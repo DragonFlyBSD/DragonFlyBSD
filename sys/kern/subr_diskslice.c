@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.31 2007/05/15 22:44:14 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.32 2007/05/16 05:20:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -452,6 +452,8 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 						info->d_media_blksize;
 			dpart->media_blocks   = sp->ds_size;
 			dpart->media_blksize  = info->d_media_blksize;
+			dpart->skip_platform = sp->ds_skip_platform;
+			dpart->skip_bsdlabel = sp->ds_skip_bsdlabel;
 			if (lp && slice != WHOLE_DISK_SLICE) {
 				struct partition *p;
 
@@ -461,6 +463,20 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 						       info->d_media_blksize;
 				dpart->media_size = (u_int64_t)p->p_size *
 						    info->d_media_blksize;
+
+				/*
+				 * partition starting sector (p_offset)
+				 * requires slice's reserved areas to be
+				 * adjusted.
+				 */
+				if (dpart->skip_platform > p->p_offset)
+					dpart->skip_platform -= p->p_offset;
+				else
+					dpart->skip_platform = 0;
+				if (dpart->skip_bsdlabel > p->p_offset)
+					dpart->skip_bsdlabel -= p->p_offset;
+				else
+					dpart->skip_bsdlabel = 0;
 			}
 		}
 		return (0);
@@ -480,16 +496,17 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			bzero(lp, sizeof *lp);
 		else
 			bcopy(sp->ds_label, lp, sizeof *lp);
-		if (sp->ds_label == NULL)
+		if (sp->ds_label == NULL) {
 			openmask = 0;
-		else {
+		} else {
 			openmask = sp->ds_openmask;
-			if (slice == COMPATIBILITY_SLICE)
+			if (slice == COMPATIBILITY_SLICE) {
 				openmask |= ssp->dss_slices[
 				    ssp->dss_first_bsd_slice].ds_openmask;
-			else if (slice == ssp->dss_first_bsd_slice)
+			} else if (slice == ssp->dss_first_bsd_slice) {
 				openmask |= ssp->dss_slices[
 				    COMPATIBILITY_SLICE].ds_openmask;
+			}
 		}
 		error = setdisklabel(lp, (struct disklabel *)data,
 				     (u_long)openmask);
@@ -737,6 +754,8 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		 * Allocate a minimal slices "struct".  This will become
 		 * the final slices "struct" if we don't want real slices
 		 * or if we can't find any real slices.
+		 *
+		 * Then scan the disk
 		 */
 		*sspp = dsmakeslicestruct(BASE_SLICE, info);
 
@@ -754,29 +773,49 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		/*
 		 * If there are no real slices, then make the compatiblity
 		 * slice cover the whole disk.
+		 *
+		 * no sectors are reserved for the platform (ds_skip_platform
+		 * will be 0) in this case.  This means that if a disklabel
+		 * is installed it will be directly installed in sector 0.
 		 */
 		if (ssp->dss_nslices == BASE_SLICE) {
 			ssp->dss_slices[COMPATIBILITY_SLICE].ds_size
 				= info->d_media_blocks;
 		}
 
-		/* Point the compatibility slice at the BSD slice, if any. */
+		/*
+		 * Point the compatibility slice at the BSD slice, if any. 
+		 */
 		for (slice = BASE_SLICE; slice < ssp->dss_nslices; slice++) {
 			sp = &ssp->dss_slices[slice];
 			if (sp->ds_type == DOSPTYP_386BSD /* XXX */) {
+				struct diskslice *csp;
+
+				csp = &ssp->dss_slices[COMPATIBILITY_SLICE];
 				ssp->dss_first_bsd_slice = slice;
-				ssp->dss_slices[COMPATIBILITY_SLICE].ds_offset
-					= sp->ds_offset;
-				ssp->dss_slices[COMPATIBILITY_SLICE].ds_size
-					= sp->ds_size;
-				ssp->dss_slices[COMPATIBILITY_SLICE].ds_type
-					= sp->ds_type;
+				csp->ds_offset = sp->ds_offset;
+				csp->ds_size = sp->ds_size;
+				csp->ds_type = sp->ds_type;
+				csp->ds_skip_platform = sp->ds_skip_platform;
+				csp->ds_skip_bsdlabel = sp->ds_skip_bsdlabel;
 				break;
 			}
 		}
+
+		/*
+		 * By definition accesses via the whole-disk device do not
+		 * specify any reserved areas.  The whole disk may be read
+		 * or written by the whole-disk device.
+		 *
+		 * XXX do not set a label for the whole disk slice, the
+		 * code should be able to operate without one once we
+		 * fix the virgin label code.
+		 */
 		sp = &ssp->dss_slices[WHOLE_DISK_SLICE];
 		sp->ds_label = clone_label(info, NULL);
 		sp->ds_wlabel = TRUE;
+		sp->ds_skip_platform = 0;
+		sp->ds_skip_bsdlabel = 0;
 	}
 
 	/*
@@ -989,11 +1028,39 @@ slice_info(char *sname, struct diskslice *sp)
 static void
 set_ds_label(struct diskslices *ssp, int slice, struct disklabel *lp)
 {
-	ssp->dss_slices[slice].ds_label = lp;
+	struct diskslice *sp1 = &ssp->dss_slices[slice];
+	struct diskslice *sp2;
+
 	if (slice == COMPATIBILITY_SLICE)
-		ssp->dss_slices[ssp->dss_first_bsd_slice].ds_label = lp;
+		sp2 = &ssp->dss_slices[ssp->dss_first_bsd_slice];
 	else if (slice == ssp->dss_first_bsd_slice)
-		ssp->dss_slices[COMPATIBILITY_SLICE].ds_label = lp;
+		sp2 = &ssp->dss_slices[COMPATIBILITY_SLICE];
+	else
+		sp2 = NULL;
+	sp1->ds_label = lp;
+	if (sp2)
+		sp2->ds_label = lp;
+
+	/*
+	 * If the slice is not the whole-disk slice, setup the reserved
+	 * area(s).
+	 *
+	 * The reserved area for the original bsd disklabel, inclusive of
+	 * the label and space for boot2, is 15 sectors.  If you've
+	 * noticed people traditionally skipping 16 sectors its because
+	 * the sector numbers start at the beginning of the slice rather
+	 * then the beginning of the disklabel and traditional dos slices
+	 * reserve a sector at the beginning for the boot code.
+	 *
+	 * NOTE! With the traditional bsdlabel, the first N bytes of boot2
+	 * overlap with the disklabel.  The disklabel program checks that
+	 * they are 0.
+	 */
+	if (slice != WHOLE_DISK_SLICE) {
+		sp1->ds_skip_bsdlabel = sp1->ds_skip_platform + 15;
+		if (sp2)
+			sp2->ds_skip_bsdlabel = sp1->ds_skip_bsdlabel;
+	}
 }
 
 static void

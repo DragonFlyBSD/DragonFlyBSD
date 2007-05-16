@@ -35,7 +35,7 @@
  *
  * $Id: vinumparser.c,v 1.21 2000/12/20 03:44:13 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumparser.c,v 1.20.2.5 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumparser.c,v 1.6 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumparser.c,v 1.7 2007/05/16 05:20:21 dillon Exp $
  */
 
 /*
@@ -68,7 +68,7 @@
 #include <sys/buf.h>
 #include <sys/proc.h>
 #include <sys/namei.h>
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/mount.h>
 
 #include "vinumvar.h"

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.55 2007/05/15 17:51:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.56 2007/05/16 05:20:26 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -47,7 +47,7 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/malloc.h>
 
 #include "quota.h"

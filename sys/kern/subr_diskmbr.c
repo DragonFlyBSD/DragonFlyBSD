@@ -36,14 +36,14 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.21 2007/05/15 22:44:14 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.22 2007/05/16 05:20:23 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #define	DOSPTYP_EXTENDED	5
 #define	DOSPTYP_EXTENDEDX	15
 #define	DOSPTYP_ONTRACK		84
@@ -510,5 +510,12 @@ mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
 	sp->ds_offset = offset;
 	sp->ds_size = size;
 	sp->ds_type = dp->dp_typ;
+
+	/*
+	 * The first sector in each slice is reserved for a system boot
+	 * sector.
+	 */
+	sp->ds_skip_platform = 1;
+	sp->ds_skip_bsdlabel = 0;
 	return (0);
 }

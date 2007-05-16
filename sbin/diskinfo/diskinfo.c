@@ -31,13 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.1 2007/05/15 17:53:11 dillon Exp $
+ * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.2 2007/05/16 05:20:10 dillon Exp $
  */
 
 #define DKTYPENAMES
 #include <sys/types.h>
 #include <sys/fcntl.h>
 #include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -127,6 +128,14 @@ dumppart(const char *path, struct partinfo *dpart)
 			} else {
 				printf("%s", fstypenames[dpart->fstype]);
 			}
+		}
+		if (dpart->skip_platform || dpart->skip_bsdlabel) {
+			/*
+			 * note: rsvdlabel is inclusive of rsvdplat. i.e.
+			 * they are not relative to each other.
+			 */
+			printf(" rsvdplat=%d rsvdlabel=%d",
+				dpart->skip_platform, dpart->skip_bsdlabel);
 		}
 	}
 	printf("\n");

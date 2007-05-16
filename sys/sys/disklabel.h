@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel.h,v 1.19 2007/05/15 17:51:02 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.20 2007/05/16 05:20:25 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -294,31 +294,11 @@ static const char *fstypenames[] = {
 #ifndef LOCORE
 
 /*
- * DIOCGPART ioctl - returns information about a slice or partition.  This
- * ioctl is primarily used to get the block size and media size.
- *
- * NOTE: media_offset currently represents the byte offset on the raw device,
- * it is not a partition relative offset.
- */
-struct partinfo {
-	u_int64_t	media_offset;	/* byte offset in parent layer */
-	u_int64_t	media_size;	/* media size in bytes */
-	u_int64_t	media_blocks;	/* media size in blocks */
-	int		media_blksize;	/* block size in bytes (sector size) */
-
-	int		reserved01;
-	int		reserved02;
-	int		fstype;		/* filesystem type if numeric */
-	char		fstypestr[16];	/* filesystem type as ascii */
-};
-
-/*
  * Disk-specific ioctls.
  */
 #define DIOCGDINFO	_IOR('d', 101, struct disklabel)/* get */
 #define DIOCSDINFO	_IOW('d', 102, struct disklabel)/* set */
 #define DIOCWDINFO	_IOW('d', 103, struct disklabel)/* set, update disk */
-#define DIOCGPART	_IOR('d', 104, struct partinfo)	/* get partition */
 #define DIOCGDVIRGIN	_IOR('d', 105, struct disklabel) /* get virgin label */
 
 #define DIOCWLABEL	_IOW('d', 109, int)	/* write en/disable label */

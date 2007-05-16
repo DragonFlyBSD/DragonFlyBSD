@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.17 2007/05/14 20:02:45 dillon Exp $
+ * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.18 2007/05/16 05:20:25 dillon Exp $
  */
 
 #ifndef _SYS_ODISKLABEL_H_
@@ -49,27 +49,6 @@
 #endif
 #if defined(_KERNEL) && !defined(_SYS_CONF_H_)
 #include <sys/conf.h>		/* for make_sub_dev() */
-#endif
-
-/*
- * Each disk has a label which includes information about the hardware
- * disk geometry, filesystem partitions, and drive specific information.
- * The label is in block 0 or 1, possibly offset from the beginning
- * to leave room for a bootstrap, etc.
- */
-
-/* XXX these should be defined per controller (or drive) elsewhere, not here! */
-#ifdef __i386__
-#define LABELSECTOR	1			/* sector containing label */
-#define LABELOFFSET	0			/* offset of label in sector */
-#endif
-
-#ifndef	LABELSECTOR
-#define LABELSECTOR	0			/* sector containing label */
-#endif
-
-#ifndef	LABELOFFSET
-#define LABELOFFSET	64			/* offset of label in sector */
 #endif
 
 #define DISKMAGIC	((u_int32_t)0x82564557)	/* The disk magic number */
