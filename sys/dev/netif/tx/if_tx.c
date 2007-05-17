@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.40 2007/05/13 18:33:57 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.41 2007/05/17 08:19:02 swildner Exp $
  */
 
 /*
@@ -779,7 +779,7 @@ epic_ifwatchdog(struct ifnet *ifp)
 		epic_init(sc);
 
 	} else
-		if_printf(ifp, "seems we can continue normaly\n");
+		if_printf(ifp, "seems we can continue normally\n");
 
 	/* Start output */
 	if (!ifq_is_empty(&ifp->if_snd))

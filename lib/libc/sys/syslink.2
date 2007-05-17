@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/syslink.2,v 1.6 2007/05/13 22:25:41 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/syslink.2,v 1.7 2007/05/17 08:19:00 swildner Exp $
 .\"
 .Dd March 13, 2007
 .Dt SYSLINK 2
@@ -85,7 +85,7 @@ may be multi-homed.
 .Pp
 For example, a particular filesystem mount will have a persistent logical
 sysid, a separate session id for every entity connecting to it, and one or
-more dynamic (changable) physical sysids depending on the mesh topology.
+more dynamic (changeable) physical sysids depending on the mesh topology.
 .Pp
 The Syslink protocol is used to glue the cluster mesh together.  It is
 based on the concept of (mostly) reliable packets and buffered streams.
@@ -191,7 +191,7 @@ Prefixes are typically on the order of 20 bits, fewer or greater depending
 on how many entities you want to be able to interconnect within the cluster.
 When multiple seed nodes are used in a cluster, the top few bits identify the
 seed node (seed nodes do not communicate with each other and must dole out
-separate numereical prefix ranges).
+separate numerical prefix ranges).
 The low 44 bits are a combination of a sequence number and a universal
 timestamp.
 Timestamps operate with a 1 minute granularity and must not roll over
@@ -207,7 +207,7 @@ open() so the limited size of the iterator should not create any real
 limitations to system scale or performance.  A session can kinda be thought
 of as a serialized link over which transactions can occur.  While the
 rate of new session and logical id creation may be limited, the actual
-number you can have operationally (each with a 500 year guarenteed
+number you can have operationally (each with a 500 year guaranteed
 uniqueness) is virtually unlimited.  It is also possible to simply allocate
 more then one prefix to handle certain burst issues, such as machine booting,
 if the limitation to the iterator would otherwise cause allocation delays.
@@ -314,11 +314,11 @@ the target are usually used for event and blocking/unblocking notifications.
 .Pp
 The SYSLINK protocol is not intended to take the place of a reliable link
 level protocol such as TCP and mesh links should only use UDP when packet
-delivery can be virtually guarenteed (such as when operating over switched
+delivery can be virtually guaranteed (such as when operating over switched
 ethernet).  UDP-based syslinks may still buffer multiple messages within
 the limitations of the UDP packet.
 .Pp
-The SYSLINK protocol is not intended to provide quorum guarentees.  Quorum
+The SYSLINK protocol is not intended to provide quorum guarantees.  Quorum
 protocols operate over SYSLINK, but are not implemented by SYSLINK.
 .Sh SYSLINK PROTOCOL - MESSAGE BUFFERING
 Syslinks which operate over buffered connections where messages may be
@@ -346,7 +346,7 @@ the target is responsible for returning a keep-alive blocking indication
 to the originator to prevent the originator from retrying or aborting
 the transaction.  Keep-alives can be directly handled by the route node
 connected to the target (since it knows if the leaf disconnects),
-simplifying leaf operation.  A route node will very occassionally do a sanity
+simplifying leaf operation.  A route node will very occasionally do a sanity
 check request to the leaf (perhaps once a minute) to verify that
 transactions blocked for a long time are still known to the leaf.
 .Pp
@@ -372,16 +372,16 @@ by allowing a node to asynchronously push data to places where it thinks
 it will be needed immediately.  The most commmon use of this sort of
 operation is the read-ahead optimization.  When one node performs a read
 transaction with another node, and the target node is capable of read-ahead
-and detemines that read-ahead is useful, the target node can initiate the
+and determines that read-ahead is useful, the target node can initiate the
 read-ahead and push the data to the originating node in a separate
-asyncnronous transaction.  Read-aheads are typically not directly adjacent
+asynchronous transaction.  Read-aheads are typically not directly adjacent
 to the read that just occurred in order to allow the originator to initiate
 the next synchronous transaction without it crossing paths with the
 asynchronous read-ahead push (resulting in the same data being returned to
 the originator twice).
 .Sh OPERATING AS A ROUTE NODE
 Most userland applications using syslink will operate as leaf nodes, but
-there is nothing preventing you from oprating as a route node.  Operating
+there is nothing preventing you from operating as a route node.  Operating
 as a route node requires implementing all route node requirements including
 the handling of logical sysid registrations and the tracking of transactions
 initiated by nodes that directly connect to you.  In fact, sysid seeding

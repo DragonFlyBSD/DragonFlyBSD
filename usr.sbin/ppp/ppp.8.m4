@@ -26,7 +26,7 @@ changecom(,)dnl
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
-.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.6 2007/05/12 21:16:23 swildner Exp $
+.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.7 2007/05/17 08:19:03 swildner Exp $
 .\"
 .Dd September 20, 1995
 .Dt PPP 8
@@ -3075,7 +3075,7 @@ and the
 address of the local network in which
 .Dv HISADDR
 appears.
-This allows other machines connecteed to the LAN to talk to
+This allows other machines connected to the LAN to talk to
 the peer as if the peer itself was connected to the LAN.
 The proxy entry cannot be made unless
 .Dv HISADDR
@@ -3441,7 +3441,7 @@ for details of the available commands.
 This command tells
 .Nm
 to punch holes in the firewall for FTP or IRC DCC connections.
-This is done dynamically by installing termporary firewall rules which
+This is done dynamically by installing temporary firewall rules which
 allow a particular connection (and only that connection) to go through
 the firewall.
 The rules are removed once the corresponding connection terminates.
@@ -5312,7 +5312,7 @@ and
 .Dq default
 can be used for
 .Ar dest
-to sepcify the default route, and
+to specify the default route, and
 .Dq 0.0.0.0
 is understood to be the same as
 .Dq default

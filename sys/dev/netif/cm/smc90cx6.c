@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.22 2006/10/25 20:55:56 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.23 2007/05/17 08:19:02 swildner Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -807,7 +807,7 @@ cmintr(void *arg)
 				 * configured sender)
 				 */
 				log(LOG_WARNING,
-				    "%s: spurious RX interupt or sender 0 "
+				    "%s: spurious RX interrupt or sender 0 "
 				    " (ignored)\n", ifp->if_xname);
 				/*
 				 * restart receiver on same buffer.

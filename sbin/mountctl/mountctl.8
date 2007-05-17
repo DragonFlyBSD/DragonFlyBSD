@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.12 2006/07/26 20:21:07 swildner Exp $
+.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.13 2007/05/17 08:19:01 swildner Exp $
 .\"
 .Dd January 8, 2005
 .Dt MOUNTCTL 8
@@ -103,7 +103,7 @@ not the case at the moment.
 .Fl r
 will restart an existing journal, directing it to a new file descriptor.
 A shutdown is sent to the old journal and the system waits for the return
-diection (if running full-duplex) to EOF.  The new descriptor is then
+direction (if running full-duplex) to EOF.  The new descriptor is then
 installed and the FIFO index is reset to the last acknowledged transaction.
 Clients scanning a journal across such a disconnect must check for repeated
 transaction ids since some overlap between the old and new journal may occur.
@@ -121,7 +121,7 @@ specified in the OPTION KEYWORDS section.
 .Bl -tag -width indent
 .It Fl 2
 Specify full-duplex operation.  The kernel will not throw away journal
-data in its internal FIFO until the transaction id is acknowlwedged.  This
+data in its internal FIFO until the transaction id is acknowledged.  This
 requires a full-duplex journaling descriptor.  Note that shell pipes are
 full-duplex-capable.
 .It Fl F
@@ -215,7 +215,7 @@ option is equivalent to specifying the path option.  Both should not be
 specified.
 .It Ar fd=filedesc
 Specify where the journal's output stream should be directed by handing over
-a file desciptor.
+a file descriptor.
 Use file descriptor 1 if you wish to output the journal to the current
 stdout.
 Note that the
@@ -242,7 +242,7 @@ Close the journal.  Any currently buffered data will be aborted.  No close
 record is written.  The journaling stream is immediately closed.
 .It Ar flush
 Flush the journal.  All currently buffered data is flushed.  The command
-does not return until the write suceeds and, if the connection is two-way,
+does not return until the write succeeds and, if the connection is two-way,
 and acknowledgement has been returned for journaled data buffered at the
 time the flush was issued.
 .El

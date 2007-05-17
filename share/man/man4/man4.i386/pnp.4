@@ -29,7 +29,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/pnp.4,v 1.5.2.7 2001/09/25 23:40:30 yokota Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/pnp.4,v 1.5 2007/05/13 20:29:48 hasso Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/pnp.4,v 1.6 2007/05/17 08:19:01 swildner Exp $
 .\"
 .Dd September 7, 1997
 .Dt PNP 4 i386
@@ -130,7 +130,7 @@ struct pnp_device {
 The probe routine must check that the vendor_id passed is a
 recognized one, that any necessary devices on the card are enabled,
 and returns a NULL value in case of failure or a non-NULL value
-(generally a pointer to the device name) unpon success.  In the probe
+(generally a pointer to the device name) upon success.  In the probe
 routine, the function
 .Fn read_pnp_parms
 can be used to check that the logical devices are enabled.

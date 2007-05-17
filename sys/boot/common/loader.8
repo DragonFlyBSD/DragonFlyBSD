@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.14 2006/10/14 23:06:42 swildner Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.15 2007/05/17 08:19:02 swildner Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -423,7 +423,7 @@ kernel.
 Setting this to 1 enables emergency interrupt polling.  All interrupt
 handlers are executed periodically.  This mode is very expensive and should
 only be used to get a system accessible when interrupt routing is
-otherwise broken.  It is primarly used by kernel developers to debug new
+otherwise broken.  It is primarily used by kernel developers to debug new
 systems.
 .It Va kern.emergency_intr_freq
 Set the polling rate for the emergency interrupt polling code.  The

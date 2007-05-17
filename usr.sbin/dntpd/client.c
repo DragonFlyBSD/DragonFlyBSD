@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.9 2005/04/26 23:50:23 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.10 2007/05/17 08:19:03 swildner Exp $
  */
 
 #include "defs.h"
@@ -253,8 +253,8 @@ client_check(struct server_info **checkp,
     /*
      * BEST CLIENT FOR FREQUENCY CORRECTION:
      *
-     *	8 samples and a correllation > 0.99, or
-     * 16 samples and a correllation > 0.96
+     *	8 samples and a correlation > 0.99, or
+     * 16 samples and a correlation > 0.96
      */
     info = *best_freq;
     if ((check->lin_count >= 8 && fabs(check->lin_cache_corr) >= 0.99) ||
@@ -340,7 +340,7 @@ client_manage_polling_mode(struct server_info *info)
     case POLL_ACQUIRE:
 	/*
 	 * Acquisition mode using the nominal timeout.  We do not shift
-	 * to maintainance mode unless the correllation is at least 0.90
+	 * to maintainance mode unless the correlation is at least 0.90
 	 */
 	if (info->poll_count < POLL_ACQUIRE_MAX ||
 	    info->lin_count < 8 ||
@@ -351,7 +351,7 @@ client_manage_polling_mode(struct server_info *info)
 	    ) {
 		logdebug(2, 
 		    "%s: WARNING: Unable to shift this source to "
-		    "maintainance mode.  Target correllation is aweful.\n",
+		    "maintenance mode.  Target correlation is aweful.\n",
 		    info->target);
 	    }
 	    if (info->poll_sleep == 0)
@@ -368,7 +368,7 @@ client_manage_polling_mode(struct server_info *info)
 	) {
 	    logdebug(2, 
 		"%s: polling mode MAINTAIN->ACQUIRE.  Unable to maintain\n"
-		"the maintainance mode because the correllation went"
+		"the maintenance mode because the correlation went"
 		" bad!\n", info->target);
 	    info->poll_mode = POLL_ACQUIRE;
 	    info->poll_count = 0;
@@ -473,7 +473,7 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
 
     /*
      * Calculate various derived values.   This gets us slope, y-intercept,
-     * and correllation from the linear regression.
+     * and correlation from the linear regression.
      */
     if (info->lin_count > 1) {
 	info->lin_cache_slope = 

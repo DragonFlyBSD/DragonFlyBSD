@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)mmap.2	8.4 (Berkeley) 5/11/95
 .\" $FreeBSD: src/lib/libc/sys/mmap.2,v 1.22.2.12 2002/02/27 03:40:13 dd Exp $
-.\" $DragonFly: src/lib/libc/sys/mmap.2,v 1.8 2007/02/19 11:10:12 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/mmap.2,v 1.9 2007/05/17 08:19:00 swildner Exp $
 .\"
 .Dd December 11, 2006
 .Dt MMAP 2
@@ -209,7 +209,7 @@ to
 .Va COPTFLAGS
 in your
 .Pa /etc/make.conf
-to enable this option for other architechures.
+to enable this option for other architectures.
 .Dv MAP_STACK
 implies
 .Dv MAP_ANON ,
@@ -246,7 +246,7 @@ update the VPTE_M bit in the virtual page table, the mapping must R+W
 even though actual access to the memory will be properly governed by
 the virtual page table.
 .Pp
-Addressable backing store is limited by the range suppored in the virtual
+Addressable backing store is limited by the range supported in the virtual
 page table entries.  The kernel may implement a page table abstraction capable
 of addressing a larger range within the backing store then could otherwise
 be mapped into memory.

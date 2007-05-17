@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/i4b/isdnd/isdnd.rc.5,v 1.11.2.5 2001/08/10 23:17:32 obrien Exp $
-.\" $DragonFly: src/usr.sbin/i4b/isdnd/isdnd.rc.5,v 1.6 2007/03/03 23:19:25 swildner Exp $
+.\" $DragonFly: src/usr.sbin/i4b/isdnd/isdnd.rc.5,v 1.7 2007/05/17 08:19:03 swildner Exp $
 .\"
 .\"     last edit-date: [Sat Jul 21 13:27:41 2001]
 .\"
@@ -371,7 +371,7 @@ If set to
 .Em on
 rotate budget-calloutsfile every night when an attempt is made to update
 the file on a new day.
-The statistics for the previous day are witten to
+The statistics for the previous day are written to
 a file with the filename specified by budget-calloutsfile to which a hyphen
 and the new day's (!) day of month number is appended.
 (optional)
@@ -610,7 +610,7 @@ which will have an undesired effect on your telco bill)!
 .It Li ppp-auth-paranoid
 If set to
 .Em no ,
-the remote site is not required to prove its authentity for connections
+the remote site is not required to prove its authenticity for connections
 that are initiated by the local site.
 The default is
 .Em yes
@@ -628,7 +628,7 @@ Set to
 if the other side does not support re-challenging for chap.
 The default is
 .Em yes ,
-which causes verification of the remote site's authentity once in a while.
+which causes verification of the remote site's authenticity once in a while.
 .Pp
 This keyword is only used if
 .Em ppp-expect-auth
@@ -637,7 +637,7 @@ has been set to chap for an
 PPP interface.
 (optional)
 .It Li ppp-expect-auth
-The local site expects the authentity of the remote site to be proved by
+The local site expects the authenticity of the remote site to be proved by
 the specified method.
 The supported methods are:
 .Pp
@@ -668,7 +668,7 @@ This keyword is only used for the
 PPP interfaces.
 (optional)
 .It Li ppp-expect-name
-The name that has to be provided by the remote site to prove its authentity.
+The name that has to be provided by the remote site to prove its authenticity.
 .Pp
 This keyword is only used if
 .Em ppp-expect-auth
@@ -677,7 +677,7 @@ has been set to pap or chap for an
 PPP interface.
 (optional)
 .It Li ppp-expect-password
-The secret that has to be provided by the remote site to prove its authentity.
+The secret that has to be provided by the remote site to prove its authenticity.
 .Pp
 This keyword is only used if
 .Em ppp-expect-auth
@@ -714,7 +714,7 @@ has been set to pap or chap for an
 PPP interface.
 (optional)
 .It Li ppp-send-password
-The secret used to prove the local site's authentity to the remote site.
+The secret used to prove the local site's authenticity to the remote site.
 .Pp
 This keyword is only used if
 .Em ppp-send-auth

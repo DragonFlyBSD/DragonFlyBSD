@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ahc.4,v 1.22.2.8 2002/01/21 17:38:18 scottl Exp $
-.\" $DragonFly: src/share/man/man4/ahc.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ahc.4,v 1.4 2007/05/17 08:19:01 swildner Exp $
 .\"
 .Dd February 13, 2000
 .Dt AHC 4
@@ -232,7 +232,7 @@ SCB space to be augmented with external SRAM up to a maximum of 255 SCBs.
 Very few Adaptec controller configurations have external SRAM.
 .Pp
 If external SRAM is not available, SCBs are a limited resource.
-Using the SCBs in a straight forward manner would only allow the dirver to
+Using the SCBs in a straight forward manner would only allow the driver to
 handle as many concurrent transactions as there are physical SCBs.
 To fully utilize the SCSI bus and the devices on it,
 requires much more concurrency.

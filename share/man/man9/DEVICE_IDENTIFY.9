@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/DEVICE_IDENTIFY.9,v 1.2.2.5 2002/03/19 18:24:16 schweikh Exp $
-.\" $DragonFly: src/share/man/man9/DEVICE_IDENTIFY.9,v 1.4 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man9/DEVICE_IDENTIFY.9,v 1.5 2007/05/17 08:19:02 swildner Exp $
 .\"
 .Dd March 10, 2001
 .Dt DEVICE_IDENTIFY 9
@@ -41,7 +41,7 @@
 .Sh DESCRIPTION
 The identify function for a device is only needed for devices on busses
 that cannot identify their children independently, e.g. the ISA bus.
-It is used to recognize the device (usually done by accessing non-ambigous
+It is used to recognize the device (usually done by accessing non-ambiguous
 registers in the hardware) and to tell the kernel about it and thus
 creating a new device instance.
 .Pp

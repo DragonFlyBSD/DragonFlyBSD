@@ -1,4 +1,4 @@
-$DragonFly: src/bin/cpdup/BACKUPS,v 1.3 2007/05/13 22:25:41 swildner Exp $
+$DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
 
 			    INCREMENTAL BACKUP HOWTO
 
@@ -124,7 +124,7 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.3 2007/05/13 22:25:41 swildner Exp $
     might exist on the physical /backup disk in only one place even though
     it may be present in dozens of daily mirrors.  To ensure that the
     file being hardlinked does not get corrupted cpdup's -f option can be
-    used in conjuction with -H to force cpdup to validate the contents 
+    used in conjunction with -H to force cpdup to validate the contents 
     of the file, even if all the stat info looks identical.
 
 	cpdup -f -H /backup/mirrors/box1 ...

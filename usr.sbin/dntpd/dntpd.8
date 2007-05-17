@@ -1,4 +1,4 @@
-.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.11 2007/04/05 12:32:18 swildner Exp $
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.12 2007/05/17 08:19:03 swildner Exp $
 .\"
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\"
@@ -107,7 +107,7 @@ and logs to stderr instead of syslog.  A single linear regression is
 accumulated at the nominal polling rate and reported until terminated.
 No time corrections are made.  This option is meant for testing only.
 Note that frequency corrections based on internet time sources typically
-require a long (10-30min) polling rate to be well correllated.
+require a long (10-30min) polling rate to be well correlated.
 .It Fl F
 Run in the foreground.  Unlike debug mode, this option will still log
 to syslog.
@@ -125,11 +125,11 @@ time corrections and state changes are logged at log level 2.  Log level's
 3 and 4 increase the amount of debugging information logged.
 .It Fl T Ar nominal_poll
 Set the nominal polling interval, in seconds.  This is the interval used
-while the client is in aquisition mode.
-The default is 300 sconds (5 minutes).
+while the client is in acquisition mode.
+The default is 300 seconds (5 minutes).
 .It Fl L Ar maximum_poll
 Set the maximum polling interval, in seconds.  This is the interval used
-while the client is in maintainance mode, after it believes it has
+while the client is in maintenance mode, after it believes it has
 stabilized the system's clock.
 The default is 1800 seconds (30 minutes).
 .It targets

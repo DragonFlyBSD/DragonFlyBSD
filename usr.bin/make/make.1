@@ -31,7 +31,7 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.29 2007/01/19 07:23:43 dillon Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.30 2007/05/17 08:19:02 swildner Exp $
 .\"
 .Dd March 30, 2005
 .Dt MAKE 1
@@ -1429,7 +1429,7 @@ environment variables so that a warning flag specified on the command
 line will influence all sub-makes.
 Several flags can be specified on a single
 .Ic .WARN
-target by seperating them with blanks.
+target by separating them with blanks.
 .El
 .Sh ENVIRONMENT
 The
@@ -1557,7 +1557,7 @@ all:
 A trailing backslash in a variable value defined on the command line causes
 the delimiting space in the
 .Ev MAKEFLAGS
-environment variable to be preceeded by that backslash.
+environment variable to be preceded by that backslash.
 That causes a submake to not treat that space as a word delimiter.
 Fixing this requires a larger rewrite of the code handling command line
 macros and assignments to

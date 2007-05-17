@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/libexec/ftpd/ftpchroot.5,v 1.2.2.1 2003/02/11 14:28:28 yar Exp $
-.\" $DragonFly: src/libexec/ftpd/ftpchroot.5,v 1.3 2006/03/21 09:12:20 swildner Exp $
+.\" $DragonFly: src/libexec/ftpd/ftpchroot.5,v 1.4 2007/05/17 08:19:01 swildner Exp $
 .\"
 .Dd January 26, 2003
 .Dt FTPCHROOT 5
@@ -72,7 +72,7 @@ If it is not an absolute pathname, then it will be relative
 to the user's login directory.
 If it contains the
 .Qq \&/./
-seprator,
+separator,
 .Xr ftpd 8
 will treat its left-hand side as the name of the directory to do
 .Xr chroot 2

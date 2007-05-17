@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.111 2007/05/13 22:25:42 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.112 2007/05/17 08:19:02 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -157,7 +157,7 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # CPU_AMD64X2_INTR_SPAM tries to route HyperTransport EXTINT and NMI
 # messages to LINT0 on the local APIC when the BIOS has forgotten to
 # do that.  If this is not done on a multi-core cpu, EXTINT and NMI
-# get routed to the INTR/NMI pins on *BOTH* cores simultaniously, causing
+# get routed to the INTR/NMI pins on *BOTH* cores simultaneously, causing
 # two INTA ack cycles one of which will almost certainly result in a
 # spurious interrupt vector being presented.  This is often visible as 
 # an unmaskable IRQ 7 which occurs for every normal interrupt that occurs
@@ -207,7 +207,7 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # I/O clock delay time on Cyrix 5x86 and 6x86 are 0 and 7,respectively
 # (no clock delay).
 #
-# CPU_L2_LATENCY specifed the L2 cache latency value.  This option is used
+# CPU_L2_LATENCY specified the L2 cache latency value.  This option is used
 # only when CPU_PPRO2CELERON is defined and Mendocino Celeron is detected.
 # The default value is 5.
 #

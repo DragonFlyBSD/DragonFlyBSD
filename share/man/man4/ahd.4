@@ -27,7 +27,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ahd.4,v 1.2.2.1 2002/09/01 22:35:34 scottl Exp $
-.\" $DragonFly: src/share/man/man4/ahd.4,v 1.4 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ahd.4,v 1.5 2007/05/17 08:19:01 swildner Exp $
 .\"
 .Dd September 1, 2002
 .Dt AHD 4
@@ -78,7 +78,7 @@ is enabled.  Logically 'or' the following bits together:
 .Bd -ragged -offset indent
 .Bl -column "Value " Function
 .Em "Value   Function"
-0x0001  Show miscellanious information
+0x0001  Show miscellaneous information
 0x0002  Show sense data
 0x0004  Show Serial EEPROM contents
 0x0008  Show bus termination settings
@@ -107,7 +107,7 @@ through the
 configuration option.  The value assigned to this option should be a bitmap
 of all units where target mode is desired.
 For example, a value of 0x25, would enable target mode on units 0, 2, and 5.
-Note that target mode is only supoprted for ultra160 speeds and below.
+Note that target mode is only supported for ultra160 speeds and below.
 .Pp
 Per target configuration performed in the
 .Tn SCSI-Select

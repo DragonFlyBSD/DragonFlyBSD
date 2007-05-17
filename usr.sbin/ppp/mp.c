@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/mp.c,v 1.36.2.9 2002/09/01 02:12:28 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/mp.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/mp.c,v 1.3 2007/05/17 08:19:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -965,13 +965,13 @@ mp_SetEnddisc(struct cmdargs const *arg)
     case PHASE_ESTABLISH:
       /* Make sure none of our links are DATALINK_LCP or greater */
       if (bundle_HighestState(arg->bundle) >= DATALINK_LCP) {
-        log_Printf(LogWARN, "enddisc: Only changable before"
+        log_Printf(LogWARN, "enddisc: Only changeable before"
                    " LCP negotiations\n");
         return 1;
       }
       break;
     default:
-      log_Printf(LogWARN, "enddisc: Only changable at phase DEAD/ESTABLISH\n");
+      log_Printf(LogWARN, "enddisc: Only changeable at phase DEAD/ESTABLISH\n");
       return 1;
   }
 

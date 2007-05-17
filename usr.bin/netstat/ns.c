@@ -32,7 +32,7 @@
  *
  * @(#)ns.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/ns.c,v 1.1.1.1.14.1 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/ns.c,v 1.4 2007/04/22 01:25:04 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/ns.c,v 1.5 2007/05/17 08:19:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -200,7 +200,7 @@ spp_stats(u_long off, char *name, int af __unused)
 	ANY(sppstat.spps_sndurg, "packet", " sent with URG only");
 	ANY(sppstat.spps_sndwinup, "window update-only packet", " sent");
 	ANY(sppstat.spps_sndctrl, "control (SYN|FIN|RST) packet", " sent");
-	ANY(sppstat.spps_sndvoid, "request", " to send a non-existant packet");
+	ANY(sppstat.spps_sndvoid, "request", " to send a non-existent packet");
 	ANY(sppstat.spps_rcvtotal, "total packet", " received");
 	ANY(sppstat.spps_rcvpack, "packet", " received in sequence");
 	ANY(sppstat.spps_rcvbyte, "byte", " received in sequence");

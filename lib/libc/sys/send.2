@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)send.2	8.2 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/send.2,v 1.10.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/send.2,v 1.7 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/send.2,v 1.8 2007/05/17 08:19:00 swildner Exp $
 .\"
 .Dd February 15, 1995
 .Dt SEND 2
@@ -218,4 +218,4 @@ then
 .Fn close
 it before it has actually been sent, the result being that the receiver
 gets a closed file descriptor.  It is left to the application to
-implement an acknowlegment mechanism to prevent this from happening.
+implement an acknowledgment mechanism to prevent this from happening.

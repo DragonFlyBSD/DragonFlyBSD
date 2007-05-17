@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_one2many.4,v 1.1.2.9 2003/01/06 23:32:22 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/ng_one2many.4,v 1.4 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ng_one2many.4,v 1.5 2007/05/17 08:19:01 swildner Exp $
 .\"
 .Dd November 15, 2000
 .Dt NG_ONE2MANY 4
@@ -72,7 +72,7 @@ Packets are never delivered out a many hook that is down.
 How a link is determined to be up or down depends on the node's
 configured link failure detection algorithm.
 .Sh TRANSMIT ALGORITHMS
-At this time, the only algorithm for determing the outgoing
+At this time, the only algorithm for determining the outgoing
 .Dv many
 hook is a simple round-robin delivery algorithm.
 Packets are delivered out the many hooks in sequential order.

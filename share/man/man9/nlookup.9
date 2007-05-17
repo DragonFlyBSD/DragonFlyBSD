@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/nlookup.9,v 1.8 2007/05/13 18:33:56 swildner Exp $
+.\" $DragonFly: src/share/man/man9/nlookup.9,v 1.9 2007/05/17 08:19:02 swildner Exp $
 .\"
 .Dd August 6, 2005
 .Os
@@ -96,8 +96,8 @@ node creation
 .Dv VCREATE Ns / Ns Dv VDELETE
 .Pc ,
 and an error code of 0
-will be returned for a non-existant target.
-Otherwise a non-existant target will cause
+will be returned for a non-existent target.
+Otherwise a non-existent target will cause
 .Er ENOENT
 to be returned.
 .Pp
@@ -183,7 +183,7 @@ All specified bits must pass for this function to return 0.
 If
 .Dv VCREATE
 is specified and the target ncp represents a
-non-existant file or dir, or if
+non-existent file or dir, or if
 .Dv VDELETE
 is specified and the
 target exists, the parent directory is checked for
@@ -202,7 +202,7 @@ Note that
 .Fn nlookup
 does not (and should not) return
 .Er ENOENT
-for non-existant leafs.
+for non-existent leafs.
 The passed ncp may or may not be locked.
 The caller should use a locked ncp on leaf lookups, especially
 for

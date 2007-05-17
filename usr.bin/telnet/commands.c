@@ -32,7 +32,7 @@
  *
  * @(#)commands.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/usr.bin/telnet/commands.c,v 1.21.2.6 2002/11/30 05:35:13 eric Exp $
- * $DragonFly: src/usr.bin/telnet/commands.c,v 1.4 2005/02/28 16:55:39 joerg Exp $
+ * $DragonFly: src/usr.bin/telnet/commands.c,v 1.5 2007/05/17 08:19:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -2245,7 +2245,7 @@ static char
 	sethelp[] = 	"set operating parameters ('set ?' for more)",
 	unsethelp[] = 	"unset operating parameters ('unset ?' for more)",
 	togglestring[] ="toggle operating parameters ('toggle ?' for more)",
-	slchelp[] =	"change state of special charaters ('slc ?' for more)",
+	slchelp[] =	"change state of special characters ('slc ?' for more)",
 	displayhelp[] =	"display operating parameters",
 	zhelp[] =	"suspend telnet",
 #ifdef OPIE

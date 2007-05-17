@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.13 2007/05/13 22:25:41 swildner Exp $
+.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.14 2007/05/17 08:19:01 swildner Exp $
 .\"
 .Dd March 6, 2005
 .Dt JSCAN 8
@@ -88,7 +88,7 @@ or, if not specified, the current directory.
 The
 .Ar mirror_transid_file
 will be used to track the transaction id representing the current
-syncnronization point for the mirror.  The keyword
+synchronization point for the mirror.  The keyword
 .Ar none
 may be specified if no tracking file is desired.  However, if no tracking
 file is specified it will not be possible to roll the mirror forwards or
@@ -133,7 +133,7 @@ is not specified,
 acts as a stateless transceiver and the input stream is not acked until
 an ack is received from the output stream.
 .Pp
-This option is most typically used in conjuction with
+This option is most typically used in conjunction with
 .Fl w/W .
 In this case the ACK protocol is handled independently for the input side
 and the output side uses the journaling data recorded by

@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/firewall.7,v 1.1.2.8 2003/04/29 07:57:22 brueffer Exp $
-.\" $DragonFly: src/share/man/man7/firewall.7,v 1.9 2007/02/19 11:10:11 swildner Exp $
+.\" $DragonFly: src/share/man/man7/firewall.7,v 1.10 2007/05/17 08:19:01 swildner Exp $
 .\"
 .Dd May 26, 2001
 .Dt FIREWALL 7
@@ -47,7 +47,7 @@ Constructing a firewall may appear to be trivial, but most people
 get them wrong.  The most common mistake is to create an exclusive
 firewall rather than an inclusive firewall.  An exclusive firewall
 allows all packets through except for those matching a set of rules.
-An inclusive firewall allows only packets matching the rulset
+An inclusive firewall allows only packets matching the ruleset
 through.  Inclusive firewalls are much, much safer then exclusive
 firewalls but a tad more difficult to build properly.  The
 second most common mistake is to blackhole everything except the

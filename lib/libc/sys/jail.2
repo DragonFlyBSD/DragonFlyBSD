@@ -7,14 +7,14 @@
 .\"----------------------------------------------------------------------------
 .\"
 .\"$FreeBSD: src/lib/libc/sys/jail.2,v 1.10.2.10 2002/12/12 05:26:38 trhodes Exp $
-.\"$DragonFly: src/lib/libc/sys/jail.2,v 1.8 2007/02/25 18:50:48 swildner Exp $
+.\"$DragonFly: src/lib/libc/sys/jail.2,v 1.9 2007/05/17 08:19:00 swildner Exp $
 .\"
 .Dd April 28, 1999
 .Dt JAIL 2
 .Os
 .Sh NAME
 .Nm jail
-.Nd imprison current process and future decendants
+.Nd imprison current process and future descendants
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -58,7 +58,7 @@ The
 .Dq ips
 pointer contains the IP addresses assigned to the jail.
 .Sh PRISON
-Once a process has been put in a prison, it and its decendants cannot escape
+Once a process has been put in a prison, it and its descendants cannot escape
 the prison.
 A process can be attached to a prison by calling
 .Xr jail_attach 2 .

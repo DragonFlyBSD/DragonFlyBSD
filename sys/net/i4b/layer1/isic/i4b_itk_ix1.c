@@ -29,7 +29,7 @@
  *      last edit-date: [Wed Jan 24 09:27:06 2001]
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_itk_ix1.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_itk_ix1.c,v 1.6 2006/12/22 23:44:56 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_itk_ix1.c,v 1.7 2007/05/17 08:19:02 swildner Exp $
  *
  *---------------------------------------------------------------------------
  *
@@ -277,7 +277,7 @@ isic_probe_itkix1(device_t dev)
 	/* register interupt routine */
 
 	#if defined(ITK_PROBE_DEBUG)
-	kprintf("Setting up access interupt...");
+	kprintf("Setting up access interrupt...");
 	#endif
 
 	bus_setup_intr(dev, sc->sc_resources.irq,

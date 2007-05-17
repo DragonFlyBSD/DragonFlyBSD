@@ -6,7 +6,7 @@
                 last edit-date: [Wed Nov  1 15:08:03 2000]
 
  $FreeBSD: src/share/examples/isdn/FAQ,v 1.6.2.2 2002/08/07 10:47:48 blackend Exp $
- $DragonFly: src/share/examples/isdn/FAQ,v 1.4 2007/05/13 22:25:41 swildner Exp $
+ $DragonFly: src/share/examples/isdn/FAQ,v 1.5 2007/05/17 08:19:01 swildner Exp $
 
 --------------------------------------------------------------------------------
 
@@ -149,7 +149,7 @@ Contents:
 	---------------------
 	>I further think Gary should mention
 	>in the FAQ in the section "B. How to figure out the ISP's IP address
-	>that it isn't normaly necessary to do it because of the auto
+	>that it isn't normally necessary to do it because of the auto
 	>address negotiation.
 
 	Gary answers:

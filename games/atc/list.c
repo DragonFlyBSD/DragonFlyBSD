@@ -35,7 +35,7 @@
  *
  * @(#)list.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/list.c,v 1.4 1999/11/30 03:48:20 billf Exp $
- * $DragonFly: src/games/atc/list.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
+ * $DragonFly: src/games/atc/list.c,v 1.4 2007/05/17 08:19:00 swildner Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ void
 delete(LIST *l, PLANE *p)
 {
 	if (l->head == NULL)
-		loser(p, "deleted a non-existant plane! Get help!");
+		loser(p, "deleted a non-existent plane! Get help!");
 
 	if (l->head == p && l->tail == p)
 		l->head = l->tail = NULL;

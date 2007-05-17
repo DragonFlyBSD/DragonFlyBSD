@@ -30,7 +30,7 @@ cat >${UPPER} <<DONE
 # Configuration file for kernel type: ${UPPER}
 ident	${UPPER}
 # \$FreeBSD: src/share/examples/drivers/make_device_driver.sh,v 1.6.2.1 2001/07/25 15:56:09 dd Exp $"
-# \$DragonFly: src/share/examples/drivers/make_device_driver.sh,v 1.5 2006/10/24 17:09:45 swildner Exp $"
+# \$DragonFly: src/share/examples/drivers/make_device_driver.sh,v 1.6 2007/05/17 08:19:01 swildner Exp $"
 DONE
 
 grep -v GENERIC < GENERIC >>${UPPER}
@@ -222,7 +222,7 @@ ${1}intr(int unit)
 	sc_p scp  = sca[unit];
 	
 	/* 
-	 * well we got an interupt, now what?
+	 * well we got an interrupt, now what?
 	 * Theoretically we don't need to check the unit.
 	 */
 	return;

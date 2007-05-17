@@ -1,10 +1,10 @@
-# $DragonFly: src/share/examples/cvsup/DragonFly-release1_6-supfile,v 1.2 2007/04/01 12:20:50 swildner Exp $
+# $DragonFly: src/share/examples/cvsup/DragonFly-release1_6-supfile,v 1.3 2007/05/17 08:19:01 swildner Exp $
 #
 # DRAGONFLY-RELEASE1_6-SUPFILE
 #
 # This file will by default maintain the DragonFly 1.6 release source code
 # in /usr/src/ by tracking the DragonFly_RELEASE_1_6_Slip tag in the CVS tree.
-# This tag represents the maintainance arm of the DragonFly 1.6 release.
+# This tag represents the maintenance arm of the DragonFly 1.6 release.
 #
 # (The '_Slip' part is a slip tag that tracks changes along with the correct
 #  subversion.  If you do not use this tag your subversion may be out of 

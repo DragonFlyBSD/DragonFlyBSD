@@ -32,7 +32,7 @@
  *
  * @(#)ns.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/ipx.c,v 1.13.2.1 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/ipx.c,v 1.5 2007/04/22 01:25:04 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/ipx.c,v 1.6 2007/05/17 08:19:02 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -203,7 +203,7 @@ spx_stats(u_long off, char *name, int af __unused)
 	ANYl(spxstat.spxs_sndurg, "packet", " sent with URG only");
 	ANYl(spxstat.spxs_sndwinup, "window update-only packet", " sent");
 	ANYl(spxstat.spxs_sndctrl, "control (SYN|FIN|RST) packet", " sent");
-	ANYl(spxstat.spxs_sndvoid, "request", " to send a non-existant packet");
+	ANYl(spxstat.spxs_sndvoid, "request", " to send a non-existent packet");
 	ANYl(spxstat.spxs_rcvtotal, "total packet", " received");
 	ANYl(spxstat.spxs_rcvpack, "packet", " received in sequence");
 	ANYl(spxstat.spxs_rcvbyte, "byte", " received in sequence");
