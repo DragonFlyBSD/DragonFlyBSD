@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.22 2007/05/15 17:50:54 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.23 2007/05/17 15:05:27 swildner Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -55,6 +55,7 @@
 #include <sys/buf.h>
 #include <sys/cdio.h>
 #include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/kernel.h>
 #include <sys/buf2.h>
 #include <sys/thread2.h>
