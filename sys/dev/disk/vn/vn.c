@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.32 2007/05/15 22:44:05 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.33 2007/05/17 03:20:08 dillon Exp $
  */
 
 /*
@@ -243,6 +243,11 @@ vnopen(struct dev_open_args *ap)
 			bzero(info, sizeof(*info));
 			info->d_media_blksize = vn->sc_secsize;
 			info->d_media_blocks = vn->sc_size;
+			/*
+			 * reserve mbr sector for backwards compatibility
+			 * when no slices exist.
+			 */
+			info->d_dsflags = DSO_COMPATMBR;
 
 			info->d_secpertrack = 32;
 			info->d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);

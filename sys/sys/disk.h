@@ -39,7 +39,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.13 2007/05/15 22:44:19 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.14 2007/05/17 03:20:11 dillon Exp $
  */
 
 #ifndef _SYS_DISK_H_
@@ -91,11 +91,19 @@ struct disk_info {
 
 /*
  * d_dsflags, also used for dsopen() - control disklabel processing
+ *
+ * COMPATPARTA	- used by scsi devices to allow CDs to boot from cd0a.
+ *		  cd's don't have disklabels and the default compat label
+ *		  does not implement an 'a' partition.
+ *
+ * COMPARTMBR	- used by the vn device to request that one sector be
+ *		  reserved as if an MBR were present even when one isn't.
  */
 #define DSO_NOLABELS		0x0001
 #define DSO_ONESLICE		0x0002
 #define DSO_COMPATLABEL		0x0004
 #define DSO_COMPATPARTA		0x0008
+#define DSO_COMPATMBR		0x0010
 
 /*
  * Disk management structure - automated disklabel support.

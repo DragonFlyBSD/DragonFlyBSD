@@ -1,5 +1,3 @@
-/*	$NetBSD: ccdconfig.c,v 1.2.2.1 1995/11/11 02:43:35 thorpej Exp $	*/
-
 /*
  * Copyright (c) 1995 Jason R. Thorpe.
  * All rights reserved.
@@ -31,10 +29,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $NetBSD: ccdconfig.c,v 1.2.2.1 1995/11/11 02:43:35 thorpej Exp $
  * $FreeBSD: src/sbin/ccdconfig/ccdconfig.c,v 1.16.2.2 2000/12/11 01:03:25 obrien Exp $
- * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.7 2006/10/16 22:02:22 pavalos Exp $
+ * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.8 2007/05/17 03:20:12 dillon Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/linker.h>
 #include <sys/disklabel.h>
@@ -95,7 +95,6 @@ static	int do_single(int, char **, int);
 static	int do_all(int);
 static	int dump_ccd(int, char **);
 static	int getmaxpartitions(void);
-static	int getrawpartition(void);
 static	int flags_to_val(char *);
 static	void print_ccd_info(struct ccd_softc *, kvm_t *);
 static	char *resolve_ccdname(char *);
@@ -300,7 +299,7 @@ do_single(int argc, char **argv, int action)
 			    i == 0 ? '(' : ' ', cp2,
 			    i == ccio.ccio_ndisks - 1 ? ')' : ',');
 		}
-		printf(", %lu blocks ", (u_long)ccio.ccio_size);
+		printf(", %llu blocks ", ccio.ccio_size);
 		if (ccio.ccio_ileave != 0)
 			printf("interleaved at %d blocks\n", ccio.ccio_ileave);
 		else
@@ -414,7 +413,6 @@ resolve_ccdname(char *name)
 {
 	char c, *path;
 	size_t len;
-	int rawpart;
 
 	if (name[0] == '/' || name[0] == '.') {
 		/* Assume they gave the correct pathname. */
@@ -427,13 +425,7 @@ resolve_ccdname(char *name)
 	else
 		c = '\0';
 
-	if (isdigit(c)) {
-		if ((rawpart = getrawpartition()) < 0)
-			return (NULL);
-		asprintf(&path, "%s%s%c", _PATH_DEV, name, 'a' + rawpart);
-	} else {
-		asprintf(&path, "%s%s", _PATH_DEV, name);
-	}
+	asprintf(&path, "%s%s", _PATH_DEV, name);
 
 	return (path);
 }
@@ -627,12 +619,6 @@ static int
 getmaxpartitions(void)
 {
     return (MAXPARTITIONS);
-}
-
-static int
-getrawpartition(void)
-{
-	return (RAW_PART);
 }
 
 static int

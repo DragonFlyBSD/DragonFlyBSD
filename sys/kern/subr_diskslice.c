@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.32 2007/05/16 05:20:23 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.33 2007/05/17 03:20:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -463,6 +463,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 						       info->d_media_blksize;
 				dpart->media_size = (u_int64_t)p->p_size *
 						    info->d_media_blksize;
+				dpart->media_blocks = (u_int64_t)p->p_size;
 
 				/*
 				 * partition starting sector (p_offset)
@@ -776,11 +777,15 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		 *
 		 * no sectors are reserved for the platform (ds_skip_platform
 		 * will be 0) in this case.  This means that if a disklabel
-		 * is installed it will be directly installed in sector 0.
+		 * is installed it will be directly installed in sector 0
+		 * unless DSO_COMPATMBR is requested.
 		 */
 		if (ssp->dss_nslices == BASE_SLICE) {
-			ssp->dss_slices[COMPATIBILITY_SLICE].ds_size
-				= info->d_media_blocks;
+			sp = &ssp->dss_slices[COMPATIBILITY_SLICE];
+
+			sp->ds_size = info->d_media_blocks;
+			if (info->d_dsflags & DSO_COMPATMBR)
+				sp->ds_skip_platform = 1;
 		}
 
 		/*

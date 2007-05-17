@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/ccdvar.h,v 1.11.2.1 2001/09/11 09:49:54 kris Exp $ */
-/* $DragonFly: src/sys/sys/ccdvar.h,v 1.5 2006/09/10 01:26:40 dillon Exp $ */
+/* $DragonFly: src/sys/sys/ccdvar.h,v 1.6 2007/05/17 03:20:11 dillon Exp $ */
 
 /*	$NetBSD: ccdvar.h,v 1.7.2.1 1995/10/12 21:30:18 thorpej Exp $	*/
 
@@ -81,7 +81,7 @@
 #define _SYS_CCDVAR_H_
 
 /*
- * Dynamic configuration and disklabel support by:
+ * Original dynamic configuration support by:
  *	Jason R. Thorpe <thorpej@nas.nasa.gov>
  *	Numerical Aerodynamic Simulation Facility
  *	Mail Stop 258-6
@@ -92,11 +92,17 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_CONF_H_
+#include <sys/conf.h>
+#endif
 #ifndef _SYS_DEVICESTAT_H_
 #include <sys/devicestat.h>
 #endif
-#ifndef _SYS_DISKLABEL_H_
-#include <sys/disklabel.h>
+#ifndef _SYS_DISK_H_
+#include <sys/disk.h>
+#endif
+#ifndef _SYS_DISKSLICE_H_
+#include <sys/diskslice.h>
 #endif
 
 /*
@@ -106,7 +112,7 @@ struct ccddevice {
 	int		ccd_unit;	/* logical unit of this ccd */
 	int		ccd_interleave;	/* interleave (DEV_BSIZE blocks) */
 	int		ccd_flags;	/* misc. information */
-	int		ccd_dk;		/* disk number */
+	int		ccd_unused01;	/* disk number */
 	struct vnode	**ccd_vpp;	/* array of component vnodes */
 	char		**ccd_cpp;	/* array of component pathnames */
 	int		ccd_ndev;	/* number of component devices */
@@ -121,7 +127,7 @@ struct ccd_ioctl {
 	int	ccio_ileave;		/* interleave (DEV_BSIZE blocks) */
 	int	ccio_flags;		/* misc. information */
 	int	ccio_unit;		/* unit number: use varies */
-	size_t	ccio_size;		/* (returned) size of ccd */
+	u_int64_t ccio_size;		/* (returned) size of ccd in sectors */
 };
 
 /* ccd_flags */
@@ -142,7 +148,8 @@ struct cdev;
 struct ccdcinfo {
 	struct vnode	*ci_vp;			/* device's vnode */
 	struct cdev 	*ci_dev;		/* XXX: device's dev_t */
-	size_t		ci_size; 		/* size */
+	u_int64_t	ci_size; 		/* size in sectors */
+	u_int64_t	ci_skip;		/* start skip in sectors */
 	char		*ci_path;		/* path to component */
 	size_t		ci_pathlen;		/* length of component path */
 };
@@ -175,8 +182,8 @@ struct ccdcinfo {
  */
 struct ccdiinfo {
 	int	ii_ndisk;	/* # of disks range is interleaved over */
-	daddr_t	ii_startblk;	/* starting scaled block # for range */
-	daddr_t	ii_startoff;	/* starting component offset (block #) */
+	u_int64_t ii_startblk;	/* starting scaled block # for range */
+	u_int64_t ii_startoff;	/* starting component offset (block #) */
 	int	*ii_index;	/* ordered list of components in range */
 };
 
@@ -197,7 +204,7 @@ struct ccd_softc {
 	int		 sc_unit;		/* logical unit number */
 	int		 sc_flags;		/* flags */
 	int		 sc_cflags;		/* configuration flags */
-	size_t		 sc_size;		/* size of ccd */
+	u_int64_t	 sc_size;		/* size of ccd in sectors */
 	int		 sc_ileave;		/* interleave */
 	u_int		 sc_nccdisks;		/* number of components */
 #define	CCD_MAXNDISKS	 65536
@@ -205,16 +212,16 @@ struct ccd_softc {
 	struct ccdiinfo	 *sc_itable;		/* interleave table */
 	struct devstat	 device_stats;		/* device statistics */
 	struct ccdgeom   sc_geom;		/* pseudo geometry info */
-	struct disklabel sc_label;		/* generic disk device info */
-	int		 sc_openmask;
+	struct disk	 sc_disk;		/* disk overlay for ccd */
+	struct cdev	 *sc_dev;		/* raw ccd device */
 	int		 sc_pick;		/* side of mirror picked */
 	off_t		 sc_blk[2];		/* mirror localization */
 };
 
 /* sc_flags */
 #define CCDF_INITED	0x01	/* unit has been initialized */
-#define CCDF_WLABEL	0x02	/* label area is writable */
-#define CCDF_LABELLING	0x04	/* unit is currently being labelled */
+#define CCDF_UNUSED02	0x02	/* label area is writable */
+#define CCDF_UNUSED04	0x04	/* unit is currently being labelled */
 #define CCDF_WANTED	0x40	/* someone is waiting to obtain a lock */
 #define CCDF_LOCKED	0x80	/* unit is locked */
 

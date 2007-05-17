@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel.h,v 1.20 2007/05/16 05:20:25 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.21 2007/05/17 03:20:11 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -267,7 +267,14 @@ static const char *dktypenames[] = {
 #define	FS_HPFS		11		/* OS/2 high-performance file system */
 #define	FS_ISO9660	12		/* ISO 9660, normally CD-ROM */
 #define	FS_BOOT		13		/* partition contains bootstrap */
-#define	FS_VINUM	14		/* Vinum drive */
+#define	FS_VINUM	14		/* Vinum drive partition */
+#define	FS_RAID		15
+#define FS_RESERVED16	16
+#define FS_RESERVED17	17
+#define FS_RESERVED18	18
+#define FS_CCD		19		/* CCD drive partition */
+#define FS_RESERVED20	20
+#define FS_JFS2		21
 
 #ifdef	DKTYPENAMES
 static const char *fstypenames[] = {
@@ -286,6 +293,13 @@ static const char *fstypenames[] = {
 	"ISO9660",
 	"boot",
 	"vinum",
+	"raid",
+	"?",
+	"?",
+	"?",
+	"ccd",
+	"?",	/* don't use in case freebsd reassigns jfs / bug in freebsd */
+	"jfs",
 	NULL
 };
 #define FSMAXTYPES	(sizeof(fstypenames) / sizeof(fstypenames[0]) - 1)

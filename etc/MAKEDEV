@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.25 2007/02/03 17:00:12 tgen Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.26 2007/05/17 03:20:13 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -43,6 +43,7 @@
 #	ad*	ATA disks
 #	afd*	ATAPI floppy disks
 #	amrd*	AMI MegaRAID
+#	ccd*	CCD disks
 #	cd*	SCSI CD-ROM disks
 #	da*	SCSI Direct Access Devices
 #	fd*	floppy disk drives (3 1/2", 5 1/4")
@@ -483,6 +484,7 @@ all)
 	sh MAKEDEV da0 da1 da2 da3 da4 da5 da6 da7	# bdev, SCSI disk
 	sh MAKEDEV da8 da9 da10 da11 da12 da13 da14	# bdev, SCSI disk
 	sh MAKEDEV da15					# bdev, SCSI disk
+	sh MAKEDEV ccd0 ccd1 ccd2 ccd3			# ccd disk
 	sh MAKEDEV ata					# cdev, ATA control
 	sh MAKEDEV ad0 ad1 ad2 ad3 ad4 ad5 ad6 ad7	# bdev, ATA disk
 	sh MAKEDEV ar0 ar1				# bdev, ATA RAID disk
@@ -653,13 +655,14 @@ wt*)
 
 #-----------------------------------------------------------------------------
 
-aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|vkd*s*)
+aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|vkd*s*)
 	case $i in
 	aacd*s*) name=aacd; chr=151;;
 	ad*s*)   name=ad;   chr=116;;
 	ar*s*)   name=ar;   chr=157;;
 	afd*s*)  name=afd;  chr=118;;
 	amrd*s*) name=amrd; chr=133;;
+	ccd*s*)  name=ccd;  chr=74;;
 	da*s*)   name=da;   chr=13;;
 	fla*s*)  name=fla;  chr=102;;
 	idad*s*) name=idad; chr=109;;
@@ -679,7 +682,7 @@ aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|ps
 		part=`expr $i  : '....[0-9]*s[0-9]*\(.*\)'`
 		;;
 
-	afd*s*|fla*s*|pst*s*|wfd*s*|vkd*s*)
+	afd*s*|ccd*s*|fla*s*|pst*s*|wfd*s*|vkd*s*)
 		unit=`expr $i  : '...\([0-9]*\)s'`
 		slice=`expr $i : '...[0-9]*s\([0-9]*\)'`
 		part=`expr $i  : '...[0-9]*s[0-9]*\(.*\)'`
@@ -840,7 +843,7 @@ fd*)
 
 #-----------------------------------------------------------------------------
 
-aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
+aacd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
 	case $i in
 	aacd*) name=aacd; chr=151;;
 	ad*)   name=ad;   chr=116;;
@@ -848,6 +851,7 @@ aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
 	afd*)  name=afd;  chr=118;;
 	amrd*) name=amrd; chr=133;;
 	da*)   name=da;   chr=13;;
+	ccd*)  name=ccd;  chr=74;;
 	fla*)  name=fla;  chr=102;;
 	idad*) name=idad; chr=109;;
 	ipsd*) name=ipsd; chr=176;;
@@ -863,7 +867,7 @@ aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
 	aacd*|amrd*|idad*|ipsd*|mlxd*|twed*)
 		unit=`expr $i : '....\(.*\)'`
 		;;
-	afd*|fla*|pst*|wfd*|vkd*)
+	afd*|ccd*|fla*|pst*|wfd*|vkd*)
 		unit=`expr $i : '...\(.*\)'`
 		;;
 	*)
@@ -878,31 +882,6 @@ aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
 			sh MAKEDEV $name$unit$slicepartname
 		done
 		;;
-	*)
-		echo bad unit for disk in: $i
-		;;
-	esac
-	;;
-
-#-----------------------------------------------------------------------------
-
-ccd*)
-	name=ccd
-	chr=74
-	unit=`expr $i : '...\(.*\)'`
-
-	case $unit in
-	[0-9]|[0-9][0-9]|[0-4][0-9][0-9]|50[0-9]|51[0-1])
-		for part in 0 1 2 3 4 5 6 7
-		do
-			minor=`dkminor 0 $unit 0 $part`
-			partname=`dkitop $part`
-			mknod $name $unit$partname c $chr $minor \
-				root:operator 640
-			rm -f r$name$unit$partname
-		done
-		;;
-
 	*)
 		echo bad unit for disk in: $i
 		;;
