@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel32.h,v 1.21 2007/05/17 03:20:11 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel32.h,v 1.22 2007/05/17 23:49:56 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -50,12 +50,6 @@
 #if defined(_KERNEL) && !defined(_SYS_CONF_H_)
 #include <sys/conf.h>		/* for make_sub_dev() */
 #endif
-
-/*
- * Disk description table, see disktab(5)
- */
-#define	_PATH_DISKTAB	"/etc/disktab"
-#define	DISKTAB		"/etc/disktab"		/* deprecated */
 
 /*
  * Each disk has a label which includes information about the hardware
@@ -410,11 +404,5 @@ int	writedisklabel (cdev_t dev, struct disklabel *lp);
 #endif /* _KERNEL */
 
 #endif /* LOCORE */
-
-#ifndef _KERNEL
-__BEGIN_DECLS
-struct disklabel *getdiskbyname (const char *);
-__END_DECLS
-#endif
 
 #endif /* !_SYS_DISKLABEL_H_ */

@@ -31,34 +31,82 @@
  * SUCH DAMAGE.
  *
  * @(#)disktab.h	8.1 (Berkeley) 6/2/93
- * $DragonFly: src/include/disktab.h,v 1.2 2007/05/14 20:02:40 dillon Exp $
+ * $DragonFly: src/include/disktab.h,v 1.3 2007/05/17 23:49:58 dillon Exp $
  */
 
 #ifndef	_DISKTAB_H_
 #define	_DISKTAB_H_
 
+#ifndef _MACHINE_TYPES_H_
+#include <machine/types.h>
+#endif
+
 /*
  * Disk description table, see disktab(5)
  */
-#ifndef DISKTAB
-#define	DISKTAB		"/etc/disktab"
+#ifndef _PATH_DISKTAB
+#define	_PATH_DISKTAB	"/etc/disktab"
 #endif
 
+#define MAXDTPARTITIONS		16
+
 struct	disktab {
-	char	*d_name;		/* drive name */
-	char	*d_type;		/* drive type */
-	int	d_secsize;		/* sector size in bytes */
-	int	d_ntracks;		/* # tracks/cylinder */
-	int	d_nsectors;		/* # sectors/track */
-	int	d_ncylinders;		/* # cylinders */
+	char	d_typename[16];		/* drive type (string) */
+	int	d_typeid;		/* drive type (id) */
+
+	/*
+	 * disk_info mandatory fields (not necessarily mandatory for disktab).
+	 * If d_media_blksize and one of d_media_size or d_media_blocks
+	 * is set, the remainining d_media_size/d_media_blocks field will
+	 * be constructed by getdisktabbyname().
+	 */
+	__uint64_t d_media_size;
+	__uint64_t d_media_blocks;
+	int	d_media_blksize;
+	int	d_dsflags;
+
+	/*
+	 * disk_info optional fields.  
+	 */
+	unsigned int	d_nheads;	/* (used to be d_ntracks) */
+	unsigned int	d_secpertrack;	/* (used to be d_nsectors) */
+	unsigned int	d_secpercyl;
+	unsigned int	d_ncylinders;
+
 	int	d_rpm;			/* revolutions/minute */
 	int	d_badsectforw;		/* supports DEC bad144 std */
 	int	d_sectoffset;		/* use sect rather than cyl offsets */
+	int	d_npartitions;		/* number of partitions */
+	int	d_interleave;
+	int	d_trackskew;
+	int	d_cylskew;
+	int	d_headswitch;
+	int	d_trkseek;
+
+	unsigned int	d_bbsize;	/* size of boot area */
+	unsigned int	d_sbsize;	/* max size of fs superblock */
+
+	/*
+	 * The partition table is variable length but does not necessarily
+	 * represent the maximum possible number of partitions for any
+	 * particular type of disklabel.
+	 */
 	struct	dt_partition {
-		int	p_size;		/* #sectors in partition */
-		short	p_bsize;	/* block size in bytes */
-		short	p_fsize;	/* frag size in bytes */
-	} d_partitions[8];
+		__uint64_t p_offset;	/* offset, in sectors */
+		__uint64_t p_size;	/* #sectors in partition */
+		int	  p_fstype;
+		int	  p_fsize;	/* fragment size */
+		int	  p_frag;	/* bsize = fsize * frag */
+		char	  p_fstypestr[32];
+	} d_partitions[MAXDTPARTITIONS];
 };
+
+#ifndef _KERNEL
+__BEGIN_DECLS
+struct disklabel;
+struct disktab *getdisktabbyname (const char *);
+struct disklabel *getdiskbyname (const char *);
+__END_DECLS
+#endif
 
 #endif /* !_DISKTAB_H_ */

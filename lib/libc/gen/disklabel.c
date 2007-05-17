@@ -32,7 +32,7 @@
  *
  * @(#)disklabel.c	8.2 (Berkeley) 5/3/95
  * $FreeBSD: src/lib/libc/gen/disklabel.c,v 1.9.2.1 2001/03/05 08:40:47 obrien Exp $
- * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.9 2007/05/14 20:02:41 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.10 2007/05/17 23:50:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <disktab.h>
 
 static int	gettype (const char *, const char **);
 
@@ -57,7 +58,7 @@ getdiskbyname(const char *name)
 	struct	disklabel *dp = &disk;
 	struct partition *pp;
 	char	*buf;
-	char  	*db_array[2] = { DISKTAB, 0 };
+	char  	*db_array[2] = { _PATH_DISKTAB, 0 };
 	char	*cp, *cq;	/* can't be register */
 	char	p, max, psize[3], pbsize[3],
 		pfsize[3], poffset[3], ptype[3];

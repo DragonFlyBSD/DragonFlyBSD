@@ -29,25 +29,25 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     @(#)getdiskbyname.3	8.1 (Berkeley) 6/4/93
+.\" @(#)getdiskbyname.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/getdiskbyname.3,v 1.3.2.4 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/getdisktabbyname.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/getdisktabbyname.3,v 1.3 2007/05/17 23:50:00 dillon Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETDISKBYNAME 3
 .Os
 .Sh NAME
-.Nm getdiskbyname
+.Nm getdisktabbyname
 .Nd get generic disk description by its name
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
-.In sys/disklabel.h
-.Ft struct disklabel *
-.Fn getdiskbyname "const char *name"
+.In disktab.h
+.Ft struct disktab *
+.Fn getdisktabbyname "const char *name"
 .Sh DESCRIPTION
 The
-.Fn getdiskbyname
+.Fn getdisktabbyname
 function
 takes a disk name (e.g.\&
 .Ql rm03 )
@@ -66,3 +66,7 @@ The
 .Fn getdiskbyname
 function appeared in
 .Bx 4.3 .
+It was removed and reworked into
+.Fn getdisktabbyname
+in
+.Dx 1.9 .
