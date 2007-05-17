@@ -25,7 +25,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/newfs_msdos/newfs_msdos.c,v 1.9.2.4 2001/08/01 08:43:04 obrien Exp $
- * $DragonFly: src/sbin/newfs_msdos/newfs_msdos.c,v 1.3 2005/12/05 01:16:47 swildner Exp $
+ * $DragonFly: src/sbin/newfs_msdos/newfs_msdos.c,v 1.4 2007/05/17 23:53:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,6 +46,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <disktab.h>
 
 #define MAXU16	  0xffff	/* maximum unsigned 16-bit quantity */
 #define BPN	  4		/* bits per nibble */

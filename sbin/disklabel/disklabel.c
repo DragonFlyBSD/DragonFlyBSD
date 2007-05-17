@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.13 2007/05/14 20:02:43 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.14 2007/05/17 23:53:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,6 +60,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <disktab.h>
 #include "pathnames.h"
 
 /*

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.13 2005/09/10 21:01:20 swildner Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.14 2007/05/17 23:53:42 dillon Exp $
  */
 
 /*
@@ -59,6 +59,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <disktab.h>
 
 #ifdef MFS
 #include <sys/types.h>
