@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.112 2007/05/17 08:19:02 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.113 2007/05/17 17:55:14 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1523,8 +1523,6 @@ device		"snd_uaudio"
 #
 # Miscellaneous hardware:
 #
-# mcd: Mitsumi CD-ROM using proprietary (non-ATAPI) interface
-# scd: Sony CD-ROM using proprietary (non-ATAPI) interface
 # wt: Wangtek and Archive QIC-02/QIC-36 tape drives
 # ctx: Cortex-I frame grabber
 # apm: Laptop Advanced Power Management (experimental)
@@ -1618,9 +1616,6 @@ device		"snd_uaudio"
 #	Stallion:                    flags 1          iosiz 0x10000
 #  For the PCI cards, "device stl" will suffice.
 
-device		mcd0	at isa? port 0x300 irq 10
-# for the Sony CDU31/33A CDROM
-device		scd0	at isa? port 0x230
 # for the SoundBlaster 16 multicd - up to 4 devices
 device		wt0	at isa? port 0x300 irq 5 drq 1
 device		ctx0	at isa? port 0x230 iomem 0xd0000
