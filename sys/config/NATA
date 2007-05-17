@@ -1,10 +1,12 @@
 #
-# GENERIC -- Generic kernel configuration file for DragonFly/i386
+# NATA -- Generic kernel configuration file for DragonFly using NATA vs ATA
+#
+# TEMPORARY TEMPORARY TEMPORARY
 #
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/Attic/NATA,v 1.1 2007/02/22 22:13:17 tgen Exp $
+# $DragonFly: src/sys/config/Attic/NATA,v 1.2 2007/05/17 21:06:01 dillon Exp $
 
 platform	pc32
 machine		i386
@@ -72,7 +74,6 @@ options 	INVARIANTS
 device		isa
 device		eisa
 device		pci
-options		PCI_MAP_FIXUP
 
 # Floppy drives
 device		fdc0	at isa? port IO_FD1 irq 6 drq 2
@@ -85,14 +86,12 @@ device		fd1	at fdc0 drive 1
 
 # ATA and ATAPI devices
 device		nata
-device		natadisk		# ATA disk drives
-device		natapicd		# ATAPI CDROM drives
-#device		natapifd		# ATAPI floppy drives
-#device		natapist		# ATAPI tape drives
-#device		natapicam		# Emulate ATAPI devices as SCSI via CAM
-#device		nataraid		# ATA software RAID
-#device		natausb			# ATA over USB
-#options 	ATA_STATIC_ID		#Static device numbering
+device		natadisk			# ATA disk drives
+device		natapicd			# ATAPI CDROM drives
+device		natapifd			# ATAPI floppy drives
+device		natapist			# ATAPI tape drives
+device		natapicam		# Emulate ATAPI devices as SCSI via CAM
+options 	ATA_STATIC_ID		#Static device numbering
 
 # SCSI Controllers
 device		ahb		# EISA AHA1742 family
@@ -229,6 +228,7 @@ device		wlan_wep	# 802.11 WEP support
 # 802.11 TX rate control algorithms
 #device		wlan_ratectl_amrr	# AMRR
 device		wlan_ratectl_onoe	# Onoe
+device		wlan_ratectl_sample	# Sample
 
 # Aironet 4500/4800 802.11 wireless NICs.  Note: the declaration below will
 # work for PCMCIA and PCI cards, as well as ISA cards set to ISA PnP
@@ -238,6 +238,8 @@ device		wlan_ratectl_onoe	# Onoe
 device		an
 device		awi		# PRISM I IEEE 802.11b wireless NIC
 device		ral		# Ralink Technology 802.11 wireless NIC
+				# Requires wlan_ratectl_onoe and
+				# wlan_ratectl_sample
 device		rtw		# RealTek 802.11 wireless NIC
 				# Requires wlan_ratectl_onoe and wlan_wep
 # WaveLAN/IEEE 802.11 wireless NICs.  Note: the WaveLAN/IEEE really
