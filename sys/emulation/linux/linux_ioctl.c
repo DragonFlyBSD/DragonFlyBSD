@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.23 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.24 2007/05/17 21:07:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,7 +36,7 @@
 #include <sys/cdio.h>
 #include <sys/consio.h>
 #include <sys/ctype.h>
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/fcntl.h>
 #include <sys/file.h>
 #include <sys/filedesc.h>
@@ -67,15 +67,18 @@
 
 
 static int
-linux_ioctl_BLKGETSIZE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
+linux_ioctl_BLKGETSIZE32(struct file *fp, u_long cmd, u_long ocmd,
+			 caddr_t data, struct ucred *cred)
 {
+	struct partinfo dpart;
+	u_int32_t value;
 	int error;
-	struct disklabel dl;
 
-	error = fo_ioctl(fp, DIOCGDINFO, (caddr_t)&dl, cred);
+	error = fo_ioctl(fp, DIOCGPART, (caddr_t)&dpart, cred);
 	if (error)
 		return (error);
-	bcopy(&(dl.d_secperunit), data, sizeof(dl.d_secperunit));
+	value = dpart.media_blocks;	/* 64->32 */
+	bcopy(&value, data, sizeof(value));
 	return (0);
 }
 
@@ -1166,7 +1169,7 @@ linux_gen_dirmap(u_long lstart, u_long lend, u_long bstart, u_long bend, u_long 
 
 static struct ioctl_map_range linux_ioctl_map_entries[] = {
 	/* disk ioctl */
-	MAPPED_IOCTL_IOR(LINUX_BLKGETSIZE, linux_ioctl_BLKGETSIZE, uint32_t),
+	MAPPED_IOCTL_IOR(LINUX_BLKGETSIZE, linux_ioctl_BLKGETSIZE32, uint32_t),
 	/* termio ioctl */
 	MAPPED_IOCTL_IOR(LINUX_TCGETS, linux_ioctl_TCGETS, struct linux_termios),
 	MAPPED_IOCTL_IOW(LINUX_TCSETS, linux_ioctl_TCSETS, struct linux_termios),
