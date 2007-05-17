@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.25 2007/05/15 22:44:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.26 2007/05/17 03:01:59 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -299,6 +299,12 @@ dev_dkqfilter(cdev_t dev, struct knote *kn)
 /************************************************************************
  *			DEVICE HELPER FUNCTIONS				*
  ************************************************************************/
+
+int
+dev_drefs(cdev_t dev)
+{
+    return(dev->si_sysref.refcnt);
+}
 
 const char *
 dev_dname(cdev_t dev)

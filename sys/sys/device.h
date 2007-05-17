@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/device.h,v 1.10 2007/05/15 22:44:19 dillon Exp $
+ * $DragonFly: src/sys/sys/device.h,v 1.11 2007/05/17 03:02:00 dillon Exp $
  */
 
 #ifndef _SYS_DEVICE_H_
@@ -292,6 +292,7 @@ int dev_dkqfilter(cdev_t dev, struct knote *kn);
 int dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot);
 int dev_dclone(cdev_t dev);
 
+int dev_drefs(cdev_t dev);
 const char *dev_dname(cdev_t dev);
 int dev_dmaj(cdev_t dev);
 int dev_dflags(cdev_t dev);
