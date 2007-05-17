@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.171 2007/05/17 19:26:05 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.172 2007/05/17 20:43:02 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -508,6 +508,8 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/VOP_BWRITE.9.gz"
 	rm -f ${DESTDIR}/usr/include/net/hostcache.h
 	rm -f ${DESTDIR}/usr/include/netinet/in_hostcache.h
+	rm -f ${DESTDIR}/usr/include/libdisk.h ${DESTDIR}/usr/lib/libdisk.a
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/{libdisk,Open_Disk,Clone_Disk,Free_Disk,Debug_Disk,Set_Bios_Geom,Delete_Chunk,Collapse_Disk,Collapse_Chunk,Create_Chunk,All_FreeBSD,CheckRules,Disk_Names,Set_Boot_Mgr,Set_Boot_Blocks,Write_Disk,Cyl_Aligned,Next_Cyl_Aligned,Prev_Cyl_Aligned,Track_Aligned,Next_Track_Aligned,Prev_Track_Aligned,Create_Chunk_DWIM,MakeDev,MakeDevDisk,ShowChunkFlags,ChunkCanBeRoot,slice_type_name}.3.gz"
 	rm -f ${DESTDIR}/dev/mcd*
 	rm -f ${DESTDIR}/dev/scd*
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/{m,s}cd.4.gz"
