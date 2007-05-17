@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.29 2007/05/09 00:53:34 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.30 2007/05/17 21:08:49 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -216,12 +216,12 @@ static dpt_sig_S ASR_sig = {
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/conf.h>
-#include <sys/disklabel.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/stat.h>
 #include <sys/device.h>
 #include <sys/thread2.h>
+#include <sys/ioccom.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>

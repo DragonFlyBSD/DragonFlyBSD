@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.14 2007/02/19 01:14:40 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.15 2007/05/17 21:08:50 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -1210,87 +1210,4 @@ Debugger(const char *msg)
 	kprintf("Debugger(\"%s\") called.\n", msg);
 }
 #endif /* no DDB */
-
-#include <sys/disklabel.h>
-
-/*
- * Determine the size of the transfer, and make sure it is
- * within the boundaries of the partition. Adjust transfer
- * if needed, and signal errors or early completion.
- *
- * On success a new bio layer is pushed with the translated
- * block number, and returned.
- */
-struct bio *
-bounds_check_with_label(cdev_t dev, struct bio *bio,
-			struct disklabel *lp, int wlabel)
-{
-	struct bio *nbio;
-	struct buf *bp = bio->bio_buf;
-        struct partition *p = lp->d_partitions + dkpart(dev);
-        int labelsect = lp->d_partitions[0].p_offset;
-        int maxsz = p->p_size,
-                sz = (bp->b_bcount + DEV_BSIZE - 1) >> DEV_BSHIFT;
-	daddr_t blkno = (daddr_t)(bio->bio_offset >> DEV_BSHIFT);
-
-        /* overwriting disk label ? */
-        /* XXX should also protect bootstrap in first 8K */
-        if (blkno + p->p_offset <= LABELSECTOR + labelsect &&
-#if LABELSECTOR != 0
-            blkno + p->p_offset + sz > LABELSECTOR + labelsect &&
-#endif
-            bp->b_cmd != BUF_CMD_READ && wlabel == 0) {
-                bp->b_error = EROFS;
-                goto error;
-        }
-
-#if     defined(DOSBBSECTOR) && defined(notyet)
-        /* overwriting master boot record? */
-        if (blkno + p->p_offset <= DOSBBSECTOR &&
-            bp->b_cmd != BUF_CMD_READ && wlabel == 0) {
-                bp->b_error = EROFS;
-                goto error;
-        }
-#endif
-
-	/*
-	 * Check for out of bounds, EOF, and EOF clipping.
-	 */
-	if (bio->bio_offset < 0)
-		goto bad;
-	if (blkno + sz > maxsz) {
-		/*
-		 * Past EOF or B_BNOCLIP flag was set, the request is bad.
-		 */
-		if (blkno > maxsz || (bp->b_flags & B_BNOCLIP))
-			goto bad;
-
-		/*
-		 * If exactly on EOF just complete the I/O with no bytes
-		 * transfered.  B_INVAL must be set to throw away the
-		 * contents of the buffer.  Otherwise clip b_bcount.
-		 */
-                if (blkno == maxsz) {
-                        bp->b_resid = bp->b_bcount;
-			bp->b_flags |= B_INVAL;
-			goto done;
-                }
-                bp->b_bcount = (maxsz - blkno) << DEV_BSHIFT;
-        }
-	nbio = push_bio(bio);
-        nbio->bio_offset = bio->bio_offset + ((off_t)p->p_offset << DEV_BSHIFT);
-	return (nbio);
-
-	/*
-	 * The caller is responsible for calling biodone() on the passed bio
-	 * when we return NULL.
-	 */
-bad:
-	bp->b_error = EINVAL;
-error:
-	bp->b_resid = bp->b_bcount;
-        bp->b_flags |= B_ERROR | B_INVAL;
-done:
-	return (NULL);
-}
 

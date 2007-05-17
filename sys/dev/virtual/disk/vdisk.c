@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.4 2007/05/15 00:01:04 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.5 2007/05/17 21:08:49 dillon Exp $
  */
 
 /*
@@ -45,7 +45,6 @@
 #include <sys/conf.h>
 #include <sys/buf.h>
 #include <sys/devicestat.h>
-#include <sys/disklabel.h>
 #include <sys/disk.h>
 #include <machine/md_var.h>
 

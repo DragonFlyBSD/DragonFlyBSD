@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.11 2006/12/22 23:26:16 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.12 2007/05/17 21:08:48 dillon Exp $	*/
 /*	$NecBSD: nsp_pisa.c,v 1.4 1999/04/15 01:35:54 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -38,7 +38,6 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/disklabel.h>
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>

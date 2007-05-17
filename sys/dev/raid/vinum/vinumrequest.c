@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.17 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.18 2007/05/17 21:08:49 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -994,7 +994,6 @@ sdio(struct bio *bio)
 }
 
 /*
- * Simplified version of bounds_check_with_label
  * Determine the size of the transfer, and make sure it is
  * within the boundaries of the partition. Adjust transfer
  * if needed, and signal errors or early completion.

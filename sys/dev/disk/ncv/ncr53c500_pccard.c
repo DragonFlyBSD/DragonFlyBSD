@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.13 2006/12/22 23:26:16 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.14 2007/05/17 21:08:47 dillon Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -40,7 +40,6 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/disklabel.h>
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>
