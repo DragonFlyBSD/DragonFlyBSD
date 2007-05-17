@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.1,v 1.21.2.14 2003/03/12 22:08:13 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.1,v 1.4 2006/02/17 19:40:13 swildner Exp $
+.\" $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.1,v 1.5 2007/05/17 19:26:06 swildner Exp $
 .\"
 .Dd July 3, 1995
 .Dt CDCONTROL 1
@@ -18,9 +18,7 @@ The
 utility is a program to control audio features of a CD drive.
 The device is a name such
 as
-.Pa cd0
-or
-.Pa mcd0 .
+.Pa cd0 .
 .Pp
 If no
 .Ar command
@@ -38,9 +36,7 @@ Verbose mode.
 Print as much information as possible.
 .It Fl f Ar device
 Specify a device, such as
-.Pa /dev/cd0c
-or
-.Pa mcd0 .
+.Pa /dev/cd0c .
 Both absolute path and relative to
 .Pa /dev
 filename are possible.
@@ -189,9 +185,8 @@ These variables have been deprecated in favour of
 .Ev CDROM .
 .El
 .Sh FILES
-.Bl -tag -width ".Pa /dev/mcd0c" -compact
+.Bl -tag -width ".Pa /dev/acd0c" -compact
 .It Pa /dev/cd0c
-.It Pa /dev/mcd0c
 .It Pa /dev/acd0c
 .El
 .Sh HISTORY

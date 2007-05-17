@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/sys/boot/common/pnpdata,v 1.2 1999/08/28 00:39:51 peter Exp $
-# $DragonFly: src/sys/boot/common/pnpdata,v 1.3 2003/11/10 06:08:31 dillon Exp $
+# $DragonFly: src/sys/boot/common/pnpdata,v 1.4 2007/05/17 19:26:05 swildner Exp $
 #
 # This file contains the system default Plug-and-Play data.  It is
 # derived from a number of sources, including:
@@ -123,13 +123,6 @@ ident=PNP828C module=lnc            # AMD PCNet Family cards
 ident=PNP828D module=lnc            # AMD PCNet32 (VL version)
 ident=PNP8323 module=ed             # SMC EtherCard (All Types except 8013/A)
 ident=PNP8390 module=ed             # Generic network adapter
-
-# --SCSI, Proprietary CD Adapters--
-ident=PNPA003 module=matcd          # Panasonic proprietary CD-ROM adapter (SBPro/SB16)
-ident=PNPA02B module=scd            # Sony proprietary CD-ROM controller
-ident=PNPA030 module=mcd            # Mitsumi LU-005 Single Speed CD-ROM controller + drive
-ident=PNPA031 module=mcd            # Mitsumi FX-001 Single Speed CD-ROM controller + drive
-ident=PNPA032 module=mcd            # Mitsumi FX-001 Double Speed CD-ROM controller + drive
 
 # --Sound/Video-capture, multimedia--
 ident=PNPB000 module=pcm            # Sound Blaster 1.5 sound device

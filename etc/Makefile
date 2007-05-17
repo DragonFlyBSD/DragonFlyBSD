@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.170 2007/05/14 21:26:56 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.171 2007/05/17 19:26:05 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -508,6 +508,9 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/VOP_BWRITE.9.gz"
 	rm -f ${DESTDIR}/usr/include/net/hostcache.h
 	rm -f ${DESTDIR}/usr/include/netinet/in_hostcache.h
+	rm -f ${DESTDIR}/dev/mcd*
+	rm -f ${DESTDIR}/dev/scd*
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/{m,s}cd.4.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)

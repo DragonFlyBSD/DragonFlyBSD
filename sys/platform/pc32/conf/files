@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/platform/pc32/conf/files,v 1.9 2007/04/01 13:09:36 sephe Exp $
+# $DragonFly: src/sys/platform/pc32/conf/files,v 1.10 2007/05/17 19:26:05 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -234,7 +234,6 @@ bus/isa/i386/isa_compat.c		optional	isa compat_oldisa
 bus/isa/i386/isa_dma.c			optional	isa
 dev/serial/stli/istallion.c		optional	stli
 dev/misc/labpc/labpc.c			optional	labpc
-dev/disk/mcd/mcd.c			optional	mcd
 dev/misc/mse/mse.c			optional	mse
 platform/pc32/isa/npx.c			mandatory	npx
 bus/iicbus/i386/pcf.c			optional	pcf
@@ -244,7 +243,6 @@ platform/pc32/isa/pmtimer.c		optional	pmtimer acpi
 # XXX drhodus
 platform/pc32/isa/prof_machdep.c	optional	profiling-routine
 dev/serial/rc/rc.c			optional	rc
-dev/disk/scd/scd.c			optional	scd
 dev/misc/spic/spic.c			optional	spic
 dev/misc/spigot/spigot.c		optional	spigot
 dev/serial/stl/stallion.c		optional	stl

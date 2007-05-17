@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.26 2007/05/17 03:20:13 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.27 2007/05/17 19:26:05 swildner Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -51,12 +51,10 @@
 #	idad*	Compaq Smart-2 RAID arrays
 #	ips*	IBM ServeRAID controller
 #	ipsd*	IBM ServeRAID
-#	mcd*	Mitsumi CD-ROM disks
 #	md*	Memory (or malloc) disk
 #	mlx*	Mylex DAC960 RAID controllers
 #	mlxd*	Mylex DAC960 RAID disk volumes
 #	pst*	Promise SuperTrak RAID disks
-#	scd*	Sony CD-ROM disks
 #	vn*	vnode disks
 #	vkd*	virtual kernel disk
 #
@@ -491,7 +489,7 @@ all)
 	sh MAKEDEV acd0 afd0 ast0			# bdev, ATAPI devices
 	sh MAKEDEV vn0					# bdev, virtual disk
 	sh MAKEDEV vkd0					# bdev, virtual disk
-	sh MAKEDEV cd0 mcd0 scd0			# bdev, cdrom
+	sh MAKEDEV cd0					# bdev, cdrom
 	sh MAKEDEV sa0 wt0				# bdev, tape
 	sh MAKEDEV vty12				# cdev, virtual tty
 	sh MAKEDEV cuaa0 cuaa1 cuaa2 cuaa3		# cdev, serial tty
@@ -1128,12 +1126,10 @@ acd*t*)
 
 #-----------------------------------------------------------------------------
 
-acd*|cd*|mcd*|scd*)
+acd*|cd*)
 	case $i in
 	acd*) units=`expr $i : '...\(.*\)'`; name=acd; chr=117;;
 	cd*)  units=`expr $i : '..\(.*\)'` ; name=cd;  chr=15;;
-	mcd*) units=`expr $i : '...\(.*\)'`; name=mcd; chr=29;;
-	scd*) units=`expr $i : '...\(.*\)'`; name=scd; chr=45;;
 	esac
 
 	[ "$units" ] || units=0

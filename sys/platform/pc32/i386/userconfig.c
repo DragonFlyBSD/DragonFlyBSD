@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.12 2006/12/23 00:27:03 swildner Exp $
+ ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.13 2007/05/17 19:26:06 swildner Exp $
  **/
 
 /**
@@ -341,8 +341,6 @@ static DEV_INFO device_info[] = {
 {"wdc",         "IDE/ESDI/MFM disk controller",		0,		CLS_STORAGE},
 {"ata",		"ATA/ATAPI compatible disk controller",	0,		CLS_STORAGE},
 {"fdc",         "Floppy disk controller",		FLG_FIXED,	CLS_STORAGE},
-{"mcd",         "Mitsumi CD-ROM",			0,		CLS_STORAGE},
-{"scd",         "Sony CD-ROM",				0,		CLS_STORAGE},
 {"wt",          "Wangtek/Archive QIC-02 Tape drive",	0,		CLS_STORAGE},
 {"wd",		"IDE or ST506 compatible storage device", FLG_INVISIBLE, CLS_STORAGE},
 {"ad",		"ATA/ATAPI compatible storage device",	FLG_INVISIBLE,	CLS_STORAGE},	
