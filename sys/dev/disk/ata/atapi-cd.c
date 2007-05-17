@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.32 2007/05/16 05:20:12 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.33 2007/05/17 17:44:27 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -38,6 +38,7 @@
 #include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/bus.h>
+#include <sys/disk.h>
 #include <sys/disklabel.h>
 #include <sys/diskslice.h>
 #include <sys/devicestat.h>
@@ -219,9 +220,9 @@ acddetach(struct ata_device *atadev)
 	TAILQ_REMOVE(&cdp->dev_list, entry, chain);
 	kfree(entry, M_ACD);
     }
-    release_dev(cdp->dev);
+    disk_invalidate(&cdp->disk);
+    disk_destroy(&cdp->disk);
     devstat_remove_entry(cdp->stats);
-    dev_ops_remove(&acd_ops, dkunitmask(), dkmakeunit(cdp->lun));
     kfree(cdp->stats, M_ACD);
     ata_free_name(atadev);
     ata_free_lun(&acd_lun_map, cdp->lun);
@@ -251,10 +252,7 @@ acd_make_dev(struct acd_softc *cdp)
 {
     cdev_t dev;
 
-    dev_ops_add(&acd_ops, dkunitmask(), dkmakeunit(cdp->lun));
-    dev = make_dev(&acd_ops, dkmakeminor(cdp->lun, 0, 0),
-		   UID_ROOT, GID_OPERATOR, 0644, "acd%d", cdp->lun);
-    reference_dev(dev);
+    dev = disk_create(cdp->lun, &cdp->disk, &acd_ops);
     dev->si_drv1 = cdp;
     cdp->dev = dev;
     cdp->device->flags |= ATA_D_MEDIA_CHANGED;
@@ -264,8 +262,20 @@ acd_make_dev(struct acd_softc *cdp)
 static void
 acd_set_ioparm(struct acd_softc *cdp)
 {
-     cdp->dev->si_iosize_max = ((256*DEV_BSIZE)/cdp->block_size)*cdp->block_size;
-     cdp->dev->si_bsize_phys = cdp->block_size;
+    struct disk_info info;
+
+    cdp->dev->si_iosize_max = 
+		((256*DEV_BSIZE)/cdp->block_size)*cdp->block_size;
+    cdp->dev->si_bsize_phys = cdp->block_size;
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = cdp->block_size;
+    info.d_media_blocks = cdp->disk_size;
+    info.d_secpertrack = 100;
+    info.d_nheads = 1;
+    info.d_ncylinders = cdp->disk_size / info.d_secpertrack / info.d_nheads + 1;
+    info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+    info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL | DSO_COMPATPARTA;
+    disk_setdiskinfo(&cdp->disk, &info);
 }
 
 static void 
@@ -502,15 +512,13 @@ acdopen(struct dev_open_args *ap)
 	    break;
     }
 
-    if (count_dev(dev) == 1) {
-	if (cdp->changer_info && cdp->slot != cdp->changer_info->current_slot) {
-	    acd_select_slot(cdp);
-	    tsleep(&cdp->changer_info, 0, "acdopn", 0);
-	}
-	acd_prevent_allow(cdp, 1);
-	cdp->flags |= F_LOCKED;
-	acd_read_toc(cdp);
+    if (cdp->changer_info && cdp->slot != cdp->changer_info->current_slot) {
+	acd_select_slot(cdp);
+	tsleep(&cdp->changer_info, 0, "acdopn", 0);
     }
+    acd_prevent_allow(cdp, 1);
+    cdp->flags |= F_LOCKED;
+    acd_read_toc(cdp);
     return 0;
 }
 
@@ -523,14 +531,12 @@ acdclose(struct dev_close_args *ap)
     if (!cdp)
 	return ENXIO;
 
-    if (count_dev(dev) == 1) {
-	if (cdp->changer_info && cdp->slot != cdp->changer_info->current_slot) {
-	    acd_select_slot(cdp);
-	    tsleep(&cdp->changer_info, 0, "acdclo", 0);
-	}
-	acd_prevent_allow(cdp, 0);
-	cdp->flags &= ~F_LOCKED;
+    if (cdp->changer_info && cdp->slot != cdp->changer_info->current_slot) {
+	acd_select_slot(cdp);
+	tsleep(&cdp->changer_info, 0, "acdclo", 0);
     }
+    acd_prevent_allow(cdp, 0);
+    cdp->flags &= ~F_LOCKED;
     return 0;
 }
 
@@ -1053,37 +1059,6 @@ acdioctl(struct dev_ioctl_args *ap)
 	    error = acd_read_structure(cdp, (struct dvd_struct *)ap->a_data);
 	break;
 
-    case DIOCGDINFO:
-	*(struct disklabel *)ap->a_data = cdp->disklabel;
-	break;
-
-    case DIOCWDINFO:
-    case DIOCSDINFO:
-	if ((ap->a_fflag & FWRITE) == 0)
-	    error = EBADF;
-	else
-	    error = setdisklabel(&cdp->disklabel, (struct disklabel *)ap->a_data, 0);
-	break;
-
-    case DIOCWLABEL:
-	error = EBADF;
-	break;
-
-    case DIOCGPART:
-	{
-	    struct partinfo *dpart = (void *)ap->a_data;
-
-	    bzero(dpart, sizeof(*dpart));
-	    dpart->media_offset  = 0;
-	    dpart->media_size	 = (u_int64_t)cdp->disk_size * cdp->block_size;
-	    dpart->media_blocks  = cdp->disk_size;
-	    dpart->media_blksize = cdp->block_size;
-	    dpart->fstype	 = FS_BSDFFS;
-	    ksnprintf(dpart->fstypestr, sizeof(dpart->fstypestr),
-		     "4.2BSD");
-	}
-	break;
-
     default:
 	error = ENOTTY;
     }
@@ -1297,39 +1272,17 @@ acd_read_toc(struct acd_softc *cdp)
     cdp->toc.hdr.len = ntohs(cdp->toc.hdr.len);
 
     cdp->block_size = (cdp->toc.tab[0].control & 4) ? 2048 : 2352;
-    acd_set_ioparm(cdp);
+    cdp->disk_size = 0;
     bzero(ccb, sizeof(ccb));
     ccb[0] = ATAPI_READ_CAPACITY;
     if (atapi_queue_cmd(cdp->device, ccb, (caddr_t)sizes, sizeof(sizes),
 			ATPR_F_READ | ATPR_F_QUIET, 30, NULL, NULL)) {
 	bzero(&cdp->toc, sizeof(cdp->toc));
+	acd_set_ioparm(cdp);
 	return;
     }
     cdp->disk_size = ntohl(sizes[0]) + 1;
-
-    bzero(&cdp->disklabel, sizeof(struct disklabel));
-    strncpy(cdp->disklabel.d_typename, "	       ", 
-	    sizeof(cdp->disklabel.d_typename));
-    strncpy(cdp->disklabel.d_typename, cdp->device->name, 
-	    min(strlen(cdp->device->name),sizeof(cdp->disklabel.d_typename)-1));
-    strncpy(cdp->disklabel.d_packname, "unknown	       ", 
-	    sizeof(cdp->disklabel.d_packname));
-    cdp->disklabel.d_secsize = cdp->block_size;
-    cdp->disklabel.d_nsectors = 100;
-    cdp->disklabel.d_ntracks = 1;
-    cdp->disklabel.d_ncylinders = (cdp->disk_size / 100) + 1;
-    cdp->disklabel.d_secpercyl = 100;
-    cdp->disklabel.d_secperunit = cdp->disk_size;
-    cdp->disklabel.d_rpm = 300;
-    cdp->disklabel.d_interleave = 1;
-    cdp->disklabel.d_flags = 0;
-    cdp->disklabel.d_npartitions = 1;
-    cdp->disklabel.d_partitions[0].p_offset = 0;
-    cdp->disklabel.d_partitions[0].p_size = cdp->disk_size;
-    cdp->disklabel.d_partitions[0].p_fstype = FS_BSDFFS;
-    cdp->disklabel.d_magic = DISKMAGIC;
-    cdp->disklabel.d_magic2 = DISKMAGIC;
-    cdp->disklabel.d_checksum = dkcksum(&cdp->disklabel);
+    acd_set_ioparm(cdp);
 
     while ((entry = TAILQ_FIRST(&cdp->dev_list))) {
 	destroy_dev(entry->dev);
