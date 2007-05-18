@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)disktab.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/disktab.5,v 1.4.2.6 2003/05/08 14:57:04 trhodes Exp $
-.\" $DragonFly: src/share/man/man5/disktab.5,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man5/disktab.5,v 1.3 2007/05/18 17:14:14 dillon Exp $
 .\"
 .Dd June 5, 1993
 .Dt DISKTAB 5
@@ -76,17 +76,14 @@ floppy)
 .It "\&se	num	Sector size in bytes,"
 .Dv DEV_BSIZE
 default
-.It "\&sf	bool	Controller supports bad144-style bad sector forwarding"
 .It "\&rm	num	Rotation speed, rpm, 3600 default"
 .It "\&sk	num	Sector skew per track, default 0"
 .It "\&cs	num	Sector skew per cylinder, default 0"
 .It "\&hs	num	Headswitch time, usec, default 0"
 .It "\&ts	num	One-cylinder seek time, usec, default 0"
 .It "\&il	num	Sector interleave (n:1), 1 default"
-.It "\&d[0-4]	num	Drive-type-dependent parameters"
 .It "\&bs	num	Boot block size, default"
 .Dv BBSIZE
-.It "\&b[0-1]	num	Boot block filenames; see"
 .Xr disklabel 8
 .It "\&sb	num	Superblock size, default"
 .Dv SBSIZE
@@ -128,6 +125,13 @@ filesystem, swap, etc)
 .It "\&tf	str	Partition type of partition `f'"
 .It "\&tg	str	Partition type of partition `g'"
 .It "\&th	str	Partition type of partition `h'"
+.El
+.Pp
+The following entries have been discontinued and are no longer supported:
+.Bl -column "indent" "boolx"
+.It "\&d[0-4]	num	Drive-type-dependent parameters"
+.It "\&b[0-1]	num	Boot block filenames"
+.It "\&sf	bool	Controller supports bad144-style bad sector forwarding"
 .El
 .Sh FILES
 .Bl -tag -width /etc/disktab -compact

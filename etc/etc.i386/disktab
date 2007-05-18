@@ -1,11 +1,10 @@
 # $FreeBSD: src/etc/etc.i386/disktab,v 1.20.2.2 2002/04/15 00:44:15 dougb Exp $
-# $DragonFly: src/etc/etc.i386/disktab,v 1.2 2003/06/17 04:24:47 dillon Exp $
+# $DragonFly: src/etc/etc.i386/disktab,v 1.3 2007/05/18 17:14:12 dillon Exp $
 #
 # Disk geometry and partition layout tables. 
 # Key:
 #	dt	controller type
 #	ty	type of disk (fixed, removeable, simulated)
-#	d[0-4]	drive-type-dependent parameters
 #	ns	#sectors/track
 #	nt	#tracks/cylinder
 #	nc	#cylinders/disk
@@ -27,11 +26,14 @@
 #	f[a-h]	partition fragment sizes in bytes
 #	t[a-h]	partition types (filesystem, swap, etc)
 #
-# All partition sizes reserve space for bad sector tables.
-# (5 cylinders needed for maintenance + replacement sectors)
+# Obsolete keys no longer supported:
+#	b0	used to allow specification of boot0
+#	b1	used to allow specification of boot1
+#	d[0-4]  used to be drive-type-dependent parameters
 #
+#	Software driven bad sector tables are no longer supported (if
+#	they ever were in the first place).
 
-#
 # Floppy formats:
 #
 # To make a filesystem on a floppy:
