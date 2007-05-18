@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.62 2007/04/26 08:25:41 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.63 2007/05/18 02:13:04 dillon Exp $
 #
 
 # compat target
@@ -100,6 +100,10 @@ check:
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
 	@echo "    make [installer_]fetch"
+	@exit 1
+.endif
+.if !exists(${.CURDIR}/../sys/config/NATA)
+	@echo "/usr/src/sys/config/NATA doesn't exist, your CVS may be out of date"
 	@exit 1
 .endif
 
@@ -237,15 +241,6 @@ pkgsrc_cdrecord:
 .if !exists (${PKGBIN_MKISOFS})
 	${PKGBIN_PKG_ADD} ${PKGSRC_PKG_PATH}/cdrecord*
 .endif
-
-
-# XXX I am a tentative target, remove me when I am not needed anymore!
-buildkernel1 buildkernel2: ${.CURDIR}/../sys/config/NATA
-
-${.CURDIR}/../sys/config/NATA: ${.CURDIR}/../sys/config/GENERIC
-	( sed -e '/[[:<:]]ata[01]/d;s/[[:<:]]ata/n&/' ${.ALLSRC}; \
-	echo "options PCI_MAP_FIXUP"; \
-	echo "device nataraid" ) > ${.TARGET}
 
 
 .PHONY: all release installer_release quickrel installer_quickrel realquickrel
