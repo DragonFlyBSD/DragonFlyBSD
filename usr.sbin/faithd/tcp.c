@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/tcp.c,v 1.1.2.3 2002/04/28 05:40:29 suz Exp $
- * $DragonFly: src/usr.sbin/faithd/tcp.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/faithd/tcp.c,v 1.5 2007/05/18 17:05:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -256,7 +256,7 @@ relay(int s_rcv, int s_snd, const char *service, int direction)
 				/* NOTREACHED */
 			case 0:
 				/* to close opposite-direction relay process */
-				shutdown(s_snd, 0);
+				shutdown(s_snd, SHUT_RD);
 
 				close(s_rcv);
 				close(s_snd);

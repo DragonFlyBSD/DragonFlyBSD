@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rexecd.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rexecd/rexecd.c,v 1.18.2.3 2002/05/14 22:27:21 des Exp $
- * $DragonFly: src/libexec/rexecd/rexecd.c,v 1.3 2003/11/14 03:54:30 dillon Exp $
+ * $DragonFly: src/libexec/rexecd/rexecd.c,v 1.4 2007/05/18 17:05:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -254,7 +254,7 @@ doit(f, fromp)
 				if (ready & (1<<pv[0])) {
 					cc = read(pv[0], buf, sizeof (buf));
 					if (cc <= 0) {
-						shutdown(s, 1+1);
+						shutdown(s, SHUT_RDWR);
 						readfrom &= ~(1<<pv[0]);
 					} else
 						(void) write(s, buf, cc);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.19 2007/05/13 22:25:42 swildner Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.20 2007/05/18 17:05:12 dillon Exp $
  *
  * Low level socket routines
  */
@@ -367,20 +367,20 @@ ncp_sock_disconnect(struct ncp_conn *conn) {
 	if (conn->ncp_so) {
 		so = conn->ncp_so;
 		conn->ncp_so = (struct socket *)0;
-		soshutdown(so, 2);
+		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}
 	if (conn->wdg_so) {
 		so = conn->wdg_so;
 		conn->wdg_so = (struct socket *)0;
-		soshutdown(so, 2);
+		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}
 #ifdef NCPBURST
 	if (conn->bc_so) {
 		so = conn->bc_so;
 		conn->bc_so = (struct socket *)NULL;
-		soshutdown(so, 2);
+		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}
 #endif

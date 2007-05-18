@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.29 2007/04/22 01:13:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.30 2007/05/18 17:05:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -722,7 +722,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 		so->so_rcv.ssb_flags &= ~SSB_UPCALL;
 		so->so_upcall = NULL;
 		so->so_upcallarg = NULL;
-		soshutdown(so, 2);
+		soshutdown(so, SHUT_RDWR);
 		closef(fp, NULL);
 		if (slp->ns_nam)
 			FREE(slp->ns_nam, M_SONAME);

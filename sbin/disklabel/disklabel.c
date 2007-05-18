@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.14 2007/05/17 23:53:40 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.15 2007/05/18 17:05:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #define DKTYPENAMES
 #include <sys/disklabel.h>
 #include <sys/diskmbr.h>
+#include <disktab.h>
 
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
@@ -105,6 +106,7 @@ void	Warning(const char *, ...) __printflike(1, 2);
 void	usage(void);
 int	checkoldboot(int, const char *);
 struct disklabel *getvirginlabel(void);
+struct disklabel *getdisklabelfromdisktab(const char *name);
 
 #define	DEFEDITOR	_PATH_VI
 #define	streq(a,b)	(strcmp(a,b) == 0)
@@ -352,37 +354,14 @@ makelabel(const char *type, const char *name, struct disklabel *lp)
 	if (strcmp(type, "auto") == 0)
 		dp = getvirginlabel();
 	else
-		dp = getdiskbyname(type);
+		dp = getdisklabelfromdisktab(type);
 	if (dp == NULL)
 		errx(1, "%s: unknown disk type", type);
 	*lp = *dp;
-#if NUMBOOT > 0
+
 	/*
-	 * Set bootstrap name(s).
-	 * 1. If set from command line, use those,
-	 * 2. otherwise, check if disktab specifies them (b0 or b1),
-	 * 3. otherwise, makebootarea() will choose ones based on the name
-	 *    of the disk special file. E.g. /dev/ra0 -> raboot, bootra
+	 * NOTE: boot control files may no longer be specified in disktab.
 	 */
-	if (!xxboot && lp->d_boot0) {
-		if (*lp->d_boot0 != '/')
-			sprintf(boot0, "%s/%s", _PATH_BOOTDIR, lp->d_boot0);
-		else
-			strcpy(boot0, lp->d_boot0);
-		xxboot = boot0;
-	}
-#if NUMBOOT > 1
-	if (!bootxx && lp->d_boot1) {
-		if (*lp->d_boot1 != '/')
-			sprintf(boot1, "%s/%s", _PATH_BOOTDIR, lp->d_boot1);
-		else
-			strcpy(boot1, lp->d_boot1);
-		bootxx = boot1;
-	}
-#endif
-#endif
-	/* d_packname is union d_boot[01], so zero */
-	bzero(lp->d_packname, sizeof(lp->d_packname));
 	if (name)
 		strncpy(lp->d_packname, name, sizeof(lp->d_packname));
 }
@@ -1507,10 +1486,12 @@ checklabel(struct disklabel *lp)
  *
  * The device name must be given in its "canonical" form.
  */
+static struct disklabel dlab;
+
 struct disklabel *
 getvirginlabel(void)
 {
-	static struct disklabel dlab;
+	struct disklabel *dl = &dlab;
 	char nambuf[BBSIZE];
 	int f;
 
@@ -1528,17 +1509,56 @@ getvirginlabel(void)
 	 * Try to use the new get-virgin-label ioctl.  If it fails,
 	 * fallback to the old get-disdk-info ioctl.
 	 */
-	if (ioctl(f, DIOCGDVIRGIN, &dlab) < 0) {
-		if (ioctl(f, DIOCGDINFO, &dlab) < 0) {
+	if (ioctl(f, DIOCGDVIRGIN, dl) < 0) {
+		if (ioctl(f, DIOCGDINFO, dl) < 0) {
 			warn("ioctl DIOCGDINFO");
 			close(f);
 			return (NULL);
 		}
 	}
 	close(f);
-	dlab.d_boot0 = NULL;
-	dlab.d_boot1 = NULL;
-	return (&dlab);
+	return (dl);
+}
+
+struct disklabel *
+getdisklabelfromdisktab(const char *name)
+{
+	struct disktab *dt;
+	struct disklabel *dl = &dlab;
+	int i;
+
+	if ((dt = getdisktabbyname(name)) == NULL)
+		return(NULL);
+	dl->d_magic = DISKMAGIC;
+	dl->d_type = dt->d_typeid;
+	dl->d_subtype = 0;
+	dl->d_secsize = dt->d_media_blksize;
+	dl->d_nsectors = dt->d_secpertrack;
+	dl->d_ntracks = dt->d_nheads;
+	dl->d_ncylinders = dt->d_ncylinders;
+	dl->d_secpercyl = dt->d_secpercyl;
+	dl->d_secperunit = dt->d_media_blocks;
+	dl->d_rpm = dt->d_rpm;
+	dl->d_interleave = dt->d_interleave;
+	dl->d_trackskew = dt->d_trackskew;
+	dl->d_cylskew = dt->d_cylskew;
+	dl->d_headswitch = dt->d_headswitch;
+	dl->d_trkseek = dt->d_trkseek;
+	dl->d_magic2 = DISKMAGIC;
+	dl->d_npartitions = dt->d_npartitions;
+	dl->d_bbsize = dt->d_bbsize;
+	dl->d_sbsize = dt->d_sbsize;
+	for (i = 0; i < dt->d_npartitions; ++i) {
+		struct partition *dlp = &dl->d_partitions[i];
+		struct dt_partition *dtp = &dt->d_partitions[i];
+
+		dlp->p_size	= dtp->p_size;
+		dlp->p_offset	= dtp->p_offset;
+		dlp->p_fsize	= dtp->p_fsize;
+		dlp->p_fstype	= dtp->p_fstype;
+		dlp->p_frag	= dtp->p_fsize;
+	}
+	return(dl);
 }
 
 /*

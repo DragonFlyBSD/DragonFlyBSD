@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.36 2007/05/09 00:53:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.37 2007/05/18 17:05:13 dillon Exp $
  */
 
 /*
@@ -428,7 +428,7 @@ bad:;
 	}
 
 	if (so) {
-		soshutdown(so, 2);
+		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}
 	return (error);

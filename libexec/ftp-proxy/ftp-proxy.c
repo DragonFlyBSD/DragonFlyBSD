@@ -1,5 +1,5 @@
 /*	$OpenBSD: ftp-proxy.c,v 1.38 2004/11/19 00:47:23 jmc Exp $ */
-/*	$DragonFly: src/libexec/ftp-proxy/ftp-proxy.c,v 1.2 2005/02/24 15:38:09 joerg Exp $ */
+/*	$DragonFly: src/libexec/ftp-proxy/ftp-proxy.c,v 1.3 2007/05/18 17:05:10 dillon Exp $ */
 
 /*
  * Copyright (c) 1996-2001
@@ -186,7 +186,7 @@ static void
 close_client_data(void)
 {
 	if (client_data_socket >= 0) {
-		shutdown(client_data_socket, 2);
+		shutdown(client_data_socket, SHUT_RDWR);
 		close(client_data_socket);
 		client_data_socket = -1;
 	}
@@ -196,7 +196,7 @@ static void
 close_server_data(void)
 {
 	if (server_data_socket >= 0)  {
-		shutdown(server_data_socket, 2);
+		shutdown(server_data_socket, SHUT_RDWR);
 		close(server_data_socket);
 		server_data_socket = -1;
 	}
@@ -1353,14 +1353,14 @@ main(int argc, char *argv[])
 		}
 		free(fdsp);
 		if (client_iob.got_eof) {
-			shutdown(server_iob.fd, 1);
-			shutdown(client_iob.fd, 0);
+			shutdown(server_iob.fd, SHUT_WR);
+			shutdown(client_iob.fd, SHUT_RD);
 			client_iob.got_eof = 0;
 			client_iob.alive = 0;
 		}
 		if (server_iob.got_eof) {
-			shutdown(client_iob.fd, 1);
-			shutdown(server_iob.fd, 0);
+			shutdown(client_iob.fd, SHUT_WR);
+			shutdown(server_iob.fd, SHUT_RD);
 			server_iob.got_eof = 0;
 			server_iob.alive = 0;
 		}

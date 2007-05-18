@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.23 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.24 2007/05/18 17:05:13 dillon Exp $
  */
 
 /*
@@ -178,7 +178,8 @@ portal_unmount(struct mount *mp, int mntflags)
 	 * daemon to wake up, and then the accept will get ECONNABORTED
 	 * which it interprets as a request to go and bury itself.
 	 */
-	soshutdown((struct socket *) VFSTOPORTAL(mp)->pm_server->f_data, 2);
+	soshutdown((struct socket *) VFSTOPORTAL(mp)->pm_server->f_data,
+		SHUT_RDWR);
 	/*
 	 * Discard reference to underlying file.  Must call closef because
 	 * this may be the last reference.

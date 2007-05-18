@@ -32,7 +32,7 @@
  *
  * @(#)commands.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/usr.bin/telnet/commands.c,v 1.21.2.6 2002/11/30 05:35:13 eric Exp $
- * $DragonFly: src/usr.bin/telnet/commands.c,v 1.5 2007/05/17 08:19:02 swildner Exp $
+ * $DragonFly: src/usr.bin/telnet/commands.c,v 1.6 2007/05/18 17:05:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1338,7 +1338,7 @@ bye(int argc, char *argv[])
     extern int resettermname;
 
     if (connected) {
-	(void) shutdown(net, 2);
+	(void) shutdown(net, SHUT_RDWR);
 	printf("Connection closed.\n");
 	(void) NetClose(net);
 	connected = 0;

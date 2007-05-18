@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rlogind.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rlogind/rlogind.c,v 1.29.2.5 2000/12/07 15:02:31 ru Exp $
- * $DragonFly: src/libexec/rlogind/rlogind.c,v 1.4 2007/03/24 21:29:06 swildner Exp $
+ * $DragonFly: src/libexec/rlogind/rlogind.c,v 1.5 2007/05/18 17:05:12 dillon Exp $
  */
 
 /*
@@ -516,7 +516,7 @@ cleanup(int signo __unused)
 	chflags(line, 0);
 	chmod(line, 0666);
 	chown(line, 0, 0);
-	shutdown(netf, 2);
+	shutdown(netf, SHUT_RDWR);
 	exit(1);
 }
 

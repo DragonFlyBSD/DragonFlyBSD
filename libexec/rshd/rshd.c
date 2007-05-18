@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1989, 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rshd.c	8.2 (Berkeley) 4/6/94
  * $FreeBSD: src/libexec/rshd/rshd.c,v 1.30.2.5 2002/05/14 22:27:21 des Exp $
- * $DragonFly: src/libexec/rshd/rshd.c,v 1.4 2007/03/24 21:52:14 swildner Exp $
+ * $DragonFly: src/libexec/rshd/rshd.c,v 1.5 2007/05/18 17:05:12 dillon Exp $
  */
 
 /*
@@ -277,7 +277,7 @@ doit(union sockunion *fromp)
 		if ((cc = read(STDIN_FILENO, &c, 1)) != 1) {
 			if (cc < 0)
 				syslog(LOG_NOTICE, "read: %m");
-			shutdown(0, 1+1);
+			shutdown(0, SHUT_RDWR);
 			exit(1);
 		}
 		if (c == 0)
@@ -521,7 +521,7 @@ fail:
 					errno = 0;
 					cc = read(pv[0], buf, sizeof(buf));
 					if (cc <= 0) {
-						shutdown(s, 1+1);
+						shutdown(s, SHUT_RDWR);
 						FD_CLR(pv[0], &readfrom);
 					} else {
 #ifdef CRYPT
@@ -539,7 +539,7 @@ fail:
 					errno = 0;
 					cc = read(pv1[0], buf, sizeof(buf));
 					if (cc <= 0) {
-						shutdown(pv1[0], 1+1);
+						shutdown(pv1[0], SHUT_RDWR);
 						FD_CLR(pv1[0], &readfrom);
 					} else {
 						des_enc_write(STDOUT_FILENO,
@@ -554,7 +554,7 @@ fail:
 					    buf, sizeof(buf),
 						schedule, &kdata->session);
 					if (cc <= 0) {
-						shutdown(pv2[0], 1+1);
+						shutdown(pv2[0], SHUT_RDWR);
 						FD_CLR(pv2[0], &writeto);
 					} else {
 						write(pv2[0], buf, cc);

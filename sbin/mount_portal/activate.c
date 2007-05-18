@@ -37,7 +37,7 @@
  *	@(#)activate.c	8.3 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/mount_portal/activate.c,v 1.7 1999/08/28 00:13:35 peter Exp $
- * $DragonFly: src/sbin/mount_portal/activate.c,v 1.5 2005/11/06 12:36:40 swildner Exp $
+ * $DragonFly: src/sbin/mount_portal/activate.c,v 1.6 2007/05/18 17:05:12 dillon Exp $
  */
 
 #include <errno.h>
@@ -144,7 +144,7 @@ send_reply(int so, int fd, int error)
 #endif
 	sleep(1);	/*XXX*/
 #ifdef notdef
-	if (shutdown(so, 2) < 0)
+	if (shutdown(so, SHUT_RDWR) < 0)
 		syslog(LOG_ERR, "shutdown: %s", strerror(errno));
 #endif
 	/*

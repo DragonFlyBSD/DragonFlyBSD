@@ -32,7 +32,7 @@
  *
  * @(#)sys_term.c	8.4+1 (Berkeley) 5/30/95
  * $FreeBSD: src/libexec/telnetd/sys_term.c,v 1.24.2.8 2002/06/17 02:48:06 jmallett Exp $
- * $DragonFly: src/libexec/telnetd/sys_term.c,v 1.3 2006/01/12 13:43:10 corecode Exp $
+ * $DragonFly: src/libexec/telnetd/sys_term.c,v 1.4 2007/05/18 17:05:12 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -1187,6 +1187,6 @@ cleanup(int sig __unused)
 	*p = 'p';
 	(void)chmod(line, 0666);
 	(void)chown(line, 0, 0);
-	(void) shutdown(net, 2);
+	(void) shutdown(net, SHUT_RDWR);
 	_exit(1);
 }

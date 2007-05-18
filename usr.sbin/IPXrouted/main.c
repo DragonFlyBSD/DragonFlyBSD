@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/main.c,v 1.10 1999/08/28 01:15:03 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/main.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/main.c,v 1.4 2007/05/18 17:05:12 dillon Exp $
  *
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/5/93
@@ -166,7 +166,7 @@ main(int argc, char *argv[])
 	r = socket(AF_ROUTE, SOCK_RAW, 0);
 	/* later, get smart about lookingforinterfaces */
 	if (r)
-		shutdown(r, 0); /* for now, don't want reponses */
+		shutdown(r, SHUT_RD); /* for now, don't want reponses */
 	else {
 		fprintf(stderr, "IPXrouted: no routing socket\n");
 		exit(1);

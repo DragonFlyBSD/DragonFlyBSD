@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.44 2007/04/22 01:13:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.45 2007/05/18 17:05:13 dillon Exp $
  */
 
 /*
@@ -421,7 +421,7 @@ nfs_disconnect(struct nfsmount *nmp)
 	if (nmp->nm_so) {
 		so = nmp->nm_so;
 		nmp->nm_so = (struct socket *)0;
-		soshutdown(so, 2);
+		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}
 }

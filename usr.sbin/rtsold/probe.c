@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/probe.c,v 1.2.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/probe.c,v 1.7 2006/08/03 16:40:49 swildner Exp $
+ * $DragonFly: src/usr.sbin/rtsold/probe.c,v 1.8 2007/05/18 17:05:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ probe_init(void)
 	}
 
 	/* make the socket send-only */
-	if (shutdown(probesock, 0)) {
+	if (shutdown(probesock, SHUT_RD)) {
 		warnmsg(LOG_ERR, __func__, "shutdown: %s", strerror(errno));
 		return(-1);
 	}

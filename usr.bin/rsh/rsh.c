@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rsh.c	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/usr.bin/rsh/rsh.c,v 1.21.2.4 2002/09/17 15:34:41 nectar Exp $
- * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.6 2005/01/01 22:00:15 cpressey Exp $
+ * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.7 2007/05/18 17:05:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -315,7 +315,7 @@ try_connect:
 			err(1, "fork");
 	}
         else
-		shutdown(rem, 1);
+		shutdown(rem, SHUT_WR);
 
 #ifdef KERBEROS
 #ifdef CRYPT
@@ -383,7 +383,7 @@ rewrite:
 			goto reread;
 		goto rewrite;
 done:
-		shutdown(rem, 1);
+		shutdown(rem, SHUT_WR);
 		exit(0);
 	}
 
