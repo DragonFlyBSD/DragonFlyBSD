@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.10 2005/10/12 17:35:47 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.11 2007/05/18 03:12:02 dillon Exp $
  */
 
 #include "use_vt.h"
@@ -33,8 +33,6 @@
 #include "use_le.h"
 #include "use_rdp.h"
 #include "use_pcm.h"
-#include "use_mcd.h"
-#include "use_scd.h"
 #include "use_wt.h"
 #include "use_ctx.h"
 #include "use_spigot.h"
