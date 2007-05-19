@@ -24,10 +24,11 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.13 2007/03/13 09:42:20 swildner Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.14 2007/05/19 21:43:32 dillon Exp $
  */
 
-#include <sys/disklabel.h>
+#include <sys/types.h>
+#include <sys/diskslice.h>
 #include <sys/diskmbr.h>
 #include <sys/stat.h>
 #include <ctype.h>
@@ -70,8 +71,6 @@ const char *disks[] =
 {
   "/dev/ad0", "/dev/da0", "/dev/vkd0", 0
 };
-
-struct disklabel disklabel;		/* disk parameters */
 
 int cyls, sectors, heads, cylsecs, disksecs;
 
@@ -638,7 +637,7 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 static void
 print_params(void)
 {
-	printf("parameters extracted from in-core disklabel are:\n");
+	printf("parameters extracted from device are:\n");
 	printf("cylinders=%d heads=%d sectors/track=%d (%d blks/cyl)\n\n"
 			,cyls,heads,sectors,cylsecs);
 	if((dos_sectors > 63) || (dos_cyls > 1023) || (dos_heads > 255))
@@ -819,25 +818,25 @@ write_disk(off_t sector, void *buf)
 static int
 get_params(void)
 {
+    struct partinfo partinfo;	/* disk parameters */
     struct stat st;
 
-    if (ioctl(fd, DIOCGDINFO, &disklabel) == -1) {
+    if (ioctl(fd, DIOCGPART, &partinfo) == -1) {
 	if (p_flag && fstat(fd, &st) == 0 && st.st_size) {
 	    sectors = 63;
 	    heads = 16;
 	    cylsecs = heads * sectors;
 	    cyls = st.st_size / 512 / cylsecs;
 	} else {
-	    warnx("can't get disk parameters on %s; supplying dummy ones", disk);
-	    cyls = 1;
+	    warnx("can't get disk parameters on %s; supplying dummy ones",
+		  disk);
 	    heads = 1;
-	    sectors = 1;
 	    cylsecs = heads * sectors;
 	}
     } else {
-	cyls = disklabel.d_ncylinders;
-	heads = disklabel.d_ntracks;
-	sectors = disklabel.d_nsectors;
+	cyls = partinfo.d_ncylinders;
+	heads = partinfo.d_nheads;
+	sectors = partinfo.d_secpertrack;
 	cylsecs = heads * sectors;
     }
     dos_cyls = cyls;
