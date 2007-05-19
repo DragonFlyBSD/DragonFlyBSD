@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.47 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.48 2007/05/19 06:21:43 sephe Exp $
  */
 
 /*
@@ -1425,10 +1425,9 @@ xl_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = xl_ioctl;
-	ifp->if_capabilities = 0;
 	if (sc->xl_type == XL_TYPE_905B) {
 		ifp->if_start = xl_start_90xB;
-		ifp->if_capabilities |= IFCAP_HWCSUM;
+		ifp->if_capabilities |= IFCAP_HWCSUM | IFCAP_VLAN_MTU;
 	} else {
 		ifp->if_start = xl_start;
 	}
@@ -1441,12 +1440,12 @@ xl_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, XL_TX_LIST_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
 	/*
-	 * NOTE: features disabled by default.  This seems to corrupt
-	 * tx packet data one out of a million packets or so and then
-	 * generates a good checksum so the receiver doesn't
-	 * know the packet is bad 
+	 * NOTE: Hardware checksum features disabled by default.
+	 * This seems to corrupt tx packet data one out of a
+	 * million packets or so and then generates a good checksum
+	 * so the receiver doesn't know the packet is bad 
 	 */
-	ifp->if_capenable = 0; /*ifp->if_capabilities;*/
+	ifp->if_capenable = ifp->if_capabilities & ~IFCAP_HWCSUM;
 	if (ifp->if_capenable & IFCAP_TXCSUM)
 		ifp->if_hwassist = XL905B_CSUM_FEATURES;
 
@@ -3176,8 +3175,9 @@ xl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			    &mii->mii_media, command);
 		break;
         case SIOCSIFCAP:
-		ifp->if_capenable = ifr->ifr_reqcap;
-		if (ifp->if_capenable & IFCAP_TXCSUM)
+		ifp->if_capenable &= ~IFCAP_HWCSUM;
+		ifp->if_capenable |= (ifr->ifr_reqcap & IFCAP_HWCSUM);
+		if (ifp->if_capenable & IFCAP_HWCSUM)
 			ifp->if_hwassist = XL905B_CSUM_FEATURES;
 		else
 			ifp->if_hwassist = 0;
