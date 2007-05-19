@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.36 2007/05/07 02:11:33 y0netan1 Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.37 2007/05/19 19:33:02 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -1124,9 +1124,10 @@ linker_search_path(const char *name)
 	else
 	    sep = 0;
 
-	result = kmalloc(prefix_len + name_len + 1, M_LINKER, M_WAITOK);
-	if (result == NULL)	/* actually ENOMEM */
-	    return(NULL);
+	/*
+	 * +2 : possible separator, plus terminator.
+	 */
+	result = kmalloc(prefix_len + name_len + 2, M_LINKER, M_WAITOK);
 
 	strncpy(result, cp, prefix_len);
 	if (sep)
