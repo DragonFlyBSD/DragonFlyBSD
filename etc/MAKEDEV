@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.28 2007/05/19 00:51:54 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.29 2007/05/19 01:31:46 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -870,7 +870,7 @@ acd*t*)
 				# cd unit tracks use the compatibility slice
 				# and partition numbers 129+ for tracks 1+.
 				#
-				minor=`ndkminor $i 0 $(($j + 128))`
+				minor=`ndkminor $i 1 $(($j + 128))`
 				mknod ${dname}t $j c $chr $minor \
 					root:operator 640
 				j=$(($j + 1))
