@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.37 2007/05/19 09:46:18 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.38 2007/05/19 21:36:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -653,6 +653,14 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 				else
 					dpart->skip_bsdlabel = 0;
 			}
+
+			/*
+			 * Load remaining fields from the info structure
+			 */
+			dpart->d_nheads =	info->d_nheads;
+			dpart->d_ncylinders =	info->d_ncylinders;
+			dpart->d_secpertrack =	info->d_secpertrack;
+			dpart->d_secpercyl =	info->d_secpercyl;
 		}
 		return (0);
 
@@ -899,10 +907,8 @@ dsname(cdev_t dev, int unit, int slice, int part, char *partname)
 	used = strlen(name);
 
 	if (slice != WHOLE_DISK_SLICE) {
-		if (slice != COMPATIBILITY_SLICE) {
-			used += ksnprintf(name + used, sizeof(name) - used,
-					  "s%d", slice - BASE_SLICE + 1);
-		}
+		used += ksnprintf(name + used, sizeof(name) - used,
+				  "s%d", slice - BASE_SLICE + 1);
 		if (part != WHOLE_SLICE_PART) {
 			used += ksnprintf(name + used, sizeof(name) - used,
 					  "%c", 'a' + part);
@@ -997,6 +1003,9 @@ dsopen(cdev_t dev, int mode, u_int flags,
 			if (info->d_dsflags & DSO_COMPATMBR) {
 				sp->ds_skip_platform = 1;
 				sp->ds_skip_bsdlabel = sp->ds_skip_platform;
+			} else {
+				sp->ds_skip_platform = 0;
+				sp->ds_skip_bsdlabel = 0;
 			}
 		}
 

@@ -57,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.14 2007/05/19 07:05:26 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.15 2007/05/19 21:37:00 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -166,6 +166,15 @@ struct partinfo {
 	u_int32_t	skip_bsdlabel;	/* in sectors */
 	int		fstype;		/* filesystem type if numeric */
 	char		fstypestr[16];	/* filesystem type as ascii */
+
+	/*
+	 * These fields are loaded from the diskinfo structure
+	 */
+	u_int		d_nheads;
+	u_int		d_ncylinders;
+	u_int		d_secpertrack;
+	u_int		d_secpercyl;
+	u_int		d_reserved[16];
 };
 
 #define DIOCGPART	_IOR('d', 104, struct partinfo)	/* get partition */

@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.30 2007/05/19 02:39:05 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.31 2007/05/19 21:37:01 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -259,8 +259,9 @@ dkitos()
 	local s
 
 	case $1 in
-	0|1) s="" ;;
-	  *) s=s$(($1-1)) ;;
+	0) s="s0" ;;
+	1) s="" ;;
+	*) s=s$(($1-1)) ;;
 	esac
 
 	echo $s
@@ -479,6 +480,7 @@ for i in $*; do
 case $i in
 
 all)
+	rm -f *.compat
 	sh MAKEDEV std					# standard
 	sh MAKEDEV fd0 fd1				# bdev, floppy disk
 	sh MAKEDEV da0 da1 da2 da3 da4 da5 da6 da7	# bdev, SCSI disk
@@ -699,19 +701,35 @@ aacd*s*|acd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md
 	[0-9]|[0-9][0-9]|[0-4][0-9][0-9]|50[0-9]|51[0-1])
 		case $slice in
 		[0-9]|[1-2][0-9]|30)
+			# [no s*] == whole-disk slice (slice #1 in minor)
+			# s0 == slice #0 in minor (compatibility slice)
+			# s1 == slice #2 in minor
+			# s2 == slice #3 in minor
+			# etc..
+			#
+			# set slice to slice-in-minor-number
 			oldslice=$slice
-			slice=$(($slice+1))
+			if [ $oldslice -eq 0 ]; then
+			    slice=$(($oldslice))
+			else
+			    slice=$(($slice+1))
+			fi
 			slicename=`dkitos $slice`
-			minor=`ndkminor $unit $slice 2`
-			mknod  $name $unit${slicename}.compat c $chr $minor \
-				root:operator 640
 			minor=`ndkminor $unit $slice 255`
 			mknod  ${name} $unit$slicename c $chr $minor \
 				root:operator 640
+
+			# raw device names are extinct
 			rm -f r$name$unit$slicename
 
-			case $part in [a-h])
-			[ $oldslice -ne 0 ]|| slice=$oldslice
+			# get rid of old compatibility devices, the new
+			# ones use 's0', e.g. da0s0a
+			for i in a b c d e f g h i j k l m n o p
+			do
+			    rm -f $name$unit$i
+			done
+
+			case $part in [a-p])
 
 			for part in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
 			do
@@ -922,14 +940,14 @@ aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*
 	case $unit in
 	[0-9]|[0-9][0-9]|[0-4][0-9][0-9]|50[0-9]|51[0-1])
 		if [ "$doslices" -gt 0 ]; then
+			minor=`ndkminor $unit 1 255`
+			mknod  ${name} ${unit} c $chr $minor \
+				root:operator 640
 			for slicepartname in s0h s1h s2 s3 s4
 			do
 				sh MAKEDEV $name$unit$slicepartname
 			done
 		else
-			minor=`ndkminor $unit 0 0`
-			mknod  ${name} $unit.compat c $chr $minor \
-				root:operator 640
 			minor=`ndkminor $unit 1 255`
 			mknod  ${name} ${unit} c $chr $minor \
 				root:operator 640
