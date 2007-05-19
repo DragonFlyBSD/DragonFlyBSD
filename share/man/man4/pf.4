@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.4,v 1.46 2004/02/19 21:29:51 cedric Exp $
-.\"	$DragonFly: src/share/man/man4/pf.4,v 1.4 2006/10/14 23:46:23 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/pf.4,v 1.5 2007/05/19 17:32:12 swildner Exp $
 .\"
 .\" Copyright (C) 2001, Kjell Wooding.  All rights reserved.
 .\"
@@ -70,9 +70,13 @@ Starts the packet filter.
 .It Dv DIOCSTOP
 Stops the packet filter.
 .It Dv DIOCSTARTALTQ
-Starts the ALTQ bandwidth control system.
+Starts the
+.Xr altq 4
+bandwidth control system.
 .It Dv DIOCSTOPALTQ
-Stops the ALTQ bandwidth control system.
+Stops the
+.Xr altq 4
+bandwidth control system.
 .It Dv DIOCBEGINADDRS  Fa "struct pfioc_pooladdr"
 .Bd -literal
 struct pfioc_pooladdr {

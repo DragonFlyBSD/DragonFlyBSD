@@ -28,7 +28,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/ldconfig/ldconfig.8,v 1.19.2.10 2003/05/13 19:25:19 trhodes Exp $
-.\" $DragonFly: src/sbin/ldconfig/ldconfig.8,v 1.3 2004/11/04 13:14:11 joerg Exp $
+.\" $DragonFly: src/sbin/ldconfig/ldconfig.8,v 1.4 2007/05/19 17:32:12 swildner Exp $
 .\"
 .Dd October 3, 1993
 .Dt LDCONFIG 8
@@ -143,9 +143,10 @@ file.
 In particular, the
 .Ev LD_LIBRARY_PATH
 is not used to search for libraries.
-Thus, the role of ldconfig is dual.
-In
-addition to building a set of hints for quick lookup, it also serves to
+Thus, the role of
+.Nm
+is dual.
+In addition to building a set of hints for quick lookup, it also serves to
 specify the trusted collection of directories from which shared objects can
 be safely loaded.
 .Sh FILES

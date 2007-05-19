@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
-.\" $DragonFly: src/share/man/man7/hier.7,v 1.10 2007/05/12 21:27:31 swildner Exp $
+.\" $DragonFly: src/share/man/man7/hier.7,v 1.11 2007/05/19 17:32:13 swildner Exp $
 .\"
 .Dd August 23, 2006
 .Dt HIER 7
@@ -358,7 +358,9 @@ architecture-specific target tree produced by building the
 .Pa /usr/src
 tree
 .It Pa pkg/
-default destination directory for the pkgsrc collection.
+default destination directory for the
+.Xr pkgsrc 7
+collection.
 Within
 .Pa pkg/ ,
 the general layout sketched out by
@@ -377,8 +379,8 @@ and
 .Pa /etc ) .
 .It Pa pkgsrc/
 The
-.Nx
-pkgsrc collection (optional).
+.Xr pkgsrc 7
+collection (optional).
 .It Pa sbin/
 system daemons & system utilities (executed by users)
 .It Pa share/
@@ -460,8 +462,7 @@ see
 .It Pa skel/
 example . (dot) files for new accounts
 .It Pa syscons/
-files used by syscons;
-see
+files used by
 .Xr syscons 4
 .Pp
 .Bl -tag -width ".It Pa scrnmaps/" -compact

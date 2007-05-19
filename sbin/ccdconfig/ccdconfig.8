@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/ccdconfig/ccdconfig.8,v 1.9.2.10 2003/01/26 03:38:39 keramida Exp $
-.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.3 2006/02/17 19:33:32 swildner Exp $
+.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.4 2007/05/19 17:32:12 swildner Exp $
 .\"
 .Dd July 17, 1995
 .Dt CCDCONFIG 8
@@ -115,8 +115,8 @@ as a decimal number, a hexadecimal number, a comma-separated list
 of strings, or the word
 .Dq none .
 The flags are as follows:
-.Bd -unfilled -offset indent
-CCDF_SWAP		0x01		Interleave should be dmmax
+.Bd -literal -offset indent
+CCDF_SWAP	0x01		Interleave should be dmmax
 CCDF_UNIFORM	0x02		Use uniform interleave
 CCDF_MIRROR	0x04		Support mirroring
 CCDF_PARITY	0x08		Support parity (not implemented yet)
@@ -127,7 +127,7 @@ configuration file appears exactly as if it were entered on the command line.
 Note that on the command line and in the configuration file, the
 .Pa flags
 argument is optional.
-.Bd -unfilled -offset indent
+.Bd -literal -offset indent
 #
 # /etc/ccd.conf
 # Configuration file for concatenated disk devices
@@ -176,7 +176,7 @@ It reads as a two disk stripe of da2e and da3e which is mirrored
 to a two disk stripe of da4e and da5e.  The last example is a simple
 mirror.  /dev/da2e is mirrored with /dev/da4e and assigned to ccd0.
 .Pp
-.Bd -unfilled -offset
+.Bd -literal
 # ccdconfig ccd0 64 none /dev/da2e /dev/da3e /dev/da4e /dev/da5e
 # ccdconfig ccd0 128 CCDF_MIRROR /dev/da2e /dev/da3e /dev/da4e /dev/da5e
 # ccdconfig ccd0 128 CCDF_MIRROR /dev/da2e /dev/da4e
@@ -195,7 +195,7 @@ partition such that it does not overlap the label area.  For example, if
 you have A ccd disk with 10000 sectors you might create a 'd' partition
 with offset 16 and size 9984.
 .Pp
-.Bd -unfilled -offset
+.Bd -literal
 # disklabel -r -w ccd0c auto
 # disklabel -e ccd0c
 .Ed

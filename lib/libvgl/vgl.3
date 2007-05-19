@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libvgl/vgl.3,v 1.12.2.8 2001/12/17 10:08:35 ru Exp $
-.\" $DragonFly: src/lib/libvgl/vgl.3,v 1.6 2007/04/07 19:29:51 swildner Exp $
+.\" $DragonFly: src/lib/libvgl/vgl.3,v 1.7 2007/05/19 17:32:12 swildner Exp $
 .Dd November 7, 1999
 .Dt VGL 3
 .Os
@@ -135,7 +135,9 @@
 .Sh DESCRIPTION
 .Nm Libvgl
 is a library that enables the programmer access to the graphics
-modes supported by the console driver (syscons). The library takes care of
+modes supported by the console driver
+.Xr ( syscons 4 ) .
+The library takes care of
 programming the actual video hardware, and provides a number of simple
 functions to do various graphic operations.
 There is also support for a

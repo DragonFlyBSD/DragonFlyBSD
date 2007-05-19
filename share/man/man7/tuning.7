@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.13 2007/05/17 08:19:01 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.14 2007/05/19 17:32:13 swildner Exp $
 .\"
 .Dd March 4, 2007
 .Dt TUNING 7
@@ -125,9 +125,11 @@ partition holds the bulk of the files required to support the system and
 a subdirectory within it called
 .Pa /usr/pkg
 holds the bulk of the files installed from the
-pkgsrc collection.
-If you do not use pkgsrc all that much and do not intend to keep
-system source
+.Xr pkgsrc 7
+collection.
+If you do not use
+.Xr pkgsrc 7
+all that much and do not intend to keep system source
 .Pq Pa /usr/src
 on the machine, you can get away with
 a 1 gigabyte

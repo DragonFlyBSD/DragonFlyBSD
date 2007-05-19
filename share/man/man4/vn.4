@@ -32,7 +32,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/vn.4,v 1.6.2.4 2002/04/15 05:48:55 asmodai Exp $
-.\" $DragonFly: src/share/man/man4/vn.4,v 1.4 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/share/man/man4/vn.4,v 1.5 2007/05/19 17:32:12 swildner Exp $
 .\"
 .Dd December 30, 1995
 .Dt VN 4
@@ -69,7 +69,9 @@ pseudo-device	vn		#Vnode driver
 .Pp
 .Nm
 may also exist as a kernel module to be automatically loaded into the
-system when you run the vnconfig command for the first time.
+system when you run the
+.Xr vnconfig 8
+command for the first time.
 .Pp
 There is a run-time utility that is used for configuring
 .Nm Ns 's .
