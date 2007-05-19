@@ -57,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.13 2007/05/19 00:52:02 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.14 2007/05/19 07:05:26 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -316,8 +316,6 @@ dkmodslice(cdev_t dev, int slice)
  */
 
 #ifdef _KERNEL
-
-#define	dsgetlabel(dev, ssp)	(ssp->dss_slices[dkslice(dev)].ds_label)
 
 struct buf;
 struct bio;

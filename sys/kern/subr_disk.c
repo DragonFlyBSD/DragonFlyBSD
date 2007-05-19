@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.32 2007/05/19 00:52:01 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.33 2007/05/19 07:05:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -216,28 +216,23 @@ disk_destroy(struct disk *disk)
 int
 disk_dumpcheck(cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize)
 {
-	struct disk *dp;
-	struct disklabel *dl;
-	u_int64_t boff;
+	struct partinfo pinfo;
+	int error;
 
-	dp = dev->si_disk;
-	if (!dp)
+	bzero(&pinfo, sizeof(pinfo));
+	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0, proc0.p_ucred);
+	if (error)
+		return (error);
+	if (pinfo.media_blksize == 0)
 		return (ENXIO);
-	if (!dp->d_slice)
-		return (ENXIO);
-	dl = dsgetlabel(dev, dp->d_slice);
-	if (dl == NULL || dp->d_info.d_media_blksize == 0)
-		return (ENXIO);
-	*count = (u_int64_t)Maxmem * (PAGE_SIZE / dp->d_info.d_media_blksize);
-	if (dumplo64 <= LABELSECTOR || 
-	    (dumplo64 + *count > dl->d_partitions[dkpart(dev)].p_size))
-		return (EINVAL);
-	boff = dl->d_partitions[dkpart(dev)].p_offset +
-	    dp->d_slice->dss_slices[dkslice(dev)].ds_offset;
-	*blkno = boff + dumplo64;
-	*secsize = dp->d_info.d_media_blksize;
+	*count = (u_int64_t)Maxmem * PAGE_SIZE / pinfo.media_blksize;
+	if (dumplo64 < pinfo.skip_bsdlabel ||
+	    dumplo64 + *count > pinfo.media_blocks) {
+		return (ENOSPC);
+	}
+	*blkno = dumplo64 + pinfo.media_offset / pinfo.media_blksize;
+	*secsize = pinfo.media_blksize;
 	return (0);
-	
 }
 
 void 
@@ -491,9 +486,6 @@ diskdump(struct dev_dump_args *ap)
 	return(error);
 }
 
-
-SYSCTL_INT(_debug_sizeof, OID_AUTO, disklabel, CTLFLAG_RD, 
-    0, sizeof(struct disklabel), "sizeof(struct disklabel)");
 
 SYSCTL_INT(_debug_sizeof, OID_AUTO, diskslices, CTLFLAG_RD, 
     0, sizeof(struct diskslices), "sizeof(struct diskslices)");

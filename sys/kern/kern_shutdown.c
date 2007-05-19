@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.52 2007/05/15 22:44:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.53 2007/05/19 07:05:25 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -50,7 +50,7 @@
 #include <sys/systm.h>
 #include <sys/eventhandler.h>
 #include <sys/buf.h>
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/reboot.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
@@ -548,27 +548,24 @@ SYSCTL_INT(_machdep, OID_AUTO, do_dump, CTLFLAG_RW, &dodump, 0,
 static int
 setdumpdev(cdev_t dev)
 {
-	u_int64_t psize;
+	struct partinfo pinfo;
 	u_int64_t newdumplo;
+	int error;
 
 	if (dev == NULL) {
 		dumpdev = dev;
 		return (0);
 	}
-	psize = (u_int64_t)dev_dpsize(dev);
-	if (psize == (u_int64_t)-1)
+	bzero(&pinfo, sizeof(pinfo));
+	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0, proc0.p_ucred);
+	if (error || pinfo.media_blocks == 0 || pinfo.media_blksize == 0)
 		return (ENXIO);
-	/*
-	 * XXX should clean up checking in dumpsys() to be more like this.
-	 */
-	newdumplo = psize - Maxmem * (PAGE_SIZE / DEV_BSIZE);
-	if (newdumplo <= LABELSECTOR)
+
+	newdumplo = pinfo.media_blocks - 
+		    ((u_int64_t)Maxmem * PAGE_SIZE / DEV_BSIZE);
+	if ((int64_t)newdumplo < (int64_t)pinfo.skip_bsdlabel)
 		return (ENOSPC);
 	dumpdev = dev;
-	if (newdumplo < 0x80000000ULL)
-		dumplo = (int)newdumplo;
-	else
-		dumplo = LABELSECTOR;	/* bleh XXX */
 	dumplo64 = newdumplo;
 	return (0);
 }
