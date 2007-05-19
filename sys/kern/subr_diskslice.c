@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.35 2007/05/19 00:52:01 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.36 2007/05/19 02:39:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -227,13 +227,45 @@ doshift:
 	 * Calculate slice-relative sector number end slice-relative
 	 * limit.
 	 */
-	lp = sp->ds_label;
-	if (slice == WHOLE_DISK_SLICE || lp == NULL) {
+	if (slice == WHOLE_DISK_SLICE) {
 		/*
 		 * Labels have not been allowed on whole-disks for a while.
 		 * This really puts the nail in the coffin... no disk
 		 * snooping will occur even if you tried to write a label
 		 * without a slice structure.
+		 *
+		 * Accesses to the WHOLE_DISK_SLICE do not use a disklabel
+		 * and partition numbers are special-cased.  Currently numbers
+		 * less then 128 are not allowed.  Partition numbers >= 128
+		 * are encoded in the high 8 bits of the 64 bit buffer offset
+		 * and are fed directly through to the device with no
+		 * further interpretation.  In particular, no sector
+		 * translation interpretation should occur because the
+		 * sector size for the special raw access may not be the
+		 * same as the nominal sector size for the device.
+		 */
+		lp = NULL;
+		if (part < 128) {
+			kprintf("dscheck(%s): illegal partition number (%d) "
+				"for WHOLE_DISK_SLICE access\n",
+				devtoname(dev), part);
+			goto bad;
+		} else if (part != WHOLE_SLICE_PART) {
+			nbio = push_bio(bio);
+			nbio->bio_offset = bio->bio_offset |
+					   (u_int64_t)part << 56;
+			return(nbio);
+		}
+
+		/*
+		 * sp->ds_size is for the whole disk in the WHOLE_DISK_SLICE.
+		 */
+		labelsect = -LABELSECTOR - 1;
+		endsecno = sp->ds_size;
+		slicerel_secno = secno;
+	} else if ((lp = sp->ds_label) == NULL) {
+		/*
+		 * We are accessing a slice but there is no label.
 		 */
 		lp = NULL;
 		labelsect = -LABELSECTOR - 1;
@@ -241,6 +273,8 @@ doshift:
 		slicerel_secno = secno;
 	} else if (part == WHOLE_SLICE_PART) {
 		/*
+		 * We are accessing a 'raw' slice but it has a label.
+		 *
 		 * XXX messy snoop case.  Both disklabel -r -w and
 		 * DIOCWDINFO depend on write snooping to properly
 		 * correct the partition offsets for the label being
@@ -253,11 +287,17 @@ doshift:
 		endsecno = sp->ds_size;
 		slicerel_secno = secno;
 	} else if (part >= lp->d_npartitions) {
+		/*
+		 * Acesss through disklabel, but partition is out of bounds
+		 */
 		kprintf("dscheck(%s): partition out of bounds %d/%d\n",
 			devtoname(dev),
 			part, lp->d_npartitions);
 		goto bad;
 	} else {
+		/*
+		 * Acesss through disklabel, partition present.
+		 */
 		struct partition *pp;
 
 		labelsect = 0;
@@ -268,6 +308,7 @@ doshift:
 
 	/* overwriting disk label ? */
 	/* XXX should also protect bootstrap in first 8K */
+
 	if (slicerel_secno <= LABELSECTOR + labelsect &&
 #if LABELSECTOR != 0
 	    slicerel_secno + nsec > LABELSECTOR + labelsect &&
@@ -277,14 +318,17 @@ doshift:
 		goto error;
 	}
 
-#if defined(DOSBBSECTOR) && defined(notyet)
-	/* overwriting master boot record? */
-	if (slicerel_secno <= DOSBBSECTOR && bp->b_cmd != BUF_CMD_READ &&
-	    sp->ds_wlabel == 0) {
-		bp->b_error = EROFS;
-		goto error;
+	/*
+	 * If we get here, bio_offset must be on a block boundary
+	 */
+	if ((bio->bio_offset & (ssp->dss_secsize - 1)) ||
+	    (ssp->dss_secsize ^ (ssp->dss_secsize - 1)) !=
+	    ((ssp->dss_secsize << 1) - 1)) {
+		kprintf("%s: invalid BIO offset, not sector aligned or"
+			" invalid sector size (not power of 2) %08llx %d\n",
+			devtoname(dev), bio->bio_offset, ssp->dss_secsize);
+		goto bad;
 	}
-#endif
 
 	/*
 	 * EOF handling
@@ -345,7 +389,6 @@ doshift:
 			 * temporarily corrupting the in-core copy.
 			 */
 			/* XXX need name here. */
-			kprintf("SNOOP LABEL WRITE\n");
 			msg = fixlabel(
 				NULL, sp,
 			       (struct disklabel *)
@@ -767,11 +810,22 @@ dsmakeslicestruct(int nslices, struct disk_info *info)
 	ssp->dss_first_bsd_slice = COMPATIBILITY_SLICE;
 	ssp->dss_nslices = nslices;
 	ssp->dss_oflags = 0;
-	ssp->dss_secmult = info->d_media_blksize / DEV_BSIZE;
-	if (ssp->dss_secmult & (ssp->dss_secmult - 1))
+
+	/*
+	 * Figure out if we can use shifts or whether we have to
+	 * use mod/multply to translate byte offsets into sector numbers.
+	 */
+	if ((info->d_media_blksize ^ (info->d_media_blksize - 1)) ==
+	     (info->d_media_blksize << 1) - 1) {
+		ssp->dss_secmult = info->d_media_blksize / DEV_BSIZE;
+		if (ssp->dss_secmult & (ssp->dss_secmult - 1))
+			ssp->dss_secshift = -1;
+		else
+			ssp->dss_secshift = ffs(ssp->dss_secmult) - 1;
+	} else {
+		ssp->dss_secmult = 0;
 		ssp->dss_secshift = -1;
-	else
-		ssp->dss_secshift = ffs(ssp->dss_secmult) - 1;
+	}
 	ssp->dss_secsize = info->d_media_blksize;
 	sp = &ssp->dss_slices[0];
 	bzero(sp, nslices * sizeof *sp);
@@ -804,6 +858,13 @@ dsname(cdev_t dev, int unit, int slice, int part, char *partname)
 			partname[0] = 'a' + part;
 			partname[1] = 0;
 		}
+	} else if (part > 128) {
+		/*
+		 * Special access via the whole-disk-device (used to access
+		 * CD audio tracks).
+		 */
+		used += ksnprintf(name + used, sizeof(name) - used,
+					  "t%d", part - 128);
 	}
 	return (name);
 }
@@ -827,12 +888,6 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	int part;
 
 	dev->si_bsize_phys = info->d_media_blksize;
-
-	if (info->d_media_blksize % DEV_BSIZE) {
-		kprintf("%s: invalid sector size %lu\n", devtoname(dev),
-		    (u_long)info->d_media_blksize);
-		return (EINVAL);
-	}
 
 	/*
 	 * Do not attempt to read the slice table or disk label when
@@ -969,12 +1024,15 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		}
 	}
 
-	/* 
-	 * If the slice is the whole-disk slice, the partition must be set
-	 * to the whole slice partition.
+	/*
+	 * Do not allow special raw-extension partitions to be opened
+	 * if the device doesn't support them.  Raw-extension partitions
+	 * are typically used to handle CD tracks.
 	 */
-	if (slice == WHOLE_DISK_SLICE && part != WHOLE_SLICE_PART)
-		return (EINVAL);
+	if (slice == WHOLE_DISK_SLICE && part >= 128) {
+		if ((info->d_dsflags & DSO_RAWEXTENSIONS) == 0)
+			return (EINVAL);
+	}
 	return (0);
 }
 

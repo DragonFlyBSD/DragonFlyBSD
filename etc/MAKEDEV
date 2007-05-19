@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.29 2007/05/19 01:31:46 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.30 2007/05/19 02:39:05 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -933,10 +933,10 @@ aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*
 			minor=`ndkminor $unit 1 255`
 			mknod  ${name} ${unit} c $chr $minor \
 				root:operator 640
-			minor=`ndkminor $unit 1 0`
+			minor=`ndkminor $unit 0 0`
 			mknod  ${name} ${unit}a c $chr $minor \
 				root:operator 640
-			minor=`ndkminor $unit 1 2`
+			minor=`ndkminor $unit 0 2`
 			mknod  ${name} ${unit}c c $chr $minor \
 				root:operator 640
 		fi

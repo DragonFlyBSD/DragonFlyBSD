@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.35 2007/05/15 20:29:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.36 2007/05/19 02:39:02 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -422,7 +422,8 @@ ad_start(struct ata_device *atadev)
 	return;
     }
 
-    KKASSERT((bio->bio_offset & DEV_BMASK) == 0);
+    KASSERT((bio->bio_offset & DEV_BMASK) == 0,
+	    ("bio_offset not on sector boundary %08llx", bio->bio_offset));
 
     /* setup request */
     request->softc = adp;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.33 2007/05/17 17:44:27 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.34 2007/05/19 02:39:02 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -274,7 +274,8 @@ acd_set_ioparm(struct acd_softc *cdp)
     info.d_nheads = 1;
     info.d_ncylinders = cdp->disk_size / info.d_secpertrack / info.d_nheads + 1;
     info.d_secpercyl = info.d_secpertrack * info.d_nheads;
-    info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL | DSO_COMPATPARTA;
+    info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL | DSO_COMPATPARTA |
+		     DSO_RAWEXTENSIONS;
     disk_setdiskinfo(&cdp->disk, &info);
 }
 
@@ -1141,21 +1142,32 @@ acd_start(struct ata_device *atadev)
 	return;
     }
 
-    bzero(ccb, sizeof(ccb));
-
-    track = (dev->si_uminor & 0x00ff0000) >> 16;
+    /*
+     * track 0 is just data mode.  The managed disk subsystem will encode
+     * the partition number for WHOLE_DISK_SLICE accesses on partition
+     * numbers >= 128 in the high 8 bits of the bio_offset.  ACD uses this
+     * to indicate direct track access.
+     */
+    track = (bio->bio_offset >> 56) & 127;
 
     if (track) {
+	if (track > MAXTRK) {
+	    bp->b_flags |= B_ERROR;
+	    bp->b_error = EIO;
+	    biodone(bio);
+	    return;
+	}
+	bio->bio_offset &= 0x00FFFFFFFFFFFFFFULL;
 	blocksize = (cdp->toc.tab[track - 1].control & 4) ? 2048 : 2352;
 	lastlba = ntohl(cdp->toc.tab[track].addr.lba);
 	lba = bio->bio_offset / blocksize;
 	lba += ntohl(cdp->toc.tab[track - 1].addr.lba);
-    }
-    else {
+    } else {
 	blocksize = cdp->block_size;
 	lastlba = cdp->disk_size;
 	lba = bio->bio_offset / blocksize;
     }
+    bzero(ccb, sizeof(ccb));
 
     if (bp->b_bcount % blocksize != 0) {
 	bp->b_flags |= B_ERROR;
@@ -1294,7 +1306,9 @@ acd_read_toc(struct acd_softc *cdp)
 
 	ksprintf(name, "acd%dt%d", cdp->lun, track);
 	entry = kmalloc(sizeof(struct acd_devlist), M_ACD, M_WAITOK | M_ZERO);
-	entry->dev = make_dev(&acd_ops, (cdp->lun << 3) | (track << 16),
+	entry->dev = make_dev(&acd_ops, 
+			      dkmakepart(track + 128) | dkmakeunit(cdp->lun) |
+			      dkmakeslice(WHOLE_DISK_SLICE),
 			      0, 0, 0644, name, NULL);
 	entry->dev->si_drv1 = cdp->dev->si_drv1;
 	reference_dev(entry->dev);

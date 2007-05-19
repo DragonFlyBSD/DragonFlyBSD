@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.22 2007/05/16 05:20:23 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.23 2007/05/19 02:39:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -118,8 +118,10 @@ mbrinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 
 	mbr_offset = DOSBBSECTOR;
 reread_mbr:
+	if (info->d_media_blksize & DEV_BMASK)
+		return (EIO);
 	/* Read master boot record. */
-	wdev = dkmodpart(dkmodslice(dev, WHOLE_DISK_SLICE), RAW_PART);
+	wdev = dkmodpart(dkmodslice(dev, WHOLE_DISK_SLICE), WHOLE_SLICE_PART);
 	bp = geteblk((int)info->d_media_blksize);
 	bp->b_bio1.bio_offset = (off_t)mbr_offset * info->d_media_blksize;
 	bp->b_bcount = info->d_media_blksize;
@@ -136,7 +138,7 @@ reread_mbr:
 
 	/* Weakly verify it. */
 	cp = bp->b_data;
-	sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE, RAW_PART, partname);
+	sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE, WHOLE_SLICE_PART, partname);
 	if (cp[0x1FE] != 0x55 || cp[0x1FF] != 0xAA) {
 		if (bootverbose)
 			kprintf("%s: invalid primary partition table: no magic\n",
@@ -220,7 +222,7 @@ reread_mbr:
 		    && dp->dp_start == 0 && dp->dp_size == 0)
 			continue;
 		sname = dsname(dev, dkunit(dev), BASE_SLICE + dospart,
-			       RAW_PART, partname);
+			       WHOLE_SLICE_PART, partname);
 
 		/*
 		 * Temporarily ignore errors from this check.  We could
@@ -268,7 +270,7 @@ reread_mbr:
 	sp = &ssp->dss_slices[BASE_SLICE];
 	for (dospart = 0, dp = dp0; dospart < NDOSPART; dospart++, dp++, sp++) {
 		sname = dsname(dev, dkunit(dev), BASE_SLICE + dospart,
-			       RAW_PART, partname);
+			       WHOLE_SLICE_PART, partname);
 		(void)mbr_setslice(sname, info, sp, dp, mbr_offset);
 	}
 	ssp->dss_nslices = BASE_SLICE + NDOSPART;
@@ -423,7 +425,7 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 	/* Weakly verify it. */
 	cp = bp->b_data;
 	if (cp[0x1FE] != 0x55 || cp[0x1FF] != 0xAA) {
-		sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE, RAW_PART,
+		sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE, WHOLE_SLICE_PART,
 			       partname);
 		if (bootverbose)
 			kprintf("%s: invalid extended partition table: no magic\n",
@@ -446,7 +448,7 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 			static char buf[32];
 
 			sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE,
-				       RAW_PART, partname);
+				       WHOLE_SLICE_PART, partname);
 			ksnprintf(buf, sizeof(buf), "%s", sname);
 			if (strlen(buf) < sizeof buf - 11)
 				strcat(buf, "<extended>");
@@ -455,7 +457,7 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 			ext_offsets[dospart] = base_ext_offset + dp->dp_start;
 			ext_sizes[dospart] = dp->dp_size;
 		} else {
-			sname = dsname(dev, dkunit(dev), slice, RAW_PART,
+			sname = dsname(dev, dkunit(dev), slice, WHOLE_SLICE_PART,
 				       partname);
 			check_part(sname, dp, ext_offset, nsectors, ntracks,
 				   mbr_offset);

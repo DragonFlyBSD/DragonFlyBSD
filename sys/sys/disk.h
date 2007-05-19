@@ -39,7 +39,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.15 2007/05/19 00:52:02 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.16 2007/05/19 02:39:04 dillon Exp $
  */
 
 #ifndef _SYS_DISK_H_
@@ -106,6 +106,7 @@ struct disk_info {
 #define DSO_COMPATLABEL		0x0004
 #define DSO_COMPATPARTA		0x0008
 #define DSO_COMPATMBR		0x0010
+#define DSO_RAWEXTENSIONS	0x0020
 
 /*
  * Disk management structure - automated disklabel support.
