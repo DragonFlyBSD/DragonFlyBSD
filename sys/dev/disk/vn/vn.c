@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.34 2007/05/17 21:08:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.35 2007/05/19 20:31:16 dillon Exp $
  */
 
 /*
@@ -258,7 +258,7 @@ vnopen(struct dev_open_args *ap)
 					&vn->sc_slices, info));
 		}
 		if (dkslice(dev) != WHOLE_DISK_SLICE ||
-		    dkpart(dev) != RAW_PART ||
+		    dkpart(dev) != WHOLE_SLICE_PART ||
 		    ap->a_devtype != S_IFCHR) {
 			return (ENXIO);
 		}
@@ -471,7 +471,7 @@ vnioctl(struct dev_ioctl_args *ap)
 				return (error);
 		}
 		if (dkslice(dev) != WHOLE_DISK_SLICE ||
-		    dkpart(dev) != RAW_PART)
+		    dkpart(dev) != WHOLE_SLICE_PART)
 			return (ENOTTY);
 	}
 
