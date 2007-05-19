@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.29 2007/05/09 00:53:34 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.30 2007/05/19 00:52:01 dillon Exp $
  */
 
 /*
@@ -409,7 +409,7 @@ kgetdiskbyname(const char *name)
 	 * Get the unit.
 	 */
 	unit = strtol(cp, &cp, 10);
-	if (name + nlen == (const char *)cp || unit < 0 || unit > DKMAXUNIT) {
+	if (name + nlen == (const char *)cp || unit < 0 || unit >= DKMAXUNITS) {
 		kprintf("bad unit: %d\n", unit);
 		return (NULL);
 	}

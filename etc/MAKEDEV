@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.27 2007/05/17 19:26:05 swildner Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.28 2007/05/19 00:51:54 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -267,14 +267,16 @@ dkitos()
 }
 
 #-----------------------------------------------------------------------------
-# Convert disk|type|unit|slice|partition to minor number.
+# Convert unit, slice, partition to minor number.
 #-----------------------------------------------------------------------------
+#
+# ndkminor(unit, slice, partition)
 
-dkminor()
+ndkminor()
 {
-	echo $(($1 << 25 | ($2 / 32) << 21 | \
-	       ($2 % 32) << 3 | $3 << 16 | \
-	       ($4 & 7) | ($4 & 8) << 17))
+	echo $(( (($1 & 31) << 3) | (($1 & 480) << 16) | \
+		(($2 & 15) << 16) | (($2 & 112) << 25) | \
+		($3 & 7) | (($3 & 8) << 17) | (($3 & 240) << 21) ))
 }
 
 
@@ -653,9 +655,10 @@ wt*)
 
 #-----------------------------------------------------------------------------
 
-aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|vkd*s*)
+aacd*s*|acd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|vkd*s*)
 	case $i in
 	aacd*s*) name=aacd; chr=151;;
+	acd*s*)  name=acd;  chr=117;;
 	ad*s*)   name=ad;   chr=116;;
 	ar*s*)   name=ar;   chr=157;;
 	afd*s*)  name=afd;  chr=118;;
@@ -680,7 +683,7 @@ aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlx
 		part=`expr $i  : '....[0-9]*s[0-9]*\(.*\)'`
 		;;
 
-	afd*s*|ccd*s*|fla*s*|pst*s*|wfd*s*|vkd*s*)
+	acd*s*|afd*s*|ccd*s*|fla*s*|pst*s*|wfd*s*|vkd*s*)
 		unit=`expr $i  : '...\([0-9]*\)s'`
 		slice=`expr $i : '...[0-9]*s\([0-9]*\)'`
 		part=`expr $i  : '...[0-9]*s[0-9]*\(.*\)'`
@@ -699,8 +702,11 @@ aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlx
 			oldslice=$slice
 			slice=$(($slice+1))
 			slicename=`dkitos $slice`
-			minor=`dkminor 0 $unit $slice 2`
-			mknod  $name $unit$slicename c $chr $minor \
+			minor=`ndkminor $unit $slice 2`
+			mknod  $name $unit${slicename}.compat c $chr $minor \
+				root:operator 640
+			minor=`ndkminor $unit $slice 255`
+			mknod  ${name} $unit$slicename c $chr $minor \
 				root:operator 640
 			rm -f r$name$unit$slicename
 
@@ -709,7 +715,7 @@ aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlx
 
 			for part in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
 			do
-				minor=`dkminor 0 $unit $slice $part`
+				minor=`ndkminor $unit $slice $part`
 				partname=`dkitop $part`
 				mknod $name $unit$slicename$partname \
 				      c $chr $minor root:operator 640
@@ -841,9 +847,49 @@ fd*)
 
 #-----------------------------------------------------------------------------
 
-aacd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
+acd*t*)
+	units=`expr $i : '...\(.*\)t'`;
+	tracks=`expr $i : '.*t\(.*\)'`;
+	name=acd;
+	chr=117;
+
+	[ "$units"  ] || units=0
+	[ "$tracks" ] || tracks=100
+
+	if [ "$units" -le 31 -a "$tracks" -le 169 ]
+	then
+		i=0
+		while [ $i -le $units ]
+		do
+			dname=$name$i
+			rm -rf ${dname}t*
+
+			j=1
+			while [ $j -le $tracks ]
+			do
+				# cd unit tracks use the compatibility slice
+				# and partition numbers 129+ for tracks 1+.
+				#
+				minor=`ndkminor $i 0 $(($j + 128))`
+				mknod ${dname}t $j c $chr $minor \
+					root:operator 640
+				j=$(($j + 1))
+			done
+
+			i=$(($i + 1))
+		done
+	else
+		echo "$i is invalid -- can't have more than 32 cd devices or 169 tracks"
+	fi
+	;;
+
+#-----------------------------------------------------------------------------
+
+aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
+	doslices=1
 	case $i in
 	aacd*) name=aacd; chr=151;;
+	acd*)  name=acd;  chr=117; doslices=0;;
 	ad*)   name=ad;   chr=116;;
 	ar*)   name=ar;   chr=157;;
 	afd*)  name=afd;  chr=118;;
@@ -865,7 +911,7 @@ aacd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*
 	aacd*|amrd*|idad*|ipsd*|mlxd*|twed*)
 		unit=`expr $i : '....\(.*\)'`
 		;;
-	afd*|ccd*|fla*|pst*|wfd*|vkd*)
+	acd*|afd*|ccd*|fla*|pst*|wfd*|vkd*)
 		unit=`expr $i : '...\(.*\)'`
 		;;
 	*)
@@ -875,10 +921,25 @@ aacd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*
 
 	case $unit in
 	[0-9]|[0-9][0-9]|[0-4][0-9][0-9]|50[0-9]|51[0-1])
-		for slicepartname in s0h s1h s2 s3 s4
-		do
-			sh MAKEDEV $name$unit$slicepartname
-		done
+		if [ "$doslices" -gt 0 ]; then
+			for slicepartname in s0h s1h s2 s3 s4
+			do
+				sh MAKEDEV $name$unit$slicepartname
+			done
+		else
+			minor=`ndkminor $unit 0 0`
+			mknod  ${name} $unit.compat c $chr $minor \
+				root:operator 640
+			minor=`ndkminor $unit 1 255`
+			mknod  ${name} ${unit} c $chr $minor \
+				root:operator 640
+			minor=`ndkminor $unit 1 0`
+			mknod  ${name} ${unit}a c $chr $minor \
+				root:operator 640
+			minor=`ndkminor $unit 1 2`
+			mknod  ${name} ${unit}c c $chr $minor \
+				root:operator 640
+		fi
 		;;
 	*)
 		echo bad unit for disk in: $i
@@ -1090,45 +1151,8 @@ ast*)
 
 #-----------------------------------------------------------------------------
 
-acd*t*)
-	units=`expr $i : '...\(.*\)t'`;
-	tracks=`expr $i : '.*t\(.*\)'`;
-	name=acd;
-	chr=117;
-
-	[ "$units"  ] || units=0
-	[ "$tracks" ] || tracks=100
-
-	if [ "$units" -le 31 -a "$tracks" -le 169 ]
-	then
-		i=0
-		while [ $i -le $units ]
-		do
-			dname=$name$i
-			rm -rf ${dname}t*
-
-			j=1
-			while [ $j -le $tracks ]
-			do
-				mknod ${dname}t $j c $chr \
-					$((($i * 8) + (65536 * $j))) \
-					root:operator 640
-
-				j=$(($j + 1))
-			done
-
-			i=$(($i + 1))
-		done
-	else
-		echo "$i is invalid -- can't have more than 32 cd devices or 169 tracks"
-	fi
-	;;
-
-#-----------------------------------------------------------------------------
-
-acd*|cd*)
+cd*)
 	case $i in
-	acd*) units=`expr $i : '...\(.*\)'`; name=acd; chr=117;;
 	cd*)  units=`expr $i : '..\(.*\)'` ; name=cd;  chr=15;;
 	esac
 

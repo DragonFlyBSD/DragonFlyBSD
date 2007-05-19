@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.15 2007/05/18 17:05:12 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.16 2007/05/19 00:51:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -233,11 +233,12 @@ main(int argc, char *argv[])
 
 	dkname = argv[0];
 	if (dkname[0] != '/') {
-		sprintf(np, "%s%s%c", _PATH_DEV, dkname, 'a' + RAW_PART);
+		sprintf(np, "%s%s", _PATH_DEV, dkname);
 		specname = np;
 		np += strlen(specname) + 1;
-	} else
+	} else {
 		specname = dkname;
+	}
 	f = open(specname, op == READ ? O_RDONLY : O_RDWR);
 	if (f < 0 && errno == ENOENT && dkname[0] != '/') {
 		sprintf(specname, "%s%s", _PATH_DEV, dkname);

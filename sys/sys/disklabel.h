@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel.h,v 1.22 2007/05/17 23:49:56 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.23 2007/05/19 00:52:02 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -47,9 +47,6 @@
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
 #endif
-#if defined(_KERNEL) && !defined(_SYS_CONF_H_)
-#include <sys/conf.h>		/* for make_sub_dev() */
-#endif
 
 /*
  * Each disk has a label which includes information about the hardware
@@ -62,14 +59,6 @@
 #ifdef __i386__
 #define LABELSECTOR	1			/* sector containing label */
 #define LABELOFFSET	0			/* offset of label in sector */
-#endif
-
-#ifndef	LABELSECTOR
-#define LABELSECTOR	0			/* sector containing label */
-#endif
-
-#ifndef	LABELOFFSET
-#define LABELOFFSET	64			/* offset of label in sector */
 #endif
 
 #define DISKMAGIC	((u_int32_t)0x82564557)	/* The disk magic number */
@@ -88,26 +77,9 @@ struct disklabel {
 	u_int16_t d_subtype;		/* controller/d_type specific */
 	char	  d_typename[16];	/* type name, e.g. "eagle" */
 
-	/* 
-	 * d_packname contains the pack identifier and is returned when
-	 * the disklabel is read off the disk or in-core copy.
-	 * d_boot0 and d_boot1 are the (optional) names of the
-	 * primary (block 0) and secondary (block 1-15) bootstraps
-	 * as found in /boot.  These are returned when using
-	 * getdiskbyname(3) to retrieve the values from /etc/disktab.
-	 */
-	union {
-		char	un_d_packname[16];	/* pack identifier */
-		struct {
-			char *un_d_boot0;	/* primary bootstrap name */
-			char *un_d_boot1;	/* secondary bootstrap name */
-		} un_b;
-	} d_un;
-#define d_packname	d_un.un_d_packname
-#define d_boot0		d_un.un_b.un_d_boot0
-#define d_boot1		d_un.un_b.un_d_boot1
+	char	d_packname[16];		/* pack identifier */
 
-			/* disk geometry: */
+	/* disk geometry: */
 	u_int32_t d_secsize;		/* # of bytes per sector */
 	u_int32_t d_nsectors;		/* # of data sectors per track */
 	u_int32_t d_ntracks;		/* # of tracks per cylinder */
@@ -313,90 +285,7 @@ static const char *fstypenames[] = {
 
 #ifdef _KERNEL
 
-/*
- * XXX encoding of disk minor numbers, should be elsewhere.
- *
- * See <sys/reboot.h> for a possibly better encoding.
- *
- * "cpio -H newc" can be used to back up device files with large minor
- * numbers (but not ones >= 2^31).  Old cpio formats and all tar formats
- * don't have enough bits, and cpio and tar don't notice the lossage.
- * There are also some sign extension bugs.
- */
-
-/*
-       3                   2                   1                   0
-     1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
-    _________________________________________________________________
-    | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
-    -----------------------------------------------------------------
-    |    TYPE     |UNIT_2 |P| SLICE |  MAJOR?       |  UNIT   |PART |
-    -----------------------------------------------------------------
-*/
-
-#define DKMAXUNIT 0x1ff		/* Highest disk unit number */
-
-#define	dkmakeminor(unit, slice, part) \
-				(((slice) << 16) | (((unit) & 0x1e0) << 16) | \
-				(((unit) & 0x1f) << 3) | (part & 7) | \
-				((part & 0x08) << 17))
-
-static __inline u_int
-dkunitmask(void)
-{
-	return (0x01e000f8);
-}
-
-static __inline u_int
-dkmakeunit(int unit)
-{
-	return(dkmakeminor(unit, 0, 0));
-}
-
-static __inline cdev_t
-dkmodpart(cdev_t dev, int part)
-{
-	int val;
-
-	if (part < 8)
-		val = (part & 7);
-	else
-		val = (part & 7) | 0x100000;
-	return (make_sub_dev(dev, (minor(dev) & ~0x100007) | val));
-}
-
-static __inline cdev_t
-dkmodslice(cdev_t dev, int slice)
-{
-	return (make_sub_dev(dev, (minor(dev) & ~0x0f0000) | (slice << 16)));
-}
-
-static __inline int
-dkpart(cdev_t dev)
-{
-	return (((minor(dev) >> 17) & 0x08) | (minor(dev) & 7));
-}
-
-#define	dkslice(dev)		((minor(dev) >> 16) & 0x0f)
-#define	dktype(dev)       	((minor(dev) >> 25) & 0x7f)
-
-static __inline u_int
-dkunit(cdev_t dev)
-{
-	return (((minor(dev) >> 16) & 0x1e0) | ((minor(dev) >> 3) & 0x1f));
-}
-
-struct	buf;
-struct	bio;
-struct	bio_queue_head;
-
-struct bio *bounds_check_with_label (cdev_t dev, struct bio *bio,
-				     struct disklabel *lp, int wlabel);
-void	diskerr (struct bio *bio, cdev_t dev, const char *what, int pri,
-		     int donecnt);
-void	disksort (struct buf *ap, struct buf *bp);
 char	*readdisklabel (cdev_t dev, struct disklabel *lp);
-void	bioqdisksort (struct bio_queue_head *ap, struct bio *bio);
 int	setdisklabel (struct disklabel *olp, struct disklabel *nlp,
 			  u_long openmask);
 int	writedisklabel (cdev_t dev, struct disklabel *lp);

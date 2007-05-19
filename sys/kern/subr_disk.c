@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.31 2007/05/15 22:44:14 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.32 2007/05/19 00:52:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -145,8 +145,7 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 	 * Create the raw backing device
 	 */
 	compile_dev_ops(raw_ops);
-	rawdev = make_dev(raw_ops,
-			    dkmakeminor(unit, WHOLE_DISK_SLICE, RAW_PART),
+	rawdev = make_dev(raw_ops, dkmakewholedisk(unit),
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", raw_ops->head.name, unit);
 
@@ -165,7 +164,7 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 	dp->d_raw_ops = raw_ops;
 	dp->d_dev_ops = dev_ops;
 	dp->d_cdev = make_dev(dev_ops, 
-			    dkmakeminor(unit, WHOLE_DISK_SLICE, RAW_PART),
+			    dkmakewholedisk(unit),
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", dev_ops->head.name, unit);
 
@@ -729,7 +728,7 @@ writedisklabel(cdev_t dev, struct disklabel *lp)
 	 */
 	bp->b_flags &= ~B_INVAL;
 	bp->b_cmd = BUF_CMD_READ;
-	dev_dstrategy(dkmodpart(dev, RAW_PART), &bp->b_bio1);
+	dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART), &bp->b_bio1);
 	error = biowait(bp);
 	if (error)
 		goto done;
@@ -741,7 +740,7 @@ writedisklabel(cdev_t dev, struct disklabel *lp)
 		    dkcksum(dlp) == 0) {
 			*dlp = *lp;
 			bp->b_cmd = BUF_CMD_WRITE;
-			dev_dstrategy(dkmodpart(dev, RAW_PART), &bp->b_bio1);
+			dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART), &bp->b_bio1);
 			error = biowait(bp);
 			goto done;
 		}

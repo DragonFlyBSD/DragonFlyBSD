@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.37 2007/05/15 00:01:03 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.38 2007/05/19 00:52:00 dillon Exp $
  *
  */
 
@@ -65,6 +65,7 @@
 #include <sys/buf.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
+#include <sys/diskslice.h>
 #include <sys/disklabel.h>
 #include <sys/devicestat.h>
 #include <sys/fcntl.h>

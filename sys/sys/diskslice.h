@@ -1,3 +1,36 @@
+/*
+ * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
 /*-
  * Copyright (c) 1994 Bruce D. Evans.
  * All rights reserved.
@@ -24,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.12 2007/05/16 05:20:25 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.13 2007/05/19 00:52:02 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -36,13 +69,22 @@
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
 #endif
+#if defined(_KERNEL) && !defined(_SYS_CONF_H_)
+#include <sys/conf.h>           /* for make_sub_dev() */
+#endif
 
 #define	BASE_SLICE		2	/* e.g. ad0s1 */
 #define	COMPATIBILITY_SLICE	0	/* e.g. ad0a-j */
 #define	DIOCGSLICEINFO		_IOR('d', 111, struct diskslices)
 #define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
 #define	MAX_SLICES		16
-#define	WHOLE_DISK_SLICE	1	/* e.g. ad0 */
+
+/*
+ * The whole-disk-slice does not try to interpret the MBR.  The whole slice
+ * partition does not try to interpret the disklabel within the slice.
+ */
+#define	WHOLE_DISK_SLICE	1
+#define WHOLE_SLICE_PART	(DKMAXPARTITIONS - 1)
 
 #ifdef MAXPARTITIONS			/* XXX don't depend on disklabel.h */
 #if MAXPARTITIONS !=	16		/* but check consistency if possible */
@@ -128,6 +170,150 @@ struct partinfo {
 
 #define DIOCGPART	_IOR('d', 104, struct partinfo)	/* get partition */
 
+/*
+ * disk unit and slice helper functions
+ *
+ *     3                   2                   1                   0
+ *   1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *  _________________________________________________________________
+ *  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+ *  -----------------------------------------------------------------
+ *  | SL2 | PART3 |UNIT_2 |P| SLICE |  MAJOR?       |  UNIT   |PART |
+ *  -----------------------------------------------------------------
+ */
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#define DKMAXUNITS	512
+#define DKMAXSLICES	128
+#define DKMAXPARTITIONS	256
+
+/*
+ * Build a minor device number.
+ */
+static __inline u_int32_t
+dkmakeminor(u_int32_t unit, u_int32_t slice, u_int32_t part)
+{
+	u_int32_t val;
+
+	val = ((unit & 0x001f) << 3) | ((unit & 0x01e0) << 16) |
+	      ((slice & 0x000f) << 16) | ((slice & 0x0070) << 25) |
+	      (part & 0x0007) | ((part & 0x0008) << 17) |
+	      ((part & 0x00F0) << 21);
+	return(val);
+}
+
+/*
+ * Generate the minor number representing the entire disk, with no
+ * mbr or label interpretation.
+ */
+static __inline u_int32_t
+dkmakewholedisk(u_int32_t unit)
+{
+	return(dkmakeminor(unit, WHOLE_DISK_SLICE, WHOLE_SLICE_PART));
+}
+
+/*
+ * Generate the minor number representing an entire slice, with no
+ * recursive mbr, boot sector, or label interpretation.
+ */
+static __inline u_int32_t
+dkmakewholeslice(u_int32_t unit, u_int32_t slice)
+{
+	return(dkmakeminor(unit, slice, WHOLE_SLICE_PART));
+}
+
+/*
+ * Return the unit mask, used in calls to make_dev()
+ */
+static __inline u_int32_t
+dkunitmask(void)
+{
+	return (0x01e000f8);
+}
+
+/*
+ * build minor number elements - encode unit number, slice, and partition
+ * (OR the results together).
+ */
+static __inline u_int32_t
+dkmakeunit(int unit)
+{
+        return(dkmakeminor((u_int32_t)unit, 0, 0));
+}
+
+static __inline u_int32_t
+dkmakeslice(int slice)
+{
+        return(dkmakeminor(0, (u_int32_t)slice, 0));
+}
+
+static __inline u_int32_t
+dkmakepart(int part)
+{
+        return(dkmakeminor(0, 0, (u_int32_t)part));
+}
+
+#endif
+
+/*
+ * dk*() support functions operating on cdev_t's
+ */
+#ifdef _KERNEL
+
+static __inline int
+dkunit(cdev_t dev)
+{
+	u_int32_t val = minor(dev);
+
+	val = ((val >> 3) & 0x001f) | ((val >> 16) & 0x01e0);
+	return((int)val);
+}
+
+static __inline u_int32_t
+dkslice(cdev_t dev)
+{
+	u_int32_t val = minor(dev);
+
+	val = ((val >> 16) & 0x000f) | ((val >> 25) & 0x0070);
+	return(val);
+}
+
+static __inline u_int32_t
+dkpart(cdev_t dev)
+{
+	u_int32_t val = minor(dev);
+
+	val = (val & 0x0007) | ((val >> 17) & 0x0008) | ((val >> 21) & 0x00f0);
+	return(val);
+}
+
+/*
+ * dkmodpart() - create sub-device
+ */
+static __inline cdev_t
+dkmodpart(cdev_t dev, int part)
+{
+	u_int32_t val;
+
+	val = (minor(dev) & ~dkmakepart(-1)) | dkmakepart(part);
+	return (make_sub_dev(dev, val));
+}
+
+static __inline cdev_t
+dkmodslice(cdev_t dev, int slice)
+{
+	u_int32_t val;
+
+	val = (minor(dev) & ~dkmakeslice(-1)) | dkmakeslice(slice);
+	return (make_sub_dev(dev, val));
+}
+
+#endif
+
+/*
+ * disk management functions
+ */
 
 #ifdef _KERNEL
 
@@ -137,21 +323,33 @@ struct buf;
 struct bio;
 struct disklabel;
 struct disk_info;
+struct bio_queue_head;
 
 int	mbrinit (cdev_t dev, struct disk_info *info,
-		 struct diskslices **sspp);
-struct bio *dscheck (cdev_t dev, struct bio *bio, struct diskslices *ssp);
+		    struct diskslices **sspp);
+struct bio *
+	dscheck (cdev_t dev, struct bio *bio, struct diskslices *ssp);
 void	dsclose (cdev_t dev, int mode, struct diskslices *ssp);
 void	dsgone (struct diskslices **sspp);
 int	dsioctl (cdev_t dev, u_long cmd, caddr_t data, int flags,
-		     struct diskslices **sspp, struct disk_info *info);
+		    struct diskslices **sspp, struct disk_info *info);
 int	dsisopen (struct diskslices *ssp);
-struct diskslices *dsmakeslicestruct (int nslices, struct disk_info *info);
+struct diskslices *
+	dsmakeslicestruct (int nslices, struct disk_info *info);
 char	*dsname (cdev_t dev, int unit, int slice, int part,
-		     char *partname);
+		    char *partname);
 int	dsopen (cdev_t dev, int mode, u_int flags,
 		    struct diskslices **sspp, struct disk_info *info);
 int64_t	dssize (cdev_t dev, struct diskslices **sspp);
+
+/*
+ * Ancillary functions
+ */
+
+void	diskerr (struct bio *bio, cdev_t dev, const char *what, int pri,
+		    int donecnt);
+void	disksort (struct buf *ap, struct buf *bp);
+void	bioqdisksort (struct bio_queue_head *ap, struct bio *bio);
 
 #endif /* _KERNEL */
 
