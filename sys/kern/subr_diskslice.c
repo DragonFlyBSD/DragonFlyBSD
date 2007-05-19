@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.36 2007/05/19 02:39:03 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.37 2007/05/19 09:46:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -260,35 +260,44 @@ doshift:
 		/*
 		 * sp->ds_size is for the whole disk in the WHOLE_DISK_SLICE.
 		 */
-		labelsect = -LABELSECTOR - 1;
-		endsecno = sp->ds_size;
-		slicerel_secno = secno;
-	} else if ((lp = sp->ds_label) == NULL) {
-		/*
-		 * We are accessing a slice but there is no label.
-		 */
-		lp = NULL;
-		labelsect = -LABELSECTOR - 1;
+		labelsect = 0;	/* ignore any reserved sectors, do not sniff */
 		endsecno = sp->ds_size;
 		slicerel_secno = secno;
 	} else if (part == WHOLE_SLICE_PART) {
-		/*
-		 * We are accessing a 'raw' slice but it has a label.
+		/* 
+		 * We are accessing a slice.  Snoop the label and check
+		 * reserved blocks only if a label is present, otherwise
+		 * do not.  A label may be present if (1) there are active
+		 * opens on the disk (not necessarily this slice) or
+		 * (2) the disklabel program has written an in-core label
+		 * and now wants to write it out, or (3) the management layer
+		 * is trying to write out an in-core layer.  In case (2) and
+		 * (3) we MUST snoop the write or the on-disk version of the
+		 * disklabel will not be properly translated.
 		 *
-		 * XXX messy snoop case.  Both disklabel -r -w and
-		 * DIOCWDINFO depend on write snooping to properly
-		 * correct the partition offsets for the label being
-		 * written to disk.  In both cases ds_label will be
-		 * non-NULL.  This is a mess because it violates the
-		 * idea of being able to write to the raw slice.
+		 * NOTE! opens on a whole-slice partition will not attempt
+		 * to read a disklabel in.
 		 */
-		lp = NULL;
-		labelsect = 0;
+		if ((lp = sp->ds_label) != NULL) {
+			labelsect = sp->ds_skip_bsdlabel;
+		} else {
+			labelsect = 0;
+		}
 		endsecno = sp->ds_size;
 		slicerel_secno = secno;
-	} else if (part >= lp->d_npartitions) {
+	} else if ((lp = sp->ds_label) && part < lp->d_npartitions) {
 		/*
-		 * Acesss through disklabel, but partition is out of bounds
+		 * Acesss through disklabel, partition present.
+		 */
+		struct partition *pp;
+
+		labelsect = sp->ds_skip_bsdlabel;
+		pp = &lp->d_partitions[dkpart(dev)];
+		endsecno = pp->p_size;
+		slicerel_secno = pp->p_offset + secno;
+	} else if (lp) {
+		/*
+		 * Partition out of bounds
 		 */
 		kprintf("dscheck(%s): partition out of bounds %d/%d\n",
 			devtoname(dev),
@@ -296,30 +305,45 @@ doshift:
 		goto bad;
 	} else {
 		/*
-		 * Acesss through disklabel, partition present.
+		 * Attempt to access partition when no disklabel present
 		 */
-		struct partition *pp;
-
-		labelsect = 0;
-		pp = &lp->d_partitions[dkpart(dev)];
-		endsecno = pp->p_size;
-		slicerel_secno = pp->p_offset + secno;
+		kprintf("dscheck(%s): attempt to access non-existant partition\n",
+			devtoname(dev));
+		goto bad;
 	}
 
-	/* overwriting disk label ? */
-	/* XXX should also protect bootstrap in first 8K */
-
-	if (slicerel_secno <= LABELSECTOR + labelsect &&
-#if LABELSECTOR != 0
-	    slicerel_secno + nsec > LABELSECTOR + labelsect &&
+	/*
+	 * labelsect will reflect the extent of any reserved blocks from
+	 * the beginning of the slice.  We only check the slice reserved
+	 * fields (sp->ds_skip_platform and sp->ds_skip_bsdlabel) if
+	 * labelsect is non-zero, otherwise we ignore them.  When labelsect
+	 * is non-zero, sp->ds_skip_platform indicates the sector where the
+	 * disklabel begins.
+	 *
+	 * First determine if an attempt is being made to write to a
+	 * reserved area when such writes are not allowed.
+	 */
+#if 0
+	if (slicerel_secno < 16 && nsec &&
+	    bp->b_cmd != BUF_CMD_READ) {
+		kprintf("Attempt to write to reserved sector %lld labelsect %lld label %p/%p skip_plat %d skip_bsd %d WLABEL %d\n",
+			slicerel_secno,
+			labelsect,
+			sp->ds_label, lp,
+			sp->ds_skip_platform,
+			sp->ds_skip_bsdlabel,
+			sp->ds_wlabel);
+	}
 #endif
+	if (slicerel_secno < labelsect && nsec &&
 	    bp->b_cmd != BUF_CMD_READ && sp->ds_wlabel == 0) {
 		bp->b_error = EROFS;
 		goto error;
 	}
 
 	/*
-	 * If we get here, bio_offset must be on a block boundary
+	 * If we get here, bio_offset must be on a block boundary and
+	 * the sector size must be a power of 2.
 	 */
 	if ((bio->bio_offset & (ssp->dss_secsize - 1)) ||
 	    (ssp->dss_secsize ^ (ssp->dss_secsize - 1)) !=
@@ -364,31 +388,43 @@ doshift:
 			   ssp->dss_secsize;
 
 	/*
-	 * Snoop on label accesses if the slice offset is nonzero.  Fudge
-	 * offsets in the label to keep the in-core label coherent with
-	 * the on-disk one.
+	 * Snoop writes to the label area when labelsect is non-zero.
+	 * The label sector starts at sector sp->ds_skip_platform within
+	 * the slice and ends before sector sp->ds_skip_bsdlabel.  The
+	 * write must contain the label sector for us to be able to snoop it.
+	 *
+	 * We have to adjust the label's fields to the on-disk format on
+	 * a write and then adjust them back on completion of the write,
+	 * or on a read.
+	 *
+	 * SNOOPs are required for disklabel -r and the DIOC* ioctls also
+	 * depend on it on the backend for label operations.  XXX
+	 *
+	 * NOTE! ds_skip_platform is usually set to non-zero by the slice
+	 * scanning code, indicating that the slice has reserved boot
+	 * sector(s).  It is also set for compatibility reasons via 
+	 * the DSO_COMPATMBR flag.  But it is not a requirement and it
+	 * can be 0, indicating that the disklabel (if present) is stored
+	 * at the beginning of the slice.  In most cases ds_skip_platform
+	 * will be '1'.
+	 *
+	 * ds_skip_bsdlabel is inclusive of ds_skip_platform.  If they are
+	 * the same then there is no label present, even if non-zero.
 	 */
-	if (slicerel_secno <= LABELSECTOR + labelsect
-#if LABELSECTOR != 0
-	    && slicerel_secno + nsec > LABELSECTOR + labelsect
-#endif
-	    && sp->ds_offset != 0) {
+	if (slicerel_secno < labelsect &&	/* also checks labelsect!=0 */
+	    sp->ds_skip_platform < labelsect && /* degenerate case */
+	    slicerel_secno <= sp->ds_skip_platform &&
+	    slicerel_secno + nsec > sp->ds_skip_platform) {
+		/* 
+		 * Set up our own callback on I/O completion to handle
+		 * undoing the fixup we did for the write as well as
+		 * doing the fixup for a read.
+		 */
 		nbio->bio_done = dsiodone;
 		nbio->bio_caller_info1.ptr = sp;
 		nbio->bio_caller_info2.offset = 
-			(off_t)(LABELSECTOR + labelsect - slicerel_secno) *
-			ssp->dss_secsize;
+		    (sp->ds_skip_platform - slicerel_secno) * ssp->dss_secsize;
 		if (bp->b_cmd != BUF_CMD_READ) {
-			/*
-			 * XXX even disklabel(8) writes directly so we need
-			 * to adjust writes.  Perhaps we should drop support
-			 * for DIOCWLABEL (always write protect labels) and
-			 * require the use of DIOCWDINFO.
-			 *
-			 * XXX probably need to copy the data to avoid even
-			 * temporarily corrupting the in-core copy.
-			 */
-			/* XXX need name here. */
 			msg = fixlabel(
 				NULL, sp,
 			       (struct disklabel *)
@@ -562,6 +598,21 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 	case DIOCGPART:
 		{
 			struct partinfo *dpart = (void *)data;
+
+			/*
+			 * If accessing a whole-slice partition the disk
+			 * management layer may not have tried to read the
+			 * disklabel.  We have to try to read the label
+			 * in order to properly initialize the ds_skip_*
+			 * fields.
+			 *
+			 * We ignore any error.
+			 */
+			if (sp->ds_label == NULL && part == WHOLE_SLICE_PART &&
+			    slice != WHOLE_DISK_SLICE) {
+				dsreadandsetlabel(dev, info->d_dsflags,
+						  ssp, sp, info);
+			}
 
 			bzero(dpart, sizeof(*dpart));
 			dpart->media_offset   = (u_int64_t)sp->ds_offset *
@@ -880,7 +931,6 @@ dsopen(cdev_t dev, int mode, u_int flags,
 {
 	cdev_t dev1;
 	int error;
-	u_char mask;
 	bool_t need_init;
 	struct diskslice *sp;
 	struct diskslices *ssp;
@@ -891,7 +941,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 
 	/*
 	 * Do not attempt to read the slice table or disk label when
-	 * accessing the raw disk.
+	 * accessing the whole-disk slice or a while-slice partition.
 	 */
 	if (dkslice(dev) == WHOLE_DISK_SLICE)
 		flags |= DSO_ONESLICE | DSO_NOLABELS;
@@ -899,8 +949,12 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		flags |= DSO_NOLABELS;
 
 	/*
-	 * XXX reinitialize the slice table unless there is an open device
-	 * on the unit.  This should only be done if the media has changed.
+	 * Reinitialize the slice table unless there is an open device
+	 * on the unit.
+	 *
+	 * It would be nice if we didn't have to do this but when a
+	 * user is slicing and partitioning up a disk it is a lot safer
+	 * to not take any chances.
 	 */
 	ssp = *sspp;
 	need_init = !dsisopen(ssp);
@@ -940,8 +994,10 @@ dsopen(cdev_t dev, int mode, u_int flags,
 			sp = &ssp->dss_slices[COMPATIBILITY_SLICE];
 
 			sp->ds_size = info->d_media_blocks;
-			if (info->d_dsflags & DSO_COMPATMBR)
+			if (info->d_dsflags & DSO_COMPATMBR) {
 				sp->ds_skip_platform = 1;
+				sp->ds_skip_bsdlabel = sp->ds_skip_platform;
+			}
 		}
 
 		/*
@@ -979,34 +1035,41 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	}
 
 	/*
-	 * Initialize secondary info for all slices.  It is needed for more
-	 * than the current slice in the DEVFS case.  XXX DEVFS is no more.
+	 * Load the disklabel for the slice being accessed unless it is
+	 * a whole-disk-slice or a whole-slice-partition (as determined
+	 * by DSO_NOLABELS).
 	 *
-	 * Attempt to read the disklabel for each slice, creating a virgin
-	 * label if a slice does not have one.
+	 * We could scan all slices here and try to load up their
+	 * disklabels, but that would cause us to access slices that
+	 * the user may otherwise not intend us to access, or corrupted
+	 * slices, etc.
+	 *
+	 * XXX if there are no opens on the slice we may want to re-read
+	 * the disklabel anyway, even if we have one cached.
 	 */
-	for (slice = 0; slice < ssp->dss_nslices; slice++) {
-		sp = &ssp->dss_slices[slice];
-		if (sp->ds_label != NULL)
-			continue;
-
-		dev1 = dkmodslice(dkmodpart(dev, WHOLE_SLICE_PART), slice);
-
-		/*
-		 * If opening a raw disk or raw slice we do not try to
-		 * read the disklabel, and we allow access to the whole
-		 * gambino.
-		 */
-		set_ds_wlabel(ssp, slice, TRUE);
-		if ((flags & DSO_NOLABELS) == 0)
-			dsreadandsetlabel(dev1, flags, ssp, sp, info);
-	}
-
 	slice = dkslice(dev);
 	if (slice >= ssp->dss_nslices)
 		return (ENXIO);
 	sp = &ssp->dss_slices[slice];
 	part = dkpart(dev);
+
+	if ((flags & DSO_NOLABELS) == 0 && sp->ds_label == NULL) {
+		dev1 = dkmodslice(dkmodpart(dev, WHOLE_SLICE_PART), slice);
+
+		/*
+		 * If opening a raw disk we do not try to
+		 * read the disklabel now.  No interpretation of raw disks
+		 * (e.g. like 'da0') ever occurs.  We will try to read the
+		 * disklabel for a raw slice if asked to via DIOC* ioctls.
+		 *
+		 * Access to the label area is disallowed by default.  Note
+		 * however that accesses via WHOLE_DISK_SLICE, and accesses
+		 * via WHOLE_SLICE_PART for slices without valid disklabels,
+		 * will allow writes and ignore the flag.
+		 */
+		set_ds_wlabel(ssp, slice, FALSE);
+		dsreadandsetlabel(dev1, flags, ssp, sp, info);
+	}
 
 	/*
 	 * If opening a particular partition the disklabel must exist and
@@ -1019,8 +1082,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		if (sp->ds_label == NULL || part >= sp->ds_label->d_npartitions)
 			return (EINVAL);
 		if (part < sizeof(sp->ds_openmask) * 8) {
-			mask = 1 << part;
-			sp->ds_openmask |= mask;
+			sp->ds_openmask |= 1 << part;
 		}
 	}
 
@@ -1029,7 +1091,8 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	 * if the device doesn't support them.  Raw-extension partitions
 	 * are typically used to handle CD tracks.
 	 */
-	if (slice == WHOLE_DISK_SLICE && part >= 128) {
+	if (slice == WHOLE_DISK_SLICE && part >= 128 &&
+	    part != WHOLE_SLICE_PART) {
 		if ((info->d_dsflags & DSO_RAWEXTENSIONS) == 0)
 			return (EINVAL);
 	}
@@ -1253,11 +1316,19 @@ set_ds_label(struct diskslices *ssp, int slice, struct disklabel *lp)
 	 * NOTE! With the traditional bsdlabel, the first N bytes of boot2
 	 * overlap with the disklabel.  The disklabel program checks that
 	 * they are 0.
+	 *
+	 * When clearing a label, the bsdlabel reserved area is reset.
 	 */
 	if (slice != WHOLE_DISK_SLICE) {
-		sp1->ds_skip_bsdlabel = sp1->ds_skip_platform + 15;
-		if (sp2)
-			sp2->ds_skip_bsdlabel = sp1->ds_skip_bsdlabel;
+		if (lp) {
+			sp1->ds_skip_bsdlabel = sp1->ds_skip_platform + 15;
+			if (sp2)
+				sp2->ds_skip_bsdlabel = sp1->ds_skip_bsdlabel;
+		} else {
+			sp1->ds_skip_bsdlabel = sp1->ds_skip_platform;
+			if (sp2)
+				sp2->ds_skip_bsdlabel = sp1->ds_skip_platform;
+		}
 	}
 }
 

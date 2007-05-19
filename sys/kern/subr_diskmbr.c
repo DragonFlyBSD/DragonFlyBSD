@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.23 2007/05/19 02:39:03 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.24 2007/05/19 09:46:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -515,9 +515,11 @@ mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
 
 	/*
 	 * The first sector in each slice is reserved for a system boot
-	 * sector.
+	 * sector.  ds_skip_bsdlabel is always inclusive of ds_skip_platform,
+	 * if they are the same then there is no label present (or yet
+	 * loaded).
 	 */
 	sp->ds_skip_platform = 1;
-	sp->ds_skip_bsdlabel = 0;
+	sp->ds_skip_bsdlabel = 1;
 	return (0);
 }
