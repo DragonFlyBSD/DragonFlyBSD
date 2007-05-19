@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.14 2007/05/17 23:53:42 dillon Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.15 2007/05/19 06:39:39 dillon Exp $
  */
 
 /*
@@ -219,8 +219,8 @@ main(int argc, char **argv)
 	struct partition oldpartition;
 	struct stat st;
 	struct statfs *mp;
-	int fsi = 0, fso, len, n, vflag;
-	char *cp = NULL, *s1, *s2, *special;
+	int fsi = -1, fso, fsx = -1, len, n, vflag;
+	char *cp = NULL, *s1, *s2, *special, *special_slice;
 	const char *opstring;
 #ifdef MFS
 	struct vfsconf vfc;
@@ -379,6 +379,7 @@ main(int argc, char **argv)
 		usage();
 
 	special = argv[0];
+	special_slice = NULL;
 	/* Copy the NetBSD way of faking up a disk label */
         if (mfs && !strcmp(special, "swap")) {
                 /* 
@@ -459,11 +460,10 @@ main(int argc, char **argv)
 		if ((st.st_mode & S_IFMT) != S_IFCHR && !mfs)
 			printf("%s: %s: not a character-special device\n",
 			    progname, special);
- 		cp = strchr(argv[0], '\0');
- 		if (cp == argv[0])
+		if (special[0] == 0)
  			fatal("null special file name");
- 		cp--;
- 		if (!vflag && (*cp < 'a' || *cp >= 'a' + MAXPARTITIONS) && !isdigit(*cp)) {
+		cp = special + strlen(special) - 1;
+ 		if (!vflag && (*cp < 'a' || *cp >= 'a' + MAXPARTITIONS)) {
 			fatal("%s: can't figure out file system partition",
 			    argv[0]);
 		}
@@ -471,9 +471,21 @@ main(int argc, char **argv)
 		if (!mfs && disktype == NULL)
 			disktype = argv[1];
 #endif
-		lp = getdisklabel(special, fsi);
-		if (vflag || isdigit(*cp))
-			pp = &lp->d_partitions[0];
+		if (vflag) {
+			asprintf(&special_slice, "%s", special);
+		} else {
+			asprintf(&special_slice, "%*.*s",
+				 cp - special, cp - special, special);
+		}
+		fsx = open(special_slice, O_RDONLY);
+		if (fsx < 0) {
+			fatal("cannot retrieve disklabel from %s",
+				special_slice);
+		}
+		lp = getdisklabel(special, fsx);
+		close(fsx);
+		if (vflag)
+			pp = &lp->d_partitions[2];
 		else
 			pp = &lp->d_partitions[*cp - 'a'];
 		if (pp->p_size == 0)
@@ -597,8 +609,12 @@ havelabel:
 	mkfs(pp, special, fsi, fso, (Cflag && mfs) ? argv[1] : NULL);
 	if (realsectorsize != DEV_BSIZE)
 		pp->p_size /= realsectorsize /DEV_BSIZE;
-	if (!Nflag && bcmp(pp, &oldpartition, sizeof(oldpartition)))
-		rewritelabel(special, fso, lp);
+	if (!Nflag && bcmp(pp, &oldpartition, sizeof(oldpartition))) {
+		if (special_slice && (fsx = open(special_slice, O_RDWR)) >= 0) {
+			rewritelabel(special_slice, fsx, lp);
+			close(fsx);
+		}
+	}
 	if (!Nflag)
 		close(fso);
 	close(fsi);
