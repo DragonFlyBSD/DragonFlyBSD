@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.14 2005/01/05 09:14:34 maxim Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.14 2006/10/20 18:30:12 corecode Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.15 2007/05/19 06:54:29 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -67,7 +67,7 @@ extern FILE *zopen(const char *fname, const char *mode);
 
 struct nlist current_nl[] = {	/* Namelist for currently running system. */
 #define X_DUMPLO	0
-	{ "_dumplo", 0, 0, 0, 0 },
+	{ "_dumplo64", 0, 0, 0, 0 },
 #define X_TIME		1
 	{ "_time_second", 0, 0, 0, 0 },
 #define	X_DUMPSIZE	2
@@ -88,7 +88,7 @@ int cursyms[] = { X_DUMPLO, X_VERSION, X_DUMPMAG, -1 };
 int dumpsyms[] = { X_TIME, X_DUMPSIZE, X_VERSION, X_PANICSTR, X_DUMPMAG, -1 };
 
 struct nlist dump_nl[] = {               /* Name list for dumped system. */
-	{ "_dumplo", 0, 0, 0, 0 },       /* Entries MUST be the same as  */
+	{ "_dumplo64", 0, 0, 0, 0 },     /* Entries MUST be the same as  */
 	{ "_time_second", 0, 0, 0, 0 },	 /* those in current_nl[].       */
 	{ "_dumpsize", 0, 0, 0, 0 },
 	{ "_version", 0, 0, 0, 0 },
@@ -116,7 +116,7 @@ char	panic_mesg[1024];		/* panic message */
 int	panicstr;		        /* flag: dump was caused by panic */
 char	vers[1024];			/* version of kernel that crashed */
 char    *physmem;			/* physmem value used with dumped session */
-long    dkdumplo;			/* directly specified kernel dumplo value */
+u_int64_t dkdumplo;			/* directly specified kernel dumplo value */
 
 u_long	kernbase;			/* offset of kvm to core file */
 
@@ -140,7 +140,7 @@ static void	save_core(void);
 static void	usage(void);
 static int	verify_dev(char *, dev_t);
 static void	Write(int, void *, int);
-static void	kdumplo_adjust(char *cp, int kmem, long *kdumplop);
+static void	kdumplo_adjust(char *cp, int kmem, u_int64_t *kdumplop);
 
 int
 main(int argc, char **argv)
@@ -179,7 +179,7 @@ main(int argc, char **argv)
 			break;
 		case 'B':
 			directdumplo = 1;
-			dkdumplo = strtol(optarg, &ep, 10);
+			dkdumplo = strtouq(optarg, &ep, 10);
 			if (*ep != '\0')
 				errx(1, "invalid offset: '%s'", optarg);
 			break;
@@ -235,7 +235,7 @@ kmem_setup(void)
 	int kmem, i;
 	const char *dump_sys;
 	size_t len;
-	long kdumplo;		/* block number where dump starts on dumpdev */
+	u_int64_t kdumplo;	/* block number where dump starts on dumpdev */
 	char *p;
 
 	/*
@@ -284,17 +284,17 @@ kmem_setup(void)
 	}
 
 	kmem = Open(_PATH_KMEM, O_RDONLY);
-	if (directdumplo)
+	if (directdumplo) {
 		kdumplo = dkdumplo;
-	else {
+	} else {
 		Lseek(kmem, (off_t)current_nl[X_DUMPLO].n_value, L_SET);
 		Read(kmem, &kdumplo, sizeof(kdumplo));
 		if (physmem)
 			kdumplo_adjust(physmem, kmem, &kdumplo);
 	}
-		dumplo = (off_t)kdumplo * DEV_BSIZE;
+		dumplo = kdumplo * DEV_BSIZE;
 	if (verbose)
-		printf("dumplo = %lld (%ld * %d)\n",
+		printf("dumplo = %lld (%lld * %d)\n",
 		    (long long)dumplo, kdumplo, DEV_BSIZE);
 	Lseek(kmem, (off_t)current_nl[X_DUMPMAG].n_value, L_SET);
 	Read(kmem, &dumpmag, sizeof(dumpmag));
@@ -781,7 +781,7 @@ Write(int fd, void *bp, int size)
 }
 
 static void
-kdumplo_adjust(char *cp, int kmem, long *kdumplop)
+kdumplo_adjust(char *cp, int kmem, u_int64_t *kdumplop)
 {
 	uint64_t AllowMem, sanity, Maxmem, CurrMaxmem;
 	char *ep;
@@ -815,8 +815,8 @@ kdumplo_adjust(char *cp, int kmem, long *kdumplop)
 	Read(kmem, &CurrMaxmem, sizeof(CurrMaxmem));
 
 	/* based on setdumpdev() in kern_shutdown.c */
-	*kdumplop += CurrMaxmem * (PAGE_SIZE / DEV_BSIZE);
-	*kdumplop -= Maxmem * (PAGE_SIZE / DEV_BSIZE);
+	*kdumplop += (u_int64_t)CurrMaxmem * PAGE_SIZE / DEV_BSIZE;
+	*kdumplop -= (u_int64_t)Maxmem * PAGE_SIZE / DEV_BSIZE;
 }
 
 static void
