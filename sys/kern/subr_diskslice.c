@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.38 2007/05/19 21:36:59 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.39 2007/05/20 04:41:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -907,21 +907,36 @@ dsname(cdev_t dev, int unit, int slice, int part, char *partname)
 	used = strlen(name);
 
 	if (slice != WHOLE_DISK_SLICE) {
+		/*
+		 * slice or slice + partition.  BASE_SLICE is s1, but
+		 * the compatibility slice (0) needs to be s0.
+		 */
 		used += ksnprintf(name + used, sizeof(name) - used,
-				  "s%d", slice - BASE_SLICE + 1);
+				  "s%d", (slice ? slice - BASE_SLICE + 1 : 0));
 		if (part != WHOLE_SLICE_PART) {
 			used += ksnprintf(name + used, sizeof(name) - used,
 					  "%c", 'a' + part);
 			partname[0] = 'a' + part;
 			partname[1] = 0;
 		}
+	} else if (part == WHOLE_SLICE_PART) {
+		/*
+		 * whole-disk-device, raw access to disk
+		 */
+		/* no string extension */
 	} else if (part > 128) {
 		/*
-		 * Special access via the whole-disk-device (used to access
-		 * CD audio tracks).
+		 * whole-disk-device, extended raw access partitions.
+		 * (typically used to access CD audio tracks)
 		 */
 		used += ksnprintf(name + used, sizeof(name) - used,
 					  "t%d", part - 128);
+	} else {
+		/*
+		 * whole-disk-device, illegal partition number
+		 */
+		used += ksnprintf(name + used, sizeof(name) - used,
+					  "?%d", part);
 	}
 	return (name);
 }

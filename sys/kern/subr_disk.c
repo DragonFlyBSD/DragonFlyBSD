@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.33 2007/05/19 07:05:25 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.34 2007/05/20 04:41:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -776,10 +776,21 @@ diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, int donecnt)
 	int part = dkpart(dev);
 	char partname[2];
 	char *sname;
+	const char *term;
 
+	switch(bp->b_cmd) {
+	case BUF_CMD_READ:
+		term = "read";
+		break;
+	case BUF_CMD_WRITE:
+		term = "write";
+		break;
+	default:
+		term = "access";
+		break;
+	}
 	sname = dsname(dev, unit, slice, part, partname);
-	kprintf("%s%s: %s %sing ", sname, partname, what,
-	      (bp->b_cmd == BUF_CMD_READ) ? "read" : "writ");
+	kprintf("%s%s: %s %sing ", sname, partname, what, term);
 	kprintf("offset %012llx for %d", bio->bio_offset, bp->b_bcount);
 	if (donecnt)
 		kprintf(" (%d bytes completed)", donecnt);
