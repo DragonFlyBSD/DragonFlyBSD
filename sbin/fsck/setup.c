@@ -32,13 +32,13 @@
  *
  * @(#)setup.c	8.10 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/setup.c,v 1.17.2.4 2002/06/24 05:10:41 dillon Exp $
- * $DragonFly: src/sbin/fsck/setup.c,v 1.7 2006/09/10 01:26:27 dillon Exp $
+ * $DragonFly: src/sbin/fsck/setup.c,v 1.8 2007/05/20 20:29:01 dillon Exp $
  */
 
 #define DKTYPENAMES
 #include <sys/param.h>
 #include <sys/stat.h>
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/file.h>
 
 #include <vfs/ufs/dinode.h>
@@ -56,8 +56,6 @@ struct bufarea asblk;
 #define POWEROF2(num)	(((num) & ((num) - 1)) == 0)
 
 static void badsb(int listerr, char *s);
-static int calcsb(char *dev, int devfd, struct fs *fs);
-static struct disklabel *getdisklabel(char *s, int fd);
 static int readsb(int listerr);
 
 /*
@@ -70,7 +68,6 @@ setup(char *dev)
 {
 	long cg, size, asked, i, j;
 	long skipclean, bmapsize;
-	struct disklabel *lp;
 	off_t sizepb;
 	struct stat statb;
 	struct fs proto;
@@ -110,32 +107,36 @@ setup(char *dev)
 	asblk.b_un.b_buf = malloc(SBSIZE);
 	if (sblk.b_un.b_buf == NULL || asblk.b_un.b_buf == NULL)
 		errx(EEXIT, "cannot allocate space for superblock");
-	if ((lp = getdisklabel(NULL, fsreadfd)))
-		dev_bsize = secsize = lp->d_secsize;
-	else
-		dev_bsize = secsize = DEV_BSIZE;
+
+	/*
+	 * Figure out the device block size and the sector size.  The
+	 * block size is updated by readsb() later on.
+	 */
+	{
+		struct partinfo pinfo;
+
+		if (ioctl(fsreadfd, DIOCGPART, &pinfo) == 0) {
+			dev_bsize = secsize = pinfo.media_blksize;
+		} else {
+			dev_bsize = secsize = DEV_BSIZE;
+		}
+	}
+
 	/*
 	 * Read in the superblock, looking for alternates if necessary
 	 */
 	if (readsb(1) == 0) {
 		skipclean = 0;
-		if (bflag || preen || calcsb(dev, fsreadfd, &proto) == 0)
+		if (bflag || preen)
 			return(0);
 		if (reply("LOOK FOR ALTERNATE SUPERBLOCKS") == 0)
 			return (0);
-		for (cg = 0; cg < proto.fs_ncg; cg++) {
-			bflag = fsbtodb(&proto, cgsblock(&proto, cg));
-			if (readsb(0) != 0)
-				break;
-		}
-		if (cg >= proto.fs_ncg) {
-			printf("%s %s\n%s %s\n%s %s\n",
-				"SEARCH FOR ALTERNATE SUPER-BLOCK",
-				"FAILED. YOU MUST USE THE",
-				"-b OPTION TO FSCK TO SPECIFY THE",
-				"LOCATION OF AN ALTERNATE",
-				"SUPER-BLOCK TO SUPPLY NEEDED",
-				"INFORMATION; SEE fsck(8).");
+		bflag = 32;
+		if (readsb(0) == 0) {
+			printf(
+			    "YOU MUST USE THE -b OPTION TO FSCK TO SPECIFY\n"
+			    "THE LOCATION OF AN ALTERNATE SUPER-BLOCK TO\n"
+			    "SUPPLY NEEDED INFORMATION; SEE fsck(8).");
 			bflag = 0;
 			return(0);
 		}
@@ -407,80 +408,3 @@ badsb(int listerr, char *s)
 	pfatal("BAD SUPER BLOCK: %s\n", s);
 }
 
-/*
- * Calculate a prototype superblock based on information in the disk label.
- * When done the cgsblock macro can be calculated and the fs_ncg field
- * can be used. Do NOT attempt to use other macros without verifying that
- * their needed information is available!
- */
-static int
-calcsb(char *dev, int devfd, struct fs *fs)
-{
-	struct disklabel *lp;
-	struct partition *pp;
-	char *cp;
-	int i;
-
-	cp = strchr(dev, '\0') - 1;
-	if (cp == (char *)-1 || ((*cp < 'a' || *cp > 'h') && !isdigit(*cp))) {
-		pfatal("%s: CANNOT FIGURE OUT FILE SYSTEM PARTITION\n", dev);
-		return (0);
-	}
-	lp = getdisklabel(dev, devfd);
-	if (isdigit(*cp))
-		pp = &lp->d_partitions[0];
-	else
-		pp = &lp->d_partitions[*cp - 'a'];
-	if (pp->p_fstype != FS_BSDFFS) {
-		pfatal("%s: NOT LABELED AS A BSD FILE SYSTEM (%s)\n",
-			dev, pp->p_fstype < FSMAXTYPES ?
-			fstypenames[pp->p_fstype] : "unknown");
-		return (0);
-	}
-	if (pp->p_fsize == 0 || pp->p_frag == 0 ||
-	    pp->p_cpg == 0 || pp->p_size == 0) {
-		pfatal("%s: %s: type %s fsize %d, frag %d, cpg %d, size %d\n",
-		    dev, "INCOMPLETE LABEL", fstypenames[pp->p_fstype],
-		    pp->p_fsize, pp->p_frag, pp->p_cpg, pp->p_size);
-		return (0);
-	}
-	memset(fs, 0, sizeof(struct fs));
-	fs->fs_fsize = pp->p_fsize;
-	fs->fs_frag = pp->p_frag;
-	fs->fs_cpg = pp->p_cpg;
-	fs->fs_size = pp->p_size;
-	fs->fs_ntrak = lp->d_ntracks;
-	fs->fs_nsect = lp->d_nsectors;
-	fs->fs_spc = lp->d_secpercyl;
-	fs->fs_nspf = fs->fs_fsize / lp->d_secsize;
-	fs->fs_sblkno = roundup(
-		howmany(lp->d_bbsize + lp->d_sbsize, fs->fs_fsize),
-		fs->fs_frag);
-	fs->fs_cgmask = 0xffffffff;
-	for (i = fs->fs_ntrak; i > 1; i >>= 1)
-		fs->fs_cgmask <<= 1;
-	if (!POWEROF2(fs->fs_ntrak))
-		fs->fs_cgmask <<= 1;
-	fs->fs_cgoffset = roundup(
-		howmany(fs->fs_nsect, NSPF(fs)), fs->fs_frag);
-	fs->fs_fpg = (fs->fs_cpg * fs->fs_spc) / NSPF(fs);
-	fs->fs_ncg = howmany(fs->fs_size / fs->fs_spc, fs->fs_cpg);
-	for (fs->fs_fsbtodb = 0, i = NSPF(fs); i > 1; i >>= 1)
-		fs->fs_fsbtodb++;
-	dev_bsize = lp->d_secsize;
-	return (1);
-}
-
-static struct disklabel *
-getdisklabel(char *s, int fd)
-{
-	static struct disklabel lab;
-
-	if (ioctl(fd, DIOCGDINFO, (char *)&lab) < 0) {
-		if (s == NULL)
-			return ((struct disklabel *)NULL);
-		pwarn("ioctl (GCINFO): %s\n", strerror(errno));
-		errx(EEXIT, "%s: can't read disk label", s);
-	}
-	return (&lab);
-}
