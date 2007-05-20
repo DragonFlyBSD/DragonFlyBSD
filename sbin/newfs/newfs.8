@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)newfs.8	8.6 (Berkeley) 5/3/95
 .\" $FreeBSD: src/sbin/newfs/newfs.8,v 1.26.2.15 2003/05/13 12:16:08 joerg Exp $
-.\" $DragonFly: src/sbin/newfs/newfs.8,v 1.6 2007/05/17 06:12:05 swildner Exp $
+.\" $DragonFly: src/sbin/newfs/newfs.8,v 1.7 2007/05/20 19:29:21 dillon Exp $
 .\"
 .Dd May 13, 2003
 .Dt NEWFS 8
@@ -165,7 +165,8 @@ that can be understood by older boot ROMs.
 .It Fl T
 Use information for the specified disk from
 .Pa /etc/disktab
-instead of trying to get the information from a disklabel.
+instead of trying to get geometry information from the
+storage device.
 .It Fl U
 Enables soft updates on the new filesystem.
 .It Fl a Ar maxcontig
@@ -271,6 +272,12 @@ Specify that the disk does not contain any partitions, and that
 should build a file system on the whole disk.
 This option is useful for synthetic disks such as
 .Nm vinum .
+It may also be used to allow
+.Nm
+to operate on regular files.
+When operating on a regular file,
+.Nm
+will synthesize a reasonable geometry for the filesystem.
 .El
 .Pp
 The following options override the standard sizes for the disk geometry.
@@ -319,12 +326,12 @@ interest, since all the parameters which depend on it are usually disabled.
 The number of tracks/cylinder available for data allocation by the file
 system.
 The default is 1.
-If zero is specified, the value from the disklabel will be used.
+If zero is specified, the value from the device geometry will be used.
 .It Fl u Ar sectors/track
 The number of sectors per track available for data allocation by the file
 system.
 The default is 4096.
-If zero is specified, the value from the disklabel will be used.
+If zero is specified, the value from the device geometry will be used.
 This does not include sectors reserved at the end of each track for bad
 block replacement (see the
 .Fl p

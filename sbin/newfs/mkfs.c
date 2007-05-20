@@ -32,7 +32,7 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.13 2006/08/13 20:55:12 swildner Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.14 2007/05/20 19:29:21 dillon Exp $
  */
 
 #include "defs.h"
@@ -105,6 +105,7 @@ extern int	avgfilesperdir;	/* expected number of files per directory */
 extern u_long	memleft;	/* virtual memory available */
 extern caddr_t	membase;	/* start address of memory based filesystem */
 extern char *	filename;
+extern struct disktab geom;
 
 extern void fatal(const char *fmt, ...);
 
@@ -159,7 +160,7 @@ int mfs_ppid = 0;
 int parentready_signalled;
 
 void
-mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
+mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 {
 	long i, mincpc, mincpg, inospercg;
 	long cylno, rpos, blk, j, emitwarn = 0;
@@ -744,14 +745,11 @@ next:
 		wtfs(fsbtodb(&sblock, cgsblock(&sblock, cylno)),
 		    sbsize, (char *)&sblock);
 	wtfsflush();
+
 	/*
-	 * Update information about this partion in pack
-	 * label, so that it may be updated on disk.
+	 * NOTE: we no longer update information in the disklabel
 	 */
-	pp->p_fstype = FS_BSDFFS;
-	pp->p_fsize = sblock.fs_fsize;
-	pp->p_frag = sblock.fs_frag;
-	pp->p_cpg = sblock.fs_cpg;
+
 	/*
 	 * Notify parent process of success.
 	 * Dissociate from session and tty.
@@ -1417,7 +1415,8 @@ wtfs(daddr_t bno, int size, char *bf)
 	}
 	n = write(fso, bf, size);
 	if (n != size) {
-		printf("write error: %ld\n", (long)bno);
+		printf("write error: fso %d blk %ld %d/%d\n", 
+			fso, (long)bno, n, size);
 		err(36, "wtfs");
 	}
 }

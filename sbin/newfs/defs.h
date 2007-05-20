@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sbin/newfs/defs.h,v 1.1 2003/12/01 04:35:39 dillon Exp $
+ * $DragonFly: src/sbin/newfs/defs.h,v 1.2 2007/05/20 19:29:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,7 @@
 #include <stddef.h>
 #include <unistd.h>
 
-extern void mkfs(struct partition *, char *, int, int, const char *);
+extern void mkfs(char *, int, int, const char *);
 
 struct FSNode;
 typedef struct FSNode *fsnode_t;

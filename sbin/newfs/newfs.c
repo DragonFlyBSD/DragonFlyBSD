@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.15 2007/05/19 06:39:39 dillon Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.16 2007/05/20 19:29:21 dillon Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
  */
 #include <sys/param.h>
 #include <sys/stat.h>
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/file.h>
 #include <sys/mount.h>
 
@@ -200,12 +200,9 @@ char	*disktype;
 int	unlabeled;
 #endif
 
-char	device[MAXPATHLEN];
 char	mfsdevname[256];
 char	*progname;
 
-struct disklabel *getdisklabel(char *, int);
-static void rewritelabel(char *, int, struct disklabel *);
 static void usage(void);
 static void mfsintr(int signo);
 
@@ -213,20 +210,18 @@ int
 main(int argc, char **argv)
 {
 	int ch;
-	struct partition *pp;
-	struct disklabel *lp;
-	struct disklabel mfsfakelabel;
-	struct partition oldpartition;
+	struct disktab geom;		/* disk geometry data */
 	struct stat st;
 	struct statfs *mp;
-	int fsi = -1, fso, fsx = -1, len, n, vflag;
-	char *cp = NULL, *s1, *s2, *special, *special_slice;
+	int fsi = -1, fso = -1, len, n, vflag;
+	char *s1, *s2, *special;
 	const char *opstring;
 #ifdef MFS
 	struct vfsconf vfc;
 	int error;
 #endif
 
+	bzero(&geom, sizeof(geom));
 	vflag = 0;
 	if ((progname = strrchr(*argv, '/')))
 		++progname;
@@ -241,7 +236,7 @@ main(int argc, char **argv)
 	opstring = mfs ?
 	    "NCF:T:Ua:b:c:d:e:f:g:h:i:m:o:s:v" :
 	    "NOS:T:Ua:b:c:d:e:f:g:h:i:k:l:m:n:o:p:r:s:t:u:vx:";
-	while ((ch = getopt(argc, argv, opstring)) != -1)
+	while ((ch = getopt(argc, argv, opstring)) != -1) {
 		switch (ch) {
 		case 'N':
 			Nflag = 1;
@@ -372,6 +367,7 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -379,7 +375,6 @@ main(int argc, char **argv)
 		usage();
 
 	special = argv[0];
-	special_slice = NULL;
 	/* Copy the NetBSD way of faking up a disk label */
         if (mfs && !strcmp(special, "swap")) {
                 /* 
@@ -387,36 +382,26 @@ main(int argc, char **argv)
                  * XXX XXX XXX
                  */
                 fso = -1;       /* XXX; normally done below. */
- 
-                memset(&mfsfakelabel, 0, sizeof(mfsfakelabel));
-                mfsfakelabel.d_secsize = 512;
-                mfsfakelabel.d_nsectors = 64;
-                mfsfakelabel.d_ntracks = 16;
-                mfsfakelabel.d_ncylinders = 16; 
-                mfsfakelabel.d_secpercyl = 1024;
-                mfsfakelabel.d_secperunit = 16384;
-                mfsfakelabel.d_rpm = 3600;
-                mfsfakelabel.d_interleave = 1;
-                mfsfakelabel.d_npartitions = 1;
-                mfsfakelabel.d_partitions[0].p_size = 16384;
-                mfsfakelabel.d_partitions[0].p_fsize = 1024;
-                mfsfakelabel.d_partitions[0].p_frag = 8;
-                mfsfakelabel.d_partitions[0].p_cpg = 16;
 
-                lp = &mfsfakelabel;
-                pp = &mfsfakelabel.d_partitions[0];
+		geom.d_media_blksize = 512;
+		geom.d_nheads = 16;
+		geom.d_secpertrack = 64;
+		/* geom.d_ncylinders not used */
+		geom.d_secpercyl = 1024;
+		geom.d_media_blocks = 16384;
+                geom.d_rpm = 3600;
+                geom.d_interleave = 1;
 
                 goto havelabel;
         }
 
-	cp = strrchr(special, '/');
-	if (cp == 0) {
-		/*
-		 * No path prefix; try /dev/%s.
-		 */
-		snprintf(device, sizeof(device), "%s%s", _PATH_DEV, special);
-		special = device;
-	}
+	/*
+	 * If we can't stat the device and the path is relative, try
+	 * prepending /dev.
+	 */
+	if (stat(special, &st) < 0 && special[0] && special[0] != '/')
+		asprintf(&special, "/dev/%s", special);
+
 	if (Nflag) {
 		fso = -1;
 	} else {
@@ -447,100 +432,102 @@ main(int argc, char **argv)
 		}
 	}
 	if (mfs && disktype != NULL) {
-		lp = (struct disklabel *)getdiskbyname(disktype);
-		if (lp == NULL)
+		struct disktab *dt;
+
+		if ((dt = getdisktabbyname(disktype)) == NULL)
 			fatal("%s: unknown disk type", disktype);
-		pp = &lp->d_partitions[1];
+		geom = *dt;
 	} else {
+		struct partinfo pinfo;
+
+		if (special[0] == 0)
+ 			fatal("null special file name");
 		fsi = open(special, O_RDONLY);
 		if (fsi < 0)
 			fatal("%s: %s", special, strerror(errno));
 		if (fstat(fsi, &st) < 0)
 			fatal("%s: %s", special, strerror(errno));
-		if ((st.st_mode & S_IFMT) != S_IFCHR && !mfs)
+		if ((st.st_mode & S_IFMT) != S_IFCHR && !mfs && !vflag)
 			printf("%s: %s: not a character-special device\n",
 			    progname, special);
-		if (special[0] == 0)
- 			fatal("null special file name");
-		cp = special + strlen(special) - 1;
- 		if (!vflag && (*cp < 'a' || *cp >= 'a' + MAXPARTITIONS)) {
-			fatal("%s: can't figure out file system partition",
-			    argv[0]);
-		}
 #ifdef COMPAT
 		if (!mfs && disktype == NULL)
 			disktype = argv[1];
 #endif
-		if (vflag) {
-			asprintf(&special_slice, "%s", special);
+		if (ioctl(fsi, DIOCGPART, &pinfo) < 0) {
+			if (!vflag) {
+				fatal("%s: unable to retrieve geometry "
+				      "information", argv[0]);
+			}
+			/*
+			 * fake up geometry data
+			 */
+			geom.d_media_blksize = 512;
+			geom.d_nheads = 16;
+			geom.d_secpertrack = 64;
+			geom.d_secpercyl = 1024;
+			geom.d_media_blocks = st.st_size / 
+					      geom.d_media_blksize;
+			geom.d_media_size = geom.d_media_blocks *
+					    geom.d_media_blksize;
+			/* geom.d_ncylinders not used */
 		} else {
-			asprintf(&special_slice, "%*.*s",
-				 cp - special, cp - special, special);
+			/*
+			 * extract geometry from pinfo
+			 */
+			geom.d_media_blksize = pinfo.media_blksize;
+			geom.d_nheads = pinfo.d_nheads;
+			geom.d_secpertrack = pinfo.d_secpertrack;
+			geom.d_secpercyl = pinfo.d_secpercyl;
+			/* geom.d_ncylinders not used */
+			geom.d_media_blocks = pinfo.media_blocks;
+			geom.d_media_size = pinfo.media_size;
 		}
-		fsx = open(special_slice, O_RDONLY);
-		if (fsx < 0) {
-			fatal("cannot retrieve disklabel from %s",
-				special_slice);
+		if (geom.d_media_blocks == 0 || geom.d_media_size == 0) {
+			fatal("%s: is unavailable", argv[0]);
 		}
-		lp = getdisklabel(special, fsx);
-		close(fsx);
-		if (vflag)
-			pp = &lp->d_partitions[2];
-		else
-			pp = &lp->d_partitions[*cp - 'a'];
-		if (pp->p_size == 0)
-			fatal("%s: `%c' partition is unavailable",
-			    argv[0], *cp);
-		if (pp->p_fstype == FS_BOOT)
-			fatal("%s: `%c' partition overlaps boot program",
-			      argv[0], *cp);
 	}
 havelabel:
 	if (fssize == 0)
-		fssize = pp->p_size;
-	if ((uint32_t)fssize > pp->p_size && !mfs)
-	       fatal("%s: maximum file system size on the `%c' partition is %d",
-			argv[0], *cp, pp->p_size);
+		fssize = geom.d_media_blocks;
+	if ((uint32_t)fssize > geom.d_media_blocks && !mfs) {
+	       fatal("%s: maximum file system size is %lld blocks",
+		     argv[0], geom.d_media_blocks);
+	}
 	if (rpm == 0) {
-		rpm = lp->d_rpm;
+		rpm = geom.d_rpm;
 		if (rpm <= 0)
 			rpm = 3600;
 	}
 	if (ntracks == 0) {
-		ntracks = lp->d_ntracks;
+		ntracks = geom.d_nheads;
 		if (ntracks <= 0)
 			fatal("%s: no default #tracks", argv[0]);
 	}
 	if (nsectors == 0) {
-		nsectors = lp->d_nsectors;
+		nsectors = geom.d_secpertrack;
 		if (nsectors <= 0)
 			fatal("%s: no default #sectors/track", argv[0]);
 	}
 	if (sectorsize == 0) {
-		sectorsize = lp->d_secsize;
+		sectorsize = geom.d_media_blksize;
 		if (sectorsize <= 0)
 			fatal("%s: no default sector size", argv[0]);
 	}
 	if (trackskew == -1) {
-		trackskew = lp->d_trackskew;
+		trackskew = geom.d_trackskew;
 		if (trackskew < 0)
 			trackskew = 0;
 	}
 	if (interleave == 0) {
-		interleave = lp->d_interleave;
+		interleave = geom.d_interleave;
 		if (interleave <= 0)
 			interleave = 1;
 	}
-	if (fsize == 0) {
-		fsize = pp->p_fsize;
-		if (fsize <= 0)
-			fsize = MAX(DFL_FRAGSIZE, lp->d_secsize);
-	}
-	if (bsize == 0) {
-		bsize = pp->p_frag * pp->p_fsize;
-		if (bsize <= 0)
-			bsize = MIN(DFL_BLKSIZE, 8 * fsize);
-	}
+	if (fsize == 0)
+		fsize = MAX(DFL_FRAGSIZE, geom.d_media_blksize);
+	if (bsize == 0)
+		bsize = MIN(DFL_BLKSIZE, 8 * fsize);
 	/*
 	 * Maxcontig sets the default for the maximum number of blocks
 	 * that may be allocated sequentially. With filesystem clustering
@@ -556,36 +543,25 @@ havelabel:
 		fprintf(stderr, "because minfree is less than %d%%\n", MINFREE);
 		opt = FS_OPTSPACE;
 	}
-	if (trackspares == -1) {
-		trackspares = lp->d_sparespertrack;
-		if (trackspares < 0)
-			trackspares = 0;
-	}
+	if (trackspares == -1)
+		trackspares = 0;
 	nphyssectors = nsectors + trackspares;
-	if (cylspares == -1) {
-		cylspares = lp->d_sparespercyl;
-		if (cylspares < 0)
-			cylspares = 0;
-	}
+	if (cylspares == -1)
+		cylspares = 0;
 	secpercyl = nsectors * ntracks - cylspares;
 	/*
 	 * Only complain if -t or -u have been specified; the default
 	 * case (4096 sectors per cylinder) is intended to disagree
 	 * with the disklabel.
 	 */
-	if (t_or_u_flag && (uint32_t)secpercyl != lp->d_secpercyl)
-		fprintf(stderr, "%s (%d) %s (%lu)\n",
+	if (t_or_u_flag && (uint32_t)secpercyl != geom.d_secpercyl)
+		fprintf(stderr, "%s (%d) %s (%u)\n",
 			"Warning: calculated sectors per cylinder", secpercyl,
-			"disagrees with disk label", (u_long)lp->d_secpercyl);
+			"disagrees with disk label", geom.d_secpercyl);
 	if (maxbpg == 0)
 		maxbpg = MAXBLKPG(bsize);
-	headswitch = lp->d_headswitch;
-	trackseek = lp->d_trkseek;
-#ifdef notdef /* label may be 0 if faked up by kernel */
-	bbsize = lp->d_bbsize;
-	sbsize = lp->d_sbsize;
-#endif
-	oldpartition = *pp;
+	headswitch = geom.d_headswitch;
+	trackseek = geom.d_trkseek;
 	realsectorsize = sectorsize;
 	if (sectorsize != DEV_BSIZE) {		/* XXX */
 		int secperblk = sectorsize / DEV_BSIZE;
@@ -595,7 +571,6 @@ havelabel:
 		nphyssectors *= secperblk;
 		secpercyl *= secperblk;
 		fssize *= secperblk;
-		pp->p_size *= secperblk;
 	}
 	if (mfs) {
 		mfs_mtpt = argv[1];
@@ -606,15 +581,12 @@ havelabel:
 			fatal("mount point not dir: %s", mfs_mtpt);
 		}
 	}
-	mkfs(pp, special, fsi, fso, (Cflag && mfs) ? argv[1] : NULL);
-	if (realsectorsize != DEV_BSIZE)
-		pp->p_size /= realsectorsize /DEV_BSIZE;
-	if (!Nflag && bcmp(pp, &oldpartition, sizeof(oldpartition))) {
-		if (special_slice && (fsx = open(special_slice, O_RDWR)) >= 0) {
-			rewritelabel(special_slice, fsx, lp);
-			close(fsx);
-		}
-	}
+	mkfs(special, fsi, fso, (Cflag && mfs) ? argv[1] : NULL);
+
+	/*
+	 * NOTE: Newfs no longer accesses or attempts to update the
+	 * filesystem disklabel.
+	 */
 	if (!Nflag)
 		close(fso);
 	close(fsi);
@@ -669,50 +641,6 @@ mfsintr(__unused int signo)
 }
 
 #endif
-
-#ifdef COMPAT
-char lmsg[] = "%s: can't read disk label; disk type must be specified";
-#else
-char lmsg[] = "%s: can't read disk label";
-#endif
-
-struct disklabel *
-getdisklabel(char *s, int fd)
-{
-	static struct disklabel lab;
-
-	if (ioctl(fd, DIOCGDINFO, (char *)&lab) < 0) {
-#ifdef COMPAT
-		if (disktype) {
-			struct disklabel *lp;
-
-			unlabeled++;
-			lp = getdiskbyname(disktype);
-			if (lp == NULL)
-				fatal("%s: unknown disk type", disktype);
-			return (lp);
-		}
-#endif
-		warn("ioctl (GDINFO)");
-		fatal(lmsg, s);
-	}
-	return (&lab);
-}
-
-static void
-rewritelabel(char *s, int fd, struct disklabel *lp)
-{
-#ifdef COMPAT
-	if (unlabeled)
-		return;
-#endif
-	lp->d_checksum = 0;
-	lp->d_checksum = dkcksum(lp);
-	if (ioctl(fd, DIOCWDINFO, (char *)lp) < 0) {
-		warn("ioctl (WDINFO)");
-		fatal("%s: can't rewrite disk label", s);
-	}
-}
 
 /*VARARGS*/
 void
