@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.16 2007/05/19 00:51:59 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.17 2007/05/20 20:40:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -676,64 +676,32 @@ display(FILE *f, const struct disklabel *lp)
 	fprintf(f, "track-to-track seek: %ld\t# milliseconds\n",
 	    (u_long)lp->d_trkseek);
 	fprintf(f, "drivedata: ");
-	for (i = NDDATA - 1; i >= 0; i--)
+	for (i = NDDATA - 1; i >= 0; i--) {
 		if (lp->d_drivedata[i])
 			break;
+	}
 	if (i < 0)
 		i = 0;
 	for (j = 0; j <= i; j++)
 		fprintf(f, "%lu ", (u_long)lp->d_drivedata[j]);
 	fprintf(f, "\n\n%u partitions:\n", lp->d_npartitions);
 	fprintf(f,
-	    "#        size   offset    fstype   [fsize bsize bps/cpg]\n");
+	    "#          size     offset    fstype   \n");
 	pp = lp->d_partitions;
 	for (i = 0; i < lp->d_npartitions; i++, pp++) {
 		if (pp->p_size) {
-			fprintf(f, "  %c: %8lu %8lu  ", 'a' + i,
-			   (u_long)pp->p_size, (u_long)pp->p_offset);
+			u_long onemeg = 1024 * 1024 / lp->d_secsize;
+			fprintf(f, "  %c: ", 'a' + i);
+
+			fprintf(f, "%10lu ", (u_long)pp->p_size);
+			fprintf(f, "%10lu  ", (u_long)pp->p_offset);
 			if (pp->p_fstype < FSMAXTYPES)
 				fprintf(f, "%8.8s", fstypenames[pp->p_fstype]);
 			else
 				fprintf(f, "%8d", pp->p_fstype);
-			switch (pp->p_fstype) {
 
-			case FS_UNUSED:				/* XXX */
-				fprintf(f, "    %5lu %5lu %5.5s ",
-				    (u_long)pp->p_fsize,
-				    (u_long)(pp->p_fsize * pp->p_frag), "");
-				break;
-
-			case FS_BSDFFS:
-				fprintf(f, "    %5lu %5lu %5u ",
-				    (u_long)pp->p_fsize,
-				    (u_long)(pp->p_fsize * pp->p_frag),
-				    pp->p_cpg);
-				break;
-
-			case FS_BSDLFS:
-				fprintf(f, "    %5lu %5lu %5d",
-				    (u_long)pp->p_fsize,
-				    (u_long)(pp->p_fsize * pp->p_frag),
-				    pp->p_cpg);
-				break;
-
-			default:
-				fprintf(f, "%20.20s", "");
-				break;
-			}
-			fprintf(f, "\t# (Cyl. %4lu",
-			    (u_long)(pp->p_offset / lp->d_secpercyl));
-			if (pp->p_offset % lp->d_secpercyl)
-			    putc('*', f);
-			else
-			    putc(' ', f);
-			fprintf(f, "- %lu",
-			    (u_long)((pp->p_offset + pp->p_size +
-			    lp->d_secpercyl - 1) /
-			    lp->d_secpercyl - 1));
-			if (pp->p_size % lp->d_secpercyl)
-			    putc('*', f);
-			fprintf(f, ")\n");
+			fprintf(f, "\t# %11.3fM", (double)pp->p_size / onemeg);
+			fprintf(f, "\n");
 		}
 	}
 	fflush(f);
@@ -885,17 +853,19 @@ getasciilabel(FILE *f, struct disklabel *lp)
 			if (tp == NULL)
 				tp = unknown;
 			cpp = dktypenames;
-			for (; cpp < &dktypenames[DKMAXTYPES]; cpp++)
+			for (; cpp < &dktypenames[DKMAXTYPES]; cpp++) {
 				if (*cpp && streq(*cpp, tp)) {
 					lp->d_type = cpp - dktypenames;
 					break;
 				}
+			}
 			if (cpp < &dktypenames[DKMAXTYPES])
 				continue;
 			v = strtoul(tp, NULL, 10);
-			if (v >= DKMAXTYPES)
+			if (v >= DKMAXTYPES) {
 				fprintf(stderr, "line %d:%s %lu\n", lineno,
 				    "Warning, unknown disk type", v);
+			}
 			lp->d_type = v;
 			continue;
 		}
@@ -1127,6 +1097,9 @@ getasciipartspec(char *tp, struct disklabel *lp, int part, int lineno)
 	pp = &lp->d_partitions[part];
 	cp = NULL;
 
+	/*
+	 * size
+	 */
 	v = 0;
 	NXTWORD(part_size_type[part],v);
 	if (v == 0 && part_size_type[part] != '*') {
@@ -1136,6 +1109,9 @@ getasciipartspec(char *tp, struct disklabel *lp, int part, int lineno)
 	}
 	pp->p_size = v;
 
+	/*
+	 * offset
+	 */
 	v = 0;
 	NXTWORD(part_offset_type[part],v);
 	if (v == 0 && part_offset_type[part] != '*' &&
@@ -1145,7 +1121,12 @@ getasciipartspec(char *tp, struct disklabel *lp, int part, int lineno)
 		return (1);
 	}
 	pp->p_offset = v;
-	cp = tp, tp = word(cp);
+
+	/*
+	 * fstype
+	 */
+	cp = tp;
+	tp = word(cp);
 	for (cpp = fstypenames; cpp < &fstypenames[FSMAXTYPES]; cpp++)
 		if (*cpp && streq(*cpp, cp))
 			break;
@@ -1165,56 +1146,19 @@ getasciipartspec(char *tp, struct disklabel *lp, int part, int lineno)
 		pp->p_fstype = v;
 	}
 
-	switch (pp->p_fstype) {
-	case FS_UNUSED:
-		/*
-		 * allow us to accept defaults for
-		 * fsize/frag/cpg
-		 */
-		if (tp) {
-			NXTNUM(pp->p_fsize);
-			if (pp->p_fsize == 0)
-				break;
-			NXTNUM(v);
-			pp->p_frag = v / pp->p_fsize;
-		}
-		/* else default to 0's */
-		break;
+	pp->p_fsize = 0;
+	pp->p_frag = 0;
+	pp->p_cpg = 0;
 
-	/* These happen to be the same */
-	case FS_BSDFFS:
-	case FS_BSDLFS:
-		if (tp) {
-			NXTNUM(pp->p_fsize);
-			if (pp->p_fsize == 0)
-				break;
-			NXTNUM(v);
-			pp->p_frag = v / pp->p_fsize;
-			NXTNUM(pp->p_cpg);
-		} else {
-			/*
-			 * FIX! poor attempt at adaptive
-			 */
-			/* 1 GB */
-			if (pp->p_size < 1024*1024*1024 / lp->d_secsize) {
-				/*
-				 * FIX! These are too low, but are traditional
-				 */
-				pp->p_fsize = DEFAULT_NEWFS_FRAG;
-				pp->p_frag = DEFAULT_NEWFS_BLOCK /
-				    DEFAULT_NEWFS_FRAG;
-				pp->p_cpg = DEFAULT_NEWFS_CPG;
-			} else {
-				pp->p_fsize = BIG_NEWFS_FRAG;
-				pp->p_frag = BIG_NEWFS_BLOCK /
-				    BIG_NEWFS_FRAG;
-				pp->p_cpg = BIG_NEWFS_CPG;
-			}
-		}
-	default:
-		break;
+	cp = tp;
+	if (tp) {
+		fprintf(stderr, "line %d: Warning, fragment, block, "
+				"and bps/cpg fields are no\n"
+				"longer supported and must be specified "
+				"via newfs options instead.\n",
+			lineno);
 	}
-	return (0);
+	return(0);
 }
 
 /*
