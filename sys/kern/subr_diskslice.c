@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.39 2007/05/20 04:41:58 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.40 2007/05/20 19:23:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1345,7 +1345,17 @@ set_ds_label(struct diskslices *ssp, int slice, struct disklabel *lp)
 	 */
 	if (slice != WHOLE_DISK_SLICE) {
 		if (lp) {
-			sp1->ds_skip_bsdlabel = sp1->ds_skip_platform + 15;
+			/*
+			 * leave room for the disklabel and boot2 -
+			 * traditional label only.  XXX bad hack.  Such
+			 * labels cannot install a boot area due to
+			 * insufficient space.
+			 */
+			int lsects = SBSIZE / ssp->dss_secsize - 
+				     sp1->ds_skip_platform;
+			if (lsects <= 0)
+				lsects = 1;
+			sp1->ds_skip_bsdlabel = sp1->ds_skip_platform + lsects;
 			if (sp2)
 				sp2->ds_skip_bsdlabel = sp1->ds_skip_bsdlabel;
 		} else {
