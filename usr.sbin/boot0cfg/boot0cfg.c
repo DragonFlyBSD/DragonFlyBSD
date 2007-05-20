@@ -24,11 +24,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/boot0cfg/boot0cfg.c,v 1.7.2.4 2002/03/16 01:06:51 mikeh Exp $
- * $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.c,v 1.4 2004/06/26 02:04:39 dillon Exp $
+ * $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.c,v 1.5 2007/05/20 23:21:37 dillon Exp $
  */
 
 #include <sys/param.h>
-#include <sys/disklabel.h>
 #include <sys/diskmbr.h>
 #include <sys/stat.h>
 

@@ -57,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.15 2007/05/19 21:37:00 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.16 2007/05/20 23:21:36 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -75,6 +75,12 @@
 
 #define	BASE_SLICE		2	/* e.g. ad0s1 */
 #define	COMPATIBILITY_SLICE	0	/* e.g. ad0a-j */
+				/* 101 - compat disklabel DIOCGDINFO	*/
+				/* 102 - compat disklabel DIOCSDINFO	*/
+				/* 103 - compat disklabel DIOCWDINFO	*/
+				/* 104 - DIOCGPART (see below)		*/
+				/* 105 - compat disklabel DIOCGDVIRGIN	*/
+#define DIOCWLABEL		_IOW('d', 109, int)
 #define	DIOCGSLICEINFO		_IOR('d', 111, struct diskslices)
 #define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
 #define	MAX_SLICES		16

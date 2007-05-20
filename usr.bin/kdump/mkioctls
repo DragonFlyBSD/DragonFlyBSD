@@ -1,7 +1,7 @@
 set -e
 
 # $FreeBSD: src/usr.bin/kdump/mkioctls,v 1.15.2.5 2002/11/15 18:22:31 ru Exp $
-# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.6 2004/12/30 07:01:52 cpressey Exp $
+# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.7 2007/05/20 23:21:37 dillon Exp $
 
 if [ "x$1" = "x-s" ]; then
 	use_switch=1
@@ -41,6 +41,7 @@ BEGIN {
 	print "#include <sys/param.h>"
 	print "#include <sys/devicestat.h>"
 	print "#include <sys/disklabel.h>"
+	print "#include <sys/diskslice.h>"
 	print "#include <sys/socket.h>"
 	print "#include <sys/time.h>"
 	print "#include <sys/tty.h>"

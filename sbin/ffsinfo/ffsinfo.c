@@ -37,7 +37,7 @@
  *
  * $TSHeader: src/sbin/ffsinfo/ffsinfo.c,v 1.4 2000/12/12 19:30:55 tomsoft Exp $
  * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
- * $DragonFly: src/sbin/ffsinfo/ffsinfo.c,v 1.4 2006/08/13 18:16:04 swildner Exp $
+ * $DragonFly: src/sbin/ffsinfo/ffsinfo.c,v 1.5 2007/05/20 23:21:35 dillon Exp $
  *
  * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
  * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
@@ -45,7 +45,7 @@
 
 /* ********************************************************** INCLUDES ***** */
 #include <sys/param.h>
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/stat.h>
 
 #include <stdio.h>
@@ -87,7 +87,6 @@ static struct csum	*fscs;
 /* ******************************************************** PROTOTYPES ***** */
 static void	rdfs(daddr_t, size_t, void *, int);
 static void	usage(void);
-static struct disklabel	*get_disklabel(int);
 static struct ufs1_dinode	*ginode(ino_t, int);
 static void	dump_whole_inode(ino_t, int, int);
 
@@ -136,8 +135,7 @@ main(int argc, char **argv)
 	char	ch;
 	size_t	len;
 	struct stat	st;
-	struct disklabel	*lp;
-	struct partition	*pp;
+	struct partinfo pinfo;
 	int	fsi;
 	struct csum	*dbg_csp;
 	int	dbg_csc;
@@ -146,7 +144,7 @@ main(int argc, char **argv)
 	int	cfg_cg, cfg_in, cfg_lv;
 	int	cg_start, cg_stop;
 	ino_t	in;
-	char	*out_file;
+	char	*out_file = NULL;
 	int	Lflag=0;
 
 	DBG_ENTER;
@@ -154,10 +152,6 @@ main(int argc, char **argv)
 	cfg_lv=0xff;
 	cfg_in=-2;
 	cfg_cg=-2;
-	out_file=strdup("/var/tmp/ffsinfo");
-	if(out_file == NULL) {
-		errx(1, "strdup failed");
-	}
 
 	while ((ch=getopt(argc, argv, "Lg:i:l:o:")) != -1) {
 		switch(ch) {
@@ -183,11 +177,9 @@ main(int argc, char **argv)
 			}
 			break;
 		case 'o':
-			free(out_file);
-			out_file=strdup(optarg);
-			if(out_file == NULL) {
-				errx(1, "strdup failed");
-			}
+			if (out_file)
+				free(out_file);
+			out_file = strdup(optarg);
 			break;
 		case '?':
 			/* FALLTHROUGH */
@@ -261,26 +253,18 @@ main(int argc, char **argv)
 		 * the user user with the task of specifying the option -v on
 		 * vinum volumes.
 		 */
-		cp=device+strlen(device)-1;
-		lp = get_disklabel(fsi);
-		if(lp->d_type == DTYPE_VINUM) {
-			pp = &lp->d_partitions[0];
-		} else if (isdigit(*cp)) {
-			pp = &lp->d_partitions[2];
-		} else if (*cp>='a' && *cp<='h') {
-			pp = &lp->d_partitions[*cp - 'a'];
-		} else {
-			errx(1, "unknown device");
+		cp = device+strlen(device)-1;
+		if (ioctl(fsi, DIOCGPART, &pinfo) < 0) {
+			pinfo.media_size = st.st_size;
+			pinfo.media_blksize = DEV_BSIZE;
+			pinfo.media_blocks = pinfo.media_size / DEV_BSIZE;
 		}
 	
 		/*
 		 * Check if that partition looks suited for dumping.
 		 */
-		if (pp->p_size < 1) {
+		if (pinfo.media_size == 0) {
 			errx(1, "partition is unavailable");
-		}
-		if (pp->p_fstype != FS_BSDFFS) {
-			errx(1, "partition not 4.2BSD");
 		}
 	}
 
@@ -554,32 +538,6 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 	DBG_LEAVE;
 	return;
 }
-
-/* ***************************************************** get_disklabel ***** */
-/*
- * Read the disklabel from disk.
- */
-struct disklabel *
-get_disklabel(int fd)
-{
-	DBG_FUNC("get_disklabel")
-	static struct disklabel	*lab;
-
-	DBG_ENTER;
-
-	lab=(struct disklabel *)malloc(sizeof(struct disklabel));
-	if (!lab) {
-		errx(1, "malloc failed");
-	}
-	if (ioctl(fd, DIOCGDINFO, (char *)lab) < 0) {
-		errx(1, "DIOCGDINFO failed");
-		exit(-1);
-	}
-
-	DBG_LEAVE;
-	return (lab);
-}
-
 
 /* ************************************************************* usage ***** */
 /*

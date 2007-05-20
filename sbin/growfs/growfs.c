@@ -39,12 +39,12 @@
  *
  * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
  * $FreeBSD: src/sbin/growfs/growfs.c,v 1.4.2.2 2001/08/14 12:45:11 chm Exp $
- * $DragonFly: src/sbin/growfs/growfs.c,v 1.5 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/growfs/growfs.c,v 1.6 2007/05/20 23:21:36 dillon Exp $
  */
 
 /* ********************************************************** INCLUDES ***** */
 #include <sys/param.h>
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
@@ -127,8 +127,6 @@ static void	setblock(struct fs *, unsigned char *, int);
 static void	initcg(int, time_t, int, unsigned int);
 static void	updjcg(int, time_t, int, int, unsigned int);
 static void	updcsloc(time_t, int, int, unsigned int);
-static struct disklabel	*get_disklabel(int);
-static void	return_disklabel(int, struct disklabel *, unsigned int);
 static struct ufs1_dinode	*ginode(ino_t, int, int);
 static void	frag_adjust(daddr_t, int);
 static void	cond_bl_upd(ufs_daddr_t *, struct gfs_bpp *,
@@ -1934,6 +1932,7 @@ int
 main(int argc, char **argv)
 {
 	DBG_FUNC("main")
+	struct partinfo pinfo;
 	char	*device, *special, *cp;
 	char	ch;
 	unsigned int	size=0;
@@ -1941,8 +1940,6 @@ main(int argc, char **argv)
 	unsigned int	Nflag=0;
 	int	ExpertFlag=0;
 	struct stat	st;
-	struct disklabel	*lp;
-	struct partition	*pp;
 	int	fsi,fso;
 	char	reply[5];
 #ifdef FSMAXSNAP
@@ -2042,25 +2039,19 @@ main(int argc, char **argv)
 	 * user with the task of specifying the option -v on vinum volumes.
 	 */
 	cp=device+strlen(device)-1;
-	lp = get_disklabel(fsi);
-	if(lp->d_type == DTYPE_VINUM) {
-		pp = &lp->d_partitions[0];
-	} else if (isdigit(*cp)) {
-		pp = &lp->d_partitions[2];
-	} else if (*cp>='a' && *cp<='h') {
-		pp = &lp->d_partitions[*cp - 'a'];
-	} else {
-		errx(1, "unknown device");
+
+	if (ioctl(fsi, DIOCGPART, &pinfo) < 0) {
+		if (fstat(fsi, &st) < 0)
+			err(1, "unable to figure out the partition size");
+		pinfo.media_blocks  = st.st_size / DEV_BSIZE;
+		pinfo.media_blksize = DEV_BSIZE;
 	}
 
 	/*
 	 * Check if that partition looks suited for growing a file system.
 	 */
-	if (pp->p_size < 1) {
+	if (pinfo.media_blocks < 1) {
 		errx(1, "partition is unavailable");
-	}
-	if (pp->p_fstype != FS_BSDFFS) {
-		errx(1, "partition not 4.2BSD");
 	}
 
 	/*
@@ -2081,11 +2072,11 @@ main(int argc, char **argv)
 	 * Determine size to grow to. Default to the full size specified in
 	 * the disk label.
 	 */
-	sblock.fs_size = dbtofsb(&osblock, pp->p_size);
+	sblock.fs_size = dbtofsb(&osblock, pinfo.media_blocks);
 	if (size != 0) {
-		if (size > pp->p_size){
-			errx(1, "There is not enough space (%d < %d)",
-			    pp->p_size, size);
+		if (size > pinfo.media_blocks){
+			errx(1, "There is not enough space (%llu < %d)",
+			    pinfo.media_blocks, size);
 		}
 		sblock.fs_size = dbtofsb(&osblock, size);	
 	}
@@ -2135,7 +2126,7 @@ main(int argc, char **argv)
 	 * later on realize we have to abort our operation, on that block
 	 * there should be no data, so we can't destroy something yet.
 	 */
-	wtfs((daddr_t)pp->p_size-1, (size_t)DEV_BSIZE, (void *)&sblock, fso,
+	wtfs((daddr_t)pinfo.media_blocks-1, (size_t)DEV_BSIZE, (void *)&sblock, fso,
 	    Nflag);
 
 	/*
@@ -2203,16 +2194,6 @@ main(int argc, char **argv)
 	 */
 	growfs(fsi, fso, Nflag);
 
-	/*
-	 * Update the disk label.
-	 */
-	pp->p_fsize = sblock.fs_fsize;
-	pp->p_frag = sblock.fs_frag;
-	pp->p_cpg = sblock.fs_cpg;
-
-	return_disklabel(fso, lp, Nflag);
-	DBG_PRINT0("label rewritten\n");
-
 	close(fsi);
 	if(fso>-1) close(fso);
 
@@ -2221,71 +2202,6 @@ main(int argc, char **argv)
 	DBG_LEAVE;
 	return 0;
 }
-
-/* ************************************************** return_disklabel ***** */
-/*
- * Write the updated disklabel back to disk.
- */
-static void
-return_disklabel(int fd, struct disklabel *lp, unsigned int Nflag)
-{
-	DBG_FUNC("return_disklabel")
-	u_short	sum;
-	u_short	*ptr;
-
-	DBG_ENTER;
-
-	if(!lp) {
-		DBG_LEAVE;
-		return;
-	}
-	if(!Nflag) {
-		lp->d_checksum=0;
-		sum = 0;
-		ptr=(u_short *)lp;
-
-		/*
-		 * recalculate checksum
-		 */
-		while(ptr < (u_short *)&lp->d_partitions[lp->d_npartitions]) {
-			sum ^= *ptr++;
-		}
-		lp->d_checksum=sum;
-
-		if (ioctl(fd, DIOCWDINFO, (char *)lp) < 0) {
-			errx(1, "DIOCWDINFO failed");
-		}
-	}
-	free(lp);
-
-	DBG_LEAVE;
-	return ;
-}
-
-/* ***************************************************** get_disklabel ***** */
-/*
- * Read the disklabel from disk.
- */
-static struct disklabel *
-get_disklabel(int fd)
-{
-	DBG_FUNC("get_disklabel")
-	static struct	disklabel *lab;
-
-	DBG_ENTER;
-
-	lab=(struct disklabel *)malloc(sizeof(struct disklabel));
-	if (!lab) {
-		errx(1, "malloc failed");
-	}
-	if (ioctl(fd, DIOCGDINFO, (char *)lab) < 0) {
-		errx(1, "DIOCGDINFO failed");
-	}
-
-	DBG_LEAVE;
-	return (lab);
-}
-
 
 /* ************************************************************* usage ***** */
 /*

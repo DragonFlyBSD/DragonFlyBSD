@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel32.h,v 1.23 2007/05/19 00:52:02 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel32.h,v 1.24 2007/05/20 23:21:36 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -280,8 +280,6 @@ static const char *fstypenames[] = {
 #define DIOCSDINFO	_IOW('d', 102, struct disklabel)/* set */
 #define DIOCWDINFO	_IOW('d', 103, struct disklabel)/* set, update disk */
 #define DIOCGDVIRGIN	_IOR('d', 105, struct disklabel) /* get virgin label */
-
-#define DIOCWLABEL	_IOW('d', 109, int)	/* write en/disable label */
 
 #ifdef _KERNEL
 

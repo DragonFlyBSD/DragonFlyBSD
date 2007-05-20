@@ -31,13 +31,12 @@
  *
  * $NetBSD: ccdconfig.c,v 1.2.2.1 1995/11/11 02:43:35 thorpej Exp $
  * $FreeBSD: src/sbin/ccdconfig/ccdconfig.c,v 1.16.2.2 2000/12/11 01:03:25 obrien Exp $
- * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.8 2007/05/17 03:20:12 dillon Exp $
+ * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.9 2007/05/20 23:21:33 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/linker.h>
-#include <sys/disklabel.h>
 #include <sys/stat.h>
 #include <sys/module.h>
 #include <ctype.h>

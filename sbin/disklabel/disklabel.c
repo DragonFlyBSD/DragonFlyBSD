@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.17 2007/05/20 20:40:06 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.18 2007/05/20 23:21:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,6 +46,7 @@
 #include <sys/wait.h>
 #define DKTYPENAMES
 #include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/diskmbr.h>
 #include <disktab.h>
 

@@ -13,11 +13,10 @@
  * any damages whatsoever resulting from the use of this software.
  *
  * $FreeBSD: src/sbin/i386/nextboot/nextboot.c,v 1.6 1999/08/28 00:13:06 peter Exp $
- * $DragonFly: src/sbin/i386/nextboot/nextboot.c,v 1.4 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/i386/nextboot/nextboot.c,v 1.5 2007/05/20 23:21:36 dillon Exp $
  */
 
 #include <sys/types.h>
-#include <sys/disklabel.h>
 #include <sys/diskmbr.h>
 #include <fcntl.h>
 #include <err.h>

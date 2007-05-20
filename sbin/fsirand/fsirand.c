@@ -30,10 +30,10 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
- * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.9 2006/10/31 20:22:22 pavalos Exp $
+ * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.10 2007/05/20 23:21:36 dillon Exp $
  */
 
-#include <sys/disklabel.h>
+#include <sys/diskslice.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -111,20 +111,23 @@ fsirand(char *device)
 	char sbuf[SBSIZE], sbuftmp[SBSIZE];
 	int devfd, n, cg;
 	u_int32_t bsize = DEV_BSIZE;
-	struct disklabel label;
 
 	if ((devfd = open(device, printonly ? O_RDONLY : O_RDWR)) < 0) {
 		warn("can't open %s", device);
 		return (1);
 	}
 
-	/* Get block size (usually 512) from disklabel if possible */
+	/* Get block size (usually 512) from partinfo if possible */
 	if (!ignorelabel) {
-		if (ioctl(devfd, DIOCGDINFO, &label) < 0)
-			warn("can't read disklabel, using sector size of %d",
-			    bsize);
-		else
-			bsize = label.d_secsize;
+		struct partinfo pinfo;
+
+		if (ioctl(devfd, DIOCGPART, &pinfo) < 0) {
+			fprintf(stderr,
+			     "can't read partition info, assuming sector "
+			     "size of %d\n", bsize);
+		} else {
+			bsize = pinfo.media_blksize;
+		}
 	}
 
 	/* Read in master superblock */

@@ -37,7 +37,7 @@
  *
  * $TSHeader: src/sbin/growfs/debug.c,v 1.3 2000/12/12 19:31:00 tomsoft Exp $
  * $FreeBSD: src/sbin/growfs/debug.c,v 1.3.2.1 2001/07/16 15:02:13 tomsoft Exp $
- * $DragonFly: src/sbin/growfs/debug.c,v 1.4 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/growfs/debug.c,v 1.5 2007/05/20 23:21:36 dillon Exp $
  *
  * $FreeBSD: src/sbin/growfs/debug.c,v 1.3.2.1 2001/07/16 15:02:13 tomsoft Exp $
  */
@@ -54,8 +54,9 @@
 #ifdef FS_DEBUG
 
 /* *********************************************************** GLOBALS ***** */
-static FILE	*dbg_log=NULL;
-static unsigned int	indent=0;
+static FILE	*dbg_log;
+static unsigned int	indent;
+static unsigned int dbg_log_isstdout;
 
 /*
  * prototypes not done here, as they come with debug.h
@@ -68,8 +69,12 @@ static unsigned int	indent=0;
 void
 dbg_open(const char *fn)
 {
-
-	dbg_log=fopen(fn, "a");
+	if (fn) {
+		dbg_log=fopen(fn, "a");
+	} else {
+		dbg_log_isstdout = 1;
+		dbg_log=stdout;
+	}
 
 	return;
 }
@@ -81,11 +86,11 @@ dbg_open(const char *fn)
 void
 dbg_close(void)
 {
-
-	if(dbg_log) {
+	if (dbg_log && dbg_log_isstdout == 0) {
 		fclose(dbg_log);
-		dbg_log=NULL;
 	}
+	dbg_log = NULL;
+	dbg_log_isstdout = 0;
 
 	return;
 }

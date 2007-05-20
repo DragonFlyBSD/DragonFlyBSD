@@ -25,12 +25,11 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/newfs_msdos/newfs_msdos.c,v 1.9.2.4 2001/08/01 08:43:04 obrien Exp $
- * $DragonFly: src/sbin/newfs_msdos/newfs_msdos.c,v 1.4 2007/05/17 23:53:43 dillon Exp $
+ * $DragonFly: src/sbin/newfs_msdos/newfs_msdos.c,v 1.5 2007/05/20 23:21:36 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/diskslice.h>
-#include <sys/disklabel.h>
 #include <sys/diskmbr.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -709,10 +708,9 @@ getdiskinfo(int fd, const char *fname, const char *dtype, int oflag,
 	    struct bpb *bpb)
 {
     struct diskslices ds;
-    struct disklabel dl, *lp;
     const char *s1, *s2;
     char *s;
-    int slice, part, fd1, i, e;
+    int slice, part, i;
 
     slice = part = -1;
     s1 = fname;
@@ -754,46 +752,36 @@ getdiskinfo(int fd, const char *fname, const char *dtype, int oflag,
     }
     if (((slice == -1 || part != -1) &&
 	 ((!oflag && part != -1) || !bpb->bsec)) ||
-	!bpb->bps || !bpb->spt || !bpb->hds) {
-	lp = &dl;
-	i = ioctl(fd, DIOCGDINFO, lp);
-	if (i == -1 && slice != -1 && part == -1) {
-	    e = errno;
-	    if (!(s = strdup(fname)))
-		err(1, NULL);
-	    s[s1 - fname] = 0;
-	    if ((fd1 = open(s, O_RDONLY)) != -1) {
-		i = ioctl(fd1, DIOCGDINFO, lp);
-		close(fd1);
-	    }
-	    free(s);
-	    errno = e;
-	}
+	!bpb->bps || !bpb->spt || !bpb->hds
+    ) {
+	struct partinfo pinfo;
+	struct disktab *dtab = NULL;
+
+	i = ioctl(fd, DIOCGPART, &pinfo);
 	if (i == -1) {
 	    if (!dtype) {
 		warn("ioctl (GDINFO)");
 		errx(1, "%s: can't read disk label; "
 		     "disk type must be specified", fname);
-	    } else if (!(lp = getdiskbyname(dtype)))
+	    } else if (!(dtab = getdisktabbyname(dtype))) {
 		errx(1, "%s: unknown disk type", dtype);
+	    }
+	    pinfo.media_blocks = dtab->d_media_blocks;
+	    pinfo.media_blksize = dtab->d_media_blksize;
+	    pinfo.d_nheads = dtab->d_nheads;
+	    pinfo.d_secpertrack = dtab->d_secpertrack;
 	}
-	if (slice == -1 || part != -1) {
-	    if (part == -1)
-		part = RAW_PART;
-	    if (part >= lp->d_npartitions ||
-		!lp->d_partitions[part].p_size)
-		errx(1, "%s: partition is unavailable", fname);
-	    if (!oflag && part != -1)
-		bpb->hid += lp->d_partitions[part].p_offset;
-	    if (!bpb->bsec)
-		bpb->bsec = lp->d_partitions[part].p_size;
-	}
+	if (!oflag && part != -1)
+	    bpb->hid += pinfo.media_offset;
+	if (!bpb->bsec)
+	    bpb->bsec = pinfo.media_blocks;
+
 	if (!bpb->bps)
-	    bpb->bps = ckgeom(fname, lp->d_secsize, "bytes/sector");
+	    bpb->bps = ckgeom(fname, pinfo.media_blksize, "bytes/sector");
 	if (!bpb->spt)
-	    bpb->spt = ckgeom(fname, lp->d_nsectors, "sectors/track");
+	    bpb->spt = ckgeom(fname, pinfo.d_secpertrack, "sectors/track");
 	if (!bpb->hds)
-	    bpb->hds = ckgeom(fname, lp->d_ntracks, "drive heads");
+	    bpb->hds = ckgeom(fname, pinfo.d_nheads, "drive heads");
     }
 }
 
