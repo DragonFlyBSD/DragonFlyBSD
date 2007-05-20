@@ -1,18 +1,143 @@
-$DragonFly: src/UPDATING,v 1.22 2006/10/24 17:09:45 swildner Exp $
+# Updating Information for DragonFly users.
+#
+#
+# This file should warn you of any pitfalls which you might need to work around
+# when trying to update your DragonFly system.  The information below is
+# in reverse-time order, with the latest information at the top.
+#
+# If you discover any problem, please contact the bugs@lists.dragonflybsd.org
+# mailing list with the details.
+#
+# $DragonFly: src/UPDATING,v 1.23 2007/05/20 01:07:30 dillon Exp $
 
-Updating Information for DragonFly users.
++-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+
++				GENERAL					+
++-----------------------------------------------------------------------+
 
-This file should warn you of any pitfalls which you might need to work around
-when trying to update your DragonFly system.
+The best way to upgrade DragonFly is to maintain a copy of the DragonFly
+CVS repository via cvsup and to checkout the source base via this repository.
+The repository is stored in /home/dcvs by default and requires about 800MB
+of disk space.  The checked out source tree (/usr/src) requires about 400MB
+of disk space, and the build will eat around 800MB of space out of /usr/obj.
+To maintain the build you should reserve at least 2.5GB of disk space, and
+3.5GB if you have the space.
 
-If you discover any problem, please contact the bugs@lists.dragonflybsd.org
-mailing list with the details.
+Note: most people run cvsup via a root cron job to keep the repository up to
+date.  Please limit such automatic updates to once a day and try to randomize
+the hour and minute in the cron job a bit to avoid pileups.
 
-------------------------------------------------------------------------------
+	# get the CVS repository (it is placed in /home/dcvs)
+	cvsup /usr/share/examples/cvsup/DragonFly-cvs-supfile
+	# install the source from the CVS hierarchy
+	cd /usr
+	cvs -R -d /home/dcvs checkout -P src
 
-> Updating from pre-1.2 systems or FreeBSD 4.x to DragonFly 1.3+ (either
-  PREVIEW or HEAD)
----------------------
+Once you have the repository and broken out sources you can decide whether to
+update your sources from the repository automatically or manually.  Since
+you are tracking changes made to DragonFly, it is usually a good idea to
+update the sources manually:
+
+	cd /usr/src
+	cvs update -dP
+
+To upgrade a DragonFly system from sources you run the following sequence:
+
+	cd /usr/src
+	make buildworld
+	make buildkernel KERNCONF=<KERNELNAME>
+	make installkernel KERNCONF=<KERNELNAME>
+	make installworld
+
+You will also want to run the 'upgrade' target to upgrade your /etc and the
+rest of your system.  The upgrade target is aware of stale files created by
+older DragonFly installations and should delete them automatically.
+
+	make upgrade
+
+NOTE! Never do a 'make upgrade' before 'make installworld' has been run.
+Doing so might leave your system in an unusable state.
+
+Once you've done a full build of the world and kernel you can do incremental
+upgrades of either by using the 'quickworld' and 'quickkernel' targets
+instead of 'buildworld' and 'buildkernel'.  If you have any problems with
+the quick targets, try doing a cvsup, cvs update, and then a full buildworld
+and buildkernel as shown above, before asking for help.
+
++-----------------------------------------------------------------------+
++         UPGRADING FROM DRAGONFLY <= 1.8 TO DRAGONFLY >= 1.9		+
++-----------------------------------------------------------------------+
+
+In 1.9 major changes to the disk management infrastructure have taken
+place.  make upgrade may not catch all of your disk devices in /dev,
+so after upgrading be sure to cd /dev; ./MAKEDEV <blah> where <blah>
+are all of your disk devices.
+
+The biggest changes in 1.9 are:
+
+(1) That whole-slice devices such as da0s1 no longer share the same device
+    id as partition c devices such as da0s1c.
+
+(2) The whole-disk device (e.g. da0) is full raw access to the disk,
+    with no snooping or reserved sectors.  Consequently you cannot run
+    disklabel on this device.  Instead you must run disklabel on a
+    whole-slice device.
+
+(3) The 'compatibility' partitions now use slice 0 in the device name,
+    so instead of da0a you must specify da0s0a.  Also, as per (1) above,
+    accessing the disklabel for the compatibility partitions must be
+    done via slice 0 (da0s0).
+
+(4) Many device drivers that used to fake up labels, such as CD, ACD, VN,
+    and CCD now run through the disk management layer and are assigned
+    real disk management devices.   VN and CCD in particular do not usually
+    use a MBR and disklabels must be accessed through the compatibility
+    slice 0.  Your /etc/ccd.conf file still specifies 'ccd0', though, you
+    don't name it 'ccd0s0' in the config file.
+
+Generally speaking, you have to get used to running fdisk and disklabel on
+the correctly specified device names.  A lot of the wiggle, such as running
+disklabel on a partition, has been removed.
+
++-----------------------------------------------------------------------+
++         UPGRADING FROM OLDER VERSIONS OF DRAGONFLY OR FREEBSD		+
++-----------------------------------------------------------------------+
+
+> Kerberos IV
+-------------
+
+Kerberos IV (eBones) was removed from the tree, please consider moving to
+Kerberos 5 (Heimdal).
+
+> Package Management System
+---------------------------
+
+Starting with the 1.4 release, DragonFly uses NetBSD's pkgsrc package
+management system.  The necessary tools to build and maintain packages
+are provided in /usr/pkg/bin and /usr/pkg/sbin.  Make sure that these
+directories are in your PATH variable.
+
+In order to obtain a reasonably current snapshot of the pkgsrc tree, use
+the tarball from NetBSD:
+
+	fetch -o /tmp/pkgsrc.tar.gz ftp://ftp.NetBSD.org/pub/NetBSD/packages/pkgsrc.tar.gz
+	cd /usr; tar -xzf /tmp/pkgsrc.tar.gz; chown -R root:wheel pkgsrc
+
+This tree can then be kept up to date with cvs update:
+
+	cd /usr/pkgsrc; cvs up
+
+NOTE! If you upgraded from a pre-1.4 system to 1.4 or later, you need to
+build and install the pkgsrc bootstrap manually:
+
+	cd /usr/pkgsrc/bootstrap
+	./bootstrap --pkgdbdir /var/db/pkg --prefix /usr/pkg
+
++-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+
++         UPDATING FROM PRE-1.2 SYSTEMS OR FreeBSD 4.x TO               +
++         DRAGONFLY 1.3+ (EITHER PREVIEW or HEAD)                       +
++-----------------------------------------------------------------------+
 
 The compatibility shims for the build environment have been removed, you
 have to update to DragonFly 1.2 release branch first.
@@ -100,92 +225,3 @@ Finally we recommend that you do an 'ls -lta BLAH' for /bin, /sbin, /usr/bin,
 report these files to the DragonFly developers so that they can be added to
 the 'upgrade' target.
 
-------------------------------------------------------------------------------
-
-> Upgrading DragonFly on an existing DragonFly system.
----------------------
-
-The best way to upgrade DragonFly is to maintain a copy of the DragonFly
-CVS repository via cvsup and to checkout the source base via this repository.
-The repository is stored in /home/dcvs by default and requires about 800MB
-of disk space.  The checked out source tree (/usr/src) requires about 400MB
-of disk space, and the build will eat around 800MB of space out of /usr/obj.
-To maintain the build you should reserve at least 2.5GB of disk space, and
-3.5GB if you have the space.
-
-Note: most people run cvsup via a root cron job to keep the repository up to
-date.  Please limit such automatic updates to once a day and try to randomize
-the hour and minute in the cron job a bit to avoid pileups.
-
-	# get the CVS repository (it is placed in /home/dcvs)
-	cvsup /usr/share/examples/cvsup/DragonFly-cvs-supfile
-	# install the source from the CVS hierarchy
-	cd /usr
-	cvs -R -d /home/dcvs checkout -P src
-
-Once you have the repository and broken out sources you can decide whether to
-update your sources from the repository automatically or manually.  Since
-you are tracking changes made to DragonFly, it is usually a good idea to
-update the sources manually:
-
-	cd /usr/src
-	cvs update -dP
-
-To upgrade a DragonFly system from sources you run the following sequence:
-
-	cd /usr/src
-	make buildworld
-	make buildkernel KERNCONF=<KERNELNAME>
-	make installkernel KERNCONF=<KERNELNAME>
-	make installworld
-
-You will also want to run the 'upgrade' target to upgrade your /etc and the
-rest of your system.  The upgrade target is aware of stale files created by
-older DragonFly installations and should delete them automatically.
-
-	make upgrade
-
-NOTE! Never do a 'make upgrade' before 'make installworld' has been run.
-Doing so might leave your system in an unusable state.
-
-If you are using 'config' manually from /usr/src/sys/config, note 
-that the build will use the current DragonFly environment rather than
-the post-build environment from the last buildworld.   For this reason manual
-configs are discouraged.  The proper way to build a kernel is to use the
-'buildkernel' or 'quickkernel' target in /usr/src.
-
-Once you've done a full build of the world and kernel you can do incremental
-upgrades of either by using the 'quickworld' and 'quickkernel' targets
-instead of 'buildworld' and 'buildkernel'.  If you have any problems with
-the quick targets, try doing a cvsup, cvs update, and then a full buildworld
-and buildkernel as shown above, before asking for help.
-
-> Kerberos IV
--------------
-
-Kerberos IV (eBones) was removed from the tree, please consider moving to
-Kerberos 5 (Heimdal).
-
-> Package Management System
----------------------------
-
-Starting with the 1.4 release, DragonFly uses NetBSD's pkgsrc package
-management system.  The necessary tools to build and maintain packages
-are provided in /usr/pkg/bin and /usr/pkg/sbin.  Make sure that these
-directories are in your PATH variable.
-
-In order to obtain a reasonably current snapshot of the pkgsrc tree, use
-the tarball from NetBSD:
-
-	fetch -o /tmp/pkgsrc.tar.gz ftp://ftp.NetBSD.org/pub/NetBSD/packages/pkgsrc.tar.gz
-	cd /usr; tar -xzf /tmp/pkgsrc.tar.gz; chown -R root:wheel pkgsrc
-
-This tree can then be kept up to date with cvs update:
-
-	cd /usr/pkgsrc; cvs up
-
-NOTE! If you upgraded from a pre-1.4 system to 1.4 or later, you need to
-build and install the pkgsrc bootstrap manually:
-
-	cd /usr/pkgsrc/bootstrap
-	./bootstrap --pkgdbdir /var/db/pkg --prefix /usr/pkg
