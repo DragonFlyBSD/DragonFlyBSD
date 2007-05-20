@@ -1,7 +1,7 @@
 /*
  * syscall1.c
  *
- * $DragonFly: src/test/sysperf/syscall1.c,v 1.2 2006/11/07 06:57:02 dillon Exp $
+ * $DragonFly: src/test/sysperf/syscall1.c,v 1.3 2007/05/20 23:22:17 dillon Exp $
  */
 
 #include "blib.h"
@@ -19,14 +19,14 @@ main(int ac, char **av)
     start_timing();
     while (stop_timing(0, NULL) == 0) {
 	for (j = 0; j < 100; ++j)
-	    read(0, &c, 1);
+	    getuid();
 	count += 100;
     }
     max = count;
     start_timing();
     for (count = 0; count < max; count += 100) {
 	for (j = 0; j < 100; ++j)
-	    read(0, &c, 1);
+	    getuid();
     }
     stop_timing(count, "getuid()");
     return(0);
