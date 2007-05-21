@@ -1,8 +1,6 @@
-<!--#set var="title" value="A peek at the DragonFly Virtual Kernel (part 1)" -->
+<!--#set var="title" value="A Peek at the DragonFly Virtual Kernel" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/docs/articles/vkernel/vkernel.shtml,v 1.1 2007/05/21 12:02:32 victor Exp $ -->
-
-<h1>A peek at the DragonFly Virtual Kernel</h1>
+<!-- $DragonFly: site/data/docs/articles/vkernel/vkernel.shtml,v 1.2 2007/05/21 12:50:20 justin Exp $ -->
 
 <h4>
    This article was contributed by Aggelos Economopoulos.
