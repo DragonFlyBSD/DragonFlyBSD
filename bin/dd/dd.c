@@ -37,14 +37,13 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dd.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/dd.c,v 1.27.2.3 2001/08/01 01:37:35 obrien Exp $
- * $DragonFly: src/bin/dd/dd.c,v 1.7 2007/05/20 23:21:32 dillon Exp $
+ * $DragonFly: src/bin/dd/dd.c,v 1.8 2007/05/21 15:53:29 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/conf.h>
 #include <sys/device.h>
-#include <sys/diskslice.h>
 #include <sys/filio.h>
 #include <sys/time.h>
 
@@ -214,14 +213,8 @@ getfdtype(IO *io)
 		} else {
 			if (type & D_TAPE)
 				io->flags |= ISTAPE;
-			else if (type & (D_DISK | D_MEM)) {
-				if (type & D_DISK) {
-					const int one = 1;
-
-					ioctl(io->fd, DIOCWLABEL, &one);
-				}
+			else if (type & (D_DISK | D_MEM))
 				io->flags |= ISSEEK;
-			}
 			if (S_ISCHR(sb.st_mode) && (type & D_TAPE) == 0)
 				io->flags |= ISCHR;
 		}
