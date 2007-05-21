@@ -1,6 +1,6 @@
 <!--#set var="title" value="A Peek at the DragonFly Virtual Kernel" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/docs/articles/vkernel/vkernel.shtml,v 1.2 2007/05/21 12:50:20 justin Exp $ -->
+<!-- $DragonFly: site/data/docs/articles/vkernel/vkernel.shtml,v 1.3 2007/05/21 15:21:33 victor Exp $ -->
 
 <h4>
    This article was contributed by Aggelos Economopoulos.
@@ -220,27 +220,7 @@
    feature nonetheless.
 </p>
 
-<p>
-   The previous paragraphs have described the background of vkernel
-   development and have given a high-level overview of how the vkernel fits
-   in with the abstractions provided by the real kernel. We are now ready to
-   dive into the most interesting parts of the code, where we will get
-   acquainted with a new type of page table and discuss the details of FPU
-   virtualization and vproc <->; vkernel communication. But this discussion
-   needs an article of its own, therefore it will have to wait for a future
-   week.
-</p>
-
 <h2>Userspace I/O</h2>
-
-<p>
-   Our previous article gave an overview of the DragonFly virtual
-   kernel and the kernel virtual memory subsystem. In this article,
-   we can finally cover the complications that present themselves in
-   implementing such a virtualized execution environment. If you
-   haven't read the previous article, it would be a good idea to do
-   so before continuing.
-</p>
 
 <p>
    Now that we know how the virtual kernel regains control when
@@ -557,6 +537,241 @@
    vkernel's window to the outside world.
 </p>
 
+<h2>Structure of the vpagetable</h2>
+
+<p>
+   Software address translation in a memory region governed by a
+   virtual pagetable is <b>very</b> similar to the scheme
+   implemented by 32-bit x86 hardware. In fact, if you are familiar with the
+   latter, this appendix might bore you before you know it.
+</p>
+
+<img src="vaddr.png" alt="[Virtual Address]"/>
+
+<p>
+   Because we want to easily cache vpagetable mappings in the hardware
+   pagetable, the page size is essentially forced to 4KB, although the
+   equivalent of the Intel PSE extension for 4MB pages is also supported.
+   The vpagetable is a two-level forward mapped pagetable where the higher
+   10 bits of a 32-bit virtual address index into a page directory page
+   (specifying a page directory entry, or pde) and the next 10 bits select
+   a pte in the pagetable page pointed to by the pde. The lower 12 bits
+   are the byte offset in the 4KB page (see the preceding figure).
+</p>
+
+<p>
+   The format of the vpte is presented in the figure below. If this is
+   a page directory, the high 20 bits provide the page frame number of the
+   pagetable page to be consulted next. On a pagetable, the same bits
+   combine with the low 12 bits of the virtual address to form the physical
+   address.
+</p>
+
+<img src="vpte.png" alt="[page table/directory entry]"/>
+
+<p>
+   Some of the low 12 bits of a vpte have a special meaning.
+</p>
+
+<ul>
+  <li>
+    <p>
+      If, at any level in the vpagetable, V is not set, then
+      the address translation fails and the vkernel will have to signal the
+      offending process about it
+    </p>
+  <li>
+    <p>
+      The PS bit is named after the Page Size extension in
+      the Pentium and later processors. If it is set in a page directory
+      entry, then the high 10 bits of the pde specify the page frame
+      number of a 4MB page and the low 22 bits of the virtual address provide
+      the offset of the physical address in that page.
+    </p>
+  <li>
+    <p>
+      The R, W, X bits have the obvious meanings. Since the kernel assumes
+      basic x86 functionality, read permission implies execute permission.
+    </p>
+  <li>
+    <p>
+      The U (user access bit) is currently unimplemented.
+    </p>
+  <li>
+    <p>
+      The MANAGED bit indicates that there is no reverse-mapping
+      information for the physical page pointed to by this pte. This is usually
+      only true for certain System V shared memory pages.
+    </p>
+  <li>
+    <p>
+      The G (global bit) is currently unimplemented.
+    </p>
+  <li>
+    <p>
+      Finally, the WIRED bit is set if the target page has been
+      mlock()ed or is otherwise held in place.
+    </p>
+</ul>
+
+<h2>Signal Mailbox</h2>
+
+<p>
+   Signal mailboxes are an alternative signal delivery mechanism that is
+   implemented as an extension to the standard sigaction() system call.
+</p>
+
+<pre>
+    int sigaction(int signum, const struct sigaction *act,
+                  struct sigaction *oldact);
+</pre>
+
+<p>
+   where
+</p>
+
+<pre>
+    struct sigaction {
+        union {
+                void (*sa_handler)(int);
+                int *sa_mailbox;
+        };
+        int sa_flags;
+        /* ... */
+    };
+</pre>
+
+<p>
+   If a process does a sigaction() system call specifying SA_MAILBOX in
+   sa_flags, then the kernel will deliver the specified signal (signum)
+   by writing its number to the integer pointed to by sa_mailbox. The
+   next system call (or the current one if any) that blocks will return
+   with EINTR. Any further system calls are unaffected and will proceed
+   normally. If the process is running on an alternate vmspace, the
+   kernel forces a switch to the original vmspace before updating the
+   mailbox. If two or more signals are set to deliver to the same mailbox,
+   then successive deliveries overwrite each other so that, after the
+   interruption of the next system call, the value in the mailbox is the
+   number of the last signal delivered. It is expected that after checking
+   a mailbox that has had a signal delivered to it, the user program will
+   clear it by storing a zero in order to be able to detect further
+   occurrences of the corresponding signal.
+</p>
+
+<p>
+   The reason for the addition of this mechanism was to enable fast signal
+   delivery for the case that the application would just set a non-local
+   variable and return from the signal handler. Since signal handlers can
+   run at any time, it is difficult to determine what state the program is
+   in, therefore, most applications prefer to act in response to a signal
+   (most likely SIGIO) only in selected code locations (typically the main
+   loop). Hence the above case is quite common.
+</p>
+
+<p>
+   It also involves a large overhead. If the kernel, while servicing a
+   process (e.g. in a system call or page fault) notices that there is
+   a pending signal and that the process catches this signal (i.e. it
+   has specified a signal handler for it and is not currently blocking
+   it), it initiates the delivery procedure. Architecture-specific code
+   saves the current user context (general-purpose registers, instruction
+   and stack pointers, descriptors) in a signal frame structure and
+   pushes this frame onto the user stack<a name="AEN7"
+   href="vkernel.shtml#FTN.AEN7">[7]</a>. It also sets up the process
+   registers so that the signal trampoline will run next. The trampoline
+   is assembler code that is copied by the kernel into the address space
+   of every user process. It is this code that calls the handler
+   procedure and after it returns (assuming it does return), issues a
+   sigreturn() system call. The kernel then arranges for the process to
+   resume running in the specified context (normally the context
+   previously saved).
+</p>
+
+<p>
+   Compare this procedure with the one followed for delivering a
+   signal that has specified a mailbox. When the kernel notices a
+   pending signal, it copies the appropriate signal number to the
+   specified user address and sets a flag (P_MAILBOX) on the
+   receiving process. If this occurs during a system call, EINTR
+   is returned immediately, otherwise the next system call that attempts
+   to sleep will be interrupted and the P_MAILBOX flag cleared. Either
+   way, only one system call gets interrupted. This way, we save one
+   round trip to userspace and lots of copying of data just to execute
+   a handful of instructions that merely store a preset value to a known
+   memory location.
+</p>
+
+<p>
+   Also, having the signal handler notify the main application code by
+   setting a variable involves a classic race  when the program has
+   nothing else to do but wait for the signal. Clearly, wasting CPU
+   time in a tight loop testing the value of the variable is not an
+   attractive option. What we want to do is sleep until we are waken
+   by a signal, e.g. with pause(). But suppose that a signal arrives
+   after we test the variable and before we go to sleep; then we may
+   sleep forever.
+</p>
+
+<pre>
+01    sigset_t io_mask, empty_mask;
+02    sigemptyset(&amp;empty_mask);
+03    sigemptyset(&amp;io_mask);
+04    sigaddset(&amp;io_mask, SIGIO);
+05    if (sigprocmask(SIG_BLOCK, &amp;io_mask, NULL))
+06            /* error */
+07    for (;;) {
+08            while (event == 0)
+09                    sigsuspend(&amp;empty_mask);
+10            event = 0;
+11            if (sigprocmask(SIG_UNBLOCK, &amp;io_mask, NULL))
+12                    /* error */
+13            /* respond to event etc */
+14            if (sigprocmask(SIG_BLOCK, &amp;io_mask, NULL))
+15                    /* error */
+16    }
+</pre>
+
+<p>
+   The canonical way to avoid this race using the POSIX signal
+   system calls is to block the offending signal before checking
+   the variable (lines 5 and 14 in the listing above). Then, any
+   such signal will not be delivered but will remain in a pending
+   state. Next, block by calling sigsuspend() (l. 9) with an
+   appropriate signal mask as an argument. sigsuspend() puts us
+   to sleep and installs the provided signal mask which,
+   presumably, no longer blocks the signal so that, if it is pending,
+   it will be delivered and wake up the process. Afterwards, it will
+   be a good idea to unblock said signal (l. 11), because sigsuspend()
+   restores the original signal mask when returning.
+</p>
+
+<pre>
+01    for (;;) {
+02            while (event == 0)
+03                    pause();
+04            /* window */
+05            event = 0;
+06            /* respond to event etc */
+07    }
+</pre>
+
+<p>
+   Now lets see how we deal with the situation if we have arranged
+   for the signal to be delivered to a mailbox. In this case, all
+   we have to do is test the mailbox (l. 2). If it is non-zero, a
+   signal has been delivered to it; set it back to zero (l. 5) and
+   proceed to service the event. Signals may be lost if they are
+   delivered just before we reset the value in the mailbox (l. 4),
+   but at this point we are already on the code path to service
+   them, so this is inconsequential. If the mailbox was zero, we
+   just block (l. 3). If a signal has arrived between the check
+   and our going to sleep, the system call will return immediately
+   with EINTR, as it will if a signal is delivered to us after we
+   block. Notice how the signal mailbox semantics make this a
+   non-issue allowing us to write straightforward code. Saving
+   two system calls per iteration (l. 11,14 in the first listing)
+   doesn't hurt either.
+</p>
 
 <h2>Bibliography</h2>
 
@@ -678,21 +893,18 @@
         </p>
       </td>
   </tr>
-<!-- I've deleted this footnote because i wasn't able to find any place -->
-<!-- that references it -->
-
-<!--   <tr> -->
-<!--       <td align="LEFT" valign="TOP" width="5%"> -->
-<!--         <a name="FTN.AEN7" -->
-<!--             href="vkernel.shtml#AEN7">[7] -->
-<!--         </a> -->
-<!--       </td> -->
-<!--       <td align="LEFT" valign="TOP"> -->
-<!--         <p> -->
-<!--           Or any alternative stack the user has designated for signal delivery. -->
-<!--         </p> -->
-<!--       </td> -->
-<!--   </tr> -->
+  <tr>
+      <td align="LEFT" valign="TOP" width="5%">
+        <a name="FTN.AEN7"
+            href="vkernel.shtml#AEN7">[7]
+        </a>
+      </td>
+      <td align="LEFT" valign="TOP">
+        <p>
+          Or any alternative stack the user has designated for signal delivery.
+        </p>
+      </td>
+  </tr>
 </table>
 
 <!--#include virtual="/includes/footer.shtml" -->
