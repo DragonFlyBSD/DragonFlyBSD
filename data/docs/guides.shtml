@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Guides" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/docs/guides.shtml,v 1.4 2007/05/21 12:02:32 victor Exp $ -->
+<!-- $DragonFly: site/data/docs/guides.shtml,v 1.5 2007/05/21 12:51:02 justin Exp $ -->
 
 
 <table width="100%" cellpadding="2" cellspacing="0" border="1">
@@ -37,7 +37,7 @@
 </tr>
 
 <tr>
-    <td>A peek at the DragonFly Virtual Kernel</td>
+    <td>A Peek at the DragonFly Virtual Kernel</td>
     <td><a href="articles/vkernel/vkernel.shtml">HTML</a></td>
     <td align="right">16 April 2007</td>
 </tr>
