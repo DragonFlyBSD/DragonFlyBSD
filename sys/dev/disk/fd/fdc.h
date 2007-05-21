@@ -32,7 +32,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fdc.h,v 1.20.2.3 2002/02/03 14:08:46 nyan Exp $
- * $DragonFly: src/sys/dev/disk/fd/fdc.h,v 1.6 2006/02/17 19:17:57 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fdc.h,v 1.7 2007/05/21 04:22:23 dillon Exp $
  *
  */
 
@@ -96,9 +96,6 @@ typedef	struct fd_data *fd_p;
 typedef struct fdc_data *fdc_p;
 typedef enum fdc_type fdc_t;
 
-#define FDUNIT(s)	(((s) >> 6) & 3)
-#define FDTYPE(s)	((s) & 0x3f)
-
 /*
  * fdc maintains a set (1!) of ivars per child of each controller.
  */
@@ -116,7 +113,7 @@ static __inline T fdc_get_ ## A(device_t dev)				\
 	BUS_READ_IVAR(device_get_parent(dev), dev, FDC_IVAR_ ## B, &v);	\
 	return (T) v;							\
 }
-FDC_ACCESSOR(fdunit,	FDUNIT,	int)
+FDC_ACCESSOR(fdunit, FDUNIT, int)
 
 int	fdc_alloc_resources(struct fdc_data *fdc);
 void	fdc_release_resources(struct fdc_data *fdc);

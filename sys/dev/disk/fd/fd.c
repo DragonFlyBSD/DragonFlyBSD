@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.38 2007/05/19 00:52:00 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.39 2007/05/21 04:22:23 dillon Exp $
  *
  */
 
@@ -65,8 +65,9 @@
 #include <sys/buf.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
-#include <sys/diskslice.h>
 #include <sys/disklabel.h>
+#include <sys/diskslice.h>
+#include <sys/disk.h>
 #include <sys/devicestat.h>
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
@@ -182,7 +183,7 @@ struct fd_data {
 	struct	fdc_data *fdc;	/* pointer to controller structure */
 	int	fdsu;		/* this units number on this controller */
 	int	type;		/* Drive type (FD_1440...) */
-	struct	fd_type *ft;	/* pointer to the type descriptor */
+	struct	fd_type ft;	/* the type descriptor */
 	int	flags;
 #define	FD_OPEN		0x01	/* it's open		*/
 #define	FD_ACTIVE	0x02	/* it's active		*/
@@ -196,6 +197,7 @@ struct fd_data {
 	struct	callout	toffhandle;
 	struct	callout	tohandle;
 	struct	callout motor;
+	struct  disk disk;
 	struct	devstat device_stats;
 	device_t dev;
 	fdu_t	fdu;
@@ -998,6 +1000,7 @@ fd_probe(device_t dev)
 	default:
 		return (ENXIO);
 	}
+	fd->ft = fd_types[fd->type - 1];
 	return (0);
 }
 
@@ -1005,26 +1008,43 @@ static int
 fd_attach(device_t dev)
 {
 	struct	fd_data *fd;
-#if 0
-	int	i;
-	int	mynor;
-	int	typemynor;
-	int	typesize;
-#endif
 
 	fd = device_get_softc(dev);
 
-	dev_ops_add(&fd_ops, -1 << 6, fd->fdu << 6);
-	make_dev(&fd_ops, (fd->fdu << 6),
-		UID_ROOT, GID_OPERATOR, 0640, "rfd%d", fd->fdu);
-
-#if 0
-	/* Other make_dev() go here. */
-#endif
+	disk_create(fd->fdu, &fd->disk, &fd_ops);
 
 	/*
-	 * Export the drive to the devstat interface.
+	 * Make special raw floppy devices with preset types to
+	 * make formatting easier.  These override the disk management
+	 * layer for the whole-slice-disk for partitions 128-191.  Note
+	 * that we do not override partition 255, which is the
+	 * whole-slice-part.  If we did we would have to provide our
+	 * own DIOCGPART ioctl.
 	 */
+	dev_ops_add(&fd_ops,
+		    dkunitmask() | dkmakeslice(-1) | dkmakepart(128|64),
+		    dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128));
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 1),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.1720", fd->fdu);
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 2),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.1480", fd->fdu);
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 3),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.1440", fd->fdu);
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 4),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.1200", fd->fdu);
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 5),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.820", fd->fdu);
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 6),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.800", fd->fdu);
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 7),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.720", fd->fdu);
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 8),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.360", fd->fdu);
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 9),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.640", fd->fdu);
+	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 10),
+		 UID_ROOT, GID_WHEEL, 0600, "fd%d.1232", fd->fdu);
+
 	devstat_add_entry(&fd->device_stats, device_get_name(dev), 
 			  device_get_unit(dev), 512, DEVSTAT_NO_ORDERED_TAGS,
 			  DEVSTAT_TYPE_FLOPPY | DEVSTAT_TYPE_IF_OTHER,
@@ -1038,6 +1058,12 @@ fd_detach(device_t dev)
 	struct	fd_data *fd;
 
 	fd = device_get_softc(dev);
+	dev_ops_remove(&fd_ops,
+		         dkunitmask() | dkmakeslice(-1) | dkmakepart(128|64),
+		         dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128));
+	disk_invalidate(&fd->disk);
+	disk_destroy(&fd->disk);
+	devstat_remove_entry(&fd->device_stats);
 	callout_stop(&fd->toffhandle);
 	callout_stop(&fd->motor);
 
@@ -1258,8 +1284,11 @@ int
 Fdopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
- 	fdu_t fdu = FDUNIT(minor(dev));
-	int type = FDTYPE(minor(dev));
+ 	fdu_t fdu = dkunit(dev);
+	struct disk_info info;
+	struct fd_type *ft;
+	int	type;
+	int	changetype;
 	fd_p	fd;
 	fdc_p	fdc;
 
@@ -1269,71 +1298,91 @@ Fdopen(struct dev_open_args *ap)
 	fdc = fd->fdc;
 	if ((fdc == NULL) || (fd->type == NO_TYPE))
 		return (ENXIO);
+
+	/*
+	 * Figure out the type of floppy.  There are special whole-disk-device
+	 * overrides that will override the current type.
+	 */
+	type = dkpart(dev);
+	if (type == WHOLE_SLICE_PART) {
+		type = fd->type;	/* do not change selected type data */
+		changetype = 0;
+	} else if (type > 128) {
+		type -= 128;		/* set to specific format */
+		changetype = 1;
+	} else {
+		type = fd->type;	/* reset to default */
+		changetype = 1;
+	}
 	if (type > NUMDENS)
 		return (ENXIO);
-	if (type == 0)
-		type = fd->type;
-	else {
+	if (type != fd->type) {
 		/*
 		 * For each type of basic drive, make sure we are trying
 		 * to open a type it can do,
 		 */
-		if (type != fd->type) {
-			switch (fd->type) {
-			case FD_360:
+		switch (fd->type) {
+		case FD_360:
+			return (ENXIO);
+		case FD_720:
+			if (   type != FD_820
+			    && type != FD_800
+			    && type != FD_640
+			   )
 				return (ENXIO);
-			case FD_720:
-				if (   type != FD_820
-				    && type != FD_800
-				    && type != FD_640
-				   )
-					return (ENXIO);
-				break;
-			case FD_1200:
-				switch (type) {
-				case FD_1480:
-					type = FD_1480in5_25;
-					break;
-				case FD_1440:
-					type = FD_1440in5_25;
-					break;
-				case FD_1232:
-					break;
-				case FD_820:
-					type = FD_820in5_25;
-					break;
-				case FD_800:
-					type = FD_800in5_25;
-					break;
-				case FD_720:
-					type = FD_720in5_25;
-					break;
-				case FD_640:
-					type = FD_640in5_25;
-					break;
-				case FD_360:
-					type = FD_360in5_25;
-					break;
-				default:
-					return(ENXIO);
-				}
+			break;
+		case FD_1200:
+			switch (type) {
+			case FD_1480:
+				type = FD_1480in5_25;
 				break;
 			case FD_1440:
-				if (   type != FD_1720
-				    && type != FD_1480
-				    && type != FD_1200
-				    && type != FD_820
-				    && type != FD_800
-				    && type != FD_720
-				    && type != FD_640
-				    )
-					return(ENXIO);
+				type = FD_1440in5_25;
 				break;
+			case FD_1232:
+				break;
+			case FD_820:
+				type = FD_820in5_25;
+				break;
+			case FD_800:
+				type = FD_800in5_25;
+				break;
+			case FD_720:
+				type = FD_720in5_25;
+				break;
+			case FD_640:
+				type = FD_640in5_25;
+				break;
+			case FD_360:
+				type = FD_360in5_25;
+				break;
+			default:
+				return(ENXIO);
 			}
+			break;
+		case FD_1440:
+			if (   type != FD_1720
+			    && type != FD_1480
+			    && type != FD_1200
+			    && type != FD_820
+			    && type != FD_800
+			    && type != FD_720
+			    && type != FD_640
+			    )
+				return(ENXIO);
+			break;
 		}
 	}
-	fd->ft = fd_types + type - 1;
+
+	/*
+	 * fd->type is the basic drive type, not the current format
+	 * we are reading.  We only change the type when opening the
+	 * whole-slice-partition
+	 */
+	if (changetype)
+		fd->ft = fd_types[type - 1];
 	fd->flags |= FD_OPEN;
+
 	/*
 	 * Clearing the DMA overrun counter at open time is a bit messy.
 	 * Since we're only managing one counter per controller, opening
@@ -1347,6 +1396,24 @@ Fdopen(struct dev_open_args *ap)
 	 */
 	fdc->dma_overruns = 0;
 
+	/*
+	 * Set disk parameters for the disk management layer.
+	 *
+	 * Note that we do not set RAWEXTENSIONS here.  We override
+	 * the minor numbers in the raw-extension range and handle them
+	 * directly.
+	 */
+	bzero(&info, sizeof(info));
+	ft = &fd->ft;
+	info.d_media_blksize = 128 << ft->secsize;
+	info.d_media_blocks = ft->size;
+	info.d_dsflags = DSO_COMPATPARTA | DSO_COMPATMBR;
+	info.d_nheads = ft->heads;
+	info.d_secpertrack = ft->sectrac; 
+	info.d_secpercyl = ft->sectrac * ft->heads;
+	info.d_ncylinders = ft->size / info.d_secpercyl;
+	disk_setdiskinfo(&fd->disk, &info);
+
 	return 0;
 }
 
@@ -1354,7 +1421,7 @@ int
 fdclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
- 	fdu_t fdu = FDUNIT(minor(dev));
+ 	fdu_t fdu = dkunit(dev);
 	struct fd_data *fd;
 
 	fd = devclass_get_softc(fd_devclass, fdu);
@@ -1379,7 +1446,7 @@ fdstrategy(struct dev_strategy_args *ap)
  	fd_p	fd;
 	size_t	fdblk;
 
- 	fdu = FDUNIT(minor(dev));
+ 	fdu = dkunit(dev);
 	fd = devclass_get_softc(fd_devclass, fdu);
 	if (fd == 0)
 		panic("fdstrategy: buf for nonexistent device (%#lx, %#lx)",
@@ -1391,7 +1458,7 @@ fdstrategy(struct dev_strategy_args *ap)
 		goto bad;
 	};
 
-	fdblk = 128 << (fd->ft->secsize);
+	fdblk = 128 << (fd->ft.secsize);
 	if (bp->b_cmd != BUF_CMD_FORMAT) {
 		if (bio->bio_offset < 0) {
 			kprintf(
@@ -1421,7 +1488,7 @@ fdstrategy(struct dev_strategy_args *ap)
 		goto bad;
 	}
 	blknum = (unsigned)(bio->bio_offset / fdblk);
- 	nblocks = fd->ft->size;
+ 	nblocks = fd->ft.size;
 	bp->b_resid = 0;
 	if (blknum + (bp->b_bcount / fdblk) > nblocks) {
 		if (blknum <= nblocks) {
@@ -1598,9 +1665,9 @@ fdstate(fdc_p fdc)
 	bp = bio->bio_buf;
 	dev = bio->bio_driver_info;
 
-	fdu = FDUNIT(minor(dev));
+	fdu = dkunit(dev);
 	fd = devclass_get_softc(fd_devclass, fdu);
-	fdblk = 128 << fd->ft->secsize;
+	fdblk = 128 << fd->ft.secsize;
 	if (fdc->fd && (fd != fdc->fd))
 		device_printf(fd->dev, "confused fd pointers\n");
 	read = (bp->b_cmd == BUF_CMD_READ);
@@ -1613,7 +1680,7 @@ fdstate(fdc_p fdc)
 	if (fdc->state == DOSEEK || fdc->state == SEEKCOMPLETE) {
 		blknum = (unsigned)(bio->bio_offset / fdblk) +
 			 fd->skip  /fdblk;
-		b_cylinder = blknum / (fd->ft->sectrac * fd->ft->heads);
+		b_cylinder = blknum / (fd->ft.sectrac * fd->ft.heads);
 	}
 	TRACE1("fd%d", fdu);
 	TRACE1("[%s]", fdstates[fdc->state]);
@@ -1627,8 +1694,8 @@ fdstate(fdc_p fdc)
 		fd->skip = 0;
 		fdc->fd = fd;
 		fdc->fdu = fdu;
-		fdc->fdctl_wr(fdc, fd->ft->trans);
-		TRACE1("[0x%x->FDCTL]", fd->ft->trans);
+		fdc->fdctl_wr(fdc, fd->ft.trans);
+		TRACE1("[0x%x->FDCTL]", fd->ft.trans);
 		/*******************************************************\
 		* If the next drive has a motor startup pending, then	*
 		* it will start up in its own good time		*
@@ -1663,7 +1730,7 @@ fdstate(fdc_p fdc)
 			break;
 		}
 		if (fd_cmd(fdc, 3, NE7CMD_SEEK,
-			   fd->fdsu, b_cylinder * fd->ft->steptrac,
+			   fd->fdsu, b_cylinder * fd->ft.steptrac,
 			   0))
 		{
 			/*
@@ -1685,7 +1752,7 @@ fdstate(fdc_p fdc)
 	case SEEKCOMPLETE : /* SEEK DONE, START DMA */
 		/* Make sure seek really happened*/
 		if(fd->track == FD_NO_TRACK) {
-			int descyl = b_cylinder * fd->ft->steptrac;
+			int descyl = b_cylinder * fd->ft.steptrac;
 			do {
 				/*
 				 * This might be a "ready changed" interrupt,
@@ -1754,8 +1821,8 @@ fdstate(fdc_p fdc)
 				     bp->b_data+fd->skip,
 				format ? bp->b_bcount : fdblk, fdc->dmachan);
 		}
-		sectrac = fd->ft->sectrac;
-		sec = blknum %  (sectrac * fd->ft->heads);
+		sectrac = fd->ft.sectrac;
+		sec = blknum %  (sectrac * fd->ft.heads);
 		head = sec / sectrac;
 		sec = sec % sectrac + 1;
 		fd->hddrv = ((head&1)<<2)+fdu;
@@ -1854,10 +1921,10 @@ fdstate(fdc_p fdc)
 				   fd->track,        /* track */
 				   head,
 				   sec,              /* sector + 1 */
-				   fd->ft->secsize,  /* sector size */
+				   fd->ft.secsize,   /* sector size */
 				   sectrac,          /* sectors/track */
-				   fd->ft->gap,      /* gap size */
-				   fd->ft->datalen,  /* data length */
+				   fd->ft.gap,       /* gap size */
+				   fd->ft.datalen,   /* data length */
 				   0)) {
 				/* the beast is sleeping again */
 				if (!(fdc->flags & FDC_NODMA))
@@ -2084,7 +2151,7 @@ retrier(struct fdc_data *fdc)
 	dev = bio->bio_driver_info;
 
 	/* XXX shouldn't this be cached somewhere?  */
-	fdu = FDUNIT(minor(dev));
+	fdu = dkunit(dev);
 	fd = devclass_get_softc(fd_devclass, fdu);
 	if (fd->options & FDOPT_NORETRY)
 		goto fail;
@@ -2111,11 +2178,7 @@ retrier(struct fdc_data *fdc)
 				 * note: use the correct device for more
 				 * verbose error reporting.
 				 */
-				cdev_t subdev;
-
-				subdev = make_sub_dev(dev,
-				    (FDUNIT(minor(dev))<<3)|RAW_PART);
-				diskerr(bio, subdev,
+				diskerr(bio, dev,
 					"hard error", LOG_PRINTF,
 					fdc->fd->skip);
 			}
@@ -2166,9 +2229,9 @@ fdformat(cdev_t dev, struct fd_formb *finfo, struct ucred *cred)
 	int rv = 0;
 	size_t fdblk;
 
- 	fdu	= FDUNIT(minor(dev));
+ 	fdu	= dkunit(dev);
 	fd	= devclass_get_softc(fd_devclass, fdu);
-	fdblk = 128 << fd->ft->secsize;
+	fdblk = 128 << fd->ft.secsize;
 
 	/* set up a buffer header for fdstrategy() */
 	bp = getpbuf(NULL);
@@ -2179,8 +2242,8 @@ fdformat(cdev_t dev, struct fd_formb *finfo, struct ucred *cred)
 	 * seek to the requested cylinder
 	 */
 	bp->b_bio1.bio_offset = (off_t)(finfo->cyl * 
-		(fd->ft->sectrac * fd->ft->heads)
-		+ finfo->head * fd->ft->sectrac) * fdblk;
+		(fd->ft.sectrac * fd->ft.heads)
+		+ finfo->head * fd->ft.sectrac) * fdblk;
 	bp->b_bio1.bio_driver_info = dev;
 	bp->b_bio1.bio_done = fdformat_wakeup;
 
@@ -2222,60 +2285,15 @@ static int
 fdioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
- 	fdu_t	fdu = FDUNIT(minor(dev));
+ 	fdu_t	fdu = dkunit(dev);
  	fd_p	fd = devclass_get_softc(fd_devclass, fdu);
 	size_t fdblk;
-
-	struct fd_type *fdt;
-	struct disklabel *dl;
 	struct fdc_status *fsp;
-	char buffer[DEV_BSIZE];
 	int error = 0;
 
-	fdblk = 128 << fd->ft->secsize;
+	fdblk = 128 << fd->ft.secsize;
 
 	switch (ap->a_cmd) {
-	case DIOCGDINFO:
-		bzero(buffer, sizeof (buffer));
-		dl = (struct disklabel *)buffer;
-		dl->d_secsize = fdblk;
-		fdt = fd->ft;
-		dl->d_secpercyl = fdt->size / fdt->tracks;
-		dl->d_type = DTYPE_FLOPPY;
-
-		if (readdisklabel(dev, dl)
-		    == NULL)
-			error = 0;
-		else
-			error = EINVAL;
-
-		*(struct disklabel *)ap->a_data = *dl;
-		break;
-
-	case DIOCSDINFO:
-		if ((ap->a_fflag & FWRITE) == 0)
-			error = EBADF;
-		break;
-
-	case DIOCWLABEL:
-		if ((ap->a_fflag & FWRITE) == 0)
-			error = EBADF;
-		break;
-
-	case DIOCWDINFO:
-		if ((ap->a_fflag & FWRITE) == 0) {
-			error = EBADF;
-			break;
-		}
-
-		dl = (struct disklabel *)ap->a_data;
-
-		if ((error = setdisklabel((struct disklabel *)buffer, dl,
-					  (u_long)0)) != 0)
-			break;
-
-		error = writedisklabel(dev, (struct disklabel *)buffer);
-		break;
 	case FD_FORM:
 		if ((ap->a_fflag & FWRITE) == 0)
 			error = EBADF;	/* must be opened for writing */
@@ -2287,14 +2305,14 @@ fdioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case FD_GTYPE:                  /* get drive type */
-		*(struct fd_type *)ap->a_data = *fd->ft;
+		*(struct fd_type *)ap->a_data = fd->ft;
 		break;
 
 	case FD_STYPE:                  /* set drive type */
 		/* this is considered harmful; only allow for superuser */
 		if (suser_cred(ap->a_cred, 0) != 0)
 			return EPERM;
-		*fd->ft = *(struct fd_type *)ap->a_data;
+		fd->ft = *(struct fd_type *)ap->a_data;
 		break;
 
 	case FD_GOPTS:			/* get drive options */
