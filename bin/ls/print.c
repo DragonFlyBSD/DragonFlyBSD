@@ -31,7 +31,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.73 2004/06/08 09:27:42 das Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.17 2005/11/06 11:44:02 swildner Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.18 2007/05/21 01:40:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -158,13 +158,8 @@ printlong(const DISPLAY *dp)
 		if (f_flags)
 			printf("%-*s ", dp->s_flags, np->flags);
 		if (S_ISCHR(sp->st_mode) || S_ISBLK(sp->st_mode))
-			if (minor(sp->st_rdev) > 255 || minor(sp->st_rdev) < 0)
-				printf("%3d, 0x%08x ",
-				    major(sp->st_rdev),
-				    (u_int)minor(sp->st_rdev));
-			else
-				printf("%3d, %3d ",
-				    major(sp->st_rdev), minor(sp->st_rdev));
+			printf("%3d, 0x%08x ",
+			       major(sp->st_rdev), (u_int)minor(sp->st_rdev));
 		else if (dp->bcfile)
 			printf("%*s%*lld ",
 			    8 - dp->s_size, "", dp->s_size, sp->st_size);
