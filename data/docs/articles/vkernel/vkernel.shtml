@@ -1,0 +1,700 @@
+<!--#set var="title" value="A peek at the DragonFly Virtual Kernel (part 1)" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/docs/articles/vkernel/vkernel.shtml,v 1.1 2007/05/21 12:02:32 victor Exp $ -->
+
+<h1>A peek at the DragonFly Virtual Kernel</h1>
+
+<h4>
+   This article was contributed by Aggelos Economopoulos.
+</h4>
+
+<p style="padding-left: 5%">
+   <b>NOTE:</b> This article originally appeared as two articles on
+   <a href="http://lwn.net/">http://lwn.net/</a>.
+
+<p>
+   In this article, we will describe several aspects of the architecture
+   of DragonFly BSD's virtual kernel infrastructure, which allows the
+   kernel to be run as a user-space process. Its design and implementation
+   is largely the work of the project's lead developer, Matthew Dillon, who
+   first announced his intention of modifying the kernel to run in userspace
+   on <a
+  href="http://leaf.dragonflybsd.org/mailarchive/kernel/2006-09/msg00000.html">
+   September 2nd 2006</a>. The first stable DragonFlyBSD version to feature
+   virtual kernel (vkernel) support was DragonFly 1.8, released on January
+   30th 2007.
+</p>
+
+<p>
+   The motivation for this work (as can be found in the initial mail linked
+   to above) was finding an elegant solution to one immediate and one long
+   term issue in pursuing the project's main goal of Single System Image
+   clustering over the Internet. First, as any person who is familiar with
+   distributed algorithms will attest, implementing cache coherency without
+   hardware support is a complex task. It would not be made any easier by
+   enduring a 2-3 minute delay in the edit-compile-run cycle while each
+   machine goes through the boot sequence. As a nice side effect, userspace
+   programming errors are unlikely to bring the machine down and one has the
+   benefit of working with superior debugging tools (and can more easily
+   develop new ones).
+</p>
+
+<p>
+   The second, long term, issue that virtual kernels are intended to address
+   is finding a way to securely and efficiently dedicate system resources to
+   a cluster that operates over the (hostile) Internet. Because a kernel is
+   a more or less standalone environment, it should be possible to completely
+   isolate the process a virtual kernel runs in from the rest of the system.
+   While the problem of process isolation is far from solved, there exist a
+   number of promising approaches. One option, for example, would be to use
+   systrace (refer to [Provos03]) to mask-out all but the few (and hopefully
+   carefully audited) system calls that the vkernel requires after
+   initialization has taken place. This setup would allow for a significantly
+   higher degree of protection for the host system in the event that the
+   virtualized environment was compromised. Moreover, the host kernel already
+   has well-tested facilities for arbitrating resources, although these
+   facilities are not necessarily sufficient or dependable; the CPU scheduler
+   is not infallible and mechanisms for allocating disk I/O bandwidth will
+   need to be implemented or expanded. In any case, leveraging preexisting
+   mechanisms reduces the burden on the project's development team, which
+   can't be all bad.
+</p>
+
+<h2>Preparatory work</h2>
+
+<p>
+   Getting the kernel to build as a regular, userspace, elf executable
+   required tidying up large portions of the source tree. In this section we
+   will focus on the two large sets of changes that took place as part of
+   this cleanup. The second set might seem superficial and hardly worthy of
+   mention as such, but in explaining the reason that lead to it, we shall
+   discuss an important decision that was made in the implementation of the
+   virtual kernel.
+</p>
+
+<p>
+   The first set of changes was separating machine dependent code to
+   platform- and CPU-specific parts. The real and virtual kernels can be
+   considered to run on two different platforms; the first is (only, as must
+   reluctantly be admitted) running on 32-bit PC-style hardware, while the
+   second is running on a DragonFly kernel. Regardless of the differences
+   between the two platforms, both kernels expect the same processor
+   architecture. After the separation, the cpu/i386 directory of the kernel
+   tree is left with hand-optimized assembly versions of certain kernel
+   routines, headers relevant only to x86 CPUs and code that deals with
+   object relocation and debug information. The real kernel's platform
+   directory (platform/pc32) is familiar with things like programmable
+   interrupt controllers, power management and the PC bios (that the
+   vkernel doesn't need), while the virtual kernel's platform/vkernel
+   directory is happily using the system calls that the real kernel
+   can't have. Of course this does not imply that there is absolutely no
+   code duplication, but fixing that is not a pressing problem.
+</p>
+
+<p>
+   The massive second set of changes involved primarily renaming quite a few
+   kernel symbols so that there are no clashes with the libc ones (e.g.
+   *printf(), qsort, errno etc.) and using kdev_t for the POSIX dev_t type
+   in the kernel. As should be plain, this was a prerequisite for having the
+   virtual kernel link with the standard C library. Given that the kernel is
+   self-hosted (this means that, since it cannot generally rely on support
+   software after it has been loaded, the kernel includes its own helper
+   routines), one can question the decision of pulling in all of libc
+   instead of simply adding the (few) system calls that the vkernel actually
+   uses. A controversial choice at the time, it prevailed because it was
+   deemed that it would allow future vkernel code to leverage the extended
+   functionality provided by libc. Particularly, thread-awareness in the
+   system C library should accommodate the (medium term) plan to mimic
+   multi-processor operation by the use of one vkernel thread for each
+   hypothetical CPU. It is safe to say that if the plan is materialized,
+   linking against libc will prove to be a most profitable tradeoff.
+</p>
+
+<h2>The Virtual Kernel</h2>
+
+<p>
+   In this section, we will study the architecture of the virtual kernel and
+   the design choices made in its development, focusing on its differences
+   from a kernel running on actual hardware. In the process, we'll need to
+   describe the changes made in the real (host) kernel code, specifically
+   in order to support a DragonFly kernel running as a user process.
+</p>
+
+<h2>Address Space Model</h2>
+
+<p>
+   The first design choice made in the development of the vkernel is that
+   the whole virtualized environment is executing as part of the same
+   real-kernel process. This imposes well defined limits on the amount
+   of real-kernel resources that may be consumed by it and makes
+   containment straightforward. Processes running under the vkernel are not
+   in direct competition with host processes for cpu time and most parts of
+   the bookkeeping that is expected from a kernel during the lifetime of a
+   process are handled by the virtual kernel. The alternative<a name="AEN1"
+   href="vkernel.shtml#FTN.AEN1">[1]</a>, running each vkernel process<a
+   name="AEN2" href="vkernel.shtml#FTN.AEN2">[2]</a> in the context of a
+   real kernel process, imposes extra burden on the host kernel and requires
+   additional mechanisms for effective isolation of vkernel processes from
+   the host system. That said, the real kernel still has to deal with some
+   amount of VM work and reserve some memory space that is proportional to
+   the number of processes running under the vkernel. This statement will be
+   made clear after we examine the new system calls for the manipulation of
+   vmspace objects.
+</p>
+
+<p>
+   In the kernel, the main purpose of a vmspace object is to describe the
+   address space of one or more processes. Each process normally has one
+   vmspace, but a vmspace may be shared by several processes. An address
+   space is logically partitioned into sets of pages, so that all pages
+   in a set are backed by the same VM object (and are linearly mapped on
+   it) and have the same protection bits. All such sets are represented
+   as vm_map_entry structures. VM map entries are linked together both by
+   a tree and a linked list so that lookups, additions, deletions and
+   merges can be performed efficiently (with low time complexity). Control
+   information and pointers to these data structures are encapsulated in
+   the vm_map object that is contained in every vmspace (see the
+   diagram below).
+</p>
+
+<img src="dbsd-vm.png" alt="[diagram]"/>
+
+<p>
+   A VM object (vm_object) is an interface to a data store and can be of
+   various types (default, swap, vnode, ...) depending on where it gets
+   its pages from. The existence of shadow objects somewhat complicates
+   matters, but for our purposes this simplified model should be
+   sufficient. For more information you're urged to have a look at the
+   source and refer to [McKusick04] and [Dillon00].
+</p>
+
+<p>
+   In the first stages of the development of vkernel, a number of system
+   calls were added to the kernel that allow a process to associate itself
+   with more than one vmspace. The creation of a vmspace is accomplished by
+   vmspace_create(). The new vmspace is uniquely identified by an arbitrary
+   value supplied as an argument. Similarly, the vmspace_destroy() call
+   deletes the vmspace identified by the value of its only parameter. It is
+   expected that only a virtual kernel running as a user process will need
+   access to alternate address spaces. Also, it should be made clear that
+   while a process can have many vmspaces associated with it, only one
+   vmspace is active at any given time. The active vmspace is the one
+   operated on by mmap()/munmap()/madvise()/etc.
+</p>
+
+<p>
+   The virtual kernel creates a vmspace for each of its processes and it
+   destroys the associated vmspace when a vproc is terminated, but this
+   behavior is not compulsory. Since, just like in the real kernel, all
+   information about a process and its address space is stored in kernel
+   memory<a name="AEN3" href="vkernel.shtml#FTN.AEN3">[3]</a>, the vmspace
+   can be disposed of and reinstantiated at will; its existence is only
+   necessary while the vproc is running. One can imagine the vkernel
+   destroying the vproc vmspaces in response to a low memory situation in
+   the host system.
+</p>
+
+<p>
+   When it decides that it needs to run a certain process, the vkernel
+   issues a vmspace_ctl() system call with an argument of VMSPACE_CTL_RUN
+   as the command (currently there are no other commands available),
+   specifying the desired vmspace to activate. Naturally, it also needs to
+   supply the necessary context (values of general purpose registers,
+   instruction/stack pointers, descriptors) in which execution will resume.
+   The original vmspace is special; if, while running on an alternate
+   address space, a condition occurs which requires kernel intervention
+   (for example, a floating point operation throws an exception or a system
+   call is made), the host kernel automatically switches back to the previous
+   vmspace handing over the execution context at the time the exceptional
+   condition caused entry into the kernel and leaving it to the vkernel to
+   resolve matters. Signals by other host processes are likewise delivered
+   after switching back to the vkernel vmspace.
+</p>
+
+<p>
+   Support for creating and managing alternate vmspaces is also available to
+   vkernel processes. This requires special care so that all the relevant
+   code sections can operate in a recursive manner. The result is that
+   vkernels can be nested, that is, one can have a vkernel running as a
+   process under a second vkernel running as a process under a third vkernel
+   and so on. Naturally, the overhead incurred for each level of recursion
+   does not make this an attractive setup performance-wise, but it is a neat
+   feature nonetheless.
+</p>
+
+<p>
+   The previous paragraphs have described the background of vkernel
+   development and have given a high-level overview of how the vkernel fits
+   in with the abstractions provided by the real kernel. We are now ready to
+   dive into the most interesting parts of the code, where we will get
+   acquainted with a new type of page table and discuss the details of FPU
+   virtualization and vproc <->; vkernel communication. But this discussion
+   needs an article of its own, therefore it will have to wait for a future
+   week.
+</p>
+
+<h2>Userspace I/O</h2>
+
+<p>
+   Our previous article gave an overview of the DragonFly virtual
+   kernel and the kernel virtual memory subsystem. In this article,
+   we can finally cover the complications that present themselves in
+   implementing such a virtualized execution environment. If you
+   haven't read the previous article, it would be a good idea to do
+   so before continuing.
+</p>
+
+<p>
+   Now that we know how the virtual kernel regains control when
+   its processes request/need servicing, let us turn to how it
+   goes about satisfying those requests. Signal transmission and
+   most of the filesystem I/O (read, write, ...), process control
+   (kill, signal, ...) and net I/O system calls are easy; the
+   vkernel takes the same code paths that a real kernel would. The
+   only difference is in the implementation of the copyin()/copyout()
+   family of routines for performing I/O to and from userspace.
+</p>
+
+<p>
+   When the real kernel needs to access user memory locations,
+   it must first make sure that the page in question is resident
+   and will remain in memory for the duration of a copy. In
+   addition, because it acts on behalf of a user process, it
+   should adhere to the permissions associated with that process.
+   Now, on top of that, the vkernel has to work around the fact
+   that the process address space is not mapped while it is
+   running. Of course, the vkernel knows which pages it needs to
+   access and can therefore perform the copy by creating a
+   temporary kernel mapping for the pages in question. This
+   operation is reasonably fast; nevertheless, it does incur
+   measurable overhead compared to the host kernel.
+</p>
+
+<h2>Page Faults</h2>
+
+<p>
+   The interesting part is dealing with page faults (this
+   includes lazily servicing mmap()/madvise()/... operations).
+   When a process mmap()s a file (or anonymous memory) in its
+   address space, the kernel (real or virtual) does not
+   immediately allocate pages to read in the file data (or
+   locate the pages in the cache, if applicable), nor does it setup the
+   pagetable entries to fulfill the request. Instead, it merely notes in
+   its data structures that it has promised that the specified data will
+   be there when read and that writes to the corresponding memory locations
+   will not fail (for a writable mapping) and will be reflected on disk (if
+   they correspond to a file area). Later, if the process tries to access
+   these addresses (which do not still have valid pagetable entries (PTES),
+   if they ever did, because new mappings invalidate old ones), the CPU
+   throws a pagefault and the fault handling code has to deliver as promised;
+   it obtains the necessary data pages and updates the PTES. Following that,
+   the faulting instruction is restarted.
+</p>
+
+<p>
+   Consider what happens when a process running on an alternate vmspace
+   of a vkernel process generates a page fault trying to access the memory
+   region it has just mmap()ed. The real kernel knows nothing about this
+   and through a mechanism that will be described later, passes the
+   information about the fault on to the vkernel. So, how does the vkernel
+   deal with it? The case when the faulting address is invalid is trivially
+   handled by delivering a signal (SIGBUS or SIGSEGV) to the faulting vproc.
+   But in the case of a reference to a valid address, how can the vkernel
+   ensure that the current and succeeding accesses will complete? Existing
+   system facilities are not appropriate for this task; clearly, a new
+   mechanism is called for.
+</p>
+
+<p>
+   What we need, is a way for the vkernel to execute mmap-like operations
+   on its alternate vmspaces. With this functionality available as a set of
+   system calls, say vmspace_mmap()/vmspace_munmap()/etc, the vkernel code
+   servicing an mmap()/munmap()/mprotect()/etc vproc call would, after doing
+   some sanity checks, just execute the corresponding new system call
+   specifying the vmspace to operate on. This way, the real kernel would be
+   made aware of the required mapping and its VM system would do our work
+   for us.
+</p>
+
+<p>
+   The DragonFly kernel provides a vmspace_mmap() and a vmspace_munmap()
+   like the ones we described above, but none of the other calls we thought
+   we would need. The reason for this is that it takes a different,
+   non-obvious, approach that is probably the most intriguing aspect of the
+   vkernel work. The kernel's generic mmap code now recognizes a new flag,
+   MAP_VPAGETABLE. This flag specifies that the created mapping is governed
+   by a userspace virtual pagetable structure (a vpagetable), the address of
+   which can be set using the new vmspace_mcontrol() system call (which is
+   an extension of madvise(), accepting an extra pointer parameter) with an
+   argument of MADV_SETMAP. This software pagetable structure is similar to
+   most architecture-defined pagetables. The complementary vmspace_munmap(),
+   not surprisingly, removes mappings in alternate address spaces. These are
+   the primitives on which the memory management of the virtual kernel
+   is built.
+</p>
+
+<b>Table 1. New vkernel-related system calls</b>
+
+<pre>
+    int vmspace_create(void *id, int type, void *data);
+    int vmspace_destroy(void *id,);
+    int vmspace_ctl(void *id, int cmd, struct trapframe *tf,
+                    struct vextframe *vf);
+    int vmspace_mmap(void *id, void *start, size_t len, int prot,
+                     int flags, int fd, off_t offset);
+    int vmspace_munmap(void *id, void *start, size_t len);
+    int mcontrol(void *start, size_t len, int adv, void *val);
+    int vmspace_mcontrol(void *id, void *start, size_t len, int adv,
+                         void *val);
+</pre>
+
+<p>
+   At this point, an overview of the virtual memory map of each vmspace
+   associated with the vkernel process is in order. When the virtual kernel
+   starts up, there is just one vmspace for the process and it is similar to
+   that of any other process that just begun executing (mainly consisting of
+   mappings for the heap, stack, program text and libc). During its
+   initialization, the vkernel mmap()s a disk file that serves the role of
+   physical memory (RAM). The real kernel is instructed (via
+   madvise(MADV_NOSYNC)) to not bother synchronizing this memory region with
+   the disk file unless it has to, which is typically when the host kernel is
+   trying to reclaim RAM pages in a low memory situation. This is imperative;
+   otherwise all the vkernel "RAM" data would be treated as valuable by the
+   host kernel and would periodically be flushed to disk. Using MADV_NOSYNC,
+   the vkernel data will be lost if the system crashes, just like actual RAM,
+   which is exactly what we want: it is up to the vkernel to sync user data
+   back to its own filesystem. The memory file is mmap()ed specifying
+   MAP_VPAGETABLE. It is in this region that all memory allocations (both for
+   the virtual kernel and its processes) take place. The pmap module, the
+   role of which is to manage the vpagetables according to instructions from
+   higher level VM code, also uses this space to create the vpagetables for
+   user processes.
+</p>
+
+<p>
+   On the real kernel side, new vmspaces that are created for these user
+   processes are very simple in structure. They consist of a single
+   vm_map_entry that covers the 0 - VM_MAX_USER_ADDRESS address range. This
+   entry is of type MAPTYPE_VPAGETABLE and the address for its vpagetable has
+   been set (by means of vmspace_mcontrol()) to point to the vkernel's RAM,
+   wherever the pagetable for the process has been allocated.
+</p>
+
+<p>
+   The true vm_map_entry structures are managed by the vkernel's VM
+   subsystem. For every one of its processes, the virtual kernel maintains the
+   whole set of vmspace/vm_map, vm_map_entry, vm_object objects that we
+   described earlier. Additionally, the pmap module needs to keep its own
+   (not to be described here) data structures. All of the above objects reside
+   in the vkernel's "physical" memory. Here we see the primary benefit of the
+   DragonFly approach: no matter how fragmented an alternate vmspace's virtual
+   memory map is and independently of the amount of sharing of a given page by
+   processes of the virtual kernel, the host kernel expends a fixed (and
+   reasonably sized) amount of memory for each vmspace. Also, after the initial
+   vmspace creation, the host kernel's VM system is taken out of the equation
+   (expect for pagefault handling), so that when vkernel processes require VM
+   services, they only compete among themselves for CPU time and not with the
+   host processes. Compared to the "obvious" solution, this approach saves
+   large amounts of host kernel memory and achieves a higher degree
+   of isolation.
+</p>
+
+<p>
+   Now that we have grasped the larger picture, we can finally examine our
+   "interesting" case: a page fault occurs while the vkernel process is using
+   one of its alternate vmspaces. In that case, the vm_fault() code will
+   notice it is dealing with a mapping governed by a virtual pagetable and
+   proceed to walk the vpagetable much like the hardware would. Suppose there
+   is a valid entry in the vpagetable for the faulting address; then the host
+   kernel simply updates its own pagetable and returns to userspace. If, on
+   the other hand, the search fails, the pagefault is passed on to the vkernel
+   which has the necessary information to update the vpagetable or deliver a
+   signal to the faulting vproc if the access was invalid. Assuming the
+   vpagetable was updated, the next time the vkernel process runs on the
+   vmspace that caused the fault, the host kernel will be able to correct
+   its own pagetable after searching the vpagetable as described above.
+</p>
+
+<p>
+   There are a few complications to take into account, however. First of
+   all, any level of the vpagetable might be paged out. This is straightforward
+   to deal with; the code that walks the vpagetable must make sure that a page
+   is resident before it tries to access it. Secondly, the real and virtual
+   kernels must work together to update the accessed and modified bits in the
+   virtual pagetable entries (VPTES). Traditionally, in architecture-defined
+   pagetables, the hardware conveniently sets those bits for us. The hardware
+   knows nothing about vpagetables, though. Ignoring the problem altogether
+   is not a viable solution. The availability of these two bits is necessary
+   in order for the VM subsystem algorithms to be able to decide if a page is
+   heavily used and whether it can be easily reclaimed or not (see [AST06]).
+   Note that the different semantics of the modified and accessed bits mean
+   that we are dealing with two separate problems.
+</p>
+
+<p>
+   Keeping track of the accessed bit turns out to require a minimal amount
+   of work. To explain this, we need to give a short, incomplete, description
+   of how the VM subsystem utilizes the accessed bit to keep memory reference
+   statistics for every physical page it manages. When the DragonFly pageout
+   daemon is awakened and begins scanning pages, it first instructs the pmap
+   subsystem to free whatever memory it can that is consumed by process
+   pagetables, updating the physical page reference and modification
+   statistics from the PTES it throws away. Until the next scan, any pages
+   that are referenced will cause a pagefault and the fault code will have
+   to set the accessed bit on the corresponding pte (or vpte). As a result,
+   the hardware is not involved<a name="AEN4"
+   href="vkernel.shtml#FTN.AEN4">[4]</a>. The behavior of the virtual kernel
+   is identical to that just sketched above, except that in this case page
+   faults are more expensive since they must always go through the real kernel.
+</p>
+
+<p>
+   While the advisory nature of the accessed bit gives us the flexibility
+   to exchange a little bit of accuracy in the statistics to avoid a
+   considerable loss in performance, this is not an option in emulating the
+   modified bit. If the data has been altered via some mapping the (now
+   "dirty") page cannot be reused at will; it is imperative that the data be
+   stored in the backing object first. The software is not notified when a pte
+   has the modified bit set in the hardware pagetable. To work around this,
+   when a vproc requests a mapping for a page and that said mapping be
+   writable, the host kernel will disallow writes in the pagetable entry
+   that it instantiates. This way, when the vproc tries to modify the page
+   data, a fault will occur and the relevant code will set the modified bit
+   in the vpte. After that, writes on the page can finally be enabled.
+   Naturally, when the vkernel clears the modified bit in the vpagetable it
+   must force the real kernel to invalidate the hardware pte so that it can
+   detect further writes to the page and again set the bit in the vpte, if
+   necessary.
+</p>
+
+<h2>Floating Point Context</h2>
+
+<p>
+   Another issue that requires special treatment is saving and restoring
+   of the state of the processor's Floating Point Unit (FPU) when switching
+   vprocs. To the real kernel, the FPU context is a per-thread entity. On a
+   thread switch, it is always saved<a name="AEN5"
+   href="vkernel.shtml#FTN.AEN5">[5]</a> and machine-dependent arrangements
+   are made that will force an exception ("device not available" or DNA)
+   the first time that the new thread (or any thread that gets scheduled
+   later) tries to access the FPU<a name="AEN6"
+   href="vkernel.shtml#FTN.AEN6">[6]</a>. This gives the kernel the
+   opportunity to restore the proper FPU context so that floating point
+   computations can proceed as normal.
+</p>
+
+<p>
+   Now, the vkernel needs to perform similar tasks if one of its vprocs
+   throws an exception because of missing FPU context. The only difficulty
+   is that it is the host kernel that initially receives the exception. When
+   such a condition occurs, the host kernel must first restore the vkernel
+   thread's FPU state, if another host thread was given ownership of the FPU
+   in the meantime. The virtual kernel, on the other hand, is only interested
+   in the exception if it has some saved context to restore. The correct
+   behavior is obtained by having the vkernel inform the real kernel whether
+   it also needs to handle the DNA exception. This is done by setting a new
+   flag (PGEX_FPFAULT) in the trapframe argument of vmspace_ctl(). Of course,
+   the flag need not be set if the to-be-run virtualized thread is the owner
+   of the currently loaded FPU state. The existence of PGEX_FPFAULT causes
+   the vkernel host thread to be tagged with FP_VIRTFP. If the host kernel
+   notices said tag when handed a "device not available" condition, it will
+   restore the context that was saved for the vkernel thread, if any, before
+   passing the exception on to the vkernel.
+</p>
+
+<h2>Platform drivers</h2>
+
+<p>
+   Just like for ports to new hardware platforms, the changes made for
+   vkernel are confined to few parts of the source tree and most of the kernel
+   code is not aware that it is in fact running as a user process. This applies
+   to filesystems, the vfs, the network stack and core kernel code. Hardware
+   device drivers are not needed or wanted and special drivers have been
+   developed to allow the vkernel to communicate with the outside world. In
+   this subsection, we will briefly mention a couple of places in the
+   platform code where the virtual kernel needs to differentiate itself
+   from the host kernel. These examples should make clear how much easier
+   it is to emulate platform devices using the high level primitives
+   provided by the host kernel, than dealing directly with the hardware.
+</p>
+
+<p>
+   <b>Timer</b>. The DragonFly kernel works with two timer types. The first
+   type provides an abstraction for a per-CPU timer (called a systimer)
+   implemented on top of a cputimer. The latter is just an interface to a
+   platform-specific timer. The vkernel implements one cputimer using
+   kqueue's EVFILT_TIMER. kqueue is the BSD high performance event
+   notification and filtering facility described in some detail in
+   [Lemon00]. The EVFILT_TIMER filter provides access to a periodic or
+   one-shot timer. In DragonFly, kqueue has been extended with signal-driven
+   I/O support (see [Stevens99]) which, coupled with the a signal mailbox
+   delivery mechanism allows for fast and very low overhead signal
+   reception. The vkernel makes full use of the two extensions.
+</p>
+
+<p>
+   <b>Console</b>. The system console is simply the terminal from which
+   the vkernel was executed. It should be mentioned that the vkernel
+   applies special treatment to some of the signals that might be generated
+   by this terminal; for instance, SIGINT will drop the user to the
+   in-kernel debugger.
+</p>
+
+<h2>Virtual Device Drivers</h2>
+
+<p>
+   The virtual kernel disk driver exports a standard disk driver interface
+   and provides access to an externally specified file. This file is treated
+   as a disk image and is accessed with a combination of the read(), write()
+   and lseek() system calls. Probably the simplest driver in the kernel
+   tree, the memio driver for /dev/zero included in the comparison.
+</p>
+
+<p>
+   VKE implements an ethernet interface (in the vkernel) that tunnels all
+   the packets it gets to the corresponding tap interface in the host
+   kernel. It is a typical example of a network interface driver, with the
+   exception that its interrupt routine runs as a response to an event
+   notification by kqueue. A properly configured vke interface is the
+   vkernel's window to the outside world.
+</p>
+
+
+<h2>Bibliography</h2>
+
+
+<p>
+   [McKusick04] <i>The Design and Implementation of the FreeBSD 
+   Operating System</i>, Kirk McKusick and George Neville-Neil
+</p>
+
+<p>
+   [Dillon00] <i><a href="http://www.freebsd.org/doc/en/articles/vm-design/">
+       Design elements of the FreeBSD VM system</a></i> Matthew Dillon
+</p>
+
+<p>
+   [Lemon00]  <i><a href="http://people.freebsd.org/~jlemon/papers/kqueue.pdf">
+       Kqueue: A generic and scalable event notification facility</a></i>
+   Jonathan Lemon
+</p>
+
+<p>
+   [AST06] <i>Operating Systems Design and Implementation</i>,
+   Andrew Tanenbaum and Albert Woodhull.
+</p>
+
+<p>
+   [Provos03] <i>Improving Host Security with System Call Policies</i>
+   Niels Provos
+</p>
+
+<p>
+   [Stevens99] <i>UNIX Network Programming, Volume 1: Sockets and XTI</i>,
+   Richard Stevens.
+</p>
+
+<h2>Notes</h2>
+
+
+<table border="0">
+
+  <tr>
+      <td align="LEFT" valign="TOP" width="5%">
+        <a name="FTN.AEN1" 
+            href="vkernel.shtml#AEN1">[1]
+        </a>
+      </td>
+      <td align="LEFT" valign="TOP">
+        <p>
+	   There are of course other alternatives, the most obvious one being
+           having one process for the virtual kernel and another for contained
+           processes, which is mostly equivalent to the choice made in
+           DragonFly.
+        </p>
+      </td>
+  </tr>
+  <tr>
+      <td align="LEFT" valign="TOP" width="5%">
+        <a name="FTN.AEN2" 
+            href="vkernel.shtml#AEN2">[2]
+        </a>
+      </td>
+      <td align="LEFT" valign="TOP">
+        <p>
+	   A process running under a virtual kernel will also be referred to
+	   as a "vproc" to distinguish it from host kernel processes.
+        </p>
+      </td>
+  </tr>
+  <tr>
+      <td align="LEFT" valign="TOP" width="5%">
+        <a name="FTN.AEN3" 
+            href="vkernel.shtml#AEN3">[3]
+        </a>
+      </td>
+      <td align="LEFT" valign="TOP">
+        <p>
+	   The small matter of the actual data belonging to the vproc is not
+           an issue, but you will have to wait until we get to the RAM file
+           in the next subsection to see why.
+        </p>
+      </td>
+  </tr>
+  <tr>
+      <td align="LEFT" valign="TOP" width="5%">
+        <a name="FTN.AEN4" 
+            href="vkernel.shtml#AEN4">[4]
+        </a>
+      </td>
+      <td align="LEFT" valign="TOP">
+        <p>
+          Well not really, but a thorough VM walkthrough is out
+          of scope here.
+        </p>
+      </td>
+  </tr>
+  <tr>
+      <td align="LEFT" valign="TOP" width="5%">
+        <a name="FTN.AEN5" 
+            href="vkernel.shtml#AEN5">[5]
+        </a>
+      </td>
+      <td align="LEFT" valign="TOP">
+        <p>
+          This is not optimal; x86 hardware supports fully lazy FPU save, but
+          the current implementation does not take advantage of that yet.
+        </p>
+      </td>
+  </tr>
+  <tr>
+      <td align="LEFT" valign="TOP" width="5%">
+        <a name="FTN.AEN6" 
+            href="vkernel.shtml#AEN6">[6]
+        </a>
+      </td>
+      <td align="LEFT" valign="TOP">
+        <p>
+          The kernel will occasionally make use of the FPU itself, but this
+	  does not directly affect the vkernel related code paths.
+        </p>
+      </td>
+  </tr>
+<!-- I've deleted this footnote because i wasn't able to find any place -->
+<!-- that references it -->
+
+<!--   <tr> -->
+<!--       <td align="LEFT" valign="TOP" width="5%"> -->
+<!--         <a name="FTN.AEN7" -->
+<!--             href="vkernel.shtml#AEN7">[7] -->
+<!--         </a> -->
+<!--       </td> -->
+<!--       <td align="LEFT" valign="TOP"> -->
+<!--         <p> -->
+<!--           Or any alternative stack the user has designated for signal delivery. -->
+<!--         </p> -->
+<!--       </td> -->
+<!--   </tr> -->
+</table>
+
+<!--#include virtual="/includes/footer.shtml" -->
