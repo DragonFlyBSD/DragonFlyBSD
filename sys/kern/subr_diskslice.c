@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.40 2007/05/20 19:23:33 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.41 2007/05/21 04:21:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,22 +106,10 @@ clone_label(struct disk_info *info, struct diskslice *sp)
 	lp1->d_secpercyl = info->d_secpercyl;
 	lp1->d_secsize = info->d_media_blksize;
 
-	if (sp) {
+	if (sp)
 		lp1->d_secperunit = (u_int)sp->ds_size;
-		lp1->d_partitions[RAW_PART].p_size = lp1->d_secperunit;
-	} else {
+	else
 		lp1->d_secperunit = (u_int)info->d_media_blocks;
-		lp1->d_partitions[RAW_PART].p_size = lp1->d_secperunit;
-	}
-
-	/*
-	 * Used by the CD driver to create a compatibility slice which
-	 * allows us to mount root from the CD.
-	 */
-	if (info->d_dsflags & DSO_COMPATPARTA) {
-		lp1->d_partitions[0].p_size = lp1->d_secperunit;
-		lp1->d_partitions[0].p_fstype = FS_OTHER;
-	}
 
 	if (lp1->d_typename[0] == '\0')
 		strncpy(lp1->d_typename, "amnesiac", sizeof(lp1->d_typename));
@@ -143,7 +131,17 @@ clone_label(struct disk_info *info, struct diskslice *sp)
 		lp1->d_bbsize = BBSIZE;
 	if (lp1->d_sbsize == 0)
 		lp1->d_sbsize = SBSIZE;
+
+	/*
+	 * Used by various devices to create a compatibility slice which
+	 * allows us to mount root from devices which do not have a
+	 * disklabel.  Particularly: CDs.
+	 */
 	lp1->d_partitions[RAW_PART].p_size = lp1->d_secperunit;
+	if (info->d_dsflags & DSO_COMPATPARTA) {
+		lp1->d_partitions[0].p_size = lp1->d_secperunit;
+		lp1->d_partitions[0].p_fstype = FS_OTHER;
+	}
 	lp1->d_magic = DISKMAGIC;
 	lp1->d_magic2 = DISKMAGIC;
 	lp1->d_checksum = dkcksum(lp1);
@@ -543,12 +541,8 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		} else {
 			bzero(lp, sizeof(struct disklabel));
 		}
-
 		lp->d_magic = DISKMAGIC;
 		lp->d_magic2 = DISKMAGIC;
-		pp = &lp->d_partitions[RAW_PART];
-		pp->p_offset = 0;
-		pp->p_size = sp->ds_size;
 
 		lp->d_npartitions = MAXPARTITIONS;
 		if (lp->d_interleave == 0)
@@ -564,7 +558,23 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		lp->d_sbsize = SBSIZE;
 		lp->d_secpercyl = lp->d_nsectors * lp->d_ntracks;
 		lp->d_ncylinders = sp->ds_size / lp->d_secpercyl;
+
+		/*
+		 * Set or Modify the partition sizes to accomodate the slice,
+		 * since we started with a copy of the virgin label stored
+		 * in the whole-disk-slice and we are probably not a
+		 * whole-disk slice.
+		 */
 		lp->d_secperunit = sp->ds_size;
+		pp = &lp->d_partitions[RAW_PART];
+		pp->p_offset = 0;
+		pp->p_size = lp->d_secperunit;
+		if (info->d_dsflags & DSO_COMPATPARTA) {
+			pp = &lp->d_partitions[0];
+			pp->p_offset = 0;
+			pp->p_size = lp->d_secperunit;
+			pp->p_fstype = FS_OTHER;
+		}
 		lp->d_checksum = 0;
 		lp->d_checksum = dkcksum(lp);
 		return (0);
