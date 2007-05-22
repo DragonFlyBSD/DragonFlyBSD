@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.43 2007/05/17 03:20:07 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.44 2007/05/22 21:28:56 dillon Exp $
  */
 /*
  * Copyright (c) 1995 Jason R. Thorpe.
@@ -108,7 +108,7 @@
  * @(#)cd.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $
  * $NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.43 2007/05/17 03:20:07 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.44 2007/05/22 21:28:56 dillon Exp $
  */
 
 /*
@@ -196,9 +196,6 @@ struct ccdbuf {
 
 /* bits in cb_pflags */
 #define CCDPF_MIRROR_DONE 1	/* if set, mirror counterpart is done */
-
-#define CCDLABELDEV(dev)	\
-	(make_sub_dev(dev, dkmakeminor(ccdunit((dev)), 0, RAW_PART)))
 
 static d_open_t ccdopen;
 static d_close_t ccdclose;
