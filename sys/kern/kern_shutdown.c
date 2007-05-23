@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.53 2007/05/19 07:05:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.54 2007/05/23 17:09:33 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -53,6 +53,8 @@
 #include <sys/diskslice.h>
 #include <sys/reboot.h>
 #include <sys/proc.h>
+#include <sys/fcntl.h>		/* FREAD	*/
+#include <sys/stat.h>		/* S_IFCHR	*/
 #include <sys/vnode.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
@@ -551,13 +553,29 @@ setdumpdev(cdev_t dev)
 	struct partinfo pinfo;
 	u_int64_t newdumplo;
 	int error;
+	int doopen;
 
 	if (dev == NULL) {
 		dumpdev = dev;
 		return (0);
 	}
 	bzero(&pinfo, sizeof(pinfo));
+
+	/*
+	 * We have to open the device before we can perform ioctls on it,
+	 * or the slice/label data may not be present.  Device opens are
+	 * usually tracked by specfs, but the dump device can be set in
+	 * early boot and may not be open so this is somewhat of a hack.
+	 */
+	doopen = (dev->si_sysref.refcnt == 1);
+	if (doopen) {
+		error = dev_dopen(dev, FREAD, S_IFCHR, proc0.p_ucred);
+		if (error)
+			return (error);
+	}
 	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0, proc0.p_ucred);
+	if (doopen)
+		dev_dclose(dev, FREAD, S_IFCHR);
 	if (error || pinfo.media_blocks == 0 || pinfo.media_blksize == 0)
 		return (ENXIO);
 
