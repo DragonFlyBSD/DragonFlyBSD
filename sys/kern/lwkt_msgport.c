@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.38 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.39 2007/05/23 02:09:39 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -243,7 +243,7 @@ _lwkt_pullmsg(lwkt_port_t port, lwkt_msg_t msg)
     } else {
 	if (msg->ms_flags & MSGF_RETRIEVED) {
 	    /*
-	     * abort case, message already returned once, remvoe and
+	     * abort case, message already returned once, remove and
 	     * return the aborted message a second time after setting
 	     * ms_cmd to ms_abort.
 	     */

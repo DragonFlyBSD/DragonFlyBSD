@@ -3,7 +3,7 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.11 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.12 2007/05/23 02:09:41 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
@@ -42,7 +42,6 @@ lwkt_initmsg(lwkt_msg_t msg, lwkt_port_t rport, int flags,
 	msg->ms_abort = abort;	/* opaque */
     msg->ms_flags = MSGF_DONE | flags;
     msg->ms_reply_port = rport;
-    msg->ms_msgsize = 0;
 }
 
 /*
