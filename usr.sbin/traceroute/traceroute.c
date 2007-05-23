@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.7 2007/05/23 06:38:22 hasso Exp $
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  */
 
@@ -244,6 +244,34 @@ struct packetdata {
 	u_int32_t usec;
 };
 
+/*
+ * Support for ICMP extensions - draft-ietf-mpls-icmp-08.txt 
+ */
+#define ICMP_EXT_OFFSET  8 + 128 /* ICMP type, code, checksum (unused)
+				  * + original datagram */
+#define ICMP_EXT_VERSION 2
+
+/* ICMP Extension Header according to RFC4884. */
+#define EXT_VERSION(x)	(((x) & 0xf0000000) >> 28)
+#define EXT_CHECKSUM(x)	((x) & 0x0000ffff)
+
+/*
+ * ICMP extensions, object header
+ */
+struct icmp_ext_obj_hdr {
+	u_short length;
+	u_char  class_num;
+#define MPLS_STACK_ENTRY_CLASS 1
+	u_char  c_type;
+#define MPLS_STACK_ENTRY_C_TYPE 1
+};
+
+/* MPLS Label Stack Object. */
+#define MPLS_LABEL(x)   (((x) & 0xfffff000) >> 12)
+#define MPLS_EXP(x)     (((x) & 0x00000e00) >> 9)
+#define MPLS_STACK(x)   (((x) & 0x00000100) >> 8)
+#define MPLS_TTL(x)     ((x) & 0x000000ff)
+
 struct in_addr gateway[MAX_LSRR + 1];
 int lsrrlen = 0;
 int32_t sec_perturb;
@@ -251,6 +279,7 @@ int32_t usec_perturb;
 
 u_char packet[512], *outpacket;	/* last inbound (icmp) packet */
 
+void decode_extensions(unsigned char *, int);
 void dump_packet(void);
 int wait_for_reply(int, struct sockaddr_in *, struct timeval *);
 void send_probe(int, u_int8_t, int, struct sockaddr_in *);
@@ -283,6 +312,7 @@ int verbose;
 int waittime = 5;		/* time to wait for response (in seconds) */
 int nflag;			/* print addresses numerically */
 int dump;
+int Mflag;			/* show MPLS labels if any */
 
 int
 main(int argc, char *argv[])
@@ -310,7 +340,7 @@ main(int argc, char *argv[])
 
 	sysctl(mib, sizeof(mib)/sizeof(mib[0]), &max_ttl, &size, NULL, 0);
 
-	while ((ch = getopt(argc, argv, "SDIdg:f:m:np:q:rs:t:w:vlP:c")) != -1)
+	while ((ch = getopt(argc, argv, "SDIdg:f:m:np:q:rs:t:w:vlP:cM")) != -1)
 		switch (ch) {
 		case 'S':
 			sump = 1;
@@ -363,6 +393,9 @@ main(int argc, char *argv[])
 				errx(1, "max ttl must be %u to %u.", first_ttl,
 				    MAXTTL);
 			max_ttl = (u_int8_t)l;
+			break;
+		case 'M':
+			Mflag = 1;
 			break;
 		case 'n':
 			nflag++;
@@ -681,6 +714,8 @@ main(int argc, char *argv[])
 				timeout++;
 				loss++;
 			}
+			else if (cc && probe == nprobes - 1 && Mflag)
+				decode_extensions(packet, cc);
 			fflush(stdout);
 		}
 		if (sump)
@@ -721,6 +756,120 @@ wait_for_reply(int sock, struct sockaddr_in *from, struct timeval *sent)
 
 	free(fdsp);
 	return (cc);
+}
+
+void
+decode_extensions(unsigned char *buf, int ip_len)
+{
+	 uint32_t *cmn_hdr;
+	 struct icmp_ext_obj_hdr *obj_hdr;
+	 uint32_t mpls_hdr;
+	 int data_len, obj_len;
+	 struct ip *ip;
+
+	 ip = (struct ip *)buf;
+
+	 if (ip_len <= (int)(sizeof(struct ip) + ICMP_EXT_OFFSET)) {
+		/*
+		 * No support for ICMP extensions on this host
+		 */
+		return;
+	 }
+
+	 /*
+	  * Move forward to the start of the ICMP extensions, if present
+	  */
+	 buf += (ip->ip_hl << 2) + ICMP_EXT_OFFSET;
+	 cmn_hdr = (uint32_t *)buf;
+
+	 if (EXT_VERSION(ntohl(*cmn_hdr)) != ICMP_EXT_VERSION) {
+		/*
+		 * Unknown version
+		 */
+		return;
+	 }
+
+	 data_len = ip_len - ((u_char *)cmn_hdr - (u_char *)ip);
+
+	 /*
+	  * Check the checksum, cmn_hdr->checksum == 0 means no checksum'ing
+	  * done by sender.
+	  *
+	  * If the checksum is ok, we'll get 0, as the checksum is calculated
+	  * with the checksum field being 0'd.
+	  */
+	 if (EXT_CHECKSUM(ntohl(*cmn_hdr)) &&
+	     in_cksum((u_short *)cmn_hdr, data_len)) {
+		return;
+	 }
+
+	 buf += sizeof(*cmn_hdr);
+	 data_len -= sizeof(*cmn_hdr);
+
+	 while (data_len >= (int)sizeof(struct icmp_ext_obj_hdr)) {
+		unsigned char *nextbuf;
+
+		obj_hdr = (struct icmp_ext_obj_hdr *)buf;
+		obj_len = ntohs(obj_hdr->length);
+
+		/*
+		 * Sanity check the length field
+		 */
+		if (obj_len < (int)sizeof(*obj_hdr) || obj_len > data_len)
+			return;
+
+		/* Object has to be 4-byte aligned. */
+		if (obj_len & 3)
+			return;
+
+		nextbuf = buf + obj_len;
+		data_len -= obj_len;
+
+		/*
+		 * Move past the object header
+		 */
+		buf += sizeof(struct icmp_ext_obj_hdr);
+		obj_len -= sizeof(struct icmp_ext_obj_hdr);
+
+		switch (obj_hdr->class_num) {
+		case MPLS_STACK_ENTRY_CLASS:
+			switch (obj_hdr->c_type) {
+			case MPLS_STACK_ENTRY_C_TYPE:
+				while (obj_len >= (int)sizeof(uint32_t)) {
+					mpls_hdr = ntohl(*(uint32_t *)buf);
+
+					buf += sizeof(uint32_t);
+					obj_len -= sizeof(uint32_t);
+					printf(" [MPLS: Label %d Exp %d]",
+					    MPLS_LABEL(mpls_hdr),
+					    MPLS_EXP(mpls_hdr));
+				}
+				if (obj_len > 0) {
+					/*
+					 * Something went wrong, and we're at
+					 * a unknown offset into the packet,
+					 * ditch the rest of it.
+					 */
+					return;
+				}
+				break;
+			default:
+				/*
+				 * Unknown object, skip past it
+				 */
+				buf = nextbuf;
+				break;
+			}
+			break;
+
+		default:
+			/*
+			 * Unknown object, skip past it
+			 */
+			buf = nextbuf;
+			break;
+		}
+	}
 }
 
 void
@@ -1022,7 +1171,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-cdDIlnrSv] [-f first_ttl] [-g gateway_addr] [-m max_ttl]\n"
+	    "usage: %s [-cdDIlMnrSv] [-f first_ttl] [-g gateway_addr] [-m max_ttl]\n"
 	    "\t[-p port] [-P proto] [-q nqueries] [-s src_addr] [-t tos]\n"
 	    "\t[-w waittime] host [packetsize]\n", getprogname());
 	exit(1);

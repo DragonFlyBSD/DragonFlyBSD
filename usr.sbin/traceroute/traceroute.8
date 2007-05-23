@@ -33,8 +33,8 @@
 .\"
 .\"	@(#)traceroute.8	8.1 (Berkeley) 6/6/93
 .\"
-.\" $DragonFly: src/usr.sbin/traceroute/traceroute.8,v 1.3 2006/02/28 02:25:11 swildner Exp $
-.Dd June 6, 1993
+.\" $DragonFly: src/usr.sbin/traceroute/traceroute.8,v 1.4 2007/05/23 06:38:22 hasso Exp $
+.Dd May 22, 2007
 .Dt TRACEROUTE 8
 .Os
 .Sh NAME
@@ -43,7 +43,7 @@
 .Sh SYNOPSIS
 .Nm traceroute
 .Bk -words
-.Op Fl cdDIlnrSv
+.Op Fl cdDIlMnrSv
 .Op Fl f Ar first_ttl
 .Op Fl g Ar gateway_addr
 .Op Fl m Ar max_ttl
@@ -109,6 +109,8 @@ packets.
 The default is the value of the system's
 .Cm net.inet.ip.ttl
 MIB variable, which defaults to 64.
+.It Fl M
+If found, show the MPLS Label and the Experimental (EXP) bit for the hop.
 .It Fl n
 Print hop addresses numerically rather than symbolically and numerically
 (saves a nameserver address-to-name lookup for each gateway found on the
