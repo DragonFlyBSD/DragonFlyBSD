@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.113 2007/05/17 17:55:14 dillon Exp $
+# $DragonFly: src/sys/config/LINT,v 1.114 2007/05/23 17:07:55 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2328,7 +2328,7 @@ options 	PERIPH_1284	# Makes your computer act as a IEEE1284
 options 	DONTPROBE_1284	# Avoid boot detection of PnP parallel devices
 options 	VP0_DEBUG	# ZIP/ZIP+ debug
 options 	LPT_DEBUG	# Printer driver debug
-options 	PPC_DEBUG	# Parallel chipset level debug
+options 	PPC_DEBUG=2	# Parallel chipset level debug
 options 	PLIP_DEBUG	# Parallel network IP interface debug
 options 	PCFCLOCK_VERBOSE         # Verbose pcfclock driver
 options 	PCFCLOCK_MAX_RETRIES=5   # Maximum read tries (default 10)
@@ -2700,13 +2700,13 @@ options 	DEVICE_SYSCTLS
 #options 	DISABLE_PSE
 #options	ED_NO_MIIBUS
 options 	ENABLE_ALART
-options 	FB_DEBUG
+options 	FB_DEBUG=2
 options 	FB_INSTALL_CDEV
 options 	FE_8BIT_SUPPORT
 options 	I4B_SMP_WORKAROUND
 options 	I586_PMC_GUPROF=0x70000
 options 	IPFW2
-options 	KBDIO_DEBUG=2
+options 	KBDIO_DEBUG=10
 options 	KBD_MAXRETRY=4
 options 	KBD_MAXWAIT=6
 options 	KBD_RESETDELAY=201
@@ -2719,7 +2719,7 @@ options 	LOUTB
 options 	METEOR_TEST_VIDEO
 options 	NETATALKDEBUG
 options 	PANIC_DEBUG
-options 	PSM_DEBUG=1
+options 	PSM_DEBUG=4
 options 	SCSI_NCR_DEBUG
 options 	SCSI_NCR_MAX_SYNC=10000
 options 	SCSI_NCR_MAX_WIDE=1
