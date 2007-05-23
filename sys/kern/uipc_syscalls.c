@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.80 2007/04/22 01:13:10 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.81 2007/05/23 08:57:05 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -78,6 +78,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <net/netmsg2.h>
 
 #ifdef SCTP
 #include <netinet/sctp_peeloff.h>
@@ -214,7 +215,7 @@ soaccept_predicate(struct netmsg *msg0)
 	struct socket *head = msg->nm_so;
 
 	if (head->so_error != 0) {
-		msg->nm_lmsg.ms_error = head->so_error;
+		msg->nm_netmsg.nm_lmsg.ms_error = head->so_error;
 		return (TRUE);
 	}
 	if (!TAILQ_EMPTY(&head->so_comp)) {
@@ -223,15 +224,15 @@ soaccept_predicate(struct netmsg *msg0)
 		TAILQ_REMOVE(&head->so_comp, msg->nm_so, so_list);
 		head->so_qlen--;
 
-		msg->nm_lmsg.ms_error = 0;
+		msg->nm_netmsg.nm_lmsg.ms_error = 0;
 		return (TRUE);
 	}
 	if (head->so_state & SS_CANTRCVMORE) {
-		msg->nm_lmsg.ms_error = ECONNABORTED;
+		msg->nm_netmsg.nm_lmsg.ms_error = ECONNABORTED;
 		return (TRUE);
 	}
 	if (msg->nm_fflags & FNONBLOCK) {
-		msg->nm_lmsg.ms_error = EWOULDBLOCK;
+		msg->nm_netmsg.nm_lmsg.ms_error = EWOULDBLOCK;
 		return (TRUE);
 	}
 
@@ -287,15 +288,15 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 
 	/* optimize for uniprocessor case later XXX JH */
 	port = head->so_proto->pr_mport(head, NULL, PRU_PRED);
-	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport,
-		     MSGF_PCATCH | MSGF_ABORTABLE,
-		     lwkt_cmd_func(netmsg_so_notify),
-		     lwkt_cmd_func(netmsg_so_notify_abort));
+	netmsg_init_abortable(&msg.nm_netmsg, &curthread->td_msgport,
+			      MSGF_PCATCH,
+			      netmsg_so_notify,
+			      netmsg_so_notify_doabort);
 	msg.nm_predicate = soaccept_predicate;
 	msg.nm_fflags = fflags;
 	msg.nm_so = head;
 	msg.nm_etype = NM_REVENT;
-	error = lwkt_domsg(port, &msg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
 	if (error)
 		goto done;
 
@@ -437,7 +438,7 @@ soconnected_predicate(struct netmsg *msg0)
 
 	/* check predicate */
 	if (!(so->so_state & SS_ISCONNECTING) || so->so_error != 0) {
-		msg->nm_lmsg.ms_error = so->so_error;
+		msg->nm_netmsg.nm_lmsg.ms_error = so->so_error;
 		return (TRUE);
 	}
 
@@ -481,15 +482,15 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 		lwkt_port_t port;
 
 		port = so->so_proto->pr_mport(so, sa, PRU_PRED);
-		lwkt_initmsg(&msg.nm_lmsg, 
-			    &curthread->td_msgport,
-			    MSGF_PCATCH | MSGF_ABORTABLE,
-			    lwkt_cmd_func(netmsg_so_notify),
-			    lwkt_cmd_func(netmsg_so_notify_abort));
+		netmsg_init_abortable(&msg.nm_netmsg, 
+				      &curthread->td_msgport,
+				      MSGF_PCATCH,
+				      netmsg_so_notify,
+				      netmsg_so_notify_doabort);
 		msg.nm_predicate = soconnected_predicate;
 		msg.nm_so = so;
 		msg.nm_etype = NM_REVENT;
-		error = lwkt_domsg(port, &msg.nm_lmsg);
+		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
 	}
 	if (error == 0) {
 		error = so->so_error;

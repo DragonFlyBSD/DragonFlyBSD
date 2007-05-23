@@ -69,7 +69,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.29 2007/04/22 01:13:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.30 2007/05/23 08:57:09 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -89,6 +89,7 @@
 #include <sys/in_cksum.h>
 
 #include <sys/msgport2.h>
+#include <net/netmsg2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -160,7 +161,7 @@ static struct syncache *syncookie_lookup(struct in_conninfo *,
 #define TCP_SYNCACHE_BUCKETLIMIT	30
 
 struct netmsg_sc_timer {
-	struct lwkt_msg nm_lmsg;
+	struct netmsg nm_netmsg;
 	struct msgrec *nm_mrec;		/* back pointer to containing msgrec */
 };
 
@@ -170,7 +171,7 @@ struct msgrec {
 	int slot;			/* constant after init */
 };
 
-static int syncache_timer_handler(lwkt_msg_t);
+static void syncache_timer_handler(netmsg_t);
 
 struct tcp_syncache {
 	struct	vm_zone *zone;
@@ -333,10 +334,9 @@ syncache_init(void)
 			syncache_percpu->mrec[i].port = tcp_cport(cpu);
 			syncache_percpu->mrec[i].msg.nm_mrec =
 			    &syncache_percpu->mrec[i];
-			lwkt_initmsg(&syncache_percpu->mrec[i].msg.nm_lmsg,
-			    &syncache_null_rport, 0,
-			    lwkt_cmd_func(syncache_timer_handler),
-			    lwkt_cmd_op_none);
+			netmsg_init(&syncache_percpu->mrec[i].msg.nm_netmsg,
+				    &syncache_null_rport, 0,
+				    syncache_timer_handler);
 		}
 	}
 
@@ -449,7 +449,7 @@ syncache_timer(void *p)
 {
 	struct netmsg_sc_timer *msg = p;
 
-	lwkt_sendmsg(msg->nm_mrec->port, &msg->nm_lmsg);
+	lwkt_sendmsg(msg->nm_mrec->port, &msg->nm_netmsg.nm_lmsg);
 }
 
 /*
@@ -463,15 +463,15 @@ syncache_timer(void *p)
  * are any entries still on the queue and deactivate it otherwise.  Only after
  * a timer has been deactivated here can it be restarted by syncache_timeout().
  */
-static int
-syncache_timer_handler(lwkt_msg_t msg)
+static void
+syncache_timer_handler(netmsg_t netmsg)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
 	struct syncache *sc, *nsc;
 	struct inpcb *inp;
 	int slot;
 
-	slot = ((struct netmsg_sc_timer *)msg)->nm_mrec->slot;
+	slot = ((struct netmsg_sc_timer *)netmsg)->nm_mrec->slot;
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 
 	nsc = TAILQ_FIRST(&syncache_percpu->timerq[slot]);
@@ -506,8 +506,7 @@ syncache_timer_handler(lwkt_msg_t msg)
 	else
 		callout_deactivate(&syncache_percpu->tt_timerq[slot]);
 
-	lwkt_replymsg(msg, 0);
-	return (EASYNC);
+	lwkt_replymsg(&netmsg->nm_lmsg, 0);
 }
 
 /*

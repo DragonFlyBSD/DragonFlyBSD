@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.13 2006/12/22 23:44:57 swildner Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.14 2007/05/23 08:57:10 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -62,6 +62,7 @@
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/bpf.h>
+#include <net/netisr.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -96,9 +97,10 @@
 #endif /* INET6 */
 
 #include <sys/in_cksum.h>
+#include <sys/ucred.h>
 #include <machine/limits.h>
 #include <sys/msgport2.h>
-#include <sys/ucred.h>
+#include <net/netmsg2.h>
 
 extern int ip_optcopy(struct ip *, struct ip *);
 
@@ -2157,7 +2159,7 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 
 #ifdef SMP
 struct netmsg_hashlookup {
-	struct lwkt_msg		nm_lmsg;
+	struct netmsg		nm_netmsg;
 	struct inpcb		**nm_pinp;
 	struct inpcbinfo    	*nm_pcbinfo;
 	struct pf_addr		*nm_saddr;
@@ -2167,8 +2169,8 @@ struct netmsg_hashlookup {
 	sa_family_t		nm_af;
 };
 
-static int
-in_pcblookup_hash_handler(struct lwkt_msg *msg0)
+static void
+in_pcblookup_hash_handler(struct netmsg *msg0)
 {
 	struct netmsg_hashlookup *msg = (struct netmsg_hashlookup *)msg0;
 
@@ -2182,8 +2184,7 @@ in_pcblookup_hash_handler(struct lwkt_msg *msg0)
 		    &msg->nm_saddr->v6, msg->nm_sport, &msg->nm_daddr->v6,
 		    msg->nm_dport, INPLOOKUP_WILDCARD, NULL);
 #endif /* INET6 */
-	lwkt_replymsg(&msg->nm_lmsg, 0);
-	return (EASYNC);
+	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
 }
 #endif /* SMP */
 
@@ -2228,9 +2229,8 @@ pf_socket_lookup(uid_t *uid, gid_t *gid, int direction, struct pf_pdesc *pd)
 		 */
 		if (pi_cpu != mycpu->gd_cpuid) {
 			msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_INTWAIT);
-			lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
-			    lwkt_cmd_func(in_pcblookup_hash_handler),
-			    lwkt_cmd_op_none);
+			netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
+				    in_pcblookup_hash_handler);
 			msg->nm_pinp = &inp;
 			msg->nm_pcbinfo = pi;
 			msg->nm_saddr = saddr;
@@ -2284,7 +2284,8 @@ pf_socket_lookup(uid_t *uid, gid_t *gid, int direction, struct pf_pdesc *pd)
 	case AF_INET:
 #ifdef SMP
 		if (msg != NULL) {
-			lwkt_sendmsg(tcp_cport(pi_cpu), &msg->nm_lmsg);
+			lwkt_sendmsg(tcp_cport(pi_cpu),
+				     &msg->nm_netmsg.nm_lmsg);
 		} else
 #endif /* SMP */
 		{

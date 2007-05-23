@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.26 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.27 2007/05/23 08:57:04 dillon Exp $
  */
 
 #include "opt_polling.h"
@@ -45,8 +45,8 @@
 /* the two netisr handlers */
 static int sysctl_pollhz(SYSCTL_HANDLER_ARGS);
 static int sysctl_polling(SYSCTL_HANDLER_ARGS);
-static int netisr_poll(struct netmsg *);
-static int netisr_pollmore(struct netmsg *);
+static void netisr_poll(struct netmsg *);
+static void netisr_pollmore(struct netmsg *);
 static void pollclock(systimer_t, struct intrframe *);
 
 void init_device_poll(void);		/* init routine			*/
@@ -309,7 +309,7 @@ pollclock(systimer_t info __unused, struct intrframe *frame __unused)
 static struct timeval poll_start_t;
 
 /* ARGSUSED */
-static int
+static void
 netisr_pollmore(struct netmsg *msg)
 {
 	struct timeval t;
@@ -353,7 +353,6 @@ netisr_pollmore(struct netmsg *msg)
 	}
 out:
 	crit_exit();
-	return(EASYNC);
 }
 
 /*
@@ -367,7 +366,7 @@ out:
  * section to operate.
  */
 /* ARGSUSED */
-static int
+static void
 netisr_poll(struct netmsg *msg)
 {
 	static int reg_frac_count;
@@ -446,7 +445,6 @@ netisr_poll(struct netmsg *msg)
 	schednetisr(NETISR_POLLMORE);
 	phase = 4;
 	crit_exit();
-	return(EASYNC);
 }
 
 /*

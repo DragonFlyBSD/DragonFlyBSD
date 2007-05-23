@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.30 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.31 2007/05/23 08:57:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +54,9 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <net/netmsg2.h>
 
-static int netmsg_sync_func(struct netmsg *msg);
+static void netmsg_sync_func(struct netmsg *msg);
 
 struct netmsg_port_registration {
     TAILQ_ENTRY(netmsg_port_registration) npr_entry;
@@ -104,13 +105,13 @@ netisr_autopanic_reply(lwkt_port_t port, lwkt_msg_t msg)
 static int
 netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 {
-    int error;
+    netmsg_t netmsg = (void *)lmsg;
 
-    if ((lmsg->ms_flags & MSGF_ASYNC) == 0 && port->mp_td == curthread) {
-	error = lmsg->ms_cmd.cm_func(lmsg);
-	if (error == EASYNC && (lmsg->ms_flags & MSGF_DONE) == 0)
+    if ((lmsg->ms_flags & MSGF_SYNC) && port->mp_td == curthread) {
+	netmsg->nm_dispatch(netmsg);
+	if ((lmsg->ms_flags & MSGF_DONE) == 0)
 	    panic("netmsg_put_port: self-referential deadlock on netport");
-	return(error);
+	return(EASYNC);
     } else {
 	return(lwkt_default_putport(port, lmsg));
     }
@@ -134,24 +135,14 @@ netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 static int
 netmsg_sync_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 {
+    netmsg_t netmsg = (void *)lmsg;
     int error;
 
     lmsg->ms_flags &= ~MSGF_DONE;
     lmsg->ms_target_port = port;	/* required for abort */
-    error = lmsg->ms_cmd.cm_func(lmsg);
-    if (error == EASYNC)
-	error = lwkt_waitmsg(lmsg);
-    else
-	lmsg->ms_flags |= MSGF_DONE;
+    netmsg->nm_dispatch(netmsg);
+    error = lwkt_waitmsg(lmsg);
     return(error);
-}
-
-static void
-netmsg_sync_abortport(lwkt_port_t port, lwkt_msg_t lmsg)
-{
-    lmsg->ms_abort_port = lmsg->ms_reply_port;
-    lmsg->ms_flags |= MSGF_ABORTED;
-    lmsg->ms_abort.cm_func(lmsg);
 }
 
 static void
@@ -188,7 +179,6 @@ netisr_init(void)
      */
     lwkt_initport(&netisr_sync_port, NULL);
     netisr_sync_port.mp_putport = netmsg_sync_putport;
-    netisr_sync_port.mp_abortport = netmsg_sync_abortport;
 }
 
 SYSINIT(netisr, SI_SUB_PROTO_BEGIN, SI_ORDER_FIRST, netisr_init, NULL);
@@ -234,8 +224,7 @@ netmsg_service_sync(void)
     struct netmsg_port_registration *reg;
     struct netmsg smsg;
 
-    lwkt_initmsg(&smsg.nm_lmsg, &curthread->td_msgport, 0,
-		lwkt_cmd_func((void *)netmsg_sync_func), lwkt_cmd_op_none);
+    netmsg_init(&smsg, &curthread->td_msgport, 0, netmsg_sync_func);
 
     TAILQ_FOREACH(reg, &netreglist, npr_entry) {
 	lwkt_domsg(reg->npr_port, &smsg.nm_lmsg);
@@ -246,11 +235,10 @@ netmsg_service_sync(void)
  * The netmsg function simply replies the message.  API semantics require
  * EASYNC to be returned if the netmsg function disposes of the message.
  */
-static int
+static void
 netmsg_sync_func(struct netmsg *msg)
 {
     lwkt_replymsg(&msg->nm_lmsg, 0);
-    return(EASYNC);
 }
 
 /*
@@ -263,7 +251,7 @@ netmsg_service_loop(void *arg)
     struct netmsg *msg;
 
     while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
-	msg->nm_lmsg.ms_cmd.cm_func(&msg->nm_lmsg);
+	msg->nm_dispatch(msg);
     }
 }
 
@@ -304,11 +292,10 @@ netisr_queue(int num, struct mbuf *m)
 
     pmsg = &m->m_hdr.mh_netmsg;
 
-    lwkt_initmsg(&pmsg->nm_lmsg, &netisr_apanic_rport, 0,
-		lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
+    netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0, ni->ni_handler);
     pmsg->nm_packet = m;
-    pmsg->nm_lmsg.u.ms_result = num;
-    lwkt_sendmsg(port, &pmsg->nm_lmsg);
+    pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
+    lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
     return (0);
 }
 
@@ -317,8 +304,7 @@ netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler)
 {
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("netisr_register: bad isr %d", num));
-    lwkt_initmsg(&netisrs[num].ni_netmsg.nm_lmsg, &netisr_adone_rport, 0,
-	    lwkt_cmd_op_none, lwkt_cmd_op_none);
+    netmsg_init(&netisrs[num].ni_netmsg, &netisr_adone_rport, 0, NULL);
     netisrs[num].ni_mport = mportfn;
     netisrs[num].ni_handler = handler;
 }
@@ -386,8 +372,7 @@ schednetisr_remote(void *data)
     pmsg = &netisrs[num].ni_netmsg;
     crit_enter();
     if (pmsg->nm_lmsg.ms_flags & MSGF_DONE) {
-	lwkt_initmsg(&pmsg->nm_lmsg, &netisr_adone_rport, 0,
-		    lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
+	netmsg_init(pmsg, &netisr_adone_rport, 0, ni->ni_handler);
 	pmsg->nm_lmsg.u.ms_result = num;
 	lwkt_sendmsg(port, &pmsg->nm_lmsg);
     }

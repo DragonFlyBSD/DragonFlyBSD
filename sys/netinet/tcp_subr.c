@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.57 2007/04/22 01:13:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.58 2007/05/23 08:57:09 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -142,6 +142,8 @@
 #include <sys/md5.h>
 #include <sys/msgport2.h>
 #include <machine/smp.h>
+
+#include <net/netmsg2.h>
 
 #if !defined(KTR_TCP)
 #define KTR_TCP		KTR_ALL
@@ -380,7 +382,7 @@ tcpmsg_service_loop(void *dummy)
 	while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
 		do {
 			logtcp(rxmsg);
-			msg->nm_lmsg.ms_cmd.cm_func(&msg->nm_lmsg);
+			msg->nm_dispatch(msg);
 		} while ((msg = lwkt_getport(&curthread->td_msgport)) != NULL);
 		logtcp(delayed);
 		tcp_willblock();
@@ -720,7 +722,7 @@ tcp_drop(struct tcpcb *tp, int error)
 #ifdef SMP
 
 struct netmsg_remwildcard {
-	struct lwkt_msg		nm_lmsg;
+	struct netmsg		nm_netmsg;
 	struct inpcb		*nm_inp;
 	struct inpcbinfo	*nm_pcbinfo;
 #if defined(INET6)
@@ -735,8 +737,8 @@ struct netmsg_remwildcard {
  * inp can be detached.  We do this by cycling through the cpus, ending up
  * on the cpu controlling the inp last and then doing the disconnect.
  */
-static int
-in_pcbremwildcardhash_handler(struct lwkt_msg *msg0)
+static void
+in_pcbremwildcardhash_handler(struct netmsg *msg0)
 {
 	struct netmsg_remwildcard *msg = (struct netmsg_remwildcard *)msg0;
 	int cpu;
@@ -751,14 +753,13 @@ in_pcbremwildcardhash_handler(struct lwkt_msg *msg0)
 		else
 #endif
 			in_pcbdetach(msg->nm_inp);
-		lwkt_replymsg(&msg->nm_lmsg, 0);
+		lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
 	} else {
 		in_pcbremwildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
 		cpu = (cpu + 1) % ncpus2;
 		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_forwardmsg(tcp_cport(cpu), &msg->nm_lmsg);
+		lwkt_forwardmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
 	}
-	return (EASYNC);
 }
 
 #endif
@@ -942,16 +943,15 @@ no_valid_rt:
 
 		cpu = (inp->inp_pcbinfo->cpu + 1) % ncpus2;
 		msg = kmalloc(sizeof(struct netmsg_remwildcard),
-			    M_LWKTMSG, M_INTWAIT);
-		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
-		    lwkt_cmd_func(in_pcbremwildcardhash_handler),
-		    lwkt_cmd_op_none);
+			      M_LWKTMSG, M_INTWAIT);
+		netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
+			    in_pcbremwildcardhash_handler);
 #ifdef INET6
 		msg->nm_isinet6 = isafinet6;
 #endif
 		msg->nm_inp = inp;
 		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
 	} else
 #endif
 	{
@@ -990,18 +990,17 @@ tcp_drain_oncpu(struct inpcbhead *head)
 
 #ifdef SMP
 struct netmsg_tcp_drain {
-	struct lwkt_msg		nm_lmsg;
+	struct netmsg		nm_netmsg;
 	struct inpcbhead	*nm_head;
 };
 
-static int
-tcp_drain_handler(lwkt_msg_t lmsg)
+static void
+tcp_drain_handler(netmsg_t netmsg)
 {
-	struct netmsg_tcp_drain *nm = (void *)lmsg;
+	struct netmsg_tcp_drain *nm = (void *)netmsg;
 
 	tcp_drain_oncpu(nm->nm_head);
-	lwkt_replymsg(lmsg, 0);
-	return(EASYNC);
+	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);
 }
 #endif
 
@@ -1034,11 +1033,10 @@ tcp_drain(void)
 				    M_LWKTMSG, M_NOWAIT);
 			if (msg == NULL)
 				continue;
-			lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
-				lwkt_cmd_func(tcp_drain_handler),
-				lwkt_cmd_op_none);
+			netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
+				    tcp_drain_handler);
 			msg->nm_head = &tcbinfo[cpu].pcblisthead;
-			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
 		}
 	}
 #else

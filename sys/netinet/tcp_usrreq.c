@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.42 2007/04/22 01:13:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.43 2007/05/23 08:57:09 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -94,6 +94,8 @@
 #include <net/if.h>
 #include <net/netisr.h>
 #include <net/route.h>
+
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -312,19 +314,18 @@ tcp6_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 
 #ifdef SMP
 struct netmsg_inswildcard {
-	struct lwkt_msg		nm_lmsg;
+	struct netmsg		nm_netmsg;
 	struct inpcb		*nm_inp;
 	struct inpcbinfo	*nm_pcbinfo;
 };
 
-static int
-in_pcbinswildcardhash_handler(struct lwkt_msg *msg0)
+static void
+in_pcbinswildcardhash_handler(struct netmsg *msg0)
 {
 	struct netmsg_inswildcard *msg = (struct netmsg_inswildcard *)msg0;
 
 	in_pcbinswildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
-	lwkt_replymsg(&msg->nm_lmsg, 0);
-	return (EASYNC);
+	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
 }
 #endif
 
@@ -364,13 +365,12 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 		}
 
 		msg = kmalloc(sizeof(struct netmsg_inswildcard), M_LWKTMSG,
-		    M_INTWAIT);
-		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
-		    lwkt_cmd_func(in_pcbinswildcardhash_handler),
-		    lwkt_cmd_op_none);
+			      M_INTWAIT);
+		netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
+			    in_pcbinswildcardhash_handler);
 		msg->nm_inp = inp;
 		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
 	}
 #else
 	in_pcbinswildcardhash(inp);
@@ -414,13 +414,12 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 		}
 
 		msg = kmalloc(sizeof(struct netmsg_inswildcard), M_LWKTMSG,
-		    M_INTWAIT);
-		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
-		    lwkt_cmd_func(in_pcbinswildcardhash_handler),
-		    lwkt_cmd_op_none);
+			      M_INTWAIT);
+		netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
+			    in_pcbinswildcardhash_handler);
 		msg->nm_inp = inp;
 		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
 	}
 #else
 	in_pcbinswildcardhash(inp);
@@ -921,21 +920,20 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 #ifdef SMP
 
 struct netmsg_tcp_connect {
-	struct lwkt_msg		nm_lmsg;
+	struct netmsg		nm_netmsg;
 	struct tcpcb		*nm_tp;
 	struct sockaddr_in	*nm_sin;
 	struct sockaddr_in	*nm_ifsin;
 };
 
-static int
-tcp_connect_handler(lwkt_msg_t lmsg)
+static void
+tcp_connect_handler(netmsg_t netmsg)
 {
-	struct netmsg_tcp_connect *msg = (void *)lmsg;
+	struct netmsg_tcp_connect *msg = (void *)netmsg;
 	int error;
 
 	error = tcp_connect_oncpu(msg->nm_tp, msg->nm_sin, msg->nm_ifsin);
-	lwkt_replymsg(lmsg, error);
-	return(EASYNC);
+	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, error);
 }
 
 #endif
@@ -985,12 +983,12 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	if (port->mp_td != curthread) {
 		struct netmsg_tcp_connect msg;
 
-		lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
-		    lwkt_cmd_func(tcp_connect_handler), lwkt_cmd_op_none);
+		netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
+			    tcp_connect_handler);
 		msg.nm_tp = tp;
 		msg.nm_sin = sin;
 		msg.nm_ifsin = if_sin;
-		error = lwkt_domsg(port, &msg.nm_lmsg);
+		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
 	} else
 #endif
 		error = tcp_connect_oncpu(tp, sin, if_sin);

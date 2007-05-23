@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.66 2007/04/04 06:13:26 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.67 2007/05/23 08:57:09 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -94,9 +94,6 @@
 #include <sys/sysctl.h>
 #include <sys/in_cksum.h>
 
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
-
 #include <machine/stdarg.h>
 
 #include <net/if.h>
@@ -116,6 +113,9 @@
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
 
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+#include <net/netmsg2.h>
 
 #include <sys/socketvar.h>
 
@@ -307,7 +307,7 @@ static int		ip_dooptions (struct mbuf *m, int,
 static void		ip_forward (struct mbuf *m, boolean_t using_srcrt,
 					struct sockaddr_in *next_hop);
 static void		ip_freef (struct ipq *);
-static int		ip_input_handler (struct netmsg *);
+static void		ip_input_handler (struct netmsg *);
 static struct mbuf	*ip_reass (struct mbuf *, struct ipq *,
 					struct ipq *, u_int32_t *);
 
@@ -406,35 +406,33 @@ transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip,
 }
 
 struct netmsg_transport_packet {
-	struct lwkt_msg		nm_lmsg;
+	struct netmsg		nm_netmsg;
 	struct mbuf		*nm_mbuf;
 	int			nm_hlen;
 	boolean_t		nm_hasnexthop;
 	struct sockaddr_in	nm_nexthop;
 };
 
-static int
-transport_processing_handler(lwkt_msg_t lmsg)
+static void
+transport_processing_handler(netmsg_t netmsg)
 {
-	struct netmsg_transport_packet *msg = (void *)lmsg;
+	struct netmsg_transport_packet *msg = (void *)netmsg;
 	struct sockaddr_in *nexthop;
 	struct ip *ip;
 
 	ip = mtod(msg->nm_mbuf, struct ip *);
 	nexthop = msg->nm_hasnexthop ? &msg->nm_nexthop : NULL;
 	transport_processing_oncpu(msg->nm_mbuf, msg->nm_hlen, ip, nexthop);
-	lwkt_replymsg(lmsg, 0);
-	return(EASYNC);
+	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
 }
 
-static int
+static void
 ip_input_handler(struct netmsg *msg0)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg0)->nm_packet;
 
 	ip_input(m);
 	/* msg0 was embedded in the mbuf, do not reply! */
-	return(EASYNC);
 }
 
 /*
@@ -1087,9 +1085,8 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		if (msg == NULL)
 			goto bad;
 
-		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
-			lwkt_cmd_func(transport_processing_handler),
-			lwkt_cmd_op_none);
+		netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
+			    transport_processing_handler);
 		msg->nm_hlen = hlen;
 		msg->nm_hasnexthop = (args.next_hop != NULL);
 		if (msg->nm_hasnexthop)
@@ -1099,7 +1096,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		ip = mtod(m, struct ip *);
 		ip->ip_len = ntohs(ip->ip_len);
 		ip->ip_off = ntohs(ip->ip_off);
-		lwkt_sendmsg(port, &msg->nm_lmsg);
+		lwkt_sendmsg(port, &msg->nm_netmsg.nm_lmsg);
 	} else {
 		transport_processing_oncpu(m, hlen, ip, args.next_hop);
 	}

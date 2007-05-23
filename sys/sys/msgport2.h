@@ -3,7 +3,7 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.12 2007/05/23 02:09:41 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.13 2007/05/23 08:56:59 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
@@ -19,69 +19,30 @@
 #include <sys/thread2.h>
 #endif
 
-#define lwkt_cmd_op_none	lwkt_cmd_op(0)
-
-typedef int (*lwkt_cmd_func_t)(lwkt_msg_t);
-
 /*
  * Initialize a LWKT message structure.  Note that if the message supports
- * an abort MSGF_ABORTABLE must be passed in flags and an abort command
- * supplied.  If abort is not supported then lwkt_cmd_op_none is passed as
- * the abort command argument by convention.
+ * an abort MSGF_ABORTABLE must be passed in flags.
  *
  * Note that other areas of the LWKT msg may already be initialized, so we
  * do not zero the message here.
+ *
+ * Messages are marked as DONE until sent.
  */
 static __inline
 void
-lwkt_initmsg(lwkt_msg_t msg, lwkt_port_t rport, int flags, 
-		lwkt_cmd_t cmd, lwkt_cmd_t abort)
+lwkt_initmsg(lwkt_msg_t msg, lwkt_port_t rport, int flags)
 {
-    msg->ms_cmd = cmd;		/* opaque */
-    if (flags & MSGF_ABORTABLE)	/* constant optimized conditional */
-	msg->ms_abort = abort;	/* opaque */
     msg->ms_flags = MSGF_DONE | flags;
     msg->ms_reply_port = rport;
 }
 
-/*
- * These inlines convert specific types to the lwkt_cmd_t type.  The compiler
- * should be able to optimize this whole mess out.
- */
-static __inline
-lwkt_cmd_t
-lwkt_cmd_op(int op)
-{
-    lwkt_cmd_t cmd;
-
-    cmd.cm_op = op;
-    return(cmd);
-}
-
-static __inline
-lwkt_cmd_t
-lwkt_cmd_func(int (*func)(lwkt_msg_t))
-{
-    lwkt_cmd_t cmd;
-
-    cmd.cm_func = func;
-    return(cmd);
-}
-
 static __inline
 void
-lwkt_initmsg_simple(lwkt_msg_t msg, int op)
+lwkt_initmsg_abortable(lwkt_msg_t msg, lwkt_port_t rport, int flags,
+		       void (*abortfn)(lwkt_msg_t))
 {
-    lwkt_initmsg(msg, &curthread->td_msgport, 0,
-	lwkt_cmd_op(op), lwkt_cmd_op(0));
-}
-
-static __inline
-void
-lwkt_reinitmsg(lwkt_msg_t msg, lwkt_port_t rport)
-{
-    msg->ms_flags = (msg->ms_flags & (MSGF_ASYNC | MSGF_ABORTABLE)) | MSGF_DONE;
-    msg->ms_reply_port = rport;
+    lwkt_initmsg(msg, rport, flags | MSGF_ABORTABLE);
+    msg->ms_abortfn = abortfn;
 }
 
 static __inline

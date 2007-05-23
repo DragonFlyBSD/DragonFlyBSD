@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip6.h,v 1.2.2.2 2001/07/03 11:01:46 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip6.h,v 1.6 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip6.h,v 1.7 2007/05/23 08:57:09 dillon Exp $	*/
 /*	$KAME: ip6.h,v 1.18 2001/03/29 05:34:30 itojun Exp $	*/
 
 /*
@@ -270,6 +270,9 @@ do {									\
 	}								\
     }									\
 } while (0)
+
+#define IP6_EXTHDR_CHECK_VOIDRET(m, off, hlen)		\
+	IP6_EXTHDR_CHECK(m, off, hlen, )
 
 /*
  * IP6_EXTHDR_GET ensures that intermediate protocol header (from "off" to

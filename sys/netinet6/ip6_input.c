@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.33 2007/05/07 13:00:16 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.34 2007/05/23 08:57:09 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -159,7 +159,7 @@ struct ip6stat ip6stat;
 static void ip6_init2 (void *);
 static struct ip6aux *ip6_setdstifaddr (struct mbuf *, struct in6_ifaddr *);
 static int ip6_hopopts_input (u_int32_t *, u_int32_t *, struct mbuf **, int *);
-static int ip6_input(struct netmsg *msg);
+static void ip6_input(struct netmsg *msg);
 #ifdef PULLDOWN_TEST
 static struct mbuf *ip6_pullexthdr (struct mbuf *, size_t, int);
 #endif
@@ -237,7 +237,7 @@ SYSINIT(netinet6init2, SI_SUB_PROTO_DOMAIN, SI_ORDER_MIDDLE, ip6_init2, NULL);
 extern struct	route_in6 ip6_forward_rt;
 
 static
-int
+void
 ip6_input(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -310,7 +310,7 @@ ip6_input(struct netmsg *msg)
 		m_freem(m);
 		m = n;
 	}
-	IP6_EXTHDR_CHECK(m, 0, sizeof(struct ip6_hdr), EASYNC);
+	IP6_EXTHDR_CHECK_VOIDRET(m, 0, sizeof(struct ip6_hdr));
 #endif
 
 	if (m->m_len < sizeof(struct ip6_hdr)) {
@@ -355,7 +355,7 @@ ip6_input(struct netmsg *msg)
 #ifdef ALTQ
 	if (altq_input != NULL && (*altq_input)(m, AF_INET6) == 0) {
 		/* packet is dropped by traffic conditioner */
-		return (ENOBUFS);
+		return;
 	}
 #endif
 
@@ -839,8 +839,8 @@ hbhcheck:
 bad:
 	m_freem(m);
 bad2:
+	;
 	/* msg was embedded in the mbuf, do not reply! */
-	return (EASYNC);
 }
 
 /*

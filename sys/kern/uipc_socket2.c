@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.28 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.29 2007/05/23 08:57:05 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -327,10 +327,10 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 		struct netmsg_so_notify *msg, *nmsg;
 
 		TAILQ_FOREACH_MUTABLE(msg, &selinfo->si_mlist, nm_list, nmsg) {
-			if (msg->nm_predicate((struct netmsg *)msg)) {
+			if (msg->nm_predicate(&msg->nm_netmsg)) {
 				TAILQ_REMOVE(&selinfo->si_mlist, msg, nm_list);
-				lwkt_replymsg(&msg->nm_lmsg, 
-						msg->nm_lmsg.ms_error);
+				lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 
+					      msg->nm_netmsg.nm_lmsg.ms_error);
 			}
 		}
 		if (TAILQ_EMPTY(&ssb->ssb_sel.si_mlist))

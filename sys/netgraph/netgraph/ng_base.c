@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.23 2006/12/22 23:44:57 swildner Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.24 2007/05/23 08:57:09 dillon Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -88,7 +88,7 @@ static int	ng_generic_msg(node_p here, struct ng_mesg *msg,
 			const char *retaddr, struct ng_mesg ** resp);
 static ng_ID_t	ng_decodeidname(const char *name);
 static int	ngb_mod_event(module_t mod, int event, void *data);
-static int	ngintr(struct netmsg *);
+static void	ngintr(struct netmsg *);
 static int	ng_load_module(const char *);
 static int	ng_unload_module(const char *);
 
@@ -2036,7 +2036,7 @@ ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
 /*
  * Pick an item off the queue, process it, and dispose of the queue entry.
  */
-static int
+static void
 ngintr(struct netmsg *pmsg)
 {
 	hook_p  hook;
@@ -2093,7 +2093,7 @@ ngintr(struct netmsg *pmsg)
 		}
 	}
 out:
-	return(EASYNC);
+	;
 }
 
 

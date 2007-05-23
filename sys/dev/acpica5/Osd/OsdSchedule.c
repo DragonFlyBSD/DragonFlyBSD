@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSchedule.c,v 1.28 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.7 2007/01/17 17:31:19 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.8 2007/05/23 08:57:10 dillon Exp $
  */
 
 /*
@@ -130,8 +130,7 @@ AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Function,
 
     /* Note: Interrupt Context */
     at = kmalloc(sizeof(*at), M_ACPITASK, M_INTWAIT | M_ZERO);
-    lwkt_initmsg(&at->at_msg, &acpi_afree_rport, 0, 
-		lwkt_cmd_op_none, lwkt_cmd_op_none);
+    lwkt_initmsg(&at->at_msg, &acpi_afree_rport, 0);
     at->at_function = Function;
     at->at_context = Context;
     at->at_type = Type;

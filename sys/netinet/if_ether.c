@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.36 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.37 2007/05/23 08:57:09 dillon Exp $
  */
 
 /*
@@ -85,9 +85,6 @@
 #include <sys/socket.h>
 #include <sys/syslog.h>
 
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
-
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
@@ -101,6 +98,11 @@
 
 #include <net/if_arc.h>
 #include <net/iso88025.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+#include <net/netmsg2.h>
+
 
 #define SIN(s) ((struct sockaddr_in *)s)
 #define SDL(s) ((struct sockaddr_dl *)s)
@@ -146,7 +148,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 static void	arp_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest (struct ifnet *,
 			struct in_addr *, struct in_addr *, u_char *);
-static int	arpintr(struct netmsg *);
+static void	arpintr(struct netmsg *);
 static void	arptfree (struct llinfo_arp *);
 static void	arptimer (void *);
 static struct llinfo_arp
@@ -512,7 +514,7 @@ arpresolve(
  * Common length and type checks are done here,
  * then the protocol-specific routine is called.
  */
-static int
+static void
 arpintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -552,8 +554,8 @@ arpintr(struct netmsg *msg)
 out1:
 	m_freem(m);
 out2:
+	;
 	/* msg was embedded in the mbuf, do not reply! */
-	return(EASYNC);
 }
 
 #ifdef INET
@@ -707,13 +709,13 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 #ifdef SMP
 
 struct netmsg_arp_update {
-	struct lwkt_msg lmsg;
+	struct netmsg	netmsg;
 	struct mbuf	*m;
 	in_addr_t	saddr;
 	boolean_t	create;
 };
 
-static int arp_update_msghandler(struct lwkt_msg *lmsg);
+static void arp_update_msghandler(struct netmsg *netmsg);
 
 #endif
 
@@ -822,12 +824,12 @@ match:
 		goto reply;
 	}
 #ifdef SMP
-	lwkt_initmsg(&msg.lmsg, &curthread->td_msgport, 0, 
-		     lwkt_cmd_func(arp_update_msghandler), lwkt_cmd_op_none);
+	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0, 
+		    arp_update_msghandler);
 	msg.m = m;
 	msg.saddr = isaddr.s_addr;
 	msg.create = (itaddr.s_addr == myaddr.s_addr);
-	lwkt_domsg(rtable_portfn(0), &msg.lmsg);
+	lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg);
 #endif
 	arp_update_oncpu(m, isaddr.s_addr, (itaddr.s_addr == myaddr.s_addr),
 			 TRUE);
@@ -938,21 +940,20 @@ reply:
 #ifdef SMP
 
 static
-int
-arp_update_msghandler(struct lwkt_msg *lmsg)
+void
+arp_update_msghandler(struct netmsg *netmsg)
 {
-	struct netmsg_arp_update *msg = (struct netmsg_arp_update *)lmsg;
+	struct netmsg_arp_update *msg = (struct netmsg_arp_update *)netmsg;
 	int nextcpu;
 
 	arp_update_oncpu(msg->m, msg->saddr, msg->create, FALSE);
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus) {
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->lmsg);
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->netmsg.nm_lmsg);
 	} else {
-		lwkt_replymsg(&msg->lmsg, 0);
+		lwkt_replymsg(&msg->netmsg.nm_lmsg, 0);
 	}
-	return (0);
 }
 
 #endif

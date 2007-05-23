@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.17 2006/12/10 02:03:56 sephe Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.18 2007/05/23 08:57:10 dillon Exp $
  */
 
 /*
@@ -73,7 +73,7 @@
 
 Static int netisr_inited = 0;
 
-Static int
+Static void
 usbintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -84,7 +84,6 @@ usbintr(struct netmsg *msg)
 	(*ifp->if_input)(ifp, m);
 	lwkt_serialize_exit(ifp->if_serializer);
 	/* the msg is embedded in the mbuf, do not reply it */
-	return EASYNC;
 }
 
 void

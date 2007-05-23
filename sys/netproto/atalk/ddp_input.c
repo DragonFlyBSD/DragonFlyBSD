@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.13 2007/04/22 01:13:15 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.14 2007/05/23 08:57:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,7 +39,7 @@ static void     ddp_input(struct mbuf *, struct ifnet *, struct elaphdr *, int);
 /*
  * Could probably merge these two code segments a little better...
  */
-int
+void
 at2intr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -49,10 +49,9 @@ at2intr(struct netmsg *msg)
 	 */
 	ddp_input(m, m->m_pkthdr.rcvif, NULL, 2);
 	/* msg was embedded in the mbuf, do not reply! */
-	return(EASYNC);
 }
 
-int
+void
 at1intr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
@@ -79,8 +78,8 @@ at1intr(struct netmsg *msg)
 		ddp_input(m, m->m_pkthdr.rcvif, &elh, 1);
 	}
 out:
+	;
 	/* msg was embedded in the mbuf, do not reply! */
-	return(EASYNC);
 }
 
 static void

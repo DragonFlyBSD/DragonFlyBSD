@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.20 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.21 2007/05/23 08:57:06 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -245,7 +245,7 @@ aarpresolve(struct arpcom *ac, struct mbuf *m, struct sockaddr_at *destsat,
     return (0);
 }
 
-int
+void
 aarpintr(struct netmsg *msg)
 {
     struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;   
@@ -282,8 +282,8 @@ aarpintr(struct netmsg *msg)
 out:
     m_freem(m);
 out2:
+    ;
     /* msg was embedded in the mbuf, do not reply! */
-    return(EASYNC);
 }
 
 static void

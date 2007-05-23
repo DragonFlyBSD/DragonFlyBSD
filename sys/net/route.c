@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.28 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.29 2007/05/23 08:57:10 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -79,8 +79,6 @@
 #include <sys/sysctl.h>
 #include <sys/globaldata.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -88,6 +86,10 @@
 
 #include <netinet/in.h>
 #include <net/ip_mroute/ip_mroute.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+#include <net/netmsg2.h>
 
 static struct rtstatistics rtstatistics_percpu[MAXCPU];
 #ifdef SMP
@@ -107,8 +109,8 @@ static void rtinit_rtrequest_callback(int, int, struct rt_addrinfo *,
 				      struct rtentry *, void *);
 
 #ifdef SMP
-static int rtredirect_msghandler(struct lwkt_msg *lmsg);
-static int rtrequest1_msghandler(struct lwkt_msg *lmsg);
+static void rtredirect_msghandler(struct netmsg *netmsg);
+static void rtrequest1_msghandler(struct netmsg *netmsg);
 #endif
 
 SYSCTL_NODE(_net, OID_AUTO, route, CTLFLAG_RW, 0, "Routing");
@@ -169,11 +171,11 @@ rtable_init(void)
 static void
 rtable_service_loop(void *dummy __unused)
 {
-	struct lwkt_msg *lmsg;
+	struct netmsg *netmsg;
 	thread_t td = curthread;
 
-	while ((lmsg = lwkt_waitport(&td->td_msgport, NULL)) != NULL) {
-		lmsg->ms_cmd.cm_func(lmsg);
+	while ((netmsg = lwkt_waitport(&td->td_msgport, NULL)) != NULL) {
+		netmsg->nm_dispatch(netmsg);
 	}
 }
 
@@ -426,7 +428,7 @@ out:
 #ifdef SMP
 
 struct netmsg_rtredirect {
-	struct lwkt_msg	lmsg;
+	struct netmsg	netmsg;
 	struct sockaddr *dst;
 	struct sockaddr *gateway;
 	struct sockaddr *netmask;
@@ -453,14 +455,14 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 #ifdef SMP
 	struct netmsg_rtredirect msg;
 
-	lwkt_initmsg(&msg.lmsg, &curthread->td_msgport, 0,
-		     lwkt_cmd_func(rtredirect_msghandler), lwkt_cmd_op_none);
+	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
+		    rtredirect_msghandler);
 	msg.dst = dst;
 	msg.gateway = gateway;
 	msg.netmask = netmask;
 	msg.flags = flags;
 	msg.src = src;
-	error = lwkt_domsg(rtable_portfn(0), &msg.lmsg);
+	error = lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg);
 #else
 	error = rtredirect_oncpu(dst, gateway, netmask, flags, src);
 #endif
@@ -474,20 +476,19 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 
 #ifdef SMP
 
-static int
-rtredirect_msghandler(struct lwkt_msg *lmsg)
+static void
+rtredirect_msghandler(struct netmsg *netmsg)
 {
-	struct netmsg_rtredirect *msg = (void *)lmsg;
+	struct netmsg_rtredirect *msg = (void *)netmsg;
 	int nextcpu;
 
 	rtredirect_oncpu(msg->dst, msg->gateway, msg->netmask,
 			 msg->flags, msg->src);
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus)
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->lmsg);
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &netmsg->nm_lmsg);
 	else
-		lwkt_replymsg(&msg->lmsg, 0);
-	return (0);
+		lwkt_replymsg(&netmsg->nm_lmsg, 0);
 }
 
 #endif
@@ -657,7 +658,7 @@ rtrequest_global(
 #ifdef SMP
 
 struct netmsg_rtq {
-	struct lwkt_msg		lmsg;
+	struct netmsg		netmsg;
 	int			req;
 	struct rt_addrinfo	*rtinfo;
 	rtrequest1_callback_func_t callback;
@@ -674,14 +675,14 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
 #ifdef SMP
 	struct netmsg_rtq msg;
 
-	lwkt_initmsg(&msg.lmsg, &curthread->td_msgport, 0,
-		     lwkt_cmd_func(rtrequest1_msghandler), lwkt_cmd_op_none);
-	msg.lmsg.ms_error = -1;
+	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
+		    rtrequest1_msghandler);
+	msg.netmsg.nm_lmsg.ms_error = -1;
 	msg.req = req;
 	msg.rtinfo = rtinfo;
 	msg.callback = callback;
 	msg.arg = arg;
-	error = lwkt_domsg(rtable_portfn(0), &msg.lmsg);
+	error = lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg);
 #else
 	struct rtentry *rt = NULL;
 
@@ -701,10 +702,10 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
  */
 #ifdef SMP
 
-static int
-rtrequest1_msghandler(struct lwkt_msg *lmsg)
+static void
+rtrequest1_msghandler(struct netmsg *netmsg)
 {
-	struct netmsg_rtq *msg = (void *)lmsg;
+	struct netmsg_rtq *msg = (void *)netmsg;
 	struct rtentry *rt = NULL;
 	int nextcpu;
 	int error;
@@ -721,8 +722,8 @@ rtrequest1_msghandler(struct lwkt_msg *lmsg)
 	 * are not necessarily replicated.  An overall error is returned
 	 * only if no cpus have the route in question.
 	 */
-	if (msg->lmsg.ms_error < 0 || error == 0)
-		msg->lmsg.ms_error = error;
+	if (msg->netmsg.nm_lmsg.ms_error < 0 || error == 0)
+		msg->netmsg.nm_lmsg.ms_error = error;
 
 	nextcpu = mycpuid + 1;
 	if (error && msg->req != RTM_DELETE) {
@@ -730,13 +731,13 @@ rtrequest1_msghandler(struct lwkt_msg *lmsg)
 			panic("rtrequest1_msghandler: rtrequest table "
 			      "error was not on cpu #0: %p", msg->rtinfo);
 		}
-		lwkt_replymsg(&msg->lmsg, error);
+		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
 	} else if (nextcpu < ncpus) {
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->lmsg);
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->netmsg.nm_lmsg);
 	} else {
-		lwkt_replymsg(&msg->lmsg, msg->lmsg.ms_error);
+		lwkt_replymsg(&msg->netmsg.nm_lmsg,
+			      msg->netmsg.nm_lmsg.ms_error);
 	}
-	return (0);
 }
 
 #endif
