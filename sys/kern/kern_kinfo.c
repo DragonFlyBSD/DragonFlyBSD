@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.11 2007/05/09 00:53:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.12 2007/05/24 05:45:45 dillon Exp $
  */
 
 /*
@@ -222,10 +222,10 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 	kp->kp_lwp.kl_cpuid = td->td_gd->gd_cpuid;
 
 	kp->kp_lwp.kl_wchan = (uintptr_t)td->td_wchan;
-	if (td->td_wchan)
-		kp->kp_lwp.kl_stat = LSSLEEP;
-	else
+	if (td->td_flags & TDF_RUNQ)
 		kp->kp_lwp.kl_stat = LSRUN;
+	else 
+		kp->kp_lwp.kl_stat = LSSLEEP;
 	if (td->td_wmesg) {
 		strncpy(kp->kp_lwp.kl_wmesg, td->td_wmesg, WMESGLEN);
 		kp->kp_lwp.kl_wmesg[WMESGLEN] = 0;
