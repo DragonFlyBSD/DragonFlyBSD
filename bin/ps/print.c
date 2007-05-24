@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.32 2007/05/24 20:28:15 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.33 2007/05/24 20:32:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,7 @@ state(const KINFO *k, const struct varent *vent)
 			}
 			else if (KI_LWP(k, tdflags) & TDF_SINTR)
 				*cp = 'S';	/* interruptable lwkt wait */
-			else if (KI_LWP(k, tdflags) & TDF_TSLEEPQ)
+			else if (KI_PROC(k, paddr))
 				*cp = 'D';	/* uninterruptable wait */
 			else
 				*cp = 'B';	/* uninterruptable lwkt wait */
