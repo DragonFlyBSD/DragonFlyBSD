@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.32 2007/05/24 05:51:29 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.33 2007/05/24 20:51:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -135,7 +135,7 @@ netmsg_sync_putport(lwkt_port_t port, lwkt_msg_t lmsg)
     lmsg->ms_flags &= ~MSGF_DONE;
     lmsg->ms_target_port = port;	/* required for abort */
     netmsg->nm_dispatch(netmsg);
-    error = lwkt_waitmsg(lmsg);
+    error = lwkt_waitmsg(lmsg, 0);
     return(error);
 }
 
@@ -222,7 +222,7 @@ netmsg_service_sync(void)
     netmsg_init(&smsg, &curthread->td_msgport, 0, netmsg_sync_func);
 
     TAILQ_FOREACH(reg, &netreglist, npr_entry) {
-	lwkt_domsg(reg->npr_port, &smsg.nm_lmsg);
+	lwkt_domsg(reg->npr_port, &smsg.nm_lmsg, 0);
     }
 }
 

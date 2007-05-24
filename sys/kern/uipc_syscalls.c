@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.81 2007/05/23 08:57:05 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.82 2007/05/24 20:51:16 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -289,14 +289,14 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	/* optimize for uniprocessor case later XXX JH */
 	port = head->so_proto->pr_mport(head, NULL, PRU_PRED);
 	netmsg_init_abortable(&msg.nm_netmsg, &curthread->td_msgport,
-			      MSGF_PCATCH,
+			      0,
 			      netmsg_so_notify,
 			      netmsg_so_notify_doabort);
 	msg.nm_predicate = soaccept_predicate;
 	msg.nm_fflags = fflags;
 	msg.nm_so = head;
 	msg.nm_etype = NM_REVENT;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, PCATCH);
 	if (error)
 		goto done;
 
@@ -484,13 +484,13 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 		port = so->so_proto->pr_mport(so, sa, PRU_PRED);
 		netmsg_init_abortable(&msg.nm_netmsg, 
 				      &curthread->td_msgport,
-				      MSGF_PCATCH,
+				      0,
 				      netmsg_so_notify,
 				      netmsg_so_notify_doabort);
 		msg.nm_predicate = soconnected_predicate;
 		msg.nm_so = so;
 		msg.nm_etype = NM_REVENT;
-		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, PCATCH);
 	}
 	if (error == 0) {
 		error = so->so_error;

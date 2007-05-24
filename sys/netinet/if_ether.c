@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.37 2007/05/23 08:57:09 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.38 2007/05/24 20:51:22 dillon Exp $
  */
 
 /*
@@ -829,7 +829,7 @@ match:
 	msg.m = m;
 	msg.saddr = isaddr.s_addr;
 	msg.create = (itaddr.s_addr == myaddr.s_addr);
-	lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg);
+	lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
 #endif
 	arp_update_oncpu(m, isaddr.s_addr, (itaddr.s_addr == myaddr.s_addr),
 			 TRUE);

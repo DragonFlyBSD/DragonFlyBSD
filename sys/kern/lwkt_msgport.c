@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.41 2007/05/24 05:51:27 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.42 2007/05/24 20:51:16 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -129,7 +129,7 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
  *	response if the target executes the message synchronously.
  */
 int
-lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg)
+lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg, int flags)
 {
     int error;
 
@@ -138,7 +138,7 @@ lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg)
     msg->ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
     msg->ms_flags |= MSGF_SYNC;
     if ((error = lwkt_beginmsg(port, msg)) == EASYNC) {
-	error = lwkt_waitmsg(msg);
+	error = lwkt_waitmsg(msg, flags);
     } else {
 	msg->ms_flags |= MSGF_DONE | MSGF_REPLY;
     }
@@ -202,18 +202,21 @@ lwkt_abortmsg(lwkt_msg_t msg)
 
 static void *lwkt_thread_getport(lwkt_port_t port);
 static int lwkt_thread_putport(lwkt_port_t port, lwkt_msg_t msg);
-static void *lwkt_thread_waitport(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_thread_waitmsg(lwkt_msg_t msg, int flags);
+static void *lwkt_thread_waitport(lwkt_port_t port, int flags);
 static void lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg);
 
 static void *lwkt_spin_getport(lwkt_port_t port);
 static int lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg);
-static void *lwkt_spin_waitport(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_spin_waitmsg(lwkt_msg_t msg, int flags);
+static void *lwkt_spin_waitport(lwkt_port_t port, int flags);
 static void lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg);
 
 static void lwkt_null_replyport(lwkt_port_t port, lwkt_msg_t msg);
 static void *lwkt_panic_getport(lwkt_port_t port);
 static int lwkt_panic_putport(lwkt_port_t port, lwkt_msg_t msg);
-static void *lwkt_panic_waitport(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_panic_waitmsg(lwkt_msg_t msg, int flags);
+static void *lwkt_panic_waitport(lwkt_port_t port, int flags);
 static void lwkt_panic_replyport(lwkt_port_t port, lwkt_msg_t msg);
 
 /*
@@ -224,13 +227,15 @@ void
 _lwkt_initport(lwkt_port_t port,
 	       void *(*gportfn)(lwkt_port_t),
 	       int (*pportfn)(lwkt_port_t, lwkt_msg_t),
-	       void *(*wportfn)(lwkt_port_t, lwkt_msg_t),
+	       int (*wmsgfn)(lwkt_msg_t, int),
+	       void *(*wportfn)(lwkt_port_t, int),
 	       void (*rportfn)(lwkt_port_t, lwkt_msg_t))
 {
     bzero(port, sizeof(*port));
     TAILQ_INIT(&port->mp_msgq);
     port->mp_getport = gportfn;
     port->mp_putport = pportfn;
+    port->mp_waitmsg =  wmsgfn;
     port->mp_waitport =  wportfn;
     port->mp_replyport = rportfn;
 }
@@ -247,6 +252,7 @@ lwkt_initport_thread(lwkt_port_t port, thread_t td)
     _lwkt_initport(port,
 		   lwkt_thread_getport,
 		   lwkt_thread_putport,
+		   lwkt_thread_waitmsg,
 		   lwkt_thread_waitport,
 		   lwkt_thread_replyport);
     port->mpu_td = td;
@@ -265,6 +271,7 @@ lwkt_initport_spin(lwkt_port_t port)
     _lwkt_initport(port,
 		   lwkt_spin_getport,
 		   lwkt_spin_putport,
+		   lwkt_spin_waitmsg,
 		   lwkt_spin_waitport,
 		   lwkt_spin_replyport);
     spin_init(&port->mpu_spin);
@@ -280,6 +287,7 @@ lwkt_initport_replyonly_null(lwkt_port_t port)
     _lwkt_initport(port,
 		   lwkt_panic_getport,
 		   lwkt_panic_putport,
+		   lwkt_panic_waitmsg,
 		   lwkt_panic_waitport,
 		   lwkt_null_replyport);
 }
@@ -293,7 +301,8 @@ lwkt_initport_replyonly(lwkt_port_t port,
 			void (*rportfn)(lwkt_port_t, lwkt_msg_t))
 {
     _lwkt_initport(port, lwkt_panic_getport, lwkt_panic_putport,
-			 lwkt_panic_waitport, rportfn);
+			 lwkt_panic_waitmsg, lwkt_panic_waitport,
+			 rportfn);
 }
 
 void
@@ -301,16 +310,16 @@ lwkt_initport_putonly(lwkt_port_t port,
 		      int (*pportfn)(lwkt_port_t, lwkt_msg_t))
 {
     _lwkt_initport(port, lwkt_panic_getport, pportfn,
-			 lwkt_panic_waitport, lwkt_panic_replyport);
+			 lwkt_panic_waitmsg, lwkt_panic_waitport,
+			 lwkt_panic_replyport);
 }
 
 void
 lwkt_initport_panic(lwkt_port_t port)
 {
     _lwkt_initport(port,
-		   lwkt_panic_getport,
-		   lwkt_panic_putport,
-		   lwkt_panic_waitport,
+		   lwkt_panic_getport, lwkt_panic_putport,
+		   lwkt_panic_waitmsg, lwkt_panic_waitport,
 		   lwkt_panic_replyport);
 }
 
@@ -545,87 +554,79 @@ lwkt_thread_getport(lwkt_port_t port)
 }
 
 /*
- * lwkt_thread_waitport()
+ * lwkt_thread_waitmsg()
  *
- *	If msg is NULL, dequeue the next message from the port's message
- *	queue, block until a message is ready.  This function never
- *	returns NULL.
- *
- *	If msg is non-NULL, block until the requested message has been
- *	replied, then dequeue and return it.
- *
- *	NOTE: This function should not be used to wait for specific
- *	incoming requests because MSGF_DONE only applies to replies.
- *
- *	Note that the API does not currently support multiple threads waiting
- * 	on a single port.  The port must be owned by the caller.
+ *	Wait for a particular message to be replied.  We must be the only
+ *	thread waiting on the message.  The port must be owned by the
+ *	caller.
  */
+int
+lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
+{
+    if ((msg->ms_flags & MSGF_DONE) == 0) {
+	/*
+	 * If the done bit was not set we have to block until it is.
+	 */
+	lwkt_port_t port = msg->ms_reply_port;
+	thread_t td = curthread;
+	int sentabort;
+
+	KKASSERT(port->mpu_td == td);
+	KKASSERT(msg->ms_reply_port == port);
+	crit_enter_quick(td);
+	sentabort = 0;
+
+	while ((msg->ms_flags & MSGF_DONE) == 0) {
+	    port->mp_flags |= MSGPORTF_WAITING;
+	    if (sentabort == 0) {
+		if ((sentabort = lwkt_sleep("waitmsg", flags)) != 0) {
+		    lwkt_abortmsg(msg);
+		}
+	    } else {
+		lwkt_sleep("waitabt", 0);
+	    }
+	    port->mp_flags &= ~MSGPORTF_WAITING;
+	}
+	if (msg->ms_flags & MSGF_QUEUED)
+	    _lwkt_pullmsg(port, msg);
+	crit_exit_quick(td);
+    } else {
+	/*
+	 * If the done bit was set we only have to mess around with the
+	 * message if it is queued on the reply port.
+	 */
+	if (msg->ms_flags & MSGF_QUEUED) {
+	    lwkt_port_t port = msg->ms_reply_port;
+	    thread_t td = curthread;
+
+	    KKASSERT(port->mpu_td == td);
+	    KKASSERT(msg->ms_reply_port == port);
+	    crit_enter_quick(td);
+	    _lwkt_pullmsg(port, msg);
+	    crit_exit_quick(td);
+	}
+    }
+    return(msg->ms_error);
+}
+
 void *
-lwkt_thread_waitport(lwkt_port_t port, lwkt_msg_t msg)
+lwkt_thread_waitport(lwkt_port_t port, int flags)
 {
     thread_t td = curthread;
-    int sentabort;
+    lwkt_msg_t msg;
+    int error;
 
     KKASSERT(port->mpu_td == td);
     crit_enter_quick(td);
-    if (msg == NULL) {
-	/*
-	 * Wait for any message
-	 */
-	if ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL) {
-	    port->mp_flags |= MSGPORTF_WAITING;
-	    td->td_flags |= TDF_BLOCKED;
-	    do {
-		lwkt_deschedule_self(td);
-		lwkt_switch();
-	    } while ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL);
-	    td->td_flags &= ~TDF_BLOCKED;
-	    port->mp_flags &= ~MSGPORTF_WAITING;
-	}
-	_lwkt_pullmsg(port, msg);
-    } else {
-	/*
-	 * Wait for a specific message.
-	 */
-	KKASSERT(msg->ms_reply_port == port);
-	if ((msg->ms_flags & MSGF_DONE) == 0) {
-	    sentabort = 0;
-	    while ((msg->ms_flags & MSGF_DONE) == 0) {
-		/*
-		 * MSGF_PCATCH is only set by processes which wish to
-		 * abort the message they are blocked on when a signal
-		 * occurs.  Note that we still must wait for message
-		 * completion after sending an abort request.
-		 */
-		if (msg->ms_flags & MSGF_PCATCH) {
-		    if (sentabort == 0 && CURSIG(port->mpu_td->td_lwp)) {
-			sentabort = 1;
-			lwkt_abortmsg(msg);
-			continue;
-		    }
-		}
-
-		/*
-		 * XXX set TDF_SINTR so 'ps' knows the difference between
-		 * an interruptable wait and a disk wait.  YYY eventually
-		 * move LWP_SINTR to TDF_SINTR to reduce duplication.
-		 */
-		port->mp_flags |= MSGPORTF_WAITING;
-		td->td_flags |= TDF_SINTR | TDF_BLOCKED;
-		lwkt_deschedule_self(td);
-		lwkt_switch();
-		td->td_flags &= ~(TDF_SINTR | TDF_BLOCKED);
-		port->mp_flags &= ~MSGPORTF_WAITING;
-	    }
-	}
-
-	/*
-	 * Once the MSGF_DONE bit is set, the message is stable.  We
-	 * can just check MSGF_QUEUED to determine
-	 */
-	if (msg->ms_flags & MSGF_QUEUED)
-	    _lwkt_pullmsg(port, msg);
+    while ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL) {
+	port->mp_flags |= MSGPORTF_WAITING;
+	error = lwkt_sleep("waitport", flags);
+	port->mp_flags &= ~MSGPORTF_WAITING;
+	if (error)
+		goto done;
     }
+    _lwkt_pullmsg(port, msg);
+done:
     crit_exit_quick(td);
     return(msg);
 }
@@ -638,6 +639,13 @@ lwkt_thread_waitport(lwkt_port_t port, lwkt_msg_t msg)
  * thread is accessing the port.  It must be used when a port is not owned
  * by a particular thread.  This is less optimal then thread ports but
  * you don't have a choice if there are multiple threads accessing the port.
+ *
+ * Note on MSGPORTF_WAITING - because there may be multiple threads blocked
+ * on the message port, it is the responsibility of the code doing the
+ * wakeup to clear this flag rather then the blocked threads.  Some
+ * superfluous wakeups may occur, which is ok.
+ *
+ * XXX synchronous message wakeups are not current optimized.
  */
 
 static
@@ -677,80 +685,86 @@ lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg)
 }
 
 static
-void *
-lwkt_spin_waitport(lwkt_port_t port, lwkt_msg_t msg)
+int
+lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 {
+    lwkt_port_t port;
     int sentabort;
     int error;
 
-    spin_lock_wr(&port->mpu_spin);
-    if (msg == NULL) {
-	/*
-	 * Wait for any message
-	 */
-	while ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL) {
-	    port->mp_flags |= MSGPORTF_WAITING;
-	    msleep(port, &port->mpu_spin, 0, "wport", 0);
+    if ((msg->ms_flags & MSGF_DONE) == 0) {
+	port = msg->ms_reply_port;
+	sentabort = 0;
+	spin_lock_wr(&port->mpu_spin);
+	while ((msg->ms_flags & MSGF_DONE) == 0) {
+	    void *won;
+
+	    /*
+	     * If message was sent synchronously from the beginning
+	     * the wakeup will be on the message structure, else it
+	     * will be on the port structure.
+	     */
+	    if (msg->ms_flags & MSGF_SYNC) {
+		won = msg;
+	    } else {
+		won = port;
+		port->mp_flags |= MSGPORTF_WAITING;
+	    }
+
+	    /*
+	     * Only messages which support abort can be interrupted.
+	     * We must still wait for message completion regardless.
+	     */
+	    if ((flags & PCATCH) && sentabort == 0) {
+		error = msleep(won, &port->mpu_spin, PCATCH, "waitmsg", 0);
+		if (error) {
+		    sentabort = error;
+		    spin_unlock_wr(&port->mpu_spin);
+		    lwkt_abortmsg(msg);
+		    spin_lock_wr(&port->mpu_spin);
+		}
+	    } else {
+		error = msleep(won, &port->mpu_spin, 0, "waitmsg", 0);
+	    }
 	    /* see note at the top on the MSGPORTF_WAITING flag */
 	}
-	_lwkt_pullmsg(port, msg);
-    } else {
 	/*
-	 * Wait for a specific message.
+	 * Turn EINTR into ERESTART if the signal indicates.
 	 */
-	KKASSERT(msg->ms_reply_port == port);
-	if ((msg->ms_flags & MSGF_DONE) == 0) {
-	    sentabort = 0;
-	    while ((msg->ms_flags & MSGF_DONE) == 0) {
-		void *won;
-
-		/*
-		 * If message was sent synchronously from the beginning
-		 * the wakeup will be on the message structure, else it
-		 * will be on the port structure.
-		 */
-		if (msg->ms_flags & MSGF_SYNC) {
-		    won = msg;
-		} else {
-		    won = port;
-		    port->mp_flags |= MSGPORTF_WAITING;
-		}
-
-		/*
-		 * MSGF_PCATCH is only set by processes which wish to
-		 * abort the message they are blocked on when a signal
-		 * occurs.  Note that we still must wait for message
-		 * completion after sending an abort request.
-		 *
-		 * XXX ERESTART not handled.
-		 */
-		if ((msg->ms_flags & MSGF_PCATCH) && sentabort == 0) {
-		    error = msleep(won, &port->mpu_spin, PCATCH, "wmsg", 0);
-		    if (error) {
-			sentabort = error;
-			spin_unlock_wr(&port->mpu_spin);
-			lwkt_abortmsg(msg);
-			spin_lock_wr(&port->mpu_spin);
-		    }
-		} else {
-		    error = msleep(won, &port->mpu_spin, 0, "wmsg", 0);
-		}
-		/* see note at the top on the MSGPORTF_WAITING flag */
-	    }
-	    /*
-	     * Turn EINTR into ERESTART if the signal indicates.
-	     */
-	    if (sentabort && msg->ms_error == EINTR)
-		msg->ms_error = sentabort;
-
-	    /*
-	     * Once the MSGF_DONE bit is set, the message is stable.  We
-	     * can just check MSGF_QUEUED to determine
-	     */
-	    if (msg->ms_flags & MSGF_QUEUED)
-		    _lwkt_pullmsg(port, msg);
+	if (sentabort && msg->ms_error == EINTR)
+	    msg->ms_error = sentabort;
+	if (msg->ms_flags & MSGF_QUEUED)
+		_lwkt_pullmsg(port, msg);
+	spin_unlock_wr(&port->mpu_spin);
+    } else {
+	if (msg->ms_flags & MSGF_QUEUED) {
+	    port = msg->ms_reply_port;
+	    spin_lock_wr(&port->mpu_spin);
+	    _lwkt_pullmsg(port, msg);
+	    spin_unlock_wr(&port->mpu_spin);
 	}
     }
+    return(msg->ms_error);
+}
+
+static
+void *
+lwkt_spin_waitport(lwkt_port_t port, int flags)
+{
+    lwkt_msg_t msg;
+    int error;
+
+    spin_lock_wr(&port->mpu_spin);
+    while ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL) {
+	port->mp_flags |= MSGPORTF_WAITING;
+	error = msleep(port, &port->mpu_spin, flags, "waitport", 0);
+	/* see note at the top on the MSGPORTF_WAITING flag */
+	if (error) {
+	    spin_unlock_wr(&port->mpu_spin);
+	    return(NULL);
+	}
+    }
+    _lwkt_pullmsg(port, msg);
     spin_unlock_wr(&port->mpu_spin);
     return(msg);
 }
@@ -821,10 +835,17 @@ lwkt_panic_putport(lwkt_port_t port, lwkt_msg_t msg)
 }
 
 static
-void *
-lwkt_panic_waitport(lwkt_port_t port, lwkt_msg_t msg)
+int
+lwkt_panic_waitmsg(lwkt_msg_t msg, int flags)
 {
-    panic("port %p cannot be waited on msg %p", port, msg);
+    panic("port %p msg %p cannot be waited on", msg->ms_reply_port, msg);
+}
+
+static
+void *
+lwkt_panic_waitport(lwkt_port_t port, int flags)
+{
+    panic("port %p cannot be waited on", port);
 }
 
 static

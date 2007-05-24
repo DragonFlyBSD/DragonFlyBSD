@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.29 2007/05/23 08:57:10 dillon Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.30 2007/05/24 20:51:21 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -462,7 +462,7 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 	msg.netmask = netmask;
 	msg.flags = flags;
 	msg.src = src;
-	error = lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg);
+	error = lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
 #else
 	error = rtredirect_oncpu(dst, gateway, netmask, flags, src);
 #endif
@@ -682,7 +682,7 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
 	msg.rtinfo = rtinfo;
 	msg.callback = callback;
 	msg.arg = arg;
-	error = lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg);
+	error = lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
 #else
 	struct rtentry *rt = NULL;
 

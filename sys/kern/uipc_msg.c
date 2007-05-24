@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.17 2007/05/23 08:57:05 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.18 2007/05/24 20:51:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ so_pru_abort(struct socket *so)
 		    netmsg_pru_abort);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_abort;
 	msg.nm_so = so;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -81,7 +81,7 @@ so_pru_accept(struct socket *so, struct sockaddr **nam)
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_accept;
 	msg.nm_so = so;
 	msg.nm_nam = nam;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 #endif
 }
@@ -100,7 +100,7 @@ so_pru_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	msg.nm_so = so;
 	msg.nm_proto = proto;
 	msg.nm_ai = ai;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -119,7 +119,7 @@ so_pru_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	msg.nm_so = so;
 	msg.nm_nam = nam;
 	msg.nm_td = td;		/* used only for prison_ip() XXX JH */
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -137,7 +137,7 @@ so_pru_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	msg.nm_so = so;
 	msg.nm_nam = nam;
 	msg.nm_td = td;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -154,7 +154,7 @@ so_pru_connect2(struct socket *so1, struct socket *so2)
 	msg.nm_prufn = so1->so_proto->pr_usrreqs->pru_connect2;
 	msg.nm_so1 = so1;
 	msg.nm_so2 = so2;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -177,7 +177,7 @@ so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp)
 	msg.nm_data = data;
 	msg.nm_ifp = ifp;
 	msg.nm_td = td;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 #endif
 }
@@ -194,7 +194,7 @@ so_pru_detach(struct socket *so)
 		    netmsg_pru_detach);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_detach;
 	msg.nm_so = so;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -210,7 +210,7 @@ so_pru_disconnect(struct socket *so)
 		    netmsg_pru_disconnect);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_disconnect;
 	msg.nm_so = so;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -227,7 +227,7 @@ so_pru_listen(struct socket *so, struct thread *td)
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_listen;
 	msg.nm_so = so;
 	msg.nm_td = td;		/* used only for prison_ip() XXX JH */
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -244,7 +244,7 @@ so_pru_peeraddr(struct socket *so, struct sockaddr **nam)
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_peeraddr;
 	msg.nm_so = so;
 	msg.nm_nam = nam;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -261,7 +261,7 @@ so_pru_rcvd(struct socket *so, int flags)
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_rcvd;
 	msg.nm_so = so;
 	msg.nm_flags = flags;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -279,7 +279,7 @@ so_pru_rcvoob(struct socket *so, struct mbuf *m, int flags)
 	msg.nm_so = so;
 	msg.nm_m = m;
 	msg.nm_flags = flags;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -301,7 +301,7 @@ so_pru_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	msg.nm_addr = addr;
 	msg.nm_control = control;
 	msg.nm_td = td;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -318,7 +318,7 @@ so_pru_sense(struct socket *so, struct stat *sb)
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sense;
 	msg.nm_so = so;
 	msg.nm_stat = sb;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -334,7 +334,7 @@ so_pru_shutdown(struct socket *so)
 		    netmsg_pru_shutdown);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_shutdown;
 	msg.nm_so = so;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -351,7 +351,7 @@ so_pru_sockaddr(struct socket *so, struct sockaddr **nam)
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sockaddr;
 	msg.nm_so = so;
 	msg.nm_nam = nam;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -370,7 +370,7 @@ so_pru_sopoll(struct socket *so, int events, struct ucred *cred)
 	msg.nm_events = events;
 	msg.nm_cred = cred;
 	msg.nm_td = curthread;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 }
 
@@ -389,7 +389,7 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
 	msg.nm_prfn = so->so_proto->pr_ctloutput;
 	msg.nm_so = so;
 	msg.nm_sopt = sopt;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg);
+	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 	return (error);
 #endif
 }
@@ -615,7 +615,7 @@ netmsg_so_notify_doabort(lwkt_msg_t lmsg)
 		netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 			    netmsg_so_notify_abort);
 		msg.nm_notifymsg = (void *)lmsg;
-		lwkt_domsg(lmsg->ms_target_port, &msg.nm_netmsg.nm_lmsg);
+		lwkt_domsg(lmsg->ms_target_port, &msg.nm_netmsg.nm_lmsg, 0);
 	}
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.84 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.85 2007/05/24 20:51:16 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -603,6 +603,46 @@ msleep(void *ident, struct spinlock *spin, int flags,
 	crit_exit_gd(gd);
 
 	return (error);
+}
+
+/*
+ * Directly block on the LWKT thread by descheduling it.  This
+ * is much faster then tsleep(), but the only legal way to wake
+ * us up is to directly schedule the thread.
+ *
+ * Setting TDF_SINTR will cause new signals to directly schedule us.
+ *
+ * This routine is typically called while in a critical section.
+ */
+int
+lwkt_sleep(const char *wmesg, int flags)
+{
+	thread_t td = curthread;
+	int sig;
+
+	if ((flags & PCATCH) == 0 || td->td_lwp == NULL) {
+		td->td_flags |= TDF_BLOCKED;
+		td->td_wmesg = wmesg;
+		lwkt_deschedule_self(td);
+		lwkt_switch();
+		td->td_wmesg = NULL;
+		td->td_flags &= ~TDF_BLOCKED;
+		return(0);
+	}
+	if ((sig = CURSIG(td->td_lwp)) != 0) {
+		if (SIGISMEMBER(td->td_proc->p_sigacts->ps_sigintr, sig))
+			return(EINTR);
+		else
+			return(ERESTART);
+			
+	}
+	td->td_flags |= TDF_BLOCKED | TDF_SINTR;
+	td->td_wmesg = wmesg;
+	lwkt_deschedule_self(td);
+	lwkt_switch();
+	td->td_flags &= ~(TDF_BLOCKED | TDF_SINTR);
+	td->td_wmesg = NULL;
+	return(0);
 }
 
 /*

@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.25 2007/05/24 05:51:28 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.26 2007/05/24 20:51:19 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -88,8 +88,6 @@ typedef struct lwkt_msg {
  * INTRANSIT	Indicates that the message state is indeterminant (e.g.
  *		being passed through an IPI).
  *
- * PCATCH	Static flag indicates blocking entity can be interrupted.
- *
  * ABORTABLE	Static flag indicates that ms_abortfn is valid.
  */
 #define MSGF_DONE	0x0001		/* message is complete */
@@ -97,7 +95,6 @@ typedef struct lwkt_msg {
 #define MSGF_QUEUED	0x0004		/* message has been queued sanitychk */
 #define MSGF_SYNC	0x0008		/* synchronous message operation */
 #define MSGF_INTRANSIT	0x0010		/* in-transit (IPI) */
-#define MSGF_PCATCH	0x0020		/* catch proc signal while waiting */
 #define MSGF_ABORTABLE	0x0080		/* message supports abort */
 
 #define MSG_CMD_CDEV	0x00010000
@@ -118,14 +115,11 @@ MALLOC_DECLARE(M_LWKTMSG);
  *	- for asynch procesing should clear MSGF_DONE and set ms_target_port
  *	  to port prior to initiation of the command.
  *
+ * mp_waitmsg():
+ *	- wait for a particular message to be returned.
+ *
  * mp_waitport():
- *	- if the passed msg is NULL we wait for, remove, and return the
- *	  next pending message on the port.
- *	- if the passed msg is non-NULL we wait for that particular message,
- *	  which typically involves waiting until MSGF_DONE is set then
- *	  pulling the message off the port if MSGF_QUEUED is set and
- *	  returning it.  If MSGF_PCATCH is set in the message we allow
- *	  a signal to interrupt and abort the message.
+ *	- wait for a new message on the specified port.
  *
  * mp_replyport():
  *	- reply a message (executed on the originating port to return a
@@ -151,7 +145,8 @@ typedef struct lwkt_port {
     } mp_u;
     void *		(*mp_getport)(lwkt_port_t);
     int			(*mp_putport)(lwkt_port_t, lwkt_msg_t);
-    void *		(*mp_waitport)(lwkt_port_t, lwkt_msg_t);
+    int			(*mp_waitmsg)(lwkt_msg_t, int flags);
+    void *		(*mp_waitport)(lwkt_port_t, int flags);
     void		(*mp_replyport)(lwkt_port_t, lwkt_msg_t);
 } lwkt_port;
 
@@ -181,7 +176,7 @@ void lwkt_initport_putonly(lwkt_port_t,
 				int (*pportfn)(lwkt_port_t, lwkt_msg_t));
 
 void lwkt_sendmsg(lwkt_port_t, lwkt_msg_t);
-int lwkt_domsg(lwkt_port_t, lwkt_msg_t);
+int lwkt_domsg(lwkt_port_t, lwkt_msg_t, int);
 int lwkt_forwardmsg(lwkt_port_t, lwkt_msg_t);
 void lwkt_abortmsg(lwkt_msg_t);
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.77 2007/04/29 18:25:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.78 2007/05/24 20:51:16 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1210,12 +1210,16 @@ lwp_signotify(struct lwp *lp)
 			    p->p_pid, lp->lwp_tid, lp->lwp_stat,
 			    p->p_flag, lp->lwp_flag));
 
+			/*
+			 * To prevent a MP race with TDF_SINTR we must
+			 * schedule the thread on the correct cpu.
+			 */
 #ifdef SMP
 			if (td->td_gd != mycpu)
 				lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
 			else
 #endif
-			if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
+			if (td->td_flags & TDF_SINTR)
 				lwkt_schedule(td);
 		}
 	}
@@ -1238,7 +1242,7 @@ signotify_remote(void *arg)
 		signotify();
 	} else {
 		struct thread *td = lp->lwp_thread;
-		if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
+		if (td->td_flags & TDF_SINTR)
 			lwkt_schedule(td);
 	}
 }
