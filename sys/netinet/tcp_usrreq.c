@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.43 2007/05/23 08:57:09 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.44 2007/05/24 05:51:29 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -980,7 +980,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr,
 	    inp->inp_lport);
 
-	if (port->mp_td != curthread) {
+	if (port != &curthread->td_msgport) {
 		struct netmsg_tcp_connect msg;
 
 		netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,

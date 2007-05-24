@@ -69,7 +69,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.30 2007/05/23 08:57:09 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.31 2007/05/24 05:51:29 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -305,7 +305,7 @@ syncache_init(void)
 	}
 	tcp_syncache.hashmask = tcp_syncache.hashsize - 1;
 
-	lwkt_initport_null_rport(&syncache_null_rport, NULL);
+	lwkt_initport_replyonly_null(&syncache_null_rport);
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		struct tcp_syncache_percpu *syncache_percpu;

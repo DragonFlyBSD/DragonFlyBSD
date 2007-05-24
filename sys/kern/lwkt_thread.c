@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.107 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.108 2007/05/24 05:51:27 dillon Exp $
  */
 
 /*
@@ -103,8 +103,15 @@ static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
 static __int64_t token_contention_count = 0;
 static __int64_t mplock_contention_count = 0;
+static int lwkt_use_spin_port;
 
 #ifdef _KERNEL
+
+/*
+ * We can make all thread ports use the spin backend instead of the thread
+ * backend.  This should only be set to debug the spin backend.
+ */
+TUNABLE_INT("lwkt.use_spin_port", &lwkt_use_spin_port);
 
 SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
 #ifdef	INVARIANTS
@@ -334,7 +341,10 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     if ((flags & TDF_MPSAFE) == 0)
 	td->td_mpcount = 1;
 #endif
-    lwkt_initport(&td->td_msgport, td);
+    if (lwkt_use_spin_port)
+	lwkt_initport_spin(&td->td_msgport);
+    else
+	lwkt_initport_thread(&td->td_msgport, td);
     pmap_init_thread(td);
 #ifdef SMP
     /*

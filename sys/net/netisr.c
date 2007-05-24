@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.31 2007/05/23 08:57:10 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.32 2007/05/24 05:51:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,6 +73,8 @@ lwkt_port netisr_adone_rport;
 lwkt_port netisr_apanic_rport;
 lwkt_port netisr_sync_port;
 
+static int (*netmsg_fwd_port_fn)(lwkt_port_t, lwkt_msg_t);
+
 /*
  * netisr_afree_rport replymsg function, only used to handle async
  * messages which the sender has abandoned to their fate.
@@ -83,37 +85,29 @@ netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
     kfree(msg, M_LWKTMSG);
 }
 
-static void
-netisr_autopanic_reply(lwkt_port_t port, lwkt_msg_t msg)
-{
-    panic("unreplyable msg %p was replied!", msg);
-}
-
 /*
- * We must construct a custom putport function (which runs in the context
- * of the message originator)
+ * We need a custom putport function to handle the case where the
+ * message target is the current thread's message port.  This case
+ * can occur when the TCP or UDP stack does a direct callback to NFS and NFS
+ * then turns around and executes a network operation synchronously.
  *
- * Our custom putport must check for self-referential messages, which can
- * occur when the so_upcall routine is called (e.g. nfs).  Self referential
- * messages are executed synchronously.  However, we must panic if the message
- * is not marked DONE on completion because the self-referential case cannot
- * block without deadlocking.
- *
- * note: ms_target_port does not need to be set when returning a synchronous
- * error code.
+ * To prevent deadlocking, we must execute these self-referential messages
+ * synchronously, effectively turning the message into a glorified direct
+ * procedure call back into the protocol stack.  The operation must be
+ * complete on return or we will deadlock, so panic if it isn't.
  */
 static int
 netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 {
     netmsg_t netmsg = (void *)lmsg;
 
-    if ((lmsg->ms_flags & MSGF_SYNC) && port->mp_td == curthread) {
+    if ((lmsg->ms_flags & MSGF_SYNC) && port == &curthread->td_msgport) {
 	netmsg->nm_dispatch(netmsg);
 	if ((lmsg->ms_flags & MSGF_DONE) == 0)
 	    panic("netmsg_put_port: self-referential deadlock on netport");
 	return(EASYNC);
     } else {
-	return(lwkt_default_putport(port, lmsg));
+	return(netmsg_fwd_port_fn(port, lmsg));
     }
 }
 
@@ -167,17 +161,15 @@ netisr_init(void)
      * the message as being done.  The netisr_apanic_rport panics if
      * the message is replied to.
      */
-    lwkt_initport(&netisr_afree_rport, NULL);
-    netisr_afree_rport.mp_replyport = netisr_autofree_reply;
-    lwkt_initport_null_rport(&netisr_adone_rport, NULL);
-    lwkt_initport(&netisr_apanic_rport, NULL);
-    netisr_apanic_rport.mp_replyport = netisr_autopanic_reply;
+    lwkt_initport_replyonly(&netisr_afree_rport, netisr_autofree_reply);
+    lwkt_initport_replyonly_null(&netisr_adone_rport);
+    lwkt_initport_panic(&netisr_apanic_rport);
 
     /*
      * The netisr_syncport is a special port which executes the message
      * synchronously and waits for it if EASYNC is returned.
      */
-    lwkt_initport(&netisr_sync_port, NULL);
+    lwkt_initport_putonly(&netisr_sync_port, netmsg_sync_putport);
     netisr_sync_port.mp_putport = netmsg_sync_putport;
 }
 
@@ -197,6 +189,9 @@ netmsg_service_port_init(lwkt_port_t port)
      * Override the putport function.  Our custom function checks for 
      * self-references and executes such commands synchronously.
      */
+    if (netmsg_fwd_port_fn == NULL)
+	netmsg_fwd_port_fn = port->mp_putport;
+    KKASSERT(netmsg_fwd_port_fn == port->mp_putport);
     port->mp_putport = netmsg_put_port;
 
     /*

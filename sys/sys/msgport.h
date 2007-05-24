@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.24 2007/05/23 08:56:59 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.25 2007/05/24 05:51:28 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -14,6 +14,9 @@
 #endif
 #ifndef _SYS_STDINT_H_
 #include <sys/stdint.h>
+#endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
 #endif
 
 #ifdef _KERNEL
@@ -128,18 +131,37 @@ MALLOC_DECLARE(M_LWKTMSG);
  *	- reply a message (executed on the originating port to return a
  *	  message to it).  This can be rather involved if abort is to be
  *	  supported, see lwkt_default_replyport().  Generally speaking
- *	  one sets MSGF_DONE.  If MSGF_ASYNC is set the message is queued
- *	  to the port, else the port's thread is scheduled.
+ *	  one sets MSGF_DONE.  If MSGF_SYNC is set the message is not
+ *	  queued to the port and the reply code wakes up the waiter
+ *	  directly.
+ *
+ * The use of mp_u.td and mp_u.spin is specific to the port callback function
+ * set.  Default ports are tied to specific threads and use cpu locality
+ * of reference and mp_u.td (and not mp_u.spin at all).  Descriptor ports
+ * assume access via descriptors, signal interruption, etc.  Such ports use
+ * mp_u.spin (and not mp_u.td at all) and may be accessed by multiple threads.
  */
 typedef struct lwkt_port {
     lwkt_msg_queue	mp_msgq;
     int			mp_flags;
-    int			mp_unused01;
-    struct thread	*mp_td;
+    union {
+	struct spinlock	spin;
+	struct thread	*td;
+	void		*data;
+    } mp_u;
+    void *		(*mp_getport)(lwkt_port_t);
     int			(*mp_putport)(lwkt_port_t, lwkt_msg_t);
     void *		(*mp_waitport)(lwkt_port_t, lwkt_msg_t);
     void		(*mp_replyport)(lwkt_port_t, lwkt_msg_t);
 } lwkt_port;
+
+#ifdef _KERNEL
+
+#define mpu_td		mp_u.td
+#define mpu_spin	mp_u.spin
+#define mpu_data	mp_u.data
+
+#endif
 
 #define MSGPORTF_WAITING	0x0001
 
@@ -148,18 +170,19 @@ typedef struct lwkt_port {
  * messaging function support for userland is provided by the kernel's
  * kern/lwkt_msgport.c.  The port functions are provided by userland.
  */
-void lwkt_initport(lwkt_port_t, struct thread *);
-void lwkt_initport_null_rport(lwkt_port_t, struct thread *);
+
+void lwkt_initport_thread(lwkt_port_t, struct thread *);
+void lwkt_initport_spin(lwkt_port_t);
+void lwkt_initport_panic(lwkt_port_t);
+void lwkt_initport_replyonly_null(lwkt_port_t);
+void lwkt_initport_replyonly(lwkt_port_t,
+				void (*rportfn)(lwkt_port_t, lwkt_msg_t));
+void lwkt_initport_putonly(lwkt_port_t,
+				int (*pportfn)(lwkt_port_t, lwkt_msg_t));
+
 void lwkt_sendmsg(lwkt_port_t, lwkt_msg_t);
 int lwkt_domsg(lwkt_port_t, lwkt_msg_t);
 int lwkt_forwardmsg(lwkt_port_t, lwkt_msg_t);
 void lwkt_abortmsg(lwkt_msg_t);
-void *lwkt_getport(lwkt_port_t);
-
-int lwkt_default_putport(lwkt_port_t port, lwkt_msg_t msg);
-void *lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg);
-void lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg);
-void lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg);
-void lwkt_null_replyport(lwkt_port_t port, lwkt_msg_t msg);
 
 #endif
