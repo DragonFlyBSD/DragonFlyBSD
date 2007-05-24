@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.31 2007/02/18 16:15:23 corecode Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.32 2007/05/24 20:28:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -182,12 +182,16 @@ state(const KINFO *k, const struct varent *vent)
 	case SACTIVE:
 		switch (KI_LWP(k, stat)) {
 		case LSSLEEP:
-			if (KI_LWP(k, flags) & LWP_SINTR)	/* interruptable (long) */
+			if (KI_LWP(k, flags) & LWP_SINTR) {
+				/* interruptable wait short/long */
 				*cp = KI_LWP(k, slptime) >= MAXSLP ? 'I' : 'S';
+			}
 			else if (KI_LWP(k, tdflags) & TDF_SINTR)
-				*cp = 'S';
+				*cp = 'S';	/* interruptable lwkt wait */
+			else if (KI_LWP(k, tdflags) & TDF_TSLEEPQ)
+				*cp = 'D';	/* uninterruptable wait */
 			else
-				*cp = 'D';
+				*cp = 'B';	/* uninterruptable lwkt wait */
 			break;
 
 		case LSRUN:
@@ -384,15 +388,12 @@ lstarted(const KINFO *k, const struct varent *vent)
 void
 wchan(const KINFO *k, const struct varent *vent)
 {
-	if (KI_LWP(k, wchan)) {
-		if (*KI_LWP(k, wmesg) != '\0')
-			printf("%-*.*s", vent->width, vent->width,
-			       KI_LWP(k, wmesg));
-		else
-			printf("%-*lx", vent->width,
-			       (long)KI_LWP(k, wchan));
-	} else
+	if (*KI_LWP(k, wmesg)) {
+		printf("%-*.*s", vent->width, vent->width,
+		       KI_LWP(k, wmesg));
+	} else {
 		printf("%-*s", vent->width, "-");
+	}
 }
 
 #ifndef pgtok
