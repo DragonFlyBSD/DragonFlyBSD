@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.16 2007/03/23 10:11:54 swildner Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.17 2007/05/25 00:59:06 dillon Exp $
 .\"
 .Dd April 6, 2006
 .Dt PS 1
@@ -223,6 +223,8 @@ The state is given by a sequence of letters, for example,
 The first letter indicates the run state of the process:
 .Pp
 .Bl -tag -width indent -compact
+.It Li B
+Marks a blocked kernel thread.
 .It Li D
 Marks a process in disk (or other short term, uninterruptible) wait.
 .It Li I
@@ -303,7 +305,7 @@ controlling terminal (i.e., it has been revoked).
 The event (an address in the system) on which a process waits.
 When printed numerically, the initial part of the address is
 trimmed off and the result is printed in hex, for example, 0x80324000 prints
-as 324000.
+as 324000.  Note that blocked threads often only have ascii wchan's.
 .El
 .Pp
 When printing using the
