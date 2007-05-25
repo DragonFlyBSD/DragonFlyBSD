@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.31 2007/05/19 21:37:01 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.32 2007/05/25 02:21:09 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -657,7 +657,7 @@ wt*)
 
 #-----------------------------------------------------------------------------
 
-aacd*s*|acd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|vkd*s*)
+aacd*s*|acd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fd*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|vkd*s*)
 	case $i in
 	aacd*s*) name=aacd; chr=151;;
 	acd*s*)  name=acd;  chr=117;;
@@ -667,6 +667,7 @@ aacd*s*|acd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md
 	amrd*s*) name=amrd; chr=133;;
 	ccd*s*)  name=ccd;  chr=74;;
 	da*s*)   name=da;   chr=13;;
+	fd*s*)   name=fd;   chr=9;;
 	fla*s*)  name=fla;  chr=102;;
 	idad*s*) name=idad; chr=109;;
 	ipsd*s*) name=ipsd; chr=176;;
@@ -759,103 +760,51 @@ aacd*s*|acd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md
 
 #-----------------------------------------------------------------------------
 
-fd*)
-	unit=`expr $i : '..\(.*\)'`
+control-fd*)
+	unit=`expr $i : '..........\(.*\)'`
 	name=fd; chr=9
 
 	case $unit in
 	0|1|2|3)
-		mknod $name $unit c $chr $(($unit * 64)) root:operator 640
-		rm -f r$name$unit
-		# Fake BSD partitions
-		for i in a b c d e f g h
-		do
-			ln -f $name$unit $name$unit$i
-			rm -f r$name$unit r$name$unit$i
-		done
-		# User-readable and programmer-readable name sets
-
-		mknod $name ${unit}.1720 c $chr $(($unit * 64 + 1)) \
-			root:operator 640
+		minor=`ndkminor $unit 1 129`
+		mknod $name ${unit}.1720 c $chr $minor
 		rm -f r${name}${unit}.1720
-		# ln -f $name${unit}.1720 ${name}${unit}135hs21
-		# rm -f r$name${unit}135hs21
 
-		mknod $name ${unit}.1480 c $chr $(($unit * 64 + 2)) \
-		    root:operator 640
-		rm -f r$name${unit}.1480
-		# ln -f $name${unit}.1480 ${name}${unit}135hs18
-		# rm -f r$name${unit}135hs18
-		# ln -f $name${unit}.1480 ${name}${unit}96hs18
-		# rm -f r$name${unit}96hs18
+		minor=`ndkminor $unit 1 130`
+		mknod $name ${unit}.1480 c $chr $minor
+		rm -f r${name}${unit}.1480
 
-		mknod $name ${unit}.1440 c $chr $(($unit * 64 + 3)) \
-		    root:operator 640
-		rm -f r$name${unit}.1440
-		# ln -f $name${unit}.1440 $name${unit}135
-		# rm -f r$name${unit}135
-		# ln -f $name${unit}.1440 $name${unit}135ds18
-		# rm -f r$name${unit}135ds18
-		# ln -f $name${unit}.1440 $name${unit}96ds18
-		# rm -f r$name${unit}96ds18
+		minor=`ndkminor $unit 1 131`
+		mknod $name ${unit}.1440 c $chr $minor
+		rm -f r${name}${unit}.1440
 
-		mknod $name ${unit}.1200 c $chr $(($unit * 64 + 4)) \
-		    root:operator 640
-		rm -f r$name${unit}.1200
-		# ln -f $name${unit}.1200 $name${unit}96
-		# rm -f r$name${unit}96
-		# ln -f $name${unit}.1200 $name${unit}96ds15
-		# rm -f r$name${unit}96ds15
-		# ln -f $name${unit}.1200 $name${unit}135ds15
-		# rm -f r$name${unit}135ds15
+		minor=`ndkminor $unit 1 132`
+		mknod $name ${unit}.1200 c $chr $minor
+		rm -f r${name}${unit}.1200
 
-		mknod $name ${unit}.820 c $chr $(($unit * 64 + 5)) \
-		    root:operator 640
-		rm -f r$name${unit}.820
-		# ln -f $name${unit}.820 $name${unit}96hs10
-		# rm -f r$name${unit}96hs10
-		# ln -f $name${unit}.820 $name${unit}135hs10
-		# rm -f r$name${unit}135hs10
+		minor=`ndkminor $unit 1 133`
+		mknod $name ${unit}.820 c $chr $minor
+		rm -f r${name}${unit}.820
 
-		mknod $name ${unit}.800 c $chr $(($unit * 64 + 6)) \
-		    root:operator 640
-		rm -f r$name${unit}.800
-		# ln -f $name${unit}.800 $name${unit}96ds10
-		# rm -f r$name${unit}96ds10
-		# ln -f $name${unit}.800 $name${unit}135ds10
-		# rm -f r$name${unit}135ds10
+		minor=`ndkminor $unit 1 134`
+		mknod $name ${unit}.800 c $chr $minor
+		rm -f r${name}${unit}.800
 
-		mknod $name ${unit}.720 c $chr $(($unit * 64 + 7)) \
-		    root:operator 640
-		rm -f r$name${unit}.720
-		# ln -f $name${unit}.720 $name${unit}96ds9
-		# rm -f r$name${unit}96ds9
-		# ln -f $name${unit}.720 $name${unit}135ds9
-		# rm -f r$name${unit}135ds9
+		minor=`ndkminor $unit 1 135`
+		mknod $name ${unit}.720 c $chr $minor
+		rm -f r${name}${unit}.720
 
-		mknod $name ${unit}.360 c $chr $(($unit * 64 + 8)) \
-		    root:operator 640
-		rm -f r$name${unit}.360
-		# ln -f $name${unit}.360 $name${unit}48
-		# rm -f r$name${unit}48
-		# ln -f $name${unit}.360 $name${unit}48ds9
-		# rm -f r$name${unit}48ds9
+		minor=`ndkminor $unit 1 136`
+		mknod $name ${unit}.360 c $chr $minor
+		rm -f r${name}${unit}.360
 
-		mknod $name ${unit}.640 c $chr $(($unit * 64 + 9)) \
-		    root:operator 640
-		rm -f r$name${unit}.640
-		# ln -f $name${unit}.640 $name${unit}96ds8
-		# rm -f r$name${unit}96ds8
-		# ln -f $name${unit}.640 $name${unit}135ds8
-		# rm -f r$name${unit}135ds8
+		minor=`ndkminor $unit 1 137`
+		mknod $name ${unit}.640 c $chr $minor
+		rm -f r${name}${unit}.640
 
-		mknod $name ${unit}.1232 c $chr $(($unit * 64 + 10)) \
-		    root:operator 640
-		rm -f r$name${unit}.1232
-		# ln -f $name${unit}.1232 $name${unit}96ds8
-		# rm -f r$name${unit}96ds8
-		# ln -f $name${unit}.1232 $name${unit}135ds8
-		# rm -f r$name${unit}135ds8
+		minor=`ndkminor $unit 1 138`
+		mknod $name ${unit}.1232 c $chr $minor
+		rm -f r${name}${unit}.1232
 		;;
 	*)
 		echo bad unit for disk in: $i
@@ -903,7 +852,7 @@ acd*t*)
 
 #-----------------------------------------------------------------------------
 
-aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
+aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fd*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
 	doslices=1
 	case $i in
 	aacd*) name=aacd; chr=151;;
@@ -913,6 +862,7 @@ aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*
 	afd*)  name=afd;  chr=118;;
 	amrd*) name=amrd; chr=133;;
 	da*)   name=da;   chr=13;;
+	fd*)   name=fd;   chr=9;;
 	ccd*)  name=ccd;  chr=74;;
 	fla*)  name=fla;  chr=102;;
 	idad*) name=idad; chr=109;;
@@ -934,6 +884,12 @@ aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*
 		;;
 	*)
 		unit=`expr $i : '..\(.*\)'`
+		;;
+	esac
+
+	case $i in
+	fd*)
+		sh MAKEDEV control-$name$unit
 		;;
 	esac
 
@@ -1169,9 +1125,10 @@ ast*)
 
 #-----------------------------------------------------------------------------
 
-cd*)
+cd*|vcd*)
 	case $i in
 	cd*)  units=`expr $i : '..\(.*\)'` ; name=cd;  chr=15;;
+	vcd*)  units=`expr $i : '...\(.*\)'` ; name=vcd;  chr=98;;
 	esac
 
 	[ "$units" ] || units=0

@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.15 2007/04/20 07:04:09 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.16 2007/05/25 02:21:10 dillon Exp $
 .\"
 .Dd April 19, 2007
 .Dt VKERNEL 7
@@ -46,6 +46,7 @@
 .Pp
 .Pa /usr/obj/usr/src/sys/VKERNEL/kernel.debug
 .Op Fl sUv
+.Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .Op Fl i Ar file
 .Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
@@ -60,6 +61,21 @@ kernels in userland.
 .Pp
 The following options are available:
 .Bl -tag -width ".Fl m Ar size"
+.It Fl c Ar file
+Specify a readonly CDRom image
+.Ar file
+to be used by the kernel, with the first
+.Fl c
+option defining
+.Li vcd0 ,
+the second one
+.Li vcd1 ,
+and so on.  The first
+.Fl r
+or
+.Fl c
+option specified on the command line will be the boot disk.
+the CD9660 filesystem is assumed when booting from this media.
 .It Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 Specify an environment to be used by the kernel.
 .It Fl i Ar file
@@ -134,7 +150,7 @@ and
 .Cm G
 are allowed.
 .It Fl r Ar file
-Specify a disk image
+Specify a R/W disk image
 .Ar file
 to be used by the kernel, with the first
 .Fl r
@@ -142,7 +158,11 @@ option defining
 .Li vkd0 ,
 the second one
 .Li vkd1 ,
-and so on.
+and so on.  The first
+.Fl r
+or
+.Fl c
+option specified on the command line will be the boot disk.
 .It Fl s
 Boot into single-user mode.
 .It Fl U

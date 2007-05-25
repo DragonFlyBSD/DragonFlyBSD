@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,11 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.6 2007/05/25 02:21:14 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/cdrom/vcd.c,v 1.1 2007/05/25 02:21:13 dillon Exp $
  */
 
 /*
- * Virtual disk driver
+ * Virtual CDROM driver
  */
 #include <sys/types.h>
 #include <sys/param.h>
@@ -53,7 +53,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-struct vkd_softc {
+struct vcd_softc {
 	struct bio_queue_head bio_queue;
 	struct devstat stats;
 	struct disk disk;
@@ -62,32 +62,32 @@ struct vkd_softc {
 	int fd;
 };
 
-#define CDEV_MAJOR	97
+#define CDEV_MAJOR	98
 
-static d_strategy_t	vkdstrategy;
-static d_open_t		vkdopen;
+static d_strategy_t	vcdstrategy;
+static d_open_t		vcdopen;
 
-static struct dev_ops vkd_ops = {
-	{ "vkd", CDEV_MAJOR, D_DISK },
-        .d_open =	vkdopen,
+static struct dev_ops vcd_ops = {
+	{ "vcd", CDEV_MAJOR, D_DISK },
+        .d_open =	vcdopen,
         .d_close =	nullclose,
         .d_read =	physread,
         .d_write =	physwrite,
-        .d_strategy =	vkdstrategy,
+        .d_strategy =	vcdstrategy,
 };
 
 static void
-vkdinit(void *dummy __unused)
+vcdinit(void *dummy __unused)
 {
 	struct vkdisk_info *dsk;
-	struct vkd_softc *sc;
+	struct vcd_softc *sc;
 	struct stat st;
 	int i;
 
 	for (i = 0; i < DiskNum; i++) {
 		/* check that the 'bus device' has been initialized */
 		dsk = &DiskInfo[i];
-		if (dsk == NULL || dsk->type != VKD_DISK)
+		if (dsk == NULL || dsk->type != VKD_CD)
 			continue;
 		if (dsk->fd < 0 || fstat(dsk->fd, &st) < 0)
 			continue;
@@ -97,22 +97,22 @@ vkdinit(void *dummy __unused)
 		sc->unit = dsk->unit;
 		sc->fd = dsk->fd;
 		bioq_init(&sc->bio_queue);
-		devstat_add_entry(&sc->stats, "vkd", sc->unit, DEV_BSIZE,
+		devstat_add_entry(&sc->stats, "vcd", sc->unit, 2048,
 				  DEVSTAT_NO_ORDERED_TAGS,
 				  DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 				  DEVSTAT_PRIORITY_DISK);
-		sc->dev = disk_create(sc->unit, &sc->disk, &vkd_ops);
+		sc->dev = disk_create(sc->unit, &sc->disk, &vcd_ops);
 		sc->dev->si_drv1 = sc;
 		sc->dev->si_iosize_max = 256 * 1024;
 	}
 }
 
-SYSINIT(vkdisk, SI_SUB_DRIVERS, SI_ORDER_FIRST, vkdinit, NULL);
+SYSINIT(vcdisk, SI_SUB_DRIVERS, SI_ORDER_FIRST, vcdinit, NULL);
 
 static int
-vkdopen(struct dev_open_args *ap)
+vcdopen(struct dev_open_args *ap)
 {
-	struct vkd_softc *sc;
+	struct vcd_softc *sc;
 	struct disk_info info;
 	struct stat st;
 	cdev_t dev;
@@ -123,9 +123,10 @@ vkdopen(struct dev_open_args *ap)
 		return(ENXIO);
 
 	bzero(&info, sizeof(info));
-	info.d_media_blksize = DEV_BSIZE;
+	info.d_media_blksize = 2048;
 	info.d_media_blocks = st.st_size / info.d_media_blksize;
-
+	info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL | DSO_COMPATPARTA |
+			 DSO_RAWEXTENSIONS;
 	info.d_nheads = 1;
 	info.d_ncylinders = 1;
 	info.d_secpertrack = info.d_media_blocks;
@@ -136,11 +137,11 @@ vkdopen(struct dev_open_args *ap)
 }
 
 static int
-vkdstrategy(struct dev_strategy_args *ap)
+vcdstrategy(struct dev_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
 	struct buf *bp;
-	struct vkd_softc *sc;
+	struct vcd_softc *sc;
 	cdev_t dev;
 	int n;
 
@@ -165,7 +166,7 @@ vkdstrategy(struct dev_strategy_args *ap)
 			n = write(sc->fd, bp->b_data, bp->b_bcount);
 			break;
 		default:
-			panic("vkd: bad b_cmd %d", bp->b_cmd);
+			panic("vcd: bad b_cmd %d", bp->b_cmd);
 			break; /* not reached */
 		}
 		if (n != bp->b_bcount) {

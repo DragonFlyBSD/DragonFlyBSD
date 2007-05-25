@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.13 2007/05/07 05:21:42 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.14 2007/05/25 02:21:19 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -69,7 +69,7 @@ cons_unlock(void)
  *
  */
 
-#define CDEV_MAJOR	183
+#define CDEV_MAJOR	12	/* steal the same major as /dev/ttyv* */
 
 static int vcons_tty_param(struct tty *tp, struct termios *tio);
 static void vcons_tty_start(struct tty *tp);
@@ -96,9 +96,6 @@ vcons_open(struct dev_open_args *ap)
 	struct tty *tp;
 	int error;
 
-	if (minor(dev) != 255)
-		return(ENXIO);
-
 	tp = dev->si_tty = ttymalloc(dev->si_tty);
 	if ((tp->t_state & TS_ISOPEN) == 0) {
 		tp->t_oproc = vcons_tty_start;
@@ -116,11 +113,16 @@ vcons_open(struct dev_open_args *ap)
 		tp->t_ospeed = TTYDEF_SPEED;
 		ttsetwater(tp);
 	}
-	error = (*linesw[tp->t_line].l_open)(dev, tp);
-	ioctl(0, TIOCGWINSZ, &tp->t_winsize);
+	if (minor(dev) == 0) {
+		error = (*linesw[tp->t_line].l_open)(dev, tp);
+		ioctl(0, TIOCGWINSZ, &tp->t_winsize);
 
-	if (kqueue_console_info == NULL)
-		kqueue_console_info = kqueue_add(0, vcons_intr, tp);
+		if (kqueue_console_info == NULL)
+			kqueue_console_info = kqueue_add(0, vcons_intr, tp);
+	} else {
+		/* dummy up other minors so the installer will run */
+		error = 0;
+	}
 	return(error);
 }
 
@@ -130,8 +132,6 @@ vcons_close(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
-	if (minor(dev) != 255)
-		return(ENXIO);
 	tp = dev->si_tty;
 	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ttyclose(tp);
@@ -145,8 +145,6 @@ vcons_ioctl(struct dev_ioctl_args *ap)
 	struct tty *tp;
 	int error;
 
-	if (minor(dev) != 255)
-		return(ENXIO);
 	tp = dev->si_tty;
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
 					      ap->a_fflag, ap->a_cred);
@@ -178,8 +176,13 @@ vcons_tty_start(struct tty *tp)
 		return;
 	}
 	tp->t_state |= TS_BUSY;
-	while ((n = q_to_b(&tp->t_outq, buf, sizeof(buf))) > 0)
-		write(1, buf, n);
+	while ((n = q_to_b(&tp->t_outq, buf, sizeof(buf))) > 0) {
+		/*
+		 * Dummy up ttyv1, etc.
+		 */
+		if (minor(tp->t_dev) == 0)
+			write(1, buf, n);
+	}
 	tp->t_state &= ~TS_BUSY;
 	ttwwakeup(tp);
 }
@@ -317,9 +320,19 @@ vconsinit(struct consdev *cp)
 static void
 vconsinit_fini(struct consdev *cp)
 {
-	cp->cn_dev = make_dev(&vcons_ops, 255,
-			      UID_ROOT, GID_WHEEL,
-			      0600, "vconsolectl");
+	cdev_t dev;
+	int i;
+
+	/*
+	 * Implement ttyv0-ttyv7.  At the moment ttyv1-7 are sink nulls.
+	 */
+	dev_ops_add(&vcons_ops, -1 & ~7, 0);
+	for (i = 0; i < 8; ++i) {
+		dev = make_dev(&vcons_ops, i,
+			       UID_ROOT, GID_WHEEL, 0600, "ttyv%d", i);
+		if (i == 0)
+			cp->cn_dev = dev;
+	}
 }
 
 static void

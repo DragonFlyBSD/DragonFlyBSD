@@ -1,7 +1,7 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.15 2007/01/19 07:23:42 dillon Exp $
+# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.16 2007/05/25 02:21:15 dillon Exp $
 #
 bf_enc.o			optional	ipsec ipsec_esp		\
 	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
@@ -44,6 +44,7 @@ kern/subr_diskmbr.c			standard
 
 # DEVICES
 #
+dev/virtual/cdrom/vcd.c			optional	vcd
 dev/virtual/disk/vdisk.c		optional	vkd
 dev/virtual/net/if_vke.c		optional	vke
 

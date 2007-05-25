@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.18 2007/03/16 13:41:40 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.19 2007/05/25 02:21:18 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -57,6 +57,7 @@ struct vknetif_info {
 struct vkdisk_info {
         int fd;
         int unit;
+	enum vkdisk_type { VKD_EMPTY, VKD_DISK, VKD_CD } type;
         char fname[MAXPATHLEN];
 };
 

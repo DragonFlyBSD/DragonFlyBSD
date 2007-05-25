@@ -1,6 +1,6 @@
-# $DragonFly: src/sys/dev/virtual/Makefile,v 1.2 2007/01/10 13:33:22 swildner Exp $
+# $DragonFly: src/sys/dev/virtual/Makefile,v 1.3 2007/05/25 02:21:12 dillon Exp $
 #
 
-SUBDIR= disk net
+SUBDIR= disk net cdrom
 
 .include <bsd.subdir.mk>

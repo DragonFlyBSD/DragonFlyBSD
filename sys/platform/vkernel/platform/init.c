@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.35 2007/04/27 23:27:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.36 2007/05/25 02:21:19 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -105,7 +105,7 @@ static void init_sys_memory(char *imageFile);
 static void init_kern_memory(void);
 static void init_globaldata(void);
 static void init_vkernel(void);
-static void init_disk(char *diskExp[], int diskFileNum); 
+static void init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type); 
 static void init_netif(char *netifExp[], int netifFileNum);
 static void usage(const char *ctl);
 
@@ -118,9 +118,11 @@ main(int ac, char **av)
 	char *memImageFile = NULL;
 	char *netifFile[VKNETIF_MAX];
 	char *diskFile[VKDISK_MAX];
+	char *cdFile[VKDISK_MAX];
 	char *suffix;
 	int netifFileNum = 0;
 	int diskFileNum = 0;
+	int cdFileNum = 0;
 	int c;
 	int i;
 	int n;
@@ -130,7 +132,7 @@ main(int ac, char **av)
 	 */
 	kernel_mem_readonly = 1;
 
-	while ((c = getopt(ac, av, "svm:r:e:i:I:U")) != -1) {
+	while ((c = getopt(ac, av, "c:svm:r:e:i:I:U")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
@@ -161,8 +163,12 @@ main(int ac, char **av)
 				netifFile[netifFileNum++] = optarg;
 			break;
 		case 'r':
-			if (diskFileNum < VKDISK_MAX)
+			if (diskFileNum + cdFileNum < VKDISK_MAX)
 				diskFile[diskFileNum++] = optarg;
+			break;
+		case 'c':
+			if (diskFileNum + cdFileNum < VKDISK_MAX)
+				cdFile[cdFileNum++] = optarg;
 			break;
 		case 'm':
 			Maxmem_bytes = strtoull(optarg, &suffix, 0);
@@ -200,7 +206,8 @@ main(int ac, char **av)
 	init_globaldata();
 	init_vkernel();
 	init_kqueue();
-	init_disk(diskFile, diskFileNum);
+	init_disk(diskFile, diskFileNum, VKD_DISK);
+	init_disk(cdFile, cdFileNum, VKD_CD);
 	init_netif(netifFile, netifFileNum);
 	init_exceptions();
 	mi_startup();
@@ -571,7 +578,7 @@ init_vkernel(void)
  */
 static
 void
-init_disk(char *diskExp[], int diskFileNum)
+init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 {
 	int i;	
 
@@ -593,7 +600,10 @@ init_disk(char *diskExp[], int diskFileNum)
 			int fd;
        			size_t l = 0;
 
-			fd = open(fname, O_RDWR|O_DIRECT, 0644);
+			if (type == VKD_DISK)
+			    fd = open(fname, O_RDWR|O_DIRECT, 0644);
+			else
+			    fd = open(fname, O_RDONLY|O_DIRECT, 0644);
 			if (fd < 0 || fstat(fd, &st) < 0) {
 				err(1, "Unable to open/create %s", fname);
 				/* NOT REACHED */
@@ -604,10 +614,15 @@ init_disk(char *diskExp[], int diskFileNum)
 
 	       		info->unit = i;
 			info->fd = fd;
+			info->type = type;
 	        	memcpy(info->fname, fname, l);
 
-			if (i == 0)
-				rootdevnames[0] = "ufs:vkd0a";
+			if (i == 0) {
+				if (type == VKD_CD)
+				    rootdevnames[0] = "cd9660:vcd0a";
+				else if (type == VKD_DISK)
+				    rootdevnames[0] = "ufs:vkd0a";
+			}
 
 			DiskNum++;
 		} else {
