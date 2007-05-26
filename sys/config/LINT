@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.114 2007/05/23 17:07:55 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.115 2007/05/26 08:50:49 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1961,6 +1961,7 @@ device		trm		# Tekram DC395U/UW/F and DC315U
 device		miibus
 
 # PCI Ethernet NICs that use the common MII bus controller code.
+device		bce		# Broadcom NetXtreme II Gigabit Ethernet
 device		bfe		# Broadcom BCM440x 10/100 Ethernet
 device		dc		# DEC/Intel 21143 and various workalikes
 device		fxp		# Intel EtherExpress PRO/100B (82557, 82558)
@@ -2698,6 +2699,8 @@ options 	DEBUG_CRIT_SECTIONS
 options 	DEBUG_INTERRUPTS
 options 	DEVICE_SYSCTLS
 #options 	DISABLE_PSE
+options		BCE_DEBUG
+options		BCE_NVRAM_WRITE_SUPPORT
 #options	ED_NO_MIIBUS
 options 	ENABLE_ALART
 options 	FB_DEBUG=2

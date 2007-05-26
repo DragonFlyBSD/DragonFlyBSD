@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.17 2007/05/07 04:54:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.18 2007/05/26 08:50:49 sephe Exp $
  */
 
 /*
@@ -519,6 +519,10 @@ brgphy_reset(struct mii_softc *sc)
 			PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL)
 				& ~BRGPHY_PHY_EXTCTL_3_LED);
 		}
+	} else if (strncmp(ifp->if_xname, "bce", 3) == 0) {
+		brgphy_ber_bug(sc);
+		brgphy_jumbo_settings(sc, ifp->if_mtu);
+		brgphy_eth_wirespeed(sc);
 	}
 }
 
