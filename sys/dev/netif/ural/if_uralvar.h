@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_uralvar.h,v 1.3.2.3 2006/01/29 14:16:36 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.3 2007/03/30 11:39:34 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.4 2007/05/26 22:07:18 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -105,10 +105,6 @@ struct ural_softc {
 
 	struct ieee80211_ratectl_stats	sc_stats;
 	int				sc_tx_retries;
-
-#if 0
-	struct mtx			sc_mtx;
-#endif
 
 	struct callout			scan_ch;
 	struct callout			stats_ch;

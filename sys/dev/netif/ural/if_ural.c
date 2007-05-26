@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.10 2007/04/23 12:35:03 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.11 2007/05/26 22:07:18 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -412,11 +412,6 @@ USB_ATTACH(ural)
 		USB_ATTACH_ERROR_RETURN;
 	}
 
-#if 0
-	mtx_init(&sc->sc_mtx, USBDEVNAME(sc->sc_dev), MTX_NETWORK_LOCK,
-	    MTX_DEF | MTX_RECURSE);
-#endif
-
 	usb_init_task(&sc->sc_task, ural_task, sc);
 	callout_init(&sc->scan_ch);
 	callout_init(&sc->stats_ch);
@@ -567,10 +562,6 @@ USB_DETACH(ural)
 
 	bpfdetach(ifp);
 	ieee80211_ifdetach(ic);
-
-#if 0
-	mtx_destroy(&sc->sc_mtx);
-#endif
 
 	return 0;
 }
