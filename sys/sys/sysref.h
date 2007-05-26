@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/sysref.h,v 1.2 2007/05/08 02:31:43 dillon Exp $
+ * $DragonFly: src/sys/sys/sysref.h,v 1.3 2007/05/26 20:31:37 dillon Exp $
  */
 /*
  * System resource registration, reference counter, and allocation
@@ -133,5 +133,11 @@ RB_PROTOTYPE2(sysref_rb_tree, sysref, rbnode, rb_sysref_compare, sysid_t);
 #define SYSREF_PROTO_BUF	0x0029
 #define SYSREF_PROTO_FSMOUNT	0x002A
 #define SYSREF_PROTO_DEV	0x002B
+
+#ifdef _KERNEL
+
+sysid_t allocsysid(void);
+
+#endif
 
 #endif

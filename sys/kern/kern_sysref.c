@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_sysref.c,v 1.4 2007/05/06 19:23:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysref.c,v 1.5 2007/05/26 20:31:38 dillon Exp $
  */
 /*
  * System resource control module for all cluster-addressable system resource
@@ -348,5 +348,18 @@ _sysref_put(struct sysref *sr)
 		/* loop until the cmpset succeeds */
 		cpu_pause();
 	}
+}
+
+sysid_t
+allocsysid(void)
+{
+	globaldata_t gd = mycpu;
+	sysid_t sysid;
+
+	crit_enter_gd(gd);
+	gd->gd_sysid_alloc += ncpus_fit;
+	sysid = gd->gd_sysid_alloc;
+	crit_exit_gd(gd);
+	return(sysid);
 }
 
