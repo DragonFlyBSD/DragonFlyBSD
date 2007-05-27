@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.54 2007/05/23 17:09:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.55 2007/05/27 23:28:29 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -423,6 +423,9 @@ shutdown_halt(void *junk, int howto)
 	if (howto & RB_HALT) {
 		kprintf("\n");
 		kprintf("The operating system has halted.\n");
+#ifdef _KERNEL_VIRTUAL
+		cpu_halt();
+#else
 		kprintf("Please press any key to reboot.\n\n");
 		switch (cngetc()) {
 		case -1:		/* No console, just die */
@@ -432,6 +435,7 @@ shutdown_halt(void *junk, int howto)
 			howto &= ~RB_HALT;
 			break;
 		}
+#endif
 	}
 }
 

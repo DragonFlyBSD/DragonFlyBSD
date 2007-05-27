@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.37 2007/05/27 18:37:25 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.38 2007/05/27 23:28:30 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -109,6 +109,9 @@ static void init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type);
 static void init_netif(char *netifExp[], int netifFileNum);
 static void usage(const char *ctl);
 
+static int save_ac;
+static char **save_av;
+
 /*
  * Kernel startup for virtual kernels - standard main() 
  */
@@ -126,6 +129,9 @@ main(int ac, char **av)
 	int c;
 	int i;
 	int n;
+
+	save_ac = ac;
+	save_av = av;
 
 	/*
 	 * Process options
@@ -160,15 +166,15 @@ main(int ac, char **av)
 			break;
 		case 'I':
 			if (netifFileNum < VKNETIF_MAX)
-				netifFile[netifFileNum++] = optarg;
+				netifFile[netifFileNum++] = strdup(optarg);
 			break;
 		case 'r':
 			if (diskFileNum + cdFileNum < VKDISK_MAX)
-				diskFile[diskFileNum++] = optarg;
+				diskFile[diskFileNum++] = strdup(optarg);
 			break;
 		case 'c':
 			if (diskFileNum + cdFileNum < VKDISK_MAX)
-				cdFile[cdFileNum++] = optarg;
+				cdFile[cdFileNum++] = strdup(optarg);
 			break;
 		case 'm':
 			Maxmem_bytes = strtoull(optarg, &suffix, 0);
@@ -1036,14 +1042,14 @@ usage(const char *ctl)
 void
 cpu_reset(void)
 {
-	kprintf("cpu reset\n");
-	exit(0);
+	kprintf("cpu reset, rebooting vkernel\n");
+	closefrom(3);
+	execv(save_av[0], save_av);
 }
 
 void
 cpu_halt(void)
 {
-	kprintf("cpu halt\n");
-	for (;;)
-		__asm__ __volatile("hlt");
+	kprintf("cpu halt, exiting vkernel\n");
+	exit(0);
 }
