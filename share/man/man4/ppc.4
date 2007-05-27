@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ppc.4,v 1.13.4.4 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/ppc.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ppc.4,v 1.4 2007/05/27 23:06:33 swildner Exp $
 .\"
 .Dd March 5, 1998
 .Dt PPC 4
@@ -101,14 +101,14 @@ You may want to add support for the newest chipset your motherboard was
 sold with.
 For the ISA bus, just retrieve the specs of the chipset and write the
 corresponding
-.Fn ppc_mychipset_detect ""
+.Fn ppc_mychipset_detect
 function.
 Then add an entry to the general purpose
-.Fn ppc_detect ""
+.Fn ppc_detect
 function.
 .Pp
 Your
-.Fn ppc_mychipset_detect ""
+.Fn ppc_mychipset_detect
 function should ensure that if the mode field of the
 .Va flags
 boot variable is not null, then the operating
