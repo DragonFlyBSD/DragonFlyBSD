@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004-2007 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,142 +31,101 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg2.h,v 1.1 2006/08/08 01:27:14 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg2.h,v 1.2 2007/05/27 20:35:43 dillon Exp $
  */
 /*
- * The syslink infrastructure implements an optimized RPC mechanism across a 
- * communications link.  RPC functions are grouped together into larger
- * protocols.  Prototypes are typically associated with system structures
- * but do not have to be.
- *
- * syslink 	- Implements a communications end-point and protocol.  A
- *		  syslink is typically directly embedded in a related
- *		  structure.
- *
- * syslink_proto- Specifies a set of RPC functions.
- *
- * syslink_desc - Specifies a single RPC function within a protocol.
+ * Helper inlines and macros for syslink message generation
  */
 
-#ifndef _SYS_SYSLINK2_H_
-#define _SYS_SYSLINK2_H_
+#ifndef _SYS_SYSLINK_MSG2_H_
+#define _SYS_SYSLINK_MSG2_H_
 
 #ifndef _SYS_SYSLINK_H_
 #include <sys/syslink.h>
 #endif
-#ifndef _MACHINE_CPUFUNC_H_
-#include <machine/cpufunc.h>
+#ifndef _SYS_SYSLINK_MSG_H_
+#include <sys/syslink_msg.h>
 #endif
 
-#ifndef _KERNEL
-#ifndef _ASSERT_H_
-#include <assert.h>
-#endif
-#define KKASSERT(exp)	assert(exp)
-#endif
-
-/*
- * Basic initialization of a message structure.  Returns a cursor.
- * 'bytes' represents the amount of reserved space in the message (or the
- * size of the message buffer) and must already be 8-byte aligned.
- */
 static __inline
-syslink_msg_t
-syslink_msg_init(void *buf, sl_cid_t cmdid, int bytes, int *cursor)
+struct syslink_elm *
+syslink_msg_init_cmd(struct syslink_msg *msg, sl_proto_t proto, sl_cmd_t cmd)
 {
-	struct syslink_msg *msg = buf;
+	msg->sm_proto = proto;
+	msg->sm_bytes = 0;
+	/* rlabel will be filled in by the transport layer */
+	/* msgid will be filled in by the transport layer */
+	msg->sm_head.se_cmd = cmd;
+	msg->sm_head.se_bytes = sizeof(struct syslink_elm);
+	msg->sm_head.se_aux = 0;
+	return(&msg->sm_head);
+}
 
-	msg->msgid = -1;		/* not yet assigned / placeholder */
-	msg->cid = cmdid;		/* command identifier */
-	msg->reclen = bytes;		/* reserved size, in bytes */
-	*cursor = sizeof(*msg);
-	return (msg);
+static __inline
+struct syslink_elm *
+syslink_msg_init_reply(struct syslink_msg *msg, struct syslink_msg *rep,
+		       int32_t error)
+{
+	rep->sm_proto = msg->sm_proto | SM_PROTO_REPLY;
+	rep->sm_bytes = 0;
+	rep->sm_rlabel = msg->sm_rlabel;
+	rep->sm_msgid = msg->sm_msgid;
+	rep->sm_head.se_cmd = msg->sm_head.se_cmd | SE_CMDF_REPLY;
+	rep->sm_head.se_bytes = sizeof(struct syslink_elm);
+	rep->sm_head.se_aux = error;
+	return(&rep->sm_head);
+}
+
+static __inline
+void
+syslink_msg_done(struct syslink_msg *msg)
+{
+	msg->sm_bytes = offsetof(struct syslink_msg, sm_head) +
+				 SL_MSG_ALIGN(msg->sm_head.se_bytes);
+}
+
+static __inline
+struct syslink_elm *
+syslink_elm_make(struct syslink_elm *par, sl_cmd_t cmd, int bytes)
+{
+	struct syslink_elm *elm = (void *)((char *)par + par->se_bytes);
+
+	KKASSERT((cmd & SE_CMDF_STRUCTURED) == 0);
+	elm->se_cmd = cmd;
+	elm->se_bytes = sizeof(*elm) + bytes;
+	elm->se_aux = 0;
+
+	par->se_bytes += SL_MSG_ALIGN(elm->se_bytes);
+	return(elm);
 }
 
 /*
- * Basic completion of a constructed message buffer.  The cursor is used to
- * determine the actual size of the message and any remaining space is
- * converted to PAD.
- *
- * NOTE: The original reserved space in the message is required to have been
- * aligned.  We maintain FIFO atomicy by setting up the PAD before we fixup
- * the record length.
+ * Push a new element given the current element, creating a recursion
+ * under the current element.
+ */
+static __inline
+struct syslink_elm *
+syslink_elm_push(struct syslink_elm *par, sl_cmd_t cmd)
+{
+	struct syslink_elm *elm = (void *)((char *)par + par->se_bytes);
+
+	KKASSERT(cmd & SE_CMDF_STRUCTURED);
+	elm->se_cmd = cmd;
+	elm->se_bytes = sizeof(struct syslink_elm);
+	elm->se_aux = 0;
+
+	return(elm);
+}
+
+/*
+ * Pop a previously pushed element.  Additional array elements may be
+ * added to the parent by continuing to push/pop using the parent.
  */
 static __inline
 void
-syslink_msg_done(syslink_msg_t msg, int cursor)
+syslink_elm_pop(struct syslink_elm *par, struct syslink_elm *elm)
 {
-	syslink_msg_t tmp;
-	int n;
-
-	n = (cursor + SL_ALIGNMASK) & ~SL_ALIGNMASK;
-	if (n != msg->reclen) {
-		tmp = (syslink_msg_t)((char *)msg + n);
-		tmp->msgid = 0;
-		tmp->cid = 0;
-		tmp->reclen = msg->reclen - n;
-	}
-	cpu_sfence();
-	msg->reclen = cursor;
-}
-
-/*
- * Inline routines to help construct messages.
- */
-
-/*
- * Push a recursive syslink_item.  SLIF_RECURSION must be set in the
- * passed itemid.  A pointer to the item will be returned and the cursor
- * will be updated.  The returned item must be used in a future call
- * to syslink_item_pop().
- */
-static __inline
-syslink_item_t
-syslink_item_push(syslink_msg_t msg, sl_cid_t itemid, int *cursor)
-{
-	syslink_item_t item;
-
-	item = (char *)msg + *cursor;
-	item->itemid = itemid;
-	item->auxdata = 0;
-	KKASSERT(itemid & SLIF_RECURSION);
-	*cursor += sizeof(struct syslink_item);
-	KKASSERT(*cursor <= msg->reclen);
-
-	return (item);
-}
-
-/*
- * Pop a previously pushed recursive item.  Use the cursor to figure out
- * the item's record length.
- */
-static __inline
-void
-syslink_item_pop(syslink_msg_t msg, syslink_item_t item, int *cursor)
-{
-	item->reclen = *cursor - ((char *)item - (char *)msg);
-}
-
-/*
- * Construct a leaf node whos total size is 'bytes'.  The recursion bit
- * must not be set in the itemid.  The cursor will be updated.
- *
- * A pointer to the leaf item is returned as a void * so the caller can
- * assign it to an extended structural pointer.
- */
-static __inline
-void *
-syslink_item_leaf(syslink_msg_t msg, sl_cid_t itemid, int bytes, int *cursor)
-{
-	syslink_item_t item;
-
-	item = (char *)msg + *cursor;
-	item->reclen = bytes;
-	item->itemid = itemid;
-	item->auxdata = 0;
-	*cursor += (bytes + SL_ALIGNMASK) & ~SL_ALIGNMASK;
-	KKASSERT(*cursor <= msg->reclen && (itemid & SLIF_RECURSION) == 0);
-	return (item);
+	par->se_bytes = (char *)elm - (char *)par + elm->se_bytes;
 }
 
 #endif
