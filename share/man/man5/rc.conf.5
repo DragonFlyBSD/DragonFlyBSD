@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.33 2007/05/27 23:17:47 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.34 2007/05/27 23:46:29 swildner Exp $
 .Dd May 11, 2007
 .Dt RC.CONF 5
 .Os
@@ -2438,12 +2438,6 @@ If set to
 process
 .Pa /etc/varsym.conf
 to set system-wide variables for variant symlinks.
-.It Va unaligned_print
-.Pq Vt bool
-If set to
-.Dq Li NO ,
-unaligned access warnings will not be printed.
-(alpha)
 .It Va rand_irqs
 .Pq Vt str
 Set either to
