@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.36 2007/05/25 02:21:19 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.37 2007/05/27 18:37:25 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -621,7 +621,7 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 				if (type == VKD_CD)
 				    rootdevnames[0] = "cd9660:vcd0a";
 				else if (type == VKD_DISK)
-				    rootdevnames[0] = "ufs:vkd0a";
+				    rootdevnames[0] = "ufs:vkd0s0a";
 			}
 
 			DiskNum++;

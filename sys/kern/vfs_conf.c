@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.30 2007/05/19 00:52:01 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.31 2007/05/27 18:37:23 dillon Exp $
  */
 
 /*
@@ -422,11 +422,8 @@ kgetdiskbyname(const char *name)
 	 */
 	if (*cp == 's') {
 		slice = cp[1] - '0';
-		if (slice < 1 || slice > 9) {
-			kprintf("bad slice number\n");
-			return(NULL);
-		}
-		++slice;	/* slice #1 starts at 2 */
+		if (slice >= 1)
+			++slice;
 		cp += 2;
 	} else {
 		slice = 0;
