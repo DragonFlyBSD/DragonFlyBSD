@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.11 2007/05/26 22:07:18 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.12 2007/05/27 02:45:48 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -529,6 +529,9 @@ USB_DETACH(ural)
 	USB_DETACH_START(ural, sc);
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
+#ifdef INVARIANTS
+	int i;
+#endif
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
@@ -542,26 +545,31 @@ USB_DETACH(ural)
 
 	usb_rem_task(sc->sc_udev, &sc->sc_task);
 
-	if (sc->stats_xfer != NULL) {
-		usbd_free_xfer(sc->stats_xfer);
-		sc->stats_xfer = NULL;
-	}
-
-	if (sc->sc_rx_pipeh != NULL) {
-		usbd_abort_pipe(sc->sc_rx_pipeh);
-		usbd_close_pipe(sc->sc_rx_pipeh);
-	}
-
-	if (sc->sc_tx_pipeh != NULL) {
-		usbd_abort_pipe(sc->sc_tx_pipeh);
-		usbd_close_pipe(sc->sc_tx_pipeh);
-	}
-
-	ural_free_rx_list(sc);
-	ural_free_tx_list(sc);
-
 	bpfdetach(ifp);
 	ieee80211_ifdetach(ic);
+
+	KKASSERT(sc->stats_xfer == NULL);
+	KKASSERT(sc->sc_rx_pipeh == NULL);
+	KKASSERT(sc->sc_tx_pipeh == NULL);
+
+#ifdef INVARIANTS
+	/*
+	 * Make sure TX/RX list is empty
+	 */
+	for (i = 0; i < RAL_TX_LIST_COUNT; i++) {
+		struct ural_tx_data *data = &sc->tx_data[i];
+
+		KKASSERT(data->xfer == NULL);
+		KKASSERT(data->ni == NULL);
+		KKASSERT(data->m == NULL);
+	}
+	for (i = 0; i < RAL_RX_LIST_COUNT; i++) {
+		struct ural_rx_data *data = &sc->rx_data[i];
+
+		KKASSERT(data->xfer == NULL);
+		KKASSERT(data->m == NULL);
+	}
+#endif
 
 	return 0;
 }
@@ -569,13 +577,12 @@ USB_DETACH(ural)
 Static int
 ural_alloc_tx_list(struct ural_softc *sc)
 {
-	struct ural_tx_data *data;
-	int i, error;
+	int i;
 
 	sc->tx_queued = 0;
 
 	for (i = 0; i < RAL_TX_LIST_COUNT; i++) {
-		data = &sc->tx_data[i];
+		struct ural_tx_data *data = &sc->tx_data[i];
 
 		data->sc = sc;
 
@@ -583,8 +590,7 @@ ural_alloc_tx_list(struct ural_softc *sc)
 		if (data->xfer == NULL) {
 			kprintf("%s: could not allocate tx xfer\n",
 			    USBDEVNAME(sc->sc_dev));
-			error = ENOMEM;
-			goto fail;
+			return ENOMEM;
 		}
 
 		data->buf = usbd_alloc_buffer(data->xfer,
@@ -592,25 +598,19 @@ ural_alloc_tx_list(struct ural_softc *sc)
 		if (data->buf == NULL) {
 			kprintf("%s: could not allocate tx buffer\n",
 			    USBDEVNAME(sc->sc_dev));
-			error = ENOMEM;
-			goto fail;
+			return ENOMEM;
 		}
 	}
-
 	return 0;
-
-fail:	ural_free_tx_list(sc);
-	return error;
 }
 
 Static void
 ural_free_tx_list(struct ural_softc *sc)
 {
-	struct ural_tx_data *data;
 	int i;
 
 	for (i = 0; i < RAL_TX_LIST_COUNT; i++) {
-		data = &sc->tx_data[i];
+		struct ural_tx_data *data = &sc->tx_data[i];
 
 		if (data->xfer != NULL) {
 			usbd_free_xfer(data->xfer);
@@ -621,17 +621,21 @@ ural_free_tx_list(struct ural_softc *sc)
 			ieee80211_free_node(data->ni);
 			data->ni = NULL;
 		}
+		if (data->m != NULL) {
+			m_freem(data->m);
+			data->m = NULL;
+		}
 	}
+	sc->tx_queued = 0;
 }
 
 Static int
 ural_alloc_rx_list(struct ural_softc *sc)
 {
-	struct ural_rx_data *data;
-	int i, error;
+	int i;
 
 	for (i = 0; i < RAL_RX_LIST_COUNT; i++) {
-		data = &sc->rx_data[i];
+		struct ural_rx_data *data = &sc->rx_data[i];
 
 		data->sc = sc;
 
@@ -639,42 +643,34 @@ ural_alloc_rx_list(struct ural_softc *sc)
 		if (data->xfer == NULL) {
 			kprintf("%s: could not allocate rx xfer\n",
 			    USBDEVNAME(sc->sc_dev));
-			error = ENOMEM;
-			goto fail;
+			return ENOMEM;
 		}
 
 		if (usbd_alloc_buffer(data->xfer, MCLBYTES) == NULL) {
 			kprintf("%s: could not allocate rx buffer\n",
 			    USBDEVNAME(sc->sc_dev));
-			error = ENOMEM;
-			goto fail;
+			return ENOMEM;
 		}
 
 		data->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (data->m == NULL) {
 			kprintf("%s: could not allocate rx mbuf\n",
 			    USBDEVNAME(sc->sc_dev));
-			error = ENOMEM;
-			goto fail;
+			return ENOMEM;
 		}
 
 		data->buf = mtod(data->m, uint8_t *);
 	}
-
 	return 0;
-
-fail:	ural_free_tx_list(sc);
-	return error;
 }
 
 Static void
 ural_free_rx_list(struct ural_softc *sc)
 {
-	struct ural_rx_data *data;
 	int i;
 
 	for (i = 0; i < RAL_RX_LIST_COUNT; i++) {
-		data = &sc->rx_data[i];
+		struct ural_rx_data *data = &sc->rx_data[i];
 
 		if (data->xfer != NULL) {
 			usbd_free_xfer(data->xfer);
@@ -1213,11 +1209,14 @@ ural_tx_mgt(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 	    ural_txeof);
 
 	error = usbd_transfer(data->xfer);
-	if (error != USBD_NORMAL_COMPLETION && error != USBD_IN_PROGRESS)
+	if (error != USBD_NORMAL_COMPLETION && error != USBD_IN_PROGRESS) {
+		m_freem(m0);
+		data->m = NULL;
+		data->ni = NULL;
 		return error;
+	}
 
 	sc->tx_queued++;
-
 	return 0;
 }
 
@@ -1299,11 +1298,14 @@ ural_tx_data(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 	    ural_txeof);
 
 	error = usbd_transfer(data->xfer);
-	if (error != USBD_NORMAL_COMPLETION && error != USBD_IN_PROGRESS)
+	if (error != USBD_NORMAL_COMPLETION && error != USBD_IN_PROGRESS) {
+		m_freem(m0);
+		data->m = NULL;
+		data->ni = NULL;
 		return error;
+	}
 
 	sc->tx_queued++;
-
 	return 0;
 }
 
@@ -1312,9 +1314,6 @@ ural_start(struct ifnet *ifp)
 {
 	struct ural_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
-	struct mbuf *m0;
-	struct ether_header *eh;
-	struct ieee80211_node *ni;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -1322,6 +1321,9 @@ ural_start(struct ifnet *ifp)
 		return;
 
 	for (;;) {
+		struct ieee80211_node *ni;
+		struct mbuf *m0;
+
 		if (!IF_QEMPTY(&ic->ic_mgtq)) {
 			if (sc->tx_queued >= RAL_TX_LIST_COUNT) {
 				ifp->if_flags |= IFF_OACTIVE;
@@ -1335,10 +1337,13 @@ ural_start(struct ifnet *ifp)
 			if (ic->ic_rawbpf != NULL)
 				bpf_mtap(ic->ic_rawbpf, m0);
 
-			if (ural_tx_mgt(sc, m0, ni) != 0)
+			if (ural_tx_mgt(sc, m0, ni) != 0) {
+				ieee80211_free_node(ni);
 				break;
-
+			}
 		} else {
+			struct ether_header *eh;
+
 			if (ic->ic_state != IEEE80211_S_RUN)
 				break;
 			m0 = ifq_poll(&ifp->if_snd);
@@ -1351,9 +1356,13 @@ ural_start(struct ifnet *ifp)
 
 			ifq_dequeue(&ifp->if_snd, m0);
 
-			if (m0->m_len < sizeof (struct ether_header) &&
-			    !(m0 = m_pullup(m0, sizeof (struct ether_header))))
-				continue;
+			if (m0->m_len < sizeof (struct ether_header)) {
+				m0 = m_pullup(m0, sizeof (struct ether_header));
+				if (m0 == NULL) {
+					ifp->if_oerrors++;
+					continue;
+				}
+			}
 
 			eh = mtod(m0, struct ether_header *);
 			ni = ieee80211_find_txnode(ic, eh->ether_dhost);
