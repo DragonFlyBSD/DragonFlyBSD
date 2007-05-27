@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.53 2007/04/08 07:05:25 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.54 2007/05/27 16:07:41 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -21,6 +21,7 @@ MAN=	accept_filter.9 \
 	BUS_PRINT_CHILD.9 \
 	BUS_READ_IVAR.9 \
 	bus_release_resource.9 \
+	bus_set_resource.9 \
 	BUS_SETUP_INTR.9 \
 	cd.9 \
 	copy.9 \
