@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_uralvar.h,v 1.3.2.3 2006/01/29 14:16:36 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.4 2007/05/26 22:07:18 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.5 2007/05/27 10:53:29 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -72,8 +72,7 @@ struct ural_rx_data {
 
 struct ural_softc {
 	struct ieee80211com		sc_ic;
-	uint32_t			sc_flags;
-#define URAL_FLAG_SYNCTASK	0x1
+	int				sc_stopped;
 
 	int				(*sc_newstate)(struct ieee80211com *,
 					    enum ieee80211_state, int);
@@ -93,7 +92,7 @@ struct ural_softc {
 	usbd_pipe_handle		sc_tx_pipeh;
 
 	enum ieee80211_state		sc_state;
-	int				sc_newstate_arg;
+	int				sc_arg;
 	int				sc_sifs;
 	struct usb_task			sc_task;
 

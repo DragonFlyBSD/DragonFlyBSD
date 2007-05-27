@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.12 2007/05/27 02:45:48 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.13 2007/05/27 10:53:29 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -533,20 +533,21 @@ USB_DETACH(ural)
 	int i;
 #endif
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	crit_enter();
 
 	callout_stop(&sc->scan_ch);
 	callout_stop(&sc->stats_ch);
 
-	sc->sc_flags |= URAL_FLAG_SYNCTASK;
+	lwkt_serialize_enter(ifp->if_serializer);
 	ural_stop(sc);
-
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	usb_rem_task(sc->sc_udev, &sc->sc_task);
 
 	bpfdetach(ifp);
 	ieee80211_ifdetach(ic);
+
+	crit_exit();
 
 	KKASSERT(sc->stats_xfer == NULL);
 	KKASSERT(sc->sc_rx_pipeh == NULL);
@@ -711,12 +712,18 @@ ural_next_scan(void *arg)
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	if (sc->sc_stopped)
+		return;
 
-	if (ic->ic_state == IEEE80211_S_SCAN)
+	crit_enter();
+
+	if (ic->ic_state == IEEE80211_S_SCAN) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		ieee80211_next_scan(ic);
+		lwkt_serialize_exit(ifp->if_serializer);
+	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	crit_exit();
 }
 
 Static void
@@ -725,48 +732,26 @@ ural_task(void *xarg)
 	struct ural_softc *sc = xarg;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
-	enum ieee80211_state ostate;
+	enum ieee80211_state nstate;
 	struct ieee80211_node *ni;
 	struct mbuf *m;
 	int arg;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	if (sc->sc_stopped)
+		return;
 
-	ieee80211_ratectl_newstate(ic, sc->sc_state);
+	crit_enter();
 
-	ostate = ic->ic_state;
-	arg = sc->sc_newstate_arg;
+	nstate = sc->sc_state;
+	arg = sc->sc_arg;
+
+	KASSERT(nstate != IEEE80211_S_INIT,
+		("->INIT state transition should not be defered\n"));
+	ural_set_chan(sc, ic->ic_curchan);
 
 	switch (sc->sc_state) {
-	case IEEE80211_S_INIT:
-		if (ostate == IEEE80211_S_RUN) {
-			/* abort TSF synchronization */
-			ural_write(sc, RAL_TXRX_CSR19, 0);
-
-			/* force tx led to stop blinking */
-			ural_write(sc, RAL_MAC_CSR20, 0);
-		}
-		break;
-
-	case IEEE80211_S_SCAN:
-		ural_set_chan(sc, ic->ic_curchan);
-		callout_reset(&sc->scan_ch, hz / 5, ural_next_scan, sc);
-		break;
-
-	case IEEE80211_S_AUTH:
-		ural_set_chan(sc, ic->ic_curchan);
-		break;
-
-	case IEEE80211_S_ASSOC:
-		ural_set_chan(sc, ic->ic_curchan);
-		break;
-
 	case IEEE80211_S_RUN:
-		ural_set_chan(sc, ic->ic_curchan);
-
 		ni = ic->ic_bss;
-
-		lwkt_serialize_exit(ifp->if_serializer);
 
 		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 			ural_update_slot(&ic->ic_if);
@@ -777,16 +762,21 @@ ural_task(void *xarg)
 
 		if (ic->ic_opmode == IEEE80211_M_HOSTAP ||
 		    ic->ic_opmode == IEEE80211_M_IBSS) {
+		    	lwkt_serialize_enter(ifp->if_serializer);
 			m = ieee80211_beacon_alloc(ic, ni, &sc->sc_bo);
+			lwkt_serialize_exit(ifp->if_serializer);
+
 			if (m == NULL) {
 				kprintf("%s: could not allocate beacon\n",
 				    USBDEVNAME(sc->sc_dev));
+				crit_exit();
 				return;
 			}
 
 			if (ural_tx_bcn(sc, m, ni) != 0) {
 				kprintf("%s: could not send beacon\n",
 				    USBDEVNAME(sc->sc_dev));
+				crit_exit();
 				return;
 			}
 		}
@@ -800,17 +790,24 @@ ural_task(void *xarg)
 		/* clear statistic registers (STA_CSR0 to STA_CSR10) */
 		ural_read_multi(sc, RAL_STA_CSR0, sc->sta, sizeof(sc->sta));
 
-		lwkt_serialize_enter(ifp->if_serializer);
-
 		callout_reset(&sc->stats_ch, 4 * hz / 5,
 			      ural_stats_timeout, sc);
+		break;
 
+	case IEEE80211_S_SCAN:
+		callout_reset(&sc->scan_ch, hz / 5, ural_next_scan, sc);
+		break;
+
+	default:
 		break;
 	}
 
+	lwkt_serialize_enter(ifp->if_serializer);
+	ieee80211_ratectl_newstate(ic, sc->sc_state);
 	sc->sc_newstate(ic, sc->sc_state, arg);
-
 	lwkt_serialize_exit(ifp->if_serializer);
+
+	crit_exit();
 }
 
 Static int
@@ -821,24 +818,28 @@ ural_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	crit_enter();
+
 	callout_stop(&sc->scan_ch);
 	callout_stop(&sc->stats_ch);
 
 	/* do it in a process context */
 	sc->sc_state = nstate;
-	sc->sc_newstate_arg = arg;
+	sc->sc_arg = arg;
 
 	lwkt_serialize_exit(ifp->if_serializer);
 	usb_rem_task(sc->sc_udev, &sc->sc_task);
 
-	if (sc->sc_flags & URAL_FLAG_SYNCTASK) {
-		usb_do_task(sc->sc_udev, &sc->sc_task, USB_TASKQ_DRIVER,
-			    USBD_NO_TIMEOUT);
+	if (nstate == IEEE80211_S_INIT) {
+		lwkt_serialize_enter(ifp->if_serializer);
+		ieee80211_ratectl_newstate(ic, nstate);
+		sc->sc_newstate(ic, nstate, arg);
 	} else {
 		usb_add_task(sc->sc_udev, &sc->sc_task, USB_TASKQ_DRIVER);
+		lwkt_serialize_enter(ifp->if_serializer);
 	}
-	lwkt_serialize_enter(ifp->if_serializer);
 
+	crit_exit();
 	return 0;
 }
 
@@ -885,11 +886,19 @@ ural_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
 	struct ural_tx_data *data = priv;
 	struct ural_softc *sc = data->sc;
+	struct ieee80211_node *ni;
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
+	if (sc->sc_stopped)
+		return;
+
+	crit_enter();
+
 	if (status != USBD_NORMAL_COMPLETION) {
-		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
+		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
+			crit_exit();
 			return;
+		}
 
 		kprintf("%s: could not transmit buffer: %s\n",
 		    USBDEVNAME(sc->sc_dev), usbd_errstr(status));
@@ -898,14 +907,13 @@ ural_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 			usbd_clear_endpoint_stall_async(sc->sc_rx_pipeh);
 
 		ifp->if_oerrors++;
+		crit_exit();
 		return;
 	}
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	m_freem(data->m);
 	data->m = NULL;
-	ieee80211_free_node(data->ni);
+	ni = data->ni;
 	data->ni = NULL;
 
 	sc->tx_queued--;
@@ -915,9 +923,13 @@ ural_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	sc->sc_tx_timer = 0;
 	ifp->if_flags &= ~IFF_OACTIVE;
-	ural_start(ifp);
 
+	lwkt_serialize_enter(ifp->if_serializer);
+	ieee80211_free_node(ni);
+	ifp->if_start(ifp);
 	lwkt_serialize_exit(ifp->if_serializer);
+
+	crit_exit();
 }
 
 Static void
@@ -933,9 +945,16 @@ ural_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	struct mbuf *mnew, *m;
 	int len;
 
+	if (sc->sc_stopped)
+		return;
+
+	crit_enter();
+
 	if (status != USBD_NORMAL_COMPLETION) {
-		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
+		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
+			crit_exit();
 			return;
+		}
 
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall_async(sc->sc_rx_pipeh);
@@ -972,14 +991,14 @@ ural_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	}
 
 	m = data->m;
-	data->m = mnew;
-	data->buf = mtod(data->m, uint8_t *);
+	data->m = NULL;
+	data->buf = NULL;
+
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	/* finalize mbuf */
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = (le32toh(desc->flags) >> 16) & 0xfff;
-
-	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (sc->sc_drvbpf != NULL) {
 		struct ural_rx_radiotap_header *tap = &sc->sc_rxtap;
@@ -1006,14 +1025,19 @@ ural_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	/* node is no longer needed */
 	ieee80211_free_node(ni);
 
-	DPRINTFN(15, ("rx done\n"));
-
 	lwkt_serialize_exit(ifp->if_serializer);
+
+	data->m = mnew;
+	data->buf = mtod(data->m, uint8_t *);
+
+	DPRINTFN(15, ("rx done\n"));
 
 skip:	/* setup a new transfer */
 	usbd_setup_xfer(xfer, sc->sc_rx_pipeh, data, data->buf, MCLBYTES,
 	    USBD_SHORT_XFER_OK, USBD_NO_TIMEOUT, ural_rxeof);
 	usbd_transfer(xfer);
+
+	crit_exit();
 }
 
 Static uint8_t
@@ -1143,6 +1167,7 @@ Static int
 ural_tx_mgt(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
+	struct ifnet *ifp = &ic->ic_if;
 	struct ural_tx_desc *desc;
 	struct ural_tx_data *data;
 	struct ieee80211_frame *wh;
@@ -1204,6 +1229,8 @@ ural_tx_mgt(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 	DPRINTFN(10, ("sending mgt frame len=%u rate=%u xfer len=%u\n",
 	    m0->m_pkthdr.len, rate, xferlen));
 
+	lwkt_serialize_exit(ifp->if_serializer);
+
 	usbd_setup_xfer(data->xfer, sc->sc_tx_pipeh, data, data->buf,
 	    xferlen, USBD_FORCE_SHORT_XFER | USBD_NO_COPY, RAL_TX_TIMEOUT,
 	    ural_txeof);
@@ -1213,17 +1240,20 @@ ural_tx_mgt(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 		m_freem(m0);
 		data->m = NULL;
 		data->ni = NULL;
-		return error;
+	} else {
+		sc->tx_queued++;
+		error = 0;
 	}
 
-	sc->tx_queued++;
-	return 0;
+	lwkt_serialize_enter(ifp->if_serializer);
+	return error;
 }
 
 Static int
 ural_tx_data(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
+	struct ifnet *ifp = &ic->ic_if;
 	struct ural_tx_desc *desc;
 	struct ural_tx_data *data;
 	struct ieee80211_frame *wh;
@@ -1293,6 +1323,8 @@ ural_tx_data(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 	DPRINTFN(10, ("sending data frame len=%u rate=%u xfer len=%u\n",
 	    m0->m_pkthdr.len, rate, xferlen));
 
+	lwkt_serialize_exit(ifp->if_serializer);
+
 	usbd_setup_xfer(data->xfer, sc->sc_tx_pipeh, data, data->buf,
 	    xferlen, USBD_FORCE_SHORT_XFER | USBD_NO_COPY, RAL_TX_TIMEOUT,
 	    ural_txeof);
@@ -1302,11 +1334,13 @@ ural_tx_data(struct ural_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 		m_freem(m0);
 		data->m = NULL;
 		data->ni = NULL;
-		return error;
+	} else {
+		sc->tx_queued++;
+		error = 0;
 	}
 
-	sc->tx_queued++;
-	return 0;
+	lwkt_serialize_enter(ifp->if_serializer);
+	return error;
 }
 
 Static void
@@ -1317,8 +1351,15 @@ ural_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if (sc->sc_stopped)
 		return;
+
+	crit_enter();
+
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING) {
+		crit_exit();
+		return;
+	}
 
 	for (;;) {
 		struct ieee80211_node *ni;
@@ -1391,6 +1432,8 @@ ural_start(struct ifnet *ifp)
 		sc->sc_tx_timer = 5;
 		ifp->if_timer = 1;
 	}
+
+	crit_exit();
 }
 
 Static void
@@ -1401,6 +1444,8 @@ ural_watchdog(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	crit_enter();
+
 	ifp->if_timer = 0;
 
 	if (sc->sc_tx_timer > 0) {
@@ -1408,12 +1453,15 @@ ural_watchdog(struct ifnet *ifp)
 			device_printf(sc->sc_dev, "device timeout\n");
 			/*ural_init(sc); XXX needs a process context! */
 			ifp->if_oerrors++;
+
+			crit_exit();
 			return;
 		}
 		ifp->if_timer = 1;
 	}
-
 	ieee80211_watchdog(ic);
+
+	crit_exit();
 }
 
 /*
@@ -1427,10 +1475,18 @@ ural_reset(struct ifnet *ifp)
 	struct ural_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (ic->ic_opmode != IEEE80211_M_MONITOR)
 		return ENETRESET;
 
+	crit_enter();
+
+	lwkt_serialize_exit(ifp->if_serializer);
 	ural_set_chan(sc, ic->ic_curchan);
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	crit_exit();
 
 	return 0;
 }
@@ -1444,13 +1500,18 @@ ural_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	crit_enter();
+
 	switch (cmd) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
-			if (ifp->if_flags & IFF_RUNNING)
+			if (ifp->if_flags & IFF_RUNNING) {
+				lwkt_serialize_exit(ifp->if_serializer);
 				ural_update_promisc(sc);
-			else
+				lwkt_serialize_enter(ifp->if_serializer);
+			} else {
 				ural_init(sc);
+			}
 		} else {
 			if (ifp->if_flags & IFF_RUNNING)
 				ural_stop(sc);
@@ -1468,6 +1529,8 @@ ural_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			ural_init(sc);
 		error = 0;
 	}
+
+	crit_exit();
 	return error;
 }
 
@@ -1658,17 +1721,12 @@ Static void
 ural_set_chan(struct ural_softc *sc, struct ieee80211_channel *c)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
-	struct ifnet *ifp = &ic->ic_if;
 	uint8_t power, tmp;
 	u_int i, chan;
-
-	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	chan = ieee80211_chan2ieee(ic, c);
 	if (chan == 0 || chan == IEEE80211_CHAN_ANY)
 		return;
-
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	if (IEEE80211_IS_CHAN_2GHZ(c))
 		power = min(sc->txpow[chan - 1], 31);
@@ -1762,8 +1820,6 @@ ural_set_chan(struct ural_softc *sc, struct ieee80211_channel *c)
 
 	sc->sc_sifs = IEEE80211_IS_CHAN_5GHZ(c) ? IEEE80211_DUR_OFDM_SIFS
 						: IEEE80211_DUR_SIFS;
-
-	lwkt_serialize_enter(ifp->if_serializer);
 }
 
 /*
@@ -2059,15 +2115,22 @@ ural_init(void *priv)
 	struct ifnet *ifp = &ic->ic_if;
 	struct ural_rx_data *data;
 	uint16_t tmp;
-	usbd_status error;
-	int i, ntries;
+	usbd_status usb_err;
+	int i, ntries, error;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	crit_enter();
+
+	lwkt_serialize_exit(ifp->if_serializer);
 	ural_set_testmode(sc);
 	ural_write(sc, 0x308, 0x00f0);	/* XXX magic */
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	ural_stop(sc);
+	sc->sc_stopped = 0;
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	/* initialize MAC registers to default values */
 	for (i = 0; i < N(ural_def_mac); i++)
@@ -2084,6 +2147,7 @@ ural_init(void *priv)
 	if (ntries == 100) {
 		kprintf("%s: timeout waiting for BBP/RF to wakeup\n",
 		    USBDEVNAME(sc->sc_dev));
+		error = ETIMEDOUT;
 		goto fail;
 	}
 
@@ -2093,7 +2157,8 @@ ural_init(void *priv)
 	/* set basic rate set (will be updated later) */
 	ural_write(sc, RAL_TXRX_CSR11, 0x15f);
 
-	if (ural_bbp_init(sc) != 0)
+	error = ural_bbp_init(sc);
+	if (error)
 		goto fail;
 
 	/* set default BSS channel */
@@ -2115,25 +2180,28 @@ ural_init(void *priv)
 	if (sc->stats_xfer == NULL) {
 		kprintf("%s: could not allocate AMRR xfer\n",
 		    USBDEVNAME(sc->sc_dev));
+		error = ENOMEM;
 		goto fail;
 	}
 
 	/*
 	 * Open Tx and Rx USB bulk pipes.
 	 */
-	error = usbd_open_pipe(sc->sc_iface, sc->sc_tx_no, USBD_EXCLUSIVE_USE,
+	usb_err = usbd_open_pipe(sc->sc_iface, sc->sc_tx_no, USBD_EXCLUSIVE_USE,
 	    &sc->sc_tx_pipeh);
-	if (error != 0) {
+	if (usb_err != 0) {
 		kprintf("%s: could not open Tx pipe: %s\n",
-		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
+		    USBDEVNAME(sc->sc_dev), usbd_errstr(usb_err));
+		error = ENOMEM;
 		goto fail;
 	}
 
-	error = usbd_open_pipe(sc->sc_iface, sc->sc_rx_no, USBD_EXCLUSIVE_USE,
+	usb_err = usbd_open_pipe(sc->sc_iface, sc->sc_rx_no, USBD_EXCLUSIVE_USE,
 	    &sc->sc_rx_pipeh);
-	if (error != 0) {
+	if (usb_err != 0) {
 		kprintf("%s: could not open Rx pipe: %s\n",
-		    USBDEVNAME(sc->sc_dev), usbd_errstr(error));
+		    USBDEVNAME(sc->sc_dev), usbd_errstr(usb_err));
+		error = ENOMEM;
 		goto fail;
 	}
 
@@ -2141,14 +2209,14 @@ ural_init(void *priv)
 	 * Allocate Tx and Rx xfer queues.
 	 */
 	error = ural_alloc_tx_list(sc);
-	if (error != 0) {
+	if (error) {
 		kprintf("%s: could not allocate Tx list\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
 	}
 
 	error = ural_alloc_rx_list(sc);
-	if (error != 0) {
+	if (error) {
 		kprintf("%s: could not allocate Rx list\n",
 		    USBDEVNAME(sc->sc_dev));
 		goto fail;
@@ -2176,21 +2244,25 @@ ural_init(void *priv)
 	}
 	ural_write(sc, RAL_TXRX_CSR2, tmp);
 
-	ifp->if_flags &= ~IFF_OACTIVE;
-	ifp->if_flags |= IFF_RUNNING;
-
 	/* clear statistic registers (STA_CSR0 to STA_CSR10) */
 	ural_read_multi(sc, RAL_STA_CSR0, sc->sta, sizeof(sc->sta));
+fail:
+	lwkt_serialize_enter(ifp->if_serializer);
+	if (error) {
+		ural_stop(sc);
+	} else {
+		ifp->if_flags &= ~IFF_OACTIVE;
+		ifp->if_flags |= IFF_RUNNING;
 
-	if (ic->ic_opmode != IEEE80211_M_MONITOR) {
-		if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
-			ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
-	} else
-		ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
+			if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
+				ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
+		} else {
+			ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+		}
+	}
 
-	return;
-
-fail:	ural_stop(sc);
+	crit_exit();
 #undef N
 }
 
@@ -2202,11 +2274,17 @@ ural_stop(struct ural_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	crit_enter();
+
+	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	sc->sc_stopped = 1;
+
 	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
 
 	sc->sc_tx_timer = 0;
 	ifp->if_timer = 0;
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	/* disable Rx */
 	ural_write(sc, RAL_TXRX_CSR2, RAL_DISABLE_RX);
@@ -2232,18 +2310,24 @@ ural_stop(struct ural_softc *sc)
 		sc->sc_tx_pipeh = NULL;
 	}
 
+	lwkt_serialize_enter(ifp->if_serializer);
+
 	ural_free_rx_list(sc);
 	ural_free_tx_list(sc);
+
+	crit_exit();
 }
 
 Static void
 ural_stats_timeout(void *arg)
 {
 	struct ural_softc *sc = (struct ural_softc *)arg;
-	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	usb_device_request_t req;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	if (sc->sc_stopped)
+		return;
+
+	crit_enter();
 
 	/*
 	 * Asynchronously read statistic registers (cleared by read).
@@ -2260,7 +2344,7 @@ ural_stats_timeout(void *arg)
 				ural_stats_update);
 	usbd_transfer(sc->stats_xfer);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	crit_exit();
 }
 
 Static void
@@ -2277,7 +2361,7 @@ ural_stats_update(usbd_xfer_handle xfer, usbd_private_handle priv,
 		return;
 	}
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	crit_enter();
 
 	/* count TX retry-fail as Tx errors */
 	ifp->if_oerrors += sc->sta[RAL_TX_PKT_FAIL];
@@ -2306,7 +2390,7 @@ ural_stats_update(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	callout_reset(&sc->stats_ch, 4 * hz / 5, ural_stats_timeout, sc);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	crit_exit();
 }
 
 Static void
