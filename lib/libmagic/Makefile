@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libmagic/Makefile,v 1.18 2007/03/25 07:50:50 sephe Exp $
+# $DragonFly: src/lib/libmagic/Makefile,v 1.19 2007/05/28 18:42:39 pavalos Exp $
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/file-4/src
 MAGICDIR= ${CONTRIBDIR}/../magic
@@ -10,7 +10,7 @@ LIB=	magic
 SHLIB_MAJOR=	2
 
 SRCS=	apprentice.c apptype.c ascmagic.c compress.c fsmagic.c funcs.c\
-	is_tar.c magic.c print.c readelf.c softmagic.c file.h.no_obj.patch
+	is_tar.c magic.c print.c readelf.c softmagic.c
 INCS=	magic.h
 
 LIBMAGIC_CDEFS = -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
@@ -38,11 +38,10 @@ FILESDIR=	/usr/share/misc
 MAGFILES=	${MAGICDIR}/Header ${MAGICDIR}/Localstuff\
 		${MAGICDIR}/Magdir/[a-z]*
 
-libmagic.3: ${CONTRIBDIR}/../doc/libmagic.man libmagic.man.patch
-	  patch -o - ${.ALLSRC} | \
+libmagic.3: ${CONTRIBDIR}/../doc/libmagic.man
 	    sed	-e s@__CSECTION__@1@g \
 		-e s@__FSECTION__@5@g \
-		-e s@__MAGIC__@${MAGIC}@g > ${.TARGET}
+		-e s@__MAGIC__@${MAGIC}@g ${.ALLSRC} > ${.TARGET}
 
 all: ${LIB} magic.mgc magic.mime.mgc
 
