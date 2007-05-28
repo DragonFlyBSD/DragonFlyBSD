@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.38 2007/05/27 23:28:30 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.39 2007/05/28 05:26:29 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -607,13 +607,18 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
        			size_t l = 0;
 
 			if (type == VKD_DISK)
-			    fd = open(fname, O_RDWR|O_DIRECT, 0644);
+			    fd = open(fname, O_RDWR|O_DIRECT|O_EXLOCK|O_NONBLOCK, 0644);
 			else
 			    fd = open(fname, O_RDONLY|O_DIRECT, 0644);
 			if (fd < 0 || fstat(fd, &st) < 0) {
+				if (errno == EAGAIN)
+					fprintf(stderr, "You may already have a vkernel using this disk image!\n");
 				err(1, "Unable to open/create %s", fname);
 				/* NOT REACHED */
 			}
+			/* get rid of O_NONBLOCK, keep O_DIRECT */
+			if (type == VKD_DISK)
+				fcntl(fd, F_SETFL, O_DIRECT);
 
 	       		info = &DiskInfo[DiskNum];
 			l = strlen(fname);

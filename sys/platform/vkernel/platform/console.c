@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.14 2007/05/25 02:21:19 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.15 2007/05/28 05:26:29 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -386,6 +386,7 @@ vcons_set_mode(int in_debugger)
 	if (tcgetattr(0, &tio) < 0)
 		return;
 	cfmakeraw(&tio);
+	tio.c_oflag |= OPOST | ONLCR;
 	tio.c_lflag |= ISIG;
 	if (in_debugger) {
 		tio.c_cc[VINTR] = init_tio.c_cc[VINTR];
