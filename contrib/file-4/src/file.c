@@ -71,7 +71,7 @@
 #include "patchlevel.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: file.c,v 1.107 2007/01/25 21:05:46 christos Exp $")
+FILE_RCSID("@(#)$File: file.c,v 1.111 2007/05/08 14:44:18 christos Exp $")
 #endif	/* lint */
 
 
@@ -128,7 +128,7 @@ main(int argc, char *argv[])
 	char *home, *usermagic;
 	struct stat sb;
 	static const char hmagic[] = "/.magic";
-#define OPTSTRING	"bcCdf:F:hikLm:nNprsvz0"
+#define OPTSTRING	"bcCde:f:F:hikLm:nNprsvz0"
 #ifdef HAVE_GETOPT_LONG
 	int longindex;
 	static const struct option long_options[] =
@@ -138,7 +138,7 @@ main(int argc, char *argv[])
 		{"brief", 0, 0, 'b'},
 		{"checking-printout", 0, 0, 'c'},
 		{"debug", 0, 0, 'd'},
-		{"exclude", 0, 0, 'e' },
+		{"exclude", 1, 0, 'e' },
 		{"files-from", 1, 0, 'f'},
 		{"separator", 1, 0, 'F'},
 		{"mime", 0, 0, 'i'},
@@ -358,9 +358,9 @@ main(int argc, char *argv[])
 
 private void
 /*ARGSUSED*/
-load(const char *m __unused, int flags)
+load(const char *m, int flags)
 {
-	if (magic)
+	if (magic || m == NULL)
 		return;
 	magic = magic_open(flags);
 	if (magic == NULL) {
@@ -576,8 +576,12 @@ help(void)
 "  -r, --raw                  don't translate unprintable chars to \\ooo\n"
 "  -s, --special-files        treat special (block/char devices) files as\n"
 "                             ordinary ones\n"
+"or\n"
 "      --help                 display this help and exit\n"
+"or\n"
 "      --version              output version information and exit\n"
+"or\n"
+"  -C, --compile              compile file specified by -m\n"
 );
 	exit(0);
 }
