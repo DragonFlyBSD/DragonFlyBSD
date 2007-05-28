@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_wakeup.c,v 1.14 2007/04/30 07:18:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_wakeup.c,v 1.15 2007/05/28 18:55:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@ static uint32_t		r_eax, r_ebx, r_ecx, r_edx, r_ebp, r_esi, r_edi,
 			r_efl, r_cr0, r_cr2, r_cr3, r_cr4, ret_addr;
 
 static uint16_t		r_cs, r_ds, r_es, r_fs, r_gs, r_ss, r_tr;
-static uint32_t		r_esp = 0;
+static uint32_t		r_esp;
 
 static void		acpi_printcpu(void);
 static void		acpi_realmodeinst(void *arg, bus_dma_segment_t *segs,
