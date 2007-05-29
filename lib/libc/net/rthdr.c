@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rthdr.c,v 1.2.2.1 2002/04/28 05:40:24 suz Exp $
- * $DragonFly: src/lib/libc/net/rthdr.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
+ * $DragonFly: src/lib/libc/net/rthdr.c,v 1.5 2007/05/29 10:58:11 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -295,4 +295,45 @@ inet6_rthdr_getflags(const struct cmsghdr *cmsg, int idx)
 #endif 
 	return -1;
     }
+}
+
+/*
+ * RFC3542 (2292bis) API
+ */
+
+socklen_t
+inet6_rth_space(int type __unused, int segments __unused)
+{
+	return (0);	/* type not suppported */
+}
+
+void *
+inet6_rth_init(void *bp __unused, socklen_t bp_len __unused, int type __unused,
+	       int segments __unused)
+{
+	return (NULL);	/* type not supported */
+}
+
+int
+inet6_rth_add(void *bp __unused, const struct in6_addr *addr __unused)
+{
+	return (-1);	/* type not supported */
+}
+
+int
+inet6_rth_reverse(const void *in __unused, void *out __unused)
+{
+	return (-1);	/* type not supported */
+}
+
+int
+inet6_rth_segments(const void *bp __unused)
+{
+	return (-1);	/* type not supported */
+}
+
+struct in6_addr *
+inet6_rth_getaddr(const void *bp __unused, int idx __unused)
+{
+	return (NULL);	/* type not supported */
 }

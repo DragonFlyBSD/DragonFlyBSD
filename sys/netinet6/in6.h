@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.h,v 1.7.2.7 2002/08/01 19:38:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.h,v 1.8 2006/11/03 00:54:55 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.h,v 1.9 2007/05/29 10:58:11 hasso Exp $	*/
 /*	$KAME: in6.h,v 1.89 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -80,6 +80,11 @@
  */
 #define __KAME__
 #define __KAME_VERSION		"20010528/FreeBSD"
+
+#ifndef _SOCKLEN_T_DECLARED
+#define _SOCKLEN_T_DECLARED
+typedef __socklen_t	socklen_t;
+#endif
 
 /*
  * Local port number conventions:
@@ -603,20 +608,20 @@ int inet6_option_init (void *, struct cmsghdr **, int);
 int inet6_option_next (const struct cmsghdr *, uint8_t **);
 int inet6_option_space (int);
 
-int inet6_opt_append (void *, size_t, int, uint8_t, size_t, uint8_t, void **);
-int inet6_opt_find (void *, size_t, int, uint8_t, size_t *, void **);
-int inet6_opt_finish (void *, size_t, int);
-int inet6_opt_get_val (void *, size_t, void *, int);
-int inet6_opt_init (void *, size_t);
-int inet6_opt_next (void *, size_t, int, uint8_t *, size_t *, void **);
-int inet6_opt_set_val (void *, size_t, void *, int);
+int inet6_opt_append (void *, socklen_t, int, uint8_t, size_t, uint8_t, void **);
+int inet6_opt_find (void *, socklen_t, int, uint8_t, size_t *, void **);
+int inet6_opt_finish (void *, socklen_t, int);
+int inet6_opt_get_val (void *, int, void *, socklen_t);
+int inet6_opt_init (void *, socklen_t);
+int inet6_opt_next (void *, socklen_t, int, uint8_t *, socklen_t *, void **);
+int inet6_opt_set_val (void *, int, void *, socklen_t);
 
 int		 inet6_rth_add (void *, const struct in6_addr *);
 struct in6_addr *inet6_rth_getaddr (const void *, int);
-void		*inet6_rth_init (void *, int, int, int);
+void		*inet6_rth_init (void *, socklen_t, int, int);
 int		 inet6_rth_reverse (const void *, void *);
 int		 inet6_rth_segments (const void *);
-size_t		 inet6_rth_space (int, int);
+socklen_t	 inet6_rth_space (int, int);
 
 int		 inet6_rthdr_add (struct cmsghdr *, const struct in6_addr *,
 				  unsigned int);
