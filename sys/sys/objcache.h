@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/objcache.h,v 1.9 2007/04/29 06:05:02 dillon Exp $
+ * $DragonFly: src/sys/sys/objcache.h,v 1.10 2007/05/29 17:01:02 dillon Exp $
  */
 
 #ifndef _OBJCACHE_H_
@@ -46,8 +46,8 @@
 
 #define OC_MFLAGS	0x0000ffff	/* same as malloc flags */
 
-typedef __boolean_t (objcache_ctor_fn)(void *obj, void *private, int ocflags);
-typedef void (objcache_dtor_fn)(void *obj, void *private);
+typedef __boolean_t (objcache_ctor_fn)(void *obj, void *privdata, int ocflags);
+typedef void (objcache_dtor_fn)(void *obj, void *privdata);
 
 /*
  * Underlying allocator.
@@ -62,7 +62,7 @@ struct objcache;
 struct objcache
 	*objcache_create(const char *name, int cluster_limit, int mag_capacity,
 			 objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
-			 void *private,
+			 void *privdata,
 			 objcache_alloc_fn *alloc, objcache_free_fn *free,
 			 void *allocator_args);
 struct objcache
@@ -71,7 +71,7 @@ struct objcache
 	*objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
 			  int cluster_limit, int mag_capacity,
 			  objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
-			  void *private);
+			  void *privdata);
 void	*objcache_get(struct objcache *oc, int ocflags);
 void	 objcache_put(struct objcache *oc, void *obj);
 void	 objcache_dtor(struct objcache *oc, void *obj);

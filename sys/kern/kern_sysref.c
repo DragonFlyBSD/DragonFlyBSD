@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_sysref.c,v 1.5 2007/05/26 20:31:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysref.c,v 1.6 2007/05/29 17:01:04 dillon Exp $
  */
 /*
  * System resource control module for all cluster-addressable system resource
@@ -58,8 +58,8 @@
 #include <sys/spinlock2.h>
 #include <sys/sysref2.h>
 
-static boolean_t sysref_ctor(void *data, void *private, int ocflags);
-static void sysref_dtor(void *data, void *private);
+static boolean_t sysref_ctor(void *data, void *privdata, int ocflags);
+static void sysref_dtor(void *data, void *privdata);
 
 /*
  * Red-Black tree support
@@ -104,7 +104,7 @@ rb_sysref_compare(struct sysref *sr1, struct sysref *sr2)
  * be deallocated.
  */
 void
-sysref_init(struct sysref *sr, struct sysref_class *class)
+sysref_init(struct sysref *sr, struct sysref_class *srclass)
 {
 	struct srpercpu *sa;
 	globaldata_t gd;
@@ -116,7 +116,7 @@ sysref_init(struct sysref *sr, struct sysref_class *class)
 	KKASSERT(((int)sr->sysid & ncpus_fit_mask) == gd->gd_cpuid);
 	sr->refcnt = -0x40000000;
 	sr->flags = 0;
-	sr->class = class;
+	sr->srclass = srclass;
 
 	sa = &sysref_array[gd->gd_cpuid];
 	spin_lock_wr(&sa->spin);
@@ -131,7 +131,7 @@ sysref_init(struct sysref *sr, struct sysref_class *class)
  * initialization of the resource and call sysref_activate() to activate it.
  */
 void *
-sysref_alloc(struct sysref_class *class)
+sysref_alloc(struct sysref_class *srclass)
 {
 	struct sysref *sr;
 	char *data;
@@ -140,19 +140,19 @@ sysref_alloc(struct sysref_class *class)
 	/*
 	 * Create the object cache backing store.
 	 */
-	if (class->oc == NULL) {
-		KKASSERT(class->mtype != NULL);
-		class->oc = objcache_create_mbacked(
-				class->mtype, class->objsize, 
-				0, class->mag_capacity,
-				sysref_ctor, sysref_dtor, class);
+	if (srclass->oc == NULL) {
+		KKASSERT(srclass->mtype != NULL);
+		srclass->oc = objcache_create_mbacked(
+				srclass->mtype, srclass->objsize, 
+				0, srclass->mag_capacity,
+				sysref_ctor, sysref_dtor, srclass);
 	}
 
 	/*
 	 * Allocate the resource.
 	 */
-	data = objcache_get(class->oc, M_WAITOK);
-	sr = (struct sysref *)(data + class->offset);
+	data = objcache_get(srclass->oc, M_WAITOK);
+	sr = (struct sysref *)(data + srclass->offset);
 
 	/*
 	 * Refcnt isn't touched while it is zero.  The objcache ctor
@@ -166,13 +166,13 @@ sysref_alloc(struct sysref_class *class)
 	 * Clean out the structure unless the caller wants to deal with
 	 * it (e.g. like the vmspace code).
 	 */
-	if ((class->flags & SRC_MANAGEDINIT) == 0) {
-		if (class->offset != 0)
-			bzero(data, class->offset);
-		n = class->offset + sizeof(struct sysref);
-		KKASSERT(n <= class->objsize);
-		if (n != class->objsize)
-			bzero(data + n, class->objsize - n);
+	if ((srclass->flags & SRC_MANAGEDINIT) == 0) {
+		if (srclass->offset != 0)
+			bzero(data, srclass->offset);
+		n = srclass->offset + sizeof(struct sysref);
+		KKASSERT(n <= srclass->objsize);
+		if (n != srclass->objsize)
+			bzero(data + n, srclass->objsize - n);
 	}
 	return(data);
 }
@@ -191,19 +191,19 @@ sysref_alloc(struct sysref_class *class)
  */
 static
 boolean_t
-sysref_ctor(void *data, void *private, int ocflags)
+sysref_ctor(void *data, void *privdata, int ocflags)
 {
 	globaldata_t gd;
 	struct srpercpu *sa;
-	struct sysref_class *class = private;
-	struct sysref *sr = (void *)((char *)data + class->offset);
+	struct sysref_class *srclass = privdata;
+	struct sysref *sr = (void *)((char *)data + srclass->offset);
 
 	/*
 	 * Resource structures need to be cleared when allocating from
 	 * malloc backing store.  This is different from the zeroing
 	 * that we do in sysref_alloc().
 	 */
-	bzero(data, class->objsize);
+	bzero(data, srclass->objsize);
 
 	/*
 	 * Resources managed by our objcache do the sysid and RB tree
@@ -217,7 +217,7 @@ sysref_ctor(void *data, void *private, int ocflags)
 	KKASSERT(((int)sr->sysid & ncpus_fit_mask) == gd->gd_cpuid);
 	/* sr->refcnt= 0; already zero */
 	sr->flags = SRF_ALLOCATED;
-	sr->class = class;
+	sr->srclass = srclass;
 
 	sa = &sysref_array[gd->gd_cpuid];
 	spin_lock_wr(&sa->spin);
@@ -232,8 +232,8 @@ sysref_ctor(void *data, void *private, int ocflags)
 	 *
 	 * XXX ignores return value for now
 	 */
-	if (class->ctor)
-		class->ctor(data, private, ocflags);
+	if (srclass->ctor)
+		srclass->ctor(data, privdata, ocflags);
 	return TRUE;
 }
 
@@ -246,19 +246,19 @@ sysref_ctor(void *data, void *private, int ocflags)
  */
 static
 void
-sysref_dtor(void *data, void *private)
+sysref_dtor(void *data, void *privdata)
 {
 	struct srpercpu *sa;
-	struct sysref_class *class = private;
-	struct sysref *sr = (void *)((char *)data + class->offset);
+	struct sysref_class *srclass = privdata;
+	struct sysref *sr = (void *)((char *)data + srclass->offset);
 
 	KKASSERT(sr->refcnt == 0);
 	sa = &sysref_array[(int)sr->sysid & ncpus_fit_mask];
 	spin_lock_wr(&sa->spin);
 	sysref_rb_tree_RB_REMOVE(&sa->rbtree, sr);
 	spin_unlock_wr(&sa->spin);
-	if (class->dtor)
-		class->dtor(data, private);
+	if (srclass->dtor)
+		srclass->dtor(data, privdata);
 }
 
 /*
@@ -314,8 +314,8 @@ _sysref_put(struct sysref *sr)
 			 * then called.
 			 */
 			if (atomic_cmpset_int(&sr->refcnt, count, -0x40000000)) {
-				data = (char *)sr - sr->class->offset;
-				sr->class->ops.terminate(data);
+				data = (char *)sr - sr->srclass->offset;
+				sr->srclass->ops.terminate(data);
 				break;
 			}
 		} else if (count > -0x40000000) {
@@ -337,11 +337,11 @@ _sysref_put(struct sysref *sr)
 			KKASSERT(count == -0x40000000 &&
 				 (sr->flags & SRF_ALLOCATED));
 			if (atomic_cmpset_int(&sr->refcnt, count, 0)) {
-				data = (char *)sr - sr->class->offset;
+				data = (char *)sr - sr->srclass->offset;
 				if (sr->flags & SRF_SYSIDUSED)
-					objcache_dtor(sr->class->oc, data);
+					objcache_dtor(sr->srclass->oc, data);
 				else
-					objcache_put(sr->class->oc, data);
+					objcache_put(sr->srclass->oc, data);
 				break;
 			}
 		}

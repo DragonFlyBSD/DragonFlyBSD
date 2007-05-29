@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/sysref.h,v 1.3 2007/05/26 20:31:37 dillon Exp $
+ * $DragonFly: src/sys/sys/sysref.h,v 1.4 2007/05/29 17:01:02 dillon Exp $
  */
 /*
  * System resource registration, reference counter, and allocation
@@ -107,7 +107,7 @@ struct sysref {
 	sysid_t	sysid;			/* machine-wide unique sysid */
 	int	refcnt;			/* normal reference count */
 	int	flags;
-	struct sysref_class *class;	/* type of resource and API */
+	struct sysref_class *srclass;	/* type of resource and API */
 };
 
 #define SRF_SYSIDUSED	0x0001		/* sysid was used for access */

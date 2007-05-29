@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.18 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.19 2007/05/29 17:01:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -123,7 +123,7 @@ struct objcache {
 	/* object constructor and destructor from blank storage */
 	objcache_ctor_fn	*ctor;
 	objcache_dtor_fn	*dtor;
-	void			*private;
+	void			*privdata;
 
 	/* interface to underlying allocator */
 	objcache_alloc_fn	*alloc;
@@ -159,13 +159,13 @@ mag_alloc(int capacity)
  */
 
 static void
-null_dtor(void *obj, void *private)
+null_dtor(void *obj, void *privdata)
 {
 	/* do nothing */
 }
 
 static boolean_t
-null_ctor(void *obj, void *private, int ocflags)
+null_ctor(void *obj, void *privdata, int ocflags)
 {
 	return TRUE;
 }
@@ -175,7 +175,7 @@ null_ctor(void *obj, void *private, int ocflags)
  */
 struct objcache *
 objcache_create(const char *name, int cluster_limit, int mag_capacity,
-		objcache_ctor_fn *ctor, objcache_dtor_fn *dtor, void *private,
+		objcache_ctor_fn *ctor, objcache_dtor_fn *dtor, void *privdata,
 		objcache_alloc_fn *alloc, objcache_free_fn *free,
 		void *allocator_args)
 {
@@ -189,7 +189,7 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 	oc->name = kstrdup(name, M_TEMP);
 	oc->ctor = ctor ? ctor : null_ctor;
 	oc->dtor = dtor ? dtor : null_dtor;
-	oc->private = private;
+	oc->privdata = privdata;
 	oc->free = free;
 	oc->allocator_args = allocator_args;
 
@@ -251,7 +251,7 @@ struct objcache *
 objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
 			int cluster_limit, int mag_capacity,
 			objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
-			void *private)
+			void *privdata)
 {
 	struct objcache_malloc_args *margs;
 	struct objcache *oc;
@@ -261,7 +261,7 @@ objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
 	margs->mtype = mtype;
 	oc = objcache_create(mtype->ks_shortdesc,
 			     cluster_limit, mag_capacity,
-			     ctor, dtor, private,
+			     ctor, dtor, privdata,
 			     objcache_malloc_alloc, objcache_malloc_free,
 			     margs);
 	return(oc);
@@ -371,7 +371,7 @@ retry:
 
 		obj = oc->alloc(oc->allocator_args, ocflags);
 		if (obj) {
-			if (oc->ctor(obj, oc->private, ocflags))
+			if (oc->ctor(obj, oc->privdata, ocflags))
 				return (obj);
 			oc->free(obj, oc->allocator_args);
 			spin_lock_wr(&depot->spin);
@@ -556,7 +556,7 @@ retry:
 	if (depot->waiting)
 		wakeup(depot);
 	crit_exit();
-	oc->dtor(obj, oc->private);
+	oc->dtor(obj, oc->privdata);
 	oc->free(obj, oc->allocator_args);
 }
 
@@ -576,7 +576,7 @@ objcache_dtor(struct objcache *oc, void *obj)
 	spin_unlock_wr(&depot->spin);
 	if (depot->waiting)
 		wakeup(depot);
-	oc->dtor(obj, oc->private);
+	oc->dtor(obj, oc->privdata);
 	oc->free(obj, oc->allocator_args);
 }
 
@@ -599,7 +599,7 @@ mag_purge(struct objcache *oc, struct magazine *mag, int freeit)
 	++mag->cleaning;
 	while (mag->rounds) {
 		obj = mag->objects[--mag->rounds];
-		oc->dtor(obj, oc->private);		/* MAY BLOCK */
+		oc->dtor(obj, oc->privdata);		/* MAY BLOCK */
 		oc->free(obj, oc->allocator_args);	/* MAY BLOCK */
 		++count;
 
