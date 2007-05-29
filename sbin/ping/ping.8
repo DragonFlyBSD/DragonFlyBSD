@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,10 +26,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)ping.8	8.2 (Berkeley) 12/11/93
-.\" $FreeBSD: src/sbin/ping/ping.8,v 1.25.2.11 2003/02/23 21:03:24 trhodes Exp $
-.\" $DragonFly: src/sbin/ping/ping.8,v 1.4 2006/05/26 19:39:38 swildner Exp $
+.\" $FreeBSD: src/sbin/ping/ping.8,v 1.54 2006/04/05 12:30:42 glebius Exp $
+.\" $DragonFly: src/sbin/ping/ping.8,v 1.5 2007/05/29 10:21:41 hasso Exp $
 .\"
-.Dd September 25, 2001
+.Dd April 4, 2006
 .Dt PING 8
 .Os
 .Sh NAME
@@ -43,26 +39,44 @@
 packets to network hosts
 .Sh SYNOPSIS
 .Nm
-.Op Fl AQRadfnqrv
+.Op Fl AaDdfnoQqRrv
 .Op Fl c Ar count
+.Op Fl G Ar sweepmaxsize
+.Op Fl g Ar sweepminsize
+.Op Fl h Ar sweepincrsize
 .Op Fl i Ar wait
 .Op Fl l Ar preload
+.Op Fl M Cm mask | time
 .Op Fl m Ar ttl
-.Op Fl p Ar pattern
 .Op Fl P Ar policy
-.Op Fl s Ar packetsize
+.Op Fl p Ar pattern
 .Op Fl S Ar src_addr
+.Op Fl s Ar packetsize
 .Op Fl t Ar timeout
-.Bo
-.Ar host |
-.Op Fl L
-.Op Fl I Ar interface
+.Op Fl W Ar waittime
+.Op Fl z Ar tos
+.Ar host
+.Nm
+.Op Fl AaDdfLnoQqRrv
+.Op Fl c Ar count
+.Op Fl I Ar iface
+.Op Fl i Ar wait
+.Op Fl l Ar preload
+.Op Fl M Cm mask | time
+.Op Fl m Ar ttl
+.Op Fl P Ar policy
+.Op Fl p Ar pattern
+.Op Fl S Ar src_addr
+.Op Fl s Ar packetsize
 .Op Fl T Ar ttl
+.Op Fl t Ar timeout
+.Op Fl W Ar waittime
+.Op Fl z Ar tos
 .Ar mcast-group
-.Bc
 .Sh DESCRIPTION
-.Nm Ping
-uses the
+The
+.Nm
+utility uses the
 .Tn ICMP
 .No protocol Ap s mandatory
 .Tn ECHO_REQUEST
@@ -108,6 +122,12 @@ packets.
 If this option is not specified,
 .Nm
 will operate until interrupted.
+If this option is specified in conjunction with ping sweeps,
+each sweep will consist of
+.Ar count
+packets.
+.It Fl D
+Set the Don't Fragment bit.
 .It Fl d
 Set the
 .Dv SO_DEBUG
@@ -128,6 +148,25 @@ Only the super-user may use this option.
 .Bf -emphasis
 This can be very hard on a network and should be used with caution.
 .Ef
+.It Fl G Ar sweepmaxsize
+Specify the maximum size of
+.Tn ICMP
+payload when sending sweeping pings.
+This option is required for ping sweeps.
+.It Fl g Ar sweepminsize
+Specify the size of
+.Tn ICMP
+payload to start with when sending sweeping pings.
+The default value is 0.
+.It Fl h Ar sweepincrsize
+Specify the number of bytes to increment the size of
+.Tn ICMP
+payload after
+each sweep when sending sweeping pings.
+The default value is 1.
+.It Fl I Ar iface
+Source multicast packets with the given interface address.
+This flag only applies if the ping destination is a multicast address.
 .It Fl i Ar wait
 Wait
 .Ar wait
@@ -139,8 +178,8 @@ values less than 1 second.
 This option is incompatible with the
 .Fl f
 option.
-.It Fl I Ar interface
-Source multicast packets with the given interface address.
+.It Fl L
+Suppress loopback of multicast packets.
 This flag only applies if the ping destination is a multicast address.
 .It Fl l Ar preload
 If
@@ -150,17 +189,40 @@ is specified,
 sends that many packets as fast as possible before falling into its normal
 mode of behavior.
 Only the super-user may use this option.
+.It Fl M Cm mask | time
+Use
+.Dv ICMP_MASKREQ
+or
+.Dv ICMP_TSTAMP
+instead of
+.Dv ICMP_ECHO .
+For
+.Cm mask ,
+print the netmask of the remote machine.
+Set the
+.Va net.inet.icmp.maskrepl
+MIB variable to enable
+.Dv ICMP_MASKREPLY .
+For
+.Cm time ,
+print the origination, reception and transmission timestamps.
 .It Fl m Ar ttl
 Set the IP Time To Live for outgoing packets.
 If not specified, the kernel uses the value of the
 .Va net.inet.ip.ttl
 MIB variable.
-.It Fl L
-Suppress loopback of multicast packets.
-This flag only applies if the ping destination is a multicast address.
 .It Fl n
 Numeric output only.
 No attempt will be made to lookup symbolic names for host addresses.
+.It Fl o
+Exit successfully after receiving one reply packet.
+.It Fl P Ar policy
+.Ar policy
+specifies IPsec policy for the ping session.
+For details please refer to
+.Xr ipsec 4
+and
+.Xr ipsec_set_policy 3 .
 .It Fl p Ar pattern
 You may specify up to 16
 .Dq pad
@@ -170,13 +232,6 @@ For example,
 .Dq Li \-p ff
 will cause the sent packet to be filled with all
 ones.
-.It Fl P Ar policy
-.Ar policy
-specifies IPsec policy for the ping session.
-For details please refer to
-.Xr ipsec 4
-and
-.Xr ipsec_set_policy 3 .
 .It Fl Q
 Somewhat quiet output.
 .No Don Ap t
@@ -186,8 +241,7 @@ Originally, the
 flag was required to display such errors, but
 .Fl v
 displays all ICMP error messages.
-On a busy machine, this output can
-be overbearing.
+On a busy machine, this output can be overbearing.
 Without the
 .Fl Q
 flag,
@@ -225,6 +279,14 @@ This option can be used to ping a local host through an interface
 that has no route through it
 (e.g., after the interface was dropped by
 .Xr routed 8 ) .
+.It Fl S Ar src_addr
+Use the following IP address as the source address in outgoing packets.
+On hosts with more than one IP address, this option can be used to
+force the source address to be something other than the IP address
+of the interface the probe packet is sent on.
+If the IP address
+is not one of this machine's interface addresses, an error is
+returned and nothing is sent.
 .It Fl s Ar packetsize
 Specify the number of data bytes to be sent.
 The default is 56, which translates into 64
@@ -233,26 +295,26 @@ data bytes when combined
 with the 8 bytes of
 .Tn ICMP
 header data.
-Only the super-user may use this option.
-.It Fl S Ar src_addr
-Use the following IP address as the source address in outgoing packets.
-On hosts with more than one IP address, this option can be used to
-force the source address to be something other than the IP address
-of the interface the probe packet is sent on.
-If the IP address is not one of this machine's interface addresses,
-an error is returned and nothing is sent.
-.It Fl t Ar timeout
-Specify a timeout, in seconds, before ping exits regardless of how
-many packets have been received.
+Only the super-user may specify values more than default.
+This option cannot be used with ping sweeps.
 .It Fl T Ar ttl
 Set the IP Time To Live for multicasted packets.
 This flag only applies if the ping destination is a multicast address.
+.It Fl t Ar timeout
+Specify a timeout, in seconds, before ping exits regardless of how
+many packets have been received.
 .It Fl v
 Verbose output.
 .Tn ICMP
 packets other than
 .Tn ECHO_RESPONSE
 that are received are listed.
+.It Fl W Ar waittime
+Time in milliseconds to wait for a reply for each packet sent.
+If a reply arrives later, the packet is not printed as replied, but
+considered as replied when calculating statistics.
+.It Fl z Ar tos
+Use the specified type of service.
 .El
 .Pp
 When using
@@ -317,8 +379,9 @@ it uses in the computation of round trip times.
 If less than eight bytes of pad are specified, no round trip times are
 given.
 .Sh DUPLICATE AND DAMAGED PACKETS
-.Nm Ping
-will report duplicate and damaged packets.
+The
+.Nm
+utility will report duplicate and damaged packets.
 Duplicate packets should never occur when pinging a unicast address,
 and seem to be caused by
 inappropriate link-level retransmissions.
@@ -375,11 +438,11 @@ field by exactly one.
 .Pp
 The
 .Tn TCP/IP
-specification states that the
+specification recommends setting the
 .Tn TTL
 field for
-.Tn TCP
-packets should be set to 60, but many systems use smaller values
+.Tn IP
+packets to 64, but many systems use smaller values
 .No ( Bx 4.3
 uses 30,
 .Bx 4.2
@@ -444,7 +507,7 @@ Others may use completely wild values.
 .Sh DIAGNOSTICS
 The
 .Nm
-command returns an exit status of zero if at least one response was
+utility returns an exit status of zero if at least one response was
 heard from the specified
 .Ar host ;
 a status of two if the transmission was successful but no responses
@@ -460,12 +523,12 @@ if an error occurred.
 .Sh HISTORY
 The
 .Nm
-command appeared in
+utility appeared in
 .Bx 4.3 .
 .Sh AUTHORS
 The original
 .Nm
-command was written by
+utility was written by
 .An Mike Muuss
 while at the US Army Ballistics
 Research Laboratory.
