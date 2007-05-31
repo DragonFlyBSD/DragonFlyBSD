@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.273 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.8 2007/05/01 00:05:17 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.9 2007/05/31 22:10:59 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -460,7 +460,7 @@ ata_device_ioctl(device_t dev, u_long cmd, caddr_t data)
 
     switch (cmd) {
     case IOCATAREQUEST:
-	if (!(buf = kmalloc(ioc_request->count, M_ATA, M_NOWAIT))) {
+	if (!(buf = kmalloc(ioc_request->count, M_ATA, M_WAITOK | M_NULLOK))) {
 	    return ENOMEM;
 	}
 	if (!(request = ata_alloc_request())) {
@@ -675,7 +675,7 @@ ata_identify(device_t dev)
 
     if (ch->devices & (ATA_ATA_MASTER | ATA_ATAPI_MASTER)) {
 	if (!(master = kmalloc(sizeof(struct ata_device),
-			      M_ATA, M_NOWAIT | M_ZERO))) {
+			      M_ATA, M_INTWAIT | M_ZERO))) {
 	    device_printf(dev, "out of memory\n");
 	    return ENOMEM;
 	}
@@ -683,7 +683,7 @@ ata_identify(device_t dev)
     }
     if (ch->devices & (ATA_ATA_SLAVE | ATA_ATAPI_SLAVE)) {
 	if (!(slave = kmalloc(sizeof(struct ata_device),
-			     M_ATA, M_NOWAIT | M_ZERO))) {
+			     M_ATA, M_INTWAIT | M_ZERO))) {
 	    kfree(master, M_ATA);
 	    device_printf(dev, "out of memory\n");
 	    return ENOMEM;
