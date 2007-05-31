@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.33 2007/05/24 20:51:21 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.34 2007/05/31 11:00:25 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -170,7 +170,6 @@ netisr_init(void)
      * synchronously and waits for it if EASYNC is returned.
      */
     lwkt_initport_putonly(&netisr_sync_port, netmsg_sync_putport);
-    netisr_sync_port.mp_putport = netmsg_sync_putport;
 }
 
 SYSINIT(netisr, SI_SUB_PROTO_BEGIN, SI_ORDER_FIRST, netisr_init, NULL);
@@ -245,7 +244,7 @@ netmsg_service_loop(void *arg)
 {
     struct netmsg *msg;
 
-    while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
+    while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
 	msg->nm_dispatch(msg);
     }
 }

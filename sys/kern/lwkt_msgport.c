@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.42 2007/05/24 20:51:16 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.43 2007/05/31 11:00:25 sephe Exp $
  */
 
 #ifdef _KERNEL
@@ -436,8 +436,7 @@ lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
     } else {
 	/*
 	 * If an asynchronous completion has been requested the message
-	 * must be queued to the reply port.  MSGF_REPLY cannot be set
-	 * until the message actually gets queued.
+	 * must be queued to the reply port.
 	 *
 	 * A critical section is required to interlock the port queue.
 	 */
@@ -572,7 +571,6 @@ lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
 	int sentabort;
 
 	KKASSERT(port->mpu_td == td);
-	KKASSERT(msg->ms_reply_port == port);
 	crit_enter_quick(td);
 	sentabort = 0;
 
@@ -600,7 +598,6 @@ lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
 	    thread_t td = curthread;
 
 	    KKASSERT(port->mpu_td == td);
-	    KKASSERT(msg->ms_reply_port == port);
 	    crit_enter_quick(td);
 	    _lwkt_pullmsg(port, msg);
 	    crit_exit_quick(td);
@@ -787,8 +784,7 @@ lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg)
     } else {
 	/*
 	 * If an asynchronous completion has been requested the message
-	 * must be queued to the reply port.  MSGF_REPLY cannot be set
-	 * until the message actually gets queued.
+	 * must be queued to the reply port.
 	 */
 	spin_lock_wr(&port->mpu_spin);
 	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
