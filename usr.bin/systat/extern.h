@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/systat/extern.h,v 1.5 2003/11/08 09:30:32 asmodai Exp $
+ * $DragonFly: src/usr.bin/systat/extern.h,v 1.6 2007/05/31 11:38:36 hasso Exp $
  */
 
 #include <sys/cdefs.h>
@@ -74,7 +74,9 @@ int	 checkport(struct inpcb *);
 void	 closeiostat(WINDOW *);
 void     closeifstat(WINDOW *);
 void	 closeicmp(WINDOW *);
+void     closeicmp6(WINDOW *);
 void	 closeip(WINDOW *);
+void	 closeip6(WINDOW *);
 void	 closekre(WINDOW *);
 void	 closembufs(WINDOW *);
 void	 closenetstat(WINDOW *);
@@ -93,8 +95,10 @@ int	 dkinit(void);
 int	 dkcmd(char *, char *);
 void	 error(const char *fmt, ...) __printflike(1, 2);
 void	 fetchicmp(void);
+void	 fetchicmp6(void);
 void     fetchifstat(void);
 void	 fetchip(void);
+void	 fetchip6(void);
 void	 fetchiostat(void);
 void	 fetchkre(void);
 void	 fetchmbufs(void);
@@ -103,8 +107,10 @@ void	 fetchpigs(void);
 void	 fetchswap(void);
 void	 fetchtcp(void);
 int	 initicmp(void);
+int	 initicmp6(void);
 int      initifstat(void);
 int	 initip(void);
+int	 initip6(void);
 int	 initiostat(void);
 int	 initkre(void);
 int	 initmbufs(void);
@@ -115,8 +121,10 @@ int	 inittcp(void);
 int	 keyboard(void);
 int	 kvm_ckread(void *, void *, int);
 void	 labelicmp(void);
+void	 labelicmp6(void);
 void     labelifstat(void);
 void	 labelip(void);
+void	 labelip6(void);
 void	 labeliostat(void);
 void	 labelkre(void);
 void	 labelmbufs(void);
@@ -129,8 +137,10 @@ void	 load(void);
 int	 netcmd(char *, char *);
 void	 nlisterr(struct nlist []);
 WINDOW	*openicmp(void);
+WINDOW	*openicmp6(void);
 WINDOW  *openifstat(void);
 WINDOW	*openip(void);
+WINDOW	*openip6(void);
 WINDOW	*openiostat(void);
 WINDOW	*openkre(void);
 WINDOW	*openmbufs(void);
@@ -140,11 +150,15 @@ WINDOW	*openswap(void);
 WINDOW	*opentcp(void);
 int	 prefix(char *, char *);
 void	 reseticmp(void);
+void	 reseticmp6(void);
 void	 resetip(void);
+void	 resetip6(void);
 void	 resettcp(void);
 void	 showicmp(void);
+void	 showicmp6(void);
 void     showifstat(void);
 void	 showip(void);
+void	 showip6(void);
 void	 showiostat(void);
 void	 showkre(void);
 void	 showmbufs(void);

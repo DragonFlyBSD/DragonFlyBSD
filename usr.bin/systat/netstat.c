@@ -32,7 +32,7 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.8 2004/12/20 11:03:16 joerg Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.9 2007/05/31 11:38:36 hasso Exp $
  */
 
 /*
@@ -50,6 +50,9 @@
 #include <net/route.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
+#ifdef INET6
+#include <netinet/ip6.h>
+#endif
 #include <netinet/in_pcb.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/icmp_var.h>

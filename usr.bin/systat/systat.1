@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)systat.1	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/usr.bin/systat/systat.1,v 1.23.2.9 2002/12/29 16:35:40 schweikh Exp $
-.\" $DragonFly: src/usr.bin/systat/systat.1,v 1.4 2006/02/17 19:39:11 swildner Exp $
+.\" $DragonFly: src/usr.bin/systat/systat.1,v 1.5 2007/05/31 11:38:37 hasso Exp $
 .\"
-.Dd September 9, 1997
+.Dd May 31, 2007
 .Dt SYSTAT 1
 .Os
 .Sh NAME
@@ -89,9 +89,11 @@ flag expects
 .Ar display
 to be one of:
 .Ic icmp ,
+.Ic icmp6 ,
 .Ic ifstat ,
 .Ic iostat ,
 .Ic ip ,
+.Ic ip6 ,
 .Ic mbufs ,
 .Ic netstat ,
 .Ic pigs ,
@@ -197,6 +199,11 @@ mode.  The
 .Ic mode
 command with no argument will display the current mode in the command
 line.
+.It Ic icmp6
+This display is like the
+.Ic icmp
+display,
+but displays statistics for IPv6 ICMP.
 .It Ic ip
 Otherwise identical to the
 .Ic icmp
@@ -205,6 +212,13 @@ display, except that it displays
 and
 .Tn UDP
 statistics.
+.It Ic ip6
+Like the
+.Ic ip
+display,
+except that it displays
+.Tn IPv6
+statics.
 .It Ic tcp
 Like
 .Ic icmp ,
@@ -512,7 +526,9 @@ For port names.
 .Xr netstat 1 ,
 .Xr kvm 3 ,
 .Xr icmp 4 ,
+.Xr icmp6 4 ,
 .Xr ip 4 ,
+.Xr ip6 4 ,
 .Xr tcp 4 ,
 .Xr udp 4 ,
 .Xr iostat 8 ,
