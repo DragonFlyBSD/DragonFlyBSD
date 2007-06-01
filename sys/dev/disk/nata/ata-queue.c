@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.65 2006/07/21 19:13:05 imp Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.4 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.5 2007/06/01 00:31:15 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -247,7 +247,8 @@ ata_finish(struct ata_request *request)
 	ata_completed(request, 0);
     }
     else {
-	/* put request on the proper taskqueue for completition */
+	/* put request on the proper taskqueue for completion */
+	/* XXX FreeBSD has some sort of bio_taskqueue code here */
         TASK_INIT(&request->task, 0, ata_completed, request);
 	ATA_DEBUG_RQ(request, "finish taskqueue_swi");
 	taskqueue_enqueue(taskqueue_swi, &request->task);
@@ -481,8 +482,8 @@ ata_completed(void *context, int dummy)
     else {
 	spin_lock_wr(&request->done);
 	request->flags |= ATA_R_COMPLETED;
-	wakeup_one(request);
 	spin_unlock_wr(&request->done);
+	wakeup_one(request);
     }
 
     /* only call ata_start if channel is present */
@@ -712,6 +713,7 @@ ata_cmd2str(struct ata_request *request)
 	case 0xa0: return ("PACKET_CMD");
 	case 0xa1: return ("ATAPI_IDENTIFY");
 	case 0xa2: return ("SERVICE");
+	case 0xb0: return ("SMART");
 	case 0xc0: return ("CFA ERASE");
 	case 0xc4: return ("READ_MUL");
 	case 0xc5: return ("WRITE_MUL");

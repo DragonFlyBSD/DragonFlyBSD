@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.197 2006/03/31 08:09:04 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.3 2007/05/15 00:01:03 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.4 2007/06/01 00:31:14 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -112,7 +112,8 @@ ad_attach(device_t dev)
     }
     device_set_ivars(dev, adp);
 
-    if (atadev->param.atavalid & ATA_FLAG_54_58) {
+    if ((atadev->param.atavalid & ATA_FLAG_54_58) &&
+	atadev->param.current_heads && atadev->param.current_sectors) {
 	adp->heads = atadev->param.current_heads;
 	adp->sectors = atadev->param.current_sectors;
 	adp->total_secs = (u_int32_t)atadev->param.current_size_1 |
@@ -265,10 +266,9 @@ ad_open(struct dev_open_args *ap)
 static int
 ad_close(struct dev_close_args *ap)
 {
+#if 0 /* XXX TGEN Probably useless, queue will be failed on detach. */
     device_t dev = ap->a_head.a_dev->si_drv1;
     struct ad_softc *adp = device_get_ivars(dev);
-
-#if 0 /* XXX TGEN Probably useless, queue will be failed on detach. */
     adp->ad_flags |= AD_DISK_OPEN;
 #endif /* 0 */
     return 0;
@@ -334,6 +334,17 @@ ad_strategy(struct dev_strategy_args *ap)
 	else
 	    request->u.ata.command = ATA_WRITE;
 	break;
+#if 0	/* NOT YET */
+    case BUF_CMD_FLUSH:
+	request->u.ata.lba = 0;
+	request->u.ata.count = 0;
+	request->u.ata.feature = 0;
+	request->bytecount = 0;
+	request->transfersize = 0;
+	request->flags = ATA_R_CONTROL;
+	request->u.ata.command = ATA_FLUSHCACHE;
+	break;
+#endif
     default:
 	device_printf(dev, "FAILURE - unknown BUF operation\n");
 	ata_free_request(request);

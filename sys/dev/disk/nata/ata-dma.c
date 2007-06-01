@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.141 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-dma.c,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-dma.c,v 1.2 2007/06/01 00:31:15 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -76,17 +76,7 @@ ata_dmainit(device_t dev)
 	ch->dma->boundary = 128 * DEV_BSIZE;
 	ch->dma->segsize = 128 * DEV_BSIZE;
 	ch->dma->max_iosize = 128 * DEV_BSIZE;
-    }
-}
-
-void
-ata_dmauninit(device_t dev)
-{
-    struct ata_channel *ch = device_get_softc(dev);
-
-    if (ch->dma) {
-	kfree(ch->dma, M_ATADMA);
-	ch->dma = NULL;
+	ch->dma->max_address = BUS_SPACE_MAXADDR_32BIT;
     }
 }
 
@@ -106,20 +96,20 @@ ata_dmaalloc(device_t dev)
     struct ata_dc_cb_args ccba;
 
     if (bus_dma_tag_create(NULL, ch->dma->alignment, 0,
-			   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			   ch->dma->max_address, BUS_SPACE_MAXADDR,
 			   NULL, NULL, ch->dma->max_iosize,
 			   ATA_DMA_ENTRIES, ch->dma->segsize,
 			   0, &ch->dma->dmatag))
 	goto error;
 
     if (bus_dma_tag_create(ch->dma->dmatag, PAGE_SIZE, PAGE_SIZE,
-			   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			   ch->dma->max_address, BUS_SPACE_MAXADDR,
 			   NULL, NULL, MAXTABSZ, 1, MAXTABSZ,
 			   0, &ch->dma->sg_tag))
 	goto error;
 
     if (bus_dma_tag_create(ch->dma->dmatag,ch->dma->alignment,ch->dma->boundary,
-			   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			   ch->dma->max_address, BUS_SPACE_MAXADDR,
 			   NULL, NULL, ch->dma->max_iosize,
 			   ATA_DMA_ENTRIES, ch->dma->segsize,
 			   0, &ch->dma->data_tag))
@@ -140,7 +130,7 @@ ata_dmaalloc(device_t dev)
 	goto error;
 
     if (bus_dma_tag_create(ch->dma->dmatag, PAGE_SIZE, 64 * 1024,
-			   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			   ch->dma->max_address, BUS_SPACE_MAXADDR,
 			   NULL, NULL, MAXWSPCSZ, 1, MAXWSPCSZ,
 			   0, &ch->dma->work_tag))
 	goto error;
@@ -280,7 +270,7 @@ ata_dmaunload(device_t dev)
 			BUS_DMASYNC_POSTWRITE);
 
 	bus_dmamap_sync(ch->dma->data_tag, ch->dma->data_map,
-			(ch->dma->flags & ATA_DMA_READ) != 0 ?
+			(ch->dma->flags & ATA_DMA_READ) ?
 			BUS_DMASYNC_POSTREAD : BUS_DMASYNC_POSTWRITE);
 	bus_dmamap_unload(ch->dma->data_tag, ch->dma->data_map);
 

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.117 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.2 2006/12/20 18:14:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.3 2007/06/01 00:31:15 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -55,10 +55,15 @@ static MALLOC_DEFINE(M_ATAPCI, "ata_pci", "ATA driver PCI");
 int
 ata_legacy(device_t dev)
 {
-    return ((pci_read_config(dev, PCIR_PROGIF, 1)&PCIP_STORAGE_IDE_MASTERDEV) &&
+    return (((pci_read_config(dev, PCIR_PROGIF, 1)&PCIP_STORAGE_IDE_MASTERDEV)&&
 	    ((pci_read_config(dev, PCIR_PROGIF, 1) &
 	      (PCIP_STORAGE_IDE_MODEPRIM | PCIP_STORAGE_IDE_MODESEC)) !=
-	     (PCIP_STORAGE_IDE_MODEPRIM | PCIP_STORAGE_IDE_MODESEC)));
+	     (PCIP_STORAGE_IDE_MODEPRIM | PCIP_STORAGE_IDE_MODESEC))) ||
+	    (!pci_read_config(dev, PCIR_BAR(0), 4) &&
+	     !pci_read_config(dev, PCIR_BAR(1), 4) &&
+	     !pci_read_config(dev, PCIR_BAR(2), 4) &&
+	     !pci_read_config(dev, PCIR_BAR(3), 4)));
+
 }
 
 int
@@ -114,6 +119,10 @@ ata_pci_probe(device_t dev)
 	break;
     case ATA_NATIONAL_ID:
 	if (!ata_national_ident(dev))
+	    return ATA_PROBE_OK;
+	break;
+    case ATA_NETCELL_ID:
+	if (!ata_netcell_ident(dev))
 	    return ATA_PROBE_OK;
 	break;
     case ATA_NVIDIA_ID:
@@ -180,9 +189,7 @@ ata_pci_attach(device_t dev)
     else
 	ctlr->channels = 1;
     ctlr->allocate = ata_pci_allocate;
-    ctlr->deallocate = ata_pci_deallocate;
     ctlr->dmainit = ata_pci_dmainit;
-    ctlr->dmauninit = ata_pci_dmauninit;
     ctlr->dev = dev;
 
     /* if needed try to enable busmastering */
@@ -206,11 +213,7 @@ ata_pci_attach(device_t dev)
     /* attach all channels on this controller */
     for (unit = 0; unit < ctlr->channels; unit++) {
 	int freeunit = 2;
-	if (unit == 0 && (pci_get_progif(dev) & 0x81) == 0x80) {
-	    device_add_child(dev, "ata", unit);
-	    continue;
-	}
-	if (unit == 1 && (pci_get_progif(dev) & 0x84) == 0x80) {
+	if ((unit == 0 || unit == 1) && ata_legacy(dev)) {
 	    device_add_child(dev, "ata", unit);
 	    continue;
 	}
@@ -410,24 +413,6 @@ ata_pci_allocate(device_t dev)
     return 0;
 }
 
-/*
- * Deallocate resources that have been allocated for the ATA channel.
- */
-int
-ata_pci_deallocate(device_t dev)
-{
-    struct ata_channel *ch = device_get_softc(dev);
-
-    if (ch->r_io[ATA_CONTROL].res)
-	bus_release_resource(dev, SYS_RES_IOPORT, ATA_CTLADDR_RID,
-			     ch->r_io[ATA_CONTROL].res);
-    if (ch->r_io[ATA_IDX_ADDR].res)
-	bus_release_resource(dev, SYS_RES_IOPORT, ATA_IOADDR_RID,
-			     ch->r_io[ATA_IDX_ADDR].res);
-
-    return 0;
-}
-
 void
 ata_pci_hw(device_t dev)
 {
@@ -516,12 +501,6 @@ ata_pci_dmainit(device_t dev)
     }
 }
 
-void
-ata_pci_dmauninit(device_t dev)
-{
-    ata_dmauninit(dev);
-}
-
 static device_method_t ata_pci_methods[] = {
     /* device interface */
     DEVMETHOD(device_probe,             ata_pci_probe),
@@ -591,8 +570,11 @@ ata_pcichannel_attach(device_t dev)
     if (ch->dma)
 	ch->dma->alloc(dev);
 
-    if ((error = ctlr->allocate(dev)))
+    if ((error = ctlr->allocate(dev))) {
+	if (ch->dma)
+	    ch->dma->free(dev);
 	return error;
+    }
 
     return ata_attach(dev);
 }
@@ -600,7 +582,6 @@ ata_pcichannel_attach(device_t dev)
 static int
 ata_pcichannel_detach(device_t dev)
 {
-    struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
     struct ata_channel *ch = device_get_softc(dev);
     int error;
 
@@ -609,11 +590,8 @@ ata_pcichannel_detach(device_t dev)
 
     if (ch->dma)
 	ch->dma->free(dev);
-    if (ctlr->dmauninit)
-	ctlr->dmauninit(dev);
 
-    if ((error = ctlr->deallocate(dev)))
-	return error;
+    /* XXX SOS free resources for io and ctlio ?? */
 
     return 0;
 }

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.h,v 1.66 2006/07/24 10:44:50 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.2 2007/06/01 00:31:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,11 +57,9 @@ struct ata_pci_controller {
     int                 channels;
     int                 (*chipinit)(device_t);
     int                 (*allocate)(device_t);
-    int			(*deallocate)(device_t);
     int                 (*locking)(device_t, int);
     void                (*reset)(device_t);
     void                (*dmainit)(device_t);
-    void		(*dmauninit)(device_t);
     void                (*setmode)(device_t, int);
     struct {
     void                (*function)(void *);
@@ -152,15 +150,29 @@ struct ata_connect_task {
 #define ATA_I6300ESB            0x25a28086
 #define ATA_I6300ESB_S1         0x25a38086
 #define ATA_I6300ESB_R1         0x25b08086
+#define ATA_I63XXESB2           0x269e8086
+#define ATA_I63XXESB2_S1        0x26808086
+#define ATA_I63XXESB2_S2        0x26818086
+#define ATA_I63XXESB2_R1        0x26828086
+#define ATA_I63XXESB2_R2        0x26838086
 #define ATA_I82801FB            0x266f8086
 #define ATA_I82801FB_S1         0x26518086
 #define ATA_I82801FB_R1         0x26528086
-#define ATA_I82801FB_M          0x26538086
+#define ATA_I82801FBM		0x26538086
 #define ATA_I82801GB            0x27df8086
 #define ATA_I82801GB_S1         0x27c08086
-#define ATA_I82801GB_R1         0x27c38086
 #define ATA_I82801GB_AH         0x27c18086
-#define ATA_I82801GB_M          0x27c58086
+#define ATA_I82801GB_R1         0x27c38086
+#define ATA_I82801GBM_S1        0x27c48086
+#define ATA_I82801GBM_AH        0x27c58086
+#define ATA_I82801GBM_R1        0x27c68086
+#define ATA_I82801HB_S1         0x28208086
+#define ATA_I82801HB_AH6        0x28218086
+#define ATA_I82801HB_R1         0x28228086
+#define ATA_I82801HB_AH4        0x28248086
+#define ATA_I82801HB_S2         0x28258086
+#define ATA_I82801HBM_S1        0x28298086
+#define ATA_I82801HBM_S2        0x282a8086
 #define ATA_I31244              0x32008086
 
 #define ATA_ITE_ID              0x1283
@@ -173,6 +185,7 @@ struct ata_connect_task {
 #define ATA_JMB363		0x2363197b
 #define ATA_JMB365		0x2365197b
 #define ATA_JMB366		0x2366197b
+#define ATA_JMB368		0x2368197b
 
 #define ATA_MARVELL_ID          0x11ab
 #define ATA_M88SX5040           0x504011ab
@@ -181,6 +194,8 @@ struct ata_connect_task {
 #define ATA_M88SX5081           0x508111ab
 #define ATA_M88SX6041           0x604111ab
 #define ATA_M88SX6081           0x608111ab
+#define ATA_M88SX6101		0x610111ab
+#define ATA_M88SX6145		0x614511ab
 
 #define ATA_MICRON_ID           0x1042
 #define ATA_MICRON_RZ1000       0x10001042
@@ -188,6 +203,9 @@ struct ata_connect_task {
 
 #define ATA_NATIONAL_ID         0x100b
 #define ATA_SC1100              0x0502100b
+
+#define ATA_NETCELL_ID		0x169c
+#define ATA_NETCELL_SR		0x0044169c
 
 #define ATA_NVIDIA_ID           0x10de
 #define ATA_NFORCE1             0x01bc10de
@@ -260,12 +278,17 @@ struct ata_connect_task {
 #define ATA_HT1000 		0x02141166
 #define ATA_HT1000_S1 		0x024b1166
 #define ATA_HT1000_S2 		0x024a1166
+#define ATA_K2			0x02401166
+#define ATA_FRODO4		0x02411166
+#define ATA_FRODO8		0x02421166
 
 #define ATA_SILICON_IMAGE_ID    0x1095
 #define ATA_SII3114             0x31141095
 #define ATA_SII3512             0x35121095
 #define ATA_SII3112             0x31121095
 #define ATA_SII3112_1           0x02401095
+#define ATA_SII3124		0x31241095
+#define ATA_SII3132		0x31321095
 #define ATA_SII0680             0x06801095
 #define ATA_CMD646              0x06461095
 #define ATA_CMD648              0x06481095
@@ -331,6 +354,7 @@ struct ata_connect_task {
 #define ATA_VIA8233C            0x31091106
 #define ATA_VIA8235             0x31771106
 #define ATA_VIA8237             0x32271106
+#define ATA_VIA8237A		0x05911106
 #define ATA_VIA8251             0x33491106
 #define ATA_VIA8361             0x31121106
 #define ATA_VIA8363             0x03051106
@@ -354,8 +378,9 @@ struct ata_connect_task {
 #define HPT374          3
 #define HPTOLD          0x01
 
-#define MV5XXX          5
-#define MV6XXX          6
+#define MV50XX		50
+#define MV60XX		60
+#define MV61XX		61
 
 #define PROLD           0
 #define PRNEW           1
@@ -376,6 +401,7 @@ struct ata_connect_task {
 #define SWKSMIO         3
 
 #define SIIMEMIO        1
+#define SIIPRBIO        2
 #define SIIINTR         0x01
 #define SIISETCLK       0x02
 #define SIIBUG          0x04
@@ -400,8 +426,7 @@ struct ata_connect_task {
 #define AMDBUG          0x0002
 #define NVIDIA          0x0004
 #define NV4             0x0010
-#define NV4BYTE         0x0030 
-#define NV4WORD         0x0050
+#define NVQ		0x0020
 #define VIACLK          0x0100
 #define VIABUG          0x0200
 #define VIABAR          0x0400
@@ -417,12 +442,9 @@ int ata_pci_release_resource(device_t dev, device_t child, int type, int rid, st
 int ata_pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags, driver_intr_t *function, void *argument, void **cookiep);
  int ata_pci_teardown_intr(device_t dev, device_t child, struct resource *irq, void *cookie);
 int ata_pci_allocate(device_t dev);
-int ata_pci_deallocate(device_t dev);
 void ata_pci_hw(device_t dev);
 int ata_pci_status(device_t dev);
 void ata_pci_dmainit(device_t);
-void ata_pci_dmauninit(device_t);
-
 
 /* global prototypes ata-chipset.c */
 int ata_generic_ident(device_t);
@@ -439,6 +461,7 @@ int ata_jmicron_ident(device_t);
 int ata_marvell_ident(device_t);
 int ata_national_ident(device_t);
 int ata_nvidia_ident(device_t);
+int ata_netcell_ident(device_t);
 int ata_promise_ident(device_t);
 int ata_serverworks_ident(device_t);
 int ata_sii_ident(device_t);
@@ -448,4 +471,3 @@ int ata_legacy(device_t);
 
 /* global prototypes ata-dma.c */
 void ata_dmainit(device_t);
-void ata_dmauninit(device_t);

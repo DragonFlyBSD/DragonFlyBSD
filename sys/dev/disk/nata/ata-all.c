@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.273 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.9 2007/05/31 22:10:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.10 2007/06/01 00:31:14 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -609,14 +609,12 @@ ata_getparam(struct ata_device *atadev, int init)
 		   isprint(atadev->param.model[1]))) {
 	struct ata_params *atacap = &atadev->param;
 	char buffer[64];
-#if BYTE_ORDER == BIG_ENDIAN
 	int16_t *ptr;
 
 	for (ptr = (int16_t *)atacap;
 	     ptr < (int16_t *)atacap + sizeof(struct ata_params)/2; ptr++) {
-	    *ptr = bswap16(*ptr);
+	    *ptr = le16toh(*ptr);
 	}
-#endif
 	if (!(!strncmp(atacap->model, "FX", 2) ||
 	      !strncmp(atacap->model, "NEC", 3) ||
 	      !strncmp(atacap->model, "Pioneer", 7) ||
@@ -644,7 +642,9 @@ ata_getparam(struct ata_device *atadev, int init)
 	if (init) {
 	    ksprintf(buffer, "%.40s/%.8s", atacap->model, atacap->revision);
 	    device_set_desc_copy(atadev->dev, buffer);
-	    if (atadev->param.config & ATA_PROTO_ATAPI) {
+	    if ((atadev->param.config & ATA_PROTO_ATAPI) &&
+		(atadev->param.config != ATA_CFA_MAGIC1) &&
+		(atadev->param.config != ATA_CFA_MAGIC2)) {
 		if (atapi_dma && ch->dma &&
 		    (atadev->param.config & ATA_DRQ_MASK) != ATA_DRQ_INTR &&
 		    ata_umode(&atadev->param) >= ATA_UDMA2)

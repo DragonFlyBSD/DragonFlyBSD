@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.118 2006/06/28 09:59:09 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.4 2006/12/10 23:36:13 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.5 2007/06/01 00:31:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -245,6 +245,28 @@
 #define ATA_AHCI_CT_SG_OFFSET           128
 #define ATA_AHCI_CT_SIZE                256
 
+struct ata_ahci_dma_prd {
+    u_int64_t			dba;
+    u_int32_t			reserved;
+    u_int32_t			dbc;		/* 0 based */
+#define ATA_AHCI_PRD_MASK	0x003fffff	/* max 4MB */
+#define ATA_AHCI_PRD_IPC	(1<<31)
+} __packed;
+
+struct ata_ahci_cmd_tab {
+    u_int8_t			cfis[64];
+    u_int8_t			acmd[32];
+    u_int8_t			reserved[32];
+    struct ata_ahci_dma_prd	prd_tab[16];
+} __packed;
+
+struct ata_ahci_cmd_list {
+    u_int16_t			cmd_flags;
+    u_int16_t			prd_length;	/* PRD entries */
+    u_int32_t			bytecount;
+    u_int64_t			cmd_table_phys;	/* 128byte aligned */
+} __packed;
+
 /* DMA register defines */
 #define ATA_DMA_ENTRIES                 256
 #define ATA_DMA_EOT                     0x80000000
@@ -436,6 +458,7 @@ struct ata_dma {
     u_int32_t                   segsize;        /* DMA SG list segment size */
     u_int32_t                   max_iosize;     /* DMA data max IO size */
     u_int32_t                   cur_iosize;     /* DMA data current IO size */
+    u_int64_t			max_address;	/* highest DMA'able address */
     int                         flags;
 #define ATA_DMA_READ                    0x01    /* transaction is a read */
 #define ATA_DMA_LOADED                  0x02    /* DMA tables etc loaded */
@@ -486,6 +509,7 @@ struct ata_channel {
 #define         ATA_ATA_SLAVE           0x02
 #define         ATA_ATAPI_MASTER        0x04
 #define         ATA_ATAPI_SLAVE         0x08
+#define		ATA_PORTMULTIPLIER	0x10
 
     struct spinlock             state_mtx;      /* state lock */
     int                         state;          /* ATA channel state */
