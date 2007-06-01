@@ -57,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.16 2007/05/20 23:21:36 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.17 2007/06/01 00:25:23 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -69,8 +69,13 @@
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
 #endif
-#if defined(_KERNEL) && !defined(_SYS_CONF_H_)
+#if defined(_KERNEL)
+#ifndef _SYS_CONF_H_
 #include <sys/conf.h>           /* for make_sub_dev() */
+#endif
+#ifndef _SYS_SYSTM_H_
+#include <sys/systm.h>		/* for minor() */
+#endif
 #endif
 
 #define	BASE_SLICE		2	/* e.g. ad0s1 */
