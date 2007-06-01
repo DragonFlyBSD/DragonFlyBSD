@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-usb.c,v 1.4 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.4 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.5 2007/06/01 22:48:16 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -871,8 +871,7 @@ ata_usbchannel_attach(device_t dev)
 
     /* probe and attach device on this channel */
     ch->devices = ATA_ATAPI_MASTER;
-    if (!ata_delayed_attach)
-        ata_identify(dev);
+    ata_identify(dev);
     return 0;
 }
 
