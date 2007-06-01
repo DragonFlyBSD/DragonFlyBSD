@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.13 2007/01/07 00:42:26 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.14 2007/06/01 00:24:25 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -87,6 +87,9 @@ int	 ffs (int);
 #endif
 #ifndef	HAVE_INLINE_FLS
 int	 fls (int);
+#endif
+#ifndef HAVE_INLINE_FLSL
+int	 flsl(long);
 #endif
 int	 locc (int, char *, u_int);
 void	 kqsort (void *base, size_t nmemb, size_t size,
