@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.39 2006/12/22 23:44:54 swildner Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.40 2007/06/02 09:08:26 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -290,8 +290,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		break;
 
 	default:
-		kprintf("%s: can't handle af%d\n", ifp->if_xname,
-			dst->sa_family);
+		if_printf(ifp, "can't handle af%d\n", dst->sa_family);
 		gotoerr(EAFNOSUPPORT);
 	}
 
@@ -306,7 +305,8 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 * Bridges require special output handling.
 	 */
 	if (ifp->if_bridge) {
-		KASSERT(bridge_output_p != NULL,("ether_input: if_bridge not loaded!"));
+		KASSERT(bridge_output_p != NULL,
+			("%s: if_bridge not loaded!", __func__));
 		return ((*bridge_output_p)(ifp, m, NULL, NULL));
 	}
 
@@ -572,7 +572,7 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	BPF_MTAP(ifp, m);
 
 	ifp->if_ibytes += m->m_pkthdr.len;
-	
+
 	if (ifp->if_flags & IFF_MONITOR) {
 		/*
 		 * Interface marked for monitoring; discard packet.
@@ -589,7 +589,8 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	 * process it locally.
 	 */
 	if (ifp->if_bridge) {
-		KASSERT(bridge_input_p != NULL,("ether_input: if_bridge not loaded!"));
+		KASSERT(bridge_input_p != NULL,
+			("%s: if_bridge not loaded!", __func__));
 
 		if(m->m_flags & M_PROTO1) {
 			m->m_flags &= ~M_PROTO1;
