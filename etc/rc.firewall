@@ -32,7 +32,7 @@
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $DragonFly: src/etc/rc.firewall,v 1.5 2005/04/26 16:59:59 corecode Exp $
+# $DragonFly: src/etc/rc.firewall,v 1.6 2007/06/02 09:16:49 swildner Exp $
  
 # A simple packetfilter configurable via /etc/rc.conf
 #
@@ -198,7 +198,7 @@ case ${firewall_type} in
     ;;
 
     [Cc][Ll][Oo][Ss][Ee][Dd])
-        setup_loopback
+        allow_loopback
         deny_rest
     ;;
 
