@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.38 2007/05/04 17:25:04 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.39 2007/06/02 18:48:40 dillon Exp $
  *
  */
 
@@ -1429,7 +1429,9 @@ pci_add_resources(device_t pcib, device_t bus, device_t dev)
 	/* atapci devices in legacy mode need special map treatment */
 	if ((pci_get_class(dev) == PCIC_STORAGE) &&
 	    (pci_get_subclass(dev) == PCIS_STORAGE_IDE) &&
-	    (pci_get_progif(dev) & PCIP_STORAGE_IDE_MASTERDEV))
+	    ((pci_get_progif(dev) & PCIP_STORAGE_IDE_MASTERDEV) ||
+	     (!pci_read_config(dev, PCIR_BAR(0), 4) &&
+	      !pci_read_config(dev, PCIR_BAR(2), 4))) )
 		pci_ata_maps(pcib, bus, dev, b, s, f, rl);
 	else
 #endif /* PCI_MAP_FIXUP */
