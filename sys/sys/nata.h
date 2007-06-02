@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/sys/ata.h,v 1.34 2006/03/31 08:09:04 sos Exp $
- * $DragonFly: src/sys/sys/nata.h,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $FreeBSD: src/sys/sys/ata.h,v 1.35 2006/03/31 08:09:04 sos Exp $
+ * $DragonFly: src/sys/sys/nata.h,v 1.2 2007/06/02 19:17:01 dillon Exp $
  */
 
 /* XXX TGEN Don't define anything if sys/ata.h is being included. This makes
@@ -254,6 +254,7 @@ struct ata_params {
 #define ATA_PACKET_CMD                  0xa0    /* packet command */
 #define ATA_ATAPI_IDENTIFY              0xa1    /* get ATAPI params*/
 #define ATA_SERVICE                     0xa2    /* service command */
+#define ATA_SMART_CMD                   0xb0    /* SMART command */
 #define ATA_CFA_ERASE                   0xc0    /* CFA erase */
 #define ATA_READ_MUL                    0xc4    /* read multi */
 #define ATA_WRITE_MUL                   0xc5    /* write multi */
