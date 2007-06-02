@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.38 2007/06/02 10:59:37 swildner Exp $
-.Dd June 1, 2007
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.39 2007/06/02 23:53:26 swildner Exp $
+.Dd June 2, 2007
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1037,18 +1037,6 @@ is set to
 .Dq Li YES ,
 these are the flags to pass to
 .Xr inetd 8 .
-.It Va named_rcng
-.Pq Vt bool
-If set to
-.Dq Li YES
-use new functionality provided in the
-.Pa /etc/rc.d/named
-script to facilitate a
-.Xr chroot 8
-instance of
-.Xr named 8 .
-This variable is experimental.
-It may be removed or changed in the near future.
 .It Va named_enable
 .Pq Vt bool
 If set to
@@ -1087,41 +1075,6 @@ If left empty
 will not be run in a
 .Xr chroot 8
 environment.
-This variable has no effect if
-.Va named_rcng
-is not enabled.
-This variable is experimental.
-It may be removed or changed in the near future.
-.It Va named_chroot_autoupdate
-.Pq Vt bool
-Set to
-.Dq Li NO
-to disable automatic syncing of libraries and
-other system files between the root file system and the
-.Xr chroot 8 .
-This variable has no effect if
-.Va named_rcng
-is not enabled.
-This variable is experimental.
-It may be removed or changed in the near future.
-.It Va named_symlink_enable
-.Pq Vt bool
-Set to
-.Dq Li NO
-to disable symlinking of
-.Va named_pidfile
-and
-.Pa /var/run/ndc
-into the
-.Xr chroot 8
-environment in which
-.Xr named 8
-is running.
-This variable has no effect if
-.Va named_rcng
-is not enabled.
-This variable is experimental.
-It may be removed or changed in the near future.
 .It Va kerberos5_server_enable
 .Pq Vt bool
 Set to
