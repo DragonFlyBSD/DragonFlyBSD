@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.36 2007/06/02 10:07:03 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.37 2007/06/02 10:26:47 swildner Exp $
 .Dd June 1, 2007
 .Dt RC.CONF 5
 .Os
@@ -278,26 +278,31 @@ alias for
 If a filename is specified, the full path
 must be given.
 .It Va firewall_trusted_nets
+.Pq Vt str
 List of trusted networks (if
 .Va firewall_type
 is set to
 .Li client ) .
 .It Va firewall_trusted_interfaces
+.Pq Vt str
 List of trusted network interfaces (if
 .Va firewall_type
 is set to
 .Li client ) .
 .It Va firewall_allowed_icmp_types
+.Pq Vt str
 List of allowed ICMP types (if
 .Va firewall_type
 is set to
 .Li client ) .
 .It Va firewall_open_tcp_ports
+.Pq Vt str
 List of TCP ports to open (if
 .Va firewall_type
 is set to
 .Li client ) .
 .It Va firewall_open_udp_ports
+.Pq Vt str
 List of UDP ports to open (if
 .Va firewall_type
 is set to
