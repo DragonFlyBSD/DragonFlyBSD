@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.18 2007/06/02 05:09:18 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.19 2007/06/02 05:33:09 sephe Exp $
  */
 
 /*
@@ -1776,8 +1776,9 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		if (memcmp(eh->ether_dhost, bstp_etheraddr,
 		    ETHER_ADDR_LEN) == 0) {
 			m = bstp_input(ifp, m);
-			if (m == NULL)
-				goto out;
+			KASSERT(m == NULL,
+				("attempt to deliver 802.1D packet\n"));
+			goto out;
 		}
 
 		if (bif->bif_flags & IFBIF_STP) {
