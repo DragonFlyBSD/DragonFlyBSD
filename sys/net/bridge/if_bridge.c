@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.20 2007/06/02 08:31:00 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.21 2007/06/02 12:51:48 sephe Exp $
  */
 
 /*
@@ -190,7 +190,7 @@ static int	bridge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bridge_mutecaps(struct bridge_iflist *, int);
 static void	bridge_ifdetach(void *arg __unused, struct ifnet *);
 static void	bridge_init(void *);
-static void	bridge_stop(struct ifnet *, int);
+static void	bridge_stop(struct ifnet *);
 static void	bridge_start(struct ifnet *);
 static struct mbuf *bridge_input(struct ifnet *, struct mbuf *);
 static int	bridge_output_serialized(struct ifnet *, struct mbuf *,
@@ -491,7 +491,7 @@ bridge_clone_destroy(struct ifnet *ifp)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	bridge_stop(ifp, 1);
+	bridge_stop(ifp);
 	ifp->if_flags &= ~IFF_UP;
 
 	while ((bif = LIST_FIRST(&sc->sc_iflist)) != NULL)
@@ -527,7 +527,6 @@ static int
 bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct bridge_softc *sc = ifp->if_softc;
-	struct thread *td = curthread;
 	union {
 		struct ifbreq ifbreq;
 		struct ifbifconf ifbifconf;
@@ -539,8 +538,9 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	const struct bridge_control *bc;
 	int error = 0;
 
-	switch (cmd) {
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	switch (cmd) {
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		break;
@@ -557,15 +557,14 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		    (bc->bc_flags & BC_F_COPYOUT) == 0) {
 			error = EINVAL;
 			break;
-		}
-		else if (cmd == SIOCSDRVSPEC &&
+		} else if (cmd == SIOCSDRVSPEC &&
 		    (bc->bc_flags & BC_F_COPYOUT) != 0) {
 			error = EINVAL;
 			break;
 		}
 
 		if (bc->bc_flags & BC_F_SUSER) {
-			error = suser(td);
+			error = suser_cred(cr, NULL_CRED_OKAY);
 			if (error)
 				break;
 		}
@@ -583,13 +582,12 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 				break;
 		}
 
-		error = (*bc->bc_func)(sc, &args);
+		error = bc->bc_func(sc, &args);
 		if (error)
 			break;
 
 		if (bc->bc_flags & BC_F_COPYOUT)
 			error = copyout(&args, ifd->ifd_data, ifd->ifd_len);
-
 		break;
 
 	case SIOCSIFFLAGS:
@@ -597,16 +595,16 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		    (ifp->if_flags & IFF_RUNNING)) {
 			/*
 			 * If interface is marked down and it is running,
-			 * then stop and disable it.
+			 * then stop it.
 			 */
-			bridge_stop(ifp, 1);
+			bridge_stop(ifp);
 		} else if ((ifp->if_flags & IFF_UP) &&
 		    !(ifp->if_flags & IFF_RUNNING)) {
 			/*
 			 * If interface is marked up and it is stopped, then
 			 * start it.
 			 */
-			(*ifp->if_init)(sc);
+			ifp->if_init(sc);
 		}
 		break;
 
@@ -616,14 +614,9 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 
 	default:
-		/*
-		 * drop the lock as ether_ioctl() will call bridge_start() and
-		 * cause the lock to be recursed.
-		 */
 		error = ether_ioctl(ifp, cmd, data);
 		break;
 	}
-
 	return (error);
 }
 
@@ -1319,6 +1312,8 @@ bridge_init(void *xsc)
 	struct bridge_softc *sc = (struct bridge_softc *)xsc;
 	struct ifnet *ifp = sc->sc_ifp;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (ifp->if_flags & IFF_RUNNING)
 		return;
 
@@ -1336,7 +1331,7 @@ bridge_init(void *xsc)
  *	Stop the bridge interface.
  */
 static void
-bridge_stop(struct ifnet *ifp, int disable)
+bridge_stop(struct ifnet *ifp)
 {
 	struct bridge_softc *sc = ifp->if_softc;
 
@@ -1515,27 +1510,34 @@ done:
 static void
 bridge_start(struct ifnet *ifp)
 {
-	struct bridge_softc *sc;
-	struct mbuf *m;
-	struct ether_header *eh;
-	struct ifnet *dst_if;
+	struct bridge_softc *sc = ifp->if_softc;
 
-	sc = ifp->if_softc;
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	ifp->if_flags |= IFF_OACTIVE;
 	for (;;) {
+		struct ifnet *dst_if = NULL;
+		struct ether_header *eh;
+		struct mbuf *m;
+
 		m = ifq_dequeue(&ifp->if_snd, NULL);
-		if (m == 0)
+		if (m == NULL)
 			break;
+
+		if (m->m_len < sizeof(*eh)) {
+			m = m_pullup(m, sizeof(*eh));
+			if (m == NULL) {
+				ifp->if_oerrors++;
+				continue;
+			}
+		}
+		eh = mtod(m, struct ether_header *);
+
 		BPF_MTAP(ifp, m);
 		ifp->if_opackets++;
 
-		eh = mtod(m, struct ether_header *);
-		dst_if = NULL;
-
-		if ((m->m_flags & (M_BCAST|M_MCAST)) == 0) {
+		if ((m->m_flags & (M_BCAST|M_MCAST)) == 0)
 			dst_if = bridge_rtlookup(sc, eh->ether_dhost);
-		}
 
 		if (dst_if == NULL)
 			bridge_broadcast(sc, ifp, m, 0);
@@ -1543,8 +1545,6 @@ bridge_start(struct ifnet *ifp)
 			bridge_enqueue(sc, dst_if, m);
 	}
 	ifp->if_flags &= ~IFF_OACTIVE;
-
-	return;
 }
 
 /*
