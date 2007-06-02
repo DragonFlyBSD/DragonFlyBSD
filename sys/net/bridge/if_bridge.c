@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.19 2007/06/02 05:33:09 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.20 2007/06/02 08:31:00 sephe Exp $
  */
 
 /*
@@ -793,9 +793,6 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 		return (EBUSY);
 
 	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_WAITOK|M_ZERO);
-	if (bif == NULL)
-		return (ENOMEM);
-
 	bif->bif_ifp = ifs;
 	bif->bif_flags = IFBIF_LEARNING | IFBIF_DISCOVER;
 	bif->bif_priority = BSTP_DEFAULT_PORT_PRIORITY;
