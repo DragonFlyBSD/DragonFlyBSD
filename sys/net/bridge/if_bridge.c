@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.17 2007/01/04 21:14:40 tgen Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.18 2007/06/02 05:09:18 sephe Exp $
  */
 
 /*
@@ -1720,7 +1720,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	bifp = sc->sc_ifp;
 	lwkt_serialize_enter(bifp->if_serializer);
 
-	if ((sc->sc_ifp->if_flags & IFF_RUNNING) == 0)
+	if ((bifp->if_flags & IFF_RUNNING) == 0)
 		goto out;
 
 	/*
@@ -1735,6 +1735,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		bifp->if_ipackets++;
 		bifp->if_ibytes += m->m_pkthdr.len;
 		m_freem(m);
+		m = NULL;
 		goto out;
 	}
 
@@ -1754,8 +1755,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 #define IFP2AC(ifp) ((struct arpcom *)(ifp))
 #define IFP2ENADDR(ifp) (IFP2AC(ifp)->ac_enaddr)
-	if (memcmp(eh->ether_dhost, IFP2ENADDR(bifp),
-	    ETHER_ADDR_LEN) == 0) {
+	if (memcmp(eh->ether_dhost, IFP2ENADDR(bifp), ETHER_ADDR_LEN) == 0) {
 		/*
 		 * If the packet is for us, set the packets source as the
 		 * bridge, and return the packet back to ether_input for
