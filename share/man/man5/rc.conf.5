@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.35 2007/05/31 23:03:36 swildner Exp $
-.Dd May 11, 2007
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.36 2007/06/02 10:07:03 swildner Exp $
+.Dd June 1, 2007
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -269,13 +269,39 @@ unrestricted IP access
 all IP services disabled, except via
 .Dq Li lo0
 .It Li client
-basic protection for a workstation
+basic protection for a workstation on a LAN
 .It Li simple
-basic protection for a LAN.
+alias for
+.Li client .
 .El
 .Pp
 If a filename is specified, the full path
 must be given.
+.It Va firewall_trusted_nets
+List of trusted networks (if
+.Va firewall_type
+is set to
+.Li client ) .
+.It Va firewall_trusted_interfaces
+List of trusted network interfaces (if
+.Va firewall_type
+is set to
+.Li client ) .
+.It Va firewall_allowed_icmp_types
+List of allowed ICMP types (if
+.Va firewall_type
+is set to
+.Li client ) .
+.It Va firewall_open_tcp_ports
+List of TCP ports to open (if
+.Va firewall_type
+is set to
+.Li client ) .
+.It Va firewall_open_udp_ports
+List of UDP ports to open (if
+.Va firewall_type
+is set to
+.Li client ) .
 .It Va ipv6_firewall_type
 .Pq Vt str
 The IPv6 equivalent of
