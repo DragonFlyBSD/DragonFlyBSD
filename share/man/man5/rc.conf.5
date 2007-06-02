@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.37 2007/06/02 10:26:47 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.38 2007/06/02 10:59:37 swildner Exp $
 .Dd June 1, 2007
 .Dt RC.CONF 5
 .Os
@@ -220,6 +220,67 @@ Set to
 .Dq Li YES
 to run
 .Xr dhcrelay 8
+.It Va pf_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+to load
+.Xr pf 4
+at startup.
+If the kernel was not built with
+.Cd "device pf" ,
+the
+.Pa pf.ko
+kernel module will be loaded.
+See also
+.Va firewall_enable
+and
+.Va ipfilter_enable .
+.It Va pf_rules
+.Pq Vt str
+Path to the
+.Xr pf 4
+ruleset definition file.
+.It Va pf_program
+.Pq Vt str
+Path to
+.Xr pfctl 8 .
+.It Va pf_flags
+.Pq Vt str
+If
+.Va pf_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to
+.Xr pfctl 8
+when loading the ruleset.
+.It Va pflog_enable
+.Pq Vt bool
+Set this to
+.Dq Li YES
+to enable
+.Xr pflogd 8
+which logs packets from
+.Xr pf 4 .
+.It Va pflog_logfile
+.Pq Vt str
+If
+.Va pflog_enable
+is set to
+.Dq Li YES
+this specifies the path of the log file.
+.It Va pflog_program
+.Pq Vt str
+Path to
+.Xr pflogd 8 .
+.It Va pflog_flags
+.Pq Vt str
+If
+.Va pflog_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to
+.Xr pflogd 8 .
 .It Va firewall_enable
 .Pq Vt bool
 Set to
@@ -231,6 +292,8 @@ the
 .Pa ipfw.ko
 kernel module will be loaded.
 See also
+.Va pf_enable
+and
 .Va ipfilter_enable .
 .It Va ipv6_firewall_enable
 .Pq Vt bool
@@ -427,6 +490,10 @@ options IPFILTER_DEFAULT_BLOCK
 .Ed
 .Pp
 in the kernel configuration file is a good idea, too.
+See also
+.Va pf_enable
+and
+.Va firewall_enable .
 .\" ----- ipfilter_program setting ------------------------------
 .It Va ipfilter_program
 .Pq Vt str
@@ -2616,7 +2683,10 @@ has not completed within the specified time (in seconds).
 .Xr varsym 1 ,
 .Xr vidcontrol 1 ,
 .Xr ip 4 ,
+.Xr ipf 4 ,
+.Xr ipfw 4 ,
 .Xr kld 4 ,
+.Xr pf 4 ,
 .Xr tcp 4 ,
 .Xr udp 4 ,
 .Xr exports 5 ,
@@ -2649,6 +2719,8 @@ has not completed within the specified time (in seconds).
 .Xr nfsd 8 ,
 .Xr ntpd 8 ,
 .Xr pcnfsd 8 ,
+.Xr pfctl 8 ,
+.Xr pflogd 8 ,
 .Xr quotacheck 8 ,
 .Xr quotaon 8 ,
 .Xr rc 8 ,
