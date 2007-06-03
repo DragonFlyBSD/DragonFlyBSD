@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bpf.h,v 1.2.4.3 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bpf/ng_bpf.h,v 1.4 2004/02/14 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/netgraph/bpf/ng_bpf.h,v 1.5 2007/06/03 20:51:11 dillon Exp $
  * $Whistle: ng_bpf.h,v 1.3 1999/12/03 20:30:23 archie Exp $
  */
 
@@ -50,9 +50,9 @@
 
 /* Program structure for one hook */
 struct ng_bpf_hookprog {
-	char		thisHook[NG_HOOKLEN+1];		/* name of hook */
-	char		ifMatch[NG_HOOKLEN+1];		/* match dest hook */
-	char		ifNotMatch[NG_HOOKLEN+1];	/* !match dest hook */
+	char		thisHook[NG_HOOKSIZ];		/* name of hook */
+	char		ifMatch[NG_HOOKSIZ];		/* match dest hook */
+	char		ifNotMatch[NG_HOOKSIZ];		/* !match dest hook */
 	int32_t		bpf_prog_len;			/* #isns in program */
 	struct bpf_insn	bpf_prog[__ARRAY_ZERO];		/* bpf program */
 };
@@ -95,9 +95,9 @@ struct ng_bpf_hookstat {
 enum {
 	NGM_BPF_SET_PROGRAM = 1,	/* supply a struct ng_bpf_hookprog */
 	NGM_BPF_GET_PROGRAM,		/* returns a struct ng_bpf_hookprog */
-	NGM_BPF_GET_STATS,		/* supply name as char[NG_HOOKLEN+1] */
-	NGM_BPF_CLR_STATS,		/* supply name as char[NG_HOOKLEN+1] */
-	NGM_BPF_GETCLR_STATS,		/* supply name as char[NG_HOOKLEN+1] */
+	NGM_BPF_GET_STATS,		/* supply name as char[NG_HOOKSIZ] */
+	NGM_BPF_CLR_STATS,		/* supply name as char[NG_HOOKSIZ] */
+	NGM_BPF_GETCLR_STATS,		/* supply name as char[NG_HOOKSIZ] */
 };
 
 #endif /* _NETGRAPH_BPF_H_ */

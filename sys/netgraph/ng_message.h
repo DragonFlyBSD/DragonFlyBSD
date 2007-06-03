@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_message.h,v 1.4.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/ng_message.h,v 1.4 2006/05/20 02:42:11 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_message.h,v 1.5 2007/06/03 20:51:10 dillon Exp $
  * $Whistle: ng_message.h,v 1.12 1999/01/25 01:17:44 archie Exp $
  */
 
@@ -49,11 +49,11 @@
 #endif
 
 /* ASCII string size limits */
-#define NG_TYPELEN	15	/* max type name len (16 with null) */
-#define NG_HOOKLEN	15	/* max hook name len (16 with null) */
-#define NG_NODELEN	15	/* max node name len (16 with null) */
-#define NG_PATHLEN	511	/* max path len     (512 with null) */
-#define NG_CMDSTRLEN	15	/* max command string (16 with null) */
+#define NG_TYPESIZ	32	/* max type name len (including null) */
+#define NG_HOOKSIZ	32	/* max hook name len (including null) */
+#define NG_NODESIZ	32	/* max node name len (including null) */
+#define NG_PATHSIZ	512	/* max path len (including null) */
+#define NG_CMDSTRSIZ	32	/* max command string (including null) */
 #define NG_TEXTRESPONSE 1024	/* allow this length for a text response */
 
 /* A netgraph message */
@@ -66,7 +66,7 @@ struct ng_mesg {
 		u_int32_t	token;			/* match with reply */
 		u_int32_t	typecookie;		/* node's type cookie */
 		u_int32_t	cmd;			/* command identifier */
-		u_char		cmdstr[NG_CMDSTRLEN+1];	/* cmd string + \0 */
+		u_char		cmdstr[NG_CMDSTRSIZ];	/* cmd string */
 	} header;
 	char	data[0];		/* placeholder for actual data */
 };
@@ -122,9 +122,9 @@ struct ng_mesg {
 
 /* Structure used for NGM_MKPEER */
 struct ngm_mkpeer {
-	char	type[NG_TYPELEN + 1];			/* peer type */
-	char	ourhook[NG_HOOKLEN + 1];		/* hook name */
-	char	peerhook[NG_HOOKLEN + 1];		/* peer hook name */
+	char	type[NG_TYPESIZ];		/* peer type */
+	char	ourhook[NG_HOOKSIZ];		/* hook name */
+	char	peerhook[NG_HOOKSIZ];		/* peer hook name */
 };
 
 /* Keep this in sync with the above structure definition */
@@ -137,9 +137,9 @@ struct ngm_mkpeer {
 
 /* Structure used for NGM_CONNECT */
 struct ngm_connect {
-	char	path[NG_PATHLEN + 1];			/* peer path */
-	char	ourhook[NG_HOOKLEN + 1];		/* hook name */
-	char	peerhook[NG_HOOKLEN + 1];		/* peer hook name */
+	char	path[NG_PATHSIZ];		/* peer path */
+	char	ourhook[NG_HOOKSIZ];		/* hook name */
+	char	peerhook[NG_HOOKSIZ];		/* peer hook name */
 };
 
 /* Keep this in sync with the above structure definition */
@@ -152,7 +152,7 @@ struct ngm_connect {
 
 /* Structure used for NGM_NAME */
 struct ngm_name {
-	char	name[NG_NODELEN + 1];			/* node name */
+	char	name[NG_NODESIZ];			/* node name */
 };
 
 /* Keep this in sync with the above structure definition */
@@ -163,7 +163,7 @@ struct ngm_name {
 
 /* Structure used for NGM_RMHOOK */
 struct ngm_rmhook {
-	char	ourhook[NG_HOOKLEN + 1];		/* hook name */
+	char	ourhook[NG_HOOKSIZ];		/* hook name */
 };
 
 /* Keep this in sync with the above structure definition */
@@ -174,8 +174,8 @@ struct ngm_rmhook {
 
 /* Structure used for NGM_NODEINFO */
 struct nodeinfo {
-	char		name[NG_NODELEN + 1];	/* node name (if any) */
-        char    	type[NG_TYPELEN + 1];   /* peer type */
+	char		name[NG_NODESIZ];	/* node name (if any) */
+        char    	type[NG_TYPESIZ];	/* peer type */
 	ng_ID_t		id;			/* unique identifier */
 	u_int32_t	hooks;			/* number of active hooks */
 };
@@ -191,8 +191,8 @@ struct nodeinfo {
 
 /* Structure used for NGM_LISTHOOKS */
 struct linkinfo {
-	char		ourhook[NG_HOOKLEN + 1];	/* hook name */
-	char		peerhook[NG_HOOKLEN + 1];	/* peer hook */
+	char		ourhook[NG_HOOKSIZ];	/* hook name */
+	char		peerhook[NG_HOOKSIZ];	/* peer hook */
 	struct nodeinfo	nodeinfo;
 };
 
@@ -231,7 +231,7 @@ struct namelist {
 
 /* Structure used for NGM_LISTTYPES */
 struct typeinfo {
-	char		type_name[NG_TYPELEN + 1];	/* name of type */
+	char		type_name[NG_TYPESIZ];		/* name of type */
 	u_int32_t	numnodes;			/* number alive */
 };
 

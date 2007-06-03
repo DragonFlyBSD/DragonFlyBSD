@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.21 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.22 2007/06/03 20:51:09 dillon Exp $
  */
 
 /*
@@ -139,7 +139,7 @@ struct sr_softc {
 	int	running;	/* something is attached so we are running */
 	int	dcd;		/* do we have dcd? */
 	/* ---netgraph bits --- */
-	char		nodename[NG_NODELEN + 1]; /* store our node name */
+	char		nodename[NG_NODESIZ]; /* store our node name */
 	int		datahooks;	/* number of data hooks attached */
 	node_p		node;		/* netgraph node */
 	hook_p		hook;		/* data hook */
@@ -2852,8 +2852,8 @@ ngsr_rcvmsg(node_p node,
 			    (*resp)->header.token = msg->header.token;
 			    (*resp)->header.typecookie = NG_SR_COOKIE;
 			    (*resp)->header.cmd = msg->header.cmd;
-			    strncpy((*resp)->header.cmdstr, "status",
-					NG_CMDSTRLEN);
+			    strlcpy((*resp)->header.cmdstr, "status",
+					NG_CMDSTRSIZ);
 			}
 			break;
 	    	    default:

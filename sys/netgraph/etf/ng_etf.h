@@ -29,7 +29,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_etf.h,v 1.1.2.2 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/etf/ng_etf.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/etf/ng_etf.h,v 1.3 2007/06/03 20:51:12 dillon Exp $
  */
 
 #ifndef _NETGRAPH_ETHERTYPE_FILTER_H_
@@ -73,7 +73,7 @@ struct ng_etfstat {
 
 /* This structure is returned by the NGM_ETF_GET_STATUS command */
 struct ng_etffilter {
-	char		matchhook[NG_HOOKLEN + 1]; /* hook name */
+	char		matchhook[NG_HOOKSIZ]; /* hook name */
 	u_int16_t	ethertype;	/* this ethertype to this hook */
 };	
 

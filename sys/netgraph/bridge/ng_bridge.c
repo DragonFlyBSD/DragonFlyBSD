@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bridge.c,v 1.1.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.9 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.10 2007/06/03 20:51:12 dillon Exp $
  */
 
 /*
@@ -1012,7 +1012,7 @@ ng_bridge_timeout(void *arg)
 static const char *
 ng_bridge_nodename(node_p node)
 {
-	static char name[NG_NODELEN+1];
+	static char name[NG_NODESIZ];
 
 	if (node->name != NULL)
 		ksnprintf(name, sizeof(name), "%s", node->name);

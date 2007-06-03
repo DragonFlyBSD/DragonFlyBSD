@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.14 2007/04/22 01:13:13 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.15 2007/06/03 20:51:12 dillon Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -83,7 +83,7 @@ struct ng_ksocket_private {
 	LIST_ENTRY(ng_ksocket_private)	siblings;
 	u_int32_t	flags;
 	u_int32_t	response_token;
-	char		response_addr[NG_PATHLEN+1];
+	char		response_addr[NG_PATHSIZ];
 };
 typedef struct ng_ksocket_private *priv_p;
 
@@ -568,7 +568,7 @@ ng_ksocket_newhook(node_p node, hook_p hook, const char *name0)
 	struct thread *td = curthread->td_proc ? curthread : &thread0;	/* XXX broken */
 	const priv_p priv = node->private;
 	struct ng_mesg *msg;
-	char *s1, *s2, name[NG_HOOKLEN+1];
+	char *s1, *s2, name[NG_HOOKSIZ];
 	int family, type, protocol, error;
 
 	/* Check if we're already connected */

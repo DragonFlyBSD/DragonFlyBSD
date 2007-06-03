@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.21 2006/12/22 23:26:18 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.22 2007/06/03 20:51:07 dillon Exp $
  */
 
 /*
@@ -123,7 +123,7 @@ struct ar_softc {
 	int	running;	/* something is attached so we are running */
 	int	dcd;		/* do we have dcd? */
 	/* ---netgraph bits --- */
-	char		nodename[NG_NODELEN + 1]; /* store our node name */
+	char		nodename[NG_NODESIZ]; /* store our node name */
 	int		datahooks;	/* number of data hooks attached */
 	node_p		node;		/* netgraph node */
 	hook_p		hook;		/* data hook */

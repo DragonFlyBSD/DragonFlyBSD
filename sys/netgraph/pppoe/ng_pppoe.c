@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pppoe.c,v 1.23.2.17 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.9 2006/12/22 23:44:57 swildner Exp $
+ * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.10 2007/06/03 20:51:13 dillon Exp $
  * $Whistle: ng_pppoe.c,v 1.10 1999/11/01 09:24:52 julian Exp $
  */
 #if 0
@@ -142,7 +142,7 @@ struct sess_con {
 	hook_p  		hook;
 	u_int16_t		Session_ID;
 	enum state		state;
-	char			creator[NG_NODELEN + 1]; /* who to notify */
+	char			creator[NG_NODESIZ]; /* who to notify */
 	struct pppoe_full_hdr	pkt_hdr;	/* used when connected */
 	negp			neg;		/* used when negotiating */
 	/*struct sess_con	*hash_next;*/	/* not yet used */
@@ -685,8 +685,7 @@ AAA
 			neg->pkt->pkt_header.ph.sid = 0x0000;
 			neg->timeout = 0;
 
-			strncpy(sp->creator, retaddr, NG_NODELEN);
-			sp->creator[NG_NODELEN] = '\0';
+			strlcpy(sp->creator, retaddr, NG_NODESIZ);
 		}
 		switch (msg->header.cmd) {
 		case NGM_PPPOE_GET_STATUS:
@@ -849,7 +848,7 @@ send_acname(sessp sp, const struct pppoe_tag *tag)
 		return (ENOMEM);
 
 	sts = (struct ngpppoe_sts *)msg->data;
-	tlen = min(NG_HOOKLEN, ntohs(tag->tag_len));
+	tlen = min(NG_HOOKSIZ - 1, ntohs(tag->tag_len));
 	strncpy(sts->hook, tag->tag_data, tlen);
 	sts->hook[tlen] = '\0';
 	error = ng_send_msg(sp->hook->node, msg, sp->creator, NULL);
@@ -1676,7 +1675,7 @@ AAA
 	if (msg == NULL)
 		return (ENOMEM);
 	sts = (struct ngpppoe_sts *)msg->data;
-	strncpy(sts->hook, sp->hook->name, NG_HOOKLEN + 1);
+	strlcpy(sts->hook, sp->hook->name, NG_HOOKSIZ);
 	error = ng_send_msg(sp->hook->node, msg, sp->creator, NULL);
 	return (error);
 }

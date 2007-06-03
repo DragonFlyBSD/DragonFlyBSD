@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_parse.h,v 1.2 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.h,v 1.2.4.4 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/ng_parse.h,v 1.3 2006/05/20 02:42:11 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_parse.h,v 1.4 2007/06/03 20:51:10 dillon Exp $
  */
 
 #ifndef _NETGRAPH_PARSE_H_
@@ -398,11 +398,11 @@ struct ng_parse_fixedstring_info {
 /*
  * COMMONLY USED BOUNDED LENGTH STRING TYPES
  */
-extern const struct ng_parse_type ng_parse_nodebuf_type;  /* NG_NODELEN + 1 */
-extern const struct ng_parse_type ng_parse_hookbuf_type;  /* NG_HOOKLEN + 1 */
-extern const struct ng_parse_type ng_parse_pathbuf_type;  /* NG_PATHLEN + 1 */
-extern const struct ng_parse_type ng_parse_typebuf_type;  /* NG_TYPELEN + 1 */
-extern const struct ng_parse_type ng_parse_cmdbuf_type;   /* NG_CMDSTRLEN + 1 */
+extern const struct ng_parse_type ng_parse_nodebuf_type;  /* NG_NODESIZ */
+extern const struct ng_parse_type ng_parse_hookbuf_type;  /* NG_HOOKSIZ */
+extern const struct ng_parse_type ng_parse_pathbuf_type;  /* NG_PATHSIZ */
+extern const struct ng_parse_type ng_parse_typebuf_type;  /* NG_TYPESIZ */
+extern const struct ng_parse_type ng_parse_cmdbuf_type;   /* NG_CMDSTRSIZ */
 
 /*
  * INTEGER TYPES

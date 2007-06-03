@@ -29,7 +29,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.10 2006/12/22 23:44:57 swildner Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.c,v 1.11 2007/06/03 20:51:10 dillon Exp $
  *
  */
 
@@ -98,7 +98,7 @@ struct ngd_softc {
 	SLIST_HEAD(, ngd_connection) head;
 
 	node_p node;
-	char nodename[NG_NODELEN + 1];
+	char nodename[NG_NODESIZ];
 } ngd_softc;
 
 /* helper definition */

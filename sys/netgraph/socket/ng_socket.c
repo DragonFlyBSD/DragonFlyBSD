@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.13 2007/04/22 01:13:13 dillon Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.14 2007/06/03 20:51:13 dillon Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -313,7 +313,7 @@ ngd_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	meta_p  mp = NULL;
 	int     len, error;
 	hook_p  hook = NULL;
-	char	hookname[NG_HOOKLEN + 1];
+	char	hookname[NG_HOOKSIZ];
 
 	if ((pcbp == NULL) || (control != NULL)) {
 		error = EINVAL;
@@ -340,7 +340,7 @@ ngd_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		 */
 		hook = LIST_FIRST(&pcbp->sockdata->node->hooks);
 	} else {
-		if (len > NG_HOOKLEN) {
+		if (len >= NG_HOOKSIZ) {
 			error = EINVAL;
 			goto release;
 		}
@@ -803,7 +803,7 @@ ngs_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	struct ngpcb *const pcbp = sockdata->datasock;
 	struct socket *so;
 	struct sockaddr_ng *addr;
-	char *addrbuf[NG_HOOKLEN + 1 + 4];
+	char *addrbuf[NG_HOOKSIZ + 4];
 	int addrlen;
 
 	/* If there is no data socket, black-hole it */
@@ -814,7 +814,7 @@ ngs_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	so = pcbp->ng_socket;
 
 	/* Get the return address into a sockaddr. */
-	addrlen = strlen(hook->name);	/* <= NG_HOOKLEN */
+	addrlen = strlen(hook->name);	/* <= NG_HOOKSIZ - 1 */
 	addr = (struct sockaddr_ng *) addrbuf;
 	addr->sg_len = addrlen + 3;
 	addr->sg_family = AF_NETGRAPH;

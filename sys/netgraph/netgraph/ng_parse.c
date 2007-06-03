@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_parse.c,v 1.3 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.c,v 1.3.2.8 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.8 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.9 2007/06/03 20:51:12 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -820,7 +820,7 @@ const struct ng_parse_type ng_parse_fixedstring_type = {
 };
 
 const struct ng_parse_fixedstring_info ng_parse_nodebuf_info = {
-	NG_NODELEN + 1
+	NG_NODESIZ
 };
 const struct ng_parse_type ng_parse_nodebuf_type = {
 	&ng_parse_fixedstring_type,
@@ -828,7 +828,7 @@ const struct ng_parse_type ng_parse_nodebuf_type = {
 };
 
 const struct ng_parse_fixedstring_info ng_parse_hookbuf_info = {
-	NG_HOOKLEN + 1
+	NG_HOOKSIZ
 };
 const struct ng_parse_type ng_parse_hookbuf_type = {
 	&ng_parse_fixedstring_type,
@@ -836,7 +836,7 @@ const struct ng_parse_type ng_parse_hookbuf_type = {
 };
 
 const struct ng_parse_fixedstring_info ng_parse_pathbuf_info = {
-	NG_PATHLEN + 1
+	NG_PATHSIZ
 };
 const struct ng_parse_type ng_parse_pathbuf_type = {
 	&ng_parse_fixedstring_type,
@@ -844,7 +844,7 @@ const struct ng_parse_type ng_parse_pathbuf_type = {
 };
 
 const struct ng_parse_fixedstring_info ng_parse_typebuf_info = {
-	NG_TYPELEN + 1
+	NG_TYPESIZ
 };
 const struct ng_parse_type ng_parse_typebuf_type = {
 	&ng_parse_fixedstring_type,
@@ -852,7 +852,7 @@ const struct ng_parse_type ng_parse_typebuf_type = {
 };
 
 const struct ng_parse_fixedstring_info ng_parse_cmdbuf_info = {
-	NG_CMDSTRLEN + 1
+	NG_CMDSTRSIZ
 };
 const struct ng_parse_type ng_parse_cmdbuf_type = {
 	&ng_parse_fixedstring_type,

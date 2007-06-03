@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.16 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.17 2007/06/03 20:51:08 dillon Exp $
  */
 
 /*
@@ -259,7 +259,7 @@ struct softc {
 	char		name[8];
 	u_int32_t	falc_irq, falc_state, framer_state;
 	struct schan *ch[M32_CHAN];
-	char	nodename[NG_NODELEN + 1];
+	char	nodename[NG_NODESIZ];
 	node_p	node;
 
 	u_long		cnt_fec;

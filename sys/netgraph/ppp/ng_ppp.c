@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.11 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.12 2007/06/03 20:51:13 dillon Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -560,7 +560,7 @@ ng_ppp_rcvmsg(node_p node, struct ng_mesg *msg,
 		break;
 	case NGM_VJC_COOKIE:
 	    {
-		char path[NG_PATHLEN + 1];
+		char path[NG_PATHSIZ];
 		node_p origNode;
 
 		if ((error = ng_path2node(node, raddr, &origNode, NULL)) != 0)
