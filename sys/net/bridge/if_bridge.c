@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.21 2007/06/02 12:51:48 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.22 2007/06/03 11:25:58 sephe Exp $
  */
 
 /*
@@ -1391,7 +1391,7 @@ bridge_enqueue(struct bridge_softc *sc, struct ifnet *dst_ifp, struct mbuf *m)
  *	The mbuf has the Ethernet header already attached.  We must
  *	enqueue or free the mbuf before returning.
  */
-int
+static int
 bridge_output_serialized(struct ifnet *ifp, struct mbuf *m,
     struct sockaddr *sa, struct rtentry *rt)
 {
@@ -1705,7 +1705,7 @@ done:
  *	Receive input from a member interface.  Queue the packet for
  *	bridging if it is not for us.
  */
-struct mbuf *
+static struct mbuf *
 bridge_input(struct ifnet *ifp, struct mbuf *m)
 {
 	struct bridge_softc *sc = ifp->if_bridge;
