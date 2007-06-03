@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.166 2006/07/24 10:44:50 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.4 2007/06/01 00:31:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.5 2007/06/03 04:27:56 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1263,9 +1263,12 @@ ata_ati_ident(device_t dev)
     {{ ATA_ATI_IXP200,    0x00, 0,        0, ATA_UDMA5, "IXP200" },
      { ATA_ATI_IXP300,    0x00, 0,        0, ATA_UDMA6, "IXP300" },
      { ATA_ATI_IXP400,    0x00, 0,        0, ATA_UDMA6, "IXP400" },
+     { ATA_ATI_SB600,     0x00, 0,        0, ATA_UDMA6, "SB600"  },
      { ATA_ATI_IXP300_S1, 0x00, SIIMEMIO, 0, ATA_SA150, "IXP300" },
      { ATA_ATI_IXP400_S1, 0x00, SIIMEMIO, 0, ATA_SA150, "IXP400" },
      { ATA_ATI_IXP400_S2, 0x00, SIIMEMIO, 0, ATA_SA150, "IXP400" },
+     { ATA_ATI_SB600_S1,  0x00, SIIMEMIO, 0, ATA_SA300, "SB600"  },
+     { ATA_ATI_SB600_S2,  0x00, SIIMEMIO, 0, ATA_SA300, "SB600"  },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -1863,7 +1866,9 @@ ata_intel_new_setmode(device_t dev, int mode)
     u_int8_t mask44 = 0, new44 = 0;
     int error;
     u_int8_t timings[] = { 0x00, 0x00, 0x10, 0x21, 0x23, 0x10, 0x21, 0x23,
-			   0x23, 0x23, 0x23, 0x23, 0x23, 0x23 };
+			   0x23, 0x23, 0x23, 0x23, 0x23, 0x23, 0x23 };
+			/* PIO0  PIO1  PIO2  PIO3  PIO4  WDMA0 WDMA1 WDMA2 */
+			/* UDMA0 UDMA1 UDMA2 UDMA3 UDMA4 UDMA5 UDMA6 */
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
@@ -1881,30 +1886,134 @@ ata_intel_new_setmode(device_t dev, int mode)
     if (error)
 	return;
 
+    /*
+     * reg48: 1 bit per (primary drive 0, primary drive 1, secondary
+     *			 drive 0, secondary drive 1)
+     *
+     *		0 Disable Ultra DMA mode
+     *		1 Enable Ultra DMA mode
+     *
+     * reg4a: 4 bits per (primary drive 0, primary drive 1, secondary
+     *			  drive 0, secondary drive 1).
+     * 		0000 UDMA mode 0
+     *		0001 UDMA mode 1, 3, 5
+     *		0010 UDMA mode 2, 4, reserved
+     *		0011 reserved
+     *		(top two bits for each drive reserved)
+     */
+#if 0
+    device_printf(dev,
+		  "regs before 40=%08x 44=%02x 48=%02x 4a=%04x 54=%04x\n",
+		  reg40, reg44, reg48 ,reg4a, reg54);
+#endif
+    reg48 &= ~(0x0001 << devno);
+    reg4a &= ~(0x3 << (devno << 2));
     if (mode >= ATA_UDMA0) {
-	pci_write_config(gparent, 0x48, reg48 | (0x0001 << devno), 2);
-	pci_write_config(gparent, 0x4a,
-			 (reg4a & ~(0x3 << (devno << 2))) |
-			 ((0x01 + !(mode & 0x01)) << (devno << 2)), 2);
+	reg48 |= 0x0001 << devno;
+	if (mode > ATA_UDMA0) 
+	    reg4a |= (1 + !(mode & 0x01)) << (devno << 2);
     }
-    else {
-	pci_write_config(gparent, 0x48, reg48 & ~(0x0001 << devno), 2);
-	pci_write_config(gparent, 0x4a, (reg4a & ~(0x3 << (devno << 2))), 2);
-    }
-    reg54 |= 0x0400;
-    if (mode >= ATA_UDMA2)
-	pci_write_config(gparent, 0x54, reg54 | (0x1 << devno), 2);
-    else
-	pci_write_config(gparent, 0x54, reg54 & ~(0x1 << devno), 2);
+    pci_write_config(gparent, 0x48, reg48, 2);
+    pci_write_config(gparent, 0x4a, reg4a, 2);
+
+    /*
+     * reg54:
+     *
+     *	32:20	reserved
+     *	19:18	Secondary ATA signal mode
+     *  17:16	Primary ATA signal mode
+     *		00 = Normal (enabled)
+     *		01 = Tri-state (disabled)
+     *		10 = Drive Low (disabled)
+     *		11 = Reserved
+     *
+     *  15	Secondary drive 1	- Base Clock
+     *  14	Secondary drive 0	- Base Clock
+     *  13	Primary drive 1		- Base Clock
+     *	12	Primary drive 0		- Base Clock
+     *		0 = Select 33 MHz clock
+     *		1 = Select 100 Mhz clock
+     *
+     *	11	Reserved
+     *	10	Vendor specific (set by BIOS?)
+     *  09:08	Reserved
+     *
+     *  07	Secondary drive 1 	- Cable Type
+     *  06	Secondary drive 0	- Cable Type
+     *  05	Primary drive 1		- Cable Type
+     *	04	Primary drive 0		- Cable Type
+     *		0 = 40 Conductor
+     *		1 = 80 Conductor (or high speed cable)
+     *
+     *  03	Secondary drive 1 	- Select 33/66 clock
+     *  02	Secondary drive 0	- Select 33/66 clock
+     *  01	Primary drive 1		- Select 33/66 clock
+     *	00	Primary drive 0		- Select 33/66 clock
+     *		0 = Select 33 MHz
+     *		1 = Select 66 MHz
+     *
+     *		It is unclear what this should be set to when operating
+     *		in 100MHz mode.
+     *
+     * NOTE: UDMA2 = 33 MHz
+     *	     UDMA3 = 40 MHz (?) - unsupported
+     *	     UDMA4 = 66 MHz
+     *	     UDMA5 = 100 MHz
+     *	     UDMA6 = 133 Mhz
+     */
+    reg54 |= 0x0400;	/* set vendor specific bit */
+    reg54 &= ~((0x1 << devno) | (0x1000 << devno));
 
     if (mode >= ATA_UDMA5)
-	pci_write_config(gparent, 0x54, reg54 | (0x1000 << devno), 2);
-    else 
-	pci_write_config(gparent, 0x54, reg54 & ~(0x1000 << devno), 2);
+	reg54 |= (0x1000 << devno);
+    else if (mode >= ATA_UDMA3)	/* XXX should this be ATA_UDMA3 or 4? */
+	reg54 |= (0x1 << devno);
 
-    reg40 &= ~0x00ff00ff;
-    reg40 |= 0x40774077;
+    pci_write_config(gparent, 0x54, reg54, 2);
 
+    /*
+     * Reg40 (32 bits... well, actually two 16 bit registers)
+     *
+     * Primary channel bits 15:00, Secondary channel bits 31:00.  Note
+     * that slave timings are handled in register 44.
+     *
+     * 15	ATA Decode Enable (R/W) 1 = enable decoding of I/O ranges
+     *
+     * 14	Slave ATA Timing Register Enable (R/W)
+     *
+     * 13:12	IORDY Sample Mode
+     *		00	PIO-0
+     *		01	PIO-2, SW-2
+     *		10	PIO-3, PIO-4, MW-1, MW-2
+     *		11	Reserved
+     *
+     * 11:10	Reserved
+     *
+     * 09:08	Recovery Mode
+     *		00	PIO-0, PIO-2, SW-2
+     *		01	PIO-3, MW-1
+     *		10	Reserved
+     *		11	PIO-4, MW-2
+     *
+     * 07:04	Secondary Device Control Bits
+     * 03:00	Primary Device Control Bits
+     *
+     *		bit 3	DMA Timing Enable
+     *
+     *		bit 2	Indicate Presence of ATA(1) or ATAPI(0) device
+     *
+     *		bit 1	Enable IORDY sample point capability for PIO
+     *			xfers.  Always enabled for PIO4 and PIO3, enabled
+     *			for PIO2 if indicated by the device, and otherwise
+     *			probably should be 0.
+     *
+     *		bit 0	Fast Drive Timing Enable.  Enables faster then PIO-0
+     *			timing modes.
+     */
+
+    /*
+     * Modify reg40 according to the table
+     */
     if (atadev->unit == ATA_MASTER) {
 	mask40 = 0x3300;
 	new40 = timings[ata_mode2idx(mode)] << 8;
@@ -1914,6 +2023,45 @@ ata_intel_new_setmode(device_t dev, int mode)
 	new44 = ((timings[ata_mode2idx(mode)] & 0x30) >> 2) |
 		(timings[ata_mode2idx(mode)] & 0x03);
     }
+
+    /*
+     * Slave ATA timing register enable
+     */
+    mask40 |= 0x4000;
+    new40  |= 0x4000;
+
+    /*
+     * Device control bits 3:0 for master, 7:4 for slave.
+     *
+     * bit3 DMA Timing enable.
+     * bit2 Indicate presence of ATA(1) or ATAPI(0) device, set accordingly
+     * bit1 Enable IORDY sample point capability for PIO xfers.  Always
+     *	    enabled for PIO4 and PIO3, enabled for PIO2 if indicated by
+     *	    the device, and otherwise should be 0.
+     * bit0 Fast Drive Timing Enable.  Enable faster then PIO-0 timing modes.
+     *
+     * Set to: 0 x 1 1
+     */
+
+    if (atadev->unit == ATA_MASTER) {
+	mask40 |= 0x0F;
+	new40 |= 0x03;
+	if (!ata_atapi(dev))
+	    new40 |= 0x04;
+    } else {
+	mask40 |= 0xF0;
+	new40 |= 0x30;
+	if (!ata_atapi(dev))
+	    new40 |= 0x40;
+    }
+    /*
+    reg40 &= ~0x00ff00ff;
+    reg40 |= 0x40774077;
+    */
+
+    /*
+     * Primary or Secondary controller
+     */
     if (ch->unit) {
 	mask40 <<= 16;
 	new40 <<= 16;
@@ -1922,6 +2070,17 @@ ata_intel_new_setmode(device_t dev, int mode)
     }
     pci_write_config(gparent, 0x40, (reg40 & ~mask40) | new40, 4);
     pci_write_config(gparent, 0x44, (reg44 & ~mask44) | new44, 1);
+
+#if 0
+    reg40 = pci_read_config(gparent, 0x40, 4);
+    reg44 = pci_read_config(gparent, 0x44, 1);
+    reg48 = pci_read_config(gparent, 0x48, 1);
+    reg4a = pci_read_config(gparent, 0x4a, 2);
+    reg54 = pci_read_config(gparent, 0x54, 2);
+    device_printf(dev,
+		  "regs after 40=%08x 44=%02x 48=%02x 4a=%04x 54=%04x\n",
+		  reg40, reg44, reg48 ,reg4a, reg54);
+#endif
 
     atadev->mode = mode;
 }
@@ -5316,7 +5475,7 @@ ata_via_family_setmode(device_t dev, int mode)
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
     u_int8_t timings[] = { 0xa8, 0x65, 0x42, 0x22, 0x20, 0x42, 0x22, 0x20,
-			   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
+			   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
     int modes[][7] = {
 	{ 0xc2, 0xc1, 0xc0, 0x00, 0x00, 0x00, 0x00 },   /* VIA ATA33 */
 	{ 0xee, 0xec, 0xea, 0xe9, 0xe8, 0x00, 0x00 },   /* VIA ATA66 */

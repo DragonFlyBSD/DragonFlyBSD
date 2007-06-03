@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.h,v 1.66 2006/07/24 10:44:50 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.2 2007/06/01 00:31:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.3 2007/06/03 04:27:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -105,9 +105,12 @@ struct ata_connect_task {
 #define ATA_ATI_IXP200          0x43491002
 #define ATA_ATI_IXP300          0x43691002
 #define ATA_ATI_IXP400          0x43761002
+#define ATA_ATI_SB600		0x438c1002
 #define ATA_ATI_IXP300_S1       0x436e1002
 #define ATA_ATI_IXP400_S1       0x43791002
 #define ATA_ATI_IXP400_S2       0x437a1002
+#define ATA_ATI_SB600_S1	0x43801002
+#define ATA_ATI_SB600_S2	0x43811002
 
 #define ATA_CENATEK_ID          0x16ca
 #define ATA_CENATEK_ROCKET      0x000116ca
