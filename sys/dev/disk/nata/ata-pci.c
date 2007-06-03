@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.117 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.3 2007/06/01 00:31:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.4 2007/06/03 11:49:54 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -450,15 +450,25 @@ static int
 ata_pci_dmastart(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+    u_int8_t val;
 
     ATA_IDX_OUTB(ch, ATA_BMSTAT_PORT, (ATA_IDX_INB(ch, ATA_BMSTAT_PORT) | 
 		 (ATA_BMSTAT_INTERRUPT | ATA_BMSTAT_ERROR)));
     ATA_IDX_OUTL(ch, ATA_BMDTP_PORT, ch->dma->sg_bus);
     ch->dma->flags |= ATA_DMA_ACTIVE;
-    ATA_IDX_OUTB(ch, ATA_BMCMD_PORT,
-		 (ATA_IDX_INB(ch, ATA_BMCMD_PORT) & ~ATA_BMCMD_WRITE_READ) |
-		 ((ch->dma->flags & ATA_DMA_READ) ? ATA_BMCMD_WRITE_READ : 0) |
-		 ATA_BMCMD_START_STOP);
+    val = ATA_IDX_INB(ch, ATA_BMCMD_PORT);
+    if (ch->dma->flags & ATA_DMA_READ)
+	val |= ATA_BMCMD_WRITE_READ;
+    else
+	val &= ~ATA_BMCMD_WRITE_READ;
+    ATA_IDX_OUTB(ch, ATA_BMCMD_PORT, val);
+
+    /*
+     * Issue the start command separately from configuration setup,
+     * in case the hardware latches portions of the configuration.
+     */
+    ATA_IDX_OUTB(ch, ATA_BMCMD_PORT, val | ATA_BMCMD_START_STOP);
+
     return 0;
 }
 
