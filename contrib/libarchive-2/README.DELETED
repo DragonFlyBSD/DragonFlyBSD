@@ -6,6 +6,7 @@ config.aux/
 config.h.in
 configure
 configure.ac
+cpio/
 examples/
 libarchive/config_freebsd.h
 libarchive/config_windows.h

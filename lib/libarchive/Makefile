@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.12 2007/05/09 19:39:23 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.13 2007/06/03 21:29:07 pavalos Exp $
 
 LIB=	archive
 
@@ -101,6 +101,9 @@ MLINKS+=	archive_entry.3 archive_entry_copy_symlink.3
 MLINKS+=	archive_entry.3 archive_entry_copy_symlink_w.3
 MLINKS+=	archive_entry.3 archive_entry_copy_uname_w.3
 MLINKS+=	archive_entry.3 archive_entry_dev.3
+MLINKS+=	archive_entry.3 archive_entry_devmajor.3
+MLINKS+=	archive_entry.3 archive_entry_devminor.3
+MLINKS+=	archive_entry.3 archive_entry_filetype.3
 MLINKS+=	archive_entry.3 archive_entry_fflags.3
 MLINKS+=	archive_entry.3 archive_entry_fflags_text.3
 MLINKS+=	archive_entry.3 archive_entry_free.3
@@ -112,11 +115,18 @@ MLINKS+=	archive_entry.3 archive_entry_mode.3
 MLINKS+=	archive_entry.3 archive_entry_mtime.3
 MLINKS+=	archive_entry.3 archive_entry_mtime_nsec.3
 MLINKS+=	archive_entry.3 archive_entry_new.3
+MLINKS+=	archive_entry.3 archive_entry_nlink.3
 MLINKS+=	archive_entry.3 archive_entry_pathname.3
 MLINKS+=	archive_entry.3 archive_entry_pathname_w.3
 MLINKS+=	archive_entry.3 archive_entry_rdev.3
 MLINKS+=	archive_entry.3 archive_entry_rdevmajor.3
 MLINKS+=	archive_entry.3 archive_entry_rdevminor.3
+MLINKS+=	archive_entry.3 archive_entry_set_atime.3
+MLINKS+=	archive_entry.3 archive_entry_set_ctime.3
+MLINKS+=	archive_entry.3 archive_entry_set_dev.3
+MLINKS+=	archive_entry.3 archive_entry_set_devmajor.3
+MLINKS+=	archive_entry.3 archive_entry_set_devminor.3
+MLINKS+=	archive_entry.3 archive_entry_set_filetype.3
 MLINKS+=	archive_entry.3 archive_entry_set_fflags.3
 MLINKS+=	archive_entry.3 archive_entry_set_gid.3
 MLINKS+=	archive_entry.3 archive_entry_set_gname.3
@@ -158,6 +168,7 @@ MLINKS+=	archive_read.3 archive_read_support_compression_bzip2.3
 MLINKS+=	archive_read.3 archive_read_support_compression_compress.3
 MLINKS+=	archive_read.3 archive_read_support_compression_gzip.3
 MLINKS+=	archive_read.3 archive_read_support_compression_none.3
+MLINKS+=	archive_read.3 archive_read_support_compression_program.3
 MLINKS+=	archive_read.3 archive_read_support_format_all.3
 MLINKS+=	archive_read.3 archive_read_support_format_cpio.3
 MLINKS+=	archive_read.3 archive_read_support_format_empty.3
@@ -188,6 +199,8 @@ MLINKS+=	archive_write.3 archive_write_set_bytes_in_last_block.3
 MLINKS+=	archive_write.3 archive_write_set_bytes_per_block.3
 MLINKS+=	archive_write.3 archive_write_set_compression_bzip2.3
 MLINKS+=	archive_write.3 archive_write_set_compression_gzip.3
+MLINKS+=	archive_write.3 archive_write_set_compression_none.3
+MLINKS+=	archive_write.3 archive_write_set_compression_program.3
 MLINKS+=	archive_write.3 archive_write_set_format_cpio.3
 MLINKS+=	archive_write.3 archive_write_set_format_pax.3
 MLINKS+=	archive_write.3 archive_write_set_format_pax_restricted.3
