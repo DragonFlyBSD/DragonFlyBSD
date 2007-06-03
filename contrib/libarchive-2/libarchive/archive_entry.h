@@ -28,7 +28,9 @@
 #ifndef ARCHIVE_ENTRY_H_INCLUDED
 #define	ARCHIVE_ENTRY_H_INCLUDED
 
+#include <sys/types.h>
 #include <stddef.h>  /* for wchar_t */
+#include <time.h>
 #include <unistd.h>
 
 #ifdef __cplusplus

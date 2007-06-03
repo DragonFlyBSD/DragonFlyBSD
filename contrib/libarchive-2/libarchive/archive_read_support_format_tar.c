@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.54 2007/04/15 00:53:38 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.55 2007/05/21 04:45:24 cperciva Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -1149,7 +1149,7 @@ pax_header(struct archive_read *a, struct tar *tar,
 			return (-1);
 		while (*wp && *wp != L'=')
 			++wp;
-		if (*wp == L'\0' || wp == NULL) {
+		if (*wp == L'\0') {
 			archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
 			    "Invalid pax extended attributes");
 			return (ARCHIVE_WARN);

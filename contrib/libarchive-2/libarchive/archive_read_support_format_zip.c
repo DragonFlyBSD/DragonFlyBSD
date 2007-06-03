@@ -79,6 +79,7 @@ struct zip {
 	size_t 			uncompressed_buffer_size;
 #ifdef HAVE_ZLIB_H
 	z_stream		stream;
+	char			stream_valid;
 #endif
 
 	struct archive_string	pathname;
@@ -535,13 +536,19 @@ zip_read_data_deflate(struct archive_read *a, const void **buff,
 
 	/* If we haven't yet read any data, initialize the decompressor. */
 	if (!zip->decompress_init) {
-		r = inflateInit2(&zip->stream,
-		    -15 /* Don't check for zlib header */);
+		if (zip->stream_valid)
+			r = inflateReset(&zip->stream);
+		else
+			r = inflateInit2(&zip->stream,
+			    -15 /* Don't check for zlib header */);
 		if (r != Z_OK) {
 			archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
 			    "Can't initialize ZIP decompression.");
 			return (ARCHIVE_FATAL);
 		}
+		/* Stream structure has been set up. */
+		zip->stream_valid = 1;
+		/* We've initialized decompression for this stream. */
 		zip->decompress_init = 1;
 	}
 
@@ -667,8 +674,11 @@ archive_read_format_zip_cleanup(struct archive_read *a)
 	struct zip *zip;
 
 	zip = (struct zip *)(a->format->data);
-	if (zip->uncompressed_buffer != NULL)
-		free(zip->uncompressed_buffer);
+#ifdef HAVE_ZLIB_H
+	if (zip->stream_valid)
+		inflateEnd(&zip->stream);
+#endif
+	free(zip->uncompressed_buffer);
 	archive_string_free(&(zip->pathname));
 	archive_string_free(&(zip->extra));
 	free(zip);

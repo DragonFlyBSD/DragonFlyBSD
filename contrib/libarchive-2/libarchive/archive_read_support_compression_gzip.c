@@ -57,6 +57,7 @@ struct private_data {
 	int64_t		 total_out;
 	unsigned long	 crc;
 	char		 header_done;
+	char		 eof; /* True = found end of compressed data. */
 };
 
 static int	finish(struct archive_read *);
@@ -65,7 +66,7 @@ static ssize_t	read_consume(struct archive_read *, size_t);
 static int	drive_decompressor(struct archive_read *a, struct private_data *);
 #endif
 
-/* These two functions are defined even if we lack zlib.  See below. */
+/* These two functions are defined even if we lack the library.  See below. */
 static int	bid(const void *, size_t);
 static int	init(struct archive_read *, const void *, size_t);
 
@@ -73,7 +74,7 @@ int
 archive_read_support_compression_gzip(struct archive *_a)
 {
 	struct archive_read *a = (struct archive_read *)_a;
-	if(__archive_read_register_compression(a, bid, init) != NULL)
+	if (__archive_read_register_compression(a, bid, init) != NULL)
 		return (ARCHIVE_OK);
 	return (ARCHIVE_FATAL);
 }
@@ -134,9 +135,9 @@ bid(const void *buff, size_t len)
 #ifndef HAVE_ZLIB_H
 
 /*
- * If we don't have zlib on this system, we can't actually do the
- * decompression.  We can, however, still detect gzip-compressed
- * archives and emit a useful message.
+ * If we don't have the library on this system, we can't actually do the
+ * decompression.  We can, however, still detect compressed archives
+ * and emit a useful message.
  */
 static int
 init(struct archive_read *a, const void *buff, size_t n)
@@ -285,8 +286,10 @@ read_ahead(struct archive_read *a, const void **p, size_t min)
 	while (read_avail < min &&		/* Haven't satisfied min. */
 	    read_avail < state->uncompressed_buffer_size) { /* !full */
 		was_avail = read_avail;
-		if ((ret = drive_decompressor(a, state)) != ARCHIVE_OK)
+		if ((ret = drive_decompressor(a, state)) < ARCHIVE_OK)
 			return (ret);
+		if (ret == ARCHIVE_EOF)
+			break; /* Break on EOF even if we haven't met min. */
 		read_avail = state->stream.next_out - state->read_next;
 		if (was_avail == read_avail) /* No progress? */
 			break;
@@ -355,6 +358,8 @@ drive_decompressor(struct archive_read *a, struct private_data *state)
 	unsigned char b;
 	const void *read_buf;
 
+	if (state->eof)
+		return (ARCHIVE_EOF);
 	flags = 0;
 	count = 0;
 	header_state = 0;
@@ -524,12 +529,10 @@ drive_decompressor(struct archive_read *a, struct private_data *state)
 				 * TODO: Verify gzip trailer
 				 * (uncompressed length and CRC).
 				 */
+				state->eof = 1;
 				return (ARCHIVE_OK);
 			default:
 				/* Any other return value is an error. */
-				archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
-				    "gzip decompression failed (%s)",
-				    state->stream.msg);
 				goto fatal;
 			}
 		}

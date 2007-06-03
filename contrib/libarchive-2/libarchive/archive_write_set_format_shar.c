@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_shar.c,v 1.16 2007/03/03 07:37:36 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_shar.c,v 1.17 2007/05/19 05:09:09 cperciva Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -208,11 +208,14 @@ archive_write_shar_header(struct archive_write *a, struct archive_entry *entry)
 			/* Try to avoid a lot of redundant mkdir commands. */
 			if (strcmp(p, ".") == 0) {
 				/* Don't try to "mkdir ." */
+				free(p);
 			} else if (shar->last_dir == NULL) {
 				ret = shar_printf(a,
 				    "mkdir -p %s > /dev/null 2>&1\n", p);
-				if (ret != ARCHIVE_OK)
+				if (ret != ARCHIVE_OK) {
+					free(p);
 					return (ret);
+				}
 				shar->last_dir = p;
 			} else if (strcmp(p, shar->last_dir) == 0) {
 				/* We've already created this exact dir. */
@@ -224,11 +227,15 @@ archive_write_shar_header(struct archive_write *a, struct archive_entry *entry)
 			} else {
 				ret = shar_printf(a,
 				    "mkdir -p %s > /dev/null 2>&1\n", p);
-				if (ret != ARCHIVE_OK)
+				if (ret != ARCHIVE_OK) {
+					free(p);
 					return (ret);
+				}
 				free(shar->last_dir);
 				shar->last_dir = p;
 			}
+		} else {
+			free(p);
 		}
 	}
 
