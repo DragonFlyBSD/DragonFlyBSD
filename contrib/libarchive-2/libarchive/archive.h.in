@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive.h.in,v 1.42 2007/04/14 22:34:10 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive.h.in,v 1.43 2007/05/02 05:29:55 cperciva Exp $
  */
 
 #ifndef ARCHIVE_H_INCLUDED
@@ -322,6 +322,10 @@ int		 archive_read_data_into_fd(struct archive *, int fd);
 #define	ARCHIVE_EXTRACT_SECURE_SYMLINKS (256)
 /* Default: Do not reject entries with '..' as path elements. */
 #define	ARCHIVE_EXTRACT_SECURE_NODOTDOT (512)
+/* Default: Create parent directories as needed. */
+#define	ARCHIVE_EXTRACT_NO_AUTODIR (1024)
+/* Default: Overwrite files, even if one on disk is newer. */
+#define	ARCHIVE_EXTRACT_NO_OVERWRITE_NEWER (2048)
 
 int		 archive_read_extract(struct archive *, struct archive_entry *,
 		     int flags);
@@ -499,7 +503,7 @@ const char	*archive_format_name(struct archive *);
 int		 archive_format(struct archive *);
 void		 archive_clear_error(struct archive *);
 void		 archive_set_error(struct archive *, int _err, const char *fmt, ...);
-void archive_copy_error(struct archive *dest, struct archive *src);
+void		 archive_copy_error(struct archive *dest, struct archive *src);
 
 #ifdef __cplusplus
 }

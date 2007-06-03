@@ -1,4 +1,20 @@
 
+May 26, 2007: libarchive 2.2.3 released
+May 26, 2007: Fix memory leaks in ZIP reader and shar writer, add some
+	missing system headers to archive_entry.h, dead code cleanup
+	from Colin Percival, more tests for gzip/bzip2, fix an
+	EOF anomaly in bzip2 decompression.
+
+May 12, 2007: libarchive 2.2.2 released
+May 12, 2007: Fix archive_write_disk permission restore by cloning
+	entry passed into write_header so that permission info is
+	still available at finish_entry time.  (archive_read_extract()
+	worked okay because it held onto the passed-in entry, but
+	direct consumers of archive_write_disk would break).  This
+	required fixing archive_entry_clone(), which now works and has
+	a reasonably complete test case.
+May 10, 2007: Skeletal cpio implementation.
+
 May 06, 2007: libarchive 2.2.1 released
 May 06, 2007: Flesh out a lot more of test_entry.c so as to catch
 	problems such as the device node breakage before releasing <sigh>.

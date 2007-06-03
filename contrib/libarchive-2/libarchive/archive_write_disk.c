@@ -25,7 +25,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_disk.c,v 1.10 2007/04/15 04:43:12 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_disk.c,v 1.11 2007/05/21 04:22:38 cperciva Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -204,6 +204,7 @@ static void	edit_deep_directories(struct archive_write_disk *ad);
 static int	cleanup_pathname(struct archive_write_disk *);
 static int	create_dir(struct archive_write_disk *, char *);
 static int	create_parent_dir(struct archive_write_disk *, char *);
+static int	older(struct stat *, struct archive_entry *);
 static int	restore_entry(struct archive_write_disk *);
 #ifdef HAVE_POSIX_ACL
 static int	set_acl(struct archive_write_disk *, int fd, struct archive_entry *,
@@ -292,7 +293,11 @@ _archive_write_header(struct archive *_a, struct archive_entry *entry)
 	a->pst = NULL;
 	a->current_fixup = NULL;
 	a->deferred = 0;
-	a->entry = entry;
+	if (a->entry) {
+		archive_entry_free(a->entry);
+		a->entry = NULL;
+	}
+	a->entry = archive_entry_clone(entry);
 	a->fd = -1;
 	a->offset = 0;
 	a->uid = a->user_uid;
@@ -544,6 +549,11 @@ _archive_write_finish_entry(struct archive *_a)
 		close(a->fd);
 		a->fd = -1;
 	}
+	/* If there's an entry, we can release it now. */
+	if (a->entry) {
+		archive_entry_free(a->entry);
+		a->entry = NULL;
+	}
 	a->archive.state = ARCHIVE_STATE_HEADER;
 	return (ret);
 }
@@ -682,7 +692,8 @@ restore_entry(struct archive_write_disk *a)
 	/* Try creating it first; if this fails, we'll try to recover. */
 	en = create_filesystem_object(a);
 
-	if (en == ENOTDIR || en == ENOENT) {
+	if ((en == ENOTDIR || en == ENOENT)
+	    && !(a->flags & ARCHIVE_EXTRACT_NO_AUTODIR)) {
 		/* If the parent dir doesn't exist, try creating it. */
 		create_parent_dir(a, a->name);
 		/* Now try to create the object again. */
@@ -724,6 +735,14 @@ restore_entry(struct archive_write_disk *a)
 		}
 
 		/* TODO: if it's a symlink... */
+
+		if (a->flags & ARCHIVE_EXTRACT_NO_OVERWRITE_NEWER) {
+			if (!older(&(a->st), a->entry)) {
+				archive_set_error(&a->archive, 0,
+				    "File on disk is not older; skipping.");
+				return (ARCHIVE_FAILED);
+			}
+		}
 
 		/* If it's our archive, we're done. */
 		if (a->skip_file_dev > 0 &&
@@ -1287,7 +1306,6 @@ create_dir(struct archive_write_disk *a, char *path)
 
 	/* Check for special names and just skip them. */
 	slash = strrchr(path, '/');
-	base = strrchr(path, '/');
 	if (slash == NULL)
 		base = path;
 	else
@@ -2016,4 +2034,39 @@ trivial_lookup_uid(void *private_data, const char *uname, uid_t uid)
 	(void)private_data; /* UNUSED */
 	(void)uname; /* UNUSED */
 	return (uid);
+}
+
+/*
+ * Test if file on disk is older than entry.
+ */
+static int
+older(struct stat *st, struct archive_entry *entry)
+{
+	/* First, test the seconds and return if we have a definite answer. */
+	/* Definitely older. */
+	if (st->st_mtime < archive_entry_mtime(entry))
+		return (1);
+	/* Definitely younger. */
+	if (st->st_mtime > archive_entry_mtime(entry))
+		return (0);
+	/* If this platform supports fractional seconds, try those. */
+#if HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC
+	/* Definitely older. */
+	if (st->st_mtimespec.tv_nsec < archive_entry_mtime_nsec(entry))
+		return (1);
+	/* Definitely younger. */
+	if (st->st_mtimespec.tv_nsec > archive_entry_mtime_nsec(entry))
+		return (0);
+#elif HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+	/* Definitely older. */
+	if (st->st_mtim.tv_nsec < archive_entry_mtime_nsec(entry))
+		return (1);
+	/* Definitely older. */
+	if (st->st_mtim.tv_nsec > archive_entry_mtime_nsec(entry))
+		return (0);
+#else
+	/* This system doesn't have high-res timestamps. */
+#endif
+	/* Same age, so not older. */
+	return (0);
 }

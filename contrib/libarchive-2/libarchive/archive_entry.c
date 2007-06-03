@@ -311,6 +311,8 @@ struct archive_entry *
 archive_entry_clone(struct archive_entry *entry)
 {
 	struct archive_entry *entry2;
+	struct ae_acl *ap, *ap2;
+	struct ae_xattr *xp;
 
 	/* Allocate new structure and copy over all of the fields. */
 	entry2 = (struct archive_entry *)malloc(sizeof(*entry2));
@@ -328,8 +330,24 @@ archive_entry_clone(struct archive_entry *entry)
 	aes_copy(&entry2->ae_symlink, &entry->ae_symlink);
 	aes_copy(&entry2->ae_uname, &entry->ae_uname);
 
-	/* XXX TODO: Copy ACL data over as well. XXX */
-	/* XXX TODO: Copy xattr data over as well. XXX */
+	/* Copy ACL data over. */
+	ap = entry->acl_head;
+	while (ap != NULL) {
+		ap2 = acl_new_entry(entry2,
+		    ap->type, ap->permset, ap->tag, ap->id);
+		if (ap2 != NULL)
+			aes_copy(&ap2->name, &ap->name);
+		ap = ap->next;
+	}
+
+	/* Copy xattr data over. */
+	xp = entry->xattr_head;
+	while (xp != NULL) {
+		archive_entry_xattr_add_entry(entry2,
+		    xp->name, xp->value, xp->size);
+		xp = xp->next;
+	}
+
 	return (entry2);
 }
 
