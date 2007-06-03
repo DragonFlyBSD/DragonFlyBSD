@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@whistle.com>
 .\"
 .\" $FreeBSD: src/lib/libnetgraph/netgraph.3,v 1.4.2.10 2002/12/29 16:35:36 schweikh Exp $
-.\" $DragonFly: src/lib/libnetgraph/netgraph.3,v 1.4 2006/10/27 10:53:59 swildner Exp $
+.\" $DragonFly: src/lib/libnetgraph/netgraph.3,v 1.5 2007/06/03 23:41:25 swildner Exp $
 .\" $Whistle: netgraph.3,v 1.7 1999/01/25 07:14:06 archie Exp $
 .\"
 .Dd January 19, 1999
@@ -170,7 +170,7 @@ bytes.
 If
 .Fa "path"
 is non-NULL, it must point to a buffer of at least
-.Dv "NG_PATHLEN + 1"
+.Dv "NG_PATHSIZ"
 bytes, which will be filled in (and NUL terminated) with the path to
 the node from which the message was received.
 .Pp
@@ -209,7 +209,7 @@ and stores it in
 which must be large enough to hold the entire packet.  If
 .Fa "hook"
 is non-NULL, it must point to a buffer of at least
-.Dv "NG_HOOKLEN + 1"
+.Dv "NG_HOOKSIZ"
 bytes, which will be filled in (and NUL terminated) with the name of
 the hook on which the data was received.
 .Pp

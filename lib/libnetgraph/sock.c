@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/lib/libnetgraph/sock.c,v 1.2 2000/01/28 00:48:27 archie Exp $
- * $DragonFly: src/lib/libnetgraph/sock.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/lib/libnetgraph/sock.c,v 1.5 2007/06/03 23:41:25 swildner Exp $
  * $Whistle: sock.c,v 1.12 1999/01/20 00:57:23 archie Exp $
  */
 
@@ -60,7 +60,7 @@
 int
 NgMkSockNode(const char *name, int *csp, int *dsp)
 {
-	char namebuf[NG_NODELEN + 1];
+	char namebuf[NG_NODESIZ];
 	int cs = -1;		/* control socket */
 	int ds = -1;		/* data socket */
 	int errnosv;
@@ -93,11 +93,11 @@ NgMkSockNode(const char *name, int *csp, int *dsp)
 gotNode:
 	/* Assign the node the desired name, if any */
 	if (name != NULL) {
-		u_char sbuf[NG_NODELEN + 3];
+		u_char sbuf[NG_NODESIZ + 2];
 		struct sockaddr_ng *const sg = (struct sockaddr_ng *) sbuf;
 
 		/* Assign name */
-		snprintf(sg->sg_data, NG_NODELEN + 1, "%s", name);
+		snprintf(sg->sg_data, NG_NODESIZ, "%s", name);
 		sg->sg_family = AF_NETGRAPH;
 		sg->sg_len = strlen(sg->sg_data) + 3;
 		if (bind(cs, (struct sockaddr *) sg, sg->sg_len) < 0) {
@@ -135,7 +135,7 @@ gotNode:
 
 	/* Create data socket if desired */
 	if (dsp != NULL) {
-		u_char sbuf[NG_NODELEN + 4];
+		u_char sbuf[NG_NODESIZ + 3];
 		struct sockaddr_ng *const sg = (struct sockaddr_ng *) sbuf;
 
 		/* Create data socket, initially just "floating" */
@@ -147,7 +147,7 @@ gotNode:
 		}
 
 		/* Associate the data socket with the node */
-		snprintf(sg->sg_data, NG_NODELEN + 2, "%s:", namebuf);
+		snprintf(sg->sg_data, NG_NODESIZ + 1, "%s:", namebuf);
 		sg->sg_family = AF_NETGRAPH;
 		sg->sg_len = strlen(sg->sg_data) + 3;
 		if (connect(ds, (struct sockaddr *) sg, sg->sg_len) < 0) {
@@ -211,7 +211,7 @@ NgNameNode(int cs, const char *path, const char *fmt, ...)
 int
 NgRecvData(int ds, u_char * buf, size_t len, char *hook)
 {
-	u_char frombuf[NG_HOOKLEN + sizeof(struct sockaddr_ng)];
+	u_char frombuf[NG_HOOKSIZ - 1 + sizeof(struct sockaddr_ng)];
 	struct sockaddr_ng *const from = (struct sockaddr_ng *) frombuf;
 	int fromlen = sizeof(frombuf);
 	int rtn, errnosv;
@@ -228,7 +228,7 @@ NgRecvData(int ds, u_char * buf, size_t len, char *hook)
 
 	/* Copy hook name */
 	if (hook != NULL)
-		snprintf(hook, NG_HOOKLEN + 1, "%s", from->sg_data);
+		snprintf(hook, NG_HOOKSIZ, "%s", from->sg_data);
 
 	/* Debugging */
 	if (_gNgDebugLevel >= 2) {
@@ -250,13 +250,13 @@ NgRecvData(int ds, u_char * buf, size_t len, char *hook)
 int
 NgSendData(int ds, const char *hook, const u_char * buf, size_t len)
 {
-	u_char sgbuf[NG_HOOKLEN + sizeof(struct sockaddr_ng)];
+	u_char sgbuf[NG_HOOKSIZ - 1 + sizeof(struct sockaddr_ng)];
 	struct sockaddr_ng *const sg = (struct sockaddr_ng *) sgbuf;
 	int errnosv;
 
 	/* Set up destination hook */
 	sg->sg_family = AF_NETGRAPH;
-	snprintf(sg->sg_data, NG_HOOKLEN + 1, "%s", hook);
+	snprintf(sg->sg_data, NG_HOOKSIZ, "%s", hook);
 	sg->sg_len = strlen(sg->sg_data) + 3;
 
 	/* Debugging */
