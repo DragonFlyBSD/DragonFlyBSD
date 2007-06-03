@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.65 2006/07/21 19:13:05 imp Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.5 2007/06/01 00:31:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.6 2007/06/03 11:52:09 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -77,6 +77,8 @@ ata_queue_request(struct ata_request *request)
 	    spin_unlock_wr(&ch->state_mtx);
 	    return;
 	}
+	/* interlock against interrupt */
+	request->flags |= ATA_R_HWCMDQUEUED;
 	spin_unlock_wr(&ch->state_mtx);
     }
     /* otherwise put request on the locked queue at the specified location */
@@ -218,6 +220,10 @@ ata_start(device_t dev)
 		    ata_finish(request);
 		    return;
 		}
+
+		/* interlock against interrupt */
+		request->flags |= ATA_R_HWCMDQUEUED;
+
 		if (dumping) {
 		    spin_unlock_wr(&ch->state_mtx);
 		    spin_unlock_wr(&ch->queue_mtx);

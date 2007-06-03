@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.273 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.10 2007/06/01 00:31:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.11 2007/06/03 11:52:09 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -317,13 +317,24 @@ ata_interrupt(void *data)
 
     spin_lock_wr(&ch->state_mtx);
     do {
-	/* ignore interrupt if its not for us */
+	/*
+	 * Ignore interrupt if its not for us.  This may also have the
+	 * side effect of processing events unrelated to I/O requests.
+	 */
 	if (ch->hw.status && !ch->hw.status(ch->dev))
 	    break;
 
-	/* do we have a running request */
-	if (!(request = ch->running))
+	/*
+	 * Check if we have a running request, and make sure it has been
+	 * completely queued.  Otherwise the channel status may indicate
+	 * not-busy when, in fact, the command had not yet been issued.
+	 */
+	if ((request = ch->running) == NULL)
 	    break;
+	if ((request->flags & ATA_R_HWCMDQUEUED) == 0) {
+	    kprintf("ata_interrupt: early interrupt\n");
+	    break;
+	}
 
 	/* XXX TGEN Ignore weird ATAPI+DMA interrupts on SMP */
 	if (ch->dma && (request->flags & ATA_R_ATAPI)) {
