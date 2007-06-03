@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.19 2007/06/03 11:47:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.20 2007/06/03 13:02:24 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -525,7 +525,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 			/*
 			 * Limit to the boundary and maximum segment size
 			 */
-			if ((nextpaddr ^ sg->ds_addr) & bmask) {
+			if (((nextpaddr - 1) ^ sg->ds_addr) & bmask) {
 				tmpsize = dmat->boundary -
 					  (sg->ds_addr & ~bmask);
 				if (tmpsize > dmat->maxsegsz)
