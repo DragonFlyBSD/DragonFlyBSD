@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.18 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.19 2007/06/03 11:47:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -420,6 +420,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	int			seg;
 	int			error;
 	vm_paddr_t		nextpaddr;
+	bus_addr_t		bmask;
 
 	if (map == NULL)
 		map = &nobounce_dmamap;
@@ -474,27 +475,38 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	sg = dmat->segments;
 	seg = 1;
 	sg->ds_len = 0;
-
 	nextpaddr = 0;
+	bmask = ~(dmat->boundary - 1);	/* note: will be 0 if boundary is 0 */
+
+	/* force at least one segment */
 	do {
 		bus_size_t	size;
 
+		/*
+		 * Per-page main loop
+		 */
 		paddr = pmap_kextract(vaddr);
 		size = PAGE_SIZE - (paddr & PAGE_MASK);
 		if (size > buflen)
 			size = buflen;
-
 		if (map->pagesneeded != 0 && run_filter(dmat, paddr)) {
+			/* 
+			 * note: this paddr has the same in-page offset
+			 * as vaddr and thus the paddr above, so the
+			 * size does not have to be recalculated
+			 */
 			paddr = add_bounce_page(dmat, map, vaddr, size);
 		}
 
+		/*
+		 * Fill in the bus_dma_segment
+		 */
 		if (sg->ds_len == 0) {
 			sg->ds_addr = paddr;
 			sg->ds_len = size;
 		} else if (paddr == nextpaddr) {
 			sg->ds_len += size;
 		} else {
-			/* Go to the next segment */
 			sg++;
 			seg++;
 			if (seg > dmat->nsegments)
@@ -502,11 +514,49 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 			sg->ds_addr = paddr;
 			sg->ds_len = size;
 		}
-		vaddr += size;
 		nextpaddr = paddr + size;
+
+		/*
+		 * Handle maxsegsz and boundary issues with a nested loop
+		 */
+		for (;;) {
+			bus_size_t	tmpsize;
+
+			/*
+			 * Limit to the boundary and maximum segment size
+			 */
+			if ((nextpaddr ^ sg->ds_addr) & bmask) {
+				tmpsize = dmat->boundary -
+					  (sg->ds_addr & ~bmask);
+				if (tmpsize > dmat->maxsegsz)
+					tmpsize = dmat->maxsegsz;
+				KKASSERT(tmpsize < sg->ds_len);
+			} else if (sg->ds_len > dmat->maxsegsz) {
+				tmpsize = dmat->maxsegsz;
+			} else {
+				break;
+			}
+
+			/*
+			 * Futz, split the data into a new segment.
+			 */
+			if (seg >= dmat->nsegments)
+				goto fail;
+			sg[1].ds_len = sg[0].ds_len - tmpsize;
+			sg[1].ds_addr = sg[0].ds_addr + tmpsize;
+			sg[0].ds_len = tmpsize;
+			sg++;
+			seg++;
+		}
+
+		/*
+		 * Adjust for loop
+		 */
 		buflen -= size;
+		vaddr += size;
 	} while (buflen > 0);
 
+fail:
 	if (buflen != 0) {
 		kprintf("bus_dmamap_load: Too many segs! buf_len = 0x%lx\n",
 		       (u_long)buflen);
