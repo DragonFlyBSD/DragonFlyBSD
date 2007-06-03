@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.101 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-tape.c,v 1.2 2006/12/22 23:26:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-tape.c,v 1.3 2007/06/03 04:48:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -106,12 +106,7 @@ ast_attach(device_t dev)
     struct ast_readposition position;
     cdev_t cdev;
 
-    /* XXX TGEN We're not in interrupt context, so we can M_WAITOK and remove
-       the OOM check. */
-    if (!(stp = kmalloc(sizeof(struct ast_softc), M_AST, M_NOWAIT | M_ZERO))) {
-	device_printf(dev, "out of memory\n");
-	return ENOMEM;
-    }
+    stp = kmalloc(sizeof(struct ast_softc), M_AST, M_WAITOK | M_ZERO);
     device_set_ivars(dev, stp);
     ATA_SETMODE(device_get_parent(dev), dev);
 

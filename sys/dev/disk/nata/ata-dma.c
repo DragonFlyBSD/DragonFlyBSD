@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.141 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-dma.c,v 1.2 2007/06/01 00:31:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-dma.c,v 1.3 2007/06/03 04:48:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -66,18 +66,17 @@ ata_dmainit(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(dev);
 
-    if ((ch->dma = kmalloc(sizeof(struct ata_dma), M_ATADMA, M_NOWAIT|M_ZERO))) {
-	ch->dma->alloc = ata_dmaalloc;
-	ch->dma->free = ata_dmafree;
-	ch->dma->setprd = ata_dmasetprd;
-	ch->dma->load = ata_dmaload;
-	ch->dma->unload = ata_dmaunload;
-	ch->dma->alignment = 2;
-	ch->dma->boundary = 128 * DEV_BSIZE;
-	ch->dma->segsize = 128 * DEV_BSIZE;
-	ch->dma->max_iosize = 128 * DEV_BSIZE;
-	ch->dma->max_address = BUS_SPACE_MAXADDR_32BIT;
-    }
+    ch->dma = kmalloc(sizeof(struct ata_dma), M_ATADMA, M_INTWAIT|M_ZERO);
+    ch->dma->alloc = ata_dmaalloc;
+    ch->dma->free = ata_dmafree;
+    ch->dma->setprd = ata_dmasetprd;
+    ch->dma->load = ata_dmaload;
+    ch->dma->unload = ata_dmaunload;
+    ch->dma->alignment = 2;
+    ch->dma->boundary = 128 * DEV_BSIZE;
+    ch->dma->segsize = 128 * DEV_BSIZE;
+    ch->dma->max_iosize = 128 * DEV_BSIZE;
+    ch->dma->max_address = BUS_SPACE_MAXADDR_32BIT;
 }
 
 static void

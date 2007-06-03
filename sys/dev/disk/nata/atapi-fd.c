@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.109 2006/03/30 05:29:57 marcel Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-fd.c,v 1.3 2007/05/15 00:01:03 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-fd.c,v 1.4 2007/06/03 04:48:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -91,12 +91,7 @@ afd_attach(device_t dev)
     struct afd_softc *fdp;
     cdev_t cdev;
 
-    /* XXX TGEN We're not in interrupt context, so we can M_WAITOK and remove
-       the OOM check. */
-    if (!(fdp = kmalloc(sizeof(struct afd_softc), M_AFD, M_NOWAIT | M_ZERO))) {
-	device_printf(dev, "out of memory\n");
-	return ENOMEM;
-    }
+    fdp = kmalloc(sizeof(struct afd_softc), M_AFD, M_WAITOK | M_ZERO);
     device_set_ivars(dev, fdp);
     ATA_SETMODE(device_get_parent(dev), dev);
 

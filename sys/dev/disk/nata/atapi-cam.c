@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.5 2007/05/01 00:05:17 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.6 2007/06/03 04:48:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -148,14 +148,8 @@ static void
 atapi_cam_identify(device_t *dev, device_t parent)
 {
 	struct atapi_xpt_softc *scp =
-	    kmalloc(sizeof(struct atapi_xpt_softc), M_ATACAM, M_NOWAIT|M_ZERO);
+	    kmalloc(sizeof(struct atapi_xpt_softc), M_ATACAM, M_INTWAIT|M_ZERO);
 	device_t child;
-
-	if (scp == NULL) {
-		/* XXX TGEN Use device_printf()? */
-		kprintf("atapi_cam_identify: out of memory");
-		return;
-	}
 
 	/* Assume one atapicam instance per parent channel instance. */
 	child = device_add_child(parent, "atapicam", -1);
@@ -587,11 +581,8 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 
 	if ((ccb_h->flags & CAM_DIR_MASK) == CAM_DIR_IN && (len & 1)) {
 	    /* ATA always transfers an even number of bytes */
-	    if ((buf = hcb->dxfer_alloc
-		 = kmalloc(++len, M_ATACAM, M_NOWAIT | M_ZERO)) == NULL) {
-		kprintf("cannot allocate ATAPI/CAM buffer\n");
-		goto action_oom;
-	    }
+	    buf = hcb->dxfer_alloc =
+		kmalloc(++len, M_ATACAM, M_INTWAIT | M_ZERO);
 	}
 	request->dev = softc->atadev[tid]->dev;
 	request->driver = hcb;
@@ -822,14 +813,12 @@ static struct atapi_hcb *
 allocate_hcb(struct atapi_xpt_softc *softc, int unit, int bus, union ccb *ccb)
 {
     struct atapi_hcb *hcb = (struct atapi_hcb *)
-    kmalloc(sizeof(struct atapi_hcb), M_ATACAM, M_NOWAIT | M_ZERO);
+	kmalloc(sizeof(struct atapi_hcb), M_ATACAM, M_INTWAIT | M_ZERO);
 
-    if (hcb != NULL) {
-	hcb->softc = softc;
-	hcb->unit = unit;
-	hcb->bus = bus;
-	hcb->ccb = ccb;
-    }
+    hcb->softc = softc;
+    hcb->unit = unit;
+    hcb->bus = bus;
+    hcb->ccb = ccb;
     return hcb;
 }
 

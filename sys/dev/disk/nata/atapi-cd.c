@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.6 2007/06/03 03:44:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.7 2007/06/03 04:48:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -129,10 +129,7 @@ acd_attach(device_t dev)
 
     /* XXX TGEN We're not in interrupt context, so we can M_WAITOK and remove
        the OOM check. */
-    if (!(cdp = kmalloc(sizeof(struct acd_softc), M_ACD, M_NOWAIT | M_ZERO))) {
-	device_printf(dev, "out of memory\n");
-	return ENOMEM;
-    }
+    cdp = kmalloc(sizeof(struct acd_softc), M_ACD, M_INTWAIT | M_ZERO);
     cdp->block_size = 2048;
     device_set_ivars(dev, cdp);
     ATA_SETMODE(device_get_parent(dev), dev);
@@ -413,10 +410,7 @@ acd_ioctl(struct dev_ioctl_args *ap)
 		struct cd_toc_entry *entry;
 
 		/* XXX TGEN Use M_WAITOK, not in intr ctx. */
-		if (!(toc = kmalloc(sizeof(struct toc), M_ACD, M_NOWAIT))) {
-		    error = ENOMEM;
-		    break;
-		}
+		toc = kmalloc(sizeof(struct toc), M_ACD, M_INTWAIT);
 		bcopy(&cdp->toc, toc, sizeof(struct toc));
 		entry = toc->tab + (toc->hdr.ending_track + 1 -
 			toc->hdr.starting_track) + 1;
@@ -465,10 +459,7 @@ acd_ioctl(struct dev_ioctl_args *ap)
 		struct cd_toc_entry *entry;
 
 		/* XXX TGEN Use M_WAITOK, not in intr ctx. */
-		if (!(toc = kmalloc(sizeof(struct toc), M_ACD, M_NOWAIT))) {
-		    error = ENOMEM;
-		    break;
-		}
+		toc = kmalloc(sizeof(struct toc), M_ACD, M_INTWAIT);
 		bcopy(&cdp->toc, toc, sizeof(struct toc));
 		entry = toc->tab + (track - toc->hdr.starting_track);
 		lba2msf(ntohl(entry->addr.lba), &entry->addr.msf.minute,
@@ -1376,8 +1367,7 @@ acd_send_cue(device_t dev, struct cdr_cuesheet *cuesheet)
     if ((error = acd_mode_select(dev, (caddr_t)&param, param.page_length + 10)))
 	return error;
 
-    /* XXX TGEN Use M_WAITOK, not in intr ctx. */
-    if (!(buffer = kmalloc(cuesheet->len, M_ACD, M_NOWAIT)))
+    if (!(buffer = kmalloc(cuesheet->len, M_ACD, M_WAITOK | M_NULLOK)))
 	return ENOMEM;
 
     if (!(error = copyin(cuesheet->entries, buffer, cuesheet->len)))
@@ -1429,9 +1419,7 @@ acd_report_key(device_t dev, struct dvd_authinfo *ai)
     ccb[10] = (ai->agid << 6) | ai->format;
 
     if (length) {
-	/* XXX TGEN Use M_WAITOK, not in intr ctx. */
-	if (!(d = kmalloc(length, M_ACD, M_NOWAIT | M_ZERO)))
-	    return ENOMEM;
+	d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
 	d->length = htons(length - 2);
     }
 
@@ -1497,25 +1485,19 @@ acd_send_key(device_t dev, struct dvd_authinfo *ai)
     switch (ai->format) {
     case DVD_SEND_CHALLENGE:
 	length = 16;
-	/* XXX TGEN Use M_WAITOK, not in intr ctx. */
-	if (!(d = kmalloc(length, M_ACD, M_NOWAIT | M_ZERO)))
-	    return ENOMEM;
+	d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
 	bcopy(ai->keychal, &d->data[0], 10);
 	break;
 
     case DVD_SEND_KEY2:
 	length = 12;
-	/* XXX TGEN Use M_WAITOK, not in intr ctx. */
-	if (!(d = kmalloc(length, M_ACD, M_NOWAIT | M_ZERO)))
-	    return ENOMEM;
+	d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
 	bcopy(&ai->keychal[0], &d->data[0], 5);
 	break;
     
     case DVD_SEND_RPC:
 	length = 8;
-	/* XXX TGEN Use M_WAITOK, not in intr ctx. */
-	if (!(d = kmalloc(length, M_ACD, M_NOWAIT | M_ZERO)))
-	    return ENOMEM;
+	d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
 	d->data[0] = ai->region;
 	break;
 
@@ -1577,9 +1559,7 @@ acd_read_structure(device_t dev, struct dvd_struct *s)
 	return EINVAL;
     }
 
-    /* XXX TGEN Use M_WAITOK, not in intr ctx. */
-    if (!(d = kmalloc(length, M_ACD, M_NOWAIT | M_ZERO)))
-	return ENOMEM;
+    d = kmalloc(length, M_ACD, M_WAITOK | M_ZERO);
     d->length = htons(length - 2);
 	
     bzero(ccb, sizeof(ccb));

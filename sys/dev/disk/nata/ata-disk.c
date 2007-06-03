@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.197 2006/03/31 08:09:04 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.4 2007/06/01 00:31:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.5 2007/06/03 04:48:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -104,12 +104,7 @@ ad_attach(device_t dev)
     if (device_get_ivars(dev))
 	return EEXIST;
 
-    /* XXX TGEN We're not in interrupt context, so we can M_WAITOK and remove
-       the OOM check. */
-    if (!(adp = kmalloc(sizeof(struct ad_softc), M_AD, M_NOWAIT | M_ZERO))) {
-	device_printf(dev, "out of memory\n");
-	return ENOMEM;
-    }
+    adp = kmalloc(sizeof(struct ad_softc), M_AD, M_INTWAIT | M_ZERO);
     device_set_ivars(dev, adp);
 
     if ((atadev->param.atavalid & ATA_FLAG_54_58) &&

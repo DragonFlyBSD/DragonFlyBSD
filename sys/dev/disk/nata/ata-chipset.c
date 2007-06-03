@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.166 2006/07/24 10:44:50 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.5 2007/06/03 04:27:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.6 2007/06/03 04:48:29 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -261,7 +261,7 @@ ata_sata_phy_check_events(device_t dev)
 	if ((error & ATA_SE_PHY_CHANGED) &&
 	    (tp = (struct ata_connect_task *)
 		  kmalloc(sizeof(struct ata_connect_task),
-			 M_ATA, M_NOWAIT | M_ZERO))) {
+			 M_ATA, M_INTWAIT | M_ZERO))) {
 
 	    if (((status & ATA_SS_CONWELL_MASK) == ATA_SS_CONWELL_GEN1) ||
 		((status & ATA_SS_CONWELL_MASK) == ATA_SS_CONWELL_GEN2)) {
@@ -3355,7 +3355,7 @@ ata_promise_chipinit(device_t dev)
 
 	    /* setup host packet controls */
 	    hpkt = kmalloc(sizeof(struct ata_promise_sx4),
-			  M_TEMP, M_NOWAIT | M_ZERO);
+			  M_TEMP, M_INTWAIT | M_ZERO);
 	    spin_init(&hpkt->mtx);
 	    TAILQ_INIT(&hpkt->queue);
 	    hpkt->busy = 0;
@@ -3731,7 +3731,7 @@ ata_promise_mio_status(device_t dev)
     if ((status & (0x00000001 << ch->unit)) &&
 	(tp = (struct ata_connect_task *)
 	      kmalloc(sizeof(struct ata_connect_task),
-		     M_ATA, M_NOWAIT | M_ZERO))) {
+		     M_ATA, M_INTWAIT | M_ZERO))) {
 
 	if (bootverbose)
 	    device_printf(ch->dev, "DISCONNECT requested\n");
@@ -3745,7 +3745,7 @@ ata_promise_mio_status(device_t dev)
     if ((status & (0x00000010 << ch->unit)) &&
 	(tp = (struct ata_connect_task *)
 	      kmalloc(sizeof(struct ata_connect_task),
-		     M_ATA, M_NOWAIT | M_ZERO))) {
+		     M_ATA, M_INTWAIT | M_ZERO))) {
 
 	if (bootverbose)
 	    device_printf(ch->dev, "CONNECT requested\n");
@@ -4112,7 +4112,7 @@ ata_promise_queue_hpkt(struct ata_pci_controller *ctlr, u_int32_t hpkt)
     spin_lock_wr(&hpktp->mtx);
     if (hpktp->busy) {
 	struct host_packet *hp = 
-	    kmalloc(sizeof(struct host_packet), M_TEMP, M_NOWAIT | M_ZERO);
+	    kmalloc(sizeof(struct host_packet), M_TEMP, M_INTWAIT | M_ZERO);
 	hp->addr = hpkt;
 	TAILQ_INSERT_TAIL(&hpktp->queue, hp, chain);
     }
@@ -5597,7 +5597,7 @@ ata_serialize(device_t dev, int flags)
 
     if (!inited) {
 	serial = kmalloc(sizeof(struct ata_serialize),
-			      M_TEMP, M_NOWAIT | M_ZERO);
+			      M_TEMP, M_INTWAIT | M_ZERO);
 	spin_init(&serial->locked_mtx);
 	serial->locked_ch = -1;
 	serial->restart_ch = -1;
