@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.5 2007/05/09 00:53:33 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.6 2007/06/03 03:44:14 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -73,7 +73,9 @@ static u_int32_t msf2lba(u_int8_t, u_int8_t, u_int8_t);
 static void acd_start(device_t, struct bio *);
 static void acd_done(struct ata_request *);
 static void acd_read_toc(device_t);
+#if 0
 static struct acd_tracknode * acd_make_tracknode(device_t, int);
+#endif
 static void acd_destroy_tracknode(device_t, int);
 static int acd_play(device_t, int, int);
 static int acd_setchan(device_t, u_int8_t, u_int8_t, u_int8_t, u_int8_t);
@@ -121,7 +123,6 @@ acd_probe(device_t dev)
 static int
 acd_attach(device_t dev)
 {
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
     struct acd_softc *cdp;
     cdev_t cdev;
@@ -142,18 +143,24 @@ acd_attach(device_t dev)
 		      DEVSTAT_NO_ORDERED_TAGS,
 		      DEVSTAT_TYPE_CDROM | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_CD);
+
+    cdev = disk_create(device_get_unit(dev), &cdp->disk, &acd_ops);
+#if 0
     dev_ops_add(&acd_ops, dkunitmask(), dkmakeunit(device_get_unit(dev)));
     cdev = make_dev(&acd_ops, dkmakeminor(device_get_unit(dev), 0, 0),
 		      UID_ROOT, GID_OPERATOR, 0644, "acd%d",
 		      device_get_unit(dev));
+#endif
     reference_dev(cdev);
     cdev->si_drv1 = dev;
-    /* XXX TGEN acd_set_ioparm(dev); */
-    if (ch->dma)
-	cdev->si_iosize_max = ch->dma->max_iosize;
-    else
-	cdev->si_iosize_max = DFLTPHYS;
+
+    /*
+     * Even though we do not have media information yet, we have to
+     * tell the disk management layer something or dscheck() will be
+     * unhappy.
+     */
     cdp->cdev = cdev;
+    acd_set_ioparm(dev);
     atadev->flags |= ATA_D_MEDIA_CHANGED;
 
     /* announce we are here */
@@ -180,6 +187,8 @@ acd_detach(device_t dev)
 
     /* don't leave anything behind */
     dev_ops_remove(&acd_ops, dkunitmask(), dkmakeunit(device_get_unit(dev)));
+    disk_invalidate(&cdp->disk);
+    disk_destroy(&cdp->disk);
     devstat_remove_entry(&cdp->stats);
     device_set_ivars(dev, NULL);
     kfree(cdp, M_ACD);
@@ -817,19 +826,28 @@ acd_start(device_t dev, struct bio *bp)
 
     bzero(ccb, sizeof(ccb));
 
-    /* AND the unit number out of the minor, and shift the tracknumber back */
-    track = (cdev->si_uminor & 0x00ff0000) >> 16;
+    /*
+     * Special track access is via bio_offset (128-255), and direct
+     * raw access via 128, else normal accesses.
+     */
+    track = (bp->bio_offset >> 56) & 127;
 
     if (track) {
+	if (track > MAXTRK) {
+	    bbp->b_flags |= B_ERROR;
+	    bbp->b_error = EIO;
+	    biodone(bp);
+	    return;
+	}
 	blocksize = (cdp->toc.tab[track - 1].control & 4) ? 2048 : 2352;
 	lastlba = ntohl(cdp->toc.tab[track].addr.lba);
-	lba = bp->bio_offset / blocksize;
+	lba = (bp->bio_offset & 0x00FFFFFFFFFFFFFFULL) / blocksize;
 	lba += ntohl(cdp->toc.tab[track - 1].addr.lba);
     }
     else {
 	blocksize = cdp->block_size;
 	lastlba = cdp->disk_size;
-	lba = bp->bio_offset / blocksize;
+	lba = (bp->bio_offset & 0x00FFFFFFFFFFFFFFULL) / blocksize;
     }
 
     count = bbp->b_bcount / blocksize;
@@ -932,11 +950,26 @@ acd_set_ioparm(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct acd_softc *cdp = device_get_ivars(dev);
+    struct disk_info info;
 
     if (ch->dma)
 	cdp->iomax = min(ch->dma->max_iosize, 65534);
     else
 	cdp->iomax = min(DFLTPHYS, 65534);
+
+    cdp->cdev->si_iosize_max = (cdp->iomax / cdp->block_size) * cdp->block_size;
+    cdp->cdev->si_bsize_phys = cdp->block_size;
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = cdp->block_size;
+    info.d_media_blocks = (cdp->disk_size == -1) ? 0 : cdp->disk_size;
+    info.d_secpertrack = 100;
+    info.d_nheads = 1;
+    info.d_ncylinders = cdp->disk_size / info.d_secpertrack / info.d_nheads + 1;
+    info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+    info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL | DSO_COMPATPARTA |
+		     DSO_RAWEXTENSIONS;
+    disk_setdiskinfo(&cdp->disk, &info);
+
 }
 
 static void 
@@ -1001,7 +1034,6 @@ acd_read_toc(device_t dev)
     cdp->toc.hdr.len = ntohs(cdp->toc.hdr.len);
 
     cdp->block_size = (cdp->toc.tab[0].control & 4) ? 2048 : 2352;
-    acd_set_ioparm(dev);
     bzero(ccb, sizeof(ccb));
     ccb[0] = ATAPI_READ_CAPACITY;
     if (ata_atapicmd(dev, ccb, (caddr_t)sizes, sizeof(sizes),
@@ -1010,11 +1042,15 @@ acd_read_toc(device_t dev)
 	return;
     }
     cdp->disk_size = ntohl(sizes[0]) + 1;
+    acd_set_ioparm(dev);
 
     for (track = 1; track <= ntracks; track ++) {
 	if (cdp->track[track] != NULL)
 	    continue;
+#if 0
 	tracknode = acd_make_tracknode(dev, track);
+#endif
+	tracknode = NULL;
 	cdp->track[track] = tracknode;
     }
     for (; track < MAXTRK; track ++) {
@@ -1043,6 +1079,9 @@ acd_read_toc(device_t dev)
  * acd_tracknode pointer to be included in the list of tracks available on the
  * medium.
  */
+
+#if 0
+
 static struct acd_tracknode *
 acd_make_tracknode(device_t dev, int track)
 {
@@ -1059,6 +1098,8 @@ acd_make_tracknode(device_t dev, int track)
     reference_dev(tracknode->cdev);
     return tracknode;
 }
+
+#endif
 
 /*
  * Destroys the device node of a numbered track and frees the related struct

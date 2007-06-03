@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.30 2007/05/15 05:37:36 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.31 2007/06/03 03:44:17 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -768,7 +768,8 @@ cdregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_TYPE_CDROM | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_CD);
 	disk_create(periph->unit_number, &softc->disk, &cd_ops);
-	softc->disk.d_info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL;
+	softc->disk.d_info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL |
+					DSO_COMPATPARTA;
 
 	/*
 	 * Add an async callback so that we get
@@ -1435,10 +1436,9 @@ cdstrategy(struct dev_strategy_args *ap)
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct cd_softc *softc;
-	u_int  unit, part;
+	u_int  unit;
 
 	unit = dkunit(dev);
-	part = dkpart(dev);
 	periph = cam_extend_get(cdperiphs, unit);
 	if (periph == NULL) {
 		bp->b_error = ENXIO;

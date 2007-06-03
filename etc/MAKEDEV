@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.32 2007/05/25 02:21:09 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.33 2007/06/03 03:44:12 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -852,15 +852,17 @@ acd*t*)
 
 #-----------------------------------------------------------------------------
 
-aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fd*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|vkd*)
+aacd*|acd*|ad*|ar*|afd*|amrd*|cd*|ccd*|da*|fd*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vcd*|vn*|vkd*)
 	doslices=1
+	directraw=0
 	case $i in
 	aacd*) name=aacd; chr=151;;
-	acd*)  name=acd;  chr=117; doslices=0;;
+	acd*)  name=acd;  chr=117; doslices=0; directraw=1;;
 	ad*)   name=ad;   chr=116;;
 	ar*)   name=ar;   chr=157;;
 	afd*)  name=afd;  chr=118;;
 	amrd*) name=amrd; chr=133;;
+	cd*)   name=cd;   chr=15; doslices=0; directraw=1;;
 	da*)   name=da;   chr=13;;
 	fd*)   name=fd;   chr=9;;
 	ccd*)  name=ccd;  chr=74;;
@@ -871,6 +873,7 @@ aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fd*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*
 	mlxd*) name=mlxd; chr=131;;
 	pst*)  name=pst;  chr=168;;
 	twed*) name=twed; chr=147;;
+	vcd*)  name=vcd;  chr=98; doslices=0;;
 	vn*)   name=vn;   chr=43;;
 	vkd*)  name=vkd;  chr=97;;
 	esac
@@ -879,7 +882,7 @@ aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fd*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*
 	aacd*|amrd*|idad*|ipsd*|mlxd*|twed*)
 		unit=`expr $i : '....\(.*\)'`
 		;;
-	acd*|afd*|ccd*|fla*|pst*|wfd*|vkd*)
+	acd*|afd*|ccd*|fla*|pst*|wfd*|vcd*|vkd*)
 		unit=`expr $i : '...\(.*\)'`
 		;;
 	*)
@@ -904,8 +907,17 @@ aacd*|acd*|ad*|ar*|afd*|amrd*|ccd*|da*|fd*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*
 				sh MAKEDEV $name$unit$slicepartname
 			done
 		else
+			if [ "$directraw" -gt 0 ]; then
+				minor=`ndkminor $unit 1 128`
+				mknod  ${name} ${unit} c $chr $minor \
+					root:operator 640
+			else
+				minor=`ndkminor $unit 1 255`
+				mknod  ${name} ${unit} c $chr $minor \
+					root:operator 640
+			fi
 			minor=`ndkminor $unit 1 255`
-			mknod  ${name} ${unit} c $chr $minor \
+			mknod  ${name} ${unit}s0 c $chr $minor \
 				root:operator 640
 			minor=`ndkminor $unit 0 0`
 			mknod  ${name} ${unit}a c $chr $minor \
@@ -1121,49 +1133,6 @@ ast*)
 		echo bad unit for tape in: $i
 		;;
 	esac
-	;;
-
-#-----------------------------------------------------------------------------
-
-cd*|vcd*)
-	case $i in
-	cd*)  units=`expr $i : '..\(.*\)'` ; name=cd;  chr=15;;
-	vcd*)  units=`expr $i : '...\(.*\)'` ; name=vcd;  chr=98;;
-	esac
-
-	[ "$units" ] || units=0
-
-	if [ "$units" -le 31 ]
-	then
-		i=0
-		while [ $i -le $units ]
-		do
-			dname=$name$i
-			rm -rf ${dname}*
-
-			case $name in 
-			acd)
-				mknod $name ${i} c $chr $(($i * 8 )) \
-					root:operator 640
-				ln -f ${dname} ${dname}a
-				ln -f ${dname} ${dname}c
-				;;
-			*)
-				mknod $name ${i}a c $chr $(($i * 8)) \
-					root:operator 640
-				mknod $name ${i}c c $chr $(($i * 8 + 2)) \
-					root:operator 640
-				;;
-			esac
-
-			rm -f r${dname}a
-			rm -f r${dname}c
-
-			i=$(($i + 1))
-		done
-	else
-		echo "$i is invalid -- can't have more than 32 cd devices"
-	fi
 	;;
 
 #-----------------------------------------------------------------------------

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.35 2007/05/20 23:21:36 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.36 2007/06/03 03:44:16 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1142,10 +1142,10 @@ acd_start(struct ata_device *atadev)
     }
 
     /*
-     * track 0 is just data mode.  The managed disk subsystem will encode
-     * the partition number for WHOLE_DISK_SLICE accesses on partition
-     * numbers >= 128 in the high 8 bits of the bio_offset.  ACD uses this
-     * to indicate direct track access.
+     * Special track access is via the high 8 bits of bio_offset
+     * (128-254).  The first track is 129.  128 is used for direct
+     * raw CD device access which bypasses the disk layer entirely
+     * (so e.g. writes by burncd don't error out in the disk layer).
      */
     track = (bio->bio_offset >> 56) & 127;
 
@@ -1156,15 +1156,14 @@ acd_start(struct ata_device *atadev)
 	    biodone(bio);
 	    return;
 	}
-	bio->bio_offset &= 0x00FFFFFFFFFFFFFFULL;
 	blocksize = (cdp->toc.tab[track - 1].control & 4) ? 2048 : 2352;
 	lastlba = ntohl(cdp->toc.tab[track].addr.lba);
-	lba = bio->bio_offset / blocksize;
+	lba = (bio->bio_offset & 0x00FFFFFFFFFFFFFFULL) / blocksize;
 	lba += ntohl(cdp->toc.tab[track - 1].addr.lba);
     } else {
 	blocksize = cdp->block_size;
 	lastlba = cdp->disk_size;
-	lba = bio->bio_offset / blocksize;
+	lba = (bio->bio_offset & 0x00FFFFFFFFFFFFFFULL) / blocksize;
     }
     bzero(ccb, sizeof(ccb));
 

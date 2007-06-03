@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.h,v 1.45 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.h,v 1.1 2006/12/04 14:40:37 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.h,v 1.2 2007/06/03 03:44:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -284,6 +284,7 @@ struct acd_softc {
     u_int32_t                   disk_size;      /* size of current media */
     u_int32_t                   block_size;     /* blocksize currently used */
     u_int32_t                   iomax;          /* Max I/O request (bytes) */
+    struct disk			disk;		/* disk management */
     struct devstat		stats;		/* devstat entry */
     cdev_t			cdev;		/* device placeholder */
     struct acd_tracknode        *track[MAXTRK+1];       /* tracks */
