@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.20 2006/01/28 17:18:48 y0netan1 Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.21 2007/06/03 11:49:30 y0netan1 Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -112,6 +112,7 @@ struct	vmstats vms, ovms;
 
 int	winlines = 20;
 int	nflag = 0;
+int	verbose = 0;
 
 kvm_t *kd;
 
@@ -157,7 +158,7 @@ main(int argc, char **argv)
 	memf = nlistf = NULL;
 	interval = reps = todo = 0;
 	maxshowdevs = 2;
-	while ((c = getopt(argc, argv, "c:fiM:mN:n:p:stw:z")) != -1) {
+	while ((c = getopt(argc, argv, "c:fiM:mN:n:p:stvw:z")) != -1) {
 		switch (c) {
 		case 'c':
 			reps = atoi(optarg);
@@ -201,6 +202,9 @@ main(int argc, char **argv)
 #else
 			errx(EX_USAGE, "sorry, -t is not (re)implemented yet");
 #endif
+			break;
+		case 'v':
+			++verbose;
 			break;
 		case 'w':
 			interval = atoi(optarg);
@@ -744,7 +748,7 @@ dointr(void)
 		err(1, "malloc");
 	sysctlbyname("hw.intrcnt", intrcnt, &size, NULL, 0);
 
-	nwidth = 8;
+	nwidth = 21;
 	for (i = 0; i < nintr; ++i) {
 		if (nwidth < (int)strlen(intrname[i]))
 			nwidth = (int)strlen(intrname[i]);
@@ -753,9 +757,19 @@ dointr(void)
 	printf("interrupt                   total       rate\n");
 	inttotal = 0;
 	for (i = 0; i < nintr; ++i) {
-		if (intrcnt[i] || strncmp(intrname[i], "irq", 3) != 0) {
+		int named;
+		char *infop, irqinfo[32];
+
+		if ((named = strncmp(intrname[i], "irq", 3)) != 0 ||
+		    intrcnt[i] > 0) {
+			infop = intrname[i];
+			if (verbose && named) {
+				snprintf(irqinfo, sizeof(irqinfo),
+					 "irq%d: %s", i, intrname[i]);
+				infop = irqinfo;
+			}
 			printf("%-*.*s %11lu %10lu\n", 
-				nwidth, nwidth, intrname[i],
+				nwidth, nwidth, infop,
 				intrcnt[i], intrcnt[i] / uptime);
 		}
 		inttotal += intrcnt[i];
@@ -888,7 +902,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s%s",
-		"usage: vmstat [-imsz] [-c count] [-M core] [-N system] [-w wait]\n",
+		"usage: vmstat [-imsvz] [-c count] [-M core] [-N system] [-w wait]\n",
 		"              [-n devs] [disks]\n");
 	exit(1);
 }
