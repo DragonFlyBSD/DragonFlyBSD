@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.63 2007/05/18 02:13:04 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.64 2007/06/04 01:47:41 swildner Exp $
 #
 
 # compat target
@@ -164,6 +164,7 @@ customizeiso:
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
 	cpdup ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT} ${ISOROOT}/tmp/bootstrap
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
+	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/man/man1/cvsup.1 ${ISOROOT}/usr/local/man/man1/cvsup.1
 	mkdir -p ${ISOROOT}/tmp/bootstrap/distfiles	# new bootstrap insists in that
 	chroot ${ISOROOT} csh -c "cd /tmp/bootstrap/bootstrap; ./bootstrap"
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
