@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.27.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.12 2007/01/27 15:03:25 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.13 2007/06/04 17:21:55 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -224,7 +224,7 @@ fail:
 	if (count != 0) {
 		/* We have to wait until after any system dumps... */
 		ahc->platform_data->eh =
-		    EVENTHANDLER_REGISTER(shutdown_final, ahc_shutdown,
+		    EVENTHANDLER_REGISTER(shutdown_post_sync, ahc_shutdown,
 					  ahc, SHUTDOWN_PRI_DEFAULT);
 		ahc_intr_enable(ahc, TRUE);
 	}
@@ -1869,7 +1869,7 @@ ahc_platform_free(struct ahc_softc *ahc)
 			cam_sim_free(pdata->sim);
 		}
 		if (pdata->eh != NULL)
-			EVENTHANDLER_DEREGISTER(shutdown_final, pdata->eh);
+			EVENTHANDLER_DEREGISTER(shutdown_post_sync, pdata->eh);
 		kfree(ahc->platform_data, M_DEVBUF);
 	}
 }

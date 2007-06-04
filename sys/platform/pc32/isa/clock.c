@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.52 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.53 2007/06/04 17:22:02 dillon Exp $
  */
 
 /*
@@ -797,7 +797,7 @@ startrtclock(void)
 #endif
 	}
 
-	EVENTHANDLER_REGISTER(shutdown_final, resettodr_on_shutdown, NULL, SHUTDOWN_PRI_LAST);
+	EVENTHANDLER_REGISTER(shutdown_post_sync, resettodr_on_shutdown, NULL, SHUTDOWN_PRI_LAST);
 
 #if !defined(SMP)
 	/*

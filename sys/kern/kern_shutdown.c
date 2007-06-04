@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.55 2007/05/27 23:28:29 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.56 2007/06/04 17:21:54 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -364,13 +364,18 @@ boot(int howto)
 	print_uptime();
 
 	/*
-	 * Ok, now do things that assume all filesystem activity has
-	 * been completed.
+	 * Dump before doing post_sync shutdown ops
 	 */
-	EVENTHANDLER_INVOKE(shutdown_post_sync, howto);
 	crit_enter();
 	if ((howto & (RB_HALT|RB_DUMP)) == RB_DUMP && !cold)
 		dumpsys();
+
+	/*
+	 * Ok, now do things that assume all filesystem activity has
+	 * been completed.  This will also call the device shutdown
+	 * methods.
+	 */
+	EVENTHANDLER_INVOKE(shutdown_post_sync, howto);
 
 	/* Now that we're going to really halt the system... */
 	EVENTHANDLER_INVOKE(shutdown_final, howto);

@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.13 2007/05/13 18:33:57 swildner Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.14 2007/06/04 17:21:58 dillon Exp $"
 
 #define _DPT_C_
 
@@ -1493,7 +1493,7 @@ dpt_attach(dpt_softc_t *dpt)
 	}
 	cam_simq_release(devq);
 	if (i > 0)
-		EVENTHANDLER_REGISTER(shutdown_final, dptshutdown,
+		EVENTHANDLER_REGISTER(shutdown_post_sync, dptshutdown,
 				      dpt, SHUTDOWN_PRI_DEFAULT);
 	return (i);
 }
