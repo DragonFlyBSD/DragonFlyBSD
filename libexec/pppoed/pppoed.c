@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/pppoed/pppoed.c,v 1.2.6.8 2002/06/17 02:21:25 brian Exp $
- * $DragonFly: src/libexec/pppoed/pppoed.c,v 1.3 2003/08/08 04:18:36 dillon Exp $
+ * $DragonFly: src/libexec/pppoed/pppoed.c,v 1.4 2007/06/04 00:40:31 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -498,7 +498,7 @@ nglogx(const char *fmt, ...)
 int
 main(int argc, char *argv[])
 {
-  char hostname[MAXHOSTNAMELEN], *exec, rhook[NG_HOOKLEN + 1];
+  char hostname[MAXHOSTNAMELEN], *exec, rhook[NG_HOOKSIZ];
   unsigned char response[1024];
   const char *label, *prog, *provider, *acname;
   struct ngm_connect ngc;

@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/examples/netgraph/ngctl,v 1.1 1999/11/30 02:45:08 archie Exp $
-# $DragonFly: src/share/examples/netgraph/ngctl,v 1.2 2003/06/17 04:36:57 dillon Exp $
+# $DragonFly: src/share/examples/netgraph/ngctl,v 1.3 2007/06/04 00:40:31 swildner Exp $
 
 #
 # This is an example that shows how to send ASCII formatted control
@@ -151,8 +151,8 @@
 #
 #     /* Structure used for NGM_LISTHOOKS */
 #     struct linkinfo {
-#             char            ourhook[NG_HOOKLEN + 1];        /* hook name */
-#             char            peerhook[NG_HOOKLEN + 1];       /* peer hook */
+#             char            ourhook[NG_HOOKSIZ];	/* hook name */
+#             char            peerhook[NG_HOOSIZ];	/* peer hook */
 #             struct nodeinfo nodeinfo;
 #     };
 #

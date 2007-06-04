@@ -35,7 +35,7 @@
  *
  * $Whistle: msg.c,v 1.2 1999/11/29 23:38:35 archie Exp $
  * $FreeBSD: src/usr.sbin/ngctl/msg.c,v 1.1.4.1 2000/07/27 22:05:36 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/msg.c,v 1.4 2005/12/05 02:40:27 swildner Exp $
+ * $DragonFly: src/usr.sbin/ngctl/msg.c,v 1.5 2007/06/04 00:40:31 swildner Exp $
  */
 
 #include "ngctl.h"
@@ -112,7 +112,7 @@ MsgRead(void)
 	u_char buf[2 * sizeof(struct ng_mesg) + BUF_SIZE];
 	struct ng_mesg *const m = (struct ng_mesg *)buf;
 	struct ng_mesg *const ascii = (struct ng_mesg *)m->data;
-	char path[NG_PATHLEN+1];
+	char path[NG_PATHSIZ];
 
 	/* Get incoming message (in binary form) */
 	if (NgRecvMsg(csock, m, sizeof(buf), path) < 0) {

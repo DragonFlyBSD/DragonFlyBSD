@@ -28,7 +28,7 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.11 2007/06/04 00:40:31 swildner Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
@@ -103,7 +103,7 @@ struct ing_softc {
 	struct ifqueue  xmitq;	  /* transmit queue */
 		
 	node_p		node;		/* back pointer to node */
-	char		nodename[NG_NODELEN + 1]; /* store our node name */
+	char		nodename[NG_NODESIZ]; /* store our node name */
 	hook_p  	debughook;
 	hook_p  	hook;	
 

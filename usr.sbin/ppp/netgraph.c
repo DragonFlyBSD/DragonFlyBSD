@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/netgraph.c,v 1.4.2.1 2002/09/01 02:12:29 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/netgraph.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/netgraph.c,v 1.3 2007/06/04 00:40:32 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +92,7 @@
 struct ngdevice {
   struct device dev;			/* What struct physical knows about */
   int cs;				/* Control socket */
-  char hook[NG_HOOKLEN + 1];		/* Our socket node hook */
+  char hook[NG_HOOKSIZ];		/* Our socket node hook */
 };
 
 #define device2ng(d)	((d)->type == NG_DEVICE ? (struct ngdevice *)d : NULL)
@@ -108,7 +108,7 @@ ng_DeviceSize(void)
 static int
 ng_MessageOut(struct ngdevice *dev, struct physical *p, const char *data)
 {
-  char path[NG_PATHLEN + 1];
+  char path[NG_PATHSIZ];
   int len, pos, dpos;
   char *fmt;
 
@@ -169,7 +169,7 @@ ng_MessageIn(struct physical *p, char *buf, size_t sz)
   char msgbuf[sizeof(struct ng_mesg) * 2 + NG_MSGBUFSZ];
   struct ngdevice *dev = device2ng(p->handler);
   struct ng_mesg *rep = (struct ng_mesg *)msgbuf;
-  char path[NG_PATHLEN + 1];
+  char path[NG_PATHSIZ];
   int len;
 
 #ifdef BROKEN_SELECT
@@ -233,7 +233,7 @@ ng_Write(struct physical *p, const void *v, size_t n)
 static ssize_t
 ng_Read(struct physical *p, void *v, size_t n)
 {
-  char hook[NG_HOOKLEN + 1];
+  char hook[NG_HOOKSIZ];
 
 log_Printf(LogDEBUG, "ng_Read\n");
   switch (p->dl->state) {
@@ -463,11 +463,11 @@ ng_Create(struct physical *p)
   struct ngm_mkpeer mkp;
   struct ngm_connect ngc;
   const char *devp, *endp;
-  char lasthook[NG_HOOKLEN + 1];
-  char hook[NG_HOOKLEN + 1];
-  char nodetype[NG_TYPELEN + NG_NODELEN + 2];
-  char modname[NG_TYPELEN + 4];
-  char path[NG_PATHLEN + 1];
+  char lasthook[NG_HOOKSIZ];
+  char hook[NG_HOOKSIZ];
+  char nodetype[NG_TYPESIZ + NG_NODESIZ];
+  char modname[NG_TYPESIZ + 3];
+  char path[NG_PATHSIZ];
   char *nodename;
   int len, sz, done, f;
 

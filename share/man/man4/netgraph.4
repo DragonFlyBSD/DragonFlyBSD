@@ -34,7 +34,7 @@
 .\"          Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/netgraph.4,v 1.39.2.1 2001/12/21 09:00:50 ru Exp $
-.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.9 2007/05/17 08:19:01 swildner Exp $
+.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.10 2007/06/04 00:40:31 swildner Exp $
 .\" $Whistle: netgraph.4,v 1.7 1999/01/28 23:54:52 julian Exp $
 .\"
 .Dd January 19, 1999
@@ -103,7 +103,7 @@ The name must not contain the characters
 or
 .Dq \&:
 and is limited to
-.Dv "NG_NODELEN + 1"
+.Dv "NG_NODESIZ"
 characters (including NUL byte).
 .Pp
 Each node instance has a unique
@@ -133,7 +133,7 @@ or a
 .Dq \&:
 and is
 limited to
-.Dv "NG_HOOKLEN + 1"
+.Dv "NG_HOOKSIZ"
 characters (including NUL byte).
 .It
 A hook is always connected to another hook. That is, hooks are
@@ -541,7 +541,7 @@ struct ng_type {
 .Pp
 Control messages have the following structure:
 .Bd -literal
-#define NG_CMDSTRLEN    15      /* Max command string (16 with null) */
+#define NG_CMDSTRSIZ    16      /* Max command string (including null) */
 
 struct ng_mesg {
   struct ng_msghdr {
@@ -552,7 +552,7 @@ struct ng_mesg {
     u_long      token;          /* Reply should have the same token */
     u_long      typecookie;     /* Node type understanding this message */
     u_long      cmd;            /* Command identifier */
-    u_char      cmdstr[NG_CMDSTRLEN+1]; /* Cmd string (for debug) */
+    u_char      cmdstr[NG_CMDSTRSIZ]; /* Cmd string (for debug) */
   } header;
   char  data[0];                /* Start of cmd/resp data */
 };

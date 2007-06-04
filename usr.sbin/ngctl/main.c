@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/main.c,v 1.4.2.4 2002/02/01 18:17:43 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/main.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/main.c,v 1.5 2007/06/04 00:40:31 swildner Exp $
  * $Whistle: main.c,v 1.12 1999/11/29 19:17:46 archie Exp $
  */
 
@@ -110,7 +110,7 @@ int	csock, dsock;
 int
 main(int ac, char *av[])
 {
-	char	name[NG_NODELEN + 1];
+	char	name[NG_NODESIZ];
 	int	interactive = isatty(0) && isatty(1);
 	FILE	*fp = NULL;
 	int	ch, rtn = 0;
@@ -236,7 +236,7 @@ DoInteractive(void)
 		/* Display any incoming data packet */
 		if (FD_ISSET(dsock, &rfds)) {
 			u_char buf[8192];
-			char hook[NG_HOOKLEN + 1];
+			char hook[NG_HOOKSIZ];
 			int rl;
 
 			/* Read packet from socket */

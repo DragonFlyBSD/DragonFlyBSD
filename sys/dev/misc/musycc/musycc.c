@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
- * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.10 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.11 2007/06/04 00:40:31 swildner Exp $
  *
  *
  *
@@ -223,7 +223,7 @@ struct softc {
 	struct mdesc *mdt[NHDLC];
 	struct mdesc *mdr[NHDLC];
 	node_p node;			/* NG node */
-	char nodename[NG_NODELEN + 1];	/* NG nodename */
+	char nodename[NG_NODESIZ];	/* NG nodename */
 	struct schan *chan[NHDLC];
 	u_long		cnt_ferr;
 	u_long		cnt_cerr;

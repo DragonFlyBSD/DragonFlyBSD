@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_pppoe.4,v 1.18.2.1 2001/12/21 09:00:51 ru Exp $
-.\" $DragonFly: src/share/man/man4/ng_pppoe.4,v 1.3 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ng_pppoe.4,v 1.4 2007/06/04 00:40:31 swildner Exp $
 .\" $Whistle: ng_pppoe.8,v 1.1 1999/01/25 23:46:27 archie Exp $
 .\"
 .Dd October 28, 1999
@@ -127,7 +127,7 @@ structure shown below.
 The three commands above use a common data structure:
 .Bd -literal -offset 4n
 struct ngpppoe_init_data {
-    char       hook[NG_HOOKLEN + 1];   /* hook to monitor on */
+    char       hook[NG_HOOKSIZ];       /* hook to monitor on */
     u_int16_t  data_len;               /* service name length */
     char       data[0];                /* init data goes here */
 };
@@ -155,7 +155,7 @@ will be received at closure instead.
 The three commands above use a common data structure:
 .Bd -literal -offset 4n
 struct ngpppoe_sts {
-    char    hook[NG_HOOKLEN + 1]; /* hook associated with event session */
+    char    hook[NG_HOOKSIZ]; /* hook associated with event session */
 };
 .Ed
 .El
@@ -226,7 +226,7 @@ setup(char *ethername, char *service, char *sessname,
 	}               message;
 	/********tracking our little graph ********/
 	char            path[100];
-	char            source_ID[NG_NODELEN + 1];
+	char            source_ID[NG_NODESIZ];
 	char            pppoe_node_name[100];
 	int             k;
 
