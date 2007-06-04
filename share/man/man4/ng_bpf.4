@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_bpf.4,v 1.17.2.1 2001/12/21 09:00:51 ru Exp $
-.\" $DragonFly: src/share/man/man4/ng_bpf.4,v 1.5 2007/06/04 00:40:31 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ng_bpf.4,v 1.6 2007/06/04 01:08:02 swildner Exp $
 .\" $Whistle: ng_bpf.8,v 1.2 1999/12/03 01:57:12 archie Exp $
 .\"
 .Dd December 2, 1999
@@ -83,9 +83,9 @@ This command sets the filter program that will be applied to incoming
 data on a hook.  The following structure must be supplied as an argument:
 .Bd -literal -offset 4n
 struct ng_bpf_hookprog {
-  char            thisHook[NG_HOOKSIZ];   /* name of hook */
-  char            ifMatch[NG_HOOKSIZ];    /* match dest hook */
-  char            ifNotMatch[NG_HOOKSIZ]; /* !match dest hook */
+  char            thisHook[NG_HOOKSIZ];     /* name of hook */
+  char            ifMatch[NG_HOOKSIZ];      /* match dest hook */
+  char            ifNotMatch[NG_HOOKSIZ];   /* !match dest hook */
   int32_t         bpf_prog_len;             /* #isns in program */
   struct bpf_insn bpf_prog[0];              /* bpf program */
 };
