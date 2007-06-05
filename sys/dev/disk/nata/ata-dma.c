@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.141 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-dma.c,v 1.3 2007/06/03 04:48:29 dillon Exp $
+ * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.147 2007/04/08 21:53:52 sos Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-dma.c,v 1.4 2007/06/05 18:30:40 swildner Exp $
  */
 
 #include "opt_ata.h"

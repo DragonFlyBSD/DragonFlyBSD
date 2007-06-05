@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.118 2006/06/28 09:59:09 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.6 2007/06/03 11:52:09 dillon Exp $
+ * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.123 2007/04/08 19:18:51 sos Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.7 2007/06/05 18:30:40 swildner Exp $
  */
 
 #include <sys/param.h>

@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.166 2006/07/24 10:44:50 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.6 2007/06/03 04:48:29 dillon Exp $
+ * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.196 2007/04/08 19:18:51 sos Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.7 2007/06/05 18:30:40 swildner Exp $
  */
 
 #include "opt_ata.h"

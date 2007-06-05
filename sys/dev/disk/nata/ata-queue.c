@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.65 2006/07/21 19:13:05 imp Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.6 2007/06/03 11:52:09 dillon Exp $
+ * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.67 2007/01/27 21:15:58 remko Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.7 2007/06/05 18:30:40 swildner Exp $
  */
 
 #include "opt_ata.h"

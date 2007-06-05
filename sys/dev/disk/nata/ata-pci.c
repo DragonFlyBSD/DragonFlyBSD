@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.117 2006/05/12 05:04:40 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.4 2007/06/03 11:49:54 dillon Exp $
+ * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.121 2007/02/23 12:18:33 piso Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.5 2007/06/05 18:30:40 swildner Exp $
  */
 
 #include "opt_ata.h"

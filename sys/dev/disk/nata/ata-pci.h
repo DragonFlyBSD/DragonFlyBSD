@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ata/ata-pci.h,v 1.66 2006/07/24 10:44:50 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.3 2007/06/03 04:27:56 dillon Exp $
+ * $FreeBSD: src/sys/dev/ata/ata-pci.h,v 1.76 2007/03/09 22:23:39 sos Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.4 2007/06/05 18:30:40 swildner Exp $
  */
 
 #include <sys/param.h>
