@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.22 2007/06/03 11:25:58 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.23 2007/06/05 13:41:39 sephe Exp $
  */
 
 /*
@@ -1710,11 +1710,13 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 {
 	struct bridge_softc *sc = ifp->if_bridge;
 	struct bridge_iflist *bif;
-	struct ifnet *bifp;
+	struct ifnet *bifp, *new_ifp;
 	struct ether_header *eh;
 	struct mbuf *mc, *mc2;
 
+	new_ifp = NULL;
 	bifp = sc->sc_ifp;
+
 	lwkt_serialize_enter(bifp->if_serializer);
 
 	if ((bifp->if_flags & IFF_RUNNING) == 0)
@@ -1736,13 +1738,21 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		goto out;
 	}
 
-	bif = bridge_lookup_member_if(sc, ifp);
-	if (bif == NULL)
-		goto out;
-
 	eh = mtod(m, struct ether_header *);
 
 	m->m_flags &= ~M_PROTO1; /* XXX Hack - loop prevention */
+
+	if (memcmp(eh->ether_dhost, IF_LLADDR(bifp), ETHER_ADDR_LEN) == 0) {
+		/*
+		 * If the packet is for us, set the packets source as the
+		 * bridge, and return the packet back to ifnet.if_input for
+		 * local processing.
+		 */
+		KASSERT(bifp->if_bridge == NULL,
+			("loop created in bridge_input"));
+		new_ifp = bifp;
+		goto out;
+	}
 
 	/*
 	 * Tap all packets arriving on the bridge, no matter if
@@ -1750,21 +1760,9 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	 */
 	BPF_MTAP(bifp, m);
 
-#define IFP2AC(ifp) ((struct arpcom *)(ifp))
-#define IFP2ENADDR(ifp) (IFP2AC(ifp)->ac_enaddr)
-	if (memcmp(eh->ether_dhost, IFP2ENADDR(bifp), ETHER_ADDR_LEN) == 0) {
-		/*
-		 * If the packet is for us, set the packets source as the
-		 * bridge, and return the packet back to ether_input for
-		 * local processing.
-		 */
-
-		/* Mark the packet as arriving on the bridge interface */
-		m->m_pkthdr.rcvif = bifp;
-		bifp->if_ipackets++;
-
+	bif = bridge_lookup_member_if(sc, ifp);
+	if (bif == NULL)
 		goto out;
-	}
 
 	bridge_span(sc, m);
 
@@ -1811,7 +1809,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		 * bridge.
 		 */
 		KASSERT(bifp->if_bridge == NULL,
-		    ("loop created in bridge_input"));
+			("loop created in bridge_input"));
 		mc2 = m_dup(m, MB_DONTWAIT);
 #ifdef notyet
 		if (mc2 != NULL) {
@@ -1822,7 +1820,8 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 #endif
 		if (mc2 != NULL) {
 			mc2->m_pkthdr.rcvif = bifp;
-			(*bifp->if_input)(bifp, mc2);
+			bifp->if_ipackets++;
+			bifp->if_input(bifp, mc2);
 		}
 
 		/* Return the original packet for local processing. */
@@ -1844,25 +1843,17 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
 		if (bif->bif_ifp->if_type != IFT_ETHER)
 			continue;
+
 		/* It is destined for us. */
 		if (memcmp(IF_LLADDR(bif->bif_ifp), eh->ether_dhost,
 		    ETHER_ADDR_LEN) == 0) {
-			if (bif->bif_flags & IFBIF_LEARNING)
+			if (bif->bif_flags & IFBIF_LEARNING) {
 				bridge_rtupdate(sc,
 				    eh->ether_shost, ifp, 0, IFBAF_DYNAMIC);
-			m->m_pkthdr.rcvif = bif->bif_ifp;
-			if (ifp->if_type == IFT_GIF) {
-				m->m_flags |= M_PROTO1;
-				/*
-				 * Avoid an interface ordering deadlock.
-				 */
-				lwkt_serialize_exit(bifp->if_serializer);
-				lwkt_serialize_enter(bif->bif_ifp->if_serializer);
-				(*bif->bif_ifp->if_input)(bif->bif_ifp, m);
-				lwkt_serialize_exit(bif->bif_ifp->if_serializer);
-				lwkt_serialize_enter(bifp->if_serializer);
-				m = NULL;
 			}
+
+			m->m_flags |= M_PROTO1;	/* XXX loop prevention */
+			new_ifp = bif->bif_ifp;
 			goto out;
 		}
 
@@ -1878,9 +1869,19 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	/* Perform the bridge forwarding function. */
 	bridge_forward(sc, m);
 	m = NULL;
-
 out:
 	lwkt_serialize_exit(bifp->if_serializer);
+
+	if (new_ifp != NULL) {
+		lwkt_serialize_enter(new_ifp->if_serializer);
+
+		m->m_pkthdr.rcvif = new_ifp;
+		new_ifp->if_ipackets++;
+		new_ifp->if_input(new_ifp, m);
+		m = NULL;
+
+		lwkt_serialize_exit(new_ifp->if_serializer);
+	}
 	return (m);
 }
 
