@@ -31,7 +31,7 @@
  * $OpenBSD: bridgestp.c,v 1.5 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: bridgestp.c,v 1.5 2003/11/28 08:56:48 keihan Exp $
  * $FreeBSD: src/sys/net/bridgestp.c,v 1.7 2005/10/11 02:58:32 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.3 2006/06/30 16:50:01 geekgod Exp $
+ * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.4 2007/06/06 13:10:39 sephe Exp $
  */
 
 /*
@@ -289,7 +289,7 @@ bstp_send_config_bpdu(struct bridge_softc *sc, struct bridge_iflist *bif,
 
 	memcpy(mtod(m, caddr_t) + sizeof(*eh), &bpdu, sizeof(bpdu));
 
-	bridge_enqueue(sc, ifp, m);
+	bridge_enqueue(ifp, m);
 }
 
 static int
@@ -400,7 +400,7 @@ bstp_transmit_tcn(struct bridge_softc *sc)
 
 	memcpy(mtod(m, caddr_t) + sizeof(*eh), &bpdu, sizeof(bpdu));
 
-	bridge_enqueue(sc, ifp, m);
+	bridge_enqueue(ifp, m);
 }
 
 static void

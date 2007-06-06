@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.23 2007/06/05 13:41:39 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.24 2007/06/06 13:10:39 sephe Exp $
  */
 
 /*
@@ -1354,8 +1354,8 @@ bridge_stop(struct ifnet *ifp)
  *	Enqueue a packet on a bridge member interface.
  *
  */
-__inline void
-bridge_enqueue(struct bridge_softc *sc, struct ifnet *dst_ifp, struct mbuf *m)
+void
+bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 {
 	struct altq_pktattr pktattr;
 	struct mbuf *m0;
@@ -1475,7 +1475,7 @@ bridge_output_serialized(struct ifnet *ifp, struct mbuf *m,
 				}
 			}
 			lwkt_serialize_exit(sc->sc_ifp->if_serializer);
-			bridge_enqueue(sc, dst_if, mc);
+			bridge_enqueue(dst_if, mc);
 			lwkt_serialize_enter(sc->sc_ifp->if_serializer);
 		}
 		if (used == 0)
@@ -1494,7 +1494,7 @@ sendunicast:
 	if ((dst_if->if_flags & IFF_RUNNING) == 0) {
 		m_freem(m);
 	} else {
-		bridge_enqueue(sc, dst_if, m);
+		bridge_enqueue(dst_if, m);
 	}
 done:
 	lwkt_serialize_enter(ifp->if_serializer);
@@ -1542,7 +1542,7 @@ bridge_start(struct ifnet *ifp)
 		if (dst_if == NULL)
 			bridge_broadcast(sc, ifp, m, 0);
 		else
-			bridge_enqueue(sc, dst_if, m);
+			bridge_enqueue(dst_if, m);
 	}
 	ifp->if_flags &= ~IFF_OACTIVE;
 }
@@ -1689,7 +1689,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		if (m == NULL)
 			goto done;
 	}
-	bridge_enqueue(sc, dst_if, m);
+	bridge_enqueue(dst_if, m);
 
 	/*
 	 * ifp's serializer was held on entry and is expected to be held
@@ -1960,7 +1960,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 				continue;
 		}
 
-		bridge_enqueue(sc, dst_if, mc);
+		bridge_enqueue(dst_if, mc);
 	}
 	if (used == 0)
 		m_freem(m);
@@ -1994,7 +1994,7 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 			continue;
 		}
 
-		bridge_enqueue(sc, dst_if, mc);
+		bridge_enqueue(dst_if, mc);
 	}
 }
 
