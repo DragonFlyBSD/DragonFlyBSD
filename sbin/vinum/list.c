@@ -37,7 +37,7 @@
  *
  * $Id: list.c,v 1.25 2000/12/20 03:38:43 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/list.c,v 1.25.2.4 2001/05/28 05:58:04 grog Exp $
- * $DragonFly: src/sbin/vinum/list.c,v 1.7 2007/01/20 19:20:39 dillon Exp $
+ * $DragonFly: src/sbin/vinum/list.c,v 1.8 2007/06/07 22:57:49 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -1275,7 +1275,7 @@ dumpconfig(char *part)
 {
     char partname[MAXPATHLEN];
     char *partid;
-    char partition;					    /* UNIX partition */
+    int partition;					    /* UNIX partition */
     int slice;
     int founddrive;					    /* flag when we find a vinum drive */
     struct disklabel label;				    /* label of this drive */
@@ -1304,15 +1304,15 @@ dumpconfig(char *part)
 	    fprintf(stderr, "Can't get label from %s: %s (%d)\n", partname, strerror(errno), errno);
 	    continue;
 	}
-	for (partition = 'a'; partition < 'i'; partition++) {
-	    if ((partition != 'c')			    /* it's not the c partition */
-	    &&((label.d_partitions[partition - 'a'].p_fstype == FS_VINUM) /* and it's a Vinum partition */
+	for (partition = 0; partition < MAXPARTITIONS; partition++) {
+	    if ((partition != 2)			    /* it's not the c partition */
+	    &&((label.d_partitions[partition].p_fstype == FS_VINUM) /* and it's a Vinum partition */
 	    ||Verbose)) {				    /* or we're just plain curious */
-		sprintf(partid, "s%d%c", slice, partition);
+		sprintf(partid, "s%d%c", slice, partition + 'a');
 		found = check_drive(partname);		    /* try to open it */
 		founddrive |= found;			    /* and note if we were successful at all */
-		if (label.d_partitions[partition - 'a'].p_fstype == FS_VINUM) {	/* it's a Vinum partition */
-		    drivelength = ((u_int64_t) label.d_partitions[partition - 'a'].p_size) * DEV_BSIZE;
+		if (label.d_partitions[partition].p_fstype == FS_VINUM) {	/* it's a Vinum partition */
+		    drivelength = ((u_int64_t) label.d_partitions[partition].p_size) * DEV_BSIZE;
 		    printf("Drive %s: %s (%lld bytes)\n",
 			partname,
 			roughlength(drivelength, 1),
@@ -1335,15 +1335,15 @@ dumpconfig(char *part)
 	    fprintf(stderr, "Can't get label from %s: %s (%d)\n", partname, strerror(errno), errno);
 	    return;
 	}
-	for (partition = 'a'; partition < 'i'; partition++) { /* try the compatibility partition */
-	    if ((partition != 'c')			    /* it's not the c partition */
-	    &&((label.d_partitions[partition - 'a'].p_fstype == FS_VINUM) /* and it's a Vinum partition */
+	for (partition = 0; partition < MAXPARTITIONS; partition++) { /* try the compatibility partition */
+	    if ((partition != 2)			    /* it's not the c partition */
+	    &&((label.d_partitions[partition].p_fstype == FS_VINUM) /* and it's a Vinum partition */
 	    ||Verbose)) {				    /* or we're just plain curious */
-		sprintf(partid, "%c", partition);
+		sprintf(partid, "%c", partition + 'a');
 		found = check_drive(partname);		    /* try to open it */
 		founddrive |= found;			    /* and note if we were successful at all */
-		if (label.d_partitions[partition - 'a'].p_fstype == FS_VINUM) {	/* it's a Vinum partition */
-		    drivelength = ((u_int64_t) label.d_partitions[partition - 'a'].p_size) * DEV_BSIZE;
+		if (label.d_partitions[partition].p_fstype == FS_VINUM) {	/* it's a Vinum partition */
+		    drivelength = ((u_int64_t) label.d_partitions[partition].p_size) * DEV_BSIZE;
 		    printf("Drive %s: %s (%lld bytes)\n",
 			partname,
 			roughlength(drivelength, 1),
