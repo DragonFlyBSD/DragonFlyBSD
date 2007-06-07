@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.79 2007/05/16 14:37:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.80 2007/06/07 20:30:20 dillon Exp $
  *
  */
 
@@ -72,6 +72,7 @@
  * ring.
  */
 
+#include "opt_polling.h"
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/endian.h>
@@ -263,6 +264,9 @@ static void	bge_stats_update(struct bge_softc *);
 static void	bge_stats_update_regs(struct bge_softc *);
 static int	bge_encap(struct bge_softc *, struct mbuf *, uint32_t *);
 
+#ifdef DEVICE_POLLING
+static void	bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
+#endif
 static void	bge_intr(void *);
 static void	bge_start(struct ifnet *);
 static int	bge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -1773,6 +1777,9 @@ bge_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = bge_ioctl;
 	ifp->if_start = bge_start;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = bge_poll;
+#endif
 	ifp->if_watchdog = bge_watchdog;
 	ifp->if_init = bge_init;
 	ifp->if_mtu = ETHERMTU;
@@ -2294,6 +2301,52 @@ bge_txeof(struct bge_softc *sc)
 		ifp->if_start(ifp);
 }
 
+#ifdef DEVICE_POLLING
+
+static void
+bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+{
+	struct bge_softc *sc = ifp->if_softc;
+ 	uint32_t status;
+
+	switch(cmd) {
+	case POLL_REGISTER:
+		/*
+		 * Mask the interrupt when we start polling
+		 */
+		BGE_SETBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
+		break;
+	case POLL_DEREGISTER:
+		/*
+		 * Unmask the interrupt when we stop polling.
+		 */
+		BGE_CLRBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
+		break;
+	case POLL_AND_CHECK_STATUS:
+		bus_dmamap_sync(sc->bge_cdata.bge_status_tag,
+				sc->bge_cdata.bge_status_map,
+				BUS_DMASYNC_POSTREAD);
+
+		/*
+		 * Process link state changes.
+		 */
+		status = CSR_READ_4(sc, BGE_MAC_STS);
+		if ((status & sc->bge_link_chg) || sc->bge_link_evt) {
+			sc->bge_link_evt = 0;
+			sc->bge_link_upd(sc, status);
+		}
+		/* fall through */
+	case POLL_ONLY:
+		if (ifp->if_flags & IFF_RUNNING) {
+			bge_rxeof(sc);
+			bge_txeof(sc);
+		}
+		break;
+	}
+}
+
+#endif
+
 static void
 bge_intr(void *xsc)
 {
@@ -2758,7 +2811,10 @@ bge_init(void *xsc)
 
 	/* Enable host interrupts. */
 	BGE_SETBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_CLEAR_INTA);
-	BGE_CLRBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
+#ifdef DEVICE_POLLING
+	if ((ifp->if_flags & IFF_POLLING) == 0)
+#endif
+		BGE_CLRBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
 	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 0);
 
 	bge_ifmedia_upd(ifp);
