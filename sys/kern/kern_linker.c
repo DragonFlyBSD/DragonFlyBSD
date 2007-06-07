@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.37 2007/05/19 19:33:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.38 2007/06/07 22:58:11 corecode Exp $
  */
 
 #include "opt_ddb.h"
@@ -46,6 +46,10 @@
 #include <sys/sysctl.h>
 
 #include <vm/vm_zone.h>
+
+#ifdef _KERNEL_VIRTUAL
+#include <dlfcn.h>
+#endif
 
 #ifdef KLD_DEBUG
 int kld_debug = 0;
@@ -621,6 +625,14 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 	*raddr = cp->address;
 	return 0;
     }
+
+#ifdef _KERNEL_VIRTUAL
+    *raddr = dlsym(RTLD_NEXT, name);
+    if (*raddr != NULL) {
+	KLD_DPF(SYM, ("linker_file_lookup_symbol: found dlsym=%x\n", *raddr));
+	return 0;
+    }
+#endif
 
     KLD_DPF(SYM, ("linker_file_lookup_symbol: fail\n"));
     return ENOENT;
