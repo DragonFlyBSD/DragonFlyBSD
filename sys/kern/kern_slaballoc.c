@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.49 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.50 2007/06/07 20:34:14 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -485,9 +485,11 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
      * Handle large allocations directly.  There should not be very many of
      * these so performance is not a big issue.
      *
-     * Guarentee page alignment for allocations in multiples of PAGE_SIZE
+     * The backend allocator is pretty nasty on a SMP system.   Use the
+     * slab allocator for one and two page-sized chunks even though we lose
+     * some efficiency.  XXX maybe fix mmio and the elf loader instead.
      */
-    if (size >= ZoneLimit || (size & PAGE_MASK) == 0) {
+    if (size >= ZoneLimit || ((size & PAGE_MASK) == 0 && size > PAGE_SIZE*2)) {
 	struct kmemusage *kup;
 
 	size = round_page(size);
