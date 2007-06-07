@@ -26,12 +26,11 @@
  *
  * $OpenBSD: strlcat.c,v 1.2 1999/06/17 16:28:58 millert Exp $
  * $FreeBSD: src/lib/libc/string/strlcat.c,v 1.2.4.2 2001/07/09 23:30:06 obrien Exp $
- * $DragonFly: src/sys/libkern/strlcat.c,v 1.4 2007/01/07 00:02:17 dillon Exp $
+ * $DragonFly: src/sys/libkern/strlcat.c,v 1.5 2007/06/07 23:45:02 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/libkern.h>
-#include <string.h>
 
 /*
  * Appends src to string dst of size siz (unlike strncat, siz is the

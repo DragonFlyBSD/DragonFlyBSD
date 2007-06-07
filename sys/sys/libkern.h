@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.14 2007/06/01 00:24:25 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.15 2007/06/07 23:45:01 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -45,9 +45,6 @@
 /*
  * Hacks to prevent conflicts with standard header files
  */
-#ifndef _KERNEL_VIRTUAL
-#define _KERNEL_VIRTUAL
-#endif
 
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
