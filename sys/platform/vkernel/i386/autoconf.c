@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.10 2007/05/08 02:31:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.11 2007/06/07 23:14:28 dillon Exp $
  */
 
 /*
@@ -175,8 +175,6 @@ cpu_startup(void *dummy)
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
 		      (nswbuf*MAXPHYS) + pager_map_size);
 	pager_map.system_map = 1;
-	kmem_suballoc(&kernel_map, &exec_map, &minaddr, &maxaddr,
-		      (16*(ARG_MAX+(PAGE_SIZE*3))));
 #if defined(USERCONFIG)
         userconfig();
 	cninit();               /* the preferred console may have changed */

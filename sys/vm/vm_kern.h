@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.h,v 1.22 2000/02/16 21:11:31 dillon Exp $
- * $DragonFly: src/sys/vm/vm_kern.h,v 1.11 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.h,v 1.12 2007/06/07 23:14:29 dillon Exp $
  */
 
 #ifndef _VM_VM_KERN_H_
@@ -85,7 +85,6 @@
 extern struct vm_map buffer_map;
 extern struct vm_map kernel_map;
 extern struct vm_map clean_map;
-extern struct vm_map exec_map;
 extern u_int vm_kmem_size;
 
 extern vm_offset_t kernel_vm_end;

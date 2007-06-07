@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.121 2007/05/17 21:08:49 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.122 2007/06/07 23:14:26 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -372,8 +372,6 @@ again:
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
 		      (nswbuf*MAXPHYS) + pager_map_size);
 	pager_map.system_map = 1;
-	kmem_suballoc(&kernel_map, &exec_map, &minaddr, &maxaddr,
-		      (16*(ARG_MAX+(PAGE_SIZE*3))));
 
 #if defined(USERCONFIG)
 	userconfig();

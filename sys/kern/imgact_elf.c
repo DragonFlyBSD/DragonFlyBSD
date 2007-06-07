@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.50 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.51 2007/06/07 23:14:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,6 +51,7 @@
 #include <sys/sysctl.h>
 #include <sys/sysent.h>
 #include <sys/vnode.h>
+#include <sys/sfbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -260,7 +261,6 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	size_t copy_len;
 	vm_object_t object;
 	vm_offset_t file_addr;
-	vm_offset_t data_buf = 0;
 
 	object = vp->v_object;
 	error = 0;
@@ -352,24 +352,18 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	}
 
 	if (copy_len != 0) {
-		vm_object_reference(object);
-		rv = vm_map_find(&exec_map,
-				 object, 
-				 trunc_page(offset + filsz),
-				 &data_buf,
-				 PAGE_SIZE,
-				 TRUE,
-				 VM_MAPTYPE_NORMAL,
-				 VM_PROT_READ, VM_PROT_ALL,
-				 MAP_COPY_ON_WRITE | MAP_PREFAULT_PARTIAL);
-		if (rv != KERN_SUCCESS) {
-			vm_object_deallocate(object);
-			return EINVAL;
-		}
+		vm_page_t m;
+		struct sf_buf *sf;
 
-		/* send the page fragment to user space */
-		error = copyout((caddr_t)data_buf, (caddr_t)map_addr, copy_len);
-		vm_map_remove(&exec_map, data_buf, data_buf + PAGE_SIZE);
+		m = vm_fault_object_page(object, trunc_page(offset + filsz),
+					 VM_PROT_READ, 0, &error);
+		if (m) {
+			sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
+			error = copyout((caddr_t)sf_buf_kva(sf),
+					(caddr_t)map_addr, copy_len);
+			sf_buf_free(sf);
+			vm_page_unhold(m);
+		}
 		if (error) {
 			return (error);
 		}

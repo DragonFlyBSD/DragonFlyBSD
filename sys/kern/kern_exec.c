@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.56 2007/04/29 18:25:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.57 2007/06/07 23:14:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -72,6 +72,7 @@
 #include <sys/thread2.h>
 
 MALLOC_DEFINE(M_PARGS, "proc-args", "Process arguments");
+MALLOC_DEFINE(M_EXECARGS, "exec-args", "Exec arguments");
 
 static register_t *exec_copyout_strings (struct image_params *);
 
@@ -94,6 +95,23 @@ void print_execve_args(struct image_args *args);
 int debug_execve_args = 0;
 SYSCTL_INT(_kern, OID_AUTO, debug_execve_args, CTLFLAG_RW, &debug_execve_args,
     0, "");
+
+/*
+ * Exec arguments object cache
+ */
+static struct objcache *exec_objcache;
+
+static
+void
+exec_objcache_init(void *arg __unused)
+{
+	exec_objcache = objcache_create_mbacked(
+					M_EXECARGS, PATH_MAX + ARG_MAX,
+					16,	/* up to this many objects */
+					2,	/* minimal magazine capacity */
+					NULL, NULL, NULL);
+}
+SYSINIT(exec_objcache, SI_BOOT2_MACHDEP, SI_ORDER_ANY, exec_objcache_init, 0);
 
 /*
  * stackgap_random specifies if the stackgap should have a random size added
@@ -688,7 +706,8 @@ exec_copyin_args(struct image_args *args, char *fname,
 	size_t	length;
 
 	bzero(args, sizeof(*args));
-	args->buf = (char *) kmem_alloc_wait(&exec_map, PATH_MAX + ARG_MAX);
+
+	args->buf = objcache_get(exec_objcache, M_WAITOK);
 	if (args->buf == NULL)
 		return (ENOMEM);
 	args->begin_argv = args->buf;
@@ -779,8 +798,7 @@ void
 exec_free_args(struct image_args *args)
 {
 	if (args->buf) {
-		kmem_free_wakeup(&exec_map,
-				(vm_offset_t)args->buf, PATH_MAX + ARG_MAX);
+		objcache_put(exec_objcache, args->buf);
 		args->buf = NULL;
 	}
 }
