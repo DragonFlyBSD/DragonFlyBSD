@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.12 2006/12/28 18:29:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.13 2007/06/07 23:00:39 dillon Exp $
  */
 
 /*
@@ -287,6 +287,7 @@ void vm_object_reference (vm_object_t);
 void vm_object_shadow (vm_object_t *, vm_ooffset_t *, vm_size_t);
 void vm_object_madvise (vm_object_t, vm_pindex_t, int, int);
 void vm_object_init2 (void);
+vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t, vm_prot_t, int, int *);
 #endif				/* _KERNEL */
 
 #endif				/* _VM_VM_OBJECT_H_ */

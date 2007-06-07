@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.41 2007/01/12 22:12:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.42 2007/06/07 23:00:39 dillon Exp $
  */
 
 /*
@@ -139,7 +139,7 @@ release_page(struct faultstate *fs)
 static __inline void
 unlock_map(struct faultstate *fs)
 {
-	if (fs->lookup_still_valid) {
+	if (fs->lookup_still_valid && fs->map) {
 		vm_map_lookup_done(fs->map, fs->entry, 0);
 		fs->lookup_still_valid = FALSE;
 	}
@@ -159,7 +159,8 @@ _cleanup_successful_fault(struct faultstate *fs, int relock)
 	}
 	fs->object = fs->first_object;
 	if (relock && fs->lookup_still_valid == FALSE) {
-		vm_map_lock_read(fs->map);
+		if (fs->map)
+			vm_map_lock_read(fs->map);
 		fs->lookup_still_valid = TRUE;
 	}
 }
@@ -587,6 +588,135 @@ RetryFault:
 
 	if (curthread->td_lwp) {
 		if (fs.hardfault) {
+			curthread->td_lwp->lwp_ru.ru_majflt++;
+		} else {
+			curthread->td_lwp->lwp_ru.ru_minflt++;
+		}
+	}
+
+	/*
+	 * Unlock everything, and return the held page.
+	 */
+	vm_page_wakeup(fs.m);
+	vm_object_deallocate(fs.first_object);
+
+	*errorp = 0;
+	return(fs.m);
+}
+
+/*
+ * Fault in the specified
+ */
+vm_page_t
+vm_fault_object_page(vm_object_t object, vm_ooffset_t offset,
+		     vm_prot_t fault_type, int fault_flags, int *errorp)
+{
+	int result;
+	vm_pindex_t first_pindex;
+	struct faultstate fs;
+	struct vm_map_entry entry;
+
+	bzero(&entry, sizeof(entry));
+	entry.object.vm_object = object;
+	entry.maptype = VM_MAPTYPE_NORMAL;
+	entry.protection = entry.max_protection = fault_type;
+
+	fs.didlimit = 0;
+	fs.hardfault = 0;
+	fs.fault_flags = fault_flags;
+	fs.map = NULL;
+	KKASSERT((fault_flags & VM_FAULT_WIRE_MASK) == 0);
+
+RetryFault:
+	
+	fs.first_object = object;
+	first_pindex = OFF_TO_IDX(offset);
+	fs.entry = &entry;
+	fs.first_prot = fault_type;
+	fs.wired = 0;
+	/*fs.map_generation = 0; unused */
+
+	/*
+	 * Make a reference to this object to prevent its disposal while we
+	 * are messing with it.  Once we have the reference, the map is free
+	 * to be diddled.  Since objects reference their shadows (and copies),
+	 * they will stay around as well.
+	 *
+	 * Bump the paging-in-progress count to prevent size changes (e.g.
+	 * truncation operations) during I/O.  This must be done after
+	 * obtaining the vnode lock in order to avoid possible deadlocks.
+	 */
+	vm_object_reference(fs.first_object);
+	fs.vp = vnode_pager_lock(fs.first_object);
+	vm_object_pip_add(fs.first_object, 1);
+
+	fs.lookup_still_valid = TRUE;
+	fs.first_m = NULL;
+	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
+
+#if 0
+	/* XXX future - ability to operate on VM object using vpagetable */
+	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		result = vm_fault_vpagetable(&fs, &first_pindex,
+					     fs.entry->aux.master_pde,
+					     fault_type);
+		if (result == KERN_TRY_AGAIN)
+			goto RetryFault;
+		if (result != KERN_SUCCESS) {
+			*errorp = result;
+			return (NULL);
+		}
+	}
+#endif
+
+	/*
+	 * Now we have the actual (object, pindex), fault in the page.  If
+	 * vm_fault_object() fails it will unlock and deallocate the FS
+	 * data.   If it succeeds everything remains locked and fs->object
+	 * will have an additinal PIP count if it is not equal to
+	 * fs->first_object
+	 */
+	result = vm_fault_object(&fs, first_pindex, fault_type);
+
+	if (result == KERN_TRY_AGAIN)
+		goto RetryFault;
+	if (result != KERN_SUCCESS) {
+		*errorp = result;
+		return(NULL);
+	}
+
+	/*
+	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
+	 * will contain a busied page.
+	 */
+	unlock_things(&fs);
+
+	/*
+	 * Return a held page.  We are not doing any pmap manipulation so do
+	 * not set PG_MAPPED.  However, adjust the page flags according to
+	 * the fault type because the caller may not use a managed pmapping
+	 * (so we don't want to lose the fact that the page will be dirtied
+	 * if a write fault was specified).
+	 */
+	vm_page_hold(fs.m);
+	vm_page_flag_clear(fs.m, PG_ZERO);
+	if (fault_type & VM_PROT_WRITE)
+		vm_page_dirty(fs.m);
+
+	/*
+	 * Indicate that the page was accessed.
+	 */
+	vm_page_flag_set(fs.m, PG_REFERENCED);
+
+	/*
+	 * Unbusy the page by activating it.  It remains held and will not
+	 * be reclaimed.
+	 */
+	vm_page_activate(fs.m);
+
+	if (curthread->td_lwp) {
+		if (fs.hardfault) {
+			mycpu->gd_cnt.v_vm_faults++;
 			curthread->td_lwp->lwp_ru.ru_majflt++;
 		} else {
 			curthread->td_lwp->lwp_ru.ru_minflt++;
@@ -1154,7 +1284,12 @@ readrest:
 			 * dirty in the first object so that it will go out 
 			 * to swap when needed.
 			 */
-			if (fs->map_generation == fs->map->timestamp &&
+			if (
+				/*
+				 * Map, if present, has not changed
+				 */
+				(fs->map == NULL ||
+				fs->map_generation == fs->map->timestamp) &&
 				/*
 				 * Only one shadow object
 				 */
@@ -1181,6 +1316,7 @@ readrest:
 				 * grab the lock if we need to
 				 */
 				(fs->lookup_still_valid ||
+				 fs->map == NULL ||
 				 lockmgr(&fs->map->lock, LK_EXCLUSIVE|LK_NOWAIT) == 0)
 			    ) {
 				
@@ -1247,6 +1383,7 @@ readrest:
 	 */
 
 	if (!fs->lookup_still_valid &&
+	    fs->map != NULL &&
 	    (fs->map->timestamp != fs->map_generation)) {
 		release_page(fs);
 		unlock_and_deallocate(fs);
