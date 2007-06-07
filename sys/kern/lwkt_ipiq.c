@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.21 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.22 2007/06/07 20:35:54 dillon Exp $
  */
 
 /*
@@ -130,9 +130,13 @@ KTR_INFO(KTR_IPIQ, ipiq, send_pasv, 1, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, send_nbio, 2, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, send_fail, 3, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, receive, 4, IPIQ_STRING, IPIQ_ARG_SIZE);
+KTR_INFO(KTR_IPIQ, ipiq, sync_start, 5, "cpumask=%08x", sizeof(cpumask_t));
+KTR_INFO(KTR_IPIQ, ipiq, sync_add, 6, "cpumask=%08x", sizeof(cpumask_t));
 
 #define logipiq(name, func, arg1, arg2, sgd, dgd)	\
 	KTR_LOG(ipiq_ ## name, func, arg1, arg2, sgd->gd_cpuid, dgd->gd_cpuid)
+#define logipiq2(name, arg)	\
+	KTR_LOG(ipiq_ ## name, arg)
 
 #endif	/* SMP */
 #endif	/* KERNEL */
@@ -638,6 +642,7 @@ lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll)
     poll->cs_count = 0;
     poll->cs_mask = mask;
 #ifdef SMP
+    logipiq2(sync_start, mask & gd->gd_other_cpus);
     poll->cs_maxcount = lwkt_send_ipiq_mask(
 		mask & gd->gd_other_cpus & smp_active_mask,
 		(ipifunc1_t)lwkt_cpusync_remote1, poll);
@@ -670,6 +675,7 @@ lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll)
     mask &= ~poll->cs_mask;
     poll->cs_mask |= mask;
 #ifdef SMP
+    logipiq2(sync_add, mask & gd->gd_other_cpus);
     count = lwkt_send_ipiq_mask(
 		mask & gd->gd_other_cpus & smp_active_mask,
 		(ipifunc1_t)lwkt_cpusync_remote1, poll);
