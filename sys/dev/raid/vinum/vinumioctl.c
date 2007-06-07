@@ -43,7 +43,7 @@
  *
  * $Id: vinumioctl.c,v 1.14 2000/10/27 03:07:53 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumioctl.c,v 1.25.2.4 2002/02/03 00:44:19 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.8 2007/05/15 17:50:56 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.9 2007/06/07 22:58:38 corecode Exp $
  */
 
 #include "vinumhdr.h"
@@ -68,11 +68,7 @@ vinumioctl(struct dev_ioctl_args *ap)
     cdev_t dev = ap->a_head.a_dev;
     u_long cmd = ap->a_cmd;
     caddr_t data = ap->a_data;
-    unsigned int objno;
     int error = 0;
-    struct sd *sd;
-    struct plex *plex;
-    struct volume *vol;
     unsigned int index;					    /* for transferring config info */
     unsigned int sdno;					    /* for transferring config info */
     int fe;						    /* free list element number */
@@ -313,6 +309,11 @@ vinumioctl(struct dev_ioctl_args *ap)
 	}
 
     case VINUM_DRIVE_TYPE:
+    case VINUM_SD_TYPE:
+    case VINUM_RAWSD_TYPE:
+    case VINUM_RAWPLEX_TYPE:
+    case VINUM_PLEX_TYPE:
+    case VINUM_VOLUME_TYPE:
     default:
 	log(LOG_WARNING,
 	    "vinumioctl: invalid ioctl from process %d (%s): %lx\n",
@@ -320,108 +321,6 @@ vinumioctl(struct dev_ioctl_args *ap)
 	    curproc->p_comm,
 	    cmd);
 	return EINVAL;
-
-    case VINUM_SD_TYPE:
-    case VINUM_RAWSD_TYPE:
-	objno = Sdno(dev);
-
-	sd = &SD[objno];
-
-	switch (cmd) {
-	case DIOCGDINFO:				    /* get disk label */
-	    get_volume_label(sd->name, 1, sd->sectors, (struct disklabel *) data);
-	    break;
-
-	    /*
-	     * We don't have this stuff on hardware,
-	     * so just pretend to do it so that
-	     * utilities don't get upset.
-	     */
-	case DIOCWDINFO:				    /* write partition info */
-	case DIOCSDINFO:				    /* set partition info */
-	    return 0;					    /* not a titty */
-
-	default:
-	    return ENOTTY;				    /* not my kind of ioctl */
-	}
-
-	return 0;					    /* pretend we did it */
-
-    case VINUM_RAWPLEX_TYPE:
-    case VINUM_PLEX_TYPE:
-	objno = Plexno(dev);
-
-	plex = &PLEX[objno];
-
-	switch (cmd) {
-	case DIOCGDINFO:				    /* get disk label */
-	    get_volume_label(plex->name, 1, plex->length, (struct disklabel *) data);
-	    break;
-
-	    /*
-	     * We don't have this stuff on hardware,
-	     * so just pretend to do it so that
-	     * utilities don't get upset.
-	     */
-	case DIOCWDINFO:				    /* write partition info */
-	case DIOCSDINFO:				    /* set partition info */
-	    return 0;					    /* not a titty */
-
-	default:
-	    return ENOTTY;				    /* not my kind of ioctl */
-	}
-
-	return 0;					    /* pretend we did it */
-
-    case VINUM_VOLUME_TYPE:
-	objno = Volno(dev);
-
-	if ((unsigned) objno >= (unsigned) vinum_conf.volumes_allocated) /* not a valid volume */
-	    return ENXIO;
-	vol = &VOL[objno];
-	if (vol->state != volume_up)			    /* not up, */
-	    return EIO;					    /* I/O error */
-
-	switch (cmd) {
-	case DIOCGDINFO:				    /* get disk label */
-	    get_volume_label(vol->name, vol->plexes, vol->size, (struct disklabel *) data);
-	    break;
-
-	case DIOCGPART:					    /* get partition information */
-	    {
-		struct partinfo *dpart = (void *)data;
-
-		bzero(dpart, sizeof(*dpart));
-		dpart->media_offset  = 0;
-		dpart->media_size    = (u_int64_t)vol->size * DEV_BSIZE;
-		dpart->media_blocks  = vol->size;
-		dpart->media_blksize = DEV_BSIZE;
-		dpart->fstype = FS_BSDFFS;
-	    }
-	    break;
-
-	    /*
-	     * We don't have this stuff on hardware,
-	     * so just pretend to do it so that
-	     * utilities don't get upset.
-	     */
-	case DIOCWDINFO:				    /* write partition info */
-	case DIOCSDINFO:				    /* set partition info */
-	    return 0;					    /* not a titty */
-
-	case DIOCWLABEL:				    /* set or reset label writeable */
-	    if ((ap->a_fflag & FWRITE) == 0)		    /* not writeable? */
-		return EACCES;				    /* no, die */
-	    if (*(int *) data != 0)			    /* set it? */
-		vol->flags |= VF_WLABEL;		    /* yes */
-	    else
-		vol->flags &= ~VF_WLABEL;		    /* no, reset */
-	    break;
-
-	default:
-	    return ENOTTY;				    /* not my kind of ioctl */
-	}
-	break;
     }
     return 0;						    /* XXX */
 }

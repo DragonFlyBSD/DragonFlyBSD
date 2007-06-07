@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.23 2007/05/15 17:50:56 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.24 2007/06/07 22:58:38 corecode Exp $
  */
 
 #include "vinumhdr.h"
@@ -706,124 +706,6 @@ daemon_save_config(void)
     Free(config);
 }
 
-/*
- * Disk labels are a mess.  The correct way to
- * access them is with the DIOC[GSW]DINFO ioctls,
- * but some programs, such as newfs, access the
- * disk directly, so we have to write things
- * there.  We do this only on request.  If a user
- * request tries to read it directly, we fake up
- * one on the fly.
- */
-
-/*
- * get_volume_label returns a label structure to lp, which
- * is allocated by the caller
- */
-void
-get_volume_label(char *name, int plexes, u_int64_t size, struct disklabel *lp)
-{
-    bzero(lp, sizeof(struct disklabel));
-
-    strncpy(lp->d_typename, "vinum", sizeof(lp->d_typename));
-    lp->d_type = DTYPE_VINUM;
-    strncpy(lp->d_packname, name, min(sizeof(lp->d_packname), sizeof(name)));
-    lp->d_rpm = 14400 * plexes;				    /* to keep them guessing */
-    lp->d_interleave = 1;
-    lp->d_flags = 0;
-
-    /*
-     * A Vinum volume has a single track with all
-     * its sectors.
-     */
-    lp->d_secsize = DEV_BSIZE;				    /* bytes per sector */
-    lp->d_nsectors = size;				    /* data sectors per track */
-    lp->d_ntracks = 1;					    /* tracks per cylinder */
-    lp->d_ncylinders = 1;				    /* data cylinders per unit */
-    lp->d_secpercyl = size;				    /* data sectors per cylinder */
-    lp->d_secperunit = size;				    /* data sectors per unit */
-
-    lp->d_bbsize = BBSIZE;
-    lp->d_sbsize = SBSIZE;
-
-    lp->d_magic = DISKMAGIC;
-    lp->d_magic2 = DISKMAGIC;
-
-    /*
-     * Set up partitions a, b and c to be identical
-     * and the size of the volume.  a is UFS, b is
-     * swap, c is nothing.
-     */
-    lp->d_partitions[0].p_size = size;
-    lp->d_partitions[0].p_fsize = 1024;
-    lp->d_partitions[0].p_fstype = FS_BSDFFS;		    /* FreeBSD File System :-) */
-    lp->d_partitions[0].p_fsize = 1024;			    /* FS fragment size */
-    lp->d_partitions[0].p_frag = 8;			    /* and fragments per block */
-    lp->d_partitions[SWAP_PART].p_size = size;
-    lp->d_partitions[SWAP_PART].p_fstype = FS_SWAP;	    /* swap partition */
-    lp->d_partitions[LABEL_PART].p_size = size;
-    lp->d_npartitions = LABEL_PART + 1;
-    strncpy(lp->d_packname, name, min(sizeof(lp->d_packname), sizeof(name)));
-    lp->d_checksum = dkcksum(lp);
-}
-
-/* Write a volume label.  This implements the VINUM_LABEL ioctl. */
-int
-write_volume_label(int volno)
-{
-    struct disklabel *lp;
-    struct buf *bp;
-    struct disklabel *dlp;
-    struct volume *vol;
-    int error;
-    cdev_t dev;
-
-    lp = (struct disklabel *) Malloc((sizeof(struct disklabel) + (DEV_BSIZE - 1)) & (DEV_BSIZE - 1));
-    if (lp == 0)
-	return ENOMEM;
-
-    if ((unsigned) (volno) >= (unsigned) vinum_conf.volumes_allocated) /* invalid volume */
-	return ENOENT;
-
-    vol = &VOL[volno];					    /* volume in question */
-    if (vol->state <= volume_uninit)			    /* nothing there */
-	return ENXIO;
-    else if (vol->state < volume_up)			    /* not accessible */
-	return EIO;					    /* I/O error */
-
-    get_volume_label(vol->name, vol->plexes, vol->size, lp); /* get the label */
-
-    /*
-     * Now write to disk.  This code is derived from the
-     * system writedisklabel (), which does silly things
-     * like reading the label and refusing to write
-     * unless it's already there.
-     */
-    bp = geteblk((int) lp->d_secsize);			    /* get a buffer */
-    dev = make_adhoc_dev(&vinum_ops, vol->volno);
-    bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
-    bp->b_bcount = lp->d_secsize;
-    bzero(bp->b_data, lp->d_secsize);
-    dlp = (struct disklabel *) bp->b_data;
-    *dlp = *lp;
-    bp->b_flags &= ~B_INVAL;
-    bp->b_cmd = BUF_CMD_WRITE;
-
-    /*
-     * This should read:
-     *
-     *       vinumstrategy (bp);
-     *
-     * Negotiate with phk to get it fixed.
-     */
-    dev_dstrategy(dev, &bp->b_bio1);
-    error = biowait(bp);
-    bp->b_flags |= B_INVAL | B_AGE;
-    bp->b_flags &= ~B_ERROR;
-    brelse(bp);
-    return error;
-}
-
 /* Look at all disks on the system for vinum slices */
 int
 vinum_scandisk(char *devicename[], int drives)
@@ -891,7 +773,7 @@ vinum_scandisk(char *devicename[], int drives)
 	    if (has_slice && slice != has_slice)
 		continue;
 
-	    for (part = 'a'; part <= 'p'; part++) {
+	    for (part = 'a'; part < 'a' + MAXPARTITIONS; part++) {
 		if (has_part && part != has_part)
 		    continue;
 		if (part == 'c')
@@ -915,7 +797,7 @@ vinum_scandisk(char *devicename[], int drives)
 	    }
 	}
 	if (founddrive == 0 && has_slice == 0) {	    /* didn't find anything, */
-	    for (part = 'a'; part <= 'p'; part++) {	    /* try the compatibility partition */
+	    for (part = 'a'; part < 'a' + MAXPARTITIONS; part++) {	    /* try the compatibility partition */
 		if (has_part && has_part != part)
 		    continue;
 		if (part == 'c')

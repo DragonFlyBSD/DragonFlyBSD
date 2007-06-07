@@ -39,7 +39,7 @@
  *
  * $Id: vinumvar.h,v 1.24 2000/03/01 02:34:57 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumvar.h,v 1.32.2.4 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.10 2007/05/15 17:50:56 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.11 2007/06/07 22:58:38 corecode Exp $
  */
 
 #include <sys/time.h>
@@ -264,7 +264,7 @@ enum objflags {
     VF_OPEN = 4,					    /* object has openers */
     VF_WRITETHROUGH = 8,				    /* volume: write through */
     VF_INITED = 0x10,					    /* unit has been initialized */
-    VF_WLABEL = 0x20,					    /* label area is writable */
+    /* 0x20 unused, was: VF_WLABEL: label area is writable */
     VF_LABELLING = 0x40,				    /* unit is currently being labelled */
     VF_WANTED = 0x80,					    /* someone is waiting to obtain a lock */
     VF_RAW = 0x100,					    /* raw volume (no file system) */

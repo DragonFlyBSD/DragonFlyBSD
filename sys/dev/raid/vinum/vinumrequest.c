@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.18 2007/05/17 21:08:49 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.19 2007/06/07 22:58:38 corecode Exp $
  */
 
 #include "vinumhdr.h"
@@ -1017,18 +1017,6 @@ vinum_bounds_check(struct bio *bio, struct volume *vol)
     int size = (bp->b_bcount + DEV_BSIZE - 1) >> DEV_BSHIFT; /* size of this request (sectors) */
     daddr_t blkno = (daddr_t)(bio->bio_offset >> DEV_BSHIFT);
 
-    /* Would this transfer overwrite the disk label? */
-    if (blkno <= LABELSECTOR			    /* starts before or at the label */
-#if LABELSECTOR != 0
-	&& blkno + size > LABELSECTOR		    /* and finishes after */
-#endif
-	&& (!(vol->flags & VF_RAW))			    /* and it's not raw */
-	&& (bp->b_cmd != BUF_CMD_READ)			    /* and it's a write */
-	&&(!vol->flags & (VF_WLABEL | VF_LABELLING))) {	    /* and we're not allowed to write the label */
-	bp->b_error = EROFS;				    /* read-only */
-	bp->b_flags |= B_ERROR;
-	return (NULL);
-    }
     if (size == 0)					    /* no transfer specified, */
 	return 0;					    /* treat as EOF */
     /* beyond partition? */
