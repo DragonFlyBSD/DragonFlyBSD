@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.15 2007/05/28 05:26:29 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.16 2007/06/07 22:58:22 corecode Exp $
  */
 
 #include <sys/systm.h>
@@ -42,6 +42,7 @@
 #include <sys/termios.h>
 #include <sys/fcntl.h>
 #include <sys/signalvar.h>
+#include <sys/eventhandler.h>
 #include <machine/md_var.h>
 #include <unistd.h>
 #include <termios.h>
@@ -292,7 +293,11 @@ vconswinch(int __unused sig)
 static void
 vconscleanup(void)
 {
-	tcsetattr(0, TCSAFLUSH, &init_tio);
+	/*
+	 * We might catch stray SIGIOs, so try hard.
+	 */
+	while (tcsetattr(0, TCSAFLUSH, &init_tio) != 0 && errno == EINTR)
+		/* NOTHING */;
 }
 
 static void
@@ -333,6 +338,7 @@ vconsinit_fini(struct consdev *cp)
 		if (i == 0)
 			cp->cn_dev = dev;
 	}
+	EVENTHANDLER_REGISTER(shutdown_final, vconscleanup, NULL, SHUTDOWN_PRI_LAST);
 }
 
 static void
