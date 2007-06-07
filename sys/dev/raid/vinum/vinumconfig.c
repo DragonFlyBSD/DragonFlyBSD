@@ -47,7 +47,7 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.11 2007/03/10 09:47:29 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.12 2007/06/07 22:58:00 corecode Exp $
  */
 
 #define STATIC static
@@ -1451,11 +1451,12 @@ config_volume(int update)
 			"Plex %s already belongs to volume %s",
 			token[parameter],
 			vol->name);
-		else if (++vol->plexes > 8)		    /* another entry */
+		else if (vol->plexes + 1 > 8)		    /* another entry */
 		    throw_rude_remark(EINVAL,
 			"Too many plexes for volume %s",
 			vol->name);
-		vol->plex[vol->plexes - 1] = plexno;
+		vol->plex[vol->plexes] = plexno;
+		vol->plexes++;
 		PLEX[plexno].state = plex_referenced;	    /* we know something about it */
 		PLEX[plexno].volno = volno;		    /* and this volume references it */
 	    }
