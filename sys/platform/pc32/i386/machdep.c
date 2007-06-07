@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.122 2007/06/07 23:14:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.123 2007/06/07 23:45:51 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -244,8 +244,6 @@ static void
 cpu_startup(void *dummy)
 {
 	caddr_t v;
-	vm_offset_t minaddr;
-	vm_offset_t maxaddr;
 	vm_size_t size = 0;
 	vm_offset_t firstaddr;
 

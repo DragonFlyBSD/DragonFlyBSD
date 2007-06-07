@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.11 2007/06/07 23:14:28 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.12 2007/06/07 23:45:52 dillon Exp $
  */
 
 /*
@@ -127,8 +127,6 @@ cpu_startup(void *dummy)
 	vm_offset_t buffer_eva;
 	vm_offset_t pager_sva;
 	vm_offset_t pager_eva;
-	vm_offset_t minaddr;
-	vm_offset_t maxaddr;
 
 	kprintf("%s", version);
 	kprintf("real memory = %llu (%lluK bytes)\n",
