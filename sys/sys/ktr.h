@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/ktr.h,v 1.10 2006/09/12 22:03:11 dillon Exp $
+ * $DragonFly: src/sys/sys/ktr.h,v 1.11 2007/06/07 18:03:15 dillon Exp $
  */
 /*
  * Generic Kernel trace buffer support.  
@@ -52,8 +52,17 @@
 #include "opt_ktr.h"
 #endif
 
-#if !defined(KTR_ALL)
+/*
+ * Conveniently auto-enable KTRs when particular KTRs are specified
+ * in kernel options.  This way we can get logging during boot.
+ * However, if KTR_ALL is optioned, just disable everything by default.
+ * The user can enable individual masks via sysctl.
+ */
+#if defined(KTR_ALL)
+#define KTR_AUTO_ENABLE	0
+#else
 #define KTR_ALL		0
+#define KTR_AUTO_ENABLE	-1
 #endif
 
 #define	KTR_BUFSIZE	48
@@ -95,7 +104,7 @@ SYSCTL_DECL(_debug_ktr);
 
 #define KTR_INFO_MASTER(master)						    \
 	    SYSCTL_NODE(_debug_ktr, OID_AUTO, master, CTLFLAG_RW, 0, "");   \
-	    int ktr_ ## master ## _enable = -1;				    \
+	    int ktr_ ## master ## _enable = KTR_AUTO_ENABLE;		    \
 	    SYSCTL_INT(_debug_ktr, OID_AUTO, master ## _enable, CTLFLAG_RW, \
 			&ktr_ ## master ## _enable, 0, "")
 
