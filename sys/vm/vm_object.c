@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.30 2007/03/20 00:55:10 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.31 2007/06/08 02:00:47 dillon Exp $
  */
 
 /*
@@ -440,7 +440,7 @@ vm_object_terminate(vm_object_t object)
 	vm_object_count--;
 	crit_exit();
 
-	wakeup(object);
+	vm_object_dead_wakeup(object);
 	if (object->ref_count != 0)
 		panic("vm_object_terminate2: object with references, ref_count=%d", object->ref_count);
 
@@ -467,6 +467,34 @@ vm_object_terminate_callback(vm_page_t p, void *data __unused)
 		vm_page_wakeup(p);
 	}
 	return(0);
+}
+
+/*
+ * The object is dead but still has an object<->pager association.  Sleep
+ * and return.  The caller typically retests the association in a loop.
+ */
+void
+vm_object_dead_sleep(vm_object_t object, const char *wmesg)
+{
+	crit_enter();
+	if (object->handle) {
+		vm_object_set_flag(object, OBJ_DEADWNT);
+		tsleep(object, 0, wmesg, 0);
+	}
+	crit_exit();
+}
+
+/*
+ * Wakeup anyone waiting for the object<->pager disassociation on
+ * a dead object.
+ */
+void
+vm_object_dead_wakeup(vm_object_t object)
+{
+	if (object->flags & OBJ_DEADWNT) {
+		vm_object_clear_flag(object, OBJ_DEADWNT);
+		wakeup(object);
+	}
 }
 
 /*

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.104 2007/05/09 00:53:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.105 2007/06/08 02:00:45 dillon Exp $
  */
 
 /*
@@ -1360,7 +1360,7 @@ retry:
 	} else {
 		if (object->flags & OBJ_DEAD) {
 			vn_unlock(vp);
-			tsleep(object, 0, "vodead", 0);
+			vm_object_dead_sleep(object, "vodead");
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 			goto retry;
 		}

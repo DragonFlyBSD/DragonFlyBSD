@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.33 2007/05/06 19:23:36 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.34 2007/06/08 02:00:47 dillon Exp $
  */
 
 /*
@@ -134,7 +134,7 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 	 */
 	while (((object = vp->v_object) != NULL) &&
 		(object->flags & OBJ_DEAD)) {
-		tsleep(object, 0, "vadead", 0);
+		vm_object_dead_sleep(object, "vadead");
 	}
 
 	if (vp->v_sysref.refcnt <= 0)

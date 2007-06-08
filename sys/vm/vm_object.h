@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.13 2007/06/07 23:00:39 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.14 2007/06/08 02:00:47 dillon Exp $
  */
 
 /*
@@ -181,7 +181,7 @@ struct vm_object {
 #define	OBJ_WRITEABLE	0x0080		/* object has been made writable */
 #define OBJ_MIGHTBEDIRTY 0x0100		/* object might be dirty */
 #define OBJ_CLEANING	0x0200
-#define OBJ_UNUSED1000	0x1000
+#define OBJ_DEADWNT	0x1000		/* waiting because object is dead */
 #define	OBJ_ONEMAPPING	0x2000		/* One USE (a single, non-forked) mapping flag */
 
 #define IDX_TO_OFF(idx) (((vm_ooffset_t)(idx)) << PAGE_SHIFT)
@@ -288,6 +288,9 @@ void vm_object_shadow (vm_object_t *, vm_ooffset_t *, vm_size_t);
 void vm_object_madvise (vm_object_t, vm_pindex_t, int, int);
 void vm_object_init2 (void);
 vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t, vm_prot_t, int, int *);
+void vm_object_dead_sleep(vm_object_t, const char *);
+void vm_object_dead_wakeup(vm_object_t);
+
 #endif				/* _KERNEL */
 
 #endif				/* _VM_VM_OBJECT_H_ */
