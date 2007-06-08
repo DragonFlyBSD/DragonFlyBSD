@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.85 2007/05/24 20:51:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.86 2007/06/08 02:02:27 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -88,11 +88,13 @@ MALLOC_DEFINE(M_TSLEEP, "tslpque", "tsleep queues");
 #define KTR_TSLEEP	KTR_ALL
 #endif
 KTR_INFO_MASTER(tsleep);
-KTR_INFO(KTR_TSLEEP, tsleep, tsleep_beg, 0, "tsleep enter", 0);
-KTR_INFO(KTR_TSLEEP, tsleep, tsleep_end, 0, "tsleep exit", 0);
-KTR_INFO(KTR_TSLEEP, tsleep, wakeup_beg, 0, "wakeup enter", 0);
-KTR_INFO(KTR_TSLEEP, tsleep, wakeup_end, 0, "wakeup exit", 0);
-#define logtsleep(name)	KTR_LOG(tsleep_ ## name)
+KTR_INFO(KTR_TSLEEP, tsleep, tsleep_beg, 0, "tsleep enter %p", sizeof(void *));
+KTR_INFO(KTR_TSLEEP, tsleep, tsleep_end, 1, "tsleep exit", 0);
+KTR_INFO(KTR_TSLEEP, tsleep, wakeup_beg, 2, "wakeup enter %p", sizeof(void *));
+KTR_INFO(KTR_TSLEEP, tsleep, wakeup_end, 3, "wakeup exit", 0);
+
+#define logtsleep1(name)	KTR_LOG(tsleep_ ## name)
+#define logtsleep2(name, val)	KTR_LOG(tsleep_ ## name, val)
 
 struct loadavg averunnable =
 	{ {0, 0, 0}, FSCALE };	/* load average, of runnable procs */
@@ -281,12 +283,11 @@ updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
 }
 
 /*
- * We're only looking at 7 bits of the address; everything is
- * aligned to 4, lots of things are aligned to greater powers
- * of 2.  Shift right by 8, i.e. drop the bottom 256 worth.
+ * tsleep/wakeup hash table parameters.  Try to find the sweet spot for
+ * like addresses being slept on.
  */
-#define TABLESIZE	128
-#define LOOKUP(x)	(((intptr_t)(x) >> 8) & (TABLESIZE - 1))
+#define TABLESIZE	1024
+#define LOOKUP(x)	(((intptr_t)(x) >> 6) & (TABLESIZE - 1))
 
 static cpumask_t slpque_cpumasks[TABLESIZE];
 
@@ -366,7 +367,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		lwkt_setpri_self(oldpri);
 		return (0);
 	}
-	logtsleep(tsleep_beg);
+	logtsleep2(tsleep_beg, ident);
 	gd = td->td_gd;
 	KKASSERT(td != &gd->gd_idlethread);	/* you must be kidding! */
 
@@ -537,7 +538,7 @@ resume:
 		lp->lwp_flag &= ~(LWP_BREAKTSLEEP | LWP_SINTR);
 		p->p_flag &= ~P_MAILBOX;
 	}
-	logtsleep(tsleep_end);
+	logtsleep1(tsleep_end);
 	crit_exit_quick(td);
 	return (error);
 }
@@ -739,7 +740,7 @@ _wakeup(void *ident, int domain)
 	int id;
 
 	crit_enter();
-	logtsleep(wakeup_beg);
+	logtsleep2(wakeup_beg, ident);
 	gd = mycpu;
 	id = LOOKUP(ident);
 	qp = &gd->gd_tsleep_hash[id];
@@ -845,7 +846,7 @@ restart:
 	}
 #endif
 done:
-	logtsleep(wakeup_end);
+	logtsleep1(wakeup_end);
 	crit_exit();
 }
 
