@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.116 2007/05/26 22:54:29 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.117 2007/06/08 07:39:19 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -712,7 +712,7 @@ device		hfa			#FORE PCA-200E ATM PCI
 # Only the following devices support this mode of operation at the time of
 # this writing:
 #
-# bce, dc, em, fwe, fxp, nfe, nge, nv, re, rl, sis, stge, vge, vr, wi and xl
+# bce, bge, dc, em, fwe, fxp, nfe, nge, nv, re, rl, sis, stge, vge, vr, wi, xl
  
 options         DEVICE_POLLING
 
