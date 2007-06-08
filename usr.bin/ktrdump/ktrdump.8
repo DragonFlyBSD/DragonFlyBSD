@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
-.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.10 2007/06/08 18:24:22 dillon Exp $
+.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.11 2007/06/08 18:33:15 dillon Exp $
 .\"
 .Dd May 5, 2004
 .Dt KTRDUMP 8
@@ -46,7 +46,18 @@ utility is used to dump the contents of the kernel ktr trace buffer.
 The following options are available:
 .Bl -tag -width ".Fl N Ar execfile"
 .It Fl a
-Print all fields.  Implies all print options.
+Print most fields.  Implies
+.Fl c
+.Fl i
+.Fl r
+.Fl x
+.Fl p
+.Fl r ,
+and
+.Fl s .
+Note that
+.Fl f
+is not included.
 .It Fl c
 Print the CPU number that each entry was logged from.
 .It Fl f
