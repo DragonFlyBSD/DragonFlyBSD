@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.78 2007/04/29 18:25:36 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.79 2007/06/08 00:57:02 dillon Exp $
  */
 
 /*
@@ -1028,25 +1028,26 @@ pmap_pinit(struct pmap *pmap)
 	}
 
 	/*
-	 * allocate object for the ptes
+	 * Allocate an object for the ptes
 	 */
 	if (pmap->pm_pteobj == NULL)
-		pmap->pm_pteobj = vm_object_allocate( OBJT_DEFAULT, PTDPTDI + 1);
+		pmap->pm_pteobj = vm_object_allocate(OBJT_DEFAULT, PTDPTDI + 1);
 
 	/*
-	 * allocate the page directory page
+	 * Allocate the page directory page, unless we already have
+	 * one cached.  If we used the cached page the wire_count will
+	 * already be set appropriately.
 	 */
-	ptdpg = vm_page_grab( pmap->pm_pteobj, PTDPTDI,
-			VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-
-	ptdpg->wire_count = 1;
-	++vmstats.v_wire_count;
-
-
-	vm_page_flag_clear(ptdpg, PG_MAPPED | PG_BUSY); /* not usually mapped*/
-	ptdpg->valid = VM_PAGE_BITS_ALL;
-
-	pmap_kenter((vm_offset_t)pmap->pm_pdir, VM_PAGE_TO_PHYS(ptdpg));
+	if ((ptdpg = pmap->pm_pdirm) == NULL) {
+		ptdpg = vm_page_grab(pmap->pm_pteobj, PTDPTDI,
+				     VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
+		pmap->pm_pdirm = ptdpg;
+		vm_page_flag_clear(ptdpg, PG_MAPPED | PG_BUSY);
+		ptdpg->valid = VM_PAGE_BITS_ALL;
+		ptdpg->wire_count = 1;
+		++vmstats.v_wire_count;
+		pmap_kenter((vm_offset_t)pmap->pm_pdir, VM_PAGE_TO_PHYS(ptdpg));
+	}
 	if ((ptdpg->flags & PG_ZERO) == 0)
 		bzero(pmap->pm_pdir, PAGE_SIZE);
 
@@ -1064,12 +1065,27 @@ pmap_pinit(struct pmap *pmap)
 }
 
 /*
- * Clean up a pmap structure so it can be physically freed
+ * Clean up a pmap structure so it can be physically freed.  This routine
+ * is called by the vmspace dtor function.  A great deal of pmap data is
+ * left passively mapped to improve vmspace management so we have a bit
+ * of cleanup work to do here.
  */
 void
 pmap_puninit(pmap_t pmap)
 {
+	vm_page_t p;
+
 	KKASSERT(pmap->pm_active == 0);
+	if ((p = pmap->pm_pdirm) != NULL) {
+		KKASSERT(pmap->pm_pdir != NULL);
+		pmap_kremove((vm_offset_t)pmap->pm_pdir);
+		p->wire_count--;
+		vmstats.v_wire_count--;
+		KKASSERT((p->flags & PG_BUSY) == 0);
+		vm_page_busy(p);
+		vm_page_free_zero(p);
+		pmap->pm_pdirm = NULL;
+	}
 	if (pmap->pm_pdir) {
 		kmem_free(&kernel_map, (vm_offset_t)pmap->pm_pdir, PAGE_SIZE);
 		pmap->pm_pdir = NULL;
@@ -1099,6 +1115,10 @@ pmap_pinit2(struct pmap *pmap)
 /*
  * Attempt to release and free and vm_page in a pmap.  Returns 1 on success,
  * 0 on failure (if the procedure had to sleep).
+ *
+ * When asked to remove the page directory page itself, we actually just
+ * leave it cached so we do not have to incur the SMP inval overhead of
+ * removing the kernel mapping.  pmap_puninit() will take care of it.
  */
 static int
 pmap_release_free_page(struct pmap *pmap, vm_page_t p)
@@ -1123,23 +1143,25 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	if (p->hold_count)  {
 		panic("pmap_release: freeing held page table page");
 	}
+	if (pmap->pm_ptphint && (pmap->pm_ptphint->pindex == p->pindex))
+		pmap->pm_ptphint = NULL;
+
 	/*
-	 * Page directory pages need to have the kernel
-	 * stuff cleared, so they can go into the zero queue also.
+	 * We leave the page directory page cached, wired, and mapped in
+	 * the pmap until the dtor function (pmap_puninit()) gets called.
+	 * However, still clean it up so we can set PG_ZERO.
 	 */
 	if (p->pindex == PTDPTDI) {
 		bzero(pde + KPTDI, nkpt * PTESIZE);
 		pde[MPPTDI] = 0;
 		pde[APTDPTDI] = 0;
-		pmap_kremove((vm_offset_t)pmap->pm_pdir);
+		vm_page_flag_set(p, PG_ZERO);
+		vm_page_wakeup(p);
+	} else {
+		p->wire_count--;
+		vmstats.v_wire_count--;
+		vm_page_free_zero(p);
 	}
-
-	if (pmap->pm_ptphint && (pmap->pm_ptphint->pindex == p->pindex))
-		pmap->pm_ptphint = NULL;
-
-	p->wire_count--;
-	vmstats.v_wire_count--;
-	vm_page_free_zero(p);
 	return 1;
 }
 
