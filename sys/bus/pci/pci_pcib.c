@@ -26,8 +26,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.6 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.7 2007/06/08 13:52:09 sephe Exp $
  */
+
+#include "opt_pci.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -416,10 +418,12 @@ pcib_alloc_resource(device_t dev, device_t child, int type, int *rid,
 					start = sc->iobase;
 				if (end > sc->iolimit)
 					end = sc->iolimit;
+				if (start < end)
+					ok = 1;
 			}
 		} else {
 			ok = 1;
-#if 0
+#ifdef PCI_MAP_FIXUP
 			if (start < sc->iobase && end > sc->iolimit) {
 				start = sc->iobase;
 				end = sc->iolimit;
@@ -475,7 +479,7 @@ pcib_alloc_resource(device_t dev, device_t child, int type, int *rid,
 			}
 		} else if (!ok) {
 			ok = 1;	/* subtractive bridge: always ok */
-#if 0
+#ifdef PCI_MAP_FIXUP
 			if (pcib_is_nonprefetch_open(sc)) {
 				if (start < sc->membase && end > sc->memlimit) {
 					start = sc->membase;

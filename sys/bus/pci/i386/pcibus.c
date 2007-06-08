@@ -24,15 +24,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.18 2007/05/01 00:05:16 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.19 2007/06/08 13:52:09 sephe Exp $
  *
  */
+
+#include "opt_pci.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/sysctl.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -427,6 +430,46 @@ nexus_legacypci_attach(device_t dev)
 	return (0);
 }
 
+#ifdef PCI_MAP_FIXUP
+
+SYSCTL_NODE(_hw, OID_AUTO, pci, CTLFLAG_RD, 0, "pci parameters");
+
+static unsigned long legacy_host_mem_start = 0x80000000;
+/* XXX need TUNABLE_ULONG? */
+TUNABLE_INT("hw.pci.host_mem_start", (int *)&legacy_host_mem_start);
+SYSCTL_ULONG(_hw_pci, OID_AUTO, host_mem_start, CTLFLAG_RD,
+	     &legacy_host_mem_start, 0x80000000,
+	     "Limit the host bridge memory to being above this address.  "
+	     "Must be\n"
+	     "set at boot via hw.pci.host_mem_start tunable.");
+
+static struct resource *
+nexus_legacypci_alloc_resource(device_t dev, device_t child, int type, int *rid,
+			       u_long start, u_long end, u_long count,
+			       u_int flags)
+{
+	/*
+	 * If no memory preference is given, use upper 32MB slot most
+	 * bioses use for their memory window.  Typically other bridges
+	 * before us get in the way to assert their preferences on memory.
+	 * Hardcoding like this sucks, so a more MD/MI way needs to be
+	 * found to do it.  This is typically only used on older laptops
+	 * that don't have pci busses behind pci bridge, so assuming > 32MB
+	 * is likely OK.
+	 *
+	 * However, this can cause problems for other chipsets, so we make
+	 * this tunable by hw.pci.host_mem_start.
+	 */
+	if (type == SYS_RES_MEMORY && start == 0UL && end == ~0UL)
+		start = legacy_host_mem_start;
+	if (type == SYS_RES_IOPORT && start == 0UL && end == ~0UL)
+		start = 0x1000;
+	return bus_generic_alloc_resource(dev, child, type, rid,
+					  start, end, count, flags);
+}
+
+#endif	/* PCI_MAP_FIXUP */
+
 static device_method_t legacypci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_identify,	nexus_legacypci_identify),
@@ -444,7 +487,11 @@ static device_method_t legacypci_methods[] = {
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 	DEVMETHOD(bus_read_ivar,	bus_generic_read_ivar),
 	DEVMETHOD(bus_write_ivar,	bus_generic_write_ivar),
+#ifdef PCI_MAP_FIXUP
+	DEVMETHOD(bus_alloc_resource,	nexus_legacypci_alloc_resource),
+#else
 	DEVMETHOD(bus_alloc_resource,	bus_generic_alloc_resource),
+#endif
 	DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
 	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
