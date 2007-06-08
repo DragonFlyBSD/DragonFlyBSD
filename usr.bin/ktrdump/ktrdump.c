@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.8 2007/06/08 18:33:15 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.9 2007/06/08 18:46:32 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -669,7 +669,7 @@ print_bufs_timesorted(FILE *fo, struct ktr_buffer *ktr_bufs,
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: ktrdump [-acfinpqrtx] [-N execfile] "
+	fprintf(stderr, "usage: ktrdump [-acfilnpqrtx] [-N execfile] "
 			"[-M corefile] [-o outfile]\n");
 	exit(1);
 }
