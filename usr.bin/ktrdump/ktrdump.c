@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.6 2005/12/19 17:09:58 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.7 2007/06/08 18:24:22 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -52,14 +52,13 @@
 extern char *optarg;
 extern int optind;
 
-static void usage(void);
-static void print_header(FILE *fo, int row);
-static void print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry);
-static struct ktr_info *kvm_ktrinfo(kvm_t *kd, void *kptr);
-static const char *kvm_string(kvm_t *kd, const char *kptr);
-static const char *trunc_path(const char *str, int maxlen);
-static void read_symbols(const char *execfile);
-static const char *address_to_symbol(void *kptr);
+struct ktr_buffer {
+	struct ktr_entry *ents;
+	int modified;
+	int reset;
+	int beg_idx;		/* Beginning index */
+	int end_idx;		/* Ending index */
+};
 
 static struct nlist nl[] = {
 	{ "_ktr_version" },
@@ -74,6 +73,7 @@ static struct nlist nl[] = {
 static int cflag;
 static int fflag;
 static int iflag;
+static int lflag;
 static int nflag;
 static int qflag;
 static int rflag;
@@ -83,17 +83,32 @@ static int xflag;
 static int pflag;
 static int Mflag;
 static int Nflag;
-static int64_t last_timestamp;
 static double tsc_frequency;
 static double correction_factor = 0.0;
 
 static char corefile[PATH_MAX];
 static char execfile[PATH_MAX];
 
-static char desc[SBUFLEN];
 static char errbuf[_POSIX2_LINE_MAX];
-static char fbuf[PATH_MAX];
-static char obuf[PATH_MAX];
+static int ncpus;
+static kvm_t *kd;
+static int entries_per_buf;
+static int fifo_mask;
+
+static void usage(void);
+static int earliest_ts(struct ktr_buffer *buf);
+static void print_header(FILE *fo, int row);
+static void print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry, u_int64_t *last_timestamp);
+static struct ktr_info *kvm_ktrinfo(kvm_t *kd, void *kptr);
+static const char *kvm_string(kvm_t *kd, const char *kptr);
+static const char *trunc_path(const char *str, int maxlen);
+static void read_symbols(const char *execfile);
+static const char *address_to_symbol(void *kptr);
+static struct ktr_buffer *ktr_bufs_init(int);
+static void load_bufs(struct ktr_buffer *, struct ktr_entry **);
+static void print_buf(FILE *, struct ktr_buffer *, int, u_int64_t *);
+static void print_bufs_timesorted(FILE *, struct ktr_buffer *, u_int64_t *);
+
 
 /*
  * Reads the ktr trace buffer from kernel memory and prints the trace entries.
@@ -101,34 +116,20 @@ static char obuf[PATH_MAX];
 int
 main(int ac, char **av)
 {
-	struct ktr_entry **ktr_buf;
-	struct ktr_entry *entry;
-	struct ktr_entry *entryx;
-	uintmax_t tlast, tnow;
-	struct stat sb;
-	kvm_t *kd;
+	struct ktr_buffer *ktr_bufs;
+	struct ktr_entry **ktr_kbuf;
 	FILE *fo;
-	char *p;
-	int64_t first_timestamp;
 	int64_t tts;
 	int *ktr_start_index;
 	int version;
-	int entries;
-	int *ktr_idx;
-	int ncpus;
-	int did_display_flag = 0;
-	int in;
 	int c;
-	int i;
 	int n;
-	int bestn;
-	int row;
 
 	/*
 	 * Parse commandline arguments.
 	 */
 	fo = stdout;
-	while ((c = getopt(ac, av, "acfinqrtxpsA:N:M:o:")) != -1) {
+	while ((c = getopt(ac, av, "acfinqrtxpslA:N:M:o:")) != -1) {
 		switch (c) {
 		case 'a':
 			cflag = 1;
@@ -149,6 +150,9 @@ main(int ac, char **av)
 			break;
 		case 'f':
 			fflag = 1;
+			break;
+		case 'l':
+			lflag = 1;
 			break;
 		case 'i':
 			iflag = 1;
@@ -228,97 +232,40 @@ main(int ac, char **av)
 	}
 	if (version > KTR_VERSION)
 		errx(1, "ktr version too high for us to handle");
-	if (kvm_read(kd, nl[1].n_value, &entries, sizeof(entries)) == -1)
+	if (kvm_read(kd, nl[1].n_value, &entries_per_buf,
+				sizeof(entries_per_buf)) == -1)
 		errx(1, "%s", kvm_geterr(kd));
-	ktr_buf = malloc(sizeof(*ktr_buf) * ncpus);
-	ktr_idx = malloc(sizeof(*ktr_idx) * ncpus);
+	fifo_mask = entries_per_buf - 1;
+
+	printf("TSC frequency is %6.3f MHz\n", tsc_frequency / 1000000.0);
+
+	ktr_kbuf = malloc(sizeof(*ktr_kbuf) * ncpus);
 
 	if (nflag == 0)
 		read_symbols(Nflag ? execfile : NULL);
 
-	if (kvm_read(kd, nl[2].n_value, ktr_idx, sizeof(*ktr_idx) * ncpus) == -1)
+	if (kvm_read(kd, nl[3].n_value, ktr_kbuf, sizeof(*ktr_kbuf) * ncpus) == -1)
 		errx(1, "%s", kvm_geterr(kd));
-	if (kvm_read(kd, nl[3].n_value, ktr_buf, sizeof(*ktr_buf) * ncpus) == -1)
-		errx(1, "%s", kvm_geterr(kd));
-	for (n = 0; n < ncpus; ++n) {
-		void *kptr = ktr_buf[n];
-		ktr_buf[n] = malloc(sizeof(**ktr_buf) * entries);
-		if (kvm_read(kd, (uintptr_t)kptr, ktr_buf[n], sizeof(**ktr_buf) * entries) == -1)
-			errx(1, "%s", kvm_geterr(kd));
-	}
 
-	/*
-	 * Figure out the lowest numbered timestamp.
-	 */
-	first_timestamp = 0;
-	printf("TSC frequency is %6.3f MHz\n", tsc_frequency / 1000000.0);
-	for (n = 0; n < ncpus; ++n) {
-		for (i = 0; i < entries; ++i) {
-			entry = &ktr_buf[n][i];
-			if (entry->ktr_timestamp && (first_timestamp == 0 ||
-			    first_timestamp < entry->ktr_timestamp)) {
-				first_timestamp = entry->ktr_timestamp;
-			}
-		}
-	}
+	ktr_bufs = ktr_bufs_init(ncpus);
 
-	/*
-	 * Figure out the starting entry for each cpu
-	 */
-	for (n = 0; n < ncpus; ++n) {
-		ktr_start_index[n] = 0;
-		tts = 0;
-		for (i = 0; i < entries; ++i) {
-			entry = &ktr_buf[n][i];
-			if (entry->ktr_timestamp == 0)
-				continue;
-			if (tts == 0 || tts > entry->ktr_timestamp) {
-				tts = entry->ktr_timestamp;
-				ktr_start_index[n] = i;
-			}
-		}
-	}
-
-	/*
-	 * Now tear through the trace buffer.
-	 */
 	if (sflag) {
-		row = 0;
-		for (;;) {
-			bestn = -1;
-			tts = 0;
-			for (n = 0; n < ncpus; ++n) {
-				i = ktr_start_index[n];
-				entry = &ktr_buf[n][i];
-				if (entry->ktr_timestamp == 0)
-					continue;
-				if (tts == 0 || tts >= entry->ktr_timestamp) {
-					tts = entry->ktr_timestamp;
-					bestn = n;
-				}
-			}
-			if (bestn < 0 || tts < last_timestamp)
-				break;
-			print_header(fo, row);
-			print_entry(fo, kd, bestn, ktr_start_index[bestn],
-				    &ktr_buf[bestn][ktr_start_index[bestn]]);
-			if (++ktr_start_index[bestn] == entries)
-				ktr_start_index[bestn] = 0;
-			last_timestamp = tts;
-			++row;
-		}
+		u_int64_t last_timestamp = 0;
+		do {
+			load_bufs(ktr_bufs, ktr_kbuf);
+			print_bufs_timesorted(fo, ktr_bufs, &last_timestamp);
+			if (lflag)
+				usleep(1000000 / 10);
+		} while (lflag);
 	} else {
-		for (n = 0; n < ncpus; ++n) {
-			last_timestamp = first_timestamp;
-			i = ktr_start_index[n];
-			do {
-				entry = &ktr_buf[n][i];
-				print_header(fo, i);
-				print_entry(fo, kd, n, i, &ktr_buf[n][i]);
-				if (++i == entries)
-					i = 0;
-			} while (i != ktr_start_index[n]);
-		}
+		u_int64_t *last_timestamp = calloc(sizeof(u_int64_t), ncpus);
+		do {
+			load_bufs(ktr_bufs, ktr_kbuf);
+			for (n = 0; n < ncpus; ++n)
+				print_buf(fo, ktr_bufs, n, &last_timestamp[n]);
+			if (lflag)
+				usleep(1000000 / 10);
+		} while (lflag);
 	}
 	return (0);
 }
@@ -326,7 +273,7 @@ main(int ac, char **av)
 static void
 print_header(FILE *fo, int row)
 {
-	if (qflag == 0 && row % 20 == 0) {
+	if (qflag == 0 && (u_int32_t)row % 20 == 0) {
 		fprintf(fo, "%-6s ", "index");
 		if (cflag)
 			fprintf(fo, "%-3s ", "cpu");
@@ -349,20 +296,21 @@ print_header(FILE *fo, int row)
 }
 
 static void
-print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry)
+print_entry(FILE *fo, kvm_t *kd, int n, int row, struct ktr_entry *entry,
+	    u_int64_t *last_timestamp)
 {
 	struct ktr_info *info = NULL;
 
-	fprintf(fo, " %5d ", i);
+	fprintf(fo, " %06x ", row & 0x00FFFFFF);
 	if (cflag)
 		fprintf(fo, "%-3d ", n);
 	if (tflag || rflag) {
 		if (rflag && !nflag && tsc_frequency != 0.0) {
 			fprintf(fo, "%13.3f uS ",
-				(double)(entry->ktr_timestamp - last_timestamp) * 1000000.0 / tsc_frequency - correction_factor);
+				(double)(entry->ktr_timestamp - *last_timestamp) * 1000000.0 / tsc_frequency - correction_factor);
 		} else if (rflag) {
 			fprintf(fo, "%-16lld ", entry->ktr_timestamp -
-						last_timestamp);
+						*last_timestamp);
 		} else {
 			fprintf(fo, "%-16lld ", entry->ktr_timestamp);
 		}
@@ -402,7 +350,7 @@ print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry)
 		}
 	}
 	fprintf(fo, "\n");
-	last_timestamp = entry->ktr_timestamp;
+	*last_timestamp = entry->ktr_timestamp;
 }
 
 static
@@ -550,6 +498,171 @@ address_to_symbol(void *kptr)
 	snprintf(buf, sizeof(buf), "%s+%d", symcache->symname,
 		(int)((char *)kptr - symcache->symaddr));
 	return(buf);
+}
+
+static
+struct ktr_buffer *
+ktr_bufs_init(int ncpus)
+{
+	struct ktr_buffer *ktr_bufs, *it;
+	int i;
+
+	ktr_bufs = malloc(sizeof(*ktr_bufs) * ncpus);
+	if (!ktr_bufs)
+		err(1, "can't allocate data structures\n");
+	for (i = 0; i < ncpus; ++i) {
+		it = ktr_bufs + i;
+		it->ents = malloc(sizeof(struct ktr_entry) * entries_per_buf);
+		if (it->ents == NULL)
+			err(1, "can't allocate data structures\n");
+		it->reset = 1;
+		it->beg_idx = -1;
+		it->end_idx = -1;
+	}
+	return ktr_bufs;
+}
+
+static
+void
+get_indices(kvm_t *kd, int *idx)
+{
+	if (kvm_read(kd, nl[2].n_value, idx, sizeof(*idx) * ncpus) == -1)
+		errx(1, "%s", kvm_geterr(kd));
+}
+
+/*
+ * Get the trace buffer data from the kernel
+ */
+static
+void
+load_bufs(struct ktr_buffer *ktr_bufs, struct ktr_entry **kbufs)
+{
+	static int *kern_idx;
+	struct ktr_buffer *kbuf;
+	int i;
+
+	if (!kern_idx) {
+		kern_idx = malloc(sizeof(*kern_idx) * ncpus);
+		if (!kern_idx) {
+			err(1, "can't allocate data structures\n");
+		}
+	}
+
+	get_indices(kd, kern_idx);
+	for (i = 0; i < ncpus; ++i) {
+		kbuf = &ktr_bufs[i];
+		if (kern_idx[i] == kbuf->end_idx)
+			continue;
+		kbuf->end_idx = kern_idx[i];
+
+		/*
+		 * If we do not have a notion of the beginning index, assume
+		 * it is entries_per_buf before the ending index.  Don't
+		 * worry about underflows/negative numbers, the indices will
+		 * be masked.
+		 */
+		if (kbuf->reset) {
+			kbuf->beg_idx = kbuf->end_idx - entries_per_buf + 1;
+			kbuf->reset = 0;
+		}
+		if (kvm_read(kd, (uintptr_t)kbufs[i], ktr_bufs[i].ents,
+				sizeof(struct ktr_entry) * entries_per_buf)
+									== -1)
+			errx(1, "%s", kvm_geterr(kd));
+		kbuf->modified = 1;
+		kbuf->beg_idx = earliest_ts(kbuf);
+	}
+
+}
+
+/*
+ * Locate the earliest timestamp iterating backwards from end_idx, but
+ * not going further back then beg_idx.  We have to do this because
+ * the kernel uses a circulating buffer.
+ */
+static
+int
+earliest_ts(struct ktr_buffer *buf)
+{
+	struct ktr_entry *save;
+	int count, scan, i, earliest;
+
+	count = 0;
+	earliest = buf->end_idx - 1;
+	save = &buf->ents[earliest & fifo_mask];
+	for (scan = buf->end_idx - 1; scan != buf->beg_idx -1; --scan) {
+		i = scan & fifo_mask;
+		if (buf->ents[i].ktr_timestamp < save->ktr_timestamp)
+			earliest = scan;
+		/*
+		 * We may have gotten so far behind that beg_idx wrapped
+		 * more then once around the buffer.  Just stop
+		 */
+		if (++count == entries_per_buf)
+			break;
+	}
+	return earliest;
+}
+
+static
+void
+print_buf(FILE *fo, struct ktr_buffer *ktr_bufs, int cpu,
+	  u_int64_t *last_timestamp)
+{
+	int first, last;
+	struct ktr_buffer *buf = ktr_bufs + cpu;
+
+	if (buf->modified == 0)
+		return;
+	if (*last_timestamp == 0) {
+		*last_timestamp =
+			buf->ents[buf->beg_idx & fifo_mask].ktr_timestamp;
+	}
+	while (buf->beg_idx != buf->end_idx) {
+		print_header(fo, buf->beg_idx);
+		print_entry(fo, kd, cpu, buf->beg_idx,
+			    &buf->ents[buf->beg_idx & fifo_mask],
+			    last_timestamp);
+		++buf->beg_idx;
+	}
+	buf->modified = 0;
+}
+
+static
+void
+print_bufs_timesorted(FILE *fo, struct ktr_buffer *ktr_bufs,
+		      u_int64_t *last_timestamp)
+{
+	struct ktr_entry *ent;
+	struct ktr_buffer *buf;
+	int n, bestn;
+	u_int64_t ts;
+	static int row = 0;
+
+	for (;;) {
+		ts = 0;
+		bestn = -1;
+		for (n = 0; n < ncpus; ++n) {
+			buf = ktr_bufs + n;
+			if (buf->beg_idx == buf->end_idx)
+				continue;
+			ent = &buf->ents[buf->beg_idx & fifo_mask];
+			if (ts == 0 || (ts >= ent->ktr_timestamp)) {
+				ts = ent->ktr_timestamp;
+				bestn = n;
+			}
+		}
+		if ((bestn < 0) || (ts < *last_timestamp))
+			break;
+		buf = ktr_bufs + bestn;
+		print_header(fo, row);
+		print_entry(fo, kd, bestn, row,
+			    &buf->ents[buf->beg_idx & fifo_mask],
+			    last_timestamp);
+		++buf->beg_idx;
+		*last_timestamp = ts;
+		++row;
+	}
 }
 
 static void

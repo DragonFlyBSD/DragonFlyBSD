@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
-.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.9 2007/05/13 22:25:42 swildner Exp $
+.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.10 2007/06/08 18:24:22 dillon Exp $
 .\"
 .Dd May 5, 2004
 .Dt KTRDUMP 8
@@ -34,7 +34,7 @@
 .Nd print kernel ktr trace buffer
 .Sh SYNOPSIS
 .Nm
-.Op Fl acfinpqrstx
+.Op Fl acfilnpqrstx
 .Op Fl N Ar execfile
 .Op Fl M Ar corefile
 .Op Fl o Ar outfile
@@ -53,6 +53,9 @@ Print the CPU number that each entry was logged from.
 Print the file and line number that each entry was logged from.
 .It Fl i
 Print the ID string field, identifying the facility being logged.
+.It Fl l
+.Nm
+will loop waiting for new data rather then exit.
 .It Fl n
 .Nm
 normally tries to translate the caller fields and (when easily parsed)
@@ -71,7 +74,8 @@ Attempt to merge the KTR logs for all cpus into a single time-sorted
 log.  For the numbers to make any sense you probably want to turn
 on the
 .Va debug.ktr.resynchronize
-sysctl variable.
+sysctl variable.  This sysctl causes the kernel to periodically
+calculate the drift between each cpu's TSC and apply a correction.
 .It Fl x
 Print the call chain leading up to the procedure which issued
 the KTR.
