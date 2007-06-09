@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.27 2007/05/13 04:34:47 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.28 2007/06/09 19:46:02 dillon Exp $
  */
 
 /*
@@ -282,6 +282,9 @@ vnode_ctor(void *obj, void *private, int ocflags)
 	lockinit(&vp->v_lock, "vnode", 0, 0);
 	ccms_dataspace_init(&vp->v_ccms);
 	TAILQ_INIT(&vp->v_namecache);
+	RB_INIT(&vp->v_rbclean_tree);
+	RB_INIT(&vp->v_rbdirty_tree);
+	RB_INIT(&vp->v_rbhash_tree);
 	return(TRUE);
 }
 
@@ -597,6 +600,14 @@ allocvnode(int lktimeout, int lkflags)
 		panic("cleaned vnode isn't");
 	if (vp->v_track_read.bk_active + vp->v_track_write.bk_active)
 		panic("Clean vnode has pending I/O's");
+	if (vp->v_flag & VONWORKLST)
+		panic("Clean vnode still pending on syncer worklist!");
+	if (!RB_EMPTY(&vp->v_rbdirty_tree))
+		panic("Clean vnode still has dirty buffers!");
+	if (!RB_EMPTY(&vp->v_rbclean_tree))
+		panic("Clean vnode still has clean buffers!");
+	if (!RB_EMPTY(&vp->v_rbhash_tree))
+		panic("Clean vnode still on hash tree!");
 	KKASSERT(vp->v_mount == NULL);
 #endif
 	vp->v_flag = 0;
@@ -617,9 +628,6 @@ allocvnode(int lktimeout, int lkflags)
 	 * sysref_init() on allocate.
 	 */
 	sysref_activate(&vp->v_sysref);
-	RB_INIT(&vp->v_rbclean_tree);
-	RB_INIT(&vp->v_rbdirty_tree);
-	RB_INIT(&vp->v_rbhash_tree);
 	vp->v_filesize = NOOFFSET;
 	vp->v_type = VNON;
 	vp->v_tag = 0;
