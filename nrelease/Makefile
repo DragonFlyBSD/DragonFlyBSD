@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.64 2007/06/04 01:47:41 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.65 2007/06/09 03:13:02 dillon Exp $
 #
 
 # compat target
@@ -15,7 +15,7 @@ ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
 ISOROOT = ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
-KERNCONF ?= GENERIC NATA
+KERNCONF ?= GENERIC
 
 PKGSRC_PREFIX?=		/usr/pkg
 PKGBIN_PKG_ADD?=	${PKGSRC_PREFIX}/sbin/pkg_add
@@ -100,10 +100,6 @@ check:
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
 	@echo "    make [installer_]fetch"
-	@exit 1
-.endif
-.if !exists(${.CURDIR}/../sys/config/NATA)
-	@echo "/usr/src/sys/config/NATA doesn't exist, your CVS may be out of date"
 	@exit 1
 .endif
 

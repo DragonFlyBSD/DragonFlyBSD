@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.50 2007/05/26 08:50:49 sephe Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.51 2007/06/09 03:13:01 dillon Exp $
 
 platform	pc32
 machine		i386
@@ -82,16 +82,27 @@ device		fd1	at fdc0 drive 1
 # don't use the above line for fdc0 but the following one:
 #device		fdc0
 
-# ATA and ATAPI devices
-device		ata0	at isa? port IO_WD1 irq 14
-device		ata1	at isa? port IO_WD2 irq 15
-device		ata
-device		atadisk			# ATA disk drives
-device		atapicd			# ATAPI CDROM drives
-device		atapifd			# ATAPI floppy drives
-device		atapist			# ATAPI tape drives
-device		atapicam		# Emulate ATAPI devices as SCSI via CAM
-options 	ATA_STATIC_ID		#Static device numbering
+# NEW-ATA (NATA) and ATAPI devices
+#
+device		nata
+device		natadisk		# ATA disk drives
+device		natapicd		# ATAPI CDROM drives
+device		natapifd		# ATAPI floppy drives
+device		natapist		# ATAPI tape drives
+device		natapicam		# Emulate ATAPI devices as SCSI 
+options 	ATA_STATIC_ID		# Static device numbering
+options		PCI_MAP_FIXUP		# Needed for NATA
+
+# LEGACY ATA and ATAPI devices
+#device		ata0	at isa? port IO_WD1 irq 14
+#device		ata1	at isa? port IO_WD2 irq 15
+#device		ata
+#device		atadisk			# ATA disk drives
+#device		atapicd			# ATAPI CDROM drives
+#device		atapifd			# ATAPI floppy drives
+#device		atapist			# ATAPI tape drives
+#device		atapicam		# Emulate ATAPI devices as SCSI via CAM
+#options 	ATA_STATIC_ID		#Static device numbering
 
 # SCSI Controllers
 device		ahb		# EISA AHA1742 family
