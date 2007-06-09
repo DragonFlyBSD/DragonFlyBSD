@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.7 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.8 2007/06/09 18:56:23 dillon Exp $
  */
 
 /*
@@ -63,6 +63,11 @@
 #define UMCT_SET_LCR_SIZE	1
 #define UMCT_SET_MCR		10	/* Set Modem Control Register */
 #define UMCT_SET_MCR_SIZE	1
+#define UMCT_SET_UNKNOWN1	11
+#define UMCT_SET_UNKNOWN1_SIZE	1
+#define UMCT_SET_UNKNOWN2	12
+#define UMCT_SET_UNKNOWN2_SIZE	1
+
 
 #define UMCT_INTR_INTERVAL	100
 #define UMCT_IFACE_INDEX	0
@@ -428,6 +433,8 @@ umct_param(void *addr, int portno, struct termios *ti)
 	sc = addr;
 	value = umct_calc_baud(ti->c_ospeed);
 	umct_request(sc, UMCT_SET_BAUD, UMCT_SET_BAUD_SIZE, value);
+	umct_request(sc, UMCT_SET_UNKNOWN1, UMCT_SET_UNKNOWN1_SIZE, 0);
+	umct_request(sc, UMCT_SET_UNKNOWN2, UMCT_SET_UNKNOWN2_SIZE, 0);
 
 	value = sc->sc_lcr & 0x40;
 
