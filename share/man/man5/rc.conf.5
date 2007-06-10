@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.39 2007/06/02 23:53:26 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.40 2007/06/10 18:57:59 swildner Exp $
 .Dd June 2, 2007
 .Dt RC.CONF 5
 .Os
@@ -42,10 +42,8 @@ file is generally initialized by the installer.
 .Pp
 The purpose of
 .Nm
-is not to run commands or perform system startup actions
-directly.
-Instead, it is included by the
-various generic startup scripts in
+is not to run commands or perform system startup actions directly.
+Instead, it is included by the various generic startup scripts in
 .Pa /etc
 which conditionalize their
 internal actions according to the settings found there.
@@ -87,8 +85,7 @@ If set to
 .Dq Li NO ,
 disable informational messages from the rc scripts.
 Informational messages are displayed when
-a condition that is not serious enough to warrant a warning or
-an error occurs.
+a condition that is not serious enough to warrant a warning or an error occurs.
 .It Va swapfile
 .Pq Vt str
 If set to
@@ -99,8 +96,7 @@ pathname to a file to use for additional swap space.
 .Pq Vt bool
 If set to
 .Dq Li YES ,
-enable support for Automatic Power Management with
-the
+enable support for Automatic Power Management with the
 .Xr apm 8
 command.
 .It Va apmd_enable
@@ -136,8 +132,7 @@ daemon.
 .Pq Vt str
 List of arguments to be passed to
 .Xr ifconfig 8
-at boot time or on
-insertion of the card (e.g.\&
+at boot time or on insertion of the card (e.g.\&
 .Dq Cm inet Li 192.168.1.1 Cm netmask Li 255.255.255.0
 for a fixed address or
 .Dq Li DHCP
@@ -191,8 +186,7 @@ if NIS is not used.
 .Pq Vt str
 Path to the DHCP client program
 .Pa ( /sbin/dhclient ,
-the ISC DHCP client,
-is the default).
+the ISC DHCP client, is the default).
 .It Va dhclient_flags
 .Pq Vt str
 Additional flags to pass to the DHCP client program.
@@ -205,8 +199,7 @@ Set to
 .Dq Li YES
 to start the DHCP client in background.
 This can cause trouble with applications depending on
-a working network, but it will provide a faster startup
-in many cases.
+a working network, but it will provide a faster startup in many cases.
 .It Va dhcpd_enable
 .Pq Vt bool
 Set to
@@ -338,8 +331,7 @@ alias for
 .Li client .
 .El
 .Pp
-If a filename is specified, the full path
-must be given.
+If a filename is specified, the full path must be given.
 .It Va firewall_trusted_nets
 .Pq Vt str
 List of trusted networks (if
@@ -644,8 +636,7 @@ Note that if
 .Va kern_securelevel
 is set to 3,
 .Va ipfs_enable
-cannot be used
-because the raised securelevel will prevent
+cannot be used because the raised securelevel will prevent
 .Xr ipfs 8
 from saving the state tables at shutdown time.
 .\" ----- ipfs_program setting ----------------------------------
@@ -678,8 +669,7 @@ Setting this to
 .Dq Li NO
 might help remedy such problems with connections as randomly hanging
 or other weird behavior.
-Some network devices are known
-to be broken with respect to these options.
+Some network devices are known to be broken with respect to these options.
 .It Va log_in_vain
 .Pq Vt int
 Set to 0 by default.
@@ -712,10 +702,8 @@ Setting to
 .Dq Li YES
 will cause the kernel to ignore TCP frames that have both
 the SYN and FIN flags set.
-This prevents OS fingerprinting, but may
-break some legitimate applications.
-This option is only available if the
-kernel was built with the
+This prevents OS fingerprinting, but may break some legitimate applications.
+This option is only available if the kernel was built with the
 .Dv TCP_DROP_SYNFIN
 option.
 .It Va icmp_drop_redirect
@@ -770,25 +758,21 @@ for more information.
 .It Va network_interfaces
 .Pq Vt str
 Set to the list of network interfaces to configure on this host.
-For example, if the only network devices in the system are the loopback
-device
+For example, if the only network devices in the system are the loopback device
 .Pq Li lo0
 and a NIC using the
 .Xr ed 4
-driver,
-this could be set to
+driver, this could be set to
 .Dq Li "lo0 ed0" .
 An
 .Va ifconfig_ Ns Aq Ar interface
 variable is also assumed to exist for each value of
 .Ar interface .
 It is also possible to add IP alias entries here in cases where
-multiple IP addresses registered against a single interface
-are desired.
+multiple IP addresses registered against a single interface are desired.
 Assuming that the interface in question was
 .Li ed0 ,
-it might look
-something like this:
+it might look something like this:
 .Bd -literal
 ifconfig_ed0_alias0="inet 127.0.0.253 netmask 0xffffffff"
 ifconfig_ed0_alias1="inet 127.0.0.254 netmask 0xffffffff"
@@ -797,8 +781,7 @@ ifconfig_ed0_alias1="inet 127.0.0.254 netmask 0xffffffff"
 And so on.
 For each
 .Va ifconfig_ Ns Ao Ar interface Ac Ns Va _alias Ns Aq Ar n
-entry that is found,
-its contents are passed to
+entry that is found, its contents are passed to
 .Xr ifconfig 8 .
 Execution stops at the first unsuccessful access, so if
 something like this is present:
@@ -811,15 +794,13 @@ ifconfig_ed0_alias4="inet 127.0.0.254 netmask 0xffffffff"
 .Pp
 Then note that alias4 would
 .Em not
-be added since the search would
-stop with the missing alias3 entry.
+be added since the search would stop with the missing alias3 entry.
 .Pp
 If the
 .Pa /etc/start_if. Ns Aq Ar interface
 file is present, it is read and executed by the
 .Xr sh 1
-interpreter
-before configuring the interface as specified in the
+interpreter before configuring the interface as specified in the
 .Va ifconfig_ Ns Aq Ar interface
 and
 .Va ifconfig_ Ns Ao Ar interface Ac Ns Va _alias Ns Aq Ar n
@@ -831,8 +812,7 @@ variable to
 .Dq Li DHCP .
 For instance, to initialize the
 .Li ed0
-device via DHCP,
-it is possible to use something like:
+device via DHCP, it is possible to use something like:
 .Bd -literal
 ifconfig_ed0="DHCP"
 .Ed
@@ -887,8 +867,7 @@ tunnel according to the syntax of the
 .Cm tunnel
 option to
 .Xr ifconfig 8 .
-Additionally, this option ensures that each listed interface is created
-via the
+Additionally, this option ensures that each listed interface is created via the
 .Cm create
 option to
 .Xr ifconfig 8
@@ -945,8 +924,7 @@ The name of the profile to use from
 The name of the user under which
 .Xr ppp 8
 should be started.
-By
-default,
+By default,
 .Xr ppp 8
 is started as
 .Dq Li root .
@@ -968,8 +946,7 @@ If set to
 .Xr fsck 8
 will be run with the
 .Fl y
-flag if the initial preen
-of the file systems fails.
+flag if the initial preen of the file systems fails.
 .It Va netfs_types
 .Pq Vt str
 List of file system types that are network-based.
@@ -981,8 +958,7 @@ instead.
 .Pq Vt str
 If set to something other than
 .Dq Li NO
-(the default),
-this variable extends the list of file system types
+(the default), this variable extends the list of file system types
 for which automatic mounting at startup by
 .Xr rc 8
 should be delayed until the network is initialized.
@@ -990,8 +966,7 @@ It should contain
 a whitespace-separated list of network file system descriptor pairs,
 each consisting of a file system type as passed to
 .Xr mount 8
-and a human-readable, one-word description,
-joined with a colon
+and a human-readable, one-word description, joined with a colon
 .Pq Ql \&: .
 Extending the default list in this way is only necessary
 when third party file system types are used.
@@ -1079,8 +1054,7 @@ environment.
 .Pq Vt bool
 Set to
 .Dq Li YES
-to start a Kerberos 5 authentication server
-at boot time.
+to start a Kerberos 5 authentication server at boot time.
 .It Va kerberos5_server_program
 .Pq Vt str
 If
@@ -1153,14 +1127,12 @@ See the
 manpage for more information.
 .It Va amd_map_program
 .Pq Vt str
-If set,
-the specified program is run to get the list of
+If set, the specified program is run to get the list of
 .Xr amd 8
 maps.
 For example, if the
 .Xr amd 8
-maps are stored in NIS, one can set this to
-run
+maps are stored in NIS, one can set this to run
 .Xr ypcat 1
 to get a list of
 .Xr amd 8
@@ -1172,8 +1144,7 @@ NIS map.
 If set to
 .Dq Li YES ,
 .Pa /etc/motd
-will be updated at boot time to reflect the kernel release
-being run.
+will be updated at boot time to reflect the kernel release being run.
 If set to
 .Dq Li NO ,
 .Pa /etc/motd
@@ -1201,15 +1172,17 @@ is set to
 this can be set to
 .Dq Li 0
 to disable NFS ACCESS RPC caching, or to the number of seconds for which
-NFS ACCESS
-results should be cached.
+NFS ACCESS results should be cached.
 A value of 2-10 seconds will substantially reduce network traffic for
-many NFS operations.  The default is 5 seconds.  Note that the attribute
-cache holds stat information only.  The NFS data cache is independent
-of the attribute cache and is only invalidated when the client detects that
-the server has modified the underlying file.  This value specifies a
-maximum timeout.  The NFS client will automatically use a shorter timeout
-for files which have been recently modified.
+many NFS operations.
+The default is 5 seconds.
+Note that the attribute cache holds stat information only.
+The NFS data cache is independent of the attribute cache and is only
+invalidated when the client detects that the server has modified the
+underlying file.
+This value specifies a maximum timeout.
+The NFS client will automatically use a shorter timeout for files which
+have been recently modified.
 .It Va nfs_neg_cache
 .Pq Vt int
 If
@@ -1222,8 +1195,8 @@ to disable the caching of NEGATIVE LOOKUPS (lookups of non-existent
 filenames), or to the number of seconds for which negative lookups should
 be cached.
 A value of 2-10 seconds will substantially reduce network
-traffic for many NFS operations, especially source code builds.  The
-default is 3 seconds.
+traffic for many NFS operations, especially source code builds.
+The default is 3 seconds.
 .It Va nfs_server_enable
 .Pq Vt bool
 If set to
@@ -1263,8 +1236,7 @@ daemon.
 .Pq Vt bool
 If set to
 .Dq Li YES ,
-allow services like PCNFSD to make non-privileged mount
-requests.
+allow services like PCNFSD to make non-privileged mount requests.
 .It Va nfs_reserved_port_only
 .Pq Vt bool
 If set to
@@ -1275,10 +1247,8 @@ provide NFS services only on a secure port.
 If set to a number, indicates the number of packets worth of
 socket buffer space to reserve on an NFS client.
 The kernel default is typically 4.
-Using a higher number may be
-useful on gigabit networks to improve performance.
-The minimum value is
-2 and the maximum is 64.
+Using a higher number may be useful on gigabit networks to improve performance.
+The minimum value is 2 and the maximum is 64.
 .It Va rpc_umntall_enable
 .Pq Vt bool
 If set to
@@ -1378,13 +1348,11 @@ If set to
 run the
 .Xr timed 8
 service at boot time.
-This command is intended for networks of
-machines where a consistent
+This command is intended for networks of machines where a consistent
 .Dq "network time"
 for all hosts must be established.
-This is often useful in large NFS
-environments where time stamps on files are expected to be consistent
-network-wide.
+This is often useful in large NFS environments where time stamps on
+files are expected to be consistent network-wide.
 .It Va timed_flags
 .Pq Vt str
 If
@@ -1415,10 +1383,12 @@ is set to
 .Dq Li YES ,
 these are the flags to pass to the
 .Xr ntpd 8
-daemon. Set to
+daemon.
+Set to
 .Dq Li -s
 by default which sets the time immediately at startup if the
-local clock is off by more than 180 seconds. To prevent
+local clock is off by more than 180 seconds.
+To prevent
 .Xr ntpd 8
 from doing this, set
 .Va ntpd_flags
@@ -1546,16 +1516,14 @@ The IPv6 equivalent of
 .Va defaultrouter .
 .It Va static_routes
 .Pq Vt str
-Set to the list of static routes that are to be added at system
-boot time.
+Set to the list of static routes that are to be added at system boot time.
 If not set to
 .Dq Li NO
 then for each whitespace separated
 .Ar element
 in the value, a
 .Va route_ Ns Aq Ar element
-variable is assumed to exist
-whose contents will later be passed to a
+variable is assumed to exist whose contents will later be passed to a
 .Dq Nm route Cm add
 operation.
 .It Va ipv6_static_routes
@@ -1568,8 +1536,7 @@ then for each whitespace separated
 .Ar element
 in the value, a
 .Va ipv6_route_ Ns Aq Ar element
-variable is assumed to exist
-whose contents will later be passed to a
+variable is assumed to exist whose contents will later be passed to a
 .Dq Nm route Cm add Fl inet6
 operation.
 .It Va gateway_enable
@@ -1586,8 +1553,7 @@ The IPv6 equivalent of
 .Pq Vt bool
 If set to
 .Dq Li YES ,
-run a routing daemon of some sort, based on the
-settings of
+run a routing daemon of some sort, based on the settings of
 .Va router_program
 and
 .Va router_flags .
@@ -1597,8 +1563,7 @@ The IPv6 equivalent of
 .Va router_enable .
 If set to
 .Dq Li YES ,
-run a routing daemon of some sort, based on the
-settings of
+run a routing daemon of some sort, based on the settings of
 .Va ipv6_router_program
 and
 .Va ipv6_router_flags .
@@ -1772,8 +1737,7 @@ daemon.
 .Pq Vt str
 If not set to
 .Dq Li NO ,
-this is the local IPv4 address for 6to4 (IPv6 over IPv4 tunneling
-interface).
+this is the local IPv4 address for 6to4 (IPv6 over IPv4 tunneling interface).
 Specify this entry to enable the 6to4 interface.
 .It Va stf_interface_ipv4plen
 .Pq Vt int
@@ -1793,8 +1757,7 @@ IPv6 Site Level Aggregator for
 .Pq Vt str
 If not set to
 .Dq Li NO ,
-this is the faith prefix to enable a FAITH IPv6-to-IPv4 TCP
-translator.
+this is the faith prefix to enable a FAITH IPv6-to-IPv4 TCP translator.
 You also need
 .Xr faithd 8
 setup.
@@ -1815,12 +1778,6 @@ man page for further details on the available command parameters.
 Also refer to the files in
 .Pa /usr/share/examples/atm
 for more detailed configuration information.
-.It Va atm_load
-.Pq Vt str
-This is a list of physical ATM interface drivers to load. Typical values are
-.Dq Li hfa_pci
-and/or
-.Dq Li hea_pci .
 .It Va atm_netif_ Ns Aq Ar intf
 .Pq Vt str
 For the ATM physical interface
@@ -1870,8 +1827,7 @@ For the ATM network interface
 .Ar netif ,
 this variable defines the ATM address for a host which is to provide ATMARP
 service.
-This variable is only applicable to interfaces using a UNI signalling
-manager.
+This variable is only applicable to interfaces using a UNI signalling manager.
 If set to
 .Dq Li local ,
 this host will become an ATMARP server.
@@ -1893,46 +1849,17 @@ This variable is only applicable if
 .Va atm_arpserver_ Ns Aq Ar netif
 is set to
 .Dq Li local .
-.It Va atm_pvcs
-.Pq Vt str
-Set to the list of ATM PVCs to be added at system
-boot time.
-For each whitespace separated
-.Ar element
-in the value, an
-.Va atm_pvc_ Ns Aq Ar element
-variable is assumed to exist.
-The value of each of these variables
-will be passed as the parameters of an
-.Dq Nm atm Cm "add pvc"
-command.
 .It Va atm_arps
 .Pq Vt str
-Set to the list of permanent ATM ARP entries to be added
-at system boot time.
+Set to the list of permanent ATM ARP entries to be added at system boot time.
 For each whitespace separated
 .Ar element
 in the value, an
 .Va atm_arp_ Ns Aq Ar element
 variable is assumed to exist.
-The value of each of these variables
-will be passed as the parameters of an
+The value of each of these variables will be passed as the parameters of an
 .Dq Nm atm Cm "add arp"
 command.
-.It Va natm_interfaces
-.Pq Vt str
-Set to the list of
-.Xr natm 4
-interfaces that will also be used for HARP through
-.Xr harp 4 .
-If this list is not empty all interfaces in the list will be brought up
-with
-.Xr ifconfig 9
-and
-.Xr harp 4
-will be loaded.
-For this to work the interface drivers must be either compiled into the
-kernel or must reside on the root partition.
 .It Va keybell
 .Pq Vt str
 The keyboard bell sound.
@@ -1968,8 +1895,7 @@ if the default behavior is desired.
 If not set to
 .Dq Li NO ,
 attempt to program the function keys with the value.
-The value should
-be a single string of the form:
+The value should be a single string of the form:
 .Dq Ar funkey_number new_value Op Ar funkey_number new_value ... .
 .It Va cursor
 .Pq Vt str
@@ -2015,8 +1941,7 @@ is used.
 .Pq Vt int
 If set to
 .Dq Li NO ,
-the default screen blanking interval is used, otherwise it is set
-to
+the default screen blanking interval is used, otherwise it is set to
 .Ar value
 seconds.
 .It Va saver
@@ -2054,8 +1979,7 @@ If the mouse is attached to the PS/2 mouse port, choose
 or
 .Dq Li ps/2 ,
 regardless of the brand and model of the mouse.
-Likewise, if the
-mouse is attached to the bus mouse port, choose
+Likewise, if the mouse is attached to the bus mouse port, choose
 .Dq Li auto
 or
 .Dq Li busmouse .
@@ -2107,13 +2031,11 @@ the mouse through the virtual mouse device,
 and configure it as a
 .Dq Li sysmouse
 type mouse, since all
-mouse data is converted to this single canonical format when
-using
+mouse data is converted to this single canonical format when using
 .Xr moused 8 .
 If the client program does not support the
 .Dq Li sysmouse
-type,
-specify the
+type, specify the
 .Dq Li mousesystems
 type.
 It is the second preferred type.
@@ -2144,9 +2066,7 @@ If set to
 .Dq Li NO ,
 the default mouse cursor character range
 .Li 0xd0 Ns - Ns Li 0xd3
-is used,
-otherwise the range start is set
-to
+is used, otherwise the range start is set to
 .Ar value
 character, see
 .Xr vidcontrol 1 .
@@ -2162,8 +2082,7 @@ is run with these options for each of the virtual terminals
 .Pq Pa /dev/ttyv* .
 For example,
 .Dq Fl m Cm on
-will enable the mouse pointer on all virtual terminals
-if
+will enable the mouse pointer on all virtual terminals if
 .Va moused_enable
 is set to
 .Dq Li YES .
@@ -2299,8 +2218,7 @@ facility.
 .Pq Vt bool
 Set to
 .Dq Li YES
-to enable Linux/ELF binary emulation at system initial
-boot time.
+to enable Linux/ELF binary emulation at system initial boot time.
 .It Va sysvipc_enable
 .Pq Vt bool
 If set to
@@ -2347,22 +2265,10 @@ to disable that security check during system startup.
 The kernel security level to set at startup.
 The allowed range of
 .Ar value
-ranges from \-1 (the compile time default) to 3 (the
-most secure).
+ranges from \-1 (the compile time default) to 3 (the most secure).
 See
 .Xr init 8
-for the list of possible security levels and their effect
-on system operation.
-.It Va lomac_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to enable Low Watermark Mandatory Access Control (LOMAC) at boot time.
-This security model enforces integrity constraints for system processes;
-see
-.Xr lomac 4
-for a complete description of the LOMAC model, as well as its impact
-on system operation.
+for the list of possible security levels and their effect on system operation.
 .It Va start_vinum
 .Pq Vt bool
 Set to
@@ -2467,9 +2373,7 @@ do not allow the root user in a jail to set its hostname.
 .Pq Vt bool
 If set to
 .Dq Li NO ,
-do not allow any protocol,
-besides TCP/IP,
-to be used within a jail.
+do not allow any protocol, besides TCP/IP, to be used within a jail.
 .It Va jail_sysvipc_allow
 .Pq Vt bool
 If set to
@@ -2505,8 +2409,7 @@ When set to
 .Dq Li YES ,
 starts the
 .Xr isdnd 8
-daemon
-at system boot time.
+daemon at system boot time.
 .It Va isdn_flags
 .Pq Vt str
 Set to
@@ -2577,8 +2480,7 @@ Otherwise set to the directory used to store entropy files in.
 Set to
 .Dq Li NO
 to disable caching entropy through reboots.
-Otherwise set to the filename used to store cached entropy through
-reboots.
+Otherwise set to the filename used to store cached entropy through reboots.
 This file should be located on the root file system to seed the
 .Xr random 4
 device as early as possible in the boot process.
