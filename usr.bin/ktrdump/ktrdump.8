@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
-.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.12 2007/06/08 18:46:32 swildner Exp $
+.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.13 2007/06/12 12:50:22 hasso Exp $
 .\"
 .Dd June 8, 2007
 .Dt KTRDUMP 8
@@ -93,8 +93,6 @@ Print the call chain leading up to the procedure which issued
 the KTR.
 .It Fl t
 Print the timestamp for each entry.
-.Xr ktr 4
-manual page.
 .It Fl N Ar execfile
 The kernel image to resolve symbols from.
 The default is the value returned via
