@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/bin/mv/mv.c,v 1.24.2.6 2004/03/24 08:34:36 pjd Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.12 2006/11/11 12:05:36 victor Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.13 2007/06/12 20:56:16 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -248,8 +248,9 @@ fastcopy(const char *from, const char *to, struct stat *sbp)
 	static u_int blen;
 	static char *bp;
 	mode_t oldmode;
-	int nread, from_fd, to_fd;
-	ssize_t wtotal = 0, wcount;
+	int from_fd, to_fd;
+	size_t nread, wcount;
+	off_t wtotal = 0;
 
 	if ((from_fd = open(from, O_RDONLY, 0)) < 0) {
 		warn("%s", from);
@@ -273,8 +274,8 @@ fastcopy(const char *from, const char *to, struct stat *sbp)
 		close(from_fd);
 		return (1);
 	}
-	while ((nread = read(from_fd, bp, (size_t)blen)) > 0) {
-		wcount = write(to_fd, bp, (size_t)nread);
+	while ((ssize_t)(nread = read(from_fd, bp, (size_t)blen)) != -1) {
+		wcount = write(to_fd, bp, nread);
 		wtotal += wcount;
 
 		if (wcount != nread) {
@@ -289,7 +290,7 @@ fastcopy(const char *from, const char *to, struct stat *sbp)
 					mv_pct(wtotal, sbp->st_size));
 		}
 	}
-	if (nread < 0) {
+	if ((ssize_t)nread == -1) {
 		warn("%s", from);
 err:		if (unlink(to))
 			warn("%s: remove", to);

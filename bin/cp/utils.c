@@ -32,7 +32,7 @@
  *
  * @(#)utils.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/utils.c,v 1.45 2005/02/09 17:37:37 ru Exp $
- * $DragonFly: src/bin/cp/utils.c,v 1.9 2006/08/03 16:40:45 swildner Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.10 2007/06/12 20:56:16 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,9 @@ copy_file(const FTSENT *entp, int dne)
 {
 	static char buf[MAXBSIZE];
 	struct stat *fs;
-	int ch, checkch, from_fd, rcount, rval, to_fd, wcount, wresid, wtotal;
+	int ch, checkch, from_fd, rval, to_fd;
+	size_t rcount, wcount, wresid;
+	off_t wtotal;
 	char *bufp;
 #ifdef VM_AND_BUFFER_CACHE_SYNCHRONIZED
 	char *p;
@@ -140,6 +142,8 @@ copy_file(const FTSENT *entp, int dne)
 			for (bufp = p, wresid = fs->st_size; ;
 			    bufp += wcount, wresid -= wcount) {
 				wcount = write(to_fd, bufp, wresid);
+				if ((ssize_t)wcount == -1)
+					break;
 				wtotal += wcount;
 				if (info) {
 					info = 0;
@@ -148,7 +152,7 @@ copy_file(const FTSENT *entp, int dne)
 					    entp->fts_path, to.p_path,
 					    cp_pct(wtotal, fs->st_size));
 				}
-				if (wcount >= wresid || wcount <= 0)
+				if (wcount >= wresid || wcount == 0)
 					break;
 			}
 			if (wcount != wresid) {
@@ -165,10 +169,12 @@ copy_file(const FTSENT *entp, int dne)
 #endif
 	{
 		wtotal = 0;
-		while ((rcount = read(from_fd, buf, MAXBSIZE)) > 0) {
+		while ((ssize_t)(rcount = read(from_fd, buf, MAXBSIZE)) != 0) {
 			for (bufp = buf, wresid = rcount; ;
 			    bufp += wcount, wresid -= wcount) {
 				wcount = write(to_fd, bufp, wresid);
+				if ((ssize_t)wcount == -1)
+					break;
 				wtotal += wcount;
 				if (info) {
 					info = 0;
@@ -177,7 +183,7 @@ copy_file(const FTSENT *entp, int dne)
 					    entp->fts_path, to.p_path,
 					    cp_pct(wtotal, fs->st_size));
 				}
-				if (wcount >= wresid || wcount <= 0)
+				if (wcount >= wresid || wcount == 0)
 					break;
 			}
 			if (wcount != wresid) {
@@ -186,7 +192,7 @@ copy_file(const FTSENT *entp, int dne)
 				break;
 			}
 		}
-		if (rcount < 0) {
+		if ((ssize_t)rcount == -1) {
 			warn("%s", entp->fts_path);
 			rval = 1;
 		}
