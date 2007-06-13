@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.20 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.21 2007/06/13 20:45:24 dillon Exp $
  */
 
 /*
@@ -2559,6 +2559,12 @@ Static void
 umass_cam_poll(struct cam_sim *sim)
 {
 	struct umass_softc *sc = (struct umass_softc *) sim->softc;
+
+	if (sc->umass_sim == NULL) {
+		kprintf("%s: cam poll after detach!\n",
+			USBDEVNAME(sc->sc_dev));
+		return;
+	}
 
 	DPRINTF(UDMASS_SCSI, ("%s: CAM poll\n",
 		USBDEVNAME(sc->sc_dev)));
