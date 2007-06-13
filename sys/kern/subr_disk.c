@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.34 2007/05/20 04:41:58 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.35 2007/06/13 20:58:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -650,10 +650,10 @@ readdisklabel(cdev_t dev, struct disklabel *lp)
  * Check new disk label for sensibility before setting it.
  */
 int
-setdisklabel(struct disklabel *olp, struct disklabel *nlp, u_long openmask)
+setdisklabel(struct disklabel *olp, struct disklabel *nlp, u_int32_t *openmask)
 {
-	int i;
 	struct partition *opp, *npp;
+	int i;
 
 	/*
 	 * Check it is actually a disklabel we are looking at.
@@ -661,15 +661,21 @@ setdisklabel(struct disklabel *olp, struct disklabel *nlp, u_long openmask)
 	if (nlp->d_magic != DISKMAGIC || nlp->d_magic2 != DISKMAGIC ||
 	    dkcksum(nlp) != 0)
 		return (EINVAL);
+
 	/*
-	 * For each partition that we think is open,
+	 * For each partition that we think is open, check the new disklabel
+	 * for compatibility.  Ignore special partitions (>= 128).
 	 */
-	while ((i = ffs((long)openmask)) != 0) {
-		i--;
-		/*
-	 	 * Check it is not changing....
-	 	 */
-		openmask &= ~(1 << i);
+	i = 0;
+	while (i < 128) {
+		if (openmask[i >> 5] == 0) {
+			i += 32;
+			continue;
+		}
+		if ((openmask[i >> 5] & (1 << (i & 31))) == 0) {
+			++i;
+			continue;
+		}
 		if (nlp->d_npartitions <= i)
 			return (EBUSY);
 		opp = &olp->d_partitions[i];
@@ -688,6 +694,7 @@ setdisklabel(struct disklabel *olp, struct disklabel *nlp, u_long openmask)
 			npp->p_frag = opp->p_frag;
 			npp->p_cpg = opp->p_cpg;
 		}
+		++i;
 	}
  	nlp->d_checksum = 0;
  	nlp->d_checksum = dkcksum(nlp);

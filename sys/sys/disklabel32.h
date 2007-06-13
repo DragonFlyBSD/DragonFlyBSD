@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel32.h,v 1.24 2007/05/20 23:21:36 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel32.h,v 1.25 2007/06/13 20:58:38 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -285,7 +285,7 @@ static const char *fstypenames[] = {
 
 char	*readdisklabel (cdev_t dev, struct disklabel *lp);
 int	setdisklabel (struct disklabel *olp, struct disklabel *nlp,
-			  u_long openmask);
+			  u_int32_t *openmask);
 int	writedisklabel (cdev_t dev, struct disklabel *lp);
 
 #endif /* _KERNEL */

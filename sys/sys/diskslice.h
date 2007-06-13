@@ -57,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.17 2007/06/01 00:25:23 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.18 2007/06/13 20:58:38 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -89,6 +89,14 @@
 #define	DIOCGSLICEINFO		_IOR('d', 111, struct diskslices)
 #define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
 #define	MAX_SLICES		16
+
+/*
+ * Support limits
+ */
+#define DKMAXUNITS	512	/* maximum supported disk units */
+#define DKMAXSLICES	128	/* maximum supported slices (0 & 1 special) */
+#define DKRESPARTITIONS	128	/* 128+ have special meanings */
+#define DKMAXPARTITIONS	256	/* maximum supported in-kernel partitions */
 
 /*
  * The whole-disk-slice does not try to interpret the MBR.  The whole slice
@@ -137,8 +145,10 @@ struct diskslice {
 	struct disklabel *ds_label;	/* BSD label, if any */
 	void		*ds_dev;	/* devfs token for raw whole slice */
 	void		*ds_devs[MAXPARTITIONS]; /* XXX s.b. in label */
-	u_char		ds_openmask;	/* devs open */
+	u_int32_t	ds_openmask[DKMAXPARTITIONS/sizeof(u_int32_t)];
+					/* devs open */
 	u_char		ds_wlabel;	/* nonzero if label is writable */
+	int		ds_ttlopens;	/* total opens, incl slice & raw */
 };
 
 struct diskslices {
@@ -203,10 +213,6 @@ struct partinfo {
  */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-
-#define DKMAXUNITS	512
-#define DKMAXSLICES	128
-#define DKMAXPARTITIONS	256
 
 /*
  * Build a minor device number.
@@ -330,6 +336,62 @@ dkmodslice(cdev_t dev, int slice)
 }
 
 #endif
+
+/*
+ * Bitmask ops, keeping track of which partitions are open.
+ */
+static __inline
+void
+dsclrmask(struct diskslice *ds, int part)
+{
+	part &= (DKMAXPARTITIONS - 1);
+	ds->ds_openmask[part >> 5] &= ~(1 << (part & 31));
+}
+
+static __inline
+void
+dssetmask(struct diskslice *ds, int part)
+{
+	part &= (DKMAXPARTITIONS - 1);
+	ds->ds_openmask[part >> 5] |= (1 << (part & 31));
+}
+
+static __inline
+int
+dschkmask(struct diskslice *ds, int part)
+{
+	part &= (DKMAXPARTITIONS - 1);
+	return (ds->ds_openmask[part >> 5] & (1 << (part & 31)));
+}
+
+static __inline
+int
+dscountmask(struct diskslice *ds)
+{
+	int count = 0;
+	int i;
+	int j;
+
+	for (i = 0; i < DKMAXPARTITIONS / 32; ++i) {
+		if (ds->ds_openmask[i]) {
+			for (j = 0; j < 32; ++j) {
+				if (ds->ds_openmask[i] & (1 << j))
+					++count;
+			}
+		}
+	}
+	return(count);
+}
+
+static __inline
+void
+dssetmaskfrommask(struct diskslice *ds, u_int32_t *tmask)
+{
+	int i;
+
+	for (i = 0; i < DKMAXPARTITIONS / 32; ++i)
+		tmask[i] |= ds->ds_openmask[i];
+}
 
 /*
  * disk management functions

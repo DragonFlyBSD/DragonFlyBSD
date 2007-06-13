@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.41 2007/05/21 04:21:05 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.42 2007/06/13 20:58:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -478,8 +478,7 @@ dsclose(cdev_t dev, int mode, struct diskslices *ssp)
 	part  = dkpart(dev);
 	if (slice < ssp->dss_nslices) {
 		sp = &ssp->dss_slices[slice];
-		if (part < sizeof(sp->ds_openmask) * 8)
-			sp->ds_openmask &= ~(1 << part);
+		dsclrmask(sp, part);
 	}
 }
 
@@ -509,7 +508,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 	int error;
 	struct disklabel *lp;
 	int old_wlabel;
-	u_char openmask;
+	u_int32_t openmask[DKMAXPARTITIONS/sizeof(u_int32_t)];
 	int part;
 	int slice;
 	struct diskslice *sp;
@@ -705,19 +704,20 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		else
 			bcopy(sp->ds_label, lp, sizeof *lp);
 		if (sp->ds_label == NULL) {
-			openmask = 0;
+			bzero(openmask, sizeof(openmask));
 		} else {
-			openmask = sp->ds_openmask;
+			bcopy(sp->ds_openmask, openmask, sizeof(openmask));
 			if (slice == COMPATIBILITY_SLICE) {
-				openmask |= ssp->dss_slices[
-				    ssp->dss_first_bsd_slice].ds_openmask;
+				dssetmaskfrommask(&ssp->dss_slices[
+						  ssp->dss_first_bsd_slice],
+						  openmask);
 			} else if (slice == ssp->dss_first_bsd_slice) {
-				openmask |= ssp->dss_slices[
-				    COMPATIBILITY_SLICE].ds_openmask;
+				dssetmaskfrommask(&ssp->dss_slices[
+						  COMPATIBILITY_SLICE],
+						  openmask);
 			}
 		}
-		error = setdisklabel(lp, (struct disklabel *)data,
-				     (u_long)openmask);
+		error = setdisklabel(lp, (struct disklabel *)data, openmask);
 		/* XXX why doesn't setdisklabel() check this? */
 		if (error == 0 && lp->d_partitions[RAW_PART].p_offset != 0)
 			error = EXDEV;
@@ -745,10 +745,18 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 
 		if (*(int *)data == 0) {
 			for (slice = 0; slice < ssp->dss_nslices; slice++) {
-				openmask = ssp->dss_slices[slice].ds_openmask;
-				if (openmask &&
-				    (slice != WHOLE_DISK_SLICE || 
-				     openmask & ~(1 << RAW_PART))) {
+				struct diskslice *ds = &ssp->dss_slices[slice];
+
+				switch(dscountmask(ds)) {
+				case 0:
+					break;
+				case 1:
+					if (slice != WHOLE_DISK_SLICE)
+						return (EBUSY);
+					if (!dschkmask(ds, RAW_PART))
+						return (EBUSY);
+					break;
+				default:
 					return (EBUSY);
 				}
 			}
@@ -779,9 +787,8 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		 * if anything fails.
 		 */
 		for (slice = 0; slice < ssp->dss_nslices; slice++) {
-			for (openmask = ssp->dss_slices[slice].ds_openmask,
-			     part = 0; openmask; openmask >>= 1, part++) {
-				if (!(openmask & 1))
+			for (part = 0; part < DKMAXPARTITIONS; ++part) {
+				if (!dschkmask(&ssp->dss_slices[slice], part))
 					continue;
 				error = dsopen(dkmodslice(dkmodpart(dev, part),
 							  slice),
@@ -856,7 +863,7 @@ dsisopen(struct diskslices *ssp)
 	if (ssp == NULL)
 		return (0);
 	for (slice = 0; slice < ssp->dss_nslices; slice++) {
-		if (ssp->dss_slices[slice].ds_openmask)
+		if (dscountmask(&ssp->dss_slices[slice]))
 			return (1);
 	}
 	return (0);
@@ -1115,10 +1122,8 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	if (part != WHOLE_SLICE_PART && slice != WHOLE_DISK_SLICE) {
 		if (sp->ds_label == NULL || part >= sp->ds_label->d_npartitions)
 			return (EINVAL);
-		if (part < sizeof(sp->ds_openmask) * 8) {
-			sp->ds_openmask |= 1 << part;
-		}
 	}
+	dssetmask(sp, part);
 
 	/*
 	 * Do not allow special raw-extension partitions to be opened
@@ -1188,7 +1193,7 @@ dssize(cdev_t dev, struct diskslices **sspp)
 	part = dkpart(dev);
 	ssp = *sspp;
 	if (ssp == NULL || slice >= ssp->dss_nslices
-	    || !(ssp->dss_slices[slice].ds_openmask & (1 << part))) {
+	    || !dschkmask(&ssp->dss_slices[slice], part)) {
 		if (dev_dopen(dev, FREAD, S_IFCHR, proc0.p_ucred) != 0)
 			return (-1);
 		dev_dclose(dev, FREAD, S_IFCHR);
