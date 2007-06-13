@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rndcontrol/rndcontrol.8,v 1.13.2.2 2001/12/21 09:05:32 ru Exp $
-.\" $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.8,v 1.6 2006/07/11 11:41:35 swildner Exp $
+.\" $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.8,v 1.7 2007/06/13 14:27:41 swildner Exp $
 .\"
 .Dd October 20, 1995
 .Dt RNDCONTROL 8
@@ -71,7 +71,7 @@ more than one IRQ.
 .Pp
 By default, all IRQs will help develop entropy.  The kernel uses a
 rate-limited helper thread to add the actual entropy and even fast
-interrupts should not detrimentally effect a running system.
+interrupts should not detrimentally affect a running system.
 .Sh FILES
 .Bl -tag -width ".Pa /dev/urandom" -compact
 .It Pa /dev/random
