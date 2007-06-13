@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.36 2007/05/16 20:59:38 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.37 2007/06/13 20:53:39 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -543,9 +543,11 @@ daopen(struct dev_open_args *ap)
 		return (error); /* error code from tsleep */
 	}
 
-	if (cam_periph_acquire(periph) != CAM_REQ_CMP)
-		return(ENXIO);
-	softc->flags |= DA_FLAG_OPEN;
+	if ((softc->flags & DA_FLAG_OPEN) == 0) {
+		if (cam_periph_acquire(periph) != CAM_REQ_CMP)
+			return(ENXIO);
+		softc->flags |= DA_FLAG_OPEN;
+	}
 
 	crit_enter();
 	if ((softc->flags & DA_FLAG_PACK_INVALID) != 0) {
@@ -736,9 +738,17 @@ daclose(struct dev_close_args *ap)
 		softc->device_stats.flags |= DEVSTAT_BS_UNAVAILABLE;
 	}
 
-	softc->flags &= ~DA_FLAG_OPEN;
+	/*
+	 * Don't compound any ref counting software bugs with more.
+	 */
+	if (softc->flags & DA_FLAG_OPEN) {
+		softc->flags &= ~DA_FLAG_OPEN;
+		cam_periph_release(periph);
+	} else {
+		xpt_print_path(periph->path);
+		kprintf("daclose() called on an already closed device!\n");
+	}
 	cam_periph_unlock(periph);
-	cam_periph_release(periph);
 	return (0);	
 }
 
