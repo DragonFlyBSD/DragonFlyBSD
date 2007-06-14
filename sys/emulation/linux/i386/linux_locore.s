@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/linux/linux_locore.s,v 1.5.2.3 2001/11/05 19:08:23 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/i386/linux_locore.s,v 1.3 2003/08/07 21:17:18 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/i386/linux_locore.s,v 1.3.8.1 2007/06/14 19:18:51 dillon Exp $ */
 
 #include "linux_assym.h"			/* system definitions */
 #include <machine/asmacros.h>			/* miscellaneous asm macros */
@@ -8,7 +8,7 @@
 NON_GPROF_ENTRY(linux_sigcode)
 	call	*LINUX_SIGF_HANDLER(%esp)
 	leal	LINUX_SIGF_SC(%esp),%ebx	/* linux scp */
-	movl	LINUX_SC_GS(%ebx),%gs
+	movw	LINUX_SC_GS(%ebx),%gs
 	movl	%esp, %ebx			/* pass sigframe */
 	push	%eax				/* fake ret addr */
 	movl	$LINUX_SYS_linux_sigreturn,%eax	/* linux_sigreturn() */
@@ -19,7 +19,7 @@ NON_GPROF_ENTRY(linux_sigcode)
 linux_rt_sigcode:
 	call	*LINUX_RT_SIGF_HANDLER(%esp)
 	leal	LINUX_RT_SIGF_UC(%esp),%ebx	/* linux ucp */
-	movl	LINUX_SC_GS(%ebx),%gs
+	movw	LINUX_SC_GS(%ebx),%gs
 	push	%eax				/* fake ret addr */
 	movl	$LINUX_SYS_linux_rt_sigreturn,%eax   /* linux_rt_sigreturn() */
 	int	$0x80				/* enter kernel with args */
