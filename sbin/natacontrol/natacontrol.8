@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/atacontrol/atacontrol.8,v 1.28 2005/11/18 10:32:09 ru Exp $
-.\" $DragonFly: src/sbin/natacontrol/natacontrol.8,v 1.1 2006/12/05 21:32:21 tgen Exp $
+.\" $DragonFly: src/sbin/natacontrol/natacontrol.8,v 1.2 2007/06/14 23:00:36 swildner Exp $
 .\"
 .Dd December 5, 2006
 .Dt NATACONTROL 8
@@ -136,10 +136,11 @@ of the individual disks named
 .Ar disk0 ... diskN .
 .Ek
 .Pp
-Although the NATA driver allows for creating an ATA RAID on disks with any
-controller, there are restrictions.
-It is only possible to boot on
-an array if it is either located on a
+Although the
+.Xr nata 4
+driver allows for creating an ATA RAID on disks with any controller,
+there are restrictions.
+It is only possible to boot on an array if it is either located on a
 .Dq real
 ATA RAID controller like
 the Promise or Highpoint controllers, or if the RAID declared is of
@@ -161,10 +162,12 @@ Get the status of an ATA RAID.
 .It Ic mode
 Without the mode argument, the current transfer modes of the
 device are printed.
-If the mode argument is given, the NATA driver
-is asked to change the transfer mode to the one given.
-The NATA driver
-will reject modes that are not supported by the hardware.
+If the mode argument is given, the
+.Xr nata 4
+driver is asked to change the transfer mode to the one given.
+The
+.Xr nata 4
+driver will reject modes that are not supported by the hardware.
 Modes are given like
 .Dq Li PIO3 ,
 .Dq Li udma2 ,
@@ -228,7 +231,9 @@ command returns.
 The
 .Nm
 utility first appeared in
-.Fx 4.6 .
+.Fx 4.6
+and was imported into
+.Dx 1.7 .
 .Sh AUTHORS
 .An -nosplit
 The
