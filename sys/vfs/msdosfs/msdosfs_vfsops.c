@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.46 2007/05/15 17:51:03 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.47 2007/06/14 02:55:27 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -776,7 +776,7 @@ msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data)
 	int error;
 
 	dep = VTODE(vp);
-	if (vp->v_type == VNON ||
+	if (vp->v_type == VNON || vp->v_type == VBAD ||
 	    ((dep->de_flag &
 	    (DE_ACCESS | DE_CREATE | DE_UPDATE | DE_MODIFIED)) == 0 &&
 	    (RB_EMPTY(&vp->v_rbdirty_tree) || info->waitfor == MNT_LAZY))) {

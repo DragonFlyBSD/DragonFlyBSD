@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.28 2007/05/06 19:23:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.29 2007/06/14 02:55:27 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -314,6 +314,7 @@ again:
 	 */
 	if (msdosfs_hashins(ldep) != 0) {
 		kprintf("debug: msdosfs: hashins collision, retrying\n");
+		nvp->v_type = VBAD;
 		vx_put(nvp);
 		kfree(ldep, M_MSDOSFSNODE);
 		goto again;
@@ -368,6 +369,7 @@ again:
 			 * Arrange for vput() to just forget about it.
 			 */
 			ldep->de_Name[0] = SLOT_DELETED;
+			nvp->v_type = VBAD;
 
 			vx_put(nvp);
 			*depp = NULL;

@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.27 2007/05/13 02:34:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.28 2007/06/14 02:55:23 dillon Exp $
  */
 
 /*
@@ -533,8 +533,7 @@ vlrureclaim(struct mount *mp, void *data)
 		 * at least until we block, so we can safely do an initial
 		 * check, and then must check again after we lock the vnode.
 		 */
-		if (vp->v_type == VNON ||	/* XXX */
-		    vp->v_type == VBAD ||	/* XXX */
+		if (vp->v_type == VNON ||	/* syncer or indeterminant */
 		    !vmightfree(vp, trigger)	/* critical path opt */
 		) {
 			vmovevnodetoend(mp, vp);
@@ -561,8 +560,7 @@ vlrureclaim(struct mount *mp, void *data)
 		 * been reclaimed and only has our VX reference associated
 		 * with it.
 		 */
-		if (vp->v_type == VNON ||	/* XXX */
-		    vp->v_type == VBAD ||	/* XXX */
+		if (vp->v_type == VNON ||	/* syncer or indeterminant */
 		    (vp->v_flag & VRECLAIMED) ||
 		    vp->v_mount != mp ||
 		    !vtrytomakegoneable(vp, trigger)	/* critical path opt */

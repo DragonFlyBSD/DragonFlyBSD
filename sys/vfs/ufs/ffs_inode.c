@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.23 2006/05/26 17:07:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.24 2007/06/14 02:55:25 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -88,6 +88,14 @@ ffs_update(struct vnode *vp, int waitfor)
 	ip->i_flag &= ~(IN_LAZYMOD | IN_MODIFIED);
 	fs = ip->i_fs;
 	if (fs->fs_ronly)
+		return (0);
+
+	/*
+	 * The vnode type is usually set to VBAD if an unrecoverable I/O
+	 * error has occured (such as when reading the inode).  Clear the
+	 * modified bits but do not write anything out in this case.
+	 */
+	if (vp->v_type == VBAD)
 		return (0);
 	/*
 	 * Ensure that uid and gid are correct. This is a temporary
