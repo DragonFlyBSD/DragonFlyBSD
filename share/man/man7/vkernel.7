@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.16 2007/05/25 02:21:10 dillon Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.17 2007/06/14 21:02:57 swildner Exp $
 .\"
 .Dd April 19, 2007
 .Dt VKERNEL 7
@@ -241,10 +241,10 @@ created and populated (assuming world has been built previously):
 .Bd -literal
 dd if=/dev/zero of=/var/vkernel/rootimg.01 bs=1m count=2048
 vnconfig -c -s labels vn0 /var/vkernel/rootimg.01
-disklabel -r -w vn0 auto
-disklabel -e vn0	# edit the label to create a vn0a partition
-newfs /dev/vn0a
-mount /dev/vn0a /mnt
+disklabel -r -w vn0s0 auto
+disklabel -e vn0s0	# edit the label to create a vn0s0a partition
+newfs /dev/vn0s0a
+mount /dev/vn0s0a /mnt
 cd /usr/src
 make installworld DESTDIR=/mnt
 cd etc
