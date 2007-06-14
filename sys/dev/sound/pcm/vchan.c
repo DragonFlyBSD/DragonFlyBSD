@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/vchan.c,v 1.17.2.4 2006/04/04 17:43:49 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.5 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.6 2007/06/14 21:48:36 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.5 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.6 2007/06/14 21:48:36 corecode Exp $");
 
 /*
  * Default speed
@@ -53,18 +53,27 @@ static u_int32_t vchan_fmt[] = {
 };
 
 static int
-vchan_mix_s16(int16_t *to, int16_t *tmp, unsigned int count)
+vchan_mix_s16(int16_t *to, int16_t *tmp, unsigned int count, int volume)
 {
 	/*
 	 * to is the output buffer, tmp is the input buffer
 	 * count is the number of 16bit samples to mix
+	 * volume is in range 0-100
 	 */
 	int i;
 	int x;
+	int scale;
+	int doscale;
+
+	scale = (volume << 16) / 100;
+	doscale = volume != 100;
 
 	for(i = 0; i < count; i++) {
 		x = to[i];
-		x += tmp[i];
+		if (doscale)
+			x += ((int)tmp[i] * scale) >> 16;
+		else
+			x += tmp[i];
 		if (x < -32768) {
 			/* kprintf("%d + %d = %d (u)\n", to[i], tmp[i], x); */
 			x = -32768;
@@ -88,6 +97,7 @@ feed_vchan_s16(struct pcm_feeder *f, struct pcm_channel *c, u_int8_t *b, u_int32
 	uint32_t sz;
 	int16_t *tmp, *dst;
 	unsigned int cnt, rcnt = 0;
+	int volume;
 
 	#if 0
 	if (sndbuf_getsize(src) < count)
@@ -118,7 +128,10 @@ feed_vchan_s16(struct pcm_feeder *f, struct pcm_channel *c, u_int8_t *b, u_int32
 			if (ch->flags & CHN_F_MAPPED)
 				sndbuf_acquire(ch->bufsoft, NULL, sndbuf_getfree(ch->bufsoft));
 			cnt = FEEDER_FEED(ch->feeder, ch, (u_int8_t *)tmp, count, ch->bufsoft);
-			vchan_mix_s16(dst, tmp, cnt >> 1);
+			volume = ch->volume & 0xff;	/* XXX do special stereo processing? */
+			volume += (ch->volume >> 8) & 0xff;
+			volume >>= 1;
+			vchan_mix_s16(dst, tmp, cnt >> 1, volume);
 			if (cnt > rcnt)
 				rcnt = cnt;
 		}

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.99.2.4 2006/04/04 17:37:51 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.11 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.12 2007/06/14 21:48:36 corecode Exp $
  */
 
 #include "use_isa.h"
@@ -35,7 +35,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.11 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.12 2007/06/14 21:48:36 corecode Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #if 0
@@ -858,6 +858,10 @@ chn_init(struct pcm_channel *c, void *devinfo, int dir, int direction)
 		goto out;
 
 	ret = sndbuf_setfmt(bs, AFMT_U8);
+	if (ret)
+		goto out;
+
+	ret = chn_setvolume(c, 100, 100);
 	if (ret)
 		goto out;
 

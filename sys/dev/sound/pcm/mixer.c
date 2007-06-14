@@ -24,14 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.43.2.4 2006/04/04 17:43:48 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.14 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.15 2007/06/14 21:48:36 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
+#include <dev/sound/pcm/dsp.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.14 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.15 2007/06/14 21:48:36 corecode Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -437,6 +438,48 @@ mixer_hwvol_step(device_t dev, int left_step, int right_step)
 /* ----------------------------------------------------------------------- */
 
 static int
+vchanvolume(cdev_t i_dev, int write, int *volume, int *ret,
+		struct thread *td)
+{
+	struct snddev_info *d;
+	void *cookie;
+	struct pcm_channel *ch;
+	int vol_left, vol_right;
+
+	crit_enter();
+	d = dsp_get_info(i_dev);
+	if (d == NULL) {
+		crit_exit();
+		return 0;
+	}
+	/*
+	 * We search for a vchan which is owned by the current process.
+	 */
+	for (cookie = NULL; (ch = pcm_chn_iterate(d, &cookie)) != NULL;)
+		if (ch->flags & CHN_F_VIRTUAL &&
+		    ch->pid == td->td_proc->p_pid)
+			break;
+
+	if (ch == NULL) {
+		crit_exit();
+		return 0;
+	}
+
+	if (write) {
+		vol_left = min(*volume & 0x00ff, 100);
+		vol_right = min((*volume & 0xff00) >> 8, 100);
+		*ret = chn_setvolume(ch, vol_left, vol_right);
+	} else {
+		*volume = ch->volume;
+		*ret = 0;
+	}
+	crit_exit();
+	return 1;
+}
+
+/* ----------------------------------------------------------------------- */
+
+static int
 mixer_open(struct dev_open_args *ap)
 {
 	struct cdev *i_dev = ap->a_head.a_dev;
@@ -485,6 +528,20 @@ mixer_ioctl(struct dev_ioctl_args *ap)
 
 	if (m == NULL)
 		return EBADF;
+
+	/*
+	 * If we are handling PCM, maybe the app really wants to
+	 * set its vchan, and fails to use the correct fd.
+	 */
+	if (j == SOUND_MIXER_PCM) {
+		cdev_t pdev;
+
+		if (vchanvolume(i_dev,
+			    (cmd & MIXER_WRITE(0)) == MIXER_WRITE(0),
+			    (int *)arg, &ret, curthread))
+			return ret;
+		/* else proceed as usual */
+	}
 
 	snd_mtxlock(m->lock);
 	if (mode != -1 && !m->busy) {

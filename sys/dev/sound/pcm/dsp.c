@@ -24,15 +24,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.80.2.6 2006/04/04 17:43:48 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.14 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.15 2007/06/14 21:48:36 corecode Exp $
  */
 
 #include <sys/param.h>
 #include <sys/queue.h>
 
+#include <dev/sound/pcm/dsp.h>
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.14 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.15 2007/06/14 21:48:36 corecode Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -60,7 +61,7 @@ struct dev_ops dsp_cdevsw = {
 static eventhandler_tag dsp_ehtag;
 #endif
 
-static struct snddev_info *
+struct snddev_info *
 dsp_get_info(struct cdev *dev)
 {
 	struct snddev_info *d;
@@ -423,24 +424,7 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 	int kill;
     	int ret = 0, *arg_i = (int *)arg, tmp;
 
-	/*
-	 * this is an evil hack to allow broken apps to perform mixer ioctls
-	 * on dsp devices.
-	 */
-
 	d = dsp_get_info(i_dev);
-	if (IOCGROUP(cmd) == 'M') {
-		/*
-		 * This is at least, a bug to bug compatible with OSS.
-		 */
-		if (d->mixer_dev != NULL) {
-			ap->a_head.a_dev = d->mixer_dev;
-			return mixer_ioctl(ap);
-		} else {
-			return EBADF;
-		}
-	}
-
 	getchns(i_dev, &rdch, &wrch, 0);
 
 	kill = 0;
@@ -456,6 +440,37 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 		wrch = NULL;
 	if (kill & 2)
 		rdch = NULL;
+
+	/*
+	 * 4Front OSS specifies that dsp devices allow mixer controls to
+	 * control PCM == their volume.
+	 */
+	if (IOCGROUP(cmd) == 'M') {
+		/*
+		 * For now only set the channel volume for vchans, pass
+		 * all others to the mixer.
+		 */
+		if (wrch != NULL && wrch->flags & CHN_F_VIRTUAL &&
+		    (cmd & 0xff) == SOUND_MIXER_PCM) {
+			if ((cmd & MIXER_WRITE(0)) == MIXER_WRITE(0)) {
+				int vol_raw = *(int *)arg;
+				int vol_left, vol_right;
+
+				vol_left = min(vol_raw & 0x00ff, 100);
+				vol_right = min((vol_raw & 0xff00) >> 8, 100);
+				ret = chn_setvolume(wrch, vol_left, vol_right);
+			} else {
+				*(int *)arg = wrch->volume;
+			}
+		} else {
+			ap->a_head.a_dev = d->mixer_dev;
+			ret = mixer_ioctl(ap);
+		}
+
+		relchns(i_dev, rdch, wrch, 0);
+		crit_exit();
+		return ret;
+	}
 	
     	switch(cmd) {
 #ifdef OLDPCM_IOCTL

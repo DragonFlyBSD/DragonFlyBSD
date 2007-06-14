@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.63.2.2 2006/04/04 17:43:48 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.10 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.11 2007/06/14 21:48:36 corecode Exp $
  */
 
 /*
@@ -221,6 +221,7 @@ int pcm_chnref(struct pcm_channel *c, int ref);
 int pcm_inprog(struct snddev_info *d, int delta);
 
 struct pcm_channel *pcm_chn_create(struct snddev_info *d, struct pcm_channel *parent, kobj_class_t cls, int dir, void *devinfo);
+struct pcm_channel *pcm_chn_iterate(struct snddev_info *d, void **cookie);
 int pcm_chn_destroy(struct pcm_channel *ch);
 int pcm_chn_add(struct snddev_info *d, struct pcm_channel *ch);
 int pcm_chn_remove(struct snddev_info *d, struct pcm_channel *ch);

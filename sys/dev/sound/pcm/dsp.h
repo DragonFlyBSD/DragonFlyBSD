@@ -24,7 +24,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.h,v 1.9 2005/01/06 01:43:20 imp Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.h,v 1.3 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.h,v 1.4 2007/06/14 21:48:36 corecode Exp $
  */
 
 extern struct dev_ops dsp_cdevsw;
+
+struct snddev_info *dsp_get_info(struct cdev *dev);

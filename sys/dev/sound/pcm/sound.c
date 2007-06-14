@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.93.2.3 2006/04/04 17:43:48 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.8 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.9 2007/06/14 21:48:36 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.8 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.9 2007/06/14 21:48:36 corecode Exp $");
 
 devclass_t pcm_devclass;
 
@@ -519,6 +519,22 @@ retry_num_search_out:
 	}
 
 	return ch;
+}
+
+struct pcm_channel *
+pcm_chn_iterate(struct snddev_info *d, void **cookie)
+{
+	struct snddev_channel **last = (struct snddev_channel **)cookie;
+
+	if (*last == NULL)
+		*last = SLIST_FIRST(&d->channels);
+	else
+		*last = SLIST_NEXT(*last, link);
+
+	if (*last == NULL)
+		return NULL;
+	else
+		return (*last)->channel;
 }
 
 int
