@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.21 2007/06/13 20:45:24 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.22 2007/06/14 01:10:25 dillon Exp $
  */
 
 /*
@@ -2249,10 +2249,8 @@ umass_cam_detach_sim(struct umass_softc *sc)
 {
 	callout_stop(&sc->rescan_timeout);
 	if (sc->umass_sim) {
-		if (xpt_bus_deregister(cam_sim_path(sc->umass_sim)))
-			cam_sim_free(sc->umass_sim);
-		else
-			return(EBUSY);
+		xpt_bus_deregister(cam_sim_path(sc->umass_sim));
+		cam_sim_free(sc->umass_sim);
 
 		sc->umass_sim = NULL;
 	}
@@ -2560,11 +2558,7 @@ umass_cam_poll(struct cam_sim *sim)
 {
 	struct umass_softc *sc = (struct umass_softc *) sim->softc;
 
-	if (sc->umass_sim == NULL) {
-		kprintf("%s: cam poll after detach!\n",
-			USBDEVNAME(sc->sc_dev));
-		return;
-	}
+	KKASSERT(sc != NULL);
 
 	DPRINTF(UDMASS_SCSI, ("%s: CAM poll\n",
 		USBDEVNAME(sc->sc_dev)));
