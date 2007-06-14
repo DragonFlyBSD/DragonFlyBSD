@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.h,v 1.4 1999/12/29 04:54:27 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.5 2004/09/17 02:20:53 joerg Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.6 2007/06/14 01:09:30 dillon Exp $
  */
 
 #ifndef _CAM_CAM_SIM_H
@@ -63,7 +63,6 @@ struct cam_sim *  cam_sim_alloc(sim_action_func sim_action,
 void		  cam_sim_free(struct cam_sim *sim);
 void		  cam_sim_release(struct cam_sim *sim, int flags);
 
-#define CAM_SIM_DEVQ	0x0001
 #define CAM_SIM_SOFTC	0x0002
 
 /* Optional sim attributes may be set with these. */

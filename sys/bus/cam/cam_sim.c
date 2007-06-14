@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.8 2006/09/05 00:55:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.9 2007/06/14 01:09:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include "cam_ccb.h"
 #include "cam_sim.h"
 #include "cam_queue.h"
+#include "cam_xpt_sim.h"
 
 #define CAM_PATH_ANY (u_int32_t)-1
 
@@ -101,22 +102,32 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 	return (sim);
 }
 
+static void deadsim_poll(struct cam_sim *sim);
+static void deadsim_action(struct cam_sim *sim, union ccb *ccb);
+
 void
 cam_sim_free(struct cam_sim *sim)
 {
-	cam_sim_release(sim, CAM_SIM_DEVQ | CAM_SIM_SOFTC);
+	sim->sim_action = deadsim_action;
+	sim->sim_poll = deadsim_poll;
+	cam_sim_release(sim, CAM_SIM_SOFTC);
 }
 
+/*
+ * Note: the devq is still used by individual peripherals even if the
+ * backend sim disappears, so do not destroy it until the sim itself
+ * is no longer needed.
+ */
 void
 cam_sim_release(struct cam_sim *sim, int flags)
 {
 	if (flags & CAM_SIM_SOFTC)
 		sim->softc = NULL;
-	if (flags & CAM_SIM_DEVQ) {
-		cam_simq_release(sim->devq);
-		sim->devq = NULL;
-	}
 	if (sim->refcount == 1) {
+		if (sim->devq) {
+			cam_simq_release(sim->devq);
+			sim->devq = NULL;
+		}
 		sim->refcount = 0;
 		kfree(sim, M_DEVBUF);
 	} else {
@@ -129,3 +140,21 @@ cam_sim_set_path(struct cam_sim *sim, u_int32_t path_id)
 {
 	sim->path_id = path_id;
 }
+
+/*
+ * Dead sim poll and action functions.  The backend to the sim has gone
+ * away, aka usb, scsi device, etc... deal with it.
+ */
+static void
+deadsim_poll(struct cam_sim *sim)
+{
+	/* empty */
+}
+
+static void
+deadsim_action(struct cam_sim *sim, union ccb *ccb)
+{
+	ccb->ccb_h.status = CAM_TID_INVALID;
+	xpt_done(ccb);
+}
+
