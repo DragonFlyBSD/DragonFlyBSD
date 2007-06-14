@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbdreg.h,v 1.9.2.2 2001/07/30 16:46:44 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbdreg.h,v 1.5 2004/09/19 02:15:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbdreg.h,v 1.5.8.1 2007/06/14 19:53:22 dillon Exp $
  */
 
 #ifndef _DEV_KBD_KBDREG_H_
@@ -80,6 +80,7 @@ struct keyboard {
 	int		kb_io_base;	/* port# if any */
 	int		kb_io_size;	/* # of occupied port */
 	int		kb_led;		/* LED status */
+	int		kb_savemode;	/* device specific (used by usb) */
 	struct keymap	*kb_keymap;	/* key map */
 	struct accentmap *kb_accentmap;	/* accent map */
 	struct fkeytab	*kb_fkeytab;	/* function key strings */
