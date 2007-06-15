@@ -35,13 +35,14 @@
 .\"
 .\"     @(#)exit.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/exit.3,v 1.6.2.4 2001/12/14 18:33:58 ru Exp $
-.\" $DragonFly: src/lib/libc/stdlib/exit.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
+.\" $DragonFly: src/lib/libc/stdlib/exit.3,v 1.3 2007/06/15 19:36:33 swildner Exp $
 .\"
-.Dd June 4, 1993
+.Dd June 15, 2007
 .Dt EXIT 3
 .Os
 .Sh NAME
-.Nm exit
+.Nm exit ,
+.Nm _Exit
 .Nd perform normal program termination
 .Sh LIBRARY
 .Lb libc
@@ -49,12 +50,18 @@
 .In stdlib.h
 .Ft void
 .Fn exit "int status"
+.Ft void
+.Fn _Exit "int status"
 .Sh DESCRIPTION
-.Fn Exit
-terminates a process.
+The
+.Fn exit
+and
+.Fn _Exit
+functions terminate a process.
 .Pp
-Before termination it performs the following functions in the
-order listed:
+Before termination,
+.Fn exit
+performs the following functions in the order listed:
 .Bl -enum -offset indent
 .It
 Call the functions registered with the
@@ -70,6 +77,18 @@ Unlink all files created with the
 function.
 .El
 .Pp
+The C99 function
+.Fn _Exit
+terminates without calling the functions registered with
+.Xr atexit 3
+by just calling
+.Xr _exit 2 .
+Code intended to be portable should always use
+.Xr _exit 2
+directly as it is defined by
+.St -susv2
+as well.
+.Pp
 Passing arbitrary values back to the environment as
 .Ar status
 is considered bad style;
@@ -83,8 +102,9 @@ use the values described in
 .Sh RETURN VALUES
 The
 .Fn exit
-function
-never returns.
+and
+.Fn _Exit
+functions never return.
 .Sh SEE ALSO
 .Xr _exit 2 ,
 .Xr atexit 3 ,
@@ -94,6 +114,7 @@ never returns.
 .Sh STANDARDS
 The
 .Fn exit
-function
-conforms to
-.St -isoC .
+and
+.Fn _Exit
+functions conform to
+.St -isoC-99 .
