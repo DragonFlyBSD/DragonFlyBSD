@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.20 2007/05/07 14:12:16 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.21 2007/06/15 12:04:45 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -261,7 +261,7 @@ ieee80211_input_withiv(struct ieee80211com *ic, struct mbuf *m,
 		}
 		ni->ni_rssi = rssi;
 		ni->ni_rstamp = rstamp;
-		if (HAS_SEQ(type)) {
+		if (HAS_SEQ(type) && !IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 			uint8_t tid;
 			if (IEEE80211_QOS_HAS_SEQ(wh)) {
 				tid = ((struct ieee80211_qosframe *)wh)->
