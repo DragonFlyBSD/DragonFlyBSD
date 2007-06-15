@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.71 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.72 2007/06/15 17:25:05 dillon Exp $
  */
 
 
@@ -232,7 +232,11 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, access_cache_timeout, CTLFLAG_RW,
 
 static int	nfsneg_cache_timeout = NFS_MINATTRTIMO;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, neg_cache_timeout, CTLFLAG_RW, 
-	   &nfsneg_cache_timeout, 0, "NFS NEGATIVE ACCESS cache timeout");
+	   &nfsneg_cache_timeout, 0, "NFS NEGATIVE NAMECACHE timeout");
+
+static int	nfspos_cache_timeout = NFS_MINATTRTIMO;
+SYSCTL_INT(_vfs_nfs, OID_AUTO, pos_cache_timeout, CTLFLAG_RW, 
+	   &nfspos_cache_timeout, 0, "NFS POSITIVE NAMECACHE timeout");
 
 static int	nfsv3_commit_on_close = 0;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, nfsv3_commit_on_close, CTLFLAG_RW, 
@@ -805,12 +809,24 @@ nfsmout:
 	return (error);
 }
 
+static
+void
+nfs_cache_setvp(struct nchandle *nch, struct vnode *vp, int nctimeout)
+{
+	if (nctimeout == 0)
+		nctimeout = 1;
+	else
+		nctimeout *= hz;
+	cache_setvp(nch, vp);
+	cache_settimeout(nch, nctimeout);
+}
+
 /*
  * NEW API CALL - replaces nfs_lookup().  However, we cannot remove 
  * nfs_lookup() until all remaining new api calls are implemented.
  *
  * Resolve a namecache entry.  This function is passed a locked ncp and
- * must call cache_setvp() on it as appropriate to resolve the entry.
+ * must call nfs_cache_setvp() on it as appropriate to resolve the entry.
  */
 static int
 nfs_nresolve(struct vop_nresolve_args *ap)
@@ -860,16 +876,8 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 		 * we cannot simply destroy the entry because it is used
 		 * as a placeholder by the caller.
 		 */
-		if (error == ENOENT) {
-			int nticks;
-
-			if (nfsneg_cache_timeout)
-				nticks = nfsneg_cache_timeout * hz;
-			else
-				nticks = 1;
-			cache_setvp(ap->a_nch, NULL);
-			cache_settimeout(ap->a_nch, nticks);
-		}
+		if (error == ENOENT)
+			nfs_cache_setvp(ap->a_nch, NULL, nfsneg_cache_timeout);
 		nfsm_postop_attr(dvp, attrflag, NFS_LATTR_NOSHRINK);
 		m_freem(mrep);
 		goto nfsmout;
@@ -910,7 +918,7 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 	} else {
 		nfsm_loadattr(nvp, NULL);
 	}
-	cache_setvp(ap->a_nch, nvp);
+	nfs_cache_setvp(ap->a_nch, nvp, nfspos_cache_timeout);
 	m_freem(mrep);
 nfsmout:
 	vput(dvp);
@@ -2532,7 +2540,8 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 					nlc.nlc_nameptr);
 				    nch = cache_nlookup(&dnch, &nlc);
 				    cache_setunresolved(&nch);
-				    cache_setvp(&nch, newvp);
+				    nfs_cache_setvp(&nch, newvp,
+						    nfspos_cache_timeout);
 				    cache_put(&nch);
 				} else {
 				    kprintf("NFS/READDIRPLUS, UNABLE TO ENTER"
