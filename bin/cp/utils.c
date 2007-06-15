@@ -32,7 +32,7 @@
  *
  * @(#)utils.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/utils.c,v 1.45 2005/02/09 17:37:37 ru Exp $
- * $DragonFly: src/bin/cp/utils.c,v 1.10 2007/06/12 20:56:16 corecode Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.11 2007/06/15 07:02:51 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -169,7 +169,7 @@ copy_file(const FTSENT *entp, int dne)
 #endif
 	{
 		wtotal = 0;
-		while ((ssize_t)(rcount = read(from_fd, buf, MAXBSIZE)) != 0) {
+		while ((ssize_t)(rcount = read(from_fd, buf, MAXBSIZE)) > 0) {
 			for (bufp = buf, wresid = rcount; ;
 			    bufp += wcount, wresid -= wcount) {
 				wcount = write(to_fd, bufp, wresid);

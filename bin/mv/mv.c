@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/bin/mv/mv.c,v 1.24.2.6 2004/03/24 08:34:36 pjd Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.13 2007/06/12 20:56:16 corecode Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.14 2007/06/15 07:02:51 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -274,7 +274,7 @@ fastcopy(const char *from, const char *to, struct stat *sbp)
 		close(from_fd);
 		return (1);
 	}
-	while ((ssize_t)(nread = read(from_fd, bp, (size_t)blen)) != -1) {
+	while ((ssize_t)(nread = read(from_fd, bp, (size_t)blen)) > 0) {
 		wcount = write(to_fd, bp, nread);
 		wtotal += wcount;
 
