@@ -6,7 +6,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/share/man/man4/md.4,v 1.3.2.4 2001/06/18 22:00:12 dd Exp $
-.\" $DragonFly: src/share/man/man4/md.4,v 1.3 2007/05/17 08:19:01 swildner Exp $
+.\" $DragonFly: src/share/man/man4/md.4,v 1.4 2007/06/15 10:45:33 swildner Exp $
 .\"
 .Dd July 4, 2000
 .Dt MD 4
@@ -107,10 +107,10 @@ backed
 device on
 .Pa /tmp :
 .Bd -literal
-if [ -e /dev/md0 -a -e /dev/md0c ]; then
-	disklabel -r -w md0 auto && \\
-	newfs /dev/md0c && \\
-	mount /dev/md0c /tmp && \\
+if [ -e /dev/md0s0 -a -e /dev/md0s0c ]; then
+	disklabel -r -w md0s0 auto && \\
+	newfs /dev/md0s0c && \\
+	mount /dev/md0s0c /tmp && \\
 	chmod 1777 /tmp
 fi
 .Ed
