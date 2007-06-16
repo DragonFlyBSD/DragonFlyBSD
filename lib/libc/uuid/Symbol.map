@@ -1,0 +1,15 @@
+/*
+ * $FreeBSD: src/lib/libc/uuid/Symbol.map,v 1.2 2007/04/29 14:05:20 deischen Exp $
+ * $DragonFly: src/lib/libc/uuid/Symbol.map,v 1.1 2007/06/16 19:57:14 dillon Exp $
+ */
+
+FBSD_1.0 {
+	uuid_to_string;
+	uuid_is_nil;
+	uuid_hash;
+	uuid_from_string;
+	uuid_equal;
+	uuid_create_nil;
+	uuid_create;
+	uuid_compare;
+};

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/uuid.h,v 1.6 2005/10/07 13:37:10 marcel Exp $
- * $DragonFly: src/sys/sys/uuid.h,v 1.1 2007/06/16 18:55:24 dillon Exp $
+ * $DragonFly: src/sys/sys/uuid.h,v 1.2 2007/06/16 19:57:08 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -57,9 +57,7 @@ struct uuid {
 
 struct sbuf;
 
-#if 0
 struct uuid *kern_uuidgen(struct uuid *, size_t);
-#endif
 
 int snprintf_uuid(char *, size_t, struct uuid *);
 int printf_uuid(struct uuid *);

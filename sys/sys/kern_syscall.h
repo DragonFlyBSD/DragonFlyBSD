@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.36 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.37 2007/06/16 19:57:08 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -63,6 +63,7 @@ struct vmspace;
 struct vnode;
 struct file;
 struct ucred;
+struct uuid;
 
 /*
  * Prototypes for syscalls in kern/kern_descrip.c
@@ -158,6 +159,7 @@ int kern_symlink(struct nlookupdata *nd, char *path, int mode);
 int kern_truncate(struct nlookupdata *nd, off_t length);
 int kern_unlink(struct nlookupdata *nd);
 int kern_utimes(struct nlookupdata *nd, struct timeval *tptr);
+struct uuid *kern_uuidgen(struct uuid *store, size_t count);
 
 /*
  * Prototypes for syscalls in kern/vfs_cache.c

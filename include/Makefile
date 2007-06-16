@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.33 2007/01/19 07:23:39 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.34 2007/06/16 19:57:11 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -21,8 +21,8 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	search.h setjmp.h sgtty.h \
 	signal.h stab.h stdarg.h stdbool.h stddef.h stdint.h stdio.h stdlib.h \
 	string.h stringlist.h strings.h struct.h sysexits.h tar.h time.h \
-	timers.h ttyent.h unistd.h ulimit.h utime.h utmp.h vis.h wchar.h \
-	wctype.h
+	timers.h ttyent.h unistd.h ulimit.h utime.h utmp.h uuid.h vis.h \
+	wchar.h wctype.h
 
 MHDRS=	float.h floatingpoint.h varargs.h
 

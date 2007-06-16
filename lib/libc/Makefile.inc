@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc/Makefile.inc,v 1.5 1999/08/27 23:58:06 peter Exp $
-# $DragonFly: src/lib/libc/Makefile.inc,v 1.5 2006/08/19 09:14:27 swildner Exp $
+# $DragonFly: src/lib/libc/Makefile.inc,v 1.6 2007/06/16 19:57:12 dillon Exp $
 #
 # This file contains make rules that are shared by libc and libc_r.
 #
@@ -39,6 +39,7 @@ NOASM=
 .include "${.CURDIR}/../libc/string/Makefile.inc"
 .include "${.CURDIR}/../libc/sys/Makefile.inc"
 .include "${.CURDIR}/../libc/rpc/Makefile.inc"
+.include "${.CURDIR}/../libc/uuid/Makefile.inc"
 .include "${.CURDIR}/../libc/xdr/Makefile.inc"
 .if !defined(NO_YP_LIBC)
 CFLAGS+= -DYP

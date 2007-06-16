@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_uuid.c,v 1.13 2007/04/23 12:53:00 pjd Exp $
- * $DragonFly: src/sys/kern/kern_uuid.c,v 1.1 2007/06/16 18:55:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_uuid.c,v 1.2 2007/06/16 19:57:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,10 +32,13 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
+#include <sys/kern_syscall.h>
+#include <sys/random.h>
 #include <sys/sbuf.h>
 #include <sys/socket.h>
 #include <sys/sysproto.h>
 #include <sys/uuid.h>
+#include <net/if_var.h>
 
 /*
  * See also:
@@ -60,49 +63,28 @@ struct uuid_private {
 	uint16_t	node[UUID_NODE_LEN>>1];
 };
 
-#if 0	/* NOT YET */
-
 static struct uuid_private uuid_last;
 
-static struct mtx uuid_mutex;
-MTX_SYSINIT(uuid_lock, &uuid_mutex, "UUID generator mutex lock", MTX_DEF);
+static struct lock uuid_lock;
+
+static
+void
+uuid_lock_init(void *arg __unused)
+{
+	lockinit(&uuid_lock, "uuid", 0, 0);
+}
+SYSINIT(uuid_lock, SI_BOOT1_POST, SI_ORDER_ANY, uuid_lock_init, NULL);
 
 /*
- * Return the first MAC address we encounter or, if none was found,
- * construct a sufficiently random multicast address. We don't try
- * to return the same MAC address as previously returned. We always
- * generate a new multicast address if no MAC address exists in the
- * system.
- * It would be nice to know if 'ifnet' or any of its sub-structures
- * has been changed in any way. If not, we could simply skip the
- * scan and safely return the MAC address we returned before.
+ * Ask the network subsystem for a real MAC address from any of the
+ * system interfaces.  If we can't find one, generate a random multicast
+ * MAC address.
  */
 static void
 uuid_node(uint16_t *node)
 {
-	struct ifnet *ifp;
-	struct ifaddr *ifa;
-	struct sockaddr_dl *sdl;
-	int i;
-
-	IFNET_RLOCK();
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
-		/* Walk the address list */
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
-			sdl = (struct sockaddr_dl*)ifa->ifa_addr;
-			if (sdl != NULL && sdl->sdl_family == AF_LINK &&
-			    sdl->sdl_type == IFT_ETHER) {
-				/* Got a MAC address. */
-				bcopy(LLADDR(sdl), node, UUID_NODE_LEN);
-				IFNET_RUNLOCK();
-				return;
-			}
-		}
-	}
-	IFNET_RUNLOCK();
-
-	for (i = 0; i < (UUID_NODE_LEN>>1); i++)
-		node[i] = (uint16_t)arc4random();
+	if (if_getanyethermac(node, UUID_NODE_LEN) != 0)
+		read_random(node, UUID_NODE_LEN);
 	*((uint8_t*)node) |= 0x01;
 }
 
@@ -115,13 +97,13 @@ uuid_node(uint16_t *node)
 static uint64_t
 uuid_time(void)
 {
-	struct bintime bt;
+	struct timespec ts;
 	uint64_t time = 0x01B21DD213814000LL;
 
-	bintime(&bt);
-	time += (uint64_t)bt.sec * 10000000LL;
-	time += (10000000LL * (uint32_t)(bt.frac >> 32)) >> 32;
-	return (time & ((1LL << 60) - 1LL));
+	nanotime(&ts);
+	time += ts.tv_sec * 10000000LL;		/* 100 ns increments */
+	time += ts.tv_nsec / 100;		/* 100 ns increments */
+	return (time & ((1LL << 60) - 1LL));	/* limit to 60 bits */
 }
 
 struct uuid *
@@ -131,24 +113,26 @@ kern_uuidgen(struct uuid *store, size_t count)
 	uint64_t time;
 	size_t n;
 
-	mtx_lock(&uuid_mutex);
+	lockmgr(&uuid_lock, LK_EXCLUSIVE | LK_RETRY);
 
 	uuid_node(uuid.node);
 	time = uuid_time();
 
 	if (uuid_last.time.ll == 0LL || uuid_last.node[0] != uuid.node[0] ||
 	    uuid_last.node[1] != uuid.node[1] ||
-	    uuid_last.node[2] != uuid.node[2])
-		uuid.seq = (uint16_t)arc4random() & 0x3fff;
-	else if (uuid_last.time.ll >= time)
+	    uuid_last.node[2] != uuid.node[2]) {
+		read_random(&uuid.seq, sizeof(uuid.seq));
+		uuid.seq &= 0x3fff;
+	} else if (uuid_last.time.ll >= time) {
 		uuid.seq = (uuid_last.seq + 1) & 0x3fff;
-	else
+	} else {
 		uuid.seq = uuid_last.seq;
+	}
 
 	uuid_last = uuid;
 	uuid_last.time.ll = (time + count - 1) & ((1LL << 60) - 1LL);
 
-	mtx_unlock(&uuid_mutex);
+	lockmgr(&uuid_lock, LK_RELEASE);
 
 	/* Set sequence and variant and deal with byte order. */
 	uuid.seq = htobe16(uuid.seq | 0x8000);
@@ -165,14 +149,13 @@ kern_uuidgen(struct uuid *store, size_t count)
 	return (store);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct uuidgen_args {
-	struct uuid *store;
-	int	count;
-};
-#endif
+/*
+ * uuidgen(struct uuid *store, int count)
+ *
+ * Generate an array of new UUIDs
+ */
 int
-uuidgen(struct thread *td, struct uuidgen_args *uap)
+sys_uuidgen(struct uuidgen_args *uap)
 {
 	struct uuid *store;
 	size_t count;
@@ -188,14 +171,12 @@ uuidgen(struct thread *td, struct uuidgen_args *uap)
 		return (EINVAL);
 
 	count = uap->count;
-	store = malloc(count * sizeof(struct uuid), M_TEMP, M_WAITOK);
+	store = kmalloc(count * sizeof(struct uuid), M_TEMP, M_WAITOK);
 	kern_uuidgen(store, count);
 	error = copyout(store, uap->store, count * sizeof(struct uuid));
-	free(store, M_TEMP);
+	kfree(store, M_TEMP);
 	return (error);
 }
-
-#endif	/* NOT YET */
 
 int
 snprintf_uuid(char *buf, size_t sz, struct uuid *uuid)
