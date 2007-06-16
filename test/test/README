@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.45 2007/06/03 11:52:45 dillon Exp $
+$DragonFly: src/test/test/README,v 1.46 2007/06/16 03:10:06 josepht Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -23,3 +23,5 @@ and march them down again.
 Hello World!
 
      Going to bed now!
+
+Hello
