@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/mixer.h,v 1.14 2005/01/06 01:43:21 imp Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.h,v 1.5 2007/01/04 21:47:03 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/mixer.h,v 1.14.2.1 2007/05/13 20:53:39 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.h,v 1.6 2007/06/16 19:48:05 hasso Exp $
  */
 
 int mixer_init(device_t dev, kobj_class_t cls, void *devinfo);
@@ -40,6 +40,10 @@ void mix_setdevs(struct snd_mixer *m, u_int32_t v);
 void mix_setrecdevs(struct snd_mixer *m, u_int32_t v);
 u_int32_t mix_getdevs(struct snd_mixer *m);
 u_int32_t mix_getrecdevs(struct snd_mixer *m);
+void mix_setparentchild(struct snd_mixer *m, u_int32_t parent, u_int32_t childs);
+void mix_setrealdev(struct snd_mixer *m, u_int32_t dev, u_int32_t realdev);
+u_int32_t mix_getparent(struct snd_mixer *m, u_int32_t dev);
+u_int32_t mix_getchild(struct snd_mixer *m, u_int32_t dev);
 void *mix_getdevinfo(struct snd_mixer *m);
 
 /*

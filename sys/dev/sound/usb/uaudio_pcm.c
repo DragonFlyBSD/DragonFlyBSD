@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.15.2.1 2005/12/30 19:55:54 netchild Exp $ */
-/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.7 2007/01/20 21:32:36 swildner Exp $ */
+/* $FreeBSD: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.15.2.2 2007/05/13 20:53:40 ariff Exp $ */
+/* $DragonFly: src/sys/dev/sound/usb/uaudio_pcm.c,v 1.8 2007/06/16 19:48:05 hasso Exp $ */
 
 /*-
  * Copyright (c) 2000-2002 Hiroyuki Aizu <aizu@navi.org>
@@ -244,12 +244,20 @@ ua_mixer_init(struct snd_mixer *m)
 	d = device_get_softc(ua->sc_dev);
 
 	mask = uaudio_query_mix_info(pa_dev);
-	if (d && !(mask & SOUND_MIXER_PCM)) {
-		/*
-		 * Emulate missing pcm mixer controller
-		 * through FEEDER_VOLUME
-		 */
-		 d->flags |= SD_F_SOFTVOL;
+	if (d != NULL) {
+		if (!(mask & SOUND_MASK_PCM)) {
+			/*
+			 * Emulate missing pcm mixer controller
+			 * through FEEDER_VOLUME
+			 */
+			 d->flags |= SD_F_SOFTPCMVOL;
+		}
+		if (!(mask & SOUND_MASK_VOLUME)) {
+			mix_setparentchild(m, SOUND_MIXER_VOLUME,
+			    SOUND_MASK_PCM);
+			mix_setrealdev(m, SOUND_MIXER_VOLUME,
+			    SOUND_MIXER_NONE);
+		}
 	}
 	mix_setdevs(m,	mask);
 

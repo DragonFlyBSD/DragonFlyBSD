@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.93.2.3 2006/04/04 17:43:48 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.9 2007/06/14 21:48:36 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.93.2.5 2007/06/04 09:06:05 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.10 2007/06/16 19:48:05 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.9 2007/06/14 21:48:36 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.10 2007/06/16 19:48:05 hasso Exp $");
 
 devclass_t pcm_devclass;
 
@@ -46,7 +46,7 @@ int snd_unit = 0;
 TUNABLE_INT("hw.snd.unit", &snd_unit);
 #endif
 
-int snd_maxautovchans = 0;
+int snd_maxautovchans = 4;
 TUNABLE_INT("hw.snd.maxautovchans", &snd_maxautovchans);
 
 SYSCTL_NODE(_hw, OID_AUTO, snd, CTLFLAG_RD, 0, "Sound driver");
@@ -373,7 +373,8 @@ sysctl_hw_snd_unit(SYSCTL_HANDLER_ARGS)
 	unit = snd_unit;
 	error = sysctl_handle_int(oidp, &unit, sizeof(unit), req);
 	if (error == 0 && req->newptr != NULL) {
-		if (unit < 0 || unit >= devclass_get_maxunit(pcm_devclass))
+		if (unit < 0 || (pcm_devclass != NULL &&
+		    unit >= devclass_get_maxunit(pcm_devclass)))
 			return EINVAL;
 		d = devclass_get_softc(pcm_devclass, unit);
 		if (d == NULL || SLIST_EMPTY(&d->channels))

@@ -22,15 +22,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3.2.1 2005/12/30 19:55:54 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.4 2007/01/04 21:47:03 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3.2.3 2007/06/08 17:33:38 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.5 2007/06/16 19:48:05 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pcm/ac97_patch.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.4 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.5 2007/06/16 19:48:05 hasso Exp $");
 
 void ad1886_patch(struct ac97_info* codec)
 {
@@ -49,13 +49,60 @@ void ad198x_patch(struct ac97_info* codec)
 	ac97_wrcd(codec, 0x76, ac97_rdcd(codec, 0x76) | 0x0420);
 }
 
+void ad1981b_patch(struct ac97_info* codec)
+{
+	/*
+	 * Enable headphone jack sensing.
+	 */
+	switch (ac97_getsubvendor(codec)) {
+	case 0x02d91014:	/* IBM Thinkcentre */
+		ac97_wrcd(codec, AC97_AD_JACK_SPDIF,
+		    ac97_rdcd(codec, AC97_AD_JACK_SPDIF) | 0x0800);
+		break;
+	default:
+		break;
+	}
+}
+
 void cmi9739_patch(struct ac97_info* codec)
 {
 	/*
-	 * Few laptops (notably ASUS W1000N) need extra register
-	 * initialization to power up the internal speakers.
+	 * Few laptops need extra register initialization
+	 * to power up the internal speakers.
 	 */
-	ac97_wrcd(codec, AC97_REG_POWER, 0x000f);
-	ac97_wrcd(codec, AC97_MIXEXT_CLFE, 0x0000);
-	ac97_wrcd(codec, 0x64, 0x7110);
+	switch (ac97_getsubvendor(codec)) {
+	case 0x18431043:	/* ASUS W1000N */
+		ac97_wrcd(codec, AC97_REG_POWER, 0x000f);
+		ac97_wrcd(codec, AC97_MIXEXT_CLFE, 0x0000);
+		ac97_wrcd(codec, 0x64, 0x7110);
+		break;
+	default:
+		break;
+	}
+}
+
+void alc655_patch(struct ac97_info* codec)
+{
+	/*
+	 * MSI (Micro-Star International) specific EAPD quirk.
+	 */
+	switch (ac97_getsubvendor(codec)) {
+	case 0x00611462:	/* MSI S250 */
+	case 0x01311462:	/* MSI S270 */
+	case 0x01611462:	/* LG K1 Express */
+	case 0x03511462:	/* MSI L725 */
+		ac97_wrcd(codec, 0x7a, ac97_rdcd(codec, 0x7a) & 0xfffd);
+		break;
+	case 0x10ca1734:
+		/*
+		 * Amilo Pro V2055 with ALC655 has phone out by default
+		 * disabled (surround on), leaving us only with internal
+		 * speakers. This should really go to mixer. We write the
+		 * Data Flow Control reg.
+		 */
+		ac97_wrcd(codec, 0x6a, ac97_rdcd(codec, 0x6a) | 0x0001);
+		break;
+	default:
+		break;
+	}
 }

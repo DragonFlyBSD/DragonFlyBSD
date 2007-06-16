@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/atiixp.c,v 1.2.2.5 2006/11/14 13:08:11 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.3 2007/05/13 18:33:58 swildner Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/atiixp.c,v 1.2.2.7 2007/04/26 08:21:44 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.4 2007/06/16 19:48:05 hasso Exp $
  */
 
 /*
@@ -66,7 +66,7 @@
 
 #include <dev/sound/pci/atiixp.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.3 2007/05/13 18:33:58 swildner Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.4 2007/06/16 19:48:05 hasso Exp $");
 
 struct atiixp_dma_op {
 	volatile uint32_t addr;
@@ -800,6 +800,7 @@ atiixp_chip_post_init(void *arg)
 
 	subdev = (pci_get_subdevice(sc->dev) << 16) | pci_get_subvendor(sc->dev);
 	switch (subdev) {
+	case 0x11831043:	/* ASUS A6R */
 	case 0x2043161f:	/* Maxselect x710s - http://maxselect.ru/ */
 		ac97_setflags(sc->codec, ac97_getflags(sc->codec) | AC97_F_EAPD_INV);
 		break;
@@ -844,27 +845,30 @@ atiixp_release_resource(struct atiixp_info *sc)
 	}
 	if (sc->ih) {
 		bus_teardown_intr(sc->dev, sc->irq, sc->ih);
-		sc->ih = 0;
+		sc->ih = NULL;
 	}
 	if (sc->reg) {
 		bus_release_resource(sc->dev, sc->regtype, sc->regid, sc->reg);
-		sc->reg = 0;
+		sc->reg = NULL;
 	}
 	if (sc->irq) {
 		bus_release_resource(sc->dev, SYS_RES_IRQ, sc->irqid, sc->irq);
-		sc->irq = 0;
+		sc->irq = NULL;
 	}
 	if (sc->parent_dmat) {
 		bus_dma_tag_destroy(sc->parent_dmat);
-		sc->parent_dmat = 0;
+		sc->parent_dmat = NULL;
 	}
-	if (sc->sgd_dmamap) {
+	if (sc->sgd_dmamap)
 		bus_dmamap_unload(sc->sgd_dmat, sc->sgd_dmamap);
-		sc->sgd_dmamap = 0;
+	if (sc->sgd_table) {
+		bus_dmamem_free(sc->sgd_dmat, sc->sgd_table, sc->sgd_dmamap);
+		sc->sgd_table = NULL;
 	}
+	sc->sgd_dmamap = NULL;
 	if (sc->sgd_dmat) {
 		bus_dma_tag_destroy(sc->sgd_dmat);
-		sc->sgd_dmat = 0;
+		sc->sgd_dmat = NULL;
 	}
 	if (sc->lock) {
 		snd_mtxfree(sc->lock);

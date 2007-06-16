@@ -22,12 +22,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.h,v 1.3.2.1 2005/12/30 19:55:54 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.h,v 1.4 2007/01/04 21:47:03 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.h,v 1.3.2.2 2007/04/26 08:30:52 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.h,v 1.5 2007/06/16 19:48:05 hasso Exp $
  */
 
 typedef void (*ac97_patch)(struct ac97_info*);
 
 void ad1886_patch(struct ac97_info*);
 void ad198x_patch(struct ac97_info*);
+void ad1981b_patch(struct ac97_info*);
 void cmi9739_patch(struct ac97_info*);
+void alc655_patch(struct ac97_info*);

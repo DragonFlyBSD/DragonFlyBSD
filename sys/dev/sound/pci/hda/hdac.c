@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/hda/hdac.c,v 1.6 2006/10/12 04:19:37 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.3 2007/05/11 01:03:06 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/hda/hdac.c,v 1.36.2.2 2007/06/13 01:52:26 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.4 2007/06/16 19:48:05 hasso Exp $
  */
 
 /*
@@ -47,7 +47,7 @@
  *        http://people.freebsd.org/~ariff/HDA/parser.rb . This crude
  *        ruby parser take the verbose dmesg dump as its input. Refer to
  *        http://www.microsoft.com/whdc/device/audio/default.mspx for various
- *        interesting documents, especiall UAA (Universal Audio Architecture).
+ *        interesting documents, especially UAA (Universal Audio Architecture).
  *     4) Possible vendor specific support.
  *        (snd_hda_intel, snd_hda_ati, etc..)
  *
@@ -83,26 +83,15 @@
 
 #include "mixer_if.h"
 
-#define HDA_DRV_TEST_REV	"20061009_0031"
+#define HDA_DRV_TEST_REV	"20070611_0045"
 #define HDA_WIDGET_PARSER_REV	1
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.3 2007/05/11 01:03:06 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.4 2007/06/16 19:48:05 hasso Exp $");
 
-#undef HDA_DEBUG_ENABLED
-#define HDA_DEBUG_ENABLED	1
-
-#ifdef HDA_DEBUG_ENABLED
-#define HDA_DEBUG(stmt)	do {	\
-	stmt			\
-} while(0)
-#else
-#define HDA_DEBUG(stmt)
-#endif
-
-#define HDA_BOOTVERBOSE(stmt)	do {	\
-	if (bootverbose) {			\
-		stmt				\
-	}					\
+#define HDA_BOOTVERBOSE(stmt)	do {			\
+	if (bootverbose != 0) {				\
+		stmt					\
+	}						\
 } while(0)
 
 #if 1
@@ -113,7 +102,19 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.3 2007/05/11 
 #define hdac_lock(sc)		snd_mtxlock((sc)->lock)
 #define hdac_unlock(sc)		snd_mtxunlock((sc)->lock)
 #define hdac_lockassert(sc)	snd_mtxassert((sc)->lock)
-#define hdac_lockowned(sc)	(1)/*mtx_owned((sc)->lock)*/
+#define hdac_lockowned(sc)	(1)/* mtx_owned((sc)->lock) */
+
+#if 0 /* TODO: No uncacheable DMA support in DragonFly. */
+#include <machine/specialreg.h>
+#define HDAC_DMA_ATTR(sc, v, s, attr)	do {				\
+	vm_offset_t va = (vm_offset_t)(v);				\
+	vm_size_t sz = (vm_size_t)(s);					\
+	if ((sc) != NULL && (sc)->nocache != 0 && va != 0 && sz != 0)	\
+		(void)pmap_change_attr(va, sz, (attr));			\
+} while(0)
+#else
+#define HDAC_DMA_ATTR(...)
+#endif
 
 #define HDA_FLAG_MATCH(fl, v)	(((fl) & (v)) == (v))
 #define HDA_DEV_MATCH(fl, v)	((fl) == (v) || \
@@ -124,6 +125,9 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.3 2007/05/11 
 				((fl) & 0xffff0000) == ((v) & 0xffff0000)))
 #define HDA_MATCH_ALL		0xffffffff
 #define HDAC_INVALID		0xffffffff
+
+/* Default controller / jack sense poll: 250ms */
+#define HDAC_POLL_INTERVAL	max(hz >> 2, 1)
 
 #define HDA_MODEL_CONSTRUCT(vendor, model)	\
 		(((uint32_t)(model) << 16) | ((vendor##_VENDORID) & 0xffff))
@@ -166,17 +170,28 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.3 2007/05/11 
 
 /* OEM/subvendors */
 
+/* Intel */
+#define INTEL_D101GGC_SUBVENDOR	HDA_MODEL_CONSTRUCT(INTEL, 0xd600)
+
 /* HP/Compaq */
 #define HP_VENDORID		0x103c
 #define HP_V3000_SUBVENDOR	HDA_MODEL_CONSTRUCT(HP, 0x30b5)
 #define HP_NX7400_SUBVENDOR	HDA_MODEL_CONSTRUCT(HP, 0x30a2)
 #define HP_NX6310_SUBVENDOR	HDA_MODEL_CONSTRUCT(HP, 0x30aa)
+#define HP_NX6325_SUBVENDOR	HDA_MODEL_CONSTRUCT(HP, 0x30b0)
+#define HP_XW4300_SUBVENDOR	HDA_MODEL_CONSTRUCT(HP, 0x3013)
+#define HP_3010_SUBVENDOR	HDA_MODEL_CONSTRUCT(HP, 0x3010)
+#define HP_DV5000_SUBVENDOR	HDA_MODEL_CONSTRUCT(HP, 0x30a5)
 #define HP_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(HP, 0xffff)
+/* What is wrong with XN 2563 anyway? (Got the picture ?) */
+#define HP_NX6325_SUBVENDORX	0x103c30b0
 
 /* Dell */
 #define DELL_VENDORID		0x1028
 #define DELL_D820_SUBVENDOR	HDA_MODEL_CONSTRUCT(DELL, 0x01cc)
 #define DELL_I1300_SUBVENDOR	HDA_MODEL_CONSTRUCT(DELL, 0x01c9)
+#define DELL_XPSM1210_SUBVENDOR	HDA_MODEL_CONSTRUCT(DELL, 0x01d7)
+#define DELL_OPLX745_SUBVENDOR	HDA_MODEL_CONSTRUCT(DELL, 0x01da)
 #define DELL_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(DELL, 0xffff)
 
 /* Clevo */
@@ -186,17 +201,77 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.3 2007/05/11 
 
 /* Acer */
 #define ACER_VENDORID		0x1025
+#define ACER_A5050_SUBVENDOR	HDA_MODEL_CONSTRUCT(ACER, 0x010f)
+#define ACER_3681WXM_SUBVENDOR	HDA_MODEL_CONSTRUCT(ACER, 0x0110)
 #define ACER_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(ACER, 0xffff)
 
 /* Asus */
 #define ASUS_VENDORID		0x1043
 #define ASUS_M5200_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x1993)
+#define ASUS_U5F_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x1263)
+#define ASUS_A8JC_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x1153)
+#define ASUS_P1AH2_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x81cb)
+#define ASUS_A7M_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x1323)
+#define ASUS_A7T_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x13c2)
+#define ASUS_W6F_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x1263)
+#define ASUS_W2J_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x1971)
+#define ASUS_F3JC_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x1338)
+#define ASUS_M2V_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x81e7)
+#define ASUS_M2N_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x8234)
+#define ASUS_M2NPVMX_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x81cb)
+#define ASUS_P5BWD_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x81ec)
 #define ASUS_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0xffff)
 
 /* IBM / Lenovo */
 #define IBM_VENDORID		0x1014
 #define IBM_M52_SUBVENDOR	HDA_MODEL_CONSTRUCT(IBM, 0x02f6)
 #define IBM_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(IBM, 0xffff)
+
+/* Lenovo */
+#define LENOVO_VENDORID		0x17aa
+#define LENOVO_3KN100_SUBVENDOR	HDA_MODEL_CONSTRUCT(LENOVO, 0x2066)
+#define LENOVO_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(LENOVO, 0xffff)
+
+/* Samsung */
+#define SAMSUNG_VENDORID	0x144d
+#define SAMSUNG_Q1_SUBVENDOR	HDA_MODEL_CONSTRUCT(SAMSUNG, 0xc027)
+#define SAMSUNG_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(SAMSUNG, 0xffff)
+
+/* Medion ? */
+#define MEDION_VENDORID			0x161f
+#define MEDION_MD95257_SUBVENDOR	HDA_MODEL_CONSTRUCT(MEDION, 0x203d)
+#define MEDION_ALL_SUBVENDOR		HDA_MODEL_CONSTRUCT(MEDION, 0xffff)
+
+/*
+ * Apple Intel MacXXXX seems using Sigmatel codec/vendor id
+ * instead of their own, which is beyond my comprehension
+ * (see HDA_CODEC_STAC9221 below).
+ */
+#define APPLE_INTEL_MAC		0x76808384
+
+/* LG Electronics */
+#define LG_VENDORID		0x1854
+#define LG_LW20_SUBVENDOR	HDA_MODEL_CONSTRUCT(LG, 0x0018)
+#define LG_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(LG, 0xffff)
+
+/* Fujitsu Siemens */
+#define FS_VENDORID		0x1734
+#define FS_PA1510_SUBVENDOR	HDA_MODEL_CONSTRUCT(FS, 0x10b8)
+#define FS_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(FS, 0xffff)
+
+/* Toshiba */
+#define TOSHIBA_VENDORID	0x1179
+#define TOSHIBA_U200_SUBVENDOR	HDA_MODEL_CONSTRUCT(TOSHIBA, 0x0001)
+#define TOSHIBA_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(TOSHIBA, 0xffff)
+
+/* Micro-Star International (MSI) */
+#define MSI_VENDORID		0x1462
+#define MSI_MS1034_SUBVENDOR	HDA_MODEL_CONSTRUCT(MSI, 0x0349)
+#define MSI_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(MSI, 0xffff)
+
+/* Uniwill ? */
+#define UNIWILL_VENDORID	0x1584
+#define UNIWILL_9075_SUBVENDOR	HDA_MODEL_CONSTRUCT(UNIWILL, 0x9075)
 
 
 /* Misc constants.. */
@@ -213,18 +288,48 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.3 2007/05/11 
 #define HDA_ADC_PATH	(1 << 1)
 #define HDA_ADC_RECSEL	(1 << 2)
 
+#define HDA_DAC_LOCKED	(1 << 3)
+#define HDA_ADC_LOCKED	(1 << 4)
+
 #define HDA_CTL_OUT	(1 << 0)
 #define HDA_CTL_IN	(1 << 1)
 #define HDA_CTL_BOTH	(HDA_CTL_IN | HDA_CTL_OUT)
 
-#define HDA_GPIO_MAX		15
-/* 0 - 14 = GPIO */
+#define HDA_GPIO_MAX		8
+/* 0 - 7 = GPIO , 8 = Flush */
 #define HDA_QUIRK_GPIO0		(1 << 0)
 #define HDA_QUIRK_GPIO1		(1 << 1)
 #define HDA_QUIRK_GPIO2		(1 << 2)
-#define HDA_QUIRK_SOFTPCMVOL	(1 << 15)
-#define HDA_QUIRK_FIXEDRATE	(1 << 16)
-#define HDA_QUIRK_FORCESTEREO	(1 << 17)
+#define HDA_QUIRK_GPIO3		(1 << 3)
+#define HDA_QUIRK_GPIO4		(1 << 4)
+#define HDA_QUIRK_GPIO5		(1 << 5)
+#define HDA_QUIRK_GPIO6		(1 << 6)
+#define HDA_QUIRK_GPIO7		(1 << 7)
+#define HDA_QUIRK_GPIOFLUSH	(1 << 8)
+
+/* 9 - 25 = anything else */
+#define HDA_QUIRK_SOFTPCMVOL	(1 << 9)
+#define HDA_QUIRK_FIXEDRATE	(1 << 10)
+#define HDA_QUIRK_FORCESTEREO	(1 << 11)
+#define HDA_QUIRK_EAPDINV	(1 << 12)
+#define HDA_QUIRK_DMAPOS	(1 << 13)
+
+/* 26 - 31 = vrefs */
+#define HDA_QUIRK_IVREF50	(1 << 26)
+#define HDA_QUIRK_IVREF80	(1 << 27)
+#define HDA_QUIRK_IVREF100	(1 << 28)
+#define HDA_QUIRK_OVREF50	(1 << 29)
+#define HDA_QUIRK_OVREF80	(1 << 30)
+#define HDA_QUIRK_OVREF100	(1 << 31)
+
+#define HDA_QUIRK_IVREF		(HDA_QUIRK_IVREF50 | HDA_QUIRK_IVREF80 | \
+							HDA_QUIRK_IVREF100)
+#define HDA_QUIRK_OVREF		(HDA_QUIRK_OVREF50 | HDA_QUIRK_OVREF80 | \
+							HDA_QUIRK_OVREF100)
+#define HDA_QUIRK_VREF		(HDA_QUIRK_IVREF | HDA_QUIRK_OVREF)
+
+#define SOUND_MASK_SKIP		(1 << 30)
+#define SOUND_MASK_DISABLE	(1 << 31)
 
 static const struct {
 	char *key;
@@ -233,9 +338,26 @@ static const struct {
 	{ "gpio0", HDA_QUIRK_GPIO0 },
 	{ "gpio1", HDA_QUIRK_GPIO1 },
 	{ "gpio2", HDA_QUIRK_GPIO2 },
+	{ "gpio3", HDA_QUIRK_GPIO3 },
+	{ "gpio4", HDA_QUIRK_GPIO4 },
+	{ "gpio5", HDA_QUIRK_GPIO5 },
+	{ "gpio6", HDA_QUIRK_GPIO6 },
+	{ "gpio7", HDA_QUIRK_GPIO7 },
+	{ "gpioflush", HDA_QUIRK_GPIOFLUSH },
 	{ "softpcmvol", HDA_QUIRK_SOFTPCMVOL },
 	{ "fixedrate", HDA_QUIRK_FIXEDRATE },
 	{ "forcestereo", HDA_QUIRK_FORCESTEREO },
+	{ "eapdinv", HDA_QUIRK_EAPDINV },
+	{ "dmapos", HDA_QUIRK_DMAPOS },
+	{ "ivref50", HDA_QUIRK_IVREF50 },
+	{ "ivref80", HDA_QUIRK_IVREF80 },
+	{ "ivref100", HDA_QUIRK_IVREF100 },
+	{ "ovref50", HDA_QUIRK_OVREF50 },
+	{ "ovref80", HDA_QUIRK_OVREF80 },
+	{ "ovref100", HDA_QUIRK_OVREF100 },
+	{ "ivref", HDA_QUIRK_IVREF },
+	{ "ovref", HDA_QUIRK_OVREF },
+	{ "vref", HDA_QUIRK_VREF },
 };
 #define HDAC_QUIRKS_TAB_LEN	\
 		(sizeof(hdac_quirks_tab) / sizeof(hdac_quirks_tab[0]))
@@ -244,15 +366,19 @@ static const struct {
 #define HDA_BDL_MAX	256
 #define HDA_BDL_DEFAULT	HDA_BDL_MIN
 
+#define HDA_BLK_MIN	HDAC_DMA_ALIGNMENT
+#define HDA_BLK_ALIGN	(~(HDA_BLK_MIN - 1))
+
 #define HDA_BUFSZ_MIN		4096
 #define HDA_BUFSZ_MAX		65536
 #define HDA_BUFSZ_DEFAULT	16384
 
 #define HDA_PARSE_MAXDEPTH	10
 
-#define HDAC_UNSOLTAG_EVENT_HP	0x00
+#define HDAC_UNSOLTAG_EVENT_HP		0x00
+#define HDAC_UNSOLTAG_EVENT_TEST	0x01
 
-static MALLOC_DEFINE(M_HDAC, "hdac", "High Definition Audio Controller");
+MALLOC_DEFINE(M_HDAC, "hdac", "High Definition Audio Controller");
 
 enum {
 	HDA_PARSE_MIXER,
@@ -293,6 +419,19 @@ static const struct {
 	{ HDA_SIS_ALL,    "SiS (Unknown)"    },
 };
 #define HDAC_DEVICES_LEN (sizeof(hdac_devices) / sizeof(hdac_devices[0]))
+
+static const struct {
+	uint16_t vendor;
+	uint8_t reg;
+	uint8_t mask;
+	uint8_t enable;
+} hdac_pcie_snoop[] = {
+	{  INTEL_VENDORID, 0x00, 0x00, 0x00 },
+	{    ATI_VENDORID, 0x42, 0xf8, 0x02 },
+	{ NVIDIA_VENDORID, 0x4e, 0xf0, 0x0f },
+};
+#define HDAC_PCIESNOOP_LEN	\
+			(sizeof(hdac_pcie_snoop) / sizeof(hdac_pcie_snoop[0]))
 
 static const struct {
 	uint32_t	rate;
@@ -346,19 +485,25 @@ static const struct {
 /* Realtek */
 #define REALTEK_VENDORID	0x10ec
 #define HDA_CODEC_ALC260	HDA_CODEC_CONSTRUCT(REALTEK, 0x0260)
+#define HDA_CODEC_ALC262	HDA_CODEC_CONSTRUCT(REALTEK, 0x0262)
+#define HDA_CODEC_ALC660	HDA_CODEC_CONSTRUCT(REALTEK, 0x0660)
 #define HDA_CODEC_ALC861	HDA_CODEC_CONSTRUCT(REALTEK, 0x0861)
-#define HDA_CODEC_ALC862	HDA_CODEC_CONSTRUCT(REALTEK, 0x0862)
+#define HDA_CODEC_ALC861VD	HDA_CODEC_CONSTRUCT(REALTEK, 0x0862)
 #define HDA_CODEC_ALC880	HDA_CODEC_CONSTRUCT(REALTEK, 0x0880)
 #define HDA_CODEC_ALC882	HDA_CODEC_CONSTRUCT(REALTEK, 0x0882)
 #define HDA_CODEC_ALC883	HDA_CODEC_CONSTRUCT(REALTEK, 0x0883)
+#define HDA_CODEC_ALC885	HDA_CODEC_CONSTRUCT(REALTEK, 0x0885)
+#define HDA_CODEC_ALC888	HDA_CODEC_CONSTRUCT(REALTEK, 0x0888)
 #define HDA_CODEC_ALCXXXX	HDA_CODEC_CONSTRUCT(REALTEK, 0xffff)
 
-/* Analog Device */
-#define ANALOGDEVICE_VENDORID	0x11d4
-#define HDA_CODEC_AD1981HD	HDA_CODEC_CONSTRUCT(ANALOGDEVICE, 0x1981)
-#define HDA_CODEC_AD1983	HDA_CODEC_CONSTRUCT(ANALOGDEVICE, 0x1983)
-#define HDA_CODEC_AD1986A	HDA_CODEC_CONSTRUCT(ANALOGDEVICE, 0x1986)
-#define HDA_CODEC_ADXXXX	HDA_CODEC_CONSTRUCT(ANALOGDEVICE, 0xffff)
+/* Analog Devices */
+#define ANALOGDEVICES_VENDORID	0x11d4
+#define HDA_CODEC_AD1981HD	HDA_CODEC_CONSTRUCT(ANALOGDEVICES, 0x1981)
+#define HDA_CODEC_AD1983	HDA_CODEC_CONSTRUCT(ANALOGDEVICES, 0x1983)
+#define HDA_CODEC_AD1986A	HDA_CODEC_CONSTRUCT(ANALOGDEVICES, 0x1986)
+#define HDA_CODEC_AD1988	HDA_CODEC_CONSTRUCT(ANALOGDEVICES, 0x1988)
+#define HDA_CODEC_AD1988B	HDA_CODEC_CONSTRUCT(ANALOGDEVICES, 0x198b)
+#define HDA_CODEC_ADXXXX	HDA_CODEC_CONSTRUCT(ANALOGDEVICES, 0xffff)
 
 /* CMedia */
 #define CMEDIA_VENDORID		0x434d
@@ -371,6 +516,8 @@ static const struct {
 #define HDA_CODEC_STAC9221D	HDA_CODEC_CONSTRUCT(SIGMATEL, 0x7683)
 #define HDA_CODEC_STAC9220	HDA_CODEC_CONSTRUCT(SIGMATEL, 0x7690)
 #define HDA_CODEC_STAC922XD	HDA_CODEC_CONSTRUCT(SIGMATEL, 0x7681)
+#define HDA_CODEC_STAC9227	HDA_CODEC_CONSTRUCT(SIGMATEL, 0x7618)
+#define HDA_CODEC_STAC9271D	HDA_CODEC_CONSTRUCT(SIGMATEL, 0x7627)
 #define HDA_CODEC_STACXXXX	HDA_CODEC_CONSTRUCT(SIGMATEL, 0xffff)
 
 /*
@@ -388,6 +535,21 @@ static const struct {
 #define HDA_CODEC_CXWAIKIKI	HDA_CODEC_CONSTRUCT(CONEXANT, 0x5047)
 #define HDA_CODEC_CXXXXX	HDA_CODEC_CONSTRUCT(CONEXANT, 0xffff)
 
+/* VIA */
+#define HDA_CODEC_VT1708_8	HDA_CODEC_CONSTRUCT(VIA, 0x1708)
+#define HDA_CODEC_VT1708_9	HDA_CODEC_CONSTRUCT(VIA, 0x1709)
+#define HDA_CODEC_VT1708_A	HDA_CODEC_CONSTRUCT(VIA, 0x170a)
+#define HDA_CODEC_VT1708_B	HDA_CODEC_CONSTRUCT(VIA, 0x170b)
+#define HDA_CODEC_VT1709_0	HDA_CODEC_CONSTRUCT(VIA, 0xe710)
+#define HDA_CODEC_VT1709_1	HDA_CODEC_CONSTRUCT(VIA, 0xe711)
+#define HDA_CODEC_VT1709_2	HDA_CODEC_CONSTRUCT(VIA, 0xe712)
+#define HDA_CODEC_VT1709_3	HDA_CODEC_CONSTRUCT(VIA, 0xe713)
+#define HDA_CODEC_VT1709_4	HDA_CODEC_CONSTRUCT(VIA, 0xe714)
+#define HDA_CODEC_VT1709_5	HDA_CODEC_CONSTRUCT(VIA, 0xe715)
+#define HDA_CODEC_VT1709_6	HDA_CODEC_CONSTRUCT(VIA, 0xe716)
+#define HDA_CODEC_VT1709_7	HDA_CODEC_CONSTRUCT(VIA, 0xe717)
+#define HDA_CODEC_VTXXXX	HDA_CODEC_CONSTRUCT(VIA, 0xffff)
+
 
 /* Codecs */
 static const struct {
@@ -395,64 +557,119 @@ static const struct {
 	char *name;
 } hdac_codecs[] = {
 	{ HDA_CODEC_ALC260,    "Realtek ALC260" },
+	{ HDA_CODEC_ALC262,    "Realtek ALC262" },
+	{ HDA_CODEC_ALC660,    "Realtek ALC660" },
 	{ HDA_CODEC_ALC861,    "Realtek ALC861" },
-	{ HDA_CODEC_ALC862,    "Realtek ALC862" },
+	{ HDA_CODEC_ALC861VD,  "Realtek ALC861-VD" },
 	{ HDA_CODEC_ALC880,    "Realtek ALC880" },
 	{ HDA_CODEC_ALC882,    "Realtek ALC882" },
 	{ HDA_CODEC_ALC883,    "Realtek ALC883" },
-	{ HDA_CODEC_AD1981HD,  "Analog Device AD1981HD" },
-	{ HDA_CODEC_AD1983,    "Analog Device AD1983" },
-	{ HDA_CODEC_AD1986A,   "Analog Device AD1986A" },
+	{ HDA_CODEC_ALC885,    "Realtek ALC885" },
+	{ HDA_CODEC_ALC888,    "Realtek ALC888" },
+	{ HDA_CODEC_AD1981HD,  "Analog Devices AD1981HD" },
+	{ HDA_CODEC_AD1983,    "Analog Devices AD1983" },
+	{ HDA_CODEC_AD1986A,   "Analog Devices AD1986A" },
+	{ HDA_CODEC_AD1988,    "Analog Devices AD1988" },
+	{ HDA_CODEC_AD1988B,   "Analog Devices AD1988B" },
 	{ HDA_CODEC_CMI9880,   "CMedia CMI9880" },
 	{ HDA_CODEC_STAC9221,  "Sigmatel STAC9221" },
 	{ HDA_CODEC_STAC9221D, "Sigmatel STAC9221D" },
 	{ HDA_CODEC_STAC9220,  "Sigmatel STAC9220" },
 	{ HDA_CODEC_STAC922XD, "Sigmatel STAC9220D/9223D" },
+	{ HDA_CODEC_STAC9227,  "Sigmatel STAC9227" },
+	{ HDA_CODEC_STAC9271D, "Sigmatel STAC9271D" },
 	{ HDA_CODEC_CXVENICE,  "Conexant Venice" },
 	{ HDA_CODEC_CXWAIKIKI, "Conexant Waikiki" },
+	{ HDA_CODEC_VT1708_8,  "VIA VT1708_8" },
+	{ HDA_CODEC_VT1708_9,  "VIA VT1708_9" },
+	{ HDA_CODEC_VT1708_A,  "VIA VT1708_A" },
+	{ HDA_CODEC_VT1708_B,  "VIA VT1708_B" },
+	{ HDA_CODEC_VT1709_0,  "VIA VT1709_0" },
+	{ HDA_CODEC_VT1709_1,  "VIA VT1709_1" },
+	{ HDA_CODEC_VT1709_2,  "VIA VT1709_2" },
+	{ HDA_CODEC_VT1709_3,  "VIA VT1709_3" },
+	{ HDA_CODEC_VT1709_4,  "VIA VT1709_4" },
+	{ HDA_CODEC_VT1709_5,  "VIA VT1709_5" },
+	{ HDA_CODEC_VT1709_6,  "VIA VT1709_6" },
+	{ HDA_CODEC_VT1709_7,  "VIA VT1709_7" },
 	/* Unknown codec */
 	{ HDA_CODEC_ALCXXXX,   "Realtek (Unknown)" },
-	{ HDA_CODEC_ADXXXX,    "Analog Device (Unknown)" },
+	{ HDA_CODEC_ADXXXX,    "Analog Devices (Unknown)" },
 	{ HDA_CODEC_CMIXXXX,   "CMedia (Unknown)" },
 	{ HDA_CODEC_STACXXXX,  "Sigmatel (Unknown)" },
 	{ HDA_CODEC_CXXXXX,    "Conexant (Unknown)" },
+	{ HDA_CODEC_VTXXXX,    "VIA (Unknown)" },
 };
 #define HDAC_CODECS_LEN	(sizeof(hdac_codecs) / sizeof(hdac_codecs[0]))
 
 enum {
 	HDAC_HP_SWITCH_CTL,
-	HDAC_HP_SWITCH_CTRL
+	HDAC_HP_SWITCH_CTRL,
+	HDAC_HP_SWITCH_DEBUG
 };
 
 static const struct {
 	uint32_t model;
 	uint32_t id;
 	int type;
+	int inverted;
+	int polling;
+	int execsense;
 	nid_t hpnid;
 	nid_t spkrnid[8];
 	nid_t eapdnid;
 } hdac_hp_switch[] = {
 	/* Specific OEM models */
-	{ HP_V3000_SUBVENDOR,  HDA_CODEC_CXVENICE, HDAC_HP_SWITCH_CTL,
-	    17, { 16, -1 }, 16 },
+	{ HP_V3000_SUBVENDOR, HDA_CODEC_CXVENICE, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 17, { 16, -1 }, 16 },
+	/* { HP_XW4300_SUBVENDOR, HDA_CODEC_ALC260, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 21, { 16, 17, -1 }, -1 } */
+	/*{ HP_3010_SUBVENDOR,  HDA_CODEC_ALC260, HDAC_HP_SWITCH_DEBUG,
+	    0, 1, 0, 16, { 15, 18, 19, 20, 21, -1 }, -1 },*/
 	{ HP_NX7400_SUBVENDOR, HDA_CODEC_AD1981HD, HDAC_HP_SWITCH_CTL,
-	     6, {  5, -1 },  5 },
+	    0, 0, -1, 6, { 5, -1 }, 5 },
 	{ HP_NX6310_SUBVENDOR, HDA_CODEC_AD1981HD, HDAC_HP_SWITCH_CTL,
-	     6, {  5, -1 },  5 },
+	    0, 0, -1, 6, { 5, -1 }, 5 },
+	{ HP_NX6325_SUBVENDOR, HDA_CODEC_AD1981HD, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 6, { 5, -1 }, 5 },
+	{ TOSHIBA_U200_SUBVENDOR, HDA_CODEC_AD1981HD, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 6, { 5, -1 }, -1 },
 	{ DELL_D820_SUBVENDOR, HDA_CODEC_STAC9220, HDAC_HP_SWITCH_CTRL,
-	    13, { 14, -1 }, -1 },
+	    0, 0, -1, 13, { 14, -1 }, -1 },
 	{ DELL_I1300_SUBVENDOR, HDA_CODEC_STAC9220, HDAC_HP_SWITCH_CTRL,
-	    13, { 14, -1 }, -1 },
+	    0, 0, -1, 13, { 14, -1 }, -1 },
+	{ DELL_OPLX745_SUBVENDOR, HDA_CODEC_AD1983, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 6, { 5, 7, -1 }, -1 },
+	{ APPLE_INTEL_MAC, HDA_CODEC_STAC9221, HDAC_HP_SWITCH_CTRL,
+	    0, 0, -1, 10, { 13, -1 }, -1 },
+	{ LENOVO_3KN100_SUBVENDOR, HDA_CODEC_AD1986A, HDAC_HP_SWITCH_CTL,
+	    1, 0, -1, 26, { 27, -1 }, -1 },
+	{ LG_LW20_SUBVENDOR, HDA_CODEC_ALC880, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 27, { 20, -1 }, -1 },
+	{ ACER_A5050_SUBVENDOR, HDA_CODEC_ALC883, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 20, { 21, -1 }, -1 },
+	{ ACER_3681WXM_SUBVENDOR, HDA_CODEC_ALC883, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 20, { 21, -1 }, -1 },
+	{ MSI_MS1034_SUBVENDOR, HDA_CODEC_ALC883, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 20, { 27, -1 }, -1 },
 	/*
 	 * All models that at least come from the same vendor with
 	 * simmilar codec.
 	 */
-	{ HP_ALL_SUBVENDOR,  HDA_CODEC_CXVENICE, HDAC_HP_SWITCH_CTL,
-	    17, { 16, -1 }, 16 },
+	{ HP_ALL_SUBVENDOR, HDA_CODEC_CXVENICE, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 17, { 16, -1 }, 16 },
 	{ HP_ALL_SUBVENDOR, HDA_CODEC_AD1981HD, HDAC_HP_SWITCH_CTL,
-	     6, {  5, -1 },  5 },
+	    0, 0, -1, 6, { 5, -1 }, 5 },
+	{ TOSHIBA_ALL_SUBVENDOR, HDA_CODEC_AD1981HD, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 6, { 5, -1 }, -1 },
 	{ DELL_ALL_SUBVENDOR, HDA_CODEC_STAC9220, HDAC_HP_SWITCH_CTRL,
-	    13, { 14, -1 }, -1 },
+	    0, 0, -1, 13, { 14, -1 }, -1 },
+	{ LENOVO_ALL_SUBVENDOR, HDA_CODEC_AD1986A, HDAC_HP_SWITCH_CTL,
+	    1, 0, -1, 26, { 27, -1 }, -1 },
+#if 0
+	{ ACER_ALL_SUBVENDOR, HDA_CODEC_ALC883, HDAC_HP_SWITCH_CTL,
+	    0, 0, -1, 20, { 21, -1 }, -1 },
+#endif
 };
 #define HDAC_HP_SWITCH_LEN	\
 		(sizeof(hdac_hp_switch) / sizeof(hdac_hp_switch[0]))
@@ -479,7 +696,7 @@ static int	hdac_get_capabilities(struct hdac_softc *);
 static void	hdac_dma_cb(void *, bus_dma_segment_t *, int, int);
 static int	hdac_dma_alloc(struct hdac_softc *,
 					struct hdac_dma *, bus_size_t);
-static void	hdac_dma_free(struct hdac_dma *);
+static void	hdac_dma_free(struct hdac_softc *, struct hdac_dma *);
 static int	hdac_mem_alloc(struct hdac_softc *);
 static void	hdac_mem_free(struct hdac_softc *);
 static int	hdac_irq_alloc(struct hdac_softc *);
@@ -512,6 +729,9 @@ static void	hdac_audio_ctl_amp_set_internal(struct hdac_softc *,
 				nid_t, nid_t, int, int, int, int, int, int);
 static int	hdac_audio_ctl_ossmixer_getnextdev(struct hdac_devinfo *);
 static struct	hdac_widget *hdac_widget_get(struct hdac_devinfo *, nid_t);
+
+static int	hdac_rirb_flush(struct hdac_softc *sc);
+static int	hdac_unsolq_flush(struct hdac_softc *sc);
 
 #define hdac_command(a1, a2, a3)	\
 		hdac_command_sendone_internal(a1, a2, a3)
@@ -621,7 +841,7 @@ hdac_hp_switch_handler(struct hdac_devinfo *devinfo)
 	struct hdac_softc *sc;
 	struct hdac_widget *w;
 	struct hdac_audio_ctl *ctl;
-	uint32_t id, res;
+	uint32_t val, id, res;
 	int i = 0, j, forcemute;
 	nid_t cad;
 
@@ -650,6 +870,10 @@ hdac_hp_switch_handler(struct hdac_devinfo *devinfo)
 			    HDA_CMD_SET_EAPD_BTL_ENABLE_EAPD) ? 0 : 1;
 	}
 
+	if (hdac_hp_switch[i].execsense != -1)
+		hdac_command(sc,
+		    HDA_CMD_SET_PIN_SENSE(cad, hdac_hp_switch[i].hpnid,
+		    hdac_hp_switch[i].execsense), cad);
 	res = hdac_command(sc,
 	    HDA_CMD_GET_PIN_SENSE(cad, hdac_hp_switch[i].hpnid), cad);
 	HDA_BOOTVERBOSE(
@@ -657,29 +881,35 @@ hdac_hp_switch_handler(struct hdac_devinfo *devinfo)
 		    "HDA_DEBUG: Pin sense: nid=%d res=0x%08x\n",
 		    hdac_hp_switch[i].hpnid, res);
 	);
-	res >>= 31;
+	res = HDA_CMD_GET_PIN_SENSE_PRESENCE_DETECT(res);
+	res ^= hdac_hp_switch[i].inverted;
 
 	switch (hdac_hp_switch[i].type) {
 	case HDAC_HP_SWITCH_CTL:
 		ctl = hdac_audio_ctl_amp_get(devinfo,
 		    hdac_hp_switch[i].hpnid, 0, 1);
 		if (ctl != NULL) {
-			ctl->muted = (res != 0 && forcemute == 0) ?
+			val = (res != 0 && forcemute == 0) ?
 			    HDA_AMP_MUTE_NONE : HDA_AMP_MUTE_ALL;
-			hdac_audio_ctl_amp_set(ctl,
-			    HDA_AMP_MUTE_DEFAULT, ctl->left,
-			    ctl->right);
-		}
-		for (j = 0; hdac_hp_switch[i].spkrnid[j] != -1; j++) {
-			ctl = hdac_audio_ctl_amp_get(devinfo,
-			    hdac_hp_switch[i].spkrnid[j], 0, 1);
-			if (ctl != NULL) {
-				ctl->muted = (res != 0 || forcemute == 1) ?
-				    HDA_AMP_MUTE_ALL : HDA_AMP_MUTE_NONE;
+			if (val != ctl->muted) {
+				ctl->muted = val;
 				hdac_audio_ctl_amp_set(ctl,
 				    HDA_AMP_MUTE_DEFAULT, ctl->left,
 				    ctl->right);
 			}
+		}
+		for (j = 0; hdac_hp_switch[i].spkrnid[j] != -1; j++) {
+			ctl = hdac_audio_ctl_amp_get(devinfo,
+			    hdac_hp_switch[i].spkrnid[j], 0, 1);
+			if (ctl == NULL)
+				continue;
+			val = (res != 0 || forcemute == 1) ?
+			    HDA_AMP_MUTE_ALL : HDA_AMP_MUTE_NONE;
+			if (val == ctl->muted)
+				continue;
+			ctl->muted = val;
+			hdac_audio_ctl_amp_set(ctl, HDA_AMP_MUTE_DEFAULT,
+			    ctl->left, ctl->right);
 		}
 		break;
 	case HDAC_HP_SWITCH_CTRL:
@@ -689,56 +919,91 @@ hdac_hp_switch_handler(struct hdac_devinfo *devinfo)
 			if (w != NULL && w->type ==
 			    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX) {
 				if (forcemute == 0)
-					w->wclass.pin.ctrl |=
+					val = w->wclass.pin.ctrl |
 					    HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE;
 				else
-					w->wclass.pin.ctrl &=
+					val = w->wclass.pin.ctrl &
 					    ~HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE;
-				hdac_command(sc,
-				    HDA_CMD_SET_PIN_WIDGET_CTRL(cad, w->nid,
-				    w->wclass.pin.ctrl), cad);
+				if (val != w->wclass.pin.ctrl) {
+					w->wclass.pin.ctrl = val;
+					hdac_command(sc,
+					    HDA_CMD_SET_PIN_WIDGET_CTRL(cad,
+					    w->nid, w->wclass.pin.ctrl), cad);
+				}
 			}
 			for (j = 0; hdac_hp_switch[i].spkrnid[j] != -1; j++) {
 				w = hdac_widget_get(devinfo,
 				    hdac_hp_switch[i].spkrnid[j]);
-				if (w != NULL && w->type ==
-				    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX) {
-					w->wclass.pin.ctrl &=
-					    ~HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE;
-					hdac_command(sc,
-					    HDA_CMD_SET_PIN_WIDGET_CTRL(cad,
-					    w->nid,
-					    w->wclass.pin.ctrl), cad);
-				}
+				if (w == NULL || w->type !=
+				    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX)
+					continue;
+				val = w->wclass.pin.ctrl &
+				    ~HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE;
+				if (val == w->wclass.pin.ctrl)
+					continue;
+				w->wclass.pin.ctrl = val;
+				hdac_command(sc, HDA_CMD_SET_PIN_WIDGET_CTRL(
+				    cad, w->nid, w->wclass.pin.ctrl), cad);
 			}
 		} else {
 			/* HP out */
 			w = hdac_widget_get(devinfo, hdac_hp_switch[i].hpnid);
 			if (w != NULL && w->type ==
 			    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX) {
-				w->wclass.pin.ctrl &=
+				val = w->wclass.pin.ctrl &
 				    ~HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE;
-				hdac_command(sc,
-				    HDA_CMD_SET_PIN_WIDGET_CTRL(cad, w->nid,
-				    w->wclass.pin.ctrl), cad);
+				if (val != w->wclass.pin.ctrl) {
+					w->wclass.pin.ctrl = val;
+					hdac_command(sc,
+					    HDA_CMD_SET_PIN_WIDGET_CTRL(cad,
+					    w->nid, w->wclass.pin.ctrl), cad);
+				}
 			}
 			for (j = 0; hdac_hp_switch[i].spkrnid[j] != -1; j++) {
 				w = hdac_widget_get(devinfo,
 				    hdac_hp_switch[i].spkrnid[j]);
-				if (w != NULL && w->type ==
-				    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX) {
-					if (forcemute == 0)
-						w->wclass.pin.ctrl |=
-						    HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE;
-					else
-						w->wclass.pin.ctrl &=
-						    ~HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE;
-					hdac_command(sc,
-					    HDA_CMD_SET_PIN_WIDGET_CTRL(cad,
-					    w->nid,
-					    w->wclass.pin.ctrl), cad);
-				}
+				if (w == NULL || w->type !=
+				    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX)
+					continue;
+				if (forcemute == 0)
+					val = w->wclass.pin.ctrl |
+					    HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE;
+				else
+					val = w->wclass.pin.ctrl &
+					    ~HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE;
+				if (val == w->wclass.pin.ctrl)
+					continue;
+				w->wclass.pin.ctrl = val;
+				hdac_command(sc, HDA_CMD_SET_PIN_WIDGET_CTRL(
+				    cad, w->nid, w->wclass.pin.ctrl), cad);
 			}
+		}
+		break;
+	case HDAC_HP_SWITCH_DEBUG:
+		if (hdac_hp_switch[i].execsense != -1)
+			hdac_command(sc,
+			    HDA_CMD_SET_PIN_SENSE(cad, hdac_hp_switch[i].hpnid,
+			    hdac_hp_switch[i].execsense), cad);
+		res = hdac_command(sc,
+		    HDA_CMD_GET_PIN_SENSE(cad, hdac_hp_switch[i].hpnid), cad);
+		device_printf(sc->dev,
+		    "[ 0] HDA_DEBUG: Pin sense: nid=%d res=0x%08x\n",
+		    hdac_hp_switch[i].hpnid, res);
+		for (j = 0; hdac_hp_switch[i].spkrnid[j] != -1; j++) {
+			w = hdac_widget_get(devinfo,
+			    hdac_hp_switch[i].spkrnid[j]);
+			if (w == NULL || w->type !=
+			    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX)
+				continue;
+			if (hdac_hp_switch[i].execsense != -1)
+				hdac_command(sc,
+				    HDA_CMD_SET_PIN_SENSE(cad, w->nid,
+				    hdac_hp_switch[i].execsense), cad);
+			res = hdac_command(sc,
+			    HDA_CMD_GET_PIN_SENSE(cad, w->nid), cad);
+			device_printf(sc->dev,
+			    "[%2d] HDA_DEBUG: Pin sense: nid=%d res=0x%08x\n",
+			    j + 1, w->nid, res);
 		}
 		break;
 	default:
@@ -784,12 +1049,15 @@ hdac_unsolicited_handler(struct hdac_codec *codec, uint32_t tag)
 	case HDAC_UNSOLTAG_EVENT_HP:
 		hdac_hp_switch_handler(devinfo);
 		break;
+	case HDAC_UNSOLTAG_EVENT_TEST:
+		device_printf(sc->dev, "Unsol Test!\n");
+		break;
 	default:
 		break;
 	}
 }
 
-static void
+static int
 hdac_stream_intr(struct hdac_softc *sc, struct hdac_chan *ch)
 {
 	/* XXX to be removed */
@@ -798,7 +1066,7 @@ hdac_stream_intr(struct hdac_softc *sc, struct hdac_chan *ch)
 #endif
 
 	if (ch->blkcnt == 0)
-		return;
+		return (0);
 
 	/* XXX to be removed */
 #ifdef HDAC_INTR_EXTRA
@@ -823,16 +1091,13 @@ hdac_stream_intr(struct hdac_softc *sc, struct hdac_chan *ch)
 #ifdef HDAC_INTR_EXTRA
 	if (res & HDAC_SDSTS_BCIS) {
 #endif
-		ch->prevptr = ch->ptr;
-		ch->ptr += sndbuf_getblksz(ch->b);
-		ch->ptr %= sndbuf_getsize(ch->b);
-		hdac_unlock(sc);
-		chn_intr(ch->c);
-		hdac_lock(sc);
+		return (1);
 	/* XXX to be removed */
 #ifdef HDAC_INTR_EXTRA
 	}
 #endif
+
+	return (0);
 }
 
 /****************************************************************************
@@ -846,14 +1111,16 @@ hdac_intr_handler(void *context)
 	struct hdac_softc *sc;
 	uint32_t intsts;
 	uint8_t rirbsts;
-	uint8_t rirbwp;
-	struct hdac_rirb *rirb_base, *rirb;
-	nid_t ucad;
-	uint32_t utag;
+	struct hdac_rirb *rirb_base;
+	uint32_t trigger = 0;
 
 	sc = (struct hdac_softc *)context;
 
 	hdac_lock(sc);
+	if (sc->polling != 0) {
+		hdac_unlock(sc);
+		return;
+	}
 	/* Do we have anything to do? */
 	intsts = HDAC_READ_4(&sc->mem, HDAC_INTSTS);
 	if (!HDA_FLAG_MATCH(intsts, HDAC_INTSTS_GIS)) {
@@ -867,26 +1134,9 @@ hdac_intr_handler(void *context)
 		rirbsts = HDAC_READ_1(&sc->mem, HDAC_RIRBSTS);
 		/* Get as many responses that we can */
 		while (HDA_FLAG_MATCH(rirbsts, HDAC_RIRBSTS_RINTFL)) {
-			HDAC_WRITE_1(&sc->mem, HDAC_RIRBSTS, HDAC_RIRBSTS_RINTFL);
-			rirbwp = HDAC_READ_1(&sc->mem, HDAC_RIRBWP);
-			bus_dmamap_sync(sc->rirb_dma.dma_tag, sc->rirb_dma.dma_map,
-			    BUS_DMASYNC_POSTREAD);
-			while (sc->rirb_rp != rirbwp) {
-				sc->rirb_rp++;
-				sc->rirb_rp %= sc->rirb_size;
-				rirb = &rirb_base[sc->rirb_rp];
-				if (rirb->response_ex & HDAC_RIRB_RESPONSE_EX_UNSOLICITED) {
-					ucad = HDAC_RIRB_RESPONSE_EX_SDATA_IN(rirb->response_ex);
-					utag = rirb->response >> 26;
-					if (ucad > -1 && ucad < HDAC_CODEC_MAX &&
-					    sc->codecs[ucad] != NULL) {
-						sc->unsolq[sc->unsolq_wp++] =
-						    (ucad << 16) |
-						    (utag & 0xffff);
-						sc->unsolq_wp %= HDAC_UNSOLQ_MAX;
-					}
-				}
-			}
+			HDAC_WRITE_1(&sc->mem,
+			    HDAC_RIRBSTS, HDAC_RIRBSTS_RINTFL);
+			hdac_rirb_flush(sc);
 			rirbsts = HDAC_READ_1(&sc->mem, HDAC_RIRBSTS);
 		}
 		/* XXX to be removed */
@@ -895,29 +1145,29 @@ hdac_intr_handler(void *context)
 		HDAC_WRITE_4(&sc->mem, HDAC_INTSTS, HDAC_INTSTS_CIS);
 #endif
 	}
+
+	hdac_unsolq_flush(sc);
+
 	if (intsts & HDAC_INTSTS_SIS_MASK) {
-		if (intsts & (1 << sc->num_iss))
-			hdac_stream_intr(sc, &sc->play);
-		if (intsts & (1 << 0))
-			hdac_stream_intr(sc, &sc->rec);
+		if ((intsts & (1 << sc->num_iss)) &&
+		    hdac_stream_intr(sc, &sc->play) != 0)
+			trigger |= 1;
+		if ((intsts & (1 << 0)) &&
+		    hdac_stream_intr(sc, &sc->rec) != 0)
+			trigger |= 2;
 		/* XXX to be removed */
 #ifdef HDAC_INTR_EXTRA
-		HDAC_WRITE_4(&sc->mem, HDAC_INTSTS, intsts & HDAC_INTSTS_SIS_MASK);
+		HDAC_WRITE_4(&sc->mem, HDAC_INTSTS, intsts &
+		    HDAC_INTSTS_SIS_MASK);
 #endif
 	}
 
-	if (sc->unsolq_st == HDAC_UNSOLQ_READY) {
-		sc->unsolq_st = HDAC_UNSOLQ_BUSY;
-		while (sc->unsolq_rp != sc->unsolq_wp) {
-			ucad = sc->unsolq[sc->unsolq_rp] >> 16;
-			utag = sc->unsolq[sc->unsolq_rp++] & 0xffff;
-			sc->unsolq_rp %= HDAC_UNSOLQ_MAX;
-			hdac_unsolicited_handler(sc->codecs[ucad], utag);
-		}
-		sc->unsolq_st = HDAC_UNSOLQ_READY;
-	}
-
 	hdac_unlock(sc);
+
+	if (trigger & 1)
+		chn_intr(sc->play.c);
+	if (trigger & 2)
+		chn_intr(sc->rec.c);
 }
 
 /****************************************************************************
@@ -942,10 +1192,16 @@ hdac_reset(struct hdac_softc *sc)
 		HDAC_WRITE_4(&sc->mem, HDAC_BSDCTL(sc, i), 0x0);
 
 	/*
-	 * Stop Control DMA engines
+	 * Stop Control DMA engines.
 	 */
 	HDAC_WRITE_1(&sc->mem, HDAC_CORBCTL, 0x0);
 	HDAC_WRITE_1(&sc->mem, HDAC_RIRBCTL, 0x0);
+
+	/*
+	 * Reset DMA position buffer.
+	 */
+	HDAC_WRITE_4(&sc->mem, HDAC_DPIBLBASE, 0x0);
+	HDAC_WRITE_4(&sc->mem, HDAC_DPIBUBASE, 0x0);
 
 	/*
 	 * Reset the controller. The reset must remain asserted for
@@ -1068,16 +1324,6 @@ hdac_dma_cb(void *callback_arg, bus_dma_segment_t *segs, int nseg, int error)
 	}
 }
 
-static void
-hdac_dma_nocache(void *ptr)
-{
-#if defined(__i386__) || defined(__amd64__)
-	vm_offset_t va;
-
-	va = (vm_offset_t)ptr;
-	pmap_kmodify_nc(va);
-#endif
-}
 
 /****************************************************************************
  * int hdac_dma_alloc
@@ -1088,9 +1334,11 @@ hdac_dma_nocache(void *ptr)
 static int
 hdac_dma_alloc(struct hdac_softc *sc, struct hdac_dma *dma, bus_size_t size)
 {
+	bus_size_t roundsz;
 	int result;
 	int lowaddr;
 
+	roundsz = roundup2(size, HDAC_DMA_ALIGNMENT);
 	lowaddr = (sc->support_64bit) ? BUS_SPACE_MAXADDR :
 	    BUS_SPACE_MAXADDR_32BIT;
 	bzero(dma, sizeof(*dma));
@@ -1105,69 +1353,90 @@ hdac_dma_alloc(struct hdac_softc *sc, struct hdac_dma *dma, bus_size_t size)
 	    BUS_SPACE_MAXADDR,			/* highaddr */
 	    NULL,				/* filtfunc */
 	    NULL,				/* fistfuncarg */
-	    size, 				/* maxsize */
+	    roundsz, 				/* maxsize */
 	    1,					/* nsegments */
-	    size, 				/* maxsegsz */
+	    roundsz, 				/* maxsegsz */
 	    0,					/* flags */
 	    &dma->dma_tag);			/* dmat */
 	if (result != 0) {
 		device_printf(sc->dev, "%s: bus_dma_tag_create failed (%x)\n",
 		    __func__, result);
-		goto fail;
+		goto hdac_dma_alloc_fail;
 	}
 
 	/*
 	 * Allocate DMA memory
 	 */
+#if 0 /* TODO: No uncacheable DMA support in DragonFly. */
 	result = bus_dmamem_alloc(dma->dma_tag, (void **)&dma->dma_vaddr,
-	    BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &dma->dma_map);
+	    BUS_DMA_NOWAIT | BUS_DMA_ZERO |
+	    ((sc->nocache != 0) ? BUS_DMA_NOCACHE : 0), &dma->dma_map);
+#else
+	result = bus_dmamem_alloc(dma->dma_tag, (void **)&dma->dma_vaddr,
+	    BUS_DMA_NOWAIT | BUS_DMA_ZERO, &dma->dma_map);
+#endif
 	if (result != 0) {
 		device_printf(sc->dev, "%s: bus_dmamem_alloc failed (%x)\n",
 		    __func__, result);
-		goto fail;
+		goto hdac_dma_alloc_fail;
 	}
+
+	dma->dma_size = roundsz;
 
 	/*
 	 * Map the memory
 	 */
 	result = bus_dmamap_load(dma->dma_tag, dma->dma_map,
-	    (void *)dma->dma_vaddr, size, hdac_dma_cb, (void *)dma,
-	    BUS_DMA_NOWAIT);
+	    (void *)dma->dma_vaddr, roundsz, hdac_dma_cb, (void *)dma, 0);
 	if (result != 0 || dma->dma_paddr == 0) {
+		if (result == 0)
+			result = ENOMEM;
 		device_printf(sc->dev, "%s: bus_dmamem_load failed (%x)\n",
 		    __func__, result);
-		goto fail;
+		goto hdac_dma_alloc_fail;
 	}
-	bzero((void *)dma->dma_vaddr, size);
-	hdac_dma_nocache(dma->dma_vaddr);
+
+	HDA_BOOTVERBOSE(
+		device_printf(sc->dev, "%s: size=%ju -> roundsz=%ju\n",
+		    __func__, (uintmax_t)size, (uintmax_t)roundsz);
+	);
 
 	return (0);
-fail:
-	if (dma->dma_map != NULL)
-		bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
-	if (dma->dma_tag != NULL)
-		bus_dma_tag_destroy(dma->dma_tag);
+
+hdac_dma_alloc_fail:
+	hdac_dma_free(sc, dma);
+
 	return (result);
 }
 
 
 /****************************************************************************
- * void hdac_dma_free(struct hdac_dma *)
+ * void hdac_dma_free(struct hdac_softc *, struct hdac_dma *)
  *
  * Free a struct dhac_dma that has been previously allocated via the
  * hdac_dma_alloc function.
  ****************************************************************************/
 static void
-hdac_dma_free(struct hdac_dma *dma)
+hdac_dma_free(struct hdac_softc *sc, struct hdac_dma *dma)
 {
-	if (dma->dma_tag != NULL) {
+	if (dma->dma_map != NULL) {
+#if 0
 		/* Flush caches */
 		bus_dmamap_sync(dma->dma_tag, dma->dma_map,
 		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
+#endif
 		bus_dmamap_unload(dma->dma_tag, dma->dma_map);
-		bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
-		bus_dma_tag_destroy(dma->dma_tag);
 	}
+	if (dma->dma_vaddr != NULL) {
+		bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
+		dma->dma_vaddr = NULL;
+	}
+	dma->dma_map = NULL;
+	if (dma->dma_tag != NULL) {
+		bus_dma_tag_destroy(dma->dma_tag);
+		dma->dma_tag = NULL;
+	}
+	dma->dma_size = 0;
 }
 
 /****************************************************************************
@@ -1210,6 +1479,7 @@ hdac_mem_free(struct hdac_softc *sc)
 	if (mem->mem_res != NULL)
 		bus_release_resource(sc->dev, SYS_RES_MEMORY, mem->mem_rid,
 		    mem->mem_res);
+	mem->mem_res = NULL;
 }
 
 /****************************************************************************
@@ -1230,23 +1500,22 @@ hdac_irq_alloc(struct hdac_softc *sc)
 	if (irq->irq_res == NULL) {
 		device_printf(sc->dev, "%s: Unable to allocate irq\n",
 		    __func__);
-		goto fail;
+		goto hdac_irq_alloc_fail;
 	}
 	result = snd_setup_intr(sc->dev, irq->irq_res, INTR_MPSAFE,
-		hdac_intr_handler, sc, &irq->irq_handle);
+	    hdac_intr_handler, sc, &irq->irq_handle);
 	if (result != 0) {
 		device_printf(sc->dev,
 		    "%s: Unable to setup interrupt handler (%x)\n",
 		    __func__, result);
-		goto fail;
+		goto hdac_irq_alloc_fail;
 	}
 
 	return (0);
 
-fail:
-	if (irq->irq_res != NULL)
-		bus_release_resource(sc->dev, SYS_RES_IRQ, irq->irq_rid,
-		    irq->irq_res);
+hdac_irq_alloc_fail:
+	hdac_irq_free(sc);
+
 	return (ENXIO);
 }
 
@@ -1261,11 +1530,13 @@ hdac_irq_free(struct hdac_softc *sc)
 	struct hdac_irq *irq;
 
 	irq = &sc->irq;
-	if (irq->irq_handle != NULL)
+	if (irq->irq_res != NULL && irq->irq_handle != NULL)
 		bus_teardown_intr(sc->dev, irq->irq_res, irq->irq_handle);
 	if (irq->irq_res != NULL)
 		bus_release_resource(sc->dev, SYS_RES_IRQ, irq->irq_rid,
 		    irq->irq_res);
+	irq->irq_handle = NULL;
+	irq->irq_res = NULL;
 }
 
 /****************************************************************************
@@ -1356,17 +1627,20 @@ hdac_rirb_init(struct hdac_softc *sc)
 	sc->rirb_rp = 0;
 	HDAC_WRITE_2(&sc->mem, HDAC_RIRBWP, HDAC_RIRBWP_RIRBWPRST);
 
-	/* Setup the interrupt threshold */
-	HDAC_WRITE_2(&sc->mem, HDAC_RINTCNT, sc->rirb_size / 2);
+	if (sc->polling == 0) {
+		/* Setup the interrupt threshold */
+		HDAC_WRITE_2(&sc->mem, HDAC_RINTCNT, sc->rirb_size / 2);
 
-	/* Enable Overrun and response received reporting */
+		/* Enable Overrun and response received reporting */
 #if 0
-	HDAC_WRITE_1(&sc->mem, HDAC_RIRBCTL,
-	    HDAC_RIRBCTL_RIRBOIC | HDAC_RIRBCTL_RINTCTL);
+		HDAC_WRITE_1(&sc->mem, HDAC_RIRBCTL,
+		    HDAC_RIRBCTL_RIRBOIC | HDAC_RIRBCTL_RINTCTL);
 #else
-	HDAC_WRITE_1(&sc->mem, HDAC_RIRBCTL, HDAC_RIRBCTL_RINTCTL);
+		HDAC_WRITE_1(&sc->mem, HDAC_RIRBCTL, HDAC_RIRBCTL_RINTCTL);
 #endif
+	}
 
+#if 0
 	/*
 	 * Make sure that the Host CPU cache doesn't contain any dirty
 	 * cache lines that falls in the rirb. If I understood correctly, it
@@ -1375,6 +1649,7 @@ hdac_rirb_init(struct hdac_softc *sc)
 	 */
 	bus_dmamap_sync(sc->rirb_dma.dma_tag, sc->rirb_dma.dma_map,
 	    BUS_DMASYNC_PREREAD);
+#endif
 }
 
 /****************************************************************************
@@ -1424,15 +1699,15 @@ hdac_scan_codecs(struct hdac_softc *sc)
 	for (i = 0; i < HDAC_CODEC_MAX; i++) {
 		if (HDAC_STATESTS_SDIWAKE(statests, i)) {
 			/* We have found a codec. */
-			hdac_unlock(sc);
 			codec = (struct hdac_codec *)kmalloc(sizeof(*codec),
 			    M_HDAC, M_ZERO | M_NOWAIT);
-			hdac_lock(sc);
 			if (codec == NULL) {
 				device_printf(sc->dev,
 				    "Unable to allocate memory for codec\n");
 				continue;
 			}
+			codec->commands = NULL;
+			codec->responses_received = 0;
 			codec->verbs_sent = 0;
 			codec->sc = sc;
 			codec->cad = i;
@@ -1475,13 +1750,6 @@ hdac_probe_codec(struct hdac_codec *codec)
 	    cad);
 	startnode = HDA_PARAM_SUB_NODE_COUNT_START(subnode);
 	endnode = startnode + HDA_PARAM_SUB_NODE_COUNT_TOTAL(subnode);
-
-	if (vendorid == HDAC_INVALID ||
-	    revisionid == HDAC_INVALID ||
-	    subnode == HDAC_INVALID) {
-		device_printf(sc->dev, "invalid response\n");
-		return (0);
-	}
 
 	HDA_BOOTVERBOSE(
 		device_printf(sc->dev, "HDA_DEBUG: \tstartnode=%d endnode=%d\n",
@@ -1530,10 +1798,8 @@ hdac_probe_function(struct hdac_codec *codec, nid_t nid)
 	if (fctgrptype != HDA_PARAM_FCT_GRP_TYPE_NODE_TYPE_AUDIO)
 		return (NULL);
 
-	hdac_unlock(sc);
 	devinfo = (struct hdac_devinfo *)kmalloc(sizeof(*devinfo), M_HDAC,
 	    M_NOWAIT | M_ZERO);
-	hdac_lock(sc);
 	if (devinfo == NULL) {
 		device_printf(sc->dev, "%s: Unable to allocate ivar\n",
 		    __func__);
@@ -1562,60 +1828,96 @@ hdac_widget_connection_parse(struct hdac_widget *w)
 {
 	struct hdac_softc *sc = w->devinfo->codec->sc;
 	uint32_t res;
-	int i, j, max, found, entnum, cnid;
+	int i, j, max, ents, entnum;
 	nid_t cad = w->devinfo->codec->cad;
 	nid_t nid = w->nid;
+	nid_t cnid, addcnid, prevcnid;
+
+	w->nconns = 0;
 
 	res = hdac_command(sc,
 	    HDA_CMD_GET_PARAMETER(cad, nid, HDA_PARAM_CONN_LIST_LENGTH), cad);
 
-	w->nconns = HDA_PARAM_CONN_LIST_LENGTH_LIST_LENGTH(res);
+	ents = HDA_PARAM_CONN_LIST_LENGTH_LIST_LENGTH(res);
 
-	if (w->nconns < 1)
+	if (ents < 1)
 		return;
 
 	entnum = HDA_PARAM_CONN_LIST_LENGTH_LONG_FORM(res) ? 2 : 4;
-	res = 0;
-	i = 0;
-	found = 0;
 	max = (sizeof(w->conns) / sizeof(w->conns[0])) - 1;
+	prevcnid = 0;
 
-	while (i < w->nconns) {
+#define CONN_RMASK(e)		(1 << ((32 / (e)) - 1))
+#define CONN_NMASK(e)		(CONN_RMASK(e) - 1)
+#define CONN_RESVAL(r, e, n)	((r) >> ((32 / (e)) * (n)))
+#define CONN_RANGE(r, e, n)	(CONN_RESVAL(r, e, n) & CONN_RMASK(e))
+#define CONN_CNID(r, e, n)	(CONN_RESVAL(r, e, n) & CONN_NMASK(e))
+
+	for (i = 0; i < ents; i += entnum) {
 		res = hdac_command(sc,
 		    HDA_CMD_GET_CONN_LIST_ENTRY(cad, nid, i), cad);
 		for (j = 0; j < entnum; j++) {
-			cnid = res;
-			cnid >>= (32 / entnum) * j;
-			cnid &= (1 << (32 / entnum)) - 1;
-			if (cnid == 0)
-				continue;
-			if (found > max) {
-				device_printf(sc->dev,
-				    "node %d: Adding %d: "
-				    "Max connection reached!\n",
-				    nid, cnid);
-				continue;
+			cnid = CONN_CNID(res, entnum, j);
+			if (cnid == 0) {
+				if (w->nconns < ents)
+					device_printf(sc->dev,
+					    "%s: nid=%d WARNING: zero cnid "
+					    "entnum=%d j=%d index=%d "
+					    "entries=%d found=%d res=0x%08x\n",
+					    __func__, nid, entnum, j, i,
+					    ents, w->nconns, res);
+				else
+					goto getconns_out;
 			}
-			w->conns[found++] = cnid;
+			if (cnid < w->devinfo->startnode ||
+			    cnid >= w->devinfo->endnode) {
+				HDA_BOOTVERBOSE(
+					device_printf(sc->dev,
+					    "%s: GHOST: nid=%d j=%d "
+					    "entnum=%d index=%d res=0x%08x\n",
+					    __func__, nid, j, entnum, i, res);
+				);
+			}
+			if (CONN_RANGE(res, entnum, j) == 0)
+				addcnid = cnid;
+			else if (prevcnid == 0 || prevcnid >= cnid) {
+				device_printf(sc->dev,
+				    "%s: WARNING: Invalid child range "
+				    "nid=%d index=%d j=%d entnum=%d "
+				    "prevcnid=%d cnid=%d res=0x%08x\n",
+				    __func__, nid, i, j, entnum, prevcnid,
+				    cnid, res);
+				addcnid = cnid;
+			} else
+				addcnid = prevcnid + 1;
+			while (addcnid <= cnid) {
+				if (w->nconns > max) {
+					device_printf(sc->dev,
+					    "%s: nid=%d: Adding %d: "
+					    "Max connection reached! max=%d\n",
+					    __func__, nid, addcnid, max + 1);
+					goto getconns_out;
+				}
+				w->conns[w->nconns++] = addcnid++;
+			}
+			prevcnid = cnid;
 		}
-		i += entnum;
 	}
 
+getconns_out:
 	HDA_BOOTVERBOSE(
-		if (w->nconns != found) {
-			device_printf(sc->dev,
-			    "HDA_DEBUG: nid=%d WARNING!!! Connection "
-			    "length=%d != found=%d\n",
-			    nid, w->nconns, found);
-		}
+		device_printf(sc->dev,
+		    "HDA_DEBUG: %s: nid=%d entries=%d found=%d\n",
+		    __func__, nid, ents, w->nconns);
 	);
+	return;
 }
 
 static uint32_t
 hdac_widget_pin_getconfig(struct hdac_widget *w)
 {
 	struct hdac_softc *sc;
-	uint32_t config, id;
+	uint32_t config, orig, id;
 	nid_t cad, nid;
 
 	sc = w->devinfo->codec->sc;
@@ -1626,10 +1928,25 @@ hdac_widget_pin_getconfig(struct hdac_widget *w)
 	config = hdac_command(sc,
 	    HDA_CMD_GET_CONFIGURATION_DEFAULT(cad, nid),
 	    cad);
+	orig = config;
+
 	/*
 	 * XXX REWRITE!!!! Don't argue!
 	 */
-	if (id == HDA_CODEC_ALC880 &&
+	if (id == HDA_CODEC_ALC880 && sc->pci_subvendor == LG_LW20_SUBVENDOR) {
+		switch (nid) {
+		case 26:
+			config &= ~HDA_CONFIG_DEFAULTCONF_DEVICE_MASK;
+			config |= HDA_CONFIG_DEFAULTCONF_DEVICE_LINE_IN;
+			break;
+		case 27:
+			config &= ~HDA_CONFIG_DEFAULTCONF_DEVICE_MASK;
+			config |= HDA_CONFIG_DEFAULTCONF_DEVICE_HP_OUT;
+			break;
+		default:
+			break;
+		}
+	} else if (id == HDA_CODEC_ALC880 &&
 	    (sc->pci_subvendor == CLEVO_D900T_SUBVENDOR ||
 	    sc->pci_subvendor == ASUS_M5200_SUBVENDOR)) {
 		/*
@@ -1671,9 +1988,137 @@ hdac_widget_pin_getconfig(struct hdac_widget *w)
 		default:
 			break;
 		}
+	} else if (id == HDA_CODEC_ALC883 &&
+	    HDA_DEV_MATCH(ACER_ALL_SUBVENDOR, sc->pci_subvendor)) {
+		switch (nid) {
+		case 25:
+			config &= ~(HDA_CONFIG_DEFAULTCONF_DEVICE_MASK |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK);
+			config |= (HDA_CONFIG_DEFAULTCONF_DEVICE_MIC_IN |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_FIXED);
+			break;
+		case 28:
+			config &= ~(HDA_CONFIG_DEFAULTCONF_DEVICE_MASK |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK);
+			config |= (HDA_CONFIG_DEFAULTCONF_DEVICE_CD |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_FIXED);
+			break;
+		default:
+			break;
+		}
+	} else if (id == HDA_CODEC_CXVENICE && sc->pci_subvendor ==
+	    HP_V3000_SUBVENDOR) {
+		switch (nid) {
+		case 18:
+			config &= ~HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK;
+			config |= HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_NONE;
+			break;
+		case 20:
+			config &= ~(HDA_CONFIG_DEFAULTCONF_DEVICE_MASK |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK);
+			config |= (HDA_CONFIG_DEFAULTCONF_DEVICE_MIC_IN |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_FIXED);
+			break;
+		case 21:
+			config &= ~(HDA_CONFIG_DEFAULTCONF_DEVICE_MASK |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK);
+			config |= (HDA_CONFIG_DEFAULTCONF_DEVICE_CD |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_FIXED);
+			break;
+		default:
+			break;
+		}
+	} else if (id == HDA_CODEC_CXWAIKIKI && sc->pci_subvendor ==
+	    HP_DV5000_SUBVENDOR) {
+		switch (nid) {
+		case 20:
+		case 21:
+			config &= ~HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK;
+			config |= HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_NONE;
+			break;
+		default:
+			break;
+		}
+	} else if (id == HDA_CODEC_ALC861 && sc->pci_subvendor ==
+	    ASUS_W6F_SUBVENDOR) {
+		switch (nid) {
+		case 11:
+			config &= ~(HDA_CONFIG_DEFAULTCONF_DEVICE_MASK |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK);
+			config |= (HDA_CONFIG_DEFAULTCONF_DEVICE_LINE_OUT |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_FIXED);
+			break;
+		case 15:
+			config &= ~(HDA_CONFIG_DEFAULTCONF_DEVICE_MASK |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK);
+			config |= (HDA_CONFIG_DEFAULTCONF_DEVICE_HP_OUT |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_JACK);
+			break;
+		default:
+			break;
+		}
+	} else if (id == HDA_CODEC_ALC861 && sc->pci_subvendor ==
+	    UNIWILL_9075_SUBVENDOR) {
+		switch (nid) {
+		case 15:
+			config &= ~(HDA_CONFIG_DEFAULTCONF_DEVICE_MASK |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK);
+			config |= (HDA_CONFIG_DEFAULTCONF_DEVICE_HP_OUT |
+			    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_JACK);
+			break;
+		default:
+			break;
+		}
+	} else if (id == HDA_CODEC_AD1986A && sc->pci_subvendor ==
+	    ASUS_M2NPVMX_SUBVENDOR) {
+		switch (nid) {
+		case 28:	/* LINE */
+			config &= ~HDA_CONFIG_DEFAULTCONF_DEVICE_MASK;
+			config |= HDA_CONFIG_DEFAULTCONF_DEVICE_LINE_IN;
+			break;
+		case 29:	/* MIC */
+			config &= ~HDA_CONFIG_DEFAULTCONF_DEVICE_MASK;
+			config |= HDA_CONFIG_DEFAULTCONF_DEVICE_MIC_IN;
+			break;
+		default:
+			break;
+		}
 	}
 
+	HDA_BOOTVERBOSE(
+		if (config != orig)
+			device_printf(sc->dev,
+			    "HDA_DEBUG: Pin config nid=%u 0x%08x -> 0x%08x\n",
+			    nid, orig, config);
+	);
+
 	return (config);
+}
+
+static uint32_t
+hdac_widget_pin_getcaps(struct hdac_widget *w)
+{
+	struct hdac_softc *sc;
+	uint32_t caps, orig, id;
+	nid_t cad, nid;
+
+	sc = w->devinfo->codec->sc;
+	cad = w->devinfo->codec->cad;
+	nid = w->nid;
+	id = hdac_codec_id(w->devinfo);
+
+	caps = hdac_command(sc,
+	    HDA_CMD_GET_PARAMETER(cad, nid, HDA_PARAM_PIN_CAP), cad);
+	orig = caps;
+
+	HDA_BOOTVERBOSE(
+		if (caps != orig)
+			device_printf(sc->dev,
+			    "HDA_DEBUG: Pin caps nid=%u 0x%08x -> 0x%08x\n",
+			    nid, orig, caps);
+	);
+
+	return (caps);
 }
 
 static void
@@ -1688,15 +2133,15 @@ hdac_widget_pin_parse(struct hdac_widget *w)
 	config = hdac_widget_pin_getconfig(w);
 	w->wclass.pin.config = config;
 
-	pincap = hdac_command(sc,
-		HDA_CMD_GET_PARAMETER(cad, nid, HDA_PARAM_PIN_CAP), cad);
+	pincap = hdac_widget_pin_getcaps(w);
 	w->wclass.pin.cap = pincap;
 
 	w->wclass.pin.ctrl = hdac_command(sc,
-		HDA_CMD_GET_PIN_WIDGET_CTRL(cad, nid), cad) &
-		~(HDA_CMD_SET_PIN_WIDGET_CTRL_HPHN_ENABLE |
-		HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE |
-		HDA_CMD_SET_PIN_WIDGET_CTRL_IN_ENABLE);
+	    HDA_CMD_GET_PIN_WIDGET_CTRL(cad, nid), cad) &
+	    ~(HDA_CMD_SET_PIN_WIDGET_CTRL_HPHN_ENABLE |
+	    HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE |
+	    HDA_CMD_SET_PIN_WIDGET_CTRL_IN_ENABLE |
+	    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE_MASK);
 
 	if (HDA_PARAM_PIN_CAP_HEADPHONE_CAP(pincap))
 		w->wclass.pin.ctrl |= HDA_CMD_SET_PIN_WIDGET_CTRL_HPHN_ENABLE;
@@ -1908,6 +2353,149 @@ hdac_widget_get(struct hdac_devinfo *devinfo, nid_t nid)
 	return (&devinfo->widget[nid - devinfo->startnode]);
 }
 
+static __inline int
+hda_poll_channel(struct hdac_chan *ch)
+{
+	uint32_t sz, delta;
+	volatile uint32_t ptr;
+
+	if (ch->active == 0)
+		return (0);
+
+	sz = ch->blksz * ch->blkcnt;
+	if (ch->dmapos != NULL)
+		ptr = *(ch->dmapos);
+	else
+		ptr = HDAC_READ_4(&ch->devinfo->codec->sc->mem,
+		    ch->off + HDAC_SDLPIB);
+	ch->ptr = ptr;
+	ptr %= sz;
+	ptr &= ~(ch->blksz - 1);
+	delta = (sz + ptr - ch->prevptr) % sz;
+
+	if (delta < ch->blksz)
+		return (0);
+
+	ch->prevptr = ptr;
+
+	return (1);
+}
+
+#define hda_chan_active(sc)	((sc)->play.active + (sc)->rec.active)
+
+static void
+hda_poll_callback(void *arg)
+{
+	struct hdac_softc *sc = arg;
+	uint32_t trigger = 0;
+
+	if (sc == NULL)
+		return;
+
+	hdac_lock(sc);
+	if (sc->polling == 0 || hda_chan_active(sc) == 0) {
+		hdac_unlock(sc);
+		return;
+	}
+
+	trigger |= (hda_poll_channel(&sc->play) != 0) ? 1 : 0;
+	trigger |= (hda_poll_channel(&sc->rec) != 0) ? 2 : 0;
+
+	/* XXX */
+	callout_reset(&sc->poll_hda, 1/*sc->poll_ticks*/,
+	    hda_poll_callback, sc);
+
+	hdac_unlock(sc);
+
+	if (trigger & 1)
+		chn_intr(sc->play.c);
+	if (trigger & 2)
+		chn_intr(sc->rec.c);
+}
+
+static int
+hdac_rirb_flush(struct hdac_softc *sc)
+{
+	struct hdac_rirb *rirb_base, *rirb;
+	struct hdac_codec *codec;
+	struct hdac_command_list *commands;
+	nid_t cad;
+	uint32_t resp;
+	uint8_t rirbwp;
+	int ret = 0;
+
+	rirb_base = (struct hdac_rirb *)sc->rirb_dma.dma_vaddr;
+	rirbwp = HDAC_READ_1(&sc->mem, HDAC_RIRBWP);
+#if 0
+	bus_dmamap_sync(sc->rirb_dma.dma_tag, sc->rirb_dma.dma_map,
+	    BUS_DMASYNC_POSTREAD);
+#endif
+
+	while (sc->rirb_rp != rirbwp) {
+		sc->rirb_rp++;
+		sc->rirb_rp %= sc->rirb_size;
+		rirb = &rirb_base[sc->rirb_rp];
+		cad = HDAC_RIRB_RESPONSE_EX_SDATA_IN(rirb->response_ex);
+		if (cad < 0 || cad >= HDAC_CODEC_MAX ||
+		    sc->codecs[cad] == NULL)
+			continue;
+		resp = rirb->response;
+		codec = sc->codecs[cad];
+		commands = codec->commands;
+		if (rirb->response_ex & HDAC_RIRB_RESPONSE_EX_UNSOLICITED) {
+			sc->unsolq[sc->unsolq_wp++] = (cad << 16) |
+			    ((resp >> 26) & 0xffff);
+			sc->unsolq_wp %= HDAC_UNSOLQ_MAX;
+		} else if (commands != NULL && commands->num_commands > 0 &&
+		    codec->responses_received < commands->num_commands)
+			commands->responses[codec->responses_received++] =
+			    resp;
+		ret++;
+	}
+
+	return (ret);
+}
+
+static int
+hdac_unsolq_flush(struct hdac_softc *sc)
+{
+	nid_t cad;
+	uint32_t tag;
+	int ret = 0;
+
+	if (sc->unsolq_st == HDAC_UNSOLQ_READY) {
+		sc->unsolq_st = HDAC_UNSOLQ_BUSY;
+		while (sc->unsolq_rp != sc->unsolq_wp) {
+			cad = sc->unsolq[sc->unsolq_rp] >> 16;
+			tag = sc->unsolq[sc->unsolq_rp++] & 0xffff;
+			sc->unsolq_rp %= HDAC_UNSOLQ_MAX;
+			hdac_unsolicited_handler(sc->codecs[cad], tag);
+			ret++;
+		}
+		sc->unsolq_st = HDAC_UNSOLQ_READY;
+	}
+
+	return (ret);
+}
+
+static void
+hdac_poll_callback(void *arg)
+{
+	struct hdac_softc *sc = arg;
+	if (sc == NULL)
+		return;
+
+	hdac_lock(sc);
+	if (sc->polling == 0 || sc->poll_ival == 0) {
+		hdac_unlock(sc);
+		return;
+	}
+	hdac_rirb_flush(sc);
+	hdac_unsolq_flush(sc);
+	callout_reset(&sc->poll_hdac, sc->poll_ival, hdac_poll_callback, sc);
+	hdac_unlock(sc);
+}
+
 static void
 hdac_stream_stop(struct hdac_chan *ch)
 {
@@ -1919,9 +2507,50 @@ hdac_stream_stop(struct hdac_chan *ch)
 	    HDAC_SDCTL_RUN);
 	HDAC_WRITE_1(&sc->mem, ch->off + HDAC_SDCTL0, ctl);
 
-	ctl = HDAC_READ_4(&sc->mem, HDAC_INTCTL);
-	ctl &= ~(1 << (ch->off >> 5));
-	HDAC_WRITE_4(&sc->mem, HDAC_INTCTL, ctl);
+	ch->active = 0;
+
+	if (sc->polling != 0) {
+		int pollticks;
+
+		if (hda_chan_active(sc) == 0) {
+			callout_stop(&sc->poll_hda);
+			sc->poll_ticks = 1;
+		} else {
+			if (sc->play.active != 0)
+				ch = &sc->play;
+			else
+				ch = &sc->rec;
+			pollticks = ((uint64_t)hz * ch->blksz) /
+			    ((uint64_t)sndbuf_getbps(ch->b) *
+			    sndbuf_getspd(ch->b));
+			pollticks >>= 2;
+			if (pollticks > hz)
+				pollticks = hz;
+			if (pollticks < 1) {
+				HDA_BOOTVERBOSE(
+					device_printf(sc->dev,
+					    "%s: pollticks=%d < 1 !\n",
+					    __func__, pollticks);
+				);
+				pollticks = 1;
+			}
+			if (pollticks > sc->poll_ticks) {
+				HDA_BOOTVERBOSE(
+					device_printf(sc->dev,
+					    "%s: pollticks %d -> %d\n",
+					    __func__, sc->poll_ticks,
+					    pollticks);
+				);
+				sc->poll_ticks = pollticks;
+				callout_reset(&sc->poll_hda, 1,
+				    hda_poll_callback, sc);
+			}
+		}
+	} else {
+		ctl = HDAC_READ_4(&sc->mem, HDAC_INTCTL);
+		ctl &= ~(1 << (ch->off >> 5));
+		HDAC_WRITE_4(&sc->mem, HDAC_INTCTL, ctl);
+	}
 }
 
 static void
@@ -1930,14 +2559,52 @@ hdac_stream_start(struct hdac_chan *ch)
 	struct hdac_softc *sc = ch->devinfo->codec->sc;
 	uint32_t ctl;
 
-	ctl = HDAC_READ_4(&sc->mem, HDAC_INTCTL);
-	ctl |= 1 << (ch->off >> 5);
-	HDAC_WRITE_4(&sc->mem, HDAC_INTCTL, ctl);
+	if (sc->polling != 0) {
+		int pollticks;
 
-	ctl = HDAC_READ_1(&sc->mem, ch->off + HDAC_SDCTL0);
-	ctl |= HDAC_SDCTL_IOCE | HDAC_SDCTL_FEIE | HDAC_SDCTL_DEIE |
-	    HDAC_SDCTL_RUN;
+		pollticks = ((uint64_t)hz * ch->blksz) /
+		    ((uint64_t)sndbuf_getbps(ch->b) * sndbuf_getspd(ch->b));
+		pollticks >>= 2;
+		if (pollticks > hz)
+			pollticks = hz;
+		if (pollticks < 1) {
+			HDA_BOOTVERBOSE(
+				device_printf(sc->dev,
+				    "%s: pollticks=%d < 1 !\n",
+				    __func__, pollticks);
+			);
+			pollticks = 1;
+		}
+		if (hda_chan_active(sc) == 0 || pollticks < sc->poll_ticks) {
+			HDA_BOOTVERBOSE(
+				if (hda_chan_active(sc) == 0) {
+					device_printf(sc->dev,
+					    "%s: pollticks=%d\n",
+					    __func__, pollticks);
+				} else {
+					device_printf(sc->dev,
+					    "%s: pollticks %d -> %d\n",
+					    __func__, sc->poll_ticks,
+					    pollticks);
+				}
+			);
+			sc->poll_ticks = pollticks;
+			callout_reset(&sc->poll_hda, 1, hda_poll_callback,
+			    sc);
+		}
+		ctl = HDAC_READ_1(&sc->mem, ch->off + HDAC_SDCTL0);
+		ctl |= HDAC_SDCTL_RUN;
+	} else {
+		ctl = HDAC_READ_4(&sc->mem, HDAC_INTCTL);
+		ctl |= 1 << (ch->off >> 5);
+		HDAC_WRITE_4(&sc->mem, HDAC_INTCTL, ctl);
+		ctl = HDAC_READ_1(&sc->mem, ch->off + HDAC_SDCTL0);
+		ctl |= HDAC_SDCTL_IOCE | HDAC_SDCTL_FEIE | HDAC_SDCTL_DEIE |
+		    HDAC_SDCTL_RUN;
+	} 
 	HDAC_WRITE_1(&sc->mem, ch->off + HDAC_SDCTL0, ctl);
+
+	ch->active = 1;
 }
 
 static void
@@ -1989,31 +2656,42 @@ static void
 hdac_bdl_setup(struct hdac_chan *ch)
 {
 	struct hdac_softc *sc = ch->devinfo->codec->sc;
-	uint64_t addr;
-	int blks, size, blocksize;
 	struct hdac_bdle *bdle;
+	uint64_t addr;
+	uint32_t blksz, blkcnt;
 	int i;
 
 	addr = (uint64_t)sndbuf_getbufaddr(ch->b);
-	size = sndbuf_getsize(ch->b);
-	blocksize = sndbuf_getblksz(ch->b);
-	blks = size / blocksize;
-	bdle = (struct hdac_bdle*)ch->bdl_dma.dma_vaddr;
+	bdle = (struct hdac_bdle *)ch->bdl_dma.dma_vaddr;
 
-	for (i = 0; i < blks; i++, bdle++) {
-		bdle->addrl = (uint32_t)addr;
-		bdle->addrh = (uint32_t)(addr >> 32);
-		bdle->len = blocksize;
-		bdle->ioc = 1;
-
-		addr += blocksize;
+	if (sc->polling != 0) {
+		blksz = ch->blksz * ch->blkcnt;
+		blkcnt = 1;
+	} else {
+		blksz = ch->blksz;
+		blkcnt = ch->blkcnt;
 	}
 
-	HDAC_WRITE_4(&sc->mem, ch->off + HDAC_SDCBL, size);
-	HDAC_WRITE_2(&sc->mem, ch->off + HDAC_SDLVI, blks - 1);
+	for (i = 0; i < blkcnt; i++, bdle++) {
+		bdle->addrl = (uint32_t)addr;
+		bdle->addrh = (uint32_t)(addr >> 32);
+		bdle->len = blksz;
+		bdle->ioc = 1 ^ sc->polling;
+		addr += blksz;
+	}
+
+	HDAC_WRITE_4(&sc->mem, ch->off + HDAC_SDCBL, blksz * blkcnt);
+	HDAC_WRITE_2(&sc->mem, ch->off + HDAC_SDLVI, blkcnt - 1);
 	addr = ch->bdl_dma.dma_paddr;
 	HDAC_WRITE_4(&sc->mem, ch->off + HDAC_SDBDPL, (uint32_t)addr);
 	HDAC_WRITE_4(&sc->mem, ch->off + HDAC_SDBDPU, (uint32_t)(addr >> 32));
+	if (ch->dmapos != NULL &&
+	    !(HDAC_READ_4(&sc->mem, HDAC_DPIBLBASE) & 0x00000001)) {
+		addr = sc->pos_dma.dma_paddr;
+		HDAC_WRITE_4(&sc->mem, HDAC_DPIBLBASE,
+		    ((uint32_t)addr & HDAC_DPLBASE_DPLBASE_MASK) | 0x00000001);
+		HDAC_WRITE_4(&sc->mem, HDAC_DPIBUBASE, (uint32_t)(addr >> 32));
+	}
 }
 
 static int
@@ -2028,7 +2706,6 @@ hdac_bdl_alloc(struct hdac_chan *ch)
 		device_printf(sc->dev, "can't alloc bdl\n");
 		return (rc);
 	}
-	hdac_dma_nocache(ch->bdl_dma.dma_vaddr);
 
 	return (0);
 }
@@ -2047,7 +2724,7 @@ hdac_audio_ctl_amp_set_internal(struct hdac_softc *sc, nid_t cad, nid_t nid,
 		v = (1 << (15 - dir)) | (1 << 13) | (index << 8) |
 		    (lmute << 7) | left;
 		hdac_command(sc,
-			HDA_CMD_SET_AMP_GAIN_MUTE(cad, nid, v), cad);
+		    HDA_CMD_SET_AMP_GAIN_MUTE(cad, nid, v), cad);
 		v = (1 << (15 - dir)) | (1 << 12) | (index << 8) |
 		    (rmute << 7) | right;
 	} else
@@ -2143,14 +2820,12 @@ hdac_command_send_internal(struct hdac_softc *sc,
 	struct hdac_codec *codec;
 	int corbrp;
 	uint32_t *corb;
-	uint8_t rirbwp;
 	int timeout;
 	int retry = 10;
-	struct hdac_rirb *rirb_base, *rirb;
-	nid_t ucad;
-	uint32_t utag;
+	struct hdac_rirb *rirb_base;
 
-	if (sc == NULL || sc->codecs[cad] == NULL || commands == NULL)
+	if (sc == NULL || sc->codecs[cad] == NULL || commands == NULL ||
+	    commands->num_commands < 1)
 		return;
 
 	codec = sc->codecs[cad];
@@ -2164,8 +2839,10 @@ hdac_command_send_internal(struct hdac_softc *sc,
 		if (codec->verbs_sent != commands->num_commands) {
 			/* Queue as many verbs as possible */
 			corbrp = HDAC_READ_2(&sc->mem, HDAC_CORBRP);
+#if 0
 			bus_dmamap_sync(sc->corb_dma.dma_tag,
 			    sc->corb_dma.dma_map, BUS_DMASYNC_PREWRITE);
+#endif
 			while (codec->verbs_sent != commands->num_commands &&
 			    ((sc->corb_wp + 1) % sc->corb_size) != corbrp) {
 				sc->corb_wp++;
@@ -2175,61 +2852,30 @@ hdac_command_send_internal(struct hdac_softc *sc,
 			}
 
 			/* Send the verbs to the codecs */
+#if 0
 			bus_dmamap_sync(sc->corb_dma.dma_tag,
 			    sc->corb_dma.dma_map, BUS_DMASYNC_POSTWRITE);
+#endif
 			HDAC_WRITE_2(&sc->mem, HDAC_CORBWP, sc->corb_wp);
 		}
 
-		timeout = 10;
-		do {
-			rirbwp = HDAC_READ_1(&sc->mem, HDAC_RIRBWP);
-			bus_dmamap_sync(sc->rirb_dma.dma_tag, sc->rirb_dma.dma_map,
-			    BUS_DMASYNC_POSTREAD);
-			if (sc->rirb_rp != rirbwp) {
-				do {
-					sc->rirb_rp++;
-					sc->rirb_rp %= sc->rirb_size;
-					rirb = &rirb_base[sc->rirb_rp];
-					if (rirb->response_ex & HDAC_RIRB_RESPONSE_EX_UNSOLICITED) {
-						ucad = HDAC_RIRB_RESPONSE_EX_SDATA_IN(rirb->response_ex);
-						utag = rirb->response >> 26;
-						if (ucad > -1 && ucad < HDAC_CODEC_MAX &&
-						    sc->codecs[ucad] != NULL) {
-							sc->unsolq[sc->unsolq_wp++] =
-							    (ucad << 16) |
-							    (utag & 0xffff);
-							sc->unsolq_wp %= HDAC_UNSOLQ_MAX;
-						}
-					} else if (codec->responses_received < commands->num_commands)
-						codec->commands->responses[codec->responses_received++] =
-						    rirb->response;
-				} while (sc->rirb_rp != rirbwp);
-				break;
-			}
+		timeout = 1000;
+		while (hdac_rirb_flush(sc) == 0 && --timeout)
 			DELAY(10);
-		} while (--timeout);
 	} while ((codec->verbs_sent != commands->num_commands ||
-	    	codec->responses_received != commands->num_commands) &&
-		--retry);
+	    codec->responses_received != commands->num_commands) && --retry);
 
 	if (retry == 0)
 		device_printf(sc->dev,
-			"%s: TIMEOUT numcmd=%d, sent=%d, received=%d\n",
-			__func__, commands->num_commands,
-			codec->verbs_sent, codec->responses_received);
+		    "%s: TIMEOUT numcmd=%d, sent=%d, received=%d\n",
+		    __func__, commands->num_commands, codec->verbs_sent,
+		    codec->responses_received);
 
+	codec->commands = NULL;
+	codec->responses_received = 0;
 	codec->verbs_sent = 0;
 
-	if (sc->unsolq_st == HDAC_UNSOLQ_READY) {
-		sc->unsolq_st = HDAC_UNSOLQ_BUSY;
-		while (sc->unsolq_rp != sc->unsolq_wp) {
-			ucad = sc->unsolq[sc->unsolq_rp] >> 16;
-			utag = sc->unsolq[sc->unsolq_rp++] & 0xffff;
-			sc->unsolq_rp %= HDAC_UNSOLQ_MAX;
-			hdac_unsolicited_handler(sc->codecs[ucad], utag);
-		}
-		sc->unsolq_st = HDAC_UNSOLQ_READY;
-	}
+	hdac_unsolq_flush(sc);
 }
 
 
@@ -2261,21 +2907,21 @@ hdac_probe(device_t dev)
 	for (i = 0; i < HDAC_DEVICES_LEN; i++) {
 		if (hdac_devices[i].model == model) {
 		    	strlcpy(desc, hdac_devices[i].desc, sizeof(desc));
-		    	result = 0;
+		    	result = BUS_PROBE_DEFAULT;
 			break;
 		}
 		if (HDA_DEV_MATCH(hdac_devices[i].model, model) &&
 		    class == PCIC_MULTIMEDIA &&
 		    subclass == PCIS_MULTIMEDIA_HDA) {
 		    	strlcpy(desc, hdac_devices[i].desc, sizeof(desc));
-		    	result = 0;
+		    	result = BUS_PROBE_GENERIC;
 			break;
 		}
 	}
 	if (result == ENXIO && class == PCIC_MULTIMEDIA &&
 	    subclass == PCIS_MULTIMEDIA_HDA) {
 		strlcpy(desc, "Generic", sizeof(desc));
-	    	result = 0;
+	    	result = BUS_PROBE_GENERIC;
 	}
 	if (result != ENXIO) {
 		strlcat(desc, " High Definition Audio Controller",
@@ -2298,14 +2944,10 @@ hdac_channel_init(kobj_t obj, void *data, struct snd_dbuf *b,
 	if (dir == PCMDIR_PLAY) {
 		ch = &sc->play;
 		ch->off = (sc->num_iss + devinfo->function.audio.playcnt) << 5;
-		ch->dir = PCMDIR_PLAY;
-		ch->sid = ++sc->streamcnt;
 		devinfo->function.audio.playcnt++;
 	} else {
 		ch = &sc->rec;
 		ch->off = devinfo->function.audio.reccnt << 5;
-		ch->dir = PCMDIR_REC;
-		ch->sid = ++sc->streamcnt;
 		devinfo->function.audio.reccnt++;
 	}
 	if (devinfo->function.audio.quirks & HDA_QUIRK_FIXEDRATE) {
@@ -2313,6 +2955,13 @@ hdac_channel_init(kobj_t obj, void *data, struct snd_dbuf *b,
 		ch->pcmrates[0] = 48000;
 		ch->pcmrates[1] = 0;
 	}
+	if (sc->pos_dma.dma_vaddr != NULL)
+		ch->dmapos = (uint32_t *)(sc->pos_dma.dma_vaddr +
+		    (sc->streamcnt * 8));
+	else
+		ch->dmapos = NULL;
+	ch->sid = ++sc->streamcnt;
+	ch->dir = dir;
 	ch->b = b;
 	ch->c = c;
 	ch->devinfo = devinfo;
@@ -2328,9 +2977,27 @@ hdac_channel_init(kobj_t obj, void *data, struct snd_dbuf *b,
 	if (sndbuf_alloc(ch->b, sc->chan_dmat, sc->chan_size) != 0)
 		return (NULL);
 
-	hdac_dma_nocache(sndbuf_getbuf(ch->b));
+	HDAC_DMA_ATTR(sc, sndbuf_getbuf(ch->b), sndbuf_getmaxsize(ch->b),
+	    PAT_UNCACHEABLE);
 
 	return (ch);
+}
+
+static int
+hdac_channel_free(kobj_t obj, void *data)
+{
+	struct hdac_softc *sc;
+	struct hdac_chan *ch;
+
+	ch = (struct hdac_chan *)data;
+	sc = (ch != NULL && ch->devinfo != NULL && ch->devinfo->codec != NULL) ?
+	    ch->devinfo->codec->sc : NULL;
+	if (ch != NULL && sc != NULL) {
+		HDAC_DMA_ATTR(sc, sndbuf_getbuf(ch->b),
+		    sndbuf_getmaxsize(ch->b), PAT_WRITE_BACK);
+	}
+
+	return (1);
 }
 
 static int
@@ -2353,16 +3020,18 @@ static int
 hdac_channel_setspeed(kobj_t obj, void *data, uint32_t speed)
 {
 	struct hdac_chan *ch = data;
-	uint32_t spd = 0;
+	uint32_t spd = 0, threshold;
 	int i;
 
 	for (i = 0; ch->pcmrates[i] != 0; i++) {
 		spd = ch->pcmrates[i];
-		if (spd >= speed)
+		threshold = spd + ((ch->pcmrates[i + 1] != 0) ?
+		    ((ch->pcmrates[i + 1] - spd) >> 1) : 0);
+		if (speed < threshold)
 			break;
 	}
 
-	if (spd == 0)
+	if (spd == 0)	/* impossible */
 		ch->spd = 48000;
 	else
 		ch->spd = spd;
@@ -2417,11 +3086,51 @@ hdac_stream_setup(struct hdac_chan *ch)
 }
 
 static int
-hdac_channel_setblocksize(kobj_t obj, void *data, uint32_t blocksize)
+hdac_channel_setfragments(kobj_t obj, void *data,
+					uint32_t blksz, uint32_t blkcnt)
 {
 	struct hdac_chan *ch = data;
+	struct hdac_softc *sc = ch->devinfo->codec->sc;
 
-	sndbuf_resize(ch->b, ch->blkcnt, ch->blksz);
+	blksz &= HDA_BLK_ALIGN;
+
+	if (blksz > (sndbuf_getmaxsize(ch->b) / HDA_BDL_MIN))
+		blksz = sndbuf_getmaxsize(ch->b) / HDA_BDL_MIN;
+	if (blksz < HDA_BLK_MIN)
+		blksz = HDA_BLK_MIN;
+	if (blkcnt > HDA_BDL_MAX)
+		blkcnt = HDA_BDL_MAX;
+	if (blkcnt < HDA_BDL_MIN)
+		blkcnt = HDA_BDL_MIN;
+
+	while ((blksz * blkcnt) > sndbuf_getmaxsize(ch->b)) {
+		if ((blkcnt >> 1) >= HDA_BDL_MIN)
+			blkcnt >>= 1;
+		else if ((blksz >> 1) >= HDA_BLK_MIN)
+			blksz >>= 1;
+		else
+			break;
+	}
+
+	if ((sndbuf_getblksz(ch->b) != blksz ||
+	    sndbuf_getblkcnt(ch->b) != blkcnt) &&
+	    sndbuf_resize(ch->b, blkcnt, blksz) != 0)
+		device_printf(sc->dev, "%s: failed blksz=%u blkcnt=%u\n",
+		    __func__, blksz, blkcnt);
+
+	ch->blksz = sndbuf_getblksz(ch->b);
+	ch->blkcnt = sndbuf_getblkcnt(ch->b);
+
+	return (1);
+}
+
+static int
+hdac_channel_setblocksize(kobj_t obj, void *data, uint32_t blksz)
+{
+	struct hdac_chan *ch = data;
+	struct hdac_softc *sc = ch->devinfo->codec->sc;
+
+	hdac_channel_setfragments(obj, data, blksz, sc->chan_blkcnt);
 
 	return (ch->blksz);
 }
@@ -2461,6 +3170,9 @@ hdac_channel_trigger(kobj_t obj, void *data, int go)
 	struct hdac_chan *ch = data;
 	struct hdac_softc *sc = ch->devinfo->codec->sc;
 
+	if (!(go == PCMTRIG_START || go == PCMTRIG_STOP || go == PCMTRIG_ABORT))
+		return (0);
+
 	hdac_lock(sc);
 	switch (go) {
 	case PCMTRIG_START:
@@ -2469,6 +3181,8 @@ hdac_channel_trigger(kobj_t obj, void *data, int go)
 	case PCMTRIG_STOP:
 	case PCMTRIG_ABORT:
 		hdac_channel_stop(sc, ch);
+		break;
+	default:
 		break;
 	}
 	hdac_unlock(sc);
@@ -2481,26 +3195,22 @@ hdac_channel_getptr(kobj_t obj, void *data)
 {
 	struct hdac_chan *ch = data;
 	struct hdac_softc *sc = ch->devinfo->codec->sc;
-	int sz, delta;
 	uint32_t ptr;
 
 	hdac_lock(sc);
-	ptr = HDAC_READ_4(&sc->mem, ch->off + HDAC_SDLPIB);
+	if (sc->polling != 0)
+		ptr = ch->ptr;
+	else if (ch->dmapos != NULL)
+		ptr = *(ch->dmapos);
+	else
+		ptr = HDAC_READ_4(&sc->mem, ch->off + HDAC_SDLPIB);
 	hdac_unlock(sc);
 
-	sz = sndbuf_getsize(ch->b);
-	ptr %= sz;
-
-	if (ch->dir == PCMDIR_REC) {
-		delta = ptr % sndbuf_getblksz(ch->b);
-		if (delta != 0) {
-			ptr -= delta;
-			if (ptr < delta)
-				ptr = sz - delta;
-			else
-				ptr -= delta;
-		}
-	}
+	/*
+	 * Round to available space and force 128 bytes aligment.
+	 */
+	ptr %= ch->blksz * ch->blkcnt;
+	ptr &= HDA_BLK_ALIGN;
 
 	return (ptr);
 }
@@ -2513,6 +3223,7 @@ hdac_channel_getcaps(kobj_t obj, void *data)
 
 static kobj_method_t hdac_channel_methods[] = {
 	KOBJMETHOD(channel_init,		hdac_channel_init),
+	KOBJMETHOD(channel_free,		hdac_channel_free),
 	KOBJMETHOD(channel_setformat,		hdac_channel_setformat),
 	KOBJMETHOD(channel_setspeed,		hdac_channel_setspeed),
 	KOBJMETHOD(channel_setblocksize,	hdac_channel_setblocksize),
@@ -2522,6 +3233,27 @@ static kobj_method_t hdac_channel_methods[] = {
 	{ 0, 0 }
 };
 CHANNEL_DECLARE(hdac_channel);
+
+static void
+hdac_jack_poll_callback(void *arg)
+{
+	struct hdac_devinfo *devinfo = arg;
+	struct hdac_softc *sc;
+
+	if (devinfo == NULL || devinfo->codec == NULL ||
+	    devinfo->codec->sc == NULL)
+		return;
+	sc = devinfo->codec->sc;
+	hdac_lock(sc);
+	if (sc->poll_ival == 0) {
+		hdac_unlock(sc);
+		return;
+	}
+	hdac_hp_switch_handler(devinfo);
+	callout_reset(&sc->poll_jack, sc->poll_ival,
+	    hdac_jack_poll_callback, devinfo);
+	hdac_unlock(sc);
+}
 
 static int
 hdac_audio_ctl_ossmixer_init(struct snd_mixer *m)
@@ -2543,31 +3275,35 @@ hdac_audio_ctl_ossmixer_init(struct snd_mixer *m)
 	cad = devinfo->codec->cad;
 	for (i = 0; i < HDAC_HP_SWITCH_LEN; i++) {
 		if (!(HDA_DEV_MATCH(hdac_hp_switch[i].model,
-		    sc->pci_subvendor) &&
-		    hdac_hp_switch[i].id == id))
+		    sc->pci_subvendor) && hdac_hp_switch[i].id == id))
 			continue;
 		w = hdac_widget_get(devinfo, hdac_hp_switch[i].hpnid);
-		if (w != NULL && w->enable != 0
-		    && w->type ==
-		    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX &&
-		    HDA_PARAM_AUDIO_WIDGET_CAP_UNSOL_CAP(w->param.widget_cap)) {
+		if (w == NULL || w->enable == 0 || w->type !=
+		    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX)
+			continue;
+		if (hdac_hp_switch[i].polling != 0)
+			callout_reset(&sc->poll_jack, 1,
+			    hdac_jack_poll_callback, devinfo);
+		else if (HDA_PARAM_AUDIO_WIDGET_CAP_UNSOL_CAP(w->param.widget_cap))
 			hdac_command(sc,
-			    HDA_CMD_SET_UNSOLICITED_RESPONSE(cad,
-			    w->nid,
-			    HDA_CMD_SET_UNSOLICITED_RESPONSE_ENABLE|
+			    HDA_CMD_SET_UNSOLICITED_RESPONSE(cad, w->nid,
+			    HDA_CMD_SET_UNSOLICITED_RESPONSE_ENABLE |
 			    HDAC_UNSOLTAG_EVENT_HP), cad);
-			hdac_hp_switch_handler(devinfo);
-			HDA_BOOTVERBOSE(
-				device_printf(sc->dev,
-				    "HDA_DEBUG: Enabling headphone/speaker "
-				    "audio routing switching:\n");
-				device_printf(sc->dev,
-				    "HDA_DEBUG: \tindex=%d nid=%d "
-				    "pci_subvendor=0x%08x "
-				    "codec=0x%08x\n",
-				    i, w->nid, sc->pci_subvendor, id);
-			);
-		}
+		else
+			continue;
+		hdac_hp_switch_handler(devinfo);
+		HDA_BOOTVERBOSE(
+			device_printf(sc->dev,
+			    "HDA_DEBUG: Enabling headphone/speaker "
+			    "audio routing switching:\n");
+			device_printf(sc->dev,
+			    "HDA_DEBUG: \tindex=%d nid=%d "
+			    "pci_subvendor=0x%08x "
+			    "codec=0x%08x [%s]\n",
+			    i, w->nid, sc->pci_subvendor, id,
+			    (hdac_hp_switch[i].polling != 0) ? "POLL" :
+			    "UNSOL");
+		);
 		break;
 	}
 	for (i = 0; i < HDAC_EAPD_SWITCH_LEN; i++) {
@@ -2619,19 +3355,13 @@ hdac_audio_ctl_ossmixer_init(struct snd_mixer *m)
 	}
 
 	if (softpcmvol == 1 || ctl == NULL) {
-		device_printf(sc->dev, "no softpcm support available\n");
-#if notyet
-		struct snddev_info *d = NULL;
-		d = device_get_softc(sc->dev);
-		if (d != NULL) {
-			d->flags |= SD_F_SOFTPCMVOL;
-			HDA_BOOTVERBOSE(
-				device_printf(sc->dev,
-				    "HDA_DEBUG: %s Soft PCM volume\n",
-				    (softpcmvol == 1) ?
-				    "Forcing" : "Enabling");
-			);
-		}
+		pcm_setflags(sc->dev, pcm_getflags(sc->dev) | SD_F_SOFTPCMVOL);
+		HDA_BOOTVERBOSE(
+			device_printf(sc->dev,
+			    "HDA_DEBUG: %s Soft PCM volume\n",
+			    (softpcmvol == 1) ?
+			    "Forcing" : "Enabling");
+		);
 		i = 0;
 		/*
 		 * XXX Temporary quirk for STAC9220, until the parser
@@ -2647,6 +3377,24 @@ hdac_audio_ctl_ossmixer_init(struct snd_mixer *m)
 					ctl->ossmask = SOUND_MASK_VOLUME;
 					ctl->ossval = 100 | (100 << 8);
 				} else
+					ctl->ossmask &= ~SOUND_MASK_VOLUME;
+			}
+		} else if (id == HDA_CODEC_STAC9221) {
+			mask |= SOUND_MASK_VOLUME;
+			while ((ctl = hdac_audio_ctl_each(devinfo, &i)) !=
+			    NULL) {
+				if (ctl->widget == NULL)
+					continue;
+				if (ctl->widget->type ==
+				    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_AUDIO_OUTPUT &&
+				    ctl->index == 0 && (ctl->widget->nid == 2 ||
+				    ctl->widget->enable != 0)) {
+					ctl->enable = 1;
+					ctl->ossmask = SOUND_MASK_VOLUME;
+					ctl->ossval = 100 | (100 << 8);
+				} else if (ctl->enable == 0)
+					continue;
+				else
 					ctl->ossmask &= ~SOUND_MASK_VOLUME;
 			}
 		} else {
@@ -2666,10 +3414,13 @@ hdac_audio_ctl_ossmixer_init(struct snd_mixer *m)
 					ctl->enable = 0;
 			}
 		}
-#endif
 	}
 
-	recmask &= ~(SOUND_MASK_PCM | SOUND_MASK_RECLEV | SOUND_MASK_SPEAKER);
+	recmask &= ~(SOUND_MASK_PCM | SOUND_MASK_RECLEV | SOUND_MASK_SPEAKER |
+	    SOUND_MASK_BASS | SOUND_MASK_TREBLE | SOUND_MASK_IGAIN |
+	    SOUND_MASK_OGAIN);
+	recmask &= (1 << SOUND_MIXER_NRDEVICES) - 1;
+	mask &= (1 << SOUND_MIXER_NRDEVICES) - 1;
 
 	mix_setrecdevs(m, recmask);
 	mix_setdevs(m, mask);
@@ -2722,11 +3473,16 @@ hdac_audio_ctl_ossmixer_set(struct snd_mixer *m, unsigned dev,
 		else
 			w->param.eapdbtl |= HDA_CMD_SET_EAPD_BTL_ENABLE_EAPD;
 		if (orig != w->param.eapdbtl) {
+			uint32_t val;
+
 			if (hdac_eapd_switch[i].hp_switch != 0)
 				hdac_hp_switch_handler(devinfo);
+			val = w->param.eapdbtl;
+			if (devinfo->function.audio.quirks & HDA_QUIRK_EAPDINV)
+				val ^= HDA_CMD_SET_EAPD_BTL_ENABLE_EAPD;
 			hdac_command(sc,
 			    HDA_CMD_SET_EAPD_BTL_ENABLE(devinfo->codec->cad,
-			    w->nid, w->param.eapdbtl), devinfo->codec->cad);
+			    w->nid, val), devinfo->codec->cad);
 		}
 		hdac_unlock(sc);
 		return (left | (left << 8));
@@ -2820,7 +3576,8 @@ hdac_audio_ctl_ossmixer_setrecsrc(struct snd_mixer *m, uint32_t src)
 			    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_AUDIO_MIXER))
 				continue;
 			if (cw->ctlflags & target) {
-				hdac_widget_connection_select(w, j);
+				if (!(w->pflags & HDA_ADC_LOCKED))
+					hdac_widget_connection_select(w, j);
 				ret = target;
 				j += w->nconns;
 			}
@@ -2852,7 +3609,9 @@ hdac_attach(device_t dev)
 {
 	struct hdac_softc *sc;
 	int result;
-	int i = 0;
+	int i;
+	uint16_t vendor;
+	uint8_t v;
 
 	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc == NULL) {
@@ -2861,21 +3620,36 @@ hdac_attach(device_t dev)
 	}
 
 	sc->lock = snd_mtxcreate(device_get_nameunit(dev), HDAC_MTX_NAME);
-	if (sc->lock == NULL) {
-		device_printf(dev, "mutex creation failed\n");
-		kfree(sc, M_DEVBUF);
-		return (ENOMEM);
-	}
-
 	sc->dev = dev;
 	sc->pci_subvendor = (uint32_t)pci_get_subdevice(sc->dev) << 16;
 	sc->pci_subvendor |= (uint32_t)pci_get_subvendor(sc->dev) & 0x0000ffff;
+	vendor = pci_get_vendor(dev);
+
+	if (sc->pci_subvendor == HP_NX6325_SUBVENDORX) {
+		/* Screw nx6325 - subdevice/subvendor swapped */
+		sc->pci_subvendor = HP_NX6325_SUBVENDOR;
+	}
+
+	callout_init(&sc->poll_hda);
+	callout_init(&sc->poll_hdac);
+	callout_init(&sc->poll_jack);
+
+	sc->poll_ticks = 1;
+	sc->poll_ival = HDAC_POLL_INTERVAL;
+	if (resource_int_value(device_get_name(dev),
+	    device_get_unit(dev), "polling", &i) == 0 && i != 0)
+		sc->polling = 1;
+	else
+		sc->polling = 0;
 
 	sc->chan_size = pcm_getbuffersize(dev,
-	    HDA_BUFSZ_MIN, HDA_BUFSZ_DEFAULT, HDA_BUFSZ_DEFAULT);
-	if (resource_int_value(device_get_name(sc->dev),
-	    device_get_unit(sc->dev), "blocksize", &i) == 0 &&
-	    i > 0) {
+	    HDA_BUFSZ_MIN, HDA_BUFSZ_DEFAULT, HDA_BUFSZ_MAX);
+
+	if (resource_int_value(device_get_name(dev),
+	    device_get_unit(dev), "blocksize", &i) == 0 && i > 0) {
+		i &= HDA_BLK_ALIGN;
+		if (i < HDA_BLK_MIN)
+			i = HDA_BLK_MIN;
 		sc->chan_blkcnt = sc->chan_size / i;
 		i = 0;
 		while (sc->chan_blkcnt >> i)
@@ -2895,13 +3669,13 @@ hdac_attach(device_t dev)
 	    BUS_SPACE_MAXADDR,			/* highaddr */
 	    NULL,				/* filtfunc */
 	    NULL,				/* fistfuncarg */
-	    sc->chan_size, 				/* maxsize */
+	    sc->chan_size, 			/* maxsize */
 	    1,					/* nsegments */
-	    sc->chan_size, 				/* maxsegsz */
+	    sc->chan_size, 			/* maxsegsz */
 	    0,					/* flags */
 	    &sc->chan_dmat);			/* dmat */
 	if (result != 0) {
-		device_printf(sc->dev, "%s: bus_dma_tag_create failed (%x)\n",
+		device_printf(dev, "%s: bus_dma_tag_create failed (%x)\n",
 		     __func__, result);
 		snd_mtxfree(sc->lock);
 		kfree(sc, M_DEVBUF);
@@ -2914,6 +3688,70 @@ hdac_attach(device_t dev)
 		sc->codecs[i] = NULL;
 
 	pci_enable_busmaster(dev);
+
+	if (vendor == INTEL_VENDORID) {
+		/* TCSEL -> TC0 */
+		v = pci_read_config(dev, 0x44, 1);
+		pci_write_config(dev, 0x44, v & 0xf8, 1);
+		HDA_BOOTVERBOSE(
+			device_printf(dev, "TCSEL: 0x%02d -> 0x%02d\n", v,
+			    pci_read_config(dev, 0x44, 1));
+		);
+	}
+
+#if 0 /* TODO: No uncacheable DMA support in DragonFly. */
+	sc->nocache = 1;
+
+	if (resource_int_value(device_get_name(dev),
+	    device_get_unit(dev), "snoop", &i) == 0 && i != 0) {
+#else
+	sc->nocache = 0;
+#endif
+		/*
+		 * Try to enable PCIe snoop to avoid messing around with
+		 * uncacheable DMA attribute. Since PCIe snoop register
+		 * config is pretty much vendor specific, there are no
+		 * general solutions on how to enable it, forcing us (even
+		 * Microsoft) to enable uncacheable or write combined DMA
+		 * by default.
+		 *
+		 * http://msdn2.microsoft.com/en-us/library/ms790324.aspx
+		 */
+		for (i = 0; i < HDAC_PCIESNOOP_LEN; i++) {
+			if (hdac_pcie_snoop[i].vendor != vendor)
+				continue;
+			sc->nocache = 0;
+			if (hdac_pcie_snoop[i].reg == 0x00)
+				break;
+			v = pci_read_config(dev, hdac_pcie_snoop[i].reg, 1);
+			if ((v & hdac_pcie_snoop[i].enable) ==
+			    hdac_pcie_snoop[i].enable)
+				break;
+			v &= hdac_pcie_snoop[i].mask;
+			v |= hdac_pcie_snoop[i].enable;
+			pci_write_config(dev, hdac_pcie_snoop[i].reg, v, 1);
+			v = pci_read_config(dev, hdac_pcie_snoop[i].reg, 1);
+			if ((v & hdac_pcie_snoop[i].enable) !=
+			    hdac_pcie_snoop[i].enable) {
+				HDA_BOOTVERBOSE(
+					device_printf(dev,
+					    "WARNING: Failed to enable PCIe "
+					    "snoop!\n");
+				);
+#if 0 /* TODO: No uncacheable DMA support in DragonFly. */
+				sc->nocache = 1;
+#endif
+			}
+			break;
+		}
+#if 0 /* TODO: No uncacheable DMA support in DragonFly. */
+	}
+#endif
+
+	HDA_BOOTVERBOSE(
+		device_printf(dev, "DMA Coherency: %s / vendor=0x%04x\n",
+		    (sc->nocache == 0) ? "PCIe snoop" : "Uncacheable", vendor);
+	);
 
 	/* Allocate resources */
 	result = hdac_mem_alloc(sc);
@@ -2941,10 +3779,6 @@ hdac_attach(device_t dev)
 	/* Quiesce everything */
 	hdac_reset(sc);
 
-	/* Disable PCI-Express QOS */
-	pci_write_config(sc->dev, 0x44,
-	    pci_read_config(sc->dev, 0x44, 1) & 0xf8, 1);
-
 	/* Initialize the CORB and RIRB */
 	hdac_corb_init(sc);
 	hdac_rirb_init(sc);
@@ -2960,9 +3794,9 @@ hdac_attach(device_t dev)
 	return (0);
 
 hdac_attach_fail:
-	hdac_dma_free(&sc->rirb_dma);
-	hdac_dma_free(&sc->corb_dma);
 	hdac_irq_free(sc);
+	hdac_dma_free(sc, &sc->rirb_dma);
+	hdac_dma_free(sc, &sc->corb_dma);
 	hdac_mem_free(sc);
 	snd_mtxfree(sc->lock);
 	kfree(sc, M_DEVBUF);
@@ -2994,6 +3828,10 @@ hdac_audio_parse(struct hdac_devinfo *devinfo)
 	devinfo->startnode = HDA_PARAM_SUB_NODE_COUNT_START(res);
 	devinfo->endnode = devinfo->startnode + devinfo->nodecnt;
 
+	res = hdac_command(sc,
+	    HDA_CMD_GET_PARAMETER(cad , nid, HDA_PARAM_GPIO_COUNT), cad);
+	devinfo->function.audio.gpio = res;
+
 	HDA_BOOTVERBOSE(
 		device_printf(sc->dev, "       Vendor: 0x%08x\n",
 		    devinfo->vendor_id);
@@ -3008,6 +3846,19 @@ hdac_audio_parse(struct hdac_devinfo *devinfo)
 		device_printf(sc->dev, "        Nodes: start=%d "
 		    "endnode=%d total=%d\n",
 		    devinfo->startnode, devinfo->endnode, devinfo->nodecnt);
+		device_printf(sc->dev, "    CORB size: %d\n", sc->corb_size);
+		device_printf(sc->dev, "    RIRB size: %d\n", sc->rirb_size);
+		device_printf(sc->dev, "      Streams: ISS=%d OSS=%d BSS=%d\n",
+		    sc->num_iss, sc->num_oss, sc->num_bss);
+		device_printf(sc->dev, "         GPIO: 0x%08x\n",
+		    devinfo->function.audio.gpio);
+		device_printf(sc->dev, "               NumGPIO=%d NumGPO=%d "
+		    "NumGPI=%d GPIWake=%d GPIUnsol=%d\n",
+		    HDA_PARAM_GPIO_COUNT_NUM_GPIO(devinfo->function.audio.gpio),
+		    HDA_PARAM_GPIO_COUNT_NUM_GPO(devinfo->function.audio.gpio),
+		    HDA_PARAM_GPIO_COUNT_NUM_GPI(devinfo->function.audio.gpio),
+		    HDA_PARAM_GPIO_COUNT_GPI_WAKE(devinfo->function.audio.gpio),
+		    HDA_PARAM_GPIO_COUNT_GPI_UNSOL(devinfo->function.audio.gpio));
 	);
 
 	res = hdac_command(sc,
@@ -3030,13 +3881,11 @@ hdac_audio_parse(struct hdac_devinfo *devinfo)
 	    cad);
 	devinfo->function.audio.inamp_cap = res;
 
-	if (devinfo->nodecnt > 0) {
-		hdac_unlock(sc);
+	if (devinfo->nodecnt > 0)
 		devinfo->widget = (struct hdac_widget *)kmalloc(
 		    sizeof(*(devinfo->widget)) * devinfo->nodecnt, M_HDAC,
 		    M_NOWAIT | M_ZERO);
-		hdac_lock(sc);
-	} else
+	else
 		devinfo->widget = NULL;
 
 	if (devinfo->widget == NULL) {
@@ -3104,10 +3953,8 @@ hdac_audio_ctl_parse(struct hdac_devinfo *devinfo)
 	if (max < 1)
 		return;
 
-	hdac_unlock(sc);
 	ctls = (struct hdac_audio_ctl *)kmalloc(
 	    sizeof(*ctls) * max, M_HDAC, M_ZERO | M_NOWAIT);
-	hdac_lock(sc);
 
 	if (ctls == NULL) {
 		/* Blekh! */
@@ -3224,19 +4071,46 @@ static const struct {
 	uint32_t set, unset;
 } hdac_quirks[] = {
 	/*
-	 * XXX Fixed rate quirk. Other than 48000
-	 *     sounds pretty much like train wreck.
-	 *
 	 * XXX Force stereo quirk. Monoural recording / playback
 	 *     on few codecs (especially ALC880) seems broken or
 	 *     perhaps unsupported.
 	 */
 	{ HDA_MATCH_ALL, HDA_MATCH_ALL,
-	    HDA_QUIRK_FIXEDRATE | HDA_QUIRK_FORCESTEREO, 0 },
+	    HDA_QUIRK_FORCESTEREO | HDA_QUIRK_IVREF, 0 },
 	{ ACER_ALL_SUBVENDOR, HDA_MATCH_ALL,
-	    HDA_QUIRK_GPIO1, 0 },
+	    HDA_QUIRK_GPIO0, 0 },
 	{ ASUS_M5200_SUBVENDOR, HDA_CODEC_ALC880,
+	    HDA_QUIRK_GPIO0, 0 },
+	{ ASUS_A7M_SUBVENDOR, HDA_CODEC_ALC880,
+	    HDA_QUIRK_GPIO0, 0 },
+	{ ASUS_A7T_SUBVENDOR, HDA_CODEC_ALC882,
+	    HDA_QUIRK_GPIO0, 0 },
+	{ ASUS_W2J_SUBVENDOR, HDA_CODEC_ALC882,
+	    HDA_QUIRK_GPIO0, 0 },
+	{ ASUS_U5F_SUBVENDOR, HDA_CODEC_AD1986A,
+	    HDA_QUIRK_EAPDINV, 0 },
+	{ ASUS_A8JC_SUBVENDOR, HDA_CODEC_AD1986A,
+	    HDA_QUIRK_EAPDINV, 0 },
+	{ ASUS_F3JC_SUBVENDOR, HDA_CODEC_ALC861,
+	    HDA_QUIRK_OVREF, 0 },
+	{ ASUS_W6F_SUBVENDOR, HDA_CODEC_ALC861,
+	    HDA_QUIRK_OVREF, 0 },
+	{ UNIWILL_9075_SUBVENDOR, HDA_CODEC_ALC861,
+	    HDA_QUIRK_OVREF, 0 },
+	/*{ ASUS_M2N_SUBVENDOR, HDA_CODEC_AD1988,
+	    HDA_QUIRK_IVREF80, HDA_QUIRK_IVREF50 | HDA_QUIRK_IVREF100 },*/
+	{ MEDION_MD95257_SUBVENDOR, HDA_CODEC_ALC880,
 	    HDA_QUIRK_GPIO1, 0 },
+	{ LENOVO_3KN100_SUBVENDOR, HDA_CODEC_AD1986A,
+	    HDA_QUIRK_EAPDINV, 0 },
+	{ SAMSUNG_Q1_SUBVENDOR, HDA_CODEC_AD1986A,
+	    HDA_QUIRK_EAPDINV, 0 },
+	{ APPLE_INTEL_MAC, HDA_CODEC_STAC9221,
+	    HDA_QUIRK_GPIO0 | HDA_QUIRK_GPIO1, 0 },
+	{ HDA_MATCH_ALL, HDA_CODEC_AD1988,
+	    HDA_QUIRK_IVREF80, HDA_QUIRK_IVREF50 | HDA_QUIRK_IVREF100 },
+	{ HDA_MATCH_ALL, HDA_CODEC_AD1988B,
+	    HDA_QUIRK_IVREF80, HDA_QUIRK_IVREF50 | HDA_QUIRK_IVREF100 },
 	{ HDA_MATCH_ALL, HDA_CODEC_CXVENICE,
 	    0, HDA_QUIRK_FORCESTEREO },
 	{ HDA_MATCH_ALL, HDA_CODEC_STACXXXX,
@@ -3248,6 +4122,7 @@ static void
 hdac_vendor_patch_parse(struct hdac_devinfo *devinfo)
 {
 	struct hdac_widget *w;
+	struct hdac_audio_ctl *ctl;
 	uint32_t id, subvendor;
 	int i;
 
@@ -3281,6 +4156,34 @@ hdac_vendor_patch_parse(struct hdac_devinfo *devinfo)
 			if (w->nid != 5)
 				w->enable = 0;
 		}
+		if (subvendor == HP_XW4300_SUBVENDOR) {
+			ctl = hdac_audio_ctl_amp_get(devinfo, 16, 0, 1);
+			if (ctl != NULL && ctl->widget != NULL) {
+				ctl->ossmask = SOUND_MASK_SPEAKER;
+				ctl->widget->ctlflags |= SOUND_MASK_SPEAKER;
+			}
+			ctl = hdac_audio_ctl_amp_get(devinfo, 17, 0, 1);
+			if (ctl != NULL && ctl->widget != NULL) {
+				ctl->ossmask = SOUND_MASK_SPEAKER;
+				ctl->widget->ctlflags |= SOUND_MASK_SPEAKER;
+			}
+		} else if (subvendor == HP_3010_SUBVENDOR) {
+			ctl = hdac_audio_ctl_amp_get(devinfo, 17, 0, 1);
+			if (ctl != NULL && ctl->widget != NULL) {
+				ctl->ossmask = SOUND_MASK_SPEAKER;
+				ctl->widget->ctlflags |= SOUND_MASK_SPEAKER;
+			}
+			ctl = hdac_audio_ctl_amp_get(devinfo, 21, 0, 1);
+			if (ctl != NULL && ctl->widget != NULL) {
+				ctl->ossmask = SOUND_MASK_SPEAKER;
+				ctl->widget->ctlflags |= SOUND_MASK_SPEAKER;
+			}
+		}
+		break;
+	case HDA_CODEC_ALC861:
+		ctl = hdac_audio_ctl_amp_get(devinfo, 21, 2, 1);
+		if (ctl != NULL)
+			ctl->muted = HDA_AMP_MUTE_ALL;
 		break;
 	case HDA_CODEC_ALC880:
 		for (i = devinfo->startnode; i < devinfo->endnode; i++) {
@@ -3305,13 +4208,40 @@ hdac_vendor_patch_parse(struct hdac_devinfo *devinfo)
 			}
 		}
 		break;
+	case HDA_CODEC_ALC883:
+		/*
+		 * nid: 24/25 = External (jack) or Internal (fixed) Mic.
+		 *              Clear vref cap for jack connectivity.
+		 */
+		w = hdac_widget_get(devinfo, 24);
+		if (w != NULL && w->enable != 0 && w->type ==
+		    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX &&
+		    (w->wclass.pin.config &
+		    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK) ==
+		    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_JACK)
+			w->wclass.pin.cap &= ~(
+			    HDA_PARAM_PIN_CAP_VREF_CTRL_100_MASK |
+			    HDA_PARAM_PIN_CAP_VREF_CTRL_80_MASK |
+			    HDA_PARAM_PIN_CAP_VREF_CTRL_50_MASK);
+		w = hdac_widget_get(devinfo, 25);
+		if (w != NULL && w->enable != 0 && w->type ==
+		    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX &&
+		    (w->wclass.pin.config &
+		    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK) ==
+		    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_JACK)
+			w->wclass.pin.cap &= ~(
+			    HDA_PARAM_PIN_CAP_VREF_CTRL_100_MASK |
+			    HDA_PARAM_PIN_CAP_VREF_CTRL_80_MASK |
+			    HDA_PARAM_PIN_CAP_VREF_CTRL_50_MASK);
+		/*
+		 * nid: 26 = Line-in, leave it alone.
+		 */
+		break;
 	case HDA_CODEC_AD1981HD:
 		w = hdac_widget_get(devinfo, 11);
 		if (w != NULL && w->enable != 0 && w->nconns > 3)
 			w->selconn = 3;
 		if (subvendor == IBM_M52_SUBVENDOR) {
-			struct hdac_audio_ctl *ctl;
-
 			ctl = hdac_audio_ctl_amp_get(devinfo, 7, 0, 1);
 			if (ctl != NULL)
 				ctl->ossmask = SOUND_MASK_SPEAKER;
@@ -3328,8 +4258,75 @@ hdac_vendor_patch_parse(struct hdac_devinfo *devinfo)
 			if (w->nid != 3)
 				w->enable = 0;
 		}
+		if (subvendor == ASUS_M2NPVMX_SUBVENDOR) {
+			/* nid 28 is mic, nid 29 is line-in */
+			w = hdac_widget_get(devinfo, 15);
+			if (w != NULL)
+				w->selconn = 2;
+			w = hdac_widget_get(devinfo, 16);
+			if (w != NULL)
+				w->selconn = 1;
+		}
+		break;
+	case HDA_CODEC_AD1988:
+	case HDA_CODEC_AD1988B:
+		/*w = hdac_widget_get(devinfo, 12);
+		if (w != NULL) {
+			w->selconn = 1;
+			w->pflags |= HDA_ADC_LOCKED;
+		}
+		w = hdac_widget_get(devinfo, 13);
+		if (w != NULL) {
+			w->selconn = 4;
+			w->pflags |= HDA_ADC_LOCKED;
+		}
+		w = hdac_widget_get(devinfo, 14);
+		if (w != NULL) {
+			w->selconn = 2;
+			w->pflags |= HDA_ADC_LOCKED;
+		}*/
+		ctl = hdac_audio_ctl_amp_get(devinfo, 57, 0, 1);
+		if (ctl != NULL) {
+			ctl->ossmask = SOUND_MASK_IGAIN;
+			ctl->widget->ctlflags |= SOUND_MASK_IGAIN;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 58, 0, 1);
+		if (ctl != NULL) {
+			ctl->ossmask = SOUND_MASK_IGAIN;
+			ctl->widget->ctlflags |= SOUND_MASK_IGAIN;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 60, 0, 1);
+		if (ctl != NULL) {
+			ctl->ossmask = SOUND_MASK_IGAIN;
+			ctl->widget->ctlflags |= SOUND_MASK_IGAIN;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 32, 0, 1);
+		if (ctl != NULL) {
+			ctl->ossmask = SOUND_MASK_MIC | SOUND_MASK_VOLUME;
+			ctl->widget->ctlflags |= SOUND_MASK_MIC;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 32, 4, 1);
+		if (ctl != NULL) {
+			ctl->ossmask = SOUND_MASK_MIC | SOUND_MASK_VOLUME;
+			ctl->widget->ctlflags |= SOUND_MASK_MIC;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 32, 1, 1);
+		if (ctl != NULL) {
+			ctl->ossmask = SOUND_MASK_LINE | SOUND_MASK_VOLUME;
+			ctl->widget->ctlflags |= SOUND_MASK_LINE;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 32, 7, 1);
+		if (ctl != NULL) {
+			ctl->ossmask = SOUND_MASK_SPEAKER | SOUND_MASK_VOLUME;
+			ctl->widget->ctlflags |= SOUND_MASK_SPEAKER;
+		}
 		break;
 	case HDA_CODEC_STAC9221:
+		/*
+		 * Dell XPS M1210 need all DACs for each output jacks
+		 */
+		if (subvendor == DELL_XPSM1210_SUBVENDOR)
+			break;
 		for (i = devinfo->startnode; i < devinfo->endnode; i++) {
 			w = hdac_widget_get(devinfo, i);
 			if (w == NULL || w->enable == 0)
@@ -3353,6 +4350,48 @@ hdac_vendor_patch_parse(struct hdac_devinfo *devinfo)
 
 		}
 		break;
+	case HDA_CODEC_STAC9227:
+		w = hdac_widget_get(devinfo, 8);
+		if (w != NULL)
+			w->enable = 0;
+		w = hdac_widget_get(devinfo, 9);
+		if (w != NULL)
+			w->enable = 0;
+		break;
+	case HDA_CODEC_CXWAIKIKI:
+		if (subvendor == HP_DV5000_SUBVENDOR) {
+			w = hdac_widget_get(devinfo, 27);
+			if (w != NULL)
+				w->enable = 0;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 16, 0, 1);
+		if (ctl != NULL)
+			ctl->ossmask = SOUND_MASK_SKIP;
+		ctl = hdac_audio_ctl_amp_get(devinfo, 25, 0, 1);
+		if (ctl != NULL && ctl->childwidget != NULL &&
+		    ctl->childwidget->enable != 0) {
+			ctl->ossmask = SOUND_MASK_PCM | SOUND_MASK_VOLUME;
+			ctl->childwidget->ctlflags |= SOUND_MASK_PCM;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 25, 1, 1);
+		if (ctl != NULL && ctl->childwidget != NULL &&
+		    ctl->childwidget->enable != 0) {
+			ctl->ossmask = SOUND_MASK_LINE | SOUND_MASK_VOLUME;
+			ctl->childwidget->ctlflags |= SOUND_MASK_LINE;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 25, 2, 1);
+		if (ctl != NULL && ctl->childwidget != NULL &&
+		    ctl->childwidget->enable != 0) {
+			ctl->ossmask = SOUND_MASK_MIC | SOUND_MASK_VOLUME;
+			ctl->childwidget->ctlflags |= SOUND_MASK_MIC;
+		}
+		ctl = hdac_audio_ctl_amp_get(devinfo, 26, 0, 1);
+		if (ctl != NULL) {
+			ctl->ossmask = SOUND_MASK_SKIP;
+			/* XXX mixer \=rec mic broken.. why?!? */
+			/* ctl->widget->ctlflags |= SOUND_MASK_MIC; */
+		}
+		break;
 	default:
 		break;
 	}
@@ -3374,6 +4413,7 @@ hdac_audio_ctl_ossmixer_getnextdev(struct hdac_devinfo *devinfo)
 		case SOUND_MIXER_MIC:
 		case SOUND_MIXER_CD:
 		case SOUND_MIXER_RECLEV:
+		case SOUND_MIXER_IGAIN:
 		case SOUND_MIXER_OGAIN:	/* reserved for EAPD switch */
 			(*dev)++;
 			break;
@@ -3502,7 +4542,7 @@ hdac_audio_ctl_outamp_build(struct hdac_devinfo *devinfo,
 			if (ctl->enable == 0 || ctl->widget == NULL)
 				continue;
 			/* XXX This should be compressed! */
-			if ((ctl->widget->nid == w->nid) ||
+			if (((ctl->widget->nid == w->nid) ||
 			    (ctl->widget->nid == pnid && ctl->index == index &&
 			    (ctl->dir & HDA_CTL_IN)) ||
 			    (ctl->widget->nid == pnid && pw != NULL &&
@@ -3512,7 +4552,8 @@ hdac_audio_ctl_outamp_build(struct hdac_devinfo *devinfo,
 			    pw->selconn == -1) &&
 			    (ctl->dir & HDA_CTL_OUT)) ||
 			    (strategy == HDA_PARSE_DIRECT &&
-			    ctl->widget->nid == w->nid)) {
+			    ctl->widget->nid == w->nid)) &&
+			    !(ctl->ossmask & ~SOUND_MASK_VOLUME)) {
 				/*if (pw != NULL && pw->selconn == -1)
 					pw->selconn = index;
 				fl |= SOUND_MASK_VOLUME;
@@ -3543,8 +4584,8 @@ hdac_audio_ctl_outamp_build(struct hdac_devinfo *devinfo,
 		}
 		w->ctlflags |= fl;
 		return (fl);
-	} else if (w->type == HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX
-	    && HDA_PARAM_PIN_CAP_INPUT_CAP(w->wclass.pin.cap) &&
+	} else if (w->type == HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX &&
+	    HDA_PARAM_PIN_CAP_INPUT_CAP(w->wclass.pin.cap) &&
 	    (w->pflags & HDA_ADC_PATH)) {
 		conndev = w->wclass.pin.config &
 		    HDA_CONFIG_DEFAULTCONF_DEVICE_MASK;
@@ -3846,37 +4887,91 @@ hdac_audio_build_tree(struct hdac_devinfo *devinfo)
 #define HDA_COMMIT_CTRL	(1 << 1)
 #define HDA_COMMIT_EAPD	(1 << 2)
 #define HDA_COMMIT_GPIO	(1 << 3)
+#define HDA_COMMIT_MISC	(1 << 4)
 #define HDA_COMMIT_ALL	(HDA_COMMIT_CONN | HDA_COMMIT_CTRL | \
-				HDA_COMMIT_EAPD | HDA_COMMIT_GPIO)
+			HDA_COMMIT_EAPD | HDA_COMMIT_GPIO | HDA_COMMIT_MISC)
 
 static void
 hdac_audio_commit(struct hdac_devinfo *devinfo, uint32_t cfl)
 {
 	struct hdac_softc *sc = devinfo->codec->sc;
 	struct hdac_widget *w;
-	nid_t cad, nid;
-	int i, gpioval;
+	nid_t cad;
+	int i;
 
 	if (!(cfl & HDA_COMMIT_ALL))
 		return;
 
 	cad = devinfo->codec->cad;
 
+	if ((cfl & HDA_COMMIT_MISC)) {
+		if (sc->pci_subvendor == APPLE_INTEL_MAC)
+			hdac_command(sc, HDA_CMD_12BIT(cad, devinfo->nid,
+			    0x7e7, 0), cad);
+	}
+
 	if (cfl & HDA_COMMIT_GPIO) {
-		nid = devinfo->nid;
-		for (i = 0; i < HDA_GPIO_MAX; i++) {
-			if (!(devinfo->function.audio.quirks & (1 << i)))
-				continue;
-			gpioval = (1 << i) - 1;
+		uint32_t gdata, gmask, gdir;
+		int commitgpio, numgpio;
+
+		gdata = 0;
+		gmask = 0;
+		gdir = 0;
+		commitgpio = 0;
+
+		numgpio = HDA_PARAM_GPIO_COUNT_NUM_GPIO(
+		    devinfo->function.audio.gpio);
+
+		if (devinfo->function.audio.quirks & HDA_QUIRK_GPIOFLUSH)
+			commitgpio = (numgpio > 0) ? 1 : 0;
+		else {
+			for (i = 0; i < numgpio && i < HDA_GPIO_MAX; i++) {
+				if (!(devinfo->function.audio.quirks &
+				    (1 << i)))
+					continue;
+				if (commitgpio == 0) {
+					commitgpio = 1;
+					HDA_BOOTVERBOSE(
+						gdata = hdac_command(sc,
+						    HDA_CMD_GET_GPIO_DATA(cad,
+						    devinfo->nid), cad);
+						gmask = hdac_command(sc,
+						    HDA_CMD_GET_GPIO_ENABLE_MASK(cad,
+						    devinfo->nid), cad);
+						gdir = hdac_command(sc,
+						    HDA_CMD_GET_GPIO_DIRECTION(cad,
+						    devinfo->nid), cad);
+						device_printf(sc->dev,
+						    "GPIO init: data=0x%08x "
+						    "mask=0x%08x dir=0x%08x\n",
+						    gdata, gmask, gdir);
+						gdata = 0;
+						gmask = 0;
+						gdir = 0;
+					);
+				}
+				gdata |= 1 << i;
+				gmask |= 1 << i;
+				gdir |= 1 << i;
+			}
+		}
+
+		if (commitgpio != 0) {
+			HDA_BOOTVERBOSE(
+				device_printf(sc->dev,
+				    "GPIO commit: data=0x%08x mask=0x%08x "
+				    "dir=0x%08x\n",
+				    gdata, gmask, gdir);
+			);
 			hdac_command(sc,
-			    HDA_CMD_SET_GPIO_ENABLE_MASK(cad, nid, gpioval),
-			    cad);
+			    HDA_CMD_SET_GPIO_ENABLE_MASK(cad, devinfo->nid,
+			    gmask), cad);
 			hdac_command(sc,
-			    HDA_CMD_SET_GPIO_DIRECTION(cad, nid, gpioval),
-			    cad);
+			    HDA_CMD_SET_GPIO_DIRECTION(cad, devinfo->nid,
+			    gdir), cad);
 			hdac_command(sc,
-			    HDA_CMD_SET_GPIO_DATA(cad, nid, gpioval),
-			    cad);
+			    HDA_CMD_SET_GPIO_DATA(cad, devinfo->nid,
+			    gdata), cad);
 		}
 	}
 
@@ -3892,6 +4987,10 @@ hdac_audio_commit(struct hdac_devinfo *devinfo, uint32_t cfl)
 		}
 		if ((cfl & HDA_COMMIT_CTRL) &&
 		    w->type == HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX) {
+		    	uint32_t pincap;
+
+			pincap = w->wclass.pin.cap;
+
 			if ((w->pflags & (HDA_DAC_PATH | HDA_ADC_PATH)) ==
 			    (HDA_DAC_PATH | HDA_ADC_PATH))
 				device_printf(sc->dev, "WARNING: node %d "
@@ -3904,25 +5003,63 @@ hdac_audio_commit(struct hdac_devinfo *devinfo, uint32_t cfl)
 				    HDA_CONFIG_DEFAULTCONF_DEVICE_HP_OUT)
 					w->wclass.pin.ctrl &=
 					    ~HDA_CMD_SET_PIN_WIDGET_CTRL_HPHN_ENABLE;
+				if ((devinfo->function.audio.quirks & HDA_QUIRK_OVREF100) &&
+				    HDA_PARAM_PIN_CAP_VREF_CTRL_100(pincap))
+					w->wclass.pin.ctrl |=
+					    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE(
+					    HDA_CMD_PIN_WIDGET_CTRL_VREF_ENABLE_100);
+				else if ((devinfo->function.audio.quirks & HDA_QUIRK_OVREF80) &&
+				    HDA_PARAM_PIN_CAP_VREF_CTRL_80(pincap))
+					w->wclass.pin.ctrl |=
+					    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE(
+					    HDA_CMD_PIN_WIDGET_CTRL_VREF_ENABLE_80);
+				else if ((devinfo->function.audio.quirks & HDA_QUIRK_OVREF50) &&
+				    HDA_PARAM_PIN_CAP_VREF_CTRL_50(pincap))
+					w->wclass.pin.ctrl |=
+					    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE(
+					    HDA_CMD_PIN_WIDGET_CTRL_VREF_ENABLE_50);
 			} else if (w->pflags & HDA_ADC_PATH) {
 				w->wclass.pin.ctrl &=
 				    ~(HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE |
 				    HDA_CMD_SET_PIN_WIDGET_CTRL_HPHN_ENABLE);
+				if ((devinfo->function.audio.quirks & HDA_QUIRK_IVREF100) &&
+				    HDA_PARAM_PIN_CAP_VREF_CTRL_100(pincap))
+					w->wclass.pin.ctrl |=
+					    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE(
+					    HDA_CMD_PIN_WIDGET_CTRL_VREF_ENABLE_100);
+				else if ((devinfo->function.audio.quirks & HDA_QUIRK_IVREF80) &&
+				    HDA_PARAM_PIN_CAP_VREF_CTRL_80(pincap))
+					w->wclass.pin.ctrl |=
+					    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE(
+					    HDA_CMD_PIN_WIDGET_CTRL_VREF_ENABLE_80);
+				else if ((devinfo->function.audio.quirks & HDA_QUIRK_IVREF50) &&
+				    HDA_PARAM_PIN_CAP_VREF_CTRL_50(pincap))
+					w->wclass.pin.ctrl |=
+					    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE(
+					    HDA_CMD_PIN_WIDGET_CTRL_VREF_ENABLE_50);
 			} else
 				w->wclass.pin.ctrl &= ~(
 				    HDA_CMD_SET_PIN_WIDGET_CTRL_HPHN_ENABLE |
 				    HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE |
-				    HDA_CMD_SET_PIN_WIDGET_CTRL_IN_ENABLE);
+				    HDA_CMD_SET_PIN_WIDGET_CTRL_IN_ENABLE |
+				    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE_MASK);
 			hdac_command(sc,
 			    HDA_CMD_SET_PIN_WIDGET_CTRL(cad, w->nid,
 			    w->wclass.pin.ctrl), cad);
 		}
 		if ((cfl & HDA_COMMIT_EAPD) &&
-		    w->param.eapdbtl != HDAC_INVALID)
+		    w->param.eapdbtl != HDAC_INVALID) {
+		    	uint32_t val;
+
+			val = w->param.eapdbtl;
+			if (devinfo->function.audio.quirks &
+			    HDA_QUIRK_EAPDINV)
+				val ^= HDA_CMD_SET_EAPD_BTL_ENABLE_EAPD;
 			hdac_command(sc,
 			    HDA_CMD_SET_EAPD_BTL_ENABLE(cad, w->nid,
-			    w->param.eapdbtl), cad);
+			    val), cad);
 
+		}
 		DELAY(1000);
 	}
 }
@@ -3959,7 +5096,7 @@ hdac_audio_ctl_commit(struct hdac_devinfo *devinfo)
 					kprintf(" childnid=%d",
 					ctl->childwidget->nid);
 				kprintf(" Bind to NONE\n");
-		}
+			}
 		);
 		if (ctl->step > 0) {
 			ctl->ossval = (ctl->left * 100) / ctl->step;
@@ -4018,9 +5155,14 @@ hdac_pcmchannel_setup(struct hdac_devinfo *devinfo, int dir)
 		}*/
 		if (!HDA_PARAM_SUPP_STREAM_FORMATS_PCM(cap))
 			continue;
+		if (ret == 0) {
+			fmtcap = w->param.supp_stream_formats;
+			pcmcap = w->param.supp_pcm_size_rate;
+		} else {
+			fmtcap &= w->param.supp_stream_formats;
+			pcmcap &= w->param.supp_pcm_size_rate;
+		}
 		ch->io[ret++] = i;
-		fmtcap &= w->param.supp_stream_formats;
-		pcmcap &= w->param.supp_pcm_size_rate;
 	}
 	ch->io[ret] = -1;
 
@@ -4109,7 +5251,8 @@ hdac_dump_ctls(struct hdac_devinfo *devinfo, const char *banner, uint32_t flag)
 	i = 0;
 	while ((ctl = hdac_audio_ctl_each(devinfo, &i)) != NULL) {
 		if (ctl->enable == 0 || ctl->widget == NULL ||
-		    ctl->widget->enable == 0)
+		    ctl->widget->enable == 0 || (ctl->ossmask &
+		    (SOUND_MASK_SKIP | SOUND_MASK_DISABLE)))
 			continue;
 		if ((flag == 0 && (ctl->ossmask & ~fl)) ||
 		    (flag != 0 && (ctl->ossmask & flag))) {
@@ -4232,6 +5375,20 @@ hdac_dump_pin(struct hdac_softc *sc, struct hdac_widget *w)
 		kprintf(" IN");
 	if (HDA_PARAM_PIN_CAP_BALANCED_IO_PINS(pincap))
 		kprintf(" BAL");
+	if (HDA_PARAM_PIN_CAP_VREF_CTRL(pincap)) {
+		kprintf(" VREF[");
+		if (HDA_PARAM_PIN_CAP_VREF_CTRL_50(pincap))
+			kprintf(" 50");
+		if (HDA_PARAM_PIN_CAP_VREF_CTRL_80(pincap))
+			kprintf(" 80");
+		if (HDA_PARAM_PIN_CAP_VREF_CTRL_100(pincap))
+			kprintf(" 100");
+		if (HDA_PARAM_PIN_CAP_VREF_CTRL_GROUND(pincap))
+			kprintf(" GROUND");
+		if (HDA_PARAM_PIN_CAP_VREF_CTRL_HIZ(pincap))
+			kprintf(" HIZ");
+		kprintf(" ]");
+	}
 	if (HDA_PARAM_PIN_CAP_EAPD_CAP(pincap))
 		kprintf(" EAPD");
 	if (HDA_PARAM_AUDIO_WIDGET_CAP_UNSOL_CAP(wcap))
@@ -4484,9 +5641,21 @@ hdac_release_resources(struct hdac_softc *sc)
 		return;
 
 	hdac_lock(sc);
+	sc->polling = 0;
+	sc->poll_ival = 0;
+	callout_stop(&sc->poll_hdac);
+	callout_stop(&sc->poll_jack);
 	hdac_reset(sc);
 	hdac_unlock(sc);
-	snd_mtxfree(sc->lock);
+#if 0 /* TODO: No callout_drain() in DragonFly. */
+	callout_drain(&sc->poll_hdac);
+	callout_drain(&sc->poll_jack);
+#else
+	callout_stop(&sc->poll_hdac);
+	callout_stop(&sc->poll_jack);
+#endif
+
+	hdac_irq_free(sc);
 
 	device_get_children(sc->dev, &devlist, &devcount);
 	for (i = 0; devlist != NULL && i < devcount; i++) {
@@ -4511,16 +5680,20 @@ hdac_release_resources(struct hdac_softc *sc)
 		sc->codecs[i] = NULL;
 	}
 
-	hdac_dma_free(&sc->rirb_dma);
-	hdac_dma_free(&sc->corb_dma);
+	hdac_dma_free(sc, &sc->pos_dma);
+	hdac_dma_free(sc, &sc->rirb_dma);
+	hdac_dma_free(sc, &sc->corb_dma);
 	if (sc->play.blkcnt > 0)
-		hdac_dma_free(&sc->play.bdl_dma);
+		hdac_dma_free(sc, &sc->play.bdl_dma);
 	if (sc->rec.blkcnt > 0)
-		hdac_dma_free(&sc->rec.bdl_dma);
-	hdac_irq_free(sc);
+		hdac_dma_free(sc, &sc->rec.bdl_dma);
+	if (sc->chan_dmat != NULL) {
+		bus_dma_tag_destroy(sc->chan_dmat);
+		sc->chan_dmat = NULL;
+	}
 	hdac_mem_free(sc);
+	snd_mtxfree(sc->lock);
 	kfree(sc, M_DEVBUF);
-
 }
 
 /* This function surely going to make its way into upper level someday. */
@@ -4583,6 +5756,205 @@ hdac_config_fetch(struct hdac_softc *sc, uint32_t *on, uint32_t *off)
 	}
 }
 
+#ifdef SND_DYNSYSCTL
+static int
+sysctl_hdac_polling(SYSCTL_HANDLER_ARGS)
+{
+	struct hdac_softc *sc;
+	struct hdac_devinfo *devinfo;
+	device_t dev;
+	uint32_t ctl;
+	int err, val;
+
+	dev = oidp->oid_arg1;
+	devinfo = pcm_getdevinfo(dev);
+	if (devinfo == NULL || devinfo->codec == NULL ||
+	    devinfo->codec->sc == NULL)
+		return (EINVAL);
+	sc = devinfo->codec->sc;
+	hdac_lock(sc);
+	val = sc->polling;
+	hdac_unlock(sc);
+	err = sysctl_handle_int(oidp, &val, 0, req);
+
+	if (err != 0 || req->newptr == NULL)
+		return (err);
+	if (val < 0 || val > 1)
+		return (EINVAL);
+
+	hdac_lock(sc);
+	if (val != sc->polling) {
+		if (hda_chan_active(sc) != 0)
+			err = EBUSY;
+		else if (val == 0) {
+			callout_stop(&sc->poll_hdac);
+			hdac_unlock(sc);
+#if 0 /* TODO: No callout_drain() in DragonFly. */
+			callout_drain(&sc->poll_hdac);
+#else
+			callout_stop(&sc->poll_hdac);
+#endif
+			hdac_lock(sc);
+			HDAC_WRITE_2(&sc->mem, HDAC_RINTCNT,
+			    sc->rirb_size / 2);
+			ctl = HDAC_READ_1(&sc->mem, HDAC_RIRBCTL);
+			ctl |= HDAC_RIRBCTL_RINTCTL;
+			HDAC_WRITE_1(&sc->mem, HDAC_RIRBCTL, ctl);
+			HDAC_WRITE_4(&sc->mem, HDAC_INTCTL,
+			    HDAC_INTCTL_CIE | HDAC_INTCTL_GIE);
+			sc->polling = 0;
+			DELAY(1000);
+		} else {
+			HDAC_WRITE_4(&sc->mem, HDAC_INTCTL, 0);
+			HDAC_WRITE_2(&sc->mem, HDAC_RINTCNT, 0);
+			ctl = HDAC_READ_1(&sc->mem, HDAC_RIRBCTL);
+			ctl &= ~HDAC_RIRBCTL_RINTCTL;
+			HDAC_WRITE_1(&sc->mem, HDAC_RIRBCTL, ctl);
+			callout_reset(&sc->poll_hdac, 1, hdac_poll_callback,
+			    sc);
+			sc->polling = 1;
+			DELAY(1000);
+		}
+	}
+	hdac_unlock(sc);
+
+	return (err);
+}
+
+static int
+sysctl_hdac_polling_interval(SYSCTL_HANDLER_ARGS)
+{
+	struct hdac_softc *sc;
+	struct hdac_devinfo *devinfo;
+	device_t dev;
+	int err, val;
+
+	dev = oidp->oid_arg1;
+	devinfo = pcm_getdevinfo(dev);
+	if (devinfo == NULL || devinfo->codec == NULL ||
+	    devinfo->codec->sc == NULL)
+		return (EINVAL);
+	sc = devinfo->codec->sc;
+	hdac_lock(sc);
+	val = ((uint64_t)sc->poll_ival * 1000) / hz;
+	hdac_unlock(sc);
+	err = sysctl_handle_int(oidp, &val, 0, req);
+
+	if (err != 0 || req->newptr == NULL)
+		return (err);
+
+	if (val < 1)
+		val = 1;
+	if (val > 5000)
+		val = 5000;
+	val = ((uint64_t)val * hz) / 1000;
+	if (val < 1)
+		val = 1;
+	if (val > (hz * 5))
+		val = hz * 5;
+
+	hdac_lock(sc);
+	sc->poll_ival = val;
+	hdac_unlock(sc);
+
+	return (err);
+}
+
+#ifdef SND_DEBUG
+static int
+sysctl_hdac_dump(SYSCTL_HANDLER_ARGS)
+{
+	struct hdac_softc *sc;
+	struct hdac_devinfo *devinfo;
+	struct hdac_widget *w;
+	device_t dev;
+	uint32_t res, execres;
+	int i, err, val;
+	nid_t cad;
+
+	dev = oidp->oid_arg1;
+	devinfo = pcm_getdevinfo(dev);
+	if (devinfo == NULL || devinfo->codec == NULL ||
+	    devinfo->codec->sc == NULL)
+		return (EINVAL);
+	val = 0;
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL || val == 0)
+		return (err);
+	sc = devinfo->codec->sc;
+	cad = devinfo->codec->cad;
+	hdac_lock(sc);
+	device_printf(dev, "HDAC Dump AFG [nid=%d]:\n", devinfo->nid);
+	for (i = devinfo->startnode; i < devinfo->endnode; i++) {
+		w = hdac_widget_get(devinfo, i);
+		if (w == NULL || w->type !=
+		    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX)
+			continue;
+		execres = hdac_command(sc, HDA_CMD_SET_PIN_SENSE(cad, w->nid, 0),
+		    cad);
+		res = hdac_command(sc, HDA_CMD_GET_PIN_SENSE(cad, w->nid), cad);
+		device_printf(dev, "nid=%-3d exec=0x%08x sense=0x%08x [%s]\n",
+		    w->nid, execres, res,
+		    (w->enable == 0) ? "DISABLED" : "ENABLED");
+	}
+	device_printf(dev,
+	    "NumGPIO=%d NumGPO=%d NumGPI=%d GPIWake=%d GPIUnsol=%d\n",
+	    HDA_PARAM_GPIO_COUNT_NUM_GPIO(devinfo->function.audio.gpio),
+	    HDA_PARAM_GPIO_COUNT_NUM_GPO(devinfo->function.audio.gpio),
+	    HDA_PARAM_GPIO_COUNT_NUM_GPI(devinfo->function.audio.gpio),
+	    HDA_PARAM_GPIO_COUNT_GPI_WAKE(devinfo->function.audio.gpio),
+	    HDA_PARAM_GPIO_COUNT_GPI_UNSOL(devinfo->function.audio.gpio));
+	if (1 || HDA_PARAM_GPIO_COUNT_NUM_GPI(devinfo->function.audio.gpio) > 0) {
+		device_printf(dev, " GPI:");
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPI_DATA(cad, devinfo->nid), cad);
+		kprintf(" data=0x%08x", res);
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPI_WAKE_ENABLE_MASK(cad, devinfo->nid),
+		    cad);
+		kprintf(" wake=0x%08x", res);
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPI_UNSOLICITED_ENABLE_MASK(cad, devinfo->nid),
+		    cad);
+		kprintf(" unsol=0x%08x", res);
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPI_STICKY_MASK(cad, devinfo->nid), cad);
+		kprintf(" sticky=0x%08x\n", res);
+	}
+	if (1 || HDA_PARAM_GPIO_COUNT_NUM_GPO(devinfo->function.audio.gpio) > 0) {
+		device_printf(dev, " GPO:");
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPO_DATA(cad, devinfo->nid), cad);
+		kprintf(" data=0x%08x\n", res);
+	}
+	if (1 || HDA_PARAM_GPIO_COUNT_NUM_GPIO(devinfo->function.audio.gpio) > 0) {
+		device_printf(dev, "GPI0:");
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPIO_DATA(cad, devinfo->nid), cad);
+		kprintf(" data=0x%08x", res);
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPIO_ENABLE_MASK(cad, devinfo->nid), cad);
+		kprintf(" enable=0x%08x", res);
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPIO_DIRECTION(cad, devinfo->nid), cad);
+		kprintf(" direction=0x%08x\n", res);
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPIO_WAKE_ENABLE_MASK(cad, devinfo->nid), cad);
+		device_printf(dev, "      wake=0x%08x", res);
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPIO_UNSOLICITED_ENABLE_MASK(cad, devinfo->nid),
+		    cad);
+		kprintf("  unsol=0x%08x", res);
+		res = hdac_command(sc,
+		    HDA_CMD_GET_GPIO_STICKY_MASK(cad, devinfo->nid), cad);
+		kprintf("    sticky=0x%08x\n", res);
+	}
+	hdac_unlock(sc);
+	return (0);
+}
+#endif
+#endif
+
 static void
 hdac_attach2(void *arg)
 {
@@ -4628,7 +6000,9 @@ hdac_attach2(void *arg)
 		device_printf(sc->dev,
 		    "HDA_DEBUG: Enabling controller interrupt...\n");
 	);
-	HDAC_WRITE_4(&sc->mem, HDAC_INTCTL, HDAC_INTCTL_CIE | HDAC_INTCTL_GIE);
+	if (sc->polling == 0)
+		HDAC_WRITE_4(&sc->mem, HDAC_INTCTL,
+		    HDAC_INTCTL_CIE | HDAC_INTCTL_GIE);
 	HDAC_WRITE_4(&sc->mem, HDAC_GCTL, HDAC_READ_4(&sc->mem, HDAC_GCTL) |
 	    HDAC_GCTL_UNSOL);
 
@@ -4697,10 +6071,11 @@ hdac_attach2(void *arg)
 	while ((ctl = hdac_audio_ctl_each(devinfo, &i)) != NULL) {
 		if (ctl->widget == NULL)
 			continue;
-		w = ctl->widget;
-		if (w->enable == 0)
+		if (ctl->ossmask & SOUND_MASK_DISABLE)
 			ctl->enable = 0;
-		if (HDA_PARAM_AUDIO_WIDGET_CAP_DIGITAL(w->param.widget_cap))
+		w = ctl->widget;
+		if (w->enable == 0 ||
+		    HDA_PARAM_AUDIO_WIDGET_CAP_DIGITAL(w->param.widget_cap))
 			ctl->enable = 0;
 		w = ctl->childwidget;
 		if (w == NULL)
@@ -4715,6 +6090,11 @@ hdac_attach2(void *arg)
 	);
 	hdac_audio_build_tree(devinfo);
 
+	i = 0;
+	while ((ctl = hdac_audio_ctl_each(devinfo, &i)) != NULL) {
+		if (ctl->ossmask & (SOUND_MASK_SKIP | SOUND_MASK_DISABLE))
+			ctl->ossmask = 0;
+	}
 	HDA_BOOTVERBOSE(
 		device_printf(sc->dev, "HDA_DEBUG: AFG commit...\n");
 	);
@@ -4760,29 +6140,57 @@ hdac_attach2(void *arg)
 
 	sc->registered++;
 
+	if ((devinfo->function.audio.quirks & HDA_QUIRK_DMAPOS) &&
+	    hdac_dma_alloc(sc, &sc->pos_dma,
+	    (sc->num_iss + sc->num_oss + sc->num_bss) * 8) != 0) {
+		HDA_BOOTVERBOSE(
+			device_printf(sc->dev,
+			    "Failed to allocate DMA pos buffer (non-fatal)\n");
+		);
+	}
+
 	for (i = 0; i < pcnt; i++)
 		pcm_addchan(sc->dev, PCMDIR_PLAY, &hdac_channel_class, devinfo);
 	for (i = 0; i < rcnt; i++)
 		pcm_addchan(sc->dev, PCMDIR_REC, &hdac_channel_class, devinfo);
 
+#ifdef SND_DYNSYSCTL
+	SYSCTL_ADD_PROC(snd_sysctl_tree(sc->dev),
+	    SYSCTL_CHILDREN(snd_sysctl_tree_top(sc->dev)), OID_AUTO,
+	    "polling", CTLTYPE_INT | CTLFLAG_RW, sc->dev, sizeof(sc->dev),
+	    sysctl_hdac_polling, "I", "Enable polling mode");
+	SYSCTL_ADD_PROC(snd_sysctl_tree(sc->dev),
+	    SYSCTL_CHILDREN(snd_sysctl_tree_top(sc->dev)), OID_AUTO,
+	    "polling_interval", CTLTYPE_INT | CTLFLAG_RW, sc->dev,
+	    sizeof(sc->dev), sysctl_hdac_polling_interval, "I",
+	    "Controller/Jack Sense polling interval (1-1000 ms)");
+#ifdef SND_DEBUG
+	SYSCTL_ADD_PROC(snd_sysctl_tree(sc->dev),
+	    SYSCTL_CHILDREN(snd_sysctl_tree_top(sc->dev)), OID_AUTO,
+	    "dump", CTLTYPE_INT | CTLFLAG_RW, sc->dev, sizeof(sc->dev),
+	    sysctl_hdac_dump, "I", "Dump states");
+#endif
+#endif
+
 	ksnprintf(status, SND_STATUSLEN, "at memory 0x%lx irq %ld %s [%s]",
-			rman_get_start(sc->mem.mem_res),
-			rman_get_start(sc->irq.irq_res),
-			"snd_hda", HDA_DRV_TEST_REV);
+	    rman_get_start(sc->mem.mem_res), rman_get_start(sc->irq.irq_res),
+	    PCM_KLDSTRING(snd_hda), HDA_DRV_TEST_REV);
 	pcm_setstatus(sc->dev, status);
 	device_printf(sc->dev, "<HDA Codec: %s>\n", hdac_codec_name(devinfo));
 	HDA_BOOTVERBOSE(
 		device_printf(sc->dev, "<HDA Codec ID: 0x%08x>\n",
 		    hdac_codec_id(devinfo));
 	);
-	device_printf(sc->dev, "<HDA Driver Revision: %s>\n", HDA_DRV_TEST_REV);
+	device_printf(sc->dev, "<HDA Driver Revision: %s>\n",
+	    HDA_DRV_TEST_REV);
 
 	HDA_BOOTVERBOSE(
 		if (devinfo->function.audio.quirks != 0) {
 			device_printf(sc->dev, "\n");
 			device_printf(sc->dev, "HDA config/quirks:");
 			for (i = 0; i < HDAC_QUIRKS_TAB_LEN; i++) {
-				if (devinfo->function.audio.quirks &
+				if ((devinfo->function.audio.quirks &
+				    hdac_quirks_tab[i].value) ==
 				    hdac_quirks_tab[i].value)
 					kprintf(" %s", hdac_quirks_tab[i].key);
 			}
@@ -4830,6 +6238,12 @@ hdac_attach2(void *arg)
 		device_printf(sc->dev, "+--------------------------------------+\n");
 		hdac_dump_pcmchannels(sc, pcnt, rcnt);
 	);
+
+	if (sc->polling != 0) {
+		hdac_lock(sc);
+		callout_reset(&sc->poll_hdac, 1, hdac_poll_callback, sc);
+		hdac_unlock(sc);
+	}
 }
 
 /****************************************************************************

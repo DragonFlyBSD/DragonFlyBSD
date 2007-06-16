@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.99.2.4 2006/04/04 17:37:51 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.12 2007/06/14 21:48:36 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.99.2.5 2007/05/13 20:53:39 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.13 2007/06/16 19:48:05 hasso Exp $
  */
 
 #include "use_isa.h"
@@ -35,7 +35,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.12 2007/06/14 21:48:36 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.13 2007/06/16 19:48:05 hasso Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #if 0
@@ -1358,7 +1358,7 @@ chn_buildfeeder(struct pcm_channel *c)
 	c->feederflags &= ~(1 << FEEDER_VOLUME);
 	if (c->direction == PCMDIR_PLAY &&
 			!(c->flags & CHN_F_VIRTUAL) &&
-			c->parentsnddev && (c->parentsnddev->flags & SD_F_SOFTVOL) &&
+			c->parentsnddev && (c->parentsnddev->flags & SD_F_SOFTPCMVOL) &&
 			c->parentsnddev->mixer_dev)
 		c->feederflags |= 1 << FEEDER_VOLUME;
 	flags = c->feederflags;
@@ -1417,7 +1417,10 @@ chn_buildfeeder(struct pcm_channel *c)
 
 	if ((flags & (1 << FEEDER_VOLUME))) {
 		struct dev_ioctl_args map;
-		int vol = 100 | (100 << 8);
+		u_int32_t parent = SOUND_MIXER_NONE;
+		int vol, left, right;
+
+		vol = 100 | (100 << 8);
 
 		CHN_UNLOCK(c);
 		/*
@@ -1431,9 +1434,30 @@ chn_buildfeeder(struct pcm_channel *c)
 		map.a_fflag = -1;
 		map.a_cred = NULL;
 		if (mixer_ioctl(&map) != 0)
-			device_printf(c->dev, "Soft Volume: Failed to read default value\n");
+			device_printf(c->dev, "Soft PCM Volume: Failed to read default value\n");
+		left = vol & 0x7f;
+		right = (vol >> 8) & 0x7f;
+		if (c->parentsnddev != NULL &&
+		    c->parentsnddev->mixer_dev != NULL &&
+		    c->parentsnddev->mixer_dev->si_drv1 != NULL)
+			parent = mix_getparent(
+			    c->parentsnddev->mixer_dev->si_drv1,
+			    SOUND_MIXER_PCM);
+		if (parent != SOUND_MIXER_NONE) {
+			vol = 100 | (100 << 8);
+			map.a_head.a_dev = c->parentsnddev->mixer_dev;
+			map.a_cmd = MIXER_READ(parent);
+			map.a_data = (caddr_t)&vol;
+			map.a_fflag = -1;
+			map.a_cred = NULL;
+			if (mixer_ioctl(&map) != 0)
+				device_printf(c->dev, "Soft Volume: Failed to read parent default value\n");
+			left = (left * (vol & 0x7f)) / 100;
+			right = (right * ((vol >> 8) & 0x7f)) / 100;
+		}
+
 		CHN_LOCK(c);
-		chn_setvolume(c, vol & 0x7f, (vol >> 8) & 0x7f);
+		chn_setvolume(c, left, right);
 	}
 
 	return 0;

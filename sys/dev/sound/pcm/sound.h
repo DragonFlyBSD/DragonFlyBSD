@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.63.2.2 2006/04/04 17:43:48 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.11 2007/06/14 21:48:36 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.63.2.3 2007/05/13 20:53:39 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.12 2007/06/16 19:48:05 hasso Exp $
  */
 
 /*
@@ -133,7 +133,7 @@ nomenclature:
 
 #define SD_F_SIMPLEX		0x00000001
 #define SD_F_AUTOVCHAN		0x00000002
-#define SD_F_SOFTVOL		0x00000004
+#define SD_F_SOFTPCMVOL		0x00000004
 #define SD_F_PRIO_RD		0x10000000
 #define SD_F_PRIO_WR		0x20000000
 #define SD_F_PRIO_SET		(SD_F_PRIO_RD | SD_F_PRIO_WR)

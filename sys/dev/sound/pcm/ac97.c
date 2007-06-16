@@ -23,17 +23,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.53.2.3 2006/01/09 02:06:42 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.23 2007/01/04 21:47:03 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.53.2.5 2007/05/13 20:53:39 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.24 2007/06/16 19:48:05 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pcm/ac97_patch.h>
 
+#include <bus/pci/pcivar.h>
+
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.23 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.24 2007/06/16 19:48:05 hasso Exp $");
 
 MALLOC_DEFINE(M_AC97, "ac97", "ac97 codec");
 
@@ -55,6 +57,7 @@ struct ac97_info {
 	device_t dev;
 	void *devinfo;
 	u_int32_t id;
+	u_int32_t subvendor;
 	unsigned count, caps, se, extcaps, extid, extstat, noext:1;
 	u_int32_t flags;
 	struct ac97mixtable_entry mix[32];
@@ -139,7 +142,7 @@ static struct ac97_codecid ac97codecid[] = {
 	{ 0x41445368, 0x00, 0, "AD1888", 	ad198x_patch },
 	{ 0x41445370, 0x00, 0, "AD1980",	ad198x_patch },
 	{ 0x41445372, 0x00, 0, "AD1981A",	0 },
-	{ 0x41445374, 0x00, 0, "AD1981B",	0 },
+	{ 0x41445374, 0x00, 0, "AD1981B",	ad1981b_patch },
 	{ 0x41445375, 0x00, 0, "AD1985",	ad198x_patch },
 	{ 0x41445378, 0x00, 0, "AD1986",	ad198x_patch },
 	{ 0x414b4d00, 0x00, 1, "AK4540", 	0 },
@@ -153,7 +156,7 @@ static struct ac97_codecid ac97codecid[] = {
 	{ 0x414c4740, 0x0f, 0, "ALC202", 	0 },
 	{ 0x414c4720, 0x0f, 0, "ALC650", 	0 },
 	{ 0x414c4752, 0x0f, 0, "ALC250",	0 },
-	{ 0x414c4760, 0x0f, 0, "ALC655",	0 },
+	{ 0x414c4760, 0x0f, 0, "ALC655",	alc655_patch },
 	{ 0x414c4770, 0x0f, 0, "ALC203",	0 },
 	{ 0x414c4780, 0x0f, 0, "ALC658",	0 },
 	{ 0x414c4790, 0x0f, 0, "ALC850",	0 },
@@ -406,6 +409,12 @@ ac97_getcaps(struct ac97_info *codec)
 	return codec->caps;
 }
 
+u_int32_t
+ac97_getsubvendor(struct ac97_info *codec)
+{
+	return codec->subvendor;
+}
+
 static int
 ac97_setrecsrc(struct ac97_info *codec, int channel)
 {
@@ -539,6 +548,23 @@ ac97_fix_auxout(struct ac97_info *codec)
 static void
 ac97_fix_tone(struct ac97_info *codec)
 {
+	/*
+	 * YMF chips does not indicate tone and 3D enhancement capability
+	 * in the AC97_REG_RESET register.
+	 */
+	switch (codec->id) {
+	case 0x594d4800:	/* YMF743 */
+	case 0x594d4803:	/* YMF753 */
+		codec->caps |= AC97_CAP_TONE;
+		codec->se |= 0x04;
+		break;
+	case 0x594d4802:	/* YMF752 */
+		codec->se |= 0x04;
+		break;
+	default:
+		break;
+	}
+
 	/* Hide treble and bass if they don't exist */
 	if ((codec->caps & AC97_CAP_TONE) == 0) {
 		bzero(&codec->mix[SOUND_MIXER_BASS],
@@ -558,9 +584,8 @@ ac97_fix_volume(struct ac97_info *codec)
 	ac97_wrcd(codec, AC97_MIX_PCM, 0);
 	bzero(&codec->mix[SOUND_MIXER_PCM],
 		sizeof(codec->mix[SOUND_MIXER_PCM]));
-	codec->flags |= AC97_F_SOFTVOL;
 	if (d)
-		d->flags |= SD_F_SOFTVOL;
+		d->flags |= SD_F_SOFTPCMVOL;
 	return;
 #endif
 	switch (codec->id) {
@@ -577,9 +602,8 @@ ac97_fix_volume(struct ac97_info *codec)
 	}
 	bzero(&codec->mix[SOUND_MIXER_PCM],
 			sizeof(codec->mix[SOUND_MIXER_PCM]));
-	codec->flags |= AC97_F_SOFTVOL;
 	if (d)
-		d->flags |= SD_F_SOFTVOL;
+		d->flags |= SD_F_SOFTPCMVOL;
 }
 
 static const char*
@@ -645,6 +669,9 @@ ac97_initmixer(struct ac97_info *codec)
 	}
 
 	codec->id = id;
+	codec->subvendor = (u_int32_t)pci_get_subdevice(codec->dev) << 16;
+	codec->subvendor |= (u_int32_t)pci_get_subvendor(codec->dev) &
+	    0x0000ffff;
 	codec->noext = 0;
 	codec_patch = NULL;
 
@@ -761,8 +788,6 @@ ac97_initmixer(struct ac97_info *codec)
 	if (bootverbose) {
 		if (codec->flags & AC97_F_RDCD_BUG)
 			device_printf(codec->dev, "Buggy AC97 Codec: aggressive ac97_rdcd() workaround enabled\n");
-		if (codec->flags & AC97_F_SOFTVOL)
-			device_printf(codec->dev, "Soft PCM volume\n");
 		device_printf(codec->dev, "Codec features ");
 		for (i = j = 0; i < 10; i++)
 			if (codec->caps & (1 << i))
@@ -964,5 +989,3 @@ ac97_getmixerclass(void)
 {
 	return &ac97mixer_class;
 }
-
-

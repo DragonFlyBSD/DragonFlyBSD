@@ -23,15 +23,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/vchan.c,v 1.17.2.4 2006/04/04 17:43:49 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.6 2007/06/14 21:48:36 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/vchan.c,v 1.17.2.5 2007/02/04 06:17:14 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.7 2007/06/16 19:48:05 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.6 2007/06/14 21:48:36 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.7 2007/06/16 19:48:05 hasso Exp $");
 
 /*
  * Default speed
@@ -177,6 +177,7 @@ vchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c,
 static int
 vchan_free(kobj_t obj, void *data)
 {
+	kfree(data, M_DEVBUF);
 	return 0;
 }
 

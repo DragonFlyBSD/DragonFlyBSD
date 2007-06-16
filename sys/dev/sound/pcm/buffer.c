@@ -23,15 +23,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.25.2.1 2005/12/30 19:55:54 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.8 2007/01/04 21:47:03 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.25.2.3 2007/04/26 08:21:43 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.9 2007/06/16 19:48:05 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.8 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.9 2007/06/16 19:48:05 hasso Exp $");
 
 struct snd_dbuf *
 sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel)
@@ -49,6 +49,7 @@ sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel)
 void
 sndbuf_destroy(struct snd_dbuf *b)
 {
+	sndbuf_free(b);
 	kfree(b, M_DEVBUF);
 }
 
@@ -88,25 +89,31 @@ sndbuf_alloc(struct snd_dbuf *b, bus_dma_tag_t dmatag, unsigned int size)
 	b->maxsize = size;
 	b->bufsize = b->maxsize;
 	b->buf_addr = 0;
+	b->flags |= SNDBUF_F_MANAGED;
 	if (bus_dmamem_alloc(b->dmatag, (void **)&b->buf, BUS_DMA_NOWAIT,
-	    &b->dmamap))
+	    &b->dmamap)) {
+		sndbuf_free(b);
 		return (ENOMEM);
+	}
 	if (bus_dmamap_load(b->dmatag, b->dmamap, b->buf, b->maxsize,
 	    sndbuf_setmap, b, 0) != 0 || b->buf_addr == 0) {
-		bus_dmamem_free(b->dmatag, b->buf, b->dmamap);
-		b->dmamap = NULL;
+		sndbuf_free(b);
 		return (ENOMEM);
 	}
 
 	ret = sndbuf_resize(b, 2, b->maxsize / 2);
 	if (ret != 0)
 		sndbuf_free(b);
+
 	return (ret);
 }
 
 int
 sndbuf_setup(struct snd_dbuf *b, void *buf, unsigned int size)
 {
+	b->flags &= ~SNDBUF_F_MANAGED;
+	if (buf)
+		b->flags |= SNDBUF_F_MANAGED;
 	b->buf = buf;
 	b->maxsize = size;
 	b->bufsize = b->maxsize;
@@ -118,15 +125,20 @@ sndbuf_free(struct snd_dbuf *b)
 {
 	if (b->tmpbuf)
 		kfree(b->tmpbuf, M_DEVBUF);
+	if (b->buf) {
+		if (b->flags & SNDBUF_F_MANAGED) {
+			if (b->dmamap)
+				bus_dmamap_unload(b->dmatag, b->dmamap);
+			if (b->dmatag)
+				bus_dmamem_free(b->dmatag, b->buf, b->dmamap);
+		} else
+			kfree(b->buf, M_DEVBUF);
+	}
+
 	b->tmpbuf = NULL;
-
-	if (b->dmamap)
-		bus_dmamap_unload(b->dmatag, b->dmamap);
-
-	if (b->dmamap && b->buf)
-		bus_dmamem_free(b->dmatag, b->buf, b->dmamap);
-	b->dmamap = NULL;
 	b->buf = NULL;
+	b->dmatag = NULL;
+	b->dmamap = NULL;
 }
 
 int

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/buffer.h,v 1.10 2005/01/06 01:43:20 imp Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.h,v 1.3 2007/01/04 21:47:03 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/buffer.h,v 1.10.2.2 2007/05/13 20:50:31 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.h,v 1.4 2007/06/16 19:48:05 hasso Exp $
  */
 
 #define SND_DMA(b) (sndbuf_getflags((b)) & SNDBUF_F_DMA)
@@ -33,6 +33,7 @@
 #define	SNDBUF_F_DMA		0x00000001
 #define	SNDBUF_F_XRUN		0x00000002
 #define	SNDBUF_F_RUNNING	0x00000004
+#define	SNDBUF_F_MANAGED	0x00000008
 
 #define SNDBUF_NAMELEN	48
 
@@ -52,7 +53,7 @@ struct snd_dbuf {
 	u_int32_t flags;
 	bus_dmamap_t dmamap;
 	bus_dma_tag_t dmatag;
-	u_int32_t buf_addr;
+	bus_addr_t buf_addr;
 	struct selinfo sel;
 	struct pcm_channel *channel;
 	char name[SNDBUF_NAMELEN];

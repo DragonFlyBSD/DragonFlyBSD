@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/driver.c,v 1.13.2.2 2006/01/24 18:56:11 joel Exp $
- * $DragonFly: src/sys/dev/sound/driver.c,v 1.3 2007/01/04 21:47:00 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/driver.c,v 1.13.2.3 2007/05/13 21:11:40 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/driver.c,v 1.4 2007/06/16 19:48:04 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -63,6 +63,8 @@ MODULE_DEPEND(snd_driver, snd_csa, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_csapcm, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_ds1, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_emu10k1, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_envy24, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_envy24ht, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_es137x, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_es1888, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_ess, 1, 1, 1);
@@ -78,6 +80,7 @@ MODULE_DEPEND(snd_driver, snd_sb16, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_sb8, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_sbc, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_solo, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_spicds, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_t4dwave, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_via8233, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_via82c686, 1, 1, 1);

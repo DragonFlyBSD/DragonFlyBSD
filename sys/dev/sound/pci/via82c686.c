@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/via82c686.c,v 1.34.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.8 2007/01/04 21:47:02 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/via82c686.c,v 1.34.2.2 2007/04/26 08:21:44 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.9 2007/06/16 19:48:05 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 
 #include <dev/sound/pci/via82c686.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.8 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.9 2007/06/16 19:48:05 hasso Exp $");
 
 #define VIA_PCI_ID 0x30581106
 #define	NSEGS		4	/* Number of segments in SGD table */
@@ -610,6 +610,7 @@ bad:
 	if (via->irq) bus_release_resource(dev, SYS_RES_IRQ, via->irqid, via->irq);
 	if (via->parent_dmat) bus_dma_tag_destroy(via->parent_dmat);
 	if (via->sgd_dmamap) bus_dmamap_unload(via->sgd_dmat, via->sgd_dmamap);
+	if (via->sgd_table) bus_dmamem_free(via->sgd_dmat, via->sgd_table, via->sgd_dmamap);
 	if (via->sgd_dmat) bus_dma_tag_destroy(via->sgd_dmat);
 	if (via->lock) snd_mtxfree(via->lock);
 	if (via) kfree(via, M_DEVBUF);
@@ -632,6 +633,7 @@ via_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, via->irqid, via->irq);
 	bus_dma_tag_destroy(via->parent_dmat);
 	bus_dmamap_unload(via->sgd_dmat, via->sgd_dmamap);
+	bus_dmamem_free(via->sgd_dmat, via->sgd_table, via->sgd_dmamap);
 	bus_dma_tag_destroy(via->sgd_dmat);
 	snd_mtxfree(via->lock);
 	kfree(via, M_DEVBUF);
