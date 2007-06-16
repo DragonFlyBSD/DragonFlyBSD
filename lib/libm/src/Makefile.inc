@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libm/src/Makefile.inc,v 1.1 2005/07/26 21:15:20 joerg Exp $
+# $DragonFly: src/lib/libm/src/Makefile.inc,v 1.2 2007/06/16 22:26:53 pavalos Exp $
 
 .PATH:	${.CURDIR}/src
 
@@ -17,7 +17,7 @@ MI_FUNCS+=	\
 	e_atan2.c e_atan2f.c e_atanh.c e_atanhf.c e_cosh.c e_coshf.c \
 	e_exp.c e_expf.c e_fmod.c e_fmodf.c e_hypot.c e_hypotf.c e_j0.c \
 	e_j0f.c e_j1.c e_j1f.c e_jn.c e_jnf.c e_lgamma_r.c e_lgammaf_r.c \
-	e_log.c e_log10.c e_log10f.c e_logf.c e_pow.c e_powf.c e_rem_pio2.c \
+	e_log.c e_log10.c e_log10f.c e_log2.c e_log2f.c e_logf.c e_pow.c e_powf.c e_rem_pio2.c \
 	e_rem_pio2f.c e_remainder.c e_remainderf.c e_scalb.c e_scalbf.c \
 	e_sinh.c e_sinhf.c e_sqrt.c e_sqrtf.c \
 	s_asinh.c s_asinhf.c s_atan.c s_atanf.c s_cbrt.c s_cbrtf.c s_ceil.c \

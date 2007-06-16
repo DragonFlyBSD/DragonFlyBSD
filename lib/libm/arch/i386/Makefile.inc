@@ -1,9 +1,9 @@
-# $DragonFly: src/lib/libm/arch/i386/Makefile.inc,v 1.1 2005/07/26 21:15:19 joerg Exp $
+# $DragonFly: src/lib/libm/arch/i386/Makefile.inc,v 1.2 2007/06/16 22:26:53 pavalos Exp $
 
 .PATH:	${.CURDIR}/arch/i386
 
 SRCS+=	e_acos.S e_asin.S e_atan2.S e_atan2f.S e_exp.S e_expf.S e_fmod.S \
-	e_log.S e_log10.S e_log10f.S e_logf.S e_remainder.S e_remainderf.S \
+	e_log.S e_log10.S e_log10f.S e_log2.S e_log2f.S e_logf.S e_remainder.S e_remainderf.S \
 	e_scalb.S e_scalbf.S e_sqrt.S e_sqrtf.S lrint.S s_atan.S s_atanf.S \
 	s_ceil.S s_ceilf.S s_copysign.S s_copysignf.S s_cos.S s_cosf.S \
 	s_finite.S s_finitef.S s_floor.S s_floorf.S s_ilogb.S s_ilogbf.S \

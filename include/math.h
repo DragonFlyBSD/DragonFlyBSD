@@ -1,5 +1,3 @@
-/*	$NetBSD: math.h,v 1.40 2005/02/03 04:39:32 perry Exp $	*/
-
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -10,8 +8,8 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: math.h,v 1.40 2005/02/03 04:39:32 perry Exp $
- * $DragonFly: src/include/math.h,v 1.8 2006/05/17 14:06:36 swildner Exp $
+ * $NetBSD: math.h,v 1.41 2005/07/21 12:56:29 christos Exp $
+ * $DragonFly: src/include/math.h,v 1.9 2007/06/16 22:26:53 pavalos Exp $
  */
 
 /*
@@ -180,6 +178,7 @@ double	exp(double);
 double	frexp(double, int *);
 double	ldexp(double, int);
 double	log(double);
+double	log2(double);
 double	log10(double);
 double	modf(double, double *);
 
@@ -264,6 +263,7 @@ float	frexpf(float, int *);
 int	ilogbf(float);
 float	ldexpf(float, int);
 float	logf(float);
+float	log2f(float);
 float	log10f(float);
 float	log1pf(float);
 float	logbf(float);
