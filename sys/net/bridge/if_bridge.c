@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.24 2007/06/06 13:10:39 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.25 2007/06/16 15:27:27 sephe Exp $
  */
 
 /*
@@ -124,6 +124,7 @@
 #include <netinet/if_ether.h> /* for struct arpcom */
 #include <net/bridge/if_bridgevar.h>
 #include <net/if_llc.h>
+#include <net/netmsg2.h>
 
 #include <net/route.h>
 #include <sys/in_cksum.h>
@@ -265,6 +266,13 @@ static int	bridge_ip6_checkbasic(struct mbuf **mp);
 #endif /* INET6 */
 static int	bridge_fragment(struct ifnet *, struct mbuf *,
 		    struct ether_header *, int, struct llc *);
+static void	bridge_enqueue_internal(struct ifnet *, struct mbuf *m,
+					netisr_fn_t);
+static void	bridge_enqueue_handler(struct netmsg *);
+static void	bridge_pfil_enqueue_handler(struct netmsg *);
+static void	bridge_pfil_enqueue(struct ifnet *, struct mbuf *, int);
+static void	bridge_handoff_notags(struct ifnet *, struct mbuf *);
+static void	bridge_handoff(struct ifnet *, struct mbuf *);
 
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_BRIDGE, bridge, CTLFLAG_RW, 0, "Bridge");
@@ -367,7 +375,6 @@ struct if_clone bridge_cloner = IF_CLONE_INITIALIZER("bridge",
 static int
 bridge_modevent(module_t mod, int type, void *data)
 {
-
 	switch (type) {
 	case MOD_LOAD:
 		LIST_INIT(&bridge_list);
@@ -1348,6 +1355,46 @@ bridge_stop(struct ifnet *ifp)
 	ifp->if_flags &= ~IFF_RUNNING;
 }
 
+static void
+bridge_enqueue_internal(struct ifnet *dst_ifp, struct mbuf *m,
+			netisr_fn_t handler)
+{
+	struct netmsg_packet *nmp;
+	lwkt_port_t port;
+	int cpu = mycpu->gd_cpuid;
+
+	while (m->m_type == MT_TAG) {
+		/* XXX see ether_output_frame for full rules check */
+		m = m->m_next;
+	}
+
+	nmp = &m->m_hdr.mh_netmsg;
+	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0, handler);
+	nmp->nm_packet = m;
+	nmp->nm_netmsg.nm_lmsg.u.ms_resultp = dst_ifp;
+
+	port = cpu_portfn(cpu);
+	lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
+}
+
+static void
+bridge_pfil_enqueue(struct ifnet *dst_ifp, struct mbuf *m,
+		    int runfilt)
+{
+	netisr_fn_t handler;
+
+	if (runfilt && (inet_pfil_hook.ph_hashooks > 0
+#ifdef INET6
+	    || inet6_pfil_hook.ph_hashooks > 0
+#endif
+	    )) {
+		handler = bridge_pfil_enqueue_handler;
+	} else {
+		handler = bridge_enqueue_handler;
+	}
+	bridge_enqueue_internal(dst_ifp, m, handler);
+}
+
 /*
  * bridge_enqueue:
  *
@@ -1357,28 +1404,7 @@ bridge_stop(struct ifnet *ifp)
 void
 bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 {
-	struct altq_pktattr pktattr;
-	struct mbuf *m0;
-
-	while (m->m_type == MT_TAG) {
-		/* XXX see ether_output_frame for full rules check */
-		m = m->m_next;
-	}
-
-	lwkt_serialize_enter(dst_ifp->if_serializer);
-
-	/* We may be sending a fragment so traverse the mbuf */
-	for (; m; m = m0) {
-		m0 = m->m_nextpkt;
-		m->m_nextpkt = NULL;
-
-		if (ifq_is_enabled(&dst_ifp->if_snd))
-			altq_etherclassify(&dst_ifp->if_snd, m, &pktattr);
-
-		ifq_handoff(dst_ifp, m, &pktattr);
-	}
-
-	lwkt_serialize_exit(dst_ifp->if_serializer);
+	bridge_enqueue_internal(dst_ifp, m, bridge_enqueue_handler);
 }
 
 /*
@@ -1474,9 +1500,7 @@ bridge_output_serialized(struct ifnet *ifp, struct mbuf *m,
 					continue;
 				}
 			}
-			lwkt_serialize_exit(sc->sc_ifp->if_serializer);
 			bridge_enqueue(dst_if, mc);
-			lwkt_serialize_enter(sc->sc_ifp->if_serializer);
 		}
 		if (used == 0)
 			m_freem(m);
@@ -1564,8 +1588,8 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	sc->sc_ifp->if_ipackets++;
-	sc->sc_ifp->if_ibytes += m->m_pkthdr.len;
+	ifp->if_ipackets++;
+	ifp->if_ibytes += m->m_pkthdr.len;
 
 	/*
 	 * Look up the bridge_iflist.
@@ -1590,12 +1614,6 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	eh = mtod(m, struct ether_header *);
 
 	/*
-	 * Various ifp's are used below, release the serializer for
-	 * the bridge ifp so other ifp serializers can be acquired.
-	 */
-	lwkt_serialize_exit(ifp->if_serializer);
-
-	/*
 	 * If the interface is learning, and the source
 	 * address is valid and not multicast, record
 	 * the address.
@@ -1614,7 +1632,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	if ((bif->bif_flags & IFBIF_STP) != 0 &&
 	    bif->bif_state == BSTP_IFSTATE_LEARNING) {
 		m_freem(m);
-		goto done;
+		return;
 	}
 
 	/*
@@ -1630,13 +1648,44 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		dst_if = bridge_rtlookup(sc, eh->ether_dhost);
 		if (src_if == dst_if) {
 			m_freem(m);
-			goto done;
+			return;
 		}
 	} else {
 		/* ...forward it to all interfaces. */
 		sc->sc_ifp->if_imcasts++;
 		dst_if = NULL;
 	}
+
+	if (dst_if == NULL) {
+		bridge_broadcast(sc, src_if, m, 1);
+		return;
+	}
+
+	/*
+	 * At this point, we're dealing with a unicast frame
+	 * going to a different interface.
+	 */
+	if ((dst_if->if_flags & IFF_RUNNING) == 0) {
+		m_freem(m);
+		return;
+	}
+	bif = bridge_lookup_member_if(sc, dst_if);
+	if (bif == NULL) {
+		/* Not a member of the bridge (anymore?) */
+		m_freem(m);
+		return;
+	}
+
+	if (bif->bif_flags & IFBIF_STP) {
+		switch (bif->bif_state) {
+		case BSTP_IFSTATE_DISABLED:
+		case BSTP_IFSTATE_BLOCKING:
+			m_freem(m);
+			return;
+		}
+	}
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	/* run the packet filter */
 	if (inet_pfil_hook.ph_hashooks > 0
@@ -1648,48 +1697,13 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 			goto done;
 		if (m == NULL)
 			goto done;
-	}
 
-	if (dst_if == NULL) {
-		bridge_broadcast(sc, src_if, m, 1);
-		goto done;
-	}
-
-	/*
-	 * At this point, we're dealing with a unicast frame
-	 * going to a different interface.
-	 */
-	if ((dst_if->if_flags & IFF_RUNNING) == 0) {
-		m_freem(m);
-		goto done;
-	}
-	bif = bridge_lookup_member_if(sc, dst_if);
-	if (bif == NULL) {
-		/* Not a member of the bridge (anymore?) */
-		m_freem(m);
-		goto done;
-	}
-
-	if (bif->bif_flags & IFBIF_STP) {
-		switch (bif->bif_state) {
-		case BSTP_IFSTATE_DISABLED:
-		case BSTP_IFSTATE_BLOCKING:
-			m_freem(m);
-			goto done;
-		}
-	}
-
-	if (inet_pfil_hook.ph_hashooks > 0
-#ifdef INET6
-	    || inet6_pfil_hook.ph_hashooks > 0
-#endif
-	    ) {
-		if (bridge_pfil(&m, sc->sc_ifp, dst_if, PFIL_OUT) != 0)
+		if (bridge_pfil(&m, ifp, dst_if, PFIL_OUT) != 0)
 			goto done;
 		if (m == NULL)
 			goto done;
 	}
-	bridge_enqueue(dst_if, m);
+	bridge_handoff(dst_if, m);
 
 	/*
 	 * ifp's serializer was held on entry and is expected to be held
@@ -1852,8 +1866,11 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 				    eh->ether_shost, ifp, 0, IFBAF_DYNAMIC);
 			}
 
-			m->m_flags |= M_PROTO1;	/* XXX loop prevention */
-			new_ifp = bif->bif_ifp;
+			if (bif->bif_ifp != ifp) {
+				/* XXX loop prevention */
+				m->m_flags |= M_PROTO1;
+				new_ifp = bif->bif_ifp;
+			}
 			goto out;
 		}
 
@@ -1898,17 +1915,32 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 {
 	struct bridge_iflist *bif;
 	struct mbuf *mc;
-	struct ifnet *dst_if;
+	struct ifnet *dst_if, *bifp;
 	int used = 0;
 
-	/* Filter on the bridge interface before broadcasting */
+	bifp = sc->sc_ifp;
+
+	ASSERT_SERIALIZED(bifp->if_serializer);
+
+	/* run the packet filter */
 	if (runfilt && (inet_pfil_hook.ph_hashooks > 0
 #ifdef INET6
 	    || inet6_pfil_hook.ph_hashooks > 0
 #endif
 	    )) {
-		if (bridge_pfil(&m, sc->sc_ifp, NULL, PFIL_OUT) != 0)
-			return;
+		lwkt_serialize_exit(bifp->if_serializer);
+
+		/* Filter on the bridge interface before broadcasting */
+
+		if (bridge_pfil(&m, bifp, src_if, PFIL_IN) != 0)
+			goto filt;
+		if (m == NULL)
+			goto filt;
+
+		if (bridge_pfil(&m, bifp, NULL, PFIL_OUT) != 0)
+			m = NULL;
+filt:
+		lwkt_serialize_enter(bifp->if_serializer);
 		if (m == NULL)
 			return;
 	}
@@ -1943,24 +1975,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 				continue;
 			}
 		}
-
-		/*
-		 * Filter on the output interface. Pass a NULL bridge interface
-		 * pointer so we do not redundantly filter on the bridge for
-		 * each interface we broadcast on.
-		 */
-		if (runfilt && (inet_pfil_hook.ph_hashooks > 0
-#ifdef INET6
-		    || inet6_pfil_hook.ph_hashooks > 0
-#endif
-		    )) {
-			if (bridge_pfil(&mc, NULL, dst_if, PFIL_OUT) != 0)
-				continue;
-			if (mc == NULL)
-				continue;
-		}
-
-		bridge_enqueue(dst_if, mc);
+		bridge_pfil_enqueue(dst_if, mc, runfilt);
 	}
 	if (used == 0)
 		m_freem(m);
@@ -2812,4 +2827,82 @@ out:
 	if (m != NULL)
 		m_freem(m);
 	return (error);
+}
+
+static void
+bridge_enqueue_handler(struct netmsg *nmsg)
+{
+	struct netmsg_packet *nmp;
+	struct ifnet *dst_ifp;
+	struct mbuf *m;
+
+	nmp = (struct netmsg_packet *)nmsg;
+	m = nmp->nm_packet;
+	dst_ifp = nmp->nm_netmsg.nm_lmsg.u.ms_resultp;
+
+	bridge_handoff_notags(dst_ifp, m);
+}
+
+static void
+bridge_pfil_enqueue_handler(struct netmsg *nmsg)
+{
+	struct netmsg_packet *nmp;
+	struct ifnet *dst_ifp;
+	struct mbuf *m;
+
+	nmp = (struct netmsg_packet *)nmsg;
+	m = nmp->nm_packet;
+	dst_ifp = nmp->nm_netmsg.nm_lmsg.u.ms_resultp;
+
+	/*
+	 * Filter on the output interface. Pass a NULL bridge interface
+	 * pointer so we do not redundantly filter on the bridge for
+	 * each interface we broadcast on.
+	 */
+	if (inet_pfil_hook.ph_hashooks > 0
+#ifdef INET6
+	    || inet6_pfil_hook.ph_hashooks > 0
+#endif
+	    ) {
+		if (bridge_pfil(&m, NULL, dst_ifp, PFIL_OUT) != 0)
+			return;
+		if (m == NULL)
+			return;
+	}
+	bridge_handoff_notags(dst_ifp, m);
+}
+
+static void
+bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m)
+{
+	while (m->m_type == MT_TAG) {
+		/* XXX see ether_output_frame for full rules check */
+		m = m->m_next;
+	}
+	bridge_handoff_notags(dst_ifp, m);
+}
+
+static void
+bridge_handoff_notags(struct ifnet *dst_ifp, struct mbuf *m)
+{
+	struct mbuf *m0;
+
+	KKASSERT(m->m_type != MT_TAG);
+
+	lwkt_serialize_enter(dst_ifp->if_serializer);
+
+	/* We may be sending a fragment so traverse the mbuf */
+	for (; m; m = m0) {
+		struct altq_pktattr pktattr;
+
+		m0 = m->m_nextpkt;
+		m->m_nextpkt = NULL;
+
+		if (ifq_is_enabled(&dst_ifp->if_snd))
+			altq_etherclassify(&dst_ifp->if_snd, m, &pktattr);
+
+		ifq_handoff(dst_ifp, m, &pktattr);
+	}
+
+	lwkt_serialize_exit(dst_ifp->if_serializer);
 }
