@@ -23,10 +23,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/pcm.4,v 1.50 2006/11/29 17:07:02 joel Exp $
-.\" $DragonFly: src/share/man/man4/pcm.4,v 1.6 2007/01/04 21:47:00 corecode Exp $
+.\" $FreeBSD: src/share/man/man4/pcm.4,v 1.39.2.6 2007/05/23 19:45:49 brueffer Exp $
+.\" $DragonFly: src/share/man/man4/pcm.4,v 1.7 2007/06/16 17:44:33 hasso Exp $
 .\"
-.Dd November 29, 2006
+.Dd November 26, 2006
 .Dt SOUND 4
 .Os
 .Sh NAME
@@ -34,7 +34,7 @@
 .Nm pcm ,
 .Nm snd
 .Nd
-.Fx
+.Dx
 PCM audio device infrastructure
 .Sh SYNOPSIS
 To compile this driver into the kernel, place the following line in your
@@ -143,51 +143,33 @@ options can be configured via the
 .Xr sysctl 8
 interface but can only be manipulated while the device is inactive.
 .Ss Runtime Configuration
-There are a number of
+The following
 .Xr sysctl 8
-variables available.
-.Va hw.snd.*
-tunables are global settings and
-.Va dev.pcm.*
-are device specific.
+variables are available:
 .Bl -tag -width ".Va hw.snd.report_soft_formats" -offset indent
-.It Va hw.snd.latency_profile
-Define sets of buffering latency conversion tables for the
-.Va hw.snd.latency
-tunable.
-A value of 0 will use a low and aggressive latency profile which can result
-in possible underruns if the application cannot keep up with a rapid irq
-rate, especially during high workload.
-The default value is 1, which is considered a moderate/safe latency profile.
-.It Va hw.snd.latency
-Configure the buffering latency.
-Only affects applications that do not explicitly request
-blocksize / fragments.
-This tunable provides finer granularity than the
-.Va hw.snd.latency_profile
-tunable.
-Possible values range between 0 (lowest latency) and 10 (highest latency).
+.It Va hw.snd.pcm%d.buffersize
+Configure the amount of
+.Tn DMA
+bufferspace available for a device.
+.It Va hw.snd.targetirqrate
+Set the default block size such that continuous
+playback will achieve this
+.Tn IRQ
+rate.
+This value can be tuned to improve application performance.
+Increase this value when the sound lags and decrease
+it if sound stutters or breaks up.
 .It Va hw.snd.report_soft_formats
 Controls the internal format conversion if it is
 available transparently to the application software.
 When disabled or not available, the application will
 only be able to select formats the device natively supports.
-.It Va hw.snd.feeder_rate_round
-Sample rate rounding threshold, to avoid large prime division at the
-cost of accuracy.
-All requested sample rates will be rounded to the nearest threshold value.
-Possible values range between 0 (disabled) and 500.
-Default is 25.
-.It Va hw.snd.feeder_rate_max
-Maximum allowable sample rate.
-.It Va hw.snd.feeder_rate_min
-Minimum allowable sample rate.
 .It Va hw.snd.verbose
 Level of verbosity for the
 .Pa /dev/sndstat
 device.
 Higher values include more output and the highest level,
-four, should be used when reporting problems.
+three, should be used when reporting problems.
 Other options include:
 .Bl -tag -width 2n
 .It 0
@@ -201,8 +183,6 @@ current format, speed, and pseudo device statistics such as
 buffer overruns and buffer underruns.
 .It 3
 File names and versions of the currently loaded sound modules.
-.It 4
-Various messages intended for debugging.
 .El
 .It Va hw.snd.maxautovchans
 Global
@@ -215,18 +195,7 @@ Set to
 if no
 .Tn VCHANS
 are desired.
-Maximum value is 255.
-.It Va hw.snd.default_unit
-Default sound card for systems with multiple sound cards.
-When using
-.Xr devfs 5 ,
-the default device for
-.Pa /dev/dsp .
-Equivalent to a symlink from
-.Pa /dev/dsp
-to
-.Pa /dev/dsp Ns Va ${hw.snd.default_unit} .
-.It Va dev.pcm.%d.vchans
+.It Va hw.snd.pcm%d.vchans
 The current number of
 .Tn VCHANs
 allocated per device.
@@ -237,29 +206,11 @@ Setting this value to
 will disable
 .Tn VCHANs
 for this device.
-.It Va dev.pcm.%d.vchanrate
-Sample rate speed for
-.Tn VCHAN
-mixing.
-All playback paths will be converted to this sample rate before the mixing
-process begins.
-.It Va dev.pcm.%d.vchanformat
-Format for
-.Tn VCHAN
-mixing.
-All playback paths will be converted to this format before the mixing
-process begins.
-.It Va dev.pcm.%d.polling
-Experimental polling mode support where the driver operates by querying the
-device state on each tick using a
-.Xr callout 9
-mechanism.
-Disabled by default and currently only available for a few device drivers.
 .El
 .Ss Recording Channels
 On devices that have more than one recording source (ie: mic and line),
 there is a corresponding
-.Pa /dev/dsp%d.r%d
+.Pa /dev/dspr%d.%d
 device.
 .Ss Statistics
 Channel statistics are only kept while the device is open.
@@ -287,7 +238,7 @@ functions.
 .Sh FILES
 The
 .Nm
-drivers may create the following
+drivers may use the following
 device nodes:
 .Pp
 .Bl -tag -width ".Pa /dev/audio%d.%d" -compact
@@ -299,12 +250,8 @@ Digitized voice device.
 Like
 .Pa /dev/dsp ,
 but 16 bits per sample.
-.It Pa /dev/dsp%d.p%d
-Playback channel.
-.It Pa /dev/dsp%d.r%d
-Record channel.
-.It Pa /dev/dsp%d.v%d
-Virtual channel.
+.It Pa /dev/dspr%d.%d
+Should be connected to a record codec.
 .It Pa /dev/sndstat
 Current
 .Nm
@@ -326,9 +273,8 @@ device is probed and attached, these messages can be viewed with the
 utility.
 .Sh DIAGNOSTICS
 .Bl -diag
-.It pcm%d:play:%d:dsp%d.p%d: play interrupt timeout, channel dead
-The hardware does not generate interrupts to serve incoming (play)
-or outgoing (record) data.
+.It ac97: dac not ready
+AC97 codec is not likely to be accompanied with the sound card.
 .It unsupported subdevice XX
 A device node is not created properly.
 .El
@@ -336,13 +282,11 @@ A device node is not created properly.
 .Xr snd_ad1816 4 ,
 .Xr snd_als4000 4 ,
 .Xr snd_atiixp 4 ,
-.Xr snd_audiocs 4 ,
 .Xr snd_cmi 4 ,
 .Xr snd_cs4281 4 ,
 .Xr snd_csa 4 ,
 .Xr snd_ds1 4 ,
 .Xr snd_emu10k1 4 ,
-.Xr snd_emu10kx 4 ,
 .Xr snd_envy24 4 ,
 .Xr snd_envy24ht 4 ,
 .Xr snd_es137x 4 ,
@@ -363,7 +307,6 @@ A device node is not created properly.
 .Xr snd_via8233 4 ,
 .Xr snd_via82c686 4 ,
 .Xr snd_vibes 4 ,
-.Xr devfs 5 ,
 .Xr loader.conf 5 ,
 .Xr dmesg 8 ,
 .Xr kldload 8 ,

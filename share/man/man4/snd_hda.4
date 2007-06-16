@@ -22,10 +22,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/snd_hda.4,v 1.5 2006/12/17 16:48:26 joel Exp $
-.\" $DragonFly: src/share/man/man4/snd_hda.4,v 1.1 2007/01/04 21:47:00 corecode Exp $
+.\" $FreeBSD: src/share/man/man4/snd_hda.4,v 1.10.2.1 2007/05/15 18:40:22 joel Exp $
+.\" $DragonFly: src/share/man/man4/snd_hda.4,v 1.2 2007/06/16 17:44:33 hasso Exp $
 .\"
-.Dd December 17, 2006
+.Dd May 5, 2007
 .Dt SND_HDA 4
 .Os
 .Sh NAME
@@ -125,7 +125,7 @@ SiS 966
 VIA VT8251/8237A
 .El
 .Pp
-Generic Audio chipsets compatible with the Intel HDA specification should work,
+Generic audio chipsets compatible with the Intel HDA specification should work,
 but have not been verified yet.
 The following codecs have been verified to work:
 .Pp
@@ -137,6 +137,8 @@ Analog Device AD1983
 .It
 Analog Device AD1986A
 .It
+Analog Device AD1988
+.It
 CMedia CMI9880
 .It
 Conexant Venice
@@ -145,13 +147,19 @@ Conexant Waikiki
 .It
 Realtek ALC260
 .It
+Realtek ALC262
+.It
 Realtek ALC861
+.It
+Realtek ALC861VD
 .It
 Realtek ALC880
 .It
 Realtek ALC882
 .It
 Realtek ALC883
+.It
+Realtek ALC885
 .It
 Realtek ALC888
 .It
@@ -164,10 +172,17 @@ Sigmatel STAC9221
 Sigmatel STAC9221D
 .It
 Sigmatel STAC9227
+.It
+Sigmatel STAC9271D
+.It
+VIA VT1708
+.It
+VIA VT1709
 .El
 .Sh SEE ALSO
 .Xr sound 4 ,
-.Xr loader.conf 5
+.Xr loader.conf 5 ,
+.Xr sysctl 8
 .Sh HISTORY
 The
 .Nm
