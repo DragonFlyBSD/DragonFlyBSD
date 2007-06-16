@@ -1,9 +1,10 @@
 # $FreeBSD: src/lib/libc/uuid/Makefile.inc,v 1.4 2006/03/13 01:15:01 deischen Exp $
-# $DragonFly: src/lib/libc/uuid/Makefile.inc,v 1.1 2007/06/16 19:57:14 dillon Exp $
+# $DragonFly: src/lib/libc/uuid/Makefile.inc,v 1.2 2007/06/16 20:43:47 dillon Exp $
 
 # DCE 1.1 UUID implementation sources
 
-.PATH: ${.CURDIR}/uuid
+# uuid sources
+.PATH: ${.CURDIR}/../libc/uuid
 
 SRCS+=	uuid_compare.c uuid_create.c uuid_create_nil.c uuid_equal.c \
 	uuid_from_string.c uuid_hash.c uuid_is_nil.c uuid_to_string.c
