@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/atiixp.c,v 1.2.2.7 2007/04/26 08:21:44 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.4 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.5 2007/06/16 20:07:19 dillon Exp $
  */
 
 /*
@@ -66,7 +66,7 @@
 
 #include <dev/sound/pci/atiixp.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.4 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.5 2007/06/16 20:07:19 dillon Exp $");
 
 struct atiixp_dma_op {
 	volatile uint32_t addr;
@@ -114,7 +114,7 @@ struct atiixp_info {
 	uint32_t dma_segs;
 	int registered_channels;
 
-	struct spinlock *lock;
+	sndlock_t	lock;
 };
 
 #define atiixp_rd(_sc, _reg)	\
@@ -747,7 +747,7 @@ atiixp_chip_post_init(void *arg)
 	/* wait for the interrupts to happen */
 	timeout = 100;
 	while (--timeout) {
-		msleep(sc, sc->lock, 0, "ixpslp", 1);
+		snd_mtxsleep(sc, sc->lock, 0, "ixpslp", 1);
 		if (sc->codec_not_ready_bits)
 			break;
 	}

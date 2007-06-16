@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.18.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.11 2007/06/16 20:07:19 dillon Exp $
  */
 
 /*
@@ -45,7 +45,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.11 2007/06/16 20:07:19 dillon Exp $");
 
 /* Debugging macro's */
 #undef DEB
@@ -78,7 +78,7 @@ struct sc_info {
 	struct resource		*reg, *irq;
 	int			regid, irqid;
 	void			*ih;
-	struct spinlock		*lock;
+	sndlock_t		lock;
 
 	unsigned int		bufsz;
 	struct sc_chinfo	pch, rch;

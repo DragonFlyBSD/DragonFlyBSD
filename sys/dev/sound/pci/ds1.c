@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ds1.c,v 1.43.2.1 2006/01/18 01:05:34 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.8 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.9 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 #include <dev/sound/pci/ds1.h>
 #include <dev/sound/pci/ds1-fw.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.8 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.9 2007/06/16 20:07:19 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -119,7 +119,7 @@ struct sc_info {
 	struct resource *reg, *irq;
 	int		regid, irqid;
 	void		*ih;
-	struct spinlock	*lock;
+	sndlock_t	lock;
 
 	void *regbase;
 	u_int32_t *pbase, pbankbase, pbanksize;

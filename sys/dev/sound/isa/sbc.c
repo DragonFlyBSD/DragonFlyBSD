@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/sbc.c,v 1.44.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.9 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.10 2007/06/16 20:07:18 dillon Exp $
  */
 
 #include <dev/sound/chip.h>
@@ -33,7 +33,7 @@
 
 #include <bus/isa/isavar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.9 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/sbc.c,v 1.10 2007/06/16 20:07:18 dillon Exp $");
 
 #define IO_MAX	3
 #define IRQ_MAX	1
@@ -69,7 +69,7 @@ struct sbc_softc {
 
 	void *ih[IRQ_MAX];
 
-	struct spinlock *lock;
+	sndlock_t	lock;
 
 	u_int32_t bd_ver;
 };

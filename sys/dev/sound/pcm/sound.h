@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.63.2.3 2007/05/13 20:53:39 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.12 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.13 2007/06/16 20:07:22 dillon Exp $
  */
 
 /*
@@ -74,8 +74,8 @@
 #undef	USING_MUTEX
 #undef	USING_DEVFS
 
-#include <sys/spinlock.h>
-#include <sys/spinlock2.h>
+#include <sys/lock.h>		/* lockmgr locks */
+typedef struct lock *sndlock_t;	/* opaque lock structure */
 
 #define USING_MUTEX
 #define INTR_TYPE_AV	0
@@ -242,8 +242,9 @@ int snd_setup_intr(device_t dev, struct resource *res, int flags,
 void *snd_mtxcreate(const char *desc, const char *type);
 void snd_mtxfree(void *m);
 void snd_mtxassert(void *m);
-#define	snd_mtxlock(m) spin_lock_wr(m)
-#define	snd_mtxunlock(m) spin_unlock_wr(m)
+void snd_mtxlock(void *m);
+void snd_mtxunlock(void *m);
+int snd_mtxsleep(void *, sndlock_t, int, const char *, int);
 
 int sysctl_hw_snd_vchans(SYSCTL_HANDLER_ARGS);
 
@@ -304,14 +305,14 @@ struct snddev_info {
 	char status[SND_STATUSLEN];
 	struct sysctl_ctx_list sysctl_tree;
 	struct sysctl_oid *sysctl_tree_top;
-	struct spinlock *lock;
+	sndlock_t	lock;
 	struct cdev *mixer_dev;
 
 };
 
 #ifdef	PCM_DEBUG_MTX
-#define	pcm_lock(d) spin_lock_wr(((struct snddev_info *)(d))->lock)
-#define	pcm_unlock(d) spin_unlock_wr(((struct snddev_info *)(d))->lock)
+#define	pcm_lock(d) snd_mtxlock(((struct snddev_info *)(d))->lock)
+#define	pcm_unlock(d) snd_mtxunlock(((struct snddev_info *)(d))->lock)
 #else
 void pcm_lock(struct snddev_info *d);
 void pcm_unlock(struct snddev_info *d);

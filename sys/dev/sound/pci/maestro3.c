@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.28.2.2 2007/03/12 02:03:25 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.11 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.12 2007/06/16 20:07:19 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 #include <dev/sound/pci/gnu/maestro3_reg.h>
 #include <dev/sound/pci/gnu/maestro3_dsp.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.11 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.12 2007/06/16 20:07:19 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -152,7 +152,7 @@ struct sc_info {
 	unsigned int		bufsz;
 	u_int16_t		*savemem;
 
-	struct spinlock		*sc_lock;
+	sndlock_t		sc_lock;
 };
 
 #define M3_LOCK(_sc)		snd_mtxlock((_sc)->sc_lock)

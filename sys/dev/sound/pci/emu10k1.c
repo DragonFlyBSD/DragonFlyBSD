@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.55.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.12 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.13 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -38,7 +38,7 @@
 #include <bus/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.12 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.13 2007/06/16 20:07:19 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -130,7 +130,7 @@ struct sc_info {
 
 	struct resource *reg, *irq;
 	void		*ih;
-	struct spinlock	*lock;
+	sndlock_t	lock;
 
 	unsigned int bufsz;
 	int timer, timerinterval;

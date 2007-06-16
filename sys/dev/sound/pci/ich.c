@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.53.2.11 2007/05/28 21:07:41 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.15 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.16 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.15 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.16 2007/06/16 20:07:19 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -208,8 +208,10 @@ struct sc_info {
 	uint16_t vendor;
 	uint16_t devid;
 	uint32_t flags;
-	struct spinlock *ich_lock;
+	sndlock_t	ich_lock;
 };
+
+#define IGNORE_PCR	0x01
 
 /* -------------------------------------------------------------------- */
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.h,v 1.31.2.1 2005/12/30 19:55:54 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.h,v 1.5 2007/01/04 21:47:03 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.h,v 1.6 2007/06/16 20:07:22 dillon Exp $
  */
 
 struct pcmchan_children {
@@ -63,7 +63,7 @@ struct pcm_channel {
 	void *devinfo;
 	device_t dev;
 	char name[CHN_NAMELEN];
-	struct spinlock *lock;
+	sndlock_t	lock;
 	SLIST_HEAD(, pcmchan_children) children;
 };
 
@@ -104,8 +104,8 @@ void chn_lock(struct pcm_channel *c);
 void chn_unlock(struct pcm_channel *c);
 
 #ifdef	USING_MUTEX
-#define CHN_LOCK(c) spin_lock_wr((struct spinlock *)((c)->lock))
-#define CHN_UNLOCK(c) spin_unlock_wr((struct spinlock *)((c)->lock))
+#define CHN_LOCK(c) snd_mtxlock(((c)->lock))
+#define CHN_UNLOCK(c) snd_mtxunlock(((c)->lock))
 #define CHN_LOCKASSERT(c)
 #else
 #define CHN_LOCK(c)

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/via82c686.c,v 1.34.2.2 2007/04/26 08:21:44 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.9 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 
 #include <dev/sound/pci/via82c686.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.9 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.10 2007/06/16 20:07:19 dillon Exp $");
 
 #define VIA_PCI_ID 0x30581106
 #define	NSEGS		4	/* Number of segments in SGD table */
@@ -89,7 +89,7 @@ struct via_info {
 	struct via_chinfo pch, rch;
 	struct via_dma_op *sgd_table;
 	u_int16_t codec_caps;
-	struct spinlock *lock;
+	sndlock_t	lock;
 };
 
 static u_int32_t via_fmt[] = {

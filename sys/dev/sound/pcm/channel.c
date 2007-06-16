@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.99.2.5 2007/05/13 20:53:39 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.13 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.14 2007/06/16 20:07:22 dillon Exp $
  */
 
 #include "use_isa.h"
@@ -35,7 +35,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.13 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.14 2007/06/16 20:07:22 dillon Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #if 0
@@ -162,7 +162,7 @@ chn_sleep(struct pcm_channel *c, char *str, int timeout)
 
 	CHN_LOCKASSERT(c);
 #ifdef USING_MUTEX
-	ret = msleep(bs, c->lock, PCATCH, str, timeout);
+	ret = snd_mtxsleep(bs, c->lock, PCATCH, str, timeout);
 #else
 	ret = tsleep(bs, PRIBIO | PCATCH, str, timeout);
 #endif

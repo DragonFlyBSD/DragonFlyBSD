@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.6.2.1 2007/05/13 21:09:24 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.3 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.4 2007/06/16 20:07:21 dillon Exp $
  */
 
 #ifndef _HDAC_PRIVATE_H_
@@ -287,7 +287,7 @@ struct hdac_chan {
 struct hdac_softc {
 	device_t	dev;
 	device_t	hdabus;
-	struct spinlock	*lock;
+	sndlock_t	lock;
 
 	struct intr_config_hook intrhook;
 

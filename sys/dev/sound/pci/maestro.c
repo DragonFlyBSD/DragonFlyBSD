@@ -25,7 +25,7 @@
  *
  *	maestro.c,v 1.23.2.1 2003/10/03 18:21:38 taku Exp
  * $FreeBSD: src/sys/dev/sound/pci/maestro.c,v 1.28.2.3 2006/02/04 11:58:28 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.9 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 /*
@@ -56,7 +56,7 @@
 
 #include <dev/sound/pci/maestro_reg.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.9 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.10 2007/06/16 20:07:19 dillon Exp $");
 
 
 #define inline __inline
@@ -161,7 +161,7 @@ struct agg_info {
 
 	/* FreeBSD SMPng related */
 #ifdef USING_MUTEX
-	struct spinlock		*lock;	/* mutual exclusion */
+	sndlock_t		lock;
 #endif
 	/* FreeBSD newpcm related */
 	struct ac97_info	*codec;
@@ -288,7 +288,7 @@ agg_sleep(struct agg_info *sc, const char *wmesg, int msec)
 	if (timo == 0)
 		timo = 1;
 #ifdef USING_MUTEX
-	msleep(sc, sc->lock, 0, wmesg, timo);
+	snd_mtxsleep(sc, sc->lock, 0, wmesg, timo);
 #else
 	tsleep(sc, PWAIT, wmesg, timo);
 #endif

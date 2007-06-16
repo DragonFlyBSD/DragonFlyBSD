@@ -40,7 +40,7 @@
  * those that don't.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.32.2.2 2006/01/24 18:54:22 joel Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.9 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -54,7 +54,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.9 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.10 2007/06/16 20:07:19 dillon Exp $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6
@@ -110,7 +110,7 @@ struct sc_info {
 	struct resource		*reg, *irq;
 	int			regid, irqid;
 	void 			*ih;
-	struct spinlock		*lock;
+	sndlock_t		lock;
 
 	int			spdif_enabled;
 	unsigned int		bufsz;

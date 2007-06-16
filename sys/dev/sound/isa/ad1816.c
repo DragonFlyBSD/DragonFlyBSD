@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/ad1816.c,v 1.37.2.2 2006/04/04 17:23:24 ariff Exp $
- * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.7 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.8 2007/06/16 20:07:18 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.7 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/ad1816.c,v 1.8 2007/06/16 20:07:18 dillon Exp $");
 
 struct ad1816_info;
 
@@ -58,7 +58,7 @@ struct ad1816_info {
 	int drq2_rid;
 	void *ih;
 	bus_dma_tag_t parent_dmat;
-	struct spinlock *lock;
+	sndlock_t	lock;
 
 	unsigned int bufsize;
 	struct ad1816_chinfo pch, rch;

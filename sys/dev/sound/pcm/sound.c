@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.93.2.5 2007/06/04 09:06:05 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.10 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.11 2007/06/16 20:07:22 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.10 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.11 2007/06/16 20:07:22 dillon Exp $");
 
 devclass_t pcm_devclass;
 
@@ -73,12 +73,12 @@ void *
 snd_mtxcreate(const char *desc, const char *type)
 {
 #ifdef USING_MUTEX
-	struct spinlock *m;
+	struct lock	*m;
 
 	m = kmalloc(sizeof(*m), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (m == NULL)
 		return NULL;
-	spin_init(m);
+	lockinit(m, __DECONST(char *, type), 0, LK_CANRECURSE);
 	return m;
 #else
 	return (void *)0xcafebabe;
@@ -89,11 +89,9 @@ void
 snd_mtxfree(void *m)
 {
 #ifdef USING_MUTEX
-	struct spinlock *mtx = m;
+	struct lock *lk = m;
 
-	/* mtx_assert(mtx, MA_OWNED); */
-	spin_uninit(mtx);
-	kfree(mtx, M_DEVBUF);
+	kfree(lk, M_DEVBUF);
 #endif
 }
 
@@ -102,18 +100,18 @@ snd_mtxassert(void *m)
 {
 #ifdef USING_MUTEX
 #ifdef INVARIANTS
-	/* XXX can't assert spinlocks */
+	/* XXX */
 #endif
 #endif
 }
-/*
+
 void
 snd_mtxlock(void *m)
 {
 #ifdef USING_MUTEX
-	struct spinlock *mtx = m;
+	struct lock *lk = m;
 
-	spin_lock_wr(mtx);
+	lockmgr(lk, LK_EXCLUSIVE | LK_RETRY);
 #endif
 }
 
@@ -121,12 +119,28 @@ void
 snd_mtxunlock(void *m)
 {
 #ifdef USING_MUTEX
-	struct spinlock *mtx = m;
+	struct lock *lk = m;
 
-	spin_unlock_wr(mtx);
+	lockmgr(lk, LK_RELEASE);
 #endif
 }
-*/
+
+int
+snd_mtxsleep(void *addr, sndlock_t lock, int flags, const char *wmesg, int timo)
+{
+	int r;
+
+	crit_enter();
+	tsleep_interlock(addr);
+	snd_mtxunlock(lock);
+	r = tsleep(addr, flags, wmesg, timo);
+	snd_mtxlock(lock);
+	crit_exit();
+	return(r);
+}
+
+
+
 int
 snd_setup_intr(device_t dev, struct resource *res, int flags, driver_intr_t hand, void *param, void **cookiep)
 {

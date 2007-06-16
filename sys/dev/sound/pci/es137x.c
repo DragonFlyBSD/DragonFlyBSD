@@ -39,7 +39,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/es137x.c,v 1.55.2.2 2006/01/16 02:08:56 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.9 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.9 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/es137x.c,v 1.10 2007/06/16 20:07:19 dillon Exp $");
 
 static int debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, es_debug, CTLFLAG_RW, &debug, 0, "");
@@ -194,7 +194,7 @@ struct es_info {
 	uint32_t	sctrl;
 	uint32_t	escfg;
 	struct es_chinfo ch[ES_NCHANS];
-	struct spinlock	*lock;
+	sndlock_t	lock;
 };
 
 #define ES_LOCK(sc)		snd_mtxlock((sc)->lock)

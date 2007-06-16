@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/spicds.c,v 1.5.2.2 2007/06/11 19:33:27 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/spicds.c,v 1.1 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pci/spicds.c,v 1.2 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -46,7 +46,7 @@ struct spicds_info {
 	unsigned int dvc;    /* De-emphasis and Volume Control */
 	unsigned int left, right;
 	char name[SPICDS_NAMELEN];
-	struct spinlock *lock;
+	sndlock_t	lock;
 };
 
 static void

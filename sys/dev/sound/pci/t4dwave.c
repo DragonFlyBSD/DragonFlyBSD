@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.48 2005/03/01 08:58:05 imp Exp $
- * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.9 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,7 +34,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.9 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.10 2007/06/16 20:07:19 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -94,7 +94,7 @@ struct tr_info {
 	int regtype, regid, irqid;
 	void *ih;
 
-	struct spinlock *lock;
+	sndlock_t	lock;
 
 	u_int32_t playchns;
 	unsigned int bufsz;

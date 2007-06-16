@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/solo.c,v 1.35.2.4 2006/07/13 01:53:54 yongari Exp $
- * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.9 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/solo.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/solo.c,v 1.9 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/solo.c,v 1.10 2007/06/16 20:07:19 dillon Exp $");
 
 #define SOLO_DEFAULT_BUFSZ 16384
 #define ABS(x) (((x) < 0)? -(x) : (x))
@@ -100,7 +100,7 @@ struct ess_info {
 
     	struct ess_chinfo pch, rch;
 #if ESS18XX_MPSAFE == 1
-	struct spinlock *lock;
+	sndlock_t	lock;
 #endif
 };
 

@@ -24,7 +24,7 @@
  */
 
 /* $FreeBSD: src/sys/gnu/dev/sound/pci/emu10k1-alsa.h,v 1.2 2005/01/06 18:26:37 imp Exp $ */
-/* $DragonFly: src/sys/dev/sound/pci/gnu/emu10k1-alsa.h,v 1.1 2007/01/04 21:47:03 corecode Exp $ */
+/* $DragonFly: src/sys/dev/sound/pci/gnu/emu10k1-alsa.h,v 1.2 2007/06/16 20:07:20 dillon Exp $ */
 
 #ifdef __KERNEL__
 
@@ -910,7 +910,7 @@ typedef struct {
 	struct list_head gpr_ctl;	/* GPR controls */
 	struct semaphore lock;
 	snd_emu10k1_fx8010_pcm_t pcm[8];
-	spinlock_t irq_lock;
+	sndlock_t irq_lock;
 	snd_emu10k1_fx8010_irq_t *irq_handlers;
 } snd_emu10k1_fx8010_t;
 
@@ -922,9 +922,9 @@ typedef struct {
 	snd_rawmidi_substream_t *substream_input;
 	snd_rawmidi_substream_t *substream_output;
 	unsigned int midi_mode;
-	spinlock_t input_lock;
-	spinlock_t output_lock;
-	spinlock_t open_lock;
+	sndlock_t input_lock;
+	sndlock_t output_lock;
+	sndlock_t open_lock;
 	int tx_enable, rx_enable;
 	int port;
 	int ipr_tx, ipr_rx;
@@ -958,7 +958,7 @@ struct _snd_emu10k1 {
 	struct list_head mapped_order_link_head;
 	void **page_ptr_table;
 	unsigned long *page_addr_table;
-	spinlock_t memblk_lock;
+	sndlock_t memblk_lock;
 
 	unsigned int spdif_bits[3];		/* s/pdif out setup */
 
@@ -974,13 +974,13 @@ struct _snd_emu10k1 {
 	snd_pcm_t *pcm_efx;
 	snd_pcm_t *pcm_fx8010;
 
-	spinlock_t synth_lock;
+	sndlock_t synth_lock;
 	void *synth;
 	int (*get_synth_voice)(emu10k1_t *emu);
 
-	spinlock_t reg_lock;
-	spinlock_t emu_lock;
-	spinlock_t voice_lock;
+	sndlock_t reg_lock;
+	sndlock_t emu_lock;
+	sndlock_t voice_lock;
 	struct semaphore ptb_lock;
 
 	emu10k1_voice_t voices[64];

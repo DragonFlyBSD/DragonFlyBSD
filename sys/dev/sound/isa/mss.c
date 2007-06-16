@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.95.2.3 2006/04/04 17:30:59 ariff Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.11 2007/06/16 20:07:18 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/mss.c,v 1.11 2007/06/16 20:07:18 dillon Exp $");
 
 /* board-specific include files */
 #include <dev/sound/isa/mss.h>
@@ -70,7 +70,7 @@ struct mss_info {
     int		     drq2_rid;
     void 	    *ih;
     bus_dma_tag_t    parent_dmat;
-    struct spinlock *lock;
+    sndlock_t	    lock;
 
     char mss_indexed_regs[MSS_INDEXED_REGS];
     char opl_indexed_regs[OPL_INDEXED_REGS];

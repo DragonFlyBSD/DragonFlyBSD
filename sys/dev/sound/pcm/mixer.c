@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.43.2.5 2007/05/13 20:53:39 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.16 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.17 2007/06/16 20:07:22 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -32,7 +32,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.16 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.17 2007/06/16 20:07:22 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -55,7 +55,7 @@ struct snd_mixer {
 	u_int32_t child[32];
 	u_int8_t realdev[32];
 	char name[MIXER_NAMELEN];
-	struct spinlock *lock;
+	sndlock_t	lock;
 };
 
 static u_int16_t snd_mixerdefaults[SOUND_MIXER_NRDEVICES] = {

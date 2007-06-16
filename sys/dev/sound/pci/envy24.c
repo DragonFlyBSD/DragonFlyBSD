@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/envy24.c,v 1.11.2.2 2007/06/11 19:33:27 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.1 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.2 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -37,7 +37,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.1 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.2 2007/06/16 20:07:19 dillon Exp $");
 
 MALLOC_DEFINE(M_ENVY24, "envy24", "envy24 audio");
 
@@ -116,7 +116,7 @@ struct cfg_info {
 /* device private data */
 struct sc_info {
 	device_t	dev;
-	struct spinlock	*lock;
+	sndlock_t	lock;
 
 	/* Control/Status registor */
 	struct resource *cs;
