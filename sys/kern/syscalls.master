@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.55 2007/05/03 23:04:31 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.56 2007/06/16 20:00:37 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -560,7 +560,7 @@
 389	UNIMPL	NOHIDE	nosys
 390	UNIMPL	NOHIDE	nosys
 391	UNIMPL	NOHIDE	nosys
-392	UNIMPL	NOHIDE	nosys
+392	STD	BSD	{ int uuidgen(struct uuid *store, int count); }
 393	STD	BSD	{ int sendfile(int fd, int s, off_t offset, size_t nbytes, \
 				struct sf_hdtr *hdtr, off_t *sbytes, int flags); }
 ; 394-439 used by FreeBSD-current
