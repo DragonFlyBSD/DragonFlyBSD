@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/18/93
 # $FreeBSD: src/share/man/man4/Makefile,v 1.83.2.66 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/share/man/man4/Makefile,v 1.54 2007/06/14 23:00:36 swildner Exp $
+# $DragonFly: src/share/man/man4/Makefile,v 1.55 2007/06/16 13:47:44 swildner Exp $
 
 MAN=	aac.4 \
 	acpi.4 \
@@ -295,6 +295,7 @@ MAN=	aac.4 \
 	wlan.4 \
 	wlan_acl.4 \
 	wlan_ccmp.4 \
+	wlan_ratectl.4 \
 	wlan_tkip.4 \
 	wlan_wep.4 \
 	wlan_xauth.4 \
@@ -330,6 +331,9 @@ MLINKS+=smp.4 SMP.4
 MLINKS+=splash.4 screensaver.4
 MLINKS+=syscons.4 sc.4
 MLINKS+=vpo.4 imm.4
+MLINKS+=wlan_ratectl.4 wlan_ratectl_amrr.4 \
+	wlan_ratectl.4 wlan_ratectl_onoe.4 \
+	wlan_ratectl.4 wlan_ratectl_sample.4
 
 # XXX NOT IMPORTED:	man4.hp300 man4.sparc man4.tahoe man4.vax
 SUBDIR=	 man4.i386
