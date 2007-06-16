@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.51 2007/05/13 18:33:58 swildner Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.52 2007/06/16 19:59:30 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1851,6 +1851,31 @@ ifmaof_ifpforaddr(struct sockaddr *sa, struct ifnet *ifp)
 			break;
 
 	return ifma;
+}
+
+/*
+ * This function locates the first real ethernet MAC from a network
+ * card and loads it into node, returning 0 on success or ENOENT if
+ * no suitable interfaces were found.  It is used by the uuid code to
+ * generate a unique 6-byte number.
+ */
+int
+if_getanyethermac(uint16_t *node, int minlen)
+{
+	struct ifnet *ifp;
+	struct sockaddr_dl *sdl;
+
+	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		if (ifp->if_type != IFT_ETHER)
+			continue;
+		sdl = IF_LLSOCKADDR(ifp);
+		if (sdl->sdl_alen < minlen)
+			continue;
+		bcopy(((struct arpcom *)ifp->if_softc)->ac_enaddr, node,
+		      minlen);
+		return(0);
+	}
+	return (ENOENT);
 }
 
 /*
