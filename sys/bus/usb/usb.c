@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.26 2007/05/01 00:05:16 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.27 2007/06/16 20:57:59 dillon Exp $	*/
 
 /* Also already merged from NetBSD:
  *	$NetBSD: usb.c,v 1.70 2002/05/09 21:54:32 augustss Exp $
@@ -175,7 +175,8 @@ Static void	usb_task_thread(void *);
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 Static cdev_t usb_dev;		/* The /dev/usb device. */
-Static int usb_ndevs;			/* Number of /dev/usbN devices. */
+Static int usb_ndevs;		/* Number of /dev/usbN devices. */
+Static int usb_exitevthreads;	/* Ask the event threads to exit */
 #endif
 
 #define USB_MAX_EVENTS 100
@@ -279,6 +280,10 @@ USB_ATTACH(usb)
 	usb_callout_init(sc->sc_bus->softi);
 #endif
 #endif
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+	usb_exitevthreads = 0;
+	usb_create_event_thread(sc);
+#endif
 
 	err = usbd_new_device(USBDEV(sc->sc_dev), sc->sc_bus, 0, speed, 0,
 		  &sc->sc_port);
@@ -327,7 +332,6 @@ USB_ATTACH(usb)
 #endif
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	usb_create_event_thread(sc);
 	/* The per controller devices (used for usb_discover) */
 	/* XXX This is redundant now, but old usbd's will want it */
 	dev_ops_add(&usb_ops, -1, device_get_unit(self));
@@ -355,13 +359,6 @@ usb_create_event_thread(void *arg)
 	struct usb_softc *sc = arg;
 	int i;
 
-	if (usb_kthread_create1(usb_event_thread, sc, &sc->sc_event_thread,
-			   "%s", USBDEVNAME(sc->sc_dev))) {
-		kprintf("%s: unable to create event thread for\n",
-		       USBDEVNAME(sc->sc_dev));
-		panic("usb_create_event_thread");
-	}
-
 	for (i = 0; i < USB_NUM_TASKQS; i++) {
 		struct usb_taskq *taskq = &usb_taskq[i];
 
@@ -375,6 +372,12 @@ usb_create_event_thread(void *arg)
 				panic("usb_create_event_thread task");
 			}
 		}
+	}
+	if (usb_kthread_create1(usb_event_thread, sc, &sc->sc_event_thread,
+			   "%s", USBDEVNAME(sc->sc_dev))) {
+		kprintf("%s: unable to create event thread for\n",
+		       USBDEVNAME(sc->sc_dev));
+		panic("usb_create_event_thread");
 	}
 }
 
@@ -505,7 +508,7 @@ usb_task_thread(void *arg)
 	taskq = arg;
 	DPRINTF(("usb_task_thread: start taskq %s\n", taskq->name));
 
-	while (usb_ndevs > 0) {
+	while (usb_exitevthreads == 0) {
 		task = TAILQ_FIRST(&taskq->tasks);
 		if (task == NULL) {
 			tsleep(&taskq->tasks, 0, "usbtsk", 0);
@@ -959,6 +962,7 @@ USB_DETACH(usb)
 		destroy_dev(usb_dev);
 		usb_dev = NULL;
 
+		usb_exitevthreads = 1;
 		for (i = 0; i < USB_NUM_TASKQS; i++) {
 			struct usb_taskq *taskq = &usb_taskq[i];
 			wakeup(&taskq->tasks);
