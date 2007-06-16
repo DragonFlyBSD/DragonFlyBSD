@@ -43,7 +43,7 @@
  *
  * $Id: vinumioctl.c,v 1.14 2000/10/27 03:07:53 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumioctl.c,v 1.25.2.4 2002/02/03 00:44:19 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.9 2007/06/07 22:58:38 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.10 2007/06/16 20:48:34 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -234,11 +234,6 @@ vinumioctl(struct dev_ioctl_args *ap)
 	    return vinum_rqinfo(data);
 #endif
 
-	case VINUM_LABEL:				    /* label a volume */
-	    ioctl_reply->error = write_volume_label(*(int *) data); /* index of the volume to label */
-	    ioctl_reply->msg[0] = '\0';			    /* no message */
-	    return 0;
-
 	case VINUM_REMOVE:
 	    remove((struct vinum_ioctl_msg *) data);	    /* remove an object */
 	    return 0;
@@ -308,6 +303,7 @@ vinumioctl(struct dev_ioctl_args *ap)
 	    break;
 	}
 
+    case VINUM_LABEL:
     case VINUM_DRIVE_TYPE:
     case VINUM_SD_TYPE:
     case VINUM_RAWSD_TYPE:

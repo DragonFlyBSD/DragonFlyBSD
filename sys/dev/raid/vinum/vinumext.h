@@ -35,7 +35,7 @@
  *
  * $Id: vinumext.h,v 1.26 2000/05/16 07:38:08 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumext.h,v 1.25.2.3 2001/05/11 02:11:06 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.12 2007/06/07 22:58:38 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.13 2007/06/16 20:48:34 swildner Exp $
  */
 
 /* vinumext.h: external definitions */
@@ -184,7 +184,6 @@ void forceup(int plexno);
 void update_plex_state(int plexno);
 void update_volume_state(int volno);
 void invalidate_subdisks(struct plex *, enum sdstate);
-int write_volume_label(int);
 void start_object(struct vinum_ioctl_msg *);
 void stop_object(struct vinum_ioctl_msg *);
 void setstate(struct vinum_ioctl_msg *msg);
