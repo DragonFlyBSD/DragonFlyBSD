@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.196 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.7 2007/06/05 18:30:40 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.8 2007/06/17 16:34:43 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -457,6 +457,7 @@ ata_ahci_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     u_int32_t version;
+    int unit;
 
     /* reset AHCI controller */
     ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC,
@@ -477,7 +478,12 @@ ata_ahci_chipinit(device_t dev)
 	MAX(flsl(ATA_INL(ctlr->r_res2, ATA_AHCI_PI)), 
 	    (ATA_INL(ctlr->r_res2, ATA_AHCI_CAP) & ATA_AHCI_NPMASK) + 1);
 
-    /* clear interrupts */
+    /* disable interrupt sources and clear interrupts */
+    for (unit = 0; unit < ctlr->channels; unit++) {
+	int offset = unit << 7;
+	ATA_OUTL(ctlr->r_res2, ATA_AHCI_P_IE + offset, 0);
+	ATA_OUTL(ctlr->r_res2, ATA_AHCI_P_IS + offset, -1);
+    }
     ATA_OUTL(ctlr->r_res2, ATA_AHCI_IS, ATA_INL(ctlr->r_res2, ATA_AHCI_IS));
 
     /* enable AHCI interrupts */
