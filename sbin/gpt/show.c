@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/show.c,v 1.14 2006/06/22 22:22:32 marcel Exp $
- * $DragonFly: src/sbin/gpt/show.c,v 1.1 2007/06/16 22:29:27 dillon Exp $
+ * $DragonFly: src/sbin/gpt/show.c,v 1.2 2007/06/17 08:15:08 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -54,46 +54,23 @@ usage_show(void)
 static const char *
 friendly(uuid_t *t)
 {
-	static uuid_t efi_slice = GPT_ENT_TYPE_EFI;
-	static uuid_t mslinux = GPT_ENT_TYPE_MS_BASIC_DATA;
-	static uuid_t freebsd = GPT_ENT_TYPE_FREEBSD;
-	static uuid_t hfs = GPT_ENT_TYPE_APPLE_HFS;
-	static uuid_t linuxswap = GPT_ENT_TYPE_LINUX_SWAP;
-	static uuid_t msr = GPT_ENT_TYPE_MS_RESERVED;
-	static uuid_t swap = GPT_ENT_TYPE_FREEBSD_SWAP;
-	static uuid_t ufs = GPT_ENT_TYPE_FREEBSD_UFS;
-	static uuid_t vinum = GPT_ENT_TYPE_FREEBSD_VINUM;
-	static char buf[80];
-	char *s;
+	static char *save_name1 /*= NULL*/;
+	static char *save_name2 /*= NULL*/;
 
 	if (show_uuid)
 		goto unfriendly;
 
-	if (uuid_equal(t, &efi_slice, NULL))
-		return ("EFI System");
-	if (uuid_equal(t, &swap, NULL))
-		return ("FreeBSD swap");
-	if (uuid_equal(t, &ufs, NULL))
-		return ("FreeBSD UFS/UFS2");
-	if (uuid_equal(t, &vinum, NULL))
-		return ("FreeBSD vinum");
-
-	if (uuid_equal(t, &freebsd, NULL))
-		return ("FreeBSD legacy");
-	if (uuid_equal(t, &mslinux, NULL))
-		return ("Linux/Windows");
-	if (uuid_equal(t, &linuxswap, NULL))
-		return ("Linux swap");
-	if (uuid_equal(t, &msr, NULL))
-		return ("Windows reserved");
-	if (uuid_equal(t, &hfs, NULL))
-		return ("Apple HFS");
+	uuid_addr_lookup(t, &save_name1, NULL);
+	if (save_name1)
+		return (save_name1);
 
 unfriendly:
-	uuid_to_string(t, &s, NULL);
-	strlcpy(buf, s, sizeof buf);
-	free(s);
-	return (buf);
+	if (save_name2) {
+		free(save_name2);
+		save_name2 = NULL;
+	}
+	uuid_to_string(t, &save_name2, NULL);
+	return (save_name2);
 }
 
 static void

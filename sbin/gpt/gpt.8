@@ -23,7 +23,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.1 2007/06/16 22:29:27 dillon Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.2 2007/06/17 08:15:08 dillon Exp $
 .\"
 .Dd June 22, 2006
 .Os
@@ -131,10 +131,11 @@ option allows the user to specify the partition type.
 The type is given as an UUID, but
 .Nm
 accepts
-.Cm efi , swap , ufs , hfs , linux
+.Cm efi , swap , ufs , hfs , linux , dfly ,
 and
 .Cm windows
 as aliases for the most commonly used partition types.
+You may also specify any symbolic name in the system uuids file.
 .\" ==== create ====
 .It Nm Ic create Oo Fl fp Oc Ar device ...
 The

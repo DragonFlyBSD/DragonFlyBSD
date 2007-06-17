@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/add.c,v 1.15 2006/10/04 18:20:25 marcel Exp $
- * $DragonFly: src/sbin/gpt/add.c,v 1.1 2007/06/16 22:29:27 dillon Exp $
+ * $DragonFly: src/sbin/gpt/add.c,v 1.2 2007/06/17 08:15:08 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -102,6 +102,7 @@ add(int fd)
 		}
 	} else {
 		/* Find empty slot in GPT table. */
+		ent = NULL;
 		for (i = 0; i < le32toh(hdr->hdr_entries); i++) {
 			ent = (void*)((char*)tbl->map_data + i *
 			    le32toh(hdr->hdr_entsz));
@@ -197,8 +198,11 @@ cmd_add(int argc, char *argv[])
 
 	/* Create UFS partitions by default. */
 	if (uuid_is_nil(&type, NULL)) {
-		uuid_t ufs = GPT_ENT_TYPE_FREEBSD_UFS;
-		type = ufs;
+		uint32_t status;
+
+		uuid_name_lookup(&type, "DragonFly Label", &status);
+		if (status != uuid_s_ok)
+			usage_add();
 	}
 
 	while (optind < argc) {

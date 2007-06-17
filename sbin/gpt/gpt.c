@@ -26,7 +26,7 @@
  * CRC32 code derived from work by Gary S. Brown.
  *
  * $FreeBSD: src/sbin/gpt/gpt.c,v 1.16 2006/07/07 02:44:23 marcel Exp $
- * $DragonFly: src/sbin/gpt/gpt.c,v 1.1 2007/06/16 22:29:27 dillon Exp $
+ * $DragonFly: src/sbin/gpt/gpt.c,v 1.2 2007/06/17 08:15:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -263,12 +263,19 @@ int
 parse_uuid(const char *s, uuid_t *uuid)
 {
 	uint32_t status;
+	uuid_t tmp;
 
 	uuid_from_string(s, uuid, &status);
 	if (status == uuid_s_ok)
 		return (0);
 
 	switch (*s) {
+	case 'd':
+		if (strcmp(s, "dfly") == 0 || strcmp(s, "dragonfly") == 0) {
+			s = "DragonFly Label";
+			/* fall through to lookup at end */
+		}
+		break;
 	case 'e':
 		if (strcmp(s, "efi") == 0) {
 			uuid_t efi = GPT_ENT_TYPE_EFI;
@@ -312,6 +319,13 @@ parse_uuid(const char *s, uuid_t *uuid)
 		}
 		break;
 	}
+
+	uuid_name_lookup(&tmp, s, &status);
+	if (status == uuid_s_ok) {
+		*uuid = tmp;
+		return(0);
+	}
+
 	return (EINVAL);
 }
 
