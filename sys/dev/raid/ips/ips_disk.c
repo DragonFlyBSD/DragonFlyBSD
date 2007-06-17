@@ -25,13 +25,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.12 2007/05/15 00:01:04 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.13 2007/06/17 23:50:16 dillon Exp $
  */
 
 #include <sys/devicestat.h>
 #include <dev/raid/ips/ips.h>
 #include <dev/raid/ips/ips_disk.h>
 #include <sys/stat.h>
+#include <sys/dtype.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>

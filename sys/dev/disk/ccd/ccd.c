@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.45 2007/06/17 03:51:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.46 2007/06/17 23:50:15 dillon Exp $
  */
 /*
  * Copyright (c) 1995 Jason R. Thorpe.
@@ -108,7 +108,7 @@
  * @(#)cd.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $
  * $NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.45 2007/06/17 03:51:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.46 2007/06/17 23:50:15 dillon Exp $
  */
 
 /*
@@ -136,6 +136,7 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/disk.h>
+#include <sys/dtype.h>
 #include <sys/diskslice.h>
 #include <sys/devicestat.h>
 #include <sys/fcntl.h>

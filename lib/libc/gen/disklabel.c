@@ -32,12 +32,13 @@
  *
  * @(#)disklabel.c	8.2 (Berkeley) 5/3/95
  * $FreeBSD: src/lib/libc/gen/disklabel.c,v 1.9.2.1 2001/03/05 08:40:47 obrien Exp $
- * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.11 2007/05/19 00:51:56 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.12 2007/06/17 23:50:13 dillon Exp $
  */
 
 #include <sys/param.h>
 #define DKTYPENAMES
 #include <sys/disklabel.h>
+#include <sys/dtype.h>
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
 

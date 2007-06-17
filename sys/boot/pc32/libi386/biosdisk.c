@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosdisk.c,v 1.45 2004/09/21 06:46:44 wes Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biosdisk.c,v 1.10 2006/09/10 01:26:31 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/biosdisk.c,v 1.11 2007/06/17 23:50:15 dillon Exp $
  */
 
 /*
@@ -41,6 +41,7 @@
 
 #include <sys/disklabel.h>
 #include <sys/diskmbr.h>
+#include <sys/dtype.h>
 #include <machine/bootinfo.h>
 
 #include <stdarg.h>

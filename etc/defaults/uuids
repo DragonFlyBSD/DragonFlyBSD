@@ -1,4 +1,4 @@
-# $DragonFly: src/etc/defaults/uuids,v 1.1 2007/06/17 08:17:11 dillon Exp $
+# $DragonFly: src/etc/defaults/uuids,v 1.2 2007/06/17 23:50:11 dillon Exp $
 #
 #
 # EFI
@@ -9,11 +9,13 @@ c12a7328-f81f-11d2-ba4b-00a0c93ec93b	"EFI System"
 #
 # DragonFly
 #
-9d087404-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Label"
+9d087404-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Label32"
 9d58fdbd-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Swap"
 9d94ce7c-1ca5-11dc-8817-01301bb8a9f5	"DragonFly UFS1"
 9dd4478f-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Vinum"
 dbd5211b-1ca5-11dc-8817-01301bb8a9f5	"DragonFly CCD"
+3d48ce54-1d16-11dc-8696-01301bb8a9f5	"DragonFly Label64"
+bd215ab2-1d16-11dc-8696-01301bb8a9f5	"DragonFly Legacy"
 #
 # FreeBSD
 #

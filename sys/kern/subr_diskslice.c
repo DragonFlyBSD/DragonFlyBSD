@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.44 2007/06/17 09:56:19 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.45 2007/06/17 23:50:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,86 +67,14 @@
 #include <vfs/ufs/dinode.h>	/* XXX used only for fs.h */
 #include <vfs/ufs/fs.h>		/* XXX used only to get BBSIZE/SBSIZE */
 
-#define TRACE(str)	do { if (ds_debug) kprintf str; } while (0)
-
-typedef	u_char	bool_t;
-
-static volatile bool_t ds_debug;
-
-static struct disklabel *clone_label (struct disk_info *info,
-					struct diskslice *sp);
 static void dsiodone (struct bio *bio);
-static char *fixlabel (const char *sname, struct diskslice *sp,
-			   struct disklabel *lp, int writeflag);
 static int  dsreadandsetlabel(cdev_t dev, u_int flags,
 			   struct diskslices *ssp, struct diskslice *sp,
 			   struct disk_info *info);
 static void free_ds_label (struct diskslices *ssp, int slice);
-static void partition_info (const char *sname, int part, struct partition *pp);
-static void slice_info (const char *sname, struct diskslice *sp);
 static void set_ds_label (struct diskslices *ssp, int slice,
 			      struct disklabel *lp);
 static void set_ds_wlabel (struct diskslices *ssp, int slice, int wlabel);
-
-/*
- * Create a disklabel based on a disk_info structure, initializing
- * the appropriate fields and creating a raw partition that covers the
- * whole disk.
- *
- * If a diskslice is passed, the label is truncated to the slice
- */
-static struct disklabel *
-clone_label(struct disk_info *info, struct diskslice *sp)
-{
-	struct disklabel *lp1;
-
-	lp1 = kmalloc(sizeof *lp1, M_DEVBUF, M_WAITOK | M_ZERO);
-	lp1->d_nsectors = info->d_secpertrack;
-	lp1->d_ntracks = info->d_nheads;
-	lp1->d_secpercyl = info->d_secpercyl;
-	lp1->d_secsize = info->d_media_blksize;
-
-	if (sp)
-		lp1->d_secperunit = (u_int)sp->ds_size;
-	else
-		lp1->d_secperunit = (u_int)info->d_media_blocks;
-
-	if (lp1->d_typename[0] == '\0')
-		strncpy(lp1->d_typename, "amnesiac", sizeof(lp1->d_typename));
-	if (lp1->d_packname[0] == '\0')
-		strncpy(lp1->d_packname, "fictitious", sizeof(lp1->d_packname));
-	if (lp1->d_nsectors == 0)
-		lp1->d_nsectors = 32;
-	if (lp1->d_ntracks == 0)
-		lp1->d_ntracks = 64;
-	lp1->d_secpercyl = lp1->d_nsectors * lp1->d_ntracks;
-	lp1->d_ncylinders = lp1->d_secperunit / lp1->d_secpercyl;
-	if (lp1->d_rpm == 0)
-		lp1->d_rpm = 3600;
-	if (lp1->d_interleave == 0)
-		lp1->d_interleave = 1;
-	if (lp1->d_npartitions < RAW_PART + 1)
-		lp1->d_npartitions = MAXPARTITIONS;
-	if (lp1->d_bbsize == 0)
-		lp1->d_bbsize = BBSIZE;
-	if (lp1->d_sbsize == 0)
-		lp1->d_sbsize = SBSIZE;
-
-	/*
-	 * Used by various devices to create a compatibility slice which
-	 * allows us to mount root from devices which do not have a
-	 * disklabel.  Particularly: CDs.
-	 */
-	lp1->d_partitions[RAW_PART].p_size = lp1->d_secperunit;
-	if (info->d_dsflags & DSO_COMPATPARTA) {
-		lp1->d_partitions[0].p_size = lp1->d_secperunit;
-		lp1->d_partitions[0].p_fstype = FS_OTHER;
-	}
-	lp1->d_magic = DISKMAGIC;
-	lp1->d_magic2 = DISKMAGIC;
-	lp1->d_checksum = dkcksum(lp1);
-	return (lp1);
-}
 
 /*
  * Determine the size of the transfer, and make sure it is
@@ -277,28 +205,19 @@ doshift:
 		endsecno = sp->ds_size;
 		slicerel_secno = secno;
 		snoop = 1;
-	} else if ((lp = sp->ds_label) && part < lp->d_npartitions) {
+	} else if ((lp = sp->ds_label) != NULL) {
 		/*
-		 * A disklabel is present and a partition is explicitly being
-		 * accessed (verses a whole-slice).  Snooping of the
-		 * partition is not supported even if the disklabel is
-		 * accessible.  Of course, the reserved area is still
-		 * write protected.
+		 * A label is present, extract the partition.  Snooping of
+		 * the disklabel is not supported even if accessible.  Of
+		 * course, the reserved area is still write protected.
 		 */
-		struct partition *pp;
-
-		pp = &lp->d_partitions[dkpart(dev)];
-		endsecno = pp->p_size;
-		slicerel_secno = pp->p_offset + secno;
+		if (getpartbounds(lp, part, &slicerel_secno, &endsecno)) {
+			kprintf("dscheck(%s): partition %d out of bounds\n",
+				devtoname(dev), part);
+			goto bad;
+		}
+		slicerel_secno += secno;
 		snoop = 0;
-	} else if (lp) {
-		/*
-		 * Partition out of bounds
-		 */
-		kprintf("dscheck(%s): partition out of bounds %d/%d\n",
-			devtoname(dev),
-			part, lp->d_npartitions);
-		goto bad;
 	} else {
 		/*
 		 * Attempt to access partition when no disklabel present
@@ -475,7 +394,6 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 	int slice;
 	struct diskslice *sp;
 	struct diskslices *ssp;
-	struct partition *pp;
 
 	slice = dkslice(dev);
 	part = dkpart(dev);
@@ -497,60 +415,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		}
 
 		lp = (struct disklabel *)data;
-		if (ssp->dss_slices[WHOLE_DISK_SLICE].ds_label) {
-			*lp = *ssp->dss_slices[WHOLE_DISK_SLICE].ds_label;
-		} else {
-			bzero(lp, sizeof(struct disklabel));
-		}
-		lp->d_magic = DISKMAGIC;
-		lp->d_magic2 = DISKMAGIC;
-
-		lp->d_npartitions = MAXPARTITIONS;
-		if (lp->d_interleave == 0)
-			lp->d_interleave = 1;
-		if (lp->d_rpm == 0)
-			lp->d_rpm = 3600;
-		if (lp->d_nsectors == 0)	/* sectors per track */
-			lp->d_nsectors = 32;
-		if (lp->d_ntracks == 0)		/* heads */
-			lp->d_ntracks = 64;
-		lp->d_ncylinders = 0;
-		lp->d_bbsize = BBSIZE;
-		lp->d_sbsize = SBSIZE;
-
-		/*
-		 * If the slice or GPT partition is really small we could
-		 * wind up with an absurd calculation for ncylinders.
-		 */
-		while (lp->d_ncylinders < 4) {
-			if (lp->d_ntracks > 1)
-				lp->d_ntracks >>= 1;
-			else if (lp->d_nsectors > 1)
-				lp->d_nsectors >>= 1;
-			else
-				break;
-			lp->d_secpercyl = lp->d_nsectors * lp->d_ntracks;
-			lp->d_ncylinders = sp->ds_size / lp->d_secpercyl;
-		}
-
-		/*
-		 * Set or Modify the partition sizes to accomodate the slice,
-		 * since we started with a copy of the virgin label stored
-		 * in the whole-disk-slice and we are probably not a
-		 * whole-disk slice.
-		 */
-		lp->d_secperunit = sp->ds_size;
-		pp = &lp->d_partitions[RAW_PART];
-		pp->p_offset = 0;
-		pp->p_size = lp->d_secperunit;
-		if (info->d_dsflags & DSO_COMPATPARTA) {
-			pp = &lp->d_partitions[0];
-			pp->p_offset = 0;
-			pp->p_size = lp->d_secperunit;
-			pp->p_fstype = FS_OTHER;
-		}
-		lp->d_checksum = 0;
-		lp->d_checksum = dkcksum(lp);
+		makevirginlabel(lp, ssp, sp, info);
 		return (0);
 
 	case DIOCGDINFO:
@@ -608,26 +473,26 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 
 			if (slice != WHOLE_DISK_SLICE &&
 			    part != WHOLE_SLICE_PART) {
-				struct partition *p;
-
-				if (lp == NULL || part >= lp->d_npartitions)
+				u_int64_t start;
+				u_int64_t blocks;
+				if (lp == NULL)
 					return(EINVAL);
-
-				p = &lp->d_partitions[part];
-				dpart->fstype = p->p_fstype;
-				dpart->media_offset += (u_int64_t)p->p_offset *
+				if (getpartbounds(lp, part, &start, &blocks))
+					return(EINVAL);
+				dpart->fstype = getpartfstype(lp, part);
+				dpart->media_offset += start *
 						       info->d_media_blksize;
-				dpart->media_size = (u_int64_t)p->p_size *
+				dpart->media_size = blocks *
 						    info->d_media_blksize;
-				dpart->media_blocks = (u_int64_t)p->p_size;
+				dpart->media_blocks = blocks;
 
 				/*
 				 * partition starting sector (p_offset)
 				 * requires slice's reserved areas to be
 				 * adjusted.
 				 */
-				if (dpart->reserved_blocks > p->p_offset)
-					dpart->reserved_blocks -= p->p_offset;
+				if (dpart->reserved_blocks > start)
+					dpart->reserved_blocks -= start;
 				else
 					dpart->reserved_blocks = 0;
 			}
@@ -676,30 +541,9 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			bzero(openmask, sizeof(openmask));
 		} else {
 			bcopy(sp->ds_openmask, openmask, sizeof(openmask));
-#if 0
-			/* no longer supported, s0 is a real slice for GPT */
-			if (slice == COMPATIBILITY_SLICE) {
-				dssetmaskfrommask(&ssp->dss_slices[
-						  ssp->dss_first_bsd_slice],
-						  openmask);
-			} else if (slice == ssp->dss_first_bsd_slice) {
-				dssetmaskfrommask(&ssp->dss_slices[
-						  COMPATIBILITY_SLICE],
-						  openmask);
-			}
-#endif
 		}
-		error = setdisklabel(lp, (struct disklabel *)data, openmask);
-		/* XXX why doesn't setdisklabel() check this? */
-		if (error == 0 && lp->d_partitions[RAW_PART].p_offset != 0)
-			error = EXDEV;
-		if (error == 0) {
-			if (lp->d_secperunit > sp->ds_size)
-				error = ENOSPC;
-			for (part = 0; part < lp->d_npartitions; part++)
-				if (lp->d_partitions[part].p_size > sp->ds_size)
-					error = ENOSPC;
-		}
+		error = setdisklabel(lp, (struct disklabel *)data,
+				     sp, openmask);
 		if (error != 0) {
 			kfree(lp, M_DEVBUF);
 			return (error);
@@ -849,7 +693,6 @@ int
 dsisopen(struct diskslices *ssp)
 {
 	int slice;
-	int j;
 
 	if (ssp == NULL)
 		return (0);
@@ -964,7 +807,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 {
 	cdev_t dev1;
 	int error;
-	bool_t need_init;
+	int need_init;
 	struct diskslice *sp;
 	struct diskslices *ssp;
 	int slice;
@@ -1004,7 +847,6 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		*sspp = dsmakeslicestruct(BASE_SLICE, info);
 
 		if ((flags & DSO_ONESLICE) == 0) {
-			TRACE(("mbrinit\n"));
 			error = mbrinit(dev, info, sspp);
 			if (error != 0) {
 				dsgone(sspp);
@@ -1111,7 +953,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	 * table need exist.
 	 */
 	if (part != WHOLE_SLICE_PART && slice != WHOLE_DISK_SLICE) {
-		if (sp->ds_label == NULL || part >= sp->ds_label->d_npartitions)
+		if (sp->ds_label == NULL || part >= getnumparts(sp->ds_label))
 			return (EINVAL);
 	}
 	dssetmask(sp, part);
@@ -1162,8 +1004,6 @@ dsreadandsetlabel(cdev_t dev, u_int flags,
 	}
 	if (msg == NULL)
 		msg = fixlabel(sname, sp, lp1, FALSE);
-	if (msg == NULL && lp1->d_secsize != info->d_media_blksize)
-		msg = "inconsistent sector size";
 	if (msg != NULL) {
 		if (sp->ds_type == DOSPTYP_386BSD /* XXX */)
 			log(LOG_WARNING, "%s: cannot find label (%s)\n",
@@ -1183,6 +1023,8 @@ dssize(cdev_t dev, struct diskslices **sspp)
 	int part;
 	int slice;
 	struct diskslices *ssp;
+	u_int64_t start;
+	u_int64_t blocks;
 
 	slice = dkslice(dev);
 	part = dkpart(dev);
@@ -1197,7 +1039,9 @@ dssize(cdev_t dev, struct diskslices **sspp)
 	lp = ssp->dss_slices[slice].ds_label;
 	if (lp == NULL)
 		return (-1);
-	return ((int64_t)lp->d_partitions[part].p_size);
+	if (getpartbounds(lp, part, &start, &blocks))
+		return (-1);
+	return ((int64_t)blocks);
 }
 
 static void
@@ -1214,180 +1058,18 @@ free_ds_label(struct diskslices *ssp, int slice)
 	set_ds_label(ssp, slice, (struct disklabel *)NULL);
 }
 
-static char *
-fixlabel(const char *sname, struct diskslice *sp, struct disklabel *lp, int writeflag)
-{
-	u_int64_t start;
-	u_int64_t end;
-	u_int64_t offset;
-	int part;
-	struct partition *pp;
-	bool_t warned;
-
-	/* These errors "can't happen" so don't bother reporting details. */
-	if (lp->d_magic != DISKMAGIC || lp->d_magic2 != DISKMAGIC)
-		return ("fixlabel: invalid magic");
-	if (dkcksum(lp) != 0)
-		return ("fixlabel: invalid checksum");
-
-	pp = &lp->d_partitions[RAW_PART];
-
-	/*
-	 * What a mess.  For ages old backwards compatibility the disklabel
-	 * on-disk stores absolute offsets instead of slice-relative offsets.
-	 * So fix it up when reading, writing, or snooping.
-	 *
-	 * The in-core label is always slice-relative.
-	 */
-	if (writeflag) {
-		start = 0;
-		offset = sp->ds_offset;
-	} else {
-		start = sp->ds_offset;
-		offset = -sp->ds_offset;
-	}
-	if (pp->p_offset != start) {
-		if (sname != NULL) {
-			kprintf(
-"%s: rejecting BSD label: raw partition offset != slice offset\n",
-			       sname);
-			slice_info(sname, sp);
-			partition_info(sname, RAW_PART, pp);
-		}
-		return ("fixlabel: raw partition offset != slice offset");
-	}
-	if (pp->p_size != sp->ds_size) {
-		if (sname != NULL) {
-			kprintf("%s: raw partition size != slice size\n", sname);
-			slice_info(sname, sp);
-			partition_info(sname, RAW_PART, pp);
-		}
-		if (pp->p_size > sp->ds_size) {
-			if (sname == NULL)
-				return ("fixlabel: raw partition size > slice size");
-			kprintf("%s: truncating raw partition\n", sname);
-			pp->p_size = sp->ds_size;
-		}
-	}
-	end = start + sp->ds_size;
-	if (start > end)
-		return ("fixlabel: slice wraps");
-	if (lp->d_secpercyl <= 0)
-		return ("fixlabel: d_secpercyl <= 0");
-	pp -= RAW_PART;
-	warned = FALSE;
-	for (part = 0; part < lp->d_npartitions; part++, pp++) {
-		if (pp->p_offset != 0 || pp->p_size != 0) {
-			if (pp->p_offset < start
-			    || pp->p_offset + pp->p_size > end
-			    || pp->p_offset + pp->p_size < pp->p_offset) {
-				if (sname != NULL) {
-					kprintf(
-"%s: rejecting partition in BSD label: it isn't entirely within the slice\n",
-					       sname);
-					if (!warned) {
-						slice_info(sname, sp);
-						warned = TRUE;
-					}
-					partition_info(sname, part, pp);
-				}
-				/* XXX else silently discard junk. */
-				bzero(pp, sizeof *pp);
-			} else {
-				pp->p_offset += offset;
-			}
-		}
-	}
-	lp->d_ncylinders = sp->ds_size / lp->d_secpercyl;
-	lp->d_secperunit = sp->ds_size;
- 	lp->d_checksum = 0;
- 	lp->d_checksum = dkcksum(lp);
-	return (NULL);
-}
-
-static void
-partition_info(const char *sname, int part, struct partition *pp)
-{
-	kprintf("%s%c: start %lu, end %lu, size %lu\n", sname, 'a' + part,
-	       (u_long)pp->p_offset, (u_long)(pp->p_offset + pp->p_size - 1),
-	       (u_long)pp->p_size);
-}
-
-static void
-slice_info(const char *sname, struct diskslice *sp)
-{
-	kprintf("%s: start %llu, end %llu, size %llu\n", sname,
-	       sp->ds_offset, sp->ds_offset + sp->ds_size - 1, sp->ds_size);
-}
-
 static void
 set_ds_label(struct diskslices *ssp, int slice, struct disklabel *lp)
 {
-	struct diskslice *sp1 = &ssp->dss_slices[slice];
-#if 0
-	struct diskslice *sp2;
+	struct diskslice *sp = &ssp->dss_slices[slice];
 
-	if (slice == COMPATIBILITY_SLICE)
-		sp2 = &ssp->dss_slices[ssp->dss_first_bsd_slice];
-	else if (slice == ssp->dss_first_bsd_slice)
-		sp2 = &ssp->dss_slices[COMPATIBILITY_SLICE];
-	else
-		sp2 = NULL;
-#endif
-	sp1->ds_label = lp;
-#if 0
-	if (sp2)
-		sp2->ds_label = lp;
-#endif
-
-	/*
-	 * If the slice is not the whole-disk slice, setup the reserved
-	 * area(s).
-	 *
-	 * The reserved area for the original bsd disklabel, inclusive of
-	 * the label and space for boot2, is 15 sectors.  If you've
-	 * noticed people traditionally skipping 16 sectors its because
-	 * the sector numbers start at the beginning of the slice rather
-	 * then the beginning of the disklabel and traditional dos slices
-	 * reserve a sector at the beginning for the boot code.
-	 *
-	 * NOTE! With the traditional bsdlabel, the first N bytes of boot2
-	 * overlap with the disklabel.  The disklabel program checks that
-	 * they are 0.
-	 *
-	 * When clearing a label, the bsdlabel reserved area is reset.
-	 */
-	if (slice != WHOLE_DISK_SLICE) {
-		if (lp) {
-			/*
-			 * BSD uses in-band labels, meaning the label itself
-			 * is accessible from partitions within the label.
-			 * We must reserved the area taken up by the label
-			 * itself to prevent mistakes from wiping it.
-			 */
-			sp1->ds_reserved = SBSIZE / ssp->dss_secsize;
-#if 0
-			if (sp2)
-				sp2->ds_reserved = sp1->ds_reserved;
-#endif
-		} else {
-			sp1->ds_reserved = 0;
-#if 0
-			if (sp2)
-				sp2->ds_reserved = sp1->ds_reserved;
-#endif
-		}
-	}
+	sp->ds_label = lp;
+	adjust_label_reserved(ssp, slice, sp);
 }
 
 static void
 set_ds_wlabel(struct diskslices *ssp, int slice, int wlabel)
 {
 	ssp->dss_slices[slice].ds_wlabel = wlabel;
-#if 0
-	if (slice == COMPATIBILITY_SLICE)
-		ssp->dss_slices[ssp->dss_first_bsd_slice].ds_wlabel = wlabel;
-	else if (slice == ssp->dss_first_bsd_slice)
-		ssp->dss_slices[COMPATIBILITY_SLICE].ds_wlabel = wlabel;
-#endif
 }
+

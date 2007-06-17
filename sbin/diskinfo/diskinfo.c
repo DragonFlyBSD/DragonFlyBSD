@@ -31,13 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.3 2007/06/17 03:51:12 dillon Exp $
+ * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.4 2007/06/17 23:50:15 dillon Exp $
  */
 
 #define DKTYPENAMES
 #include <sys/types.h>
 #include <sys/fcntl.h>
-#include <sys/disklabel.h>
+#include <sys/dtype.h>
 #include <sys/diskslice.h>
 #include <stdio.h>
 #include <stdlib.h>

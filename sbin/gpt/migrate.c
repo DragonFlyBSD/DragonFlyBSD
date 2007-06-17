@@ -24,11 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/migrate.c,v 1.16 2005/09/01 02:42:52 marcel Exp $
- * $DragonFly: src/sbin/gpt/migrate.c,v 1.1 2007/06/16 22:29:27 dillon Exp $
+ * $DragonFly: src/sbin/gpt/migrate.c,v 1.2 2007/06/17 23:50:15 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/disklabel.h>
+#include <sys/dtype.h>
 
 #include <err.h>
 #include <stddef.h>

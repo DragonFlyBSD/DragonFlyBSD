@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_disk.c,v 1.8.2.4 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.12 2007/05/15 00:01:04 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.13 2007/06/17 23:50:16 dillon Exp $
  */
 
 /*
@@ -39,6 +39,7 @@
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
+#include <sys/dtype.h>
 #include <sys/rman.h>
 
 #include "mlx_compat.h"

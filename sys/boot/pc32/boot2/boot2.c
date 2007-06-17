@@ -45,12 +45,13 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.14 2005/05/25 06:22:22 y0netan1 Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.15 2007/06/17 23:50:15 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
+#include <sys/dtype.h>
 #include <sys/dirent.h>
 #include <machine/bootinfo.h>
 #include <machine/elf.h>

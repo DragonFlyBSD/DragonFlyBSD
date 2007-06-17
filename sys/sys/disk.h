@@ -39,7 +39,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.16 2007/05/19 02:39:04 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.17 2007/06/17 23:50:12 dillon Exp $
  */
 
 #ifndef _SYS_DISK_H_
@@ -51,9 +51,6 @@
 
 #ifndef _SYS_DISKSLICE_H_
 #include <sys/diskslice.h>
-#endif
-#ifndef _SYS_DISKLABEL_H_
-#include <sys/disklabel.h>
 #endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>

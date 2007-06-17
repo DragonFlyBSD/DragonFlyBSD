@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.37 2007/05/08 02:31:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.38 2007/06/17 23:50:16 dillon Exp $
  */
 
 /*
@@ -61,7 +61,6 @@
 #include <sys/bootmaj.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
-#include <sys/disklabel.h>
 #include <sys/diskslice.h>
 #include <sys/reboot.h>
 #include <sys/kernel.h>
@@ -286,18 +285,8 @@ setroot(void)
 		return;
 	}
 
-	/*
-	 * XXX kludge for inconsistent unit numbering and lack of slice
-	 * support for floppies.
-	 */
-	if (majdev == FD_CDEV_MAJOR) {
-		slice = COMPATIBILITY_SLICE;
-		part = RAW_PART;
-		mindev = unit << FDUNITSHIFT;
-	} else {
-		part = B_PARTITION(bootdev);
-		mindev = dkmakeminor(unit, slice, part);
-	}
+	part = B_PARTITION(bootdev);
+	mindev = dkmakeminor(unit, slice, part);
 	newrootdev = udev2dev(makeudev(majdev, mindev), 0);
 	if (!dev_is_good(newrootdev))
 		return;

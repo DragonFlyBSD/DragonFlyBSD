@@ -24,12 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/efi/libefi/devicename.c,v 1.2 2001/09/07 08:49:47 dfr Exp $
- * $DragonFly: src/sys/boot/efi/libefi/devicename.c,v 1.1 2003/11/10 06:08:33 dillon Exp $
+ * $DragonFly: src/sys/boot/efi/libefi/devicename.c,v 1.2 2007/06/17 23:50:15 dillon Exp $
  */
 
 #include <stand.h>
 #include <string.h>
-#include <sys/disklabel.h>
 #include "bootstrap.h"
 
 #include <efi.h>

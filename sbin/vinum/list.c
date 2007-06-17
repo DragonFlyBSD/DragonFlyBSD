@@ -37,7 +37,7 @@
  *
  * $Id: list.c,v 1.25 2000/12/20 03:38:43 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/list.c,v 1.25.2.4 2001/05/28 05:58:04 grog Exp $
- * $DragonFly: src/sbin/vinum/list.c,v 1.8 2007/06/07 22:57:49 corecode Exp $
+ * $DragonFly: src/sbin/vinum/list.c,v 1.9 2007/06/17 23:50:15 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -55,6 +55,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/utsname.h>
+#include <sys/disklabel.h>
 #include <dev/raid/vinum/vinumhdr.h>
 #include "vext.h"
 #include <dev/raid/vinum/request.h>

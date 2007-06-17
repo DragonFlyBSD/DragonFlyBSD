@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.36 2007/06/17 03:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.37 2007/06/17 23:50:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,6 @@
 #include <sys/sysctl.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
-#include <sys/disklabel.h>
 #include <sys/diskslice.h>
 #include <sys/disk.h>
 #include <sys/malloc.h>
@@ -600,164 +599,6 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 		bq = bn;
 	}
 	TAILQ_INSERT_AFTER(&bioq->queue, bq, bio, bio_act);
-}
-
-
-/*
- * Attempt to read a disk label from a device using the indicated strategy
- * routine.  The label must be partly set up before this: secpercyl, secsize
- * and anything required in the strategy routine (e.g., dummy bounds for the
- * partition containing the label) must be filled in before calling us.
- * Returns NULL on success and an error string on failure.
- */
-char *
-readdisklabel(cdev_t dev, struct disklabel *lp)
-{
-	struct buf *bp;
-	struct disklabel *dlp;
-	char *msg = NULL;
-
-	bp = geteblk((int)lp->d_secsize);
-	bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
-	bp->b_bcount = lp->d_secsize;
-	bp->b_flags &= ~B_INVAL;
-	bp->b_cmd = BUF_CMD_READ;
-	dev_dstrategy(dev, &bp->b_bio1);
-	if (biowait(bp))
-		msg = "I/O error";
-	else for (dlp = (struct disklabel *)bp->b_data;
-	    dlp <= (struct disklabel *)((char *)bp->b_data +
-	    lp->d_secsize - sizeof(*dlp));
-	    dlp = (struct disklabel *)((char *)dlp + sizeof(long))) {
-		if (dlp->d_magic != DISKMAGIC || dlp->d_magic2 != DISKMAGIC) {
-			if (msg == NULL)
-				msg = "no disk label";
-		} else if (dlp->d_npartitions > MAXPARTITIONS ||
-			   dkcksum(dlp) != 0)
-			msg = "disk label corrupted";
-		else {
-			*lp = *dlp;
-			msg = NULL;
-			break;
-		}
-	}
-	bp->b_flags |= B_INVAL | B_AGE;
-	brelse(bp);
-	return (msg);
-}
-
-/*
- * Check new disk label for sensibility before setting it.
- */
-int
-setdisklabel(struct disklabel *olp, struct disklabel *nlp, u_int32_t *openmask)
-{
-	struct partition *opp, *npp;
-	int i;
-
-	/*
-	 * Check it is actually a disklabel we are looking at.
-	 */
-	if (nlp->d_magic != DISKMAGIC || nlp->d_magic2 != DISKMAGIC ||
-	    dkcksum(nlp) != 0)
-		return (EINVAL);
-
-	/*
-	 * For each partition that we think is open, check the new disklabel
-	 * for compatibility.  Ignore special partitions (>= 128).
-	 */
-	i = 0;
-	while (i < 128) {
-		if (openmask[i >> 5] == 0) {
-			i += 32;
-			continue;
-		}
-		if ((openmask[i >> 5] & (1 << (i & 31))) == 0) {
-			++i;
-			continue;
-		}
-		if (nlp->d_npartitions <= i)
-			return (EBUSY);
-		opp = &olp->d_partitions[i];
-		npp = &nlp->d_partitions[i];
-		if (npp->p_offset != opp->p_offset || npp->p_size < opp->p_size)
-			return (EBUSY);
-		/*
-		 * Copy internally-set partition information
-		 * if new label doesn't include it.		XXX
-		 * (If we are using it then we had better stay the same type)
-		 * This is possibly dubious, as someone else noted (XXX)
-		 */
-		if (npp->p_fstype == FS_UNUSED && opp->p_fstype != FS_UNUSED) {
-			npp->p_fstype = opp->p_fstype;
-			npp->p_fsize = opp->p_fsize;
-			npp->p_frag = opp->p_frag;
-			npp->p_cpg = opp->p_cpg;
-		}
-		++i;
-	}
- 	nlp->d_checksum = 0;
- 	nlp->d_checksum = dkcksum(nlp);
-	*olp = *nlp;
-	return (0);
-}
-
-/*
- * Write disk label back to device after modification.
- */
-int
-writedisklabel(cdev_t dev, struct disklabel *lp)
-{
-	struct buf *bp;
-	struct disklabel *dlp;
-	int error = 0;
-
-	if (lp->d_partitions[RAW_PART].p_offset != 0)
-		return (EXDEV);			/* not quite right */
-	bp = geteblk((int)lp->d_secsize);
-	bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
-	bp->b_bcount = lp->d_secsize;
-#if 1
-	/*
-	 * We read the label first to see if it's there,
-	 * in which case we will put ours at the same offset into the block..
-	 * (I think this is stupid [Julian])
-	 * Note that you can't write a label out over a corrupted label!
-	 * (also stupid.. how do you write the first one? by raw writes?)
-	 */
-	bp->b_flags &= ~B_INVAL;
-	bp->b_cmd = BUF_CMD_READ;
-	dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART), &bp->b_bio1);
-	error = biowait(bp);
-	if (error)
-		goto done;
-	for (dlp = (struct disklabel *)bp->b_data;
-	    dlp <= (struct disklabel *)
-	      ((char *)bp->b_data + lp->d_secsize - sizeof(*dlp));
-	    dlp = (struct disklabel *)((char *)dlp + sizeof(long))) {
-		if (dlp->d_magic == DISKMAGIC && dlp->d_magic2 == DISKMAGIC &&
-		    dkcksum(dlp) == 0) {
-			*dlp = *lp;
-			bp->b_cmd = BUF_CMD_WRITE;
-			dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART), &bp->b_bio1);
-			error = biowait(bp);
-			goto done;
-		}
-	}
-	error = ESRCH;
-done:
-#else
-	bzero(bp->b_data, lp->d_secsize);
-	dlp = (struct disklabel *)bp->b_data;
-	*dlp = *lp;
-	bp->b_flags &= ~B_INVAL;
-	bp->b_cmd = BUF_CMD_WRITE;
-	BUF_STRATEGY(bp, 1);
-	error = biowait(bp);
-#endif
-	bp->b_flags |= B_INVAL | B_AGE;
-	brelse(bp);
-	return (error);
 }
 
 /*

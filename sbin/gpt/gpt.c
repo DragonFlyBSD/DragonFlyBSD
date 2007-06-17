@@ -26,7 +26,7 @@
  * CRC32 code derived from work by Gary S. Brown.
  *
  * $FreeBSD: src/sbin/gpt/gpt.c,v 1.16 2006/07/07 02:44:23 marcel Exp $
- * $DragonFly: src/sbin/gpt/gpt.c,v 1.3 2007/06/17 08:34:59 dillon Exp $
+ * $DragonFly: src/sbin/gpt/gpt.c,v 1.4 2007/06/17 23:50:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -272,7 +272,7 @@ parse_uuid(const char *s, uuid_t *uuid)
 	switch (*s) {
 	case 'd':
 		if (strcmp(s, "dfly") == 0 || strcmp(s, "dragonfly") == 0) {
-			s = "DragonFly Label";
+			s = "DragonFly Label64";
 			/* fall through to lookup at end */
 		}
 		break;

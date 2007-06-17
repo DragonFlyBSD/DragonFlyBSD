@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/add.c,v 1.15 2006/10/04 18:20:25 marcel Exp $
- * $DragonFly: src/sbin/gpt/add.c,v 1.3 2007/06/17 08:34:59 dillon Exp $
+ * $DragonFly: src/sbin/gpt/add.c,v 1.4 2007/06/17 23:50:15 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -196,11 +196,11 @@ cmd_add(int argc, char *argv[])
 	if (argc == optind)
 		usage_add();
 
-	/* Create UFS partitions by default. */
+	/* Create DragonFly 64 bit label partitions by default. */
 	if (uuid_is_nil(&type, NULL)) {
 		uint32_t status;
 
-		uuid_name_lookup(&type, "DragonFly Label", &status);
+		uuid_name_lookup(&type, "DragonFly Label64", &status);
 		if (status != uuid_s_ok)
 			usage_add();
 	}

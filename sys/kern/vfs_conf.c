@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.31 2007/05/27 18:37:23 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.32 2007/06/17 23:50:16 dillon Exp $
  */
 
 /*
@@ -54,7 +54,6 @@
 #include <sys/malloc.h>
 #include <sys/reboot.h>
 #include <sys/diskslice.h>
-#include <sys/disklabel.h>
 #include <sys/conf.h>
 #include <sys/cons.h>
 #include <sys/device.h>

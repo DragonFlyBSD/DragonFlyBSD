@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.12 2007/06/07 23:45:52 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/autoconf.c,v 1.13 2007/06/17 23:50:16 dillon Exp $
  */
 
 /*
@@ -62,7 +62,6 @@
 #include <sys/bus.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
-#include <sys/disklabel.h>
 #include <sys/diskslice.h>
 #include <sys/reboot.h>
 #include <sys/kernel.h>

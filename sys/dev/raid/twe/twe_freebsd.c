@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.26 2007/05/15 00:01:04 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.27 2007/06/17 23:50:16 dillon Exp $
  */
 
 /*
@@ -39,6 +39,7 @@
 #include <dev/raid/twe/twe_tables.h>
 #include <dev/raid/twe/tweio.h>
 #include <dev/raid/twe/twevar.h>
+#include <sys/dtype.h>
 
 static devclass_t	twe_devclass;
 
