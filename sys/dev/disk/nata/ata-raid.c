@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.120 2006/04/15 10:27:41 maxim Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.6 2007/05/15 00:01:03 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.7 2007/06/17 03:54:07 y0netan1 Exp $
  */
 
 #include "opt_ata.h"
@@ -538,7 +538,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	    request->dev = rdp->disks[request->this].dev;
 	    ata_raid_send_request(request);
 	    rdp->disks[request->this].last_lba =
-	       ((u_int64_t)(bp->bio_offset) >> DEV_BSIZE) + chunk;
+	       ((u_int64_t)(bp->bio_offset) >> DEV_BSHIFT) + chunk;
 	    break;
 
 	case AR_T_RAID5:
