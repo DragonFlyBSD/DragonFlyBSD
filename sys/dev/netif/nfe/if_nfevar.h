@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfevar.h,v 1.11 2006/02/19 13:57:02 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.1 2006/08/27 03:28:21 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.2 2007/06/17 11:38:58 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -65,12 +65,12 @@ struct nfe_rx_ring {
 	bus_dma_tag_t		jtag;
 	bus_dmamap_t		jmap;
 	caddr_t			jpool;
-	struct nfe_jbuf		jbuf[NFE_JPOOL_COUNT];
+	struct nfe_jbuf		*jbuf;
 	SLIST_HEAD(, nfe_jbuf)	jfreelist;
 
 	bus_dma_tag_t		data_tag;
 	bus_dmamap_t		data_tmpmap;
-	struct nfe_rx_data	data[NFE_RX_RING_COUNT];
+	struct nfe_rx_data	*data;
 	int			bufsz;
 	int			cur;
 	int			next;

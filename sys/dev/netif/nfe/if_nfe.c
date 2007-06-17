@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.9 2007/05/01 23:48:03 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.10 2007/06/17 11:38:58 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -150,8 +150,13 @@ static int	nfe_newbuf_jumbo(struct nfe_softc *, struct nfe_rx_ring *, int,
 #ifdef NFE_DEBUG
 
 static int	nfe_debug = 0;
+static int	nfe_rx_ring_count = NFE_RX_RING_DEF_COUNT;
+
+TUNABLE_INT("hw.nfe.rx_ring_count", &nfe_rx_ring_count);
 
 SYSCTL_NODE(_hw, OID_AUTO, nfe, CTLFLAG_RD, 0, "nVidia GigE parameters");
+SYSCTL_INT(_hw_nfe, OID_AUTO, rx_ring_count, CTLFLAG_RD, &nfe_rx_ring_count,
+	   NFE_RX_RING_DEF_COUNT, "rx ring count");
 SYSCTL_INT(_hw_nfe, OID_AUTO, debug, CTLFLAG_RW, &nfe_debug, 0,
 	   "control debugging printfs");
 
@@ -358,10 +363,6 @@ nfe_probe(device_t dev)
 				break;
 			}
 
-			/* Enable jumbo frames for adapters that support it */
-			if (sc->sc_flags & NFE_JUMBO_SUP)
-				sc->sc_flags |= NFE_USE_JUMBO;
-
 			device_set_desc(dev, n->desc);
 			device_set_async_attach(dev, TRUE);
 			return 0;
@@ -462,11 +463,6 @@ nfe_attach(device_t dev)
 	ifq_set_ready(&ifp->if_snd);
 
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
-
-#if 0
-	if (sc->sc_flags & NFE_USE_JUMBO)
-		ifp->if_hardmtu = NFE_JUMBO_MTU;
-#endif
 
 	if (sc->sc_flags & NFE_HW_VLAN)
 		ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING;
@@ -759,7 +755,15 @@ nfe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	switch (cmd) {
 	case SIOCSIFMTU:
-		/* XXX NFE_USE_JUMBO should be set here */
+		if (((sc->sc_flags & NFE_JUMBO_SUP) &&
+		     ifr->ifr_mtu > NFE_JUMBO_MTU) ||
+		    ((sc->sc_flags & NFE_JUMBO_SUP) == 0 &&
+		     ifr->ifr_mtu > ETHERMTU)) {
+			return EINVAL;
+		} else if (ifp->if_mtu != ifr->ifr_mtu) {
+			ifp->if_mtu = ifr->ifr_mtu;
+			nfe_init(sc);
+		}
 		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -897,7 +901,7 @@ nfe_rxeof(struct nfe_softc *sc)
 		ifp->if_input(ifp, m);
 skip:
 		nfe_set_ready_rxdesc(sc, ring, ring->cur);
-		sc->rxq.cur = (sc->rxq.cur + 1) % NFE_RX_RING_COUNT;
+		sc->rxq.cur = (sc->rxq.cur + 1) % nfe_rx_ring_count;
 	}
 
 	if (reap)
@@ -1208,6 +1212,23 @@ nfe_init(void *xsc)
 
 	nfe_stop(sc);
 
+	/*
+	 * NOTE:
+	 * Switching between jumbo frames and normal frames should
+	 * be done _after_ nfe_stop() but _before_ nfe_init_rx_ring().
+	 */
+	if (ifp->if_mtu > ETHERMTU) {
+		sc->sc_flags |= NFE_USE_JUMBO;
+		sc->rxq.bufsz = NFE_JBYTES;
+		if (bootverbose)
+			if_printf(ifp, "use jumbo frames\n");
+	} else {
+		sc->sc_flags &= ~NFE_USE_JUMBO;
+		sc->rxq.bufsz = MCLBYTES;
+		if (bootverbose)
+			if_printf(ifp, "use non-jumbo frames\n");
+	}
+
 	error = nfe_init_tx_ring(sc, &sc->txq);
 	if (error) {
 		nfe_stop(sc);
@@ -1264,7 +1285,7 @@ nfe_init(void *xsc)
 	NFE_WRITE(sc, NFE_TX_RING_ADDR_LO, sc->txq.physaddr & 0xffffffff);
 
 	NFE_WRITE(sc, NFE_RING_SIZE,
-	    (NFE_RX_RING_COUNT - 1) << 16 |
+	    (nfe_rx_ring_count - 1) << 16 |
 	    (NFE_TX_RING_COUNT - 1));
 
 	NFE_WRITE(sc, NFE_RXBUFSZ, sc->rxq.bufsz);
@@ -1370,14 +1391,19 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		descsize = sizeof(struct nfe_desc32);
 	}
 
+	ring->jbuf = kmalloc(sizeof(struct nfe_jbuf) * NFE_JPOOL_COUNT,
+			     M_DEVBUF, M_WAITOK | M_ZERO);
+	ring->data = kmalloc(sizeof(struct nfe_rx_data) * nfe_rx_ring_count,
+			     M_DEVBUF, M_WAITOK | M_ZERO);
+
 	ring->bufsz = MCLBYTES;
 	ring->cur = ring->next = 0;
 
 	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   NFE_RX_RING_COUNT * descsize, 1,
-				   NFE_RX_RING_COUNT * descsize,
+				   nfe_rx_ring_count * descsize, 1,
+				   nfe_rx_ring_count * descsize,
 				   0, &ring->tag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
@@ -1396,7 +1422,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	}
 
 	error = bus_dmamap_load(ring->tag, ring->map, *desc,
-				NFE_RX_RING_COUNT * descsize,
+				nfe_rx_ring_count * descsize,
 				nfe_ring_dma_addr, &ring->physaddr,
 				BUS_DMA_WAITOK);
 	if (error) {
@@ -1408,9 +1434,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		return error;
 	}
 
-	if (sc->sc_flags & NFE_USE_JUMBO) {
-		ring->bufsz = NFE_JBYTES;
-
+	if (sc->sc_flags & NFE_JUMBO_SUP) {
 		error = nfe_jpool_alloc(sc, ring);
 		if (error) {
 			if_printf(&sc->arpcom.ac_if,
@@ -1440,7 +1464,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		return error;
 	}
 
-	for (i = 0; i < NFE_RX_RING_COUNT; i++) {
+	for (i = 0; i < nfe_rx_ring_count; i++) {
 		error = bus_dmamap_create(ring->data_tag, 0,
 					  &ring->data[i].map);
 		if (error) {
@@ -1464,11 +1488,12 @@ nfe_reset_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 {
 	int i;
 
-	for (i = 0; i < NFE_RX_RING_COUNT; i++) {
+	for (i = 0; i < nfe_rx_ring_count; i++) {
 		struct nfe_rx_data *data = &ring->data[i];
 
 		if (data->m != NULL) {
-			bus_dmamap_unload(ring->data_tag, data->map);
+			if ((sc->sc_flags & NFE_USE_JUMBO) == 0)
+				bus_dmamap_unload(ring->data_tag, data->map);
 			m_freem(data->m);
 			data->m = NULL;
 		}
@@ -1483,7 +1508,7 @@ nfe_init_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 {
 	int i;
 
-	for (i = 0; i < NFE_RX_RING_COUNT; ++i) {
+	for (i = 0; i < nfe_rx_ring_count; ++i) {
 		int error;
 
 		/* XXX should use a function pointer */
@@ -1511,7 +1536,7 @@ nfe_free_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		struct nfe_rx_data *data;
 		int i;
 
-		for (i = 0; i < NFE_RX_RING_COUNT; i++) {
+		for (i = 0; i < nfe_rx_ring_count; i++) {
 			data = &ring->data[i];
 
 			if (data->m != NULL) {
@@ -1525,6 +1550,11 @@ nfe_free_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	}
 
 	nfe_jpool_free(sc, ring);
+	
+	if (ring->jbuf != NULL)
+		kfree(ring->jbuf, M_DEVBUF);
+	if (ring->data != NULL)
+		kfree(ring->data, M_DEVBUF);
 
 	if (ring->tag != NULL) {
 		void *desc;
