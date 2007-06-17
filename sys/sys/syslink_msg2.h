@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg2.h,v 1.2 2007/05/27 20:35:43 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg2.h,v 1.3 2007/06/17 21:31:07 dillon Exp $
  */
 /*
  * Helper inlines and macros for syslink message generation
@@ -49,7 +49,7 @@
 
 static __inline
 struct syslink_elm *
-syslink_msg_init_cmd(struct syslink_msg *msg, sl_proto_t proto, sl_cmd_t cmd)
+sl_msg_init_cmd(struct syslink_msg *msg, sl_proto_t proto, sl_cmd_t cmd)
 {
 	msg->sm_proto = proto;
 	msg->sm_bytes = 0;
@@ -63,8 +63,8 @@ syslink_msg_init_cmd(struct syslink_msg *msg, sl_proto_t proto, sl_cmd_t cmd)
 
 static __inline
 struct syslink_elm *
-syslink_msg_init_reply(struct syslink_msg *msg, struct syslink_msg *rep,
-		       int32_t error)
+sl_msg_init_reply(struct syslink_msg *msg, struct syslink_msg *rep,
+		  int32_t error)
 {
 	rep->sm_proto = msg->sm_proto | SM_PROTO_REPLY;
 	rep->sm_bytes = 0;
@@ -78,7 +78,7 @@ syslink_msg_init_reply(struct syslink_msg *msg, struct syslink_msg *rep,
 
 static __inline
 void
-syslink_msg_done(struct syslink_msg *msg)
+sl_msg_fini(struct syslink_msg *msg)
 {
 	msg->sm_bytes = offsetof(struct syslink_msg, sm_head) +
 				 SL_MSG_ALIGN(msg->sm_head.se_bytes);
@@ -86,7 +86,7 @@ syslink_msg_done(struct syslink_msg *msg)
 
 static __inline
 struct syslink_elm *
-syslink_elm_make(struct syslink_elm *par, sl_cmd_t cmd, int bytes)
+sl_elm_make(struct syslink_elm *par, sl_cmd_t cmd, int bytes)
 {
 	struct syslink_elm *elm = (void *)((char *)par + par->se_bytes);
 
@@ -105,7 +105,7 @@ syslink_elm_make(struct syslink_elm *par, sl_cmd_t cmd, int bytes)
  */
 static __inline
 struct syslink_elm *
-syslink_elm_push(struct syslink_elm *par, sl_cmd_t cmd)
+sl_elm_push(struct syslink_elm *par, sl_cmd_t cmd)
 {
 	struct syslink_elm *elm = (void *)((char *)par + par->se_bytes);
 
@@ -123,10 +123,14 @@ syslink_elm_push(struct syslink_elm *par, sl_cmd_t cmd)
  */
 static __inline
 void
-syslink_elm_pop(struct syslink_elm *par, struct syslink_elm *elm)
+sl_elm_pop(struct syslink_elm *par, struct syslink_elm *elm)
 {
 	par->se_bytes = (char *)elm - (char *)par + elm->se_bytes;
 }
+
+#define SL_FOREACH_ELEMENT(par, elm)					\
+	for (elm = par + 1; (char *)elm < (char *)par + par->se_bytes;	\
+	     elm = (void *)((char *)elm + SL_MSG_ALIGN(elm->se_bytes)))
 
 #endif
 

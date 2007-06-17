@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.11 2007/05/27 20:35:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.12 2007/06/17 21:31:05 dillon Exp $
  */
 /*
  * This module implements the core syslink() system call and provides
@@ -128,9 +128,9 @@ static void backend_dispose_kern(struct sldesc *sl, struct slmsg *slmsg);
  * more complex ctor/dtor API in order to provide ready-to-go slmsg's.
  */
 
-struct objcache *sl_objcache_big;
-struct objcache *sl_objcache_small;
-struct objcache *sl_objcache_none;
+static struct objcache *sl_objcache_big;
+static struct objcache *sl_objcache_small;
+static struct objcache *sl_objcache_none;
 
 MALLOC_DEFINE(M_SYSLINK, "syslink", "syslink manager");
 
@@ -429,10 +429,17 @@ shutdownsldesc(struct sldesc *sl, int how)
 	 * Call shutdown on the peer with the opposite flags
 	 */
 	rhow = 0;
-	if (how & SHUT_RD)
-		rhow |= SHUT_WR;
-	if (how & SHUT_WR)
-		rhow |= SHUT_RD;
+	switch(how) {
+	case SHUT_RD:
+		rhow = SHUT_WR;
+		break;
+	case SHUT_WR:
+		rhow = SHUT_WR;
+		break;
+	case SHUT_RDWR:
+		rhow = SHUT_RDWR;
+		break;
+	}
 	shutdownsldesc2(sl->peer, rhow);
 }
 
@@ -441,10 +448,17 @@ void
 shutdownsldesc2(struct sldesc *sl, int how)
 {
 	spin_lock_wr(&sl->spin);
-	if (how & SHUT_RD)
+	switch(how) {
+	case SHUT_RD:
 		sl->flags |= SLF_RSHUTDOWN;
-	if (how & SHUT_WR)
+		break;
+	case SHUT_WR:
 		sl->flags |= SLF_WSHUTDOWN;
+		break;
+	case SHUT_RDWR:
+		sl->flags |= SLF_RSHUTDOWN | SLF_WSHUTDOWN;
+		break;
+	}
 	spin_unlock_wr(&sl->spin);
 
 	/*
@@ -755,7 +769,7 @@ slfileop_close(struct file *fp)
 	 * Shutdown both directions.  The other side will not issue API
 	 * calls to us after we've shutdown both directions.
 	 */
-	shutdownsldesc(sl, SHUT_RD|SHUT_WR);
+	shutdownsldesc(sl, SHUT_RDWR);
 
 	/*
 	 * Cleanup
@@ -1123,10 +1137,9 @@ syslink_ukbackend(int *fdp, struct sldesc **kslp)
  * and wait for a reply.
  */
 int
-syslink_kdomsg(struct sldesc *ksl, struct syslink_msg *msg,
-	       struct bio *bio, int flags)
+syslink_kdomsg(struct sldesc *ksl, struct slmsg *slmsg)
 {
-	struct slmsg slmsg;
+	struct syslink_msg *msg;
 	int error;
 
 	/*
@@ -1134,11 +1147,9 @@ syslink_kdomsg(struct sldesc *ksl, struct syslink_msg *msg,
 	 * reply matching.  If the message id is already in use we return
 	 * EEXIST, giving the originator the chance to roll a new msgid.
 	 */
-	bzero(&slmsg, sizeof(slmsg));
-	slmsg.msg = msg;
-	slmsg.msgsize = msg->sm_bytes;
-	slmsg.bio = bio;
-	if ((error = syslink_validate_msg(slmsg.msg, slmsg.msgsize)) != 0)
+	msg = slmsg->msg;
+	slmsg->msgsize = msg->sm_bytes;
+	if ((error = syslink_validate_msg(msg, msg->sm_bytes)) != 0)
 		return (error);
 	msg->sm_msgid = allocsysid();
 
@@ -1146,23 +1157,40 @@ syslink_kdomsg(struct sldesc *ksl, struct syslink_msg *msg,
 	 * Issue the request and wait for a matching reply or failure,
 	 * then remove the message from the matching tree and return.
 	 */
-	error = ksl->peer->backend_write(ksl->peer, &slmsg);
+	error = ksl->peer->backend_write(ksl->peer, slmsg);
 	spin_lock_wr(&ksl->spin);
 	if (error == 0) {
-		while (slmsg.rep == NULL) {
-			error = msleep(&slmsg, &ksl->spin, flags, "kwtmsg", 0);
+		while (slmsg->rep == NULL) {
+			error = msleep(slmsg, &ksl->spin, 0, "kwtmsg", 0);
 			/* XXX ignore error for now */
 		}
-		if (slmsg.rep == (struct slmsg *)-1) {
+		if (slmsg->rep == (struct slmsg *)-1) {
 			error = EIO;
+			slmsg->rep = NULL;
 		} else {
-			error = slmsg.rep->msg->sm_head.se_aux;
-			kprintf("reply with error %d\n", error);
-			ksl->peer->backend_dispose(ksl->peer, slmsg.rep);
+			error = slmsg->rep->msg->sm_head.se_aux;
 		}
 	}
 	spin_unlock_wr(&ksl->spin);
 	return(error);
+}
+
+struct slmsg *
+syslink_kallocmsg(void)
+{
+	return(objcache_get(sl_objcache_small, M_WAITOK));
+}
+
+void
+syslink_kfreemsg(struct sldesc *ksl, struct slmsg *slmsg)
+{
+	struct slmsg *rep;
+
+	if ((rep = slmsg->rep) != NULL) {
+		slmsg->rep = NULL;
+		ksl->peer->backend_dispose(ksl->peer, rep);
+	}
+	objcache_put(slmsg->oc, slmsg);
 }
 
 void
@@ -1174,7 +1202,7 @@ syslink_kshutdown(struct sldesc *ksl, int how)
 void
 syslink_kclose(struct sldesc *ksl)
 {
-	shutdownsldesc(ksl, SHUT_RD|SHUT_WR);
+	shutdownsldesc(ksl, SHUT_RDWR);
 	sldrop(ksl);
 }
 

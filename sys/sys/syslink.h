@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink.h,v 1.9 2007/05/27 20:35:43 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink.h,v 1.10 2007/06/17 21:31:06 dillon Exp $
  */
 
 /*
@@ -157,8 +157,9 @@ struct slmsg {
 
 struct sldesc;
 int syslink_ukbackend(int *fdp, struct sldesc **kslp);
-int syslink_kdomsg(struct sldesc *ksl, struct syslink_msg *msg,
-		   struct bio *bio, int flags);
+struct slmsg *syslink_kallocmsg(void);
+int syslink_kdomsg(struct sldesc *ksl, struct slmsg *msg);
+void syslink_kfreemsg(struct sldesc *ksl, struct slmsg *msg);
 void syslink_kshutdown(struct sldesc *ksl, int how);
 void syslink_kclose(struct sldesc *ksl);
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg.h,v 1.8 2007/05/27 20:35:43 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg.h,v 1.9 2007/06/17 21:31:07 dillon Exp $
  */
 /*
  * The syslink infrastructure implements an optimized RPC mechanism across a 
@@ -84,15 +84,20 @@ typedef u_int16_t	sl_reclen_t;	/* item length */
  *	structured syslink_elm's, otherwise the payload is considered to
  *	be opaque.
  *
- *	SE_CMDF_GLOBAL indicates that the command is globally defined by the
+ *	SE_CMDF_GLOBAL - indicates that the command is globally defined by the
  *	syslink standard and is not protocol-specific.  Note that PADs
  *	are not global commands.
  *
- *	SE_CMDF_UNTRANSLATED indicates that the syslink_elm structure had
+ *	SE_CMDF_UNTRANSLATED - indicates that the syslink_elm structure had
  *	to be translated into host endian format but any directly or
  *	indirectly represented opaque data has not been.  This bit is used
  *	by the protocol layer to properly endian-translate protocol-specific
  *	opaque data.
+ *
+ *	SE_CMDF_ASIZE* - These 2 bits can encode the size for simple elments.
+ *	The size is verified prior to delivery so command switches on simple
+ *	elements need not check se_bytes.  This also makes it easier for
+ *	the protocol code to do endian conversions.
  *
  * SE_AUX field - auxillary data field (signed 32 bit integer)
  *
@@ -111,7 +116,14 @@ struct syslink_elm {
 #define SE_CMDF_STRUCTURED	0x4000	/* payload is structured */
 #define SE_CMDF_GLOBAL		0x2000	/* non-proto-specific global cmd */
 #define SE_CMDF_UNTRANSLATED	0x1000	/* needs endian translation */
-#define SE_CMD_MASK		0x0FFF
+
+#define SE_CMDF_ASIZEMASK	0x0C00	/* auto-size mask */
+#define SE_CMDF_ASIZEX		0x0000	/* N bytes of extended data */
+#define SE_CMDF_ASIZE0		0x0400	/* 0 bytes of extended data */
+#define SE_CMDF_ASIZE4		0x0800	/* 4 bytes of extended data */
+#define SE_CMDF_ASIZE8		0x0C00	/* 8 bytes of extended data */
+
+#define SE_CMD_MASK		0x03FF
 
 #define SE_CMD_PAD		0x0000	/* always reserved to mean PAD */
 
