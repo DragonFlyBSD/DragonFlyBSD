@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc/uuid/Makefile.inc,v 1.4 2006/03/13 01:15:01 deischen Exp $
-# $DragonFly: src/lib/libc/uuid/Makefile.inc,v 1.3 2007/06/17 07:35:12 dillon Exp $
+# $DragonFly: src/lib/libc/uuid/Makefile.inc,v 1.4 2007/06/17 10:53:25 swildner Exp $
 
 # DCE 1.1 UUID implementation sources
 
@@ -12,6 +12,7 @@ SRCS+=	uuid_compare.c uuid_create.c uuid_create_nil.c uuid_equal.c \
 SYM_MAPS+=	${.CURDIR}/uuid/Symbol.map
 
 MAN+=	uuid.3
+MLINKS+=uuid.3 uuid_addr_lookup.3
 MLINKS+=uuid.3 uuid_compare.3
 MLINKS+=uuid.3 uuid_create.3
 MLINKS+=uuid.3 uuid_create_nil.3
@@ -19,4 +20,6 @@ MLINKS+=uuid.3 uuid_equal.3
 MLINKS+=uuid.3 uuid_from_string.3
 MLINKS+=uuid.3 uuid_hash.3
 MLINKS+=uuid.3 uuid_is_nil.3
+MLINKS+=uuid.3 uuid_name_lookup.3
+MLINKS+=uuid.3 uuid_reset_lookup.3
 MLINKS+=uuid.3 uuid_to_string.3

@@ -24,19 +24,30 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/uuid/uuid.3,v 1.6 2005/11/24 07:04:20 ru Exp $
-.\" $DragonFly: src/lib/libc/uuid/uuid.3,v 1.3 2007/06/17 07:47:32 dillon Exp $
+.\" $DragonFly: src/lib/libc/uuid/uuid.3,v 1.4 2007/06/17 10:53:25 swildner Exp $
 .\"
-.Dd January 3, 2005
+.Dd June 17, 2007
 .Dt UUID 3
 .Os
 .Sh NAME
-.Nm uuid_compare , uuid_create , uuid_create_nil , uuid_equal ,
-.Nm uuid_from_string , uuid_hash , uuid_is_nil , uuid_to_string
+.Nm uuid_addr_lookup ,
+.Nm uuid_compare ,
+.Nm uuid_create ,
+.Nm uuid_create_nil ,
+.Nm uuid_equal ,
+.Nm uuid_from_string ,
+.Nm uuid_hash ,
+.Nm uuid_is_nil ,
+.Nm uuid_name_lookup ,
+.Nm uuid_reset_lookup ,
+.Nm uuid_to_string
 .Nd DCE 1.1 compliant UUID functions
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In uuid.h
+.Ft void
+.Fn uuid_addr_lookup "const uuid_t *u" "char **strp" "uint32_t *status"
 .Ft int32_t
 .Fn uuid_compare "const uuid_t *uuid1" "const uuid_t *uuid2" "uint32_t *status"
 .Ft void
@@ -52,11 +63,11 @@
 .Ft int32_t
 .Fn uuid_is_nil "const uuid_t *uuid" "uint32_t *status"
 .Ft void
-.Fn uuid_to_string "const uuid_t *uuid" "char **str" "uint32_t *status"
-.Ft void
-.Fn uuid_addr_lookup "const uuid_t *u" "char **strp" "uint32_t *status"
-.Ft void
 .Fn uuid_name_lookup "uuid_t *u" "const char *str" "uint32_t *status"
+.Ft void
+.Fn uuid_reset_lookup "void"
+.Ft void
+.Fn uuid_to_string "const uuid_t *uuid" "char **str" "uint32_t *status"
 .Sh DESCRIPTION
 The family of DCE 1.1 compliant UUID functions allow applications to operate
 on universally unique identifiers, or UUIDs.
@@ -80,39 +91,55 @@ respectively.
 A 16-bit hash value can be obtained by calling
 .Fn uuid_hash .
 .Pp
-String equivalents to UUIDs may be available.  The
+String equivalents to UUIDs may be available.
+The
 .Fn uuid_addr_lookup
 function will lookup the symbolic name given a UUID.
-The variable *strp should be initialized to NULL.
+The variable
+.Fa *strp
+should be initialized to
+.Dv NULL .
 Successive calls to
 .Fn uuid_addr_lookup
-will free the previous contents prior to doing the lookup.  The last
-string may be freed by calling the function with a NULL UUID.
-If a lookup fails, *strp will be set to NULL and *status
-(if status is not NULL) will be set to uuid_s_not_found.  Otherwise
-*strp will be assigned to the symbolic name and *status will be
-set to uuid_s_ok.
+will free the previous contents prior to doing the lookup.
+The last string may be freed by calling the function with a
+.Dv NULL
+UUID.
+If a lookup fails,
+.Fa *strp
+will be set to
+.Dv NULL
+and
+.Fa *status
+(if status is not
+.Dv NULL )
+will be set to
+.Dv uuid_s_not_found.
+Otherwise
+.Fa *strp
+will be assigned to the symbolic name and
+.Fa *status
+will be set to
+.Dv uuid_s_ok .
 .Pp
 The
 .Fn uuid_name_lookup
 function will lookup a UUID given a symbolic name.
-The contents of the uuid will be zerod out if a lookup fails.
+The contents of the uuid will be zeroed out if a lookup fails.
 .Pp
 The
 .Fn uuid_reset_lookup
-function will clear its in-memory cache of UUID<->NAME conversions.  The
-next lookup will reload the cache.
+function will clear its in-memory cache of UUID<->NAME conversions.
+The next lookup will reload the cache.
 .Sh FILES
-.TP 3n
-\fI/etc/defaults/uuids\fR
-A list of UUIDs and their symbolic names provided by the OS vendor
-.Pp
-.TP 3n
-\fI/etc/uuids\fR
-A list of UUIDs and their symbolic names provided by the system administrator
+.Bl -tag -width ".Pa /etc/defaults/uuids"
+.It Pa /etc/defaults/uuids
+A list of UUIDs and their symbolic names provided by the OS vendor.
+.It Pa /etc/uuids
+A list of UUIDs and their symbolic names provided by the system administrator.
+.El
 .Sh RETURN VALUES
-The successful or unsuccessful completion of the function is returned in
-the
+The successful or unsuccessful completion of the function is returned in the
 .Fa status
 argument.
 Possible values are:
@@ -126,11 +153,11 @@ The UUID does not have a known version.
 The string representation of an UUID is not valid.
 .It Dv uuid_s_no_memory
 The meaning of the code escaped the writers mind.
+.It Dv uuid_s_not_found
+A UUID lookup failed.
 .El
 .Sh SEE ALSO
 .Xr uuidgen 1 ,
 .Xr uuidgen 2
 .Sh STANDARDS
 The UUID functions conform to the DCE 1.1 RPC specification.
-.Sh BUGS
-This manpage can be improved.
