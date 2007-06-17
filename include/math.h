@@ -8,8 +8,8 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: math.h,v 1.41 2005/07/21 12:56:29 christos Exp $
- * $DragonFly: src/include/math.h,v 1.11 2007/06/17 17:46:01 pavalos Exp $
+ * $NetBSD: math.h,v 1.46 2007/02/22 22:08:19 drochner Exp $
+ * $DragonFly: src/include/math.h,v 1.12 2007/06/17 18:00:08 pavalos Exp $
  */
 
 /*
@@ -66,7 +66,7 @@ union __long_double_u {
  * ANSI/POSIX
  */
 /* 7.12#3 HUGE_VAL, HUGELF, HUGE_VALL */
-extern __const union __double_u __infinity;
+extern const union __double_u __infinity;
 #ifdef __MATH_BUILTIN_CONSTANTS
 #define	HUGE_VAL	__builtin_huge_val()
 #else
@@ -78,14 +78,14 @@ extern __const union __double_u __infinity;
  */
 #if __ISO_C_VISIBLE >= 1999
 /* 7.12#3 HUGE_VAL, HUGELF, HUGE_VALL */
-extern __const union __float_u __infinityf;
+extern const union __float_u __infinityf;
 #ifdef __MATH_BUILTIN_CONSTANTS
 #define	HUGE_VALF	__builtin_huge_valf()
 #else
 #define	HUGE_VALF	__infinityf.__val
 #endif
 
-extern __const union __long_double_u __infinityl;
+extern const union __long_double_u __infinityl;
 #define	HUGE_VALL	__infinityl.__val
 
 /* 7.12#4 INFINITY */
@@ -101,7 +101,7 @@ extern __const union __long_double_u __infinityl;
 #ifdef __MATH_BUILTIN_CONSTANTS
 #define	NAN		__builtin_nan("")
 #elif defined(__HAVE_NANF)
-extern __const union __float_u __nanf;
+extern const union __float_u __nanf;
 #define	NAN		__nanf.__val
 #endif /* __HAVE_NANF */
 
@@ -311,7 +311,7 @@ long long int	llroundf(float);
 float	fmodf(float, float);
 float	remainderf(float, float);
 
-/* 7.2.11 manipulation */
+/* 7.12.11 manipulation */
 
 float	copysignf(float, float);
 double	nan(const char *);
