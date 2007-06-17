@@ -1,6 +1,8 @@
-/*	$NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.28 2007/06/16 23:22:32 dillon Exp $
+/*
+ * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
+ * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.29 2007/06/17 08:42:31 dillon Exp $
+ */
 
 /* Also already merged from NetBSD:
  *	$NetBSD: usb.c,v 1.70 2002/05/09 21:54:32 augustss Exp $
