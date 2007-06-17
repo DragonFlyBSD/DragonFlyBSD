@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/subr_diskgpt.c,v 1.1 2007/06/17 04:57:02 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskgpt.c,v 1.2 2007/06/17 09:56:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -150,15 +150,18 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 
 	/*
 	 * We are passed a pointer to a minimal slices struct.  Replace
-	 * it with a maximal one (128 slices)
+	 * it with a maximal one (128 slices + special slices).  Well,
+	 * really there is only one special slice (the WHOLE_DISK_SLICE)
+	 * since we use the compatibility slice for s0, but don't quibble.
+	 * 
 	 */
 	kfree(*sspp, M_DEVBUF);
-	ssp = *sspp = dsmakeslicestruct(128, info);
+	ssp = *sspp = dsmakeslicestruct(BASE_SLICE+128, info);
 
 	/*
 	 * Create a slice for each partition.
 	 */
-	for (i = 0; i < (int)entries; ++i) {
+	for (i = 0; i < (int)entries && i < 128; ++i) {
 		struct gpt_ent sent;
 		char partname[2];
 		char *sname;
@@ -181,7 +184,7 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 		if (i == 0)
 			sp = &ssp->dss_slices[COMPATIBILITY_SLICE];
 		else
-			sp = &ssp->dss_slices[BASE_SLICE+i];
+			sp = &ssp->dss_slices[BASE_SLICE+i-1];
 		sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE,
 			       WHOLE_SLICE_PART, partname);
 
@@ -189,7 +192,8 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 			continue;
 
 		if (sent.ent_lba_start < table_lba + table_blocks ||
-		    sent.ent_lba_end >= info->d_media_blocks) {
+		    sent.ent_lba_end >= info->d_media_blocks ||
+		    sent.ent_lba_start >= sent.ent_lba_end) {
 			kprintf("%s part %d: unavailable, bad start or "
 				"ending lba\n",
 				sname, i);

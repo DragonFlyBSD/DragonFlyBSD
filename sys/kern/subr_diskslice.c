@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.43 2007/06/17 03:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.44 2007/06/17 09:56:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -469,7 +469,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 	int error;
 	struct disklabel *lp;
 	int old_wlabel;
-	u_int32_t openmask[DKMAXPARTITIONS/sizeof(u_int32_t)];
+	u_int32_t openmask[DKMAXPARTITIONS/(sizeof(u_int32_t)*8)];
 	u_int64_t old_reserved;
 	int part;
 	int slice;
@@ -510,15 +510,28 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			lp->d_interleave = 1;
 		if (lp->d_rpm == 0)
 			lp->d_rpm = 3600;
-		if (lp->d_nsectors == 0)
+		if (lp->d_nsectors == 0)	/* sectors per track */
 			lp->d_nsectors = 32;
-		if (lp->d_ntracks == 0)
+		if (lp->d_ntracks == 0)		/* heads */
 			lp->d_ntracks = 64;
-
+		lp->d_ncylinders = 0;
 		lp->d_bbsize = BBSIZE;
 		lp->d_sbsize = SBSIZE;
-		lp->d_secpercyl = lp->d_nsectors * lp->d_ntracks;
-		lp->d_ncylinders = sp->ds_size / lp->d_secpercyl;
+
+		/*
+		 * If the slice or GPT partition is really small we could
+		 * wind up with an absurd calculation for ncylinders.
+		 */
+		while (lp->d_ncylinders < 4) {
+			if (lp->d_ntracks > 1)
+				lp->d_ntracks >>= 1;
+			else if (lp->d_nsectors > 1)
+				lp->d_nsectors >>= 1;
+			else
+				break;
+			lp->d_secpercyl = lp->d_nsectors * lp->d_ntracks;
+			lp->d_ncylinders = sp->ds_size / lp->d_secpercyl;
+		}
 
 		/*
 		 * Set or Modify the partition sizes to accomodate the slice,
@@ -836,6 +849,7 @@ int
 dsisopen(struct diskslices *ssp)
 {
 	int slice;
+	int j;
 
 	if (ssp == NULL)
 		return (0);

@@ -57,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.19 2007/06/17 03:51:11 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.20 2007/06/17 09:56:17 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -132,7 +132,7 @@ struct diskslice {
 	struct disklabel *ds_label;	/* BSD label, if any */
 	void		*ds_dev;	/* devfs token for raw whole slice */
 	void		*ds_devs[MAXPARTITIONS]; /* XXX s.b. in label */
-	u_int32_t	ds_openmask[DKMAXPARTITIONS/sizeof(u_int32_t)];
+	u_int32_t	ds_openmask[DKMAXPARTITIONS/(sizeof(u_int32_t)*8)];
 					/* devs open */
 	u_char		ds_wlabel;	/* nonzero if label is writable */
 	int		ds_ttlopens;	/* total opens, incl slice & raw */
