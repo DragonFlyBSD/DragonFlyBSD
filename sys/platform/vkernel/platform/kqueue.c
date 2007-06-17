@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.3 2007/01/15 19:08:10 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.4 2007/06/17 16:46:17 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -106,6 +106,16 @@ signalmailbox(struct intrframe *frame)
 	struct kevent kevary[8];
 	int n;
 	int i;
+
+	/*
+	 * we only need to wake up our shutdown thread once.  
+	 * Keep it non-zero so the shutdown thread can detect it.
+	 */
+
+	if (mdcpu->gd_shutdown > 0) {
+		mdcpu->gd_shutdown = -1;
+		wakeup(&mdcpu->gd_shutdown);
+	}
 
 	if (gd->gd_mailbox == 0)
 		return;

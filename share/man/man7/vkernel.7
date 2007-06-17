@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.18 2007/06/14 21:11:29 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.19 2007/06/17 16:46:14 dillon Exp $
 .\"
 .Dd June 14, 2007
 .Dt VKERNEL 7
@@ -202,15 +202,24 @@ holds the unit number of the associated
 .Xr tap 4
 device.
 .Sh SIGNALS
-The virtual kernel enables all terminal signals while in
-.Xr ddb 4
-mode but only enables
+The virtual kernel only enables 
+.Dv SIGQUIT
+and 
+.Dv SIGTERM 
+while operating in regular console mode. 
+Sending 
 .Ql \&^\e
 .Pq Dv SIGQUIT
-while operating as a console which causes the virtual kernel to enter its
-internal
+to the virtual kernel causes the virtual kernel to enter its internal
 .Xr ddb 4
-debugger.
+debugger and re-enable all other terminal signals. 
+Sending
+.Dv SIGTERM 
+to the virtual kernel triggers a clean shutdown by passing a 
+.Dv SIGUSR2 
+to the virtual kernel's 
+.Xr init 8
+process.
 .Sh DEBUGGING
 It is possible to directly gdb the virtual kernel's process.
 It is recommended that you do a

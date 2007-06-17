@@ -32,13 +32,15 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.5 2007/01/15 05:27:29 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.6 2007/06/17 16:46:15 dillon Exp $
  */
 
 #include "opt_ddb.h"
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/kthread.h>
+#include <sys/reboot.h>
 #include <ddb/ddb.h>
 
 #include <sys/thread2.h>
@@ -56,6 +58,14 @@ static void exc_segfault(int signo, siginfo_t *info, void *ctx);
 static void exc_debugger(int signo, siginfo_t *info, void *ctx);
 #endif
 
+/* signal shutdown thread misc. */
+
+static void sigshutdown_daemon( void );
+static struct thread *sigshutdown_thread;
+static struct kproc_desc sigshut_kp = {
+	"sigshutdown", sigshutdown_daemon, &sigshutdown_thread
+};
+
 void
 init_exceptions(void)
 {
@@ -67,10 +77,17 @@ init_exceptions(void)
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGSEGV, &sa, NULL);
 	sigaction(SIGTRAP, &sa, NULL);
+
 #ifdef DDB
 	sa.sa_sigaction = exc_debugger;
 	sigaction(SIGQUIT, &sa, NULL);
 #endif
+
+	bzero(&sa, sizeof(sa));
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags |= SA_MAILBOX | SA_NODEFER;
+	sa.sa_mailbox = &mdcpu->gd_shutdown;
+	sigaction(SIGTERM, &sa, NULL);
 }
 
 /*
@@ -94,6 +111,31 @@ exc_segfault(int signo, siginfo_t *info, void *ctxp)
 	kern_trap((struct trapframe *)&ctx->uc_mcontext.mc_gs);
 	splz();
 }
+
+/*
+ * This function runs in a thread dedicated to external shutdown signals.
+ *
+ * Currently, when a vkernel recieves a SIGTERM, either the VKERNEL init(8) 
+ * is signaled with SIGUSR2, or the VKERNEL simply shuts down, preventing
+ * fsck's when the VKERNEL is restarted.
+ */ 
+static void
+sigshutdown_daemon( void )
+{
+	while (mdcpu->gd_shutdown == 0) {
+		tsleep(&mdcpu->gd_shutdown, 0, "sswait", 0);
+	}
+	mdcpu->gd_shutdown = 0;
+	kprintf("Caught SIGTERM from host system. Shutting down...\n");
+	if (initproc != NULL) {
+		ksignal(initproc, SIGUSR2);
+	}
+	else {
+		reboot(RB_POWEROFF);
+	}	
+}
+SYSINIT(sigshutdown, SI_BOOT2_PROC0, SI_ORDER_ANY, 
+	kproc_start, &sigshut_kp); 
 
 #ifdef DDB
 
