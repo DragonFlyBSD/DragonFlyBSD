@@ -12,8 +12,8 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_powf.c,v 1.11 2004/06/30 18:45:25 drochner Exp $
- * $DragonFly: src/lib/libm/src/e_powf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_powf.c,v 1.12 2006/03/19 20:46:25 christos Exp $
+ * $DragonFly: src/lib/libm/src/e_powf.c,v 1.2 2007/06/17 00:57:06 pavalos Exp $
  */
 
 #include <math.h>
@@ -206,11 +206,11 @@ powf(float x, float y)
 	else if (j==0x43000000) {			/* if z == 128 */
 	    if(p_l+ovt>z-p_h) return s*huge*huge;	/* overflow */
 	}
-	else if ((j&0x7fffffff)>0x43160000)		/* z <= -150 */
-	    return s*tiny*tiny;				/* underflow */
 	else if (j==0xc3160000){			/* z == -150 */
 	    if(p_l<=z-p_h) return s*tiny*tiny;		/* underflow */
 	}
+	else if ((j&0x7fffffff)>0x43160000)		/* z <= -150 */
+	    return s*tiny*tiny;				/* underflow */
     /*
      * compute 2**(p_h+p_l)
      */
