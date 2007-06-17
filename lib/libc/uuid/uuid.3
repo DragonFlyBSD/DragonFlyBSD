@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/uuid/uuid.3,v 1.6 2005/11/24 07:04:20 ru Exp $
-.\" $DragonFly: src/lib/libc/uuid/uuid.3,v 1.1 2007/06/16 19:57:14 dillon Exp $
+.\" $DragonFly: src/lib/libc/uuid/uuid.3,v 1.2 2007/06/17 07:35:12 dillon Exp $
 .\"
 .Dd January 3, 2005
 .Dt UUID 3
@@ -53,6 +53,10 @@
 .Fn uuid_is_nil "const uuid_t *uuid" "uint32_t *status"
 .Ft void
 .Fn uuid_to_string "const uuid_t *uuid" "char **str" "uint32_t *status"
+.Ft void
+.Fn uuid_addr_lookup "const uuid_t *u" "char **strp" "uint32_t *status"
+.Ft void
+.Fn uuid_name_lookup "uuid_t *u" "const char *str" "uint32_t *status"
 .Sh DESCRIPTION
 The family of DCE 1.1 compliant UUID functions allow applications to operate
 on universally unique identifiers, or UUIDs.
@@ -75,6 +79,37 @@ or
 respectively.
 A 16-bit hash value can be obtained by calling
 .Fn uuid_hash .
+.Pp
+String equivalents to UUIDs may be available.  The
+.Fn uuid_addr_lookup
+function will lookup the symbolic name given a UUID.
+The variable *strp should be initialized to NULL.
+Successive calls to
+.Fn uuid_addr_lookup
+will free the previous contents prior to doing the lookup.  The last
+string may be freed by calling the function with a NULL UUID.
+If a lookup fails, *strp will be set to NULL and *status
+(if status is not NULL) will be set to uuid_s_not_found.  Otherwise
+*strp will be assigned to the symbolic name and *status will be
+set to uuid_s_ok.
+.Pp
+The
+.Fn uuid_name_lookup
+function will lookup a UUID given a symbolic name.
+The contents of the uuid will be zerod out if a lookup fails.
+.Pp
+The
+.Fn uuid_reset_lookup
+function will clear its in-memory cache of UUID<->NAME conversions.  The
+next lookup will reload the cache.
+.Sh FILES
+.TP 3n
+\fI/etc/uuids\fR
+A list of UUIDs and their symbolic names provided by the OS vendor
+.Pp
+.TP 3n
+\fI/etc/uuids.local\fR
+A list of UUIDs and their symbolic names provided by the system administrator
 .Sh RETURN VALUES
 The successful or unsuccessful completion of the function is returned in
 the
