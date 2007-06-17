@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libc/uuid/uuid_name_lookup.c,v 1.2 2007/06/17 07:36:28 dillon Exp $
+ * $DragonFly: src/lib/libc/uuid/uuid_name_lookup.c,v 1.3 2007/06/17 07:47:32 dillon Exp $
  */
 /*
  * Implement UUID-to-NAME and NAME-to-UUID functions
@@ -112,8 +112,11 @@ uuid_addr_lookup(const uuid_t *u, char **strp, uint32_t *status)
 	}
 	if (u) {
 		if (uuid_name_loaded == 0) {
+			/*
+			 * /etc/uuids will override /etc/defaults/uuids
+			 */
 			uuid_loadcache("/etc/uuids");
-			uuid_loadcache("/etc/uuids.local");
+			uuid_loadcache("/etc/defaults/uuids");
 			uuid_name_loaded = 1;
 		}
 		node = uuid_urbtree_RB_LOOKUP_UUID(&uuid_urbroot, u);
