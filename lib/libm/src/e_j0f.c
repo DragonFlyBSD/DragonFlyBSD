@@ -13,7 +13,7 @@
  * ====================================================
  *
  * $NetBSD: e_j0f.c,v 1.7 2002/05/26 22:01:50 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_j0f.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $DragonFly: src/lib/libm/src/e_j0f.c,v 1.2 2007/06/17 00:44:00 pavalos Exp $
  */
 
 #include <math.h>
@@ -62,8 +62,11 @@ j0f(float x)
 	 * j0(x) = 1/sqrt(pi) * (P(0,x)*cc - Q(0,x)*ss) / sqrt(x)
 	 * y0(x) = 1/sqrt(pi) * (P(0,x)*ss + Q(0,x)*cc) / sqrt(x)
 	 */
+#ifdef DEAD_CODE
 		if(ix>0x80000000) z = (invsqrtpi*cc)/sqrtf(x);
-		else {
+		else
+#endif
+		{
 		    u = pzerof(x); v = qzerof(x);
 		    z = invsqrtpi*(u*cc-v*ss)/sqrtf(x);
 		}
@@ -136,8 +139,11 @@ y0f(float x)
                     if ((s*c)<zero) cc = z/ss;
                     else            ss = z/cc;
                 }
+#ifdef DEAD_CODE
                 if(ix>0x80000000) z = (invsqrtpi*ss)/sqrtf(x);
-                else {
+                else
+#endif
+		{
                     u = pzerof(x); v = qzerof(x);
                     z = invsqrtpi*(u*ss+v*cc)/sqrtf(x);
                 }
