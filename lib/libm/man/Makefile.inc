@@ -1,11 +1,11 @@
-# $DragonFly: src/lib/libm/man/Makefile.inc,v 1.5 2007/06/16 23:04:43 pavalos Exp $
+# $DragonFly: src/lib/libm/man/Makefile.inc,v 1.6 2007/06/17 06:26:18 pavalos Exp $
 
 .PATH:	${.CURDIR}/man
 
 MAN+=	acos.3 acosh.3 asin.3 asinh.3 atan.3 atan2.3 atanh.3 ceil.3 \
 	cos.3 cosh.3 erf.3 exp.3 fabs.3 floor.3 fmod.3 hypot.3 ieee.3 \
 	ieee_test.3 j0.3 lgamma.3 math.3 rint.3 round.3 sin.3 \
-	sinh.3 sqrt.3 tan.3 tanh.3
+	sinh.3 sqrt.3 tan.3 tanh.3 trunc.3
 MLINKS+=	\
 	acos.3 acosf.3 acosh.3 acoshf.3 asin.3 asinf.3 asinh.3 asinhf.3 \
 	atan.3 atanf.3 atan2.3 atan2f.3 atanh.3 atanhf.3 ceil.3 ceilf.3 \
@@ -25,4 +25,4 @@ MLINKS+=	\
 	lgamma.3 lgammaf_r.3 lgamma.3 gamma.3 lgamma.3 gammaf.3 \
 	lgamma.3 gamma_r.3 lgamma.3 gammaf_r.3 rint.3 rintf.3 \
 	round.3 roundf.3 sin.3 sinf.3 sinh.3 sinhf.3 sqrt.3 cbrt.3 \
-	sqrt.3 cbrtf.3 sqrt.3 sqrtf.3 tan.3 tanf.3 tanh.3 tanhf.3
+	sqrt.3 cbrtf.3 sqrt.3 sqrtf.3 tan.3 tanf.3 tanh.3 tanhf.3 trunc.3 truncf.3

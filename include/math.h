@@ -9,7 +9,7 @@
  * ====================================================
  *
  * $NetBSD: math.h,v 1.41 2005/07/21 12:56:29 christos Exp $
- * $DragonFly: src/include/math.h,v 1.9 2007/06/16 22:26:53 pavalos Exp $
+ * $DragonFly: src/include/math.h,v 1.10 2007/06/17 06:26:18 pavalos Exp $
  */
 
 /*
@@ -291,6 +291,8 @@ float	floorf(float);
 float	rintf(float);
 double	round(double);
 float	roundf(float);
+double	trunc(double);
+float	truncf(float);
 long int	lrint(double);
 long int	lrintf(float);
 /* LONGLONG */

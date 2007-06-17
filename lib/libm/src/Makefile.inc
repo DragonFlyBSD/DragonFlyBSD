@@ -1,11 +1,11 @@
-# $DragonFly: src/lib/libm/src/Makefile.inc,v 1.2 2007/06/16 22:26:53 pavalos Exp $
+# $DragonFly: src/lib/libm/src/Makefile.inc,v 1.3 2007/06/17 06:26:18 pavalos Exp $
 
 .PATH:	${.CURDIR}/src
 
 # This files are always used.
 SRCS+=	k_cos.c k_cosf.c k_rem_pio2.c k_rem_pio2f.c k_sin.c k_sinf.c \
 	k_tan.c k_tanf.c llrint.c llrintf.c llround.c \
-	llroundf.c lrint.c lrintf.c lround.c lroundf.c w_cabs.c w_cabsf.c \
+	llroundf.c lrint.c lrintf.c lround.c lroundf.c s_trunc.c s_truncf.c w_cabs.c w_cabsf.c \
 	w_drem.c w_dremf.c w_gamma.c w_gamma_r.c w_gammaf.c w_gammaf_r.c \
 	w_lgamma.c w_lgammaf.c
 
