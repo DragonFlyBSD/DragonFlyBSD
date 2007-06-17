@@ -26,7 +26,7 @@
  * CRC32 code derived from work by Gary S. Brown.
  *
  * $FreeBSD: src/sbin/gpt/gpt.c,v 1.16 2006/07/07 02:44:23 marcel Exp $
- * $DragonFly: src/sbin/gpt/gpt.c,v 1.2 2007/06/17 08:15:08 dillon Exp $
+ * $DragonFly: src/sbin/gpt/gpt.c,v 1.3 2007/06/17 08:34:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -439,7 +439,7 @@ gpt_mbr(int fd, off_t lba)
 			m = map_add(start, size, MAP_TYPE_MBR_PART, p);
 			if (m == NULL)
 				return (-1);
-			m->map_index = i + 1;
+			m->map_index = i;
 		} else {
 			if (gpt_mbr(fd, start) == -1)
 				return (-1);
@@ -530,7 +530,7 @@ gpt_gpt(int fd, off_t lba)
 		    MAP_TYPE_GPT_PART, ent);
 		if (m == NULL)
 			return (-1);
-		m->map_index = i + 1;
+		m->map_index = i;
 	}
 	return (0);
 

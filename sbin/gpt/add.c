@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/add.c,v 1.15 2006/10/04 18:20:25 marcel Exp $
- * $DragonFly: src/sbin/gpt/add.c,v 1.2 2007/06/17 08:15:08 dillon Exp $
+ * $DragonFly: src/sbin/gpt/add.c,v 1.3 2007/06/17 08:34:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -41,7 +41,7 @@
 
 static uuid_t type;
 static off_t block, size;
-static unsigned int entry;
+static unsigned int entry = NOENTRY;
 
 static void
 usage_add(void)
@@ -85,14 +85,14 @@ add(int fd)
 	}
 
 	hdr = gpt->map_data;
-	if (entry > le32toh(hdr->hdr_entries)) {
+	if (entry != NOENTRY && entry > le32toh(hdr->hdr_entries)) {
 		warnx("%s: error: index %u out of range (%u max)", device_name,
 		    entry, le32toh(hdr->hdr_entries));
 		return;
 	}
 
-	if (entry > 0) {
-		i = entry - 1;
+	if (entry != NOENTRY) {
+		i = entry;
 		ent = (void*)((char*)tbl->map_data + i *
 		    le32toh(hdr->hdr_entsz));
 		if (!uuid_is_nil(&ent->ent_type, NULL)) {
@@ -149,7 +149,7 @@ add(int fd)
 	gpt_write(fd, lbt);
 	gpt_write(fd, tpg);
 
-	printf("%sp%u added\n", device_name, i + 1);
+	printf("%ss%u added\n", device_name, i + 1);
 }
 
 int
@@ -169,10 +169,10 @@ cmd_add(int argc, char *argv[])
 				usage_add();
 			break;
 		case 'i':
-			if (entry > 0)
+			if (entry != NOENTRY)
 				usage_add();
-			entry = strtol(optarg, &p, 10);
-			if (*p != 0 || entry < 1)
+			entry = strtoul(optarg, &p, 10);
+			if (*p != 0 || entry == NOENTRY)
 				usage_add();
 			break;
 		case 's':

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/label.c,v 1.3 2006/10/04 18:20:25 marcel Exp $
- * $DragonFly: src/sbin/gpt/label.c,v 1.1 2007/06/16 22:29:27 dillon Exp $
+ * $DragonFly: src/sbin/gpt/label.c,v 1.2 2007/06/17 08:34:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -42,7 +42,7 @@
 static int all;
 static uuid_t type;
 static off_t block, size;
-static unsigned int entry;
+static unsigned int entry = NOENTRY;
 static uint8_t *name;
 
 static void
@@ -91,16 +91,16 @@ label(int fd)
 
 	/* Relabel all matching entries in the map. */
 	for (m = map_first(); m != NULL; m = m->map_next) {
-		if (m->map_type != MAP_TYPE_GPT_PART || m->map_index < 1)
+		if (m->map_type != MAP_TYPE_GPT_PART || m->map_index == NOENTRY)
 			continue;
-		if (entry > 0 && entry != m->map_index)
+		if (entry != NOENTRY && entry != m->map_index)
 			continue;
 		if (block > 0 && block != m->map_start)
 			continue;
 		if (size > 0 && size != m->map_size)
 			continue;
 
-		i = m->map_index - 1;
+		i = m->map_index;
 
 		hdr = gpt->map_data;
 		ent = (void*)((char*)tbl->map_data + i *
@@ -136,7 +136,7 @@ label(int fd)
 		gpt_write(fd, lbt);
 		gpt_write(fd, tpg);
 
-		printf("%sp%u labeled\n", device_name, m->map_index);
+		printf("%ss%u labeled\n", device_name, m->map_index);
 	}
 }
 
@@ -194,10 +194,10 @@ cmd_label(int argc, char *argv[])
 			name_from_file(optarg);
 			break;
 		case 'i':
-			if (entry > 0)
+			if (entry != NOENTRY)
 				usage_label();
-			entry = strtol(optarg, &p, 10);
-			if (*p != 0 || entry < 1)
+			entry = strtoul(optarg, &p, 10);
+			if (*p != 0 || entry == NOENTRY)
 				usage_label();
 			break;
 		case 'l':
@@ -224,7 +224,8 @@ cmd_label(int argc, char *argv[])
 	}
 
 	if (!all ^
-	    (block > 0 || entry > 0 || size > 0 || !uuid_is_nil(&type, NULL)))
+	    (block > 0 || entry != NOENTRY || size > 0 ||
+	     !uuid_is_nil(&type, NULL)))
 		usage_label();
 
 	if (name == NULL || argc == optind)

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/map.c,v 1.6 2005/08/31 01:47:19 marcel Exp $
- * $DragonFly: src/sbin/gpt/map.c,v 1.1 2007/06/16 22:29:27 dillon Exp $
+ * $DragonFly: src/sbin/gpt/map.c,v 1.2 2007/06/17 08:34:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -50,7 +50,7 @@ mkmap(off_t start, off_t size, int type)
 	m->map_size = size;
 	m->map_next = m->map_prev = NULL;
 	m->map_type = type;
-	m->map_index = 0;
+	m->map_index = NOENTRY;
 	m->map_data = NULL;
 	return (m);
 }

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/map.h,v 1.6 2005/08/31 01:47:19 marcel Exp $
- * $DragonFly: src/sbin/gpt/map.h,v 1.1 2007/06/16 22:29:27 dillon Exp $
+ * $DragonFly: src/sbin/gpt/map.h,v 1.2 2007/06/17 08:34:59 dillon Exp $
  */
 
 #ifndef _MAP_H_
@@ -46,6 +46,7 @@ typedef struct map {
 #define	MAP_TYPE_GPT_PART	7
 #define	MAP_TYPE_PMBR		8
 	unsigned int map_index;
+#define NOENTRY		((unsigned int)-1)
 	void 	*map_data;
 } map_t;
 

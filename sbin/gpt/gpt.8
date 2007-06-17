@@ -23,7 +23,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.2 2007/06/17 08:15:08 dillon Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.3 2007/06/17 08:34:59 dillon Exp $
 .\"
 .Dd June 22, 2006
 .Os
@@ -119,6 +119,7 @@ The
 option allows the user to specify which (free) entry in the GPT table is to
 be used for the new partition.
 By default, the first free entry is selected.
+Entries start at index 0 representing partition 0 of the GPT.
 .Pp
 The
 .Fl s Ar count
@@ -202,6 +203,7 @@ option selects the partition that starts at the given block number.
 The
 .Fl i Ar index
 option selects the partition with the given partition number.
+Partition numbers start at 0.
 .Pp
 The
 .Fl s Ar count

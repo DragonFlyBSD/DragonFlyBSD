@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/show.c,v 1.14 2006/06/22 22:22:32 marcel Exp $
- * $DragonFly: src/sbin/gpt/show.c,v 1.2 2007/06/17 08:15:08 dillon Exp $
+ * $DragonFly: src/sbin/gpt/show.c,v 1.3 2007/06/17 08:34:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -93,10 +93,10 @@ show(int fd __unused)
 		printf("  %*llu", lbawidth, (long long)m->map_size);
 		putchar(' ');
 		putchar(' ');
-		if (m->map_index > 0)
+		if (m->map_index != NOENTRY)
 			printf("%5d", m->map_index);
 		else
-			printf("     ");
+			printf("    -");
 		putchar(' ');
 		putchar(' ');
 		switch (m->map_type) {
