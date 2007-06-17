@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libm/Makefile,v 1.6 2005/10/01 12:40:33 corecode Exp $
+# $DragonFly: src/lib/libm/Makefile,v 1.7 2007/06/17 17:46:01 pavalos Exp $
 
 LIB=		m
 SHLIB_MAJOR=	3
@@ -13,6 +13,7 @@ ARCHDIR= i386
 .if exists(arch/${ARCHDIR}/Makefile.inc)
 .include "arch/${ARCHDIR}/Makefile.inc"
 .endif
+.include "gen/Makefile.inc"
 .include "man/Makefile.inc"
 .include "src/Makefile.inc"
 

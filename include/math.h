@@ -9,7 +9,7 @@
  * ====================================================
  *
  * $NetBSD: math.h,v 1.41 2005/07/21 12:56:29 christos Exp $
- * $DragonFly: src/include/math.h,v 1.10 2007/06/17 06:26:18 pavalos Exp $
+ * $DragonFly: src/include/math.h,v 1.11 2007/06/17 17:46:01 pavalos Exp $
  */
 
 /*
@@ -314,6 +314,9 @@ float	remainderf(float, float);
 /* 7.2.11 manipulation */
 
 float	copysignf(float, float);
+double	nan(const char *);
+float	nanf(const char *);
+long double	nanl(const char *);
 float	nextafterf(float, float);
 
 #endif /* __ISO_C_VISIBLE >= 1999 */
