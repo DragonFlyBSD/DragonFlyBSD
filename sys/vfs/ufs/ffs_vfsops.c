@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.56 2007/05/16 05:20:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.57 2007/06/17 05:08:52 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1042,8 +1042,9 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	 * We have to recheck after having obtained the vnode interlock.
 	 */
 	ip = VTOI(vp);
-	if (vp->v_type == VNON || ((ip->i_flag &
-	     (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
+	if (vp->v_type == VNON || vp->v_type == VBAD ||
+	     ((ip->i_flag &
+	      (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);
 	}
@@ -1127,6 +1128,7 @@ restart:
 	if (ufs_ihashins(ip) != 0) {
 		kprintf("debug: ufs ihashins collision, retrying inode %ld\n",
 		    (long)ip->i_number);
+		vp->v_type = VBAD;
 		vx_put(vp);
 		kfree(ip, ump->um_malloctype);
 		goto restart;
@@ -1143,6 +1145,7 @@ restart:
 		 * still zero, it will be unlinked and returned to the free
 		 * list by vput().
 		 */
+		vp->v_type = VBAD;
 		brelse(bp);
 		vx_put(vp);
 		*vpp = NULL;
@@ -1161,6 +1164,7 @@ restart:
 	 */
 	error = ufs_vinit(mp, &vp);
 	if (error) {
+		vp->v_type = VBAD;
 		vx_put(vp);
 		*vpp = NULL;
 		return (error);
