@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.44 2007/05/22 21:28:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.45 2007/06/17 03:51:14 dillon Exp $
  */
 /*
  * Copyright (c) 1995 Jason R. Thorpe.
@@ -108,7 +108,7 @@
  * @(#)cd.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $
  * $NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.44 2007/05/22 21:28:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.45 2007/06/17 03:51:14 dillon Exp $
  */
 
 /*
@@ -453,12 +453,12 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 		 * Skip a certain amount of storage at the beginning of
 		 * the component to make sure we don't infringe on any
 		 * reserved sectors.  This is handled entirely by
-		 * dpart.skip_bsdlabel but we also impose a minimum
+		 * dpart.reserved_blocks but we also impose a minimum
 		 * of 16 sectors for backwards compatibility.
 		 */
 		skip = 16;
-		if (skip < dpart.skip_bsdlabel)
-			skip = dpart.skip_bsdlabel;
+		if (skip < dpart.reserved_blocks)
+			skip = dpart.reserved_blocks;
 		size = dpart.media_blocks - skip;
 
 		/*

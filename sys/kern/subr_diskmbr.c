@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.24 2007/05/19 09:46:18 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.25 2007/06/17 03:51:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -152,8 +152,21 @@ reread_mbr:
 
 	dp0 = &dpcopy[0];
 
-	/* Check for "Ontrack Diskmanager". */
+	/*
+	 * Check for "Ontrack Diskmanager" or GPT.  If a GPT is found in
+	 * the first dos partition, ignore the rest of the MBR and go
+	 * to GPT processing.
+	 */
 	for (dospart = 0, dp = dp0; dospart < NDOSPART; dospart++, dp++) {
+		if (dospart == 0 &&
+		    (dp->dp_typ == DOSPTYP_PMBR || dp->dp_typ == DOSPTYP_GPT)) {
+			if (bootverbose)
+				kprintf(
+	    "%s: Found GPT in slice #%d\n", sname, dospart + 1);
+			error = gptinit(dev, info, sspp);
+			goto done;
+		}
+
 		if (dp->dp_typ == DOSPTYP_ONTRACK) {
 			if (bootverbose)
 				kprintf(
@@ -514,12 +527,8 @@ mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
 	sp->ds_type = dp->dp_typ;
 
 	/*
-	 * The first sector in each slice is reserved for a system boot
-	 * sector.  ds_skip_bsdlabel is always inclusive of ds_skip_platform,
-	 * if they are the same then there is no label present (or yet
-	 * loaded).
+	 * Slices do not overlap with the parent (if any).
 	 */
-	sp->ds_skip_platform = 1;
-	sp->ds_skip_bsdlabel = 1;
+	sp->ds_reserved = 0;
 	return (0);
 }

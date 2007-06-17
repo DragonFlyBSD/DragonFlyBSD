@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.35 2007/06/13 20:58:37 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.36 2007/06/17 03:51:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -226,7 +226,7 @@ disk_dumpcheck(cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize)
 	if (pinfo.media_blksize == 0)
 		return (ENXIO);
 	*count = (u_int64_t)Maxmem * PAGE_SIZE / pinfo.media_blksize;
-	if (dumplo64 < pinfo.skip_bsdlabel ||
+	if (dumplo64 < pinfo.reserved_blocks ||
 	    dumplo64 + *count > pinfo.media_blocks) {
 		return (ENOSPC);
 	}

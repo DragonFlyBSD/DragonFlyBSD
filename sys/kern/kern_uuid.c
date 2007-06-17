@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_uuid.c,v 1.13 2007/04/23 12:53:00 pjd Exp $
- * $DragonFly: src/sys/kern/kern_uuid.c,v 1.2 2007/06/16 19:57:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_uuid.c,v 1.3 2007/06/17 03:51:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -207,6 +207,21 @@ sbuf_printf_uuid(struct sbuf *sb, struct uuid *uuid)
 
 	snprintf_uuid(buf, sizeof(buf), uuid);
 	return (sbuf_printf(sb, "%s", buf));
+}
+
+/*
+ * Test functions
+ */
+int
+kuuid_is_nil(struct uuid *uuid)
+{
+	int i;
+
+	for (i = 0; i < sizeof(*uuid); i += sizeof(int)) {
+		if (*(int *)((char *)uuid + i) != 0)
+			return(0);
+	}
+	return(1);
 }
 
 /*

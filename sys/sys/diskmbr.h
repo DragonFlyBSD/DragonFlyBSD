@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD$
- * $DragonFly: src/sys/sys/diskmbr.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/diskmbr.h,v 1.4 2007/06/17 03:51:11 dillon Exp $
  */
 
 #ifndef _SYS_DISKMBR_H_
@@ -57,9 +57,15 @@
 #define	DOSPTYP_LINSWP	0x82	/* Linux swap partition */
 #define	DOSPTYP_LINUX	0x83	/* Linux partition */
 #define	DOSPTYP_PMBR	0xee	/* GPT Protective MBR */
+#define	DOSPTYP_GPT	0xef	/* GPT Native EFI */
 #define	DOSPTYP_EXT	5	/* DOS extended partition */
 #define	DOSPTYP_EXTLBA	15	/* DOS extended partition */
 
+/*
+ * Note that sector numbers in a legacy MBR DOS partition start at 1 instead
+ * of 0, so the first sector of the disk would be cyl 0, head 0, sector 1
+ * and translate to block 0 in the actual disk I/O.
+ */
 struct dos_partition {
 	unsigned char	dp_flag;	/* bootstrap flags */
 	unsigned char	dp_shd;		/* starting head */

@@ -57,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.18 2007/06/13 20:58:38 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.19 2007/06/17 03:51:11 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -88,6 +88,7 @@
 #define DIOCWLABEL		_IOW('d', 109, int)
 #define	DIOCGSLICEINFO		_IOR('d', 111, struct diskslices)
 #define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
+#define	DIOCSETSNOOP		_IOW('d', 113, int)
 #define	MAX_SLICES		16
 
 /*
@@ -117,30 +118,16 @@
  * diskslice structure - slices up the disk and indicates where the
  * BSD labels are, if any.
  *
- * ds_skip_platform  -	sectors reserved by the platform abstraction,
- *		      	typically to hold boot sectors and other junk.
- *		      	The BSD label is placed after the reserved sectors.
- *
- *			This field is typically non-zero for dos slices.
- *			It will always be 0 for the whole-disk slice.
- *			
- * ds_skip_bsdlabel  -	sectors reserved by the BSD label.  Always 0 when
- *			the disk is accessed via the whole-disk slice.
- *
- *			This field includes any sectors reserved by the
- *			platform. e.g. in a dos slice the platform uses
- *			1 sector (the boot code sector) and the disklabel
- *			uses 15 sectors.  This field will be set to 16.
- *			
- *			This field would end up being set to one less for
- *			a directly labeled disk, at least for a standard
- *			bsd disklabel vs MBR + bsd disklabel.
+ * ds_reserved	     -  indicates read-only sectors due to an overlap with
+ *			a parent partition or an in-band label.  BSD labels
+ *			are in-band labels.  This field is also set if
+ *			label snooping has been requested, even if there is
+ *			no label present.
  */
 struct diskslice {
 	u_int64_t	ds_offset;	/* starting sector */
 	u_int64_t	ds_size;	/* number of sectors */
-	u_int32_t	ds_skip_platform;	/* in sectors */
-	u_int32_t	ds_skip_bsdlabel;	/* in sectors */
+	u_int32_t	ds_reserved;	/* sectors reserved parent overlap */
 	int		ds_type;	/* (foreign) slice type */
 	struct disklabel *ds_label;	/* BSD label, if any */
 	void		*ds_dev;	/* devfs token for raw whole slice */
@@ -170,12 +157,11 @@ struct diskslices {
  * NOTE: media_offset currently represents the byte offset on the raw device,
  * it is not a partition relative offset.
  *
- * skip_platform and skip_bsdlabel work as with the diskslice
- * structure.  For partitions within a disklabel these fields are usually
- * 0 except for partitions which overlap the label or slice reserved area
- * itself.  Those partitions will set these fields appropriately (relative
- * to the partition).  In particular, the 'a' and 'c' partitions are
- * protected.
+ * NOTE: reserved_blocks indicates how many blocks at the beginning of the
+ * partition are read-only due to in-band sharing with the parent.  For
+ * example, if partition 'a' starts at block 0, it actually overlaps the
+ * disklabel itself so numerous sectors at the beginning of 'a' will be
+ * reserved.
  */
 struct partinfo {
 	u_int64_t	media_offset;	/* byte offset in parent layer */
@@ -183,8 +169,7 @@ struct partinfo {
 	u_int64_t	media_blocks;	/* media size in blocks */
 	int		media_blksize;	/* block size in bytes (sector size) */
 
-	u_int32_t	skip_platform;	/* in sectors */
-	u_int32_t	skip_bsdlabel;	/* in sectors */
+	u_int64_t	reserved_blocks;/* read-only, in sectors */
 	int		fstype;		/* filesystem type if numeric */
 	char		fstypestr[16];	/* filesystem type as ascii */
 
@@ -406,6 +391,8 @@ struct disk_info;
 struct bio_queue_head;
 
 int	mbrinit (cdev_t dev, struct disk_info *info,
+		    struct diskslices **sspp);
+int	gptinit (cdev_t dev, struct disk_info *info,
 		    struct diskslices **sspp);
 struct bio *
 	dscheck (cdev_t dev, struct bio *bio, struct diskslices *ssp);

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/gpt.h,v 1.10 2006/06/22 22:11:12 marcel Exp $
- * $DragonFly: src/sys/sys/gpt.h,v 1.1 2007/06/16 18:55:24 dillon Exp $
+ * $DragonFly: src/sys/sys/gpt.h,v 1.2 2007/06/17 03:51:11 dillon Exp $
  */
 
 #ifndef _SYS_GPT_H_
@@ -57,6 +57,7 @@ struct gpt_hdr {
 	uint32_t	padding;
 };
 
+#define GPT_MIN_HDR_SIZE	offsetof(struct gpt_hdr, padding)
 #define	GPT_HDR_SIG		"EFI PART"
 #define	GPT_HDR_REVISION	0x00010000
 

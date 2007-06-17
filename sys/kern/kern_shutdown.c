@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.56 2007/06/04 17:21:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.57 2007/06/17 03:51:10 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -590,7 +590,7 @@ setdumpdev(cdev_t dev)
 
 	newdumplo = pinfo.media_blocks - 
 		    ((u_int64_t)Maxmem * PAGE_SIZE / DEV_BSIZE);
-	if ((int64_t)newdumplo < (int64_t)pinfo.skip_bsdlabel)
+	if ((int64_t)newdumplo < (int64_t)pinfo.reserved_blocks)
 		return (ENOSPC);
 	dumpdev = dev;
 	dumplo64 = newdumplo;

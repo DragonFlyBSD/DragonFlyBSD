@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.18 2007/05/20 23:21:34 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.19 2007/06/17 03:51:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -371,7 +371,10 @@ makelabel(const char *type, const char *name, struct disklabel *lp)
 int
 writelabel(int f, const char *boot, struct disklabel *lp)
 {
+	int yes = 1;
+	int no = 0;
 	int flag;
+	int r;
 
 	if (disable_write) {
 		Warning("write to disk label supressed - label was as follows:");
@@ -403,13 +406,14 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			lseek(f, (off_t)0, SEEK_SET);
 			
 			/*
-			 * write enable label sector before write (if necessary),
-			 * disable after writing.
+			 * write enable label sector before write
+			 * (if necessary), disable after writing.
 			 */
 			flag = 1;
 			if (ioctl(f, DIOCWLABEL, &flag) < 0)
 				warn("ioctl DIOCWLABEL");
-			if (write(f, boot, lp->d_bbsize) != (ssize_t)lp->d_bbsize) {
+			r = write(f, boot, lp->d_bbsize);
+			if (r != ((ssize_t)lp->d_bbsize)) {
 				warn("write");
 				return (1);
 			}
@@ -417,9 +421,14 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			/*
 			 * Output the remainder of the disklabel
 			 */
-			if (bootbuf && write(f, bootbuf, bootsize) != bootsize) {
-				warn("write");
-				return(1);
+			if (bootbuf) {
+				ioctl(f, DIOCSETSNOOP, &yes);
+				r = write(f, bootbuf, bootsize);
+				ioctl(f, DIOCSETSNOOP, &no);
+				if (r != bootsize) {
+					warn("write");
+					return(1);
+				}
 			}
 #endif
 			flag = 0;
@@ -470,9 +479,16 @@ struct disklabel *
 readlabel(int f)
 {
 	struct disklabel *lp;
+	int r;
+	int yes = 1;
+	int no = 0;
 
 	if (rflag) {
-		if (read(f, bootarea, BBSIZE) < BBSIZE)
+		if (ioctl(f, DIOCSETSNOOP, &yes) < 0)
+			printf("BAD SNOOP\n");
+		r = read(f, bootarea, BBSIZE);
+		ioctl(f, DIOCSETSNOOP, &no);
+		if (r < BBSIZE)
 			err(4, "%s", specname);
 		for (lp = (struct disklabel *)bootarea;
 		    lp <= (struct disklabel *)(bootarea + BBSIZE - sizeof(*lp));

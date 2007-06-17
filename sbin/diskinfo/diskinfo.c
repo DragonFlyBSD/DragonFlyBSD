@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.2 2007/05/16 05:20:10 dillon Exp $
+ * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.3 2007/06/17 03:51:12 dillon Exp $
  */
 
 #define DKTYPENAMES
@@ -129,13 +129,12 @@ dumppart(const char *path, struct partinfo *dpart)
 				printf("%s", fstypenames[dpart->fstype]);
 			}
 		}
-		if (dpart->skip_platform || dpart->skip_bsdlabel) {
+		if (dpart->reserved_blocks) {
 			/*
 			 * note: rsvdlabel is inclusive of rsvdplat. i.e.
 			 * they are not relative to each other.
 			 */
-			printf(" rsvdplat=%d rsvdlabel=%d",
-				dpart->skip_platform, dpart->skip_bsdlabel);
+			printf(" reserved=%lld", dpart->reserved_blocks);
 		}
 	}
 	printf("\n");
