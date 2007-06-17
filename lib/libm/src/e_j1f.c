@@ -12,8 +12,8 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: e_j1f.c,v 1.7 2002/05/26 22:01:50 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_j1f.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: e_j1f.c,v 1.10 2006/03/19 20:54:15 christos Exp $
+ * $DragonFly: src/lib/libm/src/e_j1f.c,v 1.2 2007/06/17 01:09:00 pavalos Exp $
  */
 
 #include <math.h>
@@ -63,8 +63,11 @@ j1f(float x)
 	 * j1(x) = 1/sqrt(pi) * (P(1,x)*cc - Q(1,x)*ss) / sqrt(x)
 	 * y1(x) = 1/sqrt(pi) * (P(1,x)*ss + Q(1,x)*cc) / sqrt(x)
 	 */
+#ifdef DEAD_CODE
 		if(ix>0x80000000) z = (invsqrtpi*cc)/sqrtf(y);
-		else {
+		else
+#endif
+		{
 		    u = ponef(y); v = qonef(y);
 		    z = invsqrtpi*(u*cc-v*ss)/sqrtf(y);
 		}
@@ -284,7 +287,7 @@ static const float qs5[6] = {
  -4.7191835938e+03, /* 0xc5937978 */
 };
 
-static const float qr3[6] = {
+static const float qr3[6] = { /* for x in [4.5454,2.8570]=1/[0.22001,0.3499] */
  -5.0783124372e-09, /* 0xb1ae7d4f */
  -1.0253783315e-01, /* 0xbdd1ff5b */
  -4.6101160049e+00, /* 0xc0938612 */
@@ -328,9 +331,13 @@ qonef(float x)
 	p = q = 0;
 	GET_FLOAT_WORD(ix,x);
 	ix &= 0x7fffffff;
-	if(ix>=0x40200000)     {p = qr8; q= qs8;}
-	else if(ix>=0x40f71c58){p = qr5; q= qs5;}
-	else if(ix>=0x4036db68){p = qr3; q= qs3;}
+	/* [inf, 8]		(8      41000000) */
+	if(ix>=0x41000000)     {p = qr8; q= qs8;}
+	/* [8, 4.5454]		(4.5454 409173eb) */
+	else if(ix>=0x409173eb){p = qr5; q= qs5;}
+	/* [4.5454, 2.8570] 	(2.8570	4036d917) */
+	else if(ix>=0x4036d917){p = qr3; q= qs3;}
+	/* [2.8570, 2]		(2 	40000000) */
 	else if(ix>=0x40000000){p = qr2; q= qs2;}
 	z = one/(x*x);
 	r = p[0]+z*(p[1]+z*(p[2]+z*(p[3]+z*(p[4]+z*p[5]))));
