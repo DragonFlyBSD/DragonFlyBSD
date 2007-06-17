@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.118 2007/06/09 18:21:18 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.119 2007/06/17 20:33:14 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -484,6 +484,7 @@ options 	NETGRAPH_BPF
 options 	NETGRAPH_BRIDGE
 options 	NETGRAPH_CISCO
 options 	NETGRAPH_ECHO
+options		NETGRAPH_EIFACE
 options 	NETGRAPH_ETHER
 options 	NETGRAPH_FRAME_RELAY
 options 	NETGRAPH_HOLE

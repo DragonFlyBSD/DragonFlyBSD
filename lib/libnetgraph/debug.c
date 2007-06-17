@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/lib/libnetgraph/debug.c,v 1.5.2.1 2000/05/01 18:09:54 archie Exp $
- * $DragonFly: src/lib/libnetgraph/debug.c,v 1.3 2003/08/08 04:18:34 dillon Exp $
+ * $DragonFly: src/lib/libnetgraph/debug.c,v 1.4 2007/06/17 20:33:14 swildner Exp $
  * $Whistle: debug.c,v 1.24 1999/01/24 01:15:33 archie Exp $
  */
 
@@ -60,16 +60,23 @@
 #include <netgraph/UI/ng_UI.h>
 #include <netgraph/async/ng_async.h>
 #include <netgraph/bpf/ng_bpf.h>
+#include <netgraph/bridge/ng_bridge.h>
 #include <netgraph/cisco/ng_cisco.h>
 #include <netgraph/echo/ng_echo.h>
+#include <netgraph/eiface/ng_eiface.h>
+#include <netgraph/etf/ng_etf.h>
 #include <netgraph/ether/ng_ether.h>
 #include <netgraph/frame_relay/ng_frame_relay.h>
 #include <netgraph/hole/ng_hole.h>
 #include <netgraph/iface/ng_iface.h>
 #include <netgraph/ksocket/ng_ksocket.h>
+#include <netgraph/l2tp/ng_l2tp.h>
 #include <netgraph/lmi/ng_lmi.h>
+#include <netgraph/mppc/ng_mppc.h>
+#include <netgraph/one2many/ng_one2many.h>
 #include <netgraph/ppp/ng_ppp.h>
 #include <netgraph/pppoe/ng_pppoe.h>
+#include <netgraph/pptpgre/ng_pptpgre.h>
 #include <netgraph/rfc1490/ng_rfc1490.h>
 #include <netgraph/socket/ng_socket.h>
 #include <netgraph/tee/ng_tee.h>
@@ -81,8 +88,6 @@
 #include <machine/../isa/ipac.h>
 #include <netgraph/ng_df.h>
 #include <netgraph/ng_ipac.h>
-#include <netgraph/mppc/ng_mppc.h>
-#include <netgraph/pptpgre/ng_pptpgre.h>
 #include <netgraph/ng_tn.h>
 #endif
 
@@ -109,17 +114,24 @@ static const struct ng_cookie cookies[] = {
 	COOKIE(UI),
 	COOKIE(ASYNC),
 	COOKIE(BPF),
+	COOKIE(BRIDGE),
 	COOKIE(CISCO),
 	COOKIE(ECHO),
+	COOKIE(EIFACE),
+	COOKIE(ETF),
 	COOKIE(ETHER),
 	COOKIE(FRAMERELAY),
 	COOKIE(GENERIC),
 	COOKIE(HOLE),
 	COOKIE(IFACE),
 	COOKIE(KSOCKET),
+	COOKIE(L2TP),
 	COOKIE(LMI),
+	COOKIE(MPPC),
+	COOKIE(ONE2MANY),
 	COOKIE(PPP),
 	COOKIE(PPPOE),
+	COOKIE(PPTPGRE),
 	COOKIE(RFC1490),
 	COOKIE(SOCKET),
 	COOKIE(TEE),
@@ -128,8 +140,6 @@ static const struct ng_cookie cookies[] = {
 #ifdef WHISTLE
 	COOKIE(DF),
 	COOKIE(IPAC),
-	COOKIE(MPPC),
-	COOKIE(PPTPGRE),
 	COOKIE(TN),
 	COOKIE(WFRA),
 #endif

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.65 2007/05/26 08:50:49 sephe Exp $
+# $DragonFly: src/sys/conf/options,v 1.66 2007/06/17 20:33:14 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -320,6 +320,7 @@ NETGRAPH_BPF		opt_netgraph.h
 NETGRAPH_BRIDGE		opt_netgraph.h
 NETGRAPH_CISCO		opt_netgraph.h
 NETGRAPH_ECHO		opt_netgraph.h
+NETGRAPH_EIFACE		opt_netgraph.h
 NETGRAPH_ETHER		opt_netgraph.h
 NETGRAPH_FRAME_RELAY	opt_netgraph.h
 NETGRAPH_HOLE		opt_netgraph.h
