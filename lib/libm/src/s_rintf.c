@@ -12,8 +12,8 @@
  * is preserved.
  * ====================================================
  *
- * $NetBSD: s_rintf.c,v 1.7 2002/05/26 22:01:58 wiz Exp $
- * $DragonFly: src/lib/libm/src/s_rintf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: s_rintf.c,v 1.8 2006/08/01 20:14:35 drochner Exp $
+ * $DragonFly: src/lib/libm/src/s_rintf.c,v 1.2 2007/06/17 02:27:53 pavalos Exp $
  */
 
 #include <math.h>
@@ -30,7 +30,11 @@ rintf(float x)
 {
 	int32_t i0,j0,sx;
 	u_int32_t i,i1;
-	float w,t;
+#ifdef __i386__ /* XXX gcc4 will omit the rounding otherwise */
+	volatile
+#endif
+		float w;
+	float t;
 	GET_FLOAT_WORD(i0,x);
 	sx = (i0>>31)&1;
 	j0 = ((i0>>23)&0xff)-0x7f;

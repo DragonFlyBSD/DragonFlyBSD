@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $NetBSD: lrintf.c,v 1.3 2004/10/13 15:18:32 drochner Exp $
- * $DragonFly: src/lib/libm/src/lrintf.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $NetBSD: lrintf.c,v 1.4 2006/08/01 20:14:35 drochner Exp $
+ * $DragonFly: src/lib/libm/src/lrintf.c,v 1.2 2007/06/17 02:27:53 pavalos Exp $
  */
 
 #include <math.h>
@@ -53,6 +53,10 @@ LRINTNAME(float x)
 	u_int32_t i0;
 	int e, s, shift;
 	RESTYPE res;
+#ifdef __i386__ /* XXX gcc4 will omit the rounding otherwise */
+	volatile
+#endif
+		float w;
 
 	GET_FLOAT_WORD(i0, x);
 	e = i0 >> SNG_FRACBITS;
@@ -69,8 +73,8 @@ LRINTNAME(float x)
 	/* >= 2^23 is already an exact integer */
 	if (e < SNG_FRACBITS) {
 		/* round, using current direction */
-		x += TWO23[s];
-		x -= TWO23[s];
+		w = TWO23[s] + x;
+		x = w - TWO23[s];
 	}
 
 	GET_FLOAT_WORD(i0, x);
