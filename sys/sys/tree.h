@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.6 2007/04/19 19:06:01 dillon Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.7 2007/06/17 07:58:33 dillon Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -386,14 +386,19 @@ struct {								\
 
 /* Generates prototypes and inline functions */
 #define RB_PROTOTYPE(name, type, field, cmp)				\
-struct type *name##_RB_REMOVE(struct name *, struct type *);		\
-struct type *name##_RB_INSERT(struct name *, struct type *);		\
-struct type *name##_RB_FIND(struct name *, struct type *);		\
-int name##_RB_SCAN(struct name *, int (*)(struct type *, void *),	\
+	_RB_PROTOTYPE(, name, type, field, cmp)
+#define RB_STATIC_PROTOTYPE(name, type, field, cmp)			\
+	_RB_PROTOTYPE(static, name, type, field, cmp)
+
+#define _RB_PROTOTYPE(STORQUAL, name, type, field, cmp)			\
+STORQUAL struct type *name##_RB_REMOVE(struct name *, struct type *);	\
+STORQUAL struct type *name##_RB_INSERT(struct name *, struct type *);	\
+STORQUAL struct type *name##_RB_FIND(struct name *, struct type *);	\
+STORQUAL int name##_RB_SCAN(struct name *, int (*)(struct type *, void *),\
 			int (*)(struct type *, void *), void *);	\
-struct type *name##_RB_NEXT(struct type *);				\
-struct type *name##_RB_PREV(struct type *);				\
-struct type *name##_RB_MINMAX(struct name *, int);			\
+STORQUAL struct type *name##_RB_NEXT(struct type *);			\
+STORQUAL struct type *name##_RB_PREV(struct type *);			\
+STORQUAL struct type *name##_RB_MINMAX(struct name *, int);		\
 RB_SCAN_INFO(name, type)						\
 
 /*
@@ -417,14 +422,20 @@ struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
 RB_PROTOTYPE2(name, type, field, cmp, datatype);			\
 struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
 
-#define RB_PROTOTYPEX(name, type, field, cmp, rcmp, datatype)		\
-RB_PROTOTYPE2(name, type, field, cmp, datatype);			\
+#define RB_PROTOTYPEX(name, type, field, cmp, datatype)			\
+RB_PROTOTYPE(name, type, field, cmp);					\
 struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
 
 /* Main rb operation.
  * Moves node close to the key of elm to top
  */
 #define RB_GENERATE(name, type, field, cmp)				\
+	_RB_GENERATE(, name, type, field, cmp)
+
+#define RB_STATIC_GENERATE(name, type, field, cmp)			\
+	_RB_GENERATE(static, name, type, field, cmp)
+
+#define _RB_GENERATE(STORQUAL, name, type, field, cmp)			\
 static void								\
 name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 {									\
@@ -548,7 +559,7 @@ name##_RB_REMOVE_COLOR(struct name *head, struct type *parent,		\
 		RB_COLOR(elm, field) = RB_BLACK;			\
 }									\
 									\
-struct type *								\
+STORQUAL struct type *							\
 name##_RB_REMOVE(struct name *head, struct type *elm)			\
 {									\
 	struct type *child, *parent, *old;				\
@@ -624,7 +635,7 @@ color:									\
 }									\
 									\
 /* Inserts a node into the RB tree */					\
-struct type *								\
+STORQUAL struct type *							\
 name##_RB_INSERT(struct name *head, struct type *elm)			\
 {									\
 	struct type *tmp;						\
@@ -655,7 +666,7 @@ name##_RB_INSERT(struct name *head, struct type *elm)			\
 }									\
 									\
 /* Finds the node with the same key as elm */				\
-struct type *								\
+STORQUAL struct type *							\
 name##_RB_FIND(struct name *head, struct type *elm)			\
 {									\
 	struct type *tmp = RB_ROOT(head);				\
@@ -684,7 +695,7 @@ name##_SCANCMP_ALL(struct type *type, void *data)			\
 	return(0);							\
 }									\
 									\
-int									\
+STORQUAL int								\
 name##_RB_SCAN(struct name *head,					\
 		int (*scancmp)(struct type *, void *),			\
 		int (*callback)(struct type *, void *),			\
@@ -741,7 +752,7 @@ name##_RB_SCAN(struct name *head,					\
 }									\
 									\
 /* ARGSUSED */								\
-struct type *								\
+STORQUAL struct type *							\
 name##_RB_NEXT(struct type *elm)					\
 {									\
 	if (RB_RIGHT(elm, field)) {					\
@@ -763,7 +774,7 @@ name##_RB_NEXT(struct type *elm)					\
 }									\
 									\
 /* ARGSUSED */								\
-struct type *								\
+STORQUAL struct type *							\
 name##_RB_PREV(struct type *elm)					\
 {									\
 	if (RB_LEFT(elm, field)) {					\
@@ -784,7 +795,7 @@ name##_RB_PREV(struct type *elm)					\
 	return (elm);							\
 }									\
 									\
-struct type *								\
+STORQUAL struct type *							\
 name##_RB_MINMAX(struct name *head, int val)				\
 {									\
 	struct type *tmp = RB_ROOT(head);				\
@@ -885,21 +896,26 @@ name##_RB_RLOOKUP(struct name *head, datatype value)			\
 }									\
 
 /*
- * The 'X' version adds a generic ranged function using a callback instead
- * of fixed functions.
+ * This generates a custom lookup function for a red-black tree.
+ * Note that the macro may be used with a storage qualifier.
  */
-#define RB_GENERATEX(name, type, field, cmp, rcmp, datatype, begfield)	\
-RB_GENERATE2(name, type, field, cmp, datatype, begfield)		\
+
+#define RB_GENERATE_XLOOKUP(name, ext, type, field, xcmp, datatype)	   \
+	_RB_GENERATE_XLOOKUP(,name, ext, type, field, xcmp, datatype)
+#define RB_STATIC_GENERATE_XLOOKUP(name, ext, type, field, xcmp, datatype) \
+	_RB_GENERATE_XLOOKUP(static, name, ext, type, field, xcmp, datatype)
+
+#define _RB_GENERATE_XLOOKUP(STORQUAL, name, ext, type, field, xcmp, datatype)\
 									\
-struct type *								\
-name##_RB_RLOOKUP(struct name *head, datatype value)			\
+STORQUAL struct type *							\
+name##_RB_LOOKUP_##ext (struct name *head, datatype value)		\
 {									\
 	struct type *tmp;						\
 	int r;								\
 									\
 	tmp = RB_ROOT(head);						\
 	while (tmp) {							\
-		r = rcmp(value, tmp);					\
+		r = xcmp(value, tmp);					\
 		if (r == 0)						\
 			return(tmp);					\
 		if (r > 0) 						\
