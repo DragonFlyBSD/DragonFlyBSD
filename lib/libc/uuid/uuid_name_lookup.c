@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libc/uuid/uuid_name_lookup.c,v 1.1 2007/06/17 07:35:12 dillon Exp $
+ * $DragonFly: src/lib/libc/uuid/uuid_name_lookup.c,v 1.2 2007/06/17 07:36:28 dillon Exp $
  */
 /*
  * Implement UUID-to-NAME and NAME-to-UUID functions
@@ -194,7 +194,7 @@ uuid_loadcache(const char *path)
 	if ((fp = fopen(path, "r")) == NULL)
 		return;
 	while ((line = fgetln(fp, &len)) != NULL) {
-		if (len == 0)
+		if (len == 0 || *line == '#')
 			continue;
 		line[len-1] = 0;
 		uuid = strtok_r(line, " \t\r", &last);
