@@ -2,7 +2,7 @@
 #
 # $NetBSD: dhclient,v 1.8 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dhclient,v 1.6 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/dhclient,v 1.8 2006/06/03 10:41:26 y0netan1 Exp $
+# $DragonFly: src/etc/rc.d/dhclient,v 1.9 2007/06/17 14:08:00 swildner Exp $
 #
 
 # PROVIDE: dhclient
@@ -39,8 +39,7 @@ dhclient_common()
 	if [ -n "$_cmdifn" ]; then
 		eval _cooked_list=\"`expr "$dhcp_list" : ".*\($_cmdifn\).*"`\"
 		if [ -z "$_cooked_list" ]; then
-			err "No such network interface: $_cmdifn"
-			return 1
+			err 1 "No such network interface: $_cmdifn"
 		fi
 	fi
 }

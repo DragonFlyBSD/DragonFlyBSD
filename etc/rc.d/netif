@@ -23,7 +23,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/netif,v 1.2 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/netif,v 1.5 2005/12/29 17:29:10 dillon Exp $
+# $DragonFly: src/etc/rc.d/netif,v 1.6 2007/06/17 14:08:00 swildner Exp $
 #
 
 # PROVIDE: netif
@@ -88,7 +88,7 @@ network_common()
 	_verbose=
 
 	if [ -z "$1" ]; then
-		err "network_common(): No function name specified."
+		err 1 "network_common(): No function name specified."
 	else
 		_func="$1"
 	fi
@@ -103,8 +103,7 @@ network_common()
 	if [ -n "$_cmdifn" ]; then
 		eval _cooked_list=\"`expr "$_ifn_list" : ".*\($_cmdifn\).*"`\"
 		if [ -z "$_cooked_list" ]; then
-			err "No such network interface: $_cmdifn"
-			return 1
+			err 1 "No such network interface: $_cmdifn"
 		fi
 	fi
 
