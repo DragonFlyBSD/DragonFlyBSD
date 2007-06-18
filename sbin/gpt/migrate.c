@@ -24,11 +24,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/migrate.c,v 1.16 2005/09/01 02:42:52 marcel Exp $
- * $DragonFly: src/sbin/gpt/migrate.c,v 1.2 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sbin/gpt/migrate.c,v 1.3 2007/06/18 05:13:39 dillon Exp $
  */
 
 #include <sys/types.h>
-#include <sys/disklabel.h>
+#include <sys/disklabel32.h>
 #include <sys/dtype.h>
 
 #include <err.h>
@@ -68,15 +68,15 @@ static struct gpt_ent*
 migrate_disklabel(int fd, off_t start, struct gpt_ent *ent)
 {
 	char *buf;
-	struct disklabel *dl;
+	struct disklabel32 *dl;
 	off_t ofs, rawofs;
 	int i;
 
-	buf = gpt_read(fd, start + LABELSECTOR, 1);
-	dl = (void*)(buf + LABELOFFSET);
+	buf = gpt_read(fd, start + LABELSECTOR32, 1);
+	dl = (void*)(buf + LABELOFFSET32);
 
-	if (le32toh(dl->d_magic) != DISKMAGIC ||
-	    le32toh(dl->d_magic2) != DISKMAGIC) {
+	if (le32toh(dl->d_magic) != DISKMAGIC32 ||
+	    le32toh(dl->d_magic2) != DISKMAGIC32) {
 		warnx("%s: warning: FreeBSD slice without disklabel",
 		    device_name);
 		return (ent);

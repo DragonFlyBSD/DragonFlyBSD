@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.45 2007/06/17 23:50:16 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.46 2007/06/18 05:13:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,7 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/disklabel.h>
+#include <sys/disklabel32.h>
 #include <sys/diskslice.h>
 #include <sys/disk.h>
 #include <sys/diskmbr.h>
@@ -67,14 +68,14 @@
 #include <vfs/ufs/dinode.h>	/* XXX used only for fs.h */
 #include <vfs/ufs/fs.h>		/* XXX used only to get BBSIZE/SBSIZE */
 
-static void dsiodone (struct bio *bio);
 static int  dsreadandsetlabel(cdev_t dev, u_int flags,
 			   struct diskslices *ssp, struct diskslice *sp,
 			   struct disk_info *info);
 static void free_ds_label (struct diskslices *ssp, int slice);
-static void set_ds_label (struct diskslices *ssp, int slice,
-			      struct disklabel *lp);
+static void set_ds_label (struct diskslices *ssp, int slice, disklabel_t lp);
 static void set_ds_wlabel (struct diskslices *ssp, int slice, int wlabel);
+
+#define ops	(&disklabel32_ops)
 
 /*
  * Determine the size of the transfer, and make sure it is
@@ -96,8 +97,7 @@ dscheck(cdev_t dev, struct bio *bio, struct diskslices *ssp)
 {
 	struct buf *bp = bio->bio_buf;
 	struct bio *nbio;
-	struct disklabel *lp;
-	char *msg;
+	disklabel_t lp;
 	long nsec;
 	u_int64_t secno;
 	u_int64_t endsecno;
@@ -107,7 +107,6 @@ dscheck(cdev_t dev, struct bio *bio, struct diskslices *ssp)
 	u_int32_t slice;
 	int shift;
 	int mask;
-	int snoop;
 
 	slice = dkslice(dev);
 	part  = dkpart(dev);
@@ -156,9 +155,7 @@ doshift:
 	if (slice == WHOLE_DISK_SLICE) {
 		/*
 		 * Labels have not been allowed on whole-disks for a while.
-		 * This really puts the nail in the coffin... no disk
-		 * snooping will occur even if you tried to write a label
-		 * without a slice structure.
+		 * This really puts the nail in the coffin.
 		 *
 		 * Accesses to the WHOLE_DISK_SLICE do not use a disklabel
 		 * and partition numbers are special-cased.  Currently numbers
@@ -170,7 +167,7 @@ doshift:
 		 * sector size for the special raw access may not be the
 		 * same as the nominal sector size for the device.
 		 */
-		lp = NULL;
+		lp.opaque = NULL;
 		if (part < 128) {
 			kprintf("dscheck(%s): illegal partition number (%d) "
 				"for WHOLE_DISK_SLICE access\n",
@@ -189,35 +186,26 @@ doshift:
 		 */
 		endsecno = sp->ds_size;
 		slicerel_secno = secno;
-		snoop = 0;
 	} else if (part == WHOLE_SLICE_PART) {
 		/* 
-		 * We are accessing a slice.  Enable snooping of the bsd
-		 * label.  Note that snooping only occurs if ds_reserved
-		 * is also non-zero.  ds_reserved will be non-zero if
-		 * an in-core label is present or snooping has been
-		 * explicitly requested via an ioctl().
-		 *
 		 * NOTE! opens on a whole-slice partition will not attempt
 		 * to read a disklabel in, so there may not be an in-core
 		 * disklabel even if there is one on the disk.
 		 */
 		endsecno = sp->ds_size;
 		slicerel_secno = secno;
-		snoop = 1;
-	} else if ((lp = sp->ds_label) != NULL) {
+	} else if ((lp = sp->ds_label).opaque != NULL) {
 		/*
 		 * A label is present, extract the partition.  Snooping of
 		 * the disklabel is not supported even if accessible.  Of
 		 * course, the reserved area is still write protected.
 		 */
-		if (getpartbounds(lp, part, &slicerel_secno, &endsecno)) {
+		if (ops->op_getpartbounds(lp, part, &slicerel_secno, &endsecno)) {
 			kprintf("dscheck(%s): partition %d out of bounds\n",
 				devtoname(dev), part);
 			goto bad;
 		}
 		slicerel_secno += secno;
-		snoop = 0;
 	} else {
 		/*
 		 * Attempt to access partition when no disklabel present
@@ -281,42 +269,6 @@ doshift:
 	nbio = push_bio(bio);
 	nbio->bio_offset = (off_t)(sp->ds_offset + slicerel_secno) * 
 			   ssp->dss_secsize;
-
-	/*
-	 * Snoop reads and writes to the label area - only done if
-	 * snoop is non-zero, ds_reserved is non-zero, and the
-	 * read covers the label sector.
-	 */
-	if (snoop && slicerel_secno < sp->ds_reserved &&
-	    slicerel_secno <= LABELSECTOR &&
-	    nsec && slicerel_secno + nsec > LABELSECTOR) {
-		/* 
-		 * Set up our own callback on I/O completion to handle
-		 * undoing the fixup we did for the write as well as
-		 * doing the fixup for a read.
-		 *
-		 * Set info2.offset to the offset within the buffer containing
-		 * the start of the label.
-		 */
-		nbio->bio_done = dsiodone;
-		nbio->bio_caller_info1.ptr = sp;
-		nbio->bio_caller_info2.offset =
-			(LABELSECTOR - slicerel_secno) * ssp->dss_secsize;
-		if (bp->b_cmd != BUF_CMD_READ) {
-			msg = fixlabel(
-				NULL, sp,
-			       (struct disklabel *)
-			       (bp->b_data + (int)nbio->bio_caller_info2.offset),
-			       TRUE);
-			if (msg != NULL) {
-				kprintf("dscheck(%s): %s\n", 
-				    devtoname(dev), msg);
-				bp->b_error = EROFS;
-				pop_bio(nbio);
-				goto error;
-			}
-		}
-	}
 	return (nbio);
 
 bad_bcount:
@@ -386,10 +338,10 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 	struct diskslices **sspp, struct disk_info *info)
 {
 	int error;
-	struct disklabel *lp;
+	disklabel_t lp;
+	disklabel_t lptmp;
 	int old_wlabel;
 	u_int32_t openmask[DKMAXPARTITIONS/(sizeof(u_int32_t)*8)];
-	u_int64_t old_reserved;
 	int part;
 	int slice;
 	struct diskslice *sp;
@@ -404,7 +356,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 	lp = sp->ds_label;
 
 	switch (cmd) {
-	case DIOCGDVIRGIN:
+	case DIOCGDVIRGIN32:
 		/*
 		 * You can only retrieve a virgin disklabel on the whole
 		 * disk slice or whole-slice partition.
@@ -414,11 +366,11 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			return(EINVAL);
 		}
 
-		lp = (struct disklabel *)data;
-		makevirginlabel(lp, ssp, sp, info);
+		lp.opaque = data;
+		ops->op_makevirginlabel(lp, ssp, sp, info);
 		return (0);
 
-	case DIOCGDINFO:
+	case DIOCGDINFO32:
 		/*
 		 * You can only retrieve a disklabel on the whole
 		 * slice partition.
@@ -436,12 +388,12 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		    (info->d_dsflags & DSO_COMPATLABEL) == 0) {
 			return (ENODEV);
 		}
-		if (sp->ds_label == NULL) {
+		if (sp->ds_label.opaque == NULL) {
 			error = dsreadandsetlabel(dev, info->d_dsflags,
 						  ssp, sp, info);
 		}
 		if (error == 0)
-			*(struct disklabel *)data = *sp->ds_label;
+			bcopy(sp->ds_label.opaque, data, ops->labelsize);
 		return (error);
 
 	case DIOCGPART:
@@ -456,7 +408,8 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			 *
 			 * We ignore any error.
 			 */
-			if (sp->ds_label == NULL && part == WHOLE_SLICE_PART &&
+			if (sp->ds_label.opaque == NULL &&
+			    part == WHOLE_SLICE_PART &&
 			    slice != WHOLE_DISK_SLICE) {
 				dsreadandsetlabel(dev, info->d_dsflags,
 						  ssp, sp, info);
@@ -475,11 +428,11 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			    part != WHOLE_SLICE_PART) {
 				u_int64_t start;
 				u_int64_t blocks;
-				if (lp == NULL)
+				if (lp.opaque == NULL)
 					return(EINVAL);
-				if (getpartbounds(lp, part, &start, &blocks))
+				if (ops->op_getpartbounds(lp, part, &start, &blocks))
 					return(EINVAL);
-				dpart->fstype = getpartfstype(lp, part);
+				dpart->fstype = ops->op_getpartfstype(lp, part);
 				dpart->media_offset += start *
 						       info->d_media_blksize;
 				dpart->media_size = blocks *
@@ -512,7 +465,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 				 (char *)ssp);
 		return (0);
 
-	case DIOCSDINFO:
+	case DIOCSDINFO32:
 		/*
 		 * You can write a disklabel on the whole disk slice or
 		 * whole-slice partition.
@@ -532,20 +485,20 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 
 		if (!(flags & FWRITE))
 			return (EBADF);
-		lp = kmalloc(sizeof *lp, M_DEVBUF, M_WAITOK);
-		if (sp->ds_label == NULL)
-			bzero(lp, sizeof *lp);
+		lp.opaque = kmalloc(ops->labelsize, M_DEVBUF, M_WAITOK);
+		if (sp->ds_label.opaque == NULL)
+			bzero(lp.opaque, ops->labelsize);
 		else
-			bcopy(sp->ds_label, lp, sizeof *lp);
-		if (sp->ds_label == NULL) {
+			bcopy(sp->ds_label.opaque, lp.opaque, ops->labelsize);
+		if (sp->ds_label.opaque == NULL) {
 			bzero(openmask, sizeof(openmask));
 		} else {
 			bcopy(sp->ds_openmask, openmask, sizeof(openmask));
 		}
-		error = setdisklabel(lp, (struct disklabel *)data,
-				     sp, openmask);
+		lptmp.opaque = data;
+		error = ops->op_setdisklabel(lp, lptmp, sp, openmask);
 		if (error != 0) {
-			kfree(lp, M_DEVBUF);
+			kfree(lp.opaque, M_DEVBUF);
 			return (error);
 		}
 		free_ds_label(ssp, slice);
@@ -588,11 +541,8 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		 * complete, then lock out future accesses and opens.
 		 */
 		*sspp = NULL;
-		lp = kmalloc(sizeof *lp, M_DEVBUF, M_WAITOK);
-		*lp = *ssp->dss_slices[WHOLE_DISK_SLICE].ds_label;
 		error = dsopen(dev, S_IFCHR, ssp->dss_oflags, sspp, info);
 		if (error != 0) {
-			kfree(lp, M_DEVBUF);
 			*sspp = ssp;
 			return (error);
 		}
@@ -611,19 +561,17 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 					       S_IFCHR, ssp->dss_oflags, sspp,
 					       info);
 				if (error != 0) {
-					kfree(lp, M_DEVBUF);
 					*sspp = ssp;
 					return (EBUSY);
 				}
 			}
 		}
 
-		kfree(lp, M_DEVBUF);
 		dsgone(&ssp);
 		return (0);
 
-	case DIOCWDINFO:
-		error = dsioctl(dev, DIOCSDINFO, data, flags, &ssp, info);
+	case DIOCWDINFO32:
+		error = dsioctl(dev, DIOCSDINFO32, data, flags, &ssp, info);
 		if (error != 0)
 			return (error);
 
@@ -632,28 +580,10 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		 */
 		old_wlabel = sp->ds_wlabel;
 		set_ds_wlabel(ssp, slice, TRUE);
-		old_reserved = sp->ds_reserved;
-		sp->ds_reserved = SBSIZE / ssp->dss_secsize;
-		error = writedisklabel(dev, sp->ds_label);
+		error = ops->op_writedisklabel(dev, sp, sp->ds_label);
 		set_ds_wlabel(ssp, slice, old_wlabel);
-		sp->ds_reserved = old_reserved;
 		/* XXX should invalidate in-core label if write failed. */
 		return (error);
-
-	case DIOCSETSNOOP:
-		/*
-		 * Set label snooping even if there is no label present.
-		 */
-		if (slice == WHOLE_DISK_SLICE || part != WHOLE_SLICE_PART)
-			return (EINVAL);
-		if (lp == NULL) {
-			if (*(int *)data) {
-				sp->ds_reserved = SBSIZE / ssp->dss_secsize;
-			} else {
-				sp->ds_reserved = 0;
-			}
-		}
-		return (0);
 
 	case DIOCWLABEL:
 		if (slice == WHOLE_DISK_SLICE)
@@ -666,27 +596,6 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 	default:
 		return (ENOIOCTL);
 	}
-}
-
-/*
- * Chain the bio_done.  b_cmd remains valid through such chaining.
- */
-static void
-dsiodone(struct bio *bio)
-{
-	struct buf *bp = bio->bio_buf;
-	char *msg;
-
-	if (bp->b_cmd != BUF_CMD_READ
-	    || (!(bp->b_flags & B_ERROR) && bp->b_error == 0)) {
-		msg = fixlabel(NULL, bio->bio_caller_info1.ptr,
-			       (struct disklabel *)
-			       (bp->b_data + (int)bio->bio_caller_info2.offset),
-			       FALSE);
-		if (msg != NULL)
-			kprintf("%s\n", msg);
-	}
-	biodone(bio->bio_prev);
 }
 
 int
@@ -903,7 +812,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		 * template.
 		 */
 		sp = &ssp->dss_slices[WHOLE_DISK_SLICE];
-		sp->ds_label = clone_label(info, NULL);
+		sp->ds_label = ops->op_clone_label(info, NULL);
 		sp->ds_wlabel = TRUE;
 		sp->ds_reserved = 0;
 	}
@@ -927,7 +836,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	sp = &ssp->dss_slices[slice];
 	part = dkpart(dev);
 
-	if ((flags & DSO_NOLABELS) == 0 && sp->ds_label == NULL) {
+	if ((flags & DSO_NOLABELS) == 0 && sp->ds_label.opaque == NULL) {
 		dev1 = dkmodslice(dkmodpart(dev, WHOLE_SLICE_PART), slice);
 
 		/*
@@ -953,8 +862,10 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	 * table need exist.
 	 */
 	if (part != WHOLE_SLICE_PART && slice != WHOLE_DISK_SLICE) {
-		if (sp->ds_label == NULL || part >= getnumparts(sp->ds_label))
+		if (sp->ds_label.opaque == NULL ||
+		    part >= ops->op_getnumparts(sp->ds_label)) {
 			return (EINVAL);
+		}
 	}
 	dssetmask(sp, part);
 
@@ -983,34 +894,29 @@ dsreadandsetlabel(cdev_t dev, u_int flags,
 		  struct diskslices *ssp, struct diskslice *sp,
 		  struct disk_info *info)
 {
-	struct disklabel *lp1;
+	disklabel_t lp;
 	const char *msg;
 	const char *sname;
 	char partname[2];
 	int slice = dkslice(dev);
-	u_int64_t old_reserved;
+
+	lp.opaque = NULL;
 
 	sname = dsname(dev, dkunit(dev), slice, WHOLE_SLICE_PART, partname);
-	lp1 = clone_label(info, sp);
-	old_reserved = sp->ds_reserved;
-	sp->ds_reserved = 0;
-	msg = readdisklabel(dev, lp1);
-	sp->ds_reserved = old_reserved;
+	msg = ops->op_readdisklabel(dev, sp, &lp, info);
 
 	if (msg != NULL && (flags & DSO_COMPATLABEL)) {
 		msg = NULL;
-		kfree(lp1, M_DEVBUF);
-		lp1 = clone_label(info, sp);
+		lp = ops->op_clone_label(info, sp);
 	}
-	if (msg == NULL)
-		msg = fixlabel(sname, sp, lp1, FALSE);
 	if (msg != NULL) {
 		if (sp->ds_type == DOSPTYP_386BSD /* XXX */)
 			log(LOG_WARNING, "%s: cannot find label (%s)\n",
 			    sname, msg);
-		kfree(lp1, M_DEVBUF);
+		if (lp.opaque)
+			kfree(lp.opaque, M_DEVBUF);
 	} else {
-		set_ds_label(ssp, slice, lp1);
+		set_ds_label(ssp, slice, lp);
 		set_ds_wlabel(ssp, slice, FALSE);
 	}
 	return (msg ? EINVAL : 0);
@@ -1019,7 +925,7 @@ dsreadandsetlabel(cdev_t dev, u_int flags,
 int64_t
 dssize(cdev_t dev, struct diskslices **sspp)
 {
-	struct disklabel *lp;
+	disklabel_t lp;
 	int part;
 	int slice;
 	struct diskslices *ssp;
@@ -1037,9 +943,9 @@ dssize(cdev_t dev, struct diskslices **sspp)
 		ssp = *sspp;
 	}
 	lp = ssp->dss_slices[slice].ds_label;
-	if (lp == NULL)
+	if (lp.opaque == NULL)
 		return (-1);
-	if (getpartbounds(lp, part, &start, &blocks))
+	if (ops->op_getpartbounds(lp, part, &start, &blocks))
 		return (-1);
 	return ((int64_t)blocks);
 }
@@ -1047,24 +953,25 @@ dssize(cdev_t dev, struct diskslices **sspp)
 static void
 free_ds_label(struct diskslices *ssp, int slice)
 {
-	struct disklabel *lp;
 	struct diskslice *sp;
+	disklabel_t lp;
 
 	sp = &ssp->dss_slices[slice];
 	lp = sp->ds_label;
-	if (lp == NULL)
-		return;
-	kfree(lp, M_DEVBUF);
-	set_ds_label(ssp, slice, (struct disklabel *)NULL);
+	if (lp.opaque != NULL) {
+		kfree(lp.opaque, M_DEVBUF);
+		lp.opaque = NULL;
+		set_ds_label(ssp, slice, lp);
+	}
 }
 
 static void
-set_ds_label(struct diskslices *ssp, int slice, struct disklabel *lp)
+set_ds_label(struct diskslices *ssp, int slice, disklabel_t lp)
 {
 	struct diskslice *sp = &ssp->dss_slices[slice];
 
 	sp->ds_label = lp;
-	adjust_label_reserved(ssp, slice, sp);
+	ops->op_adjust_label_reserved(ssp, slice, sp);
 }
 
 static void

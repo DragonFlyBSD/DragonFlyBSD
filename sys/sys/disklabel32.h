@@ -32,11 +32,11 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel32.h,v 1.26 2007/06/17 23:50:12 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel32.h,v 1.27 2007/06/18 05:13:42 dillon Exp $
  */
 
-#ifndef _SYS_DISKLABEL_H_
-#define	_SYS_DISKLABEL_H_
+#ifndef _SYS_DISKLABEL32_H_
+#define	_SYS_DISKLABEL32_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -57,13 +57,13 @@
 
 /* XXX these should be defined per controller (or drive) elsewhere, not here! */
 #ifdef __i386__
-#define LABELSECTOR	1			/* sector containing label */
-#define LABELOFFSET	0			/* offset of label in sector */
+#define LABELSECTOR32	1			/* sector containing label */
+#define LABELOFFSET32	0			/* offset of label in sector */
 #endif
 
-#define DISKMAGIC	((u_int32_t)0x82564557)	/* The disk magic number */
-#ifndef MAXPARTITIONS
-#define	MAXPARTITIONS	16
+#define DISKMAGIC32	((u_int32_t)0x82564557)	/* The disk magic number */
+#ifndef MAXPARTITIONS32
+#define	MAXPARTITIONS32	16
 #endif
 
 #define	LABEL_PART	2		/* partition containing label */
@@ -71,7 +71,7 @@
 #define	SWAP_PART	1		/* partition normally containing swap */
 
 #ifndef LOCORE
-struct disklabel {
+struct disklabel32 {
 	u_int32_t d_magic;		/* the magic number */
 	u_int16_t d_type;		/* drive type */
 	u_int16_t d_subtype;		/* controller/d_type specific */
@@ -125,10 +125,10 @@ struct disklabel {
 	u_int32_t d_headswitch;		/* head switch time, usec */
 	u_int32_t d_trkseek;		/* track-to-track seek, usec */
 	u_int32_t d_flags;		/* generic flags (now unused) */
-#define NDDATA 5
-	u_int32_t d_drivedata[NDDATA];	/* drive-type specific information */
-#define NSPARE 5
-	u_int32_t d_spare[NSPARE];	/* reserved for future use */
+#define NDDATA32 5
+	u_int32_t d_drivedata[NDDATA32];/* drive-type specific information */
+#define NSPARE32 5
+	u_int32_t d_spare[NSPARE32];	/* reserved for future use */
 	u_int32_t d_magic2;		/* the magic number (again) */
 	u_int16_t d_checksum;		/* xor of data incl. partitions */
 
@@ -136,7 +136,7 @@ struct disklabel {
 	u_int16_t d_npartitions;	/* number of partitions in following */
 	u_int32_t d_bbsize;		/* size of boot area at sn0, bytes */
 	u_int32_t d_sbsize;		/* max size of fs superblock, bytes */
-	struct	partition {		/* the partition table */
+	struct	partition32 {		/* the partition table */
 		u_int32_t p_size;	/* number of sectors in partition */
 		u_int32_t p_offset;	/* starting sector */
 		u_int32_t p_fsize;	/* filesystem basic fragment size */
@@ -148,13 +148,13 @@ struct disklabel {
 		} __partition_u1;
 #define	p_cpg	__partition_u1.cpg
 #define	p_sgs	__partition_u1.sgs
-	} d_partitions[MAXPARTITIONS];	/* actually may be more */
+	} d_partitions[MAXPARTITIONS32];/* actually may be more */
 };
 
-static u_int16_t dkcksum(struct disklabel *lp);
+static u_int16_t dkcksum32(struct disklabel32 *lp);
 
 static __inline u_int16_t
-dkcksum(struct disklabel *lp)
+dkcksum32(struct disklabel32 *lp)
 {
 	u_int16_t *start, *end;
 	u_int16_t sum = 0;
@@ -165,6 +165,10 @@ dkcksum(struct disklabel *lp)
 		sum ^= *start++;
 	return (sum);
 }
+
+#ifdef _KERNEL
+extern struct disklabel_ops disklabel32_ops;
+#endif
 
 #else /* LOCORE */
 	/*
@@ -184,34 +188,11 @@ dkcksum(struct disklabel *lp)
 /*
  * Disk-specific ioctls.
  */
-#define DIOCGDINFO	_IOR('d', 101, struct disklabel)/* get */
-#define DIOCSDINFO	_IOW('d', 102, struct disklabel)/* set */
-#define DIOCWDINFO	_IOW('d', 103, struct disklabel)/* set, update disk */
-#define DIOCGDVIRGIN	_IOR('d', 105, struct disklabel) /* get virgin label */
-
-#ifdef _KERNEL
-
-struct diskslice;
-struct diskslices;
-struct disk_info;
-
-char	*readdisklabel (cdev_t dev, struct disklabel *lp);
-int	setdisklabel (struct disklabel *olp, struct disklabel *nlp,
-		    struct diskslice *sp, u_int32_t *openmask);
-int	writedisklabel (cdev_t dev, struct disklabel *lp);
-struct disklabel *clone_label(struct disk_info *info, struct diskslice *sp);
-char *fixlabel(const char *sname, struct diskslice *sp,
-		struct disklabel *lp, int writeflag);
-void adjust_label_reserved(struct diskslices *ssp, int slice, struct diskslice *sp);
-int getpartbounds(struct disklabel *lp, u_int32_t part,
-		    u_int64_t *start, u_int64_t *blocks);
-int getpartfstype(struct disklabel *lp, u_int32_t part);
-u_int32_t getnumparts(struct disklabel *lp);
-void makevirginlabel(struct disklabel *lp, struct diskslices *ssp,
-		    struct diskslice *sp, struct disk_info *info);
-
-#endif /* _KERNEL */
+#define DIOCGDINFO32	_IOR('d', 101, struct disklabel32) /* get */
+#define DIOCSDINFO32	_IOW('d', 102, struct disklabel32) /* set */
+#define DIOCWDINFO32	_IOW('d', 103, struct disklabel32) /* set, update disk */
+#define DIOCGDVIRGIN32	_IOR('d', 105, struct disklabel32) /* get virgin label */
 
 #endif /* LOCORE */
 
-#endif /* !_SYS_DISKLABEL_H_ */
+#endif /* !_SYS_DISKLABEL32_H_ */

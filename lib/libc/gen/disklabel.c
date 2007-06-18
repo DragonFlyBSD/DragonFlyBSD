@@ -32,12 +32,12 @@
  *
  * @(#)disklabel.c	8.2 (Berkeley) 5/3/95
  * $FreeBSD: src/lib/libc/gen/disklabel.c,v 1.9.2.1 2001/03/05 08:40:47 obrien Exp $
- * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.12 2007/06/17 23:50:13 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.13 2007/06/18 05:13:34 dillon Exp $
  */
 
 #include <sys/param.h>
 #define DKTYPENAMES
-#include <sys/disklabel.h>
+#include <sys/disklabel32.h>
 #include <sys/dtype.h>
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
@@ -52,12 +52,12 @@
 
 static int	gettype (const char *, const char **);
 
-struct disklabel *
+struct disklabel32 *
 getdiskbyname(const char *name)
 {
-	static struct	disklabel disk;
-	struct	disklabel *dp = &disk;
-	struct partition *pp;
+	static struct disklabel32 disk;
+	struct	disklabel32 *dp = &disk;
+	struct partition32 *pp;
 	char	*buf;
 	char  	*db_array[2] = { _PATH_DISKTAB, 0 };
 	char	*cp, *cq;	/* can't be register */
@@ -108,7 +108,7 @@ getdiskbyname(const char *name)
 	strcpy(ptype, "tx");
 	max = 'a' - 1;
 	pp = &dp->d_partitions[0];
-	for (p = 'a'; p < 'a' + MAXPARTITIONS; p++, pp++) {
+	for (p = 'a'; p < 'a' + MAXPARTITIONS32; p++, pp++) {
 		long l;
 		psize[1] = pbsize[1] = pfsize[1] = poffset[1] = ptype[1] = p;
 		if (cgetnum(buf, psize, &l) == -1)
@@ -135,12 +135,12 @@ getdiskbyname(const char *name)
 	dp->d_npartitions = max + 1 - 'a';
 	strcpy(psize, "dx");
 	dx = dp->d_drivedata;
-	for (p = '0'; p < '0' + NDDATA; p++, dx++) {
+	for (p = '0'; p < '0' + NDDATA32; p++, dx++) {
 		psize[1] = p;
 		getnumdflt(*dx, psize, 0);
 	}
-	dp->d_magic = DISKMAGIC;
-	dp->d_magic2 = DISKMAGIC;
+	dp->d_magic = DISKMAGIC32;
+	dp->d_magic2 = DISKMAGIC32;
 	free(buf);
 	return (dp);
 }

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)disktab.h	8.1 (Berkeley) 6/2/93
- * $DragonFly: src/include/disktab.h,v 1.3 2007/05/17 23:49:58 dillon Exp $
+ * $DragonFly: src/include/disktab.h,v 1.4 2007/06/18 05:13:33 dillon Exp $
  */
 
 #ifndef	_DISKTAB_H_
@@ -103,9 +103,9 @@ struct	disktab {
 
 #ifndef _KERNEL
 __BEGIN_DECLS
-struct disklabel;
+struct disklabel32;
 struct disktab *getdisktabbyname (const char *);
-struct disklabel *getdiskbyname (const char *);
+struct disklabel32 *getdiskbyname (const char *);
 __END_DECLS
 #endif
 

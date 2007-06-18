@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosdisk.c,v 1.45 2004/09/21 06:46:44 wes Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biosdisk.c,v 1.11 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/biosdisk.c,v 1.12 2007/06/18 05:13:42 dillon Exp $
  */
 
 /*
@@ -39,7 +39,7 @@
 
 #include <stand.h>
 
-#include <sys/disklabel.h>
+#include <sys/disklabel32.h>
 #include <sys/diskmbr.h>
 #include <sys/dtype.h>
 #include <machine/bootinfo.h>
@@ -82,7 +82,7 @@ struct open_disk {
 #define BD_FLOPPY		0x0004
 #define BD_LABELOK		0x0008
 #define BD_PARTTABOK		0x0010
-    struct disklabel		od_disklabel;
+    struct disklabel32		od_disklabel;
     int				od_nslices;	/* slice count */
     struct dos_partition	od_slicetab[NEXTDOSPART];
 };
@@ -370,14 +370,14 @@ bd_printbsdslice(struct open_disk *od, daddr_t offset, char *prefix,
 {
     char		line[80];
     char		buf[BIOSDISK_SECSIZE];
-    struct disklabel	*lp;
+    struct disklabel32	*lp;
     int			i;
 
     /* read disklabel */
-    if (bd_read(od, offset + LABELSECTOR, 1, buf))
+    if (bd_read(od, offset + LABELSECTOR32, 1, buf))
 	return;
-    lp =(struct disklabel *)(&buf[0]);
-    if (lp->d_magic != DISKMAGIC) {
+    lp =(struct disklabel32 *)(&buf[0]);
+    if (lp->d_magic != DISKMAGIC32) {
 	sprintf(line, "%s: FFS  bad disklabel\n", prefix);
 	pager_output(line);
 	return;
@@ -453,7 +453,7 @@ static int
 bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev)
 {
     struct dos_partition	*dptr;
-    struct disklabel		*lp;
+    struct disklabel32		*lp;
     struct open_disk		*od;
     int				sector, slice, i;
     int				error;
@@ -610,17 +610,17 @@ bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev)
 	DEBUG("opening raw slice");
     } else {
 	
-	if (bd_read(od, sector + LABELSECTOR, 1, buf)) {
+	if (bd_read(od, sector + LABELSECTOR32, 1, buf)) {
 	    DEBUG("error reading disklabel");
 	    error = EIO;
 	    goto out;
 	}
-	DEBUG("copy %d bytes of label from %p to %p", sizeof(struct disklabel), buf + LABELOFFSET, &od->od_disklabel);
-	bcopy(buf + LABELOFFSET, &od->od_disklabel, sizeof(struct disklabel));
+	DEBUG("copy %d bytes of label from %p to %p", sizeof(struct disklabel32), buf + LABELOFFSET32, &od->od_disklabel);
+	bcopy(buf + LABELOFFSET32, &od->od_disklabel, sizeof(struct disklabel32));
 	lp = &od->od_disklabel;
 	od->od_flags |= BD_LABELOK;
 
-	if (lp->d_magic != DISKMAGIC) {
+	if (lp->d_magic != DISKMAGIC32) {
 	    DEBUG("no disklabel");
 	    error = ENOENT;
 	    goto out;

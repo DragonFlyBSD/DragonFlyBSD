@@ -57,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.20 2007/06/17 09:56:17 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.21 2007/06/18 05:13:42 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -65,6 +65,9 @@
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_DISKLABEL_H_
+#include <sys/disklabel.h>
 #endif
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
@@ -88,7 +91,6 @@
 #define DIOCWLABEL		_IOW('d', 109, int)
 #define	DIOCGSLICEINFO		_IOR('d', 111, struct diskslices)
 #define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
-#define	DIOCSETSNOOP		_IOW('d', 113, int)
 #define	MAX_SLICES		16
 
 /*
@@ -129,7 +131,8 @@ struct diskslice {
 	u_int64_t	ds_size;	/* number of sectors */
 	u_int32_t	ds_reserved;	/* sectors reserved parent overlap */
 	int		ds_type;	/* (foreign) slice type */
-	struct disklabel *ds_label;	/* BSD label, if any */
+	disklabel_t 	ds_label;	/* label, if any */
+	struct disklabel_ops *ds_ops;	/* label ops (probe default) */
 	void		*ds_dev;	/* devfs token for raw whole slice */
 	void		*ds_devs[MAXPARTITIONS]; /* XXX s.b. in label */
 	u_int32_t	ds_openmask[DKMAXPARTITIONS/(sizeof(u_int32_t)*8)];
@@ -386,7 +389,6 @@ dssetmaskfrommask(struct diskslice *ds, u_int32_t *tmask)
 
 struct buf;
 struct bio;
-struct disklabel;
 struct disk_info;
 struct bio_queue_head;
 

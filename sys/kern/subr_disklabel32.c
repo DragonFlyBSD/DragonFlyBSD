@@ -89,7 +89,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disklabel32.c,v 1.1 2007/06/17 23:50:16 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disklabel32.c,v 1.2 2007/06/18 05:13:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,6 +100,7 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/disklabel.h>
+#include <sys/disklabel32.h>
 #include <sys/diskslice.h>
 #include <sys/disk.h>
 #include <sys/dtype.h>		/* DTYPE_* constants */
@@ -115,42 +116,44 @@
 #include <vfs/ufs/dinode.h>	/* XXX used only for fs.h */
 #include <vfs/ufs/fs.h>		/* XXX used only to get BBSIZE/SBSIZE */
 
-static void partition_info(const char *sname, int part, struct partition *pp);
+static void partition_info(const char *sname, int part, struct partition32 *pp);
 static void slice_info(const char *sname, struct diskslice *sp);
+static const char *l32_fixlabel(const char *sname, struct diskslice *sp,
+				disklabel_t lpx, int writeflag);
 
 /*
  * Retrieve the partition start and extent, in blocks.  Return 0 on success,
  * EINVAL on error.
  */
-int
-getpartbounds(struct disklabel *lp, u_int32_t part,
-	      u_int64_t *start, u_int64_t *blocks)
+static int
+l32_getpartbounds(disklabel_t lp, u_int32_t part,
+		  u_int64_t *start, u_int64_t *blocks)
 {
-	struct partition *pp;
+	struct partition32 *pp;
 
-	if (part >= lp->d_npartitions)
+	if (part >= lp.lab32->d_npartitions)
 		return (EINVAL);
-	pp = &lp->d_partitions[part];
+	pp = &lp.lab32->d_partitions[part];
 	*blocks = pp->p_size;
 	*start = pp->p_offset;
 	return(0);
 }
 
-int
-getpartfstype(struct disklabel *lp, u_int32_t part)
+static int
+l32_getpartfstype(disklabel_t lp, u_int32_t part)
 {
-	struct partition *pp;
+	struct partition32 *pp;
 
-	if (part >= lp->d_npartitions)
+	if (part >= lp.lab32->d_npartitions)
 		return (0);
-	pp = &lp->d_partitions[part];
+	pp = &lp.lab32->d_partitions[part];
 	return(pp->p_fstype);
 }
 
-u_int32_t
-getnumparts(struct disklabel *lp)
+static u_int32_t
+l32_getnumparts(disklabel_t lp)
 {
-	return(lp->d_npartitions);
+	return(lp.lab32->d_npartitions);
 }
 
 /*
@@ -160,34 +163,43 @@ getnumparts(struct disklabel *lp)
  * partition containing the label) must be filled in before calling us.
  * Returns NULL on success and an error string on failure.
  */
-char *
-readdisklabel(cdev_t dev, struct disklabel *lp)
+static const char *
+l32_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
+		struct disk_info *info)
 {
+	disklabel_t lpx;
 	struct buf *bp;
-	struct disklabel *dlp;
-	char *msg = NULL;
+	struct disklabel32 *dlp;
+	const char *msg = NULL;
+	int secsize = info->d_media_blksize;
 
-	bp = geteblk((int)lp->d_secsize);
-	bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
-	bp->b_bcount = lp->d_secsize;
+	bp = geteblk(secsize);
+	bp->b_bio1.bio_offset = (off_t)LABELSECTOR32 * secsize;
+	bp->b_bcount = secsize;
 	bp->b_flags &= ~B_INVAL;
 	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(dev, &bp->b_bio1);
 	if (biowait(bp))
 		msg = "I/O error";
-	else for (dlp = (struct disklabel *)bp->b_data;
-	    dlp <= (struct disklabel *)((char *)bp->b_data +
-	    lp->d_secsize - sizeof(*dlp));
-	    dlp = (struct disklabel *)((char *)dlp + sizeof(long))) {
-		if (dlp->d_magic != DISKMAGIC || dlp->d_magic2 != DISKMAGIC) {
+	else for (dlp = (struct disklabel32 *)bp->b_data;
+	    dlp <= (struct disklabel32 *)((char *)bp->b_data +
+	    secsize - sizeof(*dlp));
+	    dlp = (struct disklabel32 *)((char *)dlp + sizeof(long))) {
+		if (dlp->d_magic != DISKMAGIC32 ||
+		    dlp->d_magic2 != DISKMAGIC32) {
 			if (msg == NULL)
 				msg = "no disk label";
 		} else if (dlp->d_npartitions > MAXPARTITIONS ||
-			   dkcksum(dlp) != 0)
+			   dkcksum32(dlp) != 0) {
 			msg = "disk label corrupted";
-		else {
-			*lp = *dlp;
-			msg = NULL;
+		} else {
+			lpx.lab32 = dlp;
+			msg = l32_fixlabel(NULL, sp, lpx, FALSE);
+			if (msg == NULL) {
+				(*lpp).lab32 = kmalloc(sizeof(*dlp),
+						       M_DEVBUF, M_WAITOK|M_ZERO);
+				*(*lpp).lab32 = *dlp;
+			}
 			break;
 		}
 	}
@@ -199,19 +211,23 @@ readdisklabel(cdev_t dev, struct disklabel *lp)
 /*
  * Check new disk label for sensibility before setting it.
  */
-int
-setdisklabel(struct disklabel *olp, struct disklabel *nlp,
-	     struct diskslice *sp, u_int32_t *openmask)
+static int
+l32_setdisklabel(disklabel_t olpx, disklabel_t nlpx,
+		 struct diskslice *sp, u_int32_t *openmask)
 {
-	struct partition *opp, *npp;
+	struct disklabel32 *olp, *nlp;
+	struct partition32 *opp, *npp;
 	int part;
 	int i;
+
+	olp = olpx.lab32;
+	nlp = nlpx.lab32;
 
 	/*
 	 * Check it is actually a disklabel we are looking at.
 	 */
-	if (nlp->d_magic != DISKMAGIC || nlp->d_magic2 != DISKMAGIC ||
-	    dkcksum(nlp) != 0)
+	if (nlp->d_magic != DISKMAGIC32 || nlp->d_magic2 != DISKMAGIC32 ||
+	    dkcksum32(nlp) != 0)
 		return (EINVAL);
 
 	/*
@@ -249,7 +265,7 @@ setdisklabel(struct disklabel *olp, struct disklabel *nlp,
 		++i;
 	}
  	nlp->d_checksum = 0;
- 	nlp->d_checksum = dkcksum(nlp);
+ 	nlp->d_checksum = dkcksum32(nlp);
 	*olp = *nlp;
 
 	if (olp->d_partitions[RAW_PART].p_offset)
@@ -266,17 +282,21 @@ setdisklabel(struct disklabel *olp, struct disklabel *nlp,
 /*
  * Write disk label back to device after modification.
  */
-int
-writedisklabel(cdev_t dev, struct disklabel *lp)
+static int
+l32_writedisklabel(cdev_t dev, struct diskslice *sp, disklabel_t lpx)
 {
+	struct disklabel32 *lp;
+	struct disklabel32 *dlp;
 	struct buf *bp;
-	struct disklabel *dlp;
+	const char *msg;
 	int error = 0;
+
+	lp = lpx.lab32;
 
 	if (lp->d_partitions[RAW_PART].p_offset != 0)
 		return (EXDEV);			/* not quite right */
 	bp = geteblk((int)lp->d_secsize);
-	bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
+	bp->b_bio1.bio_offset = (off_t)LABELSECTOR32 * lp->d_secsize;
 	bp->b_bcount = lp->d_secsize;
 #if 1
 	/*
@@ -292,16 +312,23 @@ writedisklabel(cdev_t dev, struct disklabel *lp)
 	error = biowait(bp);
 	if (error)
 		goto done;
-	for (dlp = (struct disklabel *)bp->b_data;
-	    dlp <= (struct disklabel *)
+	for (dlp = (struct disklabel32 *)bp->b_data;
+	    dlp <= (struct disklabel32 *)
 	      ((char *)bp->b_data + lp->d_secsize - sizeof(*dlp));
-	    dlp = (struct disklabel *)((char *)dlp + sizeof(long))) {
-		if (dlp->d_magic == DISKMAGIC && dlp->d_magic2 == DISKMAGIC &&
-		    dkcksum(dlp) == 0) {
+	    dlp = (struct disklabel32 *)((char *)dlp + sizeof(long))) {
+		if (dlp->d_magic == DISKMAGIC32 &&
+		    dlp->d_magic2 == DISKMAGIC32 && dkcksum32(dlp) == 0) {
 			*dlp = *lp;
-			bp->b_cmd = BUF_CMD_WRITE;
-			dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART), &bp->b_bio1);
-			error = biowait(bp);
+			lpx.lab32 = dlp;
+			msg = l32_fixlabel(NULL, sp, lpx, TRUE);
+			if (msg) {
+				error = EINVAL;
+			} else {
+				bp->b_cmd = BUF_CMD_WRITE;
+				dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART),
+					      &bp->b_bio1);
+				error = biowait(bp);
+			}
 			goto done;
 		}
 	}
@@ -309,7 +336,7 @@ writedisklabel(cdev_t dev, struct disklabel *lp)
 done:
 #else
 	bzero(bp->b_data, lp->d_secsize);
-	dlp = (struct disklabel *)bp->b_data;
+	dlp = (struct disklabel32 *)bp->b_data;
 	*dlp = *lp;
 	bp->b_flags &= ~B_INVAL;
 	bp->b_cmd = BUF_CMD_WRITE;
@@ -328,73 +355,76 @@ done:
  *
  * If a diskslice is passed, the label is truncated to the slice
  */
-struct disklabel *
-clone_label(struct disk_info *info, struct diskslice *sp)
+static disklabel_t
+l32_clone_label(struct disk_info *info, struct diskslice *sp)
 {
-	struct disklabel *lp1;
+	struct disklabel32 *lp;
+	disklabel_t res;
 
-	lp1 = kmalloc(sizeof *lp1, M_DEVBUF, M_WAITOK | M_ZERO);
-	lp1->d_nsectors = info->d_secpertrack;
-	lp1->d_ntracks = info->d_nheads;
-	lp1->d_secpercyl = info->d_secpercyl;
-	lp1->d_secsize = info->d_media_blksize;
+	lp = kmalloc(sizeof *lp, M_DEVBUF, M_WAITOK | M_ZERO);
+	lp->d_nsectors = info->d_secpertrack;
+	lp->d_ntracks = info->d_nheads;
+	lp->d_secpercyl = info->d_secpercyl;
+	lp->d_secsize = info->d_media_blksize;
 
 	if (sp)
-		lp1->d_secperunit = (u_int)sp->ds_size;
+		lp->d_secperunit = (u_int)sp->ds_size;
 	else
-		lp1->d_secperunit = (u_int)info->d_media_blocks;
+		lp->d_secperunit = (u_int)info->d_media_blocks;
 
-	if (lp1->d_typename[0] == '\0')
-		strncpy(lp1->d_typename, "amnesiac", sizeof(lp1->d_typename));
-	if (lp1->d_packname[0] == '\0')
-		strncpy(lp1->d_packname, "fictitious", sizeof(lp1->d_packname));
-	if (lp1->d_nsectors == 0)
-		lp1->d_nsectors = 32;
-	if (lp1->d_ntracks == 0)
-		lp1->d_ntracks = 64;
-	lp1->d_secpercyl = lp1->d_nsectors * lp1->d_ntracks;
-	lp1->d_ncylinders = lp1->d_secperunit / lp1->d_secpercyl;
-	if (lp1->d_rpm == 0)
-		lp1->d_rpm = 3600;
-	if (lp1->d_interleave == 0)
-		lp1->d_interleave = 1;
-	if (lp1->d_npartitions < RAW_PART + 1)
-		lp1->d_npartitions = MAXPARTITIONS;
-	if (lp1->d_bbsize == 0)
-		lp1->d_bbsize = BBSIZE;
-	if (lp1->d_sbsize == 0)
-		lp1->d_sbsize = SBSIZE;
+	if (lp->d_typename[0] == '\0')
+		strncpy(lp->d_typename, "amnesiac", sizeof(lp->d_typename));
+	if (lp->d_packname[0] == '\0')
+		strncpy(lp->d_packname, "fictitious", sizeof(lp->d_packname));
+	if (lp->d_nsectors == 0)
+		lp->d_nsectors = 32;
+	if (lp->d_ntracks == 0)
+		lp->d_ntracks = 64;
+	lp->d_secpercyl = lp->d_nsectors * lp->d_ntracks;
+	lp->d_ncylinders = lp->d_secperunit / lp->d_secpercyl;
+	if (lp->d_rpm == 0)
+		lp->d_rpm = 3600;
+	if (lp->d_interleave == 0)
+		lp->d_interleave = 1;
+	if (lp->d_npartitions < RAW_PART + 1)
+		lp->d_npartitions = MAXPARTITIONS;
+	if (lp->d_bbsize == 0)
+		lp->d_bbsize = BBSIZE;
+	if (lp->d_sbsize == 0)
+		lp->d_sbsize = SBSIZE;
 
 	/*
 	 * Used by various devices to create a compatibility slice which
 	 * allows us to mount root from devices which do not have a
 	 * disklabel.  Particularly: CDs.
 	 */
-	lp1->d_partitions[RAW_PART].p_size = lp1->d_secperunit;
+	lp->d_partitions[RAW_PART].p_size = lp->d_secperunit;
 	if (info->d_dsflags & DSO_COMPATPARTA) {
-		lp1->d_partitions[0].p_size = lp1->d_secperunit;
-		lp1->d_partitions[0].p_fstype = FS_OTHER;
+		lp->d_partitions[0].p_size = lp->d_secperunit;
+		lp->d_partitions[0].p_fstype = FS_OTHER;
 	}
-	lp1->d_magic = DISKMAGIC;
-	lp1->d_magic2 = DISKMAGIC;
-	lp1->d_checksum = dkcksum(lp1);
-	return (lp1);
+	lp->d_magic = DISKMAGIC32;
+	lp->d_magic2 = DISKMAGIC32;
+	lp->d_checksum = dkcksum32(lp);
+	res.lab32 = lp;
+	return (res);
 }
 
-void
-makevirginlabel(struct disklabel *lp, struct diskslices *ssp,
-		struct diskslice *sp, struct disk_info *info)
+static void
+l32_makevirginlabel(disklabel_t lpx, struct diskslices *ssp,
+		    struct diskslice *sp, struct disk_info *info)
 {
-	struct partition *pp;
+	struct disklabel32 *lp = lpx.lab32;
+	struct partition32 *pp;
 
-	if (ssp->dss_slices[WHOLE_DISK_SLICE].ds_label) {
-		bcopy(ssp->dss_slices[WHOLE_DISK_SLICE].ds_label, lp,
-		      sizeof(*lp));
+	if (ssp->dss_slices[WHOLE_DISK_SLICE].ds_label.opaque) {
+		bcopy(ssp->dss_slices[WHOLE_DISK_SLICE].ds_label.opaque, lp,
+		      sizeof(struct disklabel32));
 	} else {
 		bzero(lp, sizeof(*lp));
 	}
-	lp->d_magic = DISKMAGIC;
-	lp->d_magic2 = DISKMAGIC;
+	lp->d_magic = DISKMAGIC32;
+	lp->d_magic2 = DISKMAGIC32;
 
 	lp->d_npartitions = MAXPARTITIONS;
 	if (lp->d_interleave == 0)
@@ -441,23 +471,27 @@ makevirginlabel(struct disklabel *lp, struct diskslices *ssp,
 		pp->p_fstype = FS_OTHER;
 	}
 	lp->d_checksum = 0;
-	lp->d_checksum = dkcksum(lp);
+	lp->d_checksum = dkcksum32(lp);
 }
 
-char *
-fixlabel(const char *sname, struct diskslice *sp, struct disklabel *lp, int writeflag)
+static const char *
+l32_fixlabel(const char *sname, struct diskslice *sp,
+	     disklabel_t lpx, int writeflag)
 {
+	struct disklabel32 *lp;
+	struct partition32 *pp;
 	u_int64_t start;
 	u_int64_t end;
 	u_int64_t offset;
 	int part;
-	struct partition *pp;
 	int warned;
 
+	lp = lpx.lab32;
+
 	/* These errors "can't happen" so don't bother reporting details. */
-	if (lp->d_magic != DISKMAGIC || lp->d_magic2 != DISKMAGIC)
+	if (lp->d_magic != DISKMAGIC32 || lp->d_magic2 != DISKMAGIC32)
 		return ("fixlabel: invalid magic");
-	if (dkcksum(lp) != 0)
+	if (dkcksum32(lp) != 0)
 		return ("fixlabel: invalid checksum");
 
 	pp = &lp->d_partitions[RAW_PART];
@@ -531,14 +565,15 @@ fixlabel(const char *sname, struct diskslice *sp, struct disklabel *lp, int writ
 	lp->d_ncylinders = sp->ds_size / lp->d_secpercyl;
 	lp->d_secperunit = sp->ds_size;
  	lp->d_checksum = 0;
- 	lp->d_checksum = dkcksum(lp);
+ 	lp->d_checksum = dkcksum32(lp);
 	return (NULL);
 }
 
-void
-adjust_label_reserved(struct diskslices *ssp, int slice, struct diskslice *sp)
+static void
+l32_adjust_label_reserved(struct diskslices *ssp, int slice,
+			  struct diskslice *sp)
 {
-	struct disklabel *lp = sp->ds_label;
+	struct disklabel32 *lp = sp->ds_label.lab32;
 
 	/*
 	 * If the slice is not the whole-disk slice, setup the reserved
@@ -573,7 +608,7 @@ adjust_label_reserved(struct diskslices *ssp, int slice, struct diskslice *sp)
 }
 
 static void
-partition_info(const char *sname, int part, struct partition *pp)
+partition_info(const char *sname, int part, struct partition32 *pp)
 {
 	kprintf("%s%c: start %lu, end %lu, size %lu\n", sname, 'a' + part,
 		(u_long)pp->p_offset, (u_long)(pp->p_offset + pp->p_size - 1),
@@ -586,4 +621,18 @@ slice_info(const char *sname, struct diskslice *sp)
 	kprintf("%s: start %llu, end %llu, size %llu\n", sname,
 	       sp->ds_offset, sp->ds_offset + sp->ds_size - 1, sp->ds_size);
 }
+
+struct disklabel_ops disklabel32_ops = {
+	.labelsect = LABELSECTOR32,
+	.labelsize = sizeof(struct disklabel32),
+	.op_readdisklabel = l32_readdisklabel,
+	.op_setdisklabel = l32_setdisklabel,
+	.op_writedisklabel = l32_writedisklabel,
+	.op_clone_label = l32_clone_label,
+	.op_adjust_label_reserved = l32_adjust_label_reserved,
+	.op_getpartbounds = l32_getpartbounds,
+	.op_getpartfstype = l32_getpartfstype,
+	.op_getnumparts = l32_getnumparts,
+	.op_makevirginlabel = l32_makevirginlabel
+};
 

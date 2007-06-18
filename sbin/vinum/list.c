@@ -37,7 +37,7 @@
  *
  * $Id: list.c,v 1.25 2000/12/20 03:38:43 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/list.c,v 1.25.2.4 2001/05/28 05:58:04 grog Exp $
- * $DragonFly: src/sbin/vinum/list.c,v 1.9 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sbin/vinum/list.c,v 1.10 2007/06/18 05:13:41 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -55,7 +55,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/utsname.h>
-#include <sys/disklabel.h>
+#include <sys/disklabel32.h>
 #include <dev/raid/vinum/vinumhdr.h>
 #include "vext.h"
 #include <dev/raid/vinum/request.h>
@@ -1279,7 +1279,7 @@ dumpconfig(char *part)
     int partition;					    /* UNIX partition */
     int slice;
     int founddrive;					    /* flag when we find a vinum drive */
-    struct disklabel label;				    /* label of this drive */
+    struct disklabel32 label;				    /* label of this drive */
     int driveno;					    /* fd of drive */
     int found;
     u_int64_t drivelength;
@@ -1301,7 +1301,7 @@ dumpconfig(char *part)
 		fprintf(stderr, "Can't open %s: %s (%d)\n", partname, strerror(errno), errno);
 	    continue;
 	}
-	if (ioctl(driveno, DIOCGDINFO, &label) < 0) {
+	if (ioctl(driveno, DIOCGDINFO32, &label) < 0) {
 	    fprintf(stderr, "Can't get label from %s: %s (%d)\n", partname, strerror(errno), errno);
 	    continue;
 	}
@@ -1332,7 +1332,7 @@ dumpconfig(char *part)
 		fprintf(stderr, "Can't open %s: %s (%d)\n", partname, strerror(errno), errno);
 	    return;
 	}
-	if (ioctl(driveno, DIOCGDINFO, &label) < 0) {
+	if (ioctl(driveno, DIOCGDINFO32, &label) < 0) {
 	    fprintf(stderr, "Can't get label from %s: %s (%d)\n", partname, strerror(errno), errno);
 	    return;
 	}

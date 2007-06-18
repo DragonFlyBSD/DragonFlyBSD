@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/efi/libefi/devicename.c,v 1.2 2001/09/07 08:49:47 dfr Exp $
- * $DragonFly: src/sys/boot/efi/libefi/devicename.c,v 1.2 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sys/boot/efi/libefi/devicename.c,v 1.3 2007/06/18 05:13:41 dillon Exp $
  */
 
 #include <stand.h>
@@ -133,7 +133,7 @@ efi_parsedev(struct efi_devdesc **dev, const char *devspec, const char **path)
 			}
 			if (*cp && (*cp != ':')) {
 				partition = *cp - 'a';		/* get a partition number */
-				if ((partition < 0) || (partition >= MAXPARTITIONS)) {
+				if ((partition < 0) || (partition >= MAXPARTITIONS32)) {
 					err = EPART;
 					goto fail;
 				}

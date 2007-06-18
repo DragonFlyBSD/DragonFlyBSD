@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.20 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.21 2007/06/18 05:13:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,10 +45,12 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #define DKTYPENAMES
-#include <sys/disklabel.h>
+#include <sys/disklabel32.h>
+#include <sys/disklabel64.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
 #include <sys/dtype.h>
+#include <sys/sysctl.h>
 #include <disktab.h>
 
 #include <vfs/ufs/dinode.h>
@@ -90,25 +92,26 @@
 
 #define	NUMBOOT	2
 
-void	makelabel(const char *, const char *, struct disklabel *);
-int	writelabel(int, const char *, struct disklabel *);
+void	makelabel(const char *, const char *, struct disklabel32 *);
+int	writelabel(int, const char *, struct disklabel32 *);
 void	l_perror(const char *);
-struct disklabel *readlabel(int);
-struct disklabel *makebootarea(char *, struct disklabel *, int);
-void	display(FILE *, const struct disklabel *);
-int	edit(struct disklabel *, int);
+struct disklabel32 *readlabel(int);
+struct disklabel32 *makebootarea(char *, struct disklabel32 *, int);
+void	display(FILE *, const struct disklabel32 *);
+int	edit(struct disklabel32 *, int);
 int	editit(void);
 char	*skip(char *);
 char	*word(char *);
-int	getasciilabel(FILE *, struct disklabel *);
-int	getasciipartspec(char *, struct disklabel *, int, int);
-int	checklabel(struct disklabel *);
-void	setbootflag(struct disklabel *);
+int	getasciilabel(FILE *, struct disklabel32 *);
+int	getasciipartspec(char *, struct disklabel32 *, int, int);
+int	checklabel(struct disklabel32 *);
+void	setbootflag(struct disklabel32 *);
 void	Warning(const char *, ...) __printflike(1, 2);
 void	usage(void);
 int	checkoldboot(int, const char *);
-struct disklabel *getvirginlabel(void);
-struct disklabel *getdisklabelfromdisktab(const char *name);
+const char *fixlabel(int, struct disklabel32 *, int);
+struct disklabel32 *getvirginlabel(void);
+struct disklabel32 *getdisklabelfromdisktab(const char *name);
 
 #define	DEFEDITOR	_PATH_VI
 #define	streq(a,b)	(strcmp(a,b) == 0)
@@ -118,7 +121,7 @@ char	*specname;
 char	tmpfil[] = PATH_TMPFILE;
 
 char	namebuf[BBSIZE], *np = namebuf;
-struct	disklabel lab;
+struct	disklabel32 lab;
 char	bootarea[BBSIZE];
 
 #define MAX_PART ('z')
@@ -143,18 +146,20 @@ enum	{
 
 int	rflag;
 int	disable_write;   /* set to disable writing to disk label */
+int	forceflag;
+u_int32_t slice_start_lba;
 
 #ifdef DEBUG
 int	debug;
-#define OPTIONS	"BNRWb:denrs:w"
+#define OPTIONS	"BNRWb:def:nrs:w"
 #else
-#define OPTIONS	"BNRWb:enrs:w"
+#define OPTIONS	"BNRWb:ef:nrs:w"
 #endif
 
 int
 main(int argc, char *argv[])
 {
-	struct disklabel *lp;
+	struct disklabel32 *lp;
 	FILE *t;
 	int ch, f = 0, flag, error = 0;
 	char *name = 0;
@@ -167,6 +172,11 @@ main(int argc, char *argv[])
 				break;
 			case 'b':
 				xxboot = optarg;
+				break;
+
+			case 'f':
+				forceflag = 1;
+				slice_start_lba = strtoul(optarg, NULL, 0);
 				break;
 #if NUMBOOT > 1
 			case 's':
@@ -327,7 +337,7 @@ main(int argc, char *argv[])
 #if NUMBOOT > 0
 	case WRITEBOOT:
 	{
-		struct disklabel tlab;
+		struct disklabel32 tlab;
 
 		lp = readlabel(f);
 		tlab = *lp;
@@ -350,9 +360,9 @@ main(int argc, char *argv[])
  * if specified.
  */
 void
-makelabel(const char *type, const char *name, struct disklabel *lp)
+makelabel(const char *type, const char *name, struct disklabel32 *lp)
 {
-	struct disklabel *dp;
+	struct disklabel32 *dp;
 
 	if (strcmp(type, "auto") == 0)
 		dp = getvirginlabel();
@@ -370,10 +380,9 @@ makelabel(const char *type, const char *name, struct disklabel *lp)
 }
 
 int
-writelabel(int f, const char *boot, struct disklabel *lp)
+writelabel(int f, const char *boot, struct disklabel32 *lp)
 {
-	int yes = 1;
-	int no = 0;
+	const char *msg;
 	int flag;
 	int r;
 
@@ -386,10 +395,10 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 		if (checkoldboot(f, boot))
 			errx(4, "Will not overwrite old bootblocks w/ label, install new boot blocks first!");
 		setbootflag(lp);
-		lp->d_magic = DISKMAGIC;
-		lp->d_magic2 = DISKMAGIC;
+		lp->d_magic = DISKMAGIC32;
+		lp->d_magic2 = DISKMAGIC32;
 		lp->d_checksum = 0;
-		lp->d_checksum = dkcksum(lp);
+		lp->d_checksum = dkcksum32(lp);
 		if (rflag) {
 			/*
 			 * First set the kernel disk label,
@@ -399,7 +408,7 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			 * may prevent us from changing the current (in-core)
 			 * label.
 			 */
-			if (ioctl(f, DIOCSDINFO, lp) < 0 &&
+			if (ioctl(f, DIOCSDINFO32, lp) < 0 &&
 				errno != ENODEV && errno != ENOTTY) {
 				l_perror("ioctl DIOCSDINFO");
 				return (1);
@@ -413,7 +422,13 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			flag = 1;
 			if (ioctl(f, DIOCWLABEL, &flag) < 0)
 				warn("ioctl DIOCWLABEL");
+			msg = fixlabel(f, lp, 1);
+			if (msg) {
+				warn(msg);
+				return (1);
+			}
 			r = write(f, boot, lp->d_bbsize);
+			fixlabel(f, lp, 0);
 			if (r != ((ssize_t)lp->d_bbsize)) {
 				warn("write");
 				return (1);
@@ -423,9 +438,9 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			 * Output the remainder of the disklabel
 			 */
 			if (bootbuf) {
-				ioctl(f, DIOCSETSNOOP, &yes);
+				fixlabel(f, lp, 1);
 				r = write(f, bootbuf, bootsize);
-				ioctl(f, DIOCSETSNOOP, &no);
+				fixlabel(f, lp, 0);
 				if (r != bootsize) {
 					warn("write");
 					return(1);
@@ -434,7 +449,7 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 #endif
 			flag = 0;
 			ioctl(f, DIOCWLABEL, &flag);
-		} else if (ioctl(f, DIOCWDINFO, lp) < 0) {
+		} else if (ioctl(f, DIOCWDINFO32, lp) < 0) {
 			l_perror("ioctl DIOCWDINFO");
 			return (1);
 		}
@@ -476,35 +491,35 @@ l_perror(const char *s)
  * Fetch disklabel for disk.
  * Use ioctl to get label unless -r flag is given.
  */
-struct disklabel *
+struct disklabel32 *
 readlabel(int f)
 {
-	struct disklabel *lp;
+	const char *msg;
+	struct disklabel32 *lp;
 	int r;
-	int yes = 1;
-	int no = 0;
 
 	if (rflag) {
-		if (ioctl(f, DIOCSETSNOOP, &yes) < 0)
-			printf("BAD SNOOP\n");
 		r = read(f, bootarea, BBSIZE);
-		ioctl(f, DIOCSETSNOOP, &no);
 		if (r < BBSIZE)
 			err(4, "%s", specname);
-		for (lp = (struct disklabel *)bootarea;
-		    lp <= (struct disklabel *)(bootarea + BBSIZE - sizeof(*lp));
-		    lp = (struct disklabel *)((char *)lp + 16))
-			if (lp->d_magic == DISKMAGIC &&
-			    lp->d_magic2 == DISKMAGIC)
+		for (lp = (struct disklabel32 *)bootarea;
+		    lp <= (struct disklabel32 *)(bootarea + BBSIZE - sizeof(*lp));
+		    lp = (struct disklabel32 *)((char *)lp + 16)) {
+			if (lp->d_magic == DISKMAGIC32 &&
+			    lp->d_magic2 == DISKMAGIC32)
 				break;
-		if (lp > (struct disklabel *)(bootarea+BBSIZE-sizeof(*lp)) ||
-		    lp->d_magic != DISKMAGIC || lp->d_magic2 != DISKMAGIC ||
-		    dkcksum(lp) != 0)
-			errx(1,
-	    "bad pack magic number (label is damaged, or pack is unlabeled)");
+		}
+		if (lp > (struct disklabel32 *)(bootarea+BBSIZE-sizeof(*lp)) ||
+		    lp->d_magic != DISKMAGIC32 || lp->d_magic2 != DISKMAGIC32 ||
+		    dkcksum32(lp) != 0) {
+			errx(1, "bad pack magic number (label is damaged, "
+				"or pack is unlabeled)");
+		}
+		if ((msg = fixlabel(f, lp, 0)) != NULL)
+			errx(1, msg);
 	} else {
 		lp = &lab;
-		if (ioctl(f, DIOCGDINFO, lp) < 0)
+		if (ioctl(f, DIOCGDINFO32, lp) < 0)
 			err(4, "ioctl DIOCGDINFO");
 	}
 	return (lp);
@@ -514,10 +529,10 @@ readlabel(int f)
  * Construct a bootarea (d_bbsize bytes) in the specified buffer ``boot''
  * Returns a pointer to the disklabel portion of the bootarea.
  */
-struct disklabel *
-makebootarea(char *boot, struct disklabel *dp, int f)
+struct disklabel32 *
+makebootarea(char *boot, struct disklabel32 *dp, int f)
 {
-	struct disklabel *lp;
+	struct disklabel32 *lp;
 	char *p;
 	int b;
 #if NUMBOOT > 0
@@ -534,8 +549,8 @@ makebootarea(char *boot, struct disklabel *dp, int f)
 		dp->d_secsize = DEV_BSIZE;
 		dp->d_bbsize = BBSIZE;
 	}
-	lp = (struct disklabel *)
-		(boot + (LABELSECTOR * dp->d_secsize) + LABELOFFSET);
+	lp = (struct disklabel32 *)
+		(boot + (LABELSECTOR32 * dp->d_secsize) + LABELOFFSET32);
 	bzero((char *)lp, sizeof *lp);
 #if NUMBOOT > 0
 	/*
@@ -656,17 +671,17 @@ makebootarea(char *boot, struct disklabel *dp, int f)
 	 * Make sure no part of the bootstrap is written in the area
 	 * reserved for the label.
 	 */
-	for (p = (char *)lp; p < (char *)lp + sizeof(struct disklabel); p++)
+	for (p = (char *)lp; p < (char *)lp + sizeof(struct disklabel32); p++)
 		if (*p)
 			errx(2, "bootstrap doesn't leave room for disk label");
 	return (lp);
 }
 
 void
-display(FILE *f, const struct disklabel *lp)
+display(FILE *f, const struct disklabel32 *lp)
 {
 	int i, j;
-	const struct partition *pp;
+	const struct partition32 *pp;
 
 	fprintf(f, "# %s:\n", specname);
 	if (lp->d_type < DKMAXTYPES)
@@ -694,7 +709,7 @@ display(FILE *f, const struct disklabel *lp)
 	fprintf(f, "track-to-track seek: %ld\t# milliseconds\n",
 	    (u_long)lp->d_trkseek);
 	fprintf(f, "drivedata: ");
-	for (i = NDDATA - 1; i >= 0; i--) {
+	for (i = NDDATA32 - 1; i >= 0; i--) {
 		if (lp->d_drivedata[i])
 			break;
 	}
@@ -726,10 +741,10 @@ display(FILE *f, const struct disklabel *lp)
 }
 
 int
-edit(struct disklabel *lp, int f)
+edit(struct disklabel32 *lp, int f)
 {
 	int c, fd;
-	struct disklabel label;
+	struct disklabel32 label;
 	FILE *fp;
 
 	if ((fd = mkstemp(tmpfil)) == -1 ||
@@ -836,7 +851,7 @@ word(char *cp)
  * and fill in lp.
  */
 int
-getasciilabel(FILE *f, struct disklabel *lp)
+getasciilabel(FILE *f, struct disklabel32 *lp)
 {
 	char *cp;
 	const char **cpp;
@@ -907,17 +922,17 @@ getasciilabel(FILE *f, struct disklabel *lp)
 			continue;
 		}
 		if (streq(cp, "drivedata")) {
-			for (i = 0; (cp = tp) && *cp != '\0' && i < NDDATA;) {
+			for (i = 0; (cp = tp) && *cp != '\0' && i < NDDATA32;) {
 				lp->d_drivedata[i++] = strtoul(cp, NULL, 10);
 				tp = word(cp);
 			}
 			continue;
 		}
 		if (sscanf(cp, "%lu partitions", &v) == 1) {
-			if (v == 0 || v > MAXPARTITIONS) {
+			if (v == 0 || v > MAXPARTITIONS32) {
 				fprintf(stderr,
 				    "line %d: bad # of partitions\n", lineno);
-				lp->d_npartitions = MAXPARTITIONS;
+				lp->d_npartitions = MAXPARTITIONS32;
 				errors++;
 			} else
 				lp->d_npartitions = v;
@@ -1105,9 +1120,9 @@ getasciilabel(FILE *f, struct disklabel *lp)
  * Return 0 on success, 1 on failure.
  */
 int
-getasciipartspec(char *tp, struct disklabel *lp, int part, int lineno)
+getasciipartspec(char *tp, struct disklabel32 *lp, int part, int lineno)
 {
-	struct partition *pp;
+	struct partition32 *pp;
 	char *cp;
 	const char **cpp;
 	u_long v;
@@ -1184,16 +1199,16 @@ getasciipartspec(char *tp, struct disklabel *lp, int part, int lineno)
  * derived fields according to supplied values.
  */
 int
-checklabel(struct disklabel *lp)
+checklabel(struct disklabel32 *lp)
 {
-	struct partition *pp;
+	struct partition32 *pp;
 	int i, errors = 0;
 	char part;
 	u_long total_size, total_percent, current_offset;
 	int seen_default_offset;
 	int hog_part;
 	int j;
-	struct partition *pp2;
+	struct partition32 *pp2;
 
 	if (lp->d_secsize == 0) {
 		fprintf(stderr, "sector size 0\n");
@@ -1227,9 +1242,9 @@ checklabel(struct disklabel *lp)
 		errors++;
 	} else if (lp->d_sbsize % lp->d_secsize)
 		Warning("super block size %% sector-size != 0");
-	if (lp->d_npartitions > MAXPARTITIONS)
+	if (lp->d_npartitions > MAXPARTITIONS32)
 		Warning("number of partitions (%lu) > MAXPARTITIONS (%d)",
-		    (u_long)lp->d_npartitions, MAXPARTITIONS);
+		    (u_long)lp->d_npartitions, MAXPARTITIONS32);
 
 	/* first allocate space to the partitions, then offsets */
 	total_size = 0; /* in sectors */
@@ -1449,12 +1464,12 @@ checklabel(struct disklabel *lp)
  *
  * The device name must be given in its "canonical" form.
  */
-static struct disklabel dlab;
+static struct disklabel32 dlab;
 
-struct disklabel *
+struct disklabel32 *
 getvirginlabel(void)
 {
-	struct disklabel *dl = &dlab;
+	struct disklabel32 *dl = &dlab;
 	char nambuf[BBSIZE];
 	int f;
 
@@ -1472,8 +1487,8 @@ getvirginlabel(void)
 	 * Try to use the new get-virgin-label ioctl.  If it fails,
 	 * fallback to the old get-disdk-info ioctl.
 	 */
-	if (ioctl(f, DIOCGDVIRGIN, dl) < 0) {
-		if (ioctl(f, DIOCGDINFO, dl) < 0) {
+	if (ioctl(f, DIOCGDVIRGIN32, dl) < 0) {
+		if (ioctl(f, DIOCGDINFO32, dl) < 0) {
 			warn("ioctl DIOCGDINFO");
 			close(f);
 			return (NULL);
@@ -1483,16 +1498,16 @@ getvirginlabel(void)
 	return (dl);
 }
 
-struct disklabel *
+struct disklabel32 *
 getdisklabelfromdisktab(const char *name)
 {
 	struct disktab *dt;
-	struct disklabel *dl = &dlab;
+	struct disklabel32 *dl = &dlab;
 	int i;
 
 	if ((dt = getdisktabbyname(name)) == NULL)
 		return(NULL);
-	dl->d_magic = DISKMAGIC;
+	dl->d_magic = DISKMAGIC32;
 	dl->d_type = dt->d_typeid;
 	dl->d_subtype = 0;
 	dl->d_secsize = dt->d_media_blksize;
@@ -1507,12 +1522,12 @@ getdisklabelfromdisktab(const char *name)
 	dl->d_cylskew = dt->d_cylskew;
 	dl->d_headswitch = dt->d_headswitch;
 	dl->d_trkseek = dt->d_trkseek;
-	dl->d_magic2 = DISKMAGIC;
+	dl->d_magic2 = DISKMAGIC32;
 	dl->d_npartitions = dt->d_npartitions;
 	dl->d_bbsize = dt->d_bbsize;
 	dl->d_sbsize = dt->d_sbsize;
 	for (i = 0; i < dt->d_npartitions; ++i) {
-		struct partition *dlp = &dl->d_partitions[i];
+		struct partition32 *dlp = &dl->d_partitions[i];
 		struct dt_partition *dtp = &dt->d_partitions[i];
 
 		dlp->p_size	= dtp->p_size;
@@ -1531,9 +1546,9 @@ getdisklabelfromdisktab(const char *name)
  * clobber bootstrap code.
  */
 void
-setbootflag(struct disklabel *lp)
+setbootflag(struct disklabel32 *lp)
 {
-	struct partition *pp;
+	struct partition32 *pp;
 	int i, errors = 0;
 	char part;
 	u_long boffset;
@@ -1601,6 +1616,104 @@ checkoldboot(int f, const char *bootbuffer)
 	if (strncmp(buf + 0x316, "BTX", 3) == 0)  /* old location */
 		return(1);
 	return(0);
+}
+
+/*
+ * Traditional 32 bit disklabels actually use absolute sector numbers on
+ * disk, NOT slice relative sector numbres.   The OS hides this from us
+ * when we use DIOC ioctls to access the label, but newer versions of
+ * Dragonfly no longer adjusts the disklabel when snooping reads or writes
+ * so we have to figure it out ourselves.
+ */
+const char *
+fixlabel(int f, struct disklabel32 *lp, int writeadj)
+{
+	const char *msg = NULL;
+	struct partinfo info;
+	struct partition32 *pp;
+	u_int64_t start;
+	u_int64_t end;
+	u_int64_t offset;
+	int part;
+	int rev;
+	int rev_len = sizeof(rev);
+
+	if (sysctlbyname("kern.osrevision", &rev, &rev_len, NULL, 0) < 0) {
+		errx(1, "Cannot use raw mode on non-DragonFly systems\n");
+	}
+	if (rev < 200701) {
+		warnx("Warning running new disklabel on old DragonFly systems,\n"
+		      "assuming the disk layer will fixup the label.\n");
+		sleep(3);
+		return(NULL);
+	}
+
+	pp = &lp->d_partitions[RAW_PART];
+
+	if (forceflag) {
+		info.media_offset = slice_start_lba * lp->d_secsize;
+		info.media_blocks = pp->p_size;
+		info.media_blksize = lp->d_secsize;
+	} else if (ioctl(f, DIOCGPART, &info) < 0) {
+		msg = "Unable to extract the slice starting LBA, "
+		      "you must use the -f <slice_start_lba> option\n"
+		      "to specify it manually, or perhaps try without "
+		      "using -r and let the kernel deal with it\n";
+		return(msg);
+	}
+
+	if (lp->d_magic != DISKMAGIC32 || lp->d_magic2 != DISKMAGIC32)
+		return ("fixlabel: invalid magic");
+	if (dkcksum32(lp) != 0)
+		return ("fixlabel: invalid checksum");
+
+	/*
+	 * What a mess.  For ages old backwards compatibility the disklabel
+	 * on-disk stores absolute offsets instead of slice-relative offsets.
+	 * So fix it up when reading, writing, or snooping.
+	 *
+	 * The in-core label is always slice-relative.
+	 */
+	if (writeadj) {
+		/*
+		 * incore -> disk
+		 */
+		start = 0;
+		offset = info.media_offset / info.media_blksize;
+	} else {
+		/*
+		 * disk -> incore
+		 */
+		start = info.media_offset / info.media_blksize;
+		offset = -info.media_offset / info.media_blksize;
+	}
+	if (pp->p_offset != start)
+		return ("fixlabel: raw partition offset != slice offset");
+	if (pp->p_size != info.media_blocks) {
+		if (pp->p_size > info.media_blocks)
+			return ("fixlabel: raw partition size > slice size");
+	}
+	end = start + info.media_blocks;
+	if (start > end)
+		return ("fixlabel: slice wraps");
+	if (lp->d_secpercyl <= 0)
+		return ("fixlabel: d_secpercyl <= 0");
+	pp -= RAW_PART;
+	for (part = 0; part < lp->d_npartitions; part++, pp++) {
+		if (pp->p_offset != 0 || pp->p_size != 0) {
+			if (pp->p_offset < start
+			    || pp->p_offset + pp->p_size > end
+			    || pp->p_offset + pp->p_size < pp->p_offset) {
+				/* XXX else silently discard junk. */
+				bzero(pp, sizeof *pp);
+			} else {
+				pp->p_offset += offset;
+			}
+		}
+	}
+	lp->d_checksum = 0;
+	lp->d_checksum = dkcksum32(lp);
+	return (NULL);
 }
 
 void

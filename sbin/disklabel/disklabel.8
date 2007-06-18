@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.13 2007/05/17 08:19:01 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.14 2007/06/18 05:13:38 dillon Exp $
 .\"
 .Dd January 21, 2007
 .Dt DISKLABEL 8
@@ -94,6 +94,9 @@
 .Oc
 .Ar disk Ar protofile
 .Oo Ar disktype/auto Oc
+.Nm
+.Fl f Ar slice_start_lba
+.Oo Ar options Oc
 .Sh DESCRIPTION
 The
 .Nm
@@ -712,6 +715,21 @@ The asterisk
 .Pq Ql *
 indicates that the partition does not begin or end exactly on a
 cylinder boundary.
+.Pp
+.Dx
+no longer snoop-adjusts the on-disklabel when reading or writing
+raw labels.
+.Nm
+is now responsible for adjusting the label when operating in raw mode.
+Traditional (32 bit BSD) disklabels store offsets as absolute block numbers
+rather than slice-relative block numbers.
+If
+.Nm
+is unable to issue the DIOCGPART ioctl to get slice information it will 
+refuse to read or write the label in raw mode.
+The
+.Fl f
+option may be used to force the operation by supplying a manual offset.
 .Sh EXAMPLES
 .Dl "disklabel da0s1"
 .Pp

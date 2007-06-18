@@ -45,10 +45,10 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.15 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.16 2007/06/18 05:13:42 dillon Exp $
  */
 #include <sys/param.h>
-#include <sys/disklabel.h>
+#include <sys/disklabel32.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
 #include <sys/dtype.h>
@@ -517,7 +517,7 @@ static int
 dskread(void *buf, unsigned lba, unsigned nblk)
 {
     struct dos_partition *dp;
-    struct disklabel *d;
+    struct disklabel32 *d;
     char *sec;
     unsigned sl, i;
 
@@ -549,10 +549,10 @@ dskread(void *buf, unsigned lba, unsigned nblk)
 	    }
 	    dsk.start = dp->dp_start;
 	}
-	if (drvread(sec, dsk.start + LABELSECTOR, 1))
+	if (drvread(sec, dsk.start + LABELSECTOR32, 1))
 		return -1;
-	d = (void *)(sec + LABELOFFSET);
-	if (d->d_magic != DISKMAGIC || d->d_magic2 != DISKMAGIC) {
+	d = (void *)(sec + LABELOFFSET32);
+	if (d->d_magic != DISKMAGIC32 || d->d_magic2 != DISKMAGIC32) {
 	    if (dsk.part != RAW_PART) {
 		printf(INVALID_S, "label");
 		return -1;

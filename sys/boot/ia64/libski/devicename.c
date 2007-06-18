@@ -24,12 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/ia64/libski/devicename.c,v 1.2 2003/09/08 09:11:32 obrien Exp $
- * $DragonFly: src/sys/boot/ia64/libski/devicename.c,v 1.1 2003/11/10 06:08:37 dillon Exp $
+ * $DragonFly: src/sys/boot/ia64/libski/devicename.c,v 1.2 2007/06/18 05:13:41 dillon Exp $
  */
 
 #include <stand.h>
 #include <string.h>
-#include <sys/disklabel.h>
+#include <sys/disklabel32.h>
 #include "bootstrap.h"
 #include "libski.h"
 
@@ -131,7 +131,7 @@ ski_parsedev(struct ski_devdesc **dev, const char *devspec, const char **path)
 			}
 			if (*cp && (*cp != ':')) {
 				partition = *cp - 'a';		/* get a partition number */
-				if ((partition < 0) || (partition >= MAXPARTITIONS)) {
+				if ((partition < 0) || (partition >= MAXPARTITIONS32)) {
 					err = EPART;
 					goto fail;
 				}

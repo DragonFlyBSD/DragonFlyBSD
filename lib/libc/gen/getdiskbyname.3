@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)getdiskbyname.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/getdiskbyname.3,v 1.3.2.4 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/getdiskbyname.3,v 1.3 2007/05/17 23:53:44 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/getdiskbyname.3,v 1.4 2007/06/18 05:13:34 dillon Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETDISKBYNAME 3
@@ -43,8 +43,8 @@
 .Lb libc
 .Sh SYNOPSIS
 .In disktab.h
-.In sys/disklabel.h
-.Ft struct disklabel *
+.In sys/disklabel32.h
+.Ft struct disklabel32 *
 .Fn getdiskbyname "const char *name"
 .Sh DESCRIPTION
 The
