@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/vkernel/include/smp.h,v 1.1 2006/11/08 16:40:00 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/smp.h,v 1.2 2007/06/18 18:57:13 josepht Exp $
  *
  */
 
@@ -48,9 +48,9 @@ void	bootMP			(void);
 
 #endif
 
-#if 0
 /* global data in apic_vector.s */
 extern volatile u_int		stopped_cpus;
+#if 0
 extern volatile u_int		started_cpus;
 
 extern volatile u_int		checkstate_probed_cpus;
@@ -97,8 +97,10 @@ extern struct pcb		stoppcbs[];
 void	*permanent_io_mapping(vm_paddr_t);
 u_int	mp_bootaddress		(u_int);
 int	mp_probe		(void);
+#endif
 void	mp_start		(void);
 void	mp_announce		(void);
+#if 0
 u_int	isa_apic_mask		(u_int);
 int	isa_apic_irq		(int);
 int	pci_apic_irq		(int, int, int);
@@ -115,9 +117,11 @@ int	apic_polarity		(int, int);
 void	assign_apic_irq		(int apic, int intpin, int irq);
 void	revoke_apic_irq		(int irq);
 void	init_secondary		(void);
+#endif
 int	stop_cpus		(u_int);
 void	ap_init			(void);
 int	restart_cpus		(u_int);
+#if 0
 void	forward_signal		(struct proc *);
 
 #endif

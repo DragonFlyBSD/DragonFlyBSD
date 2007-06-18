@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.23 2007/04/29 18:25:38 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.24 2007/06/18 18:57:12 josepht Exp $
  */
 
 /*
@@ -950,10 +950,9 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 			(usermode ? "user" : "kernel"));
 	}
 #ifdef SMP
-	/* three separate prints in case of a trap on an unmapped page */
+	/* two separate prints in case of a trap on an unmapped page */
 	kprintf("mp_lock = %08x; ", mp_lock);
 	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
-	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
 	if (type == T_PAGEFLT) {
 		kprintf("fault virtual address	= 0x%x\n", eva);
@@ -1046,10 +1045,9 @@ dblfault_handler(void)
 	kprintf("esp = 0x%x\n", gd->gd_common_tss.tss_esp);
 	kprintf("ebp = 0x%x\n", gd->gd_common_tss.tss_ebp);
 #ifdef SMP
-	/* three separate prints in case of a trap on an unmapped page */
+	/* two separate prints in case of a trap on an unmapped page */
 	kprintf("mp_lock = %08x; ", mp_lock);
 	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
-	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
 	panic("double fault");
 }

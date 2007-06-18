@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.21 2007/04/29 18:25:39 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.22 2007/06/18 18:57:13 josepht Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -285,7 +285,10 @@ pmap_release(struct pmap *pmap)
 		panic("pmap_release: pteobj reference count != 1");
 #endif
 #ifdef SMP
+	panic("Must write code to clear PTxpdir cache across all CPUs");
+#if 0
 #error "Must write code to clear PTxpdir cache across all CPUs"
+#endif
 #endif
 	/*
 	 * Once we destroy the page table, the mapping becomes invalid.
@@ -534,7 +537,10 @@ inval_ptbase_pagedir(pmap_t pmap, vm_pindex_t pindex)
 	vm_offset_t va;
 
 #ifdef SMP
+	panic("Must inval self-mappings in all gd's");
+#if 0
 #error "Must inval self-mappings in all gd's"
+#endif
 #endif
 	if (pmap == &kernel_pmap) {
 		va = (vm_offset_t)KernelPTA + (pindex << PAGE_SHIFT);
@@ -788,7 +794,7 @@ pmap_qenter(vm_offset_t va, struct vm_page **m, int count)
 		va += PAGE_SIZE;
 	}
 #ifdef SMP
-	XXX
+	panic("XXX smp_invltlb()");
 	smp_invltlb();
 #endif
 }
@@ -843,7 +849,7 @@ pmap_qremove(vm_offset_t va, int count)
 		va += PAGE_SIZE;
 	}
 #ifdef SMP
-	XXX
+	panic("XXX smp_invltlb()");
 	smp_invltlb();
 #endif
 }
