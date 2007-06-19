@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.1 2007/06/19 02:53:55 dillon Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.2 2007/06/19 06:38:33 dillon Exp $
  */
 /*
  * Copyright (c) 1987, 1993
@@ -71,7 +71,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.1 2007/06/19 02:53:55 dillon Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.2 2007/06/19 06:38:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -138,6 +138,7 @@ char	*skip(char *);
 char	*word(char *);
 int	getasciilabel(FILE *, struct disklabel64 *);
 int	getasciipartspec(char *, struct disklabel64 *, int, int, uint32_t);
+int	getasciipartuuid(char *, struct disklabel64 *, int, int, uint32_t);
 int	checklabel(struct disklabel64 *);
 void	Warning(const char *, ...) __printflike(1, 2);
 void	usage(void);
@@ -683,7 +684,7 @@ display(FILE *f, const struct disklabel64 *lp)
 			lp->d_pstop - lp->d_pbase);
 	fprintf(f, "#\n");
 
-	uuid_to_string(&lp->d_obj_uuid, &str, NULL);
+	uuid_to_string(&lp->d_stor_uuid, &str, NULL);
 	fprintf(f, "diskid: %s\n", str ? str : "<unknown>");
 	free(str);
 
@@ -703,10 +704,11 @@ display(FILE *f, const struct disklabel64 *lp)
 	fprintf(f, "\n");
 	fprintf(f, "%u partitions:\n", lp->d_npartitions);
 	fprintf(f, "#          size     offset    fstype   fsuuid\n");
-	pp = lp->d_partitions;
 	didany = 0;
-	for (part = 0; part < lp->d_npartitions; part++, pp++) {
+	for (part = 0; part < lp->d_npartitions; part++) {
+		pp = &lp->d_partitions[part];
 		const u_long onemeg = 1024 * 1024;
+
 		if (pp->p_bsize == 0)
 			continue;
 		didany = 1;
@@ -727,10 +729,27 @@ display(FILE *f, const struct disklabel64 *lp)
 		fprintf(f, "\t# %11.3fM", (double)pp->p_bsize / onemeg);
 		fprintf(f, "\n");
 	}
+	for (part = 0; part < lp->d_npartitions; part++) {
+		pp = &lp->d_partitions[part];
+
+		if (pp->p_bsize == 0)
+			continue;
+
+		if (uuid_is_nil(&lp->d_stor_uuid, NULL) == 0) {
+			fprintf(f, "  %c-stor_uuid: ", 'a' + part);
+			str = NULL;
+			uuid_to_string(&pp->p_stor_uuid, &str, NULL);
+			if (str) {
+				fprintf(f, "%s", str);
+				free(str);
+			}
+			fprintf(f, "\n");
+		}
+	}
 	if (didany == 0) {
 		fprintf(f, "# EXAMPLE\n");
 		fprintf(f, "#a:          4g          0    4.2BSD\n");
-		fprintf(f, "#b:          *           *    4.2BSD\n");
+		fprintf(f, "#a:          *           *    4.2BSD\n");
 
 	}
 	fflush(f);
@@ -890,7 +909,7 @@ getasciilabel(FILE *f, struct disklabel64 *lp)
 
 		if (streq(cp, "diskid")) {
 			uint32_t status = 0;
-			uuid_from_string(tp, &lp->d_obj_uuid, &status);
+			uuid_from_string(tp, &lp->d_stor_uuid, &status);
 			if (status != uuid_s_ok) {
 				fprintf(stderr,
 				    "line %d: %s: illegal UUID\n",
@@ -985,7 +1004,11 @@ getasciilabel(FILE *f, struct disklabel64 *lp)
 		}
 
 		/* the ':' was removed above */
-		if (*cp < 'a' || *cp > MAX_PART || cp[1] != '\0') {
+
+		/*
+		 * Handle main partition data, e.g. a:, b:, etc.
+		 */
+		if (*cp < 'a' || *cp > MAX_PART) {
 			fprintf(stderr,
 			    "line %d: %s: Unknown disklabel field\n", lineno,
 			    cp);
@@ -1002,7 +1025,6 @@ getasciilabel(FILE *f, struct disklabel64 *lp)
 			errors++;
 			continue;
 		}
-		part_set[part] = 1;
 
 		if (blksize == 0) {
 			fprintf(stderr, "block size to use for partition "
@@ -1011,10 +1033,24 @@ getasciilabel(FILE *f, struct disklabel64 *lp)
 			continue;
 		}
 
-		if (getasciipartspec(tp, lp, part, lineno, blksize) != 0) {
-			errors++;
-			break;
+		if (strcmp(cp + 1, "-stor_uuid") == 0) {
+			if (getasciipartuuid(tp, lp, part, lineno, blksize)) {
+				errors++;
+				break;
+			}
+			continue;
+		} else if (cp[1] == 0) {
+			part_set[part] = 1;
+			if (getasciipartspec(tp, lp, part, lineno, blksize)) {
+				errors++;
+				break;
+			}
+			continue;
 		}
+		fprintf(stderr, "line %d: %s: Unknown disklabel field\n",
+			lineno, cp);
+		errors++;
+		continue;
 	}
 	errors += checklabel(lp);
 	return (errors == 0);
@@ -1048,7 +1084,8 @@ parse_field_val(char **tp, char **cp, u_int64_t *vv, int lineno)
  * Return 0 on success, 1 on failure.
  */
 int
-getasciipartspec(char *tp, struct disklabel64 *lp, int part, int lineno, uint32_t blksize)
+getasciipartspec(char *tp, struct disklabel64 *lp, int part,
+		 int lineno, uint32_t blksize)
 {
 	struct partition64 *pp;
 	char *cp;
@@ -1155,6 +1192,27 @@ getasciipartspec(char *tp, struct disklabel64 *lp, int part, int lineno, uint32_
 	if (tp) {
 		fprintf(stderr, "line %d: Warning, extra data on line\n",
 			lineno);
+	}
+	return(0);
+}
+
+int
+getasciipartuuid(char *tp, struct disklabel64 *lp, int part,
+		 int lineno, uint32_t blksize __unused)
+{
+	struct partition64 *pp;
+	uint32_t status;
+	char *cp;
+
+	pp = &lp->d_partitions[part];
+
+	cp = tp;
+	tp = word(cp);
+	uuid_from_string(cp, &pp->p_stor_uuid, &status);
+	if (status != uuid_s_ok) {
+		fprintf(stderr, "line %d: Illegal storage uuid specification\n",
+			lineno);
+		return(1);
 	}
 	return(0);
 }
@@ -1342,6 +1400,8 @@ checklabel(struct disklabel64 *lp)
 			pp->p_boffset = 0;
 			continue;
 		}
+		if (uuid_is_nil(&pp->p_stor_uuid, NULL))
+			uuid_create(&pp->p_stor_uuid, NULL);
 
 		if (pp->p_boffset < lp->d_pbase) {
 			fprintf(stderr,
