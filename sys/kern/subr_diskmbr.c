@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.25 2007/06/17 03:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.26 2007/06/19 06:07:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -525,6 +525,8 @@ mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
 	sp->ds_offset = offset;
 	sp->ds_size = size;
 	sp->ds_type = dp->dp_typ;
+	bzero(&sp->ds_type_uuid, sizeof(sp->ds_type_uuid));
+	bzero(&sp->ds_stor_uuid, sizeof(sp->ds_type_uuid));
 
 	/*
 	 * Slices do not overlap with the parent (if any).

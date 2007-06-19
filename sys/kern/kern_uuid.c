@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_uuid.c,v 1.13 2007/04/23 12:53:00 pjd Exp $
- * $DragonFly: src/sys/kern/kern_uuid.c,v 1.3 2007/06/17 03:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_uuid.c,v 1.4 2007/06/19 06:07:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,6 +38,7 @@
 #include <sys/socket.h>
 #include <sys/sysproto.h>
 #include <sys/uuid.h>
+#include <sys/gpt.h>
 #include <net/if_var.h>
 
 /*
@@ -212,16 +213,73 @@ sbuf_printf_uuid(struct sbuf *sb, struct uuid *uuid)
 /*
  * Test functions
  */
+
+/* A macro used to improve the readability of uuid_compare(). */
+#define DIFF_RETURN(a, b, field)	do {			\
+	if ((a)->field != (b)->field)				\
+		return (((a)->field < (b)->field) ? -1 : 1);	\
+} while (0)
+
+/*
+ * kuuid_compare() - compare two UUIDs.
+ * See also:
+ *	http://www.opengroup.org/onlinepubs/009629399/uuid_compare.htm
+ *
+ * NOTE: Either UUID can be NULL, meaning a nil UUID. nil UUIDs are smaller
+ *	 than any non-nil UUID.
+ */
 int
-kuuid_is_nil(struct uuid *uuid)
+kuuid_compare(const struct uuid *a, const struct uuid *b)
+{
+	int	res;
+
+	/* Deal with NULL or equal pointers. */
+	if (a == b)
+		return (0);
+	if (a == NULL)
+		return ((kuuid_is_nil(b)) ? 0 : -1);
+	if (b == NULL)
+		return ((kuuid_is_nil(a)) ? 0 : 1);
+
+	/* We have to compare the hard way. */
+	DIFF_RETURN(a, b, time_low);
+	DIFF_RETURN(a, b, time_mid);
+	DIFF_RETURN(a, b, time_hi_and_version);
+	DIFF_RETURN(a, b, clock_seq_hi_and_reserved);
+	DIFF_RETURN(a, b, clock_seq_low);
+
+	res = bcmp(a->node, b->node, sizeof(a->node));
+	if (res)
+		return ((res < 0) ? -1 : 1);
+	return (0);
+}
+
+#undef DIFF_RETURN
+
+int
+kuuid_is_nil(const struct uuid *uuid)
 {
 	int i;
 
 	for (i = 0; i < sizeof(*uuid); i += sizeof(int)) {
-		if (*(int *)((char *)uuid + i) != 0)
+		if (*(const int *)((const char *)uuid + i) != 0)
 			return(0);
 	}
 	return(1);
+}
+
+int
+kuuid_is_ccd(const struct uuid *uuid)
+{
+	static struct uuid ccd_uuid = GPT_ENT_TYPE_DRAGONFLY_CCD;
+	return(kuuid_compare(uuid, &ccd_uuid) == 0);
+}
+
+int
+kuuid_is_vinum(const struct uuid *uuid)
+{
+	static struct uuid vinum_uuid = GPT_ENT_TYPE_DRAGONFLY_VINUM;
+	return(kuuid_compare(uuid, &vinum_uuid) == 0);
 }
 
 /*

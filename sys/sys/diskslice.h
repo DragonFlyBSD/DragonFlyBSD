@@ -57,7 +57,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.21 2007/06/18 05:13:42 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.22 2007/06/19 06:07:51 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -68,6 +68,9 @@
 #endif
 #ifndef _SYS_DISKLABEL_H_
 #include <sys/disklabel.h>
+#endif
+#ifndef _SYS_UUID_H_
+#include <sys/uuid.h>
 #endif
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
@@ -130,6 +133,8 @@ struct diskslice {
 	u_int64_t	ds_offset;	/* starting sector */
 	u_int64_t	ds_size;	/* number of sectors */
 	u_int32_t	ds_reserved;	/* sectors reserved parent overlap */
+	struct uuid	ds_type_uuid;	/* slice type uuid */
+	struct uuid	ds_stor_uuid;	/* slice storage unique uuid */
 	int		ds_type;	/* (foreign) slice type */
 	disklabel_t 	ds_label;	/* label, if any */
 	struct disklabel_ops *ds_ops;	/* label ops (probe default) */
@@ -158,7 +163,8 @@ struct diskslices {
  * This ioctl is primarily used to get the block size and media size.
  *
  * NOTE: media_offset currently represents the byte offset on the raw device,
- * it is not a partition relative offset.
+ * it is not a partition relative offset.  disklabel(32) uses this field
+ * to figure out the slice offset so it fixup raw labels.
  *
  * NOTE: reserved_blocks indicates how many blocks at the beginning of the
  * partition are read-only due to in-band sharing with the parent.  For
@@ -173,8 +179,8 @@ struct partinfo {
 	int		media_blksize;	/* block size in bytes (sector size) */
 
 	u_int64_t	reserved_blocks;/* read-only, in sectors */
-	int		fstype;		/* filesystem type if numeric */
-	char		fstypestr[16];	/* filesystem type as ascii */
+	int		fstype;		/* legacy filesystem type or FS_OTHER */
+	char		fsreserved[16];	/* reserved for future use */
 
 	/*
 	 * These fields are loaded from the diskinfo structure
@@ -183,7 +189,18 @@ struct partinfo {
 	u_int		d_ncylinders;
 	u_int		d_secpertrack;
 	u_int		d_secpercyl;
-	u_int		d_reserved[16];
+	u_int		d_reserved[8];	/* reserved for future use */
+
+	/*
+	 * UUIDs can be extracted from GPT slices and disklabel64
+	 * partitions.  If not known, they will be set to a nil uuid.
+	 *
+	 * fstype_uuid represents the slice or partition type, e.g.
+	 * like GPT_ENT_TYPE_DRAGONFLY_DISKLABEL32.  If not nil,
+	 * storage_uuid uniquely identifies the physical storage.
+	 */
+	struct uuid	fstype_uuid;
+	struct uuid	storage_uuid;
 };
 
 #define DIOCGPART	_IOR('d', 104, struct partinfo)	/* get partition */

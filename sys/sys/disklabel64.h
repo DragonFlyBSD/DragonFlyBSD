@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/disklabel64.h,v 1.2 2007/06/19 02:53:52 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel64.h,v 1.3 2007/06/19 06:07:51 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL64_H_
@@ -121,7 +121,7 @@ struct disklabel64 {
 		u_int32_t p_unused05;	/* reserved, must be 0 */
 		u_int32_t p_unused06;	/* reserved, must be 0 */
 		struct uuid p_type_uuid;/* mount type as UUID */
-		struct uuid p_obj_uuid; /* unique uuid for storage */
+		struct uuid p_stor_uuid;/* unique uuid for storage */
 	} d_partitions[MAXPARTITIONS64];/* actually may be more */
 };
 

@@ -89,7 +89,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disklabel32.c,v 1.3 2007/06/19 02:53:56 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disklabel32.c,v 1.4 2007/06/19 06:07:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -139,15 +139,20 @@ l32_getpartbounds(struct diskslices *ssp, disklabel_t lp, u_int32_t part,
 	return(0);
 }
 
-static int
-l32_getpartfstype(disklabel_t lp, u_int32_t part)
+static void
+l32_loadpartinfo(disklabel_t lp, u_int32_t part, struct partinfo *dpart)
 {
 	struct partition32 *pp;
+	const size_t uuid_size = sizeof(struct uuid);
 
-	if (part >= lp.lab32->d_npartitions)
-		return (0);
-	pp = &lp.lab32->d_partitions[part];
-	return(pp->p_fstype);
+	bzero(&dpart->fstype_uuid, uuid_size);
+	bzero(&dpart->storage_uuid, uuid_size);
+	if (part < lp.lab32->d_npartitions) {
+		pp = &lp.lab32->d_partitions[part];
+		dpart->fstype = pp->p_fstype;
+	} else {
+		dpart->fstype = 0;
+	}
 }
 
 static u_int32_t
@@ -608,7 +613,7 @@ struct disklabel_ops disklabel32_ops = {
 	.op_clone_label = l32_clone_label,
 	.op_adjust_label_reserved = l32_adjust_label_reserved,
 	.op_getpartbounds = l32_getpartbounds,
-	.op_getpartfstype = l32_getpartfstype,
+	.op_loadpartinfo = l32_loadpartinfo,
 	.op_getnumparts = l32_getnumparts,
 	.op_makevirginlabel = l32_makevirginlabel
 };

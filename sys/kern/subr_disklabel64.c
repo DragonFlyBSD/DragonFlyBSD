@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/subr_disklabel64.c,v 1.2 2007/06/19 02:53:56 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disklabel64.c,v 1.3 2007/06/19 06:07:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -72,16 +72,22 @@ l64_getpartbounds(struct diskslices *ssp, disklabel_t lp, u_int32_t part,
 /*
  * Get the filesystem type XXX - diskslices code needs to use uuids
  */
-static int
-l64_getpartfstype(disklabel_t lp, u_int32_t part)
+static void
+l64_loadpartinfo(disklabel_t lp, u_int32_t part, struct partinfo *dpart)
 {
 	struct partition64 *pp;
+	const size_t uuid_size = sizeof(struct uuid);
 
-	if (part >= lp.lab64->d_npartitions)
-		return (0);
-	pp = &lp.lab64->d_partitions[part];
-	/* XXX */
-	return (0);
+	if (part < lp.lab64->d_npartitions) {
+		pp = &lp.lab64->d_partitions[part];
+		dpart->fstype_uuid = pp->p_type_uuid;
+		dpart->storage_uuid = pp->p_stor_uuid;
+		dpart->fstype = pp->p_fstype;
+	} else {
+		bzero(&dpart->fstype_uuid, uuid_size);
+		bzero(&dpart->storage_uuid, uuid_size);
+		dpart->fstype = 0;
+	}
 }
 
 /*
@@ -209,15 +215,15 @@ l64_setdisklabel(disklabel_t olpx, disklabel_t nlpx, struct diskslices *ssp,
 		}
 
 		/*
-		 * Do not allow p_type_uuid or p_obj_uuid to change if
+		 * Do not allow p_type_uuid or p_stor_uuid to change if
 		 * the partition is currently open.
 		 */
 		if (bcmp(&npp->p_type_uuid, &opp->p_type_uuid,
 		     sizeof(npp->p_type_uuid)) != 0) {
 			return (EBUSY);
 		}
-		if (bcmp(&npp->p_obj_uuid, &opp->p_obj_uuid,
-		     sizeof(npp->p_obj_uuid)) != 0) {
+		if (bcmp(&npp->p_stor_uuid, &opp->p_stor_uuid,
+		     sizeof(npp->p_stor_uuid)) != 0) {
 			return (EBUSY);
 		}
 		++i;
@@ -458,7 +464,7 @@ struct disklabel_ops disklabel64_ops = {
 	.op_clone_label = l64_clone_label,
 	.op_adjust_label_reserved = l64_adjust_label_reserved,
 	.op_getpartbounds = l64_getpartbounds,
-	.op_getpartfstype = l64_getpartfstype,
+	.op_loadpartinfo = l64_loadpartinfo,
 	.op_getnumparts = l64_getnumparts,
 	.op_makevirginlabel = l64_makevirginlabel
 };

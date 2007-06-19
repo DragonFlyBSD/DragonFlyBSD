@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.24 2007/06/07 22:58:38 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.25 2007/06/19 06:07:55 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -239,7 +239,7 @@ init_drive(struct drive *drive, int verbose)
 	return drive->lasterror;
     }
     if (drive->partinfo.fstype != FS_VINUM &&
-	strcmp(drive->partinfo.fstypestr, "vinum") != 0
+	!kuuid_is_vinum(&drive->partinfo.fstype_uuid)
     ) {	 
 	drive->lasterror = EFTYPE;
 	if (verbose)

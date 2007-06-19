@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/subr_diskgpt.c,v 1.2 2007/06/17 09:56:19 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskgpt.c,v 1.3 2007/06/19 06:07:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -226,6 +226,8 @@ gpt_setslice(const char *sname, struct disk_info *info, struct diskslice *sp,
 	sp->ds_offset = sent->ent_lba_start;
 	sp->ds_size   = sent->ent_lba_end + 1 - sent->ent_lba_start;
 	sp->ds_type   = 1;	/* XXX */
+	sp->ds_type_uuid = sent->ent_type;
+	sp->ds_stor_uuid = sent->ent_uuid;
 	sp->ds_reserved = 0;	/* no reserved sectors */
 }
 

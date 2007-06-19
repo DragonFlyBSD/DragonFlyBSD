@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.4 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.5 2007/06/19 06:07:52 dillon Exp $
  */
 
 #define DKTYPENAMES
@@ -44,6 +44,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <uuid.h>
 
 static int quietMode;
 static int extendedMode;
@@ -81,7 +82,7 @@ main(int ac, char **av)
 		if (ioctl(fd, DIOCGPART, &dpart) < 0) {
 			printf("%-16s %s\n", av[i], strerror(errno));
 		} else if (dpart.media_size == 0 && dpart.fstype == 0 &&
-			   dpart.fstypestr[0] == 0) {
+			   uuid_is_nil(&dpart.fstype_uuid, NULL)) {
 			if (quietMode == 0)
 				printf("%-16s unused\n", av[i]);
 		} else {
@@ -118,16 +119,26 @@ dumppart(const char *path, struct partinfo *dpart)
 		);
 	}
 	if (extendedMode) {
-		if (dpart->fstypestr[0]) {
-			printf(" fs=%s", dpart->fstypestr);
-		} else if (dpart->fstype) {
-			printf(" fs=");
+		if (!uuid_is_nil(&dpart->fstype_uuid, NULL)) {
+			char *str;
+			uuid_addr_lookup(&dpart->fstype_uuid, &str, NULL);
+			if (str == NULL)
+				uuid_to_string(&dpart->fstype_uuid, &str, NULL);
+			printf(" fstype='%s'", str ? str : "<illegal>");
+		}
+		if (dpart->fstype) {
+			printf(" ofstype=");
 			if (dpart->fstype < 0 || 
 			    dpart->fstype >= (int)FSMAXTYPES) {
 				printf("%d", dpart->fstype);
 			} else {
 				printf("%s", fstypenames[dpart->fstype]);
 			}
+		}
+		if (!uuid_is_nil(&dpart->storage_uuid, NULL)) {
+			char *str = NULL;
+			uuid_to_string(&dpart->fstype_uuid, &str, NULL);
+			printf(" storage_uuid='%s'", str ? str : "<illegal>");
 		}
 		if (dpart->reserved_blocks) {
 			/*

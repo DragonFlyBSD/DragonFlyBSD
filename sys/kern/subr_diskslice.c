@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.47 2007/06/19 02:53:56 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.48 2007/06/19 06:07:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -443,6 +443,8 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			dpart->media_blocks   = sp->ds_size;
 			dpart->media_blksize  = info->d_media_blksize;
 			dpart->reserved_blocks= sp->ds_reserved;
+			dpart->fstype_uuid = sp->ds_type_uuid;
+			dpart->storage_uuid = sp->ds_stor_uuid;
 
 			if (slice != WHOLE_DISK_SLICE &&
 			    part != WHOLE_SLICE_PART) {
@@ -454,7 +456,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 							  &start, &blocks)) {
 					return(EINVAL);
 				}
-				dpart->fstype = ops->op_getpartfstype(lp, part);
+				ops->op_loadpartinfo(lp, part, dpart);
 				dpart->media_offset += start *
 						       info->d_media_blksize;
 				dpart->media_size = blocks *

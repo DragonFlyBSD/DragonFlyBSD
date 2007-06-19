@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/disklabel.h,v 1.28 2007/06/19 02:53:52 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.29 2007/06/19 06:07:51 dillon Exp $
  */
 /*
  * Disklabel abstraction
@@ -60,6 +60,7 @@ struct cdev;
 struct diskslice;
 struct diskslices;
 struct disk_info;
+struct partinfo;
 
 struct disklabel_ops {
 	struct uuid type;	/* uuid specifies disklabel type */
@@ -81,8 +82,8 @@ struct disklabel_ops {
 	int (*op_getpartbounds)
 		    (struct diskslices *, disklabel_t, u_int32_t,
 		     u_int64_t *, u_int64_t *);
-	int (*op_getpartfstype)
-		    (disklabel_t, u_int32_t);
+	void (*op_loadpartinfo)
+		    (disklabel_t, u_int32_t, struct partinfo *);
 	u_int32_t (*op_getnumparts)
 		    (disklabel_t);
 	void (*op_makevirginlabel)
