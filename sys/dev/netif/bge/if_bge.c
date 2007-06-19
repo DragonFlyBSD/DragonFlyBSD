@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.80 2007/06/07 20:30:20 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.81 2007/06/19 14:59:41 sephe Exp $
  *
  */
 
@@ -84,6 +84,7 @@
 #include <sys/serialize.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/sysctl.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -330,12 +331,30 @@ static int	bge_dma_block_alloc(struct bge_softc *, bus_size_t,
 				    void **, bus_addr_t *);
 static void	bge_dma_block_free(bus_dma_tag_t, bus_dmamap_t, void *);
 
+static void	bge_coal_change(struct bge_softc *);
+static int	bge_sysctl_rx_coal_ticks(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_tx_coal_ticks(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_rx_max_coal_bds(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_tx_max_coal_bds(SYSCTL_HANDLER_ARGS);
+static int	bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *, uint32_t);
+
 /*
  * Set following tunable to 1 for some IBM blade servers with the DNLK
  * switch module. Auto negotiation is broken for those configurations.
  */
 static int	bge_fake_autoneg = 0;
 TUNABLE_INT("hw.bge.fake_autoneg", &bge_fake_autoneg);
+
+/* Interrupt moderation control variables. */
+static int	bge_rx_coal_ticks = 150;	/* usec */
+static int	bge_tx_coal_ticks = 1000000;	/* usec */
+static int	bge_rx_max_coal_bds = 16;
+static int	bge_tx_max_coal_bds = 32;
+
+TUNABLE_INT("hw.bge.rx_coal_ticks", &bge_rx_coal_ticks);
+TUNABLE_INT("hw.bge.tx_coal_ticks", &bge_tx_coal_ticks);
+TUNABLE_INT("hw.bge.rx_max_coal_bds", &bge_rx_max_coal_bds);
+TUNABLE_INT("hw.bge.tx_max_coal_bds", &bge_tx_max_coal_bds);
 
 static device_method_t bge_methods[] = {
 	/* Device interface */
@@ -1767,10 +1786,10 @@ bge_attach(device_t dev)
 
 	/* Set default tuneable values. */
 	sc->bge_stat_ticks = BGE_TICKS_PER_SEC;
-	sc->bge_rx_coal_ticks = 150;
-	sc->bge_tx_coal_ticks = 150;
-	sc->bge_rx_max_coal_bds = 10;
-	sc->bge_tx_max_coal_bds = 10;
+	sc->bge_rx_coal_ticks = bge_rx_coal_ticks;
+	sc->bge_tx_coal_ticks = bge_tx_coal_ticks;
+	sc->bge_rx_max_coal_bds = bge_rx_max_coal_bds;
+	sc->bge_tx_max_coal_bds = bge_tx_max_coal_bds;
 
 	/* Set up ifnet structure */
 	ifp->if_softc = sc;
@@ -1871,6 +1890,46 @@ bge_attach(device_t dev)
 	}
 
 	/*
+	 * Create sysctl nodes.
+	 */
+	sysctl_ctx_init(&sc->bge_sysctl_ctx);
+	sc->bge_sysctl_tree = SYSCTL_ADD_NODE(&sc->bge_sysctl_ctx,
+					      SYSCTL_STATIC_CHILDREN(_hw),
+					      OID_AUTO,
+					      device_get_nameunit(dev),
+					      CTLFLAG_RD, 0, "");
+	if (sc->bge_sysctl_tree == NULL) {
+		device_printf(dev, "can't add sysctl node\n");
+		error = ENXIO;
+		goto fail;
+	}
+
+	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
+			OID_AUTO, "rx_coal_ticks",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bge_sysctl_rx_coal_ticks, "I",
+			"Receive coalescing ticks (usec).");
+	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
+			OID_AUTO, "tx_coal_ticks",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bge_sysctl_tx_coal_ticks, "I",
+			"Transmit coalescing ticks (usec).");
+	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
+			OID_AUTO, "rx_max_coal_bds",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bge_sysctl_rx_max_coal_bds, "I",
+			"Receive max coalesced BD count.");
+	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
+			OID_AUTO, "tx_max_coal_bds",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bge_sysctl_tx_max_coal_bds, "I",
+			"Transmit max coalesced BD count.");
+
+	/*
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, ether_addr, NULL);
@@ -1918,6 +1977,9 @@ bge_detach(device_t dev)
         if (sc->bge_res != NULL)
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    BGE_PCI_BAR0, sc->bge_res);
+
+	if (sc->bge_sysctl_tree != NULL)
+		sysctl_ctx_free(&sc->bge_sysctl_ctx);
 
 	bge_dma_free(sc);
 
@@ -2396,6 +2458,9 @@ bge_intr(void *xsc)
 		/* Check TX ring producer/consumer */
 		bge_txeof(sc);
 	}
+
+	if (sc->bge_coal_chg)
+		bge_coal_change(sc);
 }
 
 static void
@@ -3116,6 +3181,7 @@ bge_stop(struct bge_softc *sc)
 	}
 
 	sc->bge_link = 0;
+	sc->bge_coal_chg = 0;
 
 	sc->bge_tx_saved_considx = BGE_TXCONS_UNSET;
 
@@ -3618,4 +3684,128 @@ bge_copper_link_upd(struct bge_softc *sc, uint32_t status __unused)
 	CSR_WRITE_4(sc, BGE_MAC_STS, BGE_MACSTAT_SYNC_CHANGED |
 	    BGE_MACSTAT_CFG_CHANGED | BGE_MACSTAT_MI_COMPLETE |
 	    BGE_MACSTAT_LINK_CHANGED);
+}
+
+static int
+bge_sysctl_rx_coal_ticks(SYSCTL_HANDLER_ARGS)
+{
+	struct bge_softc *sc = arg1;
+
+	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
+				   &sc->bge_rx_coal_ticks,
+				   BGE_RX_COAL_TICKS_CHG);
+}
+
+static int
+bge_sysctl_tx_coal_ticks(SYSCTL_HANDLER_ARGS)
+{
+	struct bge_softc *sc = arg1;
+
+	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
+				   &sc->bge_tx_coal_ticks,
+				   BGE_TX_COAL_TICKS_CHG);
+}
+
+static int
+bge_sysctl_rx_max_coal_bds(SYSCTL_HANDLER_ARGS)
+{
+	struct bge_softc *sc = arg1;
+
+	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
+				   &sc->bge_rx_max_coal_bds,
+				   BGE_RX_MAX_COAL_BDS_CHG);
+}
+
+static int
+bge_sysctl_tx_max_coal_bds(SYSCTL_HANDLER_ARGS)
+{
+	struct bge_softc *sc = arg1;
+
+	return bge_sysctl_coal_chg(oidp, arg1, arg2, req,
+				   &sc->bge_tx_max_coal_bds,
+				   BGE_TX_MAX_COAL_BDS_CHG);
+}
+
+static int
+bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *coal,
+		    uint32_t coal_chg_mask)
+{
+	struct bge_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error = 0, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = *coal;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (!error && req->newptr != NULL) {
+		if (v < 0) {
+			error = EINVAL;
+		} else {
+			*coal = v;
+			sc->bge_coal_chg |= coal_chg_mask;
+		}
+	}
+
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+static void
+bge_coal_change(struct bge_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	uint32_t val;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (sc->bge_coal_chg & BGE_RX_COAL_TICKS_CHG) {
+		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS,
+			    sc->bge_rx_coal_ticks);
+		DELAY(10);
+		val = CSR_READ_4(sc, BGE_HCC_RX_COAL_TICKS);
+
+		if (bootverbose) {
+			if_printf(ifp, "rx_coal_ticks -> %u\n",
+				  sc->bge_rx_coal_ticks);
+		}
+	}
+
+	if (sc->bge_coal_chg & BGE_TX_COAL_TICKS_CHG) {
+		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS,
+			    sc->bge_tx_coal_ticks);
+		DELAY(10);
+		val = CSR_READ_4(sc, BGE_HCC_TX_COAL_TICKS);
+
+		if (bootverbose) {
+			if_printf(ifp, "tx_coal_ticks -> %u\n",
+				  sc->bge_tx_coal_ticks);
+		}
+	}
+
+	if (sc->bge_coal_chg & BGE_RX_MAX_COAL_BDS_CHG) {
+		CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS,
+			    sc->bge_rx_max_coal_bds);
+		DELAY(10);
+		val = CSR_READ_4(sc, BGE_HCC_RX_MAX_COAL_BDS);
+
+		if (bootverbose) {
+			if_printf(ifp, "rx_max_coal_bds -> %u\n",
+				  sc->bge_rx_max_coal_bds);
+		}
+	}
+
+	if (sc->bge_coal_chg & BGE_TX_MAX_COAL_BDS_CHG) {
+		CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS,
+			    sc->bge_tx_max_coal_bds);
+		DELAY(10);
+		val = CSR_READ_4(sc, BGE_HCC_TX_MAX_COAL_BDS);
+
+		if (bootverbose) {
+			if_printf(ifp, "tx_max_coal_bds -> %u\n",
+				  sc->bge_tx_max_coal_bds);
+		}
+	}
+
+	sc->bge_coal_chg = 0;
 }

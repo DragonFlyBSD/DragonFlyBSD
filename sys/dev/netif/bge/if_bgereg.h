@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.21 2007/05/07 04:54:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.22 2007/06/19 14:59:41 sephe Exp $
  */
 
 /*
@@ -2389,6 +2389,15 @@ struct bge_softc {
 	int			bge_link;
 	int			bge_link_evt;
 	struct callout		bge_stat_timer;
+
+	struct sysctl_ctx_list	bge_sysctl_ctx;
+	struct sysctl_oid	*bge_sysctl_tree;
+
+	uint32_t		bge_coal_chg;
+#define BGE_RX_COAL_TICKS_CHG	0x1
+#define BGE_TX_COAL_TICKS_CHG	0x2
+#define BGE_RX_MAX_COAL_BDS_CHG	0x4
+#define BGE_TX_MAX_COAL_BDS_CHG	0x8
 
 	void			(*bge_link_upd)(struct bge_softc *, uint32_t);
 	uint32_t		bge_link_chg;
