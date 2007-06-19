@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.22 2007/06/19 02:53:54 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.23 2007/06/19 19:07:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1477,6 +1477,7 @@ static struct disklabel32 dlab;
 struct disklabel32 *
 getvirginlabel(void)
 {
+	struct partinfo info;
 	struct disklabel32 *dl = &dlab;
 	char nambuf[BBSIZE];
 	int f;
@@ -1492,8 +1493,17 @@ getvirginlabel(void)
 	}
 
 	/*
-	 * Try to use the new get-virgin-label ioctl.  If it fails,
-	 * fallback to the old get-disdk-info ioctl.
+	 * Check to see if the media is too big for a 32 bit disklabel.
+	 */
+	if (ioctl(f, DIOCGPART, &info) == 0) {
+		 if (info.media_size >= 0x100000000ULL * 512) {
+			warnx("The media is too large for a 32 bit disklabel");
+			return (NULL);
+		 }
+	}
+
+	/*
+	 * Generate a virgin disklabel via ioctl
 	 */
 	if (ioctl(f, DIOCGDVIRGIN32, dl) < 0) {
 		l_perror("ioctl DIOCGDVIRGIN32");
