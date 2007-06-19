@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/add.c,v 1.15 2006/10/04 18:20:25 marcel Exp $
- * $DragonFly: src/sbin/gpt/add.c,v 1.4 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sbin/gpt/add.c,v 1.5 2007/06/19 02:30:35 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -48,7 +48,7 @@ usage_add(void)
 {
 
 	fprintf(stderr,
-	    "usage: %s [-b lba] [-i index] [-s lba] [-t uuid] device ...\n",
+	    "usage: %s [-b lba] [-i index] [-s count] [-t uuid] device ...\n",
 	    getprogname());
 	exit(1);
 }
@@ -202,7 +202,7 @@ cmd_add(int argc, char *argv[])
 
 		uuid_name_lookup(&type, "DragonFly Label64", &status);
 		if (status != uuid_s_ok)
-			usage_add();
+			err(1, "unable to find uuid for 'DragonFly Label64'");
 	}
 
 	while (optind < argc) {
