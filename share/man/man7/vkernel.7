@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.19 2007/06/17 16:46:14 dillon Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.20 2007/06/19 17:25:46 dillon Exp $
 .\"
 .Dd June 14, 2007
 .Dt VKERNEL 7
@@ -51,6 +51,7 @@
 .Op Fl i Ar file
 .Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
 .Op Fl m Ar size
+.Op Fl p Ar file
 .Op Fl r Ar file
 .Sh DESCRIPTION
 The
@@ -149,6 +150,9 @@ Lowercase versions of
 and
 .Cm G
 are allowed.
+.It Fl p Ar file
+Specify a file in which to store the process ID. 
+A warning is issued if this file cannot be opened for writing.
 .It Fl r Ar file
 Specify a R/W disk image
 .Ar file

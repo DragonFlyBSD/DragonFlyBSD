@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.39 2007/05/28 05:26:29 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.40 2007/06/19 17:25:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -80,6 +80,7 @@ struct vkdisk_info DiskInfo[VKDISK_MAX];
 int DiskNum;
 struct vknetif_info NetifInfo[VKNETIF_MAX];
 int NetifNum;
+char *pid_file;
 vm_offset_t KvaStart;
 vm_offset_t KvaEnd;
 vm_offset_t KvaSize;
@@ -107,6 +108,8 @@ static void init_globaldata(void);
 static void init_vkernel(void);
 static void init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type); 
 static void init_netif(char *netifExp[], int netifFileNum);
+static void writepid( void );
+static void cleanpid( void );
 static void usage(const char *ctl);
 
 static int save_ac;
@@ -129,7 +132,7 @@ main(int ac, char **av)
 	int c;
 	int i;
 	int n;
-
+	
 	save_ac = ac;
 	save_av = av;
 
@@ -138,7 +141,7 @@ main(int ac, char **av)
 	 */
 	kernel_mem_readonly = 1;
 
-	while ((c = getopt(ac, av, "c:svm:r:e:i:I:U")) != -1) {
+	while ((c = getopt(ac, av, "c:svm:r:e:i:p:I:U")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
@@ -200,12 +203,16 @@ main(int ac, char **av)
 				}
 			}
 			break;
+		case 'p':
+			pid_file = optarg;	
+			break;
 		case 'U':
 			kernel_mem_readonly = 0;
 			break;
 		}
 	}
 
+	writepid();
 	cpu_disable_intr();
 	init_sys_memory(memImageFile);
 	init_kern_memory();
@@ -1039,6 +1046,37 @@ init_netif(char *netifExp[], int netifExpNum)
 
 static
 void
+writepid( void )
+{
+	pid_t self;
+	FILE *fp;
+
+	if (pid_file != NULL) {
+		self = getpid();
+		fp = fopen(pid_file, "w");
+
+		if (fp != NULL) {
+			fprintf(fp, "%ld\n", (long)self);
+			fclose(fp);
+		}
+		else {
+			perror("Warning: couldn't open pidfile");
+		}
+	}
+}
+
+static
+void
+cleanpid( void ) 
+{
+	if (pid_file != NULL) {
+		if ( unlink(pid_file) != 0 )
+			perror("Warning: couldn't remove pidfile");
+	}
+}
+
+static
+void
 usage(const char *ctl)
 {
 	
@@ -1049,6 +1087,7 @@ cpu_reset(void)
 {
 	kprintf("cpu reset, rebooting vkernel\n");
 	closefrom(3);
+	cleanpid();
 	execv(save_av[0], save_av);
 }
 
@@ -1056,5 +1095,6 @@ void
 cpu_halt(void)
 {
 	kprintf("cpu halt, exiting vkernel\n");
+	cleanpid();
 	exit(0);
 }
