@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.47 2007/06/19 06:07:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.48 2007/06/19 19:09:46 dillon Exp $
  */
 /*
  * Copyright (c) 1995 Jason R. Thorpe.
@@ -108,7 +108,7 @@
  * @(#)cd.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $
  * $NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.47 2007/06/19 06:07:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.48 2007/06/19 19:09:46 dillon Exp $
  */
 
 /*
@@ -440,7 +440,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 #endif
 			goto fail;
 		}
-		if (dpart.fstype != FS_CCD || 
+		if (dpart.fstype != FS_CCD && 
 		    !kuuid_is_ccd(&dpart.fstype_uuid)) {
 			kprintf("ccd%d: %s: filesystem type must be 'ccd'\n",
 				ccd->ccd_unit, ci->ci_path);
@@ -592,8 +592,9 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 	struct ccdiinfo *ii;
 	u_int64_t bn;
 	u_int64_t lbn;
+	u_int64_t size;
+	int icount;
 	int ix;
-	u_long size;
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_INIT)
@@ -607,8 +608,9 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 	 *
 	 * Chances are this is too big, but we don't care.
 	 */
-	size = (cs->sc_nccdisks + 1) * sizeof(struct ccdiinfo);
-	cs->sc_itable = kmalloc(size, M_DEVBUF, M_WAITOK|M_ZERO);
+	icount = cs->sc_nccdisks + 1;
+	cs->sc_itable = kmalloc(icount * sizeof(struct ccdiinfo),
+				M_DEVBUF, M_WAITOK|M_ZERO);
 
 	/*
 	 * Trivial case: no interleave (actually interleave of disk size).
@@ -643,7 +645,7 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 	 */
 	size = 0;
 	bn = lbn = 0;
-	for (ii = cs->sc_itable; ; ii++) {
+	for (ii = cs->sc_itable; ii < &cs->sc_itable[icount]; ++ii) {
 		/*
 		 * Allocate space for ii_index.  We might allocate more then
 		 * we use.
@@ -679,7 +681,7 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 		ii->ii_startblk = bn / cs->sc_ileave;
 
 		/*
-		 * Record starting comopnent block using an sc_ileave 
+		 * Record starting component block using an sc_ileave 
 		 * blocksize.  This value is relative to the beginning of
 		 * a component disk.
 		 */
@@ -697,10 +699,16 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 			}
 		}
 		ii->ii_ndisk = ix;
+
+		/*
+		 * Adjust for loop
+		 */
 		bn += ix * (smallci->ci_size - size);
 		lbn = smallci->ci_size / cs->sc_ileave;
 		size = smallci->ci_size;
 	}
+	if (ii == &cs->sc_itable[icount])
+		panic("ccdinterlave software bug!  table exhausted");
 #ifdef DEBUG
 	if (ccddebug & CCDB_INIT)
 		printiinfo(cs->sc_itable);
