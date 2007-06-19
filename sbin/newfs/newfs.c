@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.16 2007/05/20 19:29:21 dillon Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.17 2007/06/19 19:18:20 dillon Exp $
  */
 
 /*
@@ -486,6 +486,11 @@ main(int argc, char **argv)
 		if (geom.d_media_blocks == 0 || geom.d_media_size == 0) {
 			fatal("%s: is unavailable", argv[0]);
 		}
+		printf("%s: media size %6.2fMB\n",
+		        argv[0], geom.d_media_size / 1024.0 / 1024.0);
+		if (geom.d_media_size / 512 >= 0x80000000ULL)
+			fatal("%s: media size is too large for newfs to handle",
+			      argv[0]);
 	}
 havelabel:
 	if (fssize == 0)
