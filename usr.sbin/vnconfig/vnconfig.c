@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.11 2007/05/15 22:45:10 dillon Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.12 2007/06/19 19:28:18 dillon Exp $
  */
 
 #include <ctype.h>
@@ -278,7 +278,7 @@ config(struct vndisk *vnp)
 		struct stat st;
 
 		if (flags & VN_TRUNCATE)
-			fd = open(file, O_RDWR|O_CREAT|O_TRUNC);
+			fd = open(file, O_RDWR|O_CREAT|O_TRUNC, 0600);
 		else
 			fd = open(file, O_RDWR);
 		if (fd >= 0 && fstat(fd, &st) == 0 && S_ISREG(st.st_mode)) {
