@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/subr_disklabel64.c,v 1.3 2007/06/19 06:07:57 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disklabel64.c,v 1.4 2007/06/19 06:39:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -411,7 +411,7 @@ l64_makevirginlabel(disklabel_t lpx, struct diskslices *ssp,
 	lp->d_magic = DISKMAGIC64;
 	lp->d_align = blksize;
 	lp->d_npartitions = MAXPARTITIONS64;
-	kern_uuidgen(&lp->d_obj_uuid, 1);
+	kern_uuidgen(&lp->d_stor_uuid, 1);
 
 	ressize = offsetof(struct disklabel64, d_partitions[RESPARTITIONS64]);
 	ressize = (ressize + (uint32_t)blkmask) & ~blkmask;

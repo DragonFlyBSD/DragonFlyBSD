@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/disklabel64.h,v 1.3 2007/06/19 06:07:51 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel64.h,v 1.4 2007/06/19 06:39:10 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL64_H_
@@ -87,7 +87,7 @@ struct disklabel64 {
 	u_int32_t d_crc;		/* crc32() d_magic thru last part */
 	u_int32_t d_align;		/* partition alignment requirement */
 	u_int32_t d_npartitions;	/* number of partitions */
-	struct uuid d_obj_uuid;		/* unique uuid for label */
+	struct uuid d_stor_uuid;	/* unique uuid for label */
 
 	u_int64_t d_total_size;		/* total size incl everything (bytes) */
 	u_int64_t d_bbase;		/* boot area base offset (bytes) */
