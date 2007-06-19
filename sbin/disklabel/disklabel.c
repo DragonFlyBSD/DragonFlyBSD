@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.21 2007/06/18 05:13:38 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.22 2007/06/19 02:53:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -410,7 +410,7 @@ writelabel(int f, const char *boot, struct disklabel32 *lp)
 			 */
 			if (ioctl(f, DIOCSDINFO32, lp) < 0 &&
 				errno != ENODEV && errno != ENOTTY) {
-				l_perror("ioctl DIOCSDINFO");
+				l_perror("ioctl DIOCSDINFO32");
 				return (1);
 			}
 			lseek(f, (off_t)0, SEEK_SET);
@@ -450,7 +450,7 @@ writelabel(int f, const char *boot, struct disklabel32 *lp)
 			flag = 0;
 			ioctl(f, DIOCWLABEL, &flag);
 		} else if (ioctl(f, DIOCWDINFO32, lp) < 0) {
-			l_perror("ioctl DIOCWDINFO");
+			l_perror("ioctl DIOCWDINFO32");
 			return (1);
 		}
 	}
@@ -479,6 +479,12 @@ l_perror(const char *s)
 	case EXDEV:
 		warnx("%s: '%c' partition must start at beginning of disk",
 		    s, 'a' + RAW_PART);
+		break;
+
+	case ENOATTR:
+		warnx("%s: the disk already has a label of a different type,\n"
+		      "probably a 64 bit disklabel.  It must be cleaned out "
+		      "first.\n", s);
 		break;
 
 	default:
@@ -519,8 +525,10 @@ readlabel(int f)
 			errx(1, msg);
 	} else {
 		lp = &lab;
-		if (ioctl(f, DIOCGDINFO32, lp) < 0)
-			err(4, "ioctl DIOCGDINFO");
+		if (ioctl(f, DIOCGDINFO32, lp) < 0) {
+			l_perror("ioctl DIOCGDINFO32");
+			exit(4);
+		}
 	}
 	return (lp);
 }
@@ -1488,11 +1496,9 @@ getvirginlabel(void)
 	 * fallback to the old get-disdk-info ioctl.
 	 */
 	if (ioctl(f, DIOCGDVIRGIN32, dl) < 0) {
-		if (ioctl(f, DIOCGDINFO32, dl) < 0) {
-			warn("ioctl DIOCGDINFO");
-			close(f);
-			return (NULL);
-		}
+		l_perror("ioctl DIOCGDVIRGIN32");
+		close(f);
+		return(NULL);
 	}
 	close(f);
 	return (dl);

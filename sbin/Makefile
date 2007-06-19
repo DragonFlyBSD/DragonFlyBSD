@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.5 (Berkeley) 3/31/94
 # $FreeBSD: src/sbin/Makefile,v 1.77.2.9 2002/08/08 09:03:46 ru Exp $
-# $DragonFly: src/sbin/Makefile,v 1.16 2007/06/16 22:29:25 dillon Exp $
+# $DragonFly: src/sbin/Makefile,v 1.17 2007/06/19 02:53:53 dillon Exp $
 #
 # XXX MISSING:		icheck ncheck
 
@@ -14,6 +14,7 @@ SUBDIR=	adjkerntz \
 	comcontrol \
 	dhclient \
 	disklabel \
+	disklabel64 \
 	diskinfo \
 	dmesg \
 	dump \

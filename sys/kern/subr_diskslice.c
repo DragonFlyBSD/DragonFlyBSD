@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.46 2007/06/18 05:13:42 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.47 2007/06/19 02:53:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,7 @@
 #include <sys/conf.h>
 #include <sys/disklabel.h>
 #include <sys/disklabel32.h>
+#include <sys/disklabel64.h>
 #include <sys/diskslice.h>
 #include <sys/disk.h>
 #include <sys/diskmbr.h>
@@ -72,10 +73,9 @@ static int  dsreadandsetlabel(cdev_t dev, u_int flags,
 			   struct diskslices *ssp, struct diskslice *sp,
 			   struct disk_info *info);
 static void free_ds_label (struct diskslices *ssp, int slice);
-static void set_ds_label (struct diskslices *ssp, int slice, disklabel_t lp);
+static void set_ds_label (struct diskslices *ssp, int slice, disklabel_t lp,
+			   disklabel_ops_t ops);
 static void set_ds_wlabel (struct diskslices *ssp, int slice, int wlabel);
-
-#define ops	(&disklabel32_ops)
 
 /*
  * Determine the size of the transfer, and make sure it is
@@ -98,6 +98,7 @@ dscheck(cdev_t dev, struct bio *bio, struct diskslices *ssp)
 	struct buf *bp = bio->bio_buf;
 	struct bio *nbio;
 	disklabel_t lp;
+	disklabel_ops_t ops;
 	long nsec;
 	u_int64_t secno;
 	u_int64_t endsecno;
@@ -200,7 +201,9 @@ doshift:
 		 * the disklabel is not supported even if accessible.  Of
 		 * course, the reserved area is still write protected.
 		 */
-		if (ops->op_getpartbounds(lp, part, &slicerel_secno, &endsecno)) {
+		ops = sp->ds_ops;
+		if (ops->op_getpartbounds(ssp, lp, part,
+					  &slicerel_secno, &endsecno)) {
 			kprintf("dscheck(%s): partition %d out of bounds\n",
 				devtoname(dev), part);
 			goto bad;
@@ -340,6 +343,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 	int error;
 	disklabel_t lp;
 	disklabel_t lptmp;
+	disklabel_ops_t ops;
 	int old_wlabel;
 	u_int32_t openmask[DKMAXPARTITIONS/(sizeof(u_int32_t)*8)];
 	int part;
@@ -354,9 +358,15 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		return (EINVAL);
 	sp = &ssp->dss_slices[slice];
 	lp = sp->ds_label;
+	ops = sp->ds_ops;	/* may be NULL if no label */
 
 	switch (cmd) {
 	case DIOCGDVIRGIN32:
+		ops = &disklabel32_ops;
+		/* fall through */
+	case DIOCGDVIRGIN64:
+		if (cmd != DIOCGDVIRGIN32)
+			ops = &disklabel64_ops;
 		/*
 		 * You can only retrieve a virgin disklabel on the whole
 		 * disk slice or whole-slice partition.
@@ -371,6 +381,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		return (0);
 
 	case DIOCGDINFO32:
+	case DIOCGDINFO64:
 		/*
 		 * You can only retrieve a disklabel on the whole
 		 * slice partition.
@@ -391,7 +402,15 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		if (sp->ds_label.opaque == NULL) {
 			error = dsreadandsetlabel(dev, info->d_dsflags,
 						  ssp, sp, info);
+			ops = sp->ds_ops;	/* may be NULL */
 		}
+
+		/*
+		 * The type of label we found must match the type of
+		 * label requested.
+		 */
+		if (error == 0 && IOCPARM_LEN(cmd) != ops->labelsize)
+			error = ENOATTR;
 		if (error == 0)
 			bcopy(sp->ds_label.opaque, data, ops->labelsize);
 		return (error);
@@ -413,6 +432,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			    slice != WHOLE_DISK_SLICE) {
 				dsreadandsetlabel(dev, info->d_dsflags,
 						  ssp, sp, info);
+				ops = sp->ds_ops;	/* may be NULL */
 			}
 
 			bzero(dpart, sizeof(*dpart));
@@ -430,8 +450,10 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 				u_int64_t blocks;
 				if (lp.opaque == NULL)
 					return(EINVAL);
-				if (ops->op_getpartbounds(lp, part, &start, &blocks))
+				if (ops->op_getpartbounds(ssp, lp, part,
+							  &start, &blocks)) {
 					return(EINVAL);
+				}
 				dpart->fstype = ops->op_getpartfstype(lp, part);
 				dpart->media_offset += start *
 						       info->d_media_blksize;
@@ -466,6 +488,11 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		return (0);
 
 	case DIOCSDINFO32:
+		ops = &disklabel32_ops;
+		/* fall through */
+	case DIOCSDINFO64:
+		if (cmd != DIOCSDINFO32)
+			ops = &disklabel64_ops;
 		/*
 		 * You can write a disklabel on the whole disk slice or
 		 * whole-slice partition.
@@ -482,9 +509,21 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		 */
 		if (slice == WHOLE_DISK_SLICE)
 			return (ENODEV);
-
 		if (!(flags & FWRITE))
 			return (EBADF);
+
+		/*
+		 * If an existing label is present it must be the same
+		 * type as the label being passed by the ioctl.
+		 */
+		if (sp->ds_label.opaque && sp->ds_ops != ops)
+			return (ENOATTR);
+
+		/*
+		 * Create a temporary copy of the existing label
+		 * (if present) so setdisklabel can compare it against
+		 * the new label.
+		 */
 		lp.opaque = kmalloc(ops->labelsize, M_DEVBUF, M_WAITOK);
 		if (sp->ds_label.opaque == NULL)
 			bzero(lp.opaque, ops->labelsize);
@@ -496,13 +535,13 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			bcopy(sp->ds_openmask, openmask, sizeof(openmask));
 		}
 		lptmp.opaque = data;
-		error = ops->op_setdisklabel(lp, lptmp, sp, openmask);
+		error = ops->op_setdisklabel(lp, lptmp, ssp, sp, openmask);
 		if (error != 0) {
 			kfree(lp.opaque, M_DEVBUF);
 			return (error);
 		}
 		free_ds_label(ssp, slice);
-		set_ds_label(ssp, slice, lp);
+		set_ds_label(ssp, slice, lp, ops);
 		return (0);
 
 	case DIOCSYNCSLICEINFO:
@@ -571,16 +610,24 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		return (0);
 
 	case DIOCWDINFO32:
-		error = dsioctl(dev, DIOCSDINFO32, data, flags, &ssp, info);
+	case DIOCWDINFO64:
+		error = dsioctl(dev, ((cmd == DIOCWDINFO32) ?
+					DIOCSDINFO32 : DIOCSDINFO64),
+				data, flags, &ssp, info);
+		if (error == 0 && sp->ds_label.opaque == NULL)
+			error = EINVAL;
 		if (error != 0)
 			return (error);
 
 		/*
-		 * Set the reserved area
+		 * Allow the reserved area to be written, reload ops
+		 * because the DIOCSDINFO op above may have installed
+		 * a new label type.
 		 */
+		ops = sp->ds_ops;
 		old_wlabel = sp->ds_wlabel;
 		set_ds_wlabel(ssp, slice, TRUE);
-		error = ops->op_writedisklabel(dev, sp, sp->ds_label);
+		error = ops->op_writedisklabel(dev, ssp, sp, sp->ds_label);
 		set_ds_wlabel(ssp, slice, old_wlabel);
 		/* XXX should invalidate in-core label if write failed. */
 		return (error);
@@ -808,11 +855,9 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		 * specify any reserved areas.  The whole disk may be read
 		 * or written by the whole-disk device.
 		 *
-		 * ds_label for a whole-disk device is only used as a
-		 * template.
+		 * The whole-disk slice does not ever have a label.
 		 */
 		sp = &ssp->dss_slices[WHOLE_DISK_SLICE];
-		sp->ds_label = ops->op_clone_label(info, NULL);
 		sp->ds_wlabel = TRUE;
 		sp->ds_reserved = 0;
 	}
@@ -863,7 +908,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	 */
 	if (part != WHOLE_SLICE_PART && slice != WHOLE_DISK_SLICE) {
 		if (sp->ds_label.opaque == NULL ||
-		    part >= ops->op_getnumparts(sp->ds_label)) {
+		    part >= sp->ds_ops->op_getnumparts(sp->ds_label)) {
 			return (EINVAL);
 		}
 	}
@@ -895,18 +940,33 @@ dsreadandsetlabel(cdev_t dev, u_int flags,
 		  struct disk_info *info)
 {
 	disklabel_t lp;
+	disklabel_ops_t ops;
 	const char *msg;
 	const char *sname;
 	char partname[2];
 	int slice = dkslice(dev);
 
+	/*
+	 * Probe the disklabel
+	 */
 	lp.opaque = NULL;
-
 	sname = dsname(dev, dkunit(dev), slice, WHOLE_SLICE_PART, partname);
+	ops = &disklabel32_ops;
 	msg = ops->op_readdisklabel(dev, sp, &lp, info);
+	if (msg && strcmp(msg, "no disk label") == 0) {
+		ops = &disklabel64_ops;
+		msg = disklabel64_ops.op_readdisklabel(dev, sp, &lp, info);
+	}
 
+	/*
+	 * If we failed and COMPATLABEL is set, create a dummy disklabel.
+	 */
 	if (msg != NULL && (flags & DSO_COMPATLABEL)) {
 		msg = NULL;
+		if (sp->ds_size >= 0x100000000ULL)
+			ops = &disklabel64_ops;
+		else
+			ops = &disklabel32_ops;
 		lp = ops->op_clone_label(info, sp);
 	}
 	if (msg != NULL) {
@@ -916,7 +976,7 @@ dsreadandsetlabel(cdev_t dev, u_int flags,
 		if (lp.opaque)
 			kfree(lp.opaque, M_DEVBUF);
 	} else {
-		set_ds_label(ssp, slice, lp);
+		set_ds_label(ssp, slice, lp, ops);
 		set_ds_wlabel(ssp, slice, FALSE);
 	}
 	return (msg ? EINVAL : 0);
@@ -926,6 +986,7 @@ int64_t
 dssize(cdev_t dev, struct diskslices **sspp)
 {
 	disklabel_t lp;
+	disklabel_ops_t ops;
 	int part;
 	int slice;
 	struct diskslices *ssp;
@@ -945,7 +1006,8 @@ dssize(cdev_t dev, struct diskslices **sspp)
 	lp = ssp->dss_slices[slice].ds_label;
 	if (lp.opaque == NULL)
 		return (-1);
-	if (ops->op_getpartbounds(lp, part, &start, &blocks))
+	ops = ssp->dss_slices[slice].ds_ops;
+	if (ops->op_getpartbounds(ssp, lp, part, &start, &blocks))
 		return (-1);
 	return ((int64_t)blocks);
 }
@@ -961,17 +1023,22 @@ free_ds_label(struct diskslices *ssp, int slice)
 	if (lp.opaque != NULL) {
 		kfree(lp.opaque, M_DEVBUF);
 		lp.opaque = NULL;
-		set_ds_label(ssp, slice, lp);
+		set_ds_label(ssp, slice, lp, NULL);
 	}
 }
 
 static void
-set_ds_label(struct diskslices *ssp, int slice, disklabel_t lp)
+set_ds_label(struct diskslices *ssp, int slice,
+	     disklabel_t lp, disklabel_ops_t ops)
 {
 	struct diskslice *sp = &ssp->dss_slices[slice];
 
 	sp->ds_label = lp;
-	ops->op_adjust_label_reserved(ssp, slice, sp);
+	sp->ds_ops = ops;
+	if (lp.opaque && slice != WHOLE_DISK_SLICE)
+		ops->op_adjust_label_reserved(ssp, slice, sp);
+	else
+		sp->ds_reserved = 0;
 }
 
 static void

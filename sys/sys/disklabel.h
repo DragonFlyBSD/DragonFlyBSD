@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/disklabel.h,v 1.27 2007/06/18 05:13:42 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel.h,v 1.28 2007/06/19 02:53:52 dillon Exp $
  */
 /*
  * Disklabel abstraction
@@ -63,22 +63,24 @@ struct disk_info;
 
 struct disklabel_ops {
 	struct uuid type;	/* uuid specifies disklabel type */
-	int labelsect;
 	int labelsize;		/* size of disklabel in bytes */
 
 	const char *(*op_readdisklabel)
 		    (struct cdev *, struct diskslice *, disklabel_t *,
 		     struct disk_info *);
 	int (*op_setdisklabel)
-		    (disklabel_t, disklabel_t, struct diskslice *, u_int32_t *);
+		    (disklabel_t, disklabel_t, struct diskslices *,
+		     struct diskslice *, u_int32_t *);
 	int (*op_writedisklabel)
-		    (struct cdev *, struct diskslice *, disklabel_t);
+		    (struct cdev *, struct diskslices *, struct diskslice *,
+		     disklabel_t);
 	disklabel_t (*op_clone_label)
 		    (struct disk_info *, struct diskslice *);
 	void (*op_adjust_label_reserved)
 		    (struct diskslices *, int, struct diskslice *);
 	int (*op_getpartbounds)
-		    (disklabel_t, u_int32_t, u_int64_t *, u_int64_t *);
+		    (struct diskslices *, disklabel_t, u_int32_t,
+		     u_int64_t *, u_int64_t *);
 	int (*op_getpartfstype)
 		    (disklabel_t, u_int32_t);
 	u_int32_t (*op_getnumparts)
@@ -87,6 +89,8 @@ struct disklabel_ops {
 		    (disklabel_t, struct diskslices *,
 		     struct diskslice *, struct disk_info *);
 };
+
+typedef struct disklabel_ops	*disklabel_ops_t;
 
 #endif /* !_SYS_DISKLABEL_H_ */
 

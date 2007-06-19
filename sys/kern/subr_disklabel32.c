@@ -89,7 +89,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disklabel32.c,v 1.2 2007/06/18 05:13:42 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disklabel32.c,v 1.3 2007/06/19 02:53:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -126,7 +126,7 @@ static const char *l32_fixlabel(const char *sname, struct diskslice *sp,
  * EINVAL on error.
  */
 static int
-l32_getpartbounds(disklabel_t lp, u_int32_t part,
+l32_getpartbounds(struct diskslices *ssp, disklabel_t lp, u_int32_t part,
 		  u_int64_t *start, u_int64_t *blocks)
 {
 	struct partition32 *pp;
@@ -134,8 +134,8 @@ l32_getpartbounds(disklabel_t lp, u_int32_t part,
 	if (part >= lp.lab32->d_npartitions)
 		return (EINVAL);
 	pp = &lp.lab32->d_partitions[part];
-	*blocks = pp->p_size;
 	*start = pp->p_offset;
+	*blocks = pp->p_size;
 	return(0);
 }
 
@@ -157,11 +157,9 @@ l32_getnumparts(disklabel_t lp)
 }
 
 /*
- * Attempt to read a disk label from a device using the indicated strategy
- * routine.  The label must be partly set up before this: secpercyl, secsize
- * and anything required in the strategy routine (e.g., dummy bounds for the
- * partition containing the label) must be filled in before calling us.
- * Returns NULL on success and an error string on failure.
+ * Attempt to read a disk label from a device.  
+ *
+ * Returns NULL on sucess, and an error string on failure
  */
 static const char *
 l32_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
@@ -187,9 +185,13 @@ l32_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
 	    dlp = (struct disklabel32 *)((char *)dlp + sizeof(long))) {
 		if (dlp->d_magic != DISKMAGIC32 ||
 		    dlp->d_magic2 != DISKMAGIC32) {
-			if (msg == NULL)
+			/*
+			 * NOTE! dsreadandsetlabel() does a strcmp() on
+			 * this string.
+			 */
+			if (msg == NULL) 
 				msg = "no disk label";
-		} else if (dlp->d_npartitions > MAXPARTITIONS ||
+		} else if (dlp->d_npartitions > MAXPARTITIONS32 ||
 			   dkcksum32(dlp) != 0) {
 			msg = "disk label corrupted";
 		} else {
@@ -212,7 +214,7 @@ l32_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
  * Check new disk label for sensibility before setting it.
  */
 static int
-l32_setdisklabel(disklabel_t olpx, disklabel_t nlpx,
+l32_setdisklabel(disklabel_t olpx, disklabel_t nlpx, struct diskslices *ssp,
 		 struct diskslice *sp, u_int32_t *openmask)
 {
 	struct disklabel32 *olp, *nlp;
@@ -283,7 +285,8 @@ l32_setdisklabel(disklabel_t olpx, disklabel_t nlpx,
  * Write disk label back to device after modification.
  */
 static int
-l32_writedisklabel(cdev_t dev, struct diskslice *sp, disklabel_t lpx)
+l32_writedisklabel(cdev_t dev, struct diskslices *ssp, struct diskslice *sp,
+		   disklabel_t lpx)
 {
 	struct disklabel32 *lp;
 	struct disklabel32 *dlp;
@@ -387,7 +390,7 @@ l32_clone_label(struct disk_info *info, struct diskslice *sp)
 	if (lp->d_interleave == 0)
 		lp->d_interleave = 1;
 	if (lp->d_npartitions < RAW_PART + 1)
-		lp->d_npartitions = MAXPARTITIONS;
+		lp->d_npartitions = MAXPARTITIONS32;
 	if (lp->d_bbsize == 0)
 		lp->d_bbsize = BBSIZE;
 	if (lp->d_sbsize == 0)
@@ -416,17 +419,15 @@ l32_makevirginlabel(disklabel_t lpx, struct diskslices *ssp,
 {
 	struct disklabel32 *lp = lpx.lab32;
 	struct partition32 *pp;
+	disklabel_t template;
 
-	if (ssp->dss_slices[WHOLE_DISK_SLICE].ds_label.opaque) {
-		bcopy(ssp->dss_slices[WHOLE_DISK_SLICE].ds_label.opaque, lp,
-		      sizeof(struct disklabel32));
-	} else {
-		bzero(lp, sizeof(*lp));
-	}
+	template = l32_clone_label(info, NULL);
+	bcopy(template.opaque, lp, sizeof(struct disklabel32));
+
 	lp->d_magic = DISKMAGIC32;
 	lp->d_magic2 = DISKMAGIC32;
 
-	lp->d_npartitions = MAXPARTITIONS;
+	lp->d_npartitions = MAXPARTITIONS32;
 	if (lp->d_interleave == 0)
 		lp->d_interleave = 1;
 	if (lp->d_rpm == 0)
@@ -472,6 +473,8 @@ l32_makevirginlabel(disklabel_t lpx, struct diskslices *ssp,
 	}
 	lp->d_checksum = 0;
 	lp->d_checksum = dkcksum32(lp);
+
+	kfree(template.opaque, M_DEVBUF);
 }
 
 static const char *
@@ -569,42 +572,17 @@ l32_fixlabel(const char *sname, struct diskslice *sp,
 	return (NULL);
 }
 
+/*
+ * Set the number of blocks at the beginning of the slice which have
+ * been reserved for label operations.  This area will be write-protected
+ * when accessed via the slice.
+ */
 static void
 l32_adjust_label_reserved(struct diskslices *ssp, int slice,
 			  struct diskslice *sp)
 {
-	struct disklabel32 *lp = sp->ds_label.lab32;
-
-	/*
-	 * If the slice is not the whole-disk slice, setup the reserved
-	 * area(s).
-	 *
-	 * The reserved area for the original bsd disklabel, inclusive of
-	 * the label and space for boot2, is 15 sectors.  If you've
-	 * noticed people traditionally skipping 16 sectors its because
-	 * the sector numbers start at the beginning of the slice rather
-	 * then the beginning of the disklabel and traditional dos slices
-	 * reserve a sector at the beginning for the boot code.
-	 *
-	 * NOTE! With the traditional bsdlabel, the first N bytes of boot2
-	 * overlap with the disklabel.  The disklabel program checks that
-	 * they are 0.
-	 *
-	 * When clearing a label, the bsdlabel reserved area is reset.
-	 */
-	if (slice != WHOLE_DISK_SLICE) {
-		if (lp) {
-			/*
-			 * BSD uses in-band labels, meaning the label itself
-			 * is accessible from partitions within the label.
-			 * We must reserved the area taken up by the label
-			 * itself to prevent mistakes from wiping it.
-			 */
-			sp->ds_reserved = SBSIZE / ssp->dss_secsize;
-		} else {
-			sp->ds_reserved = 0;
-		}
-	}
+	/*struct disklabel32 *lp = sp->ds_label.lab32;*/
+	sp->ds_reserved = SBSIZE / ssp->dss_secsize;
 }
 
 static void
@@ -623,7 +601,6 @@ slice_info(const char *sname, struct diskslice *sp)
 }
 
 struct disklabel_ops disklabel32_ops = {
-	.labelsect = LABELSECTOR32,
 	.labelsize = sizeof(struct disklabel32),
 	.op_readdisklabel = l32_readdisklabel,
 	.op_setdisklabel = l32_setdisklabel,
