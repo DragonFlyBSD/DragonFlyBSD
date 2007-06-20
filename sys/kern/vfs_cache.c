@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.82 2007/05/13 02:34:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.83 2007/06/20 06:23:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1752,12 +1752,16 @@ restart:
 		numchecks++;
 
 		/*
-		 * Zap entries that have timed out.
+		 * Try to zap entries that have timed out.  We have
+		 * to be careful here because locked leafs may depend
+		 * on the vnode remaining intact in a parent, so only
+		 * do this under very specific conditions.
 		 */
 		if (ncp->nc_timeout && 
 		    (int)(ncp->nc_timeout - ticks) < 0 &&
 		    (ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
-		    ncp->nc_exlocks == 0
+		    ncp->nc_exlocks == 0 &&
+		    TAILQ_EMPTY(&ncp->nc_list)
 		) {
 			cache_zap(_cache_get(ncp));
 			goto restart;
