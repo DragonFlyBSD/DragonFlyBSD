@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.81 2007/06/19 14:59:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.82 2007/06/21 15:00:18 sephe Exp $
  *
  */
 
@@ -77,6 +77,7 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/ktr.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
@@ -355,6 +356,15 @@ TUNABLE_INT("hw.bge.rx_coal_ticks", &bge_rx_coal_ticks);
 TUNABLE_INT("hw.bge.tx_coal_ticks", &bge_tx_coal_ticks);
 TUNABLE_INT("hw.bge.rx_max_coal_bds", &bge_rx_max_coal_bds);
 TUNABLE_INT("hw.bge.tx_max_coal_bds", &bge_tx_max_coal_bds);
+
+#if !defined(KTR_IF_BGE)
+#define KTR_IF_BGE	KTR_ALL
+#endif
+KTR_INFO_MASTER(if_bge);
+KTR_INFO(KTR_IF_BGE, if_bge, intr, 0, "intr", 0);
+KTR_INFO(KTR_IF_BGE, if_bge, rx_pkt, 1, "rx_pkt", 0);
+KTR_INFO(KTR_IF_BGE, if_bge, tx_pkt, 2, "tx_pkt", 0);
+#define logif(name)	KTR_LOG(if_bge_ ## name)
 
 static device_method_t bge_methods[] = {
 	/* Device interface */
@@ -2204,6 +2214,7 @@ bge_rxeof(struct bge_softc *sc)
 
 		rxidx = cur_rx->bge_idx;
 		BGE_INC(sc->bge_rx_saved_considx, sc->bge_return_ring_cnt);
+		logif(rx_pkt);
 
 		if (cur_rx->bge_flags & BGE_RXBDFLAG_VLAN_TAG) {
 			have_tag = 1;
@@ -2349,6 +2360,7 @@ bge_txeof(struct bge_softc *sc)
 		}
 		sc->bge_txcnt--;
 		BGE_INC(sc->bge_tx_saved_considx, BGE_TX_RING_CNT);
+		logif(tx_pkt);
 	}
 
 	if (cur_tx != NULL &&
@@ -2414,7 +2426,9 @@ bge_intr(void *xsc)
 {
 	struct bge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
- 	uint32_t status;
+	uint32_t status;
+
+	logif(intr);
 
  	/*
 	 * Ack the interrupt by writing something to BGE_MBX_IRQ0_LO.  Don't
