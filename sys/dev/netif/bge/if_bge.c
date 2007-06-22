@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.82 2007/06/21 15:00:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.83 2007/06/22 11:53:40 sephe Exp $
  *
  */
 
@@ -2725,8 +2725,7 @@ bge_start(struct ifnet *ifp)
 	uint32_t prodidx;
 	int need_trans;
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING ||
-	    !sc->bge_link)
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
 	prodidx = sc->bge_tx_prodidx;
