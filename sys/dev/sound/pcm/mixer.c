@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.43.2.5 2007/05/13 20:53:39 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.17 2007/06/16 20:07:22 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.18 2007/06/22 21:41:16 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -32,7 +32,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.17 2007/06/16 20:07:22 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.18 2007/06/22 21:41:16 corecode Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -671,8 +671,6 @@ mixer_ioctl(struct dev_ioctl_args *ap)
 	 * set its vchan, and fails to use the correct fd.
 	 */
 	if (j == SOUND_MIXER_PCM) {
-		cdev_t pdev;
-
 		if (vchanvolume(i_dev,
 			    (cmd & MIXER_WRITE(0)) == MIXER_WRITE(0),
 			    (int *)arg, &ret, curthread))
