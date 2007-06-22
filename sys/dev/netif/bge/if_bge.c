@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.83 2007/06/22 11:53:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.84 2007/06/22 15:26:18 sephe Exp $
  *
  */
 
@@ -270,6 +270,8 @@ static int	bge_encap(struct bge_softc *, struct mbuf *, uint32_t *);
 static void	bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
 #endif
 static void	bge_intr(void *);
+static void	bge_enable_intr(struct bge_softc *);
+static void	bge_disable_intr(struct bge_softc *);
 static void	bge_start(struct ifnet *);
 static int	bge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bge_init(void *);
@@ -1442,8 +1444,8 @@ bge_blockinit(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_HCC_RX_COAL_TICKS_INT, 0);
 		CSR_WRITE_4(sc, BGE_HCC_TX_COAL_TICKS_INT, 0);
 	}
-	CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT, 0);
-	CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT, 0);
+	CSR_WRITE_4(sc, BGE_HCC_RX_MAX_COAL_BDS_INT, 1);
+	CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS_INT, 1);
 
 	/* Set up address of statistics block */
 	if (!BGE_IS_5705_PLUS(sc)) {
@@ -2385,16 +2387,10 @@ bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 
 	switch(cmd) {
 	case POLL_REGISTER:
-		/*
-		 * Mask the interrupt when we start polling
-		 */
-		BGE_SETBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
+		bge_disable_intr(sc);
 		break;
 	case POLL_DEREGISTER:
-		/*
-		 * Unmask the interrupt when we stop polling.
-		 */
-		BGE_CLRBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
+		bge_enable_intr(sc);
 		break;
 	case POLL_AND_CHECK_STATUS:
 		bus_dmamap_sync(sc->bge_cdata.bge_status_tag,
@@ -2887,13 +2883,14 @@ bge_init(void *xsc)
 	/* Tell firmware we're alive. */
 	BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
 
-	/* Enable host interrupts. */
+	/* Enable host interrupts if polling(4) is not enabled. */
 	BGE_SETBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_CLEAR_INTA);
 #ifdef DEVICE_POLLING
-	if ((ifp->if_flags & IFF_POLLING) == 0)
+	if (ifp->if_flags & IFF_POLLING)
+		bge_disable_intr(sc);
+	else
 #endif
-		BGE_CLRBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
-	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 0);
+	bge_enable_intr(sc);
 
 	bge_ifmedia_upd(ifp);
 
@@ -3159,8 +3156,7 @@ bge_stop(struct bge_softc *sc)
 	}
 
 	/* Disable host interrupts. */
-	BGE_SETBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
-	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 1);
+	bge_disable_intr(sc);
 
 	/*
 	 * Tell firmware we're shutting down.
@@ -3821,4 +3817,47 @@ bge_coal_change(struct bge_softc *sc)
 	}
 
 	sc->bge_coal_chg = 0;
+}
+
+static void
+bge_enable_intr(struct bge_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_handler_enable(ifp->if_serializer);
+
+	/*
+	 * Enable interrupt.
+	 */
+	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 0);
+
+	/*
+	 * Unmask the interrupt when we stop polling.
+	 */
+	BGE_CLRBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
+
+	/*
+	 * Trigger another interrupt, since above writing
+	 * to interrupt mailbox0 may acknowledge pending
+	 * interrupt.
+	 */
+	BGE_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_SET);
+}
+
+static void
+bge_disable_intr(struct bge_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	/*
+	 * Mask the interrupt when we start polling.
+	 */
+	BGE_SETBIT(sc, BGE_PCI_MISC_CTL, BGE_PCIMISCCTL_MASK_PCI_INTR);
+
+	/*
+	 * Acknowledge possible asserted interrupt.
+	 */
+	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 1);
+
+	lwkt_serialize_handler_disable(ifp->if_serializer);
 }
