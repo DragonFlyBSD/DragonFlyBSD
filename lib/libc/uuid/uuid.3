@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/uuid/uuid.3,v 1.6 2005/11/24 07:04:20 ru Exp $
-.\" $DragonFly: src/lib/libc/uuid/uuid.3,v 1.4 2007/06/17 10:53:25 swildner Exp $
+.\" $DragonFly: src/lib/libc/uuid/uuid.3,v 1.5 2007/06/23 20:39:10 swildner Exp $
 .\"
 .Dd June 17, 2007
 .Dt UUID 3
@@ -111,10 +111,12 @@ will be set to
 .Dv NULL
 and
 .Fa *status
-(if status is not
+(if
+.Fa status
+is not
 .Dv NULL )
 will be set to
-.Dv uuid_s_not_found.
+.Dv uuid_s_not_found .
 Otherwise
 .Fa *strp
 will be assigned to the symbolic name and
