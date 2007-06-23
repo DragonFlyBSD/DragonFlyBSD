@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.20 2007/06/19 17:25:46 dillon Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.21 2007/06/23 20:52:41 swildner Exp $
 .\"
 .Dd June 14, 2007
 .Dt VKERNEL 7
@@ -151,7 +151,7 @@ and
 .Cm G
 are allowed.
 .It Fl p Ar file
-Specify a file in which to store the process ID. 
+Specify a file in which to store the process ID.
 A warning is issued if this file cannot be opened for writing.
 .It Fl r Ar file
 Specify a R/W disk image
@@ -206,22 +206,22 @@ holds the unit number of the associated
 .Xr tap 4
 device.
 .Sh SIGNALS
-The virtual kernel only enables 
+The virtual kernel only enables
 .Dv SIGQUIT
-and 
-.Dv SIGTERM 
-while operating in regular console mode. 
-Sending 
+and
+.Dv SIGTERM
+while operating in regular console mode.
+Sending
 .Ql \&^\e
 .Pq Dv SIGQUIT
 to the virtual kernel causes the virtual kernel to enter its internal
 .Xr ddb 4
-debugger and re-enable all other terminal signals. 
+debugger and re-enable all other terminal signals.
 Sending
-.Dv SIGTERM 
-to the virtual kernel triggers a clean shutdown by passing a 
-.Dv SIGUSR2 
-to the virtual kernel's 
+.Dv SIGTERM
+to the virtual kernel triggers a clean shutdown by passing a
+.Dv SIGUSR2
+to the virtual kernel's
 .Xr init 8
 process.
 .Sh DEBUGGING
