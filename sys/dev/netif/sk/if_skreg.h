@@ -31,7 +31,7 @@
  *
  * $FreeBSD: /c/ncvs/src/sys/pci/if_skreg.h,v 1.9 2000/04/22 02:16:37 wpaul Exp $
  * $OpenBSD: if_skreg.h,v 1.39 2006/08/20 19:15:46 brad Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.12 2006/11/14 12:52:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.13 2007/06/23 09:25:02 sephe Exp $
  */
 
 /*
@@ -337,7 +337,8 @@
 #define SK_IMTIMER_TICKS_GENESIS	53
 #define SK_IMTIMER_TICKS_YUKON		78
 #define SK_IMTIMER_TICKS_YUKON_EC	125
-#define SK_IM_USECS(x)		((x) * imtimer_ticks)
+#define SK_IMTIME_DEFAULT		160	/* microseconds */
+#define SK_IM_USECS(sc, x)		((x) * (sc)->sk_imtimer_ticks)
 
 /*
  * The SK_EPROM0 register contains a byte that describes the

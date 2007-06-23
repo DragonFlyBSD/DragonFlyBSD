@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.52 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.53 2007/06/23 09:25:02 sephe Exp $
  */
 
 /*
@@ -98,6 +98,7 @@
 #include <sys/serialize.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/sysctl.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -175,6 +176,8 @@ static int	skc_probe(device_t);
 static int	skc_attach(device_t);
 static int	skc_detach(device_t);
 static void	skc_shutdown(device_t);
+static int	skc_sysctl_imtime(SYSCTL_HANDLER_ARGS);
+
 static int	sk_probe(device_t);
 static int	sk_attach(device_t);
 static int	sk_detach(device_t);
@@ -247,6 +250,10 @@ static void	sk_dump_bytes(const char *, int);
 #define DPRINTF(x)
 #define DPRINTFN(n,x)
 #endif
+
+/* Interrupt moderation time. */
+static int	skc_imtime = SK_IMTIME_DEFAULT;
+TUNABLE_INT("hw.skc.imtime", &skc_imtime);
 
 /*
  * Note that we have newbus methods for both the GEnesis controller
@@ -1039,8 +1046,6 @@ skc_probe(device_t dev)
 static void
 sk_reset(struct sk_softc *sc)
 {
-	uint32_t imtimer_ticks;
-
 	DPRINTFN(2, ("sk_reset\n"));
 
 	CSR_WRITE_2(sc, SK_CSR, SK_CSR_SW_RESET);
@@ -1080,14 +1085,8 @@ sk_reset(struct sk_softc *sc)
 	 * microseconds, we have to multiply by the correct number of
 	 * ticks-per-microsecond.
 	 */
-	switch (sc->sk_type) {
-	case SK_GENESIS:
-		imtimer_ticks = SK_IMTIMER_TICKS_GENESIS;
-		break;
-	default:
-		imtimer_ticks = SK_IMTIMER_TICKS_YUKON;
-	}
-	sk_win_write_4(sc, SK_IMTIMERINIT, SK_IM_USECS(100));
+	KKASSERT(sc->sk_imtimer_ticks != 0 && sc->sk_imtime != 0);
+	sk_win_write_4(sc, SK_IMTIMERINIT, SK_IM_USECS(sc, sc->sk_imtime));
 	sk_win_write_4(sc, SK_IMMR, SK_ISR_TX1_S_EOF|SK_ISR_TX2_S_EOF|
 	    SK_ISR_RX1_EOF|SK_ISR_RX2_EOF);
 	sk_win_write_1(sc, SK_IMTIMERCTL, SK_IMCTL_START);
@@ -1392,6 +1391,16 @@ skc_attach(device_t dev)
 		goto fail;
 	}
 
+	switch (sc->sk_type) {
+	case SK_GENESIS:
+		sc->sk_imtimer_ticks = SK_IMTIMER_TICKS_GENESIS;
+		break;
+	default:
+		sc->sk_imtimer_ticks = SK_IMTIMER_TICKS_YUKON;
+		break;
+	}
+	sc->sk_imtime = skc_imtime;
+
 	/* Reset the adapter. */
 	sk_reset(sc);
 
@@ -1459,6 +1468,26 @@ skc_attach(device_t dev)
 			sk_win_write_4(sc, SK_EP_ADDR, flashaddr);
 		}
 	}
+
+	/*
+	 * Create sysctl nodes.
+	 */
+	sysctl_ctx_init(&sc->sk_sysctl_ctx);
+	sc->sk_sysctl_tree = SYSCTL_ADD_NODE(&sc->sk_sysctl_ctx,
+					     SYSCTL_STATIC_CHILDREN(_hw),
+					     OID_AUTO,
+					     device_get_nameunit(dev),
+					     CTLFLAG_RD, 0, "");
+	if (sc->sk_sysctl_tree == NULL) {
+		device_printf(dev, "can't add sysctl node\n");
+		error = ENXIO;
+		goto fail;
+	}
+	SYSCTL_ADD_PROC(&sc->sk_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sk_sysctl_tree),
+			OID_AUTO, "imtime", CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, skc_sysctl_imtime, "I",
+			"Interrupt moderation time (usec).");
 
 	sc->sk_devs[SK_PORT_A] = device_add_child(dev, "sk", -1);
 	port = kmalloc(sizeof(*port), M_DEVBUF, M_WAITOK);
@@ -1551,6 +1580,9 @@ skc_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->sk_res_rid,
 				     sc->sk_res);
 	}
+
+	if (sc->sk_sysctl_tree != NULL)
+		sysctl_ctx_free(&sc->sk_sysctl_ctx);
 
 	return 0;
 }
@@ -3207,4 +3239,38 @@ sk_dmamem_addr(void *arg, bus_dma_segment_t *seg, int nseg, int error)
 {
 	KASSERT(nseg == 1, ("too many segments %d", nseg));
 	*((bus_addr_t *)arg) = seg->ds_addr;
+}
+
+static int
+skc_sysctl_imtime(SYSCTL_HANDLER_ARGS)
+{
+	struct sk_softc *sc = arg1;
+	struct lwkt_serialize *slize = &sc->sk_serializer;
+	int error = 0, v;
+
+	lwkt_serialize_enter(slize);
+
+	v = sc->sk_imtime;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+	if (v <= 0) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (sc->sk_imtime != v) {
+		sc->sk_imtime = v;
+		sk_win_write_4(sc, SK_IMTIMERINIT,
+			       SK_IM_USECS(sc, sc->sk_imtime));
+
+		/*
+		 * Force interrupt moderation timer to
+		 * reload new value.
+		 */
+		sk_win_write_4(sc, SK_IMTIMER, 0);
+	}
+back:
+	lwkt_serialize_exit(slize);
+	return error;
 }
