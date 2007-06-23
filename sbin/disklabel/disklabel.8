@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.14 2007/06/18 05:13:38 dillon Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.15 2007/06/23 20:51:42 swildner Exp $
 .\"
 .Dd January 21, 2007
 .Dt DISKLABEL 8
@@ -725,7 +725,9 @@ Traditional (32 bit BSD) disklabels store offsets as absolute block numbers
 rather than slice-relative block numbers.
 If
 .Nm
-is unable to issue the DIOCGPART ioctl to get slice information it will 
+is unable to issue the
+.Dv DIOCGPART
+ioctl to get slice information it will
 refuse to read or write the label in raw mode.
 The
 .Fl f
