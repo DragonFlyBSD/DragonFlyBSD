@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.12 2006/10/18 21:44:41 victor Exp $
+# $DragonFly: src/etc/rc.subr,v 1.13 2007/06/23 10:13:39 swildner Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -1062,10 +1062,14 @@ warn()
 #
 info()
 {
-	if [ -x /usr/bin/logger ]; then
-		logger "$0: INFO: $*"
-	fi
-	echo "$0: INFO: $*"
+	case ${rc_info} in
+	[Yy][Ee][Ss]|[Tt][Rr][Uu][Ee]|[Oo][Nn]|1)
+		if [ -x /usr/bin/logger ]; then
+			logger "$0: INFO: $*"
+		fi
+		echo "$0: INFO: $*"
+		;;
+	esac
 }
 
 #
