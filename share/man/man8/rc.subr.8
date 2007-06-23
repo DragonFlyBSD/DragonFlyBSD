@@ -1,6 +1,6 @@
 .\" 	$NetBSD: rc.subr.8,v 1.9 2002/07/08 16:14:55 atatat Exp $
 .\"	$FreeBSD: src/share/man/man8/rc.subr.8,v 1.3 2003/04/22 05:13:55 dougb Exp $
-.\"	$DragonFly: src/share/man/man8/rc.subr.8,v 1.3 2007/03/03 23:19:25 swildner Exp $
+.\"	$DragonFly: src/share/man/man8/rc.subr.8,v 1.4 2007/06/23 09:37:24 swildner Exp $
 .\" Copyright (c) 2002 The NetBSD Foundation, Inc.
 .\" All rights reserved.
 .\"
@@ -256,7 +256,7 @@ as an aid to debugging scripts. It can be turned on or off
 by the
 .Xr rc.conf 5
 variable
-.Em rc_debug .
+.Va rc_debug .
 .It Ic err Ar exitval Ar message
 Display an error message to
 .Em stderr ,
@@ -302,7 +302,7 @@ The display of this informational output can be
 turned on or off by the
 .Xr rc.conf 5
 variable
-.Em rc_info .
+.Va rc_info .
 .It Ic load_rc_config Ar command
 Source in the configuration files for
 .Ar command .
