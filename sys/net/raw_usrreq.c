@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.13 2007/04/22 01:13:11 dillon Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.14 2007/06/24 20:00:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,14 +54,17 @@ raw_init(void)
 	LIST_INIT(&rawcb_list);
 }
 
+/************************************************************************
+ *			 RAW PROTOCOL INTERFACE				*
+ ************************************************************************/
 
 /*
- * Raw protocol input routine.  Find the socket
- * associated with the packet(s) and move them over.  If
- * nothing exists for this packet, drop it.
- */
-/*
- * Raw protocol interface.
+ * Raw protocol input routine.  Find the socket associated with the packet(s)
+ * and move them over.  If nothing exists for this packet, drop it.  This
+ * routine is indirect called via rts_input() and will be serialized on
+ * cpu 0.
+ *
+ * Most other raw protocol interface functions are also serialized XXX.
  */
 void
 raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,

@@ -64,7 +64,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.38 2007/04/21 02:26:47 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.39 2007/06/24 20:00:00 dillon Exp $
  */
 
 #include "opt_sctp.h"
@@ -85,6 +85,7 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <net/raw_cb.h>
+#include <net/netmsg2.h>
 
 #ifdef SCTP
 extern void sctp_add_ip_address(struct ifaddr *ifa);
@@ -335,13 +336,44 @@ familyof(struct sockaddr *sa)
 	return (sa != NULL ? sa->sa_family : 0);
 }
 
+/*
+ * Routing socket input function.  The packet must be serialized onto cpu 0.
+ * We use the cpu0_soport() netisr processing loop to handle it.
+ *
+ * This looks messy but it means that anyone, including interrupt code,
+ * can send a message to the routing socket.
+ */
+static void
+rts_input_handler(struct netmsg *msg)
+{
+	static const struct sockaddr route_dst = { 2, PF_ROUTE, };
+	struct sockproto route_proto;
+	struct netmsg_packet *pmsg;
+	struct mbuf *m;
+	sa_family_t family;
+
+	pmsg = (void *)msg;
+	m = pmsg->nm_packet;
+	family = pmsg->nm_netmsg.nm_lmsg.u.ms_result;
+	route_proto.sp_family = PF_ROUTE;
+	route_proto.sp_protocol = family;
+
+	raw_input(m, &route_proto, &route_src, &route_dst);
+}
+
 static void
 rts_input(struct mbuf *m, sa_family_t family)
 {
-	static const struct sockaddr route_dst = { 2, PF_ROUTE, };
-	struct sockproto route_proto = { PF_ROUTE, family };
+	struct netmsg_packet *pmsg;
+	lwkt_port_t port;
 
-	raw_input(m, &route_proto, &route_src, &route_dst);
+	port = cpu0_soport(NULL, NULL, 0);
+	pmsg = &m->m_hdr.mh_netmsg;
+	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 
+		    0, rts_input_handler);
+	pmsg->nm_packet = m;
+	pmsg->nm_netmsg.nm_lmsg.u.ms_result = family;
+	lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
 }
 
 static void *
@@ -1334,3 +1366,4 @@ static struct domain routedomain = {
 };
 
 DOMAIN_SET(route);
+
