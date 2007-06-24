@@ -26,7 +26,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ata.4,v 1.72 2007/03/10 12:44:22 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/nata.4,v 1.2 2007/06/15 22:58:25 swildner Exp $
+.\" $DragonFly: src/share/man/man4/nata.4,v 1.3 2007/06/24 10:50:43 swildner Exp $
 .\"
 .Dd June 14, 2007
 .Dt NATA 4
@@ -212,11 +212,13 @@ Native Command Queuing (NCQ) on SATA drives is not yet supported.
 .Xr natacontrol 8
 .Sh HISTORY
 The
-.Nm
+.Xr ata 4
 driver first appeared in
-.Fx 4.0
-and was imported into
-.Dx 1.7 .
+.Fx 4.0 .
+A later version was imported into
+.Dx 1.7
+as
+.Nm .
 .Sh AUTHORS
 .An S\(/oren Schmidt
 .Aq sos@FreeBSD.org .
