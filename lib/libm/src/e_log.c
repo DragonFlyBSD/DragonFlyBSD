@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $NetBSD: e_log.c,v 1.12 2002/05/26 22:01:51 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_log.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $DragonFly: src/lib/libm/src/e_log.c,v 1.2 2007/06/24 05:17:51 pavalos Exp $
  */
 
 /* log(x)
@@ -105,7 +105,7 @@ log(double x)
 	SET_HIGH_WORD(x,hx|(i^0x3ff00000));	/* normalize x or x/2 */
 	k += (i>>20);
 	f = x-1.0;
-	if((0x000fffff&(2+hx))<3) {	/* |f| < 2**-20 */
+	if((0x000fffff&(2+hx))<3) {	/* -2**-20 <= f < 2**-20 */
 	    if(f==zero) { if(k==0) return zero;  else {dk=(double)k;
 				   return dk*ln2_hi+dk*ln2_lo;}
 	    }
