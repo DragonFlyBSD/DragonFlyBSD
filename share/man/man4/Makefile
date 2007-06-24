@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/18/93
 # $FreeBSD: src/share/man/man4/Makefile,v 1.83.2.66 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/share/man/man4/Makefile,v 1.57 2007/06/17 20:33:14 swildner Exp $
+# $DragonFly: src/share/man/man4/Makefile,v 1.58 2007/06/24 10:47:48 swildner Exp $
 
 MAN=	aac.4 \
 	acpi.4 \
@@ -122,6 +122,7 @@ MAN=	aac.4 \
 	multicast.4 \
 	my.4 \
 	nata.4 \
+	nataraid.4 \
 	natm.4 \
 	ncr.4 \
 	netgraph.4 \
@@ -320,6 +321,7 @@ MLINKS+=nata.4 acd.4 \
 	nata.4 ad.4 \
 	nata.4 afd.4 \
 	nata.4 ast.4
+MLINKS+=nataraid.4 ar.4
 MLINKS+=netintro.4 networking.4
 MLINKS+=pccbb.4 cbb.4
 MLINKS+=pcm.4 sound.4
