@@ -31,28 +31,27 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/socket.c,v 1.3 2005/04/25 17:42:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/socket.c,v 1.4 2007/06/25 21:33:36 dillon Exp $
  */
 
 #include "defs.h"
 
 int
-udp_socket(const char *target, int port)
+udp_socket(const char *target, int port, struct sockaddr_in *sam)
 {
-    struct sockaddr_in sam;
     struct hostent *hp;
     int rc;
     int fd;
     int tos;
 
-    if ((rc = inet_aton(target, &sam.sin_addr)) == 0) {
+    if ((rc = inet_aton(target, &sam->sin_addr)) == 0) {
 	if ((hp = gethostbyname2(target, AF_INET)) == NULL) {
-	    logerr("Unable to resolve %s", target);
+	    logerr("Unable to resolve server %s", target);
 	    return(-1);
 	}
-	bcopy(hp->h_addr_list[0], &sam.sin_addr, hp->h_length);
+	bcopy(hp->h_addr_list[0], &sam->sin_addr, hp->h_length);
     } else if (rc != 1) {
-	logerrstr("unable to resolve ip/host: %s", target);
+	logerrstr("unable to resolve server %s", target);
 	return(-1);
     }
     if ((fd = socket(PF_INET, SOCK_DGRAM, PF_UNSPEC)) < 0) {
@@ -64,10 +63,10 @@ udp_socket(const char *target, int port)
 	close(fd);
 	return(-1);
     }
-    sam.sin_port = htons(port);
-    sam.sin_len = sizeof(sam);
-    sam.sin_family = AF_INET;
-    if (connect(fd, (void *)&sam, sizeof(sam)) < 0) {
+    sam->sin_port = htons(port);
+    sam->sin_len = sizeof(sam);
+    sam->sin_family = AF_INET;
+    if (connect(fd, (void *)sam, sizeof(*sam)) < 0) {
 	logerr("connect(%s)", target);
 	close(fd);
 	return(-1);

@@ -31,10 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.10 2007/05/17 08:19:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.11 2007/06/25 21:33:36 dillon Exp $
  */
 
 #include "defs.h"
+
+static int client_insane(struct server_info **, int, server_info_t);
 
 void
 client_init(void)
@@ -49,8 +51,10 @@ client_main(struct server_info **info_ary, int count)
     double last_freq;
     double freq;
     double offset;
-    int i;
     int calc_offset_correction;
+    int didreconnect;
+    int i;
+    int insane;
 
     last_freq = 0.0;
 
@@ -89,6 +93,44 @@ client_main(struct server_info **info_ary, int count)
 	    client_check(&info_ary[i], &best_off, &best_freq);
 
 	/*
+	 * Check for server insanity.  In large NNTP pools some servers
+	 * may just be dead wrong, but report that they are right.
+	 */
+	if (best_off) {
+	    insane = client_insane(info_ary, count, best_off);
+	    if (insane > 0) {
+		/* 
+		 * best_off meets the quorum requirements and is good
+		 * (keep best_off)
+		 */
+	    } else if (insane == 0) {
+		/*
+		 * best_off is probably good, but we do not have enough
+		 * servers reporting yet to meet the quorum requirements.
+		 */
+		best_off = NULL;
+	    } else if (best_off->server_insane == 0) {
+		/*
+		 * This server is insane, mark it (first report)
+		 */
+		best_off->server_insane = 1;
+		client_setserverstate(best_off, 0,
+			"FAILED - server reports insane offset, reconnecting");
+		disconnect_server(best_off);
+		best_off->poll_mode = POLL_FIXED;
+		best_off->poll_count = 0;
+		lin_reset(best_off);
+	    } else {
+		/*
+		 * This server is still insane, permanently disable it.
+		 */
+		disconnect_server(best_off);
+		client_setserverstate(best_off, -2,
+			"FAILED - permanently disabling insane server");
+	    }
+	}
+
+	/*
 	 * Offset correction.
 	 */
 	if (best_off) {
@@ -124,8 +166,11 @@ client_main(struct server_info **info_ary, int count)
 	 * This function is responsible for managing the polling mode and
 	 * figures out how long we should sleep.
 	 */
+	didreconnect = 0;
 	for (i = 0; i < count; ++i)
-	    client_manage_polling_mode(info_ary[i]);
+	    client_manage_polling_mode(info_ary[i], &didreconnect);
+	if (didreconnect)
+	    client_check_duplicate_ips(info_ary, count);
 
 	/*
 	 * Polling loop sleep.
@@ -152,15 +197,23 @@ client_poll(server_info_t info, int poll_interval, int calc_offset_correction)
     }
     info->poll_sleep = 0;
 
-    logdebug(4, "%s: poll, ", info->target);
+    /*
+     * If the client isn't open don't mess with the poll_failed count
+     * or anything else.  We are left in the init or startup phase.
+     */
+    if (info->fd < 0) {
+	if (info->poll_failed < 0x7FFFFFFF)
+	    ++info->poll_failed;
+	return;
+    }
+
+    logdebuginfo(info, 4, "poll, ");
     if (udp_ntptimereq(info->fd, &rtv, &ltv, &lbtv) < 0) {
 	++info->poll_failed;
-	logdebug(4, "no response (%d failures in a row)\n", 
-		info->poll_failed);
+	logdebug(4, "no response (%d failures in a row)\n", info->poll_failed);
 	if (info->poll_failed == POLL_FAIL_RESET) {
 	    if (info->lin_count != 0) {
-		logdebug(4, "%s: resetting regression due to failures\n", 
-			info->target);
+		logdebuginfo(info, 4, "resetting regression due to failures\n");
 	    }
 	    lin_reset(info);
 	}
@@ -241,9 +294,9 @@ client_check(struct server_info **checkp,
 	    double freq_diff;
 
 	    freq_diff = info->lin_cache_freq - check->lin_cache_freq;
-	    logdebug(4, "%s: Switching to alternate, Frequence "
-		    "difference is %6.3f ppm\n",
-		    info->target, freq_diff * 1.0E+6);
+	    logdebuginfo(info, 4, "Switching to alternate, Frequence "
+			 "difference is %6.3f ppm\n",
+			 freq_diff * 1.0E+6);
 	    *checkp = info;
 	    free(check);
 	    check = info;
@@ -298,46 +351,116 @@ client_check(struct server_info **checkp,
  * through the alt's.
  */
 void
-client_manage_polling_mode(struct server_info *info)
+client_manage_polling_mode(struct server_info *info, int *didreconnect)
 {
     /*
-     * If too many query failures occured go into a failure-recovery state.
-     * If we were in startup when we failed, go into the second failure
-     * state so a recovery returns us back to startup mode.
+     * Permanently failed servers are ignored.
      */
-    if (info->poll_failed >= POLL_FAIL_RESET && 
-	info->poll_mode != POLL_FAILED_1 &&
-	info->poll_mode != POLL_FAILED_2
-    ) {
-	logdebug(2, "%s: polling mode moving to a FAILED state.\n",
-		info->target);
-	if (info->poll_mode != POLL_STARTUP)
-	    info->poll_mode = POLL_FAILED_1;
-	else
-	    info->poll_mode = POLL_FAILED_2;
-	info->poll_count = 0;
-    }
+    if (info->server_state == -2)
+	return;
+
+    /*
+     * Our polling interval has not yet passed.
+     */
+    if (info->poll_sleep)
+	return;
 
     /*
      * Standard polling mode progression
      */
     switch(info->poll_mode) {
     case POLL_FIXED:
+	/*
+	 * Initial state after connect or when a reconnect is required.
+	 */
+	if (info->fd < 0) {
+	    logdebuginfo(info, 2, "polling mode INIT, relookup & reconnect\n");
+	    reconnect_server(info);
+	    *didreconnect = 1;
+	    if (info->fd < 0) {
+		if (info->poll_failed >= POLL_RECOVERY_RESTART * 5)
+		    info->poll_sleep = max_sleep_opt;
+		else if (info->poll_failed >= POLL_RECOVERY_RESTART)
+		    info->poll_sleep = nom_sleep_opt;
+		else
+		    info->poll_sleep = min_sleep_opt;
+		break;
+	    }
+
+	    /*
+	     * Transition the server to the DNS lookup successful state.
+	     * Note that the server state does not transition out of
+	     * lookup successful if we relookup after a packet failure
+	     * so the message is printed only once, usually.
+	     */
+	    client_setserverstate(info, 0, "DNS lookup success");
+
+	    /*
+	     * If we've failed many times switch to the startup state but
+	     * do not fall through into it.  break the switch and a single
+	     * poll will be made after the nominal polling interval.
+	     */
+	    if (info->poll_failed >= POLL_RECOVERY_RESTART * 5) {
+		logdebuginfo(info, 2, "polling mode INIT->STARTUP (very slow)\n");
+		info->poll_mode = POLL_STARTUP;
+		info->poll_sleep = max_sleep_opt;
+		info->poll_count = 0;
+		break;
+	    } else if (info->poll_failed >= POLL_RECOVERY_RESTART) {
+		logdebuginfo(info, 2, "polling mode INIT->STARTUP (slow)\n");
+		info->poll_mode = POLL_STARTUP;
+		info->poll_count = 0;
+		break;
+	    }
+	}
+
+	/*
+	 * Fall through to the startup state.
+	 */
 	info->poll_mode = POLL_STARTUP;
-	info->poll_count = 0;
-	logdebug(2, "%s: polling mode INIT->STARTUP.\n", info->target);
+	logdebuginfo(info, 2, "polling mode INIT->STARTUP (normal)\n");
 	/* fall through */
     case POLL_STARTUP:
-	if (info->poll_count < POLL_STARTUP_MAX) {
-	    if (info->poll_sleep == 0)
-		info->poll_sleep = min_sleep_opt;
+	/*
+	 * Transition to a FAILED state if too many poll failures occured.
+	 */
+	if (info->poll_failed >= POLL_FAIL_RESET) {
+	    logdebuginfo(info, 2, "polling mode STARTUP->FAILED\n");
+	    info->poll_mode = POLL_FAILED;
+	    info->poll_count = 0;
 	    break;
 	}
+
+	/*
+	 * Transition the server to operational.  Do a number of minimum
+	 * interval polls to try to get a good offset calculation quickly.
+	 */
+	if (info->poll_count)
+	    client_setserverstate(info, 1, "connected ok");
+	if (info->poll_count < POLL_STARTUP_MAX) {
+	    info->poll_sleep = min_sleep_opt;
+	    break;
+	}
+
+	/*
+	 * Once we've got our polls fall through to aquisition mode to
+	 * do aquisition processing.
+	 */
 	info->poll_mode = POLL_ACQUIRE;
 	info->poll_count = 0;
-	logdebug(2, "%s: polling mode STARTUP->ACQUIRE.\n", info->target);
+	logdebuginfo(info, 2, "polling mode STARTUP->ACQUIRE\n");
 	/* fall through */
     case POLL_ACQUIRE:
+	/*
+	 * Transition to a FAILED state if too many poll failures occured.
+	 */
+	if (info->poll_failed >= POLL_FAIL_RESET) {
+	    logdebuginfo(info, 2, "polling mode STARTUP->FAILED\n");
+	    info->poll_mode = POLL_FAILED;
+	    info->poll_count = 0;
+	    break;
+	}
+
 	/*
 	 * Acquisition mode using the nominal timeout.  We do not shift
 	 * to maintainance mode unless the correlation is at least 0.90
@@ -349,68 +472,203 @@ client_manage_polling_mode(struct server_info *info)
 	    if (info->poll_count >= POLL_ACQUIRE_MAX && 
 		info->lin_count == LIN_RESTART - 2
 	    ) {
-		logdebug(2, 
-		    "%s: WARNING: Unable to shift this source to "
-		    "maintenance mode.  Target correlation is aweful.\n",
-		    info->target);
+		logdebuginfo(info, 2, 
+		    "WARNING: Unable to shift this source to "
+		    "maintenance mode.  Target correlation is aweful\n");
 	    }
-	    if (info->poll_sleep == 0)
-		info->poll_sleep = nom_sleep_opt;
 	    break;
 	}
 	info->poll_mode = POLL_MAINTAIN;
 	info->poll_count = 0;
-	logdebug(2, "%s: polling mode ACQUIRE->MAINTAIN.\n", info->target);
+	logdebuginfo(info, 2, "polling mode ACQUIRE->MAINTAIN\n");
 	/* fall through */
     case POLL_MAINTAIN:
+	/*
+	 * Transition to a FAILED state if too many poll failures occured.
+	 */
+	if (info->poll_failed >= POLL_FAIL_RESET) {
+	    logdebuginfo(info, 2, "polling mode STARTUP->FAILED\n");
+	    info->poll_mode = POLL_FAILED;
+	    info->poll_count = 0;
+	    break;
+	}
+
+	/*
+	 * Maintaince mode, max polling interval.
+	 *
+	 * Transition back to acquisition mode if we are unable to maintain
+	 * this mode due to the correlation going bad.
+	 */
 	if (info->lin_count >= LIN_RESTART / 2 && 
 	    fabs(info->lin_cache_corr) < 0.70
 	) {
-	    logdebug(2, 
-		"%s: polling mode MAINTAIN->ACQUIRE.  Unable to maintain\n"
+	    logdebuginfo(info, 2, 
+		"polling mode MAINTAIN->ACQUIRE.  Unable to maintain\n"
 		"the maintenance mode because the correlation went"
-		" bad!\n", info->target);
+		" bad!\n");
 	    info->poll_mode = POLL_ACQUIRE;
 	    info->poll_count = 0;
 	    break;
 	}
-	if (info->poll_sleep == 0)
-	    info->poll_sleep = max_sleep_opt;
-	/* do nothing */
+	info->poll_sleep = max_sleep_opt;
 	break;
-    case POLL_FAILED_1:
+    case POLL_FAILED:
 	/*
-	 * We have failed recently. If we recover return to the acquisition
-	 * state.
-	 *
-	 * poll_count does not increment while we are failed.  poll_failed
-	 * does increment (but gets zero'd once we recover).
+	 * We have a communications failure.  A late recovery is possible 
+	 * if we enter this state with a good poll.
 	 */
 	if (info->poll_count != 0) {
-	    logdebug(2, "%s: polling mode FAILED1->ACQUIRE.\n", info->target);
-	    info->poll_mode = POLL_ACQUIRE;
+	    logdebuginfo(info, 2, "polling mode FAILED->ACQUIRE\n");
+	    if (info->poll_failed >= POLL_FAIL_RESET)
+		info->poll_mode = POLL_STARTUP;
+	    else
+		info->poll_mode = POLL_ACQUIRE;
 	    /* do not reset poll_count */
 	    break;
 	}
-	if (info->poll_failed >= POLL_RECOVERY_RESTART)
-	    info->poll_mode = POLL_FAILED_2;
-	if (info->poll_sleep == 0)
-	    info->poll_sleep = nom_sleep_opt;
-	break;
-    case POLL_FAILED_2:
+
 	/*
-	 * We have been failed for a very long time, or we failed while
-	 * in startup.  If we recover we have to go back into startup.
+	 * If we have been failed too long, disconnect from the server
+	 * and start us all over again.  Note that the failed count is not
+	 * reset to 0.
 	 */
-	if (info->poll_count != 0) {
-	    logdebug(2, "%s: polling mode FAILED2->STARTUP.\n", info->target);
-	    info->poll_mode = POLL_STARTUP;
+	if (info->poll_failed >= POLL_RECOVERY_RESTART) {
+	    logdebuginfo(info, 2, "polling mode FAILED->INIT\n");
+	    client_setserverstate(info, 0, "FAILED");
+	    disconnect_server(info);
+	    info->poll_mode = POLL_FIXED;
 	    break;
 	}
-	if (info->poll_sleep == 0)
-	    info->poll_sleep = nom_sleep_opt;
 	break;
     }
+
+    /*
+     * If the above state machine has not set a polling interval, set a
+     * nominal polling interval.
+     */
+    if (info->poll_sleep == 0)
+	info->poll_sleep = nom_sleep_opt;
+}
+
+/*
+ * Look for duplicate IP addresses.  This is done very inoften, so we do
+ * not use a particularly efficient algorithm.
+ *
+ * Only reconnect a client which has not done its initial poll.
+ */
+void
+client_check_duplicate_ips(struct server_info **info_ary, int count)
+{
+    server_info_t info1;
+    server_info_t info2;
+    int tries;
+    int i;
+    int j;
+
+    for (i = 0; i < count; ++i) {
+	info1 = info_ary[i];
+	if (info1->fd < 0 || info1->server_state != 0)
+	    continue;
+	for (tries = 0; tries < 10; ++tries) {
+	    for (j = 0; j < count; ++j) {
+		info2 = info_ary[j];
+		if (i == j || info2->fd < 0)
+		    continue;
+		if (strcmp(info1->ipstr, info2->ipstr) == 0) {
+		    reconnect_server(info1);
+		    break;
+		}
+	    }
+	    if (j == count)
+		break;
+	}
+	if (tries == 10) {
+	    disconnect_server(info1);
+	    client_setserverstate(info1, -2,
+				  "permanently disabling duplicate server");
+	}
+    }
+}
+
+/*
+ * Calculate whether the server pointed to by *bestp is insane or not.
+ * For some reason some servers in e.g. the ntp pool are sometimes an hour
+ * off.  If we have at least three servers in the pool require that a
+ * quorum agree that the current best server's offset is reasonable.
+ *
+ * Allow +/- 30 seconds of error for now.
+ *
+ * Returns -1 if insane, 0 if not enough samples, and 1 if ok
+ */
+static
+int
+client_insane(struct server_info **info_ary, int count, server_info_t best)
+{
+    server_info_t info;
+    double best_offset;
+    double info_offset;
+    int good;
+    int bad;
+    int skip;
+    int quorum;
+    int i;
+
+    /*
+     * If only one ntp server we cannot check to see if it is insane
+     */
+    if (count < 2)
+	    return(1);
+    best_offset = best->lin_sumoffset / best->lin_countoffset;
+
+    /*
+     * Calculated the quorum.  Do not count permanently failed servers
+     * in the calculation.
+     *
+     * adjusted count	quorum
+     *   2		  2
+     *   3		  2
+     *   4		  3
+     *   5		  3
+     */
+    quorum = count;
+    for (i = 0; i < count; ++i) {
+	info = info_ary[i];
+	if (info->server_state == -2)
+	    --quorum;
+    }
+
+    quorum = quorum / 2 + 1;
+    good = 0;
+    bad = 0;
+    skip = 0;
+
+    /*
+     * Find the good, the bad, and the ugly.
+     */
+    for (i = 0; i < count; ++i) {
+	info = info_ary[i];
+	if (info->lin_countoffset < 2) {
+	    ++skip;
+	    continue;
+	}
+	info_offset = info->lin_sumoffset / info->lin_countoffset;
+	info_offset -= best_offset;
+	if (info_offset < -30.0 || info_offset > 30.0)
+		++bad;
+	else
+		++good;
+    }
+
+    /*
+     * Did we meet our quorum?
+     */
+    logdebuginfo(best, 5, "insanecheck good=%d bad=%d skip=%d quorum=%d\n",
+		 good, bad, skip, quorum);
+    if (good >= quorum)
+	return(1);
+    if (good + skip >= quorum)
+	return(0);
+    return(-1);
 }
 
 /*
@@ -516,7 +774,7 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
     info->lin_cache_freq = info->lin_cache_slope;
 
     if (debug_level >= 4) {
-	logdebug(4, "iter=%2d time=%7.3f off=%.6f uoff=%.6f",
+	logdebuginfo(info, 4, "iter=%2d time=%7.3f off=%.6f uoff=%.6f",
 	    (int)info->lin_count,
 	    time_axis, offset, uncorrected_offset);
 	if (info->lin_count > 1) {
@@ -598,5 +856,14 @@ lin_resetoffsets(server_info_t info)
     info->lin_countoffset = 0;
     info->lin_sumoffset = 0;
     info->lin_sumoffset2 = 0;
+}
+
+void
+client_setserverstate(server_info_t info, int state, const char *str)
+{
+    if (info->server_state != state) {
+        info->server_state = state;
+	logdebuginfo(info, 1, "%s\n", str);
+    }
 }
 

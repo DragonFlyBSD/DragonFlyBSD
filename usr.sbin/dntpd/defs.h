@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.9 2005/04/26 23:50:23 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.10 2007/06/25 21:33:36 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -60,8 +60,10 @@
 
 #define DNTPD_VERSION	"1.0"
 
-#define logdebug(level, ctl, varargs...)	\
+#define logdebug(level, ctl, varargs...)		\
 	if (level <= debug_level) _logdebug(level, ctl, ##varargs);
+#define logdebuginfo(info, level, ctl, varargs...)	\
+	if (level <= debug_level) _logdebuginfo(info, level, ctl, ##varargs);
 
 extern int debug_opt;
 extern int debug_level;
@@ -72,9 +74,11 @@ extern int nom_sleep_opt;
 extern int max_sleep_opt;
 extern int log_stderr;
 
-int udp_socket(const char *target, int port);
+int udp_socket(const char *target, int port, struct sockaddr_in *sam);
 int udp_ntptimereq(int fd, struct timeval *rtvp, 
 		   struct timeval *ltvp, struct timeval *lbtvp);
+void reconnect_server(server_info_t info);
+void disconnect_server(server_info_t info);
 
 void l_fixedpt_to_tv(struct l_fixedpt *fixed, struct timeval *tvp);
 void tv_subtract_micro(struct timeval *tvp, long usec);
@@ -87,6 +91,7 @@ void ts_to_tv(struct timespec *ts, struct timeval *tv);
 void logerr(const char *ctl, ...);
 void logerrstr(const char *ctl, ...);
 void _logdebug(int level, const char *ctl, ...);
+void _logdebuginfo(server_info_t info, int level, const char *ctl, ...);
 
 void sysntp_getbasetime(struct timeval *tvp);
 int sysntp_offset_correction_is_running(void);

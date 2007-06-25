@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.9 2005/04/27 00:42:13 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.10 2007/06/25 21:33:36 dillon Exp $
  */
 
 #include "defs.h"
@@ -165,6 +165,19 @@ main(int ac, char **av)
 	    /* not reached */
 	}
     }
+
+    /*
+     * Make sure min and nom intervals are less then or equal to the maximum
+     * interval.
+     */
+    if (min_sleep_opt > max_sleep_opt)
+	min_sleep_opt = max_sleep_opt;
+    if (nom_sleep_opt > max_sleep_opt)
+	nom_sleep_opt = max_sleep_opt;
+
+    /*
+     * Set default config file
+     */
     if (config_opt == NULL) {
 	if (optind != ac)
 	    config_opt = "/dev/null";
@@ -240,6 +253,7 @@ main(int ac, char **av)
      */
     sysntp_clear_alternative_corrections();
     client_init();
+    client_check_duplicate_ips(servers, nservers);
     rc = client_main(servers, nservers);
     return(rc);
 }
@@ -276,7 +290,7 @@ dotest(const char *target)
     struct server_info info;
 
     bzero(&info, sizeof(info));
-    info.fd = udp_socket(target, 123);
+    info.fd = udp_socket(target, 123, &info.sam);
     if (info.fd < 0) {
 	logerrstr("unable to create UDP socket for %s", target);
 	return;
@@ -298,6 +312,7 @@ static void
 add_server(const char *target)
 {
     server_info_t info;
+    const char *ipstr;
 
     if (nservers == maxservers) {
 	maxservers += 16;
@@ -307,12 +322,46 @@ add_server(const char *target)
     info = malloc(sizeof(struct server_info));
     servers[nservers] = info;
     bzero(info, sizeof(struct server_info));
-    info->fd = udp_socket(target, 123);
-    if (info->fd < 0) {
-	logerrstr("Unable to add server %s", target);
+    info->fd = udp_socket(target, 123, &info->sam);
+    info->target = strdup(target);
+    if (info->fd >= 0) {
+	ipstr = addr2ascii(AF_INET, &info->sam.sin_addr,
+			   sizeof(info->sam.sin_addr), NULL);
+	info->ipstr = strdup(ipstr);
     } else {
-	info->target = strdup(target);
-	++nservers;
+	client_setserverstate(info, -1, "DNS or IP lookup failure");
+    }
+    ++nservers;
+}
+
+void
+disconnect_server(server_info_t info)
+{
+    if (info->fd >= 0)
+	close(info->fd);
+    info->fd = -1;
+    if (info->ipstr) {
+	free(info->ipstr);
+	info->ipstr = NULL;
+    }
+}
+
+void
+reconnect_server(server_info_t info)
+{
+    const char *ipstr;
+
+    if (info->fd >= 0)
+	close(info->fd);
+    if (info->ipstr) {
+	free(info->ipstr);
+	info->ipstr = NULL;
+    }
+    info->fd = udp_socket(info->target, 123, &info->sam);
+    if (info->fd >= 0) {
+	ipstr = addr2ascii(AF_INET, &info->sam.sin_addr,
+			   sizeof(info->sam.sin_addr), NULL);
+	info->ipstr = strdup(ipstr);
     }
 }
 

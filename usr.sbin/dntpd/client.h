@@ -31,16 +31,20 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.6 2005/04/26 07:01:43 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.7 2007/06/25 21:33:36 dillon Exp $
  */
 
 struct server_info {
 	int fd;			/* udp descriptor */
+	int server_state;	/* -1 (no dns), 0 (dns good), or 1 (pkt good) */
+	int server_insane;	/* insanity check */
 	int poll_sleep;		/* countdown for poll (in seconds) */
 	int poll_mode;		/* mode of operation */
 	int poll_count;		/* number of polls in current mode */
 	int poll_failed;	/* count of NTP failures */
+	struct sockaddr_in sam; /* udp connection info */
 	char *target;		/* target hostname or IP (string) */
+	char *ipstr;		/* IP string */
 
 	/*
 	 * A second linear regression playing hopskip with the first.  This
@@ -95,11 +99,10 @@ struct server_info {
  * linear regression.
  */
 #define POLL_FIXED	0	/* fixed internal (nom_sleep_opt seconds) */
-#define POLL_STARTUP	1	/* startup fastpoll for offset adjust (min) */
+#define POLL_STARTUP	1	/* startup poll for offset adjust (min) */
 #define POLL_ACQUIRE	2	/* acquisition for frequency adjust (nom) */
 #define POLL_MAINTAIN	3	/* maintainance mode (max) */
-#define POLL_FAILED_1	4	/* recent failure state (nom) */
-#define POLL_FAILED_2	5	/* aged failure state (nom) */
+#define POLL_FAILED	4	/* failure state (nom) */
 
 #define POLL_STARTUP_MAX	6	/* max polls in this mode */
 #define POLL_ACQUIRE_MAX	16	/* max polls in this mode */
@@ -127,7 +130,9 @@ void client_poll(server_info_t info, int poll_interval,
 void client_check(struct server_info **check, 
 		  struct server_info **best_off,
 		  struct server_info **best_freq);
-void client_manage_polling_mode(struct server_info *info);
+void client_check_duplicate_ips(struct server_info **info_ary, int count);
+void client_manage_polling_mode(struct server_info *info, int *didreconnect);
+void client_setserverstate(server_info_t info, int state, const char *str);
 
 void lin_regress(server_info_t info, 
 		 struct timeval *ltv, struct timeval *lbtv,
