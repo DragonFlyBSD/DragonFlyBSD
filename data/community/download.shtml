@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.9 2007/05/07 20:52:15 justin Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.10 2007/06/25 22:29:20 pavalos Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -259,7 +259,7 @@ rsync
 
 <TR>
 <TD>TheShell.com (Ashburn, VA, USA)</TD>
-<TD>Code, official ISOs</TD>
+<TD>Code, daily snapshots, official ISOs</TD>
 <TD>
 <a href="http://www.theshell.com/pub/DragonFly/">HTTP</a>,
 <a href="ftp://ftp.theshell.com/pub/DragonFly/">FTP</a>, and
@@ -335,6 +335,12 @@ rsync
 </TD>
 </TR>
 
+<TR>
+<TD>TheShell.com (Ashburn, VA, USA)</TD>
+<TD>binary pkgsrc packages</TD>
+<TD><a href="http://www.theshell.com/pub/DragonFly/packages/RELEASE/i386/All/">i386 packages</a>
+</TD>
+</TR>
 
 <!--
 <TR>
@@ -342,14 +348,6 @@ rsync
 <TD>binary pkgsrc packages </TD>
 <TD><a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/RELEASE/i386/All/">i386 packages</a>, 
 <a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/RELEASE/bootstrap/">bootstrap kits</a>
-</TD>
-</TR>
-
-<TR>
-<TD>TheShell.com (Ashburn, VA, USA)</TD>
-<TD>binary pkgsrc packages </TD>
-<TD><a href="http://www.theshell.com/pub/DragonFly/packages/RELEASE/i386/All/">i386 packages</a>, 
-<a href="http://www.theshell.com/pub/DragonFly/packages/RELEASE/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
 
