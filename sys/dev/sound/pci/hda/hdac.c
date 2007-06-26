@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/hda/hdac.c,v 1.36.2.3 2007/06/21 20:58:44 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.6 2007/06/26 11:53:16 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.7 2007/06/26 14:56:50 hasso Exp $
  */
 
 /*
@@ -86,7 +86,7 @@
 #define HDA_DRV_TEST_REV	"20070619_0045"
 #define HDA_WIDGET_PARSER_REV	1
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.6 2007/06/26 11:53:16 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.7 2007/06/26 14:56:50 hasso Exp $");
 
 #define HDA_BOOTVERBOSE(stmt)	do {			\
 	if (bootverbose != 0) {				\
@@ -5646,15 +5646,6 @@ hdac_release_resources(struct hdac_softc *sc)
 	callout_stop(&sc->poll_jack);
 	hdac_reset(sc);
 	hdac_unlock(sc);
-#if 0 /* TODO: No callout_drain() in DragonFly. */
-	callout_drain(&sc->poll_hda);
-	callout_drain(&sc->poll_hdac);
-	callout_drain(&sc->poll_jack);
-#else
-	callout_stop(&sc->poll_hda);
-	callout_stop(&sc->poll_hdac);
-	callout_stop(&sc->poll_jack);
-#endif
 
 	hdac_irq_free(sc);
 
@@ -5790,11 +5781,6 @@ sysctl_hdac_polling(SYSCTL_HANDLER_ARGS)
 		else if (val == 0) {
 			callout_stop(&sc->poll_hdac);
 			hdac_unlock(sc);
-#if 0 /* TODO: No callout_drain() in DragonFly. */
-			callout_drain(&sc->poll_hdac);
-#else
-			callout_stop(&sc->poll_hdac);
-#endif
 			hdac_lock(sc);
 			HDAC_WRITE_2(&sc->mem, HDAC_RINTCNT,
 			    sc->rirb_size / 2);
