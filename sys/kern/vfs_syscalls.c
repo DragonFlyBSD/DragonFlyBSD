@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.116 2007/05/09 00:53:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.117 2007/06/26 20:39:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -926,10 +926,14 @@ sys_mountctl(struct mountctl_args *uap)
 	/*
 	 * Validate the descriptor
 	 */
-	fp = holdfp(p->p_fd, uap->fd, -1);
-	if (fp == NULL) {
-		error = EBADF;
-		goto done;
+	if (uap->fd >= 0) {
+		fp = holdfp(p->p_fd, uap->fd, -1);
+		if (fp == NULL) {
+			error = EBADF;
+			goto done;
+		}
+	} else {
+		fp = NULL;
 	}
 
 	/*
