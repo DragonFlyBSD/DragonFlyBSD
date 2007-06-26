@@ -34,7 +34,7 @@
  *	The Regents of the University of California.  All rights reserved.
  * @(#)unifdef.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/unifdef/unifdef.c,v 1.3 2005/07/25 17:51:36 hmp Exp $
+ * $DragonFly: src/usr.bin/unifdef/unifdef.c,v 1.4 2007/06/26 07:47:28 hasso Exp $
  * $FreeBSD: src/usr.bin/unifdef/unifdef.c,v 1.20 2005/05/21 09:55:09 ru Exp $
  * $NetBSD: unifdef.c,v 1.8 2000/07/03 02:51:36 matt Exp $
  * $dotat: things/unifdef.c,v 1.171 2005/03/08 12:38:48 fanf2 Exp $"
@@ -885,7 +885,7 @@ skipsym(const char *cp)
 }
 
 /*
- * Look for the symbol in the symbol table. If is is found, we return
+ * Look for the symbol in the symbol table. If it is found, we return
  * the symbol table index, else we return -1.
  */
 static int

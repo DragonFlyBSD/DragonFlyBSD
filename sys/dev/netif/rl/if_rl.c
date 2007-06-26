@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.35 2007/05/13 18:33:57 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.36 2007/06/26 07:47:28 hasso Exp $
  */
 
 /*
@@ -767,7 +767,7 @@ rl_attach(device_t dev)
 		irq = pci_read_config(dev, RL_PCI_INTLINE, 4);
 
 		/* Reset the power state. */
-		device_printf(dev, "chip is is in D%d power mode "
+		device_printf(dev, "chip is in D%d power mode "
 			      "-- setting to D0\n", pci_get_powerstate(dev));
 		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 

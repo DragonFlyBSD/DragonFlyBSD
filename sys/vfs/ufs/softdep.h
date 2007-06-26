@@ -37,7 +37,7 @@
  *
  *	@(#)softdep.h	9.7 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/softdep.h,v 1.7.2.1 2000/06/22 19:27:42 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/softdep.h,v 1.5 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/softdep.h,v 1.6 2007/06/26 07:47:28 hasso Exp $
  */
 
 #include <sys/queue.h>
@@ -375,7 +375,7 @@ struct allocindir {
  * The "freefrag" structure is constructed and attached when the replacement
  * block is first allocated. It is processed after the inode claiming the
  * bigger block that replaces it has been written to disk. Note that the
- * ff_state field is is used to store the uid, so may lose data. However,
+ * ff_state field is used to store the uid, so may lose data. However,
  * the uid is used only in printing an error message, so is not critical.
  * Keeping it in a short keeps the data structure down to 32 bytes.
  */
