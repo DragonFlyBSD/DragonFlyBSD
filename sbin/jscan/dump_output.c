@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/dump_output.c,v 1.3 2005/09/07 19:10:09 dillon Exp $
+ * $DragonFly: src/sbin/jscan/dump_output.c,v 1.4 2007/06/26 20:47:58 dillon Exp $
  */
 
 #include "jscan.h"
@@ -39,5 +39,27 @@
 void
 dump_output(struct jsession *ss, struct jdata *jd)
 {
+    int n;
+    int r;
+
+    for (n = 0; n < jd->jd_size; n += r) {
+	r = write(1, jd->jd_data + n, jd->jd_size - n);
+	if (r == 0)
+	    break;
+	if (r < 0) {
+	    r = 0;
+	    if (errno == EINTR)
+		continue;
+	    if (errno == EAGAIN) {
+		usleep(1000000 / 5);
+		continue;
+	    }
+	    break;
+	}
+    }
+    if (n != jd->jd_size) {
+	perror("write(stdout)");
+	exit(1);
+    }
     jsession_update_transid(ss, jd->jd_transid);
 }
