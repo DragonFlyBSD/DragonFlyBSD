@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/log.c,v 1.4 2007/06/25 21:33:36 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/log.c,v 1.5 2007/06/26 00:40:35 dillon Exp $
  */
 
 #include "defs.h"
@@ -86,16 +86,22 @@ _logdebuginfo(server_info_t info, int level, const char *ctl, ...)
 {
     va_list va;
     char *str = NULL;
+    int ipstrpad;
 
     if (level <= debug_level) {
 	va_start(va, ctl);
 
 	vasprintf(&str, ctl, va);
 	if (str) {
-	    if (info->ipstr == NULL || strcmp(info->target, info->ipstr) == 0)
+	    if (info->ipstr == NULL || strcmp(info->target, info->ipstr) == 0) {
 		_logdebug(level, "%s: %s", info->target, str);
-	    else
-		_logdebug(level, "%s (%s): %s", info->target, info->ipstr, str);
+	    } else {
+		if ((ipstrpad = 15 - strlen(info->ipstr)) < 0)
+			ipstrpad = 0;
+		_logdebug(level, "%s %*.*s(%s): %s", info->target,
+			  ipstrpad, ipstrpad, "",
+			  info->ipstr, str);
+	    }
 	}
 	va_end(va);
     }

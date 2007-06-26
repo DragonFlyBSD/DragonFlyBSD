@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.11 2007/06/25 21:33:36 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.12 2007/06/26 00:40:35 dillon Exp $
  */
 
 #include "defs.h"
@@ -774,12 +774,12 @@ lin_regress(server_info_t info, struct timeval *ltv, struct timeval *lbtv,
     info->lin_cache_freq = info->lin_cache_slope;
 
     if (debug_level >= 4) {
-	logdebuginfo(info, 4, "iter=%2d time=%7.3f off=%.6f uoff=%.6f",
+	logdebuginfo(info, 4, "iter=%2d time=%7.3f off=%+.6f uoff=%+.6f",
 	    (int)info->lin_count,
 	    time_axis, offset, uncorrected_offset);
 	if (info->lin_count > 1) {
-	    logdebug(4, " slope %7.6f"
-			    " yint %3.2f corr %7.6f freq_ppm %4.2f", 
+	    logdebug(4, " slope %+7.6f"
+			    " yint %+3.2f corr %+7.6f freq_ppm %+4.2f", 
 		info->lin_cache_slope,
 		info->lin_cache_yint,
 		info->lin_cache_corr,
