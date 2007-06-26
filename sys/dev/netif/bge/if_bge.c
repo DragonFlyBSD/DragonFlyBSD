@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.84 2007/06/22 15:26:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.85 2007/06/26 15:10:23 sephe Exp $
  *
  */
 
@@ -1170,7 +1170,7 @@ bge_chipinit(struct bge_softc *sc)
 	 */
 	CSR_WRITE_4(sc, BGE_MODE_CTL, BGE_DMA_SWAP_OPTIONS|
 	    BGE_MODECTL_MAC_ATTN_INTR|BGE_MODECTL_HOST_SEND_BDS|
-	    BGE_MODECTL_TX_NO_PHDR_CSUM);
+	    BGE_MODECTL_TX_NO_PHDR_CSUM|BGE_MODECTL_RX_NO_PHDR_CSUM);
 
 	/*
 	 * Disable memory write invalidate.  Apparently it is not supported
@@ -2283,12 +2283,11 @@ bge_rxeof(struct bge_softc *sc)
 				if ((cur_rx->bge_ip_csum ^ 0xffff) == 0)
 					m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
 			}
-			if (cur_rx->bge_flags & BGE_RXBDFLAG_TCP_UDP_CSUM &&
+			if ((cur_rx->bge_flags & BGE_RXBDFLAG_TCP_UDP_CSUM) &&
 			    m->m_pkthdr.len >= BGE_MIN_FRAME) {
 				m->m_pkthdr.csum_data =
-				    cur_rx->bge_tcp_udp_csum;
-				m->m_pkthdr.csum_flags |=
-					CSUM_DATA_VALID | CSUM_PSEUDO_HDR;
+					cur_rx->bge_tcp_udp_csum;
+				m->m_pkthdr.csum_flags |= CSUM_DATA_VALID;
 			}
 		}
 
