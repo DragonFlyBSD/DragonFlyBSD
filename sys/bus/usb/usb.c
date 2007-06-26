@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.29 2007/06/17 08:42:31 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.30 2007/06/26 19:52:10 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -282,7 +282,7 @@ USB_ATTACH(usb)
 #endif
 #endif
 
-	err = usbd_new_device(USBDEV(sc->sc_dev), sc->sc_bus, 0, speed, 0,
+	err = usbd_new_device(sc->sc_dev, sc->sc_bus, 0, speed, 0,
 		  &sc->sc_port);
 	if (!err) {
 		dev = sc->sc_port.device;

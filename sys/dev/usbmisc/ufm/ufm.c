@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.12 2006/12/22 23:26:25 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.13 2007/06/26 19:52:10 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -211,7 +211,7 @@ USB_ATTACH(ufm)
 			0644, "ufm%d", device_get_unit(self));
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 #endif
 
 	DPRINTFN(10, ("ufm_attach: %p\n", sc->sc_udev));
@@ -442,7 +442,7 @@ USB_DETACH(ufm)
 	crit_enter();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wait for processes to go away. */
-		usb_detach_wait(USBDEV(sc->sc_dev));
+		usb_detach_wait(sc->sc_dev);
 	}
 	crit_exit();
 
@@ -460,7 +460,7 @@ USB_DETACH(ufm)
 #endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 
 	return (0);
 }

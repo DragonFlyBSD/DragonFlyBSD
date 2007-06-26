@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.9 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.10 2007/06/26 19:52:10 hasso Exp $
  */
 
 /*
@@ -347,7 +347,7 @@ USB_ATTACH(uvisor)
 	}
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, ucom->sc_udev,
-			   USBDEV(ucom->sc_dev));
+			   ucom->sc_dev);
 
 	DPRINTF(("uvisor: in=0x%x out=0x%x\n", ucom->sc_bulkin_no, ucom->sc_bulkout_no));
 	ucom_attach(&sc->sc_ucom);
@@ -394,7 +394,7 @@ USB_DETACH(uvisor)
 	rv = ucom_detach(&sc->sc_ucom);
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_ucom.sc_udev,
-			   USBDEV(sc->sc_ucom.sc_dev));
+			   sc->sc_ucom.sc_dev);
 
 	return (rv);
 }

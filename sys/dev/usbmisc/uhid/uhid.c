@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.20 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.21 2007/06/26 19:52:10 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -313,7 +313,7 @@ USB_DETACH(uhid)
 			/* Wake everyone */
 			wakeup(&sc->sc_q);
 			/* Wait for processes to go away. */
-			usb_detach_wait(USBDEV(sc->sc_dev));
+			usb_detach_wait(sc->sc_dev);
 		}
 		crit_exit();
 	}
@@ -531,7 +531,7 @@ uhidread(struct dev_read_args *ap)
 	sc->sc_refcnt++;
 	error = uhid_do_read(sc, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 	return (error);
 }
 
@@ -578,7 +578,7 @@ uhidwrite(struct dev_write_args *ap)
 	sc->sc_refcnt++;
 	error = uhid_do_write(sc, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 	return (error);
 }
 
@@ -710,7 +710,7 @@ uhidioctl(struct dev_ioctl_args *ap)
 	sc->sc_refcnt++;
 	error = uhid_do_ioctl(sc, ap->a_cmd, ap->a_data, ap->a_fflag);
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 	return (error);
 }
 

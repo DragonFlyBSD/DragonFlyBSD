@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.15 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.16 2007/06/26 19:52:10 hasso Exp $
  */
 
 /*
@@ -340,7 +340,7 @@ USB_ATTACH(ulpt)
 #endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 
 	USB_ATTACH_SUCCESS_RETURN;
 }
@@ -392,7 +392,7 @@ USB_DETACH(ulpt)
 	if (sc->sc_refcnt >= 0) {
 		kprintf("%s: waiting for idle\n", USBDEVNAME(sc->sc_dev));
 		while (sc->sc_refcnt >= 0)
-			usb_detach_wait(USBDEV(sc->sc_dev));
+			usb_detach_wait(sc->sc_dev);
 		kprintf("%s: idle wait done\n", USBDEVNAME(sc->sc_dev));
 	}
 	crit_exit();
@@ -415,7 +415,7 @@ USB_DETACH(ulpt)
 #endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 
 	return (0);
 }
@@ -599,7 +599,7 @@ ulptopen(struct dev_open_args *ap)
 
 done:
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 
 	DPRINTF(("ulptopen: done, error=%d\n", error));
 	return (error);
@@ -712,7 +712,7 @@ ulptwrite(struct dev_write_args *ap)
 	sc->sc_refcnt++;
 	error = ulpt_do_write(sc, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 	return (error);
 }
 

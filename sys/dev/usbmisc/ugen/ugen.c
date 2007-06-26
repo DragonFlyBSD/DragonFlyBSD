@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.23 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.24 2007/06/26 19:52:10 hasso Exp $
  */
 
 /* 
@@ -768,7 +768,7 @@ ugenread(struct dev_read_args *ap)
 	sc->sc_refcnt++;
 	error = ugen_do_read(sc, endpt, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 	return (error);
 }
 
@@ -879,7 +879,7 @@ ugenwrite(struct dev_write_args *ap)
 	sc->sc_refcnt++;
 	error = ugen_do_write(sc, endpt, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 	return (error);
 }
 
@@ -931,7 +931,7 @@ USB_DETACH(ugen)
 		for (i = 0; i < USB_MAX_ENDPOINTS; i++)
 			wakeup(&sc->sc_endpoints[i][IN]);
 		/* Wait for processes to go away. */
-		usb_detach_wait(USBDEV(sc->sc_dev));
+		usb_detach_wait(sc->sc_dev);
 	}
 	crit_exit();
 
@@ -1444,7 +1444,7 @@ ugenioctl(struct dev_ioctl_args *ap)
 	sc->sc_refcnt++;
 	error = ugen_do_ioctl(sc, endpt, ap->a_cmd, ap->a_data, ap->a_fflag);
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 	return (error);
 }
 

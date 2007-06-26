@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.15 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.16 2007/06/26 19:52:10 hasso Exp $
  */
 
 /*
@@ -264,7 +264,7 @@ USB_ATTACH(urio)
 			0644, "urio%d", device_get_unit(self));
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 #endif
 
 	DPRINTFN(10, ("urio_attach: %p\n", sc->sc_udev));
@@ -639,7 +639,7 @@ USB_DETACH(urio)
 		for (i = 0; i < USB_MAX_ENDPOINTS; i++)
 			wakeup(&sc->sc_endpoints[i][IN]);
 		/* Wait for processes to go away. */
-		usb_detach_wait(USBDEV(sc->sc_dev));
+		usb_detach_wait(sc->sc_dev);
 	}
 	crit_exit();
 #else
@@ -652,7 +652,7 @@ USB_DETACH(urio)
 	crit_enter();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wait for processes to go away. */
-		usb_detach_wait(USBDEV(sc->sc_dev));
+		usb_detach_wait(sc->sc_dev);
 	}
 	crit_exit();
 #endif
@@ -669,7 +669,7 @@ USB_DETACH(urio)
 #endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 
 	return (0);
 }

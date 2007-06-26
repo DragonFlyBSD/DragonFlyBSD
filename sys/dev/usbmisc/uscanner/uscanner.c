@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.15 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.16 2007/06/26 19:52:10 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -367,7 +367,7 @@ USB_ATTACH(uscanner)
 #endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 
 	USB_ATTACH_SUCCESS_RETURN;
 }
@@ -547,7 +547,7 @@ uscannerread(struct dev_read_args *ap)
 	sc->sc_refcnt++;
 	error = uscanner_do_read(sc, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 
 	return (error);
 }
@@ -598,7 +598,7 @@ uscannerwrite(struct dev_write_args *ap)
 	sc->sc_refcnt++;
 	error = uscanner_do_write(sc, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
-		usb_detach_wakeup(USBDEV(sc->sc_dev));
+		usb_detach_wakeup(sc->sc_dev);
 	return (error);
 }
 
@@ -645,7 +645,7 @@ USB_DETACH(uscanner)
 	crit_enter();
 	if (--sc->sc_refcnt >= 0) {
 		/* Wait for processes to go away. */
-		usb_detach_wait(USBDEV(sc->sc_dev));
+		usb_detach_wait(sc->sc_dev);
 	}
 	crit_exit();
 
@@ -664,7 +664,7 @@ USB_DETACH(uscanner)
 #endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 
 	return (0);
 }

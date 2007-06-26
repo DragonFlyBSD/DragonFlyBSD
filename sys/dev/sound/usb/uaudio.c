@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.91 2004/11/05 17:46:14 kent Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.14.2.2 2006/04/04 17:34:10 ariff Exp $ */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.11 2007/01/04 21:47:03 corecode Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.12 2007/06/26 19:52:10 hasso Exp $: */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -594,7 +594,7 @@ USB_ATTACH(uaudio)
 
 #if !defined(__FreeBSD__) && !defined(__DragonFly__)
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 #endif
 
 	DPRINTF(("uaudio_attach: doing audio_attach_mi\n"));
@@ -652,7 +652,7 @@ uaudio_detach(device_ptr_t self, int flags)
 		rv = config_detach(sc->sc_audiodev, flags);
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
-			   USBDEV(sc->sc_dev));
+			   sc->sc_dev);
 
 	return rv;
 }
