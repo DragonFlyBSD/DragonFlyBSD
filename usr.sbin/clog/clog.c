@@ -25,7 +25,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $Id: clog.c,v 1.3 2001/10/02 18:51:26 jdw Exp $
- * $DragonFly: src/usr.sbin/clog/clog.c,v 1.3 2005/12/05 01:04:00 swildner Exp $
+ * $DragonFly: src/usr.sbin/clog/clog.c,v 1.4 2007/06/26 23:30:05 josepht Exp $
  */
 
 
@@ -33,7 +33,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <sched.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +40,7 @@
 #include <unistd.h>
 
 #include <sys/mman.h>
+#include <sys/sched.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
 

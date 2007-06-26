@@ -32,15 +32,16 @@
  * sem test.
  *
  * $FreeBSD: src/lib/libc_r/test/sem_d.c,v 1.1.2.2 2001/06/22 21:44:27 jasone Exp $
- * $DragonFly: src/lib/libc_r/test/sem_d.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/test/sem_d.c,v 1.3 2007/06/26 23:30:05 josepht Exp $
  *
  ****************************************************************************/
+
+#include <sys/semaphore.h>
 
 #include <assert.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <semaphore.h>
 #include <pthread.h>
 
 #define NTHREADS 10

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/pthread.h,v 1.20.2.4 2003/05/27 18:18:01 jdp Exp $
- * $DragonFly: src/include/pthread.h,v 1.9 2006/04/06 13:00:44 davidxu Exp $
+ * $DragonFly: src/include/pthread.h,v 1.10 2007/06/26 23:30:05 josepht Exp $
  */
 #ifndef _PTHREAD_H_
 #define _PTHREAD_H_
@@ -44,7 +44,7 @@
 #include <sys/time.h>
 #include <sys/signal.h>
 #include <limits.h>
-#include <sched.h>
+#include <sys/sched.h>
 
 /*
  * Run-time invariant values:

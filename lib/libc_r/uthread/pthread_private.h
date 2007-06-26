@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.12 2007/01/08 21:41:53 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.13 2007/06/26 23:30:05 josepht Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -57,7 +57,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/cdefs.h>
-#include <sched.h>
+#include <sys/sched.h>
 #include <spinlock.h>
 #include <pthread_np.h>
 

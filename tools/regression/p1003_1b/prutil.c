@@ -1,6 +1,6 @@
 #include <errno.h>
 #include <unistd.h>
-#include <sched.h>
+#include <sys/sched.h>
 #include <stdio.h>
 
 #include <err.h>
@@ -9,7 +9,7 @@
 
 /*
  * $FreeBSD: src/tools/regression/p1003_1b/prutil.c,v 1.1 2000/02/16 14:28:41 dufault Exp $
- * $DragonFly: src/tools/regression/p1003_1b/prutil.c,v 1.2 2003/06/17 04:29:11 dillon Exp $
+ * $DragonFly: src/tools/regression/p1003_1b/prutil.c,v 1.3 2007/06/26 23:30:05 josepht Exp $
  */
 void quit(const char *text)
 {

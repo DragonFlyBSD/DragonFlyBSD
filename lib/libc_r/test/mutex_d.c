@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/test/mutex_d.c,v 1.1.2.2 2003/01/05 19:59:39 semenu Exp $
- * $DragonFly: src/lib/libc_r/test/mutex_d.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/test/mutex_d.c,v 1.3 2007/06/26 23:30:05 josepht Exp $
  */
 #include <stdlib.h>
 #include <unistd.h>
@@ -39,7 +39,7 @@
 #include <assert.h>
 #include <errno.h>
 #include "pthread.h"
-#include <sched.h>
+#include <sys/sched.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>

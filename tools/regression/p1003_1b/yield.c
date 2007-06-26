@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/tools/regression/p1003_1b/yield.c,v 1.1 2000/02/16 14:28:42 dufault Exp $
- * $DragonFly: src/tools/regression/p1003_1b/yield.c,v 1.2 2003/06/17 04:29:11 dillon Exp $
+ * $DragonFly: src/tools/regression/p1003_1b/yield.c,v 1.3 2007/06/26 23:30:05 josepht Exp $
  *
  */
 #include <sys/types.h>
@@ -41,7 +41,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/mman.h>
-#include <sched.h>
+#include <sys/sched.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 

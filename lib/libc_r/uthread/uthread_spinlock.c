@@ -30,13 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.8.2.2 2002/10/17 19:37:39 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.5 2007/01/08 21:41:53 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.6 2007/06/26 23:30:05 josepht Exp $
  *
  */
 
 #include <sys/fcntl.h>
 #include <stdio.h>
-#include <sched.h>
+#include <sys/sched.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/tools/regression/p1003_1b/fifo.c,v 1.1 2000/02/16 14:28:40 dufault Exp $
- * $DragonFly: src/tools/regression/p1003_1b/fifo.c,v 1.2 2003/06/17 04:29:11 dillon Exp $
+ * $DragonFly: src/tools/regression/p1003_1b/fifo.c,v 1.3 2007/06/26 23:30:05 josepht Exp $
  */
 #include <unistd.h>
 #include <stdlib.h>
@@ -41,7 +41,7 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/time.h>
-#include <sched.h>
+#include <sys/sched.h>
 #include <signal.h>
 
 volatile int ticked;

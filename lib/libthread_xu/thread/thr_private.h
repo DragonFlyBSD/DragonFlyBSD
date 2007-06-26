@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.16 2007/05/03 23:08:34 dillon Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.17 2007/06/26 23:30:05 josepht Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -50,7 +50,7 @@
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
-#include <sched.h>
+#include <sys/sched.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <pthread_np.h>

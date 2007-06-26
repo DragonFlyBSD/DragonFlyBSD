@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.34 2007/06/16 19:57:11 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.35 2007/06/26 23:30:05 josepht Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -48,7 +48,6 @@ LDIRS=	net netgraph netinet netinet6 sys vm
 # when buildworld is run.
 #
 LSUBDIRS=	bus/cam bus/cam/scsi \
-	emulation/posix4 \
 	emulation/linux \
 	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
 	vfs/smbfs vfs/udf vfs/ufs \

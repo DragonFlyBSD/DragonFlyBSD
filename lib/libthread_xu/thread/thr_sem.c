@@ -27,16 +27,16 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.5 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.6 2007/06/26 23:30:05 josepht Exp $
  */
 
 #include "namespace.h"
 #include <machine/tls.h>
+#include <sys/semaphore.h>
 
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <semaphore.h>
 #include <stdlib.h>
 #include <time.h>
 #include "un-namespace.h"
