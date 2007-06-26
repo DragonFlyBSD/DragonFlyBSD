@@ -1,4 +1,4 @@
-.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.12 2007/05/17 08:19:03 swildner Exp $
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.13 2007/06/26 02:40:20 dillon Exp $
 .\"
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\"
@@ -43,6 +43,7 @@
 .Bk -words
 .Op Fl dnqstFSQ
 .Op Fl f Ar config_file
+.Op Fl i Ar insane_deviation
 .Op Fl l Ar log_level
 .Op Fl T Ar nominal_poll
 .Op Fl L Ar maximum_poll
@@ -118,6 +119,14 @@ Terminate any running background daemon and exit.
 .It Fl f Ar config_file
 Specify the configuration file.  The default is
 .Pa /etc/dntpd.conf .
+.It Fl i Ar insane_deviation
+Specify how much deviation is allowed in calculated offsets, in seconds.
+Fractions may be specified.
+A quorum of servers must agree with the one we select as being the best time
+source in order for us to select that source.
+The default deviation allowed is a fairly expansive 0.5 seconds.
+Note that offset errors due to internet packet latency can
+exceed 25ms (0.025).
 .It Fl l Ar log_level
 Specify the log level.  The default is 1.  All serious errors are logged
 at log level 0.  Major time corrections are logged at log level 1.  All
@@ -223,6 +232,26 @@ It is difficult to calculate the packet latency for an internet time source
 and in some cases this can result in time sources which disagree as much as
 20ms with each other.  If you specify multiple targets and run in
 debug or a high-logging mode you may observe this issue.
+.Sh MULTIPLE SERVERS AND DNS ROUND ROBINS
+Multiple servers may be specified in the configuration file.  Pool domains
+are supported and the same domain name may be specified several times to
+connect to several different targets within the pool.  Your DNS server
+must rotate IPs for this to work properly (all
+.Ux
+name servers will rotate IPs).
+.Nm
+will automatically weed out any duplicate IPs.
+.Pp
+When two or more time sources are configured,
+.Nm
+will do a quorum-based sanity check on its best pick and fail the server if
+its offset deviates significantly from other servers.
+.Pp
+If a server fails,
+.Nm
+will relookup its domain name and attempt to reconnect to it.
+To avoid overloading servers due to packet routing snafus, reconnections
+can take upwards of an hour to cycle.
 .Sh CONFIGURATION FILE
 The
 .Pa /etc/dntpd.conf

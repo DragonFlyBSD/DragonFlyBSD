@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.10 2007/06/25 21:33:36 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/defs.h,v 1.11 2007/06/26 02:40:20 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -73,6 +73,7 @@ extern int min_sleep_opt;
 extern int nom_sleep_opt;
 extern int max_sleep_opt;
 extern int log_stderr;
+extern double insane_deviation;
 
 int udp_socket(const char *target, int port, struct sockaddr_in *sam);
 int udp_ntptimereq(int fd, struct timeval *rtvp, 

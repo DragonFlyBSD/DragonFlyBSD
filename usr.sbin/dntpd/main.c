@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.10 2007/06/25 21:33:36 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.11 2007/06/26 02:40:20 dillon Exp $
  */
 
 #include "defs.h"
@@ -56,6 +56,7 @@ int no_update_opt = 0;		/* do not make any actual updates */
 int min_sleep_opt = 5;		/* 5 seconds minimum poll interval */
 int nom_sleep_opt = 300;	/* 5 minutes nominal poll interval */
 int max_sleep_opt = 1800;	/* 30 minutes maximum poll interval */
+double insane_deviation = 0.5;	/* 0.5 seconds of deviation == insane */
 const char *config_opt;		/* config file */
 const char *pid_opt = "/var/run/dntpd.pid";
 
@@ -77,7 +78,7 @@ main(int ac, char **av)
     /*
      * Process Options
      */
-    while ((ch = getopt(ac, av, "df:l:np:qstFL:QST:")) != -1) {
+    while ((ch = getopt(ac, av, "df:i:l:np:qstFL:QST:")) != -1) {
 	switch(ch) {
 	case 'd':
 	    debug_opt = 1;
@@ -92,6 +93,9 @@ main(int ac, char **av)
 	    break;
 	case 'f':
 	    config_opt = optarg;
+	    break;
+	case 'i':
+	    insane_deviation = strtod(optarg, NULL);
 	    break;
 	case 'l':
 	    debug_level = strtol(optarg, NULL, 0);

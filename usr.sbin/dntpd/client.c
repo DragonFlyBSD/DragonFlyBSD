@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.12 2007/06/26 00:40:35 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/client.c,v 1.13 2007/06/26 02:40:20 dillon Exp $
  */
 
 #include "defs.h"
@@ -103,30 +103,22 @@ client_main(struct server_info **info_ary, int count)
 		 * best_off meets the quorum requirements and is good
 		 * (keep best_off)
 		 */
+		best_off->server_insane = 0;
 	    } else if (insane == 0) {
 		/*
 		 * best_off is probably good, but we do not have enough
 		 * servers reporting yet to meet the quorum requirements.
 		 */
 		best_off = NULL;
-	    } else if (best_off->server_insane == 0) {
-		/*
-		 * This server is insane, mark it (first report)
-		 */
-		best_off->server_insane = 1;
-		client_setserverstate(best_off, 0,
-			"FAILED - server reports insane offset, reconnecting");
-		disconnect_server(best_off);
-		best_off->poll_mode = POLL_FIXED;
-		best_off->poll_count = 0;
-		lin_reset(best_off);
 	    } else {
 		/*
-		 * This server is still insane, permanently disable it.
+		 * best_off is ugly, mark the server as being insane for
+		 * 60 minutes.
 		 */
-		disconnect_server(best_off);
-		client_setserverstate(best_off, -2,
-			"FAILED - permanently disabling insane server");
+		best_off->server_insane = 60 * 60;
+		logdebuginfo(best_off, 1, 
+			     "excessive offset deviation, mapping out\n");
+		best_off = NULL;
 	    }
 	}
 
@@ -186,6 +178,14 @@ client_poll(server_info_t info, int poll_interval, int calc_offset_correction)
     struct timeval ltv;
     struct timeval lbtv;
     double offset;
+
+    /*
+     * Adjust the insane-server countdown
+     */
+    if (info->server_insane > poll_interval)
+	info->server_insane -= poll_interval;
+    else
+	info->server_insane = 0;
 
     /*
      * By default we always poll.  If the polling interval comes under
@@ -328,10 +328,15 @@ client_check(struct server_info **checkp,
      * Use the standard-deviation and require at least 4 samples.  An
      * offset correction is valid if the standard deviation is less then
      * the average offset divided by 4.
+     *
+     * Servers marked as being insane are not allowed
      */
     info = *best_off;
     if (check->lin_countoffset >= 4 && 
-	check->lin_cache_stddev < fabs(check->lin_sumoffset / check->lin_countoffset / 4)) {
+	(check->lin_cache_stddev <
+	 fabs(check->lin_sumoffset / check->lin_countoffset / 4)) &&
+	check->server_insane == 0
+     ) {
 	if (info == NULL || 
 	    fabs(check->lin_cache_stddev) < fabs(info->lin_cache_stddev)
 	) {
@@ -596,7 +601,7 @@ client_check_duplicate_ips(struct server_info **info_ary, int count)
  * off.  If we have at least three servers in the pool require that a
  * quorum agree that the current best server's offset is reasonable.
  *
- * Allow +/- 30 seconds of error for now.
+ * Allow +/- 0.5 seconds of error for now (settable with option).
  *
  * Returns -1 if insane, 0 if not enough samples, and 1 if ok
  */
@@ -643,17 +648,22 @@ client_insane(struct server_info **info_ary, int count, server_info_t best)
     skip = 0;
 
     /*
-     * Find the good, the bad, and the ugly.
+     * Find the good, the bad, and the ugly.  We need at least four samples
+     * and a stddev within the deviation being checked to count a server
+     * in the calculation.
      */
     for (i = 0; i < count; ++i) {
 	info = info_ary[i];
-	if (info->lin_countoffset < 2) {
+	if (info->lin_countoffset < 4 ||
+	    info->lin_cache_stddev > insane_deviation
+	) {
 	    ++skip;
 	    continue;
 	}
+
 	info_offset = info->lin_sumoffset / info->lin_countoffset;
 	info_offset -= best_offset;
-	if (info_offset < -30.0 || info_offset > 30.0)
+	if (info_offset < -insane_deviation || info_offset > insane_deviation)
 		++bad;
 	else
 		++good;
@@ -662,8 +672,9 @@ client_insane(struct server_info **info_ary, int count, server_info_t best)
     /*
      * Did we meet our quorum?
      */
-    logdebuginfo(best, 5, "insanecheck good=%d bad=%d skip=%d quorum=%d\n",
-		 good, bad, skip, quorum);
+    logdebuginfo(best, 5, "insanecheck good=%d bad=%d skip=%d "
+			  "quorum=%d (allowed=%-+8.6f)\n",
+		 good, bad, skip, quorum, insane_deviation);
     if (good >= quorum)
 	return(1);
     if (good + skip >= quorum)
