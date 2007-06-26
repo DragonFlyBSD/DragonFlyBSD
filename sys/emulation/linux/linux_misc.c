@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.38 2007/05/09 00:53:34 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.39 2007/06/26 19:31:03 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -75,7 +75,7 @@
 #include <machine/segments.h>
 #endif
 
-#include <emulation/posix4/sched.h>
+#include <sys/sched.h>
 
 #include <emulation/linux/linux_sysproto.h>
 #include <arch_linux/linux.h>

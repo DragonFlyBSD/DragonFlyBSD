@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/ksched.c,v 1.7.2.1 2000/05/16 06:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/kern_sched.c,v 1.8 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sched.c,v 1.9 2007/06/26 19:31:08 dillon Exp $
  */
 
 /* ksched: Soft real time scheduling based on "rtprio".
@@ -38,12 +38,12 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/posix4.h>
 #include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/resource.h>
 #include <machine/cpu.h>	/* For need_user_resched */
 
-#include "posix4.h"
 
 /* ksched: Real-time extension to support POSIX priority scheduling.
  */

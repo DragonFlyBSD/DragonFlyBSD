@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/posix4.h,v 1.6 1999/12/27 10:22:09 bde Exp $
- * $DragonFly: src/sys/sys/posix4.h,v 1.7 2007/02/03 17:05:57 corecode Exp $
+ * $DragonFly: src/sys/sys/posix4.h,v 1.8 2007/06/26 19:31:10 dillon Exp $
  */
 
 #include "opt_posix.h"
@@ -40,7 +40,7 @@
 #include <sys/param.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
-#include "sched.h"
+#include <sys/sched.h>
 
 MALLOC_DECLARE(M_P31B);
 

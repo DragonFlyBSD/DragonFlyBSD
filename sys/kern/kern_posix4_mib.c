@@ -30,14 +30,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/posix4_mib.c,v 1.3.2.1 2000/08/03 01:09:59 peter Exp $
- * $DragonFly: src/sys/kern/kern_posix4_mib.c,v 1.3 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_posix4_mib.c,v 1.4 2007/06/26 19:31:08 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
-#include "posix4.h"
+#include <sys/posix4.h>
 
 static int facility[CTL_P1003_1B_MAXID - 1];
 
