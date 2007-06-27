@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.18 2007/06/06 18:49:28 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.19 2007/06/27 12:28:00 hasso Exp $
  */
 
 /*
@@ -54,16 +54,8 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/file.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-#include <sys/limits.h>
-#else
 #include <machine/limits.h>
-#endif
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 #include <sys/vnode.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>

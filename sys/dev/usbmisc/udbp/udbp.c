@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.10 2006/12/22 23:26:25 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.11 2007/06/27 12:28:00 hasso Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -78,11 +78,7 @@
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/file.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 #include <sys/poll.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>

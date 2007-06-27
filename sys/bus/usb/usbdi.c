@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi.c,v 1.106 2004/10/24 12:52:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.c,v 1.91.2.1 2005/12/15 00:36:00 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.14 2006/12/22 23:12:17 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.15 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -41,22 +41,15 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/kernel.h>
-#include <sys/device.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include "usb_if.h"
 #if defined(DIAGNOSTIC) && defined(__i386__)
 #include <machine/cpu.h>
 #endif
-#endif
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#ifdef __DragonFly__
 #include <sys/thread2.h>
-#endif
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -65,9 +58,7 @@
 #include <bus/usb/usb_mem.h>
 #include <bus/usb/usb_quirks.h>
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 #define delay(d)	DELAY(d)
-#endif
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (usbdebug) logprintf x
@@ -410,12 +401,6 @@ usbd_free_xfer(usbd_xfer_handle xfer)
 	DPRINTFN(5,("usbd_free_xfer: %p\n", xfer));
 	if (xfer->rqflags & (URQ_DEV_DMABUF | URQ_AUTO_DMABUF))
 		usbd_free_buffer(xfer);
-#if defined(__NetBSD__) && defined(DIAGNOSTIC)
-	if (callout_pending(&xfer->timeout_handle)) {
-		callout_stop(&xfer->timeout_handle);
-		kprintf("usbd_free_xfer: timout_handle pending");
-	}
-#endif
 	xfer->device->bus->methods->freex(xfer->device->bus, xfer);
 	return (USBD_NORMAL_COMPLETION);
 }
@@ -952,15 +937,8 @@ usbd_do_request_flags_pipe(usbd_device_handle dev, usbd_pipe_handle pipe,
 	usbd_status err;
 
 #ifdef DIAGNOSTIC
-#if defined(__i386__) && (defined(__FreeBSD__) || defined(__DragonFly__))
-#if defined(__FreeBSD__)
-	KASSERT(curthread->td_intr_nesting_level == 0,
-	       	("usbd_do_request: in interrupt context"));
-#elif defined(__DragonFly__)
 	KASSERT(mycpu->gd_intr_nesting_level == 0,
 		("usbd_do_request: in interrupt context"));
-#endif
-#endif
 	if (dev->bus->intr_context) {
 		kprintf("usbd_do_request: not in process context\n");
 		return (USBD_INVAL);
@@ -1234,7 +1212,6 @@ usbd_get_string(usbd_device_handle dev, int si, char *buf)
 	return (USBD_NORMAL_COMPLETION);
 }
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 int
 usbd_driver_load(module_t mod, int what, void *arg)
 {
@@ -1243,4 +1220,3 @@ usbd_driver_load(module_t mod, int what, void *arg)
  	return (0);
 }
 
-#endif

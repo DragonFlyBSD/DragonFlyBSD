@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.21 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.22 2007/06/27 12:28:00 hasso Exp $
  */
 
 /*
@@ -54,11 +54,7 @@
 #include <sys/conf.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
@@ -73,11 +69,7 @@
 #include <bus/usb/usb_quirks.h>
 #include <bus/usb/hid.h>
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-#include <sys/mouse.h>
-#else
 #include <machine/mouse.h>
-#endif
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (umsdebug) logprintf x
@@ -334,10 +326,6 @@ USB_ATTACH(ums)
 	sc->status.button = sc->status.obutton = 0;
 	sc->status.dx = sc->status.dy = sc->status.dz = 0;
 
-#if !defined(__FreeBSD__) && !defined(__DragonFly__)
-	sc->rsel.si_flags = 0;
-	sc->rsel.si_pid = 0;
-#endif
 	dev_ops_add(&ums_ops, -1, device_get_unit(self));
 	make_dev(&ums_ops, device_get_unit(self),
 		UID_ROOT, GID_OPERATOR,

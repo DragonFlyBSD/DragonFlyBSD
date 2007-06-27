@@ -1,6 +1,6 @@
 /*	$NetBSD: ehcivar.h,v 1.19 2005/04/29 15:04:29 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.9.2.1 2006/01/26 01:43:13 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehcivar.h,v 1.8 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehcivar.h,v 1.9 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -101,12 +101,10 @@ typedef struct ehci_softc {
 	bus_space_tag_t iot;
 	bus_space_handle_t ioh;
 	bus_size_t sc_size;
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	void *ih;
 
 	struct resource *io_res;
 	struct resource *irq_res;
-#endif
 	u_int sc_offs;			/* offset to operational regs */
 	int sc_flags;			/* misc flags */
 
@@ -114,10 +112,6 @@ typedef struct ehci_softc {
 	int sc_id_vendor;		/* vendor ID for root hub */
 
 	u_int32_t sc_cmd;		/* shadow of cmd reg during suspend */
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	void *sc_powerhook;		/* cookie from power hook */
-	void *sc_shutdownhook;		/* cookie from shutdown hook */
-#endif
 
 	u_int sc_ncomp;
 	u_int sc_npcomp;
@@ -126,9 +120,6 @@ typedef struct ehci_softc {
 	usb_dma_t sc_fldma;
 	ehci_link_t *sc_flist;
 	u_int sc_flsize;
-#if !defined(__FreeBSD__) && !defined(__DragonFly__)
-	u_int sc_rand;			/* XXX need proper intr scheduling */
-#endif
 
 	struct ehci_soft_islot sc_islots[EHCI_INTRQHS];
 
@@ -156,13 +147,7 @@ typedef struct ehci_softc {
 	usb_callout_t sc_tmo_pcd;
 	usb_callout_t sc_tmo_intrlist;
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	device_ptr_t sc_child;		/* /dev/usb# device */
-#endif
 	char sc_dying;
-#if defined(__NetBSD__)
-	struct usb_dma_reserve sc_dma_reserve;
-#endif
 } ehci_softc_t;
 
 #define EREAD1(sc, a) bus_space_read_1((sc)->iot, (sc)->ioh, (a))
@@ -181,9 +166,6 @@ typedef struct ehci_softc {
 usbd_status	ehci_init(ehci_softc_t *);
 int		ehci_intr(void *);
 int		ehci_detach(ehci_softc_t *, int);
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int		ehci_activate(device_ptr_t, enum devact);
-#endif
 void		ehci_power(int state, void *priv);
 void		ehci_shutdown(void *v);
 

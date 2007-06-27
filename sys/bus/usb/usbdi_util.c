@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi_util.c,v 1.42 2004/12/03 08:53:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.34 2005/03/01 08:01:22 sobomax Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.11 2006/12/22 23:12:17 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.12 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -44,15 +44,8 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/malloc.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/proc.h>
-#include <sys/device.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/bus.h>
-#endif
-#ifdef __DragonFly__
 #include <sys/thread2.h>
-#endif
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbhid.h>

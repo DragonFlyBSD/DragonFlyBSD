@@ -25,7 +25,7 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.9 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.10 2007/06/27 12:28:00 hasso Exp $
  */
 
 /*
@@ -43,18 +43,9 @@
 #include <sys/conf.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/bus.h>
 #include <sys/ioccom.h>
-#if defined(__FreeBSD__) &&  __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
-#else
-#include <sys/ioctl.h>
-#include <sys/device.h>
-#endif
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/poll.h>

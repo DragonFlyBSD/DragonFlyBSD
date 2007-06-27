@@ -1,7 +1,7 @@
 /*
  * $NetBSD: hid.c,v 1.17 2001/11/13 06:24:53 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/hid.c,v 1.23 2003/08/24 17:55:54 obrien Exp $
- * $DragonFly: src/sys/bus/usb/hid.c,v 1.10 2006/12/22 23:12:17 swildner Exp $
+ * $DragonFly: src/sys/bus/usb/hid.c,v 1.11 2007/06/27 12:27:59 hasso Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -42,9 +42,6 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if defined(__NetBSD__)
-#include <sys/kernel.h>
-#endif
 #include <sys/malloc.h>
 
 #include <bus/usb/usb.h>

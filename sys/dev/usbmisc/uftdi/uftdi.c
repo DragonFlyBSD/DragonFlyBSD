@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.10 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.10 2007/06/26 19:52:10 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.11 2007/06/27 12:28:00 hasso Exp $
  */
 
 /*
@@ -57,11 +57,7 @@
 #include <sys/tty.h>
 #include <sys/file.h>
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 
 #include <sys/sysctl.h>
 

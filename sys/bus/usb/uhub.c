@@ -1,6 +1,6 @@
 /*	$NetBSD: uhub.c,v 1.68 2004/06/29 06:30:05 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhub.c,v 1.69.2.1 2005/12/18 15:51:31 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.13 2007/06/26 19:52:10 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.14 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -47,19 +47,10 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>
-#include <sys/proc.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/lock.h>
-#ifdef __FreeBSD__
-#include <sys/mutex.h>
-#else
 #include <sys/thread2.h>
-#endif
-#endif
 #include <sys/sysctl.h>
 
 #include <bus/usb/usb.h>
@@ -95,12 +86,9 @@ struct uhub_softc {
 Static usbd_status uhub_explore(usbd_device_handle hub);
 Static void uhub_intr(usbd_xfer_handle, usbd_private_handle,usbd_status);
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 Static bus_child_detached_t uhub_child_detached;
 Static bus_child_location_str_t uhub_child_location_str;
 Static bus_child_pnpinfo_str_t uhub_child_pnpinfo_str;
-#endif
-
 
 /*
  * We need two attachment points:
@@ -108,13 +96,6 @@ Static bus_child_pnpinfo_str_t uhub_child_pnpinfo_str;
  * Every other driver only connects to hubs
  */
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-USB_DECLARE_DRIVER(uhub);
-
-/* Create the driver instance for the hub connected to hub case */
-CFATTACH_DECL(uhub_uhub, sizeof(struct uhub_softc),
-    uhub_match, uhub_attach, uhub_detach, uhub_activate);
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 USB_DECLARE_DRIVER_INIT(uhub,
 	DEVMETHOD(bus_child_detached, uhub_child_detached),
 	DEVMETHOD(bus_child_pnpinfo_str, uhub_child_pnpinfo_str),
@@ -148,7 +129,6 @@ Static	driver_t uhubroot_driver = {
 	uhubroot_methods,
 	sizeof(struct uhub_softc)
 };
-#endif
 
 USB_MATCH(uhub)
 {
@@ -546,36 +526,6 @@ uhub_explore(usbd_device_handle dev)
 	return (USBD_NORMAL_COMPLETION);
 }
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int
-uhub_activate(device_ptr_t self, enum devact act)
-{
-	struct uhub_softc *sc = (struct uhub_softc *)self;
-	struct usbd_hub *hub = sc->sc_hub->hub;
-	usbd_device_handle dev;
-	int nports, port, i;
-
-	switch (act) {
-	case DVACT_ACTIVATE:
-		return (EOPNOTSUPP);
-
-	case DVACT_DEACTIVATE:
-		if (hub == NULL) /* malfunctioning hub */
-			break;
-		nports = hub->hubdesc.bNbrPorts;
-		for(port = 0; port < nports; port++) {
-			dev = hub->ports[port].device;
-			if (dev != NULL && dev->subdevs != NULL) {
-				for (i = 0; dev->subdevs[i] != NULL; i++)
-					config_deactivate(dev->subdevs[i]);
-			}
-		}
-		break;
-	}
-	return (0);
-}
-#endif
-
 /*
  * Called from process context when the hub is gone.
  * Detach all devices on active ports.
@@ -587,11 +537,7 @@ USB_DETACH(uhub)
 	struct usbd_port *rup;
 	int port, nports;
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	DPRINTF(("uhub_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	DPRINTF(("uhub_detach: sc=%port\n", sc));
-#endif
 
 	crit_enter();
 
@@ -623,7 +569,6 @@ USB_DETACH(uhub)
 	return (0);
 }
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 int
 uhub_child_location_str(device_t cbdev, device_t child, char *buf,
     size_t buflen)
@@ -752,8 +697,6 @@ found_dev:
 	dev->subdevs[i] = NULL;
 	crit_exit();
 }
-#endif
-
 
 /*
  * Hub interrupt.
@@ -773,7 +716,5 @@ uhub_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		usb_needs_explore(sc->sc_hub);
 }
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 DRIVER_MODULE(uhub, usb, uhubroot_driver, uhubroot_devclass, 0, 0);
 DRIVER_MODULE(uhub, uhub, uhub_driver, uhub_devclass, usbd_driver_load, 0);
-#endif

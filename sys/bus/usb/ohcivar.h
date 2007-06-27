@@ -1,6 +1,6 @@
 /*	$NetBSD: ohcivar.h,v 1.30 2001/12/31 12:20:35 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohcivar.h,v 1.40.2.1 2005/12/04 05:52:23 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohcivar.h,v 1.6 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohcivar.h,v 1.7 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -92,12 +92,10 @@ typedef struct ohci_softc {
 	bus_space_handle_t ioh;
 	bus_size_t sc_size;
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	void *ih;
 
 	struct resource *io_res;
 	struct resource *irq_res;
-#endif
 
 	usb_dma_t sc_hccadma;
 	struct ohci_hcca *sc_hcca;
@@ -135,10 +133,6 @@ typedef struct ohci_softc {
 	char sc_vendor[16];
 	int sc_id_vendor;
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	void *sc_powerhook;		/* cookie from power hook */
-	void *sc_shutdownhook;		/* cookie from shutdown hook */
-#endif
 	u_int32_t sc_control;		/* Preserved during suspend/standby */
 	u_int32_t sc_intre;
 
@@ -147,9 +141,6 @@ typedef struct ohci_softc {
 
 	usb_callout_t sc_tmo_rhsc;
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	device_ptr_t sc_child;
-#endif
 	char sc_dying;
 } ohci_softc_t;
 
@@ -167,9 +158,6 @@ struct ohci_xfer {
 usbd_status	ohci_init(ohci_softc_t *);
 int		ohci_intr(void *);
 int	 	ohci_detach(ohci_softc_t *, int);
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int		ohci_activate(device_ptr_t, enum devact);
-#endif
 
 #define MS_TO_TICKS(ms) ((ms) * hz / 1000)
 

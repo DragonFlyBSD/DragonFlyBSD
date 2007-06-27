@@ -1,6 +1,6 @@
 /*	$NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.154.2.4 2006/06/26 00:31:25 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.19 2006/12/22 23:12:17 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.20 2007/06/27 12:27:59 hasso Exp $	*/
 
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -62,23 +62,16 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>
-#include <sys/select.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #if defined(DIAGNOSTIC) && defined(__i386__)
 #include <machine/cpu.h>
 #endif
-#endif
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
-#ifdef __DragonFly__
 #include <sys/thread2.h>
-#endif
 
 #include <machine/endian.h>
 
@@ -91,15 +84,7 @@
 #include <bus/usb/ohcireg.h>
 #include <bus/usb/ohcivar.h>
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 #define delay(d)                DELAY(d)
-#endif
-
-#if defined(__OpenBSD__)
-struct cfdriver ohci_cd = {
-	NULL, "ohci", DV_DULL
-};
-#endif
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (ohcidebug) logprintf x
@@ -108,26 +93,10 @@ int ohcidebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ohci, CTLFLAG_RW, 0, "USB ohci");
 SYSCTL_INT(_hw_usb_ohci, OID_AUTO, debug, CTLFLAG_RW,
 	   &ohcidebug, 0, "ohci debug level");
-#ifndef __NetBSD__
 #define bitmask_snprintf(q,f,b,l) ksnprintf((b), (l), "%b", (q), (f))
-#endif
 #else
 #define DPRINTF(x)
 #define DPRINTFN(n,x)
-#endif
-
-/*
- * The OHCI controller is little endian, so on big endian machines
- * the data strored in memory needs to be swapped.
- */
-#if defined(__OpenBSD__)
-#if BYTE_ORDER == BIG_ENDIAN
-#define htole32(x) (bswap32(x))
-#define le32toh(x) (bswap32(x))
-#else
-#define htole32(x) (x)
-#define le32toh(x) (x)
-#endif
 #endif
 
 struct ohci_pipe;
@@ -149,10 +118,6 @@ Static usbd_status	ohci_alloc_std_chain(struct ohci_pipe *,
 			    ohci_softc_t *, int, int, usbd_xfer_handle,
 			    ohci_soft_td_t *, ohci_soft_td_t **);
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-Static void		ohci_shutdown(void *v);
-Static void		ohci_power(int, void *);
-#endif
 Static usbd_status	ohci_open(usbd_pipe_handle);
 Static void		ohci_poll(struct usbd_bus *);
 Static void		ohci_softintr(void *);
@@ -360,48 +325,14 @@ Static struct usbd_pipe_methods ohci_device_isoc_methods = {
 	ohci_device_isoc_done,
 };
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int
-ohci_activate(device_ptr_t self, enum devact act)
-{
-	struct ohci_softc *sc = (struct ohci_softc *)self;
-	int rv = 0;
-
-	switch (act) {
-	case DVACT_ACTIVATE:
-		return (EOPNOTSUPP);
-
-	case DVACT_DEACTIVATE:
-		if (sc->sc_child != NULL)
-			rv = config_deactivate(sc->sc_child);
-		sc->sc_dying = 1;
-		break;
-	}
-	return (rv);
-}
-#endif
-
 int
 ohci_detach(struct ohci_softc *sc, int flags)
 {
 	int i, rv = 0;
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	if (sc->sc_child != NULL)
-		rv = config_detach(sc->sc_child, flags);
-
-	if (rv != 0)
-		return (rv);
-#else
 	sc->sc_dying = 1;
-#endif
 
 	usb_uncallout(sc->sc_tmo_rhsc, ohci_rhsc_enable, sc);
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	powerhook_disestablish(sc->sc_powerhook);
-	shutdownhook_disestablish(sc->sc_shutdownhook);
-#endif
 
 	OWRITE4(sc, OHCI_INTERRUPT_DISABLE, OHCI_ALL_INTRS);
 	OWRITE4(sc, OHCI_CONTROL, OHCI_HCFS_RESET);
@@ -709,11 +640,7 @@ ohci_init(ohci_softc_t *sc)
 	u_int32_t rev;
 
 	DPRINTF(("ohci_init: start\n"));
-#if defined(__OpenBSD__)
-	kprintf(",");
-#else
 	kprintf("%s:", USBDEVNAME(sc->sc_bus.bdev));
-#endif
 	rev = OREAD4(sc, OHCI_REVISION);
 	kprintf(" OHCI version %d.%d%s\n", OHCI_REV_HI(rev), OHCI_REV_LO(rev),
 	       OHCI_REV_LEGACY(rev) ? ", legacy support" : "");
@@ -813,12 +740,6 @@ ohci_init(ohci_softc_t *sc)
 	/* Set up the bus struct. */
 	sc->sc_bus.methods = &ohci_bus_methods;
 	sc->sc_bus.pipe_size = sizeof(struct ohci_pipe);
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	sc->sc_control = sc->sc_intre = 0;
-	sc->sc_powerhook = powerhook_establish(ohci_power, sc);
-	sc->sc_shutdownhook = shutdownhook_establish(ohci_shutdown, sc);
-#endif
 
 	usb_callout_init(sc->sc_tmo_rhsc);
 

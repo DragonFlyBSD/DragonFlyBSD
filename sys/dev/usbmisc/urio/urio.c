@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.16 2007/06/26 19:52:10 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.17 2007/06/27 12:28:00 hasso Exp $
  */
 
 /*
@@ -49,25 +49,16 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#if defined(__NetBSD__)
-#include <sys/device.h>
-#include <sys/ioctl.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/ioccom.h>
-#endif
 #include <sys/fcntl.h>
 #include <sys/filio.h>
 #include <sys/conf.h>
 #include <sys/uio.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
@@ -100,18 +91,6 @@ SYSCTL_INT(_hw_usb_urio, OID_AUTO, debug, CTLFLAG_RW,
 #define RIO_IN  1
 #define RIO_NODIR  2
 
-#if defined(__NetBSD__)
-int urioopen(cdev_t, int, int, struct proc *);
-int urioclose(cdev_t, int, int, struct proc *p);
-int urioread(cdev_t, struct uio *uio, int);
-int uriowrite(cdev_t, struct uio *uio, int);
-int urioioctl(cdev_t, u_long, caddr_t, int, struct proc *);
-
-cdev_decl(urio);
-#define RIO_UE_GET_DIR(p) ((UE_GET_DIR(p) == UE_DIR_IN) ? RIO_IN :\
-			  ((UE_GET_DIR(p) == UE_DIR_OUT) ? RIO_OUT :\
-							   RIO_NODIR))
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 d_open_t  urioopen;
 d_close_t urioclose;
 d_read_t  urioread;
@@ -131,7 +110,6 @@ Static struct dev_ops urio_ops = {
 #define RIO_UE_GET_DIR(p) ((UE_GET_DIR(p) == UE_DIR_IN) ? RIO_IN :\
 		 	  ((UE_GET_DIR(p) == UE_DIR_OUT) ? RIO_OUT :\
 			    				   RIO_NODIR))
-#endif  /*defined(__FreeBSD__)*/
 
 #define	URIO_BBSIZE	1024
 
@@ -146,9 +124,6 @@ struct urio_softc {
 	int sc_epaddr[2];
 
 	int sc_refcnt;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	u_char sc_dying;
-#endif
 };
 
 #define URIOUNIT(n) (minor(n))
@@ -186,9 +161,6 @@ USB_ATTACH(urio)
 	usbd_device_handle udev;
 	usbd_interface_handle iface;
 	u_int8_t epcount;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	u_int8_t niface;
-#endif
 	usbd_status r;
 	char * ermsg = "<none>";
 	int i;
@@ -200,29 +172,11 @@ USB_ATTACH(urio)
 
 	sc->sc_udev = udev = uaa->device;
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
  	if ((!uaa->device) || (!uaa->iface)) {
 		ermsg = "device or iface";
  		goto nobulk;
 	}
 	sc->sc_iface = iface = uaa->iface;
-#elif defined(__NetBSD__) || defined(__OpenBSD__)
- 	if (!udev) {
-		ermsg = "device";
- 		goto nobulk;
-	}
-	r = usbd_interface_count(udev, &niface);
-	if (r) {
-		ermsg = "iface";
-		goto nobulk;
-	}
-	r = usbd_device2interface_handle(udev, 0, &iface);
-	if (r) {
-		ermsg = "iface";
-		goto nobulk;
-	}
-	sc->sc_iface = iface;
-#endif
 	sc->sc_opened = 0;
 	sc->sc_pipeh_in = 0;
 	sc->sc_pipeh_out = 0;
@@ -257,15 +211,10 @@ USB_ATTACH(urio)
 		goto nobulk;
 	}
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	dev_ops_add(&urio_ops, -1, device_get_unit(self));
 	make_dev(&urio_ops, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
 			0644, "urio%d", device_get_unit(self));
-#elif defined(__NetBSD__) || defined(__OpenBSD__)
-	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
-			   sc->sc_dev);
-#endif
 
 	DPRINTFN(10, ("urio_attach: %p\n", sc->sc_udev));
 
@@ -589,93 +538,6 @@ ret:
 	return error;
 }
 
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int
-urio_activate(device_ptr_t self, enum devact act)
-{
-	struct urio_softc *sc = (struct urio_softc *)self;
-
-	switch (act) {
-	case DVACT_ACTIVATE:
-		return (EOPNOTSUPP);
-		break;
-
-	case DVACT_DEACTIVATE:
-		sc->sc_dying = 1;
-		break;
-	}
-	return (0);
-}
-
-USB_DETACH(urio)
-{
-	USB_DETACH_START(urio, sc);
-	struct urio_endpoint *sce;
-	int i, dir;
-	int s;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	int maj, mn;
-
-	DPRINTF(("urio_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
-	DPRINTF(("urio_detach: sc=%p\n", sc));
-#endif
-
-	sc->sc_dying = 1;
-	/* Abort all pipes.  Causes processes waiting for transfer to wake. */
-#if 0
-	for (i = 0; i < USB_MAX_ENDPOINTS; i++) {
-		for (dir = OUT; dir <= IN; dir++) {
-			sce = &sc->sc_endpoints[i][dir];
-			if (sce && sce->pipeh)
-				usbd_abort_pipe(sce->pipeh);
-		}
-	}
-
-	crit_enter();
-	if (--sc->sc_refcnt >= 0) {
-		/* Wake everyone */
-		for (i = 0; i < USB_MAX_ENDPOINTS; i++)
-			wakeup(&sc->sc_endpoints[i][IN]);
-		/* Wait for processes to go away. */
-		usb_detach_wait(sc->sc_dev);
-	}
-	crit_exit();
-#else
-	if (sc->sc_pipeh_in)
-		usbd_abort_pipe(sc->sc_pipeh_in);
-
-	if (sc->sc_pipeh_out)
-		usbd_abort_pipe(sc->sc_pipeh_out);
-
-	crit_enter();
-	if (--sc->sc_refcnt >= 0) {
-		/* Wait for processes to go away. */
-		usb_detach_wait(sc->sc_dev);
-	}
-	crit_exit();
-#endif
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	/* locate the major number */
-	for (maj = 0; maj < nchrdev; maj++)
-		if (cdevsw[maj].d_open == urioopen)
-			break;
-
-	/* Nuke the vnodes for any open instances (calls close). */
-	mn = self->dv_unit * USB_MAX_ENDPOINTS;
-	vdevgone(maj, mn, mn + USB_MAX_ENDPOINTS - 1, VCHR);
-#endif
-
-	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
-			   sc->sc_dev);
-
-	return (0);
-}
-#endif /* defined(__NetBSD__) || defined(__OpenBSD__) */
-
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 Static int
 urio_detach(device_t self)
 {
@@ -687,4 +549,4 @@ urio_detach(device_t self)
 }
 
 DRIVER_MODULE(urio, uhub, urio_driver, urio_devclass, usbd_driver_load, 0);
-#endif
+

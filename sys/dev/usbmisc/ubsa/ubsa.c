@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.9 2006/12/22 23:26:25 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.10 2007/06/27 12:28:00 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -74,11 +74,7 @@
 #include <sys/conf.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/poll.h>
@@ -179,9 +175,6 @@ struct	ubsa_softc {
 
 	u_char			sc_lsr;		/* Local status register */
 	u_char			sc_msr;		/* ubsa status register */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	void			*sc_swicookie;
-#endif
 };
 
 Static	void ubsa_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
@@ -252,10 +245,6 @@ DRIVER_MODULE(ubsa, uhub, ubsa_driver, ucom_devclass, usbd_driver_load, 0);
 MODULE_DEPEND(ubsa, usb, 1, 1, 1);
 MODULE_DEPEND(ubsa, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(ubsa, UBSA_MODVER);
-
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-static struct ithd *ucom_ithd;
-#endif
 
 USB_MATCH(ubsa)
 {
@@ -411,11 +400,6 @@ USB_ATTACH(ubsa)
 	DPRINTF(("ubsa: in = 0x%x, out = 0x%x, intr = 0x%x\n",
 	    ucom->sc_bulkin_no, ucom->sc_bulkout_no, sc->sc_intr_number));
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	swi_add(&ucom_ithd, "ucom", ubsa_notify, sc, SWI_TTY, 0,
-	    &sc->sc_swicookie);
-#endif
- 
 	ucom_attach(ucom);
 
 	kfree(devinfo, M_USBDEV);
@@ -444,10 +428,6 @@ USB_DETACH(ubsa)
 	sc->sc_ucom.sc_dying = 1;
 
 	rv = ucom_detach(&sc->sc_ucom);
-
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	ithread_remove_handler(sc->sc_swicookie);
-#endif
 
 	return (rv);
 }
@@ -740,11 +720,7 @@ ubsa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	DPRINTF(("%s: ubsa lsr = 0x%02x, msr = 0x%02x\n",
 	    USBDEVNAME(sc->sc_ucom.sc_dev), sc->sc_lsr, sc->sc_msr));
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	swi_sched(sc->sc_swicookie, 0);
-#else
 	ubsa_notify(sc);
-#endif
 }
 
 /* Handle delayed events. */

@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.23 2007/06/26 19:52:10 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.24 2007/06/27 12:28:00 hasso Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -78,11 +78,7 @@
 #include <sys/tty.h>
 #include <sys/clist.h>
 #include <sys/file.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/poll.h>

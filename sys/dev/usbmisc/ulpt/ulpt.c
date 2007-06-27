@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.16 2007/06/26 19:52:10 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.17 2007/06/27 12:28:00 hasso Exp $
  */
 
 /*
@@ -49,14 +49,9 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/kernel.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>
-#include <sys/ioctl.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/ioccom.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#endif
 #include <sys/uio.h>
 #include <sys/conf.h>
 #include <sys/device.h>
@@ -124,19 +119,6 @@ struct ulpt_softc {
 	u_char sc_dying;
 };
 
-#if defined(__NetBSD__)
-dev_type_open(ulptopen);
-dev_type_close(ulptclose);
-dev_type_write(ulptwrite);
-dev_type_ioctl(ulptioctl);
-
-const struct cdevsw ulpt_cdevsw = {
-	ulptopen, ulptclose, noread, ulptwrite, ulptioctl,
-	nostop, notty, nopoll, nommap, nokqfilter,
-};
-#elif defined(__OpenBSD__)
-cdev_decl(ulpt);
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 Static d_open_t ulptopen;
 Static d_close_t ulptclose;
 Static d_write_t ulptwrite;
@@ -151,7 +133,6 @@ Static struct dev_ops ulpt_ops = {
 	.d_write =	ulptwrite,
 	.d_ioctl =	ulptioctl,
 };
-#endif
 
 void ulpt_disco(void *);
 
@@ -330,14 +311,12 @@ USB_ATTACH(ulpt)
 	}
 #endif
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	dev_ops_add(&ulpt_ops, -1, device_get_unit(self));
 	make_dev(&ulpt_ops, device_get_unit(self),
 		UID_ROOT, GID_OPERATOR, 0644, "ulpt%d", device_get_unit(self));
 	make_dev(&ulpt_ops,
 		device_get_unit(self)|ULPT_NOPRIME,
 		UID_ROOT, GID_OPERATOR, 0644, "unlpt%d", device_get_unit(self));
-#endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
 			   sc->sc_dev);
@@ -345,36 +324,11 @@ USB_ATTACH(ulpt)
 	USB_ATTACH_SUCCESS_RETURN;
 }
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int
-ulpt_activate(device_ptr_t self, enum devact act)
-{
-	struct ulpt_softc *sc = (struct ulpt_softc *)self;
-
-	switch (act) {
-	case DVACT_ACTIVATE:
-		return (EOPNOTSUPP);
-
-	case DVACT_DEACTIVATE:
-		sc->sc_dying = 1;
-		break;
-	}
-	return (0);
-}
-#endif
-
 USB_DETACH(ulpt)
 {
 	USB_DETACH_START(ulpt, sc);
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	int maj, mn;
-#endif
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	DPRINTF(("ulpt_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	DPRINTF(("ulpt_detach: sc=%p\n", sc));
-#endif
 
 	sc->sc_dying = 1;
 	if (sc->sc_out_pipe != NULL)
@@ -397,22 +351,7 @@ USB_DETACH(ulpt)
 	}
 	crit_exit();
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	/* locate the major number */
-#if defined(__NetBSD__)
-	maj = cdevsw_lookup_major(&ulpt_cdevsw);
-#elif defined(__OpenBSD__)
-	for (maj = 0; maj < nchrdev; maj++)
-		if (cdevsw[maj].d_open == ulptopen)
-			break;
-#endif
-
-	/* Nuke the vnodes for any open instances (calls close). */
-	mn = self->dv_unit;
-	vdevgone(maj, mn, mn, VCHR);
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	dev_ops_remove(&ulpt_ops, -1, device_get_unit(self));
-#endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
 			   sc->sc_dev);
@@ -509,7 +448,7 @@ ulptopen(struct dev_open_args *ap)
 	sc->sc_flags = flags;
 	DPRINTF(("ulptopen: flags=0x%x\n", (unsigned)flags));
 
-#if defined(USB_DEBUG) && (defined(__FreeBSD__) || defined(__DragonFly__))
+#if defined(USB_DEBUG)
 	/* Ignoring these flags might not be a good idea */
 	if ((flags & ~ULPT_NOPRIME) != 0)
 		kprintf("ulptopen: flags ignored: %b\n", flags,
@@ -753,6 +692,5 @@ ieee1284_print_id(char *str)
 }
 #endif
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 DRIVER_MODULE(ulpt, uhub, ulpt_driver, ulpt_devclass, usbd_driver_load, 0);
-#endif
+

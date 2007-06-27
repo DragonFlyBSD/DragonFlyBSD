@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.h,v 1.69 2002/09/22 23:20:50 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.h,v 1.39.2.1 2006/01/20 22:47:49 mux Exp $    */
-/*	$DragonFly: src/sys/bus/usb/usb.h,v 1.5 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.h,v 1.6 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -45,10 +45,6 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/ioctl.h>
-#endif
 
 #if defined(_KERNEL)
 #include <bus/usb/usb_port.h>
@@ -99,11 +95,7 @@ typedef u_int8_t uDWord[4];
 #define USETDW(w,v) (*(u_int32_t *)(w) = (v))
 #endif
 
-#if defined(__FreeBSD__) && (__FreeBSD_version <= 500014)
-#define UPACKED __attribute__ ((packed))
-#else
 #define UPACKED __packed
-#endif
 
 typedef struct {
 	uByte		bmRequestType;

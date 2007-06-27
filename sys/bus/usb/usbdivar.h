@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdivar.h,v 1.70 2002/07/11 21:14:36 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdivar.h,v 1.43.2.1 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdivar.h,v 1.6 2006/12/10 02:03:57 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdivar.h,v 1.7 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -39,9 +39,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if defined(__NetBSD__)
-#include <sys/callout.h>
-#endif
 
 /* From usb_mem.h */
 DECLARE_USB_DMA_T;
@@ -268,9 +265,6 @@ void		usb_schedsoftintr(struct usbd_bus *);
 
 /* Locator stuff. */
 
-#if defined(__NetBSD__)
-#include "locators.h"
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 /* XXX these values are used to statically bind some elements in the USB tree
  * to specific driver instances. This should be somehow emulated in FreeBSD
  * but can be done later on.
@@ -282,16 +276,6 @@ void		usb_schedsoftintr(struct usbd_bus *);
 #define UHUBCF_VENDOR_DEFAULT -1
 #define UHUBCF_PRODUCT_DEFAULT -1
 #define UHUBCF_RELEASE_DEFAULT -1
-#endif
-
-#if defined (__OpenBSD__)
-#define	UHUBCF_PORT		0
-#define	UHUBCF_CONFIGURATION	1
-#define	UHUBCF_INTERFACE	2
-#define	UHUBCF_VENDOR		3
-#define	UHUBCF_PRODUCT		4
-#define	UHUBCF_RELEASE		5
-#endif
 
 #define	uhubcf_port		cf_loc[UHUBCF_PORT]
 #define	uhubcf_configuration	cf_loc[UHUBCF_CONFIGURATION]

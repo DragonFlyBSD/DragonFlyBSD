@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.21 2007/06/26 19:52:10 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.22 2007/06/27 12:28:00 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -54,28 +54,15 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-#include <sys/mutex.h>
-#endif
 #include <sys/signalvar.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>
-#include <sys/ioctl.h>
-#include <sys/file.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/ioccom.h>
 #include <sys/filio.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/ioccom.h>
-#endif
 #include <sys/conf.h>
 #include <sys/tty.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/poll.h>
@@ -142,9 +129,6 @@ struct uhid_softc {
 #define	UHID_CHUNK	128	/* chunk size for read */
 #define	UHID_BSIZE	1020	/* buffer size */
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-cdev_decl(uhid);
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 d_open_t	uhidopen;
 d_close_t	uhidclose;
 d_read_t	uhidread;
@@ -163,7 +147,6 @@ Static struct dev_ops uhid_ops = {
 	.d_ioctl =	uhidioctl,
 	.d_poll =	uhidpoll,
 };
-#endif
 
 Static void uhid_intr(usbd_xfer_handle, usbd_private_handle,
 			   usbd_status);
@@ -262,46 +245,19 @@ USB_ATTACH(uhid)
 	sc->sc_repdesc = desc;
 	sc->sc_repdesc_size = size;
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	dev_ops_add(&uhid_ops, -1, device_get_unit(self));
 	make_dev(&uhid_ops, device_get_unit(self),
 		UID_ROOT, GID_OPERATOR,
 		0644, "uhid%d", device_get_unit(self));
-#endif
 
 	USB_ATTACH_SUCCESS_RETURN;
 }
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int
-uhid_activate(device_ptr_t self, enum devact act)
-{
-	struct uhid_softc *sc = (struct uhid_softc *)self;
-
-	switch (act) {
-	case DVACT_ACTIVATE:
-		return (EOPNOTSUPP);
-
-	case DVACT_DEACTIVATE:
-		sc->sc_dying = 1;
-		break;
-	}
-	return (0);
-}
-#endif
-
 USB_DETACH(uhid)
 {
 	USB_DETACH_START(uhid, sc);
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	int maj, mn;
-#endif
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	DPRINTF(("uhid_detach: sc=%p flags=%d\n", sc, flags));
-#else
 	DPRINTF(("uhid_detach: sc=%p\n", sc));
-#endif
 
 	sc->sc_dying = 1;
 	if (sc->sc_intrpipe != NULL)
@@ -318,18 +274,7 @@ USB_DETACH(uhid)
 		crit_exit();
 	}
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	/* locate the major number */
-	for (maj = 0; maj < nchrdev; maj++)
-		if (cdevsw[maj].d_open == uhidopen)
-			break;
-
-	/* Nuke the vnodes for any open instances (calls close). */
-	mn = self->dv_unit;
-	vdevgone(maj, mn, mn, VCHR);
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	dev_ops_remove(&uhid_ops, -1, device_get_unit(self));
-#endif
 
 	if (sc->sc_repdesc)
 		kfree(sc->sc_repdesc, M_USBDEV);
@@ -600,13 +545,7 @@ uhid_do_ioctl(struct uhid_softc *sc, u_long cmd, caddr_t addr, int flag)
 		if (*(int *)addr) {
 			if (sc->sc_async != NULL)
 				return (EBUSY);
-#if defined(__DragonFly__)
 			sc->sc_async = curproc;
-#elif __FreeBSD_version >= 500000
-			sc->sc_async = p->td_proc;
-#else
-                        sc->sc_async = p;
-#endif
 			DPRINTF(("uhid_do_ioctl: FIOASYNC %p\n", sc->sc_async));
 		} else
 			sc->sc_async = NULL;
@@ -740,6 +679,5 @@ uhidpoll(struct dev_poll_args *ap)
 	return (0);
 }
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 DRIVER_MODULE(uhid, uhub, uhid_driver, uhid_devclass, usbd_driver_load, 0);
-#endif
+

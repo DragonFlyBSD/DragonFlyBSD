@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.22 2007/06/14 01:10:25 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.23 2007/06/27 12:28:00 hasso Exp $
  */
 
 /*
@@ -667,9 +667,7 @@ Static void umass_dump_buffer	(struct umass_softc *sc, u_int8_t *buffer,
 				int buflen, int printlen);
 #endif
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 MODULE_DEPEND(umass, cam, 1,1,1);
-#endif
 
 /*
  * USB device probe/attach/detach

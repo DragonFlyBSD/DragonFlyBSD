@@ -1,6 +1,6 @@
 /*	$NetBSD: ehci.c,v 1.91 2005/02/27 00:27:51 perry Exp $ */
 /*	$FreeBSD: src/sys/dev/usb/ehci.c,v 1.36.2.3 2006/09/24 13:39:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.28 2006/12/22 23:12:17 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.29 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 2004 The NetBSD Foundation, Inc.
@@ -71,9 +71,7 @@
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
-#ifdef __DragonFly__
 #include <sys/thread2.h>
-#endif
 
 #include <machine/cpu.h>
 #include <machine/endian.h>
@@ -87,9 +85,7 @@
 #include <bus/usb/ehcireg.h>
 #include <bus/usb/ehcivar.h>
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 #define delay(d)                DELAY(d)
-#endif
 
 #ifdef USB_DEBUG
 #define EHCI_DEBUG USB_DEBUG
@@ -99,9 +95,7 @@ int ehcidebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ehci, CTLFLAG_RW, 0, "USB ehci");
 SYSCTL_INT(_hw_usb_ehci, OID_AUTO, debug, CTLFLAG_RW,
 	   &ehcidebug, 0, "ehci debug level");
-#ifndef __NetBSD__
 #define bitmask_snprintf(q,f,b,l) ksnprintf((b), (l), "%b", (q), (f))
-#endif
 #else
 #define DPRINTF(x)
 #define DPRINTFN(n,x)
@@ -400,11 +394,6 @@ ehci_init(ehci_softc_t *sc)
 	/* Set up the bus struct. */
 	sc->sc_bus.methods = &ehci_bus_methods;
 	sc->sc_bus.pipe_size = sizeof(struct ehci_pipe);
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	sc->sc_powerhook = powerhook_establish(ehci_power, sc);
-	sc->sc_shutdownhook = shutdownhook_establish(ehci_shutdown, sc);
-#endif
 
 	sc->sc_eintrs = EHCI_NORMAL_INTRS;
 
@@ -898,28 +887,13 @@ ehci_detach(struct ehci_softc *sc, int flags)
 {
 	int rv = 0;
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	if (sc->sc_child != NULL)
-		rv = config_detach(sc->sc_child, flags);
-
-	if (rv != 0)
-		return (rv);
-#else
 	sc->sc_dying = 1;
-#endif
 
 	EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
 	EOWRITE4(sc, EHCI_USBCMD, 0);
 	EOWRITE4(sc, EHCI_USBCMD, EHCI_CMD_HCRESET);
 	usb_uncallout(sc->sc_tmo_intrlist, ehci_intrlist_timeout, sc);
 	usb_uncallout(sc->sc_tmo_pcd, ehci_pcd_enable, sc);
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	if (sc->sc_powerhook != NULL)
-		powerhook_disestablish(sc->sc_powerhook);
-	if (sc->sc_shutdownhook != NULL)
-		shutdownhook_disestablish(sc->sc_shutdownhook);
-#endif
 
 	usb_delay_ms(&sc->sc_bus, 300); /* XXX let stray task complete */
 
@@ -928,27 +902,6 @@ ehci_detach(struct ehci_softc *sc, int flags)
 
 	return (rv);
 }
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int
-ehci_activate(device_ptr_t self, enum devact act)
-{
-	struct ehci_softc *sc = (struct ehci_softc *)self;
-	int rv = 0;
-
-	switch (act) {
-	case DVACT_ACTIVATE:
-		return (EOPNOTSUPP);
-
-	case DVACT_DEACTIVATE:
-		if (sc->sc_child != NULL)
-			rv = config_deactivate(sc->sc_child);
-		sc->sc_dying = 1;
-		break;
-	}
-	return (rv);
-}
-#endif
 
 /*
  * Handle suspend/resume.
@@ -974,9 +927,6 @@ ehci_power(int why, void *v)
 
 	switch (why) {
 	case PWR_SUSPEND:
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	case PWR_STANDBY:
-#endif
 		sc->sc_bus.use_polling++;
 
 		for (i = 1; i <= sc->sc_noport; i++) {
@@ -1074,12 +1024,6 @@ ehci_power(int why, void *v)
 
 		sc->sc_bus.use_polling--;
 		break;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	case PWR_SOFTSUSPEND:
-	case PWR_SOFTSTANDBY:
-	case PWR_SOFTRESUME:
-		break;
-#endif
 	}
 	crit_exit();
 
@@ -2288,14 +2232,6 @@ ehci_alloc_sqtd_chain(struct ehci_pipe *epipe, ehci_softc_t *sc,
 		goto nomem;
 	for (;;) {
 		dataphyspage = EHCI_PAGE(dataphys);
-		/* The EHCI hardware can handle at most 5 pages. */
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-		if (dataphyslastpage - dataphyspage <
-		    EHCI_QTD_NBUFFERS * EHCI_PAGE_SIZE) {
-			/* we can handle it in this QTD */
-			curlen = len;
-		}
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 		/* XXX This is pretty broken: Because we do not allocate
 		 * a contiguous buffer (contiguous in physical pages) we
 		 * can only transfer one page in one go.
@@ -2305,28 +2241,10 @@ ehci_alloc_sqtd_chain(struct ehci_pipe *epipe, ehci_softc_t *sc,
 		if (dataphyspage == dataphyslastpage) {
 			curlen = len;
 		}
-#endif
 		else {
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-			/* must use multiple TDs, fill as much as possible. */
-			curlen = EHCI_QTD_NBUFFERS * EHCI_PAGE_SIZE -
-				 EHCI_PAGE_OFFSET(dataphys);
-#ifdef DIAGNOSTIC
-			if (curlen > len) {
-				kprintf("ehci_alloc_sqtd_chain: curlen=0x%x "
-				       "len=0x%x offs=0x%x\n", curlen, len,
-				       EHCI_PAGE_OFFSET(dataphys));
-				kprintf("lastpage=0x%x page=0x%x phys=0x%x\n",
-				       dataphyslastpage, dataphyspage,
-				       dataphys);
-				curlen = len;
-			}
-#endif
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 			/* See comment above (XXX) */
 			curlen = EHCI_PAGE_SIZE -
 				 EHCI_PAGE_MASK(dataphys);
-#endif
 			/* the length must be a multiple of the max size */
 			curlen -= curlen % mps;
 			DPRINTFN(1,("ehci_alloc_sqtd_chain: multiple QTDs, "

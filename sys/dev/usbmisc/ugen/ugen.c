@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.24 2007/06/26 19:52:10 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.25 2007/06/27 12:28:00 hasso Exp $
  */
 
 /* 
@@ -54,24 +54,15 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>
-#include <sys/ioctl.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/ioccom.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/filio.h>
-#endif
 #include <sys/tty.h>
 #include <sys/file.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
@@ -109,9 +100,7 @@ SYSCTL_INT(_hw_usb_ugen, OID_AUTO, bufsize, CTLFLAG_RW,
 
 struct ugen_endpoint {
 	struct ugen_softc *sc;
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	cdev_t dev;
-#endif
 	usb_endpoint_descriptor_t *edesc;
 	usbd_interface_handle iface;
 	int state;
@@ -146,9 +135,6 @@ struct ugen_softc {
 	u_char sc_dying;
 };
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-cdev_decl(ugen);
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 d_open_t  ugenopen;
 d_close_t ugenclose;
 d_read_t  ugenread;
@@ -167,7 +153,6 @@ Static struct dev_ops ugen_ops = {
 	.d_ioctl =	ugenioctl,
 	.d_poll =	ugenpoll,
 };
-#endif
 
 Static void ugenintr(usbd_xfer_handle xfer, usbd_private_handle addr,
 			    usbd_status status);
@@ -177,10 +162,8 @@ Static int ugen_do_read(struct ugen_softc *, int, struct uio *, int);
 Static int ugen_do_write(struct ugen_softc *, int, struct uio *, int);
 Static int ugen_do_ioctl(struct ugen_softc *, int, u_long,
 			    caddr_t, int);
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 Static void ugen_make_devnodes(struct ugen_softc *sc);
 Static void ugen_destroy_devnodes(struct ugen_softc *sc);
-#endif
 Static int ugen_set_config(struct ugen_softc *sc, int configno);
 Static usb_config_descriptor_t *ugen_get_cdesc(struct ugen_softc *sc,
 						int index, int *lenp);
@@ -243,18 +226,15 @@ USB_ATTACH(ugen)
 		USB_ATTACH_ERROR_RETURN;
 	}
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* the main device, ctrl endpoint */
 	dev_ops_add(&ugen_ops, 
 		    UGENUNITMASK, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0));
 	make_dev(&ugen_ops, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0),
 		UID_ROOT, GID_OPERATOR, 0644, "%s", USBDEVNAME(sc->sc_dev));
-#endif
 
 	USB_ATTACH_SUCCESS_RETURN;
 }
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 Static void
 ugen_make_devnodes(struct ugen_softc *sc)
 {
@@ -324,7 +304,6 @@ ugen_destroy_devnodes(struct ugen_softc *sc)
 		}
 	}
 }
-#endif
 
 Static int
 ugen_set_config(struct ugen_softc *sc, int configno)
@@ -341,9 +320,7 @@ ugen_set_config(struct ugen_softc *sc, int configno)
 	DPRINTFN(1,("ugen_set_config: %s to configno %d, sc=%p\n",
 		    USBDEVNAME(sc->sc_dev), configno, sc));
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	ugen_destroy_devnodes(sc);
-#endif
 
 	/* We start at 1, not 0, because we don't care whether the
 	 * control endpoint is open or not. It is always present.
@@ -391,9 +368,7 @@ ugen_set_config(struct ugen_softc *sc, int configno)
 		}
 	}
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	ugen_make_devnodes(sc);
-#endif
 
 	return (USBD_NORMAL_COMPLETION);
 }
@@ -883,38 +858,13 @@ ugenwrite(struct dev_write_args *ap)
 	return (error);
 }
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int
-ugen_activate(device_ptr_t self, enum devact act)
-{
-	struct ugen_softc *sc = (struct ugen_softc *)self;
-
-	switch (act) {
-	case DVACT_ACTIVATE:
-		return (EOPNOTSUPP);
-
-	case DVACT_DEACTIVATE:
-		sc->sc_dying = 1;
-		break;
-	}
-	return (0);
-}
-#endif
-
 USB_DETACH(ugen)
 {
 	USB_DETACH_START(ugen, sc);
 	struct ugen_endpoint *sce;
 	int i, dir;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	int maj, mn;
-#endif
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	DPRINTF(("ugen_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	DPRINTF(("ugen_detach: sc=%p\n", sc));
-#endif
 
 	sc->sc_dying = 1;
 	/* Abort all pipes.  Causes processes waiting for transfer to wake. */
@@ -935,21 +885,10 @@ USB_DETACH(ugen)
 	}
 	crit_exit();
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	/* locate the major number */
-	for (maj = 0; maj < nchrdev; maj++)
-		if (cdevsw[maj].d_open == ugenopen)
-			break;
-
-	/* Nuke the vnodes for any open instances (calls close). */
-	mn = self->dv_unit * USB_MAX_ENDPOINTS;
-	vdevgone(maj, mn, mn + USB_MAX_ENDPOINTS - 1, VCHR);
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 	/* destroy the device for the control endpoint */
 	ugen_destroy_devnodes(sc);
 	dev_ops_remove(&ugen_ops, 
 		    UGENUNITMASK, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0));
-#endif
 	return (0);
 }
 
@@ -1074,10 +1013,8 @@ ugen_set_interface(struct ugen_softc *sc, int ifaceidx, int altno)
 	if (err)
 		return (err);
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* destroy the existing devices, we remake the new ones in a moment */
 	ugen_destroy_devnodes(sc);
-#endif
 
 	/* XXX should only do this after setting new altno has succeeded */
 	for (endptno = 0; endptno < nendpt; endptno++) {
@@ -1108,10 +1045,8 @@ ugen_set_interface(struct ugen_softc *sc, int ifaceidx, int altno)
 		sce->iface = iface;
 	}
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* make the new devices */
 	ugen_make_devnodes(sc);
-#endif
 
 	return (0);
 }
@@ -1510,6 +1445,5 @@ ugenpoll(struct dev_poll_args *ap)
 	return (0);
 }
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 DRIVER_MODULE(ugen, uhub, ugen_driver, ugen_devclass, usbd_driver_load, 0);
-#endif
+

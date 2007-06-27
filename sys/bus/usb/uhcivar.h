@@ -1,6 +1,6 @@
 /*	$NetBSD: uhcivar.h,v 1.33 2002/02/11 11:41:30 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhcivar.h,v 1.40 2005/03/19 19:08:46 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhcivar.h,v 1.6 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhcivar.h,v 1.7 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -144,12 +144,10 @@ typedef struct uhci_softc {
 	bus_space_tag_t iot;
 	bus_space_handle_t ioh;
 	bus_size_t sc_size;
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	void *ih;
 
 	struct resource *io_res;
 	struct resource *irq_res;
-#endif
 
 	uhci_physaddr_t *sc_pframes;
 	usb_dma_t sc_dma;
@@ -192,23 +190,11 @@ typedef struct uhci_softc {
 
 	char sc_vendor[16];		/* vendor string for root hub */
 	int sc_id_vendor;		/* vendor ID for root hub */
-
-#if defined(__NetBSD__)
-	void *sc_powerhook;		/* cookie from power hook */
-	void *sc_shutdownhook;		/* cookie from shutdown hook */
-#endif
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	device_ptr_t sc_child;		/* /dev/usb# device */
-#endif
 } uhci_softc_t;
 
 usbd_status	uhci_init(uhci_softc_t *);
 int		uhci_intr(void *);
 int		uhci_detach(uhci_softc_t *, int);
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int		uhci_activate(device_ptr_t, enum devact);
-#endif
 
 void		uhci_shutdown(void *v);
 void		uhci_power(int state, void *priv);

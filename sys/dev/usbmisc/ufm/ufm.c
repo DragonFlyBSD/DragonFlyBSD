@@ -30,32 +30,23 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.13 2007/06/26 19:52:10 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.14 2007/06/27 12:28:00 hasso Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#if defined(__NetBSD__)
-#include <sys/device.h>
-#include <sys/ioctl.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/ioccom.h>
-#endif
 #include <sys/fcntl.h>
 #include <sys/filio.h>
 #include <sys/conf.h>
 #include <sys/uio.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
-#include <sys/selinfo.h>
-#else
 #include <sys/select.h>
-#endif
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
@@ -80,13 +71,6 @@ SYSCTL_INT(_hw_usb_ufm, OID_AUTO, debug, CTLFLAG_RW,
 #define DPRINTFN(n,x)
 #endif
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int ufmopen(cdev_t, int, int, usb_proc_ptr);
-int ufmclose(cdev_t, int, int, usb_proc_ptr);
-int ufmioctl(cdev_t, u_long, caddr_t, int, usb_proc_ptr);
-
-cdev_decl(ufm);
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 d_open_t  ufmopen;
 d_close_t ufmclose;
 d_ioctl_t ufmioctl;
@@ -99,7 +83,6 @@ Static struct dev_ops ufm_ops = {
 	.d_close = ufmclose,
 	.d_ioctl = ufmioctl,
 };
-#endif  /*defined(__FreeBSD__)*/
 
 #define FM_CMD0		0x00
 #define FM_CMD_SET_FREQ	0x01
@@ -115,9 +98,6 @@ struct ufm_softc {
 	int sc_freq;
 
 	int sc_refcnt;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	u_char sc_dying;
-#endif
 };
 
 #define UFMUNIT(n) (minor(n))
@@ -151,9 +131,6 @@ USB_ATTACH(ufm)
 	usbd_device_handle udev;
 	usbd_interface_handle iface;
 	u_int8_t epcount;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	u_int8_t niface;
-#endif
 	usbd_status r;
 	char * ermsg = "<none>";
 
@@ -164,29 +141,11 @@ USB_ATTACH(ufm)
 
 	sc->sc_udev = udev = uaa->device;
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
  	if ((!uaa->device) || (!uaa->iface)) {
 		ermsg = "device or iface";
  		goto nobulk;
 	}
 	sc->sc_iface = iface = uaa->iface;
-#elif defined(__NetBSD__) || defined(__OpenBSD__)
- 	if (!udev) {
-		ermsg = "device";
- 		goto nobulk;
-	}
-	r = usbd_interface_count(udev, &niface);
-	if (r) {
-		ermsg = "iface";
-		goto nobulk;
-	}
-	r = usbd_device2interface_handle(udev, 0, &iface);
-	if (r) {
-		ermsg = "iface";
-		goto nobulk;
-	}
-	sc->sc_iface = iface;
-#endif
 	sc->sc_opened = 0;
 	sc->sc_refcnt = 0;
 
@@ -203,16 +162,11 @@ USB_ATTACH(ufm)
 	}
 	sc->sc_epaddr = edesc->bEndpointAddress;
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* XXX no error trapping, no storing of cdev_t */
 	dev_ops_add(&ufm_ops, -1, device_get_unit(self));
 	make_dev(&ufm_ops, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
 			0644, "ufm%d", device_get_unit(self));
-#elif defined(__NetBSD__) || defined(__OpenBSD__)
-	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
-			   sc->sc_dev);
-#endif
 
 	DPRINTFN(10, ("ufm_attach: %p\n", sc->sc_udev));
 
@@ -405,68 +359,6 @@ ufmioctl(struct dev_ioctl_args *ap)
 	return error;
 }
 
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int
-ufm_activate(device_ptr_t self, enum devact act)
-{
-	struct ufm_softc *sc = (struct ufm_softc *)self;
-
-	switch (act) {
-	case DVACT_ACTIVATE:
-		return (EOPNOTSUPP);
-		break;
-
-	case DVACT_DEACTIVATE:
-		sc->sc_dying = 1;
-		break;
-	}
-	return (0);
-}
-
-USB_DETACH(ufm)
-{
-	USB_DETACH_START(ufm, sc);
-	struct ufm_endpoint *sce;
-	int i, dir;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	int maj, mn;
-
-	DPRINTF(("ufm_detach: sc=%p flags=%d\n", sc, flags));
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
-	DPRINTF(("ufm_detach: sc=%p\n", sc));
-#endif
-
-	sc->sc_dying = 1;
-
-	crit_enter();
-	if (--sc->sc_refcnt >= 0) {
-		/* Wait for processes to go away. */
-		usb_detach_wait(sc->sc_dev);
-	}
-	crit_exit();
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	/* locate the major number */
-	for (maj = 0; maj < nchrdev; maj++)
-		if (cdevsw[maj].d_open == ufmopen)
-			break;
-
-	/* Nuke the vnodes for any open instances (calls close). */
-	mn = self->dv_unit * USB_MAX_ENDPOINTS;
-	vdevgone(maj, mn, mn + USB_MAX_ENDPOINTS - 1, VCHR);
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
-	/* XXX not implemented yet */
-#endif
-
-	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
-			   sc->sc_dev);
-
-	return (0);
-}
-#endif /* defined(__NetBSD__) || defined(__OpenBSD__) */
-
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 Static int
 ufm_detach(device_t self)
 {
@@ -475,4 +367,3 @@ ufm_detach(device_t self)
 }
 
 DRIVER_MODULE(ufm, uhub, ufm_driver, ufm_devclass, usbd_driver_load, 0);
-#endif

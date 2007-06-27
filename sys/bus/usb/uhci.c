@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.162.2.1 2006/03/01 01:59:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.21 2007/05/13 22:25:42 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.22 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*	Also already incorporated from NetBSD:
  *	$NetBSD: uhci.c,v 1.172 2003/02/23 04:19:26 simonb Exp $
@@ -63,23 +63,16 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <sys/device.h>
-#include <sys/select.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/endian.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #if defined(DIAGNOSTIC) && defined(__i386__)
 #include <machine/cpu.h>
 #endif
-#endif
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
-#ifdef __DragonFly__
 #include <sys/thread2.h>
-#endif
 
 #include <machine/endian.h>
 
@@ -95,17 +88,9 @@
 /* Use bandwidth reclamation for control transfers. Some devices choke on it. */
 /*#define UHCI_CTL_LOOP */
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 #define delay(d)		DELAY(d)
-#endif
 
 #define MS_TO_TICKS(ms) ((ms) * hz / 1000)
-
-#if defined(__OpenBSD__)
-struct cfdriver uhci_cd = {
-	NULL, "uhci", DV_DULL
-};
-#endif
 
 #ifdef USB_DEBUG
 uhci_softc_t *thesc;
@@ -118,26 +103,10 @@ SYSCTL_INT(_hw_usb_uhci, OID_AUTO, debug, CTLFLAG_RW,
 	   &uhcidebug, 0, "uhci debug level");
 SYSCTL_INT(_hw_usb_uhci, OID_AUTO, loop, CTLFLAG_RW,
 	   &uhcinoloop, 0, "uhci noloop");
-#ifndef __NetBSD__
 #define bitmask_snprintf(q,f,b,l) ksnprintf((b), (l), "%b", (q), (f))
-#endif
 #else
 #define DPRINTF(x)
 #define DPRINTFN(n,x)
-#endif
-
-/*
- * The UHCI controller is little endian, so on big endian machines
- * the data strored in memory needs to be swapped.
- */
-#if defined(__OpenBSD__)
-#if BYTE_ORDER == BIG_ENDIAN
-#define htole32(x) (bswap32(x))
-#define le32toh(x) (bswap32(x))
-#else
-#define htole32(x) (x)
-#define le32toh(x) (x)
-#endif
 #endif
 
 struct uhci_pipe {
@@ -179,10 +148,6 @@ struct uhci_pipe {
 Static void		uhci_globalreset(uhci_softc_t *);
 Static usbd_status	uhci_portreset(uhci_softc_t*, int);
 Static void		uhci_reset(uhci_softc_t *);
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-Static void		uhci_shutdown(void *v);
-Static void		uhci_power(int, void *);
-#endif
 Static usbd_status	uhci_run(uhci_softc_t *, int run);
 Static uhci_soft_td_t  *uhci_alloc_std(uhci_softc_t *);
 Static void		uhci_free_std(uhci_softc_t *, uhci_soft_td_t *);
@@ -538,11 +503,6 @@ uhci_init(uhci_softc_t *sc)
 	sc->sc_bus.methods = &uhci_bus_methods;
 	sc->sc_bus.pipe_size = sizeof(struct uhci_pipe);
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	sc->sc_suspend = PWR_RESUME;
-	sc->sc_powerhook = powerhook_establish(uhci_power, sc);
-	sc->sc_shutdownhook = shutdownhook_establish(uhci_shutdown, sc);
-#endif
 	DPRINTFN(1,("uhci_init: enabling\n"));
 	UWRITE2(sc, UHCI_INTR, UHCI_INTR_TOCRCIE | UHCI_INTR_RIE |
 		UHCI_INTR_IOCE | UHCI_INTR_SPIE);	/* enable interrupts */
@@ -552,47 +512,14 @@ uhci_init(uhci_softc_t *sc)
 	return (uhci_run(sc, 1));		/* and here we go... */
 }
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-int
-uhci_activate(device_ptr_t self, enum devact act)
-{
-	struct uhci_softc *sc = (struct uhci_softc *)self;
-	int rv = 0;
-
-	switch (act) {
-	case DVACT_ACTIVATE:
-		return (EOPNOTSUPP);
-
-	case DVACT_DEACTIVATE:
-		if (sc->sc_child != NULL)
-			rv = config_deactivate(sc->sc_child);
-		break;
-	}
-	return (rv);
-}
-#endif
-
 int
 uhci_detach(struct uhci_softc *sc, int flags)
 {
 	usbd_xfer_handle xfer;
 	int rv = 0;
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	if (sc->sc_child != NULL)
-		rv = config_detach(sc->sc_child, flags);
-
-	if (rv != 0)
-		return (rv);
-#endif
-
 	UWRITE2(sc, UHCI_INTR, 0);		/* disable interrupts */
 	uhci_run(sc, 0);
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	powerhook_disestablish(sc->sc_powerhook);
-	shutdownhook_disestablish(sc->sc_shutdownhook);
-#endif
 
 	/* Free all xfers associated with this HC. */
 	for (;;) {
@@ -1205,11 +1132,6 @@ uhci_intr1(uhci_softc_t *sc)
 	status = UREAD2(sc, UHCI_STS) & UHCI_STS_ALLINTRS;
 	if (status == 0)	/* The interrupt was not for us. */
 		return (0);
-
-#if defined(DIAGNOSTIC) && defined(__NetBSD__)
-	if (sc->sc_suspend != PWR_RESUME)
-		kprintf("uhci_intr: suspended sts=0x%x\n", status);
-#endif
 
 	if (sc->sc_suspend != PWR_RESUME) {
 		kprintf("%s: interrupt while not operating ignored\n",

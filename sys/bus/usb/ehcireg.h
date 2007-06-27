@@ -1,6 +1,6 @@
 /*	$NetBSD: ehcireg.h,v 1.18 2004/10/22 10:38:17 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ehcireg.h,v 1.7.2.1 2006/01/26 01:43:13 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehcireg.h,v 1.6 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehcireg.h,v 1.7 2007/06/27 12:27:59 hasso Exp $	*/
 
 /*
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -183,9 +183,7 @@
 #define EHCI_PAGE_SIZE 0x1000
 #define EHCI_PAGE(x) ((x) &~ 0xfff)
 #define EHCI_PAGE_OFFSET(x) ((x) & 0xfff)
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 #define EHCI_PAGE_MASK(x) ((x) & 0xfff)
-#endif
 
 typedef u_int32_t ehci_link_t;
 #define EHCI_LINK_TERMINATE	0x00000001
