@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.5 2007/06/19 06:07:52 dillon Exp $
+ * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.6 2007/06/27 18:15:57 dillon Exp $
  */
 
 #define DKTYPENAMES
@@ -137,7 +137,7 @@ dumppart(const char *path, struct partinfo *dpart)
 		}
 		if (!uuid_is_nil(&dpart->storage_uuid, NULL)) {
 			char *str = NULL;
-			uuid_to_string(&dpart->fstype_uuid, &str, NULL);
+			uuid_to_string(&dpart->storage_uuid, &str, NULL);
 			printf(" storage_uuid='%s'", str ? str : "<illegal>");
 		}
 		if (dpart->reserved_blocks) {
