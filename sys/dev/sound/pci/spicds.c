@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/spicds.c,v 1.5.2.2 2007/06/11 19:33:27 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/spicds.c,v 1.2 2007/06/16 20:07:19 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/spicds.c,v 1.3 2007/06/27 13:26:18 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -141,11 +141,11 @@ spicds_create(device_t dev, void *devinfo, int num, spicds_ctrl ctrl)
 #if(0)
 	device_printf(dev, "spicds_create(dev, devinfo, %d, ctrl)\n", num);
 #endif
-	codec = (struct spicds_info *)malloc(sizeof *codec, M_SPICDS, M_NOWAIT);
+	codec = (struct spicds_info *)kmalloc(sizeof *codec, M_SPICDS, M_NOWAIT);
 	if (codec == NULL)
 		return NULL;
 
-	snprintf(codec->name, SPICDS_NAMELEN, "%s:spicds%d", device_get_nameunit(dev), num);
+	ksnprintf(codec->name, SPICDS_NAMELEN, "%s:spicds%d", device_get_nameunit(dev), num);
 	codec->lock = snd_mtxcreate(codec->name, codec->name);
 	codec->dev = dev;
 	codec->ctrl = ctrl;
@@ -163,7 +163,7 @@ void
 spicds_destroy(struct spicds_info *codec)
 {
 	snd_mtxfree(codec->lock);
-	free(codec, M_SPICDS);
+	kfree(codec, M_SPICDS);
 }
 
 void
