@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.25 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.26 2007/06/28 20:24:57 dillon Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -410,6 +410,10 @@ callout_handle_init(struct callout_handle *handle)
  *
  * The callout is installed on and will be processed on the current cpu's
  * callout wheel.
+ *
+ * WARNING! This function may be called from any cpu but the caller must
+ * serialize callout_stop() and callout_reset() calls on the passed
+ * structure regardless of cpu.
  */
 void
 callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *), 
@@ -458,6 +462,10 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *),
  * the target cpu to process the request.  It is possible for the callout
  * to execute in that case.
  *
+ * WARNING! This function may be called from any cpu but the caller must
+ * serialize callout_stop() and callout_reset() calls on the passed
+ * structure regardless of cpu.
+ *
  * WARNING! This routine may be called from an IPI
  */
 int
@@ -483,12 +491,37 @@ callout_stop(struct callout *c)
 	crit_enter_gd(gd);
 
 	/*
-	 * Don't attempt to delete a callout that's not on the queue.
+	 * Don't attempt to delete a callout that's not on the queue.  The
+	 * callout may not have a cpu assigned to it.  Callers do not have
+	 * to be on the issuing cpu but must still serialize access to the
+	 * callout structure.
+	 *
+	 * We are not cpu-localized here and cannot safely modify the
+	 * flags field in the callout structure.  Note that most of the
+	 * time CALLOUT_ACTIVE will be 0 if CALLOUT_PENDING is also 0.
+	 *
+	 * If we race another cpu's dispatch of this callout it is possible
+	 * for CALLOUT_ACTIVE to be set with CALLOUT_PENDING unset.  This
+	 * will cause us to fall through and synchronize with the other
+	 * cpu.
 	 */
 	if ((c->c_flags & CALLOUT_PENDING) == 0) {
+#ifdef SMP
+		if ((c->c_flags & CALLOUT_ACTIVE) == 0) {
+			crit_exit_gd(gd);
+			return (0);
+		}
+		if (c->c_gd == NULL || c->c_gd == gd) {
+			c->c_flags &= ~CALLOUT_ACTIVE;
+			crit_exit_gd(gd);
+			return (0);
+		}
+		/* fall-through to the cpu-localization code. */
+#else
 		c->c_flags &= ~CALLOUT_ACTIVE;
 		crit_exit_gd(gd);
 		return (0);
+#endif
 	}
 #ifdef SMP
 	if ((tgd = c->c_gd) != gd) {
