@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.17 2007/06/26 08:36:24 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.18 2007/06/28 09:33:33 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -75,7 +75,6 @@ MALLOC_DECLARE(M_USBHC);
 #define USBDEVNAME(bdev) device_get_nameunit(bdev)
 #define USBDEVUNIT(bdev) device_get_unit(bdev)
 #define USBDEVPTRNAME(bdev) device_get_nameunit(bdev)
-#define USBDEVUNIT(bdev) device_get_unit(bdev)
 #define USBGETSOFTC(bdev) (device_get_softc(bdev))
 
 #define DECLARE_USB_DMA_T \
