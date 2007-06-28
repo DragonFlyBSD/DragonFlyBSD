@@ -1,6 +1,6 @@
 /*	$NetBSD: uhcivar.h,v 1.33 2002/02/11 11:41:30 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhcivar.h,v 1.40 2005/03/19 19:08:46 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhcivar.h,v 1.7 2007/06/27 12:27:59 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhcivar.h,v 1.8 2007/06/28 13:55:12 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -165,7 +165,7 @@ typedef struct uhci_softc {
 	uhci_soft_td_t *sc_freetds;	/* TD free list */
 	uhci_soft_qh_t *sc_freeqhs;	/* QH free list */
 
-	SIMPLEQ_HEAD(, usbd_xfer) sc_free_xfers; /* free xfers */
+	STAILQ_HEAD(, usbd_xfer) sc_free_xfers; /* free xfers */
 
 	u_int8_t sc_addr;		/* device address */
 	u_int8_t sc_conf;		/* device configuration */

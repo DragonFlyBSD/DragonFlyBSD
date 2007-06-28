@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi_util.c,v 1.42 2004/12/03 08:53:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.34 2005/03/01 08:01:22 sobomax Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.13 2007/06/28 06:32:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.14 2007/06/28 13:55:12 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -54,8 +54,8 @@
 #include <bus/usb/usbdi_util.h>
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (usbdebug) logprintf x
-#define DPRINTFN(n,x)	if (usbdebug>(n)) logprintf x
+#define DPRINTF(x)	if (usbdebug) kprintf x
+#define DPRINTFN(n,x)	if (usbdebug>(n)) kprintf x
 extern int usbdebug;
 #else
 #define DPRINTF(x)

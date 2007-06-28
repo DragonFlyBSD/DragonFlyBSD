@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.32 2007/06/28 06:32:31 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.33 2007/06/28 13:55:12 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -98,8 +98,8 @@ MALLOC_DEFINE(M_USBHC, "USBHC", "USB host controller");
 SYSCTL_NODE(_hw, OID_AUTO, usb, CTLFLAG_RW, 0, "USB debugging");
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (usbdebug) logprintf x
-#define DPRINTFN(n,x)	if (usbdebug>(n)) logprintf x
+#define DPRINTF(x)	if (usbdebug) kprintf x
+#define DPRINTFN(n,x)	if (usbdebug>(n)) kprintf x
 int	usbdebug = 0;
 SYSCTL_INT(_hw_usb, OID_AUTO, debug, CTLFLAG_RW,
 	   &usbdebug, 0, "usb debug level");

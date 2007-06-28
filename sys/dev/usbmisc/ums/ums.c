@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.23 2007/06/28 06:32:33 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.24 2007/06/28 13:55:13 hasso Exp $
  */
 
 /*
@@ -72,8 +72,8 @@
 #include <machine/mouse.h>
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (umsdebug) logprintf x
-#define DPRINTFN(n,x)	if (umsdebug>(n)) logprintf x
+#define DPRINTF(x)	if (umsdebug) kprintf x
+#define DPRINTFN(n,x)	if (umsdebug>(n)) kprintf x
 int	umsdebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ums, CTLFLAG_RW, 0, "USB ums");
 SYSCTL_INT(_hw_usb_ums, OID_AUTO, debug, CTLFLAG_RW,

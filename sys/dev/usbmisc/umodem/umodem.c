@@ -2,7 +2,7 @@
  * $NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.13 2007/06/28 06:32:33 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.14 2007/06/28 13:55:13 hasso Exp $
  */
 
 /*-
@@ -111,7 +111,7 @@ int	umodemdebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, umodem, CTLFLAG_RW, 0, "USB umodem");
 SYSCTL_INT(_hw_usb_umodem, OID_AUTO, debug, CTLFLAG_RW,
 	   &umodemdebug, 0, "umodem debug level");
-#define DPRINTFN(n, x)	if (umodemdebug > (n)) logprintf x
+#define DPRINTFN(n, x)	if (umodemdebug > (n)) kprintf x
 #else
 #define DPRINTFN(n, x)
 #endif

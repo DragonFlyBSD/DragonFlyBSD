@@ -1,6 +1,6 @@
 /*	$NetBSD: ehci.c,v 1.91 2005/02/27 00:27:51 perry Exp $ */
 /*	$FreeBSD: src/sys/dev/usb/ehci.c,v 1.36.2.3 2006/09/24 13:39:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.30 2007/06/28 06:32:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.31 2007/06/28 13:55:12 hasso Exp $	*/
 
 /*
  * Copyright (c) 2004 The NetBSD Foundation, Inc.
@@ -89,8 +89,8 @@
 
 #ifdef USB_DEBUG
 #define EHCI_DEBUG USB_DEBUG
-#define DPRINTF(x)	do { if (ehcidebug) logprintf x; } while (0)
-#define DPRINTFN(n,x)	do { if (ehcidebug>(n)) logprintf x; } while (0)
+#define DPRINTF(x)	do { if (ehcidebug) kprintf x; } while (0)
+#define DPRINTFN(n,x)	do { if (ehcidebug>(n)) kprintf x; } while (0)
 int ehcidebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ehci, CTLFLAG_RW, 0, "USB ehci");
 SYSCTL_INT(_hw_usb_ehci, OID_AUTO, debug, CTLFLAG_RW,
@@ -1072,9 +1072,9 @@ ehci_allocx(struct usbd_bus *bus)
 	struct ehci_softc *sc = (struct ehci_softc *)bus;
 	usbd_xfer_handle xfer;
 
-	xfer = SIMPLEQ_FIRST(&sc->sc_free_xfers);
+	xfer = STAILQ_FIRST(&sc->sc_free_xfers);
 	if (xfer != NULL) {
-		SIMPLEQ_REMOVE_HEAD(&sc->sc_free_xfers, next);
+		STAILQ_REMOVE_HEAD(&sc->sc_free_xfers, next);
 #ifdef DIAGNOSTIC
 		if (xfer->busy_free != XFER_FREE) {
 			kprintf("ehci_allocx: xfer=%p not free, 0x%08x\n", xfer,
@@ -1114,7 +1114,7 @@ ehci_freex(struct usbd_bus *bus, usbd_xfer_handle xfer)
 		return;
 	}
 #endif
-	SIMPLEQ_INSERT_HEAD(&sc->sc_free_xfers, xfer, next);
+	STAILQ_INSERT_HEAD(&sc->sc_free_xfers, xfer, next);
 }
 
 static void
@@ -1603,7 +1603,7 @@ ehci_root_ctrl_transfer(usbd_xfer_handle xfer)
 		return (err);
 
 	/* Pipe isn't running, start first */
-	return (ehci_root_ctrl_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ehci_root_ctrl_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 static usbd_status
@@ -2053,7 +2053,7 @@ ehci_root_intr_transfer(usbd_xfer_handle xfer)
 		return (err);
 
 	/* Pipe isn't running, start first */
-	return (ehci_root_intr_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ehci_root_intr_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 static usbd_status
@@ -2613,7 +2613,7 @@ ehci_device_ctrl_transfer(usbd_xfer_handle xfer)
 		return (err);
 
 	/* Pipe isn't running, start first */
-	return (ehci_device_ctrl_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ehci_device_ctrl_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 static usbd_status
@@ -2847,7 +2847,7 @@ ehci_device_bulk_transfer(usbd_xfer_handle xfer)
 		return (err);
 
 	/* Pipe isn't running, start first */
-	return (ehci_device_bulk_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ehci_device_bulk_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 usbd_status
@@ -3015,7 +3015,7 @@ ehci_device_intr_transfer(usbd_xfer_handle xfer)
 	 * Pipe isn't running (otherwise err would be USBD_INPROG),
 	 * so start it first.
 	 */
-	return (ehci_device_intr_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ehci_device_intr_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 static usbd_status

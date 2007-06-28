@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.76.2.3 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.20 2007/06/28 06:32:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.21 2007/06/28 13:55:12 hasso Exp $	*/
 
 /* Also already have from NetBSD:
  *	$NetBSD: usb_subr.c,v 1.102 2003/01/01 16:21:50 augustss Exp $
@@ -70,8 +70,8 @@
 #define delay(d)         DELAY(d)
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (usbdebug) logprintf x
-#define DPRINTFN(n,x)	if (usbdebug>(n)) logprintf x
+#define DPRINTF(x)	if (usbdebug) kprintf x
+#define DPRINTFN(n,x)	if (usbdebug>(n)) kprintf x
 extern int usbdebug;
 #else
 #define DPRINTF(x)
@@ -742,7 +742,7 @@ usbd_setup_pipe(usbd_device_handle dev, usbd_interface_handle iface,
 	p->aborting = 0;
 	p->repeat = 0;
 	p->interval = ival;
-	SIMPLEQ_INIT(&p->queue);
+	STAILQ_INIT(&p->queue);
 	err = dev->bus->methods->open_pipe(p);
 	if (err) {
 		DPRINTFN(-1,("usbd_setup_pipe: endpoint=0x%x failed, error="

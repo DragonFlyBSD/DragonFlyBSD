@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.20 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.21 2007/06/28 13:55:13 hasso Exp $
  */
 
 /*
@@ -78,8 +78,8 @@
 #define delay(d)         DELAY(d)
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (ukbddebug) logprintf x
-#define DPRINTFN(n,x)	if (ukbddebug>(n)) logprintf x
+#define DPRINTF(x)	if (ukbddebug) kprintf x
+#define DPRINTFN(n,x)	if (ukbddebug>(n)) kprintf x
 int	ukbddebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ukbd, CTLFLAG_RW, 0, "USB ukbd");
 SYSCTL_INT(_hw_usb_ukbd, OID_AUTO, debug, CTLFLAG_RW,

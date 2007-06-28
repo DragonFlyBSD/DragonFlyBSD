@@ -1,7 +1,7 @@
 /*
  * $NetBSD: hid.c,v 1.17 2001/11/13 06:24:53 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/hid.c,v 1.23 2003/08/24 17:55:54 obrien Exp $
- * $DragonFly: src/sys/bus/usb/hid.c,v 1.12 2007/06/28 06:32:31 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/hid.c,v 1.13 2007/06/28 13:55:12 hasso Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -50,8 +50,8 @@
 #include <bus/usb/hid.h>
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (usbdebug) logprintf x
-#define DPRINTFN(n,x)	if (usbdebug>(n)) logprintf x
+#define DPRINTF(x)	if (usbdebug) kprintf x
+#define DPRINTFN(n,x)	if (usbdebug>(n)) kprintf x
 extern int usbdebug;
 #else
 #define DPRINTF(x)

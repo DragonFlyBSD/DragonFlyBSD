@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.18 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.19 2007/06/28 13:55:13 hasso Exp $
  */
 
 /*
@@ -71,8 +71,8 @@
 #define	ULPT_BSIZE	16384
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (ulptdebug) logprintf x
-#define DPRINTFN(n,x)	if (ulptdebug>(n)) logprintf x
+#define DPRINTF(x)	if (ulptdebug) kprintf x
+#define DPRINTFN(n,x)	if (ulptdebug>(n)) kprintf x
 int	ulptdebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ulpt, CTLFLAG_RW, 0, "USB ulpt");
 SYSCTL_INT(_hw_usb_ulpt, OID_AUTO, debug, CTLFLAG_RW,

@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.14 2007/06/28 06:32:32 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.15 2007/06/28 13:55:12 hasso Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -60,8 +60,8 @@
 #endif
 
 #ifdef RUM_DEBUG
-#define DPRINTF(x)	do { if (rum_debug) logprintf x; } while (0)
-#define DPRINTFN(n, x)	do { if (rum_debug >= (n)) logprintf x; } while (0)
+#define DPRINTF(x)	do { if (rum_debug) kprintf x; } while (0)
+#define DPRINTFN(n, x)	do { if (rum_debug >= (n)) kprintf x; } while (0)
 int rum_debug = 0;
 #else
 #define DPRINTF(x)

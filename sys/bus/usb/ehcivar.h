@@ -1,6 +1,6 @@
 /*	$NetBSD: ehcivar.h,v 1.19 2005/04/29 15:04:29 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.9.2.1 2006/01/26 01:43:13 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehcivar.h,v 1.9 2007/06/27 12:27:59 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehcivar.h,v 1.10 2007/06/28 13:55:12 hasso Exp $	*/
 
 /*
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -140,7 +140,7 @@ typedef struct ehci_softc {
 	u_int32_t sc_eintrs;
 	ehci_soft_qh_t *sc_async_head;
 
-	SIMPLEQ_HEAD(, usbd_xfer) sc_free_xfers; /* free xfers */
+	STAILQ_HEAD(, usbd_xfer) sc_free_xfers; /* free xfers */
 
 	struct lock sc_doorbell_lock;
 

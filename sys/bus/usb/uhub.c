@@ -1,6 +1,6 @@
 /*	$NetBSD: uhub.c,v 1.68 2004/06/29 06:30:05 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhub.c,v 1.69.2.1 2005/12/18 15:51:31 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.15 2007/06/28 06:32:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.16 2007/06/28 13:55:12 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -61,8 +61,8 @@
 #define UHUB_INTR_INTERVAL 255	/* ms */
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (uhubdebug) logprintf x
-#define DPRINTFN(n,x)	if (uhubdebug>(n)) logprintf x
+#define DPRINTF(x)	if (uhubdebug) kprintf x
+#define DPRINTFN(n,x)	if (uhubdebug>(n)) kprintf x
 int	uhubdebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, uhub, CTLFLAG_RW, 0, "USB uhub");
 SYSCTL_INT(_hw_usb_uhub, OID_AUTO, debug, CTLFLAG_RW,

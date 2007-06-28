@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.18 2007/06/28 06:32:33 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.19 2007/06/28 13:55:13 hasso Exp $
  */
 
 /*
@@ -73,8 +73,8 @@
 #include <bus/usb/rio500_usb.h>
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (uriodebug) logprintf x
-#define DPRINTFN(n,x)	if (uriodebug>(n)) logprintf x
+#define DPRINTF(x)	if (uriodebug) kprintf x
+#define DPRINTFN(n,x)	if (uriodebug>(n)) kprintf x
 int	uriodebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, urio, CTLFLAG_RW, 0, "USB urio");
 SYSCTL_INT(_hw_usb_urio, OID_AUTO, debug, CTLFLAG_RW,

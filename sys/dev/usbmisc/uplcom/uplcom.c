@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.12 2007/06/28 06:32:33 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.13 2007/06/28 13:55:13 hasso Exp $
  */
 
 /*-
@@ -120,7 +120,7 @@ SYSCTL_INT(_hw_usb_uplcom, OID_AUTO, debug, CTLFLAG_RW,
 
 #define DPRINTFN(n, x)	do { \
 				if (uplcomdebug > (n)) \
-					logprintf x; \
+					kprintf x; \
 			} while (0)
 #else
 #define DPRINTFN(n, x)

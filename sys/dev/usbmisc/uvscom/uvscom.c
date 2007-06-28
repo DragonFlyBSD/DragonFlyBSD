@@ -25,7 +25,7 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.11 2007/06/28 06:32:33 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.12 2007/06/28 13:55:13 hasso Exp $
  */
 
 /*
@@ -69,7 +69,7 @@ SYSCTL_INT(_hw_usb_uvscom, OID_AUTO, debug, CTLFLAG_RW,
 
 #define DPRINTFN(n, x) do { \
 				if (uvscomdebug > (n)) \
-					logprintf x; \
+					kprintf x; \
 			} while (0)
 #else
 #define DPRINTFN(n, x)

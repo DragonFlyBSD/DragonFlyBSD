@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.24 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.25 2007/06/28 13:55:13 hasso Exp $
  */
 
 /*
@@ -126,7 +126,7 @@
 
 #ifdef USB_DEBUG
 #define DIF(m, x)	if (umassdebug & (m)) do { x ; } while (0)
-#define	DPRINTF(m, x)	if (umassdebug & (m)) logprintf x
+#define	DPRINTF(m, x)	if (umassdebug & (m)) kprintf x
 #define UDMASS_GEN	0x00010000	/* general */
 #define UDMASS_SCSI	0x00020000	/* scsi */
 #define UDMASS_UFI	0x00040000	/* ufi command set */

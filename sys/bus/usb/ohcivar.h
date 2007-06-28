@@ -1,6 +1,6 @@
 /*	$NetBSD: ohcivar.h,v 1.30 2001/12/31 12:20:35 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohcivar.h,v 1.40.2.1 2005/12/04 05:52:23 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohcivar.h,v 1.7 2007/06/27 12:27:59 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohcivar.h,v 1.8 2007/06/28 13:55:12 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -123,7 +123,7 @@ typedef struct ohci_softc {
 	ohci_soft_td_t *sc_freetds;
 	ohci_soft_itd_t *sc_freeitds;
 
-	SIMPLEQ_HEAD(, usbd_xfer) sc_free_xfers; /* free xfers */
+	STAILQ_HEAD(, usbd_xfer) sc_free_xfers; /* free xfers */
 
 	usbd_xfer_handle sc_intrxfer;
 

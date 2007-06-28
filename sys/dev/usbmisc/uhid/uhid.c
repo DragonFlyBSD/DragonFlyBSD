@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.23 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.24 2007/06/28 13:55:13 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -81,8 +81,8 @@
 #include <bus/usb/ugraphire_rdesc.h>
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (uhiddebug) logprintf x
-#define DPRINTFN(n,x)	if (uhiddebug>(n)) logprintf x
+#define DPRINTF(x)	if (uhiddebug) kprintf x
+#define DPRINTFN(n,x)	if (uhiddebug>(n)) kprintf x
 int	uhiddebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, uhid, CTLFLAG_RW, 0, "USB uhid");
 SYSCTL_INT(_hw_usb_uhid, OID_AUTO, debug, CTLFLAG_RW,

@@ -1,6 +1,6 @@
 /*	$NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.154.2.4 2006/06/26 00:31:25 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.21 2007/06/28 06:32:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.22 2007/06/28 13:55:12 hasso Exp $	*/
 
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -87,8 +87,8 @@
 #define delay(d)                DELAY(d)
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (ohcidebug) logprintf x
-#define DPRINTFN(n,x)	if (ohcidebug>(n)) logprintf x
+#define DPRINTF(x)	if (ohcidebug) kprintf x
+#define DPRINTFN(n,x)	if (ohcidebug>(n)) kprintf x
 int ohcidebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ohci, CTLFLAG_RW, 0, "USB ohci");
 SYSCTL_INT(_hw_usb_ohci, OID_AUTO, debug, CTLFLAG_RW,
@@ -658,7 +658,7 @@ ohci_init(ohci_softc_t *sc)
 	for (i = 0; i < OHCI_HASH_SIZE; i++)
 		LIST_INIT(&sc->sc_hash_itds[i]);
 
-	SIMPLEQ_INIT(&sc->sc_free_xfers);
+	STAILQ_INIT(&sc->sc_free_xfers);
 
 	/* XXX determine alignment by R/W */
 	/* Allocate the HCCA area. */
@@ -897,9 +897,9 @@ ohci_allocx(struct usbd_bus *bus)
 	struct ohci_softc *sc = (struct ohci_softc *)bus;
 	usbd_xfer_handle xfer;
 
-	xfer = SIMPLEQ_FIRST(&sc->sc_free_xfers);
+	xfer = STAILQ_FIRST(&sc->sc_free_xfers);
 	if (xfer != NULL) {
-		SIMPLEQ_REMOVE_HEAD(&sc->sc_free_xfers, next);
+		STAILQ_REMOVE_HEAD(&sc->sc_free_xfers, next);
 #ifdef DIAGNOSTIC
 		if (xfer->busy_free != XFER_FREE) {
 			kprintf("ohci_allocx: xfer=%p not free, 0x%08x\n", xfer,
@@ -944,7 +944,7 @@ ohci_freex(struct usbd_bus *bus, usbd_xfer_handle xfer)
 	}
 	xfer->busy_free = XFER_FREE;
 #endif
-	SIMPLEQ_INSERT_HEAD(&sc->sc_free_xfers, xfer, next);
+	STAILQ_INSERT_HEAD(&sc->sc_free_xfers, xfer, next);
 }
 
 /*
@@ -2406,7 +2406,7 @@ ohci_root_ctrl_transfer(usbd_xfer_handle xfer)
 		return (err);
 
 	/* Pipe isn't running, start first */
-	return (ohci_root_ctrl_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ohci_root_ctrl_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 static usbd_status
@@ -2742,7 +2742,7 @@ ohci_root_intr_transfer(usbd_xfer_handle xfer)
 		return (err);
 
 	/* Pipe isn't running, start first */
-	return (ohci_root_intr_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ohci_root_intr_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 static usbd_status
@@ -2797,7 +2797,7 @@ ohci_device_ctrl_transfer(usbd_xfer_handle xfer)
 		return (err);
 
 	/* Pipe isn't running, start first */
-	return (ohci_device_ctrl_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ohci_device_ctrl_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 static usbd_status
@@ -2872,7 +2872,7 @@ ohci_device_bulk_transfer(usbd_xfer_handle xfer)
 		return (err);
 
 	/* Pipe isn't running, start first */
-	return (ohci_device_bulk_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ohci_device_bulk_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 static usbd_status
@@ -3011,7 +3011,7 @@ ohci_device_intr_transfer(usbd_xfer_handle xfer)
 		return (err);
 
 	/* Pipe isn't running, start first */
-	return (ohci_device_intr_start(SIMPLEQ_FIRST(&xfer->pipe->queue)));
+	return (ohci_device_intr_start(STAILQ_FIRST(&xfer->pipe->queue)));
 }
 
 static usbd_status
@@ -3229,7 +3229,7 @@ ohci_device_isoc_transfer(usbd_xfer_handle xfer)
 
 	/* and start if the pipe wasn't running */
 	if (!err)
-		ohci_device_isoc_start(SIMPLEQ_FIRST(&xfer->pipe->queue));
+		ohci_device_isoc_start(STAILQ_FIRST(&xfer->pipe->queue));
 
 	return (err);
 }

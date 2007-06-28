@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.18 2007/06/28 06:32:33 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.19 2007/06/28 13:55:13 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -73,8 +73,8 @@
 #include <bus/usb/usbdevs.h>
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (uscannerdebug) logprintf x
-#define DPRINTFN(n,x)	if (uscannerdebug>(n)) logprintf x
+#define DPRINTF(x)	if (uscannerdebug) kprintf x
+#define DPRINTFN(n,x)	if (uscannerdebug>(n)) kprintf x
 int	uscannerdebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, uscanner, CTLFLAG_RW, 0, "USB uscanner");
 SYSCTL_INT(_hw_usb_uscanner, OID_AUTO, debug, CTLFLAG_RW,

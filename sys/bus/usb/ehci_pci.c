@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.18.2.1 2006/01/26 01:43:13 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.16 2007/06/28 06:32:31 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.17 2007/06/28 13:55:12 hasso Exp $
  */
 
 /*
@@ -145,7 +145,7 @@ static const char *ehci_device_generic = "EHCI (generic) USB 2.0 controller";
 
 #ifdef USB_DEBUG
 #define EHCI_DEBUG USB_DEBUG
-#define DPRINTF(x)	do { if (ehcidebug) logprintf x; } while (0)
+#define DPRINTF(x)	do { if (ehcidebug) kprintf x; } while (0)
 extern int ehcidebug;
 #else
 #define DPRINTF(x)

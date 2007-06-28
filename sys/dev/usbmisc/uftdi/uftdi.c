@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.10 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.12 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.13 2007/06/28 13:55:12 hasso Exp $
  */
 
 /*
@@ -79,12 +79,12 @@ SYSCTL_INT(_hw_usb_uftdi, OID_AUTO, debug, CTLFLAG_RW,
 	   &uftdidebug, 0, "uftdi debug level");
 #define DPRINTF(x)      do { \
 				if (uftdidebug) \
-					logprintf x; \
+					kprintf x; \
 			} while (0)
 
 #define DPRINTFN(n, x)  do { \
 				if (uftdidebug > (n)) \
-					logprintf x; \
+					kprintf x; \
 			} while (0)
 
 #else

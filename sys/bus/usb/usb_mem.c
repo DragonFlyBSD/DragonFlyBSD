@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_mem.c,v 1.26 2003/02/01 06:23:40 thorpej Exp $
  * $FreeBSD: src/sys/dev/usb/usb_mem.c,v 1.5 2003/10/04 22:13:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.11 2007/06/28 06:32:31 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.12 2007/06/28 13:55:12 hasso Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -88,8 +88,8 @@ KTR_INFO(KTR_USB_MEMORY, usbmem, blkfree, 0, USBKTR_STRING, USBKTR_ARG_SIZE);
 	KTR_LOG(usbmem_ ## name, ptr, bus, (int)size, (int)align);
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (usbdebug) logprintf x
-#define DPRINTFN(n,x)	if (usbdebug>(n)) logprintf x
+#define DPRINTF(x)	if (usbdebug) kprintf x
+#define DPRINTFN(n,x)	if (usbdebug>(n)) kprintf x
 extern int usbdebug;
 #else
 #define DPRINTF(x)

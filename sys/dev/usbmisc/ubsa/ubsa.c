@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.11 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.12 2007/06/28 13:55:12 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -98,7 +98,7 @@ SYSCTL_INT(_hw_usb_ubsa, OID_AUTO, debug, CTLFLAG_RW,
 
 #define	DPRINTFN(n, x)	do { \
 				if (ubsadebug > (n)) \
-					logprintf x; \
+					kprintf x; \
 			} while (0)
 #else
 #define	DPRINTFN(n, x)

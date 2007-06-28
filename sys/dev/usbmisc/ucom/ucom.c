@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.25 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.26 2007/06/28 13:55:12 hasso Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -102,12 +102,12 @@ SYSCTL_INT(_hw_usb_ucom, OID_AUTO, debug, CTLFLAG_RW,
 	   &ucomdebug, 0, "ucom debug level");
 #define DPRINTF(x)	do { \
 				if (ucomdebug) \
-					logprintf x; \
+					kprintf x; \
 			} while (0)
 
 #define DPRINTFN(n, x)	do { \
 				if (ucomdebug > (n)) \
-					logprintf x; \
+					kprintf x; \
 			} while (0)
 #else
 #define DPRINTF(x)

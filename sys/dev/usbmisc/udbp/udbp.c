@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.12 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.13 2007/06/28 13:55:12 hasso Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -104,8 +104,8 @@
 #include <netgraph/netgraph.h>
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (udbpdebug) logprintf x
-#define DPRINTFN(n,x)	if (udbpdebug>(n)) logprintf x
+#define DPRINTF(x)	if (udbpdebug) kprintf x
+#define DPRINTFN(n,x)	if (udbpdebug>(n)) kprintf x
 int	udbpdebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, udbp, CTLFLAG_RW, 0, "USB udbp");
 SYSCTL_INT(_hw_usb_udbp, OID_AUTO, debug, CTLFLAG_RW,

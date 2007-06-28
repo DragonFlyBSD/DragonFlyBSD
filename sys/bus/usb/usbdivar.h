@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdivar.h,v 1.70 2002/07/11 21:14:36 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdivar.h,v 1.43.2.1 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdivar.h,v 1.8 2007/06/28 06:32:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdivar.h,v 1.9 2007/06/28 13:55:12 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -174,7 +174,7 @@ struct usbd_pipe {
 	int			refcnt;
 	char			running;
 	char			aborting;
-	SIMPLEQ_HEAD(, usbd_xfer) queue;
+	STAILQ_HEAD(, usbd_xfer) queue;
 	LIST_ENTRY(usbd_pipe)	next;
 
 	usbd_xfer_handle	intrxfer; /* used for repeating requests */
@@ -219,7 +219,7 @@ struct usbd_xfer {
 #define URQ_AUTO_DMABUF	0x10
 #define URQ_DEV_DMABUF	0x20
 
-	SIMPLEQ_ENTRY(usbd_xfer) next;
+	STAILQ_ENTRY(usbd_xfer) next;
 
 	void		       *hcpriv; /* private use by the HC driver */
 

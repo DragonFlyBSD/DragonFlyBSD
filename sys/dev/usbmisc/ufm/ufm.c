@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.15 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.16 2007/06/28 13:55:12 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -60,8 +60,8 @@
 #include <bus/usb/dsbr100io.h>
 
 #ifdef USB_DEBUG
-#define DPRINTF(x)	if (ufmdebug) logprintf x
-#define DPRINTFN(n,x)	if (ufmdebug>(n)) logprintf x
+#define DPRINTF(x)	if (ufmdebug) kprintf x
+#define DPRINTFN(n,x)	if (ufmdebug>(n)) kprintf x
 int	ufmdebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ufm, CTLFLAG_RW, 0, "USB ufm");
 SYSCTL_INT(_hw_usb_ufm, OID_AUTO, debug, CTLFLAG_RW,
