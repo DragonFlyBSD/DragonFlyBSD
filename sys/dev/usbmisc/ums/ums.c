@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.22 2007/06/27 12:28:00 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.23 2007/06/28 06:32:33 hasso Exp $
  */
 
 /*
@@ -128,25 +128,25 @@ struct ums_softc {
 #define MOUSE_FLAGS_MASK (HIO_CONST|HIO_RELATIVE)
 #define MOUSE_FLAGS (HIO_RELATIVE)
 
-Static void ums_intr(usbd_xfer_handle xfer,
+static void ums_intr(usbd_xfer_handle xfer,
 			  usbd_private_handle priv, usbd_status status);
 
-Static void ums_add_to_queue(struct ums_softc *sc,
+static void ums_add_to_queue(struct ums_softc *sc,
 				int dx, int dy, int dz, int buttons);
-Static void ums_add_to_queue_timeout(void *priv);
+static void ums_add_to_queue_timeout(void *priv);
 
-Static int  ums_enable(void *);
-Static void ums_disable(void *);
+static int  ums_enable(void *);
+static void ums_disable(void *);
 
-Static d_open_t  ums_open;
-Static d_close_t ums_close;
-Static d_read_t  ums_read;
-Static d_ioctl_t ums_ioctl;
-Static d_poll_t  ums_poll;
+static d_open_t  ums_open;
+static d_close_t ums_close;
+static d_read_t  ums_read;
+static d_ioctl_t ums_ioctl;
+static d_poll_t  ums_poll;
 
 #define UMS_CDEV_MAJOR	111
 
-Static struct dev_ops ums_ops = {
+static struct dev_ops ums_ops = {
 	{ "ums", UMS_CDEV_MAJOR, 0 },
 	.d_open =	ums_open,
 	.d_close =	ums_close,
@@ -204,12 +204,12 @@ USB_ATTACH(ums)
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	kprintf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 	ed = usbd_interface2endpoint_descriptor(iface, 0);
 	if (!ed) {
 		kprintf("%s: could not read endpoint descriptor\n",
-		       USBDEVNAME(sc->sc_dev));
+		       device_get_nameunit(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -225,7 +225,7 @@ USB_ATTACH(ums)
 	if (UE_GET_DIR(ed->bEndpointAddress) != UE_DIR_IN ||
 	    UE_GET_XFERTYPE(ed->bmAttributes) != UE_INTERRUPT) {
 		kprintf("%s: unexpected endpoint\n",
-		       USBDEVNAME(sc->sc_dev));
+		       device_get_nameunit(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -235,23 +235,23 @@ USB_ATTACH(ums)
 
 	if (!hid_locate(desc, size, HID_USAGE2(HUP_GENERIC_DESKTOP, HUG_X),
 		       hid_input, &sc->sc_loc_x, &flags)) {
-		kprintf("%s: mouse has no X report\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: mouse has no X report\n", device_get_nameunit(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 	if ((flags & MOUSE_FLAGS_MASK) != MOUSE_FLAGS) {
 		kprintf("%s: X report 0x%04x not supported\n",
-		       USBDEVNAME(sc->sc_dev), flags);
+		       device_get_nameunit(sc->sc_dev), flags);
 		USB_ATTACH_ERROR_RETURN;
 	}
 
 	if (!hid_locate(desc, size, HID_USAGE2(HUP_GENERIC_DESKTOP, HUG_Y),
 		       hid_input, &sc->sc_loc_y, &flags)) {
-		kprintf("%s: mouse has no Y report\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: mouse has no Y report\n", device_get_nameunit(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 	if ((flags & MOUSE_FLAGS_MASK) != MOUSE_FLAGS) {
 		kprintf("%s: Y report 0x%04x not supported\n",
-		       USBDEVNAME(sc->sc_dev), flags);
+		       device_get_nameunit(sc->sc_dev), flags);
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -276,7 +276,7 @@ USB_ATTACH(ums)
 	sc->sc_loc_btn = kmalloc(sizeof(struct hid_location)*sc->nbuttons,
 				M_USBDEV, M_INTWAIT);
 
-	kprintf("%s: %d buttons%s\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %d buttons%s\n", device_get_nameunit(sc->sc_dev),
 	       sc->nbuttons, sc->flags & UMS_Z? " and Z dir." : "");
 
 	for (i = 1; i <= sc->nbuttons; i++)
@@ -333,7 +333,7 @@ USB_ATTACH(ums)
 
 	if (usbd_get_quirks(uaa->device)->uq_flags & UQ_SPUR_BUT_UP) {
 		DPRINTF(("%s: Spurious button up events\n",
-			USBDEVNAME(sc->sc_dev)));
+			device_get_nameunit(sc->sc_dev)));
 		sc->flags |= UMS_SPUR_BUT_UP;
 	}
 
@@ -341,7 +341,7 @@ USB_ATTACH(ums)
 }
 
 
-Static int
+static int
 ums_detach(device_t self)
 {
 	struct ums_softc *sc = device_get_softc(self);
@@ -349,7 +349,7 @@ ums_detach(device_t self)
 	if (sc->sc_enabled)
 		ums_disable(sc);
 
-	DPRINTF(("%s: disconnected\n", USBDEVNAME(self)));
+	DPRINTF(("%s: disconnected\n", device_get_nameunit(self)));
 
 	kfree(sc->sc_loc_btn, M_USB);
 	kfree(sc->sc_ibuf, M_USB);
@@ -449,7 +449,7 @@ ums_intr(usbd_xfer_handle xfer, usbd_private_handle addr,
 	}
 }
 
-Static void
+static void
 ums_add_to_queue_timeout(void *priv)
 {
 	struct ums_softc *sc = priv;
@@ -459,7 +459,7 @@ ums_add_to_queue_timeout(void *priv)
 	crit_exit();
 }
 
-Static void
+static void
 ums_add_to_queue(struct ums_softc *sc, int dx, int dy, int dz, int buttons)
 {
 	/* Discard data in case of full buffer */
@@ -506,7 +506,7 @@ ums_add_to_queue(struct ums_softc *sc, int dx, int dy, int dz, int buttons)
 	}
 }
 
-Static int
+static int
 ums_enable(void *v)
 {
 	struct ums_softc *sc = v;
@@ -539,7 +539,7 @@ ums_enable(void *v)
 	return (0);
 }
 
-Static void
+static void
 ums_disable(void *priv)
 {
 	struct ums_softc *sc = priv;
@@ -556,7 +556,7 @@ ums_disable(void *priv)
 		DPRINTF(("Discarded %d bytes in queue\n", sc->qcount));
 }
 
-Static int
+static int
 ums_open(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -567,7 +567,7 @@ ums_open(struct dev_open_args *ap)
 	return ums_enable(sc);
 }
 
-Static int
+static int
 ums_close(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -584,7 +584,7 @@ ums_close(struct dev_close_args *ap)
 	return 0;
 }
 
-Static int
+static int
 ums_read(struct dev_read_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -654,7 +654,7 @@ ums_read(struct dev_read_args *ap)
 	return 0;
 }
 
-Static int
+static int
 ums_poll(struct dev_poll_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;

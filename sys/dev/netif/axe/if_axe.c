@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.21 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.22 2007/06/28 06:32:31 hasso Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -103,7 +103,7 @@
 /*
  * Various supported device vendors/products.
  */
-Static struct axe_type axe_devs[] = {
+static struct axe_type axe_devs[] = {
 	{ USB_VENDOR_ASIX, USB_PRODUCT_ASIX_AX88172 },
 	{ USB_VENDOR_DLINK, USB_PRODUCT_DLINK_DUBE100 },
 	{ USB_VENDOR_JVC, USB_PRODUCT_JVC_MP_PRX1 },
@@ -115,34 +115,34 @@ Static struct axe_type axe_devs[] = {
 	{ 0, 0 }
 };
 
-Static int axe_match(device_ptr_t);
-Static int axe_attach(device_ptr_t);
-Static int axe_detach(device_ptr_t);
+static int axe_match(device_t);
+static int axe_attach(device_t);
+static int axe_detach(device_t);
 
-Static int axe_tx_list_init(struct axe_softc *);
-Static int axe_rx_list_init(struct axe_softc *);
-Static int axe_newbuf(struct axe_softc *, struct axe_chain *, struct mbuf *);
-Static int axe_encap(struct axe_softc *, struct mbuf *, int);
-Static void axe_rxeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
-Static void axe_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
-Static void axe_tick(void *);
-Static void axe_rxstart(struct ifnet *);
-Static void axe_start(struct ifnet *);
-Static int axe_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-Static void axe_init(void *);
-Static void axe_stop(struct axe_softc *);
-Static void axe_watchdog(struct ifnet *);
-Static void axe_shutdown(device_ptr_t);
-Static int axe_miibus_readreg(device_ptr_t, int, int);
-Static int axe_miibus_writereg(device_ptr_t, int, int, int);
-Static void axe_miibus_statchg(device_ptr_t);
-Static int axe_cmd(struct axe_softc *, int, int, int, void *);
-Static int axe_ifmedia_upd(struct ifnet *);
-Static void axe_ifmedia_sts(struct ifnet *, struct ifmediareq *);
+static int axe_tx_list_init(struct axe_softc *);
+static int axe_rx_list_init(struct axe_softc *);
+static int axe_newbuf(struct axe_softc *, struct axe_chain *, struct mbuf *);
+static int axe_encap(struct axe_softc *, struct mbuf *, int);
+static void axe_rxeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
+static void axe_txeof(usbd_xfer_handle, usbd_private_handle, usbd_status);
+static void axe_tick(void *);
+static void axe_rxstart(struct ifnet *);
+static void axe_start(struct ifnet *);
+static int axe_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+static void axe_init(void *);
+static void axe_stop(struct axe_softc *);
+static void axe_watchdog(struct ifnet *);
+static void axe_shutdown(device_t);
+static int axe_miibus_readreg(device_t, int, int);
+static int axe_miibus_writereg(device_t, int, int, int);
+static void axe_miibus_statchg(device_t);
+static int axe_cmd(struct axe_softc *, int, int, int, void *);
+static int axe_ifmedia_upd(struct ifnet *);
+static void axe_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 
-Static void axe_setmulti(struct axe_softc *);
+static void axe_setmulti(struct axe_softc *);
 
-Static device_method_t axe_methods[] = {
+static device_method_t axe_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		axe_match),
 	DEVMETHOD(device_attach,	axe_attach),
@@ -161,20 +161,20 @@ Static device_method_t axe_methods[] = {
 	{ 0, 0 }
 };
 
-Static driver_t axe_driver = {
+static driver_t axe_driver = {
 	"axe",
 	axe_methods,
 	sizeof(struct axe_softc)
 };
 
-Static devclass_t axe_devclass;
+static devclass_t axe_devclass;
 
 DRIVER_MODULE(axe, uhub, axe_driver, axe_devclass, usbd_driver_load, 0);
 DRIVER_MODULE(miibus, axe, miibus_driver, miibus_devclass, 0, 0);
 MODULE_DEPEND(axe, usb, 1, 1, 1);
 MODULE_DEPEND(axe, miibus, 1, 1, 1);
 
-Static int
+static int
 axe_cmd(struct axe_softc *sc, int cmd, int index, int val, void *buf)
 {
 	usb_device_request_t	req;
@@ -200,10 +200,10 @@ axe_cmd(struct axe_softc *sc, int cmd, int index, int val, void *buf)
 	return(0);
 }
 
-Static int
-axe_miibus_readreg(device_ptr_t dev, int phy, int reg)
+static int
+axe_miibus_readreg(device_t dev, int phy, int reg)
 {
-	struct axe_softc	*sc = USBGETSOFTC(dev);
+	struct axe_softc	*sc = device_get_softc(dev);
 	usbd_status		err;
 	u_int16_t		val;
 
@@ -244,10 +244,10 @@ axe_miibus_readreg(device_ptr_t dev, int phy, int reg)
 	return (val);
 }
 
-Static int
-axe_miibus_writereg(device_ptr_t dev, int phy, int reg, int val)
+static int
+axe_miibus_writereg(device_t dev, int phy, int reg, int val)
 {
-	struct axe_softc	*sc = USBGETSOFTC(dev);
+	struct axe_softc	*sc = device_get_softc(dev);
 	usbd_status		err;
 
 	if (sc->axe_dying) {
@@ -266,11 +266,11 @@ axe_miibus_writereg(device_ptr_t dev, int phy, int reg, int val)
 	return (0);
 }
 
-Static void
-axe_miibus_statchg(device_ptr_t dev)
+static void
+axe_miibus_statchg(device_t dev)
 {
 #ifdef notdef
-	struct axe_softc	*sc = USBGETSOFTC(dev);
+	struct axe_softc	*sc = device_get_softc(dev);
 	struct mii_data		*mii = GET_MII(sc);
 #endif
 	/* doesn't seem to be necessary */
@@ -281,7 +281,7 @@ axe_miibus_statchg(device_ptr_t dev)
 /*
  * Set media options.
  */
-Static int
+static int
 axe_ifmedia_upd(struct ifnet *ifp)
 {
         struct axe_softc        *sc = ifp->if_softc;
@@ -301,7 +301,7 @@ axe_ifmedia_upd(struct ifnet *ifp)
 /*
  * Report current media status.
  */
-Static void
+static void
 axe_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
         struct axe_softc        *sc = ifp->if_softc;
@@ -314,7 +314,7 @@ axe_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
         return;
 }
 
-Static void
+static void
 axe_setmulti(struct axe_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -347,7 +347,7 @@ axe_setmulti(struct axe_softc *sc)
 	axe_cmd(sc, AXE_CMD_RXCTL_WRITE, 0, rxmode, NULL);
 }
 
-Static void
+static void
 axe_reset(struct axe_softc *sc)
 {
 	if (sc->axe_dying)
@@ -491,8 +491,8 @@ USB_ATTACH(axe)
 	USB_ATTACH_SUCCESS_RETURN;
 }
 
-Static int
-axe_detach(device_ptr_t dev)
+static int
+axe_detach(device_t dev)
 {
 	struct axe_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -514,7 +514,7 @@ axe_detach(device_ptr_t dev)
 /*
  * Initialize an RX descriptor and attach an MBUF cluster.
  */
-Static int
+static int
 axe_newbuf(struct axe_softc *sc, struct axe_chain *c, struct mbuf *m)
 {
 	struct mbuf		*m_new = NULL;
@@ -539,7 +539,7 @@ axe_newbuf(struct axe_softc *sc, struct axe_chain *c, struct mbuf *m)
 	return(0);
 }
 
-Static int
+static int
 axe_rx_list_init(struct axe_softc *sc)
 {
 	struct axe_cdata	*cd;
@@ -563,7 +563,7 @@ axe_rx_list_init(struct axe_softc *sc)
 	return(0);
 }
 
-Static int
+static int
 axe_tx_list_init(struct axe_softc *sc)
 {
 	struct axe_cdata	*cd;
@@ -589,7 +589,7 @@ axe_tx_list_init(struct axe_softc *sc)
 	return(0);
 }
 
-Static void
+static void
 axe_rxstart(struct ifnet *ifp)
 {
 	struct axe_softc *sc = ifp->if_softc;
@@ -613,7 +613,7 @@ axe_rxstart(struct ifnet *ifp)
  * A frame has been uploaded: pass the resulting mbuf chain up to
  * the higher level protocols.
  */
-Static void
+static void
 axe_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
 	struct axe_chain *c = priv;
@@ -675,7 +675,7 @@ done:
  * the list buffers.
  */
 
-Static void
+static void
 axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
 	struct axe_chain *c = priv;
@@ -715,7 +715,7 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-Static void
+static void
 axe_tick(void *xsc)
 {
 	struct axe_softc *sc = xsc;
@@ -738,7 +738,7 @@ axe_tick(void *xsc)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-Static int
+static int
 axe_encap(struct axe_softc *sc, struct mbuf *m, int idx)
 {
 	struct axe_chain	*c;
@@ -769,7 +769,7 @@ axe_encap(struct axe_softc *sc, struct mbuf *m, int idx)
 	return(0);
 }
 
-Static void
+static void
 axe_start(struct ifnet *ifp)
 {
 	struct axe_softc *sc = ifp->if_softc;
@@ -808,7 +808,7 @@ axe_start(struct ifnet *ifp)
 	ifp->if_timer = 5;
 }
 
-Static void
+static void
 axe_init(void *xsc)
 {
 	struct axe_softc	*sc = xsc;
@@ -896,7 +896,7 @@ axe_init(void *xsc)
 	callout_reset(&sc->axe_stat_timer, hz, axe_tick, sc);
 }
 
-Static int
+static int
 axe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct axe_softc	*sc = ifp->if_softc;
@@ -953,7 +953,7 @@ axe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	return(error);
 }
 
-Static void
+static void
 axe_watchdog(struct ifnet *ifp)
 {
 	struct axe_softc *sc = ifp->if_softc;
@@ -975,7 +975,7 @@ axe_watchdog(struct ifnet *ifp)
  * Stop the adapter and free any mbufs allocated to the
  * RX and TX lists.
  */
-Static void
+static void
 axe_stop(struct axe_softc *sc)
 {
 	usbd_status		err;
@@ -1072,8 +1072,8 @@ axe_stop(struct axe_softc *sc)
  * Stop all chip I/O so that the kernel's probe routines don't
  * get confused by errant DMAs when rebooting.
  */
-Static void
-axe_shutdown(device_ptr_t dev)
+static void
+axe_shutdown(device_t dev)
 {
 	struct axe_softc	*sc;
 

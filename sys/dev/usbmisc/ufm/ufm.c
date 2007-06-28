@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.14 2007/06/27 12:28:00 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.15 2007/06/28 06:32:32 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@ d_ioctl_t ufmioctl;
 
 #define UFM_CDEV_MAJOR	200
 
-Static struct dev_ops ufm_ops = {
+static struct dev_ops ufm_ops = {
 	{ "ufm", UFM_CDEV_MAJOR, 0 },
 	.d_open = ufmopen,
 	.d_close = ufmclose,
@@ -89,7 +89,7 @@ Static struct dev_ops ufm_ops = {
 #define FM_CMD2		0x02
 
 struct ufm_softc {
- 	USBBASEDEVICE sc_dev;
+ 	device_t sc_dev;
 	usbd_device_handle sc_udev;
 	usbd_interface_handle sc_iface;
 
@@ -137,7 +137,7 @@ USB_ATTACH(ufm)
 	DPRINTFN(10,("ufm_attach: sc=%p\n", sc));
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	kprintf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
+	kprintf("%s: %s\n", device_get_nameunit(sc->sc_dev), devinfo);
 
 	sc->sc_udev = udev = uaa->device;
 
@@ -173,7 +173,7 @@ USB_ATTACH(ufm)
 	USB_ATTACH_SUCCESS_RETURN;
 
  nobulk:
-	kprintf("%s: could not find %s\n", USBDEVNAME(sc->sc_dev),ermsg);
+	kprintf("%s: could not find %s\n", device_get_nameunit(sc->sc_dev),ermsg);
 	USB_ATTACH_ERROR_RETURN;
 }
 
@@ -359,10 +359,10 @@ ufmioctl(struct dev_ioctl_args *ap)
 	return error;
 }
 
-Static int
+static int
 ufm_detach(device_t self)
 {
-	DPRINTF(("%s: disconnected\n", USBDEVNAME(self)));
+	DPRINTF(("%s: disconnected\n", device_get_nameunit(self)));
 	return 0;
 }
 

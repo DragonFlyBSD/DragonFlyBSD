@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.18 2007/05/23 08:57:10 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.19 2007/06/28 06:32:31 hasso Exp $
  */
 
 /*
@@ -71,9 +71,9 @@
 #include "usb.h"
 #include "usb_ethersubr.h"
 
-Static int netisr_inited = 0;
+static int netisr_inited = 0;
 
-Static void
+static void
 usbintr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.8 2007/06/09 18:56:23 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.9 2007/06/28 06:32:33 hasso Exp $
  */
 
 /*
@@ -88,15 +88,15 @@ struct umct_softc {
 	struct task		sc_task;
 };
 
-Static void umct_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
-Static void umct_get_status(void *, int, u_char *, u_char *);
-Static void umct_set(void *, int, int, int);
-Static int  umct_param(void *, int, struct termios *);
-Static int  umct_open(void *, int);
-Static void umct_close(void *, int);
-Static void umct_notify(void *, int);
+static void umct_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
+static void umct_get_status(void *, int, u_char *, u_char *);
+static void umct_set(void *, int, int, int);
+static int  umct_param(void *, int, struct termios *);
+static int  umct_open(void *, int);
+static void umct_close(void *, int);
+static void umct_notify(void *, int);
 
-Static struct ucom_callback umct_callback = {
+static struct ucom_callback umct_callback = {
 	umct_get_status,	/* ucom_get_status */
 	umct_set,		/* ucom_set */
 	umct_param,		/* ucom_param */
@@ -107,7 +107,7 @@ Static struct ucom_callback umct_callback = {
 	NULL			/* ucom_write */
 };
 
-Static const struct umct_product {
+static const struct umct_product {
 	uint16_t	vendor;
 	uint16_t	product;
 } umct_products[] = {
@@ -119,18 +119,18 @@ Static const struct umct_product {
 	{ 0, 0 }
 };
 
-Static device_probe_t	umct_match;
-Static device_attach_t	umct_attach;
-Static device_detach_t	umct_detach;
+static device_probe_t	umct_match;
+static device_attach_t	umct_attach;
+static device_detach_t	umct_detach;
 
-Static device_method_t umct_methods[] = {
+static device_method_t umct_methods[] = {
 	DEVMETHOD(device_probe, umct_match),
 	DEVMETHOD(device_attach, umct_attach),
 	DEVMETHOD(device_detach, umct_detach),
 	{ 0, 0 }
 };
 
-Static driver_t umct_driver = {
+static driver_t umct_driver = {
 	"ucom",
 	umct_methods,
 	sizeof(struct umct_softc)
@@ -182,7 +182,7 @@ USB_ATTACH(umct)
 
 	usbd_devinfo(dev, 0, devinfo);
 	device_set_desc_copy(self, devinfo);
-	devname = USBDEVNAME(ucom->sc_dev);
+	devname = device_get_nameunit(ucom->sc_dev);
 	kprintf("%s: %s\n", devname, devinfo);
 
 	ucom->sc_bulkout_no = -1;
@@ -301,7 +301,7 @@ USB_DETACH(umct)
 	return (rv);
 }
 
-Static int
+static int
 umct_request(struct umct_softc *sc, uint8_t request, int len, uint32_t value)
 {
 	usb_device_request_t req;
@@ -318,11 +318,11 @@ umct_request(struct umct_softc *sc, uint8_t request, int len, uint32_t value)
 	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, oval);
 	if (err)
 		kprintf("%s: ubsa_request: %s\n",
-		    USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
+		    device_get_nameunit(sc->sc_ucom.sc_dev), usbd_errstr(err));
 	return (err);
 }
 
-Static void
+static void
 umct_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
 	struct umct_softc *sc;
@@ -351,7 +351,7 @@ umct_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	taskqueue_enqueue(taskqueue_swi, &sc->sc_task);
 }
 
-Static void
+static void
 umct_notify(void *arg, int count)
 {
 	struct umct_softc *sc;
@@ -361,7 +361,7 @@ umct_notify(void *arg, int count)
 		ucom_status_change(&sc->sc_ucom);
 }
 
-Static void
+static void
 umct_get_status(void *addr, int portno, u_char *lsr, u_char *msr)
 {
 	struct umct_softc *sc;
@@ -375,7 +375,7 @@ umct_get_status(void *addr, int portno, u_char *lsr, u_char *msr)
 	return;
 }
 
-Static void
+static void
 umct_set(void *addr, int portno, int reg, int onoff)
 {
 	struct umct_softc *sc;
@@ -402,7 +402,7 @@ umct_set(void *addr, int portno, int reg, int onoff)
 	}
 }
 
-Static int
+static int
 umct_calc_baud(u_int baud)
 {
 	switch(baud) {
@@ -424,7 +424,7 @@ umct_calc_baud(u_int baud)
 	return (0x0);
 }
 
-Static int
+static int
 umct_param(void *addr, int portno, struct termios *ti)
 {
 	struct umct_softc *sc;
@@ -463,7 +463,7 @@ umct_param(void *addr, int portno, struct termios *ti)
 	return (0);
 }
 
-Static int
+static int
 umct_open(void *addr, int portno)
 {
 	struct umct_softc *sc;
@@ -481,7 +481,7 @@ umct_open(void *addr, int portno)
 		    sc->sc_isize, umct_intr, UMCT_INTR_INTERVAL);
 		if (err) {
 			kprintf("%s: cannot open interrupt pipe (addr %d)\n",
-			    USBDEVNAME(sc->sc_ucom.sc_dev),
+			    device_get_nameunit(sc->sc_ucom.sc_dev),
 			    sc->sc_intr_number);
 			kfree(sc->sc_intr_buf, M_USBDEV);
 			return (EIO);
@@ -491,7 +491,7 @@ umct_open(void *addr, int portno)
 	return (0);
 }
 
-Static void
+static void
 umct_close(void *addr, int portno)
 {
 	struct umct_softc *sc;
@@ -505,11 +505,11 @@ umct_close(void *addr, int portno)
 		err = usbd_abort_pipe(sc->sc_intr_pipe);
 		if (err)
 			kprintf("%s: abort interrupt pipe failed: %s\n",
-			    USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
+			    device_get_nameunit(sc->sc_ucom.sc_dev), usbd_errstr(err));
 		err = usbd_close_pipe(sc->sc_intr_pipe);
 		if (err)
 			kprintf("%s: close interrupt pipe failed: %s\n",
-			    USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
+			    device_get_nameunit(sc->sc_ucom.sc_dev), usbd_errstr(err));
 		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}

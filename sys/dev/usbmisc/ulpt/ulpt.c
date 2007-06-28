@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.17 2007/06/27 12:28:00 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.18 2007/06/28 06:32:32 hasso Exp $
  */
 
 /*
@@ -93,7 +93,7 @@ SYSCTL_INT(_hw_usb_ulpt, OID_AUTO, debug, CTLFLAG_RW,
 #define LPS_MASK        (LPS_SELECT|LPS_NERR|LPS_NOPAPER)
 
 struct ulpt_softc {
-	USBBASEDEVICE sc_dev;
+	device_t sc_dev;
 	usbd_device_handle sc_udev;	/* device */
 	usbd_interface_handle sc_iface;	/* interface */
 	int sc_ifaceno;
@@ -119,14 +119,14 @@ struct ulpt_softc {
 	u_char sc_dying;
 };
 
-Static d_open_t ulptopen;
-Static d_close_t ulptclose;
-Static d_write_t ulptwrite;
-Static d_ioctl_t ulptioctl;
+static d_open_t ulptopen;
+static d_close_t ulptclose;
+static d_write_t ulptwrite;
+static d_ioctl_t ulptioctl;
 
 #define ULPT_CDEV_MAJOR 113
 
-Static struct dev_ops ulpt_ops = {
+static struct dev_ops ulpt_ops = {
 	{ "ulpt", ULPT_CDEV_MAJOR, 0 },
 	.d_open =	ulptopen,
 	.d_close =	ulptclose,
@@ -187,7 +187,7 @@ USB_ATTACH(ulpt)
 	DPRINTFN(10,("ulpt_attach: sc=%p\n", sc));
 	usbd_devinfo(dev, 0, devinfo);
 	USB_ATTACH_SETUP;
-	kprintf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
 	       devinfo, ifcd->bInterfaceClass, ifcd->bInterfaceSubClass);
 
 	/* XXX
@@ -196,7 +196,7 @@ USB_ATTACH(ulpt)
 	cdesc = usbd_get_config_descriptor(dev);
 	if (cdesc == NULL) {
 		kprintf("%s: failed to get configuration descriptor\n",
-		       USBDEVNAME(sc->sc_dev));
+		       device_get_nameunit(sc->sc_dev));
 		USB_ATTACH_ERROR_RETURN;
 	}
 	iend = (usb_interface_descriptor_t *)
@@ -228,7 +228,7 @@ USB_ATTACH(ulpt)
 		err = usbd_set_interface(iface, altno);
 		if (err) {
 			kprintf("%s: setting alternate interface failed\n",
-			       USBDEVNAME(sc->sc_dev));
+			       device_get_nameunit(sc->sc_dev));
 			sc->sc_dying = 1;
 			USB_ATTACH_ERROR_RETURN;
 		}
@@ -243,7 +243,7 @@ USB_ATTACH(ulpt)
 		ed = usbd_interface2endpoint_descriptor(iface, i);
 		if (ed == NULL) {
 			kprintf("%s: couldn't get ep %d\n",
-			    USBDEVNAME(sc->sc_dev), i);
+			    device_get_nameunit(sc->sc_dev), i);
 			USB_ATTACH_ERROR_RETURN;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
@@ -256,7 +256,7 @@ USB_ATTACH(ulpt)
 	}
 	if (sc->sc_out == -1) {
 		kprintf("%s: could not find bulk out endpoint\n",
-		    USBDEVNAME(sc->sc_dev));
+		    device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -266,7 +266,7 @@ USB_ATTACH(ulpt)
 		sc->sc_in = -1;
 	}
 
-	kprintf("%s: using %s-directional mode\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: using %s-directional mode\n", device_get_nameunit(sc->sc_dev),
 	       sc->sc_in >= 0 ? "bi" : "uni");
 
 	DPRINTFN(10, ("ulpt_attach: bulk=%d\n", sc->sc_out));
@@ -294,17 +294,17 @@ USB_ATTACH(ulpt)
 	err = usbd_do_request_flags(dev, &req, devinfo, USBD_SHORT_XFER_OK,
 		  &alen, USBD_DEFAULT_TIMEOUT);
 	if (err) {
-		kprintf("%s: cannot get device id\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: cannot get device id\n", device_get_nameunit(sc->sc_dev));
 	} else if (alen <= 2) {
 		kprintf("%s: empty device id, no printer connected?\n",
-		       USBDEVNAME(sc->sc_dev));
+		       device_get_nameunit(sc->sc_dev));
 	} else {
 		/* devinfo now contains an IEEE-1284 device ID */
 		len = ((devinfo[0] & 0xff) << 8) | (devinfo[1] & 0xff);
 		if (len > sizeof devinfo - 3)
 			len = sizeof devinfo - 3;
 		devinfo[len] = 0;
-		kprintf("%s: device id <", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: device id <", device_get_nameunit(sc->sc_dev));
 		ieee1284_print_id(devinfo+2);
 		kprintf(">\n");
 	}
@@ -344,10 +344,10 @@ USB_DETACH(ulpt)
 	crit_enter();
 	--sc->sc_refcnt;
 	if (sc->sc_refcnt >= 0) {
-		kprintf("%s: waiting for idle\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: waiting for idle\n", device_get_nameunit(sc->sc_dev));
 		while (sc->sc_refcnt >= 0)
 			usb_detach_wait(sc->sc_dev);
-		kprintf("%s: idle wait done\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: idle wait done\n", device_get_nameunit(sc->sc_dev));
 	}
 	crit_exit();
 
@@ -554,11 +554,11 @@ ulpt_statusmsg(u_char status, struct ulpt_softc *sc)
 	sc->sc_laststatus = status;
 
 	if (new & LPS_SELECT)
-		log(LOG_NOTICE, "%s: offline\n", USBDEVNAME(sc->sc_dev));
+		log(LOG_NOTICE, "%s: offline\n", device_get_nameunit(sc->sc_dev));
 	else if (new & LPS_NOPAPER)
-		log(LOG_NOTICE, "%s: out of paper\n", USBDEVNAME(sc->sc_dev));
+		log(LOG_NOTICE, "%s: out of paper\n", device_get_nameunit(sc->sc_dev));
 	else if (new & LPS_NERR)
-		log(LOG_NOTICE, "%s: output error\n", USBDEVNAME(sc->sc_dev));
+		log(LOG_NOTICE, "%s: output error\n", device_get_nameunit(sc->sc_dev));
 
 	return (status);
 }

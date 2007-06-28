@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.17 2007/06/27 12:28:00 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.18 2007/06/28 06:32:33 hasso Exp $
  */
 
 /*
@@ -99,7 +99,7 @@ d_ioctl_t urioioctl;
 
 #define URIO_CDEV_MAJOR	143
 
-Static struct dev_ops urio_ops = {
+static struct dev_ops urio_ops = {
 	{ "urio", URIO_CDEV_MAJOR, 0 },
 	.d_open =	urioopen,
 	.d_close =	urioclose,
@@ -114,7 +114,7 @@ Static struct dev_ops urio_ops = {
 #define	URIO_BBSIZE	1024
 
 struct urio_softc {
- 	USBBASEDEVICE sc_dev;
+ 	device_t sc_dev;
 	usbd_device_handle sc_udev;
 	usbd_interface_handle sc_iface;
 
@@ -168,7 +168,7 @@ USB_ATTACH(urio)
 	DPRINTFN(10,("urio_attach: sc=%p\n", sc));
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	kprintf("%s: %s\n", USBDEVNAME(sc->sc_dev), devinfo);
+	kprintf("%s: %s\n", device_get_nameunit(sc->sc_dev), devinfo);
 
 	sc->sc_udev = udev = uaa->device;
 
@@ -221,7 +221,7 @@ USB_ATTACH(urio)
 	USB_ATTACH_SUCCESS_RETURN;
 
  nobulk:
-	kprintf("%s: could not find %s\n", USBDEVNAME(sc->sc_dev),ermsg);
+	kprintf("%s: could not find %s\n", device_get_nameunit(sc->sc_dev),ermsg);
 	USB_ATTACH_ERROR_RETURN;
 }
 
@@ -538,10 +538,10 @@ ret:
 	return error;
 }
 
-Static int
+static int
 urio_detach(device_t self)
 {
-	DPRINTF(("%s: disconnected\n", USBDEVNAME(self)));
+	DPRINTF(("%s: disconnected\n", device_get_nameunit(self)));
 	dev_ops_remove(&urio_ops, -1, device_get_unit(self));
 	/* XXX not implemented yet */
 	device_set_desc(self, NULL);

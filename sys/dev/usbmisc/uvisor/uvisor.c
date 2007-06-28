@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.11 2007/06/27 12:28:00 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.12 2007/06/28 06:32:33 hasso Exp $
  */
 
 /*
@@ -161,9 +161,9 @@ struct uvisor_softc {
 	u_int16_t		sc_flags;
 };
 
-Static usbd_status uvisor_init(struct uvisor_softc *);
+static usbd_status uvisor_init(struct uvisor_softc *);
 
-Static void uvisor_close(void *, int);
+static void uvisor_close(void *, int);
 
 struct ucom_callback uvisor_callback = {
 	NULL,
@@ -176,10 +176,10 @@ struct ucom_callback uvisor_callback = {
 	NULL,
 };
 
-Static device_probe_t uvisor_match;
-Static device_attach_t uvisor_attach;
-Static device_detach_t uvisor_detach;
-Static device_method_t uvisor_methods[] = {
+static device_probe_t uvisor_match;
+static device_attach_t uvisor_attach;
+static device_detach_t uvisor_detach;
+static device_method_t uvisor_methods[] = {
        /* Device interface */
        DEVMETHOD(device_probe, uvisor_match),
        DEVMETHOD(device_attach, uvisor_attach),
@@ -188,7 +188,7 @@ Static device_method_t uvisor_methods[] = {
  };
 
 
-Static driver_t uvisor_driver = {
+static driver_t uvisor_driver = {
        "ucom",
        uvisor_methods,
        sizeof (struct uvisor_softc)
@@ -264,7 +264,7 @@ USB_ATTACH(uvisor)
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
 
-	devname = USBDEVNAME(ucom->sc_dev);
+	devname = device_get_nameunit(ucom->sc_dev);
 	kprintf("%s: %s\n", devname, devinfo);
 
 	DPRINTFN(10,("\nuvisor_attach: sc=%p\n", sc));
@@ -317,12 +317,12 @@ USB_ATTACH(uvisor)
 	}
 	if (ucom->sc_bulkin_no == -1) {
 		kprintf("%s: Could not find data bulk in\n",
-		       USBDEVNAME(ucom->sc_dev));
+		       device_get_nameunit(ucom->sc_dev));
 		goto bad;
 	}
 	if (ucom->sc_bulkout_no == -1) {
 		kprintf("%s: Could not find data bulk out\n",
-		       USBDEVNAME(ucom->sc_dev));
+		       device_get_nameunit(ucom->sc_dev));
 		goto bad;
 	}
 
@@ -337,7 +337,7 @@ USB_ATTACH(uvisor)
 
 	err = uvisor_init(sc);
 	if (err) {
-		kprintf("%s: init failed, %s\n", USBDEVNAME(ucom->sc_dev),
+		kprintf("%s: init failed, %s\n", device_get_nameunit(ucom->sc_dev),
 		       usbd_errstr(err));
 		goto bad;
 	}
@@ -359,7 +359,7 @@ bad:
 #if 0
 
 int
-uvisor_activate(device_ptr_t self, enum devact act)
+uvisor_activate(device_t self, enum devact act)
 {
 	struct uvisor_softc *sc = (struct uvisor_softc *)self;
 	int rv = 0;
@@ -423,7 +423,7 @@ uvisor_init(struct uvisor_softc *sc)
 		char *string;
 
 		np = UGETW(coninfo.num_ports);
-		kprintf("%s: Number of ports: %d\n", USBDEVNAME(sc->sc_ucom.sc_dev), np);
+		kprintf("%s: Number of ports: %d\n", device_get_nameunit(sc->sc_ucom.sc_dev), np);
 		for (i = 0; i < np; ++i) {
 			switch (coninfo.connections[i].port_function_id) {
 			case UVISOR_FUNCTION_GENERIC:
@@ -443,7 +443,7 @@ uvisor_init(struct uvisor_softc *sc)
 				break;
 			}
 			kprintf("%s: port %d, is for %s\n",
-			    USBDEVNAME(sc->sc_ucom.sc_dev), coninfo.connections[i].port,
+			    device_get_nameunit(sc->sc_ucom.sc_dev), coninfo.connections[i].port,
 			    string);
 		}
 	}

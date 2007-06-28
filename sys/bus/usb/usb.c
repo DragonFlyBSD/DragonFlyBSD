@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.31 2007/06/27 12:27:59 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.32 2007/06/28 06:32:31 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -115,7 +115,7 @@ int	usb_noexplore = 0;
 #endif
 
 struct usb_softc {
-	USBBASEDEVICE	sc_dev;		/* base device */
+	device_t	sc_dev;		/* base device */
 	cdev_t		sc_usbdev;
 	usbd_bus_handle sc_bus;		/* USB controller */
 	struct usbd_port sc_port;	/* dummy port for root hub */
@@ -148,31 +148,31 @@ struct dev_ops usb_ops = {
 	.d_poll =	usbpoll,
 };
 
-Static void	usb_discover(void *);
-Static bus_child_detached_t usb_child_detached;
-Static void	usb_create_event_thread(void *);
-Static void	usb_event_thread(void *);
-Static void	usb_task_thread(void *);
+static void	usb_discover(void *);
+static bus_child_detached_t usb_child_detached;
+static void	usb_create_event_thread(void *);
+static void	usb_event_thread(void *);
+static void	usb_task_thread(void *);
 
-Static cdev_t usb_dev;		/* The /dev/usb device. */
-Static int usb_ndevs;			/* Number of /dev/usbN devices. */
+static cdev_t usb_dev;		/* The /dev/usb device. */
+static int usb_ndevs;			/* Number of /dev/usbN devices. */
 
 #define USB_MAX_EVENTS 100
 struct usb_event_q {
 	struct usb_event ue;
 	TAILQ_ENTRY(usb_event_q) next;
 };
-Static TAILQ_HEAD(, usb_event_q) usb_events =
+static TAILQ_HEAD(, usb_event_q) usb_events =
 	TAILQ_HEAD_INITIALIZER(usb_events);
-Static int usb_nevents = 0;
-Static struct selinfo usb_selevent;
-Static struct proc *usb_async_proc;  /* process that wants USB SIGIO */
-Static int usb_dev_open = 0;
-Static void usb_add_event(int, struct usb_event *);
+static int usb_nevents = 0;
+static struct selinfo usb_selevent;
+static struct proc *usb_async_proc;  /* process that wants USB SIGIO */
+static int usb_dev_open = 0;
+static void usb_add_event(int, struct usb_event *);
 
-Static int usb_get_next_event(struct usb_event *);
+static int usb_get_next_event(struct usb_event *);
 
-Static const char *usbrev_str[] = USBREV_STR;
+static const char *usbrev_str[] = USBREV_STR;
 
 USB_DECLARE_DRIVER_INIT(usb,
 			DEVMETHOD(bus_child_detached, usb_child_detached),
@@ -209,7 +209,7 @@ USB_ATTACH(usb)
 	sc->sc_bus->usbctl = sc;
 	sc->sc_port.power = USB_MAX_POWER;
 
-	kprintf("%s", USBDEVNAME(sc->sc_dev));
+	kprintf("%s", device_get_nameunit(sc->sc_dev));
 	usbrev = sc->sc_bus->usbrev;
 	kprintf(": USB revision %s", usbrev_str[usbrev]);
 	switch (usbrev) {
@@ -233,7 +233,7 @@ USB_ATTACH(usb)
 		sc->sc_bus->use_polling++;
 #endif
 
-	ue.u.ue_ctrlr.ue_bus = USBDEVUNIT(sc->sc_dev);
+	ue.u.ue_ctrlr.ue_bus = device_get_unit(sc->sc_dev);
 	usb_add_event(USB_EVENT_CTRLR_ATTACH, &ue);
 
 #ifdef USB_USE_SOFTINTR
@@ -242,7 +242,7 @@ USB_ATTACH(usb)
 	sc->sc_bus->soft = softintr_establish(IPL_SOFTNET,
 	    sc->sc_bus->methods->soft_intr, sc->sc_bus);
 	if (sc->sc_bus->soft == NULL) {
-		kprintf("%s: can't register softintr\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: can't register softintr\n", device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -258,7 +258,7 @@ USB_ATTACH(usb)
 		if (dev->hub == NULL) {
 			sc->sc_dying = 1;
 			kprintf("%s: root device is not a hub\n",
-			       USBDEVNAME(sc->sc_dev));
+			       device_get_nameunit(sc->sc_dev));
 			USB_ATTACH_ERROR_RETURN;
 		}
 		sc->sc_bus->root_hub = dev;
@@ -279,7 +279,7 @@ USB_ATTACH(usb)
 #endif
 	} else {
 		kprintf("%s: root hub problem, error=%d\n",
-		       USBDEVNAME(sc->sc_dev), err);
+		       device_get_nameunit(sc->sc_dev), err);
 		sc->sc_dying = 1;
 	}
 #if 0
@@ -308,7 +308,7 @@ USB_ATTACH(usb)
 	USB_ATTACH_SUCCESS_RETURN;
 }
 
-Static const char *taskq_names[] = USB_TASKQ_NAMES;
+static const char *taskq_names[] = USB_TASKQ_NAMES;
 
 void
 usb_create_event_thread(void *arg)
@@ -317,9 +317,9 @@ usb_create_event_thread(void *arg)
 	int i;
 
 	if (usb_kthread_create1(usb_event_thread, sc, &sc->sc_event_thread,
-			   "%s", USBDEVNAME(sc->sc_dev))) {
+			   "%s", device_get_nameunit(sc->sc_dev))) {
 		kprintf("%s: unable to create event thread for\n",
-		       USBDEVNAME(sc->sc_dev));
+		       device_get_nameunit(sc->sc_dev));
 		panic("usb_create_event_thread");
 	}
 
@@ -693,7 +693,7 @@ usbpoll(struct dev_poll_args *ap)
 }
 
 /* Explore device tree from the root. */
-Static void
+static void
 usb_discover(void *v)
 {
 	struct usb_softc *sc = v;
@@ -762,12 +762,12 @@ usbd_add_dev_event(int type, usbd_device_handle udev)
 }
 
 void
-usbd_add_drv_event(int type, usbd_device_handle udev, device_ptr_t dev)
+usbd_add_drv_event(int type, usbd_device_handle udev, device_t dev)
 {
 	struct usb_event ue;
 
 	ue.u.ue_driver.ue_cookie = udev->cookie;
-	strncpy(ue.u.ue_driver.ue_devname, USBDEVPTRNAME(dev),
+	strncpy(ue.u.ue_driver.ue_devname, device_get_nameunit(dev),
 		sizeof ue.u.ue_driver.ue_devname);
 	usb_add_event(type, &ue);
 }
@@ -856,7 +856,7 @@ USB_DETACH(usb)
 		wakeup(&sc->sc_bus->needs_explore);
 		if (tsleep(sc, 0, "usbdet", hz * 60))
 			kprintf("%s: event thread didn't die\n",
-			       USBDEVNAME(sc->sc_dev));
+			       device_get_nameunit(sc->sc_dev));
 		DPRINTF(("usb_detach: event thread dead\n"));
 	}
 
@@ -891,13 +891,13 @@ USB_DETACH(usb)
 #endif
 #endif
 
-	ue.u.ue_ctrlr.ue_bus = USBDEVUNIT(sc->sc_dev);
+	ue.u.ue_ctrlr.ue_bus = device_get_unit(sc->sc_dev);
 	usb_add_event(USB_EVENT_CTRLR_DETACH, &ue);
 
 	return (0);
 }
 
-Static void
+static void
 usb_child_detached(device_t self, device_t child)
 {
 	struct usb_softc *sc = device_get_softc(self);

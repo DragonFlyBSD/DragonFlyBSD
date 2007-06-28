@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.19 2007/06/27 12:28:00 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.20 2007/06/28 06:32:32 hasso Exp $
  */
 
 /*
@@ -119,12 +119,12 @@ typedef struct ukbd_softc {
 typedef void usbd_intr_t(usbd_xfer_handle, usbd_private_handle, usbd_status);
 typedef void usbd_disco_t(void *);
 
-Static int		ukbd_resume(device_t self);
-Static usbd_intr_t	ukbd_intr;
-Static int		ukbd_driver_load(module_t mod, int what, void *arg);
-Static int		ukbd_default_term(keyboard_t *kbd);
+static int		ukbd_resume(device_t self);
+static usbd_intr_t	ukbd_intr;
+static int		ukbd_driver_load(module_t mod, int what, void *arg);
+static int		ukbd_default_term(keyboard_t *kbd);
 
-Static keyboard_t	default_kbd;
+static keyboard_t	default_kbd;
 
 USB_DECLARE_DRIVER_INIT(ukbd, DEVMETHOD(device_resume, ukbd_resume));
 
@@ -167,7 +167,7 @@ USB_ATTACH(ukbd)
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	kprintf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
 	arg[0] = (void *)uaa;
@@ -198,7 +198,7 @@ ukbd_detach(device_t self)
 	kbd = kbd_get_keyboard(kbd_find_keyboard(DRIVER_NAME,
 						 device_get_unit(self)));
 	if (kbd == NULL) {
-		DPRINTF(("%s: keyboard not attached!?\n", USBDEVNAME(self)));
+		DPRINTF(("%s: keyboard not attached!?\n", device_get_nameunit(self)));
 		return ENXIO;
 	}
 	(*kbdsw[kbd->kb_index]->disable)(kbd);
@@ -218,12 +218,12 @@ ukbd_detach(device_t self)
 			return error;
 	}
 
-	DPRINTF(("%s: disconnected\n", USBDEVNAME(self)));
+	DPRINTF(("%s: disconnected\n", device_get_nameunit(self)));
 
 	return (0);
 }
 
-Static int
+static int
 ukbd_resume(device_t self)
 {
 	keyboard_t *kbd;
@@ -265,7 +265,7 @@ DRIVER_MODULE(ukbd, uhub, ukbd_driver, ukbd_devclass, ukbd_driver_load, 0);
 #define SCAN_CHAR(c)	((c) & 0x7f)
 
 #define NMOD 8
-Static struct {
+static struct {
 	int mask, key;
 } ukbd_mods[NMOD] = {
 	{ MOD_CONTROL_L, 0xe0 },
@@ -291,7 +291,7 @@ Static struct {
  * 0x69: F14
  * 0x6a: F15
  */
-Static u_int8_t ukbd_trtab[256] = {
+static u_int8_t ukbd_trtab[256] = {
 	   0,   0,   0,   0,  30,  48,  46,  32, /* 00 - 07 */
 	  18,  33,  34,  35,  23,  36,  37,  38, /* 08 - 0F */
 	  50,  49,  24,  25,  16,  19,  31,  20, /* 10 - 17 */
@@ -362,24 +362,24 @@ typedef struct ukbd_state {
 } ukbd_state_t;
 
 /* keyboard driver declaration */
-Static int		ukbd_configure(int flags);
-Static kbd_probe_t	ukbd_probe;
-Static kbd_init_t	ukbd_init;
-Static kbd_term_t	ukbd_term;
-Static kbd_intr_t	ukbd_interrupt;
-Static kbd_test_if_t	ukbd_test_if;
-Static kbd_enable_t	ukbd_enable;
-Static kbd_disable_t	ukbd_disable;
-Static kbd_read_t	ukbd_read;
-Static kbd_check_t	ukbd_check;
-Static kbd_read_char_t	ukbd_read_char;
-Static kbd_check_char_t	ukbd_check_char;
-Static kbd_ioctl_t	ukbd_ioctl;
-Static kbd_lock_t	ukbd_lock;
-Static kbd_clear_state_t ukbd_clear_state;
-Static kbd_get_state_t	ukbd_get_state;
-Static kbd_set_state_t	ukbd_set_state;
-Static kbd_poll_mode_t	ukbd_poll;
+static int		ukbd_configure(int flags);
+static kbd_probe_t	ukbd_probe;
+static kbd_init_t	ukbd_init;
+static kbd_term_t	ukbd_term;
+static kbd_intr_t	ukbd_interrupt;
+static kbd_test_if_t	ukbd_test_if;
+static kbd_enable_t	ukbd_enable;
+static kbd_disable_t	ukbd_disable;
+static kbd_read_t	ukbd_read;
+static kbd_check_t	ukbd_check;
+static kbd_read_char_t	ukbd_read_char;
+static kbd_check_char_t	ukbd_check_char;
+static kbd_ioctl_t	ukbd_ioctl;
+static kbd_lock_t	ukbd_lock;
+static kbd_clear_state_t ukbd_clear_state;
+static kbd_get_state_t	ukbd_get_state;
+static kbd_set_state_t	ukbd_set_state;
+static kbd_poll_mode_t	ukbd_poll;
 
 keyboard_switch_t ukbdsw = {
 	ukbd_probe,
@@ -406,18 +406,18 @@ keyboard_switch_t ukbdsw = {
 KEYBOARD_DRIVER(ukbd, ukbdsw, ukbd_configure);
 
 /* local functions */
-Static int		ukbd_enable_intr(keyboard_t *kbd, int on,
+static int		ukbd_enable_intr(keyboard_t *kbd, int on,
 					 usbd_intr_t *func);
-Static timeout_t	ukbd_timeout;
+static timeout_t	ukbd_timeout;
 
-Static int		ukbd_getc(ukbd_state_t *state);
-Static int		probe_keyboard(struct usb_attach_arg *uaa, int flags);
-Static int		init_keyboard(ukbd_state_t *state, int *type,
+static int		ukbd_getc(ukbd_state_t *state);
+static int		probe_keyboard(struct usb_attach_arg *uaa, int flags);
+static int		init_keyboard(ukbd_state_t *state, int *type,
 				      int flags);
-Static void		set_leds(ukbd_state_t *state, int leds);
-Static int		set_typematic(keyboard_t *kbd, int code);
+static void		set_leds(ukbd_state_t *state, int leds);
+static int		set_typematic(keyboard_t *kbd, int code);
 #ifdef UKBD_EMULATE_ATSCANCODE
-Static int		keycode2scancode(int keycode, int shift, int up);
+static int		keycode2scancode(int keycode, int shift, int up);
 #endif
 
 /* local variables */
@@ -430,10 +430,10 @@ Static int		keycode2scancode(int keycode, int shift, int up);
 #include <dev/misc/kbd/kbdtables.h>
 
 /* structures for the default keyboard */
-Static ukbd_state_t	default_kbd_state;
-Static keymap_t		default_keymap;
-Static accentmap_t	default_accentmap;
-Static fkeytab_t	default_fkeytab[NUM_FKEYS];
+static ukbd_state_t	default_kbd_state;
+static keymap_t		default_keymap;
+static accentmap_t	default_accentmap;
+static fkeytab_t	default_fkeytab[NUM_FKEYS];
 
 /*
  * The back door to the keyboard driver!
@@ -444,7 +444,7 @@ Static fkeytab_t	default_fkeytab[NUM_FKEYS];
  * NOTE: because of the way the low-level conole is initialized, this routine
  * may be called more than once!!
  */
-Static int
+static int
 ukbd_configure(int flags)
 {
 	return 0;
@@ -479,7 +479,7 @@ ukbd_configure(int flags)
 /* low-level functions */
 
 /* detect a keyboard */
-Static int
+static int
 ukbd_probe(int unit, void *arg, int flags)
 {
 	void **data;
@@ -504,7 +504,7 @@ ukbd_probe(int unit, void *arg, int flags)
  * connection to the console.  This feature also handles the USB bus reset
  * which detaches and reattaches USB devices during boot.
  */
-Static int
+static int
 ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 {
 	keyboard_t *kbd;
@@ -621,7 +621,7 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	return 0;
 }
 
-Static int
+static int
 ukbd_enable_intr(keyboard_t *kbd, int on, usbd_intr_t *func)
 {
 	ukbd_state_t *state = (ukbd_state_t *)kbd->kb_data;
@@ -653,7 +653,7 @@ ukbd_enable_intr(keyboard_t *kbd, int on, usbd_intr_t *func)
 }
 
 /* finish using this keyboard */
-Static int
+static int
 ukbd_term(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
@@ -693,7 +693,7 @@ ukbd_term(keyboard_t *kbd)
  * Finish using the default keyboard.  Shutdown the USB side of the keyboard
  * but do not unregister it.
  */
-Static int
+static int
 ukbd_default_term(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
@@ -721,7 +721,7 @@ ukbd_default_term(keyboard_t *kbd)
 
 /* keyboard interrupt routine */
 
-Static void
+static void
 ukbd_timeout(void *arg)
 {
 	keyboard_t *kbd;
@@ -735,7 +735,7 @@ ukbd_timeout(void *arg)
 	crit_exit();
 }
 
-Static int
+static int
 ukbd_interrupt(keyboard_t *kbd, void *arg)
 {
 	usbd_status status = (usbd_status)arg;
@@ -861,7 +861,7 @@ ukbd_interrupt(keyboard_t *kbd, void *arg)
 	return 0;
 }
 
-Static int
+static int
 ukbd_getc(ukbd_state_t *state)
 {
 	int c;
@@ -886,7 +886,7 @@ ukbd_getc(ukbd_state_t *state)
 }
 
 /* test the interface to the device */
-Static int
+static int
 ukbd_test_if(keyboard_t *kbd)
 {
 	return 0;
@@ -896,7 +896,7 @@ ukbd_test_if(keyboard_t *kbd)
  * Enable the access to the device; until this function is called,
  * the client cannot read from the keyboard.
  */
-Static int
+static int
 ukbd_enable(keyboard_t *kbd)
 {
 	crit_enter();
@@ -906,7 +906,7 @@ ukbd_enable(keyboard_t *kbd)
 }
 
 /* disallow the access to the device */
-Static int
+static int
 ukbd_disable(keyboard_t *kbd)
 {
 	crit_enter();
@@ -916,7 +916,7 @@ ukbd_disable(keyboard_t *kbd)
 }
 
 /* read one byte from the keyboard if it's allowed */
-Static int
+static int
 ukbd_read(keyboard_t *kbd, int wait)
 {
 	ukbd_state_t *state;
@@ -976,7 +976,7 @@ ukbd_read(keyboard_t *kbd, int wait)
 }
 
 /* check if data is waiting */
-Static int
+static int
 ukbd_check(keyboard_t *kbd)
 {
 	if (!KBD_IS_ACTIVE(kbd) || !KBD_HAS_DEVICE(kbd))
@@ -991,7 +991,7 @@ ukbd_check(keyboard_t *kbd)
 }
 
 /* read char from the keyboard */
-Static u_int
+static u_int
 ukbd_read_char(keyboard_t *kbd, int wait)
 {
 	ukbd_state_t *state;
@@ -1177,7 +1177,7 @@ next_code:
 }
 
 /* check if char is waiting */
-Static int
+static int
 ukbd_check_char(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
@@ -1191,7 +1191,7 @@ ukbd_check_char(keyboard_t *kbd)
 }
 
 /* some useful control functions */
-Static int
+static int
 ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 {
 	/* trasnlate LED_XXX bits into the device specific bits */
@@ -1307,7 +1307,7 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 }
 
 /* lock the access to the keyboard */
-Static int
+static int
 ukbd_lock(keyboard_t *kbd, int lock)
 {
 	/* XXX ? */
@@ -1315,7 +1315,7 @@ ukbd_lock(keyboard_t *kbd, int lock)
 }
 
 /* clear the internal state of the keyboard */
-Static void
+static void
 ukbd_clear_state(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
@@ -1337,7 +1337,7 @@ ukbd_clear_state(keyboard_t *kbd)
 }
 
 /* save the internal state */
-Static int
+static int
 ukbd_get_state(keyboard_t *kbd, void *buf, size_t len)
 {
 	if (len == 0)
@@ -1349,7 +1349,7 @@ ukbd_get_state(keyboard_t *kbd, void *buf, size_t len)
 }
 
 /* set the internal state */
-Static int
+static int
 ukbd_set_state(keyboard_t *kbd, void *buf, size_t len)
 {
 	if (len < sizeof(ukbd_state_t))
@@ -1358,7 +1358,7 @@ ukbd_set_state(keyboard_t *kbd, void *buf, size_t len)
 	return 0;
 }
 
-Static int
+static int
 ukbd_poll(keyboard_t *kbd, int on)
 {
 	ukbd_state_t *state;
@@ -1383,7 +1383,7 @@ ukbd_poll(keyboard_t *kbd, int on)
 
 /* local functions */
 
-Static int
+static int
 probe_keyboard(struct usb_attach_arg *uaa, int flags)
 {
 	usb_interface_descriptor_t *id;
@@ -1402,7 +1402,7 @@ probe_keyboard(struct usb_attach_arg *uaa, int flags)
 	return EINVAL;
 }
 
-Static int
+static int
 init_keyboard(ukbd_state_t *state, int *type, int flags)
 {
 	usb_endpoint_descriptor_t *ed;
@@ -1449,7 +1449,7 @@ bLength=%d bDescriptorType=%d bEndpointAddress=%d-%s bmAttributes=%d wMaxPacketS
 	return 0;
 }
 
-Static void
+static void
 set_leds(ukbd_state_t *state, int leds)
 {
 	u_int8_t res = leds;
@@ -1459,7 +1459,7 @@ set_leds(ukbd_state_t *state, int leds)
 	usbd_set_report_async(state->ks_iface, UHID_OUTPUT_REPORT, 0, &res, 1);
 }
 
-Static int
+static int
 set_typematic(keyboard_t *kbd, int code)
 {
 	static int delays[] = { 250, 500, 750, 1000 };
@@ -1476,7 +1476,7 @@ set_typematic(keyboard_t *kbd, int code)
 }
 
 #ifdef UKBD_EMULATE_ATSCANCODE
-Static int
+static int
 keycode2scancode(int keycode, int shift, int up)
 {
 	static int scan[] = {
@@ -1501,7 +1501,7 @@ keycode2scancode(int keycode, int shift, int up)
 }
 #endif /* UKBD_EMULATE_ATSCANCODE */
 
-Static int
+static int
 ukbd_driver_load(module_t mod, int what, void *arg)
 {
 	switch (what) {

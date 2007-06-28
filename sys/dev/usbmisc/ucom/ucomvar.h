@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ucomvar.h,v 1.9 2001/01/23 21:56:17 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ucomvar.h,v 1.2 2002/07/31 14:34:35 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucomvar.h,v 1.4 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucomvar.h,v 1.5 2007/06/28 06:32:32 hasso Exp $
  */
 
 /*-
@@ -138,7 +138,7 @@ struct ucom_callback {
 #define UCS_RTS_IFLOW	0x0008	/* use RTS input flow control */
 
 struct ucom_softc {
-	USBBASEDEVICE		sc_dev;		/* base device */
+	device_t		sc_dev;		/* base device */
 	usbd_device_handle	sc_udev;	/* USB device */
 	usbd_interface_handle	sc_iface;	/* data interface */
 

@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.10 2007/06/27 12:28:00 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.11 2007/06/28 06:32:32 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -91,7 +91,7 @@
 #include "../ucom/ucomvar.h"
 
 #ifdef USB_DEBUG
-Static int	ubsadebug = 0;
+static int	ubsadebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, ubsa, CTLFLAG_RW, 0, "USB ubsa");
 SYSCTL_INT(_hw_usb_ubsa, OID_AUTO, debug, CTLFLAG_RW,
 	   &ubsadebug, 0, "ubsa debug level");
@@ -177,23 +177,23 @@ struct	ubsa_softc {
 	u_char			sc_msr;		/* ubsa status register */
 };
 
-Static	void ubsa_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
-Static	void ubsa_notify(void *);
+static	void ubsa_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
+static	void ubsa_notify(void *);
 
-Static	void ubsa_get_status(void *, int, u_char *, u_char *);
-Static	void ubsa_set(void *, int, int, int);
-Static	int  ubsa_param(void *, int, struct termios *);
-Static	int  ubsa_open(void *, int);
-Static	void ubsa_close(void *, int);
+static	void ubsa_get_status(void *, int, u_char *, u_char *);
+static	void ubsa_set(void *, int, int, int);
+static	int  ubsa_param(void *, int, struct termios *);
+static	int  ubsa_open(void *, int);
+static	void ubsa_close(void *, int);
 
-Static	int  ubsa_request(struct ubsa_softc *, u_int8_t, u_int16_t);
-Static	void ubsa_dtr(struct ubsa_softc *, int);
-Static	void ubsa_rts(struct ubsa_softc *, int);
-Static	void ubsa_baudrate(struct ubsa_softc *, speed_t);
-Static	void ubsa_parity(struct ubsa_softc *, tcflag_t);
-Static	void ubsa_databits(struct ubsa_softc *, tcflag_t);
-Static	void ubsa_stopbits(struct ubsa_softc *, tcflag_t);
-Static	void ubsa_flow(struct ubsa_softc *, tcflag_t, tcflag_t);
+static	int  ubsa_request(struct ubsa_softc *, u_int8_t, u_int16_t);
+static	void ubsa_dtr(struct ubsa_softc *, int);
+static	void ubsa_rts(struct ubsa_softc *, int);
+static	void ubsa_baudrate(struct ubsa_softc *, speed_t);
+static	void ubsa_parity(struct ubsa_softc *, tcflag_t);
+static	void ubsa_databits(struct ubsa_softc *, tcflag_t);
+static	void ubsa_stopbits(struct ubsa_softc *, tcflag_t);
+static	void ubsa_flow(struct ubsa_softc *, tcflag_t, tcflag_t);
 
 struct ucom_callback ubsa_callback = {
 	ubsa_get_status,
@@ -206,7 +206,7 @@ struct ucom_callback ubsa_callback = {
 	NULL
 };
 
-Static const struct ubsa_product {
+static const struct ubsa_product {
 	uint16_t	vendor;
 	uint16_t	product;
 } ubsa_products [] = {
@@ -223,11 +223,11 @@ Static const struct ubsa_product {
 	{ 0, 0 }
 };
 
-Static device_probe_t ubsa_match;
-Static device_attach_t ubsa_attach;
-Static device_detach_t ubsa_detach;
+static device_probe_t ubsa_match;
+static device_attach_t ubsa_attach;
+static device_detach_t ubsa_detach;
 
-Static device_method_t ubsa_methods[] = {
+static device_method_t ubsa_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe, ubsa_match),
 	DEVMETHOD(device_attach, ubsa_attach),
@@ -235,7 +235,7 @@ Static device_method_t ubsa_methods[] = {
 	{ 0, 0 }
 };
 
-Static driver_t ubsa_driver = {
+static driver_t ubsa_driver = {
 	"ucom",
 	ubsa_methods,
 	sizeof (struct ubsa_softc)
@@ -298,7 +298,7 @@ USB_ATTACH(ubsa)
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
 
-	devname = USBDEVNAME(ucom->sc_dev);
+	devname = device_get_nameunit(ucom->sc_dev);
 	kprintf("%s: %s\n", devname, devinfo);
 
 	DPRINTF(("ubsa attach: sc = %p\n", sc));
@@ -322,7 +322,7 @@ USB_ATTACH(ubsa)
 
 	if (cdesc == NULL) {
 		kprintf("%s: failed to get configuration descriptor\n",
-		    USBDEVNAME(ucom->sc_dev));
+		    device_get_nameunit(ucom->sc_dev));
 		ucom->sc_dying = 1;
 		goto error;
 	}
@@ -346,7 +346,7 @@ USB_ATTACH(ubsa)
 		ed = usbd_interface2endpoint_descriptor(ucom->sc_iface, i);
 		if (ed == NULL) {
 			kprintf("%s: no endpoint descriptor for %d\n",
-			    USBDEVNAME(ucom->sc_dev), i);
+			    device_get_nameunit(ucom->sc_dev), i);
 			ucom->sc_dying = 1;
 			goto error;
 		}
@@ -368,7 +368,7 @@ USB_ATTACH(ubsa)
 
 	if (sc->sc_intr_number == -1) {
 		kprintf("%s: Could not find interrupt in\n",
-		    USBDEVNAME(ucom->sc_dev));
+		    device_get_nameunit(ucom->sc_dev));
 		ucom->sc_dying = 1;
 		goto error;
 	}
@@ -378,14 +378,14 @@ USB_ATTACH(ubsa)
 
 	if (ucom->sc_bulkin_no == -1) {
 		kprintf("%s: Could not find data bulk in\n",
-		    USBDEVNAME(ucom->sc_dev));
+		    device_get_nameunit(ucom->sc_dev));
 		ucom->sc_dying = 1;
 		goto error;
 	}
 
 	if (ucom->sc_bulkout_no == -1) {
 		kprintf("%s: Could not find data bulk out\n",
-		    USBDEVNAME(ucom->sc_dev));
+		    device_get_nameunit(ucom->sc_dev));
 		ucom->sc_dying = 1;
 		goto error;
 	}
@@ -432,7 +432,7 @@ USB_DETACH(ubsa)
 	return (rv);
 }
 
-Static int
+static int
 ubsa_request(struct ubsa_softc *sc, u_int8_t request, u_int16_t value)
 {
 	usb_device_request_t req;
@@ -447,11 +447,11 @@ ubsa_request(struct ubsa_softc *sc, u_int8_t request, u_int16_t value)
 	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, 0);
 	if (err)
 		kprintf("%s: ubsa_request: %s\n",
-		    USBDEVNAME(sc->sc_ucom.sc_dev), usbd_errstr(err));
+		    device_get_nameunit(sc->sc_ucom.sc_dev), usbd_errstr(err));
 	return (err);
 }
 
-Static void
+static void
 ubsa_dtr(struct ubsa_softc *sc, int onoff)
 {
 
@@ -464,7 +464,7 @@ ubsa_dtr(struct ubsa_softc *sc, int onoff)
 	ubsa_request(sc, UBSA_SET_DTR, onoff ? 1 : 0);
 }
 
-Static void
+static void
 ubsa_rts(struct ubsa_softc *sc, int onoff)
 {
 
@@ -477,7 +477,7 @@ ubsa_rts(struct ubsa_softc *sc, int onoff)
 	ubsa_request(sc, UBSA_SET_RTS, onoff ? 1 : 0);
 }
 
-Static void
+static void
 ubsa_break(struct ubsa_softc *sc, int onoff)
 {
 
@@ -486,7 +486,7 @@ ubsa_break(struct ubsa_softc *sc, int onoff)
 	ubsa_request(sc, UBSA_SET_BREAK, onoff ? 1 : 0);
 }
 
-Static void
+static void
 ubsa_set(void *addr, int portno, int reg, int onoff)
 {
 	struct ubsa_softc *sc;
@@ -507,7 +507,7 @@ ubsa_set(void *addr, int portno, int reg, int onoff)
 	}
 }
 
-Static void
+static void
 ubsa_baudrate(struct ubsa_softc *sc, speed_t speed)
 {
 	u_int16_t value = 0;
@@ -533,7 +533,7 @@ ubsa_baudrate(struct ubsa_softc *sc, speed_t speed)
 	default:
 		kprintf("%s: ubsa_param: unsupported baudrate, "
 		    "forcing default of 9600\n",
-		    USBDEVNAME(sc->sc_ucom.sc_dev));
+		    device_get_nameunit(sc->sc_ucom.sc_dev));
 		value = B230400 / B9600;
 		break;
 	};
@@ -546,7 +546,7 @@ ubsa_baudrate(struct ubsa_softc *sc, speed_t speed)
 		ubsa_request(sc, UBSA_SET_BAUDRATE, value);
 }
 
-Static void
+static void
 ubsa_parity(struct ubsa_softc *sc, tcflag_t cflag)
 {
 	int value;
@@ -561,7 +561,7 @@ ubsa_parity(struct ubsa_softc *sc, tcflag_t cflag)
 	ubsa_request(sc, UBSA_SET_PARITY, value);
 }
 
-Static void
+static void
 ubsa_databits(struct ubsa_softc *sc, tcflag_t cflag)
 {
 	int value;
@@ -576,14 +576,14 @@ ubsa_databits(struct ubsa_softc *sc, tcflag_t cflag)
 	default:
 		kprintf("%s: ubsa_param: unsupported databits requested, "
 		    "forcing default of 8\n",
-		    USBDEVNAME(sc->sc_ucom.sc_dev));
+		    device_get_nameunit(sc->sc_ucom.sc_dev));
 		value = 3;
 	}
 
 	ubsa_request(sc, UBSA_SET_DATA_BITS, value);
 }
 
-Static void
+static void
 ubsa_stopbits(struct ubsa_softc *sc, tcflag_t cflag)
 {
 	int value;
@@ -595,7 +595,7 @@ ubsa_stopbits(struct ubsa_softc *sc, tcflag_t cflag)
 	ubsa_request(sc, UBSA_SET_STOP_BITS, value);
 }
 
-Static void
+static void
 ubsa_flow(struct ubsa_softc *sc, tcflag_t cflag, tcflag_t iflag)
 {
 	int value;
@@ -611,7 +611,7 @@ ubsa_flow(struct ubsa_softc *sc, tcflag_t cflag, tcflag_t iflag)
 	ubsa_request(sc, UBSA_SET_FLOW_CTRL, value);
 }
 
-Static int
+static int
 ubsa_param(void *addr, int portno, struct termios *ti)
 {
 	struct ubsa_softc *sc;
@@ -629,7 +629,7 @@ ubsa_param(void *addr, int portno, struct termios *ti)
 	return (0);
 }
 
-Static int
+static int
 ubsa_open(void *addr, int portno)
 {
 	struct ubsa_softc *sc;
@@ -654,7 +654,7 @@ ubsa_open(void *addr, int portno)
 		    UBSA_INTR_INTERVAL);
 		if (err) {
 			kprintf("%s: cannot open interrupt pipe (addr %d)\n",
-			    USBDEVNAME(sc->sc_ucom.sc_dev),
+			    device_get_nameunit(sc->sc_ucom.sc_dev),
 			    sc->sc_intr_number);
 			return (EIO);
 		}
@@ -663,7 +663,7 @@ ubsa_open(void *addr, int portno)
 	return (0);
 }
 
-Static void
+static void
 ubsa_close(void *addr, int portno)
 {
 	struct ubsa_softc *sc;
@@ -679,19 +679,19 @@ ubsa_close(void *addr, int portno)
 		err = usbd_abort_pipe(sc->sc_intr_pipe);
 		if (err)
 			kprintf("%s: abort interrupt pipe failed: %s\n",
-			    USBDEVNAME(sc->sc_ucom.sc_dev),
+			    device_get_nameunit(sc->sc_ucom.sc_dev),
 			    usbd_errstr(err));
 		err = usbd_close_pipe(sc->sc_intr_pipe);
 		if (err)
 			kprintf("%s: close interrupt pipe failed: %s\n",
-			    USBDEVNAME(sc->sc_ucom.sc_dev),
+			    device_get_nameunit(sc->sc_ucom.sc_dev),
 			    usbd_errstr(err));
 		kfree(sc->sc_intr_buf, M_USBDEV);
 		sc->sc_intr_pipe = NULL;
 	}
 }
 
-Static void
+static void
 ubsa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
 	struct ubsa_softc *sc;
@@ -707,7 +707,7 @@ ubsa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 			return;
 
 		DPRINTF(("%s: ubsa_intr: abnormal status: %s\n",
-		    USBDEVNAME(sc->sc_ucom.sc_dev),
+		    device_get_nameunit(sc->sc_ucom.sc_dev),
 		    usbd_errstr(status)));
 		usbd_clear_endpoint_stall_async(sc->sc_intr_pipe);
 		return;
@@ -718,13 +718,13 @@ ubsa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	sc->sc_msr = buf[3];
 
 	DPRINTF(("%s: ubsa lsr = 0x%02x, msr = 0x%02x\n",
-	    USBDEVNAME(sc->sc_ucom.sc_dev), sc->sc_lsr, sc->sc_msr));
+	    device_get_nameunit(sc->sc_ucom.sc_dev), sc->sc_lsr, sc->sc_msr));
 
 	ubsa_notify(sc);
 }
 
 /* Handle delayed events. */
-Static void
+static void
 ubsa_notify(void *arg)
 {
 	struct ubsa_softc *sc;
@@ -733,7 +733,7 @@ ubsa_notify(void *arg)
 	ucom_status_change(&sc->sc_ucom);
 }
 
-Static void
+static void
 ubsa_get_status(void *addr, int portno, u_char *lsr, u_char *msr)
 {
 	struct ubsa_softc *sc;

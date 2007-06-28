@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.18.2.1 2006/01/26 01:43:13 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.15 2007/05/01 00:05:16 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.16 2007/06/28 06:32:31 hasso Exp $
  */
 
 /*
@@ -413,7 +413,7 @@ ehci_pci_attach(device_t self)
 				continue;
 			bsc = device_get_softc(nbus[0]);
 			DPRINTF(("ehci_pci_attach: companion %s\n",
-			    USBDEVNAME(bsc->bdev)));
+			    device_get_nameunit(bsc->bdev)));
 			sc->sc_comps[ncomp++] = bsc;
 			if (ncomp >= EHCI_COMPANION_MAX)
 				break;
@@ -497,7 +497,7 @@ ehci_pci_takecontroller(device_t self)
 		pci_write_config(self, eecp, legsup | EHCI_LEGSUP_OSOWNED, 4);
 		if (legsup & EHCI_LEGSUP_BIOSOWNED) {
 			kprintf("%s: waiting for BIOS to give up control\n",
-			    USBDEVNAME(sc->sc_bus.bdev));
+			    device_get_nameunit(sc->sc_bus.bdev));
 			for (i = 0; i < 5000; i++) {
 				legsup = pci_read_config(self, eecp, 4);
 				if ((legsup & EHCI_LEGSUP_BIOSOWNED) == 0)
@@ -506,7 +506,7 @@ ehci_pci_takecontroller(device_t self)
 			}
 			if (legsup & EHCI_LEGSUP_BIOSOWNED)
 				kprintf("%s: timed out waiting for BIOS\n",
-				    USBDEVNAME(sc->sc_bus.bdev));
+				    device_get_nameunit(sc->sc_bus.bdev));
 		}
 	}
 }

@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi.h,v 1.64 2004/10/23 13:26:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.h,v 1.59 2005/05/16 06:58:43 imp Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi.h,v 1.8 2007/06/27 12:27:59 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.h,v 1.9 2007/06/28 06:32:31 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -165,7 +165,7 @@ void usbd_set_polling(usbd_device_handle, int);
 const char *usbd_errstr(usbd_status);
 
 void usbd_add_dev_event(int, usbd_device_handle);
-void usbd_add_drv_event(int, usbd_device_handle, device_ptr_t);
+void usbd_add_drv_event(int, usbd_device_handle, device_t);
 
 void usbd_devinfo(usbd_device_handle, int, char *);
 const struct usbd_quirks *usbd_get_quirks(usbd_device_handle);

@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_quirks.c,v 1.50 2004/06/23 02:30:52 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_quirks.c,v 1.41.2.4 2006/02/15 22:51:08 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_quirks.c,v 1.5 2006/12/10 02:03:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_quirks.c,v 1.6 2007/06/28 06:32:31 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -53,7 +53,7 @@ extern int usbdebug;
 
 #define ANY 0xffff
 
-Static const struct usbd_quirk_entry {
+static const struct usbd_quirk_entry {
 	u_int16_t idVendor;
 	u_int16_t idProduct;
 	u_int16_t bcdDevice;

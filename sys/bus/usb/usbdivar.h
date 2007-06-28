@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdivar.h,v 1.70 2002/07/11 21:14:36 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdivar.h,v 1.43.2.1 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdivar.h,v 1.7 2007/06/27 12:27:59 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdivar.h,v 1.8 2007/06/28 06:32:31 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -100,7 +100,7 @@ struct usb_softc;
 
 struct usbd_bus {
 	/* Filled by HC driver */
-	USBBASEDEVICE		bdev; /* base device, host adapter */
+	device_t		bdev; /* base device, host adapter */
 	struct usbd_bus_methods	*methods;
 	u_int32_t		pipe_size; /* size of a pipe struct */
 	/* Filled by usb driver */
@@ -153,7 +153,7 @@ struct usbd_device {
 	usb_config_descriptor_t *cdesc;	       /* full config descr */
 	const struct usbd_quirks     *quirks;  /* device quirks, always set */
 	struct usbd_hub	       *hub;           /* only if this is a hub */
-	device_ptr_t	       *subdevs;       /* sub-devices, 0 terminated */
+	device_t	       *subdevs;       /* sub-devices, 0 terminated */
 	uint8_t		       *ifacenums;     /* sub-device interfacenumbers */
 };
 
@@ -246,7 +246,7 @@ usbd_status	usbd_setup_pipe(usbd_device_handle dev,
 				usbd_interface_handle iface,
 				struct usbd_endpoint *, int,
 				usbd_pipe_handle *pipe);
-usbd_status	usbd_new_device(device_ptr_t parent,
+usbd_status	usbd_new_device(device_t parent,
 				usbd_bus_handle bus, int depth,
 				int lowspeed, int port,
 				struct usbd_port *);
@@ -257,7 +257,7 @@ void		usb_free_device(usbd_device_handle);
 
 usbd_status	usb_insert_transfer(usbd_xfer_handle xfer);
 void		usb_transfer_complete(usbd_xfer_handle xfer);
-void		usb_disconnect_port(struct usbd_port *up, device_ptr_t);
+void		usb_disconnect_port(struct usbd_port *up, device_t);
 
 /* Routines from usb.c */
 void		usb_needs_explore(usbd_device_handle);

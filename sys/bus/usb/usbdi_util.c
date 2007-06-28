@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi_util.c,v 1.42 2004/12/03 08:53:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.34 2005/03/01 08:01:22 sobomax Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.12 2007/06/27 12:27:59 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.13 2007/06/28 06:32:31 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -418,9 +418,9 @@ usbd_get_config(usbd_device_handle dev, u_int8_t *conf)
 	return (usbd_do_request(dev, &req, conf));
 }
 
-Static void usbd_bulk_transfer_cb(usbd_xfer_handle xfer,
+static void usbd_bulk_transfer_cb(usbd_xfer_handle xfer,
 				  usbd_private_handle priv, usbd_status status);
-Static void
+static void
 usbd_bulk_transfer_cb(usbd_xfer_handle xfer, usbd_private_handle priv,
 		      usbd_status status)
 {
@@ -460,9 +460,9 @@ usbd_bulk_transfer(usbd_xfer_handle xfer, usbd_pipe_handle pipe,
 	return (err);
 }
 
-Static void usbd_intr_transfer_cb(usbd_xfer_handle xfer,
+static void usbd_intr_transfer_cb(usbd_xfer_handle xfer,
 				  usbd_private_handle priv, usbd_status status);
-Static void
+static void
 usbd_intr_transfer_cb(usbd_xfer_handle xfer, usbd_private_handle priv,
 		      usbd_status status)
 {
@@ -503,19 +503,19 @@ usbd_intr_transfer(usbd_xfer_handle xfer, usbd_pipe_handle pipe,
 }
 
 void
-usb_detach_wait(device_ptr_t dv)
+usb_detach_wait(device_t dv)
 {
-	DPRINTF(("usb_detach_wait: waiting for %s\n", USBDEVPTRNAME(dv)));
+	DPRINTF(("usb_detach_wait: waiting for %s\n", device_get_nameunit(dv)));
 	if (tsleep(dv, 0, "usbdet", hz * 60))
 		kprintf("usb_detach_wait: %s didn't detach\n",
-		        USBDEVPTRNAME(dv));
-	DPRINTF(("usb_detach_wait: %s done\n", USBDEVPTRNAME(dv)));
+		        device_get_nameunit(dv));
+	DPRINTF(("usb_detach_wait: %s done\n", device_get_nameunit(dv)));
 }
 
 void
-usb_detach_wakeup(device_ptr_t dv)
+usb_detach_wakeup(device_t dv)
 {
-	DPRINTF(("usb_detach_wakeup: for %s\n", USBDEVPTRNAME(dv)));
+	DPRINTF(("usb_detach_wakeup: for %s\n", device_get_nameunit(dv)));
 	wakeup(dv);
 }
 

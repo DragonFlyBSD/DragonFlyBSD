@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_uralvar.h,v 1.3.2.3 2006/01/29 14:16:36 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.5 2007/05/27 10:53:29 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.6 2007/06/28 06:32:32 hasso Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -76,7 +76,7 @@ struct ural_softc {
 
 	int				(*sc_newstate)(struct ieee80211com *,
 					    enum ieee80211_state, int);
-	USBBASEDEVICE			sc_dev;
+	device_t			sc_dev;
 	usbd_device_handle		sc_udev;
 	usbd_interface_handle		sc_iface;
 

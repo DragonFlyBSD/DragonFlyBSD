@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-usb.c,v 1.4 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.5 2007/06/01 22:48:16 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.6 2007/06/28 06:32:31 hasso Exp $
  */
 
 #include "opt_ata.h"
@@ -79,7 +79,7 @@ struct bbb_csw {
 
 /* USB-ATA 'controller' softc */
 struct atausb_softc {
-    USBBASEDEVICE	dev;		/* base device */
+    device_t	dev;		/* base device */
     usbd_interface_handle iface;	/* interface */
     int			ifaceno;	/* interface number */
     u_int8_t		bulkin;		/* endpoint address's */
@@ -347,7 +347,7 @@ atausb_attach(device_t dev)
 }
 
 static int
-atausb_detach(device_ptr_t dev)
+atausb_detach(device_t dev)
 {
     struct atausb_softc *sc = device_get_softc(dev);
     usbd_device_handle udev;

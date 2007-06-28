@@ -2,7 +2,7 @@
  * $NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.12 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.13 2007/06/28 06:32:33 hasso Exp $
  */
 
 /*-
@@ -130,7 +130,7 @@ SYSCTL_INT(_hw_usb_umodem, OID_AUTO, debug, CTLFLAG_RW,
 struct umodem_softc {
 	struct ucom_softc	sc_ucom;
 
-	USBBASEDEVICE		sc_dev;		/* base device */
+	device_t		sc_dev;		/* base device */
 
 	usbd_device_handle	sc_udev;	/* USB device */
 
@@ -157,27 +157,27 @@ struct umodem_softc {
 	u_char			sc_msr;		/* Modem status register */
 };
 
-Static void	*umodem_get_desc(usbd_device_handle dev, int type, int subtype);
-Static usbd_status umodem_set_comm_feature(struct umodem_softc *sc,
+static void	*umodem_get_desc(usbd_device_handle dev, int type, int subtype);
+static usbd_status umodem_set_comm_feature(struct umodem_softc *sc,
 					   int feature, int state);
-Static usbd_status umodem_set_line_coding(struct umodem_softc *sc,
+static usbd_status umodem_set_line_coding(struct umodem_softc *sc,
 					  usb_cdc_line_state_t *state);
 
-Static void	umodem_get_caps(usbd_device_handle, int *, int *);
+static void	umodem_get_caps(usbd_device_handle, int *, int *);
 
-Static void	umodem_get_status(void *, int portno, u_char *lsr, u_char *msr);
-Static void	umodem_set(void *, int, int, int);
-Static void	umodem_dtr(struct umodem_softc *, int);
-Static void	umodem_rts(struct umodem_softc *, int);
-Static void	umodem_break(struct umodem_softc *, int);
-Static void	umodem_set_line_state(struct umodem_softc *);
-Static int	umodem_param(void *, int, struct termios *);
-Static int	umodem_ioctl(void *, int, u_long, caddr_t, int, usb_proc_ptr );
-Static int	umodem_open(void *, int portno);
-Static void	umodem_close(void *, int portno);
-Static void	umodem_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
+static void	umodem_get_status(void *, int portno, u_char *lsr, u_char *msr);
+static void	umodem_set(void *, int, int, int);
+static void	umodem_dtr(struct umodem_softc *, int);
+static void	umodem_rts(struct umodem_softc *, int);
+static void	umodem_break(struct umodem_softc *, int);
+static void	umodem_set_line_state(struct umodem_softc *);
+static int	umodem_param(void *, int, struct termios *);
+static int	umodem_ioctl(void *, int, u_long, caddr_t, int, usb_proc_ptr );
+static int	umodem_open(void *, int portno);
+static void	umodem_close(void *, int portno);
+static void	umodem_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
 
-Static struct ucom_callback umodem_callback = {
+static struct ucom_callback umodem_callback = {
 	umodem_get_status,
 	umodem_set,
 	umodem_param,
@@ -188,11 +188,11 @@ Static struct ucom_callback umodem_callback = {
 	NULL,
 };
 
-Static device_probe_t umodem_match;
-Static device_attach_t umodem_attach;
-Static device_detach_t umodem_detach;
+static device_probe_t umodem_match;
+static device_attach_t umodem_attach;
+static device_detach_t umodem_detach;
 
-Static device_method_t umodem_methods[] = {
+static device_method_t umodem_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe, umodem_match),
 	DEVMETHOD(device_attach, umodem_attach),
@@ -200,7 +200,7 @@ Static device_method_t umodem_methods[] = {
 	{ 0, 0 }
 };
 
-Static driver_t umodem_driver = {
+static driver_t umodem_driver = {
 	"ucom",
 	umodem_methods,
 	sizeof (struct umodem_softc)
@@ -263,7 +263,7 @@ USB_ATTACH(umodem)
 	sc->sc_udev = dev;
 	sc->sc_ctl_iface = uaa->iface;
 
-	devname = USBDEVNAME(sc->sc_dev);
+	devname = device_get_nameunit(sc->sc_dev);
 	/* XXX ? use something else ? XXX */
 	id = usbd_get_interface_descriptor(sc->sc_ctl_iface);
 	kprintf("%s: %s, iclass %d/%d\n", devname, devinfo,
@@ -398,7 +398,7 @@ USB_ATTACH(umodem)
 	USB_ATTACH_ERROR_RETURN;
 }
 
-Static int
+static int
 umodem_open(void *addr, int portno)
 {
 	struct umodem_softc *sc = addr;
@@ -422,7 +422,7 @@ umodem_open(void *addr, int portno)
 	return 0;
 }
 
-Static void
+static void
 umodem_close(void *addr, int portno)
 {
 	struct umodem_softc *sc = addr;
@@ -434,16 +434,16 @@ umodem_close(void *addr, int portno)
 		err = usbd_abort_pipe(sc->sc_notify_pipe);
 		if (err)
 			kprintf("%s: abort notify pipe failed: %s\n",
-			    USBDEVNAME(sc->sc_dev), usbd_errstr(err));
+			    device_get_nameunit(sc->sc_dev), usbd_errstr(err));
 		err = usbd_close_pipe(sc->sc_notify_pipe);
 		if (err)
 			kprintf("%s: close notify pipe failed: %s\n",
-			    USBDEVNAME(sc->sc_dev), usbd_errstr(err));
+			    device_get_nameunit(sc->sc_dev), usbd_errstr(err));
 		sc->sc_notify_pipe = NULL;
 	}
 }
 
-Static void
+static void
 umodem_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
 	struct umodem_softc *sc = priv;
@@ -455,14 +455,14 @@ umodem_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
 			return;
-		kprintf("%s: abnormal status: %s\n", USBDEVNAME(sc->sc_dev),
+		kprintf("%s: abnormal status: %s\n", device_get_nameunit(sc->sc_dev),
 		       usbd_errstr(status));
 		return;
 	}
 
 	if (sc->sc_notify_buf.bmRequestType != UCDC_NOTIFICATION) {
 		DPRINTF(("%s: unknown message type (%02x) on notify pipe\n",
-			 USBDEVNAME(sc->sc_dev),
+			 device_get_nameunit(sc->sc_dev),
 			 sc->sc_notify_buf.bmRequestType));
 		return;
 	}
@@ -475,12 +475,12 @@ umodem_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		 */
 		if (UGETW(sc->sc_notify_buf.wLength) != 2) {
 			kprintf("%s: Invalid notification length! (%d)\n",
-			       USBDEVNAME(sc->sc_dev),
+			       device_get_nameunit(sc->sc_dev),
 			       UGETW(sc->sc_notify_buf.wLength));
 			break;
 		}
 		DPRINTF(("%s: notify bytes = %02x%02x\n",
-			 USBDEVNAME(sc->sc_dev),
+			 device_get_nameunit(sc->sc_dev),
 			 sc->sc_notify_buf.data[0],
 			 sc->sc_notify_buf.data[1]));
 		/* Currently, lsr is always zero. */
@@ -497,7 +497,7 @@ umodem_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		break;
 	default:
 		DPRINTF(("%s: unknown notify message: %02x\n",
-			 USBDEVNAME(sc->sc_dev),
+			 device_get_nameunit(sc->sc_dev),
 			 sc->sc_notify_buf.bNotification));
 		break;
 	}

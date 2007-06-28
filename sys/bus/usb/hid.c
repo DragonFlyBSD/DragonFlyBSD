@@ -1,7 +1,7 @@
 /*
  * $NetBSD: hid.c,v 1.17 2001/11/13 06:24:53 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/hid.c,v 1.23 2003/08/24 17:55:54 obrien Exp $
- * $DragonFly: src/sys/bus/usb/hid.c,v 1.11 2007/06/27 12:27:59 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/hid.c,v 1.12 2007/06/28 06:32:31 hasso Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -58,7 +58,7 @@ extern int usbdebug;
 #define DPRINTFN(n,x)
 #endif
 
-Static void hid_clear_local(struct hid_item *);
+static void hid_clear_local(struct hid_item *);
 
 #define MAXUSAGE 100
 struct hid_data {
@@ -74,7 +74,7 @@ struct hid_data {
 	int kindset;
 };
 
-Static void
+static void
 hid_clear_local(struct hid_item *c)
 {
 

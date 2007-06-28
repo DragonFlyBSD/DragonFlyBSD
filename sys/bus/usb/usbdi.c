@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi.c,v 1.106 2004/10/24 12:52:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.c,v 1.91.2.1 2005/12/15 00:36:00 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.15 2007/06/27 12:27:59 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.16 2007/06/28 06:32:31 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -69,15 +69,15 @@ extern int usbdebug;
 #define DPRINTFN(n,x)
 #endif
 
-Static usbd_status usbd_ar_pipe(usbd_pipe_handle pipe);
-Static void usbd_do_request_async_cb
+static usbd_status usbd_ar_pipe(usbd_pipe_handle pipe);
+static void usbd_do_request_async_cb
 	(usbd_xfer_handle, usbd_private_handle, usbd_status);
-Static void usbd_start_next(usbd_pipe_handle pipe);
-Static usbd_status usbd_open_pipe_ival
+static void usbd_start_next(usbd_pipe_handle pipe);
+static usbd_status usbd_open_pipe_ival
 	(usbd_interface_handle, u_int8_t, u_int8_t, usbd_pipe_handle *, int);
-Static int usbd_xfer_isread(usbd_xfer_handle xfer);
+static int usbd_xfer_isread(usbd_xfer_handle xfer);
 
-Static int usbd_nbuses = 0;
+static int usbd_nbuses = 0;
 
 void
 usbd_init(void)
@@ -722,7 +722,7 @@ usbd_get_interface(usbd_interface_handle iface, u_int8_t *aiface)
 /*** Internal routines ***/
 
 /* Dequeue all pipe operations, called from critical section. */
-Static usbd_status
+static usbd_status
 usbd_ar_pipe(usbd_pipe_handle pipe)
 {
 	usbd_xfer_handle xfer;

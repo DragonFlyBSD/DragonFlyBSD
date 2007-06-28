@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.22 2007/06/27 12:28:00 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.23 2007/06/28 06:32:32 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -93,7 +93,7 @@ SYSCTL_INT(_hw_usb_uhid, OID_AUTO, debug, CTLFLAG_RW,
 #endif
 
 struct uhid_softc {
-	USBBASEDEVICE sc_dev;			/* base device */
+	device_t sc_dev;			/* base device */
 	usbd_device_handle sc_udev;
 	usbd_interface_handle sc_iface;	/* interface */
 	usbd_pipe_handle sc_intrpipe;	/* interrupt pipe */
@@ -138,7 +138,7 @@ d_poll_t	uhidpoll;
 
 #define		UHID_CDEV_MAJOR 122
 
-Static struct dev_ops uhid_ops = {
+static struct dev_ops uhid_ops = {
 	{ "uhid", UHID_CDEV_MAJOR, 0 },
 	.d_open =	uhidopen,
 	.d_close =	uhidclose,
@@ -148,12 +148,12 @@ Static struct dev_ops uhid_ops = {
 	.d_poll =	uhidpoll,
 };
 
-Static void uhid_intr(usbd_xfer_handle, usbd_private_handle,
+static void uhid_intr(usbd_xfer_handle, usbd_private_handle,
 			   usbd_status);
 
-Static int uhid_do_read(struct uhid_softc *, struct uio *uio, int);
-Static int uhid_do_write(struct uhid_softc *, struct uio *uio, int);
-Static int uhid_do_ioctl(struct uhid_softc *, u_long, caddr_t, int);
+static int uhid_do_read(struct uhid_softc *, struct uio *uio, int);
+static int uhid_do_write(struct uhid_softc *, struct uio *uio, int);
+static int uhid_do_ioctl(struct uhid_softc *, u_long, caddr_t, int);
 
 USB_DECLARE_DRIVER(uhid);
 
@@ -188,13 +188,13 @@ USB_ATTACH(uhid)
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
-	kprintf("%s: %s, iclass %d/%d\n", USBDEVNAME(sc->sc_dev),
+	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
 	ed = usbd_interface2endpoint_descriptor(iface, 0);
 	if (ed == NULL) {
 		kprintf("%s: could not read endpoint descriptor\n",
-		       USBDEVNAME(sc->sc_dev));
+		       device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -210,7 +210,7 @@ USB_ATTACH(uhid)
 
 	if (UE_GET_DIR(ed->bEndpointAddress) != UE_DIR_IN ||
 	    (ed->bmAttributes & UE_XFERTYPE) != UE_INTERRUPT) {
-		kprintf("%s: unexpected endpoint\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: unexpected endpoint\n", device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
 		USB_ATTACH_ERROR_RETURN;
 	}
@@ -231,7 +231,7 @@ USB_ATTACH(uhid)
 	}
 
 	if (err) {
-		kprintf("%s: no report descriptor\n", USBDEVNAME(sc->sc_dev));
+		kprintf("%s: no report descriptor\n", device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
 		USB_ATTACH_ERROR_RETURN;
 	}
