@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.18 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.19 2007/06/29 23:40:00 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -161,14 +161,14 @@ elf_getphdrs(struct file *fp, Elf_Phdr *phdr, size_t nbyte)
 	PRINTF(("reading phdrs section\n"));
 	if ((error = read_check(fp, phdr, nbyte)) != 0)
 		goto done;
-	kprintf("headers section:\n");
+	PRINTF(("headers section:\n"));
 	for (i = 0; i < nheaders; i++) {
-		kprintf("entry type:   %d\n", phdr[i].p_type);
-		kprintf("file offset:  %d\n", phdr[i].p_offset);
-		kprintf("virt address: %p\n", (uint32_t *)phdr[i].p_vaddr);
-		kprintf("file size:    %d\n", phdr[i].p_filesz);
-		kprintf("memory size:  %d\n", phdr[i].p_memsz);
-		kprintf("\n");
+		PRINTF(("entry type:   %d\n", phdr[i].p_type));
+		PRINTF(("file offset:  %d\n", phdr[i].p_offset));
+		PRINTF(("virt address: %p\n", (uint32_t *)phdr[i].p_vaddr));
+		PRINTF(("file size:    %d\n", phdr[i].p_filesz));
+		PRINTF(("memory size:  %d\n", phdr[i].p_memsz));
+		PRINTF(("\n"));
 	}
  done:
 	return error;
@@ -429,7 +429,10 @@ mmap_phdr(struct file *fp, Elf_Phdr *phdr)
 	return error;
 }
 
-
+/*
+ * Load memory mapped segments.  The segments are backed by the checkpoint
+ * file.
+ */
 static int
 elf_loadphdrs(struct file *fp, Elf_Phdr *phdr, int numsegs) 
 {
@@ -624,12 +627,28 @@ elf_getfiles(struct proc *p, struct file *fp)
 		if (cfi->cfi_index < 0)
 			continue;
 
-		if ((error = ckpt_fhtovp(&cfi->cfi_fh, &vp)) != 0)
-			break;
-		if ((error = fp_vpopen(vp, OFLAGS(cfi->cfi_flags), &tempfp)) != 0) {
-			vput(vp);
-			break;
+		/*
+		 * Restore a saved file descriptor.  If CKFIF_ISCKPTFD is 
+		 * set the descriptor represents the checkpoint file itself,
+		 * probably due to the user calling sys_checkpoint().  We
+		 * want to use the fp being used to restore the checkpoint
+		 * instead of trying to restore the original filehandle.
+		 */
+		if (cfi->cfi_ckflags & CKFIF_ISCKPTFD) {
+			fhold(fp);
+			tempfp = fp;
+			error = 0;
+		} else {
+			error = ckpt_fhtovp(&cfi->cfi_fh, &vp);
+			if (error == 0) {
+				error = fp_vpopen(vp, OFLAGS(cfi->cfi_flags),
+						  &tempfp);
+				if (error)
+					vput(vp);
+			}
 		}
+		if (error)
+			break;
 		tempfp->f_offset = cfi->cfi_offset;
 
 		/*

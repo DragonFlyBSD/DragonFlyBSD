@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.51 2007/06/07 23:14:25 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.52 2007/06/29 23:40:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -900,12 +900,13 @@ static int each_segment (struct proc *, segment_callback, void *, int);
 static int elf_corehdr (struct lwp *, int, struct file *, struct ucred *,
 			int, elf_buf_t);
 static int elf_puthdr (struct lwp *, elf_buf_t, const prstatus_t *,
-			const prfpregset_t *, const prpsinfo_t *, int);
+			const prfpregset_t *, const prpsinfo_t *, int,
+			struct file *);
 static int elf_putnote (elf_buf_t, const char *, int, const void *, size_t);
 
 static int elf_putsigs(struct lwp *, elf_buf_t);
 static int elf_puttextvp(struct proc *, elf_buf_t);
-static int elf_putfiles(struct proc *, elf_buf_t);
+static int elf_putfiles(struct proc *, elf_buf_t, struct file *);
 
 extern int osreldate;
 
@@ -963,7 +964,7 @@ generic_elf_coredump(struct lwp *lp, int sig, struct file *fp, off_t limit)
 	 * size is calculated.
 	 */
 	bzero(&target, sizeof(target));
-	elf_puthdr(lp, &target, NULL, NULL, NULL, seginfo.count);
+	elf_puthdr(lp, &target, NULL, NULL, NULL, seginfo.count, fp);
 
 	if (target.off + seginfo.vsize >= limit)
 		return (EFAULT);
@@ -1258,8 +1259,12 @@ elf_corehdr(struct lwp *lp, int sig, struct file *fp, struct ucred *cred, int nu
 	/* XXX - We don't fill in the command line arguments properly yet. */
 	strncpy(psinfo->pr_psargs, p->p_comm, PRARGSZ);
 
-	/* Fill in the header. */
-	error = elf_puthdr(lp, target, status, fpregset, psinfo, numsegs);
+	/*
+	 * Fill in the header.  The fp is passed so we can detect and flag
+	 * a checkpoint file pointer within the core file itself, because
+	 * it may not be restored from the same file handle.
+	 */
+	error = elf_puthdr(lp, target, status, fpregset, psinfo, numsegs, fp);
 
 	kfree(tempdata, M_TEMP);
 
@@ -1273,7 +1278,8 @@ elf_corehdr(struct lwp *lp, int sig, struct file *fp, struct ucred *cred, int nu
 
 static int
 elf_puthdr(struct lwp *lp, elf_buf_t target, const prstatus_t *status,
-	const prfpregset_t *fpregset, const prpsinfo_t *psinfo, int numsegs)
+	const prfpregset_t *fpregset, const prpsinfo_t *psinfo, int numsegs,
+	struct file *fp)
 {
 	struct proc *p = lp->lwp_proc;
 	int error = 0;
@@ -1315,7 +1321,7 @@ elf_puthdr(struct lwp *lp, elf_buf_t target, const prstatus_t *status,
 	if (error == 0)
 		error = elf_putsigs(lp, target);
 	if (error == 0)
-		error = elf_putfiles(p, target);
+		error = elf_putfiles(p, target, fp);
 
 	/*
 	 * Align up to a page boundary for the program segments.  The
@@ -1423,7 +1429,7 @@ elf_putsigs(struct lwp *lp, elf_buf_t target)
 }
 
 static int
-elf_putfiles(struct proc *p, elf_buf_t target)
+elf_putfiles(struct proc *p, elf_buf_t target, struct file *ckfp)
 {
 	int error = 0;
 	int i;
@@ -1464,6 +1470,10 @@ elf_putfiles(struct proc *p, elf_buf_t target)
 		cfi->cfi_type = fp->f_type;
 		cfi->cfi_flags = fp->f_flag;
 		cfi->cfi_offset = fp->f_offset;
+		cfi->cfi_ckflags = 0;
+
+		if (fp == ckfp)
+			cfi->cfi_ckflags |= CKFIF_ISCKPTFD;
 		/* f_count and f_msgcount should not be saved/restored */
 		/* XXX save cred info */
 
