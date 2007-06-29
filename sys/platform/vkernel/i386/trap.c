@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.24 2007/06/18 18:57:12 josepht Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.25 2007/06/29 21:54:11 dillon Exp $
  */
 
 /*
@@ -551,7 +551,7 @@ restart:
 		 * saved FP state that the (emulated) virtual kernel
 		 * needs to hand over to a different emulated process.
 		 */
-		if (p->p_vkernel && p->p_vkernel->vk_current &&
+		if (lp->lwp_ve &&
 		    (td->td_pcb->pcb_flags & FP_VIRTFP)
 		) {
 			npxdna(frame);
@@ -598,8 +598,8 @@ restart:
 	 * VM context managed by a virtual kernel then let the virtual kernel
 	 * handle it.
 	 */
-	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		vkernel_trap(p, frame);
+	if (lp->lwp_ve) {
+		vkernel_trap(lp, frame);
 		goto out;
 	}
 
@@ -858,7 +858,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 	int rv = 0;
 	vm_prot_t ftype;
 	thread_t td = curthread;
-	struct proc *p = td->td_proc;
+	struct lwp *lp = td->td_lwp;
 
 	va = trunc_page(eva);
 	if (usermode == FALSE) {
@@ -872,8 +872,8 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		 * vm is initialized above to NULL. If curproc is NULL
 		 * or curproc->p_vmspace is NULL the fault is fatal.
 		 */
-		if (p != NULL)
-			vm = p->p_vmspace;
+		if (lp != NULL)
+			vm = lp->lwp_vmspace;
 
 		if (vm == NULL)
 			goto nogo;
@@ -891,7 +891,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		 * Keep swapout from messing with us during this
 		 *	critical time.
 		 */
-		PHOLD(p);
+		PHOLD(lp->lwp_proc);
 
 		/*
 		 * Grow the stack if necessary
@@ -902,9 +902,9 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		 * a growable stack region, or if the stack 
 		 * growth succeeded.
 		 */
-		if (!grow_stack (p, va)) {
+		if (!grow_stack (lp->lwp_proc, va)) {
 			rv = KERN_FAILURE;
-			PRELE(p);
+			PRELE(lp->lwp_proc);
 			goto nogo;
 		}
 
@@ -913,7 +913,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 			      (ftype & VM_PROT_WRITE) ? VM_FAULT_DIRTY
 						      : VM_FAULT_NORMAL);
 
-		PRELE(p);
+		PRELE(lp->lwp_proc);
 	} else {
 		/*
 		 * Don't have to worry about process locking or stacks in the kernel.
@@ -1061,7 +1061,7 @@ dblfault_handler(void)
 int
 trapwrite(unsigned addr)
 {
-	struct proc *p;
+	struct lwp *lp;
 	vm_offset_t va;
 	struct vmspace *vm;
 	int rv;
@@ -1073,13 +1073,13 @@ trapwrite(unsigned addr)
 	if (va >= VM_MAX_USER_ADDRESS)
 		return (1);
 
-	p = curproc;
-	vm = p->p_vmspace;
+	lp = curthread->td_lwp;
+	vm = lp->lwp_vmspace;
 
-	PHOLD(p);
+	PHOLD(lp->lwp_proc);
 
-	if (!grow_stack (p, va)) {
-		PRELE(p);
+	if (!grow_stack (lp->lwp_proc, va)) {
+		PRELE(lp->lwp_proc);
 		return (1);
 	}
 
@@ -1088,7 +1088,7 @@ trapwrite(unsigned addr)
 	 */
 	rv = vm_fault(&vm->vm_map, va, VM_PROT_WRITE, VM_FAULT_DIRTY);
 
-	PRELE(p);
+	PRELE(lp->lwp_proc);
 
 	if (rv != KERN_SUCCESS)
 		return 1;
@@ -1151,8 +1151,8 @@ syscall2(struct trapframe *frame)
 	 * Restore the virtual kernel context and return from its system
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
-	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		error = vkernel_trap(p, frame);
+	if (lp->lwp_ve) {
+		error = vkernel_trap(lp, frame);
 		frame->tf_eax = error;
 		if (error)
 			frame->tf_eflags |= PSL_C;

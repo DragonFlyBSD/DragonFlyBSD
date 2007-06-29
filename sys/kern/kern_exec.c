@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.57 2007/06/07 23:14:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.58 2007/06/29 21:54:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -171,6 +171,12 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	struct image_params image_params, *imgp;
 	struct vattr attr;
 	int (*img_first) (struct image_params *);
+
+	if (p->p_nthreads != 1) {
+		kprintf("pid %d attempt to exec with multiple LWPs present\n",
+			p->p_pid);
+		return (EINVAL);
+	}
 
 	if (debug_execve_args) {
 		kprintf("%s()\n", __func__);

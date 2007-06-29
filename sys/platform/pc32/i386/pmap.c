@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.79 2007/06/08 00:57:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.80 2007/06/29 21:54:10 dillon Exp $
  */
 
 /*
@@ -2211,6 +2211,7 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 		    vm_size_t size, int limit)
 {
 	struct rb_vm_page_scan_info info;
+	struct lwp *lp;
 	int psize;
 
 	/*
@@ -2223,7 +2224,8 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	/*
 	 * We can't preinit if the pmap is not the current pmap
 	 */
-	if (curproc == NULL || pmap != vmspace_pmap(curproc->p_vmspace))
+	lp = curthread->td_lwp;
+	if (lp == NULL || pmap != vmspace_pmap(lp->lwp_vmspace))
 		return;
 
 	psize = i386_btop(size);
@@ -2317,6 +2319,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 	vm_pindex_t pindex;
 	vm_page_t m, mpte;
 	vm_object_t object;
+	struct lwp *lp;
 
 	/*
 	 * We do not currently prefault mappings that use virtual page
@@ -2324,7 +2327,8 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 	 */
 	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
 		return;
-	if (curproc == NULL || (pmap != vmspace_pmap(curproc->p_vmspace)))
+	lp = curthread->td_lwp;
+	if (lp == NULL || (pmap != vmspace_pmap(lp->lwp_vmspace)))
 		return;
 
 	object = entry->object.vm_object;
@@ -2758,6 +2762,7 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 void
 pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
+	struct lwp *lp;
 	unsigned *pte, tpte;
 	pv_entry_t pv, npv;
 	vm_page_t m;
@@ -2765,7 +2770,8 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 	int iscurrentpmap;
 	int32_t save_generation;
 
-	if (curproc && pmap == vmspace_pmap(curproc->p_vmspace))
+	lp = curthread->td_lwp;
+	if (lp && pmap == vmspace_pmap(lp->lwp_vmspace))
 		iscurrentpmap = 1;
 	else
 		iscurrentpmap = 0;
@@ -3210,20 +3216,47 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
  * Replace p->p_vmspace with a new one.  If adjrefs is non-zero the new
  * vmspace will be ref'd and the old one will be deref'd.
  *
- * If the process is the current process, pm_active will be properly
- * adjusted for both vmspaces and the new vmspace will be activated.
+ * The vmspace for all lwps associated with the process will be adjusted
+ * and cr3 will be reloaded if any lwp is the current lwp.
  */
 void
 pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 {
-	struct pmap *pmap;
 	struct vmspace *oldvm;
+	struct lwp *lp;
 
+	crit_enter();
 	oldvm = p->p_vmspace;
 	if (oldvm != newvm) {
-		crit_enter();
 		p->p_vmspace = newvm;
-		if (p == curproc) {
+		KKASSERT(p->p_nthreads == 1);
+		lp = LIST_FIRST(&p->p_lwps);
+		pmap_setlwpvm(lp, newvm);
+		if (adjrefs) {
+			sysref_get(&newvm->vm_sysref);
+			sysref_put(&oldvm->vm_sysref);
+		}
+	}
+	crit_exit();
+}
+
+/*
+ * Set the vmspace for a LWP.  The vmspace is almost universally set the
+ * same as the process vmspace, but virtual kernels need to swap out contexts
+ * on a per-lwp basis.
+ */
+void
+pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
+{
+	struct vmspace *oldvm;
+	struct pmap *pmap;
+
+	crit_enter();
+	oldvm = lp->lwp_vmspace;
+
+	if (oldvm != newvm) {
+		lp->lwp_vmspace = newvm;
+		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
 			atomic_set_int(&pmap->pm_active, 1 << mycpu->gd_cpuid);
@@ -3242,10 +3275,6 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 #else
 			pmap->pm_active &= ~1;
 #endif
-		}
-		if (adjrefs) {
-			sysref_get(&newvm->vm_sysref);
-			sysref_put(&oldvm->vm_sysref);
 		}
 	}
 	crit_exit();

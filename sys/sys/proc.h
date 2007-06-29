@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.107 2007/04/29 18:25:33 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.108 2007/06/29 21:54:14 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -131,6 +131,7 @@ struct	pargs {
 
 struct jail;
 struct vkernel;
+struct vmspace_entry;
 struct ktrace_node;
 
 enum lwpstat {
@@ -151,6 +152,8 @@ struct lwp {
 	LIST_ENTRY(lwp) lwp_list;	/* List of all threads in the proc. */
 
 	struct proc	*lwp_proc;	/* Link to our proc. */
+	struct vmspace	*lwp_vmspace;	/* Inherited from p_vmspace */
+	struct vmspace_entry *lwp_ve;	/* Used by the vkernel */
 
 	lwpid_t		lwp_tid;	/* Our thread id . */
 

@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.42 2007/06/07 23:00:39 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.43 2007/06/29 21:54:15 dillon Exp $
  */
 
 /*
@@ -418,9 +418,10 @@ RetryFault:
 vm_page_t
 vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type, int *errorp)
 {
+	struct lwp *lp = curthread->td_lwp;
 	vm_page_t m;
 
-	m = vm_fault_page(&curproc->p_vmspace->vm_map, va, 
+	m = vm_fault_page(&lp->lwp_vmspace->vm_map, va, 
 			  fault_type, VM_FAULT_NORMAL, errorp);
 	return(m);
 }

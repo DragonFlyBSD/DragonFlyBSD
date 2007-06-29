@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.57 2007/02/25 23:17:13 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.58 2007/06/29 21:54:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,10 @@ ASSYM(P_VMSPACE, offsetof(struct proc, p_vmspace));
 ASSYM(VM_PMAP, offsetof(struct vmspace, vm_pmap));
 ASSYM(PM_ACTIVE, offsetof(struct pmap, pm_active));
 
+ASSYM(LWP_VMSPACE, offsetof(struct lwp, lwp_vmspace));
+
 ASSYM(TD_PROC, offsetof(struct thread, td_proc));
+ASSYM(TD_LWP, offsetof(struct thread, td_lwp));
 ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
 ASSYM(TD_SP, offsetof(struct thread, td_sp));
 ASSYM(TD_PRI, offsetof(struct thread, td_pri));

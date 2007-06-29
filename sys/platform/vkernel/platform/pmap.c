@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.22 2007/06/18 18:57:13 josepht Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.23 2007/06/29 21:54:12 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -1986,6 +1986,7 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 		    vm_size_t size, int limit)
 {
 	struct rb_vm_page_scan_info info;
+	struct lwp *lp;
 	int psize;
 
 	/*
@@ -1998,7 +1999,8 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	/*
 	 * We can't preinit if the pmap is not the current pmap
 	 */
-	if (curproc == NULL || pmap != vmspace_pmap(curproc->p_vmspace))
+	lp = curthread->td_lwp;
+	if (lp == NULL || pmap != vmspace_pmap(lp->lwp_vmspace))
 		return;
 
 	psize = size >> PAGE_SHIFT;
@@ -2086,12 +2088,13 @@ static int pmap_prefault_pageorder[] = {
 void
 pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 {
-	int i;
 	vm_offset_t starta;
 	vm_offset_t addr;
 	vm_pindex_t pindex;
 	vm_page_t m, mpte;
 	vm_object_t object;
+	struct lwp *lp;
+	int i;
 
 	/*
 	 * We do not currently prefault mappings that use virtual page
@@ -2099,7 +2102,8 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 	 */
 	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
 		return;
-	if (curproc == NULL || (pmap != vmspace_pmap(curproc->p_vmspace)))
+	lp = curthread->td_lwp;
+	if (lp == NULL || pmap != vmspace_pmap(lp->lwp_vmspace))
 		return;
 
 	object = entry->object.vm_object;
@@ -2539,8 +2543,10 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 	pmap_inval_info info;
 	int iscurrentpmap;
 	int32_t save_generation;
+	struct lwp *lp;
 
-	if (curproc && pmap == vmspace_pmap(curproc->p_vmspace))
+	lp = curthread->td_lwp;
+	if (lp && pmap == vmspace_pmap(lp->lwp_vmspace))
 		iscurrentpmap = 1;
 	else
 		iscurrentpmap = 0;
@@ -2975,14 +2981,36 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 void
 pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 {
-	struct pmap *pmap;
 	struct vmspace *oldvm;
+	struct lwp *lp;
 
 	oldvm = p->p_vmspace;
+	crit_enter();
 	if (oldvm != newvm) {
-		crit_enter();
 		p->p_vmspace = newvm;
-		if (p == curproc) {
+		KKASSERT(p->p_nthreads == 1);
+		lp = LIST_FIRST(&p->p_lwps);
+		pmap_setlwpvm(lp, newvm);
+		if (adjrefs) {
+			sysref_get(&newvm->vm_sysref);
+			sysref_put(&oldvm->vm_sysref);
+		}
+	}
+	crit_exit();
+}
+
+void
+pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
+{
+	struct vmspace *oldvm;
+	struct pmap *pmap;
+
+	crit_enter();
+	oldvm = lp->lwp_vmspace;
+
+	if (oldvm != newvm) {
+		lp->lwp_vmspace = newvm;
+		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
 			atomic_set_int(&pmap->pm_active, 1 << mycpu->gd_cpuid);
@@ -2992,10 +3020,6 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 #if defined(SWTCH_OPTIM_STATS)
 			tlb_flush_count++;
 #endif
-#if 0
-			curthread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
-			load_cr3(curthread->td_pcb->pcb_cr3);
-#endif
 			pmap = vmspace_pmap(oldvm);
 #if defined(SMP)
 			atomic_clear_int(&pmap->pm_active,
@@ -3004,13 +3028,10 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 			pmap->pm_active &= ~1;
 #endif
 		}
-		if (adjrefs) {
-			sysref_get(&newvm->vm_sysref);
-			sysref_put(&oldvm->vm_sysref);
-		}
 	}
 	crit_exit();
 }
+
 
 vm_offset_t
 pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)

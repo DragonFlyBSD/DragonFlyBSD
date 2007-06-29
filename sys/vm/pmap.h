@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.25 2007/04/29 18:25:41 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.26 2007/06/29 21:54:15 dillon Exp $
  */
 
 /*
@@ -91,6 +91,7 @@ struct proc;
 struct thread;
 struct vm_page;
 struct vmspace;
+struct vmspace_entry;
 
 /*
  * Most of these variables represent parameters set up by low level MD kernel
@@ -171,6 +172,8 @@ void		 pmap_init_proc (struct proc *);
 void		 pmap_init_thread (struct thread *td);
 void		 pmap_dispose_proc (struct proc *p);
 void		 pmap_replacevm (struct proc *, struct vmspace *, int);
+void		 pmap_setlwpvm (struct lwp *, struct vmspace *);
+
 vm_offset_t	 pmap_addr_hint (vm_object_t obj, vm_offset_t addr, vm_size_t size);
 void		*pmap_kenter_temporary (vm_paddr_t pa, int i);
 void		 pmap_init2 (void);

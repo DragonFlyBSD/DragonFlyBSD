@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.11 2007/04/29 18:25:41 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.12 2007/06/29 21:54:15 dillon Exp $
  */
 #include "opt_ddb.h"
 
@@ -149,11 +149,15 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 	struct vkernel_common *vc;
 	struct vmspace_entry *ve;
 	struct vkernel *vk;
+	struct lwp *lwp;
 	struct proc *p;
 	int framesz;
 	int error;
 
-	if ((vk = curproc->p_vkernel) == NULL)
+	lwp = curthread->td_lwp;
+	p = lwp->lwp_proc;
+
+	if ((vk = p->p_vkernel) == NULL)
 		return (EINVAL);
 	vc = vk->vk_common;
 	if ((ve = vkernel_find_vmspace(vc, uap->id)) == NULL)
@@ -162,8 +166,8 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 	/*
 	 * Signal mailbox interlock
 	 */
-	if (curproc->p_flag & P_MAILBOX) {
-		curproc->p_flag &= ~P_MAILBOX;
+	if (p->p_flag & P_MAILBOX) {
+		p->p_flag &= ~P_MAILBOX;
 		return (EINTR);
 	}
 
@@ -174,11 +178,8 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		 * install the passed register context.  Return with
 		 * EJUSTRETURN so the syscall code doesn't adjust the context.
 		 */
-		p = curproc;
 		++ve->refs;
 		framesz = sizeof(struct trapframe);
-		vk->vk_current = ve;
-		vk->vk_save_vmspace = p->p_vmspace;
 		vk->vk_user_trapframe = uap->tframe;
 		vk->vk_user_vextframe = uap->vframe;
 		bcopy(uap->sysmsg_frame, &vk->vk_save_trapframe, framesz);
@@ -196,11 +197,10 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 			bcopy(&vk->vk_save_vextframe.vx_tls, &curthread->td_tls,
 			      sizeof(vk->vk_save_vextframe.vx_tls));
 			set_user_TLS();
-			vk->vk_current = NULL;
-			vk->vk_save_vmspace = NULL;
 			--ve->refs;
 		} else {
-			pmap_replacevm(p, ve->vmspace, 0);
+			lwp->lwp_ve = ve;
+			pmap_setlwpvm(lwp, ve->vmspace);
 			set_user_TLS();
 			set_vkernel_fp(uap->sysmsg_frame);
 			error = EJUSTRETURN;
@@ -456,6 +456,7 @@ vkernel_exit(struct proc *p)
 	struct vkernel_common *vc;
 	struct vmspace_entry *ve;
 	struct vkernel *vk;
+	struct lwp *lp;
 	int freeme = 0;
 
 	vk = p->p_vkernel;
@@ -471,16 +472,18 @@ vkernel_exit(struct proc *p)
 	 * that the process should enter vkernel_trap() before the handling
 	 * the signal.
 	 */
-	if ((ve = vk->vk_current) != NULL) {
-		kprintf("Killed with active VC, notify kernel list\n");
+	LIST_FOREACH(lp, &p->p_lwps, lwp_list) {
+		if ((ve = lp->lwp_ve) != NULL) {
+			kprintf("Warning, pid %d killed with active VC!\n",
+				p->p_pid);
 #ifdef DDB
-		db_print_backtrace();
+			db_print_backtrace();
 #endif
-		vk->vk_current = NULL;
-		pmap_replacevm(p, vk->vk_save_vmspace, 0);
-		vk->vk_save_vmspace = NULL;
-		KKASSERT(ve->refs > 0);
-		--ve->refs;
+			lp->lwp_ve = NULL;
+			pmap_setlwpvm(lp, p->p_vmspace);
+			KKASSERT(ve->refs > 0);
+			--ve->refs;
+		}
 	}
 
 	/*
@@ -505,8 +508,9 @@ vkernel_exit(struct proc *p)
  * or otherwise needs to return control to the virtual kernel context.
  */
 int
-vkernel_trap(struct proc *p, struct trapframe *frame)
+vkernel_trap(struct lwp *lp, struct trapframe *frame)
 {
+	struct proc *p = lp->lwp_proc;
 	struct vmspace_entry *ve;
 	struct vkernel *vk;
 	int error;
@@ -515,15 +519,14 @@ vkernel_trap(struct proc *p, struct trapframe *frame)
 	 * Which vmspace entry was running?
 	 */
 	vk = p->p_vkernel;
-	ve = vk->vk_current;
-	vk->vk_current = NULL;
+	ve = lp->lwp_ve;
 	KKASSERT(ve != NULL);
 
 	/*
-	 * Switch the process context back to the virtual kernel's VM space.
+	 * Switch the LWP vmspace back to the virtual kernel's VM space.
 	 */
-	pmap_replacevm(p, vk->vk_save_vmspace, 0);
-	vk->vk_save_vmspace = NULL;
+	lp->lwp_ve = NULL;
+	pmap_setlwpvm(lp, p->p_vmspace);
 	KKASSERT(ve->refs > 0);
 	--ve->refs;
 

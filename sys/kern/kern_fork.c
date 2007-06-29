@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.68 2007/04/29 18:25:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.69 2007/06/29 21:54:08 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -568,6 +568,7 @@ restart:
 	lp = zalloc(lwp_zone);
 	bzero(lp, sizeof(*lp));
 	lp->lwp_proc = destproc;
+	lp->lwp_vmspace = destproc->p_vmspace;
 	lp->lwp_tid = tid;
 	LIST_INSERT_HEAD(&destproc->p_lwps, lp, lwp_list);
 	destproc->p_nthreads++;

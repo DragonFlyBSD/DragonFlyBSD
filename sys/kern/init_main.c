@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.80 2007/05/02 05:55:35 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.81 2007/06/29 21:54:08 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -396,6 +396,7 @@ proc0_init(void *dummy __unused)
 	/* Allocate a prototype map so we have something to fork. */
 	pmap_pinit0(vmspace_pmap(&vmspace0));
 	p->p_vmspace = &vmspace0;
+	lp->lwp_vmspace = p->p_vmspace;
 	sysref_init(&vmspace0.vm_sysref, &vmspace_sysref_class);
 	vm_map_init(&vmspace0.vm_map,
 		    round_page(VM_MIN_USER_ADDRESS),

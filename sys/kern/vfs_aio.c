@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.40 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.41 2007/06/29 21:54:08 dillon Exp $
  */
 
 /*
@@ -619,17 +619,13 @@ aio_daemon(void *uproc, struct trapframe *frame)
 	struct aiocblist *aiocbe;
 	struct aioproclist *aiop;
 	struct kaioinfo *ki;
-	struct proc *curcp, *mycp, *userp;
-	struct vmspace *myvm;
+	struct proc *mycp, *userp;
+	struct vmspace *curvm;
+	struct lwp *mylwp;
 	struct ucred *cr;
 
-	/*
-	 * Local copies of curproc (cp) and vmspace (myvm).  Get extra
-	 * reference on myvm so we can use pmap_replacevm()
-	 */
-	mycp = curproc;
-	myvm = mycp->p_vmspace;
-	sysref_get(&myvm->vm_sysref);
+	mylwp = curthread->td_lwp;
+	mycp = mylwp->lwp_proc;
 
 	if (mycp->p_textvp) {
 		vrele(mycp->p_textvp);
@@ -682,14 +678,9 @@ aio_daemon(void *uproc, struct trapframe *frame)
 	 * and creating too many daemons.)
 	 */
 	wakeup(mycp);
+	curvm = NULL;
 
 	for (;;) {
-		/*
-		 * curcp is the current daemon process context.
-		 * userp is the current user process context.
-		 */
-		curcp = mycp;
-
 		/*
 		 * Take daemon off of free queue
 		 */
@@ -714,9 +705,12 @@ aio_daemon(void *uproc, struct trapframe *frame)
 			/*
 			 * Connect to process address space for user program.
 			 */
-			if (userp != curcp) {
-				pmap_replacevm(mycp, userp->p_vmspace, 1);
-				curcp = userp;
+			if (curvm != userp->p_vmspace) {
+				pmap_setlwpvm(mylwp, userp->p_vmspace);
+				if (curvm)
+					sysref_put(&curvm->vm_sysref);
+				curvm = userp->p_vmspace;
+				sysref_get(&curvm->vm_sysref);
 			}
 
 			ki = userp->p_aioinfo;
@@ -781,10 +775,11 @@ aio_daemon(void *uproc, struct trapframe *frame)
 		/*
 		 * Disconnect from user address space.
 		 */
-		if (curcp != mycp) {
+		if (curvm) {
 			/* swap our original address space back in */
-			pmap_replacevm(mycp, myvm, 1);
-			curcp = mycp;
+			pmap_setlwpvm(mylwp, mycp->p_vmspace);
+			sysref_put(&curvm->vm_sysref);
+			curvm = NULL;
 		}
 
 		/*
@@ -820,7 +815,6 @@ aio_daemon(void *uproc, struct trapframe *frame)
 						    mycp->p_vmspace->vm_sysref.refcnt);
 					}
 #endif
-					sysref_put(&myvm->vm_sysref);
 					exit1(0);
 				}
 			}

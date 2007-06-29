@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/swtch.s,v 1.6 2007/04/29 18:25:38 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/swtch.s,v 1.7 2007/06/29 21:54:11 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -126,9 +126,9 @@ ENTRY(cpu_heavy_switch)
 	movl	%edi,PCB_EDI(%edx)
 
 	movl	%ecx,%ebx			/* EBX = curthread */
-	movl	TD_PROC(%ecx),%ecx
+	movl	TD_LWP(%ecx),%ecx
 	movl	PCPU(cpuid), %eax
-	movl	P_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
+	movl	LWP_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
 	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%ecx)
 
 	/*
@@ -225,11 +225,11 @@ ENTRY(cpu_exit_switch)
 	 * If this is a process/lwp, deactivate the pmap after we've
 	 * switched it out.
 	 */
-	movl	TD_PROC(%ebx),%ecx
+	movl	TD_LWP(%ebx),%ecx
 	testl	%ecx,%ecx
 	jz	2f
 	movl	PCPU(cpuid), %eax
-	movl	P_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
+	movl	LWP_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
 	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%ecx)
 2:
 	/*
@@ -275,7 +275,7 @@ ENTRY(cpu_exit_switch)
 ENTRY(cpu_heavy_restore)
 	popfl
 	movl	TD_PCB(%eax),%edx		/* EDX = PCB */
-	movl	TD_PROC(%eax),%ecx
+	movl	TD_LWP(%eax),%ecx
 
 #if defined(SWTCH_OPTIM_STATS)
 	incl	_swtch_optim_stats
@@ -285,7 +285,7 @@ ENTRY(cpu_heavy_restore)
 	 * safely test/reload %cr3 until after we have set the bit in the
 	 * pmap (remember, we do not hold the MP lock in the switch code).
 	 */
-	movl	P_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
+	movl	LWP_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
 	movl	PCPU(cpuid), %esi
 	MPLOCKED btsl	%esi, VM_PMAP+PM_ACTIVE(%ecx)
 

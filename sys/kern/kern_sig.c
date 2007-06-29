@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.78 2007/05/24 20:51:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.79 2007/06/29 21:54:08 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -820,10 +820,10 @@ trapsignal(struct lwp *lp, int sig, u_long code)
 	 * context, switch back to the virtual kernel context before
 	 * trying to post the signal.
 	 */
-	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		struct trapframe *tf = curthread->td_lwp->lwp_md.md_regs;
+	if (lp->lwp_ve) {
+		struct trapframe *tf = lp->lwp_md.md_regs;
 		tf->tf_trapno = 0;
-		vkernel_trap(p, tf);
+		vkernel_trap(lp, tf);
 	}
 
 
@@ -1748,10 +1748,10 @@ postsig(int sig)
 	 * context, switch back to the virtual kernel context before
 	 * trying to post the signal.
 	 */
-	if (p->p_vkernel && p->p_vkernel->vk_current) {
-		struct trapframe *tf = curthread->td_lwp->lwp_md.md_regs;
+	if (lp->lwp_ve) {
+		struct trapframe *tf = lp->lwp_md.md_regs;
 		tf->tf_trapno = 0;
-		vkernel_trap(p, tf);
+		vkernel_trap(lp, tf);
 	}
 
 	lwp_delsig(lp, sig);

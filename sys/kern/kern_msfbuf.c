@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.20 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.21 2007/06/29 21:54:08 dillon Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -273,7 +273,8 @@ msf_map_ubuf(struct msf_buf **msfp, void *base, size_t nbytes, int flags)
 		return (ERANGE);
 	}
 
-	if ((paddr = pmap_extract(&curproc->p_vmspace->vm_pmap, (vm_offset_t)base)) != 0)
+	if ((paddr = pmap_extract(&curthread->td_lwp->lwp_vmspace->vm_pmap,
+				  (vm_offset_t)base)) != 0)
 		msf = msf_alloc(PHYS_TO_VM_PAGE(paddr), flags);
 	else
 		msf = msf_alloc(NULL, flags);
