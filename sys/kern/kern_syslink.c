@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.13 2007/06/29 00:18:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.14 2007/06/29 05:14:00 dillon Exp $
  */
 /*
  * This module implements the core syslink() system call and provides
@@ -108,6 +108,9 @@ static void sldrop(struct sldesc *sl);
 static int syslink_validate_msg(struct syslink_msg *msg, int bytes);
 static int syslink_validate_elm(struct syslink_elm *elm, sl_reclen_t bytes,
 				 int swapit, int depth);
+
+static int sl_local_mmap(struct slmsg *slmsg, char *base, size_t len);
+static void sl_local_munmap(struct slmsg *slmsg);
 
 static int backend_wblocked_user(struct sldesc *sl, int nbio, sl_proto_t proto);
 static int backend_write_user(struct sldesc *sl, struct slmsg *slmsg);
@@ -518,6 +521,7 @@ slmsg_put(struct slmsg *slmsg)
 		xio_release(&slmsg->xio);
 		rel_mplock();
 	}
+	slmsg->flags &= ~SLMSGF_LINMAP;
 	objcache_put(slmsg->oc, slmsg);
 }
 
@@ -554,7 +558,10 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		nbio = 0;
 
 	/*
-	 * Validate the uio
+	 * Validate the uio.
+	 *
+	 * iov0 - message buffer
+	 * iov1 - DMA buffer or backup buffer
 	 */
 	if (uio->uio_iovcnt < 1) {
 		error = 0;
@@ -562,13 +569,9 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	}
 	iov0 = &uio->uio_iov[0];
 	if (uio->uio_iovcnt > 2) {
-		error = EFBIG;
+		error = EINVAL;
 		goto done2;
 	}
-	if (uio->uio_iovcnt > 1)
-		iov1 = &uio->uio_iov[1];
-	else
-		iov1 = NULL;
 
 	/*
 	 * Get a message, blocking if necessary.
@@ -592,22 +595,27 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	wmsg = slmsg->msg;
 
 	/*
-	 * We have a message.  If there isn't enough space, return
-	 * ENOSPC without dequeueing it.  When reading commands containing
-	 * DMA buffers the caller must supply an iov[1] large enough to
-	 * hold the data.
+	 * We have a message and still hold the spinlock.  Make sure the
+	 * uio has enough room to hold the message.
+	 *
+	 * Note that replies do not have XIOs.
 	 */
 	if (slmsg->msgsize > iov0->iov_len) {
 		error = ENOSPC;
 		goto done1;
 	}
-	if (slmsg->xio.xio_bytes &&
-	    (wmsg->sm_head.se_cmd & (SE_CMDF_REPLY|SE_CMDF_DMAW)) ==
-	     SE_CMDF_DMAW &&
-	    (iov1 == NULL || slmsg->xio.xio_bytes > iov1->iov_len)
-	) {
-		error = ENOSPC;
-		goto done1;
+	if (slmsg->xio.xio_bytes) {
+		if (uio->uio_iovcnt != 2) {
+			error = ENOSPC;
+			goto done1;
+		}
+		iov1 = &uio->uio_iov[1];
+		if (slmsg->xio.xio_bytes > iov1->iov_len) {
+			error = ENOSPC;
+			goto done1;
+		}
+	} else {
+		iov1 = NULL;
 	}
 
 	/*
@@ -620,36 +628,68 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	spin_unlock_wr(&sl->spin);
 
 	/*
-	 * Load the message data into the user buffer.  If receiving a
-	 * command with DMAW set the xio is copied into the second user
-	 * buffer.  Commands with DMAR are handled when we reply.
+	 * Load the message data into the user buffer.
+	 *
+	 * If receiving a command an XIO may exist specifying a DMA buffer.
+	 * For commands, if DMAW is set we have to copy or map the buffer
+	 * so the caller can access the data being written.  If DMAR is set
+	 * we do not have to copy but we still must map the buffer so the
+	 * caller can directly fill in the data being requested.
 	 */
-	if ((error = uiomove((void *)slmsg->msg, slmsg->msgsize, uio)) == 0) {
-		if ((wmsg->sm_head.se_cmd & (SE_CMDF_REPLY|SE_CMDF_DMAW)) ==
-		    SE_CMDF_DMAW
-		) {
-			get_mplock();
-			error = xio_copy_xtou(&slmsg->xio, 0,
-					      iov1->iov_base,
-					      slmsg->xio.xio_bytes);
-
+	error = uiomove((void *)slmsg->msg, slmsg->msgsize, uio);
+	if (error == 0 && slmsg->xio.xio_bytes &&
+	    (wmsg->sm_head.se_cmd & SE_CMDF_REPLY) == 0) {
+		if (wmsg->sm_head.se_cmd & SE_CMDF_DMAW) {
 			/*
-			 * If this is a write-only DMA op the XIO can be
-			 * released now, otherwise have to hold on to it
-			 * so the reply can load it.
+			 * Data being passed to caller or being passed in both
+			 * directions, copy or map.
 			 */
-			if ((wmsg->sm_head.se_cmd & SE_CMDF_DMAR) == 0) {
-				slmsg->flags &= ~SLMSGF_HASXIO;
-				xio_release(&slmsg->xio);
+			get_mplock();
+			if ((flags & O_MAPONREAD) &&
+			    (slmsg->xio.xio_flags & XIOF_VMLINEAR)) {
+				error = sl_local_mmap(slmsg,
+						      iov1->iov_base,
+						      iov1->iov_len);
+				if (error)
+				error = xio_copy_xtou(&slmsg->xio, 0,
+						      iov1->iov_base,
+						      slmsg->xio.xio_bytes);
+			} else {
+				error = xio_copy_xtou(&slmsg->xio, 0,
+						      iov1->iov_base,
+						      slmsg->xio.xio_bytes);
+			}
+			rel_mplock();
+		} else if (wmsg->sm_head.se_cmd & SE_CMDF_DMAR) {
+			/*
+			 * Data will be passed back to originator, map
+			 * the buffer if we can, else use the backup
+			 * buffer at the same VA supplied by the caller.
+			 */
+			get_mplock();
+			if ((flags & O_MAPONREAD) &&
+			    (slmsg->xio.xio_flags & XIOF_VMLINEAR)) {
+				error = sl_local_mmap(slmsg,
+						      iov1->iov_base,
+						      iov1->iov_len);
+				error = 0; /* ignore errors */
 			}
 			rel_mplock();
 		}
 	}
 
 	/*
-	 * Clean up
+	 * Clean up.
 	 */
-	if (slmsg->msg->sm_proto & SM_PROTO_REPLY) {
+	if (error) {
+		/*
+		 * Requeue the message if we could not read it successfully
+		 */
+		spin_lock_wr(&sl->spin);
+		TAILQ_INSERT_HEAD(&sl->inq, slmsg, tqnode);
+		slmsg->flags |= SLMSGF_ONINQ;
+		spin_unlock_wr(&sl->spin);
+	} else if (slmsg->msg->sm_proto & SM_PROTO_REPLY) {
 		/*
 		 * Dispose of any received reply after we've copied it
 		 * to userland.  We don't need the slmsg any more.
@@ -657,20 +697,6 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		slmsg->flags &= ~SLMSGF_ONINQ;
 		sl->peer->backend_dispose(sl->peer, slmsg);
 		if (sl->wblocked && sl->repbytes < syslink_bufsize) {
-			sl->wblocked = 0;	/* MP race ok here */
-			wakeup(&sl->wblocked);
-		}
-	} else if (error) {
-		/*
-		 * Reply to a command that we failed to copy to userspace.
-		 */
-		spin_lock_wr(&sl->spin);
-		RB_REMOVE(slmsg_rb_tree, &sl->reply_rb_root, slmsg);
-		sl->cmdbytes -= slmsg->maxsize;
-		spin_unlock_wr(&sl->spin);
-		slmsg->flags &= ~SLMSGF_ONINQ;
-		sl->peer->backend_reply(sl->peer, slmsg, NULL);
-		if (sl->wblocked && sl->cmdbytes < syslink_bufsize) {
 			sl->wblocked = 0;	/* MP race ok here */
 			wakeup(&sl->wblocked);
 		}
@@ -690,7 +716,7 @@ done2:
 }
 
 /*
- * Userland writes syslink message
+ * Userland writes syslink message (optionally with DMA buffer in iov[1]).
  */
 static
 int
@@ -740,6 +766,10 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		iov1 = &uio->uio_iov[1];
 		if (iov1->iov_len > XIO_INTERNAL_SIZE) {
 			error = EFBIG;
+			goto done2;
+		}
+		if ((intptr_t)iov1->iov_base & PAGE_MASK) {
+			error = EINVAL;
 			goto done2;
 		}
 	} else {
@@ -792,14 +822,22 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	if ((wmsg->sm_head.se_cmd & SE_CMDF_REPLY) == 0) {
 		/*
 		 * Install the XIO for commands if any DMA flags are set.
+		 *
+		 * XIOF_VMLINEAR requires that the XIO represent a
+		 * contiguous set of pages associated with a single VM
+		 * object (so the reader side can mmap it easily).
+		 *
+		 * XIOF_VMLINEAR might not be set when the kernel sends
+		 * commands to userland so the reader side backs off to
+		 * a backup buffer if it isn't set, but we require it
+		 * for userland writes.
 		 */
+		xflags = XIOF_VMLINEAR;
 		if (wmsg->sm_head.se_cmd & SE_CMDF_DMAR)
-			xflags = XIOF_READ | XIOF_WRITE;
+			xflags |= XIOF_READ | XIOF_WRITE;
 		else if (wmsg->sm_head.se_cmd & SE_CMDF_DMAW)
-			xflags = XIOF_READ;
-		else 
-			xflags = 0;
-		if (xflags) {
+			xflags |= XIOF_READ;
+		if (xflags && iov1) {
 			get_mplock();
 			error = xio_init_ubuf(&slmsg->xio, iov1->iov_base,
 					      iov1->iov_len, xflags);
@@ -812,8 +850,6 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	} else {
 		/*
 		 * Replies have to be matched up against received commands.
-		 * If the command is set DMAR and the reply has data, copy
-		 * the data to the command's XIO.
 		 */
 		spin_lock_wr(&sl->spin);
 		slcmd = slmsg_rb_tree_RB_LOOKUP(&sl->reply_rb_root,
@@ -828,10 +864,17 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		spin_unlock_wr(&sl->spin);
 
 		/*
-		 * Copy the reply iov if the original command set DMAR.
+		 * If the original command specified DMAR, has an xio, and
+		 * our write specifies a DMA buffer, then we can do a
+		 * copyback.  But if we are linearly mapped and the caller
+		 * is using the map base address, then the caller filled in
+		 * the data via the direct memory map and no copyback is
+		 * needed.
 		 */
 		if ((slcmd->msg->sm_head.se_cmd & SE_CMDF_DMAR) && iov1 &&
-		    (slcmd->flags & SLMSGF_HASXIO)
+		    (slcmd->flags & SLMSGF_HASXIO) &&
+		    ((slcmd->flags & SLMSGF_LINMAP) == 0 ||
+		     iov1->iov_base != slcmd->vmbase)
 		) {
 			size_t count;
 			if (iov1->iov_len > slcmd->xio.xio_bytes)
@@ -841,6 +884,15 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 			get_mplock();
 			error = xio_copy_utox(&slcmd->xio, 0, iov1->iov_base,
 					      count);
+			rel_mplock();
+		}
+
+		/*
+		 * If we had mapped a DMA buffer, remove it
+		 */
+		if (slcmd->flags & SLMSGF_LINMAP) {
+			get_mplock();
+			sl_local_munmap(slcmd);
 			rel_mplock();
 		}
 
@@ -939,6 +991,69 @@ slfileop_kqfilter(struct file *fp, struct knote *kn)
 {
 	return(0);
 }
+
+/************************************************************************
+ *			    LOCAL MEMORY MAPPING 			*
+ ************************************************************************
+ *
+ * This feature is currently not implemented
+ *
+ */
+
+static
+int
+sl_local_mmap(struct slmsg *slmsg, char *base, size_t len)
+{
+	return (EOPNOTSUPP);
+}
+
+static
+void
+sl_local_munmap(struct slmsg *slmsg)
+{
+	/* empty */
+}
+
+#if 0
+
+static
+int
+sl_local_mmap(struct slmsg *slmsg, char *base, size_t len)
+{
+	struct vmspace *vms = curproc->p_vmspace;
+	vm_offset_t addr = (vm_offset_t)base;
+
+	/* XXX  check user address range */
+	error = vm_map_replace(
+			&vma->vm_map,
+			(vm_offset_t)base, (vm_offset_t)base + len,
+			slmsg->xio.xio_pages[0]->object,
+			slmsg->xio.xio_pages[0]->pindex << PAGE_SHIFT,
+			VM_PROT_READ|VM_PROT_WRITE,
+			VM_PROT_READ|VM_PROT_WRITE,
+			MAP_DISABLE_SYNCER);
+	}
+	if (error == 0) {
+		slmsg->flags |= SLMSGF_LINMAP;
+		slmsg->vmbase = base;
+		slmsg->vmsize = len;
+	}
+	return (error);
+}
+
+static
+void
+sl_local_munmap(struct slmsg *slmsg)
+{
+	if (slmsg->flags & SLMSGF_LINMAP) {
+		vm_map_remove(&curproc->p_vmspace->vm_map,
+			      slmsg->vmbase,
+			      slmsg->vmbase + slcmd->vmsize);
+		slmsg->flags &= ~SLMSGF_LINMAP;
+	}
+}
+
+#endif
 
 /************************************************************************
  *			    MESSAGE VALIDATION 				*
