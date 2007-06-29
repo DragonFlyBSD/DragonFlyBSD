@@ -1,6 +1,6 @@
 /*	$NetBSD: ehci.c,v 1.91 2005/02/27 00:27:51 perry Exp $ */
 /*	$FreeBSD: src/sys/dev/usb/ehci.c,v 1.36.2.3 2006/09/24 13:39:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.31 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.32 2007/06/29 22:56:31 hasso Exp $	*/
 
 /*
  * Copyright (c) 2004 The NetBSD Foundation, Inc.
@@ -469,8 +469,8 @@ ehci_init(ehci_softc_t *sc)
 	sc->sc_async_head = sqh;
 	EOWRITE4(sc, EHCI_ASYNCLISTADDR, sqh->physaddr | EHCI_LINK_QH);
 
-	usb_callout_init(sc->sc_tmo_pcd);
-	usb_callout_init(sc->sc_tmo_intrlist);
+	callout_init(&sc->sc_tmo_pcd);
+	callout_init(&sc->sc_tmo_intrlist);
 
 	lockinit(&sc->sc_doorbell_lock, "ehcidb", 0, 0);
 
@@ -579,7 +579,7 @@ ehci_intr1(ehci_softc_t *sc)
 		 */
 		ehci_pcd_able(sc, 0);
 		/* Do not allow RHSC interrupts > 1 per second */
-                usb_callout(sc->sc_tmo_pcd, hz, ehci_pcd_enable, sc);
+                callout_reset(&sc->sc_tmo_pcd, hz, ehci_pcd_enable, sc);
 		eintrs &= ~EHCI_STS_PCD;
 	}
 
@@ -669,7 +669,7 @@ ehci_softintr(void *v)
 	/* Schedule a callout to catch any dropped transactions. */
 	if ((sc->sc_flags & EHCI_SCFLG_LOSTINTRBUG) &&
 	    !LIST_EMPTY(&sc->sc_intrhead))
-		usb_callout(sc->sc_tmo_intrlist, hz / 5, ehci_intrlist_timeout,
+		callout_reset(&sc->sc_tmo_intrlist, hz / 5, ehci_intrlist_timeout,
 		   sc);
 
 #ifdef USB_USE_SOFTINTR
@@ -727,7 +727,7 @@ ehci_check_intr(ehci_softc_t *sc, struct ehci_xfer *ex)
 	}
  done:
 	DPRINTFN(12, ("ehci_check_intr: ex=%p done\n", ex));
-	usb_uncallout(ex->xfer.timeout_handle, ehci_timeout, ex);
+	callout_stop(&ex->xfer.timeout_handle);
 	usb_rem_task(ex->xfer.pipe->device, &ex->abort_task);
 	ehci_idone(ex);
 }
@@ -892,8 +892,8 @@ ehci_detach(struct ehci_softc *sc, int flags)
 	EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
 	EOWRITE4(sc, EHCI_USBCMD, 0);
 	EOWRITE4(sc, EHCI_USBCMD, EHCI_CMD_HCRESET);
-	usb_uncallout(sc->sc_tmo_intrlist, ehci_intrlist_timeout, sc);
-	usb_uncallout(sc->sc_tmo_pcd, ehci_pcd_enable, sc);
+	callout_stop(&sc->sc_tmo_intrlist);
+	callout_stop(&sc->sc_tmo_pcd);
 
 	usb_delay_ms(&sc->sc_bus, 300); /* XXX let stray task complete */
 
@@ -2384,7 +2384,7 @@ ehci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 		/* If we're dying, just do the software part. */
 		crit_enter();
 		xfer->status = status;	/* make software ignore it */
-		usb_uncallout(xfer->timeout_handle, ehci_timeout, xfer);
+		callout_stop(&xfer->timeout_handle);
 		usb_rem_task(epipe->pipe.device, &exfer->abort_task);
 		usb_transfer_complete(xfer);
 		crit_exit();
@@ -2418,7 +2418,7 @@ ehci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 	crit_enter();
 	exfer->ehci_xfer_flags |= EHCI_XFER_ABORTING;
 	xfer->status = status;	/* make software ignore it */
-	usb_uncallout(xfer->timeout_handle, ehci_timeout, xfer);
+	callout_stop(&xfer->timeout_handle);
 	usb_rem_task(epipe->pipe.device, &exfer->abort_task);
 	crit_exit();
 
@@ -2801,7 +2801,7 @@ ehci_device_request(usbd_xfer_handle xfer)
 	crit_enter();
 	ehci_set_qh_qtd(sqh, setup);
 	if (xfer->timeout && !sc->sc_bus.use_polling) {
-                usb_callout(xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
+                callout_reset(&xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
 			    ehci_timeout, xfer);
 	}
 	ehci_add_intr_list(sc, exfer);
@@ -2910,7 +2910,7 @@ ehci_device_bulk_start(usbd_xfer_handle xfer)
 	crit_enter();
 	ehci_set_qh_qtd(sqh, data);
 	if (xfer->timeout && !sc->sc_bus.use_polling) {
-		usb_callout(xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
+		callout_reset(&xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
 			    ehci_timeout, xfer);
 	}
 	ehci_add_intr_list(sc, exfer);
@@ -3078,7 +3078,7 @@ ehci_device_intr_start(usbd_xfer_handle xfer)
 	crit_enter();
 	ehci_set_qh_qtd(sqh, data);
 	if (xfer->timeout && !sc->sc_bus.use_polling) {
-		usb_callout(xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
+		callout_reset(&xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
 		    ehci_timeout, xfer);
 	}
 	ehci_add_intr_list(sc, exfer);
@@ -3172,7 +3172,7 @@ ehci_device_intr_done(usbd_xfer_handle xfer)
 		crit_enter();
 		ehci_set_qh_qtd(sqh, data);
 		if (xfer->timeout && !sc->sc_bus.use_polling) {
-			usb_callout(xfer->timeout_handle,
+			callout_reset(&xfer->timeout_handle,
 			    MS_TO_TICKS(xfer->timeout), ehci_timeout, xfer);
 		}
 		crit_exit();

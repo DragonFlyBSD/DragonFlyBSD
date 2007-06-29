@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.33 2007/06/28 13:55:12 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.34 2007/06/29 22:56:31 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -247,7 +247,7 @@ USB_ATTACH(usb)
 		USB_ATTACH_ERROR_RETURN;
 	}
 #else
-	usb_callout_init(sc->sc_bus->softi);
+	callout_init(&sc->sc_bus->softi);
 #endif
 #endif
 

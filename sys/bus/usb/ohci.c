@@ -1,6 +1,6 @@
 /*	$NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.154.2.4 2006/06/26 00:31:25 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.22 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.23 2007/06/29 22:56:31 hasso Exp $	*/
 
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -332,7 +332,7 @@ ohci_detach(struct ohci_softc *sc, int flags)
 
 	sc->sc_dying = 1;
 
-	usb_uncallout(sc->sc_tmo_rhsc, ohci_rhsc_enable, sc);
+	callout_stop(&sc->sc_tmo_rhsc);
 
 	OWRITE4(sc, OHCI_INTERRUPT_DISABLE, OHCI_ALL_INTRS);
 	OWRITE4(sc, OHCI_CONTROL, OHCI_HCFS_RESET);
@@ -741,7 +741,7 @@ ohci_init(ohci_softc_t *sc)
 	sc->sc_bus.methods = &ohci_bus_methods;
 	sc->sc_bus.pipe_size = sizeof(struct ohci_pipe);
 
-	usb_callout_init(sc->sc_tmo_rhsc);
+	callout_init(&sc->sc_tmo_rhsc);
 
 	return (USBD_NORMAL_COMPLETION);
 
@@ -1169,7 +1169,7 @@ ohci_intr1(ohci_softc_t *sc)
 		 */
 		ohci_rhsc_able(sc, 0);
 		/* Do not allow RHSC interrupts > 1 per second */
-		usb_callout(sc->sc_tmo_rhsc, hz, ohci_rhsc_enable, sc);
+		callout_reset(&sc->sc_tmo_rhsc, hz, ohci_rhsc_enable, sc);
 		eintrs &= ~OHCI_RHSC;
 	}
 
@@ -1340,7 +1340,7 @@ ohci_softintr(void *v)
 			DPRINTFN(15,("ohci_process_done: error cc=%d (%s)\n",
 			  OHCI_TD_GET_CC(le32toh(std->td.td_flags)),
 			  ohci_cc_strs[OHCI_TD_GET_CC(le32toh(std->td.td_flags))]));
-			usb_uncallout(xfer->timeout_handle, ohci_timeout, xfer);
+			callout_stop(&xfer->timeout_handle);
 			usb_rem_task(OXFER(xfer)->xfer.pipe->device,
 			    &OXFER(xfer)->abort_task);
 
@@ -1380,7 +1380,7 @@ ohci_softintr(void *v)
 			continue;
 
 		/* Normal transfer completion */
-		usb_uncallout(xfer->timeout_handle, ohci_timeout, xfer);
+		callout_stop(&xfer->timeout_handle);
 		usb_rem_task(OXFER(xfer)->xfer.pipe->device,
 		    &OXFER(xfer)->abort_task);
 		for (p = xfer->hcpriv; p->xfer == xfer; p = n) {
@@ -1738,7 +1738,7 @@ ohci_device_request(usbd_xfer_handle xfer)
 	opipe->tail.td = tail;
 	OWRITE4(sc, OHCI_COMMAND_STATUS, OHCI_CLF);
 	if (xfer->timeout && !sc->sc_bus.use_polling) {
-		usb_callout(xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
+		callout_reset(&xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
 			    ohci_timeout, xfer);
 	}
 	crit_exit();
@@ -2203,7 +2203,7 @@ ohci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 		/* If we're dying, just do the software part. */
 		crit_enter();
 		xfer->status = status;	/* make software ignore it */
-		usb_uncallout(xfer->timeout_handle, ohci_timeout, xfer);
+		callout_stop(&xfer->timeout_handle);
 		usb_rem_task(xfer->pipe->device, &OXFER(xfer)->abort_task);
 		usb_transfer_complete(xfer);
 		crit_exit();
@@ -2236,7 +2236,7 @@ ohci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 	crit_enter();
 	oxfer->ohci_xfer_flags |= OHCI_XFER_ABORTING;
 	xfer->status = status;	/* make software ignore it */
-	usb_uncallout(xfer->timeout_handle, ohci_timeout, xfer);
+	callout_stop(&xfer->timeout_handle);
 	usb_rem_task(xfer->pipe->device, &OXFER(xfer)->abort_task);
 	crit_exit();
 	DPRINTFN(1,("ohci_abort_xfer: stop ed=%p\n", sed));
@@ -2954,7 +2954,7 @@ ohci_device_bulk_start(usbd_xfer_handle xfer)
 	sed->ed.ed_flags &= htole32(~OHCI_ED_SKIP);
 	OWRITE4(sc, OHCI_COMMAND_STATUS, OHCI_BLF);
 	if (xfer->timeout && !sc->sc_bus.use_polling) {
-                usb_callout(xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
+                callout_reset(&xfer->timeout_handle, MS_TO_TICKS(xfer->timeout),
 			    ohci_timeout, xfer);
 	}
 
