@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/xio.h,v 1.8 2007/06/29 00:18:03 dillon Exp $
+ * $DragonFly: src/sys/sys/xio.h,v 1.9 2007/06/29 05:09:14 dillon Exp $
  */
 
 /*
@@ -84,6 +84,7 @@ typedef struct xio *xio_t;
 
 #define XIOF_READ	0x0001
 #define XIOF_WRITE	0x0002
+#define XIOF_VMLINEAR	0x0004	/* must be VM object linear */
 
 #endif
 

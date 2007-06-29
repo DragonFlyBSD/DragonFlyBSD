@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.13 2007/06/29 00:18:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.14 2007/06/29 05:09:15 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -94,6 +94,7 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
 {
     vm_offset_t addr;
     vm_page_t m;
+    vm_page_t m0;
     int error;
     int i;
     int n;
@@ -112,6 +113,7 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
 	xio->xio_pages = xio->xio_internal_pages;
 	if ((n = PAGE_SIZE - xio->xio_offset) > ubytes)
 	    n = ubytes;
+	m0 = NULL;
 	for (i = 0; n && i < XIO_INTERNAL_PAGES; ++i) {
 	    m = vm_fault_page_quick(addr, vmprot, &error);
 	    if (m == NULL)
@@ -122,6 +124,19 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
 	    if ((n = ubytes) > PAGE_SIZE)
 		n = PAGE_SIZE;
 	    addr += PAGE_SIZE;
+
+	    /*
+	     * Check linearity, used by syslink to memory map DMA buffers.
+	     */
+	    if (flags & XIOF_VMLINEAR) {
+		if (i == 0) {
+		    m0 = m;
+		} else 
+		if (m->object != m0->object || m->pindex != m0->pindex + i) {
+		    error = EINVAL;
+		    break;
+		}
+	    }
 	}
 	xio->xio_npages = i;
 
