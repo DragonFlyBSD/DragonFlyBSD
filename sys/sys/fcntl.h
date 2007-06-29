@@ -37,7 +37,7 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.11 2006/12/05 23:14:55 dillon Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.12 2007/06/29 05:12:40 dillon Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -108,9 +108,11 @@
 #define O_FASYNCWRITE	0x00800000	/* force asynchronous write */
 #define O_FUNBUFFERED	0x01000000	/* force unbuffered (direct) I/O */
 #define O_FBUFFERED	0x02000000	/* force buffered I/O */
+#define O_MAPONREAD	0x04000000	/* memory map read buffer */
 
 #define O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
-			 O_FSYNCWRITE|O_FASYNCWRITE|O_FUNBUFFERED|O_FBUFFERED)
+			 O_FSYNCWRITE|O_FASYNCWRITE|O_FUNBUFFERED|O_FBUFFERED|\
+			 O_MAPONREAD)
 
 #ifdef _KERNEL
 /* convert from open() flags to/from fflags; convert O_RD/WR to FREAD/FWRITE */
@@ -118,9 +120,11 @@
 #define	OFLAGS(fflags)	((fflags) - 1)
 
 /* bits to save after open */
-#define	FMASK		(FREAD|FWRITE|FAPPEND|FASYNC|FFSYNC|FNONBLOCK|O_DIRECT)
+#define	FMASK		(FREAD|FWRITE|FAPPEND|FASYNC|FFSYNC|FNONBLOCK|\
+			 O_DIRECT|O_MAPONREAD)
 /* bits settable by fcntl(F_SETFL, ...) */
-#define	FCNTLFLAGS	(FAPPEND|FASYNC|FFSYNC|FNONBLOCK|FPOSIXSHM|O_DIRECT)
+#define	FCNTLFLAGS	(FAPPEND|FASYNC|FFSYNC|FNONBLOCK|FPOSIXSHM|\
+			 O_DIRECT|O_MAPONREAD)
 #endif
 
 /*
