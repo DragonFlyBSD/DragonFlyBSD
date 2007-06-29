@@ -37,7 +37,7 @@
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rndcontrol/random.4,v 1.9.2.2 2001/11/24 16:14:18 dd Exp $
-.\" $DragonFly: src/usr.sbin/rndcontrol/random.4,v 1.8 2006/11/19 20:24:04 swildner Exp $
+.\" $DragonFly: src/usr.sbin/rndcontrol/random.4,v 1.9 2007/06/29 19:34:41 swildner Exp $
 .\"
 .Dd October 21, 1995
 .Dt RANDOM 4 i386
@@ -138,7 +138,12 @@ and is used by
 .It Pa /dev/urandom
 .El
 .Sh "SEE ALSO"
-.Xr srandomdev 3 ,
+.Xr arc4random 3 ,
+.Xr drand48 3 ,
+.Xr rand 3 ,
+.Xr RAND_add 3 ,
+.Xr RAND_bytes 3 ,
+.Xr random 3 ,
 .Xr rndcontrol 8
 .Sh HISTORY
 The

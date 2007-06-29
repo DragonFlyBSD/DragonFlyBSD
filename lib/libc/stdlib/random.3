@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)random.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/random.3,v 1.11.2.6 2003/06/03 19:13:16 schweikh Exp $
-.\" $DragonFly: src/lib/libc/stdlib/random.3,v 1.4 2006/03/01 00:00:46 swildner Exp $
+.\" $DragonFly: src/lib/libc/stdlib/random.3,v 1.5 2007/06/29 19:34:41 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt RANDOM 3
@@ -173,6 +173,7 @@ is called with less than 8 bytes of state information, or if
 detects that the state information has been garbled, error
 messages are printed on the standard error output.
 .Sh SEE ALSO
+.Xr arc4random 3 ,
 .Xr rand 3 ,
 .Xr srand 3 ,
 .Xr urandom 4
