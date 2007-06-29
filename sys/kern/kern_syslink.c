@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.12 2007/06/17 21:31:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.13 2007/06/29 00:18:05 dillon Exp $
  */
 /*
  * This module implements the core syslink() system call and provides
@@ -66,6 +66,7 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/buf2.h>
 
 #include "opt_syslink.h"
 
@@ -119,6 +120,7 @@ static int backend_write_kern(struct sldesc *sl, struct slmsg *slmsg);
 static void backend_reply_kern(struct sldesc *sl, struct slmsg *slcmd,
 			       struct slmsg *slrep);
 static void backend_dispose_kern(struct sldesc *sl, struct slmsg *slmsg);
+static void slmsg_put(struct slmsg *slmsg);
 
 /*
  * Objcache memory backend
@@ -176,6 +178,7 @@ slmsg_ctor(void *data, void *private, int ocflags)
 		slmsg->msg = kmalloc(slmsg->maxsize,
 				     M_SYSLINK, M_WAITOK|M_ZERO);
 	}
+	xio_init(&slmsg->xio);
 	return(TRUE);
 }
 
@@ -505,6 +508,19 @@ sldrop(struct sldesc *sl)
 	}
 }
 
+static
+void
+slmsg_put(struct slmsg *slmsg)
+{
+	if (slmsg->flags & SLMSGF_HASXIO) {
+		slmsg->flags &= ~SLMSGF_HASXIO;
+		get_mplock();
+		xio_release(&slmsg->xio);
+		rel_mplock();
+	}
+	objcache_put(slmsg->oc, slmsg);
+}
+
 /************************************************************************
  *				FILEOPS API				*
  ************************************************************************
@@ -520,6 +536,8 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	struct sldesc *sl = fp->f_data;		/* fp refed on call */
 	struct slmsg *slmsg;
 	struct iovec *iov0;
+	struct iovec *iov1;
+	struct syslink_msg *wmsg;
 	int error;
 	int nbio;
 
@@ -543,6 +561,14 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		goto done2;
 	}
 	iov0 = &uio->uio_iov[0];
+	if (uio->uio_iovcnt > 2) {
+		error = EFBIG;
+		goto done2;
+	}
+	if (uio->uio_iovcnt > 1)
+		iov1 = &uio->uio_iov[1];
+	else
+		iov1 = NULL;
 
 	/*
 	 * Get a message, blocking if necessary.
@@ -563,12 +589,23 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		if (error)
 			goto done1;
 	}
+	wmsg = slmsg->msg;
 
 	/*
 	 * We have a message.  If there isn't enough space, return
-	 * ENOSPC without dequeueing it.
+	 * ENOSPC without dequeueing it.  When reading commands containing
+	 * DMA buffers the caller must supply an iov[1] large enough to
+	 * hold the data.
 	 */
 	if (slmsg->msgsize > iov0->iov_len) {
+		error = ENOSPC;
+		goto done1;
+	}
+	if (slmsg->xio.xio_bytes &&
+	    (wmsg->sm_head.se_cmd & (SE_CMDF_REPLY|SE_CMDF_DMAW)) ==
+	     SE_CMDF_DMAW &&
+	    (iov1 == NULL || slmsg->xio.xio_bytes > iov1->iov_len)
+	) {
 		error = ENOSPC;
 		goto done1;
 	}
@@ -583,13 +620,35 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	spin_unlock_wr(&sl->spin);
 
 	/*
-	 * Load the message data into the user buffer and clean up.  We
-	 * may have to wakeup blocked writers.
+	 * Load the message data into the user buffer.  If receiving a
+	 * command with DMAW set the xio is copied into the second user
+	 * buffer.  Commands with DMAR are handled when we reply.
 	 */
 	if ((error = uiomove((void *)slmsg->msg, slmsg->msgsize, uio)) == 0) {
-		/* yip yip */
+		if ((wmsg->sm_head.se_cmd & (SE_CMDF_REPLY|SE_CMDF_DMAW)) ==
+		    SE_CMDF_DMAW
+		) {
+			get_mplock();
+			error = xio_copy_xtou(&slmsg->xio, 0,
+					      iov1->iov_base,
+					      slmsg->xio.xio_bytes);
+
+			/*
+			 * If this is a write-only DMA op the XIO can be
+			 * released now, otherwise have to hold on to it
+			 * so the reply can load it.
+			 */
+			if ((wmsg->sm_head.se_cmd & SE_CMDF_DMAR) == 0) {
+				slmsg->flags &= ~SLMSGF_HASXIO;
+				xio_release(&slmsg->xio);
+			}
+			rel_mplock();
+		}
 	}
 
+	/*
+	 * Clean up
+	 */
 	if (slmsg->msg->sm_proto & SM_PROTO_REPLY) {
 		/*
 		 * Dispose of any received reply after we've copied it
@@ -641,10 +700,13 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	struct slmsg *slmsg;
 	struct slmsg *slcmd;
 	struct syslink_msg sltmp;
+	struct syslink_msg *wmsg;	/* wire message */
 	struct iovec *iov0;
+	struct iovec *iov1;
 	sl_proto_t proto;
 	int nbio;
 	int error;
+	int xflags;
 
 	/*
 	 * Kinda messy.  Figure out the non-blocking state
@@ -669,6 +731,19 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	if (iov0->iov_len > SLMSG_BIG) {
 		error = EFBIG;
 		goto done2;
+	}
+	if (uio->uio_iovcnt > 2) {
+		error = EFBIG;
+		goto done2;
+	}
+	if (uio->uio_iovcnt > 1) {
+		iov1 = &uio->uio_iov[1];
+		if (iov1->iov_len > XIO_INTERNAL_SIZE) {
+			error = EFBIG;
+			goto done2;
+		}
+	} else {
+		iov1 = NULL;
 	}
 
 	/*
@@ -705,18 +780,41 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	else
 		slmsg = objcache_get(sl_objcache_big, M_WAITOK);
 	slmsg->msgsize = iov0->iov_len;
+	wmsg = slmsg->msg;
 
-	error = uiomove((void *)slmsg->msg, iov0->iov_len, uio);
+	error = uiomove((void *)wmsg, iov0->iov_len, uio);
 	if (error)
 		goto done1;
-	error = syslink_validate_msg(slmsg->msg, slmsg->msgsize);
+	error = syslink_validate_msg(wmsg, slmsg->msgsize);
 	if (error)
 		goto done1;
 
-	/*
-	 * Replies have to be matched up against received commands.
-	 */
-	if (slmsg->msg->sm_proto & SM_PROTO_REPLY) {
+	if ((wmsg->sm_head.se_cmd & SE_CMDF_REPLY) == 0) {
+		/*
+		 * Install the XIO for commands if any DMA flags are set.
+		 */
+		if (wmsg->sm_head.se_cmd & SE_CMDF_DMAR)
+			xflags = XIOF_READ | XIOF_WRITE;
+		else if (wmsg->sm_head.se_cmd & SE_CMDF_DMAW)
+			xflags = XIOF_READ;
+		else 
+			xflags = 0;
+		if (xflags) {
+			get_mplock();
+			error = xio_init_ubuf(&slmsg->xio, iov1->iov_base,
+					      iov1->iov_len, xflags);
+			rel_mplock();
+			if (error)
+				goto done1;
+			slmsg->flags |= SLMSGF_HASXIO;
+		}
+		error = sl->peer->backend_write(sl->peer, slmsg);
+	} else {
+		/*
+		 * Replies have to be matched up against received commands.
+		 * If the command is set DMAR and the reply has data, copy
+		 * the data to the command's XIO.
+		 */
 		spin_lock_wr(&sl->spin);
 		slcmd = slmsg_rb_tree_RB_LOOKUP(&sl->reply_rb_root,
 						slmsg->msg->sm_msgid);
@@ -728,18 +826,44 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		RB_REMOVE(slmsg_rb_tree, &sl->reply_rb_root, slcmd);
 		sl->cmdbytes -= slcmd->maxsize;
 		spin_unlock_wr(&sl->spin);
+
+		/*
+		 * Copy the reply iov if the original command set DMAR.
+		 */
+		if ((slcmd->msg->sm_head.se_cmd & SE_CMDF_DMAR) && iov1 &&
+		    (slcmd->flags & SLMSGF_HASXIO)
+		) {
+			size_t count;
+			if (iov1->iov_len > slcmd->xio.xio_bytes)
+				count = slcmd->xio.xio_bytes;
+			else
+				count = iov1->iov_len;
+			get_mplock();
+			error = xio_copy_utox(&slcmd->xio, 0, iov1->iov_base,
+					      count);
+			rel_mplock();
+		}
+
+		/*
+		 * Reply and handle unblocking
+		 */
 		sl->peer->backend_reply(sl->peer, slcmd, slmsg);
 		if (sl->wblocked && sl->cmdbytes < syslink_bufsize) {
 			sl->wblocked = 0;	/* MP race ok here */
 			wakeup(&sl->wblocked);
 		}
-		/* error is 0 */
-	} else {
-		error = sl->peer->backend_write(sl->peer, slmsg);
+
+		/*
+		 * slmsg has already been dealt with, make sure error is
+		 * 0 so we do not double-free it.
+		 */
+		error = 0;
 	}
+	/* fall through */
 done1:
 	if (error)
-		objcache_put(slmsg->oc, slmsg);
+		slmsg_put(slmsg);
+	/* fall through */
 done2:
 	return(error);
 }
@@ -1056,7 +1180,7 @@ backend_reply_user(struct sldesc *sl, struct slmsg *slcmd, struct slmsg *slrep)
 {
 	int error;
 
-	objcache_put(slcmd->oc, slcmd);
+	slmsg_put(slcmd);
 	if (slrep) {
 		spin_lock_wr(&sl->spin);
 		if ((sl->flags & SLF_RSHUTDOWN) == 0) {
@@ -1078,7 +1202,7 @@ static
 void
 backend_dispose_user(struct sldesc *sl, struct slmsg *slmsg)
 {
-	objcache_put(slmsg->oc, slmsg);
+	slmsg_put(slmsg);
 }
 
 /************************************************************************
@@ -1190,7 +1314,7 @@ syslink_kfreemsg(struct sldesc *ksl, struct slmsg *slmsg)
 		slmsg->rep = NULL;
 		ksl->peer->backend_dispose(ksl->peer, rep);
 	}
-	objcache_put(slmsg->oc, slmsg);
+	slmsg_put(slmsg);
 }
 
 void

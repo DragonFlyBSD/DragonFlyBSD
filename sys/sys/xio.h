@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/xio.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/xio.h,v 1.8 2007/06/29 00:18:03 dillon Exp $
  */
 
 /*
@@ -96,6 +96,8 @@ void xio_release(xio_t xio);
 int xio_uio_copy(xio_t xio, int uoffset, struct uio *uio, int *sizep);
 int xio_copy_xtou(xio_t xio, int uoffset, void *uptr, int bytes);
 int xio_copy_xtok(xio_t xio, int uoffset, void *kptr, int bytes);
+int xio_copy_utox(xio_t xio, int uoffset, const void *uptr, int bytes);
+int xio_copy_ktox(xio_t xio, int uoffset, const void *kptr, int bytes);
 
 /*
  * XIOs are not modified by copy operations, the caller must track the 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.12 2007/01/11 20:53:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.13 2007/06/29 00:18:05 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -259,7 +259,7 @@ xio_copy_xtou(xio_t xio, int uoffset, void *uptr, int bytes)
     vm_page_t m;
     struct sf_buf *sf;
 
-    if (bytes > xio->xio_bytes)
+    if (uoffset + bytes > xio->xio_bytes)
 	return(EFAULT);
 
     offset = (xio->xio_offset + uoffset) & PAGE_MASK;
@@ -334,3 +334,96 @@ xio_copy_xtok(xio_t xio, int uoffset, void *kptr, int bytes)
     return(error);
 }
 
+/*
+ * Copy the specified number of bytes from userland to the xio.
+ * Return an error code or 0 on success.  
+ *
+ * uoffset is the abstracted starting offset in the XIO, not the actual
+ * offset, and usually starts at 0.
+ *
+ * Data in pages backing the XIO will be modified.
+ */
+int
+xio_copy_utox(xio_t xio, int uoffset, const void *uptr, int bytes)
+{
+    int i;
+    int n;
+    int error;
+    int offset;
+    vm_page_t m;
+    struct sf_buf *sf;
+
+    if (uoffset + bytes > xio->xio_bytes)
+	return(EFAULT);
+
+    offset = (xio->xio_offset + uoffset) & PAGE_MASK;
+    if ((n = PAGE_SIZE - offset) > bytes)
+	n = bytes;
+
+    error = 0;
+    for (i = (xio->xio_offset + uoffset) >> PAGE_SHIFT; 
+	 i < xio->xio_npages; 
+	 ++i
+    ) {
+	m = xio->xio_pages[i];
+	sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
+	error = copyin(uptr, (char *)sf_buf_kva(sf) + offset, n);
+	sf_buf_free(sf);
+	if (error)
+	    break;
+	bytes -= n;
+	uptr = (const char *)uptr + n;
+	if (bytes == 0)
+	    break;
+	if ((n = bytes) > PAGE_SIZE)
+	    n = PAGE_SIZE;
+	offset = 0;
+    }
+    return(error);
+}
+
+/*
+ * Copy the specified number of bytes from the kernel to the xio.
+ * Return an error code or 0 on success.  
+ *
+ * uoffset is the abstracted starting offset in the XIO, not the actual
+ * offset, and usually starts at 0.
+ *
+ * Data in pages backing the XIO will be modified.
+ */
+int
+xio_copy_ktox(xio_t xio, int uoffset, const void *kptr, int bytes)
+{
+    int i;
+    int n;
+    int error;
+    int offset;
+    vm_page_t m;
+    struct sf_buf *sf;
+
+    if (uoffset + bytes > xio->xio_bytes)
+	return(EFAULT);
+
+    offset = (xio->xio_offset + uoffset) & PAGE_MASK;
+    if ((n = PAGE_SIZE - offset) > bytes)
+	n = bytes;
+
+    error = 0;
+    for (i = (xio->xio_offset + uoffset) >> PAGE_SHIFT; 
+	 i < xio->xio_npages; 
+	 ++i
+    ) {
+	m = xio->xio_pages[i];
+	sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
+	bcopy(kptr, (char *)sf_buf_kva(sf) + offset, n);
+	sf_buf_free(sf);
+	bytes -= n;
+	kptr = (const char *)kptr + n;
+	if (bytes == 0)
+	    break;
+	if ((n = bytes) > PAGE_SIZE)
+	    n = PAGE_SIZE;
+	offset = 0;
+    }
+    return(error);
+}

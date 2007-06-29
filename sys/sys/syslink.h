@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink.h,v 1.10 2007/06/17 21:31:06 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink.h,v 1.11 2007/06/29 00:18:03 dillon Exp $
  */
 
 /*
@@ -143,13 +143,14 @@ struct slmsg {
 	int msgsize;
 	int maxsize;
 	int flags;
-	struct bio *bio;
+	struct xio xio;
 	struct slmsg *rep;		/* reply (kernel backend) */
 	struct objcache *oc;
 	struct syslink_msg *msg;
 };
 
 #define SLMSGF_ONINQ	0x0001
+#define SLMSGF_HASXIO	0x0002
 
 #endif
 

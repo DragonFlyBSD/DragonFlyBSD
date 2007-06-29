@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg.h,v 1.9 2007/06/17 21:31:07 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg.h,v 1.10 2007/06/29 00:18:03 dillon Exp $
  */
 /*
  * The syslink infrastructure implements an optimized RPC mechanism across a 
@@ -97,7 +97,15 @@ typedef u_int16_t	sl_reclen_t;	/* item length */
  *	SE_CMDF_ASIZE* - These 2 bits can encode the size for simple elments.
  *	The size is verified prior to delivery so command switches on simple
  *	elements need not check se_bytes.  This also makes it easier for
- *	the protocol code to do endian conversions.
+ *	the protocol code to do endian conversions.  These bits are not used
+ *	for this purpose in sm_head.
+ *
+ *	SE_CMDF_DMAR
+ *	SE_CMDF_DMAW - These bits share the same bit positions as the ASIZE
+ *	bits and are used in sm_head to indicate the presence of an out of
+ *	band DMA buffer associated with the message.  DMAW indicates that
+ *	the originator is passing data to the target, DMAR indicates that
+ *	the target is passing data to the originator.  Both bits may be set.
  *
  * SE_AUX field - auxillary data field (signed 32 bit integer)
  *
@@ -122,6 +130,9 @@ struct syslink_elm {
 #define SE_CMDF_ASIZE0		0x0400	/* 0 bytes of extended data */
 #define SE_CMDF_ASIZE4		0x0800	/* 4 bytes of extended data */
 #define SE_CMDF_ASIZE8		0x0C00	/* 8 bytes of extended data */
+
+#define SE_CMDF_DMAR		0x0800	/* buffer sent to target */
+#define SE_CMDF_DMAW		0x0400	/* buffer returned from target */
 
 #define SE_CMD_MASK		0x03FF
 
