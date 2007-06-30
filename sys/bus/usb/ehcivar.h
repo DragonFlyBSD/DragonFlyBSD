@@ -1,6 +1,6 @@
 /*	$NetBSD: ehcivar.h,v 1.19 2005/04/29 15:04:29 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.9.2.1 2006/01/26 01:43:13 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehcivar.h,v 1.10 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehcivar.h,v 1.11 2007/06/30 20:39:22 hasso Exp $	*/
 
 /*
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -144,8 +144,8 @@ typedef struct ehci_softc {
 
 	struct lock sc_doorbell_lock;
 
-	usb_callout_t sc_tmo_pcd;
-	usb_callout_t sc_tmo_intrlist;
+	struct callout sc_tmo_pcd;
+	struct callout sc_tmo_intrlist;
 
 	char sc_dying;
 } ehci_softc_t;

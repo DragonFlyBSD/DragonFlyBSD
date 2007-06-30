@@ -1,6 +1,6 @@
 /*	$NetBSD: ohcivar.h,v 1.30 2001/12/31 12:20:35 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohcivar.h,v 1.40.2.1 2005/12/04 05:52:23 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohcivar.h,v 1.8 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohcivar.h,v 1.9 2007/06/30 20:39:22 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -139,7 +139,7 @@ typedef struct ohci_softc {
 	u_int sc_overrun_cnt;
 	struct timeval sc_overrun_ntc;
 
-	usb_callout_t sc_tmo_rhsc;
+	struct callout sc_tmo_rhsc;
 
 	char sc_dying;
 } ohci_softc_t;

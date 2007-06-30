@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdivar.h,v 1.70 2002/07/11 21:14:36 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdivar.h,v 1.43.2.1 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdivar.h,v 1.9 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdivar.h,v 1.10 2007/06/30 20:39:22 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -223,7 +223,7 @@ struct usbd_xfer {
 
 	void		       *hcpriv; /* private use by the HC driver */
 
-	usb_callout_t		timeout_handle;
+	struct callout		timeout_handle;
 };
 
 void usbd_init(void);

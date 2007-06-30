@@ -1,6 +1,6 @@
 /*	$NetBSD: uhcivar.h,v 1.33 2002/02/11 11:41:30 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhcivar.h,v 1.40 2005/03/19 19:08:46 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhcivar.h,v 1.8 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhcivar.h,v 1.9 2007/06/30 20:39:22 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -186,7 +186,7 @@ typedef struct uhci_softc {
 	/* Info for the root hub interrupt channel. */
 	int sc_ival;			/* time between root hub intrs */
 	usbd_xfer_handle sc_intr_xfer;	/* root hub interrupt transfer */
-	usb_callout_t sc_poll_handle;
+	struct callout sc_poll_handle;
 
 	char sc_vendor[16];		/* vendor string for root hub */
 	int sc_id_vendor;		/* vendor ID for root hub */

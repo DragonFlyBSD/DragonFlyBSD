@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.34 2007/06/29 22:56:31 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.35 2007/06/30 20:39:22 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -316,7 +316,7 @@ usb_create_event_thread(void *arg)
 	struct usb_softc *sc = arg;
 	int i;
 
-	if (usb_kthread_create1(usb_event_thread, sc, &sc->sc_event_thread,
+	if (kthread_create(usb_event_thread, sc, &sc->sc_event_thread,
 			   "%s", device_get_nameunit(sc->sc_dev))) {
 		kprintf("%s: unable to create event thread for\n",
 		       device_get_nameunit(sc->sc_dev));
@@ -330,7 +330,7 @@ usb_create_event_thread(void *arg)
 			taskq->taskcreated = 1;
 			taskq->name = taskq_names[i];
 			TAILQ_INIT(&taskq->tasks);
-			if (usb_kthread_create2(usb_task_thread, taskq,
+			if (kthread_create(usb_task_thread, taskq,
 			    &taskq->task_thread_proc, taskq->name)) {
 				kprintf("unable to create task thread\n");
 				panic("usb_create_event_thread task");
@@ -810,9 +810,7 @@ usb_add_event(int type, struct usb_event *uep)
 	wakeup(&usb_events);
 	selwakeuppri(&usb_selevent, 0);
 	if (usb_async_proc != NULL) {
-		PROC_LOCK(usb_async_proc);
 		ksignal(usb_async_proc, SIGIO);
-		PROC_UNLOCK(usb_async_proc);
 	}
 	crit_exit();
 }
