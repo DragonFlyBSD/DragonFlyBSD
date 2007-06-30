@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.10 2007/02/22 21:02:49 corecode Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.11 2007/06/30 05:54:03 dillon Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -106,7 +106,7 @@ kernel-tags:
 # Note: when moving the existing kernel to .old, it is by default stripped
 # so we do not have two full debug environments sitting in / eating up space.
 #
-kernel-install:
+kernel-install: kernel-installable
 	@if [ ! -f ${SELECTEDKERNEL} ] ; then \
 		echo "You must build a kernel first." ; \
 		exit 1 ; \
@@ -134,7 +134,7 @@ kernel-install:
 		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
 .endif
 
-kernel-reinstall:
+kernel-reinstall: kernel-installable
 .ifdef NOFSCHG
 	${INSTALL} -m 555 -o root -g wheel \
 		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
@@ -142,6 +142,18 @@ kernel-reinstall:
 	${INSTALL} -m 555 -o root -g wheel -fschg \
 		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
 .endif
+
+# Require DESTDIR to be manually specified when installing a
+# virtual kernel.
+#
+kernel-installable:
+.if ${P} == vkernel
+.if !defined(DESTDIR)
+	@echo "When installing a virtual kernel, DESTDIR must be manually specified"
+	@exit 1
+.endif
+.endif
+	@exit 0
 
 .if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES)
 all:	modules
