@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.58 2007/06/24 17:37:35 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.59 2007/06/30 21:52:19 swildner Exp $
  */
 
 #include "opt_ntp.h"
@@ -765,7 +765,7 @@ tvtohz_high(struct timeval *tv)
 			sec++;
 			usec -= 1000000;
 		}
-		kprintf("tvtohz: negative time difference %ld sec %ld usec\n",
+		kprintf("tvtohz_high: negative time difference %ld sec %ld usec\n",
 		       sec, usec);
 #endif
 		ticks = 1;
