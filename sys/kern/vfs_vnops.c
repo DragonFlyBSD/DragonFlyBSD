@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.50 2007/05/09 00:53:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.51 2007/06/30 20:17:36 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -636,7 +636,7 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 
 	get_mplock();
 	KASSERT(uio->uio_td == curthread,
-		("uio_procp %p is not p %p", uio->uio_td, curthread));
+		("uio_td %p is not p %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
 	if (vp->v_type == VREG)
 		bwillwrite();
@@ -705,7 +705,7 @@ svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 
 	get_mplock();
 	KASSERT(uio->uio_td == curthread,
-		("uio_procp %p is not p %p", uio->uio_td, curthread));
+		("uio_td %p is not p %p", uio->uio_td, curthread));
 
 	vp = (struct vnode *)fp->f_data;
 	if (vp == NULL || vp->v_type == VBAD) {
