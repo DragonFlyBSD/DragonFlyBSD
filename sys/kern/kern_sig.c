@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.79 2007/06/29 21:54:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.80 2007/06/30 02:33:04 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -693,6 +693,10 @@ killpg_all_callback(struct proc *p, void *data)
 	return(0);
 }
 
+/*
+ * Send a general signal to a process or LWPs within that process.  Note
+ * that new signals cannot be sent if a process is exiting.
+ */
 int
 kern_kill(int sig, pid_t pid, lwpid_t tid)
 {
@@ -708,6 +712,14 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 			return (ESRCH);
 		if (!CANSIGNAL(p, sig))
 			return (EPERM);
+
+		/*
+		 * NOP if the process is exiting.  Note that lwpsignal() is
+		 * called directly with P_WEXIT set to kill individual LWPs
+		 * during exit, which is allowed.
+		 */
+		if (p->p_flag & P_WEXIT)
+			return (0);
 		if (tid != -1) {
 			FOREACH_LWP_IN_PROC(lp, p) {
 				if (lp->lwp_tid == tid)
@@ -963,11 +975,10 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		action = SIG_DFL;
 	} else {
 		/*
-		 * Do not try to deliver signals to an exiting process or
-		 * exiting lwp.
+		 * Do not try to deliver signals to an exiting lwp.  Note
+		 * that we must still deliver the signal if P_WEXIT is set
+		 * in the process flags.
 		 */
-		if (p->p_flag & P_WEXIT)
-			return;
 		if (lp && (lp->lwp_flag & LWP_WEXIT))
 			return;
 
