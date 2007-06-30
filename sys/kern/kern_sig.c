@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.80 2007/06/30 02:33:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.81 2007/06/30 23:38:31 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -817,9 +817,11 @@ pgsignal(struct pgrp *pgrp, int sig, int checkctty)
 }
 
 /*
- * Send a signal caused by a trap to the current process.
- * If it will be caught immediately, deliver it with correct code.
- * Otherwise, post it normally.
+ * Send a signal caused by a trap to the current lwp.  If it will be caught
+ * immediately, deliver it with correct code.  Otherwise, post it normally.
+ *
+ * These signals may ONLY be delivered to the specified lwp and may never
+ * be delivered to the process generically.
  */
 void
 trapsignal(struct lwp *lp, int sig, u_long code)
@@ -1019,10 +1021,13 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 
 	if (p->p_stat == SSTOP) {
 		/*
-		 * Nobody can handle this signal, so add it to the process
-		 * pending list.
+		 * Nobody can handle this signal, add it to the lwp or
+		 * process pending list 
 		 */
-		SIGADDSET(p->p_siglist, sig);
+		if (lp)
+			SIGADDSET(lp->lwp_siglist, sig);
+		else
+			SIGADDSET(p->p_siglist, sig);
 
 		/*
 		 * If the process is stopped and is being traced, then no
@@ -1098,24 +1103,29 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 	/* else not stopped */
 active_process:
 
-	if (lp == NULL)
+	/*
+	 * Never deliver a lwp-specific signal to a random lwp.
+	 */
+	if (lp == NULL) {
 		lp = find_lwp_for_signal(p, sig);
+		if (lp && SIGISMEMBER(lp->lwp_sigmask, sig))
+			lp = NULL;
+	}
 
 	/*
-	 * If lp == NULL, there is no thread available which does
-	 * not block the signal.  If lp is set, it might be a thread
-	 * specific signal, so we have to check for the thread ignoring
-	 * the signal.
-	 *
-	 * If so, defer further processing for this signal.
-	 * Add the signal to the process pending list.
+	 * Deliver to the process generically if (1) the signal is being
+	 * sent to any thread or (2) we could not find a thread to deliver
+	 * it to.
 	 */
-	if (lp == NULL || SIGISMEMBER(lp->lwp_sigmask, sig)) {
+	if (lp == NULL) {
 		SIGADDSET(p->p_siglist, sig);
 		goto out;
 	}
-	/* else we have a lwp to deliver the signal to */
 
+	/*
+	 * Deliver to a specific LWP whether it masks it or not.  It will
+	 * not be dispatched if masked but we must still deliver it.
+	 */
 	if (p->p_nice > NZERO && action == SIG_DFL && (prop & SA_KILL) &&
 	    (p->p_flag & P_TRACED) == 0) {
 		p->p_nice = NZERO;
