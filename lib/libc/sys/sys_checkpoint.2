@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/sys_checkpoint.2,v 1.5 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/sys_checkpoint.2,v 1.6 2007/06/30 01:59:41 dillon Exp $
 .\"
 .Dd November 22, 2004
 .Dt SYS_CHECKPOINT 2
@@ -220,7 +220,22 @@ the original is likely being replaced.
 The caller must not truncate the existing checkpoint file when creating
 a new one or specify the existing file's file descriptor as the new
 one as this will destroy the data that the checkpoint operation needs
-to copy to the new file.
+to copy to the new file.  It is best to checkpoint to a new file and then
+rename-over the old, or to remove() the old file before creating the new
+one so it remains valid as long as the program continues to run.
+.Pp
+Threaded programs cannot currently be checkpointed.  The program must be
+reduced to a single thread before it can be safely checkpointed.
+.Pp
+MAP_VPAGETABLE mappings cannot currently be checkpointed.  A program must
+restore such mappings manually on resumption.  Only regular file and
+anonymous memory mappings are checkpointed and restored.  Device and other
+special mappings are not.  Only regular file descriptors are checkpointed
+and restored.  Devices, pipes, sockets, and other special descriptors are
+not.  Memory wiring states are not checkpointed or restored.  madvise()
+states are not checkpointed or restored.  Basic mapping permissions are
+checkpointed and restored.
+.Pp
 .Sh SECURITY
 The sysctl
 .Em kern.ckptgroup
