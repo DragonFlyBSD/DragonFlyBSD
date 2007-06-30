@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.54 2007/05/27 16:07:41 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.55 2007/06/30 21:47:54 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -485,6 +485,8 @@ MLINKS+=timeout.9 callout.9 \
 	timeout.9 callout_reset.9 \
 	timeout.9 callout_stop.9 \
 	timeout.9 untimeout.9
+MLINKS+=tvtohz.9 tvtohz_high.9 \
+	tvtohz.9 tvtohz_low.9
 MLINKS+=uio.9 uiomove.9
 MLINKS+=vhold.9 vdrop.9
 MLINKS+=VOP_ATTRIB.9 VOP_GETATTR.9 \
