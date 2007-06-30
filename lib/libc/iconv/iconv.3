@@ -1,5 +1,5 @@
 .\" $NetBSD: src/lib/libc/iconv/iconv.3,v 1.12 2004/08/02 13:38:21 tshiozak Exp $
-.\" $DragonFly: src/lib/libc/iconv/iconv.3,v 1.1 2005/03/11 23:33:53 joerg Exp $
+.\" $DragonFly: src/lib/libc/iconv/iconv.3,v 1.2 2007/06/30 19:03:52 swildner Exp $
 .\"
 .\" Copyright (c)2003 Citrus Project,
 .\" All rights reserved.
@@ -160,14 +160,18 @@ Upon successful completion of
 it returns a conversion descriptor.
 Otherwise,
 .Fn iconv_open
-returns (iconv_t)\-1 and sets errno to indicate the error.
+returns (iconv_t)\-1 and sets
+.Va errno
+to indicate the error.
 .Pp
 Upon successful completion of
 .Fn iconv_close ,
 it returns 0.
 Otherwise,
 .Fn iconv_close
-returns \-1 and sets errno to indicate the error.
+returns \-1 and sets
+.Va errno
+to indicate the error.
 .Pp
 Upon successful completion of
 .Fn iconv ,
@@ -176,7 +180,9 @@ it returns the number of
 conversions.
 Otherwise,
 .Fn iconv
-returns (size_t)\-1 and sets errno to indicate the error.
+returns (size_t)\-1 and sets
+.Va errno
+to indicate the error.
 .\" ----------------------------------------------------------------------
 .Sh ERRORS
 The

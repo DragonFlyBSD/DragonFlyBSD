@@ -31,7 +31,7 @@
 .\"
 .\"	From: @(#)sigaction.2	8.2 (Berkeley) 4/3/94
 .\" $FreeBSD: src/lib/libc/sys/sigaction.2,v 1.22.2.10 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.7 2006/05/26 19:39:37 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.8 2007/06/30 19:03:52 swildner Exp $
 .\"
 .Dd April 3, 1994
 .Dt SIGACTION 2
@@ -196,7 +196,9 @@ the calling process exit.  If the calling process subsequently issues
 a
 .Xr wait 2
 (or equivalent), it blocks until all of the calling process's child
-processes terminate, and then returns a value of -1 with errno set to
+processes terminate, and then returns a value of -1 with
+.Va errno
+set to
 .Er ECHILD .
 .It Dv SA_ONSTACK
 If this bit is set, the system will deliver the signal to the process

@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/sys_checkpoint.2,v 1.6 2007/06/30 01:59:41 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/sys_checkpoint.2,v 1.7 2007/06/30 19:03:52 swildner Exp $
 .\"
 .Dd November 22, 2004
 .Dt SYS_CHECKPOINT 2
@@ -102,7 +102,7 @@ an exec call.
 Upon successful completion, the value 0 is typically returned.  A checkpoint
 being resumed typically returns a positive value; otherwise the value -1
 is returned and the global variable
-.Li errno
+.Va errno
 is set to indicate the error.
 .Sh EXAMPLE
 .Bd -literal -offset indent -compact

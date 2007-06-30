@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/at_fork.9,v 1.9.2.7 2002/01/10 09:36:27 ru Exp $
-.\" $DragonFly: src/share/man/man9/at_fork.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/at_fork.9,v 1.3 2007/06/30 19:03:52 swildner Exp $
 .\" "
 .Dd August 15, 1996
 .Os
@@ -64,7 +64,9 @@ argument as the corresponding call to
 .Fn at_fork .
 .Sh RETURN VALUES
 .Fn at_fork
-returns an errno, 0 meaning success.
+returns an
+.Va errno ,
+0 meaning success.
 .Fn rm_at_fork
 returns the number of items removed (should be 0 or 1).
 .Sh SEE ALSO

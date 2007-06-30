@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libstand/libstand.3,v 1.5.2.11 2002/06/26 19:14:43 schweikh Exp $
-.\" $DragonFly: src/lib/libstand/libstand.3,v 1.5 2006/02/17 19:35:07 swildner Exp $
+.\" $DragonFly: src/lib/libstand/libstand.3,v 1.6 2007/06/30 19:03:52 swildner Exp $
 .\"
 .Dd September 13, 2004
 .Dt LIBSTAND 3
@@ -171,7 +171,9 @@ may be used to prevent a variable being unset.
 .Fn strerror "int error"
 .Xc
 .Pp
-Returns error messages for the subset of errno values supported by
+Returns error messages for the subset of
+.Va errno
+values supported by
 .Nm .
 .It Fn assert expression
 .Pp

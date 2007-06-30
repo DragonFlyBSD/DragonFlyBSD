@@ -33,7 +33,7 @@
 .\"
 .\"     @(#)glob.3	8.3 (Berkeley) 4/16/94
 .\" $FreeBSD: src/lib/libc/gen/glob.3,v 1.7.2.11 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/glob.3,v 1.4 2006/05/26 19:39:36 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/glob.3,v 1.5 2007/06/30 19:03:52 swildner Exp $
 .\"
 .Dd December 6, 2005
 .Dt GLOB 3
@@ -376,9 +376,10 @@ are undefined.
 .Pp
 If
 .Fn glob
-terminates due to an error, it sets errno and returns one of the
-following non-zero constants, which are defined in the include
-file
+terminates due to an error, it sets
+.Va errno
+and returns one of the
+following non-zero constants, which are defined in the include file
 .In glob.h :
 .Bl -tag -width GLOB_NOCHECK
 .It Dv GLOB_NOSPACE
@@ -460,9 +461,9 @@ may cause unchecked errors.
 .Pp
 The
 .Fn glob
-argument
-may fail and set errno for any of the errors specified for the
-library routines
+argument may fail and set
+.Va errno
+for any of the errors specified for the library routines
 .Xr stat 2 ,
 .Xr closedir 3 ,
 .Xr opendir 3 ,

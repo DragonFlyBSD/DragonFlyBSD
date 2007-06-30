@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/kqueue.2,v 1.1.2.16 2002/07/02 21:05:08 mp Exp $
-.\" $DragonFly: src/lib/libc/sys/kqueue.2,v 1.3 2006/05/26 19:39:37 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/kqueue.2,v 1.4 2007/06/30 19:03:52 swildner Exp $
 .\"
 .Dd April 14, 2000
 .Dt KQUEUE 2
@@ -382,7 +382,9 @@ This filter automatically sets the EV_CLEAR flag internally.
 .Fn kqueue
 creates a new kernel event queue and returns a file descriptor.
 If there was an error creating the kernel event queue, a value of -1 is
-returned and errno set.
+returned and
+.Va errno
+set.
 .Pp
 .Fn kevent
 returns the number of events placed in the
@@ -404,7 +406,7 @@ and the system error in
 Otherwise,
 .Dv -1
 will be returned, and
-.Dv errno
+.Va errno
 will be set to indicate the error condition.
 If the time limit expires, then
 .Fn kevent

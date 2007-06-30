@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)termios.4	8.4 (Berkeley) 4/19/94
 .\" $FreeBSD: src/share/man/man4/termios.4,v 1.12.2.9 2001/12/17 11:30:12 ru Exp $
-.\" $DragonFly: src/share/man/man4/termios.4,v 1.4 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/termios.4,v 1.5 2007/06/30 19:03:52 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt TERMIOS 4
@@ -175,7 +175,8 @@ signal, or if the process group of the reading
 process is orphaned, the
 .Xr read 2
 returns -1 with
-.Va errno set to
+.Va errno
+set to
 .Er EIO
 and no
 signal is sent.  The default action of the
@@ -206,7 +207,8 @@ or blocking
 the
 .Xr write 2
 returns -1 with
-errno set to
+.Va errno
+set to
 .Er EIO
 and no signal is sent.
 .Pp
@@ -279,7 +281,8 @@ request, and the read completes successfully, having read as
 much data as possible, the number of bytes read is returned.
 .It
 If there is no data available, the read returns -1, with
-errno set to
+.Va errno
+set to
 .Er EAGAIN .
 .El
 .Pp

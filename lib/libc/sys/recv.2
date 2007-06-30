@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)recv.2	8.3 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/recv.2,v 1.8.2.8 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/recv.2,v 1.5 2006/05/26 19:39:37 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/recv.2,v 1.6 2007/06/30 19:03:52 swildner Exp $
 .\"
 .Dd February 21, 1994
 .Dt RECV 2
@@ -253,8 +253,9 @@ for ancillary data.
 is returned to indicate that expedited or out-of-band data were received.
 .Sh RETURN VALUES
 Upon successful completion the number of bytes which were received is
-returned.  Otherwise -1 is returned and the global variable errno is
-set to indicate the error.
+returned.  Otherwise -1 is returned and the global variable
+.Va errno
+is set to indicate the error.
 .Sh ERRORS
 The calls fail if:
 .Bl -tag -width Er
