@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/vkernel.h,v 1.9 2007/06/29 21:54:14 dillon Exp $
+ * $DragonFly: src/sys/sys/vkernel.h,v 1.10 2007/07/01 01:11:37 dillon Exp $
  */
 
 #ifndef _SYS_VKERNEL_H_
@@ -70,18 +70,18 @@ RB_PROTOTYPE(vmspace_rb_tree, vmspace_entry, rb_entry, rb_vmspace_compare);
  * original VM space and trap context is saved in the process's vkernel
  * structure.
  */
-struct vkernel {
-	struct trapframe vk_save_trapframe;	/* swapped context */
-	struct vextframe vk_save_vextframe;
-	struct trapframe *vk_user_trapframe;	/* copyback to vkernel */
-	struct vextframe *vk_user_vextframe;
-	struct vkernel_common *vk_common;	/* shared data */
+struct vkernel_lwp {
+	struct trapframe save_trapframe;	/* swapped context */
+	struct vextframe save_vextframe;
+	struct trapframe *user_trapframe;	/* copyback to vkernel */
+	struct vextframe *user_vextframe;
+	struct vmspace_entry *ve;
 };
 
-struct vkernel_common {
-	RB_HEAD(vmspace_rb_tree, vmspace_entry) vc_root;
-	struct spinlock vc_spin;
-	int vc_refs;
+struct vkernel_proc {
+	RB_HEAD(vmspace_rb_tree, vmspace_entry) root;
+	struct spinlock spin;
+	int refs;
 };
 
 struct vmspace_entry {
@@ -96,6 +96,7 @@ struct vmspace_entry {
 
 void vkernel_inherit(struct proc *p1, struct proc *p2);
 void vkernel_exit(struct proc *p);
+void vkernel_lwp_exit(struct lwp *lp);
 int vkernel_trap(struct lwp *lp, struct trapframe *frame);
 
 #endif

@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.16 2007/06/29 21:54:11 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.17 2007/07/01 01:11:36 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -525,7 +525,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	 * context, switch back to the virtual kernel context before
 	 * trying to post the signal.
 	 */
-	if (lp->lwp_ve) {
+	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 		lp->lwp_md.md_regs->tf_trapno = 0;
 		vkernel_trap(lp, lp->lwp_md.md_regs);
 	}

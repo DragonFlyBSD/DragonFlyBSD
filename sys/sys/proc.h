@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.109 2007/07/01 00:03:49 swildner Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.110 2007/07/01 01:11:37 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -130,7 +130,8 @@ struct	pargs {
  */
 
 struct jail;
-struct vkernel;
+struct vkernel_proc;
+struct vkernel_lwp;
 struct vmspace_entry;
 struct ktrace_node;
 
@@ -153,7 +154,7 @@ struct lwp {
 
 	struct proc	*lwp_proc;	/* Link to our proc. */
 	struct vmspace	*lwp_vmspace;	/* Inherited from p_vmspace */
-	struct vmspace_entry *lwp_ve;	/* Used by the vkernel */
+	struct vkernel_lwp *lwp_vkernel;/* VKernel support, lwp part */
 
 	lwpid_t		lwp_tid;	/* Our thread id . */
 
@@ -295,7 +296,7 @@ struct	proc {
 	struct proc	*p_leader;	/* XXX lwp */
 	void		*p_emuldata;	/* process-specific emulator state */
 	struct usched	*p_usched;	/* Userland scheduling control */
-	struct vkernel	*p_vkernel;	/* Virtual kernel extension */
+	struct vkernel_proc *p_vkernel; /* VKernel support, proc part */
 	int		p_numposixlocks; /* number of POSIX locks */
 
 	struct spinlock p_spin;		/* Spinlock for LWP access to proc */

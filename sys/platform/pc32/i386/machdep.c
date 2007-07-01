@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.124 2007/06/29 21:54:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.125 2007/07/01 01:11:38 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -712,7 +712,6 @@ void
 sendupcall(struct vmupcall *vu, int morepending)
 {
 	struct lwp *lp = curthread->td_lwp;
-	struct proc *p = lp->lwp_proc;
 	struct trapframe *regs;
 	struct upcall upcall;
 	struct upc_frame upc_frame;
@@ -723,7 +722,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	 * context, switch back to the virtual kernel context before
 	 * trying to post the signal.
 	 */
-	if (lp->lwp_ve) {
+	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 		lp->lwp_md.md_regs->tf_trapno = 0;
 		vkernel_trap(lp, lp->lwp_md.md_regs);
 	}

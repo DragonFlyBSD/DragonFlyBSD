@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.81 2007/06/30 02:33:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.82 2007/07/01 01:11:35 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -334,9 +334,15 @@ exit1(int rv)
 	if (vm->vm_upcalls)
 		upc_release(vm, lp);
 
-	/* clean up data related to virtual kernel operation */
-	if (p->p_vkernel)
+	/*
+	 * Clean up data related to virtual kernel operation.  Clean up
+	 * any vkernel context related to the current lwp now so we can
+	 * destroy p_vkernel.
+	 */
+	if (p->p_vkernel) {
+		vkernel_lwp_exit(lp);
 		vkernel_exit(p);
+	}
 
 	/*
 	 * Release user portion of address space.
@@ -516,6 +522,12 @@ lwp_exit(int masterexit)
 	 * make sure it is set here.
 	 */
 	lp->lwp_flag |= LWP_WEXIT;
+
+	/*
+	 * Clean up any virtualization
+	 */
+	if (lp->lwp_vkernel)
+		vkernel_lwp_exit(lp);
 
 	/*
 	 * Nobody actually wakes us when the lock

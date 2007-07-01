@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.12 2007/06/29 21:54:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.13 2007/07/01 01:11:37 dillon Exp $
  */
 #include "opt_ddb.h"
 
@@ -56,10 +56,10 @@
 #include <sys/spinlock2.h>
 #include <sys/sysref2.h>
 
-static struct vmspace_entry *vkernel_find_vmspace(struct vkernel_common *vc,
+static struct vmspace_entry *vkernel_find_vmspace(struct vkernel_proc *vkp,
 						  void *id);
 static void vmspace_entry_delete(struct vmspace_entry *ve,
-				 struct vkernel_common *vc);
+				 struct vkernel_proc *vkp);
 
 static MALLOC_DEFINE(M_VKERNEL, "vkernel", "VKernel structures");
 
@@ -77,9 +77,8 @@ static MALLOC_DEFINE(M_VKERNEL, "vkernel", "VKernel structures");
 int
 sys_vmspace_create(struct vmspace_create_args *uap)
 {
-	struct vkernel_common *vc;
 	struct vmspace_entry *ve;
-	struct vkernel *vk;
+	struct vkernel_proc *vkp;
 
 	if (vkernel_enable == 0)
 		return (EOPNOTSUPP);
@@ -88,27 +87,24 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 	 * Create a virtual kernel side-structure for the process if one
 	 * does not exist.
 	 */
-	if ((vk = curproc->p_vkernel) == NULL) {
-		vk = kmalloc(sizeof(*vk), M_VKERNEL, M_WAITOK|M_ZERO);
-		vc = kmalloc(sizeof(*vc), M_VKERNEL, M_WAITOK|M_ZERO);
-		vc->vc_refs = 1;
-		spin_init(&vc->vc_spin);
-		RB_INIT(&vc->vc_root);
-		vk->vk_common = vc;
-		curproc->p_vkernel = vk;
+	if ((vkp = curproc->p_vkernel) == NULL) {
+		vkp = kmalloc(sizeof(*vkp), M_VKERNEL, M_WAITOK|M_ZERO);
+		vkp->refs = 1;
+		spin_init(&vkp->spin);
+		RB_INIT(&vkp->root);
+		curproc->p_vkernel = vkp;
 	}
-	vc = vk->vk_common;
 
 	/*
 	 * Create a new VMSPACE
 	 */
-	if (vkernel_find_vmspace(vc, uap->id))
+	if (vkernel_find_vmspace(vkp, uap->id))
 		return (EEXIST);
 	ve = kmalloc(sizeof(struct vmspace_entry), M_VKERNEL, M_WAITOK|M_ZERO);
 	ve->vmspace = vmspace_alloc(VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	ve->id = uap->id;
 	pmap_pinit2(vmspace_pmap(ve->vmspace));
-	RB_INSERT(vmspace_rb_tree, &vc->vc_root, ve);
+	RB_INSERT(vmspace_rb_tree, &vkp->root, ve);
 	return (0);
 }
 
@@ -120,18 +116,16 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 int
 sys_vmspace_destroy(struct vmspace_destroy_args *uap)
 {
-	struct vkernel_common *vc;
+	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
-	struct vkernel *vk;
 
-	if ((vk = curproc->p_vkernel) == NULL)
+	if ((vkp = curproc->p_vkernel) == NULL)
 		return (EINVAL);
-	vc = vk->vk_common;
-	if ((ve = vkernel_find_vmspace(vc, uap->id)) == NULL)
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
 		return (ENOENT);
 	if (ve->refs)
 		return (EBUSY);
-	vmspace_entry_delete(ve, vc);
+	vmspace_entry_delete(ve, vkp);
 	return(0);
 }
 
@@ -146,21 +140,20 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
 int
 sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 {
-	struct vkernel_common *vc;
+	struct vkernel_proc *vkp;
+	struct vkernel_lwp *vklp;
 	struct vmspace_entry *ve;
-	struct vkernel *vk;
-	struct lwp *lwp;
+	struct lwp *lp;
 	struct proc *p;
 	int framesz;
 	int error;
 
-	lwp = curthread->td_lwp;
-	p = lwp->lwp_proc;
+	lp = curthread->td_lwp;
+	p = lp->lwp_proc;
 
-	if ((vk = p->p_vkernel) == NULL)
+	if ((vkp = p->p_vkernel) == NULL)
 		return (EINVAL);
-	vc = vk->vk_common;
-	if ((ve = vkernel_find_vmspace(vc, uap->id)) == NULL)
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
 		return (ENOENT);
 
 	/*
@@ -178,13 +171,18 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		 * install the passed register context.  Return with
 		 * EJUSTRETURN so the syscall code doesn't adjust the context.
 		 */
-		++ve->refs;
+		atomic_add_int(&ve->refs, 1);
 		framesz = sizeof(struct trapframe);
-		vk->vk_user_trapframe = uap->tframe;
-		vk->vk_user_vextframe = uap->vframe;
-		bcopy(uap->sysmsg_frame, &vk->vk_save_trapframe, framesz);
-		bcopy(&curthread->td_tls, &vk->vk_save_vextframe.vx_tls,
-		      sizeof(vk->vk_save_vextframe.vx_tls));
+		if ((vklp = lp->lwp_vkernel) == NULL) {
+			vklp = kmalloc(sizeof(*vklp), M_VKERNEL,
+				       M_WAITOK|M_ZERO);
+			lp->lwp_vkernel = vklp;
+		}
+		vklp->user_trapframe = uap->tframe;
+		vklp->user_vextframe = uap->vframe;
+		bcopy(uap->sysmsg_frame, &vklp->save_trapframe, framesz);
+		bcopy(&curthread->td_tls, &vklp->save_vextframe.vx_tls,
+		      sizeof(vklp->save_vextframe.vx_tls));
 		error = copyin(uap->tframe, uap->sysmsg_frame, framesz);
 		if (error == 0)
 			error = copyin(&uap->vframe->vx_tls, &curthread->td_tls, sizeof(struct savetls));
@@ -193,14 +191,14 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		if (error == 0)
 			error = cpu_sanitize_tls(&curthread->td_tls);
 		if (error) {
-			bcopy(&vk->vk_save_trapframe, uap->sysmsg_frame, framesz);
-			bcopy(&vk->vk_save_vextframe.vx_tls, &curthread->td_tls,
-			      sizeof(vk->vk_save_vextframe.vx_tls));
+			bcopy(&vklp->save_trapframe, uap->sysmsg_frame, framesz);
+			bcopy(&vklp->save_vextframe.vx_tls, &curthread->td_tls,
+			      sizeof(vklp->save_vextframe.vx_tls));
 			set_user_TLS();
-			--ve->refs;
+			atomic_subtract_int(&ve->refs, 1);
 		} else {
-			lwp->lwp_ve = ve;
-			pmap_setlwpvm(lwp, ve->vmspace);
+			vklp->ve = ve;
+			pmap_setlwpvm(lp, ve->vmspace);
 			set_user_TLS();
 			set_vkernel_fp(uap->sysmsg_frame);
 			error = EJUSTRETURN;
@@ -223,15 +221,13 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 int
 sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 {
-	struct vkernel_common *vc;
+	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
-	struct vkernel *vk;
 	int error;
 
-	if ((vk = curproc->p_vkernel) == NULL)
+	if ((vkp = curproc->p_vkernel) == NULL)
 		return (EINVAL);
-	vc = vk->vk_common;
-	if ((ve = vkernel_find_vmspace(vc, uap->id)) == NULL)
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
 		return (ENOENT);
 	error = kern_mmap(ve->vmspace, uap->addr, uap->len,
 			  uap->prot, uap->flags,
@@ -247,17 +243,15 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 int
 sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 {
-	struct vkernel_common *vc;
+	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
-	struct vkernel *vk;
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
 	vm_map_t map;
 
-	if ((vk = curproc->p_vkernel) == NULL)
+	if ((vkp = curproc->p_vkernel) == NULL)
 		return (EINVAL);
-	vc = vk->vk_common;
-	if ((ve = vkernel_find_vmspace(vc, uap->id)) == NULL)
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
 		return (ENOENT);
 
 	/*
@@ -297,14 +291,12 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 int
 sys_vmspace_pread(struct vmspace_pread_args *uap)
 {
-	struct vkernel_common *vc;
+	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
-	struct vkernel *vk;
 
-	if ((vk = curproc->p_vkernel) == NULL)
+	if ((vkp = curproc->p_vkernel) == NULL)
 		return (EINVAL);
-	vc = vk->vk_common;
-	if ((ve = vkernel_find_vmspace(vc, uap->id)) == NULL)
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
 		return (ENOENT);
 	return (EINVAL);
 }
@@ -320,14 +312,12 @@ sys_vmspace_pread(struct vmspace_pread_args *uap)
 int
 sys_vmspace_pwrite(struct vmspace_pwrite_args *uap)
 {
-	struct vkernel_common *vc;
+	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
-	struct vkernel *vk;
 
-	if ((vk = curproc->p_vkernel) == NULL)
+	if ((vkp = curproc->p_vkernel) == NULL)
 		return (EINVAL);
-	vc = vk->vk_common;
-	if ((ve = vkernel_find_vmspace(vc, uap->id)) == NULL)
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
 		return (ENOENT);
 	return (EINVAL);
 }
@@ -340,15 +330,13 @@ sys_vmspace_pwrite(struct vmspace_pwrite_args *uap)
 int
 sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
 {
-	struct vkernel_common *vc;
+	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
-	struct vkernel *vk;
 	vm_offset_t start, end;
 
-	if ((vk = curproc->p_vkernel) == NULL)
+	if ((vkp = curproc->p_vkernel) == NULL)
 		return (EINVAL);
-	vc = vk->vk_common;
-	if ((ve = vkernel_find_vmspace(vc, uap->id)) == NULL)
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
 		return (ENOENT);
 
 	/*
@@ -393,10 +381,10 @@ static
 int
 rb_vmspace_delete(struct vmspace_entry *ve, void *data)
 {
-	struct vkernel_common *vc = data;
+	struct vkernel_proc *vkp = data;
 
 	KKASSERT(ve->refs == 0);
-	vmspace_entry_delete(ve, vc);
+	vmspace_entry_delete(ve, vkp);
 	return(0);
 }
 
@@ -406,9 +394,9 @@ rb_vmspace_delete(struct vmspace_entry *ve, void *data)
  */
 static
 void
-vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_common *vc)
+vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_proc *vkp)
 {
-	RB_REMOVE(vmspace_rb_tree, &vc->vc_root, ve);
+	RB_REMOVE(vmspace_rb_tree, &vkp->root, ve);
 
 	pmap_remove_pages(vmspace_pmap(ve->vmspace),
 			  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
@@ -421,13 +409,13 @@ vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_common *vc)
 
 static
 struct vmspace_entry *
-vkernel_find_vmspace(struct vkernel_common *vc, void *id)
+vkernel_find_vmspace(struct vkernel_proc *vkp, void *id)
 {
 	struct vmspace_entry *ve;
 	struct vmspace_entry key;
 
 	key.id = id;
-	ve = RB_FIND(vmspace_rb_tree, &vc->vc_root, &key);
+	ve = RB_FIND(vmspace_rb_tree, &vkp->root, &key);
 	return (ve);
 }
 
@@ -438,32 +426,22 @@ vkernel_find_vmspace(struct vkernel_common *vc, void *id)
 void
 vkernel_inherit(struct proc *p1, struct proc *p2)
 {
-	struct vkernel_common *vc;
-	struct vkernel *vk;
+	struct vkernel_proc *vkp;
 
-	vk = p1->p_vkernel;
-	vc = vk->vk_common;
-	KKASSERT(vc->vc_refs > 0);
-	atomic_add_int(&vc->vc_refs, 1);
-	vk = kmalloc(sizeof(*vk), M_VKERNEL, M_WAITOK|M_ZERO);
-	p2->p_vkernel = vk;
-	vk->vk_common = vc;
+	vkp = p1->p_vkernel;
+	KKASSERT(vkp->refs > 0);
+	atomic_add_int(&vkp->refs, 1);
+	p2->p_vkernel = vkp;
 }
 
 void
 vkernel_exit(struct proc *p)
 {
-	struct vkernel_common *vc;
-	struct vmspace_entry *ve;
-	struct vkernel *vk;
+	struct vkernel_proc *vkp;
 	struct lwp *lp;
 	int freeme = 0;
 
-	vk = p->p_vkernel;
-	p->p_vkernel = NULL;
-	vc = vk->vk_common;
-	vk->vk_common = NULL;
-
+	vkp = p->p_vkernel;
 	/*
 	 * Restore the original VM context if we are killed while running
 	 * a different one.
@@ -473,34 +451,47 @@ vkernel_exit(struct proc *p)
 	 * the signal.
 	 */
 	LIST_FOREACH(lp, &p->p_lwps, lwp_list) {
-		if ((ve = lp->lwp_ve) != NULL) {
-			kprintf("Warning, pid %d killed with active VC!\n",
-				p->p_pid);
-#ifdef DDB
-			db_print_backtrace();
-#endif
-			lp->lwp_ve = NULL;
-			pmap_setlwpvm(lp, p->p_vmspace);
-			KKASSERT(ve->refs > 0);
-			--ve->refs;
-		}
+		vkernel_lwp_exit(lp);
 	}
 
 	/*
 	 * Dereference the common area
 	 */
-	KKASSERT(vc->vc_refs > 0);
-	spin_lock_wr(&vc->vc_spin);
-	if (--vc->vc_refs == 0)	
+	p->p_vkernel = NULL;
+	KKASSERT(vkp->refs > 0);
+	spin_lock_wr(&vkp->spin);
+	if (--vkp->refs == 0)	
 		freeme = 1;
-	spin_unlock_wr(&vc->vc_spin);
+	spin_unlock_wr(&vkp->spin);
 
 	if (freeme) {
-		RB_SCAN(vmspace_rb_tree, &vc->vc_root, NULL,
-			rb_vmspace_delete, vc);
-		kfree(vc, M_VKERNEL);
+		RB_SCAN(vmspace_rb_tree, &vkp->root, NULL,
+			rb_vmspace_delete, vkp);
+		kfree(vkp, M_VKERNEL);
 	}
-	kfree(vk, M_VKERNEL);
+}
+
+void
+vkernel_lwp_exit(struct lwp *lp)
+{
+	struct vkernel_lwp *vklp;
+	struct vmspace_entry *ve;
+
+	if ((vklp = lp->lwp_vkernel) != NULL) {
+		if ((ve = vklp->ve) != NULL) {
+			kprintf("Warning, pid %d killed with "
+				"active VC!\n", lp->lwp_proc->p_pid);
+#ifdef DDB
+			db_print_backtrace();
+#endif
+			pmap_setlwpvm(lp, lp->lwp_proc->p_vmspace);
+			vklp->ve = NULL;
+			KKASSERT(ve->refs > 0);
+			atomic_subtract_int(&ve->refs, 1);
+		}
+		lp->lwp_vkernel = NULL;
+		kfree(vklp, M_VKERNEL);
+	}
 }
 
 /*
@@ -512,23 +503,24 @@ vkernel_trap(struct lwp *lp, struct trapframe *frame)
 {
 	struct proc *p = lp->lwp_proc;
 	struct vmspace_entry *ve;
-	struct vkernel *vk;
+	struct vkernel_lwp *vklp;
 	int error;
 
 	/*
 	 * Which vmspace entry was running?
 	 */
-	vk = p->p_vkernel;
-	ve = lp->lwp_ve;
+	vklp = lp->lwp_vkernel;
+	KKASSERT(vklp);
+	ve = vklp->ve;
 	KKASSERT(ve != NULL);
 
 	/*
 	 * Switch the LWP vmspace back to the virtual kernel's VM space.
 	 */
-	lp->lwp_ve = NULL;
+	vklp->ve = NULL;
 	pmap_setlwpvm(lp, p->p_vmspace);
 	KKASSERT(ve->refs > 0);
-	--ve->refs;
+	atomic_subtract_int(&ve->refs, 1);
 
 	/*
 	 * Copy the emulated process frame to the virtual kernel process.
@@ -538,10 +530,10 @@ vkernel_trap(struct lwp *lp, struct trapframe *frame)
 	 * Restore the virtual kernel's saved context so the virtual kernel
 	 * process can resume.
 	 */
-	error = copyout(frame, vk->vk_user_trapframe, sizeof(*frame));
-	bcopy(&vk->vk_save_trapframe, frame, sizeof(*frame));
-	bcopy(&vk->vk_save_vextframe.vx_tls, &curthread->td_tls,
-	      sizeof(vk->vk_save_vextframe.vx_tls));
+	error = copyout(frame, vklp->user_trapframe, sizeof(*frame));
+	bcopy(&vklp->save_trapframe, frame, sizeof(*frame));
+	bcopy(&vklp->save_vextframe.vx_tls, &curthread->td_tls,
+	      sizeof(vklp->save_vextframe.vx_tls));
 	set_user_TLS();
 	return(error);
 }

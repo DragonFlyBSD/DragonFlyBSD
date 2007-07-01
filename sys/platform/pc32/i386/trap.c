@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.105 2007/06/29 21:54:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.106 2007/07/01 01:11:38 dillon Exp $
  */
 
 /*
@@ -629,7 +629,7 @@ restart:
 			 * saved FP state that the virtual kernel needs
 			 * to hand over to a different emulated process.
 			 */
-			if (lp->lwp_ve &&
+			if (lp->lwp_vkernel && lp->lwp_vkernel->ve &&
 			    (td->td_pcb->pcb_flags & FP_VIRTFP)
 			) {
 				npxdna();
@@ -857,7 +857,7 @@ kernel_trap:
 	 * VM context managed by a virtual kernel then let the virtual kernel
 	 * handle it.
 	 */
-	if (lp->lwp_ve) {
+	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 		vkernel_trap(lp, frame);
 		goto out;
 	}
@@ -1236,7 +1236,7 @@ syscall2(struct trapframe *frame)
 	 * Restore the virtual kernel context and return from its system
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
-	if (lp->lwp_ve) {
+	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 		error = vkernel_trap(lp, frame);
 		frame->tf_eax = error;
 		if (error)

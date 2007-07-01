@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.26 2007/06/29 21:54:15 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.27 2007/07/01 01:11:37 dillon Exp $
  */
 
 /*
@@ -87,6 +87,7 @@
 #include <vm/vm.h>
 #endif
 
+struct lwp;
 struct proc;
 struct thread;
 struct vm_page;
