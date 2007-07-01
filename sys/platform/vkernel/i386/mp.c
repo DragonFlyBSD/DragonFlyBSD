@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.2 2007/07/01 02:51:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.3 2007/07/01 04:02:33 dillon Exp $
  */
 
 
