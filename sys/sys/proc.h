@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.108 2007/06/29 21:54:14 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.109 2007/07/01 00:03:49 swildner Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -470,7 +470,6 @@ int	inferior (struct proc *p);
 int	leavepgrp (struct proc *p);
 void	sess_hold(struct session *sp);
 void	sess_rele(struct session *sp);
-void	mi_switch (struct proc *p);
 void	procinit (void);
 void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);
