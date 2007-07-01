@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.6 2007/02/02 15:57:51 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.7 2007/07/01 03:28:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <ddb/ddb.h>
+#include <dlfcn.h>	/* DLL */
 
 #include <sys/user.h>
 
@@ -108,6 +109,7 @@ struct i386_frame {
 static void	db_nextframe(struct i386_frame **, db_addr_t *);
 static int	db_numargs(struct i386_frame *);
 static void	db_print_stack_entry(const char *, int, char **, int *, db_addr_t);
+static void	dl_symbol_values(int callpc, const char **name);
 
 
 static char	*watchtype_str(int type);
@@ -193,6 +195,7 @@ db_nextframe(struct i386_frame **fp, db_addr_t *ip)
 
 	sym = db_search_symbol(eip, DB_STGY_ANY, &offset);
 	db_symbol_values(sym, &name, NULL);
+	dl_symbol_values(eip, &name);
 	if (name != NULL) {
 		if (!strcmp(name, "calltrap")) {
 			frame_type = TRAP;
@@ -318,6 +321,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 
 		sym = db_search_symbol(callpc, DB_STGY_ANY, &offset);
 		db_symbol_values(sym, &name, NULL);
+		dl_symbol_values(callpc, &name);
 
 		/*
 		 * Attempt to determine a (possibly fake) frame that gives
@@ -387,13 +391,6 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 		}
 
 		db_nextframe(&frame, &callpc);
-
-		{
-			sym = db_search_symbol(callpc, DB_STGY_ANY, &offset);
-			db_symbol_values(sym, &name, NULL);
-			db_print_stack_entry(name, 0, 0, 0, callpc);
-			break;
-		}
 		if (frame == 0)
 			break;
 	}
@@ -604,3 +601,20 @@ db_md_list_watchpoints(void)
 		db_printf("  dr%d 0x%08x\n", i, DBREG_DRX((&d),i));
 	db_printf("\n");
 }
+
+/*
+ * See if dladdr() can get the symbol name via the standard dynamic loader.
+ */
+static
+void
+dl_symbol_values(int callpc, const char **name)
+{
+	Dl_info info;
+
+	if (*name == NULL) {
+		if (dladdr((const void *)callpc, &info) != 0) {
+			*name = info.dli_sname;
+		}
+	}
+}
+
