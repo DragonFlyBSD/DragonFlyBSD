@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.12 2007/07/01 02:51:45 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.13 2007/07/01 03:04:15 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -122,11 +122,13 @@ splz(void)
 
 	while (gd->mi.gd_reqflags & (RQF_IPIQ|RQF_INTPEND)) {
 		crit_enter_quick(td);
+#ifdef SMP
 		if (gd->mi.gd_reqflags & RQF_IPIQ) {
 			atomic_clear_int_nonlocked(&gd->mi.gd_reqflags,
 						   RQF_IPIQ);
 			lwkt_process_ipiq();
 		}
+#endif
 		if (gd->mi.gd_reqflags & RQF_INTPEND) {
 			atomic_clear_int_nonlocked(&gd->mi.gd_reqflags,
 						   RQF_INTPEND);

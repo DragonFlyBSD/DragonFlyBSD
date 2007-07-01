@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.7 2007/07/01 02:51:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.8 2007/07/01 03:04:14 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -67,9 +67,12 @@ static void exc_debugger(int signo, siginfo_t *info, void *ctx);
  * IPIs are 'fast' interrupts, so we deal with them directly from our
  * signal handler.
  */
+
+#ifdef SMP
+
 static
 void
-ipi(int nada, siginfo_t *info, void *ctxp)
+ipisig(int nada, siginfo_t *info, void *ctxp)
 {
 	++mycpu->gd_intr_nesting_level;
 	if (curthread->td_pri < TDPRI_CRIT) {
@@ -81,6 +84,8 @@ ipi(int nada, siginfo_t *info, void *ctxp)
 	}
 	--mycpu->gd_intr_nesting_level;
 }
+
+#endif
 
 void
 init_exceptions(void)
@@ -98,13 +103,10 @@ init_exceptions(void)
 	sa.sa_sigaction = exc_debugger;
 	sigaction(SIGQUIT, &sa, NULL);
 #endif
-
-	sa.sa_sigaction = ipi;
-	if (sigaction(SIGUSR1, &sa, NULL) != 0)
-	{
-		warn("ipi handler setup failed");
-		panic("IPI setup failed");
-	}
+#ifdef SMP
+	sa.sa_sigaction = ipisig;
+	sigaction(SIGUSR1, &sa, NULL);
+#endif
 }
 
 /*
