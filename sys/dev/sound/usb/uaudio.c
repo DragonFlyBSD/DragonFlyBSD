@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.91 2004/11/05 17:46:14 kent Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.14.2.2 2006/04/04 17:34:10 ariff Exp $ */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.14 2007/06/28 13:55:12 hasso Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.15 2007/07/01 21:24:02 hasso Exp $: */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -496,9 +496,10 @@ USB_DECLARE_DRIVER_INIT(uaudio,
 #endif
 
 
-USB_MATCH(uaudio)
+static int
+uaudio_match(device_t self)
 {
-	USB_MATCH_START(uaudio, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_interface_descriptor_t *id;
 
 	if (uaa->iface == NULL)
@@ -515,9 +516,11 @@ USB_MATCH(uaudio)
 	return UMATCH_IFACECLASS_IFACESUBCLASS;
 }
 
-USB_ATTACH(uaudio)
+static int
+uaudio_attach(device_t self)
 {
-	USB_ATTACH_START(uaudio, sc, uaa);
+	struct uaudio_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_interface_descriptor_t *id;
 	usb_config_descriptor_t *cdesc;
 	char devinfo[1024];
@@ -526,7 +529,8 @@ USB_ATTACH(uaudio)
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 #else
 	usbd_devinfo(uaa->device, 0, devinfo, sizeof(devinfo));
 	kprintf(": %s\n", devinfo);
@@ -538,14 +542,14 @@ USB_ATTACH(uaudio)
 	if (cdesc == NULL) {
 		kprintf("%s: failed to get configuration descriptor\n",
 		       device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	err = uaudio_identify(sc, cdesc);
 	if (err) {
 		kprintf("%s: audio descriptors make no sense, error=%d\n",
 		       device_get_nameunit(sc->sc_dev), err);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	sc->sc_ac_ifaceh = uaa->iface;
@@ -572,7 +576,7 @@ USB_ATTACH(uaudio)
 		if (sc->sc_alts[j].ifaceh == NULL) {
 			kprintf("%s: alt %d missing AS interface(s)\n",
 			    device_get_nameunit(sc->sc_dev), j);
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 	}
 
@@ -606,11 +610,11 @@ USB_ATTACH(uaudio)
 	sc->sc_dying = 0;
 	if (audio_attach_mi(sc->sc_dev)) {
 		kprintf("audio_attach_mi failed\n");
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 #endif
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
@@ -658,9 +662,10 @@ uaudio_detach(device_t self, int flags)
 }
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
 
-USB_DETACH(uaudio)
+static int
+uaudio_detach(device_t self)
 {
-	USB_DETACH_START(uaudio, sc);
+	struct uaudio_softc *sc = device_get_softc(self);
 
 	sbuf_delete(&(sc->uaudio_sndstat));
 	sc->uaudio_sndstat_flag = 0;

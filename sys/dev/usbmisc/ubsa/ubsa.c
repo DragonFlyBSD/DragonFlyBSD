@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.12 2007/06/28 13:55:12 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.13 2007/07/01 21:24:03 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -246,9 +246,10 @@ MODULE_DEPEND(ubsa, usb, 1, 1, 1);
 MODULE_DEPEND(ubsa, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(ubsa, UBSA_MODVER);
 
-USB_MATCH(ubsa)
+static int
+ubsa_match(device_t self)
 {
-	USB_MATCH_START(ubsa, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	int i;
 
 	if (uaa->iface != NULL)
@@ -263,9 +264,11 @@ USB_MATCH(ubsa)
 	return (UMATCH_NONE);
 }
 
-USB_ATTACH(ubsa)
+static int
+ubsa_attach(device_t self)
 {
-	USB_ATTACH_START(ubsa, sc, uaa);
+	struct ubsa_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev;
 	struct ucom_softc *ucom;
 	usb_config_descriptor_t *cdesc;
@@ -290,10 +293,8 @@ USB_ATTACH(ubsa)
 	sc->sc_rts = -1;
 
 	usbd_devinfo(dev, 0, devinfo);
-	/* USB_ATTACH_SETUP; */
 	ucom->sc_dev = self;
 	device_set_desc_copy(self, devinfo);
-	/* USB_ATTACH_SETUP; */
 
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
@@ -403,16 +404,17 @@ USB_ATTACH(ubsa)
 	ucom_attach(ucom);
 
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
 error:
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 
-USB_DETACH(ubsa)
+static int
+ubsa_detach(device_t self)
 {
-	USB_DETACH_START(ubsa, sc);
+	struct ubsa_softc *sc = device_get_softc(self);
 	int rv;
 
 

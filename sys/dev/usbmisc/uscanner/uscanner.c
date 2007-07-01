@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.19 2007/06/28 13:55:13 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.20 2007/07/01 21:24:04 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -271,9 +271,10 @@ static void uscanner_do_close(struct uscanner_softc *);
 
 USB_DECLARE_DRIVER(uscanner);
 
-USB_MATCH(uscanner)
+static int
+uscanner_match(device_t self)
 {
-	USB_MATCH_START(uscanner, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 	if (uaa->iface != NULL)
 		return UMATCH_NONE;
@@ -282,9 +283,11 @@ USB_MATCH(uscanner)
 		UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 
-USB_ATTACH(uscanner)
+static int
+uscanner_attach(device_t self)
 {
-	USB_ATTACH_START(uscanner, sc, uaa);
+	struct uscanner_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_interface_descriptor_t *id = 0;
 	usb_endpoint_descriptor_t *ed, *ed_bulkin = NULL, *ed_bulkout = NULL;
 	char devinfo[1024];
@@ -292,7 +295,8 @@ USB_ATTACH(uscanner)
 	usbd_status err;
 
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 	kprintf("%s: %s\n", device_get_nameunit(sc->sc_dev), devinfo);
 
 	sc->sc_dev_flags = uscanner_lookup(uaa->vendor, uaa->product)->flags;
@@ -303,7 +307,7 @@ USB_ATTACH(uscanner)
 	if (err) {
 		kprintf("%s: setting config no failed\n",
 		    device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* XXX We only check the first interface */
@@ -313,7 +317,7 @@ USB_ATTACH(uscanner)
 	if (err || id == 0) {
 		kprintf("%s: could not get interface descriptor, err=%d,id=%p\n",
 		       device_get_nameunit(sc->sc_dev), err, id);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* Find the two first bulk endpoints */
@@ -322,7 +326,7 @@ USB_ATTACH(uscanner)
 		if (ed == 0) {
 			kprintf("%s: could not read endpoint descriptor\n",
 			       device_get_nameunit(sc->sc_dev));
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN
@@ -341,7 +345,7 @@ USB_ATTACH(uscanner)
 	if (ed_bulkin == NULL || ed_bulkout == NULL) {
 		kprintf("%s: bulk-in and/or bulk-out endpoint not found\n",
 			device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	sc->sc_bulkin = ed_bulkin->bEndpointAddress;
@@ -355,7 +359,7 @@ USB_ATTACH(uscanner)
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
 			   sc->sc_dev);
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 int
@@ -588,9 +592,10 @@ uscannerwrite(struct dev_write_args *ap)
 	return (error);
 }
 
-USB_DETACH(uscanner)
+static int
+uscanner_detach(device_t self)
 {
-	USB_DETACH_START(uscanner, sc);
+	struct uscanner_softc *sc = device_get_softc(self);
 
 	DPRINTF(("uscanner_detach: sc=%p\n", sc));
 

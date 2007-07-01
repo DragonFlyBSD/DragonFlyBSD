@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.22 2007/06/28 06:32:31 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.23 2007/07/01 21:24:02 hasso Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -368,9 +368,10 @@ axe_reset(struct axe_softc *sc)
 /*
  * Probe for a AX88172 chip.
  */
-USB_MATCH(axe)
+static int
+axe_match(device_t self)
 {
-	USB_MATCH_START(axe, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	struct axe_type			*t;
 
 	if (!uaa->iface)
@@ -392,9 +393,11 @@ USB_MATCH(axe)
  * Attach the interface. Allocate softc structures, do ifmedia
  * setup and ethernet/BPF attach.
  */
-USB_ATTACH(axe)
+static int
+axe_attach(device_t self)
 {
-	USB_ATTACH_START(axe, sc, uaa);
+	struct axe_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	char			devinfo[1024];
 	u_char			eaddr[ETHER_ADDR_LEN];
 	struct ifnet		*ifp;
@@ -408,13 +411,13 @@ USB_ATTACH(axe)
 	if (usbd_set_config_no(sc->axe_udev, AXE_CONFIG_NO, 1)) {
 		device_printf(self, "setting config no %d failed\n",
 		    AXE_CONFIG_NO);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	if (usbd_device2interface_handle(uaa->device,
 	    AXE_IFACE_IDX, &sc->axe_iface)) {
 		device_printf(self, "getting interface handle failed\n");
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	id = usbd_get_interface_descriptor(sc->axe_iface);
@@ -428,7 +431,7 @@ USB_ATTACH(axe)
 		ed = usbd_interface2endpoint_descriptor(sc->axe_iface, i);
 		if (!ed) {
 			device_printf(self, "couldn't get ep %d\n", i);
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
 		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
@@ -475,7 +478,7 @@ USB_ATTACH(axe)
 	if (mii_phy_probe(self, &sc->axe_miibus,
 	    axe_ifmedia_upd, axe_ifmedia_sts)) {
 		device_printf(self, "MII without any PHY!\n");
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/*
@@ -488,7 +491,7 @@ USB_ATTACH(axe)
 
 	usb_register_netisr();
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 static int

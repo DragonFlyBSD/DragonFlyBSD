@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.25 2007/06/30 20:39:22 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.26 2007/07/01 21:24:03 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -157,9 +157,10 @@ static int uhid_do_ioctl(struct uhid_softc *, u_long, caddr_t, int);
 
 USB_DECLARE_DRIVER(uhid);
 
-USB_MATCH(uhid)
+static int
+uhid_match(device_t self)
 {
-	USB_MATCH_START(uhid, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_interface_descriptor_t *id;
 
 	if (uaa->iface == NULL)
@@ -172,9 +173,11 @@ USB_MATCH(uhid)
 	return (UMATCH_IFACECLASS_GENERIC);
 }
 
-USB_ATTACH(uhid)
+static int
+uhid_attach(device_t self)
 {
-	USB_ATTACH_START(uhid, sc, uaa);
+	struct uhid_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_interface_handle iface = uaa->iface;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
@@ -187,7 +190,8 @@ USB_ATTACH(uhid)
 	sc->sc_iface = iface;
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
@@ -196,7 +200,7 @@ USB_ATTACH(uhid)
 		kprintf("%s: could not read endpoint descriptor\n",
 		       device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	DPRINTFN(10,("uhid_attach: bLength=%d bDescriptorType=%d "
@@ -212,7 +216,7 @@ USB_ATTACH(uhid)
 	    (ed->bmAttributes & UE_XFERTYPE) != UE_INTERRUPT) {
 		kprintf("%s: unexpected endpoint\n", device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	sc->sc_ep_addr = ed->bEndpointAddress;
@@ -233,7 +237,7 @@ USB_ATTACH(uhid)
 	if (err) {
 		kprintf("%s: no report descriptor\n", device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	(void)usbd_set_idle(iface, 0, 0);
@@ -250,12 +254,13 @@ USB_ATTACH(uhid)
 		UID_ROOT, GID_OPERATOR,
 		0644, "uhid%d", device_get_unit(self));
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
-USB_DETACH(uhid)
+static int
+uhid_detach(device_t self)
 {
-	USB_DETACH_START(uhid, sc);
+	struct uhid_softc *sc = device_get_softc(self);
 
 	DPRINTF(("uhid_detach: sc=%p\n", sc));
 

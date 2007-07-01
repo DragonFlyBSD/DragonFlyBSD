@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.15 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.16 2007/07/01 21:24:02 hasso Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -343,9 +343,10 @@ static const struct {
 
 USB_DECLARE_DRIVER(ural);
 
-USB_MATCH(ural)
+static int
+ural_match(device_t self)
 {
-	USB_MATCH_START(ural, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 	if (uaa->iface != NULL)
 		return UMATCH_NONE;
@@ -354,9 +355,11 @@ USB_MATCH(ural)
 	    UMATCH_VENDOR_PRODUCT : UMATCH_NONE;
 }
 
-USB_ATTACH(ural)
+static int
+ural_attach(device_t self)
 {
-	USB_ATTACH_START(ural, sc, uaa);
+	struct ural_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	struct ifnet *ifp;
 	struct ieee80211com *ic = &sc->sc_ic;
 	usb_interface_descriptor_t *id;
@@ -369,12 +372,13 @@ USB_ATTACH(ural)
 	sc->sc_tx_retries = 7;	/* TODO tunable/sysctl */
 
 	usbd_devinfo(sc->sc_udev, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 
 	if (usbd_set_config_no(sc->sc_udev, RAL_CONFIG_NO, 0) != 0) {
 		kprintf("%s: could not set configuration no\n",
 		    device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* get the first interface handle */
@@ -383,7 +387,7 @@ USB_ATTACH(ural)
 	if (error != 0) {
 		kprintf("%s: could not get interface handle\n",
 		    device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/*
@@ -397,7 +401,7 @@ USB_ATTACH(ural)
 		if (ed == NULL) {
 			kprintf("%s: no endpoint descriptor for %d\n",
 			    device_get_nameunit(sc->sc_dev), i);
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
@@ -409,7 +413,7 @@ USB_ATTACH(ural)
 	}
 	if (sc->sc_rx_no == -1 || sc->sc_tx_no == -1) {
 		kprintf("%s: missing endpoint\n", device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	usb_init_task(&sc->sc_task, ural_task, sc);
@@ -521,12 +525,13 @@ USB_ATTACH(ural)
 	if (bootverbose)
 		ieee80211_announce(ic);
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
-USB_DETACH(ural)
+static int
+ural_detach(device_t self)
 {
-	USB_DETACH_START(ural, sc);
+	struct ural_softc *sc = device_get_softc(self);
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
 #ifdef INVARIANTS

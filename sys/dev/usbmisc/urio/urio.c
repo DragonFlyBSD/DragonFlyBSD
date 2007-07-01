@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.19 2007/06/28 13:55:13 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.20 2007/07/01 21:24:04 hasso Exp $
  */
 
 /*
@@ -132,9 +132,10 @@ struct urio_softc {
 
 USB_DECLARE_DRIVER(urio);
 
-USB_MATCH(urio)
+static int
+urio_match(device_t self)
 {
-	USB_MATCH_START(urio, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_device_descriptor_t *dd;
 
 	DPRINTFN(10,("urio_match\n"));
@@ -154,9 +155,11 @@ USB_MATCH(urio)
 		return UMATCH_NONE;
 }
 
-USB_ATTACH(urio)
+static int
+urio_attach(device_t self)
 {
-	USB_ATTACH_START(urio, sc, uaa);
+	struct urio_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	char devinfo[1024];
 	usbd_device_handle udev;
 	usbd_interface_handle iface;
@@ -167,7 +170,8 @@ USB_ATTACH(urio)
 
 	DPRINTFN(10,("urio_attach: sc=%p\n", sc));
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 	kprintf("%s: %s\n", device_get_nameunit(sc->sc_dev), devinfo);
 
 	sc->sc_udev = udev = uaa->device;
@@ -218,11 +222,11 @@ USB_ATTACH(urio)
 
 	DPRINTFN(10, ("urio_attach: %p\n", sc->sc_udev));
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
  nobulk:
 	kprintf("%s: could not find %s\n", device_get_nameunit(sc->sc_dev),ermsg);
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 
 

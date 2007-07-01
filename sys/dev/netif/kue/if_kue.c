@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.24 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.25 2007/07/01 21:24:02 hasso Exp $
  */
 
 /*
@@ -380,9 +380,10 @@ kue_reset(struct kue_softc *sc)
 /*
  * Probe for a KLSI chip.
  */
-USB_MATCH(kue)
+static int
+kue_match(device_t self)
 {
-	USB_MATCH_START(kue, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	struct kue_type			*t;
 
 	if (!uaa->iface)
@@ -404,9 +405,11 @@ USB_MATCH(kue)
  * Attach the interface. Allocate softc structures, do
  * setup and ethernet/BPF attach.
  */
-USB_ATTACH(kue)
+static int
+kue_attach(device_t self)
 {
-	USB_ATTACH_START(kue, sc, uaa);
+	struct kue_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	char			devinfo[1024];
 	struct ifnet		*ifp;
 	usbd_status		err;
@@ -430,7 +433,7 @@ USB_ATTACH(kue)
 		if (!ed) {
 			kprintf("kue%d: couldn't get ep %d\n",
 			    sc->kue_unit, i);
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
 		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
@@ -456,7 +459,7 @@ USB_ATTACH(kue)
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		mtx_destroy(&sc->kue_mtx);
 #endif
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* Reset the adapter. */
@@ -491,7 +494,7 @@ USB_ATTACH(kue)
 
 	KUE_UNLOCK(sc);
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 static int

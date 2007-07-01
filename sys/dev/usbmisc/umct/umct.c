@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.9 2007/06/28 06:32:33 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.10 2007/07/01 21:24:03 hasso Exp $
  */
 
 /*
@@ -141,9 +141,10 @@ MODULE_DEPEND(umct, usb, 1, 1, 1);
 MODULE_DEPEND(umct, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(umct, 1);
 
-USB_MATCH(umct)
+static int
+umct_match(device_t self)
 {
-	USB_MATCH_START(umct, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	int i;
 
 	if (uaa->iface != NULL)
@@ -159,9 +160,11 @@ USB_MATCH(umct)
 	return (UMATCH_NONE);
 }
 
-USB_ATTACH(umct)
+static int
+umct_attach(device_t self)
 {
-	USB_ATTACH_START(umct, sc, uaa);
+	struct umct_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev;
 	struct ucom_softc *ucom;
 	usb_config_descriptor_t *cdesc;
@@ -277,16 +280,17 @@ USB_ATTACH(umct)
 	ucom_attach(ucom);
 
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
 error:
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 
-USB_DETACH(umct)
+static int
+umct_detach(device_t self)
 {
-	USB_DETACH_START(umct, sc);
+	struct umct_softc *sc = device_get_softc(self);
 	int rv;
 
 	if (sc->sc_intr_pipe != NULL) {

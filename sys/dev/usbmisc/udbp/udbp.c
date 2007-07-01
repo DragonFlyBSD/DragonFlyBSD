@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.13 2007/06/28 13:55:12 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.14 2007/07/01 21:24:03 hasso Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -218,9 +218,10 @@ static void udbp_out_transfer_cb	(usbd_xfer_handle xfer,
 
 USB_DECLARE_DRIVER(udbp);
 
-USB_MATCH(udbp)
+static int
+udbp_match(device_t self)
 {
-	USB_MATCH_START(udbp, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_interface_descriptor_t *id;
 	if (!uaa->iface)
 	  return (UMATCH_NONE);
@@ -250,9 +251,11 @@ USB_MATCH(udbp)
 	return (UMATCH_NONE);
 }
 
-USB_ATTACH(udbp)
+static int
+udbp_attach(device_t self)
 {
-	USB_ATTACH_START(udbp, sc, uaa);
+	struct udbp_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_interface_handle iface = uaa->iface;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed, *ed_bulkin = NULL, *ed_bulkout = NULL;
@@ -266,7 +269,8 @@ USB_ATTACH(udbp)
 	(void) usbd_device2interface_handle(uaa->device, 0, &iface);
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
@@ -276,7 +280,7 @@ USB_ATTACH(udbp)
 		if (!ed) {
 			kprintf("%s: could not read endpoint descriptor\n",
 			       device_get_nameunit(sc->sc_dev));
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN
@@ -295,7 +299,7 @@ USB_ATTACH(udbp)
 	if (ed_bulkin == NULL || ed_bulkout == NULL) {
 		kprintf("%s: bulk-in and/or bulk-out endpoint not found\n",
 			device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	if (ed_bulkin->wMaxPacketSize[0] != ed_bulkout->wMaxPacketSize[0] ||
@@ -306,7 +310,7 @@ USB_ATTACH(udbp)
 		       ed_bulkout->wMaxPacketSize[0],
 		       ed_bulkin->wMaxPacketSize[1],
 		       ed_bulkout->wMaxPacketSize[1]);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	sc->sc_bulkin = ed_bulkin->bEndpointAddress;
@@ -389,7 +393,7 @@ USB_ATTACH(udbp)
 	if (err) {
 		goto bad;
 	}
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 bad:
 #if 0 /* probably done in udbp_detach() */
 		if (sc->sc_bulkout_buffer) {
@@ -406,13 +410,14 @@ bad:
 		}
 #endif
 		udbp_detach(self);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 }
 
 
-USB_DETACH(udbp)
+static int
+udbp_detach(device_t self)
 {
-	USB_DETACH_START(udbp, sc);
+	struct udbp_softc *sc = device_get_softc(self);
 
 	sc->flags |= DISCONNECTED;
 

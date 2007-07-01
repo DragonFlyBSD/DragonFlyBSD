@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.16 2007/06/28 13:55:12 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.17 2007/07/01 21:24:03 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -104,9 +104,10 @@ struct ufm_softc {
 
 USB_DECLARE_DRIVER(ufm);
 
-USB_MATCH(ufm)
+static int
+ufm_match(device_t self)
 {
-	USB_MATCH_START(ufm, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_device_descriptor_t *dd;
 
 	DPRINTFN(10,("ufm_match\n"));
@@ -123,9 +124,11 @@ USB_MATCH(ufm)
 		return UMATCH_NONE;
 }
 
-USB_ATTACH(ufm)
+static int
+ufm_attach(device_t self)
 {
-	USB_ATTACH_START(ufm, sc, uaa);
+	struct ufm_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	char devinfo[1024];
 	usb_endpoint_descriptor_t *edesc;
 	usbd_device_handle udev;
@@ -136,7 +139,8 @@ USB_ATTACH(ufm)
 
 	DPRINTFN(10,("ufm_attach: sc=%p\n", sc));
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 	kprintf("%s: %s\n", device_get_nameunit(sc->sc_dev), devinfo);
 
 	sc->sc_udev = udev = uaa->device;
@@ -170,11 +174,11 @@ USB_ATTACH(ufm)
 
 	DPRINTFN(10, ("ufm_attach: %p\n", sc->sc_udev));
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
  nobulk:
 	kprintf("%s: could not find %s\n", device_get_nameunit(sc->sc_dev),ermsg);
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 
 

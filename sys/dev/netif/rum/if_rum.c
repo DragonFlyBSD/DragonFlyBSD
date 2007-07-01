@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.15 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.16 2007/07/01 21:24:02 hasso Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -219,9 +219,10 @@ static const struct rfprog {
 USB_DECLARE_DRIVER(rum);
 DRIVER_MODULE(rum, uhub, rum_driver, rum_devclass, usbd_driver_load, 0);
 
-USB_MATCH(rum)
+static int
+rum_match(device_t self)
 {
-	USB_MATCH_START(rum, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 	if (uaa->iface != NULL)
 		return UMATCH_NONE;
@@ -230,9 +231,11 @@ USB_MATCH(rum)
 	    UMATCH_VENDOR_PRODUCT : UMATCH_NONE;
 }
 
-USB_ATTACH(rum)
+static int
+rum_attach(device_t self)
 {
-	USB_ATTACH_START(rum, sc, uaa);
+	struct rum_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
 	usb_interface_descriptor_t *id;
@@ -245,12 +248,13 @@ USB_ATTACH(rum)
 	sc->sc_udev = uaa->device;
 
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 
 	if (usbd_set_config_no(sc->sc_udev, RT2573_CONFIG_NO, 0) != 0) {
 		kprintf("%s: could not set configuration no\n",
 		    device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* get the first interface handle */
@@ -259,7 +263,7 @@ USB_ATTACH(rum)
 	if (error != 0) {
 		kprintf("%s: could not get interface handle\n",
 		    device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/*
@@ -273,7 +277,7 @@ USB_ATTACH(rum)
 		if (ed == NULL) {
 			kprintf("%s: no endpoint descriptor for iface %d\n",
 			    device_get_nameunit(sc->sc_dev), i);
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
@@ -285,7 +289,7 @@ USB_ATTACH(rum)
 	}
 	if (sc->sc_rx_no == -1 || sc->sc_tx_no == -1) {
 		kprintf("%s: missing endpoint\n", device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	usb_init_task(&sc->sc_task, rum_task, sc);
@@ -302,7 +306,7 @@ USB_ATTACH(rum)
 	if (ntries == 1000) {
 		kprintf("%s: timeout waiting for chip to settle\n",
 		    device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* retrieve MAC address and various other things from EEPROM */
@@ -315,7 +319,7 @@ USB_ATTACH(rum)
 	error = rum_load_microcode(sc, rt2573, sizeof(rt2573));
 	if (error != 0) {
 		device_printf(self, "can't load microcode\n");
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	ic->ic_phytype = IEEE80211_T_OFDM;	/* not only, but not used */
@@ -419,12 +423,13 @@ USB_ATTACH(rum)
 	if (bootverbose)
 		ieee80211_announce(ic);
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
-USB_DETACH(rum)
+static int
+rum_detach(device_t self)
 {
-	USB_DETACH_START(rum, sc);
+	struct rum_softc *sc = device_get_softc(self);
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 #ifdef INVARIANTS
 	int i;

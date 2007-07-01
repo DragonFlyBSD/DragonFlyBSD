@@ -1,6 +1,6 @@
 /*	$NetBSD: uhub.c,v 1.68 2004/06/29 06:30:05 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhub.c,v 1.69.2.1 2005/12/18 15:51:31 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.16 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.17 2007/07/01 21:24:02 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -130,9 +130,10 @@ static	driver_t uhubroot_driver = {
 	sizeof(struct uhub_softc)
 };
 
-USB_MATCH(uhub)
+static int
+uhub_match(device_t self)
 {
-	USB_MATCH_START(uhub, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_device_descriptor_t *dd = usbd_get_device_descriptor(uaa->device);
 
 	DPRINTFN(5,("uhub_match, dd=%p\n", dd));
@@ -145,9 +146,11 @@ USB_MATCH(uhub)
 	return (UMATCH_NONE);
 }
 
-USB_ATTACH(uhub)
+static int
+uhub_attach(device_t self)
 {
-	USB_ATTACH_START(uhub, sc, uaa);
+	struct uhub_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev = uaa->device;
 	char *devinfo;
 	usbd_status err;
@@ -163,7 +166,8 @@ USB_ATTACH(uhub)
 	DPRINTFN(1,("uhub_attach\n"));
 	sc->sc_hub = dev;
 	usbd_devinfo(dev, 1, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 
 	if (dev->depth > 0 && UHUB_IS_HIGH_SPEED(sc)) {
 		kprintf("%s: %s transaction translator%s\n",
@@ -176,14 +180,14 @@ USB_ATTACH(uhub)
 		DPRINTF(("%s: configuration failed, error=%s\n",
 			 device_get_nameunit(sc->sc_dev), usbd_errstr(err)));
 		kfree(devinfo, M_TEMP);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	if (dev->depth > USB_HUB_MAX_DEPTH) {
 		kprintf("%s: hub depth (%d) exceeded, hub ignored\n",
 		       device_get_nameunit(sc->sc_dev), USB_HUB_MAX_DEPTH);
 		kfree(devinfo, M_TEMP);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* Get hub descriptor. */
@@ -203,7 +207,7 @@ USB_ATTACH(uhub)
 		DPRINTF(("%s: getting hub descriptor failed, error=%s\n",
 			 device_get_nameunit(sc->sc_dev), usbd_errstr(err)));
 		kfree(devinfo, M_TEMP);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	for (nremov = 0, port = 1; port <= nports; port++)
@@ -338,14 +342,14 @@ USB_ATTACH(uhub)
 
 	sc->sc_running = 1;
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
  bad:
 	if (hub)
 		kfree(hub, M_USBDEV);
 	kfree(devinfo, M_TEMP);
 	dev->hub = NULL;
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 
 usbd_status
@@ -530,9 +534,10 @@ uhub_explore(usbd_device_handle dev)
  * Called from process context when the hub is gone.
  * Detach all devices on active ports.
  */
-USB_DETACH(uhub)
+static int
+uhub_detach(device_t self)
 {
-	USB_DETACH_START(uhub, sc);
+	struct uhub_softc *sc = device_get_softc(self);
 	struct usbd_hub *hub = sc->sc_hub->hub;
 	struct usbd_port *rup;
 	int port, nports;

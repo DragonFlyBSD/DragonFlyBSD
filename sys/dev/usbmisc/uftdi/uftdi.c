@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.10 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.13 2007/06/28 13:55:12 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.14 2007/07/01 21:24:03 hasso Exp $
  */
 
 /*
@@ -137,9 +137,10 @@ struct ucom_callback uftdi_callback = {
 	uftdi_write,
 };
 
-USB_MATCH(uftdi)
+static int
+uftdi_match(device_t self)
 {
-	USB_MATCH_START(uftdi, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 	if (uaa->iface != NULL)
 		return (UMATCH_NONE);
@@ -155,9 +156,11 @@ USB_MATCH(uftdi)
 	return (UMATCH_NONE);
 }
 
-USB_ATTACH(uftdi)
+static int
+uftdi_attach(device_t self)
 {
-	USB_ATTACH_START(uftdi, sc, uaa);
+	struct uftdi_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev = uaa->device;
 	usbd_interface_handle iface;
 	usb_interface_descriptor_t *id;
@@ -262,14 +265,14 @@ USB_ATTACH(uftdi)
 	ucom_attach(&sc->sc_ucom);
 	kfree(devinfo, M_USBDEV);
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
 bad:
 	DPRINTF(("uftdi_attach: ATTACH ERROR\n"));
 	ucom->sc_dying = 1;
 	kfree(devinfo, M_USBDEV);
 
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 #if 0
 int
@@ -292,9 +295,10 @@ uftdi_activate(device_t self, enum devact act)
 }
 #endif
 #if 1
-USB_DETACH(uftdi)
+static int
+uftdi_detach(device_t self)
 {
-	USB_DETACH_START(uftdi, sc);
+	struct uftdi_softc *sc = device_get_softc(self);
 
 	int rv = 0;
 

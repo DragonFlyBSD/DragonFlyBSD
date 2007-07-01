@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.19 2007/06/28 13:55:13 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.20 2007/07/01 21:24:03 hasso Exp $
  */
 
 /*
@@ -151,9 +151,10 @@ void ieee1284_print_id(char *);
 
 USB_DECLARE_DRIVER(ulpt);
 
-USB_MATCH(ulpt)
+static int
+ulpt_match(device_t self)
 {
-	USB_MATCH_START(ulpt, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_interface_descriptor_t *id;
 
 	DPRINTFN(10,("ulpt_match\n"));
@@ -170,9 +171,11 @@ USB_MATCH(ulpt)
 	return (UMATCH_NONE);
 }
 
-USB_ATTACH(ulpt)
+static int
+ulpt_attach(device_t self)
 {
-	USB_ATTACH_START(ulpt, sc, uaa);
+	struct ulpt_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev = uaa->device;
 	usbd_interface_handle iface = uaa->iface;
 	usb_interface_descriptor_t *ifcd = usbd_get_interface_descriptor(iface);
@@ -186,7 +189,8 @@ USB_ATTACH(ulpt)
 
 	DPRINTFN(10,("ulpt_attach: sc=%p\n", sc));
 	usbd_devinfo(dev, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
 	       devinfo, ifcd->bInterfaceClass, ifcd->bInterfaceSubClass);
 
@@ -197,7 +201,7 @@ USB_ATTACH(ulpt)
 	if (cdesc == NULL) {
 		kprintf("%s: failed to get configuration descriptor\n",
 		       device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 	iend = (usb_interface_descriptor_t *)
 		   ((char *)cdesc + UGETW(cdesc->wTotalLength));
@@ -230,7 +234,7 @@ USB_ATTACH(ulpt)
 			kprintf("%s: setting alternate interface failed\n",
 			       device_get_nameunit(sc->sc_dev));
 			sc->sc_dying = 1;
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 	}
 
@@ -244,7 +248,7 @@ USB_ATTACH(ulpt)
 		if (ed == NULL) {
 			kprintf("%s: couldn't get ep %d\n",
 			    device_get_nameunit(sc->sc_dev), i);
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
 		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
@@ -258,7 +262,7 @@ USB_ATTACH(ulpt)
 		kprintf("%s: could not find bulk out endpoint\n",
 		    device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	if (usbd_get_quirks(dev)->uq_flags & UQ_BROKEN_BIDIR) {
@@ -321,12 +325,13 @@ USB_ATTACH(ulpt)
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
 			   sc->sc_dev);
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
-USB_DETACH(ulpt)
+static int
+ulpt_detach(device_t self)
 {
-	USB_DETACH_START(ulpt, sc);
+	struct ulpt_softc *sc = device_get_softc(self);
 
 	DPRINTF(("ulpt_detach: sc=%p\n", sc));
 

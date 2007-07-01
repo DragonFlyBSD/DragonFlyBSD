@@ -25,7 +25,7 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.12 2007/06/28 13:55:13 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.13 2007/07/01 21:24:04 hasso Exp $
  */
 
 /*
@@ -233,9 +233,10 @@ DRIVER_MODULE(uvscom, uhub, uvscom_driver, ucom_devclass, usbd_driver_load, 0);
 MODULE_DEPEND(uvscom, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(uvscom, UVSCOM_MODVER);
 
-USB_MATCH(uvscom)
+static int
+uvscom_match(device_t self)
 {
-	USB_MATCH_START(uvscom, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 	if (uaa->iface != NULL)
 		return (UMATCH_NONE);
@@ -244,9 +245,11 @@ USB_MATCH(uvscom)
 		UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 
-USB_ATTACH(uvscom)
+static int
+uvscom_attach(device_t self)
 {
-	USB_ATTACH_START(uvscom, sc, uaa);
+	struct uvscom_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev = uaa->device;
 	struct ucom_softc *ucom;
 	usb_config_descriptor_t *cdesc;
@@ -263,10 +266,8 @@ USB_ATTACH(uvscom)
 	bzero(sc, sizeof (struct uvscom_softc));
 
 	usbd_devinfo(dev, 0, devinfo);
-	/* USB_ATTACH_SETUP; */
 	ucom->sc_dev = self;
 	device_set_desc_copy(self, devinfo);
-	/* USB_ATTACH_SETUP; */
 
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
@@ -374,17 +375,18 @@ USB_ATTACH(uvscom)
 	ucom_attach(&sc->sc_ucom);
 
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
 error:
 	ucom->sc_dying = 1;
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 
-USB_DETACH(uvscom)
+static int
+uvscom_detach(device_t self)
 {
-	USB_DETACH_START(uvscom, sc);
+	struct uvscom_softc *sc = device_get_softc(self);
 	int rv = 0;
 
 	DPRINTF(("uvscom_detach: sc = %p\n", sc));

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.27 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.28 2007/07/01 21:24:02 hasso Exp $
  */
 
 /*
@@ -392,9 +392,10 @@ cue_reset(struct cue_softc *sc)
 /*
  * Probe for a Pegasus chip.
  */
-USB_MATCH(cue)
+static int
+cue_match(device_t self)
 {
-	USB_MATCH_START(cue, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	struct cue_type			*t;
 
 	if (!uaa->iface)
@@ -416,9 +417,11 @@ USB_MATCH(cue)
  * Attach the interface. Allocate softc structures, do ifmedia
  * setup and ethernet/BPF attach.
  */
-USB_ATTACH(cue)
+static int
+cue_attach(device_t self)
 {
-	USB_ATTACH_START(cue, sc, uaa);
+	struct cue_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	char			devinfo[1024];
 	u_char			eaddr[ETHER_ADDR_LEN];
 	struct ifnet		*ifp;
@@ -433,7 +436,7 @@ USB_ATTACH(cue)
 	if (usbd_set_config_no(sc->cue_udev, CUE_CONFIG_NO, 0)) {
 		device_printf(self, "setting config no %d failed\n",
 			      CUE_CONFIG_NO);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	id = usbd_get_interface_descriptor(uaa->iface);
@@ -447,7 +450,7 @@ USB_ATTACH(cue)
 		ed = usbd_interface2endpoint_descriptor(uaa->iface, i);
 		if (!ed) {
 			device_printf(self, "couldn't get ep %d\n", i);
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
 		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
@@ -494,7 +497,7 @@ USB_ATTACH(cue)
 	sc->cue_dying = 0;
 
 	CUE_UNLOCK(sc);
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 static int

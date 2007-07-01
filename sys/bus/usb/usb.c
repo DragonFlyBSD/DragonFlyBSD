@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.35 2007/06/30 20:39:22 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.36 2007/07/01 21:24:02 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -183,13 +183,15 @@ USB_DECLARE_DRIVER_INIT(usb,
 
 MODULE_VERSION(usb, 1);
 
-USB_MATCH(usb)
+static int
+usb_match(device_t self)
 {
 	DPRINTF(("usbd_match\n"));
 	return (UMATCH_GENERIC);
 }
 
-USB_ATTACH(usb)
+static int
+usb_attach(device_t self)
 {
 	struct usb_softc *sc = device_get_softc(self);
 	void *aux = device_get_ivars(self);
@@ -223,7 +225,7 @@ USB_ATTACH(usb)
 	default:
 		kprintf(", not supported\n");
 		sc->sc_dying = 1;
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 	kprintf("\n");
 
@@ -244,7 +246,7 @@ USB_ATTACH(usb)
 	if (sc->sc_bus->soft == NULL) {
 		kprintf("%s: can't register softintr\n", device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 #else
 	callout_init(&sc->sc_bus->softi);
@@ -259,7 +261,7 @@ USB_ATTACH(usb)
 			sc->sc_dying = 1;
 			kprintf("%s: root device is not a hub\n",
 			       device_get_nameunit(sc->sc_dev));
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 		sc->sc_bus->root_hub = dev;
 #if 1
@@ -305,7 +307,7 @@ USB_ATTACH(usb)
 		usb_dev = reference_dev(tmp_dev);
 	}
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 static const char *taskq_names[] = USB_TASKQ_NAMES;
@@ -836,9 +838,10 @@ usb_schedsoftintr(usbd_bus_handle bus)
 #endif /* USB_USE_SOFTINTR */
 }
 
-USB_DETACH(usb)
+static int
+usb_detach(device_t self)
 {
-	USB_DETACH_START(usb, sc);
+	struct usb_softc *sc = device_get_softc(self);
 	struct usb_event ue;
 
 	DPRINTF(("usb_detach: start\n"));

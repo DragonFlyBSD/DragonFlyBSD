@@ -2,7 +2,7 @@
  * $NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.14 2007/06/28 13:55:13 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.15 2007/07/01 21:24:03 hasso Exp $
  */
 
 /*-
@@ -211,9 +211,10 @@ MODULE_DEPEND(umodem, usb, 1, 1, 1);
 MODULE_DEPEND(umodem, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(umodem, UMODEM_MODVER);
 
-USB_MATCH(umodem)
+static int
+umodem_match(device_t self)
 {
-	USB_MATCH_START(umodem, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_interface_descriptor_t *id;
 	int cm, acm;
 
@@ -236,9 +237,11 @@ USB_MATCH(umodem)
 	return (UMATCH_IFACECLASS_IFACESUBCLASS_IFACEPROTO);
 }
 
-USB_ATTACH(umodem)
+static int
+umodem_attach(device_t self)
 {
-	USB_ATTACH_START(umodem, sc, uaa);
+	struct umodem_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev = uaa->device;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
@@ -258,7 +261,6 @@ USB_ATTACH(umodem)
 	device_set_desc_copy(self, devinfo);
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
-	/*USB_ATTACH_SETUP; */
 
 	sc->sc_udev = dev;
 	sc->sc_ctl_iface = uaa->iface;
@@ -390,12 +392,12 @@ USB_ATTACH(umodem)
 	ucom_attach(&sc->sc_ucom);
 
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
  bad:
 	ucom->sc_dying = 1;
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 
 static int
@@ -775,9 +777,10 @@ umodem_set_comm_feature(struct umodem_softc *sc, int feature, int state)
 	return (USBD_NORMAL_COMPLETION);
 }
 
-USB_DETACH(umodem)
+static int
+umodem_detach(device_t self)
 {
-	USB_DETACH_START(umodem, sc);
+	struct umodem_softc *sc = device_get_softc(self);
 	int rv = 0;
 
 	DPRINTF(("umodem_detach: sc=%p\n", sc));

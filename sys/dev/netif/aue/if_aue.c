@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.32 2007/06/28 06:32:31 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.33 2007/07/01 21:24:02 hasso Exp $
  */
 
 /*
@@ -600,9 +600,10 @@ aue_reset(struct aue_softc *sc)
 /*
  * Probe for a Pegasus chip.
  */
-USB_MATCH(aue)
+static int
+aue_match(device_t self)
 {
-	USB_MATCH_START(aue, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 	if (uaa->iface != NULL)
 		return (UMATCH_NONE);
@@ -615,9 +616,11 @@ USB_MATCH(aue)
  * Attach the interface. Allocate softc structures, do ifmedia
  * setup and ethernet/BPF attach.
  */
-USB_ATTACH(aue)
+static int
+aue_attach(device_t self)
 {
-	USB_ATTACH_START(aue, sc, uaa);
+	struct aue_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	char			devinfo[1024];
 	u_char			eaddr[ETHER_ADDR_LEN];
 	struct ifnet		*ifp;
@@ -635,13 +638,13 @@ USB_ATTACH(aue)
 	if (usbd_set_config_no(sc->aue_udev, AUE_CONFIG_NO, 0)) {
 		device_printf(self, "setting config no %d failed\n",
 			      AUE_CONFIG_NO);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	err = usbd_device2interface_handle(uaa->device, AUE_IFACE_IDX, &iface);
 	if (err) {
 		device_printf(self, "getting interface handle failed\n");
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	sc->aue_iface = iface;
@@ -661,7 +664,7 @@ USB_ATTACH(aue)
 		ed = usbd_interface2endpoint_descriptor(iface, i);
 		if (ed == NULL) {
 			device_printf(self, "couldn't get ep %d\n", i);
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
 		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
@@ -716,7 +719,7 @@ USB_ATTACH(aue)
 	    aue_ifmedia_upd, aue_ifmedia_sts)) {
 		device_printf(self, "MII without any PHY!\n");
 		AUE_UNLOCK(sc);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/*
@@ -727,7 +730,7 @@ USB_ATTACH(aue)
 	sc->aue_dying = 0;
 
 	AUE_UNLOCK(sc);
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 static int

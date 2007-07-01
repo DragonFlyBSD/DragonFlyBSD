@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.13 2007/06/28 13:55:13 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.14 2007/07/01 21:24:04 hasso Exp $
  */
 
 /*-
@@ -312,9 +312,10 @@ SYSCTL_PROC(_hw_usb_uplcom, OID_AUTO, interval, CTLTYPE_INT | CTLFLAG_RW,
 	    0, sizeof(int), sysctl_hw_usb_uplcom_interval,
 	    "I", "uplcom interrupt pipe interval");
 
-USB_MATCH(uplcom)
+static int
+uplcom_match(device_t self)
 {
-	USB_MATCH_START(uplcom, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	int i;
 
 	if (uaa->iface != NULL)
@@ -331,9 +332,11 @@ USB_MATCH(uplcom)
 	return (UMATCH_NONE);
 }
 
-USB_ATTACH(uplcom)
+static int
+uplcom_attach(device_t self)
 {
-	USB_ATTACH_START(uplcom, sc, uaa);
+	struct uplcom_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev = uaa->device;
 	struct ucom_softc *ucom;
 	usb_config_descriptor_t *cdesc;
@@ -350,10 +353,8 @@ USB_ATTACH(uplcom)
 	bzero(sc, sizeof (struct uplcom_softc));
 
 	usbd_devinfo(dev, 0, devinfo);
-	/* USB_ATTACH_SETUP; */
 	ucom->sc_dev = self;
 	device_set_desc_copy(self, devinfo);
-	/* USB_ATTACH_SETUP; */
 
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
@@ -545,16 +546,17 @@ USB_ATTACH(uplcom)
 	ucom_attach(&sc->sc_ucom);
 
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
 error:
 	kfree(devinfo, M_USBDEV);
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 
-USB_DETACH(uplcom)
+static int
+uplcom_detach(device_t self)
 {
-	USB_DETACH_START(uplcom, sc);
+	struct uplcom_softc *sc = device_get_softc(self);
 	int rv = 0;
 
 	DPRINTF(("uplcom_detach: sc = %p\n", sc));

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.12 2007/06/28 06:32:33 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.13 2007/07/01 21:24:04 hasso Exp $
  */
 
 /*
@@ -225,9 +225,10 @@ static const struct uvisor_type uvisor_devs[] = {
 #define uvisor_lookup(v, p) ((const struct uvisor_type *)usb_lookup(uvisor_devs, v, p))
 
 
-USB_MATCH(uvisor)
+static int
+uvisor_match(device_t self)
 {
-	USB_MATCH_START(uvisor, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 	if (uaa->iface != NULL)
 		return (UMATCH_NONE);
@@ -239,9 +240,11 @@ USB_MATCH(uvisor)
 		UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 
-USB_ATTACH(uvisor)
+static int
+uvisor_attach(device_t self)
 {
-	USB_ATTACH_START(uvisor, sc, uaa);
+	struct uvisor_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev = uaa->device;
 	usbd_interface_handle iface;
 	usb_interface_descriptor_t *id;
@@ -348,12 +351,12 @@ USB_ATTACH(uvisor)
 	DPRINTF(("uvisor: in=0x%x out=0x%x\n", ucom->sc_bulkin_no, ucom->sc_bulkout_no));
 	ucom_attach(&sc->sc_ucom);
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 
 bad:
 	DPRINTF(("uvisor_attach: ATTACH ERROR\n"));
 	ucom->sc_dying = 1;
-	USB_ATTACH_ERROR_RETURN;
+	return ENXIO;
 }
 
 #if 0
@@ -380,9 +383,10 @@ uvisor_activate(device_t self, enum devact act)
 
 #endif
 
-USB_DETACH(uvisor)
+static int
+uvisor_detach(device_t self)
 {
-	USB_DETACH_START(uvisor, sc);
+	struct uvisor_softc *sc = device_get_softc(self);
 	int rv = 0;
 
 	DPRINTF(("uvisor_detach: sc=%p\n", sc));

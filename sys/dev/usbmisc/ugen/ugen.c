@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.28 2007/06/30 20:39:22 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.29 2007/07/01 21:24:03 hasso Exp $
  */
 
 /* 
@@ -177,9 +177,10 @@ static int ugen_get_alt_index(struct ugen_softc *sc, int ifaceidx);
 
 USB_DECLARE_DRIVER(ugen);
 
-USB_MATCH(ugen)
+static int
+ugen_match(device_t self)
 {
-	USB_MATCH_START(ugen, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 #if 0
 	if (uaa->matchlvl)
@@ -191,16 +192,19 @@ USB_MATCH(ugen)
 		return (UMATCH_NONE);
 }
 
-USB_ATTACH(ugen)
+static int
+ugen_attach(device_t self)
 {
-	USB_ATTACH_START(ugen, sc, uaa);
+	struct ugen_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle udev;
 	char devinfo[1024];
 	usbd_status err;
 	int conf;
 
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 	kprintf("%s: %s\n", device_get_nameunit(sc->sc_dev), devinfo);
 
 	sc->sc_udev = udev = uaa->device;
@@ -213,7 +217,7 @@ USB_ATTACH(ugen)
 		kprintf("%s: setting configuration index 0 failed\n",
 		       device_get_nameunit(sc->sc_dev));
 		sc->sc_dying = 1;
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 	conf = usbd_get_config_descriptor(udev)->bConfigurationValue;
 
@@ -223,7 +227,7 @@ USB_ATTACH(ugen)
 		kprintf("%s: setting configuration %d failed\n",
 		       device_get_nameunit(sc->sc_dev), conf);
 		sc->sc_dying = 1;
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* the main device, ctrl endpoint */
@@ -232,7 +236,7 @@ USB_ATTACH(ugen)
 	make_dev(&ugen_ops, UGENMINOR(device_get_unit(sc->sc_dev), 0),
 		UID_ROOT, GID_OPERATOR, 0644, "%s", device_get_nameunit(sc->sc_dev));
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 static void
@@ -858,9 +862,10 @@ ugenwrite(struct dev_write_args *ap)
 	return (error);
 }
 
-USB_DETACH(ugen)
+static int
+ugen_detach(device_t self)
 {
-	USB_DETACH_START(ugen, sc);
+	struct ugen_softc *sc = device_get_softc(self);
 	struct ugen_endpoint *sce;
 	int i, dir;
 

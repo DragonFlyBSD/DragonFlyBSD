@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.21 2007/06/28 13:55:13 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.22 2007/07/01 21:24:03 hasso Exp $
  */
 
 /*
@@ -128,9 +128,10 @@ static keyboard_t	default_kbd;
 
 USB_DECLARE_DRIVER_INIT(ukbd, DEVMETHOD(device_resume, ukbd_resume));
 
-USB_MATCH(ukbd)
+static int
+ukbd_match(device_t self)
 {
-	USB_MATCH_START(ukbd, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 	keyboard_switch_t *sw;
 	void *arg[2];
@@ -148,9 +149,11 @@ USB_MATCH(ukbd)
 	return (UMATCH_IFACECLASS_IFACESUBCLASS_IFACEPROTO);
 }
 
-USB_ATTACH(ukbd)
+static int
+ukbd_attach(device_t self)
 {
-	USB_ATTACH_START(ukbd, sc, uaa);
+	struct ukbd_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_interface_handle iface = uaa->iface;
 	usb_interface_descriptor_t *id;
 	char devinfo[1024];
@@ -162,11 +165,12 @@ USB_ATTACH(ukbd)
 
 	sw = kbd_get_switch(DRIVER_NAME);
 	if (sw == NULL)
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
@@ -174,19 +178,19 @@ USB_ATTACH(ukbd)
 	arg[1] = (void *)ukbd_intr;
 	kbd = NULL;
 	if ((*sw->probe)(unit, (void *)arg, 0))
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	if ((*sw->init)(unit, &kbd, (void *)arg, 0))
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	(*sw->enable)(kbd);
 
 #ifdef KBD_INSTALL_CDEV
 	if (kbd_attach(kbd))
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 #endif
 	if (bootverbose)
 		(*sw->diag)(kbd, bootverbose);
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 int

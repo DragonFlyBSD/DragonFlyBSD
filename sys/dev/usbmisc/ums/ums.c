@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.24 2007/06/28 13:55:13 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.25 2007/07/01 21:24:03 hasso Exp $
  */
 
 /*
@@ -157,9 +157,10 @@ static struct dev_ops ums_ops = {
 
 USB_DECLARE_DRIVER(ums);
 
-USB_MATCH(ums)
+static int
+ums_match(device_t self)
 {
-	USB_MATCH_START(ums, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_interface_descriptor_t *id;
 	int size, ret;
 	void *desc;
@@ -185,9 +186,11 @@ USB_MATCH(ums)
 	return (ret);
 }
 
-USB_ATTACH(ums)
+static int
+ums_attach(device_t self)
 {
-	USB_ATTACH_START(ums, sc, uaa);
+	struct ums_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_interface_handle iface = uaa->iface;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
@@ -203,14 +206,15 @@ USB_ATTACH(ums)
 	sc->sc_iface = iface;
 	id = usbd_get_interface_descriptor(iface);
 	usbd_devinfo(uaa->device, 0, devinfo);
-	USB_ATTACH_SETUP;
+	sc->sc_dev = self;
+	device_set_desc_copy(self, devinfo);
 	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
 	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 	ed = usbd_interface2endpoint_descriptor(iface, 0);
 	if (!ed) {
 		kprintf("%s: could not read endpoint descriptor\n",
 		       device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	DPRINTFN(10,("ums_attach: bLength=%d bDescriptorType=%d "
@@ -226,33 +230,33 @@ USB_ATTACH(ums)
 	    UE_GET_XFERTYPE(ed->bmAttributes) != UE_INTERRUPT) {
 		kprintf("%s: unexpected endpoint\n",
 		       device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	err = usbd_read_report_desc(uaa->iface, &desc, &size, M_TEMP);
 	if (err)
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 
 	if (!hid_locate(desc, size, HID_USAGE2(HUP_GENERIC_DESKTOP, HUG_X),
 		       hid_input, &sc->sc_loc_x, &flags)) {
 		kprintf("%s: mouse has no X report\n", device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 	if ((flags & MOUSE_FLAGS_MASK) != MOUSE_FLAGS) {
 		kprintf("%s: X report 0x%04x not supported\n",
 		       device_get_nameunit(sc->sc_dev), flags);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	if (!hid_locate(desc, size, HID_USAGE2(HUP_GENERIC_DESKTOP, HUG_Y),
 		       hid_input, &sc->sc_loc_y, &flags)) {
 		kprintf("%s: mouse has no Y report\n", device_get_nameunit(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 	if ((flags & MOUSE_FLAGS_MASK) != MOUSE_FLAGS) {
 		kprintf("%s: Y report 0x%04x not supported\n",
 		       device_get_nameunit(sc->sc_dev), flags);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* try to guess the Z activator: first check Z, then WHEEL */
@@ -337,7 +341,7 @@ USB_ATTACH(ums)
 		sc->flags |= UMS_SPUR_BUT_UP;
 	}
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 

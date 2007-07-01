@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.8 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.9 2007/07/01 21:24:02 hasso Exp $
  */
 
 /*
@@ -508,9 +508,10 @@ rue_reset(struct rue_softc *sc)
  * Probe for a RTL8150 chip.
  */
 
-USB_MATCH(rue)
+static int
+rue_match(device_t self)
 {
-	USB_MATCH_START(rue, uaa);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	struct rue_type	*t;
 
 	if (uaa->iface == NULL)
@@ -533,9 +534,11 @@ USB_MATCH(rue)
  * setup and ethernet/BPF attach.
  */
 
-USB_ATTACH(rue)
+static int
+rue_attach(device_t self)
 {
-	USB_ATTACH_START(rue, sc, uaa);
+	struct rue_softc *sc = device_get_softc(self);
+	struct usb_attach_arg *uaa = device_get_ivars(self);
 	char				devinfo[1024];
 	uint8_t				eaddr[ETHER_ADDR_LEN];
 	struct ifnet			*ifp;
@@ -548,13 +551,13 @@ USB_ATTACH(rue)
 	if (usbd_set_config_no(sc->rue_udev, RUE_CONFIG_NO, 0)) {
 		device_printf(self, "setting config no %d failed\n",
 			      RUE_CONFIG_NO);
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	if (usbd_device2interface_handle(uaa->device, RUE_IFACE_IDX,
 					 &sc->rue_iface)) {
 		device_printf(self, "getting interface handle failed\n");
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	id = usbd_get_interface_descriptor(sc->rue_iface);
@@ -568,7 +571,7 @@ USB_ATTACH(rue)
 		ed = usbd_interface2endpoint_descriptor(sc->rue_iface, i);
 		if (ed == NULL) {
 			device_printf(self, "couldn't get ep %d\n", i);
-			USB_ATTACH_ERROR_RETURN;
+			return ENXIO;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
 		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
@@ -591,7 +594,7 @@ USB_ATTACH(rue)
 	/* Get station address from the EEPROM */
 	if (rue_read_mem(sc, RUE_EEPROM_IDR0, eaddr, ETHER_ADDR_LEN)) {
 		device_printf(self, "couldn't get station address\n");
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	ifp->if_softc = sc;
@@ -609,7 +612,7 @@ USB_ATTACH(rue)
 	if (mii_phy_probe(self, &sc->rue_miibus,
 			  rue_ifmedia_upd, rue_ifmedia_sts)) {
 		device_printf(self, "MII without any PHY!\n");
-		USB_ATTACH_ERROR_RETURN;
+		return ENXIO;
 	}
 
 	/* Call MI attach routine */
@@ -620,7 +623,7 @@ USB_ATTACH(rue)
 
 	usb_register_netisr();
 
-	USB_ATTACH_SUCCESS_RETURN;
+	return 0;
 }
 
 static int
