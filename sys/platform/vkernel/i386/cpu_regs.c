@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.17 2007/07/01 01:11:36 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.18 2007/07/01 02:51:43 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -699,7 +699,6 @@ cpu_idle(void)
 		if (cpu_idle_hlt && !lwkt_runnable() &&
 		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
 			splz();
-			signalmailbox(NULL);
 			if (!lwkt_runnable()) {
 				sigpause(0);
 			}
@@ -712,7 +711,6 @@ cpu_idle(void)
 		} else {
 			td->td_flags &= ~TDF_IDLE_NOHLT;
 			splz();
-			signalmailbox(NULL);
 #ifdef SMP
 			/*__asm __volatile("sti; pause");*/
 			__asm __volatile("pause");

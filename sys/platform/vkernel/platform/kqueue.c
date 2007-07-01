@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.4 2007/06/17 16:46:17 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.5 2007/07/01 02:51:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -62,7 +62,11 @@ struct kqueue_info {
 	int fd;
 };
 
-int KQueueFd = -1;
+static void kqueuesig(int signo);
+static void kqueue_intr(void *arg __unused, void *frame __unused);
+
+static int KQueueFd = -1;
+static void *VIntr1;
 
 /*
  * Initialize kqueue based I/O
@@ -78,8 +82,9 @@ init_kqueue(void)
 	struct sigaction sa;
 
 	bzero(&sa, sizeof(sa));
-	sa.sa_mailbox = &mdcpu->gd_mailbox;
-	sa.sa_flags = SA_MAILBOX | SA_NODEFER;
+	/*sa.sa_mailbox = &mdcpu->gd_mailbox;*/
+	sa.sa_flags = SA_NODEFER;
+	sa.sa_handler = kqueuesig;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGIO, &sa, NULL);
 	KQueueFd = kqueue();
@@ -90,49 +95,12 @@ init_kqueue(void)
 }
 
 /*
- * A SIGIO mailbox event cause a system call interruption and a timely
- * poll.  If the mailbox is active we clean out all pending kqueue events.
- * It is really that simple.
- *
- * We specify EV_CLEAR for all events to ensure no requeues before their
- * time.  A new SIGIO is not generated unless all events are cleared from
- * the kqueue.
+ * Signal handler dispatches interrupt thread.  Use interrupt #1
  */
-void
-signalmailbox(struct intrframe *frame)
+static void
+kqueuesig(int signo)
 {
-	struct mdglobaldata *gd = mdcpu;
-	struct timespec ts;
-	struct kevent kevary[8];
-	int n;
-	int i;
-
-	/*
-	 * we only need to wake up our shutdown thread once.  
-	 * Keep it non-zero so the shutdown thread can detect it.
-	 */
-
-	if (mdcpu->gd_shutdown > 0) {
-		mdcpu->gd_shutdown = -1;
-		wakeup(&mdcpu->gd_shutdown);
-	}
-
-	if (gd->gd_mailbox == 0)
-		return;
-	gd->gd_mailbox = 0;
-	ts.tv_sec = 0;
-	ts.tv_nsec = 0;
-	crit_enter();
-	do {
-		n = kevent(KQueueFd, NULL, 0, kevary, 8, &ts);
-		for (i = 0; i < n; ++i) {
-			struct kevent *kev = &kevary[i];
-			struct kqueue_info *info = (void *)kev->udata;
-
-			info->func(info->data, frame);
-		}
-	} while (n == 8);
-	crit_exit();
+	signalintr(1);
 }
 
 /*
@@ -144,6 +112,9 @@ kqueue_add(int fd, void (*func)(void *, struct intrframe *), void *data)
 	struct timespec ts = { 0, 0 };
 	struct kqueue_info *info;
 	struct kevent kev;
+
+	if (VIntr1 == NULL)
+		VIntr1 = register_int(1, kqueue_intr, NULL, "kqueue", NULL, 0);
 
 	info = kmalloc(sizeof(*info), M_DEVBUF, M_ZERO|M_INTWAIT);
 	info->func = func;
@@ -199,5 +170,33 @@ kqueue_del(struct kqueue_info *info)
 		panic("kevent: failed to delete descriptor %d", info->fd);
 	info->fd = -1;
 	kfree(info, M_DEVBUF);
+}
+
+/*
+ * Safely called via DragonFly's normal interrupt handling mechanism.
+ *
+ * Calleld with the MP lock held.  Note that this is still an interrupt
+ * thread context.
+ */
+static
+void
+kqueue_intr(void *arg __unused, void *frame __unused)
+{
+	struct timespec ts;
+	struct kevent kevary[8];
+	int n;
+	int i;
+
+	ts.tv_sec = 0;
+	ts.tv_nsec = 0;
+	do {
+		n = kevent(KQueueFd, NULL, 0, kevary, 8, &ts);
+		for (i = 0; i < n; ++i) {
+			struct kevent *kev = &kevary[i];
+			struct kqueue_info *info = (void *)kev->udata;
+
+			info->func(info->data, frame);
+		}
+	} while (n == 8);
 }
 

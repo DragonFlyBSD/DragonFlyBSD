@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.23 2007/06/29 21:54:12 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.24 2007/07/01 02:51:45 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -227,6 +227,7 @@ pmap_pinit(struct pmap *pmap)
 	pmap->pm_count = 1;
 	pmap->pm_active = 0;
 	pmap->pm_ptphint = NULL;
+	pmap->pm_cpucachemask = 0;
 	TAILQ_INIT(&pmap->pm_pvlist);
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
 }
@@ -284,15 +285,10 @@ pmap_release(struct pmap *pmap)
 	if (object->ref_count != 1)
 		panic("pmap_release: pteobj reference count != 1");
 #endif
-#ifdef SMP
-	panic("Must write code to clear PTxpdir cache across all CPUs");
-#if 0
-#error "Must write code to clear PTxpdir cache across all CPUs"
-#endif
-#endif
 	/*
 	 * Once we destroy the page table, the mapping becomes invalid.
-	 * Rather then waste time doing a madvise 
+	 * Don't waste time doing a madvise to invalidate the mapping, just
+	 * set cpucachemask to 0.
 	 */
 	if (pmap->pm_pdir == gd->gd_PT1pdir) {
 		gd->gd_PT1pdir = NULL;
@@ -330,6 +326,7 @@ pmap_release(struct pmap *pmap)
 	 * Leave the KVA reservation for pm_pdir cached for later reuse.
 	 */
 	pmap->pm_pdirpte = 0;
+	pmap->pm_cpucachemask = 0;
 }
 
 static int
@@ -463,8 +460,18 @@ get_ptbase(struct pmap *pmap, vm_offset_t va)
 		KKASSERT(va >= KvaStart && va < KvaEnd);
 		return(KernelPTA + (va >> PAGE_SHIFT));
 	} else if (pmap->pm_pdir == gd->gd_PT1pdir) {
+		if ((pmap->pm_cpucachemask & gd->mi.gd_cpumask) == 0) {
+			*gd->gd_PT1pde = pmap->pm_pdirpte;
+			madvise(gd->gd_PT1map, SEG_SIZE, MADV_INVAL);
+			atomic_set_int(&pmap->pm_cpucachemask, gd->mi.gd_cpumask);
+		}
 		return(gd->gd_PT1map + (va >> PAGE_SHIFT));
 	} else if (pmap->pm_pdir == gd->gd_PT2pdir) {
+		if ((pmap->pm_cpucachemask & gd->mi.gd_cpumask) == 0) {
+			*gd->gd_PT2pde = pmap->pm_pdirpte;
+			madvise(gd->gd_PT2map, SEG_SIZE, MADV_INVAL);
+			atomic_set_int(&pmap->pm_cpucachemask, gd->mi.gd_cpumask);
+		}
 		return(gd->gd_PT2map + (va >> PAGE_SHIFT));
 	}
 
@@ -479,11 +486,13 @@ get_ptbase(struct pmap *pmap, vm_offset_t va)
 		gd->gd_PT1pdir = pmap->pm_pdir;
 		*gd->gd_PT1pde = pmap->pm_pdirpte;
 		madvise(gd->gd_PT1map, SEG_SIZE, MADV_INVAL);
+		atomic_set_int(&pmap->pm_cpucachemask, gd->mi.gd_cpumask);
 		return(gd->gd_PT1map + (va >> PAGE_SHIFT));
 	} else {
 		gd->gd_PT2pdir = pmap->pm_pdir;
 		*gd->gd_PT2pde = pmap->pm_pdirpte;
 		madvise(gd->gd_PT2map, SEG_SIZE, MADV_INVAL);
+		atomic_set_int(&pmap->pm_cpucachemask, gd->mi.gd_cpumask);
 		return(gd->gd_PT2map + (va >> PAGE_SHIFT));
 	}
 }
@@ -536,12 +545,6 @@ inval_ptbase_pagedir(pmap_t pmap, vm_pindex_t pindex)
 	struct mdglobaldata *gd = mdcpu;
 	vm_offset_t va;
 
-#ifdef SMP
-	panic("Must inval self-mappings in all gd's");
-#if 0
-#error "Must inval self-mappings in all gd's"
-#endif
-#endif
 	if (pmap == &kernel_pmap) {
 		va = (vm_offset_t)KernelPTA + (pindex << PAGE_SHIFT);
 		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
@@ -553,14 +556,29 @@ inval_ptbase_pagedir(pmap_t pmap, vm_pindex_t pindex)
 		va = (vm_offset_t)pindex << PAGE_SHIFT;
 		vmspace_mcontrol(pmap, (void *)va, SEG_SIZE, MADV_INVAL, 0);
 	}
-	if (pmap->pm_pdir == gd->gd_PT1pdir) {
-		va = (vm_offset_t)gd->gd_PT1map + (pindex << PAGE_SHIFT);
-		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+
+	/*
+	 * Do a selective invalidation if we have a valid cache of this
+	 * page table.
+	 */
+	if (pmap->pm_cpucachemask & gd->mi.gd_cpumask) {
+		if (pmap->pm_pdir == gd->gd_PT1pdir) {
+			va = (vm_offset_t)gd->gd_PT1map +
+				(pindex << PAGE_SHIFT);
+			madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+		}
+		if (pmap->pm_pdir == gd->gd_PT2pdir) {
+			va = (vm_offset_t)gd->gd_PT2map +
+				(pindex << PAGE_SHIFT);
+			madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+		}
 	}
-	if (pmap->pm_pdir == gd->gd_PT2pdir) {
-		va = (vm_offset_t)gd->gd_PT2map + (pindex << PAGE_SHIFT);
-		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
-	}
+
+	/*
+	 * Invalidate any other cpu's cache mappings of this page table,
+	 * leaving only ours.
+	 */
+	atomic_clear_int(&pmap->pm_cpucachemask, gd->gd_other_cpus);
 }
 
 /*
@@ -794,7 +812,6 @@ pmap_qenter(vm_offset_t va, struct vm_page **m, int count)
 		va += PAGE_SIZE;
 	}
 #ifdef SMP
-	panic("XXX smp_invltlb()");
 	smp_invltlb();
 #endif
 }
@@ -849,7 +866,6 @@ pmap_qremove(vm_offset_t va, int count)
 		va += PAGE_SIZE;
 	}
 #ifdef SMP
-	panic("XXX smp_invltlb()");
 	smp_invltlb();
 #endif
 }

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/mplock.s,v 1.1 2007/06/18 18:57:12 josepht Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/mplock.s,v 1.2 2007/07/01 02:51:43 dillon Exp $
  *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
@@ -151,9 +151,6 @@ NON_GPROF_ENTRY(get_mplock)
 	movl	$-1,%eax
 	lock cmpxchgl %ecx,mp_lock
 	jnz	2f
-#ifdef PARANOID_INVLTLB
-	movl	%cr3,%eax; movl %eax,%cr3 /* YYY check and remove */
-#endif
 	NON_GPROF_RET			/* success */
 
 	/*

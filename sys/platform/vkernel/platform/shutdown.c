@@ -1,6 +1,5 @@
-
 /*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -32,7 +31,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.7 2007/07/01 02:51:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/shutdown.c,v 1.1 2007/07/01 02:51:45 dillon Exp $
+ */
+/*
+ * Install a signal handler for SIGTERM which shuts down the virtual kernel
  */
 
 #include "opt_ddb.h"
@@ -42,6 +44,7 @@
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/reboot.h>
+#include <sys/interrupt.h>
 #include <ddb/ddb.h>
 
 #include <sys/thread2.h>
@@ -55,86 +58,47 @@
 #include <signal.h>
 #include <unistd.h>
 
-int _ucodesel = LSEL(LUCODE_SEL, SEL_UPL);
-int _udatasel = LSEL(LUDATA_SEL, SEL_UPL);
+static void shutdownsig(int signo);
+static void shutdown_intr(void *arg __unused, void *frame __unused);
 
-static void exc_segfault(int signo, siginfo_t *info, void *ctx);
-#ifdef DDB
-static void exc_debugger(int signo, siginfo_t *info, void *ctx);
-#endif
-
-/*
- * IPIs are 'fast' interrupts, so we deal with them directly from our
- * signal handler.
- */
 static
 void
-ipi(int nada, siginfo_t *info, void *ctxp)
-{
-	++mycpu->gd_intr_nesting_level;
-	if (curthread->td_pri < TDPRI_CRIT) {
-		curthread->td_pri += TDPRI_CRIT;
-		lwkt_process_ipiq();
-		curthread->td_pri -= TDPRI_CRIT;
-	} else {
-		need_ipiq();
-	}
-	--mycpu->gd_intr_nesting_level;
-}
-
-void
-init_exceptions(void)
+initshutdown(void *arg __unused)
 {
 	struct sigaction sa;
 
 	bzero(&sa, sizeof(sa));
-	sa.sa_sigaction = exc_segfault;
-	sa.sa_flags |= SA_SIGINFO;
 	sigemptyset(&sa.sa_mask);
-	sigaction(SIGSEGV, &sa, NULL);
-	sigaction(SIGTRAP, &sa, NULL);
+	sa.sa_flags |= SA_NODEFER;
+	sa.sa_handler = shutdownsig;
+	sigaction(SIGTERM, &sa, NULL);
 
-#ifdef DDB
-	sa.sa_sigaction = exc_debugger;
-	sigaction(SIGQUIT, &sa, NULL);
-#endif
-
-	sa.sa_sigaction = ipi;
-	if (sigaction(SIGUSR1, &sa, NULL) != 0)
-	{
-		warn("ipi handler setup failed");
-		panic("IPI setup failed");
-	}
+	register_int(2, shutdown_intr, NULL, "shutdown", NULL, 0);
 }
+
+static
+void
+shutdownsig(int signo)
+{
+	signalintr(2);
+}
+
+SYSINIT(initshutdown, SI_BOOT2_PROC0, SI_ORDER_ANY, 
+	initshutdown, NULL); 
 
 /*
- * This function handles a segmentation fault.  
- *
- * XXX We assume that trapframe is a subset of ucontext.  It is as of
- *     this writing.
+ * DragonFly-safe interrupt thread.  We are the only handler on interrupt
+ * #2 so we can just steal the thread's context forever.
  */
-static void
-exc_segfault(int signo, siginfo_t *info, void *ctxp)
+static
+void
+shutdown_intr(void *arg __unused, void *frame __unused)
 {
-	ucontext_t *ctx = ctxp;
-
-#if 0
-	kprintf("CAUGHT SEGFAULT EIP %08x ERR %08x TRAPNO %d err %d\n",
-		ctx->uc_mcontext.mc_eip,
-		ctx->uc_mcontext.mc_err,
-		ctx->uc_mcontext.mc_trapno & 0xFFFF,
-		ctx->uc_mcontext.mc_trapno >> 16);
-#endif
-	kern_trap((struct trapframe *)&ctx->uc_mcontext.mc_gs);
-	splz();
+	kprintf("Caught SIGTERM from host system. Shutting down...\n");
+	if (initproc != NULL) {
+		ksignal(initproc, SIGUSR2);
+	} else {
+		reboot(RB_POWEROFF);
+	}	
 }
 
-#ifdef DDB
-
-static void
-exc_debugger(int signo, siginfo_t *info, void *ctx)
-{
-	Debugger("interrupt from console");
-}
-
-#endif

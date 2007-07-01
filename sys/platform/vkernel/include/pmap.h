@@ -43,7 +43,7 @@
  * from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  * from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/include/pmap.h,v 1.3 2007/01/15 09:28:39 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/pmap.h,v 1.4 2007/07/01 02:51:44 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -123,6 +123,7 @@ struct pmap {
 	pd_entry_t		*pm_pdir;	/* KVA of page directory */
 	vpte_t			pm_pdirpte;	/* pte mapping phys page */
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
+	cpumask_t		pm_cpucachemask;/* Invalidate cpu mappings */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	int			pm_count;	/* reference count */

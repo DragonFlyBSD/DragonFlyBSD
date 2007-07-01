@@ -1,7 +1,7 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.18 2007/06/18 18:57:12 josepht Exp $
+# $DragonFly: src/sys/platform/vkernel/conf/files,v 1.19 2007/07/01 02:51:41 dillon Exp $
 #
 bf_enc.o			optional	ipsec ipsec_esp		\
 	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
@@ -31,7 +31,8 @@ vfs/smbfs/smbfs_vnops.c		optional	smbfs
 cpu/i386/misc/atomic.c		standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/vkernel/i386/autoconf.c	standard
-platform/vkernel/i386/mp.c		optional	smp
+platform/vkernel/i386/mp.c		optional	smp		\
+	compile-with	"${CC} -c -pthread ${CFLAGS} -I/usr/include ${.IMPSRC}"
 platform/vkernel/i386/mplock.s		optional	smp
 #
 # DDB XXX
@@ -69,6 +70,7 @@ platform/vkernel/i386/fork_tramp.s	standard
 platform/vkernel/platform/init.c	standard
 platform/vkernel/platform/globaldata.c	standard
 platform/vkernel/platform/kqueue.c	standard
+platform/vkernel/platform/shutdown.c	standard
 platform/vkernel/platform/machintr.c	standard
 platform/vkernel/platform/copyio.c	standard
 platform/vkernel/platform/pmap.c	standard

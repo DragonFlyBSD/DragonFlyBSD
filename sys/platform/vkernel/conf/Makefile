@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/platform/vkernel/conf/Makefile,v 1.6 2007/01/19 07:23:42 dillon Exp $
+# $DragonFly: src/sys/platform/vkernel/conf/Makefile,v 1.7 2007/07/01 02:51:41 dillon Exp $
 #
 # Which version of config(8) is required.
 %VERSREQ=	400026
@@ -15,7 +15,7 @@ S=	../..
 
 # Override the normal kernel link and link as a normal user program
 #
-SYSTEM_LD= @${CC} -g -export-dynamic -o ${.TARGET} ${SYSTEM_OBJS} vers.o
+SYSTEM_LD= @${CC} -g -export-dynamic -o ${.TARGET} ${SYSTEM_OBJS} vers.o -lthread_xu
 
 %BEFORE_DEPEND
 

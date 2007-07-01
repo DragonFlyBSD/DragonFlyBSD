@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/swtch.s,v 1.7 2007/06/29 21:54:11 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/swtch.s,v 1.8 2007/07/01 02:51:43 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -610,3 +610,13 @@ ENTRY(cpu_lwkt_restore)
 	popl	%ebp
 	ret
 
+/*
+ * bootstrap_idle()
+ *
+ * Make AP become the idle loop.
+ */
+ENTRY(bootstrap_idle)
+	movl	PCPU(curthread),%eax
+	movl	%eax,%ebx
+	movl	TD_SP(%eax),%esp
+	ret

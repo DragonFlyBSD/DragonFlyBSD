@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.19 2007/05/25 02:21:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.20 2007/07/01 02:51:44 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -99,8 +99,9 @@ void kern_trap(struct trapframe *);
 void user_trap(struct trapframe *);
 void syscall2 (struct trapframe *);
 void vcons_set_mode(int);
-void signalmailbox(struct intrframe *);
 int npxdna(struct trapframe *);
+
+void signalintr(int intr);
 
 struct kqueue_info;
 struct kqueue_info *kqueue_add(int, void (*)(void *, struct intrframe *), void *);

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.26 2007/07/01 01:11:36 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.27 2007/07/01 02:51:43 dillon Exp $
  */
 
 /*
@@ -1431,17 +1431,6 @@ go_user(struct intrframe *frame)
 		}
 
 		/*
-		 * We must poll the mailbox prior to making the system call
-		 * to properly interlock new mailbox signals against the 
-		 * system call.
-		 *
-		 * Passing a NULL frame causes the interrupt code to assume
-		 * the supervisor.
-		 */
-		if (mdcpu->gd_mailbox)
-			signalmailbox(NULL);
-
-		/*
 		 * Run emulated user process context.  This call interlocks
 		 * with new mailbox signals.
 		 *
@@ -1457,12 +1446,9 @@ go_user(struct intrframe *frame)
 			tf->tf_xflags, frame->if_xflags);
 #endif
 		if (r < 0) {
-			if (errno == EINTR)
-				signalmailbox(frame);
-			else
+			if (errno != EINTR)
 				panic("vmspace_ctl failed");
 		} else {
-			signalmailbox(frame);
 			if (tf->tf_trapno) {
 				user_trap(tf);
 			} else if (mycpu->gd_reqflags & RQF_AST_MASK) {

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/globaldata.c,v 1.3 2007/01/06 19:40:55 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/globaldata.c,v 1.4 2007/07/01 02:51:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -95,8 +95,6 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 	 * Whole page table mappings and where we have to store the related
 	 * pde's.
 	 */
-	KKASSERT(((vm_offset_t)gd->gd_PT1map & SEG_MASK) == 0);
-	KKASSERT(((vm_offset_t)gd->gd_PT2map & SEG_MASK) == 0);
 
 	gd->gd_PT1map = gd->mi.gd_prvspace->PT1MAP;
 	gd->gd_PT1pdir = NULL;
@@ -107,6 +105,9 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 	gd->gd_PT2pdir = NULL;
 	gd->gd_PT2pde = &KernelPTD[((vm_offset_t)gd->gd_PT2map - KvaStart) / 
 				   SEG_SIZE];
+
+	KKASSERT(((vm_offset_t)gd->gd_PT1map & SEG_MASK) == 0);
+	KKASSERT(((vm_offset_t)gd->gd_PT2map & SEG_MASK) == 0);
 }
 
 int

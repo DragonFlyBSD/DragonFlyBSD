@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.11 2007/04/30 16:45:59 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.12 2007/07/01 02:51:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -45,6 +45,8 @@
 #include <stdio.h>
 #include <signal.h>
 #include <machine/globaldata.h>
+#include <machine/md_var.h>
+#include <sys/thread2.h>
 
 /*
  * Interrupt Subsystem ABI
@@ -115,19 +117,50 @@ void
 splz(void)
 {
 	struct mdglobaldata *gd = mdcpu;
+	thread_t td = gd->mi.gd_curthread;
 	int irq;
 
-	atomic_clear_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
-	while ((irq = ffs(gd->gd_spending)) != 0) {
-	    --irq;
-	    atomic_clear_int(&gd->gd_spending, 1 << irq);
-	    irq += FIRST_SOFTINT;
-	    sched_ithd(irq);
+	while (gd->mi.gd_reqflags & (RQF_IPIQ|RQF_INTPEND)) {
+		crit_enter_quick(td);
+		if (gd->mi.gd_reqflags & RQF_IPIQ) {
+			atomic_clear_int_nonlocked(&gd->mi.gd_reqflags,
+						   RQF_IPIQ);
+			lwkt_process_ipiq();
+		}
+		if (gd->mi.gd_reqflags & RQF_INTPEND) {
+			atomic_clear_int_nonlocked(&gd->mi.gd_reqflags,
+						   RQF_INTPEND);
+			while ((irq = ffs(gd->gd_spending)) != 0) {
+				--irq;
+				atomic_clear_int(&gd->gd_spending, 1 << irq);
+				irq += FIRST_SOFTINT;
+				sched_ithd(irq);
+			}
+			while ((irq = ffs(gd->gd_fpending)) != 0) {
+				--irq;
+				atomic_clear_int(&gd->gd_fpending, 1 << irq);
+				sched_ithd(irq);
+			}
+		}
+		crit_exit_noyield(td);
 	}
-	while ((irq = ffs(gd->gd_fpending)) != 0) {
-	    --irq;
-	    atomic_clear_int(&gd->gd_fpending, 1 << irq);
-	    sched_ithd(irq);
+}
+
+/*
+ * Allows an unprotected signal handler or mailbox to signal an interrupt
+ */
+void
+signalintr(int intr)
+{
+	struct mdglobaldata *gd = mdcpu;
+	thread_t td = gd->mi.gd_curthread;
+
+	if (td->td_pri >= TDPRI_CRIT) {
+		atomic_set_int_nonlocked(&gd->gd_fpending, 1 << intr);
+		atomic_set_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
+	} else {
+		atomic_clear_int(&gd->gd_fpending, 1 << intr);
+		sched_ithd(intr);
 	}
 }
 
