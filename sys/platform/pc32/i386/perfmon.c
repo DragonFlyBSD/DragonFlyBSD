@@ -27,11 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/perfmon.c,v 1.21 1999/09/25 18:24:04 phk Exp $
- * $DragonFly: src/sys/platform/pc32/i386/perfmon.c,v 1.9 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/perfmon.c,v 1.10 2007/07/02 02:14:32 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/fcntl.h>
@@ -70,7 +71,23 @@ static struct dev_ops perfmon_ops = {
 };
 
 /*
- * Must be called after cpu_class is set up.
+ * Initialize the device ops for user access to the perfmon.  This must
+ * be done late in the boot sequence.
+ *
+ * NOTE: The perfmon is really a minor of the mem major.  Perfmon
+ * gets 32-47.
+ */
+static void
+perfmon_driver_init(void *unused __unused)
+{
+	dev_ops_add(&perfmon_ops, 0xf0, 32);
+	make_dev(&perfmon_ops, 32, UID_ROOT, GID_KMEM, 0640, "perfmon");
+}
+
+SYSINIT(perfmondrv, SI_SUB_DRIVERS, SI_ORDER_ANY, perfmon_driver_init, NULL)
+
+/*
+ * This is called in early boot, after cpu_class has been set up.
  */
 void
 perfmon_init(void)
@@ -99,10 +116,6 @@ perfmon_init(void)
 		break;
 	}
 #endif /* SMP */
-
-	/* NOTE: really a minor of mem.  perfmon gets 32-47 */
-	dev_ops_add(&perfmon_ops, 0xf0, 32);
-	make_dev(&perfmon_ops, 32, UID_ROOT, GID_KMEM, 0640, "perfmon");
 }
 
 int
