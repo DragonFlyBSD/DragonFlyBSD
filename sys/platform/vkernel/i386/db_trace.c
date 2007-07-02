@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.7 2007/07/01 03:28:54 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.8 2007/07/02 01:42:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -613,7 +613,8 @@ dl_symbol_values(int callpc, const char **name)
 
 	if (*name == NULL) {
 		if (dladdr((const void *)callpc, &info) != 0) {
-			*name = info.dli_sname;
+			if (info.dli_saddr <= (const void *)callpc)
+				*name = info.dli_sname;
 		}
 	}
 }
