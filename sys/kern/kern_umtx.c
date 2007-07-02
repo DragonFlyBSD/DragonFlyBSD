@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_umtx.c,v 1.6 2007/01/11 20:53:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_umtx.c,v 1.7 2007/07/02 01:30:07 dillon Exp $
  */
 
 /*
@@ -73,7 +73,8 @@
  * Returns 0 if we slept and were woken up, -1 and ETIMEDOUT if we slept
  * and timed out, and EBUSY if the contents of the pointer did not match
  * the specified value.  A timeout of 0 indicates an unlimited sleep.
- * EINTR is returned if the call was interrupted by a signal.
+ * EINTR is returned if the call was interrupted by a signal (even if
+ * the signal specifies that the system call should restart).
  *
  * This function interlocks against call to umtx_wakeup.  It does NOT interlock
  * against changes in *ptr.  However, it does not have to.  The standard use
@@ -112,8 +113,8 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	    timeout = (timeout * hz + 999999) / 1000000;
 	waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
 	error = tsleep(waddr, PCATCH|PDOMAIN_UMTX, "umtxsl", timeout);
-	/* Can not restart timeout wait. */
-	if (timeout != 0 && error == ERESTART)
+	/* Always break out in case of signal, even if restartable */
+	if (error == ERESTART)
 		error = EINTR;
     } else {
 	error = EBUSY;
