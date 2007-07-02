@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.13 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.14 2007/07/02 14:47:27 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -62,6 +62,9 @@ int adjkerntz;
 int wall_cmos_clock = 0;
 static struct kqueue_info *kqueue_timer_info;
 
+static int cputimer_mib[16];
+static int cputimer_miblen;
+
 
 /*
  * SYSTIMER IMPLEMENTATION
@@ -89,7 +92,17 @@ static struct cputimer vkernel_cputimer = {
 void
 cpu_initclocks(void *arg __unused)
 {
+	int len;
 	kprintf("initclocks\n");
+	len = sizeof(vkernel_cputimer.freq);
+	if (sysctlbyname("kern.cputimer.freq", &vkernel_cputimer.freq, &len,
+		         NULL, NULL) < 0) {
+		panic("cpu_initclocks: can't get kern.cputimer.freq!");
+	}
+	len = sizeof(cputimer_mib)/sizeof(cputimer_mib[0]);
+	if (sysctlnametomib("kern.cputimer.clock", cputimer_mib, &len) < 0)
+		panic("cpu_initclocks: can't get kern.cputimer.clock!");
+	cputimer_miblen = len;
 	cputimer_register(&vkernel_cputimer);
 	cputimer_select(&vkernel_cputimer, 0);
 }
@@ -107,21 +120,21 @@ vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock)
 
 /*
  * Get the current counter, with 2's complement rollover.
+ *
+ * NOTE! MPSAFE, possibly no critical section
  */
 static sysclock_t
 vkernel_timer_get_timecount(void)
 {
-	static sysclock_t vkernel_last_counter;
-	struct timeval tv;
+	struct mdglobaldata *gd = mdcpu;
+	size_t len;
 	sysclock_t counter;
 
-	/* XXX NO PROTECTION FROM INTERRUPT */
-	gettimeofday(&tv, NULL);
-	counter = (sysclock_t)tv.tv_usec;
-	if (counter < vkernel_last_counter)
-		vkernel_cputimer.base += 1000000;
-	vkernel_last_counter = counter;
-	counter += vkernel_cputimer.base;
+	len = sizeof(counter);
+	if (sysctl(cputimer_mib, cputimer_miblen, &counter, &len,
+		   NULL, NULL) < 0) {
+		panic("vkernel_timer_get_timecount: sysctl failed!");
+	}
 	return(counter);
 }
 
