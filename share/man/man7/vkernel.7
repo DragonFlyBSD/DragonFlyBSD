@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.21 2007/06/23 20:52:41 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.22 2007/07/02 02:37:02 dillon Exp $
 .\"
 .Dd June 14, 2007
 .Dt VKERNEL 7
@@ -51,6 +51,7 @@
 .Op Fl i Ar file
 .Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
 .Op Fl m Ar size
+.Op Fl n Ar numcpus
 .Op Fl p Ar file
 .Op Fl r Ar file
 .Sh DESCRIPTION
@@ -150,6 +151,11 @@ Lowercase versions of
 and
 .Cm G
 are allowed.
+.It Fl n Ar numcpus
+Specify the number of cpus you wish to emulate.
+Up to 32 cpus are supported.
+The virtual kernel must be built with options SMP to use this option
+and will default to 2 cpus unless otherwise specified.
 .It Fl p Ar file
 Specify a file in which to store the process ID.
 A warning is issued if this file cannot be opened for writing.

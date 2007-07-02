@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.3 2007/07/01 04:02:33 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.4 2007/07/02 02:37:03 dillon Exp $
  */
 
 
@@ -142,8 +142,7 @@ mp_start(void)
 {
 	int shift;
 
-	/* XXX testing 2 cpus */
-	ncpus = 2;
+	ncpus = optcpus;
 
 	mp_naps = ncpus - 1;
 

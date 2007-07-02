@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.40 2007/06/19 17:25:48 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.41 2007/07/02 02:37:05 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -96,6 +96,7 @@ vpte_t	*KernelPTD;
 vpte_t	*KernelPTA;	/* Warning: Offset for direct VA translation */
 u_int cpu_feature;	/* XXX */
 u_int tsc_present;	/* XXX */
+int optcpus;		/* number of cpus - see mp_start() */
 
 struct privatespace *CPU_prvspace;
 
@@ -110,7 +111,7 @@ static void init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type);
 static void init_netif(char *netifExp[], int netifFileNum);
 static void writepid( void );
 static void cleanpid( void );
-static void usage(const char *ctl);
+static void usage(const char *str);
 
 static int save_ac;
 static char **save_av;
@@ -140,8 +141,11 @@ main(int ac, char **av)
 	 * Process options
 	 */
 	kernel_mem_readonly = 1;
+#ifdef SMP
+	optcpus = 2;
+#endif
 
-	while ((c = getopt(ac, av, "c:svm:r:e:i:p:I:U")) != -1) {
+	while ((c = getopt(ac, av, "c:svm:n:r:e:i:p:I:U")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
@@ -203,6 +207,21 @@ main(int ac, char **av)
 				}
 			}
 			break;
+		case 'n':
+			/*
+			 * This value is set up by mp_start(), don't just
+			 * set ncpus here.
+			 */
+#ifdef SMP
+			optcpus = strtol(optarg, NULL, 0);
+			if (optcpus < 1 || optcpus > 32)
+				usage("Bad ncpus, valid range is 1-32");
+#else
+			if (strtol(optarg, NULL, 0) != 1) {
+				usage("You built a UP vkernel, only 1 cpu!");
+			}
+#endif
+			
 		case 'p':
 			pid_file = optarg;	
 			break;
@@ -1077,9 +1096,10 @@ cleanpid( void )
 
 static
 void
-usage(const char *ctl)
+usage(const char *str)
 {
-	
+	fprintf(stderr, "%s\n", str);
+	exit(1);
 }
 
 void

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/vkernel/include/smp.h,v 1.2 2007/06/18 18:57:13 josepht Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/smp.h,v 1.3 2007/07/02 02:37:04 dillon Exp $
  *
  */
 
@@ -50,6 +50,8 @@ void	bootMP			(void);
 
 /* global data in apic_vector.s */
 extern volatile u_int		stopped_cpus;
+extern int			optcpus;	/* from main() */
+
 #if 0
 extern volatile u_int		started_cpus;
 
