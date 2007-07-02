@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.18 2007/06/28 09:33:33 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.19 2007/07/02 07:07:08 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -107,8 +107,6 @@ typedef struct callout usb_callout_t;
 #define usb_callout_init(h)     callout_init(&(h))
 #define usb_callout(h, t, f, d) callout_reset(&(h), (t), (f), (d))
 #define usb_uncallout(h, f, d)  callout_stop(&(h))
-
-#define	ETHER_ALIGN		2
 
 #define clalloc(p, s, x) (clist_alloc_cblocks((p), (s), (s)), 0)
 #define clfree(p) clist_free_cblocks((p))
