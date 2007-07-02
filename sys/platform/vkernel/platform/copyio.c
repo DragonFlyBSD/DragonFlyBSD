@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.7 2007/01/11 10:15:18 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.8 2007/07/02 16:52:25 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -117,6 +117,9 @@ copyinstr(const void *udaddr, void *kaddr, size_t len, size_t *res)
 /*
  * Copy a binary buffer from user space to kernel space.
  *
+ * NOTE: on a real system copyin/copyout are MP safe, but the current
+ * implementation on a vkernel is not so we get the mp lock.
+ *
  * Returns 0 on success, EFAULT on failure.
  */
 int
@@ -129,6 +132,7 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 	size_t n;
 
 	error = 0;
+	get_mplock();
 	while (len) {
 		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
 				  VM_PROT_READ,
@@ -147,6 +151,7 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 		vm_page_unhold(m);
 		sf_buf_free(sf);
 	}
+	rel_mplock();
 	return (error);
 }
 
@@ -165,6 +170,7 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 	size_t n;
 
 	error = 0;
+	get_mplock();
 	while (len) {
 		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
 				  VM_PROT_READ|VM_PROT_WRITE, 
@@ -183,6 +189,7 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 		vm_page_unhold(m);
 		sf_buf_free(sf);
 	}
+	rel_mplock();
 	return (error);
 }
  
