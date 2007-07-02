@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.19 2007/05/29 17:01:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.20 2007/07/02 06:34:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
 static MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
 static MALLOC_DEFINE(M_OBJMAG, "objcache magazine", "Object Cache Magazine");
 
-#define	INITIAL_MAG_CAPACITY	256
+#define	INITIAL_MAG_CAPACITY	64
 
 struct magazine {
 	int			 rounds;
@@ -131,6 +131,7 @@ struct objcache {
 	void			*allocator_args;
 
 	SLIST_ENTRY(objcache)	oc_next;
+	int			exhausted;	/* oops */
 
 	/* NUMA-cluster level caches */
 	struct magazinedepot	depot[MAXCLUSTERS];
@@ -182,6 +183,8 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 	struct objcache *oc;
 	struct magazinedepot *depot;
 	int cpuid;
+	int need;
+	int factor;
 
 	/* allocate object cache structure */
 	oc = kmalloc(__offsetof(struct objcache, cache_percpu[ncpus]),
@@ -202,19 +205,41 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 
 	if (mag_capacity == 0)
 		mag_capacity = INITIAL_MAG_CAPACITY;
-	depot->magcapacity = mag_capacity;
 
 	/*
 	 * The cluster_limit must be sufficient to have three magazines per
-	 * cpu.
+	 * cpu.  If we have a lot of cpus the mag_capacity might just be
+	 * too big, reduce it if necessary.
+	 *
+	 * Each cpu can hold up to two magazines, with the remainder in the
+	 * depot.  If many objects are allocated fewer magazines are
+	 * available.  We have to make sure that each cpu has access to
+	 * free objects until the object cache hits 75% of its limit.
 	 */
 	if (cluster_limit == 0) {
 		depot->unallocated_objects = -1;
 	} else {
-		if (cluster_limit < mag_capacity * ncpus * 3)
-			cluster_limit = mag_capacity * ncpus * 3;
+		factor = 8;
+		need = mag_capacity * ncpus * factor;
+		if (cluster_limit < need && mag_capacity > 16) {
+			kprintf("objcache(%s): too small for ncpus"
+				", adjusting mag_capacity %d->",
+				name, mag_capacity);
+			while (need > cluster_limit && mag_capacity > 16) {
+				mag_capacity >>= 1;
+				need = mag_capacity * ncpus * factor;
+			}
+			kprintf("%d\n", mag_capacity);
+		}
+		if (cluster_limit < need) {
+			kprintf("objcache(%s): too small for ncpus"
+				", adjusting cluster_limit %d->%d\n",
+				name, cluster_limit, need);
+			cluster_limit = need;
+		}
 		depot->unallocated_objects = cluster_limit;
 	}
+	depot->magcapacity = mag_capacity;
 	oc->alloc = alloc;
 
 	/* initialize per-cpu caches */
@@ -392,6 +417,10 @@ retry:
 			crit_exit();
 		}
 		return(obj);
+	}
+	if (oc->exhausted == 0) {
+		kprintf("Warning, objcache(%s): Exhausted!\n", oc->name);
+		oc->exhausted = 1;
 	}
 
 	/*
