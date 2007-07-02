@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.42 2007/07/02 03:44:12 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.43 2007/07/02 17:44:00 josepht Exp $
  */
 
 #include <sys/types.h>
@@ -223,6 +223,7 @@ main(int ac, char **av)
 			}
 #endif
 			
+			break;
 		case 'p':
 			pid_file = optarg;	
 			break;
