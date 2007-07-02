@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.5 2007/07/01 02:51:45 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.6 2007/07/02 03:44:12 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -133,6 +133,9 @@ struct kqueue_info *
 kqueue_add_timer(void (*func)(void *, struct intrframe *), void *data)
 {
 	struct kqueue_info *info;
+
+	if (VIntr1 == NULL)
+		VIntr1 = register_int(1, kqueue_intr, NULL, "kqueue", NULL, 0);
 
 	info = kmalloc(sizeof(*info), M_DEVBUF, M_ZERO|M_INTWAIT);
 	info->func = func;

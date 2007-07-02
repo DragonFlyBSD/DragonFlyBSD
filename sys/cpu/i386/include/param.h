@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.13 2007/01/19 07:23:42 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.14 2007/07/02 03:44:08 dillon Exp $
  */
 
 #ifndef _CPU_PARAM_H_
@@ -89,8 +89,12 @@
 /*
  * Use SMP_MAXCPU instead of MAXCPU for structures that are intended to
  * remain compatible between UP and SMP builds.
+ *
+ * NOTE: Max supported cpus is 32 because we use 32 bit cpu masks.
  */
+#ifndef SMP_MAXCPU
 #define SMP_MAXCPU	16
+#endif
 #ifdef SMP
 #define MAXCPU		SMP_MAXCPU
 #else

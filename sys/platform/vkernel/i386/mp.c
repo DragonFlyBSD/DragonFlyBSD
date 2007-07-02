@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.4 2007/07/02 02:37:03 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.5 2007/07/02 03:44:09 dillon Exp $
  */
 
 
@@ -112,11 +112,13 @@ ap_finish(void)
 	 * of 'other' CPUs.
 	 */
         rel_mplock();
-        while (smp_active_mask != smp_startup_mask)
+        while (smp_active_mask != smp_startup_mask) {
+		DELAY(100000);
                 cpu_lfence();
+	}
 
         while (try_mplock() == 0)
-                ;
+		DELAY(100000);
         if (bootverbose)
                 kprintf("Active CPU Mask: %08x\n", smp_active_mask);
 }
@@ -301,10 +303,11 @@ ap_init(void)
 
 	while (mp_finish == 0) {
 		cpu_lfence();
+		DELAY(500000);
 	}
         ++curthread->td_mpcount;
         while (cpu_try_mplock() == 0)
-            ;
+		DELAY(100000);
 
         /* BSP may have changed PTD while we're waiting for the lock */
         cpu_invltlb();
@@ -443,11 +446,10 @@ start_all_aps(u_int boot_addr)
 		 */
 		pthread_create(&ap_tids[x], NULL, start_ap, NULL);
 
-		while((smp_startup_mask & (1 << x)) == 0)
+		while((smp_startup_mask & (1 << x)) == 0) {
 			cpu_lfence(); /* XXX spin until the AP has started */
-
-		/* XXX hack, sleep for a second to let the APs start up */
-		sleep(1);
+			DELAY(1000);
+		}
 	}
 
 	return(ncpus - 1);
