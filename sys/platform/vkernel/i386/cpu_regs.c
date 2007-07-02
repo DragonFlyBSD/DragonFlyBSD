@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.18 2007/07/01 02:51:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.19 2007/07/02 01:37:10 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -107,6 +107,7 @@
 #include <sys/random.h>
 #include <sys/ptrace.h>
 #include <machine/sigframe.h>
+#include <unistd.h>		/* umtx_* functions */
 
 extern void dblfault_handler (void);
 
@@ -679,6 +680,7 @@ void
 cpu_idle(void)
 {
 	struct thread *td = curthread;
+	struct mdglobaldata *gd = mdcpu;
 
 	crit_exit();
 	KKASSERT(td->td_pri < TDPRI_CRIT);
@@ -689,19 +691,14 @@ cpu_idle(void)
 		lwkt_switch();
 
 		/*
-		 * If we are going to halt call splz unconditionally after
-		 * CLIing to catch any interrupt races.  Note that we are
-		 * at SPL0 and interrupts are enabled.
-		 *
-		 * We must poll our mailbox signals prior to calling 
-		 * sigpause() in order to properly interlock with them.
+		 * The idle loop halts only if no threads are scheduleable
+		 * and no signals have occured.
 		 */
 		if (cpu_idle_hlt && !lwkt_runnable() &&
 		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
 			splz();
-			if (!lwkt_runnable()) {
-				sigpause(0);
-			}
+			if (!lwkt_runnable())
+				umtx_sleep(&gd->mi.gd_runqmask, 0, 0);
 #ifdef SMP
 			else {
 			    __asm __volatile("pause");
@@ -721,6 +718,22 @@ cpu_idle(void)
 		}
 	}
 }
+
+#ifdef SMP
+
+/*
+ * Called by the LWKT switch core with a critical section held if the only
+ * schedulable thread needs the MP lock and we couldn't get it.  On
+ * a real cpu we just spin in the scheduler.  In the virtual kernel
+ * we sleep for a bit.
+ */
+void
+cpu_mplock_contested(void)
+{
+	usleep(1000);
+}
+
+#endif
 
 /*
  * Clear registers on exec

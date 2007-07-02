@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.108 2007/05/24 05:51:27 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.109 2007/07/02 01:37:08 dillon Exp $
  */
 
 /*
@@ -679,6 +679,7 @@ again:
 		    nq = bsrl(rqmask);
 		}
 		if (ntd == NULL) {
+		    cpu_mplock_contested();
 		    ntd = &gd->gd_idlethread;
 		    ntd->td_flags |= TDF_IDLE_NOHLT;
 		    goto using_idle_thread;
@@ -720,10 +721,12 @@ using_idle_thread:
 	     */
 	    if (ntd->td_mpcount) {
 		mpheld = MP_LOCK_HELD();
-		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
+		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL) {
 		    panic("Idle thread %p was holding the BGL!", ntd);
-		else if (mpheld == 0)
+		} else if (mpheld == 0) {
+		    cpu_mplock_contested();
 		    goto again;
+		}
 	    }
 #endif
 	}
