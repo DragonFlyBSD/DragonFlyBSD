@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.69 2007/06/29 21:54:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.70 2007/07/02 17:06:54 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -589,6 +589,7 @@ restart:
 			mycpu->gd_schedclock.periodic;
 	destproc->p_usched->heuristic_forking(origlp, lp);
 	crit_exit();
+	lp->lwp_cpumask &= usched_mastermask;
 
 	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, 0);
 	lp->lwp_thread = td;

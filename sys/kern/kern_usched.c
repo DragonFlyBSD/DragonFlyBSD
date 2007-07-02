@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_usched.c,v 1.8 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_usched.c,v 1.9 2007/07/02 17:06:55 dillon Exp $
  */
 
 #include <sys/errno.h>
@@ -43,6 +43,8 @@
 #include <machine/smp.h>
 
 static TAILQ_HEAD(, usched) usched_list = TAILQ_HEAD_INITIALIZER(usched_list);
+
+cpumask_t usched_mastermask = -1;
 
 /*
  * Called from very low level boot code, i386/i386/machdep.c/init386().
@@ -202,6 +204,10 @@ sys_usched_set(struct usched_set_args *uap)
 		error = copyin(uap->data, &cpuid, sizeof(int));
 		if (error)
 			break;
+		if (cpuid < 0 || cpuid >= ncpus) {
+			error = EFBIG;
+			break;
+		}
 		if ((smp_active_mask & (1 << cpuid)) == 0) {
 			error = EINVAL;
 			break;
@@ -216,6 +222,10 @@ sys_usched_set(struct usched_set_args *uap)
 		error = copyin(uap->data, &cpuid, sizeof(int));
 		if (error)
 			break;
+		if (cpuid < 0 || cpuid >= ncpus) {
+			error = EFBIG;
+			break;
+		}
 		if (!(smp_active_mask & (1 << cpuid))) {
 			error = EINVAL;
 			break;
@@ -228,6 +238,10 @@ sys_usched_set(struct usched_set_args *uap)
 		error = copyin(uap->data, &cpuid, sizeof(int));
 		if (error)
 			break;
+		if (cpuid < 0 || cpuid >= ncpus) {
+			error = EFBIG;
+			break;
+		}
 		lp = curthread->td_lwp;
 		mask = lp->lwp_cpumask & smp_active_mask & ~(1 << cpuid);
 		if (mask == 0)

@@ -3,7 +3,7 @@
  *
  *	Userland scheduler API
  * 
- * $DragonFly: src/sys/sys/usched.h,v 1.12 2006/06/10 20:19:39 dillon Exp $
+ * $DragonFly: src/sys/sys/usched.h,v 1.13 2007/07/02 17:06:56 dillon Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -81,6 +81,7 @@ union usched_data {
 
 extern struct usched	usched_bsd4;
 extern struct usched	usched_dummy;
+extern cpumask_t usched_mastermask;
 
 int usched_ctl(struct usched *, int);
 struct usched *usched_init(void);
