@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.37 2007/07/02 06:43:31 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.38 2007/07/02 23:52:04 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -174,13 +174,30 @@ static int usb_get_next_event(struct usb_event *);
 
 static const char *usbrev_str[] = USBREV_STR;
 
-USB_DECLARE_DRIVER_INIT(usb,
-			DEVMETHOD(bus_child_detached, usb_child_detached),
-			DEVMETHOD(device_suspend, bus_generic_suspend),
-			DEVMETHOD(device_resume, bus_generic_resume),
-			DEVMETHOD(device_shutdown, bus_generic_shutdown)
-			);
+static device_probe_t usb_match;
+static device_attach_t usb_attach;
+static device_detach_t usb_detach;
 
+static devclass_t usb_devclass;
+
+static kobj_method_t usb_methods[] = {
+	DEVMETHOD(device_probe, usb_match),
+	DEVMETHOD(device_attach, usb_attach),
+	DEVMETHOD(device_detach, usb_detach),
+	DEVMETHOD(bus_child_detached, usb_child_detached),
+	DEVMETHOD(device_suspend, bus_generic_suspend),
+	DEVMETHOD(device_resume, bus_generic_resume),
+	DEVMETHOD(device_shutdown, bus_generic_shutdown),
+	{0,0}
+};
+
+static driver_t usb_driver = {
+	"usb",
+	usb_methods,
+	sizeof(struct usb_softc)
+};
+
+MODULE_DEPEND(usb, usb, 1, 1, 1);
 MODULE_VERSION(usb, 1);
 
 static int

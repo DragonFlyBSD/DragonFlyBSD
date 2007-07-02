@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.26 2007/07/02 06:43:31 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.27 2007/07/02 23:52:05 hasso Exp $
  */
 
 /*
@@ -155,7 +155,26 @@ static struct dev_ops ums_ops = {
 	.d_poll =	ums_poll,
 };
 
-USB_DECLARE_DRIVER(ums);
+static device_probe_t ums_match;
+static device_attach_t ums_attach;
+static device_detach_t ums_detach;
+
+static devclass_t ums_devclass;
+
+static kobj_method_t ums_methods[] = {
+	DEVMETHOD(device_probe, ums_match),
+	DEVMETHOD(device_attach, ums_attach),
+	DEVMETHOD(device_detach, ums_detach),
+	{0,0}
+};
+
+static driver_t ums_driver = {
+	"ums",
+	ums_methods,
+	sizeof(struct ums_softc)
+};
+
+MODULE_DEPEND(ums, usb, 1, 1, 1);
 
 static int
 ums_match(device_t self)

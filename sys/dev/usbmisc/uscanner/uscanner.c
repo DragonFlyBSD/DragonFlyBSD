@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.21 2007/07/02 06:43:31 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.22 2007/07/02 23:52:05 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -269,7 +269,26 @@ static void uscanner_do_close(struct uscanner_softc *);
 
 #define USCANNERUNIT(n) (minor(n))
 
-USB_DECLARE_DRIVER(uscanner);
+static device_probe_t uscanner_match;
+static device_attach_t uscanner_attach;
+static device_detach_t uscanner_detach;
+
+static devclass_t uscanner_devclass;
+
+static kobj_method_t uscanner_methods[] = {
+	DEVMETHOD(device_probe, uscanner_match),
+	DEVMETHOD(device_attach, uscanner_attach),
+	DEVMETHOD(device_detach, uscanner_detach),
+	{0,0}
+};
+
+static driver_t uscanner_driver = {
+	"uscanner",
+	uscanner_methods,
+	sizeof(struct uscanner_softc)
+};
+
+MODULE_DEPEND(uscanner, usb, 1, 1, 1);
 
 static int
 uscanner_match(device_t self)

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.21 2007/07/02 06:43:31 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.22 2007/07/02 23:52:05 hasso Exp $
  */
 
 /*
@@ -149,7 +149,26 @@ void ieee1284_print_id(char *);
 #define	ULPTFLAGS(s)	(minor(s) & 0xe0)
 
 
-USB_DECLARE_DRIVER(ulpt);
+static device_probe_t ulpt_match;
+static device_attach_t ulpt_attach;
+static device_detach_t ulpt_detach;
+
+static devclass_t ulpt_devclass;
+
+static kobj_method_t ulpt_methods[] = {
+	DEVMETHOD(device_probe, ulpt_match),
+	DEVMETHOD(device_attach, ulpt_attach),
+	DEVMETHOD(device_detach, ulpt_detach),
+	{0,0}
+};
+
+static driver_t ulpt_driver = {
+	"ulpt",
+	ulpt_methods,
+	sizeof(struct ulpt_softc)
+};
+
+MODULE_DEPEND(ulpt, usb, 1, 1, 1);
 
 static int
 ulpt_match(device_t self)

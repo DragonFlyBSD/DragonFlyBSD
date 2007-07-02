@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.91 2004/11/05 17:46:14 kent Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.14.2.2 2006/04/04 17:34:10 ariff Exp $ */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.15 2007/07/01 21:24:02 hasso Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.16 2007/07/02 23:52:05 hasso Exp $: */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -487,12 +487,30 @@ USB_DECLARE_DRIVER(uaudio);
 
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
 
-USB_DECLARE_DRIVER_INIT(uaudio,
-		DEVMETHOD(device_suspend, bus_generic_suspend),
-		DEVMETHOD(device_resume, bus_generic_resume),
-		DEVMETHOD(device_shutdown, bus_generic_shutdown),
-		DEVMETHOD(bus_print_child, bus_generic_print_child)
-		);
+static device_probe_t uaudio_match;
+static device_attach_t uaudio_attach;
+static device_detach_t uaudio_detach;
+
+static devclass_t uaudio_devclass;
+
+static kobj_method_t uaudio_methods[] = {
+	DEVMETHOD(device_probe, uaudio_match),
+	DEVMETHOD(device_attach, uaudio_attach),
+	DEVMETHOD(device_detach, uaudio_detach),
+	DEVMETHOD(device_suspend, bus_generic_suspend),
+	DEVMETHOD(device_resume, bus_generic_resume),
+	DEVMETHOD(device_shutdown, bus_generic_shutdown),
+	DEVMETHOD(bus_print_child, bus_generic_print_child),
+	{0,0}
+};
+
+static driver_t uaudio_driver = {
+	"uaudio",
+	uaudio_methods,
+	sizeof(struct uaudio_softc)
+};
+
+MODULE_DEPEND(uaudio, usb, 1, 1, 1);
 #endif
 
 

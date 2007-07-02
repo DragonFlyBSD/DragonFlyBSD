@@ -1,6 +1,6 @@
 /*	$NetBSD: uhub.c,v 1.68 2004/06/29 06:30:05 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhub.c,v 1.69.2.1 2005/12/18 15:51:31 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.17 2007/07/01 21:24:02 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.18 2007/07/02 23:52:04 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -96,15 +96,33 @@ static bus_child_pnpinfo_str_t uhub_child_pnpinfo_str;
  * Every other driver only connects to hubs
  */
 
-USB_DECLARE_DRIVER_INIT(uhub,
+static device_probe_t uhub_match;
+static device_attach_t uhub_attach;
+static device_detach_t uhub_detach;
+
+static devclass_t uhub_devclass;
+
+static kobj_method_t uhub_methods[] = {
+	DEVMETHOD(device_probe, uhub_match),
+	DEVMETHOD(device_attach, uhub_attach),
+	DEVMETHOD(device_detach, uhub_detach),
 	DEVMETHOD(bus_child_detached, uhub_child_detached),
 	DEVMETHOD(bus_child_pnpinfo_str, uhub_child_pnpinfo_str),
 	DEVMETHOD(bus_child_location_str, uhub_child_location_str),
 	DEVMETHOD(bus_driver_added, bus_generic_driver_added),
 	DEVMETHOD(device_suspend, bus_generic_suspend),
 	DEVMETHOD(device_resume, bus_generic_resume),
-	DEVMETHOD(device_shutdown, bus_generic_shutdown)
-	);
+	DEVMETHOD(device_shutdown, bus_generic_shutdown),
+	{0,0}
+};
+
+static driver_t uhub_driver = {
+	"uhub",
+	uhub_methods,
+	sizeof(struct uhub_softc)
+};
+
+MODULE_DEPEND(uhub, usb, 1, 1, 1);
 
 /* Create the driver instance for the hub connected to usb case. */
 devclass_t uhubroot_devclass;

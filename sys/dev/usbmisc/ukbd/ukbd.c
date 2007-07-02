@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.22 2007/07/01 21:24:03 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.23 2007/07/02 23:52:05 hasso Exp $
  */
 
 /*
@@ -126,7 +126,27 @@ static int		ukbd_default_term(keyboard_t *kbd);
 
 static keyboard_t	default_kbd;
 
-USB_DECLARE_DRIVER_INIT(ukbd, DEVMETHOD(device_resume, ukbd_resume));
+static device_probe_t ukbd_match;
+static device_attach_t ukbd_attach;
+static device_detach_t ukbd_detach;
+
+static devclass_t ukbd_devclass;
+
+static kobj_method_t ukbd_methods[] = {
+	DEVMETHOD(device_probe, ukbd_match),
+	DEVMETHOD(device_attach, ukbd_attach),
+	DEVMETHOD(device_detach, ukbd_detach),
+	DEVMETHOD(device_resume, ukbd_resume),
+	{0,0}
+};
+
+static driver_t ukbd_driver = {
+	"ukbd",
+	ukbd_methods,
+	sizeof(struct ukbd_softc)
+};
+
+MODULE_DEPEND(ukbd, usb, 1, 1, 1);
 
 static int
 ukbd_match(device_t self)

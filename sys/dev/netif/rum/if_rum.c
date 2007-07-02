@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.16 2007/07/01 21:24:02 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.17 2007/07/02 23:52:04 hasso Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -216,7 +216,26 @@ static const struct rfprog {
 	RT2573_RF5225
 };
 
-USB_DECLARE_DRIVER(rum);
+static device_probe_t rum_match;
+static device_attach_t rum_attach;
+static device_detach_t rum_detach;
+
+static devclass_t rum_devclass;
+
+static kobj_method_t rum_methods[] = {
+	DEVMETHOD(device_probe, rum_match),
+	DEVMETHOD(device_attach, rum_attach),
+	DEVMETHOD(device_detach, rum_detach),
+	{0,0}
+};
+
+static driver_t rum_driver = {
+	"rum",
+	rum_methods,
+	sizeof(struct rum_softc)
+};
+
+MODULE_DEPEND(rum, usb, 1, 1, 1);
 DRIVER_MODULE(rum, uhub, rum_driver, rum_devclass, usbd_driver_load, 0);
 
 static int

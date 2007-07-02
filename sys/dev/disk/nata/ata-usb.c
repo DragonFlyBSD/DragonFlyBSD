@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-usb.c,v 1.4 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.6 2007/06/28 06:32:31 hasso Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-usb.c,v 1.7 2007/07/02 23:52:04 hasso Exp $
  */
 
 #include "opt_ata.h"
@@ -142,7 +142,26 @@ int ata_usbchannel_end_transaction(struct ata_request *request);
 /*
  * USB frontend part
  */
-USB_DECLARE_DRIVER(atausb);
+static device_probe_t atausb_match;
+static device_attach_t atausb_attach;
+static device_detach_t atausb_detach;
+
+static devclass_t atausb_devclass;
+
+static kobj_method_t atausb_methods[] = {
+	DEVMETHOD(device_probe, atausb_match),
+	DEVMETHOD(device_attach, atausb_attach),
+	DEVMETHOD(device_detach, atausb_detach),
+	{0,0}
+};
+
+static driver_t atausb_driver = {
+	"atausb",
+	atausb_methods,
+	sizeof(struct atausb_softc)
+};
+
+MODULE_DEPEND(atausb, usb, 1, 1, 1);
 DRIVER_MODULE(atausb, uhub, atausb_driver, atausb_devclass, 0, 0);
 MODULE_VERSION(atausb, 1);
 

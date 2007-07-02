@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.30 2007/07/02 06:43:31 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.31 2007/07/02 23:52:05 hasso Exp $
  */
 
 /* 
@@ -175,7 +175,26 @@ static int ugen_get_alt_index(struct ugen_softc *sc, int ifaceidx);
 #define UGENMINOR(u, e) (((u & 0xf) << 4) | ((u & 0xf0) << 12) | (e))
 #define UGENUNITMASK	0xffff00f0
 
-USB_DECLARE_DRIVER(ugen);
+static device_probe_t ugen_match;
+static device_attach_t ugen_attach;
+static device_detach_t ugen_detach;
+
+static devclass_t ugen_devclass;
+
+static kobj_method_t ugen_methods[] = {
+	DEVMETHOD(device_probe, ugen_match),
+	DEVMETHOD(device_attach, ugen_attach),
+	DEVMETHOD(device_detach, ugen_detach),
+	{0,0}
+};
+
+static driver_t ugen_driver = {
+	"ugen",
+	ugen_methods,
+	sizeof(struct ugen_softc)
+};
+
+MODULE_DEPEND(ugen, usb, 1, 1, 1);
 
 static int
 ugen_match(device_t self)

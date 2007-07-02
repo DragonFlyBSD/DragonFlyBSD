@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.26 2007/07/01 21:24:03 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.27 2007/07/02 23:52:05 hasso Exp $
  */
 
 /*
@@ -568,7 +568,28 @@ static uint8_t fake_inq_data[SHORT_INQUIRY_LENGTH] = {
 };
 
 /* USB device probe/attach/detach functions */
-USB_DECLARE_DRIVER(umass);
+static device_probe_t umass_match;
+static device_attach_t umass_attach;
+static device_detach_t umass_detach;
+
+static devclass_t umass_devclass;
+
+static kobj_method_t umass_methods[] = {
+	DEVMETHOD(device_probe, umass_match),
+	DEVMETHOD(device_attach, umass_attach),
+	DEVMETHOD(device_detach, umass_detach),
+	{0,0},
+	{0,0}
+};
+
+static driver_t umass_driver = {
+	"umass",
+	umass_methods,
+	sizeof(struct umass_softc)
+};
+
+MODULE_DEPEND(umass, usb, 1, 1, 1);
+
 static int umass_match_proto	(struct umass_softc *sc,
 				usbd_interface_handle iface,
 				usbd_device_handle udev);

@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.21 2007/07/02 06:43:31 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.22 2007/07/02 23:52:05 hasso Exp $
  */
 
 /*
@@ -130,7 +130,26 @@ struct urio_softc {
 
 #define RIO_RW_TIMEOUT 4000	/* ms */
 
-USB_DECLARE_DRIVER(urio);
+static device_probe_t urio_match;
+static device_attach_t urio_attach;
+static device_detach_t urio_detach;
+
+static devclass_t urio_devclass;
+
+static kobj_method_t urio_methods[] = {
+	DEVMETHOD(device_probe, urio_match),
+	DEVMETHOD(device_attach, urio_attach),
+	DEVMETHOD(device_detach, urio_detach),
+	{0,0}
+};
+
+static driver_t urio_driver = {
+	"urio",
+	urio_methods,
+	sizeof(struct urio_softc)
+};
+
+MODULE_DEPEND(urio, usb, 1, 1, 1);
 
 static int
 urio_match(device_t self)

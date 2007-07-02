@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.18 2007/07/02 06:43:31 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.19 2007/07/02 23:52:05 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,26 @@ struct ufm_softc {
 
 #define UFMUNIT(n) (minor(n))
 
-USB_DECLARE_DRIVER(ufm);
+static device_probe_t ufm_match;
+static device_attach_t ufm_attach;
+static device_detach_t ufm_detach;
+
+static devclass_t ufm_devclass;
+
+static kobj_method_t ufm_methods[] = {
+	DEVMETHOD(device_probe, ufm_match),
+	DEVMETHOD(device_attach, ufm_attach),
+	DEVMETHOD(device_detach, ufm_detach),
+	{0,0}
+};
+
+static driver_t ufm_driver = {
+	"ufm",
+	ufm_methods,
+	sizeof(struct ufm_softc)
+};
+
+MODULE_DEPEND(ufm, usb, 1, 1, 1);
 
 static int
 ufm_match(device_t self)

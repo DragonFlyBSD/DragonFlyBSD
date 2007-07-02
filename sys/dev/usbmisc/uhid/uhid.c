@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.27 2007/07/02 06:43:31 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.28 2007/07/02 23:52:05 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -155,7 +155,26 @@ static int uhid_do_read(struct uhid_softc *, struct uio *uio, int);
 static int uhid_do_write(struct uhid_softc *, struct uio *uio, int);
 static int uhid_do_ioctl(struct uhid_softc *, u_long, caddr_t, int);
 
-USB_DECLARE_DRIVER(uhid);
+static device_probe_t uhid_match;
+static device_attach_t uhid_attach;
+static device_detach_t uhid_detach;
+
+static devclass_t uhid_devclass;
+
+static kobj_method_t uhid_methods[] = {
+	DEVMETHOD(device_probe, uhid_match),
+	DEVMETHOD(device_attach, uhid_attach),
+	DEVMETHOD(device_detach, uhid_detach),
+	{0,0}
+};
+
+static driver_t uhid_driver = {
+	"uhid",
+	uhid_methods,
+	sizeof(struct uhid_softc)
+};
+
+MODULE_DEPEND(uhid, usb, 1, 1, 1);
 
 static int
 uhid_match(device_t self)

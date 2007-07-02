@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.14 2007/07/01 21:24:03 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.15 2007/07/02 23:52:05 hasso Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -216,7 +216,26 @@ static void udbp_out_transfer_cb	(usbd_xfer_handle xfer,
 					usbd_private_handle priv,
 					usbd_status err);
 
-USB_DECLARE_DRIVER(udbp);
+static device_probe_t udbp_match;
+static device_attach_t udbp_attach;
+static device_detach_t udbp_detach;
+
+static devclass_t udbp_devclass;
+
+static kobj_method_t udbp_methods[] = {
+	DEVMETHOD(device_probe, udbp_match),
+	DEVMETHOD(device_attach, udbp_attach),
+	DEVMETHOD(device_detach, udbp_detach),
+	{0,0}
+};
+
+static driver_t udbp_driver = {
+	"udbp",
+	udbp_methods,
+	sizeof(struct udbp_softc)
+};
+
+MODULE_DEPEND(udbp, usb, 1, 1, 1);
 
 static int
 udbp_match(device_t self)

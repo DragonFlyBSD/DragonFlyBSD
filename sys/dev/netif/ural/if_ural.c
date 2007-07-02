@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.16 2007/07/01 21:24:02 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.17 2007/07/02 23:52:05 hasso Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -341,7 +341,26 @@ static const struct {
 	{ 161, 0x08808, 0x0242f, 0x00281 }
 };
 
-USB_DECLARE_DRIVER(ural);
+static device_probe_t ural_match;
+static device_attach_t ural_attach;
+static device_detach_t ural_detach;
+
+static devclass_t ural_devclass;
+
+static kobj_method_t ural_methods[] = {
+	DEVMETHOD(device_probe, ural_match),
+	DEVMETHOD(device_attach, ural_attach),
+	DEVMETHOD(device_detach, ural_detach),
+	{0,0}
+};
+
+static driver_t ural_driver = {
+	"ural",
+	ural_methods,
+	sizeof(struct ural_softc)
+};
+
+MODULE_DEPEND(ural, usb, 1, 1, 1);
 
 static int
 ural_match(device_t self)
