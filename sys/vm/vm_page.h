@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.25 2006/12/02 23:13:46 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.26 2007/07/02 15:57:48 dillon Exp $
  */
 
 /*
@@ -154,7 +154,7 @@ struct vm_page {
 	u_short	flags;			/* see below */
 	u_short	pc;			/* page color */
 	u_short wire_count;		/* wired down maps refs (P) */
-	short hold_count;		/* page hold count */
+	int 	hold_count;		/* page hold count */
 	u_char	act_count;		/* page usage count */
 	u_char	busy;			/* page busy count */
 
@@ -165,8 +165,6 @@ struct vm_page {
 #if PAGE_SIZE == 4096
 	u_char	valid;			/* map of valid DEV_BSIZE chunks */
 	u_char	dirty;			/* map of dirty DEV_BSIZE chunks */
-	u_char	unused1;
-	u_char	unused2;
 #elif PAGE_SIZE == 8192
 	u_short	valid;			/* map of valid DEV_BSIZE chunks */
 	u_short	dirty;			/* map of dirty DEV_BSIZE chunks */
