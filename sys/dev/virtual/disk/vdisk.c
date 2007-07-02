@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.6 2007/05/25 02:21:14 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.7 2007/07/02 17:15:10 dillon Exp $
  */
 
 /*
@@ -43,6 +43,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
+#include <sys/bus.h>
 #include <sys/buf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
@@ -57,12 +58,17 @@ struct vkd_softc {
 	struct bio_queue_head bio_queue;
 	struct devstat stats;
 	struct disk disk;
+	struct spinlock spin;
+	thread_t iotd;		/* dedicated io thread */
 	cdev_t dev;
 	int unit;
 	int fd;
 };
 
 #define CDEV_MAJOR	97
+
+static void vkd_io_thread(void *arg);
+static void vkd_doio(struct vkd_softc *sc, struct bio *bio);
 
 static d_strategy_t	vkdstrategy;
 static d_open_t		vkdopen;
@@ -96,6 +102,7 @@ vkdinit(void *dummy __unused)
 		sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 		sc->unit = dsk->unit;
 		sc->fd = dsk->fd;
+		spin_init(&sc->spin);
 		bioq_init(&sc->bio_queue);
 		devstat_add_entry(&sc->stats, "vkd", sc->unit, DEV_BSIZE,
 				  DEVSTAT_NO_ORDERED_TAGS,
@@ -104,6 +111,12 @@ vkdinit(void *dummy __unused)
 		sc->dev = disk_create(sc->unit, &sc->disk, &vkd_ops);
 		sc->dev->si_drv1 = sc;
 		sc->dev->si_iosize_max = 256 * 1024;
+		if (ncpus > 2) {
+			int xcpu = ncpus - 1;
+			lwkt_create(vkd_io_thread, sc, &sc->iotd, NULL, 
+				    0, xcpu, "vkd%d-io", sc->unit);
+			usched_mastermask &= ~(1 << xcpu);
+		}
 	}
 }
 
@@ -139,44 +152,87 @@ static int
 vkdstrategy(struct dev_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
-	struct buf *bp;
 	struct vkd_softc *sc;
 	cdev_t dev;
-	int n;
 
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
 
-	bioqdisksort(&sc->bio_queue, bio);
-	while ((bio = bioq_first(&sc->bio_queue)) != NULL) {
-		bioq_remove(&sc->bio_queue, bio);
-		bp = bio->bio_buf;
-
-		devstat_start_transaction(&sc->stats);
-
-		switch(bp->b_cmd) {
-		case BUF_CMD_READ:
-			lseek(sc->fd, bio->bio_offset, 0);
-			n = read(sc->fd, bp->b_data, bp->b_bcount);
-			break;
-		case BUF_CMD_WRITE:
-			/* XXX HANDLE SHORT WRITE XXX */
-			lseek(sc->fd, bio->bio_offset, 0);
-			n = write(sc->fd, bp->b_data, bp->b_bcount);
-			break;
-		default:
-			panic("vkd: bad b_cmd %d", bp->b_cmd);
-			break; /* not reached */
+	if (sc->iotd) {
+		spin_lock_wr(&sc->spin);
+		bioqdisksort(&sc->bio_queue, bio);
+		spin_unlock_wr(&sc->spin);
+		wakeup(sc->iotd);
+	} else {
+		bioqdisksort(&sc->bio_queue, bio);
+		while ((bio = bioq_first(&sc->bio_queue)) != NULL) {
+			bioq_remove(&sc->bio_queue, bio);
+			vkd_doio(sc, bio);
+			biodone(bio);
 		}
-		if (n != bp->b_bcount) {
-			bp->b_error = EIO;
-			bp->b_flags |= B_ERROR;
-		}
-			
-		bp->b_resid = bp->b_bcount - n;
-		devstat_end_transaction_buf(&sc->stats, bp);
-		biodone(bio);
 	}
 	return(0);
+}
+
+static
+void
+vkd_io_thread(void *arg)
+{
+	struct bio *bio;
+	struct vkd_softc *sc;
+	int count = 0;
+
+	rel_mplock();
+	sc = arg;
+
+	kprintf("vkd%d I/O helper on cpu %d\n", sc->unit, mycpu->gd_cpuid);
+
+	spin_lock_wr(&sc->spin);
+	for (;;) {
+		while ((bio = bioq_first(&sc->bio_queue)) != NULL) {
+			bioq_remove(&sc->bio_queue, bio);
+			spin_unlock_wr(&sc->spin);
+			vkd_doio(sc, bio);
+			get_mplock();
+			biodone(bio);
+			rel_mplock();
+			if ((++count & 3) == 0)
+				lwkt_switch();
+			spin_lock_wr(&sc->spin);
+		}
+		msleep(sc->iotd, &sc->spin, 0, "bioq", 0);
+	}
+	/* not reached */
+	spin_unlock_wr(&sc->spin);
+}
+
+static
+void
+vkd_doio(struct vkd_softc *sc, struct bio *bio)
+{
+	struct buf *bp = bio->bio_buf;
+	int n;
+
+	devstat_start_transaction(&sc->stats);
+
+	switch(bp->b_cmd) {
+	case BUF_CMD_READ:
+		n = pread(sc->fd, bp->b_data, bp->b_bcount, bio->bio_offset);
+		break;
+	case BUF_CMD_WRITE:
+		/* XXX HANDLE SHORT WRITE XXX */
+		n = pwrite(sc->fd, bp->b_data, bp->b_bcount, bio->bio_offset);
+		break;
+	default:
+		panic("vkd: bad b_cmd %d", bp->b_cmd);
+		break; /* not reached */
+	}
+	if (n != bp->b_bcount) {
+		bp->b_error = EIO;
+		bp->b_flags |= B_ERROR;
+	}
+		
+	bp->b_resid = bp->b_bcount - n;
+	devstat_end_transaction_buf(&sc->stats, bp);
 }
 
