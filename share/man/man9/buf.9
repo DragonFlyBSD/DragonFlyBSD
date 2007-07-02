@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/buf.9,v 1.5.2.5 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/buf.9,v 1.6 2007/07/01 10:49:36 swildner Exp $
+.\" $DragonFly: src/share/man/man9/buf.9,v 1.7 2007/07/02 19:32:34 swildner Exp $
 .\"
 .Dd December 21, 2004
 .Dt BUF 9
@@ -114,7 +114,7 @@ If a page making up a VM buffer is about to undergo I/O, the system typically
 unmaps it from KVM and replaces the page in the
 .Fa b_pages[]
 array with a placemarker called
-.Fa bogus_page.
+.Fa bogus_page .
 The placemarker forces any kernel subsystems referencing the associated
 .Ft struct buf
 to re-lookup the associated page.
