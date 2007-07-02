@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.126 2007/07/02 01:37:09 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.127 2007/07/02 16:52:01 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -955,6 +955,17 @@ cpu_idle(void)
  */
 void
 cpu_mplock_contested(void)
+{
+	cpu_pause();
+}
+
+/*
+ * This routine is called if a spinlock has been held through the
+ * exponential backoff period and is seriously contested.  On a real cpu
+ * we let it spin.
+ */
+void
+cpu_spinlock_contested(void)
 {
 	cpu_pause();
 }

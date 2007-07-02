@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.72 2007/07/02 01:37:11 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.73 2007/07/02 16:52:01 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -147,6 +147,7 @@ void	*phashinit (int count, struct malloc_type *type, u_long *nentries);
 int	cpu_sanitize_frame (struct trapframe *);
 int	cpu_sanitize_tls (struct savetls *);
 void	cpu_mplock_contested(void);
+void	cpu_spinlock_contested(void);
 void	cpu_halt (void);
 void	cpu_reset (void);
 void	cpu_boot (int);

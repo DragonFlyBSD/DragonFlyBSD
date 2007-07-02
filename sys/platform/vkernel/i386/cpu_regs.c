@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.20 2007/07/02 06:30:26 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.21 2007/07/02 16:52:00 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -745,6 +745,16 @@ cpu_idle(void)
  */
 void
 cpu_mplock_contested(void)
+{
+	usleep(1000);
+}
+
+/*
+ * Called by the spinlock code with or without a critical section held
+ * when a spinlock is found to be seriously constested.
+ */
+void
+cpu_spinlock_contested(void)
 {
 	usleep(1000);
 }

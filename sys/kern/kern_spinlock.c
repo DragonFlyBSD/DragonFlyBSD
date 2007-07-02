@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.10 2007/02/21 02:19:39 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.11 2007/07/02 16:51:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -262,6 +262,7 @@ exponential_backoff(struct exponential_backoff *bo)
 	 * Indefinite
 	 */
 	++spinlocks_contested2;
+	cpu_spinlock_contested();
 	if (bo->nsec == 0) {
 		bo->base = sys_cputimer->count();
 		bo->nsec = 1;
