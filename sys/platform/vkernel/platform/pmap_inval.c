@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/pmap_inval.c,v 1.3 2007/01/08 03:33:43 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap_inval.c,v 1.4 2007/07/02 02:22:58 dillon Exp $
  */
 
 /*
@@ -43,8 +43,13 @@
  * race against our own modifications and tests.  Second, even if we
  * were to use bus-locked instruction we can still screw up the 
  * target cpu's instruction pipeline due to Intel cpu errata.
+ *
+ * For our virtual page tables, the real kernel will handle SMP interactions
+ * with pmaps that may be active on other cpus.  Even so, we have to be
+ * careful about bit setting races particularly when we are trying to clean
+ * a page and test the modified bit to avoid races where the modified bit
+ * might get set after our poll but before we clear the field.
  */
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -67,91 +72,153 @@
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
 
-/*
- * Initialize for add or flush
- */
+static __inline
 void
-pmap_inval_init(pmap_inval_info_t info)
-{
-    info->pir_flags = 0;
-}
-
-void
-pmap_inval_add(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
+pmap_inval_cpu(struct pmap *pmap, vm_offset_t va, size_t bytes)
 {
     if (pmap == &kernel_pmap) {
-	madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+	madvise((void *)va, bytes, MADV_INVAL);
     } else {
-	vmspace_mcontrol(pmap, (void *)va, PAGE_SIZE, MADV_INVAL, 0);
+	vmspace_mcontrol(pmap, (void *)va, bytes, MADV_INVAL, 0);
     }
 }
-
-void
-pmap_inval_flush(pmap_inval_info_t info)
-{
-    info->pir_flags = 0;
-}
-
-#if 0
 
 /*
- * Add a (pmap, va) pair to the invalidation list and protect access
- * as appropriate.
+ * Invalidate a pte in a pmap and synchronize with target cpus
+ * as required.  Throw away the modified and access bits.  Use
+ * pmap_clean_pte() to do the same thing but also get an interlocked
+ * modified/access status.
+ *
+ * Clearing the field first (basically clearing VPTE_V) prevents any
+ * new races from occuring while we invalidate the TLB (i.e. the pmap
+ * on the real cpu), then clear it again to clean out any race that
+ * might have occured before the invalidation completed.
  */
 void
-pmap_inval_add(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
+pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
-#ifdef SMP
-    if ((info->pir_flags & PIRF_CPUSYNC) == 0) {
-	info->pir_flags |= PIRF_CPUSYNC;
-	info->pir_cpusync.cs_run_func = NULL;
-	info->pir_cpusync.cs_fin1_func = NULL;
-	info->pir_cpusync.cs_fin2_func = NULL;
-	lwkt_cpusync_start(pmap->pm_active, &info->pir_cpusync);
-    } else if (pmap->pm_active & ~info->pir_cpusync.cs_mask) {
-	lwkt_cpusync_add(pmap->pm_active, &info->pir_cpusync);
-    }
-#else
-    if (pmap->pm_active == 0)
-	return;
-#endif
-    if ((info->pir_flags & (PIRF_INVLTLB|PIRF_INVL1PG)) == 0) {
-	if (va == (vm_offset_t)-1) {
-	    info->pir_flags |= PIRF_INVLTLB;
-#ifdef SMP
-	    info->pir_cpusync.cs_fin2_func = _cpu_invltlb;
-#endif
-	} else {
-	    info->pir_flags |= PIRF_INVL1PG;
-	    info->pir_cpusync.cs_data = (void *)va;
-#ifdef SMP
-	    info->pir_cpusync.cs_fin2_func = _cpu_invl1pg;
-#endif
+	*ptep = 0;
+	pmap_inval_cpu(pmap, va, PAGE_SIZE);
+	*ptep = 0;
+}
+
+/*
+ * Same as pmap_inval_pte() but only synchronize with the current
+ * cpu.  For the moment its the same as the non-quick version.
+ */
+void
+pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
+{
+	*ptep = 0;
+	pmap_inval_cpu(pmap, va, PAGE_SIZE);
+	*ptep = 0;
+}
+
+/*
+ * Invalidating page directory entries requires some additional
+ * sophistication.  The cachemask must be cleared so the kernel
+ * resynchronizes its temporary page table mappings cache.
+ */
+void
+pmap_inval_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
+{
+	*ptep = 0;
+	pmap_inval_cpu(pmap, va, SEG_SIZE);
+	*ptep = 0;
+	pmap->pm_cpucachemask = 0;
+}
+
+void
+pmap_inval_pde_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
+{
+	pmap_inval_pde(ptep, pmap, va);
+}
+
+/*
+ * These carefully handle interactions with other cpus and return
+ * the original vpte.  Clearing VPTE_W prevents us from racing the
+ * setting of VPTE_M, allowing us to invalidate the tlb (the real cpu's
+ * pmap) and get good status for VPTE_M.
+ *
+ * When messing with page directory entries we have to clear the cpu
+ * mask to force a reload of the kernel's page table mapping cache.
+ *
+ * clean: clear VPTE_M and VPTE_W
+ * setro: clear VPTE_W
+ * load&clear: clear entire field
+ */
+vpte_t
+pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
+{
+	vpte_t pte;
+
+	pte = *ptep;
+	if (pte & VPTE_V) {
+		atomic_clear_int(ptep, VPTE_W);
+		pmap_inval_cpu(pmap, va, PAGE_SIZE);
+		pte = *ptep;
+		atomic_clear_int(ptep, VPTE_W|VPTE_M);
 	}
-    } else {
-	info->pir_flags |= PIRF_INVLTLB;
-#ifdef SMP
-	info->pir_cpusync.cs_fin2_func = _cpu_invltlb;
-#endif
-    }
+	return(pte);
+}
+
+vpte_t
+pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
+{
+	vpte_t pte;
+
+	pte = *ptep;
+	if (pte & VPTE_V) {
+		atomic_clear_int(ptep, VPTE_W);
+		pmap_inval_cpu(pmap, va, SEG_SIZE);
+		pte = *ptep;
+		atomic_clear_int(ptep, VPTE_W|VPTE_M);
+		pmap->pm_cpucachemask = 0;
+	}
+	return(pte);
 }
 
 /*
- * Synchronize changes with target cpus.
+ * This is an odd case and I'm not sure whether it even occurs in normal
+ * operation.  Turn off write access to the page, clean out the tlb
+ * (the real cpu's pmap), and deal with any VPTE_M race that may have
+ * occured.  VPTE_M is not cleared.
  */
-void
-pmap_inval_flush(pmap_inval_info_t info)
+vpte_t
+pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
-#ifdef SMP
-    if (info->pir_flags & PIRF_CPUSYNC)
-	lwkt_cpusync_finish(&info->pir_cpusync);
-#else
-    if (info->pir_flags & PIRF_INVLTLB)
-	_cpu_invltlb(NULL);
-    else if (info->pir_flags & PIRF_INVL1PG)
-	_cpu_invl1pg(info->pir_cpusync.cs_data);
-#endif
-    info->pir_flags = 0;
+	vpte_t pte;
+
+	pte = *ptep;
+	if (pte & VPTE_V) {
+		pte = *ptep;
+		atomic_clear_int(ptep, VPTE_W);
+		pmap_inval_cpu(pmap, va, PAGE_SIZE);
+		pte |= *ptep & VPTE_M;
+	}
+	return(pte);
 }
 
-#endif
+/*
+ * This is a combination of pmap_inval_pte() and pmap_clean_pte().
+ * Firts prevent races with the 'A' and 'M' bits, then clean out
+ * the tlb (the real cpu's pmap), then incorporate any races that
+ * may have occured in the mean time, and finally zero out the pte.
+ */
+vpte_t
+pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
+			vm_offset_t va)
+{
+	vpte_t pte;
+
+	pte = *ptep;
+	if (pte & VPTE_V) {
+		pte = *ptep;
+		atomic_clear_int(ptep, VPTE_R|VPTE_W);
+		pmap_inval_cpu(pmap, va, PAGE_SIZE);
+		pte |= *ptep & (VPTE_A | VPTE_M);
+	}
+	*ptep = 0;
+	return(pte);
+}
+

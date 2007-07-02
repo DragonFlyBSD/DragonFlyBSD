@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/pmap_inval.h,v 1.2 2007/01/08 16:03:24 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/pmap_inval.h,v 1.3 2007/07/02 02:22:57 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_INVAL_H_
@@ -58,11 +58,14 @@ typedef pmap_inval_info *pmap_inval_info_t;
 #include <machine/pmap.h>
 #endif
 
-void pmap_inval_init(pmap_inval_info_t);
-void pmap_inval_add(pmap_inval_info_t, pmap_t, vm_offset_t);
-void pmap_inval_add_seg(pmap_inval_info_t, pmap_t, vm_offset_t);
-void pmap_inval_add_all(pmap_inval_info_t, pmap_t);
-void pmap_inval_flush(pmap_inval_info_t);
+void pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
+void pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
+void pmap_inval_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
+void pmap_inval_pde_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
+vpte_t pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
+vpte_t pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
+vpte_t pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
+vpte_t pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
 
 #endif
 
