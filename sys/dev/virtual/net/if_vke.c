@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.6 2007/04/20 06:24:42 swildner Exp $
+ * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.7 2007/07/02 05:38:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ static int	vke_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	vke_attach(const struct vknetif_info *, int);
 static void	vke_intr(void *, struct intrframe *);
 static int	vke_stop(struct vke_softc *);
-static int	vke_rxeof(struct vke_softc *);
+static void	vke_rxeof(struct vke_softc *);
 static int	vke_init_addr(struct ifnet *, in_addr_t, in_addr_t);
 
 static void
@@ -156,11 +156,15 @@ vke_start(struct ifnet *ifp)
 		return;
 
 	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
-		m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
-		BPF_MTAP(ifp, m);
-		write(sc->sc_fd, sc->sc_txbuf, m->m_pkthdr.len);
+		if (m->m_pkthdr.len <= MCLBYTES) {
+			m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
+			BPF_MTAP(ifp, m);
+			write(sc->sc_fd, sc->sc_txbuf, m->m_pkthdr.len);
+			ifp->if_opackets++;
+		} else {
+			ifp->if_oerrors++;
+		}
 		m_freem(m);
-		ifp->if_opackets++;
 	}
 }
 
@@ -255,7 +259,7 @@ back:
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-static int
+static void
 vke_rxeof(struct vke_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -266,28 +270,36 @@ vke_rxeof(struct vke_softc *sc)
 	for (;;) {
 		int n;
 
-		if (sc->sc_rx_mbuf != NULL) {
-			m = sc->sc_rx_mbuf;
-			sc->sc_rx_mbuf = NULL;
-		} else {
+		/*
+		 * Try to get an mbuf
+		 */
+		if ((m = sc->sc_rx_mbuf) == NULL)
 			m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
-			if (m == NULL)
-				return ENOBUFS;
-		}
+		else
+			sc->sc_rx_mbuf = NULL;
 
-		n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
+		/*
+		 * Drain the interface whether we get an mbuf or not or
+		 * we might stop receiving interrupts.
+		 */
+		if (m) {
+			n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
+		} else {
+			n = read(sc->sc_fd, sc->sc_txbuf, MCLBYTES);
+		}
 		if (n < 0) {
 			sc->sc_rx_mbuf = m;	/* We can use it next time */
-
-			/* TODO: handle fatal error */
 			break;
 		}
-		ifp->if_ipackets++;
-		m->m_pkthdr.rcvif = ifp;
-		m->m_pkthdr.len = m->m_len = n;
-		ifp->if_input(ifp, m);
+		if (m) {
+			ifp->if_ipackets++;
+			m->m_pkthdr.rcvif = ifp;
+			m->m_pkthdr.len = m->m_len = n;
+			ifp->if_input(ifp, m);
+		} else {
+			ifp->if_ierrors++;
+		}
 	}
-	return 0;
 }
 
 static int
