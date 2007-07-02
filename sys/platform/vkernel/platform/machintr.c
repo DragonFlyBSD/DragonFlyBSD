@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.13 2007/07/01 03:04:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.14 2007/07/02 01:47:22 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -161,8 +161,10 @@ signalintr(int intr)
 		atomic_set_int_nonlocked(&gd->gd_fpending, 1 << intr);
 		atomic_set_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
 	} else {
+		crit_enter_quick(td);
 		atomic_clear_int(&gd->gd_fpending, 1 << intr);
 		sched_ithd(intr);
+		crit_exit_quick(td);
 	}
 }
 
