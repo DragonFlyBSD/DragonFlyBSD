@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.36 2007/07/01 21:24:02 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.37 2007/07/02 06:43:31 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -500,7 +500,9 @@ usbopen(struct dev_open_args *ap)
 		return (0);
 	}
 
-	USB_GET_SC_OPEN(usb, unit, sc);
+	sc = devclass_get_softc(usb_devclass, unit);
+	if (sc == NULL)
+		return (ENXIO);
 
 	if (sc->sc_dying)
 		return (EIO);
@@ -579,7 +581,7 @@ usbioctl(struct dev_ioctl_args *ap)
 		}
 	}
 
-	USB_GET_SC(usb, unit, sc);
+	sc = devclass_get_softc(usb_devclass, unit);
 
 	if (sc->sc_dying)
 		return (EIO);

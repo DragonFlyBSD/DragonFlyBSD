@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.25 2007/07/01 21:24:03 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.26 2007/07/02 06:43:31 hasso Exp $
  */
 
 /*
@@ -566,7 +566,9 @@ ums_open(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 
-	USB_GET_SC_OPEN(ums, UMSUNIT(dev), sc);
+	sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
+	if (sc == NULL)
+		return (ENXIO);
 
 	return ums_enable(sc);
 }
@@ -577,7 +579,7 @@ ums_close(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 
-	USB_GET_SC(ums, UMSUNIT(dev), sc);
+	sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
 
 	if (!sc)
 		return 0;
@@ -598,7 +600,7 @@ ums_read(struct dev_read_args *ap)
 	int l = 0;
 	int error;
 
-	USB_GET_SC(ums, UMSUNIT(dev), sc);
+	sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
 
 	crit_enter();
 	if (!sc) {
@@ -665,7 +667,7 @@ ums_poll(struct dev_poll_args *ap)
 	struct ums_softc *sc;
 	int revents = 0;
 
-	USB_GET_SC(ums, UMSUNIT(dev), sc);
+	sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
 
 	if (!sc) {
 		ap->a_events = 0;
@@ -694,7 +696,7 @@ ums_ioctl(struct dev_ioctl_args *ap)
 	int error = 0;
 	mousemode_t mode;
 
-	USB_GET_SC(ums, UMSUNIT(dev), sc);
+	sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
 
 	if (!sc)
 		return EIO;

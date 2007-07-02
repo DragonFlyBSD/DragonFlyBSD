@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.26 2007/06/28 13:55:12 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.27 2007/07/02 06:43:31 hasso Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -256,7 +256,9 @@ ucomopen(struct dev_open_args *ap)
 	struct tty *tp;
 	int error;
 
-	USB_GET_SC_OPEN(ucom, unit, sc);
+	sc = devclass_get_softc(ucom_devclass, unit);
+	if (sc == NULL)
+		return (ENXIO);
 
 	if (sc->sc_dying)
 		return (ENXIO);
@@ -449,7 +451,7 @@ ucomclose(struct dev_close_args *ap)
 	struct ucom_softc *sc;
 	struct tty *tp;
 
-	USB_GET_SC(ucom, UCOMUNIT(dev), sc);
+	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(dev));
 
 	tp = sc->sc_tty;
 
@@ -500,7 +502,7 @@ ucomread(struct dev_read_args *ap)
 	struct tty *tp;
 	int error;
 
-	USB_GET_SC(ucom, UCOMUNIT(dev), sc);
+	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(dev));
 	tp = sc->sc_tty;
 
 	DPRINTF(("ucomread: tp = %p, flag = 0x%x\n", tp, ap->a_ioflag));
@@ -523,7 +525,7 @@ ucomwrite(struct dev_write_args *ap)
 	struct tty *tp;
 	int error;
 
-	USB_GET_SC(ucom, UCOMUNIT(dev), sc);
+	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(dev));
 	tp = sc->sc_tty;
 
 	DPRINTF(("ucomwrite: tp = %p, flag = 0x%x\n", tp, ap->a_ioflag));
@@ -547,7 +549,7 @@ ucomioctl(struct dev_ioctl_args *ap)
 	int error;
 	int d;
 
-	USB_GET_SC(ucom, UCOMUNIT(dev), sc);
+	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(dev));
 	tp = sc->sc_tty;
 
 	if (sc->sc_dying)
@@ -776,7 +778,7 @@ ucomparam(struct tty *tp, struct termios *t)
 	int error;
 	usbd_status uerr;
 
-	USB_GET_SC(ucom, UCOMUNIT(tp->t_dev), sc);
+	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(tp->t_dev));
 
 	if (sc->sc_dying)
 		return (EIO);
@@ -845,7 +847,7 @@ ucomstart(struct tty *tp)
 	u_char *data;
 	int cnt;
 
-	USB_GET_SC(ucom, UCOMUNIT(tp->t_dev), sc);
+	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(tp->t_dev));
 	DPRINTF(("ucomstart: sc = %p\n", sc));
 
 	if (sc->sc_dying)
@@ -932,7 +934,7 @@ ucomstop(struct tty *tp, int flag)
 {
 	struct ucom_softc *sc;
 
-	USB_GET_SC(ucom, UCOMUNIT(tp->t_dev), sc);
+	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(tp->t_dev));
 
 	DPRINTF(("ucomstop: %d\n", flag));
 

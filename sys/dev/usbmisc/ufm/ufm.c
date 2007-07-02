@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.17 2007/07/01 21:24:03 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.18 2007/07/02 06:43:31 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -189,7 +189,9 @@ ufmopen(struct dev_open_args *ap)
 	struct ufm_softc *sc;
 
 	int unit = UFMUNIT(dev);
-	USB_GET_SC_OPEN(ufm, unit, sc);
+	sc = devclass_get_softc(ufm_devclass, unit);
+	if (sc == NULL)
+		return (ENXIO);
 
 	DPRINTFN(5, ("ufmopen: flag=%d, mode=%d, unit=%d\n",
 		     ap->a_oflags, ap->a_devtype, unit));
@@ -211,7 +213,7 @@ ufmclose(struct dev_close_args *ap)
 	struct ufm_softc *sc;
 
 	int unit = UFMUNIT(dev);
-	USB_GET_SC(ufm, unit, sc);
+	sc = devclass_get_softc(ufm_devclass, unit);
 
 	DPRINTFN(5, ("ufmclose: flag=%d, mode=%d, unit=%d\n", 
 		    ap->a_fflag, ap->a_devtype, unit));
@@ -338,7 +340,7 @@ ufmioctl(struct dev_ioctl_args *ap)
 	int unit = UFMUNIT(dev);
 	int error = 0;
 
-	USB_GET_SC(ufm, unit, sc);
+	sc = devclass_get_softc(ufm_devclass, unit);
 
 	switch (ap->a_cmd) {
 	case FM_SET_FREQ:

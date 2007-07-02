@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.20 2007/07/01 21:24:03 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.21 2007/07/02 06:43:31 hasso Exp $
  */
 
 /*
@@ -441,7 +441,9 @@ ulptopen(struct dev_open_args *ap)
 	usbd_status err;
 	int spin, error;
 
-	USB_GET_SC_OPEN(ulpt, ULPTUNIT(dev), sc);
+	sc = devclass_get_softc(ulpt_devclass, ULPTUNIT(dev));
+	if (sc == NULL)
+		return (ENXIO);
 
 	if (sc == NULL || sc->sc_iface == NULL || sc->sc_dying)
 		return (ENXIO);
@@ -574,7 +576,7 @@ ulptclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct ulpt_softc *sc;
 
-	USB_GET_SC(ulpt, ULPTUNIT(dev), sc);
+	sc = devclass_get_softc(ulpt_devclass, ULPTUNIT(dev));
 
 	if (sc->sc_state != ULPT_OPEN)
 		/* We are being forced to close before the open completed. */
@@ -648,7 +650,7 @@ ulptwrite(struct dev_write_args *ap)
 	struct ulpt_softc *sc;
 	int error;
 
-	USB_GET_SC(ulpt, ULPTUNIT(dev), sc);
+	sc = devclass_get_softc(ulpt_devclass, ULPTUNIT(dev));
 
 	if (sc->sc_dying)
 		return (EIO);

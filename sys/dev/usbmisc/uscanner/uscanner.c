@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.20 2007/07/01 21:24:04 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.21 2007/07/02 06:43:31 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -370,7 +370,9 @@ uscanneropen(struct dev_open_args *ap)
 	int unit = USCANNERUNIT(dev);
 	usbd_status err;
 
-	USB_GET_SC_OPEN(uscanner, unit, sc);
+	sc = devclass_get_softc(uscanner_devclass, unit);
+	if (sc == NULL)
+		return (ENXIO);
 
  	DPRINTFN(5, ("uscanneropen: flag=%d, mode=%d, unit=%d\n",
 		     ap->a_oflags, ap->a_devtype, unit));
@@ -432,7 +434,7 @@ uscannerclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct uscanner_softc *sc;
 
-	USB_GET_SC(uscanner, USCANNERUNIT(dev), sc);
+	sc = devclass_get_softc(uscanner_devclass, USCANNERUNIT(dev));
 
 	DPRINTFN(5, ("uscannerclose: flag=%d, mode=%d, unit=%d\n",
 		     ap->a_fflag, ap->a_devtype, USCANNERUNIT(dev)));
@@ -532,7 +534,7 @@ uscannerread(struct dev_read_args *ap)
 	struct uscanner_softc *sc;
 	int error;
 
-	USB_GET_SC(uscanner, USCANNERUNIT(dev), sc);
+	sc = devclass_get_softc(uscanner_devclass, USCANNERUNIT(dev));
 
 	sc->sc_refcnt++;
 	error = uscanner_do_read(sc, ap->a_uio, ap->a_ioflag);
@@ -583,7 +585,7 @@ uscannerwrite(struct dev_write_args *ap)
 	struct uscanner_softc *sc;
 	int error;
 
-	USB_GET_SC(uscanner, USCANNERUNIT(dev), sc);
+	sc = devclass_get_softc(uscanner_devclass, USCANNERUNIT(dev));
 
 	sc->sc_refcnt++;
 	error = uscanner_do_write(sc, ap->a_uio, ap->a_ioflag);
@@ -631,7 +633,7 @@ uscannerpoll(struct dev_poll_args *ap)
 	struct uscanner_softc *sc;
 	int revents = 0;
 
-	USB_GET_SC(uscanner, USCANNERUNIT(dev), sc);
+	sc = devclass_get_softc(uscanner_devclass, USCANNERUNIT(dev));
 
 	if (sc->sc_dying)
 		return (EIO);

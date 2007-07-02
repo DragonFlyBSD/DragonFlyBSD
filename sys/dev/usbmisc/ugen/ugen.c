@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.29 2007/07/01 21:24:03 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.30 2007/07/02 06:43:31 hasso Exp $
  */
 
 /* 
@@ -392,7 +392,9 @@ ugenopen(struct dev_open_args *ap)
 	void *buf;
 	int i, j;
 
-	USB_GET_SC_OPEN(ugen, unit, sc);
+	sc = devclass_get_softc(ugen_devclass, unit);
+	if (sc == NULL)
+		return (ENXIO);
 
  	DPRINTFN(5, ("ugenopen: flag=%d, mode=%d, unit=%d endpt=%d\n",
 		     ap->a_oflags, ap->a_devtype, unit, endpt));
@@ -528,7 +530,7 @@ ugenclose(struct dev_close_args *ap)
 	int dir;
 	int i;
 
-	USB_GET_SC(ugen, UGENUNIT(dev), sc);
+	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
 
 	DPRINTFN(5, ("ugenclose: flag=%d, mode=%d, unit=%d, endpt=%d\n",
 		     ap->a_fflag, ap->a_devtype, UGENUNIT(dev), endpt));
@@ -742,7 +744,7 @@ ugenread(struct dev_read_args *ap)
 	struct ugen_softc *sc;
 	int error;
 
-	USB_GET_SC(ugen, UGENUNIT(dev), sc);
+	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
 
 	sc->sc_refcnt++;
 	error = ugen_do_read(sc, endpt, ap->a_uio, ap->a_ioflag);
@@ -853,7 +855,7 @@ ugenwrite(struct dev_write_args *ap)
 	struct ugen_softc *sc;
 	int error;
 
-	USB_GET_SC(ugen, UGENUNIT(dev), sc);
+	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
 
 	sc->sc_refcnt++;
 	error = ugen_do_write(sc, endpt, ap->a_uio, ap->a_ioflag);
@@ -1379,7 +1381,7 @@ ugenioctl(struct dev_ioctl_args *ap)
 	struct ugen_softc *sc;
 	int error;
 
-	USB_GET_SC(ugen, UGENUNIT(dev), sc);
+	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
 
 	sc->sc_refcnt++;
 	error = ugen_do_ioctl(sc, endpt, ap->a_cmd, ap->a_data, ap->a_fflag);
@@ -1396,7 +1398,7 @@ ugenpoll(struct dev_poll_args *ap)
 	struct ugen_endpoint *sce;
 	int revents = 0;
 
-	USB_GET_SC(ugen, UGENUNIT(dev), sc);
+	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
 
 	if (sc->sc_dying)
 		return (EIO);

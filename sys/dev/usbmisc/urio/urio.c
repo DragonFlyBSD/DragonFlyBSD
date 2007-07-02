@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.20 2007/07/01 21:24:04 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.21 2007/07/02 06:43:31 hasso Exp $
  */
 
 /*
@@ -238,7 +238,9 @@ urioopen(struct dev_open_args *ap)
 	struct urio_softc * sc;
 #endif
 	int unit = URIOUNIT(dev);
-	USB_GET_SC_OPEN(urio, unit, sc);
+	sc = devclass_get_softc(urio_devclass, unit);
+	if (sc == NULL)
+		return (ENXIO);
 
 	DPRINTFN(5, ("urioopen: flag=%d, mode=%d, unit=%d\n",
 		     ap->a_oflags, ap->a_devtype, unit));
@@ -279,7 +281,7 @@ urioclose(struct dev_close_args *ap)
 	struct urio_softc * sc;
 #endif
 	int unit = URIOUNIT(dev);
-	USB_GET_SC(urio, unit, sc);
+	sc = devclass_get_softc(urio_devclass, unit);
 
 	DPRINTFN(5, ("urioclose: flag=%d, mode=%d, unit=%d\n",
 		ap->a_fflag, ap->a_devtype, unit));
@@ -316,7 +318,7 @@ urioread(struct dev_read_args *ap)
 	u_int32_t n, tn;
 	int error = 0;
 
-	USB_GET_SC(urio, unit, sc);
+	sc = devclass_get_softc(urio_devclass, unit);
 
 	DPRINTFN(5, ("urioread: %d\n", unit));
 	if (!sc->sc_opened)
@@ -389,7 +391,7 @@ uriowrite(struct dev_write_args *ap)
 	u_int32_t n;
 	int error = 0;
 
-	USB_GET_SC(urio, unit, sc);
+	sc = devclass_get_softc(urio_devclass, unit);
 
 	DPRINTFN(5, ("uriowrite: %d\n", unit));
 	if (!sc->sc_opened)
@@ -459,7 +461,7 @@ urioioctl(struct dev_ioctl_args *ap)
 	int error = 0;
 	usbd_status r;
 
-	USB_GET_SC(urio, unit, sc);
+	sc = devclass_get_softc(urio_devclass, unit);
 
 	switch (ap->a_cmd) {
 	case RIO_RECV_COMMAND:
