@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.14 2007/07/02 14:47:27 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.15 2007/07/02 15:18:51 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -126,9 +126,8 @@ vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock)
 static sysclock_t
 vkernel_timer_get_timecount(void)
 {
-	struct mdglobaldata *gd = mdcpu;
-	size_t len;
 	sysclock_t counter;
+	size_t len;
 
 	len = sizeof(counter);
 	if (sysctl(cputimer_mib, cputimer_miblen, &counter, &len,
