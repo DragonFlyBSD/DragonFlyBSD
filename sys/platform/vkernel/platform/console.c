@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.16 2007/06/07 22:58:22 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.17 2007/07/02 04:19:14 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -43,6 +43,7 @@
 #include <sys/fcntl.h>
 #include <sys/signalvar.h>
 #include <sys/eventhandler.h>
+#include <sys/interrupt.h>
 #include <machine/md_var.h>
 #include <unistd.h>
 #include <termios.h>
@@ -271,7 +272,13 @@ vconssignal(int sig)
 }
 
 static void
-vconswinch(int __unused sig)
+vconswinchsig(int __unused sig)
+{
+	signalintr(3);
+}
+
+static void
+vconswinch_intr(void *arg __unused, void *frame __unused)
 {
 	struct winsize newsize;
 
@@ -315,18 +322,25 @@ vconsinit(struct consdev *cp)
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 	atexit(vconscleanup);
-
-	sa.sa_handler = vconswinch;
-	sigaction(SIGWINCH, &sa, NULL);
-
 	vcons_set_mode(0);
 }
 
 static void
 vconsinit_fini(struct consdev *cp)
 {
+	struct sigaction sa;
 	cdev_t dev;
 	int i;
+
+	/*
+	 * We have to do this here rather then in early boot to be able
+	 * to use the interrupt subsystem.
+	 */
+	register_int(3, vconswinch_intr, NULL, "swinch", NULL, 0);
+	bzero(&sa, sizeof(sa));
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = vconswinchsig;
+	sigaction(SIGWINCH, &sa, NULL);
 
 	/*
 	 * Implement ttyv0-ttyv7.  At the moment ttyv1-7 are sink nulls.
