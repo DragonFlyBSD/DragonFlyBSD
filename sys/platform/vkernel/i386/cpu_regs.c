@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.19 2007/07/02 01:37:10 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.20 2007/07/02 06:30:26 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -697,8 +697,24 @@ cpu_idle(void)
 		if (cpu_idle_hlt && !lwkt_runnable() &&
 		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
 			splz();
-			if (!lwkt_runnable())
-				umtx_sleep(&gd->mi.gd_runqmask, 0, 0);
+			if (!lwkt_runnable()) {
+#ifdef DEBUGIDLE
+				struct timeval tv1, tv2;
+				gettimeofday(&tv1, NULL);
+#endif
+				umtx_sleep(&gd->mi.gd_runqmask, 0, 1000000);
+#ifdef DEBUGIDLE
+				gettimeofday(&tv2, NULL);
+				if (tv2.tv_usec - tv1.tv_usec +
+				    (tv2.tv_sec - tv1.tv_sec) * 1000000 
+				    > 500000) {
+					kprintf("cpu %d idlelock %08x %08x\n",
+						gd->mi.gd_cpuid,
+						gd->mi.gd_runqmask,
+						gd->gd_fpending);
+				}
+#endif
+			}
 #ifdef SMP
 			else {
 			    __asm __volatile("pause");
