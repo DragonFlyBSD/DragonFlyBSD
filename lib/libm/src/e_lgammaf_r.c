@@ -13,7 +13,7 @@
  * ====================================================
  *
  * $NetBSD: e_lgammaf_r.c,v 1.6 2002/05/26 22:01:51 wiz Exp $
- * $DragonFly: src/lib/libm/src/e_lgammaf_r.c,v 1.1 2005/07/26 21:15:20 joerg Exp $
+ * $DragonFly: src/lib/libm/src/e_lgammaf_r.c,v 1.2 2007/07/03 18:51:45 pavalos Exp $
  */
 
 #include <math.h>
@@ -149,7 +149,7 @@ lgammaf_r(float x, int *signgamp)
 	ix = hx&0x7fffffff;
 	if(ix>=0x7f800000) return x*x;
 	if(ix==0) return one/zero;
-	if(ix<0x1c800000) {	/* |x|<2**-70, return -log(|x|) */
+	if(ix<0x35000000) {	/* |x|<2**-21, return -log(|x|) */
 	    if(hx<0) {
 	        *signgamp = -1;
 	        return -logf(-x);
