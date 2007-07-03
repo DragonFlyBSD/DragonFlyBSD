@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.35 2007/01/15 00:51:43 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.36 2007/07/03 17:40:51 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -265,6 +265,7 @@ tapopen(struct dev_open_args *ap)
 	if ((error = suser_cred(ap->a_cred, 0)) != 0)
 		return (error);
 
+	get_mplock();
 	tp = dev->si_drv1;
 	if (tp == NULL) {
 		tapcreate(dev);
@@ -279,8 +280,10 @@ tapopen(struct dev_open_args *ap)
 		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
 	}
 
-	if (tp->tap_flags & TAP_OPEN)
+	if (tp->tap_flags & TAP_OPEN) {
+		rel_mplock();
 		return (EBUSY);
+	}
 
 	bcopy(tp->arpcom.ac_enaddr, tp->ether_addr, sizeof(tp->ether_addr));
 
@@ -291,8 +294,9 @@ tapopen(struct dev_open_args *ap)
 	TAPDEBUG(ifp, "opened. minor = %#x, refcnt = %d, taplastunit = %d\n",
 		 minor(tp->tap_dev), taprefcnt, taplastunit);
 
+	rel_mplock();
 	return (0);
-} /* tapopen */
+}
 
 
 /*
@@ -309,6 +313,7 @@ tapclose(struct dev_close_args *ap)
 
 	/* junk all pending output */
 
+	get_mplock();
 	lwkt_serialize_enter(ifp->if_serializer);
 	ifq_purge(&ifp->if_snd);
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -365,14 +370,17 @@ tapclose(struct dev_close_args *ap)
 	TAPDEBUG(ifp, "closed. minor = %#x, refcnt = %d, taplastunit = %d\n",
 		 minor(tp->tap_dev), taprefcnt, taplastunit);
 
+	rel_mplock();
 	return (0);
-} /* tapclose */
+}
 
 
 /*
  * tapifinit
  *
- * network interface initialization function
+ * Network interface initialization function (called with if serializer held)
+ *
+ * MPSAFE
  */
 static void
 tapifinit(void *xtp)
@@ -387,13 +395,14 @@ tapifinit(void *xtp)
 
 	/* attempt to start output */
 	tapifstart(ifp);
-} /* tapifinit */
+}
 
 
 /*
  * tapifioctl
  *
- * Process an ioctl request on network interface
+ * Process an ioctl request on network interface (called with if serializer
+ * held).
  *
  * MPSAFE
  */
@@ -448,13 +457,16 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	}
 
 	return (0);
-} /* tapifioctl */
+}
 
 
 /*
  * tapifstart 
  * 
- * queue packets from higher level ready to put out
+ * Queue packets from higher level ready to put out (called with if serializer
+ * held)
+ *
+ * MPSAFE
  */
 static void
 tapifstart(struct ifnet *ifp)
@@ -486,8 +498,11 @@ tapifstart(struct ifnet *ifp)
 		}
 		KNOTE(&tp->tap_rsel.si_note, 0);
 
-		if ((tp->tap_flags & TAP_ASYNC) && (tp->tap_sigio != NULL))
+		if ((tp->tap_flags & TAP_ASYNC) && (tp->tap_sigio != NULL)) {
+			get_mplock();
 			pgsigio(tp->tap_sigio, SIGIO, 0);
+			rel_mplock();
+		}
 
 		/*
 		 * selwakeup is not MPSAFE.  tapifstart is.
@@ -499,13 +514,16 @@ tapifstart(struct ifnet *ifp)
 	}
 
 	ifp->if_flags &= ~IFF_OACTIVE;
-} /* tapifstart */
+}
 
 
 /*
  * tapioctl
  *
- * the ops interface is now pretty minimal
+ * The ops interface is now pretty minimal.  Called via fileops with nothing
+ * held.
+ *
+ * MPSAFE
  */
 static int
 tapioctl(struct dev_ioctl_args *ap)
@@ -607,14 +625,18 @@ tapioctl(struct dev_ioctl_args *ap)
 	}
 	lwkt_serialize_exit(ifp->if_serializer);
 	return (error);
-} /* tapioctl */
+}
 
 
 /*
  * tapread
  *
- * the ops read interface - reads a packet at a time, or at
- * least as much of a packet as can be read
+ * The ops read interface - reads a packet at a time, or at
+ * least as much of a packet as can be read.
+ *
+ * Called from the fileops interface with nothing held.
+ *
+ * MPSAFE
  */
 static int
 tapread(struct dev_read_args *ap)
@@ -678,13 +700,16 @@ tapread(struct dev_read_args *ap)
 	}
 
 	return (error);
-} /* tapread */
-
+}
 
 /*
  * tapwrite
  *
- * the ops write interface - an atomic write is a packet - or else!
+ * The ops write interface - an atomic write is a packet - or else!
+ *
+ * Called from the fileops interface with nothing held.
+ *
+ * MPSAFE
  */
 static int
 tapwrite(struct dev_write_args *ap)
@@ -752,15 +777,18 @@ tapwrite(struct dev_write_args *ap)
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (0);
-} /* tapwrite */
-
+}
 
 /*
  * tappoll
  *
- * the poll interface, this is only useful on reads
- * really. the write detect always returns true, write never blocks
- * anyway, it either accepts the packet or drops it
+ * The poll interface, this is only useful on reads really. The write
+ * detect always returns true, write never blocks anyway, it either
+ * accepts the packet or drops it
+ *
+ * Called from the fileops interface with nothing held.
+ *
+ * MPSAFE
  */
 static int
 tappoll(struct dev_poll_args *ap)
@@ -780,12 +808,13 @@ tappoll(struct dev_poll_args *ap)
 				 minor(tp->tap_dev));
 
 			revents |= (ap->a_events & (POLLIN | POLLRDNORM));
-		} 
-		else {
+		} else {
 			TAPDEBUG(ifp, "waiting for data, minor = %#x\n",
 				 minor(tp->tap_dev));
 
+			get_mplock();
 			selrecord(curthread, &tp->tap_rsel);
+			rel_mplock();
 		}
 	}
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -794,8 +823,13 @@ tappoll(struct dev_poll_args *ap)
 		revents |= (ap->a_events & (POLLOUT | POLLWRNORM));
 	ap->a_events = revents;
 	return(0);
-} /* tappoll */
+}
 
+/*
+ * tapkqfilter - called from the fileops interface with nothing held
+ *
+ * MPSAFE
+ */
 static int filt_tapread(struct knote *kn, long hint);
 static void filt_tapdetach(struct knote *kn);
 static struct filterops tapread_filtops =
