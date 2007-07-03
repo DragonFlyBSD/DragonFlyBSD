@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.76.2.3 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.22 2007/07/03 06:58:50 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.23 2007/07/03 07:21:08 hasso Exp $	*/
 
 /* Also already have from NetBSD:
  *	$NetBSD: usb_subr.c,v 1.102 2003/01/01 16:21:50 augustss Exp $
@@ -921,7 +921,6 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 	*uaap = uaa;
 	if (device_probe_and_attach(bdev) == 0)
 		return (USBD_NORMAL_COMPLETION);
-	}
 
 	/*
 	 * The generic attach failed, but leave the device as it is.
