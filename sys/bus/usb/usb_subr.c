@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.76.2.3 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.21 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.22 2007/07/03 06:58:50 hasso Exp $	*/
 
 /* Also already have from NetBSD:
  *	$NetBSD: usb_subr.c,v 1.102 2003/01/01 16:21:50 augustss Exp $
@@ -786,7 +786,6 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 	usb_device_descriptor_t *dd = &dev->ddesc;
 	int found, i, confi, nifaces;
 	usbd_status err;
-	device_t dv;
 	device_t *tmpdv;
 	usbd_interface_handle ifaces[256]; /* 256 is the absolute max */
 
@@ -818,14 +817,14 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 	DPRINTF(("usbd_probe_and_attach: trying device specific drivers\n"));
 
 	dev->ifacenums = NULL;
-	dev->subdevs = kmalloc(2 * sizeof dv, M_USB, M_WAITOK);
+	dev->subdevs = kmalloc(2 * sizeof(device_t), M_USB, M_WAITOK);
 	dev->subdevs[0] = bdev;
 	dev->subdevs[1] = 0;
 	*uaap = uaa;
-	dv = USB_DO_ATTACH(dev, bdev, parent, &uaa, usbd_print, usbd_submatch);
-	if (dv) {
+	if (device_probe_and_attach(bdev) == 0) {
 		return (USBD_NORMAL_COMPLETION);
 	}
+
 	/*
 	 * Free subdevs so we can reallocate it larger for the number of
 	 * interfaces 
@@ -859,7 +858,7 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 			ifaces[i] = &dev->ifaces[i];
 		uaa.ifaces = ifaces;
 		uaa.nifaces = nifaces;
-		dev->subdevs = kmalloc((nifaces+1) * sizeof dv, M_USB,
+		dev->subdevs = kmalloc((nifaces+1) * sizeof(device_t), M_USB,
 				       M_WAITOK);
 		dev->ifacenums = kmalloc((nifaces) * sizeof(*dev->ifacenums),
 					 M_USB, M_WAITOK);
@@ -874,9 +873,7 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 			dev->subdevs[found + 1] = 0;
 			dev->ifacenums[found] = i;
 			*uaap = uaa;
-			dv = USB_DO_ATTACH(dev, bdev, parent, &uaa, usbd_print,
-					   usbd_submatch);
-			if (dv != NULL) {
+			if (device_probe_and_attach(bdev) == 0) {
 				ifaces[i] = 0; /* consumed */
 				found++;
 
@@ -918,12 +915,11 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 	uaa.usegeneric = 1;
 	uaa.configno = UHUB_UNK_CONFIGURATION;
 	uaa.ifaceno = UHUB_UNK_INTERFACE;
-	dev->subdevs = kmalloc(2 * sizeof dv, M_USB, M_WAITOK);
+	dev->subdevs = kmalloc(2 * sizeof(device_t), M_USB, M_WAITOK);
 	dev->subdevs[0] = bdev;
 	dev->subdevs[1] = 0;
 	*uaap = uaa;
-	dv = USB_DO_ATTACH(dev, bdev, parent, &uaa, usbd_print, usbd_submatch);
-	if (dv != NULL) {
+	if (device_probe_and_attach(bdev) == 0)
 		return (USBD_NORMAL_COMPLETION);
 	}
 
