@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.22 2007/07/02 02:37:02 dillon Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.23 2007/07/03 18:05:55 dillon Exp $
 .\"
 .Dd June 14, 2007
 .Dt VKERNEL 7
@@ -330,6 +330,14 @@ cd /usr/obj/usr/src/sys/VKERNEL
 The
 .Xr reboot 8
 command can be used to stop a virtual kernel.
+.Sh BUILDING THE WORLD UNDER A VKERNEL
+The virtual kernel platform does not have all the header files expected
+by a world build, so the easiest thing to do right now is to specify a
+pc32 target when building the world under a virtual kernel, like this:
+.Bd -literal
+vkernel# make MACHINE_PLATFORM=pc32 buildworld
+vkernel# make MACHINE_PLATFORM=pc32 installworld
+.Ed
 .Sh SEE ALSO
 .Xr bridge 4 ,
 .Xr tap 4 ,
