@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.82 2007/07/01 01:11:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.83 2007/07/03 17:22:14 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -364,7 +364,6 @@ exit1(int rv)
 
 	if (SESS_LEADER(p)) {
 		struct session *sp = p->p_session;
-		struct vnode *vp;
 
 		if (sp->s_ttyvp) {
 			/*
@@ -375,31 +374,22 @@ exit1(int rv)
 			 *
 			 * NOTE: while waiting for the process group to exit
 			 * it is possible that one of the processes in the
-			 * group will revoke the tty, so we have to recheck.
+			 * group will revoke the tty, so the ttyclosesession()
+			 * function will re-check sp->s_ttyvp.
 			 */
 			if (sp->s_ttyp && (sp->s_ttyp->t_session == sp)) {
 				if (sp->s_ttyp->t_pgrp)
 					pgsignal(sp->s_ttyp->t_pgrp, SIGHUP, 1);
-				(void) ttywait(sp->s_ttyp);
-				/*
-				 * The tty could have been revoked
-				 * if we blocked.
-				 */
-				if ((vp = sp->s_ttyvp) != NULL) {
-					ttyclosesession(sp, 0);
-					vx_lock(vp);
-					VOP_REVOKE(vp, REVOKEALL);
-					vx_unlock(vp);
-					vrele(vp);	/* s_ttyvp ref */
-				}
+				ttywait(sp->s_ttyp);
+				ttyclosesession(sp, 1); /* also revoke */
 			}
 			/*
 			 * Release the tty.  If someone has it open via
 			 * /dev/tty then close it (since they no longer can
 			 * once we've NULL'd it out).
 			 */
-			if (sp->s_ttyvp)
-				ttyclosesession(sp, 1);
+			ttyclosesession(sp, 0);
+
 			/*
 			 * s_ttyp is not zero'd; we use this to indicate
 			 * that the session once had a controlling terminal.

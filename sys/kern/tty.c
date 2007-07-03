@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.41 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.42 2007/07/03 17:22:14 dillon Exp $
  */
 
 /*-
@@ -292,30 +292,63 @@ ttyclearsession(struct tty *tp)
 }
 
 /*
- * Terminate the tty vnode association for a session.  This is the 
+ * Release the tty vnode association for a session.  This is the 
  * 'other half' of the close.  Because multiple opens of /dev/tty
  * only generate a single open to the actual tty, the file modes
  * are locked to FREAD|FWRITE.
+ *
+ * If dorevoke is non-zero, the session is also revoked.  We have to
+ * close the vnode if VCTTYISOPEN is set.
  */
 void
-ttyclosesession(struct session *sp, int dorele)
+ttyclosesession(struct session *sp, int dorevoke)
 {
 	struct vnode *vp;
 
+retry:
+	/*
+	 * There may not be a controlling terminal or it may have been closed
+	 * out from under us.
+	 */
 	if ((vp = sp->s_ttyvp) == NULL)
 		return;
-	sp->s_ttyvp = NULL;
-	if (vp->v_flag & VCTTYISOPEN) {
-		if (vn_lock(vp, LK_EXCLUSIVE|LK_RETRY) == 0) {
+
+	/*
+	 * We need a lock if we have to close or revoke.
+	 */
+	if ((vp->v_flag & VCTTYISOPEN) || dorevoke) {
+		vhold(vp);
+		if (vn_lock(vp, LK_EXCLUSIVE|LK_RETRY)) {
+			vdrop(vp);
+			goto retry;
+		}
+
+		/*
+		 * Retry if the vnode was ripped out from under us
+		 */
+		if (vp != sp->s_ttyvp) {
+			vn_unlock(vp);
+			vdrop(vp);
+			goto retry;
+		}
+
+		/*
+		 * Close and revoke as needed
+		 */
+		sp->s_ttyvp = NULL;
+		if (vp->v_flag & VCTTYISOPEN) {
 			vclrflags(vp, VCTTYISOPEN);
 			VOP_CLOSE(vp, FREAD|FWRITE);
-			vn_unlock(vp);
 		}
+		if (dorevoke)
+			VOP_REVOKE(vp, REVOKEALL);
+		vn_unlock(vp);
+		vdrop(vp);
+	} else {
+		sp->s_ttyvp = NULL;
 	}
-	if (dorele)
-		vrele(vp);
+	vrele(vp);
 }
-
 
 #define	FLUSHQ(q) {							\
 	if ((q)->c_cc)							\

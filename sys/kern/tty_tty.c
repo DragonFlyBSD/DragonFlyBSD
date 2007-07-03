@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.18 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.19 2007/07/03 17:22:14 dillon Exp $
  */
 
 /*
@@ -84,22 +84,31 @@ cttyopen(struct dev_open_args *ap)
 	int error;
 
 	KKASSERT(p);
-	ttyvp = cttyvp(p);
-	if (ttyvp) {
-		if (ttyvp->v_flag & VCTTYISOPEN) {
-			error = 0;
-		} else {
-			vsetflags(ttyvp, VCTTYISOPEN);
-			vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
-			error = VOP_OPEN(ttyvp, FREAD|FWRITE, ap->a_cred, NULL);
-			if (error)
-				vclrflags(ttyvp, VCTTYISOPEN);
-			vn_unlock(ttyvp);
-		}
-	} else {
-		error = ENXIO;
+retry:
+	if ((ttyvp = cttyvp(p)) == NULL)
+		return (ENXIO);
+	if (ttyvp->v_flag & VCTTYISOPEN)
+		return (0);
+
+	/*
+	 * Messy interlock, don't let the vnode go away while we try to
+	 * lock it and check for race after we might have blocked.
+	 */
+	vhold(ttyvp);
+	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
+	if (ttyvp != cttyvp(p) || (ttyvp->v_flag & VCTTYISOPEN)) {
+		kprintf("Warning: cttyopen: race avoided\n");
+		vn_unlock(ttyvp);
+		vdrop(ttyvp);
+		goto retry;
 	}
-	return (error);
+	vsetflags(ttyvp, VCTTYISOPEN);
+	error = VOP_OPEN(ttyvp, FREAD|FWRITE, ap->a_cred, NULL);
+	if (error)
+		vclrflags(ttyvp, VCTTYISOPEN);
+	vn_unlock(ttyvp);
+	vdrop(ttyvp);
+	return(error);
 }
 
 /*
@@ -115,21 +124,33 @@ cttyclose(struct dev_close_args *ap)
 	int error;
 
 	KKASSERT(p);
-	ttyvp = cttyvp(p);
-	if (ttyvp == NULL) {
+retry:
+	/*
+	 * The tty may have been TIOCNOTTY'd, don't return an
+	 * error on close.  We just have nothing to do.
+	 */
+	if ((ttyvp = cttyvp(p)) == NULL)
+		return(0);
+	if (ttyvp->v_flag & VCTTYISOPEN) {
 		/*
-		 * The tty may have been TIOCNOTTY'd, don't return an
-		 * error on close.  We just have nothing to do.
+		 * Avoid a nasty race if we block while getting the lock.
 		 */
-		/* error = EIO; */
-		error = 0;
-	} else if (ttyvp->v_flag & VCTTYISOPEN) {
-		vclrflags(ttyvp, VCTTYISOPEN);
+		vhold(ttyvp);
 		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
-		if (error == 0) {
-			error = VOP_CLOSE(ttyvp, FREAD|FWRITE);
-			vn_unlock(ttyvp);
+		if (error) {
+			vdrop(ttyvp);
+			goto retry;
 		}
+		if (ttyvp != cttyvp(p) || (ttyvp->v_flag & VCTTYISOPEN) == 0) {
+			kprintf("Warning: cttyclose: race avoided\n");
+			vn_unlock(ttyvp);
+			vdrop(ttyvp);
+			goto retry;
+		}
+		vclrflags(ttyvp, VCTTYISOPEN);
+		error = VOP_CLOSE(ttyvp, FREAD|FWRITE);
+		vn_unlock(ttyvp);
+		vdrop(ttyvp);
 	} else {
 		error = 0;
 	}
