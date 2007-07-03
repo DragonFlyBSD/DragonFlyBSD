@@ -37,10 +37,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#198 $
+ * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#199 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.3.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.13 2007/01/27 15:03:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.21 2003/06/23 22:06:34 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.14 2007/07/03 21:13:35 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -373,7 +373,7 @@ ahd_flush_qoutfifo(struct ahd_softc *ahd)
 	 * Wait for any inprogress DMA to complete and clear DMA state
 	 * if this if for an SCB in the qinfifo.
 	 */
-	while ((ccscbctl = ahd_inb(ahd, CCSCBCTL) & (CCARREN|CCSCBEN)) != 0) {
+	while (((ccscbctl = ahd_inb(ahd, CCSCBCTL)) & (CCARREN|CCSCBEN)) != 0) {
 
 		if ((ccscbctl & (CCSCBDIR|CCARREN)) == (CCSCBDIR|CCARREN)) {
 			if ((ccscbctl & ARRDONE) != 0)
