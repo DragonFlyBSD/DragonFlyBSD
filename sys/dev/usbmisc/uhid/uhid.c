@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.28 2007/07/02 23:52:05 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.29 2007/07/03 19:28:16 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -341,7 +341,7 @@ uhid_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		DPRINTFN(5, ("uhid_intr: waking %p\n", &sc->sc_q));
 		wakeup(&sc->sc_q);
 	}
-	selwakeuppri(&sc->sc_rsel, 0);
+	selwakeup(&sc->sc_rsel);
 	if (sc->sc_async != NULL) {
 		DPRINTFN(3, ("uhid_intr: sending SIGIO %p\n", sc->sc_async));
 		ksignal(sc->sc_async, SIGIO);
@@ -368,7 +368,8 @@ uhidopen(struct dev_open_args *ap)
 		return (EBUSY);
 	sc->sc_state |= UHID_OPEN;
 
-	if (clalloc(&sc->sc_q, UHID_BSIZE, 0) == -1) {
+	if ((clist_alloc_cblocks(&sc->sc_q, UHID_BSIZE,
+				 UHID_BSIZE), 0) == -1) {
 		sc->sc_state &= ~UHID_OPEN;
 		return (ENOMEM);
 	}
@@ -414,7 +415,7 @@ uhidclose(struct dev_close_args *ap)
 	sc->sc_intrpipe = 0;
 
 	ndflush(&sc->sc_q, sc->sc_q.c_cc);
-	clfree(&sc->sc_q);
+	clist_free_cblocks(&sc->sc_q);
 
 	kfree(sc->sc_ibuf, M_USBDEV);
 	kfree(sc->sc_obuf, M_USBDEV);

@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi_util.h,v 1.31 2004/12/03 08:53:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi_util.h,v 1.19 2005/03/01 08:01:22 sobomax Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi_util.h,v 1.5 2007/06/28 06:32:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi_util.h,v 1.6 2007/07/03 19:28:16 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -68,7 +68,7 @@ usbd_status	usbd_get_report(usbd_interface_handle iface, int type, int id,
 				void *data, int len);
 usbd_status	usbd_set_idle(usbd_interface_handle iface, int duration, int id);
 usbd_status	usbd_read_report_desc(usbd_interface_handle ifc, void **descp,
-				      int *sizep, usb_malloc_type mem);
+				      int *sizep, struct malloc_type *mem);
 usbd_status	usbd_get_config(usbd_device_handle dev, u_int8_t *conf);
 usbd_status	usbd_get_string_desc(usbd_device_handle dev, int sindex,
 				     int langid, usb_string_descriptor_t *sdesc,

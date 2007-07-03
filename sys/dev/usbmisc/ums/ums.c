@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.27 2007/07/02 23:52:05 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.28 2007/07/03 19:28:16 hasso Exp $
  */
 
 /*
@@ -391,7 +391,7 @@ ums_detach(device_t self)
 	}
 	if (sc->state & UMS_SELECT) {
 		sc->state &= ~UMS_SELECT;
-		selwakeuppri(&sc->rsel, 0);
+		selwakeup(&sc->rsel);
 	}
 	dev_ops_remove(&ums_ops, -1, device_get_unit(self));
 
@@ -525,7 +525,7 @@ ums_add_to_queue(struct ums_softc *sc, int dx, int dy, int dz, int buttons)
 	}
 	if (sc->state & UMS_SELECT) {
 		sc->state &= ~UMS_SELECT;
-		selwakeuppri(&sc->rsel, 0);
+		selwakeup(&sc->rsel);
 	}
 }
 

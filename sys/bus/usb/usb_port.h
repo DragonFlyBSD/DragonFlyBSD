@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.19 2007/07/02 07:07:08 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.20 2007/07/03 19:28:16 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -51,19 +51,13 @@
 #define _USB_PORT_H
 
 /*
- * Macros to ease the import of USB drivers from other BSD systems.
+ * Macros to ease the import of USB drivers from other BSD systems. Drivers
+ * in the DragonFly tree don't use any of these macros.
+ *
+ * Driver that wants to use these can simply include <bus/usb/usb_port.h>.
  */
 
 #include "opt_usb.h"
-
-#if defined(_KERNEL)
-#include <sys/malloc.h>
-
-MALLOC_DECLARE(M_USB);
-MALLOC_DECLARE(M_USBDEV);
-MALLOC_DECLARE(M_USBHC);
-
-#endif
 
 #define USBVERBOSE
 
@@ -110,9 +104,6 @@ typedef struct callout usb_callout_t;
 
 #define clalloc(p, s, x) (clist_alloc_cblocks((p), (s), (s)), 0)
 #define clfree(p) clist_free_cblocks((p))
-
-#define PWR_RESUME 0
-#define PWR_SUSPEND 1
 
 #define config_detach(dev, flag) device_delete_child(device_get_parent(dev), dev)
 
@@ -202,10 +193,6 @@ __CONCAT(dname,_detach)(device_t self)
 #define SIMPLEQ_ENTRY		STAILQ_ENTRY
 
 #define logprintf		kprintf
-
-#ifdef SYSCTL_DECL
-SYSCTL_DECL(_hw_usb);
-#endif
 
 #endif /* _USB_PORT_H */
 

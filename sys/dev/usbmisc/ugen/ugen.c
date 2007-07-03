@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.31 2007/07/02 23:52:05 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.32 2007/07/03 19:28:16 hasso Exp $
  */
 
 /* 
@@ -464,7 +464,8 @@ ugenopen(struct dev_open_args *ap)
 			sce->ibuf = kmalloc(isize, M_USBDEV, M_WAITOK);
 			DPRINTFN(5, ("ugenopen: intr endpt=%d,isize=%d\n",
 				     endpt, isize));
-			if (clalloc(&sce->q, UGEN_IBSIZE, 0) == -1)
+			if ((clist_alloc_cblocks(&sce->q, UGEN_IBSIZE,
+						 UGEN_IBSIZE), 0) == -1)
 				return (ENOMEM);
 			err = usbd_open_pipe_intr(sce->iface,
 				edesc->bEndpointAddress,
@@ -473,7 +474,7 @@ ugenopen(struct dev_open_args *ap)
 				USBD_DEFAULT_INTERVAL);
 			if (err) {
 				kfree(sce->ibuf, M_USBDEV);
-				clfree(&sce->q);
+				clist_free_cblocks(&sce->q);
 				return (EIO);
 			}
 			DPRINTFN(5, ("ugenopen: interrupt open done\n"));
@@ -583,7 +584,7 @@ ugenclose(struct dev_close_args *ap)
 		switch (sce->edesc->bmAttributes & UE_XFERTYPE) {
 		case UE_INTERRUPT:
 			ndflush(&sce->q, sce->q.c_cc);
-			clfree(&sce->q);
+			clist_free_cblocks(&sce->q);
 			break;
 		case UE_ISOCHRONOUS:
 			for (i = 0; i < UGEN_NISOREQS; ++i)
@@ -595,7 +596,7 @@ ugenclose(struct dev_close_args *ap)
 		if (sce->ibuf != NULL) {
 			kfree(sce->ibuf, M_USBDEV);
 			sce->ibuf = NULL;
-			clfree(&sce->q);
+			clist_free_cblocks(&sce->q);
 		}
 	}
 	sc->sc_is_open[endpt] = 0;
@@ -951,7 +952,7 @@ ugenintr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		DPRINTFN(5, ("ugen_intr: waking %p\n", sce));
 		wakeup(sce);
 	}
-	selwakeuppri(&sce->rsel, 0);
+	selwakeup(&sce->rsel);
 }
 
 static void
@@ -1011,7 +1012,7 @@ ugen_isoc_rintr(usbd_xfer_handle xfer, usbd_private_handle addr,
 		DPRINTFN(5, ("ugen_isoc_rintr: waking %p\n", sce));
 		wakeup(sce);
 	}
-	selwakeuppri(&sce->rsel, 0);
+	selwakeup(&sce->rsel);
 }
 
 static usbd_status

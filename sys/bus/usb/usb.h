@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.h,v 1.69 2002/09/22 23:20:50 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.h,v 1.39.2.1 2006/01/20 22:47:49 mux Exp $    */
-/*	$DragonFly: src/sys/bus/usb/usb.h,v 1.6 2007/06/27 12:27:59 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.h,v 1.7 2007/07/03 19:28:16 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -46,9 +46,24 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include "opt_usb.h"
+
 #if defined(_KERNEL)
-#include <bus/usb/usb_port.h>
+#include "opt_usb.h"
+
+#ifdef SYSCTL_DECL
+SYSCTL_DECL(_hw_usb);
+#endif
+
+#include <sys/malloc.h>
+
+MALLOC_DECLARE(M_USB);
+MALLOC_DECLARE(M_USBDEV);
+MALLOC_DECLARE(M_USBHC);
 #endif /* _KERNEL */
+
+#define PWR_RESUME 0
+#define PWR_SUSPEND 1
 
 /* These two defines are used by usbd to autoload the usb kld */
 #define USB_KLD		"usb"		/* name of usb module */

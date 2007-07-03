@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ucomvar.h,v 1.9 2001/01/23 21:56:17 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ucomvar.h,v 1.2 2002/07/31 14:34:35 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucomvar.h,v 1.5 2007/06/28 06:32:32 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucomvar.h,v 1.6 2007/07/03 19:28:16 hasso Exp $
  */
 
 /*-
@@ -100,7 +100,7 @@ struct ucom_callback {
 #define UCOM_SET_RTS 2
 #define UCOM_SET_BREAK 3
 	int (*ucom_param)(void *, int, struct termios *);
-	int (*ucom_ioctl)(void *, int, u_long, caddr_t, int, usb_proc_ptr);
+	int (*ucom_ioctl)(void *, int, u_long, caddr_t, int, struct thread *);
 	int (*ucom_open)(void *, int);
 	void (*ucom_close)(void *, int);
 	void (*ucom_read)(void *, int, u_char **, u_int32_t *);

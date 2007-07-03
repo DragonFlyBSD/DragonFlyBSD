@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.14 2007/07/01 21:24:04 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.15 2007/07/03 19:28:16 hasso Exp $
  */
 
 /*-
@@ -191,7 +191,7 @@ static	void uplcom_break(struct uplcom_softc *, int);
 static	void uplcom_set_line_state(struct uplcom_softc *);
 static	void uplcom_get_status(void *, int, u_char *, u_char *);
 #if 0 /* TODO */
-static	int  uplcom_ioctl(void *, int, u_long, caddr_t, int, usb_proc_ptr);
+static	int  uplcom_ioctl(void *, int, u_long, caddr_t, int, struct thread *);
 #endif
 static	int  uplcom_param(void *, int, struct termios *);
 static	int  uplcom_open(void *, int);
@@ -996,7 +996,7 @@ uplcom_get_status(void *addr, int portno, u_char *lsr, u_char *msr)
 #if 0 /* TODO */
 static int
 uplcom_ioctl(void *addr, int portno, u_long cmd, caddr_t data, int flag,
-	     usb_proc_ptr p)
+	     struct thread *p)
 {
 	struct uplcom_softc *sc = addr;
 	int error = 0;

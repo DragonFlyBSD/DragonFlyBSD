@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.38 2007/07/02 23:52:04 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.39 2007/07/03 19:28:16 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -127,7 +127,7 @@ struct usb_softc {
 
 struct usb_taskq {
 	TAILQ_HEAD(, usb_task)	tasks;
-	usb_proc_ptr     	task_thread_proc;
+	struct thread		*task_thread_proc;
 	const char		*name;
 	int			taskcreated;	/* task thread exists. */
 };
@@ -306,8 +306,6 @@ usb_attach(device_t self)
 		sc->sc_bus->use_polling--;
 #endif
 
-	config_pending_incr();
-
 	usb_create_event_thread(sc);
 	/* The per controller devices (used for usb_discover) */
 	/* XXX This is redundant now, but old usbd's will want it */
@@ -440,7 +438,6 @@ usb_event_thread(void *arg)
 	/* Make sure first discover does something. */
 	sc->sc_bus->needs_explore = 1;
 	usb_discover(sc);
-	config_pending_decr();
 
 	while (!sc->sc_dying) {
 #ifdef USB_DEBUG
@@ -829,7 +826,7 @@ usb_add_event(int type, struct usb_event *uep)
 	TAILQ_INSERT_TAIL(&usb_events, ueq, next);
 	usb_nevents++;
 	wakeup(&usb_events);
-	selwakeuppri(&usb_selevent, 0);
+	selwakeup(&usb_selevent);
 	if (usb_async_proc != NULL) {
 		ksignal(usb_async_proc, SIGIO);
 	}

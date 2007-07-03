@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.76.2.3 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.23 2007/07/03 07:21:08 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.24 2007/07/03 19:28:16 hasso Exp $	*/
 
 /* Also already have from NetBSD:
  *	$NetBSD: usb_subr.c,v 1.102 2003/01/01 16:21:50 augustss Exp $
@@ -1269,7 +1269,7 @@ usb_disconnect_port(struct usbd_port *up, device_t parent)
 			if (up->portno != 0)
 				kprintf(" port %d", up->portno);
 			kprintf(" (addr %d) disconnected\n", dev->address);
-			config_detach(dev->subdevs[i], DETACH_FORCE);
+			device_delete_child(device_get_parent(dev->subdevs[i]), dev->subdevs[i]);
 			dev->subdevs[i] = NULL;
 		}
 	}
