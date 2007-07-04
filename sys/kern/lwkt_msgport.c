@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.43 2007/05/31 11:00:25 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.44 2007/07/04 19:40:35 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -407,7 +407,7 @@ lwkt_thread_replyport_remote(lwkt_msg_t msg)
 void
 lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
-    KKASSERT((msg->ms_flags & (MSGF_DONE|MSGF_QUEUED)) == 0);
+    KKASSERT((msg->ms_flags & (MSGF_DONE|MSGF_QUEUED|MSGF_INTRANSIT)) == 0);
 
     if (msg->ms_flags & MSGF_SYNC) {
 	/*
