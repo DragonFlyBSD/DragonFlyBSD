@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.h,v 1.69 2002/09/22 23:20:50 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.h,v 1.39.2.1 2006/01/20 22:47:49 mux Exp $    */
-/*	$DragonFly: src/sys/bus/usb/usb.h,v 1.7 2007/07/03 19:28:16 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.h,v 1.8 2007/07/04 06:06:48 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -45,8 +45,6 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
-
-#include "opt_usb.h"
 
 #if defined(_KERNEL)
 #include "opt_usb.h"
