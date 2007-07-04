@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.18 2007/05/24 20:51:16 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.19 2007/07/04 23:36:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -605,13 +605,21 @@ netmsg_so_notify(netmsg_t netmsg)
  * Called by doio when trying to abort a netmsg_so_notify message.
  * Unlike the other functions this one is dispatched directly by
  * the LWKT subsystem, so it takes a lwkt_msg_t as an argument.
+ *
+ * The original message, lmsg, is under the control of the caller and
+ * will not be destroyed until we return so we can safely reference it
+ * in our synchronous abort request.
+ *
+ * This part of the abort request occurs on the originating cpu which
+ * means we may race the message flags and the original message may
+ * not even have been processed by the target cpu yet.
  */
 void
 netmsg_so_notify_doabort(lwkt_msg_t lmsg)
 {
 	struct netmsg_so_notify_abort msg;
 
-	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
+	if ((lmsg->ms_flags & (MSGF_DONE | MSGF_REPLY)) == 0) {
 		netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 			    netmsg_so_notify_abort);
 		msg.nm_notifymsg = (void *)lmsg;
@@ -624,6 +632,16 @@ netmsg_so_notify_doabort(lwkt_msg_t lmsg)
  * and will interlock against processing/reply races (since such races
  * occur on the same thread that controls the port where the abort is 
  * requeued).
+ *
+ * This part of the abort request occurs on the target cpu.  The message
+ * flags must be tested again in case the test that we did on the
+ * originating cpu raced.  Since messages are handled in sequence, the
+ * original message will have already been handled by the loop and either
+ * replied to or queued.
+ *
+ * We really only need to interlock with MSGF_REPLY (a bit that is set on
+ * our cpu when we reply).  Note that MSGF_DONE is not set until the
+ * reply reaches the originating cpu.  Test both bits anyway.
  */
 void
 netmsg_so_notify_abort(netmsg_t netmsg)
@@ -634,9 +652,9 @@ netmsg_so_notify_abort(netmsg_t netmsg)
 
 	/*
 	 * The original notify message is not destroyed until after the
-	 * abort request is handled, so we can check its state.
+	 * abort request is returned, so we can check its state.
 	 */
-	if ((msg->nm_netmsg.nm_lmsg.ms_flags & MSGF_DONE) == 0) {
+	if ((msg->nm_netmsg.nm_lmsg.ms_flags & (MSGF_DONE | MSGF_REPLY)) == 0) {
 		ssb = (msg->nm_etype & NM_REVENT) ?
 				&msg->nm_so->so_rcv :
 				&msg->nm_so->so_snd;
