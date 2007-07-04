@@ -37,11 +37,11 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.seq,v 1.2.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.seq,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.seq,v 1.12 2003/06/28 04:40:46 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.seq,v 1.3 2007/07/04 23:04:13 pavalos Exp $
  */
 
-VERSION = "$Id: //depot/aic7xxx/aic7xxx/aic79xx.seq#94 $"
+VERSION = "$Id: //depot/aic7xxx/aic7xxx/aic79xx.seq#95 $"
 PATCH_ARG_LIST = "struct ahd_softc *ahd"
 PREFIX = "ahd_"
 
@@ -583,9 +583,6 @@ found_last_sent_scb:
 		bmov	CURRSCB, SCBPTR, 2;
 curscb_ww_done:
 	} else {
-		/*
-		 * Untested - Verify with Rev B.
-		 */
 		bmov	SCBPTR, CURRSCB, 2;
 	}
 
@@ -1960,12 +1957,14 @@ SET_DST_MODE	M_SCSI;
 	test	SSTAT0, SELDO jnz return;
 	mvi	SCBPTR[1], SCB_LIST_NULL;
 unexpected_nonpkt_phase:
-	test	MODE_PTR, ~(MK_MODE(M_DFF1, M_DFF1)) jnz . + 3;
+	test	MODE_PTR, ~(MK_MODE(M_DFF1, M_DFF1))
+		jnz unexpected_nonpkt_mode_cleared;
 SET_SRC_MODE	M_DFF0;
 SET_DST_MODE	M_DFF0;
 	or	LONGJMP_ADDR[1], INVALID_ADDR;
 	dec	SCB_FIFO_USE_COUNT;
 	mvi	DFFSXFRCTL, CLRCHN;
+unexpected_nonpkt_mode_cleared:
 	mvi	CLRSINT2, CLRNONPACKREQ;
 	test	SCSIPHASE, ~(MSG_IN_PHASE|MSG_OUT_PHASE) jnz illegal_phase;
 	SET_SEQINTCODE(ENTERING_NONPACK)
