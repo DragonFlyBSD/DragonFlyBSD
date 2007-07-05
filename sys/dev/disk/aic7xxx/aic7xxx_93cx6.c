@@ -30,8 +30,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_93cx6.c#17 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_93cx6.c,v 1.8.2.6 2002/08/31 07:25:53 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_93cx6.c,v 1.4 2006/12/22 23:26:15 swildner Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_93cx6.c,v 1.18 2003/08/24 17:48:03 obrien Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_93cx6.c,v 1.5 2007/07/05 04:56:38 pavalos Exp $
  */
 
 /*
@@ -65,7 +65,6 @@
  *   is preceded by an initial zero (leading 0, followed by 16-bits, MSB
  *   first).  The clock cycling from low to high initiates the next data
  *   bit to be sent from the chip.
- *
  */
 
 #ifdef __linux__
