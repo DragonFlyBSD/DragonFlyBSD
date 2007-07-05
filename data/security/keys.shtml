@@ -1,6 +1,6 @@
-<!--#set var="title" value="The History of DragonFly" -->
+<!--#set var="title" value="Security" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/security/keys.shtml,v 1.1 2007/07/05 00:41:28 dillon Exp $ -->
+<!-- $DragonFly: site/data/security/keys.shtml,v 1.2 2007/07/05 03:35:16 justin Exp $ -->
 
 <p>
 We have a PGP key which may be used for secure communications with the
