@@ -1,0 +1,13 @@
+<!--#set var="title" value="The History of DragonFly" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/security/keys.shtml,v 1.1 2007/07/05 00:41:28 dillon Exp $ -->
+
+<p>
+We have a PGP key which may be used for secure communications with the
+DragonFly Security Officer at security@dragonflybsd.org:
+<p>
+<a href="dragonfly-security-key.txt">Security Officer (DragonFly BSD)</a>
+<p>
+Fingerprint: 0E3A 8560 AC19 C01D 44F7  3587 2CEF 94C6 4994 4635
+
+<!--#include virtual="/includes/footer.shtml" -->

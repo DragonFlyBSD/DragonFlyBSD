@@ -2,7 +2,7 @@
      "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-<!-- $DragonFly: site/data/includes/header.shtml,v 1.3 2007/01/31 07:48:34 swildner Exp $ -->
+<!-- $DragonFly: site/data/includes/header.shtml,v 1.4 2007/07/05 00:41:27 dillon Exp $ -->
 <title><!--#echo var="title" --></title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <link href="/favicon.ico" rel="shortcut icon" type="image/x-icon">
@@ -54,6 +54,12 @@
 <li><a href="/docs/guides.shtml">Guides</a>
 <li><a href="http://leaf.dragonflybsd.org/cgi/web-man">Man pages</a>
 <li><a href="/docs/presentations.shtml">Presentations</a>
+</ul>
+
+<li class="major">Security
+
+<ul class="minor">
+<li><a href="/security/keys.shtml">PGP Keys</a>
 </ul>
 
 </ul>
