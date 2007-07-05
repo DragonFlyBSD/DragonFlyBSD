@@ -1,4 +1,4 @@
-#
+#-
 # Copyright (c) 1999 M. Warner Losh.
 # All rights reserved.
 #
@@ -23,8 +23,8 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/dev/pccard/card_if.m,v 1.21 2002/11/02 23:00:28 imp Exp $
-# $DragonFly: src/sys/bus/pccard/card_if.m,v 1.1 2004/02/10 07:55:45 joerg Exp $
+# $FreeBSD: src/sys/dev/pccard/card_if.m,v 1.29 2005/07/01 03:40:28 imp Exp $
+# $DragonFly: src/sys/bus/pccard/card_if.m,v 1.2 2007/07/05 12:08:53 sephe Exp $
 #
 
 #include <sys/bus.h>
@@ -68,15 +68,15 @@ METHOD int set_memory_offset {
 	device_t  dev;
 	device_t  child;
 	int	  rid;
-	u_int32_t cardaddr;
-	u_int32_t *deltap;
+	uint32_t cardaddr;
+	uint32_t *deltap;
 }
 
 METHOD int get_memory_offset {
 	device_t  dev;
 	device_t  child;
 	int	  rid;
-	u_int32_t *offset;
+	uint32_t *offset;
 }
 
 #
@@ -91,38 +91,6 @@ METHOD int attach_card {
 #
 METHOD int detach_card {
 	device_t  dev;
-}
-
-#
-# Returns the type of card this is.  Maybe we don't need this.
-#
-METHOD int get_type {
-	device_t  dev;
-	int	  *type;
-}
-
-#
-# Returns the function number for this device.
-#
-METHOD int get_function {
-	device_t  dev;
-	device_t  child;
-	int	  *func;
-}
-
-#
-# Activates (and powers up if necessary) the card's nth function
-# since each function gets its own device, there is no need to
-# to specify a function number
-#
-METHOD int activate_function {
-	device_t  dev;
-	device_t  child;
-}
-
-METHOD int deactivate_function {
-	device_t  dev;
-	device_t  child;
 }
 
 #
@@ -203,50 +171,10 @@ METHOD int compat_match {
 }
 
 #
-# Method for devices to ask its CIS-enabled parent bus for CIS info.
-# Device driver requests all tuples if type 'id', the routine places
-# 'nret' number of tuples in 'buff'.  Returns 0 if all tuples processed,
-# or an error code if processing was aborted.
-# Users of this method will be responsible for freeing the memory allocated
-# by calling the cis_free method.
+# Scanning function for accessing the CIS of a card in its driver.
 #
-
-HEADER {
-	struct cis_tupleinfo {
-		u_int8_t id;
-		int len;
-		char *data;
-	};
+METHOD int cis_scan {
+	device_t bus;
+        pccard_scan_t fnp;
+	void *argp;
 };
-
-CODE  {
-	static int
-	null_cis_read(device_t dev, device_t child, u_int8_t id,
-	    struct cis_tupleinfo **buff, int *nret)
-	{
-		*nret = 0;
-		*buff = NULL;
-		return ENXIO;
-	}
-
-	static void
-	null_cis_free(device_t dev, struct cis_tupleinfo *buff, int *nret)
-	{
-		return;
-	}
-};
-
-METHOD int cis_read {
-	device_t dev;
-	device_t child;
-	u_int8_t id;
-	struct	 cis_tupleinfo **buff;
-	int	 *nret;
-} DEFAULT null_cis_read;
-
-METHOD int cis_free {
-	device_t dev;
-	struct	 cis_tupleinfo *buff;
-	int	 nret;
-} DEFAULT null_cis_free;
-

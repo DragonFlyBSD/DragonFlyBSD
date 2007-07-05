@@ -1,8 +1,8 @@
 /*	$NetBSD: i82365reg.h,v 1.3 1998/12/20 17:53:28 nathanw Exp $	*/
-/* $FreeBSD: src/sys/dev/exca/excareg.h,v 1.2 2002/07/26 08:01:08 imp Exp $ */
-/* $DragonFly: src/sys/dev/pccard/exca/excareg.h,v 1.2 2005/06/27 02:27:10 swildner Exp $ */
+/* $FreeBSD: src/sys/dev/exca/excareg.h,v 1.5 2005/01/06 01:42:40 imp Exp $ */
+/* $DragonFly: src/sys/dev/pccard/exca/excareg.h,v 1.3 2007/07/05 12:08:54 sephe Exp $ */
 
-/*
+/*-
  * Copyright (c) 2002 M Warner Losh.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -102,8 +102,12 @@
 #define	EXCA_IDENT_IFTYPE_RESERVED		0xC0
 #define	EXCA_IDENT_ZERO				0x30
 #define	EXCA_IDENT_REV_MASK			0x0F
-#define	EXCA_IDENT_REV_I82365SLR0		0x02
-#define	EXCA_IDENT_REV_I82365SLR1		0x03
+#define	EXCA_IDENT_REV_I82365SLR0		0x02	/* step a/b */
+#define	EXCA_IDENT_REV_I82365SLR1		0x03	/* step c */
+#define	EXCA_IDENT_REV_I82365SLDF		0x04	/* step df */
+#define	EXCA_IDENT_REV_IBM1			0x08	/* ibm clone */
+#define	EXCA_IDENT_REV_IBM2			0x09	/* ibm clone */
+#define	EXCA_IDENT_REV_IBM_KING			0x0a	/* ibm king */
 
 #define	EXCA_IF_STATUS				0x01	/* RO */
 #define	EXCA_IF_STATUS_GPI			0x80 /* General Purpose Input */
@@ -383,6 +387,22 @@
 #define EXCA_CIRRUS_EXT_CONTROL_1		0x03
 #define EXCA_CIRRUS_EXT_CONTROL_1_PCI_INTR_MASK	0x18
 
+#define EXCA_VADEM_VMISC			0x3a
+#define EXCA_VADEM_REV				0x40
+#define EXCA_VADEM_COOKIE1			0x0E
+#define EXCA_VADEM_COOKIE2			0x37
+
+#define EXCA_RICOH_ID				0x3a
+#define EXCA_RID_296				0x32
+#define EXCA_RID_396				0xb2
+
+/*
+ * o2 micro specific registers
+ */
+#define EXCA_O2MICRO_CTRL_C			0x3a
+#define EXCA_O2CC_IREQ_INTC			0x80
+#define EXCA_O2CC_STSCHG_INTC			0x20
+
 /* Plug and play */
 #define EXCA_PNP_ACTIONTEC	0x1802A904	/* AEI0218 */
 #define EXCA_PNP_IBM3765	0x65374d24	/* IBM3765 */
@@ -391,6 +411,10 @@
 #define EXCA_PNP_VLSI_82C146	0x020ED041	/* PNP0E02 */
 #define EXCA_PNP_82365_CARDBUS	0x030ED041	/* PNP0E03 */
 #define EXCA_PNP_SCM_SWAPBOX	0x69046d4c	/* SMC0469 */
+
+/* C-Bus PnP Definitions */
+#define EXCA_NEC_PC9801_102	0x9180a3b8	/* NEC8091 PC-9801-102 */
+#define	EXCA_NEC_PC9821RA_E01	0x2181a3b8	/* NEC8121 PC-9821RA-E01 */
 
 /*
  *	Mask of allowable interrupts.
@@ -404,8 +428,20 @@
  *	NT had a special device that would probe for conflicts early in the
  *	boot process and formulate a mapping table.  Maybe we should do
  *	something similar.
+ *
+ *	For NEC PC-98 machines, irq 3, 5, 6, 9, 10, 11, 12, 13 are allowed.
+ *	These correspond to the C-BUS signals INT 0, 1, 2, 3, 41, 42, 5, 6
+ *	respectively.
+ *
+ *	Hiroshi TSUKADA-san writes in FreeBSD98-testers that CBUS INT 2
+ *	(mapped to IRQ 6) is routed to the IRQ 7 pin of the pcic in pc98
+ *	cbus add-in cards.  He has confirmed this routing with a visual
+ *	inspection of his card or a VOM.
  */
-
+#ifdef PC98
+#define	EXCA_INT_MASK_ALLOWED	0x3E68		/* PC98 */
+#else
 #define	EXCA_INT_MASK_ALLOWED	0xDEB8		/* AT */
+#endif
 
 #endif /* !_SYS_DEV_EXCA_EXCAREG_H */

@@ -1,7 +1,7 @@
-/* $FreeBSD: src/sys/dev/exca/excavar.h,v 1.2 2002/07/26 08:01:08 imp Exp $ */
-/* $DragonFly: src/sys/dev/pccard/exca/excavar.h,v 1.1 2004/02/10 07:55:47 joerg Exp $ */
+/* $FreeBSD: src/sys/dev/exca/excavar.h,v 1.7 2005/01/06 01:42:40 imp Exp $ */
+/* $DragonFly: src/sys/dev/pccard/exca/excavar.h,v 1.2 2007/07/05 12:08:54 sephe Exp $ */
 
-/*
+/*-
  * Copyright (c) 2002 M Warner Losh.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,6 +62,8 @@
  * Structure to manage the ExCA part of the chip.
  */
 struct exca_softc;
+typedef uint8_t (exca_getb_fn)(struct exca_softc *, int);
+typedef void (exca_putb_fn)(struct exca_softc *, int, uint8_t);
 
 struct exca_softc 
 {
@@ -75,11 +77,35 @@ struct exca_softc
 	uint32_t	flags;
 #define EXCA_SOCKET_PRESENT	0x00000001
 #define EXCA_HAS_MEMREG_WIN	0x00000002
+#define EXCA_CARD_OK		0x00000004
+#define EXCA_EVENT		0x80000000
 	uint32_t	offset;
+	int		chipset;
+#define EXCA_CARDBUS	0
+#define	EXCA_I82365	1		/* Intel i82365SL-A/B or clone */
+#define EXCA_I82365SL_DF 2		/* Intel i82365sl-DF step */
+#define	EXCA_VLSI	3		/* VLSI chip */
+#define	EXCA_PD6710	4		/* Cirrus logic PD6710 */
+#define	EXCA_PD6722	5		/* Cirrus logic PD6722 */
+#define EXCA_PD6729	6		/* Cirrus Logic PD6729 */
+#define	EXCA_VG365	7		/* Vadem 365 */
+#define	EXCA_VG465      8		/* Vadem 465 */
+#define	EXCA_VG468	9		/* Vadem 468 */
+#define	EXCA_VG469	10		/* Vadem 469 */
+#define	EXCA_RF5C296	11		/* Ricoh RF5C296 */
+#define	EXCA_RF5C396	12		/* Ricoh RF5C396 */
+#define	EXCA_IBM	13		/* IBM clone */
+#define	EXCA_IBM_KING	14		/* IBM KING PCMCIA Controller */
+#define EXCA_BOGUS	-1		/* Invalid/not present/etc */
+	exca_getb_fn	*getb;
+	exca_putb_fn	*putb;
+	device_t	pccarddev;
+	uint32_t	status;		/* status, hw dependent */
 };
 
 void exca_init(struct exca_softc *sc, device_t dev, 
     bus_space_tag_t, bus_space_handle_t, uint32_t);
+void exca_insert(struct exca_softc *sc);
 int exca_io_map(struct exca_softc *sc, int width, struct resource *r);
 int exca_io_unmap_res(struct exca_softc *sc, struct resource *res);
 int exca_is_pcic(struct exca_softc *sc);
@@ -89,31 +115,39 @@ int exca_mem_set_flags(struct exca_softc *sc, struct resource *res,
 int exca_mem_set_offset(struct exca_softc *sc, struct resource *res,
     uint32_t cardaddr, uint32_t *deltap);
 int exca_mem_unmap_res(struct exca_softc *sc, struct resource *res);
-int exca_probe_slots(device_t dev, struct exca_softc *);
+int exca_probe_slots(device_t dev, struct exca_softc *exca,
+    bus_space_tag_t iot, bus_space_handle_t ioh);
+void exca_removal(struct exca_softc *);
 void exca_reset(struct exca_softc *, device_t child);
 
+/* bus/device interfaces */
+int exca_activate_resource(struct exca_softc *exca, device_t child, int type,
+    int rid, struct resource *res);
+int exca_deactivate_resource(struct exca_softc *exca, device_t child, int type,
+    int rid, struct resource *res);
+
 static __inline uint8_t
-exca_read(struct exca_softc *sc, int reg)
+exca_getb(struct exca_softc *sc, int reg)
 {
-	return (bus_space_read_1(sc->bst, sc->bsh, sc->offset + reg));
+	return (sc->getb(sc, reg));
 }
 
 static __inline void
-exca_write(struct exca_softc *sc, int reg, uint8_t val)
+exca_putb(struct exca_softc *sc, int reg, uint8_t val)
 {
-	return (bus_space_write_1(sc->bst, sc->bsh, sc->offset + reg, val));
+	sc->putb(sc, reg, val);
 }
 
 static __inline void
 exca_setb(struct exca_softc *sc, int reg, uint8_t mask)
 {
-	exca_write(sc, reg, exca_read(sc, reg) | mask);
+	exca_putb(sc, reg, exca_getb(sc, reg) | mask);
 }
 
 static __inline void
 exca_clrb(struct exca_softc *sc, int reg, uint8_t mask)
 {
-	exca_write(sc, reg, exca_read(sc, reg) & ~mask);
+	exca_putb(sc, reg, exca_getb(sc, reg) & ~mask);
 }
 
 #endif /* !_SYS_DEV_EXCA_EXCAVAR_H */

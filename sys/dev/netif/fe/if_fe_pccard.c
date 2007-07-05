@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.12 2006/11/07 06:43:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.13 2007/07/05 12:08:53 sephe Exp $
  */
 
 #include "opt_fe.h"
@@ -48,7 +48,6 @@
 
 #include <bus/pccard/pccardvar.h>
 #include <bus/pccard/pccarddevs.h>
-#include <bus/pccard/cardinfo.h>
 
 #include "card_if.h"
 

@@ -26,7 +26,7 @@
  * xe pccard interface driver
  *
  * $FreeBSD: src/sys/dev/xe/if_xe_pccard.c,v 1.11 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe_pccard.c,v 1.3 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe_pccard.c,v 1.4 2007/07/05 12:08:53 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -59,9 +59,10 @@
 #endif
 
 static const struct pccard_product xe_pccard_products[] = {
-	PCMCIA_CARD(ACCTON, EN2226, 0),
+	PCMCIA_CARD(COMPAQ, CPQ550, 0),
 	PCMCIA_CARD(COMPAQ2, CPQ_10_100, 0),
 	PCMCIA_CARD(INTEL, EEPRO100, 0),
+	PCMCIA_CARD(RACORE, ACCTON_EN2226, 0),
 	PCMCIA_CARD(XIRCOM, CE, 0),
 	PCMCIA_CARD(XIRCOM, CE2, 0),
 	PCMCIA_CARD(XIRCOM, CE3, 0),

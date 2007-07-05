@@ -1,8 +1,8 @@
 /*	$NetBSD: pcmciavar.h,v 1.12 2000/02/08 12:51:31 enami Exp $	*/
-/* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.34 2002/11/14 05:15:50 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.6 2006/10/25 20:55:51 dillon Exp $ */
+/* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.54 2005/07/13 15:00:59 imp Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.7 2007/07/05 12:08:53 sephe Exp $ */
 
-/*
+/*-
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,11 +31,19 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/queue.h>
-#include <sys/bus_dma.h>
-
 extern int	pccard_verbose;
+
+/*
+ * PCCARD_API_LEVEL.  When set to 5, we provide a 5.x compatable API
+ * for driver writers that have to share their code between 5.x and 6.x.
+ * The 5.x compatibility interfaces will be unsupported in 7.0, at which
+ * point we'll only support 6 and newer, etc.
+ */
+#ifndef PCCARD_API_LEVEL
+#define PCCARD_API_LEVEL 5
+#elif PCCARD_API_LEVEL < 5
+#error "pccard API less than 5 unsupported"
+#endif
 
 /*
  * Contains information about mapped/allocated i/o spaces.
@@ -60,7 +68,6 @@ struct pccard_mem_handle {
 	bus_addr_t      addr;		/* resulting address in bus space */
 	bus_size_t      size;		/* size of mem space */
 	bus_size_t      realsize;	/* how much we really allocated */
-	long		offset;		/* mapped Offset on card */
 	bus_addr_t	cardaddr;	/* Absolute address on card */
 	int		kind;
 };
@@ -82,7 +89,7 @@ struct pccard_mem_handle {
 
 struct pccard_config_entry {
 	int		number;
-	u_int32_t	flags;
+	uint32_t	flags;
 	int		iftype;
 	int		num_iospace;
 
@@ -96,7 +103,7 @@ struct pccard_config_entry {
 		u_long	length;
 		u_long	start;
 	} iospace[4];		/* XXX this could be as high as 16 */
-	u_int16_t	irqmask;
+	uint16_t	irqmask;
 	int		num_memspace;
 	struct {
 		u_long	length;
@@ -104,12 +111,6 @@ struct pccard_config_entry {
 		u_long	hostaddr;
 	} memspace[2];		/* XXX this could be as high as 8 */
 	int		maxtwins;
-	struct resource *iores[4];
-	int		iorid[4];
-	struct resource *irqres;
-	int		irqrid;
-	struct resource *memres[2];
-	int		memrid[2];
 	STAILQ_ENTRY(pccard_config_entry) cfe_list;
 };
 
@@ -119,7 +120,7 @@ struct pccard_funce_disk {
 
 struct pccard_funce_lan {
 	int pfl_nidlen;
-	u_int8_t pfl_nid[8];
+	uint8_t pfl_nid[8];
 };
 
 union pccard_funce {
@@ -148,8 +149,8 @@ struct pccard_function {
 #define	pf_ccr_realsize	pf_pcmh.realsize
 	uint32_t	pf_ccr_offset;	/* Offset from ccr_base of CIS */
 	int		pf_ccr_window;
-	long		pf_mfc_iobase;	/* Right type? */
-	long		pf_mfc_iomax;
+	bus_addr_t	pf_mfc_iobase;
+	bus_addr_t	pf_mfc_iomax;
 	int		pf_flags;
 	driver_intr_t	*intr_handler;
 	void		*intr_handler_arg;
@@ -180,13 +181,10 @@ struct pccard_card {
 	int32_t		product;
 #define	PCMCIA_PRODUCT_INVALID		-1
 	int16_t		prodext;
-	u_int16_t	error;
+	uint16_t	error;
 #define	PCMCIA_CIS_INVALID		{ NULL, NULL, NULL, NULL }
 	STAILQ_HEAD(, pccard_function) pf_head;
 };
-
-#define	PCCARD_MEM_ATTR		1
-#define	PCCARD_MEM_COMMON	2
 
 #define	PCCARD_WIDTH_AUTO	0
 #define	PCCARD_WIDTH_IO8	1
@@ -195,7 +193,7 @@ struct pccard_card {
 /* More later? */
 struct pccard_ivar {
 	struct resource_list resources;
-	struct pccard_function *fcn;
+	struct pccard_function *pf;
 };
 
 struct pccard_softc {
@@ -206,9 +204,6 @@ struct pccard_softc {
 	struct pccard_card card;
 	int		sc_enabled_count;	/* num functions enabled */
 };
-
-void
-pccardbus_if_setup(struct pccard_softc*);
 
 struct pccard_cis_quirk {
 	int32_t manufacturer;
@@ -227,13 +222,14 @@ struct pccard_tuple {
 	bus_space_handle_t memh;
 };
 
+typedef int (*pccard_scan_t)(const struct pccard_tuple *, void *);
+
 struct pccard_product {
 	const char	*pp_name;		/* NULL if end of table */
-#define PCCARD_VENDOR_ANY ((u_int32_t) -1)
-	u_int32_t	pp_vendor;
-#define PCCARD_PRODUCT_ANY ((u_int32_t) -1)
-	u_int32_t	pp_product;
-	int		pp_expfunc;
+#define PCCARD_VENDOR_ANY (0xffffffff)
+	uint32_t	pp_vendor;
+#define PCCARD_PRODUCT_ANY (0xffffffff)
+	uint32_t	pp_product;
 	const char	*pp_cis[4];
 };
 
@@ -257,8 +253,7 @@ pccard_product_lookup(device_t dev, const struct pccard_product *tab,
 void	pccard_read_cis(struct pccard_softc *);
 void	pccard_check_cis_quirks(device_t);
 void	pccard_print_cis(device_t);
-int	pccard_scan_cis(device_t, 
-		int (*) (struct pccard_tuple *, void *), void *);
+int	pccard_scan_cis(device_t, pccard_scan_t, void *);
 
 #define	pccard_cis_read_1(tuple, idx0)					\
 	(bus_space_read_1((tuple)->memt, (tuple)->memh, (tuple)->mult*(idx0)))
@@ -290,7 +285,8 @@ int	pccard_scan_cis(device_t,
 #define	PCCARD_SPACE_MEMORY	1
 #define	PCCARD_SPACE_IO		2
 
-#define	pccard_mfc(sc)	(STAILQ_FIRST(&(sc)->card.pf_head) &&		\
+#define	pccard_mfc(sc)							\
+		(STAILQ_FIRST(&(sc)->card.pf_head) &&			\
 		 STAILQ_NEXT(STAILQ_FIRST(&(sc)->card.pf_head),pf_list))
 
 #define	pccard_io_alloc(pf, start, size, align, pciop)			\
@@ -347,15 +343,15 @@ pccard_get_ ## A(device_t dev)						\
 {									\
 	uintptr_t v;							\
 	BUS_READ_IVAR(device_get_parent(dev), dev, PCCARD_IVAR_ ## B, &v); \
-	return (T) v;							\
+	return (T)v;							\
 }
 
-PCCARD_ACCESSOR(ether,		ETHADDR,		u_int8_t *)
-PCCARD_ACCESSOR(vendor,		VENDOR,			u_int32_t)
-PCCARD_ACCESSOR(product,	PRODUCT,		u_int32_t)
-PCCARD_ACCESSOR(prodext,	PRODEXT,		u_int16_t)
-PCCARD_ACCESSOR(function_number,FUNCTION_NUMBER,	u_int32_t)
-PCCARD_ACCESSOR(function,	FUNCTION,		u_int32_t)
+PCCARD_ACCESSOR(ether,		ETHADDR,		uint8_t *)
+PCCARD_ACCESSOR(vendor,		VENDOR,			uint32_t)
+PCCARD_ACCESSOR(product,	PRODUCT,		uint32_t)
+PCCARD_ACCESSOR(prodext,	PRODEXT,		uint16_t)
+PCCARD_ACCESSOR(function_number,FUNCTION_NUMBER,	uint32_t)
+PCCARD_ACCESSOR(function,	FUNCTION,		uint32_t)
 PCCARD_ACCESSOR(vendor_str,	VENDOR_STR,		const char *)
 PCCARD_ACCESSOR(product_str,	PRODUCT_STR,		const char *)
 PCCARD_ACCESSOR(cis3_str,	CIS3_STR,		const char *)
@@ -375,9 +371,26 @@ enum {
 #define PCCARD_S(a, b) PCMCIA_STR_ ## a ## _ ## b
 #define PCCARD_P(a, b) PCMCIA_PRODUCT_ ## a ## _ ## b
 #define PCCARD_C(a, b) PCMCIA_CIS_ ## a ## _ ## b
-#define PCMCIA_CARD(v, p, f) { PCCARD_S(v, p), PCMCIA_VENDOR_ ## v, \
-		PCCARD_P(v, p), f, PCCARD_C(v, p) }
-#define PCMCIA_CARD2(v1, p1, p2, f) \
+#if PCCARD_API_LEVEL >= 6
+#define PCMCIA_CARD_D(v, p) { PCCARD_S(v, p), PCMCIA_VENDOR_ ## v, \
+		PCCARD_P(v, p), PCCARD_C(v, p) }
+#define PCMCIA_CARD2_D(v1, p1, p2) \
 		{ PCMCIA_STR_ ## p2, PCMCIA_VENDOR_ ## v1, PCCARD_P(v1, p1), \
-		  f, PCMCIA_CIS_ ## p2}
-
+		  PCMCIA_CIS_ ## p2}
+#define PCMCIA_CARD(v, p) { NULL, PCMCIA_VENDOR_ ## v, \
+		PCCARD_P(v, p), PCCARD_C(v, p) }
+#define PCMCIA_CARD2(v1, p1, p2) \
+		{ NULL, PCMCIA_VENDOR_ ## v1, PCCARD_P(v1, p1), \
+		  PCMCIA_CIS_ ## p2}
+#else
+#define PCMCIA_CARD_D(v, p, f) { PCCARD_S(v, p), PCMCIA_VENDOR_ ## v, \
+		PCCARD_P(v, p), PCCARD_C(v, p) }
+#define PCMCIA_CARD2_D(v1, p1, p2, f) \
+		{ PCMCIA_STR_ ## p2, PCMCIA_VENDOR_ ## v1, PCCARD_P(v1, p1), \
+		  PCMCIA_CIS_ ## p2}
+#define PCMCIA_CARD(v, p, f) { NULL, PCMCIA_VENDOR_ ## v, \
+		PCCARD_P(v, p), PCCARD_C(v, p) }
+#define PCMCIA_CARD2(v1, p1, p2, f) \
+		{ NULL, PCMCIA_VENDOR_ ## v1, PCCARD_P(v1, p1), \
+		  PCMCIA_CIS_ ## p2}
+#endif

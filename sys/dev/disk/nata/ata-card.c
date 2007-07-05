@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-card.c,v 1.39 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-card.c,v 1.2 2006/12/05 19:28:14 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-card.c,v 1.3 2007/07/05 12:08:53 sephe Exp $
  */
 
 #include "opt_ata.h"
@@ -35,6 +35,7 @@
 #include <sys/nata.h>
 #include <sys/rman.h>
 
+#include <bus/pccard/pccard_cis.h>
 #include <bus/pccard/pccardreg.h>
 #include <bus/pccard/pccardvar.h>
 #include <bus/pccard/pccarddevs.h>
@@ -45,7 +46,7 @@
 static const struct pccard_product ata_pccard_products[] = {
 	PCMCIA_CARD(FREECOM, PCCARDIDE, 0),
 	PCMCIA_CARD(EXP, EXPMULTIMEDIA, 0),
-	PCMCIA_CARD(IODATA, CBIDE2, 0),
+	PCMCIA_CARD(IODATA3, CBIDE2, 0),
 	PCMCIA_CARD(OEM2, CDROM1, 0),
 	PCMCIA_CARD(OEM2, IDE, 0),
 	PCMCIA_CARD(PANASONIC, KXLC005, 0),

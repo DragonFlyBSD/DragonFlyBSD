@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.12 2007/05/17 21:08:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.13 2007/07/05 12:08:53 sephe Exp $	*/
 /*	$NecBSD: nsp_pisa.c,v 1.4 1999/04/15 01:35:54 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -47,6 +47,7 @@
 
 #include <vm/vm.h>
 
+#include <sys/rman.h>
 #include <sys/device_port.h>
 
 #include <bus/pccard/pccarddevs.h>
@@ -65,8 +66,6 @@
 #if !defined(__FreeBSD__) || __FreeBSD_version < 500014
 #include	<sys/select.h>
 #endif
-#include 	<bus/pccard/cardinfo.h>
-#include	<bus/pccard/slot.h>
 
 #define	PIO_MODE 0x100		/* pd_flags */
 

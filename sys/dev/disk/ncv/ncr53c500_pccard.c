@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.14 2007/05/17 21:08:47 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.15 2007/07/05 12:08:53 sephe Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -51,6 +51,7 @@
 
 #include "dvcfg.h"
 
+#include <sys/rman.h>
 #include <sys/device_port.h>
 
 #include <bus/pccard/pccarddevs.h>
@@ -68,8 +69,6 @@
 
 #include	<sys/kernel.h>
 #include	<sys/module.h>
-#include	<bus/pccard/cardinfo.h>
-#include	<bus/pccard/slot.h>
 
 static int ncvprobe(DEVPORT_PDEVICE devi);
 static int ncvattach(DEVPORT_PDEVICE devi);

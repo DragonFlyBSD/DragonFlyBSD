@@ -1,4 +1,4 @@
-#
+#-
 # Copyright (c) 1999 M. Warner Losh.
 # All rights reserved.
 #
@@ -23,8 +23,8 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/dev/pccard/power_if.m,v 1.3 2000/04/16 06:04:13 imp Exp $
-# $DragonFly: src/sys/bus/pccard/power_if.m,v 1.1 2004/02/10 07:55:45 joerg Exp $
+# $FreeBSD: src/sys/dev/pccard/power_if.m,v 1.4 2005/01/06 01:43:03 imp Exp $
+# $DragonFly: src/sys/bus/pccard/power_if.m,v 1.2 2007/07/05 12:08:53 sephe Exp $
 #
 
 #include <sys/bus.h>

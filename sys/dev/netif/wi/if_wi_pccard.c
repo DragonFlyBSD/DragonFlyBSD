@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pccard.c,v 1.47 2004/06/09 06:31:40 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.10 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.11 2007/07/05 12:08:53 sephe Exp $
  */
 
 /*
@@ -63,6 +63,7 @@
 #include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/if_wavelan_ieee.h>
 
+#include <bus/pccard/pccard_cis.h>
 #include <bus/pccard/pccardreg.h>
 #include <bus/pccard/pccardvar.h>
 #include <bus/pccard/pccarddevs.h>
@@ -134,8 +135,9 @@ static const struct pccard_product wi_pccard_products[] = {
 	PCMCIA_CARD(GEMTEK, WLAN, 0),
 	PCMCIA_CARD(HWN, AIRWAY80211, 0), 
 	PCMCIA_CARD(INTEL, PRO_WLAN_2011, 0),
-	PCMCIA_CARD(INTERSIL, MA401RA, 0),
-	PCMCIA_CARD(INTERSIL, DWL650, 0),
+	PCMCIA_CARD(INTERSIL, ISL37100P, 0),
+	PCMCIA_CARD(INTERSIL, ISL37110P, 0),
+	PCMCIA_CARD(INTERSIL, ISL37300P, 0),
 	PCMCIA_CARD(INTERSIL2, PRISM2, 0),
 	PCMCIA_CARD(IODATA2, WCF12, 0),
 	PCMCIA_CARD(IODATA2, WNB11PCM, 0),
@@ -144,7 +146,7 @@ static const struct pccard_product wi_pccard_products[] = {
 	PCMCIA_CARD(MICROSOFT, MN_520, 0),
 	PCMCIA_CARD(NOKIA, C020_WLAN, 0),
 	PCMCIA_CARD(NOKIA, C110_WLAN, 0),
-	PCMCIA_CARD(PLANEX_2, GWNS11H, 0),
+	PCMCIA_CARD(PLANEX, GWNS11H, 0),
 	PCMCIA_CARD(PROXIM, HARMONY, 0),
 	PCMCIA_CARD(PROXIM, RANGELANDS_8430, 0),
 	PCMCIA_CARD(SAMSUNG, SWL_2000N, 0),

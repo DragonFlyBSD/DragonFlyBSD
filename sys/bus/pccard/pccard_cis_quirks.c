@@ -1,10 +1,10 @@
 /*	$NetBSD: pcmcia_cis_quirks.c,v 1.6 2000/04/12 21:07:55 scw Exp $ */
-/* $FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.7 2002/02/09 21:34:06 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.6 2006/12/22 23:12:16 swildner Exp $ */
+/*	$FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.15 2005/03/26 21:30:49 sam Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.7 2007/07/05 12:08:53 sephe Exp $ */
 
 #define	PCCARDDEBUG
 
-/*
+/*-
  * Copyright (c) 1998 Marc Horowitz.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,19 +34,13 @@
  */
 
 #include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/module.h>
-#include <sys/kernel.h>
-#include <sys/queue.h>
-#include <sys/types.h>
-
 #include <sys/bus.h>
-#include <sys/rman.h>
+#include <sys/malloc.h>
+#include <sys/systm.h>
 
-#include <bus/pccard/pccarddevs.h>
-#include <bus/pccard/pccardreg.h>
+#include <bus/pccard/pccard_cis.h>
 #include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
 
 /* There are cards out there whose CIS flat-out lies.  This file
    contains struct pccard_function chains for those devices. */
@@ -205,6 +199,23 @@ static struct pccard_cis_quirk pccard_cis_quirks[] = {
 static int n_pccard_cis_quirks =
 	sizeof(pccard_cis_quirks)/sizeof(pccard_cis_quirks[0]);
 
+static int
+pccard_cis_quirk_match(struct pccard_softc *sc, struct pccard_cis_quirk *q)
+{
+	if ((sc->card.manufacturer == q->manufacturer) &&
+		(sc->card.product == q->product) &&
+		(((sc->card.manufacturer != PCMCIA_VENDOR_INVALID) &&
+		  (sc->card.product != PCMCIA_PRODUCT_INVALID)) ||
+		 ((sc->card.manufacturer == PCMCIA_VENDOR_INVALID) &&
+		  (sc->card.product == PCMCIA_PRODUCT_INVALID) &&
+		  sc->card.cis1_info[0] &&
+		  (strcmp(sc->card.cis1_info[0], q->cis1_info[0]) == 0) &&
+		  sc->card.cis1_info[1] &&
+		  (strcmp(sc->card.cis1_info[1], q->cis1_info[1]) == 0))))
+		return (1);
+	return (0);
+}
+
 void
 pccard_check_cis_quirks(device_t dev)
 {
@@ -213,69 +224,70 @@ pccard_check_cis_quirks(device_t dev)
 	int i, j;
 	struct pccard_function *pf, *pf_next, *pf_last;
 	struct pccard_config_entry *cfe, *cfe_next;
+	struct pccard_cis_quirk *q;
 
 	pf = NULL;
 	pf_last = NULL;
 
 	for (i=0; i<n_pccard_cis_quirks; i++) {
-		if ((sc->card.manufacturer == pccard_cis_quirks[i].manufacturer) &&
-			(sc->card.product == pccard_cis_quirks[i].product) &&
-			(((sc->card.manufacturer != PCMCIA_VENDOR_INVALID) &&
-			  (sc->card.product != PCMCIA_PRODUCT_INVALID)) ||
-			 ((sc->card.manufacturer == PCMCIA_VENDOR_INVALID) &&
-			  (sc->card.product == PCMCIA_PRODUCT_INVALID) &&
-			  sc->card.cis1_info[0] &&
-			  (strcmp(sc->card.cis1_info[0],
-					  pccard_cis_quirks[i].cis1_info[0]) == 0) &&
-			  sc->card.cis1_info[1] &&
-			  (strcmp(sc->card.cis1_info[1],
-					  pccard_cis_quirks[i].cis1_info[1]) == 0)))) {
-			if (!wiped) {
-				if (bootverbose) {
-					device_printf(dev, "using CIS quirks for ");
-					for (j = 0; j < 4; j++) {
-						if (sc->card.cis1_info[j] == NULL)
-							break;
-						if (j)
-							kprintf(", ");
-						kprintf("%s", sc->card.cis1_info[j]);
-					}
-					kprintf("\n");
+		q = &pccard_cis_quirks[i];
+		if (!pccard_cis_quirk_match(sc, q))
+			continue;
+		if (!wiped) {
+			if (bootverbose) {
+				device_printf(dev, "using CIS quirks for ");
+				for (j = 0; j < 4; j++) {
+					if (sc->card.cis1_info[j] == NULL)
+						break;
+					if (j)
+						kprintf(", ");
+					kprintf("%s", sc->card.cis1_info[j]);
 				}
-
-				for (pf = STAILQ_FIRST(&sc->card.pf_head); pf != NULL;
-				     pf = pf_next) {
-					for (cfe = STAILQ_FIRST(&pf->cfe_head); cfe != NULL;
-					     cfe = cfe_next) {
-						cfe_next = STAILQ_NEXT(cfe, cfe_list);
-						kfree(cfe, M_DEVBUF);
-					}
-					pf_next = STAILQ_NEXT(pf, pf_list);
-					kfree(pf, M_DEVBUF);
-				}
-
-				STAILQ_INIT(&sc->card.pf_head);
-				wiped = 1;
+				kprintf("\n");
 			}
 
-			if (pf_last == pccard_cis_quirks[i].pf) {
-				cfe = kmalloc(sizeof(*cfe), M_DEVBUF, M_INTWAIT);
-				*cfe = *pccard_cis_quirks[i].cfe;
-
-				STAILQ_INSERT_TAIL(&pf->cfe_head, cfe, cfe_list);
-			} else {
-				pf = kmalloc(sizeof(*pf), M_DEVBUF, M_INTWAIT);
-				*pf = *pccard_cis_quirks[i].pf;
-				STAILQ_INIT(&pf->cfe_head);
-
-				cfe = kmalloc(sizeof(*cfe), M_DEVBUF, M_INTWAIT);
-				*cfe = *pccard_cis_quirks[i].cfe;
-
-				STAILQ_INSERT_TAIL(&pf->cfe_head, cfe, cfe_list);
-				STAILQ_INSERT_TAIL(&sc->card.pf_head, pf, pf_list);
-
-				pf_last = pccard_cis_quirks[i].pf;
+			for (pf = STAILQ_FIRST(&sc->card.pf_head); pf != NULL;
+			     pf = pf_next) {
+				for (cfe = STAILQ_FIRST(&pf->cfe_head); cfe != NULL;
+				     cfe = cfe_next) {
+					cfe_next = STAILQ_NEXT(cfe, cfe_list);
+					kfree(cfe, M_DEVBUF);
+				}
+				pf_next = STAILQ_NEXT(pf, pf_list);
+				kfree(pf, M_DEVBUF);
 			}
+
+			STAILQ_INIT(&sc->card.pf_head);
+			wiped = 1;
+		}
+
+		if (pf_last == q->pf) {
+			cfe = kmalloc(sizeof(*cfe), M_DEVBUF, M_NOWAIT);
+			if (cfe == NULL) {
+				device_printf(dev, "no memory for quirk (1)\n");
+				continue;
+			}
+			*cfe = *q->cfe;
+			STAILQ_INSERT_TAIL(&pf->cfe_head, cfe, cfe_list);
+		} else {
+			pf = kmalloc(sizeof(*pf), M_DEVBUF, M_NOWAIT);
+			if (pf == NULL) {
+				device_printf(dev,
+					"no memory for pccard function\n");
+				continue;
+			}
+			*pf = *q->pf;
+			STAILQ_INIT(&pf->cfe_head);
+			cfe = kmalloc(sizeof(*cfe), M_DEVBUF, M_NOWAIT);
+			if (cfe == NULL) {
+				kfree(pf, M_DEVBUF);
+				device_printf(dev, "no memory for quirk (2)\n");
+				continue;
+			}
+			*cfe = *q->cfe;
+			STAILQ_INSERT_TAIL(&pf->cfe_head, cfe, cfe_list);
+			STAILQ_INSERT_TAIL(&sc->card.pf_head, pf, pf_list);
+			pf_last = q->pf;
 		}
 	}
 }

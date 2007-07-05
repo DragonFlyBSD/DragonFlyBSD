@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.6 2007/04/12 18:35:09 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.7 2007/07/05 12:08:54 sephe Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -45,6 +45,7 @@
 #include "sioreg.h"
 #include "sio_private.h"
 
+#include <bus/pccard/pccard_cis.h>
 #include <bus/pccard/pccarddevs.h>
 #include <bus/pccard/pccardreg.h>
 #include <bus/pccard/pccardvar.h>
