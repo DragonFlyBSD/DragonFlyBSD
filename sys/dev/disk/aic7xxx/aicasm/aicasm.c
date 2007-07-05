@@ -37,10 +37,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm.c#22 $
+ * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm.c#23 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm.c,v 1.28.2.6 2002/08/31 07:26:06 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm.c,v 1.4 2006/04/22 16:15:26 dillon Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm.c,v 1.36 2003/12/17 00:01:11 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm.c,v 1.5 2007/07/05 05:46:33 pavalos Exp $
  */
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -608,10 +608,10 @@ output_listing(char *ifilename)
 
 		while (line < cur_instr->srcline) {
 			fgets(buf, sizeof(buf), ifile);
-				fprintf(listfile, "\t\t%s", buf);
+				fprintf(listfile, "             \t%s", buf);
 				line++;
 		}
-		fprintf(listfile, "%03x %02x%02x%02x%02x", instrptr,
+		fprintf(listfile, "%04x %02x%02x%02x%02x", instrptr,
 #if BYTE_ORDER == LITTLE_ENDIAN
 			cur_instr->format.bytes[0],
 			cur_instr->format.bytes[1],
@@ -623,14 +623,23 @@ output_listing(char *ifilename)
 			cur_instr->format.bytes[1],
 			cur_instr->format.bytes[0]);
 #endif
-		fgets(buf, sizeof(buf), ifile);
-		fprintf(listfile, "\t%s", buf);
-		line++;
+		/*
+		 * Macro expansions can cause several instructions
+		 * to be output for a single source line.  Only
+		 * advance the line once in these cases.
+		 */
+		if (line == cur_instr->srcline) {
+			fgets(buf, sizeof(buf), ifile);
+			fprintf(listfile, "\t%s", buf);
+			line++;
+		} else {
+			fprintf(listfile, "\n");
+		}
 		instrptr++;
 	}
 	/* Dump the remainder of the file */
 	while(fgets(buf, sizeof(buf), ifile) != NULL)
-		fprintf(listfile, "\t\t%s", buf);
+		fprintf(listfile, "             %s", buf);
 
 	fclose(ifile);
 }
