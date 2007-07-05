@@ -37,10 +37,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/aic7xxx/aic7xxx/aic79xx_inline.h#50 $
+ * $Id: //depot/aic7xxx/aic7xxx/aic79xx_inline.h#51 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_inline.h,v 1.3.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_inline.h,v 1.3 2006/12/22 23:26:15 swildner Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_inline.h,v 1.12 2003/06/28 04:43:19 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_inline.h,v 1.4 2007/07/05 01:13:05 pavalos Exp $
  */
 
 #ifndef _AIC79XX_INLINE_H_
@@ -456,6 +456,8 @@ static __inline u_int	ahd_inb_scbram(struct ahd_softc *ahd, u_int offset);
 static __inline u_int	ahd_inw_scbram(struct ahd_softc *ahd, u_int offset);
 static __inline uint32_t
 			ahd_inl_scbram(struct ahd_softc *ahd, u_int offset);
+static __inline uint64_t
+			ahd_inq_scbram(struct ahd_softc *ahd, u_int offset);
 static __inline void	ahd_swap_with_next_hscb(struct ahd_softc *ahd,
 						struct scb *scb);
 static __inline void	ahd_queue_scb(struct ahd_softc *ahd, struct scb *scb);
@@ -698,10 +700,15 @@ ahd_inw_scbram(struct ahd_softc *ahd, u_int offset)
 static __inline uint32_t
 ahd_inl_scbram(struct ahd_softc *ahd, u_int offset)
 {
-	return (ahd_inb_scbram(ahd, offset)
-	      | (ahd_inb_scbram(ahd, offset+1) << 8)
-	      | (ahd_inb_scbram(ahd, offset+2) << 16)
-	      | (ahd_inb_scbram(ahd, offset+3) << 24));
+	return (ahd_inw_scbram(ahd, offset)
+	      | (ahd_inw_scbram(ahd, offset+2) << 16));
+}
+
+static __inline uint64_t
+ahd_inq_scbram(struct ahd_softc *ahd, u_int offset)
+{
+	return (ahd_inl_scbram(ahd, offset)
+	      | ((uint64_t)ahd_inl_scbram(ahd, offset+4)) << 32);
 }
 
 static __inline struct scb *
