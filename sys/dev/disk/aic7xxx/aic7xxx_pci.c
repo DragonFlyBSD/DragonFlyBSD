@@ -39,10 +39,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_pci.c#69 $
+ * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_pci.c#72 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.30 2003/09/02 17:30:34 jhb Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.8 2007/07/05 05:08:32 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.31 2003/09/25 23:36:41 scottl Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.9 2007/07/05 05:17:39 pavalos Exp $
  */
 
 #ifdef __linux__
@@ -1284,8 +1284,10 @@ ahc_pci_test_register_access(struct ahc_softc *ahc)
 	 * or read prefetching could be initiated by the
 	 * CPU or host bridge.  Our device does not support
 	 * either, so look for data corruption and/or flagged
-	 * PCI errors.
+	 * PCI errors.  First pause without causing another
+	 * chip reset.
 	 */
+	hcntrl &= ~CHIPRST;
 	ahc_outb(ahc, HCNTRL, hcntrl|PAUSE);
 	while (ahc_is_paused(ahc) == 0)
 		;
