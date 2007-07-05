@@ -30,15 +30,15 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahd_pci.c#13 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.2.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.7 2006/12/22 23:26:15 swildner Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.11 2003/09/02 17:30:34 jhb Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.8 2007/07/05 05:08:32 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
 
-#define	AHD_PCI_IOADDR0 PCIR_MAPS	/* Primary I/O BAR */
-#define	AHD_PCI_MEMADDR (PCIR_MAPS + 4) /* Mem I/O Address */
-#define	AHD_PCI_IOADDR1 (PCIR_MAPS + 12)/* Secondary I/O BAR */
+#define	AHD_PCI_IOADDR0 PCIR_BAR(0)	/* Primary I/O BAR */
+#define	AHD_PCI_MEMADDR PCIR_BAR(1)	/* Mem I/O Address */
+#define	AHD_PCI_IOADDR1 PCIR_BAR(3)	/* Secondary I/O BAR */
 
 static int ahd_pci_probe(device_t dev);
 static int ahd_pci_attach(device_t dev);

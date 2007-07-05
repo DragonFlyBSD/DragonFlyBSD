@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.h#94 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.15 2003/06/28 04:45:25 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.4 2007/07/05 02:47:43 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.16 2003/09/02 17:30:34 jhb Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.5 2007/07/05 05:08:32 pavalos Exp $
  */
 
 #ifndef _AIC79XX_H_
@@ -1299,9 +1299,9 @@ struct ahd_devinfo {
 };
 
 /****************************** PCI Structures ********************************/
-#define AHD_PCI_IOADDR0	PCIR_MAPS	/* I/O BAR*/
-#define AHD_PCI_MEMADDR	(PCIR_MAPS + 4)	/* Memory BAR */
-#define AHD_PCI_IOADDR1	(PCIR_MAPS + 12)/* Second I/O BAR */
+#define AHD_PCI_IOADDR0	PCIR_BAR(0)	/* I/O BAR*/
+#define AHD_PCI_MEMADDR	PCIR_BAR(1)	/* Memory BAR */
+#define AHD_PCI_IOADDR1	PCIR_BAR(3)	/* Second I/O BAR */
 
 typedef int (ahd_device_setup_t)(struct ahd_softc *);
 
