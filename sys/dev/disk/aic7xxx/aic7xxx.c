@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.103 2004/10/19 20:48:05 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.20 2007/07/06 05:45:52 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.104 2004/11/18 20:22:31 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.21 2007/07/06 05:58:26 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -583,7 +583,7 @@ ahc_handle_seqint(struct ahc_softc *ahc, u_int intstat)
 			 */
 			if (ahc->scb_data->recovery_scbs == 0
 			 || (scb->flags & SCB_RECOVERY_SCB) != 0)
-				aic_scb_timer_reset(scb, 5 * 1000000);
+				aic_scb_timer_reset(scb, 5 * 1000);
 			break;
 		}
 		default:
@@ -7119,7 +7119,7 @@ bus_reset:
 			ahc_print_path(ahc, active_scb);
 			kprintf("BDR message in message buffer\n");
 			active_scb->flags |= SCB_DEVICE_RESET;
-			aic_scb_timer_reset(scb, 2 * 1000000);
+			aic_scb_timer_reset(scb, 2 * 1000);
 		} else if (last_phase != P_BUSFREE
 			&& (ahc_inb(ahc, SSTAT1) & REQINIT) == 0) {
 			/*
@@ -7221,7 +7221,7 @@ bus_reset:
 				kprintf("Queuing a BDR SCB\n");
 				ahc_qinfifo_requeue_tail(ahc, scb);
 				ahc_outb(ahc, SCBPTR, saved_scbptr);
-				aic_scb_timer_reset(scb, 2 * 1000000);
+				aic_scb_timer_reset(scb, 2 * 1000);
 			} else {
 				/* Go "immediatly" to the bus reset */
 				/* This shouldn't happen */

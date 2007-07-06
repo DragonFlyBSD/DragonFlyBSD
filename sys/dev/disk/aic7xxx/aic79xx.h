@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.h#107 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.22 2004/08/18 16:33:14 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.11 2007/07/06 05:07:58 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.23 2004/11/18 20:22:31 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.12 2007/07/06 05:58:26 pavalos Exp $
  */
 
 #ifndef _AIC79XX_H_
@@ -1152,7 +1152,7 @@ struct ahd_softc {
 	/*
 	 * Statistics.
 	 */
-#define	AHD_STAT_UPDATE_US	250000 /* 250ms */
+#define	AHD_STAT_UPDATE_MS	250
 #define	AHD_STAT_BUCKETS	4
 	u_int			  cmdcmplt_bucket;
 	uint32_t		  cmdcmplt_counts[AHD_STAT_BUCKETS];

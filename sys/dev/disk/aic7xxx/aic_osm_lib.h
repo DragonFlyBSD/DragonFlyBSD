@@ -32,8 +32,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic_osm_lib.h#5 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.h,v 1.3 2004/08/17 00:14:31 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.h,v 1.3 2007/07/06 04:56:22 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.h,v 1.4 2004/11/18 20:22:31 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.h,v 1.4 2007/07/06 05:58:26 pavalos Exp $
  */
 
 /******************************** OS Includes *********************************/
@@ -199,21 +199,31 @@ static __inline u_int aic_get_timeout(struct scb *);
 static __inline void aic_scb_timer_reset(struct scb *, u_int);
 
 static __inline void
-aic_timer_reset(aic_timer_t *timer, u_int usec, aic_callback_t *func, void *arg)
+aic_timer_reset(aic_timer_t *timer, u_int msec, aic_callback_t *func, void *arg)
 {
-	callout_reset(timer, (usec * hz)/1000000, func, arg);
+	uint64_t time;
+
+	time = msec;
+	time *= hz;
+	time /= 1000;
+	callout_reset(timer, time, func, arg);
 }
 
 static __inline u_int
 aic_get_timeout(struct scb *scb)
 {
-	return (scb->io_ctx->ccb_h.timeout * 1000);
+	return (scb->io_ctx->ccb_h.timeout);
 }
 
 static __inline void
-aic_scb_timer_reset(struct scb *scb, u_int usec)
+aic_scb_timer_reset(struct scb *scb, u_int msec)
 {
-	callout_reset(&scb->io_ctx->ccb_h.timeout_ch, (usec * hz)/1000000,
+	uint64_t time;
+
+	time = msec;
+	time *= hz;
+	time /= 1000;
+	callout_reset(&scb->io_ctx->ccb_h.timeout_ch, time,
 		aic_platform_timeout, scb);
 }
 
