@@ -37,10 +37,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.reg,v 1.2.2.6 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.reg,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.reg,v 1.16 2004/02/04 16:38:38 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.reg,v 1.3 2007/07/06 00:56:38 pavalos Exp $
  */
-VERSION = "$Id: //depot/aic7xxx/aic7xxx/aic79xx.reg#70 $"
+VERSION = "$Id: //depot/aic7xxx/aic7xxx/aic79xx.reg#75 $"
 
 /*
  * This file is processed by the aic7xxx_asm utility for use in assembling
@@ -66,13 +66,6 @@ VERSION = "$Id: //depot/aic7xxx/aic7xxx/aic79xx.reg#70 $"
 		mvi	MODE_PTR, MK_MODE(src, dst);			\
 	}
 
-#define TOGGLE_DFF_MODE							\
-	if ((ahd->bugs & AHD_SET_MODE_BUG) != 0) {			\
-		call	toggle_dff_mode_work_around;			\
-	} else {							\
-		xor	MODE_PTR, MK_MODE(M_DFF1, M_DFF1);		\
-	}
-	
 #define RESTORE_MODE(mode)						\
 	if ((ahd->bugs & AHD_SET_MODE_BUG) != 0) {			\
 		mov	mode call set_mode_work_around;			\
@@ -3543,8 +3536,32 @@ scratch_ram {
 	COMPLETE_DMA_SCB_HEAD {
 		size		2
 	}
-	/* Counting semaphore to prevent new select-outs */
+	/*
+	 * tail of list of SCBs that have
+	 * completed but need to be uploaded
+	 * to the host prior to being completed.
+	 */
+	COMPLETE_DMA_SCB_TAIL {
+		size		2
+	}
+	/*
+	 * head of list of SCBs that have
+	 * been uploaded to the host, but cannot
+	 * be completed until the QFREEZE is in
+	 * full effect (i.e. no selections pending).
+	 */
+	COMPLETE_ON_QFREEZE_HEAD {
+		size		2
+	}
+	/*
+	 * Counting semaphore to prevent new select-outs
+	 * The queue is frozen so long as the sequencer
+	 * and kernel freeze counts differ.
+	 */
 	QFREEZE_COUNT {
+		size		2
+	}
+	KERNEL_QFREEZE_COUNT {
 		size		2
 	}
 	/*
@@ -3626,6 +3643,17 @@ scratch_ram {
 		size		1
 	}
 	/*
+	 * Kernel and sequencer offsets into the queue of
+	 * incoming target mode command descriptors.  The
+	 * queue is full when the KERNEL_TQINPOS == TQINPOS.
+	 */
+	KERNEL_TQINPOS {
+		size		1
+	}
+	TQINPOS {                
+		size		1
+	}
+	/*
 	 * Base address of our shared data with the kernel driver in host
 	 * memory.  This includes the qoutfifo and target mode
 	 * incoming command queue.
@@ -3639,17 +3667,6 @@ scratch_ram {
 	 */
 	QOUTFIFO_NEXT_ADDR {
 		size		4
-	}
-	/*
-	 * Kernel and sequencer offsets into the queue of
-	 * incoming target mode command descriptors.  The
-	 * queue is full when the KERNEL_TQINPOS == TQINPOS.
-	 */
-	KERNEL_TQINPOS {
-		size		1
-	}
-	TQINPOS {                
-		size		1
 	}
 	ARG_1 {
 		size		1
