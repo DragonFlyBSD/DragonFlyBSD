@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.104 2004/11/18 20:22:31 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.21 2007/07/06 05:58:26 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.105 2004/11/18 20:33:43 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.22 2007/07/06 06:09:20 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -7792,10 +7792,12 @@ ahc_handle_target_cmd(struct ahc_softc *ahc, struct target_cmd *cmd)
 		return (1);
 	} else
 		ahc->flags &= ~AHC_TQINFIFO_BLOCKED;
-#if 0
-	kprintf("Incoming command from %d for %d:%d%s\n",
-	       initiator, target, lun,
-	       lstate == ahc->black_hole ? "(Black Holed)" : "");
+#ifdef AHC_DEBUG
+	if (ahc_debug & AHC_SHOW_TQIN) {
+		kprintf("Incoming command from %d for %d:%d%s\n",
+		       initiator, target, lun,
+		       lstate == ahc->black_hole ? "(Black Holed)" : "");
+	}
 #endif
 	SLIST_REMOVE_HEAD(&lstate->accept_tios, sim_links.sle);
 
@@ -7855,9 +7857,11 @@ ahc_handle_target_cmd(struct ahc_softc *ahc, struct target_cmd *cmd)
 		 * continue target I/O comes in response
 		 * to this accept tio.
 		 */
-#if 0
-		kprintf("Received Immediate Command %d:%d:%d - %p\n",
-		       initiator, target, lun, ahc->pending_device);
+#ifdef AHC_DEBUG
+		if (ahc_debug & AHC_SHOW_TQIN) {
+			kprintf("Received Immediate Command %d:%d:%d - %p\n",
+			       initiator, target, lun, ahc->pending_device);
+		}
 #endif
 		ahc->pending_device = lstate;
 		aic_freeze_ccb((union ccb *)atio);
