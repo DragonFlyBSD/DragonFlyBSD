@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.30 2007/05/24 20:51:21 dillon Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.31 2007/07/06 11:59:03 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -174,7 +174,7 @@ rtable_service_loop(void *dummy __unused)
 	struct netmsg *netmsg;
 	thread_t td = curthread;
 
-	while ((netmsg = lwkt_waitport(&td->td_msgport, NULL)) != NULL) {
+	while ((netmsg = lwkt_waitport(&td->td_msgport, 0)) != NULL) {
 		netmsg->nm_dispatch(netmsg);
 	}
 }

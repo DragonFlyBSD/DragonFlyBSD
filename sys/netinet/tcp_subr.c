@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.58 2007/05/23 08:57:09 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.59 2007/07/06 11:59:03 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -379,7 +379,7 @@ tcpmsg_service_loop(void *dummy)
 {
 	struct netmsg *msg;
 
-	while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
+	while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
 		do {
 			logtcp(rxmsg);
 			msg->nm_dispatch(msg);
