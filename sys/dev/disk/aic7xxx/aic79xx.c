@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#246 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.35 2005/02/16 18:09:41 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.25 2007/07/06 06:26:59 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.36 2005/02/16 23:13:38 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.26 2007/07/06 23:44:54 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -8880,6 +8880,12 @@ ahd_print_register(ahd_reg_parse_entry_t *table, u_int num_entries,
 {
 	int	printed;
 	u_int	printed_mask;
+	u_int	dummy_column;
+
+	if (cur_column == NULL) {
+		dummy_column = 0;
+		cur_column = &dummy_column;
+	}
 
 	if (cur_column != NULL && *cur_column >= wrap_point) {
 		kprintf("\n");
@@ -8916,8 +8922,7 @@ ahd_print_register(ahd_reg_parse_entry_t *table, u_int num_entries,
 		printed += kprintf(") ");
 	else
 		printed += kprintf(" ");
-	if (cur_column != NULL)
-		*cur_column += printed;
+	*cur_column += printed;
 	return (printed);
 }
 
