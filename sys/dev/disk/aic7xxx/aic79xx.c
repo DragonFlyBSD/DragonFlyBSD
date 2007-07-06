@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#246 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.31 2004/08/17 00:14:30 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.22 2007/07/06 04:56:22 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.32 2004/08/18 16:35:52 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.23 2007/07/06 05:17:17 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -9337,7 +9337,7 @@ bus_reset:
 				 * untimed-out command is outstanding.
 				 */ 
 				if (ahd_other_scb_timeout(ahd, scb,
-							  active_scb) != 0)
+							  active_scb) == 0)
 					goto bus_reset;
 				continue;
 			} 
@@ -9376,7 +9376,7 @@ bus_reset:
 			 * some other command.  Reset the timer
 			 * and go on.
 			 */
-			if (ahd_other_scb_timeout(ahd, scb, NULL) != 0)
+			if (ahd_other_scb_timeout(ahd, scb, NULL) == 0)
 				goto bus_reset;
 		} else {
 			/*
