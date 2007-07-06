@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.100 2004/05/11 20:39:46 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.17 2007/07/06 02:04:20 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.101 2004/08/13 21:39:14 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.18 2007/07/06 02:44:30 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -1438,8 +1438,6 @@ ahc_clear_critical_section(struct ahc_softc *ahc)
 		 * so we are really executing the instruction just
 		 * before it.
 		 */
-		if (seqaddr != 0)
-			seqaddr -= 1;
 		cs = ahc->critical_sections;
 		for (i = 0; i < ahc->num_critical_sections; i++, cs++) {
 			
