@@ -28,18 +28,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_pci.c#13 $
+ * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_pci.c#19 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.56 2003/09/02 17:30:34 jhb Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.9 2007/07/05 05:08:32 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.60 2003/12/17 00:02:09 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.10 2007/07/06 00:01:16 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
 
 #ifdef AHC_PCI_CONFIG
-
-#define	AHC_PCI_IOADDR  PCIR_BAR(0)	/* I/O Address */
-#define	AHC_PCI_MEMADDR PCIR_BAR(1)	/* Mem I/O Address */
 
 static int ahc_pci_probe(device_t dev);
 static int ahc_pci_attach(device_t dev);
@@ -110,7 +107,7 @@ ahc_pci_attach(device_t dev)
 
 	/* Allocate a dmatag for our SCB DMA maps */
 	/* XXX Should be a child of the PCI bus dma tag */
-	error = bus_dma_tag_create(/*parent*/NULL, /*alignment*/1,
+	error = aic_dma_tag_create(ahc, /*parent*/NULL, /*alignment*/1,
 				   /*boundary*/0,
 				   (ahc->flags & AHC_39BIT_ADDRESSING)
 				   ? 0x7FFFFFFFFFULL
@@ -149,7 +146,7 @@ ahc_pci_map_registers(struct ahc_softc *ahc)
 	int	regs_id;
 	int	allow_memio;
 
-	command = ahc_pci_read_config(ahc->dev_softc, PCIR_COMMAND, /*bytes*/1);
+	command = aic_pci_read_config(ahc->dev_softc, PCIR_COMMAND, /*bytes*/1);
 	regs = NULL;
 	regs_type = 0;
 	regs_id = 0;
@@ -189,15 +186,15 @@ ahc_pci_map_registers(struct ahc_softc *ahc)
 				device_printf(ahc->dev_softc,
 				       "PCI Device %d:%d:%d failed memory "
 				       "mapped test.  Using PIO.\n",
-				       ahc_get_pci_bus(ahc->dev_softc),
-				       ahc_get_pci_slot(ahc->dev_softc),
-				       ahc_get_pci_function(ahc->dev_softc));
+				       aic_get_pci_bus(ahc->dev_softc),
+				       aic_get_pci_slot(ahc->dev_softc),
+				       aic_get_pci_function(ahc->dev_softc));
 				bus_release_resource(ahc->dev_softc, regs_type,
 						     regs_id, regs);
 				regs = NULL;
 			} else {
 				command &= ~PCIM_CMD_PORTEN;
-				ahc_pci_write_config(ahc->dev_softc,
+				aic_pci_write_config(ahc->dev_softc,
 						     PCIR_COMMAND,
 						     command, /*bytes*/1);
 			}
@@ -212,9 +209,22 @@ ahc_pci_map_registers(struct ahc_softc *ahc)
 		if (regs != NULL) {
 			ahc->tag = rman_get_bustag(regs);
 			ahc->bsh = rman_get_bushandle(regs);
-			command &= ~PCIM_CMD_MEMEN;
-			ahc_pci_write_config(ahc->dev_softc, PCIR_COMMAND,
-					     command, /*bytes*/1);
+			if (ahc_pci_test_register_access(ahc) != 0) {
+				device_printf(ahc->dev_softc,
+				       "PCI Device %d:%d:%d failed I/O "
+				       "mapped test.\n",
+				       aic_get_pci_bus(ahc->dev_softc),
+				       aic_get_pci_slot(ahc->dev_softc),
+				       aic_get_pci_function(ahc->dev_softc));
+				bus_release_resource(ahc->dev_softc, regs_type,
+						     regs_id, regs);
+				regs = NULL;
+			} else {
+				command &= ~PCIM_CMD_MEMEN;
+				aic_pci_write_config(ahc->dev_softc,
+						     PCIR_COMMAND,
+						     command, /*bytes*/1);
+			}
 		}
 	}
 	if (regs == NULL) {
@@ -246,39 +256,5 @@ ahc_pci_map_int(struct ahc_softc *ahc)
 	return (ahc_map_int(ahc));
 }
 
-void
-ahc_power_state_change(struct ahc_softc *ahc, ahc_power_state new_state)
-{
-	uint32_t cap;
-	u_int cap_offset;
-
-	/*
-	 * Traverse the capability list looking for
-	 * the power management capability.
-	 */
-	cap = 0;
-	cap_offset = ahc_pci_read_config(ahc->dev_softc,
-					 PCIR_CAP_PTR, /*bytes*/1);
-	while (cap_offset != 0) {
-
-		cap = ahc_pci_read_config(ahc->dev_softc,
-					  cap_offset, /*bytes*/4);
-		if ((cap & 0xFF) == 1
-		 && ((cap >> 16) & 0x3) > 0) {
-			uint32_t pm_control;
-
-			pm_control = ahc_pci_read_config(ahc->dev_softc,
-							 cap_offset + 4,
-							 /*bytes*/2);
-			pm_control &= ~0x3;
-			pm_control |= new_state;
-			ahc_pci_write_config(ahc->dev_softc,
-					     cap_offset + 4,
-					     pm_control, /*bytes*/2);
-			break;
-		}
-		cap_offset = (cap >> 8) & 0xFF;
-	}
-}
 
 #endif

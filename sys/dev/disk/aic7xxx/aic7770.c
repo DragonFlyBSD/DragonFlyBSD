@@ -37,10 +37,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/aic7xxx/aic7xxx/aic7770.c#32 $
+ * $Id: //depot/aic7xxx/aic7xxx/aic7770.c#34 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7770.c,v 1.1.2.9 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.7 2007/01/27 15:03:25 swildner Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7770.c,v 1.16 2003/12/17 00:02:09 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.8 2007/07/06 00:01:16 pavalos Exp $
  */
 
 #ifdef __linux__
@@ -175,7 +175,7 @@ aic7770_config(struct ahc_softc *ahc, struct aic7770_identity *entry, u_int io)
 	case 15:
 		break;
 	default:
-		kprintf("aic7770_config: illegal irq setting %d\n", intdef);
+		kprintf("aic7770_config: invalid irq setting %d\n", intdef);
 		return (ENXIO);
 	}
 
