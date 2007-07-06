@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.h#85 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.h,v 1.50 2003/12/17 00:02:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.h,v 1.3 2007/07/06 00:01:16 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.h,v 1.52 2004/08/18 16:31:56 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.h,v 1.4 2007/07/06 04:56:22 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_H_
@@ -614,6 +614,8 @@ struct scb_data {
 	struct	scb *scbarray;		/* Array of kernel SCBs */
 	struct	scsi_sense_data *sense; /* Per SCB sense data */
 
+	u_int	recovery_scbs;		/* Transactions currently in recovery */
+
 	/*
 	 * "Bus" addresses of our data structures.
 	 */
@@ -921,6 +923,8 @@ typedef int (*ahc_bus_suspend_t)(struct ahc_softc *);
 typedef int (*ahc_bus_resume_t)(struct ahc_softc *);
 typedef void ahc_callback_t (void *);
 
+#define AIC_SCB_DATA(softc) ((softc)->scb_data)
+
 struct ahc_softc {
 	bus_space_tag_t           tag;
 	bus_space_handle_t        bsh;
@@ -1172,6 +1176,7 @@ struct aic7770_identity {
 extern struct aic7770_identity aic7770_ident_table[];
 extern const int ahc_num_aic7770_devs;
 
+#define AHC_EISA_SLOT_SIZE	0x1000
 #define AHC_EISA_SLOT_OFFSET	0xc00
 #define AHC_EISA_IOSIZE		0x100
 

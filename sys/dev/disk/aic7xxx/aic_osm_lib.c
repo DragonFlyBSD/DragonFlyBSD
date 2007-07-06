@@ -31,8 +31,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic_osm_lib.c#5 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.c,v 1.2 2003/12/19 18:34:30 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.c,v 1.1 2007/07/06 00:01:16 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.c,v 1.3 2004/08/17 00:14:31 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.c,v 1.2 2007/07/06 04:56:22 pavalos Exp $
  */
 
 static void	aic_recovery_thread(void *arg);
@@ -46,15 +46,7 @@ aic_set_recoveryscb(struct aic_softc *aic, struct scb *scb)
 
 		scb->flags |= SCB_RECOVERY_SCB;
 
-		/*
-		 * Take all queued, but not sent SCBs out of the equation.
-		 * Also ensure that no new CCBs are queued to us while we
-		 * try to fix this problem.
-		 */
-		if ((scb->io_ctx->ccb_h.status & CAM_RELEASE_SIMQ) == 0) {
-			xpt_freeze_simq(SCB_GET_SIM(aic, scb), /*count*/1);
-			scb->io_ctx->ccb_h.status |= CAM_RELEASE_SIMQ;
-		}
+		AIC_SCB_DATA(aic)->recovery_scbs++;
 
 		/*
 		 * Go through all of our pending SCBs and remove

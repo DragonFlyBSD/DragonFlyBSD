@@ -30,8 +30,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_pci.c#19 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.61 2004/03/17 17:50:25 njl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.11 2007/07/06 01:11:07 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.62 2004/08/17 00:14:30 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.12 2007/07/06 04:56:22 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -237,24 +237,5 @@ ahc_pci_map_registers(struct ahc_softc *ahc)
 	ahc->platform_data->regs = regs;
 	return (0);
 }
-
-int
-ahc_pci_map_int(struct ahc_softc *ahc)
-{
-	int zero;
-
-	zero = 0;
-	ahc->platform_data->irq =
-	    bus_alloc_resource_any(ahc->dev_softc, SYS_RES_IRQ, &zero,
-				   RF_ACTIVE | RF_SHAREABLE);
-	if (ahc->platform_data->irq == NULL) {
-		device_printf(ahc->dev_softc,
-			      "bus_alloc_resource() failed to allocate IRQ\n");
-		return (ENOMEM);
-	}
-	ahc->platform_data->irq_res_type = SYS_RES_IRQ;
-	return (ahc_map_int(ahc));
-}
-
 
 #endif

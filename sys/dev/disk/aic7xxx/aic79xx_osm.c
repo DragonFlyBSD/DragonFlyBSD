@@ -31,8 +31,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#35 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.18 2004/08/04 17:55:34 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.16 2007/07/06 02:40:58 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.19 2004/08/17 00:14:30 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.17 2007/07/06 04:56:22 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -251,39 +251,31 @@ ahd_done(struct ahd_softc *ahd, struct scb *scb)
 	}
 #endif
 
-	/*
-	 * If the recovery SCB completes, we have to be
-	 * out of our timeout.
-	 */
 	if ((scb->flags & SCB_RECOVERY_SCB) != 0) {
 		struct	scb *list_scb;
 
-		/*
-		 * We were able to complete the command successfully,
-		 * so reinstate the timeouts for all other pending
-		 * commands.
-		 */
-		LIST_FOREACH(list_scb, &ahd->pending_scbs, pending_links) {
-			union ccb *ccb;
-			uint64_t time;
-
-			ccb = list_scb->io_ctx;
-			if (ccb->ccb_h.timeout == CAM_TIME_INFINITY)
-				continue;
-
-			time = ccb->ccb_h.timeout;
-			time *= hz;
-			time /= 1000;
-			callout_reset(&ccb->ccb_h.timeout_ch, time,
-			    ahd_platform_timeout, list_scb);
-		}
+		ahd->scb_data.recovery_scbs--;
 
 		if (aic_get_transaction_status(scb) == CAM_BDR_SENT
 		 || aic_get_transaction_status(scb) == CAM_REQ_ABORTED)
 			aic_set_transaction_status(scb, CAM_CMD_TIMEOUT);
-		ahd_print_path(ahd, scb);
-		kprintf("no longer in timeout, status = %x\n",
-		       ccb->ccb_h.status);
+
+		if (ahd->scb_data.recovery_scbs == 0) {
+			/*
+			 * All recovery actions have completed successfully,
+			 * so reinstate the timeouts for all other pending
+			 * commands.
+			 */
+			LIST_FOREACH(list_scb,
+				     &ahd->pending_scbs, pending_links) {
+
+				aic_scb_timer_reset(scb, aic_get_timeout(scb));
+			}
+
+			ahd_print_path(ahd, scb);
+			kprintf("no longer in timeout, status = %x\n",
+			       ccb->ccb_h.status);
+		}
 	}
 
 	/* Don't clobber any existing error state */
@@ -1107,18 +1099,7 @@ ahd_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 
-	if (ccb->ccb_h.timeout != CAM_TIME_INFINITY) {
-		uint64_t time;
-
-		if (ccb->ccb_h.timeout == CAM_TIME_DEFAULT)
-			ccb->ccb_h.timeout = 5 * 1000;
-
-		time = ccb->ccb_h.timeout;
-		time *= hz;
-		time /= 1000;
-		callout_reset(&ccb->ccb_h.timeout_ch, time,
-		    ahd_platform_timeout, scb);
-	}
+	aic_scb_timer_start(scb);
 
 	if ((scb->flags & SCB_TARGET_IMMEDIATE) != 0) {
 		/* Define a mapping from our tag to the SCB. */

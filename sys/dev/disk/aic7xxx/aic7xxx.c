@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.101 2004/08/13 21:39:14 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.18 2007/07/06 02:44:30 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.102 2004/08/17 00:14:30 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.19 2007/07/06 04:56:22 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -372,6 +372,9 @@ ahc_run_untagged_queue(struct ahc_softc *ahc, struct scb_tailq *queue)
 	if ((scb = TAILQ_FIRST(queue)) != NULL
 	 && (scb->flags & SCB_ACTIVE) == 0) {
 		scb->flags |= SCB_ACTIVE;
+		/*
+		 * Timers are disabled while recovery is in progress.
+		 */
 		aic_scb_timer_start(scb);
 		ahc_queue_scb(ahc, scb);
 	}
@@ -573,9 +576,14 @@ ahc_handle_seqint(struct ahc_softc *ahc, u_int intstat)
 			ahc_outb(ahc, RETURN_1, SEND_SENSE);
 			/*
 			 * Ensure we have enough time to actually
-			 * retrieve the sense.
+			 * retrieve the sense, but only schedule
+			 * the timer if we are not in recovery or
+			 * this is a recovery SCB that is allowed
+			 * to have an active timer.
 			 */
-			aic_scb_timer_reset(scb, 5 * 1000000);
+			if (ahc->scb_data->recovery_scbs == 0
+			 || (scb->flags & SCB_RECOVERY_SCB) != 0)
+				aic_scb_timer_reset(scb, 5 * 1000000);
 			break;
 		}
 		default:

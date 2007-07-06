@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.h#107 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.20 2004/08/04 17:55:34 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.9 2007/07/06 02:40:58 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.21 2004/08/17 00:14:30 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.10 2007/07/06 04:56:22 pavalos Exp $
  */
 
 #ifndef _AIC79XX_H_
@@ -668,12 +668,15 @@ struct scb_data {
 	 */
 	struct	scb *scbindex[AHD_SCB_MAX];
 
+	u_int		 recovery_scbs;	/* Transactions currently in recovery */
+
 	/*
 	 * "Bus" addresses of our data structures.
 	 */
 	bus_dma_tag_t	 hscb_dmat;	/* dmat for our hardware SCB array */
 	bus_dma_tag_t	 sg_dmat;	/* dmat for our sg segments */
 	bus_dma_tag_t	 sense_dmat;	/* dmat for our sense buffers */
+
 	SLIST_HEAD(, map_node) hscb_maps;
 	SLIST_HEAD(, map_node) sg_maps;
 	SLIST_HEAD(, map_node) sense_maps;
@@ -1068,6 +1071,8 @@ struct ahd_completion
 	uint8_t		sg_status;
 	uint8_t		valid_tag;
 };
+
+#define AIC_SCB_DATA(softc) (&(softc)->scb_data)
 
 struct ahd_softc {
 	bus_space_tag_t           tags[2];

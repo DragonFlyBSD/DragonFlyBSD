@@ -32,8 +32,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic_osm_lib.h#5 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.h,v 1.2 2004/05/11 20:33:42 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.h,v 1.2 2007/07/06 01:42:34 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.h,v 1.3 2004/08/17 00:14:31 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.h,v 1.3 2007/07/06 04:56:22 pavalos Exp $
  */
 
 /******************************** OS Includes *********************************/
@@ -221,7 +221,8 @@ static __inline void
 aic_scb_timer_start(struct scb *scb)
 {
 	
-	if (scb->io_ctx->ccb_h.timeout != CAM_TIME_INFINITY) {
+	if (AIC_SCB_DATA(scb->aic_softc)->recovery_scbs == 0
+	 && scb->io_ctx->ccb_h.timeout != CAM_TIME_INFINITY) {
 		uint64_t time;
 
 		time = scb->io_ctx->ccb_h.timeout;

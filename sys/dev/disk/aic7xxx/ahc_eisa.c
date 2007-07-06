@@ -28,8 +28,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_eisa.c#13 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/ahc_eisa.c,v 1.33 2004/03/17 17:50:25 njl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_eisa.c,v 1.8 2007/07/06 01:11:07 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/ahc_eisa.c,v 1.34 2004/08/17 00:14:30 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_eisa.c,v 1.9 2007/07/06 04:56:22 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -157,41 +157,6 @@ aic7770_attach(device_t dev)
 	return (0);
 }
 
-int
-aic7770_map_registers(struct ahc_softc *ahc, u_int unused_ioport_arg)
-{
-	struct	resource *regs;
-	int	rid;
-
-	rid = 0;
-	regs = bus_alloc_resource_any(ahc->dev_softc, SYS_RES_IOPORT, &rid,
-				      RF_ACTIVE);
-	if (regs == NULL) {
-		device_printf(ahc->dev_softc, "Unable to map I/O space?!\n");
-		return ENOMEM;
-	}
-	ahc->platform_data->regs_res_type = SYS_RES_IOPORT;
-	ahc->platform_data->regs_res_id = rid,
-	ahc->platform_data->regs = regs;
-	ahc->tag = rman_get_bustag(regs);
-	ahc->bsh = rman_get_bushandle(regs);
-	return (0);
-}
-
-int
-aic7770_map_int(struct ahc_softc *ahc, int irq)
-{
-	int zero;
-
-	zero = 0;
-	ahc->platform_data->irq =
-	    bus_alloc_resource_any(ahc->dev_softc, SYS_RES_IRQ, &zero,
-				   RF_ACTIVE);
-	if (ahc->platform_data->irq == NULL)
-		return (ENOMEM);
-	ahc->platform_data->irq_res_type = SYS_RES_IRQ;
-	return (ahc_map_int(ahc));
-}
 
 static device_method_t ahc_eisa_device_methods[] = {
 	/* Device interface */

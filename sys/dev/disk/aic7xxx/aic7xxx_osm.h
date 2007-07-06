@@ -31,8 +31,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#18 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.25 2003/12/17 00:02:10 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.10 2007/07/06 00:01:16 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.27 2004/08/17 00:14:31 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.11 2007/07/06 04:56:22 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
@@ -199,15 +199,35 @@ ahc_unlock(void)
 	crit_exit_id("ahc");
 }
 
+/************************* Initialization/Teardown ****************************/
+int	  ahc_platform_alloc(struct ahc_softc *ahc, void *platform_arg);
+void	  ahc_platform_free(struct ahc_softc *ahc);
+int	  ahc_map_int(struct ahc_softc *ahc);
+int	  ahc_attach(struct ahc_softc *);
+int	  ahc_softc_comp(struct ahc_softc *lahc, struct ahc_softc *rahc);
+int	  ahc_detach(device_t);
+
 /********************************** PCI ***************************************/
 #ifdef AIC_PCI_CONFIG
 int ahc_pci_map_registers(struct ahc_softc *ahc);
-int ahc_pci_map_int(struct ahc_softc *ahc);
+#define ahc_pci_map_int ahc_map_int
 #endif /*AIC_PCI_CONFIG*/
 
 /******************************** VL/EISA *************************************/
 int aic7770_map_registers(struct ahc_softc *ahc, u_int port);
-int aic7770_map_int(struct ahc_softc *ahc, int irq);
+static __inline int aic7770_map_int(struct ahc_softc *, int);
+
+static __inline int
+aic7770_map_int(struct ahc_softc *ahc, int irq)
+{
+	/*
+	 * The IRQ is unused in the FreeBSD
+	 * implementation since the EISA and
+	 * ISA attachments register the IRQ
+	 * with newbus before the core is called.
+	 */
+	return ahc_map_int(ahc);
+}
 
 /********************************* Debug **************************************/
 static __inline void	ahc_print_path(struct ahc_softc *, struct scb *);
@@ -229,14 +249,6 @@ void	  ahc_notify_xfer_settings_change(struct ahc_softc *,
 					  struct ahc_devinfo *);
 void	  ahc_platform_set_tags(struct ahc_softc *, struct ahc_devinfo *,
 				int /*enable*/);
-
-/************************* Initialization/Teardown ****************************/
-int	  ahc_platform_alloc(struct ahc_softc *ahc, void *platform_arg);
-void	  ahc_platform_free(struct ahc_softc *ahc);
-int	  ahc_map_int(struct ahc_softc *ahc);
-int	  ahc_attach(struct ahc_softc *);
-int	  ahc_softc_comp(struct ahc_softc *lahc, struct ahc_softc *rahc);
-int	  ahc_detach(device_t);
 
 /****************************** Interrupts ************************************/
 void			ahc_platform_intr(void *);
