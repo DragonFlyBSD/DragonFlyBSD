@@ -41,8 +41,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_pci.c#78 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.32 2003/12/17 00:02:10 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.10 2007/07/06 00:01:16 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.33 2004/08/22 14:02:43 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.11 2007/07/06 05:40:41 pavalos Exp $
  */
 
 #ifdef __linux__
@@ -2119,12 +2119,13 @@ ahc_pci_resume(struct ahc_softc *ahc)
 	 * that the OS doesn't know about and rely on our chip
 	 * reset handler to handle the rest.
 	 */
-	aic_pci_write_config(ahc->dev_softc, DEVCONFIG, /*bytes*/4,
-			     ahc->bus_softc.pci_softc.devconfig);
-	aic_pci_write_config(ahc->dev_softc, PCIR_COMMAND, /*bytes*/1,
-			     ahc->bus_softc.pci_softc.command);
-	aic_pci_write_config(ahc->dev_softc, CSIZE_LATTIME, /*bytes*/1,
-			     ahc->bus_softc.pci_softc.csize_lattime);
+	aic_pci_write_config(ahc->dev_softc, DEVCONFIG,
+			     ahc->bus_softc.pci_softc.devconfig, /*bytes*/4);
+	aic_pci_write_config(ahc->dev_softc, PCIR_COMMAND,
+			     ahc->bus_softc.pci_softc.command, /*bytes*/1);
+	aic_pci_write_config(ahc->dev_softc, CSIZE_LATTIME,
+			     ahc->bus_softc.pci_softc.csize_lattime,
+			     /*bytes*/1);
 	if ((ahc->flags & AHC_HAS_TERM_LOGIC) != 0) {
 		struct	seeprom_descriptor sd;
 		u_int	sxfrctl1;
