@@ -37,10 +37,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#147 $
+ * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#148 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.98 2003/12/19 18:10:59 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.15 2007/07/06 00:01:16 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.99 2004/02/04 16:40:08 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.16 2007/07/06 01:03:17 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -5493,7 +5493,7 @@ ahc_search_qinfifo(struct ahc_softc *ahc, int target, char channel,
 				if (cstat != CAM_REQ_CMP)
 					aic_freeze_scb(scb);
 				if ((scb->flags & SCB_ACTIVE) == 0)
-					kprintf("Inactive SCB in Waiting List\n");
+					kprintf("Inactive SCB in Wait List\n");
 				ahc_done(ahc, scb);
 				/* FALLTHROUGH */
 			}
@@ -5599,8 +5599,6 @@ ahc_search_untagged_queues(struct ahc_softc *ahc, aic_io_ctx_t ctx,
 				cstat = aic_get_transaction_status(scb);
 				if (cstat != CAM_REQ_CMP)
 					aic_freeze_scb(scb);
-				if ((scb->flags & SCB_ACTIVE) == 0)
-					kprintf("Inactive SCB in untaggedQ\n");
 				ahc_done(ahc, scb);
 				break;
 			}
