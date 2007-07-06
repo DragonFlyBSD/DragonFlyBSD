@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx_inline.h#57 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_inline.h,v 1.15 2004/05/11 20:46:05 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_inline.h,v 1.7 2007/07/06 02:23:31 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_inline.h,v 1.16 2004/08/04 17:55:34 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_inline.h,v 1.8 2007/07/06 02:40:58 pavalos Exp $
  */
 
 #ifndef _AIC79XX_INLINE_H_
@@ -805,9 +805,10 @@ ahd_queue_scb(struct ahd_softc *ahd, struct scb *scb)
 		uint64_t host_dataptr;
 
 		host_dataptr = aic_le64toh(scb->hscb->dataptr);
-		kprintf("%s: Queueing SCB 0x%x bus addr 0x%x - 0x%x%x/0x%x\n",
+		kprintf("%s: Queueing SCB %d:0x%x bus addr 0x%x - 0x%x%x/0x%x\n",
 		       ahd_name(ahd),
-		       SCB_GET_TAG(scb), aic_le32toh(scb->hscb->hscb_busaddr),
+		       SCB_GET_TAG(scb), scb->hscb->scsiid,
+		       aic_le32toh(scb->hscb->hscb_busaddr),
 		       (u_int)((host_dataptr >> 32) & 0xFFFFFFFF),
 		       (u_int)(host_dataptr & 0xFFFFFFFF),
 		       aic_le32toh(scb->hscb->datacnt));

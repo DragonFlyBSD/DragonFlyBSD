@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.h#107 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.19 2004/05/11 20:46:05 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.8 2007/07/06 02:23:31 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.20 2004/08/04 17:55:34 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.9 2007/07/06 02:40:58 pavalos Exp $
  */
 
 #ifndef _AIC79XX_H_
@@ -1439,6 +1439,8 @@ typedef enum {
 	SEARCH_REMOVE,
 	SEARCH_PRINT
 } ahd_search_action;
+void			ahd_done_with_status(struct ahd_softc *ahd,
+					     struct scb *scb, uint32_t status);
 int			ahd_search_qinfifo(struct ahd_softc *ahd, int target,
 					   char channel, int lun, u_int tag,
 					   role_t role, uint32_t status,

@@ -1,7 +1,7 @@
 /*
  * Core routines and tables shareable across OS platforms.
  *
- * Copyright (c) 1994-2002 Justin T. Gibbs.
+ * Copyright (c) 1994-2002, 2004 Justin T. Gibbs.
  * Copyright (c) 2000-2003 Adaptec Inc.
  * All rights reserved.
  *
@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#246 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.29 2004/05/11 20:46:05 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.20 2007/07/06 02:23:31 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.30 2004/08/04 17:55:33 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.21 2007/07/06 02:40:58 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -197,7 +197,8 @@ static int		ahd_search_scb_list(struct ahd_softc *ahd, int target,
 					    char channel, int lun, u_int tag,
 					    role_t role, uint32_t status,
 					    ahd_search_action action,
-					    u_int *list_head, u_int tid);
+					    u_int *list_head, u_int *list_tail,
+					    u_int tid);
 static void		ahd_stitch_tid_list(struct ahd_softc *ahd,
 					    u_int tid_prev, u_int tid_cur,
 					    u_int tid_next);
@@ -1663,7 +1664,8 @@ ahd_handle_scsiint(struct ahd_softc *ahd, u_int intstat)
 		 * so just clear the error.
 		 */
 		ahd_outb(ahd, CLRLQIINT1, CLRLQICRCI_NLQ);
-	} else if ((status & BUSFREE) != 0) {
+	} else if ((status & BUSFREE) != 0
+		|| (lqistat1 & LQOBUSFREE) != 0) {
 		u_int lqostat1;
 		int   restart;
 		int   clear_fifo;
@@ -2028,10 +2030,6 @@ ahd_handle_pkt_busfree(struct ahd_softc *ahd, u_int busfreetime)
 		u_int waiting_t;
 		u_int next;
 
-		if ((busfreetime & BUSFREE_LQO) == 0)
-			kprintf("%s: Warning, BUSFREE time is 0x%x.  "
-			       "Expected BUSFREE_LQO.\n",
-			       ahd_name(ahd), busfreetime);
 		/*
 		 * The LQO manager detected an unexpected busfree
 		 * either:
@@ -2254,8 +2252,14 @@ ahd_handle_nonpkt_busfree(struct ahd_softc *ahd)
 			struct ahd_tmode_tstate *tstate;
 
 			/*
-			 * PPR Rejected.  Try non-ppr negotiation
-			 * and retry command.
+			 * PPR Rejected.
+			 *
+			 * If the previous negotiation was packetized,
+			 * this could be because the device has been
+			 * reset without our knowledge.  Force our
+			 * current negotiation to async and retry the
+			 * negotiation.  Otherwise retry the command
+			 * with non-ppr negotiation.
 			 */
 #ifdef AHD_DEBUG
 			if ((ahd_debug & AHD_SHOW_MESSAGES) != 0)
@@ -2264,11 +2268,34 @@ ahd_handle_nonpkt_busfree(struct ahd_softc *ahd)
 			tinfo = ahd_fetch_transinfo(ahd, devinfo.channel,
 						    devinfo.our_scsiid,
 						    devinfo.target, &tstate);
-			tinfo->curr.transport_version = 2;
-			tinfo->goal.transport_version = 2;
-			tinfo->goal.ppr_options = 0;
-			ahd_qinfifo_requeue_tail(ahd, scb);
-			printerror = 0;
+			if ((tinfo->curr.ppr_options & MSG_EXT_PPR_IU_REQ)!=0) {
+				ahd_set_width(ahd, &devinfo,
+					      MSG_EXT_WDTR_BUS_8_BIT,
+					      AHD_TRANS_CUR,
+					      /*paused*/TRUE);
+				ahd_set_syncrate(ahd, &devinfo,
+						/*period*/0, /*offset*/0,
+						/*ppr_options*/0,
+						AHD_TRANS_CUR,
+						/*paused*/TRUE);
+				/*
+				 * The expect PPR busfree handler below
+				 * will effect the retry and necessary
+				 * abort.
+				 */
+			} else {
+				tinfo->curr.transport_version = 2;
+				tinfo->goal.transport_version = 2;
+				tinfo->goal.ppr_options = 0;
+				/*
+				 * Remove any SCBs in the waiting for selection
+				 * queue that may also be for this target so
+				 * that command ordering is preserved.
+				 */
+				ahd_freeze_devq(ahd, scb);
+				ahd_qinfifo_requeue_tail(ahd, scb);
+				printerror = 0;
+			}
 		} else if (ahd_sent_msg(ahd, AHDMSG_EXT, MSG_EXT_WDTR, FALSE)
 			&& ppr_busfree == 0) {
 			/*
@@ -2283,6 +2310,12 @@ ahd_handle_nonpkt_busfree(struct ahd_softc *ahd)
 				      MSG_EXT_WDTR_BUS_8_BIT,
 				      AHD_TRANS_CUR|AHD_TRANS_GOAL,
 				      /*paused*/TRUE);
+			/*
+			 * Remove any SCBs in the waiting for selection
+			 * queue that may also be for this target so that
+			 * command ordering is preserved.
+			 */
+			ahd_freeze_devq(ahd, scb);
 			ahd_qinfifo_requeue_tail(ahd, scb);
 			printerror = 0;
 		} else if (ahd_sent_msg(ahd, AHDMSG_EXT, MSG_EXT_SDTR, FALSE)
@@ -2300,6 +2333,12 @@ ahd_handle_nonpkt_busfree(struct ahd_softc *ahd)
 					/*ppr_options*/0,
 					AHD_TRANS_CUR|AHD_TRANS_GOAL,
 					/*paused*/TRUE);
+			/*
+			 * Remove any SCBs in the waiting for selection
+			 * queue that may also be for this target so that
+			 * command ordering is preserved.
+			 */
+			ahd_freeze_devq(ahd, scb);
 			ahd_qinfifo_requeue_tail(ahd, scb);
 			printerror = 0;
 		} else if ((ahd->msg_flags & MSG_FLAG_EXPECT_IDE_BUSFREE) != 0
@@ -2372,14 +2411,14 @@ ahd_handle_nonpkt_busfree(struct ahd_softc *ahd)
 			 */
 			kprintf("%s: ", ahd_name(ahd));
 		}
-		if (lastphase != P_BUSFREE)
-			ahd_force_renegotiation(ahd, &devinfo);
 		kprintf("Unexpected busfree %s, %d SCBs aborted, "
 		       "PRGMCNT == 0x%x\n",
 		       ahd_lookup_phase_entry(lastphase)->phasemsg,
 		       aborted,
 		       ahd_inw(ahd, PRGMCNT));
 		ahd_dump_card_state(ahd);
+		if (lastphase != P_BUSFREE)
+			ahd_force_renegotiation(ahd, &devinfo);
 	}
 	/* Always restart the sequencer. */
 	return (1);
@@ -3316,7 +3355,6 @@ ahd_update_pending_scbs(struct ahd_softc *ahd)
 {
 	struct		scb *pending_scb;
 	int		pending_scb_count;
-	u_int		scb_tag;
 	int		paused;
 	u_int		saved_scbptr;
 	ahd_mode_state	saved_modes;
@@ -3334,7 +3372,6 @@ ahd_update_pending_scbs(struct ahd_softc *ahd)
 	pending_scb_count = 0;
 	LIST_FOREACH(pending_scb, &ahd->pending_scbs, pending_links) {
 		struct ahd_devinfo devinfo;
-		struct hardware_scb *pending_hscb;
 		struct ahd_initiator_tinfo *tinfo;
 		struct ahd_tmode_tstate *tstate;
 
@@ -3342,11 +3379,10 @@ ahd_update_pending_scbs(struct ahd_softc *ahd)
 		tinfo = ahd_fetch_transinfo(ahd, devinfo.channel,
 					    devinfo.our_scsiid,
 					    devinfo.target, &tstate);
-		pending_hscb = pending_scb->hscb;
 		if ((tstate->auto_negotiate & devinfo.target_mask) == 0
 		 && (pending_scb->flags & SCB_AUTO_NEGOTIATE) != 0) {
 			pending_scb->flags &= ~SCB_AUTO_NEGOTIATE;
-			pending_hscb->control &= ~MK_MESSAGE;
+			pending_scb->hscb->control &= ~MK_MESSAGE;
 		}
 		ahd_sync_scb(ahd, pending_scb,
 			     BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE);
@@ -3378,18 +3414,15 @@ ahd_update_pending_scbs(struct ahd_softc *ahd)
 		ahd_outb(ahd, SCSISEQ0, ahd_inb(ahd, SCSISEQ0) & ~ENSELO);
 	saved_scbptr = ahd_get_scbptr(ahd);
 	/* Ensure that the hscbs down on the card match the new information */
-	for (scb_tag = 0; scb_tag < ahd->scb_data.maxhscbs; scb_tag++) {
-		struct	hardware_scb *pending_hscb;
+	LIST_FOREACH(pending_scb, &ahd->pending_scbs, pending_links) {
+		u_int	scb_tag;
 		u_int	control;
 
-		pending_scb = ahd_lookup_scb(ahd, scb_tag);
-		if (pending_scb == NULL)
-			continue;
+		scb_tag = SCB_GET_TAG(pending_scb);
 		ahd_set_scbptr(ahd, scb_tag);
-		pending_hscb = pending_scb->hscb;
 		control = ahd_inb_scbram(ahd, SCB_CONTROL);
 		control &= ~MK_MESSAGE;
-		control |= pending_hscb->control & MK_MESSAGE;
+		control |= pending_scb->hscb->control & MK_MESSAGE;
 		ahd_outb(ahd, SCB_CONTROL, control);
 	}
 	ahd_set_scbptr(ahd, saved_scbptr);
@@ -6539,13 +6572,14 @@ ahd_chip_init(struct ahd_softc *ahd)
 			      | ENLQIOVERI_LQ|ENLQIOVERI_NLQ);
 	ahd_outb(ahd, LQOMODE0, ENLQOATNLQ|ENLQOATNPKT|ENLQOTCRC);
 	/*
-	 * An interrupt from LQOBUSFREE is made redundant by the
-	 * BUSFREE interrupt.  We choose to have the sequencer catch
-	 * LQOPHCHGINPKT errors manually for the command phase at the
-	 * start of a packetized selection case.
-	ahd_outb(ahd, LQOMODE1, ENLQOBUSFREE|ENLQOPHACHGINPKT);
+	 * We choose to have the sequencer catch LQOPHCHGINPKT errors
+	 * manually for the command phase at the start of a packetized
+	 * selection case.  ENLQOBUSFREE should be made redundant by
+	 * the BUSFREE interrupt, but it seems that some LQOBUSFREE
+	 * events fail to assert the BUSFREE interrupt so we must
+	 * also enable LQOBUSFREE interrupts.
 	 */
-	ahd_outb(ahd, LQOMODE1, 0);
+	ahd_outb(ahd, LQOMODE1, ENLQOBUSFREE);
 
 	/*
 	 * Setup sequencer interrupt handlers.
@@ -6656,6 +6690,8 @@ ahd_chip_init(struct ahd_softc *ahd)
 	/* We don't have any waiting selections */
 	ahd_outw(ahd, WAITING_TID_HEAD, SCB_LIST_NULL);
 	ahd_outw(ahd, WAITING_TID_TAIL, SCB_LIST_NULL);
+	ahd_outw(ahd, MK_MESSAGE_SCB, SCB_LIST_NULL);
+	ahd_outw(ahd, MK_MESSAGE_SCSIID, 0xFF);
 	for (i = 0; i < AHD_NUM_TARGETS; i++)
 		ahd_outw(ahd, WAITING_SCB_TAILS + (2 * i), SCB_LIST_NULL);
 
@@ -7299,12 +7335,28 @@ ahd_reset_cmds_pending(struct ahd_softc *ahd)
 	ahd->flags &= ~AHD_UPDATE_PEND_CMDS;
 }
 
+void
+ahd_done_with_status(struct ahd_softc *ahd, struct scb *scb, uint32_t status)
+{
+	cam_status ostat;
+	cam_status cstat;
+
+	ostat = aic_get_transaction_status(scb);
+	if (ostat == CAM_REQ_INPROG)
+		aic_set_transaction_status(scb, status);
+	cstat = aic_get_transaction_status(scb);
+	if (cstat != CAM_REQ_CMP)
+		aic_freeze_scb(scb);
+	ahd_done(ahd, scb);
+}
+
 int
 ahd_search_qinfifo(struct ahd_softc *ahd, int target, char channel,
 		   int lun, u_int tag, role_t role, uint32_t status,
 		   ahd_search_action action)
 {
 	struct scb	*scb;
+	struct scb	*mk_msg_scb;
 	struct scb	*prev_scb;
 	ahd_mode_state	 saved_modes;
 	u_int		 qinstart;
@@ -7313,6 +7365,7 @@ ahd_search_qinfifo(struct ahd_softc *ahd, int target, char channel,
 	u_int		 tid_next;
 	u_int		 tid_prev;
 	u_int		 scbid;
+	u_int		 seq_flags2;
 	u_int		 savedscbptr;
 	uint32_t	 busaddr;
 	int		 found;
@@ -7368,23 +7421,10 @@ ahd_search_qinfifo(struct ahd_softc *ahd, int target, char channel,
 			found++;
 			switch (action) {
 			case SEARCH_COMPLETE:
-			{
-				cam_status ostat;
-				cam_status cstat;
-
-				ostat = aic_get_transaction_status(scb);
-				if (ostat == CAM_REQ_INPROG)
-					aic_set_transaction_status(scb,
-								   status);
-				cstat = aic_get_transaction_status(scb);
-				if (cstat != CAM_REQ_CMP)
-					aic_freeze_scb(scb);
 				if ((scb->flags & SCB_ACTIVE) == 0)
 					kprintf("Inactive SCB in qinfifo\n");
-				ahd_done(ahd, scb);
-
+				ahd_done_with_status(ahd, scb, status);
 				/* FALLTHROUGH */
-			}
 			case SEARCH_REMOVE:
 				break;
 			case SEARCH_PRINT:
@@ -7414,21 +7454,24 @@ ahd_search_qinfifo(struct ahd_softc *ahd, int target, char channel,
 	 * looking for matches.
 	 */
 	ahd_set_modes(ahd, AHD_MODE_SCSI, AHD_MODE_SCSI);
+	seq_flags2 = ahd_inb(ahd, SEQ_FLAGS2);
+	if ((seq_flags2 & PENDING_MK_MESSAGE) != 0) {
+		scbid = ahd_inw(ahd, MK_MESSAGE_SCB);
+		mk_msg_scb = ahd_lookup_scb(ahd, scbid);
+	} else
+		mk_msg_scb = NULL;
 	savedscbptr = ahd_get_scbptr(ahd);
 	tid_next = ahd_inw(ahd, WAITING_TID_HEAD);
 	tid_prev = SCB_LIST_NULL;
 	targets = 0;
 	for (scbid = tid_next; !SCBID_IS_NULL(scbid); scbid = tid_next) {
 		u_int tid_head;
+		u_int tid_tail;
 
-		/*
-		 * We limit based on the number of SCBs since
-		 * MK_MESSAGE SCBs are not in the per-tid lists.
-		 */
 		targets++;
-		if (targets > AHD_SCB_MAX) {
+		if (targets > AHD_NUM_TARGETS)
 			panic("TID LIST LOOP");
-		}
+
 		if (scbid >= ahd->scb_data.numscbs) {
 			kprintf("%s: Waiting TID List inconsistency. "
 			       "SCB index == 0x%x, yet numscbs == 0x%x.",
@@ -7458,8 +7501,71 @@ ahd_search_qinfifo(struct ahd_softc *ahd, int target, char channel,
 		tid_head = scbid;
 		found += ahd_search_scb_list(ahd, target, channel,
 					     lun, tag, role, status,
-					     action, &tid_head,
+					     action, &tid_head, &tid_tail,
 					     SCB_GET_TARGET(ahd, scb));
+		/*
+		 * Check any MK_MESSAGE SCB that is still waiting to
+		 * enter this target's waiting for selection queue.
+		 */
+		if (mk_msg_scb != NULL
+		 && ahd_match_scb(ahd, mk_msg_scb, target, channel,
+				  lun, tag, role)) {
+
+			/*
+			 * We found an scb that needs to be acted on.
+			 */
+			found++;
+			switch (action) {
+			case SEARCH_COMPLETE:
+				if ((mk_msg_scb->flags & SCB_ACTIVE) == 0)
+					kprintf("Inactive SCB pending MK_MSG\n");
+				ahd_done_with_status(ahd, mk_msg_scb, status);
+				/* FALLTHROUGH */
+			case SEARCH_REMOVE:
+			{
+				u_int tail_offset;
+
+				kprintf("Removing MK_MSG scb\n");
+
+				/*
+				 * Reset our tail to the tail of the
+				 * main per-target list.
+				 */
+				tail_offset = WAITING_SCB_TAILS
+				    + (2 * SCB_GET_TARGET(ahd, mk_msg_scb));
+				ahd_outw(ahd, tail_offset, tid_tail);
+
+				seq_flags2 &= ~PENDING_MK_MESSAGE;
+				ahd_outb(ahd, SEQ_FLAGS2, seq_flags2);
+				ahd_outw(ahd, CMDS_PENDING,
+					 ahd_inw(ahd, CMDS_PENDING)-1);
+				mk_msg_scb = NULL;
+				break;
+			}
+			case SEARCH_PRINT:
+				kprintf(" 0x%x", SCB_GET_TAG(scb));
+				/* FALLTHROUGH */
+			case SEARCH_COUNT:
+				break;
+			}
+		}
+
+		if (mk_msg_scb != NULL
+		 && SCBID_IS_NULL(tid_head)
+		 && ahd_match_scb(ahd, scb, target, channel, CAM_LUN_WILDCARD,
+				  SCB_LIST_NULL, ROLE_UNKNOWN)) {
+
+			/*
+			 * When removing the last SCB for a target
+			 * queue with a pending MK_MESSAGE scb, we
+			 * must queue the MK_MESSAGE scb.
+			 */
+			kprintf("Queueing mk_msg_scb\n");
+			tid_head = ahd_inw(ahd, MK_MESSAGE_SCB);
+			seq_flags2 &= ~PENDING_MK_MESSAGE;
+			ahd_outb(ahd, SEQ_FLAGS2, seq_flags2);
+			mk_msg_scb = NULL;
+		}
 		if (tid_head != scbid)
 			ahd_stitch_tid_list(ahd, tid_prev, tid_head, tid_next);
 		if (!SCBID_IS_NULL(tid_head))
@@ -7467,6 +7573,8 @@ ahd_search_qinfifo(struct ahd_softc *ahd, int target, char channel,
 		if (action == SEARCH_PRINT)
 			kprintf(")\n");
 	}
+
+	/* Restore saved state. */
 	ahd_set_scbptr(ahd, savedscbptr);
 	ahd_restore_modes(ahd, saved_modes);
 	return (found);
@@ -7475,7 +7583,8 @@ ahd_search_qinfifo(struct ahd_softc *ahd, int target, char channel,
 static int
 ahd_search_scb_list(struct ahd_softc *ahd, int target, char channel,
 		    int lun, u_int tag, role_t role, uint32_t status,
-		    ahd_search_action action, u_int *list_head, u_int tid)
+		    ahd_search_action action, u_int *list_head, 
+		    u_int *list_tail, u_int tid)
 {
 	struct	scb *scb;
 	u_int	scbid;
@@ -7487,6 +7596,7 @@ ahd_search_scb_list(struct ahd_softc *ahd, int target, char channel,
 	found = 0;
 	prev = SCB_LIST_NULL;
 	next = *list_head;
+	*list_tail = SCB_LIST_NULL;
 	for (scbid = next; !SCBID_IS_NULL(scbid); scbid = next) {
 		if (scbid >= ahd->scb_data.numscbs) {
 			kprintf("%s:SCB List inconsistency. "
@@ -7502,6 +7612,7 @@ ahd_search_scb_list(struct ahd_softc *ahd, int target, char channel,
 			panic("Waiting List traversal\n");
 		}
 		ahd_set_scbptr(ahd, scbid);
+		*list_tail = scbid;
 		next = ahd_inw_scbram(ahd, SCB_NEXT);
 		if (ahd_match_scb(ahd, scb, target, channel,
 				  lun, SCB_LIST_NULL, role) == 0) {
@@ -7511,24 +7622,14 @@ ahd_search_scb_list(struct ahd_softc *ahd, int target, char channel,
 		found++;
 		switch (action) {
 		case SEARCH_COMPLETE:
-		{
-			cam_status ostat;
-			cam_status cstat;
-
-			ostat = aic_get_transaction_status(scb);
-			if (ostat == CAM_REQ_INPROG)
-				aic_set_transaction_status(scb, status);
-			cstat = aic_get_transaction_status(scb);
-			if (cstat != CAM_REQ_CMP)
-				aic_freeze_scb(scb);
 			if ((scb->flags & SCB_ACTIVE) == 0)
 				kprintf("Inactive SCB in Waiting List\n");
-			ahd_done(ahd, scb);
+			ahd_done_with_status(ahd, scb, status);
 			/* FALLTHROUGH */
-		}
 		case SEARCH_REMOVE:
 			ahd_rem_wscb(ahd, scbid, prev, next, tid);
-			if (prev == SCB_LIST_NULL)
+			*list_tail = prev;
+			if (SCBID_IS_NULL(prev))
 				*list_head = next;
 			break;
 		case SEARCH_PRINT:
@@ -7597,14 +7698,17 @@ ahd_rem_wscb(struct ahd_softc *ahd, u_int scbid,
 	}
 
 	/*
-	 * SCBs that had MK_MESSAGE set in them will not
-	 * be queued to the per-target lists, so don't
-	 * blindly clear the tail pointer.
+	 * SCBs that have MK_MESSAGE set in them may
+	 * cause the tail pointer to be updated without
+	 * setting the next pointer of the previous tail.
+	 * Only clear the tail if the removed SCB was
+	 * the tail.
 	 */
 	tail_offset = WAITING_SCB_TAILS + (2 * tid);
 	if (SCBID_IS_NULL(next)
 	 && ahd_inw(ahd, tail_offset) == scbid)
 		ahd_outw(ahd, tail_offset, prev);
+
 	ahd_add_scb_to_free_list(ahd, scbid);
 	return (next);
 }
@@ -8847,6 +8951,9 @@ ahd_dump_card_state(struct ahd_softc *ahd)
 	 * Mode independent registers.
 	 */
 	cur_col = 0;
+	ahd_intstat_print(ahd_inb(ahd, INTSTAT), &cur_col, 50);
+	ahd_seloid_print(ahd_inb(ahd, SELOID), &cur_col, 50);
+	ahd_selid_print(ahd_inb(ahd, SELID), &cur_col, 50);
 	ahd_hs_mailbox_print(ahd_inb(ahd, LOCAL_HS_MAILBOX), &cur_col, 50);
 	ahd_intctl_print(ahd_inb(ahd, INTCTL), &cur_col, 50);
 	ahd_seqintstat_print(ahd_inb(ahd, SEQINTSTAT), &cur_col, 50);
@@ -8862,6 +8969,12 @@ ahd_dump_card_state(struct ahd_softc *ahd)
 	ahd_seqintctl_print(ahd_inb(ahd, SEQINTCTL), &cur_col, 50);
 	ahd_seq_flags_print(ahd_inb(ahd, SEQ_FLAGS), &cur_col, 50);
 	ahd_seq_flags2_print(ahd_inb(ahd, SEQ_FLAGS2), &cur_col, 50);
+	ahd_qfreeze_count_print(ahd_inw(ahd, QFREEZE_COUNT), &cur_col, 50);
+	ahd_kernel_qfreeze_count_print(ahd_inw(ahd, KERNEL_QFREEZE_COUNT),
+				       &cur_col, 50);
+	ahd_mk_message_scb_print(ahd_inw(ahd, MK_MESSAGE_SCB), &cur_col, 50);
+	ahd_mk_message_scsiid_print(ahd_inb(ahd, MK_MESSAGE_SCSIID),
+				    &cur_col, 50);
 	ahd_sstat0_print(ahd_inb(ahd, SSTAT0), &cur_col, 50);
 	ahd_sstat1_print(ahd_inb(ahd, SSTAT1), &cur_col, 50);
 	ahd_sstat2_print(ahd_inb(ahd, SSTAT2), &cur_col, 50);
@@ -8969,7 +9082,7 @@ ahd_dump_card_state(struct ahd_softc *ahd)
 
 		ahd_set_modes(ahd, AHD_MODE_DFF0 + i, AHD_MODE_DFF0 + i);
 		fifo_scbptr = ahd_get_scbptr(ahd);
-		kprintf("\n%s: FIFO%d %s, LONGJMP == 0x%x, SCB 0x%x\n",
+		kprintf("\n\n%s: FIFO%d %s, LONGJMP == 0x%x, SCB 0x%x\n",
 		       ahd_name(ahd), i,
 		       (dffstat & (FIFO0FREE << i)) ? "Free" : "Active",
 		       ahd_inw(ahd, LONGJMP_ADDR), fifo_scbptr);
@@ -9024,6 +9137,9 @@ ahd_dump_card_state(struct ahd_softc *ahd)
 	kprintf("%s: OS_SPACE_CNT = 0x%x MAXCMDCNT = 0x%x\n",
 	       ahd_name(ahd), ahd_inb(ahd, OS_SPACE_CNT),
 	       ahd_inb(ahd, MAXCMDCNT));
+	kprintf("%s: SAVED_SCSIID = 0x%x SAVED_LUN = 0x%x\n",
+	       ahd_name(ahd), ahd_inb(ahd, SAVED_SCSIID),
+	       ahd_inb(ahd, SAVED_LUN));
 	ahd_simode0_print(ahd_inb(ahd, SIMODE0), &cur_col, 50);
 	kprintf("\n");
 	ahd_set_modes(ahd, AHD_MODE_CCHAN, AHD_MODE_CCHAN);
@@ -9131,6 +9247,11 @@ ahd_recover_commands(struct ahd_softc *ahd)
 	 * interrupt handler has yet to see.
 	 */
 	was_paused = ahd_is_paused(ahd);
+
+	kprintf("%s: Recovery Initiated - Card was %spaused\n", ahd_name(ahd),
+	       was_paused ? "" : "not ");
+	ahd_dump_card_state(ahd);
+
 	ahd_pause_and_flushwork(ahd);
 
 	if (LIST_EMPTY(&ahd->timedout_scbs) != 0) {
@@ -9148,10 +9269,6 @@ ahd_recover_commands(struct ahd_softc *ahd)
 		ahd_unlock();
 		return;
 	}
-
-	kprintf("%s: Recovery Initiated - Card was %spaused\n", ahd_name(ahd),
-	       was_paused ? "" : "not ");
-	ahd_dump_card_state(ahd);
 
 	/*
 	 * Determine identity of SCB acting on the bus.

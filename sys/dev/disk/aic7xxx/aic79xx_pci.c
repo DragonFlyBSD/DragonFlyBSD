@@ -40,8 +40,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx_pci.c#88 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_pci.c,v 1.19 2004/05/11 20:46:05 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.11 2007/07/06 02:23:32 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_pci.c,v 1.20 2004/08/04 17:55:34 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.12 2007/07/06 02:40:58 pavalos Exp $
  */
 
 #ifdef __linux__
@@ -994,7 +994,8 @@ ahd_aic790X_setup(struct ahd_softc *ahd)
 		u_int devconfig1;
 
 		ahd->features |= AHD_RTI|AHD_NEW_IOCELL_OPTS
-			      |  AHD_NEW_DFCNTRL_OPTS|AHD_FAST_CDB_DELIVERY;
+			      |  AHD_NEW_DFCNTRL_OPTS|AHD_FAST_CDB_DELIVERY
+			      |  AHD_BUSFREEREV_BUG;
 		ahd->bugs |= AHD_LQOOVERRUN_BUG|AHD_EARLY_REQ_BUG;
 
 		/*
