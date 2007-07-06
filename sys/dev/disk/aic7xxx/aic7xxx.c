@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.108 2005/02/16 23:13:38 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.24 2007/07/06 23:44:54 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.109 2005/03/31 05:00:31 sam Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.25 2007/07/06 23:51:23 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -6679,7 +6679,7 @@ ahc_print_register(ahc_reg_parse_entry_t *table, u_int num_entries,
 		cur_column = &dummy_column;
 	}
 
-	if (cur_column != NULL && *cur_column >= wrap_point) {
+	if (*cur_column >= wrap_point) {
 		kprintf("\n");
 		*cur_column = 0;
 	}
