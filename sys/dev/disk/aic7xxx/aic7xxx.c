@@ -37,10 +37,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#148 $
+ * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.99 2004/02/04 16:40:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.16 2007/07/06 01:03:17 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.100 2004/05/11 20:39:46 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.17 2007/07/06 02:04:20 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -226,6 +226,9 @@ static int		ahc_check_patch(struct ahc_softc *ahc,
 					u_int start_instr, u_int *skip_addr);
 static void		ahc_download_instr(struct ahc_softc *ahc,
 					   u_int instrptr, uint8_t *dconsts);
+static int		ahc_other_scb_timeout(struct ahc_softc *ahc,
+					      struct scb *scb,
+					      struct scb *other_scb);
 #ifdef AHC_TARGET_MODE
 static void		ahc_queue_lstate_event(struct ahc_softc *ahc,
 					       struct ahc_tmode_lstate *lstate,
@@ -285,10 +288,19 @@ ahc_restart(struct ahc_softc *ahc)
 		ahc_outb(ahc, SEQ_FLAGS2,
 			 ahc_inb(ahc, SEQ_FLAGS2) & ~SCB_DMA);
 	}
+
+	/*
+	 * Clear any pending sequencer interrupt.  It is no
+	 * longer relevant since we're resetting the Program
+	 * Counter.
+	 */
+	ahc_outb(ahc, CLRINT, CLRSEQINT);
+
 	ahc_outb(ahc, MWI_RESIDUAL, 0);
 	ahc_outb(ahc, SEQCTL, ahc->seqctl);
 	ahc_outb(ahc, SEQADDR0, 0);
 	ahc_outb(ahc, SEQADDR1, 0);
+
 	ahc_unpause(ahc);
 }
 
@@ -360,6 +372,7 @@ ahc_run_untagged_queue(struct ahc_softc *ahc, struct scb_tailq *queue)
 	if ((scb = TAILQ_FIRST(queue)) != NULL
 	 && (scb->flags & SCB_ACTIVE) == 0) {
 		scb->flags |= SCB_ACTIVE;
+		aic_scb_timer_start(scb);
 		ahc_queue_scb(ahc, scb);
 	}
 }
@@ -1172,19 +1185,20 @@ ahc_handle_scsiint(struct ahc_softc *ahc, u_int intstat)
 				       scb_index);
 			}
 #endif
-			/*
-			 * Force a renegotiation with this target just in
-			 * case the cable was pulled and will later be
-			 * re-attached.  The target may forget its negotiation
-			 * settings with us should it attempt to reselect
-			 * during the interruption.  The target will not issue
-			 * a unit attention in this case, so we must always
-			 * renegotiate.
-			 */
 			ahc_scb_devinfo(ahc, &devinfo, scb);
-			ahc_force_renegotiation(ahc, &devinfo);
 			aic_set_transaction_status(scb, CAM_SEL_TIMEOUT);
 			ahc_freeze_devq(ahc, scb);
+
+			/*
+			 * Cancel any pending transactions on the device
+			 * now that it seems to be missing.  This will
+			 * also revert us to async/narrow transfers until
+			 * we can renegotiate with the device.
+			 */
+			ahc_handle_devreset(ahc, &devinfo,
+					    CAM_SEL_TIMEOUT,
+					    "Selection Timeout",
+					    /*verbose_level*/1);
 		}
 		ahc_outb(ahc, CLRINT, CLRSCSIINT);
 		ahc_restart(ahc);
@@ -3758,8 +3772,9 @@ ahc_handle_devreset(struct ahc_softc *ahc, struct ahc_devinfo *devinfo,
 			 /*period*/0, /*offset*/0, /*ppr_options*/0,
 			 AHC_TRANS_CUR, /*paused*/TRUE);
 	
-	ahc_send_async(ahc, devinfo->channel, devinfo->target,
-		       CAM_LUN_WILDCARD, AC_SENT_BDR, NULL);
+	if (status != CAM_SEL_TIMEOUT)
+		ahc_send_async(ahc, devinfo->channel, devinfo->target,
+			       CAM_LUN_WILDCARD, AC_SENT_BDR, NULL);
 
 	if (message != NULL
 	 && (verbose_level <= bootverbose))
@@ -5086,14 +5101,17 @@ ahc_pause_and_flushwork(struct ahc_softc *ahc)
 			 * Give the sequencer some time to service
 			 * any active selections.
 			 */
-			aic_delay(200);
+			aic_delay(500);
 		}
 		ahc_intr(ahc);
 		ahc_pause(ahc);
 		paused = TRUE;
 		ahc_outb(ahc, SCSISEQ, ahc_inb(ahc, SCSISEQ) & ~ENSELO);
-		ahc_clear_critical_section(ahc);
 		intstat = ahc_inb(ahc, INTSTAT);
+		if ((intstat & INT_PEND) == 0) {
+			ahc_clear_critical_section(ahc);
+			intstat = ahc_inb(ahc, INTSTAT);
+		}
 	} while (--maxloops
 	      && (intstat != 0xFF || (ahc->features & AHC_REMOVABLE) == 0)
 	      && ((intstat & INT_PEND) != 0
@@ -6814,6 +6832,58 @@ ahc_timeout(struct scb *scb)
 }
 
 /*
+ * Re-schedule a timeout for the passed in SCB if we determine that some
+ * other SCB is in the process of recovery or an SCB with a longer
+ * timeout is still pending.  Limit our search to just "other_scb"
+ * if it is non-NULL.
+ */
+static int
+ahc_other_scb_timeout(struct ahc_softc *ahc, struct scb *scb,
+		      struct scb *other_scb)
+{
+	u_int	newtimeout;
+	int	found;
+
+	ahc_print_path(ahc, scb);
+	kprintf("Other SCB Timeout%s",
+ 	       (scb->flags & SCB_OTHERTCL_TIMEOUT) != 0
+	       ? " again\n" : "\n");
+
+	newtimeout = aic_get_timeout(scb);
+	scb->flags |= SCB_OTHERTCL_TIMEOUT;
+	found = 0;
+	if (other_scb != NULL) {
+		if ((other_scb->flags
+		   & (SCB_OTHERTCL_TIMEOUT|SCB_TIMEDOUT)) == 0
+		 || (other_scb->flags & SCB_RECOVERY_SCB) != 0) {
+			found++;
+			newtimeout = MAX(aic_get_timeout(other_scb),
+					 newtimeout);
+		}
+	} else {
+		LIST_FOREACH(other_scb, &ahc->pending_scbs, pending_links) {
+			if ((other_scb->flags
+			   & (SCB_OTHERTCL_TIMEOUT|SCB_TIMEDOUT)) == 0
+			 || (other_scb->flags & SCB_RECOVERY_SCB) != 0) {
+				found++;
+				newtimeout =
+				    MAX(aic_get_timeout(other_scb),
+					newtimeout);
+			}
+		}
+	}
+
+	if (found != 0)
+		aic_scb_timer_reset(scb, newtimeout);
+	else {
+		ahc_print_path(ahc, scb);
+		kprintf("No other SCB worth waiting for...\n");
+	}
+
+	return (found != 0);
+}
+
+/*
  * ahc_recover_commands determines if any of the commands that have currently
  * timedout are the root cause for this timeout.  Innocent commands are given
  * a new timeout while we wait for the command executing on the bus to timeout.
@@ -6939,17 +7009,9 @@ bus_reset:
 			 */ 
 			active_scb = ahc_lookup_scb(ahc, active_scb_index);
 			if (active_scb != scb) {
-				u_int	newtimeout;
-
-				ahc_print_path(ahc, scb);
-				kprintf("Other SCB Timeout%s",
-			 	       (scb->flags & SCB_OTHERTCL_TIMEOUT) != 0
-				       ? " again\n" : "\n");
-				scb->flags |= SCB_OTHERTCL_TIMEOUT;
-				newtimeout =
-				    MAX(aic_get_timeout(active_scb),
-					aic_get_timeout(scb));
-				aic_scb_timer_reset(scb, newtimeout);
+				if (ahc_other_scb_timeout(ahc, scb,
+							  active_scb) != 0)
+					goto bus_reset;
 				continue;
 			} 
 
