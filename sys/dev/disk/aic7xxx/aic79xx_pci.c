@@ -40,8 +40,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx_pci.c#88 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_pci.c,v 1.21 2004/08/22 13:54:27 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.13 2007/07/06 05:20:00 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_pci.c,v 1.23 2005/02/16 18:16:35 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.14 2007/07/06 06:35:41 pavalos Exp $
  */
 
 #ifdef __linux__
@@ -995,14 +995,14 @@ ahd_aic790X_setup(struct ahd_softc *ahd)
 
 		ahd->features |= AHD_RTI|AHD_NEW_IOCELL_OPTS
 			      |  AHD_NEW_DFCNTRL_OPTS|AHD_FAST_CDB_DELIVERY;
-		ahd->bugs |= AHD_LQOOVERRUN_BUG|AHD_EARLY_REQ_BUG
-			  |  AHD_BUSFREEREV_BUG;
+		ahd->bugs |= AHD_LQOOVERRUN_BUG|AHD_EARLY_REQ_BUG;
 
 		/*
 		 * Some issues have been resolved in the 7901B.
 		 */
 		if ((ahd->features & AHD_MULTI_FUNC) != 0)
-			ahd->bugs |= AHD_INTCOLLISION_BUG|AHD_ABORT_LQI_BUG;
+			ahd->bugs |= AHD_INTCOLLISION_BUG|AHD_ABORT_LQI_BUG
+				  |  AHD_BUSFREEREV_BUG;
 
 		/*
 		 * IO Cell paramter setup.
