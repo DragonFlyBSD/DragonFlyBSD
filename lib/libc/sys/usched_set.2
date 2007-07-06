@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/usched_set.2,v 1.1 2007/07/05 17:36:46 josepht Exp $
+.\" $DragonFly: src/lib/libc/sys/usched_set.2,v 1.2 2007/07/06 07:09:44 swildner Exp $
 .\"
 .Dd July 5, 2007
 .Dt USCHED_SET 2
@@ -47,27 +47,31 @@
 .Sh DESCRIPTION
 The
 .Fn usched_set
-function is used to perform several user scheduler tasks.  These tasks
-include: setting the user scheduler, assigning an LWP to a specific CPU,
-adding a CPU to the available CPUs for an LWP, and removing a CPU from
-the list of available CPUs for an LWP.
+function is used to perform several user scheduler tasks.
+These tasks include: setting the user scheduler, assigning an LWP to a
+specific CPU, adding a CPU to the available CPUs for an LWP,
+and removing a CPU from the list of available CPUs for an LWP.
 .Pp
 The
 .Fa cmd
 argument specifies the action for 
 .Fn usched_set
-to take.  USCHED_SET_SCHEDULER sets the user scheduler where
+to take.
+.Dv USCHED_SET_SCHEDULER
+sets the user scheduler where
 .Fa data
 is a
-.Ft char *
-that contains the name of the user scheduler.  USCHED_SET_CPU assigns the 
-LWP to the cpuid pointed to by 
+.Vt char *
+that contains the name of the user scheduler.
+.Dv USCHED_SET_CPU
+assigns the LWP to the cpuid pointed to by 
+.Fa data .
+.Dv USCHED_ADD_CPU
+adds the cpuid specified by 
 .Fa data
-. USCHED_ADD_CPU adds the cpuid specified
-by 
-.Fa data
-to the list of available CPUs for the LWP.  USCHED_DEL_CPU removes
-the cpuid specified by
+to the list of available CPUs for the LWP.
+.Dv USCHED_DEL_CPU
+removes the cpuid specified by
 .Fa data
 from the list of available CPUs for the LWP.
 .Sh RETURN VALUES
@@ -79,24 +83,28 @@ The function will fail if:
 The user scheduler to set is not in the list of available user schedulers.
 The
 .Fa bytes
-argument does is not the correct size (int) for a cpuid.  The specified cpuid
-is not set in smp_active_mask.
-.Fa cmd
+argument does is not the correct size
+.Vt ( int )
+for a cpuid.
+The specified cpuid is not set in
+.Va smp_active_mask .
+.Fa Cmd
 contains an unkown value.
 .It Bq Er EFBIG
 The specified cpuid is not a valid cpuid for the system.
 .It Bq Er EPERM
 Deleting the specified cpuid leaves the LWP without a CPU to run on.
 .El
-.Sh SEE ALSO
+.\".Sh SEE ALSO
 .Sh HISTORY
 The
 .Fn usched_set
 function call was added in
 .Dx 1.9 .
 .Sh AUTHORS
-.Fn usched_set
+.An -nosplit
+.Fn Usched_set
 was written by 
 .An Matt Dillon .
 This manual page was written by 
-.An Joe Talbott
+.An Joe Talbott .
