@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.h#85 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.h,v 1.52 2004/08/18 16:31:56 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.h,v 1.4 2007/07/06 04:56:22 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.h,v 1.53 2004/10/19 20:48:06 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.h,v 1.5 2007/07/06 05:45:52 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_H_
@@ -181,6 +181,10 @@ struct seeprom_descriptor;
 
 /* Reset line assertion time in us */
 #define AHC_BUSRESET_DELAY	25
+
+/* Phase change constants used in target mode. */
+#define	AHC_BUSSETTLE_DELAY	400
+#define	AHC_DATARELEASE_DELAY	400
 
 /******************* Chip Characteristics/Operating Settings  *****************/
 /*
