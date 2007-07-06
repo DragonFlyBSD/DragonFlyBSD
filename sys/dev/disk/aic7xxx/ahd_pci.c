@@ -30,8 +30,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahd_pci.c#17 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.16 2004/03/17 17:50:25 njl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.10 2007/07/06 01:11:07 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.18 2005/03/05 19:24:22 imp Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.11 2007/07/06 23:48:20 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -68,7 +68,7 @@ ahd_pci_probe(device_t dev)
 	entry = ahd_find_pci_device(dev);
 	if (entry != NULL) {
 		device_set_desc(dev, entry->name);
-		return (0);
+		return (BUS_PROBE_DEFAULT);
 	}
 	return (ENXIO);
 }
