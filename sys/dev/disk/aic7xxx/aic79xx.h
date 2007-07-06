@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.h#107 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.21 2004/08/17 00:14:30 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.10 2007/07/06 04:56:22 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.22 2004/08/18 16:33:14 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.11 2007/07/06 05:07:58 pavalos Exp $
  */
 
 #ifndef _AIC79XX_H_
@@ -1346,19 +1346,6 @@ struct ahd_pci_identity {
 };
 extern struct ahd_pci_identity ahd_pci_ident_table [];
 extern const u_int ahd_num_pci_devs;
-
-/***************************** VL/EISA Declarations ***************************/
-struct aic7770_identity {
-	uint32_t		 full_id;
-	uint32_t		 id_mask;
-	char			*name;
-	ahd_device_setup_t	*setup;
-};
-extern struct aic7770_identity aic7770_ident_table [];
-extern const int ahd_num_aic7770_devs;
-
-#define AHD_EISA_SLOT_OFFSET	0xc00
-#define AHD_EISA_IOSIZE		0x100
 
 /*************************** Function Declarations ****************************/
 /******************************************************************************/
