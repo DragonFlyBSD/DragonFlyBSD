@@ -37,10 +37,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/aic7xxx/aic7xxx/aic79xx.h#106 $
+ * $Id: //depot/aic7xxx/aic7xxx/aic79xx.h#107 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.18 2004/02/04 16:38:38 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.7 2007/07/06 00:56:38 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.19 2004/05/11 20:46:05 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.8 2007/07/06 02:23:31 pavalos Exp $
  */
 
 #ifndef _AIC79XX_H_
@@ -1066,7 +1066,6 @@ struct ahd_completion
 {
 	uint16_t	tag;
 	uint8_t		sg_status;
-	uint8_t		pad[4];
 	uint8_t		valid_tag;
 };
 

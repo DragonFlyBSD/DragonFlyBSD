@@ -37,10 +37,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $Id: //depot/aic7xxx/aic7xxx/aic79xx_inline.h#56 $
+ * $Id: //depot/aic7xxx/aic7xxx/aic79xx_inline.h#57 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_inline.h,v 1.14 2004/02/04 16:38:38 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_inline.h,v 1.6 2007/07/06 00:56:38 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_inline.h,v 1.15 2004/05/11 20:46:05 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_inline.h,v 1.7 2007/07/06 02:23:31 pavalos Exp $
  */
 
 #ifndef _AIC79XX_INLINE_H_
@@ -694,7 +694,7 @@ ahd_inb_scbram(struct ahd_softc *ahd, u_int offset)
 	 * Razor #528
 	 */
 	value = ahd_inb(ahd, offset);
-	if ((ahd->flags & AHD_PCIX_SCBRAM_RD_BUG) != 0)
+	if ((ahd->bugs & AHD_PCIX_SCBRAM_RD_BUG) != 0)
 		ahd_inb(ahd, MODE_PTR);
 	return (value);
 }
