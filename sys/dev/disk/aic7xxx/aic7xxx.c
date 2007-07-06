@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.105 2004/11/18 20:33:43 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.22 2007/07/06 06:09:20 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.107 2005/02/16 18:09:41 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.23 2007/07/06 06:27:00 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -3904,6 +3904,7 @@ ahc_alloc(void *platform_arg, char *name)
 	ahc->seep_config = kmalloc(sizeof(*ahc->seep_config),
 				  M_DEVBUF, M_WAITOK);
 	LIST_INIT(&ahc->pending_scbs);
+	LIST_INIT(&ahc->timedout_scbs);
 	/* We don't know our unit number until the OSM sets it */
 	ahc->name = name;
 	ahc->unit = -1;
@@ -6245,6 +6246,8 @@ ahc_calc_residual(struct ahc_softc *ahc, struct scb *scb)
 		return;
 	} else if ((resid_sgptr & ~SG_PTR_MASK) != 0) {
 		panic("Bogus resid sgptr value 0x%x\n", resid_sgptr);
+		/* NOTREACHED */
+		return;
 	} else {
 		struct ahc_dma_seg *sg;
 

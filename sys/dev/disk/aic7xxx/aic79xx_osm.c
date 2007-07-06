@@ -31,8 +31,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#35 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.19 2004/08/17 00:14:30 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.17 2007/07/06 04:56:22 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.21 2005/02/16 18:09:41 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.18 2007/07/06 06:26:59 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -579,7 +579,7 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 		cpi->hba_misc = 0;
 		cpi->hba_eng_cnt = 0;
 		cpi->max_target = (ahd->features & AHD_WIDE) ? 15 : 7;
-		cpi->max_lun = AHD_NUM_LUNS - 1;
+		cpi->max_lun = AHD_NUM_LUNS_NONPKT - 1;
 		cpi->initiator_id = ahd->our_id;
 		if ((ahd->flags & AHD_RESET_BUS_A) == 0) {
 			cpi->hba_misc |= PIM_NOBUSRESET;
