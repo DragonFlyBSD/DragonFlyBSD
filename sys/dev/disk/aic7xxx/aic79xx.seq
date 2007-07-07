@@ -37,8 +37,8 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.seq,v 1.17 2004/08/04 17:55:34 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.seq,v 1.8 2007/07/06 02:40:58 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.seq,v 1.19 2007/02/18 19:48:59 ceri Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.seq,v 1.9 2007/07/07 01:55:11 pavalos Exp $
  */
 
 VERSION = "$Id: //depot/aic7xxx/aic7xxx/aic79xx.seq#119 $"
@@ -2140,7 +2140,7 @@ BEGIN_CRITICAL;
 END_CRITICAL;
 pkt_status_check_overrun:
 	/*
-	 * Status PKT overruns are uncerimoniously recovered with a
+	 * Status PKT overruns are unceremoniously recovered with a
 	 * bus reset.  If we've overrun, let the host know so that
 	 * recovery can be performed.
 	 *
