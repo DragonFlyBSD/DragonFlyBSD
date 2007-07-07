@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#246 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.36 2005/02/16 23:13:38 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.26 2007/07/06 23:44:54 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.37 2005/09/22 05:06:03 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.27 2007/07/07 00:37:46 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -9025,11 +9025,12 @@ ahd_dump_card_state(struct ahd_softc *ahd)
 	}
 	kprintf("\nTotal %d\n", i);
 
-	kprintf("Kernel Free SCB list: ");
+	kprintf("Kernel Free SCB lists: ");
 	i = 0;
 	TAILQ_FOREACH(scb, &ahd->scb_data.free_scbs, links.tqe) {
 		struct scb *list_scb;
 
+		kprintf("\n  COLIDX[%d]: ", AHD_GET_SCB_COL_IDX(ahd, scb));
 		list_scb = scb;
 		do {
 			kprintf("%d ", SCB_GET_TAG(list_scb));
@@ -9037,6 +9038,7 @@ ahd_dump_card_state(struct ahd_softc *ahd)
 		} while (list_scb && i++ < AHD_SCB_MAX);
 	}
 
+	kprintf("\n  Any Device: ");
 	LIST_FOREACH(scb, &ahd->scb_data.any_dev_free_scb_list, links.le) {
 		if (i++ > AHD_SCB_MAX)
 			break;
