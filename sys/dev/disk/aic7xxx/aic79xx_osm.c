@@ -31,8 +31,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#35 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.22 2005/09/22 05:01:37 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.19 2007/07/07 00:28:32 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.23 2005/12/04 02:12:40 ru Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.20 2007/07/07 01:06:07 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -53,7 +53,7 @@
 
 #define ccb_scb_ptr spriv_ptr0
 
-#if UNUSED
+#if 0
 static void	ahd_dump_targcmd(struct target_cmd *cmd);
 #endif
 static int	ahd_modevent(module_t mod, int type, void *data);
@@ -1462,7 +1462,7 @@ ahd_detach(device_t dev)
 	return (0);
 }
 
-#if UNUSED
+#if 0
 static void
 ahd_dump_targcmd(struct target_cmd *cmd)
 {

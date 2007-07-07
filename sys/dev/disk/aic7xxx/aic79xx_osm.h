@@ -32,8 +32,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.h#23 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.13 2003/12/17 00:02:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.9 2007/07/06 00:01:16 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.17 2005/12/04 02:12:40 ru Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.10 2007/07/07 01:06:07 pavalos Exp $
  */
 
 #ifndef _AIC79XX_FREEBSD_H_
@@ -112,7 +112,7 @@
 #define AHD_NSEG (roundup(btoc(MAXPHYS) + 1, 16))
 
 /* This driver supports target mode */
-#if NOT_YET
+#ifdef NOT_YET
 #define AHD_TARGET_MODE 1
 #endif
 

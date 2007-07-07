@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#246 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.37 2005/09/22 05:06:03 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.27 2007/07/07 00:37:46 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.38 2005/12/04 02:12:40 ru Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.28 2007/07/07 01:06:07 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -169,7 +169,7 @@ static void		ahd_handle_devreset(struct ahd_softc *ahd,
 					    struct ahd_devinfo *devinfo,
 					    u_int lun, cam_status status,
 					    char *message, int verbose_level);
-#if AHD_TARGET_MODE
+#ifdef AHD_TARGET_MODE
 static void		ahd_setup_target_msgin(struct ahd_softc *ahd,
 					       struct ahd_devinfo *devinfo,
 					       struct scb *scb);
@@ -1232,7 +1232,7 @@ ahd_handle_seqint(struct ahd_softc *ahd, u_int intstat)
 					ahd->msgin_index = 0;
 				}
 			}
-#if AHD_TARGET_MODE
+#ifdef AHD_TARGET_MODE
 			else {
 				if (bus_phase == P_MESGOUT) {
 					ahd->msg_type =
@@ -5394,7 +5394,7 @@ ahd_free(struct ahd_softc *ahd)
 
 		tstate = ahd->enabled_targets[i];
 		if (tstate != NULL) {
-#if AHD_TARGET_MODE
+#ifdef AHD_TARGET_MODE
 			int j;
 
 			for (j = 0; j < AHD_NUM_LUNS; j++) {
@@ -5410,7 +5410,7 @@ ahd_free(struct ahd_softc *ahd)
 			kfree(tstate, M_DEVBUF);
 		}
 	}
-#if AHD_TARGET_MODE
+#ifdef AHD_TARGET_MODE
 	if (ahd->black_hole != NULL) {
 		xpt_free_path(ahd->black_hole->path);
 		kfree(ahd->black_hole, M_DEVBUF);
@@ -6651,7 +6651,7 @@ ahd_chip_init(struct ahd_softc *ahd)
 	ahd_outb(ahd, CLRSINT3, NTRAMPERR|OSRAMPERR);
 	ahd_outb(ahd, CLRINT, CLRSCSIINT);
 
-#if NEEDS_MORE_TESTING
+#ifdef NEEDS_MORE_TESTING
 	/*
 	 * Always enable abort on incoming L_Qs if this feature is
 	 * supported.  We use this to catch invalid SCB references.
@@ -7212,7 +7212,7 @@ ahd_match_scb(struct ahd_softc *ahd, struct scb *scb, int target,
 	if (match != 0)
 		match = ((lun == slun) || (lun == CAM_LUN_WILDCARD));
 	if (match != 0) {
-#if AHD_TARGET_MODE
+#ifdef AHD_TARGET_MODE
 		int group;
 
 		group = XPT_FC_GROUP(scb->io_ctx->ccb_h.func_code);
@@ -7886,7 +7886,7 @@ ahd_reset_channel(struct ahd_softc *ahd, char channel, int initiate_reset)
 	/* Make sure the sequencer is in a safe location. */
 	ahd_clear_critical_section(ahd);
 
-#if AHD_TARGET_MODE
+#ifdef AHD_TARGET_MODE
 	if ((ahd->flags & AHD_TARGETROLE) != 0) {
 		ahd_run_tqinfifo(ahd, /*paused*/TRUE);
 	}

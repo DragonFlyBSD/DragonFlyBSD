@@ -40,8 +40,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx_pci.c#88 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_pci.c,v 1.23 2005/02/16 18:16:35 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.14 2007/07/06 06:35:41 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_pci.c,v 1.24 2005/12/04 02:12:40 ru Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_pci.c,v 1.15 2007/07/07 01:06:07 pavalos Exp $
  */
 
 #ifdef __linux__
@@ -620,7 +620,7 @@ ahd_check_extport(struct ahd_softc *ahd)
 		}
 	}
 
-#if AHD_DEBUG
+#ifdef AHD_DEBUG
 	if (have_seeprom != 0
 	 && (ahd_debug & AHD_DUMP_SEEPROM) != 0) {
 		uint16_t *sc_data;
