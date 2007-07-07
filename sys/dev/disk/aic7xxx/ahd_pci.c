@@ -30,8 +30,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahd_pci.c#17 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.18 2005/03/05 19:24:22 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.11 2007/07/06 23:48:20 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.19 2005/09/22 04:56:59 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.12 2007/07/07 00:10:39 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -161,6 +161,7 @@ ahd_pci_map_registers(struct ahd_softc *ahd)
 		if (bootverbose)
 			device_printf(ahd->dev_softc,
 				      "Defaulting to MEMIO on\n");
+		allow_memio = 1;
 	}
 
 	if ((command & PCIM_CMD_MEMEN) != 0
