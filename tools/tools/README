@@ -1,5 +1,5 @@
 # $FreeBSD: src/tools/tools/README,v 1.18.2.2 2003/02/24 22:52:36 sam Exp $
-# $DragonFly: src/tools/tools/README,v 1.7 2007/03/04 13:15:48 sephe Exp $
+# $DragonFly: src/tools/tools/README,v 1.8 2007/07/07 12:01:00 swildner Exp $
 
 This directory is for tools.
 
@@ -19,10 +19,11 @@ ifinfo		Uses the interface MIB to print out all the information
 		an interface exports in an ugly form.
 kdrv		KernelDriver; add/list/remove third-party kernel driver
 		source to/in/from a kernel source tree.
-kernxref	Shellscript to cross reference symbols in the LINT kernel.
 kerninclude	Shellscript to find unused #includes in the kernel.
+kernxref	Shellscript to cross reference symbols in the LINT kernel.
 local_syms	Shellscript to find symbols not referenced by other files.
 mid	 	Create a Message-ID database for mailing lists.
+pciid		Generate src/share/misc/pci_vendors.
 scsi-defects	Get at the primary or grown defect list of a SCSI disk.
 splitpatch	Python script to split a large patch file into independent
 		patches.  Default name convention is compatible with
@@ -31,6 +32,4 @@ tcl_bmake	Generates a bmake Makefile for src/lib/libtcl.
 upgrade         Scripts used for upgrading an installed system.
 vop_table	Generates a HTML document that shows all the VOP's in
 		the kernel.
-diffburst	OBSOLETE: equivalent functionality is available via split -p.
-		For example: "cat patchfile | split -p ^diff". See split(1).
 wlandebug	Manipulate netproto/802_11 debug flags symbolically.
