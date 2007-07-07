@@ -32,8 +32,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.h#23 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.17 2005/12/04 02:12:40 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.10 2007/07/07 01:06:07 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.18 2005/12/06 11:19:36 ru Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.11 2007/07/07 01:12:01 pavalos Exp $
  */
 
 #ifndef _AIC79XX_FREEBSD_H_
@@ -138,7 +138,7 @@ struct scb_platform_data {
 };
 
 /***************************** Core Includes **********************************/
-#if AHD_REG_PRETTY_PRINT
+#ifdef AHD_REG_PRETTY_PRINT
 #define AIC_DEBUG_REGISTERS 1
 #else
 #define AIC_DEBUG_REGISTERS 0
