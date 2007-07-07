@@ -30,8 +30,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.c#20 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.44 2005/12/04 02:12:40 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.18 2007/07/07 01:06:07 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.45 2006/09/05 20:28:28 mjacob Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.19 2007/07/07 01:36:02 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -156,6 +156,8 @@ ahc_attach(struct ahc_softc *ahc)
 	count = 0;
 	sim = NULL;
 	sim2 = NULL;
+	path = NULL;
+	path2 = NULL;
 
 	/*
 	 * Create a thread to perform all recovery.
