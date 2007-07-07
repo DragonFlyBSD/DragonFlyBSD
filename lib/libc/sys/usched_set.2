@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/usched_set.2,v 1.2 2007/07/06 07:09:44 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/usched_set.2,v 1.3 2007/07/07 17:42:48 swildner Exp $
 .\"
 .Dd July 5, 2007
 .Dt USCHED_SET 2
@@ -54,7 +54,7 @@ and removing a CPU from the list of available CPUs for an LWP.
 .Pp
 The
 .Fa cmd
-argument specifies the action for 
+argument specifies the action for
 .Fn usched_set
 to take.
 .Dv USCHED_SET_SCHEDULER
@@ -64,10 +64,10 @@ is a
 .Vt char *
 that contains the name of the user scheduler.
 .Dv USCHED_SET_CPU
-assigns the LWP to the cpuid pointed to by 
+assigns the LWP to the cpuid pointed to by
 .Fa data .
 .Dv USCHED_ADD_CPU
-adds the cpuid specified by 
+adds the cpuid specified by
 .Fa data
 to the list of available CPUs for the LWP.
 .Dv USCHED_DEL_CPU
@@ -104,7 +104,7 @@ function call was added in
 .Sh AUTHORS
 .An -nosplit
 .Fn Usched_set
-was written by 
+was written by
 .An Matt Dillon .
-This manual page was written by 
+This manual page was written by
 .An Joe Talbott .
