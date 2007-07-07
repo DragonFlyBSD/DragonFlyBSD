@@ -40,8 +40,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm_macro_gram.y#5 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_macro_gram.y,v 1.1.2.2 2002/08/31 07:26:06 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_macro_gram.y,v 1.3 2006/04/22 16:15:26 dillon Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_macro_gram.y,v 1.4 2006/12/29 13:08:46 yar Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_macro_gram.y,v 1.4 2007/07/07 01:47:51 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -118,7 +118,7 @@ macro_arglist:
 |	macro_arglist ',' T_ARG
 	{
 		if ($1 == 0) {
-			stop("Comma without preceeding argument in arg list",
+			stop("Comma without preceding argument in arg list",
 			     EX_DATAERR);
 			/* NOTREACHED */
 		}

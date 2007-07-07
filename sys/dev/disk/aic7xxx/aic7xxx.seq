@@ -37,8 +37,8 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.seq,v 1.127 2004/08/13 21:41:23 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.seq,v 1.4 2007/07/06 02:46:40 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.seq,v 1.129 2006/12/29 13:08:45 yar Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.seq,v 1.5 2007/07/07 01:47:51 pavalos Exp $
  */
 
 VERSION = "$Id: //depot/aic7xxx/aic7xxx/aic7xxx.seq#58 $"
@@ -2004,7 +2004,7 @@ if ((ahc->flags & AHC_TARGETROLE) != 0) {
  * from out to in, wait an additional data release delay before continuing.
  */
 change_phase:
-	/* Wait for preceeding I/O session to complete. */
+	/* Wait for preceding I/O session to complete. */
 	test	SCSISIGI, ACKI jnz .;
 
 	/* Change the phase */
