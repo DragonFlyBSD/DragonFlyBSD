@@ -36,7 +36,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.13 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_abi.c,v 1.14 2007/07/07 12:13:47 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -127,7 +127,7 @@ static int icu_imcr_present;
  */
 static 
 int
-icu_setvar(int varid __unused, const void *buf __unused)
+icu_setvar(int varid, const void *buf)
 {
     int error = 0;
 	
@@ -144,7 +144,7 @@ icu_setvar(int varid __unused, const void *buf __unused)
 
 static
 int
-icu_getvar(int varid __unused, void *buf __unused)
+icu_getvar(int varid, void *buf)
 {
     int error = 0;
 	
