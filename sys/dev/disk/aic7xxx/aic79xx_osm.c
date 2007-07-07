@@ -31,8 +31,8 @@
  *
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#35 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.21 2005/02/16 18:09:41 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.18 2007/07/06 06:26:59 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.22 2005/09/22 05:01:37 gibbs Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.19 2007/07/07 00:28:32 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -269,7 +269,8 @@ ahd_done(struct ahd_softc *ahd, struct scb *scb)
 			LIST_FOREACH(list_scb,
 				     &ahd->pending_scbs, pending_links) {
 
-				aic_scb_timer_reset(scb, aic_get_timeout(scb));
+				aic_scb_timer_reset(list_scb,
+						    aic_get_timeout(scb));
 			}
 
 			ahd_print_path(ahd, scb);
