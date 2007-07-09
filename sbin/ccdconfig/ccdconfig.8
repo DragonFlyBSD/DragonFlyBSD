@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/ccdconfig/ccdconfig.8,v 1.9.2.10 2003/01/26 03:38:39 keramida Exp $
-.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.4 2007/05/19 17:32:12 swildner Exp $
+.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.5 2007/07/09 17:51:29 dillon Exp $
 .\"
 .Dd July 17, 1995
 .Dt CCDCONFIG 8
@@ -138,9 +138,9 @@ ccd0            16      none    /dev/da2e /dev/da3e
 .Ed
 .Pp
 The component devices need to name partitions of type
-.Li FS_BSDFFS
+.Li FS_CCD
 (or
-.Dq 4.2BSD
+.Dq CCD
 as shown by
 .Xr disklabel 8 ) .
 .Sh RECOVERY
