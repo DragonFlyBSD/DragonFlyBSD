@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.34 2007/05/31 11:00:25 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.35 2007/07/10 20:24:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -120,23 +120,17 @@ netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
  * synchronous port which runs the commands synchronously gives us the
  * ability to serialize operations in one place later on when we start
  * removing the BGL.
- *
- * We clear MSGF_DONE prior to executing the message in order to close
- * any potential replymsg races with the flags field.  If a synchronous
- * result code is returned we set MSGF_DONE again.  MSGF_DONE's flag state
- * must be correct or the caller will be confused.
  */
 static int
 netmsg_sync_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 {
     netmsg_t netmsg = (void *)lmsg;
-    int error;
 
-    lmsg->ms_flags &= ~MSGF_DONE;
+    KKASSERT((lmsg->ms_flags & MSGF_DONE) == 0);
+
     lmsg->ms_target_port = port;	/* required for abort */
     netmsg->nm_dispatch(netmsg);
-    error = lwkt_waitmsg(lmsg, 0);
-    return(error);
+    return(EASYNC);
 }
 
 static void
