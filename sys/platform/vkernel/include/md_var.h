@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.20 2007/07/01 02:51:44 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.21 2007/07/10 13:19:08 swildner Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -74,7 +74,6 @@ extern  u_int   cpu_id;		/* XXX belongs in i386 */
 extern struct vkdisk_info DiskInfo[VKDISK_MAX];
 extern int	DiskNum;
 extern int	MemImageFd;
-extern int	KQueueFd;
 extern struct vknetif_info NetifInfo[VKNETIF_MAX];
 extern int	NetifNum;
 extern int	_ucodesel, _udatasel;
