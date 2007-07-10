@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.41 2007/07/04 16:28:45 swildner Exp $
-.Dd July 4, 2007
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.42 2007/07/10 22:36:01 swildner Exp $
+.Dd July 10, 2007
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -200,13 +200,13 @@ Additional flags to pass to the DHCP client program.
 For the ISC DHCP client, see the
 .Xr dhclient 8
 manpage for a description of the command line options available.
-.It Va background_dhclient
-.Pq Vt bool
-Set to
-.Dq Li YES
-to start the DHCP client in background.
-This can cause trouble with applications depending on
-a working network, but it will provide a faster startup in many cases.
+.\".It Va background_dhclient
+.\".Pq Vt bool
+.\"Set to
+.\".Dq Li YES
+.\"to start the DHCP client in background.
+.\"This can cause trouble with applications depending on
+.\"a working network, but it will provide a faster startup in many cases.
 .It Va dhcpd_enable
 .Pq Vt bool
 Set to
@@ -813,15 +813,41 @@ and
 .Va ifconfig_ Ns Ao Ar interface Ac Ns Va _alias Ns Aq Ar n
 variables.
 .Pp
-It is possible to bring up an interface with DHCP by setting the
+It is possible to bring up an interface with DHCP by adding
+.Dq Li DHCP
+to the
 .Va ifconfig_ Ns Aq Ar interface
-variable to
-.Dq Li DHCP .
+variable.
 For instance, to initialize the
 .Li ed0
 device via DHCP, it is possible to use something like:
 .Bd -literal
 ifconfig_ed0="DHCP"
+.Ed
+.Pp
+Also, if your interface needs WPA authentication, it is possible to add
+.Dq Li WPA
+to the
+.Va ifconfig_ Ns Aq Ar interface
+variable.
+.Pp
+Finally, you can add
+.Xr ifconfig 8
+options in this variable, in addition to the
+.Pa /etc/start_if. Ns Aq Ar interface
+file.
+For instance, to initialize the
+.Li wi0
+device via DHCP, using WPA authentication and 802.11b mode, it is
+possible to use something like:
+.Bd -literal
+ifconfig_wi0="up DHCP WPA mode 11b"
+.Ed
+.Pp
+It is also possible to rename interface by doing:
+.Bd -literal
+ifconfig_ed0_name="net0"
+ifconfig_net0="inet 10.0.0.1 netmask 0xffff0000"
 .Ed
 .It Va ipv6_network_interfaces
 .Pq Vt str
