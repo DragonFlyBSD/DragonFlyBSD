@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/cpu.h,v 1.1 2007/01/14 20:07:15 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/cpu.h,v 1.2 2007/07/10 18:35:38 josepht Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -40,6 +40,24 @@
 #include <cpu/cpu.h>
 
 #define CLKF_USERMODE(framep) ((framep)->if_xflags & PGEX_U)
+
+/* globals used in vkernel CPU to kernel CPU locking */
+#if defined(_KERNEL)
+
+extern int lwp_cpu_lock;
+extern int next_cpu;
+extern int real_ncpus;
+void setrealcpu(void);
+
+#endif
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#define LCL_NONE        0
+#define LCL_PER_CPU     1
+#define LCL_SINGLE_CPU  2
+
+#endif
 
 #endif
 

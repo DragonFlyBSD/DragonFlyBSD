@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.24 2007/07/07 22:57:19 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.25 2007/07/10 18:35:38 josepht Exp $
 .\"
 .Dd July 2, 2007
 .Dt VKERNEL 7
@@ -50,6 +50,7 @@
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .Op Fl i Ar file
 .Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc
+.Op Fl l Ar cpulock
 .Op Fl m Ar size
 .Op Fl n Ar numcpus
 .Op Fl p Ar file
@@ -137,6 +138,27 @@ interface.
 The
 .Ar netmask
 argument applies to all interfaces for which an address is specified.
+.It Fl l Ar cpulock
+Specify which, if any, real CPUs to lock virtual CPUs to.
+.Ar cpulock
+is one of
+.Cm any,
+.Cm map Ns Op Ns , Ns Ar startCPU Ns
+, or
+.Ar CPU
+.Pp
+.Cm any
+does not map virtual CPUs to real CPUs.  This is the default.
+.Pp
+.Cm map Ns Op Ns , Ns Ar startCPU
+maps each virtual CPU to a real CPU starting with real CPU 0 or
+.Ar startCPU
+if specified.
+.Pp
+.Ar CPU
+locks all virtual CPUs to the real CPU spcified by
+.Ar CPU
+
 .It Fl m Ar size
 Specify the amount of memory to be used by the kernel in bytes,
 .Cm K

@@ -3,7 +3,7 @@
  *
  *	Userland scheduler API
  * 
- * $DragonFly: src/sys/sys/usched.h,v 1.13 2007/07/02 17:06:56 dillon Exp $
+ * $DragonFly: src/sys/sys/usched.h,v 1.14 2007/07/10 18:35:38 josepht Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -86,7 +86,9 @@ extern cpumask_t usched_mastermask;
 int usched_ctl(struct usched *, int);
 struct usched *usched_init(void);
 
-#else
+#endif
+
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
 int usched_set(pid_t, int, void *, int);
 

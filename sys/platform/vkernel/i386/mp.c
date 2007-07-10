@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.5 2007/07/02 03:44:09 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.6 2007/07/10 18:35:38 josepht Exp $
  */
 
 
@@ -46,6 +46,7 @@
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 
+#include <machine/cpu.h>
 #include <machine/cpufunc.h>
 #include <machine/globaldata.h>
 #include <machine/md_var.h>
@@ -130,7 +131,7 @@ void *
 start_ap(void *arg __unused)
 {
 	init_secondary();
-
+	setrealcpu();
 	bootstrap_idle();
 
 	return(NULL); /* NOTREACHED */

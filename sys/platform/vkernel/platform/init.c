@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.43 2007/07/02 17:44:00 josepht Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.44 2007/07/10 18:35:38 josepht Exp $
  */
 
 #include <sys/types.h>
@@ -49,8 +49,10 @@
 #include <sys/vmspace.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/sysctl.h>
 #include <vm/vm_page.h>
 
+#include <machine/cpu.h>
 #include <machine/globaldata.h>
 #include <machine/tls.h>
 #include <machine/md_var.h>
@@ -98,6 +100,9 @@ vpte_t	*KernelPTA;	/* Warning: Offset for direct VA translation */
 u_int cpu_feature;	/* XXX */
 u_int tsc_present;	/* XXX */
 int optcpus;		/* number of cpus - see mp_start() */
+int lwp_cpu_lock;	/* if/how to lock virtual CPUs to real CPUs */
+int real_ncpus;		/* number of real CPUs */
+int next_cpu;		/* next real CPU to lock a virtual CPU to */
 
 struct privatespace *CPU_prvspace;
 
@@ -128,6 +133,8 @@ main(int ac, char **av)
 	char *diskFile[VKDISK_MAX];
 	char *cdFile[VKDISK_MAX];
 	char *suffix;
+	char *endp;
+	size_t real_ncpus_size;
 	int netifFileNum = 0;
 	int diskFileNum = 0;
 	int cdFileNum = 0;
@@ -145,8 +152,12 @@ main(int ac, char **av)
 #ifdef SMP
 	optcpus = 2;
 #endif
+	lwp_cpu_lock = LCL_NONE;
 
-	while ((c = getopt(ac, av, "c:svm:n:r:e:i:p:I:U")) != -1) {
+	real_ncpus_size = sizeof(real_ncpus);
+	sysctlbyname("hw.ncpu", &real_ncpus, &real_ncpus_size, NULL, 0);
+
+	while ((c = getopt(ac, av, "c:svl:m:n:r:e:i:p:I:U")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
@@ -208,6 +219,27 @@ main(int ac, char **av)
 				}
 			}
 			break;
+		case 'l':
+			next_cpu = -1;
+			if (strncmp("map", optarg, 3) == 0) {
+				lwp_cpu_lock = LCL_PER_CPU;
+				if (*(optarg + 3) == ',')
+					next_cpu = strtol(optarg+4, &endp, 0);
+				if (*endp != '\0')
+					usage("Bad target CPU number at '%s'", endp);
+				if (next_cpu < 0 || next_cpu > real_ncpus - 1)
+					usage("Bad target CPU, valid range is 0-%d", real_ncpus - 1);
+			} else if (strncmp("any", optarg, 3) == 0) {
+				lwp_cpu_lock = LCL_NONE;
+			} else {
+				lwp_cpu_lock = LCL_SINGLE_CPU;
+				next_cpu = strtol(optarg, &endp, 0);
+				if (*endp != '\0')
+					usage("Bad target CPU number at '%s'", endp);
+				if (next_cpu < 0 || next_cpu > real_ncpus - 1)
+					usage("Bad target CPU, valid range is 0-%d", real_ncpus - 1);
+			}
+			break;
 		case 'n':
 			/*
 			 * This value is set up by mp_start(), don't just
@@ -239,6 +271,7 @@ main(int ac, char **av)
 	init_kern_memory();
 	init_globaldata();
 	init_vkernel();
+	setrealcpu();
 	init_kqueue();
 	init_disk(diskFile, diskFileNum, VKD_DISK);
 	init_disk(cdFile, cdFileNum, VKD_CD);
@@ -1125,3 +1158,29 @@ cpu_halt(void)
 	cleanpid();
 	exit(0);
 }
+
+void
+setrealcpu(void)
+{
+	switch(lwp_cpu_lock) {
+	case LCL_PER_CPU:
+		if (bootverbose)
+			kprintf("Locking CPU%d to real cpu %d\n",
+				mycpuid, next_cpu);
+		usched_set(getpid(), USCHED_SET_CPU, &next_cpu, sizeof(next_cpu));
+		next_cpu++;
+		if (next_cpu >= real_ncpus)
+			next_cpu = 0;
+		break;
+	case LCL_SINGLE_CPU:
+		if (bootverbose)
+			kprintf("Locking CPU%d to real cpu %d\n",
+				mycpuid, next_cpu);
+		usched_set(getpid(), USCHED_SET_CPU, &next_cpu, sizeof(next_cpu));
+		break;
+	default:
+		/* do not map virtual cpus to real cpus */
+		break;
+	}
+}
+
