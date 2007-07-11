@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.47 2007/04/13 12:26:42 corecode Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.48 2007/07/11 08:21:14 swildner Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -7,14 +7,6 @@
 /set type=dir uname=root gname=wheel mode=0755
 .
     bin
-    ..
-    freebsd_pkg
-	sbin
-	..
-	man
-	    man1
-	    ..
-	..
     ..
     games
         hide            gname=games mode=0550
