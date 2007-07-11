@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.25 2007/07/10 18:35:38 josepht Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.26 2007/07/11 00:49:05 swildner Exp $
 .\"
-.Dd July 2, 2007
+.Dd July 10, 2007
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -142,13 +142,14 @@ argument applies to all interfaces for which an address is specified.
 Specify which, if any, real CPUs to lock virtual CPUs to.
 .Ar cpulock
 is one of
-.Cm any,
-.Cm map Ns Op Ns , Ns Ar startCPU Ns
-, or
-.Ar CPU
+.Cm any ,
+.Cm map Ns Op Ns , Ns Ar startCPU ,
+or
+.Ar CPU .
 .Pp
 .Cm any
-does not map virtual CPUs to real CPUs.  This is the default.
+does not map virtual CPUs to real CPUs.
+This is the default.
 .Pp
 .Cm map Ns Op Ns , Ns Ar startCPU
 maps each virtual CPU to a real CPU starting with real CPU 0 or
@@ -156,9 +157,8 @@ maps each virtual CPU to a real CPU starting with real CPU 0 or
 if specified.
 .Pp
 .Ar CPU
-locks all virtual CPUs to the real CPU spcified by
-.Ar CPU
-
+locks all virtual CPUs to the real CPU specified by
+.Ar CPU .
 .It Fl m Ar size
 Specify the amount of memory to be used by the kernel in bytes,
 .Cm K
