@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/eventhandler.h,v 1.5 2000/01/16 06:11:33 bde Exp $
- * $DragonFly: src/sys/sys/eventhandler.h,v 1.7 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/eventhandler.h,v 1.8 2007/07/11 23:46:54 dillon Exp $
  */
 
 #include <sys/queue.h>
@@ -163,6 +163,7 @@ typedef void (*shutdown_fn) (void *, int);
 
 #define	SHUTDOWN_PRI_FIRST	EVENTHANDLER_PRI_FIRST
 #define	SHUTDOWN_PRI_DEFAULT	EVENTHANDLER_PRI_ANY
+#define	SHUTDOWN_PRI_DRIVER	(EVENTHANDLER_PRI_ANY + 5000)
 #define	SHUTDOWN_PRI_LAST	EVENTHANDLER_PRI_LAST
 
 EVENTHANDLER_DECLARE(shutdown_pre_sync, shutdown_fn);	/* before fs sync */

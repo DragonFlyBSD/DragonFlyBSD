@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.15 2006/12/22 23:26:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.16 2007/07/11 23:46:58 dillon Exp $
  */
 
 /*
@@ -254,7 +254,7 @@ en_pci_attach(pcici_t config_id, int unit)
    * reboot before the driver initializes.
    */
   EVENTHANDLER_REGISTER(shutdown_post_sync, en_pci_shutdown, scp,
-			SHUTDOWN_PRI_DEFAULT);
+			SHUTDOWN_PRI_DRIVER);
 
   if (!pci_map_int(config_id, en_intr, (void *) sc)) {
     kprintf("%s: couldn't establish interrupt\n", sc->sc_dev.dv_xname);

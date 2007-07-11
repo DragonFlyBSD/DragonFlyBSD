@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.31 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.32 2007/07/11 23:46:58 dillon Exp $
  */
 
 /*
@@ -828,7 +828,7 @@ ieattach(struct isa_device *dvp)
 
 	if (ie->hard_type == IE_EE16)
 		EVENTHANDLER_REGISTER(shutdown_post_sync, ee16_shutdown,
-				      ie, SHUTDOWN_PRI_DEFAULT);
+				      ie, SHUTDOWN_PRI_DRIVER);
 
 	ether_ifattach(ifp, ie->arpcom.ac_enaddr, NULL);
 	return (1);

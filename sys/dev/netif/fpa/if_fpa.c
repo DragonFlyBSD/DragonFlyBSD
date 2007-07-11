@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.17 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.18 2007/07/11 23:46:58 dillon Exp $
  */
 
 /*
@@ -192,7 +192,7 @@ pdq_pci_attach(
     pdq_ifattach(sc, pdq_pci_ifwatchdog);
     pci_map_int(config_id, pdq_pci_ifintr, (void*) sc);
     EVENTHANDLER_REGISTER(shutdown_post_sync, pdq_pci_shutdown, sc,
-			  SHUTDOWN_PRI_DEFAULT);
+			  SHUTDOWN_PRI_DRIVER);
 
 }
 

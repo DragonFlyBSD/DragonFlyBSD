@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.31 2007/06/04 17:21:57 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.32 2007/07/11 23:46:58 dillon Exp $
  */
 
 /*
@@ -305,7 +305,7 @@ aac_attach(struct aac_softc *sc)
 
 	/* Register the shutdown method to only be called post-dump */
 	if ((EVENTHANDLER_REGISTER(shutdown_post_sync, aac_shutdown, sc->aac_dev,
-				   SHUTDOWN_PRI_DEFAULT)) == NULL)
+				   SHUTDOWN_PRI_DRIVER)) == NULL)
 	device_printf(sc->aac_dev, "shutdown event registration failed\n");
 
 	/* Register with CAM for the non-DASD devices */

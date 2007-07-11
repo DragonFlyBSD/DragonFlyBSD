@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.12 2005/06/16 21:12:29 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.13 2007/07/11 23:46:58 dillon Exp $
  */
 
 /*
@@ -339,7 +339,7 @@ fore_pci_attach(config_id, unit)
 	 * Add hook to our shutdown function
 	 */
 	EVENTHANDLER_REGISTER(shutdown_post_sync, fore_pci_shutdown, fup,
-			      SHUTDOWN_PRI_DEFAULT);
+			      SHUTDOWN_PRI_DRIVER);
 
 	/*
 	 * Initialize the CP microcode program.

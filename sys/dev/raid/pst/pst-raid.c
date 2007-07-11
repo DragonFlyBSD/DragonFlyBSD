@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.23 2007/05/15 00:01:04 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.24 2007/07/11 23:46:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -187,7 +187,7 @@ pst_attach(device_t dev)
 	   device_get_nameunit(psc->iop->dev));
 #if 0
     EVENTHANDLER_REGISTER(shutdown_post_sync, pst_shutdown,
-			  dev, SHUTDOWN_PRI_DEFAULT);
+			  dev, SHUTDOWN_PRI_DRIVER);
 #endif
     return 0;
 }

@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.c#20 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.45 2006/09/05 20:28:28 mjacob Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.19 2007/07/07 01:36:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.20 2007/07/11 23:46:58 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -272,7 +272,7 @@ fail:
 		/* We have to wait until after any system dumps... */
 		ahc->platform_data->eh =
 		    EVENTHANDLER_REGISTER(shutdown_post_sync, ahc_shutdown,
-					  ahc, SHUTDOWN_PRI_DEFAULT);
+					  ahc, SHUTDOWN_PRI_DRIVER);
 		ahc_intr_enable(ahc, TRUE);
 	}
 

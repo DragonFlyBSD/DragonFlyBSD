@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.17 2007/06/04 17:22:00 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.18 2007/07/11 23:46:58 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -501,7 +501,7 @@ iir_attach(struct gdt_softc *gdt)
     cam_simq_release(devq);
     if (i > 0)
         EVENTHANDLER_REGISTER(shutdown_post_sync, iir_shutdown,
-                              gdt, SHUTDOWN_PRI_DEFAULT);
+                              gdt, SHUTDOWN_PRI_DRIVER);
     /* iir_watchdog(gdt); */
     gdt->sc_state = GDT_NORMAL;
 }

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.9 2006/12/20 18:14:38 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.10 2007/07/11 23:46:56 dillon Exp $
  */
 
 /*
@@ -533,7 +533,7 @@ eni_pci_attach ( pcici_t config_id, int unit )
 	 * Add hook to out shutdown function
 	 */
 	EVENTHANDLER_REGISTER(shutdown_post_sync, eni_pci_shutdown, eup,
-			      SHUTDOWN_PRI_DEFAULT);
+			      SHUTDOWN_PRI_DRIVER);
 
 	/*
 	 * Initialize driver processing
