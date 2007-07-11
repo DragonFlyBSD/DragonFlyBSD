@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/csu/amd64/Makefile,v 1.18 2003/06/30 12:53:39 ru Exp $
-# $DragonFly: src/lib/csu/amd64/Makefile.csu,v 1.1 2007/01/15 18:01:44 corecode Exp $
+# $DragonFly: src/lib/csu/amd64/Makefile.csu,v 1.2 2007/07/11 21:12:50 corecode Exp $
 
 CSUDIR?=	${.CURDIR}
 
@@ -13,4 +13,4 @@ CFLAGS+=	-I${CSUDIR}/../common \
 .PATH:		${CSUDIR} ${CSUDIR}/../common
 
 gcrt1.o: crt1.c
-	${CC} ${CFLAGS} -DGCRT -c -o gcrt1.o ${.CURDIR}/crt1.c
+	${CC} ${CFLAGS} -DGCRT -c -o gcrt1.o ${CSUDIR}/crt1.c
