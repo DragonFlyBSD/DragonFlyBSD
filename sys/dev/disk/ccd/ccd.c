@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.48 2007/06/19 19:09:46 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.49 2007/07/11 23:42:16 dillon Exp $
  */
 /*
  * Copyright (c) 1995 Jason R. Thorpe.
@@ -108,7 +108,7 @@
  * @(#)cd.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $
  * $NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.48 2007/06/19 19:09:46 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.49 2007/07/11 23:42:16 dillon Exp $
  */
 
 /*
@@ -398,6 +398,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 	/* Allocate space for the component info. */
 	cs->sc_cinfo = kmalloc(cs->sc_nccdisks * sizeof(struct ccdcinfo),
 				M_DEVBUF, M_WAITOK);
+	cs->sc_maxiosize = MAXPHYS;
 
 	/*
 	 * Verify that each component piece exists and record
@@ -427,6 +428,10 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 		bcopy(tmppath, ci->ci_path, ci->ci_pathlen);
 
 		ci->ci_dev = vn_todev(vp);
+		if (ci->ci_dev->si_iosize_max &&
+		    cs->sc_maxiosize > ci->ci_dev->si_iosize_max) {
+			cs->sc_maxiosize = ci->ci_dev->si_iosize_max;
+		}
 
 		/*
 		 * Get partition information for the component.
@@ -489,6 +494,8 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 		ci->ci_size = size;
 		cs->sc_size += size;
 	}
+	kprintf("ccd%d: max component iosize is %d\n",
+		cs->sc_unit, cs->sc_maxiosize);
 
 	/*
 	 * Don't allow the interleave to be smaller than
@@ -1048,9 +1055,11 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 	cbp->cb_buf.b_data = addr;
 	cbp->cb_vp = ci->ci_vp;
 	if (cs->sc_ileave == 0)
-              cbc = dbtob((off_t)(ci->ci_size - cbn));
+		cbc = dbtob((off_t)(ci->ci_size - cbn));
 	else
-              cbc = dbtob((off_t)(cs->sc_ileave - cboff));
+		cbc = dbtob((off_t)(cs->sc_ileave - cboff));
+	if (cbc > cs->sc_maxiosize)
+		cbc = cs->sc_maxiosize;
 	cbp->cb_buf.b_bcount = (cbc < bcount) ? cbc : bcount;
  	cbp->cb_buf.b_bufsize = cbp->cb_buf.b_bcount;
 
@@ -1090,6 +1099,8 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 		      cbc = dbtob((off_t)(ci->ci_size - cbn));
 		else
 		      cbc = dbtob((off_t)(cs->sc_ileave - cboff));
+		if (cbc > cs->sc_maxiosize)
+			cbc = cs->sc_maxiosize;
 		cbp->cb_buf.b_bcount = (cbc < bcount) ? cbc : bcount;
 		cbp->cb_buf.b_bufsize = cbp->cb_buf.b_bcount;
 
