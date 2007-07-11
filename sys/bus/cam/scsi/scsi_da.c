@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.38 2007/06/18 00:38:08 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.39 2007/07/11 22:53:21 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -2090,9 +2090,9 @@ dashutdown(void * arg, int howto)
 	struct cam_periph *periph;
 	struct da_softc *softc;
 
-	for (periph = TAILQ_FIRST(&dadriver.units); periph != NULL;
-	     periph = TAILQ_NEXT(periph, unit_links)) {
+	TAILQ_FOREACH(periph, &dadriver.units, unit_links) {
 		union ccb ccb;
+
 		softc = (struct da_softc *)periph->softc;
 
 		/*
