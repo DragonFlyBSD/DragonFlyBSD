@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.58 2007/06/29 21:54:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.59 2007/07/12 21:56:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -172,12 +172,6 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	struct vattr attr;
 	int (*img_first) (struct image_params *);
 
-	if (p->p_nthreads != 1) {
-		kprintf("pid %d attempt to exec with multiple LWPs present\n",
-			p->p_pid);
-		return (EINVAL);
-	}
-
 	if (debug_execve_args) {
 		kprintf("%s()\n", __func__);
 		print_execve_args(args);
@@ -187,13 +181,12 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	imgp = &image_params;
 
 	/*
-	 * Lock the process and set the P_INEXEC flag to indicate that
-	 * it should be left alone until we're done here.  This is
-	 * necessary to avoid race conditions - e.g. in ptrace() -
-	 * that might allow a local user to illicitly obtain elevated
-	 * privileges.
+	 * NOTE: P_INEXEC is handled by exec_new_vmspace() now.  We make
+	 * no modifications to the process at all until we get there.
+	 *
+	 * Note that multiple threads may be trying to exec at the same
+	 * time.  exec_new_vmspace() handles that too.
 	 */
-	p->p_flag |= P_INEXEC;
 
 	/*
 	 * Initialize part of the common data
@@ -499,8 +492,14 @@ exec_fail_dealloc:
 	}
 
 exec_fail:
-	/* we're done here, clear P_INEXEC */
-	p->p_flag &= ~P_INEXEC;
+	/*
+	 * we're done here, clear P_INEXEC if we were the ones that
+	 * set it.  Otherwise if vmspace_destroyed is still set we
+	 * raced another thread and that thread is responsible for
+	 * clearing it.
+	 */
+	if (imgp->vmspace_destroyed & 2)
+		p->p_flag &= ~P_INEXEC;
 	if (imgp->vmspace_destroyed) {
 		/* sorry, no more process anymore. exit gracefully */
 		exit1(W_EXITCODE(0, SIGABRT));
@@ -635,19 +634,38 @@ exec_unmap_first_page(struct image_params *imgp)
  * Destroy old address space, and allocate a new stack
  *	The new stack is only SGROWSIZ large because it is grown
  *	automatically in trap.c.
+ *
+ * This is the point of no return.
  */
 int
 exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 {
-	int error;
 	struct vmspace *vmspace = imgp->proc->p_vmspace;
 	vm_offset_t stack_addr = USRSTACK - maxssiz;
+	struct proc *p;
 	vm_map_t map;
+	int error;
 
+	/*
+	 * Indicate that we cannot gracefully error out any more, kill
+	 * any other threads present, and set P_INEXEC to indicate that
+	 * we are now messing with the process structure proper.
+	 *
+	 * If killalllwps() races return an error which coupled with
+	 * vmspace_destroyed will cause us to exit.  This is what we
+	 * want since another thread is patiently waiting for us to exit
+	 * in that case.
+	 */
+	p = curproc;
 	imgp->vmspace_destroyed = 1;
 
-	if (curthread->td_proc->p_nthreads > 1)
-		killlwps(curthread->td_lwp);
+	if (curthread->td_proc->p_nthreads > 1) {
+		error = killalllwps(1);
+		if (error)
+			return (error);
+	}
+	imgp->vmspace_destroyed |= 2;	/* we are responsible for P_INEXEC */
+	p->p_flag |= P_INEXEC;
 
 	/*
 	 * Prevent a pending AIO from modifying the new address space.

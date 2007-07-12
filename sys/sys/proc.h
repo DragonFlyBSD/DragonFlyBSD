@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.110 2007/07/01 01:11:37 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.111 2007/07/12 21:56:20 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -487,7 +487,7 @@ void	cpu_lwp_exit (void) __dead2;
 void	cpu_thread_exit (void) __dead2;
 void	lwp_exit (int masterexit) __dead2;
 void	lwp_dispose (struct lwp *);
-void	killlwps (struct lwp *);
+int	killalllwps (int);
 void	exit1 (int) __dead2;
 void	cpu_fork (struct lwp *, struct lwp *, int);
 int	cpu_prepare_lwp(struct lwp *, struct lwp_params *);

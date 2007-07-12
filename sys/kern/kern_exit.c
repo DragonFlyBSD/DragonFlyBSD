@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.83 2007/07/03 17:22:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.84 2007/07/12 21:56:22 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -82,6 +82,7 @@
 #include <sys/sysref2.h>
 
 static void reaplwps(void *context, int dummy);
+static void killlwps(struct lwp *lp);
 
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
 static MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
@@ -178,11 +179,52 @@ sys_extexit(struct extexit_args *uap)
 }
 
 /*
+ * Kill all lwps associated with the current process except the
+ * current lwp.   Return an error if we race another thread trying to
+ * do the same thing and lose the race.
+ *
+ * If forexec is non-zero the current thread and process flags are
+ * cleaned up so they can be reused.
+ */
+int
+killalllwps(int forexec)
+{
+	struct lwp *lp = curthread->td_lwp;
+	struct proc *p = lp->lwp_proc;
+
+	/*
+	 * Interlock against P_WEXIT.  Only one of the process's thread
+	 * is allowed to do the master exit.
+	 */
+	if (p->p_flag & P_WEXIT)
+		return (EALREADY);
+	p->p_flag |= P_WEXIT;
+
+	/*
+	 * Interlock with LWP_WEXIT and kill any remaining LWPs
+	 */
+	lp->lwp_flag |= LWP_WEXIT;
+	if (p->p_nthreads > 1)
+		killlwps(lp);
+
+	/*
+	 * If doing this for an exec, clean up the remaining thread
+	 * (us) for continuing operation after all the other threads
+	 * have been killed.
+	 */
+	if (forexec) {
+		lp->lwp_flag &= ~LWP_WEXIT;
+		p->p_flag &= ~P_WEXIT;
+	}
+	return(0);
+}
+
+/*
  * Kill all LWPs except the current one.  Do not try to signal
  * LWPs which have exited on their own or have already been
  * signaled.
  */
-void
+static void
 killlwps(struct lwp *lp)
 {
 	struct proc *p = lp->lwp_proc;
@@ -225,6 +267,7 @@ exit1(int rv)
 	struct vmspace *vm;
 	struct vnode *vtmp;
 	struct exitlist *ep;
+	int error;
 
 	if (p->p_pid == 1) {
 		kprintf("init died (signal %d, exit %d)\n",
@@ -233,21 +276,15 @@ exit1(int rv)
 	}
 
 	/*
-	 * Interlock against P_WEXIT.  Only one of the process's thread
-	 * is allowed to do the master exit.
+	 * Kill all lwps associated with the current process, return an
+	 * error if we race another thread trying to do the same thing
+	 * and lose the race.
 	 */
-	if (p->p_flag & P_WEXIT) {
+	error = killalllwps(0);
+	if (error) {
 		lwp_exit(0);
 		/* NOT REACHED */
 	}
-	p->p_flag |= P_WEXIT;
-
-	/*
-	 * Interlock with LWP_WEXIT and kill any remaining LWPs
-	 */
-	lp->lwp_flag |= LWP_WEXIT;
-	if (p->p_nthreads > 1)
-		killlwps(lp);
 
 	caps_exit(lp->lwp_thread);
 	aio_proc_rundown(p);
