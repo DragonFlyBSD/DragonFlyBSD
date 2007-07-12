@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/ccdvar.h,v 1.11.2.1 2001/09/11 09:49:54 kris Exp $ */
-/* $DragonFly: src/sys/sys/ccdvar.h,v 1.6 2007/05/17 03:20:11 dillon Exp $ */
+/* $DragonFly: src/sys/sys/ccdvar.h,v 1.7 2007/07/12 00:25:57 dillon Exp $ */
 
 /*	$NetBSD: ccdvar.h,v 1.7.2.1 1995/10/12 21:30:18 thorpej Exp $	*/
 
@@ -206,6 +206,7 @@ struct ccd_softc {
 	int		 sc_cflags;		/* configuration flags */
 	u_int64_t	 sc_size;		/* size of ccd in sectors */
 	int		 sc_ileave;		/* interleave */
+	int		 sc_maxiosize;		/* maximum I/O size */
 	u_int		 sc_nccdisks;		/* number of components */
 #define	CCD_MAXNDISKS	 65536
 	struct ccdcinfo	 *sc_cinfo;		/* component info */
