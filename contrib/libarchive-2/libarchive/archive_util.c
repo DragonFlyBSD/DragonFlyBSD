@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_util.c,v 1.13 2007/03/03 07:37:36 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_util.c,v 1.15 2007/07/06 15:36:38 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -49,6 +49,12 @@ int
 archive_api_version(void)
 {
 	return (ARCHIVE_API_VERSION);
+}
+
+int
+archive_version_stamp(void)
+{
+	return (ARCHIVE_VERSION_STAMP);
 }
 
 const char *

@@ -24,7 +24,8 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_ustar.c,v 1.21 2007/04/02 00:34:36 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_ustar.c,v 1.24 2007/06/11 05:17:30 kientzle Exp $");
+
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -277,6 +278,16 @@ __archive_write_format_header_ustar(struct archive_write *a, char h[512],
 	else {
 		/* Store in two pieces, splitting at a '/'. */
 		p = strchr(pp + strlen(pp) - USTAR_name_size - 1, '/');
+		/*
+		 * If the separator we found is the first '/', find
+		 * the next one.  (This is a pathological case that
+		 * occurs for paths of exactly 101 bytes that start with
+		 * '/'; it occurs because the separating '/' is not
+		 * stored explicitly and the reconstruction assumes that
+		 * an empty prefix means there is no '/' separator.)
+		 */
+		if (p == pp)
+			p = strchr(p + 1, '/');
 		/*
 		 * If there is no path separator, or the prefix or
 		 * remaining name are too large, return an error.

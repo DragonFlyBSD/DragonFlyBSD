@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_entry.h,v 1.21 2007/03/01 06:22:34 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive_entry.h,v 1.22 2007/05/29 01:00:18 kientzle Exp $
  */
 
 #ifndef ARCHIVE_ENTRY_H_INCLUDED
