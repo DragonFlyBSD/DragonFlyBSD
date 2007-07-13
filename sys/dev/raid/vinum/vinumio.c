@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.25 2007/06/19 06:07:55 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.26 2007/07/13 18:36:32 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -55,6 +55,8 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
     int devmajor;					    /* major devs for disk device */
     int devminor;					    /* minor devs for disk device */
     int unit;
+    int slice;
+    int part;
     char *dname;
 
     if (bcmp(drive->devicename, "/dev/", 5))		    /* device name doesn't start with /dev */
@@ -106,35 +108,34 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
     dname += 2;						    /* point past */
 
     /*
-     * Found the device.  We can expect one of
-     * two formats for the rest: a unit number,
-     * then either a partition letter for the
-     * compatiblity partition (e.g. h) or a
-     * slice ID and partition (e.g. s2e).
-     * Create a minor number for each of them.
+     * Found the device.  Require the form
+     * <unit>s<slice><partition>
      */
-    unit = 0;
-    while ((*dname >= '0')				    /* unit number */
-    &&(*dname <= '9')) {
-	unit = unit * 10 + *dname - '0';
-	dname++;
-    }
+    if (*dname < '0' || *dname > '9')
+	return(ENODEV);
+    unit = strtol(dname, &dname, 10);
+    if (*dname != 's')
+	return(ENODEV);
+    ++dname;
 
-    if (*dname == 's') {				    /* slice */
-	if (((dname[1] < '1') || (dname[1] > '4'))	    /* invalid slice */
-	||((dname[2] < 'a') || (dname[2] > 'p')))	    /* or invalid partition */
-	    return ENODEV;
-	devminor = dkmakeminor(unit, dname[1] - '0' + 1, (dname[2] - 'a'));
-    } else {						    /* compatibility partition */
-	if ((*dname < 'a') || (*dname > 'p'))		    /* or invalid partition */
-	    return ENODEV;
-	devminor = dkmakeminor(unit, 0, (dname[0] - 'a'));
-    }
+    /*
+     * Convert slice number to value suitable for
+     * dkmakeminor().  0->0, 1->2, 2->3, etc.
+     */
+    slice = strtol(dname, &dname, 10);
+    if (slice > 0)
+	++slice;
+
+    if (*dname < 'a' || *dname > 'p')
+	return ENODEV;
+
+    part = *dname - 'a';
+    devminor = dkmakeminor(unit, slice, part);
 
     /*
      * Disallow partition c
      */
-    if ((((devminor >> 17) & 0x08) | (devminor & 7)) == 2)
+    if (part == 2)
 	return ENOTTY;					    /* not buying that */
 
     drive->dev = udev2dev(makeudev(devmajor, devminor), 0);
@@ -670,11 +671,14 @@ daemon_save_config(void)
 		if ((drive->state != drive_unallocated)
 		    && (drive->state != drive_referenced)) { /* and it's a real drive */
 		    wlabel_on = 1;			    /* enable writing the label */
+		    error = 0;
+#if 0
 		    error = dev_dioctl(drive->dev, /* make the label writeable */
 			DIOCWLABEL,
 			(caddr_t) & wlabel_on,
 			FWRITE,
 			proc0.p_ucred);
+#endif
 		    if (error == 0)
 			error = write_drive(drive, (char *) vhdr, VINUMHEADERLEN, VINUM_LABEL_OFFSET);
 		    if (error == 0)
@@ -682,12 +686,14 @@ daemon_save_config(void)
 		    if (error == 0)
 			error = write_drive(drive, config, MAXCONFIG, VINUM_CONFIG_OFFSET + MAXCONFIG);	/* second copy */
 		    wlabel_on = 0;			    /* enable writing the label */
+#if 0
 		    if (error == 0)
 			error = dev_dioctl(drive->dev, /* make the label non-writeable again */
 			    DIOCWLABEL,
 			    (caddr_t) & wlabel_on,
 			    FWRITE,
 			    proc0.p_ucred);
+#endif
 		    unlockdrive(drive);
 		    if (error) {
 			log(LOG_ERR,
