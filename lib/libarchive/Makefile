@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.13 2007/06/03 21:29:07 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.14 2007/07/13 06:59:34 dillon Exp $
 
 LIB=	archive
 
@@ -9,6 +9,11 @@ CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2/libarchive
 VERSION!=	cat ${CONTRIBDIR}/../version
 ARCHIVE_API_MAJOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/\..*//'
 ARCHIVE_API_MINOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/[0-9]*\.//' -e 's/\..*//'
+ARCHIVE_API_REV!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/.*\.//'
+# Can't use /usr/bin/printf to format the version stamp here, because
+# that's not available during installworld.  Fortunately, awk is.
+ARCHIVE_VERSION_STAMP!= echo ${ARCHIVE_API_MAJOR} ${ARCHIVE_API_MINOR} ${ARCHIVE_API_REV} | awk '{printf("%d%03d%03d",$$1,$$2,$$3)}'
+
 SHLIB_MAJOR=	5
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 CFLAGS+=	-DPACKAGE_STRING=\"libarchive\ ${VERSION}\"
@@ -64,6 +69,7 @@ SRCS=	archive.h					\
 	archive_write_set_format_ar.c			\
 	archive_write_set_format_by_name.c		\
 	archive_write_set_format_cpio.c			\
+	archive_write_set_format_cpio_newc.c		\
 	archive_write_set_format_pax.c			\
 	archive_write_set_format_shar.c			\
 	archive_write_set_format_ustar.c		\
@@ -227,6 +233,7 @@ archive.h:	archive.h.in Makefile
 		sed 's/@SHLIB_MAJOR@/${SHLIB_MAJOR}/g' |		\
 		sed 's/@ARCHIVE_API_MAJOR@/${ARCHIVE_API_MAJOR}/g' |	\
 		sed 's/@ARCHIVE_API_MINOR@/${ARCHIVE_API_MINOR}/g' |	\
+		sed 's/@ARCHIVE_VERSION_STAMP@/${ARCHIVE_VERSION_STAMP}/g' | \
 		sed 's|@ARCHIVE_H_INCLUDE_INTTYPES_H@|#include <inttypes.h>  /* For int64_t */|g' |			\
 		cat > archive.h
 
