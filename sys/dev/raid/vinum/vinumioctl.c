@@ -43,7 +43,7 @@
  *
  * $Id: vinumioctl.c,v 1.14 2000/10/27 03:07:53 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumioctl.c,v 1.25.2.4 2002/02/03 00:44:19 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.10 2007/06/16 20:48:34 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.11 2007/07/13 18:55:45 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -68,11 +68,16 @@ vinumioctl(struct dev_ioctl_args *ap)
     cdev_t dev = ap->a_head.a_dev;
     u_long cmd = ap->a_cmd;
     caddr_t data = ap->a_data;
-    int error = 0;
+    int error;
     unsigned int index;					    /* for transferring config info */
     unsigned int sdno;					    /* for transferring config info */
+    unsigned int objno;
+    struct volume *vol;
+    struct partinfo *dpart;
     int fe;						    /* free list element number */
     struct _ioctl_reply *ioctl_reply = (struct _ioctl_reply *) data; /* struct to return */
+
+    error = 0;
 
     /* First, decide what we're looking at */
     switch (DEVTYPE(dev)) {
@@ -92,77 +97,87 @@ vinumioctl(struct dev_ioctl_args *ap)
 	    }
 	    ioctl_reply = (struct _ioctl_reply *) data;	    /* reinstate the address to reply to */
 	    ioctl_reply->error = 0;
-	    return 0;
+	    break;
 #endif
 
 	case VINUM_CREATE:				    /* create a vinum object */
 	    error = lock_config();			    /* get the config for us alone */
 	    if (error)					    /* can't do it, */
-		return error;				    /* give up */
+		break;
 	    error = setjmp(command_fail);		    /* come back here on error */
 	    if (error == 0)				    /* first time, */
 		ioctl_reply->error = parse_user_config((char *) data, /* update the config */
 		    &keyword_set);
 	    else if (ioctl_reply->error == 0) {		    /* longjmp, but no error status */
+		error = 0;
 		ioctl_reply->error = EINVAL;		    /* note that something's up */
 		ioctl_reply->msg[0] = '\0';		    /* no message? */
 	    }
 	    unlock_config();
-	    return 0;					    /* must be 0 to return the real error info */
+	    break;
 
 	case VINUM_GETCONFIG:				    /* get the configuration information */
 	    bcopy(&vinum_conf, data, sizeof(vinum_conf));
-	    return 0;
+	    break;
 
 	    /* start configuring the subsystem */
 	case VINUM_STARTCONFIG:
-	    return start_config(*(int *) data);		    /* just lock it.  Parameter is 'force' */
+	    error = start_config(*(int *) data);	    /* just lock it.  Parameter is 'force' */
+	    break;
 
+	case VINUM_DRIVECONFIG:
 	    /*
 	     * Move the individual parts of the config to user space.
 	     *
 	     * Specify the index of the object in the first word of data,
 	     * and return the object there
 	     */
-	case VINUM_DRIVECONFIG:
-	    index = *(int *) data;			    /* get the index */
-	    if (index >= (unsigned) vinum_conf.drives_allocated) /* can't do it */
-		return ENXIO;				    /* bang */
-	    bcopy(&DRIVE[index], data, sizeof(struct drive)); /* copy the config item out */
-	    return 0;
+	    index = *(int *) data;
+	    if (index >= (unsigned)vinum_conf.drives_allocated) {
+		error = ENXIO;
+	    } else {
+		bcopy(&DRIVE[index], data, sizeof(struct drive));
+	    }
+	    break;
 
 	case VINUM_SDCONFIG:
-	    index = *(int *) data;			    /* get the index */
-	    if (index >= (unsigned) vinum_conf.subdisks_allocated) /* can't do it */
-		return ENXIO;				    /* bang */
-	    bcopy(&SD[index], data, sizeof(struct sd));	    /* copy the config item out */
-	    return 0;
+	    index = *(int *) data;
+	    if (index >= (unsigned) vinum_conf.subdisks_allocated) {
+		error = ENXIO;
+	    } else {
+		bcopy(&SD[index], data, sizeof(struct sd));
+	    }
+	    break;
 
 	case VINUM_PLEXCONFIG:
-	    index = *(int *) data;			    /* get the index */
-	    if (index >= (unsigned) vinum_conf.plexes_allocated) /* can't do it */
-		return ENXIO;				    /* bang */
-	    bcopy(&PLEX[index], data, sizeof(struct plex)); /* copy the config item out */
-	    return 0;
+	    index = *(int *) data;
+	    if (index >= (unsigned) vinum_conf.plexes_allocated) {
+		error = ENXIO;
+	    } else {
+		bcopy(&PLEX[index], data, sizeof(struct plex));
+	    }
+	    break;
 
 	case VINUM_VOLCONFIG:
-	    index = *(int *) data;			    /* get the index */
-	    if (index >= (unsigned) vinum_conf.volumes_allocated) /* can't do it */
-		return ENXIO;				    /* bang */
-	    bcopy(&VOL[index], data, sizeof(struct volume)); /* copy the config item out */
-	    return 0;
+	    index = *(int *) data;
+	    if (index >= (unsigned) vinum_conf.volumes_allocated) {
+		error = ENXIO;
+	    } else {
+		bcopy(&VOL[index], data, sizeof(struct volume));
+	    }
+	    break;
 
 	case VINUM_PLEXSDCONFIG:
-	    index = *(int *) data;			    /* get the plex index */
-	    sdno = ((int *) data)[1];			    /* and the sd index */
-	    if ((index >= (unsigned) vinum_conf.plexes_allocated) /* plex doesn't exist */
-	    ||(sdno >= PLEX[index].subdisks))		    /* or it doesn't have this many subdisks */
-		return ENXIO;				    /* bang */
-	    bcopy(&SD[PLEX[index].sdnos[sdno]],		    /* copy the config item out */
-		data,
-		sizeof(struct sd));
-	    return 0;
-
+	    index = ((int *)data)[0];			    /* get the plex index */
+	    sdno = ((int *)data)[1];			    /* and the sd index */
+	    if ((index >= (unsigned) vinum_conf.plexes_allocated)
+		||(sdno >= PLEX[index].subdisks)) {
+		error = ENXIO;
+	    } else {
+		bcopy(&SD[PLEX[index].sdnos[sdno]], data, sizeof(struct sd));
+	    }
+	    break;
+	case VINUM_SAVECONFIG:
 	    /*
 	     * We get called in two places: one from the
 	     * userland config routines, which call us
@@ -173,28 +188,29 @@ vinumioctl(struct dev_ioctl_args *ap)
 	     * routine, which can only work if we're *not*
 	     * configuring.  In this case, supply parameter 1.
 	     */
-	case VINUM_SAVECONFIG:
 	    if (VFLAGS & VF_CONFIGURING) {		    /* must be us, the others are asleep */
 		if (*(int *) data == 0)			    /* finish config */
 		    finish_config(1);			    /* finish the configuration and update it */
 		else
-		    return EBUSY;			    /* can't do it now */
+		    error = EBUSY;
 	    }
-	    save_config();				    /* save configuration to disk */
-	    return 0;
+	    if (error == 0)
+		save_config();				    /* save configuration to disk */
+	    break;
 
 	case VINUM_RELEASECONFIG:			    /* release the config */
 	    if (VFLAGS & VF_CONFIGURING) {		    /* must be us, the others are asleep */
 		finish_config(0);			    /* finish the configuration, don't change it */
 		save_config();				    /* save configuration to disk */
-	    } else
+	    } else {
 		error = EINVAL;				    /* release what config? */
-	    return error;
+	    }
+	    break;
 
 	case VINUM_INIT:
 	    ioctl_reply = (struct _ioctl_reply *) data;	    /* reinstate the address to reply to */
 	    ioctl_reply->error = 0;
-	    return 0;
+	    break;
 
 	case VINUM_RESETCONFIG:
 	    if (vinum_inactive(0)) {			    /* if the volumes are not active */
@@ -206,13 +222,13 @@ vinumioctl(struct dev_ioctl_args *ap)
 		log(LOG_NOTICE, "vinum: CONFIGURATION OBLITERATED\n");
 		ioctl_reply = (struct _ioctl_reply *) data; /* reinstate the address to reply to */
 		ioctl_reply->error = 0;
-		return 0;
+	    } else {
+		error = EBUSY;
 	    }
-	    return EBUSY;
 
 	case VINUM_SETSTATE:
 	    setstate((struct vinum_ioctl_msg *) data);	    /* set an object state */
-	    return 0;
+	    break;
 
 	    /*
 	     * Set state by force, without changing
@@ -220,105 +236,141 @@ vinumioctl(struct dev_ioctl_args *ap)
 	     */
 	case VINUM_SETSTATE_FORCE:
 	    setstate_by_force((struct vinum_ioctl_msg *) data);	/* set an object state */
-	    return 0;
+	    break;
 
 #ifdef VINUMDEBUG
 	case VINUM_MEMINFO:
 	    vinum_meminfo(data);
-	    return 0;
+	    break;
 
 	case VINUM_MALLOCINFO:
-	    return vinum_mallocinfo(data);
+	    error = vinum_mallocinfo(data);
+	    break;
 
 	case VINUM_RQINFO:
-	    return vinum_rqinfo(data);
+	    error = vinum_rqinfo(data);
+	    break;
 #endif
 
 	case VINUM_REMOVE:
 	    remove((struct vinum_ioctl_msg *) data);	    /* remove an object */
-	    return 0;
+	    break;
 
 	case VINUM_GETFREELIST:				    /* get a drive free list element */
 	    index = *(int *) data;			    /* get the drive index */
 	    fe = ((int *) data)[1];			    /* and the free list element */
 	    if ((index >= (unsigned) vinum_conf.drives_allocated) /* plex doesn't exist */
-	    ||(DRIVE[index].state == drive_unallocated))
-		return ENODEV;
-	    if (fe >= DRIVE[index].freelist_entries)	    /* no such entry */
-		return ENOENT;
-	    bcopy(&DRIVE[index].freelist[fe],
-		data,
-		sizeof(struct drive_freelist));
-	    return 0;
+		||(DRIVE[index].state == drive_unallocated)) {
+		error = ENODEV;
+	    } else if (fe >= DRIVE[index].freelist_entries) {
+		error = ENOENT;
+	    } else {
+		bcopy(&DRIVE[index].freelist[fe], data,
+		      sizeof(struct drive_freelist));
+	    }
+	    break;
 
 	case VINUM_RESETSTATS:
 	    resetstats((struct vinum_ioctl_msg *) data);    /* reset object stats */
-	    return 0;
+	    break;
 
 	    /* attach an object to a superordinate object */
 	case VINUM_ATTACH:
 	    attachobject((struct vinum_ioctl_msg *) data);
-	    return 0;
+	    break;
 
 	    /* detach an object from a superordinate object */
 	case VINUM_DETACH:
 	    detachobject((struct vinum_ioctl_msg *) data);
-	    return 0;
+	    break;
 
 	    /* rename an object */
 	case VINUM_RENAME:
 	    renameobject((struct vinum_rename_msg *) data);
-	    return 0;
+	    break;
 
 	    /* replace an object */
 	case VINUM_REPLACE:
 	    replaceobject((struct vinum_ioctl_msg *) data);
-	    return 0;
+	    break;
 
 	case VINUM_DAEMON:
 	    vinum_daemon();				    /* perform the daemon */
-	    return 0;
+	    break;
 
 	case VINUM_FINDDAEMON:				    /* check for presence of daemon */
-	    return vinum_finddaemon();
-	    return 0;
+	    error = vinum_finddaemon();
+	    break;
 
 	case VINUM_SETDAEMON:				    /* set daemon flags */
-	    return vinum_setdaemonopts(*(int *) data);
+	    error = vinum_setdaemonopts(*(int *) data);
+	    break;
 
 	case VINUM_GETDAEMON:				    /* get daemon flags */
 	    *(int *) data = daemon_options;
-	    return 0;
+	    break;
 
 	case VINUM_PARITYOP:				    /* check/rebuild RAID-4/5 parity */
 	    parityops((struct vinum_ioctl_msg *) data);
-	    return 0;
+	    break;
 
 	    /* move an object */
 	case VINUM_MOVE:
 	    moveobject((struct vinum_ioctl_msg *) data);
-	    return 0;
+	    break;
 	default:
-	    /* FALLTHROUGH */
+	    error = EINVAL;
 	    break;
 	}
-
+	break;
     case VINUM_LABEL:
     case VINUM_DRIVE_TYPE:
     case VINUM_SD_TYPE:
     case VINUM_RAWSD_TYPE:
     case VINUM_RAWPLEX_TYPE:
     case VINUM_PLEX_TYPE:
+	error = EINVAL;
+	break;
     case VINUM_VOLUME_TYPE:
+	objno = Volno(dev);
+
+	if ((unsigned)objno >= (unsigned)vinum_conf.volumes_allocated) {
+	    error = ENXIO;
+	    break;
+	}
+	vol = &VOL[objno];
+	if (vol->state != volume_up) {
+	    error = EIO;
+	    break;
+	}
+
+	switch(cmd) {
+	case DIOCGPART:
+	    dpart = (void *)data;
+
+	    bzero(dpart, sizeof(*dpart));
+	    dpart->media_offset  = 0;
+	    dpart->media_size    = (u_int64_t)vol->size * DEV_BSIZE;
+	    dpart->media_blocks  = vol->size;
+	    dpart->media_blksize = DEV_BSIZE;
+	    dpart->fstype = FS_BSDFFS;
+	    break;
+	default:
+	    error = EINVAL;
+	}
+	break;
     default:
+	error = EINVAL;
+	break;
+    }
+    if (error) {
 	log(LOG_WARNING,
 	    "vinumioctl: invalid ioctl from process %d (%s): %lx\n",
 	    curproc->p_pid,
 	    curproc->p_comm,
 	    cmd);
-	return EINVAL;
     }
-    return 0;						    /* XXX */
+    return error;
 }
 
 /*
