@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.42 2007/07/10 22:36:01 swildner Exp $
-.Dd July 10, 2007
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.43 2007/07/13 07:36:26 swildner Exp $
+.Dd July 13, 2007
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1694,6 +1694,25 @@ If
 is set to
 .Dq Li YES
 this is the list of interfaces to use.
+.It Va rtsold_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+run the
+.Xr rtsold 8
+daemon at boot time.
+The
+.Xr rtsold 8
+daemon is used for automatic discovery of non-link local addresses.
+.It Va rtsold_flags
+.Pq Vt str
+If
+.Va rtsold_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to the
+.Xr rtsold 8
+daemon.
 .It Va ipxgateway_enable
 .Pq Vt bool
 If set to
@@ -2620,6 +2639,7 @@ has not completed within the specified time (in seconds).
 .Xr rpc.lockd 8 ,
 .Xr rpc.statd 8 ,
 .Xr rpcbind 8 ,
+.Xr rtsold 8 ,
 .Xr rwhod 8 ,
 .Xr savecore 8 ,
 .Xr sshd 8 ,
