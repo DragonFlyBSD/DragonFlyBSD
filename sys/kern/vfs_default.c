@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.47 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.48 2007/07/13 01:20:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1216,7 +1216,8 @@ vop_stdclose(struct vop_close_args *ap)
 	struct vnode *vp = ap->a_vp;
 
 	KASSERT(vp->v_opencount > 0,
-		("VOP_STDCLOSE: BAD OPENCOUNT %p %d\n", vp, vp->v_opencount));
+		("VOP_STDCLOSE: BAD OPENCOUNT %p %d type=%d ops=%p flgs=%08x\n",
+		vp, vp->v_opencount, vp->v_type, *vp->v_ops, vp->v_flag));
 	if (ap->a_fflag & FWRITE) {
 		KASSERT(vp->v_writecount > 0,
 			("VOP_STDCLOSE: BAD WRITECOUNT %p %d\n", 
