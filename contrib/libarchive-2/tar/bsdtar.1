@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.bin/tar/bsdtar.1,v 1.33 2007/01/09 08:12:17 kientzle Exp $
+.\" $FreeBSD: src/usr.bin/tar/bsdtar.1,v 1.35 2007/05/29 05:39:10 kientzle Exp $
 .\"
 .Dd April 13, 2004
 .Dt BSDTAR 1
@@ -50,6 +50,9 @@
 .Sh DESCRIPTION
 .Nm
 creates and manipulates streaming archive files.
+This implementation can extract from tar, pax, cpio, zip, jar, ar,
+and ISO 9660 cdrom images and can create tar, pax, cpio, ar,
+and shar archives.
 .Pp
 The first synopsis form shows a
 .Dq bundled
@@ -463,6 +466,9 @@ archive:
 To extract all entries from the archive on
 the default tape drive:
 .Dl Nm Fl x
+.Pp
+To examine the contents of an ISO 9660 cdrom image:
+.Dl Nm Fl tf Pa image.iso
 .Pp
 To move file hierarchies, invoke
 .Nm
