@@ -28,7 +28,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     $FreeBSD: src/share/man/man4/faith.4,v 1.6.2.4 2002/08/28 04:44:23 brooks Exp $
-.\"     $DragonFly: src/share/man/man4/faith.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\"     $DragonFly: src/share/man/man4/faith.4,v 1.3 2007/07/14 21:48:15 swildner Exp $
 .\"
 .Dd April 10, 1999
 .Dt FAITH 4
@@ -105,12 +105,12 @@ interface.
 To avoid possible misuse,
 .Xr sysctl 8
 variable
-.Li net.inet6.ip6.keepfaith
+.Va net.inet6.ip6.keepfaith
 must be set to
 .Li 1
 prior to the use of the interface.
 When
-.Li net.inet6.ip6.keepfaith
+.Va net.inet6.ip6.keepfaith
 is
 .Li 0 ,
 no packet will be captured by

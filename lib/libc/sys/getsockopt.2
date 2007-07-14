@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)getsockopt.2	8.4 (Berkeley) 5/2/95
 .\" $FreeBSD: src/lib/libc/sys/getsockopt.2,v 1.12.2.11 2002/01/09 17:44:15 yar Exp $
-.\" $DragonFly: src/lib/libc/sys/getsockopt.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/getsockopt.2,v 1.5 2007/07/14 21:48:15 swildner Exp $
 .\"
 .Dd May 2, 1995
 .Dt GETSOCKOPT 2
@@ -238,7 +238,7 @@ The system places an absolute maximum on these values, which is accessible
 through the
 .Xr sysctl 3
 MIB variable
-.Dq Li kern.ipc.maxsockbuf .
+.Va kern.ipc.maxsockbuf .
 .Pp
 .Dv SO_SNDLOWAT
 is an option to set the minimum count for output operations.

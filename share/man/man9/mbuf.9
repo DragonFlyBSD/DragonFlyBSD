@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
-.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.6 2007/02/11 00:13:18 swildner Exp $
+.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.7 2007/07/14 21:48:15 swildner Exp $
 .\"
 .Dd October 17, 2000
 .Dt MBUF 9
@@ -251,7 +251,7 @@ is set to
 .Dv MB_WAIT ,
 a failed allocation will result in the caller being put
 to sleep for a designated
-kern.ipc.mbuf_wait
+.Va kern.ipc.mbuf_wait
 .Xr ( sysctl 8
 tunable)
 number of ticks.

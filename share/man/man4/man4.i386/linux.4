@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/man4.i386/linux.4,v 1.1 2003/09/17 23:08:13 hmp Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/linux.4,v 1.2 2007/07/14 21:48:15 swildner Exp $
 .\" $FreeBSD: src/share/man/man4/man4.i386/linux.4,v 1.6 2002/12/12 17:25:57 ru Exp $
 .Dd September 17, 2003
 .Dt LINUX 4 i386
@@ -61,12 +61,12 @@ a true (albeit limited) ABI implementation is provided.
 The following
 .Xr sysctl 8
 tunable variables are available:
-.Bl -tag -width compat.linux.oss_version
-.It compat.linux.osname
+.Bl -tag -width ".Va compat.linux.oss_version"
+.It Va compat.linux.osname
 Linux kernel operating system name.
-.It compat.linux.osrelease
+.It Va compat.linux.osrelease
 Linux kernel operating system release.
-.It compat.linux.oss_version
+.It Va compat.linux.oss_version
 Linux Open Sound System version.
 .El
 .Pp

@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/share/man/man4/si.4,v 1.20.2.5 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/si.4,v 1.3 2004/03/11 12:28:55 hmp Exp $
+.\" $DragonFly: src/share/man/man4/si.4,v 1.4 2007/07/14 21:48:15 swildner Exp $
 .Dd September 16, 1995
 .Os
 .Dt SI 4
@@ -60,11 +60,14 @@ The si device driver also responds to the
 utility for configuring drain-on-close timeouts.
 .Pp
 The driver also defines 3 sysctl variables that can be manipulated:
-machdep.si_debug sets the debug level for the whole driver.
+.Va machdep.si_debug
+sets the debug level for the whole driver.
 It depends
-on the driver being compiled with SI_DEBUG. machdep.si_pollrate
+on the driver being compiled with SI_DEBUG.
+.Va machdep.si_pollrate
 sets how often per second the driver polls for lost interrupts.
-machdep.si_realpoll sets whether or not the card will treat the
+.Va machdep.si_realpoll
+sets whether or not the card will treat the
 poll intervals as if they were interrupts.
 .Pp
 An open on a /dev device node controlled by the si driver obeys the same
@@ -157,8 +160,11 @@ The interrupt tuning rate is not believed to be optimal at this time for
 maximum efficiency.
 .Pp
 Polled mode (a feature of standard Specialix drivers) is not implemented,
-but it can be approximated by turning on machdep.si_realpoll.  The poll
-frequency is set by machdep.si_pollrate (in units of 1/100th of a second).
+but it can be approximated by turning on
+.Va machdep.si_realpoll.
+The poll frequency is set by
+.Va machdep.si_pollrate
+(in units of 1/100th of a second).
 .Pp
 The driver does not yet support baud rates higher than 115,200 on SX
 modules.

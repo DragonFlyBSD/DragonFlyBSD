@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ttcp.4,v 1.8.2.6 2001/12/17 11:30:12 ru Exp $
-.\" $DragonFly: src/share/man/man4/ttcp.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ttcp.4,v 1.3 2007/07/14 21:48:15 swildner Exp $
 .\"
 .Dd January 18, 1995
 .Dt TTCP 4
@@ -75,7 +75,7 @@ recognize old, duplicate packets, which in turn reduces the amount of
 time the
 .Tn TCP
 protocol must maintain state after a connection closes.  The
-.Dq Li net.inet.tcp.rfc1644
+.Va net.inet.tcp.rfc1644
 MIB variable can be used to disable
 .Tn T/TCP
 negotiation at run time; however, the protocol has been designed to
@@ -204,7 +204,7 @@ immediately closed.
 The
 .Tn T/TCP
 extensions require the
-.Dq Li net.inet.tcp.rfc1644
+.Va net.inet.tcp.rfc1644
 MIB variable to be true in order for the appropriate
 .Tn TCP
 options to be sent.  See

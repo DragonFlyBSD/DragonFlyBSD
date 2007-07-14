@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/security.7,v 1.13.2.11 2002/04/13 02:04:44 keramida Exp $
-.\" $DragonFly: src/share/man/man7/security.7,v 1.8 2007/02/19 11:10:11 swildner Exp $
+.\" $DragonFly: src/share/man/man7/security.7,v 1.9 2007/07/14 21:48:16 swildner Exp $
 .\"
 .Dd September 18, 1999
 .Dt SECURITY 7
@@ -346,7 +346,9 @@ An enterprising intruder can use a KLD module to install
 his own bpf device or other sniffing device on a running kernel.
 To avoid these problems you have to run
 the kernel at a higher secure level, at least securelevel 1.  The securelevel
-can be set with a sysctl on the kern.securelevel variable.  Once you have
+can be set with a sysctl on the
+.Va kern.securelevel
+variable.  Once you have
 set the securelevel to 1, write access to raw devices will be denied and
 special chflags flags, such as
 .Sq schg ,
@@ -602,7 +604,12 @@ exist with the internal chargen port.  A competent sysadmin will turn off all
 of these inetd-internal test services.
 .Pp
 Spoofed packet attacks may also be used to overload the kernel route cache.
-Refer to the net.inet.ip.rtexpire, rtminexpire, and rtmaxcache sysctl
+Refer to the
+.Va net.inet.ip.rtexpire ,
+.Va net.inet.ip.rtminexpire ,
+and
+.Va net.inet.ip.rtmaxcache
+sysctl
 parameters.  A spoofed packet attack that uses a random source IP will cause
 the kernel to generate a temporary cached route in the route table, viewable
 with

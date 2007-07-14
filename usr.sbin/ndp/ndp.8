@@ -1,5 +1,5 @@
 .\"	$FreeBSD: src/usr.sbin/ndp/ndp.8,v 1.1.2.8 2003/08/12 16:27:57 ume Exp $
-.\"	$DragonFly: src/usr.sbin/ndp/ndp.8,v 1.4 2006/03/01 08:08:45 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/ndp/ndp.8,v 1.5 2007/07/14 21:48:16 swildner Exp $
 .\"	$KAME: ndp.8,v 1.15 2001/02/08 07:17:03 itojun Exp $
 .\"
 .\" Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -144,7 +144,7 @@ received on the
 .Ar interface .
 Note that the kernel does not accept Router Advertisement messages
 unless the
-.Li net.inet6.ip6.accept_rtadv
+.Va net.inet6.ip6.accept_rtadv
 variable is non-0, even if the flag is on.
 This flag is set to 1 by default.
 .El

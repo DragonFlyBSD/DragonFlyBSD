@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ip.4	8.2 (Berkeley) 11/30/93
 .\" $FreeBSD: src/share/man/man4/ip.4,v 1.13.2.9 2002/05/02 02:40:26 silby Exp $
-.\" $DragonFly: src/share/man/man4/ip.4,v 1.4 2007/04/04 06:13:25 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ip.4,v 1.5 2007/07/14 21:48:15 swildner Exp $
 .\"
 .Dd March 3, 2001
 .Dt IP 4
@@ -178,18 +178,18 @@ use the default range of values, normally
 through
 .Dv IPPORT_USERRESERVED .
 This is adjustable through the sysctl setting:
-.Sy net.inet.ip.portrange.first
+.Va net.inet.ip.portrange.first
 and
-.Sy net.inet.ip.portrange.last .
+.Va net.inet.ip.portrange.last .
 .It Dv IP_PORTRANGE_HIGH
 use a high range of values, normally
 .Dv IPPORT_HIFIRSTAUTO
 and
 .Dv IPPORT_HILASTAUTO .
 This is adjustable through the sysctl setting:
-.Sy net.inet.ip.portrange.hifirst
+.Va net.inet.ip.portrange.hifirst
 and
-.Sy net.inet.ip.portrange.hilast .
+.Va net.inet.ip.portrange.hilast .
 .It Dv IP_PORTRANGE_LOW
 use a low range of ports, which are normally restricted to
 privileged processes on
@@ -200,9 +200,9 @@ down to
 .Li IPPORT_RESERVEDSTART
 in descending order.
 This is adjustable through the sysctl setting:
-.Sy net.inet.ip.portrange.lowfirst
+.Va net.inet.ip.portrange.lowfirst
 and
-.Sy net.inet.ip.portrange.lowlast .
+.Va net.inet.ip.portrange.lowlast .
 .El
 .Ss "Multicast Options"
 .Tn IP

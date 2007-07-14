@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)inet.4	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man4/inet.4,v 1.11.2.6 2001/12/17 11:30:12 ru Exp $
-.\" $DragonFly: src/share/man/man4/inet.4,v 1.4 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/inet.4,v 1.5 2007/07/14 21:48:15 swildner Exp $
 .\"
 .Dd February 14, 1995
 .Dt INET 4
@@ -164,9 +164,10 @@ When the last reference to an IP route is dropped, the route is
 examined to determine if it was created by cloning such a route.  If
 this is the case, the
 .Dv RTF_PROTO3
-flag is turned on, and the expiration timer is initialized to go off
-in net.inet.ip.rtexpire seconds.  If such a route is re-referenced,
-the flag and expiration timer are reset.
+flag is turned on, and the expiration timer is initialized to go off in
+.Va net.inet.ip.rtexpire
+seconds.
+If such a route is re-referenced, the flag and expiration timer are reset.
 .It
 A kernel timeout runs once every ten minutes, or sooner if there are
 soon-to-expire routes in the kernel routing table, and deletes the
@@ -174,14 +175,16 @@ expired routes.
 .El
 .Pp
 A dynamic process is in place to modify the value of
-net.inet.ip.rtexpire if the number of cached routes grows too large.
+.Va net.inet.ip.rtexpire
+if the number of cached routes grows too large.
 If after an expiration run there are still more than
-net.inet.ip.rtmaxcache unreferenced routes remaining, the rtexpire
+.Va net.inet.ip.rtmaxcache
+unreferenced routes remaining, the rtexpire
 value is multiplied by \(34, and any routes which have longer
 expiration times have those times adjusted.  This process is damped
 somewhat by specification of a minimum rtexpire value
-(net.inet.ip.rtminexpire), and by restricting the reduction to once in
-a ten-minute period.
+.Va ( net.inet.ip.rtminexpire ) ,
+and by restricting the reduction to once in a ten-minute period.
 .Pp
 If some external process deletes the original route from which a
 protocol-cloned route was generated, the ``child route'' is deleted.

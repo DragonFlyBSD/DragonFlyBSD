@@ -33,7 +33,7 @@
 .\"
 .\"	@(#)traceroute.8	8.1 (Berkeley) 6/6/93
 .\"
-.\" $DragonFly: src/usr.sbin/traceroute/traceroute.8,v 1.4 2007/05/23 06:38:22 hasso Exp $
+.\" $DragonFly: src/usr.sbin/traceroute/traceroute.8,v 1.5 2007/07/14 21:48:16 swildner Exp $
 .Dd May 22, 2007
 .Dt TRACEROUTE 8
 .Os
@@ -107,7 +107,7 @@ This is useful for checking for asymmetric routing.
 Set the max time-to-live (max number of hops) used in outgoing probe
 packets.
 The default is the value of the system's
-.Cm net.inet.ip.ttl
+.Va net.inet.ip.ttl
 MIB variable, which defaults to 64.
 .It Fl M
 If found, show the MPLS Label and the Experimental (EXP) bit for the hop.

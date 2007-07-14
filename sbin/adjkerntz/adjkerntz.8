@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/adjkerntz/adjkerntz.8,v 1.18.2.5 2002/08/21 18:58:00 trhodes Exp $
-.\" $DragonFly: src/sbin/adjkerntz/adjkerntz.8,v 1.4 2006/02/17 19:33:32 swildner Exp $
+.\" $DragonFly: src/sbin/adjkerntz/adjkerntz.8,v 1.5 2007/07/14 21:48:15 swildner Exp $
 .\"
 .Dd April 4, 1996
 .Dt ADJKERNTZ 8
@@ -62,7 +62,7 @@ If that file does not exist, it means that the CMOS clock keeps UTC time.
 The
 .Nm
 utility passes this state to the
-.Pa machdep.wall_cmos_clock
+.Va machdep.wall_cmos_clock
 kernel variable.
 .Pp
 Adjustments may be needed at system startup and shutdown, and
@@ -88,7 +88,7 @@ and sets the kernel clock to the corresponding UTC time.
 The
 .Nm
 utility also stores the local time zone offset into the
-.Pa machdep.adjkerntz
+.Va machdep.adjkerntz
 kernel variable, for use by subsequent invocations of
 .Em "'adjkerntz -a'"
 and by local time file systems.
@@ -110,7 +110,7 @@ Then
 exits.
 .It Fl a Op Fl s
 This form is used to update the local time CMOS clock and kernel
-.Pa machdep.adjkerntz
+.Va machdep.adjkerntz
 variable when time zone changes occur,
 e.g., when entering or leaving daylight savings time.
 The
@@ -120,7 +120,7 @@ the previously stored
 time zone offset, and the changed time zone rule to
 calculate a new time zone offset.
 It stores the new offset into the
-.Pa machdep.adjkerntz
+.Va machdep.adjkerntz
 kernel variable, and updates the wall CMOS clock to the new local time.
 If
 .Em "'adjkerntz -a'"

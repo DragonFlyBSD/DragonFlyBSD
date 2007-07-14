@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)chroot.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/chroot.2,v 1.7.2.8 2002/12/11 14:06:37 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/chroot.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/chroot.2,v 1.3 2007/07/14 21:48:15 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt CHROOT 2
@@ -66,14 +66,14 @@ has no effect on the process's current directory.
 This call is restricted to the super-user.
 .Pp
 Depending on the setting of the
-.Ql kern.chroot_allow_open_directories
+.Va kern.chroot_allow_open_directories
 sysctl variable, open filedescriptors which reference directories
 will make the
 .Fn chroot
 fail as follows:
 .Pp
 If
-.Ql kern.chroot_allow_open_directories
+.Va kern.chroot_allow_open_directories
 is set to zero,
 .Fn chroot
 will always fail with
@@ -81,7 +81,7 @@ will always fail with
 if there are any directories open.
 .Pp
 If
-.Ql kern.chroot_allow_open_directories
+.Va kern.chroot_allow_open_directories
 is set to one (the default),
 .Fn chroot
 will fail with
@@ -92,7 +92,7 @@ process is already subject to a
 call.
 .Pp
 Any other value for
-.Ql kern.chroot_allow_open_directories
+.Va kern.chroot_allow_open_directories
 will bypass the check for open directories
 .Pp
 Upon successful completion, a value of 0 is returned.  Otherwise,
