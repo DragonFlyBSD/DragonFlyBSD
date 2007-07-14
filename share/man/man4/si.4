@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/share/man/man4/si.4,v 1.20.2.5 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/si.4,v 1.4 2007/07/14 21:48:15 swildner Exp $
+.\" $DragonFly: src/share/man/man4/si.4,v 1.5 2007/07/14 21:56:46 swildner Exp $
 .Dd September 16, 1995
 .Os
 .Dt SI 4
@@ -161,7 +161,7 @@ maximum efficiency.
 .Pp
 Polled mode (a feature of standard Specialix drivers) is not implemented,
 but it can be approximated by turning on
-.Va machdep.si_realpoll.
+.Va machdep.si_realpoll .
 The poll frequency is set by
 .Va machdep.si_pollrate
 (in units of 1/100th of a second).
