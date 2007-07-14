@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.20 2007/06/03 13:02:24 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.21 2007/07/14 07:29:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,7 @@
 
 #include <machine/md_var.h>
 
-#define MAX_BPAGES 128
+#define MAX_BPAGES 1024
 
 struct bus_dma_tag {
 	bus_dma_tag_t	  parent;
@@ -289,9 +289,12 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 				panic("bus_dmamap_create: page reallocation "
 				      "not implemented");
 			}
-			pages = atop(dmat->maxsize);
+
+			pages = MAX(atop(dmat->maxsize), 1);
 			pages = MIN(maxpages - total_bpages, pages);
-			error = alloc_bounce_pages(dmat, pages);
+			pages = MAX(pages, 1);
+			if (alloc_bounce_pages(dmat, pages) < pages)
+				error = ENOMEM;
 
 			if ((dmat->flags & BUS_DMA_MIN_ALLOC_COMP) == 0) {
 				if (error == 0)
