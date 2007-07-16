@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.65 2007/06/09 03:13:02 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.66 2007/07/16 21:16:49 dillon Exp $
 #
 
 # compat target
@@ -30,7 +30,7 @@ TAR?=	tar
 
 PKGSRC_CDRECORD?=	cdrecord-2.00.3nb2.tgz
 PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20070205
-CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20051229
+CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
 PKGSRC_PACKAGES?=	cdrecord-2.00.3nb2.tgz
 
