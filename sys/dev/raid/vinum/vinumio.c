@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.26 2007/07/13 18:36:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.27 2007/07/16 21:31:06 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -672,7 +672,7 @@ daemon_save_config(void)
 		    && (drive->state != drive_referenced)) { /* and it's a real drive */
 		    wlabel_on = 1;			    /* enable writing the label */
 		    error = 0;
-#if 0
+#if 1
 		    error = dev_dioctl(drive->dev, /* make the label writeable */
 			DIOCWLABEL,
 			(caddr_t) & wlabel_on,
@@ -686,7 +686,7 @@ daemon_save_config(void)
 		    if (error == 0)
 			error = write_drive(drive, config, MAXCONFIG, VINUM_CONFIG_OFFSET + MAXCONFIG);	/* second copy */
 		    wlabel_on = 0;			    /* enable writing the label */
-#if 0
+#if 1
 		    if (error == 0)
 			error = dev_dioctl(drive->dev, /* make the label non-writeable again */
 			    DIOCWLABEL,
