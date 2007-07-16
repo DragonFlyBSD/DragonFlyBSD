@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libarchive/config.h,v 1.7 2007/05/05 21:16:57 pavalos Exp $ */
+/* $DragonFly: src/lib/libarchive/config.h,v 1.8 2007/07/16 22:20:15 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -316,8 +316,14 @@
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1
 
+/* Define to 1 if the system has the type `uintmax_t'. */
+#define HAVE_UINTMAX_T 1
+
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
+
+/* Define to 1 if the system has the type `unsigned long long'. */
+#define HAVE_UNSIGNED_LONG_LONG 1
 
 /* Define to 1 if you have the `utime' function. */
 #define HAVE_UTIME 1
@@ -403,18 +409,6 @@
 /* Define for large files, on AIX-style hosts. */
 /* #undef _LARGE_FILES */
 
-/* Define to `long long' if <sys/types.h> does not define. */
-/* #undef __int64_t */
-
-/* Define to `unsigned long long' if <sys/types.h> does not define. */
-/* #undef __uint64_t */
-
-/* Define to `__int64_t' if <sys/types.h> does not define. */
-#define _int64_t __int64_t
-
-/* Define to `__uint64_t' if <sys/types.h> does not define. */
-#define _uint64_t __uint64_t
-
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */
 
@@ -424,7 +418,7 @@
 /* Define to `unsigned long' if <sys/types.h> does not define. */
 /* #undef id_t */
 
-/* Define to `_int64_t' if <sys/types.h> does not define. */
+/* Define int64_t to a valid signed 64-bit type, if necessary. */
 /* #undef int64_t */
 
 /* Define to `int64_t' if <sys/types.h> does not define. */
@@ -439,13 +433,10 @@
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 /* #undef size_t */
 
-/* Define to `_uint64_t' if <sys/types.h> does not define. */
-/* #undef u_int64_t */
-
 /* Define to `int' if <sys/types.h> doesn't define. */
 /* #undef uid_t */
 
-/* Define to `u_int64_t' if <sys/types.h> does not define. */
+/* Define uint64_t to an unsigned 64-bit type, if necessary. */
 /* #undef uint64_t */
 
 /* Define to `uint64_t' if <sys/types.h> does not define. */
