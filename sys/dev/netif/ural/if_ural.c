@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.17 2007/07/02 23:52:05 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.18 2007/07/16 11:21:49 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -68,7 +68,7 @@ SYSCTL_INT(_hw_usb_ural, OID_AUTO, debug, CTLFLAG_RW, &uraldebug, 0,
 
 #define URAL_RSSI(rssi)					\
 	((rssi) > (RAL_NOISE_FLOOR + RAL_RSSI_CORR) ?	\
-	 ((rssi) - RAL_NOISE_FLOOR + RAL_RSSI_CORR) : 0)
+	 ((rssi) - (RAL_NOISE_FLOOR + RAL_RSSI_CORR)) : 0)
 
 /* various supported device vendors/products */
 static const struct usb_devno ural_devs[] = {
