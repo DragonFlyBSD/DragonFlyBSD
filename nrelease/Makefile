@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.66 2007/07/16 21:16:49 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.67 2007/07/17 19:29:48 dillon Exp $
 #
 
 # compat target
@@ -19,6 +19,7 @@ KERNCONF ?= GENERIC
 
 PKGSRC_PREFIX?=		/usr/pkg
 PKGBIN_PKG_ADD?=	${PKGSRC_PREFIX}/sbin/pkg_add
+PKGBIN_PKG_DELETE?=	${PKGSRC_PREFIX}/sbin/pkg_delete
 PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
@@ -32,7 +33,16 @@ PKGSRC_CDRECORD?=	cdrecord-2.00.3nb2.tgz
 PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20070205
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
+# Default packages to be installed on the release ISO.
+#
 PKGSRC_PACKAGES?=	cdrecord-2.00.3nb2.tgz
+
+# Even though buildiso wipes the packages, our check target has to run
+# first and old packages (listed as they appear in pkg_info) must be
+# cleaned out in order for the pkg_add -n test we use in the check target
+# to operate properly.
+#
+OLD_PKGSRC_PACKAGES?=
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `pkgcustomizeiso'
@@ -42,7 +52,8 @@ REQ_ROOTSKELS= ${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
 .if defined(WITH_INSTALLER)
-PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6a.tgz dfuife_curses-1.5.tgz
+OLD_PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6
+PKGSRC_PACKAGES+=	dfuibe_installer-1.1.7nb1.tgz dfuife_curses-1.5.tgz
 PKGSRC_PACKAGES+=	gettext-lib-0.14.5.tgz libaura-3.1.tgz \
 			libdfui-4.2.tgz libinstaller-5.1.tgz
 ROOTSKELS+=		${.CURDIR}/installer
@@ -82,6 +93,9 @@ check:
 	@echo "    make pkgsrc_conf"
 	@exit 1
 .endif
+.for PKG in ${OLD_PKGSRC_PACKAGES}
+	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_DELETE} -K ${ISOROOT}/var/db/pkg ${PKG} > /dev/null 2>&1 || exit 0
+.endfor
 .for PKG in ${PKGSRC_PACKAGES}
 	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}/var/db/pkg -n ${PKG} > /dev/null 2>&1 || \
 		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make [installer_]fetch"; exit 1)
