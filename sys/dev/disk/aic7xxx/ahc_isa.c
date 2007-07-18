@@ -35,12 +35,12 @@
  * $Id$
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_isa.c,v 1.5 2004/10/15 23:39:52 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_isa.c,v 1.1 2007/07/06 04:56:22 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_isa.c,v 1.2 2007/07/18 21:48:34 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
 
-#include <cpu/limits.h>		/* For CHAR_BIT */
+#include <machine/limits.h>	/* For CHAR_BIT */
 #include <bus/isa/isavar.h>	/* For ISA attach glue */
 
 
