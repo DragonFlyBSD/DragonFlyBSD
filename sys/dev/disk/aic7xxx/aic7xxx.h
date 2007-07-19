@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.h#85 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.h,v 1.53 2004/10/19 20:48:06 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.h,v 1.5 2007/07/06 05:45:52 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.h,v 1.56 2007/04/19 18:53:52 scottl Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.h,v 1.6 2007/07/19 00:23:04 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_H_
@@ -1228,7 +1228,7 @@ void			 ahc_softc_insert(struct ahc_softc *);
 struct ahc_softc	*ahc_find_softc(struct ahc_softc *ahc);
 void			 ahc_set_unit(struct ahc_softc *, int);
 void			 ahc_set_name(struct ahc_softc *, char *);
-void			 ahc_alloc_scbs(struct ahc_softc *ahc);
+int			 ahc_alloc_scbs(struct ahc_softc *ahc);
 void			 ahc_free(struct ahc_softc *ahc);
 int			 ahc_reset(struct ahc_softc *ahc, int reinit);
 void			 ahc_shutdown(void *arg);

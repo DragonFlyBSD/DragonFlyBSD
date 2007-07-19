@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#246 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.38 2005/12/04 02:12:40 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.28 2007/07/07 01:06:07 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.40 2007/04/19 18:53:52 scottl Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.29 2007/07/19 00:23:04 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -5688,7 +5688,8 @@ ahd_init_scbdata(struct ahd_softc *ahd)
 	scb_data->init_level++;
 
 	/* Perform initial CCB allocation */
-	ahd_alloc_scbs(ahd);
+	while (ahd_alloc_scbs(ahd) != 0)
+		;
 
 	if (scb_data->numscbs == 0) {
 		kprintf("%s: ahd_init_scbdata - "
@@ -5935,7 +5936,8 @@ look_again:
 
 		if (tries++ != 0)
 			return (NULL);
-		ahd_alloc_scbs(ahd);
+		if (ahd_alloc_scbs(ahd) == 0)
+			return (NULL);
 		goto look_again;
 	}
 	LIST_REMOVE(scb, links.le);
@@ -6006,7 +6008,7 @@ ahd_free_scb(struct ahd_softc *ahd, struct scb *scb)
 	aic_platform_scb_free(ahd, scb);
 }
 
-void
+int
 ahd_alloc_scbs(struct ahd_softc *ahd)
 {
 	struct scb_data *scb_data;
@@ -6026,7 +6028,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 	scb_data = &ahd->scb_data;
 	if (scb_data->numscbs >= AHD_SCB_MAX_ALLOC)
 		/* Can't allocate any more */
-		return;
+		return (0);
 
 	if (scb_data->scbs_left != 0) {
 		int offset;
@@ -6043,7 +6045,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 				     (void **)&hscb_map->vaddr,
 				     BUS_DMA_NOWAIT, &hscb_map->dmamap) != 0) {
 			kfree(hscb_map, M_DEVBUF);
-			return;
+			return (0);
 		}
 
 		SLIST_INSERT_HEAD(&scb_data->hscb_maps, hscb_map, links);
@@ -6073,7 +6075,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 				     (void **)&sg_map->vaddr,
 				     BUS_DMA_NOWAIT, &sg_map->dmamap) != 0) {
 			kfree(sg_map, M_DEVBUF);
-			return;
+			return (0);
 		}
 
 		SLIST_INSERT_HEAD(&scb_data->sg_maps, sg_map, links);
@@ -6107,7 +6109,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 				     (void **)&sense_map->vaddr,
 				     BUS_DMA_NOWAIT, &sense_map->dmamap) != 0) {
 			kfree(sense_map, M_DEVBUF);
-			return;
+			return (0);
 		}
 
 		SLIST_INSERT_HEAD(&scb_data->sense_maps, sense_map, links);
@@ -6186,6 +6188,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 		sense_busaddr += AHD_SENSE_BUFSIZE;
 		scb_data->numscbs++;
 	}
+	return (i);
 }
 
 void

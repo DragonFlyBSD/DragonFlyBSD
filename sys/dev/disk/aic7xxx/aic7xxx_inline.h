@@ -39,8 +39,8 @@
  *
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_inline.h#47 $
  *
- * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_inline.h,v 1.23 2003/12/17 00:02:10 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_inline.h,v 1.3 2007/07/06 00:01:16 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_inline.h,v 1.25 2007/04/19 18:53:52 scottl Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_inline.h,v 1.4 2007/07/19 00:23:04 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_INLINE_H_
@@ -364,7 +364,8 @@ ahc_get_scb(struct ahc_softc *ahc)
 	struct scb *scb;
 
 	if ((scb = SLIST_FIRST(&ahc->scb_data->free_scbs)) == NULL) {
-		ahc_alloc_scbs(ahc);
+		if (ahc_alloc_scbs(ahc) == 0)
+			return (NULL);
 		scb = SLIST_FIRST(&ahc->scb_data->free_scbs);
 		if (scb == NULL)
 			return (NULL);
