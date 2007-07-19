@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.117 2007/06/26 20:39:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.118 2007/07/19 01:16:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -758,7 +758,10 @@ mount_warning(struct mount *mp, const char *ctl, ...)
 		kprintf("\n");
 		kfree(buf, M_TEMP);
 	} else {
-		kprintf("unmount(%p): ", mp);
+		kprintf("unmount(%p", mp);
+		if (mp->mnt_ncmounton.ncp && mp->mnt_ncmounton.ncp->nc_name)
+			kprintf(",%s", mp->mnt_ncmounton.ncp->nc_name);
+		kprintf("): ");
 		kvprintf(ctl, va);
 		kprintf("\n");
 	}
