@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/hda/hdac.c,v 1.36.2.3 2007/06/21 20:58:44 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.7 2007/06/26 14:56:50 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.8 2007/07/19 21:23:10 corecode Exp $
  */
 
 /*
@@ -86,7 +86,7 @@
 #define HDA_DRV_TEST_REV	"20070619_0045"
 #define HDA_WIDGET_PARSER_REV	1
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.7 2007/06/26 14:56:50 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.8 2007/07/19 21:23:10 corecode Exp $");
 
 #define HDA_BOOTVERBOSE(stmt)	do {			\
 	if (bootverbose != 0) {				\
@@ -220,6 +220,7 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.7 2007/06/26 
 #define ASUS_M2N_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x8234)
 #define ASUS_M2NPVMX_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x81cb)
 #define ASUS_P5BWD_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0x81ec)
+#define ASUS_VMCSM_SUBVENDOR	HDA_MODEL_CONSTRUCT(NVIDIA, 0xcb84)
 #define ASUS_ALL_SUBVENDOR	HDA_MODEL_CONSTRUCT(ASUS, 0xffff)
 
 /* IBM / Lenovo */
@@ -2072,8 +2073,9 @@ hdac_widget_pin_getconfig(struct hdac_widget *w)
 		default:
 			break;
 		}
-	} else if (id == HDA_CODEC_AD1986A && sc->pci_subvendor ==
-	    ASUS_M2NPVMX_SUBVENDOR) {
+	} else if (id == HDA_CODEC_AD1986A &&
+	    (sc->pci_subvendor == ASUS_M2NPVMX_SUBVENDOR ||
+	     sc->pci_subvendor == ASUS_VMCSM_SUBVENDOR)) {
 		switch (nid) {
 		case 28:	/* LINE */
 			config &= ~HDA_CONFIG_DEFAULTCONF_DEVICE_MASK;
@@ -4256,7 +4258,8 @@ hdac_vendor_patch_parse(struct hdac_devinfo *devinfo)
 			if (w->nid != 3)
 				w->enable = 0;
 		}
-		if (subvendor == ASUS_M2NPVMX_SUBVENDOR) {
+		if (subvendor == ASUS_M2NPVMX_SUBVENDOR ||
+		    subvendor == ASUS_VMCSM_SUBVENDOR) {
 			/* nid 28 is mic, nid 29 is line-in */
 			w = hdac_widget_get(devinfo, 15);
 			if (w != NULL)
