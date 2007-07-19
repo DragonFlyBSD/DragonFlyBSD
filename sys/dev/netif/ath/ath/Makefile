@@ -34,13 +34,13 @@
 # THE POSSIBILITY OF SUCH DAMAGES.
 #
 # $FreeBSD: src/sys/modules/ath/Makefile,v 1.1.10.1 2006/04/04 23:55:33 sam Exp $
-# $DragonFly: src/sys/dev/netif/ath/ath/Makefile,v 1.1 2006/07/13 09:15:22 sephe Exp $
+# $DragonFly: src/sys/dev/netif/ath/ath/Makefile,v 1.2 2007/07/19 12:40:35 sephe Exp $
 #
 
 KMOD	= if_ath
 SRCS	= if_ath.c if_ath_pci.c
 SRCS	+= device_if.h bus_if.h pci_if.h opt_ath.h
 
-KMODDEPS = ath_hal ath_rate
+KMODDEPS = wlan ath_hal ath_rate
 
 .include <bsd.kmod.mk>
