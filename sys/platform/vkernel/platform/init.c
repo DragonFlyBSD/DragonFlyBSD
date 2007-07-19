@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.44 2007/07/10 18:35:38 josepht Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.45 2007/07/19 20:18:00 josepht Exp $
  */
 
 #include <sys/types.h>
@@ -141,6 +141,8 @@ main(int ac, char **av)
 	int c;
 	int i;
 	int n;
+	int real_vkernel_enable;
+	size_t real_vkernel_enable_size;
 	
 	save_ac = ac;
 	save_av = av;
@@ -153,6 +155,12 @@ main(int ac, char **av)
 	optcpus = 2;
 #endif
 	lwp_cpu_lock = LCL_NONE;
+
+	real_vkernel_enable_size = sizeof(real_vkernel_enable);
+	sysctlbyname("vm.vkernel_enable", &real_vkernel_enable, &real_vkernel_enable_size, NULL, 0);
+	
+	if (real_vkernel_enable == 0)
+		errx(1,"vm.vkernel_enable is %d, must be set to 1 to execute a vkernel!", real_vkernel_enable);
 
 	real_ncpus_size = sizeof(real_ncpus);
 	sysctlbyname("hw.ncpu", &real_ncpus, &real_ncpus_size, NULL, 0);
