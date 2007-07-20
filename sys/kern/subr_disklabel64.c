@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/subr_disklabel64.c,v 1.4 2007/06/19 06:39:06 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disklabel64.c,v 1.5 2007/07/20 17:21:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -118,6 +118,9 @@ l64_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
 	size_t bpsize;
 	int secsize;
 
+	/*
+	 * XXX I/O size is subject to device DMA limitations
+	 */
 	secsize = info->d_media_blksize;
 	bpsize = (sizeof(*dlp) + secsize - 1) & ~(secsize - 1);
 
@@ -289,6 +292,9 @@ l64_writedisklabel(cdev_t dev, struct diskslices *ssp,
 
 	lp = lpx.lab64;
 
+	/*
+	 * XXX I/O size is subject to device DMA limitations
+	 */
 	secsize = ssp->dss_secsize;
 	bpsize = (sizeof(*lp) + secsize - 1) & ~(secsize - 1);
 

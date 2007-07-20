@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.35 2007/05/15 22:44:21 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.36 2007/07/20 17:21:54 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -142,8 +142,9 @@ swapdev_strategy(struct vop_strategy_args *ap)
 	 * bp->b_vp is not modified.  Strategy code is always supposed to
 	 * use the passed vp.
 	 *
-	 * XXX do a dev_dstrategy() call on sp->sw_device instead of on
-	 * sp->sw_vp ?
+	 * We have to use vn_strategy() here even if we know we have a
+	 * device in order to properly break up requests which exceed the
+	 * device's DMA limits.
 	 */
 	vn_strategy(sp->sw_vp, nbio);
 	return 0;

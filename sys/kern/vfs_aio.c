@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.41 2007/06/29 21:54:08 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.42 2007/07/20 17:21:52 dillon Exp $
  */
 
 /*
@@ -944,8 +944,12 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 
 	crit_exit();
 	
-	/* Perform transfer. */
-	dev_dstrategy(vp->v_rdev, &bp->b_bio1);
+	/*
+	 * Perform the transfer.  vn_strategy must be used even though we
+	 * know we have a device in order to deal with requests which exceed
+	 * device DMA limitations.
+	 */
+	vn_strategy(vp, &bp->b_bio1);
 
 	notify = 0;
 	crit_enter();

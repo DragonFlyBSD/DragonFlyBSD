@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/subr_diskgpt.c,v 1.3 2007/06/19 06:07:57 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskgpt.c,v 1.4 2007/07/20 17:21:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -136,6 +136,9 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 		goto done;
 	}
 
+	/*
+	 * XXX subject to device dma size limitations
+	 */
 	bp2 = geteblk((int)(table_blocks * info->d_media_blksize));
 	bp2->b_bio1.bio_offset = (off_t)table_lba * info->d_media_blksize;
 	bp2->b_bcount = table_blocks * info->d_media_blksize;

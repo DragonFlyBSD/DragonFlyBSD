@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.51 2007/05/09 00:53:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.52 2007/07/20 17:21:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,6 +60,15 @@
 
 #include <sys/thread2.h>
 
+/*
+ * Specfs chained debugging (bitmask)
+ *
+ * 0 - disable debugging
+ * 1 - report chained I/Os
+ * 2 - force 4K chained I/Os
+ */
+#define SPEC_CHAIN_DEBUG	0
+
 static int	spec_advlock (struct vop_advlock_args *);  
 static int	spec_bmap (struct vop_bmap_args *);
 static int	spec_close (struct vop_close_args *);
@@ -75,6 +84,7 @@ static int	spec_print (struct vop_print_args *);
 static int	spec_read (struct vop_read_args *);  
 static int	spec_strategy (struct vop_strategy_args *);
 static int	spec_write (struct vop_write_args *);
+static void	spec_strategy_done(struct bio *nbio);
 
 struct vop_ops spec_vnode_vops = {
 	.vop_default =		vop_defaultop,
@@ -438,7 +448,9 @@ spec_inactive(struct vop_inactive_args *ap)
 }
 
 /*
- * Just call the device strategy routine
+ * Convert a vnode strategy call into a device strategy call.  Vnode strategy
+ * calls are not limited to device DMA limits so we have to deal with the
+ * case.
  *
  * spec_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
@@ -447,8 +459,11 @@ spec_strategy(struct vop_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
+	struct buf *nbp;
 	struct vnode *vp;
 	struct mount *mp;
+	int chunksize;
+	int maxiosize;
 
 	if (bp->b_cmd != BUF_CMD_READ &&
 	    (LIST_FIRST(&bp->b_dep)) != NULL && bioops.io_start) {
@@ -474,8 +489,148 @@ spec_strategy(struct vop_strategy_args *ap)
 				mp->mnt_stat.f_syncwrites++;
 		}
 	}
-	dev_dstrategy_chain(vp->v_rdev, bio);
+
+        /*
+         * Device iosize limitations only apply to read and write.  Shortcut
+         * the I/O if it fits.
+         */
+	maxiosize = vp->v_rdev->si_iosize_max;
+#if SPEC_CHAIN_DEBUG & 2
+	maxiosize = 4096;
+#endif
+        if (bp->b_bcount <= maxiosize ||
+            (bp->b_cmd != BUF_CMD_READ && bp->b_cmd != BUF_CMD_WRITE)) {
+                dev_dstrategy_chain(vp->v_rdev, bio);
+                return (0);
+        }
+
+	/*
+	 * Clone the buffer and set up an I/O chain to chunk up the I/O.
+	 */
+	nbp = kmalloc(sizeof(*bp), M_DEVBUF, M_INTWAIT|M_ZERO);
+	initbufbio(nbp);
+	LIST_INIT(&nbp->b_dep);
+	BUF_LOCKINIT(nbp);
+	BUF_LOCK(nbp, LK_EXCLUSIVE);
+	BUF_KERNPROC(nbp);
+	nbp->b_vp = vp;
+	nbp->b_flags = B_PAGING | (bp->b_flags & B_BNOCLIP);
+	nbp->b_data = bp->b_data;
+	nbp->b_bio1.bio_done = spec_strategy_done;
+	nbp->b_bio1.bio_offset = bio->bio_offset;
+	nbp->b_bio1.bio_caller_info1.ptr = bio;
+
+	/*
+	 * Start the first transfer
+	 */
+	if (vn_isdisk(vp, NULL))
+		chunksize = vp->v_rdev->si_bsize_phys;
+	else
+		chunksize = DEV_BSIZE;
+	chunksize = maxiosize / chunksize * chunksize;
+#if SPEC_CHAIN_DEBUG & 1
+	kprintf("spec_strategy chained I/O chunksize=%d\n", chunksize);
+#endif
+	nbp->b_cmd = bp->b_cmd;
+	nbp->b_bcount = chunksize;
+	nbp->b_bufsize = chunksize;	/* used to detect a short I/O */
+	nbp->b_bio1.bio_caller_info2.index = chunksize;
+
+#if SPEC_CHAIN_DEBUG & 1
+	kprintf("spec_strategy: chain %p offset %d/%d bcount %d\n",
+		bp, 0, bp->b_bcount, nbp->b_bcount);
+#endif
+
+	dev_dstrategy(vp->v_rdev, &nbp->b_bio1);
 	return (0);
+}
+
+/*
+ * Chunked up transfer completion routine - chain transfers until done
+ */
+static
+void
+spec_strategy_done(struct bio *nbio)
+{
+	struct buf *nbp = nbio->bio_buf;
+	struct bio *bio = nbio->bio_caller_info1.ptr;	/* original bio */
+	struct buf *bp = bio->bio_buf;			/* original bp */
+	int chunksize = nbio->bio_caller_info2.index;	/* chunking */
+	int boffset = nbp->b_data - bp->b_data;
+
+	if (nbp->b_flags & B_ERROR) {
+		/*
+		 * An error terminates the chain, propogate the error back
+		 * to the original bp
+		 */
+		bp->b_flags |= B_ERROR;
+		bp->b_error = nbp->b_error;
+		bp->b_resid = bp->b_bcount - boffset +
+			      (nbp->b_bcount - nbp->b_resid);
+#if SPEC_CHAIN_DEBUG & 1
+		kprintf("spec_strategy: chain %p error %d bcount %d/%d\n",
+			bp, bp->b_error, bp->b_bcount,
+			bp->b_bcount - bp->b_resid);
+#endif
+		kfree(nbp, M_DEVBUF);
+		biodone(bio);
+	} else if (nbp->b_resid) {
+		/*
+		 * A short read or write terminates the chain
+		 */
+		bp->b_error = nbp->b_error;
+		bp->b_resid = bp->b_bcount - boffset +
+			      (nbp->b_bcount - nbp->b_resid);
+#if SPEC_CHAIN_DEBUG & 1
+		kprintf("spec_strategy: chain %p short read(1) bcount %d/%d\n",
+			bp, bp->b_bcount - bp->b_resid, bp->b_bcount);
+#endif
+		kfree(nbp, M_DEVBUF);
+		biodone(bio);
+	} else if (nbp->b_bcount != nbp->b_bufsize) {
+		/*
+		 * A short read or write can also occur by truncating b_bcount
+		 */
+#if SPEC_CHAIN_DEBUG & 1
+		kprintf("spec_strategy: chain %p short read(2) bcount %d/%d\n",
+			bp, nbp->b_bcount + boffset, bp->b_bcount);
+#endif
+		bp->b_error = 0;
+		bp->b_bcount = nbp->b_bcount + boffset; 
+		bp->b_resid = nbp->b_resid;
+		kfree(nbp, M_DEVBUF);
+		biodone(bio);
+	} else if (nbp->b_bcount + boffset == bp->b_bcount) {
+		/*
+		 * No more data terminates the chain
+		 */
+#if SPEC_CHAIN_DEBUG & 1
+		kprintf("spec_strategy: chain %p finished bcount %d\n",
+			bp, bp->b_bcount);
+#endif
+		bp->b_error = 0;
+		bp->b_resid = 0;
+		kfree(nbp, M_DEVBUF);
+		biodone(bio);
+	} else {
+		/*
+		 * Continue the chain
+		 */
+		boffset += nbp->b_bcount;
+		nbp->b_data = bp->b_data + boffset;
+		nbp->b_bcount = bp->b_bcount - boffset;
+		if (nbp->b_bcount > chunksize)
+			nbp->b_bcount = chunksize;
+		nbp->b_bio1.bio_done = spec_strategy_done;
+		nbp->b_bio1.bio_offset = bio->bio_offset + boffset;
+
+#if SPEC_CHAIN_DEBUG & 1
+		kprintf("spec_strategy: chain %p offset %d/%d bcount %d\n",
+			bp, boffset, bp->b_bcount, nbp->b_bcount);
+#endif
+
+		dev_dstrategy(nbp->b_vp->v_rdev, &nbp->b_bio1);
+	}
 }
 
 /*
