@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/hda/hdac.c,v 1.36.2.3 2007/06/21 20:58:44 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.8 2007/07/19 21:23:10 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.9 2007/07/22 18:53:19 dillon Exp $
  */
 
 /*
@@ -86,7 +86,7 @@
 #define HDA_DRV_TEST_REV	"20070619_0045"
 #define HDA_WIDGET_PARSER_REV	1
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.8 2007/07/19 21:23:10 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.9 2007/07/22 18:53:19 dillon Exp $");
 
 #define HDA_BOOTVERBOSE(stmt)	do {			\
 	if (bootverbose != 0) {				\
@@ -5651,6 +5651,10 @@ hdac_release_resources(struct hdac_softc *sc)
 	hdac_unlock(sc);
 
 	hdac_irq_free(sc);
+
+	/* give pending interrupts stuck on the lock a chance to clear */
+	/* bad hack */
+	tsleep(&sc->irq, 0, "hdaslp", hz / 10);
 
 	device_get_children(sc->dev, &devlist, &devcount);
 	for (i = 0; devlist != NULL && i < devcount; i++) {
