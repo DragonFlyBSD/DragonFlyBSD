@@ -34,7 +34,7 @@
  *
  * $Id: v.c,v 1.31 2000/09/03 01:29:26 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/v.c,v 1.26.2.3 2001/03/13 03:04:06 grog Exp $
- * $DragonFly: src/sbin/vinum/v.c,v 1.5 2007/01/20 19:20:39 dillon Exp $
+ * $DragonFly: src/sbin/vinum/v.c,v 1.6 2007/07/22 22:46:09 corecode Exp $
  */
 
 #include <ctype.h>
@@ -54,14 +54,13 @@
 #include "vext.h"
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <readline/history.h>
 #include <readline/readline.h>
 #include <sys/linker.h>
 #include <sys/module.h>
 #include <sys/resource.h>
 
 FILE *cf;						    /* config file handle */
-FILE *history;						    /* history file */
+FILE *hist;						    /* history file */
 char *historyfile;					    /* and its name */
 
 char *dateformat;					    /* format in which to store date */
@@ -139,11 +138,11 @@ main(int argc, char *argv[], char *envp[])
 	    errno);
 	exit(1);
     }
-    history = fopen(historyfile, "a+");
-    if (history != NULL) {
+    hist = fopen(historyfile, "a+");
+    if (hist != NULL) {
 	timestamp();
-	fprintf(history, "*** " VINUMMOD " started ***\n");
-	fflush(history);				    /* before we start the daemon */
+	fprintf(hist, "*** " VINUMMOD " started ***\n");
+	fflush(hist);				    /* before we start the daemon */
     }
     superdev = open(VINUM_SUPERDEV_NAME, O_RDWR);	    /* open vinum superdevice */
     if (superdev < 0) {					    /* no go */
@@ -224,8 +223,8 @@ main(int argc, char *argv[], char *envp[])
 		if (tokens)
 		    parseline(tokens, token);		    /* and do what he says */
 	    }
-	    if (history)
-		fflush(history);
+	    if (hist)
+		fflush(hist);
 	}
     }
     return 0;						    /* normal completion */
@@ -316,11 +315,11 @@ parseline(int args, char *argv[])
     int j;
     enum keyword command;				    /* command to execute */
 
-    if (history != NULL) {				    /* save the command to history file */
+    if (hist != NULL) {				    /* save the command to history file */
 	timestamp();
 	for (i = 0; i < args; i++)			    /* all args */
-	    fprintf(history, "%s ", argv[i]);
-	fputs("\n", history);
+	    fprintf(hist, "%s ", argv[i]);
+	fputs("\n", hist);
     }
     if ((args == 0)					    /* empty line */
     ||(*argv[0] == '#'))				    /* or a comment, */
@@ -525,9 +524,9 @@ make_devices(void)
 	    perror(VINUMMOD ": Can't write to /dev");
 	return;
     }
-    if (history) {
+    if (hist) {
 	timestamp();
-	fprintf(history, "*** Created devices ***\n");
+	fprintf(hist, "*** Created devices ***\n");
     }
     if (superdev >= 0)					    /* super device open */
 	close(superdev);
@@ -849,7 +848,7 @@ timestamp(void)
     char datetext[MAXDATETEXT];
     time_t sec;
 
-    if (history != NULL) {
+    if (hist != NULL) {
 	if (gettimeofday(&now, NULL) != 0) {
 	    fprintf(stderr, "Can't get time: %s\n", strerror(errno));
 	    return;
@@ -857,7 +856,7 @@ timestamp(void)
 	sec = now.tv_sec;
 	date = localtime(&sec);
 	strftime(datetext, MAXDATETEXT, dateformat, date),
-	    fprintf(history,
+	    fprintf(hist,
 	    "%s.%06ld ",
 	    datetext,
 	    now.tv_usec);

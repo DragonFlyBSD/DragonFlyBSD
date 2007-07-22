@@ -34,7 +34,7 @@
  *
  * $Id: commands.c,v 1.14 2000/11/14 20:01:23 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/commands.c,v 1.31.2.6 2003/06/06 05:13:29 grog Exp $
- * $DragonFly: src/sbin/vinum/commands.c,v 1.7 2007/01/20 19:20:39 dillon Exp $
+ * $DragonFly: src/sbin/vinum/commands.c,v 1.8 2007/07/22 22:46:09 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -59,7 +59,6 @@
 #include <sys/linker.h>
 #include <sys/module.h>
 #include <sys/wait.h>
-#include <readline/history.h>
 #include <readline/readline.h>
 #include <devstat.h>
 
