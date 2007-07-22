@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.45 2007/07/19 20:18:00 josepht Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.46 2007/07/22 20:04:00 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -231,10 +231,13 @@ main(int ac, char **av)
 			next_cpu = -1;
 			if (strncmp("map", optarg, 3) == 0) {
 				lwp_cpu_lock = LCL_PER_CPU;
-				if (*(optarg + 3) == ',')
+				if (optarg[3] == ',') {
 					next_cpu = strtol(optarg+4, &endp, 0);
-				if (*endp != '\0')
-					usage("Bad target CPU number at '%s'", endp);
+					if (*endp != '\0')
+						usage("Bad target CPU number at '%s'", endp);
+				} else {
+					next_cpu = 0;
+				}
 				if (next_cpu < 0 || next_cpu > real_ncpus - 1)
 					usage("Bad target CPU, valid range is 0-%d", real_ncpus - 1);
 			} else if (strncmp("any", optarg, 3) == 0) {
