@@ -1,4 +1,4 @@
-$DragonFly: site/save/README,v 1.8 2007/07/12 03:05:27 justin Exp $
+$DragonFly: site/save/README,v 1.9 2007/07/23 02:14:09 justin Exp $
 
 dragonfly.jpeg	From Kenneth Stailey <kstailey@yahoo.com>
 	(cool, Kenneth borrowed heavily to superimpose the two though
@@ -56,6 +56,20 @@ nullify-desktop2.png
 	1600x1200, second is the same image with a widescreen aspect ratio 
 	of 1920x1200.  Images are BSD licensed and originally found at: 
 	http://nullify.wordpress.com/2007/07/11/dragonflybsd-wallpaper/
+
+nullify-desktop3.png
+nullify-desktop4.png
+nullify-desktop5.png
+nullify-desktop6.png
+nullify-desktop7.png
+nullify-desktop8.png
+nullify-desktop9.png
+nullify-desktop10.png
+
+        Backgrounds with a DragonFly logo, all 1920x1440.  Created by
+	"Wiger van Houten" <crown.of.locusts@gmail.com>.  
+	Images are BSD licensed and originally found at:
+	http://nullify.wordpress.com/2007/07/14/more-dragonfly-wallpapers/
 
 studbolt-desktop01.jpg
 studbolt-desktop01-wide.jpg
