@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.48 2007/06/19 06:07:57 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.49 2007/07/23 19:53:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -914,7 +914,6 @@ dsopen(cdev_t dev, int mode, u_int flags,
 			return (EINVAL);
 		}
 	}
-	dssetmask(sp, part);
 
 	/*
 	 * Do not allow special raw-extension partitions to be opened
@@ -926,6 +925,11 @@ dsopen(cdev_t dev, int mode, u_int flags,
 		if ((info->d_dsflags & DSO_RAWEXTENSIONS) == 0)
 			return (EINVAL);
 	}
+
+	/*
+	 * Ok, we are open
+	 */
+	dssetmask(sp, part);
 	return (0);
 }
 
