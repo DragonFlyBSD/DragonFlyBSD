@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.52 2007/07/20 17:21:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.53 2007/07/23 19:19:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <sys/stat.h>
 #include <sys/fcntl.h>
 #include <sys/vmmeter.h>
+#include <sys/bus.h>
 #include <sys/tty.h>
 
 #include <vm/vm.h>
@@ -494,7 +495,10 @@ spec_strategy(struct vop_strategy_args *ap)
          * Device iosize limitations only apply to read and write.  Shortcut
          * the I/O if it fits.
          */
-	maxiosize = vp->v_rdev->si_iosize_max;
+	if ((maxiosize = vp->v_rdev->si_iosize_max) == 0) {
+		kprintf("%s: si_iosize_max not set!\n", dev_dname(vp->v_rdev));
+		maxiosize = MAXPHYS;
+	}
 #if SPEC_CHAIN_DEBUG & 2
 	maxiosize = 4096;
 #endif
