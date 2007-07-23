@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.7 2007/06/03 04:48:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.8 2007/07/23 19:26:09 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -228,6 +228,7 @@ acd_open(struct dev_open_args *ap)
        out. */
     if (!dev)
         return ENXIO;
+
     struct ata_device *atadev = device_get_softc(dev);
     struct acd_softc *cdp = device_get_ivars(dev);
     struct ata_request *request;
@@ -261,11 +262,16 @@ acd_open(struct dev_open_args *ap)
     }
     ata_free_request(request);
 
-    if (count_dev(cdp->cdev) == 1) {
+    /*
+     * DragonFly abstracts out the disk layer so our device may not have
+     * a vnode directly associated with it.  count_dev() cannot be used.
+     */
+    if (atadev->opencount == 0) {
 	acd_prevent_allow(dev, 1);
 	cdp->flags |= F_LOCKED;
 	acd_read_toc(dev);
     }
+    ++atadev->opencount;
     return 0;
 }
 
@@ -274,14 +280,17 @@ acd_close(struct dev_close_args *ap)
 {
     device_t dev = ap->a_head.a_dev->si_drv1;
     struct acd_softc *cdp = device_get_ivars(dev);
+    struct ata_device *atadev = device_get_softc(dev);
 
     if (!cdp)
 	return ENXIO;
 
-    if (count_dev(cdp->cdev) == 1) {
+    if (atadev->opencount == 1) {
 	acd_prevent_allow(dev, 0);
 	cdp->flags &= ~F_LOCKED;
     }
+    if (atadev->opencount > 0)
+	--atadev->opencount;
     return 0;
 }
 
@@ -346,7 +355,7 @@ acd_ioctl(struct dev_ioctl_args *ap)
 	break;
 
     case CDIOCEJECT:
-	if (count_dev(cdp->cdev) > 1) {
+	if (atadev->opencount > 1) {
 	    error = EBUSY;
 	    break;
 	}
@@ -354,7 +363,7 @@ acd_ioctl(struct dev_ioctl_args *ap)
 	break;
 
     case CDIOCCLOSE:
-	if (count_dev(cdp->cdev) > 1)
+	if (atadev->opencount > 1)
 	    break;
 	error = acd_tray(dev, 1);
 	break;
@@ -767,7 +776,7 @@ acd_strategy(struct dev_strategy_args *ap)
     device_t dev = ap->a_head.a_dev->si_drv1;
     struct bio *bp = ap->a_bio;
     struct buf *bbp = bp->bio_buf;
-    struct ata_device *atadev = device_get_softc(dev);
+/*    struct ata_device *atadev = device_get_softc(dev);*/
     struct acd_softc *cdp = device_get_ivars(dev);
     cdev_t cdev = cdp->cdev;
 
@@ -784,6 +793,8 @@ acd_strategy(struct dev_strategy_args *ap)
 	biodone(bp);
 	return 0;
     }
+
+    KASSERT(bbp->b_bcount != 0, ("acd_strategy: 0-length I/O"));
 
     bp->bio_driver_info = cdev;
     bbp->b_resid = bbp->b_bcount;
@@ -842,6 +853,8 @@ acd_start(device_t dev, struct bio *bp)
     }
 
     count = bbp->b_bcount / blocksize;
+    KASSERT(count != 0, ("acd_strategy: 0-length I/O %d bytes vs %d blksize",
+		bbp->b_bcount, blocksize));
 
     if (bbp->b_cmd == BUF_CMD_READ) {
 	/* if transfer goes beyond range adjust it to be within limits */

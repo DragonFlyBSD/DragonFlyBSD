@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.123 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.7 2007/06/05 18:30:40 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.8 2007/07/23 19:26:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -426,6 +426,7 @@ struct ata_device {
 #define         ATA_D_MEDIA_CHANGED     0x0002
 #define         ATA_D_ENC_PRESENT       0x0004
 #define         ATA_D_48BIT_ACTIVE      0x0008
+    int				opencount;	/* when tracking needed */
 };
 
 /* structure for holding DMA Physical Region Descriptors (PRD) entries */

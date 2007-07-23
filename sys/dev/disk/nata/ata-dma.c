@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.147 2007/04/08 21:53:52 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-dma.c,v 1.4 2007/06/05 18:30:40 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-dma.c,v 1.5 2007/07/23 19:26:09 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -227,6 +227,7 @@ ata_dmaload(device_t dev, caddr_t data, int32_t count, int dir,
     }
     if (!count) {
 	device_printf(dev, "FAILURE - zero length DMA transfer attempted\n");
+	panic("zero length DMA transfer");
 	return EIO;
     }
     if (((uintptr_t)data & (ch->dma->alignment - 1)) ||
