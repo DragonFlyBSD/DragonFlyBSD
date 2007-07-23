@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.6 2007/06/03 04:48:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.7 2007/07/23 19:24:11 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -588,7 +588,8 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	request->driver = hcb;
 	request->data = buf;
 	request->bytecount = len;
-	request->transfersize = min(request->bytecount, 65534);
+	request->transfersize = min(request->bytecount,
+				min(softc->ata_ch->dma->max_iosize, 65534));
 	request->timeout = ccb_h->timeout / 1000; /* XXX lost granularity */
 	request->retries = 2;
 	request->callback = &atapi_cb;
