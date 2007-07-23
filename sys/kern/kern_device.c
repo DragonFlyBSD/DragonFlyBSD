@@ -27,7 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.26 2007/05/17 03:01:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.27 2007/07/23 18:59:50 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -514,7 +514,7 @@ dev_ops_add_override(cdev_t backing_dev, struct dev_ops *template,
 	*ops = *template;
 	ops->head.name = backing_ops->head.name;
 	ops->head.maj = backing_ops->head.maj;
-	ops->head.flags = backing_ops->head.flags;
+	ops->head.flags |= backing_ops->head.flags & ~D_TRACKCLOSE;
 	compile_dev_ops(ops);
 	dev_ops_add(ops, mask, match);
 

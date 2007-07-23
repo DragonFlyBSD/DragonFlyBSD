@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.37 2007/06/17 23:50:16 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.38 2007/07/23 18:59:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ static d_dump_t diskdump;
 static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
 
 static struct dev_ops disk_ops = {
-	{ "disk" },
+	{ "disk", 0, D_DISK },
 	.d_open = diskopen,
 	.d_close = diskclose,
 	.d_read = physread,
