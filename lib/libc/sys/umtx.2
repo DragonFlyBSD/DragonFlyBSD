@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.10 2007/06/30 19:03:52 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.11 2007/07/23 23:04:21 dillon Exp $
 .\"
 .Dd February 21, 2005
 .Dt UMTX 2
@@ -83,11 +83,15 @@ Kernel support for userland mutexes is based on the physical memory backing
 the user address.  Two userland programs may use this facility through
 .Fn mmap ,
 .Fn sysv ,
-and
-.Fn rfork
-based shared memory.  It is important to note that the kernel does not
+.Fn rfork ,
+or light weight process-based shared memory.
+It is important to note that the kernel does not
 take responsibility for adjusting the contents of the mutex or for the
 userland implementation of the mutex.
+.Pp
+.Fn umtx_sleep
+does not restart in case of a signal, even if the signal specifies
+that system calls should restart.
 .Sh RETURN VALUES
 .Fn umtx_sleep
 will return 0 if it successfully slept and was then woken up.  Otherwise
