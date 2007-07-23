@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.32 2007/06/18 00:38:08 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.33 2007/07/23 19:20:43 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -769,6 +769,7 @@ cdregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_TYPE_CDROM | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_CD);
 	disk_create(periph->unit_number, &softc->disk, &cd_ops);
+	softc->disk.d_rawdev->si_iosize_max = MAXPHYS;
 	softc->disk.d_info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL |
 					DSO_COMPATPARTA;
 

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.39 2007/07/11 22:53:21 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.40 2007/07/23 19:20:43 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -1350,6 +1350,7 @@ daregister(struct cam_periph *periph, void *arg)
 	 * Register this media as a disk
 	 */
 	disk_create(periph->unit_number, &softc->disk, &da_ops);
+	softc->disk.d_rawdev->si_iosize_max = MAXPHYS;
 
 	/*
 	 * Add async callbacks for bus reset and
