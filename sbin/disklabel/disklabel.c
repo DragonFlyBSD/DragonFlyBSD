@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.23 2007/06/19 19:07:41 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.24 2007/07/24 19:48:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1262,10 +1262,15 @@ checklabel(struct disklabel32 *lp)
 	for (i = 0; i < lp->d_npartitions; i++) {
 		pp = &lp->d_partitions[i];
 		if (part_set[i]) {
+
 			if (part_size_type[i] == '*') {
 				if (i == RAW_PART) {
 					pp->p_size = lp->d_secperunit;
 				} else {
+					if (part_offset_type[i] != '*') {
+						if (total_size < pp->p_offset)
+							total_size = pp->p_offset;
+					}
 					if (hog_part != -1)
 						Warning("Too many '*' partitions (%c and %c)",
 						    hog_part + 'a',i + 'a');

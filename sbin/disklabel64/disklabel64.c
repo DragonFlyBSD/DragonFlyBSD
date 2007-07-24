@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.2 2007/06/19 06:38:33 dillon Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.3 2007/07/24 19:48:44 dillon Exp $
  */
 /*
  * Copyright (c) 1987, 1993
@@ -71,7 +71,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.2 2007/06/19 06:38:33 dillon Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.3 2007/07/24 19:48:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1282,11 +1282,16 @@ checklabel(struct disklabel64 *lp)
 		pp = &lp->d_partitions[i];
 		if (part_set[i]) {
 			if (part_size_type[i] == '*') {
-				if (hog_part != -1)
+				if (part_offset_type[i] != '*') {
+					if (total_size < pp->p_boffset)
+						total_size = pp->p_boffset;
+				}
+				if (hog_part != -1) {
 					Warning("Too many '*' partitions (%c and %c)",
 					    hog_part + 'a',i + 'a');
-				else
+				} else {
 					hog_part = i;
+				}
 			} else {
 				off_t size;
 
