@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/checkpt/checkpt.c,v 1.4 2004/12/21 02:07:27 hmp Exp $
+ * $DragonFly: src/usr.bin/checkpt/checkpt.c,v 1.5 2007/07/24 19:44:18 dillon Exp $
  */
 
 #include <sys/signal.h>
@@ -44,7 +44,7 @@ static
 void
 usage(const char *prg)
 {
-    fprintf(stderr, "%s file.ckpt\n", prg);
+    fprintf(stderr, "%s -r file.ckpt\n", prg);
     exit(1);
 }
 
@@ -80,4 +80,3 @@ main(int ac, char **av)
 	fprintf(stderr, "Unknown error restoring checkpoint\n");
     return(5);
 }
-
