@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.67 2007/07/17 19:29:48 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.67.2.1 2007/07/26 20:43:24 dillon Exp $
 #
 
 # compat target
@@ -15,7 +15,7 @@ ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
 ISOROOT = ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
-KERNCONF ?= GENERIC
+KERNCONF ?= GENERIC VKERNEL
 
 PKGSRC_PREFIX?=		/usr/pkg
 PKGBIN_PKG_ADD?=	${PKGSRC_PREFIX}/sbin/pkg_add
