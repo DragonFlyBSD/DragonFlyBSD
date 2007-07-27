@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.35 2007/06/26 23:30:05 josepht Exp $
+# $DragonFly: src/include/Makefile,v 1.36 2007/07/27 13:57:18 swildner Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -26,14 +26,11 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 
 MHDRS=	float.h floatingpoint.h varargs.h
 
-# posix4/aio.h conflicts with dysons and isn't installed:
-PHDRS=	mqueue.h sched.h semaphore.h # aio.h
-
 # Only for default SHARED=copies case
 SHDRS=	soundcard.h joystick.h
 
-LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h syslog.h \
-	termios.h ucontext.h
+LHDRS=	aio.h errno.h fcntl.h linker_set.h mqueue.h poll.h sched.h \
+	semaphore.h syslog.h termios.h ucontext.h
 
 # directories which also contain header files that need to be copied.
 # Other directories, like 'bus' and 'netproto', are created using mtree.
@@ -109,9 +106,6 @@ INCSLINKS+=	sys/$i ${INCLUDEDIR}/$i
 .endfor
 .for i in ${MHDRS}
 INCSLINKS+=	machine/$i ${INCLUDEDIR}/$i
-.endfor
-.for i in ${PHDRS}
-INCSLINKS+=	emulation/posix4/$i ${INCLUDEDIR}/$i
 .endfor
 INCSLINKS+=	bus/cam ${INCLUDEDIR}/cam
 INCSLINKS+=	vfs/msdosfs ${INCLUDEDIR}/msdosfs
