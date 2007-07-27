@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.15 2007/07/03 19:28:16 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.16 2007/07/27 18:07:21 hasso Exp $
  */
 
 /*-
@@ -249,7 +249,7 @@ static const struct uplcom_product {
 	{ USB_VENDOR_ELECOM, USB_PRODUCT_ELECOM_UCSGT, -1, TYPE_PL2303 },
 	{ USB_VENDOR_ELECOM, USB_PRODUCT_ELECOM_UCSGT0, -1, TYPE_PL2303 },
 	/* Sony Ericsson USB Cable */
-	{ USB_VENDOR_SUSTEEN, USB_PRODUCT_SUSTEEN_DCU10,
+	{ USB_VENDOR_SONYERICSSON, USB_PRODUCT_SONYERICSSON_DCU10,
 	  -1,TYPE_PL2303 },
 	/* SOURCENEXT KeikaiDenwa 8 */
 	{ USB_VENDOR_SOURCENEXT, USB_PRODUCT_SOURCENEXT_KEIKAI8,
