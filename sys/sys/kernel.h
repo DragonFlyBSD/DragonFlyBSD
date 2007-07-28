@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.28 2007/05/01 02:29:31 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.29 2007/07/28 23:24:32 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -397,6 +397,7 @@ struct intr_config_hook {
 	void	(*ich_func) (void *);
 	void	*ich_arg;
 	const char *ich_desc;
+	int	ich_order;
 };
 
 int	config_intrhook_establish (struct intr_config_hook *);

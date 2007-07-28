@@ -42,7 +42,7 @@
  *	@(#)subr_autoconf.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/kern/subr_autoconf.c,v 1.14 1999/10/05 21:19:41 n_hibma Exp $
- * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.8 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.9 2007/07/28 23:24:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -115,15 +115,21 @@ config_intrhook_establish(struct intr_config_hook *hook)
 
 	for (hook_entry = TAILQ_FIRST(&intr_config_hook_list);
 	     hook_entry != NULL;
-	     hook_entry = TAILQ_NEXT(hook_entry, ich_links))
+	     hook_entry = TAILQ_NEXT(hook_entry, ich_links)) {
 		if (hook_entry == hook)
 			break;
-	if (hook_entry != NULL) {
+		if (hook_entry->ich_order > hook->ich_order)
+			break;
+	}
+	if (hook_entry == hook) {
 		kprintf("config_intrhook_establish: establishing an "
 		       "already established hook.\n");
 		return (1);
 	}
-	TAILQ_INSERT_TAIL(&intr_config_hook_list, hook, ich_links);
+	if (hook_entry)
+		TAILQ_INSERT_BEFORE(hook_entry, hook, ich_links);
+	else
+		TAILQ_INSERT_TAIL(&intr_config_hook_list, hook, ich_links);
 	if (cold == 0)
 		/* XXX Sufficient for modules loaded after initial config??? */
 		run_interrupt_driven_config_hooks(NULL);	
