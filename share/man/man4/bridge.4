@@ -32,7 +32,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $NetBSD: bridge.4,v 1.7 2005/06/23 12:47:38 peter Exp $
-.\" $DragonFly: src/share/man/man4/bridge.4,v 1.9 2006/08/29 22:26:32 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bridge.4,v 1.10 2007/07/29 17:27:45 swildner Exp $
 .\"
 .Dd August 30, 2006
 .Dt BRIDGE 4
@@ -53,7 +53,7 @@ For example, it is possible to bridge Ethernet and 802.11 networks together,
 but it is not possible to bridge Ethernet and Token Ring together.
 .Pp
 To use
-.Nm bridge ,
+.Nm ,
 the administrator must first create the interface and configure
 the bridge parameters.
 The bridge is created using the
@@ -121,7 +121,7 @@ and found its way into
 .Sh AUTHORS
 .An -nosplit
 The
-.Nm bridge
+.Nm
 driver was originally written by
 .An Jason L. Wright
 .Aq jason@thought.net

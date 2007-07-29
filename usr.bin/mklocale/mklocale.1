@@ -1,6 +1,6 @@
 .\" $NetBSD: src/usr.bin/mklocale/mklocale.1,v 1.13 2004/01/24 17:03:26 wiz Exp $
 .\" FreeBSD: src/usr.bin/mklocale/mklocale.1,v 1.6 1999/09/20 09:15:21 phantom Exp
-.\" $DragonFly: src/usr.bin/mklocale/mklocale.1,v 1.6 2007/04/06 20:07:41 swildner Exp $
+.\" $DragonFly: src/usr.bin/mklocale/mklocale.1,v 1.7 2007/07/29 17:27:45 swildner Exp $
 .\"
 .\" Copyright (c) 1993, 1994
 .\"	The Regents of the University of California.  All rights reserved.
@@ -41,18 +41,18 @@
 .Nm mklocale
 .Nd make LC_CTYPE locale files
 .Sh SYNOPSIS
-.Nm mklocale
+.Nm
 .Op Fl d
 .Ar \& Ns Ao src-file
 .Ar \& Ac Ns language/LC_CTYPE
-.Nm mklocale
+.Nm
 .Op Fl d
 .Fl o
 .Ar language/LC_CTYPE
 .Ar src-file
 .Sh DESCRIPTION
 The
-.Nm mklocale
+.Nm
 utility reads an
 .Dv LC_CTYPE
 source file from standard input and produces an
@@ -267,12 +267,12 @@ Controls character set for subsequent runes.
 .Xr nls 7
 .Sh HISTORY
 The
-.Nm mklocale
+.Nm
 utility first appeared in
 .Bx 4.4 .
 .Sh BUGS
 The
-.Nm mklocale
+.Nm
 utility is overly simplistic.
 .Pp
 We should switch to

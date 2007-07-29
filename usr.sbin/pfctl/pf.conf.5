@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.conf.5,v 1.291 2004/02/04 19:38:30 jmc Exp $
-.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.7 2007/05/12 21:22:11 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.8 2007/07/29 17:27:45 swildner Exp $
 .\"
 .\" Copyright (c) 2002, Daniel Hartmeier
 .\" All rights reserved.
@@ -39,16 +39,16 @@ The
 .Xr pf 4
 packet filter modifies, drops or passes packets according to rules or
 definitions specified in
-.Nm pf.conf .
+.Nm .
 .Sh STATEMENT ORDER
 There are seven types of statements in
-.Nm pf.conf :
+.Nm :
 .Bl -tag -width xxxx
 .It Cm Macros
 User-defined variables may be defined and used later, simplifying
 the configuration file.
 Macros must be defined before they are referenced in
-.Nm pf.conf .
+.Nm .
 .It Cm Tables
 Tables provide a mechanism for increasing the performance and flexibility of
 rules with large numbers of source or destination addresses.
@@ -72,7 +72,7 @@ With the exception of
 and
 .Cm tables ,
 the types of statements should be grouped and appear in
-.Nm pf.conf
+.Nm
 in the order shown above, as this matches the operation of the underlying
 packet filtering engine.
 By default
@@ -146,13 +146,13 @@ before or after the ruleset has been loaded.
 Table definitions can be placed directly in this file, and loaded at the
 same time as other rules are loaded, atomically.
 Table definitions inside
-.Nm pf.conf
+.Nm
 use the
 .Ar table
 statement, and are especially useful to define non-persistent tables.
 The contents of a pre-existing table defined without a list of addresses
 to initialize it is not altered when
-.Nm pf.conf
+.Nm
 is loaded.
 A table initialized with the empty list,
 .Li { } ,
@@ -632,7 +632,7 @@ control.
 At least two declarations are required to configure queues, and later
 any packet filtering rule can reference the defined queues by name.
 During the filtering component of
-.Nm pf.conf ,
+.Nm ,
 the last referenced
 .Ar queue
 name is where any packets from
@@ -929,7 +929,7 @@ Translation rules modify either the source or destination address of the
 packets associated with a stateful connection.
 A stateful connection is automatically created to track packets matching
 such a rule as long as they are not blocked by the filtering section of
-.Nm pf.conf .
+.Nm .
 The translation engine modifies the specified address and/or port in the
 packet, recalculates IP, TCP and UDP checksums as necessary, and passes it to
 the packet filter for evaluation.
@@ -2178,7 +2178,7 @@ load anchor spam:manual from "/etc/pf-spam.conf"
 When
 .Xr pfctl 8
 loads
-.Nm pf.conf ,
+.Nm ,
 it will also load all the rules from the file
 .Pa /etc/pf-spam.conf
 into the named ruleset.
