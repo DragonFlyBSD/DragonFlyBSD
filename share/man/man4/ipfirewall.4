@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ipfirewall.4,v 1.19.2.7 2002/11/18 21:51:16 luigi Exp $
-.\" $DragonFly: src/share/man/man4/ipfirewall.4,v 1.4 2006/04/02 16:50:05 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ipfirewall.4,v 1.5 2007/07/29 16:43:05 swildner Exp $
 .\"
 .Dd June 22, 1997
 .Dt IPFW 4
@@ -9,23 +9,19 @@
 .Nm ipfw
 .Nd IP packet filter and traffic accounting
 .Sh DESCRIPTION
-.Em ipfw
+.Nm Ipfw
 is a system facility which allows filtering,
 redirecting, and other operations on IP packets travelling through
 system interfaces.
 .Pp
 The user interface for
-.Em ipfw
+.Nm
 is implemented by the
-.Nm ipfw
-program, so the reader is referred to the
 .Xr ipfw 8
-manpage for a complete description of the capabilities of
-.Em ipfw
-and how to use it.
+program.
 .Sh KERNEL OPTIONS
 The following options in the kernel configuration file are related to
-.Em ipfw
+.Nm
 operation:
 Options in the kernel configuration file:
 .Bl -tag -width ".Cd options IPFIREWALL_VERBOSE_LIMIT"
