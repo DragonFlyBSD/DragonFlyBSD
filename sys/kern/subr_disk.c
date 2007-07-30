@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.38 2007/07/23 18:59:51 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.39 2007/07/30 08:02:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -642,5 +642,62 @@ diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, int donecnt)
 	kprintf("offset %012llx for %d", bio->bio_offset, bp->b_bcount);
 	if (donecnt)
 		kprintf(" (%d bytes completed)", donecnt);
+}
+
+/*
+ * Locate a disk device
+ */
+cdev_t
+disk_locate(const char *devname)
+{
+	struct disk *dp;
+	cdev_t dev;
+	char *ptr;
+	int i;
+	int prefix;
+	int slice;
+	int part;
+
+	/*
+	 * Device and unit
+	 */
+	for (i = 0; devname[i]; ++i) {
+		if (devname[i] >= '0' && devname[i] <= '9')
+			break;
+	}
+	while (devname[i] >= '0' && devname[i] <= '9')
+		++i;
+	prefix = i;
+
+	/*
+	 * Slice and partition.  s1 starts at slice #2.  s0 is slice #0.
+	 * slice #1 is the WHOLE_DISK_SLICE.
+	 */
+	if (devname[i] == 's') {
+		slice = strtol(devname + i + 1, &ptr, 10);
+		i = (const char *)ptr - devname;
+		if (slice > 0)
+			++slice;
+	} else {
+		slice = WHOLE_DISK_SLICE;
+	}
+	if (devname[i] >= 'a' && devname[i] <= 'z') {
+		part = devname[i] - 'a';
+	} else {
+		part = WHOLE_SLICE_PART;
+	}
+
+	/*
+	 * Find the device
+	 */
+	LIST_FOREACH(dp, &disklist, d_list) {
+		dev = dp->d_cdev;
+		if (strlen(dev->si_name) == prefix &&
+		    strncmp(devname, dev->si_name, prefix) == 0
+		) {
+			return(dkmodpart(dkmodslice(dev, slice), part));
+		}
+	}
+	return(NULL);
 }
 

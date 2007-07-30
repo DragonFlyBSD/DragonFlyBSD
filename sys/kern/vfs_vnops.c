@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.51 2007/06/30 20:17:36 hasso Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.52 2007/07/30 08:02:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -333,6 +333,28 @@ again:
 bad:
 	if (vp)
 		vput(vp);
+	return (error);
+}
+
+int
+vn_opendisk(const char *devname, int fmode, struct vnode **vpp)
+{
+	struct vnode *vp;
+	int error;
+
+	if (strncmp(devname, "/dev/", 5) == 0)
+		devname += 5;
+	if ((vp = getsynthvnode(devname)) == NULL) {
+		error = ENODEV;
+	} else {
+		error = VOP_OPEN(vp, fmode, proc0.p_ucred, NULL);
+		vn_unlock(vp);
+		if (error) {
+			vrele(vp);
+			vp = NULL;
+		}
+	}
+	*vpp = vp;
 	return (error);
 }
 
