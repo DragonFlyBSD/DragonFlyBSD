@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.59 2007/07/12 21:56:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.60 2007/07/30 14:52:40 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -160,6 +160,12 @@ print_execve_args(struct image_args *args)
  */
 static const struct execsw **execsw;
 
+/*
+ * Replace current vmspace with a new binary.
+ * Returns 0 on success, > 0 on recoverable error (use as errno).
+ * Returns -1 on leathal error which demands killing of the current
+ * process!
+ */
 int
 kern_execve(struct nlookupdata *nd, struct image_args *args)
 {
@@ -501,10 +507,13 @@ exec_fail:
 	if (imgp->vmspace_destroyed & 2)
 		p->p_flag &= ~P_INEXEC;
 	if (imgp->vmspace_destroyed) {
-		/* sorry, no more process anymore. exit gracefully */
-		exit1(W_EXITCODE(0, SIGABRT));
-		/* NOT REACHED */
-		return(0);
+		/*
+		 * Sorry, no more process anymore. exit gracefully.
+		 * However we can't die right here, because our
+		 * caller might have to clean up, so indicate a
+		 * leathal error by returning -1.
+		 */
+		return(-1);
 	} else {
 		return(error);
 	}
@@ -529,6 +538,12 @@ sys_execve(struct execve_args *uap)
 		error = kern_execve(&nd, &args);
 	nlookup_done(&nd);
 	exec_free_args(&args);
+
+	if (error < 0) {
+		/* We hit a leathal error condition.  Let's die now. */
+		exit1(W_EXITCODE(0, SIGABRT));
+		/* NOTREACHED */
+	}
 
 	/*
 	 * The syscall result is returned in registers to the new program.
