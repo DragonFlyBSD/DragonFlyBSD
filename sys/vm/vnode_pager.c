@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.34 2007/06/08 02:00:47 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.35 2007/07/30 21:41:30 dillon Exp $
  */
 
 /*
@@ -90,6 +90,9 @@ struct pagerops vnodepagerops = {
 	vnode_pager_haspage,
 	NULL
 };
+
+static struct krate vbadrate = { 1 };
+static struct krate vresrate = { 1 };
 
 int vnode_pbuf_freecnt = -1;	/* start out unlimited */
 
@@ -1010,11 +1013,13 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	mycpu->gd_cnt.v_vnodepgsout += ncount;
 
 	if (error) {
-		kprintf("vnode_pager_putpages: I/O error %d\n", error);
+		krateprintf(&vbadrate,
+			    "vnode_pager_putpages: I/O error %d\n", error);
 	}
 	if (auio.uio_resid) {
-		kprintf("vnode_pager_putpages: residual I/O %d at %lu\n",
-		    auio.uio_resid, (u_long)m[0]->pindex);
+		krateprintf(&vresrate,
+			    "vnode_pager_putpages: residual I/O %d at %lu\n",
+			    auio.uio_resid, (u_long)m[0]->pindex);
 	}
 	for (i = 0; i < ncount; i++) {
 		rtvals[i] = VM_PAGER_OK;
