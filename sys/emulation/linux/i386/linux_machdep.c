@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.22 2007/07/30 16:57:49 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.23 2007/07/30 17:41:23 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -138,7 +138,7 @@ sys_linux_execve(struct linux_execve_args *args)
 	linux_free_path(&path);
 
 	if (error < 0) {
-		/* We hit a leathal error condition.  Let's die now. */
+		/* We hit a lethal error condition.  Let's die now. */
 		exit1(W_EXITCODE(0, SIGABRT));
 		/* NOTREACHED */
 	}

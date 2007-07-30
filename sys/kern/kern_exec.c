@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.60 2007/07/30 14:52:40 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.61 2007/07/30 17:41:23 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -163,7 +163,7 @@ static const struct execsw **execsw;
 /*
  * Replace current vmspace with a new binary.
  * Returns 0 on success, > 0 on recoverable error (use as errno).
- * Returns -1 on leathal error which demands killing of the current
+ * Returns -1 on lethal error which demands killing of the current
  * process!
  */
 int
@@ -511,7 +511,7 @@ exec_fail:
 		 * Sorry, no more process anymore. exit gracefully.
 		 * However we can't die right here, because our
 		 * caller might have to clean up, so indicate a
-		 * leathal error by returning -1.
+		 * lethal error by returning -1.
 		 */
 		return(-1);
 	} else {
@@ -540,7 +540,7 @@ sys_execve(struct execve_args *uap)
 	exec_free_args(&args);
 
 	if (error < 0) {
-		/* We hit a leathal error condition.  Let's die now. */
+		/* We hit a lethal error condition.  Let's die now. */
 		exit1(W_EXITCODE(0, SIGABRT));
 		/* NOTREACHED */
 	}
