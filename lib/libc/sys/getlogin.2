@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)getlogin.2	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/sys/getlogin.2,v 1.14.2.6 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getlogin.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/getlogin.2,v 1.5 2007/07/30 22:11:33 swildner Exp $
 .\"
 .Dd June 9, 1993
 .Dt GETLOGIN 2
@@ -123,7 +123,9 @@ even though it is not the session leader, but beware that ALL processes
 in the session will change their login name at the same time, even the
 parent.
 .Pp
-This is not the same as the traditional UNIX behavior of inheriting privilege.
+This is not the same as the traditional
+.Ux
+behavior of inheriting privilege.
 .Pp
 Since the
 .Fn setlogin

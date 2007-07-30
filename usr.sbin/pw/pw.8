@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/pw/pw.8,v 1.19.2.12 2003/05/08 15:01:44 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/pw/pw.8,v 1.3 2006/02/17 19:40:21 swildner Exp $
+.\" $DragonFly: src/usr.sbin/pw/pw.8,v 1.4 2007/07/30 22:11:34 swildner Exp $
 .\"
 .Dd December 9, 1996
 .Dt PW 8
@@ -375,7 +375,9 @@ default determined from
 with the account name as a subdirectory.
 .It Fl e Ar date
 Set the account's expiration date.
-Format of the date is either a UNIX time in decimal, or a date in
+Format of the date is either a
+.Ux
+time in decimal, or a date in
 .Ql dd-mmm-yy[yy]
 format, where dd is the day, mmm is the month, either in numeric or alphabetic format
 ('Jan', 'Feb', etc) and year is either a two or four digit year.
