@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.16 2007/01/07 00:42:55 dillon Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.17 2007/07/30 21:40:31 dillon Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -189,6 +189,19 @@ struct clockinfo {
 #define TIMER_RELTIME	0x0	/* relative timer */
 #ifndef TIMER_ABSTIME
 #define TIMER_ABSTIME	0x1	/* absolute timer */
+#endif
+
+#ifdef _KERNEL
+
+/*
+ * For krateprintf()
+ */
+struct krate {
+	int freq;
+	int ticks;
+	int count;
+};
+
 #endif
 
 #ifdef _KERNEL

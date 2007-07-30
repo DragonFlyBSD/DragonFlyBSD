@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.17 2006/12/26 11:01:07 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.18 2007/07/30 21:40:30 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -329,6 +329,28 @@ kvprintf(const char *fmt, __va_list ap)
 		msgbuftrigger = 1;
 	consintr = savintr;		/* reenable interrupts */
 	return (retval);
+}
+
+/*
+ * Limited rate kprintf.  The passed rate structure must be initialized
+ * with the desired reporting frequency.  A frequency of 0 will result in
+ * no output.
+ */
+void
+krateprintf(struct krate *rate, const char *fmt, ...)
+{
+	__va_list ap;
+
+	if (rate->ticks != ticks) {
+		rate->ticks = ticks;
+		rate->count = 0;
+	}
+	if (rate->count < rate->freq) {
+		++rate->count;
+		__va_start(ap, fmt);
+		kvprintf(fmt, ap);
+		__va_end(ap);
+	}
 }
 
 /*
