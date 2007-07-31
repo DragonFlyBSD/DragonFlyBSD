@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.38 2007/05/05 16:52:55 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.38.2.1 2007/07/31 22:40:50 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -2618,9 +2618,6 @@ driver_module_handler(module_t mod, int what, void *arg)
 		driver = dmd->dmd_driver;
 		PDEBUG(("Loading module: driver %s on bus %s",
 		        DRIVERNAME(driver), dmd->dmd_busname));
-		error = devclass_add_driver(bus_devclass, driver);
-		if (error)
-			break;
 
 		/*
 		 * If the driver has any base classes, make the
@@ -2633,8 +2630,12 @@ driver_module_handler(module_t mod, int what, void *arg)
 			parentname = driver->baseclasses[0]->name;
 		else
 			parentname = NULL;
-	    	*dmd->dmd_devclass = devclass_find_internal(driver->name,
+		*dmd->dmd_devclass = devclass_find_internal(driver->name,
 							    parentname, TRUE);
+
+		error = devclass_add_driver(bus_devclass, driver);
+		if (error)
+			break;
 		break;
 
 	case MOD_UNLOAD:

@@ -34,7 +34,7 @@
  *
  * $Id: commands.c,v 1.14 2000/11/14 20:01:23 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/commands.c,v 1.31.2.6 2003/06/06 05:13:29 grog Exp $
- * $DragonFly: src/sbin/vinum/commands.c,v 1.8 2007/07/22 22:46:09 corecode Exp $
+ * $DragonFly: src/sbin/vinum/commands.c,v 1.8.2.1 2007/07/31 22:40:48 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -121,14 +121,14 @@ vinum_create(int argc, char *argv[], char *arg0[])
 	char *configline;
 
 	configline = fgets(buffer, BUFSIZE, dfd);
-	if (history)
-	    fprintf(history, "%s", buffer);
 
 	if (configline == NULL) {
 	    if (ferror(dfd))
 		perror("Can't read config file");
 	    break;
 	}
+	if (hist)
+	    fprintf(hist, "%s", buffer);
 	file_line++;					    /* count the lines */
 	if (vflag)
 	    printf("%4d: %s", file_line, buffer);
@@ -309,8 +309,8 @@ vinum_init(int argc, char *argv[], char *arg0[])
 	int objno;
 	enum objecttype type;				    /* type returned */
 
-	if (history)
-	    fflush(history);				    /* don't let all the kids do it. */
+	if (hist)
+	    fflush(hist);				    /* don't let all the kids do it. */
 	for (objindex = 0; objindex < argc; objindex++) {
 	    objno = find_object(argv[objindex], &type);	    /* find the object */
 	    if (objno < 0)

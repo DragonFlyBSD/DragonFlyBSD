@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/wl.4,v 1.10.2.5 2002/03/19 18:24:15 schweikh Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/wl.4,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/wl.4,v 1.2.10.1 2007/07/31 22:40:49 dillon Exp $
 .Dd July 7, 1997
 .Dt WL 4 i386
 .Os
@@ -72,8 +72,9 @@ The card can either be initialized with the vendor supplied DOS setup software.
 Typically minimally an IRQ, port, and Network ID must be supplied.
 Michael Smith's
 .Xr wlconfig 8
-utility can now be used to do this work from
-the UNIX side.  The card is "not" plug and play.
+utility can now be used to do this work from the
+.Ux
+side.  The card is "not" plug and play.
 The network id controls whether one set of cards can hear another.
 If different, cards will read physical packets, but they will be discarded
 by the radio modem.

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)connect.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/connect.2,v 1.11.2.8 2003/04/05 16:59:01 ceri Exp $
-.\" $DragonFly: src/lib/libc/sys/connect.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/connect.2,v 1.2.10.1 2007/07/31 22:40:47 dillon Exp $
 .\"
 .Dd June 4, 1993
 .Dt CONNECT 2
@@ -119,8 +119,12 @@ and a previous connection attempt
 has not yet been completed.
 .El
 .Pp
-The following errors are specific to connecting names in the UNIX domain.
-These errors may not apply in future versions of the UNIX IPC domain.
+The following errors are specific to connecting names in the
+.Ux
+domain.
+These errors may not apply in future versions of the
+.Ux
+IPC domain.
 .Bl -tag -width Er
 .It Bq Er ENOTDIR
 A component of the path prefix is not a directory.

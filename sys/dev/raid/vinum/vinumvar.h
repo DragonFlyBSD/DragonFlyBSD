@@ -39,7 +39,7 @@
  *
  * $Id: vinumvar.h,v 1.24 2000/03/01 02:34:57 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumvar.h,v 1.32.2.4 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.11 2007/06/07 22:58:38 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.11.2.1 2007/07/31 22:40:50 dillon Exp $
  */
 
 #include <sys/time.h>
@@ -433,8 +433,10 @@ struct drive {
     struct partinfo partinfo;				    /* partition information */
 /* XXX kludge until we get this struct cleaned up */
 #if _KERNEL
-    cdev_t dev;						    /* device information */
+    struct vnode *vp;
+    struct cdev *dev;
 #else
+    char vp [sizeof (int *)];
     char dev [sizeof (int *)];
 #endif
 #ifdef VINUMDEBUG

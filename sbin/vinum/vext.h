@@ -33,7 +33,7 @@
 /*
  * $Id: vext.h,v 1.17 2000/05/07 04:17:12 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/vext.h,v 1.16.2.2 2000/06/08 01:53:16 grog Exp $
- * $DragonFly: src/sbin/vinum/vext.h,v 1.3 2007/01/20 19:20:39 dillon Exp $
+ * $DragonFly: src/sbin/vinum/vext.h,v 1.3.4.1 2007/07/31 22:40:48 dillon Exp $
  */
 
 #define MAXARGS 64					    /* maximum number of args on a line */
@@ -154,7 +154,7 @@ extern int SSize;					    /* sector size for revive */
 extern int dowait;					    /* wait for children to exit */
 extern char *objectname;				    /* name for some functions */
 
-extern FILE *history;					    /* history file */
+extern FILE *hist;					    /* history file */
 
 /* Structures to read kernel data into */
 extern struct _vinum_conf vinum_conf;			    /* configuration information */

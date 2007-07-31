@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.16 2007/05/15 00:01:03 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.16.2.1 2007/07/31 22:40:49 dillon Exp $
  *
  */
 
@@ -182,11 +182,13 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 	
 	while (1) {
 		bio = bioq_first(&sc->bio_queue);
-		if (bp)
-			bioq_remove(&sc->bio_queue, bio);
-		crit_exit();
-		if (bio == NULL)
+		if (bio == NULL) {
+			crit_exit();
 			break;
+		}
+		crit_exit();
+		bioq_remove(&sc->bio_queue, bio);
+		bp = bio->bio_buf;
 
 		devstat_start_transaction(&sc->stats);
 

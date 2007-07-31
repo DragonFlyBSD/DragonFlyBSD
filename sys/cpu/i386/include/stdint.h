@@ -36,7 +36,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/_stdint.h,v 1.1 2002/07/29 17:41:07 mike Exp $
- * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.7 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.7.4.1 2007/07/31 22:40:49 dillon Exp $
  */
 
 #ifndef _CPU_STDINT_H_
@@ -213,7 +213,22 @@ typedef volatile int	__atomic_intr_t;
 /* Limit of size_t. */
 #define	SIZE_MAX	UINT32_MAX
 
-/* NOTE: wchar and wint macros in sys/stdint.h */
+/* Also possibly defined in <wchar.h> */
+/* Limits of wchar_t. */
+#ifndef WCHAR_MIN
+#define	WCHAR_MIN	INT32_MIN
+#endif
+#ifndef WCHAR_MAX
+#define	WCHAR_MAX	INT32_MAX
+#endif
+
+/* Limits of wint_t. */
+#ifndef WINT_MIN
+#define	WINT_MIN	INT32_MIN
+#endif
+#ifndef WINT_MAX
+#define	WINT_MAX	INT32_MAX
+#endif
 
 /*
  * ISO/IEC 9899:1999

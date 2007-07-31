@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.73 2007/07/02 16:52:01 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.73.2.1 2007/07/31 22:40:50 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -132,6 +132,7 @@ struct trapframe;
 struct user;
 struct vmspace;
 struct savetls;
+struct krate;
 
 void	Debugger (const char *msg);
 void	backtrace(void);
@@ -172,6 +173,7 @@ int	log (int, const char *, ...) __printflike(2, 3);
 void	logwakeup (void);
 void	log_console (struct uio *);
 int	kprintf (const char *, ...) __printflike(1, 2);
+void	krateprintf (struct krate *, const char *, ...) __printflike(2, 3);
 int	ksnprintf (char *, size_t, const char *, ...) __printflike(3, 4);
 int	ksprintf (char *buf, const char *, ...) __printflike(2, 3);
 int	uprintf (const char *, ...) __printflike(1, 2);

@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.11 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.11.4.1 2007/07/31 22:40:50 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -305,8 +305,6 @@ complete_raid5_write(struct rqelement *rqe)
     struct rqgroup *rqg;				    /* and to the request group */
     struct rqelement *prqe;				    /* point to the parity block */
     struct drive *drive;				    /* drive to access */
-    cdev_t dev;
-
     rqg = rqe->rqg;					    /* and to our request group */
     rq = rqg->rq;					    /* point to our request */
     ubio = rq->bio;					    /* user's buffer header */
@@ -393,10 +391,9 @@ complete_raid5_write(struct rqelement *rqe)
 		    rqe->b.b_bcount = rqe->datalen << DEV_BSHIFT; /* length to write */
 		    rqe->b.b_resid = rqe->b.b_bcount;	    /* nothing transferred */
 		    rqe->b.b_bio1.bio_offset += (off_t)rqe->dataoffset << DEV_BSHIFT;	    /* point to the correct block */
-		    dev = DRIVE[rqe->driveno].dev;
-		    rqe->b.b_bio1.bio_driver_info = dev;
-		    rqg->active++;			    /* another active request */
 		    drive = &DRIVE[rqe->driveno];	    /* drive to access */
+		    rqe->b.b_bio1.bio_driver_info = drive->dev;
+		    rqg->active++;			    /* another active request */
 
 							    /* We can't sleep here, so we just increment the counters. */
 		    drive->active++;
@@ -408,10 +405,9 @@ complete_raid5_write(struct rqelement *rqe)
 #if VINUMDEBUG
 		    if (debug & DEBUG_ADDRESSES)
 			log(LOG_DEBUG,
-			    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
+			    "  %s dev %s, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
 			    (rqe->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
-			    major(dev),
-			    minor(dev),
+			    drive->devicename,
 			    rqe->sdno,
 			    rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT),
 			    rqe->b.b_bio1.bio_offset,
@@ -419,7 +415,7 @@ complete_raid5_write(struct rqelement *rqe)
 		    if (debug & DEBUG_LASTREQS)
 			logrq(loginfo_raid5_data, (union rqinfou) rqe, ubio);
 #endif
-		    dev_dstrategy(dev, &rqe->b.b_bio1);
+		    vn_strategy(drive->vp, &rqe->b.b_bio1);
 		}
 	    }
 	}
@@ -431,10 +427,9 @@ complete_raid5_write(struct rqelement *rqe)
     rqg->flags &= ~XFR_PARITYOP;			    /* reset flags that brought us here */
     rqe->b.b_bcount = rqe->buflen << DEV_BSHIFT;	    /* length to write */
     rqe->b.b_resid = rqe->b.b_bcount;			    /* nothing transferred */
-    dev = DRIVE[rqe->driveno].dev;
-    rqe->b.b_bio1.bio_driver_info = dev;
-    rqg->active++;					    /* another active request */
     drive = &DRIVE[rqe->driveno];			    /* drive to access */
+    rqe->b.b_bio1.bio_driver_info = drive->dev;
+    rqg->active++;					    /* another active request */
 
     /* We can't sleep here, so we just increment the counters. */
     drive->active++;
@@ -447,10 +442,9 @@ complete_raid5_write(struct rqelement *rqe)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
+	    "  %s dev %s, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
 	    (rqe->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
-	    major(dev),
-	    minor(dev),
+	    device->devicename,
 	    rqe->sdno,
 	    rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT),
 	    rqe->b.b_bio1.bio_offset,
@@ -458,7 +452,7 @@ complete_raid5_write(struct rqelement *rqe)
     if (debug & DEBUG_LASTREQS)
 	logrq(loginfo_raid5_parity, (union rqinfou) rqe, ubio);
 #endif
-    dev_dstrategy(dev, &rqe->b.b_bio1);
+    vn_strategy(drive->vp, &rqe->b.b_bio1);
 }
 
 /* Local Variables: */

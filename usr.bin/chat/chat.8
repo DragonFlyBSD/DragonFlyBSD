@@ -1,7 +1,7 @@
 .\" -*- nroff -*-
 .\" manual page [] for chat 1.8
 .\" $FreeBSD: src/usr.bin/chat/chat.8,v 1.15.2.3 2003/02/24 22:37:41 trhodes Exp $
-.\" $DragonFly: src/usr.bin/chat/chat.8,v 1.4 2007/04/06 19:28:12 swildner Exp $
+.\" $DragonFly: src/usr.bin/chat/chat.8,v 1.4.2.1 2007/07/31 22:40:51 dillon Exp $
 .Dd September 27, 1996
 .Dt CHAT 8
 .Os
@@ -88,7 +88,7 @@ Request that
 .Ar script
 be executed in a stderr verbose mode.
 The
-.Nm chat
+.Nm
 program will then log all text received from the
 modem and the output strings sent to the modem to the stderr device.
 This
@@ -127,7 +127,7 @@ program.
 .El
 .Sh CHAT SCRIPT
 The
-.Nm chat
+.Nm
 script defines the communications.
 .Pp
 A script consists of one or more
@@ -139,7 +139,7 @@ string pair, separated by a dash as in the following example:
 .Dl ogin:-BREAK-ogin: ppp ssword: hello2u2
 .Pp
 This line indicates that the
-.Nm chat
+.Nm
 program should expect the string
 .Dq ogin: .
 If it fails to receive a login prompt within the time interval
@@ -151,7 +151,7 @@ If the first
 is received then the break sequence is not generated.
 .Pp
 Once it received the login prompt the
-.Nm chat
+.Nm
 program will send the string ppp and then expect the prompt
 .Dq ssword: .
 When it receives the
@@ -626,13 +626,13 @@ Additional information about
 .Nm
 scripts may be found with UUCP documentation.
 The
-.Nm chat
+.Nm
 script was taken from the ideas proposed by the scripts used by the
 .Xr uucico 1
 program.
 .Sh COPYRIGHT
 The
-.Nm chat
+.Nm
 program is in public domain.
 This is not the GNU public license.
 If it breaks then you get to keep both pieces.

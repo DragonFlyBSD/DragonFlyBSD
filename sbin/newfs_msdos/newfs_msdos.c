@@ -25,7 +25,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/newfs_msdos/newfs_msdos.c,v 1.9.2.4 2001/08/01 08:43:04 obrien Exp $
- * $DragonFly: src/sbin/newfs_msdos/newfs_msdos.c,v 1.5 2007/05/20 23:21:36 dillon Exp $
+ * $DragonFly: src/sbin/newfs_msdos/newfs_msdos.c,v 1.5.2.1 2007/07/31 22:40:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -724,10 +724,11 @@ getdiskinfo(int fd, const char *fname, const char *dtype, int oflag,
     s1 = s2;
     if (s2 && *s2 == 's') {
 	slice = strtol(s2 + 1, &s, 10);
-	if (slice < 1 || slice > MAX_SLICES - BASE_SLICE)
+	if (slice < 0 || slice > MAX_SLICES - BASE_SLICE)
 	    s2 = NULL;
 	else {
-	    slice = BASE_SLICE + slice - 1;
+	    if (slice)
+		slice = BASE_SLICE + slice - 1;
 	    s2 = s;
 	}
     }

@@ -1,6 +1,6 @@
 .\"	$OpenBSD: crypto.4,v 1.4 2002/09/12 07:15:03 deraadt Exp $
 .\"	$FreeBSD: src/share/man/man4/crypto.4,v 1.1.2.2 2002/12/29 16:35:38 schweikh Exp $
-.\"	$DragonFly: src/share/man/man4/crypto.4,v 1.5 2007/05/12 21:22:10 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/crypto.4,v 1.5.2.1 2007/07/31 22:40:48 dillon Exp $
 .\"
 .\" Copyright (c) 2001 Theo de Raadt
 .\" All rights reserved.
@@ -51,13 +51,13 @@ submit transactions, and get results.
 If
 .Ar count
 given in the specification, and is greater than 0, a maximum of one
-.Nm crypto
+.Nm
 device is created.
 .Pp
 The following
 .Xr ioctl 2
 calls apply only to the
-.Nm crypto
+.Nm
 devices:
 .Bl -tag -width CIOCGSESSION
 .It Dv CIOCGSESSION

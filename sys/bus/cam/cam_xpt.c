@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.34 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.34.4.1 2007/07/31 22:40:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1351,6 +1351,7 @@ xpt_init(void *dummy)
 				  M_TEMP, M_INTWAIT | M_ZERO);
 	xpt_config_hook->ich_func = xpt_config;
 	xpt_config_hook->ich_desc = "xpt";
+	xpt_config_hook->ich_order = 1000;
 	if (config_intrhook_establish(xpt_config_hook) != 0) {
 		kfree (xpt_config_hook, M_TEMP);
 		kprintf("xpt_init: config_intrhook_establish failed "

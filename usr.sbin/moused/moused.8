@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/moused/moused.8,v 1.27.2.11 2003/04/28 08:34:04 brueffer Exp $
-.\" $DragonFly: src/usr.sbin/moused/moused.8,v 1.6 2007/04/07 19:29:52 swildner Exp $
+.\" $DragonFly: src/usr.sbin/moused/moused.8,v 1.6.2.1 2007/07/31 22:40:52 dillon Exp $
 .\"
 .Dd April 1, 2000
 .Dt MOUSED 8
@@ -570,7 +570,8 @@ process id of the currently running
 .Nm
 utility
 .It Pa /var/run/MouseRemote
-UNIX-domain stream socket for X10 MouseRemote events
+.Ux Ns -domain
+stream socket for X10 MouseRemote events
 .El
 .Sh EXAMPLES
 .Dl moused -p /dev/cuaa0 -i type

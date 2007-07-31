@@ -23,7 +23,7 @@
 .\"SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/share/man/man5/elf.5,v 1.6.2.8 2001/12/17 11:30:13 ru Exp $
-.\"	$DragonFly: src/share/man/man5/elf.5,v 1.4 2006/05/26 19:39:40 swildner Exp $
+.\"	$DragonFly: src/share/man/man5/elf.5,v 1.4.6.1 2007/07/31 22:40:49 dillon Exp $
 .\"
 .Dd July 31, 1999
 .Dt ELF 5
@@ -229,7 +229,8 @@ The following values are currently defined:
 .Pp
 .Bl -tag -width "ELFOSABI_STANDALONE" -compact
 .It Dv ELFOSABI_SYSV
-UNIX System V ABI.
+.At V
+ABI.
 .It Dv ELFOSABI_HPUX
 HP-UX operating system ABI.
 .It Dv ELFOSABI_NETBSD
@@ -251,7 +252,9 @@ IRIX operating system ABI.
 .Fx
 operating system ABI.
 .It Dv ELFOSABI_TRU64
-TRU64 UNIX operating system ABI.
+TRU64
+.Ux
+operating system ABI.
 .It Dv ELFOSABI_ARM
 ARM architecture ABI.
 .It Dv ELFOSABI_STANDALONE

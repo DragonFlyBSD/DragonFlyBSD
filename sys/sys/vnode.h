@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.75 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.75.2.1 2007/07/31 22:40:50 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -446,6 +446,7 @@ struct uio;
 struct vattr;
 struct vnode;
 
+struct vnode *getsynthvnode(const char *devname);
 void	addaliasu (struct vnode *vp, int x, int y);
 int	v_associate_rdev(struct vnode *vp, cdev_t dev);
 void	v_release_rdev(struct vnode *vp);
@@ -500,6 +501,7 @@ int	vn_get_namelen(struct vnode *, int *);
 void	vn_setspecops (struct file *fp);
 int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf);
 int	vn_open (struct nlookupdata *ndp, struct file *fp, int fmode, int cmode);
+int	vn_opendisk (const char *devname, int fmode, struct vnode **vpp);
 void	vn_pollevent (struct vnode *vp, int events);
 void	vn_pollgone (struct vnode *vp);
 int	vn_pollrecord (struct vnode *vp, int events);

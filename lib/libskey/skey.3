@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libskey/skey.3,v 1.10.2.1 2000/04/22 16:36:00 phantom Exp $
-.\" $DragonFly: src/lib/libskey/skey.3,v 1.5 2006/05/26 19:39:38 swildner Exp $
+.\" $DragonFly: src/lib/libskey/skey.3,v 1.5.6.1 2007/07/31 22:40:48 dillon Exp $
 .\"
 .Dd December 22, 1996
 .Dt SKEY 3
@@ -121,28 +121,39 @@ The
 .Fn skey_crypt
 is a wrapper function for the standard library
 .Xr crypt 3 ,
-which returns the encrypted UNIX password if either the given
+which returns the encrypted
+.Ux
+password if either the given
 s/key or regular passwords are ok.
 .Fn skey_crypt
 first attempts verification of the given password via the skey
 method, and will return the encrypted password from the
 passwd structure if it can be verified, as though the user had
-actually entered the correct UNIX password.
+actually entered the correct
+.Ux
+password.
 If s/key password verification does not work, then the password
 is encrypted in the usual way and the result passed back to the
 caller.
 If the passwd structure pointer is NULL,
 .Fn skey_crypt
 returns a non-NULL string which could not possibly be a valid
-UNIX password (namely, a string containing ":").
+.Ux
+password (namely, a string containing ":").
 .Pp
 The
 .Fn skeyaccess
-function determines whether traditional UNIX (non-S/Key) passwords
+function determines whether traditional
+.Ux
+(non-S/Key) passwords
 are permitted for any combination of user name, group member,
-terminal port, host name, and network.  If UNIX passwords are allowed,
+terminal port, host name, and network.  If
+.Ux
+passwords are allowed,
 .Fn skeyaccess
-returns a non-zero value.  If UNIX passwords are not allowed, it
+returns a non-zero value.  If
+.Ux
+passwords are not allowed, it
 returns 0.  See
 .Xr skey.access 5
 for more information on the layout and structure of the

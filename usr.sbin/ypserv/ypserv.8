@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ypserv/ypserv.8,v 1.22.2.8 2002/12/29 16:35:44 schweikh Exp $
-.\" $DragonFly: src/usr.sbin/ypserv/ypserv.8,v 1.6 2006/05/26 19:39:41 swildner Exp $
+.\" $DragonFly: src/usr.sbin/ypserv/ypserv.8,v 1.6.6.1 2007/07/31 22:40:52 dillon Exp $
 .\"
 .Dd February 4, 1995
 .Dt YPSERV 8
@@ -44,7 +44,8 @@
 .Op Fl p Ar path
 .Sh DESCRIPTION
 .Tn NIS
-is an RPC-based service designed to allow a number of UNIX-based
+is an RPC-based service designed to allow a number of
+.Ux Ns -based
 machines to share a common set of configuration files.
 Rather than
 requiring a system administrator to update several copies of files
@@ -193,7 +194,9 @@ The
 .Sq TCP port less than 1024
 test is trivial to defeat for users with
 unrestricted access to machines on your network (even those machines
-which do not run UNIX-based operating systems).
+which do not run
+.Ux Ns -based
+operating systems).
 .It
 If you plan to use a
 .Dx

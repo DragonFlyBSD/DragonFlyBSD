@@ -36,7 +36,7 @@
 .\" Author: Archie Cobbs <archie@freebsd.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_l2tp.4,v 1.1.2.1 2002/08/20 23:48:53 archie Exp $
-.\" $DragonFly: src/share/man/man4/ng_l2tp.4,v 1.6 2007/07/14 06:58:42 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ng_l2tp.4,v 1.6.2.1 2007/07/31 22:40:48 dillon Exp $
 .\"
 .Dd April 22, 2002
 .Dt NG_L2TP 4
@@ -48,7 +48,7 @@
 .In netgraph/l2tp/ng_l2tp.h
 .Sh DESCRIPTION
 The
-.Nm ng_l2tp
+.Nm
 node type implements the encapsulation layer of the L2TP protocol
 as described in RFC 2661.
 This includes adding the L2TP packet header for outgoing packets
@@ -57,7 +57,7 @@ The node maintains the L2TP sequence number state and handles
 control session packet acknowledgment and retransmission.
 .Sh HOOKS
 The
-.Nm ng_l2tp
+.Nm
 node type supports the following hooks:
 .Pp
 .Bl -tag -compact -offset 3n -width session_hhhh
@@ -179,7 +179,7 @@ sets the maximum number of times a packet will be retransmitted
 without being acknowledged before a failure condition is declared.
 Once a failure condition is declared, each additional retransmission
 will cause the
-.Nm ng_l2tp
+.Nm
 node to send a
 .Dv NGM_L2TP_ACK_FAILURE
 control message back to the node that sent the last

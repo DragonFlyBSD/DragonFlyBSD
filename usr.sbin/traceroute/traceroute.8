@@ -33,7 +33,7 @@
 .\"
 .\"	@(#)traceroute.8	8.1 (Berkeley) 6/6/93
 .\"
-.\" $DragonFly: src/usr.sbin/traceroute/traceroute.8,v 1.5 2007/07/14 21:48:16 swildner Exp $
+.\" $DragonFly: src/usr.sbin/traceroute/traceroute.8,v 1.5.2.1 2007/07/31 22:40:52 dillon Exp $
 .Dd May 22, 2007
 .Dt TRACEROUTE 8
 .Os
@@ -41,7 +41,7 @@
 .Nm traceroute
 .Nd print the route packets take to network host
 .Sh SYNOPSIS
-.Nm traceroute
+.Nm
 .Bk -words
 .Op Fl cdDIlMnrSv
 .Op Fl f Ar first_ttl
@@ -87,7 +87,7 @@ Dump the packet data to standard error before transmitting it.
 .It Fl f Ar first_ttl
 Set the first time-to-live used in outgoing probe packets. The effect is that
 the first first_ttl - 1 hosts will be skipped in the output of
-.Nm traceroute .
+.Nm .
 The default value is 1 (skip no hosts).
 .It Fl g Ar gateway_addr
 Add

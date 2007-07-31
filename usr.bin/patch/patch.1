@@ -1,5 +1,5 @@
 .\"	$OpenBSD: patch.1,v 1.17 2003/10/31 20:20:45 millert Exp $
-.\"	$DragonFly: src/usr.bin/patch/patch.1,v 1.6 2005/09/06 00:43:16 swildner Exp $
+.\"	$DragonFly: src/usr.bin/patch/patch.1,v 1.6.8.1 2007/07/31 22:40:51 dillon Exp $
 .\"
 .\" Copyright 1986, Larry Wall
 .\"
@@ -28,10 +28,10 @@
 .Nm patch
 .Nd apply a diff file to an original
 .Sh SYNOPSIS
-.Nm patch
+.Nm
 .Op Cm options
 .Op Ar origfile Op Ar patchfile
-.Nm patch
+.Nm
 .Pf \*(Lt Ar patchfile
 .Sh DESCRIPTION
 .Nm
@@ -328,7 +328,7 @@ will try to skip any leading garbage, apply the diff,
 and then skip any trailing garbage.
 Thus you could feed an article or message containing a
 diff listing to
-.Nm patch ,
+.Nm ,
 and it should work.
 If the entire diff is indented by a consistent amount,
 this will be taken into account.

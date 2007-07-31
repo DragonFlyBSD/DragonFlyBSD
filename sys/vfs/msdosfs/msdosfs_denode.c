@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.29 2007/06/14 02:55:27 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.29.2.1 2007/07/31 22:40:50 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -178,7 +178,10 @@ msdosfs_hashins(struct denode *dep)
 		    deq->de_dirclust == dep->de_dirclust &&
 		    deq->de_diroffset == dep->de_diroffset) {
 			lwkt_reltoken(&ilock);
-			return(EBUSY);
+			if (dep->de_refcnt)
+				return(EBUSY);
+			else
+				return(EINVAL);
 		}
 		depp = &deq->de_next;
 	}
@@ -312,12 +315,17 @@ again:
 	 * Insert the denode into the hash queue.  If a collision occurs
 	 * throw away the vnode and try again.
 	 */
-	if (msdosfs_hashins(ldep) != 0) {
-		kprintf("debug: msdosfs: hashins collision, retrying\n");
+	error = msdosfs_hashins(ldep);
+	if (error == EBUSY) {
 		nvp->v_type = VBAD;
 		vx_put(nvp);
 		kfree(ldep, M_MSDOSFSNODE);
 		goto again;
+	} else if (error) {
+		nvp->v_type = VBAD;
+		vx_put(nvp);
+		kfree(ldep, M_MSDOSFSNODE);
+		return (EINVAL);
 	}
 	nvp->v_data = ldep;
 	ldep->de_pmp = pmp;
@@ -689,7 +697,8 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	int error = 0;
 
 #ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_inactive(): dep %p, de_Name[0] %x\n", dep, dep->de_Name[0]);
+	kprintf("msdosfs_inactive(): dep %p, de_Name[0] %x\n",
+		dep, (dep ? dep->de_Name[0] : 0));
 #endif
 
 	if (prtactive && vp->v_sysref.refcnt > 1)
@@ -698,7 +707,7 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	/*
 	 * Ignore denodes related to stale file handles.
 	 */
-	if (dep->de_Name[0] == SLOT_DELETED)
+	if (dep == NULL || dep->de_Name[0] == SLOT_DELETED)
 		goto out;
 
 	/*
@@ -724,9 +733,9 @@ out:
 	 */
 #ifdef MSDOSFS_DEBUG
 	kprintf("msdosfs_inactive(): v_sysrefs %d, de_Name[0] %x\n",
-		vp->v_sysref.refcnt, dep->de_Name[0]);
+		vp->v_sysref.refcnt, )dep ? dep->de_Name[0] : 0));
 #endif
-	if (dep->de_Name[0] == SLOT_DELETED)
+	if (dep == NULL || dep->de_Name[0] == SLOT_DELETED)
 		vrecycle(vp);
 	return (error);
 }

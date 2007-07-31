@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.105 2007/06/08 02:00:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.105.2.1 2007/07/31 22:40:50 dillon Exp $
  */
 
 /*
@@ -1212,7 +1212,7 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 int
 vrecycle(struct vnode *vp)
 {
-	if (vp->v_sysref.refcnt == 1) {
+	if (vp->v_sysref.refcnt <= 1) {
 		vgone_vxlocked(vp);
 		return (1);
 	}

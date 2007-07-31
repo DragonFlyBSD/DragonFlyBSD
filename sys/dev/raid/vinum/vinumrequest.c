@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.19 2007/06/07 22:58:38 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.19.2.1 2007/07/31 22:40:50 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -436,6 +436,7 @@ launch_requests(struct request *rq, int reviveok)
 		    logrq(loginfo_rqe, (union rqinfou) rqe, rq->bio);
 #endif
 		/* fire off the request */
+		/* XXX this had better not be a low level drive */
 		dev_dstrategy(dev, &rqe->b.b_bio1);
 	    }
 	}
@@ -899,7 +900,6 @@ void
 sdio(struct bio *bio)
 {
     cdev_t dev;
-    cdev_t sddev;
     struct sd *sd;
     struct sdbuf *sbp;
     daddr_t endoffset;
@@ -945,7 +945,6 @@ sdio(struct bio *bio)
 	biodone(bio);
 	return;
     }
-    sddev = DRIVE[sd->driveno].dev;		    /* device */
     bzero(sbp, sizeof(struct sdbuf));			    /* start with nothing */
     sbp->b.b_cmd = bp->b_cmd;
     sbp->b.b_bcount = bp->b_bcount;			    /* number of bytes to transfer */
@@ -975,10 +974,9 @@ sdio(struct bio *bio)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
+	    "  %s dev %s, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
 	    (sbp->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
-	    major(sddev),
-	    minor(sddev),
+	    drive->devicename,
 	    sbp->sdno,
 	    sbp->b.b_bio1.bio_offset - ((off_t)SD[sbp->sdno].driveoffset << DEV_BSHIFT),
 	    sbp->b.b_bio1.bio_offset,
@@ -989,7 +987,7 @@ sdio(struct bio *bio)
     if (debug & DEBUG_LASTREQS)
 	logrq(loginfo_sdiol, (union rqinfou) &sbp->b.b_bio1, &sbp->b.b_bio1);
 #endif
-    dev_dstrategy(sddev, &sbp->b.b_bio1);
+    vn_strategy(drive->vp, &sbp->b.b_bio1);
     crit_exit();
 }
 
