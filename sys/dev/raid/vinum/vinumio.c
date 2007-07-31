@@ -35,12 +35,13 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.27 2007/07/16 21:31:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.28 2007/07/31 18:13:01 dillon Exp $
  */
 
 #include "vinumhdr.h"
 #include "request.h"
 #include <vm/vm_zone.h>
+#include <sys/nlookup.h>
 
 static char *sappend(char *txt, char *s);
 static int drivecmp(const void *va, const void *vb);
@@ -52,113 +53,68 @@ static int drivecmp(const void *va, const void *vb);
 int
 open_drive(struct drive *drive, struct proc *p, int verbose)
 {
-    int devmajor;					    /* major devs for disk device */
-    int devminor;					    /* minor devs for disk device */
-    int unit;
-    int slice;
-    int part;
-    char *dname;
-
-    if (bcmp(drive->devicename, "/dev/", 5))		    /* device name doesn't start with /dev */
-	return ENOENT;					    /* give up */
-    if (drive->flags & VF_OPEN)				    /* open already, */
-	return EBUSY;					    /* don't do it again */
+    struct nlookupdata nd;
+    int error;
+    const char *dname;
 
     /*
-     * Yes, Bruce, I know this is horrible, but we
-     * don't have a root file system when we first
-     * try to do this.  If you can come up with a
-     * better solution, I'd really like it.  I'm
-     * just putting it in now to add ammuntion to
-     * moving the system to devfs.
+     * Fail if already open
      */
-    dname = &drive->devicename[5];
-    drive->dev = NULL;					    /* no device yet */
-
-    /* Find the device */
-    if (bcmp(dname, "ad", 2) == 0)			    /* IDE disk */
-	devmajor = 116;
-    else if (bcmp(dname, "wd", 2) == 0)			    /* IDE disk */
-	devmajor = 3;
-    else if (bcmp(dname, "da", 2) == 0)
-	devmajor = 13;
-    else if (bcmp(dname, "vn", 2) == 0)
-	devmajor = 43;
-    else if (bcmp(dname, "md", 2) == 0)
-	devmajor = 95;
-    else if (bcmp(dname, "vkd", 3) == 0) {
-	devmajor = 97;
-	dname += 1;
-    } else if (bcmp(dname, "amrd", 4) == 0) {
-	devmajor = 133;
-	dname += 2;
-    } else if (bcmp(dname, "mlxd", 4) == 0) {
-	devmajor = 131;
-	dname += 2;
-    } else if (bcmp(dname, "idad", 4) == 0) {
-	devmajor = 109;
-	dname += 2;
-    } else if (bcmp(dname, "twed", 4) == 0) {               /* 3ware raid */
-      devmajor = 147;
-      dname += 2;
-    } else if (bcmp(dname, "ar", 2) == 0) {
-	devmajor = 157;
-    } else
-	return ENODEV;
-    dname += 2;						    /* point past */
+    if (drive->flags & VF_OPEN)
+	return EBUSY;
+    dname = drive->devicename;
 
     /*
-     * Found the device.  Require the form
-     * <unit>s<slice><partition>
+     * Severe hack to disallow opening partition 'c'
      */
-    if (*dname < '0' || *dname > '9')
-	return(ENODEV);
-    unit = strtol(dname, &dname, 10);
-    if (*dname != 's')
-	return(ENODEV);
-    ++dname;
+    if (strncmp(dname, "/dev", 4) == 0 && dname[strlen(dname)-1] == 'c')
+	return ENOTTY;
+
+    if (rootdev) {
+	/*
+	 * Open via filesystem (future)
+	 */
+	error = nlookup_init(&nd, drive->devicename, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error)
+	    return error;
+	error = vn_open(&nd, NULL, FREAD|FWRITE, 0);
+	drive->vp = nd.nl_open_vp;
+	nd.nl_open_vp = NULL;
+	nlookup_done(&nd);
+    } else {
+	/*
+	 * Open via synthesized vnode backed by disk device
+	 */
+	error = vn_opendisk(drive->devicename, FREAD|FWRITE, &drive->vp);
+	if (error)
+	    return error;
+    }
+
+    if (error == 0 && drive->vp == NULL)
+	error = ENODEV;
 
     /*
-     * Convert slice number to value suitable for
-     * dkmakeminor().  0->0, 1->2, 2->3, etc.
+     * A huge amount of pollution all over vinum requires that our low
+     * level drive be a device.
      */
-    slice = strtol(dname, &dname, 10);
-    if (slice > 0)
-	++slice;
-
-    if (*dname < 'a' || *dname > 'p')
-	return ENODEV;
-
-    part = *dname - 'a';
-    devminor = dkmakeminor(unit, slice, part);
-
-    /*
-     * Disallow partition c
-     */
-    if (part == 2)
-	return ENOTTY;					    /* not buying that */
-
-    drive->dev = udev2dev(makeudev(devmajor, devminor), 0);
-
-    if (drive->dev == NULL)
-	return ENODEV;
-
-    drive->dev->si_iosize_max = DFLTPHYS;
-    if (dev_is_good(drive->dev))
-	drive->lasterror = dev_dopen(drive->dev, FWRITE, 0, proc0.p_ucred);
-    else
-	drive->lasterror = ENOENT;
-
-    if (drive->lasterror != 0) {			    /* failed */
-	drive->state = drive_down;			    /* just force it down */
-	if (verbose)
+    if (error == 0 && drive->vp->v_type != VCHR) {
+	vn_close(drive->vp, FREAD|FWRITE);
+	drive->vp = NULL;
+	error = ENODEV;
+    }
+    if (error) {
+	drive->state = drive_down;
+	if (verbose) {
 	    log(LOG_WARNING,
 		"vinum open_drive %s: failed with error %d\n",
-		drive->devicename, drive->lasterror);
-    } else
-	drive->flags |= VF_OPEN;			    /* we're open now */
-
-    return drive->lasterror;
+		drive->devicename, error);
+	}
+    } else {
+	drive->dev = drive->vp->v_rdev;
+	drive->flags |= VF_OPEN;
+    }
+    drive->lasterror = error;
+    return error;
 }
 
 /*
@@ -224,12 +180,9 @@ init_drive(struct drive *drive, int verbose)
     if (drive->lasterror)
 	return drive->lasterror;
 
-    drive->lasterror = dev_dioctl(
-	drive->dev,
-	DIOCGPART,
-	(caddr_t) & drive->partinfo,
-	FREAD,
-	proc0.p_ucred);
+    drive->lasterror = VOP_IOCTL(drive->vp, DIOCGPART,
+				 (caddr_t)&drive->partinfo,
+				 FREAD|FWRITE, proc0.p_ucred);
     if (drive->lasterror) {
 	if (verbose)
 	    log(LOG_WARNING,
@@ -277,8 +230,11 @@ close_locked_drive(struct drive *drive)
      * the queues, which spec_close() will try to
      * do.  Get rid of them here first.
      */
-    drive->lasterror = dev_dclose(drive->dev, 0, 0);
-    drive->flags &= ~VF_OPEN;				    /* no longer open */
+    if (drive->vp) {
+	drive->lasterror = vn_close(drive->vp, FREAD|FWRITE);
+	drive->vp = NULL;
+    }
+    drive->flags &= ~VF_OPEN;
 }
 
 /*
@@ -337,7 +293,7 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, buf_cmd_t c
 	saveaddr = bp->b_data;
 	bp->b_data = buf;
 	bp->b_bcount = len;
-	dev_dstrategy(drive->dev, &bp->b_bio1);
+	vn_strategy(drive->vp, &bp->b_bio1);
 	error = biowait(bp);
 	bp->b_data = saveaddr;
 	bp->b_flags |= B_INVAL | B_AGE;
@@ -673,11 +629,9 @@ daemon_save_config(void)
 		    wlabel_on = 1;			    /* enable writing the label */
 		    error = 0;
 #if 1
-		    error = dev_dioctl(drive->dev, /* make the label writeable */
-			DIOCWLABEL,
-			(caddr_t) & wlabel_on,
-			FWRITE,
-			proc0.p_ucred);
+		    error = VOP_IOCTL(drive->vp, DIOCWLABEL,
+				      (caddr_t)&wlabel_on,
+				      FREAD|FWRITE, proc0.p_ucred);
 #endif
 		    if (error == 0)
 			error = write_drive(drive, (char *) vhdr, VINUMHEADERLEN, VINUM_LABEL_OFFSET);
@@ -687,12 +641,11 @@ daemon_save_config(void)
 			error = write_drive(drive, config, MAXCONFIG, VINUM_CONFIG_OFFSET + MAXCONFIG);	/* second copy */
 		    wlabel_on = 0;			    /* enable writing the label */
 #if 1
-		    if (error == 0)
-			error = dev_dioctl(drive->dev, /* make the label non-writeable again */
-			    DIOCWLABEL,
-			    (caddr_t) & wlabel_on,
-			    FWRITE,
-			    proc0.p_ucred);
+		    if (error == 0) {
+			error = VOP_IOCTL(drive->vp, DIOCWLABEL,
+					  (caddr_t)&wlabel_on,
+					  FREAD|FWRITE, proc0.p_ucred);
+		    }
 #endif
 		    unlockdrive(drive);
 		    if (error) {
