@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.30 2007/07/30 14:44:56 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.31 2007/07/31 01:16:53 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -178,7 +178,10 @@ msdosfs_hashins(struct denode *dep)
 		    deq->de_dirclust == dep->de_dirclust &&
 		    deq->de_diroffset == dep->de_diroffset) {
 			lwkt_reltoken(&ilock);
-			return(EBUSY);
+			if (dep->de_refcnt)
+				return(EBUSY);
+			else
+				return(EINVAL);
 		}
 		depp = &deq->de_next;
 	}
@@ -312,12 +315,17 @@ again:
 	 * Insert the denode into the hash queue.  If a collision occurs
 	 * throw away the vnode and try again.
 	 */
-	if (msdosfs_hashins(ldep) != 0) {
-		kprintf("debug: msdosfs: hashins collision, retrying\n");
+	error = msdosfs_hashins(ldep);
+	if (error == EBUSY) {
 		nvp->v_type = VBAD;
 		vx_put(nvp);
 		kfree(ldep, M_MSDOSFSNODE);
 		goto again;
+	} else if (error) {
+		nvp->v_type = VBAD;
+		vx_put(nvp);
+		kfree(ldep, M_MSDOSFSNODE);
+		return (EINVAL);
 	}
 	nvp->v_data = ldep;
 	ldep->de_pmp = pmp;
