@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.12 2007/05/24 05:45:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.12.2.1 2007/08/01 08:22:07 dillon Exp $
  */
 
 /*
@@ -153,6 +153,20 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 	kl->kl_stat = lwp->lwp_stat;
 	kl->kl_lock = lwp->lwp_lock;
 	kl->kl_tdflags = lwp->lwp_thread->td_flags;
+
+	/*
+	 * The process/lwp stat may not reflect whether the process is
+	 * actually sleeping or not if the related thread was directly
+	 * descheduled by LWKT.  Adjust the stat if the thread is not
+	 * runnable and not waiting to be scheduled on a cpu by the
+	 * user process scheduler.
+	 */
+	if (kl->kl_stat == LSRUN) {
+		if ((kl->kl_tdflags & TDF_RUNQ) == 0 &&
+		    (lwp->lwp_flag & LWP_ONRUNQ) == 0) {
+			kl->kl_stat = LSSLEEP;
+		}
+	}
 #ifdef SMP
 	kl->kl_mpcount = lwp->lwp_thread->td_mpcount;
 #else
