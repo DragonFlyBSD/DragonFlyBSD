@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.12 2007/07/31 18:13:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.13 2007/08/01 11:46:46 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -444,7 +444,7 @@ complete_raid5_write(struct rqelement *rqe)
 	log(LOG_DEBUG,
 	    "  %s dev %s, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
 	    (rqe->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
-	    device->devicename,
+	    drive->devicename,
 	    rqe->sdno,
 	    rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT),
 	    rqe->b.b_bio1.bio_offset,
