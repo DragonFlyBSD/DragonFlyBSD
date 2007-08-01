@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/atacontrol/atacontrol.c,v 1.42 2006/03/15 19:32:43 sos Exp $
- * $DragonFly: src/sbin/natacontrol/natacontrol.c,v 1.1 2006/12/05 21:32:21 tgen Exp $
+ * $DragonFly: src/sbin/natacontrol/natacontrol.c,v 1.2 2007/08/01 22:54:00 swildner Exp $
  */
 
 #include <sys/nata.h>
@@ -98,19 +98,19 @@ void
 usage()
 {
 	fprintf(stderr,
-		"usage:  atacontrol <command> args:\n"
-		"        atacontrol list\n"
-		"        atacontrol info channel\n"
-		"        atacontrol attach channel\n"
-		"        atacontrol detach channel\n"
-		"        atacontrol reinit channel\n"
-		"        atacontrol create type [interleave] disk0 ... diskN\n"
-		"        atacontrol delete array\n"
-		"        atacontrol addspare array disk\n"
-		"        atacontrol rebuild array\n"
-		"        atacontrol status array\n"
-		"        atacontrol mode device [mode]\n"
-		"        atacontrol cap device\n"
+		"usage:  natacontrol <command> args:\n"
+		"        natacontrol list\n"
+		"        natacontrol info channel\n"
+		"        natacontrol attach channel\n"
+		"        natacontrol detach channel\n"
+		"        natacontrol reinit channel\n"
+		"        natacontrol create type [interleave] disk0 ... diskN\n"
+		"        natacontrol delete array\n"
+		"        natacontrol addspare array disk\n"
+		"        natacontrol rebuild array\n"
+		"        natacontrol status array\n"
+		"        natacontrol mode device [mode]\n"
+		"        natacontrol cap device\n"
 	);
 	exit(EX_USAGE);
 }
@@ -308,7 +308,7 @@ main(int argc, char **argv)
 		      sscanf(argv[2], "acd%d", &disk) == 1 ||
 		      sscanf(argv[2], "afd%d", &disk) == 1 ||
 		      sscanf(argv[2], "ast%d", &disk) == 1)) {
-			fprintf(stderr, "atacontrol: Invalid device %s\n",
+			fprintf(stderr, "natacontrol: Invalid device %s\n",
 				argv[2]);
 			exit(EX_USAGE);
 		}
@@ -335,7 +335,7 @@ main(int argc, char **argv)
 		      sscanf(argv[2], "acd%d", &disk) == 1 ||
 		      sscanf(argv[2], "afd%d", &disk) == 1 ||
 		      sscanf(argv[2], "ast%d", &disk) == 1)) {
-			fprintf(stderr, "atacontrol: Invalid device %s\n",
+			fprintf(stderr, "natacontrol: Invalid device %s\n",
 				argv[2]);
 			exit(EX_USAGE);
 		}
@@ -363,7 +363,7 @@ main(int argc, char **argv)
 
 		if (!(sscanf(argv[2], "ata%d", &channel) == 1)) {
 			fprintf(stderr,
-				"atacontrol: Invalid channel %s\n", argv[2]);
+				"natacontrol: Invalid channel %s\n", argv[2]);
                         exit(EX_USAGE);
 		}
 		info_print(fd, channel, 0);
@@ -374,7 +374,7 @@ main(int argc, char **argv)
 
 		if (!(sscanf(argv[2], "ata%d", &channel) == 1)) {
 			fprintf(stderr,
-				"atacontrol: Invalid channel %s\n", argv[2]);
+				"natacontrol: Invalid channel %s\n", argv[2]);
                         exit(EX_USAGE);
 		}
 		if (ioctl(fd, IOCATADETACH, &channel) < 0)
@@ -386,7 +386,7 @@ main(int argc, char **argv)
 
 		if (!(sscanf(argv[2], "ata%d", &channel) == 1)) {
 			fprintf(stderr,
-				"atacontrol: Invalid channel %s\n", argv[2]);
+				"natacontrol: Invalid channel %s\n", argv[2]);
                         exit(EX_USAGE);
 		}
 		if (ioctl(fd, IOCATAATTACH, &channel) < 0)
@@ -399,7 +399,7 @@ main(int argc, char **argv)
 
 		if (!(sscanf(argv[2], "ata%d", &channel) == 1)) {
 			fprintf(stderr,
-				"atacontrol: Invalid channel %s\n", argv[2]);
+				"natacontrol: Invalid channel %s\n", argv[2]);
                         exit(EX_USAGE);
 		}
 		if (ioctl(fd, IOCATAREINIT, &channel) < 0)
@@ -430,10 +430,10 @@ main(int argc, char **argv)
 				config.type = AR_JBOD;
 		}
 		if (!config.type) {
-			fprintf(stderr, "atacontrol: Invalid RAID type %s\n",
+			fprintf(stderr, "natacontrol: Invalid RAID type %s\n",
 				argv[2]);
-			fprintf(stderr, "atacontrol: Valid RAID types: \n");
-			fprintf(stderr, "            stripe | mirror | "
+			fprintf(stderr, "natacontrol: Valid RAID types: \n");
+			fprintf(stderr, "             stripe | mirror | "
 					"RAID0 | RAID1 | RAID0+1 | RAID5 | "
 					"SPAN | JBOD\n");
 			exit(EX_USAGE);
@@ -445,7 +445,7 @@ main(int argc, char **argv)
 			if (argc < 4 ||
 			    !sscanf(argv[3], "%d", &config.interleave) == 1) {
 				fprintf(stderr,
-					"atacontrol: Invalid interleave %s\n",
+					"natacontrol: Invalid interleave %s\n",
 					argv[3]);
 				exit(EX_USAGE);
 			}
@@ -457,7 +457,7 @@ main(int argc, char **argv)
 		for (disk = 0; disk < 16 && (offset + disk) < argc; disk++) {
 			if (!(sscanf(argv[offset + disk], "ad%d", &dev) == 1)) {
 				fprintf(stderr,
-					"atacontrol: Invalid disk %s\n",
+					"natacontrol: Invalid disk %s\n",
 					argv[offset + disk]);
 				exit(EX_USAGE);
 			}
@@ -466,7 +466,7 @@ main(int argc, char **argv)
 
 		if ((config.type == AR_RAID1 || config.type == AR_RAID01) &&
 		    disk < 2) {
-			fprintf(stderr, "atacontrol: At least 2 disks must be "
+			fprintf(stderr, "natacontrol: At least 2 disks must be "
 				"specified\n");
 			exit(EX_USAGE);
 		}
@@ -483,7 +483,7 @@ main(int argc, char **argv)
 
 		if (!(sscanf(argv[2], "ar%d", &array) == 1)) {
 			fprintf(stderr,
-				"atacontrol: Invalid array %s\n", argv[2]);
+				"natacontrol: Invalid array %s\n", argv[2]);
                         exit(EX_USAGE);
 		}
 		if (ioctl(fd, IOCATARAIDDELETE, &array) < 0)
@@ -495,12 +495,12 @@ main(int argc, char **argv)
 
 		if (!(sscanf(argv[2], "ar%d", &config.lun) == 1)) {
 			fprintf(stderr,
-				"atacontrol: Invalid array %s\n", argv[2]);
+				"natacontrol: Invalid array %s\n", argv[2]);
 			usage();
 		}
 		if (!(sscanf(argv[3], "ad%d", &config.disks[0]) == 1)) {
 			fprintf(stderr,
-				"atacontrol: Invalid disk %s\n", argv[3]);
+				"natacontrol: Invalid disk %s\n", argv[3]);
 			usage();
 		}
 		if (ioctl(fd, IOCATARAIDADDSPARE, &config) < 0)
@@ -512,7 +512,7 @@ main(int argc, char **argv)
 
 		if (!(sscanf(argv[2], "ar%d", &array) == 1)) {
 			fprintf(stderr,
-				"atacontrol: Invalid array %s\n", argv[2]);
+				"natacontrol: Invalid array %s\n", argv[2]);
 			usage();
 		}
 		if (ioctl(fd, IOCATARAIDREBUILD, &array) < 0)
@@ -533,7 +533,7 @@ main(int argc, char **argv)
 
 		if (!(sscanf(argv[2], "ar%d", &config.lun) == 1)) {
 			fprintf(stderr,
-				"atacontrol: Invalid array %s\n", argv[2]);
+				"natacontrol: Invalid array %s\n", argv[2]);
 			usage();
 		}
 		if (ioctl(fd, IOCATARAIDSTATUS, &config) < 0)
