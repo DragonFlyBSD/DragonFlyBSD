@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.18 2007/02/05 09:38:19 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.19 2007/08/01 12:35:29 swildner Exp $
  */
 
 #include "use_asc.h"
@@ -851,7 +851,6 @@ ascpoll(struct dev_poll_args *ap)
     cdev_t dev = ap->a_head.a_dev;
     int unit = UNIT(minor(dev));
     struct asc_unit *scu = unittab + unit;
-    struct proc *p1;
     int revents = 0;
 
     crit_enter();

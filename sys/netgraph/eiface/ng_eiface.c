@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.12 2006/12/22 23:44:57 swildner Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.13 2007/08/01 12:35:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -493,8 +493,6 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	const priv_p priv = hook->node->private;
 	struct ifnet *const ifp = priv->ifp;
 	int error = 0;
-	struct ether_header *eh;
-	u_short ether_type;
 
 	/* Meta-data is end its life here... */
 	NG_FREE_META(meta);
