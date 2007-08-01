@@ -25,7 +25,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/printf.9,v 1.8 2006/09/08 14:05:03 ru Exp $
-.\" $DragonFly: src/share/man/man9/kprintf.9,v 1.2 2007/04/09 21:20:37 swildner Exp $
+.\" $DragonFly: src/share/man/man9/kprintf.9,v 1.3 2007/08/01 21:39:29 swildner Exp $
 .\"
 .Dd January 1, 2007
 .Dt KPRINTF 9
@@ -56,12 +56,12 @@
 .Fn kvsprintf "char *str" "const char *format" "__va_list ap"
 .Ft int
 .Fn kvsnprintf "char *str" "size_t size" "const char *format" "__va_list ap"
-.Ft void
+.Ft int
 .Fn tprintf "struct proc *p" "int pri" "const char *format" ...
 .Ft int
 .Fn uprintf "const char *format" ...
 .In sys/syslog.h
-.Ft void
+.Ft int
 .Fn log "int pri" "const char *format" ...
 .Sh DESCRIPTION
 The
@@ -172,8 +172,9 @@ The
 .Fn kvsprintf ,
 .Fn kvsnprintf ,
 .Fn tprintf ,
+.Fn uprintf ,
 and
-.Fn uprintf
+.Fn log
 functions return the number of characters displayed.
 .Sh EXAMPLES
 This example demonstrates the use of the
