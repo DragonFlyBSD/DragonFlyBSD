@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.56 2007/07/01 00:03:49 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.57 2007/08/01 21:56:40 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -315,7 +315,8 @@ MLINKS+=kobj.9 DEFINE_CLASS.9 \
 	kobj.9 kobj_create.9 \
 	kobj.9 kobj_delete.9 \
 	kobj.9 kobj_init.9
-MLINKS+=kprintf.9 ksnprintf.9 \
+MLINKS+=kprintf.9 krateprintf.9 \
+	kprintf.9 ksnprintf.9 \
 	kprintf.9 ksprintf.9 \
 	kprintf.9 kvprintf.9 \
 	kprintf.9 kvsnprintf.9 \
