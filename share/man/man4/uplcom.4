@@ -35,9 +35,9 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/uplcom.4,v 1.15 2006/08/20 05:56:00 imp Exp $
-.\" $DragonFly: src/share/man/man4/uplcom.4,v 1.4 2006/11/13 21:39:19 swildner Exp $
+.\" $DragonFly: src/share/man/man4/uplcom.4,v 1.5 2007/08/02 11:53:30 hasso Exp $
 .\"
-.Dd November 13, 2006
+.Dd July 29, 2007
 .Dt UPLCOM 4
 .Os
 .Sh NAME
@@ -59,45 +59,93 @@ driver which makes it behave like a
 .Sh HARDWARE
 The
 .Nm
-driver supports the following adapters:
+driver supports the following devices:
 .Pp
 .Bl -bullet -compact
 .It
-ATEN UC-232A
+Alcatel One Touch 535/735 phones
 .It
-BAFO BF-800
+Aten UC-232A USB to serial adapter
 .It
-BAFO BF-810
+BAFO BF-800 and BF-810 USB to serial adapters
 .It
-ELECOM UC-SGT
+Belkin F5U257 USB to serial adapter
+.It
+Elecom UC-SGT USB to serial adapter
 .It
 HAL Corporation Crossam2+USB IR commander
 .It
-Hama USB RS-232 Serial Adapter
+Hama USB RS-232 serial adapter
 .It
 Hamlet exagerate XURS232
 .It
+Huawei UMTS/HSDPA adapters
+.It
 IOGEAR UC-232A
 .It
-I/O DATA USB-RSAQ
+I/O DATA USB-RSAQ series USB to serial adapters
 .It
-I/O DATA USB-RSAQ2
+Itegno GSM/GPRS and CDMA modems
 .It
-I/O DATA USB-RSAQ3
+Leadtek 9531 GPS
+.It
+MCT USB to serial adapter
+.It
+Mobile Action MA-620 IrDA
+.It
+Nokia CA-42 USB data cable clones
+.It
+Panasonic TYTP50P6S 50" touch panel 
+.It
+Pharos 360 GPS
 .It
 PLANEX USB-RS232 URS-03
 .It
-RATOC REX-USB60
+Radio Shack USB to serial cable
 .It
-Radio Shack USB Serial Cable
+RATOC REX-USB60 USB to serial adapter
+.It
+Sagem USB data cables
+.It
+Samsung I330 smartphone cradle
 .It
 Sandberg USB to Serial Link (model number 133-08)
 .It
-SOURCENEXT KeikaiDenwa 8 (with and without charger)
+Siemens SX1 cellphone
 .It
-Sony Ericsson USB Cable (Susteen USB Data Cable)
+Siemens x65 and x75 series cellphones
 .It
-Willcom W-SIM DD PHS terminal.(WS002IN)
+Sitecom USB to serial cable
+.It
+Sony-Ericsson (Susteen) DCU-10 and DCU-11 USB data cables
+.It
+Sourcenext KeikaiDenwa 8 (with and without charger)
+.It
+Susteen Datapilot Universal-2 Phone Cable
+.It
+Syntech CPT-8001C barcode scanner USB IR cradle
+.It
+TDK USB-PHS adapter UHA6400
+.It
+TDK USB-PDC adapter UPA9664
+.It
+Tripp-Lite U209-000-R USB to serial cable
+.It
+Willcom W-SIM DD PHS terminal (WS002IN)
+.El
+.Pp
+The list is far from being complete and the
+.Nm
+driver provides support for many more devices based on original Prolific
+chips or it's clones:
+.Pp
+.Bl -bullet -compact
+.It
+Alcor AU9720 USB to serial controller
+.It
+Anchor Chips USB to serial controller
+.It
+Speed Dragon Multimedia MS3303H USB to serial controller
 .El
 .Sh SEE ALSO
 .Xr tty 4 ,
