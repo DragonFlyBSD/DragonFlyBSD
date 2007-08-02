@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.44 2007/02/22 15:50:49 corecode Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.45 2007/08/02 13:29:41 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1093,6 +1093,7 @@ selrecord(struct thread *selector, struct selinfo *sip)
 		sip->si_flags |= SI_COLL;
 	} else {
 		sip->si_pid = selector->td_proc->p_pid;
+		sip->si_tid = selector->td_lwp->lwp_tid;
 	}
 }
 
