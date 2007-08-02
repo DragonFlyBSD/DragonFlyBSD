@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.16 2007/07/27 18:07:21 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.17 2007/08/02 11:20:29 hasso Exp $
  */
 
 /*-
@@ -67,16 +67,15 @@
  */
 
 /*
- * This driver supports several USB-to-RS232 serial adapters driven by
- * Prolific PL-2303, PL-2303X and probably PL-2303HX USB-to-RS232
- * bridge chip.  The adapters are sold under many different brand
- * names.
+ * This driver supports several devices devices driven by Prolific PL-2303
+ * (known also as PL-2303H), PL-2303X and PL-2303HX USB-to-RS232 bridge chip.
+ * The devices are sold under many different brand names.
  *
- * Datasheets are available at Prolific www site at
- * http://www.prolific.com.tw.  The datasheets don't contain full
- * programming information for the chip.
+ * Datasheets are available at Prolific www site at http://www.prolific.com.tw
+ * The datasheets don't contain full programming information for the chip.
  *
- * PL-2303HX is probably programmed the same as PL-2303X.
+ * PL-2303HX has the same features as PL-2303X (at least from the point of
+ * view of device driver) but is pin-to-pin compatible with PL-2303.
  *
  * There are several differences between PL-2303 and PL-2303(H)X.
  * PL-2303(H)X can do higher bitrate in bulk mode, has _probably_
@@ -209,60 +208,42 @@ struct ucom_callback uplcom_callback = {
 	NULL
 };
 
-static const struct uplcom_product {
-	uint16_t	vendor;
-	uint16_t	product;
-	int32_t		release;	 /* release is a 16bit entity,
-					  * if -1 is specified we "don't care"
-					  * This is a floor value.  The table
-					  * must have newer revs before older
-					  * revs (and -1 last).
-					  */
-	char		chiptype;
-} uplcom_products [] = {
-	{ USB_VENDOR_RADIOSHACK, USB_PRODUCT_RADIOSHACK_USBCABLE, -1, TYPE_PL2303 },
+static const struct usb_devno uplcom_devs[] = {
+	{ USB_VENDOR_RADIOSHACK, USB_PRODUCT_RADIOSHACK_USBCABLE },
 
 	/* I/O DATA USB-RSAQ */
-	{ USB_VENDOR_IODATA, USB_PRODUCT_IODATA_USBRSAQ, -1, TYPE_PL2303 },
+	{ USB_VENDOR_IODATA, USB_PRODUCT_IODATA_USBRSAQ },
 	/* Prolific Pharos */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_PL2303X, -1, TYPE_PL2303 },
+	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_PL2303X },
 	/* I/O DATA USB-RSAQ2 */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_RSAQ2, -1, TYPE_PL2303 },
+	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_RSAQ2 },
 	/* I/O DATA USB-RSAQ3 */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_RSAQ3, -1, TYPE_PL2303X },
+	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_RSAQ3 },
 	/* Willcom W-SIM */
-	{ USB_VENDOR_PROLIFIC2, USB_PRODUCT_PROLIFIC2_WSIM, -1, TYPE_PL2303X},
+	{ USB_VENDOR_PROLIFIC2, USB_PRODUCT_PROLIFIC2_WSIM },
 	/* PLANEX USB-RS232 URS-03 */
-	{ USB_VENDOR_ATEN, USB_PRODUCT_ATEN_UC232A, -1, TYPE_PL2303 },
-	/* ST Lab USB-SERIAL-4 */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_PL2303,
-	  0x300, TYPE_PL2303X },
-	/* IOGEAR/ATEN UC-232A (also ST Lab USB-SERIAL-1) */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_PL2303, -1, TYPE_PL2303 },
-	/* HAMLET exagerate XURS232 */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_PL2303, -1, TYPE_PL2303X },
+	{ USB_VENDOR_ATEN, USB_PRODUCT_ATEN_UC232A },
+	/* IOGEAR/ATEN UC-232A, ST Lab USB-SERIAL-X etc */
+	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_PL2303 },
 	/* TDK USB-PHS Adapter UHA6400 */
-	{ USB_VENDOR_TDK, USB_PRODUCT_TDK_UHA6400, -1, TYPE_PL2303 },
+	{ USB_VENDOR_TDK, USB_PRODUCT_TDK_UHA6400 },
 	/* RATOC REX-USB60 */
-	{ USB_VENDOR_RATOC, USB_PRODUCT_RATOC_REXUSB60, -1, TYPE_PL2303 },
+	{ USB_VENDOR_RATOC, USB_PRODUCT_RATOC_REXUSB60 },
 	/* ELECOM UC-SGT */
-	{ USB_VENDOR_ELECOM, USB_PRODUCT_ELECOM_UCSGT, -1, TYPE_PL2303 },
-	{ USB_VENDOR_ELECOM, USB_PRODUCT_ELECOM_UCSGT0, -1, TYPE_PL2303 },
+	{ USB_VENDOR_ELECOM, USB_PRODUCT_ELECOM_UCSGT },
+	{ USB_VENDOR_ELECOM, USB_PRODUCT_ELECOM_UCSGT0 },
 	/* Sony Ericsson USB Cable */
-	{ USB_VENDOR_SONYERICSSON, USB_PRODUCT_SONYERICSSON_DCU10,
-	  -1,TYPE_PL2303 },
+	{ USB_VENDOR_SONYERICSSON, USB_PRODUCT_SONYERICSSON_DCU10 },
 	/* SOURCENEXT KeikaiDenwa 8 */
-	{ USB_VENDOR_SOURCENEXT, USB_PRODUCT_SOURCENEXT_KEIKAI8,
-	  -1, TYPE_PL2303 },
+	{ USB_VENDOR_SOURCENEXT, USB_PRODUCT_SOURCENEXT_KEIKAI8 },
 	/* SOURCENEXT KeikaiDenwa 8 with charger */
-	{ USB_VENDOR_SOURCENEXT, USB_PRODUCT_SOURCENEXT_KEIKAI8_CHG,
-	  -1, TYPE_PL2303 },
+	{ USB_VENDOR_SOURCENEXT, USB_PRODUCT_SOURCENEXT_KEIKAI8_CHG },
 	/* HAL Corporation Crossam2+USB */
-	{ USB_VENDOR_HAL, USB_PRODUCT_HAL_IMR001, -1, TYPE_PL2303 },
+	{ USB_VENDOR_HAL, USB_PRODUCT_HAL_IMR001 },
 	/* Sitecom USB to Serial */
-	{ USB_VENDOR_MCT, USB_PRODUCT_MCT_SITECOM_USB232, -1, TYPE_PL2303 },
+	{ USB_VENDOR_MCT, USB_PRODUCT_MCT_SITECOM_USB232 },
 	/* Tripp-Lite U209-000-R */
-	{ USB_VENDOR_TRIPPLITE, USB_PRODUCT_TRIPPLITE_U209, -1, TYPE_PL2303X },
+	{ USB_VENDOR_TRIPPLITE, USB_PRODUCT_TRIPPLITE_U209 },
 	{ 0, 0 }
 };
 
@@ -316,20 +297,12 @@ static int
 uplcom_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	int i;
 
 	if (uaa->iface != NULL)
 		return (UMATCH_NONE);
 
-	for (i = 0; uplcom_products[i].vendor != 0; i++) {
-		if (uplcom_products[i].vendor == uaa->vendor &&
-		    uplcom_products[i].product == uaa->product &&
-		    (uplcom_products[i].release <= uaa->release ||
-		     uplcom_products[i].release == -1)) {
-			return (UMATCH_VENDOR_PRODUCT);
-		}
-	}
-	return (UMATCH_NONE);
+	return (usb_lookup(uplcom_devs, uaa->vendor, uaa->product) != NULL ?
+		UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 
 static int
@@ -338,6 +311,7 @@ uplcom_attach(device_t self)
 	struct uplcom_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev = uaa->device;
+	usb_device_descriptor_t *dd;
 	struct ucom_softc *ucom;
 	usb_config_descriptor_t *cdesc;
 	usb_interface_descriptor_t *id;
@@ -364,26 +338,23 @@ uplcom_attach(device_t self)
 
 	DPRINTF(("uplcom attach: sc = %p\n", sc));
 
-	/* determine chip type */
-	for (i = 0; uplcom_products[i].vendor != 0; i++) {
-		if (uplcom_products[i].vendor == uaa->vendor &&
-		    uplcom_products[i].product == uaa->product &&
-		    (uplcom_products[i].release == uaa->release ||
-		     uplcom_products[i].release == -1)) {
-			sc->sc_chiptype = uplcom_products[i].chiptype;
-			break;
-		}
-	}
+	dd = usbd_get_device_descriptor(uaa->device);
+
+	if (!dd)
+		goto error;
 
 	/*
-	 * check we found the device - attach should have ensured we
-	 * don't get here without matching device
+	 * Determine chip type with algorithm sequence taken from the
+	 * Linux driver as I'm not aware of any better method. Device
+	 * release number in chip could be (and in fact is in many cases)
+	 * replaced by the contents of external EEPROM etc.
 	 */
-	if (uplcom_products[i].vendor == 0) {
-		kprintf("%s: didn't match\n", devname);
-		ucom->sc_dying = 1;
-		goto error;
-	}
+	else if (dd->bDeviceClass == 0x02)
+		sc->sc_chiptype = TYPE_PL2303;
+	else if (dd->bMaxPacketSize == 0x40)
+		sc->sc_chiptype = TYPE_PL2303X;
+	else
+		sc->sc_chiptype = TYPE_PL2303;
 
 #ifdef USB_DEBUG
 	/* print the chip type */
