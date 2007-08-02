@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)select.2	8.2 (Berkeley) 3/25/94
 .\" $FreeBSD: src/lib/libc/sys/select.2,v 1.14.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/select.2,v 1.7 2006/05/26 19:39:37 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/select.2,v 1.8 2007/08/02 00:21:54 swildner Exp $
 .\"
 .Dd March 25, 1994
 .Dt SELECT 2
@@ -42,9 +42,7 @@
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
-.In sys/types.h
-.In sys/time.h
-.In unistd.h
+.In sys/select.h
 .Ft int
 .Fn select "int nfds" "fd_set *readfds" "fd_set *writefds" "fd_set *exceptfds" "struct timeval *timeout"
 .Fn FD_SET fd &fdset
