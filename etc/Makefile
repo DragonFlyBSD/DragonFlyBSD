@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.179 2007/07/01 00:03:49 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.180 2007/08/02 06:53:14 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -551,6 +551,9 @@ distribution:
 	cd ${.CURDIR}/rc.d; ${MAKE} install 
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
 	cd ${.CURDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt
+	cd ${.CURDIR}; \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+		Makefile.usr ${DESTDIR}/usr/Makefile
 .if !defined(NO_I4B)
 	cd ${.CURDIR}/isdn; ${MAKE} install
 .endif
