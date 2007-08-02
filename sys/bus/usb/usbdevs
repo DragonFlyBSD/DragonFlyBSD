@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.23 2007/07/27 17:49:29 hasso Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.24 2007/08/02 11:37:24 hasso Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -356,7 +356,7 @@ vendor SMC		0x0707	Standard Microsystems
 vendor PUTERCOM		0x0708	Putercom
 vendor MCT		0x0711	MCT
 vendor IMATION		0x0718	Imation
-vendor SONYERICSSON	0x0731	Sony Ericsson
+vendor SUSTEEN		0x0731	Susteen
 vendor EICON		0x0734	Eicon Networks
 vendor SYNTECH		0x0745	Syntech Information
 vendor DIGITALSTREAM	0x074e	Digital Stream
@@ -554,7 +554,7 @@ vendor ACERCM		0x1189	Acer Communications & Multimedia
 vendor SIERRA		0x1199	Sierra Wireless
 vendor TOPFIELD		0x11db	Topfield Co., Ltd
 vendor SIEMENS3		0x11f5	Siemens
-vendor PROLIFIC2	0x11f6  Prolific
+vendor NETINDEX		0x11f6  NetIndex Inc.
 vendor ALCATEL		0x11f7	Alcatel
 vendor UNKNOWN3		0x1233	Unknown vendor
 vendor TSUNAMI		0x1241	Tsunami
@@ -793,6 +793,9 @@ product AIRPRIME PC5220		0x0112	CDMA Wireless PC Card
 /* AKS products */
 product AKS USBHASP		0x0001	USB-HASP 0.06
 
+/* Alcatel products */
+product ALCATEL OT535		0x02df	One Touch 535/735
+
 /* Alcor Micro, Inc. products */
 product ALCOR2 KBD_HUB		0x2802	Kbd Hub
 
@@ -800,6 +803,7 @@ product ALCOR MA_KBD_HUB	0x9213	MacAlly Kbd Hub
 product ALCOR AU9814		0x9215	AU9814 Hub
 product ALCOR SM_KBD		0x9410	MicroConnectors/StrongMan Keyboard
 product ALCOR NEC_KBD_HUB	0x9472	NEC Kbd Hub
+product ALCOR AU9720		0x9720	AU9720 USB to serial controller
 
 /* Allied Telesyn International products */
 product ALLIEDTELESYN ATUSB100	0xb100	AT-USB100
@@ -816,6 +820,7 @@ product AMBIT NTL_250		0x6098	NTL 250 cable modem
 product AMIT CGWLUSB2GO		0x0002	CG-WLUSB2GO
 
 /* Anchor products */
+product ANCHOR SERIAL		0x2008	Serial
 product ANCHOR EZUSB		0x2131	EZUSB
 product ANCHOR EZLINK		0x2720	EZLINK
 
@@ -1507,6 +1512,7 @@ product IODATA USBWNB11A	0x0919	USB WN-B11
 product IODATA USBWNB11		0x0922	USB Airport WN-B11
 product IODATA ETGUS2		0x0930	ETG-US2
 product IODATA USBRSAQ		0x0a03	USB serial adapter USB-RSAQ1
+product IODATA USBRSAQ5		0x0a0e	USB serial adapter USB-RSAQ5
 product IODATA2 USB2SC		0x0a09	USB2.0-SCSI Bridge USB2-SC
 
 /* Iomega products */
@@ -1519,6 +1525,10 @@ product IOMEGA CDRW		0x0055	CDRW 9602
 product IRIVER IFP_1XX		0x1101	iFP-1xx
 product IRIVER IFP_3XX		0x1103	iFP-3xx
 product IRIVER IFP_5XX		0x1105	iFP-5xx
+
+/* Itegno products */
+product ITEGNO GSM		0x1080	Itegno GSM/GPRS modem
+product ITEGNO CDMA		0x2080	iTegno CDMA 1x card
 
 /* Ituner networks products */
 product ITUNERNET USBLCD2X20	0x0002	USB-LCD 2x20
@@ -1627,6 +1637,9 @@ product KYOCERA2 CDMA_MSM_K	0x17da	Qualcomm Kyocera CDMA Technologies MSM
 product LACIE HD		0xa601	Hard Disk
 product LACIE CDRW		0xa602	CD R/W
 product LACIE PKTDRV            0x0211  PocketDrive
+
+/* Leadtek products */
+product LEADTEK 9531		0x2101	9531 GPS
 
 /* Lexar products */
 product LEXAR JUMPSHOT		0x0001	jumpSHOT CompactFlash Reader
@@ -1823,6 +1836,9 @@ product MITSUMI SONY_MOUSE	0x6408	Quick Scroll Mouse
 product MITSUMI BT_DONGLE	0x641f	Bluetooth USB dongle
 product MITSUMI FDD		0x6901	FDD
 
+/* Mobile Action products */
+product MOBILEACTION MA620	0x0620	MA-620 IrDA
+
 /* Mobility products */
 product MOBILITY EA		0x0204	Ethernet Adapter
 product MOBILITY EASIDOCK	0x0304	EasiDock Ethernet
@@ -1918,6 +1934,9 @@ product NETGEAR3 WG111T_NF	0x4251	WG111T (no firmware)
 product NETGEAR3 WPN111		0x5f00	WPN111
 product NETGEAR3 WPN111_NF	0x5f01	WPN111 (no firmware)
 
+/* NetIndex Inc. products */
+product NETINDEX WSIM		0x2001  Willcom WSIM
+
 /* Nikon products */
 product NIKON E990		0x0102	Digital Camera E990
 product NIKON E880		0x0103	Digital Camera E880
@@ -1926,6 +1945,9 @@ product NIKON LS40		0x4000	CoolScan LS40 ED
 
 /* NHJ product */
 product NHJ CAM2		0x9120	Camera
+
+/* Nokia products */
+product NOKIA CA42		0x1234	CA-42 Serial
 
 /* Nova Technology product */
 product NOVATECH NV902W		0x9020	NV-902W
@@ -1995,6 +2017,7 @@ product PANASONIC KXLRW32AN	0x0d09	CD-R Drive KXL-RW32AN
 product PANASONIC KXLCB20AN	0x0d0a	CD-R Drive KXL-CB20AN
 product PANASONIC KXLCB35AN	0x0d0e	DVD-ROM & CD-R/RW
 product PANASONIC SDCAAE	0x1b00	MultiMediaCard Adapter
+product PANASONIC TYTP50P6S	0x3900	TY-TP50P6-S 50in Touch Panel
 
 /* Pen Driver */
 product PEN USBDISKPRO		0x0120	USB Disk Pro
@@ -2059,6 +2082,7 @@ product PLEXTOR 40_12_40U	0x0011	PlexWriter 40/12/40U
 
 /* PLX products */
 product PLX TESTBOARD		0x9060	test board
+product PLX CA42		0xac70	CA-42 Serial
 
 /* PointChips */
 product POINTCHIPS FLASH	0x8001	Flash
@@ -2095,6 +2119,7 @@ product PRIMAX PCGAUMS1		0x4d04	Sony PCGA-UMS1
 product PROLIFIC PL2301		0x0000	PL2301 Host-Host interface
 product PROLIFIC PL2302		0x0001	PL2302 Host-Host interface
 product PROLIFIC RSAQ2		0x04bb	PL2303 Serial adapter (IODATA USB-RSAQ2)
+product PROLIFIC DCU11		0x1234	Unbranded DCU-11 clone
 product PROLIFIC PL2303		0x2303	PL2303 Serial adapter (ATEN/IOGEAR UC232A)
 product PROLIFIC PL2305		0x2305	Parallel printer adapter
 product PROLIFIC ATAPI4		0x2307	ATAPI-4 Bridge Controller
@@ -2184,6 +2209,7 @@ product SAITEK CYBORG_3D_GOLD	0x0006	Cyborg 3D Gold Joystick
 product SAMSUNG ML6060		0x3008	ML-6060 laser printer
 product SAMSUNG YP_U2		0x5050	YP-U2 MP3 Player
 product SAMSUNG I500		0x6601	I500 Palm USB Phone 
+product SAMSUNG I330		0x8001	I330 Palm USB phone
 
 /* Samsung Techwin products */
 product SAMSUNG_TECHWIN DIGIMAX_410	0x000a	Digimax 410
@@ -2342,12 +2368,12 @@ product SONY CLIE_NX60		0x00da	Sony Clie nx60
 product SONY CLIE_TH55		0x0144	Sony Clie th55
 product SONY CLIE_TJ25		0x0169	Sony Clie tj25
 
-/* Sony Ericsson products */
-product SONYERICSSON DCU10	0x0528	USB Cable
-
 /* SOURCENEXT products */
 product SOURCENEXT KEIKAI8	0x039f	KeikaiDenwa 8
 product SOURCENEXT KEIKAI8_CHG	0x012e	KeikaiDenwa 8 with charger
+
+/* Speed Dragon Multimedia products */
+product SPEEDDRAGON MS3303H	0x110b	MS3303H USB to serial controller
 
 /* Sphairon Access Systems GmbH product */
 product SPHAIRON UB801R		0x0110	UB801R
@@ -2381,8 +2407,12 @@ product SURECOM RT2570		0x11f3	RT2570
 product SURECOM RT2573		0x31f3	RT2573
 
 /* Susteen products */
-product SUSTEEN DCU10	0x0528	USB Cable
-  
+product SUSTEEN DCU10		0x0528	Sony-Ericsson DCU-10/DCU-11
+product SUSTEEN U2		0x2003	Susteen Datapilot Universal-2 cable
+
+/* Syntech Information products */
+product SYNTECH SERIAL		0x0001	Serial
+
 /* System TALKS, Inc. */
 product	SYSTEMTALKS SGCX2UL	0x1920	SGC-X2UL
 
