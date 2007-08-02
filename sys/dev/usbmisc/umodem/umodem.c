@@ -1,8 +1,7 @@
 /*
- * $NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.17 2007/08/02 16:19:17 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.18 2007/08/02 22:13:47 hasso Exp $
  */
 
 /*-
@@ -104,8 +103,6 @@
 #include <dev/usbmisc/ucom/ucomvar.h>
 #include <bus/usb/usb_quirks.h>
 
-#include <bus/usb/usbdevs.h>
-
 #ifdef USB_DEBUG
 int	umodemdebug = 0;
 SYSCTL_NODE(_hw_usb, OID_AUTO, umodem, CTLFLAG_RW, 0, "USB umodem");
@@ -118,12 +115,16 @@ SYSCTL_INT(_hw_usb_umodem, OID_AUTO, debug, CTLFLAG_RW,
 #define DPRINTF(x) DPRINTFN(0, x)
 
 /*
- * These are the maximum number of bytes transferred per frame.
- * If some really high speed devices should use this driver they
- * may need to be increased, but this is good enough for normal modems.
+ * These are the maximum number of bytes transferred per frame. These
+ * values were increased from 64/256 used in older versions of the driver
+ * to better support EVDO wireless PPP. Old values were good enough for
+ * normal modems, but not for really high speed devices.
+ *
+ * The sizes should not be increased further, or there will be problems
+ * with contiguous storage allocation.
  */
-#define UMODEMIBUFSIZE 64
-#define UMODEMOBUFSIZE 256
+#define UMODEMIBUFSIZE 4096
+#define UMODEMOBUFSIZE 4096
 
 #define UMODEM_MODVER			1	/* module version */
 
@@ -314,11 +315,11 @@ umodem_attach(device_t self)
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
 		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
 			ucom->sc_bulkin_no = ed->bEndpointAddress;
-                } else if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_OUT &&
+		} else if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_OUT &&
 		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
 			ucom->sc_bulkout_no = ed->bEndpointAddress;
-                }
-        }
+		}
+	}
 
 	if (ucom->sc_bulkin_no == -1) {
 		kprintf("%s: Could not find data bulk in\n", devname);
@@ -601,7 +602,7 @@ umodem_ioctl(void *addr, int portno, u_long cmd, caddr_t data, int flag,
 	if (sc->sc_ucom.sc_dying)
 		return (EIO);
 
-	DPRINTF(("umodemioctl: cmd=0x%08lx\n", cmd));
+	DPRINTF(("umodem_ioctl: cmd=0x%08lx\n", cmd));
 
 	switch (cmd) {
 	case USB_GET_CM_OVER_DATA:
@@ -615,7 +616,7 @@ umodem_ioctl(void *addr, int portno, u_long cmd, caddr_t data, int flag,
 		break;
 
 	default:
-		DPRINTF(("umodemioctl: unknown\n"));
+		DPRINTF(("umodem_ioctl: unknown\n"));
 		error = ENOTTY;
 		break;
 	}
@@ -626,7 +627,7 @@ umodem_ioctl(void *addr, int portno, u_long cmd, caddr_t data, int flag,
 void
 umodem_dtr(struct umodem_softc *sc, int onoff)
 {
-	DPRINTF(("umodem_modem: onoff=%d\n", onoff));
+	DPRINTF(("umodem_dtr: onoff=%d\n", onoff));
 
 	if (sc->sc_dtr == onoff)
 		return;
@@ -638,7 +639,7 @@ umodem_dtr(struct umodem_softc *sc, int onoff)
 void
 umodem_rts(struct umodem_softc *sc, int onoff)
 {
-	DPRINTF(("umodem_modem: onoff=%d\n", onoff));
+	DPRINTF(("umodem_rts: onoff=%d\n", onoff));
 
 	if (sc->sc_rts == onoff)
 		return;
