@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi_util.c,v 1.42 2004/12/03 08:53:40 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.34 2005/03/01 08:01:22 sobomax Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.15 2007/07/03 19:28:16 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.16 2007/08/02 16:19:17 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -535,3 +535,30 @@ usb_find_desc(usbd_device_handle dev, int type, int subtype)
 	}
 	return desc;
 }
+
+/* same as usb_find_desc(), but searches only in the specified interface. */
+const usb_descriptor_t *
+usb_find_desc_if(usbd_device_handle dev, int type, int subtype,
+		 usb_interface_descriptor_t *id)
+{
+	usbd_desc_iter_t iter;
+	const usb_descriptor_t *desc;
+
+	usb_desc_iter_init(dev, &iter);
+
+	iter.cur = (void *)id;		/* start from the interface desc */
+	usb_desc_iter_next(&iter);	/* and skip it */
+
+	while ((desc = usb_desc_iter_next(&iter)) != NULL) {
+		if (desc->bDescriptorType == UDESC_INTERFACE) {
+			/* we ran into the next interface --- not found */
+			return NULL;
+		}
+		if (desc->bDescriptorType == type &&
+		     (subtype == USBD_SUBTYPE_ANY ||
+		      subtype == desc->bDescriptorSubtype))
+			break;
+	}
+	return desc;
+}
+
