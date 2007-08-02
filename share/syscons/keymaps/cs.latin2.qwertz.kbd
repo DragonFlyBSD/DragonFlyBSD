@@ -2,7 +2,7 @@
 # by Rudolf Cejka <cejkar@dcse.fee.vutbr.cz>
 #
 # $FreeBSD: src/share/syscons/keymaps/cs.latin2.qwertz.kbd,v 1.1 1999/12/22 00:09:14 ache Exp $
-# $DragonFly: src/share/syscons/keymaps/cs.latin2.qwertz.kbd,v 1.2 2003/06/17 04:37:03 dillon Exp $
+# $DragonFly: src/share/syscons/keymaps/cs.latin2.qwertz.kbd,v 1.3 2007/08/02 00:04:58 swildner Exp $
 #
 # English/Czech keyboard lock:  (Left)Alt+Shift
 # English/Czech keyboard shift: (Right)AltGr
@@ -124,7 +124,7 @@
   089   cr     cr     nl     nl     cr     cr     nl     nl      N
   090   rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl   O
   091   '/'    '/'    '/'    '/'    '/'    '/'    '/'    '/'     N
-  092   nscr   nscr   debug  debug  nop    nop    nop    nop     O
+  092   nscr   pscr   debug  debug  nop    nop    nop    nop     O
   093   ashift ashift ralt   ralt   ralt   ralt   ralt   ralt    O
   094   fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49  O
   095   fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50  O
@@ -237,7 +237,7 @@
   217   cr     cr     nl     nl     cr     cr     nl     nl      N
   218   rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl   O
   219   '/'    '/'    '/'    '/'    '/'    '/'    '/'    '/'     N
-  220   nscr   nscr   debug  debug  nop    nop    nop    nop     O
+  220   nscr   pscr   debug  debug  nop    nop    nop    nop     O
   221   ashift ashift ralt   ralt   ralt   ralt   ralt   ralt    O
   222   fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49  O
   223   fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50  O

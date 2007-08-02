@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/swissgerman.iso.kbd,v 1.5.2.1 2000/07/18 00:47:53 ache Exp $
-# $DragonFly: src/share/syscons/keymaps/swissgerman.iso.kbd,v 1.3 2005/08/20 19:22:37 swildner Exp $
+# $DragonFly: src/share/syscons/keymaps/swissgerman.iso.kbd,v 1.4 2007/08/02 00:04:59 swildner Exp $
 #
 # swissgerman ISO 8859-1 keymap, no dead keys
 # created 14.11.1999 by Martin Blapp <mb@imp.ch>
@@ -99,7 +99,7 @@
   089   cr     cr     nl     nl     cr     cr     nl     nl      O
   090   rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl   O
   091   '/'    '/'    '/'    '/'    '/'    '/'    '/'    '/'     N
-  092   nscr   nscr   debug  debug  nop    nop    nop    nop     O
+  092   nscr   pscr   debug  debug  nop    nop    nop    nop     O
   093   ralt   ralt   ralt   ralt   ralt   ralt   ralt   ralt    O
   094   fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49  O
   095   fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50  O

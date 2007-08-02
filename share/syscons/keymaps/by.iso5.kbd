@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/by.iso5.kbd,v 1.1 2003/12/20 11:18:43 ache Exp $
-# $DragonFly: src/share/syscons/keymaps/by.iso5.kbd,v 1.1 2006/11/12 21:15:46 swildner Exp $
+# $DragonFly: src/share/syscons/keymaps/by.iso5.kbd,v 1.2 2007/08/02 00:04:58 swildner Exp $
 #                                                         alt
 # scan                       cntrl          alt    alt   cntrl lock
 # code  base   shift  cntrl  shift  alt    shift  cntrl  shift state
@@ -96,7 +96,7 @@
   089   cr     cr     nl     nl     cr     cr     nl     nl      O
   090   rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl   O
   091   '/'    '/'    '/'    '/'    '/'    '/'    '/'    '/'     N
-  092   nscr   nscr   debug  debug  nop    nop    nop    nop     O
+  092   nscr   pscr   debug  debug  nop    nop    nop    nop     O
   093   ralt   ralt   ralt   ralt   ralt   ralt   ralt   ralt    O
   094   fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49  O
   095   fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50  O
@@ -206,7 +206,7 @@
   217   cr     cr     nl     nl     cr     cr     nl     nl      O
   218   rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl   O
   219   '/'    '/'    '/'    '/'    '/'    '/'    '/'    '/'     N
-  220   nscr   nscr   debug  debug  nop    nop    nop    nop     O
+  220   nscr   pscr   debug  debug  nop    nop    nop    nop     O
   221   ralt   ralt   ralt   ralt   ralt   ralt   ralt   ralt    O
   222   fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49  O
   223   fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50  O

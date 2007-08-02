@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/uk.iso.kbd,v 1.13.2.2 2002/04/14 16:18:09 phantom Exp $
-# $DragonFly: src/share/syscons/keymaps/uk.iso.kbd,v 1.3 2005/08/20 19:22:37 swildner Exp $
+# $DragonFly: src/share/syscons/keymaps/uk.iso.kbd,v 1.4 2007/08/02 00:04:59 swildner Exp $
 #                                                         alt
 # scan                       cntrl          alt    alt   cntrl lock
 # code  base   shift  cntrl  shift  alt    shift  cntrl  shift state
@@ -96,7 +96,7 @@
   089   cr     cr     nl     nl     cr     cr     nl     nl      O
   090   rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl  rctrl   O
   091   '/'    '/'    '/'    '/'    '/'    '/'    '/'    '/'     N
-  092   nscr   nscr   debug  debug  nop    nop    nop    nop     O
+  092   nscr   pscr   debug  debug  nop    nop    nop    nop     O
   093   ralt   ralt   ralt   ralt   ralt   ralt   ralt   ralt    O
   094   fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49 fkey49  O
   095   fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50 fkey50  O
