@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.180 2007/08/02 06:53:14 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.181 2007/08/02 10:27:01 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -517,6 +517,8 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/sata.4.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/snd_emu10kx.4.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/{cpu,mi}_switch.9.gz"
+	rm -f ${DESTDIR}/usr/libexec/getNAME
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/getNAME.1.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)

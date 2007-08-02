@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/libexec/Makefile,v 1.42.2.5 2002/11/12 17:32:48 obrien Exp $
-# $DragonFly: src/libexec/Makefile,v 1.11 2006/11/09 18:44:52 pavalos Exp $
+# $DragonFly: src/libexec/Makefile,v 1.12 2007/08/02 10:27:01 swildner Exp $
 
 # Present but disabled: kpasswdd
 SUBDIR=	atrun \
@@ -9,7 +9,6 @@ SUBDIR=	atrun \
 	fingerd \
 	ftpd \
 	ftp-proxy \
-	getNAME \
 	getty \
 	makekey \
 	makewhatis.local \
