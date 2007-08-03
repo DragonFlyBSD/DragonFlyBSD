@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.68 2007/07/26 20:43:02 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.69 2007/08/03 08:00:06 dillon Exp $
 #
 
 # compat target
@@ -24,25 +24,25 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
-PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.9.0-DEVELOPMENT
+PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.10.0-RELEASE-BUILD
 
 ENVCMD?=	env
 TAR?=	tar
 
-PKGSRC_CDRECORD?=	cdrecord-2.00.3nb2.tgz
-PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20070205
+PKGSRC_CDRECORD?=	cdrtools-2.01.01.27nb1.tgz
+PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20070801
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
 # Default packages to be installed on the release ISO.
 #
-PKGSRC_PACKAGES?=	cdrecord-2.00.3nb2.tgz
+PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1.tgz
 
 # Even though buildiso wipes the packages, our check target has to run
 # first and old packages (listed as they appear in pkg_info) must be
 # cleaned out in order for the pkg_add -n test we use in the check target
 # to operate properly.
 #
-OLD_PKGSRC_PACKAGES?=
+OLD_PKGSRC_PACKAGES?= cdrecord-2.00.3nb2 bootstrap-kit-20070205
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `pkgcustomizeiso'
@@ -166,17 +166,14 @@ syssrcs:
 .endif
 
 customizeiso:
-	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
 	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${CVSUP_BOOTSTRAP_KIT}.tgz)
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
-	cpdup ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT} ${ISOROOT}/tmp/bootstrap
+	cd ${ISOROOT}; tar xvzpf ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/man/man1/cvsup.1 ${ISOROOT}/usr/local/man/man1/cvsup.1
-	mkdir -p ${ISOROOT}/tmp/bootstrap/distfiles	# new bootstrap insists in that
-	chroot ${ISOROOT} csh -c "cd /tmp/bootstrap/bootstrap; ./bootstrap"
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
 	rm -rf `find ${ISOROOT} -type d -name CVS -print`
 	rm -rf ${ISOROOT}/usr/local/share/pristine
@@ -192,11 +189,21 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
+	# This is a really bad hack.  There seems to be no reliable way
+	# to install a package to a target directory prefix so we have to
+	# copy everything into the ISO root and do the install chrooted.
+	#
+	rm -rf ${ISOROOT}/tmp/packages
+	mkdir ${ISOROOT}/tmp/packages
 .for PKG in ${PKGSRC_PACKAGES}
-	${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${PKG}
+	cp ${ISODIR}/packages/${PKG} ${ISOROOT}/tmp/packages
 .endfor
+.for PKG in ${PKGSRC_PACKAGES}
+	${ENV} PKG_PATH=/tmp/packages chroot ${ISOROOT} ${PKGBIN_PKG_ADD} -I ${PKG}
+.endfor
+	rm -rf ${ISOROOT}/tmp/packages
 	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
-	${PKGBIN_PKG_ADMIN} -K ${ISOROOT}${PKGSRC_DB} rebuild
+	chroot ${ISOROOT} ${PKGBIN_PKG_ADMIN} rebuild
 
 mklocatedb:
 	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
@@ -250,7 +257,7 @@ pkgsrc_conf:
 
 pkgsrc_cdrecord:
 .if !exists (${PKGBIN_MKISOFS})
-	${PKGBIN_PKG_ADD} ${PKGSRC_PKG_PATH}/cdrecord*
+	${PKGBIN_PKG_ADD} ${PKGSRC_PKG_PATH}/cdrtools*
 .endif
 
 
