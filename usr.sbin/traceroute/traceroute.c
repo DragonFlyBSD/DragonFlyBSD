@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.7 2007/05/23 06:38:22 hasso Exp $
+ * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.8 2007/08/03 09:50:05 hasso Exp $
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  */
 
@@ -245,7 +245,7 @@ struct packetdata {
 };
 
 /*
- * Support for ICMP extensions - draft-ietf-mpls-icmp-08.txt 
+ * Support for ICMP extensions - RFC4950.
  */
 #define ICMP_EXT_OFFSET  8 + 128 /* ICMP type, code, checksum (unused)
 				  * + original datagram */
