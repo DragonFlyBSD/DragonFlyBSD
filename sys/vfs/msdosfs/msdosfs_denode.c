@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.29.2.1 2007/07/31 22:40:50 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.29.2.2 2007/08/03 21:55:23 swildner Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -733,7 +733,7 @@ out:
 	 */
 #ifdef MSDOSFS_DEBUG
 	kprintf("msdosfs_inactive(): v_sysrefs %d, de_Name[0] %x\n",
-		vp->v_sysref.refcnt, )dep ? dep->de_Name[0] : 0));
+		vp->v_sysref.refcnt, (dep ? dep->de_Name[0] : 0));
 #endif
 	if (dep == NULL || dep->de_Name[0] == SLOT_DELETED)
 		vrecycle(vp);
