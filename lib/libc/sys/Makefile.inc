@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.27 2007/07/05 17:36:46 josepht Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.28 2007/08/03 08:40:14 swildner Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -130,7 +130,7 @@ MLINKS+=read.2 pread.2 read.2 preadv.2 read.2 readv.2
 MLINKS+=recv.2 recvfrom.2 recv.2 recvmsg.2
 MLINKS+=send.2 sendmsg.2 send.2 sendto.2
 MLINKS+=setpgid.2 setpgrp.2
-MLINKS+=setresuid.2 setresgid.2
+MLINKS+=setresuid.2 getresgid.2 setresuid.2 getresuid.2 setresuid.2 setresgid.2
 MLINKS+=setuid.2 setegid.2 setuid.2 seteuid.2 setuid.2 setgid.2
 MLINKS+=shmat.2 shmdt.2
 MLINKS+=stat.2 fstat.2 stat.2 lstat.2
