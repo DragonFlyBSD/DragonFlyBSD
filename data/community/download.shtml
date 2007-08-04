@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.10 2007/06/25 22:29:20 pavalos Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.11 2007/08/04 01:47:48 justin Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -173,7 +173,7 @@ rsync
 <TD>Daily snapshots, official ISOs</TD>
 <TD>
 <a href="http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">HTTP</a>, 
-<a href="ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">FTP</a>, and 
+<a href="ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">FTP</a>, 
 <a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">rsync</a> (IPv4 and IPv6)
 </TD>
 </TR>
@@ -262,7 +262,7 @@ rsync
 <TD>Code, daily snapshots, official ISOs</TD>
 <TD>
 <a href="http://www.theshell.com/pub/DragonFly/">HTTP</a>,
-<a href="ftp://ftp.theshell.com/pub/DragonFly/">FTP</a>, and
+<a href="ftp://ftp.theshell.com/pub/DragonFly/">FTP</a>, 
 <a href="rsync://rsync.theshell.com/pub/DragonFly/">rsync</a> (IPv4 and IPv6)
 </TD>
 </TR>
@@ -291,7 +291,7 @@ rsync
 <TD>Daily Snapshots, Official ISOs</TD>
 <TD>
 <a href="http://ftp.duth.gr/pub/DragonflyBSD/">HTTP</a>,
-<a href="ftp://ftp.duth.gr/pub/DragonflyBSD/">FTP</a>
+<a href="ftp://ftp.duth.gr/pub/DragonflyBSD/">FTP</a>,
 <a href="rsync://ftp.duth.gr/DragonflyBSD/">rsync</a>
 </TD>
 </TR>
@@ -300,7 +300,7 @@ rsync
 <TD>High5.net (Amsterdam)</TD>
 <TD>Official ISOs</TD>
 <TD>
-<a href="http://high5.net/mirrors/DragonFly/iso-images/">HTTP</a>,
+<a href="http://high5.net/mirrors/DragonFly/iso-images/">HTTP</a>
 </TD>
 </TR>
 
@@ -309,8 +309,17 @@ rsync
 <TD>Daily Snapshots, Official ISOs</TD>
 <TD>
 <a href="http://ftp.estpak.ee/pub/DragonFly">HTTP</a>,
-<a href="ftp://ftp.estpak.ee/pub/DragonFly">FTP</a>
+<a href="ftp://ftp.estpak.ee/pub/DragonFly">FTP</a>,
 <a href="rsync://ftp.estpak.ee/DragonFly">rsync</a>
+</TD>
+</TR>
+
+<TR>
+<TD>TWAREN FTP (Taiwan)</TD>
+<TD>Daily Snapshots, Official ISOs</TD>
+<TD>
+<a href="http://ftp.twaren.net/BSD/DragonFlyBSD/">HTTP</a>,
+<a href="ftp://ftp.twaren.net/BSD/DragonFlyBSD/">FTP</a>
 </TD>
 </TR>
 
@@ -369,6 +378,14 @@ rsync
 </TD>
 </TR>
 -->
+
+<TR>
+<TD>TWAREN FTP (Taiwan)</TD>
+<TD>binary pkgsrc packages</TD>
+<TD>
+<a href="http://ftp.twaren.net/BSD/DragonFlyBSD/packages">i386 packages</a>
+</TD>
+</TR>
 
 
 <!-- source only after this -->
