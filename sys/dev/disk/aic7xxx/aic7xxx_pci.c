@@ -42,7 +42,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_pci.c#78 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.35 2005/09/22 05:11:35 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.12 2007/07/07 00:49:51 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.12.2.1 2007/08/04 21:42:35 dillon Exp $
  */
 
 #ifdef __linux__
@@ -54,8 +54,6 @@
 #include "aic7xxx_inline.h"
 #include "aic7xxx_93cx6.h"
 #endif
-
-#ifdef AHC_PCI_CONFIG
 
 static __inline uint64_t
 ahc_compose_id(u_int device, u_int vendor, u_int subdevice, u_int subvendor)
@@ -2509,4 +2507,3 @@ ahc_aha494XX_setup(struct ahc_softc *ahc)
 	return (0);
 }
 
-#endif
