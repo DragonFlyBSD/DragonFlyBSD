@@ -1,4 +1,4 @@
-/*	$NetBSD: cmds.c,v 1.121 2007/04/18 01:39:04 lukem Exp $	*/
+/*	$NetBSD: cmds.c,v 1.123 2007/05/24 05:05:18 lukem Exp $	*/
 
 /*-
  * Copyright (c) 1996-2007 The NetBSD Foundation, Inc.
@@ -103,7 +103,7 @@
 #if 0
 static char sccsid[] = "@(#)cmds.c	8.6 (Berkeley) 10/9/94";
 #else
-__RCSID("$NetBSD: cmds.c,v 1.121 2007/04/18 01:39:04 lukem Exp $");
+__RCSID("$NetBSD: cmds.c,v 1.123 2007/05/24 05:05:18 lukem Exp $");
 #endif
 #endif /* not lint */
 
@@ -754,8 +754,9 @@ mget(int argc, char *argv[])
 void
 fget(int argc, char *argv[])
 {
-	char	*buf, *mode;
+	char	*mode;
 	FILE	*fp;
+	char	buf[MAXPATHLEN];
 
 	if (argc != 2) {
 		UPRINTF("usage: %s localfile\n", argv[0]);
@@ -773,9 +774,7 @@ fget(int argc, char *argv[])
 	argv[0] = "get";
 	mode = restart_point ? "r+" : "w";
 
-	for (;
-	    (buf = fparseln(fp, NULL, NULL, "\0\0\0", 0)) != NULL;
-	    free(buf)) {
+	while (getline(fp, buf, sizeof(buf), NULL) >= 0) {
 		if (buf[0] == '\0')
 			continue;
 		argv[1] = buf;
@@ -2496,7 +2495,8 @@ modtime(int argc, char *argv[])
 	}
 	mtime = remotemodtime(argv[1], 1);
 	if (mtime != -1)
-		fprintf(ttyout, "%s\t%s", argv[1], asctime(localtime(&mtime)));
+		fprintf(ttyout, "%s\t%s", argv[1],
+		    rfc2822time(localtime(&mtime)));
 	code = (mtime > 0);
 }
 

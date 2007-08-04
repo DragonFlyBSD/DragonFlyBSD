@@ -1,4 +1,4 @@
-/*	$NetBSD: util.c,v 1.138 2007/04/17 05:52:04 lukem Exp $	*/
+/*	$NetBSD: util.c,v 1.143 2007/05/24 05:05:19 lukem Exp $	*/
 
 /*-
  * Copyright (c) 1997-2007 The NetBSD Foundation, Inc.
@@ -71,7 +71,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: util.c,v 1.138 2007/04/17 05:52:04 lukem Exp $");
+__RCSID("$NetBSD: util.c,v 1.143 2007/05/24 05:05:19 lukem Exp $");
 #endif /* not lint */
 
 /*
@@ -175,7 +175,7 @@ parse_feat(const char *line)
 
 			/*
 			 * work-around broken ProFTPd servers that can't
-			 * even obey RFC 2389.
+			 * even obey RFC2389.
 			 */
 	while (*line && isspace((int)*line))
 		line++;
@@ -399,7 +399,7 @@ ftp_login(const char *host, const char *luser, const char *lpass)
 	 */
 	if (anonftp) {
 		FREEPTR(user);
-		user = ftp_strdup("anonymous");	/* as per RFC 1635 */
+		user = ftp_strdup("anonymous");	/* as per RFC1635 */
 		FREEPTR(pass);
 		pass = ftp_strdup(getoptionvalue("anonpass"));
 	}
@@ -717,7 +717,6 @@ remotemodtime(const char *file, int noisy)
 	if (r == COMPLETE) {
 		struct tm timebuf;
 		char *timestr, *frac;
-		int yy, mo, day, hour, min, sec;
 
 		/*
 		 * time-val = 14DIGIT [ "." 1*DIGIT ]
@@ -749,20 +748,13 @@ remotemodtime(const char *file, int noisy)
 			timestr[1] = '0';
 			fprintf(ttyout, "Converted to `%s'\n", timestr);
 		}
+		memset(&timebuf, 0, sizeof(timebuf));
 		if (strlen(timestr) != 14 ||
-		    sscanf(timestr, "%04d%02d%02d%02d%02d%02d",
-			&yy, &mo, &day, &hour, &min, &sec) != 6) {
+		    (strptime(timestr, "%Y%m%d%H%M%S", &timebuf) == NULL)) {
  bad_parse_time:
 			fprintf(ttyout, "Can't parse time `%s'.\n", timestr);
 			goto cleanup_parse_time;
 		}
-		memset(&timebuf, 0, sizeof(timebuf));
-		timebuf.tm_sec = sec;
-		timebuf.tm_min = min;
-		timebuf.tm_hour = hour;
-		timebuf.tm_mday = day;
-		timebuf.tm_mon = mo - 1;
-		timebuf.tm_year = yy - TM_YEAR_BASE;
 		timebuf.tm_isdst = -1;
 		rtime = timegm(&timebuf);
 		if (rtime == -1) {
@@ -771,7 +763,9 @@ remotemodtime(const char *file, int noisy)
 			else
 				goto cleanup_parse_time;
 		} else
-			DPRINTF("parsed date as: %s", ctime(&rtime));
+			DPRINTF("parsed date `%s' as " LLF ", %s",
+			    timestr, (LLT)rtime,
+			    rfc2822time(localtime(&rtime)));
 	} else {
 		if (r == ERROR && code == 500 && features[FEAT_MDTM] == -1)
 			features[FEAT_MDTM] = 0;
@@ -785,6 +779,21 @@ remotemodtime(const char *file, int noisy)
 	if (rtime == -1)
 		code = ocode;
 	return (rtime);
+}
+
+/*
+ * Format tm in an RFC2822 compatible manner, with a trailing \n.
+ * Returns a pointer to a static string containing the result.
+ */
+const char *
+rfc2822time(const struct tm *tm)
+{
+	static char result[50];
+
+	if (strftime(result, sizeof(result),
+	    "%a, %d %b %Y %H:%M:%S %z\n", tm) == 0)
+		errx(1, "Can't convert RFC2822 time: buffer too small");
+	return result;
 }
 
 /*
