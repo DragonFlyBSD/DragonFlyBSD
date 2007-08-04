@@ -31,12 +31,10 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_pci.c#19 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.64 2005/03/05 19:24:22 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.13 2007/07/06 23:48:20 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.14 2007/08/04 21:42:15 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
-
-#ifdef AHC_PCI_CONFIG
 
 static int ahc_pci_probe(device_t dev);
 static int ahc_pci_attach(device_t dev);
@@ -238,4 +236,3 @@ ahc_pci_map_registers(struct ahc_softc *ahc)
 	return (0);
 }
 
-#endif
