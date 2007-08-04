@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.27 2007/05/23 08:57:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.28 2007/08/04 08:25:37 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -138,7 +138,7 @@ SYSCTL_UINT(_kern_polling, OID_AUTO, lost_polls, CTLFLAG_RW,
 	&lost_polls, 0, "How many times we would have lost a poll tick");
 
 static u_int32_t pending_polls;
-SYSCTL_UINT(_kern_polling, OID_AUTO, pending_polls, CTLFLAG_RW,
+SYSCTL_UINT(_kern_polling, OID_AUTO, pending_polls, CTLFLAG_RD,
 	&pending_polls, 0, "Do we need to poll again");
 
 static int residual_burst = 0;
@@ -155,7 +155,7 @@ SYSCTL_PROC(_kern_polling, OID_AUTO, enable, CTLTYPE_INT | CTLFLAG_RW,
 	0, 0, sysctl_polling, "I", "Polling enabled");
 
 static u_int32_t phase;
-SYSCTL_UINT(_kern_polling, OID_AUTO, phase, CTLFLAG_RW,
+SYSCTL_UINT(_kern_polling, OID_AUTO, phase, CTLFLAG_RD,
 	&phase, 0, "Polling phase");
 
 static u_int32_t suspect;
