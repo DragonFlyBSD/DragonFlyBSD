@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.67.2.2 2007/08/03 08:00:28 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.67.2.3 2007/08/04 09:48:05 corecode Exp $
 #
 
 # compat target
@@ -196,7 +196,7 @@ customizeiso:
 	rm -rf ${ISOROOT}/tmp/packages
 	mkdir ${ISOROOT}/tmp/packages
 .for PKG in ${PKGSRC_PACKAGES}
-	cp ${ISODIR}/packages/${PKG} ${ISOROOT}/tmp/packages
+	cp ${PKGSRC_PKG_PATH}/${PKG} ${ISOROOT}/tmp/packages
 .endfor
 .for PKG in ${PKGSRC_PACKAGES}
 	${ENV} PKG_PATH=/tmp/packages chroot ${ISOROOT} ${PKGBIN_PKG_ADD} -I ${PKG}
