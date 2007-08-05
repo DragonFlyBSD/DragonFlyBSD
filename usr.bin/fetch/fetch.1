@@ -1,5 +1,5 @@
 .\"-
-.\" Copyright (c) 2000 Dag-Erling Coïdan Smørgrav
+.\" Copyright (c) 2000-2004 Dag-Erling Coïdan Smørgrav
 .\" All rights reserved.
 .\" Portions Copyright (c) 1999 Massachusetts Institute of Technology; used
 .\" by permission.
@@ -27,10 +27,10 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\"      $FreeBSD: src/usr.bin/fetch/fetch.1,v 1.33.2.12 2003/06/06 06:48:42 des Exp $
-.\"      $DragonFly: src/usr.bin/fetch/fetch.1,v 1.3 2006/02/17 19:39:03 swildner Exp $
+.\"      $FreeBSD: src/usr.bin/fetch/fetch.1,v 1.67 2006/04/22 03:04:24 jkoshy Exp $
+.\"      $DragonFly: src/usr.bin/fetch/fetch.1,v 1.4 2007/08/05 21:48:12 swildner Exp $
 .\"
-.Dd June 28, 2000
+.Dd August 5, 2007
 .Dt FETCH 1
 .Os
 .Sh NAME
@@ -134,7 +134,7 @@ See
 for a description of the file format.
 This feature is experimental.
 .It Fl n
-Don't preserve the modification time of the transferred file.
+Do not preserve the modification time of the transferred file.
 .It Fl o Ar file
 Set the output file name to
 .Ar file .
@@ -145,6 +145,10 @@ A
 argument of
 .Sq Li \&-
 indicates that results are to be directed to the standard output.
+If the
+.Ar file
+argument is a directory, fetched file(s) will be placed within the
+directory, with name(s) selected as in the default behaviour.
 .It Fl P
 .It Fl p
 Use passive FTP.
@@ -209,28 +213,28 @@ message.
 .Sh ENVIRONMENT
 .Bl -tag -width HTTP_TIMEOUT
 .It Ev FTP_TIMEOUT
-maximum time, in seconds, to wait before aborting an
-.Tn FTP
-connection.
+maximum time, in seconds, to wait before aborting an FTP connection.
 .It Ev HTTP_TIMEOUT
-maximum time, in seconds, to wait before aborting an
-.Tn HTTP
-connection.
+maximum time, in seconds, to wait before aborting an HTTP connection.
 .El
 .Pp
 All environment variables mentioned in the documentation for the
 .Xr fetch 3
 library are supported.
-.Sh DIAGNOSTICS
+A number of these are quite important to the proper operation of
+.Nm ;
+you are strongly encouraged to read
+.Xr fetch 3
+as well.
+.Sh EXIT STATUS
 The
 .Nm
 command returns zero on success, or one on failure.
 If multiple URLs are listed on the command line,
 .Nm
-will attempt to retrieve them each of them in turn, and return zero
-only if they were all successfully retrieved.
+will attempt to retrieve each one of them in turn, and will return
+zero only if they were all successfully retrieved.
 .Sh SEE ALSO
-.Xr sh 1 ,
 .Xr fetch 3
 .Sh HISTORY
 The
@@ -244,15 +248,15 @@ This implementation first appeared in
 The original implementation of
 .Nm
 was done by
-.An Jean-Marc Zucconi .
+.An Jean-Marc Zucconi Aq jmz@FreeBSD.org .
 It was extensively re-worked for
 .Fx 2.2
 by
-.An Garrett Wollman ,
+.An Garrett Wollman Aq wollman@FreeBSD.org ,
 and later completely rewritten to use the
 .Xr fetch 3
 library by
-.An Dag-Erling Sm\(/orgrav .
+.An Dag-Erling Sm\(/orgrav Aq des@FreeBSD.org .
 .Sh NOTES
 The
 .Fl b

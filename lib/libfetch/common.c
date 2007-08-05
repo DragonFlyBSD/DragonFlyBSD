@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libfetch/common.c,v 1.7.2.13 2003/06/06 06:45:25 des Exp $
- * $DragonFly: src/lib/libfetch/common.c,v 1.3 2004/08/16 14:19:31 joerg Exp $
+ * $FreeBSD: src/lib/libfetch/common.c,v 1.50 2005/02/16 12:46:46 des Exp $
+ * $DragonFly: src/lib/libfetch/common.c,v 1.4 2007/08/05 21:48:12 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,9 @@
  * Error messages for resolver errors
  */
 static struct fetcherr _netdb_errlist[] = {
+#ifdef EAI_NODATA
 	{ EAI_NODATA,	FETCH_RESOLV,	"Host not found" },
+#endif
 	{ EAI_AGAIN,	FETCH_TEMP,	"Transient resolver failure" },
 	{ EAI_FAIL,	FETCH_RESOLV,	"Non-recoverable resolver failure" },
 	{ EAI_NONAME,	FETCH_RESOLV,	"No address record" },
@@ -487,7 +489,6 @@ _fetch_write(conn_t *conn, const char *buf, size_t len)
 {
 	struct iovec iov;
 
-	/* This is correct, because writev doesn't change the buffer */
 	iov.iov_base = __DECONST(char *, buf);
 	iov.iov_len = len;
 	return _fetch_writev(conn, &iov, 1);
@@ -562,7 +563,7 @@ _fetch_writev(conn_t *conn, struct iovec *iov, int iovcnt)
 		}
 		if (iovcnt > 0) {
 			iov->iov_len -= wlen;
-			iov->iov_base = (char *)iov->iov_base + wlen;
+			iov->iov_base = __DECONST(char *, iov->iov_base) + wlen;
 		}
 	}
 	return (total);
@@ -579,7 +580,6 @@ _fetch_putln(conn_t *conn, const char *str, size_t len)
 	int ret;
 
 	DEBUG(fprintf(stderr, ">>> %s\n", str));
-	/* This is correct, because writev doesn't change the buffer */
 	iov[0].iov_base = __DECONST(char *, str);
 	iov[0].iov_len = len;
 	iov[1].iov_base = __DECONST(char *, ENDL);
@@ -605,6 +605,7 @@ _fetch_close(conn_t *conn)
 	if (--conn->ref > 0)
 		return (0);
 	ret = close(conn->sd);
+	free(conn->buf);
 	free(conn);
 	return (ret);
 }

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2000 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 2000-2004 Dag-Erling Coïdan Smørgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/fetch/fetch.c,v 1.10.2.21 2003/06/06 06:48:42 des Exp $
- * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.7 2006/03/06 03:21:26 swildner Exp $
+ * $FreeBSD: src/usr.bin/fetch/fetch.c,v 1.78 2006/11/10 22:05:41 des Exp $
+ * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.8 2007/08/05 21:48:12 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -38,6 +38,7 @@
 #include <err.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -88,7 +89,7 @@ int	 sigint;	/* SIGINT received */
 
 long	 ftp_timeout;	/* default timeout for FTP transfers */
 long	 http_timeout;	/* default timeout for HTTP transfers */
-u_char	*buf;		/* transfer buffer */
+char	*buf;		/* transfer buffer */
 
 
 /*
@@ -111,7 +112,7 @@ sig_handler(int sig)
 }
 
 struct xferstat {
-	char		 name[40];
+	char		 name[64];
 	struct timeval	 start;
 	struct timeval	 last;
 	off_t		 size;
@@ -122,43 +123,62 @@ struct xferstat {
 /*
  * Compute and display ETA
  */
-static void
+static const char *
 stat_eta(struct xferstat *xs)
 {
-	long elapsed, received, expected, eta;
+	static char str[16];
+	long elapsed, eta;
+	off_t received, expected;
 
 	elapsed = xs->last.tv_sec - xs->start.tv_sec;
 	received = xs->rcvd - xs->offset;
 	expected = xs->size - xs->rcvd;
 	eta = (long)((double)elapsed * expected / received);
-	if (eta > 3600) {
-		fprintf(stderr, "%02ld:", eta / 3600);
-		eta %= 3600;
+	if (eta > 3600)
+		snprintf(str, sizeof str, "%02ldh%02ldm",
+		    eta / 3600, (eta % 3600) / 60);
+	else
+		snprintf(str, sizeof str, "%02ldm%02lds",
+		    eta / 60, eta % 60);
+	return (str);
+}
+
+/*
+ * Format a number as "xxxx YB" where Y is ' ', 'k', 'M'...
+ */
+static const char *prefixes = " kMGTP";
+static const char *
+stat_bytes(off_t bytes)
+{
+	static char str[16];
+	const char *prefix = prefixes;
+
+	while (bytes > 9999 && prefix[1] != '\0') {
+		bytes /= 1024;
+		prefix++;
 	}
-	fprintf(stderr, "%02ld:%02ld", eta / 60, eta % 60);
+	snprintf(str, sizeof str, "%4jd %cB", (intmax_t)bytes, *prefix);
+	return (str);
 }
 
 /*
  * Compute and display transfer rate
  */
-static void
+static const char *
 stat_bps(struct xferstat *xs)
 {
+	static char str[16];
 	double delta, bps;
 
 	delta = (xs->last.tv_sec + (xs->last.tv_usec / 1.e6))
 	    - (xs->start.tv_sec + (xs->start.tv_usec / 1.e6));
 	if (delta == 0.0) {
-		fprintf(stderr, "?? Bps");
-		return;
+		snprintf(str, sizeof str, "?? Bps");
+	} else {
+		bps = (xs->rcvd - xs->offset) / delta;
+		snprintf(str, sizeof str, "%sps", stat_bytes((off_t)bps));
 	}
-	bps = (xs->rcvd - xs->offset) / delta;
-	if (bps > 1024*1024)
-		fprintf(stderr, "%.2f MBps", bps / (1024*1024));
-	else if (bps > 1024)
-		fprintf(stderr, "%.2f kBps", bps / 1024);
-	else
-		fprintf(stderr, "%.2f Bps", bps);
+	return (str);
 }
 
 /*
@@ -170,9 +190,6 @@ stat_display(struct xferstat *xs, int force)
 	struct timeval now;
 	int ctty_pgrp;
 
-	if (!v_tty || !v_level)
-		return;
-
 	/* check if we're the foreground process */
 	if (ioctl(STDERR_FILENO, TIOCGPGRP, &ctty_pgrp) == -1 ||
 	    (pid_t)ctty_pgrp != pgrp)
@@ -183,22 +200,22 @@ stat_display(struct xferstat *xs, int force)
 		return;
 	xs->last = now;
 
-	fprintf(stderr, "\rReceiving %s", xs->name);
+	fprintf(stderr, "\r%-46.46s", xs->name);
 	if (xs->size <= 0) {
-		fprintf(stderr, ": %lld bytes", (long long)xs->rcvd);
+		setproctitle("%s [%s]", xs->name, stat_bytes(xs->rcvd));
+		fprintf(stderr, "        %s", stat_bytes(xs->rcvd));
 	} else {
-		fprintf(stderr, " (%lld bytes): %d%%", (long long)xs->size,
-		    (int)((100.0 * xs->rcvd) / xs->size));
-		if (xs->rcvd > 0 && xs->last.tv_sec >= xs->start.tv_sec + 30) {
-			fprintf(stderr, " (ETA ");
-			stat_eta(xs);
-			if (v_level > 1) {
-				fprintf(stderr, " at ");
-				stat_bps(xs);
-			}
-			fprintf(stderr, ")  ");
-		}
+		setproctitle("%s [%d%% of %s]", xs->name,
+		    (int)((100.0 * xs->rcvd) / xs->size),
+		    stat_bytes(xs->size));
+		fprintf(stderr, "%3d%% of %s",
+		    (int)((100.0 * xs->rcvd) / xs->size),
+		    stat_bytes(xs->size));
 	}
+	fprintf(stderr, " %s", stat_bps(xs));
+	if (xs->size > 0 && xs->rcvd > 0 &&
+	    xs->last.tv_sec >= xs->start.tv_sec + 10)
+		fprintf(stderr, " %s", stat_eta(xs));
 }
 
 /*
@@ -213,7 +230,10 @@ stat_start(struct xferstat *xs, const char *name, off_t size, off_t offset)
 	xs->size = size;
 	xs->offset = offset;
 	xs->rcvd = offset;
-	stat_display(xs, 1);
+	if (v_tty && v_level > 0)
+		stat_display(xs, 1);
+	else if (v_level > 0)
+		fprintf(stderr, "%-46s", xs->name);
 }
 
 /*
@@ -223,7 +243,8 @@ static void
 stat_update(struct xferstat *xs, off_t rcvd)
 {
 	xs->rcvd = rcvd;
-	stat_display(xs, 0);
+	if (v_tty && v_level > 0)
+		stat_display(xs, 0);
 }
 
 /*
@@ -232,21 +253,14 @@ stat_update(struct xferstat *xs, off_t rcvd)
 static void
 stat_end(struct xferstat *xs)
 {
-	double delta;
-
-	if (!v_level)
-		return;
-
 	gettimeofday(&xs->last, NULL);
-
-	stat_display(xs, 1);
-	fputc('\n', stderr);
-	delta = (xs->last.tv_sec + (xs->last.tv_usec / 1.e6))
-	    - (xs->start.tv_sec + (xs->start.tv_usec / 1.e6));
-	fprintf(stderr, "%lld bytes transferred in %.1f seconds (",
-	    (long long)(xs->rcvd - xs->offset), delta);
-	stat_bps(xs);
-	fprintf(stderr, ")\n");
+	if (v_tty && v_level > 0) {
+		stat_display(xs, 1);
+		putc('\n', stderr);
+	} else if (v_level > 0) {
+		fprintf(stderr, "        %s %s\n",
+		    stat_bytes(xs->size), stat_bps(xs));
+	}
 }
 
 /*
@@ -259,15 +273,14 @@ query_auth(struct url *URL)
 	tcflag_t saved_flags;
 	int i, nopwd;
 
-
 	fprintf(stderr, "Authentication required for <%s://%s:%d/>!\n",
 	    URL->scheme, URL->host, URL->port);
 
 	fprintf(stderr, "Login: ");
 	if (fgets(URL->user, sizeof URL->user, stdin) == NULL)
-		return -1;
-	for (i = 0; URL->user[i]; ++i)
-		if (isspace(URL->user[i]))
+		return (-1);
+	for (i = strlen(URL->user); i >= 0; --i)
+		if (URL->user[i] == '\r' || URL->user[i] == '\n')
 			URL->user[i] = '\0';
 
 	fprintf(stderr, "Password: ");
@@ -283,12 +296,12 @@ query_auth(struct url *URL)
 		nopwd = (fgets(URL->pwd, sizeof URL->pwd, stdin) == NULL);
 	}
 	if (nopwd)
-		return -1;
-
-	for (i = 0; URL->pwd[i]; ++i)
-		if (isspace(URL->pwd[i]))
+		return (-1);
+	for (i = strlen(URL->pwd); i >= 0; --i)
+		if (URL->pwd[i] == '\r' || URL->pwd[i] == '\n')
 			URL->pwd[i] = '\0';
-	return 0;
+
+	return (0);
 }
 
 /*
@@ -308,8 +321,8 @@ fetch(char *URL, const char *path)
 	const char *slash;
 	char *tmppath;
 	int r;
-	u_int timeout;
-	u_char *ptr;
+	unsigned timeout;
+	char *ptr;
 
 	f = of = NULL;
 	tmppath = NULL;
@@ -389,7 +402,7 @@ fetch(char *URL, const char *path)
 		if (us.size == -1)
 			printf("Unknown\n");
 		else
-			printf("%lld\n", (long long)us.size);
+			printf("%jd\n", (intmax_t)us.size);
 		goto success;
 	}
 
@@ -407,12 +420,23 @@ fetch(char *URL, const char *path)
 	 * the connection later if we change our minds.
 	 */
 	sb.st_size = -1;
-	if (!o_stdout && stat(path, &sb) == -1 && errno != ENOENT) {
-		warnx("%s: stat()", path);
-		goto failure;
+	if (!o_stdout) {
+		r = stat(path, &sb);
+		if (r == 0 && r_flag && S_ISREG(sb.st_mode)) {
+			url->offset = sb.st_size;
+		} else if (r == -1 || !S_ISREG(sb.st_mode)) {
+			/*
+			 * Whatever value sb.st_size has now is either
+			 * wrong (if stat(2) failed) or irrelevant (if the
+			 * path does not refer to a regular file)
+			 */
+			sb.st_size = -1;
+		}
+		if (r == -1 && errno != ENOENT) {
+			warnx("%s: stat()", path);
+			goto failure;
+		}
 	}
-	if (!o_stdout && r_flag && S_ISREG(sb.st_mode))
-		url->offset = sb.st_size;
 
 	/* start the transfer */
 	if (timeout)
@@ -433,10 +457,9 @@ fetch(char *URL, const char *path)
 	if (S_size) {
 		if (us.size == -1) {
 			warnx("%s: size unknown", URL);
-			goto failure;
 		} else if (us.size != S_size) {
-			warnx("%s: size mismatch: expected %lld, actual %lld",
-			    URL, (long long)S_size, (long long)us.size);
+			warnx("%s: size mismatch: expected %jd, actual %jd",
+			    URL, (intmax_t)S_size, (intmax_t)us.size);
 			goto failure;
 		}
 	}
@@ -454,11 +477,11 @@ fetch(char *URL, const char *path)
 		warnx("%s: size of remote file is not known", URL);
 	if (v_level > 1) {
 		if (sb.st_size != -1)
-			fprintf(stderr, "local size / mtime: %lld / %ld\n",
-			    (long long)sb.st_size, (long)sb.st_mtime);
+			fprintf(stderr, "local size / mtime: %jd / %ld\n",
+			    (intmax_t)sb.st_size, (long)sb.st_mtime);
 		if (us.size != -1)
-			fprintf(stderr, "remote size / mtime: %lld / %ld\n",
-			    (long long)us.size, (long)us.mtime);
+			fprintf(stderr, "remote size / mtime: %jd / %ld\n",
+			    (intmax_t)us.size, (long)us.mtime);
 	}
 
 	/* open output file */
@@ -476,15 +499,15 @@ fetch(char *URL, const char *path)
 				    "does not match remote", path);
 				goto failure_keep;
 			}
-		} else {
+		} else if (us.size != -1) {
 			if (us.size == sb.st_size)
 				/* nothing to do */
 				goto success;
 			if (sb.st_size > us.size) {
 				/* local file too long! */
-				warnx("%s: local file (%lld bytes) is longer "
-				    "than remote file (%lld bytes)", path,
-				    (long long)sb.st_size, (long long)us.size);
+				warnx("%s: local file (%jd bytes) is longer "
+				    "than remote file (%jd bytes)", path,
+				    (intmax_t)sb.st_size, (intmax_t)us.size);
 				goto failure;
 			}
 			/* we got it, open local file */
@@ -550,6 +573,8 @@ fetch(char *URL, const char *path)
 				}
 
 				of = fopen(tmppath, "w");
+				chown(tmppath, sb.st_uid, sb.st_gid);
+				chmod(tmppath, sb.st_mode & ALLPERMS);
 			}
 		}
 
@@ -644,8 +669,8 @@ fetch(char *URL, const char *path)
 
 	/* did the transfer complete normally? */
 	if (us.size != -1 && count < us.size) {
-		warnx("%s appears to be truncated: %lld/%lld bytes",
-		    path, (long long)count, (long long)us.size);
+		warnx("%s appears to be truncated: %jd/%jd bytes",
+		    path, (intmax_t)count, (intmax_t)us.size);
 		goto failure_keep;
 	}
 
@@ -683,7 +708,7 @@ fetch(char *URL, const char *path)
 		fetchFreeURL(url);
 	if (tmppath != NULL)
 		free(tmppath);
-	return r;
+	return (r);
 }
 
 static void

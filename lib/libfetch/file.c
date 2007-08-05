@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libfetch/file.c,v 1.6.2.8 2003/02/01 18:14:32 des Exp $
- * $DragonFly: src/lib/libfetch/file.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $FreeBSD: src/lib/libfetch/file.c,v 1.17 2004/09/21 18:35:20 des Exp $
+ * $DragonFly: src/lib/libfetch/file.c,v 1.3 2007/08/05 21:48:12 swildner Exp $
  */
 
 #include <sys/param.h>
