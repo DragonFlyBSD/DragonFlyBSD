@@ -1,6 +1,6 @@
 /*	$NetBSD: asa.c,v 1.11 1997/09/20 14:55:00 lukem Exp $	*/
-/*  $FreeBSD: src/usr.bin/asa/asa.c,v 1.5 2002/05/15 03:31:40 tjr Exp $ */
-/*  $DragonFly: src/usr.bin/asa/asa.c,v 1.1 2004/06/20 02:52:15 hmp Exp $ */
+/*  $FreeBSD: src/usr.bin/asa/asa.c,v 1.6 2005/05/21 09:55:04 ru Exp $ */
+/*  $DragonFly: src/usr.bin/asa/asa.c,v 1.2 2007/08/05 16:57:55 pavalos Exp $ */
 /*
  * Copyright (c) 1993,94 Winning Strategies, Inc.
  * All rights reserved.
@@ -79,7 +79,7 @@ static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: asa [file...]\n");
+	fprintf(stderr, "usage: asa [file ...]\n");
 	exit(1);
 }
 
