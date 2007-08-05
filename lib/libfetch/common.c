@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/common.c,v 1.7.2.13 2003/06/06 06:45:25 des Exp $
- * $DragonFly: src/lib/libfetch/common.c,v 1.3 2004/08/16 14:19:31 joerg Exp $
+ * $DragonFly: src/lib/libfetch/common.c,v 1.3.10.1 2007/08/05 23:54:56 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -605,6 +605,7 @@ _fetch_close(conn_t *conn)
 	if (--conn->ref > 0)
 		return (0);
 	ret = close(conn->sd);
+	free(conn->buf);
 	free(conn);
 	return (ret);
 }
