@@ -1,0 +1,14 @@
+Original source obtained from:
+ftp://alpha.gnu.org/pub/gnu/diffutils/
+
+The file README.DELETED contains a list of deleted files.
+
+When upgrading, remember that config.h is not on a vendor branch.
+
+Import hint:
+cvs import src/contrib/diffutils-2.8 FSF DIFFUTILS_2_8_?
+
+This source is used in:
+gnu/usr.bin/diff
+gnu/usr.bin/diff3
+gnu/usr.bin/sdiff
