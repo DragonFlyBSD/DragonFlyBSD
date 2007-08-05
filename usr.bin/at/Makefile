@@ -1,5 +1,5 @@
-# $FreeBSD: src/usr.bin/at/Makefile,v 1.10.2.1 2001/04/25 11:29:16 ru Exp $
-# $DragonFly: src/usr.bin/at/Makefile,v 1.3 2004/09/20 13:11:54 joerg Exp $
+# $FreeBSD: src/usr.bin/at/Makefile,v 1.13 2001/09/13 06:48:16 ru Exp $
+# $DragonFly: src/usr.bin/at/Makefile,v 1.4 2007/08/05 18:24:29 pavalos Exp $
 
 .include "${.CURDIR}/Makefile.inc"
 
@@ -13,6 +13,7 @@ MLINKS=	at.1 batch.1 \
 	at.1 atq.1 \
 	at.1 atrm.1
 
+BINOWN=	root
 BINMODE= 4555
 CLEANFILES+= at.1
 
