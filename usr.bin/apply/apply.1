@@ -30,10 +30,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)apply.1	8.2 (Berkeley) 4/4/94
-.\" $FreeBSD: src/usr.bin/apply/apply.1,v 1.8.2.4 2002/07/15 04:07:25 keramida Exp $
-.\" $DragonFly: src/usr.bin/apply/apply.1,v 1.3 2006/02/17 19:38:54 swildner Exp $
+.\" $FreeBSD: src/usr.bin/apply/apply.1,v 1.17 2006/12/13 08:13:14 ru Exp $
+.\" $DragonFly: src/usr.bin/apply/apply.1,v 1.4 2007/08/05 16:19:56 pavalos Exp $
 .\"
-.Dd April 4, 1994
+.Dd December 13, 2006
 .Dt APPLY 1
 .Os
 .Sh NAME
@@ -113,7 +113,7 @@ default shell
 .El
 .Sh EXAMPLES
 .Bl -tag -width apply -compact
-.It Li "apply echo a*"
+.It Li "apply echo *"
 is similar to
 .Xr ls 1 ;
 .It Li "apply \-2 cmp a1 b1 a2 b2 a3 b3"
@@ -139,3 +139,7 @@ Shell metacharacters in
 may have bizarre effects; it is best to enclose complicated
 commands in single quotes
 .Pq '' .
+.Pp
+The
+.Nm
+utility does not recognize multibyte characters.
