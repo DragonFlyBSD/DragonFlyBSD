@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.11 2007/08/04 01:47:48 justin Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.12 2007/08/06 16:38:01 justin Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -340,14 +340,14 @@ rsync
 <TR>
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>binary pkgsrc packages<br>(mirror from here)</TD>
-<TD><a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/RELEASE/i386/All/">i386 packages</a> 
+<TD><a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/stable/">i386 packages</a> 
 </TD>
 </TR>
 
 <TR>
 <TD>TheShell.com (Ashburn, VA, USA)</TD>
 <TD>binary pkgsrc packages</TD>
-<TD><a href="http://www.theshell.com/pub/DragonFly/packages/RELEASE/i386/All/">i386 packages</a>
+<TD><a href="http://www.theshell.com/pub/DragonFly/packages/stable/">i386 packages</a>
 </TD>
 </TR>
 
@@ -383,7 +383,7 @@ rsync
 <TD>TWAREN FTP (Taiwan)</TD>
 <TD>binary pkgsrc packages</TD>
 <TD>
-<a href="http://ftp.twaren.net/BSD/DragonFlyBSD/packages">i386 packages</a>
+<a href="http://ftp.twaren.net/BSD/DragonFlyBSD/packages/stable/">i386 packages</a>
 </TD>
 </TR>
 
