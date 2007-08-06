@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - August 2007 Release 1.10.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_10.shtml,v 1.1 2007/08/06 20:14:31 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release1_10.shtml,v 1.2 2007/08/06 20:20:11 dillon Exp $ -->
 
 <h1>Obtaining DragonFly 1.10.x for your system</h1>
 
@@ -186,7 +186,7 @@ type 'make' in /usr for more information on available options.
 	<li>Signal and proper stop/continue support added to LWPs
 	<li>Entire kernel is now LWP and thread centric instead of process
 	    and thread centric.
-	<li>Bind 9.3.4 integrated
+	<li>Bind 9.3.4P1 integrated (including Jul/Aug-07 security fixes)
 	<li>GCC 4.1.2 integrated, selectable with CCVER.  GCC-3 is still
 	    the default.
 	<li>Add an abstraction layer to vn_strategy() to hide DMA limitations

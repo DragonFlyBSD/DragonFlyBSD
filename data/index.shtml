@@ -1,6 +1,6 @@
 <!--#set var="title" value="Welcome to DragonFlyBSD.org" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/index.shtml,v 1.4 2007/08/06 15:50:54 hmp Exp $ -->
+<!-- $DragonFly: site/data/index.shtml,v 1.5 2007/08/06 20:20:12 dillon Exp $ -->
 
 	<h1>Ongoing DragonFly News</h1>
 	<p>
@@ -14,11 +14,11 @@
 	to DragonFly.
     </p>
 
-    <h1>DragonFly-1.8.1 RELEASED!</h1>
-	<h1>27 March 2007</h1>
+    <h1>DragonFly-1.10.0 RELEASED!</h1>
+	<h1>06 August 2007</h1>
 
 <p>
-The <a href="/community/release1_8.shtml"><b>DragonFly-1.8.1 Release</b></a> is ready!
+The <a href="/community/release1_10.shtml"><b>DragonFly-1.10.0 Release</b></a> is ready!
 
 </p>
 
