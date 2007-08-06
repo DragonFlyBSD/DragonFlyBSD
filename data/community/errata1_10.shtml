@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - August 2007 Release 1.10.x Errata Page" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/community/errata1_10.shtml,v 1.1 2007/08/06 20:14:31 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/errata1_10.shtml,v 1.2 2007/08/06 20:29:50 justin Exp $ -->
 
 <h1>Errata Page for DragonFly 1.10.x</h1>
 
@@ -24,7 +24,7 @@ cvsup.
 	setting up its defaults.
     <li>The installer may have problems installing additional packages
 	on custom-built CDs via the menu option.  This is due to a bug
-	in the new PkgSrc bootstrap.  Rebuilding the effected package(s)
+	in the new pkgsrc bootstrap.  Rebuilding the effected package(s)
 	solves the problem.
 </ul>
 
