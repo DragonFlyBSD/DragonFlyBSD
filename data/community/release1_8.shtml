@@ -1,11 +1,11 @@
 <!--#set var="title" value="DragonFly - January 2007 Release 1.8.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_8.shtml,v 1.4 2007/03/18 19:35:17 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release1_8.shtml,v 1.5 2007/08/06 15:52:02 hmp Exp $ -->
 
 <h1>Obtaining DragonFly 1.8.x for your system</h1>
 
-<h2>1.8.0 ISO Images for CDs</h2>
+<h2>1.8.1 ISO Images for CDs</h2>
 
 <p>
 DragonFly CDs are 'live', which means that the CD will boot your system 
@@ -36,6 +36,8 @@ See the 'Download Site' list below for a list of download locations.
 <b>The MD5 for the release is:
 <br/>MD5 (dfly-1.8.0_REL.iso) = d5ffce6709ca82be458d95634d73a58b
 <br/>MD5 (dfly-1.8.0_REL.iso.gz) = 893b606ce5c0f156ea74c57ebf554c2b
+<br/>MD5 (dfly-1.8.1_REL.iso) = 98b4cfd6f8aabf49acf7a81d75368156
+<br/>MD5 (dfly-1.8.1_REL.iso.gz) = fdafd2df5f48df4f7fdf0ff0b9ecee0c
 
 </b><br /> </p>
 
@@ -65,6 +67,12 @@ See the 'Download Site' list below for a list of download locations.
 <TD>RELEASE CD</TD>
 <TD><A HREF="errata1_8.shtml">Errata</A></TD>
 </TR>
+<TR>
+<TD>1.8.1</TD>
+<TD>27-Mar-2007</TD>
+<TD>RELEASE CD</TD>
+<TD><A HREF="errata1_8.shtml">Errata</A></TD>
+</TR>
 </TABLE>
 
 <p>
@@ -82,47 +90,73 @@ See the 'Download Site' list below for a list of download locations.
 
 <!--
 <TR><TD>Fortunaty.net</TD>
-<TD>1.8.0_REL image</TD>
-<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A></TD></TR>
+<TD>1.8.1_REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.8.1_REL.iso.gz">HTTP</A></TD></TR>
 -->
 
 <TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>1.8.0_REL image</TD>
+<TD>1.8.1_REL image</TD>
 <TD>
-    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">FTP</A>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.8.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.8.1_REL.iso.gz">FTP</A>
 </TD>
 </TR>
 
 <!--
 <TR><TD>BGP4.net (USA)</TD>
-<TD>1.8.0_REL image</TD>
+<TD>1.8.1_REL image</TD>
 <TD>
-    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">FTP</A>
+    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.8.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.8.1_REL.iso.gz">FTP</A>
 </TD></TR>
 -->
 
 <TR><TD>TheShell.com</TD>
-<TD>1.8.0_REL image</TD>
+<TD>1.8.1_REL image</TD>
 <TD>
-    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">FTP</A>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.8.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.8.1_REL.iso.gz">FTP</A>
 </TD></TR>
 
 <TR><TD>high5.net (Amsterdam)</TD>
-<TD>1.8.0_REL image</TD>
+<TD>1.8.1_REL image</TD>
 <TD>
-    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.8.0_REL.iso.gz">HTTP</A>
+    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.8.1_REL.iso.gz">HTTP</A>
 </TD></TR>
 
-
 <TR><TD>Dragonflybsd.org (USA)</TD>
-<TD>1.8.0_REL image</TD>
-<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.8.0_REL.iso.gz">FTP</A>
+<TD>1.8.1_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.8.1_REL.iso.gz">FTP</A>
 (<I>try to find another site first</I>)</TD></TR>
 
 </TABLE>
+
+<h1>Release Notes for DragonFly 1.8.1</h1>
+<p>
+<ul>
+    <li>Security updates for bind, file, libmagic, and tcpdump
+    <li>xorg added to various paths, including periodic directories for cron
+	and manual paths.
+    <li>The dynamic loader now properly searches objects, solving problems
+	with a number of pkgsrc applications.
+    <li>A bug in getcontext() has been fixed.
+    <li>Miscellanious zoneinfo updates have been made.
+    <li>Miscellanious ACPI and taskqueue adjustments have been MFCd.
+    <li>The fwe network interface is now properly dependant on firewire
+    <li>A bug in vinum was fixed
+    <li>The virtual kernel's VKE network interface can now be tcpdumped.
+    <li>a NULL sa pointer can be passed to the 4.3 compat recvfrom() syscall,
+	to the linux compat recvfrom() syscall, and to the current recvfrom()
+	syscall.
+    <li>A bounds check error against UIO_MAXIOV and UIO_SMALLIOV has been
+	fixed.
+    <li>Simulate a '/' mount for processes doing a df in a chrooted
+	environment (when chrooted into a subdirectory).
+    <li>Fix a bug in DDB's backtrace.
+    <li>Update the EST module (cpu voltage / frequency reporting)
+    <li>The virtual kernel now properly handles spurious SIGTRAPs
+    <li>MFC a bug fix for SMBFS which fixes a kernel panic. 
+</ul>
 
 <h1>Release Notes for DragonFly 1.8.0</h1>
 
