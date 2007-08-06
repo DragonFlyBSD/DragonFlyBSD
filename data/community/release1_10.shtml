@@ -1,0 +1,280 @@
+<!--#set var="title" value="DragonFly - August 2007 Release 1.10.x Download" -->
+<!--#include virtual="/includes/header.shtml" -->
+
+<!-- $DragonFly: site/data/community/release1_10.shtml,v 1.1 2007/08/06 20:14:31 dillon Exp $ -->
+
+<h1>Obtaining DragonFly 1.10.x for your system</h1>
+
+<h2>1.10.0 ISO Images for CDs</h2>
+
+<p>
+DragonFly CDs are 'live', which means that the CD will boot your system 
+and let you log in as root (no password).  You can use this feature to
+check for hardware compatibility and play with DragonFly a little before
+actually installing it on your hard drive. 
+</p>
+<p>
+The CD includes an installer that can be run at the console, or
+(experimentally) via a web browser.  Make sure you read the
+<a href="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README">README</a>
+file for more information.   To activate the installer, boot the CD and
+login as 'installer'.
+</p>
+<p>
+The installer has a Netboot server option.  You can
+boot the CD on one machine, enable the feature via the installer, and
+then PXEBoot other systems and do a network based install.  System
+operators should be aware that running the netboot server hardwires
+a 10.1.0.X network and runs a DHCP server which might interfere with
+other DHCP servers on your LAN.
+</p>
+<p>
+See the 'Download Site' list below for a list of download locations. 
+</p>
+
+<p>
+<b>The MD5 for the release is:
+<br/>MD5 (dfly-1.10.0_REL.iso) = 51a86604eed9be4f795ca0f665396f8a
+<br/>MD5 (dfly-1.10.0_REL.iso.gz) = 1cea8b87f1d1933a2d24a36720b37a7e
+
+</b><br /> </p>
+
+<h2>1.10.x Release Errata</h2>
+<p>
+    DragonFly releases are meant to be stable, dependable entities.  We
+    backport compatible bug fixes from current development into release
+    branches but we do not generally backport new features. 
+    The release CD is always a '.0', e.g. 1.10.0.   The most common way to
+    track a release is to use cvsup to track the release sources and then
+    build and install a new world and kernel to keep your system updated.
+</p>
+<p>
+    <B>We do not always get every last little fix into a release.  Please
+    be sure to read the errata page for the release CD!</B>
+</p>
+<TABLE BORDER="1">
+<TR>
+<TH>Version</TH>
+<TH>Date</TH>
+<TH>Comments</TH>
+<TH></TH>
+</TR>
+<TR>
+<TD>1.10.0</TD>
+<TD>06-Aug-2007</TD>
+<TD>RELEASE CD</TD>
+<TD><A HREF="errata1_10.shtml">Errata</A></TD>
+</TR>
+</TABLE>
+
+<p>
+</p>
+
+<h2>1.10.x Release Sites</h2>
+
+<TABLE BORDER="1">
+<TR>
+<TH>Organization</TH>
+<TH>Mirrored Data</TH>
+<TH>Access methods</TH>
+</TR>
+
+<!--
+<TR><TD>Fortunaty.net</TD>
+<TD>1.10.0_REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A></TD></TR>
+-->
+
+<TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
+<TD>1.10.0_REL image</TD>
+<TD>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">FTP</A>
+</TD>
+</TR>
+
+<!--
+<TR><TD>BGP4.net (USA)</TD>
+<TD>1.10.0_REL image</TD>
+<TD>
+    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">FTP</A>
+</TD></TR>
+-->
+
+<TR><TD>TheShell.com</TD>
+<TD>1.10.0_REL image</TD>
+<TD>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">FTP</A>
+</TD></TR>
+
+<TR><TD>high5.net (Amsterdam)</TD>
+<TD>1.10.0_REL image</TD>
+<TD>
+    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A>
+</TD></TR>
+
+<TR><TD>Dragonflybsd.org (USA)</TD>
+<TD>1.10.0_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.10.0_REL.iso.gz">FTP</A>
+(<I>try to find another site first</I>)</TD></TR>
+
+</TABLE>
+
+<h1>Release Notes for DragonFly 1.10.0</h1>
+
+<p>
+1.10 is our sixth major DragonFly release.  DragonFly's policy is to
+only commit bug fixes to release branches.
+</p>
+<p>
+Several big-ticket items are present in this release.  Our default ATA driver
+has been switched to NATA (ported from FreeBSD).  NATAs big claim to fame
+is support for AHCI which is the native SATA protocol standard.  It is far,
+far better then the old ATA/IDE protocol.  DragonFly now has non-booting
+support for GPT partitioning and 64 bit disklabels.  Non-booting means we
+don't have boot support for these formats yet.  DragonFly's Light Weight
+Process abstraction is now finished and working via libthread_xu but the
+default threading library is not quite ready to be changed from libc_r
+yet.  All threaded programs now link against an actual 'libpthread' which
+is a softlink to libc_r or libthread_xu, allowing the new threading library
+to be tested more fully.
+</p>
+<p>
+In order to support a reasonable number of slices and partitions
+a certain degree of device renumbering has occured, so if you are upgrading
+from an older release be sure to run 'make upgrade' after installing the
+new world and kernel to properly update your /dev.  Up to 250 or so slices
+and 127 partitions are now supported.
+</p>
+<p>
+This release also contains a massive amount of new device support,
+particularly related to wireless networking, plus security updates
+and bug fixes.
+</p>
+<p>
+A more complete list is included below.  We consider 1.10 to be more
+stable then 1.8.
+</p>
+<p>
+This release includes a Makefile in /usr that can be used to get the
+fill distribution source tree and to get the full PkgSrc tree.  Just
+type 'make' in /usr for more information on available options.
+</p>
+<p>
+<ul>
+	<li><b>NATA is now the default ata driver.</b>
+	<li><b>Major changes made to the disk abstraction layer.</b>
+	<li><b>Significant changes made to disk device minor numbers
+	    in /dev.</b>
+	<li><b>GPT and 64 bit disklabel support added (non booting).</b>
+	<li><b>The LWP (Userland threading work) is now essentially done.</b>
+	<li><b>Major work on vinum to remove its roll-your-own disklabel
+	    layer and to remove its assumptions about the device layer's
+	    DMA capabilities.</b>
+	<li><b>Introduce libpthread as a softlink allowing libthread_xu or
+	    libc_r to be selected.  All multithreaded programs are now
+	    linked against libpthread.   libc_r is the default as
+	    there are still a few issues that need to be worked out
+	    with libthread_xu.</b>
+	<li><b>Major improvements to wireless networking drivers.</b>
+	<li><b>Many new USB and PCI devices added.</b>
+	<li><b>Numerous new PCI drivers added, particularly w/ networking.</b>
+	<li>Userland syslink API is now finished.
+	<li>Link state changes are now reported through the routing socket.
+	<li>Signal and proper stop/continue support added to LWPs
+	<li>Entire kernel is now LWP and thread centric instead of process
+	    and thread centric.
+	<li>Bind 9.3.4 integrated
+	<li>GCC 4.1.2 integrated, selectable with CCVER.  GCC-3 is still
+	    the default.
+	<li>Add an abstraction layer to vn_strategy() to hide DMA limitations
+	    of underlying devices.
+	<li>Fix symbol resolution issues with loaded modules.
+	<li>Both GCC-3 and GCC-4 are now built by default.
+	<li>Improve virtual kernel disk and networking support.  Multiple
+	    disks and network interfaces are now supported.
+	<li>Implement SMP support for virtual kernels (mainly as a testbed).
+	<li>Many documentation updates.
+	<li>Enhance kinfo_proc to return LWP info.
+	<li>Enhance the virtual kernel's console.
+	<li>Replace gnu tar with BSD tar.
+	<li>Fix a single stepping bug that could lead to a panic.
+	<li>Allow multiple kernels to be supplied on the release ISO and
+	    supply a VKERNEL kernel in addition to the normal kernel.
+	<li>Get rid of the UAREA for good.
+	<li>Synchronize zoneinfo changes with recent standards changes.
+	<li>Fix a mbuf leak in sbappendcontrol().
+	<li>Fix an exec*() syscall memory leak that can lock a machine up
+	    when the exec temporary argument space becomes exhausted.
+	<li>Bring in the latest libarchive, bsdtar, sendmail, awk,
+	    ping, file, less, and openssh.
+	<li>Bring in binutils 2.17.
+	<li>Support MBs that do not have keyboard controllers by placing
+	    an upper limit on the keyboard controller probe timeout.
+	<li>Remove IPV6 type 0 router header support entirely.
+	<li>Implement SYSREF for the kernel - this structure and API
+	    implements MP-safe reference counting and also associates a
+	    unique 64 bit id with the structure allowing the structure to
+	    be referenced off-machine.  SYSREF is part of the clustering work.
+	<li>Use SYSREF for struct vmspace and struct vnode, including doing
+	    a major revamping of the vnode reference handling code.
+	<li>Do a major reordering of many SYSINITs and a major reordering
+	    of where device configuration occurs in the boot sequence.
+	    Device configuration now occurs far later in the boot sequence
+	    and has access to most major subsystems including threading
+	    and major memory subsystems.  Interrupts are now enabled during
+	    device configuration.  This is somewhat experimental but works
+	    great in allowing us to locate ordering issues in various device
+	    init functions related to their interrupts.
+	<li>Implement asynchronous device attachment but default to
+	    disabled for 1.10.
+	<li>Reformulate disk management layer ioctls and remove data
+	    pollution.  Do not store filesystem-specific data such as
+	    the fragment size in the disklabel any more.
+	<li>Expand the SCSI subsystem to handle 16-byte commands,
+	    allowing > 32 bit block addressing for devices that support
+	    it.
+	<li>Change the 'make upgrade' target to attempt to rebuild the
+	    devices found in /dev instead of just rebuilding base devices.
+	<li>Distributions now include a Makefile in /usr with easy-to-use
+	    targets for creating and synchronizing /usr/src and /usr/pkgsrc.
+	<li>Greatly simplify LWKT messaging within the kernel.
+	<li>Add virtual CDROM support to the virtual kernel.
+	<li>Add halt and reboot support to the virtual kernel.
+	<li>Fix a bug in bus_dmamap_load() that was not properly following
+	    boundary and maximum segment size limits.
+	<li>Save and restore a USB keyboard's translation mode, allowing
+	    the keyboard to be un-plugged and re-plugged.
+	<li>Remove the last source of major SMP TLB invalidations in the
+	    fork/exec/exit/wait critical paths, significantly reducing IPI
+	    traffic and improving fork/exec performance.
+	<li>ktrdump now has an option to loop waiting for new input.
+	<li>Fix mouse jumpiness when emergency interrupts are enabled by
+	    not polling PS/2 mouse interrupts.
+	<li>Fix numerous CAM/USB issues so we do not panic or crash if
+	    a USB mass storage device is pulled while still mounted.  Make
+	    sure umount -f works on pulled devices.
+	<li>Synchronize the sound subsystem with FreeBSD.
+	<li>Timeout positive hits in the namecache as well as negative hits
+	    for NFS mounts.  Otherwise rename-over's can result in a stale
+	    namecache that doesn't auto recover.
+	<li>Add MPLS support to traceroute and add a protocol entry in
+	    /etc/protocols for MPLS-in-ip.
+	<li>Bring in a number of math library fixes from FreeBSD.
+	<li><b>dntpd now properly handles DNS failures, supports DNS pools,
+	    and does a quorum consistency check when told to use more then
+	    one source.</b>
+	<li>Fix a bug in the checkpointing code that was preventing a
+	    program from being re-checkpointed properly.
+	<li>Major USB code cleanup.
+	<li>Adjust dynamic objcache sizing to handle certain degenerate
+	    conditions.
+	<li>Synchronize with the Adaptec SCSI code from FreeBSD.
+	<li>Retire the original ports packaging tools.
+</ul>
+</p>
+
+
+<!--#include virtual="/includes/footer.shtml" -->

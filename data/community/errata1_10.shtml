@@ -1,0 +1,32 @@
+<!--#set var="title" value="DragonFly - August 2007 Release 1.10.x Errata Page" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/community/errata1_10.shtml,v 1.1 2007/08/06 20:14:31 dillon Exp $ -->
+
+<h1>Errata Page for DragonFly 1.10.x</h1>
+
+<p>
+General note on errata:  We do not roll a release CD every time we bump
+the sub-version.  The standard upgrade method is to build from sources.
+The 
+<A HREF="http://leaf.dragonflybsd.org/cgi/web-man?command=build&section=ANY">build</A>
+manual page gives you information on how to upgrade your system from
+sources.  See the <A HREF="download.cgi">download</A> page for information on tracking changes with
+cvsup.
+</p>
+
+<h2>1.10.0 Errata</h2>
+<ul>
+    <li>The installer will want to install boot blocks on your CD and
+	floppy devices in addition to your hard drive.  You have to
+	uncheck those entries before proceeding.  This bug was introduced
+	when we redid our disk management layer and caused the installer
+	to mis-identify CD and floppy media for the purposes of
+	setting up its defaults.
+    <li>The installer may have problems installing additional packages
+	on custom-built CDs via the menu option.  This is due to a bug
+	in the new PkgSrc bootstrap.  Rebuilding the effected package(s)
+	solves the problem.
+</ul>
+
+
+<!--#include virtual="/includes/footer.shtml" -->
