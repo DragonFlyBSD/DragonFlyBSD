@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Big-Picture Status" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/status/diary.shtml,v 1.5 2007/08/06 15:48:50 hmp Exp $ -->
+<!-- $DragonFly: site/data/status/diary.shtml,v 1.6 2007/08/06 15:54:53 hmp Exp $ -->
 
 <h2>Fri 03 August 2007</h2>
 <ul>
@@ -103,7 +103,7 @@
 	<li>Add MPLS support to traceroute and add a protocol entry in
 	    /etc/protocols for MPLS-in-ip.
 	<li>Bring in a number of math library fixes from FreeBSD.
-	<li><b>dntpd now properly handles dns failures, supports DNS pools,
+	<li><b>dntpd now properly handles DNS failures, supports DNS pools,
 	    and does a quorum consistency check when told to use more then
 	    one source.</b>
 	<li>Fix a bug in the checkpointing code that was preventing a
