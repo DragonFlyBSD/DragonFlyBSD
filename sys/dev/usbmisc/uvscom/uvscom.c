@@ -25,7 +25,7 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.14 2007/07/03 19:28:16 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.15 2007/08/07 09:18:11 hasso Exp $
  */
 
 /*
@@ -224,7 +224,7 @@ static device_method_t uvscom_methods[] = {
 };
 
 static driver_t uvscom_driver = {
-	"uvscom",
+	"ucom",
 	uvscom_methods,
 	sizeof (struct uvscom_softc)
 };
