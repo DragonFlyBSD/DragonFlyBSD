@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.1.2.2 2002/11/08 21:53:49 semenu Exp $ */
-/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.9 2006/12/22 23:26:20 swildner Exp $ */
+/* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.18 2006/12/11 11:09:48 yongari Exp $ */
+/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.10 2007/08/07 11:44:41 sephe Exp $ */
 /*	$OpenBSD: eephy.c,v 1.26 2006/06/08 00:27:12 brad Exp $	*/
 /*
  * Principal Author: Parag Patel
@@ -64,7 +64,7 @@ static int	e1000phy_probe(device_t);
 static int	e1000phy_attach(device_t);
 static int	e1000phy_service(struct mii_softc *, struct mii_data *, int);
 static void	e1000phy_status(struct mii_softc *);
-static int	e1000phy_mii_phy_auto(struct mii_softc *, int);
+static void	e1000phy_mii_phy_auto(struct mii_softc *);
 static void	e1000phy_reset(struct mii_softc *);
 
 static device_method_t e1000phy_methods[] = {
@@ -87,8 +87,12 @@ static const struct mii_phydesc e1000phys[] = {
 	MII_PHYDESC(MARVELL,	E1000_4),
 	MII_PHYDESC(MARVELL,	E1000_5),
 	MII_PHYDESC(MARVELL,	E1000_6),
+	MII_PHYDESC(MARVELL,	E3082),
+	MII_PHYDESC(MARVELL,	E1112),
+	MII_PHYDESC(MARVELL,	E1149),
 	MII_PHYDESC(MARVELL,	E1111),
 	MII_PHYDESC(MARVELL,	E1116),
+	MII_PHYDESC(MARVELL,	E1118),
 	MII_PHYDESC_NULL
 };
 
@@ -122,6 +126,7 @@ e1000phy_attach(device_t dev)
 	struct mii_attach_args *ma;
 	struct mii_data *mii;
 	const char *sep = "";
+	int fast_ether = 0;
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
@@ -138,10 +143,18 @@ e1000phy_attach(device_t dev)
 
 	sc->mii_flags |= MIIF_NOISOLATE;
 
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_MARVELL &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_MARVELL_E1011 && 
-	    (PHY_READ(sc, E1000_ESSR) & E1000_ESSR_FIBER_LINK))
-		sc->mii_flags |= MIIF_HAVEFIBER;
+	switch (sc->mii_model) {
+	case MII_MODEL_MARVELL_E1011:
+	case MII_MODEL_MARVELL_E1112:
+		if (PHY_READ(sc, E1000_ESSR) & E1000_ESSR_FIBER_LINK)
+			sc->mii_flags |= MIIF_HAVEFIBER;
+		break;
+	case MII_MODEL_MARVELL_E3082:
+		/* 88E3082 10/100 Fast Ethernet PHY. */
+		sc->mii_anegticks = MII_ANEGTICKS;
+		fast_ether = 1;
+		break;
+	}
 
 	mii->mii_instance++;
 
@@ -150,44 +163,45 @@ e1000phy_attach(device_t dev)
 #define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
 #define PRINT(s)	kprintf("%s%s", sep, s); sep = ", "
 
-#if	0
+	device_printf(dev, "%s", "");
+
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
 	    E1000_CR_ISOLATE);
-#endif
-
-	device_printf(dev, " ");
 	if ((sc->mii_flags & MIIF_HAVEFIBER) == 0) {
-		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, sc->mii_inst),
-				E1000_CR_SPEED_1000 | E1000_CR_FULL_DUPLEX);
-		PRINT("1000baseTX-FDX");
-		/*
-		TODO - apparently 1000BT-simplex not supported?
-		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
-				E1000_CR_SPEED_1000);
-		PRINT("1000baseTX");
-		*/
+		if (!fast_ether) {
+			/*
+			 * 1000T-simplex not supported; driver must ignore
+			 * this entry, but it must be present in order to
+			 * manually set full-duplex.
+			 */
+			ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0,
+			    sc->mii_inst), E1000_CR_SPEED_1000);
+			ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX,
+			    sc->mii_inst),
+			    E1000_CR_SPEED_1000 | E1000_CR_FULL_DUPLEX);
+			PRINT("1000baseT-FDX");
+		}
 		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_FDX, sc->mii_inst),
-				E1000_CR_SPEED_100 | E1000_CR_FULL_DUPLEX);
+		    E1000_CR_SPEED_100 | E1000_CR_FULL_DUPLEX);
 		PRINT("100baseTX-FDX");
 		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, 0, sc->mii_inst),
-				E1000_CR_SPEED_100);
+		    E1000_CR_SPEED_100);
 		PRINT("100baseTX");
 		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, IFM_FDX, sc->mii_inst),
-				E1000_CR_SPEED_10 | E1000_CR_FULL_DUPLEX);
+		    E1000_CR_SPEED_10 | E1000_CR_FULL_DUPLEX);
 		PRINT("10baseTX-FDX");
 		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, 0, sc->mii_inst),
-				E1000_CR_SPEED_10);
+		    E1000_CR_SPEED_10);
 		PRINT("10baseTX");
 	} else {
 		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_SX, IFM_FDX, sc->mii_inst),
-				E1000_CR_SPEED_1000);
+		    E1000_CR_SPEED_1000 | E1000_CR_FULL_DUPLEX);
 		PRINT("1000baseSX-FDX");
 	}
 
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
-	PRINT("auto");
+	PRINT("auto\n");
 
-	kprintf("\n");
 #undef ADD
 #undef PRINT
 
@@ -198,46 +212,72 @@ e1000phy_attach(device_t dev)
 static void
 e1000phy_reset(struct mii_softc *sc)
 {
-	uint32_t reg;
-	int i;
+	uint16_t reg;
 
-	/* initialize custom E1000 registers to magic values */
 	reg = PHY_READ(sc, E1000_SCR);
-	reg &= ~E1000_SCR_AUTO_X_MODE;
-	PHY_WRITE(sc, E1000_SCR, reg);
+	if ((sc->mii_flags & MIIF_HAVEFIBER) != 0) {
+		reg &= ~E1000_SCR_AUTO_X_MODE;
+		PHY_WRITE(sc, E1000_SCR, reg);
+		if (sc->mii_model == MII_MODEL_MARVELL_E1112) {
+			/* Select 1000BASE-X only mode. */
+			PHY_WRITE(sc, E1000_EADR, 2);
+			reg = PHY_READ(sc, E1000_SCR);
+			reg &= ~E1000_SCR_MODE_MASK;
+			reg |= E1000_SCR_MODE_1000BX;
+			PHY_WRITE(sc, E1000_SCR, reg);
+			PHY_WRITE(sc, E1000_EADR, 1);
+		}
+	} else {
+		switch (sc->mii_model) {
+		case MII_MODEL_MARVELL_E1111:
+		case MII_MODEL_MARVELL_E1112:
+		case MII_MODEL_MARVELL_E1116:
+		case MII_MODEL_MARVELL_E1118:
+		case MII_MODEL_MARVELL_E1149:
+			/* Disable energy detect mode. */
+			reg &= ~E1000_SCR_EN_DETECT_MASK;
+			reg |= E1000_SCR_AUTO_X_MODE;
+			break;
+		case MII_MODEL_MARVELL_E3082:
+			reg |= (E1000_SCR_AUTO_X_MODE >> 1);
+			break;
+		default:
+			reg &= ~E1000_SCR_AUTO_X_MODE;
+			break;
+		}
+		/* Enable CRS on TX. */
+		reg |= E1000_SCR_ASSERT_CRS_ON_TX;
+		/* Auto correction for reversed cable polarity. */
+		reg &= ~E1000_SCR_POLARITY_REVERSAL;
+		PHY_WRITE(sc, E1000_SCR, reg);
+	}
 
-	/* normal PHY reset */
-	/*mii_phy_reset(sc);*/
+	switch (MII_MODEL(sc->mii_model)) {
+	case MII_MODEL_MARVELL_E3082:
+	case MII_MODEL_MARVELL_E1112:
+	case MII_MODEL_MARVELL_E1116:
+	case MII_MODEL_MARVELL_E1118:
+	case MII_MODEL_MARVELL_E1149:
+		break;
+	default:
+		/* Force TX_CLK to 25MHz clock. */
+		reg = PHY_READ(sc, E1000_ESCR);
+		reg |= E1000_ESCR_TX_CLK_25;
+		PHY_WRITE(sc, E1000_ESCR, reg);
+		break;
+	}
+
+	/* Reset the PHY so all changes take effect. */
 	reg = PHY_READ(sc, E1000_CR);
 	reg |= E1000_CR_RESET;
 	PHY_WRITE(sc, E1000_CR, reg);
-
-	for (i = 0; i < 500; i++) {
-		DELAY(1);
-		reg = PHY_READ(sc, E1000_CR);
-		if (!(reg & E1000_CR_RESET))
-			break;
-	}
-
-	/* set more custom E1000 registers to magic values */
-	reg = PHY_READ(sc, E1000_SCR);
-	reg |= E1000_SCR_ASSERT_CRS_ON_TX;
-	PHY_WRITE(sc, E1000_SCR, reg);
-
-	reg = PHY_READ(sc, E1000_ESCR);
-	reg |= E1000_ESCR_TX_CLK_25;
-	PHY_WRITE(sc, E1000_ESCR, reg);
-
-	/* even more magic to reset DSP? */
-	PHY_WRITE(sc, 29, 0x1d);
-	PHY_WRITE(sc, 30, 0xc1);
-	PHY_WRITE(sc, 30, 0x00);
 }
 
 static int
 e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
+	uint16_t speed, gig;
 	int reg;
 
 	switch (cmd) {
@@ -263,118 +303,117 @@ e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		/*
 		 * If the interface is not up, don't do anything.
 		 */
-		if ((mii->mii_ifp->if_flags & IFF_UP) == 0) {
+		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
+			break;
+
+		if (IFM_SUBTYPE(ife->ifm_media) == IFM_AUTO) {
+			e1000phy_mii_phy_auto(sc);
 			break;
 		}
 
+		speed = 0;
 		switch (IFM_SUBTYPE(ife->ifm_media)) {
-		case IFM_AUTO:
-			/*
-			 * If we're already in auto mode, just return.
-			 */
-			if (sc->mii_flags & MIIF_DOINGAUTO) {
-				return (0);
-			}
-			e1000phy_reset(sc);
-			e1000phy_mii_phy_auto(sc, 1);
-			break;
-
-		case IFM_1000_SX:
-			e1000phy_reset(sc);
-
-			PHY_WRITE(sc, E1000_CR,
-			    E1000_CR_FULL_DUPLEX | E1000_CR_SPEED_1000);
-			PHY_WRITE(sc, E1000_AR, E1000_FA_1000X_FD);
-			break;
-
 		case IFM_1000_T:
-			if (sc->mii_flags & MIIF_DOINGAUTO)
-				return (0);
-
-			e1000phy_reset(sc);
-
-			/* TODO - any other way to force 1000BT? */
-			e1000phy_mii_phy_auto(sc, 1);
+			if (sc->mii_model == MII_MODEL_MARVELL_E3082)
+				return (EINVAL);
+			speed = E1000_CR_SPEED_1000;
 			break;
-
+		case IFM_1000_SX:
+			if (sc->mii_model == MII_MODEL_MARVELL_E3082)
+				return (EINVAL);
+			speed = E1000_CR_SPEED_1000;
+			break;
 		case IFM_100_TX:
-			e1000phy_reset(sc);
-
-			if ((ife->ifm_media & IFM_GMASK) == IFM_FDX) {
-				PHY_WRITE(sc, E1000_CR,
-				    E1000_CR_FULL_DUPLEX | E1000_CR_SPEED_100);
-				PHY_WRITE(sc, E1000_AR, E1000_AR_100TX_FD);
-			} else {
-				PHY_WRITE(sc, E1000_CR, E1000_CR_SPEED_100);
-				PHY_WRITE(sc, E1000_AR, E1000_AR_100TX);
-			}
+			speed = E1000_CR_SPEED_100;
 			break;
-
 		case IFM_10_T:
-			e1000phy_reset(sc);
-
-			if ((ife->ifm_media & IFM_GMASK) == IFM_FDX) {
-				PHY_WRITE(sc, E1000_CR,
-				    E1000_CR_FULL_DUPLEX | E1000_CR_SPEED_10);
-				PHY_WRITE(sc, E1000_AR, E1000_AR_10T_FD);
-			} else {
-				PHY_WRITE(sc, E1000_CR, E1000_CR_SPEED_10);
-				PHY_WRITE(sc, E1000_AR, E1000_AR_10T);
-			}
-
+			speed = E1000_CR_SPEED_10;
 			break;
-
+		case IFM_NONE:
+			reg = PHY_READ(sc, E1000_CR);
+			PHY_WRITE(sc, E1000_CR,
+			    reg | E1000_CR_ISOLATE | E1000_CR_POWER_DOWN);
+			goto done;
 		default:
 			return (EINVAL);
 		}
 
+		if (((ife->ifm_media & IFM_GMASK) & IFM_FDX) != 0) {
+			speed |= E1000_CR_FULL_DUPLEX;
+			gig = E1000_1GCR_1000T_FD;
+		} else {
+			gig = E1000_1GCR_1000T;
+		}
+
+		reg = PHY_READ(sc, E1000_CR);
+		reg &= ~E1000_CR_AUTO_NEG_ENABLE;
+		PHY_WRITE(sc, E1000_CR, reg | E1000_CR_RESET);
+
+		/*
+		 * When setting the link manually, one side must
+		 * be the master and the other the slave. However
+		 * ifmedia doesn't give us a good way to specify
+		 * this, so we fake it by using one of the LINK
+		 * flags. If LINK0 is set, we program the PHY to
+		 * be a master, otherwise it's a slave.
+		 */
+		if (IFM_SUBTYPE(ife->ifm_media) == IFM_1000_T ||
+		    IFM_SUBTYPE(ife->ifm_media) == IFM_1000_SX) {
+			if (mii->mii_ifp->if_flags & IFF_LINK0) {
+				PHY_WRITE(sc, E1000_1GCR, gig |
+				    E1000_1GCR_MS_ENABLE | E1000_1GCR_MS_VALUE);
+			} else {
+				PHY_WRITE(sc, E1000_1GCR, gig |
+				    E1000_1GCR_MS_ENABLE);
+			}
+		} else {
+			if (sc->mii_model != MII_MODEL_MARVELL_E3082)
+				PHY_WRITE(sc, E1000_1GCR, 0);
+		}
+		PHY_WRITE(sc, E1000_AR, E1000_AR_SELECTOR_FIELD);
+		PHY_WRITE(sc, E1000_CR, speed | E1000_CR_RESET);
+done:
 		break;
 
 	case MII_TICK:
 		/*
 		 * If we're not currently selected, just return.
 		 */
-		if (IFM_INST(ife->ifm_media) != sc->mii_inst) {
+		if (IFM_INST(ife->ifm_media) != sc->mii_inst)
 			return (0);
-		}
 
 		/*
 		 * Is the interface even up?
 		 */
-		if ((mii->mii_ifp->if_flags & IFF_UP) == 0) {
+		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			return (0);
-		}
 
 		/*
 		 * Only used for autonegotiation.
 		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO) {
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
 			break;
-		}
 
 		/*
 		 * Check to see if we have link.  If we do, we don't
 		 * need to restart the autonegotiation process.  Read
 		 * the BMSR twice in case it's latched.
 		 */
-		reg = PHY_READ(sc, E1000_SR) | PHY_READ(sc, E1000_SR);
-		if (reg & E1000_SR_LINK_STATUS)
+		reg = PHY_READ(sc, MII_BMSR) | PHY_READ(sc, MII_BMSR);
+		if (reg & BMSR_LINK) {
+			sc->mii_ticks = 0;
 			break;
+		}
 
 		/*
 		 * Only retry autonegotiation every mii_anegticks seconds.
 		 */
-		if (++(sc->mii_ticks) != sc->mii_anegticks) {
+		if (++sc->mii_ticks != sc->mii_anegticks)
 			return (0);
-		}
 		sc->mii_ticks = 0;
 
 		e1000phy_reset(sc);
-
-		if (e1000phy_mii_phy_auto(sc, 0) == EJUSTRETURN) {
-			return (0);
-		}
-
+		e1000phy_mii_phy_auto(sc);
 		break;
 	}
 
@@ -390,7 +429,7 @@ static void
 e1000phy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
-	int bmsr, bmcr, esr, ssr, isr, ar, lpar;
+	int bmsr, bmcr, esr, gsr, ssr, isr, ar, lpar;
 
 	mii->mii_media_status = IFM_AVALID;
 	mii->mii_media_active = IFM_ETHER;
@@ -409,9 +448,10 @@ e1000phy_status(struct mii_softc *sc)
 	if (bmcr & E1000_CR_LOOPBACK)
 		mii->mii_media_active |= IFM_LOOP;
 
-	if ((sc->mii_flags & MIIF_DOINGAUTO) &&
-	    (!(bmsr & E1000_SR_AUTO_NEG_COMPLETE) || !(ssr & E1000_SSR_LINK) ||
-	    !(ssr & E1000_SSR_SPD_DPLX_RESOLVED))) {
+	if (((bmcr & E1000_CR_AUTO_NEG_ENABLE) != 0 &&
+	     (bmsr & E1000_SR_AUTO_NEG_COMPLETE) == 0) ||
+	    (ssr & E1000_SSR_LINK) == 0 ||
+	    (ssr & E1000_SSR_SPD_DPLX_RESOLVED) == 0) {
 		/* Erg, still trying, I guess... */
 		mii->mii_media_active |= IFM_NONE;
 		return;
@@ -446,59 +486,32 @@ e1000phy_status(struct mii_softc *sc)
 			mii->mii_media_active |= IFM_FLAG0;
 		}
 	}
+
+	/* FLAG2 : local PHY resolved to MASTER */
+	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
+	    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX) {
+		PHY_READ(sc, E1000_1GSR);
+		gsr = PHY_READ(sc, E1000_1GSR);
+		if ((gsr & E1000_1GSR_MS_CONFIG_RES) != 0)
+			mii->mii_media_active |= IFM_FLAG2;
+	}
 }
 
-static int
-e1000phy_mii_phy_auto(struct mii_softc *sc, int waitfor)
+static void
+e1000phy_mii_phy_auto(struct mii_softc *sc)
 {
-	int bmsr, i;
-
-	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
-		if ((sc->mii_flags & MIIF_HAVEFIBER) == 0) {
-			PHY_WRITE(sc, E1000_AR, E1000_AR_10T | E1000_AR_10T_FD |
-			    E1000_AR_100TX | E1000_AR_100TX_FD | 
-			    E1000_AR_PAUSE | E1000_AR_ASM_DIR);
-			PHY_WRITE(sc, E1000_1GCR, E1000_1GCR_1000T_FD);
-		} else {
-			PHY_WRITE(sc, E1000_AR, E1000_FA_1000X_FD |
-				  E1000_FA_SYM_PAUSE | E1000_FA_ASYM_PAUSE);
-		}
-		PHY_WRITE(sc, E1000_CR,
-		    E1000_CR_AUTO_NEG_ENABLE | E1000_CR_RESTART_AUTO_NEG);
+	if ((sc->mii_flags & MIIF_HAVEFIBER) == 0) {
+		PHY_WRITE(sc, E1000_AR, E1000_AR_10T | E1000_AR_10T_FD |
+		    E1000_AR_100TX | E1000_AR_100TX_FD |
+		    E1000_AR_PAUSE | E1000_AR_ASM_DIR);
+	} else {
+		PHY_WRITE(sc, E1000_AR, E1000_FA_1000X_FD | E1000_FA_1000X |
+		    E1000_FA_SYM_PAUSE | E1000_FA_ASYM_PAUSE);
 	}
-
-	if (waitfor) {
-		/* Wait 5 seconds for it to complete. */
-		for (i = 0; i < 5000; i++) {
-			bmsr = PHY_READ(sc, E1000_SR) | PHY_READ(sc, E1000_SR);
-
-			if (bmsr & E1000_SR_AUTO_NEG_COMPLETE) {
-				return (0);
-			}
-			DELAY(1000);
-		}
-
-		/*
-		 * Don't need to worry about clearing MIIF_DOINGAUTO.
-		 * If that's set, a timeout is pending, and it will
-		 * clear the flag. [do it anyway]
-		 */
-		return (EIO);
+	if (sc->mii_model != MII_MODEL_MARVELL_E3082) {
+		PHY_WRITE(sc, E1000_1GCR,
+		    E1000_1GCR_1000T_FD | E1000_1GCR_1000T);
 	}
-
-	/*
-	 * Just let it finish asynchronously.  This is for the benefit of
-	 * the tick handler driving autonegotiation.  Don't want 500ms
-	 * delays all the time while the system is running!
-	 */
-	if (sc->mii_flags & MIIF_AUTOTSLEEP) {
-		sc->mii_flags |= MIIF_DOINGAUTO;
-		tsleep(&sc->mii_flags, 0, "miiaut", hz >> 1);
-		mii_phy_auto_timeout(sc);
-	} else if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
-		sc->mii_flags |= MIIF_DOINGAUTO;
-		callout_reset(&sc->mii_auto_ch, 5 * hz,
-				mii_phy_auto_timeout, sc);
-	}
-	return (EJUSTRETURN);
+	PHY_WRITE(sc, E1000_CR,
+	    E1000_CR_AUTO_NEG_ENABLE | E1000_CR_RESTART_AUTO_NEG);
 }
