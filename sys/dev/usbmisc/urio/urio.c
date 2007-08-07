@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.22 2007/07/02 23:52:05 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.23 2007/08/07 10:42:41 hasso Exp $
  */
 
 /*
@@ -59,7 +59,6 @@
 #include <sys/tty.h>
 #include <sys/file.h>
 #include <sys/select.h>
-#include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>

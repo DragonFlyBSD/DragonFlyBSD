@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.13 2007/07/01 21:24:03 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.14 2007/08/07 10:42:40 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -76,7 +76,6 @@
 #include <sys/file.h>
 #include <sys/select.h>
 #include <sys/proc.h>
-#include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 

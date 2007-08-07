@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.18 2007/08/02 11:53:30 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.19 2007/08/07 10:42:41 hasso Exp $
  */
 
 /*-
@@ -96,7 +96,6 @@
 #include <sys/file.h>
 #include <sys/select.h>
 #include <sys/proc.h>
-#include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>

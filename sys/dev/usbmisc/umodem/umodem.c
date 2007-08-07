@@ -1,7 +1,7 @@
 /*
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.19 2007/08/07 10:04:10 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.20 2007/08/07 10:42:41 hasso Exp $
  */
 
 /*-
@@ -90,7 +90,6 @@
 #include <sys/select.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>
-#include <sys/vnode.h>
 #include <sys/bus.h>
 #include <sys/poll.h>
 

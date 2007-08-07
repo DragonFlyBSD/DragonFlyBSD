@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.19 2007/07/02 23:52:05 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.20 2007/08/07 10:42:40 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,6 @@
 #include <sys/tty.h>
 #include <sys/file.h>
 #include <sys/select.h>
-#include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
