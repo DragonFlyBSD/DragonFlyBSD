@@ -22,7 +22,7 @@
  */
 #ifndef lint
 static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/tcpdump/print-bootp.c,v 1.78.2.3 2006/02/13 19:02:05 hannes Exp $ (LBL)";
+    "@(#) $Header: /tcpdump/master/tcpdump/print-bootp.c,v 1.78.2.7 2007/01/29 20:56:00 guy Exp $ (LBL)";
 #endif
 
 #ifdef HAVE_CONFIG_H
@@ -42,6 +42,7 @@ static const char rcsid[] _U_ =
 
 static void rfc1048_print(const u_char *);
 static void cmu_print(const u_char *);
+static char *client_fqdn_flags(u_int flags);
 
 static char tstr[] = " [|bootp]";
 
@@ -100,10 +101,10 @@ bootp_print(register const u_char *cp, u_int length)
 	if (bp->bp_secs)
 		printf(", secs %d", EXTRACT_16BITS(&bp->bp_secs));
 
-	printf(", Flags [ %s ]",
-	       bittok2str(bootp_flag_values, "none", EXTRACT_16BITS(&bp->bp_flags)));
-	if (vflag>1)
-	  printf( " (0x%04x)", EXTRACT_16BITS(&bp->bp_flags));
+	printf(", Flags [%s]",
+		bittok2str(bootp_flag_values, "none", EXTRACT_16BITS(&bp->bp_flags)));
+	if (vflag > 1)
+		printf(" (0x%04x)", EXTRACT_16BITS(&bp->bp_flags));
 
 	/* Client's ip address */
 	TCHECK(bp->bp_ciaddr);
@@ -374,11 +375,11 @@ rfc1048_print(register const u_char *bp)
 	bp += sizeof(int32_t);
 
 	/* Loop while we there is a tag left in the buffer */
-	while (bp + 1 < snapend) {
+	while (TTEST2(*bp, 1)) {
 		tag = *bp++;
-		if (tag == TAG_PAD)
+		if (tag == TAG_PAD && vflag < 3)
 			continue;
-		if (tag == TAG_END)
+		if (tag == TAG_END && vflag < 3)
 			return;
 		if (tag == TAG_EXTENDED_OPTION) {
 			TCHECK2(*(bp + 1), 2);
@@ -392,17 +393,29 @@ rfc1048_print(register const u_char *bp)
 			cp = tok2str(tag2str, "?T%u", tag);
 		c = *cp++;
 
-		/* Get the length; check for truncation */
-		if (bp + 1 >= snapend) {
-			fputs(tstr, stdout);
-			return;
+		if (tag == TAG_PAD || tag == TAG_END)
+			len = 0;
+		else {
+			/* Get the length; check for truncation */
+			TCHECK2(*bp, 1);
+			len = *bp++;
 		}
-		len = *bp++;
 
-		printf("\n\t    %s Option %u, length %u: ", cp, tag, len);
+		printf("\n\t    %s Option %u, length %u%s", cp, tag, len,
+		    len > 0 ? ": " : "");
 
-		if (bp + len >= snapend) {
-			printf("[|bootp %u]", len);
+		if (tag == TAG_PAD && vflag > 2) {
+			u_int ntag = 1;
+			while (TTEST2(*bp, 1) && *bp == TAG_PAD) {
+				bp++;
+				ntag++;
+			}
+			if (ntag > 1)
+				printf(", occurs %u", ntag);
+		}
+
+		if (!TTEST2(*bp, len)) {
+			printf("[|rfc1048 %u]", len);
 			return;
 		}
 
@@ -413,22 +426,20 @@ rfc1048_print(register const u_char *bp)
 		}
 
 		if (tag == TAG_PARM_REQUEST) {
-			first = 1;
-                        idx = 0;
-                        printf("\n\t      ");
+			idx = 0;
 			while (len-- > 0) {
 				uc = *bp++;
 				cp = tok2str(tag2str, "?Option %u", uc);
-				printf("%s%s", (first || (!(idx %4))) ? "" : ", ", cp + 1);
-
-                                if ((idx %4) == 3) {
-                                    printf("\n\t      ");
-                                }
-				first = 0;
-                                idx ++;
+				if (idx % 4 == 0)
+					printf("\n\t      ");
+				else
+					printf(", ");
+				printf("%s", cp + 1);
+				idx++;
 			}
 			continue;
 		}
+
 		if (tag == TAG_EXTENDED_REQUEST) {
 			first = 1;
 			while (len > 1) {
@@ -576,15 +587,16 @@ rfc1048_print(register const u_char *bp)
 				break;
 
 			case TAG_CLIENT_FQDN:
-				/* option 81 should be at least 4 bytes long */
-				if (len < 4)  {
-                                        printf("ERROR: options 81 len %u < 4 bytes", len);
+				/* option 81 should be at least 3 bytes long */
+				if (len < 3)  {
+					printf("ERROR: option 81 len %u < 3 bytes", len);
 					break;
 				}
-				if (*bp++)
-					printf("[svrreg]");
 				if (*bp)
-					printf("%u/%u/", *bp, *(bp+1));
+					printf("[%s] ", client_fqdn_flags(*bp));
+				bp++;
+				if (*bp || *(bp+1))
+					printf("%u/%u ", *bp, *(bp+1));
 				bp += 2;
 				putchar('"');
 				if (fn_printn(bp, size - 3, snapend)) {
@@ -703,4 +715,23 @@ cmu_print(register const u_char *bp)
 trunc:
 	fputs(tstr, stdout);
 #undef PRINTCMUADDR
+}
+
+static char *
+client_fqdn_flags(u_int flags)
+{
+	static char buf[8+1];
+	int i = 0;
+
+	if (flags & CLIENT_FQDN_FLAGS_S)
+		buf[i++] = 'S';
+	if (flags & CLIENT_FQDN_FLAGS_O)
+		buf[i++] = 'O';
+	if (flags & CLIENT_FQDN_FLAGS_E)
+		buf[i++] = 'E';
+	if (flags & CLIENT_FQDN_FLAGS_N)
+		buf[i++] = 'N';
+	buf[i] = '\0';
+
+	return buf;
 }

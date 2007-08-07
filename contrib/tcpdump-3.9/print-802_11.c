@@ -22,7 +22,7 @@
 
 #ifndef lint
 static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/tcpdump/print-802_11.c,v 1.31.2.11 2006/06/13 22:25:43 guy Exp $ (LBL)";
+    "@(#) $Header: /tcpdump/master/tcpdump/print-802_11.c,v 1.31.2.15 2007/07/22 23:14:14 guy Exp $ (LBL)";
 #endif
 
 #ifdef HAVE_CONFIG_H
@@ -264,7 +264,7 @@ parse_elements(struct mgmt_body_t *pbody, const u_char *p, int offset)
 
 			if (pbody->tim.length <= 3)
 				break;
-			if (pbody->rates.length > sizeof pbody->tim.bitmap)
+			if (pbody->tim.length - 3 > sizeof pbody->tim.bitmap)
 				return;
 			if (!TTEST2(*(p + offset), pbody->tim.length - 3))
 				return;
@@ -687,22 +687,23 @@ static void
 data_header_print(u_int16_t fc, const u_char *p, const u_int8_t **srcp,
     const u_int8_t **dstp)
 {
-	switch (FC_SUBTYPE(fc)) {
-	case DATA_DATA:
-	case DATA_NODATA:
-		break;
-	case DATA_DATA_CF_ACK:
-	case DATA_NODATA_CF_ACK:
-		printf("CF Ack ");
-		break;
-	case DATA_DATA_CF_POLL:
-	case DATA_NODATA_CF_POLL:
-		printf("CF Poll ");
-		break;
-	case DATA_DATA_CF_ACK_POLL:
-	case DATA_NODATA_CF_ACK_POLL:
-		printf("CF Ack/Poll ");
-		break;
+	u_int subtype = FC_SUBTYPE(fc);
+
+	if (DATA_FRAME_IS_CF_ACK(subtype) || DATA_FRAME_IS_CF_POLL(subtype) ||
+	    DATA_FRAME_IS_QOS(subtype)) {
+		printf("CF ");
+		if (DATA_FRAME_IS_CF_ACK(subtype)) {
+			if (DATA_FRAME_IS_CF_POLL(subtype))
+				printf("Ack/Poll");
+			else
+				printf("Ack");
+		} else {
+			if (DATA_FRAME_IS_CF_POLL(subtype))
+				printf("Poll");
+		}
+		if (DATA_FRAME_IS_QOS(subtype))
+			printf("+QoS");
+		printf(" ");
 	}
 
 #define ADDR1  (p + 4)
@@ -825,6 +826,8 @@ ctrl_header_print(u_int16_t fc, const u_char *p, const u_int8_t **srcp,
 static int
 extract_header_length(u_int16_t fc)
 {
+	int len;
+
 	switch (FC_TYPE(fc)) {
 	case T_MGMT:
 		return MGMT_HDRLEN;
@@ -846,7 +849,10 @@ extract_header_length(u_int16_t fc)
 			return 0;
 		}
 	case T_DATA:
-		return (FC_TO_DS(fc) && FC_FROM_DS(fc)) ? 30 : 24;
+		len = (FC_TO_DS(fc) && FC_FROM_DS(fc)) ? 30 : 24;
+		if (DATA_FRAME_IS_QOS(FC_SUBTYPE(fc)))
+			len += 2;
+		return len;
 	default:
 		printf("unknown IEEE802.11 frame type (%d)", FC_TYPE(fc));
 		return 0;
@@ -900,8 +906,12 @@ ieee_802_11_hdr_print(u_int16_t fc, const u_char *p, const u_int8_t **srcp,
 	}
 }
 
+#ifndef roundup2
+#define	roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
+#endif
+
 static u_int
-ieee802_11_print(const u_char *p, u_int length, u_int caplen)
+ieee802_11_print(const u_char *p, u_int length, u_int caplen, int pad)
 {
 	u_int16_t fc;
 	u_int hdrlen;
@@ -915,6 +925,8 @@ ieee802_11_print(const u_char *p, u_int length, u_int caplen)
 
 	fc = EXTRACT_LE_16BITS(p);
 	hdrlen = extract_header_length(fc);
+	if (pad)
+		hdrlen = roundup2(hdrlen, 4);
 
 	if (caplen < hdrlen) {
 		printf("[|802.11]");
@@ -945,6 +957,8 @@ ieee802_11_print(const u_char *p, u_int length, u_int caplen)
 		}
 		break;
 	case T_DATA:
+		if (DATA_FRAME_IS_NULL(FC_SUBTYPE(fc)))
+			return hdrlen;	/* no-data frame */
 		/* There may be a problem w/ AP not having this bit set */
 		if (FC_WEP(fc)) {
 			if (!wep_print(p)) {
@@ -985,11 +999,11 @@ ieee802_11_print(const u_char *p, u_int length, u_int caplen)
 u_int
 ieee802_11_if_print(const struct pcap_pkthdr *h, const u_char *p)
 {
-	return ieee802_11_print(p, h->len, h->caplen);
+	return ieee802_11_print(p, h->len, h->caplen, 0);
 }
 
 static int
-print_radiotap_field(struct cpack_state *s, u_int32_t bit)
+print_radiotap_field(struct cpack_state *s, u_int32_t bit, int *pad)
 {
 	union {
 		int8_t		i8;
@@ -1003,6 +1017,10 @@ print_radiotap_field(struct cpack_state *s, u_int32_t bit)
 
 	switch (bit) {
 	case IEEE80211_RADIOTAP_FLAGS:
+		rc = cpack_uint8(s, &u.u8);
+		if (u.u8 & IEEE80211_RADIOTAP_F_DATAPAD)
+			*pad = 1;
+		break;
 	case IEEE80211_RADIOTAP_RATE:
 	case IEEE80211_RADIOTAP_DB_ANTSIGNAL:
 	case IEEE80211_RADIOTAP_DB_ANTNOISE:
@@ -1125,6 +1143,7 @@ ieee802_11_radio_print(const u_char *p, u_int length, u_int caplen)
 	int bit0;
 	const u_char *iter;
 	u_int len;
+	int pad;
 
 	if (caplen < sizeof(*hdr)) {
 		printf("[|802.11]");
@@ -1158,6 +1177,8 @@ ieee802_11_radio_print(const u_char *p, u_int length, u_int caplen)
 		return caplen;
 	}
 
+	/* Assume no Atheros padding between 802.11 header and body */
+	pad = 0;
 	for (bit0 = 0, presentp = &hdr->it_present; presentp <= last_presentp;
 	     presentp++, bit0 += 32) {
 		for (present = EXTRACT_LE_32BITS(presentp); present;
@@ -1169,12 +1190,12 @@ ieee802_11_radio_print(const u_char *p, u_int length, u_int caplen)
 			bit = (enum ieee80211_radiotap_type)
 			    (bit0 + BITNO_32(present ^ next_present));
 
-			if (print_radiotap_field(&cpacker, bit) != 0)
+			if (print_radiotap_field(&cpacker, bit, &pad) != 0)
 				goto out;
 		}
 	}
 out:
-	return len + ieee802_11_print(p + len, length - len, caplen - len);
+	return len + ieee802_11_print(p + len, length - len, caplen - len, pad);
 #undef BITNO_32
 #undef BITNO_16
 #undef BITNO_8
@@ -1205,7 +1226,7 @@ ieee802_11_avs_radio_print(const u_char *p, u_int length, u_int caplen)
 	}
 
 	return caphdr_len + ieee802_11_print(p + caphdr_len,
-	    length - caphdr_len, caplen - caphdr_len);
+	    length - caphdr_len, caplen - caphdr_len, 0);
 }
 
 #define PRISM_HDR_LEN		144
@@ -1244,7 +1265,7 @@ prism_if_print(const struct pcap_pkthdr *h, const u_char *p)
 	}
 
 	return PRISM_HDR_LEN + ieee802_11_print(p + PRISM_HDR_LEN,
-	    length - PRISM_HDR_LEN, caplen - PRISM_HDR_LEN);
+	    length - PRISM_HDR_LEN, caplen - PRISM_HDR_LEN, 0);
 }
 
 /*
