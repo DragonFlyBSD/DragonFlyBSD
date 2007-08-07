@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.47 2007/06/14 02:55:27 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.48 2007/08/07 20:05:30 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -655,16 +655,17 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 		struct vnode *vp = pmp->pm_devvp;
 
 		kprintf("msdosfs_umount(): just before calling VOP_CLOSE()\n");
-		kprintf("flag %08lx, sysrefs %d, writecount %d, auxrefs %ld\n",
+		kprintf("flag %08x, sysrefs %d, writecount %d, auxrefs %d\n",
 		    vp->v_flag, vp->v_sysref.refcnt,
 		    vp->v_writecount, vp->v_auxrefs);
-		kprintf("mount %p, op %p\n", vp->v_mount, vp->v_op);
+		kprintf("mount %p, op %p\n", vp->v_mount, vp->v_ops);
 		kprintf("freef %p, freeb %p, mount %p\n",
-		    TAILQ_NEXT(vp, v_freelist), TAILQ_PREV(vp, v_freelist),
+		    TAILQ_NEXT(vp, v_freelist),
+		    *vp->v_freelist.tqe_prev,
 		    vp->v_mount);
-		kprintf("cleanblkhd %p, dirtyblkhd %p, numoutput %ld, type %d\n",
-		    RB_EMPTY(&vp->v_rbclean_tree),
-		    RB_EMPTY(&vp->v_rbdirty_tree),
+		kprintf("cleanblkhd %p, dirtyblkhd %p, numoutput %d, type %d\n",
+		    RB_ROOT(&vp->v_rbclean_tree),
+		    RB_ROOT(&vp->v_rbdirty_tree),
 		    vp->v_track_write.bk_active, vp->v_type);
 		kprintf("union %p, tag %d, data[0] %08x, data[1] %08x\n",
 		    vp->v_socket, vp->v_tag,
