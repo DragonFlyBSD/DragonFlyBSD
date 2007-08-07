@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.25.2.6 2002/07/05 11:30:32 fenner Exp $
-# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.11 2007/08/07 18:12:02 pavalos Exp $
+# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.12 2007/08/07 18:41:18 pavalos Exp $
 
 
 TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump-3.9
@@ -32,6 +32,9 @@ SRCS=	addrtoname.c af.c cpack.c gmpls.c oui.c gmt2local.c ipproto.c \
 SRCS+=	print-smb.c smbutil.c version.c
 CLEANFILES+=	version.c
 
+CONTRIBDIR= ${TCPDUMP_DISTDIR}
+SRCS+=	tcpdump.1.no_obj.patch
+
 CFLAGS+= -I${.CURDIR} -I${TCPDUMP_DISTDIR}
 CFLAGS+= -DHAVE_CONFIG_H -D_U_="__attribute__((unused))"
 
@@ -44,8 +47,7 @@ SRCS+=	print-ip6.c print-ip6opts.c print-mobility.c \
 	print-ripng.c print-icmp6.c print-frag6.c print-rt6.c \
 	print-ospf6.c print-dhcp6.c
 
-CONTRIBDIR= ${TCPDUMP_DISTDIR}
-SRCS+=  print-ospf6.c.patch tcpdump.1.no_obj.patch
+SRCS+=  print-ospf6.c.patch
 CFLAGS+=	-DINET6
 .endif
 .if ${MACHINE_ARCH} != "i386"
