@@ -21,7 +21,7 @@
 
 #ifndef lint
 static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/tcpdump/print-ip.c,v 1.149.2.6 2006/02/19 05:01:07 guy Exp $ (LBL)";
+    "@(#) $Header: /tcpdump/master/tcpdump/print-ip.c,v 1.149.2.8 2007/01/29 20:57:47 guy Exp $ (LBL)";
 #endif
 
 #ifdef HAVE_CONFIG_H
@@ -633,7 +633,7 @@ ip_print(netdissect_options *ndo,
             }
 
             if (ipds->ip->ip_ttl >= 1)
-                (void)printf(", ttl %3u", ipds->ip->ip_ttl);    
+                (void)printf(", ttl %u", ipds->ip->ip_ttl);    
 
 	    /*
 	     * for the firewall guys, print id, offset.
@@ -641,14 +641,14 @@ ip_print(netdissect_options *ndo,
 	     * For unfragmented datagrams, note the don't fragment flag.
 	     */
 
-	    (void)printf(", id %u, offset %u, flags [%s], proto: %s (%u)",
+	    (void)printf(", id %u, offset %u, flags [%s], proto %s (%u)",
                          EXTRACT_16BITS(&ipds->ip->ip_id),
                          (ipds->off & 0x1fff) * 8,
-                         bittok2str(ip_frag_values, "none", ipds->off&0xe000 ),
+                         bittok2str(ip_frag_values, "none", ipds->off&0xe000),
                          tok2str(ipproto_values,"unknown",ipds->ip->ip_p),
                          ipds->ip->ip_p);
 
-            (void)printf(", length: %u", EXTRACT_16BITS(&ipds->ip->ip_len));
+            (void)printf(", length %u", EXTRACT_16BITS(&ipds->ip->ip_len));
 
             if ((hlen - sizeof(struct ip)) > 0) {
                 printf(", options (");
