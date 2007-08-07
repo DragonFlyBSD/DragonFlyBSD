@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.29 2007/08/07 10:42:40 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.30 2007/08/07 11:30:03 hasso Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -206,7 +206,6 @@ ucom_detach(struct ucom_softc *sc)
 			device_printf(sc->sc_dev,
 				      "still open, forcing close\n");
 			(*linesw[tp->t_line].l_close)(tp, 0);
-			tp->t_gen++;
 			ttyclose(tp);
 			ttwakeup(tp);
 			ttwwakeup(tp);

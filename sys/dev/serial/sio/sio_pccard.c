@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.7 2007/07/05 12:08:54 sephe Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.8 2007/08/07 11:30:03 hasso Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -136,7 +136,6 @@ sio_pccard_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IOPORT, 0, com->ioportres);
 	if (com->tp && (com->tp->t_state & TS_ISOPEN)) {
 		device_printf(dev, "still open, forcing close\n");
-		com->tp->t_gen++;
 		ttyclose(com->tp);
 		ttwakeup(com->tp);
 		ttwwakeup(com->tp);

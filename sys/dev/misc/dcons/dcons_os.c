@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.11 2007/05/07 05:21:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.12 2007/08/07 11:30:03 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -596,7 +596,6 @@ dcons_detach(int port)
 		kprintf("dcons: still opened\n");
 #if __FreeBSD_version < 502113
 		(*linesw[tp->t_line].l_close)(tp, 0);
-		tp->t_gen++;
 		ttyclose(tp);
 		ttwakeup(tp);
 		ttwwakeup(tp);
