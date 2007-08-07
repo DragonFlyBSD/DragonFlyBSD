@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.13 2007/08/07 15:46:03 justin Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.14 2007/08/07 16:57:07 justin Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -323,6 +323,17 @@ rsync
 </TD>
 </TR>
 
+<TR>
+<TD>dragonflybsd.kiev.ua (Ukraine)</TD>
+<TD>Daily Snapshots, Official ISOs</TD>
+<TD>
+<a href="http://www.dragonflybsd.kiev.ua/">HTTP</a>,
+<a href="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/">FTP</a>
+</TD>
+</TR>
+
+
+
 <!-- binary packages after this -->
 <TR>
 <TD COLSPAN="3">&nbsp;</TD>
@@ -386,6 +397,15 @@ rsync
 <a href="http://ftp.twaren.net/BSD/DragonFlyBSD/packages/stable/">i386 packages</a>
 </TD>
 </TR>
+
+<TR>
+<TD>dragonflybsd.kiev.ua (Ukraine)</TD>
+<TD>binary pkgsrc packages</TD>
+<TD>
+<a href="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/packages/stable/">i386 packages</a>
+</TD>
+</TR>
+
 
 
 <!-- source only after this -->
@@ -464,6 +484,15 @@ cvsup
 cvsup
 </TD>
 </TR>
+
+<TR>
+<TD>dragonflybsd.kiev.ua (Ukraine)</TD>
+<TD>Code</TD>
+<TD>
+cvsup
+</TD>
+</TR>
+
 
 </TABLE>
 
