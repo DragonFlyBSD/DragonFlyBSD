@@ -1,4 +1,4 @@
-$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.10 2007/05/03 08:31:33 sephe Exp $
+$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.11 2007/08/07 11:36:49 sephe Exp $
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
 
@@ -218,8 +218,11 @@ model MARVELL E1000_4		0x0004 Marvell 88E1000S Gigabit PHY
 model MARVELL E1000_5		0x0005 Marvell 88E1000 Gigabit PHY
 model MARVELL E1000_6		0x0006 Marvell 88E1000 Gigabit PHY
 model MARVELL E3082		0x0008 Marvell 88E3082 10/100 PHY
+model MARVELL E1112		0x0009 Marvell 88E1112 Gigabit PHY
+model MARVELL E1149		0x000b Marvell 88E1149 Gigabit PHY
 model MARVELL E1111		0x000c Marvell 88E1111 Gigabit PHY
 model MARVELL E1116		0x0021 Marvell 88E1116 Gigabit PHY
+model MARVELL E1118		0x0022 Marvell 88E1118 Gigabit PHY
 model xxMARVELL E1000_2		0x0002 Marvell 88E1000 Gigabit PHY
 model xxMARVELL E1000_3		0x0003 Marvell 88E1000 Gigabit PHY
 model xxMARVELL E1000_5		0x0005 Marvell 88E1000 Gigabit PHY
