@@ -1,11 +1,6 @@
-$DragonFly: src/lib/libpcap/patches/Attic/grammar.y.patch,v 1.1 2007/03/16 12:59:10 sephe Exp $
-Index: grammar.y
-===================================================================
-RCS file: /opt/df_cvs/src/contrib/libpcap-0.9/grammar.y,v
-retrieving revision 1.1.1.1
-diff -u -r1.1.1.1 grammar.y
---- grammar.y	25 Dec 2006 00:32:18 -0000	1.1.1.1
-+++ grammar.y	9 Mar 2007 13:24:29 -0000
+$DragonFly: src/lib/libpcap/patches/Attic/grammar.y.patch,v 1.2 2007/08/07 18:12:02 pavalos Exp $
+--- grammar.y.orig	2007-08-07 12:56:23.000000000 -0400
++++ grammar.y	2007-08-07 12:56:02.000000000 -0400
 @@ -55,6 +55,8 @@
  #include "pf.h"
  #include <pcap-namedb.h>
@@ -35,10 +30,10 @@ diff -u -r1.1.1.1 grammar.y
  %type	<i>	atmtype atmmultitype
  %type	<blk>	atmfield
  %type	<blk>	atmfieldvalue atmvalue atmlistvalue
-@@ -141,12 +147,13 @@
- %token	VPI VCI
+@@ -143,12 +149,13 @@
  %token	RADIO
- %token  SIO OPC DPC SLS
+ %token	FISU LSSU MSU
+ %token	SIO OPC DPC SLS
 +%token	TYPE SUBTYPE
  
  %type	<s> ID
@@ -50,7 +45,7 @@ diff -u -r1.1.1.1 grammar.y
  
  %left OR AND
  %nonassoc  '!'
-@@ -337,6 +344,7 @@
+@@ -340,6 +347,7 @@
  	| PPPOED		{ $$ = gen_pppoed(); }
  	| PPPOES		{ $$ = gen_pppoes(); }
  	| pfvar			{ $$ = $1; }
@@ -58,7 +53,7 @@ diff -u -r1.1.1.1 grammar.y
  	;
  
  pfvar:	  PF_IFNAME ID		{ $$ = gen_pf_ifname($2); }
-@@ -347,6 +355,83 @@
+@@ -350,6 +358,83 @@
  	| PF_ACTION action	{ $$ = gen_pf_action($2); }
  	;
  

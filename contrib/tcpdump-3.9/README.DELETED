@@ -1,5 +1,10 @@
+.#CHANGES.1.87
+.#tcpdump.c.1.253.2.5
 .cvsignore
+CHANGES.~1~
+CHANGES~
 CREDITS
+CVS/
 FILES
 INSTALL
 Makefile-devel-adds
@@ -22,5 +27,6 @@ mkdep
 packetdat.awk
 send-ack.awk
 stime.awk
+tcpdump-3.9/
 tests/
 win32/

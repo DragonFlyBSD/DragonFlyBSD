@@ -1,6 +1,8 @@
 Original Source can be downloaded from:
-http://www.tcpdump.org/release/tcpdump-3.9.5.tar.gz
-MD5 (tcpdump-3.9.5.tar.gz) = 2135e7b1f09af0eaf66d2af822bed44a
+http://www.tcpdump.org/release/
+
+cvs import hint:
+cvs import src/contrib/tcpdump-3.9 TCPDUMP v3_9_?
 
 A list of files and directories removed is in README.DELETED
 

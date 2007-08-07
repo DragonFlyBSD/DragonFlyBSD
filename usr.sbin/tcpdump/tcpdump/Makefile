@@ -1,12 +1,12 @@
 # $FreeBSD: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.25.2.6 2002/07/05 11:30:32 fenner Exp $
-# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.10 2007/08/01 22:24:34 pavalos Exp $
+# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.11 2007/08/07 18:12:02 pavalos Exp $
 
 
 TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump-3.9
 .PATH: ${TCPDUMP_DISTDIR}
 
 PROG=	tcpdump
-SRCS=	addrtoname.c cpack.c gmpls.c oui.c gmt2local.c ipproto.c \
+SRCS=	addrtoname.c af.c cpack.c gmpls.c oui.c gmt2local.c ipproto.c \
 	nlpid.c l2vpn.c machdep.c parsenfsfh.c \
 	print-802_11.c print-ap1394.c print-ah.c print-arcnet.c \
 	print-aodv.c print-arp.c print-ascii.c print-atalk.c print-atm.c \
@@ -21,7 +21,7 @@ SRCS=	addrtoname.c cpack.c gmpls.c oui.c gmt2local.c ipproto.c \
 	print-l2tp.c print-lane.c print-ldp.c print-llc.c \
 	print-lmp.c print-lspping.c \
 	print-lwres.c print-mobile.c print-mpls.c print-msdp.c \
-	print-nfs.c print-ntp.c print-null.c print-ospf.c \
+	print-nfs.c print-ntp.c print-null.c print-olsr.c print-ospf.c \
 	print-pflog.c print-pgm.c print-pim.c print-ppp.c print-pppoe.c \
 	print-pptp.c print-radius.c print-raw.c print-rip.c \
 	print-rsvp.c print-rx.c print-sctp.c print-sip.c print-sl.c print-sll.c \
@@ -45,8 +45,7 @@ SRCS+=	print-ip6.c print-ip6opts.c print-mobility.c \
 	print-ospf6.c print-dhcp6.c
 
 CONTRIBDIR= ${TCPDUMP_DISTDIR}
-SRCS+=  print-ospf6.c.patch print-802_11.c.patch tcpdump.1.no_obj.patch
-SRCS+=	print-bgp.c.patch
+SRCS+=  print-ospf6.c.patch tcpdump.1.no_obj.patch
 CFLAGS+=	-DINET6
 .endif
 .if ${MACHINE_ARCH} != "i386"

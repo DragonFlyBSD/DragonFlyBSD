@@ -1,6 +1,10 @@
+.#CHANGES.1.59
+.#Makefile.in.1.99.2.1
 .cvsignore
-ChmodBPF/
+CHANGES~
 CREDITS
+CVS/
+ChmodBPF/
 FILES
 INSTALL.txt
 Makefile.in
@@ -17,6 +21,8 @@ TODO
 Win32/
 acconfig.h
 aclocal.m4
+bpf/CVS/
+bpf/net/CVS/
 config.guess
 config.h.in
 config.sub
@@ -27,11 +33,15 @@ fad-gifc.c
 fad-glifc.c
 fad-null.c
 fad-win32.c
+gencode.c.orig
+gencode.c.rej
 install-sh
 lbl/
+libpcap-0.9/
 missing/
 mkdep
 msdos/
+net/
 packaging/
 pcap-dag.c
 pcap-dag.h
@@ -52,3 +62,4 @@ pcap-snoop.c
 pcap-stdinc.h
 pcap-win32.c
 pcap1.h
+wlan_filtering.patch
