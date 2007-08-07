@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.10 2007/05/03 08:32:24 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.11 2007/08/07 11:37:11 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.9 2006/11/16 13:37:21 sephe Exp 
+ *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.10 2007/05/03 08:31:33 sephe Exp 
  */
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
@@ -301,10 +301,16 @@
 #define	MII_STR_MARVELL_E1000_6	"Marvell 88E1000 Gigabit PHY"
 #define	MII_MODEL_MARVELL_E3082	0x0008
 #define	MII_STR_MARVELL_E3082	"Marvell 88E3082 10/100 PHY"
+#define	MII_MODEL_MARVELL_E1112	0x0009
+#define	MII_STR_MARVELL_E1112	"Marvell 88E1112 Gigabit PHY"
+#define	MII_MODEL_MARVELL_E1149	0x000b
+#define	MII_STR_MARVELL_E1149	"Marvell 88E1149 Gigabit PHY"
 #define	MII_MODEL_MARVELL_E1111	0x000c
 #define	MII_STR_MARVELL_E1111	"Marvell 88E1111 Gigabit PHY"
 #define	MII_MODEL_MARVELL_E1116	0x0021
 #define	MII_STR_MARVELL_E1116	"Marvell 88E1116 Gigabit PHY"
+#define	MII_MODEL_MARVELL_E1118	0x0022
+#define	MII_STR_MARVELL_E1118	"Marvell 88E1118 Gigabit PHY"
 #define	MII_MODEL_xxMARVELL_E1000_2	0x0002
 #define	MII_STR_xxMARVELL_E1000_2	"Marvell 88E1000 Gigabit PHY"
 #define	MII_MODEL_xxMARVELL_E1000_3	0x0003
