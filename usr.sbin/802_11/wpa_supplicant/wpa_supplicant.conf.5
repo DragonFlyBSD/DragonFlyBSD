@@ -22,10 +22,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/wpa_supplicant.conf.5,v 1.3.2.4 2006/02/21 17:19:54 sam Exp $
-.\" $DragonFly: src/usr.sbin/802_11/wpa_supplicant/wpa_supplicant.conf.5,v 1.3 2007/05/17 08:19:03 swildner Exp $
+.\" $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/wpa_supplicant.conf.5,v 1.9 2007/07/11 16:04:08 sam Exp $
+.\" $DragonFly: src/usr.sbin/802_11/wpa_supplicant/wpa_supplicant.conf.5,v 1.4 2007/08/07 11:25:37 sephe Exp $
 .\"
-.Dd June 24, 2006
+.Dd July 22, 2007
 .Dt WPA_SUPPLICANT.CONF 5
 .Os
 .Sh NAME
@@ -219,7 +219,8 @@ an 8-63 character
 .Tn ASCII
 passphrase.
 .Tn ASCII
-passphrases are converted to a 256-bit key using the network SSID.
+passphrases are dynamically converted to a 256-bit key at runtime
+using the network SSID.
 .It Va eapol_flags
 Dynamic WEP key usage for non-WPA mode, specified as a bit field.
 Bit 0 (1) forces dynamically generated unicast WEP keys to be used.
@@ -259,6 +260,10 @@ Identity string for EAP.
 .It Va anonymous_identity
 Anonymous identity string for EAP (to be used as the unencrypted identity
 with EAP types that support different tunneled identities; e.g.\& EAP-TTLS).
+.It Va mixed_cell
+Configure whether networks that allow both plaintext and encryption
+are allowed when selecting a BSS from the scan results.
+By default this is set to 0 (disabled).
 .It Va password
 Password string for EAP.
 .It Va ca_cert

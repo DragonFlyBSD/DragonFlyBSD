@@ -12,35 +12,37 @@
  *
  * See README and COPYING for more details.
  *
- * $FreeBSD: src/usr.sbin/wpa/l2_packet.c,v 1.1.2.2 2006/03/24 01:43:17 sam Exp $
- * $DragonFly: src/usr.sbin/802_11/l2_packet.c,v 1.3 2007/01/01 01:45:40 sephe Exp $
+ * $FreeBSD: src/usr.sbin/wpa/l2_packet.c,v 1.4 2007/07/09 15:57:10 sam Exp $
+ * $DragonFly: src/usr.sbin/802_11/l2_packet.c,v 1.4 2007/08/07 11:25:36 sephe Exp $
  */
 
 /*
- * FreeBSD-specific implementation.
+ * DragonFlyBSD-specific implementation.
  */
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-#include <sys/time.h>
 
 #include <net/if.h>
 #include <net/if_dl.h>
-#include <net/route.h>
 #include <net/bpf.h>
+#include <net/route.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <errno.h>
 #include <pcap.h>
 
 #include "common.h"
 #include "eloop.h"
 #include "l2_packet.h"
+
+static const u8 pae_group_addr[ETH_ALEN] =
+	{ 0x01, 0x80, 0xc2, 0x00, 0x00, 0x03 };
 
 struct l2_packet_data {
 	pcap_t *pcap;
@@ -153,7 +155,7 @@ static int
 l2_packet_init_libpcap(struct l2_packet_data *l2, unsigned short protocol)
 {
 	bpf_u_int32 pcap_maskp, pcap_netp;
-	char pcap_filter[100], pcap_err[PCAP_ERRBUF_SIZE];
+	char pcap_filter[200], pcap_err[PCAP_ERRBUF_SIZE];
 	struct bpf_program pcap_fp;
 
 	pcap_lookupnet(l2->ifname, &pcap_netp, &pcap_maskp, pcap_err);
@@ -165,13 +167,17 @@ l2_packet_init_libpcap(struct l2_packet_data *l2, unsigned short protocol)
 	}
 	if (pcap_datalink(l2->pcap) != DLT_EN10MB &&
 	    pcap_set_datalink(l2->pcap, DLT_EN10MB) < 0) {
-		fprintf(stderr, "pcap_set_datalinke(DLT_EN10MB): %s\n",
+		fprintf(stderr, "pcap_set_datalink(DLT_EN10MB): %s\n",
 			pcap_geterr(l2->pcap));
 		return -1;
 	}
 	snprintf(pcap_filter, sizeof(pcap_filter),
-		 "ether dst " MACSTR " and ether proto 0x%x",
-		 MAC2STR(l2->own_addr), protocol);
+		 "not ether src " MACSTR " and "
+		 "( ether dst " MACSTR " or ether dst " MACSTR " ) and "
+		 "ether proto 0x%x",
+		 MAC2STR(l2->own_addr), /* do not receive own packets */
+		 MAC2STR(l2->own_addr), MAC2STR(pae_group_addr),
+		 protocol);
 	if (pcap_compile(l2->pcap, &pcap_fp, pcap_filter, 1, pcap_netp) < 0) {
 		fprintf(stderr, "pcap_compile: %s\n", pcap_geterr(l2->pcap));
 		return -1;

@@ -1,0 +1,13 @@
+$DragonFly: src/usr.sbin/802_11/os_unix.c.patch,v 1.1 2007/08/07 11:25:36 sephe Exp $
+diff -urp hostapd-0.5.8/os_unix.c /usr/src/contrib/hostapd-0.5.8/os_unix.c
+--- os_unix.c	2007-03-25 10:09:43.000000000 +0800
++++ os_unix.c	2007-07-22 12:17:04.000000000 +0800
+@@ -171,7 +171,7 @@ int os_setenv(const char *name, const ch
+ 
+ int os_unsetenv(const char *name)
+ {
+-#if defined(__FreeBSD__) || defined(__NetBSD__)
++#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+ 	unsetenv(name);
+ 	return 0;
+ #else

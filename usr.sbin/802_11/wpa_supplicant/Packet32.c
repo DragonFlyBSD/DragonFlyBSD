@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/Packet32.c,v 1.2.2.2 2006/04/12 17:21:08 sam Exp $
- * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/Packet32.c,v 1.2 2006/09/02 05:40:35 sephe Exp $
+ * $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/Packet32.c,v 1.4 2007/07/11 16:04:08 sam Exp $
+ * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/Packet32.c,v 1.3 2007/08/07 11:25:37 sephe Exp $
  */
 
 /*
@@ -48,9 +48,7 @@
 #include <sys/errno.h>
 #include <sys/sysctl.h>
 #include <sys/fcntl.h>
-#include <sys/time.h>
 
-#include <net/bpf.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_var.h>
@@ -59,6 +57,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <net/route.h>
+
+#include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -100,6 +100,7 @@ typedef struct NDIS_802_11_KEY_COMPAT {
 struct adapter {
 	int			socket;
 	char			name[IFNAMSIZ];
+	int			prev_roaming;
 };
 
 PCHAR
@@ -116,6 +117,7 @@ PacketOpenAdapter(iface)
 	int			s;
 	int			ifflags;
 	struct ifreq		ifr;
+	struct ieee80211req	ireq;
 
 	s = socket(PF_INET, SOCK_DGRAM, 0);
 
@@ -127,7 +129,23 @@ PacketOpenAdapter(iface)
 		return(NULL);
 
 	a->socket = s;
+	if (strncmp(iface, "\\Device\\NPF_", 12) == 0)
+		iface += 12;
+	else if (strncmp(iface, "\\DEVICE\\", 8) == 0)
+		iface += 8;
 	snprintf(a->name, IFNAMSIZ, "%s", iface);
+
+	/* Turn off net80211 roaming */
+	bzero((char *)&ireq, sizeof(ireq));
+	strncpy(ireq.i_name, iface, sizeof (ifr.ifr_name));
+	ireq.i_type = IEEE80211_IOC_ROAMING;
+	if (ioctl(a->socket, SIOCG80211, &ireq) == 0) {
+		a->prev_roaming = ireq.i_val;
+		ireq.i_val = IEEE80211_ROAMING_MANUAL;
+		if (ioctl(a->socket, SIOCS80211, &ireq) < 0)
+			fprintf(stderr,
+			    "Could not set IEEE80211_ROAMING_MANUAL\n");
+	}
 
 	bzero((char *)&ifr, sizeof(ifr));
         strncpy(ifr.ifr_name, iface, sizeof (ifr.ifr_name));
@@ -329,11 +347,19 @@ PacketCloseAdapter(iface)
 {	
 	struct adapter		*a;
 	struct ifreq		ifr;
+	struct ieee80211req	ireq;
 
 	if (iface == NULL)
 		return;
 
 	a = iface;
+
+	/* Reset net80211 roaming */
+	bzero((char *)&ireq, sizeof(ireq));
+	strncpy(ireq.i_name, a->name, sizeof (ifr.ifr_name));
+	ireq.i_type = IEEE80211_IOC_ROAMING;
+	ireq.i_val = a->prev_roaming;
+	ioctl(a->socket, SIOCS80211, &ireq);
 
 	bzero((char *)&ifr, sizeof(ifr));
         strncpy(ifr.ifr_name, a->name, sizeof (ifr.ifr_name));

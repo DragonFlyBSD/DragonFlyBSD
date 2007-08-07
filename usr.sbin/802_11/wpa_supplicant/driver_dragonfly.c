@@ -11,8 +11,8 @@
  *
  * See README and COPYING for more details.
  *
- * $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/driver_freebsd.c,v 1.5.2.4 2006/03/24 01:43:18 sam Exp $
- * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/driver_dragonfly.c,v 1.1 2006/06/24 07:29:44 sephe Exp $
+ * $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/driver_freebsd.c,v 1.14 2007/06/11 03:57:46 sam Exp $
+ * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/driver_dragonfly.c,v 1.2 2007/08/07 11:25:37 sephe Exp $
  */
 
 #include <stdlib.h>
@@ -97,7 +97,6 @@ set80211param(struct wpa_driver_bsd_data *drv, int op, int arg)
 	ireq.i_val = arg;
 
 	if (ioctl(drv->sock, SIOCS80211, &ireq) < 0) {
-		perror("ioctl[SIOCS80211]");
 		fprintf(stderr, "ioctl[SIOCS80211, op %u, arg 0x%x]: %s\n",
 			op, arg, strerror(errno));
 		return -1;
@@ -115,7 +114,6 @@ get80211param(struct wpa_driver_bsd_data *drv, int op)
 	ireq.i_type = op;
 
 	if (ioctl(drv->sock, SIOCG80211, &ireq) < 0) {
-		perror("ioctl[SIOCG80211]");
 		fprintf(stderr, "ioctl[SIOCG80211, op %u]: %s\n",
 			op, strerror(errno));
 		return -1;
@@ -258,7 +256,7 @@ wpa_driver_bsd_set_key(void *priv, wpa_alg alg,
 	struct ieee80211req_key wk;
 	struct ether_addr ea;
 	char *alg_name;
-	u_int8_t cipher;
+	uint8_t cipher;
 
 	if (alg == WPA_ALG_NONE)
 		return wpa_driver_bsd_del_key(drv, key_idx, addr);
@@ -288,7 +286,7 @@ wpa_driver_bsd_set_key(void *priv, wpa_alg alg,
 		__func__, alg_name, ether_ntoa(&ea), key_idx, set_tx,
 		seq_len, key_len);
 
-	if (seq_len > sizeof(u_int64_t)) {
+	if (seq_len > sizeof(uint64_t)) {
 		wpa_printf(MSG_DEBUG, "%s: seq_len %zu too big",
 			__func__, seq_len);
 		return -2;
@@ -320,6 +318,7 @@ wpa_driver_bsd_set_key(void *priv, wpa_alg alg,
 		wk.ik_flags |= IEEE80211_KEY_DEFAULT;
 	wk.ik_keylen = key_len;
 	memcpy(&wk.ik_keyrsc, seq, seq_len);
+	wk.ik_keyrsc = le64toh(wk.ik_keyrsc);
 	memcpy(wk.ik_keydata, key, key_len);
 
 	return set80211var(drv, IEEE80211_IOC_WPAKEY, &wk, sizeof(wk));
@@ -432,6 +431,9 @@ wpa_driver_bsd_set_auth_alg(void *priv, int auth_alg)
 		authmode = IEEE80211_AUTH_SHARED;
 	else
 		authmode = IEEE80211_AUTH_OPEN;
+
+	wpa_printf(MSG_DEBUG, "%s alg 0x%x authmode %u",
+		__func__, auth_alg, authmode);
 
 	return set80211param(drv, IEEE80211_IOC_AUTHMODE, authmode);
 }
@@ -586,7 +588,7 @@ wpa_scan_result_compar(const void *a, const void *b)
 }
 
 static int
-getmaxrate(uint8_t rates[15], uint8_t nrates)
+getmaxrate(const uint8_t rates[15], uint8_t nrates)
 {
 	int i, maxrate = -1;
 
@@ -600,14 +602,14 @@ getmaxrate(uint8_t rates[15], uint8_t nrates)
 
 /* unalligned little endian access */     
 #define LE_READ_4(p)					\
-	((u_int32_t)					\
-	 ((((const u_int8_t *)(p))[0]      ) |		\
-	  (((const u_int8_t *)(p))[1] <<  8) |		\
-	  (((const u_int8_t *)(p))[2] << 16) |		\
-	  (((const u_int8_t *)(p))[3] << 24)))
+	((uint32_t)					\
+	 ((((const uint8_t *)(p))[0]      ) |		\
+	  (((const uint8_t *)(p))[1] <<  8) |		\
+	  (((const uint8_t *)(p))[2] << 16) |		\
+	  (((const uint8_t *)(p))[3] << 24)))
 
 static int __inline
-iswpaoui(const u_int8_t *frm)
+iswpaoui(const uint8_t *frm)
 {
 	return frm[1] > 3 && LE_READ_4(frm+2) == ((WPA_OUI_TYPE<<24)|WPA_OUI);
 }
@@ -620,8 +622,8 @@ wpa_driver_bsd_get_scan_results(void *priv,
 #define	min(a,b)	((a)>(b)?(b):(a))
 	struct wpa_driver_bsd_data *drv = priv;
 	uint8_t buf[24*1024];
-	uint8_t *cp, *vp;
-	struct ieee80211req_scan_result *sr;
+	const uint8_t *cp, *vp;
+	const struct ieee80211req_scan_result *sr;
 	struct wpa_scan_result *wsr;
 	int len, ielen;
 
@@ -633,7 +635,7 @@ wpa_driver_bsd_get_scan_results(void *priv,
 	cp = buf;
 	wsr = results;
 	while (len >= sizeof(struct ieee80211req_scan_result)) {
-		sr = (struct ieee80211req_scan_result *) cp;
+		sr = (const struct ieee80211req_scan_result *) cp;
 		memcpy(wsr->bssid, sr->isr_bssid, IEEE80211_ADDR_LEN);
 		wsr->ssid_len = sr->isr_ssid_len;
 		wsr->freq = sr->isr_freq;
@@ -642,7 +644,7 @@ wpa_driver_bsd_get_scan_results(void *priv,
 		wsr->level = 0;		/* XXX? */
 		wsr->caps = sr->isr_capinfo;
 		wsr->maxrate = getmaxrate(sr->isr_rates, sr->isr_nrates);
-		vp = (u_int8_t *)(sr+1);
+		vp = (uint8_t *)(sr+1);
 		memcpy(wsr->ssid, vp, sr->isr_ssid_len);
 		if (sr->isr_ie_len > 0) {
 			vp += sr->isr_ssid_len;
