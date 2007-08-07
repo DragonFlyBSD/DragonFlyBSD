@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.12 2007/08/06 16:38:01 justin Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.13 2007/08/07 15:46:03 justin Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -109,7 +109,7 @@ features often discussed on the mailing lists are typically not
 in release branches.
 </p>
 <p>
-The current release is <a href="release1_8.shtml">DragonFly 1.8.X-RELEASE</a>.
+The current release is <a href="release1_10.shtml">DragonFly 1.10.X-RELEASE</a>.
 </p>
 
 <p>
@@ -333,7 +333,7 @@ rsync
 <TR>
 <TD>www.pkgsrc-box.org (Germany)</TD>
 <TD>Master site for binary pkgsrc packages</TD>
-<TD><a href="http://www.pkgsrc-box.org/packages/stable/DragonFly-1.8/All/">i386 packages</a>
+<TD><a href="http://www.pkgsrc-box.org/packages/stable/">i386 packages</a>
 </TD>
 </TR>
 
