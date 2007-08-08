@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.67 2007/06/22 12:08:07 sephe Exp $
+# $DragonFly: src/sys/conf/options,v 1.68 2007/08/08 00:23:39 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -435,6 +435,9 @@ NFS_WDELAYHASHSIZ	opt_nfs.h
 NFS_MUIDHASHSIZ		opt_nfs.h
 NFS_NOSERVER		opt_nfs.h
 NFS_DEBUG		opt_nfs.h
+
+# MSDOSFS options
+MSDOSFS_DEBUG		opt_msdosfs.h
 
 # For the Bt848/Bt848A/Bt849/Bt878/Bt879 driver
 BROOKTREE_SYSTEM_DEFAULT	opt_bktr.h

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.120 2007/06/22 12:08:07 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.121 2007/08/08 00:23:40 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -812,6 +812,9 @@ options 	NFS_UIDHASHSIZ=29	# Tune the size of nfssvc_sock with this
 options 	NFS_WDELAYHASHSIZ=16	# and with this
 options 	NFS_MUIDHASHSIZ=63	# Tune the size of nfsmount with this
 options 	NFS_DEBUG		# Enable NFS Debugging
+
+# MSDOSFS options:
+options		MSDOSFS_DEBUG		# Enable MSDOSFS Debugging
 
 #
 # Add support for the EXT2FS filesystem of Linux fame.  Be a bit

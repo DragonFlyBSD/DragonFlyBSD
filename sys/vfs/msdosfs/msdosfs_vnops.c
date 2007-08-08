@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.48 2007/08/08 00:12:51 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.49 2007/08/08 00:23:40 swildner Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -391,8 +391,8 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	int error = 0;
 
 #ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_setattr(): vp %p, vap %p, cred %p, p %p\n",
-	    ap->a_vp, vap, cred, ap->a_td);
+	kprintf("msdosfs_setattr(): vp %p, vap %p, cred %p\n",
+	    ap->a_vp, vap, cred);
 #endif
 
 	/*
@@ -404,7 +404,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	    (vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 #ifdef MSDOSFS_DEBUG
 		kprintf("msdosfs_setattr(): returning EINVAL\n");
-		kprintf("    va_type %d, va_nlink %x, va_fsid %lx, va_fileid %lx\n",
+		kprintf("    va_type %d, va_nlink %x, va_fsid %x, va_fileid %lx\n",
 		    vap->va_type, vap->va_nlink, vap->va_fsid, vap->va_fileid);
 		kprintf("    va_blocksize %lx, va_rmajor %x, va_bytes %qx, va_gen %lx\n",
 		    vap->va_blocksize, vap->va_rmajor, vap->va_bytes, vap->va_gen);
@@ -667,7 +667,7 @@ msdosfs_write(struct vop_write_args *ap)
 
 #ifdef MSDOSFS_DEBUG
 	kprintf("msdosfs_write(vp %p, uio %p, ioflag %x, cred %p\n",
-	    vp, uio, ioflag, cred);
+	    vp, uio, ioflag, ap->a_cred);
 	kprintf("msdosfs_write(): diroff %lu, dirclust %lu, startcluster %lu\n",
 	    dep->de_diroffset, dep->de_dirclust, dep->de_StartCluster);
 #endif
