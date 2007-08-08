@@ -34,9 +34,9 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.16 2007/08/08 11:21:08 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.17 2007/08/08 22:46:48 swildner Exp $
 .\"
-.Dd January 21, 2007
+.Dd August 8, 2007
 .Dt DISKLABEL 8
 .Os
 .Sh NAME
@@ -593,11 +593,11 @@ track-to-track seek: 0  # milliseconds
 drivedata: 0
 
 16 partitions:
-#        size   offset    fstype   [fsize bsize bps/cpg]
-  a:    81920        0    4.2BSD     1024  8192    16   # (Cyl.    0 - 84*)
-  b:   160000    81920      swap                        # (Cyl.   84* - 218*)
-  c:  1173930        0    unused        0     0         # (Cyl.    0 - 1211*)
-  h:   962010   211920     vinum                        # (Cyl.  218*- 1211*)
+#        size   offset    fstype
+  a:    81920        0    4.2BSD	#      40.000M
+  b:   160000    81920      swap	#      78.125M
+  c:  1173930        0    unused	#     573.208M
+  h:   962010   211920     vinum	#     469.731M
 .Ed
 .Pp
 Lines starting with a
@@ -725,39 +725,10 @@ none of which are in current use.
 in
 .In sys/disklabel.h
 for more details).
-.It Ar fsize
-For
-.Cm 4.2BSD
-and
-.Tn LFS
-file systems only, the fragment size.
-Defaults to 1024 for partitions smaller than 1GB,
-2048 for partitions 1GB or larger.
-.It Ar bsize
-For
-.Cm 4.2BSD
-and
-.Tn LFS
-file systems only, the block size.
-Defaults to 8192 for partitions smaller than 1GB,
-16384 for partitions 1GB or larger.
-.It Ar bps/cpg
-For
-.Cm 4.2BSD
-file systems, the number of cylinders in a cylinder group.
-For
-.Tn LFS
-file systems, the segment shift value.
-Defaults to 16 for partitions smaller than 1GB,
-64 for partitions 1GB or larger.
 .El
 .Pp
-The remainder of the line is a comment and shows the cylinder allocations based
-on the obsolete (but possibly correct) geometry information about the drive.
-The asterisk
-.Pq Ql *
-indicates that the partition does not begin or end exactly on a
-cylinder boundary.
+The remainder of the line is a comment and shows the size of the partition
+in MB.
 .Pp
 .Dx
 no longer snoop-adjusts the on-disklabel when reading or writing
@@ -922,8 +893,8 @@ track-to-track seek: 0	# milliseconds
 drivedata: 0
 
 16 partitions:
-#        size   offset    fstype   [fsize bsize bps/cpg]
-  a:   400M        0    4.2BSD     4096 16384    75 	# (Cyl.    0 - 812*)
+#        size   offset    fstype
+  a:   400M        0    4.2BSD
   b:     1G        *      swap
   c:      *        *    unused
   e: 204800        *    4.2BSD
