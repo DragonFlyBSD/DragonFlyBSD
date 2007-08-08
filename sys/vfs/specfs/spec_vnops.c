@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.53 2007/07/23 19:19:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.54 2007/08/08 00:12:52 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -419,8 +419,7 @@ spec_kqfilter(struct vop_kqfilter_args *ap)
 /*
  * Synch buffers associated with a block device
  *
- * spec_fsync(struct vnode *a_vp, struct ucred *a_cred,
- *	      int a_waitfor, struct thread *a_td)
+ * spec_fsync(struct vnode *a_vp, int a_waitfor)
  */
 /* ARGSUSED */
 static int
@@ -440,7 +439,7 @@ spec_fsync(struct vop_fsync_args *ap)
 }
 
 /*
- * spec_inactive(struct vnode *a_vp, struct thread *a_td)
+ * spec_inactive(struct vnode *a_vp)
  */
 static int
 spec_inactive(struct vop_inactive_args *ap)
@@ -691,8 +690,7 @@ spec_bmap(struct vop_bmap_args *ap)
 /*
  * Device close routine
  *
- * spec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *	      struct thread *a_td)
+ * spec_close(struct vnode *a_vp, int a_fflag)
  *
  * NOTE: the vnode may or may not be locked on call.
  */

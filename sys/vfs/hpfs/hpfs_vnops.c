@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.41 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.42 2007/08/08 00:12:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -110,8 +110,7 @@ hpfs_putpages(struct vop_putpages_args *ap)
 }
 
 /*
- * hpfs_fsync(struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
- *	      struct proc *a_td)
+ * hpfs_fsync(struct vnode *a_vp, int a_waitfor)
  */
 static int
 hpfs_fsync(struct vop_fsync_args *ap)
@@ -142,7 +141,7 @@ loop:
 
 /*
  * hpfs_ioctl(struct vnode *a_vp, u_long a_command, caddr_t a_data,
- *	      int a_fflag, struct ucred *a_cred, struct proc *a_td)
+ *	      int a_fflag, struct ucred *a_cred)
  */
 static int
 hpfs_ioctl(struct vop_ioctl_args *ap)
@@ -437,8 +436,7 @@ hpfs_write(struct vop_write_args *ap)
 /*
  * XXXXX do we need hpfsnode locking inside?
  *
- * hpfs_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
- *		struct proc *a_td)
+ * hpfs_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 static int
 hpfs_getattr(struct vop_getattr_args *ap)
@@ -487,8 +485,7 @@ hpfs_getattr(struct vop_getattr_args *ap)
 /*
  * XXXXX do we need hpfsnode locking inside?
  *
- * hpfs_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
- *		struct thread *a_td)
+ * hpfs_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred)
  */
 static int
 hpfs_setattr(struct vop_setattr_args *ap)
@@ -722,8 +719,7 @@ hpfs_strategy(struct vop_strategy_args *ap)
 /*
  * XXXXX do we need hpfsnode locking inside?
  *
- * hpfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	       struct proc *a_td)
+ * hpfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 int
 hpfs_access(struct vop_access_args *ap)

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.33 2007/08/07 20:05:30 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.34 2007/08/08 00:12:51 swildner Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -687,7 +687,7 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 }
 
 /*
- * msdosfs_inactive(struct vnode *a_vp, struct thread *a_td)
+ * msdosfs_inactive(struct vnode *a_vp)
  */
 int
 msdosfs_inactive(struct vop_inactive_args *ap)

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.60 2007/05/09 00:53:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.61 2007/08/08 00:12:52 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -266,7 +266,7 @@ ufs_mknod(struct vop_old_mknod_args *ap)
  * Nothing to do.
  *
  * ufs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	    struct thread *a_td)
+ *	    struct file *a_fp)
  */
 /* ARGSUSED */
 static
@@ -291,8 +291,7 @@ ufs_open(struct vop_open_args *ap)
  *
  * Update the times on the inode.
  *
- * ufs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *	     struct thread *a_td)
+ * ufs_close(struct vnode *a_vp, int a_fflag)
  */
 /* ARGSUSED */
 static
@@ -307,8 +306,7 @@ ufs_close(struct vop_close_args *ap)
 }
 
 /*
- * ufs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	      struct thread *a_td)
+ * ufs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static
 int
@@ -390,8 +388,7 @@ ufs_access(struct vop_access_args *ap)
 }
 
 /*
- * ufs_getattr(struct vnode *a_vp, struct vattr *a_vap,
- *		struct thread *a_td)
+ * ufs_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 /* ARGSUSED */
 static
@@ -447,7 +444,7 @@ ufs_getattr(struct vop_getattr_args *ap)
  * Set attribute vnode op. called from several syscalls
  *
  * ufs_setattr(struct vnode *a_vp, struct vattr *a_vap,
- *		struct ucred *a_cred, struct thread *a_td)
+ *		struct ucred *a_cred)
  */
 static
 int
@@ -697,8 +694,7 @@ good:
  *
  * NB Currently unsupported.
  *
- * ufs_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred,
- *	    struct thread *a_td)
+ * ufs_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred)
  */
 /* ARGSUSED */
 static
@@ -1940,8 +1936,7 @@ ufsspec_write(struct vop_write_args *ap)
  *
  * Update the times on the inode then do device close.
  *
- * ufsspec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *		 struct thread *a_td)
+ * ufsspec_close(struct vnode *a_vp, int a_fflag)
  */
 static 
 int
@@ -2006,8 +2001,7 @@ ufsfifo_write(struct vop_write_args *ap)
  *
  * Update the times on the inode then do device close.
  *
- * ufsfifo_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *		 struct thread *a_td)
+ * ufsfifo_close(struct vnode *a_vp, int a_fflag)
  */
 static
 int

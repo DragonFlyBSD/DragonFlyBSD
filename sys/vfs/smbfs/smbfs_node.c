@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.24 2007/05/09 00:53:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.25 2007/08/08 00:12:52 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -292,7 +292,7 @@ smbfs_nget(struct mount *mp, struct vnode *dvp, const char *name, int nmlen,
 /*
  * Free smbnode, and give vnode back to system
  *
- * smbfs_reclaim(struct vnode *a_vp, struct thread *a_td)
+ * smbfs_reclaim(struct vnode *a_vp)
  */
 int
 smbfs_reclaim(struct vop_reclaim_args *ap)
@@ -332,7 +332,7 @@ smbfs_reclaim(struct vop_reclaim_args *ap)
 }
 
 /*
- * smbfs_inactive(struct vnode *a_vp, struct thread *a_td)
+ * smbfs_inactive(struct vnode *a_vp)
  */
 int
 smbfs_inactive(struct vop_inactive_args *ap)

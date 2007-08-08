@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.34 2007/05/09 00:53:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.35 2007/08/08 00:12:51 swildner Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -794,7 +794,7 @@ done:
  */
 
 /*
- * Journal vop_settattr { a_vp, a_vap, a_cred, a_td }
+ * Journal vop_setattr { a_vp, a_vap, a_cred }
  */
 static
 int
@@ -906,7 +906,7 @@ journal_write(struct vop_write_args *ap)
 }
 
 /*
- * Journal vop_fsync { a_vp, a_waitfor, a_td }
+ * Journal vop_fsync { a_vp, a_waitfor }
  */
 static
 int
@@ -969,7 +969,7 @@ journal_putpages(struct vop_putpages_args *ap)
 }
 
 /*
- * Journal vop_setacl { a_vp, a_type, a_aclp, a_cred, a_td }
+ * Journal vop_setacl { a_vp, a_type, a_aclp, a_cred }
  */
 static
 int
@@ -1004,7 +1004,7 @@ journal_setacl(struct vop_setacl_args *ap)
 }
 
 /*
- * Journal vop_setextattr { a_vp, a_name, a_uio, a_cred, a_td }
+ * Journal vop_setextattr { a_vp, a_name, a_uio, a_cred }
  */
 static
 int

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.26 2007/05/09 00:53:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.27 2007/08/08 00:12:52 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -212,7 +212,7 @@ nwfs_lookupnp(struct nwmount *nmp, ncpfid fid, struct thread *td,
 /*
  * Free nwnode, and give vnode back to system
  *
- * nwfs_reclaim(struct vnode *a_vp, struct thread *a_td)
+ * nwfs_reclaim(struct vnode *a_vp)
  */
 int
 nwfs_reclaim(struct vop_reclaim_args *ap)
@@ -247,7 +247,7 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 }
 
 /*
- * nwfs_inactive(struct vnode *a_vp, struct thread *a_td)
+ * nwfs_inactive(struct vnode *a_vp)
  */
 int
 nwfs_inactive(struct vop_inactive_args *ap)

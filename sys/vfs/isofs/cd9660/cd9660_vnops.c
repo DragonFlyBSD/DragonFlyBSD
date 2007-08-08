@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.34 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.35 2007/08/08 00:12:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -195,7 +195,7 @@ cd9660_access(struct vop_access_args *ap)
 }
 
 /*
- * cd9660_getattr(struct vnode *a_vp, struct vattr *a_vap, struct thread *a_td)
+ * cd9660_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 static int
 cd9660_getattr(struct vop_getattr_args *ap)

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.72 2007/06/15 17:25:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.73 2007/08/08 00:12:51 swildner Exp $
  */
 
 
@@ -292,8 +292,7 @@ nfsmout:
  * For nfs version 3, use the access rpc to check accessibility. If file modes
  * are changed on the server, accesses might still fail later.
  *
- * nfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	      struct thread *a_td)
+ * nfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 nfs_access(struct vop_access_args *ap)
@@ -447,7 +446,8 @@ nfs_access(struct vop_access_args *ap)
  * For paged in text files, you will need to flush the page cache
  * if consistency is lost.
  *
- * nfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
+ * nfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	    struct file *a_fp)
  */
 /* ARGSUSED */
 static int
@@ -544,8 +544,7 @@ nfs_open(struct vop_open_args *ap)
  *                     1 should be dealt with via an fsync() system call for
  *                     cases where write errors are important.
  *
- * nfs_close(struct vnode *a_vp, int a_fflag,
- *	     struct ucred *a_cred, struct thread *a_td)
+ * nfs_close(struct vnode *a_vp, int a_fflag)
  */
 /* ARGSUSED */
 static int
@@ -592,8 +591,7 @@ nfs_close(struct vop_close_args *ap)
 /*
  * nfs getattr call from vfs.
  *
- * nfs_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
- *		struct thread *a_td)
+ * nfs_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 static int
 nfs_getattr(struct vop_getattr_args *ap)
@@ -2868,8 +2866,7 @@ nfs_strategy(struct vop_strategy_args *ap)
  *
  * NB Currently unsupported.
  *
- * nfs_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred,
- *	    struct thread *a_td)
+ * nfs_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred)
  */
 /* ARGSUSED */
 static int
@@ -2881,8 +2878,7 @@ nfs_mmap(struct vop_mmap_args *ap)
 /*
  * fsync vnode op. Just call nfs_flush() with commit == 1.
  *
- * nfs_fsync(struct vnode *a_vp, struct ucred * a_cred, int a_waitfor,
- *	     struct thread *a_td)
+ * nfs_fsync(struct vnode *a_vp, int a_waitfor)
  */
 /* ARGSUSED */
 static int
@@ -3233,8 +3229,7 @@ nfs_print(struct vop_print_args *ap)
  * Essentially just get vattr and then imitate iaccess() since the device is
  * local to the client.
  *
- * nfsspec_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *		  struct thread *a_td)
+ * nfsspec_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 nfsspec_access(struct vop_access_args *ap)
@@ -3335,8 +3330,7 @@ nfsspec_write(struct vop_write_args *ap)
  *
  * Update the times on the nfsnode then do device close.
  *
- * nfsspec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *		 struct thread *a_td)
+ * nfsspec_close(struct vnode *a_vp, int a_fflag)
  */
 static int
 nfsspec_close(struct vop_close_args *ap)
@@ -3403,7 +3397,7 @@ nfsfifo_write(struct vop_write_args *ap)
  *
  * Update the times on the nfsnode then do fifo close.
  *
- * nfsfifo_close(struct vnode *a_vp, int a_fflag, struct thread *a_td)
+ * nfsfifo_close(struct vnode *a_vp, int a_fflag)
  */
 static int
 nfsfifo_close(struct vop_close_args *ap)

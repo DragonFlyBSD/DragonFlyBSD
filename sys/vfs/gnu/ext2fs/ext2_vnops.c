@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.39 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.40 2007/08/08 00:12:51 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -1303,7 +1303,8 @@ ext2_itimes(struct vnode *vp)
  *
  * Nothing to do.
  *
- * ext2_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
+ * ext2_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	     struct file *a_fp)
  */
 /* ARGSUSED */
 static

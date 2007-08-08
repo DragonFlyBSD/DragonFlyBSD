@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.26 2007/05/06 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.27 2007/08/08 00:12:51 swildner Exp $
  */
 
 
@@ -199,7 +199,7 @@ loop:
 }
 
 /*
- * nfs_inactive(struct vnode *a_vp, struct thread *a_td)
+ * nfs_inactive(struct vnode *a_vp)
  *
  * NOTE: the passed vnode is locked but not referenced.  On return the
  * vnode must be unlocked and not referenced.

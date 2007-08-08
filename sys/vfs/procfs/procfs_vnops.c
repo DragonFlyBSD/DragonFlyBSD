@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.43 2007/05/06 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.44 2007/08/08 00:12:52 swildner Exp $
  */
 
 /*
@@ -162,7 +162,8 @@ static pid_t atopid (const char *, u_int);
  * is to support exclusive open on process
  * memory images.
  *
- * procfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
+ * procfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	       struct file *a_fp)
  */
 static int
 procfs_open(struct vop_open_args *ap)
@@ -374,7 +375,7 @@ procfs_bmap(struct vop_bmap_args *ap)
  *
  * (vp) is locked on entry, but must be unlocked on exit.
  *
- * procfs_inactive(struct vnode *a_vp, struct thread *a_td)
+ * procfs_inactive(struct vnode *a_vp)
  */
 static int
 procfs_inactive(struct vop_inactive_args *ap)
@@ -434,8 +435,7 @@ procfs_badop(struct vop_generic_args *ap)
  *
  * this is relatively minimal for procfs.
  *
- * procfs_getattr(struct vnode *a_vp, struct vattr *a_vap,
- *		  struct ucred *a_cred,	struct thread *a_td)
+ * procfs_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 static int
 procfs_getattr(struct vop_getattr_args *ap)
@@ -604,7 +604,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 
 /*
  * procfs_setattr(struct vnode *a_vp, struct vattr *a_vap,
- *		  struct ucred *a_cred,	struct thread *a_td)
+ *		  struct ucred *a_cred)
  */
 static int
 procfs_setattr(struct vop_setattr_args *ap)
@@ -637,8 +637,7 @@ procfs_setattr(struct vop_setattr_args *ap)
  * but does mean that the i/o entry points need to check
  * that the operation really does make sense.
  *
- * procfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *		 struct thread *a_td)
+ * procfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 procfs_access(struct vop_access_args *ap)

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.48 2007/07/13 01:20:10 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.49 2007/08/08 00:12:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1171,8 +1171,7 @@ vop_stdpathconf(struct vop_pathconf_args *ap)
 /*
  * Standard open.
  *
- * (struct vnode *a_vp, int a_mode, struct ucred *a_ucred, struct file *a_fp,
- *  struct thread *a_td)
+ * (struct vnode *a_vp, int a_mode, struct ucred *a_ucred, struct file *a_fp)
  *
  * a_mode: note, 'F' modes, e.g. FREAD, FWRITE
  */
@@ -1206,7 +1205,7 @@ vop_stdopen(struct vop_open_args *ap)
 /*
  * Standard close.
  *
- * (struct vnode *a_vp, int a_fflag, struct thread *a_td)
+ * (struct vnode *a_vp, int a_fflag)
  *
  * a_fflag: note, 'F' modes, e.g. FREAD, FWRITE.  same as a_mode in stdopen?
  */

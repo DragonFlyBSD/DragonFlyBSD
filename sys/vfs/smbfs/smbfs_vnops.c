@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.38 2007/05/06 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.39 2007/08/08 00:12:52 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -121,8 +121,7 @@ struct vop_ops smbfs_vnode_vops = {
 };
 
 /*
- * smbfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *		struct thread *a_td)
+ * smbfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 smbfs_access(struct vop_access_args *ap)
@@ -155,7 +154,7 @@ smbfs_access(struct vop_access_args *ap)
 
 /*
  * smbfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	      struct thread *a_td)
+ *	      struct file *a_fp)
  */
 /* ARGSUSED */
 static int
@@ -269,7 +268,7 @@ done:
 /*
  * smbfs_getattr call from vfs.
  *
- * smbfs_getattr(struct vnode *a_vp, struct vattr *a_vap, struct thread *a_td)
+ * smbfs_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 static int
 smbfs_getattr(struct vop_getattr_args *ap)
@@ -302,8 +301,7 @@ smbfs_getattr(struct vop_getattr_args *ap)
 }
 
 /*
- * smbfs_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
- *		 struct thread *a_td)
+ * smbfs_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred)
  */
 static int
 smbfs_setattr(struct vop_setattr_args *ap)
@@ -734,14 +732,13 @@ smbfs_readdir(struct vop_readdir_args *ap)
 }
 
 /*
- * smbfs_fsync(struct vnode *a_vp, struct ucred *a_cred,
- *	       int a_waitfor, struct thread *a_td)
+ * smbfs_fsync(struct vnode *a_vp, int a_waitfor)
  */
 /* ARGSUSED */
 static int
 smbfs_fsync(struct vop_fsync_args *ap)
 {
-/*	return (smb_flush(ap->a_vp, ap->a_cred, ap->a_waitfor, ap->a_td, 1));*/
+/*	return (smb_flush(ap->a_vp, ap->a_waitfor, curthread, 1));*/
     return (0);
 }
 
@@ -844,16 +841,13 @@ smbfs_ioctl(struct vop_ioctl_args *ap)
 }
 
 static char smbfs_atl[] = "rhsvda";
+
+/*
+ * smbfs_getextattr(struct vnode *a_vp, char *a_name, struct uio *a_uio,
+ *		struct ucred *a_cred)
+ */
 static int
 smbfs_getextattr(struct vop_getextattr_args *ap)
-/* {
-        IN struct vnode *a_vp;
-        IN char *a_name;
-        INOUT struct uio *a_uio;
-        IN struct ucred *a_cred;
-        IN struct thread *a_td;
-};
-*/
 {
 	struct vnode *vp = ap->a_vp;
 	struct ucred *cred = ap->a_cred;

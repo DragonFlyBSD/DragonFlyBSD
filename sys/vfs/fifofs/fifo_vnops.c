@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.38 2007/05/06 19:23:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.39 2007/08/08 00:12:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -156,7 +156,7 @@ fifo_lookup(struct vop_old_lookup_args *ap)
  * to find an active instance of a fifo.
  *
  * fifo_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	     struct thread *a_td)
+ *	     struct file *a_fp)
  */
 /* ARGSUSED */
 static int
@@ -328,7 +328,7 @@ fifo_write(struct vop_write_args *ap)
  * Device ioctl operation.
  *
  * fifo_ioctl(struct vnode *a_vp, int a_command, caddr_t a_data, int a_fflag,
- *	      struct ucred *a_cred, struct thread *a_td)
+ *	      struct ucred *a_cred)
  */
 /* ARGSUSED */
 static int
@@ -430,8 +430,7 @@ filt_fifowrite(struct knote *kn, long hint)
 }
 
 /*
- * fifo_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred,
- *	     struct thread *a_td)
+ * fifo_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred)
  */
 /* ARGSUSED */
 static int
@@ -477,7 +476,7 @@ fifo_poll(struct vop_poll_args *ap)
 }
 
 /*
- * fifo_inactive(struct vnode *a_vp, struct thread *a_td)
+ * fifo_inactive(struct vnode *a_vp)
  */
 static int
 fifo_inactive(struct vop_inactive_args *ap)
@@ -508,8 +507,7 @@ fifo_bmap(struct vop_bmap_args *ap)
 /*
  * Device close routine
  *
- * fifo_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *	      struct thread *a_td)
+ * fifo_close(struct vnode *a_vp, int a_fflag)
  */
 /* ARGSUSED */
 static int

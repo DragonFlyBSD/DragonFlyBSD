@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.37 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.38 2007/08/08 00:12:51 swildner Exp $
  */
 
 /*
@@ -238,7 +238,8 @@ bad:
 }
 
 /*
- * fdesc_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
+ * fdesc_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	      struct file *a_fp)
  */
 static int
 fdesc_open(struct vop_open_args *ap)
@@ -365,7 +366,7 @@ fdesc_getattr(struct vop_getattr_args *ap)
 
 /*
  * fdesc_setattr(struct vnode *a_vp, struct vattr *a_vap,
- *		 struct ucred *a_cred, struct thread *a_td)
+ *		 struct ucred *a_cred)
  */
 static int
 fdesc_setattr(struct vop_setattr_args *ap)
@@ -485,8 +486,7 @@ done:
 }
 
 /*
- * fdesc_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred,
- *	      struct thread *a_td)
+ * fdesc_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred)
  */
 static int
 fdesc_poll(struct vop_poll_args *ap)
@@ -495,7 +495,7 @@ fdesc_poll(struct vop_poll_args *ap)
 }
 
 /*
- * fdesc_inactive(struct vnode *a_vp, struct thread *a_td)
+ * fdesc_inactive(struct vnode *a_vp)
  */
 static int
 fdesc_inactive(struct vop_inactive_args *ap)

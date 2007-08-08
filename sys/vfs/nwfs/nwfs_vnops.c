@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.35 2007/05/06 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.36 2007/08/08 00:12:52 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -119,8 +119,7 @@ struct vop_ops nwfs_vnode_vops = {
  * nwfs_access vnode op
  * for now just return ok
  *
- * nwfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *		struct thread *a_td)
+ * nwfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 nwfs_access(struct vop_access_args *ap)
@@ -153,7 +152,8 @@ nwfs_access(struct vop_access_args *ap)
 /*
  * nwfs_open vnode op
  *
- * nwfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
+ * nwfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	     struct file *a_fp)
  */
 /* ARGSUSED */
 static int
@@ -219,8 +219,7 @@ nwfs_open(struct vop_open_args *ap)
 }
 
 /*
- * nwfs_close(struct vnode *a_vp, int a_fflag,
- *	      struct ucred *a_cred, struct thread *a_td)
+ * nwfs_close(struct vnode *a_vp, int a_fflag)
  */
 static int
 nwfs_close(struct vop_close_args *ap)
@@ -255,8 +254,7 @@ done:
 /*
  * nwfs_getattr call from vfs.
  *
- * nwfs_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
- *		struct thread *a_td)
+ * nwfs_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 static int
 nwfs_getattr(struct vop_getattr_args *ap)
@@ -685,14 +683,13 @@ nwfs_readdir(struct vop_readdir_args *ap)
 }
 
 /*
- * nwfs_fsync(struct vnode *a_vp, struct ucred *a_cred,
- *	      int a_waitfor, struct thread *a_td)
+ * nwfs_fsync(struct vnode *a_vp, int a_waitfor)
  */
 /* ARGSUSED */
 static int
 nwfs_fsync(struct vop_fsync_args *ap)
 {
-/*	return (nfs_flush(ap->a_vp, ap->a_cred, ap->a_waitfor, ap->a_td, 1));*/
+/*	return (nfs_flush(ap->a_vp, ap->a_waitfor, curthread, 1));*/
     return (0);
 }
 

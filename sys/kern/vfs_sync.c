@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.15 2007/05/06 19:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.16 2007/08/08 00:12:51 swildner Exp $
  */
 
 /*
@@ -368,8 +368,7 @@ sync_close(struct vop_close_args *ap)
 /*
  * Do a lazy sync of the filesystem.
  *
- * sync_fsync { struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
- *		struct thread *a_td }
+ * sync_fsync { struct vnode *a_vp, int a_waitfor }
  */
 static int
 sync_fsync(struct vop_fsync_args *ap)

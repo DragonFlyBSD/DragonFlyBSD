@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.47 2007/05/09 00:53:35 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.48 2007/08/08 00:12:51 swildner Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -211,7 +211,8 @@ msdosfs_mknod(struct vop_old_mknod_args *ap)
 }
 
 /*
- * msdosfs_open(struct vnode *a_vp)
+ * msdosfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *		struct file *a_fp)
  */
 static int
 msdosfs_open(struct vop_open_args *ap)
@@ -220,8 +221,7 @@ msdosfs_open(struct vop_open_args *ap)
 }
 
 /*
- * msdosfs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *		 struct thread *a_td)
+ * msdosfs_close(struct vnode *a_vp, int a_fflag)
  */
 static int
 msdosfs_close(struct vop_close_args *ap)
@@ -238,8 +238,7 @@ msdosfs_close(struct vop_close_args *ap)
 }
 
 /*
- * msdosfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *		  struct thread *a_td)
+ * msdosfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 msdosfs_access(struct vop_access_args *ap)
@@ -314,8 +313,7 @@ msdosfs_access(struct vop_access_args *ap)
 }
 
 /*
- * msdosfs_getattr(struct vnode *a_vp, struct vattr *a_vap,
- *		   struct ucred *a_cred, struct thread *a_td)
+ * msdosfs_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 static int
 msdosfs_getattr(struct vop_getattr_args *ap)
@@ -380,7 +378,7 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 
 /*
  * msdosfs_setattr(struct vnode *a_vp, struct vattr *a_vap,
- *		   struct ucred *a_cred, struct thread *a_td)
+ *		   struct ucred *a_cred)
  */
 static int
 msdosfs_setattr(struct vop_setattr_args *ap)
@@ -855,8 +853,7 @@ errexit:
  * This function is worthless for vnodes that represent directories. Maybe we
  * could just do a sync if they try an fsync on a directory file.
  *
- * msdosfs_fsync(struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
- *		 struct thread *a_td)
+ * msdosfs_fsync(struct vnode *a_vp, int a_waitfor)
  */
 static int
 msdosfs_fsync(struct vop_fsync_args *ap)

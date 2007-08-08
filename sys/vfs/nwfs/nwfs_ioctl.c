@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_ioctl.c,v 1.2.2.1 2001/02/22 09:14:12 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_ioctl.c,v 1.7 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_ioctl.c,v 1.8 2007/08/08 00:12:52 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -53,7 +53,7 @@
 
 /*
  * nwfs_ioctl(struct vnode *a_vp, u_long a_command, caddr_t a_data,
- *	      int a_fflag, struct ucred *a_cred, struct thread *a_td)
+ *	      int a_fflag, struct ucred *a_cred)
  */
 int
 nwfs_ioctl(struct vop_ioctl_args *ap)

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.40 2007/05/09 00:53:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.41 2007/08/08 00:12:52 swildner Exp $
  *
  */
 
@@ -215,8 +215,7 @@ ntfs_bypass(struct vop_generic_args *ap)
 #endif
 
 /*
- * ntfs_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
- *		struct thread *a_td)
+ * ntfs_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 static int
 ntfs_getattr(struct vop_getattr_args *ap)
@@ -436,8 +435,7 @@ ntfs_write(struct vop_write_args *ap)
 }
 
 /*
- * ntfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *		struct thread *a_td)
+ * ntfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 int
 ntfs_access(struct vop_access_args *ap)
@@ -519,7 +517,7 @@ ntfs_access(struct vop_access_args *ap)
  * Nothing to do.
  *
  * ntfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	     struct thread *a_td)
+ *	     struct file *a_fp)
  */
 /* ARGSUSED */
 static int
@@ -533,8 +531,7 @@ ntfs_open(struct vop_open_args *ap)
  *
  * Update the times on the inode.
  *
- * ntfs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *	      struct thread *a_td)
+ * ntfs_close(struct vnode *a_vp, int a_fflag)
  */
 /* ARGSUSED */
 static int
@@ -788,8 +785,7 @@ ntfs_lookup(struct vop_old_lookup_args *ap)
  * This function is worthless for vnodes that represent directories. Maybe we
  * could just do a sync if they try an fsync on a directory file.
  *
- * ntfs_fsync(struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
- *	      struct thread *a_td)
+ * ntfs_fsync(struct vnode *a_vp, int a_waitfor)
  */
 static int
 ntfs_fsync(struct vop_fsync_args *ap)

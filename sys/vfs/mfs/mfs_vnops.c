@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.35 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.36 2007/08/08 00:12:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -104,7 +104,7 @@ VNODEOP_SET(mfs_vnode_vops);
  * disassociate it in close rather then faking it when we created the vnode.
  *
  * mfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	    struct thread *a_td)
+ *	    struct file *a_fp)
  */
 /* ARGSUSED */
 static int
@@ -312,8 +312,7 @@ mfs_bmap(struct vop_bmap_args *ap)
 /*
  * Memory filesystem close routine
  *
- * mfs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *	     struct thread *a_td)
+ * mfs_close(struct vnode *a_vp, int a_fflag)
  */
 /* ARGSUSED */
 static int
@@ -379,7 +378,7 @@ done:
 /*
  * Memory filesystem inactive routine
  *
- * mfs_inactive(struct vnode *a_vp, struct thread *a_td)
+ * mfs_inactive(struct vnode *a_vp)
  */
 /* ARGSUSED */
 static int

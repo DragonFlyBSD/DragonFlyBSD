@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.37 2007/05/18 17:05:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.38 2007/08/08 00:12:52 swildner Exp $
  */
 
 /*
@@ -200,7 +200,7 @@ portal_connect(struct socket *so, struct socket *so2)
 
 /*
  * portal_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *		struct thread *a_td)
+ *	       struct file *a_fp)
  */
 static int
 portal_open(struct vop_open_args *ap)
@@ -435,8 +435,7 @@ bad:;
 }
 
 /*
- * portal_getattr(struct vnode *a_vp, struct vattr *a_vap,
- *		  struct ucred *a_cred, struct thread *a_td)
+ * portal_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 static int
 portal_getattr(struct vop_getattr_args *ap)
@@ -480,7 +479,7 @@ portal_getattr(struct vop_getattr_args *ap)
 
 /*
  * portal_setattr(struct vnode *a_vp, struct vattr *a_vap,
- *		  struct ucred *a_cred, struct thread *a_td)
+ *		  struct ucred *a_cred)
  */
 static int
 portal_setattr(struct vop_setattr_args *ap)
@@ -519,7 +518,7 @@ portal_readdir(struct vop_readdir_args *ap)
 }
 
 /*
- * portal_inactive(struct vnode *a_vp, struct thread *a_td)
+ * portal_inactive(struct vnode *a_vp)
  */
 static int
 portal_inactive(struct vop_inactive_args *ap)
