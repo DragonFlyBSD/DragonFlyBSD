@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.24 2007/07/24 19:48:43 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.25 2007/08/08 20:15:50 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -727,7 +727,7 @@ display(FILE *f, const struct disklabel32 *lp)
 		fprintf(f, "%lu ", (u_long)lp->d_drivedata[j]);
 	fprintf(f, "\n\n%u partitions:\n", lp->d_npartitions);
 	fprintf(f,
-	    "#          size     offset    fstype   \n");
+	    "#          size     offset    fstype\n");
 	pp = lp->d_partitions;
 	for (i = 0; i < lp->d_npartitions; i++, pp++) {
 		if (pp->p_size) {
