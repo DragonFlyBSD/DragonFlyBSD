@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.1 2007/06/19 02:53:55 dillon Exp $
+.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.2 2007/08/08 11:21:08 swildner Exp $
 .\"
 .Dd January 21, 2007
 .Dt DISKLABEL 8
@@ -101,42 +101,52 @@
 The
 .Nm
 utility
-installs, examines or modifies the label on a disk drive or pack.  When writing
+installs, examines or modifies the label on a disk drive or pack.
+When writing
 the label, it can be used to change the drive identification, the disk
-partitions on the drive, or to replace a damaged label.  There are several forms
-of the command that read (display), install or edit the label on a disk.  In
+partitions on the drive, or to replace a damaged label.
+There are several forms
+of the command that read (display), install or edit the label on a disk.
+In
 addition,
 .Nm
 can install bootstrap code.
 .Ss Raw or in-core label
 The disk label resides close to or at the beginning of each disk slice.
-For faster access, the kernel maintains a copy in core at all times.  By
+For faster access, the kernel maintains a copy in core at all times.
+By
 default, most forms of the
 .Nm
-command access the in-core copy of the label.  To access the raw (on-disk)
+command access the in-core copy of the label.
+To access the raw (on-disk)
 copy, use the
 .Fl r
-option.  This option allows a label to be installed on a disk without kernel
+option.
+This option allows a label to be installed on a disk without kernel
 support for a label, such as when labels are first installed on a system; it
-must be used when first installing a label on a disk.  The specific effect of
+must be used when first installing a label on a disk.
+The specific effect of
 .Fl r
 is described under each command.
 .Ss Disk device name
 All
 .Nm
 forms require a disk device name, which should always be the raw
-device name representing the disk or slice.  For example
+device name representing the disk or slice.
+For example
 .Pa da0
 represents the entire disk regardless of any DOS partitioning,
 and
 .Pa da0s1
-represents a slice.  Some devices, most notably
+represents a slice.
+Some devices, most notably
 .Ar ccd ,
 require that the
 .Dq whole-disk
 (or
 .Dq c )
-partition be specified.  For example
+partition be specified.
+For example
 .Pa ccd0c .
 You do not have to include the
 .Pa /dev/
@@ -159,7 +169,8 @@ represents the raw disk in question, and may be in the form
 or
 .Pa /dev/da0c .
 It will display all of the parameters associated with the drive and its
-partition layout.  Unless the
+partition layout.
+Unless the
 .Fl r
 flag is given,
 the kernel's in-core copy of the label is displayed;
@@ -169,7 +180,8 @@ If the
 .Fl r
 flag is given,
 .Nm
-reads the label from the raw disk and displays it.  Both versions are usually
+reads the label from the raw disk and displays it.
+Both versions are usually
 identical except in the case where a label has not yet been initialized or
 is corrupt.
 .Ss Writing a standard label
@@ -193,11 +205,15 @@ The required arguments to
 .Nm
 are the drive to be labeled and the drive type as described in the
 .Xr disktab 5
-file.  The drive parameters and partitions are taken from that file.  If
+file.
+The drive parameters and partitions are taken from that file.
+If
 different disks of the same physical type are to have different partitions, it
 will be necessary to have separate disktab entries describing each, or to edit
-the label after installation as described below.  The optional argument is a
-pack identification string, up to 16 characters long.  The pack id must be
+the label after installation as described below.
+The optional argument is a
+pack identification string, up to 16 characters long.
+The pack id must be
 quoted if it contains blanks.
 .Pp
 If the
@@ -210,7 +226,8 @@ If the
 flag is given, the disk sectors containing the label and bootstrap
 will be written directly.
 A side-effect of this is that any existing bootstrap code will be overwritten
-and the disk rendered unbootable.  See the boot options below for a method of
+and the disk rendered unbootable.
+See the boot options below for a method of
 writing the label and the bootstrap at the same time.
 If
 .Fl r
@@ -228,13 +245,16 @@ For a virgin disk that is not known to
 can be specified as
 .Dq auto .
 In this case, the driver is requested to produce a virgin label for the
-disk.  This might or might not be successful, depending on whether the
+disk.
+This might or might not be successful, depending on whether the
 driver for the disk is able to get the required data without reading
-anything from the disk at all.  It will likely succeed for all SCSI
-disks, most IDE disks, and vnode devices.  Writing a label to the
+anything from the disk at all.
+It will likely succeed for all SCSI
+disks, most IDE disks, and vnode devices.
+Writing a label to the
 disk is the only supported operation, and the
 .Ar disk
-itself must be provided as the canonical name, i.e. not as a full
+itself must be provided as the canonical name, i.e.\& not as a full
 path name.
 .Pp
 For most harddisks, a label based on percentages for most partitions (and
@@ -245,7 +265,8 @@ will produce a reasonable configuration.
 PC-based systems have special requirements in order for the BIOS to properly
 recognize a
 .Dx
-disklabel.  Older systems may require what is known as a
+disklabel.
+Older systems may require what is known as a
 .Dq dangerously dedicated
 disklabel, which creates a fake DOS partition to work around problems older
 BIOSes have with modern disk geometries.
@@ -254,11 +275,13 @@ to create a normal DOS partition using
 .Ar fdisk
 and then create a
 .Dx
-disklabel within that slice.  This is described
+disklabel within that slice.
+This is described
 later on in this page.
 .Pp
 Installing a new disklabel does not in of itself allow your system to boot
-a kernel using that label.  You must also install boot blocks, which is
+a kernel using that label.
+You must also install boot blocks, which is
 described later on in this manual page.
 .Ss Editing an existing disk label
 To edit an existing disk label, use the form
@@ -272,18 +295,24 @@ To edit an existing disk label, use the form
 This command reads the label from the in-core kernel copy, or directly from the
 disk if the
 .Fl r
-flag is also specified.  The label is written to a file in ASCII and then
-supplied to an editor for changes.  If no editor is specified in an
+flag is also specified.
+The label is written to a file in ASCII and then
+supplied to an editor for changes.
+If no editor is specified in an
 .Ev EDITOR
 environment variable,
 .Xr vi 1
-is used.  When the editor terminates, the label file is used to rewrite the disk
-label.  Existing bootstrap code is unchanged regardless of whether
+is used.
+When the editor terminates, the label file is used to rewrite the disk
+label.
+Existing bootstrap code is unchanged regardless of whether
 .Fl r
-was specified.  If
+was specified.
+If
 .Fl n
 is specified, no data will be written to the device, and instead the
-disklabel that would have been written will be printed to stdout.  This is
+disklabel that would have been written will be printed to stdout.
+This is
 useful to see how a partitioning scheme will work out for a specific disk.
 .Ss Restoring a disk label from a file
 To restore a disk label from a file, use the form
@@ -297,26 +326,32 @@ To restore a disk label from a file, use the form
 .Nm
 is capable of restoring a disk label that was previously saved in a file in ASCII format.
 The prototype file used to create the label should be in the same format as that
-produced when reading or editing a label.  Comments are delimited by
+produced when reading or editing a label.
+Comments are delimited by
 .Ar \&#
-and newline.  As when writing a new label, any existing bootstrap code will be
+and newline.
+As when writing a new label, any existing bootstrap code will be
 clobbered if
 .Fl r
-is specified and will be unaffected otherwise.  See the boot options below for a
+is specified and will be unaffected otherwise.
+See the boot options below for a
 method of restoring the label and writing the bootstrap at the same time.
 If
 .Fl n
 is used, no data will be written to the device, and instead the
-disklabel that would have been written will be printed to stdout.  This is
+disklabel that would have been written will be printed to stdout.
+This is
 useful to see how a partitioning scheme will work out for a specific disk.
 .Ss Enabling and disabling writing to the disk label area
 By default, it is not possible to write to the disk label area at the beginning
-of a disk.  The disk driver arranges for
+of a disk.
+The disk driver arranges for
 .Xr write 2
 and similar system calls
 to return
 .Er EROFS
-on any attempt to do so.  If you need
+on any attempt to do so.
+If you need
 to write to this area (for example, to obliterate the label), use the form
 .Pp
 .Nm
@@ -332,7 +367,8 @@ command
 .Ss Installing bootstraps
 The final three forms of
 .Nm
-are used to install bootstrap code.  If you are creating a
+are used to install bootstrap code.
+If you are creating a
 .Dq dangerously-dedicated
 slice for compatibility with older PC systems,
 you generally want to specify the raw disk name such as
@@ -341,7 +377,8 @@ If you are creating a label within an existing DOS slice,
 you should specify
 the partition name such as
 .Pa da0s1a .
-Making a slice bootable can be tricky.  If you are using a normal DOS
+Making a slice bootable can be tricky.
+If you are using a normal DOS
 slice you typically install (or leave) a standard MBR on the base disk and
 then install the
 .Dx
@@ -356,7 +393,8 @@ bootblocks in the slice.
 .Ar disk
 .Oo Ar disktype Oc
 .Pp
-This form installs the bootstrap only.  It does not change the disk label.
+This form installs the bootstrap only.
+It does not change the disk label.
 You should never use this command on a base disk unless you intend to create a
 .Dq dangerously-dedicated
 disk, such as
@@ -381,7 +419,8 @@ command described above.
 In addition to writing a new volume label, it also installs the bootstrap.
 If run on a base disk this command will create a
 .Dq dangerously-dedicated
-label.  This command is normally run on a slice rather than a base disk.
+label.
+This command is normally run on a slice rather than a base disk.
 If
 .Fl n
 is used, no data will be written to the device, and instead the
@@ -404,17 +443,20 @@ command described above.
 In addition to restoring the volume label, it also installs the bootstrap.
 If run on a base disk this command will create a
 .Dq dangerously-dedicated
-label.  This command is normally run on a slice rather than a base disk.
+label.
+This command is normally run on a slice rather than a base disk.
 .Pp
 The bootstrap commands always access the disk directly, so it is not necessary
 to specify the
 .Fl r
-flag.  If
+flag.
+If
 .Fl n
 is used, no data will be written to the device, and instead the
 disklabel that would have been written will be printed to stdout.
 .Pp
-The bootstrap code is comprised of two boot programs.  Specify the name of the
+The bootstrap code is comprised of two boot programs.
+Specify the name of the
 boot programs to be installed in one of these ways:
 .Bl -enum
 .It
@@ -426,7 +468,8 @@ flags.
 .Fl b
 indicates the primary boot program and
 .Fl s
-the secondary boot program.  The boot programs are located in
+the secondary boot program.
+The boot programs are located in
 .Pa /boot .
 .It
 If the
@@ -825,8 +868,10 @@ and
 Completely wipe any prior information on the disk, creating a new bootable
 disk with a DOS partition table containing one
 .Dq whole-disk
-slice.  Then
-initialize the slice, then edit it to your needs.  The
+slice.
+Then
+initialize the slice, then edit it to your needs.
+The
 .Pa dd
 commands are optional, but may be necessary for some BIOSes to properly
 recognize the disk.
@@ -874,7 +919,8 @@ to be decreased or the offset of a partition to be changed while it is open.
 Some device drivers create a label containing only a single large partition
 if a disk is unlabeled; thus, the label must be written to the
 .Dq a
-partition of the disk while it is open.  This sometimes requires the desired
+partition of the disk while it is open.
+This sometimes requires the desired
 label to be set in two steps, the first one creating at least one other
 partition, and the second setting the label on the new partition while shrinking
 the
@@ -890,12 +936,19 @@ disk.
 When installing bootstrap code,
 .Nm
 checks for these cases.
-If the installed boot code would overlap a partition of type FS_UNUSED
-it is marked as type FS_BOOT.
+If the installed boot code would overlap a partition of type
+.Dv FS_UNUSED
+it is marked as type
+.Dv FS_BOOT .
 The
 .Xr newfs 8
-utility will disallow creation of file systems on FS_BOOT partitions.
-Conversely, if a partition has a type other than FS_UNUSED or FS_BOOT,
+utility will disallow creation of file systems on
+.Dv FS_BOOT
+partitions.
+Conversely, if a partition has a type other than
+.Dv FS_UNUSED
+or
+.Dv FS_BOOT ,
 .Nm
 will not install bootstrap code that overlaps it.
 .Sh SEE ALSO
@@ -904,6 +957,7 @@ will not install bootstrap code that overlaps it.
 .Xr disktab 5 ,
 .Xr boot0cfg 8 ,
 .Xr diskinfo 8 ,
+.Xr disklabel 8 ,
 .Xr fdisk 8 ,
 .Xr vinum 8
 .Sh BUGS
@@ -929,7 +983,8 @@ or
 .Fl R ,
 thus replacing the
 .Em fdisk
-table by the dummy one in the bootstrap program.  This is only of
+table by the dummy one in the bootstrap program.
+This is only of
 concern if the disk is fully dedicated, so that the
 .Bx
 disklabel
@@ -938,7 +993,8 @@ starts at absolute block 0 on the disk.
 The
 .Nm
 utility
-does not perform all possible error checking.  Warning *is* given if partitions
+does not perform all possible error checking.
+Warning *is* given if partitions
 overlap; if an absolute offset does not match the expected offset; if the
 .Dq c
 partition does not start at 0 or does not cover the entire slice; if a
