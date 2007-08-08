@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $DragonFly: src/etc/rc.d/resident,v 1.3 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/resident,v 1.4 2007/08/08 03:11:00 swildner Exp $
 #
 
 # PROVIDE: resident
@@ -16,22 +16,23 @@ stop_cmd=":"
 
 resident_start()
 {
-if [ -f /etc/resident.conf ]; then
-        while read path 
-        do
-                case ${path} in
-                \#*|"")
-                        ;;
-                *)
-			if [ -f ${path} ]; then
-				resident ${path}
-			else
-                        file ${path} | grep shared | cut -f1 -d ':' -s | xargs resident
-			fi
-                esac
-        done < /etc/resident.conf
-fi
-
+	if [ -f /etc/resident.conf ]; then
+        	while read path 
+        	do
+                	case ${path} in
+                	\#*|"")
+                	        ;;
+                	*)
+				if [ -f ${path} ]; then
+					resident ${path}
+				else
+					file ${path} | grep shared | \
+					    cut -f1 -d ':' -s | xargs resident
+				fi
+				;;
+                	esac
+        	done < /etc/resident.conf
+	fi
 }
 
 load_rc_config $name
