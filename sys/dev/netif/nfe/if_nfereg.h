@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfereg.h,v 1.19 2006/05/28 00:20:21 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.3 2007/06/17 11:38:58 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.4 2007/08/08 11:38:51 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -169,6 +169,9 @@ struct nfe_desc64 {
 	uint16_t	flags;
 #define NFE_RX_FIXME_V2		0x4300
 #define NFE_RX_VALID_V2		(1 << 13)
+#define NFE_RX_IP_CSUMOK_V2	0x1000
+#define NFE_RX_UDP_CSUMOK_V2	0x1400
+#define NFE_RX_TCP_CSUMOK_V2	0x1800
 #define NFE_TX_ERROR_V2		0x5c04
 #define NFE_TX_LASTFRAG_V2	(1 << 13)
 } __packed;

@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.10 2007/06/17 11:38:58 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.11 2007/08/08 11:38:51 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -88,8 +88,11 @@
 
 #include "miibus_if.h"
 
-#include "if_nfereg.h"
-#include "if_nfevar.h"
+#include <dev/netif/nfe/if_nfereg.h>
+#include <dev/netif/nfe/if_nfevar.h>
+
+#define NFE_CSUM
+#define NFE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 
 static int	nfe_probe(device_t);
 static int	nfe_attach(device_t);
@@ -469,14 +472,11 @@ nfe_attach(device_t dev)
 
 #ifdef NFE_CSUM
 	if (sc->sc_flags & NFE_HW_CSUM) {
-#if 0
-		ifp->if_capabilities |= IFCAP_CSUM_IPv4 | IFCAP_CSUM_TCPv4 |
-		    IFCAP_CSUM_UDPv4;
-#else
-		ifp->if_capabilities = IFCAP_HWCSUM;
-		ifp->if_hwassist = CSUM_IP | CSUM_TCP | CSUM_UDP;
-#endif
+		ifp->if_capabilities |= IFCAP_HWCSUM;
+		ifp->if_hwassist = NFE_CSUM_FEATURES;
 	}
+#else
+	sc->sc_flags &= ~NFE_HW_CSUM;
 #endif
 	ifp->if_capenable = ifp->if_capabilities;
 
@@ -798,11 +798,18 @@ nfe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
         case SIOCSIFCAP:
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
-		if (mask & IFCAP_HWCSUM) {
-			if (IFCAP_HWCSUM & ifp->if_capenable)
+		if ((mask & IFCAP_HWCSUM) &&
+		    (ifp->if_capabilities & IFCAP_HWCSUM)) {
+			if (IFCAP_HWCSUM & ifp->if_capenable) {
 				ifp->if_capenable &= ~IFCAP_HWCSUM;
-			else
+				ifp->if_hwassist = 0;
+			} else {
 				ifp->if_capenable |= IFCAP_HWCSUM;
+				ifp->if_hwassist = NFE_CSUM_FEATURES;
+			}
+
+			if (ifp->if_flags & IFF_RUNNING)
+				nfe_init(sc);
 		}
 		break;
 	default:
@@ -883,19 +890,20 @@ nfe_rxeof(struct nfe_softc *sc)
 		m->m_pkthdr.len = m->m_len = len;
 		m->m_pkthdr.rcvif = ifp;
 
-#ifdef notyet
-		if (sc->sc_flags & NFE_HW_CSUM) {
-			if (flags & NFE_RX_IP_CSUMOK)
-				m->m_pkthdr.csum_flags |= M_IPV4_CSUM_IN_OK;
-			if (flags & NFE_RX_UDP_CSUMOK)
-				m->m_pkthdr.csum_flags |= M_UDP_CSUM_IN_OK;
-			if (flags & NFE_RX_TCP_CSUMOK)
-				m->m_pkthdr.csum_flags |= M_TCP_CSUM_IN_OK;
+		if ((ifp->if_capenable & IFCAP_HWCSUM) &&
+		    (flags & NFE_RX_CSUMOK)) {
+			m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED;
+
+			if (flags & NFE_RX_IP_CSUMOK_V2)
+				m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
+
+			if (flags &
+			    (NFE_RX_UDP_CSUMOK_V2 | NFE_RX_TCP_CSUMOK_V2)) {
+				m->m_pkthdr.csum_flags |= CSUM_DATA_VALID |
+							  CSUM_PSEUDO_HDR;
+				m->m_pkthdr.csum_data = 0xffff;
+			}
 		}
-#elif defined(NFE_CSUM)
-		if ((sc->sc_flags & NFE_HW_CSUM) && (flags & NFE_RX_CSUMOK))
-			m->m_pkthdr.csum_flags = M_IPV4_CSUM_IN_OK;
-#endif
 
 		ifp->if_ipackets++;
 		ifp->if_input(ifp, m);
@@ -1048,12 +1056,12 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 			vtag = NFE_TX_VTAG | htons(ifv->ifv_tag);
 	}
 
-#ifdef NFE_CSUM
-	if (m0->m_pkthdr.csum_flags & M_IPV4_CSUM_OUT)
-		flags |= NFE_TX_IP_CSUM;
-	if (m0->m_pkthdr.csum_flags & (M_TCPV4_CSUM_OUT | M_UDPV4_CSUM_OUT))
-		flags |= NFE_TX_TCP_CSUM;
-#endif
+	if (sc->arpcom.ac_if.if_capenable & IFCAP_HWCSUM) {
+		if (m0->m_pkthdr.csum_flags & CSUM_IP)
+			flags |= NFE_TX_IP_CSUM;
+		if (m0->m_pkthdr.csum_flags & (CSUM_TCP | CSUM_UDP))
+			flags |= NFE_TX_TCP_CSUM;
+	}
 
 	/*
 	 * XXX urm. somebody is unaware of how hardware works.  You 
@@ -1249,10 +1257,9 @@ nfe_init(void *xsc)
 		sc->rxtxctl |= NFE_RXTX_V3MAGIC;
 	else if (sc->sc_flags & NFE_JUMBO_SUP)
 		sc->rxtxctl |= NFE_RXTX_V2MAGIC;
-#ifdef NFE_CSUM
-	if (sc->sc_flags & NFE_HW_CSUM)
+
+	if (ifp->if_capenable & IFCAP_HWCSUM)
 		sc->rxtxctl |= NFE_RXTX_RXCSUM;
-#endif
 
 	/*
 	 * Although the adapter is capable of stripping VLAN tags from received
