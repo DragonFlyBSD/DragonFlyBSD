@@ -24,7 +24,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/beastie.4th,v 1.7 2003/10/28 17:18:42 scottl Exp $
-\ $DragonFly: src/sys/boot/forth/beastie.4th,v 1.7 2005/05/29 23:35:00 swildner Exp $
+\ $DragonFly: src/sys/boot/forth/beastie.4th,v 1.8 2007/08/09 00:28:09 swildner Exp $
 
 marker task-beastie.4th
 
@@ -56,12 +56,12 @@ variable rebootkey
 	2dup at-xy ." " 1+
 	2dup at-xy ." ,--,           [31m|           [37m,--," 1+
 	2dup at-xy ." |   `-,       [31m,^,       [37m,-'   |" 1+
-	2dup at-xy ."  `,    `-,   [32m([31m/ \[32m)   [37m,-`    ,-'" 1+
-	2dup at-xy ."    `-,    `-,[31m/   \[37m,-`    ,-`" 1+
+	2dup at-xy ."  `,    `-,   [32m([31m/ \[32m)   [37m,-'    ,'" 1+
+	2dup at-xy ."    `-,    `-,[31m/   \[37m,-'    ,-'" 1+
 	2dup at-xy ."       `------[31m(   )[37m------'" 1+
-	2dup at-xy ."   ,----------[31m(   )[37m-----------," 1+
+	2dup at-xy ."   ,----------[31m(   )[37m----------," 1+
 	2dup at-xy ."  |        _,-[31m(   )[37m-,_        |" 1+
-	2dup at-xy ."   `-,__,-`   [31m\   /   [37m`-,__,-'" 1+
+	2dup at-xy ."   `-,__,-'   [31m\   /   [37m`-,__,-'" 1+
 	2dup at-xy ."               [31m| |" 1+
 	2dup at-xy ."               | |" 1+
 	2dup at-xy ."               | |" 1+
@@ -78,12 +78,12 @@ variable rebootkey
 	2dup at-xy ." " 1+
 	2dup at-xy ." ,--,           |           ,--," 1+
 	2dup at-xy ." |   `-,       ,^,       ,-'   |" 1+
-	2dup at-xy ."  `,    `-,   (/ \)   ,-`    ,-'" 1+
-	2dup at-xy ."    `-,    `-,/   \,-`    ,-`" 1+
+	2dup at-xy ."  `,    `-,   (/ \)   ,-'    ,'" 1+
+	2dup at-xy ."    `-,    `-,/   \,-'    ,-'" 1+
 	2dup at-xy ."       `------(   )------'" 1+
-	2dup at-xy ."   ,----------(   )-----------," 1+
+	2dup at-xy ."   ,----------(   )----------," 1+
 	2dup at-xy ."  |        _,-(   )-,_        |" 1+
-	2dup at-xy ."   `-,__,-`   \   /   `-,__,-'" 1+
+	2dup at-xy ."   `-,__,-'   \   /   `-,__,-'" 1+
 	2dup at-xy ."               | |" 1+
 	2dup at-xy ."               | |" 1+
 	2dup at-xy ."               | |" 1+
