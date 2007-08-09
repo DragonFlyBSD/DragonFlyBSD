@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.37 2006/09/29 03:37:03 hsu Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.38 2007/08/09 01:10:06 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -453,6 +453,12 @@ struct	mbuf 	*m_uiomove(struct uio *);
 void		m_mclget(struct mbuf *m, int how);
 int		m_sharecount(struct mbuf *m);
 void		m_chtype(struct mbuf *m, int type);
+
+#ifdef MBUF_DEBUG
+void		mbuftrackid(struct mbuf *, int);
+#else
+#define mbuftrackid(m, id)	/* empty */
+#endif
 
 /*
  * Allocate the right type of mbuf for the desired total length.

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.68 2007/08/08 00:23:39 swildner Exp $
+# $DragonFly: src/sys/conf/options,v 1.69 2007/08/09 01:10:03 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -401,6 +401,7 @@ VFS_BIO_DEBUG		opt_global.h
 DEBUG_INTERRUPTS	opt_global.h
 SOCKBUF_DEBUG		opt_global.h
 PANIC_DEBUG		opt_global.h
+MBUF_DEBUG		opt_global.h
 
 # Sample system/interrupt PC
 DEBUG_PCTRACK		opt_pctrack.h

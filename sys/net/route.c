@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.31 2007/07/06 11:59:03 sephe Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.32 2007/08/09 01:10:05 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -1457,6 +1457,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 			m = m_get(MB_DONTWAIT, MT_SONAME);
 			if (m == NULL)
 				return (ENOBUFS);
+			mbuftrackid(m, 34);
 			deldst = mtod(m, struct sockaddr *);
 			rt_maskedcopy(dst, deldst, netmask);
 			dst = deldst;

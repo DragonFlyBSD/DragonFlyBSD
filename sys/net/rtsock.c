@@ -64,7 +64,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.39 2007/06/24 20:00:00 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.40 2007/08/09 01:10:05 dillon Exp $
  */
 
 #include "opt_sctp.h"
@@ -853,6 +853,7 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 	m = m_getl(hlen, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
 	if (m == NULL)
 		return (NULL);
+	mbuftrackid(m, 32);
 	m->m_pkthdr.len = m->m_len = hlen;
 	m->m_pkthdr.rcvif = NULL;
 	rtinfo->rti_addrs = 0;
@@ -1141,6 +1142,7 @@ rt_ieee80211msg(struct ifnet *ifp, int what, void *data, size_t data_len)
 		bcopy(data, mtod(m, u_int8_t *) + m->m_len, data_len);
 		m->m_len += data_len;
 	}
+	mbuftrackid(m, 33);
 	if (m->m_flags & M_PKTHDR)
 		m->m_pkthdr.len += data_len;
 	mtod(m, struct if_announcemsghdr *)->ifan_msglen += data_len;

@@ -65,7 +65,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.62 2007/05/13 22:56:59 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.63 2007/08/09 01:10:04 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -79,6 +79,7 @@
 #include <sys/sysctl.h>
 #include <sys/domain.h>
 #include <sys/objcache.h>
+#include <sys/tree.h>
 #include <sys/protosw.h>
 #include <sys/uio.h>
 #include <sys/thread.h>
@@ -102,6 +103,122 @@ struct mbcluster {
 	void	*mcl_data;
 	struct lwkt_serialize mcl_serializer;
 };
+
+/*
+ * mbuf tracking for debugging purposes
+ */
+#ifdef MBUF_DEBUG
+
+static MALLOC_DEFINE(M_MTRACK, "mtrack", "mtrack");
+
+struct mbctrack;
+RB_HEAD(mbuf_rb_tree, mbtrack);
+RB_PROTOTYPE2(mbuf_rb_tree, mbtrack, rb_node, mbtrack_cmp, struct mbuf *);
+
+struct mbtrack {
+	RB_ENTRY(mbtrack) rb_node;
+	int trackid;
+	struct mbuf *m;
+};
+
+static int
+mbtrack_cmp(struct mbtrack *mb1, struct mbtrack *mb2)
+{
+	if (mb1->m < mb2->m)
+		return(-1);
+	if (mb1->m > mb2->m)
+		return(1);
+	return(0);
+}
+
+RB_GENERATE2(mbuf_rb_tree, mbtrack, rb_node, mbtrack_cmp, struct mbuf *, m);
+
+struct mbuf_rb_tree	mbuf_track_root;
+
+static void
+mbuftrack(struct mbuf *m)
+{
+	struct mbtrack *mbt;
+
+	crit_enter();
+	mbt = kmalloc(sizeof(*mbt), M_MTRACK, M_INTWAIT|M_ZERO);
+	mbt->m = m;
+	if (mbuf_rb_tree_RB_INSERT(&mbuf_track_root, mbt))
+		panic("mbuftrack: mbuf %p already being tracked\n", m);
+	crit_exit();
+}
+
+static void
+mbufuntrack(struct mbuf *m)
+{
+	struct mbtrack *mbt;
+
+	crit_enter();
+	mbt = mbuf_rb_tree_RB_LOOKUP(&mbuf_track_root, m);
+	if (mbt == NULL) {
+		kprintf("mbufuntrack: mbuf %p was not tracked\n", m);
+	} else {
+		mbuf_rb_tree_RB_REMOVE(&mbuf_track_root, mbt);
+		kfree(mbt, M_MTRACK);
+	}
+	crit_exit();
+}
+
+void
+mbuftrackid(struct mbuf *m, int trackid)
+{
+	struct mbtrack *mbt;
+	struct mbuf *n;
+
+	crit_enter();
+	while (m) { 
+		n = m->m_nextpkt;
+		while (m) {
+			mbt = mbuf_rb_tree_RB_LOOKUP(&mbuf_track_root, m);
+			if (mbt)
+				mbt->trackid = trackid;
+			m = m->m_next;
+		}
+		m = n;
+	}
+	crit_exit();
+}
+
+static int
+mbuftrack_callback(struct mbtrack *mbt, void *arg)
+{
+	struct sysctl_req *req = arg;
+	char buf[64];
+	int error;
+
+	ksnprintf(buf, sizeof(buf), "mbuf %p track %d\n", mbt->m, mbt->trackid);
+
+	error = SYSCTL_OUT(req, buf, strlen(buf));
+	if (error)	
+		return(-error);
+	return(0);
+}
+
+static int
+mbuftrack_show(SYSCTL_HANDLER_ARGS)
+{
+	int error;
+
+	crit_enter();
+	error = mbuf_rb_tree_RB_SCAN(&mbuf_track_root, NULL,
+				     mbuftrack_callback, req);
+	crit_exit();
+	return (-error);
+}
+SYSCTL_PROC(_kern_ipc, OID_AUTO, showmbufs, CTLFLAG_RD|CTLTYPE_STRING,
+	    0, 0, mbuftrack_show, "A", "Show all in-use mbufs");
+
+#else
+
+#define mbuftrack(m)
+#define mbufuntrack(m)
+
+#endif
 
 static void mbinit(void *);
 SYSINIT(mbuf, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, mbinit, NULL)
@@ -432,6 +549,7 @@ updatestats(struct mbuf *m, int type)
 	m->m_type = type;
 
 	crit_enter();
+	mbuftrack(m);
 	++mbtypes[type];
 	++mbstat.m_mbufs;
 	crit_exit();
@@ -554,6 +672,7 @@ retryonce:
 	m->m_type = type;
 
 	crit_enter();
+	mbuftrack(m);
 	++mbtypes[type];
 	++mbstat.m_clusters;
 	crit_exit();
@@ -699,6 +818,7 @@ m_free(struct mbuf *m)
 	 * to the objcache.
 	 */
 	m->m_next = NULL;
+	mbufuntrack(m);
 #ifdef notyet
 	KKASSERT(m->m_nextpkt == NULL);
 #else

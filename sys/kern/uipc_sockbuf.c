@@ -33,7 +33,7 @@
  *
  * @(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_sockbuf.c,v 1.2 2007/04/22 04:08:59 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_sockbuf.c,v 1.3 2007/08/09 01:10:04 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -90,6 +90,8 @@ sbappend(struct sockbuf *sb, struct mbuf *m)
 {
 	struct mbuf *n;
 
+	mbuftrackid(m, 16);
+
 	if (m) {
 		n = sb->sb_lastrecord;
 		if (n) {
@@ -118,6 +120,7 @@ sbappend(struct sockbuf *sb, struct mbuf *m)
 void
 sbappendstream(struct sockbuf *sb, struct mbuf *m)
 {
+	mbuftrackid(m, 17);
 	KKASSERT(m->m_nextpkt == NULL);
 	sbcompress(sb, m, sb->sb_lastmbuf);
 }
@@ -183,6 +186,7 @@ sbappendrecord(struct sockbuf *sb, struct mbuf *m0)
 
 	if (m0 == NULL)
 		return;
+	mbuftrackid(m0, 18);
 
 	sbcheck(sb);
 
@@ -236,6 +240,8 @@ sbappendaddr(struct sockbuf *sb, const struct sockaddr *asa, struct mbuf *m0,
 	struct mbuf *m, *n;
 	int eor;
 
+	mbuftrackid(m0, 19);
+	mbuftrackid(control, 20);
 	if (m0 && (m0->m_flags & M_PKTHDR) == 0)
 		panic("sbappendaddr");
 	sbcheck(sb);
@@ -297,6 +303,9 @@ sbappendcontrol(struct sockbuf *sb, struct mbuf *m0, struct mbuf *control)
 	KKASSERT(control->m_nextpkt == NULL);
 	sbcheck(sb);
 
+	mbuftrackid(m0, 21);
+	mbuftrackid(control, 22);
+
 	length = m_countm(control, &n, &cmbcnt) + m_countm(m0, NULL, &m0mbcnt);
 
 	KKASSERT(m0 != NULL);
@@ -338,6 +347,8 @@ sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 {
 	int eor = 0;
 	struct mbuf *free_chain = NULL;
+
+	mbuftrackid(m, 23);
 
 	sbcheck(sb);
 	while (m) {
@@ -576,6 +587,7 @@ sbcreatecontrol(caddr_t p, int size, int type, int level)
 	cp->cmsg_len = CMSG_LEN(size);
 	cp->cmsg_level = level;
 	cp->cmsg_type = type;
+	mbuftrackid(m, 24);
 	return (m);
 }
 
