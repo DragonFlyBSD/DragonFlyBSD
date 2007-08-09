@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.105 2007/08/09 22:39:20 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.106 2007/08/09 22:50:37 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -812,10 +812,8 @@ _share=	share/syscons/scrnmaps
 
 _gcc34_cross= gnu/usr.bin/cc34
 _gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
-.if !defined(NO_GCC41)
 _gcc41_cross= gnu/usr.bin/cc41
 _gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
-.endif
 _binutils= gnu/usr.bin/binutils217
 
 .if !defined(NO_FORTRAN)
@@ -879,11 +877,9 @@ libraries:
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc34 \
 		${MAKE} -f Makefile.inc1 _startup_libs34;
-.if !defined(NO_GCC41)
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc41 \
 		${MAKE} -f Makefile.inc1 _startup_libs41;
-.endif
 	cd ${.CURDIR}; \
 	    ${MAKE} -f Makefile.inc1 _startup_libs; \
 	    ${MAKE} -f Makefile.inc1 _prebuild_libs; \
