@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.182 2007/08/09 02:27:51 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.183 2007/08/09 22:39:21 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -213,6 +213,9 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libstdc++.so,libstdc++.so.3}"
 	csh -c "rm -f ${DESTDIR}/usr/lib/{libstdc++_p.a}"
 	rm -rf ${DESTDIR}/usr/libexec/binutils214
+.endif
+.if exists(${DESTDIR}/usr/libexec/binutils217)
+	rm -rf ${DESTDIR}/usr/libexec/binutils215
 .endif
 	rm -f ${DESTDIR}/usr/bin/makewhatis
 	rm -f ${DESTDIR}/usr/sbin/prebind
