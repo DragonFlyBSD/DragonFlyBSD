@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.21 2007/05/08 20:59:37 swildner Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.22 2007/08/09 22:15:22 corecode Exp $
  */
 
 #include <err.h>
@@ -36,13 +36,12 @@
 #include <unistd.h>
 
 #ifndef CCVER_DEFAULT
-#define CCVER_DEFAULT "gcc34"
+#define CCVER_DEFAULT "gcc41"
 #endif
 
 #ifndef BINUTILSVER_DEFAULT
 #define	BINUTILSVER_DEFAULT "binutils217"
 #endif
-#define	BINUTILSVER_GCC34 "binutils217"
 
 #define OBJFORMAT	0
 #define COMPILER	1
@@ -117,10 +116,7 @@ main(int argc, char **argv)
 	if ((ccver = getenv("CCVER")) == NULL || ccver[0] == 0)
 		ccver = CCVER_DEFAULT;
 	if ((buver = getenv("BINUTILSVER")) == NULL) {
-		if (strcmp(ccver, "gcc34") == 0)
-		        buver = BINUTILSVER_GCC34;
-		else
-		        buver = BINUTILSVER_DEFAULT;	/* fall through */
+		buver = BINUTILSVER_DEFAULT;
 	}
 
 	if (cmds) {
