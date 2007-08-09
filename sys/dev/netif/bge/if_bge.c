@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.85 2007/06/26 15:10:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.85.2.1 2007/08/09 14:23:35 sephe Exp $
  *
  */
 
@@ -264,7 +264,7 @@ static void	bge_rxeof(struct bge_softc *);
 static void	bge_tick(void *);
 static void	bge_stats_update(struct bge_softc *);
 static void	bge_stats_update_regs(struct bge_softc *);
-static int	bge_encap(struct bge_softc *, struct mbuf *, uint32_t *);
+static int	bge_encap(struct bge_softc *, struct mbuf **, uint32_t *);
 
 #ifdef DEVICE_POLLING
 static void	bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
@@ -2563,7 +2563,7 @@ bge_stats_update(struct bge_softc *sc)
  * pointers to descriptors.
  */
 static int
-bge_encap(struct bge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
+bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 {
 	struct bge_tx_bd *d = NULL;
 	uint16_t csum_flags = 0;
@@ -2572,6 +2572,7 @@ bge_encap(struct bge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 	bus_dma_segment_t segs[BGE_NSEG_NEW];
 	bus_dmamap_t map;
 	int error, maxsegs, idx, i;
+	struct mbuf *m_head = *m_head0;
 
 	if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
 	    m_head->m_pkthdr.rcvif != NULL &&
@@ -2632,6 +2633,7 @@ bge_encap(struct bge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 			goto back;
 		} else {
 			m_head = m_new;
+			*m_head0 = m_head;
 		}
 
 		/*
@@ -2703,8 +2705,10 @@ bge_encap(struct bge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 	BGE_INC(idx, BGE_TX_RING_CNT);
 	*txidx = idx;
 back:
-	if (error)
+	if (error) {
 		m_freem(m_head);
+		*m_head0 = NULL;
+	}
 	return error;
 }
 
@@ -2776,7 +2780,7 @@ bge_start(struct ifnet *ifp)
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
-		if (bge_encap(sc, m_head, &prodidx)) {
+		if (bge_encap(sc, &m_head, &prodidx)) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
