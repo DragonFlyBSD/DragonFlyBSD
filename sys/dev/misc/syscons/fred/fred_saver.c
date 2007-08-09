@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/daemon/daemon_saver.c,v 1.18.2.2 2001/05/06 05:44:29 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/fred/fred_saver.c,v 1.7 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/fred/fred_saver.c,v 1.8 2007/08/09 02:27:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -44,58 +44,48 @@
 #include <dev/video/fb/splashreg.h>
 #include "../syscons.h"
 
-#define DAEMON_MAX_WIDTH	32
-#define DAEMON_MAX_HEIGHT	19
+#define FRED_MAX_WIDTH	31
+#define FRED_MAX_HEIGHT	15
 
-static u_char *message;
+static char *message;
 static int messagelen;
 static int blanked;
 
-/* Who is the author of this ASCII pic? */
-
-static u_char *daemon_pic[] = {
-        "             ,        ,",
-	"            /(        )`",
-	"            \\ \\___   / |",
-	"            /- _  `-/  '",
-	"           (/\\/ \\ \\   /\\",
-	"           / /   | `    \\",
-	"           O O   ) /    |",
-	"           `-^--'`<     '",
-	"          (_.)  _  )   /",
-	"           `.___/`    /",
-	"             `-----' /",
-	"<----.     __ / __   \\",
-	"<----|====O)))==) \\) /====",
-	"<----'    `--' `.__,' \\",
-	"             |        |",
-	"              \\       /       /\\",
-	"         ______( (_  / \\______/",
-	"       ,'  ,-----'   |",
-	"       `--{__________)",
+static const char *fred_pic[] = {
+	",--,           |           ,--,",
+	"|   `-,       ,^,       ,-'   |",
+	" `,    `-,   (/ \\)   ,-'    ,'",
+	"   `-,    `-,/   \\,-'    ,-'",
+	"      `------(   )------'",
+	"  ,----------(   )----------,",
+	" |        _,-(   )-,_        |",
+	"  `-,__,-'   \\   /   `-,__,-'",
+	"              | |",
+	"              | |",
+	"              | |",
+	"              | |",
+	"              | |",
+	"              | |",
+	"              `|'",
 	NULL
 };
 
-static u_char *daemon_attr[] = {
-        "             R        R",
-	"            RR        RR",
-	"            R RRRR   R R",
-	"            RR W  RRR  R",
-	"           RWWW W R   RR",
-	"           W W   W R    R",
-	"           B B   W R    R",
-	"           WWWWWWRR     R",
-	"          RRRR  R  R   R",
-	"           RRRRRRR    R",
-	"             RRRRRRR R",
-	"YYYYYY     RR R RR   R",
-	"YYYYYYYYYYRRRRYYR RR RYYYY",
-	"YYYYYY    RRRR RRRRRR R",
-	"             R        R",
-	"              R       R       RR",
-	"         CCCCCCR RR  R RRRRRRRR",
-	"       CC  CCCCCCC   C",
-	"       CCCCCCCCCCCCCCC",
+static const char *fred_attr[] = {
+	"WWWW           R           WWWW",
+	"W   WWW       RRR       WWW   W",
+	" WW    WWW   GR RG   WWW    WW ",
+	"   WWW    WWWR   RWWW    WWW",
+	"      WWWWWWWR   RWWWWWWW",
+	"  WWWWWWWWWWWR   RWWWWWWWWWWW",
+	" W        WWWR   RWWW        W",
+	"  WWWWWWWW   R   R   WWWWWWWW",
+	"              R R",
+	"              R R",
+	"              R R",
+	"              R R",
+	"              R R",
+	"              R R",
+	"              RRR",
 	NULL
 };
 
@@ -119,7 +109,7 @@ xflip_symbol(u_char symbol)
 }
 
 static void
-clear_daemon(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff, 
+clear_fred(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff, 
 	    int xlen, int ylen)
 {
 	int y;
@@ -135,7 +125,7 @@ clear_daemon(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff,
 }
 
 static void
-draw_daemon(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff, 
+draw_fred(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff, 
 	    int xlen, int ylen)
 {
 	int x, y;
@@ -146,30 +136,28 @@ draw_daemon(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff,
 		if (dxdir < 0)
 			px = xoff;
 		else
-			px = DAEMON_MAX_WIDTH - xlen;
-		if (px >= strlen(daemon_pic[y]))
+			px = FRED_MAX_WIDTH - xlen;
+		if (px >= strlen(fred_pic[y]))
 			continue;
-		for (x = xoff; (x < xlen) && (daemon_pic[y][px] != '\0'); x++, px++) {
-			switch (daemon_attr[y][px]) {
+		for (x = xoff; (x < xlen) && (fred_pic[y][px] != '\0'); x++, px++) {
+			switch (fred_attr[y][px]) {
 			case 'R': attr = (FG_LIGHTRED|BG_BLACK)<<8; break;
-			case 'Y': attr = (FG_YELLOW|BG_BLACK)<<8; break;
-			case 'B': attr = (FG_LIGHTBLUE|BG_BLACK)<<8; break;
+			case 'G': attr = (FG_LIGHTGREEN|BG_BLACK)<<8; break;
 			case 'W': attr = (FG_LIGHTGREY|BG_BLACK)<<8; break;
-			case 'C': attr = (FG_CYAN|BG_BLACK)<<8; break;
 			default: attr = (FG_WHITE|BG_BLACK)<<8; break;
 			}
 			if (dxdir < 0) {	/* Moving left */
 				sc_vtb_putc(&sc->cur_scp->scr,
 					    (ypos + y)*sc->cur_scp->xsize
 						 + xpos + x,
-					    sc->scr_map[daemon_pic[y][px]],
+					    sc->scr_map[(int)fred_pic[y][px]],
 					    attr);
 			} else {		/* Moving right */
 				sc_vtb_putc(&sc->cur_scp->scr,
 					    (ypos + y)*sc->cur_scp->xsize
-						+ xpos + DAEMON_MAX_WIDTH 
+						+ xpos + FRED_MAX_WIDTH 
 						- px - 1,
-					    sc->scr_map[xflip_symbol(daemon_pic[y][px])], 
+					    sc->scr_map[xflip_symbol(fred_pic[y][px])], 
 					    attr);
 			}
 		}
@@ -187,25 +175,25 @@ clear_string(sc_softc_t *sc, int xpos, int ypos, int xoff, char *s, int len)
 }
 
 static void
-draw_string(sc_softc_t *sc, int xpos, int ypos, int xoff, u_char *s, int len)
+draw_string(sc_softc_t *sc, int xpos, int ypos, int xoff, char *s, int len)
 {
 	int x;
 
 	for (x = xoff; x < len; x++) {
 		sc_vtb_putc(&sc->cur_scp->scr,
 			    ypos*sc->cur_scp->xsize + xpos + x,
-			    sc->scr_map[s[x]], (FG_LIGHTGREEN | BG_BLACK) << 8);
+			    sc->scr_map[(int)s[x]], (FG_LIGHTBLUE | BG_BLACK) << 8);
 	}
 }
 
 static int
-daemon_saver(video_adapter_t *adp, int blank)
+fred_saver(video_adapter_t *adp, int blank)
 {
 	static int txpos = 10, typos = 10;
 	static int txdir = -1, tydir = -1;
 	static int dxpos = 0, dypos = 0;
 	static int dxdir = 1, dydir = 1;
-	static int moved_daemon = 0;
+	static int moved_fred = 0;
 	static int xoff, yoff, toff;
 	static int xlen, ylen, tlen;
 	sc_softc_t *sc;
@@ -232,28 +220,28 @@ daemon_saver(video_adapter_t *adp, int blank)
 			return 0;
 		blanked = 1;
 
- 		clear_daemon(sc, dxpos, dypos, dxdir, xoff, yoff, xlen, ylen);
+ 		clear_fred(sc, dxpos, dypos, dxdir, xoff, yoff, xlen, ylen);
 		clear_string(sc, txpos, typos, toff, message, tlen);
 
-		if (++moved_daemon) {
+		if (++moved_fred) {
 			/*
-			 * The daemon picture may be off the screen, if
+			 * Fred's picture may be off the screen, if
 			 * screen size is chagened while the screen
 			 * saver is inactive. Make sure the origin of
 			 * the picture is between min and max.
 			 */
-			if (scp->xsize <= DAEMON_MAX_WIDTH) {
+			if (scp->xsize <= FRED_MAX_WIDTH) {
 				/*
 				 * If the screen width is too narrow, we
 				 * allow part of the picture go off
-				 * the screen so that the daemon won't
+				 * the screen so that Fred won't
 				 * flip too often.
 				 */
-				min = scp->xsize - DAEMON_MAX_WIDTH - 10;
+				min = scp->xsize - FRED_MAX_WIDTH - 10;
 				max = 10;
 			} else {
 				min = 0;
-				max = scp->xsize - DAEMON_MAX_WIDTH;
+				max = scp->xsize - FRED_MAX_WIDTH;
 			}
 			if (dxpos <= min) {
 				dxpos = min;
@@ -263,12 +251,12 @@ daemon_saver(video_adapter_t *adp, int blank)
 				dxdir = -1;
 			}
 
-			if (scp->ysize <= DAEMON_MAX_HEIGHT) {
-				min = scp->ysize - DAEMON_MAX_HEIGHT - 10;
+			if (scp->ysize <= FRED_MAX_HEIGHT) {
+				min = scp->ysize - FRED_MAX_HEIGHT - 10;
 				max = 10;
 			} else {
 				min = 0;
-				max = scp->ysize - DAEMON_MAX_HEIGHT;
+				max = scp->ysize - FRED_MAX_HEIGHT;
 			}
 			if (dypos <= min) {
 				dypos = min;
@@ -278,12 +266,12 @@ daemon_saver(video_adapter_t *adp, int blank)
 				dydir = -1;
 			}
 
-			moved_daemon = -1;
+			moved_fred = -1;
 			dxpos += dxdir; dypos += dydir;
 
 			/* clip the picture */
 			xoff = 0;
-			xlen = DAEMON_MAX_WIDTH;
+			xlen = FRED_MAX_WIDTH;
 			if (dxpos + xlen <= 0)
 				xlen = 0;
 			else if (dxpos < 0)
@@ -293,7 +281,7 @@ daemon_saver(video_adapter_t *adp, int blank)
 			else if (dxpos + xlen > scp->xsize)
 				xlen = scp->xsize - dxpos;
 			yoff = 0;
-			ylen = DAEMON_MAX_HEIGHT;
+			ylen = FRED_MAX_HEIGHT;
 			if (dypos + ylen <= 0)
 				ylen = 0;
 			else if (dypos < 0)
@@ -338,7 +326,7 @@ daemon_saver(video_adapter_t *adp, int blank)
 		else if (txpos + tlen > scp->xsize)
 			tlen = scp->xsize - txpos;
 
- 		draw_daemon(sc, dxpos, dypos, dxdir, xoff, yoff, xlen, ylen);
+ 		draw_fred(sc, dxpos, dypos, dxdir, xoff, yoff, xlen, ylen);
 		draw_string(sc, txpos, typos, toff, message, tlen);
 	} else {
 		blanked = 0;
@@ -347,7 +335,7 @@ daemon_saver(video_adapter_t *adp, int blank)
 }
 
 static int
-daemon_init(video_adapter_t *adp)
+fred_init(video_adapter_t *adp)
 {
 	messagelen = strlen(hostname) + 3 + strlen(ostype) + 1 + 
 	    strlen(osrelease);
@@ -358,14 +346,14 @@ daemon_init(video_adapter_t *adp)
 }
 
 static int
-daemon_term(video_adapter_t *adp)
+fred_term(video_adapter_t *adp)
 {
 	kfree(message, M_SYSCONS);
 	return 0;
 }
 
-static scrn_saver_t daemon_module = {
-	"daemon_saver", daemon_init, daemon_term, daemon_saver, NULL,
+static scrn_saver_t fred_module = {
+	"fred_saver", fred_init, fred_term, fred_saver, NULL,
 };
 
-SAVER_MODULE(daemon_saver, daemon_module);
+SAVER_MODULE(fred_saver, fred_module);

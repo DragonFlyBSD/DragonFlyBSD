@@ -1,8 +1,8 @@
 # $FreeBSD: src/sys/modules/syscons/daemon/Makefile,v 1.6.2.2 2002/12/01 09:01:09 nyan Exp $
-# $DragonFly: src/sys/dev/misc/syscons/fred/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
+# $DragonFly: src/sys/dev/misc/syscons/fred/Makefile,v 1.3 2007/08/09 02:27:51 swildner Exp $
 
-KMOD=	daemon_saver
-SRCS= 	daemon_saver.c
+KMOD=	fred_saver
+SRCS= 	fred_saver.c
 
 NOMAN=
 CFLAGS+= -I${.CURDIR}/..

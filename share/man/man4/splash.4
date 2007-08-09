@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/splash.4,v 1.9.2.7 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/splash.4,v 1.4 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/splash.4,v 1.5 2007/08/09 02:27:51 swildner Exp $
 .\"
-.Dd February 9, 1999
+.Dd August 8, 2007
 .Dt SPLASH 4
 .Os
 .Sh NAME
@@ -100,18 +100,18 @@ Currently the following screen saver modules are available:
 .Bl -tag -width splash_module.ko -compact
 .It Pa blank_saver.ko
 This screen saver simply blanks the screen.
-.It Pa daemon_saver.ko
-Animated
-.Bx
-Daemon screen saver.
 .It Pa fade_saver.ko
 The screen will gradually fade away.
+.It Pa fred_saver.ko
+Animated ASCII
+.Dx
+logo.
 .It Pa green_saver.ko
 If the monitor supports power saving mode, it will be turned off.
 .It Pa logo_saver.ko
 Animated graphical
-.Bx
-Daemon.
+.Dx
+logo.
 .It Pa rain_saver.ko
 Draws a shower on the screen.
 .It Pa snake_saver.ko
