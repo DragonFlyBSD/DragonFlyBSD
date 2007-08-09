@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.28 2007/04/22 01:13:17 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.28.2.1 2007/08/09 00:58:01 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -253,10 +253,10 @@ struct	xsocket {
 	sbappendrecord(&(ssb)->sb, m)
 
 #define ssb_appendaddr(ssb, src, m, control)				\
-	((ssb_space(ssb) <= 0) ? 1 : sbappendaddr(&(ssb)->sb, src, m, control))
+	((ssb_space(ssb) <= 0) ? 0 : sbappendaddr(&(ssb)->sb, src, m, control))
 
 #define ssb_appendcontrol(ssb, m, control)				\
-	((ssb_space(ssb) <= 0) ? 1 : sbappendcontrol(&(ssb)->sb, m, control))
+	((ssb_space(ssb) <= 0) ? 0 : sbappendcontrol(&(ssb)->sb, m, control))
 
 #define ssb_insert_knote(ssb, kn) {					\
         SLIST_INSERT_HEAD(&(ssb)->ssb_sel.si_note, kn, kn_selnext);	\
