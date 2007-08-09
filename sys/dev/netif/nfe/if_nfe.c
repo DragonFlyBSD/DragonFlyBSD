@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.11 2007/08/08 11:38:51 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.12 2007/08/09 04:24:14 dillon Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -565,11 +565,8 @@ nfe_resume(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	lwkt_serialize_enter(ifp->if_serializer);
-	if (ifp->if_flags & IFF_UP) {
+	if (ifp->if_flags & IFF_UP)
 		nfe_init(sc);
-		if (ifp->if_flags & IFF_RUNNING)
-			ifp->if_start(ifp);
-	}
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	return 0;
@@ -1205,9 +1202,6 @@ nfe_watchdog(struct ifnet *ifp)
 	nfe_init(ifp->if_softc);
 
 	ifp->if_oerrors++;
-
-	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
 }
 
 static void
@@ -1358,6 +1352,13 @@ nfe_init(void *xsc)
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
+
+	/*
+	 * If we had stuff in the tx ring before its all cleaned out now
+	 * so we are not going to get an interrupt, jump-start any pending
+	 * output.
+	 */
+	ifp->if_start(ifp);
 }
 
 static void
