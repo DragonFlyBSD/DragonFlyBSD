@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)syslogd.c	8.3 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.sbin/syslogd/syslogd.c,v 1.130 2004/07/04 19:52:48 cperciva Exp $
- * $DragonFly: src/usr.sbin/syslogd/syslogd.c,v 1.5 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/syslogd/syslogd.c,v 1.5.10.1 2007/08/09 02:19:20 dillon Exp $
  */
 
 /*
@@ -311,6 +311,7 @@ static void	dofsync(void);
 static void	domark(int);
 static void	fprintlog(struct filed *, int, const char *);
 static int	*socksetup(int, const char *);
+static void	setsockbuffer(int);
 static void	init(int);
 static void	logerror(const char *);
 static void	logmsg(int, const char *, const char *, int);
@@ -477,6 +478,8 @@ main(int argc, char *argv[])
 			if (i == 0)
 				die(0);
 		}
+		if (funix[i] >= 0)
+			setsockbuffer(funix[i]);
 	}
 	if (SecureMode <= 1)
 		finet = socksetup(family, bindhostname);
@@ -2573,6 +2576,8 @@ socksetup(int af, const char *bindhostname)
 			logerror("socket");
 			continue;
 		}
+		if (r->ai_socktype != SOCK_STREAM)
+			setsockbuffer(*s);
 		if (r->ai_family == AF_INET6) {
 			int on = 1;
 			if (setsockopt(*s, IPPROTO_IPV6, IPV6_V6ONLY,
@@ -2603,6 +2608,19 @@ socksetup(int af, const char *bindhostname)
 		freeaddrinfo(res);
 
 	return (socks);
+}
+
+/*
+ * Most systems default to a fairly small amount of receive buffer space,
+ * set a reasonable buffer size.
+ */
+static
+void
+setsockbuffer(int fd)
+{
+	int bytes = 65536;
+
+	setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bytes, sizeof(bytes));
 }
 
 ssize_t
