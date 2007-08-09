@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.11 2007/01/26 18:58:55 dillon Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.12 2007/08/09 21:53:02 swildner Exp $
  */
 
 #include "jscan.h"
@@ -563,7 +563,7 @@ usage(const char *av0)
 {
     fprintf(stderr, 
 	"%s [-2duF] [-D dir] [-m mirror_transid_file/none]\n"
-	"\t[-o/O output_trnasid_file/none]\n"
+	"\t[-o/O output_transid_file/none]\n"
 	"\t[-s size[kmgt]] -w/W record_prefix] [input_file/input_prefix]\n",
 	av0);
     exit(1);
