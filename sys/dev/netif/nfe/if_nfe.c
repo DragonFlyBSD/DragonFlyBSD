@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.12 2007/08/09 04:24:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.13 2007/08/09 07:24:50 dillon Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -1371,6 +1371,31 @@ nfe_stop(struct nfe_softc *sc)
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
+	/*
+	 * Are NFE_TX_CTL and NFE_RX_CTL polled by the chip microcontroller
+	 * or do they directly reset/terminate the DMA hardware?  Nobody
+	 * knows.
+	 *
+	 * Add two delays:
+	 *
+	 * (1) Delay before zeroing out NFE_TX_CTL.  This seems to help a
+	 * watchdog timeout that occurs after a stop/init sequence.  I am
+	 * theorizing that a TX KICK occuring just prior to a reinit (e.g.
+	 * due to dhclient) is queueing an interrupt to the microcontroller
+	 * which gets delayed until after we clear the control registers
+	 * down below, resulting in mass confusion.  TX KICK is clearly
+	 * hardware aided whereas the other bits in the control register
+	 * are more likely to be polled by the microcontroller.
+	 *
+	 * (2) Delay after zeroing out TX and RX CTL registers, under the
+	 * assumption that primary DMA is initiated and terminated by
+	 * the microcontroller and not hardware (and anyway, one can hardly
+	 * expect the DMA engine to just instantly stop!).  We don't want
+	 * to rip the rings out from under it before it has had a chance to
+	 * actually stop!
+	 */
+	DELAY(1000);
+
 	/* Abort Tx */
 	NFE_WRITE(sc, NFE_TX_CTL, 0);
 
@@ -1379,6 +1404,8 @@ nfe_stop(struct nfe_softc *sc)
 
 	/* Disable interrupts */
 	NFE_WRITE(sc, NFE_IRQ_MASK, 0);
+
+	DELAY(1000);
 
 	/* Reset Tx and Rx rings */
 	nfe_reset_tx_ring(sc, &sc->txq);
