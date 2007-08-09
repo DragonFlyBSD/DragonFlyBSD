@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.34 2007/04/22 01:13:10 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.35 2007/08/09 00:55:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -355,10 +355,13 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		 * Wake up readers.
 		 */
 		if (control) {
-			if (ssb_appendcontrol(&so2->so_rcv, m, control))
+			if (ssb_appendcontrol(&so2->so_rcv, m, control)) {
 				control = NULL;
+				m = NULL;
+			}
 		} else {
 			sbappend(&so2->so_rcv.sb, m);
+			m = NULL;
 		}
 		so->so_snd.ssb_mbmax -=
 			so2->so_rcv.ssb_mbcnt - unp->unp_conn->unp_mbcnt;
@@ -369,7 +372,6 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		    newhiwat, RLIM_INFINITY);
 		unp->unp_conn->unp_cc = so2->so_rcv.ssb_cc;
 		sorwakeup(so2);
-		m = NULL;
 		break;
 
 	default:
