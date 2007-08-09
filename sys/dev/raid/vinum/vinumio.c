@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.28 2007/07/31 18:13:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.29 2007/08/09 22:32:39 corecode Exp $
  */
 
 #include "vinumhdr.h"
@@ -728,7 +728,7 @@ vinum_scandisk(char *devicename[], int drives)
 	 * specified.
 	 */
 	if (has_slice == 0 && has_part == 0)
-	for (slice = 1; slice < 5; slice++) {
+	for (slice = 0; slice < MAX_SLICES; slice++) {
 	    if (has_slice && slice != has_slice)
 		continue;
 
