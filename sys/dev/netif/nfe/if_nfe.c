@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.14 2007/08/10 15:21:05 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.15 2007/08/10 15:29:25 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -886,10 +886,10 @@ nfe_rxeof(struct nfe_softc *sc)
 
 		if ((ifp->if_capenable & IFCAP_RXCSUM) &&
 		    (flags & NFE_RX_CSUMOK)) {
-			m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED;
-
-			if (flags & NFE_RX_IP_CSUMOK_V2)
-				m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
+			if (flags & NFE_RX_IP_CSUMOK_V2) {
+				m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED |
+							  CSUM_IP_VALID;
+			}
 
 			if (flags &
 			    (NFE_RX_UDP_CSUMOK_V2 | NFE_RX_TCP_CSUMOK_V2)) {
