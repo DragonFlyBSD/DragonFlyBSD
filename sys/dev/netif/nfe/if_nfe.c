@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.13 2007/08/09 07:24:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.14 2007/08/10 15:21:05 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -794,16 +794,13 @@ nfe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, cmd);
 		break;
         case SIOCSIFCAP:
-		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
-		if ((mask & IFCAP_HWCSUM) &&
-		    (ifp->if_capabilities & IFCAP_HWCSUM)) {
-			if (IFCAP_HWCSUM & ifp->if_capenable) {
-				ifp->if_capenable &= ~IFCAP_HWCSUM;
-				ifp->if_hwassist = 0;
-			} else {
-				ifp->if_capenable |= IFCAP_HWCSUM;
+		mask = (ifr->ifr_reqcap ^ ifp->if_capenable) & IFCAP_HWCSUM;
+		if (mask && (ifp->if_capabilities & IFCAP_HWCSUM)) {
+			ifp->if_capenable ^= mask;
+			if (IFCAP_TXCSUM & ifp->if_capenable)
 				ifp->if_hwassist = NFE_CSUM_FEATURES;
-			}
+			else
+				ifp->if_hwassist = 0;
 
 			if (ifp->if_flags & IFF_RUNNING)
 				nfe_init(sc);
@@ -887,7 +884,7 @@ nfe_rxeof(struct nfe_softc *sc)
 		m->m_pkthdr.len = m->m_len = len;
 		m->m_pkthdr.rcvif = ifp;
 
-		if ((ifp->if_capenable & IFCAP_HWCSUM) &&
+		if ((ifp->if_capenable & IFCAP_RXCSUM) &&
 		    (flags & NFE_RX_CSUMOK)) {
 			m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED;
 
@@ -1053,7 +1050,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 			vtag = NFE_TX_VTAG | htons(ifv->ifv_tag);
 	}
 
-	if (sc->arpcom.ac_if.if_capenable & IFCAP_HWCSUM) {
+	if (sc->arpcom.ac_if.if_capenable & IFCAP_TXCSUM) {
 		if (m0->m_pkthdr.csum_flags & CSUM_IP)
 			flags |= NFE_TX_IP_CSUM;
 		if (m0->m_pkthdr.csum_flags & (CSUM_TCP | CSUM_UDP))
@@ -1252,7 +1249,7 @@ nfe_init(void *xsc)
 	else if (sc->sc_flags & NFE_JUMBO_SUP)
 		sc->rxtxctl |= NFE_RXTX_V2MAGIC;
 
-	if (ifp->if_capenable & IFCAP_HWCSUM)
+	if (ifp->if_capenable & IFCAP_RXCSUM)
 		sc->rxtxctl |= NFE_RXTX_RXCSUM;
 
 	/*
