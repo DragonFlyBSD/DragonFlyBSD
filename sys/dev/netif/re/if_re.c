@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.33 2007/06/26 07:47:28 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.34 2007/08/10 03:48:02 dillon Exp $
  */
 
 /*
@@ -168,6 +168,8 @@ static const struct re_type re_devs[] = {
 		"RealTek 8168/8111B PCIe Gigabit Ethernet" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168_SPIN2,
 		"RealTek 8168/8111B PCIe Gigabit Ethernet" },
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168_SPIN3,
+		"RealTek 8168B/8111B PCIe Gigabit Ethernet" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169,
 		"RealTek 8169 Gigabit Ethernet" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169S,
@@ -193,6 +195,7 @@ static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_F_HASMPC,	"C+" },
 	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE,	"8168" },
 	{ RE_HWREV_8168_SPIN2,	RE_8169,	RE_F_PCIE,	"8168" },
+	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_F_PCIE,	"8168" },
 	{ RE_HWREV_8169,	RE_8169,	RE_F_HASMPC,	"8169" },
 	{ RE_HWREV_8169S,	RE_8169,	RE_F_HASMPC,	"8169S" },
 	{ RE_HWREV_8110S,	RE_8169,	RE_F_HASMPC,	"8110S" },
