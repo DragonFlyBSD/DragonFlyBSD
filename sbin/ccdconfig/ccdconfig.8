@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/ccdconfig/ccdconfig.8,v 1.9.2.10 2003/01/26 03:38:39 keramida Exp $
-.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.5 2007/07/09 17:51:29 dillon Exp $
+.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.5.2.1 2007/08/10 18:35:06 swildner Exp $
 .\"
 .Dd July 17, 1995
 .Dt CCDCONFIG 8
@@ -134,13 +134,13 @@ argument is optional.
 #
 .Pp
 # ccd           ileave  flags   component devices
-ccd0            16      none    /dev/da2e /dev/da3e
+ccd0            16      none    /dev/da2s0e /dev/da3s0e
 .Ed
 .Pp
 The component devices need to name partitions of type
 .Li FS_CCD
 (or
-.Dq CCD
+.Dq ccd
 as shown by
 .Xr disklabel 8 ) .
 .Sh RECOVERY
@@ -172,14 +172,14 @@ are exactly the same as you might place in the
 configuration file.  The first example creates a 4-disk stripe out of
 four scsi disk partitions.  The stripe uses a 64 sector interleave.
 The second example is an example of a complex stripe/mirror combination.
-It reads as a two disk stripe of da2e and da3e which is mirrored
-to a two disk stripe of da4e and da5e.  The last example is a simple
-mirror.  /dev/da2e is mirrored with /dev/da4e and assigned to ccd0.
+It reads as a two disk stripe of da2s0e and da3s0e which is mirrored
+to a two disk stripe of da4s0e and da5s0e.  The last example is a simple
+mirror.  /dev/da2s0e is mirrored with /dev/da4s0e and assigned to ccd0.
 .Pp
 .Bd -literal
-# ccdconfig ccd0 64 none /dev/da2e /dev/da3e /dev/da4e /dev/da5e
-# ccdconfig ccd0 128 CCDF_MIRROR /dev/da2e /dev/da3e /dev/da4e /dev/da5e
-# ccdconfig ccd0 128 CCDF_MIRROR /dev/da2e /dev/da4e
+# ccdconfig ccd0 64 none /dev/da2s0e /dev/da3s0e /dev/da4s0e /dev/da5s0e
+# ccdconfig ccd0 128 CCDF_MIRROR /dev/da2s0e /dev/da3s0e /dev/da4s0e /dev/da5s0e
+# ccdconfig ccd0 128 CCDF_MIRROR /dev/da2s0e /dev/da4s0e
 .Ed
 .Pp
 When you create a new ccd disk you generally want to
@@ -196,14 +196,12 @@ you have A ccd disk with 10000 sectors you might create a 'd' partition
 with offset 16 and size 9984.
 .Pp
 .Bd -literal
-# disklabel -r -w ccd0c auto
-# disklabel -e ccd0c
+# disklabel -r -w ccd0s0 auto
+# disklabel -e ccd0s0
 .Ed
 .Pp
-The disklabeling of a ccd disk is usually a one-time affair.  Unlike other
-devices, ccd currently requires that you specify partition 'c' when
-running disklabel.  If you reboot the machine and reconfigure the ccd disk,
-the disklabel you
+The disklabeling of a ccd disk is usually a one-time affair.
+If you reboot the machine and reconfigure the ccd disk, the disklabel you
 had created before will still be there and not require reinitialization.
 Beware that changing any ccd parameters: interleave, flags, or the
 device list making up the ccd disk, will usually destroy any prior

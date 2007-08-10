@@ -36,7 +36,7 @@
 .\"
 .\"     @(#)vnconfig.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/usr.sbin/vnconfig/vnconfig.8,v 1.14.2.8 2003/01/04 22:35:53 keramida Exp $
-.\" $DragonFly: src/usr.sbin/vnconfig/vnconfig.8,v 1.4 2007/02/19 11:10:12 swildner Exp $
+.\" $DragonFly: src/usr.sbin/vnconfig/vnconfig.8,v 1.4.2.1 2007/08/10 18:35:06 swildner Exp $
 .\"
 .Dd July 8, 1993
 .Dt VNCONFIG 8
@@ -213,15 +213,15 @@ default configuration file for
 option
 .El
 .Sh EXAMPLES
-.Dl vnconfig vn0c /tmp/diskimage
+.Dl vnconfig vn0 /tmp/diskimage
 .Pp
 Configures the vnode disk
-.Pa vn0c .
+.Pa vn0 .
 .Pp
-.Dl vnconfig -e vn0c /var/swapfile swap
+.Dl vnconfig -e vn0 /var/swapfile swap
 .Pp
 Configures
-.Pa vn0c
+.Pa vn0
 and enables swapping on it.
 .Pp
 .Dl vnconfig -c -v /dev/vn0 cdimage.iso
@@ -230,14 +230,14 @@ and enables swapping on it.
 Mount an ISO9660 CD image file.
 .Pp
 .Dl umount /mnt
-.Dl vnconfig -u vn0c
+.Dl vnconfig -u vn0
 .Pp
 Unmount the CD image file.
 .Pp
-.Dl vnconfig -d vn0c myfilesystem mount=/mnt
+.Dl vnconfig -d vn0 myfilesystem mount=/mnt
 .Pp
 Unmounts (disables)
-.Pa vn0c .
+.Pa vn0 .
 .Pp
 .Dl vnconfig -ae
 .Pp
@@ -245,8 +245,8 @@ Configures and enables all devices specified in
 .Pa /etc/vntab .
 .Pp
 .Dl vnconfig -s labels -c vn0 somebackingfile
-.Dl disklabel -r -w vn0 auto
-.Dl disklabel -e vn0
+.Dl disklabel -r -w vn0s0 auto
+.Dl disklabel -e vn0s0
 .Pp
 Is an example of how to configure a file-backed VN disk with a disk label
 and to initialize and then edit the label.  Once you create the label, you
@@ -258,9 +258,9 @@ relabeling and recreating the filesystem.  It is even possible to fsck the
 VN partitions that previously contained filesystems.
 .Pp
 .Dl vnconfig -e -s labels,reserve -S 400m vn1
-.Dl disklabel -r -w vn1 auto
-.Dl newfs /dev/vn1c
-.Dl mount /dev/vn1c /usr/obj
+.Dl disklabel -r -w vn1s0 auto
+.Dl newfs /dev/vn1s0
+.Dl mount /dev/vn1s0 /usr/obj
 .Pp
 Is an example of a swap-backed VN disk configuration.  This example assumes
 that you have at least 400 megabytes of swap free (and hopefully much more).

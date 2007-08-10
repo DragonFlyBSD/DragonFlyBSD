@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)swapon.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/sbin/swapon/swapon.8,v 1.15.2.2 2001/12/14 15:17:56 ru Exp $
-.\" $DragonFly: src/sbin/swapon/swapon.8,v 1.3 2006/02/17 19:33:33 swildner Exp $
+.\" $DragonFly: src/sbin/swapon/swapon.8,v 1.3.6.1 2007/08/10 18:35:06 swildner Exp $
 .\"
 .Dd June 5, 1993
 .Dt SWAPON 8
@@ -73,7 +73,7 @@ available to the system for swap allocation.
 .Bl -tag -width "/dev/{ad,da}?s?b" -compact
 .It Pa /dev/{ad,da}?s?b
 standard paging devices
-.It Pa /dev/vn0b
+.It Pa /dev/vn?s?b
 vnode disk paging device
 .It Pa /etc/fstab
 ASCII filesystem description table

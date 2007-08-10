@@ -34,13 +34,13 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.1 2007/06/19 02:53:55 dillon Exp $
+.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.1.2.1 2007/08/10 18:35:06 swildner Exp $
 .\"
-.Dd January 21, 2007
-.Dt DISKLABEL 8
+.Dd August 8, 2007
+.Dt DISKLABEL64 8
 .Os
 .Sh NAME
-.Nm disklabel
+.Nm disklabel64
 .Nd read and write disk pack label
 .Sh SYNOPSIS
 .Nm
@@ -550,11 +550,11 @@ track-to-track seek: 0  # milliseconds
 drivedata: 0
 
 16 partitions:
-#        size   offset    fstype   [fsize bsize bps/cpg]
-  a:    81920        0    4.2BSD     1024  8192    16   # (Cyl.    0 - 84*)
-  b:   160000    81920      swap                        # (Cyl.   84* - 218*)
-  c:  1173930        0    unused        0     0         # (Cyl.    0 - 1211*)
-  h:   962010   211920     vinum                        # (Cyl.  218*- 1211*)
+#        size   offset    fstype
+  a:    81920        0    4.2BSD
+  b:   160000    81920      swap
+  c:  1173930        0    unused
+  h:   962010   211920     vinum
 .Ed
 .Pp
 Lines starting with a
@@ -680,43 +680,11 @@ none of which are in current use.
 (See the definitions starting with
 .Dv FS_UNUSED
 in
-.In sys/disklabel.h
+.In sys/disklabel64.h
 for more details).
-.It Ar fsize
-For
-.Cm 4.2BSD
-and
-.Tn LFS
-file systems only, the fragment size.
-Defaults to 1024 for partitions smaller than 1GB,
-2048 for partitions 1GB or larger.
-.It Ar bsize
-For
-.Cm 4.2BSD
-and
-.Tn LFS
-file systems only, the block size.
-Defaults to 8192 for partitions smaller than 1GB,
-16384 for partitions 1GB or larger.
-.It Ar bps/cpg
-For
-.Cm 4.2BSD
-file systems, the number of cylinders in a cylinder group.
-For
-.Tn LFS
-file systems, the segment shift value.
-Defaults to 16 for partitions smaller than 1GB,
-64 for partitions 1GB or larger.
 .El
-.Pp
-The remainder of the line is a comment and shows the cylinder allocations based
-on the obsolete (but possibly correct) geometry information about the drive.
-The asterisk
-.Pq Ql *
-indicates that the partition does not begin or end exactly on a
-cylinder boundary.
 .Sh EXAMPLES
-.Dl "disklabel da0s1"
+.Dl "disklabel64 da0s1"
 .Pp
 Display the in-core label for the first slice of the
 .Pa da0
@@ -727,7 +695,7 @@ disk, as obtained via
 the base disk name should be specified, such as
 .Pa da0 . )
 .Pp
-.Dl "disklabel da0s1 > savedlabel"
+.Dl "disklabel64 da0s1 > savedlabel"
 .Pp
 Save the in-core label for
 .Pa da0s1
@@ -737,7 +705,7 @@ This file can be used with the
 .Fl R
 option to restore the label at a later date.
 .Pp
-.Dl "disklabel -w -r /dev/da0s1 da2212 foo"
+.Dl "disklabel64 -w -r /dev/da0s1 da2212 foo"
 .Pp
 Create a label for
 .Pa da0s1
@@ -748,14 +716,14 @@ found in
 Any existing bootstrap code will be clobbered
 and the disk rendered unbootable.
 .Pp
-.Dl "disklabel -e -r da0s1"
+.Dl "disklabel64 -e -r da0s1"
 .Pp
 Read the on-disk label for
 .Pa da0s1 ,
 edit it, and reinstall in-core as well as on-disk.
 Existing bootstrap code is unaffected.
 .Pp
-.Dl "disklabel -e -r -n da0s1"
+.Dl "disklabel64 -e -r -n da0s1"
 .Pp
 Read the on-disk label for
 .Pa da0s1 ,
@@ -764,7 +732,7 @@ It does
 .Em not
 install the new label either in-core or on-disk.
 .Pp
-.Dl "disklabel -r -w da0s1 auto"
+.Dl "disklabel64 -r -w da0s1 auto"
 .Pp
 Try to auto-detect the required information from
 .Pa da0s1 ,
@@ -774,7 +742,7 @@ Use another
 command to edit the
 partitioning and file system information.
 .Pp
-.Dl "disklabel -R da0s1 savedlabel"
+.Dl "disklabel64 -R da0s1 savedlabel"
 .Pp
 Restore the on-disk and in-core label for
 .Pa da0s1
@@ -782,7 +750,7 @@ from information in
 .Pa savedlabel .
 Existing bootstrap code is unaffected.
 .Pp
-.Dl "disklabel -R -n da0s1 label_layout"
+.Dl "disklabel64 -R -n da0s1 label_layout"
 .Pp
 Display what the label would be for
 .Pa da0s1
@@ -795,7 +763,7 @@ or
 .Cm *
 partition sizes.
 .Pp
-.Dl disklabel -B da0s1
+.Dl disklabel64 -B da0s1
 .Pp
 Install a new bootstrap on
 .Pa da0s1 .
@@ -805,7 +773,7 @@ and possibly
 .Pa /boot/boot2 .
 On-disk and in-core labels are unchanged.
 .Pp
-.Dl disklabel -w -B /dev/da0s1 -b newboot1 -s newboot2 da2212
+.Dl disklabel64 -w -B /dev/da0s1 -b newboot1 -s newboot2 da2212
 .Pp
 Install a new label and bootstrap.
 The label is derived from disktab information for
@@ -819,8 +787,8 @@ and
 .Dl dd if=/dev/zero of=/dev/da0 bs=512 count=32
 .Dl fdisk -BI da0
 .Dl dd if=/dev/zero of=/dev/da0s1 bs=512 count=32
-.Dl disklabel -w -B da0s1 auto
-.Dl disklabel -e da0s1
+.Dl disklabel64 -w -B da0s1 auto
+.Dl disklabel64 -e da0s1
 .Pp
 Completely wipe any prior information on the disk, creating a new bootable
 disk with a DOS partition table containing one
@@ -838,7 +806,7 @@ and
 .Cm * ,
 which could be used as a source file for
 .Pp
-.Dl disklabel -R ad0s1c new_label_file
+.Dl disklabel64 -R ad0s1c new_label_file
 .Bd -literal -offset 4n
 # /dev/ad0s1c:
 type: ESDI
@@ -860,8 +828,8 @@ track-to-track seek: 0	# milliseconds
 drivedata: 0
 
 16 partitions:
-#        size   offset    fstype   [fsize bsize bps/cpg]
-  a:   400M        0    4.2BSD     4096 16384    75 	# (Cyl.    0 - 812*)
+#        size   offset    fstype
+  a:   400M        0    4.2BSD
   b:     1G        *      swap
   c:      *        *    unused
   e: 204800        *    4.2BSD
@@ -900,7 +868,7 @@ Conversely, if a partition has a type other than FS_UNUSED or FS_BOOT,
 will not install bootstrap code that overlaps it.
 .Sh SEE ALSO
 .Xr ccd 4 ,
-.Xr disklabel 5 ,
+.Xr disklabel64 5 ,
 .Xr disktab 5 ,
 .Xr boot0cfg 8 ,
 .Xr diskinfo 8 ,
