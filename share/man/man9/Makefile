@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.57 2007/08/01 21:56:40 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.58 2007/08/10 18:53:19 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -118,6 +118,7 @@ MAN=	accept_filter.9 \
 	sysctl.9 \
 	sysctl_add_oid.9 \
 	sysctl_ctx_init.9 \
+	taskqueue.9 \
 	time.9 \
 	timeout.9 \
 	tvtohz.9 \
@@ -475,6 +476,14 @@ MLINKS+=sysctl_ctx_init.9 sysctl_ctx_entry_add.9 \
 	sysctl_ctx_init.9 sysctl_ctx_entry_del.9 \
 	sysctl_ctx_init.9 sysctl_ctx_entry_find.9 \
 	sysctl_ctx_init.9 sysctl_ctx_free.9
+MLINKS+=taskqueue.9 TASK_INIT.9 \
+	taskqueue.9 taskqueue_create.9 \
+	taskqueue.9 TASKQUEUE_DECLARE.9 \
+	taskqueue.9 TASKQUEUE_DEFINE.9 \
+	taskqueue.9 taskqueue_enqueue.9 \
+	taskqueue.9 taskqueue_find.9 \
+	taskqueue.9 taskqueue_free.9 \
+	taskqueue.9 taskqueue_run.9
 MLINKS+=time.9 boottime.9 \
 	time.9 mono_time.9 \
 	time.9 runtime.9
