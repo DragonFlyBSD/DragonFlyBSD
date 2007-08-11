@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_norm.c,v 1.10 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: pf_norm.c,v 1.80.2.1 2004/04/30 21:46:33 brad Exp $ */
 /* add	$OpenBSD: pf_norm.c,v 1.87 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.7 2006/12/22 23:44:57 swildner Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.8 2007/08/11 18:51:34 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -495,8 +495,22 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 		m2 = frent->fr_m;
 		pool_put(&pf_frent_pl, frent);
 		pf_nfrents--;
+		m->m_pkthdr.csum_flags &= m2->m_pkthdr.csum_flags;
+		m->m_pkthdr.csum_data += m2->m_pkthdr.csum_data;
 		m_cat(m, m2);
 	}
+
+	/*
+	 * Note: this 1's complement optimization with <= 65535 fragments.
+	 *
+	 * Handle 1's complement carry for the 16 bit result.  This can
+	 * result in another carry which must also be handled.
+	 */
+	m->m_pkthdr.csum_data = (m->m_pkthdr.csum_data & 0xffff) +
+				(m->m_pkthdr.csum_data >> 16);
+	if (m->m_pkthdr.csum_data > 0xFFFF)
+		m->m_pkthdr.csum_data -= 0xFFFF;
+
 
 	ip->ip_src = (*frag)->fr_src;
 	ip->ip_dst = (*frag)->fr_dst;
