@@ -65,7 +65,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.63 2007/08/09 01:10:04 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.64 2007/08/11 23:11:22 josepht Exp $
  */
 
 #include "opt_param.h"
@@ -223,9 +223,9 @@ SYSCTL_PROC(_kern_ipc, OID_AUTO, showmbufs, CTLFLAG_RD|CTLTYPE_STRING,
 static void mbinit(void *);
 SYSINIT(mbuf, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, mbinit, NULL)
 
-static u_long	mbtypes[MT_NTYPES];
+static u_long	mbtypes[SMP_MAXCPU][MT_NTYPES];
 
-struct mbstat mbstat;
+static struct mbstat mbstat[SMP_MAXCPU];
 int	max_linkhdr;
 int	max_protohdr;
 int	max_hdr;
@@ -254,9 +254,69 @@ SYSCTL_INT(_kern_ipc, KIPC_MAX_DATALEN, max_datalen, CTLFLAG_RW,
 	   &max_datalen, 0, "");
 SYSCTL_INT(_kern_ipc, OID_AUTO, mbuf_wait, CTLFLAG_RW,
 	   &mbuf_wait, 0, "");
-SYSCTL_STRUCT(_kern_ipc, KIPC_MBSTAT, mbstat, CTLFLAG_RW, &mbstat, mbstat, "");
-SYSCTL_OPAQUE(_kern_ipc, OID_AUTO, mbtypes, CTLFLAG_RD, mbtypes,
-	   sizeof(mbtypes), "LU", "");
+static int do_mbstat(SYSCTL_HANDLER_ARGS);
+
+SYSCTL_PROC(_kern_ipc, KIPC_MBSTAT, mbstat, CTLTYPE_STRUCT|CTLFLAG_RD,
+	0, 0, do_mbstat, "S,mbstat", "");
+
+static int do_mbtypes(SYSCTL_HANDLER_ARGS);
+
+SYSCTL_PROC(_kern_ipc, OID_AUTO, mbtypes, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, do_mbtypes, "LU", "");
+
+static int
+do_mbstat(SYSCTL_HANDLER_ARGS)
+{
+	struct mbstat mbstat_total;
+	struct mbstat *mbstat_totalp;
+	int i;
+
+	bzero(&mbstat_total, sizeof(mbstat_total));
+	mbstat_totalp = &mbstat_total;
+
+	for (i = 0; i < ncpus; i++)
+	{
+		mbstat_total.m_mbufs += mbstat[i].m_mbufs;	
+		mbstat_total.m_clusters += mbstat[i].m_clusters;	
+		mbstat_total.m_spare += mbstat[i].m_spare;	
+		mbstat_total.m_clfree += mbstat[i].m_clfree;	
+		mbstat_total.m_drops += mbstat[i].m_drops;	
+		mbstat_total.m_wait += mbstat[i].m_wait;	
+		mbstat_total.m_drain += mbstat[i].m_drain;	
+		mbstat_total.m_mcfail += mbstat[i].m_mcfail;	
+		mbstat_total.m_mpfail += mbstat[i].m_mpfail;	
+
+	}
+	/*
+	 * The following fields are not cumulative fields so just
+	 * get their values once.
+	 */
+	mbstat_total.m_msize = mbstat[0].m_msize;	
+	mbstat_total.m_mclbytes = mbstat[0].m_mclbytes;	
+	mbstat_total.m_minclsize = mbstat[0].m_minclsize;	
+	mbstat_total.m_mlen = mbstat[0].m_mlen;	
+	mbstat_total.m_mhlen = mbstat[0].m_mhlen;	
+
+	return(sysctl_handle_opaque(oidp, mbstat_totalp, sizeof(mbstat_total), req));
+}
+
+static int
+do_mbtypes(SYSCTL_HANDLER_ARGS)
+{
+	u_long totals[MT_NTYPES];
+	int i, j;
+
+	for (i = 0; i < MT_NTYPES; i++)
+		totals[i] = 0;
+
+	for (i = 0; i < ncpus; i++)
+	{
+		for (j = 0; j < MT_NTYPES; j++)
+			totals[j] += mbtypes[i][j];
+	}
+
+	return(sysctl_handle_opaque(oidp, totals, sizeof(totals), req));
+}
 
 /*
  * These are read-only because we do not currently have any code
@@ -469,11 +529,16 @@ struct objcache_malloc_args mclmeta_malloc_args =
 static void
 mbinit(void *dummy)
 {
-	mbstat.m_msize = MSIZE;
-	mbstat.m_mclbytes = MCLBYTES;
-	mbstat.m_minclsize = MINCLSIZE;
-	mbstat.m_mlen = MLEN;
-	mbstat.m_mhlen = MHLEN;
+	int i;
+
+	for (i = 0; i < ncpus; i++)
+	{
+		atomic_set_long_nonlocked(&mbstat[i].m_msize, MSIZE);
+		atomic_set_long_nonlocked(&mbstat[i].m_mclbytes, MCLBYTES);
+		atomic_set_long_nonlocked(&mbstat[i].m_minclsize, MINCLSIZE);
+		atomic_set_long_nonlocked(&mbstat[i].m_mlen, MLEN);
+		atomic_set_long_nonlocked(&mbstat[i].m_mhlen, MHLEN);
+	}
 
 	mbuf_cache = objcache_create("mbuf", nmbufs, 0,
 	    mbuf_ctor, NULL, NULL,
@@ -519,11 +584,11 @@ m_sharecount(struct mbuf *m)
 void
 m_chtype(struct mbuf *m, int type)
 {
-	crit_enter();
-	++mbtypes[type];
-	--mbtypes[m->m_type];
-	m->m_type = type;
-	crit_exit();
+	struct globaldata *gd = mycpu;
+
+	atomic_add_long_nonlocked(&mbtypes[gd->gd_cpuid][type], 1);
+	atomic_subtract_long_nonlocked(&mbtypes[gd->gd_cpuid][m->m_type], 1);
+	atomic_set_short_nonlocked(&m->m_type, type);
 }
 
 static void
@@ -540,19 +605,20 @@ m_reclaim(void)
 		}
 	}
 	crit_exit();
-	mbstat.m_drain++;
+	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_drain, 1);
 }
 
 static void __inline
 updatestats(struct mbuf *m, int type)
 {
+	struct globaldata *gd = mycpu;
 	m->m_type = type;
 
-	crit_enter();
 	mbuftrack(m);
-	++mbtypes[type];
-	++mbstat.m_mbufs;
-	crit_exit();
+
+	atomic_add_long_nonlocked(&mbtypes[gd->gd_cpuid][type], 1);
+	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mbufs, 1);
+
 }
 
 /*
@@ -671,11 +737,10 @@ retryonce:
 
 	m->m_type = type;
 
-	crit_enter();
 	mbuftrack(m);
-	++mbtypes[type];
-	++mbstat.m_clusters;
-	crit_exit();
+
+	atomic_add_long_nonlocked(&mbtypes[mycpu->gd_cpuid][type], 1);
+	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
 	return (m);
 }
 
@@ -744,10 +809,7 @@ m_mclget(struct mbuf *m, int how)
 	mcl = objcache_get(mclmeta_cache, MBTOM(how));
 	if (mcl != NULL) {
 		linkcluster(m, mcl);
-		crit_enter();
-		++mbstat.m_clusters;
-		/* leave the m_mbufs count intact for original mbuf */
-		crit_exit();
+		atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
 	}
 }
 
@@ -807,9 +869,10 @@ struct mbuf *
 m_free(struct mbuf *m)
 {
 	struct mbuf *n;
+	struct globaldata *gd = mycpu;
 
 	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf %p", m));
-	--mbtypes[m->m_type];
+	atomic_subtract_long_nonlocked(&mbtypes[gd->gd_cpuid][m->m_type], 1);
 
 	n = m->m_next;
 
@@ -881,7 +944,7 @@ m_free(struct mbuf *m)
 				objcache_put(mbufphdrcluster_cache, m);
 			else
 				objcache_put(mbufcluster_cache, m);
-			--mbstat.m_clusters;
+			atomic_subtract_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
 		} else {
 			/*
 			 * Hell.  Someone else has a ref on this cluster,
@@ -911,7 +974,7 @@ m_free(struct mbuf *m)
 		 * mbuf.
 		 */
 		if (m_sharecount(m) == 1)
-			--mbstat.m_clusters;
+			atomic_subtract_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
 		/* fall through */
 	case M_EXT:
 		/*
@@ -932,7 +995,7 @@ m_free(struct mbuf *m)
 			m->m_data = m->m_dat;
 			objcache_put(mbuf_cache, m);
 		}
-		--mbstat.m_mbufs;
+		atomic_subtract_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mbufs, 1);
 		break;
 	default:
 		if (!panicstr)
@@ -1056,11 +1119,11 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 		np = &n->m_next;
 	}
 	if (top == NULL)
-		mbstat.m_mcfail++;
+		atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
 	return (top);
 nospace:
 	m_freem(top);
-	mbstat.m_mcfail++;
+	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
 	return (NULL);
 }
 
@@ -1122,7 +1185,7 @@ m_copypacket(struct mbuf *m, int how)
 	return top;
 nospace:
 	m_freem(top);
-	mbstat.m_mcfail++;
+	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
 	return (NULL);
 }
 
@@ -1215,7 +1278,7 @@ m_dup(struct mbuf *m, int how)
 nospace:
 	m_freem(top);
 nospace0:
-	mbstat.m_mcfail++;
+	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
 	return (NULL);
 }
 
@@ -1378,7 +1441,7 @@ m_pullup(struct mbuf *n, int len)
 	return (m);
 bad:
 	m_freem(n);
-	mbstat.m_mpfail++;
+	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
 	return (NULL);
 }
 

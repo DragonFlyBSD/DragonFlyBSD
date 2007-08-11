@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.38 2007/08/09 01:10:06 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.39 2007/08/11 23:11:23 josepht Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -413,7 +413,6 @@ extern	int		 max_linkhdr;	/* largest link-level header */
 extern	int		 max_protohdr;	/* largest protocol header */
 extern	int		 max_hdr;	/* largest link+protocol header */
 extern	int		 max_datalen;	/* MHLEN - max_hdr */
-extern	struct mbstat	 mbstat;
 extern	int		 mbuf_wait;	/* mbuf sleep time */
 extern	int		 nmbclusters;
 extern	int		 nmbufs;
