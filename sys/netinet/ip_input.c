@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.67 2007/05/23 08:57:09 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.67.2.1 2007/08/11 17:56:55 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -1292,6 +1292,15 @@ inserted:
 		m->m_pkthdr.csum_data += q->m_pkthdr.csum_data;
 		m_cat(m, q);
 	}
+
+	/*
+	 * Clean up the 1's complement checksum.  Carry over 16 bits must
+	 * be added back.  This assumes no more then 65535 packet fragments
+	 * were reassembled.
+	 */
+	m->m_pkthdr.csum_data = (m->m_pkthdr.csum_data & 0xffff) +
+				(m->m_pkthdr.csum_data >> 16);
+
 
 #ifdef IPDIVERT
 	/*
