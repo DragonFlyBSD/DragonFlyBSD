@@ -26,7 +26,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/burncd/burncd.8,v 1.6.2.8 2003/03/12 22:08:13 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/burncd/burncd.8,v 1.6 2007/05/19 17:32:13 swildner Exp $
+.\" $DragonFly: src/usr.sbin/burncd/burncd.8,v 1.7 2007/08/11 01:13:31 swildner Exp $
 .\"
 .Dd December 4, 2001
 .Os
@@ -148,19 +148,19 @@ refers to stdin, and can only be used once.
 .Sh EXAMPLES
 The typical usage for burning a data CD-R:
 .Pp
-.D1 burncd -f /dev/acd0c data Ar file1 No fixate
+.Dl "burncd -f /dev/acd0c data file1 fixate"
 .Pp
 The typical usage for burning an audio CD-R:
 .Pp
-.D1 burncd -f /dev/acd0c audio Ar file1 file2 file3 No Fixate
+.Dl "burncd -f /dev/acd0c audio file1 file2 file3 fixate"
 .Pp
 The typical usage for burning an audio CD-R in DAO mode:
 .Pp
-.D1 burncd -f /dev/acd0c -d audio Ar file1 file2 file3
+.Dl "burncd -f /dev/acd0c -d audio file1 file2 file3"
 .Pp
 The typical usage for burning a mixed mode CD-R:
 .Pp
-.D1 burncd -f /dev/acd0c data Ar file1 No audio Ar file2 file3 No fixate
+.Dl "burncd -f /dev/acd0c data file1 audio file2 file3 fixate"
 .Pp
 The typical usage for burning from a compressed image file on stdin:
 .Pp
