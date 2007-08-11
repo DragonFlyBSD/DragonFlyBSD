@@ -34,9 +34,9 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.17 2007/08/08 22:46:48 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.18 2007/08/11 01:47:04 swildner Exp $
 .\"
-.Dd August 8, 2007
+.Dd August 10, 2007
 .Dt DISKLABEL 8
 .Os
 .Sh NAME
@@ -134,20 +134,12 @@ All
 forms require a disk device name, which should always be the raw
 device name representing the disk or slice.
 For example
-.Pa da0
+.Pa da0s0
 represents the entire disk regardless of any DOS partitioning,
+this is called the compatibility slice,
 and
 .Pa da0s1
-represents a slice.
-Some devices, most notably
-.Ar ccd ,
-require that the
-.Dq whole-disk
-(or
-.Dq c )
-partition be specified.
-For example
-.Pa ccd0c .
+represents a BSD slice.
 You do not have to include the
 .Pa /dev/
 path prefix when specifying the device.
@@ -165,9 +157,9 @@ without options:
 .Pp
 .Ar disk
 represents the raw disk in question, and may be in the form
-.Pa da0
+.Pa da0s1
 or
-.Pa /dev/da0c .
+.Pa /dev/da0s1 .
 It will display all of the parameters associated with the drive and its
 partition layout.
 Unless the
@@ -324,9 +316,10 @@ To restore a disk label from a file, use the form
 .Ar disk Ar protofile
 .Pp
 .Nm
-is capable of restoring a disk label that was previously saved in a file in ASCII format.
-The prototype file used to create the label should be in the same format as that
-produced when reading or editing a label.
+is capable of restoring a disk label that was previously saved in a file
+in ASCII format.
+The prototype file used to create the label should be in the same format
+as that produced when reading or editing a label.
 Comments are delimited by
 .Ar \&#
 and newline.
@@ -371,12 +364,12 @@ are used to install bootstrap code.
 If you are creating a
 .Dq dangerously-dedicated
 slice for compatibility with older PC systems,
-you generally want to specify the raw disk name such as
-.Pa da0 .
+you generally want to specify the compatibility slice, such as
+.Pa da0s0 .
 If you are creating a label within an existing DOS slice,
 you should specify
-the partition name such as
-.Pa da0s1a .
+the slice name such as
+.Pa da0s1 .
 Making a slice bootable can be tricky.
 If you are using a normal DOS
 slice you typically install (or leave) a standard MBR on the base disk and
@@ -395,11 +388,12 @@ bootblocks in the slice.
 .Pp
 This form installs the bootstrap only.
 It does not change the disk label.
-You should never use this command on a base disk unless you intend to create a
+You should never use this command on the compatibility slice unless you
+intend to create a
 .Dq dangerously-dedicated
 disk, such as
-.Ar da0 .
-This command is typically run on a slice such as
+.Ar da0s0 .
+This command is typically run on a BSD slice such as
 .Ar da0s1 .
 .Pp
 .Nm
@@ -417,10 +411,11 @@ This form corresponds to the
 .Dq write label
 command described above.
 In addition to writing a new volume label, it also installs the bootstrap.
-If run on a base disk this command will create a
+If run on the compatibility slice this command will create a
 .Dq dangerously-dedicated
 label.
-This command is normally run on a slice rather than a base disk.
+This command is normally run on a BSD slice rather than the compatibility
+slice.
 If
 .Fl n
 is used, no data will be written to the device, and instead the
@@ -441,10 +436,11 @@ This form corresponds to the
 .Dq restore label
 command described above.
 In addition to restoring the volume label, it also installs the bootstrap.
-If run on a base disk this command will create a
+If run on the compatibility slice this command will create a
 .Dq dangerously-dedicated
 label.
-This command is normally run on a slice rather than a base disk.
+This command is normally run on a BSD slice rather than the compatibility
+slice.
 .Pp
 The bootstrap commands always access the disk directly, so it is not necessary
 to specify the
@@ -573,7 +569,7 @@ version of the label when examining, editing, or restoring a disk
 label.
 The format is:
 .Bd -literal -offset 4n
-# /dev/da1c:
+# /dev/da0s1:
 type: SCSI
 disk: da0s1
 label:
@@ -593,11 +589,12 @@ track-to-track seek: 0  # milliseconds
 drivedata: 0
 
 16 partitions:
-#        size   offset    fstype
-  a:    81920        0    4.2BSD	#      40.000M
-  b:   160000    81920      swap	#      78.125M
-  c:  1173930        0    unused	#     573.208M
-  h:   962010   211920     vinum	#     469.731M
+#          size     offset    fstype
+  a:      81920          0    4.2BSD	#      40.000M
+  b:     160000      81920      swap	#      78.125M
+  c:    1173930          0    unused	#     573.208M
+  g:     320000     241920       ccd	#     156.250M
+  h:     612010     561920     vinum	#     298.833M
 .Ed
 .Pp
 Lines starting with a
@@ -644,7 +641,7 @@ It contains the following information:
 The partition identifier is a single letter in the range
 .Ql a
 to
-.Ql h .
+.Ql p .
 By convention, partition
 .Ql c
 is reserved to describe the entire disk.
@@ -698,10 +695,12 @@ Describes the purpose of the partition.
 The example shows all currently used partition types.
 For
 .Tn UFS
-file systems and
+file systems, use type
+.Cm 4.2BSD .
+For
 .Xr ccd 4
 partitions, use type
-.Cm 4.2BSD .
+.Cm ccd .
 For Vinum drives, use type
 .Cm vinum .
 Other common types are
@@ -723,7 +722,7 @@ none of which are in current use.
 (See the definitions starting with
 .Dv FS_UNUSED
 in
-.In sys/disklabel.h
+.In sys/dtype.h
 for more details).
 .El
 .Pp
@@ -755,8 +754,8 @@ disk, as obtained via
 .Pa /dev/da0s1 .
 (If the disk is
 .Dq dangerously-dedicated ,
-the base disk name should be specified, such as
-.Pa da0 . )
+the compatibility slice name should be specified, such as
+.Pa da0s0 . )
 .Pp
 .Dl "disklabel da0s1 > savedlabel"
 .Pp
@@ -871,9 +870,9 @@ and
 .Cm * ,
 which could be used as a source file for
 .Pp
-.Dl disklabel -R ad0s1c new_label_file
+.Dl disklabel -R ad0s1 new_label_file
 .Bd -literal -offset 4n
-# /dev/ad0s1c:
+# /dev/ad0s1:
 type: ESDI
 disk: ad0s1
 label:
@@ -893,13 +892,13 @@ track-to-track seek: 0	# milliseconds
 drivedata: 0
 
 16 partitions:
-#        size   offset    fstype
-  a:   400M        0    4.2BSD
-  b:     1G        *      swap
-  c:      *        *    unused
-  e: 204800        *    4.2BSD
-  f:     5g        *    4.2BSD
-  g:      *        *    4.2BSD
+#          size     offset    fstype
+  a:       400M          0    4.2BSD
+  b:         1G          *      swap
+  c:          *          *    unused
+  e:     204800          *    4.2BSD
+  f:         5g          *    4.2BSD
+  g:          *          *    4.2BSD
 .Ed
 .Sh DIAGNOSTICS
 The kernel device drivers will not allow the size of a disk partition
@@ -910,8 +909,8 @@ if a disk is unlabeled; thus, the label must be written to the
 partition of the disk while it is open.
 This sometimes requires the desired
 label to be set in two steps, the first one creating at least one other
-partition, and the second setting the label on the new partition while shrinking
-the
+partition, and the second setting the label on the new partition while
+shrinking the
 .Dq a
 partition.
 .Pp
