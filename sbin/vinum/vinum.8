@@ -32,9 +32,9 @@
 .\"
 .\" $Id: vinum.8,v 1.48 2001/01/15 22:15:05 grog Exp $
 .\" $FreeBSD: src/sbin/vinum/vinum.8,v 1.33.2.10 2002/12/29 16:35:38 schweikh Exp $
-.\" $DragonFly: src/sbin/vinum/vinum.8,v 1.6 2007/01/20 19:20:39 dillon Exp $
+.\" $DragonFly: src/sbin/vinum/vinum.8,v 1.7 2007/08/11 22:57:42 swildner Exp $
 .\"
-.Dd December 20, 2000
+.Dd August 11, 2007
 .Dt VINUM 8
 .Os
 .Sh NAME
@@ -1432,7 +1432,7 @@ command.
 .Pp
 See above for the description of the commands.  Here are some examples, all
 performed with the same collection of disks.  Note that the first drive,
-.Pa /dev/da1h ,
+.Pa /dev/da1s0h ,
 is smaller than the others.  This has an effect on the sizes chosen for each
 kind of subdisk.
 .Pp
@@ -1446,16 +1446,16 @@ option, these commands produce no output.
 Use a volume with a single concatenated plex for the largest possible storage
 without resilience to drive failures:
 .Bd -literal
-vinum -> concat -v /dev/da1h /dev/da2h /dev/da3h /dev/da4h
+vinum -> concat -v /dev/da1s0h /dev/da2s0h /dev/da3s0h /dev/da4s0h
 volume vinum0
   plex name vinum0.p0 org concat
-drive vinumdrive0 device /dev/da1h
+drive vinumdrive0 device /dev/da1s0h
     sd name vinum0.p0.s0 drive vinumdrive0 size 0
-drive vinumdrive1 device /dev/da2h
+drive vinumdrive1 device /dev/da2s0h
     sd name vinum0.p0.s1 drive vinumdrive1 size 0
-drive vinumdrive2 device /dev/da3h
+drive vinumdrive2 device /dev/da3s0h
     sd name vinum0.p0.s2 drive vinumdrive2 size 0
-drive vinumdrive3 device /dev/da4h
+drive vinumdrive3 device /dev/da4s0h
     sd name vinum0.p0.s3 drive vinumdrive3 size 0
 V vinum0                State: up       Plexes:       1 Size:       2134 MB
 P vinum0.p0           C State: up       Subdisks:     4 Size:       2134 MB
@@ -1472,11 +1472,11 @@ A volume with a single striped plex may give better performance than a
 concatenated plex, but restrictions on striped plexes can mean that the volume
 is smaller.  It will also not be resilient to a drive failure:
 .Bd -literal
-vinum -> stripe -v /dev/da1h /dev/da2h /dev/da3h /dev/da4h
-drive vinumdrive0 device /dev/da1h
-drive vinumdrive1 device /dev/da2h
-drive vinumdrive2 device /dev/da3h
-drive vinumdrive3 device /dev/da4h
+vinum -> stripe -v /dev/da1s0h /dev/da2s0h /dev/da3s0h /dev/da4s0h
+drive vinumdrive0 device /dev/da1s0h
+drive vinumdrive1 device /dev/da2s0h
+drive vinumdrive2 device /dev/da3s0h
+drive vinumdrive3 device /dev/da4s0h
 volume vinum0
   plex name vinum0.p0 org striped 256k
     sd name vinum0.p0.s0 drive vinumdrive0 size 849825b
@@ -1496,11 +1496,11 @@ available disk, so the resulting volume is only 1659 MB in size.
 .Ss Mirrored volume with two concatenated plexes
 For more reliability, use a mirrored, concatenated volume:
 .Bd -literal
-vinum -> mirror -v -n mirror /dev/da1h /dev/da2h /dev/da3h /dev/da4h
-drive vinumdrive0 device /dev/da1h
-drive vinumdrive1 device /dev/da2h
-drive vinumdrive2 device /dev/da3h
-drive vinumdrive3 device /dev/da4h
+vinum -> mirror -v -n mirror /dev/da1s0h /dev/da2s0h /dev/da3s0h /dev/da4s0h
+drive vinumdrive0 device /dev/da1s0h
+drive vinumdrive1 device /dev/da2s0h
+drive vinumdrive2 device /dev/da3s0h
+drive vinumdrive3 device /dev/da4s0h
 volume mirror setupstate
   plex name mirror.p0 org concat
     sd name mirror.p0.s0 drive vinumdrive0 size 0b
@@ -1529,11 +1529,11 @@ Alternatively, use the
 .Fl s
 option to create a mirrored volume with two striped plexes:
 .Bd -literal
-vinum -> mirror -v -n raid10 -s /dev/da1h /dev/da2h /dev/da3h /dev/da4h
-drive vinumdrive0 device /dev/da1h
-drive vinumdrive1 device /dev/da2h
-drive vinumdrive2 device /dev/da3h
-drive vinumdrive3 device /dev/da4h
+vinum -> mirror -v -n raid10 -s /dev/da1s0h /dev/da2s0h /dev/da3s0h /dev/da4s0h
+drive vinumdrive0 device /dev/da1s0h
+drive vinumdrive1 device /dev/da2s0h
+drive vinumdrive2 device /dev/da3s0h
+drive vinumdrive3 device /dev/da4s0h
 volume raid10 setupstate
   plex name raid10.p0 org striped 256k
     sd name raid10.p0.s0 drive vinumdrive0 size 849825b
@@ -1597,7 +1597,7 @@ Define a drive.  The options are:
 Specify the device on which the drive resides.
 .Ar devicename
 must be the name of a disk partition, for example
-.Pa /dev/da1e
+.Pa /dev/da1s0e
 or
 .Pa /dev/ad3s2h ,
 and it must be of type
@@ -1768,12 +1768,12 @@ on the last drive specified.
 # Sample vinum configuration file
 #
 # Our drives
-drive drive1 device /dev/da1h
-drive drive2 device /dev/da2h
-drive drive3 device /dev/da3h
-drive drive4 device /dev/da4h
-drive drive5 device /dev/da5h
-drive drive6 device /dev/da6h
+drive drive1 device /dev/da1s0h
+drive drive2 device /dev/da2s0h
+drive drive3 device /dev/da3s0h
+drive drive4 device /dev/da4s0h
+drive drive5 device /dev/da5s0h
+drive drive6 device /dev/da6s0h
 # A volume with one striped plex
 volume tinyvol
  plex org striped 512b
@@ -1824,14 +1824,14 @@ to edit a partition type definition.  The following display shows a typical
 partition layout as shown by
 .Xr disklabel 8 :
 .Bd -literal
-8 partitions:
-#        size   offset    fstype   [fsize bsize bps/cpg]
-  a:    81920   344064    4.2BSD        0     0     0   # (Cyl.  240*- 297*)
-  b:   262144    81920      swap                        # (Cyl.   57*- 240*)
-  c:  4226725        0    unused        0     0         # (Cyl.    0 - 2955*)
-  e:    81920        0    4.2BSD        0     0     0   # (Cyl.    0 - 57*)
-  f:  1900000   425984    4.2BSD        0     0     0   # (Cyl.  297*- 1626*)
-  g:  1900741  2325984     vinum        0     0     0   # (Cyl. 1626*- 2955*)
+16 partitions:
+#          size     offset    fstype
+  a:      81920     344064    4.2BSD	#      40.000M
+  b:     262144      81920      swap	#     128.000M
+  c:    4226725          0    unused	#    2063.830M
+  e:      81920          0    4.2BSD	#      40.000M
+  f:    1900000     425984    4.2BSD	#     927.734M
+  g:    1900741    2325984     vinum	#     928.095M
 .Ed
 .Pp
 In this example, partition
@@ -1845,9 +1845,8 @@ and
 .Dq Li f
 may be used as
 .Em UFS
-file systems or
-.Em ccd
-partitions.  Partition
+file systems.
+Partition
 .Dq Li b
 is a swap partition, and partition
 .Dq Li c
@@ -1884,7 +1883,7 @@ disk partitions for
 They should be partitions, not devices, and they should not be partition
 .Dq Li c .
 For example, good names are
-.Pa /dev/da0e
+.Pa /dev/da0s0e
 or
 .Pa /dev/ad3s4a .
 Bad names are
@@ -1892,7 +1891,7 @@ Bad names are
 and
 .Pa /dev/da0s1 ,
 both of which represent a device, not a partition, and
-.Pa /dev/ad1c ,
+.Pa /dev/ad1s0c ,
 which represents a complete disk and should be of type
 .Em unused .
 See the example under
@@ -1908,11 +1907,11 @@ You may want to join up a number of small disks to make a reasonable sized file
 system.  For example, if you had five small drives and wanted to use all the
 space for a single volume, you might write a configuration file like:
 .Bd -literal -offset indent
-drive d1 device /dev/da2e
-drive d2 device /dev/da3e
-drive d3 device /dev/da4e
-drive d4 device /dev/da5e
-drive d5 device /dev/da6e
+drive d1 device /dev/da2s0e
+drive d2 device /dev/da3s0e
+drive d3 device /dev/da4s0e
+drive d4 device /dev/da5s0e
+drive d5 device /dev/da6s0e
 volume bigger
  plex org concat
    sd length 0 drive d1
@@ -1938,8 +1937,8 @@ or RAID-5, also called
 To set up mirroring, create multiple plexes in a volume.  For example, to create
 a mirrored volume of 2 GB, you might create the following configuration file:
 .Bd -literal -offset indent
-drive d1 device /dev/da2e
-drive d2 device /dev/da3e
+drive d1 device /dev/da2s0e
+drive d2 device /dev/da3s0e
 volume mirror
  plex org concat
    sd length 2g drive d1
@@ -1960,11 +1959,11 @@ To set up RAID-5, create a single plex of type
 For example, to create an equivalent resilient volume of 2 GB, you might use the
 following configuration file:
 .Bd -literal -offset indent
-drive d1 device /dev/da2e
-drive d2 device /dev/da3e
-drive d3 device /dev/da4e
-drive d4 device /dev/da5e
-drive d5 device /dev/da6e
+drive d1 device /dev/da2s0e
+drive d2 device /dev/da3s0e
+drive d3 device /dev/da4s0e
+drive d4 device /dev/da5s0e
+drive d5 device /dev/da6s0e
 volume raid
  plex org raid5 512k
    sd length 512m drive d1
@@ -1981,9 +1980,9 @@ this example, the total storage usage is 2.5 GB, compared to 4 GB for a mirrored
 configuration.  If you were to use the minimum of only three disks, you would
 require 3 GB to store the information, for example:
 .Bd -literal -offset indent
-drive d1 device /dev/da2e
-drive d2 device /dev/da3e
-drive d3 device /dev/da4e
+drive d1 device /dev/da2s0e
+drive d2 device /dev/da3s0e
+drive d3 device /dev/da4s0e
 volume raid
  plex org raid5 512k
    sd length 1g drive d1
@@ -2016,10 +2015,10 @@ To implement striping, use a
 .Cm striped
 plex:
 .Bd -literal -offset indent
-drive d1 device /dev/da2e
-drive d2 device /dev/da3e
-drive d3 device /dev/da4e
-drive d4 device /dev/da5e
+drive d1 device /dev/da2s0e
+drive d2 device /dev/da3s0e
+drive d3 device /dev/da4s0e
+drive d4 device /dev/da5s0e
 volume raid
  plex org striped 512k
    sd length 512m drive d1
@@ -2037,10 +2036,10 @@ RAID-0), though again this name is misleading.  With
 .Nm
 you can do this with the following configuration file:
 .Bd -literal -offset indent
-drive d1 device /dev/da2e
-drive d2 device /dev/da3e
-drive d3 device /dev/da4e
-drive d4 device /dev/da5e
+drive d1 device /dev/da2s0e
+drive d2 device /dev/da3s0e
+drive d3 device /dev/da4s0e
+drive d4 device /dev/da5s0e
 volume raid setupstate
  plex org striped 512k
    sd length 512m drive d1
@@ -2071,8 +2070,8 @@ and create the volumes.  In this example, the configuration is in the file
 .Pa configfile :
 .Bd -literal -offset 2n
 # vinum create -v configfile
-   1: drive d1 device /dev/da2e
-   2: drive d2 device /dev/da3e
+   1: drive d1 device /dev/da2s0e
+   2: drive d2 device /dev/da3s0e
    3: volume mirror
    4:  plex org concat
    5:    sd length 2g drive d1
@@ -2085,7 +2084,7 @@ Volumes:        1 (4 configured)
 Plexes:         2 (8 configured)
 Subdisks:       2 (16 configured)
 
-Drive d1:       Device /dev/da2e
+Drive d1:       Device /dev/da2s0e
                 Created on vinum.lemis.com at Tue Mar 23 12:30:31 1999
                 Config last updated Tue Mar 23 14:30:32 1999
                 Size:      60105216000 bytes (57320 MB)
@@ -2093,7 +2092,7 @@ Drive d1:       Device /dev/da2e
                 Available: 57957596672 bytes (55272 MB)
                 State: up
                 Last error: none
-Drive d2:       Device /dev/da3e
+Drive d2:       Device /dev/da3s0e
                 Created on vinum.lemis.com at Tue Mar 23 12:30:32 1999
                 Config last updated Tue Mar 23 14:30:33 1999
                 Size:      60105216000 bytes (57320 MB)
@@ -2156,8 +2155,8 @@ Volumes:        1 (4 configured)
 Plexes:         4 (8 configured)
 Subdisks:       4 (16 configured)
 
-D d1                    State: up       Device /dev/da2e        Avail: 53224/57320 MB (92%)
-D d2                    State: up       Device /dev/da3e        Avail: 53224/57320 MB (92%)
+D d1                    State: up       Device /dev/da2s0e      Avail: 53224/57320 MB (92%)
+D d2                    State: up       Device /dev/da3s0e      Avail: 53224/57320 MB (92%)
 
 V mirror                State: up       Plexes:       4 Size:       2048 MB
 
@@ -2183,13 +2182,13 @@ the drives that
 already knows about.  For example, to create a volume
 .Pa raid
 on the four drives
-.Pa /dev/da1e , /dev/da2e , /dev/da3e
+.Pa /dev/da1s0e , /dev/da2s0e , /dev/da3s0e
 and
-.Pa /dev/da4e ,
+.Pa /dev/da4s0e ,
 you only need to mention the other two:
 .Bd -literal -offset indent
-drive d3 device /dev/da1e
-drive d4 device /dev/da4e
+drive d3 device /dev/da1s0e
+drive d4 device /dev/da4s0e
 volume raid
   plex org raid5 512k
     sd size 2g drive d1
@@ -2208,10 +2207,10 @@ Volumes:        2 (4 configured)
 Plexes:         5 (8 configured)
 Subdisks:       8 (16 configured)
 
-D d1                    State: up       Device /dev/da2e        Avail: 51176/57320 MB (89%)
-D d2                    State: up       Device /dev/da3e        Avail: 53220/57320 MB (89%)
-D d3                    State: up       Device /dev/da1e        Avail: 53224/57320 MB (92%)
-D d4                    State: up       Device /dev/da4e        Avail: 53224/57320 MB (92%)
+D d1                    State: up       Device /dev/da2s0e      Avail: 51176/57320 MB (89%)
+D d2                    State: up       Device /dev/da3s0e      Avail: 53220/57320 MB (89%)
+D d3                    State: up       Device /dev/da1s0e      Avail: 53224/57320 MB (92%)
+D d4                    State: up       Device /dev/da4s0e      Avail: 53224/57320 MB (92%)
 
 V mirror                State: down     Plexes:       4 Size:       2048 MB
 V raid                  State: down     Plexes:       1 Size:       6144 MB
@@ -2458,19 +2457,8 @@ drives are
 .Ux
 disk partitions and must have the partition type
 .Em vinum .
-This is different from
-.Xr ccd 4 ,
-which expects partitions of type
-.Em 4.2BSD .
-This behaviour of
-.Nm ccd
-is an invitation to shoot yourself in the foot: with
-.Nm ccd
-you can easily overwrite a file system.
-.Nm
-will not permit this.
 .Pp
-For similar reasons, the
+The
 .Nm Ic start
 command will not accept a drive on partition
 .Dq Li c .
@@ -2571,9 +2559,9 @@ but now the preferred method is with
 .Nm Ic read
 should be used for maintenance purposes only.  Note that its syntax has changed,
 and the arguments must be disk slices, such as
-.Pa /dev/da0 ,
+.Pa /dev/da0s0 ,
 not partitions such as
-.Pa /dev/da0e .
+.Pa /dev/da0s0e .
 .El
 .Sh ENVIRONMENT
 .Bl -tag -width VINUM_DATEFORMAT

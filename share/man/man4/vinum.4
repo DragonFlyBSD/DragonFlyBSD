@@ -35,9 +35,9 @@
 .\" advised of the possibility of such damage.
 .\"
 .\" $FreeBSD: src/share/man/man4/vinum.4,v 1.22.2.9 2002/04/22 08:19:35 kuriyama Exp $
-.\" $DragonFly: src/share/man/man4/vinum.4,v 1.12 2007/07/30 22:11:32 swildner Exp $
+.\" $DragonFly: src/share/man/man4/vinum.4,v 1.13 2007/08/11 22:57:42 swildner Exp $
 .\"
-.Dd May 16, 2002
+.Dd August 11, 2007
 .Dt VINUM 4
 .Os
 .Sh NAME
@@ -344,22 +344,6 @@ In general,
 serves no useful purpose on a
 .Nm
 volume.
-If you run it, it will show you
-three partitions,
-.Ql a ,
-.Ql b
-and
-.Ql c ,
-all the same except for the
-.Va fstype ,
-for example:
-.Bd -literal
-3 partitions:
-#        size   offset    fstype   [fsize bsize bps/cpg]
-  a:     2048        0    4.2BSD     1024  8192     0   # (Cyl.    0 - 0)
-  b:     2048        0      swap                        # (Cyl.    0 - 0)
-  c:     2048        0    unused        0     0         # (Cyl.    0 - 0)
-.Ed
 .Pp
 .Nm
 ignores the
@@ -373,7 +357,7 @@ Since
 volumes do not contain partitions, the names do not need to conform to the
 standard rules for naming disk partitions.
 For a physical disk partition, the
-last letter of the device name specifies the partition identifier (a to h).
+last letter of the device name specifies the partition identifier (a to p).
 .Nm
 volumes need not conform to this convention, but if they do not,
 .Xr newfs 8
@@ -811,7 +795,7 @@ command, for example:
 .if t .vs -3
 .Bd -literal
 # \fBvinum dumpconfig\fP
-Drive 4:        Device /dev/da3h
+Drive 4:        Device /dev/da3s0h
                 Created on crash.lemis.com at Sat May 20 16:32:44 2000
                 Config last updated Sat May 20 16:32:56 2000
                 Size:        601052160 bytes (573 MB)
@@ -898,7 +882,7 @@ in
 does not contain symbols, you will not get an error message, but the stack trace
 will not show the symbols.
 Check the module before starting
-.Xr gdb 1 :
+.Xr kgdb 1 :
 .Bd -literal
 $ file /modules/vinum.ko
 /modules/vinum.ko: ELF 32-bit LSB shared object, Intel 80386,
@@ -936,7 +920,7 @@ to
 and enter:
 .Bd -literal -offset indent
 cd /var/crash
-gdb -k kernel.debug vmcore.5
+kgdb kernel.debug vmcore.5
 .Ed
 .Pp
 This example assumes that you have installed the correct debug kernel at
@@ -951,7 +935,7 @@ to
 and enter
 .Bd -literal -offset indent
 cd /var/crash
-gdb -k kernel.debug
+kgdb kernel.debug
 .Ed
 .Pp
 In this case, the
