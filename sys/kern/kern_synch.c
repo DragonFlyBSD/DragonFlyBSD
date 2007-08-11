@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.86 2007/06/08 02:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.87 2007/08/11 18:18:30 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -239,8 +239,14 @@ schedcpu_resource(struct proc *p, void *data __unused)
 
 	ttime = 0;
 	FOREACH_LWP_IN_PROC(lp, p) {
-		ttime += lp->lwp_thread->td_sticks;
-		ttime += lp->lwp_thread->td_uticks;
+		/*
+		 * We may have caught an lp in the middle of being
+		 * created, lwp_thread can be NULL.
+		 */
+		if (lp->lwp_thread) {
+			ttime += lp->lwp_thread->td_sticks;
+			ttime += lp->lwp_thread->td_uticks;
+		}
 	}
 
 	switch(plimit_testcpulimit(p->p_limit, ttime)) {
