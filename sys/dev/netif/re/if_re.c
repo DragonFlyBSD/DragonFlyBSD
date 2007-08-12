@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.34 2007/08/10 03:48:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.35 2007/08/12 11:51:26 sephe Exp $
  */
 
 /*
@@ -583,8 +583,20 @@ re_setmulti(struct re_softc *sc)
 		rxfilt &= ~RE_RXCFG_RX_MULTI;
 
 	CSR_WRITE_4(sc, RE_RXCFG, rxfilt);
-	CSR_WRITE_4(sc, RE_MAR0, hashes[0]);
-	CSR_WRITE_4(sc, RE_MAR4, hashes[1]);
+
+	/*
+	 * For some unfathomable reason, RealTek decided to reverse
+	 * the order of the multicast hash registers in the PCI Express
+	 * parts. This means we have to write the hash pattern in reverse
+	 * order for those devices.
+	 */
+	if (sc->re_flags & RE_F_PCIE) {
+		CSR_WRITE_4(sc, RE_MAR0, bswap32(hashes[0]));
+		CSR_WRITE_4(sc, RE_MAR4, bswap32(hashes[1]));
+	} else {
+		CSR_WRITE_4(sc, RE_MAR0, hashes[0]);
+		CSR_WRITE_4(sc, RE_MAR4, hashes[1]);
+	}
 }
 
 static void
