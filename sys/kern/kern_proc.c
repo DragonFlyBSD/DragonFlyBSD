@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.38 2007/02/19 01:14:23 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.39 2007/08/12 16:32:13 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -647,7 +647,7 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
 {
 	struct kinfo_proc ki;
 	struct lwp *lp;
-	int skp = 1, had_output = 0;
+	int skp = 0, had_output = 0;
 	int error;
 
 	fill_kinfo_proc(p, &ki);
