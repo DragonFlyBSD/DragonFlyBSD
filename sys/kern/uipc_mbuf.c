@@ -65,7 +65,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.64 2007/08/11 23:11:22 josepht Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.65 2007/08/12 01:46:26 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -84,8 +84,9 @@
 #include <sys/uio.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
-#include <sys/serialize.h>
 #include <sys/thread2.h>
+
+#include <machine/atomic.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -101,7 +102,6 @@
 struct mbcluster {
 	int32_t	mcl_refs;
 	void	*mcl_data;
-	struct lwkt_serialize mcl_serializer;
 };
 
 /*
@@ -439,7 +439,6 @@ mclmeta_ctor(void *obj, void *private, int ocflags)
 		return (FALSE);
 	cl->mcl_refs = 0;
 	cl->mcl_data = buf;
-	lwkt_serialize_init(&cl->mcl_serializer);
 	return (TRUE);
 }
 
@@ -833,26 +832,22 @@ m_mclref(void *arg)
 	atomic_add_int(&mcl->mcl_refs, 1);
 }
 
+/*
+ * When dereferencing a cluster we have to deal with a N->0 race, where
+ * N entities free their references simultaniously.  To do this we use
+ * atomic_cmpset_int().
+ */
 static void
 m_mclfree(void *arg)
 {
 	struct mbcluster *mcl = arg;
+	int refs;
 
-	if (mcl->mcl_refs == 1) {
-		mcl->mcl_refs = 0;
+	do {
+		refs = mcl->mcl_refs;
+	} while (atomic_cmpset_int(&mcl->mcl_refs, refs, refs - 1) == 0);
+	if (refs == 1)
 		objcache_put(mclmeta_cache, mcl);
-	} else {
-		lwkt_serialize_enter(&mcl->mcl_serializer);
-		if (mcl->mcl_refs > 1) {
-			atomic_subtract_int(&mcl->mcl_refs, 1);
-			lwkt_serialize_exit(&mcl->mcl_serializer);
-		} else {
-			lwkt_serialize_exit(&mcl->mcl_serializer);
-			KKASSERT(mcl->mcl_refs == 1);
-			mcl->mcl_refs = 0;
-			objcache_put(mclmeta_cache, mcl);
-		}
-	}
 }
 
 extern void db_print_backtrace(void);
