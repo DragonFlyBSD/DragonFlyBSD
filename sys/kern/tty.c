@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.42 2007/07/03 17:22:14 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.43 2007/08/12 16:57:31 dillon Exp $
  */
 
 /*-
@@ -2484,6 +2484,18 @@ proc_compare(struct proc *p1, struct proc *p2)
 	if (p1 == NULL)
 		return (1);
 
+	/*
+ 	 * weed out zombies
+	 */
+	switch (TESTAB(p1->p_stat == SZOMB, p2->p_stat == SZOMB)) {
+	case ONLYA:
+		return (1);
+	case ONLYB:
+		return (0);
+	case BOTH:
+		return (p2->p_pid > p1->p_pid); /* tie - return highest pid */
+	}
+
 	/* XXX lwp */
 	lp1 = FIRST_LWP_IN_PROC(p1);
 	lp2 = FIRST_LWP_IN_PROC(p2);
@@ -2505,17 +2517,6 @@ proc_compare(struct proc *p1, struct proc *p2)
 		if (lp1->lwp_cpticks > lp2->lwp_cpticks)
 			return (0);
 		return (p2->p_pid > p1->p_pid);	/* tie - return highest pid */
-	}
-	/*
- 	 * weed out zombies
-	 */
-	switch (TESTAB(p1->p_stat == SZOMB, p2->p_stat == SZOMB)) {
-	case ONLYA:
-		return (1);
-	case ONLYB:
-		return (0);
-	case BOTH:
-		return (p2->p_pid > p1->p_pid); /* tie - return highest pid */
 	}
 	/*
 	 * pick the one with the smallest sleep time
