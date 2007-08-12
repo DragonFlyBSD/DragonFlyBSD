@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.27 2007/07/24 14:02:10 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.28 2007/08/12 17:30:22 dillon Exp $
 .\"
 .Dd July 10, 2007
 .Dt VKERNEL 7
@@ -291,7 +291,8 @@ cd /usr/src
 make installworld DESTDIR=/mnt
 cd etc
 make distribution DESTDIR=/mnt
-echo '/dev/vkd0a / ufs rw 1 1' >/mnt/etc/fstab
+echo '/dev/vkd0s0a	/	ufs	rw	1  1' >/mnt/etc/fstab
+echo 'proc              /proc	procfs  rw	0  0' >>/mnt/etc/fstab
 .Ed
 .Pp
 Edit
