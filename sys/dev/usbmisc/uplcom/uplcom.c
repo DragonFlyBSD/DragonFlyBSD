@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.19 2007/08/07 10:42:41 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.20 2007/08/13 12:26:51 hasso Exp $
  */
 
 /*-
@@ -235,8 +235,6 @@ static const struct usb_devno uplcom_devs[] = {
 	{ USB_VENDOR_ITEGNO, USB_PRODUCT_ITEGNO_CDMA },
 	/* Leadtek 9531 GPS */
 	{ USB_VENDOR_LEADTEK, USB_PRODUCT_LEADTEK_9531 },
-	/* Sitecom USB to serial adapter */
-	{ USB_VENDOR_MCT, USB_PRODUCT_MCT_SITECOM_USB232 },
 	/* Mobile Action MA-620 IrDA */
 	{ USB_VENDOR_MOBILEACTION, USB_PRODUCT_MOBILEACTION_MA620 },
 	/* Willcom W-SIM */
