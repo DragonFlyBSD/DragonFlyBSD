@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink.h,v 1.12 2007/06/29 05:13:59 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink.h,v 1.13 2007/08/13 17:47:20 dillon Exp $
  */
 
 /*
@@ -149,6 +149,8 @@ struct slmsg {
 	struct slmsg *rep;		/* reply (kernel backend) */
 	struct objcache *oc;
 	struct syslink_msg *msg;
+	void (*callback_func)(struct slmsg *, void *, int);
+	void *callback_data;
 };
 
 #define SLMSGF_ONINQ	0x0001
@@ -163,9 +165,16 @@ struct sldesc;
 int syslink_ukbackend(int *fdp, struct sldesc **kslp);
 struct slmsg *syslink_kallocmsg(void);
 int syslink_kdomsg(struct sldesc *ksl, struct slmsg *msg);
+int syslink_ksendmsg(struct sldesc *ksl, struct slmsg *msg,
+		     void (*func)(struct slmsg *, void *, int), void *arg);
+int syslink_kwaitmsg(struct sldesc *ksl, struct slmsg *msg);
 void syslink_kfreemsg(struct sldesc *ksl, struct slmsg *msg);
 void syslink_kshutdown(struct sldesc *ksl, int how);
 void syslink_kclose(struct sldesc *ksl);
+int syslink_kdmabuf_pages(struct slmsg *slmsg, struct vm_page **mbase, int npages);
+int syslink_kdmabuf_data(struct slmsg *slmsg, char *base, int bytes);
+
+
 
 #else
 

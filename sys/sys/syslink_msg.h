@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg.h,v 1.10 2007/06/29 00:18:03 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg.h,v 1.11 2007/08/13 17:47:20 dillon Exp $
  */
 /*
  * The syslink infrastructure implements an optimized RPC mechanism across a 
@@ -127,12 +127,12 @@ struct syslink_elm {
 
 #define SE_CMDF_ASIZEMASK	0x0C00	/* auto-size mask */
 #define SE_CMDF_ASIZEX		0x0000	/* N bytes of extended data */
-#define SE_CMDF_ASIZE0		0x0400	/* 0 bytes of extended data */
+#define SE_CMDF_ASIZE_RESERVED	0x0400	/* reserved for future use */
 #define SE_CMDF_ASIZE4		0x0800	/* 4 bytes of extended data */
 #define SE_CMDF_ASIZE8		0x0C00	/* 8 bytes of extended data */
 
-#define SE_CMDF_DMAR		0x0800	/* buffer sent to target */
-#define SE_CMDF_DMAW		0x0400	/* buffer returned from target */
+#define SE_CMDF_DMAR		0x0800	/* (structured only) originator reads */
+#define SE_CMDF_DMAW		0x0400	/* (structured only) originator writes*/
 
 #define SE_CMD_MASK		0x03FF
 

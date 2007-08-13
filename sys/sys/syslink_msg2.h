@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg2.h,v 1.3 2007/06/17 21:31:07 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg2.h,v 1.4 2007/08/13 17:47:20 dillon Exp $
  */
 /*
  * Helper inlines and macros for syslink message generation
@@ -80,7 +80,7 @@ static __inline
 void
 sl_msg_fini(struct syslink_msg *msg)
 {
-	msg->sm_bytes = offsetof(struct syslink_msg, sm_head) +
+	msg->sm_bytes = __offsetof(struct syslink_msg, sm_head) +
 				 SL_MSG_ALIGN(msg->sm_head.se_bytes);
 }
 
@@ -94,6 +94,21 @@ sl_elm_make(struct syslink_elm *par, sl_cmd_t cmd, int bytes)
 	elm->se_cmd = cmd;
 	elm->se_bytes = sizeof(*elm) + bytes;
 	elm->se_aux = 0;
+
+	par->se_bytes += SL_MSG_ALIGN(elm->se_bytes);
+	return(elm);
+}
+
+static __inline
+struct syslink_elm *
+sl_elm_make_aux(struct syslink_elm *par, sl_cmd_t cmd, int auxdata)
+{
+	struct syslink_elm *elm = (void *)((char *)par + par->se_bytes);
+
+	KKASSERT((cmd & SE_CMDF_STRUCTURED) == 0);
+	elm->se_cmd = cmd;
+	elm->se_bytes = sizeof(*elm);
+	elm->se_aux = auxdata;
 
 	par->se_bytes += SL_MSG_ALIGN(elm->se_bytes);
 	return(elm);

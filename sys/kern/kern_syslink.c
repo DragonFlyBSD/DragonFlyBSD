@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.14 2007/06/29 05:14:00 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.15 2007/08/13 17:47:19 dillon Exp $
  */
 /*
  * This module implements the core syslink() system call and provides
@@ -1414,6 +1414,61 @@ syslink_kdomsg(struct sldesc *ksl, struct slmsg *slmsg)
 	return(error);
 }
 
+/*
+ * Similar to syslink_kdomsg but return immediately instead of
+ * waiting for a reply.  The kernel must supply a callback function
+ * which will be made in the context of the user process replying
+ * to the message.
+ */
+int
+syslink_ksendmsg(struct sldesc *ksl, struct slmsg *slmsg,
+		 void (*func)(struct slmsg *, void *, int), void *arg)
+{
+	struct syslink_msg *msg;
+	int error;
+
+	/*
+	 * Finish initializing slmsg and post it to the red-black tree for
+	 * reply matching.  If the message id is already in use we return
+	 * EEXIST, giving the originator the chance to roll a new msgid.
+	 */
+	msg = slmsg->msg;
+	slmsg->msgsize = msg->sm_bytes;
+	slmsg->callback_func = func;
+	slmsg->callback_data = arg;
+	if ((error = syslink_validate_msg(msg, msg->sm_bytes)) != 0)
+		return (error);
+	msg->sm_msgid = allocsysid();
+
+	/*
+	 * Issue the request.  If no error occured the operation will be
+	 * in progress, otherwise the operation is considered to have failed
+	 * and the caller can deallocate the slmsg.
+	 */
+	error = ksl->peer->backend_write(ksl->peer, slmsg);
+	return (error);
+}
+
+int
+syslink_kwaitmsg(struct sldesc *ksl, struct slmsg *slmsg)
+{
+	int error;
+
+	spin_lock_wr(&ksl->spin);
+	while (slmsg->rep == NULL) {
+		error = msleep(slmsg, &ksl->spin, 0, "kwtmsg", 0);
+		/* XXX ignore error for now */
+	}
+	if (slmsg->rep == (struct slmsg *)-1) {
+		error = EIO;
+		slmsg->rep = NULL;
+	} else {
+		error = slmsg->rep->msg->sm_head.se_aux;
+	}
+	spin_unlock_wr(&ksl->spin);
+	return(error);
+}
+
 struct slmsg *
 syslink_kallocmsg(void)
 {
@@ -1429,6 +1484,7 @@ syslink_kfreemsg(struct sldesc *ksl, struct slmsg *slmsg)
 		slmsg->rep = NULL;
 		ksl->peer->backend_dispose(ksl->peer, rep);
 	}
+	slmsg->callback_func = NULL;
 	slmsg_put(slmsg);
 }
 
@@ -1443,6 +1499,48 @@ syslink_kclose(struct sldesc *ksl)
 {
 	shutdownsldesc(ksl, SHUT_RDWR);
 	sldrop(ksl);
+}
+
+/*
+ * Associate a DMA buffer with a kernel syslink message prior to it
+ * being sent to userland.  The DMA buffer is set up from the point
+ * of view of the target.
+ */
+int
+syslink_kdmabuf_pages(struct slmsg *slmsg, struct vm_page **mbase, int npages)
+{
+	int xflags;
+	int error;
+
+	xflags = XIOF_VMLINEAR;
+	if (slmsg->msg->sm_head.se_cmd & SE_CMDF_DMAR)
+		xflags |= XIOF_READ | XIOF_WRITE;
+	else if (slmsg->msg->sm_head.se_cmd & SE_CMDF_DMAW)
+		xflags |= XIOF_READ;
+	error = xio_init_pages(&slmsg->xio, mbase, npages, xflags);
+	slmsg->flags |= SLMSGF_HASXIO;
+	return (error);
+}
+
+/*
+ * Associate a DMA buffer with a kernel syslink message prior to it
+ * being sent to userland.  The DMA buffer is set up from the point
+ * of view of the target.
+ */
+int
+syslink_kdmabuf_data(struct slmsg *slmsg, char *base, int bytes)
+{
+	int xflags;
+
+	xflags = XIOF_VMLINEAR;
+	if (slmsg->msg->sm_head.se_cmd & SE_CMDF_DMAR)
+		xflags |= XIOF_READ | XIOF_WRITE;
+	else if (slmsg->msg->sm_head.se_cmd & SE_CMDF_DMAW)
+		xflags |= XIOF_READ;
+	xio_init_kbuf(&slmsg->xio, base, bytes);
+	slmsg->xio.xio_flags |= xflags;
+	slmsg->flags |= SLMSGF_HASXIO;
+	return(0);
 }
 
 /************************************************************************
@@ -1486,14 +1584,26 @@ static
 void
 backend_reply_kern(struct sldesc *ksl, struct slmsg *slcmd, struct slmsg *slrep)
 {
+	int error;
+
 	spin_lock_wr(&ksl->spin);
 	if (slrep == NULL) {
 		slcmd->rep = (struct slmsg *)-1;
+		error = EIO;
 	} else {
 		slcmd->rep = slrep;
+		error = slrep->msg->sm_head.se_aux;
 	}
 	spin_unlock_wr(&ksl->spin);
-	wakeup(slcmd);
+
+	/*
+	 * Issue callback or wakeup a synchronous waiter.
+	 */
+	if (slcmd->callback_func) {
+		slcmd->callback_func(slcmd, slcmd->callback_data, error);
+	} else {
+		wakeup(slcmd);
+	}
 }
 
 /*
