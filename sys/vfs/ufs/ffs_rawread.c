@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.26 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.27 2007/08/13 17:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -178,11 +178,11 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 
 	blockoff = (loffset % bsize) / DEV_BSIZE;
 
-	error = VOP_BMAP(vp, bp->b_loffset, &dp, &bp->b_bio2.bio_offset,
+	error = VOP_BMAP(vp, bp->b_loffset, &bp->b_bio2.bio_offset,
 			 &bforwards, NULL);
-	if (error != 0) {
+	if (error != 0)
 		return error;
-	}
+	dp = VTOI(vp)->i_devvp;
 	if (bp->b_bio2.bio_offset == NOOFFSET) {
 		/* 
 		 * Fill holes with NULs to preserve semantics 

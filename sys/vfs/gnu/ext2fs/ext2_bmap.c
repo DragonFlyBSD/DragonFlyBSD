@@ -37,7 +37,7 @@
  *
  * @(#)ufs_bmap.c	8.7 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_bmap.c,v 1.34.2.1 2000/03/17 10:12:14 ps Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_bmap.c,v 1.3 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_bmap.c,v 1.4 2007/08/13 17:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@ static int ext2_bmaparray(struct vnode *vp, ext2_daddr_t bn,
  * BMAP must return the contiguous before and after run in bytes, inclusive
  * of the returned block.
  *
- * ext2_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * ext2_bmap(struct vnode *a_vp, off_t a_loffset,
  *	    off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 int
@@ -84,8 +84,6 @@ ext2_bmap(struct vop_bmap_args *ap)
 	 * Check for underlying vnode requests and ensure that logical
 	 * to physical mapping is requested.
 	 */
-	if (ap->a_vpp != NULL)
-		*ap->a_vpp = VTOI(ap->a_vp)->i_devvp;
 	if (ap->a_doffsetp == NULL)
 		return (0);
 

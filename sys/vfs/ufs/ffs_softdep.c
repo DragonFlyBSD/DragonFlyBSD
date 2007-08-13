@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.51 2007/04/12 19:50:20 swildner Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.52 2007/08/13 17:31:56 dillon Exp $
  */
 
 /*
@@ -1737,8 +1737,7 @@ setup_allocindir_phase2(struct buf *bp, struct inode *ip,
 		LIST_INIT(&newindirdep->ir_donehd);
 		if (bp->b_bio2.bio_offset == NOOFFSET) {
 			VOP_BMAP(bp->b_vp, bp->b_bio1.bio_offset, 
-				NULL, &bp->b_bio2.bio_offset,
-				NULL, NULL);
+				 &bp->b_bio2.bio_offset, NULL, NULL);
 		}
 		KKASSERT(bp->b_bio2.bio_offset != NOOFFSET);
 		newindirdep->ir_savebp = getblk(ip->i_devvp,

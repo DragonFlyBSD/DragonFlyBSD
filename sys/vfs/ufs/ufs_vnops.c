@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.61 2007/08/08 00:12:52 swildner Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.62 2007/08/13 17:31:57 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1835,7 +1835,7 @@ ufs_strategy(struct vop_strategy_args *ap)
 		panic("ufs_strategy: spec");
 	nbio = push_bio(bio);
 	if (nbio->bio_offset == NOOFFSET) {
-		error = VOP_BMAP(vp, bio->bio_offset, NULL, &nbio->bio_offset,
+		error = VOP_BMAP(vp, bio->bio_offset, &nbio->bio_offset,
 				 NULL, NULL);
 		if (error) {
 			bp->b_error = error;

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.36 2007/08/13 17:18:16 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.37 2007/08/13 17:31:53 dillon Exp $
  */
 
 /*
@@ -215,7 +215,7 @@ vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
 	bsize = vp->v_mount->mnt_stat.f_iosize;
 	voff = loffset % bsize;
 
-	error = VOP_BMAP(vp, loffset - voff, NULL, &doffset, after, before);
+	error = VOP_BMAP(vp, loffset - voff, &doffset, after, before);
 	if (error)
 		return TRUE;
 	if (doffset == NOOFFSET)

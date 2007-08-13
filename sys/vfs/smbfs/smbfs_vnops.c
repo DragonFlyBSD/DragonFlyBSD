@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.39 2007/08/08 00:12:52 swildner Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.40 2007/08/13 17:31:56 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -811,16 +811,12 @@ smbfs_strategy(struct vop_strategy_args *ap)
 }
 
 /*
- * smbfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * smbfs_bmap(struct vnode *a_vp, off_t a_loffset,
  *	      off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 smbfs_bmap(struct vop_bmap_args *ap)
 {
-	struct vnode *vp = ap->a_vp;
-
-	if (ap->a_vpp != NULL)
-		*ap->a_vpp = vp;
 	if (ap->a_doffsetp != NULL)
 		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)

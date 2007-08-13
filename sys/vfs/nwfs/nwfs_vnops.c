@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.36 2007/08/08 00:12:52 swildner Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.37 2007/08/13 17:31:56 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -758,16 +758,12 @@ nwfs_strategy(struct vop_strategy_args *ap)
 }
 
 /*
- * nwfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * nwfs_bmap(struct vnode *a_vp, off_t a_loffset,
  *	     off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 nwfs_bmap(struct vop_bmap_args *ap)
 {
-	struct vnode *vp = ap->a_vp;
-
-	if (ap->a_vpp != NULL)
-		*ap->a_vpp = vp;
 	if (ap->a_doffsetp != NULL)
 		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)

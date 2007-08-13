@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.35 2007/08/08 00:12:51 swildner Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.36 2007/08/13 17:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -763,7 +763,7 @@ cd9660_strategy(struct vop_strategy_args *ap)
 		panic("cd9660_strategy: spec");
 	nbio = push_bio(bio);
 	if (nbio->bio_offset == NOOFFSET) {
-		error = VOP_BMAP(vp, bio->bio_offset, NULL,
+		error = VOP_BMAP(vp, bio->bio_offset,
 				 &nbio->bio_offset, NULL, NULL);
 		if (error) {
 			bp->b_error = error;

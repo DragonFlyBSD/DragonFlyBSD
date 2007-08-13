@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.91 2007/05/13 18:33:58 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.92 2007/08/13 17:31:51 dillon Exp $
  */
 
 /*
@@ -791,7 +791,7 @@ bdwrite(struct buf *bp)
 	 * the bmap then...  So, this is important to do.
 	 */
 	if (bp->b_bio2.bio_offset == NOOFFSET) {
-		VOP_BMAP(bp->b_vp, bp->b_loffset, NULL, &bp->b_bio2.bio_offset,
+		VOP_BMAP(bp->b_vp, bp->b_loffset, &bp->b_bio2.bio_offset,
 			 NULL, NULL);
 	}
 

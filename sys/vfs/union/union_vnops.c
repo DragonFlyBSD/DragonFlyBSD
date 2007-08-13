@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.37 2007/05/06 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.38 2007/08/13 17:31:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1684,7 +1684,7 @@ union_reclaim(struct vop_reclaim_args *ap)
  *	For some reason we cannot return the 'real' vnode either, it seems
  *	to blow up memory maps.
  *
- * union_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * union_bmap(struct vnode *a_vp, off_t a_loffset,
  *	      off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int

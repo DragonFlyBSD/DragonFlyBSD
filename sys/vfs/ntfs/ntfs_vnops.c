@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.41 2007/08/08 00:12:52 swildner Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.42 2007/08/13 17:31:56 dillon Exp $
  *
  */
 
@@ -124,15 +124,13 @@ ntfs_putpages(struct vop_putpages_args *ap)
 /*
  * This is a noop, simply returning what one has been given.
  *
- * ntfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * ntfs_bmap(struct vnode *a_vp, off_t a_loffset,
  *	     daddr_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 int
 ntfs_bmap(struct vop_bmap_args *ap)
 {
 	dprintf(("ntfs_bmap: vn: %p, blk: %d\n", ap->a_vp,(u_int32_t)ap->a_bn));
-	if (ap->a_vpp != NULL)
-		*ap->a_vpp = ap->a_vp;
 	if (ap->a_doffsetp != NULL)
 		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)

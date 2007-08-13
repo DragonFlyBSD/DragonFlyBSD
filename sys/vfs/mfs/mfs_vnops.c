@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.36 2007/08/08 00:12:51 swildner Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.37 2007/08/13 17:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -292,14 +292,12 @@ mfs_doio(struct bio *bio, struct mfsnode *mfsp)
 /*
  * This is a noop, simply returning what one has been given.
  *
- * mfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * mfs_bmap(struct vnode *a_vp, off_t a_loffset,
  *	    off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 mfs_bmap(struct vop_bmap_args *ap)
 {
-	if (ap->a_vpp != NULL)
-		*ap->a_vpp = ap->a_vp;
 	if (ap->a_doffsetp != NULL)
 		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)

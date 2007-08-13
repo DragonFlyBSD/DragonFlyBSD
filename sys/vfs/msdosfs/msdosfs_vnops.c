@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.49 2007/08/08 00:23:40 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.50 2007/08/13 17:31:56 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1816,7 +1816,7 @@ done:
  *	 containing the file of interest
  * bnp - address of where to return the filesystem relative block number
  *
- * msdosfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * msdosfs_bmap(struct vnode *a_vp, off_t a_loffset,
  *		off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
@@ -1828,8 +1828,6 @@ msdosfs_bmap(struct vop_bmap_args *ap)
 	daddr_t dbn;
 	int error;
 
-	if (ap->a_vpp != NULL)
-		*ap->a_vpp = dep->de_devvp;
 	if (ap->a_doffsetp == NULL)
 		return (0);
 	if (ap->a_runp) {

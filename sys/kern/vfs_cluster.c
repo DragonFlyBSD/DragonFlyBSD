@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.29 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.30 2007/08/13 17:31:51 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -174,7 +174,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 			if (nblks > racluster)
 				nblks = racluster;
 
-	    		error = VOP_BMAP(vp, loffset, NULL,
+	    		error = VOP_BMAP(vp, loffset,
 					 &doffset, &burstbytes, NULL);
 			if (error)
 				goto single_block_read;
@@ -240,7 +240,7 @@ single_block_read:
 			goto no_read_ahead;
 		}
 
-		error = VOP_BMAP(vp, loffset, NULL,
+		error = VOP_BMAP(vp, loffset,
 				 &doffset, &burstbytes, NULL);
 		if (error || doffset == NOOFFSET) {
 			rbp->b_flags |= B_INVAL;
@@ -683,7 +683,7 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
 		if ((vp->v_type == VREG) &&
 		    bp->b_loffset + lblocksize != filesize &&
 		    (bp->b_bio2.bio_offset == NOOFFSET) &&
-		    (VOP_BMAP(vp, loffset, NULL, &bp->b_bio2.bio_offset, &maxclen, NULL) ||
+		    (VOP_BMAP(vp, loffset, &bp->b_bio2.bio_offset, &maxclen, NULL) ||
 		     bp->b_bio2.bio_offset == NOOFFSET)) {
 			bawrite(bp);
 			vp->v_clen = 0;
@@ -963,13 +963,13 @@ cluster_collectbufs(struct vnode *vp, struct buf *last_bp, int lblocksize)
 		(void) bread(vp, loffset, last_bp->b_bcount, &bp);
 		buflist->bs_children[i] = bp;
 		if (bp->b_bio2.bio_offset == NOOFFSET) {
-			VOP_BMAP(bp->b_vp, bp->b_loffset, NULL,
-				&bp->b_bio2.bio_offset, NULL, NULL);
+			VOP_BMAP(bp->b_vp, bp->b_loffset,
+				 &bp->b_bio2.bio_offset, NULL, NULL);
 		}
 	}
 	buflist->bs_children[i] = bp = last_bp;
 	if (bp->b_bio2.bio_offset == NOOFFSET) {
-		VOP_BMAP(bp->b_vp, bp->b_loffset, NULL,
+		VOP_BMAP(bp->b_vp, bp->b_loffset,
 			 &bp->b_bio2.bio_offset, NULL, NULL);
 	}
 	buflist->bs_nchildren = i + 1;

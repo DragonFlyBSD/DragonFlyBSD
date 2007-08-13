@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.42 2007/08/08 00:12:51 swildner Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.43 2007/08/13 17:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -272,7 +272,7 @@ hpfs_ioctl(struct vop_ioctl_args *ap)
 /*
  * Map file offset to disk offset.
  *
- * hpfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * hpfs_bmap(struct vnode *a_vp, off_t a_loffset,
  *	     off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 int
@@ -283,8 +283,6 @@ hpfs_bmap(struct vop_bmap_args *ap)
 	daddr_t lbn;
 	daddr_t dbn;
 
-	if (ap->a_vpp != NULL) 
-		*ap->a_vpp = hp->h_devvp;
 	if (ap->a_runb != NULL)
 		*ap->a_runb = 0;
 	if (ap->a_doffsetp == NULL)
@@ -693,7 +691,7 @@ hpfs_strategy(struct vop_strategy_args *ap)
 
 	nbio = push_bio(bio);
 	if (nbio->bio_offset == NOOFFSET) {
-		error = VOP_BMAP(vp, bio->bio_offset, NULL, &nbio->bio_offset,
+		error = VOP_BMAP(vp, bio->bio_offset, &nbio->bio_offset,
 				 NULL, NULL);
 		if (error) {
 			kprintf("hpfs_strategy: VOP_BMAP FAILED %d\n", error);

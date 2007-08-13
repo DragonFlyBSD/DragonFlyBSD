@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_bmap.c	8.3 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_bmap.c,v 1.8 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_bmap.c,v 1.5 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_bmap.c,v 1.6 2007/08/13 17:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@
  * number on the disk. The conversion is done by using the logical block
  * number to index into the data block (extent) for the file.
  *
- * cd9660_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * cd9660_bmap(struct vnode *a_vp, off_t a_loffset,
  *		off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 int
@@ -68,8 +68,6 @@ cd9660_bmap(struct vop_bmap_args *ap)
 	 * Check for underlying vnode requests and ensure that logical
 	 * to physical mapping is requested.
 	 */
-	if (ap->a_vpp != NULL)
-		*ap->a_vpp = ip->i_devvp;
 	if (ap->a_doffsetp == NULL)
 		return (0);
 

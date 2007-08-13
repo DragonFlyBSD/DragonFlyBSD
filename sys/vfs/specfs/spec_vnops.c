@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.54 2007/08/08 00:12:52 swildner Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.55 2007/08/13 17:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -664,16 +664,12 @@ spec_freeblks(struct vop_freeblks_args *ap)
  * returned, and assume that the entire device is contiguous in regards
  * to the contiguous block range (runp and runb).
  *
- * spec_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * spec_bmap(struct vnode *a_vp, off_t a_loffset,
  *	     off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 spec_bmap(struct vop_bmap_args *ap)
 {
-	struct vnode *vp = ap->a_vp;
-
-	if (ap->a_vpp != NULL)
-		*ap->a_vpp = vp;
 	if (ap->a_doffsetp != NULL)
 		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
@@ -800,6 +796,12 @@ spec_getpages_iodone(struct bio *bio)
 	wakeup(bio->bio_buf);
 }
 
+/*
+ * spec_getpages() - get pages associated with device vnode.
+ *
+ * Note that spec_read and spec_write do not use the buffer cache, so we
+ * must fully implement getpages here.
+ */
 static int
 spec_getpages(struct vop_getpages_args *ap)
 {

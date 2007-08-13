@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.19 2006/12/23 00:41:28 swildner Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.20 2007/08/13 17:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -185,7 +185,7 @@ dead_ioctl(struct vop_ioctl_args *ap)
 /*
  * Wait until the vnode has finished changing state.
  *
- * dead_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ * dead_bmap(struct vnode *a_vp, off_t a_loffset, 
  *	     off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int

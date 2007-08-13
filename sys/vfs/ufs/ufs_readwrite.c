@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.21 2007/02/22 15:50:50 corecode Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.22 2007/08/13 17:31:57 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -478,8 +478,8 @@ ffs_getpages(struct vop_getpages_args *ap)
 	poff = (int)(foff % bsize);
 	reqoffset = foff - poff;
 
-	if (VOP_BMAP(vp, reqoffset, &dp, &doffset,
-		&bforwards, &bbackwards) || (doffset == NOOFFSET)
+	if (VOP_BMAP(vp, reqoffset, &doffset, &bforwards, &bbackwards) ||
+	    doffset == NOOFFSET
 	) {
 		for (i = 0; i < pcount; i++) {
 			if (i != ap->a_reqpage)
@@ -553,6 +553,7 @@ ffs_getpages(struct vop_getpages_args *ap)
 	}
 
 	physoffset -= foff;
+	dp = VTOI(ap->a_vp)->i_devvp;
 	rtval = VOP_GETPAGES(dp, &ap->a_m[firstpage], size,
 			     (ap->a_reqpage - firstpage), physoffset);
 

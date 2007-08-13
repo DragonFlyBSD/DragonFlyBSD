@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.30 2007/05/09 00:53:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.31 2007/08/13 17:31:56 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -893,8 +893,6 @@ udf_bmap(struct vop_bmap_args *a)
 
 	node = VTON(a->a_vp);
 
-	if (a->a_vpp != NULL)
-		*a->a_vpp = node->i_devvp;
 	if (a->a_doffsetp == NULL)
 		return(0);
 
