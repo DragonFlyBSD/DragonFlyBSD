@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.14 2007/06/29 05:09:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.15 2007/08/13 17:20:04 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -200,6 +200,31 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
 	xio->xio_error = EFAULT;
     }
     return(xio->xio_error);
+}
+
+/*
+ * Initialize an XIO given an array of vm_page pointers.
+ */
+int
+xio_init_pages(xio_t xio, struct vm_page **mbase, int npages, int xflags)
+{
+    int i;
+
+    KKASSERT(npages <= XIO_INTERNAL_PAGES);
+
+    xio->xio_flags = xflags;
+    xio->xio_offset = 0;
+    xio->xio_bytes = 0;
+    xio->xio_pages = xio->xio_internal_pages;
+    xio->xio_npages = npages;
+    xio->xio_error = 0;
+    crit_enter();
+    for (i = 0; i < npages; ++i) {
+	vm_page_hold(mbase[i]);
+	xio->xio_pages[i] = mbase[i];
+    }
+    crit_exit();
+    return(0);
 }
 
 /*
