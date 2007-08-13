@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.35 2007/07/30 21:41:30 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.36 2007/08/13 17:18:16 dillon Exp $
  */
 
 /*
@@ -72,10 +72,6 @@
 #include <vm/vnode_pager.h>
 #include <vm/vm_extern.h>
 
-static off_t vnode_pager_addr (struct vnode *vp, off_t loffset, int *run);
-static void vnode_pager_iodone (struct bio *bio);
-static int vnode_pager_input_smlfs (vm_object_t object, vm_page_t m);
-static int vnode_pager_input_old (vm_object_t object, vm_page_t m);
 static void vnode_pager_dealloc (vm_object_t);
 static int vnode_pager_getpages (vm_object_t, vm_page_t *, int, int);
 static void vnode_pager_putpages (vm_object_t, vm_page_t *, int, boolean_t, int *);
@@ -355,226 +351,6 @@ vnode_pager_freepage(vm_page_t m)
 }
 
 /*
- * calculate the disk byte address of specified logical byte offset.  The
- * logical offset will be block-aligned.  Return the number of contiguous
- * pages that may be read from the underlying block device in *run.  If
- * *run is non-NULL, it will be set to a value of at least 1.
- */
-static off_t
-vnode_pager_addr(struct vnode *vp, off_t loffset, int *run)
-{
-	struct vnode *rtvp;
-	off_t doffset;
-	int bsize;
-	int error;
-	int voff;
-
-	if (loffset < 0)
-		return -1;
-
-	if (vp->v_mount == NULL)
-		return -1;
-
-	/*
-	 * Align loffset to a block boundary for the BMAP, then adjust the
-	 * returned disk address appropriately.
-	 */
-	bsize = vp->v_mount->mnt_stat.f_iosize;
-	voff = loffset % bsize;
-
-	/*
-	 * Map the block, adjust the disk offset so it represents the
-	 * passed loffset rather then the block containing loffset.
-	 */
-	error = VOP_BMAP(vp, loffset - voff, &rtvp, &doffset, run, NULL);
-	if (error || doffset == NOOFFSET) {
-		doffset = NOOFFSET;
-	} else {
-		doffset += voff;
-
-		/*
-		 * When calculating *run, which is the number of pages
-		 * worth of data which can be read linearly from disk,
-		 * the minimum return value is 1 page.
-		 */
-		if (run) {
-			*run = (*run - voff) >> PAGE_SHIFT;
-			if (*run < 1)
-				*run = 1;
-		}
-
-	}
-	return (doffset);
-}
-
-/*
- * interrupt routine for I/O completion
- */
-static void
-vnode_pager_iodone(struct bio *bio)
-{
-	struct buf *bp = bio->bio_buf;
-
-	bp->b_cmd = BUF_CMD_DONE;
-	wakeup(bp);
-}
-
-/*
- * small block file system vnode pager input
- */
-static int
-vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
-{
-	int i;
-	struct vnode *dp, *vp;
-	struct buf *bp;
-	vm_offset_t kva;
-	struct sf_buf *sf;
-	off_t doffset;
-	vm_offset_t bsize;
-	int error = 0;
-
-	vp = object->handle;
-	if (vp->v_mount == NULL)
-		return VM_PAGER_BAD;
-
-	bsize = vp->v_mount->mnt_stat.f_iosize;
-
-
-	VOP_BMAP(vp, (off_t)0, &dp, NULL, NULL, NULL);
-
-	sf = sf_buf_alloc(m, 0);
-	kva = sf_buf_kva(sf);
-
-	for (i = 0; i < PAGE_SIZE / bsize; i++) {
-		off_t loffset;
-
-		if (vm_page_bits(i * bsize, bsize) & m->valid)
-			continue;
-
-		loffset = IDX_TO_OFF(m->pindex) + i * bsize;
-		if (loffset >= vp->v_filesize) {
-			doffset = NOOFFSET;
-		} else {
-			doffset = vnode_pager_addr(vp, loffset, NULL);
-		}
-		if (doffset != NOOFFSET) {
-			bp = getpbuf(&vnode_pbuf_freecnt);
-
-			/* build a minimal buffer header */
-			bp->b_data = (caddr_t) kva + i * bsize;
-			bp->b_bio1.bio_done = vnode_pager_iodone;
-			bp->b_bio1.bio_offset = doffset;
-			bp->b_bcount = bsize;
-			bp->b_runningbufspace = bsize;
-			runningbufspace += bp->b_runningbufspace;
-			bp->b_cmd = BUF_CMD_READ;
-
-			/* do the input */
-			vn_strategy(dp, &bp->b_bio1);
-
-			/* we definitely need to be at splvm here */
-
-			crit_enter();
-			while (bp->b_cmd != BUF_CMD_DONE)
-				tsleep(bp, 0, "vnsrd", 0);
-			crit_exit();
-			if ((bp->b_flags & B_ERROR) != 0)
-				error = EIO;
-
-			/*
-			 * free the buffer header back to the swap buffer pool
-			 */
-			relpbuf(bp, &vnode_pbuf_freecnt);
-			if (error)
-				break;
-
-			vm_page_set_validclean(m, (i * bsize) & PAGE_MASK, bsize);
-		} else {
-			vm_page_set_validclean(m, (i * bsize) & PAGE_MASK, bsize);
-			bzero((caddr_t) kva + i * bsize, bsize);
-		}
-	}
-	sf_buf_free(sf);
-	pmap_clear_modify(m);
-	vm_page_flag_clear(m, PG_ZERO);
-	if (error) {
-		return VM_PAGER_ERROR;
-	}
-	return VM_PAGER_OK;
-
-}
-
-
-/*
- * old style vnode pager output routine
- */
-static int
-vnode_pager_input_old(vm_object_t object, vm_page_t m)
-{
-	struct uio auio;
-	struct iovec aiov;
-	int error;
-	int size;
-	vm_offset_t kva;
-	struct sf_buf *sf;
-	struct vnode *vp;
-
-	error = 0;
-	vp = object->handle;
-
-	/*
-	 * Return failure if beyond current EOF
-	 */
-	if (IDX_TO_OFF(m->pindex) >= vp->v_filesize) {
-		return VM_PAGER_BAD;
-	} else {
-		size = PAGE_SIZE;
-		if (IDX_TO_OFF(m->pindex) + size > vp->v_filesize)
-			size = vp->v_filesize - IDX_TO_OFF(m->pindex);
-
-		/*
-		 * Allocate a kernel virtual address and initialize so that
-		 * we can use VOP_READ/WRITE routines.
-		 */
-		sf = sf_buf_alloc(m, 0);
-		kva = sf_buf_kva(sf);
-
-		aiov.iov_base = (caddr_t) kva;
-		aiov.iov_len = size;
-		auio.uio_iov = &aiov;
-		auio.uio_iovcnt = 1;
-		auio.uio_offset = IDX_TO_OFF(m->pindex);
-		auio.uio_segflg = UIO_SYSSPACE;
-		auio.uio_rw = UIO_READ;
-		auio.uio_resid = size;
-		auio.uio_td = curthread;
-
-		error = VOP_READ(((struct vnode *)object->handle),
-				&auio, 0, proc0.p_ucred);
-		if (!error) {
-			int count = size - auio.uio_resid;
-
-			if (count == 0)
-				error = EINVAL;
-			else if (count != PAGE_SIZE)
-				bzero((caddr_t) kva + count, PAGE_SIZE - count);
-		}
-		sf_buf_free(sf);
-	}
-	pmap_clear_modify(m);
-	vm_page_undirty(m);
-	vm_page_flag_clear(m, PG_ZERO);
-	if (!error)
-		m->valid = VM_PAGE_BITS_ALL;
-	return error ? VM_PAGER_ERROR : VM_PAGER_OK;
-}
-
-/*
- * generic vnode pager input routine
- */
-
-/*
  * EOPNOTSUPP is no longer legal.  For local media VFS's that do not
  * implement their own VOP_GETPAGES, their VOP_GETPAGES should call to
  * vnode_pager_generic_getpages() to implement the previous behaviour.
@@ -590,84 +366,46 @@ vnode_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	int bytes = count * PAGE_SIZE;
 
 	vp = object->handle;
-	/* 
-	 * XXX temporary diagnostic message to help track stale FS code,
-	 * Returning EOPNOTSUPP from here may make things unhappy.
-	 */
 	rtval = VOP_GETPAGES(vp, m, bytes, reqpage, 0);
-	if (rtval == EOPNOTSUPP) {
-	    kprintf("vnode_pager: *** WARNING *** stale FS getpages\n");
-	    rtval = vnode_pager_generic_getpages( vp, m, bytes, reqpage);
-	}
+	if (rtval == EOPNOTSUPP)
+		panic("vnode_pager: vfs's must implement vop_getpages\n");
 	return rtval;
 }
-
 
 /*
  * This is now called from local media FS's to operate against their
  * own vnodes if they fail to implement VOP_GETPAGES.
+ *
+ * With all the caching local media devices do these days there is really
+ * very little point to attempting to restrict the I/O size to contiguous
+ * blocks on-disk, especially if our caller thinks we need all the specified
+ * pages.  Just construct and issue a READ.
  */
 int
 vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
-    int reqpage)
+			     int reqpage)
 {
-	vm_object_t object;
-	vm_offset_t kva;
-	off_t foff, tfoff, nextoff;
-	int i, size, bsize, first;
-	off_t firstaddr;
-	struct vnode *dp;
-	int runpg;
-	int runend;
-	struct buf *bp;
+	struct iovec aiov;
+	struct uio auio;
+	off_t foff;
+	int error;
 	int count;
-	int error = 0;
+	int i;
+	int ioflags;
 
-	object = vp->v_object;
-	count = bytecount / PAGE_SIZE;
-
+	/*
+	 * Do not do anything if the vnode is bad.
+	 */
 	if (vp->v_mount == NULL)
 		return VM_PAGER_BAD;
 
-	bsize = vp->v_mount->mnt_stat.f_iosize;
-
-	/* get the UNDERLYING device for the file with VOP_BMAP() */
-
 	/*
-	 * originally, we did not check for an error return value -- assuming
-	 * an fs always has a bmap entry point -- that assumption is wrong!!!
+	 * Calculate the number of pages.  Since we are paging in whole
+	 * pages, adjust bytecount to be an integral multiple of the page
+	 * size.  It will be clipped to the file EOF later on.
 	 */
-	foff = IDX_TO_OFF(m[reqpage]->pindex);
-
-	/*
-	 * if we can't bmap, use old VOP code
-	 */
-	if (VOP_BMAP(vp, (off_t)0, &dp, NULL, NULL, NULL)) {
-		for (i = 0; i < count; i++) {
-			if (i != reqpage) {
-				vnode_pager_freepage(m[i]);
-			}
-		}
-		mycpu->gd_cnt.v_vnodein++;
-		mycpu->gd_cnt.v_vnodepgsin++;
-		return vnode_pager_input_old(object, m[reqpage]);
-
-		/*
-		 * if the blocksize is smaller than a page size, then use
-		 * special small filesystem code.  NFS sometimes has a small
-		 * blocksize, but it can handle large reads itself.
-		 */
-	} else if ((PAGE_SIZE / bsize) > 1 &&
-	    (vp->v_mount->mnt_stat.f_type != nfs_mount_type)) {
-		for (i = 0; i < count; i++) {
-			if (i != reqpage) {
-				vnode_pager_freepage(m[i]);
-			}
-		}
-		mycpu->gd_cnt.v_vnodein++;
-		mycpu->gd_cnt.v_vnodepgsin++;
-		return vnode_pager_input_smlfs(object, m[reqpage]);
-	}
+	bytecount = round_page(bytecount);
+	count = bytecount / PAGE_SIZE;
 
 	/*
 	 * If we have a completely valid page available to us, we can
@@ -680,7 +418,6 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	 * write support.  If we were to fall through and re-read the media
 	 * as we do here, dirty data could be lost.
 	 */
-
 	if (m[reqpage]->valid == VM_PAGE_BITS_ALL) {
 		for (i = 0; i < count; i++) {
 			if (i != reqpage)
@@ -691,163 +428,75 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	m[reqpage]->valid = 0;
 
 	/*
-	 * here on direct device I/O
-	 */
-
-	firstaddr = -1;
-	/*
-	 * calculate the run that includes the required page
-	 */
-	for(first = 0, i = 0; i < count; i = runend) {
-		firstaddr = vnode_pager_addr(vp, IDX_TO_OFF(m[i]->pindex),
-					     &runpg);
-		if (firstaddr == -1) {
-			if (i == reqpage && foff < vp->v_filesize) {
-				/* XXX no %qd in kernel. */
-				panic("vnode_pager_getpages: unexpected missing page: firstaddr: %012llx, foff: 0x%012llx, v_filesize: 0x%012llx",
-			   	 firstaddr, foff, vp->v_filesize);
-			}
-			vnode_pager_freepage(m[i]);
-			runend = i + 1;
-			first = runend;
-			continue;
-		}
-		runend = i + runpg;
-		if (runend <= reqpage) {
-			int j;
-			for (j = i; j < runend; j++) {
-				vnode_pager_freepage(m[j]);
-			}
-		} else {
-			if (runpg < (count - first)) {
-				for (i = first + runpg; i < count; i++)
-					vnode_pager_freepage(m[i]);
-				count = first + runpg;
-			}
-			break;
-		}
-		first = runend;
-	}
-
-	/*
-	 * the first and last page have been calculated now, move input pages
-	 * to be zero based...
-	 */
-	if (first != 0) {
-		for (i = first; i < count; i++) {
-			m[i - first] = m[i];
-		}
-		count -= first;
-		reqpage -= first;
-	}
-
-	/*
-	 * calculate the file virtual address for the transfer
+	 * Discard pages past the file EOF.  If the requested page is past
+	 * the file EOF we just leave its valid bits set to 0, the caller
+	 * expects to maintain ownership of the requested page.  If the
+	 * entire range is past file EOF discard everything and generate
+	 * a pagein error.
 	 */
 	foff = IDX_TO_OFF(m[0]->pindex);
-
-	/*
-	 * calculate the size of the transfer
-	 */
-	size = count * PAGE_SIZE;
-	if ((foff + size) > vp->v_filesize)
-		size = vp->v_filesize - foff;
-
-	/*
-	 * round up physical size for real devices.
-	 */
-	if (dp->v_type == VBLK || dp->v_type == VCHR) {
-		int secmask = dp->v_rdev->si_bsize_phys - 1;
-		KASSERT(secmask < PAGE_SIZE, ("vnode_pager_generic_getpages: sector size %d too large\n", secmask + 1));
-		size = (size + secmask) & ~secmask;
+	if (foff >= vp->v_filesize) {
+		for (i = 0; i < count; i++) {
+			if (i != reqpage)
+				vnode_pager_freepage(m[i]);
+		}
+		m[reqpage]->valid = 0;
+		return VM_PAGER_ERROR;
 	}
 
-	bp = getpbuf(&vnode_pbuf_freecnt);
-	kva = (vm_offset_t) bp->b_data;
+	if (foff + bytecount > vp->v_filesize) {
+		bytecount = vp->v_filesize - foff;
+		i = round_page(bytecount) / PAGE_SIZE;
+		while (count > i) {
+			--count;
+			if (count != reqpage)
+				vnode_pager_freepage(m[count]);
+		}
+	}
 
 	/*
-	 * and map the pages to be read into the kva
+	 * The size of the transfer is bytecount.  bytecount will be an
+	 * integral multiple of the page size unless it has been clipped
+	 * to the file EOF.  The transfer cannot exceed the file EOF.
+	 *
+	 * When dealing with real devices we must round-up to the device
+	 * sector size.
 	 */
-	pmap_qenter(kva, m, count);
+	if (vp->v_type == VBLK || vp->v_type == VCHR) {
+		int secmask = vp->v_rdev->si_bsize_phys - 1;
+		KASSERT(secmask < PAGE_SIZE, ("vnode_pager_generic_getpages: sector size %d too large\n", secmask + 1));
+		bytecount = (bytecount + secmask) & ~secmask;
+	}
 
-	/* build a minimal buffer header */
-	bp->b_bio1.bio_done = vnode_pager_iodone;
-	bp->b_bio1.bio_offset = firstaddr;
-	bp->b_bcount = size;
-	bp->b_runningbufspace = size;
-	runningbufspace += bp->b_runningbufspace;
-	bp->b_cmd = BUF_CMD_READ;
+	/*
+	 * Issue the I/O without any read-ahead
+	 */
+	ioflags = IO_VMIO;
+	/*ioflags |= IO_SEQMAX << IO_SEQSHIFT;*/
 
+	aiov.iov_base = (caddr_t) 0;
+	aiov.iov_len = bytecount;
+	auio.uio_iov = &aiov;
+	auio.uio_iovcnt = 1;
+	auio.uio_offset = foff;
+	auio.uio_segflg = UIO_NOCOPY;
+	auio.uio_rw = UIO_READ;
+	auio.uio_resid = bytecount;
+	auio.uio_td = NULL;
 	mycpu->gd_cnt.v_vnodein++;
 	mycpu->gd_cnt.v_vnodepgsin += count;
 
-	/* do the input */
-	vn_strategy(dp, &bp->b_bio1);
-
-	crit_enter();
-	/* we definitely need to be at splvm here */
-
-	while (bp->b_cmd != BUF_CMD_DONE)
-		tsleep(bp, 0, "vnread", 0);
-	crit_exit();
-	if ((bp->b_flags & B_ERROR) != 0)
-		error = EIO;
-
-	if (!error) {
-		if (size != count * PAGE_SIZE)
-			bzero((caddr_t) kva + size, PAGE_SIZE * count - size);
-	}
-	pmap_qremove(kva, count);
+	error = VOP_READ(vp, &auio, ioflags, proc0.p_ucred);
 
 	/*
-	 * free the buffer header back to the swap buffer pool
+	 * Calculate the actual number of bytes read and clean up the
+	 * page list.  
 	 */
-	relpbuf(bp, &vnode_pbuf_freecnt);
+	bytecount -= auio.uio_resid;
 
-	for (i = 0, tfoff = foff; i < count; i++, tfoff = nextoff) {
-		vm_page_t mt;
-
-		nextoff = tfoff + PAGE_SIZE;
-		mt = m[i];
-
-		if (nextoff <= vp->v_filesize) {
-			/*
-			 * Read filled up entire page.
-			 */
-			mt->valid = VM_PAGE_BITS_ALL;
-			vm_page_undirty(mt);	/* should be an assert? XXX */
-			pmap_clear_modify(mt);
-		} else {
-			/*
-			 * Read did not fill up entire page.  Since this
-			 * is getpages, the page may be mapped, so we have
-			 * to zero the invalid portions of the page even
-			 * though we aren't setting them valid.
-			 *
-			 * Currently we do not set the entire page valid,
-			 * we just try to clear the piece that we couldn't
-			 * read.
-			 */
-			vm_page_set_validclean(mt, 0, vp->v_filesize - tfoff);
-			/* handled by vm_fault now */
-			/* vm_page_zero_invalid(mt, FALSE); */
-		}
-		
-		vm_page_flag_clear(mt, PG_ZERO);
+	for (i = 0; i < count; ++i) {
 		if (i != reqpage) {
-
-			/*
-			 * whether or not to leave the page activated is up in
-			 * the air, but we should put the page on a page queue
-			 * somewhere. (it already is in the object). Result:
-			 * It appears that empirical results show that
-			 * deactivating pages is best.
-			 */
-
-			/*
-			 * just in case someone was asking for this page we
-			 * now tell them that it is ok to use
-			 */
+			vm_page_t mt = m[i];
 			if (!error) {
 				if (mt->flags & PG_WANTED)
 					vm_page_activate(mt);
@@ -920,7 +569,7 @@ vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
  */
 int
 vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
-    int flags, int *rtvals)
+			     int flags, int *rtvals)
 {
 	int i;
 	vm_object_t object;
