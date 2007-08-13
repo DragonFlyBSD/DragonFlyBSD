@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.15.2.1 2007/07/31 22:40:50 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.15.2.2 2007/08/13 13:39:40 hasso Exp $
  */
 
 /*-
@@ -260,7 +260,7 @@ static const struct uplcom_product {
 	/* HAL Corporation Crossam2+USB */
 	{ USB_VENDOR_HAL, USB_PRODUCT_HAL_IMR001, -1, TYPE_PL2303 },
 	/* Sitecom USB to Serial */
-	{ USB_VENDOR_MCT, USB_PRODUCT_MCT_SITECOM_USB232, -1, TYPE_PL2303 },
+	{ USB_VENDOR_SITECOM, USB_PRODUCT_SITECOM_CN104, -1, TYPE_PL2303 },
 	/* Tripp-Lite U209-000-R */
 	{ USB_VENDOR_TRIPPLITE, USB_PRODUCT_TRIPPLITE_U209, -1, TYPE_PL2303X },
 	{ 0, 0 }
