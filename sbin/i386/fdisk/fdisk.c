@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.14 2007/05/19 21:43:32 dillon Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.15 2007/08/13 17:08:34 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -838,6 +838,7 @@ get_params(void)
 	heads = partinfo.d_nheads;
 	sectors = partinfo.d_secpertrack;
 	cylsecs = heads * sectors;
+	secsize = partinfo.media_blksize;
     }
     dos_cyls = cyls;
     dos_heads = heads;
