@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.70 2007/08/04 00:52:49 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.71 2007/08/13 21:33:47 corecode Exp $
 #
 
 # compat target
@@ -86,13 +86,6 @@ check:
 	@echo "    make pkgsrc_bootstrap"
 	@exit 1
 .endif
-.if !exists(/etc/mk.conf)
-	@echo "You do not have an /etc/mk.conf.  You can use the following"
-	@echo "command to install one.  Otherwise pkgsrc defaults will not"
-	@echo "point to the  right place:"
-	@echo "    make pkgsrc_conf"
-	@exit 1
-.endif
 .for PKG in ${OLD_PKGSRC_PACKAGES}
 	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_DELETE} -K ${ISOROOT}/var/db/pkg ${PKG} > /dev/null 2>&1 || exit 0
 .endfor
@@ -141,7 +134,6 @@ buildiso:
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} installworld )
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
-	cp -p ${.CURDIR}/mk.conf.pkgsrc ${ISOROOT}/etc/mk.conf
 	chroot ${ISOROOT} /usr/bin/newaliases
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	cd ${.CURDIR}/..; \
@@ -247,13 +239,6 @@ pkgsrc_bootstrap:
 .endif
 	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
 	(cd ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}/bootstrap; ./bootstrap)
-
-pkgsrc_conf:
-.if !exists(/etc/mk.conf) 
-	cp ${.CURDIR}/mk.conf.pkgsrc /etc/mk.conf
-.else
-	fgrep -q BSD_PKG_MK /etc/mk.conf || cat ${.CURDIR}/mk.conf.pkgsrc >> /etc/mk.conf
-.endif
 
 pkgsrc_cdrecord:
 .if !exists (${PKGBIN_MKISOFS})
