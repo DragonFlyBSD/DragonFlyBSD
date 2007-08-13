@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.35 2007/08/09 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.36 2007/08/13 17:43:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -609,6 +609,7 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 {
 	struct proc *p = td->td_proc;
 	struct sockaddr_un *soun = (struct sockaddr_un *)nam;
+	struct vnode *dvp;
 	struct vnode *vp;
 	struct vattr vattr;
 	int error, namelen;
@@ -627,13 +628,17 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 		error = nlookup(&nd);
 	if (error == 0 && nd.nl_nch.ncp->nc_vp != NULL)
 		error = EADDRINUSE;
+	if (error == 0 && (dvp = nd.nl_nch.ncp->nc_parent->nc_vp) == NULL)
+		error = EPERM;
 	if (error)
 		goto done;
 
+	/* vhold(dvp); - DVP can't go away */
 	VATTR_NULL(&vattr);
 	vattr.va_type = VSOCK;
 	vattr.va_mode = (ACCESSPERMS & ~p->p_fd->fd_cmask);
-	error = VOP_NCREATE(&nd.nl_nch, &vp, nd.nl_cred, &vattr);
+	error = VOP_NCREATE(&nd.nl_nch, dvp, &vp, nd.nl_cred, &vattr);
+	/* vdrop(dvp); */
 	if (error == 0) {
 		vp->v_socket = unp->unp_socket;
 		unp->unp_vnode = vp;

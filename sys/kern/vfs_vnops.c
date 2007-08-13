@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.52 2007/07/30 08:02:38 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.53 2007/08/13 17:43:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -127,6 +127,7 @@ int
 vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 {
 	struct vnode *vp;
+	struct vnode *dvp;
 	struct ucred *cred = nd->nl_cred;
 	struct vattr vat;
 	struct vattr *vap = &vat;
@@ -176,12 +177,17 @@ again:
 		if (nd->nl_nch.ncp->nc_vp == NULL) {
 			if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 				return (error);
+			if ((dvp = nd->nl_nch.ncp->nc_parent->nc_vp) == NULL)
+				return (EPERM);
+			/* vhold(dvp); - dvp can't go away */
 			VATTR_NULL(vap);
 			vap->va_type = VREG;
 			vap->va_mode = cmode;
 			if (fmode & O_EXCL)
 				vap->va_vaflags |= VA_EXCLUSIVE;
-			error = VOP_NCREATE(&nd->nl_nch, &vp, nd->nl_cred, vap);
+			error = VOP_NCREATE(&nd->nl_nch, dvp, &vp,
+					    nd->nl_cred, vap);
+			/* vdrop(dvp); */
 			if (error)
 				return (error);
 			fmode &= ~O_TRUNC;

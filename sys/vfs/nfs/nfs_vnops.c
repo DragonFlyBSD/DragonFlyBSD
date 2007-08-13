@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.74 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.75 2007/08/13 17:43:57 dillon Exp $
  */
 
 
@@ -848,10 +848,8 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 	int32_t t1, t2;
 
 	cred = ap->a_cred;
-	ncp = ap->a_nch->ncp;
+	dvp = ap->a_dvp;
 
-	KKASSERT(ncp->nc_parent && ncp->nc_parent->nc_vp);
-	dvp = ncp->nc_parent->nc_vp;
 	if ((error = vget(dvp, LK_SHARED)) != 0)
 		return (error);
 
@@ -859,6 +857,7 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 	v3 = NFS_ISV3(dvp);
 	nfsstats.lookupcache_misses++;
 	nfsstats.rpccnt[NFSPROC_LOOKUP]++;
+	ncp = ap->a_nch->ncp;
 	len = ncp->nc_nlen;
 	nfsm_reqhead(dvp, NFSPROC_LOOKUP,
 		NFSX_FH(v3) + NFSX_UNSIGNED + nfsm_rndup(len));
@@ -2804,8 +2803,6 @@ nfsmout:
 static int
 nfs_bmap(struct vop_bmap_args *ap)
 {
-	struct vnode *vp = ap->a_vp;
-
 	if (ap->a_doffsetp != NULL)
 		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.118 2007/07/19 01:16:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.119 2007/08/13 17:43:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1619,6 +1619,7 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct vnode *vp;
+	struct vnode *dvp;
 	struct vattr vattr;
 	int error;
 	int whiteout = 0;
@@ -1645,6 +1646,9 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 		return (EEXIST);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
+	if ((dvp = nd->nl_nch.ncp->nc_parent->nc_vp) == NULL)
+		return (EPERM);
+	/* vhold(dvp); - DVP can't go away */
 
 	VATTR_NULL(&vattr);
 	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
@@ -1671,14 +1675,15 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 	}
 	if (error == 0) {
 		if (whiteout) {
-			error = VOP_NWHITEOUT(&nd->nl_nch, nd->nl_cred, NAMEI_CREATE);
+			error = VOP_NWHITEOUT(&nd->nl_nch, dvp, nd->nl_cred, NAMEI_CREATE);
 		} else {
 			vp = NULL;
-			error = VOP_NMKNOD(&nd->nl_nch, &vp, nd->nl_cred, &vattr);
+			error = VOP_NMKNOD(&nd->nl_nch, dvp, &vp, nd->nl_cred, &vattr);
 			if (error == 0)
 				vput(vp);
 		}
 	}
+	/* vdrop(dvp); */
 	return (error);
 }
 
@@ -1709,6 +1714,7 @@ kern_mkfifo(struct nlookupdata *nd, int mode)
 	struct proc *p = td->td_proc;
 	struct vattr vattr;
 	struct vnode *vp;
+	struct vnode *dvp;
 	int error;
 
 	bwillwrite();
@@ -1720,12 +1726,16 @@ kern_mkfifo(struct nlookupdata *nd, int mode)
 		return (EEXIST);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
+	if ((dvp = nd->nl_nch.ncp->nc_parent->nc_vp) == NULL)
+		return (EPERM);
+	/* vhold(dvp); - DVP can't go away */
 
 	VATTR_NULL(&vattr);
 	vattr.va_type = VFIFO;
 	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
 	vp = NULL;
-	error = VOP_NMKNOD(&nd->nl_nch, &vp, nd->nl_cred, &vattr);
+	error = VOP_NMKNOD(&nd->nl_nch, dvp, &vp, nd->nl_cred, &vattr);
+	/* vdrop(dvp); */
 	if (error == 0)
 		vput(vp);
 	return (error);
@@ -1805,6 +1815,7 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 {
 	struct thread *td = curthread;
 	struct vnode *vp;
+	struct vnode *dvp;
 	int error;
 
 	/*
@@ -1842,13 +1853,19 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 		vput(vp);
 		return (EEXIST);
 	}
+	if ((dvp = linknd->nl_nch.ncp->nc_parent->nc_vp) == NULL) {
+		vput(vp);
+		return (EPERM);
+	}
+	/* vhold(dvp); - dvp can't go away */
 
 	/*
 	 * Finally run the new API VOP.
 	 */
 	error = can_hardlink(vp, td, td->td_proc->p_ucred);
 	if (error == 0)
-		error = VOP_NLINK(&linknd->nl_nch, vp, linknd->nl_cred);
+		error = VOP_NLINK(&linknd->nl_nch, dvp, vp, linknd->nl_cred);
+	/* vdrop(dvp); */
 	vput(vp);
 	return (error);
 }
@@ -1880,6 +1897,7 @@ kern_symlink(struct nlookupdata *nd, char *path, int mode)
 {
 	struct vattr vattr;
 	struct vnode *vp;
+	struct vnode *dvp;
 	int error;
 
 	bwillwrite();
@@ -1890,9 +1908,13 @@ kern_symlink(struct nlookupdata *nd, char *path, int mode)
 		return (EEXIST);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
+	if ((dvp = nd->nl_nch.ncp->nc_parent->nc_vp) == NULL)
+		return (EPERM);
+	/* vhold(dvp); - dvp can't go away */
 	VATTR_NULL(&vattr);
 	vattr.va_mode = mode;
-	error = VOP_NSYMLINK(&nd->nl_nch, &vp, nd->nl_cred, &vattr, path);
+	error = VOP_NSYMLINK(&nd->nl_nch, dvp, &vp, nd->nl_cred, &vattr, path);
+	/* vdrop(dvp); */
 	if (error == 0)
 		vput(vp);
 	return (error);
@@ -1936,6 +1958,7 @@ int
 sys_undelete(struct undelete_args *uap)
 {
 	struct nlookupdata nd;
+	struct vnode *dvp;
 	int error;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
@@ -1945,8 +1968,16 @@ sys_undelete(struct undelete_args *uap)
 		error = nlookup(&nd);
 	if (error == 0)
 		error = ncp_writechk(&nd.nl_nch);
-	if (error == 0)
-		error = VOP_NWHITEOUT(&nd.nl_nch, nd.nl_cred, NAMEI_DELETE);
+	dvp = NULL;
+	if (error == 0) {
+		if ((dvp = nd.nl_nch.ncp->nc_parent->nc_vp) == NULL)
+			error = EPERM;
+	}
+	if (error == 0) {
+		/* vhold(dvp); - dvp can't go away */
+		error = VOP_NWHITEOUT(&nd.nl_nch, dvp, nd.nl_cred, NAMEI_DELETE);
+		/* vdrop(dvp); */
+	}
 	nlookup_done(&nd);
 	return (error);
 }
@@ -1954,6 +1985,7 @@ sys_undelete(struct undelete_args *uap)
 int
 kern_unlink(struct nlookupdata *nd)
 {
+	struct vnode *dvp;
 	int error;
 
 	bwillwrite();
@@ -1962,7 +1994,11 @@ kern_unlink(struct nlookupdata *nd)
 		return (error);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
-	error = VOP_NREMOVE(&nd->nl_nch, nd->nl_cred);
+	if ((dvp = nd->nl_nch.ncp->nc_parent->nc_vp) == NULL)
+		return (EPERM);
+	/* vhold(dvp); - dvp can't go away */
+	error = VOP_NREMOVE(&nd->nl_nch, dvp, nd->nl_cred);
+	/* vdrop(dvp); */
 	return (error);
 }
 
@@ -2845,6 +2881,8 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	struct nchandle fnchd;
 	struct nchandle tnchd;
 	struct namecache *ncp;
+	struct vnode *fdvp;
+	struct vnode *tdvp;
 	struct mount *mp;
 	int error;
 
@@ -2996,11 +3034,22 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 * when we detect the situation.
 	 */
 	if (error == 0) {
-		if (fromnd->nl_nch.ncp->nc_vp == tond->nl_nch.ncp->nc_vp) {
-			error = VOP_NREMOVE(&fromnd->nl_nch, fromnd->nl_cred);
+		fdvp = fromnd->nl_nch.ncp->nc_parent->nc_vp;
+		tdvp = tond->nl_nch.ncp->nc_parent->nc_vp;
+		if (fdvp == NULL || tdvp == NULL) {
+			error = EPERM;
+		} else if (fromnd->nl_nch.ncp->nc_vp == tond->nl_nch.ncp->nc_vp) {
+			/* vhold(fdvp); - dvp can't go away */
+			error = VOP_NREMOVE(&fromnd->nl_nch, fdvp,
+					    fromnd->nl_cred);
+			/* vdrop(fdvp); */
 		} else {
+			/* vhold(fdvp); - dvp can't go away */
+			/* vhold(tdvp); - dvp can't go away */
 			error = VOP_NRENAME(&fromnd->nl_nch, &tond->nl_nch, 
-					    tond->nl_cred);
+					    fdvp, tdvp, tond->nl_cred);
+			/* vdrop(fdvp); */
+			/* vdrop(tdvp); */
 		}
 	}
 	return (error);
@@ -3035,6 +3084,7 @@ kern_mkdir(struct nlookupdata *nd, int mode)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct vnode *vp;
+	struct vnode *dvp;
 	struct vattr vattr;
 	int error;
 
@@ -3047,13 +3097,16 @@ kern_mkdir(struct nlookupdata *nd, int mode)
 		return (EEXIST);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
-
+	if ((dvp = nd->nl_nch.ncp->nc_parent->nc_vp) == NULL)
+		return (EPERM);
+	/* vhold(dvp); - dvp can't go away */
 	VATTR_NULL(&vattr);
 	vattr.va_type = VDIR;
 	vattr.va_mode = (mode & ACCESSPERMS) &~ p->p_fd->fd_cmask;
 
 	vp = NULL;
-	error = VOP_NMKDIR(&nd->nl_nch, &vp, p->p_ucred, &vattr);
+	error = VOP_NMKDIR(&nd->nl_nch, dvp, &vp, p->p_ucred, &vattr);
+	/* vdrop(dvp); */
 	if (error == 0)
 		vput(vp);
 	return (error);
@@ -3081,6 +3134,7 @@ sys_mkdir(struct mkdir_args *uap)
 int
 kern_rmdir(struct nlookupdata *nd)
 {
+	struct vnode *dvp;
 	int error;
 
 	bwillwrite();
@@ -3097,8 +3151,11 @@ kern_rmdir(struct nlookupdata *nd)
 		return (EINVAL);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
-
-	error = VOP_NRMDIR(&nd->nl_nch, nd->nl_cred);
+	if ((dvp = nd->nl_nch.ncp->nc_parent->nc_vp) == NULL)
+		return (EPERM);
+	/* vhold(dvp); - dvp can't go away */
+	error = VOP_NRMDIR(&nd->nl_nch, dvp, nd->nl_cred);
+	/* vdrop(dvp); */
 	return (error);
 }
 

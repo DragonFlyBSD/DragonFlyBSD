@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.83 2007/06/20 06:23:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.84 2007/08/13 17:43:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1899,6 +1899,7 @@ cache_resolve(struct nchandle *nch, struct ucred *cred)
 	struct namecache *ncp;
 	struct nchandle nctmp;
 	struct mount *mp;
+	struct vnode *dvp;
 	int error;
 
 	ncp = nch->ncp;
@@ -1982,14 +1983,16 @@ restart:
 		_cache_get(par);
 		if (par == nch->mount->mnt_ncmountpt.ncp) {
 			cache_resolve_mp(nch->mount);
-		} else if (par->nc_parent->nc_vp == NULL) {
+		} else if ((dvp = par->nc_parent->nc_vp) == NULL) {
 			kprintf("[diagnostic] cache_resolve: raced on %*.*s\n", par->nc_nlen, par->nc_nlen, par->nc_name);
 			_cache_put(par);
 			continue;
 		} else if (par->nc_flag & NCF_UNRESOLVED) {
+			/* vhold(dvp); - DVP can't go away */
 			nctmp.mount = mp;
 			nctmp.ncp = par;
-			par->nc_error = VOP_NRESOLVE(&nctmp, cred);
+			par->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
+			/* vdrop(dvp); */
 		}
 		if ((error = par->nc_error) != 0) {
 			if (par->nc_error != EAGAIN) {
@@ -2014,10 +2017,12 @@ restart:
 	 * NOTE: in order to call VOP_NRESOLVE(), the parent of the passed
 	 * ncp must already be resolved.
 	 */
+	dvp = ncp->nc_parent->nc_vp;
+	/* vhold(dvp); - dvp can't go away */
 	nctmp.mount = mp;
 	nctmp.ncp = ncp;
-	ncp->nc_error = VOP_NRESOLVE(&nctmp, cred);
-	/*vop_nresolve(*ncp->nc_parent->nc_vp->v_ops, ncp, cred);*/
+	ncp->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
+	/* vdrop(dvp); */
 	if (ncp->nc_error == EAGAIN) {
 		kprintf("[diagnostic] cache_resolve: EAGAIN ncp %p %*.*s\n",
 			ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);

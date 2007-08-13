@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.34 2007/08/13 17:31:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.35 2007/08/13 17:43:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -930,7 +930,8 @@ vop_mountctl(struct vop_ops *ops, int op, struct file *fp,
  * is left locked on return.
  */
 int
-vop_nresolve(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
+vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
+	     struct vnode *dvp, struct ucred *cred)
 {
 	struct vop_nresolve_args ap;
 	int error;
@@ -938,6 +939,7 @@ vop_nresolve(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
 	ap.a_head.a_desc = &vop_nresolve_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_nch = nch;
+	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nresolve);
@@ -974,7 +976,7 @@ vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
  * is left locked on return.
  */
 int
-vop_ncreate(struct vop_ops *ops, struct nchandle *nch, 
+vop_ncreate(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
 {
 	struct vop_ncreate_args ap;
@@ -983,6 +985,7 @@ vop_ncreate(struct vop_ops *ops, struct nchandle *nch,
 	ap.a_head.a_desc = &vop_ncreate_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_nch = nch;
+	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cred = cred;
 	ap.a_vap = vap;
@@ -1002,7 +1005,7 @@ vop_ncreate(struct vop_ops *ops, struct nchandle *nch,
  * is left locked on return.
  */
 int
-vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, 
+vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
 {
 	struct vop_nmkdir_args ap;
@@ -1011,6 +1014,7 @@ vop_nmkdir(struct vop_ops *ops, struct nchandle *nch,
 	ap.a_head.a_desc = &vop_nmkdir_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_nch = nch;
+	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cred = cred;
 	ap.a_vap = vap;
@@ -1030,7 +1034,7 @@ vop_nmkdir(struct vop_ops *ops, struct nchandle *nch,
  * is left locked on return.
  */
 int
-vop_nmknod(struct vop_ops *ops, struct nchandle *nch, 
+vop_nmknod(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
 {
 	struct vop_nmknod_args ap;
@@ -1039,6 +1043,7 @@ vop_nmknod(struct vop_ops *ops, struct nchandle *nch,
 	ap.a_head.a_desc = &vop_nmknod_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_nch = nch;
+	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cred = cred;
 	ap.a_vap = vap;
@@ -1059,8 +1064,8 @@ vop_nmknod(struct vop_ops *ops, struct nchandle *nch,
  * is left locked on return.
  */
 int
-vop_nlink(struct vop_ops *ops, struct nchandle *nch,
-	struct vnode *vp, struct ucred *cred)
+vop_nlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
+	  struct vnode *vp, struct ucred *cred)
 {
 	struct vop_nlink_args ap;
 	int error;
@@ -1068,6 +1073,7 @@ vop_nlink(struct vop_ops *ops, struct nchandle *nch,
 	ap.a_head.a_desc = &vop_nlink_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_nch = nch;
+	ap.a_dvp = dvp;
 	ap.a_vp = vp;
 	ap.a_cred = cred;
 
@@ -1087,7 +1093,7 @@ vop_nlink(struct vop_ops *ops, struct nchandle *nch,
  * is left locked on return.
  */
 int
-vop_nsymlink(struct vop_ops *ops, struct nchandle *nch,
+vop_nsymlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct vnode **vpp, struct ucred *cred,
 	struct vattr *vap, char *target)
 {
@@ -1097,6 +1103,7 @@ vop_nsymlink(struct vop_ops *ops, struct nchandle *nch,
 	ap.a_head.a_desc = &vop_nsymlink_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_nch = nch;
+	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cred = cred;
 	ap.a_vap = vap;
@@ -1116,7 +1123,7 @@ vop_nsymlink(struct vop_ops *ops, struct nchandle *nch,
  * is left locked on return.
  */
 int
-vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, 
+vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct ucred *cred, int flags)
 {
 	struct vop_nwhiteout_args ap;
@@ -1125,6 +1132,7 @@ vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch,
 	ap.a_head.a_desc = &vop_nwhiteout_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_nch = nch;
+	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 	ap.a_flags = flags;
 
@@ -1142,7 +1150,8 @@ vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch,
  * is left locked on return.
  */
 int
-vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
+vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
+	    struct ucred *cred)
 {
 	struct vop_nremove_args ap;
 	int error;
@@ -1150,6 +1159,7 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
 	ap.a_head.a_desc = &vop_nremove_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_nch = nch;
+	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nremove);
@@ -1166,7 +1176,8 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
  * is left locked on return.
  */
 int
-vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
+vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
+	   struct ucred *cred)
 {
 	struct vop_nrmdir_args ap;
 	int error;
@@ -1174,6 +1185,7 @@ vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
 	ap.a_head.a_desc = &vop_nrmdir_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_nch = nch;
+	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nrmdir);
@@ -1193,8 +1205,10 @@ vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct ucred *cred)
  * source ncp's underlying file.
  */
 int
-vop_nrename(struct vop_ops *ops, struct nchandle *fnch, 
-	    struct nchandle *tnch, struct ucred *cred)
+vop_nrename(struct vop_ops *ops,
+	    struct nchandle *fnch, struct nchandle *tnch,
+	    struct vnode *fdvp, struct vnode *tdvp,
+	    struct ucred *cred)
 {
 	struct vop_nrename_args ap;
 	int error;
@@ -1203,6 +1217,8 @@ vop_nrename(struct vop_ops *ops, struct nchandle *fnch,
 	ap.a_head.a_ops = ops;
 	ap.a_fnch = fnch;
 	ap.a_tnch = tnch;
+	ap.a_fdvp = fdvp;
+	ap.a_tdvp = tdvp;
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nrename);

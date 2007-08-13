@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.28 2007/08/13 17:31:52 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.29 2007/08/13 17:43:56 dillon Exp $
  */
 
 /*
@@ -416,9 +416,15 @@ struct vop_mountctl_args {
 /*
  * NEW API
  */
+
+/*
+ * Warning: a_dvp is only held, not ref'd.  The target must still vget()
+ * it.
+ */
 struct vop_nresolve_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_nch;
+	struct vnode *a_dvp;
 	struct ucred *a_cred;
 };
 
@@ -429,69 +435,115 @@ struct vop_nlookupdotdot_args {
 	struct ucred *a_cred;
 };
 
+/*
+ * Warning: a_dvp is only held, not ref'd.  The target must still vget()
+ * it.
+ */
 struct vop_ncreate_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_nch;		/* locked namespace */
-	struct vnode **a_vpp;			/* returned refd & locked */
+	struct vnode *a_dvp;		/* held directory vnode */
+	struct vnode **a_vpp;		/* returned refd & locked */
 	struct ucred *a_cred;
 	struct vattr *a_vap;
 };
 
+/*
+ * Warning: a_dvp is only held, not ref'd.  The target must still vget()
+ * it.
+ */
 struct vop_nmkdir_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_nch;		/* locked namespace */
+	struct vnode *a_dvp;
 	struct vnode **a_vpp;			/* returned refd & locked */
 	struct ucred *a_cred;
 	struct vattr *a_vap;
 };
 
+/*
+ * Warning: a_dvp is only held, not ref'd.  The target must still vget()
+ * it.
+ */
 struct vop_nmknod_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_nch;
+	struct vnode *a_dvp;
 	struct vnode **a_vpp;
 	struct ucred *a_cred;
 	struct vattr *a_vap;
 };
 
+/*
+ * Warning: a_dvp is only held, not ref'd.  The target must still vget()
+ * it.
+ */
 struct vop_nlink_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_nch;
+	struct vnode *a_dvp;
 	struct vnode *a_vp;
 	struct ucred *a_cred;
 };
 
+/*
+ * Warning: a_dvp is only held, not ref'd.  The target must still vget()
+ * it.
+ */
 struct vop_nsymlink_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_nch;
+	struct vnode *a_dvp;
 	struct vnode **a_vpp;
 	struct ucred *a_cred;
 	struct vattr *a_vap;
 	char *a_target;
 };
 
+/*
+ * Warning: a_dvp is only held, not ref'd.  The target must still vget()
+ * it.
+ */
 struct vop_nwhiteout_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_nch;
+	struct vnode *a_dvp;
 	struct ucred *a_cred;
 	int a_flags;
 };
 
+/*
+ * Warning: a_dvp is only held, not ref'd.  The target must still vget()
+ * it.
+ */
 struct vop_nremove_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_nch;		/* locked namespace */
+	struct vnode *a_dvp;
 	struct ucred *a_cred;
 };
 
+/*
+ * Warning: a_dvp is only held, not ref'd.  The target must still vget()
+ * it.
+ */
 struct vop_nrmdir_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_nch;		/* locked namespace */
+	struct vnode *a_dvp;
 	struct ucred *a_cred;
 };
 
+/*
+ * Warning: a_fdvp and a_tdvp are only held, not ref'd.  The target must
+ * still vget() it.
+ */
 struct vop_nrename_args {
 	struct vop_generic_args a_head;
 	struct nchandle *a_fnch;		/* locked namespace / from */
 	struct nchandle *a_tnch;		/* locked namespace / to */
+	struct vnode *a_fdvp;
+	struct vnode *a_tdvp;
 	struct ucred *a_cred;
 };
 
@@ -746,28 +798,30 @@ int vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 int vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
 		const void *ctl, int ctllen, void *buf, int buflen, int *res);
 int vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
-		struct ucred *cred);
+		struct vnode *dvp, struct ucred *cred);
 int vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct ucred *cred);
-int vop_ncreate(struct vop_ops *ops, struct nchandle *nch,
+int vop_ncreate(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 		struct vnode **vpp, struct ucred *cred, struct vattr *vap);
-int vop_nmkdir(struct vop_ops *ops, struct nchandle *nch,
+int vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 		struct vnode **vpp, struct ucred *cred, struct vattr *vap);
-int vop_nmknod(struct vop_ops *ops, struct nchandle *nch,
+int vop_nmknod(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 		struct vnode **vpp, struct ucred *cred, struct vattr *vap);
-int vop_nlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *vp,
-		struct ucred *cred);
-int vop_nsymlink(struct vop_ops *ops, struct nchandle *nch,
+int vop_nlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
+		struct vnode *vp, struct ucred *cred);
+int vop_nsymlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 		struct vnode **vpp, struct ucred *cred,
 		struct vattr *vap, char *target);
-int vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch,
+int vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 		struct ucred *cred, int flags);
-int vop_nremove(struct vop_ops *ops, struct nchandle *nch,
+int vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 		struct ucred *cred);
-int vop_nrmdir(struct vop_ops *ops, struct nchandle *nch,
+int vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 		struct ucred *cred);
-int vop_nrename(struct vop_ops *ops, struct nchandle *fnch,
-		struct nchandle *tnch, struct ucred *cred);
+int vop_nrename(struct vop_ops *ops,
+		struct nchandle *fnch, struct nchandle *tnch,
+		struct vnode *fdvp, struct vnode *tdvp,
+		struct ucred *cred);
 
 /*
  * Kernel VOP forwarding wrappers.  These are called when a VFS such as
@@ -1005,26 +1059,28 @@ extern struct syslink_desc vop_nrename_desc;
  * code in kern/vfs_default which does the magic required to call the old
  * routines.
  */
-#define VOP_NRESOLVE(nch, cred)				\
-	vop_nresolve((nch)->mount->mnt_vn_use_ops, nch, cred)
-#define VOP_NCREATE(nch, vpp, cred, vap)		\
-	vop_ncreate((nch)->mount->mnt_vn_use_ops, nch, vpp, cred, vap)
-#define VOP_NMKDIR(nch, vpp, cred, vap)			\
-	vop_nmkdir((nch)->mount->mnt_vn_use_ops, nch, vpp, cred, vap)
-#define VOP_NMKNOD(nch, vpp, cred, vap)			\
-	vop_nmknod((nch)->mount->mnt_vn_use_ops, nch, vpp, cred, vap)
-#define VOP_NLINK(nch, vp, cred)			\
-	vop_nlink((nch)->mount->mnt_vn_use_ops, nch, vp, cred)
-#define VOP_NSYMLINK(nch, vpp, cred, vap, target)	\
-	vop_nsymlink((nch)->mount->mnt_vn_use_ops, nch, vpp, cred, vap, target)
-#define VOP_NWHITEOUT(nch, cred, flags)			\
-	vop_nwhiteout((nch)->mount->mnt_vn_use_ops, nch, cred, flags)
-#define VOP_NRENAME(fnch, tnch, cred)			\
-	vop_nrename((fnch)->mount->mnt_vn_use_ops, fnch, tnch, cred)
-#define VOP_NRMDIR(nch, cred)				\
-	vop_nrmdir((nch)->mount->mnt_vn_use_ops, nch, cred)
-#define VOP_NREMOVE(nch, cred)				\
-	vop_nremove((nch)->mount->mnt_vn_use_ops, nch, cred)
+#define VOP_NRESOLVE(nch, dvp, cred)			\
+	vop_nresolve((nch)->mount->mnt_vn_use_ops, nch, dvp, cred)
+#define VOP_NLOOKUPDOTDOT(dvp, vpp, cred)		\
+	vop_nlookupdotdot(*(dvp)->v_ops, dvp, vpp, cred)
+#define VOP_NCREATE(nch, dvp, vpp, cred, vap)		\
+	vop_ncreate((nch)->mount->mnt_vn_use_ops, nch, dvp, vpp, cred, vap)
+#define VOP_NMKDIR(nch, dvp, vpp, cred, vap)		\
+	vop_nmkdir((nch)->mount->mnt_vn_use_ops, nch, dvp, vpp, cred, vap)
+#define VOP_NMKNOD(nch, dvp, vpp, cred, vap)		\
+	vop_nmknod((nch)->mount->mnt_vn_use_ops, nch, dvp, vpp, cred, vap)
+#define VOP_NLINK(nch, dvp, vp, cred)			\
+	vop_nlink((nch)->mount->mnt_vn_use_ops, nch, dvp, vp, cred)
+#define VOP_NSYMLINK(nch, dvp, vpp, cred, vap, target)	\
+	vop_nsymlink((nch)->mount->mnt_vn_use_ops, nch, dvp, vpp, cred, vap, target)
+#define VOP_NWHITEOUT(nch, dvp, cred, flags)		\
+	vop_nwhiteout((nch)->mount->mnt_vn_use_ops, nch, dvp, cred, flags)
+#define VOP_NRENAME(fnch, tnch, fdvp, tdvp, cred)		\
+	vop_nrename((fnch)->mount->mnt_vn_use_ops, fnch, tnch, fdvp, tdvp, cred)
+#define VOP_NRMDIR(nch, dvp, cred)			\
+	vop_nrmdir((nch)->mount->mnt_vn_use_ops, nch, dvp, cred)
+#define VOP_NREMOVE(nch, dvp, cred)			\
+	vop_nremove((nch)->mount->mnt_vn_use_ops, nch, dvp, cred)
 
 #endif
 

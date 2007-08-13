@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.49 2007/08/08 00:12:51 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.50 2007/08/13 17:43:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +153,8 @@ vop_panic(struct vop_generic_args *ap)
 }
 
 /*
- * vop_compat_resolve { struct nchandle *a_nch }	XXX STOPGAP FUNCTION
+ * vop_compat_resolve { struct nchandle *a_nch, struct vnode *dvp }
+ * XXX STOPGAP FUNCTION
  *
  * XXX OLD API ROUTINE!  WHEN ALL VFSs HAVE BEEN CLEANED UP THIS PROCEDURE
  * WILL BE REMOVED.  This procedure exists for all VFSs which have not
@@ -189,10 +190,7 @@ vop_compat_nresolve(struct vop_nresolve_args *ap)
 
 	nch = ap->a_nch;	/* locked namecache node */
 	ncp = nch->ncp;
-	if (ncp->nc_parent == NULL)
-		return(EPERM);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
+	dvp = ap->a_dvp;
 
 	/*
 	 * UFS currently stores all sorts of side effects, including a loop
@@ -301,7 +299,8 @@ vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 
 /*
  * vop_compat_ncreate { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
- *			struct vnode *a_vpp,
+ *			struct vnode *a_dvp,
+ *			struct vnode **a_vpp,
  *			struct ucred *a_cred,
  *			struct vattr *a_vap }
  *
@@ -323,11 +322,8 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 	 * Sanity checks, get a locked directory vnode.
 	 */
 	nch = ap->a_nch;		/* locked namecache node */
+	dvp = ap->a_dvp;
 	ncp = nch->ncp;
-	if (ncp->nc_parent == NULL)
-		return(EPERM);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
@@ -383,7 +379,8 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 
 /*
  * vop_compat_nmkdir { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
- *			struct vnode *a_vpp,
+ *			struct vnode *a_dvp,
+ *			struct vnode **a_vpp,
  *			struct ucred *a_cred,
  *			struct vattr *a_vap }
  *
@@ -406,11 +403,7 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 	 */
 	nch = ap->a_nch;		/* locked namecache node */
 	ncp = nch->ncp;
-	if (ncp->nc_parent == NULL)
-		return(EPERM);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
-
+	dvp = ap->a_dvp;
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
@@ -465,7 +458,8 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 
 /*
  * vop_compat_nmknod { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
- *			struct vnode *a_vpp,
+ *			struct vnode *a_dvp,
+ *			struct vnode **a_vpp,
  *			struct ucred *a_cred,
  *			struct vattr *a_vap }
  *
@@ -488,10 +482,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 	 */
 	nch = ap->a_nch;		/* locked namecache node */
 	ncp = nch->ncp;
-	if (ncp->nc_parent == NULL)
-		return(EPERM);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
+	dvp = ap->a_dvp;
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
@@ -547,6 +538,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 
 /*
  * vop_compat_nlink { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
+ *			struct vnode *a_dvp,
  *			struct vnode *a_vp,
  *			struct ucred *a_cred }
  *
@@ -569,10 +561,7 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 	 */
 	nch = ap->a_nch;		/* locked namecache node */
 	ncp = nch->ncp;
-	if (ncp->nc_parent == NULL)
-		return(EPERM);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
+	dvp = ap->a_dvp;
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
@@ -641,10 +630,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 	*ap->a_vpp = NULL;
 	nch = ap->a_nch;		/* locked namecache node */
 	ncp = nch->ncp;
-	if (ncp->nc_parent == NULL)
-		return(EPERM);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
+	dvp = ap->a_dvp;
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
@@ -701,6 +687,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 
 /*
  * vop_compat_nwhiteout { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
+ *			  struct vnode *a_dvp,
  *			  struct ucred *a_cred,
  *			  int a_flags }
  *
@@ -726,10 +713,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 	 */
 	nch = ap->a_nch;		/* locked namecache node */
 	ncp = nch->ncp;
-	if (ncp->nc_parent == NULL)
-		return(EPERM);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
+	dvp = ap->a_dvp;
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
@@ -797,7 +781,8 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 
 /*
  * vop_compat_nremove { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
- *			  struct ucred *a_cred }
+ *			struct vnode *a_dvp,
+ *			struct ucred *a_cred }
  */
 int
 vop_compat_nremove(struct vop_nremove_args *ap)
@@ -815,10 +800,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 	 */
 	nch = ap->a_nch;		/* locked namecache node */
 	ncp = nch->ncp;
-	if (ncp->nc_parent == NULL)
-		return(EPERM);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
+	dvp = ap->a_dvp;
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
@@ -872,7 +854,8 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 
 /*
  * vop_compat_nrmdir { struct nchandle *a_nch, 	XXX STOPGAP FUNCTION
- *			  struct ucred *a_cred }
+ *		       struct vnode *dvp,
+ *		       struct ucred *a_cred }
  */
 int
 vop_compat_nrmdir(struct vop_nrmdir_args *ap)
@@ -890,10 +873,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 	 */
 	nch = ap->a_nch;		/* locked namecache node */
 	ncp = nch->ncp;
-	if (ncp->nc_parent == NULL)
-		return(EPERM);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
+	dvp = ap->a_dvp;
 
 	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		kprintf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
@@ -984,10 +964,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	 */
 	fnch = ap->a_fnch;		/* locked namecache node */
 	fncp = fnch->ncp;
-	if (fncp->nc_parent == NULL)
-		return(EPERM);
-	if ((fdvp = fncp->nc_parent->nc_vp) == NULL)
-		return(EPERM);
+	fdvp = ap->a_fdvp;
 
 	/*
 	 * Temporarily lock the source directory and lookup in DELETE mode to
@@ -1042,10 +1019,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	 */
 	tnch = ap->a_tnch;		/* locked namecache node */
 	tncp = tnch->ncp;
-	if (tncp->nc_parent == NULL)
-		error = EPERM;
-	if ((tdvp = tncp->nc_parent->nc_vp) == NULL)
-		error = EPERM;
+	tdvp = ap->a_tdvp;
 	if (error) {
 		vrele(fdvp);
 		vrele(fvp);
