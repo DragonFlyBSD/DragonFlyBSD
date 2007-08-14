@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.19 2007/07/05 12:08:53 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.19.2.1 2007/08/14 15:38:12 sephe Exp $
  */
 
 #include "opt_ed.h"
@@ -253,7 +253,7 @@ ed_pccard_attach(device_t dev)
 	int error;
 	int i;
 	uint8_t sum;
-	uint8_t *ether_addr;
+	const uint8_t *ether_addr;
 	
 	if (sc->port_used > 0)
 		ed_alloc_port(dev, sc->port_rid, sc->port_used);

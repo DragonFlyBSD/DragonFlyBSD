@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.13 2007/07/05 12:08:53 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.13.2.1 2007/08/14 15:38:12 sephe Exp $
  */
 
 #include "opt_fe.h"
@@ -126,7 +126,7 @@ fe_pccard_probe(device_t dev)
 	struct fe_softc *sc;
 	int i, error;
 	uint8_t sum;
-	uint8_t *ether_addr;
+	const uint8_t *ether_addr;
 
 	/* Prepare for the device probe process.  */
 	sc = device_get_softc(dev);

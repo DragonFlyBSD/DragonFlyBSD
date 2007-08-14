@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_pccard.c,v 1.2.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.13 2006/12/22 23:26:19 swildner Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.13.4.1 2007/08/14 15:38:12 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -128,7 +128,7 @@ ex_pccard_attach(device_t dev)
 	int			error = 0;
 	int			i;
 	uint8_t			sum;
-	uint8_t	*		ether_addr;
+	const uint8_t	*	ether_addr;
 
 	sc->dev = dev;
 	sc->ioport_rid = 0;
