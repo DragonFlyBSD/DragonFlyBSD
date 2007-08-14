@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.25 2007/08/14 08:42:34 hasso Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.26 2007/08/14 11:04:52 hasso Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -2309,17 +2309,21 @@ product SIIG2 US2308		0x0421	Serial
 
 /* Silicon Labs products */
 product SILABS POLOLU		0x803b	Pololu Serial
-product SILABS ARGUSISP		0x8066	Argussoft ISP
-product SILABS CRUMB128		0x807a	Crumb128
+product SILABS EDG1228		0x8053	Enfora EDG1228
+product SILABS ARGUSISP		0x8066	Argussoft In-System Programmer
+product SILABS CRUMB128		0x807a	Crumb128 board
 product SILABS DEGREECONT	0x80ca	Degree Controls
+product SILABS TRACIENT_RFID	0x80dd	Tracient RFID
 product SILABS SUNNTO		0x80f6	Suunto sports
 product SILABS DESKTOPMOBILE	0x813d	Burnside Desktop mobile
+product SILABS RIGBLASTER	0x814a	West Mountain Radio RIGblaster P&P
+product SILABS RIGTALK		0x814b	West Mountain Radio RIGtalk
 product SILABS IPLINK1220	0x815e	IP-Link 1220
 product SILABS LIPOWSKY_JTAG	0x81c8	Lipowsky Baby-JTAG
 product SILABS LIPOWSKY_LIN	0x81e2	Lipowsky Baby-LIN
 product SILABS LIPOWSKY_HARP	0x8218	Lipowsky HARP-1
-product SILABS CP210X_1		0xea60	CP210x Serial
-product SILABS CP210X_2		0xea61	CP210x Serial
+product SILABS CP210X_1		0xea60	Silicon Labs CP210x
+product SILABS CP210X_2		0xea61	Silicon Labs CP210x
 
 product SILABS2 DCU11CLONE	0xaa26	DCU-11 clone
 
