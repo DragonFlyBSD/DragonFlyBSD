@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb_pci.c,v 1.15 2005/10/08 06:58:51 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb_pci.c,v 1.1 2007/07/05 12:08:54 sephe Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb_pci.c,v 1.2 2007/08/14 14:58:44 sephe Exp $
  */
 
 /*-
@@ -72,6 +72,8 @@
  *  * YAMAMOTO Shigeru: Author of another FreeBSD cardbus driver
  *  * David Cross: Author of the initial ugly hack for a specific cardbus card
  */
+
+#include "opt_pci.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -317,6 +319,7 @@ cbb_pci_attach(device_t brdev)
 	sc->base_res = bus_alloc_resource_any(brdev, SYS_RES_MEMORY, &rid,
 	    RF_ACTIVE);
 	if (!sc->base_res) {
+#ifndef PCI_MAP_FIXUP
 		uint32_t sockbase;
 
 		/*
@@ -342,6 +345,10 @@ cbb_pci_attach(device_t brdev)
 		}
 		pci_write_config(brdev, CBBR_SOCKBASE,
 		    rman_get_start(sc->base_res), 4);
+#else	/* PCI_MAP_FIXUP */
+		device_printf(brdev, "Could not grab register memory\n");
+		return (ENOMEM);
+#endif	/* !PCI_MAP_FIXUP */
 	} else {
 		DEVPRINTF((brdev, "Found memory at %08lx\n",
 		    rman_get_start(sc->base_res)));
