@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.18.2.1 2006/01/26 01:43:13 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.17 2007/06/28 13:55:12 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.18 2007/08/14 20:06:13 dillon Exp $
  */
 
 /*
@@ -93,8 +93,10 @@
 static const char *ehci_device_m5239 = "ALi M5239 USB 2.0 controller";
 
 /* AMD */
-#define PCI_EHCI_DEVICEID_8111		0x10227463
+#define PCI_EHCI_DEVICEID_8111		0x74631022
+#define PCI_EHCI_DEVICEID_CS5536	0x20951022
 static const char *ehci_device_8111 = "AMD 8111 USB 2.0 controller";
+static const char *ehci_device_CS5536 = "AMD CS5536 USB 2.0 controller";
 
 /* ATI */
 #define PCI_EHCI_DEVICEID_SB200		0x43451002
@@ -210,6 +212,8 @@ ehci_pci_match(device_t self)
 		return (ehci_device_m5239);
 	case PCI_EHCI_DEVICEID_8111:
 		return (ehci_device_8111);
+	case PCI_EHCI_DEVICEID_CS5536:
+		return (ehci_device_CS5536);
 	case PCI_EHCI_DEVICEID_SB200:
 		return (ehci_device_sb200);
 	case PCI_EHCI_DEVICEID_SB400:
@@ -412,6 +416,8 @@ ehci_pci_attach(device_t self)
 			if (res != 0 || buscount != 1)
 				continue;
 			bsc = device_get_softc(nbus[0]);
+			if (bsc == NULL || bsc->bdev == NULL)
+				continue;
 			DPRINTF(("ehci_pci_attach: companion %s\n",
 			    device_get_nameunit(bsc->bdev)));
 			sc->sc_comps[ncomp++] = bsc;
