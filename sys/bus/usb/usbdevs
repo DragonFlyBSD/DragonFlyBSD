@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.24 2007/08/02 11:37:24 hasso Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.25 2007/08/14 08:42:34 hasso Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -909,6 +909,9 @@ product AVERATEC USBWLAN	0x4013	WLAN
 /* Avision products */
 product AVISION 1200U		0x0268	1200U scanner
 
+/* Baltech products */
+product BALTECH CARDREADER	0x9999	Card reader
+
 /* B&B Electronics products */
 product BBELECTRONICS USOTL4	0xAC01	uLinks Isolated RS-422/485 to USB adapter
 
@@ -1159,6 +1162,9 @@ product DLINK DSB650		0xabc1	10/100 ethernet adapter
 
 product DLINK2 DWLG122C1	0x3c03	DWL-G122 rev C1
 product DLINK2 WUA1340		0x3c04	WUA-1340
+
+/* Dynastream Innovations */
+product DYNASTREAM ANTDEVBOARD	0x1003	ANT dev board
 
 /* eGalax Products */
 product EGALAX TPANEL		0x0001	Touch Panel
@@ -1532,6 +1538,9 @@ product ITEGNO CDMA		0x2080	iTegno CDMA 1x card
 
 /* Ituner networks products */
 product ITUNERNET USBLCD2X20	0x0002	USB-LCD 2x20
+
+/* Jablotron products */
+product JABLOTRON PC60B		0x0001	PC-60B
 
 /* Jaton products */
 product JATON EDA		0x5704	Ethernet Device Adapter
@@ -2298,6 +2307,22 @@ product SIIG WINTERREADER	0x0330	WINTERREADER Reader
 product SIIG2 USBTOETHER	0x0109	USB TO Ethernet
 product SIIG2 US2308		0x0421	Serial
 
+/* Silicon Labs products */
+product SILABS POLOLU		0x803b	Pololu Serial
+product SILABS ARGUSISP		0x8066	Argussoft ISP
+product SILABS CRUMB128		0x807a	Crumb128
+product SILABS DEGREECONT	0x80ca	Degree Controls
+product SILABS SUNNTO		0x80f6	Suunto sports
+product SILABS DESKTOPMOBILE	0x813d	Burnside Desktop mobile
+product SILABS IPLINK1220	0x815e	IP-Link 1220
+product SILABS LIPOWSKY_JTAG	0x81c8	Lipowsky Baby-JTAG
+product SILABS LIPOWSKY_LIN	0x81e2	Lipowsky Baby-LIN
+product SILABS LIPOWSKY_HARP	0x8218	Lipowsky HARP-1
+product SILABS CP210X_1		0xea60	CP210x Serial
+product SILABS CP210X_2		0xea61	CP210x Serial
+
+product SILABS2 DCU11CLONE	0xaa26	DCU-11 clone
+
 /* Silicom products */
 product SILICOM U2E		0x0001	U2E
 product SILICOM GPE		0x0002	Psion Gold Port Ethernet
@@ -2513,6 +2538,9 @@ product UMEDIA AR5523_2_NF	0x3206	AR5523 (no firmware)
 
 /* Universal Access products */
 product UNIACCESS PANACHE	0x0101	Panache Surf USB ISDN Adapter
+
+/* USI products */
+product USI MC60		0x10c5	MC60 Serial
 
 /* U.S. Robotics products */
 product USR USR1120		0x00eb	USR1120 WLAN
