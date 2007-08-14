@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmciavar.h,v 1.12 2000/02/08 12:51:31 enami Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.54 2005/07/13 15:00:59 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.7 2007/07/05 12:08:53 sephe Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.8 2007/08/14 15:32:32 sephe Exp $ */
 
 /*-
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -346,7 +346,7 @@ pccard_get_ ## A(device_t dev)						\
 	return (T)v;							\
 }
 
-PCCARD_ACCESSOR(ether,		ETHADDR,		uint8_t *)
+PCCARD_ACCESSOR(ether,		ETHADDR,		const uint8_t *)
 PCCARD_ACCESSOR(vendor,		VENDOR,			uint32_t)
 PCCARD_ACCESSOR(product,	PRODUCT,		uint32_t)
 PCCARD_ACCESSOR(prodext,	PRODEXT,		uint16_t)

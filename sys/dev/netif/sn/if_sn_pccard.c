@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sn/if_sn_pccard.c,v 1.3.2.2 2001/01/25 19:40:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/sn/if_sn_pccard.c,v 1.8 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sn/if_sn_pccard.c,v 1.9 2007/08/14 15:32:32 sephe Exp $
  */
 
 /*
@@ -93,7 +93,7 @@ sn_pccard_attach(device_t dev)
 	struct sn_softc *sc = device_get_softc(dev);
 	int i;
 	uint8_t sum;
-	uint8_t *ether_addr;
+	const uint8_t *ether_addr;
 
 	sc->pccard_enaddr = 0;
 	ether_addr = pccard_get_ether(dev);

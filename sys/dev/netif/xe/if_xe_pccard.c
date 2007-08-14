@@ -26,7 +26,7 @@
  * xe pccard interface driver
  *
  * $FreeBSD: src/sys/dev/xe/if_xe_pccard.c,v 1.11 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe_pccard.c,v 1.4 2007/07/05 12:08:53 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe_pccard.c,v 1.5 2007/08/14 15:32:32 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -248,7 +248,7 @@ xe_pccard_probe(device_t dev)
 	struct xe_softc *scp = device_get_softc(dev);
 	uint32_t vendor, product, prod;
 	uint16_t prodext;
-	uint8_t *ether_addr;
+	const uint8_t *ether_addr;
 	const char *cis3_str=NULL;
 	struct xe_vendor *vendor_itm;
 	struct xe_card_type *card_itm;

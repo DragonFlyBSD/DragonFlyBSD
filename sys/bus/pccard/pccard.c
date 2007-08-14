@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.108 2005/07/15 01:43:08 imp Exp $
- * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.20 2007/07/05 12:08:53 sephe Exp $
+ * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.21 2007/08/14 15:32:32 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1036,7 +1036,7 @@ pccard_read_ivar(device_t bus, device_t child, int which, u_char *result)
 	default:
 		return (EINVAL);
 	case PCCARD_IVAR_ETHADDR:
-		bcopy(pf->pf_funce_lan_nid, result, ETHER_ADDR_LEN);
+		*(const uint8_t **)result = pf->pf_funce_lan_nid;
 		break;
 	case PCCARD_IVAR_VENDOR:
 		*(uint32_t *)result = sc->card.manufacturer;
