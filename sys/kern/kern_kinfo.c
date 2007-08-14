@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.13 2007/08/01 08:21:29 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.14 2007/08/14 20:29:05 dillon Exp $
  */
 
 /*
@@ -218,7 +218,7 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 	kp->kp_stat = SACTIVE;
 
 	kp->kp_lwp.kl_pid = -1;
-	kp->kp_lwp.kl_tid = (uintptr_t)td;
+	kp->kp_lwp.kl_tid = -1;
 	kp->kp_lwp.kl_tdflags = td->td_flags;
 #ifdef SMP
 	kp->kp_lwp.kl_mpcount = td->td_mpcount;

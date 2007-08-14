@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.22 2007/02/01 10:33:25 corecode Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.23 2007/08/14 20:29:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -79,10 +79,10 @@ int	numcpus;		/* hw.ncpu */
 static int needuser, needcomm, needenv;
 #if defined(LAZY_PS)
 static int forceuread=0;
-#define PS_ARGS	"aCcefghjLlM:mN:O:o:p:rSTt:U:uvwx"
+#define PS_ARGS	"aCcefgHhjLlM:mN:O:o:p:rSTt:U:uvwx"
 #else
 static int forceuread=1;
-#define PS_ARGS	"aCceghjLlM:mN:O:o:p:rSTt:U:uvwx"
+#define PS_ARGS	"aCcegHhjLlM:mN:O:o:p:rSTt:U:uvwx"
 #endif
 
 enum sort { DEFAULT, SORTMEM, SORTCPU } sortby = DEFAULT;
@@ -119,8 +119,8 @@ main(int argc, char **argv)
 	dev_t ttydev;
 	pid_t pid;
 	uid_t *uids;
-	int all, ch, flag, i, fmt, lineno, nentries, nocludge, dropgid;
-	int prtheader, wflag, what, xflg, uid, nuids;
+	int all, ch, flag, i, fmt, ofmt, lineno, nentries, nocludge, dropgid;
+	int prtheader, wflag, what, xflg, uid, nuids, showtid;
 	char errbuf[_POSIX2_LINE_MAX];
 	const char *cp, *nlistf, *memf;
 	size_t btime_size = sizeof(struct timeval);
@@ -156,7 +156,7 @@ main(int argc, char **argv)
 			argv[1] = kludge_oldps_options(argv[1]);
 	}
 
-	all = fmt = prtheader = wflag = xflg = 0;
+	all = fmt = ofmt = prtheader = wflag = xflg = showtid = 0;
 	pid = -1;
 	nuids = 0;
 	uids = NULL;
@@ -179,6 +179,9 @@ main(int argc, char **argv)
 			break;
 		case 'g':
 			break;			/* no-op */
+		case 'H':
+			showtid = KERN_PROC_FLAG_LWP;
+			break;
 		case 'h':
 			prtheader = ws.ws_row > 5 ? ws.ws_row : 22;
 			break;
@@ -215,7 +218,7 @@ main(int argc, char **argv)
 			break;
 		case 'o':
 			parsefmt(optarg);
-			fmt = 1;
+			fmt = ofmt = 1;
 			break;
 #if defined(LAZY_PS)
 		case 'f':
@@ -315,6 +318,13 @@ main(int argc, char **argv)
 	if (!fmt)
 		parsefmt(dfmt);
 
+	/*
+	 * Add TID to output format if requested unless user-specific format
+	 * selected.
+	 */
+	if (showtid && !ofmt)
+		insert_tid_in_fmt();
+
 	/* XXX - should be cleaner */
 	if (!all && ttydev == NODEV && pid == -1 && !nuids) {
 		if ((uids = malloc(sizeof (*uids))) == NULL)
@@ -359,6 +369,8 @@ main(int argc, char **argv)
 		what = KERN_PROC_ALL;
 		flag = 0;
 	}
+	what |= showtid;
+
 	/*
 	 * select procs
 	 */

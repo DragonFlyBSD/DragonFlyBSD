@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.28 2007/02/24 04:36:10 corecode Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.29 2007/08/14 20:29:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -127,6 +127,8 @@ static const VAR var[] = {
 	{"nice", "NI", NULL, 0, pnice, NULL, 3, 0, 0, NULL, NULL},
 	{"nivcsw", "NIVCSW", NULL, USER, rvar, NULL, 5, ROFF(ru_nivcsw), LONG, "ld",
 		NULL},
+	{"nlwp", "NLWP", NULL, 0, pvar, NULL, 4, POFF(nthreads), INT, "d",
+		NULL},
 	{"nsignals", "", "nsigs", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"nsigs", "NSIGS", NULL, USER, rvar, NULL, 4, ROFF(ru_nsignals), LONG, "ld",
 		NULL},
@@ -184,6 +186,8 @@ static const VAR var[] = {
 		UIDFMT, NULL},
 	{"tdev", "TDEV", NULL, 0, tdev, NULL, 4, 0, 0, NULL, NULL},
 	{"tdpri", "TDPRI", NULL, 0, tdpri, NULL, 5, 0, 0, NULL, NULL},
+	{"tid", "TID", NULL, 0, lpvar, NULL, PIDLEN, LPOFF(tid), UINT, PIDFMT,
+		NULL},
 	{"time", "TIME", NULL, USER, cputime, NULL, 9, 0, 0, NULL, NULL},
 	{"tpgid", "TPGID", NULL, 0, pvar, NULL, 4, POFF(tpgid), UINT, PIDFMT, NULL},
 	{"tsess", "TSESS", NULL, 0, pvar, NULL, 6, POFF(tsid), UINT, PIDFMT, NULL},
@@ -252,6 +256,26 @@ parsefmt(const char *fmt)
 	}
 
 	free(op);
+}
+
+/*
+ * Insert TID column after PID one in selected output format.
+ */
+void
+insert_tid_in_fmt(void)
+{
+	struct varent *tidvent;
+	struct varent *vent;
+
+	if ((tidvent = makevarent("tid")) == NULL)
+		errx(1, "Not enough memory");
+
+	STAILQ_FOREACH(vent, &var_head, link) {
+		if (strcmp(vent->var->name, "pid") == 0) {
+			STAILQ_INSERT_AFTER(&var_head, vent, tidvent, link);
+			break;
+		}
+	}
 }
 
 static struct varent *

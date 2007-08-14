@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.17 2007/05/25 00:59:06 dillon Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.18 2007/08/14 20:29:06 dillon Exp $
 .\"
 .Dd April 6, 2006
 .Dt PS 1
@@ -41,7 +41,7 @@
 .Nd process status
 .Sh SYNOPSIS
 .Nm
-.Op Fl aCcefhjlmrSTuvwx
+.Op Fl aCcefHhjlmrSTuvwx
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Op Fl O Ar fmt
@@ -94,6 +94,15 @@ Display the environment as well.
 .It Fl f
 Show commandline and environment information about swapped out processes.
 This option is honored only if the uid of the user is 0.
+.It Fl H
+Print one line per lightweight process (LWP) instead of one line per process.
+When this option is set and the
+.Fl o
+option is not set, the
+.Cm tid
+column is inserted in the output format after the
+.Cm pid
+one.
 .It Fl h
 Repeat the information header as often as necessary to guarantee one
 header per page of information.
@@ -382,6 +391,8 @@ nice value (alias
 .Cm ni )
 .It Cm nivcsw
 total involuntary context switches
+.It Cm nlwp
+number of lightweight processes
 .It Cm nsigs
 total signals taken (alias
 .Cm nsignals )
@@ -455,6 +466,8 @@ saved uid from a setuid executable
 control terminal device number
 .It Cm tdpri
 LWKT thread priority (0-31, 31 highest), and critical section count
+.It Cm tid
+thread ID (aka lightweight process ID)
 .It Cm time
 accumulated CPU time, user + system (alias
 .Cm cputime )

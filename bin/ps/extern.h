@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/extern.h,v 1.9 1999/08/27 23:14:50 peter Exp $
- * $DragonFly: src/bin/ps/extern.h,v 1.13 2007/02/01 10:33:25 corecode Exp $
+ * $DragonFly: src/bin/ps/extern.h,v 1.14 2007/08/14 20:29:06 dillon Exp $
  */
 
 struct kinfo;
@@ -63,6 +63,7 @@ void	 nlisterr(struct nlist *);
 void	 p_rssize(const KINFO *, const struct varent *);
 void	 pagein(const KINFO *, const struct varent *);
 void	 parsefmt(const char *);
+void	 insert_tid_in_fmt(void);
 void	 pcpu(const KINFO *, const struct varent *);
 void	 pnice(const KINFO *, const struct varent *);
 void	 pmem(const KINFO *, const struct varent *);

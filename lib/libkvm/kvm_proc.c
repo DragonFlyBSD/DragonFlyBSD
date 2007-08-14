@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.15 2007/05/09 04:33:50 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.16 2007/08/14 20:29:07 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -333,6 +333,7 @@ struct kinfo_proc *
 kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 {
 	int mib[4], st, nprocs;
+	int miblen = ((op & ~KERN_PROC_FLAGMASK) == KERN_PROC_ALL) ? 3 : 4;
 	size_t size;
 
 	if (kd->procbase != 0) {
@@ -349,7 +350,7 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 		mib[1] = KERN_PROC;
 		mib[2] = op;
 		mib[3] = arg;
-		st = sysctl(mib, op == KERN_PROC_ALL ? 3 : 4, NULL, &size, NULL, 0);
+		st = sysctl(mib, miblen, NULL, &size, NULL, 0);
 		if (st == -1) {
 			_kvm_syserr(kd, kd->program, "kvm_getprocs");
 			return (0);
@@ -360,8 +361,7 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 			    _kvm_realloc(kd, kd->procbase, size);
 			if (kd->procbase == 0)
 				return (0);
-			st = sysctl(mib, op == KERN_PROC_ALL ? 3 : 4,
-			    kd->procbase, &size, NULL, 0);
+			st = sysctl(mib, miblen, kd->procbase, &size, NULL, 0);
 		} while (st == -1 && errno == ENOMEM);
 		if (st == -1) {
 			_kvm_syserr(kd, kd->program, "kvm_getprocs");
