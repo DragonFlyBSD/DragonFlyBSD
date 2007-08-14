@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.121 2007/08/08 00:23:40 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.122 2007/08/14 09:39:26 hasso Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2565,6 +2565,7 @@ device		uscanner
 device		ucom
 device		umct
 device		uplcom
+device		uslcom
 device		uvscom
 device		uvisor
 device		uftdi
