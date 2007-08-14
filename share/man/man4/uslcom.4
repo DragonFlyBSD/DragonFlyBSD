@@ -1,4 +1,4 @@
-.\"	$DragonFly: src/share/man/man4/uslcom.4,v 1.1 2007/08/14 08:53:58 hasso Exp $
+.\"	$DragonFly: src/share/man/man4/uslcom.4,v 1.2 2007/08/14 10:11:07 hasso Exp $
 .\"	$OpenBSD: uslcom.4,v 1.4 2007/02/17 01:47:47 jsg Exp $
 .\"
 .\" Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
@@ -20,7 +20,7 @@
 .Os
 .Sh NAME
 .Nm uslcom
-.Nd Silicon Laboratories CP2101/CP2102 based USB serial adapter
+.Nd Silicon Laboratories CP2101, CP2102 and CP2103 USB to serial bridge
 .Sh SYNOPSIS
 To compile this driver into the kernel,
 place the following lines in your
@@ -39,7 +39,8 @@ uslcom_load="YES"
 .Sh DESCRIPTION
 The
 .Nm
-driver supports Silicon Laboratories CP2101/CP2102 based serial adapters.
+driver supports devices based on Silicon Laboratories CP2101, CP2102 and
+CP2103 USB to serial bridges.
 .Pp
 The following devices should work with the
 .Nm
@@ -54,8 +55,7 @@ Lipowsky Baby-JTAG
 Lipowsky Baby-LIN
 Lipowsky HARP-1
 Pololu USB to Serial
-Silicon Laboratories CP2101
-Silicon Laboratories CP2102
+Silicon Laboratories CP210x
 .Ed
 .Sh SEE ALSO
 .Xr tty 4 ,
