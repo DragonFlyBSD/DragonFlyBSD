@@ -35,7 +35,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ucom.4,v 1.2.2.2 2002/08/12 20:32:05 joe Exp $
-.\" $DragonFly: src/share/man/man4/ucom.4,v 1.4 2007/08/05 23:24:34 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ucom.4,v 1.5 2007/08/14 17:40:19 hasso Exp $
 .\"
 .Dd November 25, 1999
 .Dt UCOM 4
@@ -44,9 +44,19 @@
 .Nm ucom
 .Nd USB tty support
 .Sh SYNOPSIS
-.Cd "ucom* at uplcom?"
-.Cd "ucom* at uvisor? portno ?"
-.Cd "ucom* at uvscom?"
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device ucom"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+ucom_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
@@ -61,22 +71,19 @@ This means that normal programs such as
 or
 .Xr pppd 8
 can be used to access the device.
-.Pp
-The
-.Va portno
-locater can be used to decide which port to use for device that have
-multiple external ports.
 .Sh FILES
 .Bl -tag -width ".Pa /dev/ucom?"
 .It Pa /dev/ucom?
 .El
 .Sh SEE ALSO
 .Xr tty 4 ,
+.Xr ubsa 4 ,
 .Xr uftdi 4 ,
 .Xr umct 4 ,
 .Xr umodem 4 ,
 .Xr uplcom 4 ,
 .Xr usb 4 ,
+.Xr uslcom 4 ,
 .Xr uvisor 4 ,
 .Xr uvscom 4
 .Sh HISTORY
