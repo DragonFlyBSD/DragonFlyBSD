@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.h,v 1.2 1999/08/28 00:44:59 peter Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.h,v 1.3 2005/06/27 02:27:10 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.h,v 1.4 2007/08/14 20:09:13 dillon Exp $
  *
  */
 
@@ -33,7 +33,7 @@
 
 #define CONF1_ENABLE       0x80000000ul
 #define CONF1_ENABLE_CHK   0x80000000ul
-#define CONF1_ENABLE_MSK   0x7ff00000ul
+#define CONF1_ENABLE_MSK   0x7f000000ul
 #define CONF1_ENABLE_CHK1  0xff000001ul
 #define CONF1_ENABLE_MSK1  0x80000001ul
 #define CONF1_ENABLE_RES1  0x80000000ul
