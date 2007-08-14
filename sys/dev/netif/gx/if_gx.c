@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.27 2007/03/26 12:13:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.28 2007/08/14 13:30:35 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1257,7 +1257,8 @@ gx_rxeof(struct gx_softc *gx)
 #endif
 			if ((staterr & TCP_CSMASK) == GX_RXSTAT_HAS_TCP_CSUM) {
 				m->m_pkthdr.csum_flags |=
-				    CSUM_DATA_VALID | CSUM_PSEUDO_HDR;
+				    CSUM_DATA_VALID | CSUM_PSEUDO_HDR |
+				    CSUM_FRAG_NOT_CHECKED;
 				m->m_pkthdr.csum_data = 0xffff;
 			}
 		}

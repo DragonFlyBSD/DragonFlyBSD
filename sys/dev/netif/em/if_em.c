@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.59 2007/05/14 12:31:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.60 2007/08/14 13:30:35 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -3145,7 +3145,8 @@ em_receive_checksum(struct adapter *adapter,
 		/* Did it pass? */
 		if (!(rx_desc->errors & E1000_RXD_ERR_TCPE)) {
 			mp->m_pkthdr.csum_flags |=
-			(CSUM_DATA_VALID | CSUM_PSEUDO_HDR);
+			(CSUM_DATA_VALID | CSUM_PSEUDO_HDR |
+			 CSUM_FRAG_NOT_CHECKED);
 			mp->m_pkthdr.csum_data = htons(0xffff);
 		}
 	}

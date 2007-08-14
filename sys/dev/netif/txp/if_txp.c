@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.42 2007/03/26 12:13:58 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.43 2007/08/14 13:30:35 sephe Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -717,7 +717,8 @@ txp_rx_reclaim(struct txp_softc *sc, struct txp_rx_ring *r)
 		if ((rxd->rx_stat & RX_STAT_TCPCKSUMGOOD) ||
 		    (rxd->rx_stat & RX_STAT_UDPCKSUMGOOD)) {
 			m->m_pkthdr.csum_flags |=
-			    CSUM_DATA_VALID|CSUM_PSEUDO_HDR;
+			    CSUM_DATA_VALID|CSUM_PSEUDO_HDR|
+			    CSUM_FRAG_NOT_CHECKED;
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 

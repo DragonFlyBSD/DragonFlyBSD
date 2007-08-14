@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.35 2007/08/12 11:51:26 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.36 2007/08/14 13:30:35 sephe Exp $
  */
 
 /*
@@ -1591,7 +1591,8 @@ re_rxeof(struct re_softc *sc)
 			    (RE_UDPPKT(rxstat) &&
 			    (rxstat & RE_RDESC_STAT_UDPSUMBAD)) == 0) {
 				m->m_pkthdr.csum_flags |=
-				    CSUM_DATA_VALID|CSUM_PSEUDO_HDR;
+				    CSUM_DATA_VALID|CSUM_PSEUDO_HDR|
+				    CSUM_FRAG_NOT_CHECKED;
 				m->m_pkthdr.csum_data = 0xffff;
 			}
 		}

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.20 2007/01/03 14:12:52 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.21 2007/08/14 13:30:35 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -845,7 +845,8 @@ ndis_rxeof(ndis_handle adapter, ndis_packet **packets, uint32_t pktcnt)
 				    (NDIS_RXCSUM_TCP_PASSED |
 				    NDIS_RXCSUM_UDP_PASSED)) {
 					m0->m_pkthdr.csum_flags |=
-					    CSUM_DATA_VALID|CSUM_PSEUDO_HDR;
+					    CSUM_DATA_VALID|CSUM_PSEUDO_HDR|
+					    CSUM_FRAG_NOT_CHECKED;
 					m0->m_pkthdr.csum_data = 0xFFFF;
 				}
 			}

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vge/if_vge.c,v 1.24 2006/02/14 12:44:56 glebius Exp $
- * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.4 2007/03/24 08:42:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.5 2007/08/14 13:30:35 sephe Exp $
  */
 
 /*
@@ -1375,7 +1375,8 @@ vge_rxeof(struct vge_softc *sc, int count)
 			if (rxctl & (VGE_RDCTL_TCPPKT|VGE_RDCTL_UDPPKT) &&
 			    rxctl & VGE_RDCTL_PROTOCSUMOK) {
 				m->m_pkthdr.csum_flags |=
-				    CSUM_DATA_VALID|CSUM_PSEUDO_HDR;
+				    CSUM_DATA_VALID|CSUM_PSEUDO_HDR|
+				    CSUM_FRAG_NOT_CHECKED;
 				m->m_pkthdr.csum_data = 0xffff;
 			}
 		}

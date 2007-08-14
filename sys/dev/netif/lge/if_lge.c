@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.38 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.39 2007/08/14 13:30:35 sephe Exp $
  */
 
 /*
@@ -912,7 +912,8 @@ lge_rxeof(struct lge_softc *sc, int cnt)
 		    (rxsts & LGE_RXSTS_ISUDP &&
 		    !(rxsts & LGE_RXSTS_UDPCSUMERR))) {
 			m->m_pkthdr.csum_flags |=
-			    CSUM_DATA_VALID|CSUM_PSEUDO_HDR;
+			    CSUM_DATA_VALID|CSUM_PSEUDO_HDR|
+			    CSUM_FRAG_NOT_CHECKED;
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 

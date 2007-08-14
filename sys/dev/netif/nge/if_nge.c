@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.42 2007/03/26 12:13:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.43 2007/08/14 13:30:35 sephe Exp $
  */
 
 /*
@@ -1274,7 +1274,8 @@ nge_rxeof(struct nge_softc *sc)
 		    (extsts & NGE_RXEXTSTS_UDPPKT &&
 		    (extsts & NGE_RXEXTSTS_UDPCSUMERR) == 0)) {
 			m->m_pkthdr.csum_flags |=
-			    CSUM_DATA_VALID|CSUM_PSEUDO_HDR;
+			    CSUM_DATA_VALID|CSUM_PSEUDO_HDR|
+			    CSUM_FRAG_NOT_CHECKED;
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 

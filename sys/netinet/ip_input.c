@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.69 2007/08/11 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.70 2007/08/14 13:30:35 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -1128,6 +1128,16 @@ ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
 #ifdef IPDIVERT
 	struct m_tag *mtag;
 #endif
+
+	/*
+	 * If the hardware has not done csum over this fragment
+	 * then csum_data is not valid at all.
+	 */
+	if ((m->m_pkthdr.csum_flags & (CSUM_FRAG_NOT_CHECKED | CSUM_DATA_VALID))
+	    == (CSUM_FRAG_NOT_CHECKED | CSUM_DATA_VALID)) {
+		m->m_pkthdr.csum_data = 0;
+		m->m_pkthdr.csum_flags &= ~(CSUM_DATA_VALID | CSUM_PSEUDO_HDR);
+	}
 
 	/*
 	 * Presence of header sizes in mbufs

@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.39 2007/08/11 23:11:23 josepht Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.40 2007/08/14 13:30:35 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -220,6 +220,10 @@ struct mbuf {
 #define	CSUM_IP_VALID		0x0200		/*   ... the csum is valid */
 #define	CSUM_DATA_VALID		0x0400		/* csum_data field is valid */
 #define	CSUM_PSEUDO_HDR		0x0800		/* csum_data has pseudo hdr */
+#define CSUM_FRAG_NOT_CHECKED	0x1000		/* did _not_ csum fragment
+						 * NB: This flag is only used
+						 * by IP defragmenter.
+						 */
 
 #define	CSUM_DELAY_DATA		(CSUM_TCP | CSUM_UDP)
 #define	CSUM_DELAY_IP		(CSUM_IP)	/* XXX add ipv6 here too? */

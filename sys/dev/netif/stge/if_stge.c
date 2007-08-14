@@ -1,6 +1,6 @@
 /*	$NetBSD: if_stge.c,v 1.32 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/stge/if_stge.c,v 1.2 2006/08/12 01:21:36 yongari Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.1 2006/11/16 13:43:55 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.2 2007/08/14 13:30:35 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -1783,7 +1783,9 @@ stge_rxeof(struct stge_softc *sc, int count)
 				    ((status & RFD_UDPDetected) != 0 &&
 				    (status & RFD_UDPError) == 0)) {
 					m->m_pkthdr.csum_flags |=
-					    (CSUM_DATA_VALID | CSUM_PSEUDO_HDR);
+					    (CSUM_DATA_VALID |
+					     CSUM_PSEUDO_HDR |
+					     CSUM_FRAG_NOT_CHECKED);
 					m->m_pkthdr.csum_data = 0xffff;
 				}
 			}

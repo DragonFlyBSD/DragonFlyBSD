@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.48 2007/05/19 06:21:43 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.49 2007/08/14 13:30:35 sephe Exp $
  */
 
 /*
@@ -2122,7 +2122,8 @@ again:
 			    (rxstat & XL_RXSTAT_UDPCKOK &&
 			     !(rxstat & XL_RXSTAT_UDPCKERR))) {
 				m->m_pkthdr.csum_flags |=
-					CSUM_DATA_VALID|CSUM_PSEUDO_HDR;
+					CSUM_DATA_VALID|CSUM_PSEUDO_HDR|
+					CSUM_FRAG_NOT_CHECKED;
 				m->m_pkthdr.csum_data = 0xffff;
 			}
 		}
