@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.2 2007/08/14 11:31:02 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.3 2007/08/15 06:47:26 hasso Exp $	*/
 /*	$OpenBSD: uslcom.c,v 1.12 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -56,6 +56,7 @@ int	uslcomdebug = 0;
 #define USLCOM_DATA		0x03
 #define USLCOM_BREAK		0x05
 #define USLCOM_CTRL		0x07
+#define USLCOM_MODEM		0x13
 
 #define USLCOM_UART_DISABLE	0x00
 #define USLCOM_UART_ENABLE	0x01
@@ -94,6 +95,8 @@ int	uslcom_param(void *, int, struct termios *);
 int	uslcom_open(void *sc, int portno);
 void	uslcom_close(void *, int);
 void	uslcom_break(void *sc, int portno, int onoff);
+void	uslcom_set_flow_ctrl(struct uslcom_softc *sc, tcflag_t cflag,
+			     tcflag_t iflag);
 
 struct ucom_callback uslcom_callback = {
 	uslcom_get_status,
@@ -428,16 +431,7 @@ uslcom_param(void *vsc, int portno, struct termios *t)
 	if (err)
 		return (EIO);
 
-#if 0
-	/* XXX flow control */
-	if (ISSET(t->c_cflag, CRTSCTS))
-		/*  rts/cts flow ctl */
-	} else if (ISSET(t->c_iflag, IXON|IXOFF)) {
-		/*  xon/xoff flow ctl */
-	} else {
-		/* disable flow ctl */
-	}
-#endif
+	uslcom_set_flow_ctrl(sc, t->c_cflag, t->c_iflag);
 
 	return (0);
 }
@@ -467,3 +461,42 @@ uslcom_break(void *vsc, int portno, int onoff)
 	USETW(req.wLength, 0);
 	usbd_do_request(sc->sc_ucom.sc_udev, &req, NULL);
 }
+
+void
+uslcom_set_flow_ctrl(struct uslcom_softc *sc, tcflag_t cflag, tcflag_t iflag)
+{
+	uint8_t modemdata[16];
+	usb_device_request_t req;
+	usbd_status err;
+
+	req.bmRequestType = USLCOM_READ;
+	req.bRequest = USLCOM_MODEM;
+	USETW(req.wValue, 0);
+	USETW(req.wIndex, 0);
+	USETW(req.wLength, 16);
+
+	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, modemdata);
+	if (err)
+		kprintf("uslcom_set_flow: %s\n", usbd_errstr(err));
+
+	if (ISSET(cflag, CRTSCTS)) {
+		modemdata[0] &= ~0x7b;
+		modemdata[0] |= 0x09;
+		modemdata[4] = 0x80;
+	} else {
+		modemdata[0] &= ~0x7b;
+		modemdata[0] |= 0x01;
+		modemdata[4] = 0x40;
+	}
+
+	req.bmRequestType = USLCOM_WRITE;
+	req.bRequest = USLCOM_MODEM;
+	USETW(req.wValue, 0);
+	USETW(req.wIndex, 0);
+	USETW(req.wLength, 16);
+
+	err = usbd_do_request(sc->sc_ucom.sc_udev, &req, modemdata);
+	if (err)
+		kprintf("uslcom_set_flow: %s\n", usbd_errstr(err));
+}
+
