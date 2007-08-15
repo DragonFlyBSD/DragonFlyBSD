@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.16 2007/08/14 20:29:07 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.17 2007/08/15 19:37:52 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -53,6 +53,7 @@
 #include <sys/proc.h>
 #include <sys/exec.h>
 #include <sys/stat.h>
+#include <sys/globaldata.h>
 #include <sys/ioctl.h>
 #include <sys/tty.h>
 #include <sys/file.h>
@@ -89,7 +90,8 @@ kvm_readswap(kvm_t *kd, const struct proc *p, u_long va, u_long *cnt)
 
 #define KREAD(kd, addr, obj) \
 	(kvm_read(kd, addr, (char *)(obj), sizeof(*obj)) != sizeof(*obj))
-
+#define KREADSTR(kd, addr) \
+	kvm_readstr(kd, (u_long)addr, NULL, NULL)
 
 static struct kinfo_proc *
 kinfo_resize_proc(kvm_t *kd, struct kinfo_proc *bp)
@@ -128,6 +130,78 @@ dev2udev(cdev_t dev)
 	return((dev->si_umajor << 8) | dev->si_uminor);
 }
 
+/*
+ * Helper routine which traverses the left hand side of a red-black sub-tree.
+ */
+static uintptr_t
+kvm_lwptraverse(kvm_t *kd, struct lwp *lwp, uintptr_t lwppos)
+{
+	for (;;) {
+		if (KREAD(kd, lwppos, lwp)) {
+			_kvm_err(kd, kd->program, "can't read lwp at %p",
+				 (void *)lwppos);
+			return ((uintptr_t)-1);
+		}
+		if (lwp->u.lwp_rbnode.rbe_left == NULL)
+			break;
+		lwppos = (uintptr_t)lwp->u.lwp_rbnode.rbe_left;
+	}
+	return(lwppos);
+}
+
+/*
+ * Iterate LWPs in a process.
+ *
+ * The first lwp in a red-black tree is a left-side traversal of the tree.
+ */
+static uintptr_t
+kvm_firstlwp(kvm_t *kd, struct lwp *lwp, struct proc *proc)
+{
+	return(kvm_lwptraverse(kd, lwp, (uintptr_t)proc->p_lwp_tree.rbh_root));
+}
+
+/*
+ * If the current element is the left side of the parent the next element 
+ * will be a left side traversal of the parent's right side.  If the parent
+ * has no right side the next element will be the parent.
+ *
+ * If the current element is the right side of the parent the next element
+ * is the parent.
+ *
+ * If the parent is NULL we are done.
+ */
+static uintptr_t
+kvm_nextlwp(kvm_t *kd, uintptr_t lwppos, struct lwp *lwp, struct proc *proc)
+{
+	uintptr_t nextpos;
+
+	nextpos = (uintptr_t)lwp->u.lwp_rbnode.rbe_parent;
+	if (nextpos) {
+		if (KREAD(kd, nextpos, lwp)) {
+			_kvm_err(kd, kd->program, "can't read lwp at %p",
+				 (void *)lwppos);
+			return ((uintptr_t)-1);
+		}
+		if (lwppos == (uintptr_t)lwp->u.lwp_rbnode.rbe_left) {
+			/*
+			 * If we had gone down the left side the next element
+			 * is a left hand traversal of the parent's right
+			 * side, or the parent itself if there is no right
+			 * side.
+			 */
+			lwppos = (uintptr_t)lwp->u.lwp_rbnode.rbe_right;
+			if (lwppos)
+				nextpos = kvm_lwptraverse(kd, lwp, lwppos);
+		} else {
+			/*
+			 * If we had gone down the right side the next
+			 * element is the parent.
+			 */
+			/* nextpos = nextpos */
+		}
+	}
+	return(nextpos);
+}
 
 /*
  * Read proc's from memory file into buffer bp, which has space to hold
@@ -139,7 +213,9 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 {
 	struct pgrp pgrp;
 	struct pgrp tpgrp;
+	struct globaldata gdata;
 	struct session sess;
+	struct session tsess;
 	struct tty tty;
 	struct proc proc;
 	struct ucred ucred;
@@ -148,8 +224,13 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 	struct cdev cdev;
 	struct vmspace vmspace;
 	struct prison prison;
+	struct sigacts sigacts;
 	struct lwp lwp;
 	uintptr_t lwppos;
+	int count;
+	char *wmesg;
+
+	count = 0;
 
 	for (; p != NULL; p = proc.p_list.le_next) {
 		if (KREAD(kd, (u_long)p, &proc)) {
@@ -195,6 +276,17 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 		  }
 		  proc.p_pptr = &pproc;
 		}
+
+		if (proc.p_sigacts) {
+			if (KREAD(kd, (u_long)proc.p_sigacts, &sigacts)) {
+				_kvm_err(kd, kd->program,
+					 "can't read sigacts at %p",
+					 proc.p_sigacts);
+				return (-1);
+			}
+			proc.p_sigacts = &sigacts;
+		}
+
 		if (KREAD(kd, (u_long)pgrp.pg_session, &sess)) {
 			_kvm_err(kd, kd->program, "can't read session at %x",
 				pgrp.pg_session);
@@ -223,6 +315,15 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 					return (-1);
 				}
 				tty.t_pgrp = &tpgrp;
+			}
+			if (tty.t_session != NULL) {
+				if (KREAD(kd, (u_long)tty.t_session, &tsess)) {
+					_kvm_err(kd, kd->program,
+						 "can't read tsess at %p",
+						tty.t_session);
+					return (-1);
+				}
+				tty.t_session = &tsess;
 			}
 		}
 
@@ -262,15 +363,12 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 		fill_kinfo_proc(&proc, bp);
 		bp->kp_paddr = (uintptr_t)p;
 
-		lwppos = (uintptr_t)proc.p_lwps.lh_first;
-		if (lwppos == 0)
+		lwppos = kvm_firstlwp(kd, &lwp, &proc);
+		if (lwppos == 0) {
 			bp++;		/* Just export the proc then */
-		while (lwppos != 0) {
-			if (KREAD(kd, lwppos, &lwp)) {
-				_kvm_err(kd, kd->program, "can't read lwp at %p",
-				    lwppos);
-				return (-1);
-			}
+			count++;
+		}
+		while (lwppos && lwppos != (uintptr_t)-1) {
 			if (p != lwp.lwp_proc) {
 				_kvm_err(kd, kd->program, "lwp has wrong parent");
 				return (-1);
@@ -283,19 +381,45 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 			}
 			lwp.lwp_thread = &thread;
 
+			if (thread.td_gd) {
+				if (KREAD(kd, (u_long)thread.td_gd, &gdata)) {
+					_kvm_err(kd, kd->program, "can't read"
+						  " gd at %p",
+						  thread.td_gd);
+					return(-1);
+				}
+				thread.td_gd = &gdata;
+			}
+			if (thread.td_wmesg) {
+				wmesg = (void *)KREADSTR(kd, thread.td_wmesg);
+				if (wmesg == NULL) {
+					_kvm_err(kd, kd->program, "can't read"
+						  " wmesg %p",
+						  thread.td_wmesg);
+					return(-1);
+				}
+				thread.td_wmesg = wmesg;
+			} else {
+				wmesg = NULL;
+			}
+
 			if ((bp = kinfo_resize_proc(kd, bp)) == NULL)
 				return (-1);
 			fill_kinfo_proc(&proc, bp);
 			fill_kinfo_lwp(&lwp, &bp->kp_lwp);
 			bp->kp_paddr = (uintptr_t)p;
 			bp++;
+			count++;
+			if (wmesg)
+				free(wmesg);
 			if ((what & KERN_PROC_FLAG_LWP) == 0)
 				break;
-
-			lwppos = (uintptr_t)lwp.lwp_list.le_next;
+			lwppos = kvm_nextlwp(kd, lwppos, &lwp, &proc);
 		}
+		if (lwppos == (uintptr_t)-1)
+			return(-1);
 	}
-	return (0);
+	return (count);
 }
 
 /*
