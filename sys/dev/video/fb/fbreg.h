@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fbreg.h,v 1.6 1999/12/29 04:35:36 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.9 2006/10/23 15:42:49 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.10 2007/08/15 19:31:11 swildner Exp $
  */
 
 #ifndef _DEV_FB_FBREG_H_
@@ -76,9 +76,9 @@ typedef int vi_set_hw_cursor_shape_t(video_adapter_t *adp, int base,
 				     int height, int celsize, int blink);
 typedef int vi_blank_display_t(video_adapter_t *adp, int mode);
 #define V_DISPLAY_ON		0
-#define V_DISPLAY_BLANK		1
-#define V_DISPLAY_STAND_BY	2
-#define V_DISPLAY_SUSPEND	3
+#define V_DISPLAY_STAND_BY	(1<<0)
+#define V_DISPLAY_SUSPEND	(1<<1)
+#define V_DISPLAY_OFF		(1<<2)
 typedef int vi_mmap_t(video_adapter_t *adp, vm_offset_t offset, int prot);
 typedef int vi_ioctl_t(video_adapter_t *adp, u_long cmd, caddr_t data);
 typedef int vi_clear_t(video_adapter_t *adp);

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.19 2007/04/04 07:17:52 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.20 2007/08/15 19:31:12 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -154,6 +154,7 @@ static video_info_t *vesa_vmode = &vesa_vmode_empty;
 
 static int vesa_init_done = FALSE;
 static int has_vesa_bios = FALSE;
+static int dpms_states;
 static struct vesa_info *vesa_adp_info = NULL;
 static uint16_t *vesa_vmodetab = NULL;
 static char *vesa_oemstr = NULL;
@@ -204,6 +205,7 @@ static int vesa_bios_init(void);
 static void vesa_clear_modes(video_info_t *info, int color);
 static vm_offset_t vesa_map_buffer(u_int paddr, size_t size);
 static void vesa_unmap_buffer(vm_offset_t vaddr, size_t size);
+static int vesa_probe_dpms(void);
 
 #if 0
 static int vesa_get_origin(video_adapter_t *adp, off_t *offset);
@@ -787,6 +789,10 @@ vesa_bios_init(void)
 	if (!has_vesa_bios)
 		return (1);
 
+	dpms_states = vesa_probe_dpms();
+	if (dpms_states != 0 && bootverbose)
+		kprintf("VESA: DPMS support (states:0x%x)\n", dpms_states);
+
 	return (0);
 }
 
@@ -822,6 +828,28 @@ vesa_unmap_buffer(vm_offset_t vaddr, size_t size)
 	kprintf("vesa_unmap_buffer: vaddr:%x size:%x\n", vaddr, size);
 #endif
 	kmem_free(&kernel_map, vaddr, size);
+}
+
+/*
+ * vesa_probe_dpms
+ *
+ * Probe DPMS support and return the supported states.
+ */
+
+static int
+vesa_probe_dpms(void)
+{
+	struct vm86frame vmf;
+	int err;
+
+	bzero(&vmf, sizeof(vmf));
+	vmf.vmf_eax = 0x4f10;
+
+	err = vm86_intcall(0x10, &vmf);
+	if ((err != 0) || (vmf.vmf_ax != 0x4f))
+		return -1;	/* no support */
+
+	return (vmf.vmf_ebx >> 8);
 }
 
 /* entry points */
@@ -1270,10 +1298,39 @@ vesa_set_hw_cursor_shape(video_adapter_t *adp, int base, int height,
 						 blink);
 }
 
+/*
+ * vesa_blank_display
+ *
+ * Use DPMS if it is supported by the adapter and supports the requested
+ * state, else use the traditional VGA method. When unblanking, use both
+ * methods because either might have put us into the blanked state previously.
+ */
+
 static int
 vesa_blank_display(video_adapter_t *adp, int mode) 
 {
-	/* XXX: use VESA DPMS */
+	struct vm86frame vmf;
+	int err;
+
+	if (mode == V_DISPLAY_ON) {
+		err = (*prevvidsw->blank_display)(adp, V_DISPLAY_ON);
+		if (dpms_states == 0) {
+			return err;
+		} else {
+			bzero(&vmf, sizeof(vmf));
+			vmf.vmf_eax = 0x4f10;
+			vmf.vmf_ebx = 1;
+			err = vm86_intcall(0x10, &vmf);
+			return ((err != 0) || (vmf.vmf_ax != 0x4f));
+		}
+	} else if (dpms_states & mode) {
+			bzero(&vmf, sizeof(vmf));
+			vmf.vmf_eax = 0x4f10;
+			vmf.vmf_ebx = (mode << 8) | 1;
+			err = vm86_intcall(0x10, &vmf);
+			return ((err != 0) || (vmf.vmf_ax != 0x4f));
+	}
+
 	return (*prevvidsw->blank_display)(adp, mode);
 }
 

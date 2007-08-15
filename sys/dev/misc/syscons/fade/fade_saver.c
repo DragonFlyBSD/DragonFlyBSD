@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/fade/fade_saver.c,v 1.18 1999/08/28 00:47:47 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/fade/fade_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/fade/fade_saver.c,v 1.4 2007/08/15 19:31:11 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -68,7 +68,7 @@ fade_saver(video_adapter_t *adp, int blank)
 			}
 		} else {
 	    		(*vidsw[adp->va_index]->blank_display)(adp,
-							       V_DISPLAY_BLANK);
+							       V_DISPLAY_OFF);
 		}
 	} else {
 		if (ISPALAVAIL(adp->va_flags)) {

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.21 2007/04/04 07:14:26 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.22 2007/08/15 19:31:11 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -2297,7 +2297,7 @@ vga_blank_display(video_adapter_t *adp, int mode)
 	    val = inb(adp->va_crtc_addr + 1);
 	    outb(adp->va_crtc_addr + 1, val & ~0x80);
 	    break;
-	case V_DISPLAY_BLANK:
+	case V_DISPLAY_OFF:
 	    outb(TSIDX, 0x01);
 	    val = inb(TSREG);
 	    outb(TSIDX, 0x01);
@@ -2324,7 +2324,7 @@ vga_blank_display(video_adapter_t *adp, int mode)
 	switch (mode) {
 	case V_DISPLAY_SUSPEND:
 	case V_DISPLAY_STAND_BY:
-	case V_DISPLAY_BLANK:
+	case V_DISPLAY_OFF:
 	    outb(adp->va_crtc_addr + 4, 0x25);
 	    break;
 	case V_DISPLAY_ON:
@@ -2338,7 +2338,7 @@ vga_blank_display(video_adapter_t *adp, int mode)
 	switch (mode) {
 	case V_DISPLAY_SUSPEND:
 	case V_DISPLAY_STAND_BY:
-	case V_DISPLAY_BLANK:
+	case V_DISPLAY_OFF:
 	    outb(adp->va_crtc_addr + 4, 0x21);
 	    break;
 	case V_DISPLAY_ON:

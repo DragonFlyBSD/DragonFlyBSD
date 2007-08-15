@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/green/green_saver.c,v 1.17 1999/08/28 00:47:50 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/green/green_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/green/green_saver.c,v 1.4 2007/08/15 19:31:11 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -40,12 +40,19 @@
 #include <dev/video/fb/splashreg.h>
 #include "../syscons.h"
 
+static int blanked = 0;
+
 static int
 green_saver(video_adapter_t *adp, int blank)
 {
-	(*vidsw[adp->va_index]->blank_display)(adp,
-					       (blank) ? V_DISPLAY_STAND_BY
-						       : V_DISPLAY_ON);
+	if (blank == blanked)
+		return 0;
+
+	(*vidsw[adp->va_index]->blank_display)
+		(adp, blank ? V_DISPLAY_STAND_BY : V_DISPLAY_ON);
+
+	blanked = blank;
+
 	return 0;
 }
 
