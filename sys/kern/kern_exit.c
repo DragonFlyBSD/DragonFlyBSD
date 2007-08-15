@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.84 2007/07/12 21:56:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.85 2007/08/15 03:15:06 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -82,6 +82,7 @@
 #include <sys/sysref2.h>
 
 static void reaplwps(void *context, int dummy);
+static void reaplwp(struct lwp *lp);
 static void killlwps(struct lwp *lp);
 
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
@@ -580,10 +581,10 @@ lwp_exit(int masterexit)
 	 * synchronously, which is much faster.
 	 */
 	if (masterexit == 0) {
-		LIST_REMOVE(lp, lwp_list);
+		lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 		--p->p_nthreads;
 		wakeup(&p->p_nthreads);
-		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, lwp_list);
+		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, u.lwp_reap_entry);
 		taskqueue_enqueue(taskqueue_thread[mycpuid], deadlwp_task[mycpuid]);
 	} else {
 		--p->p_nthreads;
@@ -684,6 +685,7 @@ int
 kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 {
 	struct thread *td = curthread;
+	struct lwp *lp;
 	struct proc *q = td->td_proc;
 	struct proc *p, *t;
 	int nfound, error;
@@ -741,7 +743,10 @@ loop:
 			 * Once that is accomplished p_nthreads had better
 			 * be zero.
 			 */
-			reaplwps(&p->p_lwps, 0);
+			while ((lp = RB_ROOT(&p->p_lwp_tree)) != NULL) {
+				lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
+				reaplwp(lp);
+			}
 			KKASSERT(p->p_nthreads == 0);
 
 			/*
@@ -916,11 +921,17 @@ reaplwps(void *context, int dummy)
 	struct lwp *lp;
 
 	while ((lp = LIST_FIRST(lwplist))) {
-		LIST_REMOVE(lp, lwp_list);
-		while (lwp_wait(lp) == 0)
-			tsleep(lp, 0, "lwpreap", 1);
-		lwp_dispose(lp);
+		LIST_REMOVE(lp, u.lwp_reap_entry);
+		reaplwp(lp);
 	}
+}
+
+static void
+reaplwp(struct lwp *lp)
+{
+	while (lwp_wait(lp) == 0)
+		tsleep(lp, 0, "lwpreap", 1);
+	lwp_dispose(lp);
 }
 
 static void

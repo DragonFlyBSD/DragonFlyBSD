@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.25 2007/07/02 02:22:58 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.26 2007/08/15 03:15:07 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -2980,7 +2980,7 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 	if (oldvm != newvm) {
 		p->p_vmspace = newvm;
 		KKASSERT(p->p_nthreads == 1);
-		lp = LIST_FIRST(&p->p_lwps);
+		lp = RB_ROOT(&p->p_lwp_tree);
 		pmap_setlwpvm(lp, newvm);
 		if (adjrefs) {
 			sysref_get(&newvm->vm_sysref);

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.23 2007/05/13 18:33:57 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.24 2007/08/15 03:15:05 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -57,7 +57,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		p = allproc.lh_first;
 	else
 		p = &proc0;
-	lp = FIRST_LWP_IN_PROC(p);
+	lp = FIRST_LWP_IN_PROC(__DEVOLATILE(struct proc *, p));
 
 	if (db_more(&nl) < 0)
 	    return;
@@ -90,7 +90,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		db_printf(" %s\n", p->p_comm ? p->p_comm : "");
 		db_dump_td_tokens(lp->lwp_thread);
 
-		lp = LIST_NEXT(lp, lwp_list);
+		lp = lwp_rb_tree_RB_NEXT(lp);
 		if (lp == NULL) {
 			--np;
 			p = p->p_list.le_next;
@@ -98,7 +98,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 				p = zombproc.lh_first;
 			if (p == NULL)
 				break;
-			lp = FIRST_LWP_IN_PROC(p);
+			lp = FIRST_LWP_IN_PROC(__DEVOLATILE(struct proc *, p));
 		}
     	}
 

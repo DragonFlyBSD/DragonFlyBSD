@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.82 2007/07/01 01:11:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.83 2007/08/15 03:15:06 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -721,10 +721,7 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		if (p->p_flag & P_WEXIT)
 			return (0);
 		if (tid != -1) {
-			FOREACH_LWP_IN_PROC(lp, p) {
-				if (lp->lwp_tid == tid)
-					break;
-			}
+			lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, tid);
 			if (lp == NULL)
 				return (ESRCH);
 		}

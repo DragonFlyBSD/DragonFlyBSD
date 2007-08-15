@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.7 2007/06/17 07:58:33 dillon Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.8 2007/08/15 03:15:07 dillon Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -937,6 +937,7 @@ name##_RB_LOOKUP_##ext (struct name *head, datatype value)		\
 #define RB_RLOOKUP(name, root, value)	name##_RB_RLOOKUP(root, value)
 #define RB_SCAN(name, root, cmp, callback, data) 			\
 				name##_RB_SCAN(root, cmp, callback, data)
+#define RB_FIRST(name, root)		name##_RB_MINMAX(root, RB_NEGINF)
 #define RB_NEXT(name, root, elm)	name##_RB_NEXT(elm)
 #define RB_PREV(name, root, elm)	name##_RB_PREV(elm)
 #define RB_MIN(name, root)		name##_RB_MINMAX(root, RB_NEGINF)

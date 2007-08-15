@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.70 2007/07/02 17:06:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.71 2007/08/15 03:15:06 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -86,6 +86,23 @@ static struct forklist_head fork_list = TAILQ_HEAD_INITIALIZER(fork_list);
 static struct lwp *lwp_fork(struct lwp *, struct proc *, int flags);
 
 int forksleep; /* Place for fork1() to sleep on. */
+
+/*
+ * Red-Black tree support for LWPs
+ */
+
+static int
+rb_lwp_compare(struct lwp *lp1, struct lwp *lp2)
+{
+	if (lp1->lwp_tid < lp2->lwp_tid)
+		return(-1);
+	if (lp1->lwp_tid > lp2->lwp_tid)
+		return(1);
+	return(0);
+}
+
+RB_GENERATE2(lwp_rb_tree, lwp, u.lwp_rbnode, rb_lwp_compare, lwpid_t, lwp_tid);
+
 
 /* ARGSUSED */
 int
@@ -186,7 +203,7 @@ sys_lwp_create(struct lwp_create_args *uap)
 
 fail:
 	--p->p_nthreads;
-	LIST_REMOVE(lp, lwp_list);
+	lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 	/* lwp_dispose expects an exited lwp, and a held proc */
 	lp->lwp_flag |= LWP_WEXIT;
 	lp->lwp_thread->td_flags |= TDF_EXITING;
@@ -329,7 +346,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		p2->p_leader = p2;
 	}
 
-	LIST_INIT(&p2->p_lwps);
+	RB_INIT(&p2->p_lwp_tree);
+	p2->p_lasttid = -1;	/* first tid will be 0 */
 
 	/*
 	 * Setting the state to SIDL protects the partially initialized
@@ -535,43 +553,12 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 {
 	struct lwp *lp;
 	struct thread *td;
-	lwpid_t tid;
-
-	/*
-	 * We need to prevent wrap-around collisions.
-	 * Until we have a nice tid allocator, we need to
-	 * start searching for free tids once we wrap around.
-	 *
-	 * XXX give me a nicer allocator
-	 */
-	if (destproc->p_lasttid + 1 <= 0) {
-		tid = 0;
-restart:
-		FOREACH_LWP_IN_PROC(lp, destproc) {
-			if (lp->lwp_tid != tid)
-				continue;
-			/* tids match, search next. */
-			tid++;
-			/*
-			 * Wait -- the whole tid space is depleted?
-			 * Impossible.
-			 */
-			if (tid <= 0)
-				panic("lwp_fork: All tids depleted?!");
-			goto restart;
-		}
-		/* When we come here, the tid is not occupied */
-	} else {
-		tid = destproc->p_lasttid++;
-	}
 
 	lp = zalloc(lwp_zone);
 	bzero(lp, sizeof(*lp));
+
 	lp->lwp_proc = destproc;
 	lp->lwp_vmspace = destproc->p_vmspace;
-	lp->lwp_tid = tid;
-	LIST_INSERT_HEAD(&destproc->p_lwps, lp, lwp_list);
-	destproc->p_nthreads++;
 	lp->lwp_stat = LSRUN;
 	bcopy(&origlp->lwp_startcopy, &lp->lwp_startcopy,
 	    (unsigned) ((caddr_t)&lp->lwp_endcopy -
@@ -590,6 +577,18 @@ restart:
 	destproc->p_usched->heuristic_forking(origlp, lp);
 	crit_exit();
 	lp->lwp_cpumask &= usched_mastermask;
+
+	/*
+	 * Assign a TID to the lp.  Loop until the insert succeeds (returns
+	 * NULL).
+	 */
+	lp->lwp_tid = destproc->p_lasttid;
+	do {
+		if (++lp->lwp_tid < 0)
+			lp->lwp_tid = 1;
+	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp) != NULL);
+	destproc->p_lasttid = lp->lwp_tid;
+	destproc->p_nthreads++;
 
 	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, 0);
 	lp->lwp_thread = td;

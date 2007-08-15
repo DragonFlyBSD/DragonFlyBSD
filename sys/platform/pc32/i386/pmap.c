@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.80 2007/06/29 21:54:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.81 2007/08/15 03:15:07 dillon Exp $
  */
 
 /*
@@ -3230,7 +3230,7 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 	if (oldvm != newvm) {
 		p->p_vmspace = newvm;
 		KKASSERT(p->p_nthreads == 1);
-		lp = LIST_FIRST(&p->p_lwps);
+		lp = RB_ROOT(&p->p_lwp_tree);
 		pmap_setlwpvm(lp, newvm);
 		if (adjrefs) {
 			sysref_get(&newvm->vm_sysref);

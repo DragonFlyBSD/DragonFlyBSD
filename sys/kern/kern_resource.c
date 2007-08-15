@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.32 2007/05/03 23:04:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.33 2007/08/15 03:15:06 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -295,14 +295,9 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 		 */
 		lp = curthread->td_lwp;
 	} else {
-		FOREACH_LWP_IN_PROC(lp, p) {
-			if (lp->lwp_tid == uap->tid) {
-				break;
-			}
-		}
-		if (!lp) {
+		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, uap->tid);
+		if (lp == NULL)
 			return ESRCH;
-		}
 	}
 
 	switch (uap->function) {

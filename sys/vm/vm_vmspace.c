@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.13 2007/07/01 01:11:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.14 2007/08/15 03:15:07 dillon Exp $
  */
 #include "opt_ddb.h"
 
@@ -450,7 +450,7 @@ vkernel_exit(struct proc *p)
 	 * that the process should enter vkernel_trap() before the handling
 	 * the signal.
 	 */
-	LIST_FOREACH(lp, &p->p_lwps, lwp_list) {
+	RB_FOREACH(lp, lwp_rb_tree, &p->p_lwp_tree) {
 		vkernel_lwp_exit(lp);
 	}
 

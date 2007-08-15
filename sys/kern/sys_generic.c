@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.45 2007/08/02 13:29:41 corecode Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.46 2007/08/15 03:15:06 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1083,12 +1083,8 @@ selrecord(struct thread *selector, struct selinfo *sip)
 	if (sip->si_pid == selector->td_proc->p_pid &&
 	    sip->si_tid == selector->td_lwp->lwp_tid)
 		return;
-	if (sip->si_pid && (p = pfind(sip->si_pid))) {
-		FOREACH_LWP_IN_PROC(lp, p) {
-			if (sip->si_tid == lp->lwp_tid)
-				break;
-		}
-	}
+	if (sip->si_pid && (p = pfind(sip->si_pid)))
+		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, sip->si_tid);
 	if (lp != NULL && lp->lwp_wchan == (caddr_t)&selwait) {
 		sip->si_flags |= SI_COLL;
 	} else {
@@ -1117,10 +1113,7 @@ selwakeup(struct selinfo *sip)
 	sip->si_pid = 0;
 	if (p == NULL)
 		return;
-	FOREACH_LWP_IN_PROC(lp, p) {
-		if (lp->lwp_tid == sip->si_tid)
-			break;
-	}
+	lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, sip->si_tid);
 	if (lp == NULL)
 		return;
 

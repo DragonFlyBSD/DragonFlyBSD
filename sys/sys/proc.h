@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.111 2007/07/12 21:56:20 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.112 2007/08/15 03:15:07 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -52,6 +52,7 @@
 #include <sys/callout.h>		/* For struct callout_handle. */
 #include <sys/filedesc.h>
 #include <sys/queue.h>
+#include <sys/tree.h>
 #include <sys/rtprio.h>			/* For struct rtprio. */
 #include <sys/signal.h>
 #include <sys/lock.h>
@@ -74,6 +75,10 @@
 
 LIST_HEAD(proclist, proc);
 LIST_HEAD(lwplist, lwp);
+
+struct lwp_rb_tree;
+RB_HEAD(lwp_rb_tree, lwp);
+RB_PROTOTYPE2(lwp_rb_tree, lwp, u.lwp_rbnode, rb_lwp_compare, lwpid_t);
 
 /*
  * One structure allocated per session.
@@ -150,7 +155,10 @@ enum procstat {
 
 struct lwp {
 	TAILQ_ENTRY(lwp) lwp_procq;	/* run/sleep queue. */
-	LIST_ENTRY(lwp) lwp_list;	/* List of all threads in the proc. */
+	union {
+	    RB_ENTRY(lwp)	lwp_rbnode;	/* RB tree node - lwp in proc */
+	    LIST_ENTRY(lwp)	lwp_reap_entry;	/* reaper list */
+	} u;
 
 	struct proc	*lwp_proc;	/* Link to our proc. */
 	struct vmspace	*lwp_vmspace;	/* Inherited from p_vmspace */
@@ -289,7 +297,7 @@ struct	proc {
 	int		p_nthreads;	/* Number of threads in this process. */
 	int		p_nstopped;	/* Number of stopped threads. */
 	int		p_lasttid;	/* Last tid used. */
-	struct lwplist	p_lwps;	/* List of threads in this process. */
+	struct lwp_rb_tree p_lwp_tree;	/* RB tree of LWPs for this process */
 	void		*p_aioinfo;	/* ASYNC I/O info */
 	int		p_wakeup;	/* thread id XXX lwp */
 	struct proc	*p_peers;	/* XXX lwp */
@@ -356,14 +364,14 @@ struct	proc {
 #define	LWP_WEXIT	0x0000040 /* working on exiting */
 #define	LWP_WSTOP	0x0000080 /* working on stopping */
 
-#define	FIRST_LWP_IN_PROC(p)		LIST_FIRST(&(p)->p_lwps)
+#define	FIRST_LWP_IN_PROC(p)		RB_FIRST(lwp_rb_tree, &(p)->p_lwp_tree)
 #define	FOREACH_LWP_IN_PROC(lp, p)	\
-	LIST_FOREACH((lp), &(p)->p_lwps, lwp_list)
+	RB_FOREACH(lp, lwp_rb_tree, &(p)->p_lwp_tree)
 #define	ONLY_LWP_IN_PROC(p)		\
 	(p->p_nthreads != 1 &&		\
 	(panic("%s: proc %p (pid %d cmd %s) has more than one thread",	\
 	       __func__, p, p->p_pid, p->p_comm), 1),	\
-	FIRST_LWP_IN_PROC(p))
+	RB_ROOT(&p->p_lwp_tree))
 
 /*
  * We use process IDs <= PID_MAX; PID_MAX + 1 must also fit in a pid_t,
