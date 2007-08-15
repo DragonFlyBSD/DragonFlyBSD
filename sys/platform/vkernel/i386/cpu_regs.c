@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.21 2007/07/02 16:52:00 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.22 2007/08/15 03:10:49 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -684,6 +684,7 @@ cpu_idle(void)
 
 	crit_exit();
 	KKASSERT(td->td_pri < TDPRI_CRIT);
+	cpu_enable_intr();
 	for (;;) {
 		/*
 		 * See if there are any LWKTs ready to go.

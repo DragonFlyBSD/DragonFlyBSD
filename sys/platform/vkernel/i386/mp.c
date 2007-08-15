@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.6 2007/07/10 18:35:38 josepht Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.7 2007/08/15 03:10:49 dillon Exp $
  */
 
 
@@ -444,8 +444,15 @@ start_all_aps(u_int boot_addr)
 
 		/*
 		 * Setup the AP's lwp, this is the 'cpu'
+		 *
+		 * We have to make sure our signals are masked or the new LWP
+		 * may pick up a signal that it isn't ready for yet.  SMP
+		 * startup occurs after SI_BOOT2_LEAVE_CRIT so interrupts
+		 * have already been enabled.
 		 */
+		cpu_disable_intr();
 		pthread_create(&ap_tids[x], NULL, start_ap, NULL);
+		cpu_enable_intr();
 
 		while((smp_startup_mask & (1 << x)) == 0) {
 			cpu_lfence(); /* XXX spin until the AP has started */
