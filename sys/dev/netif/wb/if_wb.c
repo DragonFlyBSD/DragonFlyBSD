@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.38 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.39 2007/08/16 11:20:37 sephe Exp $
  */
 
 /*
@@ -848,7 +848,7 @@ wb_detach(device_t dev)
 		device_delete_child(dev, sc->wb_miibus);
 	bus_generic_detach(dev);
 
-	if (sc->wb_irq);
+	if (sc->wb_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->wb_irq);
 	if (sc->wb_res)
 		bus_release_resource(dev, WB_RES, WB_RID, sc->wb_res);
