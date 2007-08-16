@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.27 2007/08/16 06:58:02 hasso Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.28 2007/08/16 20:10:08 hasso Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -1114,6 +1114,7 @@ product DELL X30		0x4003	Dell Axim X30 PDA
 product DELL BC02		0x8000	Dell BC02 Bluetooth USB Adapter
 product DELL TM1180		0x8100	TrueMobile 1180 WLAN
 product DELL TM350		0x8103	TrueMobile 350 Bluetooth USB Adapter
+product DELL W5500		0x8115	W5500 HSDPA 
 
 /* Delorme Paublishing products */
 product DELORME EARTHMATE	0x0100	Earthmate GPS
@@ -1641,7 +1642,7 @@ product KYOCERA FINECAM_S4	0x0101	Finecam S4
 product KYOCERA FINECAM_S5	0x0103	Finecam S5
 product KYOCERA FINECAM_L3	0x0105	Finecam L3
 product KYOCERA AHK3001V	0x0203	AH-K3001V
-product KYOCERA2 CDMA_MSM_K	0x17da	Qualcomm Kyocera CDMA Technologies MSM
+product KYOCERA2 KPC650		0x17da	KPC650 EVDO
 
 /* LaCie products */
 product LACIE HD		0xa601	Hard Disk
@@ -1964,8 +1965,14 @@ product NOVATECH NV902W		0x9020	NV-902W
 product NOVATECH RT2573		0x9021	RT2573
 
 /* Novatel Wireless products */
-product NOVATEL CDMA_MODEM	0x1110	Novatel Wireless Merlin CDMA
-product NOVATEL U740		0x1400	Merlin U740
+product NOVATEL EXPRESSCARD	0x1100  ExpressCard 3G
+product NOVATEL MERLINV620	0x1110	Merlin V620
+product NOVATEL S720		0x1130  S720
+product NOVATEL MERLINU740	0x1400	Merlin U740
+product NOVATEL XU870		0x1430  XU870
+product NOVATEL ES620		0x2100  ES620 CDMA
+product NOVATEL U720		0x2110	U720
+
 product NOVATEL2 FLEXPACKGPS	0x0100	NovAtel FlexPack GPS receiver
 
 /* Olympus products */
@@ -2151,6 +2158,7 @@ product QTRONIX 980N		0x2011	Scorpion-980N keyboard
 /* Qualcomm products */
 product QUALCOMM CDMA_MSM	0x3196	CDMA Technologies MSM modem
 product QUALCOMM CDMA_MSM_2	0x6000	CDMA Technologies MSM phone
+product QUALCOMM MSM_HSDPA	0x6613  HSDPA MSM
 
 product QUALCOMM2 RWT_FCT	0x3100	RWT FCT-CDMA 2000 1xRTT modem
 product QUALCOMM2 CDMA_MSM	0x6000	CDMA Technologies MSM phone
@@ -2291,8 +2299,17 @@ product SIEMENS3 X65		0x0003	X65
 product SIEMENS3 X75		0x0004	X75
 
 /* Sierra Wireless products */
-product SIERRA AIRCARD580	0x0112	Sierra Wireless AirCard 580
-product SIERRA MC5720		0x0218	MC5720 Wireless Modem
+product SIERRA EM5625		0x0017  EM5625
+product SIERRA MC5720		0x0018	MC5720
+product SIERRA AIRCARD_595	0x0019	AirCard 595
+product SIERRA MC5725		0x0020	MC5725
+product SIERRA AIRCARD_580	0x0112	Aircard 580 EVDO
+product SIERRA MC5720_2		0x0218	MC5720
+product SIERRA MC8755_2		0x6802	MC8755
+product SIERRA MC8765		0x6803	MC8765
+product SIERRA MC8755		0x6804	MC8755 HSDPA
+product SIERRA MC8775		0x6812	MC8775 HSDPA
+product SIERRA AIRCARD_875	0x6820	Aircard 875 HSDPA
 
 /* Sigmatel products */
 product SIGMATEL IRDA		0x4200	IrDA
