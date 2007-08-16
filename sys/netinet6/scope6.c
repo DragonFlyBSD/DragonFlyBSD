@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/scope6.c,v 1.1.2.3 2002/04/01 15:29:04 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.9 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.10 2007/08/16 20:03:58 dillon Exp $	*/
 /*	$KAME: scope6.c,v 1.10 2000/07/24 13:29:31 itojun Exp $	*/
 
 /*
@@ -295,4 +295,77 @@ scope6_addr2default(struct in6_addr *addr)
 		return (0);
 
 	return (sid_default.s6id_list[in6_addrscope(addr)]);
+}
+
+/*
+ * Determine the appropriate scope zone ID for in6 and ifp.  If ret_id is
+ * non NULL, it is set to the zone ID.  If the zone ID needs to be embedded
+  * in the in6_addr structure, in6 will be modified.
+ */
+int
+in6_setscope(struct in6_addr *in6, struct ifnet *ifp, u_int32_t *ret_id)
+{
+	int scope;
+	u_int32_t zoneid = 0;
+	struct scope6_id *sid;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	sid = SID(ifp);
+
+#ifdef DIAGNOSTIC
+	if (sid == NULL) { /* should not happen */
+		panic("in6_setscope: scope array is NULL");
+		/* NOTREACHED */
+	}
+#endif
+
+	/*
+	 * special case: the loopback address can only belong to a loopback
+	 * interface.
+	 */
+	if (IN6_IS_ADDR_LOOPBACK(in6)) {
+		if (!(ifp->if_flags & IFF_LOOPBACK)) {
+			lwkt_serialize_exit(ifp->if_serializer);
+			return (EINVAL);
+		} else {
+			if (ret_id != NULL)
+				*ret_id = 0; /* there's no ambiguity */
+			lwkt_serialize_exit(ifp->if_serializer);
+			return (0);
+		}
+	}
+
+	scope = in6_addrscope(in6);
+
+	switch (scope) {
+	case IPV6_ADDR_SCOPE_NODELOCAL: /* should be interface index */
+		zoneid = sid->s6id_list[IPV6_ADDR_SCOPE_NODELOCAL];
+		break;
+
+	case IPV6_ADDR_SCOPE_LINKLOCAL:
+		zoneid = sid->s6id_list[IPV6_ADDR_SCOPE_LINKLOCAL];
+		break;
+
+	case IPV6_ADDR_SCOPE_SITELOCAL:
+		zoneid = sid->s6id_list[IPV6_ADDR_SCOPE_SITELOCAL];
+		break;
+
+	case IPV6_ADDR_SCOPE_ORGLOCAL:
+		zoneid = sid->s6id_list[IPV6_ADDR_SCOPE_ORGLOCAL];
+		break;
+
+	default:
+		zoneid = 0;     /* XXX: treat as global. */
+		break;
+	}
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	if (ret_id != NULL)
+		*ret_id = zoneid;
+
+	if (IN6_IS_SCOPE_LINKLOCAL(in6) || IN6_IS_ADDR_MC_NODELOCAL(in6) )
+		in6->s6_addr16[1] = htons(zoneid & 0xffff); /* XXX */
+
+	return (0);
 }

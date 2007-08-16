@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.38 2007/06/16 19:59:30 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.39 2007/08/16 20:03:57 dillon Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -81,6 +81,7 @@ struct	rtentry;
 struct	rt_addrinfo;
 struct	socket;
 struct	ether_header;
+struct	carp_if;
 struct	ucred;
 struct	lwkt_serialize;
 
@@ -178,6 +179,7 @@ struct ifnet {
 	int	if_dunit;		/* unit or IF_DUNIT_NONE */
 	struct	ifaddrhead if_addrhead;	/* linked list of addresses per if */
 	int	if_pcount;		/* number of promiscuous listeners */
+	struct	carp_if *if_carp;	/* carp interface structure */
 	struct	bpf_if *if_bpf;		/* packet filter structure */
 	u_short	if_index;		/* numeric abbreviation for this if  */
 	short	if_timer;		/* time 'til if_watchdog called */

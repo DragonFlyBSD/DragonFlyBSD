@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.22 2006/12/22 23:57:53 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.23 2007/08/16 20:03:58 dillon Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -1993,6 +1993,9 @@ nd6_need_cache(struct ifnet *ifp)
 #endif
 #ifdef IFT_IEEE80211
 	case IFT_IEEE80211:
+#endif
+#ifdef IFT_CARP
+	case IFT_CARP:
 #endif
 	case IFT_GIF:		/* XXX need more cases? */
 		return (1);

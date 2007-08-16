@@ -1,6 +1,6 @@
 /*	$NetBSD: ifconfig.c,v 1.34 1997/04/21 01:17:58 lukem Exp $	*/
 /* $FreeBSD: src/sbin/ifconfig/ifmedia.c,v 1.19.2.1 2006/03/01 22:24:23 glebius Exp $ */
-/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.10 2006/04/02 03:33:59 sephe Exp $ */
+/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.11 2007/08/16 20:03:55 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Jason R. Thorpe.
@@ -174,6 +174,12 @@ media_status(int s)
 				printf("associated");
 			else
 				printf("no carrier");
+			break;
+		case IFM_CARP:
+			if (ifmr.ifm_status & IFM_ACTIVE)
+				printf("master");
+			else
+				printf("backup");
 			break;
 		}
 		putchar('\n');

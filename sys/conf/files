@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.172 2007/08/15 14:34:02 swildner Exp $
+# $DragonFly: src/sys/conf/files,v 1.173 2007/08/16 20:03:52 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -79,6 +79,7 @@ crypto/des/des_setkey.c			optional ipsec ipsec_esp
 crypto/rijndael/rijndael-alg-fst.c	optional ipsec ipsec_esp
 crypto/rijndael/rijndael-api-fst.c	optional ipsec ipsec_esp
 crypto/sha1.c				optional ipsec
+crypto/sha1.c				optional carp
 crypto/sha2/sha2.c			optional ipsec
 ddb/db_access.c				optional ddb
 ddb/db_kld.c				optional ddb
@@ -895,6 +896,7 @@ netinet/in_gif.c		optional gif inet
 netinet/igmp.c			optional inet
 netinet/in.c			optional inet
 netinet/in_cksum.c		optional inet
+netinet/ip_carp.c		optional carp
 netinet/ip_gre.c		optional gre inet
 netinet/ip_id.c			optional inet
 netinet/in_pcb.c		optional inet

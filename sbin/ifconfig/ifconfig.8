@@ -27,9 +27,10 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.19 2007/04/09 21:20:37 swildner Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.20 2007/08/16 20:03:55 dillon Exp $
+
 .\"
-.Dd November 19, 2006
+.Dd April 8, 2007
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -1388,6 +1389,31 @@ The
 argument is useless and hence deprecated.
 .El
 .Pp
+The following parameters are specific to
+.Xr carp 4
+interfaces:
+.Bl -tag -width indent
+.It Cm advbase Ar seconds
+Specifies the base of the advertisement interval in seconds.
+The acceptable values are 1 to 255.
+The default value is 1.
+.\" The default value is
+.\" .Dv CARP_DFLTINTV .
+.It Cm advskew Ar interval
+Specifies the skew to add to the base advertisement interval to
+make one host advertise slower than another host.
+It is specified in 1/256 of seconds.
+The acceptable values are 1 to 254.
+The default value is 0.
+.It Cm pass Ar phrase
+Set the authentication key to
+.Ar phrase .
+.It Cm vhid Ar n
+Set the virtual host ID.
+This is a required setting.
+Acceptable values are 1 to 255.
+.El
+.Pp
 The
 .Nm
 utility displays the current configuration for a network interface
@@ -1460,6 +1486,7 @@ requested address is unknown, or the user is not privileged and
 tried to alter an interface's configuration.
 .Sh SEE ALSO
 .Xr netstat 1 ,
+.Xr carp 4 ,
 .Xr ifmedia 4 ,
 .Xr netintro 4 ,
 .Xr polling 4 ,

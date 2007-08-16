@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_proto.c,v 1.6.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.12 2007/05/07 12:40:30 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.13 2007/08/16 20:03:58 dillon Exp $	*/
 /*	$KAME: in6_proto.c,v 1.91 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -69,6 +69,7 @@
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
+#include "opt_carp.h"
 
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -139,6 +140,11 @@
 #include <netinet6/ip6protosw.h>
 
 #include <net/net_osdep.h>
+
+#ifdef CARP
+#include <netinet/ip_carp.h>
+#endif
+
 
 /*
  * TCP/IP protocol family: IP6, ICMP6, UDP, TCP.
@@ -247,6 +253,15 @@ struct ip6protosw inet6sw[] = {
   0,            0,              0,              0,
   &rip6_usrreqs
 },
+#ifdef CARP
+{ SOCK_RAW,    &inet6domain,   IPPROTO_CARP,   PR_ATOMIC|PR_ADDR,
+  carp6_input, rip6_output,    0,              rip6_ctloutput,
+  0,
+  0,            0,              0,              0,
+  &rip6_usrreqs
+},
+#endif /* CARP */
+
 /* raw wildcard */
 { SOCK_RAW,	&inet6domain,	0,		PR_ATOMIC|PR_ADDR,
   rip6_input,	rip6_output,	0,		rip6_ctloutput,

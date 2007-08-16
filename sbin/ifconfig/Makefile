@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/ifconfig/Makefile,v 1.29 2005/06/05 03:32:51 thompsa Exp $
-# $DragonFly: src/sbin/ifconfig/Makefile,v 1.5 2006/10/17 00:55:41 pavalos Exp $
+# $DragonFly: src/sbin/ifconfig/Makefile,v 1.6 2007/08/16 20:03:55 dillon Exp $
 
 PROG=	ifconfig
 
@@ -24,7 +24,7 @@ SRCS+=	ifmedia.c		# SIOC[GS]IFMEDIA support
 SRCS+=	ifvlan.c		# SIOC[GS]ETVLAN support
 SRCS+=	ifieee80211.c		# SIOC[GS]IEEE80211 support
 
-#SRCS+=	ifcarp.c		# SIOC[GS]VH support
+SRCS+=	ifcarp.c		# SIOC[GS]VH support
 #SRCS+=	ifpfsync.c		# pfsync(4) support
 
 SRCS+=	ifbridge.c		# bridge support

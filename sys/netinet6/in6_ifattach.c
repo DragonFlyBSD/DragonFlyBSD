@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.18 2006/12/22 23:57:53 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.19 2007/08/16 20:03:58 dillon Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -714,6 +714,7 @@ in6_ifattach(struct ifnet *ifp,
 #endif
 	case IFT_PFLOG:
 	case IFT_PFSYNC:
+	case IFT_CARP:
 		return;
 	}
 

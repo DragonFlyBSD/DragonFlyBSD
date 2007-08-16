@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.18 2006/12/22 23:57:53 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.19 2007/08/16 20:03:58 dillon Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -34,6 +34,7 @@
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
+#include "opt_carp.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -71,6 +72,11 @@
 
 #include <net/net_osdep.h>
 
+#ifdef CARP
+#include <netinet/ip_carp.h>
+#endif
+
+
 #define SDL(s) ((struct sockaddr_dl *)s)
 
 struct dadq;
@@ -102,7 +108,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	struct in6_addr taddr6;
 	struct in6_addr myaddr6;
 	char *lladdr = NULL;
-	struct ifaddr *ifa;
+	struct ifaddr *ifa = NULL;
 	int lladdrlen = 0;
 	int anycast = 0, proxy = 0, tentative = 0;
 	int tlladdr;
@@ -201,7 +207,14 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	 * (3) "tentative" address on which DAD is being performed.
 	 */
 	/* (1) and (3) check. */
+#ifdef CARP
+       if (ifp->if_carp)
+               ifa = carp_iamatch6(ifp->if_carp, &taddr6);
+       if (!ifa)
+               ifa = (struct ifaddr *)in6ifa_ifpwithaddr(ifp, &taddr6);
+#else
 	ifa = (struct ifaddr *)in6ifa_ifpwithaddr(ifp, &taddr6);
+#endif
 
 	/* (2) check. */
 	if (!ifa) {
@@ -895,9 +908,16 @@ nd6_na_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 		 * lladdr in sdl0.  If we are not proxying (sending NA for
 		 * my address) use lladdr configured for the interface.
 		 */
-		if (sdl0 == NULL)
+		if (sdl0 == NULL) {
+#ifdef CARP
+			if (ifp->if_carp)
+				mac = carp_macmatch6(ifp->if_carp, m, taddr6);
+			if (mac == NULL)
+				mac = nd6_ifptomac(ifp);
+#else
 			mac = nd6_ifptomac(ifp);
-		else if (sdl0->sa_family == AF_LINK) {
+#endif
+		} else if (sdl0->sa_family == AF_LINK) {
 			struct sockaddr_dl *sdl;
 			sdl = (struct sockaddr_dl *)sdl0;
 			if (sdl->sdl_alen == ifp->if_addrlen)
@@ -948,6 +968,9 @@ nd6_ifptomac(struct ifnet *ifp)
 #endif
 #ifdef IFT_IEEE80211
 	case IFT_IEEE80211:
+#endif
+#ifdef IFT_CARP
+	case IFT_CARP:
 #endif
 		return ((caddr_t)(ifp + 1));
 		break;

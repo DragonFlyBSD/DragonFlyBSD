@@ -2,7 +2,7 @@
 # Internet protocols
 #
 # $FreeBSD: src/etc/protocols,v 1.13.2.3 2002/02/27 03:39:00 dd Exp $
-# $DragonFly: src/etc/protocols,v 1.7 2007/06/21 13:36:58 hasso Exp $
+# $DragonFly: src/etc/protocols,v 1.8 2007/08/16 20:03:51 dillon Exp $
 #	from: @(#)protocols	5.1 (Berkeley) 4/17/89
 #
 # See also http://www.iana.org/assignments/protocol-numbers
@@ -120,7 +120,7 @@ ipcomp	108	IPComp		# IP Payload Compression Protocol
 snp	109	SNP		# Sitara Networks Protocol
 compaq-peer	110	Compaq-Peer	# Compaq Peer Protocol
 ipx-in-ip	111	IPX-in-IP	# IPX in IP
-vrrp	112	VRRP		# Virtual Router Redundancy Protocol
+carp	112	CARP	vrrp		# Common Address Redundancy Protocol
 pgm	113	PGM		# PGM Reliable Transport Protocol
 #	114			# any 0-hop protocol
 l2tp	115	L2TP		# Layer Two Tunneling Protocol

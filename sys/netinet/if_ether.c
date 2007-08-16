@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.38 2007/05/24 20:51:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.39 2007/08/16 20:03:57 dillon Exp $
  */
 
 /*
@@ -74,6 +74,7 @@
  */
 
 #include "opt_inet.h"
+#include "opt_carp.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -103,6 +104,10 @@
 #include <sys/msgport2.h>
 #include <net/netmsg2.h>
 
+
+#ifdef CARP
+#include <netinet/ip_carp.h>
+#endif
 
 #define SIN(s) ((struct sockaddr_in *)s)
 #define SDL(s) ((struct sockaddr_dl *)s)
@@ -145,6 +150,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "");
 
+void 		arprequest_acces(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,  u_char *enaddr);
 static void	arp_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest (struct ifnet *,
 			struct in_addr *, struct in_addr *, u_char *);
@@ -738,6 +744,7 @@ in_arpinput(struct mbuf *m)
 #ifdef SMP
 	struct netmsg_arp_update msg;
 #endif
+	u_int8_t *enaddr = NULL;
 	int op;
 	int req_len;
 
@@ -772,6 +779,19 @@ in_arpinput(struct mbuf *m)
 		if (ifp->if_bridge && ia->ia_ifp && 
 		    ifp->if_bridge == ia->ia_ifp->if_bridge)
 			goto match;
+		
+#ifdef CARP
+	/*
+	 * If the interface does not match, but the recieving interface
+	 * is part of carp, we call carp_iamatch to see if this is a
+	 * request for the virtual host ip.
+	 * XXX: This is really ugly!
+	 */
+        	if (ifp->if_carp != NULL &&
+		    carp_iamatch(ifp->if_carp, ia, &isaddr, &enaddr) &&
+		    itaddr.s_addr == ia->ia_addr.sin_addr.s_addr)
+                        goto match;
+#endif
 	}
 	LIST_FOREACH(ia, INADDR_HASH(isaddr.s_addr), ia_hash) {
 		/* Skip all ia's which don't match */
@@ -803,8 +823,10 @@ in_arpinput(struct mbuf *m)
 	return;
 
 match:
+	if (!enaddr)
+		enaddr = (u_int8_t *)IF_LLADDR(ifp);
 	myaddr = ia->ia_addr.sin_addr;
-	if (!bcmp(ar_sha(ah), IF_LLADDR(ifp), ifp->if_addrlen)) {
+	if (!bcmp(ar_sha(ah), enaddr, ifp->if_addrlen)) {
 		m_freem(m);	/* it's from me, ignore it. */
 		return;
 	}
@@ -841,7 +863,7 @@ reply:
 	if (itaddr.s_addr == myaddr.s_addr) {
 		/* I am the target */
 		memcpy(ar_tha(ah), ar_sha(ah), ah->ar_hln);
-		memcpy(ar_sha(ah), IF_LLADDR(ifp), ah->ar_hln);
+		memcpy(ar_sha(ah), enaddr, ah->ar_hln);
 	} else {
 		struct llinfo_arp *la;
 
@@ -875,7 +897,7 @@ reply:
 				return;
 			}
 			memcpy(ar_tha(ah), ar_sha(ah), ah->ar_hln);
-			memcpy(ar_sha(ah), IF_LLADDR(ifp), ah->ar_hln);
+			memcpy(ar_sha(ah), enaddr, ah->ar_hln);
 #ifdef DEBUG_PROXY
 			kprintf("arp: proxying for %s\n", inet_ntoa(itaddr));
 #endif
@@ -1036,6 +1058,16 @@ arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY)
 		arprequest(ifp, &IA_SIN(ifa)->sin_addr, &IA_SIN(ifa)->sin_addr,
 			   IF_LLADDR(ifp));
+	ifa->ifa_rtrequest = arp_rtrequest;
+	ifa->ifa_flags |= RTF_CLONING;
+}
+
+void
+arp_ifinit2(struct ifnet *ifp, struct ifaddr *ifa, u_char *enaddr)
+{
+	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY)
+		arprequest(ifp, &IA_SIN(ifa)->sin_addr, &IA_SIN(ifa)->sin_addr,
+			   enaddr);
 	ifa->ifa_rtrequest = arp_rtrequest;
 	ifa->ifa_flags |= RTF_CLONING;
 }

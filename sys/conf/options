@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.70 2007/08/13 17:49:14 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.71 2007/08/16 20:03:52 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -265,6 +265,7 @@ BOOTP_COMPAT		opt_bootp.h
 BOOTP_NFSROOT		opt_bootp.h
 BOOTP_NFSV3		opt_bootp.h
 BOOTP_WIRED_TO		opt_bootp.h
+CARP			opt_carp.h
 ETHER_II		opt_ef.h
 ETHER_8023		opt_ef.h
 ETHER_8022		opt_ef.h

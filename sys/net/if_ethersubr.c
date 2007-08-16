@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.41 2007/06/05 13:41:39 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.42 2007/08/16 20:03:57 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -40,6 +40,7 @@
 #include "opt_inet6.h"
 #include "opt_ipx.h"
 #include "opt_netgraph.h"
+#include "opt_carp.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -69,6 +70,10 @@
 #endif
 #ifdef INET6
 #include <netinet6/nd6.h>
+#endif
+
+#ifdef CARP
+#include <netinet/ip_carp.h>
 #endif
 
 #ifdef IPX
@@ -345,6 +350,12 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			return (0);	/* XXX */
 		}
 	}
+
+#ifdef CARP
+	if (ifp->if_carp && (error = carp_output(ifp, m, dst, NULL)))
+		goto bad;
+#endif
+ 
 
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_output_p != NULL) {
@@ -651,6 +662,20 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	if (rule)	/* packet is passing the second time */
 		goto post_stats;
 
+#ifdef CARP
+	/*
+         * XXX: Okay, we need to call carp_forus() and - if it is for
+         * us jump over code that does the normal check
+         * "ac_enaddr == ether_dhost". The check sequence is a bit
+         * different from OpenBSD, so we jump over as few code as
+         * possible, to catch _all_ sanity checks. This needs
+         * evaluation, to see if the carp ether_dhost values break any
+         * of these checks!
+         */
+	if (ifp->if_carp && carp_forus(ifp->if_carp, eh->ether_dhost))
+		goto pre_stats;
+#endif
+
 	/*
 	 * Discard packet if upper layers shouldn't see it because
 	 * it was unicast to a different Ethernet address.  If the
@@ -663,6 +688,11 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 		m_freem(m);
 		return;
 	}
+
+#ifdef CARP
+pre_stats:
+#endif
+
 	/* Discard packet if interface is not up */
 	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);

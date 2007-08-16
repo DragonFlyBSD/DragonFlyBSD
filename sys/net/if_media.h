@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.16 2007/03/24 05:57:49 sephe Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.17 2007/08/16 20:03:57 dillon Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -239,6 +239,11 @@ int	ifmedia_baudrate(int);
 #define IFM_ATM_UNASSIGNED	0x00000400	/* unassigned cells */
 
 /*
+ * CARP Common Address Redundancy Protocol
+ */
+#define IFM_CARP        0x000000c0
+
+/*
  * Shared media sub-types
  */
 #define	IFM_AUTO	0		/* Autoselect best media */
@@ -316,6 +321,7 @@ struct ifmedia_description {
 	{ IFM_TOKEN,		"Token ring" },				\
 	{ IFM_FDDI,		"FDDI" },				\
 	{ IFM_IEEE80211,	"IEEE 802.11 Wireless Ethernet" },	\
+	{ IFM_CARP,		"Common Address Redundancy Protocol" }, \
 	{ 0, NULL },							\
 }
 

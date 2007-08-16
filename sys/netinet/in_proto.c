@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.13 2005/07/15 17:54:47 eirikn Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.14 2007/08/16 20:03:57 dillon Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -41,6 +41,7 @@
 #include "opt_ipsec.h"
 #include "opt_inet6.h"
 #include "opt_sctp.h"
+#include "opt_carp.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -104,6 +105,10 @@
 #endif /* SCTP */
 
 #include <net/netisr.h>		/* for cpu0_soport */
+
+#ifdef CARP
+#include <netinet/ip_carp.h>
+#endif
 
 extern	struct domain inetdomain;
 static	struct pr_usrreqs nousrreqs;
@@ -294,6 +299,16 @@ struct protosw inetsw[] = {
   rip_init,	0,		0,		0,
   &rip_usrreqs
 },
+
+#ifdef CARP
+ { SOCK_RAW,     &inetdomain,    IPPROTO_CARP,   PR_ATOMIC|PR_ADDR,
+  carp_input,   rip_output,       0,      rip_ctloutput,
+  0,
+  0,            0,              0,              0,
+  &rip_usrreqs
+},
+
+#endif
 };
 
 struct domain inetdomain = {
@@ -331,4 +346,7 @@ SYSCTL_NODE(_net_inet, IPPROTO_DIVERT,	divert,	CTLFLAG_RW, 0,	"DIVERT");
 #endif
 #ifdef PIM
 SYSCTL_NODE(_net_inet, IPPROTO_PIM,    pim,    CTLFLAG_RW, 0,  "PIM");
+#endif
+#ifdef CARP
+SYSCTL_NODE(_net_inet, IPPROTO_CARP,    carp,    CTLFLAG_RW, 0,  "CARP");
 #endif

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.20 2006/09/30 21:23:28 swildner Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.21 2007/08/16 20:03:57 dillon Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -115,6 +115,7 @@ struct ip_moptions {
 	u_char	imo_multicast_ttl;	/* TTL for outgoing multicasts */
 	u_char	imo_multicast_loop;	/* 1 => hear sends if a member */
 	u_short	imo_num_memberships;	/* no. memberships this socket */
+	u_short imo_max_memberships;    /* max memberships this socket */
 	struct	in_multi *imo_membership[IP_MAX_MEMBERSHIPS];
 	u_long	imo_multicast_vif;	/* vif num outgoing multicasts */
 };

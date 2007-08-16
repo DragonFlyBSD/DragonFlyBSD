@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_var.h,v 1.3.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.7 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.8 2007/08/16 20:03:58 dillon Exp $	*/
 /*	$KAME: in6_var.h,v 1.56 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -585,6 +585,9 @@ do { \
 struct	in6_multi *in6_addmulti (struct in6_addr *, struct ifnet *,
 				     int *);
 void	in6_delmulti (struct in6_multi *);
+struct	in6_multi_mship *in6_joingroup(struct ifnet *, struct in6_addr *, int *);
+int	in6_leavegroup(struct in6_multi_mship *);
+
 extern int in6_ifindex2scopeid (int);
 extern int in6_mask2len (struct in6_addr *, u_char *);
 extern void in6_len2mask (struct in6_addr *, int);
@@ -615,6 +618,8 @@ int	in6_prefix_ioctl (struct socket *so, u_long cmd, caddr_t data,
 int	in6_prefix_add_ifid (int iilen, struct in6_ifaddr *ia);
 void	in6_prefix_remove_ifid (int iilen, struct in6_ifaddr *ia);
 void	in6_purgeprefix (struct ifnet *);
+void	in6_ifremloop(struct ifaddr *);
+void	in6_ifaddloop(struct ifaddr *);
 
 int	in6_is_addr_deprecated (struct sockaddr_in6 *);
 struct inpcb;

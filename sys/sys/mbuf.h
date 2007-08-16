@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.40 2007/08/14 13:30:35 sephe Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.41 2007/08/16 20:03:54 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -569,6 +569,7 @@ m_getb(int len, int how, int type, int flags)
 /* struct ip6aux */
 #define	PACKET_TAG_IPFW_DIVERT			9 /* divert info */
 /* uint16_t */
+#define	PACKET_TAG_CARP                         28 /* CARP info */
 
 /*
  * As a temporary and low impact solution to replace the even uglier

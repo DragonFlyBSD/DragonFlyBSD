@@ -32,7 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.15 2007/04/04 06:13:26 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.16 2007/08/16 20:03:57 dillon Exp $
  */
 
 #ifndef _NETINET_IN_H_
@@ -169,6 +169,7 @@
 #define	IPPROTO_IPCOMP		108		/* payload compression (IPComp) */
 /* 101-254: Partly Unassigned */
 #define	IPPROTO_PIM		103		/* Protocol Independent Mcast */
+#define	IPPROTO_CARP		112		/* CARP */
 #define	IPPROTO_PGM		113		/* PGM */
 #define	IPPROTO_SCTP		132		/* SCTP */
 #define	IPPROTO_PFSYNC		240		/* PFSYNC */
@@ -297,6 +298,7 @@ struct in_addr {
 #define	INADDR_UNSPEC_GROUP	(u_int32_t)0xe0000000	/* 224.0.0.0 */
 #define	INADDR_ALLHOSTS_GROUP	(u_int32_t)0xe0000001	/* 224.0.0.1 */
 #define	INADDR_ALLRTRS_GROUP	(u_int32_t)0xe0000002	/* 224.0.0.2 */
+#define	INADDR_CARP_GROUP       (u_int32_t)0xe0000012   /* 224.0.0.18 */
 #define	INADDR_PFSYNC_GROUP	(u_int32_t)0xe00000f0	/* 224.0.0.240 */
 #define	INADDR_MAX_LOCAL_GROUP	(u_int32_t)0xe00000ff	/* 224.0.0.255 */
 

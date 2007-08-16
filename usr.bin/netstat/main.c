@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.12 2006/06/25 11:02:40 corecode Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.13 2007/08/16 20:03:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -148,6 +148,8 @@ static struct nlist nl[] = {
 	{ "_rttrash" },
 #define	N_NCPUS		43
 	{ "_ncpus" },
+#define	N_CARPSTAT	44
+	{ "_carpstats" },
 	{ "" },
 };
 
@@ -179,6 +181,8 @@ struct protox {
 	{ -1,		N_IPSECSTAT,	1,	0,
 	  ipsec_stats,	NULL,		"ipsec",	0},
 #endif
+        { -1,           N_CARPSTAT,     1,      0,
+          carp_stats,   NULL,           "carp",         0},
 	{ -1,		-1,		0,	0,
 	  0,		NULL,		0 }
 };

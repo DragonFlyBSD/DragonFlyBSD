@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/scope6_var.h,v 1.1.2.1 2000/07/15 07:14:38 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6_var.h,v 1.6 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6_var.h,v 1.7 2007/08/16 20:03:58 dillon Exp $	*/
 /*	$KAME: scope6_var.h,v 1.4 2000/05/18 15:03:27 jinmei Exp $	*/
 
 /*
@@ -65,6 +65,7 @@ void	scope6_setdefault (struct ifnet *);
 int	scope6_get_default (struct scope6_id *);
 u_int32_t scope6_in6_addrscope (struct in6_addr *);
 u_int32_t scope6_addr2default (struct in6_addr *);
+int	in6_setscope __P((struct in6_addr *, struct ifnet *, u_int32_t *));
 
 #endif /* _KERNEL */
 

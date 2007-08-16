@@ -32,7 +32,7 @@
  *
  *	@(#)netstat.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/usr.bin/netstat/netstat.h,v 1.16.2.7 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.9 2006/06/25 11:02:40 corecode Exp $
+ * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.10 2007/08/16 20:03:58 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -73,6 +73,7 @@ void	ip_stats (u_long, char *, int);
 void	icmp_stats (u_long, char *, int);
 void	igmp_stats (u_long, char *, int);
 void	pim_stats (u_long, char *, int);
+void   carp_stats (u_long, const char *, int);
 #ifdef IPSEC
 void	ipsec_stats (u_long, char *, int);
 #endif
