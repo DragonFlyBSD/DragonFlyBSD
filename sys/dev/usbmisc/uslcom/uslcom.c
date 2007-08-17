@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.3 2007/08/15 06:47:26 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.4 2007/08/17 06:40:19 hasso Exp $	*/
 /*	$OpenBSD: uslcom.c,v 1.12 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -89,14 +89,15 @@ struct uslcom_softc {
 	u_char			sc_lsr;
 };
 
-void	uslcom_get_status(void *, int portno, u_char *lsr, u_char *msr);
-void	uslcom_set(void *, int, int, int);
-int	uslcom_param(void *, int, struct termios *);
-int	uslcom_open(void *sc, int portno);
-void	uslcom_close(void *, int);
-void	uslcom_break(void *sc, int portno, int onoff);
-void	uslcom_set_flow_ctrl(struct uslcom_softc *sc, tcflag_t cflag,
-			     tcflag_t iflag);
+static void	uslcom_get_status(void *, int portno, u_char *lsr,
+				  u_char *msr);
+static void	uslcom_set(void *, int, int, int);
+static int	uslcom_param(void *, int, struct termios *);
+static int	uslcom_open(void *sc, int portno);
+static void	uslcom_close(void *, int);
+static void	uslcom_break(void *sc, int portno, int onoff);
+static void	uslcom_set_flow_ctrl(struct uslcom_softc *sc, tcflag_t cflag,
+				     tcflag_t iflag);
 
 struct ucom_callback uslcom_callback = {
 	uslcom_get_status,
@@ -293,7 +294,7 @@ uslcom_activate(struct device *self, enum devact act)
 }
 #endif
 
-int
+static int
 uslcom_open(void *vsc, int portno)
 {
 	struct uslcom_softc *sc = vsc;
@@ -315,7 +316,7 @@ uslcom_open(void *vsc, int portno)
 	return (0);
 }
 
-void
+static void
 uslcom_close(void *vsc, int portno)
 {
 	struct uslcom_softc *sc = vsc;
@@ -332,7 +333,7 @@ uslcom_close(void *vsc, int portno)
 	usbd_do_request(sc->sc_ucom.sc_udev, &req, NULL);
 }
 
-void
+static void
 uslcom_set(void *vsc, int portno, int reg, int onoff)
 {
 	struct uslcom_softc *sc = vsc;
@@ -362,7 +363,7 @@ uslcom_set(void *vsc, int portno, int reg, int onoff)
 	usbd_do_request(sc->sc_ucom.sc_udev, &req, NULL);
 }
 
-int
+static int
 uslcom_param(void *vsc, int portno, struct termios *t)
 {
 	struct uslcom_softc *sc = (struct uslcom_softc *)vsc;
@@ -436,7 +437,7 @@ uslcom_param(void *vsc, int portno, struct termios *t)
 	return (0);
 }
 
-void
+static void
 uslcom_get_status(void *vsc, int portno, u_char *lsr, u_char *msr)
 {
 	struct uslcom_softc *sc = vsc;
@@ -447,7 +448,7 @@ uslcom_get_status(void *vsc, int portno, u_char *lsr, u_char *msr)
 		*lsr = sc->sc_lsr;
 }
 
-void
+static void
 uslcom_break(void *vsc, int portno, int onoff)
 {
 	struct uslcom_softc *sc = vsc;
@@ -462,7 +463,7 @@ uslcom_break(void *vsc, int portno, int onoff)
 	usbd_do_request(sc->sc_ucom.sc_udev, &req, NULL);
 }
 
-void
+static void
 uslcom_set_flow_ctrl(struct uslcom_softc *sc, tcflag_t cflag, tcflag_t iflag)
 {
 	uint8_t modemdata[16];

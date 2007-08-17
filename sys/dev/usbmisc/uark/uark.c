@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uark/uark.c,v 1.1 2007/08/14 22:28:11 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uark/uark.c,v 1.2 2007/08/17 06:40:19 hasso Exp $	*/
 /*	$OpenBSD: uark.c,v 1.9 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -68,12 +68,11 @@ struct uark_softc {
 	u_char			sc_lsr;
 };
 
-void	uark_get_status(void *, int portno, u_char *lsr, u_char *msr);
-void	uark_set(void *, int, int, int);
-int	uark_param(void *, int, struct termios *);
-int	uark_open(void *sc, int);
-void	uark_break(void *, int, int);
-int	uark_cmd(struct uark_softc *, uint16_t, uint16_t);
+static void	uark_get_status(void *, int portno, u_char *lsr, u_char *msr);
+static void	uark_set(void *, int, int, int);
+static int	uark_param(void *, int, struct termios *);
+static void	uark_break(void *, int, int);
+static int	uark_cmd(struct uark_softc *, uint16_t, uint16_t);
 
 struct ucom_callback uark_callback = {
 	uark_get_status,
@@ -250,7 +249,7 @@ uark_activate(struct device *self, enum devact act)
 }
 #endif
 
-void
+static void
 uark_set(void *vsc, int portno, int reg, int onoff)
 {
 	struct uark_softc *sc = vsc;
@@ -266,7 +265,7 @@ uark_set(void *vsc, int portno, int reg, int onoff)
 	}
 }
 
-int
+static int
 uark_param(void *vsc, int portno, struct termios *t)
 {
 	struct uark_softc *sc = (struct uark_softc *)vsc;
@@ -338,7 +337,7 @@ uark_param(void *vsc, int portno, struct termios *t)
 	return (0);
 }
 
-void
+static void
 uark_get_status(void *vsc, int portno, u_char *lsr, u_char *msr)
 {
 	struct uark_softc *sc = vsc;
@@ -349,7 +348,7 @@ uark_get_status(void *vsc, int portno, u_char *lsr, u_char *msr)
 		*lsr = sc->sc_lsr;
 }
 
-void
+static void
 uark_break(void *vsc, int portno, int onoff)
 {
 #ifdef UARK_DEBUG
@@ -366,7 +365,7 @@ uark_break(void *vsc, int portno, int onoff)
 #endif
 }
 
-int
+static int
 uark_cmd(struct uark_softc *sc, uint16_t index, uint16_t value)
 {
 	usb_device_request_t req;
