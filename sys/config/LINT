@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.123 2007/08/16 20:03:53 dillon Exp $
+# $DragonFly: src/sys/config/LINT,v 1.124 2007/08/18 18:16:24 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2728,6 +2728,7 @@ options 	LINPROCFS
 options 	LOCKF_DEBUG
 options 	LOUTB
 #options	MAXFILES=xxx
+options		MBUF_DEBUG
 options 	METEOR_TEST_VIDEO
 options 	NETATALKDEBUG
 options 	PANIC_DEBUG
