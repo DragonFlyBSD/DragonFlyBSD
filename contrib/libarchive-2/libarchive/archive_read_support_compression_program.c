@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_program.c,v 1.1 2007/05/29 01:00:19 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_program.c,v 1.2 2007/07/20 01:28:50 kientzle Exp $");
 
 #ifdef HAVE_SYS_WAIT_H
 #  include <sys/wait.h>
@@ -113,6 +113,7 @@ child_read(struct archive_read *a, char *buf, size_t buf_len)
 {
 	struct archive_decompress_program *state = a->decompressor->data;
 	ssize_t ret, requested;
+	const void *child_buf;
 
 	if (state->child_stdout == -1)
 		return (-1);
@@ -138,8 +139,10 @@ restart_read:
 		return (-1);
 
 	if (state->child_in_buf_avail == 0) {
+		child_buf = state->child_in_buf;
 		ret = (a->client_reader)(&a->archive,
-		    a->client_data, (const void **)&state->child_in_buf);
+		    a->client_data,&child_buf);
+		state->child_in_buf = (const char *)child_buf;
 
 		if (ret < 0) {
 			close(state->child_stdin);
