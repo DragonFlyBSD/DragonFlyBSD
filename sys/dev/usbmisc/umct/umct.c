@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.10 2007/07/01 21:24:03 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.10.2.1 2007/08/18 09:48:59 hasso Exp $
  */
 
 /*
@@ -419,7 +419,7 @@ umct_calc_baud(u_int baud)
 	case B19200: return (0x9);
 	case B38400: return (0xa);
 	case B57600: return (0xb);
-	case 115200: return (0xc);
+	case B115200: return (0xc);
 	case B0:
 	default:
 		break;
