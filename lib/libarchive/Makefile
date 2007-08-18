@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.14 2007/07/13 06:59:34 dillon Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.15 2007/08/18 15:23:33 pavalos Exp $
 
 LIB=	archive
 
@@ -98,6 +98,7 @@ MLINKS+=	archive_entry.3 archive_entry_atime_nsec.3
 MLINKS+=	archive_entry.3 archive_entry_clear.3
 MLINKS+=	archive_entry.3 archive_entry_clone.3
 MLINKS+=	archive_entry.3 archive_entry_copy_fflags_text_w.3
+MLINKS+=	archive_entry.3 archive_entry_copy_gname.3
 MLINKS+=	archive_entry.3 archive_entry_copy_gname_w.3
 MLINKS+=	archive_entry.3 archive_entry_copy_hardlink.3
 MLINKS+=	archive_entry.3 archive_entry_copy_hardlink_w.3
@@ -105,6 +106,7 @@ MLINKS+=	archive_entry.3 archive_entry_copy_pathname_w.3
 MLINKS+=	archive_entry.3 archive_entry_copy_stat.3
 MLINKS+=	archive_entry.3 archive_entry_copy_symlink.3
 MLINKS+=	archive_entry.3 archive_entry_copy_symlink_w.3
+MLINKS+=	archive_entry.3 archive_entry_copy_uname.3
 MLINKS+=	archive_entry.3 archive_entry_copy_uname_w.3
 MLINKS+=	archive_entry.3 archive_entry_dev.3
 MLINKS+=	archive_entry.3 archive_entry_devmajor.3

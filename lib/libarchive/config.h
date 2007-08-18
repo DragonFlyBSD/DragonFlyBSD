@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libarchive/config.h,v 1.8 2007/07/16 22:20:15 pavalos Exp $ */
+/* $DragonFly: src/lib/libarchive/config.h,v 1.9 2007/08/18 15:23:33 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -45,6 +45,14 @@
 /* Define to 1 if you have the declaration of `INT64_MIN', and to 0 if you
    don't. */
 #define HAVE_DECL_INT64_MIN 1
+
+/* Define to 1 if you have the declaration of `optarg', and to 0 if you don't.
+   */
+#define HAVE_DECL_OPTARG 1
+
+/* Define to 1 if you have the declaration of `optind', and to 0 if you don't.
+   */
+#define HAVE_DECL_OPTIND 1
 
 /* Define to 1 if you have the declaration of `SIZE_MAX', and to 0 if you
    don't. */
@@ -129,6 +137,9 @@
 /* Define to 1 if you have the <grp.h> header file. */
 #define HAVE_GRP_H 1
 
+/* Define to 1 if the system has the type `intmax_t'. */
+#define HAVE_INTMAX_T 1
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
@@ -177,6 +188,9 @@
 /* Define to 1 if you have the <locale.h> header file. */
 #define HAVE_LOCALE_H 1
 
+/* Define to 1 if the system has the type `long long int'. */
+#define HAVE_LONG_LONG_INT 1
+
 /* Define to 1 if you have the `lsetxattr' function. */
 /* #undef HAVE_LSETXATTR */
 
@@ -219,9 +233,6 @@
 
 /* Define to 1 if you have the <pwd.h> header file. */
 #define HAVE_PWD_H 1
-
-/* Define to 1 if you have the `reallocf' function. */
-#define HAVE_REALLOCF 1
 
 /* Define to 1 if you have the `select' function. */
 #define HAVE_SELECT 1
@@ -325,6 +336,9 @@
 /* Define to 1 if the system has the type `unsigned long long'. */
 #define HAVE_UNSIGNED_LONG_LONG 1
 
+/* Define to 1 if the system has the type `unsigned long long int'. */
+#define HAVE_UNSIGNED_LONG_LONG_INT 1
+
 /* Define to 1 if you have the `utime' function. */
 #define HAVE_UTIME 1
 
@@ -409,6 +423,11 @@
 /* Define for large files, on AIX-style hosts. */
 /* #undef _LARGE_FILES */
 
+/* Define for Solaris 2.5.1 so the uint64_t typedef from <sys/synch.h>,
+   <pthread.h>, or <semaphore.h> is not used. If the typedef was allowed, the
+   #define below would cause a syntax error. */
+/* #undef _UINT64_T */
+
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */
 
@@ -418,16 +437,18 @@
 /* Define to `unsigned long' if <sys/types.h> does not define. */
 /* #undef id_t */
 
-/* Define int64_t to a valid signed 64-bit type, if necessary. */
+/* Define to the type of a signed integer type of width exactly 64 bits if
+   such a type exists and the standard includes do not define it. */
 /* #undef int64_t */
 
-/* Define to `int64_t' if <sys/types.h> does not define. */
+/* Define to the widest signed integer type if <stdint.h> and <inttypes.h> do
+   not define. */
 /* #undef intmax_t */
 
 /* Define to `int' if <sys/types.h> does not define. */
 /* #undef mode_t */
 
-/* Define to `int64_t' if <sys/types.h> does not define. */
+/* Define to `long long' if <sys/types.h> does not define. */
 /* #undef off_t */
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
@@ -436,10 +457,12 @@
 /* Define to `int' if <sys/types.h> doesn't define. */
 /* #undef uid_t */
 
-/* Define uint64_t to an unsigned 64-bit type, if necessary. */
+/* Define to the type of an unsigned integer type of width exactly 64 bits if
+   such a type exists and the standard includes do not define it. */
 /* #undef uint64_t */
 
-/* Define to `uint64_t' if <sys/types.h> does not define. */
+/* Define to the widest unsigned integer type if <stdint.h> and <inttypes.h>
+   do not define. */
 /* #undef uintmax_t */
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */

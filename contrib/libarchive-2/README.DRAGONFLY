@@ -1,8 +1,8 @@
 Original source can be downloaded from:
 http://people.freebsd.org/~kientzle/libarchive/src/
 
-Resynchronized with FreeBSD CVS /usr/src/lib/libarchive on 13 Jul 2007,
-including fixes for the FreeBSD-SA-07:05.libarchive security advisory.
+cvs import hint:
+cvs import src/contrib/libarchive-2 LIBARCHIVE v2_?_?
 
 A list of deleted files is in README.DELETED.
 
