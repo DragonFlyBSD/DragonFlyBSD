@@ -1,15 +1,41 @@
-# $DragonFly: src/nrelease/Makefile,v 1.71 2007/08/13 21:33:47 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.72 2007/08/18 00:10:50 dillon Exp $
 #
 
-# compat target
-installer_release: release
-installer_quickrel: quickrel
-installer_realquickrel: realquickrel
-installer_fetch: fetch
+#########################################################################
+#				ENHANCEMENTS	 			#
+#########################################################################
+
+# These targets are now obsolete and should not be used 
+#
+installer_release: warning release
+installer_quickrel: warning quickrel
+installer_realquickrel: warning realquickrel
+installer_fetch: warning fetch
 
 .if make(installer_release) || make(installer_quickrel) || make(installer_realquickrel) || make(installer_fetch)
 WITH_INSTALLER=
 .endif
+
+# New method e.g. 'make installer fetch'.  A series of enhancement
+# targes may be specified which set make variables which enhance
+# the build in various ways.
+#
+installer:
+
+warning:
+	@echo "WARNING: The installer_* targets are now obsolete, please"
+	@echo "use 'make installer blah' instead of 'make installer_blah'"
+	@echo ""
+	@echo "will continue in 10 seconds"
+	@sleep 10
+
+.if make(installer)
+WITH_INSTALLER=
+.endif
+
+#########################################################################
+#				 SETUP		 			#
+#########################################################################
 
 ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
@@ -78,6 +104,14 @@ quickrel:	check clean buildworld2 buildkernel2 \
 		buildiso syssrcs customizeiso mklocatedb mkiso
 
 realquickrel:	check clean buildiso syssrcs customizeiso mklocatedb mkiso
+
+quick:		quickrel
+
+realquick:	realquickrel
+
+#########################################################################
+#			   CORE SUPPORT TARGETS 			#
+#########################################################################
 
 check:
 .if !exists(${PKGBIN_PKG_ADD})
@@ -220,7 +254,7 @@ realclean:	clean
 	if [ -d ${ISODIR}/packages ]; then rm -rf ${ISODIR}/packages; fi
 
 fetch:
-	mkdir -p ${PKGSRC_PKG_PATH}
+	@if [ ! -d ${PKGSRC_PKG_PATH} ]; then mkdir -p ${PKGSRC_PKG_PATH}; fi
 .for PKG in ${PKGSRC_PACKAGES}
 	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}/var/db/pkg -n ${PKG} > /dev/null 2>&1 || \
 	(cd ${PKGSRC_PKG_PATH}; echo "Fetching ${PKGSRC_BOOTSTRAP_URL}/${PKG}"; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKG})
@@ -247,7 +281,8 @@ pkgsrc_cdrecord:
 
 
 .PHONY: all release installer_release quickrel installer_quickrel realquickrel
-.PHONY: installer_fetch
+.PHONY: installer_fetch installer
+.PHONY: quick realquick
 .PHONY: installer_realquickrel check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso
 .PHONY: clean realclean fetch
