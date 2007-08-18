@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
-.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.7 2007/07/14 21:48:15 swildner Exp $
+.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.8 2007/08/18 18:58:20 swildner Exp $
 .\"
-.Dd October 17, 2000
+.Dd August 18, 2007
 .Dt MBUF 9
 .Os
 .\"
@@ -460,6 +460,35 @@ bytes.
 In case of failure, it returns
 .Dv NULL
 and attempts to restore the chain to its original state.
+.El
+.Sh STRESS TESTING
+When running a kernel compiled with the option
+.Dv MBUF_STRESS_TEST ,
+the following
+.Xr sysctl 8 Ns
+-controlled options may be used to create
+various failure/extreme cases for testing of network drivers
+and other parts of the kernel that rely on
+.Vt mbufs .
+.Bl -tag -width ident
+.It Va net.inet.ip.mbuf_frag_size
+Causes
+.Fn ip_output
+to fragment outgoing
+.Vt mbuf chains
+into fragments of the specified size.
+Setting this variable to 1 is an excellent way to
+test the long
+.Vt mbuf chain
+handling ability of network drivers.
+.It Va kern.ipc.m_defragrandomfailures
+Causes the function
+.Fn m_defrag
+to randomly fail, returning
+.Dv NULL .
+Any piece of code which uses
+.Fn m_defrag
+should be tested with this feature.
 .El
 .Sh RETURN VALUES
 See above.
