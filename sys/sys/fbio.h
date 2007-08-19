@@ -37,7 +37,7 @@
  *	@(#)fbio.h	8.2 (Berkeley) 10/30/93
  *
  * $FreeBSD: src/sys/sys/fbio.h,v 1.9.2.1 2000/05/05 09:16:16 nyan Exp $
- * $DragonFly: src/sys/sys/fbio.h,v 1.6 2006/12/29 00:10:35 swildner Exp $
+ * $DragonFly: src/sys/sys/fbio.h,v 1.7 2007/08/19 12:16:10 swildner Exp $
  */
 
 #ifndef _SYS_FBIO_H_
@@ -415,7 +415,7 @@ typedef struct video_adapter_info video_adapter_info_t;
 #define M_VESA_32K_1280		0x119	/* 1280x1024, 5:5:5 */
 #define M_VESA_64K_1280		0x11a	/* 1280x1024, 5:6:5 */
 #define M_VESA_FULL_1280	0x11b	/* 1280x1024, 8:8:8 */
-#define M_VESA_MODE_MAX		0x1ff
+#define M_VESA_MODE_MAX		0x1fff
 
 struct video_display_start {
 	int		x;
