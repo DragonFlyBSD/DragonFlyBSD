@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.28 2007/08/16 20:10:08 hasso Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.29 2007/08/19 10:03:45 hasso Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -488,6 +488,7 @@ vendor NEC2		0x0b62	NEC
 vendor ATI2		0x0b6f	ATI
 vendor ZEEVO		0x0b7a	Zeevo, Inc.
 vendor KURUSUGAWA	0x0b7e	Kurusugawa Electronics, Inc.
+vendor SMART		0x0b8c	Smart Technologies, Inc.
 vendor ASIX		0x0b95	ASIX Electronics
 vendor O2MICRO		0x0b97	O2 Micro, Inc.
 vendor USR		0x0baf	U.S. Robotics
@@ -2372,6 +2373,9 @@ product SITECOMEU WL113R2	0x9712	WL-113 rev 2
 /* Skanhex Technology products */
 product SKANHEX MD_7425		0x410a	MD 7425 Camera
 product SKANHEX SX_520Z		0x5200	SX 520z Camera
+
+/* Smart Technologies products */
+product SMART PL2303		0x2303	USB to serial adapter
 
 /* SmartBridges products */
 product SMARTBRIDGES SMARTLINK	0x0001	SmartLink USB ethernet adapter
