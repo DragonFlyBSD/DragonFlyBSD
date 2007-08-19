@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/main.c,v 1.6.2.2 2001/07/30 14:31:30 yokota Exp $
- * $DragonFly: src/lib/libvgl/main.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libvgl/main.c,v 1.3 2007/08/19 11:39:11 swildner Exp $
  */
 
 #include <stdio.h>
@@ -144,10 +144,7 @@ VGLInit(int mode)
 
   if (ioctl(0, CONS_GET, &VGLOldMode) || ioctl(0, CONS_CURRENT, &adptype))
     return -1;
-  if (IOCGROUP(mode) == 'V')	/* XXX: this is ugly */
-    VGLModeInfo.vi_mode = (mode & 0x0ff) + M_VESA_BASE;
-  else
-    VGLModeInfo.vi_mode = mode & 0x0ff;
+  VGLModeInfo.vi_mode = mode;
   if (ioctl(0, CONS_MODEINFO, &VGLModeInfo))	/* FBIO_MODEINFO */
     return -1;
 
@@ -199,7 +196,7 @@ VGLInit(int mode)
 
   ioctl(0, VT_WAITACTIVE, 0);
   ioctl(0, KDSETMODE, KD_GRAPHICS);
-  if (ioctl(0, mode, 0)) {
+  if (ioctl(0, CONS_SET, &mode)) {
     VGLEnd();
     return -5;
   }

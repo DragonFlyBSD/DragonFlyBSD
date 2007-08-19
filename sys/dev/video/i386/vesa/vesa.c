@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.20 2007/08/15 19:31:12 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.21 2007/08/19 11:39:11 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -859,7 +859,6 @@ vesa_configure(int flags)
 {
 	video_adapter_t *adp;
 	int adapters;
-	int error;
 	int i;
 
 	if (vesa_init_done)
@@ -908,15 +907,9 @@ vesa_configure(int flags)
 				     V_INFO_COLOR : 0);
 	}
 
-	if ((error = vesa_load_ioctl()) == 0) {
-		prevvidsw = vidsw[vesa_adp->va_index];
-		vidsw[vesa_adp->va_index] = &vesavidsw;
-		vesa_init_done = TRUE;
-	} else {
-		vesa_adp = NULL;
-		return error;
-	}
-
+	prevvidsw = vidsw[vesa_adp->va_index];
+	vidsw[vesa_adp->va_index] = &vesavidsw;
+	vesa_init_done = TRUE;
 	return 0;
 }
 
@@ -1650,7 +1643,6 @@ static int
 vesa_unload(void)
 {
 	u_char palette[256*3];
-	int error;
 	int bits;
 
 	/* if the adapter is currently in a VESA mode, don't unload */
@@ -1662,28 +1654,24 @@ vesa_unload(void)
 	 */
 
 	crit_enter();
-	if ((error = vesa_unload_ioctl()) == 0) {
-		if (vesa_adp != NULL) {
-			if (vesa_adp_info->v_flags & V_DAC8)  {
-				bits = vesa_bios_get_dac();
-				if (bits > 6) {
-					vesa_bios_save_palette(0, 256,
-							       palette, bits);
-					vesa_bios_set_dac(6);
-					vesa_bios_load_palette(0, 256,
-							       palette, 6);
-				}
+	if (vesa_adp != NULL) {
+		if (vesa_adp_info->v_flags & V_DAC8)  {
+			bits = vesa_bios_get_dac();
+			if (bits > 6) {
+				vesa_bios_save_palette(0, 256, palette, bits);
+				vesa_bios_set_dac(6);
+				vesa_bios_load_palette(0, 256, palette, 6);
 			}
-			vesa_adp->va_flags &= ~V_ADP_VESA;
-			vidsw[vesa_adp->va_index] = prevvidsw;
 		}
+		vesa_adp->va_flags &= ~V_ADP_VESA;
+		vidsw[vesa_adp->va_index] = prevvidsw;
 	}
 	crit_exit();
 
 	if (vesa_vm86_buf != NULL)
 		kfree(vesa_vm86_buf, M_DEVBUF);
 
-	return error;
+	return 0;
 }
 
 static int

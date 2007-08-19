@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.19 2007/05/07 05:21:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.20 2007/08/19 11:39:11 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -516,8 +516,6 @@ typedef struct {
 		(*kbdsw[(kbd)->kb_index]->poll)((kbd), (on))
 
 /* syscons.c */
-extern int 	(*sc_user_ioctl)(struct dev_ioctl_args *);
-
 int		sc_probe_unit(int unit, int flags);
 int		sc_attach_unit(int unit, int flags);
 

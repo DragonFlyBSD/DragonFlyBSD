@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.32 2007/05/07 05:21:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.33 2007/08/19 11:39:11 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -111,8 +111,6 @@ static	void		(*current_saver)(sc_softc_t *, int) = none_saver;
 #if !defined(SC_NO_FONT_LOADING) && defined(SC_DFLT_FONT)
 #include "font.h"
 #endif
-
-	d_ioctl_t	*sc_user_ioctl;
 
 static	bios_values_t	bios_value;
 
@@ -663,13 +661,6 @@ scioctl(struct dev_ioctl_args *ap)
     scr_stat *scp;
 
     tp = dev->si_tty;
-
-    /* If there is a user_ioctl function call that first */
-    if (sc_user_ioctl) {
-	error = (*sc_user_ioctl)(ap);
-	if (error != ENOIOCTL)
-	    return error;
-    }
 
     error = sc_vid_ioctl(tp, cmd, data, flag);
     if (error != ENOIOCTL)

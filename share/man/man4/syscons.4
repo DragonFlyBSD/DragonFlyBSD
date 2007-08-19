@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/syscons.4,v 1.10.2.14 2003/04/25 21:21:36 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/syscons.4,v 1.7 2006/07/22 23:52:23 swildner Exp $
+.\" $DragonFly: src/share/man/man4/syscons.4,v 1.8 2007/08/19 11:39:11 swildner Exp $
 .\"
-.Dd January 28, 2005
+.Dd August 19, 2007
 .Dt SYSCONS 4
 .Os
 .Sh NAME
@@ -478,6 +478,10 @@ Get the adapter type. This is equivalent to
 Get the current video mode. This is equivalent to
 .Dv FBIO_GETMODE .
 .Pp
+.It Dv CONS_SET Ar int *mode
+Set the current video mode. This is equivalent to
+.Dv FBIO_SETMODE .
+.Pp
 .It Dv CONS_BLANKTIME Ar int *time
 Set the screen saver blank interval (in seconds).
 .Pp
@@ -685,98 +689,6 @@ Get the index of the terminal.
 .It Dv VT_LOCKSWITCH Ar int *lock
 Prevent or permit terminal switching.
 .El
-.Ss Commands for video mode switching
-The following
-.Xr ioctl 2
-commands are defined for switching video modes. See
-.In sys/fbio.h
-for defined mode numbers (commands for higher mode numbers have to be
-supplied by the programmer):
-.Dv SW_B40x25 ,
-.Dv SW_B80x25 ,
-.Dv SW_C80x25 ,
-.Dv SW_BG320 ,
-.Dv SW_CG320 ,
-.Dv SW_BG640 ,
-.Dv SW_EGAMONO80x25 ,
-.Dv SW_CG320_D ,
-.Dv SW_CG640_E ,
-.Dv SW_EGAMONOAPA ,
-.Dv SW_CG640x350 ,
-.Dv SW_ENH_MONOAPA2 ,
-.Dv SW_ENH_CG640 ,
-.Dv SW_ENH_B40x25 ,
-.Dv SW_ENH_C40x25 ,
-.Dv SW_ENH_B80x25 ,
-.Dv SW_ENH_C80x25 ,
-.Dv SW_ENH_B80x43 ,
-.Dv SW_ENH_C80x43 ,
-.Dv SW_MCAMODE ,
-.Dv SW_VGA_C40x25 ,
-.Dv SW_VGA_C80x25 ,
-.Dv SW_VGA_C80x30 ,
-.Dv SW_VGA_C80x50 ,
-.Dv SW_VGA_C80x60 ,
-.Dv SW_VGA_M80x25 ,
-.Dv SW_VGA_M80x30 ,
-.Dv SW_VGA_M80x50 ,
-.Dv SW_VGA_M80x60 ,
-.Dv SW_VGA11 ,
-.Dv SW_BG640x480 ,
-.Dv SW_VGA12 ,
-.Dv SW_CG640x480 ,
-.Dv SW_VGA13 ,
-.Dv SW_VGA_CG320 ,
-.Dv SW_VGA_CG640 ,
-.Dv SW_VGA_MODEX ,
-.Dv SW_VGA_C90x25 ,
-.Dv SW_VGA_M90x25 ,
-.Dv SW_VGA_C90x30 ,
-.Dv SW_VGA_M90x30 ,
-.Dv SW_VGA_C90x43 ,
-.Dv SW_VGA_M90x43 ,
-.Dv SW_VGA_C90x50 ,
-.Dv SW_VGA_M90x50 ,
-.Dv SW_VGA_C90x60 ,
-.Dv SW_VGA_M90x60 ,
-.Dv SW_TEXT_80x25 ,
-.Dv SW_TEXT_80x30 ,
-.Dv SW_TEXT_80x43 ,
-.Dv SW_TEXT_80x50 ,
-.Dv SW_TEXT_80x60 ,
-.Dv SW_TEXT_132x25 ,
-.Dv SW_TEXT_132x30 ,
-.Dv SW_TEXT_132x43 ,
-.Dv SW_TEXT_132x50 ,
-.Dv SW_TEXT_132x60 ,
-.Dv SW_VESA_CG640x400 ,
-.Dv SW_VESA_CG640x480 ,
-.Dv SW_VESA_800x600 ,
-.Dv SW_VESA_CG800x600 ,
-.Dv SW_VESA_1024x768 ,
-.Dv SW_VESA_CG1024x768 ,
-.Dv SW_VESA_1280x1024 ,
-.Dv SW_VESA_CG1280x1024 ,
-.Dv SW_VESA_C80x60 ,
-.Dv SW_VESA_C132x25 ,
-.Dv SW_VESA_C132x43 ,
-.Dv SW_VESA_C132x50 ,
-.Dv SW_VESA_C132x60 ,
-.Dv SW_VESA_32K_320 ,
-.Dv SW_VESA_64K_320 ,
-.Dv SW_VESA_FULL_320 ,
-.Dv SW_VESA_32K_640 ,
-.Dv SW_VESA_64K_640 ,
-.Dv SW_VESA_FULL_640 ,
-.Dv SW_VESA_32K_800 ,
-.Dv SW_VESA_64K_800 ,
-.Dv SW_VESA_FULL_800 ,
-.Dv SW_VESA_32K_1024 ,
-.Dv SW_VESA_64K_1024 ,
-.Dv SW_VESA_FULL_1024 ,
-.Dv SW_VESA_32K_1280 ,
-.Dv SW_VESA_64K_1280 ,
-.Dv SW_VESA_FULL_1280
 .Sh FILES
 .Bl -tag -width /usr/share/syscons/xxxxyyyyzzz -compact
 .It Pa /dev/console

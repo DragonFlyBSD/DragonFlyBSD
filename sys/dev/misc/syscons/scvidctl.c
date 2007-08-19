@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.15 2006/12/29 00:10:35 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.16 2007/08/19 11:39:11 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -419,6 +419,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	return 0;
 
 #ifndef SC_NO_MODE_CHANGE
+    case CONS_SET:
     case FBIO_SETMODE:		/* set video mode */
 	if (!(adp->va_flags & V_ADP_MODECHANGE))
  	    return ENODEV;
@@ -475,39 +476,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	if (scp != scp->sc->cur_scp)
 	    return ENODEV;	/* XXX */
 	return fb_ioctl(adp, cmd, data);
-
-#ifndef SC_NO_MODE_CHANGE
-    /* VGA TEXT MODES */
-    case SW_VGA_C40x25:
-    case SW_VGA_C80x25: case SW_VGA_M80x25:
-    case SW_VGA_C80x30: case SW_VGA_M80x30:
-    case SW_VGA_C80x50: case SW_VGA_M80x50:
-    case SW_VGA_C80x60: case SW_VGA_M80x60:
-    case SW_VGA_C90x25: case SW_VGA_M90x25:
-    case SW_VGA_C90x30: case SW_VGA_M90x30:
-    case SW_VGA_C90x43: case SW_VGA_M90x43:
-    case SW_VGA_C90x50: case SW_VGA_M90x50:
-    case SW_VGA_C90x60: case SW_VGA_M90x60:
-    case SW_B40x25:     case SW_C40x25:
-    case SW_B80x25:     case SW_C80x25:
-    case SW_ENH_B40x25: case SW_ENH_C40x25:
-    case SW_ENH_B80x25: case SW_ENH_C80x25:
-    case SW_ENH_B80x43: case SW_ENH_C80x43:
-    case SW_EGAMONO80x25:
-	if (!(adp->va_flags & V_ADP_MODECHANGE))
- 	    return ENODEV;
-	return sc_set_text_mode(scp, tp, cmd & 0xff, 0, 0, 0);
-
-    /* GRAPHICS MODES */
-    case SW_BG320:     case SW_BG640:
-    case SW_CG320:     case SW_CG320_D:   case SW_CG640_E:
-    case SW_CG640x350: case SW_ENH_CG640:
-    case SW_BG640x480: case SW_CG640x480: case SW_VGA_CG320:
-    case SW_VGA_MODEX:
-	if (!(adp->va_flags & V_ADP_MODECHANGE))
-	    return ENODEV;
-	return sc_set_graphics_mode(scp, tp, cmd & 0xff);
-#endif /* SC_NO_MODE_CHANGE */
 
     case KDSETMODE:     	/* set current mode of this (virtual) console */
 	switch (*(int *)data) {

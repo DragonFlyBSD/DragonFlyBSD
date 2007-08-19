@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.11 2006/12/29 00:10:35 swildner Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.12 2007/08/19 11:39:11 swildner Exp $
  */
 
 #include <machine/console.h>
@@ -149,12 +149,7 @@ revert(void)
 	fprintf(stderr, "[=%dI", cur_info.console_info.mv_rev.back);
 
 	ioctl(0, PIO_SCRNMAP, &cur_info.screen_map);
-
-	if (cur_info.video_mode_number >= M_VESA_BASE)
-		ioctl(0, _IO('V', cur_info.video_mode_number - M_VESA_BASE),
-		      NULL);
-	else
-		ioctl(0, _IO('S', cur_info.video_mode_number), NULL);
+	ioctl(0, CONS_SET, &cur_info.video_mode_number);
 
 	if (cur_info.video_mode_info.vi_flags & V_INFO_GRAPHICS) {
 		size[0] = cur_info.video_mode_info.vi_width / 8;
@@ -529,42 +524,40 @@ video_mode(int argc, char **argv, int *mode_index)
 {
 	static struct {
 		const char *name;
-		unsigned long mode;
 		unsigned long mode_num;
-	} modes[] = {{ "80x25",        SW_VGA_C80x25,   M_VGA_C80x25 },
-		     { "80x30",        SW_VGA_C80x30,   M_VGA_C80x30 },
-		     { "80x43",        SW_ENH_C80x43,   M_ENH_C80x43 },
-		     { "80x50",        SW_VGA_C80x50,   M_VGA_C80x50 },
-		     { "80x60",        SW_VGA_C80x60,   M_VGA_C80x60 },
-		     { "132x25",       SW_VESA_C132x25,  M_VESA_C132x25 },
-		     { "132x43",       SW_VESA_C132x43,  M_VESA_C132x43 },
-		     { "132x50",       SW_VESA_C132x50,  M_VESA_C132x50 },
-		     { "132x60",       SW_VESA_C132x60,  M_VESA_C132x60 },
-		     { "VGA_40x25",    SW_VGA_C40x25,   M_VGA_C40x25 },
-		     { "VGA_80x25",    SW_VGA_C80x25,   M_VGA_C80x25 },
-		     { "VGA_80x30",    SW_VGA_C80x30,   M_VGA_C80x30 },
-		     { "VGA_80x50",    SW_VGA_C80x50,   M_VGA_C80x50 },
-		     { "VGA_80x60",    SW_VGA_C80x60,   M_VGA_C80x60 },
+	} modes[] = {{ "80x25",		M_VGA_C80x25 },
+		     { "80x30",		M_VGA_C80x30 },
+		     { "80x43",		M_ENH_C80x43 },
+		     { "80x50",		M_VGA_C80x50 },
+		     { "80x60",		M_VGA_C80x60 },
+		     { "132x25",	M_VESA_C132x25 },
+		     { "132x43",	M_VESA_C132x43 },
+		     { "132x50",	M_VESA_C132x50 },
+		     { "132x60",	M_VESA_C132x60 },
+		     { "VGA_40x25",	M_VGA_C40x25 },
+		     { "VGA_80x25",	M_VGA_C80x25 },
+		     { "VGA_80x30",	M_VGA_C80x30 },
+		     { "VGA_80x50",	M_VGA_C80x50 },
+		     { "VGA_80x60",	M_VGA_C80x60 },
 #ifdef SW_VGA_C90x25
-		     { "VGA_90x25",    SW_VGA_C90x25,   M_VGA_C90x25 },
-		     { "VGA_90x30",    SW_VGA_C90x30,   M_VGA_C90x30 },
-		     { "VGA_90x43",    SW_VGA_C90x43,   M_VGA_C90x43 },
-		     { "VGA_90x50",    SW_VGA_C90x50,   M_VGA_C90x50 },
-		     { "VGA_90x60",    SW_VGA_C90x60,   M_VGA_C90x60 },
+		     { "VGA_90x25",	M_VGA_C90x25 },
+		     { "VGA_90x30",	M_VGA_C90x30 },
+		     { "VGA_90x43",	M_VGA_C90x43 },
+		     { "VGA_90x50",	M_VGA_C90x50 },
+		     { "VGA_90x60",	M_VGA_C90x60 },
 #endif
-		     { "VGA_320x200",  SW_VGA_CG320,    M_CG320 },
-		     { "EGA_80x25",    SW_ENH_C80x25,   M_ENH_C80x25 },
-		     { "EGA_80x43",    SW_ENH_C80x43,   M_ENH_C80x43 },
-		     { "VESA_132x25",  SW_VESA_C132x25, M_VESA_C132x25 },
-		     { "VESA_132x43",  SW_VESA_C132x43, M_VESA_C132x43 },
-		     { "VESA_132x50",  SW_VESA_C132x50, M_VESA_C132x50 },
-		     { "VESA_132x60",  SW_VESA_C132x60, M_VESA_C132x60 },
-		     { "VESA_800x600", SW_VESA_800x600, M_VESA_800x600 },
-		     { NULL, NULL, NULL },
+		     { "VGA_320x200",	M_CG320 },
+		     { "EGA_80x25",	M_ENH_C80x25 },
+		     { "EGA_80x43",	M_ENH_C80x43 },
+		     { "VESA_132x25",	M_VESA_C132x25 },
+		     { "VESA_132x43",	M_VESA_C132x43 },
+		     { "VESA_132x50",	M_VESA_C132x50 },
+		     { "VESA_132x60",	M_VESA_C132x60 },
+		     { "VESA_800x600",	M_VESA_800x600 },
+		     { NULL, NULL },
 	};
 
 	int new_mode_num = 0;
-	unsigned long mode = 0;
 	int size[3];
 	int i;
 
@@ -581,7 +574,6 @@ video_mode(int argc, char **argv, int *mode_index)
 		} else {
 			for (i = 0; modes[i].name != NULL; ++i) {
 				if (!strcmp(argv[*mode_index], modes[i].name)) {
-					mode = modes[i].mode;
 					new_mode_num = modes[i].mode_num;
 					break;
 				}
@@ -602,18 +594,11 @@ video_mode(int argc, char **argv, int *mode_index)
 			errc(1, errno, "obtaining new video mode parameters");
 		}
 
-		if (mode == 0) {
-			if (new_mode_num >= M_VESA_BASE)
-				mode = _IO('V', new_mode_num - M_VESA_BASE);
-			else
-				mode = _IO('S', new_mode_num);
-		}
-
 		/*
 		 * Try setting the new mode.
 		 */
 
-		if (ioctl(0, mode, NULL) == -1) {
+		if (ioctl(0, CONS_SET, &new_mode_num) == -1) {
 			revert();
 			errc(1, errno, "setting video mode");
 		}

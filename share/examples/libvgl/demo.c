@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/share/examples/libvgl/demo.c,v 1.4 1999/12/14 08:47:42 billf Exp $
- * $DragonFly: src/share/examples/libvgl/demo.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
+ * $DragonFly: src/share/examples/libvgl/demo.c,v 1.3 2007/08/19 11:39:11 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -40,11 +40,11 @@ main(int argc, char **argv)
   VGLBitmap *tmp;
 
   // set graphics mode, here 320x240 256 colors
-  // supported modes are (from <machine/console.h>):
-  // SW_VGA_CG320:	std VGA 320x200 256 colors
-  // SW_VGA_MODEX:	Modex VGA 320x240 256 colors
-  // SW_VGA_VG640:	std VGA 640x480 16 colors
-  VGLInit(SW_VGA_MODEX);
+  // supported modes are (from <sys/fbio.h>):
+  // M_VGA_CG320:	std VGA 320x200 256 colors
+  // M_VGA_MODEX:	Modex VGA 320x240 256 colors
+  // M_VGA_CG640:	std VGA 640x480 16 colors
+  VGLInit(M_VGA_MODEX);
 
   // initialize mouse and show pointer
   VGLMouseInit(VGL_MOUSESHOW);

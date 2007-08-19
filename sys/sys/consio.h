@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/consio.h,v 1.5.2.7 2002/09/15 22:30:46 dd Exp $
- * $DragonFly: src/sys/sys/consio.h,v 1.5 2006/12/29 00:10:35 swildner Exp $
+ * $DragonFly: src/sys/sys/consio.h,v 1.6 2007/08/19 11:39:11 swildner Exp $
  */
 
 #ifndef	_SYS_CONSIO_H_
@@ -88,8 +88,8 @@ typedef struct _scrmap	scrmap_t;
 /* get the current video mode (equivalent to FBIO_GETMODE) */
 #define CONS_GET	_IOR('c', 2, int)
 
-/* not supported? */
-#define CONS_IO		_IO('c', 3)
+/* set the current video mode (equivalent to FBIO_SETMODE) */
+#define CONS_SET	_IOW('c', 3, int)
 
 /* set blank time interval */
 #define CONS_BLANKTIME	_IOW('c', 4, int)
@@ -318,88 +318,5 @@ typedef struct vt_mode vtmode_t;
 
 /* prevent switching vtys */
 #define VT_LOCKSWITCH	_IOW('v', 9, int)
-
-/*
- * Video mode switching ioctl.  See sys/fbio.h for mode numbers.
- */
-
-#define SW_B40x25 	_IO('S', M_B40x25)
-#define SW_C40x25  	_IO('S', M_C40x25)
-#define SW_B80x25  	_IO('S', M_B80x25)
-#define SW_C80x25  	_IO('S', M_C80x25)
-#define SW_BG320   	_IO('S', M_BG320)
-#define SW_CG320   	_IO('S', M_CG320)
-#define SW_BG640   	_IO('S', M_BG640)
-#define SW_EGAMONO80x25 _IO('S', M_EGAMONO80x25)
-#define SW_CG320_D    	_IO('S', M_CG320_D)
-#define SW_CG640_E    	_IO('S', M_CG640_E)
-#define SW_EGAMONOAPA 	_IO('S', M_EGAMONOAPA)
-#define SW_CG640x350  	_IO('S', M_CG640x350)
-#define SW_ENH_MONOAPA2 _IO('S', M_ENHMONOAPA2)
-#define SW_ENH_CG640  	_IO('S', M_ENH_CG640)
-#define SW_ENH_B40x25  	_IO('S', M_ENH_B40x25)
-#define SW_ENH_C40x25  	_IO('S', M_ENH_C40x25)
-#define SW_ENH_B80x25  	_IO('S', M_ENH_B80x25)
-#define SW_ENH_C80x25  	_IO('S', M_ENH_C80x25)
-#define SW_ENH_B80x43  	_IO('S', M_ENH_B80x43)
-#define SW_ENH_C80x43  	_IO('S', M_ENH_C80x43)
-#define SW_MCAMODE    	_IO('S', M_MCA_MODE)
-#define SW_VGA_C40x25	_IO('S', M_VGA_C40x25)
-#define SW_VGA_C80x25	_IO('S', M_VGA_C80x25)
-#define SW_VGA_C80x30	_IO('S', M_VGA_C80x30)
-#define SW_VGA_C80x50	_IO('S', M_VGA_C80x50)
-#define SW_VGA_C80x60	_IO('S', M_VGA_C80x60)
-#define SW_VGA_M80x25	_IO('S', M_VGA_M80x25)
-#define SW_VGA_M80x30	_IO('S', M_VGA_M80x30)
-#define SW_VGA_M80x50	_IO('S', M_VGA_M80x50)
-#define SW_VGA_M80x60	_IO('S', M_VGA_M80x60)
-#define SW_VGA11	_IO('S', M_VGA11)
-#define SW_BG640x480	_IO('S', M_VGA11)
-#define SW_VGA12	_IO('S', M_VGA12)
-#define SW_CG640x480	_IO('S', M_VGA12)
-#define SW_VGA13	_IO('S', M_VGA13)
-#define SW_VGA_CG320	_IO('S', M_VGA13)
-#define SW_VGA_CG640	_IO('S', M_VGA_CG640)
-#define SW_VGA_MODEX	_IO('S', M_VGA_MODEX)
-
-#define SW_VGA_C90x25	_IO('S', M_VGA_C90x25)
-#define SW_VGA_M90x25	_IO('S', M_VGA_M90x25)
-#define SW_VGA_C90x30	_IO('S', M_VGA_C90x30)
-#define SW_VGA_M90x30	_IO('S', M_VGA_M90x30)
-#define SW_VGA_C90x43	_IO('S', M_VGA_C90x43)
-#define SW_VGA_M90x43	_IO('S', M_VGA_M90x43)
-#define SW_VGA_C90x50	_IO('S', M_VGA_C90x50)
-#define SW_VGA_M90x50	_IO('S', M_VGA_M90x50)
-#define SW_VGA_C90x60	_IO('S', M_VGA_C90x60)
-#define SW_VGA_M90x60	_IO('S', M_VGA_M90x60)
-
-#define SW_VESA_CG640x400	_IO('V', M_VESA_CG640x400 - M_VESA_BASE)
-#define SW_VESA_CG640x480	_IO('V', M_VESA_CG640x480 - M_VESA_BASE)
-#define SW_VESA_800x600		_IO('V', M_VESA_800x600 - M_VESA_BASE)
-#define SW_VESA_CG800x600	_IO('V', M_VESA_CG800x600 - M_VESA_BASE)
-#define SW_VESA_1024x768	_IO('V', M_VESA_1024x768 - M_VESA_BASE)
-#define SW_VESA_CG1024x768	_IO('V', M_VESA_CG1024x768 - M_VESA_BASE)
-#define SW_VESA_1280x1024	_IO('V', M_VESA_1280x1024 - M_VESA_BASE)
-#define SW_VESA_CG1280x1024	_IO('V', M_VESA_CG1280x1024 - M_VESA_BASE)
-#define SW_VESA_C80x60		_IO('V', M_VESA_C80x60 - M_VESA_BASE)
-#define SW_VESA_C132x25		_IO('V', M_VESA_C132x25 - M_VESA_BASE)
-#define SW_VESA_C132x43		_IO('V', M_VESA_C132x43 - M_VESA_BASE)
-#define SW_VESA_C132x50		_IO('V', M_VESA_C132x50 - M_VESA_BASE)
-#define SW_VESA_C132x60		_IO('V', M_VESA_C132x60 - M_VESA_BASE)
-#define SW_VESA_32K_320		_IO('V', M_VESA_32K_320 - M_VESA_BASE)
-#define SW_VESA_64K_320		_IO('V', M_VESA_64K_320 - M_VESA_BASE)
-#define SW_VESA_FULL_320	_IO('V', M_VESA_FULL_320 - M_VESA_BASE)
-#define SW_VESA_32K_640		_IO('V', M_VESA_32K_640 - M_VESA_BASE)
-#define SW_VESA_64K_640		_IO('V', M_VESA_64K_640 - M_VESA_BASE)
-#define SW_VESA_FULL_640	_IO('V', M_VESA_FULL_640 - M_VESA_BASE)
-#define SW_VESA_32K_800		_IO('V', M_VESA_32K_800 - M_VESA_BASE)
-#define SW_VESA_64K_800		_IO('V', M_VESA_64K_800 - M_VESA_BASE)
-#define SW_VESA_FULL_800	_IO('V', M_VESA_FULL_800 - M_VESA_BASE)
-#define SW_VESA_32K_1024	_IO('V', M_VESA_32K_1024 - M_VESA_BASE)
-#define SW_VESA_64K_1024	_IO('V', M_VESA_64K_1024 - M_VESA_BASE)
-#define SW_VESA_FULL_1024	_IO('V', M_VESA_FULL_1024 - M_VESA_BASE)
-#define SW_VESA_32K_1280	_IO('V', M_VESA_32K_1280 - M_VESA_BASE)
-#define SW_VESA_64K_1280	_IO('V', M_VESA_64K_1280 - M_VESA_BASE)
-#define SW_VESA_FULL_1280	_IO('V', M_VESA_FULL_1280 - M_VESA_BASE)
 
 #endif /* !_SYS_CONSIO_H_ */
