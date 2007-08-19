@@ -1,10 +1,10 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
- * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.10 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.14 2007/07/01 21:24:03 hasso Exp $
+ * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.37 2007/06/22 05:53:05 imp Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.15 2007/08/19 19:45:39 hasso Exp $
  */
 
-/*
+/*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -50,6 +50,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/ioccom.h>
 #include <sys/fcntl.h>
@@ -105,15 +106,11 @@ SYSCTL_INT(_hw_usb_uftdi, OID_AUTO, debug, CTLFLAG_RW,
 
 struct uftdi_softc {
 	struct ucom_softc	sc_ucom;
-
 	usbd_interface_handle	sc_iface;	/* interface */
-
 	enum uftdi_type		sc_type;
 	u_int			sc_hdrlen;
-
 	u_char			sc_msr;
 	u_char			sc_lsr;
-
 	u_int			last_lcr;
 };
 
@@ -142,15 +139,51 @@ uftdi_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 
-	if (uaa->iface != NULL)
+	if (uaa->iface != NULL) {
+		if (uaa->vendor == USB_VENDOR_FTDI &&
+		    (uaa->product == USB_PRODUCT_FTDI_SERIAL_2232C))
+			return (UMATCH_VENDOR_IFACESUBCLASS);
 		return (UMATCH_NONE);
+	}
 
 	DPRINTFN(20,("uftdi: vendor=0x%x, product=0x%x\n",
 		     uaa->vendor, uaa->product));
 
 	if (uaa->vendor == USB_VENDOR_FTDI &&
 	    (uaa->product == USB_PRODUCT_FTDI_SERIAL_8U100AX ||
-	     uaa->product == USB_PRODUCT_FTDI_SERIAL_8U232AM))
+	     uaa->product == USB_PRODUCT_FTDI_SERIAL_8U232AM ||
+	     uaa->product == USB_PRODUCT_FTDI_SEMC_DSS20 ||
+	     uaa->product == USB_PRODUCT_FTDI_CFA_631 ||
+	     uaa->product == USB_PRODUCT_FTDI_CFA_632 ||
+	     uaa->product == USB_PRODUCT_FTDI_CFA_633 ||
+	     uaa->product == USB_PRODUCT_FTDI_CFA_634 ||
+	     uaa->product == USB_PRODUCT_FTDI_CFA_635 ||
+	     uaa->product == USB_PRODUCT_FTDI_USBSERIAL ||
+	     uaa->product == USB_PRODUCT_FTDI_MX2_3 ||
+	     uaa->product == USB_PRODUCT_FTDI_MX4_5 ||
+	     uaa->product == USB_PRODUCT_FTDI_LK202 ||
+	     uaa->product == USB_PRODUCT_FTDI_LK204 ||
+	     uaa->product == USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13M ||
+	     uaa->product == USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13S ||
+	     uaa->product == USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13U ||
+	     uaa->product == USB_PRODUCT_FTDI_EISCOU ||
+	     uaa->product == USB_PRODUCT_FTDI_UOPTBR ||
+	     uaa->product == USB_PRODUCT_FTDI_EMCU2D ||
+	     uaa->product == USB_PRODUCT_FTDI_PCMSFU ||
+	     uaa->product == USB_PRODUCT_FTDI_EMCU2H ))
+		return (UMATCH_VENDOR_PRODUCT);
+	if (uaa->vendor == USB_VENDOR_SIIG2 &&
+	    (uaa->product == USB_PRODUCT_SIIG2_US2308))
+		return (UMATCH_VENDOR_PRODUCT);
+	if (uaa->vendor == USB_VENDOR_INTREPIDCS &&
+	    (uaa->product == USB_PRODUCT_INTREPIDCS_VALUECAN ||
+	    uaa->product == USB_PRODUCT_INTREPIDCS_NEOVI))
+		return (UMATCH_VENDOR_PRODUCT);
+	if (uaa->vendor == USB_VENDOR_BBELECTRONICS &&
+	    (uaa->product == USB_PRODUCT_BBELECTRONICS_USOTL4))
+		return (UMATCH_VENDOR_PRODUCT);
+	if (uaa->vendor == USB_VENDOR_MELCO &&
+	    (uaa->product == USB_PRODUCT_MELCO_PCOPRS1))
 		return (UMATCH_VENDOR_PRODUCT);
 
 	return (UMATCH_NONE);
@@ -166,7 +199,6 @@ uftdi_attach(device_t self)
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
 	char *devinfo;
-	const char *devname;
 	int i;
 	usbd_status err;
 	struct ucom_softc *ucom = &sc->sc_ucom;
@@ -176,37 +208,116 @@ uftdi_attach(device_t self)
 	ucom->sc_dev = self;
 	ucom->sc_udev = dev;
 
-	devname = device_get_nameunit(ucom->sc_dev);
-
-	/* Move the device into the configured state. */
-	err = usbd_set_config_index(dev, UFTDI_CONFIG_INDEX, 1);
-	if (err) {
-		kprintf("\n%s: failed to set configuration, err=%s\n",
-		       devname, usbd_errstr(err));
-		goto bad;
-	}
-
-	err = usbd_device2interface_handle(dev, UFTDI_IFACE_INDEX, &iface);
-	if (err) {
-		kprintf("\n%s: failed to get interface, err=%s\n",
-		       devname, usbd_errstr(err));
-		goto bad;
-	}
-
 	usbd_devinfo(dev, 0, devinfo);
-	/*	USB_ATTACH_SETUP;*/
-	kprintf("%s: %s\n", devname, devinfo);
+	device_printf(ucom->sc_dev, "%s\n", devinfo);
+	kfree(devinfo, M_USBDEV);
+
+	if (uaa->iface == NULL) {
+		/* Move the device into the configured state. */
+		err = usbd_set_config_index(dev, UFTDI_CONFIG_INDEX, 1);
+		if (err) {
+			device_printf(ucom->sc_dev,
+			    "failed to set configuration, err=%s\n",
+			    usbd_errstr(err));
+			goto bad;
+		}
+
+		err = usbd_device2interface_handle(dev, UFTDI_IFACE_INDEX, &iface);
+		if (err) {
+			device_printf(ucom->sc_dev,
+			    "failed to get interface, err=%s\n", usbd_errstr(err));
+			goto bad;
+		}
+	} else {
+		iface = uaa->iface;
+	}
 
 	id = usbd_get_interface_descriptor(iface);
 	ucom->sc_iface = iface;
-	switch( uaa->product ){
-	case USB_PRODUCT_FTDI_SERIAL_8U100AX:
-		sc->sc_type = UFTDI_TYPE_SIO;
-		sc->sc_hdrlen = 1;
+	switch( uaa->vendor ){
+	case USB_VENDOR_FTDI:
+		switch( uaa->product ){
+		case USB_PRODUCT_FTDI_SERIAL_8U100AX:
+			sc->sc_type = UFTDI_TYPE_SIO;
+			sc->sc_hdrlen = 1;
+			break;
+		case USB_PRODUCT_FTDI_SEMC_DSS20:
+		case USB_PRODUCT_FTDI_SERIAL_8U232AM:
+		case USB_PRODUCT_FTDI_SERIAL_2232C:
+		case USB_PRODUCT_FTDI_CFA_631:
+		case USB_PRODUCT_FTDI_CFA_632:
+		case USB_PRODUCT_FTDI_CFA_633:
+		case USB_PRODUCT_FTDI_CFA_634:
+		case USB_PRODUCT_FTDI_CFA_635:
+		case USB_PRODUCT_FTDI_USBSERIAL:
+		case USB_PRODUCT_FTDI_MX2_3:
+		case USB_PRODUCT_FTDI_MX4_5:
+		case USB_PRODUCT_FTDI_LK202:
+		case USB_PRODUCT_FTDI_LK204:
+		case USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13M:
+		case USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13S:
+		case USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13U:
+		case USB_PRODUCT_FTDI_EISCOU:
+		case USB_PRODUCT_FTDI_UOPTBR:
+		case USB_PRODUCT_FTDI_EMCU2D:
+		case USB_PRODUCT_FTDI_PCMSFU:
+		case USB_PRODUCT_FTDI_EMCU2H:
+			sc->sc_type = UFTDI_TYPE_8U232AM;
+			sc->sc_hdrlen = 0;
+			break;
+
+		default:		/* Can't happen */
+			goto bad;
+		}
 		break;
-	case USB_PRODUCT_FTDI_SERIAL_8U232AM:
-		sc->sc_type = UFTDI_TYPE_8U232AM;
-		sc->sc_hdrlen = 0;
+
+	case USB_VENDOR_INTREPIDCS:
+		switch( uaa->product ){
+		case USB_PRODUCT_INTREPIDCS_VALUECAN:
+		case USB_PRODUCT_INTREPIDCS_NEOVI:
+			sc->sc_type = UFTDI_TYPE_8U232AM;
+			sc->sc_hdrlen = 0;
+			break;
+
+		default:		/* Can't happen */
+			goto bad;
+		}
+		break;
+
+	case USB_VENDOR_SIIG2:
+		switch( uaa->product ){
+		case USB_PRODUCT_SIIG2_US2308:
+			sc->sc_type = UFTDI_TYPE_8U232AM;
+			sc->sc_hdrlen = 0;
+			break;
+
+		default:		/* Can't happen */
+			goto bad;
+		}
+		break;
+
+	case USB_VENDOR_BBELECTRONICS:
+		switch( uaa->product ){
+		case USB_PRODUCT_BBELECTRONICS_USOTL4:
+			sc->sc_type = UFTDI_TYPE_8U232AM;
+			sc->sc_hdrlen = 0;
+			break;
+
+		default:		/* Can't happen */
+			goto bad;
+		}
+		break;
+
+	case USB_VENDOR_MELCO:
+		switch( uaa->product ){
+		case USB_PRODUCT_MELCO_PCOPRS1:
+			sc->sc_type = UFTDI_TYPE_8U232AM;
+			sc->sc_hdrlen = 0;
+			break;
+
+		default:		/* Can't happen */
+			goto bad;
+		}
 		break;
 
 	default:		/* Can't happen */
@@ -219,8 +330,8 @@ uftdi_attach(device_t self)
 		int addr, dir, attr;
 		ed = usbd_interface2endpoint_descriptor(iface, i);
 		if (ed == NULL) {
-			kprintf("%s: could not read endpoint descriptor"
-			       ": %s\n", devname, usbd_errstr(err));
+			device_printf(ucom->sc_dev,
+			    "could not read endpoint descriptor\n");
 			goto bad;
 		}
 
@@ -228,26 +339,27 @@ uftdi_attach(device_t self)
 		dir = UE_GET_DIR(ed->bEndpointAddress);
 		attr = ed->bmAttributes & UE_XFERTYPE;
 		if (dir == UE_DIR_IN && attr == UE_BULK)
-		  ucom->sc_bulkin_no = addr;
+			ucom->sc_bulkin_no = addr;
 		else if (dir == UE_DIR_OUT && attr == UE_BULK)
-		  ucom->sc_bulkout_no = addr;
+			ucom->sc_bulkout_no = addr;
 		else {
-		  kprintf("%s: unexpected endpoint\n", devname);
-		  goto bad;
+			device_printf(ucom->sc_dev, "unexpected endpoint\n");
+			goto bad;
 		}
 	}
 	if (ucom->sc_bulkin_no == -1) {
-		kprintf("%s: Could not find data bulk in\n",
-		       devname);
+		device_printf(ucom->sc_dev, "Could not find data bulk in\n");
 		goto bad;
 	}
 	if (ucom->sc_bulkout_no == -1) {
-		kprintf("%s: Could not find data bulk out\n",
-		       devname);
+		device_printf(ucom->sc_dev, "Could not find data bulk out\n");
 		goto bad;
 	}
-        ucom->sc_parent  = sc;
-	ucom->sc_portno = FTDI_PIT_SIOA;
+	ucom->sc_parent  = sc;
+	if (uaa->iface == NULL)
+		ucom->sc_portno = FTDI_PIT_SIOA;
+	else
+		ucom->sc_portno = FTDI_PIT_SIOA + id->bInterfaceNumber;
 	/* bulkin, bulkout set above */
 
   	ucom->sc_ibufsize = UFTDIIBUFSIZE;
@@ -259,19 +371,15 @@ uftdi_attach(device_t self)
 	ucom->sc_callback = &uftdi_callback;
 #if 0
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, ucom->sc_udev,
-			   ucom->sc_dev);
+	  ucom->sc_dev);
 #endif
 	DPRINTF(("uftdi: in=0x%x out=0x%x\n", ucom->sc_bulkin_no, ucom->sc_bulkout_no));
 	ucom_attach(&sc->sc_ucom);
-	kfree(devinfo, M_USBDEV);
-
 	return 0;
 
 bad:
 	DPRINTF(("uftdi_attach: ATTACH ERROR\n"));
 	ucom->sc_dying = 1;
-	kfree(devinfo, M_USBDEV);
-
 	return ENXIO;
 }
 #if 0
@@ -294,7 +402,7 @@ uftdi_activate(device_t self, enum devact act)
 	return (rv);
 }
 #endif
-#if 1
+
 static int
 uftdi_detach(device_t self)
 {
@@ -308,7 +416,7 @@ uftdi_detach(device_t self)
 
 	return rv;
 }
-#endif
+
 static int
 uftdi_open(void *vsc, int portno)
 {
@@ -482,6 +590,8 @@ uftdi_param(void *vsc, int portno, struct termios *t)
 		case 230400: rate = ftdi_8u232am_b230400; break;
 		case 460800: rate = ftdi_8u232am_b460800; break;
 		case 921600: rate = ftdi_8u232am_b921600; break;
+		case 2000000: rate = ftdi_8u232am_b2000000; break;
+		case 3000000: rate = ftdi_8u232am_b3000000; break;
 		default:
 			return (EINVAL);
 		}
