@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.20 2007/08/13 12:26:51 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.21 2007/08/19 10:19:43 hasso Exp $
  */
 
 /*-
@@ -271,6 +271,8 @@ static const struct usb_devno uplcom_devs[] = {
 	{ USB_VENDOR_SIEMENS3, USB_PRODUCT_SIEMENS3_X75 },
 	/* Sitecom USB to serial cable */
 	{ USB_VENDOR_SITECOM, USB_PRODUCT_SITECOM_CN104 },
+	/* Smart Technologies USB to serial adapter */
+	{ USB_VENDOR_SMART, USB_PRODUCT_SMART_PL2303 },
 	/* Sony-Ericsson DCU-10 and DCU-11 USB data cables */
 	{ USB_VENDOR_SUSTEEN, USB_PRODUCT_SUSTEEN_DCU10 },
 	/* Susteen Datapilot Universal-2 Phone Cable */
