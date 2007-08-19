@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.29 2007/08/19 10:03:45 hasso Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.30 2007/08/19 19:42:11 hasso Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -1295,8 +1295,8 @@ product FTDI EMCU2H		0xe88c	Expert mouseCLOCK USB II HBG
 product FTDI USBSERIAL		0xfa00	Matrix Orbital USB Serial
 product FTDI MX2_3		0xfa01	Matrix Orbital MX2 or MX3 LCD
 product FTDI MX4_5		0xfa02	Matrix Orbital MX4 or MX5 LCD
-product FTDI LCD_LK202_24_USB	0xfa03	Matrix Orbital LK202-24 LCD
-product FTDI LCD_LK204_24	0xfa04	Matrix Orbital LK204-24 LCD
+product FTDI LK202		0xfa03	Matrix Orbital LK202-24 LCD
+product FTDI LK204		0xfa04	Matrix Orbital LK204-24 LCD
 product FTDI LCD_CFA_632	0xfc08  Crystalfontz CFA-632 LCD
 product FTDI LCD_CFA_634	0xfc09  Crystalfontz CFA-634 LCD
 product FTDI LCD_CFA_633	0xfc0b  Crystalfontz CFA-633 LCD
