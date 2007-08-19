@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.1 2007/08/16 20:38:33 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.2 2007/08/19 17:16:43 hasso Exp $	*/
 /*	$OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $	*/
 
 /*
@@ -151,7 +151,7 @@ umsm_attach(device_t self)
 	kfree(devinfo, M_USBDEV);
 
 	if (usbd_set_config_index(ucom->sc_udev, UMSM_CONFIG_NO, 1) != 0) {
-		kprintf("%s: could not set configuration no\n", devname);
+		device_printf(ucom->sc_dev, "could not set configuration no\n");
 		goto error;
 	}
 
@@ -159,7 +159,7 @@ umsm_attach(device_t self)
 	error = usbd_device2interface_handle(ucom->sc_udev, UMSM_IFACE_NO,
 	    &ucom->sc_iface);
 	if (error != 0) {
-		kprintf("%s: could not get interface handle\n", devname);
+		device_printf(ucom->sc_dev, "could not get interface handle\n");
 		goto error;
 	}
 
@@ -169,8 +169,8 @@ umsm_attach(device_t self)
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(ucom->sc_iface, i);
 		if (ed == NULL) {
-			kprintf("%s: no endpoint descriptor found for %d\n",
-				devname, i);
+			device_printf(ucom->sc_dev, "no endpoint descriptor "
+				      "found for %d\n", i);
 			goto error;
 		}
 
@@ -182,7 +182,7 @@ umsm_attach(device_t self)
 			ucom->sc_bulkout_no = ed->bEndpointAddress;
 	}
 	if (ucom->sc_bulkin_no == -1 || ucom->sc_bulkout_no == -1) {
-		kprintf("%s: missing endpoint\n", devname);
+		device_printf(ucom->sc_dev, "missing endpoint\n");
 		goto error;
 	}
 

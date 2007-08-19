@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uark/uark.c,v 1.2 2007/08/17 06:40:19 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uark/uark.c,v 1.3 2007/08/19 17:16:43 hasso Exp $	*/
 /*	$OpenBSD: uark.c,v 1.9 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -134,7 +134,6 @@ uark_attach(device_t self)
 	usb_endpoint_descriptor_t *ed;
 	usbd_status error;
 	char *devinfo;
-	const char *devname;
 	int i;
 
 	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
@@ -149,12 +148,11 @@ uark_attach(device_t self)
 	ucom->sc_udev = uaa->device;
 	ucom->sc_iface = uaa->iface;
 
-	devname = device_get_nameunit(ucom->sc_dev);
-	kprintf("%s: %s\n", devname, devinfo);
+	device_printf(ucom->sc_dev, "%s\n", devinfo);
 	kfree(devinfo, M_USBDEV);
 
 	if (usbd_set_config_index(ucom->sc_udev, UARK_CONFIG_NO, 1) != 0) {
-		kprintf("%s: could not set configuration no\n", devname);
+		device_printf(ucom->sc_dev, "could not set configuration no\n");
 		goto error;
 	}
 
@@ -162,7 +160,7 @@ uark_attach(device_t self)
 	error = usbd_device2interface_handle(ucom->sc_udev, UARK_IFACE_NO,
 	    &ucom->sc_iface);
 	if (error != 0) {
-		kprintf("%s: could not get interface handle\n", devname);
+		device_printf(ucom->sc_dev, "could not get interface handle\n");
 		goto error;
 	}
 
@@ -172,8 +170,8 @@ uark_attach(device_t self)
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(ucom->sc_iface, i);
 		if (ed == NULL) {
-			kprintf("%s: no endpoint descriptor found for %d\n",
-			    devname, i);
+			device_printf(ucom->sc_dev, "no endpoint descriptor "
+				      "found for %d\n", i);
 			goto error;
 		}
 
@@ -186,7 +184,7 @@ uark_attach(device_t self)
 	}
 
 	if (ucom->sc_bulkin_no == -1 || ucom->sc_bulkout_no == -1) {
-		kprintf("%s: missing endpoint\n", devname);
+		device_printf(ucom->sc_dev, "missing endpoint\n");
 		goto error;
 	}
 
@@ -354,8 +352,7 @@ uark_break(void *vsc, int portno, int onoff)
 #ifdef UARK_DEBUG
 	struct uark_softc *sc = vsc;
 
-	kprintf("%s: break %s!\n", device_get_nameunit(sc->sc_ucom->sc_dev),
-	    onoff ? "on" : "off");
+	device_printf(sc->sc_ucom.sc_dev, "break %s!\n", onoff ? "on" : "off");
 
 	if (onoff)
 		/* break on */
