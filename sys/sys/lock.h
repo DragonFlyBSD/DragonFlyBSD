@@ -36,7 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.18 2006/08/11 01:55:00 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.19 2007/08/20 05:44:58 dillon Exp $
  */
 
 #ifndef	_SYS_LOCK_H_
@@ -190,6 +190,7 @@ struct proc;
 
 void	lockinit (struct lock *, char *wmesg, int timo, int flags);
 void	lockreinit (struct lock *, char *wmesg, int timo, int flags);
+void	lockuninit(struct lock *);
 #ifdef DEBUG_LOCKS
 int	debuglockmgr (struct lock *, u_int flags,
 			const char *,

@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.25 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.26 2007/08/20 05:44:59 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -516,6 +516,15 @@ lockreinit(struct lock *lkp, char *wmesg, int timo, int flags)
 	lkp->lk_wmesg = wmesg;
 	lkp->lk_timo = timo;
 	spin_unlock_wr(&lkp->lk_spinlock);
+}
+
+void
+lockuninit(struct lock *l)
+{
+	spin_lock_wr(&l->lk_spinlock);
+	KKASSERT(l->lk_waitcount == 0);
+	l->lk_wmesg = "BUG";
+	spin_uninit(&l->lk_spinlock);
 }
 
 /*
