@@ -1,3 +1,4 @@
 # Subversion control for DragonFly 1.10.X-RELEASE
-# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_10,v 1.1.2.1 2007/07/24 20:45:15 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_10,v 1.1.2.2 2007/08/20 21:23:17 dillon Exp $
 0	-
+1	fix mbuf leak, pccard & bge patches, usb 115kbps fix, packet checksum fixes
