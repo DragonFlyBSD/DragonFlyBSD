@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.33 2007/08/15 03:15:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.34 2007/08/20 05:40:40 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -455,23 +455,29 @@ sys_getrlimit(struct __getrlimit_args *uap)
  * Since we are limited to statclock tick granularity this is a statisical
  * calculation which will be correct over the long haul, but should not be
  * expected to measure fine grained deltas.
+ *
+ * It is possible to catch a lwp in the midst of being created, so
+ * check whether lwp_thread is NULL or not.
  */
 void
 calcru(struct lwp *lp, struct timeval *up, struct timeval *sp)
 {
-	struct thread *td = lp->lwp_thread;
+	struct thread *td;
 
 	/*
 	 * Calculate at the statclock level.  YYY if the thread is owned by
 	 * another cpu we need to forward the request to the other cpu, or
-	 * have a token to interlock the information.
+	 * have a token to interlock the information in order to avoid racing
+	 * thread destruction.
 	 */
-	crit_enter();
-	up->tv_sec = td->td_uticks / 1000000;
-	up->tv_usec = td->td_uticks % 1000000;
-	sp->tv_sec = td->td_sticks / 1000000;
-	sp->tv_usec = td->td_sticks % 1000000;
-	crit_exit();
+	if ((td = lp->lwp_thread) != NULL) {
+		crit_enter();
+		up->tv_sec = td->td_uticks / 1000000;
+		up->tv_usec = td->td_uticks % 1000000;
+		sp->tv_sec = td->td_sticks / 1000000;
+		sp->tv_usec = td->td_sticks % 1000000;
+		crit_exit();
+	}
 }
 
 /*
