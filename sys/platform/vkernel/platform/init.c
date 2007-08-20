@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.46 2007/07/22 20:04:00 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.47 2007/08/20 05:27:46 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -138,6 +138,7 @@ main(int ac, char **av)
 	int netifFileNum = 0;
 	int diskFileNum = 0;
 	int cdFileNum = 0;
+	int bootOnDisk = -1;	/* set below to vcd (0) or vkd (1) */
 	int c;
 	int i;
 	int n;
@@ -196,10 +197,14 @@ main(int ac, char **av)
 				netifFile[netifFileNum++] = strdup(optarg);
 			break;
 		case 'r':
+			if (bootOnDisk < 0)
+				bootOnDisk = 1;
 			if (diskFileNum + cdFileNum < VKDISK_MAX)
 				diskFile[diskFileNum++] = strdup(optarg);
 			break;
 		case 'c':
+			if (bootOnDisk < 0)
+				bootOnDisk = 0;
 			if (diskFileNum + cdFileNum < VKDISK_MAX)
 				cdFile[cdFileNum++] = strdup(optarg);
 			break;
@@ -284,8 +289,17 @@ main(int ac, char **av)
 	init_vkernel();
 	setrealcpu();
 	init_kqueue();
-	init_disk(diskFile, diskFileNum, VKD_DISK);
-	init_disk(cdFile, cdFileNum, VKD_CD);
+
+	/*
+	 * We boot from the first installed disk.
+	 */
+	if (bootOnDisk == 1) {
+		init_disk(diskFile, diskFileNum, VKD_DISK);
+		init_disk(cdFile, cdFileNum, VKD_CD);
+	} else {
+		init_disk(cdFile, cdFileNum, VKD_CD);
+		init_disk(diskFile, diskFileNum, VKD_DISK);
+	}
 	init_netif(netifFile, netifFileNum);
 	init_exceptions();
 	mi_startup();
@@ -700,7 +714,7 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 			info->type = type;
 	        	memcpy(info->fname, fname, l);
 
-			if (i == 0) {
+			if (DiskNum == 0) {
 				if (type == VKD_CD)
 				    rootdevnames[0] = "cd9660:vcd0a";
 				else if (type == VKD_DISK)
