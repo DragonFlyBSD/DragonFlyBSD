@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.h,v 1.7.2.7 2002/08/01 19:38:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.h,v 1.9 2007/05/29 10:58:11 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.h,v 1.10 2007/08/21 20:03:20 corecode Exp $	*/
 /*	$KAME: in6.h,v 1.89 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -608,8 +608,8 @@ int inet6_option_init (void *, struct cmsghdr **, int);
 int inet6_option_next (const struct cmsghdr *, uint8_t **);
 int inet6_option_space (int);
 
-int inet6_opt_append (void *, socklen_t, int, uint8_t, size_t, uint8_t, void **);
-int inet6_opt_find (void *, socklen_t, int, uint8_t, size_t *, void **);
+int inet6_opt_append (void *, socklen_t, int, uint8_t, socklen_t, uint8_t, void **);
+int inet6_opt_find (void *, socklen_t, int, uint8_t, socklen_t *, void **);
 int inet6_opt_finish (void *, socklen_t, int);
 int inet6_opt_get_val (void *, int, void *, socklen_t);
 int inet6_opt_init (void *, socklen_t);
