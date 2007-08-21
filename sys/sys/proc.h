@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.112 2007/08/15 03:15:07 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.113 2007/08/21 19:23:04 corecode Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -506,7 +506,6 @@ void	start_forked_proc (struct lwp *, struct proc *);
 int	trace_req (struct proc *);
 void	cpu_proc_wait (struct proc *);
 void	cpu_thread_wait (struct thread *);
-int	cpu_coredump (struct thread *, struct vnode *, struct ucred *);
 void	setsugid (void);
 void	faultin (struct proc *p);
 void	swapin_request (void);
