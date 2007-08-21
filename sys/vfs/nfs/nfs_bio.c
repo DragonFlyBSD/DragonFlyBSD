@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.40 2007/02/22 15:50:50 corecode Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.41 2007/08/21 17:26:48 dillon Exp $
  */
 
 
@@ -938,9 +938,13 @@ again:
 		 *
 		 * B_CACHE may also be set due to the buffer being cached
 		 * normally.
+		 *
+		 * When doing a UIO_NOCOPY write the buffer is not
+		 * overwritten and we cannot just set B_CACHE unconditionally
+		 * for full-block writes.
 		 */
 
-		if (on == 0 && n == bcount) {
+		if (on == 0 && n == bcount && uio->uio_segflg != UIO_NOCOPY) {
 			bp->b_flags |= B_CACHE;
 			bp->b_flags &= ~(B_ERROR | B_INVAL);
 		}

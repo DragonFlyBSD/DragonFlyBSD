@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.50 2007/08/13 17:31:56 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.51 2007/08/21 17:26:48 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -749,16 +749,21 @@ msdosfs_write(struct vop_write_args *ap)
 			vnode_pager_setsize(vp, dep->de_FileSize);
 		}
 
+		/*
+		 * If either the whole cluster gets written, or we write
+		 * the cluster from its start beyond EOF, then no need to
+		 * read data from disk.
+		 *
+		 * If UIO_NOCOPY is set we have to do a read-before-write
+		 * to fill in any missing pieces of the buffer since no
+		 * actual overwrite will occur.
+		 */
 		cn = de_off2cn(pmp, uio->uio_offset);
 		if ((uio->uio_offset & pmp->pm_crbomask) == 0
+		    && uio->uio_segflg != UIO_NOCOPY
 		    && (de_off2cn(pmp, uio->uio_offset + uio->uio_resid) 
 		        > de_off2cn(pmp, uio->uio_offset)
 			|| uio->uio_offset + uio->uio_resid >= dep->de_FileSize)) {
-			/*
-			 * If either the whole cluster gets written,
-			 * or we write the cluster from its start beyond EOF,
-			 * then no need to read data from disk.
-			 */
 			bp = getblk(thisvp, de_cn2doff(pmp, cn),
 				    pmp->pm_bpcluster, 0, 0);
 			clrbuf(bp);

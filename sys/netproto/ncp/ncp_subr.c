@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.c,v 1.2.2.1 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.10 2006/12/22 23:57:54 swildner Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.11 2007/08/21 17:26:46 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -231,6 +231,7 @@ ncp_write(struct ncp_conn *conn, ncp_fh *file, struct uio *uiop, struct ucred *c
 		kprintf("%s: can't handle iovcnt>1 !!!\n", __func__);
 		return EIO;
 	}
+	KKASSERT(uiop->uio_segflg != UIO_NOCOPY);
 	tsiz = uiop->uio_resid;
 	while (tsiz > 0) {
 		len = min(4096 - (uiop->uio_offset % 4096), tsiz);

@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_readwrite.c	8.7 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_readwrite.c,v 1.18.2.2 2000/12/22 18:44:33 dillon Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.13 2007/02/22 15:50:49 corecode Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.14 2007/08/21 17:26:48 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -238,15 +238,13 @@ ext2_write(struct vop_write_args *ap)
 		 * by ensuring that newly allocated blocks are zerod.  The
 		 * race can occur even in the case where the write covers
 		 * the entire block.
+		 *
+		 * Just set B_CLRBUF unconditionally, even if the write
+		 * covers the whole block.  This also handles the UIO_NOCOPY
+		 * case.  See ffs_write() in ufs for a more sophisticated
+		 * version.
 		 */
 		flags |= B_CLRBUF;
-#if 0
-		if (fs->s_frag_size > xfersize)
-			flags |= B_CLRBUF;
-		else
-			flags &= ~B_CLRBUF;
-#endif
-
 		error = ext2_balloc(ip,
 		    lbn, blkoffset + xfersize, ap->a_cred, &bp, flags);
 		if (error)

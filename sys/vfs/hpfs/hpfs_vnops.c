@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.43 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.44 2007/08/21 17:26:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -404,7 +404,16 @@ hpfs_write(struct vop_write_args *ap)
 		dprintf(("hpfs_write: bn: 0x%x (0x%x) towrite: 0x%x (0x%x)\n",
 			bn, runl, towrite, xfersz));
 
-		if ((off == 0) && (towrite == xfersz)) {
+		/*
+		 * We do not have to issue a read-before-write if the xfer
+		 * size does not cover the whole block.
+		 *
+		 * In the UIO_NOCOPY case, however, we are not overwriting
+		 * anything and must do a read-before-write to fill in
+		 * any missing pieces.
+		 */
+		if (off == 0 && towrite == xfersz &&
+		    uio->uio_segflg != UIO_NOCOPY) {
 			bp = getblk(hp->h_devvp, dbtodoff(bn), xfersz, 0, 0);
 			clrbuf(bp);
 		} else {

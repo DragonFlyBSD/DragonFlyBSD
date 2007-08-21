@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_smb.c,v 1.1.2.3 2002/12/14 14:44:19 fjoe Exp $
- * $DragonFly: src/sys/netproto/smb/smb_smb.c,v 1.6 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_smb.c,v 1.7 2007/08/21 17:26:47 dillon Exp $
  */
 /*
  * various SMB requests. Most of the routines merely packs data into mbufs.
@@ -571,6 +571,9 @@ smb_smb_write(struct smb_share *ssp, u_int16_t fid, int *len, int *rresid,
 	u_int16_t resid;
 	u_int8_t wc;
 	int error, blksz;
+
+	/* write data must be real */
+	KKASSERT(uio->uio_segflg != UIO_NOCOPY);
 
 	blksz = SSTOVC(ssp)->vc_txmax - SMB_HDRLEN - 16;
 	if (blksz > 0xffff)

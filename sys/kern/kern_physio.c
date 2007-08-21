@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.24 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.25 2007/08/21 17:26:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,6 +60,9 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 		    devtoname(dev), dev->si_iosize_max);
 		dev->si_iosize_max = DFLTPHYS;
 	}
+
+	/* Must be a real uio */
+	KKASSERT(uio->uio_segflg != UIO_NOCOPY);
 
 	/* Don't check block number overflow for D_MEM */
 	if ((dev_dflags(dev) & D_TYPEMASK) == D_MEM)

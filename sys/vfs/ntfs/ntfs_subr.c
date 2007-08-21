@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.25 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.26 2007/08/21 17:26:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1404,8 +1404,8 @@ ntfs_writentvattr_plain(struct ntfsmount *ntmp,	struct ntnode *ip,
 				(u_int32_t) cn, (u_int32_t) cl, 
 				(u_int32_t) off, (u_int32_t) tocopy, 
 				(u_int32_t) left));
-			if ((off == 0) && (tocopy == ntfs_cntob(cl)))
-			{
+			if (off == 0 && tocopy == ntfs_cntob(cl) &&
+			    uio->uio_segflg != UIO_NOCOPY) {
 				bp = getblk(ntmp->ntm_devvp, ntfs_cntodoff(cn),
 					    ntfs_cntob(cl), 0, 0);
 				clrbuf(bp);

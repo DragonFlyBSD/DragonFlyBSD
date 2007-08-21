@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.22 2007/08/13 17:31:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.23 2007/08/21 17:26:48 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -315,9 +315,10 @@ ffs_write(struct vop_write_args *ap)
 
 		/*      
 		 * We must perform a read-before-write if the transfer
-		 * size does not cover the entire buffer.
+		 * size does not cover the entire buffer, or if doing
+		 * a dummy write to flush the buffer.
 		 */
-		if (fs->fs_bsize > xfersize)
+		if (xfersize < fs->fs_bsize || uio->uio_segflg == UIO_NOCOPY)
 			flags |= B_CLRBUF;
 		else
 			flags &= ~B_CLRBUF;
@@ -333,7 +334,7 @@ ffs_write(struct vop_write_args *ap)
 		 * race where another process may see the garbage prior to
 		 * the uiomove() for a write replacing it.
 		 */
-		if ((bp->b_flags & B_CACHE) == 0 && fs->fs_bsize <= xfersize)
+		if ((bp->b_flags & B_CACHE) == 0 && (flags & B_CLRBUF) == 0)
 			vfs_bio_clrbuf(bp);
 		if (ioflag & IO_DIRECT)
 			bp->b_flags |= B_DIRECT;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/userfs/userfs_vnops.c,v 1.1 2007/08/13 17:49:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/userfs/userfs_vnops.c,v 1.2 2007/08/21 17:26:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -282,7 +282,7 @@ user_vop_write (struct vop_write_args *ap)
 		 * on USERFS_BSIZE boundaries.
 		 *
 		 * XXX not optimized for complete write-overs or file
-		 * extensions.
+		 * extensions.  Note: must bread on UIO_NOCOPY writes.
 		 */
 		offset = (int)uio->uio_offset & USERFS_BMASK;
 		error = bread(vp, uio->uio_offset - offset, USERFS_BSIZE, &bp);

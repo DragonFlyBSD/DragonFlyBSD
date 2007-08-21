@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.55 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.56 2007/08/21 17:26:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -359,6 +359,8 @@ spec_write(struct vop_write_args *ap)
 	dev = vp->v_rdev;
 	uio = ap->a_uio;
 	td = uio->uio_td;
+
+	KKASSERT(uio->uio_segflg != UIO_NOCOPY);
 
 	if (dev == NULL)		/* device was revoked */
 		return (EBADF);
