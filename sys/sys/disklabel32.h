@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel32.h,v 1.27 2007/06/18 05:13:42 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel32.h,v 1.28 2007/08/21 20:04:09 corecode Exp $
  */
 
 #ifndef _SYS_DISKLABEL32_H_
@@ -56,7 +56,7 @@
  */
 
 /* XXX these should be defined per controller (or drive) elsewhere, not here! */
-#ifdef __i386__
+#if defined(__i386__) || defined(__amd64__) 
 #define LABELSECTOR32	1			/* sector containing label */
 #define LABELOFFSET32	0			/* offset of label in sector */
 #endif
