@@ -1,0 +1,11 @@
+$DragonFly: src/gnu/usr.bin/gdb/libgdb/patches/Attic/amd64fbsd-nat.c.patch,v 1.1 2007/08/21 19:55:23 corecode Exp $
+--- /usr/src/contrib/gdb-6.2.1/gdb/amd64fbsd-nat.c	2004-10-24 14:56:24.000000000 -0500
++++ amd64fbsd-nat.c	2007-07-28 22:03:20.000000000 -0500
+@@ -219,7 +219,4 @@
+ 	amd64fbsd_sigtramp_end_addr = ps_strings;
+       }
+   }
+-
+-  /* Support debugging kernel virtual memory images.  */
+-  bsd_kvm_add_target (amd64fbsd_supply_pcb);
+ }
