@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/ifq_var.h,v 1.8 2006/05/21 03:43:45 dillon Exp $
+ * $DragonFly: src/sys/net/ifq_var.h,v 1.9 2007/08/21 19:21:54 corecode Exp $
  */
 /*
  * NOTE ON MPSAFE access.  Routines which manipulate the packet queue must
@@ -153,7 +153,10 @@ ifq_poll(struct ifaltq *_ifq)
 static __inline void
 ifq_purge(struct ifaltq *_ifq)
 {
-	(*_ifq->altq_request)(_ifq, ALTRQ_PURGE, NULL);
+	if (ifq_is_enabled(_ifq))
+		(*_ifq->altq_request)(_ifq, ALTRQ_PURGE, NULL);
+	else
+		IF_DRAIN(_ifq);
 }
 
 /*
