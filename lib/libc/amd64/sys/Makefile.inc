@@ -1,6 +1,6 @@
 #	from: Makefile.inc,v 1.1 1993/09/03 19:04:23 jtc Exp
 # $FreeBSD: src/lib/libc/amd64/sys/Makefile.inc,v 1.29 2003/10/23 06:07:09 peter Exp $
-# $DragonFly: src/lib/libc/amd64/sys/Makefile.inc,v 1.2 2006/07/27 00:44:20 corecode Exp $
+# $DragonFly: src/lib/libc/amd64/sys/Makefile.inc,v 1.3 2007/08/21 19:49:10 corecode Exp $
 
 SRCS+=	amd64_get_fsbase.c amd64_get_gsbase.c amd64_set_fsbase.c amd64_set_gsbase.c
 
@@ -13,3 +13,14 @@ NOASM=	break.o exit.o ftruncate.o getdomainname.o getlogin.o \
 	pwrite.o setdomainname.o sstk.o truncate.o uname.o vfork.o yield.o
 
 PSEUDO=	_getlogin.o _exit.o
+
+# getcontext.S needs certain offsets
+#
+# XXX this should be moved to a non-arch directory
+SRCS+= asmcontext.h
+CLEANFILES+= asmcontext.h asmcontext.o
+
+GENASSYM= NM=nm sh ${.CURDIR}/../../sys/kern/genassym.sh
+asmcontext.h: asmcontext.o
+	${GENASSYM} ${.ALLSRC} > ${.TARGET}
+
