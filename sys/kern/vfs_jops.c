@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.35 2007/08/08 00:12:51 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.36 2007/08/21 17:43:52 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -840,6 +840,15 @@ journal_write(struct vop_write_args *ap)
     struct iovec uio_one_iovec;
     void *save;
     int error;
+
+    /*
+     * Special synchronizing writes for VM backing store do not supply any
+     * real data
+     */
+    if (ap->a_uio->uio_segflg == UIO_NOCOPY) {
+	    error = vop_journal_operate_ap(&ap->a_head);
+	    return (error);
+    }
 
     /*
      * This is really nasty.  UIO's don't retain sufficient information to
