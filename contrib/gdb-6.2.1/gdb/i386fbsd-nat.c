@@ -107,7 +107,6 @@ i386fbsd_supply_pcb (struct regcache *regcache, struct pcb *pcb)
   regcache_raw_supply (regcache, I386_ESP_REGNUM, &pcb->pcb_esp);
   regcache_raw_supply (regcache, I386_EBX_REGNUM, &pcb->pcb_ebx);
   regcache_raw_supply (regcache, I386_EIP_REGNUM, &pcb->pcb_eip);
-  regcache_raw_supply (regcache, I386_GS_REGNUM, &pcb->pcb_gs);
 
   return 1;
 }
@@ -141,7 +140,4 @@ _initialize_i386fbsd_nat (void)
       }
   }
 #endif
-
-  /* Support debugging kernel virtual memory images.  */
-  bsd_kvm_add_target (i386fbsd_supply_pcb);
 }
