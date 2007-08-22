@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.59 2007/08/21 19:16:19 corecode Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.60 2007/08/22 21:35:59 hasso Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -123,6 +123,7 @@ MAN=	accept_filter.9 \
 	timeout.9 \
 	tvtohz.9 \
 	uio.9 \
+	usbdi.9 \
 	VFS.9 \
 	VFS_CHECKEXP.9 \
 	VFS_FHTOVP.9 \
@@ -497,6 +498,55 @@ MLINKS+=timeout.9 callout.9 \
 MLINKS+=tvtohz.9 tvtohz_high.9 \
 	tvtohz.9 tvtohz_low.9
 MLINKS+=uio.9 uiomove.9
+MLINKS+=usbdi.9 usbd_abort_default_pipe.9 \
+	usbdi.9 usbd_abort_pipe.9 \
+	usbdi.9 usbd_alloc_buffer.9 \
+	usbdi.9 usbd_alloc_xfer.9 \
+	usbdi.9 usbd_clear_endpoint_stall.9 \
+	usbdi.9 usbd_clear_endpoint_stall_async.9 \
+	usbdi.9 usbd_clear_endpoint_toggle.9 \
+	usbdi.9 usbd_close_pipe.9 \
+	usbdi.9 usbd_device2interface_handle.9 \
+	usbdi.9 usbd_do_request.9 \
+	usbdi.9 usbd_do_request_async.9 \
+	usbdi.9 usbd_do_request_flags.9 \
+	usbdi.9 usbd_do_request_flags_pipe.9 \
+	usbdi.9 usbd_endpoint_count.9 \
+	usbdi.9 usbd_errstr.9 \
+	usbdi.9 usbd_find_edesc.9 \
+	usbdi.9 usbd_find_idesc.9 \
+	usbdi.9 usbd_free_buffer.9 \
+	usbdi.9 usbd_free_xfer.9 \
+	usbdi.9 usbd_get_buffer.9 \
+	usbdi.9 usbd_get_config.9 \
+	usbdi.9 usbd_get_config_desc.9 \
+	usbdi.9 usbd_get_config_desc_full.9 \
+	usbdi.9 usbd_get_config_descriptor.9 \
+	usbdi.9 usbd_get_device_descriptor.9 \
+	usbdi.9 usbd_get_endpoint_descriptor.9 \
+	usbdi.9 usbd_get_interface_altindex.9 \
+	usbdi.9 usbd_get_interface_descriptor.9 \
+	usbdi.9 usbd_get_no_alts.9 \
+	usbdi.9 usbd_get_quirks.9 \
+	usbdi.9 usbd_get_speed.9 \
+	usbdi.9 usbd_get_string.9 \
+	usbdi.9 usbd_get_string_desc.9 \
+	usbdi.9 usbd_get_xfer_status.9 \
+	usbdi.9 usbd_interface2device_handle.9 \
+	usbdi.9 usbd_interface2endpoint_descriptor.9 \
+	usbdi.9 usbd_interface_count.9 \
+	usbdi.9 usbd_open_pipe.9 \
+	usbdi.9 usbd_open_pipe_intr.9 \
+	usbdi.9 usbd_pipe2device_handle.9 \
+	usbdi.9 usbd_set_config_index.9 \
+	usbdi.9 usbd_set_config_no.9 \
+	usbdi.9 usbd_set_interface.9 \
+	usbdi.9 usbd_setup_default_xfer.9 \
+	usbdi.9 usbd_setup_isoc_xfer.9 \
+	usbdi.9 usbd_setup_xfer.9 \
+	usbdi.9 usbd_sync_transfer.9 \
+	usbdi.9 usbd_transfer.9 \
+	usbdi.9 usb_find_desc.9
 MLINKS+=vhold.9 vdrop.9
 MLINKS+=VOP_ATTRIB.9 VOP_GETATTR.9 \
 	VOP_ATTRIB.9 VOP_SETATTR.9
