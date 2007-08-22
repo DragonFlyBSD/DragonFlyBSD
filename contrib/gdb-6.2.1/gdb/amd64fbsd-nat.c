@@ -219,7 +219,4 @@ Please report this to <bug-gdb@gnu.org>.",
 	amd64fbsd_sigtramp_end_addr = ps_strings;
       }
   }
-
-  /* Support debugging kernel virtual memory images.  */
-  bsd_kvm_add_target (amd64fbsd_supply_pcb);
 }

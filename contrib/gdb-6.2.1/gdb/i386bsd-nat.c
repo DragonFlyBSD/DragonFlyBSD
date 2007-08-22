@@ -313,31 +313,6 @@ i386bsd_dr_get_status (void)
 
 #endif /* PT_GETDBREGS */
 
-
-/* Support for the user struct.  */
-
-/* Return the address register REGNUM.  BLOCKEND is the value of
-   u.u_ar0, which should point to the registers.  */
-
-CORE_ADDR
-register_u_addr (CORE_ADDR blockend, int regnum)
-{
-  gdb_assert (regnum >= 0 && regnum < ARRAY_SIZE (i386bsd_r_reg_offset));
-
-  return blockend + i386bsd_r_reg_offset[regnum];
-}
-
-#include <sys/param.h>
-#include <sys/user.h>
-
-/* Return the size of the user struct.  */
-
-int
-kernel_u_size (void)
-{
-  return (sizeof (struct user));
-}
-
 void
 _initialize_i386bsd_nat (void)
 {
@@ -349,7 +324,7 @@ _initialize_i386bsd_nat (void)
      system header files and sysctl(3) to get at the relevant
      information.  */
 
-#if defined (__FreeBSD_version) && __FreeBSD_version >= 400011
+#if defined(__DragonFly__) || (defined (__FreeBSD_version) && __FreeBSD_version >= 400011)
 #define SC_REG_OFFSET i386fbsd4_sc_reg_offset
 #elif defined (__FreeBSD_version) && __FreeBSD_version >= 300005
 #define SC_REG_OFFSET i386fbsd_sc_reg_offset
