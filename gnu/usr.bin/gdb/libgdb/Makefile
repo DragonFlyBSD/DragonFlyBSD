@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.2 2006/07/27 00:30:10 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.3 2007/08/22 08:50:26 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -66,8 +66,7 @@ SRCS+=	tui-interp.c tui-io.c tui-layout.c tui-out.c tui-regs.c tui-source.c
 SRCS+=	tui-stack.c tui-win.c tui-windata.c tui-wingeneral.c tui-winsource.c
 .endif
 # kernel-debugger
-PATCHES!=	echo ${.CURDIR}/patches/*.patch
-SRCS+=	freebsd-uthread.c ${PATCHES}
+SRCS+=	freebsd-uthread.c
 #SRCS+=	kthr.c trgt.c trgt_${MACHINE_ARCH}.c
 
 DPADD=	${LIBREADLINE} ${LIBKVM} ${LIBTERMCAP} ${LIBM}
