@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.21 2007/05/07 14:12:16 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.21.2.1 2007/08/22 13:47:18 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -528,6 +528,7 @@ ieee80211_encap(struct ieee80211com *ic, struct mbuf *m,
 			    eh.ether_dhost, ":", __func__,
 			    ic->ic_def_txkey);
 			ic->ic_stats.is_tx_nodefkey++;
+			goto bad;
 		}
 	} else
 		key = NULL;
