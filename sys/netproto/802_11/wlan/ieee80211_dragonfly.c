@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.10 2007/03/24 08:39:03 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.11 2007/08/22 13:24:44 sephe Exp $
  */
 
 /*
@@ -165,7 +165,7 @@ ieee80211_node_dectestref(struct ieee80211_node *ni)
  * can use this interface too.
  */
 struct mbuf *
-ieee80211_getmgtframe(uint8_t **frm, u_int pktlen)
+ieee80211_getmgtframe(uint8_t **frm, int headroom, u_int pktlen)
 {
 	struct mbuf *m;
 	u_int len;
@@ -175,7 +175,7 @@ ieee80211_getmgtframe(uint8_t **frm, u_int pktlen)
 	 *     so we don't need to do anything special.
 	 */
 	/* XXX 4-address frame? */
-	len = roundup(sizeof(struct ieee80211_frame) + pktlen, 4);
+	len = roundup(headroom + pktlen, 4);
 	KASSERT(len <= MCLBYTES, ("802.11 mgt frame too large: %u", len));
 	if (len < MINCLSIZE) {
 		m = m_gethdr(MB_DONTWAIT, MT_HEADER);
@@ -190,7 +190,7 @@ ieee80211_getmgtframe(uint8_t **frm, u_int pktlen)
 	} else
 		m = m_getcl(MB_DONTWAIT, MT_HEADER, M_PKTHDR);
 	if (m != NULL) {
-		m->m_data += sizeof(struct ieee80211_frame);
+		m->m_data += headroom;
 		*frm = m->m_data;
 	}
 	return m;

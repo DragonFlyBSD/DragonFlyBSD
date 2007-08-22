@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.16 2007/05/07 14:12:16 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.17 2007/08/22 13:24:44 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -100,6 +100,7 @@ struct ieee80211com {
 	struct sysctl_oid	*ic_sysctl_oid;	/* dynamic sysctl oid */
 	uint32_t		ic_debug;	/* debug msg flags */
 	int			ic_vap;		/* virtual AP index */
+	int			ic_headroom;	/* driver tx headroom needs */
 
 	int			(*ic_reset)(struct ifnet *);
 	void			(*ic_recv_mgmt)(struct ieee80211com *,

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.21 2007/05/07 14:12:16 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.22 2007/08/22 13:24:44 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -379,7 +379,7 @@ ieee80211_mbuf_adjust(struct ieee80211com *ic, int hdrsize,
 	struct ieee80211_key *key, struct mbuf *m)
 {
 #define	TO_BE_RECLAIMED	(sizeof(struct ether_header) - sizeof(struct llc))
-	int needed_space = hdrsize;
+	int needed_space = hdrsize + ic->ic_headroom;
 
 	if (key != NULL) {
 		/* XXX belongs in crypto code? */
@@ -1016,6 +1016,7 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	 *	[tlv] user-specified ie's
 	 */
 	m = ieee80211_getmgtframe(&frm,
+		 ic->ic_headroom + sizeof(struct ieee80211_frame),
 		 2 + IEEE80211_NWID_LEN
 	       + 2 + IEEE80211_RATE_SIZE
 	       + 2 + (IEEE80211_RATE_MAXSIZE - IEEE80211_RATE_SIZE)
@@ -1142,7 +1143,8 @@ _ieee80211_probe_resp_alloc(struct ieee80211com *ic, struct ieee80211_node *ni)
 		 	2*sizeof(struct ieee80211_ie_wpa) : 0)
 		+ sizeof(struct ieee80211_wme_param);	/* WME */
 
-	m = ieee80211_getmgtframe(&frm, pktlen);
+	m = ieee80211_getmgtframe(&frm,
+		ic->ic_headroom + sizeof(struct ieee80211_frame), pktlen);
 	if (m == NULL) {
 		IEEE80211_DPRINTF(ic, IEEE80211_MSG_ANY,
 			"%s: cannot get buf; size %u\n", __func__, pktlen);
@@ -1257,6 +1259,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		      ic->ic_bss->ni_authmode == IEEE80211_AUTH_SHARED);
 
 		m = ieee80211_getmgtframe(&frm,
+			  ic->ic_headroom + sizeof(struct ieee80211_frame),
 			  3 * sizeof(uint16_t)
 			+ (has_challenge && status == IEEE80211_STATUS_SUCCESS ?
 				sizeof(uint16_t)+IEEE80211_CHALLENGE_LEN : 0)
@@ -1301,7 +1304,9 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		IEEE80211_DPRINTF(ic, IEEE80211_MSG_AUTH,
 			"[%6D] send station deauthenticate (reason %d)\n",
 			ni->ni_macaddr, ":", arg);
-		m = ieee80211_getmgtframe(&frm, sizeof(uint16_t));
+		m = ieee80211_getmgtframe(&frm,
+			ic->ic_headroom + sizeof(struct ieee80211_frame),
+			sizeof(uint16_t));
 		if (m == NULL)
 			senderr(ENOMEM, is_tx_nobuf);
 		*(uint16_t *)frm = htole16(arg);	/* reason */
@@ -1327,6 +1332,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		 *	[tlv] user-specified ie's
 		 */
 		m = ieee80211_getmgtframe(&frm,
+			 ic->ic_headroom + sizeof(struct ieee80211_frame),
 			 sizeof(uint16_t)
 		       + sizeof(uint16_t)
 		       + IEEE80211_ADDR_LEN
@@ -1399,6 +1405,7 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		 *	[tlv] WME (if enabled and STA enabled)
 		 */
 		m = ieee80211_getmgtframe(&frm,
+			 ic->ic_headroom + sizeof(struct ieee80211_frame),
 			 sizeof(uint16_t)
 		       + sizeof(uint16_t)
 		       + sizeof(uint16_t)
@@ -1436,7 +1443,9 @@ ieee80211_send_mgmt(struct ieee80211com *ic, struct ieee80211_node *ni,
 		IEEE80211_DPRINTF(ic, IEEE80211_MSG_ASSOC,
 			"[%6D] send station disassociate (reason %d)\n",
 			ni->ni_macaddr, ":", arg);
-		m = ieee80211_getmgtframe(&frm, sizeof(uint16_t));
+		m = ieee80211_getmgtframe(&frm,
+			ic->ic_headroom + sizeof(struct ieee80211_frame),
+			sizeof(uint16_t));
 		if (m == NULL)
 			senderr(ENOMEM, is_tx_nobuf);
 		*(uint16_t *)frm = htole16(arg);	/* reason */
@@ -1538,7 +1547,8 @@ ieee80211_beacon_alloc(struct ieee80211com *ic, struct ieee80211_node *ni,
 		 + (ic->ic_caps & IEEE80211_C_WPA ?	/* WPA 1+2 */
 			2*sizeof(struct ieee80211_ie_wpa) : 0)
 		 ;
-	m = ieee80211_getmgtframe(&frm, pktlen);
+	m = ieee80211_getmgtframe(&frm,
+		ic->ic_headroom + sizeof(struct ieee80211_frame), pktlen);
 	if (m == NULL) {
 		IEEE80211_DPRINTF(ic, IEEE80211_MSG_ANY,
 			"%s: cannot get buf; size %u\n", __func__, pktlen);
