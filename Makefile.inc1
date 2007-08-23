@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.106 2007/08/09 22:50:37 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.107 2007/08/23 07:00:31 corecode Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -150,7 +150,17 @@ BUILD_ARCH!=	sysctl -n hw.machine_arch
 .if !defined(MACHINE_PLATFORM)
 MACHINE_PLATFORM= pc32
 .endif
-TARGET_PLATFORM?= ${MACHINE_PLATFORM}
+
+# XXX this is ugly and we need to come up with a nicer solution
+.if !defined(TARGET_PLATFORM)
+.if ${TARGET_ARCH} == "i386"
+TARGET_PLATFORM= pc32
+.elif ${TARGET_ARCH} == "amd64"
+TARGET_PLATFORM= pc64
+.else
+.error Unknown target architecture.
+.endif
+.endif
 
 # BTOOLS	(Natively built) All non-cross-development tools that the
 #		main build needs.  This includes things like 'mkdir' and 'rm'.
