@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/amd64/include/param.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/param.h,v 1.2 2007/08/23 06:56:27 corecode Exp $
  */
 
 #ifndef _CPU_PARAM_H_
@@ -49,7 +49,7 @@
 #endif
 
 /*
- * Machine dependent constants for Intel 386.
+ * Machine dependent constants for x86_64.
  */
 #ifndef _CPU_PARAM_H1_
 #define _CPU_PARAM_H1_
@@ -66,29 +66,22 @@
 #define _ALIGN(p)	(((unsigned long)(p) + _ALIGNBYTES) & ~_ALIGNBYTES)
 #endif
 
-#ifndef _CPU
-#define	_CPU	amd64
+#ifndef _MACHINE
+#define	_MACHINE	amd64
 #endif
-#ifndef _CPU_ARCH
-#define	_CPU_ARCH	amd64
+#ifndef _MACHINE_ARCH
+#define	_MACHINE_ARCH	amd64
 #endif
-
-/*
- * OBJFORMAT_NAMES is a comma-separated list of the object formats
- * that are supported on the architecture.
- */
-#define OBJFORMAT_NAMES		"elf"
-#define OBJFORMAT_DEFAULT	"elf"
 
 #endif	/* _CPU_PARAM_H1_ */
 
 #ifndef _NO_NAMESPACE_POLLUTION
 
-#ifndef CPU
-#define CPU		"amd64"
+#ifndef MACHINE
+#define MACHINE		"amd64"
 #endif
-#ifndef CPU_ARCH
-#define	CPU_ARCH	"amd64"
+#ifndef MACHINE_ARCH
+#define	MACHINE_ARCH	"amd64"
 #endif
 
 /*
