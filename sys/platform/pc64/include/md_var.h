@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/md_var.h,v 1.71 2004/01/29 00:05:03 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/md_var.h,v 1.1 2007/08/21 19:45:45 corecode Exp $
+ * $DragonFly: src/sys/platform/pc64/include/md_var.h,v 1.2 2007/08/23 06:57:09 corecode Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -51,8 +51,6 @@ extern	char	cpu_vendor[];
 extern	char	kstack[];
 extern	char	sigcode[];
 extern	int	szsigcode;
-
-extern	struct pcpu __pcpu[];
 
 typedef void alias_for_inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
 struct	thread;
