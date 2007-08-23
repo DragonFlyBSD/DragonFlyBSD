@@ -1,8 +1,8 @@
-$DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.1 2006/09/27 12:10:34 corecode Exp $
+$DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.2 2007/08/23 06:19:20 corecode Exp $
 
---- /usr/src/contrib/gcc-4.0/gcc/gcc.c	2005-09-10 20:52:20.000000000 +0200
-+++ gcc.c	2005-09-11 13:21:55.000000000 +0200
-@@ -730,6 +730,7 @@
+--- gcc.c.orig	2007-02-17 03:26:15 +0100
++++ gcc.c	2007-08-22 11:56:58 +0200
+@@ -733,6 +733,7 @@
  static const char *asm_spec = ASM_SPEC;
  static const char *asm_final_spec = ASM_FINAL_SPEC;
  static const char *link_spec = LINK_SPEC;
@@ -10,15 +10,56 @@ $DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.1 2006/09/27 12
  static const char *lib_spec = LIB_SPEC;
  static const char *mfwrap_spec = MFWRAP_SPEC;
  static const char *mflib_spec = MFLIB_SPEC;
-@@ -1523,6 +1524,7 @@
-   INIT_STATIC_SPEC ("link_gcc_c_sequence",	&link_gcc_c_sequence_spec),
+@@ -1441,30 +1442,10 @@
+ #define STANDARD_STARTFILE_PREFIX_2 "/usr/lib/"
+ #endif
+ 
+-#ifdef CROSS_COMPILE  /* Don't use these prefixes for a cross compiler.  */
+-#undef MD_EXEC_PREFIX
+-#undef MD_STARTFILE_PREFIX
+-#undef MD_STARTFILE_PREFIX_1
+-#endif
+-
+-/* If no prefixes defined, use the null string, which will disable them.  */
+-#ifndef MD_EXEC_PREFIX
+-#define MD_EXEC_PREFIX ""
+-#endif
+-#ifndef MD_STARTFILE_PREFIX
+-#define MD_STARTFILE_PREFIX ""
+-#endif
+-#ifndef MD_STARTFILE_PREFIX_1
+-#define MD_STARTFILE_PREFIX_1 ""
+-#endif
+-
+ static const char *const standard_exec_prefix = STANDARD_EXEC_PREFIX;
+ static const char *const standard_exec_prefix_1 = "/usr/libexec/gcc/";
+ static const char *const standard_exec_prefix_2 = "/usr/lib/gcc/";
+-static const char *md_exec_prefix = MD_EXEC_PREFIX;
+ 
+-static const char *md_startfile_prefix = MD_STARTFILE_PREFIX;
+-static const char *md_startfile_prefix_1 = MD_STARTFILE_PREFIX_1;
+ static const char *const standard_startfile_prefix = STANDARD_STARTFILE_PREFIX;
+ static const char *const standard_startfile_prefix_1
+   = STANDARD_STARTFILE_PREFIX_1;
+@@ -1530,6 +1511,7 @@
+   INIT_STATIC_SPEC ("link_ssp",			&link_ssp_spec),
    INIT_STATIC_SPEC ("endfile",			&endfile_spec),
    INIT_STATIC_SPEC ("link",			&link_spec),
 +  INIT_STATIC_SPEC ("pre_lib",			&pre_lib_spec),
    INIT_STATIC_SPEC ("lib",			&lib_spec),
    INIT_STATIC_SPEC ("mfwrap",			&mfwrap_spec),
    INIT_STATIC_SPEC ("mflib",			&mflib_spec),
-@@ -3254,8 +3256,6 @@
+@@ -1546,9 +1528,6 @@
+   INIT_STATIC_SPEC ("multilib_options",		&multilib_options),
+   INIT_STATIC_SPEC ("linker",			&linker_name_spec),
+   INIT_STATIC_SPEC ("link_libgcc",		&link_libgcc_spec),
+-  INIT_STATIC_SPEC ("md_exec_prefix",		&md_exec_prefix),
+-  INIT_STATIC_SPEC ("md_startfile_prefix",	&md_startfile_prefix),
+-  INIT_STATIC_SPEC ("md_startfile_prefix_1",	&md_startfile_prefix_1),
+   INIT_STATIC_SPEC ("startfile_prefix_spec",	&startfile_prefix_spec),
+   INIT_STATIC_SPEC ("sysroot_spec",             &sysroot_spec),
+   INIT_STATIC_SPEC ("sysroot_suffix_spec",	&sysroot_suffix_spec),
+@@ -3278,8 +3257,6 @@
        set_std_prefix (gcc_exec_prefix, len);
        add_prefix (&exec_prefixes, gcc_libexec_prefix, "GCC",
  		  PREFIX_PRIORITY_LAST, 0, 0);
@@ -27,7 +68,7 @@ $DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.1 2006/09/27 12
      }
  
    /* COMPILER_PATH and LIBRARY_PATH have values
-@@ -3803,11 +3803,6 @@
+@@ -3827,11 +3804,6 @@
  	      PREFIX_PRIORITY_LAST, 2, 0);
  #endif
  
@@ -39,7 +80,7 @@ $DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.1 2006/09/27 12
    tooldir_prefix = concat (tooldir_base_prefix, spec_machine,
  			   dir_separator_str, NULL);
  
-@@ -3830,10 +3825,6 @@
+@@ -3854,10 +3826,6 @@
  		      concat (gcc_exec_tooldir_prefix, "bin",
  			      dir_separator_str, NULL),
  		      NULL, PREFIX_PRIORITY_LAST, 0, 0);
@@ -50,7 +91,7 @@ $DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.1 2006/09/27 12
  	}
  
        tooldir_prefix = concat (standard_exec_prefix, spec_machine,
-@@ -3841,13 +3832,6 @@
+@@ -3865,13 +3833,6 @@
  			       dir_separator_str, tooldir_prefix, NULL);
      }
  
@@ -64,7 +105,7 @@ $DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.1 2006/09/27 12
  #if defined(TARGET_SYSTEM_ROOT_RELOCATABLE) && !defined(VMS)
    /* If the normal TARGET_SYSTEM_ROOT is inside of $exec_prefix,
       then consider it to relocate with the rest of the GCC installation
-@@ -6110,10 +6094,6 @@
+@@ -6138,10 +6099,6 @@
  
    /* Read specs from a file if there is one.  */
  
@@ -75,7 +116,7 @@ $DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.1 2006/09/27 12
    specs_file = find_a_file (&startfile_prefixes, "specs", R_OK, 0);
    /* Read the specs file unless it is a default one.  */
    if (specs_file != 0 && strcmp (specs_file, "specs"))
-@@ -6123,11 +6103,9 @@
+@@ -6151,11 +6108,9 @@
  
    /* We need to check standard_exec_prefix/just_machine_suffix/specs
       for any override of as, ld and libraries.  */
@@ -88,10 +129,39 @@ $DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.1 2006/09/27 12
    strcat (specs_file, "specs");
    if (access (specs_file, R_OK) == 0)
      read_specs (specs_file, TRUE);
-@@ -6201,39 +6179,10 @@
- 	add_sysrooted_prefix (&startfile_prefixes, md_startfile_prefix_1,
- 			      "GCC", PREFIX_PRIORITY_LAST, 0, 1);
+@@ -6172,17 +6127,6 @@
+   for (i = 0; i < ARRAY_SIZE (driver_self_specs); i++)
+     do_self_spec (driver_self_specs[i]);
  
+-  /* If not cross-compiling, look for executables in the standard
+-     places.  */
+-  if (*cross_compile == '0')
+-    {
+-      if (*md_exec_prefix)
+-	{
+-	  add_prefix (&exec_prefixes, md_exec_prefix, "GCC",
+-		      PREFIX_PRIORITY_LAST, 0, 0);
+-	}
+-    }
+-
+   /* Process sysroot_suffix_spec.  */
+   if (*sysroot_suffix_spec != 0
+       && do_spec_2 (sysroot_suffix_spec) == 0)
+@@ -6228,49 +6172,12 @@
+     }
+   /* We should eventually get rid of all these and stick to
+      startfile_prefix_spec exclusively.  */
+-  else if (*cross_compile == '0' || target_system_root)
++  else
+     {
+-      if (*md_startfile_prefix)
+-	add_sysrooted_prefix (&startfile_prefixes, md_startfile_prefix,
+-			      "GCC", PREFIX_PRIORITY_LAST, 0, 1);
+-
+-      if (*md_startfile_prefix_1)
+-	add_sysrooted_prefix (&startfile_prefixes, md_startfile_prefix_1,
+-			      "GCC", PREFIX_PRIORITY_LAST, 0, 1);
+-
 -      /* If standard_startfile_prefix is relative, base it on
 -	 standard_exec_prefix.  This lets us move the installed tree
 -	 as a unit.  If GCC_EXEC_PREFIX is defined, base
@@ -132,7 +202,7 @@ $DragonFly: src/gnu/usr.bin/cc41/cc_prep/patches/gcc.c.patch,v 1.1 2006/09/27 12
      }
  
    /* Process any user specified specs in the order given on the command
-@@ -6269,7 +6218,7 @@
+@@ -6306,7 +6213,7 @@
  
    if (print_search_dirs)
      {
