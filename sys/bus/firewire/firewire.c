@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.18 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.19 2007/08/24 15:58:33 dillon Exp $
  *
  */
 
@@ -519,6 +519,7 @@ fw_xferq_drain(struct fw_xferq *xferq)
 		STAILQ_REMOVE_HEAD(&xferq->q, link);
 		xferq->queued --;
 		xfer->resp = EAGAIN;
+		xfer->state = FWXF_SENTERR;
 		fw_xfer_done(xfer);
 	}
 }
