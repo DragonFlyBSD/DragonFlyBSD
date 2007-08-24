@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ohci_pci.c,v 1.44.2.1 2006/01/29 01:26:46 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.8 2007/05/01 00:05:16 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci_pci.c,v 1.9 2007/08/24 16:02:47 dillon Exp $
  */
 
 /*
@@ -87,6 +87,9 @@ static const char *ohci_device_aladdin_v = "AcerLabs M5237 (Aladdin-V) USB contr
 
 #define PCI_OHCI_DEVICEID_AMD756	0x740c1022
 static const char *ohci_device_amd756 = "AMD-756 USB Controller";
+
+#define PCI_OHCI_DEVICEID_CS5536	0x20941022
+static const char *ohci_device_cs5536 = "AMD CS5536 [geode companion] USB Controller";
 
 #define PCI_OHCI_DEVICEID_AMD766	0x74141022
 static const char *ohci_device_amd766 = "AMD-766 USB Controller";
@@ -180,6 +183,8 @@ ohci_pci_match(device_t self)
 		return (ohci_device_amd756);
 	case PCI_OHCI_DEVICEID_AMD766:
 		return (ohci_device_amd766);
+	case PCI_OHCI_DEVICEID_CS5536:
+		return (ohci_device_cs5536);
 	case PCI_OHCI_DEVICEID_SB400_1:
 	case PCI_OHCI_DEVICEID_SB400_2:
 		return (ohci_device_sb400);
