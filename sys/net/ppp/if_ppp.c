@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.35 2007/05/23 08:57:10 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.36 2007/08/24 16:00:52 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -239,6 +239,7 @@ pppattach(void *dummy)
 
     for (sc = ppp_softc; i < NPPP; sc++) {
     	if_initname(&(sc->sc_if), "ppp", i++);
+	sc->sc_if.if_softc = sc;
 	sc->sc_if.if_mtu = PPP_MTU;
 	sc->sc_if.if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
 	sc->sc_if.if_type = IFT_PPP;
