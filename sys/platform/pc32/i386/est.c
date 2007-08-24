@@ -85,7 +85,7 @@
  *   ACPI objects: _PCT is MSR location, _PSS is freq/voltage, _PPC is caps.
  *
  * $NetBSD: est.c,v 1.25 2006/06/18 16:39:56 nonaka Exp $
- * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.8 2007/04/30 16:39:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.9 2007/08/24 16:08:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -431,6 +431,18 @@ static const struct fq_info pentium_m_n770_2[] = {
 	{  800,  988 }
 };
 
+/* Intel Pentium Core Duo T2300 */
+static const struct fq_info pentium_core_duo[] = {
+	{ 1666, 1404 },
+	{ 1500, 1404 },
+	{ 1333, 1404 },
+	{ 1167, 1404 },
+	{ 1000, 1004 },
+	{  667, 1004 },
+	{  333, 1004 },
+	{  167, 1004 },
+};
+
 struct fqlist {
 	const char *brand_tag;
 	const u_int cpu_id;
@@ -487,7 +499,15 @@ static const struct fqlist pentium_m_dothan[] = {
 	ENTRY("2.13", 0x06d8, pentium_m_n770, 4),
 	ENTRY("2.13", 0x06d8, pentium_m_n770_2, 4),
 
+
 };
+
+static const struct fqlist pentium_yonah[] = {
+
+	/* 666 MHz FSB CPUs */
+        ENTRY("1.66", 0x06e8, pentium_core_duo, 5 ),
+};
+
 #undef ENTRY
 
 struct est_cpu {
@@ -507,6 +527,11 @@ static const struct est_cpu est_cpus[] = {
 		"Intel(R) Pentium(R) M processor ", "GHz",
 		(sizeof(pentium_m_dothan) / sizeof(pentium_m_dothan[0])),
 		pentium_m_dothan
+	},
+	{
+		"Genuine Intel(R) CPU           T2300  @ ", "GHz",
+		(sizeof(pentium_yonah) / sizeof(pentium_yonah[0])),
+		pentium_yonah
 	},
 };
 
