@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.23 2006/12/22 23:44:57 swildner Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.24 2007/08/24 16:06:37 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -380,7 +380,13 @@ pppwrite(struct tty *tp, struct uio *uio, int flag)
 
     crit_enter();
     for (mp = &m0; uio->uio_resid; mp = &m->m_next) {
-	MGET(m, MB_WAIT, MT_DATA);
+	if (mp == &m0) {
+		MGETHDR(m, MB_WAIT, MT_DATA);
+		m->m_pkthdr.len = uio->uio_resid - PPP_HDRLEN;
+		m->m_pkthdr.rcvif = NULL;
+	} else {
+		MGET(m, MB_WAIT, MT_DATA);
+	}
 	if ((*mp = m) == NULL) {
 	    m_freem(m0);
 	    crit_exit();
