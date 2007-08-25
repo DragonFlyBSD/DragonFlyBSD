@@ -28,7 +28,7 @@
  *
  * @(#)rpc_main.c 1.30 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_main.c,v 1.11 1999/08/28 01:05:16 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.10 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.11 2007/08/25 08:55:26 corecode Exp $
  */
 
 
@@ -317,11 +317,9 @@ open_input(char *infile, char *define)
 		    execvp(arglist[0], arglist);
 		else
 		    execv(arglist[0], arglist);
-		warn("execv");
-		exit(1);
+		err(1, "execv(%s)", arglist[0]);
 	case -1:
-		warn("fork");
-		exit(1);
+		err(1, "fork");
 	}
 	close(pd[1]);
 	fin = fdopen(pd[0], "r");
