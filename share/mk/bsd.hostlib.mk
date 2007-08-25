@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/bsd.hostlib.mk,v 1.1 2005/06/05 19:23:10 corecode Exp $
+# $DragonFly: src/share/mk/bsd.hostlib.mk,v 1.2 2007/08/25 15:22:30 corecode Exp $
 
 .include <bsd.init.mk>
 
@@ -40,7 +40,7 @@ lib${LIB}.na: ${OBJS} ${STATICOBJS}
 
 all: ${_LIBS}
 
-_EXTRADEPEND: all
+afterdepend: all
 
 .include <bsd.dep.mk>
 
