@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/gengtype/Makefile,v 1.1 2006/09/27 12:10:34 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/gengtype/Makefile,v 1.2 2007/08/25 15:29:29 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -8,7 +8,7 @@ SRCS+=	${ERRORS_SRCS}
 
 CLEANFILES+=	gtyp-gen.h
 
-gtyp-gen.h: Makefile ../../Makefile.langs
+gtyp-gen.h: Makefile ../../Makefile.langs ${GTFILES}
 	echo "/* This file is machine generated.  Do not edit.  */" > gtyp-gen.h
 	echo "static const char *const srcdir = "  >> gtyp-gen.h
 	echo "\"$(GTFILES_SRCDIR)\"" >> gtyp-gen.h
@@ -33,5 +33,11 @@ gtyp-gen.h: Makefile ../../Makefile.langs
 	echo "\"${gtyp}\", " >> gtyp-gen.h
 .endfor
 	echo "NULL};" >> gtyp-gen.h
+
+all: ${TOOLGENDIR}/gtype-stamp
+
+${TOOLGENDIR}/gtype-stamp: ${PROG}.nx
+	cd ${TOOLGENDIR} && ${.OBJDIR}/${PROG}.nx
+	touch ${.TARGET}
 
 .include <bsd.hostprog.mk>

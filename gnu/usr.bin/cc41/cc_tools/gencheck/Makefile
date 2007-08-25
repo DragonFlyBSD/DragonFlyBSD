@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/gencheck/Makefile,v 1.1 2006/09/27 12:10:34 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/gencheck/Makefile,v 1.2 2007/08/25 15:29:29 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -16,5 +16,8 @@ gencheck.h: Makefile ../../Makefile.langs
 .else
 	touch ${.TARGET}
 .endif
+
+GENFILE= tree-check.h
+.include "../Makefile.gen"
 
 .include <bsd.hostprog.mk>
