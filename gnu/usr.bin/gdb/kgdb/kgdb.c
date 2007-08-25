@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/main.c,v 1.11 2006/01/04 23:17:52 kan Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kgdb.c,v 1.1 2006/03/07 15:48:11 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kgdb.c,v 1.2 2007/08/25 21:59:05 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -37,6 +37,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/wait.h>
+#include <sys/msgbuf.h>
 #include <errno.h>
 #include <err.h>
 #include <fcntl.h>
@@ -80,6 +81,20 @@ static char *remote;
 static char *vmcore;
 
 static void (*kgdb_new_objfile_chain)(struct objfile * objfile);
+
+uintptr_t
+lookup(const char *sym)
+{
+	struct nlist nl[2];
+
+	nl[0].n_name = (char *)(uintptr_t)sym;
+	nl[1].n_name = NULL;
+	if (kvm_nlist(kvm, nl) != 0) {
+		warnx("kvm_nlist(%s): %s", sym, kvm_geterr(kvm));
+		return (0);
+	}
+	return (nl[0].n_value);
+}
 
 static void
 kgdb_atexit(void)
@@ -238,29 +253,31 @@ kgdb_init_target(void)
 static void
 kgdb_display_msgbuf(void)
 {
-	CORE_ADDR bufp;
-	int size, rseq, wseq;
+	uintptr_t addr;
+	struct msgbuf *bufp, buf;
+	size_t rseq, wseq;
 	char c;
 
 	/*
 	 * Display the unread portion of the message buffer. This gives the
 	 * user a some initial data to work from.
 	 */
-	bufp = kgdb_parse("msgbufp->msg_ptr");
-	size = (int)kgdb_parse("msgbufp->msg_size");
-	rseq = (int)kgdb_parse("msgbufp->msg_bufr");
-	wseq = (int)kgdb_parse("msgbufp->msg_bufx");
-	rseq = MSGBUF_SEQ_TO_POS(size, rseq);
-	wseq = MSGBUF_SEQ_TO_POS(size, wseq);
-	if (bufp == 0 || size == 0 || rseq == wseq)
+	addr = lookup("_msgbufp");
+	if (addr == 0)
 		return;
+	read_memory((CORE_ADDR)addr, (char *)&bufp, sizeof(bufp));
+	read_memory((CORE_ADDR)bufp, (char *)&buf, sizeof(buf));
+	if (buf.msg_size == 0 || buf.msg_bufr == buf.msg_bufx)
+		return;
+	rseq = MSGBUF_SEQ_TO_POS(buf.msg_size, buf.msg_bufr);
+	wseq = MSGBUF_SEQ_TO_POS(buf.msg_size, buf.msg_bufx);
 
 	printf("\nUnread portion of the kernel message buffer:\n");
 	while (rseq < wseq) {
-		read_memory(bufp + rseq, &c, 1);
+		read_memory((CORE_ADDR)buf.msg_ptr + rseq, &c, 1);
 		putchar(c);
 		rseq++;
-		if (rseq == size)
+		if (rseq == buf.msg_size)
 			rseq = 0;
 	}
 	if (c != '\n')

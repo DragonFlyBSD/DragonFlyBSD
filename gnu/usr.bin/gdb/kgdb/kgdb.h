@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kgdb.h,v 1.3 2005/09/10 18:25:53 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kgdb.h,v 1.2 2006/09/30 20:03:44 swildner Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kgdb.h,v 1.3 2007/08/25 21:59:05 corecode Exp $
  */
 
 #ifndef _KGDB_H_
@@ -45,6 +45,8 @@ struct kthr {
 };
 
 extern struct kthr *curkthr;
+
+uintptr_t lookup(const char *);
 
 void kgdb_target(void);
 void kgdb_trgt_fetch_registers(int);

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.3 2005/09/10 18:25:53 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.2 2006/07/09 01:38:57 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.3 2007/08/25 21:59:05 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -52,20 +52,6 @@ static int dumptid;
 
 static struct kthr *first;
 struct kthr *curkthr;
-
-static uintptr_t
-lookup(const char *sym)
-{
-	struct nlist nl[2];
-
-	nl[0].n_name = (char *)(uintptr_t)sym;
-	nl[1].n_name = NULL;
-	if (kvm_nlist(kvm, nl) != 0) {
-		warnx("kvm_nlist(%s): %s", sym, kvm_geterr(kvm));
-		return (0);
-	}
-	return (nl[0].n_value);
-}
 
 struct kthr *
 kgdb_thr_first(void)
