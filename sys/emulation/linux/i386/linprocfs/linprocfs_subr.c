@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.22 2007/05/06 19:23:28 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.23 2007/08/25 23:27:02 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@ static struct pfsnode *pfshead[PFSHSIZE];
 static struct lwkt_token pfs_token;
 static int pfsvplock;
 
-extern int procfs_domem (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+extern int procfs_domem (struct proc *, struct lwp *, struct pfsnode *pfsp, struct uio *uio);
 
 /*
  * allocate a pfsnode/vnode pair.  the vnode is
@@ -249,6 +249,7 @@ linprocfs_rw(struct vop_read_args *ap)
 	struct pfsnode *pfs = VTOPFS(vp);
 	struct proc *p;
 	struct proc *curp;
+	struct lwp *lp;
 	int rtval;
 
 	curp = td->td_proc;
@@ -259,6 +260,8 @@ linprocfs_rw(struct vop_read_args *ap)
 		return (EINVAL);
 	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE)
 		return (EACCES);
+	lp = FIRST_LWP_IN_PROC(p);
+	LWPHOLD(lp);
 
 	while (pfs->pfs_lockowner) {
 		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
@@ -267,7 +270,7 @@ linprocfs_rw(struct vop_read_args *ap)
 
 	switch (pfs->pfs_type) {
 	case Pmem:
-		rtval = procfs_domem(curp, p, pfs, uio);
+		rtval = procfs_domem(curp, lp, pfs, uio);
 		break;
 	case Pprocstat:
 		rtval = linprocfs_doprocstat(curp, p, pfs, uio);
@@ -297,6 +300,7 @@ linprocfs_rw(struct vop_read_args *ap)
 		rtval = EOPNOTSUPP;
 		break;
 	}
+	LWPRELE(lp);
 	pfs->pfs_lockowner = NULL;
 	wakeup(&pfs->pfs_lockowner);
 	return rtval;

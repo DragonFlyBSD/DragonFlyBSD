@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.17 2007/05/06 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.18 2007/08/25 23:27:02 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -279,6 +279,7 @@ procfs_rw(struct vop_read_args *ap)
 		return (EACCES);
 	/* XXX lwp */
 	lp = FIRST_LWP_IN_PROC(p);
+	LWPHOLD(lp);
 
 	while (pfs->pfs_lockowner) {
 		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
@@ -335,6 +336,7 @@ procfs_rw(struct vop_read_args *ap)
 		rtval = EOPNOTSUPP;
 		break;
 	}
+	LWPRELE(lp);
 	pfs->pfs_lockowner = 0;
 	wakeup(&pfs->pfs_lockowner);
 	return rtval;
