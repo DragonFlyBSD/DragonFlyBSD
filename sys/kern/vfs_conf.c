@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.32 2007/06/17 23:50:16 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.33 2007/08/26 16:54:51 dillon Exp $
  */
 
 /*
@@ -304,14 +304,13 @@ vfs_mountroot_ask(void)
 	return(1);
 }
 
-static
-int
+static int
 vfs_mountroot_ask_callback(struct dev_ops *ops, void *arg __unused)
 {
 	cdev_t dev;
 
 	dev = get_dev(ops->head.maj, 0);
-	if (dev_is_good(dev))
+	if (dev_is_good(dev) && (dev_dflags(dev) & D_DISK))
 		kprintf(" \"%s\"", dev_dname(dev));
 	return(0);
 }
@@ -439,7 +438,7 @@ kgetdiskbyname(const char *name)
 	}
 
 	if (*cp != '\0') {
-		kprintf("junk after name\n");
+		kprintf("junk after name: %s\n", cp);
 		return (NULL);
 	}
 
@@ -452,7 +451,7 @@ kgetdiskbyname(const char *name)
 	info.minor = dkmakeminor(unit, slice, part);
 	dev_ops_scan(kgetdiskbyname_callback, &info);
 	if (info.dev == NULL) {
-		kprintf("no such device '%*.*s'\n", nlen, nlen, name);
+		kprintf("no disk named '%s'\n", name);
 		return (NULL);
 	}
 
@@ -463,8 +462,7 @@ kgetdiskbyname(const char *name)
 	return(rdev);
 }
 
-static
-int
+static int
 kgetdiskbyname_callback(struct dev_ops *ops, void *arg)
 {
 	struct kdbn_info *info = arg;
