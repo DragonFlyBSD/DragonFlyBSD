@@ -22,8 +22,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/at/panic.c,v 1.10 1999/12/05 19:57:14 charnier Exp $
- * $DragonFly: src/usr.bin/at/panic.c,v 1.3 2004/09/20 13:11:54 joerg Exp $
+ * $FreeBSD: src/usr.bin/at/panic.c,v 1.17 2002/05/16 00:47:14 tjr Exp $
+ * $DragonFly: src/usr.bin/at/panic.c,v 1.4 2007/08/26 16:12:27 pavalos Exp $
  */
 
 /* System Headers */
@@ -36,8 +36,9 @@
 
 /* Local headers */
 
-#include "panic.h"
 #include "at.h"
+#include "panic.h"
+#include "privs.h"
 
 /* External variables */
 
@@ -48,8 +49,11 @@ panic(const char *a)
 {
 /* Something fatal has happened, print error message and exit.
  */
-	if (fcreated)
+	if (fcreated) {
+		PRIV_START
 		unlink(atfile);
+		PRIV_END
+	}
 
 	errx(EXIT_FAILURE, "%s", a);
 }
@@ -61,8 +65,11 @@ perr(const char *a)
  */
 	int serrno = errno;
 
-	if (fcreated)
+	if (fcreated) {
+		PRIV_START
 		unlink(atfile);
+		PRIV_END
+	}
 
 	errno = serrno;
 	err(EXIT_FAILURE, "%s", a);
@@ -72,10 +79,14 @@ void
 usage(void)
 {
 	/* Print usage and exit. */
-    fprintf(stderr, "usage: at [-V] [-q x] [-f file] [-m] time\n"
-		    "       at [-V] -c job [job ...]\n"
-		    "       atq [-V] [-q x] [-v]\n"
-		    "       atrm [-V] job [job ...]\n"
-		    "       batch [-V] [-f file] [-m]\n");
+    fprintf(stderr, "usage: at [-q x] [-f file] [-m] time\n"
+		    "       at -c job [job ...]\n"
+		    "       at [-f file] -t [[CC]YY]MMDDhhmm[.SS]\n"
+		    "       at -r job [job ...]\n"
+		    "       at -l -q queuename\n"
+		    "       at -l [job ...]\n"
+		    "       atq [-q x] [-v]\n"
+		    "       atrm job [job ...]\n"
+		    "       batch [-f file] [-m]\n");
     exit(EXIT_FAILURE);
 }

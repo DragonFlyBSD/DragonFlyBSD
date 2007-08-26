@@ -22,8 +22,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/at/perm.c,v 1.9.2.1 2001/08/02 00:55:58 obrien Exp $
- * $DragonFly: src/usr.bin/at/perm.c,v 1.4 2004/09/20 13:11:54 joerg Exp $
+ * $FreeBSD: src/usr.bin/at/perm.c,v 1.11 2001/12/02 12:26:18 markm Exp $
+ * $DragonFly: src/usr.bin/at/perm.c,v 1.5 2007/08/26 16:12:27 pavalos Exp $
  */
 
 /* System Headers */
@@ -40,9 +40,9 @@
 
 /* Local headers */
 
+#include "at.h"
 #include "perm.h"
 #include "privs.h"
-#include "at.h"
 
 /* Macros */
 

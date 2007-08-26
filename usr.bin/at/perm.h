@@ -22,7 +22,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/at/perm.h,v 1.2 2004/09/20 13:11:54 joerg Exp $
+ * $FreeBSD: src/usr.bin/at/perm.h,v 1.4 2001/12/02 12:26:18 markm Exp $
+ * $DragonFly: src/usr.bin/at/perm.h,v 1.3 2007/08/26 16:12:27 pavalos Exp $
  */
 
 int check_permission(void);

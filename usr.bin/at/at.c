@@ -25,23 +25,25 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/at/at.c,v 1.18.2.1 2001/08/02 00:55:58 obrien Exp $
- * $DragonFly: src/usr.bin/at/at.c,v 1.6 2006/03/29 19:37:43 swildner Exp $
+ * $FreeBSD: src/usr.bin/at/at.c,v 1.29 2002/07/22 11:32:16 robert Exp $
+ * $DragonFly: src/usr.bin/at/at.c,v 1.7 2007/08/26 16:12:27 pavalos Exp $
  */
 
 #define _USE_BSD 1
 
 /* System Headers */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
 #include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/wait.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <langinfo.h>
+#include <locale.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stddef.h>
@@ -50,14 +52,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
-#include <locale.h>
-
-#if (MAXLOGNAME-1) > UT_NAMESIZE
-#define LOGNAMESIZE UT_NAMESIZE
-#else
-#define LOGNAMESIZE (MAXLOGNAME-1)
-#endif
 
 /* Local headers */
 
@@ -109,6 +103,7 @@ char atfile[sizeof(ATJOB_DIR) + 14] = ATJOB_DIR;
 char *atinput = NULL;		/* where to get input from */
 char atqueue = 0;		/* which queue to examine for jobs (atq) */
 char atverify = 0;		/* verify time instead of queuing job */
+char *namep;
 
 /* Function declarations */
 
@@ -116,7 +111,11 @@ static void sigc(int signo);
 static void alarmc(int signo);
 static char *cwdname(void);
 static void writefile(time_t runtimer, char queue);
-static void list_jobs(void);
+static void list_jobs(long *, int);
+static long nextjob(void);
+static time_t ttime(const char *arg);
+static int in_job_list(long, long *, int);
+static long *get_job_list(int, char *[], int *);
 
 /* Signal catching functions */
 
@@ -132,15 +131,19 @@ void sigc(int signo __unused)
 	PRIV_END
     }
 
-    exit(EXIT_FAILURE);
+    _exit(EXIT_FAILURE);
 }
 
 static
-void alarmc(int sign __unused)
+void alarmc(int signo __unused)
 {
-/* Time out after some seconds
- */
-    panic("file locking timed out");
+    char buf[1024];
+
+    /* Time out after some seconds. */
+    strlcpy(buf, namep, sizeof(buf));
+    strlcat(buf, ": file locking timed out\n", sizeof(buf));
+    write(STDERR_FILENO, buf, strlen(buf));
+    sigc(0);
 }
 
 /* Local functions */
@@ -307,15 +310,15 @@ writefile(time_t runtimer, char queue)
     if((fp = fdopen(fdes, "w")) == NULL)
 	panic("cannot reopen atjob file");
 
-    /* Get the userid to mail to, first by trying getlogin(), which reads
-     * /etc/utmp, then from LOGNAME, finally from getpwuid().
+    /* Get the userid to mail to, first by trying getlogin(),
+     * then from LOGNAME, finally from getpwuid().
      */
     mailname = getlogin();
     if (mailname == NULL)
 	mailname = getenv("LOGNAME");
 
     if ((mailname == NULL) || (mailname[0] == '\0') 
-	|| (strlen(mailname) > LOGNAMESIZE) || (getpwnam(mailname)==NULL))
+	|| (strlen(mailname) >= MAXLOGNAME) || (getpwnam(mailname)==NULL))
     {
 	pass_entry = getpwuid(real_uid);
 	if (pass_entry != NULL)
@@ -329,7 +332,8 @@ writefile(time_t runtimer, char queue)
 	    perr("cannot open input file");
     }
     fprintf(fp, "#!/bin/sh\n# atrun uid=%ld gid=%ld\n# mail %*s %d\n",
-	(long) real_uid, (long) real_gid, LOGNAMESIZE, mailname, send_mail);
+	(long) real_uid, (long) real_gid, MAXLOGNAME - 1, mailname,
+	send_mail);
 
     /* Write out the umask at the time of invocation
      */
@@ -350,7 +354,7 @@ writefile(time_t runtimer, char queue)
 	    eqp = *atenv;
 	else
 	{
-	    unsigned int i;
+	    size_t i;
 	    for (i=0; i<sizeof(no_export)/sizeof(no_export[0]); i++)
 	    {
 		export = export
@@ -434,8 +438,20 @@ writefile(time_t runtimer, char queue)
     fprintf(stderr, "Job %ld will be executed using /bin/sh\n", jobno);
 }
 
+static int
+in_job_list(long job, long *joblist, int len)
+{
+    int i;
+
+    for (i = 0; i < len; i++)
+	if (job == joblist[i])
+	    return 1;
+
+    return 0;
+}
+
 static void
-list_jobs(void)
+list_jobs(long *joblist, int len)
 {
     /* List all a user's jobs in the queue, by looping through ATJOB_DIR, 
      * or everybody's if we are root
@@ -479,19 +495,23 @@ list_jobs(void)
 	if(sscanf(dirent->d_name, "%c%5lx%8lx", &queue, &jobno, &ctm)!=3)
 	    continue;
 
+	/* If jobs are given, only list those jobs */
+	if (joblist && !in_job_list(jobno, joblist, len))
+	    continue;
+
 	if (atqueue && (queue != atqueue))
 	    continue;
 
 	runtimer = 60*(time_t) ctm;
 	runtime = *localtime(&runtimer);
-	strftime(timestr, TIMESIZE, "%X %x", &runtime);
+	strftime(timestr, TIMESIZE, nl_langinfo(D_T_FMT), &runtime);
 	if (first) {
-	    printf("Date\t\t\tOwner\tQueue\tJob#\n");
+	    printf("Date\t\t\t\tOwner\t\tQueue\tJob#\n");
 	    first=0;
 	}
 	pw = getpwuid(buf.st_uid);
 
-	printf("%s\t%s\t%c%s\t%ld\n", 
+	printf("%s\t%-16s%c%s\t%ld\n",
 	       timestr, 
 	       pw ? pw->pw_name : "???", 
 	       queue, 
@@ -585,6 +605,102 @@ process_jobs(int argc, char **argv, int what)
     closedir(spool);
 } /* delete_jobs */
 
+#define	ATOI2(ar)	((ar)[0] - '0') * 10 + ((ar)[1] - '0'); (ar) += 2;
+
+static time_t
+ttime(const char *arg)
+{
+    /*
+     * This is pretty much a copy of stime_arg1() from touch.c.  I changed
+     * the return value and the argument list because it's more convenient
+     * (IMO) to do everything in one place. - Joe Halpin
+     */
+    struct timeval tv[2];
+    time_t now;
+    struct tm *t;
+    int yearset;
+    char *p;
+
+    if (gettimeofday(&tv[0], NULL))
+	panic("Cannot get current time");
+
+    /* Start with the current time. */
+    now = tv[0].tv_sec;
+    if ((t = localtime(&now)) == NULL)
+	panic("localtime");
+    /* [[CC]YY]MMDDhhmm[.SS] */
+    if ((p = strchr(arg, '.')) == NULL)
+	t->tm_sec = 0;		/* Seconds defaults to 0. */
+    else {
+	if (strlen(p + 1) != 2)
+	    goto terr;
+	*p++ = '\0';
+	t->tm_sec = ATOI2(p);
+    }
+
+    yearset = 0;
+    switch(strlen(arg)) {
+    case 12:			/* CCYYMMDDhhmm */
+	t->tm_year = ATOI2(arg);
+	t->tm_year *= 100;
+	yearset = 1;
+	/* FALLTHROUGH */
+    case 10:			/* YYMMDDhhmm */
+	if (yearset) {
+	    yearset = ATOI2(arg);
+	    t->tm_year += yearset;
+	} else {
+	    yearset = ATOI2(arg);
+	    t->tm_year = yearset + 2000;
+	}
+	t->tm_year -= 1900;	/* Convert to UNIX time. */
+	/* FALLTHROUGH */
+    case 8:				/* MMDDhhmm */
+	t->tm_mon = ATOI2(arg);
+	--t->tm_mon;		/* Convert from 01-12 to 00-11 */
+	t->tm_mday = ATOI2(arg);
+	t->tm_hour = ATOI2(arg);
+	t->tm_min = ATOI2(arg);
+	break;
+    default:
+	goto terr;
+    }
+
+    t->tm_isdst = -1;		/* Figure out DST. */
+    tv[0].tv_sec = tv[1].tv_sec = mktime(t);
+    if (tv[0].tv_sec != -1)
+	return tv[0].tv_sec;
+    else
+terr:
+	panic(
+	   "out of range or illegal time specification: [[CC]YY]MMDDhhmm[.SS]");
+}
+
+static long *
+get_job_list(int argc, char *argv[], int *joblen)
+{
+    int i, len;
+    long *joblist;
+    char *ep;
+
+    joblist = NULL;
+    len = argc;
+    if (len > 0) {
+	if ((joblist = malloc(len * sizeof(*joblist))) == NULL)
+	    panic("out of memory");
+
+	for (i = 0; i < argc; i++) {
+	    errno = 0;
+	    if ((joblist[i] = strtol(argv[i], &ep, 10)) < 0 ||
+		ep == argv[i] || *ep != '\0' || errno)
+		panic("invalid job number");
+	}
+    }
+
+    *joblen = len;
+    return joblist;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -594,10 +710,14 @@ main(int argc, char **argv)
     char *pgm;
 
     int program = AT;			/* our default program */
-    const char *options = "q:f:mvldbVc"; /* default options for at */
-    int disp_version = 0;
+    const char *options = "q:f:t:rmvldbc"; /* default options for at */
     time_t timer;
+    long *joblist;
+    int joblen;
 
+    joblist = NULL;
+    joblen = 0;
+    timer = -1;
     RELINQUISH_PRIVS
 
     /* Eat any leading paths
@@ -607,19 +727,21 @@ main(int argc, char **argv)
     else
         pgm++;
 
+    namep = pgm;
+
     /* find out what this program is supposed to do
      */
     if (strcmp(pgm, "atq") == 0) {
 	program = ATQ;
-	options = "q:vV";
+	options = "q:v";
     }
     else if (strcmp(pgm, "atrm") == 0) {
 	program = ATRM;
-	options = "V";
+	options = "";
     }
     else if (strcmp(pgm, "batch") == 0) {
 	program = BATCH;
-	options = "f:q:mvV";
+	options = "f:q:mv";
     }
 
     /* process whatever options we can process
@@ -651,11 +773,21 @@ main(int argc, char **argv)
 	    break;
 
 	case 'd':
+	    warnx("-d is deprecated; use -r instead");
+	    /* fall through to 'r' */
+
+	case 'r':
 	    if (program != AT)
 		usage();
 
 	    program = ATRM;
-	    options = "V";
+	    options = "";
+	    break;
+
+	case 't':
+	    if (program != AT)
+		usage();
+	    timer = ttime(optarg);
 	    break;
 
 	case 'l':
@@ -663,7 +795,7 @@ main(int argc, char **argv)
 		usage();
 
 	    program = ATQ;
-	    options = "q:vV";
+	    options = "q:";
 	    break;
 
 	case 'b':
@@ -671,11 +803,7 @@ main(int argc, char **argv)
 		usage();
 
 	    program = BATCH;
-	    options = "f:q:mvV";
-	    break;
-
-	case 'V':
-	    disp_version = 1;
+	    options = "f:q:mv";
 	    break;
 
 	case 'c':
@@ -690,10 +818,6 @@ main(int argc, char **argv)
     /* end of options eating
      */
 
-    if (disp_version)
-	fprintf(stderr, "at version " VERSION "\n"
-			"Bug reports to: ig25@rz.uni-karlsruhe.de (Thomas Koenig)\n");
-
     /* select our program
      */
     if(!check_permission())
@@ -703,7 +827,9 @@ main(int argc, char **argv)
 
 	REDUCE_PRIV(DAEMON_UID, DAEMON_GID)
 
-	list_jobs();
+	if (queue_set == 0)
+	    joblist = get_job_list(argc - optind, argv + optind, &joblen);
+	list_jobs(joblist, joblen);
 	break;
 
     case ATRM:
@@ -719,7 +845,13 @@ main(int argc, char **argv)
 	break;
 
     case AT:
-	timer = parsetime(argc, argv);
+	/*
+	 * If timer is > -1, then the user gave the time with -t.  In that
+	 * case, it's already been set. If not, set it now.
+	 */
+	if (timer == -1)
+	    timer = parsetime(argc, argv);
+
 	if (atverify)
 	{
 	    struct tm *tm = localtime(&timer);

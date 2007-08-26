@@ -22,7 +22,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/at/panic.h,v 1.4 2004/09/20 13:11:54 joerg Exp $
+ * $FreeBSD: src/usr.bin/at/panic.h,v 1.6 2002/01/13 20:21:08 mike Exp $
+ * $DragonFly: src/usr.bin/at/panic.h,v 1.5 2007/08/26 16:12:27 pavalos Exp $
  */
 
 void	panic(const char *a) __dead2;

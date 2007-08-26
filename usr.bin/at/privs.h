@@ -22,24 +22,18 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/at/privs.h,v 1.7 1999/12/05 19:57:14 charnier Exp $
- * $DragonFly: src/usr.bin/at/privs.h,v 1.3 2004/09/20 13:11:54 joerg Exp $
+ * $FreeBSD: src/usr.bin/at/privs.h,v 1.8 2001/09/04 16:15:51 ru Exp $
+ * $DragonFly: src/usr.bin/at/privs.h,v 1.4 2007/08/26 16:12:27 pavalos Exp $
  */
 
 #ifndef _PRIVS_H
 #define _PRIVS_H
 
-#ifndef _USE_BSD
-#define _USE_BSD 1
 #include <unistd.h>
-#undef _USE_BSD
-#else
-#include <unistd.h>
-#endif
 
 /* Relinquish privileges temporarily for a setuid or setgid program
- * with the option of getting them back later.  This is done by swapping
- * the real and effective userid BSD style.  Call RELINQUISH_PRIVS once
+ * with the option of getting them back later.  This is done by
+ * utilizing POSIX saved user and group IDs.  Call RELINQUISH_PRIVS once
  * at the beginning of the main program.  This will cause all operations
  * to be executed with the real userid.  When you need the privileges
  * of the setuid/setgid invocation, call PRIV_START; when you no longer
@@ -70,38 +64,39 @@ extern uid_t real_uid, effective_uid;
 extern gid_t real_gid, effective_gid;
 
 #define RELINQUISH_PRIVS { \
-			      real_uid = getuid(); \
-			      effective_uid = geteuid(); \
-			      real_gid = getgid(); \
-			      effective_gid = getegid(); \
-			      setreuid(effective_uid, real_uid); \
-			      setregid(effective_gid, real_gid); \
-		          }
+	real_uid = getuid(); \
+	effective_uid = geteuid(); \
+	real_gid = getgid(); \
+	effective_gid = getegid(); \
+	seteuid(real_uid); \
+	setegid(real_gid); \
+}
 
-#define RELINQUISH_PRIVS_ROOT(a,b) { \
-			      real_uid = (a); \
-			      effective_uid = geteuid(); \
-			      real_gid = (b); \
-			      effective_gid = getegid(); \
-			      setregid(effective_gid, real_gid); \
-			      setreuid(effective_uid, real_uid); \
-		          }
+#define RELINQUISH_PRIVS_ROOT(a, b) { \
+	real_uid = (a); \
+	effective_uid = geteuid(); \
+	real_gid = (b); \
+	effective_gid = getegid(); \
+	setegid(real_gid); \
+	seteuid(real_uid); \
+}
 
-#define PRIV_START {\
-		    setreuid(real_uid, effective_uid); \
-		    setregid(real_gid, effective_gid);
+#define PRIV_START { \
+	seteuid(effective_uid); \
+	setegid(effective_gid); \
+}
 
-#define PRIV_END \
-		    setregid(effective_gid, real_gid); \
-		    setreuid(effective_uid, real_uid); \
-		    }
+#define PRIV_END { \
+	setegid(real_gid); \
+	seteuid(real_uid); \
+}
 
-#define REDUCE_PRIV(a,b) {\
-			setreuid(real_uid, effective_uid); \
-			setregid(real_gid, effective_gid); \
-			effective_uid = (a); \
-			effective_gid = (b); \
-			setregid(effective_gid, real_gid); \
-			setreuid(effective_uid, real_uid); \
-		    }
+#define REDUCE_PRIV(a, b) { \
+	PRIV_START \
+	effective_uid = (a); \
+	effective_gid = (b); \
+	setreuid((uid_t)-1, effective_uid); \
+	setregid((gid_t)-1, effective_gid); \
+	PRIV_END \
+}
 #endif

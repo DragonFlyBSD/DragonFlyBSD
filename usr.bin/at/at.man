@@ -1,6 +1,6 @@
-.\" $FreeBSD: src/usr.bin/at/at.man,v 1.13.2.10 2003/05/03 21:55:26 keramida Exp $
-.\" $DragonFly: src/usr.bin/at/at.man,v 1.5 2006/11/11 18:50:04 swildner Exp $
-.Dd April 12, 1995
+.\" $FreeBSD: src/usr.bin/at/at.man,v 1.34 2003/03/26 02:38:18 keramida Exp $
+.\" $DragonFly: src/usr.bin/at/at.man,v 1.6 2007/08/26 16:12:27 pavalos Exp $
+.Dd January 13, 2002
 .Dt "AT" 1
 .Os
 .Sh NAME
@@ -11,35 +11,48 @@
 .Nd queue, examine or delete jobs for later execution
 .Sh SYNOPSIS
 .Nm at
-.Op Fl V
 .Op Fl q Ar queue
 .Op Fl f Ar file
 .Op Fl mldbv
 .Ar time
 .Nm at
-.Op Fl V
+.Op Fl q Ar queue
+.Op Fl f Ar file
+.Op Fl mldbv
+.Fl t
+.Sm off
+.Op Oo Ar CC Oc Ar YY
+.Ar MM DD hh mm Op . Ar SS
+.Sm on
+.Nm at
 .Fl c Ar job Op Ar job ...
+.Nm at
+.Fl l Op Ar job ...
+.Nm at
+.Fl l
+.Fl q Ar queue
+.Nm at
+.Fl r Ar job Op Ar job ...
 .Pp
 .Nm atq
-.Op Fl V
 .Op Fl q Ar queue
 .Op Fl v
 .Pp
 .Nm atrm
-.Op Fl V
 .Ar job
 .Op Ar job ...
 .Pp
 .Nm batch
-.Op Fl V
 .Op Fl q Ar queue
 .Op Fl f Ar file
 .Op Fl mv
 .Op Ar time
 .Sh DESCRIPTION
-.Nm \&At
+The
+.Nm at
 and
 .Nm batch
+utilities
 read commands from standard input or a specified file which are to
 be executed at a later time, using
 .Xr sh 1 .
@@ -57,8 +70,9 @@ drops below _LOADAVG_MX, or the value specified in the invocation of
 .Nm atrun .
 .El
 .Pp
-.Nm \&At
-allows some moderately complex
+The
+.Nm at
+utility allows some moderately complex
 .Ar time
 specifications.
 It accepts times of the form
@@ -103,19 +117,27 @@ where the time-units can be
 .Em months
 or
 .Em years
-and you can tell
+and
 .Nm
-to run the job today by suffixing the time with
+may be told to run the job today by suffixing the time with
 .Em today
 and to run the job tomorrow by suffixing the time with
 .Em tomorrow .
 .Pp
-For example, to run a job at 4pm three days from now, you would do
+For example, to run a job at 4pm three days from now, use
 .Nm at Ar 4pm + 3 days ,
-to run a job at 10:00am on July 31, you would do
+to run a job at 10:00am on July 31, use
 .Nm at Ar 10am Jul 31
-and to run a job at 1am tomorrow, you would do
+and to run a job at 1am tomorrow, use
 .Nm at Ar 1am tomorrow .
+.Pp
+The
+.Nm at
+utility also supports the
+.Tn POSIX
+time format (see
+.Fl t
+option).
 .Pp
 For both
 .Nm
@@ -175,15 +197,32 @@ does not exist,
 .Pa _PERM_PATH/at.deny
 is checked, every username not mentioned in it is then allowed
 to use
-.Nm Ns .
+.Nm .
+In these two files, a user is considered to be listed only if the user
+name has no blank or other characters before it on its line and a
+newline character immediately after the name, even at the end of
+the file.
+Other lines are ignored and may be used for comments.
 .Pp
 If neither exists, only the superuser is allowed use of
-.Nm Ns .
+.Nm .
 This is the default configuration.
+.Sh IMPLEMENTATION NOTES
+Note that
+.Nm
+is implemented through the
+.Xr cron 8
+daemon by calling
+.Xr atrun 8
+every five minutes.
+This implies that the granularity of
+.Nm
+might not be optimal for every deployment.
+If a finer granularity is needed, the system crontab at
+.Pa /etc/crontab
+needs to be changed.
 .Sh OPTIONS
 .Bl -tag -width indent
-.It Fl V
-Print the version number to standard error.
 .It Fl q Ar queue
 Use the specified queue.
 A queue designation consists of a single letter; valid queue designations
@@ -217,11 +256,15 @@ Read the job from
 .Ar file
 rather than standard input.
 .It Fl l
-Is an alias for
-.Nm atq .
+With no arguments, list all jobs for the invoking user.
+If one or more
+job numbers are given, list only those jobs.
 .It Fl d
 Is an alias for
-.Nm atrm .
+.Nm atrm
+(this option is deprecated; use
+.Fl r
+instead).
 .It Fl b
 Is an alias for
 .Nm batch .
@@ -232,6 +275,43 @@ shows completed but not yet deleted jobs in the queue; otherwise
 shows the time the job will be executed.
 .It Fl c
 Cat the jobs listed on the command line to standard output.
+.It Fl r
+Remove the specified jobs.
+.It Fl t
+Specify the job time using the \*[Px] time format.
+The argument should be in the form
+.Sm off
+.Op Oo Ar CC Oc Ar YY
+.Ar MM DD hh mm Op . Ar SS
+.Sm on
+where each pair of letters represents the following:
+.Pp
+.Bl -tag -width indent -compact -offset indent
+.It Ar CC
+The first two digits of the year (the century).
+.It Ar YY
+The second two digits of the year.
+.It Ar MM
+The month of the year, from 1 to 12.
+.It Ar DD
+the day of the month, from 1 to 31.
+.It Ar hh
+The hour of the day, from 0 to 23.
+.It Ar mm
+The minute of the hour, from 0 to 59.
+.It Ar SS
+The second of the minute, from 0 to 61.
+.El
+.Pp
+If the
+.Ar CC
+and
+.Ar YY
+letter pairs are not specified, the values default to the current
+year.
+If the
+.Ar SS
+letter pair is not specified, the value defaults to 0.
 .El
 .Sh FILES
 .Bl -tag -width _ATJOB_DIR/_LOCKFILE -compact
@@ -267,7 +347,9 @@ utilities do not conform to
 At was mostly written by
 .An Thomas Koenig Aq ig25@rz.uni-karlsruhe.de .
 The time parsing routines are by
-.An David Parsons Aq orc@pell.chi.il.us .
+.An David Parsons Aq orc@pell.chi.il.us ,
+with minor enhancements by
+.An Joe Halpin Aq joe.halpin@attbi.com .
 .Sh BUGS
 If the file
 .Pa /var/run/utmp
@@ -279,11 +361,15 @@ in the environment variable
 .Ev LOGNAME .
 If that is undefined or empty, the current userid is assumed.
 .Pp
-.Nm \&At
+The
+.Nm at
 and
 .Nm batch
+utilities
 as presently implemented are not suitable when users are competing for
 resources.
-If this is the case for your site, you might want to consider another
-batch system, such as
-.Em nqs .
+If this is the case, another batch system such as
+.Em nqs
+may be more suitable.
+.Pp
+Specifying a date past 2038 may not work on some systems.

@@ -32,8 +32,8 @@
  *     \TEATIME                    / |NUMBER [SLASH NUMBER [SLASH NUMBER]]|
  *                                   \PLUS NUMBER MINUTES|HOURS|DAYS|WEEKS/
  *
- * $FreeBSD: src/usr.bin/at/parsetime.c,v 1.19.2.3 2001/12/19 11:19:16 brian Exp $
- * $DragonFly: src/usr.bin/at/parsetime.c,v 1.5 2004/09/20 13:11:54 joerg Exp $
+ * $FreeBSD: src/usr.bin/at/parsetime.c,v 1.27 2005/08/18 08:18:02 stefanf Exp $
+ * $DragonFly: src/usr.bin/at/parsetime.c,v 1.6 2007/08/26 16:12:27 pavalos Exp $
  */
 
 /* System Headers */
@@ -155,7 +155,7 @@ static int sc_tokplur;	/* scanner - is token plural? */
 static int
 parse_token(char *arg)
 {
-    unsigned int i;
+    size_t i;
 
     for (i=0; i<(sizeof Specials/sizeof Specials[0]); i++)
 	if (strcasecmp(Specials[i].name, arg) == 0) {
@@ -616,14 +616,10 @@ parsetime(int argc, char **argv)
     } /* ugly case statement */
     expect(EOF);
 
-    /* adjust for daylight savings time
+    /* convert back to time_t
      */
     runtime.tm_isdst = -1;
     runtimer = mktime(&runtime);
-    if (runtime.tm_isdst > 0) {
-	runtimer -= 3600;
-	runtimer = mktime(&runtime);
-    }
 
     if (runtimer < 0)
 	panic("garbled time");
