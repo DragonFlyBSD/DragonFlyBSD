@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.38 2007/08/22 16:56:52 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.39 2007/08/26 16:22:31 dillon Exp $
  */
 
 /*
@@ -656,16 +656,6 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	}
 
 	/*
-	 * Severe hack to avoid deadlocks with the buffer cache
-	 */
-	for (i = 0; i < ncount; ++i) {
-		vm_page_t mt = m[i];
-
-		vm_page_io_start(mt);
-		vm_page_wakeup(mt);
-	}
-
-	/*
 	 * pageouts are already clustered, use IO_ASYNC to force a bawrite()
 	 * rather then a bdwrite() to prevent paging I/O from saturating
 	 * the buffer cache.  Dummy-up the sequential heuristic to cause
@@ -702,19 +692,8 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 			    "vnode_pager_putpages: residual I/O %d at %lu\n",
 			    auio.uio_resid, (u_long)m[0]->pindex);
 	}
-	for (i = 0; i < ncount; i++) {
-		vm_page_t mt = m[i];
-
+	for (i = 0; i < ncount; i++)
 		rtvals[i] = VM_PAGER_OK;
-
-		/*
-		 * Severe hack to avoid deadlocks with the buffer cache
-		 */
-		while (vm_page_sleep_busy(mt, FALSE, "putpgs"))
-			;
-		vm_page_busy(mt);
-		vm_page_io_finish(mt);
-	}
 	return rtvals[0];
 }
 
