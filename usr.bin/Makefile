@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.3 (Berkeley) 1/7/94
 # $FreeBSD: src/usr.bin/Makefile,v 1.144.2.17 2003/01/04 17:17:07 obrien Exp $
-# $DragonFly: src/usr.bin/Makefile,v 1.37 2007/07/14 19:14:29 corecode Exp $
+# $DragonFly: src/usr.bin/Makefile,v 1.38 2007/08/26 18:20:49 pavalos Exp $
 
 # XXX MISSING:		deroff diction graph learn plot
 #			spell spline struct xsend
@@ -10,9 +10,9 @@
 #
 SUBDIR=	alias \
 	apply \
+	asa \
 	at \
 	awk \
-	asa \
 	banner \
 	basename \
 	biff \
@@ -141,8 +141,8 @@ SUBDIR=	alias \
 	printf \
 	quota \
 	rdist \
-	renice \
 	relpath \
+	renice \
 	rev \
 	rlogin \
 	rpcgen \
@@ -226,9 +226,9 @@ SUBDIR=	alias \
 
 .if !defined(NO_BIND)
 SUBDIR+=dig \
-	host \
 	dnssec-keygen \
-	dnssec-signzone
+	dnssec-signzone \
+	host
 .endif
 
 .if !defined(NO_OPENSSL)
