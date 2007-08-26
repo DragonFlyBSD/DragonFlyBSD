@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.32 2007/01/19 07:23:42 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.33 2007/08/26 07:53:25 corecode Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -167,12 +167,13 @@ _ILINKS=@ machine_base machine cpu_base cpu
 _ILINKS+=${ARCH}
 .endif
 
-all: objwarn ${PROG}
+all: objwarn fwheaders ${PROG}
 .if !defined(NOMAN)
 all: _manpages
 .endif
 
-beforedepend: ${_ILINKS} ${FORWARD_HEADERS_COOKIE}
+beforedepend: fwheaders
+fwheaders: ${_ILINKS} ${FORWARD_HEADERS_COOKIE}
 # Ensure that the links exist without depending on it when it exists which
 # causes all the modules to be rebuilt when the directory pointed to changes.
 .for _link in ${_ILINKS}
