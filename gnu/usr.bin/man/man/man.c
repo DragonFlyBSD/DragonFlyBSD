@@ -14,7 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/man/man.c,v 1.37.2.10 2003/02/14 15:38:51 ru Exp $
- * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.6 2006/09/09 17:34:46 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.7 2007/08/26 19:42:26 swildner Exp $
  */
 
 #define MAN_MAIN
@@ -1722,7 +1722,7 @@ man (name)
     }
 
   /* Treat name as file name as a last resort */
-  if (!found) {
+  if (!found && shortsec == NULL) {
     struct stat st;
 
     if (debug)
