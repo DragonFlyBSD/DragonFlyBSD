@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/objformat/Makefile,v 1.15 1999/12/24 15:18:19 green Exp $
-# $DragonFly: src/usr.bin/objformat/Makefile,v 1.10 2007/05/08 20:59:37 swildner Exp $
+# $DragonFly: src/usr.bin/objformat/Makefile,v 1.11 2007/08/26 08:15:50 corecode Exp $
 
 PROG=		objformat
 NOSHARED?=	YES
@@ -14,6 +14,11 @@ CFLAGS+=	-DCCVER_DEFAULT="\"${OBJFORMAT_BUILTIN_CCVER_DEFAULT}\""
 .endif
 .if defined(OBJFORMAT_BUILTIN_BINUTILSVER_DEFAULT)
 CFLAGS+=	-DBINUTILSVER_DEFAULT="\"${OBJFORMAT_BUILTIN_BINUTILSVER_DEFAULT}\""
+.endif
+.if defined(TOOLS_PREFIX)
+CFLAGS+=	-DOBJFORMAT_PATH_DEFAULT="\"${TOOLS_PREFIX}\""
+.elif defined(OBJFORMAT_BUILTIN_PATH_DEFAULT)
+CFLAGS+=	-DOBJFORMAT_PATH_DEFAULT="\"${OBJFORMAT_BUILTIN_PATH_DEFAULT}\""
 .endif
 # These will exec /usr/libexec/${BINUTILSVER}/<objformat>/<name>
 #

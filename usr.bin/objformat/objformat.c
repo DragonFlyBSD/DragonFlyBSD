@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.22 2007/08/09 22:15:22 corecode Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.23 2007/08/26 08:15:50 corecode Exp $
  */
 
 #include <err.h>
@@ -41,6 +41,10 @@
 
 #ifndef BINUTILSVER_DEFAULT
 #define	BINUTILSVER_DEFAULT "binutils217"
+#endif
+
+#ifndef OBJFORMAT_PATH_DEFAULT
+#define OBJFORMAT_PATH_DEFAULT ""
 #endif
 
 #define OBJFORMAT	0
@@ -159,7 +163,7 @@ main(int argc, char **argv)
 	 */
 	objformat_path = getenv("OBJFORMAT_PATH");
 	if (objformat_path == NULL)
-		objformat_path = "";
+		objformat_path = OBJFORMAT_PATH_DEFAULT;
 
 	path = strdup(objformat_path);
 
