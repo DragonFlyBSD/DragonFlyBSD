@@ -32,8 +32,8 @@
  *
  * @(#) Copyright (c) 1980, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)banner.c	8.4 (Berkeley) 4/29/95
- * $FreeBSD: src/usr.bin/banner/banner.c,v 1.7.2.4 2001/10/02 11:41:25 ru Exp $
- * $DragonFly: src/usr.bin/banner/banner.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
+ * $FreeBSD: src/usr.bin/banner/banner.c,v 1.16 2006/11/22 21:05:17 maxim Exp $
+ * $DragonFly: src/usr.bin/banner/banner.c,v 1.5 2007/08/26 16:44:32 pavalos Exp $
  */
 
 /*
@@ -1035,7 +1035,7 @@ main(int argc, char *argv[])
 			break;
 		case 'w':
 			width = atoi(optarg);
-			if (width <= 0)
+			if (width <= 0 || width > DWIDTH)
 				errx(1, "illegal argument for -w option");
 			break;
 		case '?':
@@ -1046,7 +1046,7 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	for (i = 0; i < width; i++) {
-		j = i * 132 / width;
+		j = i * DWIDTH / width;
 		print[j] = 1;
 	}
 
