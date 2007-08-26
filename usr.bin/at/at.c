@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/at.c,v 1.29 2002/07/22 11:32:16 robert Exp $
- * $DragonFly: src/usr.bin/at/at.c,v 1.7 2007/08/26 16:12:27 pavalos Exp $
+ * $DragonFly: src/usr.bin/at/at.c,v 1.8 2007/08/26 16:52:01 pavalos Exp $
  */
 
 #define _USE_BSD 1
@@ -119,8 +119,8 @@ static long *get_job_list(int, char *[], int *);
 
 /* Signal catching functions */
 
-static
-void sigc(int signo __unused)
+static void
+sigc(int signo __unused)
 {
 /* If the user presses ^C, remove the spool file and exit 
  */
@@ -134,8 +134,8 @@ void sigc(int signo __unused)
     _exit(EXIT_FAILURE);
 }
 
-static
-void alarmc(int signo __unused)
+static void
+alarmc(int signo __unused)
 {
     char buf[1024];
 
@@ -148,7 +148,8 @@ void alarmc(int signo __unused)
 
 /* Local functions */
 
-static char *cwdname(void)
+static char *
+cwdname(void)
 {
 /* Read in the current directory; the name will be overwritten on
  * subsequent calls.
