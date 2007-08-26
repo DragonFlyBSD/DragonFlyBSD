@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.23 2007/08/26 08:15:50 corecode Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.24 2007/08/26 20:40:55 corecode Exp $
  */
 
 #include <err.h>
@@ -83,7 +83,8 @@ static struct command commands[] = {
 	{"size",	BINUTILS2},
 	{"strings",	BINUTILS2},
 	{"strip",	BINUTILS2},
-	{"objformat",	OBJFORMAT}
+	{"objformat",	OBJFORMAT},
+	{"",		-1}
 };
 
 int
@@ -112,7 +113,7 @@ main(int argc, char **argv)
 	else
 		cmd = argv[0];
 
-	for (cmds = commands; cmds < &commands[arysize(commands)]; ++cmds) {
+	for (cmds = commands; cmds < &commands[arysize(commands) - 1]; ++cmds) {
 		if (strcmp(cmd, cmds->cmd) == 0)
 			break;
 	}
@@ -140,7 +141,7 @@ main(int argc, char **argv)
 		case OBJFORMAT:
 			break;
 		default:
-			err(1, "unknown command type");
+			errx(1, "unknown command type");
 			break;
 		}
 	}
