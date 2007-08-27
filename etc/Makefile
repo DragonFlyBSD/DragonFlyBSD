@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.183 2007/08/09 22:39:21 corecode Exp $
+# $DragonFly: src/etc/Makefile,v 1.184 2007/08/27 17:47:15 hasso Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -523,6 +523,13 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/libexec/getNAME
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/getNAME.1.gz"
 	rm -f ${DESTDIR}/modules/daemon_saver.ko
+	rm -f ${DESTDIR}/usr/include/net/if_arc.h
+	rm -f ${DESTDIR}/usr/include/net/iso88025.h
+	rm -f ${DESTDIR}/usr/include/netinet/if_fddi.h
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/cm.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/oltr.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/fea.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/fpa.4.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
