@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/platform/pc32/conf/files,v 1.13 2007/08/19 11:39:11 swildner Exp $
+# $DragonFly: src/sys/platform/pc32/conf/files,v 1.14 2007/08/27 20:08:55 hasso Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -53,15 +53,6 @@ msysosak.o			optional	fla			\
 	dependency	"$S/contrib/dev/fla/i386/msysosak.o.uu" 		\
 	compile-with	"uudecode < $S/contrib/dev/fla/i386/msysosak.o.uu"	\
 	no-implicit-rule
-#
-contrib/dev/oltr/if_oltr.c	optional	oltr
-trlld.o				optional	oltr			\
-	dependency	"$S/contrib/dev/oltr/i386-elf.trlld.o.uu"	\
-	compile-with	"uudecode < $S/contrib/dev/oltr/i386-elf.trlld.o.uu"	\
-	no-implicit-rule
-contrib/dev/oltr/trlldbm.c	optional	oltr
-contrib/dev/oltr/trlldhm.c	optional	oltr
-contrib/dev/oltr/trlldmac.c	optional	oltr
 bf_enc.o			optional	ipsec ipsec_esp		\
 	dependency	"$S/crypto/blowfish/arch/i386/bf_enc.S $S/crypto/blowfish/arch/i386/bf_enc_586.S $S/crypto/blowfish/arch/i386/bf_enc_686.S"		\
 	compile-with	"${CC} -c -I$S/crypto/blowfish/arch/i386 ${ASM_CFLAGS} ${WERROR} ${.IMPSRC}"	\
