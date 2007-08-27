@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.19 2007/08/16 20:03:58 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.20 2007/08/27 13:15:14 hasso Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -292,23 +292,6 @@ found:
 			in6->s6_addr[15] = addr[5];
 		}
 		break;
-
-	case IFT_ARCNET:
-		if (addrlen != 1)
-			return -1;
-		if (!addr[0])
-			return -1;
-
-		bzero(&in6->s6_addr[8], 8);
-		in6->s6_addr[15] = addr[0];
-
-		/*
-		 * due to insufficient bitwidth, we mark it local.
-		 */
-		in6->s6_addr[8] &= ~EUI64_GBIT;	/* g bit to "individual" */
-		in6->s6_addr[8] |= EUI64_UBIT;	/* u bit to "local" */
-		break;
-
 	case IFT_GIF:
 #ifdef IFT_STF
 	case IFT_STF:

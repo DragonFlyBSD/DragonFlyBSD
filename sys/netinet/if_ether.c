@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.39 2007/08/16 20:03:57 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.40 2007/08/27 13:15:14 hasso Exp $
  */
 
 /*
@@ -97,7 +97,6 @@
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
 
-#include <net/if_arc.h>
 #include <net/iso88025.h>
 
 #include <sys/thread2.h>
@@ -263,8 +262,7 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 		 * in `arp -a' listings as unresolved.  It's not actually
 		 * functional.  Then the same for broadcast.
 		 */
-		if (IN_MULTICAST(ntohl(SIN(rt_key(rt))->sin_addr.s_addr)) &&
-		    rt->rt_ifp->if_type != IFT_ARCNET) {
+		if (IN_MULTICAST(ntohl(SIN(rt_key(rt))->sin_addr.s_addr))) {
 			ETHER_MAP_IP_MULTICAST(&SIN(rt_key(rt))->sin_addr,
 					       LLADDR(SDL(gate)));
 			SDL(gate)->sdl_alen = 6;
@@ -324,7 +322,6 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 {
 	struct mbuf *m;
 	struct ether_header *eh;
-	struct arc_header *arh;
 	struct arphdr *ah;
 	struct sockaddr sa;
 	static u_char llcx[] = { 0x82, 0x40, LLC_SNAP_LSAP, LLC_SNAP_LSAP,
@@ -336,20 +333,6 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 	m->m_pkthdr.rcvif = (struct ifnet *)NULL;
 
 	switch (ifp->if_type) {
-	case IFT_ARCNET:
-		ar_hrd = htons(ARPHRD_ARCNET);
-
-		m->m_len = arphdr_len2(ifp->if_addrlen, sizeof(struct in_addr));
-		m->m_pkthdr.len = m->m_len;
-		MH_ALIGN(m, m->m_len);
-
-		arh = (struct arc_header *)sa.sa_data;
-		arh->arc_dhost = ifp->if_broadcastaddr[0];
-		arh->arc_type = ARCTYPE_ARP;
-
-		ah = mtod(m, struct arphdr *);
-		break;
-
 	case IFT_ISO88025:
 		ar_hrd = htons(ARPHRD_IEEE802);
 
@@ -430,7 +413,7 @@ arpresolve(
 		memcpy(desten, ifp->if_broadcastaddr, ifp->if_addrlen);
 		return (1);
 	}
-	if (m->m_flags & M_MCAST && ifp->if_type != IFT_ARCNET) {/* multicast */
+	if (m->m_flags & M_MCAST) {/* multicast */
 		ETHER_MAP_IP_MULTICAST(&SIN(dst)->sin_addr, desten);
 		return (1);
 	}
@@ -536,8 +519,7 @@ arpintr(struct netmsg *msg)
 
 	ar_hrd = ntohs(ar->ar_hrd);
 	if (ar_hrd != ARPHRD_ETHER &&
-	    ar_hrd != ARPHRD_IEEE802 &&
-	    ar_hrd != ARPHRD_ARCNET) {
+	    ar_hrd != ARPHRD_IEEE802) {
 		log(LOG_ERR,
 		    "arp: unknown hardware address format (0x%2D)\n",
 		    (unsigned char *)&ar->ar_hrd, "");
@@ -734,7 +716,6 @@ in_arpinput(struct mbuf *m)
 	struct arphdr *ah;
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct ether_header *eh;
-	struct arc_header *arh;
 	struct iso88025_header *th = (struct iso88025_header *)NULL;
 	struct rtentry *rt;
 	struct ifaddr *ifa;
@@ -916,11 +897,6 @@ reply:
 	ah->ar_op = htons(ARPOP_REPLY);
 	ah->ar_pro = htons(ETHERTYPE_IP); /* let's be sure! */
 	switch (ifp->if_type) {
-	case IFT_ARCNET:
-		arh = (struct arc_header *)sa.sa_data;
-		arh->arc_dhost = *ar_tha(ah);
-		arh->arc_type = ARCTYPE_ARP;
-		break;
 	case IFT_ISO88025:
 		/* Re-arrange the source/dest address */
 		memcpy(th->iso88025_dhost, th->iso88025_shost,

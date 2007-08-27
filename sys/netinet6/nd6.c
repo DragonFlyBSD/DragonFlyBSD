@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.23 2007/08/16 20:03:58 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.24 2007/08/27 13:15:14 hasso Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -204,9 +204,6 @@ nd6_setmtu0(struct ifnet *ifp, struct nd_ifinfo *ndi)
 	oldlinkmtu = ndi->linkmtu;
 
 	switch (ifp->if_type) {
-	case IFT_ARCNET:	/* XXX MTU handling needs more work */
-		ndi->maxmtu = MIN(60480, ifp->if_mtu);
-		break;
 	case IFT_ETHER:
 		ndi->maxmtu = MIN(ETHERMTU, ifp->if_mtu);
 		break;
@@ -1978,13 +1975,12 @@ nd6_need_cache(struct ifnet *ifp)
 {
 	/*
 	 * XXX: we currently do not make neighbor cache on any interface
-	 * other than ARCnet, Ethernet, FDDI and GIF.
+	 * other than Ethernet, FDDI and GIF.
 	 *
 	 * RFC2893 says:
 	 * - unidirectional tunnels needs no ND
 	 */
 	switch (ifp->if_type) {
-	case IFT_ARCNET:
 	case IFT_ETHER:
 	case IFT_FDDI:
 	case IFT_IEEE1394:
@@ -2027,9 +2023,6 @@ nd6_storelladdr(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 			return (1);
 		case IFT_IEEE1394:
 			bcopy(ifp->if_broadcastaddr, desten, ifp->if_addrlen);
-			return (1);
-		case IFT_ARCNET:
-			*desten = 0;
 			return (1);
 		default:
 			m_freem(m);

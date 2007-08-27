@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.13 2007/05/17 19:26:06 swildner Exp $
+ ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.14 2007/08/27 13:15:14 hasso Exp $
  **/
 
 /**
@@ -346,7 +346,6 @@ static DEV_INFO device_info[] = {
 {"ad",		"ATA/ATAPI compatible storage device",	FLG_INVISIBLE,	CLS_STORAGE},	
 {"fd",		"Floppy disk device",			FLG_INVISIBLE,	CLS_STORAGE},
 
-{"cm",		"SMC COM90Cx6-based Arcnet adapters",	0,		CLS_NETWORK},
 {"cs",          "IBM EtherJet, CS89x0-based Ethernet adapters",0,	CLS_NETWORK},
 {"ed",          "NE1000,NE2000,3C503,WD/SMC80xx Ethernet adapters",0,	CLS_NETWORK},
 {"el",          "3C501 Ethernet adapter",		0,		CLS_NETWORK},
