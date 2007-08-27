@@ -1,8 +1,7 @@
-# $DragonFly: src/usr.bin/tar/Makefile,v 1.11 2007/05/09 19:39:24 pavalos Exp $
+# $DragonFly: src/usr.bin/tar/Makefile,v 1.12 2007/08/27 16:50:59 pavalos Exp $
 
 PROG=	bsdtar
 SRCS=	bsdtar.c getdate.y matching.c read.c tree.c util.c write.c
-WARNS?=	6
 DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBZ}
 LDADD=	-larchive -lbz2 -lz
 NOSHARED?=	yes

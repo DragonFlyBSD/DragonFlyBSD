@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/tip/tip/Makefile,v 1.10.6.3 2002/07/17 13:25:19 ru Exp $
-# $DragonFly: src/usr.bin/tip/tip/Makefile,v 1.4 2004/09/09 07:24:41 dillon Exp $
+# $DragonFly: src/usr.bin/tip/tip/Makefile,v 1.5 2007/08/27 16:50:59 pavalos Exp $
 #
 # Files are:
 #	/etc/remote		remote host description file
@@ -23,6 +23,7 @@ MLINKS= tip.1 cu.1
 MAN=	tip.1 modems.5
 SRCS=	acu.c acutab.c cmds.c cmdtab.c cu.c hunt.c log.c partab.c \
 	remote.c tip.c tipout.c value.c vars.c
+WARNS?=	1
 
 BINDIR?=	/usr/bin
 BINOWN=		uucp

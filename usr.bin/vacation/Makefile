@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/vacation/Makefile,v 1.6.2.3 2002/03/25 21:31:50 gshapiro Exp $
-# $DragonFly: src/usr.bin/vacation/Makefile,v 1.10 2007/04/14 17:43:48 gshapiro Exp $
+# $DragonFly: src/usr.bin/vacation/Makefile,v 1.11 2007/08/27 16:51:00 pavalos Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.14
 .PATH:	${SENDMAIL_DIR}/vacation
@@ -9,6 +9,7 @@ SRCS=	vacation.c
 CFLAGS+=-I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
 CFLAGS+=-DNEWDB -DNOT_SENDMAIL
 CFLAGS+=-D_FFR_LISTDB -D_FFR_DEBUG
+WARNS?=	2
 
 .if exists(${.OBJDIR}/../../lib/libsm)
 LIBSMDIR:=	${.OBJDIR}/../../lib/libsm

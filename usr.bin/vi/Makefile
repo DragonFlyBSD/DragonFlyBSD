@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/usr.bin/vi/Makefile,v 1.27.2.7 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/vi/Makefile,v 1.5 2006/06/24 00:04:18 sephe Exp $
+# $DragonFly: src/usr.bin/vi/Makefile,v 1.6 2007/08/27 16:51:01 pavalos Exp $
 #
 # This has most of the glue needed to compile tknvi and the perl hooks,
 # but not all.
@@ -8,6 +8,7 @@
 
 SRCDIR=		${.CURDIR}/../../contrib/nvi
 CONTRIBDIR=	${SRCDIR}
+WARNS?=	0
 
 .if defined(RELEASE_CRUNCH)
 # When building `vi' for the fixit floppy, don't include any of the

@@ -1,9 +1,8 @@
 # $FreeBSD: src/usr.bin/ncal/Makefile,v 1.2 1999/08/28 01:04:25 peter Exp $
-# $DragonFly: src/usr.bin/ncal/Makefile,v 1.3 2004/01/24 22:29:20 joerg Exp $
-PROG= ncal
-SRCS= ncal.c
+# $DragonFly: src/usr.bin/ncal/Makefile,v 1.4 2007/08/27 16:50:56 pavalos Exp $
 
-CFLAGS+=	-Wall -Wmissing-prototypes -ansi -pedantic
+PROG= ncal
+WARNS?=	1
 
 DPADD+=		${LIBCALENDAR}
 LDADD+=		-lcalendar

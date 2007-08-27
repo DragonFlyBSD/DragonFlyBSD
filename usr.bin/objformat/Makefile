@@ -1,9 +1,8 @@
 # $FreeBSD: src/usr.bin/objformat/Makefile,v 1.15 1999/12/24 15:18:19 green Exp $
-# $DragonFly: src/usr.bin/objformat/Makefile,v 1.11 2007/08/26 08:15:50 corecode Exp $
+# $DragonFly: src/usr.bin/objformat/Makefile,v 1.12 2007/08/27 16:50:57 pavalos Exp $
 
 PROG=		objformat
 NOSHARED?=	YES
-WARNS?=		6
 
 .if defined(TARGET_ARCH)
 CFLAGS+=	-DTARGET_ARCH="${TARGET_ARCH}"

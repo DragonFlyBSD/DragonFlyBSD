@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/telnet/Makefile,v 1.14.2.2 2002/04/13 11:03:30 markm Exp $
-# $DragonFly: src/usr.bin/telnet/Makefile,v 1.2 2003/06/17 04:29:32 dillon Exp $
+# $DragonFly: src/usr.bin/telnet/Makefile,v 1.3 2007/08/27 16:50:59 pavalos Exp $
 
 PROG=		telnet
 
@@ -8,6 +8,7 @@ SRCS=		commands.c main.c network.c ring.c sys_bsd.c \
 
 CFLAGS+=	-DKLUDGELINEMODE -DUSE_TERMIO -DENV_HACK -DOPIE \
 		-I${.CURDIR}/../../lib -I${.CURDIR}/../../lib/libtelnet/
+WARNS?=	0
 
 .if exists(${.OBJDIR}/../../lib/libtelnet)
 LIBTELNET=	${.OBJDIR}/../../lib/libtelnet/libtelnet.a

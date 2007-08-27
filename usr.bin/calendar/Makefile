@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/calendar/Makefile,v 1.12.8.6 2003/04/06 20:04:56 dwmalone Exp $
-# $DragonFly: src/usr.bin/calendar/Makefile,v 1.4 2006/09/16 18:38:00 pavalos Exp $
+# $DragonFly: src/usr.bin/calendar/Makefile,v 1.5 2007/08/27 16:50:51 pavalos Exp $
 
 PROG=	calendar
 SRCS=   calendar.c io.c day.c ostern.c paskha.c
@@ -9,7 +9,6 @@ DE_LINKS=       de_DE.ISO_8859-1 de_DE.ISO8859-15 de_DE.ISO_8859-15
 FR_LINKS=       fr_FR.ISO8859-15
 HR_LINKS=       hr_HR.ISO_8859-2
 TEXTMODE?=	444
-WARNS?=		6
 
 beforeinstall:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${TEXTMODE} \

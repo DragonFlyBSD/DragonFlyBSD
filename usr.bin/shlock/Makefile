@@ -1,6 +1,5 @@
-# $DragonFly: src/usr.bin/shlock/Makefile,v 1.2 2005/07/31 09:13:48 asmodai Exp $
+# $DragonFly: src/usr.bin/shlock/Makefile,v 1.3 2007/08/27 16:50:58 pavalos Exp $
 
 PROG=	shlock
-WARNS?=	6
 
 .include <bsd.prog.mk>

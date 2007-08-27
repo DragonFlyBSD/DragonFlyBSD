@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/top/Makefile,v 1.5.6.2 2002/08/11 17:09:54 dwmalone Exp $
-# $DragonFly: src/usr.bin/top/Makefile,v 1.7 2006/02/15 12:54:36 corecode Exp $
+# $DragonFly: src/usr.bin/top/Makefile,v 1.8 2007/08/27 16:50:59 pavalos Exp $
 PROG=	top
 
 TOPDIR=	${.CURDIR}/../../contrib/top
@@ -25,6 +25,7 @@ DPADD=  ${LIBTERMCAP} ${LIBM} ${LIBKVM} ${LIBKINFO}
 LDADD=  -ltermcap -lm -lkvm -lkinfo
 BINGRP= kmem
 BINMODE=2555
+WARNS?=	0
 
 top.1:	top.x top.local.1
 	cat ${.ALLSRC} > top.1

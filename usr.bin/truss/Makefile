@@ -1,11 +1,12 @@
 # $FreeBSD: src/usr.bin/truss/Makefile,v 1.10.2.2 2002/07/23 09:18:30 ru Exp $
-# $DragonFly: src/usr.bin/truss/Makefile,v 1.7 2005/05/28 00:22:04 swildner Exp $
+# $DragonFly: src/usr.bin/truss/Makefile,v 1.8 2007/08/27 16:51:00 pavalos Exp $
 
 PROG=	truss
 SRCS=	main.c setup.c syscalls.c syscalls.h ioctl.c
 .if (${MACHINE_ARCH} == "i386")
 SRCS+=	i386-fbsd.c i386-linux.c linux_syscalls.h
 .endif
+WARNS?=	0
 
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../sys -I.
 

@@ -1,7 +1,7 @@
 # from BSDI Makefile,v 2.6 1996/04/08 20:06:40 bostic Exp
 #
 # $FreeBSD: src/usr.bin/doscmd/Makefile,v 1.21.2.5 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/doscmd/Makefile,v 1.4 2004/12/20 19:24:38 dillon Exp $
+# $DragonFly: src/usr.bin/doscmd/Makefile,v 1.5 2007/08/27 16:50:53 pavalos Exp $
 
 PROG=	doscmd
 SRCS=	AsyncIO.c ParseBuffer.c bios.c callback.c cmos.c config.c cpu.c cwd.c \
@@ -21,6 +21,7 @@ EXEGRP:=	${BINGRP}
 EXEMODE=	${NOBINMODE}
 #BINGRP=		kmem
 #BINMODE=	2555
+WARNS?=	0
 
 .if !defined(NO_X) && exists(${XINCDIR}/X11/X.h) && exists(${XLIBDIR}/libX11.a)
 CFLAGS+=	-I${XINCDIR}

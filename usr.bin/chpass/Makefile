@@ -1,14 +1,14 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/2/94
 # $FreeBSD: src/usr.bin/chpass/Makefile,v 1.20.2.3 2001/12/19 04:49:11 dd Exp $
-# $DragonFly: src/usr.bin/chpass/Makefile,v 1.3 2004/11/17 19:15:59 dillon Exp $
+# $DragonFly: src/usr.bin/chpass/Makefile,v 1.4 2007/08/27 16:50:52 pavalos Exp $
 
 PROG=	chpass
-CFLAGS+=-Wall
 SRCS=	chpass.c edit.c field.c pw_copy.c pw_scan.c pw_util.c pw_yp.c \
 	table.c util.c ypxfr_misc.c ${GENSRCS}
 GENSRCS=yp.h yp_clnt.c yppasswd.h yppasswd_clnt.c yppasswd_private.h \
 	yppasswd_private_clnt.c yppasswd_private_xdr.c
 BINMODE=4555
+WARNS?=	1
 .PATH:	${.CURDIR}/../../usr.sbin/pwd_mkdb ${.CURDIR}/../../usr.sbin/vipw \
 	${.CURDIR}/../../libexec/ypxfr \
 	${.CURDIR}/../../usr.sbin/rpc.yppasswdd \

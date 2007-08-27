@@ -1,4 +1,4 @@
-# $DragonFly: src/usr.bin/file/Makefile,v 1.8 2006/11/15 23:13:45 pavalos Exp $
+# $DragonFly: src/usr.bin/file/Makefile,v 1.9 2007/08/27 16:50:53 pavalos Exp $
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/file-4
 .PATH: ${CONTRIBDIR}/src
@@ -11,6 +11,7 @@ MAGIC=	/usr/share/misc/magic
 
 PROG=	file
 MAN=	file.1 magic.5
+WARNS?=	0
 
 CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
 CFLAGS+= -I${LIBMAGICDIR}

@@ -1,9 +1,8 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
-# $DragonFly: src/usr.bin/time/Makefile,v 1.3 2004/12/22 11:01:49 joerg Exp $
+# $DragonFly: src/usr.bin/time/Makefile,v 1.4 2007/08/27 16:50:59 pavalos Exp $
 
 PROG=	time
 DPADD=	${LIBKINFO}
 LDADD=	-lkinfo
-WARNS?=	6
 
 .include <bsd.prog.mk>

@@ -2,7 +2,7 @@
 	echo Hey that hurt!
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.36 2005/07/19 18:19:15 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.37 2007/08/27 16:50:56 pavalos Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
@@ -10,7 +10,6 @@ SRCS=	arch.c buf.c cond.c dir.c for.c hash.c hash_tables.c job.c	\
 	lst.c main.c make.c parse.c proc.c shell.c str.c suff.c targ.c	\
 	util.c var.c
 
-WARNS?=	6
 WARNS_WERROR=	YES
 NOSHARED?=	YES
 

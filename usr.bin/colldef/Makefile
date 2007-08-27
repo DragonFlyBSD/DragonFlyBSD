@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/colldef/Makefile,v 1.16.2.1 2002/08/17 18:57:10 ache Exp $
-# $DragonFly: src/usr.bin/colldef/Makefile,v 1.3 2005/03/02 07:16:23 joerg Exp $
+# $DragonFly: src/usr.bin/colldef/Makefile,v 1.4 2007/08/27 16:50:52 pavalos Exp $
 
 PROG=	colldef
 SRCS=	parse.y scan.l y.tab.h
@@ -8,7 +8,6 @@ CFLAGS+=-I. -I${.CURDIR}
 CFLAGS+=-DCOLLATE_DEBUG -DYY_NO_UNPUT
 LDADD=	-ll
 DPADD=	${LIBL}
-WARNS?=	6
 
 SRCS+=		collate.h
 CLEANFILES+=	collate.h

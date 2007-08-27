@@ -1,13 +1,11 @@
 #	$NetBSD: Makefile,v 1.8 2004/01/01 02:44:09 mrg Exp $
-# $DragonFly: src/usr.bin/gzip/Makefile,v 1.4 2005/04/22 06:52:42 joerg Exp $
+# $DragonFly: src/usr.bin/gzip/Makefile,v 1.5 2007/08/27 16:50:54 pavalos Exp $
 
 PROG=		gzip
-SRCS=		gzip.c
 MAN=		gzip.1 gzexe.1 zdiff.1 zforce.1 zmore.1 znew.1
 
 DPADD=		${LIBZ}
 LDADD=		-lz
-WARNS=		6
 
 NOSHARED?=	yes
 

@@ -1,8 +1,7 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
-# $DragonFly: src/usr.bin/ul/Makefile,v 1.2 2005/01/05 02:40:23 cpressey Exp $
+# $DragonFly: src/usr.bin/ul/Makefile,v 1.3 2007/08/27 16:51:00 pavalos Exp $
 
 PROG=	ul
-WARNS?=	6
 DPADD=	${LIBTERMCAP}
 LDADD=	-ltermcap
 

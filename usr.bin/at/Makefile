@@ -1,10 +1,9 @@
 # $FreeBSD: src/usr.bin/at/Makefile,v 1.13 2001/09/13 06:48:16 ru Exp $
-# $DragonFly: src/usr.bin/at/Makefile,v 1.4 2007/08/05 18:24:29 pavalos Exp $
+# $DragonFly: src/usr.bin/at/Makefile,v 1.5 2007/08/27 16:50:51 pavalos Exp $
 
 .include "${.CURDIR}/Makefile.inc"
 
 PROG=	at
-WARNS?=	6
 SRCS=	at.c panic.c parsetime.c perm.c
 LINKS=	${BINDIR}/at ${BINDIR}/atq \
 	${BINDIR}/at ${BINDIR}/atrm \

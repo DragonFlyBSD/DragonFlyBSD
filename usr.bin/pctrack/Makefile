@@ -1,8 +1,9 @@
-# $DragonFly: src/usr.bin/pctrack/Makefile,v 1.1 2006/06/08 18:48:30 dillon Exp $
+# $DragonFly: src/usr.bin/pctrack/Makefile,v 1.2 2007/08/27 16:50:57 pavalos Exp $
 
 PROG=	pctrack
 DPADD=	${LIBKVM}
 LDADD=	-lkvm
 MAN=	pctrack.8
+WARNS?=	1
 
 .include <bsd.prog.mk>

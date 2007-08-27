@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/getconf/Makefile,v 1.3.2.2 2002/11/25 09:02:40 ru Exp $
-# $DragonFly: src/usr.bin/getconf/Makefile,v 1.2 2003/06/17 04:29:27 dillon Exp $
+# $DragonFly: src/usr.bin/getconf/Makefile,v 1.3 2007/08/27 16:50:54 pavalos Exp $
 
 PROG=	getconf
 
@@ -8,6 +8,7 @@ CFLAGS+= -I${.CURDIR} -DSTABLE
 CLEANFILES+=	confstr.c limits.c pathconf.c progenv.c sysconf.c \
 		confstr.names limits.names pathconf.names sysconf.names \
 		conflicting.names unique.names
+WARNS?=	2
 
 .SUFFIXES: .gperf .names
 .PHONY: conflicts

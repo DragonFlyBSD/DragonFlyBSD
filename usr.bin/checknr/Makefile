@@ -1,7 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
-# $DragonFly: src/usr.bin/checknr/Makefile,v 1.2 2005/03/02 04:33:12 cpressey Exp $
+# $DragonFly: src/usr.bin/checknr/Makefile,v 1.3 2007/08/27 16:50:52 pavalos Exp $
 
 PROG=	checknr
-WARNS?=	6
 
 .include <bsd.prog.mk>

@@ -1,9 +1,10 @@
 # $FreeBSD: src/usr.bin/compile_et/Makefile,v 1.11 1999/09/04 09:52:32 markm Exp $
-# $DragonFly: src/usr.bin/compile_et/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
+# $DragonFly: src/usr.bin/compile_et/Makefile,v 1.3 2007/08/27 16:50:52 pavalos Exp $
 
 PROG=	compile_et
 SRCS=	compile_et.c parse.y lex.l getarg.c
 CFLAGS+=-I. -I${.CURDIR}/../../contrib/com_err
+WARNS?=	0
 
 .include <bsd.prog.mk>
 
