@@ -1,5 +1,5 @@
 .\"	$NetBSD: ifmedia.4,v 1.26 2005/10/03 18:08:03 rpaulo Exp $
-.\"	$DragonFly: src/share/man/man4/ifmedia.4,v 1.1 2006/09/10 04:14:01 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/ifmedia.4,v 1.2 2007/08/27 14:55:59 hasso Exp $
 .\"
 .\" Copyright (c) 1998, 1999, 2000, 2001, 2002, 2003, 2004
 .\"	The NetBSD Foundation, Inc.
@@ -56,13 +56,11 @@ set using the
 .Xr ifconfig 8
 command.
 .Pp
-There are currently four link types supported by
+There are currently three link types supported by
 .Nm :
 .Bl -tag -offset indent -width ".Dv IFM_IEEE80211"
 .It Dv IFM_ETHER
 Ethernet
-.It Dv IFM_TOKEN
-Token Ring
 .It Dv IFM_FDDI
 FDDI
 .It Dv IFM_IEEE80211
@@ -171,36 +169,6 @@ This option has no effect
 .Pf ( shows current status only )
 if the media is
 .Dv IFM_AUTO .
-.El
-.Sh MEDIA TYPES AND OPTIONS FOR TOKEN RING
-The following media types are defined for Token Ring:
-.Bl -tag -offset indent -width ".Dv IFM_TOK_UTP100"
-.It Dv IFM_TOK_STP4
-4Mb/s, shielded twisted pair, DB9 connector.  [DB9/4Mbit, 4STP]
-.It Dv IFM_TOK_STP16
-16Mb/s, shielded twisted pair, DB9 connector.  [DB9/16Mbit, 16STP]
-.It Dv IFM_TOK_STP100
-100Mb/s, shielded twisted pair, DB9 connector.  [STP/100Mbit, 100STP]
-.It Dv IFM_TOK_UTP4
-4Mb/s, unshielded twisted pair, RJ45 connector.  [UTP/4Mbit, 4UTP]
-.It Dv IFM_TOK_UTP16
-16Mb/s, unshielded twisted pair, RJ45 connector.  [UTP/16Mbit, 16UTP]
-.It Dv IFM_TOK_UTP100
-100Mb/s, unshielded twisted pair, RJ45 connector.  [UTP/100Mbit, 100UTP]
-.El
-.Pp
-The following media options are defined for Token Ring:
-.Bl -tag -offset indent -width ".Dv IFM_TOK_CLASSIC"
-.It Dv IFM_TOK_ETR
-Early token release.  [EarlyTokenRelease]
-.It Dv IFM_TOK_SRCRT
-Enable source routing features.  [SourceRouting]
-.It Dv IFM_TOK_ALLR
-All routes vs. single route broadcast.  [AllRoutes]
-.It Dv IFM_TOK_DTR
-Dedicated token ring.  [Dedicated]
-.It Dv IFM_TOK_CLASSIC
-Classic token ring.  [Classic]
 .El
 .Sh MEDIA TYPES AND OPTIONS FOR FDDI
 The following media types are defined for FDDI:

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.17 2007/08/16 20:03:57 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.18 2007/08/27 14:56:00 hasso Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -158,23 +158,6 @@ int	ifmedia_baudrate(int);
 #define	IFM_ETH_TXPAUSE	0x00000400	/* transmit PAUSE frames */
 
 /*
- * Token ring
- */
-#define	IFM_TOKEN	0x00000040
-#define	IFM_TOK_STP4	3		/* Shielded twisted pair 4m - DB9 */
-#define	IFM_TOK_STP16	4		/* Shielded twisted pair 16m - DB9 */
-#define	IFM_TOK_UTP4	5		/* Unshielded twisted pair 4m - RJ45 */
-#define	IFM_TOK_UTP16	6		/* Unshielded twisted pair 16m - RJ45 */
-#define	IFM_TOK_STP100  7		/* Shielded twisted pair 100m - DB9 */
-#define	IFM_TOK_UTP100  8		/* Unshielded twisted pair 100m - RJ45 */
-#define	IFM_TOK_ETR	0x00000200	/* Early token release */
-#define	IFM_TOK_SRCRT	0x00000400	/* Enable source routing features */
-#define	IFM_TOK_ALLR	0x00000800	/* All routes / Single route bcast */
-#define	IFM_TOK_DTR	0x00002000	/* Dedicated token ring */
-#define	IFM_TOK_CLASSIC	0x00004000	/* Classic token ring */
-#define	IFM_TOK_AUTO	0x00008000	/* Automatic Dedicate/Classic token ring */
-
-/*
  * FDDI
  */
 #define	IFM_FDDI	0x00000060
@@ -318,7 +301,6 @@ struct ifmedia_description {
 
 #define	IFM_TYPE_DESCRIPTIONS {						\
 	{ IFM_ETHER,		"Ethernet" },				\
-	{ IFM_TOKEN,		"Token ring" },				\
 	{ IFM_FDDI,		"FDDI" },				\
 	{ IFM_IEEE80211,	"IEEE 802.11 Wireless Ethernet" },	\
 	{ IFM_CARP,		"Common Address Redundancy Protocol" }, \
@@ -368,36 +350,6 @@ struct ifmedia_description {
 }
 
 #define	IFM_SUBTYPE_ETHERNET_OPTION_DESCRIPTIONS {			\
-	{ 0, NULL },							\
-}
-
-#define	IFM_SUBTYPE_TOKENRING_DESCRIPTIONS {				\
-	{ IFM_TOK_STP4,	"DB9/4Mbit" },					\
-	{ IFM_TOK_STP16, "DB9/16Mbit" },				\
-	{ IFM_TOK_UTP4,	"UTP/4Mbit" },					\
-	{ IFM_TOK_UTP16, "UTP/16Mbit" },				\
-	{ IFM_TOK_STP100, "STP/100Mbit" },				\
-	{ IFM_TOK_UTP100, "UTP/100Mbit" },				\
-	{ 0, NULL },							\
-}
-
-#define	IFM_SUBTYPE_TOKENRING_ALIASES {					\
-	{ IFM_TOK_STP4,	"4STP" },					\
-	{ IFM_TOK_STP16, "16STP" },					\
-	{ IFM_TOK_UTP4,	"4UTP" },					\
-	{ IFM_TOK_UTP16, "16UTP" },					\
-	{ IFM_TOK_STP100, "100STP" },					\
-	{ IFM_TOK_UTP100, "100UTP" },					\
-	{ 0, NULL },							\
-}
-
-#define	IFM_SUBTYPE_TOKENRING_OPTION_DESCRIPTIONS {			\
-	{ IFM_TOK_ETR,	"EarlyTokenRelease" },				\
-	{ IFM_TOK_SRCRT, "SourceRouting" },				\
-	{ IFM_TOK_ALLR,	"AllRoutes" },					\
-	{ IFM_TOK_DTR,	"Dedicated" },					\
-	{ IFM_TOK_CLASSIC,"Classic" },					\
-	{ IFM_TOK_AUTO,	" " },						\
 	{ 0, NULL },							\
 }
 
@@ -573,11 +525,6 @@ struct ifmedia_baudrate {
 	{ IFM_ETHER|IFM_1000_CX,	IF_Mbps(1000) },		\
 	{ IFM_ETHER|IFM_1000_T,		IF_Mbps(1000) },		\
 	{ IFM_ETHER|IFM_HPNA_1,		IF_Mbps(1) },			\
-									\
-	{ IFM_TOKEN|IFM_TOK_STP4,	IF_Mbps(4) },			\
-	{ IFM_TOKEN|IFM_TOK_STP16,	IF_Mbps(16) },			\
-	{ IFM_TOKEN|IFM_TOK_UTP4,	IF_Mbps(4) },			\
-	{ IFM_TOKEN|IFM_TOK_UTP16,	IF_Mbps(16) },			\
 									\
 	{ IFM_FDDI|IFM_FDDI_SMF,	IF_Mbps(100) },			\
 	{ IFM_FDDI|IFM_FDDI_MMF,	IF_Mbps(100) },			\

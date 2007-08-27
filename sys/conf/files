@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.175 2007/08/27 13:15:13 hasso Exp $
+# $DragonFly: src/sys/conf/files,v 1.176 2007/08/27 14:55:59 hasso Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -703,7 +703,6 @@ net/if_atmsubr.c		optional atm
 net/disc/if_disc.c		optional disc
 net/ef/if_ef.c			optional ef
 net/if_ethersubr.c		optional ether
-net/if_iso88025subr.c		optional token
 net/faith/if_faith.c		optional faith
 net/if_fddisubr.c		optional fddi
 net/gif/if_gif.c		optional gif

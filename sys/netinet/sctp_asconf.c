@@ -1,5 +1,5 @@
 /*	$KAME: sctp_asconf.c,v 1.23 2004/08/17 06:28:01 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.4 2006/12/22 23:57:52 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.5 2007/08/27 14:56:00 hasso Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -1542,7 +1542,6 @@ sctp_is_desired_interface_type(struct ifaddr *ifa)
 	switch (ifa->ifa_ifp->if_type) {
 	case IFT_ETHER:
 	case IFT_ISO88023:
-	case IFT_ISO88025:
 	case IFT_STARLAN:
 	case IFT_P10:
 	case IFT_P80:

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.8 2006/01/19 22:19:31 dillon Exp $
+ * $DragonFly: src/usr.sbin/arp/arp.c,v 1.9 2007/08/27 14:56:00 hasso Exp $
  */
 
 /*
@@ -56,7 +56,6 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/route.h>
-#include <net/iso88025.h>
 
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
@@ -508,7 +507,6 @@ print_entry(struct sockaddr_dl *sdl,
 {
 	const char *host;
 	struct hostent *hp;
-	struct iso88025_sockaddr_dl_data *trld;
 	char ifname[IF_NAMESIZE];
 	int seg;
 
@@ -546,17 +544,6 @@ print_entry(struct sockaddr_dl *sdl,
         switch(sdl->sdl_type) {
             case IFT_ETHER:
                 printf(" [ethernet]");
-                break;
-            case IFT_ISO88025:
-                printf(" [token-ring]");
-		trld = SDL_ISO88025(sdl);
-		if (trld->trld_rcf != 0) {
-			printf(" rt=%x", ntohs(trld->trld_rcf));
-			for (seg = 0;
-			     seg < ((TR_RCF_RIFLEN(trld->trld_rcf) - 2 ) / 2);
-			     seg++) 
-				printf(":%x", ntohs(*(trld->trld_route[seg])));
-		}
                 break;
 	    case IFT_L2VLAN:
 		printf(" [vlan]");

@@ -25,7 +25,7 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.1 2007/08/16 20:03:57 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_carp.c,v 1.2 2007/08/27 14:56:00 hasso Exp $
  */
 
 #include "opt_carp.h"
@@ -57,7 +57,6 @@
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
-#include <net/iso88025.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
@@ -2079,17 +2078,6 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *sa,
 			fh->fddi_shost[3] = 0;
 			fh->fddi_shost[4] = 1;
 			fh->fddi_shost[5] = sc->sc_vhid;
-		}
-		break;
-	case IFT_ISO88025: {
- 			struct iso88025_header *th;
- 			th = mtod(m, struct iso88025_header *);
-			th->iso88025_shost[0] = 3;
-			th->iso88025_shost[1] = 0;
-			th->iso88025_shost[2] = 0x40 >> (sc->sc_vhid - 1);
-			th->iso88025_shost[3] = 0x40000 >> (sc->sc_vhid - 1);
-			th->iso88025_shost[4] = 0;
-			th->iso88025_shost[5] = 0;
 		}
 		break;
 	default:

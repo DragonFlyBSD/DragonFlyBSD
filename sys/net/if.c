@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.53 2007/08/27 13:15:14 hasso Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.54 2007/08/27 14:55:59 hasso Exp $
  */
 
 #include "opt_compat.h"
@@ -1798,7 +1798,6 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 	case IFT_ETHER:			/* these types use struct arpcom */
 	case IFT_FDDI:
 	case IFT_XETHER:
-	case IFT_ISO88025:
 	case IFT_L2VLAN:
 		bcopy(lladdr, ((struct arpcom *)ifp->if_softc)->ac_enaddr, len);
 		bcopy(lladdr, LLADDR(sdl), len);

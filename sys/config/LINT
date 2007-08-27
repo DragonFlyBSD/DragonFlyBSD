@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.125 2007/08/27 13:15:14 hasso Exp $
+# $DragonFly: src/sys/config/LINT,v 1.126 2007/08/27 14:55:59 hasso Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -513,7 +513,7 @@ device		mn	# Munich32x/Falc54 Nx64kbit/sec cards.
 #  The `loop' pseudo-device is MANDATORY when networking is enabled.
 #  The `ether' pseudo-device provides generic code to handle
 #  Ethernets; it is MANDATORY when a Ethernet device driver is
-#  configured or token-ring is enabled.
+#  configured.
 #  The 'fddi' pseudo-device provides generic code to support FDDI.
 #  The `sppp' pseudo-device serves a similar role for certain types
 #  of synchronous PPP links (like `cx', `ar').
@@ -547,7 +547,6 @@ device		mn	# Munich32x/Falc54 Nx64kbit/sec cards.
 pseudo-device	ether			#Generic Ethernet
 pseudo-device	vlan	1		#VLAN support
 pseudo-device	bridge			#Bridging support
-pseudo-device	token			#Generic TokenRing
 pseudo-device	fddi			#Generic FDDI
 pseudo-device	sppp			#Generic Synchronous PPP
 pseudo-device	loop			#Network loopback device
@@ -1400,8 +1399,6 @@ options 	PUC_FASTINTR
 #     PCI and ISA varieties.
 # xe: Xircom/Intel EtherExpress Pro100/16 PC Card ethernet controller.
 # ray: Raytheon Raylink 802.11 wireless NICs, OEM as Webgear Aviator 2.4GHz
-# oltr: Olicom ISA token-ring adapters OC-3115, OC-3117, OC-3118 and OC-3133
-#       (no options needed)
 #
 device ar0 at isa? port 0x300 irq 10 iomem 0xd0000
 device cm0 at isa? port 0x2e0 irq 9 iomem 0xdc000
@@ -1449,8 +1446,6 @@ device		ray		# Raytheon Raylink/Webgear Aviator
 device		ral		# Ralink Technology 802.11 wireless NIC
 				# Requires wlan_ratectl_onoe and
 				# wlan_ratectl_sample
-
-device oltr0 at isa?
 
 #
 # ATM related options
@@ -1922,10 +1917,6 @@ options 	AHD_REG_PRETTY_PRINT
 # These options can be used to select a specific device, regardless of
 # the autodetection and i2c device checks (see comments in bktr_card.c).
 #
-#
-# The oltr driver supports the following Olicom PCI token-ring adapters
-# OC-3136, OC-3137, OC-3139, OC-3140, OC-3141, OC-3540, OC-3250
-#
 device		ahc		# AHA2940 and onboard AIC7xxx devices
 device		ahd		# AIC79xx devices
 device		amd		# AMD 53C974 (Tekram DC-390(T))
@@ -2003,8 +1994,6 @@ device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 
 device		fpa
 device		meteor
-#The oltr driver in the ISA section will also find PCI cards.
-#device		oltr0
 
 
 # Brooktree driver has been ported to the new I2C framework. Thus,

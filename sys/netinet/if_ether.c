@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.40 2007/08/27 13:15:14 hasso Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.41 2007/08/27 14:56:00 hasso Exp $
  */
 
 /*
@@ -96,8 +96,6 @@
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
-
-#include <net/iso88025.h>
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
@@ -333,23 +331,6 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 	m->m_pkthdr.rcvif = (struct ifnet *)NULL;
 
 	switch (ifp->if_type) {
-	case IFT_ISO88025:
-		ar_hrd = htons(ARPHRD_IEEE802);
-
-		m->m_len = (sizeof llcx) +
-		    arphdr_len2(ifp->if_addrlen, sizeof(struct in_addr));
-		m->m_pkthdr.len = m->m_len;
-		MH_ALIGN(m, m->m_len);
-
-		memcpy(mtod(m, caddr_t), llcx, sizeof llcx);
-		memcpy(sa.sa_data, ifp->if_broadcastaddr, ifp->if_addrlen);
-		memcpy(sa.sa_data + 6, enaddr, 6);
-		sa.sa_data[6] |= TR_RII;
-		sa.sa_data[12] = TR_AC;
-		sa.sa_data[13] = TR_LLC_FRAME;
-
-		ah = (struct arphdr *)(mtod(m, char *) + sizeof llcx);
-		break;
 	case IFT_FDDI:
 	case IFT_ETHER:
 		/*
@@ -639,41 +620,6 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			return;
 		}
 		memcpy(LLADDR(sdl), ar_sha(ah), sdl->sdl_alen = ah->ar_hln);
-		/*
-		 * If we receive an arp from a token-ring station over
-		 * a token-ring nic then try to save the source
-		 * routing info.
-		 */
-		if (ifp->if_type == IFT_ISO88025) {
-			struct iso88025_header *th =
-			    (struct iso88025_header *)m->m_pkthdr.header;
-			struct iso88025_sockaddr_dl_data *trld =
-			    SDL_ISO88025(sdl);
-			int rif_len;
-
-			rif_len = TR_RCF_RIFLEN(th->rcf);
-			if ((th->iso88025_shost[0] & TR_RII) &&
-			    (rif_len > 2)) {
-				trld->trld_rcf = th->rcf;
-				trld->trld_rcf ^= htons(TR_RCF_DIR);
-				memcpy(trld->trld_route, th->rd, rif_len - 2);
-				trld->trld_rcf &= ~htons(TR_RCF_BCST_MASK);
-				/*
-				 * Set up source routing information for
-				 * reply packet (XXX)
-				 */
-				m->m_data -= rif_len;
-				m->m_len  += rif_len;
-				m->m_pkthdr.len += rif_len;
-			} else {
-				th->iso88025_shost[0] &= ~TR_RII;
-				trld->trld_rcf = 0;
-			}
-			m->m_data -= 8;
-			m->m_len  += 8;
-			m->m_pkthdr.len += 8;
-			th->rcf = trld->trld_rcf;
-		}
 		if (rt->rt_expire != 0)
 			rt->rt_expire = time_second + arpt_keep;
 		rt->rt_flags &= ~RTF_REJECT;
@@ -716,7 +662,6 @@ in_arpinput(struct mbuf *m)
 	struct arphdr *ah;
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct ether_header *eh;
-	struct iso88025_header *th = (struct iso88025_header *)NULL;
 	struct rtentry *rt;
 	struct ifaddr *ifa;
 	struct in_ifaddr *ia;
@@ -897,24 +842,6 @@ reply:
 	ah->ar_op = htons(ARPOP_REPLY);
 	ah->ar_pro = htons(ETHERTYPE_IP); /* let's be sure! */
 	switch (ifp->if_type) {
-	case IFT_ISO88025:
-		/* Re-arrange the source/dest address */
-		memcpy(th->iso88025_dhost, th->iso88025_shost,
-		    sizeof th->iso88025_dhost);
-		memcpy(th->iso88025_shost, IF_LLADDR(ifp),
-		    sizeof th->iso88025_shost);
-		/* Set the source routing bit if neccesary */
-		if (th->iso88025_dhost[0] & TR_RII) {
-			th->iso88025_dhost[0] &= ~TR_RII;
-			if (TR_RCF_RIFLEN(th->rcf) > 2)
-				th->iso88025_shost[0] |= TR_RII;
-		}
-		/* Copy the addresses, ac and fc into sa_data */
-		memcpy(sa.sa_data, th->iso88025_dhost,
-		    (sizeof th->iso88025_dhost) * 2);
-		sa.sa_data[(sizeof th->iso88025_dhost) * 2] = TR_AC;
-		sa.sa_data[(sizeof th->iso88025_dhost) * 2 + 1] = TR_LLC_FRAME;
-		break;
 	case IFT_ETHER:
 	case IFT_FDDI:
 	/*
