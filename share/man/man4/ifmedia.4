@@ -1,5 +1,5 @@
 .\"	$NetBSD: ifmedia.4,v 1.26 2005/10/03 18:08:03 rpaulo Exp $
-.\"	$DragonFly: src/share/man/man4/ifmedia.4,v 1.2 2007/08/27 14:55:59 hasso Exp $
+.\"	$DragonFly: src/share/man/man4/ifmedia.4,v 1.3 2007/08/27 16:15:41 hasso Exp $
 .\"
 .\" Copyright (c) 1998, 1999, 2000, 2001, 2002, 2003, 2004
 .\"	The NetBSD Foundation, Inc.
@@ -56,13 +56,11 @@ set using the
 .Xr ifconfig 8
 command.
 .Pp
-There are currently three link types supported by
+There are currently two link types supported by
 .Nm :
 .Bl -tag -offset indent -width ".Dv IFM_IEEE80211"
 .It Dv IFM_ETHER
 Ethernet
-.It Dv IFM_FDDI
-FDDI
 .It Dv IFM_IEEE80211
 IEEE802.11 Wireless LAN
 .El
@@ -169,22 +167,6 @@ This option has no effect
 .Pf ( shows current status only )
 if the media is
 .Dv IFM_AUTO .
-.El
-.Sh MEDIA TYPES AND OPTIONS FOR FDDI
-The following media types are defined for FDDI:
-.Bl -tag -offset indent -width ".Dv IFM_FDDI_SMF"
-.It Dv IFM_FDDI_SMF
-Single-mode fiber.  [Single-mode, SMF]
-.It Dv IFM_FDDI_MMF
-Multi-mode fiber.  [Multi-mode, MMF]
-.It Dv IFM_FDDI_UTP
-Unshielded twisted pair, RJ45 connector.  [UTP, CDDI]
-.El
-.Pp
-The following media options are defined for FDDI:
-.Bl -tag -offset indent -width ".Dv IFM_FDDI_DA"
-.It Dv IFM_FDDI_DA
-Dual-attached station vs. Single-attached station.  [Dual-attach]
 .El
 .Sh MEDIA TYPES AND OPTIONS FOR IEEE802.11 WIRELESS LAN
 The following media types are defined for IEEE802.11 Wireless LAN:

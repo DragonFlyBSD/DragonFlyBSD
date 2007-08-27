@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.20 2007/08/27 13:15:14 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.21 2007/08/27 16:15:42 hasso Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -960,7 +960,6 @@ nd6_ifptomac(struct ifnet *ifp)
 {
 	switch (ifp->if_type) {
 	case IFT_ETHER:
-	case IFT_FDDI:
 	case IFT_IEEE1394:
 #ifdef IFT_L2VLAN
 	case IFT_L2VLAN:

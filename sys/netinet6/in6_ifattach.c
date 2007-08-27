@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.20 2007/08/27 13:15:14 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.21 2007/08/27 16:15:42 hasso Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -253,7 +253,6 @@ found:
 	/* get EUI64 */
 	switch (ifp->if_type) {
 	case IFT_ETHER:
-	case IFT_FDDI:
 	case IFT_ATM:
 	case IFT_IEEE1394:
 #ifdef IFT_IEEE80211

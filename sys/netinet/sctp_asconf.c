@@ -1,5 +1,5 @@
 /*	$KAME: sctp_asconf.c,v 1.23 2004/08/17 06:28:01 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.5 2007/08/27 14:56:00 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.6 2007/08/27 16:15:42 hasso Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -1546,7 +1546,6 @@ sctp_is_desired_interface_type(struct ifaddr *ifa)
 	case IFT_P10:
 	case IFT_P80:
 	case IFT_HY:
-	case IFT_FDDI:
 	case IFT_PPP:
 	case IFT_XETHER:
 	case IFT_SLIP:

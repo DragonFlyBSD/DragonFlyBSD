@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.18 2007/08/27 14:56:00 hasso Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.19 2007/08/27 16:15:42 hasso Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -158,15 +158,6 @@ int	ifmedia_baudrate(int);
 #define	IFM_ETH_TXPAUSE	0x00000400	/* transmit PAUSE frames */
 
 /*
- * FDDI
- */
-#define	IFM_FDDI	0x00000060
-#define	IFM_FDDI_SMF	3		/* Single-mode fiber */
-#define	IFM_FDDI_MMF	4		/* Multi-mode fiber */
-#define	IFM_FDDI_UTP	5		/* CDDI / UTP */
-#define	IFM_FDDI_DA	0x00000100	/* Dual attach / single attach */
-
-/*
  * IEEE 802.11 Wireless
  */
 #define	IFM_IEEE80211	0x00000080
@@ -301,7 +292,6 @@ struct ifmedia_description {
 
 #define	IFM_TYPE_DESCRIPTIONS {						\
 	{ IFM_ETHER,		"Ethernet" },				\
-	{ IFM_FDDI,		"FDDI" },				\
 	{ IFM_IEEE80211,	"IEEE 802.11 Wireless Ethernet" },	\
 	{ IFM_CARP,		"Common Address Redundancy Protocol" }, \
 	{ 0, NULL },							\
@@ -350,25 +340,6 @@ struct ifmedia_description {
 }
 
 #define	IFM_SUBTYPE_ETHERNET_OPTION_DESCRIPTIONS {			\
-	{ 0, NULL },							\
-}
-
-#define	IFM_SUBTYPE_FDDI_DESCRIPTIONS {					\
-	{ IFM_FDDI_SMF, "Single-mode" },				\
-	{ IFM_FDDI_MMF, "Multi-mode" },					\
-	{ IFM_FDDI_UTP, "UTP" },					\
-	{ 0, NULL },							\
-}
-
-#define	IFM_SUBTYPE_FDDI_ALIASES {					\
-	{ IFM_FDDI_SMF,	"SMF" },					\
-	{ IFM_FDDI_MMF,	"MMF" },					\
-	{ IFM_FDDI_UTP,	"CDDI" },					\
-	{ 0, NULL },							\
-}
-
-#define	IFM_SUBTYPE_FDDI_OPTION_DESCRIPTIONS {				\
-	{ IFM_FDDI_DA, "Dual-attach" },					\
 	{ 0, NULL },							\
 }
 
@@ -525,10 +496,6 @@ struct ifmedia_baudrate {
 	{ IFM_ETHER|IFM_1000_CX,	IF_Mbps(1000) },		\
 	{ IFM_ETHER|IFM_1000_T,		IF_Mbps(1000) },		\
 	{ IFM_ETHER|IFM_HPNA_1,		IF_Mbps(1) },			\
-									\
-	{ IFM_FDDI|IFM_FDDI_SMF,	IF_Mbps(100) },			\
-	{ IFM_FDDI|IFM_FDDI_MMF,	IF_Mbps(100) },			\
-	{ IFM_FDDI|IFM_FDDI_UTP,	IF_Mbps(100) },			\
 									\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH1, IF_Mbps(1) },		\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH2, IF_Mbps(2) },		\

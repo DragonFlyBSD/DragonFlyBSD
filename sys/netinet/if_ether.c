@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.41 2007/08/27 14:56:00 hasso Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.42 2007/08/27 16:15:42 hasso Exp $
  */
 
 /*
@@ -331,7 +331,6 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 	m->m_pkthdr.rcvif = (struct ifnet *)NULL;
 
 	switch (ifp->if_type) {
-	case IFT_FDDI:
 	case IFT_ETHER:
 		/*
 		 * This may not be correct for types not explicitly
@@ -843,7 +842,6 @@ reply:
 	ah->ar_pro = htons(ETHERTYPE_IP); /* let's be sure! */
 	switch (ifp->if_type) {
 	case IFT_ETHER:
-	case IFT_FDDI:
 	/*
 	 * May not be correct for types not explictly
 	 * listed, but it is our best guess.

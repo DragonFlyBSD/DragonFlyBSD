@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.14 2007/08/27 14:55:59 hasso Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.15 2007/08/27 16:15:42 hasso Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -388,12 +388,6 @@ struct ifmedia_description ifm_subtype_ethernet_descriptions[] =
 struct ifmedia_description ifm_subtype_ethernet_option_descriptions[] =
     IFM_SUBTYPE_ETHERNET_OPTION_DESCRIPTIONS;
 
-struct ifmedia_description ifm_subtype_fddi_descriptions[] =
-    IFM_SUBTYPE_FDDI_DESCRIPTIONS;
-
-struct ifmedia_description ifm_subtype_fddi_option_descriptions[] =
-    IFM_SUBTYPE_FDDI_OPTION_DESCRIPTIONS;
-
 struct ifmedia_description ifm_subtype_ieee80211_descriptions[] =
     IFM_SUBTYPE_IEEE80211_DESCRIPTIONS;
 
@@ -416,10 +410,6 @@ struct ifmedia_type_to_subtype ifmedia_types_to_subtypes[] = {
 	{
 	  &ifm_subtype_ethernet_descriptions[0],
 	  &ifm_subtype_ethernet_option_descriptions[0]
-	},
-	{
-	  &ifm_subtype_fddi_descriptions[0],
-	  &ifm_subtype_fddi_option_descriptions[0]
 	},
 	{
 	  &ifm_subtype_ieee80211_descriptions[0],

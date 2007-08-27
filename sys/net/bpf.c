@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.40 2007/02/12 15:02:33 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.41 2007/08/27 16:15:42 hasso Exp $
  */
 
 #include "use_bpf.h"
@@ -158,11 +158,6 @@ bpf_movein(struct uio *uio, int linktype, struct mbuf **mp,
 		sockp->sa_family = AF_UNSPEC;
 		/* XXX Would MAXLINKHDR be better? */
 		hlen = sizeof(struct ether_header);
-		break;
-
-	case DLT_FDDI:
-		sockp->sa_family = AF_IMPLINK;
-		hlen = 0;
 		break;
 
 	case DLT_RAW:

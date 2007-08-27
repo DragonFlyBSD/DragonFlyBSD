@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.126 2007/08/27 14:55:59 hasso Exp $
+# $DragonFly: src/sys/config/LINT,v 1.127 2007/08/27 16:15:42 hasso Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -514,7 +514,6 @@ device		mn	# Munich32x/Falc54 Nx64kbit/sec cards.
 #  The `ether' pseudo-device provides generic code to handle
 #  Ethernets; it is MANDATORY when a Ethernet device driver is
 #  configured.
-#  The 'fddi' pseudo-device provides generic code to support FDDI.
 #  The `sppp' pseudo-device serves a similar role for certain types
 #  of synchronous PPP links (like `cx', `ar').
 #  The `sl' pseudo-device implements the Serial Line IP (SLIP) service.
@@ -547,7 +546,6 @@ device		mn	# Munich32x/Falc54 Nx64kbit/sec cards.
 pseudo-device	ether			#Generic Ethernet
 pseudo-device	vlan	1		#VLAN support
 pseudo-device	bridge			#Bridging support
-pseudo-device	fddi			#Generic FDDI
 pseudo-device	sppp			#Generic Synchronous PPP
 pseudo-device	loop			#Network loopback device
 pseudo-device	bpf			#Berkeley packet filter
@@ -1654,13 +1652,9 @@ device		nmdm
 #
 # The `ahc' device provides support for the Adaptec 274X and 284X
 # adapters.  The 284X, although a VLB card, responds to EISA probes.
-#
-# fea: DEC DEFEA EISA FDDI adapter
-#
 device		eisa
 device		ahb
 device		ahc
-device		fea
 
 # The aic7xxx driver will attempt to use memory mapped I/O for all PCI
 # controllers that have it configured only if this option is set. Unfortunately,
@@ -1851,9 +1845,6 @@ options 	AHD_REG_PRETTY_PRINT
 # Dell Precision desktop machines and the integrated 3c905-TX chips
 # in Dell Latitude laptop docking stations.
 #
-# The `fpa' device provides support for the Digital DEFPA PCI FDDI
-# adapter. pseudo-device fddi is also needed.
-#
 # The `meteor' device is a PCI video capture board. It can also have the
 # following options:
 #   options METEOR_ALLOC_PAGES=xxx	preallocate kernel pages for data entry
@@ -1991,8 +1982,6 @@ device		sk		# SysKonnect GEnesis, LinkSys EG1023, D-Link
 device		ti		# Alteon (``Tigon I'', ``Tigon II'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 
-
-device		fpa
 device		meteor
 
 

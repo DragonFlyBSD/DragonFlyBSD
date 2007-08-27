@@ -1,6 +1,6 @@
 /*	$NetBSD: ifconfig.c,v 1.34 1997/04/21 01:17:58 lukem Exp $	*/
 /* $FreeBSD: src/sbin/ifconfig/ifmedia.c,v 1.19.2.1 2006/03/01 22:24:23 glebius Exp $ */
-/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.12 2007/08/27 14:55:59 hasso Exp $ */
+/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.13 2007/08/27 16:15:41 hasso Exp $ */
 
 /*
  * Copyright (c) 1997 Jason R. Thorpe.
@@ -151,13 +151,6 @@ media_status(int s)
 				printf("active");
 			else
 				printf("no carrier");
-			break;
-
-		case IFM_FDDI:
-			if (ifmr.ifm_status & IFM_ACTIVE)
-				printf("inserted");
-			else
-				printf("no ring");
 			break;
 
 		case IFM_ATM:
@@ -356,15 +349,6 @@ static struct ifmedia_description ifm_subtype_ethernet_aliases[] =
 static struct ifmedia_description ifm_subtype_ethernet_option_descriptions[] =
     IFM_SUBTYPE_ETHERNET_OPTION_DESCRIPTIONS;
 
-static struct ifmedia_description ifm_subtype_fddi_descriptions[] =
-    IFM_SUBTYPE_FDDI_DESCRIPTIONS;
-
-static struct ifmedia_description ifm_subtype_fddi_aliases[] =
-    IFM_SUBTYPE_FDDI_ALIASES;
-
-static struct ifmedia_description ifm_subtype_fddi_option_descriptions[] =
-    IFM_SUBTYPE_FDDI_OPTION_DESCRIPTIONS;
-
 static struct ifmedia_description ifm_subtype_ieee80211_descriptions[] =
     IFM_SUBTYPE_IEEE80211_DESCRIPTIONS;
 
@@ -426,23 +410,6 @@ static struct ifmedia_type_to_subtype ifmedia_types_to_subtypes[] = {
 		{
 			{ &ifm_shared_option_descriptions[0], 0 },
 			{ &ifm_subtype_ethernet_option_descriptions[0], 0 },
-			{ NULL, 0 },
-		},
-		{
-			{ NULL, 0 },
-		},
-	},
-	{
-		{
-			{ &ifm_subtype_shared_descriptions[0], 0 },
-			{ &ifm_subtype_shared_aliases[0], 1 },
-			{ &ifm_subtype_fddi_descriptions[0], 0 },
-			{ &ifm_subtype_fddi_aliases[0], 1 },
-			{ NULL, 0 },
-		},
-		{
-			{ &ifm_shared_option_descriptions[0], 0 },
-			{ &ifm_subtype_fddi_option_descriptions[0], 0 },
 			{ NULL, 0 },
 		},
 		{

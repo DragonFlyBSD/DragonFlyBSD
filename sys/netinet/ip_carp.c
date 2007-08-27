@@ -25,7 +25,7 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.2 2007/08/27 14:56:00 hasso Exp $
+ * $DragonFly: src/sys/netinet/ip_carp.c,v 1.3 2007/08/27 16:15:42 hasso Exp $
  */
 
 #include "opt_carp.h"
@@ -69,7 +69,6 @@
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 #include <netinet/if_ether.h>
-#include <netinet/if_fddi.h>
 #endif
 
 #ifdef INET6
@@ -2066,18 +2065,6 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *sa,
 			eh->ether_shost[3] = 0;
 			eh->ether_shost[4] = 1;
 			eh->ether_shost[5] = sc->sc_vhid;
-		}
-		break;
-	case IFT_FDDI: {
-			struct fddi_header *fh;
-
-			fh = mtod(m, struct fddi_header *);
-			fh->fddi_shost[0] = 0;
-			fh->fddi_shost[1] = 0;
-			fh->fddi_shost[2] = 0x5e;
-			fh->fddi_shost[3] = 0;
-			fh->fddi_shost[4] = 1;
-			fh->fddi_shost[5] = sc->sc_vhid;
 		}
 		break;
 	default:
