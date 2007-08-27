@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.127 2007/08/27 16:15:42 hasso Exp $
+# $DragonFly: src/sys/config/LINT,v 1.128 2007/08/27 20:40:52 hasso Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1305,9 +1305,6 @@ options 	FDC_DEBUG
 
 device		fd0	at fdc0 drive 0
 device		fd1	at fdc0 drive 1
-
-# M-systems DiskOnchip products see src/sys/contrib/dev/fla/README
-device		fla0	at isa?
 
 #
 # Other standard PC hardware: `mse', `sio', etc.
