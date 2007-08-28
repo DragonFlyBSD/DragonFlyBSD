@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/basename/basename.c,v 1.15 2004/07/15 06:15:10 tjr Exp $
- * $DragonFly: src/usr.bin/basename/basename.c,v 1.10 2005/09/27 22:35:51 corecode Exp $
+ * $DragonFly: src/usr.bin/basename/basename.c,v 1.11 2007/08/28 15:36:44 pavalos Exp $
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)basename.c	8.4 (Berkeley) 5/4/95
@@ -55,15 +55,22 @@ main(int argc, char **argv)
 {
 	char *p, *suffix;
 	size_t suffixlen;
-	int ch;
+	int aflag, ch;
 
 	setlocale(LC_ALL, "");
 
+	aflag = 0;
 	suffix = NULL;
 	suffixlen = 0;
 
-	while ((ch = getopt(argc, argv, "")) != -1) {
+	while ((ch = getopt(argc, argv, "as:")) != -1) {
 		switch(ch) {
+		case 'a':
+			aflag = 1;
+			break;
+		case 's':
+			suffix = optarg;
+			break;
 		case '?':
 		default:
 			usage();
@@ -72,7 +79,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 1 && argc != 2)
+	if (argc < 1)
 		usage();
 
 	if (!*argv[0]) {
@@ -81,13 +88,20 @@ main(int argc, char **argv)
 	}
 	if ((p = basename(argv[0])) == NULL)
 		err(1, "%s", argv[0]);
-	if (argc == 2) {
+	if ((suffix == NULL && !aflag) && argc == 2) {
 		suffix = argv[1];
-		suffixlen = strlen(argv[1]);
+		argc--;
 	}
-	stripsuffix(p, suffix, suffixlen);
-	printf("%s\n", p);
-	return (0);
+	if (suffix != NULL)
+		suffixlen = strlen(suffix);
+	while (argc--) {
+		if ((p = basename(*argv)) == NULL)
+			err(1, "%s", argv[0]);
+		stripsuffix(p, suffix, suffixlen);
+		argv++;
+		printf("%s\n", p);
+	}
+	exit(0);
 }
 
 void
@@ -123,6 +137,8 @@ void
 usage(void)
 {
 
-	fprintf(stderr, "usage: basename string [suffix]\n");
+	fprintf(stderr,
+"usage: basename string [suffix]\n"
+"       basename [-a] [-s suffix] string [...]\n");
 	exit(1);
 }
