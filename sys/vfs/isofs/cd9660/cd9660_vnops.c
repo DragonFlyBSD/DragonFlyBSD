@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.36 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.37 2007/08/28 01:04:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,8 +80,6 @@ static int cd9660_readdir (struct vop_readdir_args *);
 static int cd9660_readlink (struct vop_readlink_args *ap);
 static int cd9660_strategy (struct vop_strategy_args *);
 static int cd9660_print (struct vop_print_args *);
-static int cd9660_getpages (struct vop_getpages_args *);
-static int cd9660_putpages (struct vop_putpages_args *);
 
 /*
  * Setattr call. Only allowed for block and character special devices.
@@ -834,32 +832,6 @@ cd9660_pathconf(struct vop_pathconf_args *ap)
 }
 
 /*
- * get page routine
- *
- * XXX By default, wimp out... note that a_offset is ignored (and always
- * XXX has been).
- */
-int
-cd9660_getpages(struct vop_getpages_args *ap)
-{
-	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage);
-}
-
-/*
- * put page routine
- *
- * XXX By default, wimp out... note that a_offset is ignored (and always
- * XXX has been).
- */
-int
-cd9660_putpages(struct vop_putpages_args *ap)
-{
-	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_sync, ap->a_rtvals);
-}
-
-/*
  * Advisory lock support
  */
 static int
@@ -891,8 +863,8 @@ struct vop_ops cd9660_vnode_vops = {
 	.vop_reclaim =		cd9660_reclaim,
 	.vop_setattr =		cd9660_setattr,
 	.vop_strategy =		cd9660_strategy,
-	.vop_getpages =		cd9660_getpages,
-	.vop_putpages =		cd9660_putpages
+	.vop_getpages =		vop_stdgetpages,
+	.vop_putpages =		vop_stdputpages
 };
 
 /*

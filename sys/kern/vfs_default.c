@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.50 2007/08/13 17:43:55 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.51 2007/08/28 01:04:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1229,6 +1229,42 @@ vop_stdpoll(struct vop_poll_args *ap)
 	if (ap->a_events & ~POLLSTANDARD)
 		return (vn_pollrecord(ap->a_vp, ap->a_events));
 	return (ap->a_events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM));
+}
+
+/*
+ * Implement standard getpages and putpages.  All filesystems must use
+ * the buffer cache to back regular files.
+ */
+int
+vop_stdgetpages(struct vop_getpages_args *ap)
+{
+	struct mount *mp;
+	int error;
+
+	if ((mp = ap->a_vp->v_mount) != NULL) {
+		error = vnode_pager_generic_getpages(
+				ap->a_vp, ap->a_m, ap->a_count,
+				ap->a_reqpage);
+	} else {
+		error = VM_PAGER_BAD;
+	}
+	return (error);
+}
+
+int
+vop_stdputpages(struct vop_putpages_args *ap)
+{
+	struct mount *mp;
+	int error;
+
+	if ((mp = ap->a_vp->v_mount) != NULL) {
+		error = vnode_pager_generic_putpages(
+				ap->a_vp, ap->a_m, ap->a_count,
+				ap->a_sync, ap->a_rtvals);
+	} else {
+		error = VM_PAGER_BAD;
+	}
+	return (error);
 }
 
 /* 

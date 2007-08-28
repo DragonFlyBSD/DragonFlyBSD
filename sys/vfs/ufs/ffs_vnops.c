@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.17 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.18 2007/08/28 01:04:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,6 @@
 
 static int	ffs_fsync (struct vop_fsync_args *);
 static int	ffs_getpages (struct vop_getpages_args *);
-static int	ffs_putpages (struct vop_putpages_args *);
 static int	ffs_read (struct vop_read_args *);
 static int	ffs_write (struct vop_write_args *);
 
@@ -75,7 +74,7 @@ struct vop_ops ffs_vnode_vops = {
 	.vop_default =		ufs_vnoperate,
 	.vop_fsync =		ffs_fsync,
 	.vop_getpages =		ffs_getpages,
-	.vop_putpages =		ffs_putpages,
+	.vop_putpages =		vop_stdputpages,
 	.vop_read =		ffs_read,
 	.vop_balloc =		ffs_balloc,
 	.vop_reallocblks =	ffs_reallocblks,

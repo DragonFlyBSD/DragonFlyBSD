@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.41 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.42 2007/08/28 01:04:32 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -131,7 +131,6 @@ static int ext2_create (struct vop_old_create_args *);
 static int ext2_mknod (struct vop_old_mknod_args *);
 static int ext2_symlink (struct vop_old_symlink_args *);
 static int ext2_getpages (struct vop_getpages_args *);
-static int ext2_putpages (struct vop_putpages_args *);
 
 #include "ext2_readwrite.c"
 
@@ -1253,19 +1252,6 @@ ext2_getpages(struct vop_getpages_args *ap)
 		ap->a_reqpage));
 }
 
-/*
- * put page routine
- *
- * XXX By default, wimp out... note that a_offset is ignored (and always
- * XXX has been).
- */
-static int
-ext2_putpages(struct vop_putpages_args *ap)
-{
-	return (vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_sync, ap->a_rtvals));
-}
-
 void
 ext2_itimes(struct vnode *vp)
 {
@@ -2213,7 +2199,7 @@ struct vop_ops ext2_vnode_vops = {
 	.vop_old_symlink =	ext2_symlink,
 	.vop_old_whiteout =	ext2_whiteout,
 	.vop_getpages =		ext2_getpages,
-	.vop_putpages =		ext2_putpages
+	.vop_putpages =		vop_stdputpages
 };
 
 struct vop_ops ext2_spec_vops = {

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.42 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.43 2007/08/28 01:04:33 dillon Exp $
  *
  */
 
@@ -95,8 +95,6 @@ static int	ntfs_readdir (struct vop_readdir_args *ap);
 static int	ntfs_lookup (struct vop_old_lookup_args *ap);
 static int	ntfs_bmap (struct vop_bmap_args *ap);
 #if defined(__DragonFly__)
-static int	ntfs_getpages (struct vop_getpages_args *ap);
-static int	ntfs_putpages (struct vop_putpages_args *);
 static int	ntfs_fsync (struct vop_fsync_args *ap);
 #else
 static int	ntfs_bypass (struct vop_generic_args *);
@@ -104,22 +102,6 @@ static int	ntfs_bypass (struct vop_generic_args *);
 static int	ntfs_pathconf (struct vop_pathconf_args *);
 
 int	ntfs_prtactive = 1;	/* 1 => print out reclaim of active vnodes */
-
-#if defined(__DragonFly__)
-int
-ntfs_getpages(struct vop_getpages_args *ap)
-{
-	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage);
-}
-
-int
-ntfs_putpages(struct vop_putpages_args *ap)
-{
-	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_sync, ap->a_rtvals);
-}
-#endif
 
 /*
  * This is a noop, simply returning what one has been given.
@@ -845,8 +827,8 @@ struct vop_ops ntfs_vnode_vops = {
 	.vop_readdir =		ntfs_readdir,
 	.vop_fsync =		ntfs_fsync,
 	.vop_bmap =		ntfs_bmap,
-	.vop_getpages =		ntfs_getpages,
-	.vop_putpages =		ntfs_putpages,
+	.vop_getpages =		vop_stdgetpages,
+	.vop_putpages =		vop_stdputpages,
 	.vop_strategy =		ntfs_strategy,
 	.vop_read =		ntfs_read,
 	.vop_write =		ntfs_write

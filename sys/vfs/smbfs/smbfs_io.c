@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.28 2007/02/22 15:50:50 corecode Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.29 2007/08/28 01:04:33 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -407,8 +407,7 @@ int
 smbfs_getpages(struct vop_getpages_args *ap)
 {
 #ifdef SMBFS_RWGENERIC
-	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage);
+	return vop_stdgetpages(ap);
 #else
 	int i, error, nextoff, size, toff, npages, count;
 	int doclose;
@@ -550,8 +549,7 @@ smbfs_putpages(struct vop_putpages_args *ap)
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
 	VOP_OPEN(vp, FWRITE, cred, NULL);
-	error = vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_sync, ap->a_rtvals);
+	error = vop_stdputpages(ap);
 	VOP_CLOSE(vp, FWRITE, cred);
 	return error;
 #else

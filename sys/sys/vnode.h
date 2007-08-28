@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.76 2007/07/30 08:02:40 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.77 2007/08/28 01:04:31 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -518,6 +518,8 @@ int	vn_writechk (struct vnode *vp, struct nchandle *nch);
 int	ncp_writechk(struct nchandle *nch);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
+int	vop_stdgetpages(struct vop_getpages_args *ap);
+int	vop_stdputpages(struct vop_putpages_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
 int	vop_stdpoll (struct vop_poll_args *ap);

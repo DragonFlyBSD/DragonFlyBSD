@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.51 2007/08/21 17:26:48 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.52 2007/08/28 01:04:33 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -103,8 +103,6 @@ static int msdosfs_bmap (struct vop_bmap_args *);
 static int msdosfs_strategy (struct vop_strategy_args *);
 static int msdosfs_print (struct vop_print_args *);
 static int msdosfs_pathconf (struct vop_pathconf_args *ap);
-static int msdosfs_getpages (struct vop_getpages_args *);
-static int msdosfs_putpages (struct vop_putpages_args *);
 
 /*
  * Some general notes:
@@ -1956,32 +1954,6 @@ msdosfs_pathconf(struct vop_pathconf_args *ap)
 	/* NOTREACHED */
 }
 
-/*
- * get page routine
- *
- * XXX By default, wimp out... note that a_offset is ignored (and always
- * XXX has been).
- */
-int
-msdosfs_getpages(struct vop_getpages_args *ap)
-{
-	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage);
-}
-
-/*
- * put page routine
- *
- * XXX By default, wimp out... note that a_offset is ignored (and always
- * XXX has been).
- */
-int
-msdosfs_putpages(struct vop_putpages_args *ap)
-{
-	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_sync, ap->a_rtvals);
-}
-
 /* Global vfs data structures for msdosfs */
 struct vop_ops msdosfs_vnode_vops = {
 	.vop_default =		vop_defaultop,
@@ -2009,6 +1981,6 @@ struct vop_ops msdosfs_vnode_vops = {
 	.vop_strategy =		msdosfs_strategy,
 	.vop_old_symlink =	msdosfs_symlink,
 	.vop_write =		msdosfs_write,
-	.vop_getpages =		msdosfs_getpages,
-	.vop_putpages =		msdosfs_putpages
+	.vop_getpages =		vop_stdgetpages,
+	.vop_putpages =		vop_stdputpages
 };

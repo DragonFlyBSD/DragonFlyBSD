@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.44 2007/08/21 17:26:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.45 2007/08/28 01:04:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,26 +88,11 @@ static int	hpfs_create (struct vop_old_create_args *);
 static int	hpfs_remove (struct vop_old_remove_args *);
 static int	hpfs_bmap (struct vop_bmap_args *ap);
 #if defined(__DragonFly__)
-static int	hpfs_getpages (struct vop_getpages_args *ap);
-static int	hpfs_putpages (struct vop_putpages_args *);
 static int	hpfs_fsync (struct vop_fsync_args *ap);
 #endif
 static int	hpfs_pathconf (struct vop_pathconf_args *ap);
 
 #if defined(__DragonFly__)
-int
-hpfs_getpages(struct vop_getpages_args *ap)
-{
-	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage);
-}
-
-int
-hpfs_putpages(struct vop_putpages_args *ap)
-{
-	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_sync, ap->a_rtvals);
-}
 
 /*
  * hpfs_fsync(struct vnode *a_vp, int a_waitfor)
@@ -1241,8 +1226,8 @@ struct vop_ops hpfs_vnode_vops = {
 	.vop_readdir =		hpfs_readdir,
 	.vop_fsync =		hpfs_fsync,
 	.vop_bmap =		hpfs_bmap,
-	.vop_getpages =		hpfs_getpages,
-	.vop_putpages =		hpfs_putpages,
+	.vop_getpages =		vop_stdgetpages,
+	.vop_putpages =		vop_stdputpages,
 	.vop_strategy =		hpfs_strategy,
 	.vop_read =		hpfs_read,
 	.vop_write =		hpfs_write,
