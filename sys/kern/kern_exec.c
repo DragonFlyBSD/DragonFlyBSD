@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.61 2007/07/30 17:41:23 pavalos Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.62 2007/08/28 01:09:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,6 +64,7 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_object.h>
+#include <vm/vnode_pager.h>
 #include <vm/vm_pager.h>
 
 #include <sys/user.h>
@@ -605,7 +606,10 @@ exec_map_first_page(struct image_params *imgp)
 
 		/*
 		 * get_pages unbusies all the requested pages except the
-		 * primary page (at index 0 in this case).
+		 * primary page (at index 0 in this case).  The primary
+		 * page may have been wired during the pagein (e.g. by
+		 * the buffer cache) so vnode_pager_freepage() must be
+		 * used to properly release it.
 		 */
 		rv = vm_pager_get_pages(object, ma, initial_pagein, 0);
 		m = vm_page_lookup(object, 0);
@@ -613,7 +617,7 @@ exec_map_first_page(struct image_params *imgp)
 		if (rv != VM_PAGER_OK || m == NULL || m->valid == 0) {
 			if (m) {
 				vm_page_protect(m, VM_PROT_NONE);
-				vm_page_free(m);
+				vnode_pager_freepage(m);
 			}
 			crit_exit();
 			return EIO;

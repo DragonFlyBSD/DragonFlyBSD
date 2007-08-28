@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.23 2007/08/21 17:26:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.24 2007/08/28 01:09:08 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -46,6 +46,7 @@
 #include <vm/vnode_pager.h>
 #include <sys/event.h>
 #include <sys/vmmeter.h>
+#include <sys/sysctl.h>
 #include <vm/vm_page2.h>
 
 #include "opt_directio.h"
@@ -56,6 +57,10 @@
 #ifdef DIRECTIO
 extern int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
 #endif
+
+SYSCTL_DECL(_vfs_ffs);
+static int getpages_uses_bufcache = 0;
+SYSCTL_INT(_vfs_ffs, OID_AUTO, getpages_uses_bufcache, CTLFLAG_RW, &getpages_uses_bufcache, 0, "");
 
 /*
  * Vnode op for reading.
@@ -438,6 +443,13 @@ ffs_getpages(struct vop_getpages_args *ap)
 	int rtval;
 	int pagesperblock;
 
+	/*
+	 * If set just use the system standard getpages which issues a
+	 * UIO_NOCOPY VOP_READ.
+	 */
+	if (getpages_uses_bufcache) {
+		return vop_stdgetpages(ap);
+	}
 
 	pcount = round_page(ap->a_count) / PAGE_SIZE;
 	mreq = ap->a_m[ap->a_reqpage];
@@ -561,15 +573,3 @@ ffs_getpages(struct vop_getpages_args *ap)
 	return (rtval);
 }
 
-/*
- * put page routine
- *
- * XXX By default, wimp out... note that a_offset is ignored (and always
- * XXX has been).
- */
-int
-ffs_putpages(struct vop_putpages_args *ap)
-{
-	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_sync, ap->a_rtvals);
-}

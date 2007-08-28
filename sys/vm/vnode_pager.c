@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.39 2007/08/26 16:22:31 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.40 2007/08/28 01:09:07 dillon Exp $
  */
 
 /*
@@ -344,10 +344,21 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 	}
 }
 
+/*
+ * Release a page busied for a getpages operation.  The page may have become
+ * wired (typically due to being used by the buffer cache) or otherwise been
+ * soft-busied and cannot be freed in that case.  A held page can still be
+ * freed.
+ */
 void
 vnode_pager_freepage(vm_page_t m)
 {
-	vm_page_free(m);
+	if (m->busy || m->wire_count) {
+		vm_page_activate(m);
+		vm_page_wakeup(m);
+	} else {
+		vm_page_free(m);
+	}
 }
 
 /*
@@ -425,7 +436,6 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 		}
 		return VM_PAGER_OK;
 	}
-	m[reqpage]->valid = 0;
 
 	/*
 	 * Discard pages past the file EOF.  If the requested page is past
@@ -440,7 +450,6 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 			if (i != reqpage)
 				vnode_pager_freepage(m[i]);
 		}
-		m[reqpage]->valid = 0;
 		return VM_PAGER_ERROR;
 	}
 
@@ -517,9 +526,10 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	bytecount -= auio.uio_resid;
 
 	for (i = 0; i < count; ++i) {
+		vm_page_t mt = m[i];
+
 		if (i != reqpage) {
-			vm_page_t mt = m[i];
-			if (!error) {
+			if (error == 0 && mt->valid) {
 				if (mt->flags & PG_WANTED)
 					vm_page_activate(mt);
 				else
@@ -528,6 +538,18 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 			} else {
 				vnode_pager_freepage(mt);
 			}
+		} else if (mt->valid == 0) {
+			if (error == 0) {
+				kprintf("page failed but no I/O error page %p object %p pindex %d\n", mt, mt->object, (int) mt->pindex);
+				/* whoops, something happened */
+				error = EINVAL;
+			}
+		} else if (mt->valid != VM_PAGE_BITS_ALL) {
+			/*
+			 * Zero-extend the requested page if necessary (if
+			 * the filesystem is using a small block size).
+			 */
+			vm_page_zero_invalid(mt, TRUE);
 		}
 	}
 	if (error) {

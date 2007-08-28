@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.43 2007/06/29 21:54:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.44 2007/08/28 01:09:07 dillon Exp $
  */
 
 /*
@@ -1182,6 +1182,10 @@ readrest:
 			}
 			/*
 			 * Data outside the range of the pager or an I/O error
+			 *
+			 * The page may have been wired during the pagein,
+			 * e.g. by the buffer cache, and cannot simply be
+			 * freed.  Call vnode_pager_freepag() to deal with it.
 			 */
 			/*
 			 * XXX - the check for kernel_map is a kludge to work
@@ -1190,7 +1194,7 @@ readrest:
 			 */
 			if (((fs->map != &kernel_map) && (rv == VM_PAGER_ERROR)) ||
 				(rv == VM_PAGER_BAD)) {
-				vm_page_free(fs->m);
+				vnode_pager_freepage(fs->m);
 				fs->m = NULL;
 				unlock_and_deallocate(fs);
 				if (rv == VM_PAGER_ERROR)
@@ -1200,7 +1204,7 @@ readrest:
 				/* NOT REACHED */
 			}
 			if (fs->object != fs->first_object) {
-				vm_page_free(fs->m);
+				vnode_pager_freepage(fs->m);
 				fs->m = NULL;
 				/*
 				 * XXX - we cannot just fall out at this
