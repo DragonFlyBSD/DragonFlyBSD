@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.11 2007/05/18 03:12:02 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.12 2007/08/29 15:42:05 swildner Exp $
  */
 
 #include "use_vt.h"
@@ -46,7 +46,6 @@
 #include "use_asc.h"
 #include "use_stl.h"
 #include "use_stli.h"
-#include "use_fla.h"
 
 struct old_isa_driver {
 	int			type;
