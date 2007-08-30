@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.113 2007/08/21 19:23:04 corecode Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.114 2007/08/30 20:41:00 pavalos Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -331,6 +331,7 @@ struct	proc {
 #define	P_WAITED	0x01000	/* SIGSTOP status was returned by wait3/4 */
 #define	P_WEXIT		0x02000	/* Working on exiting (master exit) */
 #define	P_EXEC		0x04000	/* Process called exec. */
+#define	P_CONTINUED	0x08000	/* Proc has continued from a stopped state. */
 
 /* Should probably be changed into a hold count. */
 /* was	P_NOSWAP	0x08000	was: Do not swap upages; p->p_hold */

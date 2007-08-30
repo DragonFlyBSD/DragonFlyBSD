@@ -32,7 +32,7 @@
  *
  *	@(#)wait.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/wait.h,v 1.11 1999/12/29 04:24:50 peter Exp $
- * $DragonFly: src/sys/sys/wait.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/wait.h,v 1.6 2007/08/30 20:41:00 pavalos Exp $
  */
 
 #ifndef _SYS_WAIT_H_
@@ -62,6 +62,7 @@
 #define WTERMSIG(x)	(_WSTATUS(x))
 #define WIFEXITED(x)	(_WSTATUS(x) == 0)
 #define WEXITSTATUS(x)	(_W_INT(x) >> 8)
+#define WIFCONTINUED(x)	(x == 19)	/* 19 == SIGCONT */
 #ifndef _POSIX_SOURCE
 #define WCOREDUMP(x)	(_W_INT(x) & WCOREFLAG)
 
@@ -80,6 +81,7 @@
  */
 #define WNOHANG		1	/* don't hang in wait */
 #define WUNTRACED	2	/* tell about stopped, untraced children */
+#define WCONTINUED	4	/* Report a job control continued process. */
 #define WLINUXCLONE     0x80000000       /* wait for kthread spawned from linux_clone */
 
 #ifndef _POSIX_SOURCE

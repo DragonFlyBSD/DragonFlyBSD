@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.83 2007/08/15 03:15:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.84 2007/08/30 20:41:00 pavalos Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1012,6 +1012,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		        return;
 		}
 		SIG_CONTSIGMASK(p->p_siglist);
+		p->p_flag &= ~P_CONTINUED;
 	}
 
 	crit_enter();
@@ -1056,6 +1057,8 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			 * handle the signal itself.
 			 */
 			/* XXX what if the signal is being held blocked? */
+			p->p_flag |= P_CONTINUED;
+			wakeup(p->p_pptr);
 			if (action == SIG_DFL)
 				SIGDELSET(p->p_siglist, sig);
 			proc_unstop(p);
