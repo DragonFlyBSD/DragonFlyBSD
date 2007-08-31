@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.186 2007/08/27 21:51:40 hasso Exp $
+# $DragonFly: src/etc/Makefile,v 1.187 2007/08/31 10:52:03 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -532,6 +532,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/fpa.4.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/fla.4.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/nv.4.gz"
+	rm -f ${DESTDIR}/modules/if_nv.ko
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
