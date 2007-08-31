@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.37 2007/06/22 05:53:05 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.15 2007/08/19 19:45:39 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.16 2007/08/31 13:25:32 hasso Exp $
  */
 
 /*-
@@ -96,7 +96,6 @@ SYSCTL_INT(_hw_usb_uftdi, OID_AUTO, debug, CTLFLAG_RW,
 #define UFTDI_CONFIG_INDEX	0
 #define UFTDI_IFACE_INDEX	0
 
-
 /*
  * These are the maximum number of bytes transferred per frame.
  * The output buffer size cannot be increased due to the size encoding.
@@ -134,59 +133,68 @@ struct ucom_callback uftdi_callback = {
 	uftdi_write,
 };
 
+static const struct usb_devno uftdi_devs[] = {
+	{ USB_VENDOR_BBELECTRONICS, USB_PRODUCT_BBELECTRONICS_USOTL4 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_SERIAL_8U100AX },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_SERIAL_8U232AM },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_SERIAL_2232C },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_SEMC_DSS20 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_631 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_632 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_633 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_634 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_635 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_USBSERIAL },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_MX2_3 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_MX4_5 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_LK202 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_LK204 },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13M },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13S },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13U },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_EISCOU },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_UOPTBR },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_EMCU2D },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_PCMSFU },
+	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_EMCU2H },
+	{ USB_VENDOR_INTREPIDCS, USB_PRODUCT_INTREPIDCS_VALUECAN },
+	{ USB_VENDOR_INTREPIDCS, USB_PRODUCT_INTREPIDCS_NEOVI },
+	{ USB_VENDOR_MELCO, USB_PRODUCT_MELCO_PCOPRS1 },
+	{ USB_VENDOR_SIIG2, USB_PRODUCT_SIIG2_US2308 },
+	{ 0, 0 }
+};
+
 static int
 uftdi_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
+	usbd_status err;
+	u_int8_t nifaces;
 
-	if (uaa->iface != NULL) {
-		if (uaa->vendor == USB_VENDOR_FTDI &&
-		    (uaa->product == USB_PRODUCT_FTDI_SERIAL_2232C))
-			return (UMATCH_VENDOR_IFACESUBCLASS);
+	if (usb_lookup(uftdi_devs, uaa->vendor, uaa->product) == NULL)
 		return (UMATCH_NONE);
+
+	/* Get the number of interfaces. */
+	if (uaa->iface != NULL) {
+		nifaces = uaa->nifaces;
+	} else {
+		err = usbd_set_config_index(uaa->device, UFTDI_CONFIG_INDEX, 1);
+		if (err)
+			return (UMATCH_NONE);
+		err = usbd_interface_count(uaa->device, &nifaces);
+		if (err)
+			return (UMATCH_NONE);
+		usbd_set_config_index(uaa->device, USB_UNCONFIG_INDEX, 1);
 	}
 
-	DPRINTFN(20,("uftdi: vendor=0x%x, product=0x%x\n",
-		     uaa->vendor, uaa->product));
-
-	if (uaa->vendor == USB_VENDOR_FTDI &&
-	    (uaa->product == USB_PRODUCT_FTDI_SERIAL_8U100AX ||
-	     uaa->product == USB_PRODUCT_FTDI_SERIAL_8U232AM ||
-	     uaa->product == USB_PRODUCT_FTDI_SEMC_DSS20 ||
-	     uaa->product == USB_PRODUCT_FTDI_CFA_631 ||
-	     uaa->product == USB_PRODUCT_FTDI_CFA_632 ||
-	     uaa->product == USB_PRODUCT_FTDI_CFA_633 ||
-	     uaa->product == USB_PRODUCT_FTDI_CFA_634 ||
-	     uaa->product == USB_PRODUCT_FTDI_CFA_635 ||
-	     uaa->product == USB_PRODUCT_FTDI_USBSERIAL ||
-	     uaa->product == USB_PRODUCT_FTDI_MX2_3 ||
-	     uaa->product == USB_PRODUCT_FTDI_MX4_5 ||
-	     uaa->product == USB_PRODUCT_FTDI_LK202 ||
-	     uaa->product == USB_PRODUCT_FTDI_LK204 ||
-	     uaa->product == USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13M ||
-	     uaa->product == USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13S ||
-	     uaa->product == USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13U ||
-	     uaa->product == USB_PRODUCT_FTDI_EISCOU ||
-	     uaa->product == USB_PRODUCT_FTDI_UOPTBR ||
-	     uaa->product == USB_PRODUCT_FTDI_EMCU2D ||
-	     uaa->product == USB_PRODUCT_FTDI_PCMSFU ||
-	     uaa->product == USB_PRODUCT_FTDI_EMCU2H ))
-		return (UMATCH_VENDOR_PRODUCT);
-	if (uaa->vendor == USB_VENDOR_SIIG2 &&
-	    (uaa->product == USB_PRODUCT_SIIG2_US2308))
-		return (UMATCH_VENDOR_PRODUCT);
-	if (uaa->vendor == USB_VENDOR_INTREPIDCS &&
-	    (uaa->product == USB_PRODUCT_INTREPIDCS_VALUECAN ||
-	    uaa->product == USB_PRODUCT_INTREPIDCS_NEOVI))
-		return (UMATCH_VENDOR_PRODUCT);
-	if (uaa->vendor == USB_VENDOR_BBELECTRONICS &&
-	    (uaa->product == USB_PRODUCT_BBELECTRONICS_USOTL4))
-		return (UMATCH_VENDOR_PRODUCT);
-	if (uaa->vendor == USB_VENDOR_MELCO &&
-	    (uaa->product == USB_PRODUCT_MELCO_PCOPRS1))
+	if (nifaces <= 1)
 		return (UMATCH_VENDOR_PRODUCT);
 
-	return (UMATCH_NONE);
+	/* Dual UART chip */
+	if (uaa->iface != NULL)
+		return (UMATCH_VENDOR_IFACESUBCLASS);
+	else
+		return (UMATCH_NONE);
 }
 
 static int
@@ -234,94 +242,13 @@ uftdi_attach(device_t self)
 
 	id = usbd_get_interface_descriptor(iface);
 	ucom->sc_iface = iface;
-	switch( uaa->vendor ){
-	case USB_VENDOR_FTDI:
-		switch( uaa->product ){
-		case USB_PRODUCT_FTDI_SERIAL_8U100AX:
-			sc->sc_type = UFTDI_TYPE_SIO;
-			sc->sc_hdrlen = 1;
-			break;
-		case USB_PRODUCT_FTDI_SEMC_DSS20:
-		case USB_PRODUCT_FTDI_SERIAL_8U232AM:
-		case USB_PRODUCT_FTDI_SERIAL_2232C:
-		case USB_PRODUCT_FTDI_CFA_631:
-		case USB_PRODUCT_FTDI_CFA_632:
-		case USB_PRODUCT_FTDI_CFA_633:
-		case USB_PRODUCT_FTDI_CFA_634:
-		case USB_PRODUCT_FTDI_CFA_635:
-		case USB_PRODUCT_FTDI_USBSERIAL:
-		case USB_PRODUCT_FTDI_MX2_3:
-		case USB_PRODUCT_FTDI_MX4_5:
-		case USB_PRODUCT_FTDI_LK202:
-		case USB_PRODUCT_FTDI_LK204:
-		case USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13M:
-		case USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13S:
-		case USB_PRODUCT_FTDI_TACTRIX_OPENPORT_13U:
-		case USB_PRODUCT_FTDI_EISCOU:
-		case USB_PRODUCT_FTDI_UOPTBR:
-		case USB_PRODUCT_FTDI_EMCU2D:
-		case USB_PRODUCT_FTDI_PCMSFU:
-		case USB_PRODUCT_FTDI_EMCU2H:
-			sc->sc_type = UFTDI_TYPE_8U232AM;
-			sc->sc_hdrlen = 0;
-			break;
 
-		default:		/* Can't happen */
-			goto bad;
-		}
-		break;
-
-	case USB_VENDOR_INTREPIDCS:
-		switch( uaa->product ){
-		case USB_PRODUCT_INTREPIDCS_VALUECAN:
-		case USB_PRODUCT_INTREPIDCS_NEOVI:
-			sc->sc_type = UFTDI_TYPE_8U232AM;
-			sc->sc_hdrlen = 0;
-			break;
-
-		default:		/* Can't happen */
-			goto bad;
-		}
-		break;
-
-	case USB_VENDOR_SIIG2:
-		switch( uaa->product ){
-		case USB_PRODUCT_SIIG2_US2308:
-			sc->sc_type = UFTDI_TYPE_8U232AM;
-			sc->sc_hdrlen = 0;
-			break;
-
-		default:		/* Can't happen */
-			goto bad;
-		}
-		break;
-
-	case USB_VENDOR_BBELECTRONICS:
-		switch( uaa->product ){
-		case USB_PRODUCT_BBELECTRONICS_USOTL4:
-			sc->sc_type = UFTDI_TYPE_8U232AM;
-			sc->sc_hdrlen = 0;
-			break;
-
-		default:		/* Can't happen */
-			goto bad;
-		}
-		break;
-
-	case USB_VENDOR_MELCO:
-		switch( uaa->product ){
-		case USB_PRODUCT_MELCO_PCOPRS1:
-			sc->sc_type = UFTDI_TYPE_8U232AM;
-			sc->sc_hdrlen = 0;
-			break;
-
-		default:		/* Can't happen */
-			goto bad;
-		}
-		break;
-
-	default:		/* Can't happen */
-		goto bad;
+	if (uaa->release < 0x0200) {
+		sc->sc_type = UFTDI_TYPE_SIO;
+		sc->sc_hdrlen = 1;
+	} else {
+		sc->sc_type = UFTDI_TYPE_8U232AM;
+		sc->sc_hdrlen = 0;
 	}
 
 	ucom->sc_bulkin_no = ucom->sc_bulkout_no = -1;
