@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: extern.h,v 1.5 2004/10/19 07:36:51 otto Exp $
- * $DragonFly: src/usr.bin/bc/extern.h,v 1.2 2005/04/21 18:50:22 swildner Exp $
+ * $OpenBSD: extern.h,v 1.6 2006/03/18 20:44:43 otto Exp $
+ * $DragonFly: src/usr.bin/bc/extern.h,v 1.3 2007/09/01 18:42:08 pavalos Exp $
  */
 
 /*
@@ -18,8 +18,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#include <sys/types.h>
 
 #include <stdio.h>
 
@@ -41,3 +39,4 @@ extern int	sargc;
 extern char	**sargv;
 extern char	*filename;
 extern char	*cmdexpr;
+bool		interactive;

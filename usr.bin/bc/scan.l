@@ -1,7 +1,7 @@
 %{
 /*
- * $OpenBSD: scan.l,v 1.18 2005/04/13 06:36:03 otto Exp $
- * $DragonFly: src/usr.bin/bc/scan.l,v 1.2 2005/04/21 18:50:22 swildner Exp $
+ * $OpenBSD: scan.l,v 1.21 2006/03/18 20:44:43 otto Exp $
+ * $DragonFly: src/usr.bin/bc/scan.l,v 1.3 2007/09/01 18:42:08 pavalos Exp $
  */
 
 /*
@@ -32,11 +32,11 @@
 #include "y.tab.h"
 
 int		lineno;
+bool		interactive;
 
 static char	*strbuf = NULL;
 static size_t	strbuf_sz = 1;
 static bool	dot_seen;
-static volatile sig_atomic_t	interactive = 0;
 
 static void	init_strbuf(void);
 static void	add_str(const char *);
@@ -225,18 +225,17 @@ add_str(const char *str)
 	strlcat(strbuf, str, strbuf_sz);
 }
 
+/* ARGSUSED */
 void
 abort_line(int sig)
 {
 	const char str[] = "[\n]P\n";
 	int save_errno;
 
-	if (interactive) {
-		save_errno = errno;
-		YY_FLUSH_BUFFER;	/* XXX signal race? */
-		write(STDOUT_FILENO, str, sizeof(str) - 1);
-		errno = save_errno;
-	}
+	save_errno = errno;
+	YY_FLUSH_BUFFER;	/* XXX signal race? */
+	write(STDOUT_FILENO, str, sizeof(str) - 1);
+	errno = save_errno;
 }
 
 int
@@ -264,6 +263,8 @@ yywrap(void)
 		free(cmdexpr);
 		state++;
 	}
+	if (yyin != NULL && yyin != stdin)
+		fclose(yyin);
 	if (fileindex < sargc) {
 		filename = sargv[fileindex++];
 		yyin = fopen(filename, "r");
@@ -274,7 +275,8 @@ yywrap(void)
 	} else if (fileindex == sargc) {
 		fileindex++;
 		yyin = stdin;
-		interactive = isatty(fileno(yyin));
+		if (interactive)
+			signal(SIGINT, abort_line);
 		lineno = 1;
 		filename = "stdin";
 		return (0);

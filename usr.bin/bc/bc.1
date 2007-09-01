@@ -1,5 +1,5 @@
-.\"	$OpenBSD: bc.1,v 1.18 2004/10/19 07:36:51 otto Exp $
-.\"	$DragonFly: src/usr.bin/bc/bc.1,v 1.5 2007/07/29 17:27:45 swildner Exp $
+.\"	$OpenBSD: bc.1,v 1.22 2007/05/31 19:20:07 jmc Exp $
+.\"	$DragonFly: src/usr.bin/bc/bc.1,v 1.6 2007/09/01 18:42:08 pavalos Exp $
 .\"
 .\" Copyright (C) Caldera International Inc.  2001-2002.
 .\" All rights reserved.
@@ -332,7 +332,6 @@ the exponential function and
 .Pp
 prints approximate values of the exponential function of
 the first ten integers.
-.Pp
 .Bd -literal -offset indent
 $ bc -l -e 'scale = 500; 2 * a(2^10000)' -e quit
 .Ed
@@ -353,9 +352,13 @@ option is specified on the command line.
 .Sh STANDARDS
 The
 .Nm
-utility is expected to conform to the
-.St -p1003.2
+utility is compliant with the
+.St -p1003.1-2004
 specification.
+.Pp
+The flags
+.Op Fl ce
+are extensions to that specification.
 .Sh HISTORY
 The
 .Nm

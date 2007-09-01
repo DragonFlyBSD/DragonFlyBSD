@@ -1,7 +1,7 @@
 %{
 /*
- * $OpenBSD: bc.y,v 1.25 2005/03/17 16:59:31 otto Exp $
- * $DragonFly: src/usr.bin/bc/bc.y,v 1.2 2005/04/21 18:50:22 swildner Exp $
+ * $OpenBSD: bc.y,v 1.32 2006/05/18 05:49:53 otto Exp $
+ * $DragonFly: src/usr.bin/bc/bc.y,v 1.3 2007/09/01 18:42:08 pavalos Exp $
  */
 
 /*
@@ -33,8 +33,12 @@
  * easy regression testing.
  */
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <ctype.h>
 #include <err.h>
+#include <errno.h>
 #include <limits.h>
 #include <search.h>
 #include <signal.h>
@@ -87,7 +91,7 @@ static void		init(void);
 static __dead2 void    	usage(void);
 static char		*escape(const char *);
 
-static size_t		instr_sz = 0;
+static ssize_t		instr_sz = 0;
 static struct tree	*instructions = NULL;
 static ssize_t		current = 0;
 static int		macro_char = '0';
@@ -101,6 +105,7 @@ static bool		st_has_continue;
 static char		str_table[UCHAR_MAX][2];
 static bool		do_fork = true;
 static u_short		var_count;
+static pid_t		dc;
 
 extern char *__progname;
 
@@ -276,9 +281,15 @@ statement	: expression
 			}
 		| QUIT
 			{
+				sigset_t mask;
+
 				putchar('q');
 				fflush(stdout);
-				exit(0);
+				if (dc) {
+					sigprocmask(SIG_BLOCK, NULL, &mask);
+					sigsuspend(&mask);
+				} else
+					exit(0);
 			}
 		| RETURN return_expression
 			{
@@ -738,7 +749,7 @@ static void
 grow(void)
 {
 	struct tree	*p;
-	int		newsize;
+	size_t		newsize;
 
 	if (current == instr_sz) {
 		newsize = instr_sz * 2 + 1;
@@ -816,7 +827,7 @@ emit_macro(int node, ssize_t code)
 static void
 free_tree(void)
 {
-	size_t i;
+	ssize_t i;
 
 	for (i = 0; i < current; i++)
 		if (instructions[i].index == ALLOC_STRING)
@@ -930,17 +941,19 @@ void
 yyerror(char *s)
 {
 	char	*str, *p;
+	int	n;
 
-	if (feof(yyin))
-		asprintf(&str, "%s: %s:%d: %s: unexpected EOF",
+	if (yyin != NULL && feof(yyin))
+		n = asprintf(&str, "%s: %s:%d: %s: unexpected EOF",
 		    __progname, filename, lineno, s);
 	else if (isspace(yytext[0]) || !isprint(yytext[0]))
-		asprintf(&str, "%s: %s:%d: %s: ascii char 0x%02x unexpected",
+		n = asprintf(&str,
+		    "%s: %s:%d: %s: ascii char 0x%02x unexpected",
 		    __progname, filename, lineno, s, yytext[0]);
 	else
-		asprintf(&str, "%s: %s:%d: %s: %s unexpected",
+		n = asprintf(&str, "%s: %s:%d: %s: %s unexpected",
 		    __progname, filename, lineno, s, yytext);
-	if (str == NULL)
+	if (n == -1)
 		err(1, NULL);
 
 	fputs("c[", stdout);
@@ -982,7 +995,7 @@ init(void)
 static __dead2 void
 usage(void)
 {
-	fprintf(stderr, "%s: usage: [-cl] [-e expression] [file ...]\n",
+	fprintf(stderr, "usage: %s [-cl] [-e expression] [file ...]\n",
 	    __progname);
 	exit(1);
 }
@@ -1042,10 +1055,31 @@ escape(const char *str)
 	return ret;
 }
 
+/* ARGSUSED */
+void
+sigchld(int signo)
+{
+	pid_t pid;
+	int status;
+
+	for (;;) {
+		pid = waitpid(dc, &status, WCONTINUED);
+		if (pid == -1) {
+			if (errno == EINTR)
+				continue;
+			_exit(0);
+		}
+		if (WIFEXITED(status) || WIFSIGNALED(status))
+			_exit(0);
+		else
+			break;
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
-	int	i, ch, ret;
+	int	i, ch;
 	int	p[2];
 	char	*q;
 
@@ -1082,16 +1116,18 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
+	interactive = isatty(STDIN_FILENO);
 	for (i = 0; i < argc; i++)
 		sargv[sargc++] = argv[i];
 
 	if (do_fork) {
 		if (pipe(p) == -1)
 			err(1, "cannot create pipe");
-		ret = fork();
-		if (ret == -1)
+		dc = fork();
+		if (dc == -1)
 			err(1, "cannot fork");
-		else if (ret == 0) {
+		else if (dc != 0) {
+			signal(SIGCHLD, sigchld);
 			close(STDOUT_FILENO);
 			dup(p[1]);
 			close(p[0]);
@@ -1105,7 +1141,6 @@ main(int argc, char *argv[])
 			err(1, "cannot find dc");
 		}
 	}
-	signal(SIGINT, abort_line);
 	yywrap();
 	return yyparse();
 }
