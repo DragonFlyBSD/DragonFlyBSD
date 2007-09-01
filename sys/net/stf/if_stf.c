@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.18 2006/12/22 23:44:57 swildner Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.19 2007/09/01 20:43:24 pavalos Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -425,9 +425,7 @@ stf_checkaddr4(struct stf_softc *sc, struct in_addr *in, struct ifnet *inifp)
 	/*
 	 * reject packets with broadcast
 	 */
-	for (ia4 = TAILQ_FIRST(&in_ifaddrhead);
-	     ia4;
-	     ia4 = TAILQ_NEXT(ia4, ia_link))
+	TAILQ_FOREACH(ia4, &in_ifaddrhead, ia_link)
 	{
 		if ((ia4->ia_ifa.ifa_ifp->if_flags & IFF_BROADCAST) == 0)
 			continue;
