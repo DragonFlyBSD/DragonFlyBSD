@@ -35,7 +35,7 @@
 .\"
 .\"	@(#)xargs.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/xargs/xargs.1,v 1.6.2.12 2003/06/01 21:40:35 mux Exp $
-.\" $DragonFly: src/usr.bin/xargs/xargs.1,v 1.5 2007/08/10 21:15:31 swildner Exp $
+.\" $DragonFly: src/usr.bin/xargs/xargs.1,v 1.6 2007/09/02 19:30:47 swildner Exp $
 .\" $xMach: xargs.1,v 1.2 2002/02/23 05:23:37 tim Exp $
 .\"
 .Dd May 7, 2001
@@ -194,7 +194,7 @@ The current default value for
 is 5000.
 .It Fl o
 Reopen stdin as
-.Dq /dev/tty
+.Pa /dev/tty
 in the child process before executing the command.
 This is useful if you want
 .Nm

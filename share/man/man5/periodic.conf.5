@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/periodic.conf.5,v 1.8.2.22 2003/02/08 21:42:01 gshapiro Exp $
-.\" $DragonFly: src/share/man/man5/periodic.conf.5,v 1.6 2007/05/17 08:19:01 swildner Exp $
+.\" $DragonFly: src/share/man/man5/periodic.conf.5,v 1.7 2007/09/02 19:30:47 swildner Exp $
 .\"
 .Dd October 4, 2006
 .Dt PERIODIC.CONF 5
@@ -77,10 +77,10 @@ For an unattended machine, suitable values for
 and
 .Va monthly_output
 might be
-.Dq /var/log/daily.log ,
-.Dq /var/log/weekly.log ,
+.Pa /var/log/daily.log ,
+.Pa /var/log/weekly.log ,
 and
-.Dq /var/log/monthly.log
+.Pa /var/log/monthly.log
 respectively, as
 .Xr newsyslog 8
 will rotate these files (if they exists) at the appropriate times.
