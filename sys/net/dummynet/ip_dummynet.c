@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.22 2006/12/22 23:44:55 swildner Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.23 2007/09/02 13:27:23 sephe Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -1000,7 +1000,6 @@ static __inline
 struct dn_flow_set *
 locate_flowset(int pipe_nr, struct ip_fw *rule)
 {
-#if IPFW2
     struct dn_flow_set *fs;
     ipfw_insn *cmd = rule->cmd + rule->act_ofs;
 
@@ -1012,11 +1011,6 @@ locate_flowset(int pipe_nr, struct ip_fw *rule)
 	return fs;
 
     if (cmd->opcode == O_QUEUE)
-#else /* !IPFW2 */
-    struct dn_flow_set *fs = NULL ;
-
-    if ( (rule->fw_flg & IP_FW_F_COMMAND) == IP_FW_F_QUEUE )
-#endif /* !IPFW2 */
 	for (fs=all_flow_sets; fs && fs->fs_nr != pipe_nr; fs=fs->next)
 	    ;
     else {
@@ -1027,12 +1021,7 @@ locate_flowset(int pipe_nr, struct ip_fw *rule)
 	    fs = &(p1->fs) ;
     }
     /* record for the future */
-#if IPFW2
     ((ipfw_insn_pipe *)cmd)->pipe_ptr = fs;
-#else
-    if (fs != NULL)
-	rule->pipe_ptr = fs;
-#endif
     return fs ;
 }
 
@@ -1062,15 +1051,11 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
     int is_pipe;
 
     crit_enter();
-#if IPFW2
     ipfw_insn *cmd = fwa->rule->cmd + fwa->rule->act_ofs;
 
     if (cmd->opcode == O_LOG)
 	cmd += F_LEN(cmd);
     is_pipe = (cmd->opcode == O_PIPE);
-#else
-    is_pipe = (fwa->rule->fw_flg & IP_FW_F_COMMAND) == IP_FW_F_PIPE;
-#endif
 
     pipe_nr &= 0xffff ;
 

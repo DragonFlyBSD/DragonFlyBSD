@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.11 2007/04/09 20:47:01 swildner Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.12 2007/09/02 13:27:23 sephe Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -89,13 +89,6 @@ The differences between the two are listed in Section
 .Sx IPFW2 ENHANCEMENTS ,
 which you are encouraged to read to revise older rulesets and possibly
 write them more efficiently.
-See Section
-.Sx USING IPFW2 IN FreeBSD-STABLE
-for instructions on how to run
-.Nm ipfw2
-on
-.Fx
-STABLE.
 .Ed
 .Pp
 An
@@ -1626,27 +1619,6 @@ Controls whether layer-2 packets are passed to
 .Nm .
 Default is no.
 .El
-.Sh USING IPFW2 IN FreeBSD-STABLE
-.Nm ipfw2
-is standard in
-.Fx
-CURRENT, whereas
-.Fx
-STABLE still uses
-.Nm ipfw1
-unless the kernel is compiled with
-.Cd options IPFW2 ,
-and
-.Nm /sbin/ipfw
-and
-.Nm /usr/lib/libalias
-are recompiled with
-.Cm -DIPFW2
-and reinstalled (the same effect can be achieved by adding
-.Cm IPFW2=TRUE
-to
-.Nm /etc/make.conf
-before a buildworld).
 .Sh IPFW2 ENHANCEMENTS
 This Section lists the features that have been introduced in
 .Nm ipfw2

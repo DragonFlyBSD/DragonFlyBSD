@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.26 2006/12/22 23:44:57 swildner Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.27 2007/09/02 13:27:23 sephe Exp $
  */
 
 #define        DEB(x)
@@ -43,7 +43,6 @@
 #endif /* INET */
 #endif
 
-#if IPFW2
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
@@ -2769,4 +2768,3 @@ static moduledata_t ipfwmod = {
 };
 DECLARE_MODULE(ipfw, ipfwmod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 MODULE_VERSION(ipfw, 1);
-#endif /* IPFW2 */

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_db.c,v 1.21.2.14 2002/07/24 03:21:24 luigi Exp $
- * $DragonFly: src/lib/libalias/alias_db.c,v 1.4 2004/08/20 00:08:17 joerg Exp $
+ * $DragonFly: src/lib/libalias/alias_db.c,v 1.5 2007/09/02 13:27:22 sephe Exp $
  */
 
 /*
@@ -2643,7 +2643,6 @@ PacketAliasCheckNewLink(void)
 #include <string.h>
 #include <err.h>
 
-#if IPFW2		/* support for new firewall code */
 /*
  * helper function, updates the pointer to cmd with the length
  * of the current command, and also cleans up the first word of
@@ -2713,7 +2712,6 @@ fill_rule(void *buf, int bufsize, int rulenum,
 
     return ((void *)cmd - buf);
 }
-#endif /* IPFW2 */
 
 static void ClearAllFWHoles(void);
 
@@ -2761,7 +2759,6 @@ UninitPunchFW(void) {
 void
 PunchFWHole(struct alias_link *link) {
     int r;                      /* Result code */
-    struct ip_fw rule;          /* On-the-fly built rule */
     int fwhole;                 /* Where to punch hole */
 
 /* Don't do anything unless we are asked to */
@@ -2769,8 +2766,6 @@ PunchFWHole(struct alias_link *link) {
          fireWallFD < 0 ||
          link->link_type != LINK_TCP)
         return;
-
-    memset(&rule, 0, sizeof rule);
 
 /** Build rule **/
 
@@ -2804,7 +2799,6 @@ PunchFWHole(struct alias_link *link) {
      *	add fwhole accept tcp from OAddr OPort to DAddr DPort
      *	add fwhole accept tcp from DAddr DPort to OAddr OPort
      */
-#if IPFW2
     if (GetOriginalPort(link) != 0 && GetDestPort(link) != 0) {
 	u_int32_t rulebuf[255];
 	int i;
@@ -2825,44 +2819,6 @@ PunchFWHole(struct alias_link *link) {
 	if (r)
 		err(1, "alias punch inbound(2) setsockopt(IP_FW_ADD)");
     }
-#else	/* !IPFW2, old code to generate ipfw rule */
-
-    /* Build generic part of the two rules */
-    rule.fw_number = fwhole;
-    IP_FW_SETNSRCP(&rule, 1);	/* Number of source ports. */
-    IP_FW_SETNDSTP(&rule, 1);	/* Number of destination ports. */
-    rule.fw_flg = IP_FW_F_ACCEPT | IP_FW_F_IN | IP_FW_F_OUT;
-    rule.fw_prot = IPPROTO_TCP;
-    rule.fw_smsk.s_addr = INADDR_BROADCAST;
-    rule.fw_dmsk.s_addr = INADDR_BROADCAST;
-
-    /* Build and apply specific part of the rules */
-    rule.fw_src = GetOriginalAddress(link);
-    rule.fw_dst = GetDestAddress(link);
-    rule.fw_uar.fw_pts[0] = ntohs(GetOriginalPort(link));
-    rule.fw_uar.fw_pts[1] = ntohs(GetDestPort(link));
-
-    /* Skip non-bound links - XXX should not be strictly necessary,
-       but seems to leave hole if not done.  Leak of non-bound links?
-       (Code should be left even if the problem is fixed - it is a
-       clear optimization) */
-    if (rule.fw_uar.fw_pts[0] != 0 && rule.fw_uar.fw_pts[1] != 0) {
-        r = setsockopt(fireWallFD, IPPROTO_IP, IP_FW_ADD, &rule, sizeof rule);
-#ifdef DEBUG
-        if (r)
-            err(1, "alias punch inbound(1) setsockopt(IP_FW_ADD)");
-#endif
-        rule.fw_src = GetDestAddress(link);
-        rule.fw_dst = GetOriginalAddress(link);
-        rule.fw_uar.fw_pts[0] = ntohs(GetDestPort(link));
-        rule.fw_uar.fw_pts[1] = ntohs(GetOriginalPort(link));
-        r = setsockopt(fireWallFD, IPPROTO_IP, IP_FW_ADD, &rule, sizeof rule);
-#ifdef DEBUG
-        if (r)
-            err(1, "alias punch inbound(2) setsockopt(IP_FW_ADD)");
-#endif
-    }
-#endif /* !IPFW2 */
 /* Indicate hole applied */
     link->data.tcp->fwhole = fwhole;
     fw_setfield(fireWallField, fwhole);
@@ -2874,22 +2830,13 @@ static void
 ClearFWHole(struct alias_link *link) {
     if (link->link_type == LINK_TCP) {
         int fwhole =  link->data.tcp->fwhole; /* Where is the firewall hole? */
-        struct ip_fw rule;
 
 	if (fwhole < 0)
 	    return;
 
-        memset(&rule, 0, sizeof rule); /* useless for ipfw2 */
-#if IPFW2
 	while (!setsockopt(fireWallFD, IPPROTO_IP, IP_FW_DEL,
 		    &fwhole, sizeof fwhole))
 	    ;
-#else /* !IPFW2 */
-        rule.fw_number = fwhole;
-        while (!setsockopt(fireWallFD, IPPROTO_IP, IP_FW_DEL,
-		    &rule, sizeof rule))
-            ;
-#endif /* !IPFW2 */
         fw_clrfield(fireWallField, fwhole);
         link->data.tcp->fwhole = -1;
     }
@@ -2898,23 +2845,15 @@ ClearFWHole(struct alias_link *link) {
 /* Clear out the entire range dedicated to firewall holes. */
 static void
 ClearAllFWHoles(void) {
-    struct ip_fw rule;          /* On-the-fly built rule */
     int i;
 
     if (fireWallFD < 0)
         return;
 
-    memset(&rule, 0, sizeof rule);
     for (i = fireWallBaseNum; i < fireWallBaseNum + fireWallNumNums; i++) {
-#if IPFW2
 	int r = i;
 	while (!setsockopt(fireWallFD, IPPROTO_IP, IP_FW_DEL, &r, sizeof r))
 	    ;
-#else /* !IPFW2 */
-        rule.fw_number = i;
-        while (!setsockopt(fireWallFD, IPPROTO_IP, IP_FW_DEL, &rule, sizeof rule))
-            ;
-#endif /* !IPFW2 */
     }
     memset(fireWallField, 0, fireWallNumNums);
 }

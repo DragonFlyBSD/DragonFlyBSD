@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.130 2007/08/29 15:42:05 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.131 2007/09/02 13:27:23 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2687,7 +2687,6 @@ options 	FB_INSTALL_CDEV
 options 	FE_8BIT_SUPPORT
 options 	I4B_SMP_WORKAROUND
 options 	I586_PMC_GUPROF=0x70000
-options 	IPFW2
 options 	KBDIO_DEBUG=10
 options 	KBD_MAXRETRY=4
 options 	KBD_MAXWAIT=6

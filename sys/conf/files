@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.179 2007/08/31 11:26:44 swildner Exp $
+# $DragonFly: src/sys/conf/files,v 1.180 2007/09/02 13:27:23 sephe Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -899,8 +899,7 @@ netinet/ip_encap.c		optional inet6
 netinet/ip_divert.c		optional ipdivert
 net/dummynet/ip_dummynet.c	optional dummynet
 netinet/ip_flow.c		optional inet
-net/ipfw/ip_fw.c		optional ipfirewall
-net/ipfw/ip_fw2.c		optional ipfw2
+net/ipfw/ip_fw2.c		optional ipfirewall
 netinet/ip_icmp.c		optional inet
 netinet/ip_input.c		optional inet
 netinet/ip_demux.c		optional inet

@@ -1,12 +1,9 @@
 # $FreeBSD: src/lib/libalias/Makefile,v 1.13.2.5 2002/07/24 03:21:24 luigi Exp $
-# $DragonFly: src/lib/libalias/Makefile,v 1.4 2007/07/30 22:49:20 swildner Exp $
+# $DragonFly: src/lib/libalias/Makefile,v 1.5 2007/09/02 13:27:22 sephe Exp $
 
 LIB=		alias
 SHLIB_MAJOR=	5
 CFLAGS+=	-Wall -Wmissing-prototypes
-.if defined(IPFW2)
-CFLAGS+=	-DIPFW2
-.endif
 SRCS=		alias.c alias_cuseeme.c alias_db.c alias_ftp.c alias_irc.c \
 		alias_nbt.c alias_pptp.c alias_proxy.c alias_smedia.c \
 		alias_util.c
