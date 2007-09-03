@@ -39,7 +39,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vfsops.c,v 1.2.2.3 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.14 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.15 2007/09/03 17:06:23 dillon Exp $
  */
 
 /*
@@ -84,6 +84,7 @@ linprocfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	}
 
 	mp->mnt_flag |= MNT_LOCAL;
+	mp->mnt_kern_flag |= MNTK_NOSTKMNT;
 	mp->mnt_data = 0;
 	vfs_getnewfsid(mp);
 

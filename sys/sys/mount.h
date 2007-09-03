@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.30 2006/10/27 04:56:33 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.31 2007/09/03 17:06:22 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -243,6 +243,8 @@ struct mount {
  * dounmount() is still waiting to lock the mountpoint. This allows
  * the filesystem to cancel operations that might otherwise deadlock
  * with the unmount attempt (used by NFS).
+ *
+ * MNTK_NOSTKMNT prevents mounting another filesystem inside the flagged one.
  */
 #define MNTK_UNMOUNTF	0x00000001	/* forced unmount in progress */
 #define MNTK_NCALIASED	0x00800000	/* namecached aliased */
@@ -250,6 +252,7 @@ struct mount {
 #define	MNTK_MWAIT	0x02000000	/* waiting for unmount to finish */
 #define MNTK_WANTRDWR	0x04000000	/* upgrade to read/write requested */
 #define MNTK_FSMID	0x08000000	/* getattr supports FSMIDs */
+#define MNTK_NOSTKMNT	0x10000000	/* no stacked mount point allowed */
 
 /*
  * mountlist_*() defines

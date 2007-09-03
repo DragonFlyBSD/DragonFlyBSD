@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.119 2007/08/13 17:43:55 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.120 2007/09/03 17:06:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -247,6 +247,11 @@ sys_mount(struct mount_args *uap)
 		cache_drop(&nch);
 		vput(vp);
 		return (ENOTDIR);
+	}
+	if (vp->v_mount->mnt_kern_flag & MNTK_NOSTKMNT) {
+		cache_drop(&nch);
+		vput(vp);
+		return (EPERM);
 	}
 	if ((error = copyinstr(uap->type, fstypename, MFSNAMELEN, NULL)) != 0) {
 		cache_drop(&nch);
@@ -2162,14 +2167,14 @@ again:
 	 * is a hack at the moment.
 	 */
 	if (error == ESTALE) {
+		vput(vp);
 		cache_setunresolved(&nd->nl_nch);
 		error = cache_resolve(&nd->nl_nch, nd->nl_cred);
-		if (error == 0) {
-			vput(vp);
+		if (error == 0)
 			goto again;
-		}
+	} else {
+		vput(vp);
 	}
-	vput(vp);
 	return (error);
 }
 

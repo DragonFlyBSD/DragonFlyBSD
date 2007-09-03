@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.16 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.17 2007/09/03 17:06:24 dillon Exp $
  */
 
 /*
@@ -81,6 +81,7 @@ procfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	}
 
 	mp->mnt_flag |= MNT_LOCAL;
+	mp->mnt_kern_flag |= MNTK_NOSTKMNT;
 	mp->mnt_data = 0;
 	vfs_getnewfsid(mp);
 
