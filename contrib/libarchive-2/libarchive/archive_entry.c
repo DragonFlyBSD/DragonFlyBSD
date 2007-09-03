@@ -780,6 +780,14 @@ archive_entry_copy_pathname_w(struct archive_entry *entry, const wchar_t *name)
 }
 
 void
+archive_entry_set_perm(struct archive_entry *entry, mode_t p)
+{
+	entry->stat_valid = 0;
+	entry->ae_stat.aest_mode &= AE_IFMT;
+	entry->ae_stat.aest_mode |= ~AE_IFMT & p;
+}
+
+void
 archive_entry_set_rdev(struct archive_entry *entry, dev_t m)
 {
 	entry->stat_valid = 0;

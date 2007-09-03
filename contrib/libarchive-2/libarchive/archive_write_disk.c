@@ -25,7 +25,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_disk.c,v 1.13 2007/07/15 19:13:59 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_disk.c,v 1.14 2007/08/12 17:35:05 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -1541,15 +1541,28 @@ set_mode(struct archive_write_disk *a, int mode)
 		}
 		if (a->pst->st_gid != a->gid) {
 			mode &= ~ S_ISGID;
-			archive_set_error(&a->archive, -1, "Can't restore SGID bit");
-			r = ARCHIVE_WARN;
+			if (a->flags & ARCHIVE_EXTRACT_OWNER) {
+				/*
+				 * This is only an error if you
+				 * requested owner restore.  If you
+				 * didn't, we'll try to restore
+				 * sgid/suid, but won't consider it a
+				 * problem if we can't.
+				 */
+				archive_set_error(&a->archive, -1,
+				    "Can't restore SGID bit");
+				r = ARCHIVE_WARN;
+			}
 		}
 		/* While we're here, double-check the UID. */
 		if (a->pst->st_uid != a->uid
 		    && (a->todo & TODO_SUID)) {
 			mode &= ~ S_ISUID;
-			archive_set_error(&a->archive, -1, "Can't restore SUID bit");
-			r = ARCHIVE_WARN;
+			if (a->flags & ARCHIVE_EXTRACT_OWNER) {
+				archive_set_error(&a->archive, -1,
+				    "Can't restore SUID bit");
+				r = ARCHIVE_WARN;
+			}
 		}
 		a->todo &= ~TODO_SGID_CHECK;
 		a->todo &= ~TODO_SUID_CHECK;
@@ -1561,8 +1574,11 @@ set_mode(struct archive_write_disk *a, int mode)
 		 */
 		if (a->user_uid != a->uid) {
 			mode &= ~ S_ISUID;
-			archive_set_error(&a->archive, -1, "Can't make file SUID");
-			r = ARCHIVE_WARN;
+			if (a->flags & ARCHIVE_EXTRACT_OWNER) {
+				archive_set_error(&a->archive, -1,
+				    "Can't make file SUID");
+				r = ARCHIVE_WARN;
+			}
 		}
 		a->todo &= ~TODO_SUID_CHECK;
 	}
