@@ -1,6 +1,6 @@
-# VKERNEL - test rid for virtual kernel
+# VKERNEL - configuration for a virtual kernel
 #
-# $DragonFly: src/sys/config/VKERNEL,v 1.11 2007/05/25 02:21:11 dillon Exp $
+# $DragonFly: src/sys/config/VKERNEL,v 1.12 2007/09/03 19:24:53 pavalos Exp $
 
 platform	vkernel		# platform architecture (i386, vkernel, etc)
 machine		i386
@@ -22,7 +22,6 @@ options		KTR_SPIN_CONTENTION
 
 options		QUOTA
 options		DUMMYNET
-#options	BRIDGE
 options         IPFIREWALL              #firewall
 options		IPFIREWALL_FORWARD      #enable transparent proxy support
 options		IPFIREWALL_DEFAULT_TO_ACCEPT    #allow everything by default
@@ -31,7 +30,6 @@ options		IPSEC			#IP security
 options		IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
 options		IPSEC_DEBUG		#debug for IP security
 
-#options 	MATH_EMULATE		#Support for x87 emulation
 options		EXT2FS
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols
@@ -48,7 +46,6 @@ options 	CD9660			#ISO 9660 Filesystem
 options 	PROCFS			#Process filesystem
 options 	COMPAT_43		#Compatible with BSD 4.3 [KEEP THIS!]
 options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
-options 	SCSI_DELAY=15000	#Delay (in ms) before probing SCSI
 options		DEVICE_POLLING		# Support mixed interrupt-polling
 					# handling of network device drivers
 options 	UCONSOLE		#Allow users to grab the console
@@ -59,14 +56,8 @@ options 	SYSVSEM			#SYSV-style semaphores
 options 	P1003_1B		#Posix P1003_1B real-time extensions
 options 	_KPOSIX_PRIORITY_SCHEDULING
 options 	ICMP_BANDLIM		#Rate limit bad replies
-#options 	KBD_INSTALL_CDEV	# install a CDEV entry in /dev
-options 	AHC_REG_PRETTY_PRINT	# Print register bitfields in debug
-					# output.  Adds ~128k to driver.
-options 	AHD_REG_PRETTY_PRINT	# Print register bitfields in debug 
-					# output.  Adds ~215k to driver.
 
-#options 	SMP			# Symmetric MultiProcessor Kernel
-#options 	APIC_IO			# Symmetric (APIC) I/O
+options 	SMP			# Symmetric MultiProcessor Kernel
 
 # Debugging for Development
 options 	DDB
