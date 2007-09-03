@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.27 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.28 2007/09/03 17:32:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1251,7 +1251,7 @@ userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkern
 	}
 
 	if (new != NULL) {
-		if (!useracc(new, req.newlen, VM_PROT_READ))
+		if (!useracc(new, newlen, VM_PROT_READ))
 			return (EFAULT);
 		req.newlen = newlen;
 		req.newptr = new;
