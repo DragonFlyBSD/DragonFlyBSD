@@ -1,4 +1,14 @@
 
+Sep 01, 2007: libarchive 2.2.7 released
+Aug 31, 2007: Support for reading mtree files, including an mtree.5 manpage
+	(A little experimental still.)
+Aug 18, 2007: Read gtar 1.17 --posix --sparse entries.
+Aug 13, 2007: Refined suid/sgid restore handling; it is no longer
+	an error if suid/sgid bits are dropped when you request
+	perm restore but don't request owner restore.
+Aug 06, 2007: Use --enable-bsdcpio if you want to try bsdcpio
+	(Still very incomplete!)
+
 Aug 05, 2007: libarchive 2.2.6 released
 
 Aug 05, 2007: New configure option --disable-bsdtar, thanks to Joerg
@@ -8,6 +18,9 @@ Aug 05, 2007: Several bug fixes from FreeBSD CVS repo.
 Jul 13, 2007: libarchive 2.2.5 released
 
 Jul 12, 2007: libarchive 2.2.4 released
+Jul 12, 2007: Thanks to Colin Percival's help in diagnosing and
+	fixing several critical security bugs.  Details available at
+	http://security.freebsd.org/advisories/FreeBSD-SA-07:05.libarchive.asc
 
 May 26, 2007: libarchive 2.2.3 released
 May 26, 2007: Fix memory leaks in ZIP reader and shar writer, add some

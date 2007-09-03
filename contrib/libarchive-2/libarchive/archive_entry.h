@@ -148,6 +148,7 @@ void	archive_entry_set_nlink(struct archive_entry *, unsigned int);
 void	archive_entry_set_pathname(struct archive_entry *, const char *);
 void	archive_entry_copy_pathname(struct archive_entry *, const char *);
 void	archive_entry_copy_pathname_w(struct archive_entry *, const wchar_t *);
+void	archive_entry_set_perm(struct archive_entry *, mode_t);
 void	archive_entry_set_rdev(struct archive_entry *, dev_t);
 void	archive_entry_set_rdevmajor(struct archive_entry *, dev_t);
 void	archive_entry_set_rdevminor(struct archive_entry *, dev_t);
