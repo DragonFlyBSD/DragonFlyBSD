@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.15 2007/08/18 15:23:33 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.16 2007/09/03 18:48:12 pavalos Exp $
 
 LIB=	archive
 
@@ -48,6 +48,7 @@ SRCS=	archive.h					\
 	archive_read_support_format_cpio.c		\
 	archive_read_support_format_empty.c		\
 	archive_read_support_format_iso9660.c		\
+	archive_read_support_format_mtree.c		\
 	archive_read_support_format_tar.c		\
 	archive_read_support_format_zip.c		\
 	archive_string.c				\
