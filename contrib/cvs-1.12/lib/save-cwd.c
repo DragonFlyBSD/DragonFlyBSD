@@ -37,7 +37,6 @@
 
 #include <errno.h>
 
-#include "chdir-long.h"
 #include "unistd-safer.h"
 #include "xgetcwd.h"
 
@@ -102,7 +101,7 @@ restore_cwd (const struct saved_cwd *cwd)
   if (0 <= cwd->desc)
     return fchdir (cwd->desc);
   else
-    return chdir_long (cwd->name);
+    return -1;
 }
 
 void

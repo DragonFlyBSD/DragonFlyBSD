@@ -170,6 +170,7 @@ char *strerror (int);
 #define	CVSROOTADM_LOGINFO	"loginfo"
 #define	CVSROOTADM_MODULES	"modules"
 #define CVSROOTADM_NOTIFY	"notify"
+#define CVSROOTADM_OPTIONS	"options"
 #define CVSROOTADM_PASSWD	"passwd"
 #define CVSROOTADM_POSTADMIN	"postadmin"
 #define CVSROOTADM_POSTPROXY	"postproxy"

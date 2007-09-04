@@ -443,6 +443,58 @@ commit (int argc, char **argv)
 	    ++saved_tag;
     }
 
+    /* Check if the user passed -m, but wanted -F */
+    if (saved_message)
+    {
+	int fd;
+
+	fd = open(saved_message, O_RDONLY);
+	/* valid fd -> possibly wrong flag? */
+	if (fd >= 0)
+	{
+	    char *line = NULL;
+	    size_t line_alloced = 0;
+	    int line_len;
+
+	    close(fd);
+
+	    for (;;) {
+		printf("The message you passed exists as a file\n");
+		printf("a)bort, c)ontinue, treat as f)ile name\n");
+		printf("Action: (abort) ");
+		fflush(stdout);
+		line_len = getline(&line, &line_alloced, stdin);
+		if (line_len < 0)
+		{
+		    error(0, errno, "cannot read from stdin");
+		    error(1, 0, "aborting");
+		}
+		else if (line_len == 0 || *line == '\n' || *line == 'a' || *line == 'A')
+		{
+		    error(1, 0, "aborted by user");
+		}
+		else if (*line == 'c' || *line == 'C')
+		{
+		    break;
+		}
+		else if (*line == 'f' || *line == 'F')
+		{
+		    /*
+		     * We are leaking the memory for the file name,
+		     * but who really cares?
+		     */
+		    logfile = saved_message;
+		    saved_message = NULL;
+		    break;
+		}
+		printf("Unknown input\n");
+	    }
+
+	    if (line != NULL)
+		free(line);
+	}
+    }
+
     /* some checks related to the "-F logfile" option */
     if (logfile)
     {

@@ -52,6 +52,7 @@ static void diff_mark_errors (int err);
 static char *diff_rev1, *diff_rev2;
 /* Command line dates, from -D option.  Malloc'd.  */
 static char *diff_date1, *diff_date2;
+static char *diff_join1, *diff_join2;
 static char *use_rev1, *use_rev2;
 static int have_rev1_label, have_rev2_label;
 
@@ -310,6 +311,8 @@ diff (int argc, char **argv)
     diff_rev2 = NULL;
     diff_date1 = NULL;
     diff_date2 = NULL;
+    diff_join1 = NULL;
+    diff_join2 = NULL;
 
     optind = 0;
     /* FIXME: This should really be allocating an argv to be passed to diff
@@ -320,7 +323,7 @@ diff (int argc, char **argv)
      * to diff.
      */
     while ((c = getopt_long (argc, argv,
-	       "+abcdefhilnpstuwy0123456789BHNRTC:D:F:I:L:U:W:k:r:",
+	       "+abcdefhij:lnpstuwy0123456789BHNRTC:D:F:I:L:U:W:k:r:",
 			     longopts, &option_index)) != -1)
     {
 	switch (c)
@@ -363,6 +366,26 @@ diff (int argc, char **argv)
 		if (options)
 		    free (options);
 		options = RCS_check_kflag (optarg);
+		break;
+	    case 'j':
+		{
+		    char *ptr;
+		    char *cpy = strdup(optarg);
+
+		    if ((ptr = strchr(optarg, ':')) != NULL)
+			*ptr++ = 0;
+		    if (diff_rev2 != NULL || diff_date2 != NULL)
+			error (1, 0, "no more than two revisions/dates can be specified");
+		    if (diff_rev1 != NULL || diff_date1 != NULL) {
+			diff_join2 = cpy;
+			diff_rev2 = optarg;
+			diff_date2 = ptr ? Make_Date(ptr) : NULL;
+		    } else {
+			diff_join1 = cpy;
+			diff_rev1 = optarg;
+			diff_date1 = ptr ? Make_Date(ptr) : NULL;
+		    }
+		}
 		break;
 	    case 'r':
 		if (diff_rev2 || diff_date2)
@@ -418,11 +441,15 @@ diff (int argc, char **argv)
 	send_options (diff_argc, diff_argv);
 	if (options[0] != '\0')
 	    send_arg (options);
-	if (diff_orig1)
+	if (diff_join1)
+	    option_with_arg ("-j", diff_join1);
+	else if (diff_orig1)
 	    option_with_arg ("-r", diff_orig1);
 	else if (diff_date1)
 	    client_senddate (diff_date1);
-	if (diff_orig2)
+	if (diff_join2)
+	    option_with_arg ("-j", diff_join2);
+	else if (diff_orig2)
 	    option_with_arg ("-r", diff_orig2);
 	else if (diff_date2)
 	    client_senddate (diff_date2);
@@ -438,12 +465,9 @@ diff (int argc, char **argv)
 
 	send_to_server ("diff\012", 0);
         err = get_responses_and_close ();
-	free (options);
-	options = NULL;
-	return err;
-    }
+    } else
 #endif
-
+    {
     if (diff_rev1 != NULL)
 	tag_check_valid (diff_rev1, argc, argv, local, 0, "", false);
     if (diff_rev2 != NULL)
@@ -460,6 +484,7 @@ diff (int argc, char **argv)
                            diff_dirleaveproc, NULL, argc, argv, local,
                            which, 0, CVS_LOCK_READ, NULL, 1, NULL);
 
+    }
     /* clean up */
     free (options);
     options = NULL;
@@ -468,6 +493,10 @@ diff (int argc, char **argv)
 	free (diff_date1);
     if (diff_date2 != NULL)
 	free (diff_date2);
+    if (diff_join1 != NULL)
+	free (diff_join1);
+    if (diff_join2 != NULL)
+	 free (diff_join2);
 
     return err;
 }

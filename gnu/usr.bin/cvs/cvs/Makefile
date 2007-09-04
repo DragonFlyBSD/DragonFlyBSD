@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.32.2.6 2003/01/21 23:06:51 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.12 2006/09/13 19:34:24 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.13 2007/09/04 16:53:56 corecode Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -18,30 +18,12 @@ SRCS=	add.c admin.c annotate.c buffer.c \
 	exithandle.c expand_path.c fileattr.c filesubr.c find_names.c \
 	hardlink.c hash.c history.c ignore.c import.c lock.c log.c \
 	log-buffer.c login.c logmsg.c ls.c mkmodules.c \
-	modules.c ms-buffer.c myndbm.c no_diff.c patch.c prepend_args.c \
+	modules.c ms-buffer.c myndbm.c no_diff.c parseinfo.c patch.c \
 	rcs.c rcscmds.c \
 	recurse.c release.c remove.c repos.c root.c rsh-client.c run.c \
 	scramble.c server.c socket-client.c stack.c status.c subr.c tag.c \
 	update.c vers_ts.c version.c watch.c wrapper.c zlib.c \
 	main.c diff.c ${PATCHES}
-
-PATCHES= \
-	annotate.c.patch \
-	commit.c.patch \
-	cvs.h.patch \
-	diff.c.patch \
-	main.c.patch \
-	parseinfo.c.patch \
-	rcs.c.patch \
-	rcs.h.patch \
-	root.c.patch \
-	zlib.c.patch
-
-CONTRIBDIR=	${CVSDIR}/src
-
-CLEANFILES+=	cvs.1
-
-cvs.1: _PATCHFILE ${CVSDIR}/doc/cvs.1 cvs.1.patch
 
 CFLAGS+= -I${.CURDIR} -I../lib -DHAVE_CONFIG_H \
 	 -I${CVSDIR}/src -I${CVSDIR}/lib -I${CVSDIR}/diff -I.

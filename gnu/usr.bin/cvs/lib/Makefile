@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/lib/Makefile,v 1.19.2.4 2003/01/21 23:06:52 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.14 2005/12/07 01:16:30 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.15 2007/09/04 16:53:56 corecode Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -14,7 +14,6 @@ CFLAGS+= -I. -I${CVSDIR}/src -I${CVSDIR}/lib
 CFLAGS+= -DHAVE_CONFIG_H -DIN_LIBINTL
 YFLAGS=
 CLEANFILES+=	config.h alloca.h getopt.h glob.h
-CONTRIBDIR=     ${CVSDIR}/lib
 
 CVS_UMASK_DFLT?=	002
 CVS_ADMIN_GROUP?=	cvsadmin
@@ -31,8 +30,6 @@ SRCS=	config.h \
 	canonicalize.c strcasecmp.c getdelim.c glob.h glob.c \
 	cycle-check.c fd-safer.c dup-safer.c mbchar.c strnlen1.c \
 	mempcpy.c
-
-SRCS+=	save-cwd.c.patch xgetcwd.c.patch
 
 config.h: config.h.proto
 	sed -e "s,@VERSION@,${CVSVERSION}-DragonFly,g" \

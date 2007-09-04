@@ -189,7 +189,7 @@ typedef void (*RCSCHECKOUTPROC) (void *, const char *, size_t);
 struct rcsbuffer;
 
 /* What RCS_deltas is supposed to do.  */
-enum rcs_delta_op {RCS_ANNOTATE, RCS_FETCH};
+enum rcs_delta_op {RCS_ANNOTATE, RCS_ANNOTATE_BACKWARDS, RCS_FETCH};
 
 /*
  * exported interfaces

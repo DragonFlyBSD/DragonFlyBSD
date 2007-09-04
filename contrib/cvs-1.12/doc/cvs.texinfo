@@ -9144,7 +9144,9 @@ Changes: nothing.
 
 For each file in @var{files}, print the head revision
 of the trunk, together with information on the last
-modification for each line.  
+modification for each line.  If @samp{-b} is specified,
+the first modification after the revision selected by
+@samp{-r} is shown.  
 
 @menu
 * annotate options::            annotate options
@@ -9160,6 +9162,9 @@ These standard options are supported by @code{annotate}
 them):
 
 @table @code
+@item -b
+Backwards, show when a line was removed.
+
 @item -l
 Local directory only, no recursion.
 

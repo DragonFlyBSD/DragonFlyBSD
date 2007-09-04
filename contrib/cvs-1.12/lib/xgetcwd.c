@@ -25,8 +25,8 @@
 #include "xgetcwd.h"
 
 #include <errno.h>
+#include <unistd.h>
 
-#include "getcwd.h"
 #include "xalloc.h"
 
 /* Return the current directory, newly allocated.

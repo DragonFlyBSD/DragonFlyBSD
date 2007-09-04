@@ -21,6 +21,7 @@
 
 /* Options from the command line.  */
 
+static int backwards = 0;
 static int force_tag_match = 1;
 static int force_binary = 0;
 static char *tag = NULL;
@@ -36,7 +37,8 @@ static int rannotate_proc (int argc, char **argv, char *xwhere,
 
 static const char *const annotate_usage[] =
 {
-    "Usage: %s %s [-lRfF] [-r rev] [-D date] [files...]\n",
+    "Usage: %s %s [-blRfF] [-r rev] [-D date] [files...]\n",
+    "\t-b\tBackwards, show when a line was removed.\n",
     "\t-l\tLocal directory only, no recursion.\n",
     "\t-R\tProcess directories recursively.\n",
     "\t-f\tUse head revision if tag/date not found.\n",
@@ -63,10 +65,12 @@ annotate (int argc, char **argv)
 	usage (annotate_usage);
 
     optind = 0;
-    while ((c = getopt (argc, argv, "+lr:D:fFR")) != -1)
+    while ((c = getopt (argc, argv, "+blr:D:fFR")) != -1)
     {
 	switch (c)
 	{
+	    case 'b':
+		backwards = 1;
 	    case 'l':
 		local = 1;
 		break;
@@ -105,6 +109,8 @@ annotate (int argc, char **argv)
 
 	ign_setup ();
 
+	if (backwards)
+	    send_arg ("-b");
 	if (local)
 	    send_arg ("-l");
 	if (!force_tag_match)
@@ -280,7 +286,9 @@ annotate_fileproc (void *callerdat, struct file_info *finfo)
     else
     {
 	RCS_deltas (finfo->rcs, NULL, NULL,
-		    version, RCS_ANNOTATE, NULL, NULL, NULL, NULL);
+		    version,
+		    backwards ? RCS_ANNOTATE_BACKWARDS : RCS_ANNOTATE,
+		    NULL, NULL, NULL, NULL);
     }
     free (version);
     return 0;

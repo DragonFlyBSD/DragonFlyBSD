@@ -635,10 +635,14 @@ parse_cvsroot (const char *root_in)
     newroot->isremote = (newroot->method != local_method);
 
 #if defined (CLIENT_SUPPORT) || defined (SERVER_SUPPORT)
-    if (readonlyfs && newroot->isremote)
-	error (1, 0,
+    if (readonlyfs && newroot->isremote) {
+	/* downgrade readonlyfs settings via environment */
+	if (readonlyfs < 0)
+	    error (1, 0,
 "Read-only repository feature unavailable with remote roots (cvsroot = %s)",
 	       cvsroot_copy);
+	readonlyfs = 0;
+    }
 
     if ((newroot->method != local_method)
 	&& (newroot->method != fork_method)

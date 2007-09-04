@@ -384,6 +384,7 @@ parse_config (const char *cvsroot, const char *path)
     size_t len;
     char *p;
     struct config *retval;
+    int rescan = 0;
     /* PROCESSING	Whether config keys are currently being processed for
      *			this root.
      * PROCESSED	Whether any keys have been processed for this root.
@@ -429,6 +430,7 @@ parse_config (const char *cvsroot, const char *path)
 
     retval = new_config ();
 
+again:
     fp_info = CVS_FOPEN (infopath, "r");
     if (!fp_info)
     {
@@ -553,9 +555,11 @@ parse_config (const char *cvsroot, const char *path)
 	    readBool (infopath, "SystemAuth", p, &dummy);
 	}
 #endif
-	else if (strcmp (line, "LocalKeyword") == 0)
+	else if (strcmp (line, "LocalKeyword") == 0 ||
+		 strcmp (line, "tag") == 0)
 	    RCS_setlocalid (infopath, ln, &retval->keywords, p);
-	else if (strcmp (line, "KeywordExpand") == 0)
+	else if (strcmp (line, "KeywordExpand") == 0 ||
+		 strcmp (line, "tagexpand") == 0)
 	    RCS_setincexc (&retval->keywords, p);
 	else if (strcmp (line, "PreservePermissions") == 0)
 	{
@@ -718,6 +722,13 @@ parse_config (const char *cvsroot, const char *path)
 	error (0, errno, "cannot close %s", infopath);
     if (freeinfopath) free (freeinfopath);
     if (buf) free (buf);
+
+    if (path == NULL && !rescan++) {
+	infopath = freeinfopath =
+	    Xasprintf ("%s/%s/%s", cvsroot, CVSROOTADM, CVSROOTADM_OPTIONS);
+	buf = NULL;
+	goto again;
+    }
 
     return retval;
 }
