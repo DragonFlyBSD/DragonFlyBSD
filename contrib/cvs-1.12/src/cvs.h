@@ -52,7 +52,7 @@
 #include "exit.h"
 #include "getdate.h"
 #include "minmax.h"
-#include "regex.h"
+#include "gnuregex.h"
 #include "strcase.h"
 #include "stat-macros.h"
 #include "timespec.h"

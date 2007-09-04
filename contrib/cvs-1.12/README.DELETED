@@ -117,6 +117,7 @@ lib/readlink.c
 lib/realloc.c
 lib/regcomp.c
 lib/regex.c
+lib/regex.h
 lib/regex_internal.c
 lib/regex_internal.h
 lib/regexec.c
