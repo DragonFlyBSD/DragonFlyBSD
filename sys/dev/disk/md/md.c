@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.17 2007/07/31 20:04:48 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.18 2007/09/05 05:28:32 dillon Exp $
  *
  */
 
@@ -373,6 +373,8 @@ mdcreate(void)
 		DEVSTAT_PRIORITY_OTHER);
 	sc->dev = disk_create(sc->unit, &sc->disk, &md_ops);
 	sc->dev->si_drv1 = sc;
+	sc->dev->si_iosize_max = DFLTPHYS;
+
 	return (sc);
 }
 
