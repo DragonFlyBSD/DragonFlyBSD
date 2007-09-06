@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.21 2007/08/19 11:39:11 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.22 2007/09/06 21:03:55 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -633,10 +633,8 @@ vesa_bios_init(void)
 	if (vesa_adp_info->v_version < 0x0102) {
 		kprintf("VESA: VBE version %d.%d is not supported; "
 		       "version 1.2 or later is required.\n",
-		       ((vesa_adp_info->v_version & 0xf000) >> 12) * 10 
-			   + ((vesa_adp_info->v_version & 0x0f00) >> 8),
-		       ((vesa_adp_info->v_version & 0x00f0) >> 4) * 10 
-			   + (vesa_adp_info->v_version & 0x000f));
+		       bcd2bin((vesa_adp_info->v_version & 0xff00) >> 8),
+		       bcd2bin(vesa_adp_info->v_version & 0x00ff));
 		return 1;
 	}
 
@@ -1552,10 +1550,8 @@ vesa_bios_info(int level)
 	if (bootverbose) {
 		/* general adapter information */
 		kprintf("VESA: v%d.%d, %dk memory, flags:0x%x, mode table:%p (%x)\n", 
-		       ((vesa_adp_info->v_version & 0xf000) >> 12) * 10 +
-		       ((vesa_adp_info->v_version & 0x0f00) >> 8),
-		       ((vesa_adp_info->v_version & 0x00f0) >> 4) * 10 +
-		       (vesa_adp_info->v_version & 0x000f),
+		       bcd2bin((vesa_adp_info->v_version & 0xff00) >> 8),
+		       bcd2bin(vesa_adp_info->v_version & 0x00ff),
 		       vesa_adp_info->v_memsize * 64, vesa_adp_info->v_flags,
 		       vesa_vmodetab, vesa_adp_info->v_modetable);
 
