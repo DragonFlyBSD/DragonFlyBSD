@@ -1,5 +1,5 @@
 .\"	$NetBSD: ifmedia.4,v 1.26 2005/10/03 18:08:03 rpaulo Exp $
-.\"	$DragonFly: src/share/man/man4/ifmedia.4,v 1.3 2007/08/27 16:15:41 hasso Exp $
+.\"	$DragonFly: src/share/man/man4/ifmedia.4,v 1.4 2007/09/06 11:11:19 swildner Exp $
 .\"
 .\" Copyright (c) 1998, 1999, 2000, 2001, 2002, 2003, 2004
 .\"	The NetBSD Foundation, Inc.
@@ -37,7 +37,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd September 9, 2006
+.Dd September 6, 2007
 .Dt IFMEDIA 4
 .Os
 .Sh NAME
@@ -56,9 +56,13 @@ set using the
 .Xr ifconfig 8
 command.
 .Pp
-There are currently two link types supported by
+There are currently four link types supported by
 .Nm :
 .Bl -tag -offset indent -width ".Dv IFM_IEEE80211"
+.It Dv IFM_ATM
+Asynchronous Transfer Mode
+.It Dv IFM_CARP
+Common Address Redundancy Protocol
 .It Dv IFM_ETHER
 Ethernet
 .It Dv IFM_IEEE80211
@@ -101,6 +105,29 @@ Driver-defined flag.  [flag2]
 .It Dv IFM_LOOP
 Place the device into hardware loopback mode.  [hw-loopback]
 .El
+.Sh MEDIA TYPES AND OPTIONS FOR ASYNCHRONOUS TRANSFER MODE
+The following media types are defined for Asynchronous Transfer Mode:
+.Bl -tag -offset indent -width ".Dv IFM_ATM_TAXI_100"
+.It Dv IFM_ATM_UNKNOWN
+Unknown media type.  [Unknown, UNKNOWN]
+.It Dv IFM_ATM_UTP_25
+25Mb/s over unshielded twisted pair.  [UTP/25.6MBit, UTP-25]
+.It Dv IFM_ATM_TAXI_100
+AMD TAXI, 100Mb/s over multi-mode fiber optic cables.  [Taxi/100MBit, TAXI-100]
+.It Dv IFM_ATM_TAXI_140
+AMD TAXI, 140Mb/s over multi-node fiber optic cables.  [Taxi/140MBit, TAXI-140]
+.It Dv IFM_ATM_MM_155
+155Mb/s over multi-mode fiber optic cables. [Multi-mode/155MBit, MM-155]
+.It Dv IFM_ATM_SM_155
+155Mb/s over single-mode fiber optic cables. [Single-mode/155MBit, SM-155]
+.It Dv IFM_ATM_UTP_155
+155Mb/s over unshielded twisted pair. [UTP/155Mbit, UTP-155]
+.It Dv IFM_ATM_MM_622
+622Mb/s over multi-mode fiber optic cables. [Multi-mode/622MBit, MM-622]
+.It Dv IFM_ATM_SM_622
+622Mb/s over single-mode fiber optic cables. [Single-mode/622MBit, SM-622]
+.\".It Dv IFM_ATM_VIRTUAL
+.\"...
 .Sh MEDIA TYPES AND OPTIONS FOR ETHERNET
 The following media types are defined for Ethernet:
 .Bl -tag -offset indent -width ".Dv IFM_1000_FX"
