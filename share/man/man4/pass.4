@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/pass.4,v 1.5.2.5 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/pass.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/pass.4,v 1.3 2007/09/06 11:29:30 swildner Exp $
 .\"
 .Dd October 10, 1998
 .Dt PASS 4
@@ -68,18 +68,26 @@ devices are automatically allocated as
 .Tn SCSI
 devices are found.
 .Sh IOCTLS
-.Bl -tag -width 012345678901234
-.It CAMIOCOMMAND
+.Bl -tag -width ".Dv CAMGETPASSTHRU"
+.It Dv CAMIOCOMMAND
 This ioctl takes most kinds of CAM CCBs and passes them through to the CAM
 transport layer for action.  Note that some CCB types are not allowed
 through the passthrough device, and must be sent through the
 .Xr xpt 4
-device instead.  Some examples of xpt-only CCBs are XPT_SCAN_BUS,
-XPT_DEV_MATCH, XPT_RESET_BUS, XPT_SCAN_LUN, XPT_ENG_INQ, and XPT_ENG_EXEC.
+device instead.  Some examples of xpt-only CCBs are
+.Dv XPT_SCAN_BUS ,
+.Dv XPT_DEV_MATCH ,
+.Dv XPT_RESET_BUS ,
+.Dv XPT_SCAN_LUN ,
+.Dv XPT_ENG_INQ ,
+and
+.Dv XPT_ENG_EXEC .
 These CCB types have various attributes that make it illogical or
 impossible to service them through the passthrough interface.
-.It CAMGETPASSTHRU
-This ioctl takes an XPT_GDEVLIST CCB, and returns the passthrough device
+.It Dv CAMGETPASSTHRU
+This ioctl takes an
+.Dv XPT_GDEVLIST
+CCB, and returns the passthrough device
 corresponding to the device in question.  Although this ioctl is available
 through the
 .Nm
