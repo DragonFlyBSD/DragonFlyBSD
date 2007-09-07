@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/userfs/userfs.h,v 1.1 2007/08/13 17:49:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/userfs/userfs.h,v 1.2 2007/09/07 21:42:59 dillon Exp $
  */
 
 #include <sys/syslink_msg.h>
@@ -95,10 +95,16 @@ int	user_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
 void	user_elm_push_vnode(syslink_elm_t par, struct vnode *vp);
 void	user_elm_push_offset(syslink_elm_t par, off_t offset);
 void	user_elm_push_bio(syslink_elm_t par, int cmd, int bcount);
+void	user_elm_push_mode(struct syslink_elm *par, mode_t mode);
+void	user_elm_push_cred(struct syslink_elm *par, struct ucred *cred);
+void	user_elm_push_vattr(struct syslink_elm *par, struct vattr *vattr);
+void	user_elm_push_nch(struct syslink_elm *par, struct nchandle *nch);
+
 
 int	user_getnewvnode(struct mount *mp, struct vnode **vpp, ino_t ino,
 			 enum vtype vtype);
 
+int	user_elm_parse_vattr(struct syslink_elm *par, struct vattr *vat);
 
 #endif
 

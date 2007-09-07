@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/userfs/userfs_elms.c,v 1.1 2007/08/13 17:49:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/userfs/userfs_elms.c,v 1.2 2007/09/07 21:42:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -70,5 +70,35 @@ user_elm_push_bio(struct syslink_elm *par, int cmd, int bcount)
 {
 	sl_elm_make_aux(par, SLVFS_ELM_IOCMD, cmd);
 	sl_elm_make_aux(par, SLVFS_ELM_IOCOUNT, bcount);
+}
+
+void
+user_elm_push_mode(struct syslink_elm *par, mode_t mode)
+{
+	panic("user_elm_push_mode: not implemented yet");
+}
+
+void
+user_elm_push_cred(struct syslink_elm *par, struct ucred *cred)
+{
+	panic("user_elm_push_cred: not implemented yet");
+}
+
+void
+user_elm_push_nch(struct syslink_elm *par, struct nchandle *nch)
+{
+	panic("user_elm_push_nch: not implemented yet");
+}
+
+void
+user_elm_push_vattr(struct syslink_elm *par, struct vattr *vat)
+{
+	panic("user_elm_push_nch: not implemented yet");
+}
+
+int
+user_elm_parse_vattr(struct syslink_elm *par, struct vattr *vat)
+{
+	panic("user_elm_parse_vattr: not implemented yet");
 }
 

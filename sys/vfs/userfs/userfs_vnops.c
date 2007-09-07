@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/userfs/userfs_vnops.c,v 1.2 2007/08/21 17:26:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/userfs/userfs_vnops.c,v 1.3 2007/09/07 21:42:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <sys/stat.h>
 #include <sys/syslink.h>
 #include <sys/syslink_vfs.h>
+#include <sys/unistd.h>
 #include <vm/vnode_pager.h>
 #include "userfs.h"
 
@@ -53,8 +54,6 @@
  */
 /*static int user_vop_vnoperate(struct vop_generic_args *);*/
 static int user_vop_fsync (struct vop_fsync_args *);
-static int user_vop_getpages (struct vop_getpages_args *);
-static int user_vop_putpages (struct vop_putpages_args *);
 static int user_vop_read (struct vop_read_args *);
 static int user_vop_write (struct vop_write_args *);
 static int user_vop_access (struct vop_access_args *);
@@ -84,8 +83,8 @@ static int user_vop_bmap (struct vop_bmap_args *);
 struct vop_ops userfs_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_fsync =		user_vop_fsync,
-	.vop_getpages =		user_vop_getpages,
-	.vop_putpages =		user_vop_putpages,
+	.vop_getpages =		vop_stdgetpages,
+	.vop_putpages =		vop_stdputpages,
 	.vop_read =		user_vop_read,
 	.vop_write =		user_vop_write,
 	.vop_access =		user_vop_access,
@@ -124,6 +123,9 @@ user_vop_vnoperate(struct vop_generic_args *)
 }
 #endif
 
+/*
+ * vop_fsync(struct vnode *vp, int waitfor)
+ */
 static
 int
 user_vop_fsync (struct vop_fsync_args *ap)
@@ -160,30 +162,8 @@ user_vop_fsync (struct vop_fsync_args *ap)
 	return(error);
 }
 
-static
-int
-user_vop_getpages (struct vop_getpages_args *ap)
-{
-	int error;
-
-	error = vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-					     ap->a_reqpage);
-	return(error);
-}
-
-static
-int
-user_vop_putpages (struct vop_putpages_args *ap)
-{
-	int error;
-
-	error = vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-					     ap->a_sync, ap->a_rtvals);
-	return(error);
-}
-
 /*
- * VOP_READ - read into uio
+ * vop_read(struct vnode *vp, struct uio *uio, int ioflag, struct ucred *cred)
  */
 static
 int
@@ -202,6 +182,11 @@ user_vop_read (struct vop_read_args *ap)
 	ip = vp->v_data;
 	ump = ip->ump;
 	uio = ap->a_uio;
+
+	if (uio->uio_offset < 0)
+		return (EINVAL);
+	if (vp->v_type != VREG)
+		return (EINVAL);
 
 	kprintf("userfs_read\n");
 	error = 0;
@@ -235,6 +220,9 @@ user_vop_read (struct vop_read_args *ap)
 	return(error);
 }
 
+/*
+ * vop_write(struct vnode *vp, struct uio *uio, int ioflag, struct ucred *cred)
+ */
 static
 int
 user_vop_write (struct vop_write_args *ap)
@@ -253,26 +241,16 @@ user_vop_write (struct vop_write_args *ap)
 	ump = ip->ump;
 	uio = ap->a_uio;
 
-	switch(vp->v_type) {
-	case VREG:
-		if (ap->a_ioflag & IO_APPEND)
-			uio->uio_offset = ip->filesize;
-		/* XXX check append-only file flag */
-		/* fall through */
-	case VLNK:
-		break;
-	case VDIR:
+	if (vp->v_type != VREG)
 		return (EINVAL);
-	default:
-		return (EINVAL);
-	}
+	if (ap->a_ioflag & IO_APPEND)
+		uio->uio_offset = ip->filesize;
 
 	/*
 	 * Check for illegal write offsets.  Valid range is 0...2^63-1
 	 */
-	if (uio->uio_offset < 0 || uio->uio_offset + uio->uio_resid <= 0) {
+	if (uio->uio_offset < 0 || uio->uio_offset + uio->uio_resid <= 0)
 		return (EFBIG);
-	}
 
 	kprintf("userfs_write\n");
 	error = 0;
@@ -283,8 +261,11 @@ user_vop_write (struct vop_write_args *ap)
 		 *
 		 * XXX not optimized for complete write-overs or file
 		 * extensions.  Note: must bread on UIO_NOCOPY writes.
+		 *
+		 * XXX No need to read if strictly appending.
 		 */
 		offset = (int)uio->uio_offset & USERFS_BMASK;
+		/* if offset == ip->filesize use getblk instead */
 		error = bread(vp, uio->uio_offset - offset, USERFS_BSIZE, &bp);
 		if (error) {
 			brelse(bp);
@@ -329,6 +310,9 @@ user_vop_write (struct vop_write_args *ap)
 	return(error);
 }
 
+/*
+ * vop_access(struct vnode *vp, int mode, struct ucred *cred)
+ */
 static
 int
 user_vop_access (struct vop_access_args *ap)
@@ -347,23 +331,35 @@ user_vop_access (struct vop_access_args *ap)
 	slmsg = syslink_kallocmsg();
 	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
 			      SLVFS_CMD_VOP_ACCESS);
+	user_elm_push_vnode(par, vp);
+	user_elm_push_mode(par, ap->a_mode);
+	user_elm_push_cred(par, ap->a_cred);
 	sl_msg_fini(slmsg->msg);
 
+	/*
+	 * Issue the request and do basic validation of the response
+	 */
 	kprintf("userfs_access\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_ACCESS|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) != 0)
+		goto done;
+	par = &slmsg->rep->msg->sm_head;
+	if (par->se_cmd != (SLVFS_CMD_VOP_ACCESS|SE_CMDF_REPLY)) {
+		error = EBADRPC;
+		goto done;
 	}
+
+done:
 	syslink_kfreemsg(ump->sldesc, slmsg);
 	kprintf("error %d\n", error);
 	return(error);
 }
 
+/*
+ * vop_advlock(struct vnode *vp, caddr_t id, int op, struct flock *fl,
+ *	       int flags)
+ *
+ * This vop is handled directly by the kernel.
+ */
 static
 int
 user_vop_advlock (struct vop_advlock_args *ap)
@@ -377,6 +373,11 @@ user_vop_advlock (struct vop_advlock_args *ap)
 	return (lf_advlock(ap, &ip->lockf, ip->filesize));
 }
 
+/*
+ * vop_open(struct vnode *vp, int mode, struct ucred *cred, struct file *file)
+ *
+ * This vop is handled directly by the kernel.
+ */
 static
 int
 user_vop_open (struct vop_open_args *ap)
@@ -384,6 +385,11 @@ user_vop_open (struct vop_open_args *ap)
 	return (vop_stdopen(ap));
 }
 
+/*
+ * vop_close(struct vnode *vp, int fflag)
+ *
+ * This vop is handled directly by the kernel.
+ */
 static
 int
 user_vop_close (struct vop_close_args *ap)
@@ -391,53 +397,9 @@ user_vop_close (struct vop_close_args *ap)
 	return (vop_stdclose(ap));
 }
 
-static
-int
-user_vop_ncreate (struct vop_ncreate_args *ap)
-{
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct namecache *ncp;
-	struct ucred *cred;
-	struct vnode *dvp;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	cred = ap->a_cred;
-	ncp = ap->a_nch->ncp;
-	dvp = ap->a_dvp;
-
-	if ((error = vget(dvp, LK_SHARED)) != 0)
-		return (error);
-
-	vp = NULL;	/* XXX */
-
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_NCREATE);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_ncreate\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_NCREATE|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	vput(dvp);
-	return(error);
-}
-
+/*
+ * vop_getattr(struct vnode *vp, struct vattr *vap)
+ */
 static
 int
 user_vop_getattr (struct vop_getattr_args *ap)
@@ -447,15 +409,12 @@ user_vop_getattr (struct vop_getattr_args *ap)
 	struct vnode *vp;
 	struct slmsg *slmsg;
 	syslink_elm_t par;
+	syslink_elm_t elm;
 	int error;
 
-	kprintf("X1\n");
 	vp = ap->a_vp;
-	kprintf("X2\n");
 	ip = vp->v_data;
-	kprintf("X3\n");
 	ump = ip->ump;
-	kprintf("X4\n");
 
 	slmsg = syslink_kallocmsg();
 	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
@@ -463,299 +422,87 @@ user_vop_getattr (struct vop_getattr_args *ap)
 	sl_msg_fini(slmsg->msg);
 
 	kprintf("userfs_getattr\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_GETATTR|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) != 0)
+		goto done;
+	par = &slmsg->rep->msg->sm_head;
+	if (par->se_cmd != (SLVFS_CMD_VOP_GETATTR|SE_CMDF_REPLY)) {
+		error = EBADRPC;
+		goto done;
 	}
+
+	/*
+	 * Parse reply content
+	 */
+	SL_FOREACH_ELEMENT(par, elm) {
+		switch(elm->se_cmd) {
+		case SLVFS_ELM_VATTR:
+			error = user_elm_parse_vattr(elm, ap->a_vap);
+			break;
+		default:
+			break;
+		}
+		if (error)
+			break;
+	}
+done:
 	syslink_kfreemsg(ump->sldesc, slmsg);
 	kprintf("error %d\n", error);
 	return(error);
 }
 
-static
-int
-user_vop_nresolve (struct vop_nresolve_args *ap)
-{
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct namecache *ncp;
-	struct ucred *cred;
-	struct vnode *vp;
-	struct vnode *dvp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	cred = ap->a_cred;
-	ncp = ap->a_nch->ncp;
-	vp = NULL;	/* XXX */
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	dvp = ap->a_dvp;
-	if ((error = vget(dvp, LK_SHARED)) != 0)
-		return (error);
-	vn_unlock(dvp);
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_NRESOLVE);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_nresolve\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_NRESOLVE|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	vrele(dvp);
-	kprintf("error %d\n", error);
-	return(error);
-}
-
-static
-int
-user_vop_nlookupdotdot (struct vop_nlookupdotdot_args *ap)
-{
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct ucred *cred;
-	struct vnode *dvp;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	cred = ap->a_cred;
-	dvp = ap->a_dvp;
-	vp = NULL;	/* XXX */
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_NLOOKUPDOTDOT);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_nlookupdotdot\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_NLOOKUPDOTDOT|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	return(error);
-}
-
-static
-int
-user_vop_nlink (struct vop_nlink_args *ap)
-{
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	vp = ap->a_vp;
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_NLINK);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_nlink\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_NLINK|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	return(error);
-}
-
-static
-int
-user_vop_nmkdir (struct vop_nmkdir_args *ap)
-{
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct namecache *ncp;
-	struct ucred *cred;
-	struct vnode *dvp;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	cred = ap->a_cred;
-	ncp = ap->a_nch->ncp;
-	dvp = ap->a_dvp;
-	if ((error = vget(dvp, LK_SHARED)) != 0)
-		return (error);
-
-	vp = NULL;	/* XXX */
-
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_NMKDIR);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_nmkdir\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_NMKDIR|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	vput(dvp);
-	return(error);
-}
-
-static
-int
-user_vop_nmknod (struct vop_nmknod_args *ap)
-{
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct namecache *ncp;
-	struct ucred *cred;
-	struct vnode *dvp;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	cred = ap->a_cred;
-	ncp = ap->a_nch->ncp;
-	dvp = ncp->nc_parent->nc_vp;	/* needs vget */
-
-	vp = NULL;	/* XXX */
-
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_NMKNOD);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_nmknod\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_NMKNOD|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	return(error);
-}
-
+/*
+ * vop_pathconf(int name, int *retval)
+ *
+ * This vop is handled directly by the kernel.
+ */
 static
 int
 user_vop_pathconf (struct vop_pathconf_args *ap)
 {
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
+	int error = 0;
 
-	vp = ap->a_vp;
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_PATHCONF);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_pathconf\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_PATHCONF|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
+	switch(ap->a_name) {
+	case _PC_LINK_MAX:
+		*ap->a_retval = LINK_MAX;
+		break;
+	case _PC_MAX_CANON:
+		*ap->a_retval = MAX_CANON;
+		break;
+	case _PC_MAX_INPUT:
+		*ap->a_retval = MAX_INPUT;
+		break;
+	case _PC_PIPE_BUF:
+		*ap->a_retval = PIPE_BUF;
+		break;
+	case _PC_CHOWN_RESTRICTED:
+		*ap->a_retval = 1;
+		break;
+	case _PC_VDISABLE:
+		*ap->a_retval = _POSIX_VDISABLE;
+		break;
+	default:
+		error = EINVAL;
+		break;
 	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	return(error);
+	return (error);
 }
 
+/*
+ * vop_print(int name, int *retval)
+ *
+ * This vop is handled directly by the kernel.
+ */
 static
 int
 user_vop_print (struct vop_print_args *ap)
 {
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	vp = ap->a_vp;
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_PRINT);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_print\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_PRINT|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	return(error);
+	return(0);
 }
 
+/*
+ * vop_readdir(struct vnode *vp, struct uio *uio, struct ucred *cred,
+ *	       int *eofflag, int *ncookies, u_long **a_cookies)
+ */
 static
 int
 user_vop_readdir (struct vop_readdir_args *ap)
@@ -791,6 +538,9 @@ user_vop_readdir (struct vop_readdir_args *ap)
 	return(error);
 }
 
+/*
+ * vop_readlink(struct vnode *vp, struct uio *uio, struct ucred *cred)
+ */
 static
 int
 user_vop_readlink (struct vop_readlink_args *ap)
@@ -826,139 +576,9 @@ user_vop_readlink (struct vop_readlink_args *ap)
 	return(error);
 }
 
-static
-int
-user_vop_nremove (struct vop_nremove_args *ap)
-{
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct namecache *ncp;
-	struct ucred *cred;
-	struct vnode *dvp;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	cred = ap->a_cred;
-	ncp = ap->a_nch->ncp;
-	dvp = ncp->nc_parent->nc_vp;	/* needs vget */
-
-	vp = NULL;	/* XXX */
-
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_NREMOVE);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_nremove\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_NREMOVE|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	return(error);
-}
-
-static
-int
-user_vop_nrename (struct vop_nrename_args *ap)
-{
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct namecache *fncp;
-	struct namecache *tncp;
-	struct ucred *cred;
-	struct vnode *fdvp;
-	struct vnode *tdvp;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	cred = ap->a_cred;
-	fncp = ap->a_fnch->ncp;
-	fdvp = ap->a_fdvp;	/* XXX needs vget */
-	tncp = ap->a_tnch->ncp;
-	tdvp = ap->a_tdvp;	/* XXX needs vget */
-
-	vp = NULL;	/* XXX */
-
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_NRENAME);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_nrename\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_NRENAME|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	return(error);
-}
-
-static
-int
-user_vop_nrmdir (struct vop_nrmdir_args *ap)
-{
-	struct user_mount *ump;
-	struct user_inode *ip;
-	struct namecache *ncp;
-	struct ucred *cred;
-	struct vnode *dvp;
-	struct vnode *vp;
-	struct slmsg *slmsg;
-	syslink_elm_t par;
-	int error;
-
-	cred = ap->a_cred;
-	ncp = ap->a_nch->ncp;
-	dvp = ncp->nc_parent->nc_vp;	/* needs vget */
-
-	vp = NULL;	/* XXX */
-
-	ip = vp->v_data;
-	ump = ip->ump;
-
-	slmsg = syslink_kallocmsg();
-	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
-			      SLVFS_CMD_VOP_NRMDIR);
-	sl_msg_fini(slmsg->msg);
-
-	kprintf("userfs_nrmdir\n");
-	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
-		par = &slmsg->rep->msg->sm_head;
-
-		if (par->se_cmd == (SLVFS_CMD_VOP_NRMDIR|SE_CMDF_REPLY)) {
-			;
-		} else {
-			error = EBADRPC;
-		}
-	}
-	syslink_kfreemsg(ump->sldesc, slmsg);
-	kprintf("error %d\n", error);
-	return(error);
-}
-
+/*
+ * vop_setattr(struct vnode *vp, struct vattr *vap, struct ucred *cred)
+ */
 static
 int
 user_vop_setattr (struct vop_setattr_args *ap)
@@ -1082,6 +702,532 @@ user_strategy_callback(struct slmsg *slmsg, void *arg, int error)
 	biodone(bio);
 }
 
+/*
+ * vop_bmap(struct vnode *vp, off_t loffset, off_t *doffsetp,
+ *	    int *runp, int *runb)
+ *
+ * Dummy up the bmap op so the kernel will cluster I/Os.  The strategy
+ * code will ignore the dummied up device block translation.
+ */
+static
+int
+user_vop_bmap(struct vop_bmap_args *ap)
+{
+	int cluster_off;
+
+	*ap->a_doffsetp = ap->a_loffset;
+	cluster_off = (int)(*ap->a_doffsetp & (MAXPHYS - 1));
+
+	if (ap->a_runp)
+		*ap->a_runp = MAXPHYS - cluster_off;
+	if (ap->a_runb)
+		*ap->a_runb = cluster_off;
+	return(0);
+}
+
+
+/*
+ * vop_ncreate(struct nchandle *nch, struct vnode *dvp, struct vnode **vpp,
+ *	       struct ucred *cred, struct vattr *vap)
+ */
+static
+int
+user_vop_ncreate (struct vop_ncreate_args *ap)
+{
+	struct user_mount *ump;
+	struct user_inode *ip;
+	struct namecache *ncp;
+	struct ucred *cred;
+	struct vnode *dvp;
+	struct slmsg *slmsg;
+	syslink_elm_t par;
+	syslink_elm_t elm;
+	int error;
+
+	cred = ap->a_cred;
+	ncp = ap->a_nch->ncp;
+	dvp = ap->a_dvp;
+
+	if ((error = vget(dvp, LK_SHARED)) != 0)
+		return (error);
+
+	ip = dvp->v_data;
+	ump = ip->ump;
+
+	slmsg = syslink_kallocmsg();
+	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
+			      SLVFS_CMD_VOP_NCREATE);
+	user_elm_push_nch(par, ap->a_nch);
+	user_elm_push_vnode(par, dvp);
+	user_elm_push_cred(par, ap->a_cred);
+	user_elm_push_vattr(par, ap->a_vap);
+	sl_msg_fini(slmsg->msg);
+
+	kprintf("userfs_ncreate\n");
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) != 0)
+		goto done;
+	par = &slmsg->rep->msg->sm_head;
+	if (par->se_cmd != (SLVFS_CMD_VOP_NCREATE|SE_CMDF_REPLY)) {
+		error = EBADRPC;
+		goto done;
+	}
+
+	/*
+	 * Parse reply - extract the inode number of the newly created
+	 * object and construct a vnode using it.
+	 */
+	SL_FOREACH_ELEMENT(par, elm) {
+		switch(elm->se_cmd) {
+		case SLVFS_ELM_INUM:
+			/* XXX */
+			break;
+		default:
+			break;
+		}
+		if (error)
+			break;
+	}
+	/* XXX construct vnode using fileid */
+	error = EINVAL;
+
+done:
+	syslink_kfreemsg(ump->sldesc, slmsg);
+	kprintf("error %d\n", error);
+	vput(dvp);
+	return(error);
+}
+
+/*
+ * vop_nresolve(struct nchandle *nch, struct vnode *dvp, struct ucred *cred)
+ */
+static
+int
+user_vop_nresolve (struct vop_nresolve_args *ap)
+{
+	struct user_mount *ump;
+	struct user_inode *ip;
+	struct namecache *ncp;
+	struct ucred *cred;
+	struct vnode *dvp;
+	struct slmsg *slmsg;
+	syslink_elm_t par;
+	syslink_elm_t elm;
+	int error;
+	int flags;
+	ino_t inum;
+
+	cred = ap->a_cred;
+	ncp = ap->a_nch->ncp;
+	dvp = ap->a_dvp;
+	if ((error = vget(dvp, LK_SHARED)) != 0)
+		return (error);
+	vn_unlock(dvp);
+
+	ip = dvp->v_data;
+	ump = ip->ump;
+
+	slmsg = syslink_kallocmsg();
+	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
+			      SLVFS_CMD_VOP_NRESOLVE);
+	user_elm_push_nch(par, ap->a_nch);
+	user_elm_push_vnode(par, dvp);
+	user_elm_push_cred(par, ap->a_cred);
+	sl_msg_fini(slmsg->msg);
+
+	/*
+	 * Run the RPC.  The response must still be parsed for a ENOENT
+	 * error to extract the whiteout flag.
+	 */
+	kprintf("userfs_nresolve\n");
+	error = syslink_kdomsg(ump->sldesc, slmsg);
+	if (error && error != ENOENT)
+		goto done;
+	par = &slmsg->rep->msg->sm_head;
+	if (par->se_cmd != (SLVFS_CMD_VOP_NRESOLVE|SE_CMDF_REPLY)) {
+		error = EBADRPC;
+		goto done;
+	}
+
+	/*
+	 * Parse reply - returns inode number of resolved vnode
+	 */
+	flags = 0;
+	inum = 0;
+	SL_FOREACH_ELEMENT(par, elm) {
+		switch(elm->se_cmd) {
+		case SLVFS_ELM_INUM:
+			/* XXX */
+			break;
+		case SLVFS_ELM_NCPFLAG:
+			/* flags = & NCF_WHITEOUT */
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (error == 0) {
+		error = EINVAL;
+		/*vp = user_getvp(inum);*/
+		/* XXX construct vp cache_setvp(nch, vp); */
+	} else {
+		ncp->nc_flag |= flags;
+		cache_setvp(ap->a_nch, NULL);
+	}
+done:
+	syslink_kfreemsg(ump->sldesc, slmsg);
+	vrele(dvp);
+	kprintf("error %d\n", error);
+	return(error);
+}
+
+/*
+ * vop_nlookupdotdot(struct vnode *dvp, struct vnode **vpp, struct ucred *cred)
+ *
+ * Lookup the parent of dvp. dvp is ref'd but not locked.  The returned
+ * vnode should be ref'd and locked.
+ */
+static
+int
+user_vop_nlookupdotdot (struct vop_nlookupdotdot_args *ap)
+{
+	struct user_mount *ump;
+	struct user_inode *ip;
+	struct ucred *cred;
+	struct vnode *dvp;
+	struct vnode *vp;
+	struct slmsg *slmsg;
+	syslink_elm_t par;
+	syslink_elm_t elm;
+	int error;
+	ino_t inum;
+
+	cred = ap->a_cred;
+	dvp = ap->a_dvp;
+	vp = NULL;	/* XXX */
+	ip = vp->v_data;
+	ump = ip->ump;
+
+	slmsg = syslink_kallocmsg();
+	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
+			      SLVFS_CMD_VOP_NLOOKUPDOTDOT);
+	sl_msg_fini(slmsg->msg);
+
+	kprintf("userfs_nlookupdotdot\n");
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) != 0)
+		goto done;
+	par = &slmsg->rep->msg->sm_head;
+
+	if (par->se_cmd != (SLVFS_CMD_VOP_NLOOKUPDOTDOT|SE_CMDF_REPLY)) {
+		error = EBADRPC;
+		goto done;
+	}
+
+	/*
+	 * Parse reply - inumber of parent directory
+	 */
+	inum = 0;
+	SL_FOREACH_ELEMENT(par, elm) {
+		switch(elm->se_cmd) {
+		case SLVFS_ELM_INUM:
+			/* XXX */
+			break;
+		case SLVFS_ELM_NCPFLAG:
+			/* flags = & NCF_WHITEOUT */
+			break;
+		default:
+			break;
+		}
+	}
+
+	/* construct parent vnode */
+
+done:
+	syslink_kfreemsg(ump->sldesc, slmsg);
+	kprintf("error %d\n", error);
+	return(error);
+}
+
+/*
+ * vop_nlink(struct nchandle *nch, struct vnode *dvp, struct vnode *vp,
+ *	     struct ucred *cred)
+ */
+static
+int
+user_vop_nlink (struct vop_nlink_args *ap)
+{
+	struct user_mount *ump;
+	struct user_inode *ip;
+	struct vnode *vp;
+	struct slmsg *slmsg;
+	syslink_elm_t par;
+	int error;
+
+	vp = ap->a_vp;
+	ip = vp->v_data;
+	ump = ip->ump;
+
+	slmsg = syslink_kallocmsg();
+	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
+			      SLVFS_CMD_VOP_NLINK);
+	sl_msg_fini(slmsg->msg);
+
+	kprintf("userfs_nlink\n");
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
+		par = &slmsg->rep->msg->sm_head;
+
+		if (par->se_cmd == (SLVFS_CMD_VOP_NLINK|SE_CMDF_REPLY)) {
+			;
+		} else {
+			error = EBADRPC;
+		}
+	}
+	syslink_kfreemsg(ump->sldesc, slmsg);
+	kprintf("error %d\n", error);
+	return(error);
+}
+
+/*
+ * vop_nmkdir(struct nchandle *nch, struct vnode *dvp, struct vnode **vpp,
+ *	     struct ucred *cred, struct vattr *vap)
+ */
+static
+int
+user_vop_nmkdir (struct vop_nmkdir_args *ap)
+{
+	struct user_mount *ump;
+	struct user_inode *ip;
+	struct namecache *ncp;
+	struct ucred *cred;
+	struct vnode *dvp;
+	struct vnode *vp;
+	struct slmsg *slmsg;
+	syslink_elm_t par;
+	int error;
+
+	cred = ap->a_cred;
+	ncp = ap->a_nch->ncp;
+	dvp = ap->a_dvp;
+	if ((error = vget(dvp, LK_SHARED)) != 0)
+		return (error);
+
+	vp = NULL;	/* XXX */
+
+	ip = vp->v_data;
+	ump = ip->ump;
+
+	slmsg = syslink_kallocmsg();
+	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
+			      SLVFS_CMD_VOP_NMKDIR);
+	sl_msg_fini(slmsg->msg);
+
+	kprintf("userfs_nmkdir\n");
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
+		par = &slmsg->rep->msg->sm_head;
+
+		if (par->se_cmd == (SLVFS_CMD_VOP_NMKDIR|SE_CMDF_REPLY)) {
+			;
+		} else {
+			error = EBADRPC;
+		}
+	}
+	syslink_kfreemsg(ump->sldesc, slmsg);
+	kprintf("error %d\n", error);
+	vput(dvp);
+	return(error);
+}
+
+/*
+ * vop_nmknod(struct nchandle *nch, struct vnode *dvp, struct vnode **vpp,
+ *	     struct ucred *cred, struct vattr *vap)
+ */
+static
+int
+user_vop_nmknod (struct vop_nmknod_args *ap)
+{
+	struct user_mount *ump;
+	struct user_inode *ip;
+	struct namecache *ncp;
+	struct ucred *cred;
+	struct vnode *dvp;
+	struct vnode *vp;
+	struct slmsg *slmsg;
+	syslink_elm_t par;
+	int error;
+
+	cred = ap->a_cred;
+	ncp = ap->a_nch->ncp;
+	dvp = ncp->nc_parent->nc_vp;	/* needs vget */
+
+	vp = NULL;	/* XXX */
+
+	ip = vp->v_data;
+	ump = ip->ump;
+
+	slmsg = syslink_kallocmsg();
+	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
+			      SLVFS_CMD_VOP_NMKNOD);
+	sl_msg_fini(slmsg->msg);
+
+	kprintf("userfs_nmknod\n");
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
+		par = &slmsg->rep->msg->sm_head;
+
+		if (par->se_cmd == (SLVFS_CMD_VOP_NMKNOD|SE_CMDF_REPLY)) {
+			;
+		} else {
+			error = EBADRPC;
+		}
+	}
+	syslink_kfreemsg(ump->sldesc, slmsg);
+	kprintf("error %d\n", error);
+	return(error);
+}
+
+/*
+ * vop_nremove(struct nchandle *nch, struct vnode *dvp, struct ucred *cred)
+ */
+static
+int
+user_vop_nremove (struct vop_nremove_args *ap)
+{
+	struct user_mount *ump;
+	struct user_inode *ip;
+	struct namecache *ncp;
+	struct ucred *cred;
+	struct vnode *dvp;
+	struct vnode *vp;
+	struct slmsg *slmsg;
+	syslink_elm_t par;
+	int error;
+
+	cred = ap->a_cred;
+	ncp = ap->a_nch->ncp;
+	dvp = ncp->nc_parent->nc_vp;	/* needs vget */
+
+	vp = NULL;	/* XXX */
+
+	ip = vp->v_data;
+	ump = ip->ump;
+
+	slmsg = syslink_kallocmsg();
+	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
+			      SLVFS_CMD_VOP_NREMOVE);
+	sl_msg_fini(slmsg->msg);
+
+	kprintf("userfs_nremove\n");
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
+		par = &slmsg->rep->msg->sm_head;
+
+		if (par->se_cmd == (SLVFS_CMD_VOP_NREMOVE|SE_CMDF_REPLY)) {
+			;
+		} else {
+			error = EBADRPC;
+		}
+	}
+	syslink_kfreemsg(ump->sldesc, slmsg);
+	kprintf("error %d\n", error);
+	return(error);
+}
+
+/*
+ * vop_nrename(struct nchandle *fnch, struct nchandle *tnch,
+ *	       struct vnode *fdvp, struct vnode *tdvp,
+ *	       struct ucred *cred)
+ */
+static
+int
+user_vop_nrename (struct vop_nrename_args *ap)
+{
+	struct user_mount *ump;
+	struct user_inode *ip;
+	struct namecache *fncp;
+	struct namecache *tncp;
+	struct ucred *cred;
+	struct vnode *fdvp;
+	struct vnode *tdvp;
+	struct vnode *vp;
+	struct slmsg *slmsg;
+	syslink_elm_t par;
+	int error;
+
+	cred = ap->a_cred;
+	fncp = ap->a_fnch->ncp;
+	fdvp = ap->a_fdvp;	/* XXX needs vget */
+	tncp = ap->a_tnch->ncp;
+	tdvp = ap->a_tdvp;	/* XXX needs vget */
+
+	vp = NULL;	/* XXX */
+
+	ip = vp->v_data;
+	ump = ip->ump;
+
+	slmsg = syslink_kallocmsg();
+	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
+			      SLVFS_CMD_VOP_NRENAME);
+	sl_msg_fini(slmsg->msg);
+
+	kprintf("userfs_nrename\n");
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
+		par = &slmsg->rep->msg->sm_head;
+
+		if (par->se_cmd == (SLVFS_CMD_VOP_NRENAME|SE_CMDF_REPLY)) {
+			;
+		} else {
+			error = EBADRPC;
+		}
+	}
+	syslink_kfreemsg(ump->sldesc, slmsg);
+	kprintf("error %d\n", error);
+	return(error);
+}
+
+/*
+ * vop_nrmdir(struct nchandle *nch, struct vnode *dvp, struct ucred *cred)
+ */
+static
+int
+user_vop_nrmdir (struct vop_nrmdir_args *ap)
+{
+	struct user_mount *ump;
+	struct user_inode *ip;
+	struct namecache *ncp;
+	struct ucred *cred;
+	struct vnode *dvp;
+	struct vnode *vp;
+	struct slmsg *slmsg;
+	syslink_elm_t par;
+	int error;
+
+	cred = ap->a_cred;
+	ncp = ap->a_nch->ncp;
+	dvp = ncp->nc_parent->nc_vp;	/* needs vget */
+
+	vp = NULL;	/* XXX */
+
+	ip = vp->v_data;
+	ump = ip->ump;
+
+	slmsg = syslink_kallocmsg();
+	par = sl_msg_init_cmd(slmsg->msg, SMPROTO_BSDVFS,
+			      SLVFS_CMD_VOP_NRMDIR);
+	sl_msg_fini(slmsg->msg);
+
+	kprintf("userfs_nrmdir\n");
+	if ((error = syslink_kdomsg(ump->sldesc, slmsg)) == 0) {
+		par = &slmsg->rep->msg->sm_head;
+
+		if (par->se_cmd == (SLVFS_CMD_VOP_NRMDIR|SE_CMDF_REPLY)) {
+			;
+		} else {
+			error = EBADRPC;
+		}
+	}
+	syslink_kfreemsg(ump->sldesc, slmsg);
+	kprintf("error %d\n", error);
+	return(error);
+}
+
 static
 int
 user_vop_nsymlink (struct vop_nsymlink_args *ap)
@@ -1166,25 +1312,5 @@ user_vop_nwhiteout (struct vop_nwhiteout_args *ap)
 	syslink_kfreemsg(ump->sldesc, slmsg);
 	kprintf("error %d\n", error);
 	return(error);
-}
-
-/*
- * Dummy up the bmap op so the kernel will cluster I/Os.  The strategy
- * code will ignore the dummied up device block translation.
- */
-static
-int
-user_vop_bmap(struct vop_bmap_args *ap)
-{
-	int cluster_off;
-
-	*ap->a_doffsetp = ap->a_loffset;
-	cluster_off = (int)(*ap->a_doffsetp & (MAXPHYS - 1));
-
-	if (ap->a_runp)
-		*ap->a_runp = MAXPHYS - cluster_off;
-	if (ap->a_runb)
-		*ap->a_runb = cluster_off;
-	return(0);
 }
 
