@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/kqueue.2,v 1.1.2.16 2002/07/02 21:05:08 mp Exp $
-.\" $DragonFly: src/lib/libc/sys/kqueue.2,v 1.5 2007/09/07 08:01:29 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/kqueue.2,v 1.6 2007/09/07 08:14:57 swildner Exp $
 .\"
 .Dd April 14, 2000
 .Dt KQUEUE 2
@@ -390,7 +390,7 @@ returns the number of times the signal has occurred since the last call to
 This filter automatically sets the
 .Dv EV_CLEAR
 flag internally.
-.It EVFILT_TIMER
+.It Dv EVFILT_TIMER
 Establishes an arbitrary timer identified by
 .Va ident .
 When adding a timer,
