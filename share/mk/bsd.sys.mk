@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.sys.mk,v 1.3.2.5 2002/07/03 16:59:14 des Exp $
-# $DragonFly: src/share/mk/bsd.sys.mk,v 1.9 2006/08/12 22:34:23 swildner Exp $
+# $DragonFly: src/share/mk/bsd.sys.mk,v 1.10 2007/09/07 00:09:02 pavalos Exp $
 #
 # This file contains common settings used for building DragonFly
 # sources.
@@ -17,19 +17,19 @@ CFLAGS		+=	-Wno-uninitialized
 .  if defined(WARNS_WERROR) && !defined(NO_WERROR)
 CFLAGS		+=	-Werror
 .  endif
-.  if ${WARNS} > 0
+.  if ${WARNS} >= 1
 CFLAGS		+=	-Wunknown-pragmas -Wsystem-headers
 .endif
-.  if ${WARNS} > 1
+.  if ${WARNS} >= 2
 CFLAGS		+=	-Wall
 .  endif
-.  if ${WARNS} > 2
+.  if ${WARNS} >= 3
 CFLAGS		+=	-W -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
 .  endif
-.  if ${WARNS} > 3
+.  if ${WARNS} >= 4
 CFLAGS		+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch -Wshadow -Wcast-align
 .  endif
-.  if ${WARNS} > 5
+.  if ${WARNS} >= 6
 CFLAGS		+=	-Wchar-subscripts -Winline -Wnested-externs -Wredundant-decls
 .  endif
 . endif
