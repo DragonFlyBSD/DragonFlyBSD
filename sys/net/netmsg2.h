@@ -31,10 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/netmsg2.h,v 1.1 2007/05/23 08:57:10 dillon Exp $
+ * $DragonFly: src/sys/net/netmsg2.h,v 1.2 2007/09/08 11:20:22 sephe Exp $
  */
 
 #ifndef _NET_NETMSG2_H_
+#define _NET_NETMSG2_H_
 
 #include <net/netmsg.h>
 #include <sys/msgport.h>
@@ -60,4 +61,3 @@ netmsg_init_abortable(netmsg_t msg, lwkt_port_t rport, int flags,
 }
 
 #endif /* _NET_NETMSG2_H_ */
-
