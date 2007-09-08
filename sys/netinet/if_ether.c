@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.42 2007/08/27 16:15:42 hasso Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.43 2007/09/08 12:35:04 sephe Exp $
  */
 
 /*
@@ -322,8 +322,6 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 	struct ether_header *eh;
 	struct arphdr *ah;
 	struct sockaddr sa;
-	static u_char llcx[] = { 0x82, 0x40, LLC_SNAP_LSAP, LLC_SNAP_LSAP,
-				 LLC_UI, 0x00, 0x00, 0x00, 0x08, 0x06 };
 	u_short ar_hrd;
 
 	if ((m = m_gethdr(MB_DONTWAIT, MT_DATA)) == NULL)
