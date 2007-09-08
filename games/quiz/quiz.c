@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quiz.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/games/quiz/quiz.c,v 1.12 1999/12/12 02:29:54 billf Exp $
- * $DragonFly: src/games/quiz/quiz.c,v 1.6 2007/09/08 01:29:14 corecode Exp $
+ * $DragonFly: src/games/quiz/quiz.c,v 1.7 2007/09/08 10:49:00 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -128,8 +128,6 @@ get_file(const char *file)
 	qp = &qlist;
 	qsize = 0;
 	while ((lp = fgetln(fp, &len)) != NULL) {
-		if (lp[0] == '#')
-			continue;
 		if (qp->q_text && qp->q_text[strlen(qp->q_text) - 1] == '\\')
 			qp->q_text = appdstr(qp->q_text, lp, len);
 		else {
