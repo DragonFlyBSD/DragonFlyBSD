@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.42 2007/08/16 20:03:57 dillon Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.43 2007/09/08 12:50:34 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -893,16 +893,22 @@ ether_ioctl(struct ifnet *ifp, int command, caddr_t data)
 	struct ifreq *ifr = (struct ifreq *) data;
 	int error = 0;
 
+#define IF_INIT(ifp) \
+do { \
+	if (((ifp)->if_flags & IFF_UP) == 0) { \
+		(ifp)->if_flags |= IFF_UP; \
+		(ifp)->if_init((ifp)->if_softc); \
+	} \
+} while (0)
+
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch (command) {
 	case SIOCSIFADDR:
-		ifp->if_flags |= IFF_UP;
-
 		switch (ifa->ifa_addr->sa_family) {
 #ifdef INET
 		case AF_INET:
-			ifp->if_init(ifp->if_softc);	/* before arpwhohas */
+			IF_INIT(ifp);	/* before arpwhohas */
 			arp_ifinit(ifp, ifa);
 			break;
 #endif
@@ -921,7 +927,7 @@ ether_ioctl(struct ifnet *ifp, int command, caddr_t data)
 				bcopy(ina->x_host.c_host, ac->ac_enaddr,
 				      sizeof ac->ac_enaddr);
 
-			ifp->if_init(ifp->if_softc);	/* Set new address. */
+			IF_INIT(ifp);	/* Set new address. */
 			break;
 			}
 #endif
@@ -943,12 +949,12 @@ ether_ioctl(struct ifnet *ifp, int command, caddr_t data)
 			/*
 			 * Set new address
 			 */
-			ifp->if_init(ifp->if_softc);
+			IF_INIT(ifp);
 			break;
 		}
 #endif
 		default:
-			ifp->if_init(ifp->if_softc);
+			IF_INIT(ifp);
 			break;
 		}
 		break;
@@ -974,6 +980,8 @@ ether_ioctl(struct ifnet *ifp, int command, caddr_t data)
 		break;
 	}
 	return (error);
+
+#undef IF_INIT
 }
 
 int
