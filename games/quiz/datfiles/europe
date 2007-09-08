@@ -1,3 +1,4 @@
+# $DragonFly: src/games/quiz/datfiles/europe,v 1.2 2007/09/08 01:29:40 corecode Exp $
 Albania:Tirana|Tirane"
 Andorra:Andorra la V[ell|iej]a
 Austria:Vienna|Wien
@@ -27,6 +28,7 @@ Luxembourg:Luxembourg
 Malta:Valletta
 Moldova:Chisinau|Kishinev
 Monaco:Monte Carlo
+Montenegro:Podgorica
 Netherlands|Holland:The Hague|'sGravenhage|den Haag|Amsterdam
 Norway:Oslo
 Poland:Wars[aw|zawa]
@@ -34,6 +36,7 @@ Portugal:Lisbo[n|a]
 R[u|o]mania:Bucharest|Bucuresti
 Russia:Mos[cow|kva]
 San Marino:San Marino
+Serbia:Belgrade|Beograd
 Slovakia|Slovak Republic:Bratislava
 Slovenia:Ljubljana
 Spain:Madrid
@@ -41,4 +44,3 @@ Sweden:Stockholm
 Switzerland:Bern{e}
 Turkey:Ankara
 Ukraine:Kiev|Kyiv
-Yugoslavia:Belgrade|Beograd
