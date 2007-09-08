@@ -26,7 +26,7 @@
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc_r/man/pthread_sigmask.3,v 1.3.2.6 2001/12/17 10:08:26 ru Exp $
-.\" $DragonFly: src/lib/libc_r/man/pthread_sigmask.3,v 1.2 2003/06/17 04:26:48 dillon Exp $
+.\" $DragonFly: src/lib/libc_r/man/pthread_sigmask.3,v 1.3 2007/09/08 20:50:50 swildner Exp $
 .Dd April 27, 2000
 .Dt PTHREAD_SIGMASK 3
 .Os
@@ -52,7 +52,7 @@ is not
 it specifies a set of signals to be modified, and
 .Fa how
 specifies what to set the signal mask to:
-.Bl -tag -width SIG_UNBLOCK
+.Bl -tag -width ".Dv SIG_UNBLOCK"
 .It Dv SIG_BLOCK
 Union of the current mask and
 .Fa set .

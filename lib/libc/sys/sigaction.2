@@ -31,7 +31,7 @@
 .\"
 .\"	From: @(#)sigaction.2	8.2 (Berkeley) 4/3/94
 .\" $FreeBSD: src/lib/libc/sys/sigaction.2,v 1.22.2.10 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.8 2007/06/30 19:03:52 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.9 2007/09/08 20:50:50 swildner Exp $
 .\"
 .Dd April 3, 1994
 .Dt SIGACTION 2
@@ -64,7 +64,8 @@ struct sigaction {
 The system defines a set of signals that may be delivered to a process.
 Signal delivery resembles the occurrence of a hardware interrupt:
 the signal is normally blocked from further occurrence, the current process
-context is saved, and a new one is built.  A process may specify a
+context is saved, and a new one is built.
+A process may specify a
 .Em handler
 to which a signal is delivered, or specify that a signal is to be
 .Em ignored .
@@ -77,7 +78,8 @@ in which case its delivery is postponed until it is
 The action to be taken on delivery is determined at the time
 of delivery.
 Normally, signal handlers execute on the current stack
-of the process.  This may be changed, on a per-handler basis,
+of the process.
+This may be changed, on a per-handler basis,
 so that signals are taken on a special
 .Em "signal stack" .
 .Pp
@@ -88,9 +90,10 @@ but other signals may yet occur.
 A global
 .Em "signal mask"
 defines the set of signals currently blocked from delivery
-to a process.  The signal mask for a process is initialized
-from that of its parent (normally empty).  It
-may be changed with a
+to a process.
+The signal mask for a process is initialized
+from that of its parent (normally empty).
+It may be changed with a
 .Xr sigprocmask 2
 call, or when a signal is delivered to the process.
 .Pp
@@ -113,7 +116,8 @@ function.
 When a caught signal
 is delivered, the current state of the process is saved,
 a new signal mask is calculated (as described below),
-and the signal handler is invoked.  The call to the handler
+and the signal handler is invoked.
+The call to the handler
 is arranged so that if the signal handling routine returns
 normally the process will resume execution in the context
 from before the signal's delivery.
@@ -192,8 +196,8 @@ If this bit is set when calling
 for the
 .Dv SIGCHLD
 signal, the system will not create zombie processes when children of
-the calling process exit.  If the calling process subsequently issues
-a
+the calling process exit.
+If the calling process subsequently issues a
 .Xr wait 2
 (or equivalent), it blocks until all of the calling process's child
 processes terminate, and then returns a value of -1 with
@@ -425,7 +429,8 @@ Realtime Interfaces:
 .Fn timer_settime .
 .Pp
 All functions not in the above lists are considered to be unsafe
-with respect to signals.  That is to say, the behaviour of such
+with respect to signals.
+That is to say, the behaviour of such
 functions when called from a signal handler is undefined.
 .Sh RETURN VALUES
 .Rv -std sigaction
@@ -443,15 +448,24 @@ There are three possible prototypes the handler may match:
 .Fn handler int "siginfo_t *info" "ucontext_t *uap" ;
 .El
 .Pp
-The handler function should match the SA_SIGINFO prototype if the
-SA_SIGINFO bit is set in flags.
+The handler function should match the
+.Dv SA_SIGINFO
+prototype if the
+.Dv SA_SIGINFO
+bit is set in flags.
 It then should be pointed to by the
 .Dv sa_sigaction
 member of
 .Dv struct sigaction .
-Note that you should not assign SIG_DFL or SIG_IGN this way.
+Note that you should not assign
+.Dv SIG_DFL
+or
+.Dv SIG_IGN
+this way.
 .Pp
-If the SA_SIGINFO flag is not set, the handler function should match
+If the
+.Dv SA_SIGINFO
+flag is not set, the handler function should match
 either the ANSI C or traditional
 .Bx
 prototype and be pointed to by
@@ -474,9 +488,9 @@ function needs to be casted to
 compile without warning.
 The traditional
 .Bx
-style is not portable and since its capabilities
-are a full subset of a SA_SIGINFO handler,
-its use is deprecated.
+style is not portable and since its capabilities are a full subset of a
+.Dv SA_SIGINFO
+handler, its use is deprecated.
 .Pp
 The
 .Fa sig
@@ -492,14 +506,17 @@ handler and the
 .Dv si_code
 member of the
 .Dv info
-argument to a SA_SIGINFO handler contain a numeric code explaining the
+argument to a
+.Dv SA_SIGINFO
+handler contain a numeric code explaining the
 cause of the signal, usually one of the
 .Dv SI_...
 values from
 .In sys/signal.h
-or codes specific to a signal, i.e. one of the
+or codes specific to a signal, i.e.\& one of the
 .Dv FPE_...
-values for SIGFPE.
+values for
+.Dv SIGFPE .
 .Pp
 The
 .Fa scp
@@ -510,8 +527,9 @@ sigcontext.
 .Pp
 The
 .Fa uap
-argument to a POSIX SA_SIGINFO handler points to an instance of
-ucontext_t.
+argument to a POSIX
+.Dv SA_SIGINFO
+handler points to an instance of ucontext_t.
 .Sh ERRORS
 .Fn Sigaction
 will fail and no new signal handler will be installed if one
@@ -584,7 +602,8 @@ The
 and
 .Dv SA_RESETHAND
 flags are intended for backwards compatibility with other operating
-systems.  The
+systems.
+The
 .Dv SA_NOCLDSTOP ,
 and
 .Dv SA_NOCLDWAIT

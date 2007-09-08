@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)tcsetattr.3	8.3 (Berkeley) 1/2/94
 .\" $FreeBSD: src/lib/libc/gen/tcsetattr.3,v 1.6.2.4 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/gen/tcsetattr.3,v 1.4 2007/06/30 19:03:52 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/tcsetattr.3,v 1.5 2007/09/08 20:50:49 swildner Exp $
 .\"
 .Dd January 2, 1994
 .Dt TCSETATTR 3
@@ -171,9 +171,14 @@ terminal interface.
 Unless otherwise noted for a specific command, these functions are restricted
 from use by background processes.
 Attempts to perform these operations shall cause the process group to be sent
-a SIGTTOU signal.
-If the calling process is blocking or ignoring SIGTTOU signals, the process
-is allowed to perform the operation and the SIGTTOU signal is not sent.
+a
+.Dv SIGTTOU
+signal.
+If the calling process is blocking or ignoring
+.Dv SIGTTOU
+signals, the process is allowed to perform the operation and the
+.Dv SIGTTOU
+signal is not sent.
 .Pp
 In all the functions, although
 .Fa fd
@@ -220,22 +225,22 @@ field is created by
 .Em or Ns 'ing
 the following values, as specified in the include file
 .In termios.h .
-.Bl -tag -width "TCSADRAIN"
-.It Fa TCSANOW
+.Bl -tag -width ".Dv TCSADRAIN"
+.It Dv TCSANOW
 The change occurs immediately.
-.It Fa TCSADRAIN
+.It Dv TCSADRAIN
 The change occurs after all output written to
 .Fa fd
 has been transmitted to the terminal.
 This value of
 .Fa action
 should be used when changing parameters that affect output.
-.It Fa TCSAFLUSH
+.It Dv TCSAFLUSH
 The change occurs after all output written to
 .Fa fd
 has been transmitted to the terminal.
 Additionally, any input that has been received but not read is discarded.
-.It Fa TCSASOFT
+.It Dv TCSASOFT
 If this value is
 .Em or Ns 'ed
 into the
@@ -327,7 +332,7 @@ and
 .Fn cfsetspeed
 functions,
 as well as the
-.Li TCSASOFT
+.Dv TCSASOFT
 option to the
 .Fn tcsetattr
 function are extensions to the

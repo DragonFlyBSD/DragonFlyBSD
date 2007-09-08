@@ -4,7 +4,7 @@
 .\" use of this page comes from Rob Pike <rob@plan9.att.com>.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/rfork.2,v 1.11.2.11 2002/07/30 19:04:25 silby Exp $
-.\" $DragonFly: src/lib/libc/sys/rfork.2,v 1.5 2006/03/22 10:18:47 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/rfork.2,v 1.6 2007/09/08 20:50:50 swildner Exp $
 .\"
 .Dd January 12, 1996
 .Dt RFORK 2
@@ -34,48 +34,54 @@ to open and close files for other processes),
 and open files.
 .Fa Flags
 is the logical OR of some subset of:
-.Bl -tag -width "RFCNAMEG" -compact -offset indent
-.It RFPROC
+.Bl -tag -width ".Dv RFLINUXTHPN" -compact -offset indent
+.It Dv RFPROC
 If set a new process is created; otherwise changes affect the
 current process.
 The current implementation requires this flag to always be set.
-.It RFNOWAIT
+.It Dv RFNOWAIT
 If set, the child process will be dissociated from the parent.
 Upon
 exit the child will not leave a status for the parent to collect.
 See
 .Xr wait 2 .
-.It RFFDG
+.It Dv RFFDG
 If set, the invoker's file descriptor table (see
 .Xr intro 2 )
 is copied; otherwise the two processes share a
 single table.
-.It RFCFDG
+.It Dv RFCFDG
 If set, the new process starts with a clean file descriptor table.
 Is mutually exclusive with
 .Dv RFFDG .
-.It RFMEM
+.It Dv RFMEM
 If set, the kernel will force sharing of the entire address space,
 typically by sharing the hardware page table directly.
 The child
 will thus inherit and share all the segments the parent process owns,
-whether they are normally shareable or not.  The stack segment is
+whether they are normally shareable or not.
+The stack segment is
 not split (both the parent and child return on the same stack) and thus
 .Fn rfork
-with the RFMEM flag may not generally be called directly from high level
+with the
+.Dv RFMEM
+flag may not generally be called directly from high level
 languages including C.
 May be set only with
 .Dv RFPROC .
 A helper function is provided to assist with this problem and will cause
-the new process to run on the provided stack.  See
+the new process to run on the provided stack.
+See
 .Fn rfork_thread 3
 for information.
-.It RFSIGSHARE
+.It Dv RFSIGSHARE
 If set, the kernel will force sharing the sigacts structure between the
 child and the parent.
-.It RFLINUXTHPN
-If set, the kernel will return SIGUSR1 instead of SIGCHILD upon thread
-exit for the child.  This is intended to mimic certain Linux clone behaviour.
+.It Dv RFLINUXTHPN
+If set, the kernel will return
+.Dv SIGUSR1
+instead of SIGCHILD upon thread exit for the child.
+This is intended to mimic certain Linux clone behaviour.
 .El
 .Pp
 File descriptors in a shared file descriptor table are kept
@@ -106,9 +112,9 @@ Upon successful completion,
 .Fn rfork
 returns a value
 of 0 to the child process and returns the process ID of the child
-process to the parent process.  Otherwise, a value of -1 is returned
-to the parent process, no child process is created, and the global
-variable
+process to the parent process.
+Otherwise, a value of -1 is returned to the parent process, no
+child process is created, and the global variable
 .Va errno
 is set to indicate the error.
 .Sh ERRORS
@@ -140,9 +146,15 @@ the soft resource limit corresponding to the resource parameter
 would be exceeded (see
 .Xr getrlimit 2 ) .
 .It Bq Er EINVAL
-The RFPROC flag was not specified.
+The
+.Dv RFPROC
+flag was not specified.
 .It Bq Er EINVAL
-Both the RFFDG and the RFCFDG flags were specified.
+Both the
+.Dv RFFDG
+and the
+.Dv RFCFDG
+flags were specified.
 .It Bq Er ENOMEM
 There is insufficient swap space for the new process.
 .El
@@ -162,11 +174,14 @@ does not yet implement a native
 .Fn clone
 library call, and the current pthreads implementation does not use
 .Fn rfork
-with RFMEM.  A native port of the linux threads library,
+with
+.Dv RFMEM .
+A native port of the linux threads library,
 .Pa /usr/ports/devel/linuxthreads ,
 contains a working
 .Fn clone
-call that utilizes RFMEM.
+call that utilizes
+.Dv RFMEM .
 The
 .Fn rfork_thread
 library call can often be used instead of

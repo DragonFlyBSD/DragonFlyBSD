@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)signal.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/signal.3,v 1.17.2.9 2003/03/13 18:05:37 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/signal.3,v 1.5 2006/05/26 19:39:36 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/signal.3,v 1.6 2007/09/08 20:50:49 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt SIGNAL 3
@@ -64,7 +64,8 @@ facility.
 .Pp
 Signals allow the manipulation of a process from outside its
 domain as well as allowing the process to manipulate itself or
-copies of itself (children). There are two general types of signals:
+copies of itself (children).
+There are two general types of signals:
 those that cause termination of a process and those that do not.
 Signals which cause termination of a program might result from
 an irrecoverable error or might be the result of a user at a terminal
@@ -91,7 +92,7 @@ function allows for a signal to be caught, to be ignored, or to generate
 an interrupt.
 These signals are defined in the file
 .In signal.h :
-.Bl -column SIGVTALARMXX "create core imagexxx"
+.Bl -column ".Dv SIGCKPTEXIT" "create core imagexxx"
 .It Sy "Name	Default Action	Description"
 .It Dv SIGHUP Ta "terminate process" Ta "terminal line hangup"
 .It Dv SIGINT Ta "terminate process" Ta "interrupt program"
@@ -210,7 +211,9 @@ for a list of functions
 that are considered safe for use in signal handlers.
 .Sh RETURN VALUES
 The previous action is returned on a successful call.
-Otherwise, SIG_ERR is returned and  the global variable
+Otherwise,
+.Dv SIG_ERR
+is returned and  the global variable
 .Va errno
 is set to indicate the error.
 .Sh ERRORS
@@ -229,7 +232,7 @@ is not a valid signal number.
 An attempt is made to ignore or supply a handler for
 .Dv SIGKILL
 or
-.Ev SIGSTOP .
+.Dv SIGSTOP .
 .El
 .Sh SEE ALSO
 .Xr kill 1 ,

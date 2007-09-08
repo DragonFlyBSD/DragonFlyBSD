@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)usleep.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/usleep.3,v 1.10.2.7 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/usleep.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/usleep.3,v 1.3 2007/09/08 20:50:49 swildner Exp $
 .\"
 .Dd February 13, 1998
 .Dt USLEEP 3
@@ -62,7 +62,8 @@ by pausing for
 microseconds or until a signal occurs.
 Consequently, in this implementation,
 sleeping has no effect on the state of process timers,
-and there is no special handling for SIGALRM.
+and there is no special handling for
+.Dv SIGALRM .
 .Sh RETURN VALUES
 .Rv -std usleep
 .Sh ERRORS

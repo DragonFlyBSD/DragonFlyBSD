@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)kill.2	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/sys/kill.2,v 1.10.2.7 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/kill.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/kill.2,v 1.3 2007/09/08 20:50:50 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt KILL 2
@@ -70,8 +70,9 @@ by
 the real or effective user ID of the receiving process must match
 that of the sending process or the user must have appropriate privileges
 (such as given by a set-user-ID program or the user is the super-user).
-A single exception is the signal SIGCONT, which may always be sent
-to any descendant of the current process.
+A single exception is the signal
+.Dv SIGCONT ,
+which may always be sent to any descendant of the current process.
 .Bl -tag -width Ds
 .It \&If Fa pid No \&is greater than zero :
 .Fa Sig
