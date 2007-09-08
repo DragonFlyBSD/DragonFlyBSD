@@ -1,11 +1,13 @@
 Original source can be downloaded from OpenBSD at
-ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-4.6p1.tar.gz
-
-SHA1 (openssh-4.6p1.tar.gz) = b2aefeb1861b4688b1777436035239ec32a47da8
+ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/
 
 A list of deleted files is in README.DELETED.
 
+CVS import hint:
+cvs import src/crypto/openssh-4 OPENSSH v4_?p1
+
 Upgrading notes:
-Update version.h in secure/lib/libssh.
+./configure --with-pam --with-tcp-wrappers --without-xauth --with-libedit
+Update config.h and version.h in secure/lib/libssh.
 Update ssh{,d}_config and ssh{,d}_config.5 in secure/usr.bin/ssh and
 secure/usr.sbin/sshd.

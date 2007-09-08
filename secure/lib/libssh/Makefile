@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libssh/Makefile,v 1.2.2.7 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/lib/libssh/Makefile,v 1.9 2006/09/28 18:42:50 corecode Exp $
+# $DragonFly: src/secure/lib/libssh/Makefile,v 1.10 2007/09/08 05:01:18 pavalos Exp $
 
 LIB=	ssh
 SHLIB_MAJOR= 4
@@ -10,7 +10,7 @@ SRCS=	acss.c authfd.c authfile.c bufaux.c bufbn.c buffer.c canohost.c \
 	readpass.c rsa.c ttymodes.c xmalloc.c atomicio.c \
 	key.c dispatch.c kex.c mac.c uuencode.c misc.c rijndael.c ssh-dss.c \
 	ssh-rsa.c dh.c kexdh.c kexgex.c kexdhc.c kexgexc.c scard.c msg.c \
-	progressmeter.c dns.c scard-opensc.c getrrsetbyname.c uidswap.c
+	progressmeter.c dns.c scard-opensc.c getrrsetbyname.c uidswap.c umac.c
 # Portability layer
 SRCS+=	bsd-misc.c entropy.c
 # FreeBSD additions

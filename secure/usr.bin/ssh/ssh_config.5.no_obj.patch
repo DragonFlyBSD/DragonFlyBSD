@@ -1,4 +1,4 @@
-$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.5.no_obj.patch,v 1.4 2007/03/29 00:49:01 pavalos Exp $
+$DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.5.no_obj.patch,v 1.5 2007/09/08 05:01:18 pavalos Exp $
 --- ../../../crypto/openssh-4/ssh_config.5	2006-08-04 18:34:51.000000000 -0700
 +++ ssh_config.5	2006-11-20 09:48:54.000000000 -0700
 @@ -165,7 +165,7 @@
@@ -18,7 +18,7 @@ $DragonFly: src/secure/usr.bin/ssh/Attic/ssh_config.5.no_obj.patch,v 1.4 2007/03
 +Specifies a string to append to the regular version string to identify
 +OS- or site-specific modifications.
 +The default is
-+.Dq DragonFly-20070328 .
++.Dq DragonFly-20070907 .
  .It Cm XAuthLocation
  Specifies the full pathname of the
  .Xr xauth 1

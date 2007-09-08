@@ -40,6 +40,7 @@ openbsd-compat/bsd-cygwin_util.c
 openbsd-compat/bsd-getpeereid.c
 openbsd-compat/bsd-nextstep.c
 openbsd-compat/bsd-openpty.c
+openbsd-compat/bsd-poll.c
 openbsd-compat/bsd-snprintf.c
 openbsd-compat/bsd-waitpid.c
 openbsd-compat/daemon.c

@@ -2,7 +2,7 @@
 +++ sshd_config	2006-11-20 09:54:26.000000000 -0700
 @@ -1,4 +1,5 @@
  #	$OpenBSD: sshd_config,v 1.74 2006/07/19 13:07:10 dtucker Exp $
-+#	$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.8 2007/07/22 22:01:23 corecode Exp $
++#	$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.9 2007/09/08 05:01:18 pavalos Exp $
  
  # This is the sshd server system-wide configuration file.  See
  # sshd_config(5) for more information.
@@ -13,7 +13,7 @@
 +# Note that some of DragonFly's defaults differ from OpenBSD's, and
 +# DragonFly has a few additional options.
 +
-+#VersionAddendum DragonFly-20070328
++#VersionAddendum DragonFly-20070907
 +
  #Port 22
 -#Protocol 2,1
