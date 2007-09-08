@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc/Makefile,v 1.6 2007/01/20 20:26:37 swildner Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc/Makefile,v 1.7 2007/09/08 09:48:59 swildner Exp $
 
 .include "../Makefile.inc"
 .include "../cc_tools/Makefile.tools"
@@ -6,7 +6,7 @@
 
 PROG=	cc
 LINKS=	${BINDIR}/cc ${BINDIR}/gcc
-MLINKS=	cc.1 c++.1 cc.1 g++.1 cc.1 gcc.1 cc.1 CC.1
+MAN=	gcc34.1
 
 SRCS=	gcc.c gccspec.c intl.c prefix.c version_local.c
 SRCS+=	insn-constants.h insn-flags.h specs.h
@@ -18,9 +18,9 @@ CFLAGS+= -I.
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"${version}\"
 CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target}\"
 
-cc.1: ${GCCDIR}/gcc/doc/gcc.1
+gcc34.1: ${GCCDIR}/gcc/doc/gcc.1
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANFILES+=	cc.1
+CLEANFILES+=	gcc34.1
 
 .include <bsd.prog.mk>
