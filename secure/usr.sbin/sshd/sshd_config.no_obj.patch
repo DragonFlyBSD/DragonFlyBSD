@@ -1,12 +1,12 @@
---- ../../../crypto/openssh-4/sshd_config	2006-07-23 21:06:47.000000000 -0700
-+++ sshd_config	2006-11-20 09:54:26.000000000 -0700
+--- sshd_config	2007-09-09 15:58:55 -0700
++++ sshd_config	2007-09-09 16:27:40 -0700
 @@ -1,4 +1,5 @@
- #	$OpenBSD: sshd_config,v 1.74 2006/07/19 13:07:10 dtucker Exp $
-+#	$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.9 2007/09/08 05:01:18 pavalos Exp $
+ #	$OpenBSD: sshd_config,v 1.75 2007/03/19 01:01:29 djm Exp $
++#	$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd_config.no_obj.patch,v 1.10 2007/09/09 23:32:43 corecode Exp $
  
  # This is the sshd server system-wide configuration file.  See
  # sshd_config(5) for more information.
-@@ -10,8 +11,13 @@
+@@ -10,6 +11,11 @@
  # possible, but leave them commented.  Uncommented options change a
  # default value.
  
@@ -16,12 +16,9 @@
 +#VersionAddendum DragonFly-20070907
 +
  #Port 22
--#Protocol 2,1
-+#Protocol 2
  #AddressFamily any
  #ListenAddress 0.0.0.0
- #ListenAddress ::
-@@ -19,7 +25,6 @@
+@@ -23,7 +29,6 @@
  # HostKey for protocol version 1
  #HostKey /etc/ssh/ssh_host_key
  # HostKeys for protocol version 2
@@ -29,7 +26,7 @@
  #HostKey /etc/ssh/ssh_host_dsa_key
  
  # Lifetime and size of ephemeral version 1 server key
-@@ -34,7 +39,7 @@
+@@ -38,7 +43,7 @@
  # Authentication:
  
  #LoginGraceTime 2m
@@ -38,7 +35,7 @@
  #StrictModes yes
  #MaxAuthTries 6
  
-@@ -56,7 +61,7 @@
+@@ -60,7 +65,7 @@
  #PasswordAuthentication yes
  #PermitEmptyPasswords no
  
@@ -47,7 +44,7 @@
  #ChallengeResponseAuthentication yes
  
  # Kerberos options
-@@ -82,7 +87,7 @@
+@@ -86,7 +91,7 @@
  
  #AllowTcpForwarding yes
  #GatewayPorts no
@@ -56,7 +53,7 @@
  #X11DisplayOffset 10
  #X11UseLocalhost yes
  #PrintMotd yes
-@@ -99,6 +104,8 @@
+@@ -103,6 +108,8 @@
  #MaxStartups 10
  #PermitTunnel no
  
