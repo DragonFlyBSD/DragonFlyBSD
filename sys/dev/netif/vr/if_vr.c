@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.45 2007/09/09 03:51:25 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.46 2007/09/09 06:21:23 sephe Exp $
  */
 
 /*
@@ -1465,7 +1465,9 @@ vr_init(void *xsc)
 	 * Enable interrupts, unless we are polling.
 	 */
 	CSR_WRITE_2(sc, VR_ISR, 0xFFFF);
+#ifdef DEVICE_POLLING
 	if ((ifp->if_flags & IFF_POLLING) == 0)
+#endif
 		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
 
 	mii_mediachg(mii);
