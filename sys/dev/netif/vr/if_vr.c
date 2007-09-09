@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.44 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.45 2007/09/09 03:51:25 sephe Exp $
  */
 
 /*
@@ -1576,19 +1576,9 @@ vr_watchdog(struct ifnet *ifp)
 	ifp->if_oerrors++;
 	if_printf(ifp, "watchdog timeout\n");
 
-#ifdef DEVICE_POLLING
-	if (++sc->vr_wdogerrors == 1 && (ifp->if_flags & IFF_POLLING) == 0) {
-		if_printf(ifp, "ints don't seem to be working, "
-			"emergency switch to polling\n");
-		emergency_poll_enable("if_vr");
-		ether_poll_register(ifp);	/* XXX illegal */
-	} else 
-#endif
-	{
-		vr_stop(sc);
-		vr_reset(sc);
-		vr_init(sc);
-	}
+	vr_stop(sc);
+	vr_reset(sc);
+	vr_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		vr_start(ifp);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.28 2007/08/04 08:25:37 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.29 2007/09/09 03:51:25 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -551,13 +551,4 @@ ether_poll_deregister(struct ifnet *ifp)
 		lwkt_serialize_exit(ifp->if_serializer);
 	}
 	return (1);
-}
-
-void
-emergency_poll_enable(const char *name)
-{
-	if (polling_enabled == 0) {
-		polling_enabled = 1;
-		kprintf("%s forced polling on\n", name);
-	}
 }
