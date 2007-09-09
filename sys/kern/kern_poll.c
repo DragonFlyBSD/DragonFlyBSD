@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.30 2007/09/09 04:30:25 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.31 2007/09/09 05:11:28 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -524,8 +524,10 @@ ether_poll_deregister(struct ifnet *ifp)
 {
 	int i;
 
+	KKASSERT(ifp != NULL);
+
 	crit_enter();
-	if (ifp == NULL || (ifp->if_flags & IFF_POLLING) == 0) {
+	if ((ifp->if_flags & IFF_POLLING) == 0) {
 		crit_exit();
 		return 0;
 	}
