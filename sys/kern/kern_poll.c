@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.29 2007/09/09 03:51:25 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.30 2007/09/09 04:30:25 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -71,7 +71,8 @@ void init_device_poll(void);		/* init routine			*/
  *  POLL_REGISTER: register and disable interrupts
  *
  * The first two commands are only issued if the interface is marked as
- * 'IFF_UP and IFF_RUNNING', the last one only if IFF_RUNNING is set.
+ * 'IFF_UP, IFF_RUNNING and IFF_POLLING', the last one only if IFF_RUNNING
+ * is set.
  *
  * The count limit specifies how much work the handler can do during the
  * call -- typically this is the number of packets to be received, or
@@ -415,29 +416,32 @@ netisr_poll(struct netmsg *msg)
 
 	if (polling_enabled) {
 		for (i = 0 ; i < poll_handlers ; i++) {
-			struct pollrec *p = &pr[i];
-			if ((p->ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING)) == (IFF_UP|IFF_RUNNING|IFF_POLLING)) {
-				if (lwkt_serialize_try(p->ifp->if_serializer)) {
-					p->ifp->if_poll(p->ifp, arg, cycles);
-					lwkt_serialize_exit(p->ifp->if_serializer);
+			struct ifnet *ifp = pr[i].ifp;
+
+			if ((ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING))
+			    == (IFF_UP|IFF_RUNNING|IFF_POLLING)) {
+				if (lwkt_serialize_try(ifp->if_serializer)) {
+					ifp->if_poll(ifp, arg, cycles);
+					lwkt_serialize_exit(ifp->if_serializer);
 				}
 			}
 		}
 	} else {	/* unregister */
 		for (i = 0 ; i < poll_handlers ; i++) {
-			struct pollrec *p = &pr[i];
-			if ((p->ifp->if_flags & IFF_POLLING) == 0)
+			struct ifnet *ifp = pr[i].ifp;
+
+			if ((ifp->if_flags & IFF_POLLING) == 0)
 				continue;
 			/*
 			 * Only call the interface deregistration
 			 * function if the interface is still 
 			 * running.
 			 */
-			lwkt_serialize_enter(p->ifp->if_serializer);
-			p->ifp->if_flags &= ~IFF_POLLING;
-			if (p->ifp->if_flags & IFF_RUNNING)
-				p->ifp->if_poll(p->ifp, POLL_DEREGISTER, 1);
-			lwkt_serialize_exit(p->ifp->if_serializer);
+			lwkt_serialize_enter(ifp->if_serializer);
+			ifp->if_flags &= ~IFF_POLLING;
+			if (ifp->if_flags & IFF_RUNNING)
+				ifp->if_poll(ifp, POLL_DEREGISTER, 1);
+			lwkt_serialize_exit(ifp->if_serializer);
 		}
 		residual_burst = 0;
 		poll_handlers = 0;
