@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.28 2006/12/20 18:14:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.29 2007/09/09 09:14:38 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -340,6 +340,13 @@ found:
 	} else
 		xferq = fc->ir[fwe->dma_ch];
 
+#ifdef DEVICE_POLLING
+	/* Disable interrupt, if polling(4) is enabled */
+	if (ifp->if_flags & IFF_POLLING)
+		fc->set_intr(fc, 0);
+	else
+#endif
+	fc->set_intr(fc, 1);
 
 	/* start dma */
 	if ((xferq->flag & FWXFERQ_RUNNING) == 0)

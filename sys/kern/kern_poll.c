@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.31 2007/09/09 05:11:28 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.32 2007/09/09 09:14:38 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -71,7 +71,7 @@ void init_device_poll(void);		/* init routine			*/
  *  POLL_REGISTER: register and disable interrupts
  *
  * The first two commands are only issued if the interface is marked as
- * 'IFF_UP, IFF_RUNNING and IFF_POLLING', the last one only if IFF_RUNNING
+ * 'IFF_UP, IFF_RUNNING and IFF_POLLING', the last two only if IFF_RUNNING
  * is set.
  *
  * The count limit specifies how much work the handler can do during the
@@ -464,8 +464,6 @@ ether_poll_register(struct ifnet *ifp)
 
 	if (polling_enabled == 0) /* polling disabled, cannot register */
 		return 0;
-	if ((ifp->if_flags & IFF_UP) == 0)	/* must be up		*/
-		return 0;
 	if (ifp->if_flags & IFF_POLLING)	/* already polling	*/
 		return 0;
 	if (ifp->if_poll == NULL)		/* no polling support   */
@@ -477,7 +475,8 @@ ether_poll_register(struct ifnet *ifp)
 	crit_enter();	/* XXX MP - not mp safe */
 	lwkt_serialize_enter(ifp->if_serializer);
 	ifp->if_flags |= IFF_POLLING;
-	ifp->if_poll(ifp, POLL_REGISTER, 0);
+	if (ifp->if_flags & IFF_RUNNING)
+		ifp->if_poll(ifp, POLL_REGISTER, 0);
 	lwkt_serialize_exit(ifp->if_serializer);
 	if ((ifp->if_flags & IFF_POLLING) == 0) {
 		crit_exit();
@@ -501,9 +500,10 @@ ether_poll_register(struct ifnet *ifp)
 				"maybe a broken driver ?\n");
 			verbose--;
 		}
-		ifp->if_flags &= ~IFF_POLLING;
 		lwkt_serialize_enter(ifp->if_serializer);
-		ifp->if_poll(ifp, POLL_DEREGISTER, 0);
+		ifp->if_flags &= ~IFF_POLLING;
+		if (ifp->if_flags & IFF_RUNNING)
+			ifp->if_poll(ifp, POLL_DEREGISTER, 0);
 		lwkt_serialize_exit(ifp->if_serializer);
 		rc = 0;
 	} else {
