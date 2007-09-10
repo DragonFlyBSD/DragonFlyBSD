@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.120 2007/09/03 17:06:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.121 2007/09/10 15:08:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2113,13 +2113,14 @@ retry:
 		 * entry.  This is a hack at the moment.
 		 */
 		if (error == ESTALE) {
+			vput(vp);
 			cache_setunresolved(&nd->nl_nch);
 			error = cache_resolve(&nd->nl_nch, nd->nl_cred);
 			if (error == 0) {
-				vput(vp);
 				vp = NULL;
 				goto retry;
 			}
+			return(error);
 		}
 	}
 	vput(vp);
