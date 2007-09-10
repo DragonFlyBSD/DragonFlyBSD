@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.15 2007/04/11 18:51:33 dillon Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.16 2007/09/10 15:13:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -851,28 +851,30 @@ inet_makenetandmask(u_long net, struct sockaddr_in *in, u_long bits)
 	rtm_addrs |= RTA_NETMASK;
 	if (net == 0)
 		mask = addr = 0;
-	else if (net < 128) {
-		addr = net << IN_CLASSA_NSHIFT;
-		mask = IN_CLASSA_NET;
-	} else if (net < 65536) {
-		addr = net << IN_CLASSB_NSHIFT;
-		mask = IN_CLASSB_NET;
-	} else if (net < 16777216L) {
-		addr = net << IN_CLASSC_NSHIFT;
-		mask = IN_CLASSC_NET;
-	} else {
-		addr = net;
-		if ((addr & IN_CLASSA_HOST) == 0)
-			mask =  IN_CLASSA_NET;
-		else if ((addr & IN_CLASSB_HOST) == 0)
-			mask =  IN_CLASSB_NET;
-		else if ((addr & IN_CLASSC_HOST) == 0)
-			mask =  IN_CLASSC_NET;
+	else {
+		if (net <= 0xff)
+			addr = net << 24;
+		else if (net <= 0xffff)
+			addr = net << 16;
+		else if (net <= 0xffffff)
+			addr = net << 8;
 		else
-			mask = -1;
+			addr = net;
+
+		if (bits)
+			mask = 0xffffffff << (32 - bits);
+		else {
+			if (IN_CLASSA(addr)) {
+				mask = IN_CLASSA_NET;
+			} else if (IN_CLASSB(addr)) {
+				mask = IN_CLASSB_NET;
+			} else if (IN_CLASSC(addr)) {
+				mask = IN_CLASSC_NET;
+			} else
+				mask = 0xffffffff;
+		}
+		addr &= mask;
 	}
-	if (bits != 0)
-		mask = 0xffffffff << (32 - bits);
 	in->sin_addr.s_addr = htonl(addr);
 	in = &so_mask.sin;
 	in->sin_addr.s_addr = htonl(mask);
