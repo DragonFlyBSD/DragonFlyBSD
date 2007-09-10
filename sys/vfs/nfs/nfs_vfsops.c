@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.50 2007/04/12 19:50:19 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.50.2.1 2007/09/10 14:55:15 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -1081,19 +1081,32 @@ nfs_root(struct mount *mp, struct vnode **vpp)
 	 */
 	if ((nmp->nm_state & NFSSTA_GOTFSINFO) == 0) {
 	    if (nmp->nm_flag & NFSMNT_NFSV3) {
-		nfs_fsinfo(nmp, vp, curthread);
+		error = nfs_fsinfo(nmp, vp, curthread);
 		mp->mnt_stat.f_iosize = nfs_iosize(1, nmp->nm_sotype);
 	    } else {
 		if ((error = VOP_GETATTR(vp, &attrs)) == 0)
 			nmp->nm_state |= NFSSTA_GOTFSINFO;
 		
 	    }
+	} else {
+	    /*
+	     * The root vnode is usually cached by the namecache so do not
+	     * try to avoid going over the wire even if we have previous
+	     * information cached.  A stale NFS mount can loop
+	     * forever resolving the root vnode if we return no-error when
+	     * there is in fact an error.
+	     */
+	    np->n_attrstamp = 0;
+	    error = VOP_GETATTR(vp, &attrs);
 	}
 	if (vp->v_type == VNON)
 	    nfs_setvtype(vp, VDIR);
 	vp->v_flag = VROOT;
-	*vpp = vp;
-	return (0);
+	if (error)
+		vput(vp);
+	else
+		*vpp = vp;
+	return (error);
 }
 
 extern int syncprt;
