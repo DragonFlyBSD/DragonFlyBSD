@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfevar.h,v 1.11 2006/02/19 13:57:02 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.2 2007/06/17 11:38:58 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.3 2007/09/10 14:08:28 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -106,5 +106,15 @@ struct nfe_softc {
 	struct nfe_tx_ring	txq;
 	struct nfe_rx_ring	rxq;
 
+	uint32_t		sc_irq_enable;
+	int			sc_imtime;
+	int			sc_rx_ring_count;
+	int			sc_debug;
+	struct sysctl_ctx_list	sc_sysctl_ctx;
+	struct sysctl_oid	*sc_sysctl_tree;
+
 	struct lwkt_serialize	sc_jbuf_serializer;
 };
+
+#define NFE_IRQ_ENABLE(sc)	\
+	((sc)->sc_imtime < 0 ? NFE_IRQ_NOIMTIMER : NFE_IRQ_IMTIMER)

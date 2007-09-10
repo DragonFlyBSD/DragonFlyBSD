@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.16 2007/08/14 13:30:35 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.17 2007/09/10 14:08:28 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -149,29 +149,28 @@ static int	nfe_newbuf_std(struct nfe_softc *, struct nfe_rx_ring *, int,
 static int	nfe_newbuf_jumbo(struct nfe_softc *, struct nfe_rx_ring *, int,
 				 int);
 
+static int	nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS);
+
 #define NFE_DEBUG
 #ifdef NFE_DEBUG
 
 static int	nfe_debug = 0;
 static int	nfe_rx_ring_count = NFE_RX_RING_DEF_COUNT;
+static int	nfe_imtime = -1;
 
 TUNABLE_INT("hw.nfe.rx_ring_count", &nfe_rx_ring_count);
-
-SYSCTL_NODE(_hw, OID_AUTO, nfe, CTLFLAG_RD, 0, "nVidia GigE parameters");
-SYSCTL_INT(_hw_nfe, OID_AUTO, rx_ring_count, CTLFLAG_RD, &nfe_rx_ring_count,
-	   NFE_RX_RING_DEF_COUNT, "rx ring count");
-SYSCTL_INT(_hw_nfe, OID_AUTO, debug, CTLFLAG_RW, &nfe_debug, 0,
-	   "control debugging printfs");
+TUNABLE_INT("hw.nfe.imtime", &nfe_imtime);
+TUNABLE_INT("hw.nfe.debug", &nfe_debug);
 
 #define DPRINTF(sc, fmt, ...) do {		\
-	if (nfe_debug) {			\
+	if ((sc)->sc_debug) {			\
 		if_printf(&(sc)->arpcom.ac_if,	\
 			  fmt, __VA_ARGS__);	\
 	}					\
 } while (0)
 
 #define DPRINTFN(sc, lv, fmt, ...) do {		\
-	if (nfe_debug >= (lv)) {		\
+	if ((sc)->sc_debug >= (lv)) {		\
 		if_printf(&(sc)->arpcom.ac_if,	\
 			  fmt, __VA_ARGS__);	\
 	}					\
@@ -385,6 +384,14 @@ nfe_attach(device_t dev)
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	lwkt_serialize_init(&sc->sc_jbuf_serializer);
 
+	/*
+	 * Initialize sysctl variables
+	 */
+	sc->sc_imtime = nfe_imtime;
+	sc->sc_irq_enable = NFE_IRQ_ENABLE(sc);
+	sc->sc_rx_ring_count = nfe_rx_ring_count;
+	sc->sc_debug = nfe_debug;
+
 	sc->sc_mem_rid = PCIR_BAR(0);
 
 #ifndef BURN_BRIDGES
@@ -444,6 +451,33 @@ nfe_attach(device_t dev)
 		device_printf(dev, "could not allocate Rx ring\n");
 		goto fail;
 	}
+
+	/*
+	 * Create sysctl tree
+	 */
+	sysctl_ctx_init(&sc->sc_sysctl_ctx);
+	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
+					     SYSCTL_STATIC_CHILDREN(_hw),
+					     OID_AUTO,
+					     device_get_nameunit(dev),
+					     CTLFLAG_RD, 0, "");
+	if (sc->sc_sysctl_tree == NULL) {
+		device_printf(dev, "can't add sysctl node\n");
+		error = ENXIO;
+		goto fail;
+	}
+	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+			OID_AUTO, "imtimer", CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, nfe_sysctl_imtime, "I",
+			"Interrupt moderation time (usec).  "
+			"-1 to disable interrupt moderation.");
+	SYSCTL_ADD_INT(NULL, SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+		       "rx_ring_count", CTLFLAG_RD, &sc->sc_rx_ring_count,
+		       0, "RX ring count");
+	SYSCTL_ADD_INT(NULL, SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+		       "debug", CTLFLAG_RW, &sc->sc_debug,
+		       0, "control debugging printfs");
 
 	error = mii_phy_probe(dev, &sc->sc_miibus, nfe_ifmedia_upd,
 			      nfe_ifmedia_sts);
@@ -517,6 +551,9 @@ nfe_detach(device_t dev)
 	if (sc->sc_miibus != NULL)
 		device_delete_child(dev, sc->sc_miibus);
 	bus_generic_detach(dev);
+
+	if (sc->sc_sysctl_tree != NULL)
+		sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	if (sc->sc_irq_res != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, sc->sc_irq_rid,
@@ -691,6 +728,8 @@ nfe_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct nfe_softc *sc = ifp->if_softc;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	switch(cmd) {
 	case POLL_REGISTER:
 		/* Disable interrupts */
@@ -698,7 +737,7 @@ nfe_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		break;
 	case POLL_DEREGISTER:
 		/* enable interrupts */
-		NFE_WRITE(sc, NFE_IRQ_MASK, NFE_IRQ_WANTED);
+		NFE_WRITE(sc, NFE_IRQ_MASK, sc->sc_irq_enable);
 		break;
 	case POLL_AND_CHECK_STATUS:
 		/* fall through */
@@ -904,7 +943,7 @@ nfe_rxeof(struct nfe_softc *sc)
 		ifp->if_input(ifp, m);
 skip:
 		nfe_set_ready_rxdesc(sc, ring, ring->cur);
-		sc->rxq.cur = (sc->rxq.cur + 1) % nfe_rx_ring_count;
+		sc->rxq.cur = (sc->rxq.cur + 1) % sc->sc_rx_ring_count;
 	}
 
 	if (reap)
@@ -1284,7 +1323,7 @@ nfe_init(void *xsc)
 	NFE_WRITE(sc, NFE_TX_RING_ADDR_LO, sc->txq.physaddr & 0xffffffff);
 
 	NFE_WRITE(sc, NFE_RING_SIZE,
-	    (nfe_rx_ring_count - 1) << 16 |
+	    (sc->sc_rx_ring_count - 1) << 16 |
 	    (NFE_TX_RING_COUNT - 1));
 
 	NFE_WRITE(sc, NFE_RXBUFSZ, sc->rxq.bufsz);
@@ -1310,7 +1349,10 @@ nfe_init(void *xsc)
 	 * For now set a 128uS interval as a placemark, but don't use
 	 * the timer.
 	 */
-	NFE_WRITE(sc, NFE_IMTIMER, NFE_IM_DEFAULT);
+	if (sc->sc_imtime < 0)
+		NFE_WRITE(sc, NFE_IMTIMER, NFE_IMTIME_DEFAULT);
+	else
+		NFE_WRITE(sc, NFE_IMTIMER, NFE_IMTIME(sc->sc_imtime));
 
 	NFE_WRITE(sc, NFE_SETUP_R1, NFE_R1_MAGIC);
 	NFE_WRITE(sc, NFE_SETUP_R2, NFE_R2_MAGIC);
@@ -1344,7 +1386,7 @@ nfe_init(void *xsc)
 	if ((ifp->if_flags & IFF_POLLING) == 0)
 #endif
 	/* enable interrupts */
-	NFE_WRITE(sc, NFE_IRQ_MASK, NFE_IRQ_WANTED);
+	NFE_WRITE(sc, NFE_IRQ_MASK, sc->sc_irq_enable);
 
 	callout_reset(&sc->sc_tick_ch, hz, nfe_tick, sc);
 
@@ -1426,7 +1468,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 
 	ring->jbuf = kmalloc(sizeof(struct nfe_jbuf) * NFE_JPOOL_COUNT,
 			     M_DEVBUF, M_WAITOK | M_ZERO);
-	ring->data = kmalloc(sizeof(struct nfe_rx_data) * nfe_rx_ring_count,
+	ring->data = kmalloc(sizeof(struct nfe_rx_data) * sc->sc_rx_ring_count,
 			     M_DEVBUF, M_WAITOK | M_ZERO);
 
 	ring->bufsz = MCLBYTES;
@@ -1435,8 +1477,8 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   nfe_rx_ring_count * descsize, 1,
-				   nfe_rx_ring_count * descsize,
+				   sc->sc_rx_ring_count * descsize, 1,
+				   sc->sc_rx_ring_count * descsize,
 				   0, &ring->tag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
@@ -1455,7 +1497,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	}
 
 	error = bus_dmamap_load(ring->tag, ring->map, *desc,
-				nfe_rx_ring_count * descsize,
+				sc->sc_rx_ring_count * descsize,
 				nfe_ring_dma_addr, &ring->physaddr,
 				BUS_DMA_WAITOK);
 	if (error) {
@@ -1497,7 +1539,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		return error;
 	}
 
-	for (i = 0; i < nfe_rx_ring_count; i++) {
+	for (i = 0; i < sc->sc_rx_ring_count; i++) {
 		error = bus_dmamap_create(ring->data_tag, 0,
 					  &ring->data[i].map);
 		if (error) {
@@ -1521,7 +1563,7 @@ nfe_reset_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 {
 	int i;
 
-	for (i = 0; i < nfe_rx_ring_count; i++) {
+	for (i = 0; i < sc->sc_rx_ring_count; i++) {
 		struct nfe_rx_data *data = &ring->data[i];
 
 		if (data->m != NULL) {
@@ -1541,7 +1583,7 @@ nfe_init_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 {
 	int i;
 
-	for (i = 0; i < nfe_rx_ring_count; ++i) {
+	for (i = 0; i < sc->sc_rx_ring_count; ++i) {
 		int error;
 
 		/* XXX should use a function pointer */
@@ -1569,7 +1611,7 @@ nfe_free_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		struct nfe_rx_data *data;
 		int i;
 
-		for (i = 0; i < nfe_rx_ring_count; i++) {
+		for (i = 0; i < sc->sc_rx_ring_count; i++) {
 			data = &ring->data[i];
 
 			if (data->m != NULL) {
@@ -2148,4 +2190,43 @@ nfe_set_ready_rxdesc(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx)
 		desc32->length = htole16(ring->bufsz);
 		desc32->flags = htole16(NFE_RX_READY);
 	}
+}
+
+static int
+nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS)
+{
+	struct nfe_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = sc->sc_imtime;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+	if (v == 0) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (sc->sc_imtime != v) {
+		int old_imtime = sc->sc_imtime;
+
+		sc->sc_imtime = v;
+		sc->sc_irq_enable = NFE_IRQ_ENABLE(sc);
+
+		if ((ifp->if_flags & (IFF_POLLING | IFF_RUNNING))
+		    == IFF_RUNNING) {
+			if (old_imtime > 0 && sc->sc_imtime > 0) {
+				NFE_WRITE(sc, NFE_IMTIMER,
+					  NFE_IMTIME(sc->sc_imtime));
+			} else if ((old_imtime * sc->sc_imtime) < 0) {
+				ifp->if_init(sc);
+			}
+		}
+	}
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
 }

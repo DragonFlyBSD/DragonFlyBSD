@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfereg.h,v 1.19 2006/05/28 00:20:21 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.4 2007/08/08 11:38:51 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.5 2007/09/10 14:08:28 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -101,10 +101,11 @@
 #define NFE_IRQ_TXERR2		0x0080
 #define NFE_IRQ_TX1		0x0100
 
-#define NFE_IRQ_WANTED							\
+#define NFE_IRQ_NOIMTIMER						\
 	(NFE_IRQ_RXERR | NFE_IRQ_RX_NOBUF | NFE_IRQ_RX |		\
 	 NFE_IRQ_TXERR | NFE_IRQ_TXERR2 | NFE_IRQ_TX_DONE |		\
 	 NFE_IRQ_LINK)
+#define NFE_IRQ_IMTIMER		(NFE_IRQ_TIMER | NFE_IRQ_LINK)
 
 #define NFE_RXTX_KICKTX		0x0001
 #define NFE_RXTX_BIT1		0x0002
@@ -119,8 +120,9 @@
 #define NFE_U2M			(1 << 5)
 #define NFE_PROMISC		(1 << 7)
 
+#define NFE_IMTIME(t)		((((t) * 100) / 1024) & 0xffff)
 /* default interrupt moderation timer of 128us */
-#define NFE_IM_DEFAULT	((128 * 100) / 1024)
+#define NFE_IMTIME_DEFAULT	NFE_IMTIME(128)
 
 #define NFE_VTAG_ENABLE		(1 << 13)
 
