@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.39 2007/07/31 20:47:14 corecode Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.40 2007/09/12 07:59:31 hasso Exp $
  */
 
 #include "opt_bus.h"
@@ -2319,6 +2319,39 @@ bus_generic_child_present(device_t bus, device_t child)
  * less-wordy code.  In the future, it might make sense for this code
  * to maintain some sort of a list of resources allocated by each device.
  */
+int
+bus_alloc_resources(device_t dev, struct resource_spec *rs,
+    struct resource **res)
+{
+	int i;
+
+	for (i = 0; rs[i].type != -1; i++)
+	        res[i] = NULL;
+	for (i = 0; rs[i].type != -1; i++) {
+		res[i] = bus_alloc_resource_any(dev,
+		    rs[i].type, &rs[i].rid, rs[i].flags);
+		if (res[i] == NULL) {
+			bus_release_resources(dev, rs, res);
+			return (ENXIO);
+		}
+	}
+	return (0);
+}
+
+void
+bus_release_resources(device_t dev, const struct resource_spec *rs,
+    struct resource **res)
+{
+	int i;
+
+	for (i = 0; rs[i].type != -1; i++)
+		if (res[i] != NULL) {
+			bus_release_resource(
+			    dev, rs[i].type, rs[i].rid, res[i]);
+			res[i] = NULL;
+		}
+}
+
 struct resource *
 bus_alloc_resource(device_t dev, int type, int *rid, u_long start, u_long end,
 		   u_long count, u_int flags)

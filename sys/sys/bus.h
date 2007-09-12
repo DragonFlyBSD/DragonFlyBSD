@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.25 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.26 2007/09/12 07:59:31 hasso Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -252,6 +252,17 @@ int	bus_generic_rl_release_resource (device_t, device_t, int, int,
  * Wrapper functions for the BUS_*_RESOURCE methods to make client code
  * a little simpler.
  */
+struct resource_spec {
+	int     type;
+	int     rid;
+	int     flags;
+};
+
+int bus_alloc_resources(device_t dev, struct resource_spec *rs,
+			struct resource **res);
+void bus_release_resources(device_t dev, const struct resource_spec *rs,
+			   struct resource **res);
+
 struct	resource *bus_alloc_resource(device_t dev, int type, int *rid,
 				     u_long start, u_long end, u_long count,
 				     u_int flags);
