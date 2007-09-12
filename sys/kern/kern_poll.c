@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.32 2007/09/09 09:14:38 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.33 2007/09/12 12:02:09 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -41,15 +41,6 @@
 
 #include <net/if.h>			/* for IFF_* flags		*/
 #include <net/netisr.h>			/* for NETISR_POLL		*/
-
-/* the two netisr handlers */
-static int sysctl_pollhz(SYSCTL_HANDLER_ARGS);
-static int sysctl_polling(SYSCTL_HANDLER_ARGS);
-static void netisr_poll(struct netmsg *);
-static void netisr_pollmore(struct netmsg *);
-static void pollclock(systimer_t, struct intrframe *);
-
-void init_device_poll(void);		/* init routine			*/
 
 /*
  * Polling support for [network] device drivers.
@@ -107,78 +98,77 @@ void init_device_poll(void);		/* init routine			*/
 #endif
 #define DEVICE_POLLING_FREQ_DEFAULT	2000
 
-SYSCTL_NODE(_kern, OID_AUTO, polling, CTLFLAG_RW, 0,
-	"Device polling parameters");
-
-static u_int32_t poll_burst = 5;
-SYSCTL_UINT(_kern_polling, OID_AUTO, burst, CTLFLAG_RW,
-	&poll_burst, 0, "Current polling burst size");
-
-static u_int32_t poll_each_burst = 5;
-SYSCTL_UINT(_kern_polling, OID_AUTO, each_burst, CTLFLAG_RW,
-	&poll_each_burst, 0, "Max size of each burst");
-
-static u_int32_t poll_burst_max = 150;	/* good for 100Mbit net and HZ=1000 */
-SYSCTL_UINT(_kern_polling, OID_AUTO, burst_max, CTLFLAG_RW,
-	&poll_burst_max, 0, "Max Polling burst size");
-
-static u_int32_t user_frac = 50;
-SYSCTL_UINT(_kern_polling, OID_AUTO, user_frac, CTLFLAG_RW,
-	&user_frac, 0, "Desired user fraction of cpu time");
-
-static u_int32_t reg_frac = 20 ;
-SYSCTL_UINT(_kern_polling, OID_AUTO, reg_frac, CTLFLAG_RW,
-	&reg_frac, 0, "Every this many cycles poll register");
-
-static u_int32_t short_ticks;
-SYSCTL_UINT(_kern_polling, OID_AUTO, short_ticks, CTLFLAG_RW,
-	&short_ticks, 0, "Hardclock ticks shorter than they should be");
-
-static u_int32_t lost_polls;
-SYSCTL_UINT(_kern_polling, OID_AUTO, lost_polls, CTLFLAG_RW,
-	&lost_polls, 0, "How many times we would have lost a poll tick");
-
-static u_int32_t pending_polls;
-SYSCTL_UINT(_kern_polling, OID_AUTO, pending_polls, CTLFLAG_RD,
-	&pending_polls, 0, "Do we need to poll again");
-
-static int residual_burst = 0;
-SYSCTL_INT(_kern_polling, OID_AUTO, residual_burst, CTLFLAG_RW,
-	&residual_burst, 0, "# of residual cycles in burst");
-
-static u_int32_t poll_handlers; /* next free entry in pr[]. */
-SYSCTL_UINT(_kern_polling, OID_AUTO, handlers, CTLFLAG_RD,
-	&poll_handlers, 0, "Number of registered poll handlers");
-
-static int polling_enabled = 0;		/* global polling enable */
-TUNABLE_INT("kern.polling.enable", &polling_enabled);
-SYSCTL_PROC(_kern_polling, OID_AUTO, enable, CTLTYPE_INT | CTLFLAG_RW,
-	0, 0, sysctl_polling, "I", "Polling enabled");
-
-static u_int32_t phase;
-SYSCTL_UINT(_kern_polling, OID_AUTO, phase, CTLFLAG_RD,
-	&phase, 0, "Polling phase");
-
-static u_int32_t suspect;
-SYSCTL_UINT(_kern_polling, OID_AUTO, suspect, CTLFLAG_RW,
-	&suspect, 0, "suspect event");
-
-static u_int32_t stalled;
-SYSCTL_UINT(_kern_polling, OID_AUTO, stalled, CTLFLAG_RW,
-	&stalled, 0, "potential stalls");
-
-static int pollhz = DEVICE_POLLING_FREQ_DEFAULT;
-TUNABLE_INT("kern.polling.pollhz", &pollhz);
-SYSCTL_PROC(_kern_polling, OID_AUTO, pollhz, CTLTYPE_INT | CTLFLAG_RW,
-	    0, 0, sysctl_pollhz, "I", "Device polling frequency");
-
 #define POLL_LIST_LEN  128
 struct pollrec {
 	struct ifnet	*ifp;
 };
 
-static struct pollrec pr[POLL_LIST_LEN];
-static struct systimer gd0_pollclock;
+#define POLLCTX_MAX	32
+
+struct pollctx {
+	struct sysctl_ctx_list	poll_sysctl_ctx;
+	struct sysctl_oid	*poll_sysctl_tree;
+
+	uint32_t		poll_burst;
+	uint32_t		poll_each_burst;
+	uint32_t		poll_burst_max;
+	uint32_t		user_frac;
+	int			reg_frac_count;
+	uint32_t		reg_frac;
+	uint32_t		short_ticks;
+	uint32_t		lost_polls;
+	uint32_t		pending_polls;
+	int			residual_burst;
+	uint32_t		phase;
+	uint32_t		suspect;
+	uint32_t		stalled;
+	struct timeval		poll_start_t;
+	struct timeval		prev_t;
+
+	uint32_t		poll_handlers; /* next free entry in pr[]. */
+	struct pollrec		pr[POLL_LIST_LEN];
+
+	int			poll_cpuid;
+	struct systimer		pollclock;
+	int			polling_enabled;
+	int			pollhz;
+};
+
+static struct pollctx	*poll_context[POLLCTX_MAX];
+
+SYSCTL_NODE(_kern, OID_AUTO, polling, CTLFLAG_RW, 0,
+	"Device polling parameters");
+
+static int	poll_defcpu = -1;
+SYSCTL_INT(_kern_polling, OID_AUTO, defcpu, CTLFLAG_RD,
+	&poll_defcpu, 0, "default CPU# to run device polling");
+
+static uint32_t	poll_cpumask = 0x1;
+#ifdef notyet
+TUNABLE_INT("kern.polling.cpumask", &poll_cpumask);
+#endif
+
+static int	polling_enabled = 0;	/* global polling enable */
+TUNABLE_INT("kern.polling.enable", &polling_enabled);
+
+static int	pollhz = DEVICE_POLLING_FREQ_DEFAULT;
+TUNABLE_INT("kern.polling.pollhz", &pollhz);
+
+/* The two netisr handlers */
+static void	netisr_poll(struct netmsg *);
+static void	netisr_pollmore(struct netmsg *);
+
+/* Systimer handler */
+static void	pollclock(systimer_t, struct intrframe *);
+
+/* Sysctl handlers */
+static int	sysctl_pollhz(SYSCTL_HANDLER_ARGS);
+static int	sysctl_polling(SYSCTL_HANDLER_ARGS);
+static void	poll_add_sysctl(struct sysctl_ctx_list *,
+				struct sysctl_oid_list *, struct pollctx *);
+
+void		init_device_poll(void);		/* init routine */
+void		init_device_poll_pcpu(int);	/* per-cpu init routine */
 
 /*
  * register relevant netisr. Called from kern_clock.c:
@@ -188,8 +178,58 @@ init_device_poll(void)
 {
 	netisr_register(NETISR_POLL, cpu0_portfn, netisr_poll);
 	netisr_register(NETISR_POLLMORE, cpu0_portfn, netisr_pollmore);
-	systimer_init_periodic_nq(&gd0_pollclock, pollclock, NULL, 
-				  polling_enabled ? pollhz : 1);
+}
+
+void
+init_device_poll_pcpu(int cpuid)
+{
+	struct pollctx *pctx;
+	char cpuid_str[3];
+
+	if (((1 << cpuid) & poll_cpumask) == 0)
+		return;
+
+	pctx = kmalloc(sizeof(*pctx), M_DEVBUF, M_WAITOK | M_ZERO);
+
+	pctx->poll_burst = 5;
+	pctx->poll_each_burst = 5;
+	pctx->poll_burst_max = 150; /* good for 100Mbit net and HZ=1000 */
+	pctx->user_frac = 50;
+	pctx->reg_frac = 20;
+	pctx->polling_enabled = polling_enabled;
+	pctx->pollhz = pollhz;
+	pctx->poll_cpuid = cpuid;
+
+	KASSERT(cpuid < POLLCTX_MAX, ("cpu id must < %d", cpuid));
+	poll_context[cpuid] = pctx;
+
+	if (poll_defcpu < 0) {
+		poll_defcpu = cpuid;
+
+		/*
+		 * Initialize global sysctl nodes, for compat
+		 */
+		poll_add_sysctl(NULL, SYSCTL_STATIC_CHILDREN(_kern_polling),
+				pctx);
+	}
+
+	/*
+	 * Initialize per-cpu sysctl nodes
+	 */
+	ksnprintf(cpuid_str, sizeof(cpuid_str), "%d", pctx->poll_cpuid);
+
+	sysctl_ctx_init(&pctx->poll_sysctl_ctx);
+	pctx->poll_sysctl_tree = SYSCTL_ADD_NODE(&pctx->poll_sysctl_ctx,
+				 SYSCTL_STATIC_CHILDREN(_kern_polling),
+				 OID_AUTO, cpuid_str, CTLFLAG_RD, 0, "");
+	poll_add_sysctl(&pctx->poll_sysctl_ctx,
+			SYSCTL_CHILDREN(pctx->poll_sysctl_tree), pctx);
+
+	/*
+	 * Initialize systimer
+	 */
+	systimer_init_periodic_nq(&pctx->pollclock, pollclock, pctx,
+				  pctx->polling_enabled ? pctx->pollhz : 1);
 }
 
 /*
@@ -198,9 +238,10 @@ init_device_poll(void)
 static int
 sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 {
+	struct pollctx *pctx = arg1;
 	int error, phz;
 
-	phz = pollhz;
+	phz = pctx->pollhz;
 	error = sysctl_handle_int(oidp, &phz, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
@@ -210,9 +251,9 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 		phz = DEVICE_POLLING_FREQ_MAX;
 
 	crit_enter();
-	pollhz = phz;
-	if (polling_enabled)
-		systimer_adjust_periodic(&gd0_pollclock, phz);
+	pctx->pollhz = phz;
+	if (pctx->polling_enabled)
+		systimer_adjust_periodic(&pctx->pollclock, phz);
 	crit_exit();
 	return 0;
 }
@@ -224,17 +265,21 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 static int
 sysctl_polling(SYSCTL_HANDLER_ARGS)
 {
+	struct pollctx *pctx = arg1;
 	int error, enabled;
 
-	enabled = polling_enabled;
+	enabled = pctx->polling_enabled;
 	error = sysctl_handle_int(oidp, &enabled, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
-	polling_enabled = enabled;
-	if (polling_enabled)
-		systimer_adjust_periodic(&gd0_pollclock, pollhz);
+
+	crit_enter();
+	pctx->polling_enabled = enabled;
+	if (pctx->polling_enabled)
+		systimer_adjust_periodic(&pctx->pollclock, pollhz);
 	else
-		systimer_adjust_periodic(&gd0_pollclock, 1);
+		systimer_adjust_periodic(&pctx->pollclock, 1);
+	crit_exit();
 	return 0;
 }
 
@@ -254,41 +299,42 @@ sysctl_polling(SYSCTL_HANDLER_ARGS)
  * WARNING! called from fastint or IPI, the MP lock might not be held.
  */
 static void
-pollclock(systimer_t info __unused, struct intrframe *frame __unused)
+pollclock(systimer_t info, struct intrframe *frame __unused)
 {
-	static struct timeval prev_t, t;
+	struct pollctx *pctx = info->data;
+	struct timeval t;
 	int delta;
 
-	if (poll_handlers == 0)
+	if (pctx->poll_handlers == 0)
 		return;
 
 	microuptime(&t);
-	delta = (t.tv_usec - prev_t.tv_usec) +
-		(t.tv_sec - prev_t.tv_sec)*1000000;
+	delta = (t.tv_usec - pctx->prev_t.tv_usec) +
+		(t.tv_sec - pctx->prev_t.tv_sec)*1000000;
 	if (delta * hz < 500000)
-		short_ticks++;
+		pctx->short_ticks++;
 	else
-		prev_t = t;
+		pctx->prev_t = t;
 
-	if (pending_polls > 100) {
+	if (pctx->pending_polls > 100) {
 		/*
 		 * Too much, assume it has stalled (not always true
 		 * see comment above).
 		 */
-		stalled++;
-		pending_polls = 0;
-		phase = 0;
+		pctx->stalled++;
+		pctx->pending_polls = 0;
+		pctx->phase = 0;
 	}
 
-	if (phase <= 2) {
-		if (phase != 0)
-			suspect++;
-		phase = 1;
+	if (pctx->phase <= 2) {
+		if (pctx->phase != 0)
+			pctx->suspect++;
+		pctx->phase = 1;
 		schednetisr(NETISR_POLL);
-		phase = 2;
+		pctx->phase = 2;
 	}
-	if (pending_polls++ > 0)
-		lost_polls++;
+	if (pctx->pending_polls++ > 0)
+		pctx->lost_polls++;
 }
 
 /*
@@ -307,50 +353,56 @@ pollclock(systimer_t info __unused, struct intrframe *frame __unused)
  * handling and forwarding.
  */
 
-static struct timeval poll_start_t;
-
 /* ARGSUSED */
 static void
 netisr_pollmore(struct netmsg *msg)
 {
+	struct pollctx *pctx;
 	struct timeval t;
-	int kern_load;
+	int kern_load, cpuid;
+
+	cpuid = mycpu->gd_cpuid;
+	KKASSERT(cpuid < POLLCTX_MAX);
+
+	pctx = poll_context[cpuid];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == cpuid);
 
 	crit_enter();
 	lwkt_replymsg(&msg->nm_lmsg, 0);
-	phase = 5;
-	if (residual_burst > 0) {
+	pctx->phase = 5;
+	if (pctx->residual_burst > 0) {
 		schednetisr(NETISR_POLL);
 		/* will run immediately on return, followed by netisrs */
 		goto out;
 	}
 	/* here we can account time spent in netisr's in this tick */
 	microuptime(&t);
-	kern_load = (t.tv_usec - poll_start_t.tv_usec) +
-		(t.tv_sec - poll_start_t.tv_sec)*1000000;	/* us */
+	kern_load = (t.tv_usec - pctx->poll_start_t.tv_usec) +
+		(t.tv_sec - pctx->poll_start_t.tv_sec)*1000000;	/* us */
 	kern_load = (kern_load * hz) / 10000;			/* 0..100 */
-	if (kern_load > (100 - user_frac)) { /* try decrease ticks */
-		if (poll_burst > 1)
-			poll_burst--;
+	if (kern_load > (100 - pctx->user_frac)) { /* try decrease ticks */
+		if (pctx->poll_burst > 1)
+			pctx->poll_burst--;
 	} else {
-		if (poll_burst < poll_burst_max)
-			poll_burst++;
+		if (pctx->poll_burst < pctx->poll_burst_max)
+			pctx->poll_burst++;
 	}
 
-	pending_polls--;
-	if (pending_polls == 0) {	/* we are done */
-		phase = 0;
+	pctx->pending_polls--;
+	if (pctx->pending_polls == 0) {	/* we are done */
+		pctx->phase = 0;
 	} else {
 		/*
 		 * Last cycle was long and caused us to miss one or more
 		 * hardclock ticks. Restart processing again, but slightly
 		 * reduce the burst size to prevent that this happens again.
 		 */
-		poll_burst -= (poll_burst / 8);
-		if (poll_burst < 1)
-			poll_burst = 1;
+		pctx->poll_burst -= (pctx->poll_burst / 8);
+		if (pctx->poll_burst < 1)
+			pctx->poll_burst = 1;
 		schednetisr(NETISR_POLL);
-		phase = 6;
+		pctx->phase = 6;
 	}
 out:
 	crit_exit();
@@ -370,15 +422,22 @@ out:
 static void
 netisr_poll(struct netmsg *msg)
 {
-	static int reg_frac_count;
-	int i, cycles;
+	struct pollctx *pctx;
+	int i, cycles, cpuid;
 	enum poll_cmd arg = POLL_ONLY;
+
+	cpuid = mycpu->gd_cpuid;
+	KKASSERT(cpuid < POLLCTX_MAX);
+
+	pctx = poll_context[cpuid];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == cpuid);
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 	crit_enter();
-	phase = 3;
-	if (residual_burst == 0) { /* first call in this tick */
-		microuptime(&poll_start_t);
+	pctx->phase = 3;
+	if (pctx->residual_burst == 0) { /* first call in this tick */
+		microuptime(&pctx->poll_start_t);
 		/*
 		 * Check that paremeters are consistent with runtime
 		 * variables. Some of these tests could be done at sysctl
@@ -388,35 +447,35 @@ netisr_poll(struct netmsg *msg)
 		 * handlers, we do all here.
 		 */
 
-		if (reg_frac > hz)
-			reg_frac = hz;
-		else if (reg_frac < 1)
-			reg_frac = 1;
-		if (reg_frac_count > reg_frac)
-			reg_frac_count = reg_frac - 1;
-		if (reg_frac_count-- == 0) {
+		if (pctx->reg_frac > hz)
+			pctx->reg_frac = hz;
+		else if (pctx->reg_frac < 1)
+			pctx->reg_frac = 1;
+		if (pctx->reg_frac_count > pctx->reg_frac)
+			pctx->reg_frac_count = pctx->reg_frac - 1;
+		if (pctx->reg_frac_count-- == 0) {
 			arg = POLL_AND_CHECK_STATUS;
-			reg_frac_count = reg_frac - 1;
+			pctx->reg_frac_count = pctx->reg_frac - 1;
 		}
-		if (poll_burst_max < MIN_POLL_BURST_MAX)
-			poll_burst_max = MIN_POLL_BURST_MAX;
-		else if (poll_burst_max > MAX_POLL_BURST_MAX)
-			poll_burst_max = MAX_POLL_BURST_MAX;
+		if (pctx->poll_burst_max < MIN_POLL_BURST_MAX)
+			pctx->poll_burst_max = MIN_POLL_BURST_MAX;
+		else if (pctx->poll_burst_max > MAX_POLL_BURST_MAX)
+			pctx->poll_burst_max = MAX_POLL_BURST_MAX;
 
-		if (poll_each_burst < 1)
-			poll_each_burst = 1;
-		else if (poll_each_burst > poll_burst_max)
-			poll_each_burst = poll_burst_max;
+		if (pctx->poll_each_burst < 1)
+			pctx->poll_each_burst = 1;
+		else if (pctx->poll_each_burst > pctx->poll_burst_max)
+			pctx->poll_each_burst = pctx->poll_burst_max;
 
-		residual_burst = poll_burst;
+		pctx->residual_burst = pctx->poll_burst;
 	}
-	cycles = (residual_burst < poll_each_burst) ?
-		residual_burst : poll_each_burst;
-	residual_burst -= cycles;
+	cycles = (pctx->residual_burst < pctx->poll_each_burst) ?
+		pctx->residual_burst : pctx->poll_each_burst;
+	pctx->residual_burst -= cycles;
 
-	if (polling_enabled) {
-		for (i = 0 ; i < poll_handlers ; i++) {
-			struct ifnet *ifp = pr[i].ifp;
+	if (pctx->polling_enabled) {
+		for (i = 0 ; i < pctx->poll_handlers ; i++) {
+			struct ifnet *ifp = pctx->pr[i].ifp;
 
 			if ((ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING))
 			    == (IFF_UP|IFF_RUNNING|IFF_POLLING)) {
@@ -427,8 +486,8 @@ netisr_poll(struct netmsg *msg)
 			}
 		}
 	} else {	/* unregister */
-		for (i = 0 ; i < poll_handlers ; i++) {
-			struct ifnet *ifp = pr[i].ifp;
+		for (i = 0 ; i < pctx->poll_handlers ; i++) {
+			struct ifnet *ifp = pctx->pr[i].ifp;
 
 			if ((ifp->if_flags & IFF_POLLING) == 0)
 				continue;
@@ -443,11 +502,11 @@ netisr_poll(struct netmsg *msg)
 				ifp->if_poll(ifp, POLL_DEREGISTER, 1);
 			lwkt_serialize_exit(ifp->if_serializer);
 		}
-		residual_burst = 0;
-		poll_handlers = 0;
+		pctx->residual_burst = 0;
+		pctx->poll_handlers = 0;
 	}
 	schednetisr(NETISR_POLLMORE);
-	phase = 4;
+	pctx->phase = 4;
 	crit_exit();
 }
 
@@ -460,9 +519,18 @@ netisr_poll(struct netmsg *msg)
 int
 ether_poll_register(struct ifnet *ifp)
 {
+	struct pollctx *pctx;
 	int rc;
 
-	if (polling_enabled == 0) /* polling disabled, cannot register */
+	if (poll_defcpu < 0)
+		return 0;
+	KKASSERT(poll_defcpu < POLLCTX_MAX);
+
+	pctx = poll_context[poll_defcpu];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == poll_defcpu);
+
+	if (pctx->polling_enabled == 0) /* polling disabled, cannot register */
 		return 0;
 	if (ifp->if_flags & IFF_POLLING)	/* already polling	*/
 		return 0;
@@ -486,7 +554,7 @@ ether_poll_register(struct ifnet *ifp)
 	/*
 	 * Check if there is room.  If there isn't, deregister.
 	 */
-	if (poll_handlers >= POLL_LIST_LEN) {
+	if (pctx->poll_handlers >= POLL_LIST_LEN) {
 		/*
 		 * List full, cannot register more entries.
 		 * This should never happen; if it does, it is probably a
@@ -494,7 +562,7 @@ ether_poll_register(struct ifnet *ifp)
 		 * this at runtime is expensive, and won't solve the problem
 		 * anyways, so just report a few times and then give up.
 		 */
-		static int verbose = 10 ;
+		static int verbose = 10;	/* XXX */
 		if (verbose >0) {
 			kprintf("poll handlers list full, "
 				"maybe a broken driver ?\n");
@@ -507,8 +575,8 @@ ether_poll_register(struct ifnet *ifp)
 		lwkt_serialize_exit(ifp->if_serializer);
 		rc = 0;
 	} else {
-		pr[poll_handlers].ifp = ifp;
-		poll_handlers++;
+		pctx->pr[pctx->poll_handlers].ifp = ifp;
+		pctx->poll_handlers++;
 		rc = 1;
 	}
 	crit_exit();
@@ -522,28 +590,37 @@ ether_poll_register(struct ifnet *ifp)
 int
 ether_poll_deregister(struct ifnet *ifp)
 {
+	struct pollctx *pctx;
 	int i;
 
 	KKASSERT(ifp != NULL);
+
+	if (poll_defcpu < 0)
+		return 0;
+	KKASSERT(poll_defcpu < POLLCTX_MAX);
+
+	pctx = poll_context[poll_defcpu];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == poll_defcpu);
 
 	crit_enter();
 	if ((ifp->if_flags & IFF_POLLING) == 0) {
 		crit_exit();
 		return 0;
 	}
-	for (i = 0 ; i < poll_handlers ; i++) {
-		if (pr[i].ifp == ifp) /* found it */
+	for (i = 0 ; i < pctx->poll_handlers ; i++) {
+		if (pctx->pr[i].ifp == ifp) /* found it */
 			break;
 	}
 	ifp->if_flags &= ~IFF_POLLING; /* found or not... */
-	if (i == poll_handlers) {
+	if (i == pctx->poll_handlers) {
 		crit_exit();
 		kprintf("ether_poll_deregister: ifp not found!!!\n");
 		return 0;
 	}
-	poll_handlers--;
-	if (i < poll_handlers) { /* Last entry replaces this one. */
-		pr[i].ifp = pr[poll_handlers].ifp;
+	pctx->poll_handlers--;
+	if (i < pctx->poll_handlers) { /* Last entry replaces this one. */
+		pctx->pr[i].ifp = pctx->pr[pctx->poll_handlers].ifp;
 	}
 	crit_exit();
 
@@ -557,4 +634,62 @@ ether_poll_deregister(struct ifnet *ifp)
 		lwkt_serialize_exit(ifp->if_serializer);
 	}
 	return (1);
+}
+
+static void
+poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
+		struct pollctx *pctx)
+{
+	SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "enable",
+			CTLTYPE_INT | CTLFLAG_RW, pctx, 0, sysctl_polling,
+			"I", "Polling enabled");
+
+	SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "pollhz",
+			CTLTYPE_INT | CTLFLAG_RW, pctx, 0, sysctl_pollhz,
+			"I", "Device polling frequency");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "phase", CTLFLAG_RD,
+			&pctx->phase, 0, "Polling phase");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "suspect", CTLFLAG_RW,
+			&pctx->suspect, 0, "suspect event");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "stalled", CTLFLAG_RW,
+			&pctx->stalled, 0, "potential stalls");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "burst", CTLFLAG_RW,
+			&pctx->poll_burst, 0, "Current polling burst size");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "each_burst", CTLFLAG_RW,
+			&pctx->poll_each_burst, 0, "Max size of each burst");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "burst_max", CTLFLAG_RW,
+			&pctx->poll_burst_max, 0, "Max Polling burst size");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "user_frac", CTLFLAG_RW,
+			&pctx->user_frac, 0,
+			"Desired user fraction of cpu time");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "reg_frac", CTLFLAG_RW,
+			&pctx->reg_frac, 0,
+			"Every this many cycles poll register");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "short_ticks", CTLFLAG_RW,
+			&pctx->short_ticks, 0,
+			"Hardclock ticks shorter than they should be");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "lost_polls", CTLFLAG_RW,
+			&pctx->lost_polls, 0,
+			"How many times we would have lost a poll tick");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "pending_polls", CTLFLAG_RD,
+			&pctx->pending_polls, 0, "Do we need to poll again");
+
+	SYSCTL_ADD_INT(ctx, parent, OID_AUTO, "residual_burst", CTLFLAG_RW,
+		       &pctx->residual_burst, 0,
+		       "# of residual cycles in burst");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "handlers", CTLFLAG_RD,
+			&pctx->poll_handlers, 0,
+			"Number of registered poll handlers");
 }

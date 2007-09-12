@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.59 2007/06/30 21:52:19 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.60 2007/09/12 12:02:09 sephe Exp $
  */
 
 #include "opt_ntp.h"
@@ -106,6 +106,7 @@
 
 #ifdef DEVICE_POLLING
 extern void init_device_poll(void);
+extern void init_device_poll_pcpu(int);
 #endif
 
 #ifdef DEBUG_PCTRACK
@@ -254,6 +255,10 @@ initclocks_pcpu(void)
 	    gd->gd_time_seconds = globaldata_find(0)->gd_time_seconds;
 	    gd->gd_cpuclock_base = globaldata_find(0)->gd_cpuclock_base;
 	}
+
+#ifdef DEVICE_POLLING
+	init_device_poll_pcpu(gd->gd_cpuid);
+#endif
 
 	/*
 	 * Use a non-queued periodic systimer to prevent multiple ticks from
