@@ -23,12 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/pci/agp_amd.c,v 1.3.2.4 2002/04/25 23:41:36 cokane Exp $
- *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.8 2006/10/25 20:55:52 dillon Exp $
+ *	$FreeBSD: src/sys/pci/agp_amd.c,v 1.23 2005/12/20 21:12:26 jhb Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.9 2007/09/12 08:31:43 hasso Exp $
  */
 
 #include "opt_bus.h"
-#include "opt_pci.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -46,7 +45,6 @@
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/pmap.h>
-#include <machine/clock.h>
 
 MALLOC_DECLARE(M_AGP);
 
@@ -64,12 +62,12 @@ struct agp_amd_gatt {
 };
 
 struct agp_amd_softc {
-	struct agp_softc agp;
-	struct resource *regs;	/* memory mapped control registers */
-	bus_space_tag_t bst;	/* bus_space tag */
-	bus_space_handle_t bsh;	/* bus_space handle */
-	u_int32_t	initial_aperture; /* aperture size at startup */
-	struct agp_amd_gatt *gatt;
+	struct agp_softc	agp;
+	struct resource	       *regs;	/* memory mapped control registers */
+	bus_space_tag_t		bst;	/* bus_space tag */
+	bus_space_handle_t	bsh;	/* bus_space handle */
+	u_int32_t		initial_aperture; /* aperture size at startup */
+	struct agp_amd_gatt    *gatt;
 };
 
 static struct agp_amd_gatt *
@@ -101,10 +99,11 @@ agp_amd_alloc_gatt(device_t dev)
 	 * Allocate the page directory.
 	 */
 	gatt->ag_vdir = kmalloc(AGP_PAGE_SIZE, M_AGP, M_INTWAIT | M_ZERO);
+
 	gatt->ag_pdir = vtophys((vm_offset_t) gatt->ag_vdir);
 	if(bootverbose)
-		device_printf(dev, "gatt -> ag_pdir %8x\n",
-				(vm_offset_t)gatt->ag_pdir);
+		device_printf(dev, "gatt -> ag_pdir %#lx\n",
+		    (u_long)gatt->ag_pdir);
 	/*
 	 * Allocate the gatt pages
 	 */
@@ -112,6 +111,7 @@ agp_amd_alloc_gatt(device_t dev)
 	if(bootverbose)
 		device_printf(dev, "allocating GATT for %d AGP page entries\n", 
 			gatt->ag_entries);
+
 	gatt->ag_physical = vtophys((vm_offset_t) gatt->ag_virtual);
 
 	/*
@@ -164,16 +164,12 @@ agp_amd_match(device_t dev)
 		return NULL;
 
 	switch (pci_get_devid(dev)) {
-
 	case 0x70061022:
 		return ("AMD 751 host to AGP bridge");
-	
 	case 0x700e1022:
 		return ("AMD 761 host to AGP bridge");
-
 	case 0x700c1022:
 		return ("AMD 762 host to AGP bridge");
-
 	};
 
 	return NULL;
@@ -184,11 +180,13 @@ agp_amd_probe(device_t dev)
 {
 	const char *desc;
 
+	if (resource_disabled("agp", device_get_unit(dev)))
+		return (ENXIO);
 	desc = agp_amd_match(dev);
 	if (desc) {
 		device_verbose(dev);
 		device_set_desc(dev, desc);
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	}
 
 	return ENXIO;
@@ -206,8 +204,8 @@ agp_amd_attach(device_t dev)
 		return error;
 
 	rid = AGP_AMD751_REGISTERS;
-	sc->regs = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-				      0, ~0, 1, RF_ACTIVE);
+	sc->regs = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+					  RF_ACTIVE);
 	if (!sc->regs) {
 		agp_generic_detach(dev);
 		return ENOMEM;

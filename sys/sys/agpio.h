@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/sys/agpio.h,v 1.1.2.2 2001/12/20 10:36:57 ru Exp $
- *	$DragonFly: src/sys/sys/agpio.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
+ *	$FreeBSD: src/sys/sys/agpio.h,v 1.4 2003/10/23 18:08:56 jhb Exp $
+ *	$DragonFly: src/sys/sys/agpio.h,v 1.5 2007/09/12 08:31:44 hasso Exp $
  */
 
 #ifndef _SYS_AGPIO_H_

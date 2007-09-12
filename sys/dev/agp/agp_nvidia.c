@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * Based on FreeBSD v1.2.
- * $DragonFly: src/sys/dev/agp/agp_nvidia.c,v 1.4 2006/10/25 20:55:52 dillon Exp $
+ * $FreeBSD: src/sys/pci/agp_nvidia.c,v 1.11 2005/12/20 21:12:26 jhb Exp $
+ * $DragonFly: src/sys/dev/agp/agp_nvidia.c,v 1.5 2007/09/12 08:31:43 hasso Exp $
  */
 
 /*
@@ -33,7 +33,6 @@
  */
 
 #include "opt_bus.h"
-#include "opt_pci.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -72,16 +71,16 @@ struct agp_nvidia_softc {
 	off_t			pg_offset;
 };
 
-static const char *	agp_nvidia_match	(device_t dev);
-static int		agp_nvidia_probe	(device_t);
-static int		agp_nvidia_attach	(device_t);
-static int		agp_nvidia_detach	(device_t);
-static u_int32_t	agp_nvidia_get_aperture	(device_t);
-static int		agp_nvidia_set_aperture	(device_t, u_int32_t);
-static int		agp_nvidia_bind_page	(device_t, int, vm_offset_t);
-static int		agp_nvidia_unbind_page	(device_t, int);
+static const char *agp_nvidia_match(device_t dev);
+static int agp_nvidia_probe(device_t);
+static int agp_nvidia_attach(device_t);
+static int agp_nvidia_detach(device_t);
+static u_int32_t agp_nvidia_get_aperture(device_t);
+static int agp_nvidia_set_aperture(device_t, u_int32_t);
+static int agp_nvidia_bind_page(device_t, int, vm_offset_t);
+static int agp_nvidia_unbind_page(device_t, int);
 
-static int		nvidia_init_iorr	(u_int32_t, u_int32_t);
+static int nvidia_init_iorr(u_int32_t, u_int32_t);
 
 static const char *
 agp_nvidia_match (device_t dev)
@@ -97,7 +96,7 @@ agp_nvidia_match (device_t dev)
 	case NVIDIA_DEVICEID_NFORCE2:
 		return ("NVIDIA nForce2 AGP Controller");
 	}
-	return ("NVIDIA Generic AGP Controller");
+	return (NULL);
 }
 
 static int
@@ -105,11 +104,13 @@ agp_nvidia_probe (device_t dev)
 {
 	const char *desc;
 
+	if (resource_disabled("agp", device_get_unit(dev)))
+		return (ENXIO);
 	desc = agp_nvidia_match(dev);
 	if (desc) {
 		device_verbose(dev);
 		device_set_desc(dev, desc);
-		return (0);
+		return (BUS_PROBE_DEFAULT);
 	}
 	return (ENXIO);
 }
@@ -134,8 +135,8 @@ agp_nvidia_attach (device_t dev)
 		sc->wbc_mask = 0x80000000;
 		break;
 	default:
-		sc->wbc_mask = 0;
-		break;
+		device_printf(dev, "Bad chip id\n");
+		return (ENODEV);
 	}
 
 	/* AGP Controller */
@@ -170,6 +171,10 @@ agp_nvidia_attach (device_t dev)
 		return (error);
 
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
+	if (sc->initial_aperture == 0) {
+		device_printf(dev, "bad initial aperture size, disabling\n");
+		return ENXIO;
+	}
 
 	for (;;) {
 		gatt = agp_alloc_gatt(dev);
@@ -213,8 +218,7 @@ agp_nvidia_attach (device_t dev)
 	for (i = 0; i < 8; i++) {
 		pci_write_config(sc->mc2_dev, AGP_NVIDIA_2_ATTBASE(i),
 				 (sc->gatt->ag_physical +
-				   (i % sc->num_dirs) * 64 * 1024),
-				 4);
+				   (i % sc->num_dirs) * 64 * 1024) | 1, 4);
 	}
 
 	/* GTLB Control */
@@ -265,10 +269,17 @@ agp_nvidia_detach (device_t dev)
 static u_int32_t
 agp_nvidia_get_aperture(device_t dev)
 {
-	u_int8_t	key;
-
-	key = ffs(pci_read_config(dev, AGP_NVIDIA_0_APSIZE, 1) & 0x0f);
-	return (1 << (24 + (key ? key : 5)));
+	switch (pci_read_config(dev, AGP_NVIDIA_0_APSIZE, 1) & 0x0f) {
+	case 0: return (512 * 1024 * 1024); break;
+	case 8: return (256 * 1024 * 1024); break;
+	case 12: return (128 * 1024 * 1024); break;
+	case 14: return (64 * 1024 * 1024); break;
+	case 15: return (32 * 1024 * 1024); break;
+	default:
+		device_printf(dev, "Invalid aperture setting 0x%x",
+		    pci_read_config(dev, AGP_NVIDIA_0_APSIZE, 1));
+		return 0;
+	}
 }
 
 static int
@@ -304,7 +315,7 @@ agp_nvidia_bind_page(device_t dev, int offset, vm_offset_t physical)
 		return (EINVAL);
 
 	index = (sc->pg_offset + offset) >> AGP_PAGE_SHIFT;
-	sc->gatt->ag_virtual[index] = physical;
+	sc->gatt->ag_virtual[index] = physical | 1;
 
 	return (0);
 }
@@ -329,6 +340,7 @@ agp_nvidia_flush_tlb (device_t dev, int offset)
 {
 	struct agp_nvidia_softc *sc;
 	u_int32_t wbc_reg, temp;
+	volatile u_int32_t *ag_virtual;
 	int i;
 
 	sc = (struct agp_nvidia_softc *)device_get_softc(dev);
@@ -352,11 +364,13 @@ agp_nvidia_flush_tlb (device_t dev, int offset)
 				"TLB flush took more than 3 seconds.\n");
 	}
 
+	ag_virtual = (volatile u_int32_t *)sc->gatt->ag_virtual;
+
 	/* Flush TLB entries. */
 	for(i = 0; i < 32 + 1; i++)
-		temp = sc->gatt->ag_virtual[i * PAGE_SIZE / sizeof(u_int32_t)];
+		temp = ag_virtual[i * PAGE_SIZE / sizeof(u_int32_t)];
 	for(i = 0; i < 32 + 1; i++)
-		temp = sc->gatt->ag_virtual[i * PAGE_SIZE / sizeof(u_int32_t)];
+		temp = ag_virtual[i * PAGE_SIZE / sizeof(u_int32_t)];
 
 	return (0);
 }

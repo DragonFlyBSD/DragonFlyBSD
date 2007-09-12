@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/pci/agpvar.h,v 1.1.2.2 2002/01/10 12:07:08 mdodd Exp $
- *	$DragonFly: src/sys/dev/agp/agpvar.h,v 1.2 2003/06/17 04:28:56 dillon Exp $
+ *	$FreeBSD: src/sys/pci/agpvar.h,v 1.3 2005/12/20 20:05:21 jhb Exp $
+ *	$DragonFly: src/sys/dev/agp/agpvar.h,v 1.3 2007/09/12 08:31:43 hasso Exp $
  */
 
 #ifndef _PCI_AGPVAR_H_
@@ -48,7 +48,6 @@ struct agp_info {
 	u_int32_t	ai_mode;
 	vm_offset_t	ai_aperture_base;
 	vm_size_t	ai_aperture_size;
-	vm_offset_t	ai_aperture_va;
 	vm_size_t	ai_memory_allowed;
 	vm_size_t	ai_memory_used;
 	u_int32_t	ai_devid;

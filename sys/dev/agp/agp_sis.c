@@ -23,12 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/pci/agp_sis.c,v 1.1.2.1 2000/07/19 09:48:04 ru Exp $
- *	$DragonFly: src/sys/dev/agp/agp_sis.c,v 1.5 2004/07/04 00:24:52 dillon Exp $
+ *	$FreeBSD: src/sys/pci/agp_sis.c,v 1.20 2006/05/30 18:41:26 jkim Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_sis.c,v 1.6 2007/09/12 08:31:43 hasso Exp $
  */
 
 #include "opt_bus.h"
-#include "opt_pci.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -101,12 +100,7 @@ agp_sis_match(device_t dev)
 		return ("SiS 745 host to AGP bridge");
 	case 0x07461039:
 		return ("SiS 746 host to AGP bridge");
-	case 0x07601039:
-		return ("SiS 760 host to AGP bridge");
 	};
-
-	if (pci_get_vendor(dev) == 0x1039)
-		return ("SIS Generic host to PCI bridge");
 
 	return NULL;
 }
@@ -116,11 +110,13 @@ agp_sis_probe(device_t dev)
 {
 	const char *desc;
 
+	if (resource_disabled("agp", device_get_unit(dev)))
+		return (ENXIO);
 	desc = agp_sis_match(dev);
 	if (desc) {
 		device_verbose(dev);
 		device_set_desc(dev, desc);
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	}
 
 	return ENXIO;

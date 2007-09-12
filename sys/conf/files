@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.180 2007/09/02 13:27:23 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.181 2007/09/12 08:31:43 hasso Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1045,7 +1045,9 @@ dev/agp/agp_via.c		optional agp
 dev/agp/agp_sis.c		optional agp
 dev/agp/agp_ali.c		optional agp
 dev/agp/agp_amd.c		optional agp
+dev/agp/agp_amd64.c		optional agp
 dev/agp/agp_i810.c		optional agp
+dev/agp/agp_ati.c		optional agp
 dev/agp/agp_if.m		optional agp
 dev/disk/amd/amd.c		optional amd
 dev/netif/awi/am79c930.c	optional awi

@@ -23,12 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/pci/agp_via.c,v 1.1.2.2 2001/10/04 09:53:04 ru Exp $
- *	$DragonFly: src/sys/dev/agp/agp_via.c,v 1.5 2004/07/04 00:24:52 dillon Exp $
+ *	$FreeBSD: src/sys/pci/agp_via.c,v 1.23 2005/12/20 21:12:26 jhb Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_via.c,v 1.6 2007/09/12 08:31:43 hasso Exp $
  */
 
 #include "opt_bus.h"
-#include "opt_pci.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -46,9 +45,9 @@
 #include <vm/vm_object.h>
 #include <vm/pmap.h>
 
-#define		REG_GARTCTRL	0
-#define		REG_APSIZE	1
-#define		REG_ATTBASE	2
+#define	REG_GARTCTRL	0
+#define	REG_APSIZE	1
+#define	REG_ATTBASE	2
 
 struct agp_via_softc {
 	struct agp_softc agp;
@@ -58,9 +57,9 @@ struct agp_via_softc {
 };
 
 static int via_v2_regs[] = { AGP_VIA_GARTCTRL, AGP_VIA_APSIZE,
-			    AGP_VIA_ATTBASE };
+    AGP_VIA_ATTBASE };
 static int via_v3_regs[] = { AGP3_VIA_GARTCTRL, AGP3_VIA_APSIZE,
-			    AGP3_VIA_ATTBASE };
+    AGP3_VIA_ATTBASE };
 
 static const char*
 agp_via_match(device_t dev)
@@ -73,24 +72,61 @@ agp_via_match(device_t dev)
 		return NULL;
 
 	switch (pci_get_devid(dev)) {
+	case 0x01981106:
+		return ("VIA 8763 (P4X600) host to PCI bridge");
+	case 0x02591106:
+		return ("VIA PM800/PN800/PM880/PN880 host to PCI bridge");
+	case 0x02691106:
+		return ("VIA KT880 host to PCI bridge");
+	case 0x02961106:
+		return ("VIA 3296 (P4M800) host to PCI bridge");
 	case 0x03051106:
-		return ("VIA 82C8363 (Apollo KT133A) host to PCI bridge");
+		return ("VIA 82C8363 (Apollo KT133x/KM133) host to PCI bridge");
+	case 0x03911106:
+		return ("VIA 8371 (Apollo KX133) host to PCI bridge");
 	case 0x05011106:
 		return ("VIA 8501 (Apollo MVP4) host to PCI bridge");
 	case 0x05971106:
 		return ("VIA 82C597 (Apollo VP3) host to PCI bridge");
 	case 0x05981106:
 		return ("VIA 82C598 (Apollo MVP3) host to PCI bridge");
+	case 0x06011106:
+		return ("VIA 8601 (Apollo ProMedia/PLE133Ta) host to PCI bridge");
 	case 0x06051106:
 		return ("VIA 82C694X (Apollo Pro 133A) host to PCI bridge");
 	case 0x06911106:
 		return ("VIA 82C691 (Apollo Pro) host to PCI bridge");
-	case 0x31881106:
-		return ("VIA 8385 host to PCI bridge");
+	case 0x30911106:
+		return ("VIA 8633 (Pro 266) host to PCI bridge");
+	case 0x30991106:
+		return ("VIA 8367 (KT266/KY266x/KT333) host to PCI bridge");
+	case 0x31011106:
+		return ("VIA 8653 (Pro266T) host to PCI bridge");
+	case 0x31121106:
+		return ("VIA 8361 (KLE133) host to PCI bridge");
+	case 0x31161106:
+		return ("VIA XM266 (PM266/KM266) host to PCI bridge");
+	case 0x31231106:
+		return ("VIA 862x (CLE266) host to PCI bridge");
+	case 0x31281106:
+		return ("VIA 8753 (P4X266) host to PCI bridge");
+	case 0x31481106:
+		return ("VIA 8703 (P4M266x/P4N266) host to PCI bridge");
+	case 0x31561106:
+		return ("VIA XN266 (Apollo Pro266) host to PCI bridge");
+	case 0x31681106:
+		return ("VIA 8754 (PT800) host to PCI bridge");
+	case 0x31891106:
+		return ("VIA 8377 (Apollo KT400/KT400A/KT600) host to PCI bridge");
+	case 0x32051106:
+		return ("VIA 8235/8237 (Apollo KM400/KM400A) host to PCI bridge");
+	case 0x32081106:
+		return ("VIA 8783 (PT890) host to PCI bridge");
+	case 0x32581106:
+		return ("VIA PT880 host to PCI bridge");
+	case 0xb1981106:
+		return ("VIA VT83xx/VT87xx/KTxxx/Px8xx host to PCI bridge");
 	};
-
-	if (pci_get_vendor(dev) == 0x1106)
-		return ("VIA Generic host to PCI bridge");
 
 	return NULL;
 }
@@ -100,11 +136,13 @@ agp_via_probe(device_t dev)
 {
 	const char *desc;
 
+	if (resource_disabled("agp", device_get_unit(dev)))
+		return (ENXIO);
 	desc = agp_via_match(dev);
 	if (desc) {
 		device_verbose(dev);
 		device_set_desc(dev, desc);
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	}
 
 	return ENXIO;
@@ -116,21 +154,47 @@ agp_via_attach(device_t dev)
 	struct agp_via_softc *sc = device_get_softc(dev);
 	struct agp_gatt *gatt;
 	int error;
+	u_int32_t agpsel;
 
+	/* XXX: This should be keying off of whether the bridge is AGP3 capable,
+	 * rather than a bunch of device ids for chipsets that happen to do 8x.
+	 */
 	switch (pci_get_devid(dev)) {
-	case 0x31881106:
-		sc->regs = via_v3_regs;
+	case 0x01981106:
+	case 0x02591106:
+	case 0x02691106:
+	case 0x02961106:
+	case 0x31231106:
+	case 0x31681106:
+	case 0x31891106:
+	case 0x32051106:
+	case 0x32581106:
+	case 0xb1981106:
+		/* The newer VIA chipsets will select the AGP version based on
+		 * what AGP versions the card supports.  We still have to
+		 * program it using the v2 registers if it has chosen to use
+		 * compatibility mode.
+		 */
+		agpsel = pci_read_config(dev, AGP_VIA_AGPSEL, 1);
+		if ((agpsel & (1 << 1)) == 0)
+			sc->regs = via_v3_regs;
+		else
+			sc->regs = via_v2_regs;
 		break;
 	default:
 		sc->regs = via_v2_regs;
 		break;
 	}
-
+	
 	error = agp_generic_attach(dev);
 	if (error)
 		return error;
 
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
+	if (sc->initial_aperture == 0) {
+		device_printf(dev, "bad initial aperture size, disabling\n");
+		return ENXIO;
+	}
 
 	for (;;) {
 		gatt = agp_alloc_gatt(dev);
@@ -148,11 +212,22 @@ agp_via_attach(device_t dev)
 	}
 	sc->gatt = gatt;
 
-	/* Install the gatt. */
-	pci_write_config(dev, sc->regs[REG_ATTBASE], gatt->ag_physical | 3, 4);
-	
-	/* Enable the aperture. */
-	pci_write_config(dev, sc->regs[REG_GARTCTRL], 0x0f, 4);
+	if (sc->regs == via_v2_regs) {
+		/* Install the gatt. */
+		pci_write_config(dev, sc->regs[REG_ATTBASE], gatt->ag_physical | 3, 4);
+		
+		/* Enable the aperture. */
+		pci_write_config(dev, sc->regs[REG_GARTCTRL], 0x0f, 4);
+	} else {
+		u_int32_t gartctrl;
+
+		/* Install the gatt. */
+		pci_write_config(dev, sc->regs[REG_ATTBASE], gatt->ag_physical, 4);
+		
+		/* Enable the aperture. */
+		gartctrl = pci_read_config(dev, sc->regs[REG_ATTBASE], 4);
+		pci_write_config(dev, sc->regs[REG_GARTCTRL], gartctrl | (3 << 7), 4);
+	}
 
 	return 0;
 }
@@ -243,9 +318,18 @@ static void
 agp_via_flush_tlb(device_t dev)
 {
 	struct agp_via_softc *sc = device_get_softc(dev);
+	u_int32_t gartctrl;
 
-	pci_write_config(dev, sc->regs[REG_GARTCTRL], 0x8f, 4);
-	pci_write_config(dev, sc->regs[REG_GARTCTRL], 0x0f, 4);
+	if (sc->regs == via_v2_regs) {
+		pci_write_config(dev, sc->regs[REG_GARTCTRL], 0x8f, 4);
+		pci_write_config(dev, sc->regs[REG_GARTCTRL], 0x0f, 4);
+	} else {
+		gartctrl = pci_read_config(dev, sc->regs[REG_GARTCTRL], 4);
+		pci_write_config(dev, sc->regs[REG_GARTCTRL], gartctrl &
+		    ~(1 << 7), 4);
+		pci_write_config(dev, sc->regs[REG_GARTCTRL], gartctrl, 4);
+	}
+	
 }
 
 static device_method_t agp_via_methods[] = {

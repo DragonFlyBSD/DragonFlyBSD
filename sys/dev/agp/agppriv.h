@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/pci/agppriv.h,v 1.3.2.1 2000/07/19 09:48:04 ru Exp $
- *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.5 2006/12/22 23:26:15 swildner Exp $
+ *	$FreeBSD: src/sys/pci/agppriv.h,v 1.6 2007/07/13 16:28:12 anholt Exp $
+ *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.6 2007/09/12 08:31:43 hasso Exp $
  */
 
 #ifndef _PCI_AGPPRIV_H_
@@ -41,8 +41,8 @@
 
 #ifdef AGP_DEBUG
 #define AGP_DPF(x...) do {			\
-    kprintf("agp: ");				\
-    kprintf(##x);				\
+    printf("agp: ");				\
+    printf(##x);				\
 } while (0)
 #else
 #define AGP_DPF(x...) do {} while (0)
@@ -70,12 +70,14 @@ struct agp_memory {
  */
 struct agp_softc {
 	struct resource	        *as_aperture;	/* location of aperture */
+	int			as_aperture_rid;
 	u_int32_t		as_maxmem;	/* allocation upper bound */
 	u_int32_t		as_allocated;	/* amount allocated */
 	enum agp_acquire_state	as_state;
 	struct agp_memory_list	as_memory;	/* list of allocated memory */
 	int			as_nextid;	/* next memory block id */
 	int			as_isopen;	/* user device is open */
+	struct cdev *as_devnode;	/* from make_dev */
 	struct lock		as_lock;	/* lock for access to GATT */
 };
 
@@ -88,9 +90,13 @@ struct agp_gatt {
 void			agp_flush_cache(void);
 u_int8_t		agp_find_caps(device_t dev);
 struct agp_gatt	       *agp_alloc_gatt(device_t dev);
+void			agp_set_aperture_resource(device_t dev, int rid);
 void		        agp_free_gatt(struct agp_gatt *gatt);
 int			agp_generic_attach(device_t dev);
 int			agp_generic_detach(device_t dev);
+int			agp_generic_get_aperture(device_t dev);
+int			agp_generic_set_aperture(device_t dev,
+						 u_int32_t aperture);
 int			agp_generic_enable(device_t dev, u_int32_t mode);
 struct agp_memory      *agp_generic_alloc_memory(device_t dev, int type,
 						 vm_size_t size);
