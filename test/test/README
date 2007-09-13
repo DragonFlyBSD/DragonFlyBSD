@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.46 2007/06/16 03:10:06 josepht Exp $
+$DragonFly: src/test/test/README,v 1.47 2007/09/13 23:40:24 cat Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -25,3 +25,8 @@ Hello World!
      Going to bed now!
 
 Hello
+
+microphone check one-two, one-two
+commit bit is straight set 
+so whatcha-gonna-do ?
+
