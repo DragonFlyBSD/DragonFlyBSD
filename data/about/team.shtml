@@ -1,7 +1,7 @@
 <!--#set var="title" value="The DragonFly Team" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/about/team.shtml,v 1.5 2007/06/16 12:58:41 josepht Exp $ -->
+<!-- $DragonFly: site/data/about/team.shtml,v 1.6 2007/09/13 13:56:42 hasso Exp $ -->
 
 
 <p>
@@ -210,6 +210,12 @@ r in Japan (AllBSD) (commit access)
 <tr><td valign="top">
 <a href="mailto: josepht 'at' xenno 'dot' com">Joseph A. Talbott</a></td>
 <td valign="top">Kernel, SMP, and vkernel (commit access)
+</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto: hasso 'at' estpak 'dot' ee">Hasso Tepper</a></td>
+<td valign="top">Networking and device drivers (commit access)
 </td>
 </tr>
 
