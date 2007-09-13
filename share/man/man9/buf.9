@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/buf.9,v 1.5.2.5 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/buf.9,v 1.7 2007/07/02 19:32:34 swildner Exp $
+.\" $DragonFly: src/share/man/man9/buf.9,v 1.8 2007/09/13 10:55:55 swildner Exp $
 .\"
 .Dd December 21, 2004
 .Dt BUF 9
@@ -106,7 +106,7 @@ the
 .Ft ( vnode , Fa b_offset , Fa b_size ) .
 The kernel typically unmaps VM buffers the moment they are no longer needed
 but often keeps the
-.Fq struct buf
+.Ft struct buf
 structure instantiated and even
 .Fa bp->b_pages
 array instantiated despite having unmapped them from KVM.
