@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)tcp.4	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man4/tcp.4,v 1.11.2.14 2002/12/29 16:35:38 schweikh Exp $
-.\" $DragonFly: src/share/man/man4/tcp.4,v 1.7 2007/05/13 18:33:56 swildner Exp $
+.\" $DragonFly: src/share/man/man4/tcp.4,v 1.8 2007/09/14 23:47:53 swildner Exp $
 .\"
 .Dd February 14, 1995
 .Dt TCP 4
@@ -324,7 +324,7 @@ products, such as modems, GigE links, and fast long-haul WANs, and/or
 you have configured your machine to accommodate large TCP windows.  In such
 situations, without this option, you may experience high interactive
 latencies or packet loss due to the overloading of intermediate routers
-and switches.  Note that bandwidth delay product limiting only effects
+and switches.  Note that bandwidth delay product limiting only affects
 the transmit side of a TCP connection.
 .It tcp.inflight_debug
 Enable debugging for the bandwidth delay product algorithm.  This may

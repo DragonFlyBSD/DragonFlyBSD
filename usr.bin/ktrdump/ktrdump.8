@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
-.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.13 2007/06/12 12:50:22 hasso Exp $
+.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.14 2007/09/14 23:47:53 swildner Exp $
 .\"
 .Dd June 8, 2007
 .Dt KTRDUMP 8
@@ -108,7 +108,7 @@ The default is standard output.
 .Sh OPERATIONAL NOTES
 Users of
 .Nm
-should keep in mind that the act of trace logging will itself effect
+should keep in mind that the act of trace logging will itself affect
 execution overheads.  On a 2Ghz cpu a logging call can take anywhere
 from 40ns to 150ns to run.
 .Pp

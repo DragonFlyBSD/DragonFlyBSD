@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.14 2007/05/19 17:32:13 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.15 2007/09/14 23:47:53 swildner Exp $
 .\"
 .Dd March 4, 2007
 .Dt TUNING 7
@@ -537,8 +537,8 @@ router and switch packet queues as well as reduces the amount of data built
 up in the local host's interface queue.  With fewer packets queued up,
 interactive connections, especially over slow modems, will also be able
 to operate with lower round trip times.  However, note that this feature
-only effects data transmission (uploading / server-side).  It does not
-effect data reception (downloading).
+only affects data transmission (uploading / server-side).  It does not
+affect data reception (downloading).
 .Pp
 Adjusting
 .Va net.inet.tcp.inflight_stab

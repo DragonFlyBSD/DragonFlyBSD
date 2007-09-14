@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/lib/libc/sys/minherit.2,v 1.7.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/minherit.2,v 1.3 2004/03/11 12:28:51 hmp Exp $
+.\" $DragonFly: src/lib/libc/sys/minherit.2,v 1.4 2007/09/14 23:47:53 swildner Exp $
 .\"
 .\" Copyright (c) 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -58,7 +58,7 @@ can be set on a page basis;
 the granularity of changes may be as large as an entire region.
 .Dx
 is capable of adjusting inheritance characteristics on a page basis.
-Inheritance only effects children created by
+Inheritance only affects children created by
 .Fn fork .
 It has no effect on
 .Fn exec .
