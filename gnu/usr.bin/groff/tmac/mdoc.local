@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.2.2.19 2003/03/25 10:20:12 murray Exp $
-.\" $DragonFly: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.18 2007/09/14 19:47:03 swildner Exp $
+.\" $DragonFly: src/gnu/usr.bin/groff/tmac/mdoc.local,v 1.19 2007/09/14 20:02:03 swildner Exp $
 .\"
 .\"     %beginstrip%
 .
@@ -44,9 +44,7 @@
 .ds doc-str-Lb-libcam      Common Access Method User Library (libcam, \-lcam)
 .ds doc-str-Lb-libcaps     CAPS IPC Library (libcaps, \-lcaps)
 .ds doc-str-Lb-libcipher   FreeSec Crypt Library (libcipher, \-lcipher)
-.ds doc-str-Lb-libdevinfo  Device and Resource Information Utility Library (libdevinfo, \-ldevinfo)
 .ds doc-str-Lb-libdevstat  Device Statistics Library (libdevstat, \-ldevstat)
-.ds doc-str-Lb-libdisk     Interface to Slice and Partition Labels Library (libdisk, \-ldisk)
 .ds doc-str-Lb-libfetch    File Transfer Library (libfetch, \-lfetch)
 .ds doc-str-Lb-libftpio    FTP Connection Management Library (libftpio, \-lftpio)
 .ds doc-str-Lb-libipx      IPX Address Conversion Support Library (libipx, \-lipx)
