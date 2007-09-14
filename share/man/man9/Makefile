@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.60 2007/08/22 21:35:59 hasso Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.61 2007/09/14 22:53:56 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -67,6 +67,7 @@ MAN=	accept_filter.9 \
 	EVENTHANDLER.9 \
 	extattr.9 \
 	fetch.9 \
+	firmware.9 \
 	hash.9 \
 	ieee80211.9 \
 	ieee80211_crypto.9 \
@@ -247,6 +248,8 @@ MLINKS+=EVENTHANDLER.9 EVENTHANDLER_DECLARE.9 \
 MLINKS+=fetch.9 fubyte.9 \
 	fetch.9 fusword.9 \
 	fetch.9 fuword.9
+MLINKS+=firmware.9 firmware_image_load.9 \
+	firmware.9 firmware_image_unload.9
 MLINKS+=hash.9 hashinit.9 \
 	hash.9 phashinit.9
 MLINKS+=ieee80211.9 ieee80211_chan2ieee.9 \

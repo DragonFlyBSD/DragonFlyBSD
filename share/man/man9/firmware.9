@@ -1,0 +1,76 @@
+.\"
+.\" Copyright (c) 2007
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/share/man/man9/firmware.9,v 1.1 2007/09/14 22:53:56 swildner Exp $
+.\"
+.Dd September 15, 2007
+.Dt FIRMWARE 9
+.Os
+.Sh NAME
+.Nm firmware_image_load ,
+.Nm firmware_image_unload
+.Nd firmware support
+.Sh SYNOPSIS
+.In sys/firmware.h
+.Ft struct fw_image *
+.Fn firmware_image_load "const char *image_name"
+.Ft void
+.Fn firmware_image_unload "struct fw_image *img"
+.Sh DESCRIPTION
+The
+.Nm firmware
+interface provides functions for loading and unloading of firmware images.
+.Pp
+The
+.Fn firmware_image_load
+function loads the firmware
+.Fa image_name
+into the kernel and returns a pointer to a
+.Vt struct fw_image.
+The
+.Fn firmware_image_unload
+function unloads the image associated with
+.Fa img
+(obtained with a previous call to
+.Fn firmware_image_load ) .
+.Pp
+Images have to reside in
+.Pa /etc/firmware
+in order for these functions to work.
+This requires the root partition being mounted.
+.Sh HISTORY
+The
+.Nm firmware
+framework first appeared in
+.Dx 1.1 .
+.Sh AUTHORS
+.An Johannes Hofmann
+.An Joerg Sonnenberger
