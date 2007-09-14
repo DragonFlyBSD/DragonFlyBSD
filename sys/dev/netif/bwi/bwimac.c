@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.1 2007/09/08 06:15:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.2 2007/09/14 21:04:56 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -903,7 +903,7 @@ bwi_mac_fw_alloc(struct bwi_mac *mac)
 		} else if (mac->mac_rev >= 5 && mac->mac_rev <= 10) {
 			idx = 5;
 		} else {
-			if_printf(ifp, "no suitible IV for MAC rev %d\n",
+			if_printf(ifp, "no suitable IV for MAC rev %d\n",
 				  mac->mac_rev);
 			return ENODEV;
 		}
