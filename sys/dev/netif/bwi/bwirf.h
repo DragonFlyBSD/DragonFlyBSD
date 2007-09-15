@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwirf.h,v 1.1 2007/09/08 06:15:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwirf.h,v 1.2 2007/09/15 09:59:29 sephe Exp $
  */
 
 #ifndef _BWI_RF_H
@@ -88,6 +88,12 @@ static __inline void
 bwi_rf_set_nrssi_thr(struct bwi_mac *_mac)
 {
 	_mac->mac_rf.rf_set_nrssi_thr(_mac);
+}
+
+static __inline int
+bwi_rf_calc_rssi(struct bwi_mac *_mac, const struct bwi_rxbuf_hdr *_hdr)
+{
+	return _mac->mac_rf.rf_calc_rssi(_mac, _hdr);
 }
 
 #define RF_WRITE(mac, ofs, val)		bwi_rf_write((mac), (ofs), (val))

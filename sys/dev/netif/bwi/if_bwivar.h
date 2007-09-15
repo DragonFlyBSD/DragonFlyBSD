@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.1 2007/09/08 06:15:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.2 2007/09/15 09:59:29 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -54,6 +54,8 @@
 #define BWI_LGRETRY		4
 #define BWI_SHRETRY_FB		3
 #define BWI_LGRETRY_FB		2
+
+#define BWI_NOISE_FLOOR		-95	/* TODO: noise floor calc */
 
 #define CSR_READ_4(sc, reg)		\
 	bus_space_read_4((sc)->sc_mem_bt, (sc)->sc_mem_bh, (reg))
@@ -116,17 +118,24 @@ struct bwi_rxbuf_hdr {
 	/* Little endian */
 	uint16_t	rxh_buflen;	/* exclude bwi_rxbuf_hdr */
 	uint8_t		rxh_pad1[2];
-	uint16_t	rxh_flags1;
+	uint16_t	rxh_flags1;	/* BWI_RXH_F1_ */
 	uint8_t		rxh_rssi;
 	uint8_t		rxh_sq;
-	uint8_t		rxh_pad2[2];
-	uint16_t	rxh_flags3;
+	uint16_t	rxh_phyinfo;	/* BWI_RXH_PHYINFO_ */
+	uint16_t	rxh_flags3;	/* BWI_RXH_F3_ */
 	uint16_t	rxh_flags2;	/* BWI_RXH_F2_ */
 	uint16_t	rxh_tsf;
 	uint8_t		rxh_pad3[14];	/* Padded to 30bytes */
 } __packed;
 
+#define BWI_RXH_F1_BCM2053_RSSI	__BIT(14)
+#define BWI_RXH_F1_OFDM		__BIT(0)
+
 #define BWI_RXH_F2_TYPE2FRAME	__BIT(2)
+
+#define BWI_RXH_F3_BCM2050_RSSI	__BIT(10)
+
+#define BWI_RXH_PHYINFO_LNAGAIN	__BITS(15, 14)
 
 struct bwi_txbuf_hdr {
 	/* Little endian */
@@ -361,6 +370,9 @@ struct bwi_rf {
 
 	void			(*rf_set_nrssi_thr)(struct bwi_mac *);
 	void			(*rf_calc_nrssi_slope)(struct bwi_mac *);
+	int			(*rf_calc_rssi)
+				(struct bwi_mac *,
+				 const struct bwi_rxbuf_hdr *);
 
 #define BWI_TSSI_MAX		64
 	int8_t			rf_txpower_map0[BWI_TSSI_MAX];

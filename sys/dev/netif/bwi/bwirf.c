@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwirf.c,v 1.1 2007/09/08 06:15:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwirf.c,v 1.2 2007/09/15 09:59:29 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -114,6 +114,13 @@ static void	bwi_rf_set_nrssi_thr_11b(struct bwi_mac *);
 static void	bwi_rf_set_nrssi_thr_11g(struct bwi_mac *);
 
 static void	bwi_rf_init_sw_nrssi_table(struct bwi_mac *);
+
+static int	bwi_rf_calc_rssi_bcm2050(struct bwi_mac *,
+			const struct bwi_rxbuf_hdr *);
+static int	bwi_rf_calc_rssi_bcm2053(struct bwi_mac *,
+			const struct bwi_rxbuf_hdr *);
+static int	bwi_rf_calc_rssi_bcm2060(struct bwi_mac *,
+			const struct bwi_rxbuf_hdr *);
 
 static void	bwi_rf_on_11a(struct bwi_mac *);
 static void	bwi_rf_on_11bg(struct bwi_mac *);
@@ -250,12 +257,15 @@ bwi_rf_attach(struct bwi_mac *mac)
 		rf->rf_ctrl_rd = BWI_RF_CTRL_RD_11A;
 		rf->rf_on = bwi_rf_on_11a;
 		rf->rf_off = bwi_rf_off_11a;
+		rf->rf_calc_rssi = bwi_rf_calc_rssi_bcm2060;
 		break;
 	case IEEE80211_MODE_11B:
 		if (type == BWI_RF_T_BCM2050) {
 			rf->rf_ctrl_rd = BWI_RF_CTRL_RD_11BG;
+			rf->rf_calc_rssi = bwi_rf_calc_rssi_bcm2050;
 		} else if (type == BWI_RF_T_BCM2053) {
 			rf->rf_ctrl_adj = 1;
+			rf->rf_calc_rssi = bwi_rf_calc_rssi_bcm2053;
 		} else {
 			device_printf(sc->sc_dev, "only BCM2050/BCM2053 RF "
 				      "is supported for 11B PHY\n");
@@ -280,6 +290,7 @@ bwi_rf_attach(struct bwi_mac *mac)
 			rf->rf_off = bwi_rf_off_11bg;
 		rf->rf_calc_nrssi_slope = bwi_rf_calc_nrssi_slope_11g;
 		rf->rf_set_nrssi_thr = bwi_rf_set_nrssi_thr_11g;
+		rf->rf_calc_rssi = bwi_rf_calc_rssi_bcm2050;
 		break;
 	default:
 		device_printf(sc->sc_dev, "unsupported PHY mode\n");
@@ -2340,4 +2351,138 @@ bwi_rf_tssi2dbm(struct bwi_mac *mac, int8_t tssi, int8_t *txpwr)
 
 	*txpwr = rf->rf_txpower_map[pwr_idx];
 	return 0;
+}
+
+static int
+bwi_rf_calc_rssi_bcm2050(struct bwi_mac *mac, const struct bwi_rxbuf_hdr *hdr)
+{
+	uint16_t flags1, flags3;
+	int rssi, lna_gain;
+
+	rssi = hdr->rxh_rssi;
+	flags1 = le16toh(hdr->rxh_flags1);
+	flags3 = le16toh(hdr->rxh_flags3);
+
+#define NEW_BCM2050_RSSI
+#ifdef NEW_BCM2050_RSSI
+	if (flags1 & BWI_RXH_F1_OFDM) {
+		if (rssi > 127)
+			rssi -= 256;
+		if (flags3 & BWI_RXH_F3_BCM2050_RSSI)
+			rssi += 17;
+		else
+			rssi -= 4;
+		return rssi;
+	}
+
+	if (mac->mac_sc->sc_card_flags & BWI_CARD_F_SW_NRSSI) {
+		struct bwi_rf *rf = &mac->mac_rf;
+
+		if (rssi >= BWI_NRSSI_TBLSZ)
+			rssi = BWI_NRSSI_TBLSZ - 1;
+
+		rssi = ((31 - (int)rf->rf_nrssi_table[rssi]) * -131) / 128;
+		rssi -= 67;
+	} else {
+		rssi = ((31 - rssi) * -149) / 128;
+		rssi -= 68;
+	}
+
+	if (mac->mac_phy.phy_mode != IEEE80211_MODE_11G)
+		return rssi;
+
+	if (flags3 & BWI_RXH_F3_BCM2050_RSSI)
+		rssi += 20;
+
+	lna_gain = __SHIFTOUT(le16toh(hdr->rxh_phyinfo),
+			      BWI_RXH_PHYINFO_LNAGAIN);
+#if 0
+	DPRINTF(mac->mac_sc, "lna_gain %d, phyinfo 0x%04x\n",
+		lna_gain, le16toh(hdr->rxh_phyinfo));
+#endif
+	switch (lna_gain) {
+	case 0:
+		rssi += 27;
+		break;
+	case 1:
+		rssi += 6;
+		break;
+	case 2:
+		rssi += 12;
+		break;
+	case 3:
+		/*
+		 * XXX
+		 * According to v3 spec, we should do _nothing_ here,
+		 * but it seems that the result RSSI will be too low
+		 * (relative to what ath(4) says).  Raise it a little
+		 * bit.
+		 */
+		rssi += 5;
+		break;
+	default:
+		panic("impossible lna gain %d", lna_gain);
+	}
+#else	/* !NEW_BCM2050_RSSI */
+	lna_gain = 0; /* shut up gcc warning */
+
+	if (flags1 & BWI_RXH_F1_OFDM) {
+		if (rssi > 127)
+			rssi -= 256;
+		rssi = (rssi * 73) / 64;
+
+		if (flags3 & BWI_RXH_F3_BCM2050_RSSI)
+			rssi += 25;
+		else
+			rssi -= 3;
+		return rssi;
+	}
+
+	if (mac->mac_sc->sc_card_flags & BWI_CARD_F_SW_NRSSI) {
+		struct bwi_rf *rf = &mac->mac_rf;
+
+		if (rssi >= BWI_NRSSI_TBLSZ)
+			rssi = BWI_NRSSI_TBLSZ - 1;
+
+		rssi = ((31 - (int)rf->rf_nrssi_table[rssi]) * -131) / 128;
+		rssi -= 57;
+	} else {
+		rssi = ((31 - rssi) * -149) / 128;
+		rssi -= 68;
+	}
+
+	if (mac->mac_phy.phy_mode != IEEE80211_MODE_11G)
+		return rssi;
+
+	if (flags3 & BWI_RXH_F3_BCM2050_RSSI)
+		rssi += 25;
+#endif	/* NEW_BCM2050_RSSI */
+	return rssi;
+}
+
+static int
+bwi_rf_calc_rssi_bcm2053(struct bwi_mac *mac, const struct bwi_rxbuf_hdr *hdr)
+{
+	uint16_t flags1;
+	int rssi;
+
+	rssi = (((int)hdr->rxh_rssi - 11) * 103) / 64;
+
+	flags1 = le16toh(hdr->rxh_flags1);
+	if (flags1 & BWI_RXH_F1_BCM2053_RSSI)
+		rssi -= 109;
+	else
+		rssi -= 83;
+	return rssi;
+}
+
+static int
+bwi_rf_calc_rssi_bcm2060(struct bwi_mac *mac, const struct bwi_rxbuf_hdr *hdr)
+{
+	int rssi;
+
+	rssi = hdr->rxh_rssi;
+	if (rssi > 127)
+		rssi -= 256;
+	return rssi;
 }

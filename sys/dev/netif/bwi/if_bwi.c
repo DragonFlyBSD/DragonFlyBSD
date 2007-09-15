@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.1 2007/09/08 06:15:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.2 2007/09/15 09:59:29 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -134,6 +134,7 @@ static void	bwi_txeof(struct bwi_softc *);
 static void	bwi_txeof_status(struct bwi_softc *, int);
 static void	bwi_enable_intrs(struct bwi_softc *, uint32_t);
 static void	bwi_disable_intrs(struct bwi_softc *, uint32_t);
+static int	bwi_calc_rssi(struct bwi_softc *, const struct bwi_rxbuf_hdr *);
 
 static int	bwi_dma_alloc(struct bwi_softc *);
 static void	bwi_dma_free(struct bwi_softc *);
@@ -2455,7 +2456,7 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 		struct mbuf *m;
 		uint8_t plcp_signal;
 		uint16_t flags2;
-		int buflen, wh_ofs, hdr_extra;
+		int buflen, wh_ofs, hdr_extra, rssi;
 
 		m = rb->rb_mbuf;
 		bus_dmamap_sync(sc->sc_buf_dtag, rb->rb_dmap,
@@ -2484,6 +2485,7 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 		}
 
 		plcp_signal = *((uint8_t *)(hdr + 1) + hdr_extra);
+		rssi = bwi_calc_rssi(sc, hdr) - BWI_NOISE_FLOOR;
 
 		m->m_pkthdr.rcvif = ifp;
 		m->m_len = m->m_pkthdr.len = buflen + sizeof(*hdr);
@@ -2496,9 +2498,7 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 		wh = mtod(m, struct ieee80211_frame_min *);
 		ni = ieee80211_find_rxnode(ic, wh);
 
-		ieee80211_input(ic, m, ni, hdr->rxh_rssi,
-				le16toh(hdr->rxh_tsf));
-
+		ieee80211_input(ic, m, ni, rssi, le16toh(hdr->rxh_tsf));
 		ieee80211_free_node(ni);
 next:
 		idx = (idx + 1) % BWI_RX_NDESC;
@@ -3389,4 +3389,15 @@ bwi_calibrate(void *xsc)
 	}
 
 	lwkt_serialize_exit(ifp->if_serializer);
+}
+
+static int
+bwi_calc_rssi(struct bwi_softc *sc, const struct bwi_rxbuf_hdr *hdr)
+{
+	struct bwi_mac *mac;
+
+	KKASSERT(sc->sc_cur_regwin->rw_type == BWI_REGWIN_T_MAC);
+	mac = (struct bwi_mac *)sc->sc_cur_regwin;
+
+	return bwi_rf_calc_rssi(mac, hdr);
 }
