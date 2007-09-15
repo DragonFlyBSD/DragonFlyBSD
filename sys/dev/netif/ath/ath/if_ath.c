@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_ath.c,v 1.94.2.23 2006/07/10 01:15:24 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.7 2007/02/22 05:17:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.8 2007/09/15 21:24:59 swildner Exp $
  */
 
 /*
@@ -4779,7 +4779,7 @@ ath_getchannels(struct ath_softc *sc, u_int cc,
 	    cc, HAL_MODE_ALL, outdoor, xchanmode)) {
 		uint32_t rd;
 
-		ath_hal_getregdomain(ah, &rd);
+		(void) ath_hal_getregdomain(ah, &rd);
 		if_printf(ifp, "unable to collect channel list from hal; "
 			"regdomain likely %u country code %u\n", rd, cc);
 		kfree(chans, M_TEMP);
@@ -4897,13 +4897,13 @@ ath_update_txpow(struct ath_softc *sc)
 	if (sc->sc_curtxpow != ic->ic_txpowlimit) {
 		ath_hal_settxpowlimit(ah, ic->ic_txpowlimit);
 		/* read back in case value is clamped */
-		ath_hal_gettxpowlimit(ah, &txpow);
+		(void) ath_hal_gettxpowlimit(ah, &txpow);
 		ic->ic_txpowlimit = sc->sc_curtxpow = txpow;
 	}
 	/* 
 	 * Fetch max tx power level for status requests.
 	 */
-	ath_hal_getmaxtxpow(sc->sc_ah, &txpow);
+	(void) ath_hal_getmaxtxpow(sc->sc_ah, &txpow);
 	ic->ic_bss->ni_txpower = txpow;
 }
 
@@ -5409,7 +5409,7 @@ ath_sysctl_tpscale(SYSCTL_HANDLER_ARGS)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	ath_hal_gettpscale(sc->sc_ah, &scale);
+	(void) ath_hal_gettpscale(sc->sc_ah, &scale);
 	error = sysctl_handle_int(oidp, &scale, 0, req);
 	if (error || !req->newptr)
 		goto back;
@@ -5477,7 +5477,7 @@ ath_sysctl_rfsilent(SYSCTL_HANDLER_ARGS)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	ath_hal_getrfsilent(sc->sc_ah, &rfsilent);
+	(void) ath_hal_getrfsilent(sc->sc_ah, &rfsilent);
 	error = sysctl_handle_int(oidp, &rfsilent, 0, req);
 	if (error || !req->newptr)
 		goto back;
@@ -5526,7 +5526,7 @@ ath_sysctl_tpack(SYSCTL_HANDLER_ARGS)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	ath_hal_gettpack(sc->sc_ah, &tpack);
+	(void) ath_hal_gettpack(sc->sc_ah, &tpack);
 	error = sysctl_handle_int(oidp, &tpack, 0, req);
 	if (error || !req->newptr)
 		goto back;
@@ -5546,7 +5546,7 @@ ath_sysctl_tpcts(SYSCTL_HANDLER_ARGS)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	ath_hal_gettpcts(sc->sc_ah, &tpcts);
+	(void) ath_hal_gettpcts(sc->sc_ah, &tpcts);
 	error = sysctl_handle_int(oidp, &tpcts, 0, req);
 	if (error || !req->newptr)
 		goto back;
