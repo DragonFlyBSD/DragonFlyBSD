@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.2 2007/09/15 09:59:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.3 2007/09/15 10:53:31 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -2476,9 +2476,9 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 		wh_ofs = hdr_extra + 6;
 
 		buflen = le16toh(hdr->rxh_buflen);
-		if (buflen <= wh_ofs) {
-			if_printf(ifp, "zero length data, hdr_extra %d\n",
-				  hdr_extra);
+		if (buflen < BWI_FRAME_MIN_LEN(wh_ofs)) {
+			if_printf(ifp, "short frame %d, hdr_extra %d\n",
+				  buflen, hdr_extra);
 			ifp->if_ierrors++;
 			m_freem(m);
 			goto next;

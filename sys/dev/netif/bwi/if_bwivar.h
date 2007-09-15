@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.2 2007/09/15 09:59:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.3 2007/09/15 10:53:31 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -56,6 +56,8 @@
 #define BWI_LGRETRY_FB		2
 
 #define BWI_NOISE_FLOOR		-95	/* TODO: noise floor calc */
+#define BWI_FRAME_MIN_LEN(hdr)	\
+	((hdr) + sizeof(struct ieee80211_frame_ack) + IEEE80211_CRC_LEN)
 
 #define CSR_READ_4(sc, reg)		\
 	bus_space_read_4((sc)->sc_mem_bt, (sc)->sc_mem_bh, (reg))
