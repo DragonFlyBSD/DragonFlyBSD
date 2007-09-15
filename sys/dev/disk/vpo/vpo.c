@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.9 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.10 2007/09/15 20:06:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -356,10 +356,10 @@ vpo_action(struct cam_sim *sim, union ccb *ccb)
 		ccg = &ccb->ccg;
 
 #ifdef VP0_DEBUG
-		kprintf("vpo%d: XPT_CALC_GEOMETRY (bs=%d,vs=%d,c=%d,h=%d,spt=%d) request\n",
+		kprintf("vpo%d: XPT_CALC_GEOMETRY (bs=%d,vs=%ju,c=%d,h=%d,spt=%d) request\n",
 			vpo->vpo_unit,
 			ccg->block_size,
-			ccg->volume_size,
+			(uintmax_t)ccg->volume_size,
 			ccg->cylinders,
 			ccg->heads,
 			ccg->secs_per_track);

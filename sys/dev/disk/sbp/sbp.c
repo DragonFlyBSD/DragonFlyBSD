@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.23 2007/05/01 00:05:17 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.24 2007/09/15 20:06:38 swildner Exp $
  *
  */
 
@@ -2375,19 +2375,11 @@ kprintf("ORB %08x %08x %08x %08x\n", ntohl(ocb->orb[4]), ntohl(ocb->orb[5]), nto
 			break;
 		}
 SBP_DEBUG(1)
-		kprintf("%s:%d:%d:%d:XPT_CALC_GEOMETRY: "
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-			"Volume size = %d\n",
-#else
-			"Volume size = %jd\n",
-#endif
+		kprintf("%s:%d:%d:%d:XPT_CALC_GEOMETRY: Volume size = %ju\n",
 			device_get_nameunit(sbp->fd.dev),
 			cam_sim_path(sbp->sim),
 			ccb->ccb_h.target_id, ccb->ccb_h.target_lun,
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-			(uintmax_t)
-#endif
-				ccg->volume_size);
+			(uintmax_t)ccg->volume_size);
 END_DEBUG
 
 #if defined(__DragonFly__) || __FreeBSD_version < 501100

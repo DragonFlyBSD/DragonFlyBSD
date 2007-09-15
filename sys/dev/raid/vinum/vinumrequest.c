@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.20 2007/07/31 18:13:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.21 2007/09/15 20:06:39 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -631,11 +631,11 @@ bre(struct request *rq,
 #if VINUMDEBUG
 		    if (debug & DEBUG_EOFINFO) {	    /* tell on the request */
 			log(LOG_DEBUG,
-			    "vinum: EOF on plex %s, sd %s offset %llx (user offset %x)\n",
+			    "vinum: EOF on plex %s, sd %s offset %jx (user offset %jx)\n",
 			    plex->name,
 			    sd->name,
-			    (u_int) sd->sectors,
-			    bp->b_bio1.bio_offset);
+			    (uintmax_t)sd->sectors,
+			    (uintmax_t)bp->b_bio1.bio_offset);
 			log(LOG_DEBUG,
 			    "vinum: stripebase %x, stripeoffset %x, blockoffset %x\n",
 			    stripebase,
