@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_output.c,v 1.26.2.8 2006/09/02 15:06:04 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.23 2007/08/22 13:41:10 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_output.c,v 1.24 2007/09/15 07:19:23 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -1789,8 +1789,10 @@ ieee80211_pwrsave(struct ieee80211com *ic, struct ieee80211_node *ni,
 			ni->ni_macaddr, ":",
 			ni->ni_savedq.ifq_drops, IEEE80211_PS_MAX_QUEUE);
 #ifdef IEEE80211_DEBUG
-		if (ieee80211_msg_dumppkts(ic))
-			ieee80211_dump_pkt(mtod(m, caddr_t), m->m_len, -1, -1);
+		if (ieee80211_msg_dumppkts(ic)) {
+			ieee80211_dump_pkt(mtod(m, uint8_t *), m->m_len,
+					   -1, -1);
+		}
 #endif
 		m_freem(m);
 		return;

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_tkip.c,v 1.9.2.2 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_tkip/ieee80211_crypto_tkip.c,v 1.5 2007/05/07 14:12:16 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_tkip/ieee80211_crypto_tkip.c,v 1.6 2007/09/15 07:19:23 sephe Exp $
  */
 
 /*
@@ -431,7 +431,7 @@ tkip_demic(struct ieee80211_key *k, struct mbuf *m, int force)
 			m, hdrlen, m->m_pkthdr.len - (hdrlen + tkip.ic_miclen),
 			mic);
 		m_copydata(m, m->m_pkthdr.len - tkip.ic_miclen,
-			tkip.ic_miclen, mic0);
+			tkip.ic_miclen, (caddr_t)mic0);
 		if (memcmp(mic, mic0, tkip.ic_miclen)) {
 			/* NB: 802.11 layer handles statistic and debug msg */
 			ieee80211_notify_michael_failure(ic, wh,

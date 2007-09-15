@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_ccmp.c,v 1.7.2.1 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c,v 1.5 2007/05/07 14:12:16 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c,v 1.6 2007/09/15 07:19:23 sephe Exp $
  */
 
 /*
@@ -628,9 +628,11 @@ ccmp_decrypt(struct ieee80211_key *key, uint64_t pn, struct mbuf *m, int hdrlen)
 	ctx->cc_ic->ic_stats.is_crypto_ccmp++;
 
 	wh = mtod(m, struct ieee80211_frame *);
-	data_len = m->m_pkthdr.len - (hdrlen + ccmp.ic_header + ccmp.ic_trailer);
+	data_len = m->m_pkthdr.len -
+		   (hdrlen + ccmp.ic_header + ccmp.ic_trailer);
 	ccmp_init_blocks(&ctx->cc_aes, wh, pn, data_len, b0, aad, a, b);
-	m_copydata(m, m->m_pkthdr.len - ccmp.ic_trailer, ccmp.ic_trailer, mic);
+	m_copydata(m, m->m_pkthdr.len - ccmp.ic_trailer, ccmp.ic_trailer,
+		   (caddr_t)mic);
 	xor_block(mic, b, ccmp.ic_trailer);
 
 	i = 1;

@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.11 2007/08/22 13:24:44 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.12 2007/09/15 07:19:23 sephe Exp $
  */
 
 /*
@@ -191,7 +191,7 @@ ieee80211_getmgtframe(uint8_t **frm, int headroom, u_int pktlen)
 		m = m_getcl(MB_DONTWAIT, MT_HEADER, M_PKTHDR);
 	if (m != NULL) {
 		m->m_data += headroom;
-		*frm = m->m_data;
+		*frm = mtod(m, uint8_t *);
 	}
 	return m;
 }
