@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.91 2004/11/05 17:46:14 kent Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.14.2.2 2006/04/04 17:34:10 ariff Exp $ */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.17 2007/07/03 06:38:36 hasso Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.18 2007/09/15 21:28:15 swildner Exp $: */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -274,7 +274,7 @@ static const char *uaudio_get_terminal_name(int);
 #endif
 static int	uaudio_determine_class
 	(const struct io_terminal *, struct mixerctl *);
-static const int uaudio_feature_name(const struct io_terminal *,
+static int	uaudio_feature_name(const struct io_terminal *,
 		    struct mixerctl *);
 static void	uaudio_add_feature
 	(struct uaudio_softc *, const struct io_terminal *, int);
@@ -891,7 +891,7 @@ uaudio_determine_class(const struct io_terminal *iot, struct mixerctl *mix)
 	return terminal_type;
 }
 
-const int 
+static int 
 uaudio_feature_name(const struct io_terminal *iot, struct mixerctl *mix)
 {
 	int terminal_type;

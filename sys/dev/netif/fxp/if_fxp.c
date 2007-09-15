@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.49 2007/03/30 14:07:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.50 2007/09/15 21:28:15 swildner Exp $
  */
 
 /*
@@ -233,7 +233,7 @@ static void		fxp_ifmedia_sts(struct ifnet *ifp,
 static int		fxp_serial_ifmedia_upd(struct ifnet *ifp);
 static void		fxp_serial_ifmedia_sts(struct ifnet *ifp,
 			    struct ifmediareq *ifmr);
-static volatile int	fxp_miibus_readreg(device_t dev, int phy, int reg);
+static int		fxp_miibus_readreg(device_t dev, int phy, int reg);
 static void		fxp_miibus_writereg(device_t dev, int phy, int reg,
 			    int value);
 static void		fxp_load_ucode(struct fxp_softc *sc);
@@ -1930,7 +1930,7 @@ fxp_add_rfabuf(struct fxp_softc *sc, struct mbuf *oldm)
 	return (m == oldm);
 }
 
-static volatile int
+static int
 fxp_miibus_readreg(device_t dev, int phy, int reg)
 {
 	struct fxp_softc *sc = device_get_softc(dev);
