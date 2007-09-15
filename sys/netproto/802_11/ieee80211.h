@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.h,v 1.9.2.2 2006/08/10 06:07:49 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.7 2007/04/01 13:59:40 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.8 2007/09/15 07:12:03 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_H_
 #define _NET80211_IEEE80211_H_
@@ -431,7 +431,7 @@ struct ieee80211_country_ie {
 		uint8_t schan;			/* starting channel */
 		uint8_t nchan;			/* number channels */
 		uint8_t maxtxpwr;		/* tx power cap */
-	} band[4] __packed;			/* up to 4 sub bands */
+	} __packed band[4];			/* up to 4 sub bands */
 } __packed;
 
 #define IEEE80211_CHALLENGE_LEN		128
