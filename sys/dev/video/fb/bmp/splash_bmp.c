@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/bmp/splash_bmp.c,v 1.10.2.3 2000/10/31 08:00:06 nyan Exp $
- * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.9 2006/12/22 23:26:27 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.10 2007/09/15 13:18:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -167,44 +167,44 @@ bmp_splash(video_adapter_t *adp, int on)
 */
 
 typedef struct tagBITMAPFILEHEADER {    /* bmfh */
-    u_short	bfType		__attribute__ ((packed));
-    int		bfSize		__attribute__ ((packed));
-    u_short	bfReserved1	__attribute__ ((packed));
-    u_short	bfReserved2	__attribute__ ((packed));
-    int		bfOffBits	__attribute__ ((packed));
-} BITMAPFILEHEADER;
+    u_short	bfType;
+    int		bfSize;
+    u_short	bfReserved1;
+    u_short	bfReserved2;
+    int		bfOffBits;
+} __packed BITMAPFILEHEADER;
 
 typedef struct tagBITMAPINFOHEADER {    /* bmih */
-    int		biSize		__attribute__ ((packed));
-    int		biWidth		__attribute__ ((packed));
-    int		biHeight	__attribute__ ((packed));
-    short	biPlanes	__attribute__ ((packed));
-    short	biBitCount	__attribute__ ((packed));
-    int		biCompression	__attribute__ ((packed));
-    int		biSizeImage	__attribute__ ((packed));
-    int		biXPelsPerMeter	__attribute__ ((packed));
-    int		biYPelsPerMeter	__attribute__ ((packed));
-    int		biClrUsed	__attribute__ ((packed));
-    int		biClrImportant	__attribute__ ((packed));
-} BITMAPINFOHEADER;
+    int		biSize;
+    int		biWidth;
+    int		biHeight;
+    short	biPlanes;
+    short	biBitCount;
+    int		biCompression;
+    int		biSizeImage;
+    int		biXPelsPerMeter;
+    int		biYPelsPerMeter;
+    int		biClrUsed;
+    int		biClrImportant;
+} __packed BITMAPINFOHEADER;
 
 typedef struct tagRGBQUAD {     /* rgbq */
-    u_char	rgbBlue		__attribute__ ((packed));
-    u_char	rgbGreen	__attribute__ ((packed));
-    u_char	rgbRed		__attribute__ ((packed));
-    u_char	rgbReserved	__attribute__ ((packed));
-} RGBQUAD;
+    u_char	rgbBlue;
+    u_char	rgbGreen;
+    u_char	rgbRed;
+    u_char	rgbReserved;
+} __packed RGBQUAD;
 
 typedef struct tagBITMAPINFO {  /* bmi */
-    BITMAPINFOHEADER	bmiHeader	__attribute__ ((packed));
-    RGBQUAD		bmiColors[256]	__attribute__ ((packed));
-} BITMAPINFO;
+    BITMAPINFOHEADER	bmiHeader;
+    RGBQUAD		bmiColors[256];
+} __packed BITMAPINFO;
 
 typedef struct tagBITMAPF
 {
-    BITMAPFILEHEADER	bmfh	__attribute__ ((packed));
-    BITMAPINFO		bmfi	__attribute__ ((packed));
-} BITMAPF;
+    BITMAPFILEHEADER	bmfh;
+    BITMAPINFO		bmfi;
+} __packed BITMAPF;
 
 #define BI_RGB		0
 #define BI_RLE8		1

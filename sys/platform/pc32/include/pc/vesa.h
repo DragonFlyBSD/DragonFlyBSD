@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pc/vesa.h,v 1.7 1999/12/29 04:33:12 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pc/vesa.h,v 1.4 2005/05/07 13:06:44 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pc/vesa.h,v 1.5 2007/09/15 13:18:40 swildner Exp $
  */
 
 #ifndef _MACHINE_PC_VESA_H
@@ -32,21 +32,21 @@
 
 struct vesa_info {
 	/* mandatory fields */
-	uint8_t		v_sig[4] __attribute__ ((packed));	/* VESA */
-	uint16_t	v_version __attribute__ ((packed));	/* ver in BCD */
-	uint32_t	v_oemstr __attribute__ ((packed));	/* OEM string */
-	uint32_t	v_flags __attribute__ ((packed));	/* flags */
+	uint8_t		v_sig[4];	/* VESA */
+	uint16_t	v_version;	/* ver in BCD */
+	uint32_t	v_oemstr;	/* OEM string */
+	uint32_t	v_flags;	/* flags */
 #define V_DAC8		(1<<0)
 #define V_NONVGA	(1<<1)
 #define V_SNOW		(1<<2)
-	uint32_t	v_modetable __attribute__ ((packed));	/* modes */
-	uint16_t	v_memsize __attribute__ ((packed));	/* in 64K */
+	uint32_t	v_modetable;	/* modes */
+	uint16_t	v_memsize;	/* in 64K */
 	/* 2.0 */
-	uint16_t	v_revision __attribute__ ((packed));	/* software rev */
-	uint32_t	v_vendorstr __attribute__ ((packed));	/* vendor */
-	uint32_t	v_prodstr __attribute__ ((packed));	/* product name */
-	uint32_t	v_revstr __attribute__ ((packed));	/* product rev */
-};
+	uint16_t	v_revision;	/* software rev */
+	uint32_t	v_vendorstr;	/* vendor */
+	uint32_t	v_prodstr;	/* product name */
+	uint32_t	v_revstr;	/* product rev */
+} __packed;
 
 struct vesa_mode  {
 	/* mandatory fields */

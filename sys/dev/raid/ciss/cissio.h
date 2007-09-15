@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/cissio.h,v 1.1.2.1 2001/12/12 06:38:16 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/cissio.h,v 1.3 2005/02/12 00:23:02 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/cissio.h,v 1.4 2007/09/15 13:18:40 swildner Exp $
  */
 
 /*
@@ -109,18 +109,18 @@ typedef union {
 	u_int8_t	Dev;
 	u_int8_t	Bus:6;
 	u_int8_t	Mode:2;
-    } PeripDev __attribute__ ((__packed__));
+    } __packed PeripDev;
     struct {
 	u_int8_t	DevLSB;
 	u_int8_t	DevMSB:6;
 	u_int8_t	Mode:2;
-    } LogDev __attribute__ ((__packed__));
+    } __packed LogDev;
     struct {
 	u_int8_t	Dev:5;
 	u_int8_t	Bus:3;
 	u_int8_t	Targ:6;
 	u_int8_t	Mode:2;
-    } LogUnit __attribute__ ((__packed__));
+    } __packed LogUnit;
 } SCSI3Addr_struct;
 
 typedef struct {
@@ -149,7 +149,7 @@ typedef struct {
 	u_int8_t	Type:3;
 	u_int8_t	Attribute:3;
 	u_int8_t	Direction:2;
-    } Type __attribute__ ((__packed__));
+    } __packed Type;
     u_int16_t	Timeout;
     u_int8_t	CDB[16];
 } RequestBlock_struct;
@@ -159,13 +159,13 @@ typedef union {
 	u_int8_t	Reserved[3];
 	u_int8_t	Type;
 	u_int32_t	ErrorInfo;
-    } Common_Info __attribute__ ((__packed__));
+    } __packed Common_Info;
     struct {
 	u_int8_t	Reserved[2];
 	u_int8_t	offense_size;
 	u_int8_t	offense_num;
 	u_int32_t	offense_value;
-    } Invalid_Cmd __attribute__ ((__packed__));
+    } __packed Invalid_Cmd;
 } MoreErrInfo_struct;
 
 typedef struct {
