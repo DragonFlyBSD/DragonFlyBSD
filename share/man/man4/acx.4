@@ -28,14 +28,14 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/acx.4,v 1.7 2007/07/04 16:52:40 swildner Exp $
+.\" $DragonFly: src/share/man/man4/acx.4,v 1.8 2007/09/15 09:58:06 swildner Exp $
 .\"
-.Dd March 24, 2006
+.Dd September 15, 2007
 .Dt ACX 4
 .Os
 .Sh NAME
 .Nm acx
-.Nd Texas Instruments ACX100/TNETW1130(ACX111) IEEE 802.11 driver
+.Nd Texas Instruments ACX100/ACX111 IEEE 802.11a/b/g wireless network driver
 .Sh SYNOPSIS
 To compile this driver into the kernel, place the following lines in
 your kernel configuration file:
@@ -55,19 +55,23 @@ if_acx_load="YES"
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for Texas Instruments ACX100 or
-TNETW1130 (aka ACX111) based PCI and Cardbus network adapters.
+driver provides support for Texas Instruments TNETW1100/TNETW1100B (ACX100)
+and TNETW1130 (ACX111) based PCI/CardBus network adapters.
+.Pp
+The ACX100A and ACX100B are first generation 802.11b devices
+from TI.
+The ACX111 is a second generation device which supports 802.11b/g
+and in some cases 802.11a.
 .Pp
 By default, the
 .Nm
 driver configures the adapter for BSS operation (infrastructure mode).
-This mode requires the use of an access point. In addition, IBSS
-operation (adhoc mode) is also supported.
-For more
-information on configuring this device, see
+This mode requires the use of an access point.
+In addition, IBSS operation (adhoc mode) is also supported.
+For more information on configuring this device, see
 .Xr ifconfig 8 .
 .Ss MIB Variables
-A number of per-interface variables are implemented in the
+The following per-interface variables are implemented in the
 .Va hw.acx Ns Em X
 branch of the
 .Xr sysctl 3
@@ -77,34 +81,47 @@ MIB.
 MSDU life time.
 .El
 .Sh HARDWARE
-The following cards are known to work with the
+The following cards are among those supported by the
 .Nm
 driver:
 .Pp
-.Bl -bullet -compact
-.It
-D-Link DWL-520+
-.It
-D-Link DWL-650+
-.It
-D-Link DWL-G520+
-.It
-D-Link DWL-G650+
+.Bl -column -compact "Microcom Travelcard" "ACX111" "CardBus" "a/b/g" -offset 6n
+.Em "Card	Chip	Bus	Standard"
+D-Link DWL-520+	ACX100	PCI	b
+D-Link DWL-650+	ACX100	CardBus	b
+D-Link DWL-G520+	ACX111	PCI	b/g
+D-Link DWL-G630+	ACX111	CardBus	b/g
+D-Link DWL-G650+	ACX111	CardBus	b/g
+Ergenic ERG WL-003	ACX100	CardBus	b
+Hamlet HNWP254	ACX111	CardBus	b/g
+Hawking HWP54G	ACX111	PCI	b/g
+Linksys WPC54Gv2	ACX111	CardBus	b/g
+Microcom Travelcard	ACX111	CardBus	b/g
+Netgear WG311v2	ACX111	PCI	b/g
+Sceptre SC254W+	ACX111	CardBus	b/g
+Tornado/ADT 211g	ACX111	PCI	b/g
+USR USR5410	ACX111	CardBus	b/g
+USR USR5416	ACX111	PCI	b/g
+ZyXEL G-160	ACX111	CardBus	b/g
+ZyXEL G-360 EE	ACX111	PCI	b/g
 .El
 .Sh FILES
 The firmware for the adapter is not shipped with
 .Dx
 and must be obtained separately.
-Check the disk/CD shipped with the adapter or
-.Pp
-.Pa ftp://ftp.dlink.co.uk/wireless
+An archive with firmware files that are known to work can be found at:
+.Bd -literal -offset indent
+http://leaf.dragonflybsd.org/~sephe/acx/acx_fw.tbz
+.Ed
 .Pp
 See
 .Xr acxcontrol 8
 for more information on loading firmware.
-.\" XXX .Sh DIAGNOSTICS
 .Sh SEE ALSO
+.Xr arp 4 ,
+.Xr cardbus 4 ,
 .Xr ifmedia 4 ,
+.Xr pci 4 ,
 .Xr wlan_ratectl 4 ,
 .Xr acxcontrol 8 ,
 .Xr hostapd 8 ,
