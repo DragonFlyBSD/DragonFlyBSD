@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.13 2007/08/01 12:35:29 swildner Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.14 2007/09/15 23:52:49 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,8 @@ typedef struct ng_eiface_private *priv_p;
 /* Interface methods */
 static void	ng_eiface_init(void *xsc);
 static void	ng_eiface_start(struct ifnet *ifp);
-static int	ng_eiface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
+static int	ng_eiface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
+				struct ucred *cr);
 #ifdef DEBUG
 static void	ng_eiface_print_ioctl(struct ifnet *ifp, int cmd, caddr_t data);
 #endif
@@ -133,20 +134,20 @@ static int ng_eiface_next_unit;
  * Process an ioctl for the virtual interface
  */
 static int
-ng_eiface_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+ng_eiface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifreq *const ifr = (struct ifreq *) data;
 	int error = 0;
 
 #ifdef DEBUG
-	ng_eiface_print_ioctl(ifp, command, data);
+	ng_eiface_print_ioctl(ifp, cmd, data);
 #endif
 	crit_enter();
-	switch (command) {
+	switch (cmd) {
 
 	/* These two are mostly handled at a higher layer */
 	case SIOCSIFADDR:
-		error = ether_ioctl(ifp, command, data);
+		error = ether_ioctl(ifp, cmd, data);
 		break;
 	case SIOCGIFADDR:
 		break;
@@ -270,11 +271,11 @@ ng_eiface_start(struct ifnet *ifp)
  */
 
 static void
-ng_eiface_print_ioctl(struct ifnet *ifp, int command, caddr_t data)
+ng_eiface_print_ioctl(struct ifnet *ifp, int cmd, caddr_t data)
 {
 	char   *str;
 
-	switch (command & IOC_DIRMASK) {
+	switch (cmd & IOC_DIRMASK) {
 	case IOC_VOID:
 		str = "IO";
 		break;
@@ -293,9 +294,9 @@ ng_eiface_print_ioctl(struct ifnet *ifp, int command, caddr_t data)
 	log(LOG_DEBUG, "%s: %s('%c', %d, char[%d])\n",
 	       ifp->if_xname,
 	       str,
-	       IOCGROUP(command),
-	       command & 0xff,
-	       IOCPARM_LEN(command));
+	       IOCGROUP(cmd),
+	       cmd & 0xff,
+	       IOCPARM_LEN(cmd));
 }
 #endif /* DEBUG */
 
