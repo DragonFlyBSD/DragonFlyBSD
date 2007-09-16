@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.3 2007/09/16 04:24:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.4 2007/09/16 10:20:15 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1628,6 +1628,7 @@ bwi_mac_attach(struct bwi_softc *sc, int id, uint8_t rev)
 		DPRINTF(sc, "%s\n", "has TX stats");
 	}
 
+	device_printf(sc->sc_dev, "MAC: rev %u\n", rev);
 	return 0;
 }
 

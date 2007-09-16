@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.6 2007/09/16 09:58:27 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.7 2007/09/16 10:20:15 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -835,7 +835,7 @@ bwi_bbp_attach(struct bwi_softc *sc)
 	sc->sc_bbp_id = bbp_id;
 	sc->sc_bbp_rev = __SHIFTOUT(info, BWI_INFO_BBPREV_MASK);
 	sc->sc_bbp_pkg = __SHIFTOUT(info, BWI_INFO_BBPPKG_MASK);
-	device_printf(sc->sc_dev, "BBP id 0x%04x, BBP rev 0x%x, BBP pkg %d\n",
+	device_printf(sc->sc_dev, "BBP: id 0x%04x, rev 0x%x, pkg %d\n",
 		      sc->sc_bbp_id, sc->sc_bbp_rev, sc->sc_bbp_pkg);
 
 	DPRINTF(sc, "nregwin %d, cap 0x%08x\n", nregwin, sc->sc_cap);
