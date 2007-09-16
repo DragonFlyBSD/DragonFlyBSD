@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.36 2007/07/03 17:40:51 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.37 2007/09/16 17:02:49 pavalos Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -200,8 +200,7 @@ tapcreate(cdev_t dev)
 	char			*name = NULL;
 
 	/* allocate driver storage and create device */
-	MALLOC(tp, struct tap_softc *, sizeof(*tp), M_TAP, M_WAITOK);
-	bzero(tp, sizeof(*tp));
+	MALLOC(tp, struct tap_softc *, sizeof(*tp), M_TAP, M_WAITOK | M_ZERO);
 
 	/* select device: tap or vmnet */
 	if (minor(dev) & VMNET_DEV_MASK) {
@@ -406,7 +405,7 @@ tapifinit(void *xtp)
  *
  * MPSAFE
  */
-int
+static int
 tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct tap_softc 	*tp = (struct tap_softc *)(ifp->if_softc);
@@ -835,7 +834,7 @@ static void filt_tapdetach(struct knote *kn);
 static struct filterops tapread_filtops =
 	{ 1, NULL, filt_tapdetach, filt_tapread };
 
-int
+static int
 tapkqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
