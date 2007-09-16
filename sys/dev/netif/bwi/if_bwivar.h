@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.4 2007/09/16 04:24:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.5 2007/09/16 08:25:41 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -181,13 +181,18 @@ struct bwi_txstats {
 	/* Little endian */
 	uint8_t		txs_pad1[4];
 	uint16_t	txs_id;
-	uint8_t		txs_flags;
-	uint8_t		txs_retry_cnt;
+	uint8_t		txs_flags;	/* BWI_TXS_F_ */
+	uint8_t		txs_txcnt;	/* BWI_TXS_TXCNT_ */
 	uint8_t		txs_pad2[2];
 	uint16_t	txs_seq;
 	uint16_t	txs_unknown;
-	uint8_t		txs_pad3[2];		/* Padded to 16bytes */
+	uint8_t		txs_pad3[2];	/* Padded to 16bytes */
 } __packed;
+
+#define BWI_TXS_TXCNT_DATA	__BITS(7, 4)
+
+#define BWI_TXS_F_ACKED		__BIT(0)
+#define BWI_TXS_F_PENDING	__BIT(5)
 
 struct bwi_ring_data {
 	uint32_t		rdata_txrx_ctrl;

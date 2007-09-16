@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.4 2007/09/16 04:24:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.5 2007/09/16 08:25:41 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -130,7 +130,7 @@ static void	bwi_txeof_status64(struct bwi_softc *);
 
 static void	bwi_intr(void *);
 static void	bwi_rxeof(struct bwi_softc *, int);
-static void	_bwi_txeof(struct bwi_softc *, uint16_t);
+static void	_bwi_txeof(struct bwi_softc *, uint16_t, int, int);
 static void	bwi_txeof(struct bwi_softc *);
 static void	bwi_txeof_status(struct bwi_softc *, int);
 static void	bwi_enable_intrs(struct bwi_softc *, uint32_t);
@@ -3043,7 +3043,7 @@ bwi_txeof_status64(struct bwi_softc *sc)
 }
 
 static void
-_bwi_txeof(struct bwi_softc *sc, uint16_t tx_id)
+_bwi_txeof(struct bwi_softc *sc, uint16_t tx_id, int acked, int data_txcnt)
 {
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	struct bwi_txbuf_data *tbd;
@@ -3075,6 +3075,7 @@ _bwi_txeof(struct bwi_softc *sc, uint16_t tx_id)
 	tb->tb_mbuf = NULL;
 
 	if (tb->tb_ni != NULL) {
+		/* Feed back 'acked and data_txcnt' */
 		ieee80211_free_node(tb->tb_ni);
 		tb->tb_ni = NULL;
 	}
@@ -3095,7 +3096,17 @@ bwi_txeof_status(struct bwi_softc *sc, int end_idx)
 
 	idx = st->stats_idx;
 	while (idx != end_idx) {
-		_bwi_txeof(sc, le16toh(st->stats[idx].txs_id));
+		const struct bwi_txstats *stats = &st->stats[idx];
+
+		if ((stats->txs_flags & BWI_TXS_F_PENDING) == 0) {
+			int data_txcnt;
+
+			data_txcnt = __SHIFTOUT(stats->txs_txcnt,
+						BWI_TXS_TXCNT_DATA);
+			_bwi_txeof(sc, le16toh(stats->txs_id),
+				   stats->txs_flags & BWI_TXS_F_ACKED,
+				   data_txcnt);
+		}
 		idx = (idx + 1) % BWI_TXSTATS_NDESC;
 	}
 	st->stats_idx = idx;
@@ -3121,7 +3132,7 @@ bwi_txeof(struct bwi_softc *sc)
 		if (tx_info & 0x30) /* XXX */
 			continue;
 
-		_bwi_txeof(sc, tx_id);
+		_bwi_txeof(sc, tx_id, 0, 0);
 	}
 
 	if ((ifp->if_flags & IFF_OACTIVE) == 0)
