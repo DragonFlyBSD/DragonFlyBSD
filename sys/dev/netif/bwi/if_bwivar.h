@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.5 2007/09/16 08:25:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.6 2007/09/16 11:53:36 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -582,9 +582,15 @@ struct bwi_softc {
 
 	void			(*sc_txeof_status)(struct bwi_softc *);
 
-	/* Sysctl variables */
+	struct sysctl_ctx_list	sc_sysctl_ctx;
+	struct sysctl_oid	*sc_sysctl_tree;
+
+	/*
+	 * Sysctl variables
+	 */
 	int			sc_fw_version;	/* BWI_FW_VERSION[34] */
 	int			sc_dwell_time;	/* milliseconds */
+	uint32_t		sc_debug;
 };
 
 #define BWI_F_BUS_INITED	0x1

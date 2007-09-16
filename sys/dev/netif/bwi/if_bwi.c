@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.8 2007/09/16 11:31:20 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.9 2007/09/16 11:53:36 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -416,6 +416,39 @@ bwi_attach(device_t dev)
 		goto fail;
 	}
 
+	/*
+	 * Initialize sysctl variables
+	 */
+	sc->sc_fw_version = BWI_FW_VERSION3;
+	sc->sc_dwell_time = 200;
+
+	/*
+	 * Create sysctl tree
+	 */
+	sysctl_ctx_init(&sc->sc_sysctl_ctx);
+	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
+					     SYSCTL_STATIC_CHILDREN(_hw),
+					     OID_AUTO,
+					     device_get_nameunit(dev),
+					     CTLFLAG_RD, 0, "");
+	if (sc->sc_sysctl_tree == NULL) {
+		device_printf(dev, "can't add sysctl node\n");
+		error = ENXIO;
+		goto fail;
+	}
+
+	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			"dwell_time", CTLFLAG_RW, &sc->sc_dwell_time, 0,
+			"Channel dwell time during scan (msec)");
+	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			"fw_version", CTLFLAG_RD, &sc->sc_fw_version, 0,
+			"Firmware version");
+	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			"debug", CTLFLAG_RW, &sc->sc_debug, 0, "Debug flags");
+
 	bwi_power_on(sc, 1);
 
 	error = bwi_bbp_attach(sc);
@@ -537,9 +570,6 @@ bwi_attach(device_t dev)
 		panic("unknown phymode %d\n", phy->phy_mode);
 	}
 
-	sc->sc_fw_version = BWI_FW_VERSION3;
-	sc->sc_dwell_time = 200;
-
 	ic->ic_caps = IEEE80211_C_SHSLOT |
 		      IEEE80211_C_SHPREAMBLE |
 		      IEEE80211_C_WPA |
@@ -612,6 +642,9 @@ bwi_detach(device_t dev)
 		for (i = 0; i < sc->sc_nmac; ++i)
 			bwi_mac_detach(&sc->sc_mac[i]);
 	}
+
+	if (sc->sc_sysctl_tree != NULL)
+		sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	if (sc->sc_irq_res != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, sc->sc_irq_rid,
