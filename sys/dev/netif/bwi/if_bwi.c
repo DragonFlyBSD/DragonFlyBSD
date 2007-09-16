@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.7 2007/09/16 10:20:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.8 2007/09/16 11:31:20 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,7 @@ static void	bwi_calibrate(void *);
 static int	bwi_stop(struct bwi_softc *);
 static int	bwi_newbuf(struct bwi_softc *, int, int);
 static int	bwi_encap(struct bwi_softc *, int, struct mbuf *,
-			  struct ieee80211_node *);
+			  struct ieee80211_node **, int);
 
 static void	bwi_init_rxdesc_ring32(struct bwi_softc *, uint32_t,
 				       bus_addr_t, int, int);
@@ -1407,12 +1407,7 @@ bwi_start(struct ifnet *ifp)
 		}
 		wh = NULL;	/* Catch any invalid use */
 
-		if (mgt_pkt) {
-			ieee80211_free_node(ni);
-			ni = NULL;
-		}
-
-		if (bwi_encap(sc, idx, m, ni) != 0) {
+		if (bwi_encap(sc, idx, m, &ni, mgt_pkt) != 0) {
 			/* 'm' is freed in bwi_encap() if we reach here */
 			if (ni != NULL)
 				ieee80211_free_node(ni);
@@ -2806,9 +2801,10 @@ bwi_plcp_header(void *plcp, int pkt_len, uint8_t rate)
 
 static int
 bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
-	  struct ieee80211_node *ni)
+	  struct ieee80211_node **ni0, int mgt_pkt)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211_node *ni = *ni0;
 	struct bwi_ring_data *rd = &sc->sc_tx_rdata[BWI_TX_DATA_RING];
 	struct bwi_txbuf_data *tbd = &sc->sc_tx_bdata[BWI_TX_DATA_RING];
 	struct bwi_txbuf *tb = &tbd->tbd_buf[idx];
@@ -2819,12 +2815,13 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 	uint32_t mac_ctrl;
 	uint16_t phy_ctrl;
 	bus_addr_t paddr;
-	int pkt_len, error;
+	int pkt_len, error, mcast_pkt = 0;
 #if 0
 	const uint8_t *p;
 	int i;
 #endif
 
+	KKASSERT(ni != NULL);
 	KKASSERT(sc->sc_cur_regwin->rw_type == BWI_REGWIN_T_MAC);
 	mac = (struct bwi_mac *)sc->sc_cur_regwin;
 
@@ -2837,7 +2834,7 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 	 * Find TX rate
 	 */
 	bzero(tb->tb_rate_idx, sizeof(tb->tb_rate_idx));
-	if (ni != NULL) {
+	if (!mgt_pkt) {
 		if (ic->ic_fixed_rate != IEEE80211_FIXED_RATE_NONE) {
 			int idx;
 
@@ -2858,10 +2855,13 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 		rate = rate_fb = (1 * 2);
 	}
 
-	if (IEEE80211_IS_MULTICAST(wh->i_addr1))
+	if (IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 		rate = rate_fb = ic->ic_mcast_rate;
+		mcast_pkt = 1;
+	}
 
 	if (rate == 0 || rate_fb == 0) {
+		/* XXX this should not happen */
 		if_printf(&ic->ic_if, "invalid rate %u or fallback rate %u",
 			  rate, rate_fb);
 		rate = rate_fb = (1 * 2); /* Force 1Mbits/s */
@@ -2899,7 +2899,7 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 	bcopy(wh->i_fc, hdr->txh_fc, sizeof(hdr->txh_fc));
 	bcopy(wh->i_addr1, hdr->txh_addr1, sizeof(hdr->txh_addr1));
 
-	if (ni != NULL && !IEEE80211_IS_MULTICAST(wh->i_addr1)) {
+	if (!mcast_pkt) {
 		uint16_t dur;
 		uint8_t ack_rate;
 
@@ -2970,6 +2970,11 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 
 	bus_dmamap_sync(sc->sc_buf_dtag, tb->tb_dmap, BUS_DMASYNC_PREWRITE);
 
+	if (mgt_pkt || mcast_pkt) {
+		/* Don't involve mcast/mgt packets into TX rate control */
+		ieee80211_free_node(ni);
+		*ni0 = ni = NULL;
+	}
 	tb->tb_mbuf = m;
 	tb->tb_ni = ni;
 
