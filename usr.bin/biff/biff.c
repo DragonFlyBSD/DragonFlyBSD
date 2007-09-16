@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/biff/biff.c,v 1.6.2.4 2002/08/09 02:56:31 johan Exp $
- * $DragonFly: src/usr.bin/biff/biff.c,v 1.4 2005/01/11 19:36:09 liamfoy Exp $
+ * $DragonFly: src/usr.bin/biff/biff.c,v 1.5 2007/09/16 00:59:59 pavalos Exp $
  *
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)biff.c	8.1 (Berkeley) 6/6/93
@@ -64,7 +64,9 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if ((name = ttyname(STDERR_FILENO)) == NULL)
+	if ((name = ttyname(STDIN_FILENO)) == NULL &&
+	    (name = ttyname(STDOUT_FILENO)) == NULL &&
+	    (name = ttyname(STDERR_FILENO)) == NULL)
 		err(2, "unknown tty");
 
 	if (stat(name, &sb))
