@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.5 2007/09/16 08:25:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.6 2007/09/16 09:58:27 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1233,10 +1233,10 @@ bwi_init(void *xsc)
 		 * Drain any possible pending TX status
 		 */
 		for (i = 0; i < NRETRY; ++i) {
-			if ((CSR_READ_4(sc, BWI_TXSTATUS_0) &
-			     BWI_TXSTATUS_0_MORE) == 0)
+			if ((CSR_READ_4(sc, BWI_TXSTATUS0) &
+			     BWI_TXSTATUS0_VALID) == 0)
 				break;
-			CSR_READ_4(sc, BWI_TXSTATUS_1);
+			CSR_READ_4(sc, BWI_TXSTATUS1);
 		}
 		if (i == NRETRY)
 			if_printf(ifp, "can't drain TX status\n");
@@ -3055,6 +3055,10 @@ _bwi_txeof(struct bwi_softc *sc, uint16_t tx_id, int acked, int data_txcnt)
 		return;
 	}
 
+#if 0
+	if_printf(ifp, "acked %d, data_txcnt %d\n", acked, data_txcnt);
+#endif
+
 	ring_idx = __SHIFTOUT(tx_id, BWI_TXH_ID_RING_MASK);
 	buf_idx = __SHIFTOUT(tx_id, BWI_TXH_ID_IDX_MASK);
 
@@ -3119,20 +3123,23 @@ bwi_txeof(struct bwi_softc *sc)
 
 	for (;;) {
 		uint32_t tx_status0, tx_status1;
-		uint16_t tx_id, tx_info;
+		uint16_t tx_id;
+		int data_txcnt;
 
-		tx_status0 = CSR_READ_4(sc, BWI_TXSTATUS_0);
-		if (tx_status0 == 0)
+		tx_status0 = CSR_READ_4(sc, BWI_TXSTATUS0);
+		if ((tx_status0 & BWI_TXSTATUS0_VALID) == 0)
 			break;
-		tx_status1 = CSR_READ_4(sc, BWI_TXSTATUS_1);
+		tx_status1 = CSR_READ_4(sc, BWI_TXSTATUS1);
 
-		tx_id = __SHIFTOUT(tx_status0, BWI_TXSTATUS_0_TXID_MASK);
-		tx_info = BWI_TXSTATUS_0_INFO(tx_status0);
+		tx_id = __SHIFTOUT(tx_status0, BWI_TXSTATUS0_TXID_MASK);
+		data_txcnt = __SHIFTOUT(tx_status0,
+				BWI_TXSTATUS0_DATA_TXCNT_MASK);
 
-		if (tx_info & 0x30) /* XXX */
+		if (tx_status0 & (BWI_TXSTATUS0_AMPDU | BWI_TXSTATUS0_PENDING))
 			continue;
 
-		_bwi_txeof(sc, tx_id, 0, 0);
+		_bwi_txeof(sc, tx_id, tx_status0 & BWI_TXSTATUS0_ACKED,
+			   data_txcnt);
 	}
 
 	if ((ifp->if_flags & IFF_OACTIVE) == 0)

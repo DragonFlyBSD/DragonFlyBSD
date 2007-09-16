@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwireg.h,v 1.1 2007/09/08 06:15:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwireg.h,v 1.2 2007/09/16 09:58:27 sephe Exp $
  */
 
 #ifndef _IF_BWIREG_H
@@ -230,11 +230,17 @@
 /* MAC address of pairwise keys */
 #define BWI_PKEY_ADDR_MOBJ		0x4
 
-#define BWI_TXSTATUS_0			0x170
-#define BWI_TXSTATUS_0_MORE		__BIT(0)
-#define BWI_TXSTATUS_0_TXID_MASK	__BITS(31, 16)
-#define BWI_TXSTATUS_0_INFO(st)		(((st) & 0xfff0) | (((st) & 0xf) >> 1))
-#define BWI_TXSTATUS_1			0x174
+#define BWI_TXSTATUS0			0x170
+#define BWI_TXSTATUS0_VALID		__BIT(0)
+#define BWI_TXSTATUS0_ACKED		__BIT(1)
+#define BWI_TXSTATUS0_FREASON_MASK	__BITS(4, 2)	/* Failure reason */
+#define BWI_TXSTATUS0_AMPDU		__BIT(5)
+#define BWI_TXSTATUS0_PENDING		__BIT(6)
+#define BWI_TXSTATUS0_PM		__BIT(7)
+#define BWI_TXSTATUS0_RTS_TXCNT_MASK	__BITS(11, 8)
+#define BWI_TXSTATUS0_DATA_TXCNT_MASK	__BITS(15, 12)
+#define BWI_TXSTATUS0_TXID_MASK		__BITS(31, 16)
+#define BWI_TXSTATUS1			0x174
 
 #define BWI_TXRX_CTRL_BASE		0x200
 #define BWI_TX32_CTRL			0x0
