@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.3 2007/09/15 10:53:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.4 2007/09/16 04:24:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -54,6 +54,7 @@
 #include <net/if_media.h>
 #include <net/ifq_var.h>
 
+#include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/ieee80211_var.h>
 
 #include <bus/pci/pcireg.h>
@@ -135,6 +136,8 @@ static void	bwi_txeof_status(struct bwi_softc *, int);
 static void	bwi_enable_intrs(struct bwi_softc *, uint32_t);
 static void	bwi_disable_intrs(struct bwi_softc *, uint32_t);
 static int	bwi_calc_rssi(struct bwi_softc *, const struct bwi_rxbuf_hdr *);
+static void	bwi_rx_radiotap(struct bwi_softc *, struct mbuf *,
+				struct bwi_rxbuf_hdr *, const void *, int);
 
 static int	bwi_dma_alloc(struct bwi_softc *);
 static void	bwi_dma_free(struct bwi_softc *);
@@ -556,9 +559,26 @@ bwi_attach(device_t dev)
 
 	ieee80211_media_init(ic, bwi_media_change, ieee80211_media_status);
 
+	/*
+	 * Attach radio tap
+	 */
+	bpfattach_dlt(ifp, DLT_IEEE802_11_RADIO,
+		      sizeof(struct ieee80211_frame) + sizeof(sc->sc_tx_th),
+		      &sc->sc_drvbpf);
+
+	sc->sc_tx_th_len = roundup(sizeof(sc->sc_tx_th), sizeof(uint32_t));
+	sc->sc_tx_th.wt_ihdr.it_len = htole16(sc->sc_tx_th_len);
+	sc->sc_tx_th.wt_ihdr.it_present = htole32(BWI_TX_RADIOTAP_PRESENT);
+
+	sc->sc_rx_th_len = roundup(sizeof(sc->sc_rx_th), sizeof(uint32_t));
+	sc->sc_rx_th.wr_ihdr.it_len = htole16(sc->sc_rx_th_len);
+	sc->sc_rx_th.wr_ihdr.it_present = htole32(BWI_RX_RADIOTAP_PRESENT);
+
 	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_MPSAFE, bwi_intr, sc,
 			       &sc->sc_irq_handle, ifp->if_serializer);
 	if (error) {
+		device_printf(dev, "can't setup intr\n");
+		bpfdetach(ifp);
 		ieee80211_ifdetach(ic);
 		goto fail;
 	}
@@ -586,6 +606,7 @@ bwi_detach(device_t dev)
 		bus_teardown_intr(dev, sc->sc_irq_res, sc->sc_irq_handle);
 		lwkt_serialize_exit(ifp->if_serializer);
 
+		bpfdetach(ifp);
 		ieee80211_ifdetach(&sc->sc_ic);
 
 		for (i = 0; i < sc->sc_nmac; ++i)
@@ -2407,6 +2428,7 @@ bwi_set_chan(struct bwi_softc *sc, struct ieee80211_channel *c)
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
 	struct bwi_mac *mac;
+	uint16_t flags;
 	u_int chan;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -2418,7 +2440,18 @@ bwi_set_chan(struct bwi_softc *sc, struct ieee80211_channel *c)
 
 	bwi_rf_set_chan(mac, chan, 0);
 
-	/* TODO: radio tap */
+	/*
+	 * Setup radio tap channel freq and flags
+	 */
+	if (IEEE80211_IS_CHAN_G(c))
+		flags = IEEE80211_CHAN_G;
+	else
+		flags = IEEE80211_CHAN_B;
+
+	sc->sc_tx_th.wt_chan_freq = sc->sc_rx_th.wr_chan_freq =
+		htole16(c->ic_freq);
+	sc->sc_tx_th.wt_chan_flags = sc->sc_rx_th.wr_chan_flags =
+		htole16(flags);
 
 	return 0;
 }
@@ -2454,7 +2487,7 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 		struct ieee80211_frame_min *wh;
 		struct ieee80211_node *ni;
 		struct mbuf *m;
-		uint8_t plcp_signal;
+		const uint8_t *plcp;
 		uint16_t flags2;
 		int buflen, wh_ofs, hdr_extra, rssi;
 
@@ -2473,7 +2506,7 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 		hdr_extra = 0;
 		if (flags2 & BWI_RXH_F2_TYPE2FRAME)
 			hdr_extra = 2;
-		wh_ofs = hdr_extra + 6;
+		wh_ofs = hdr_extra + 6;	/* XXX magic number */
 
 		buflen = le16toh(hdr->rxh_buflen);
 		if (buflen < BWI_FRAME_MIN_LEN(wh_ofs)) {
@@ -2484,21 +2517,24 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 			goto next;
 		}
 
-		plcp_signal = *((uint8_t *)(hdr + 1) + hdr_extra);
-		rssi = bwi_calc_rssi(sc, hdr) - BWI_NOISE_FLOOR;
+		plcp = ((const uint8_t *)(hdr + 1) + hdr_extra);
+		rssi = bwi_calc_rssi(sc, hdr);
 
 		m->m_pkthdr.rcvif = ifp;
 		m->m_len = m->m_pkthdr.len = buflen + sizeof(*hdr);
 		m_adj(m, sizeof(*hdr) + wh_ofs);
 
-		/* TODO: radio tap */
+		/* RX radio tap */
+		if (sc->sc_drvbpf != NULL)
+			bwi_rx_radiotap(sc, m, hdr, plcp, rssi);
 
 		m_adj(m, -IEEE80211_CRC_LEN);
 
 		wh = mtod(m, struct ieee80211_frame_min *);
 		ni = ieee80211_find_rxnode(ic, wh);
 
-		ieee80211_input(ic, m, ni, rssi, le16toh(hdr->rxh_tsf));
+		ieee80211_input(ic, m, ni, rssi - BWI_NOISE_FLOOR,
+				le16toh(hdr->rxh_tsf));
 		ieee80211_free_node(ni);
 next:
 		idx = (idx + 1) % BWI_RX_NDESC;
@@ -2694,16 +2730,16 @@ bwi_rate2plcp(uint8_t rate)
 	}
 }
 
+/* XXX does not belong here */
+#define IEEE80211_OFDM_PLCP_RATE_MASK	__BITS(3, 0)
+#define IEEE80211_OFDM_PLCP_LEN_MASK	__BITS(16, 5)
+
 static __inline void
 bwi_ofdm_plcp_header(uint32_t *plcp0, int pkt_len, uint8_t rate)
 {
-/* XXX does not belong here */
-#define IEEE80211_OFDM_PLCP_SIG_MASK	__BITS(3, 0)
-#define IEEE80211_OFDM_PLCP_LEN_MASK	__BITS(16, 5)
-
 	uint32_t plcp;
 
-	plcp = __SHIFTIN(bwi_rate2plcp(rate), IEEE80211_OFDM_PLCP_SIG_MASK) |
+	plcp = __SHIFTIN(bwi_rate2plcp(rate), IEEE80211_OFDM_PLCP_RATE_MASK) |
 	       __SHIFTIN(pkt_len, IEEE80211_OFDM_PLCP_LEN_MASK);
 	*plcp0 = htole32(plcp);
 }
@@ -2818,7 +2854,7 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 			rate = rate_fb = (1 * 2);
 		}
 	} else {
-		/* Fixed at 1Mbytes/s for mgt frames */
+		/* Fixed at 1Mbits/s for mgt frames */
 		rate = rate_fb = (1 * 2);
 	}
 
@@ -2828,10 +2864,25 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 	if (rate == 0 || rate_fb == 0) {
 		if_printf(&ic->ic_if, "invalid rate %u or fallback rate %u",
 			  rate, rate_fb);
-		rate = rate_fb = (1 * 2); /* Force 1Mbytes/s */
+		rate = rate_fb = (1 * 2); /* Force 1Mbits/s */
 	}
 
-	/* TODO: radio tap */
+	/*
+	 * TX radio tap
+	 */
+	if (sc->sc_drvbpf != NULL) {
+		sc->sc_tx_th.wt_flags = 0;
+		if (wh->i_fc[1] & IEEE80211_FC1_WEP)
+			sc->sc_tx_th.wt_flags |= IEEE80211_RADIOTAP_F_WEP;
+		if (ieee80211_rate2modtype(rate) == IEEE80211_MODTYPE_DS &&
+		    (ic->ic_flags & IEEE80211_F_SHPREAMBLE) &&
+		    rate != (1 * 2)) {
+			sc->sc_tx_th.wt_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
+		}
+		sc->sc_tx_th.wt_rate = rate;
+
+		bpf_ptap(sc->sc_drvbpf, m, &sc->sc_tx_th, sc->sc_tx_th_len);
+	}
 
 	/*
 	 * Setup the embedded TX header
@@ -3400,4 +3451,53 @@ bwi_calc_rssi(struct bwi_softc *sc, const struct bwi_rxbuf_hdr *hdr)
 	mac = (struct bwi_mac *)sc->sc_cur_regwin;
 
 	return bwi_rf_calc_rssi(mac, hdr);
+}
+
+static __inline uint8_t
+bwi_ofdm_plcp2rate(const uint32_t *plcp0)
+{
+	uint32_t plcp;
+	uint8_t plcp_rate;
+
+	plcp = le32toh(*plcp0);
+	plcp_rate = __SHIFTOUT(plcp, IEEE80211_OFDM_PLCP_RATE_MASK);
+	return ieee80211_plcp2rate(plcp_rate, 1);
+}
+
+static __inline uint8_t
+bwi_ds_plcp2rate(const struct ieee80211_ds_plcp_hdr *hdr)
+{
+	return ieee80211_plcp2rate(hdr->i_signal, 0);
+}
+
+static void
+bwi_rx_radiotap(struct bwi_softc *sc, struct mbuf *m,
+		struct bwi_rxbuf_hdr *hdr, const void *plcp, int rssi)
+{
+	const struct ieee80211_frame_min *wh;
+	uint16_t flags1;
+	uint8_t rate;
+
+	KKASSERT(sc->sc_drvbpf != NULL);
+
+	flags1 = htole16(hdr->rxh_flags1);
+	if (flags1 & BWI_RXH_F1_OFDM)
+		rate = bwi_ofdm_plcp2rate(plcp);
+	else
+		rate = bwi_ds_plcp2rate(plcp);
+
+	sc->sc_rx_th.wr_flags = IEEE80211_RADIOTAP_F_FCS;
+	if (flags1 & BWI_RXH_F1_SHPREAMBLE)
+		sc->sc_rx_th.wr_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
+
+	wh = mtod(m, const struct ieee80211_frame_min *);
+	if (wh->i_fc[1] & IEEE80211_FC1_WEP)
+		sc->sc_rx_th.wr_flags |= IEEE80211_RADIOTAP_F_WEP;
+
+	sc->sc_rx_th.wr_tsf = hdr->rxh_tsf; /* No endian convertion */
+	sc->sc_rx_th.wr_rate = rate;
+	sc->sc_rx_th.wr_antsignal = rssi;
+	sc->sc_rx_th.wr_antnoise = BWI_NOISE_FLOOR;
+
+	bpf_ptap(sc->sc_drvbpf, m, &sc->sc_rx_th, sc->sc_rx_th_len);
 }

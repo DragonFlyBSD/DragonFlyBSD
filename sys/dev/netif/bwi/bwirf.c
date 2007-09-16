@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwirf.c,v 1.2 2007/09/15 09:59:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwirf.c,v 1.3 2007/09/16 04:24:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,7 @@
 #include <net/if_media.h>
 #include <net/ifq_var.h>
 
+#include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/ieee80211_var.h>
 
 #include <bus/pci/pcireg.h>

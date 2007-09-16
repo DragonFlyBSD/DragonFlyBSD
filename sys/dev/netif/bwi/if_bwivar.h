@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.3 2007/09/15 10:53:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.4 2007/09/16 04:24:30 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -131,6 +131,7 @@ struct bwi_rxbuf_hdr {
 } __packed;
 
 #define BWI_RXH_F1_BCM2053_RSSI	__BIT(14)
+#define BWI_RXH_F1_SHPREAMBLE	__BIT(7)
 #define BWI_RXH_F1_OFDM		__BIT(0)
 
 #define BWI_RXH_F2_TYPE2FRAME	__BIT(2)
@@ -449,6 +450,39 @@ enum bwi_bus_space {
 	BWI_BUS_SPACE_64BIT
 };
 
+#define BWI_TX_RADIOTAP_PRESENT 		\
+	((1 << IEEE80211_RADIOTAP_FLAGS) |	\
+	 (1 << IEEE80211_RADIOTAP_RATE) |	\
+	 (1 << IEEE80211_RADIOTAP_CHANNEL))
+
+struct bwi_tx_radiotap_hdr {
+	struct ieee80211_radiotap_header wt_ihdr;
+	uint8_t		wt_flags;
+	uint8_t		wt_rate;
+	uint16_t	wt_chan_freq;
+	uint16_t	wt_chan_flags;
+};
+
+#define BWI_RX_RADIOTAP_PRESENT				\
+	((1 << IEEE80211_RADIOTAP_TSFT) |		\
+	 (1 << IEEE80211_RADIOTAP_FLAGS) |		\
+	 (1 << IEEE80211_RADIOTAP_RATE) |		\
+	 (1 << IEEE80211_RADIOTAP_CHANNEL) |		\
+	 (1 << IEEE80211_RADIOTAP_DBM_ANTSIGNAL) |	\
+	 (1 << IEEE80211_RADIOTAP_DBM_ANTNOISE))
+
+struct bwi_rx_radiotap_hdr {
+	struct ieee80211_radiotap_header wr_ihdr;
+	uint64_t	wr_tsf;
+	uint8_t		wr_flags;
+	uint8_t		wr_rate;
+	uint16_t	wr_chan_freq;
+	uint16_t	wr_chan_flags;
+	int8_t		wr_antsignal;
+	int8_t		wr_antnoise;
+	/* TODO: sq */
+};
+
 struct bwi_softc {
 	struct ieee80211com	sc_ic;
 	uint32_t		sc_flags;	/* BWI_F_ */
@@ -501,6 +535,22 @@ struct bwi_softc {
 	struct bwi_txstats_data	*sc_txstats;
 
 	int			sc_tx_timer;
+
+	struct bpf_if		*sc_drvbpf;
+
+	union {
+		struct bwi_tx_radiotap_hdr u_tx_th;
+		uint8_t		u_pad[IEEE80211_RADIOTAP_HDRLEN];
+	} sc_u_tx_th;
+#define sc_tx_th	sc_u_tx_th.u_tx_th
+	int			sc_tx_th_len;
+
+	union {
+		struct bwi_rx_radiotap_hdr u_rx_th;
+		uint8_t		u_pad[IEEE80211_RADIOTAP_HDRLEN];
+	} sc_u_rx_th;
+#define sc_rx_th	sc_u_rx_th.u_rx_th
+	int			sc_rx_th_len;
 
 	int			(*sc_newstate)
 				(struct ieee80211com *,
