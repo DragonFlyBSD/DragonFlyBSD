@@ -1,4 +1,4 @@
-$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.11 2007/08/07 11:36:49 sephe Exp $
+$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.12 2007/09/17 11:13:55 hasso Exp $
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
 
@@ -70,6 +70,7 @@ oui TI				0x080028	Texas Instruments
 oui XAQTI			0x00e0ae	XaQti Corp.
 oui MARVELL			0x005043	Marvell Semiconductor
 oui ICPLUS			0x0090c3	IC Plus Corp.
+oui VITESSE			0x0001c1	Vitesse Semiconductor
 
 /* in the 79c873, AMD uses another OUI (which matches Davicom!) */
 oui xxAMD			0x00606e	Advanced Micro Devices
@@ -96,7 +97,7 @@ oui xxLEVEL1a			0x0004de	Level 1
 oui xxDAVICOM			0x006040	Davicom Semiconductor
 oui xxBROADCOM2			0x0050ef	Broadcom Corporation
 
-/* This is the OUI of the gigE PHY in the RealTek 8169S/8110S chips */
+/* This is the OUI of the gigE PHY in the RealTek 8211B/8169S/8110S chips */
 oui xxREALTEK			0x000732
 
 oui xxMARVELL			0x000ac2	Marvell Semiconductor
@@ -190,7 +191,7 @@ model QUALSEMI QS6612		0x0000 QS6612 10/100 media interface
 
 /* RealTek Semiconductor PHYs */
 model REALTEK RTL8201L		0x0020 RTL8201L 10/100 media interface
-model xxREALTEK RTL8169S	0x0011 RTL8169S/8110S media interface
+model xxREALTEK RTL8169S	0x0011 8211B/RTL8169S/8110S media interface
 model REALTEK2 RTL8169S		0x0011 RTL8169S/8110S media interface
 
 /* Seeq PHYs */
@@ -231,3 +232,7 @@ model xxMARVELL E1111		0x000c Marvell 88E1111 Gigabit PHY
 /* IC Plus Corp. PHYs */
 model ICPLUS IP101		0x0005 IP101 10/100 PHY
 model ICPLUS IP1000A		0x0008 IC Plus 10/100/1000 media interface
+
+/* Vitesse Semiconductor PHYs */
+model VITESSE VSC8601		0x0002 VSC8601 10/100/1000TX PHY
+
