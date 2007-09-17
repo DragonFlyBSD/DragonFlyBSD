@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwirf.c,v 1.4 2007/09/16 11:53:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwirf.c,v 1.5 2007/09/17 12:13:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -484,7 +484,8 @@ loop1_exit:
 	 */
 	rf->rf_lo_gain = (loop2 * 6) - (loop1 * 4) - 11;
 	rf->rf_rx_gain = trsw * 2;
-	DPRINTF(mac->mac_sc, "lo gain: %u, rx gain: %u\n",
+	DPRINTF(mac->mac_sc, BWI_DBG_RF | BWI_DBG_INIT,
+		"lo gain: %u, rx gain: %u\n",
 		rf->rf_lo_gain, rf->rf_rx_gain);
 
 #undef SAVE_RF_MAX
@@ -929,7 +930,8 @@ bwi_rf_init_bcm2050(struct bwi_mac *mac)
 	else
 		rf->rf_calib = calib;
 	if (rf->rf_calib != 0xffff) {
-		DPRINTF(sc, "RF calibration value: 0x%04x\n", rf->rf_calib);
+		DPRINTF(sc, BWI_DBG_RF | BWI_DBG_INIT,
+			"RF calibration value: 0x%04x\n", rf->rf_calib);
 		rf->rf_flags |= BWI_RF_F_INITED;
 	}
 
@@ -1077,7 +1079,8 @@ bwi_rf_map_txpower(struct bwi_mac *mac)
 		device_printf(sc->sc_dev, "invalid max txpower in sprom\n");
 		rf->rf_txpower_max = 74;
 	}
-	DPRINTF(sc, "max txpower from sprom: %d dBm\n", rf->rf_txpower_max);
+	DPRINTF(sc, BWI_DBG_RF | BWI_DBG_TXPOWER | BWI_DBG_ATTACH,
+		"max txpower from sprom: %d dBm\n", rf->rf_txpower_max);
 
 	/*
 	 * Find out region/domain max TX power, which is adjusted
@@ -1094,17 +1097,20 @@ bwi_rf_map_txpower(struct bwi_mac *mac)
 		ant_gain = 2;
 	}
 	ant_gain *= 4;
-	DPRINTF(sc, "ant gain %d dBm\n", ant_gain);
+	DPRINTF(sc, BWI_DBG_RF | BWI_DBG_TXPOWER | BWI_DBG_ATTACH,
+		"ant gain %d dBm\n", ant_gain);
 
 	reg_txpower_max = 90 - ant_gain - 6;	/* XXX magic number */
-	DPRINTF(sc, "region/domain max txpower %d dBm\n", reg_txpower_max);
+	DPRINTF(sc, BWI_DBG_RF | BWI_DBG_TXPOWER | BWI_DBG_ATTACH,
+		"region/domain max txpower %d dBm\n", reg_txpower_max);
 
 	/*
 	 * Force max TX power within region/domain TX power limit
 	 */
 	if (rf->rf_txpower_max > reg_txpower_max)
 		rf->rf_txpower_max = reg_txpower_max;
-	DPRINTF(sc, "max txpower %d dBm\n", rf->rf_txpower_max);
+	DPRINTF(sc, BWI_DBG_RF | BWI_DBG_TXPOWER | BWI_DBG_ATTACH,
+		"max txpower %d dBm\n", rf->rf_txpower_max);
 
 	/*
 	 * Create TSSI to TX power mapping
@@ -1146,9 +1152,14 @@ bwi_rf_map_txpower(struct bwi_mac *mac)
 			}
 
 			if (phy->phy_mode == IEEE80211_MODE_11G) {
-				DPRINTF(sc, "%s\n", "use default 11g TSSI map");
+				DPRINTF(sc,
+				BWI_DBG_RF | BWI_DBG_TXPOWER | BWI_DBG_ATTACH,
+				"%s\n", "use default 11g TSSI map");
 				txpower_map = bwi_txpower_map_11g;
 			} else {
+				DPRINTF(sc,
+				BWI_DBG_RF | BWI_DBG_TXPOWER | BWI_DBG_ATTACH,
+				"%s\n", "use default 11b TSSI map");
 				txpower_map = bwi_txpower_map_11b;
 			}
 
@@ -1169,7 +1180,8 @@ bwi_rf_map_txpower(struct bwi_mac *mac)
 	 * Extract idle TSSI from SPROM.
 	 */
 	val = bwi_read_sprom(sc, BWI_SPROM_IDLE_TSSI);
-	DPRINTF(sc, "sprom idle tssi: 0x%04x\n", val);
+	DPRINTF(sc, BWI_DBG_RF | BWI_DBG_TXPOWER | BWI_DBG_ATTACH,
+		"sprom idle tssi: 0x%04x\n", val);
 
 	if (phy->phy_mode == IEEE80211_MODE_11A)
 		mask = BWI_SPROM_IDLE_TSSI_MASK_11A;
@@ -1185,7 +1197,8 @@ bwi_rf_map_txpower(struct bwi_mac *mac)
 	/*
 	 * Calculate TX power map, which is indexed by TSSI
 	 */
-	device_printf(sc->sc_dev, "TSSI-TX power map:\n");
+	DPRINTF(sc, BWI_DBG_RF | BWI_DBG_ATTACH | BWI_DBG_TXPOWER,
+		"%s\n", "TSSI-TX power map:");
 	for (i = 0; i < BWI_TSSI_MAX; ++i) {
 		error = bwi_rf_calc_txpower(&rf->rf_txpower_map0[i], i,
 					    pa_params);
@@ -1194,13 +1207,22 @@ bwi_rf_map_txpower(struct bwi_mac *mac)
 				  "bwi_rf_calc_txpower failed\n");
 			break;
 		}
-		if (i != 0 && i % 8 == 0)
-			kprintf("\n");
-		kprintf("%d ", rf->rf_txpower_map0[i]);
+
+#ifdef BWI_DEBUG
+		if (i != 0 && i % 8 == 0) {
+			_DPRINTF(sc,
+			BWI_DBG_RF | BWI_DBG_ATTACH | BWI_DBG_TXPOWER,
+			"%s\n", "");
+		}
+#endif
+		_DPRINTF(sc, BWI_DBG_RF | BWI_DBG_ATTACH | BWI_DBG_TXPOWER,
+			 "%d ", rf->rf_txpower_map0[i]);
 	}
-	kprintf("\n");
+	_DPRINTF(sc, BWI_DBG_RF | BWI_DBG_ATTACH | BWI_DBG_TXPOWER,
+		 "%s\n", "");
 back:
-	DPRINTF(sc, "idle tssi0: %d\n", rf->rf_idle_tssi0);
+	DPRINTF(sc, BWI_DBG_RF | BWI_DBG_TXPOWER | BWI_DBG_ATTACH,
+		"idle tssi0: %d\n", rf->rf_idle_tssi0);
 	return error;
 }
 
@@ -2398,10 +2420,9 @@ bwi_rf_calc_rssi_bcm2050(struct bwi_mac *mac, const struct bwi_rxbuf_hdr *hdr)
 
 	lna_gain = __SHIFTOUT(le16toh(hdr->rxh_phyinfo),
 			      BWI_RXH_PHYINFO_LNAGAIN);
-#if 0
-	DPRINTF(mac->mac_sc, "lna_gain %d, phyinfo 0x%04x\n",
+	DPRINTF(mac->mac_sc, BWI_DBG_RF | BWI_DBG_RX,
+		"lna_gain %d, phyinfo 0x%04x\n",
 		lna_gain, le16toh(hdr->rxh_phyinfo));
-#endif
 	switch (lna_gain) {
 	case 0:
 		rssi += 27;

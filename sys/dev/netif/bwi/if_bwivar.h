@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.6 2007/09/16 11:53:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.7 2007/09/17 12:13:24 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -86,10 +86,25 @@
 
 #define BWI_DEBUG
 #ifdef BWI_DEBUG
-#define DPRINTF(sc, fmt, ...)	if_printf(&sc->sc_ic.ic_if, fmt, __VA_ARGS__)
-#else
-#define DPRINTF(sc, fmt, ...)	((void)0)
-#endif
+
+#define DPRINTF(sc, dbg, fmt, ...) \
+do { \
+	if ((sc)->sc_debug & (dbg)) \
+		if_printf(&(sc)->sc_ic.ic_if, fmt, __VA_ARGS__); \
+} while (0)
+
+#define _DPRINTF(sc, dbg, fmt, ...) \
+do { \
+	if ((sc)->sc_debug & (dbg)) \
+		kprintf(fmt, __VA_ARGS__); \
+} while (0)
+
+#else	/* !BWI_DEBUG */
+
+#define DPRINTF(sc, dbg, fmt, ...)	((void)0)
+#define _DPRINTF(sc, dbg, fmt, ...)	((void)0)
+
+#endif	/* BWI_DEBUG */
 
 struct bwi_desc32 {
 	/* Little endian */
@@ -590,11 +605,26 @@ struct bwi_softc {
 	 */
 	int			sc_fw_version;	/* BWI_FW_VERSION[34] */
 	int			sc_dwell_time;	/* milliseconds */
-	uint32_t		sc_debug;
+	uint32_t		sc_debug;	/* BWI_DBG_ */
 };
 
 #define BWI_F_BUS_INITED	0x1
 #define BWI_F_PROMISC		0x2
+
+#define BWI_DBG_MAC		0x00000001
+#define BWI_DBG_RF		0x00000002
+#define BWI_DBG_PHY		0x00000004
+#define BWI_DBG_MISC		0x00000008
+
+#define BWI_DBG_ATTACH		0x00000010
+#define BWI_DBG_INIT		0x00000020
+#define BWI_DBG_FIRMWARE	0x00000040
+#define BWI_DBG_80211		0x00000080
+#define BWI_DBG_TXPOWER		0x00000100
+#define BWI_DBG_INTR		0x00000200
+#define BWI_DBG_RX		0x00000400
+#define BWI_DBG_TX		0x00000800
+#define BWI_DBG_TXEOF		0x00001000
 
 uint16_t	bwi_read_sprom(struct bwi_softc *, uint16_t);
 int		bwi_regwin_switch(struct bwi_softc *, struct bwi_regwin *,

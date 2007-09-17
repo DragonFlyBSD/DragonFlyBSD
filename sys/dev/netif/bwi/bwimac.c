@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.5 2007/09/16 11:53:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.6 2007/09/17 12:13:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -479,10 +479,12 @@ bwi_mac_reset(struct bwi_mac *mac, int link_phy)
 	CSR_WRITE_4(sc, BWI_MAC_STATUS, status);
 
 	if (link_phy) {
-		DPRINTF(sc, "%s\n", "PHY is linked");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_ATTACH | BWI_DBG_INIT,
+			"%s\n", "PHY is linked");
 		mac->mac_phy.phy_flags |= BWI_PHY_F_LINKED;
 	} else {
-		DPRINTF(sc, "%s\n", "PHY is unlinked");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_ATTACH | BWI_DBG_INIT,
+			"%s\n", "PHY is unlinked");
 		mac->mac_phy.phy_flags &= ~BWI_PHY_F_LINKED;
 	}
 }
@@ -670,7 +672,8 @@ bwi_mac_setup_tpctl(struct bwi_mac *mac)
 		break;
 	}
 back:
-	DPRINTF(sc, "bbp atten: %u, rf atten: %u, ctrl1: %u, ctrl2: %u\n",
+	DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_INIT | BWI_DBG_TXPOWER,
+		"bbp atten: %u, rf atten: %u, ctrl1: %u, ctrl2: %u\n",
 		tpctl->bbp_atten, tpctl->rf_atten,
 		tpctl->tp_ctrl1, tpctl->tp_ctrl2);
 }
@@ -792,7 +795,8 @@ bwi_mac_init_tpctl_11bg(struct bwi_mac *mac)
 
 	mac->mac_flags |= BWI_MAC_F_TPCTL_INITED;
 	rf->rf_base_tssi = PHY_READ(mac, 0x29);
-	DPRINTF(sc, "base tssi %d\n", rf->rf_base_tssi);
+	DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_INIT | BWI_DBG_TXPOWER,
+		"base tssi %d\n", rf->rf_base_tssi);
 
 	if (abs(rf->rf_base_tssi - rf->rf_idle_tssi) >= 20) {
 		if_printf(&sc->sc_ic.ic_if, "base tssi measure failed\n");
@@ -1117,7 +1121,8 @@ bwi_mac_fw_load_iv(struct bwi_mac *mac, const struct fw_image *fw)
 	/* Get the number of IVs in the IV image */
 	hdr = (const struct bwi_fwhdr *)fw->fw_image;
 	n = be32toh(hdr->fw_iv_cnt);
-	DPRINTF(sc, "IV count %d\n", n);
+	DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_INIT | BWI_DBG_FIRMWARE,
+		"IV count %d\n", n);
 
 	/* Calculate the IV image size, for later sanity check */
 	iv_img_size = fw->fw_imglen - sizeof(*hdr);
@@ -1520,7 +1525,8 @@ bwi_mac_get_property(struct bwi_mac *mac)
 	 */
 	val = CSR_READ_4(sc, BWI_MAC_STATUS);
 	if (val & BWI_MAC_STATUS_BSWAP) {
-		DPRINTF(sc, "%s\n", "need byte swap");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_ATTACH, "%s\n",
+			"need byte swap");
 		mac->mac_flags |= BWI_MAC_F_BSWAP;
 	}
 
@@ -1534,7 +1540,8 @@ bwi_mac_get_property(struct bwi_mac *mac)
 	    BWI_STATE_HI_FLAG_64BIT) {
 		/* 64bit address */
 		sc->sc_bus_space = BWI_BUS_SPACE_64BIT;
-		DPRINTF(sc, "%s\n", "64bit bus space");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_ATTACH, "%s\n",
+			"64bit bus space");
 	} else {
 		uint32_t txrx_reg = BWI_TXRX_CTRL_BASE + BWI_TX32_CTRL;
 
@@ -1542,11 +1549,13 @@ bwi_mac_get_property(struct bwi_mac *mac)
 		if (CSR_READ_4(sc, txrx_reg) & BWI_TXRX32_CTRL_ADDRHI_MASK) {
 			/* 32bit address */
 			sc->sc_bus_space = BWI_BUS_SPACE_32BIT;
-			DPRINTF(sc, "%s\n", "32bit bus space");
+			DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_ATTACH, "%s\n",
+				"32bit bus space");
 		} else {
 			/* 30bit address */
 			sc->sc_bus_space = BWI_BUS_SPACE_30BIT;
-			DPRINTF(sc, "%s\n", "30bit bus space");
+			DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_ATTACH, "%s\n",
+				"30bit bus space");
 		}
 	}
 
@@ -1593,7 +1602,8 @@ bwi_mac_attach(struct bwi_softc *sc, int id, uint8_t rev)
 	 */
 	if (sc->sc_nmac != 0 &&
 	    pci_get_device(sc->sc_dev) != PCI_PRODUCT_BROADCOM_BCM4309) {
-		DPRINTF(sc, "%s\n", "ignore second MAC");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_ATTACH, "%s\n",
+			"ignore second MAC");
 		return 0;
 	}
 
@@ -1626,7 +1636,8 @@ bwi_mac_attach(struct bwi_softc *sc, int id, uint8_t rev)
 
 	if (mac->mac_rev < 5) {
 		mac->mac_flags |= BWI_MAC_F_HAS_TXSTATS;
-		DPRINTF(sc, "%s\n", "has TX stats");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_ATTACH, "%s\n",
+			"has TX stats");
 	}
 
 	device_printf(sc->sc_dev, "MAC: rev %u\n", rev);
@@ -1757,12 +1768,14 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 	int txpwr_diff, rf_atten_adj, bbp_atten_adj;
 
 	if (mac->mac_flags & BWI_MAC_F_TPCTL_ERROR) {
-		DPRINTF(sc, "%s\n", "tpctl error happened, can't set txpower");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "%s\n",
+			"tpctl error happened, can't set txpower");
 		return;
 	}
 
 	if (BWI_IS_BRCM_BU4306(sc)) {
-		DPRINTF(sc, "%s\n", "BU4306, can't set txpower");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "%s\n",
+			"BU4306, can't set txpower");
 		return;
 	}
 
@@ -1772,7 +1785,8 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 	ofdm_tssi = 0;
 	error = bwi_rf_get_latest_tssi(mac, tssi, BWI_COMM_MOBJ_TSSI_DS);
 	if (error) {
-		DPRINTF(sc, "%s\n", "no DS tssi");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "%s\n",
+			"no DS tssi");
 
 		if (mac->mac_phy.phy_mode == IEEE80211_MODE_11B)
 			return;
@@ -1780,7 +1794,8 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 		error = bwi_rf_get_latest_tssi(mac, tssi,
 				BWI_COMM_MOBJ_TSSI_OFDM);
 		if (error) {
-			DPRINTF(sc, "%s\n", "no OFDM tssi");
+			DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "%s\n",
+				"no OFDM tssi");
 			return;
 		}
 
@@ -1792,7 +1807,8 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 	}
 	bwi_rf_clear_tssi(mac);
 
-	DPRINTF(sc, "tssi0 %d, tssi1 %d, tssi2 %d, tssi3 %d\n",
+	DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER,
+		"tssi0 %d, tssi1 %d, tssi2 %d, tssi3 %d\n",
 		tssi[0], tssi[1], tssi[2], tssi[3]);
 
 	/*
@@ -1805,12 +1821,13 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 	if (ofdm_tssi && (HFLAGS_READ(mac) & BWI_HFLAG_PWR_BOOST_DS))
 		tssi_avg -= 13;
 
-	DPRINTF(sc, "tssi avg %d\n", tssi_avg);
+	DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "tssi avg %d\n", tssi_avg);
 
 	error = bwi_rf_tssi2dbm(mac, tssi_avg, &cur_txpwr);
 	if (error)
 		return;
-	DPRINTF(sc, "current txpower %d\n", cur_txpwr);
+	DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "current txpower %d\n",
+		cur_txpwr);
 
 	txpwr_diff = rf->rf_txpower_max - cur_txpwr; /* XXX ni_txpower */
 
@@ -1819,12 +1836,14 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 			(BWI_RF_ATTEN_FACTOR * rf_atten_adj);
 
 	if (rf_atten_adj == 0 && bbp_atten_adj == 0) {
-		DPRINTF(sc, "%s\n", "no need to adjust RF/BBP attenuation");
+		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "%s\n",
+			"no need to adjust RF/BBP attenuation");
 		/* TODO: LO */
 		return;
 	}
 
-	DPRINTF(sc, "rf atten adjust %d, bbp atten adjust %d\n",
+	DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER,
+		"rf atten adjust %d, bbp atten adjust %d\n",
 		rf_atten_adj, bbp_atten_adj);
 	bwi_mac_adjust_tpctl(mac, rf_atten_adj, bbp_atten_adj);
 	/* TODO: LO */

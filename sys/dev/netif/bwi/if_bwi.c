@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.9 2007/09/16 11:53:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.10 2007/09/17 12:13:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -289,6 +289,11 @@ static const struct {
 
 #undef CLKSRC
 
+#ifdef BWI_DEBUG
+static uint32_t	bwi_debug = BWI_DBG_ATTACH | BWI_DBG_INIT | BWI_DBG_TXPOWER;
+TUNABLE_INT("hw.bwi.debug", (int *)&bwi_debug);
+#endif
+
 static const uint8_t bwi_zero_addr[IEEE80211_ADDR_LEN];
 
 static const struct ieee80211_rateset bwi_rateset_11b =
@@ -362,6 +367,15 @@ bwi_attach(device_t dev)
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	sc->sc_dev = dev;
 
+	/*
+	 * Initialize sysctl variables
+	 */
+	sc->sc_fw_version = BWI_FW_VERSION3;
+	sc->sc_dwell_time = 200;
+#ifdef BWI_DEBUG
+	sc->sc_debug = bwi_debug;
+#endif
+
 	callout_init(&sc->sc_scan_ch);
 	callout_init(&sc->sc_calib_ch);
 
@@ -417,12 +431,6 @@ bwi_attach(device_t dev)
 	}
 
 	/*
-	 * Initialize sysctl variables
-	 */
-	sc->sc_fw_version = BWI_FW_VERSION3;
-	sc->sc_dwell_time = 200;
-
-	/*
 	 * Create sysctl tree
 	 */
 	sysctl_ctx_init(&sc->sc_sysctl_ctx);
@@ -445,9 +453,11 @@ bwi_attach(device_t dev)
 			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
 			"fw_version", CTLFLAG_RD, &sc->sc_fw_version, 0,
 			"Firmware version");
+#ifdef BWI_DEBUG
 	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
 			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
 			"debug", CTLFLAG_RW, &sc->sc_debug, 0, "Debug flags");
+#endif
 
 	bwi_power_on(sc, 1);
 
@@ -523,7 +533,7 @@ bwi_attach(device_t dev)
 	/* Get locale */
 	sc->sc_locale = __SHIFTOUT(bwi_read_sprom(sc, BWI_SPROM_CARD_INFO),
 				   BWI_SPROM_CARD_INFO_LOCALE);
-	DPRINTF(sc, "locale: %d\n", sc->sc_locale);
+	DPRINTF(sc, BWI_DBG_ATTACH, "locale: %d\n", sc->sc_locale);
 
 	/*
 	 * Setup ratesets, phytype, channels and get MAC address
@@ -787,8 +797,9 @@ bwi_regwin_info(struct bwi_softc *sc, uint16_t *type, uint8_t *rev)
 	*type = BWI_ID_HI_REGWIN_TYPE(val);
 	*rev = BWI_ID_HI_REGWIN_REV(val);
 
-	DPRINTF(sc, "regwin: type 0x%03x, rev %d, vendor 0x%04x\n",
-		*type, *rev, __SHIFTOUT(val, BWI_ID_HI_REGWIN_VENDOR_MASK));
+	DPRINTF(sc, BWI_DBG_ATTACH, "regwin: type 0x%03x, rev %d, "
+		"vendor 0x%04x\n", *type, *rev,
+		__SHIFTOUT(val, BWI_ID_HI_REGWIN_VENDOR_MASK));
 }
 
 static int
@@ -871,7 +882,8 @@ bwi_bbp_attach(struct bwi_softc *sc)
 	device_printf(sc->sc_dev, "BBP: id 0x%04x, rev 0x%x, pkg %d\n",
 		      sc->sc_bbp_id, sc->sc_bbp_rev, sc->sc_bbp_pkg);
 
-	DPRINTF(sc, "nregwin %d, cap 0x%08x\n", nregwin, sc->sc_cap);
+	DPRINTF(sc, BWI_DBG_ATTACH, "nregwin %d, cap 0x%08x\n",
+		nregwin, sc->sc_cap);
 
 	/*
 	 * Create rest of the regwins
@@ -1045,7 +1057,7 @@ bwi_get_card_flags(struct bwi_softc *sc)
 	    sc->sc_pci_revid > 0x40)
 		sc->sc_card_flags |= BWI_CARD_F_PA_GPIO9;
 
-	DPRINTF(sc, "card flags 0x%04x\n", sc->sc_card_flags);
+	DPRINTF(sc, BWI_DBG_ATTACH, "card flags 0x%04x\n", sc->sc_card_flags);
 }
 
 static void
@@ -1111,14 +1123,14 @@ bwi_get_clock_freq(struct bwi_softc *sc, struct bwi_clock_freq *freq)
 	KKASSERT(src >= 0 && src < BWI_CLKSRC_MAX);
 	KKASSERT(div != 0);
 
-	DPRINTF(sc, "clksrc %s\n",
+	DPRINTF(sc, BWI_DBG_ATTACH, "clksrc %s\n",
 		src == BWI_CLKSRC_PCI ? "PCI" :
 		(src == BWI_CLKSRC_LP_OSC ? "LP_OSC" : "CS_OSC"));
 
 	freq->clkfreq_min = bwi_clkfreq[src].freq_min / div;
 	freq->clkfreq_max = bwi_clkfreq[src].freq_max / div;
 
-	DPRINTF(sc, "clkfreq min %u, max %u\n",
+	DPRINTF(sc, BWI_DBG_ATTACH, "clkfreq min %u, max %u\n",
 		freq->clkfreq_min, freq->clkfreq_max);
 }
 
@@ -1227,8 +1239,6 @@ bwi_init(void *xsc)
 	int error;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	DPRINTF(sc, "%s\n", __func__);
 
 	error = bwi_stop(sc);
 	if (error) {
@@ -1498,8 +1508,6 @@ bwi_stop(struct bwi_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	DPRINTF(sc, "%s\n", __func__);
-
 	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
 
 	if (ifp->if_flags & IFF_RUNNING) {
@@ -1558,18 +1566,14 @@ bwi_intr(void *xsc)
 	if (intr_status == 0xffffffff)	/* Not for us */
 		return;
 
-#if 0
-	if_printf(ifp, "intr status 0x%08x\n", intr_status);
-#endif
+	DPRINTF(sc, BWI_DBG_INTR, "intr status 0x%08x\n", intr_status);
 
 	intr_status &= CSR_READ_4(sc, BWI_MAC_INTR_MASK);
 	if (intr_status == 0)		/* Nothing is interesting */
 		return;
 
 	txrx_error = 0;
-#if 0
-	if_printf(ifp, "TX/RX intr");
-#endif
+	DPRINTF(sc, BWI_DBG_INTR, "%s\n", "TX/RX intr");
 	for (i = 0; i < BWI_TXRX_NRING; ++i) {
 		uint32_t mask;
 
@@ -1581,9 +1585,8 @@ bwi_intr(void *xsc)
 		txrx_intr_status[i] =
 		CSR_READ_4(sc, BWI_TXRX_INTR_STATUS(i)) & mask;
 
-#if 0
-		kprintf(", %d 0x%08x", i, txrx_intr_status[i]);
-#endif
+		_DPRINTF(sc, BWI_DBG_INTR, ", %d 0x%08x",
+			 i, txrx_intr_status[i]);
 
 		if (txrx_intr_status[i] & BWI_TXRX_INTR_ERROR) {
 			if_printf(ifp, "intr fatal TX/RX (%d) error 0x%08x\n",
@@ -1591,9 +1594,7 @@ bwi_intr(void *xsc)
 			txrx_error = 1;
 		}
 	}
-#if 0
-	kprintf("\n");
-#endif
+	_DPRINTF(sc, BWI_DBG_INTR, "%s\n", "");
 
 	/*
 	 * Acknowledge interrupt
@@ -3019,10 +3020,10 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 		kprintf("%02x ", p[i]);
 	}
 	kprintf("\n");
-
-	if_printf(&ic->ic_if, "idx %d, pkt_len %d, buflen %d\n",
-		  idx, pkt_len, m->m_pkthdr.len);
 #endif
+
+	DPRINTF(sc, BWI_DBG_TX, "idx %d, pkt_len %d, buflen %d\n",
+		idx, pkt_len, m->m_pkthdr.len);
 
 	/* Setup TX descriptor */
 	sc->sc_setup_txdesc(sc, rd, idx, paddr, m->m_pkthdr.len);
@@ -3093,24 +3094,21 @@ _bwi_txeof(struct bwi_softc *sc, uint16_t tx_id, int acked, int data_txcnt)
 		return;
 	}
 
-#if 0
-	if_printf(ifp, "acked %d, data_txcnt %d\n", acked, data_txcnt);
-#endif
-
 	ring_idx = __SHIFTOUT(tx_id, BWI_TXH_ID_RING_MASK);
 	buf_idx = __SHIFTOUT(tx_id, BWI_TXH_ID_IDX_MASK);
 
 	KKASSERT(ring_idx == BWI_TX_DATA_RING);
 	KKASSERT(buf_idx < BWI_TX_NDESC);
-#if 0
-	if_printf(ifp, "txeof idx %d\n", buf_idx);
-#endif
 
 	tbd = &sc->sc_tx_bdata[ring_idx];
 	KKASSERT(tbd->tbd_used > 0);
 	tbd->tbd_used--;
 
 	tb = &tbd->tbd_buf[buf_idx];
+
+	DPRINTF(sc, BWI_DBG_TXEOF, "txeof idx %d, "
+		"acked %d, data_txcnt %d, ni %p\n",
+		buf_idx, acked, data_txcnt, tb->tb_ni);
 
 	bus_dmamap_unload(sc->sc_buf_dtag, tb->tb_dmap);
 	m_freem(tb->tb_mbuf);
@@ -3220,7 +3218,7 @@ bwi_get_pwron_delay(struct bwi_softc *sc)
 
 	val = CSR_READ_4(sc, BWI_PLL_ON_DELAY);
 	sc->sc_pwron_delay = howmany((val + 2) * 1000000, freq.clkfreq_min);
-	DPRINTF(sc, "power on delay %u\n", sc->sc_pwron_delay);
+	DPRINTF(sc, BWI_DBG_ATTACH, "power on delay %u\n", sc->sc_pwron_delay);
 
 	return bwi_regwin_switch(sc, old, NULL);
 }
@@ -3270,7 +3268,8 @@ bwi_regwin_disable_bits(struct bwi_softc *sc)
 
 	/* XXX cache this */
 	busrev = __SHIFTOUT(CSR_READ_4(sc, BWI_ID_LO), BWI_ID_LO_BUSREV_MASK);
-	DPRINTF(sc, "bus rev %u\n", busrev);
+	DPRINTF(sc, BWI_DBG_ATTACH | BWI_DBG_INIT | BWI_DBG_MISC,
+		"bus rev %u\n", busrev);
 
 	if (busrev == BWI_BUSREV_0)
 		return BWI_STATE_LO_DISABLE1;
@@ -3291,10 +3290,12 @@ bwi_regwin_is_enabled(struct bwi_softc *sc, struct bwi_regwin *rw)
 	if ((val & (BWI_STATE_LO_CLOCK |
 		    BWI_STATE_LO_RESET |
 		    disable_bits)) == BWI_STATE_LO_CLOCK) {
-		DPRINTF(sc, "%s is enabled\n", bwi_regwin_name(rw));
+		DPRINTF(sc, BWI_DBG_ATTACH | BWI_DBG_INIT, "%s is enabled\n",
+			bwi_regwin_name(rw));
 		return 1;
 	} else {
-		DPRINTF(sc, "%s is disabled\n", bwi_regwin_name(rw));
+		DPRINTF(sc, BWI_DBG_ATTACH | BWI_DBG_INIT, "%s is disabled\n",
+			bwi_regwin_name(rw));
 		return 0;
 	}
 }
@@ -3311,7 +3312,8 @@ bwi_regwin_disable(struct bwi_softc *sc, struct bwi_regwin *rw, uint32_t flags)
 	 * If current regwin is in 'reset' state, it was already disabled.
 	 */
 	if (state_lo & BWI_STATE_LO_RESET) {
-		DPRINTF(sc, "%s was already disabled\n", bwi_regwin_name(rw));
+		DPRINTF(sc, BWI_DBG_ATTACH | BWI_DBG_INIT,
+			"%s was already disabled\n", bwi_regwin_name(rw));
 		return;
 	}
 
@@ -3465,7 +3467,7 @@ bwi_updateslot(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	DPRINTF(sc, "%s\n", __func__);
+	DPRINTF(sc, BWI_DBG_80211, "%s\n", __func__);
 
 	KKASSERT(sc->sc_cur_regwin->rw_type == BWI_REGWIN_T_MAC);
 	mac = (struct bwi_mac *)sc->sc_cur_regwin;
