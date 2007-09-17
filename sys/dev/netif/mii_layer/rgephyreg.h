@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rgephyreg.h,v 1.2 2005/01/06 01:42:56 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rgephyreg.h,v 1.1 2005/12/26 13:36:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/rgephyreg.h,v 1.2 2007/09/17 11:29:36 hasso Exp $
  */
 
 #ifndef _DEV_MII_RGEPHYREG_H_
@@ -137,5 +137,14 @@
 #define RGEPHY_EXTSTS_X_HD_CAP	0x4000	/* 1000base-X HD capable */
 #define RGEPHY_EXTSTS_T_FD_CAP	0x2000	/* 1000base-T FD capable */
 #define RGEPHY_EXTSTS_T_HD_CAP	0x1000	/* 1000base-T HD capable */
+
+/* RTL8211B */
+#define RGEPHY_SR		0x11
+#define RGEPHY_SR_CROSSOVER	(1<< 6)
+#define RGEPHY_SR_LINK		(1<<10)
+#define RGEPHY_SR_FDX		(1<<13)
+#define RGEPHY_SR_SPEED(X)	(((X)>>14)&3)
+
+#define RGEPHY_EXT_CR		0x14
 
 #endif /* !_DEV_RGEPHY_MIIREG_H_ */

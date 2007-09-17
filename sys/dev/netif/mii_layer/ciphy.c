@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ciphy.c,v 1.3 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ciphy.c,v 1.4 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ciphy.c,v 1.5 2007/09/17 11:29:36 hasso Exp $
  */
 
 /*
@@ -77,6 +77,7 @@ static const struct mii_phydesc ciphys[] = {
 	MII_PHYDESC(xxCICADA,	CS8201),
 	MII_PHYDESC(xxCICADA,	CS8201A),
 	MII_PHYDESC(xxCICADA,	CS8201B),
+	MII_PHYDESC(VITESSE,	VSC8601),
 	MII_PHYDESC_NULL
 };
 
@@ -384,6 +385,9 @@ ciphy_fixup(struct mii_softc *sc)
 		} else {
 			PHY_CLRBIT(sc, CIPHY_MII_10BTCSR, CIPHY_10BTCSR_ECHO);
 		}
+		break;
+	
+	case MII_MODEL_VITESSE_VSC8601:
 		break;
 
 	default:

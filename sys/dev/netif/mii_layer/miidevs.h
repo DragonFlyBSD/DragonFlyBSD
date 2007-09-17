@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.11 2007/08/07 11:37:11 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.12 2007/09/17 11:29:36 hasso Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.10 2007/05/03 08:31:33 sephe Exp 
+ *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.12 2007/09/17 11:13:55 hasso Exp 
  */
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
@@ -77,6 +77,7 @@
 #define	MII_OUI_XAQTI	0x00e0ae	/* XaQti Corp. */
 #define	MII_OUI_MARVELL	0x005043	/* Marvell Semiconductor */
 #define	MII_OUI_ICPLUS	0x0090c3	/* IC Plus Corp. */
+#define	MII_OUI_VITESSE	0x0001c1	/* Vitesse Semiconductor */
 
 /* in the 79c873, AMD uses another OUI (which matches Davicom!) */
 #define	MII_OUI_xxAMD	0x00606e	/* Advanced Micro Devices */
@@ -103,7 +104,7 @@
 #define	MII_OUI_xxDAVICOM	0x006040	/* Davicom Semiconductor */
 #define	MII_OUI_xxBROADCOM2	0x0050ef	/* Broadcom Corporation */
 
-/* This is the OUI of the gigE PHY in the RealTek 8169S/8110S chips */
+/* This is the OUI of the gigE PHY in the RealTek 8211B/8169S/8110S chips */
 #define	MII_OUI_xxREALTEK	0x000732	/*  */
 
 #define	MII_OUI_xxMARVELL	0x000ac2	/* Marvell Semiconductor */
@@ -258,7 +259,7 @@
 #define	MII_MODEL_REALTEK_RTL8201L	0x0020
 #define	MII_STR_REALTEK_RTL8201L	"RTL8201L 10/100 media interface"
 #define	MII_MODEL_xxREALTEK_RTL8169S	0x0011
-#define	MII_STR_xxREALTEK_RTL8169S	"RTL8169S/8110S media interface"
+#define	MII_STR_xxREALTEK_RTL8169S	"8211B/RTL8169S/8110S media interface"
 #define	MII_MODEL_REALTEK2_RTL8169S	0x0011
 #define	MII_STR_REALTEK2_RTL8169S	"RTL8169S/8110S media interface"
 
@@ -325,3 +326,8 @@
 #define	MII_STR_ICPLUS_IP101	"IP101 10/100 PHY"
 #define	MII_MODEL_ICPLUS_IP1000A	0x0008
 #define	MII_STR_ICPLUS_IP1000A	"IC Plus 10/100/1000 media interface"
+
+/* Vitesse Semiconductor PHYs */
+#define	MII_MODEL_VITESSE_VSC8601	0x0002
+#define	MII_STR_VITESSE_VSC8601	"VSC8601 10/100/1000TX PHY"
+

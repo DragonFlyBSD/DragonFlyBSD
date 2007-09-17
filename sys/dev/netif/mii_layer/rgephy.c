@@ -32,11 +32,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rgephy.c,v 1.7 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.5 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.6 2007/09/17 11:29:36 hasso Exp $
  */
 
 /*
- * Driver for the RealTek 8169S/8110S internal 10/100/1000 PHY.
+ * Driver for the RealTek 8211B/8169S/8110S internal 10/100/1000 PHY.
  */
 
 #include <sys/param.h>
@@ -158,6 +158,7 @@ rgephy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 	int reg, speed, gig;
+	uint16_t id2;
 
 	switch (cmd) {
 	case MII_POLLSTAT:
@@ -278,9 +279,17 @@ setit:
 		 *
 		 * XXX Read the BMSR twice in case it's latched?
 		 */
-		reg = PHY_READ(sc, RE_GMEDIASTAT);
-		if (reg & RE_GMEDIASTAT_LINK)
-			break;
+		id2 = PHY_READ(sc, MII_PHYIDR2);
+
+		if (MII_REV(id2) < 2) {
+			reg = PHY_READ(sc, RE_GMEDIASTAT);
+			if (reg & RE_GMEDIASTAT_LINK)
+				break;
+		} else {
+			reg = PHY_READ(sc, RGEPHY_SR);
+			if (reg & RGEPHY_SR_LINK)
+				break;
+		}
 
 		/*
 		 * Only retry autonegotiation every mii_anegticks seconds.
@@ -319,14 +328,23 @@ rgephy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
 	int bmsr, bmcr;
+	uint16_t id2;
 
 	mii->mii_media_status = IFM_AVALID;
 	mii->mii_media_active = IFM_ETHER;
 
-	bmsr = PHY_READ(sc, RE_GMEDIASTAT);
+	id2 = PHY_READ(sc, MII_PHYIDR2);
 
-	if (bmsr & RE_GMEDIASTAT_LINK)
-		mii->mii_media_status |= IFM_ACTIVE;
+	if (MII_REV(id2) < 2) {
+		bmsr = PHY_READ(sc, RE_GMEDIASTAT);
+		if (bmsr & RE_GMEDIASTAT_LINK)
+			mii->mii_media_status |= IFM_ACTIVE;
+	} else {
+		bmsr = PHY_READ(sc, RGEPHY_SR);
+		if (bmsr & RGEPHY_SR_LINK)
+			mii->mii_media_status |= IFM_ACTIVE;
+	}
+
 	bmsr = PHY_READ(sc, RGEPHY_MII_BMSR);
 
 	bmcr = PHY_READ(sc, RGEPHY_MII_BMCR);
@@ -342,28 +360,43 @@ rgephy_status(struct mii_softc *sc)
 		}
 	}
 
-	bmsr = PHY_READ(sc, RE_GMEDIASTAT);
-
-	if (bmsr & RE_GMEDIASTAT_1000MBPS) {
-		mii->mii_media_active |= IFM_1000_T;
-	} else if (bmsr & RE_GMEDIASTAT_100MBPS) {
-		mii->mii_media_active |= IFM_100_TX;
-	} else if (bmsr & RE_GMEDIASTAT_10MBPS) {
-		mii->mii_media_active |= IFM_10_T;
+	if (MII_REV(id2) < 2) {
+		bmsr = PHY_READ(sc, RE_GMEDIASTAT);
+		if (bmsr & RE_GMEDIASTAT_1000MBPS)
+			mii->mii_media_active |= IFM_1000_T;
+		else if (bmsr & RE_GMEDIASTAT_100MBPS)
+			mii->mii_media_active |= IFM_100_TX;
+		else if (bmsr & RE_GMEDIASTAT_10MBPS)
+			mii->mii_media_active |= IFM_10_T;
+		else
+			mii->mii_media_active |= IFM_NONE;
+		if (bmsr & RE_GMEDIASTAT_FDX)
+			mii->mii_media_active |= IFM_FDX;
 	} else {
-		mii->mii_media_active |= IFM_NONE;
-		return;
+		bmsr = PHY_READ(sc, RGEPHY_SR);
+		if (RGEPHY_SR_SPEED(bmsr) == 2)
+			mii->mii_media_active |= IFM_1000_T;
+		else if (RGEPHY_SR_SPEED(bmsr) == 1)
+			mii->mii_media_active |= IFM_100_TX;
+		else if (RGEPHY_SR_SPEED(bmsr) == 0)
+			mii->mii_media_active |= IFM_10_T;
+		else
+			mii->mii_media_active |= IFM_NONE;
+		if (bmsr & RGEPHY_SR_FDX)
+			mii->mii_media_active |= IFM_FDX;
 	}
-
-	if (bmsr & RE_GMEDIASTAT_FDX)
-		mii->mii_media_active |= IFM_FDX;
 }
 
 static int
 rgephy_mii_phy_auto(struct mii_softc *sc)
 {
-	rgephy_loop(sc);
-	rgephy_reset(sc);
+	uint16_t id2;
+
+	id2 = PHY_READ(sc, MII_PHYIDR2);
+	if (MII_REV(id2) < 2) {
+		rgephy_loop(sc);
+		rgephy_reset(sc);
+	}
 
 	PHY_WRITE(sc, RGEPHY_MII_ANAR,
 		  BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) | ANAR_CSMA);
@@ -383,9 +416,13 @@ rgephy_loop(struct mii_softc *sc)
 {
 	uint32_t bmsr;
 	int i;
+	uint16_t id2;
 
-	PHY_WRITE(sc, RGEPHY_MII_BMCR, RGEPHY_BMCR_PDOWN);
-	DELAY(1000);
+	id2 = PHY_READ(sc, MII_PHYIDR2);
+	if (MII_REV(id2) < 2) {
+		PHY_WRITE(sc, RGEPHY_MII_BMCR, RGEPHY_BMCR_PDOWN);
+		DELAY(1000);
+	}
 
 	for (i = 0; i < 15000; i++) {
 		bmsr = PHY_READ(sc, RGEPHY_MII_BMSR);
@@ -465,9 +502,15 @@ rgephy_load_dspcode(struct mii_softc *sc)
 static void
 rgephy_reset(struct mii_softc *sc)
 {
+	uint16_t id2;
+
 	mii_phy_reset(sc);
-	DELAY(1000);
-	PHY_WRITE(sc, RGEPHY_MII_BMCR, RGEPHY_BMCR_AUTOEN);
-	DELAY(1000);
+
+	id2 = PHY_READ(sc, MII_PHYIDR2);
+	if (MII_REV(id2) < 2) {
+		DELAY(1000);
+		PHY_WRITE(sc, RGEPHY_MII_BMCR, RGEPHY_BMCR_AUTOEN);
+		DELAY(1000);
+	}
 	rgephy_load_dspcode(sc);
 }
