@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.30 2007/08/19 19:42:11 hasso Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.31 2007/09/17 10:24:37 hasso Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -411,7 +411,7 @@ vendor DIAMOND		0x0841	Diamond
 vendor NETGEAR		0x0846	BayNETGEAR
 vendor TOPRE		0x0853	Topre Corporation
 vendor ACTIVEWIRE	0x0854	ActiveWire
-vendor BBELECTRONICS	0x0856	B&B Electronics
+vendor BBELECTR		0x0856	B&B Electronics
 vendor PORTGEAR		0x085a	PortGear
 vendor NETGEAR2		0x0864	Netgear
 vendor SYSTEMTALKS	0x086e	System Talks
@@ -440,7 +440,7 @@ vendor XEROX		0x0924	Xerox
 vendor BIOMETRIC	0x0929	American Biometric Company
 vendor TOSHIBA		0x0930	Toshiba
 vendor PLEXTOR		0x093b	Plextor
-vendor INTREPIDCS	0x093c	Intrepid
+vendor INTREPIDCS	0x093c	Interpid
 vendor YANO		0x094f	Yano
 vendor KINGSTON		0x0951	Kingston Technology
 vendor BLUEWATER	0x0956	BlueWater Systems
@@ -475,12 +475,13 @@ vendor BROADCOM		0x0a5c	Broadcom
 vendor GREENHOUSE	0x0a6b	GREENHOUSE
 vendor GEOCAST		0x0a79	Geocast Network Systems
 vendor IDQUANTIQUE	0x0aba	id Quantique
+vendor IDTECH		0x0acd	ID TECH
 vendor ZYDAS		0x0ace	Zydas Technology Corporation
 vendor NEODIO		0x0aec	Neodio
 vendor VODAFONE		0x0af0	Vodafone
 vendor ASUS		0x0b05	ASUSTeK Computer
 vendor TODOS		0x0b0c	Todos Data System
-vendor SIIG2		0x0b39	SIIG
+vendor OCT		0x0b39	Omnidirectional Control Technology, Inc.
 vendor TEKRAM		0x0b3b	Tekram Technology
 vendor HAL		0x0b41	HAL Corporation
 vendor EMS		0x0b43	EMS Production
@@ -497,12 +498,15 @@ vendor REALTEK		0x0bda	Realtek
 vendor ADDONICS2	0x0bf6	Addonics Technology
 vendor AGATE		0x0c08	Agate Technologies
 vendor DMI		0x0c0b	DMI
+vendor ICOM		0x0c26	Icom, Inc.
 vendor CHICONY2		0x0c45	Chicony Electronics
 vendor SEALEVEL		0x0c52	Sealevel System
 vendor LUWEN		0x0c76	EasyDisk
 vendor KYOCERA2		0x0c88	Kyocera Wireless Corp.
 vendor ZCOM		0x0cde	Z-Com
 vendor ATHEROS2		0x0cf3	Atheros Communications
+vendor KOBIL		0x0d46	Kobil Systems
+vendor POSIFLEX		0x0d3a	Posiflex Technologies, Inc.
 vendor TANGTOP		0x0d3d	Tangtop
 vendor SMC3		0x0d5c	Standard Microsystems
 vendor PEN		0x0d7d	Pen Drive   
@@ -534,6 +538,7 @@ vendor RIM		0x0fca	Research In Motion
 vendor DYNASTREAM	0x0fcf	Dynastream Innovations
 vendor QUALCOMM2	0x1004	Qualcomm
 vendor DESKNOTE		0x1019	Desknote
+vendor THURLBY		0x103e	Thurlby Thandar Instruments, Ltd.
 vendor GIGABYTE		0x1044	GIGABYTE
 vendor WESTERN		0x1058	Western Digital
 vendor MOTOROLA		0x1063	Motorola
@@ -557,12 +562,14 @@ vendor TOPFIELD		0x11db	Topfield Co., Ltd
 vendor SIEMENS3		0x11f5	Siemens
 vendor NETINDEX		0x11f6  NetIndex Inc.
 vendor ALCATEL		0x11f7	Alcatel
+vendor INTERBIO		0x1209	InterBiometrics
 vendor UNKNOWN3		0x1233	Unknown vendor
 vendor TSUNAMI		0x1241	Tsunami
 vendor PHEENET		0x124a	Pheenet
 vendor TARGUS		0x1267	Targus
 vendor TWINMOS		0x126f	TwinMOS
 vendor TENDA		0x1286	Tenda
+vendor TESTO		0x128d	Testo AG
 vendor CREATIVE2	0x1292	Creative Labs
 vendor BELKIN2		0x1293	Belkin Components
 vendor CYBERTAN		0x129b	CyberTAN Technology
@@ -630,6 +637,7 @@ vendor IRIVER		0x4102	iRiver
 vendor DELL		0x413c	Dell
 vendor WCH		0x4348	QinHeng Electronics
 vendor ACEECA		0x4766	Aceeca
+vendor PAPOUCH		0x5050	Papouch s.r.o.
 vendor AVERATEC		0x50c2	Averatec
 vendor SWEEX		0x5173	Sweex
 vendor ONSPEC2		0x55aa	OnSpec Electronic Inc.
@@ -641,6 +649,7 @@ vendor INTEL		0x8086	Intel
 vendor SITECOM2		0x9016	Sitecom
 vendor MOSCHIP		0x9710	MosChip Semiconductor
 vendor 3COM3		0xa727	3Com
+vendor EVOLUTION	0xdeee	Evolution Robotics, Inc.
 vendor HP2		0xf003	Hewlett Packard
 vendor USRP		0xfffe	GNU Radio USRP
 
@@ -914,7 +923,18 @@ product AVISION 1200U		0x0268	1200U scanner
 product BALTECH CARDREADER	0x9999	Card reader
 
 /* B&B Electronics products */
-product BBELECTRONICS USOTL4	0xAC01	uLinks Isolated RS-422/485 to USB adapter
+product BBELECTR USOTL4		0xac01	USOTL4 Isolated RS-422/485 converter
+product BBELECTR USTL4		0xac02	USTL4 RS-422/485 converter
+product BBELECTR USO9ML2	0xac03	USO9ML2 Isolated RS-232 converter
+product BBELECTR USOPTL4	0xac11	USOPTL4 Isolated RS-422/485 converter
+product BBELECTR USPTL4		0xac12	USPTL4 RS-422/485 converter
+product BBELECTR USO9ML2DR2	0xac16	USO9ML2DR-2 Isolated RS-232 converter
+product BBELECTR USO9ML2DR	0xac17	USO9ML2DR Isolated RS-232 converter
+product BBELECTR USOPTL4DR2	0xac18	USOPTL4DR-2 Isolated RS-422/485 converter
+product BBELECTR USOPTL4DR	0xac19	USOPTL4DR Isolated RS-422/485 converter
+product BBELECTR 485USB9F2W	0xac25	485USB9F-2W RS-422/485 port
+product BBELECTR 485USB9F4W	0xac26	485USB9F-4W RS-422/485 port
+product BBELECTR 232USB9M	0xac27	232USB9M RS-232 port
 
 /* Belkin products */
 /*product BELKIN F5U111		0x????	F5U111 Ethernet adapter*/
@@ -1253,6 +1273,11 @@ product EPSON 4200		0x0820	CX4200 MP scanner
 /* e-TEK Labs products */
 product ETEK 1COM		0x8007	Serial port
 
+/* Evolution Robotics products */
+product EVOLUTION ER1		0x0300	ER1 Control Module
+product EVOLUTION RCM4_1	0x0302	RCM4 interface
+product EVOLUTION RCM4_2	0x0303	RCM4 interface
+
 /* Extended Systems products */
 product EXTENDED XTNDACCESS	0x0100	XTNDAccess IrDA
 
@@ -1269,6 +1294,10 @@ product GREENHOUSE KANA21	0x0001	CF-writer with Portable MP3 Player
 /* Griffin Technology */
 product GRIFFIN IMATE		0x0405	iMate, ADB adapter
 
+/* Falcom Wireless Communications products */
+product FALCOM TWIST		0x0001	Twist USB GPRS modem
+product FALCOM SAMBA		0x0005	Samba USB GPRS modem
+
 /* FEIYA products */
 product FEIYA 5IN1		0x1132	5-in-1 Card Reader
 
@@ -1279,30 +1308,226 @@ product FOSSIL WRISTPDA		0x0002	Wrist PDA
 product FREECOM DVD		0xfc01	Connector for DVD drive
 
 /* Future Technology Devices products */
-product FTDI SERIAL_8U232AM	0x6001	8U232AM Serial converter
-product FTDI SERIAL_2232C	0x6010	FT2232C Dual port Serial
+product FTDI FT232_1		0x0232	USB to serial converter
+product FTDI FT232_2		0x6001	USB to serial converter
+product FTDI FT232_3		0x6006	USB to serial converter
+product FTDI FT232_4		0x6007	USB to serial converter
+product FTDI FT232_5		0x6008	USB to serial converter
+product FTDI FT232_6		0x6009	USB to serial converter
+product FTDI FT2232		0x6010	Dual port serial converter
 product FTDI PS2KBDMS		0x8371	PS/2 Keyboard/Mouse
-product FTDI SERIAL_8U100AX	0x8372	8U100AX Serial converter
-/* Gude Analog- und Digitalsysteme products also use FTDI's id: */
-product FTDI TACTRIX_OPENPORT_13M 0xcc48 OpenPort 1.3 Mitsubishi
-product FTDI TACTRIX_OPENPORT_13S 0xcc49 OpenPort 1.3 Subaru
-product FTDI TACTRIX_OPENPORT_13U 0xcc4a OpenPort 1.3 Universal
+product FTDI FT8U100AX		0x8372	8U100AX USB hub controller
+
+/* RR-CirKits products */
+product FTDI LOCOBUFFER		0xc7d0	RR-CirKits LocoBuffer USB
+
+/* DMX4ALL products */
+product FTDI DMX4ALL		0xc850	DMX4ALL DMX interface
+
+/* ASK products */
+product FTDI ASK_RDR4X7_1	0xc990	ASK RDR 4X7 series card reader
+product FTDI ASK_RDR4X7_2	0xc991	ASK RDR 4X7 series card reader
+product FTDI ASK_RDR4X7_3	0xc992	ASK RDR 4X7 series card reader
+product FTDI ASK_RDR4X7_4	0xc993	ASK RDR 4X7 series card reader
+product FTDI ASK_RDR4X7_5	0xc994	ASK RDR 4X7 series card reader
+product FTDI ASK_RDR4X7_6	0xc995	ASK RDR 4X7 series card reader
+product FTDI ASK_RDR4X7_7	0xc996	ASK RDR 4X7 series card reader
+product FTDI ASK_RDR4X7_8	0xc997	ASK RDR 4X7 series card reader
+
+/* MJS products */
+product FTDI MJS_SIRIUS_PC	0xca81	MJS Sirius To PC Interface
+
+/* Starting Point Systems products */
+product FTDI CHAMELEON		0xcaa0	Starting Point Systems µChameleon
+
+/* Tactrix products */
+product FTDI TACTRIX_OP_13M	0xcc48	OpenPort 1.3 Mitsubishi
+product FTDI TACTRIX_OP_13S	0xcc49	OpenPort 1.3 Subaru
+product FTDI TACTRIX_OP_13U	0xcc4a	OpenPort 1.3 Universal
+
+/* Plus GSM products */
+product FTDI IPLUS		0xd070	Plus GSM iPlus
+
+/* Xsens Technologies BV products */
+product FTDI XSENS_1		0xd388	Xsens serial interface
+product FTDI XSENS_2		0xd389	Xsens serial interface
+product FTDI XSENS_3		0xd38a	Xsens serial interface
+product FTDI XSENS_4		0xd38b	Xsens serial interface
+product FTDI XSENS_5		0xd38c	Xsens serial interface
+product FTDI XSENS_6		0xd38d	Xsens serial interface
+product FTDI XSENS_7		0xd38e	Xsens serial interface
+product FTDI XSENS_8		0xd38f	Xsens serial interface
+
+/* Eurami Group products */
+product FTDI GAMMASCOUT		0xd678	Gamma Scout Online
+
+/* Westrex International products */
+product FTDI WESTREX_777	0xdc00	Westrex International model 777
+product FTDI WESTREX_8900F	0xdc00	Westrex International model 8900F
+
+/* ACG Identification GmbH products */
+product FTDI ACG_HFDUAL		0xdd20	ACG HF Dual ISO Reader (RFID)
+
+/* Artemis products */
+product FTDI ARTEMIS		0xdf28	Artemis CCD camera
+
+/* ATIK Instruments products */
+product FTDI ATK16		0xdf30	ATIK ATK-16 Grayscale Camera
+product FTDI ATK16C		0xdf30	ATIK ATK-16C Colour Camera
+product FTDI ATK16HR		0xdf30	ATIK ATK-16HR Grayscale Camera
+product FTDI ATK16HRC		0xdf30	ATIK ATK-16HRC Colour Camera
+
+/* Yost Engineering, Inc. products */
+product FTDI YEI_SC31		0xe050	YEI ServoCenter3.1 USB
+
+/* EVER Sp. products */
+product FTDI ECO_PRO		0xe520	EVER Eco Pro UPS
+
+/* Active Robots products */
+product FTDI ACTROBOTS		0xe548	Active Robots comms board
+
+/* Pyramid Computer GmbH products */
+product FTDI PYRAMID		0xe6c8	Pyramid Appliance Display
+
+/* Gude Analog- und Digitalsysteme GmbH products */
+product FTDI GUDE_1		0xe808  Gude GmbH USB to serial
+product FTDI GUDE_2		0xe809  Gude GmbH USB to serial
+product FTDI GUDE_3		0xe80a  Gude GmbH USB to serial
+product FTDI GUDE_4		0xe80b  Gude GmbH USB to serial
+product FTDI GUDE_5		0xe80c  Gude GmbH USB to serial
+product FTDI GUDE_6		0xe80d  Gude GmbH USB to serial
+product FTDI GUDE_7		0xe80e  Gude GmbH USB to serial
+product FTDI GUDE_8		0xe80f  Gude GmbH USB to serial
 product FTDI EISCOU		0xe888	Expert ISDN Control USB
 product FTDI UOPTBR		0xe889	USB-RS232 OptoBridge
 product FTDI EMCU2D		0xe88a	Expert mouseCLOCK USB II
 product FTDI PCMSFU		0xe88b	Precision Clock MSF USB
 product FTDI EMCU2H		0xe88c	Expert mouseCLOCK USB II HBG
-product FTDI USBSERIAL		0xfa00	Matrix Orbital USB Serial
-product FTDI MX2_3		0xfa01	Matrix Orbital MX2 or MX3 LCD
-product FTDI MX4_5		0xfa02	Matrix Orbital MX4 or MX5 LCD
-product FTDI LK202		0xfa03	Matrix Orbital LK202-24 LCD
-product FTDI LK204		0xfa04	Matrix Orbital LK204-24 LCD
-product FTDI LCD_CFA_632	0xfc08  Crystalfontz CFA-632 LCD
-product FTDI LCD_CFA_634	0xfc09  Crystalfontz CFA-634 LCD
-product FTDI LCD_CFA_633	0xfc0b  Crystalfontz CFA-633 LCD
+product FTDI GUDE_9		0xe88d  Gude GmbH USB to serial
+product FTDI GUDE_A		0xe88e  Gude GmbH USB to serial
+product FTDI GUDE_B		0xe88f  Gude GmbH USB to serial
+
+/* Eclo, Lda. products */
+product FTDI ECLO_1WIRE		0xea90	Eclo COM to 1-Wire USB adaptor
+
+/* Coastal ChipWorks products */
+product FTDI TNCX		0xebe0	TNC-X USB to packet-radio adapter
+
+/* Teratronik products */
+product FTDI TERATRONIK_VCP	0xec88	Teratronik device
+product FTDI TERATRONIK_D2XX	0xec89	Teratronik device
+
+/* MaxStream products */
+product FTDI MAXS_PKGU		0xee18	MaxStream PKG-U RF modem
+
+/* microHAM products */
+product FTDI MHAM_KW		0xeee8	microHAM USB-KW interface
+product FTDI MHAM_YS		0xeee9	microHAM USB-YS interface
+product FTDI MHAM_Y6		0xeeea	microHAM USB-Y6 interface
+product FTDI MHAM_Y8		0xeeeb	microHAM USB-Y8 interface
+product FTDI MHAM_IC		0xeeec	microHAM USB-IC interface
+product FTDI MHAM_DB9		0xeeed	microHAM USB-DB9 interface
+product FTDI MHAM_RS232		0xeeee	microHAM USB-RS232 interface
+product FTDI MHAM_Y9		0xeeef	microHAM USB-Y9 interface
+
+/* ELV products */
+product FTDI ELV_ALC8500	0xf06e	ELV ALC 8500 Expert
+product FTDI ELV_FHZ1000PC	0xf06f	ELV FHZ 1000 PC
+
+/* Perle Systems products */
+product	FTDI PERLE_UP		0xf0c0	Perle Systems UltraPort USB
+
+/* ACT Solutions products */
+product FTDI ACTZWAVE		0xf2d0	ACT Solutions HomePro ZWave
+
+/* 4n-galaxy.de products */
+product	FTDI GALAXY_1		0xf3c0	Galaxy USB to serial
+product	FTDI GALAXY_2		0xf3c1	Galaxy USB to serial
+
+/* Linx Technologies products */
+product FTDI LINX_SDMUSBQSS	0xf448	Linx SDM-USB-QS-S
+product FTDI LINX_MASTER2	0xf449	Linx Master Development 2.0
+product FTDI LINX_1		0xf44a	Linx USB to serial
+product FTDI LINX_2		0xf44b	Linx USB to serial
+product FTDI LINX_3		0xf44c	Linx USB to serial
+
+/* Suunto Oy products */
+product	FTDI SUUNTO		0xf680	Suunto Sports instrument
+
+/* USB-UIRT */
+product FTDI USBUIRT		0xf850	USB-UIRT
+
+/* CCS Inc. products */
+product FTDI CCS_ICDU20		0xf9d0	CCS Inc. ICD-U20
+product FTDI CCS_ICDU40		0xf9d1	CCS Inc. ICD-U40
+product FTDI CCS_MACHX		0xf9d2	CCS Inc. MACH-X
+
+/* Matrix Orbital LCD displays */
+product FTDI MATRIX_1		0xfa00	Matrix Orbital USB Serial
+product FTDI MATRIX_MX2_3	0xfa01	Matrix Orbital MX2 or MX3 LCD
+product FTDI MATRIX_MX4_5	0xfa02	Matrix Orbital MX4 or MX5 LCD
+product FTDI MATRIX_LK202	0xfa03	Matrix Orbital LK202-24 LCD
+product FTDI MATRIX_LK204	0xfa04	Matrix Orbital LK204-24 LCD
+product FTDI MATRIX_2		0xfa05	Matrix Orbital USB Serial
+product FTDI MATRIX_3		0xfa06	Matrix Orbital USB Serial
+
+/* Home Electronics products */
+product FTDI TIRA1		0xfa78	Home Electronics Tira-1
+
+/* PCDJ products */
+product FTDI PCDJ_DAC2		0xfa88	PCDJ DAC-2
+
+/* Inside.fr products */
+product FTDI ACCESSO		0xfad0	Inside Accesso contactless reader
+
+/* Thorlabs GmbH products */
+product FTDI THORLABS		0xfaf0	ThorLabs motors controller
+
+/* ELV products */
+product FTDI ELV_UR100		0xfb58	ELV UR 100
+product FTDI ELV_UM100		0xfb5a	ELV UM 100
+product FTDI ELV_UO100		0xfb5b	ELV UO 100
+
+/* Crystalfontz products */
+product FTDI CFA_632		0xfc08  Crystalfontz CFA-632 LCD
+product FTDI CFA_634		0xfc09  Crystalfontz CFA-634 LCD
+product FTDI CFA_547		0xfc0a	Crystalfontz CFA-547 LCD
+product FTDI CFA_633		0xfc0b  Crystalfontz CFA-633 LCD
 product FTDI CFA_631		0xfc0c	Crystalfontz CFA-631 LCD
-product FTDI CFA_635		0xfc0d	Crystalfontz CFA-635 USB LCD
-product FTDI SEMC_DSS20		0xfc82	SEMC DSS-20 SyncStation
+product FTDI CFA_635		0xfc0d	Crystalfontz CFA-635 LCD
+product FTDI CFA_640		0xfc0e	Crystalfontz CFA-640 LCD
+product FTDI CFA_642		0xfc0f	Crystalfontz CFA-642 LCD
+
+/* IRTrans GmbH products */
+product	FTDI IRTRANS		0xfc60	Irtrans device
+
+/* Sony Ericsson products */
+product FTDI SEMC_DSS20		0xfc82	Sony Ericsson DSS-20 SyncStation
+
+/* RM Michaelides Software & Elektronik GmbH products */
+product	FTDI CANVIEW		0xfd60	RM Michaelides CANview USB
+
+/* Video Networks Limited / Homechoice products */
+product FTDI VNHC		0xfe38	Homechoice broadband modem
+
+/* AlphaMicro Components products */
+product FTDI AMC232		0xff00	AlphaMicro Components AMC-232USB01
+
+/* Thought Technology Ltd. products */
+product	FTDI TTUSB		0xff20	Thought Technology TT-USB
+
+/* IBS elektronik products */
+product FTDI IBS_US485		0xff38	IBS US485 interface
+product FTDI IBS_PICPRO		0xff39	IBS PIC-Programmer
+product FTDI IBS_PCMCIA		0xff3a	IBS PCMCIA SRAM-cards reader
+product FTDI IBS_PK1		0xff3b	IBS Particel counter PK1
+product FTDI IBS_RS232MON	0xff3c	IBS RS232 - Monitor
+product FTDI IBS_APP70		0xff3d	IBS APP 70 dust monitoring
+product FTDI IBS_PEDO		0xff3e	IBS IBS PEDO-Modem
+product FTDI IBS_1		0xff3f	IBS future device
+
+/* Lawicel products */
+product FTDI CANUSB		0xffa8	Lawicel CANUSB device
 
 /* Fuji photo products */
 product FUJIPHOTO MASS0100	0x0100	Mass Storage
@@ -1454,6 +1679,21 @@ product HUAWEI MOBILE		0x1001	Huawei Mobile
 product IBM OPTTRAVELMOUSE	0x3107	Optical
 product IBM USBCDROMDRIVE	0x4427	USB CD-ROM Drive
 
+/* Icom, Inc. */
+product ICOM ID1		0x0004	ID-1
+product ICOM RP2C1		0x0009	ID-RP2C service 1
+product ICOM RP2C2		0x000a	ID-RP2C service 2
+product ICOM RP2D		0x000b	ID-RP2D
+product ICOM RP2VT		0x000c	ID-RP2V service T
+product ICOM RP2VR		0x000d	ID-RP2V service R
+product ICOM RP4000VT		0x0010	ID-RP4000V service T
+product ICOM RP4000VR		0x0011	ID-RP4000V service R
+product ICOM RP2000VT		0x0012	ID-RP2000V service T
+product ICOM RP2000VR		0x0013	ID-RP2000V service R
+
+/* ID TECH products */
+product IDTECH SERIAL		0x0300	USB to serial adapter
+
 /* Iiyama products */
 product IIYAMA HUB		0x0201	Hub
 
@@ -1501,6 +1741,10 @@ product INSYSTEM ADAPTERV2	0x5701	USB Storage Adapter V2
 product INTEL EASYPC_CAMERA	0x0110	Easy PC Camera
 product INTEL I2011B		0x1111	Wireless 2011B
 product INTEL TESTBOARD		0x9890	82930 test board
+
+/* InterBiometrics products */
+product INTERBIO IOBOARD	0x1002	IO Board
+product INTERBIO MINIIOBOARD	0x1003	Mini IO Board
 
 /* Intersil products */
 product INTERSIL PRISM_2X	0x3642	Prism2.x WLAN
@@ -1617,6 +1861,10 @@ product KEYSPAN UIA11		0x0202	UIA-11 remote control
 /* Kingston products */
 product KINGSTON XX1		0x0008	Ethernet Adapter
 product KINGSTON KNU101TX	0x000a	KNU101TX USB Ethernet
+
+/* Kobil Systems products */
+product KOBIL B1		0x2020	Konverter for B1
+product KOBIL KAAN		0x2021	Konverter for KAAN
 
 /* Kodak products */
 product KODAK DC220		0x0100	Digital Science DC220
@@ -1852,6 +2100,7 @@ product MITSUMI FDD		0x6901	FDD
 product MOBILEACTION MA620	0x0620	MA-620 IrDA
 
 /* Mobility products */
+product MOBILITY ED200H		0x0202	EasiDock 200 serial port
 product MOBILITY EA		0x0204	Ethernet Adapter
 product MOBILITY EASIDOCK	0x0304	EasiDock Ethernet
 
@@ -1976,6 +2225,10 @@ product NOVATEL U720		0x2110	U720
 
 product NOVATEL2 FLEXPACKGPS	0x0100	NovAtel FlexPack GPS receiver
 
+/* Omnidirectional Control Technology products */
+product OCT USBTOETHER		0x0109	USB to Ethernet
+product OCT US101		0x0421	USB to serial
+
 /* Olympus products */
 product OLYMPUS C1		0x0102	C-1 Digital Camera
 product OLYMPUS C700		0x0105	C-700 Ultra Zoom
@@ -2036,6 +2289,37 @@ product PANASONIC KXLCB20AN	0x0d0a	CD-R Drive KXL-CB20AN
 product PANASONIC KXLCB35AN	0x0d0e	DVD-ROM & CD-R/RW
 product PANASONIC SDCAAE	0x1b00	MultiMediaCard Adapter
 product PANASONIC TYTP50P6S	0x3900	TY-TP50P6-S 50in Touch Panel
+
+/* Papouch products */
+product PAPOUCH SB485_1		0x0100	SB485 USB-485/422 Converter
+product PAPOUCH AP485_1		0x0101	AP485 USB-RS485 Converter
+product PAPOUCH SB422_1		0x0102	SB422 USB-RS422 Converter
+product PAPOUCH SB485_2		0x0103	SB485 USB-485/422 Converter
+product PAPOUCH AP485_2		0x0104	AP485 USB-RS485 Converter
+product PAPOUCH SB422_2		0x0105  SB422 USB-RS422 Converter
+product PAPOUCH SB485S		0x0106	SB485S USB-485/422 Converter
+product PAPOUCH SB485C		0x0107	SB485C USB-485/422 Converter
+product PAPOUCH SERIAL		0x0200	USB Device
+product PAPOUCH LEC		0x0300	LEC USB Converter
+product PAPOUCH SB232		0x0301	SB232 USB-RS232 Converter
+product PAPOUCH TMU		0x0400	TMU Thermometer
+product PAPOUCH IRAMP		0x0500	IRAmp Duplex
+product PAPOUCH DRAK5		0x0700	DRAK5
+product PAPOUCH QUIDO88		0x0800	QUIDO USB 8/8
+product PAPOUCH QUIDO44		0x0900	QUIDO USB 4/4
+product PAPOUCH QUIDO22		0x0A00	QUIDO USB 2/2
+product PAPOUCH QUIDO101	0x0B00	QUIDO USB 10/1
+product PAPOUCH QUIDO303	0x0C00	QUIDO USB 30/3
+product PAPOUCH QUIDO603	0x0D00	QUIDO USB 60(100)/3
+product PAPOUCH QUIDO216	0x0E00	QUIDO USB 2/16
+product PAPOUCH QUIDO332	0x0F00	QUIDO USB 3/32
+product PAPOUCH DRAK6		0x1000	DRAK6 USB
+product PAPOUCH STAVOVY		0x8000	UPS-USB Stavovy Adapter
+product PAPOUCH MUC		0x8001	MU Controller
+product PAPOUCH SIMUKEY		0x8002	SimuKey
+product PAPOUCH AD4USB		0x8003	AD4USB
+product PAPOUCH GOLIATH_MUX	0x8004	GOLIATH MUX
+product PAPOUCH GOLIATH_MSR	0x8005	GOLIATH MSR
 
 /* Pen Driver */
 product PEN USBDISKPRO		0x0120	USB Disk Pro
@@ -2111,6 +2395,10 @@ product PORTGEAR EA9		0x0009	Ethernet Adapter
 
 /* Portsmith products */
 product PORTSMITH EEA		0x3003	Express Ethernet Adapter
+
+/* Posiflex Technologies products */
+product POSIFLEX PP7000_1	0x0300	PP7000 series printer
+product POSIFLEX PP7000_2	0x0400	PP7000 series printer
 
 /* PQI products */
 product PQI TRAVELFLASH		0x0001	Travel Flash Drive
@@ -2256,7 +2544,53 @@ product SCANLOGIC SL11R		0x0002	SL11R-IDE
 product SCANLOGIC 336CX		0x0300	Phantom 336CX - C3 scanner
 
 /* Sealevel products */
-product SEALEVEL USBSERIAL	0x2101	USB-Serial converter
+product SEALEVEL 2101		0x2101	SeaLINK+232 (2101/2105)
+product SEALEVEL 2102		0x2102	SeaLINK+485 (2102)
+product SEALEVEL 2103		0x2103	SeaLINK+232I (2103)
+product SEALEVEL 2104		0x2104	SeaLINK+485I (2104)
+product SEALEVEL 2106		0x9020	SeaLINK+422 (2106)
+product SEALEVEL 2201_1		0x2211	SeaPORT+2/232 (2201) Port 1
+product SEALEVEL 2201_2		0x2221	SeaPORT+2/232 (2201) Port 2
+product SEALEVEL 2202_1		0x2212	SeaPORT+2/485 (2202) Port 1
+product SEALEVEL 2202_2		0x2222	SeaPORT+2/485 (2202) Port 2
+product SEALEVEL 2203_1		0x2213	SeaPORT+2 (2203) Port 1
+product SEALEVEL 2203_2		0x2223	SeaPORT+2 (2203) Port 2
+product SEALEVEL 2401_1		0x2411	SeaPORT+4/232 (2401) Port 1
+product SEALEVEL 2401_2		0x2421	SeaPORT+4/232 (2401) Port 2
+product SEALEVEL 2401_3		0x2431	SeaPORT+4/232 (2401) Port 3
+product SEALEVEL 2401_4		0x2441	SeaPORT+4/232 (2401) Port 4
+product SEALEVEL 2402_1		0x2412	SeaPORT+4/485 (2402) Port 1
+product SEALEVEL 2402_2		0x2422	SeaPORT+4/485 (2402) Port 2
+product SEALEVEL 2402_3		0x2432	SeaPORT+4/485 (2402) Port 3
+product SEALEVEL 2402_4		0x2442	SeaPORT+4/485 (2402) Port 4
+product SEALEVEL 2403_1		0x2413	SeaPORT+4 (2403) Port 1
+product SEALEVEL 2403_2		0x2423	SeaPORT+4 (2403) Port 2
+product SEALEVEL 2403_3		0x2433	SeaPORT+4 (2403) Port 3
+product SEALEVEL 2403_4		0x2443	SeaPORT+4 (2403) Port 4
+product SEALEVEL 2801_1		0X2811	SeaLINK+8/232 (2801) Port 1
+product SEALEVEL 2801_2		0X2821	SeaLINK+8/232 (2801) Port 2
+product SEALEVEL 2801_3		0X2831	SeaLINK+8/232 (2801) Port 3
+product SEALEVEL 2801_4		0X2841	SeaLINK+8/232 (2801) Port 4
+product SEALEVEL 2801_5		0X2851	SeaLINK+8/232 (2801) Port 5
+product SEALEVEL 2801_6		0X2861	SeaLINK+8/232 (2801) Port 6
+product SEALEVEL 2801_7		0X2871	SeaLINK+8/232 (2801) Port 7
+product SEALEVEL 2801_8		0X2881	SeaLINK+8/232 (2801) Port 8
+product SEALEVEL 2802_1		0X2812	SeaLINK+8/485 (2802) Port 1
+product SEALEVEL 2802_2		0X2822	SeaLINK+8/485 (2802) Port 2
+product SEALEVEL 2802_3		0X2832	SeaLINK+8/485 (2802) Port 3
+product SEALEVEL 2802_4		0X2842	SeaLINK+8/485 (2802) Port 4
+product SEALEVEL 2802_5		0X2852	SeaLINK+8/485 (2802) Port 5
+product SEALEVEL 2802_6		0X2862	SeaLINK+8/485 (2802) Port 6
+product SEALEVEL 2802_7		0X2872	SeaLINK+8/485 (2802) Port 7
+product SEALEVEL 2802_8		0X2882	SeaLINK+8/485 (2802) Port 8
+product SEALEVEL 2803_1		0X2813	SeaLINK+8 (2803) Port 1
+product SEALEVEL 2803_2		0X2823	SeaLINK+8 (2803) Port 2
+product SEALEVEL 2803_3		0X2833	SeaLINK+8 (2803) Port 3
+product SEALEVEL 2803_4		0X2843	SeaLINK+8 (2803) Port 4
+product SEALEVEL 2803_5		0X2853	SeaLINK+8 (2803) Port 5
+product SEALEVEL 2803_6		0X2863	SeaLINK+8 (2803) Port 6
+product SEALEVEL 2803_7		0X2873	SeaLINK+8 (2803) Port 7
+product SEALEVEL 2803_8		0X2883	SeaLINK+8 (2803) Port 8
 
 /* SGI products */
 product SGI SN1_L1_SC		0x1234	SN1 L1 System Controller
@@ -2322,9 +2656,6 @@ product SIIG DIGIFILMREADER	0x0004	DigiFilm-Combo Reader
 product SIIG UISDMC2S		0x0200	MULTICARDREADER
 product SIIG MULTICARDREADER	0x0201	MULTICARDREADER
 product SIIG WINTERREADER	0x0330	WINTERREADER Reader
-
-product SIIG2 USBTOETHER	0x0109	USB TO Ethernet
-product SIIG2 US2308		0x0421	Serial
 
 /* Silicon Labs products */
 product SILABS POLOLU		0x803b	Pololu Serial
@@ -2506,6 +2837,18 @@ product TELEX MIC1		0x0001	Enhanced USB Microphone
 /* Ten X Technology, Inc. */
 product TENX UAUDIO0		0xf211	USB audio headset
 
+/* Testo AG products */
+product TESTO 175		0x0001	175/177 USB interface
+product TESTO 330		0x0002	330 USB interface
+product TESTO 435		0x0003	435/635/735 USB interface
+product TESTO 845		0x0004	845 USB interface
+product TESTO SERVICE		0x0005	Service adapter
+product TESTO 580		0x0006	580 USB interface
+product TESTO 174		0x0007	174 USB interface
+product TESTO 556		0x0009	556/560 USB interface
+product TESTO SERIAL_1		0x000a	USB adapter
+product TESTO SERIAL_2		0xf001	USB to serial converter
+
 /* Texas Intel products */
 product TI UTUSB41		0x1446	UT-USB41 hub
 product TI TUSB2046		0x2046	TUSB2046 hub
@@ -2513,6 +2856,9 @@ product TI NEXII		0x5409	Nex II Digital
 
 /* Thrustmaster products */
 product THRUST FUSION_PAD	0xa0a3	Fusion Digital Gamepad
+
+/* Thurlby Thandar Instruments products */
+product THURLBY QL355P		0x03e8	QL355P power supply
 
 /* Todos Data System products */
 product	TODOS ARGOS_MINI	0x0002	Argos Mini Smartcard Reader
