@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.37 2007/06/22 05:53:05 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.18 2007/09/17 10:31:07 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.19 2007/09/19 13:54:28 hasso Exp $
  */
 
 /*-
@@ -176,12 +176,8 @@ static const struct usb_devno uftdi_devs[] = {
 	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CCS_MACHX },
 	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_547 },
 	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_631 },
-	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_631 },
-	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_632 },
 	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_632 },
 	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_633 },
-	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_633 },
-	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_634 },
 	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_634 },
 	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_635 },
 	{ USB_VENDOR_FTDI, USB_PRODUCT_FTDI_CFA_640 },
