@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.22 2007/08/15 19:31:11 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.23 2007/09/20 17:54:27 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -47,7 +47,6 @@
 #include <machine/clock.h>
 #include <machine/md_var.h>
 #include <machine/pc/bios.h>
-#include <machine/pc/vesa.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
