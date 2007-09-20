@@ -25,7 +25,7 @@
  *
  * FreeBSD: src/usr.bin/locale/locale.c,v 1.10 2003/06/26 11:05:56 phantom Exp
  * $NetBSD: locale.c,v 1.5 2006/02/16 19:19:49 tnozaki Exp $
- * $DragonFly: src/usr.bin/locale/locale.c,v 1.1 2006/07/01 10:47:39 eirikn Exp $
+ * $DragonFly: src/usr.bin/locale/locale.c,v 1.2 2007/09/20 07:40:51 hasso Exp $
  */
 
 /*
@@ -56,8 +56,8 @@ void	init_locales_list(void);
 void	list_charmaps(void);
 void	list_locales(void);
 const char *lookup_localecat(int);
-const char *kwval_lconv(int);
-int	kwval_lookup(char *, const char **, int *, int *);
+char	*kwval_lconv(int);
+int	kwval_lookup(char *, char **, int *, int *);
 void	showdetails(char *);
 void	showkeywordslist(void);
 void	showlocale(void);
@@ -473,11 +473,11 @@ showlocale(void)
 /*
  * keyword value lookup helper (via localeconv())
  */
-const char *
+char *
 kwval_lconv(int id)
 {
 	struct lconv *lc;
-	const char *rval;
+	char *rval;
 
 	rval = NULL;
 	lc = localeconv();
@@ -558,7 +558,7 @@ kwval_lconv(int id)
  * keyword value and properties lookup
  */
 int
-kwval_lookup(char *kwname, const char **kwval, int *cat, int *isstr)
+kwval_lookup(char *kwname, char **kwval, int *cat, int *isstr)
 {
 	int	rval;
 	size_t	i;
@@ -589,7 +589,7 @@ void
 showdetails(char *kw)
 {
 	int	isstr, cat, tmpval;
-	const char	*kwval;
+	char	*kwval;
 
 	if (kwval_lookup(kw, &kwval, &cat, &isstr) == 0) {
 		/*

@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/locale.h,v 1.13 2003/08/07 09:44:10 agc Exp $	*/
-/*	$DragonFly: src/include/locale.h,v 1.3 2005/04/21 16:36:34 joerg Exp $ */
+/*	$DragonFly: src/include/locale.h,v 1.4 2007/09/20 07:40:51 hasso Exp $ */
 
 /*
  * Copyright (c) 1991, 1993
@@ -36,16 +36,16 @@
 #define _LOCALE_H_
 
 struct lconv {
-	const char	*decimal_point;
-	const char	*thousands_sep;
-	const char	*grouping;
-	const char	*int_curr_symbol;
-	const char	*currency_symbol;
-	const char	*mon_decimal_point;
-	const char	*mon_thousands_sep;
-	const char	*mon_grouping;
-	const char	*positive_sign;
-	const char	*negative_sign;
+	char	*decimal_point;
+	char	*thousands_sep;
+	char	*grouping;
+	char	*int_curr_symbol;
+	char	*currency_symbol;
+	char	*mon_decimal_point;
+	char	*mon_thousands_sep;
+	char	*mon_grouping;
+	char	*positive_sign;
+	char	*negative_sign;
 	char	int_frac_digits;
 	char	frac_digits;
 	char	p_cs_precedes;

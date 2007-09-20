@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/locale/localeconv.c,v 1.12 2004/01/02 21:53:49 itojun Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/localeconv.c,v 1.3 2005/04/21 16:36:34 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/locale/localeconv.c,v 1.4 2007/09/20 07:40:51 hasso Exp $ */
 
 /*
  * Written by J.T. Conklin <jtc@NetBSD.org>.
@@ -31,15 +31,20 @@ localeconv(void)
 
 	if (__mlocale_changed) {
 		/* LC_MONETARY */
-		ret.int_curr_symbol = _CurrentMonetaryLocale->int_curr_symbol;
-		ret.currency_symbol = _CurrentMonetaryLocale->currency_symbol;
+		ret.int_curr_symbol =
+		    (char *)_CurrentMonetaryLocale->int_curr_symbol;
+		ret.currency_symbol =
+		    (char *)_CurrentMonetaryLocale->currency_symbol;
 		ret.mon_decimal_point =
-		    _CurrentMonetaryLocale->mon_decimal_point;
+		    (char *)_CurrentMonetaryLocale->mon_decimal_point;
 		ret.mon_thousands_sep =
-		    _CurrentMonetaryLocale->mon_thousands_sep;
-		ret.mon_grouping = _CurrentMonetaryLocale->mon_grouping;
-		ret.positive_sign = _CurrentMonetaryLocale->positive_sign;
-		ret.negative_sign = _CurrentMonetaryLocale->negative_sign;
+		    (char *)_CurrentMonetaryLocale->mon_thousands_sep;
+		ret.mon_grouping =
+		    (char *)_CurrentMonetaryLocale->mon_grouping;
+		ret.positive_sign = 
+		    (char *)_CurrentMonetaryLocale->positive_sign;
+		ret.negative_sign =
+		    (char *)_CurrentMonetaryLocale->negative_sign;
 		ret.int_frac_digits = _CurrentMonetaryLocale->int_frac_digits;
 		ret.frac_digits = _CurrentMonetaryLocale->frac_digits;
 		ret.p_cs_precedes = _CurrentMonetaryLocale->p_cs_precedes;
@@ -63,14 +68,12 @@ localeconv(void)
 
 	if (__nlocale_changed) {
 		/* LC_NUMERIC */
-		/* LINTED const castaway */
 		ret.decimal_point =
 		    (char *)_CurrentNumericLocale->decimal_point;
-		/* LINTED const castaway */
 		ret.thousands_sep =
 		    (char *)_CurrentNumericLocale->thousands_sep;
-		/* LINTED const castaway */
-		ret.grouping = (char *) _CurrentNumericLocale->grouping;
+		ret.grouping =
+		    (char *)_CurrentNumericLocale->grouping;
 		__nlocale_changed = 0;
 	}
 
