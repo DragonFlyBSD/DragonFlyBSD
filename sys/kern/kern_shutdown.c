@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.59 2007/07/02 01:41:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.60 2007/09/21 09:07:03 swildner Exp $
  */
 
 #include "opt_ddb.h"
@@ -791,7 +791,7 @@ panic(const char *fmt, ...)
 	if (newpanic && trace_on_panic)
 		db_print_backtrace();
 	if (debugger_on_panic)
-		Debugger ("panic");
+		Debugger("panic");
 #endif
 	boot(bootopt);
 }
