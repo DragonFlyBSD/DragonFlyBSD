@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.12 2007/05/20 07:43:24 y0netan1 Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.13 2007/09/21 02:28:00 y0netan1 Exp $
  */
 
 /*
@@ -65,12 +65,14 @@
 #include <sys/malloc.h>
 #include <sys/bus.h>		/* XXX debugging */
 #include <sys/rman.h>
+#include <sys/sysctl.h>
 
-#ifdef RMAN_DEBUG
-#define DPRINTF(params) kprintf params
-#else
-#define DPRINTF(params)
-#endif
+int	rman_debug = 0;
+TUNABLE_INT("debug.rman_debug", &rman_debug);
+SYSCTL_INT(_debug, OID_AUTO, rman_debug, CTLFLAG_RW,
+    &rman_debug, 0, "rman debug");
+
+#define DPRINTF(params) if (rman_debug) kprintf params
 
 static MALLOC_DEFINE(M_RMAN, "rman", "Resource manager");
 
