@@ -25,8 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/at/at.c,v 1.29 2002/07/22 11:32:16 robert Exp $
- * $DragonFly: src/usr.bin/at/at.c,v 1.8 2007/08/26 16:52:01 pavalos Exp $
+ * $FreeBSD: src/usr.bin/at/at.c,v 1.30 2007/09/21 01:55:11 kevlo Exp $
+ * $DragonFly: src/usr.bin/at/at.c,v 1.9 2007/09/22 20:22:51 pavalos Exp $
  */
 
 #define _USE_BSD 1
@@ -185,7 +185,7 @@ nextjob(void)
     long jobno;
     FILE *fid;
 
-    if ((fid = fopen(ATJOB_DIR ".SEQ", "r+")) != (FILE*)0) {
+    if ((fid = fopen(ATJOB_DIR ".SEQ", "r+")) != NULL) {
 	if (fscanf(fid, "%5lx", &jobno) == 1) {
 	    rewind(fid);
 	    jobno = (1+jobno) % 0xfffff;	/* 2^20 jobs enough? */
@@ -196,7 +196,7 @@ nextjob(void)
 	fclose(fid);
 	return jobno;
     }
-    else if ((fid = fopen(ATJOB_DIR ".SEQ", "w")) != (FILE*)0) {
+    else if ((fid = fopen(ATJOB_DIR ".SEQ", "w")) != NULL) {
 	fprintf(fid, "%05lx\n", jobno = 1);
 	fclose(fid);
 	return 1;
