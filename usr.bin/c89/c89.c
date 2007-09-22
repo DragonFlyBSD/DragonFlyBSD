@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/c89/c89.c,v 1.1.2.1 2001/05/22 19:05:01 schweikh Exp $
- * $DragonFly: src/usr.bin/c89/c89.c,v 1.3 2005/01/16 19:17:28 joerg Exp $
+ * $FreeBSD: src/usr.bin/c89/c89.c,v 1.5 2005/05/21 09:55:04 ru Exp $
+ * $DragonFly: src/usr.bin/c89/c89.c,v 1.4 2007/09/22 21:13:47 pavalos Exp $
  */
 
 #include <err.h>
@@ -97,8 +97,8 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-"usage: c89 [-c] [-D name[=value]] [...] [-E] [-g] [-I directory ...]\n"
-"       [-L directory ...] [-o outfile] [-O] [-s] [-U name ...] operand ...\n"
+"usage: c89 [-cEgOs] [-D name[=value]] ... [-I directory] ... [-L directory] ...\n"
+"           [-o outfile] [-U name] ... operand ...\n"
 "\n"
 "       where operand is one or more of file.c, file.o, file.a\n"
 "       or -llibrary\n");
