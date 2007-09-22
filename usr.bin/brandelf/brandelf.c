@@ -13,7 +13,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software withough specific prior written permission
+ *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -26,19 +26,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/brandelf/brandelf.c,v 1.13.2.4 2001/07/11 23:59:11 obrien Exp $
- * $DragonFly: src/usr.bin/brandelf/brandelf.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $FreeBSD: src/usr.bin/brandelf/brandelf.c,v 1.25 2005/05/21 09:55:04 ru Exp $
+ * $DragonFly: src/usr.bin/brandelf/brandelf.c,v 1.4 2007/09/22 20:40:06 pavalos Exp $
  */
 
 #include <sys/types.h>
 #include <sys/elf_common.h>
+#include <sys/errno.h>
+#include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/errno.h>
-#include <err.h>
 
 static int elftype(const char *);
 static const char *iselftype(int);
@@ -164,7 +164,8 @@ fail:
 static void
 usage(void)
 {
-fprintf(stderr, "usage: brandelf [-f ELF ABI number] [-v] [-l] [-t string] file ...\n");
+	fprintf(stderr,
+	    "usage: brandelf [-lv] [-f ELF_ABI_number] [-t string] file ...\n");
 	exit(1);
 }
 
@@ -189,7 +190,7 @@ elftype(const char *elfstrtype)
 	for (elfwalk = 0;
 	     elfwalk < sizeof(elftypes)/sizeof(elftypes[0]);
 	     elfwalk++)
-		if (strcmp(elfstrtype, elftypes[elfwalk].str) == 0)
+		if (strcasecmp(elfstrtype, elftypes[elfwalk].str) == 0)
 			return elftypes[elfwalk].value;
 	return -1;
 }
