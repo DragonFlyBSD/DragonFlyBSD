@@ -23,9 +23,9 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" FreeBSD: src/usr.bin/c89/c89.1,v 1.4.2.4 2001/08/02 01:11:13 obrien Exp
-.\" $FreeBSD: src/usr.bin/c99/c99.1,v 1.3 2004/03/04 20:29:27 josef Exp $
-.\" $DragonFly: src/usr.bin/c99/c99.1,v 1.1 2004/07/23 16:32:58 hmp Exp $
+.\" From FreeBSD: src/usr.bin/c89/c89.1,v 1.11 2007/03/10 07:10:01 ru Exp
+.\" $FreeBSD: src/usr.bin/c99/c99.1,v 1.5 2007/03/10 07:11:20 ru Exp $
+.\" $DragonFly: src/usr.bin/c99/c99.1,v 1.2 2007/09/22 21:26:24 pavalos Exp $
 .\"
 .Dd October 7, 2002
 .Os
@@ -36,13 +36,12 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl cEgs
-.Op Fl D Ar name Ns Op = Ns Ar value
-.Ar ...
-.Op Fl I Ar directory ...
-.Op Fl L Ar directory ...
+.Oo Fl D Ar name Ns Oo = Ns Ar value Oc Oc ...
+.Oo Fl I Ar directory Oc ...
+.Oo Fl L Ar directory Oc ...
 .Op Fl o Ar outfile
 .Op Fl O Ar optlevel
-.Op Fl U Ar name ...
+.Oo Fl U Ar name Oc ...
 .Ar operand ...
 .Sh DESCRIPTION
 This is the name of the C language compiler as required by the

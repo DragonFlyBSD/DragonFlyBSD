@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/c99/c99.c,v 1.2 2002/10/08 02:19:54 tjr Exp $
- * $DragonFly: src/usr.bin/c99/c99.c,v 1.1 2004/07/23 16:32:58 hmp Exp $
+ * $FreeBSD: src/usr.bin/c99/c99.c,v 1.4 2005/05/21 09:55:05 ru Exp $
+ * $DragonFly: src/usr.bin/c99/c99.c,v 1.2 2007/09/22 21:26:24 pavalos Exp $
  */
 
 /*
@@ -94,7 +94,7 @@ main(int argc, char *argv[])
 void
 addarg(const char *item)
 {
-	if (nargs + 1 > cargs) {
+	if (nargs + 1 >= cargs) {
 		cargs += 16;
 		if ((args = realloc(args, sizeof(*args) * cargs)) == NULL)
 			err(1, "malloc");
@@ -126,9 +126,8 @@ addlib(const char *lib)
 void
 usage(void)
 {
-	fprintf(stderr,
-"usage: c99 [-cEgs] [-D name[=value]] [-I directory] ... [-L directory] ...\n");
-	fprintf(stderr,
-"       [-o outfile] [-O optlevel] [-U name]... operand ...\n");
+	fprintf(stderr, "%s\n%s\n",
+"usage: c99 [-cEgs] [-D name[=value]] ... [-I directory] ... [-L directory] ...",
+"       [-o outfile] [-O optlevel] [-U name] ... operand ...");
 	exit(1);
 }
