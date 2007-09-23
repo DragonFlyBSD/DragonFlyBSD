@@ -1,0 +1,14 @@
+$DragonFly: src/README.amd64,v 1.1 2007/09/23 04:44:41 yanyh Exp $
+
+To build AMD64 port: 
+
+export TARGET_ARCH=amd64
+export TARGET_PLATFORM=pc64
+
+make buildworld
+make -k buildkernel KERNCONF=AMD64_GENERIC 
+
+you will see errors in the kernel build; to hack, redirect the buildkernel to 
+a file and check it out! 
+
+The most recent work is on http://repo.or.cz/w/dragonfly/port-amd64.git
