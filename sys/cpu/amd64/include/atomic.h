@@ -24,10 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/atomic.h,v 1.32 2003/11/21 03:02:00 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/atomic.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/atomic.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 #ifndef _CPU_ATOMIC_H_
 #define _CPU_ATOMIC_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Various simple arithmetic on memory which is atomic in the presence
@@ -66,7 +70,8 @@
  */
 #if defined(KLD_MODULE)
 #define ATOMIC_ASM(NAME, TYPE, OP, CONS, V)			\
-void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)
+void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v);	\
+void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
 
 int atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src);
 int atomic_cmpset_long(volatile u_long *dst, u_long exp, u_long src);
@@ -101,12 +106,19 @@ atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
 			 : "+m" (*p)			\
 			 : CONS (V));			\
 }							\
-struct __hack
+static __inline void                                    \
+atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v)\
+{                                                       \
+        __asm __volatile(OP                             \
+                         : "+m" (*p)                    \
+                         : CONS (V));                   \
+}
 
 #else /* !__GNUC__ */
 
 #define ATOMIC_ASM(NAME, TYPE, OP, CONS, V)				\
-extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)
+extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v);	\
+extern void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
 
 #endif /* __GNUC__ */
 
@@ -178,7 +190,7 @@ int atomic_intr_cond_try(atomic_intr_t *p);
 void atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg);
 void atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg);
 
-#else
+#else /* !KLD_MODULE */
 
 static __inline
 void
@@ -224,7 +236,7 @@ atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg)
 	__asm __volatile(MPLOCKED "incl %0; " \
 			 "1: ;" \
 			 MPLOCKED "btsl $31,%0; jnc 2f; " \
-			 "movq %2,%rdi; call *%1; " \
+			 "movq %2,%%rdi; call *%1; " \
 			 "jmp 1b; " \
 			 "2: ;" \
 			 : "+m" (*p) \
@@ -269,7 +281,7 @@ atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg)
 	__asm __volatile(MPLOCKED "decl %0; " \
 			MPLOCKED "btrl $31,%0; " \
 			"testl $0x3FFFFFFF,%0; jz 1f; " \
-			 "movq %2,%rdi; call *%1; " \
+			 "movq %2,%%rdi; call *%1; " \
 			 "1: ;" \
 			 : "+m" (*p) \
 			 : "r"(func), "m"(arg) \
@@ -369,7 +381,7 @@ extern void atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v)
 
 #endif /* defined(__GNUC__) */
 
-#endif /* KLD_MODULE */
+#endif /* !KLD_MODULE */
 
 ATOMIC_ASM(set,	     char,  "orb %b1,%0",  "iq",  v);
 ATOMIC_ASM(clear,    char,  "andb %b1,%0", "iq", ~v);
@@ -395,6 +407,10 @@ ATOMIC_STORE_LOAD(char,	"cmpxchgb %b0,%1", "xchgb %b1,%0");
 ATOMIC_STORE_LOAD(short,"cmpxchgw %w0,%1", "xchgw %w1,%0");
 ATOMIC_STORE_LOAD(int,	"cmpxchgl %0,%1",  "xchgl %1,%0");
 ATOMIC_STORE_LOAD(long,	"cmpxchgq %0,%1",  "xchgq %1,%0");
+
+#define	atomic_cmpset_32	atomic_cmpset_int
+
+#if 0
 
 #undef ATOMIC_ASM
 #undef ATOMIC_STORE_LOAD
@@ -484,7 +500,6 @@ ATOMIC_STORE_LOAD(long,	"cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_subtract_rel_32	atomic_subtract_rel_int
 #define	atomic_load_acq_32	atomic_load_acq_int
 #define	atomic_store_rel_32	atomic_store_rel_int
-#define	atomic_cmpset_32	atomic_cmpset_int
 #define	atomic_cmpset_acq_32	atomic_cmpset_acq_int
 #define	atomic_cmpset_rel_32	atomic_cmpset_rel_int
 #define	atomic_readandclear_32	atomic_readandclear_int
@@ -580,4 +595,6 @@ extern u_int	atomic_readandclear_int(volatile u_int *);
 #endif /* defined(__GNUC__) */
 
 #endif	/* !defined(WANT_FUNCTIONS) */
+#endif /* 0 */
+
 #endif /* ! _CPU_ATOMIC_H_ */

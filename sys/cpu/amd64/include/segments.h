@@ -36,7 +36,7 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/segments.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/segments.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 #ifndef _CPU_SEGMENTS_H_
@@ -59,6 +59,8 @@
 #define	IDXSEL(s)	(((s)>>3) & 0x1fff)		/* index of selector */
 #define	LSEL(s,r)	(((s)<<3) | SEL_LDT | r)	/* a local selector */
 #define	GSEL(s,r)	(((s)<<3) | r)			/* a global selector */
+
+#ifndef LOCORE
 
 /*
  * Memory and System segment descriptors
@@ -99,7 +101,9 @@ union	descriptor	{
 	struct	gate_descriptor gd;
 };
 
-	/* system segments and gate types */
+#endif /* LOCORE */
+
+/* system segments and gate types */
 #define	SDT_SYSNULL	 0	/* system null */
 #define	SDT_SYS286TSS	 1	/* system 286 TSS available */
 #define	SDT_SYSLDT	 2	/* system local descriptor table */
@@ -134,6 +138,9 @@ union	descriptor	{
 #define	SDT_MEMEAC	29	/* memory execute only accessed conforming */
 #define	SDT_MEMERC	30	/* memory execute read conforming */
 #define	SDT_MEMERAC	31	/* memory execute read accessed conforming */
+
+
+#ifndef LOCORE
 
 /* is memory segment descriptor pointer ? */
 #define ISMEMSDP(s)	((s->d_type) >= SDT_MEMRO && (s->d_type) <= SDT_MEMERAC)
@@ -174,6 +181,7 @@ struct	soft_segment_descriptor	{
 	unsigned ssd_def32:1 ;		/* default 32 vs 16 bit size */
 	unsigned ssd_gran:1 ;		/* limit granularity (byte/page units)*/
 };
+#endif /* 0 */
 
 /*
  * region descriptors, used to load gdt/idt tables before segments yet exist.
@@ -183,7 +191,7 @@ struct region_descriptor {
 	unsigned rd_base:32 __attribute__ ((packed));	/* base address  */
 };
 
-#endif /* 0 */
+#endif /* LOCORE */
 
 /*
  * Segment Protection Exception code bits
@@ -220,7 +228,10 @@ struct region_descriptor {
 #define GBIOSDATA_SEL	12	/* BIOS interface (Data) */
 #define GBIOSUTIL_SEL	13	/* BIOS interface (Utility) */
 #define GBIOSARGS_SEL	14	/* BIOS interface (Arguments) */
+#define GTLS_START	15	/* Thread TLS Descriptor */
+#define GTLS_END	17	/* Thread TLS Descriptor */
 
+#define NGTLS			(GTLS_END - GTLS_START + 1)
 #ifdef BDE_DEBUGGER
 #define	NGDT		18	/* some of 11-17 are reserved for debugger */
 #else
@@ -241,6 +252,11 @@ struct region_descriptor {
 #define LBSDICALLS_SEL	16	/* BSDI system call gate */
 #define NLDT		(LBSDICALLS_SEL + 1)
 
+#ifndef LOCORE
+struct savetls {
+	struct segment_descriptor tls[NGTLS];
+};
+
 #ifdef _KERNEL
 extern int	_default_ldt;
 extern union descriptor gdt[];
@@ -254,5 +270,6 @@ void	sdtossd		(struct segment_descriptor *sdp,
 void	ssdtosd		(struct soft_segment_descriptor *ssdp,
 			     struct segment_descriptor *sdp);
 #endif /* _KERNEL */
+#endif /* LOCORE */
 
 #endif /* !_CPU_SEGMENTS_H_ */

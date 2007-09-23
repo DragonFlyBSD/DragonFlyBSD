@@ -35,11 +35,41 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/amd64/include/cpu.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/cpu.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 #ifndef _CPU_CPU_H_
 #define	_CPU_CPU_H_
+
+#define CLKF_INTR(framep)	(mycpu->gd_intr_nesting_level > 1 || (curthread->td_flags & TDF_INTTHREAD))
+#define CLKF_PC(framep)		((framep)->if_rip)
+
+/*
+ * Preempt the current process if in interrupt from user mode,
+ * or after the current trap/syscall if in system mode.
+ *
+ * We do not have to use a locked bus cycle but we do have to use an
+ * atomic instruction because an interrupt on the local cpu can modify
+ * the gd_reqflags field.
+ */
+#define need_lwkt_resched()	\
+	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+#define need_user_resched()	\
+	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
+#define need_proftick()         \
+	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
+#define signotify()	\
+	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
+#define sigupcall()             \
+	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_UPCALL)
+#define clear_lwkt_resched()    \
+	atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+#define clear_user_resched()	\
+	atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
+#define user_resched_wanted()	\
+	(mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
+#define lwkt_resched_wanted()   \
+	(mycpu->gd_reqflags & RQF_AST_LWKT_RESCHED)
 
 /*
  * CTL_MACHDEP definitions.
@@ -59,5 +89,11 @@
 	{ "bootinfo", CTLTYPE_STRUCT }, \
 	{ "wall_cmos_clock", CTLTYPE_INT }, \
 }
+
+#ifdef _KERNEL
+void	fork_trampoline (void);
+void	generic_lwp_return (struct lwp *, struct trapframe *);
+void	fork_return (struct lwp *, struct trapframe *);
+#endif
 
 #endif /* !_CPU_CPU_H_ */

@@ -32,7 +32,7 @@
  *
  *	from: @(#)reg.h	5.5 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/amd64/include/reg.h,v 1.35 2004/04/05 23:55:14 imp Exp $
- * $DragonFly: src/sys/cpu/amd64/include/reg.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/reg.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 #ifndef _CPU_REG_H_
@@ -98,16 +98,4 @@ struct dbreg {
 #define DBREG_DR7_RDWR      0x03      /* break on read or write */
 #define DBREG_DRX(d,x) ((d)->dr[(x)]) /* reference dr0 - dr15 by
                                          register number */
-#ifdef _KERNEL
-/*
- * XXX these interfaces are MI, so they should be declared in a MI place.
- */
-int	fill_regs(struct thread *, struct reg *);
-int	set_regs(struct thread *, struct reg *);
-int	fill_fpregs(struct thread *, struct fpreg *);
-int	set_fpregs(struct thread *, struct fpreg *);
-int	fill_dbregs(struct thread *, struct dbreg *);
-int	set_dbregs(struct thread *, struct dbreg *);
-#endif
-
 #endif /* !_CPU_REG_H_ */

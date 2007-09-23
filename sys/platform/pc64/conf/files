@@ -1,0 +1,98 @@
+# This file tells config what files go into building a kernel,
+# files marked standard are always included.
+#
+# $DragonFly: src/sys/platform/pc64/conf/files,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+# $DragonFly: src/sys/platform/pc64/conf/files,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+#
+
+linux32_genassym.o		optional	compat_linux32			\
+	dependency 	"$S/emulation/linux/amd64/linux32_genassym.c ${FORWARD_HEADERS_COOKIE}" \
+	compile-with	"${CC} ${CFLAGS:N-fno-common} -c ${.IMPSRC}"	   \
+	no-obj no-implicit-rule						   \
+	clean		"linux32_genassym.o"
+#
+linux32_assym.h			optional	compat_linux32		   \
+	dependency 	"$S/kern/genassym.sh linux32_genassym.o"		   \
+	compile-with	"sh $S/kern/genassym.sh linux32_genassym.o > ${.TARGET}" \
+	no-obj no-implicit-rule before-depend				   \
+	clean		"linux32_assym.h"
+#
+emulation/linux/linux_file.c	optional	compat_linux32
+emulation/linux/linux_getcwd.c	optional	compat_linux32
+emulation/linux/linux_ioctl.c	optional	compat_linux32
+emulation/linux/linux_ipc.c	optional	compat_linux32
+emulation/linux/linux_mib.c	optional	compat_linux32
+emulation/linux/linux_misc.c	optional	compat_linux32
+emulation/linux/linux_signal.c	optional	compat_linux32
+emulation/linux/linux_socket.c	optional	compat_linux32
+emulation/linux/linux_stats.c	optional	compat_linux32
+emulation/linux/linux_sysctl.c  optional        compat_linux32
+emulation/linux/linux_uid16.c   optional        compat_linux32
+emulation/linux/linux_util.c	optional	compat_linux32
+emulation/linux/amd64/linux32_dummy.c	optional	compat_linux32
+emulation/linux/amd64/linux32_locore.s	optional	compat_linux32	  \
+	dependency 	"linux32_assym.h"
+emulation/linux/amd64/linux32_machdep.c	optional	compat_linux32
+emulation/linux/amd64/linux32_sysent.c	optional	compat_linux32
+emulation/linux/amd64/linux32_sysvec.c	optional	compat_linux32
+
+vfs/smbfs/smbfs_io.c		optional	smbfs
+vfs/smbfs/smbfs_node.c		optional	smbfs
+vfs/smbfs/smbfs_smb.c		optional	smbfs
+vfs/smbfs/smbfs_subr.c		optional	smbfs
+vfs/smbfs/smbfs_vfsops.c	optional	smbfs
+vfs/smbfs/smbfs_vnops.c		optional	smbfs
+
+platform/pc64/amd64/atomic.c			standard			\
+        compile-with    "${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+platform/pc64/amd64/autoconf.c	standard
+platform/pc64/amd64/mp.c		optional	smp             \
+        compile-with    "${CC} -c -pthread ${CFLAGS} -I/usr/include ${.IMPSRC}"
+platform/pc64/amd64/mplock.s		optional	smp
+
+# DDB XXX
+platform/pc64/amd64/elf_machdep.c		standard
+platform/pc64/amd64/in_cksum2.s			optional	inet
+platform/pc64/amd64/ktr.c			optional	ktr
+platform/pc64/amd64/db_disasm.c			optional	ddb
+# platform/pc64/amd64/i386-gdbstub.c		optional	ddb
+#
+# DOS mbr and gpt
+kern/subr_diskmbr.c			standard
+kern/subr_diskgpt.c			standard
+
+libkern/stack_protector.c		standard
+
+# DEVICES
+#
+
+# PLATFORM FILES
+#
+platform/pc64/amd64/global.s		standard
+platform/pc64/amd64/support.s		standard
+platform/pc64/amd64/sigtramp.s		standard
+platform/pc64/amd64/swtch.s		standard
+platform/pc64/amd64/npx.c		mandatory       npx
+platform/pc64/amd64/db_interface.c	standard
+platform/pc64/amd64/db_trace.c		standard
+platform/pc64/amd64/vm_machdep.c	standard
+platform/pc64/amd64/cpu_regs.c		standard
+platform/pc64/amd64/userldt.c		standard
+platform/pc64/amd64/tls.c		standard
+platform/pc64/amd64/trap.c		standard
+platform/pc64/amd64/exception.c		standard
+platform/pc64/amd64/procfs_machdep.c	standard
+platform/pc64/amd64/fork_tramp.s	standard
+#platform/pc64/amd64/machdep.c		standard
+#platform/pc64/amd64/initcpu.c		standard
+#platform/pc64/amd64/identcpu.c		standard
+
+platform/pc64/amd64/init.c		standard
+platform/pc64/amd64/globaldata.c	standard
+platform/pc64/amd64/machintr.c	standard
+platform/pc64/amd64/pmap.c		standard
+platform/pc64/amd64/busdma_machdep.c standard
+platform/pc64/amd64/sysarch.c	standard
+platform/pc64/amd64/systimer.c	standard
+platform/pc64/amd64/console.c	standard
+platform/pc64/amd64/ipl_funcs.c	standard

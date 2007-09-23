@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/elf.h,v 1.18 2004/08/03 08:21:48 dfr Exp $
- * $DragonFly: src/sys/cpu/amd64/include/elf.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/elf.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 #ifndef _CPU_ELF_H_
@@ -145,5 +145,16 @@ __ElfType(Auxinfo);
 #define	ELF_TARG_DATA	ELFDATA2LSB
 #define	ELF_TARG_MACH	EM_X86_64
 #define	ELF_TARG_VER	1
+
+#ifdef _KERNEL
+/*
+ * On the i386 we load the dynamic linker where a userland call
+ * to mmap(0, ...) would put it.  The rationale behind this
+ * calculation is that it leaves room for the heap to grow to
+ * its maximum allowed size.
+ */
+#define ELF_RTLD_ADDR(vmspace) \
+	(round_page((vm_offset_t)(vmspace)->vm_daddr + maxdsiz))
+#endif
 
 #endif /* !_CPU_ELF_H_ */

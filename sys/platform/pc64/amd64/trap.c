@@ -1,6 +1,10 @@
 /*-
+ * Copyright (C) 1994, David Greenman
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * the University of Utah, and William Jolitz.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,19 +34,39 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)types.h	8.3 (Berkeley) 1/5/94
- * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/types.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
+ *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
+ * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/trap.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
  */
 
-#ifndef _MACHINE_TYPES_H_
-#define	_MACHINE_TYPES_H_
+#include <sys/proc.h>
 
-#ifndef _MACHINE_STDINT_H_
-#include <machine/stdint.h>
-#endif
+#include <machine/frame.h>
 
-#include <cpu/types.h>
+void
+fork_return(struct lwp *lp, struct trapframe *frame)
+{
+}
 
-#endif /* !_MACHINE_TYPES_H_ */
+/*
+ * Simplified back end of syscall(), used when returning from fork()
+ * or lwp_create() directly into user mode.  MP lock is held on entry and
+ * should be released on return.  This code will return back into the fork
+ * trampoline code which then runs doreti.
+ */
+void
+generic_lwp_return(struct lwp *lp, struct trapframe *frame)
+{
+}
 
+/*
+ * If PGEX_FPFAULT is set then set FP_VIRTFP in the PCB to force a T_DNA
+ * fault (which is then passed back to the virtual kernel) if an attempt is
+ * made to use the FP unit.
+ * 
+ * XXX this is a fairly big hack.
+ */
+void
+set_vkernel_fp(struct trapframe *frame)
+{
+}

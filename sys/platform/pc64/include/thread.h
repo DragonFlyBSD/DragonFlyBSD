@@ -24,19 +24,27 @@
  *
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/platform/pc64/include/thread.h,v 1.1 2007/08/21 19:45:45 corecode Exp $
+ * $DragonFly: src/sys/platform/pc64/include/thread.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
 #define	_MACHINE_THREAD_H_
 
+#ifndef _MACHINE_SEGMENTS_H_
+#include <machine/segments.h>
+#endif
+
 struct md_thread {
     unsigned int	mtd_cpl;
+    union savefpu	*mtd_savefpu;
+    struct savetls      mtd_savetls;
 };
 
 #ifdef _KERNEL
 
-#define td_cpl	td_mach.mtd_cpl
+#define td_cpl		td_mach.mtd_cpl
+#define td_tls		td_mach.mtd_savetls
+#define td_savefpu      td_mach.mtd_savefpu
 
 /*
  * mycpu() retrieves the base of the current cpu's globaldata structure.
@@ -60,11 +68,17 @@ _get_mycpu(void)
 {
     struct globaldata *gd;
 
-    __asm ("movl %%fs:globaldata,%0" : "=r" (gd) : "m"(__mycpu__dummy));
+    __asm ("movq %%fs:globaldata,%0" : "=r" (gd) : "m"(__mycpu__dummy));
     return(gd);
 }
 
 #define mycpu	_get_mycpu()
+
+#ifdef SMP
+#define mycpuid (_get_mycpu()->gd_cpuid)
+#else
+#define mycpuid 0
+#endif
 
 /*
  * note: curthread is never NULL, but curproc can be.  Also note that

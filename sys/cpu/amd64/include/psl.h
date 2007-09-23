@@ -35,7 +35,7 @@
  *
  *	from: @(#)psl.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/amd64/include/psl.h,v 1.12 2003/05/01 01:05:23 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/psl.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/psl.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 #ifndef _CPU_PSL_H_
@@ -56,7 +56,7 @@
 #define	PSL_IOPL	0x00003000	/* i/o privilege level */
 #define	PSL_NT		0x00004000	/* nested task bit */
 #define	PSL_RF		0x00010000	/* resume flag bit */
-/* #define PSL_VM	0x00020000 */	/* virtual 8086 mode bit */
+/* #define PSL_VM		0x00020000 */	/* virtual 8086 mode bit */
 #define	PSL_AC		0x00040000	/* alignment checking */
 /* #define PSL_VIF	0x00080000 */	/* virtual interrupt enable */
 /* #define PSL_VIP	0x00100000 */	/* virtual interrupt pending */

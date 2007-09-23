@@ -22,14 +22,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc64/include/lock.h,v 1.1 2007/08/21 19:45:45 corecode Exp $
+ * $DragonFly: src/sys/platform/pc64/include/lock.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
 #define _MACHINE_LOCK_H_
 
-#ifndef _MACHINE_PSL_H_
-#include "psl.h"
+#ifndef _CPU_PSL_H_
+#include <machine/psl.h>
 #endif
 
 /*
@@ -143,8 +143,6 @@ void	imen_lock(void);	/* disables int / spinlock combo */
 void	imen_unlock(void);
 void	clock_lock(void);	/* disables int / spinlock combo */
 void	clock_unlock(void);
-void	cons_lock(void);	/* disables int / spinlock combo */
-void	cons_unlock(void);
 
 extern struct spinlock_deprecated smp_rv_spinlock;
 
@@ -180,7 +178,7 @@ void	cpu_get_initial_mplock(void);
 extern u_int	mp_lock;
 
 #define MP_LOCK_HELD()   (mp_lock == mycpu->gd_cpuid)
-#define ASSERT_MP_LOCK_HELD()   KKASSERT(MP_LOCK_HELD())
+#define ASSERT_MP_LOCK_HELD(td)   KASSERT(MP_LOCK_HELD(), ("MP_LOCK_HELD(): not held thread %p", td))
 
 static __inline void
 cpu_rel_mplock(void)
@@ -193,7 +191,7 @@ cpu_rel_mplock(void)
 #define get_mplock()
 #define try_mplock()	1
 #define rel_mplock()
-#define ASSERT_MP_LOCK_HELD()
+#define ASSERT_MP_LOCK_HELD(td)
 
 #endif	/* SMP */
 #endif  /* _KERNEL || _UTHREAD */

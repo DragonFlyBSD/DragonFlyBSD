@@ -35,7 +35,7 @@
  *
  *	from: @(#)npx.h	5.3 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/npx.h,v 1.18.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/npx.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/npx.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 /*
@@ -156,6 +156,7 @@ struct trapframe;
 void	npxexit (void);
 void	npxinit (u_short control);
 void	npxsave (union savefpu *addr);
+int	npxdna(struct trapframe *);
 #endif
 
 #endif /* !_CPU_NPX_H_ */

@@ -32,7 +32,7 @@
  *
  *	@(#)limits.h	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/i386/include/limits.h,v 1.14.2.2 2000/11/05 09:21:42 obrien Exp $
- * $DragonFly: src/sys/cpu/amd64/include/limits.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/limits.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 #ifndef _CPU_LIMITS_H_
@@ -88,6 +88,9 @@
 
 #if !defined(_POSIX_SOURCE)
 #define	SIZE_T_MAX	ULONG_MAX	/* max value for a size_t */
+
+#define GID_MAX		UINT_MAX        /* max value for a gid_t */
+#define UID_MAX		UINT_MAX        /* max value for a uid_t */
 
 /* Quads and long longs are the same size.  Ensure they stay in sync. */
 #define	UQUAD_MAX	ULLONG_MAX	/* max value for a uquad_t */

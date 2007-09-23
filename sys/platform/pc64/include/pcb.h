@@ -36,7 +36,7 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/amd64/include/pcb.h,v 1.57 2004/01/28 23:54:31 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/pcb.h,v 1.1 2007/08/21 19:45:45 corecode Exp $
+ * $DragonFly: src/sys/platform/pc64/include/pcb.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
  */
 
 #ifndef _MACHINE_PCB_H_
@@ -58,6 +58,8 @@ struct pcb {
 	register_t	pcb_rsp;
 	register_t	pcb_rbx;
 	register_t	pcb_rip;
+	register_t	pcb_rsi;
+	register_t	pcb_rdi;
 	register_t	pcb_rflags;
 	register_t	pcb_fsbase;
 	register_t	pcb_gsbase;
@@ -72,13 +74,16 @@ struct pcb {
 	u_int64_t	pcb_dr6;
 	u_int64_t	pcb_dr7;
 
-	union	savefpu	pcb_save;
+	struct pcb_ldt *pcb_ldt;
+	union savefpu	pcb_save;
 	u_long	pcb_flags;
 #define	PCB_DBREGS	0x02	/* process using debug registers */
 #define	PCB_FPUINITDONE	0x08	/* fpu state is initialized */
 #define	PCB_FULLCTX	0x80	/* full context restore on sysret */
-
+#define	FP_VIRTFP	0x04	/* virtual kernel wants exception */
 	caddr_t	pcb_onfault;	/* copyin/out fault recovery */
+	int	pcb_unused; 
+	struct  pcb_ext *pcb_ext;	/* optional pcb extension */
 };
 
 #ifdef _KERNEL

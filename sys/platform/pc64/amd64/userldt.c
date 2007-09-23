@@ -31,27 +31,32 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/amd64/include/vframe.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/userldt.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/userldt.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
  */
 
-#ifndef _CPU_VFRAME_H_
-#define _CPU_VFRAME_H_
+#include <sys/types.h>
+#include <sys/kernel.h>
+#include <sys/systm.h>
+#include <machine/pcb.h>
+#include <machine/pcb_ext.h>
 
-#ifndef _MACHINE_NPX_H_
-#include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>
-#endif
+void
+set_user_ldt (struct pcb *pcb)
+{
+	panic("set_user_ldt");
+}
 
-/*
- * Virtualized external frame.  This is used by the virtual kernel in
- * addition to trapframe.
- */
-struct vextframe {
-	/* XXX come back for fixing this in segments.h */
-	struct savetls vx_tls;
-};
+struct pcb_ldt *
+user_ldt_alloc (struct pcb *pcb, int len)
+{
+	panic("user_ldt_alloc");
+}
 
-#endif
+void
+user_ldt_free (struct pcb *pcb)
+{
+	if (pcb->pcb_ldt)
+		panic("user_ldt_free");
+}
 

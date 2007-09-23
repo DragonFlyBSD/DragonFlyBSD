@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 1990, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2003 Peter Wemm <peter@freeBSD.org>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,18 +10,11 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -30,19 +23,35 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)types.h	8.3 (Berkeley) 1/5/94
- * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/types.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
+ * $FreeBSD: src/sys/amd64/amd64/sigtramp.S,v 1.1 2003/05/01 01:05:21 peter Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/sigtramp.s,v 1.1 2007/09/23 04:29:31 yanyh Exp $
  */
 
-#ifndef _MACHINE_TYPES_H_
-#define	_MACHINE_TYPES_H_
+#include <sys/syscall.h>
 
-#ifndef _MACHINE_STDINT_H_
-#include <machine/stdint.h>
-#endif
+#include <machine/asmacros.h>
 
-#include <cpu/types.h>
+#include "assym.s"
 
-#endif /* !_MACHINE_TYPES_H_ */
+	.text
+/**********************************************************************
+ *
+ * Signal trampoline, copied to top of user stack
+ *
+ */
+NON_GPROF_ENTRY(sigcode)
+	call	*SIGF_HANDLER(%rsp)	/* call signal handler */
+	lea	SIGF_UC(%rsp),%rdi	/* get ucontext_t */
+	pushq	$0			/* junk to fake return addr. */
+	movq	$SYS_sigreturn,%rax
+	syscall				/* enter kernel with args */
+0:	hlt				/* trap priviliged instruction */
+	jmp	0b
 
+	ALIGN_TEXT
+esigcode:
+
+	.data
+	.globl	szsigcode
+szsigcode:
+	.long	esigcode-sigcode

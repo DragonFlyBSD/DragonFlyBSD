@@ -31,27 +31,114 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/amd64/include/vframe.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/Attic/machintr.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/Attic/machintr.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
  */
 
-#ifndef _CPU_VFRAME_H_
-#define _CPU_VFRAME_H_
-
-#ifndef _MACHINE_NPX_H_
-#include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>
-#endif
+#include <sys/types.h>
+#include <sys/systm.h>
+#include <sys/kernel.h>
+#include <sys/machintr.h>
+#include <sys/errno.h>
+#include <sys/mman.h>
+#include <sys/globaldata.h>
+#include <sys/interrupt.h>
+#include <stdio.h>
+#include <signal.h>
+#include <machine/globaldata.h>
+#include <machine/md_var.h>
+#include <sys/thread2.h>
 
 /*
- * Virtualized external frame.  This is used by the virtual kernel in
- * addition to trapframe.
+ * Interrupt Subsystem ABI
  */
-struct vextframe {
-	/* XXX come back for fixing this in segments.h */
-	struct savetls vx_tls;
+
+static void dummy_intrdis(int);
+static void dummy_intren(int);
+static int dummy_vectorctl(int, int, int);
+static int dummy_setvar(int, const void *);
+static int dummy_getvar(int, void *);
+static void dummy_finalize(void);
+static void dummy_intrcleanup(void);
+
+struct machintr_abi MachIntrABI = {
+	MACHINTR_GENERIC,
+	.intrdis =	dummy_intrdis,
+	.intren =	dummy_intren,
+	.vectorctl =	dummy_vectorctl,
+	.setvar =	dummy_setvar,
+	.getvar =	dummy_getvar,
+	.finalize =	dummy_finalize,
+	.cleanup =	dummy_intrcleanup
 };
 
-#endif
+static void
+dummy_intrdis(int intr)
+{
+}
+
+static void
+dummy_intren(int intr)
+{
+}
+
+static int
+dummy_vectorctl(int op, int intr, int flags)
+{
+	return (0);
+	/* return (EOPNOTSUPP); */
+}
+
+static int
+dummy_setvar(int varid, const void *buf)
+{
+	return (ENOENT);
+}
+
+static int
+dummy_getvar(int varid, void *buf)
+{
+	return (ENOENT);
+}
+
+static void
+dummy_finalize(void)
+{
+}
+
+static void
+dummy_intrcleanup(void)
+{
+}
+
+/*
+ * Process pending interrupts
+ */
+void
+splz(void)
+{
+}
+
+/*
+ * Allows an unprotected signal handler or mailbox to signal an interrupt
+ */
+void
+signalintr(int intr)
+{
+}
+
+void
+cpu_disable_intr(void)
+{
+}
+
+void
+cpu_invlpg(void *addr)
+{
+}
+
+void
+cpu_invltlb(void)
+{
+}
 

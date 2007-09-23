@@ -31,27 +31,79 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/amd64/include/vframe.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/systimer.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/systimer.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
  */
 
-#ifndef _CPU_VFRAME_H_
-#define _CPU_VFRAME_H_
+#include <sys/types.h>
+#include <sys/systm.h>
+#include <sys/kernel.h>
+#include <sys/systimer.h>
+#include <sys/sysctl.h>
+#include <sys/signal.h>
+#include <sys/interrupt.h>
+#include <sys/bus.h>
+#include <sys/time.h>
+#include <machine/globaldata.h>
+#include <machine/md_var.h>
 
-#ifndef _MACHINE_NPX_H_
-#include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>
-#endif
+int adjkerntz;
+int wall_cmos_clock = 0;
 
 /*
- * Virtualized external frame.  This is used by the virtual kernel in
- * addition to trapframe.
+ * SYSTIMER IMPLEMENTATION
  */
-struct vextframe {
-	/* XXX come back for fixing this in segments.h */
-	struct savetls vx_tls;
-};
+/*
+ * Initialize the systimer subsystem, called from MI code in early boot.
+ */
+void
+cpu_initclocks(void *arg __unused)
+{
+}
 
-#endif
+/*
+ * Configure the interrupt for our core systimer.  Use the kqueue timer
+ * support functions.
+ */
+void
+cputimer_intr_config(struct cputimer *timer)
+{
+}
+
+/*
+ * Reload the interrupt for our core systimer.  Because the caller's
+ * reload calculation can be negatively indexed, we need a minimal
+ * check to ensure that a reasonable reload value is selected. 
+ */
+void
+cputimer_intr_reload(sysclock_t reload)
+{
+}
+
+/*
+ * Initialize the time of day register, based on the time base which is, e.g.
+ * from a filesystem.
+ */
+void
+inittodr(time_t base)
+{
+}
+
+/*
+ * Write system time back to the RTC
+ */
+void
+resettodr(void)
+{
+}
+
+void
+DELAY(int usec)
+{
+}
+
+void
+DRIVERSLEEP(int usec)
+{
+}
 

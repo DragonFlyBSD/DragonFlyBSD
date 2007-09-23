@@ -31,27 +31,21 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/amd64/include/vframe.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/console.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/console.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
  */
 
-#ifndef _CPU_VFRAME_H_
-#define _CPU_VFRAME_H_
-
-#ifndef _MACHINE_NPX_H_
-#include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>
-#endif
+#include <sys/systm.h>
 
 /*
- * Virtualized external frame.  This is used by the virtual kernel in
- * addition to trapframe.
+ * Global console locking functions
  */
-struct vextframe {
-	/* XXX come back for fixing this in segments.h */
-	struct savetls vx_tls;
-};
+void
+cons_lock(void)
+{
+}
 
-#endif
-
+void
+cons_unlock(void)
+{
+}

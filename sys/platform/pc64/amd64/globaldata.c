@@ -31,27 +31,34 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/amd64/include/vframe.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/globaldata.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/globaldata.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
  */
 
-#ifndef _CPU_VFRAME_H_
-#define _CPU_VFRAME_H_
+#include <sys/types.h>
+#include <sys/systm.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/tls.h>
+#include <sys/proc.h>
+#include <vm/vm_page.h>
 
-#ifndef _MACHINE_NPX_H_
-#include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>
-#endif
+#include <machine/md_var.h>
+#include <machine/globaldata.h>
+#include <machine/vmparam.h>
 
-/*
- * Virtualized external frame.  This is used by the virtual kernel in
- * addition to trapframe.
- */
-struct vextframe {
-	/* XXX come back for fixing this in segments.h */
-	struct savetls vx_tls;
-};
+struct globaldata *
+globaldata_find(int cpu)
+{
+}
 
-#endif
+void
+cpu_gdinit(struct mdglobaldata *gd, int cpu)
+{
+}
+
+int
+is_globaldata_space(vm_offset_t saddr, vm_offset_t eaddr)
+{
+}
 

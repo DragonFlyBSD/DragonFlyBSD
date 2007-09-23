@@ -1,0 +1,14 @@
+#
+# $DragonFly: src/sys/platform/pc64/conf/options,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+# $DragonFly: src/sys/platform/pc64/conf/options,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+#
+
+# The cpu type
+#
+HAMMER			opt_cpu.h
+
+#
+#
+SHOW_BUSYBUFS
+PANIC_REBOOT_WAIT_TIME  opt_panic.h
+

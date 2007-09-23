@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,27 +31,58 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/amd64/include/vframe.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/in_cksum2.s,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/in_cksum2.s,v 1.1 2007/09/23 04:29:31 yanyh Exp $
  */
 
-#ifndef _CPU_VFRAME_H_
-#define _CPU_VFRAME_H_
+#include <machine/asmacros.h>		/* miscellaneous asm macros */
 
-#ifndef _MACHINE_NPX_H_
-#include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>
-#endif
+#include "assym.s"
 
-/*
- * Virtualized external frame.  This is used by the virtual kernel in
- * addition to trapframe.
- */
-struct vextframe {
-	/* XXX come back for fixing this in segments.h */
-	struct savetls vx_tls;
-};
+	.text
 
-#endif
-
+	/*
+	 * asm_ones32(32bitalignedbuffer, numberof32bitwords)
+	 *
+	 * Returns the 32 bit one complement partial checksum.  This is 
+	 * basically a 1's complement checksum without the inversion (~)
+	 * at the end.  A 32 bit value is returned.  If the caller is 
+	 * calculating a 16 bit 1's complement checksum the caller must
+	 * collapse the 32 bit return value via:
+	 *
+	 *	result = (result >> 16) + (result & 0xFFFF)
+	 *	if (result > 0xFFFF)
+	 *	    result -= 0xFFFF;	<<< same as (result + 1) & 0xFFFF
+	 *				    within the range of result.
+	 * Note that worst case 0xFFFFFFFF + 0xFFFFFFFF = 0xFFFFFFFE + CARRY,
+	 * so no double-carry ever occurs.
+	 */
+	.p2align 4
+ENTRY(asm_ones32)
+	movl	4(%esp),%edx	/* %edx = buffer pointer */
+	movl	8(%esp),%ecx	/* %ecx = counter */
+	subl	%eax,%eax	/* %eax = checksum */
+	cmpl	$5,%ecx
+	jl	2f
+1:
+	subl	$5,%ecx
+	addl	(%edx),%eax
+	adcl	4(%edx),%eax
+	adcl	8(%edx),%eax
+	adcl	12(%edx),%eax
+	adcl	16(%edx),%eax
+	adcl	$0,%eax
+	addl	$20,%edx
+	cmpl	$5,%ecx
+	jge	1b
+2:
+	testl	%ecx,%ecx
+	je	4f
+3:
+	addl	(%edx),%eax
+	adcl	$0,%eax
+	addl	$4,%edx
+	decl	%ecx
+	jnz	3b
+4:
+	ret

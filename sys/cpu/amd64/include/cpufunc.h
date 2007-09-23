@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/cpufunc.h,v 1.139 2004/01/28 23:53:04 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/cpufunc.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/cpufunc.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 /*
@@ -67,6 +67,12 @@ static __inline void
 breakpoint(void)
 {
 	__asm __volatile("int $3");
+}
+
+static __inline void
+cpu_pause(void)
+{
+	__asm __volatile("pause");
 }
 
 static __inline u_int
@@ -120,9 +126,70 @@ do_cpuid(u_int ax, u_int *p)
 }
 
 static __inline void
-enable_intr(void)
+cpu_enable_intr(void)
 {
 	__asm __volatile("sti");
+}
+
+/*
+ * Cpu and compiler memory ordering fence.  mfence ensures strong read and
+ * write ordering.
+ *
+ * A serializing or fence instruction is required here.  A locked bus
+ * cycle on data for which we already own cache mastership is the most
+ * portable.
+ */
+static __inline void
+cpu_mfence(void)
+{
+#ifdef SMP
+	__asm __volatile("lock; addl $0,(%%esp)" : : : "memory");
+#else
+	__asm __volatile("" : : : "memory");
+#endif
+}
+
+/*
+ * cpu_lfence() ensures strong read ordering for reads issued prior
+ * to the instruction verses reads issued afterwords.
+ *
+ * A serializing or fence instruction is required here.  A locked bus
+ * cycle on data for which we already own cache mastership is the most
+ * portable.
+ */
+static __inline void
+cpu_lfence(void)
+{
+#ifdef SMP
+	__asm __volatile("lock; addl $0,(%%esp)" : : : "memory");
+#else
+	__asm __volatile("" : : : "memory");
+#endif
+}
+
+/*
+ * cpu_sfence() ensures strong write ordering for writes issued prior
+ * to the instruction verses writes issued afterwords.  Writes are
+ * ordered on intel cpus so we do not actually have to do anything.
+ */
+static __inline void
+cpu_sfence(void)
+{
+	__asm __volatile("" : : : "memory");
+}
+
+/*
+ * cpu_ccfence() prevents the compiler from reordering instructions, in
+ * particular stores, relative to the current cpu.  Use cpu_sfence() if
+ * you need to guarentee ordering by both the compiler and by the cpu.
+ *
+ * This also prevents the compiler from caching memory loads into local
+ * variables across the routine.
+ */
+static __inline void
+cpu_ccfence(void)
+{
+	__asm __volatile("" : : : "memory");
 }
 
 #ifdef _KERNEL
@@ -178,13 +245,6 @@ halt(void)
 	__asm __volatile("hlt");
 }
 
-#if __GNUC__ < 2
-
-#define	inb(port)		inbv(port)
-#define	outb(port, data)	outbv(port, data)
-
-#else /* __GNUC >= 2 */
-
 /*
  * The following complications are to get around gcc not having a
  * constraint letter for the range 0..255.  We still put "d" in the
@@ -229,8 +289,6 @@ outbc(u_int port, u_char data)
 {
 	__asm __volatile("outb %0,%1" : : "a" (data), "id" ((u_short)(port)));
 }
-
-#endif /* __GNUC <= 2 */
 
 static __inline u_char
 inbv(u_int port)
@@ -294,6 +352,16 @@ inw(u_int port)
 
 	__asm __volatile("inw %%dx,%0" : "=a" (data) : "d" (port));
 	return (data);
+}
+
+static __inline u_int
+loadandclear(volatile u_int *addr)
+{
+	u_int   result;
+
+	__asm __volatile("xorl %0,%0; xchgl %1,%0"
+			: "=&r" (result) : "m" (*addr));
+	return (result);
 }
 
 static __inline void
@@ -720,6 +788,7 @@ intr_restore(register_t rflags)
 #else /* !__GNUC__ */
 
 int	breakpoint(void);
+void	cpu_pause(void);
 u_int	bsfl(u_int mask);
 u_int	bsrl(u_int mask);
 void	cpu_invlpg(u_long addr);

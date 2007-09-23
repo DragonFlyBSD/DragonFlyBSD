@@ -36,7 +36,7 @@
  *
  *	from: @(#)frame.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/amd64/include/frame.h,v 1.26 2003/11/08 04:39:22 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/frame.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/frame.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 #ifndef _CPU_FRAME_H_
@@ -87,7 +87,7 @@ struct trapframe {
 /* Interrupt stack frame */
 
 struct intrframe {
-	/* vec */
+	register_t	if_vec;	/* vec */
 	/* ppl */
 	/* fs XXX */
 	/* es XXX */
@@ -117,6 +117,7 @@ struct intrframe {
 	register_t	if_rflags;
 	register_t	if_rsp;
 	register_t	if_ss;
+	register_t	if_gs;
 };
 
 int	kdb_trap(int, int, struct trapframe *);

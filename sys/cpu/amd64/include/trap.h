@@ -35,7 +35,7 @@
  *
  *	from: @(#)trap.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/amd64/include/trap.h,v 1.13 2001/07/12 06:32:51 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/trap.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/trap.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 
 #ifndef _CPU_TRAP_H_
@@ -49,6 +49,7 @@
 #define	T_PRIVINFLT	1	/* privileged instruction */
 #define	T_BPTFLT	3	/* breakpoint instruction */
 #define	T_ARITHTRAP	6	/* arithmetic trap */
+#define T_ASTFLT	7	/* system forced exception */
 #define	T_PROTFLT	9	/* protection fault */
 #define	T_TRCTRAP	10	/* debug exception (sic) */
 #define	T_PAGEFLT	12	/* page fault */
@@ -103,6 +104,7 @@
 #define	    BUS_SEGM_FAULT	T_RESERVED	/* segment protection base */
 
 /* Trap's coming from user mode */
+#define T_SYSCALL80	0x080
 #define	T_USER	0x100
 
 #endif /* !_CPU_TRAP_H_ */

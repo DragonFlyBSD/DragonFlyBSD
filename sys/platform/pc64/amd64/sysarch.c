@@ -31,27 +31,31 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/amd64/include/vframe.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/sysarch.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/sysarch.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
  */
+#include <sys/types.h>
+#include <sys/kernel.h>
+#include <sys/systm.h>
+#include <sys/sysproto.h>
+#include <sys/memrange.h>
+#include <sys/errno.h>
 
-#ifndef _CPU_VFRAME_H_
-#define _CPU_VFRAME_H_
+int
+sys_sysarch(struct sysarch_args *uap)
+{
+	return (EOPNOTSUPP);
+}
 
-#ifndef _MACHINE_NPX_H_
-#include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>
-#endif
+int
+cpu_set_iopl(void)
+{
+	return (EOPNOTSUPP);
+}
 
-/*
- * Virtualized external frame.  This is used by the virtual kernel in
- * addition to trapframe.
- */
-struct vextframe {
-	/* XXX come back for fixing this in segments.h */
-	struct savetls vx_tls;
-};
-
-#endif
+int
+cpu_clr_iopl(void)
+{
+	return (EOPNOTSUPP);
+}
 

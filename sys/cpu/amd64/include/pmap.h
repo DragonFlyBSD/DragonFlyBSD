@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/cpu/amd64/include/pmap.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/pmap.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
  */
 #ifndef _CPU_PMAP_H_
 #define	_CPU_PMAP_H_
@@ -86,6 +86,9 @@
 #define PGEX_P		0x01	/* Protection violation vs. not present */
 #define PGEX_W		0x02	/* during a Write cycle */
 #define PGEX_U		0x04	/* access from User mode (UPL) */
+
+#define PGEX_MAILBOX	0x40
+#define PGEX_FPFAULT	0x80
 
 /*
  * User space is limited to one PML4 entry (512GB).  Kernel space is also
@@ -226,9 +229,12 @@ struct pmap_statistics {
 };
 typedef struct pmap_statistics *pmap_statistics_t;
 
+struct vm_object;
+struct vm_page;
+
 struct pmap {
 	pd_entry_t		*pm_pdir;	/* KVA of page directory */
-	vm_object_t		pm_pteobj;	/* Container for pte's */
+	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
@@ -241,19 +247,19 @@ struct pmap {
 typedef struct pmap	*pmap_t;
 
 #ifdef _KERNEL
-extern pmap_t		kernel_pmap;
+extern	struct pmap		kernel_pmap;
 #endif
 
 /*
  * For each vm_page_t, there is a list of all currently valid virtual
- * mappings of that page.  An entry is a pv_entry_t, the list is pv_table.
+ * mappings of that page.  An entry is a pv_entry_t, the list is pv_list
  */
 typedef struct pv_entry {
 	pmap_t		pv_pmap;	/* pmap where mapping lies */
 	vm_offset_t	pv_va;		/* virtual address for mapping */
 	TAILQ_ENTRY(pv_entry)	pv_list;
 	TAILQ_ENTRY(pv_entry)	pv_plist;
-	vm_page_t	pv_ptem;	/* VM page for pte */
+	struct vm_page	*pv_ptem;	/* VM page for pte */
 } *pv_entry_t;
 
 #ifdef	_KERNEL
@@ -272,17 +278,15 @@ extern vm_paddr_t avail_end;
 extern vm_paddr_t avail_start;
 extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
-extern vm_paddr_t phys_avail[];
 extern char *ptvmmap;		/* poor name! */
 extern vm_offset_t virtual_avail;
-extern vm_offset_t virtual_end;
 
 void	pmap_bootstrap ( vm_paddr_t, vm_paddr_t);
 pmap_t	pmap_kernel (void);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
 unsigned *pmap_pte (pmap_t, vm_offset_t) __pure2;
-vm_page_t pmap_use_pt (pmap_t, vm_offset_t);
+struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 #ifdef SMP
 void	pmap_set_opt (void);
 #endif

@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/amd64/include/param.h,v 1.2 2007/08/23 06:56:27 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/param.h,v 1.3 2007/09/23 04:29:30 yanyh Exp $
  */
 
 #ifndef _CPU_PARAM_H_
@@ -121,7 +121,6 @@
 #define NPML4		(1UL<<PML4SHIFT)/* bytes/page map level4 table */
 #define PML4MASK	(NPML4-1)
 #define NPML4EPG	(PAGE_SIZE/(sizeof (pml4_entry_t)))
-
 
 #define DEV_BSHIFT	9		/* log2(DEV_BSIZE) */
 #define DEV_BSIZE	(1<<DEV_BSHIFT)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -30,28 +30,61 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/cpu/amd64/include/vframe.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ *
+ * $DragonFly: src/sys/platform/pc64/amd64/ktr.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/ktr.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ */
+/*
+ * Kernel tracepoint facility.
  */
 
-#ifndef _CPU_VFRAME_H_
-#define _CPU_VFRAME_H_
+#include "opt_ddb.h"
+#include "opt_ktr.h"
 
-#ifndef _MACHINE_NPX_H_
-#include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>
-#endif
+#include <sys/param.h>
+#include <sys/cons.h>
+#include <sys/kernel.h>
+#include <sys/libkern.h>
+#include <sys/proc.h>
+#include <sys/sysctl.h>
+#include <sys/ktr.h>
 
 /*
- * Virtualized external frame.  This is used by the virtual kernel in
- * addition to trapframe.
+ * This routine fills in the ktr_caller1 and ktr_caller2 fields by
+ * tracing back through the kernel stack to locate the stack frames
+ * and return addresses.
+ *
+ *
+ *	[first argument]
+ *	[retpc]
+ *	[frameptr]		-> points to caller's frame pointer
+ * sp ->[junk]
  */
-struct vextframe {
-	/* XXX come back for fixing this in segments.h */
-	struct savetls vx_tls;
-};
 
-#endif
+static __inline 
+void **
+FRAMEUP(void **frameptr)
+{
+    void **newframeptr;
+
+    newframeptr = (void **)frameptr[0];
+    if (((uintptr_t)newframeptr ^ (uintptr_t)frameptr) & ~16383)
+	newframeptr = frameptr;
+    return(newframeptr);
+}
+
+void
+cpu_ktr_caller(struct ktr_entry *_ktr)
+{
+    struct ktr_entry *ktr;
+    void **frameptr;
+
+    frameptr = (void **)&_ktr - 2;	/* frame, retpc to ktr_log */
+    ktr = _ktr;
+    frameptr = FRAMEUP(frameptr);	/* frame, retpc to traced function */
+    frameptr = FRAMEUP(frameptr);	/* frame, caller1 of traced function */
+    ktr->ktr_caller1 = frameptr[1];
+    frameptr = FRAMEUP(frameptr);	/* frame, caller2 of caller1 */
+    ktr->ktr_caller2 = frameptr[1];
+}
 
