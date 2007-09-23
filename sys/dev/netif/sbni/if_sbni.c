@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.25 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.26 2007/09/23 04:09:55 yanyh Exp $
  */
 
 /*
@@ -83,7 +83,9 @@
 #include "if_sbnireg.h"
 #include "if_sbnivar.h"
 
+#ifdef __i386__
 #define ASM_CRC 1
+#endif
 
 static void	sbni_init(void *);
 static void	sbni_start(struct ifnet *);

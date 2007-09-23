@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_balloc.c,v 1.11.2.3 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.10 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.11 2007/09/23 04:09:55 yanyh Exp $
  */
 /*
  *  linux/fs/ext2/balloc.c
@@ -50,7 +50,7 @@
 #ifdef __i386__
 #include "i386-bitops.h"
 #else
-#error Provide an bitops.h file, please !
+#include "ext2_bitops.h"
 #endif
 
 #define in_range(b, first, len)		((b) >= (first) && (b) <= (first) + (len) - 1)

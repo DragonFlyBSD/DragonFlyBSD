@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.21 2007/02/03 23:13:19 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.22 2007/09/23 04:09:55 yanyh Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -149,7 +149,7 @@ typedef	u_int32_t u32;
  *  make sense) to be used.
  */
 
-#if	defined	__i386__
+#if	defined	__i386__ || defined __amd64__
 #define MEMORY_BARRIER()	do { ; } while(0)
 #elif	defined	__powerpc__
 #define MEMORY_BARRIER()	__asm__ volatile("eieio; sync" : : : "memory")

@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.11 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.12 2007/09/23 04:09:55 yanyh Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c
@@ -51,7 +51,7 @@
 #ifdef __i386__
 #include "i386-bitops.h"
 #else
-#error please provide bit operation functions
+#include "ext2_bitops.h"
 #endif
 
 /* this is supposed to mark a buffer dirty on ready for delayed writing
