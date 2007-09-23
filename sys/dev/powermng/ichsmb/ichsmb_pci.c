@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb_pci.c,v 1.1.2.3 2002/10/20 14:57:19 nyan Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.8 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.9 2007/09/23 22:06:10 hasso Exp $
  */
 
 /*
@@ -62,12 +62,19 @@
 #include "ichsmb_reg.h"
 
 /* PCI unique identifiers */
+#define ID_6300ESB			0x25A48086
+#define ID_63xxESB			0x269B8086
 #define ID_82801AA			0x24138086
 #define ID_82801AB			0x24238086
 #define ID_82801BA			0x24438086
+#define ID_82801E			0x24538086
 #define ID_82801CA			0x24838086
-#define	ID_82801DC			0x24C38086
-#define	ID_82801EB			0x24D38086
+#define ID_82801DB			0x24C38086
+#define ID_82801EB			0x24D38086
+#define ID_82801FB			0x266A8086
+#define ID_82801G			0x27DA8086
+#define ID_82801H			0x283E8086
+#define ID_82801I			0x29308086
 
 #define PCIS_SERIALBUS_SMBUS_PROGIF	0x00
 
@@ -114,6 +121,12 @@ ichsmb_pci_probe(device_t dev)
 {
 	/* Check PCI identifier */
 	switch (pci_get_devid(dev)) {
+	case ID_6300ESB:
+		device_set_desc(dev, "Intel 6300ESB (ESB) SMBus controller");
+		break;
+	case ID_63xxESB:
+		device_set_desc(dev, "Intel 63xxESB (ESB2) SMBus controller");
+		break;
 	case ID_82801AA:
 		device_set_desc(dev, "Intel 82801AA (ICH) SMBus controller");
 		break;
@@ -126,11 +139,26 @@ ichsmb_pci_probe(device_t dev)
 	case ID_82801CA:
 		device_set_desc(dev, "Intel 82801CA (ICH3) SMBus controller");
 		break;
-	case ID_82801DC:
-		device_set_desc(dev, "Intel 82801DC (ICH4) SMBus controller");
+	case ID_82801DB:
+		device_set_desc(dev, "Intel 82801DB (ICH4) SMBus controller");
+		break;
+	case ID_82801E:
+		device_set_desc(dev, "Intel 82801E (C-ICH) SMBus controller");
 		break;
 	case ID_82801EB:
 		device_set_desc(dev, "Intel 82801EB (ICH5) SMBus controller");
+		break;
+	case ID_82801FB:
+		device_set_desc(dev, "Intel 82801FB (ICH6) SMBus controller");
+		break;
+	case ID_82801G:
+		device_set_desc(dev, "Intel 82801G (ICH7) SMBus controller");
+		break;
+	case ID_82801H:
+		device_set_desc(dev, "Intel 82801H (ICH8) SMBus controller");
+		break;
+	case ID_82801I:
+		device_set_desc(dev, "Intel 82801I (ICH9) SMBus controller");
 		break;
 	default:
 		if (pci_get_class(dev) == PCIC_SERIALBUS
