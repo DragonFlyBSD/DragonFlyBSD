@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl.9,v 1.3 2006/04/28 23:21:36 keramida Exp $
-.\" $DragonFly: src/share/man/man9/sysctl.9,v 1.3 2007/04/09 21:20:37 swildner Exp $
+.\" $DragonFly: src/share/man/man9/sysctl.9,v 1.4 2007/09/23 10:45:47 hasso Exp $
 .\"
 .Dd June 22, 2006
 .Dt SYSCTL 9
@@ -219,7 +219,7 @@ to be set indicating the read and write disposition of the sysctl:
 .Bl -tag -width CTLFLAG_ANYBODY
 .It Dv CTLFLAG_RD
 This is a read-only sysctl.
-It Dv CTLFLAG_WR
+.It Dv CTLFLAG_WR
 This is a writable sysctl.
 .It Dv CTLFLAG_RW
 This sysctl is readable and writable.
