@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.23 2007/07/02 15:18:53 dillon Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.24 2007/09/23 13:38:07 hasso Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -206,7 +206,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_NODE(ctx, parent, nbr, name, access, handler, descr)	    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_NODE|access,	    \
-	0, 0, handler, "N", descr);
+	0, 0, handler, "N", descr)
 
 /* Oid for a string.  len can be 0 to indicate '\0' termination. */
 #define SYSCTL_STRING(parent, nbr, name, access, arg, len, descr) \
@@ -215,7 +215,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_STRING(ctx, parent, nbr, name, access, arg, len, descr)  \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_STRING|access,	    \
-	arg, len, sysctl_handle_string, "A", descr);
+	arg, len, sysctl_handle_string, "A", descr)
 
 /* Oid for an int.  If ptr is NULL, val is returned. */
 #define SYSCTL_INT(parent, nbr, name, access, ptr, val, descr) \
@@ -224,7 +224,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_INT(ctx, parent, nbr, name, access, ptr, val, descr)	    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_INT|access,	    \
-	ptr, val, sysctl_handle_int, "I", descr);
+	ptr, val, sysctl_handle_int, "I", descr)
 
 /* Oid for a quad.  If ptr is NULL, val is returned. */
 #define SYSCTL_QUAD(parent, nbr, name, access, ptr, val, descr) \
@@ -233,7 +233,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_QUAD(ctx, parent, nbr, name, access, ptr, val, descr)    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_QUAD|access,	    \
-	ptr, val, sysctl_handle_quad, "Q", descr);
+	ptr, val, sysctl_handle_quad, "Q", descr)
 
 /* Oid for an unsigned quad.  If ptr is NULL, val is returned. */
 #define SYSCTL_UQUAD(parent, nbr, name, access, ptr, val, descr)	    \
@@ -242,7 +242,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_UQUAD(ctx, parent, nbr, name, access, ptr, val, descr)   \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_UQUAD|access,	    \
-	ptr, val, sysctl_handle_quad, "QU", descr);
+	ptr, val, sysctl_handle_quad, "QU", descr)
 
 /* Oid for an unsigned int.  If ptr is NULL, val is returned. */
 #define SYSCTL_UINT(parent, nbr, name, access, ptr, val, descr) \
@@ -251,7 +251,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_UINT(ctx, parent, nbr, name, access, ptr, val, descr)    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_UINT|access,	    \
-	ptr, val, sysctl_handle_int, "IU", descr);
+	ptr, val, sysctl_handle_int, "IU", descr)
 
 /* Oid for a long.  The pointer must be non NULL. */
 #define SYSCTL_LONG(parent, nbr, name, access, ptr, val, descr) \
@@ -260,7 +260,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_LONG(ctx, parent, nbr, name, access, ptr, descr)	    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_LONG|access,	    \
-	ptr, 0, sysctl_handle_long, "L", descr);
+	ptr, 0, sysctl_handle_long, "L", descr)
 
 /* Oid for a long.  The pointer must be non NULL. */
 #define SYSCTL_ULONG(parent, nbr, name, access, ptr, val, descr) \
@@ -269,7 +269,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_ULONG(ctx, parent, nbr, name, access, ptr, descr)	    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_ULONG|access,	    \
-	ptr, 0, sysctl_handle_long, "LU", descr);
+	ptr, 0, sysctl_handle_long, "LU", descr)
 
 /* Oid for an opaque object.  Specified by a pointer and a length. */
 #define SYSCTL_OPAQUE(parent, nbr, name, access, ptr, len, fmt, descr) \
@@ -278,7 +278,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_OPAQUE(ctx, parent, nbr, name, access, ptr, len, fmt, descr)\
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_OPAQUE|access,	    \
-	ptr, len, sysctl_handle_opaque, fmt, descr);
+	ptr, len, sysctl_handle_opaque, fmt, descr)
 
 /* Oid for a struct.  Specified by a pointer and a type. */
 #define SYSCTL_STRUCT(parent, nbr, name, access, ptr, type, descr) \
@@ -288,7 +288,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_STRUCT(ctx, parent, nbr, name, access, ptr, type, descr) \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_OPAQUE|access,	    \
-	ptr, sizeof(struct type), sysctl_handle_opaque, "S," #type, descr);
+	ptr, sizeof(struct type), sysctl_handle_opaque, "S," #type, descr)
 
 /* Oid for a procedure.  Specified by a pointer and an arg. */
 #define SYSCTL_PROC(parent, nbr, name, access, ptr, arg, handler, fmt, descr) \
@@ -297,7 +297,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 #define SYSCTL_ADD_PROC(ctx, parent, nbr, name, access, ptr, arg, handler, fmt, descr) \
 	sysctl_add_oid(ctx, parent, nbr, name, access,			    \
-	ptr, arg, handler, fmt, descr);
+	ptr, arg, handler, fmt, descr)
 
 #endif /* _KERNEL */
 
