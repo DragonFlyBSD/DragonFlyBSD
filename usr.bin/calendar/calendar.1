@@ -30,8 +30,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)calendar.1  8.1 (Berkeley) 6/29/93
-.\" $FreeBSD: src/usr.bin/calendar/calendar.1,v 1.16.2.9 2003/04/06 20:04:56 dwmalone Exp $
-.\" $DragonFly: src/usr.bin/calendar/calendar.1,v 1.4 2006/02/17 19:38:56 swildner Exp $
+.\" $FreeBSD: src/usr.bin/calendar/calendar.1,v 1.38 2005/02/13 22:25:20 ru Exp $
+.\" $DragonFly: src/usr.bin/calendar/calendar.1,v 1.5 2007/09/24 18:57:47 pavalos Exp $
 .\"
 .Dd June 13, 2002
 .Dt CALENDAR 1
@@ -129,7 +129,7 @@ or negative integer.
 ``Paskha'', is Orthodox Easter for this year, and may be followed by a
 positive or negative integer.
 .Pp
-Weekdays may be followed by ``-4'' ... ``+5'' (aliases for
+Weekdays may be followed by ``-4'' ...\& ``+5'' (aliases for
 last, first, second, third, fourth) for moving events like
 ``the last Monday in April''.
 .Pp
@@ -214,9 +214,9 @@ Calendar of events in France.
 .It Pa calendar.german
 Calendar of events in Germany.
 .It Pa calendar.history
-Everything  else, mostly U.S. historical events.
+Everything else, mostly U.S.\& historical events.
 .It Pa calendar.holiday
-Other  holidays, including the not-well-known, obscure, and
+Other holidays, including the not-well-known, obscure, and
 .Em really
 obscure.
 .It Pa calendar.judaic
@@ -224,16 +224,8 @@ Jewish holidays.
 This calendar should be updated yearly by the local system administrator
 so that roving holidays are set correctly for the current year.
 .It Pa calendar.music
-Musical  events,  births, and deaths.
-Strongly  oriented  toward  rock 'n' roll.
-.It Pa calendar.usholiday
-U.S. holidays.
-This calendar should be updated yearly by the local system administrator
-so that roving holidays are set correctly for the current year.
-.It Pa calendar.french
-French calendar.
-.It Pa calendar.german
-German calendar.
+Musical events, births, and deaths.
+Strongly oriented toward rock 'n' roll.
 .It Pa calendar.newzealand
 Calendar of events in New Zealand.
 .It Pa calendar.russian
@@ -241,7 +233,9 @@ Russian calendar.
 .It Pa calendar.southafrica
 Calendar of events in South Africa.
 .It Pa calendar.usholiday
-Calendar of holidays specific to the United States of America.
+U.S.\& holidays.
+This calendar should be updated yearly by the local system administrator
+so that roving holidays are set correctly for the current year.
 .It Pa calendar.world
 Includes all calendar files except for national files.
 .El
@@ -265,4 +259,4 @@ command appeared in
 .Sh BUGS
 The
 .Nm
-utility doesn't handle Jewish holidays and moon phases.
+utility does not handle Jewish holidays and moon phases.
