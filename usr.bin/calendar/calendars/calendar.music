@@ -1,13 +1,13 @@
 /*
  * Music
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/calendar.music,v 1.17 2004/12/16 00:26:53 grog Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/calendar.music,v 1.3 2006/09/16 18:38:00 pavalos Exp $
+ * $FreeBSD: src/usr.bin/calendar/calendars/calendar.music,v 1.19 2007/01/24 21:21:38 dougb Exp $
+ * $DragonFly: src/usr.bin/calendar/calendars/calendar.music,v 1.4 2007/09/24 21:38:17 pavalos Exp $
  */
 
 #ifndef _calendar_music_
 #define _calendar_music_
-    
+
 01/01	Country Joe McDonald is born in El Monte, California, 1942
 01/03	Steven Stills is born in Dallas, 1945
 01/04	Jazz great Charlie Mingus dies at 57 in Cuernavaca, Mexico, 1979
@@ -22,7 +22,7 @@
 01/17	Led Zeppelin's first album is released, 1969
 01/19	Janis Joplin is born in Port Arthur, Texas, 1943
 01/22	Sam Cooke is born in Chicago, 1935
-01/24	Warren Zevon is born, 1947
+01/24	Warren Zevon is born in Chicago, 1947
 01/25	Bob Dylan plays the second "Hurricane" benefit, in the Astrodome, 1978
 01/27	Bobby "Blue" Bland (Robert Calvin Bland) is born in Tennessee, 1930
 01/27	Wolfgang Amadeus Mozart is born in Salzburg, Austria, 1756
@@ -158,6 +158,7 @@
 08/26	Jimi Hendrix's Electric Ladyland Studios opens in New York, 1970
 09/04	Edvard Grieg dies in Bergen, Norway, 1907
 09/07	Keith Moon (The Who) dies in London of a drug overdose, 1978
+09/07	Warren Zevon dies in Los Angeles of lung cancer (mesothelioma), 2003
 09/08	Antonin Dvorak born in Nelahozeves, Bohemia, 1841
 09/08	Richard Strauss dies in Garmisch-Partenkirchen, Germany, 1949
 09/08	Ron "Pigpen" McKernan (Grateful Dead) is born in San Bruno, California, 1945
