@@ -30,15 +30,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/calendar/calendar.h,v 1.5.2.3 2003/04/06 20:04:57 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendar.h,v 1.4 2006/09/16 18:38:00 pavalos Exp $
+ * $FreeBSD: src/usr.bin/calendar/calendar.h,v 1.12 2007/06/09 05:54:13 grog Exp $
+ * $DragonFly: src/usr.bin/calendar/calendar.h,v 1.5 2007/09/24 20:31:44 pavalos Exp $
  */
 
+#include <sys/types.h>
+#include <sys/uio.h>
 
 extern struct passwd *pw;
 extern int doall;
 extern struct tm *tp;
 extern const char *calendarFile;
+extern int *cumdays;
+extern int yrdays;
+extern struct fixs neaster, npaskha;
 
 void	 cal(void);
 void	 closecal(FILE *);
@@ -64,7 +69,7 @@ void     setnnames(void);
 #define	F_ISDAYVAR	0x04 /* variables day of week, like SundayLast */
 #define	F_EASTER	0x08 /* Easter or easter depending days */
 
-extern int f_dayAfter; /* days after current date */
+extern int f_dayAfter;	/* days after current date */
 extern int f_dayBefore; /* days bevore current date */
 extern int Friday;	/* day before weekend */
 
@@ -73,3 +78,16 @@ struct fixs {
 	int len;
 };
 
+struct event *event_add(struct event *events, int month, int day, char *date,
+                        int var, char *txt);
+void event_continue(struct event *events, char *txt);
+void event_print_all(FILE *fp, struct event *events);
+/* Stored calendar event */
+struct event {
+	int month;
+	int day;
+	int var;
+	char *date;
+	char *text;
+	struct event *next;
+};

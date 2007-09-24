@@ -30,8 +30,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/calendar/day.c,v 1.13.2.5 2003/04/06 20:04:57 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/day.c,v 1.5 2006/09/16 18:38:00 pavalos Exp $
+ * $FreeBSD: src/usr.bin/calendar/day.c,v 1.27 2007/06/09 05:54:13 grog Exp $
+ * $DragonFly: src/usr.bin/calendar/day.c,v 1.6 2007/09/24 20:31:44 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -50,10 +50,10 @@
 extern struct iovec header[];
 
 struct tm *tp;
-int *cumdays; 
+static const struct tm tm0;
+int *cumdays, yrdays;
 
 static char dayname[10];
-static int offset, yrdays;
 
 /* 1-based month, 0-based days, cumulative */
 static int daytab[][14] = {
@@ -152,7 +152,8 @@ settime(time_t now)
 		cumdays = daytab[0];
 	}
 	/* Friday displays Monday's events */
-	offset = tp->tm_wday == Friday ? 3 : 1;
+	if (f_dayAfter == 0 && f_dayBefore == 0 && Friday != -1)
+		f_dayAfter = tp->tm_wday == Friday ? 3 : 1;
 	header[5].iov_base = dayname;
 
 	oldl = NULL;
@@ -181,10 +182,7 @@ Mktime(char *dp)
     time(&t);
     tp = localtime(&t);
 
-    tm.tm_sec = 0;
-    tm.tm_min = 0;
-    tm.tm_hour = 0;
-    tm.tm_wday = 0;
+    tm = tm0;
     tm.tm_mday = tp->tm_mday;
     tm.tm_mon = tp->tm_mon;
     tm.tm_year = tp->tm_year;
@@ -361,6 +359,11 @@ isnow(char *endp, int *monthp, int *dayp, int *varp)
 	}
 
 	if (!(flags & F_EASTER)) {
+	    if (day + cumdays[month] > cumdays[month + 1]) {    /* off end of month */
+		day -= (cumdays[month + 1] - cumdays[month]);   /* adjust */
+		if (++month > 12)                               /* next year */
+		    month = 1;
+	    }
 	    *monthp = month;
 	    *dayp = day;
 	    day = cumdays[month] + day;
@@ -374,19 +377,30 @@ isnow(char *endp, int *monthp, int *dayp, int *varp)
 	}
 
 #ifdef DEBUG
-	fprintf(stderr, "day2: day %d(%d-%d) yday %d\n", *dayp, day, cumdays[month], tp->tm_yday);
+	fprintf(stderr, "day2: day %d(%d-%d) yday %d\n", *dayp, day,
+                cumdays[month], tp->tm_yday);
 #endif
-	/* if today or today + offset days */
+
+	/* When days before or days after is specified */
+	/* no year rollover */
 	if (day >= tp->tm_yday - f_dayBefore &&
-	    day <= tp->tm_yday + offset + f_dayAfter)
+	    day <= tp->tm_yday + f_dayAfter)
 		return(1);
 
-	/* if number of days left in this year + days to event in next year */
-	if (yrdays - tp->tm_yday + day <= offset + f_dayAfter ||
-	    /* a year backward, eg. 6 Jan and 10 days before -> 27. Dec */
-	    tp->tm_yday + day - f_dayBefore < 0
-	    )
-		return(1);
+	/* next year */
+	if (tp->tm_yday + f_dayAfter >= yrdays) {
+		int end = tp->tm_yday + f_dayAfter - yrdays;
+		if (day <= end)
+			return(1);
+	}
+
+	/* previous year */
+	if (tp->tm_yday - f_dayBefore < 0) {
+		int before = yrdays + (tp->tm_yday - f_dayBefore);
+		if (day >= before)
+			return(1);
+	}
+
 	return(0);
 }
 
@@ -449,10 +463,8 @@ getdayvar(char *s)
 	switch(*(s + offs - 2)) {
 	case '-':
 	    return(-(atoi(s + offs - 1)));
-	    break;
 	case '+':
 	    return(atoi(s + offs - 1));
-	    break;
 	}
 
 

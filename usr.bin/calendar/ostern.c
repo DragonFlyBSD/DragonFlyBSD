@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/calendar/ostern.c,v 1.8.2.2 2002/05/27 12:14:46 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/ostern.c,v 1.4 2006/09/16 18:38:00 pavalos Exp $
+ * $FreeBSD: src/usr.bin/calendar/ostern.c,v 1.12 2007/05/07 11:18:30 dwmalone Exp $
+ * $DragonFly: src/usr.bin/calendar/ostern.c,v 1.5 2007/09/24 20:31:44 pavalos Exp $
  */
 
 #include <stdio.h>
@@ -33,8 +33,6 @@
 #include <time.h>
 
 #include "calendar.h"
-
-extern struct fixs neaster;
 
 /* return year day for Easter */
 
@@ -45,7 +43,8 @@ extern struct fixs neaster;
  * Astronomical Almanac".
  */
 
-int easter (int year)
+int
+easter(int year) /* 0 ... abcd, NOT since 1900 */
 {
     int G,	/* Golden number - 1 */
 	C,	/* Century */
@@ -77,6 +76,7 @@ int
 geteaster(char *s, int year)
 {
 	int offset = 0;
+
 #define EASTER "easter"
 #define EASTERNAMELEN (sizeof(EASTER) - 1)
 

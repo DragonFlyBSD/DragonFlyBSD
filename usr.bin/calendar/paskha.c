@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/calendar/paskha.c,v 1.4.10.2 2002/05/27 12:14:46 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/paskha.c,v 1.4 2006/09/16 18:38:00 pavalos Exp $
+ * $FreeBSD: src/usr.bin/calendar/paskha.c,v 1.8 2007/05/07 11:18:30 dwmalone Exp $
+ * $DragonFly: src/usr.bin/calendar/paskha.c,v 1.5 2007/09/24 20:31:44 pavalos Exp $
  */
 
 #include <stdio.h>
@@ -36,9 +36,6 @@
 
 #define PASKHA "paskha"
 #define PASKHALEN (sizeof(PASKHA) - 1)
-
-extern int *cumdays;
-extern struct fixs npaskha;
 
 static int paskha(int);
 
