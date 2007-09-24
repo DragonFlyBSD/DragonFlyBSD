@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)calendar.c  8.3 (Berkeley) 3/25/94
  * $FreeBSD: src/usr.bin/calendar/io.c,v 1.21 2007/06/09 05:54:13 grog Exp $
- * $DragonFly: src/usr.bin/calendar/io.c,v 1.6 2007/09/24 20:31:44 pavalos Exp $
+ * $DragonFly: src/usr.bin/calendar/io.c,v 1.7 2007/09/24 20:49:09 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -76,6 +76,9 @@ struct iovec header[] = {
 	{NULL, 0},
 	{hdr_prec, 30},
 };
+
+static FILE	*opencal(void);
+static void	 closecal(FILE *);
 
 void
 cal(void)
@@ -312,7 +315,7 @@ getfield(char *p, char **endp, int *flags)
 
 static char path[MAXPATHLEN];
 
-FILE *
+static FILE *
 opencal(void)
 {
 	uid_t uid;
@@ -391,7 +394,7 @@ opencal(void)
 	return(fdopen(fd, "w+"));
 }
 
-void
+static void
 closecal(FILE *fp)
 {
 	uid_t uid;

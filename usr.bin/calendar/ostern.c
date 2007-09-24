@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/ostern.c,v 1.12 2007/05/07 11:18:30 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/ostern.c,v 1.5 2007/09/24 20:31:44 pavalos Exp $
+ * $DragonFly: src/usr.bin/calendar/ostern.c,v 1.6 2007/09/24 20:49:09 pavalos Exp $
  */
 
 #include <stdio.h>
@@ -33,6 +33,8 @@
 #include <time.h>
 
 #include "calendar.h"
+
+static int	easter(int);
 
 /* return year day for Easter */
 
@@ -43,7 +45,7 @@
  * Astronomical Almanac".
  */
 
-int
+static int
 easter(int year) /* 0 ... abcd, NOT since 1900 */
 {
     int G,	/* Golden number - 1 */

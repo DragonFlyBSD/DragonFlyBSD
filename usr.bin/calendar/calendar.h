@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/calendar/calendar.h,v 1.12 2007/06/09 05:54:13 grog Exp $
- * $DragonFly: src/usr.bin/calendar/calendar.h,v 1.5 2007/09/24 20:31:44 pavalos Exp $
+ * $DragonFly: src/usr.bin/calendar/calendar.h,v 1.6 2007/09/24 20:49:09 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -46,19 +46,15 @@ extern int yrdays;
 extern struct fixs neaster, npaskha;
 
 void	 cal(void);
-void	 closecal(FILE *);
 int	 getday(char *);
 int	 getdayvar(char *);
 int	 getfield(char *, char **, int *);
 int	 getmonth(char *);
 int	 geteaster(char *, int);
 int      getpaskha(char *, int);
-int      easter(int);
 int	 isnow(char *, int *, int *, int *);
-FILE	*opencal(void);
 void	 settime(time_t);
 time_t   Mktime(char *);
-void	 usage(void);
 void     setnnames(void);
 
 #define isleap(y) ((((y) % 4) == 0 && ((y) % 100) != 0) || ((y) % 400) == 0)
