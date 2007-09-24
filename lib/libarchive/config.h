@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libarchive/config.h,v 1.9 2007/08/18 15:23:33 pavalos Exp $ */
+/* $DragonFly: src/lib/libarchive/config.h,v 1.10 2007/09/24 02:43:45 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -305,6 +305,9 @@
 
 /* Define to 1 if you have the <sys/param.h> header file. */
 #define HAVE_SYS_PARAM_H 1
+
+/* Define to 1 if you have the <sys/poll.h> header file. */
+#define HAVE_SYS_POLL_H 1
 
 /* Define to 1 if you have the <sys/select.h> header file. */
 #define HAVE_SYS_SELECT_H 1

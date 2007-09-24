@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.16 2007/09/03 18:48:12 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.17 2007/09/24 02:43:45 pavalos Exp $
 
 LIB=	archive
 
@@ -16,9 +16,6 @@ ARCHIVE_VERSION_STAMP!= echo ${ARCHIVE_API_MAJOR} ${ARCHIVE_API_MINOR} ${ARCHIVE
 
 SHLIB_MAJOR=	5
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
-CFLAGS+=	-DPACKAGE_STRING=\"libarchive\ ${VERSION}\"
-CFLAGS+=	-DPACKAGE_VERSION=\"${VERSION}\"
-CFLAGS+=	-DVERSION=\"${VERSION}\"
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR} -I-
 WARNS?=	6
 
@@ -29,7 +26,9 @@ SRCS=	archive.h					\
 	archive_check_magic.c				\
 	archive_entry.c					\
 	archive_entry_copy_stat.c			\
+	archive_entry_link_resolver.c			\
 	archive_entry_stat.c				\
+	archive_entry_strmode.c				\
 	archive_read.c					\
 	archive_read_data_into_fd.c			\
 	archive_read_extract.c				\
@@ -234,9 +233,8 @@ archive.h:	archive.h.in Makefile
 	cat ${CONTRIBDIR}/archive.h.in |				\
 		sed 's/@ARCHIVE_VERSION@/${VERSION}/g' |		\
 		sed 's/@SHLIB_MAJOR@/${SHLIB_MAJOR}/g' |		\
-		sed 's/@ARCHIVE_API_MAJOR@/${ARCHIVE_API_MAJOR}/g' |	\
-		sed 's/@ARCHIVE_API_MINOR@/${ARCHIVE_API_MINOR}/g' |	\
-		sed 's/@ARCHIVE_VERSION_STAMP@/${ARCHIVE_VERSION_STAMP}/g' | \
+		sed 's/@LIBARCHIVE_VERSION_STRING@/${VERSION}/g' |	\
+		sed 's/@LIBARCHIVE_VERSION@/${ARCHIVE_VERSION_STAMP}/g' | \
 		sed 's|@ARCHIVE_H_INCLUDE_INTTYPES_H@|#include <inttypes.h>  /* For int64_t */|g' |			\
 		cat > archive.h
 
