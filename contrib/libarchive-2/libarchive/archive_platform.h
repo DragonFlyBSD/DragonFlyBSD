@@ -122,4 +122,4 @@
 #define	ARCHIVE_ERRNO_MISC (-1)
 #endif
 
-#endif /* !ARCHIVE_H_INCLUDED */
+#endif /* !ARCHIVE_PLATFORM_H_INCLUDED */

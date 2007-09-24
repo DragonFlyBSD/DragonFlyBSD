@@ -25,7 +25,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_disk.c,v 1.14 2007/08/12 17:35:05 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_disk.c,v 1.17 2007/09/21 04:52:42 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -448,8 +448,10 @@ _archive_write_data_block(struct archive *_a,
 
 	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
 	    ARCHIVE_STATE_DATA, "archive_write_disk_block");
-	if (a->fd < 0)
-		return (ARCHIVE_OK);
+	if (a->fd < 0) {
+		archive_set_error(&a->archive, 0, "File not open");
+		return (ARCHIVE_WARN);
+	}
 	archive_clear_error(&a->archive);
 
 	/* Seek if necessary to the specified offset. */
@@ -478,12 +480,17 @@ static ssize_t
 _archive_write_data(struct archive *_a, const void *buff, size_t size)
 {
 	struct archive_write_disk *a = (struct archive_write_disk *)_a;
+	int r;
+
 	__archive_check_magic(&a->archive, ARCHIVE_WRITE_DISK_MAGIC,
 	    ARCHIVE_STATE_DATA, "archive_write_data");
 	if (a->fd < 0)
 		return (ARCHIVE_OK);
 
-	return (_archive_write_data_block(_a, buff, size, a->offset));
+	r = _archive_write_data_block(_a, buff, size, a->offset);
+	if (r < ARCHIVE_OK)
+		return (r);
+	return (size);
 }
 
 static int

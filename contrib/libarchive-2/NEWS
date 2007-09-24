@@ -1,4 +1,19 @@
 
+Sep 20, 2007: libarchive 2.3.2 released
+Sep 20, 2007: libarchive 2.3.1 broke bsdtar because the archive_write_data()
+	fix was implemented incorrectly.
+
+Sep 16, 2007: libarchive 2.3.1 released
+Sep 16, 2007: Many fixes to bsdcpio 0.3:  handle hardlinks with -p, recognize
+	block size on writing, fix a couple of segfaults.
+Sep 16, 2007: Fixed return value from archive_write_data() when used
+	with archive_write_disk() to match the documentation and other
+	instances of this same function.
+Sep 15, 2007: Add archive_entry_link_resolver, archive_entry_strmode
+
+Sep 11, 2007: libarchive 2.2.8 released
+Sep 09, 2007: bsdcpio 0.2 supports most (not yet all) of the old POSIX spec.
+
 Sep 01, 2007: libarchive 2.2.7 released
 Aug 31, 2007: Support for reading mtree files, including an mtree.5 manpage
 	(A little experimental still.)
@@ -7,10 +22,8 @@ Aug 13, 2007: Refined suid/sgid restore handling; it is no longer
 	an error if suid/sgid bits are dropped when you request
 	perm restore but don't request owner restore.
 Aug 06, 2007: Use --enable-bsdcpio if you want to try bsdcpio
-	(Still very incomplete!)
 
 Aug 05, 2007: libarchive 2.2.6 released
-
 Aug 05, 2007: New configure option --disable-bsdtar, thanks to Joerg
 	Sonnenberger.
 Aug 05, 2007: Several bug fixes from FreeBSD CVS repo.
