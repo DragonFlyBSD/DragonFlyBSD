@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/elf_machdep.c,v 1.8 1999/12/21 11:14:02 eivind Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/elf_machdep.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/elf_machdep.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/elf_machdep.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
  */
 
 #include <sys/param.h>

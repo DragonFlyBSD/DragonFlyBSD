@@ -38,8 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/pmap.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/pmap.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/pmap.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting

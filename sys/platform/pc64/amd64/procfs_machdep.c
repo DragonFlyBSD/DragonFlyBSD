@@ -38,8 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/i386/i386/procfs_machdep.c,v 1.14 1999/10/11 14:50:03 peter Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/procfs_machdep.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/procfs_machdep.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/procfs_machdep.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
  */
 
 /*

@@ -37,8 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/Attic/cpu_regs.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/Attic/cpu_regs.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/Attic/cpu_regs.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
  */
 
 #include "use_ether.h"

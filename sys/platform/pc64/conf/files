@@ -1,8 +1,7 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-# $DragonFly: src/sys/platform/pc64/conf/files,v 1.1 2007/09/23 04:29:31 yanyh Exp $
-# $DragonFly: src/sys/platform/pc64/conf/files,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+# $DragonFly: src/sys/platform/pc64/conf/files,v 1.2 2007/09/24 03:24:45 yanyh Exp $
 #
 
 linux32_genassym.o		optional	compat_linux32			\

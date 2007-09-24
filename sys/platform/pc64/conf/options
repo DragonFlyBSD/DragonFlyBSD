@@ -1,6 +1,5 @@
 #
-# $DragonFly: src/sys/platform/pc64/conf/options,v 1.1 2007/09/23 04:29:31 yanyh Exp $
-# $DragonFly: src/sys/platform/pc64/conf/options,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+# $DragonFly: src/sys/platform/pc64/conf/options,v 1.2 2007/09/24 03:24:45 yanyh Exp $
 #
 
 # The cpu type

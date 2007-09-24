@@ -24,8 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pcb_ext.h,v 1.4 1999/12/29 04:33:04 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/pcb_ext.h,v 1.1 2007/09/23 04:42:07 yanyh Exp $
- * $DragonFly: src/sys/platform/pc64/include/pcb_ext.h,v 1.1 2007/09/23 04:42:07 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/include/pcb_ext.h,v 1.2 2007/09/24 03:24:45 yanyh Exp $
  */
 
 #ifndef _MACHINE_PCB_EXT_H_

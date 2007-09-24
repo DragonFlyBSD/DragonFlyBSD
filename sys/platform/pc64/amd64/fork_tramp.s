@@ -31,8 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/Attic/fork_tramp.s,v 1.1 2007/09/23 04:29:31 yanyh Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/Attic/fork_tramp.s,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/Attic/fork_tramp.s,v 1.2 2007/09/24 03:24:45 yanyh Exp $
  */
 
 #include "use_npx.h"
