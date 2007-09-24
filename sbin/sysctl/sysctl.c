@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.14 2007/01/05 23:00:10 corecode Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.15 2007/09/24 06:16:19 hasso Exp $
  */
 
 #ifdef __i386__
@@ -62,7 +62,7 @@ static int	oidfmt(int *, size_t, char *, u_int *);
 static void	parse(const char *);
 static int	show_var(int *, size_t);
 static int	sysctl_all(int *, size_t);
-static void	set_T_dev_t(const char *, void **, int *);
+static void	set_T_dev_t(const char *, void **, size_t *);
 
 static void
 usage(void)
@@ -370,7 +370,7 @@ T_dev_t(int l2, void *p)
 }
 
 static void
-set_T_dev_t(const char *path, void **val, int *size)
+set_T_dev_t(const char *path, void **val, size_t *size)
 {
 	static struct stat statb;
 
