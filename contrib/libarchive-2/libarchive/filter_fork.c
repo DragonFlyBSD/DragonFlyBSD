@@ -30,6 +30,8 @@ __FBSDID("$FreeBSD: src/lib/libarchive/filter_fork.c,v 1.1 2007/05/29 01:00:20 k
 #if defined(HAVE_POLL)
 #  if defined(HAVE_POLL_H)
 #    include <poll.h>
+#  elif defined(HAVE_SYS_POLL_H)
+#    include <sys/poll.h>
 #  endif
 #elif defined(HAVE_SELECT)
 #  if defined(HAVE_SYS_SELECT_H)

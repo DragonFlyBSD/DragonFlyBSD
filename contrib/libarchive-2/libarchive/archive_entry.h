@@ -62,6 +62,7 @@ struct archive_entry;
 #define	AE_IFMT		0170000
 #define	AE_IFREG	0100000
 #define	AE_IFLNK	0120000
+#define	AE_IFSOCK	0140000
 #define	AE_IFCHR	0020000
 #define	AE_IFBLK	0060000
 #define	AE_IFDIR	0040000
@@ -108,6 +109,7 @@ dev_t			 archive_entry_rdev(struct archive_entry *);
 dev_t			 archive_entry_rdevmajor(struct archive_entry *);
 dev_t			 archive_entry_rdevminor(struct archive_entry *);
 int64_t			 archive_entry_size(struct archive_entry *);
+const char		*archive_entry_strmode(struct archive_entry *);
 const char		*archive_entry_symlink(struct archive_entry *);
 const wchar_t		*archive_entry_symlink_w(struct archive_entry *);
 uid_t			 archive_entry_uid(struct archive_entry *);
@@ -261,11 +263,6 @@ int	 archive_entry_acl_count(struct archive_entry *, int want_type);
 int		 __archive_entry_acl_parse_w(struct archive_entry *,
 		     const wchar_t *, int type);
 
-
-#ifdef __cplusplus
-}
-#endif
-
 /*
  * extended attributes
  */
@@ -284,5 +281,32 @@ int	archive_entry_xattr_reset(struct archive_entry *);
 int	archive_entry_xattr_next(struct archive_entry *,
 	     const char **name, const void **value, size_t *);
 
+/*
+ * Utility to detect hardlinks.
+ *
+ * The 'struct archive_hardlink_lookup' is a cache of entry
+ * names and dev/ino numbers.  Here's how to use it:
+ *   1. Create a lookup object with archive_hardlink_lookup_new()
+ *   2. Hand each archive_entry to archive_hardlink_lookup().
+ *      That function will return NULL (this is not a hardlink to
+ *      a previous entry) or the pathname of the first entry
+ *      that matched this.
+ *   3. Use archive_hardlink_lookup_free() to release the cache.
+ *
+ * To make things more efficient, be sure that each entry has a valid
+ * nlinks value.  The hardlink cache uses this to track when all links
+ * have been found.  If the nlinks value is zero, it will keep every
+ * name in the cache indefinitely, which can use a lot of memory.
+ */
+struct archive_entry_linkresolver;
+
+struct archive_entry_linkresolver *archive_entry_linkresolver_new(void);
+void archive_entry_linkresolver_free(struct archive_entry_linkresolver *);
+const char *archive_entry_linkresolve(struct archive_entry_linkresolver *,
+    struct archive_entry *);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !ARCHIVE_ENTRY_H_INCLUDED */

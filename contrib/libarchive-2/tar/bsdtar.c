@@ -24,7 +24,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.76 2007/08/01 03:15:35 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.77 2007/09/09 00:07:18 kientzle Exp $");
 
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
@@ -151,6 +151,7 @@ enum {
 	OPTION_NO_SAME_PERMISSIONS,
 	OPTION_NULL,
 	OPTION_ONE_FILE_SYSTEM,
+	OPTION_POSIX,
 	OPTION_STRIP_COMPONENTS,
 	OPTION_TOTALS,
 	OPTION_USE_COMPRESS_PROGRAM,
@@ -202,6 +203,7 @@ static const struct option tar_longopts[] = {
 	{ "no-same-permissions",no_argument,	   NULL, OPTION_NO_SAME_PERMISSIONS },
 	{ "null",		no_argument,	   NULL, OPTION_NULL },
 	{ "one-file-system",	no_argument,	   NULL, OPTION_ONE_FILE_SYSTEM },
+	{ "posix",		no_argument,	   NULL, OPTION_POSIX },
 	{ "preserve-permissions", no_argument,     NULL, 'p' },
 	{ "read-full-blocks",	no_argument,	   NULL, 'B' },
 	{ "same-permissions",   no_argument,       NULL, 'p' },
@@ -488,6 +490,9 @@ main(int argc, char **argv)
 			bsdtar->extract_flags |= ARCHIVE_EXTRACT_ACL;
 			bsdtar->extract_flags |= ARCHIVE_EXTRACT_XATTR;
 			bsdtar->extract_flags |= ARCHIVE_EXTRACT_FFLAGS;
+			break;
+		case OPTION_POSIX: /* GNU tar */
+			bsdtar->create_format = "pax";
 			break;
 		case 'r': /* SUSv2 */
 			set_mode(bsdtar, opt);
@@ -787,7 +792,9 @@ usage(struct bsdtar *bsdtar)
 static void
 version(void)
 {
-	printf("bsdtar %s - %s\n", PACKAGE_VERSION, archive_version());
+	printf("bsdtar %s - %s\n",
+	    BSDTAR_VERSION_STRING,
+	    archive_version());
 	exit(1);
 }
 
