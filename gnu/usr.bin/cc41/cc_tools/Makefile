@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/Makefile,v 1.2 2007/08/25 15:29:28 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc41/cc_tools/Makefile,v 1.3 2007/09/24 03:04:28 y0netan1 Exp $
 
 SUBDIR=  libiberty
 SUBDIR+= gengenrtl genmodes gengtype genpreds gencheck genconstants
@@ -10,13 +10,7 @@ SUBDIR+= gcov-iov genchecksum
 #SUBDIR+= fini
 #.endif
 
-.ORDER: mktooldir ${SUBDIR}
-
 .include "Makefile.tools"
-obj depend: mktooldir
-mktooldir:
-	mkdir -p ${TOOLGENDIR}
-
 clean cleandir:
 	rm -rf ${TOOLGENDIR}
 
