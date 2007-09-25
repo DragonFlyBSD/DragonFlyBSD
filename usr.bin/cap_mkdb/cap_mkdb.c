@@ -32,8 +32,8 @@
  *
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cap_mkdb.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.6.2.2 2001/08/02 01:15:51 obrien Exp $
- * $DragonFly: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
+ * $FreeBSD: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.14 2005/02/22 23:29:53 ru Exp $
+ * $DragonFly: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.5 2007/09/25 04:53:48 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,6 @@
 #include <string.h>
 #include <unistd.h>
 
-int	 main(int, char *[]);
 void	 db_build(char **);
 void	 dounlink(void);
 void	 usage(void);
@@ -55,6 +54,15 @@ void	 usage(void);
 DB *capdbp;
 int verbose;
 char *capdb, *capname, buf[8 * 1024];
+
+HASHINFO openinfo = {
+	4096,		/* bsize */
+	0,		/* ffactor */
+	0,		/* nelem */
+	0,		/* cachesize */
+	NULL,		/* hash() */
+	0		/* lorder */
+};
 
 /*
  * Mkcapdb creates a capability hash database for quick retrieval of capability
@@ -66,11 +74,18 @@ char *capdb, *capname, buf[8 * 1024];
 int
 main(int argc, char **argv)
 {
-	int c;
+	int byteorder, c;
 
 	capname = NULL;
-	while ((c = getopt(argc, argv, "f:v")) != -1) {
+	byteorder = 0;
+	while ((c = getopt(argc, argv, "bf:lv")) != -1) {
 		switch(c) {
+		case 'b':
+		case 'l':
+			if (byteorder != 0)
+				usage();
+			byteorder = c == 'b' ? 4321 : 1234;
+			break;
 		case 'f':
 			capname = optarg;
 			break;
@@ -88,6 +103,9 @@ main(int argc, char **argv)
 	if (*argv == NULL)
 		usage();
 
+	/* Set byte order. */
+	openinfo.lorder = byteorder;
+
 	/*
 	 * The database file is the first argument if no name is specified.
 	 * Make arrangements to unlink it if exit badly.
@@ -95,8 +113,8 @@ main(int argc, char **argv)
 	(void)snprintf(buf, sizeof(buf), "%s.db", capname ? capname : *argv);
 	if ((capname = strdup(buf)) == NULL)
 		errx(1, "strdup failed");
-	if ((capdbp = dbopen(capname,
-	    O_CREAT | O_TRUNC | O_RDWR, DEFFILEMODE, DB_HASH, NULL)) == NULL)
+	if ((capdbp = dbopen(capname, O_CREAT | O_TRUNC | O_RDWR,
+	    DEFFILEMODE, DB_HASH, &openinfo)) == NULL)
 		err(1, "%s", buf);
 
 	if (atexit(dounlink))
@@ -239,6 +257,6 @@ void
 usage(void)
 {
 	(void)fprintf(stderr,
-	    "usage: cap_mkdb [-v] [-f outfile] file [file ...]\n");
+	    "usage: cap_mkdb [-b | -l] [-v] [-f outfile] file ...\n");
 	exit(1);
 }
