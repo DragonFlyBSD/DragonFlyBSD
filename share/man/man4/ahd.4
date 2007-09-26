@@ -27,7 +27,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ahd.4,v 1.6.2.1 2006/06/05 19:30:28 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/ahd.4,v 1.6 2007/07/07 18:31:59 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ahd.4,v 1.7 2007/09/26 20:59:44 swildner Exp $
 .\"
 .Dd July 7, 2007
 .Dt AHD 4
@@ -79,20 +79,24 @@ is enabled.
 Logically OR the following bits together:
 .Bl -column -offset indent Value Function
 .Em "Value	Function"
-0x0001	Show miscellaneous information
-0x0002	Show sense data
-0x0004	Show Serial EEPROM contents
-0x0008	Show bus termination settings
-0x0010	Show host memory usage
-0x0020	Show SCSI protocol messages
-0x0040	Show mode pointer of the chip register window
-0x0080	Show selection timeouts
-0x0100	Show FIFO usage messages
-0x0200	Show Queue Full status
-0x0400	Show SCB queue status
-0x0800	Show inbound packet information
-0x1000	Show S/G list information
-0x2000	Enable extra diagnostic code in the firmware
+0x00001	Show miscellaneous information
+0x00002	Show sense data
+.\"0x00004 XXX: AHD_SHOW_RECOVERY
+0x00008	Show Serial EEPROM contents
+0x00010	Show bus termination settings
+0x00020	Show host memory usage
+0x00040	Show SCSI protocol messages
+0x00080	Show mode pointer of the chip register window
+0x00100	Show selection timeouts
+0x00200	Show FIFO usage messages
+0x00400	Show Queue Full status
+.\"0x00800 XXX: AHD_SHOW_DV
+.\"0x01000 XXX: AHD_SHOW_MASKED_ERRORS
+0x02000	Show SCB queue status
+0x04000	Show inbound packet information
+0x08000	Show S/G list information
+.\"0x10000 XXX: AHD_SHOW_INT_COALESCING
+0x20000	Enable extra diagnostic code in the firmware
 .El
 .Pp
 The
