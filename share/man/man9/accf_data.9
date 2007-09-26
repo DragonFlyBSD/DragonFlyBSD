@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/accf_data.9,v 1.1.2.4 2001/08/17 13:08:54 ru Exp $
-.\" $DragonFly: src/share/man/man9/accf_data.9,v 1.3 2006/07/22 23:52:23 swildner Exp $
+.\" $DragonFly: src/share/man/man9/accf_data.9,v 1.4 2007/09/26 18:56:26 swildner Exp $
 .\" "
 .Dd November 15, 2000
 .Os
@@ -50,11 +50,11 @@ The
 kernel option is also a module that can be enabled at runtime via
 .Xr kldload 8
 if the INET option has been compiled into the kernel.
-.Sh EXAMPLE
+.Sh EXAMPLES
 Assuming ACCEPT_FILTER_DATA has been included in the kernel config
-file or the module
-.Xr accf_data 9
-has been loaded, this will enable the data accept filter
+file or the
+.Nm
+module has been loaded, this will enable the data accept filter
 on the socket
 .Fa sok .
 .Bd -literal -offset 0i

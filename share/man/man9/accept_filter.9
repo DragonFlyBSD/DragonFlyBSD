@@ -23,9 +23,9 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man9/accept_filter.9,v 1.2.2.6 2002/12/29 16:35:39 schweikh Exp $
-.\" $DragonFly: src/share/man/man9/accept_filter.9,v 1.4 2006/10/19 18:44:00 swildner Exp $
-.\" "
+.\" $FreeBSD: src/share/man/man9/accept_filter.9,v 1.13 2004/06/16 08:33:57 ru Exp $
+.\" $DragonFly: src/share/man/man9/accept_filter.9,v 1.5 2007/09/26 18:56:26 swildner Exp $
+.\"
 .Dd June 25, 2000
 .Os
 .Dt ACCEPT_FILTER 9
@@ -39,6 +39,7 @@
 .Sh SYNOPSIS
 .In sys/types.h
 .In sys/socket.h
+.Fd #define ACCEPT_FILTER_MOD
 .In sys/socketvar.h
 .Ft int
 .Fn accept_filt_add "struct accept_filter *filt"
@@ -59,67 +60,72 @@ of
 .Dv SO_ACCEPTFILTER .
 .Sh IMPLEMENTATION NOTES
 A module that wants to be an accept filter
-must provide a struct accept_filter to the system:
+must provide a
+.Vt "struct accept_filter"
+to the system:
 .Bd -literal
 struct accept_filter {
 	char	accf_name[16];
-	void	(*accf_callback)
-		(struct socket *so, void *arg, int waitflag);
-	void *	(*accf_create)
-		(struct socket *so, char *arg);
-	void	(*accf_destroy)
-		(struct socket *so);
+	void	(*accf_callback)(struct socket *so, void *arg, int waitflag);
+	void *	(*accf_create)(struct socket *so, char *arg);
+	void	(*accf_destroy)(struct socket *so);
 	SLIST_ENTRY(accept_filter) accf_next;	/* next on the list */
 };
 .Ed
 .Pp
 The module should register it with the function
 .Fn accept_filt_add ,
-passing a pointer to a struct accept_filter, allocated with
-.Xr MALLOC 9
+passing a pointer to a
+.Vt "struct accept_filter" ,
+allocated with
+.Xr kmalloc 9
 .Pp
 The fields of
-.Fa struct accept_filter
+.Vt "struct accept_filter"
 are as follows:
-.Bl -tag -width accf_callbackXXX
-.It accf_name
+.Bl -tag -width ".Va accf_callback"
+.It Fa accf_name
 Name of the filter;
 this is how it will be accessed from userland.
-.It accf_callback
+.It Fa accf_callback
 The callback that the kernel will do
 once the connection is established.
 It is the same as a socket upcall
 and will be called when the connection is established
 and whenever new data arrives on the socket,
 unless the callback modifies the socket's flags.
-.It accf_create
+.It Fa accf_create
 Called whenever a
 .Xr setsockopt 2
 installs the filter onto
 a listening socket.
-.It accf_destroy
+.It Fa accf_destroy
 Called whenever the user removes the accept filter on the socket.
 .El
 .Pp
+The
 .Fn accept_filt_del
-passed the same string used in accept_filter.accf_name during registration
-with
+function passed the same string used in
+.Fa accept_filter.accf_name
+during registration with
 .Fn accept_filt_add ,
 the kernel will then disallow and further userland use of the filter.
 .Pp
+The
 .Fn accept_filt_get
-is used internally to locate which accept filter to use via the
-.Fn setsockopt
-syscall.
+function is used internally to locate which accept filter to use via the
+.Xr setsockopt 2
+system call.
 .Pp
+The
 .Fn accept_filt_generic_mod_event
-provides a simple way to avoid duplicate
-code for accept filters which don't use
-argument field to load and unload
-themselves.  It is a function that can be
-put in the load/unload struct
-for the
-.Fn DECLARE_MODULE
+function provides a simple way to avoid duplication of code
+for accept filters which do not use the argument field to load
+and unload themselves.
+This function can be used in the
+.Vt moduledata_t
+struct for the
+.Xr DECLARE_MODULE 9
 macro.
 .Sh SEE ALSO
 .Xr setsockopt 2 ,
@@ -130,8 +136,15 @@ macro.
 The accept filter mechanism was introduced in
 .Fx 4.0 .
 .Sh AUTHORS
+.An -nosplit
 This manual page was written by
 .An Alfred Perlstein ,
-Sheldon Hearn and Jeroen Ruigrok van der Werven.
-The accept filter concept was pioneered by David Filo at Yahoo!
-and refined to be a loadable module system by Alfred Perlstein.
+.An Sheldon Hearn
+and
+.An Jeroen Ruigrok van der Werven .
+.Pp
+The accept filter concept was pioneered by
+.An David Filo
+at Yahoo!\&
+and refined to be a loadable module system by
+.An Alfred Perlstein .

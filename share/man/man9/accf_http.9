@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/accf_http.9,v 1.1.2.6 2002/07/02 01:03:59 brian Exp $
-.\" $DragonFly: src/share/man/man9/accf_http.9,v 1.3 2006/07/22 23:52:23 swildner Exp $
+.\" $DragonFly: src/share/man/man9/accf_http.9,v 1.4 2007/09/26 18:56:26 swildner Exp $
 .\" "
 .Dd November 15, 2000
 .Os
@@ -53,7 +53,7 @@ via
 .Fn accept .
 .Pp
 The utility of
-.Xr accf_http 9
+.Nm
 is such that a server will not have to context switch several times
 before performing the initial parsing of the request.
 This effectively reduces the amount of required CPU utilization
@@ -68,15 +68,15 @@ or
 based servers.
 .Pp
 The
-.Xr accf_http 9
+.Nm
 kernel option is also a module that can be enabled at runtime via
 .Xr kldload 8
 if the INET option has been compiled into the kernel.
-.Sh EXAMPLE
+.Sh EXAMPLES
 Assuming ACCEPT_FILTER_HTTP has been included in the kernel config
-file or the module
-.Xr accf_http 9
-has been loaded, this will enable the http accept filter
+file or the
+.Nm
+module has been loaded, this will enable the http accept filter
 on the socket
 .Fa sok .
 .Bd -literal -offset 0i
