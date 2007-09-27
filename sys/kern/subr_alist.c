@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/subr_alist.c,v 1.2 2007/04/19 03:16:33 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_alist.c,v 1.3 2007/09/27 18:20:20 dillon Exp $
  */
 /*
  * This module has been adapted from the BLIST module, which was written
@@ -171,10 +171,11 @@ alist_create(daddr_t blocks, struct malloc_type *mtype)
 #if defined(ALIST_DEBUG)
 	kprintf(
 		"ALIST representing %d blocks (%d MB of swap)"
-		", requiring %dK of ram\n",
+		", requiring %dK (%d bytes) of ram\n",
 		bl->bl_blocks,
 		bl->bl_blocks * 4 / 1024,
-		(bl->bl_rootblks * sizeof(almeta_t) + 1023) / 1024
+		(bl->bl_rootblks * sizeof(almeta_t) + 1023) / 1024,
+		(bl->bl_rootblks * sizeof(almeta_t))
 	);
 	kprintf("ALIST raw radix tree contains %d records\n", bl->bl_rootblks);
 #endif
