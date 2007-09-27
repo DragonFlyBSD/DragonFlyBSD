@@ -1,4 +1,4 @@
-.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.13 2007/06/26 02:40:20 dillon Exp $
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.14 2007/09/27 19:51:42 dillon Exp $
 .\"
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\"
@@ -259,6 +259,14 @@ file contains a list of servers in the 'server <servername>' format, one
 per line.  Any information after a '#' is assumed to be a comment.  Any
 number of servers may be specified but it is usually wasteful to have more
 than four.
+.Pp
+The system will start dntpd at boot if you add the line:
+dntpd_enable="YES" to
+.Pa /etc/rc.conf .
+.Nm
+will periodically re-resolve failed DNS queries and failed servers
+and may be enabled at boot time even if the network is not yet
+operational.
 .Sh FILES
 .Bl -tag -compact
 .It Pa /var/run/dntpd.pid
