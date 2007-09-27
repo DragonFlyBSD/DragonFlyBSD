@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.30 2007/08/18 16:09:57 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.31 2007/09/27 20:54:14 dillon Exp $
 .\"
 .Dd August 18, 2007
 .Dt VKERNEL 7
@@ -46,7 +46,7 @@
 .Cd "device vkd"
 .Cd "device vke"
 .Pp
-.Pa /usr/obj/usr/src/sys/VKERNEL/kernel.debug
+.Pa /var/vkernel/kernel
 .Op Fl sUv
 .Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
@@ -328,6 +328,7 @@ kernel configuration file residing in
 .Bd -literal
 cd /usr/src
 make -DNO_MODULES buildkernel KERNCONF=VKERNEL
+make -DNO_MODULES installkernel KERNCONF=VKERNEL DESTDIR=/var/vkernel
 .Ed
 .Ss Enabling virtual kernel operation
 A special
@@ -357,13 +358,20 @@ ifconfig bridge0 up
 .Ss Running the kernel
 Finally, the virtual kernel can be run:
 .Bd -literal
-cd /usr/obj/usr/src/sys/VKERNEL
-\&./kernel.debug -m 64m -r /var/vkernel/rootimg.01 -I auto:bridge0
+cd /var/vkernel
+\&./kernel -m 64m -r /var/vkernel/rootimg.01 -I auto:bridge0
 .Ed
 .Pp
-The
+You can issue the
+.Xr reboot 8 ,
+.Xr halt 8 ,
+or
+.Xr shutdown 8
+commands from inside a virtual kernel.
+After doing a clean shutdown the
 .Xr reboot 8
-command can be used to stop a virtual kernel.
+command will re-exec the virtual kernel binary while the other two will
+cause the virtual kernel to exit.
 .Sh BUILDING THE WORLD UNDER A VKERNEL
 The virtual kernel platform does not have all the header files expected
 by a world build, so the easiest thing to do right now is to specify a
@@ -371,6 +379,19 @@ pc32 target when building the world under a virtual kernel, like this:
 .Bd -literal
 vkernel# make MACHINE_PLATFORM=pc32 buildworld
 vkernel# make MACHINE_PLATFORM=pc32 installworld
+.Ed
+.Sh CONFIGURATION FILES
+Your virtual kernel is a complete DragonFly system, but you might not want
+to run all the services a normal kernel runs.
+Here is what a typical virtual kernel's
+.Pa /etc/rc.conf
+file looks like, with some additional possibilities commented out.
+.Bd -literal
+hostname="vkernel"
+network_interfaces="lo0 vke0"
+ifconfig_vke0="DHCP"
+sendmail_enable="NO"
+#syslog_enable="NO"
 .Ed
 .Sh SEE ALSO
 .Xr bridge 4 ,
