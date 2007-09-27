@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.109 2007/07/02 01:37:08 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.110 2007/09/27 18:27:54 dillon Exp $
  */
 
 /*
@@ -763,6 +763,8 @@ using_idle_thread:
  *	- The target thread is owned by the current cpu
  *	- We are not currently being preempted
  *	- The target is not currently being preempted
+ *	- We are not holding any spin locks
+ *	- The target thread is not holding any tokens
  *	- We are able to satisfy the target's MP lock requirements (if any).
  *
  * THE CALLER OF LWKT_PREEMPT() MUST BE IN A CRITICAL SECTION.  Typically
@@ -829,15 +831,24 @@ lwkt_preempt(thread_t ntd, int critpri)
     }
 #endif
     /*
-     * Take the easy way out and do not preempt if the target is holding
+     * Take the easy way out and do not preempt if we are holding
      * any spinlocks.  We could test whether the thread(s) being
      * preempted interlock against the target thread's tokens and whether
      * we can get all the target thread's tokens, but this situation 
      * should not occur very often so its easier to simply not preempt.
      * Also, plain spinlocks are impossible to figure out at this point so 
      * just don't preempt.
+     *
+     * Do not try to preempt if the target thread is holding any tokens.
+     * We could try to acquire the tokens but this case is so rare there
+     * is no need to support it.
      */
     if (gd->gd_spinlock_rd || gd->gd_spinlocks_wr) {
+	++preempt_miss;
+	need_lwkt_resched();
+	return;
+    }
+    if (ntd->td_toks) {
 	++preempt_miss;
 	need_lwkt_resched();
 	return;
