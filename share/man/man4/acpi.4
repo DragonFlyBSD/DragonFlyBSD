@@ -24,9 +24,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.50 2005/02/23 07:23:35 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/acpi.4,v 1.6 2006/10/14 23:06:42 swildner Exp $
+.\" $DragonFly: src/share/man/man4/acpi.4,v 1.7 2007/09/29 19:38:46 swildner Exp $
 .\"
-.Dd February 13, 2005
+.Dd September 29, 2007
 .Dt ACPI 4
 .Os
 .Sh NAME
@@ -35,6 +35,7 @@
 .Sh SYNOPSIS
 .Cd "device acpi"
 .Pp
+.Cd "options ACPI_QUIRK_VMWARE"
 .Cd "options ACPI_DEBUG"
 .Sh DESCRIPTION
 The
@@ -46,6 +47,15 @@ PnP and PCI BIOS), as well as power management (superseding APM) and
 other features.
 ACPI core support is provided by the ACPI CA reference implementation
 from Intel.
+.Pp
+It was observed that when running
+.Dx
+as a guest in VMware 5.5.1 under SMP conditions, VMware's ACPI-fast24
+timer runs roughly 65 times too fast.
+The
+.Dv ACPI_QUIRK_VMWARE
+option can be specified in the kernel configuration file in order to
+fix this problem.
 .Pp
 Note that the
 .Nm
