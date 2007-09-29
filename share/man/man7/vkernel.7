@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.32 2007/09/29 08:44:32 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.33 2007/09/29 18:37:31 swildner Exp $
 .\"
 .Dd September 27, 2007
 .Dt VKERNEL 7
@@ -381,8 +381,9 @@ vkernel# make MACHINE_PLATFORM=pc32 buildworld
 vkernel# make MACHINE_PLATFORM=pc32 installworld
 .Ed
 .Sh CONFIGURATION FILES
-Your virtual kernel is a complete DragonFly system, but you might not want
-to run all the services a normal kernel runs.
+Your virtual kernel is a complete
+.Dx
+system, but you might not want to run all the services a normal kernel runs.
 Here is what a typical virtual kernel's
 .Pa /etc/rc.conf
 file looks like, with some additional possibilities commented out.
