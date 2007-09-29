@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: backupfile.c,v 1.18 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/backupfile.c,v 1.3 2006/04/10 08:11:43 joerg Exp $
+ * $OpenBSD: backupfile.c,v 1.19 2006/03/11 19:41:30 otto Exp $
+ * $DragonFly: src/usr.bin/patch/backupfile.c,v 1.4 2007/09/29 23:11:10 swildner Exp $
  */
 
 /*
@@ -44,7 +44,7 @@ const char	*simple_backup_suffix = "~";
 static char	*concat(const char *, const char *);
 static char	*make_version_name(const char *, int);
 static int	max_backup_version(const char *, const char *);
-static int	version_number(const char *, const char *, int);
+static int	version_number(const char *, const char *, size_t);
 static int	argmatch(const char *, const char **);
 static void	invalid_arg(const char *, const char *, int);
 
@@ -98,7 +98,8 @@ max_backup_version(const char *file, const char *dir)
 {
 	DIR	*dirp;
 	struct dirent	*dp;
-	int	highest_version, this_version, file_name_length;
+	int	highest_version, this_version;
+	size_t	file_name_length;
 
 	dirp = opendir(dir);
 	if (dirp == NULL)
@@ -139,7 +140,7 @@ make_version_name(const char *file, int version)
  * already have ".~" appended to it.
  */
 static int
-version_number(const char *base, const char *backup, int base_length)
+version_number(const char *base, const char *backup, size_t base_length)
 {
 	int		version;
 	const char	*p;

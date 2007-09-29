@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: util.c,v 1.29 2004/11/19 20:00:57 otto Exp $
- * $DragonFly: src/usr.bin/patch/util.c,v 1.8 2006/04/18 22:11:35 joerg Exp $
+ * $OpenBSD: util.c,v 1.32 2006/03/11 19:41:30 otto Exp $
+ * $DragonFly: src/usr.bin/patch/util.c,v 1.9 2007/09/29 23:11:10 swildner Exp $
  */
 
 /*
@@ -37,6 +37,7 @@
 #include <fcntl.h>
 #include <libgen.h>
 #include <paths.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -47,7 +48,6 @@
 #include "util.h"
 #include "backupfile.h"
 #include "pathnames.h"
-
 
 /* Rename a file, copying it if necessary. */
 
@@ -326,12 +326,9 @@ makedirs(const char *filename, bool striplast)
 			return;	/* nothing to be done */
 		*s = '\0';
 	}
-	if (snprintf(buf, buf_len, "%s -p %s", _PATH_MKDIR, tmpbuf)
-	    >= (int)buf_len)
-		fatal("buffer too small to hold %.20s...\n", tmpbuf);
-
-	if (system(buf))
-		pfatal("%.40s failed", buf);
+	if (mkpath(tmpbuf) != 0)
+		pfatal("creation of %s failed", tmpbuf);
+	free(tmpbuf);
 }
 
 /*

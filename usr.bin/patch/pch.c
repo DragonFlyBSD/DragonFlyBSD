@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: pch.c,v 1.35 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/pch.c,v 1.4 2006/04/18 22:11:35 joerg Exp $
+ * $OpenBSD: pch.c,v 1.37 2007/09/02 15:19:33 deraadt Exp $
+ * $DragonFly: src/usr.bin/patch/pch.c,v 1.5 2007/09/29 23:11:10 swildner Exp $
  */
 
 /*
@@ -128,11 +128,11 @@ void
 set_hunkmax(void)
 {
 	if (p_line == NULL)
-		p_line = malloc((size_t) hunkmax * sizeof(char *));
+		p_line = calloc((size_t) hunkmax, sizeof(char *));
 	if (p_len == NULL)
-		p_len = malloc((size_t) hunkmax * sizeof(short));
+		p_len = calloc((size_t) hunkmax, sizeof(short));
 	if (p_char == NULL)
-		p_char = malloc((size_t) hunkmax * sizeof(char));
+		p_char = calloc((size_t) hunkmax, sizeof(char));
 }
 
 /*
@@ -1369,9 +1369,8 @@ do_ed_script(void)
 {
 	char	*t;
 	long	beginning_of_this_line;
-	FILE	*pipefp;
+	FILE	*pipefp = NULL;
 
-	pipefp = NULL;
 	if (!skip_rest_of_patch) {
 		if (copy_file(filearg[0], TMPOUTNAME) < 0) {
 			unlink(TMPOUTNAME);

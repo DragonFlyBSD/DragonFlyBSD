@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: patch.c,v 1.43 2004/11/19 20:08:11 otto Exp $
- * $DragonFly: src/usr.bin/patch/patch.c,v 1.6 2006/04/18 22:11:35 joerg Exp $
+ * $OpenBSD: patch.c,v 1.45 2007/04/18 21:52:24 sobrado Exp $
+ * $DragonFly: src/usr.bin/patch/patch.c,v 1.7 2007/09/29 23:11:10 swildner Exp $
  */
 
 /*
@@ -47,7 +47,7 @@
 #include "backupfile.h"
 #include "pathnames.h"
 
-int		filemode = 0644;
+mode_t		filemode = 0644;
 
 char		buf[MAXLINELEN];	/* general purpose buffer */
 size_t		buf_len = sizeof(buf);
@@ -605,10 +605,11 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-"usage: patch [-bcCeEflnNRstuv] [-B backup-prefix] [-d directory] [-D symbol]\n"
+"usage: patch [-bCcEeflNnRstuv] [-B backup-prefix] [-D symbol] [-d directory]\n"
 "             [-F max-fuzz] [-i patchfile] [-o out-file] [-p strip-count]\n"
-"             [-r rej-name] [-V {numbered,existing,simple}] [-z backup-ext]\n"
-"             [origfile [patchfile]]\n");
+"             [-r rej-name] [-V t | nil | never] [-x number] [-z backup-ext]\n"
+"             [--posix] [origfile [patchfile]]\n"
+"       patch <patchfile\n");
 	my_exit(EXIT_SUCCESS);
 }
 

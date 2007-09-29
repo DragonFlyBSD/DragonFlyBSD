@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: inp.c,v 1.32 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/inp.c,v 1.5 2006/04/18 22:11:35 joerg Exp $
+ * $OpenBSD: inp.c,v 1.34 2006/03/11 19:41:30 otto Exp $
+ * $DragonFly: src/usr.bin/patch/inp.c,v 1.6 2007/09/29 23:11:10 swildner Exp $
  */
 
 /*
@@ -95,7 +95,7 @@ re_input(void)
 	}
 }
 
-/* Constuct the line index, somehow or other. */
+/* Construct the line index, somehow or other. */
 
 void
 scan_input(const char *filename)
@@ -136,11 +136,10 @@ plan_a(const char *filename)
 {
 	int		ifd, statfailed;
 	char		*p, *s, lbuf[MAXLINELEN];
-	LINENUM		iline;
 	struct stat	filestat;
 	off_t		i;
 	ptrdiff_t	sz;
-	size_t		lines_allocated;
+	size_t		iline, lines_allocated;
 
 #ifdef DEBUGGING
 	if (debug & 8)
@@ -283,7 +282,7 @@ plan_a(const char *filename)
 	/* test for NUL too, to maintain the behavior of the original code */
 	for (s = i_womp, i = 0; i < i_size && *s != '\0'; s++, i++) {
 		if (*s == '\n') {
-			if (iline == (LINENUM)lines_allocated) {
+			if (iline == lines_allocated) {
 				if (!reallocate_lines(&lines_allocated))
 					return false;
 			}
@@ -348,7 +347,7 @@ static void
 plan_b(const char *filename)
 {
 	FILE	*ifp;
-	int	i = 0, j, maxlen = 1;
+	size_t	i = 0, j, maxlen = 1;
 	char	*p;
 	bool	found_revision = (revision == NULL);
 
@@ -448,8 +447,9 @@ ifetch(LINENUM line, int whichbuf)
 		else {
 			tiline[whichbuf] = baseline;
 
-			lseek(tifd, (off_t) (baseline / lines_per_buf *
-			    BUFFERSIZE), SEEK_SET);
+			if (lseek(tifd, (off_t) (baseline / lines_per_buf *
+			    BUFFERSIZE), SEEK_SET) < 0)
+				pfatal("cannot seek in the temporary input file");
 
 			if (read(tifd, tibuf[whichbuf], BUFFERSIZE) < 0)
 				pfatal("error reading tmp file %s", TMPINNAME);
@@ -465,7 +465,7 @@ static bool
 rev_in_string(const char *string)
 {
 	const char	*s;
-	int		patlen;
+	size_t		patlen;
 
 	if (revision == NULL)
 		return true;

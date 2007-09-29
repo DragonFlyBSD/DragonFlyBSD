@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: util.h,v 1.13 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/util.h,v 1.1 2004/09/24 18:44:28 joerg Exp $
+ * $OpenBSD: util.h,v 1.15 2005/06/20 07:14:06 otto Exp $
+ * $DragonFly: src/usr.bin/patch/util.h,v 1.2 2007/09/29 23:11:10 swildner Exp $
  */
 
 /*
@@ -48,3 +48,6 @@ void		ignore_signals(void);
 void		makedirs(const char *, bool);
 void		version(void);
 void		my_exit(int) __attribute__((noreturn));
+
+/* in mkpath.c */
+extern int mkpath(char *);
