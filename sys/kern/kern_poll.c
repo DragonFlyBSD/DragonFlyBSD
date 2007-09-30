@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.34 2007/09/30 04:37:27 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.35 2007/09/30 05:12:25 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -40,7 +40,6 @@
 #include <sys/msgport2.h>
 
 #include <net/if.h>			/* for IFF_* flags		*/
-#include <net/netisr.h>			/* for NETISR_POLL		*/
 #include <net/netmsg2.h>
 
 /*
@@ -75,12 +74,12 @@
  * Deregistration can be requested by the driver itself (typically in the
  * *_stop() routine), or by the polling code, by invoking the handler.
  *
- * Polling can be globally enabled or disabled with the sysctl variable
- * kern.polling.enable (default is 0, disabled)
+ * Polling can be enabled or disabled on particular CPU_X with the sysctl
+ * variable kern.polling.X.enable (default is 1, enabled)
  *
  * A second variable controls the sharing of CPU between polling/kernel
  * network processing, and other activities (typically userlevel tasks):
- * kern.polling.user_frac (between 0 and 100, default 50) sets the share
+ * kern.polling.X.user_frac (between 0 and 100, default 50) sets the share
  * of CPU allocated to user tasks. CPU is allocated proportionally to the
  * shares, by dynamically adjusting the "count" (poll_burst).
  *
@@ -148,7 +147,7 @@ SYSCTL_INT(_kern_polling, OID_AUTO, defcpu, CTLFLAG_RD,
 	&poll_defcpu, 0, "default CPU to run device polling");
 
 static uint32_t	poll_cpumask0 = 0xffffffff;
-TUNABLE_INT("kern.polling.cpumask", &poll_cpumask0);
+TUNABLE_INT("kern.polling.cpumask", (int *)&poll_cpumask0);
 
 static uint32_t	poll_cpumask;
 SYSCTL_INT(_kern_polling, OID_AUTO, cpumask, CTLFLAG_RD,
@@ -160,10 +159,9 @@ TUNABLE_INT("kern.polling.enable", &polling_enabled);
 static int	pollhz = DEVICE_POLLING_FREQ_DEFAULT;
 TUNABLE_INT("kern.polling.pollhz", &pollhz);
 
-/* The two netisr handlers */
+/* Netisr handlers */
 static void	netisr_poll(struct netmsg *);
 static void	netisr_pollmore(struct netmsg *);
-
 static void	poll_register(struct netmsg *);
 static void	poll_deregister(struct netmsg *);
 static void	poll_sysctl_pollhz(struct netmsg *);
@@ -284,8 +282,7 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 }
 
 /*
- * Master enable.  If polling is disabled, cut the polling systimer 
- * frequency to 1hz.
+ * Master enable.
  */
 static int
 sysctl_polling(SYSCTL_HANDLER_ARGS)
@@ -309,8 +306,8 @@ sysctl_polling(SYSCTL_HANDLER_ARGS)
 }
 
 /*
- * Hook from hardclock. Tries to schedule a netisr, but keeps track
- * of lost ticks due to the previous handler taking too long.
+ * Hook from polling systimer. Tries to schedule a netisr, but keeps
+ * track of lost ticks due to the previous handler taking too long.
  * Normally, this should not happen, because polling handler should
  * run for a short time. However, in some cases (e.g. when there are
  * changes in link status etc.) the drivers take a very long time
@@ -433,8 +430,8 @@ netisr_pollmore(struct netmsg *msg)
 }
 
 /*
- * netisr_poll is scheduled by schednetisr when appropriate, typically once
- * per tick.
+ * netisr_poll is scheduled by schedpoll when appropriate, typically once
+ * per polling systimer tick.
  *
  * Note that the message is replied immediately in order to allow a new
  * ISR to be scheduled in the handler.
@@ -849,6 +846,12 @@ poll_sysctl_pollhz(struct netmsg *msg)
 	KKASSERT(pctx != NULL);
 	KKASSERT(pctx->poll_cpuid == cpuid);
 
+	/*
+	 * If polling is disabled or there is no device registered,
+	 * don't adjust polling systimer frequency.
+	 * Polling systimer frequency will be adjusted once polling
+	 * is enabled and there are registered devices.
+	 */
 	pctx->pollhz = msg->nm_lmsg.u.ms_result;
 	if (pctx->polling_enabled && pctx->poll_handlers)
 		systimer_adjust_periodic(&pctx->pollclock, pctx->pollhz);
@@ -868,6 +871,10 @@ poll_sysctl_polling(struct netmsg *msg)
 	KKASSERT(pctx != NULL);
 	KKASSERT(pctx->poll_cpuid == cpuid);
 
+	/*
+	 * If polling is disabled or there is no device registered,
+	 * cut the polling systimer frequency to 1hz.
+	 */
 	pctx->polling_enabled = msg->nm_lmsg.u.ms_result;
 	if (pctx->polling_enabled && pctx->poll_handlers)
 		systimer_adjust_periodic(&pctx->pollclock, pctx->pollhz);
