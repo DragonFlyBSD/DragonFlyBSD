@@ -22,9 +22,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/adw.4,v 1.5.4.6 2001/10/01 13:07:22 dd Exp $
-.\" $DragonFly: src/share/man/man4/adw.4,v 1.4 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/adw.4,v 1.5 2007/09/30 06:10:43 swildner Exp $
 .\"
-.Dd February 13, 2000
+.Dd September 29, 2007
 .Dt ADW 4
 .Os
 .Sh NAME
@@ -36,6 +36,9 @@
 .Pp
 For one or more SCSI busses:
 .Cd device scbus0 at adw0
+.Pp
+To allow PCI adapters to use memory mapped I/O if enabled:
+.Cd options ADW_ALLOW_MEMIO
 .Sh DESCRIPTION
 This driver provides access to the 16bit
 .Tn SCSI
@@ -67,6 +70,13 @@ The global setting for the maximum number of tagged transactions allowed
 per target is not honored as the CAM SCSI system will automatically determine
 the maximum number of tags a device can receive as well as guarantee fair
 resource allocation among devices.
+.Pp
+Memory mapped I/O can be enabled with the
+.Dq Dv ADW_ALLOW_MEMIO
+configuration option.
+Memory mapped I/O is more efficient than the alternative, programmed I/O.
+Most PCI BIOSes will map devices so that either technique for communicating
+with the card is available.
 .Sh SEE ALSO
 .Xr adv 4 ,
 .Xr cd 4 ,
