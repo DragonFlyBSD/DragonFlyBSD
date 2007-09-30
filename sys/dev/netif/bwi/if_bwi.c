@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.10 2007/09/17 12:13:24 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.11 2007/09/30 12:32:20 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -236,8 +236,8 @@ DRIVER_MODULE(bwi, pci, bwi_driver, bwi_devclass, 0, 0);
 DRIVER_MODULE(bwi, cardbus, bwi_driver, bwi_devclass, 0, 0);
 
 MODULE_DEPEND(bwi, wlan, 1, 1, 1);
-#if 0
 MODULE_DEPEND(bwi, wlan_ratectl_onoe, 1, 1, 1);
+#if 0
 MODULE_DEPEND(bwi, wlan_ratectl_amrr, 1, 1, 1);
 #endif
 MODULE_DEPEND(bwi, pci, 1, 1, 1);
@@ -586,6 +586,9 @@ bwi_attach(device_t dev)
 		      IEEE80211_C_MONITOR;
 	ic->ic_state = IEEE80211_S_INIT;
 	ic->ic_opmode = IEEE80211_M_STA;
+
+	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
+	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
 
 	ic->ic_updateslot = bwi_updateslot;
 
@@ -1659,6 +1662,8 @@ bwi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	callout_stop(&sc->sc_scan_ch);
 	callout_stop(&sc->sc_calib_ch);
+
+	ieee80211_ratectl_newstate(ic, nstate);
 
 	if (nstate == IEEE80211_S_INIT)
 		goto back;
@@ -2867,7 +2872,7 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 	/*
 	 * Find TX rate
 	 */
-	bzero(tb->tb_rate_idx, sizeof(tb->tb_rate_idx));
+	bzero(tb->tb_rateidx, sizeof(tb->tb_rateidx));
 	if (!mgt_pkt) {
 		if (ic->ic_fixed_rate != IEEE80211_FIXED_RATE_NONE) {
 			int idx;
@@ -2881,8 +2886,18 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 				idx = 0;
 			rate_fb = IEEE80211_RS_RATE(&ni->ni_rates, idx);
 		} else {
-			/* TODO: TX rate control */
-			rate = rate_fb = (1 * 2);
+			tb->tb_rateidx_cnt = ieee80211_ratectl_findrate(ni,
+				m->m_pkthdr.len, tb->tb_rateidx, BWI_NTXRATE);
+
+			rate = IEEE80211_RS_RATE(&ni->ni_rates,
+						 tb->tb_rateidx[0]);
+			if (tb->tb_rateidx_cnt == BWI_NTXRATE) {
+				rate_fb = IEEE80211_RS_RATE(&ni->ni_rates,
+							    tb->tb_rateidx[1]);
+			} else {
+				rate_fb = rate;
+			}
+			tb->tb_buflen = m->m_pkthdr.len;
 		}
 	} else {
 		/* Fixed at 1Mbits/s for mgt frames */
@@ -3115,7 +3130,29 @@ _bwi_txeof(struct bwi_softc *sc, uint16_t tx_id, int acked, int data_txcnt)
 	tb->tb_mbuf = NULL;
 
 	if (tb->tb_ni != NULL) {
-		/* Feed back 'acked and data_txcnt' */
+		struct ieee80211_ratectl_res res[BWI_NTXRATE];
+		int res_len, retry;
+
+		if (data_txcnt <= BWI_SHRETRY_FB || tb->tb_rateidx_cnt == 1) {
+			res_len = 1;
+			res[0].rc_res_rateidx = tb->tb_rateidx[0];
+			res[0].rc_res_tries = data_txcnt;
+		} else {
+			res_len = BWI_NTXRATE;
+			res[0].rc_res_rateidx = tb->tb_rateidx[0];
+			res[0].rc_res_tries = BWI_SHRETRY_FB;
+			res[1].rc_res_rateidx = tb->tb_rateidx[1];
+			res[1].rc_res_tries = data_txcnt - BWI_SHRETRY_FB;
+		}
+
+		if (acked)
+			retry = data_txcnt > 0 ? data_txcnt - 1 : 0;
+		else
+			retry = data_txcnt;
+
+		ieee80211_ratectl_tx_complete(tb->tb_ni, tb->tb_buflen,
+			res, res_len, retry, 0, !acked);
+
 		ieee80211_free_node(tb->tb_ni);
 		tb->tb_ni = NULL;
 	}

@@ -1,9 +1,9 @@
-# $DragonFly: src/sys/dev/netif/bwi/Makefile,v 1.1 2007/09/08 06:15:54 sephe Exp $
+# $DragonFly: src/sys/dev/netif/bwi/Makefile,v 1.2 2007/09/30 12:32:20 sephe Exp $
 KMOD	= if_bwi
 
 SRCS	= if_bwi.c bwimac.c bwiphy.c bwirf.c
 SRCS	+= device_if.h bus_if.h pci_if.h
 
-KMODDEPS= wlan
+KMODDEPS= wlan wlan_ratectl_onoe
 
 .include <bsd.kmod.mk>

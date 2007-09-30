@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.7 2007/09/17 12:13:24 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.8 2007/09/30 12:32:20 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -221,7 +221,10 @@ struct bwi_txbuf {
 	bus_dmamap_t		tb_dmap;
 
 	struct ieee80211_node	*tb_ni;
-	int			tb_rate_idx[2];
+	int			tb_buflen;
+#define BWI_NTXRATE	2
+	int			tb_rateidx_cnt;
+	int			tb_rateidx[BWI_NTXRATE];
 };
 
 struct bwi_txbuf_data {
