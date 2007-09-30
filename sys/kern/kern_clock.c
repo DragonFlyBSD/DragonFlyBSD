@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.60 2007/09/12 12:02:09 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.61 2007/09/30 04:37:27 sephe Exp $
  */
 
 #include "opt_ntp.h"
@@ -105,7 +105,6 @@
 #endif
 
 #ifdef DEVICE_POLLING
-extern void init_device_poll(void);
 extern void init_device_poll_pcpu(int);
 #endif
 
@@ -230,9 +229,6 @@ int	ntp_leap_insert;	/* whether to insert or remove a second */
 static void
 initclocks(void *dummy)
 {
-#ifdef DEVICE_POLLING
-	init_device_poll();
-#endif
 	/*psratio = profhz / stathz;*/
 	initclocks_pcpu();
 	clocks_running = 1;

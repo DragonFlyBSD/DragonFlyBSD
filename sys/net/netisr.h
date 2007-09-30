@@ -65,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.27 2007/06/16 15:27:27 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.28 2007/09/30 04:37:27 sephe Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -87,7 +87,6 @@
  * on the lowest level routine of each protocol.
  */
 #define NETISR_RESERVED0 0		/* cannot be used */
-#define	NETISR_POLL	1		/* polling callback */
 #define	NETISR_IP	2		/* same as AF_INET */
 #define	NETISR_NS	6		/* same as AF_NS */
 #define	NETISR_AARP	15		/* Appletalk ARP */
@@ -100,7 +99,6 @@
 #define	NETISR_IPV6	28		/* same as AF_INET6 */
 #define	NETISR_NATM	29		/* same as AF_NATM */
 #define	NETISR_NETGRAPH	30		/* same as AF_NETGRAPH */
-#define	NETISR_POLLMORE	31		/* check if we need more polling */
 
 #define	NETISR_MAX	32
 
@@ -216,6 +214,7 @@ struct netisr {
 
 #ifdef _KERNEL
 
+extern lwkt_port netisr_adone_rport;
 extern lwkt_port netisr_afree_rport;
 extern lwkt_port netisr_apanic_rport;
 

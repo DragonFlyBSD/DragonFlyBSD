@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.33 2007/09/12 12:02:09 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.34 2007/09/30 04:37:27 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -41,6 +41,7 @@
 
 #include <net/if.h>			/* for IFF_* flags		*/
 #include <net/netisr.h>			/* for NETISR_POLL		*/
+#include <net/netmsg2.h>
 
 /*
  * Polling support for [network] device drivers.
@@ -132,6 +133,9 @@ struct pollctx {
 	struct systimer		pollclock;
 	int			polling_enabled;
 	int			pollhz;
+
+	struct netmsg		poll_netmsg;
+	struct netmsg		poll_more_netmsg;
 };
 
 static struct pollctx	*poll_context[POLLCTX_MAX];
@@ -141,14 +145,16 @@ SYSCTL_NODE(_kern, OID_AUTO, polling, CTLFLAG_RW, 0,
 
 static int	poll_defcpu = -1;
 SYSCTL_INT(_kern_polling, OID_AUTO, defcpu, CTLFLAG_RD,
-	&poll_defcpu, 0, "default CPU# to run device polling");
+	&poll_defcpu, 0, "default CPU to run device polling");
 
-static uint32_t	poll_cpumask = 0x1;
-#ifdef notyet
-TUNABLE_INT("kern.polling.cpumask", &poll_cpumask);
-#endif
+static uint32_t	poll_cpumask0 = 0xffffffff;
+TUNABLE_INT("kern.polling.cpumask", &poll_cpumask0);
 
-static int	polling_enabled = 0;	/* global polling enable */
+static uint32_t	poll_cpumask;
+SYSCTL_INT(_kern_polling, OID_AUTO, cpumask, CTLFLAG_RD,
+	&poll_cpumask, 0, "CPUs that can run device polling");
+
+static int	polling_enabled = 1;	/* global polling enable */
 TUNABLE_INT("kern.polling.enable", &polling_enabled);
 
 static int	pollhz = DEVICE_POLLING_FREQ_DEFAULT;
@@ -157,6 +163,11 @@ TUNABLE_INT("kern.polling.pollhz", &pollhz);
 /* The two netisr handlers */
 static void	netisr_poll(struct netmsg *);
 static void	netisr_pollmore(struct netmsg *);
+
+static void	poll_register(struct netmsg *);
+static void	poll_deregister(struct netmsg *);
+static void	poll_sysctl_pollhz(struct netmsg *);
+static void	poll_sysctl_polling(struct netmsg *);
 
 /* Systimer handler */
 static void	pollclock(systimer_t, struct intrframe *);
@@ -167,27 +178,26 @@ static int	sysctl_polling(SYSCTL_HANDLER_ARGS);
 static void	poll_add_sysctl(struct sysctl_ctx_list *,
 				struct sysctl_oid_list *, struct pollctx *);
 
-void		init_device_poll(void);		/* init routine */
+static void	schedpoll_oncpu(struct pollctx *, struct netmsg *, netisr_fn_t);
+
 void		init_device_poll_pcpu(int);	/* per-cpu init routine */
 
 /*
- * register relevant netisr. Called from kern_clock.c:
+ * Initialize per-cpu polling(4) context.  Called from kern_clock.c:
  */
-void
-init_device_poll(void)
-{
-	netisr_register(NETISR_POLL, cpu0_portfn, netisr_poll);
-	netisr_register(NETISR_POLLMORE, cpu0_portfn, netisr_pollmore);
-}
-
 void
 init_device_poll_pcpu(int cpuid)
 {
 	struct pollctx *pctx;
 	char cpuid_str[3];
 
-	if (((1 << cpuid) & poll_cpumask) == 0)
+	if (cpuid >= POLLCTX_MAX)
 		return;
+
+	if (((1 << cpuid) & poll_cpumask0) == 0)
+		return;
+
+	poll_cpumask |= (1 << cpuid);
 
 	pctx = kmalloc(sizeof(*pctx), M_DEVBUF, M_WAITOK | M_ZERO);
 
@@ -199,6 +209,8 @@ init_device_poll_pcpu(int cpuid)
 	pctx->polling_enabled = polling_enabled;
 	pctx->pollhz = pollhz;
 	pctx->poll_cpuid = cpuid;
+	netmsg_init(&pctx->poll_netmsg, &netisr_adone_rport, 0, NULL);
+	netmsg_init(&pctx->poll_more_netmsg, &netisr_adone_rport, 0, NULL);
 
 	KASSERT(cpuid < POLLCTX_MAX, ("cpu id must < %d", cpuid));
 	poll_context[cpuid] = pctx;
@@ -228,8 +240,19 @@ init_device_poll_pcpu(int cpuid)
 	/*
 	 * Initialize systimer
 	 */
-	systimer_init_periodic_nq(&pctx->pollclock, pollclock, pctx,
-				  pctx->polling_enabled ? pctx->pollhz : 1);
+	systimer_init_periodic_nq(&pctx->pollclock, pollclock, pctx, 1);
+}
+
+static __inline void
+schedpoll(struct pollctx *pctx)
+{
+	schedpoll_oncpu(pctx, &pctx->poll_netmsg, netisr_poll);
+}
+
+static __inline void
+schedpollmore(struct pollctx *pctx)
+{
+	schedpoll_oncpu(pctx, &pctx->poll_more_netmsg, netisr_pollmore);
 }
 
 /*
@@ -239,6 +262,8 @@ static int
 sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 {
 	struct pollctx *pctx = arg1;
+	struct netmsg msg;
+	lwkt_port_t port;
 	int error, phz;
 
 	phz = pctx->pollhz;
@@ -250,11 +275,11 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 	else if (phz > DEVICE_POLLING_FREQ_MAX)
 		phz = DEVICE_POLLING_FREQ_MAX;
 
-	crit_enter();
-	pctx->pollhz = phz;
-	if (pctx->polling_enabled)
-		systimer_adjust_periodic(&pctx->pollclock, phz);
-	crit_exit();
+	netmsg_init(&msg, &curthread->td_msgport, 0, poll_sysctl_pollhz);
+	msg.nm_lmsg.u.ms_result = phz;
+
+	port = cpu_portfn(pctx->poll_cpuid);
+	lwkt_domsg(port, &msg.nm_lmsg, 0);
 	return 0;
 }
 
@@ -266,6 +291,8 @@ static int
 sysctl_polling(SYSCTL_HANDLER_ARGS)
 {
 	struct pollctx *pctx = arg1;
+	struct netmsg msg;
+	lwkt_port_t port;
 	int error, enabled;
 
 	enabled = pctx->polling_enabled;
@@ -273,13 +300,11 @@ sysctl_polling(SYSCTL_HANDLER_ARGS)
 	if (error || req->newptr == NULL)
 		return error;
 
-	crit_enter();
-	pctx->polling_enabled = enabled;
-	if (pctx->polling_enabled)
-		systimer_adjust_periodic(&pctx->pollclock, pollhz);
-	else
-		systimer_adjust_periodic(&pctx->pollclock, 1);
-	crit_exit();
+	netmsg_init(&msg, &curthread->td_msgport, 0, poll_sysctl_polling);
+	msg.nm_lmsg.u.ms_result = enabled;
+
+	port = cpu_portfn(pctx->poll_cpuid);
+	lwkt_domsg(port, &msg.nm_lmsg, 0);
 	return 0;
 }
 
@@ -330,7 +355,7 @@ pollclock(systimer_t info, struct intrframe *frame __unused)
 		if (pctx->phase != 0)
 			pctx->suspect++;
 		pctx->phase = 1;
-		schednetisr(NETISR_POLL);
+		schedpoll(pctx);
 		pctx->phase = 2;
 	}
 	if (pctx->pending_polls++ > 0)
@@ -367,14 +392,15 @@ netisr_pollmore(struct netmsg *msg)
 	pctx = poll_context[cpuid];
 	KKASSERT(pctx != NULL);
 	KKASSERT(pctx->poll_cpuid == cpuid);
+	KKASSERT(pctx == msg->nm_lmsg.u.ms_resultp);
 
-	crit_enter();
 	lwkt_replymsg(&msg->nm_lmsg, 0);
+
 	pctx->phase = 5;
 	if (pctx->residual_burst > 0) {
-		schednetisr(NETISR_POLL);
+		schedpoll(pctx);
 		/* will run immediately on return, followed by netisrs */
-		goto out;
+		return;
 	}
 	/* here we can account time spent in netisr's in this tick */
 	microuptime(&t);
@@ -401,11 +427,9 @@ netisr_pollmore(struct netmsg *msg)
 		pctx->poll_burst -= (pctx->poll_burst / 8);
 		if (pctx->poll_burst < 1)
 			pctx->poll_burst = 1;
-		schednetisr(NETISR_POLL);
+		schedpoll(pctx);
 		pctx->phase = 6;
 	}
-out:
-	crit_exit();
 }
 
 /*
@@ -432,9 +456,10 @@ netisr_poll(struct netmsg *msg)
 	pctx = poll_context[cpuid];
 	KKASSERT(pctx != NULL);
 	KKASSERT(pctx->poll_cpuid == cpuid);
+	KKASSERT(pctx == msg->nm_lmsg.u.ms_resultp);
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
-	crit_enter();
+
 	pctx->phase = 3;
 	if (pctx->residual_burst == 0) { /* first call in this tick */
 		microuptime(&pctx->poll_start_t);
@@ -477,82 +502,68 @@ netisr_poll(struct netmsg *msg)
 		for (i = 0 ; i < pctx->poll_handlers ; i++) {
 			struct ifnet *ifp = pctx->pr[i].ifp;
 
+			if (!lwkt_serialize_try(ifp->if_serializer))
+				continue;
+
 			if ((ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING))
-			    == (IFF_UP|IFF_RUNNING|IFF_POLLING)) {
-				if (lwkt_serialize_try(ifp->if_serializer)) {
-					ifp->if_poll(ifp, arg, cycles);
-					lwkt_serialize_exit(ifp->if_serializer);
-				}
-			}
+			    == (IFF_UP|IFF_RUNNING|IFF_POLLING))
+				ifp->if_poll(ifp, arg, cycles);
+
+			lwkt_serialize_exit(ifp->if_serializer);
 		}
 	} else {	/* unregister */
 		for (i = 0 ; i < pctx->poll_handlers ; i++) {
 			struct ifnet *ifp = pctx->pr[i].ifp;
 
-			if ((ifp->if_flags & IFF_POLLING) == 0)
+			lwkt_serialize_enter(ifp->if_serializer);
+
+			if ((ifp->if_flags & IFF_POLLING) == 0) {
+				KKASSERT(ifp->if_poll_cpuid < 0);
+				lwkt_serialize_exit(ifp->if_serializer);
 				continue;
+			}
+			ifp->if_flags &= ~IFF_POLLING;
+			ifp->if_poll_cpuid = -1;
+
 			/*
 			 * Only call the interface deregistration
 			 * function if the interface is still 
 			 * running.
 			 */
-			lwkt_serialize_enter(ifp->if_serializer);
-			ifp->if_flags &= ~IFF_POLLING;
 			if (ifp->if_flags & IFF_RUNNING)
 				ifp->if_poll(ifp, POLL_DEREGISTER, 1);
+
 			lwkt_serialize_exit(ifp->if_serializer);
 		}
 		pctx->residual_burst = 0;
 		pctx->poll_handlers = 0;
 	}
-	schednetisr(NETISR_POLLMORE);
+	schedpollmore(pctx);
 	pctx->phase = 4;
-	crit_exit();
 }
 
-/*
- * Try to register routine for polling. Returns 1 if successful
- * (and polling should be enabled), 0 otherwise.
- *
- * Called from mainline code only, not called from an interrupt.
- */
-int
-ether_poll_register(struct ifnet *ifp)
+static void
+poll_register(struct netmsg *msg)
 {
+	struct ifnet *ifp = msg->nm_lmsg.u.ms_resultp;
 	struct pollctx *pctx;
-	int rc;
+	int rc, cpuid;
 
-	if (poll_defcpu < 0)
-		return 0;
-	KKASSERT(poll_defcpu < POLLCTX_MAX);
+	cpuid = mycpu->gd_cpuid;
+	KKASSERT(cpuid < POLLCTX_MAX);
 
-	pctx = poll_context[poll_defcpu];
+	pctx = poll_context[cpuid];
 	KKASSERT(pctx != NULL);
-	KKASSERT(pctx->poll_cpuid == poll_defcpu);
+	KKASSERT(pctx->poll_cpuid == cpuid);
 
-	if (pctx->polling_enabled == 0) /* polling disabled, cannot register */
-		return 0;
-	if (ifp->if_flags & IFF_POLLING)	/* already polling	*/
-		return 0;
-	if (ifp->if_poll == NULL)		/* no polling support   */
-		return 0;
-
-	/*
-	 * Attempt to register.  Interlock with IFF_POLLING.
-	 */
-	crit_enter();	/* XXX MP - not mp safe */
-	lwkt_serialize_enter(ifp->if_serializer);
-	ifp->if_flags |= IFF_POLLING;
-	if (ifp->if_flags & IFF_RUNNING)
-		ifp->if_poll(ifp, POLL_REGISTER, 0);
-	lwkt_serialize_exit(ifp->if_serializer);
-	if ((ifp->if_flags & IFF_POLLING) == 0) {
-		crit_exit();
-		return 0;
+	if (pctx->polling_enabled == 0) {
+		/* Polling disabled, cannot register */
+		rc = EOPNOTSUPP;
+		goto back;
 	}
 
 	/*
-	 * Check if there is room.  If there isn't, deregister.
+	 * Check if there is room.
 	 */
 	if (pctx->poll_handlers >= POLL_LIST_LEN) {
 		/*
@@ -568,19 +579,134 @@ ether_poll_register(struct ifnet *ifp)
 				"maybe a broken driver ?\n");
 			verbose--;
 		}
+		rc = ENOMEM;
+	} else {
+		pctx->pr[pctx->poll_handlers].ifp = ifp;
+		pctx->poll_handlers++;
+		rc = 0;
+
+		if (pctx->poll_handlers == 1) {
+			KKASSERT(pctx->polling_enabled);
+			systimer_adjust_periodic(&pctx->pollclock,
+						 pctx->pollhz);
+		}
+	}
+back:
+	lwkt_replymsg(&msg->nm_lmsg, rc);
+}
+
+/*
+ * Try to register routine for polling. Returns 1 if successful
+ * (and polling should be enabled), 0 otherwise.
+ *
+ * Called from mainline code only, not called from an interrupt.
+ */
+int
+ether_poll_register(struct ifnet *ifp)
+{
+	if (poll_defcpu < 0)
+		return 0;
+	KKASSERT(poll_defcpu < POLLCTX_MAX);
+
+	return ether_pollcpu_register(ifp, poll_defcpu);
+}
+
+int
+ether_pollcpu_register(struct ifnet *ifp, int cpuid)
+{
+	struct netmsg msg;
+	lwkt_port_t port;
+	int rc;
+
+	if (ifp->if_poll == NULL) {
+		/* Device does not support polling */
+		return 0;
+	}
+
+	if (cpuid < 0 || cpuid >= POLLCTX_MAX)
+		return 0;
+
+	if (((1 << cpuid) & poll_cpumask) == 0) {
+		/* Polling is not supported on 'cpuid' */
+		return 0;
+	}
+	KKASSERT(poll_context[cpuid] != NULL);
+
+	/*
+	 * Attempt to register.  Interlock with IFF_POLLING.
+	 */
+	crit_enter();	/* XXX MP - not mp safe */
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	if (ifp->if_flags & IFF_POLLING) {
+		/* Already polling */
+		KKASSERT(ifp->if_poll_cpuid >= 0);
+		lwkt_serialize_exit(ifp->if_serializer);
+		crit_exit();
+		return 0;
+	}
+	KKASSERT(ifp->if_poll_cpuid < 0);
+	ifp->if_flags |= IFF_POLLING;
+	ifp->if_poll_cpuid = cpuid;
+	if (ifp->if_flags & IFF_RUNNING)
+		ifp->if_poll(ifp, POLL_REGISTER, 0);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	netmsg_init(&msg, &curthread->td_msgport, 0, poll_register);
+	msg.nm_lmsg.u.ms_resultp = ifp;
+
+	port = cpu_portfn(cpuid);
+	lwkt_domsg(port, &msg.nm_lmsg, 0);
+
+	if (msg.nm_lmsg.ms_error) {
 		lwkt_serialize_enter(ifp->if_serializer);
 		ifp->if_flags &= ~IFF_POLLING;
+		ifp->if_poll_cpuid = -1;
 		if (ifp->if_flags & IFF_RUNNING)
 			ifp->if_poll(ifp, POLL_DEREGISTER, 0);
 		lwkt_serialize_exit(ifp->if_serializer);
 		rc = 0;
 	} else {
-		pctx->pr[pctx->poll_handlers].ifp = ifp;
-		pctx->poll_handlers++;
 		rc = 1;
 	}
+
 	crit_exit();
-	return (rc);
+	return rc;
+}
+
+static void
+poll_deregister(struct netmsg *msg)
+{
+	struct ifnet *ifp = msg->nm_lmsg.u.ms_resultp;
+	struct pollctx *pctx;
+	int rc, i, cpuid;
+
+	cpuid = mycpu->gd_cpuid;
+	KKASSERT(cpuid < POLLCTX_MAX);
+
+	pctx = poll_context[cpuid];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == cpuid);
+
+	for (i = 0 ; i < pctx->poll_handlers ; i++) {
+		if (pctx->pr[i].ifp == ifp) /* Found it */
+			break;
+	}
+	if (i == pctx->poll_handlers) {
+		kprintf("ether_poll_deregister: ifp not found!!!\n");
+		rc = ENOENT;
+	} else {
+		pctx->poll_handlers--;
+		if (i < pctx->poll_handlers) {
+			/* Last entry replaces this one. */
+			pctx->pr[i].ifp = pctx->pr[pctx->poll_handlers].ifp;
+		}
+
+		if (pctx->poll_handlers == 0)
+			systimer_adjust_periodic(&pctx->pollclock, 1);
+		rc = 0;
+	}
+	lwkt_replymsg(&msg->nm_lmsg, rc);
 }
 
 /*
@@ -590,50 +716,51 @@ ether_poll_register(struct ifnet *ifp)
 int
 ether_poll_deregister(struct ifnet *ifp)
 {
-	struct pollctx *pctx;
-	int i;
+	struct netmsg msg;
+	lwkt_port_t port;
+	int rc, cpuid;
 
 	KKASSERT(ifp != NULL);
 
-	if (poll_defcpu < 0)
+	if (ifp->if_poll == NULL)
 		return 0;
-	KKASSERT(poll_defcpu < POLLCTX_MAX);
-
-	pctx = poll_context[poll_defcpu];
-	KKASSERT(pctx != NULL);
-	KKASSERT(pctx->poll_cpuid == poll_defcpu);
 
 	crit_enter();
-	if ((ifp->if_flags & IFF_POLLING) == 0) {
-		crit_exit();
-		return 0;
-	}
-	for (i = 0 ; i < pctx->poll_handlers ; i++) {
-		if (pctx->pr[i].ifp == ifp) /* found it */
-			break;
-	}
-	ifp->if_flags &= ~IFF_POLLING; /* found or not... */
-	if (i == pctx->poll_handlers) {
-		crit_exit();
-		kprintf("ether_poll_deregister: ifp not found!!!\n");
-		return 0;
-	}
-	pctx->poll_handlers--;
-	if (i < pctx->poll_handlers) { /* Last entry replaces this one. */
-		pctx->pr[i].ifp = pctx->pr[pctx->poll_handlers].ifp;
-	}
-	crit_exit();
 
-	/*
-	 * Only call the deregistration function if the interface is still
-	 * in a run state.
-	 */
-	if (ifp->if_flags & IFF_RUNNING) {
-		lwkt_serialize_enter(ifp->if_serializer);
-		ifp->if_poll(ifp, POLL_DEREGISTER, 1);
+	lwkt_serialize_enter(ifp->if_serializer);
+	if ((ifp->if_flags & IFF_POLLING) == 0) {
+		KKASSERT(ifp->if_poll_cpuid < 0);
 		lwkt_serialize_exit(ifp->if_serializer);
+		crit_exit();
+		return 0;
 	}
-	return (1);
+
+	cpuid = ifp->if_poll_cpuid;
+	KKASSERT(cpuid >= 0);
+	KKASSERT(poll_context[cpuid] != NULL);
+
+	ifp->if_flags &= ~IFF_POLLING;
+	ifp->if_poll_cpuid = -1;
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	netmsg_init(&msg, &curthread->td_msgport, 0, poll_deregister);
+	msg.nm_lmsg.u.ms_resultp = ifp;
+
+	port = cpu_portfn(cpuid);
+	lwkt_domsg(port, &msg.nm_lmsg, 0);
+
+	if (!msg.nm_lmsg.ms_error) {
+		lwkt_serialize_enter(ifp->if_serializer);
+		if (ifp->if_flags & IFF_RUNNING)
+			ifp->if_poll(ifp, POLL_DEREGISTER, 1);
+		lwkt_serialize_exit(ifp->if_serializer);
+		rc = 1;
+	} else {
+		rc = 0;
+	}
+
+	crit_exit();
+	return rc;
 }
 
 static void
@@ -692,4 +819,59 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "handlers", CTLFLAG_RD,
 			&pctx->poll_handlers, 0,
 			"Number of registered poll handlers");
+}
+
+static void
+schedpoll_oncpu(struct pollctx *pctx, struct netmsg *msg, netisr_fn_t handler)
+{
+	if (msg->nm_lmsg.ms_flags & MSGF_DONE) {
+		lwkt_port_t port;
+
+		netmsg_init(msg, &netisr_adone_rport, 0, handler);
+#ifdef INVARIANTS
+		msg->nm_lmsg.u.ms_resultp = pctx;
+#endif
+		port = cpu_portfn(mycpu->gd_cpuid);
+		lwkt_sendmsg(port, &msg->nm_lmsg);
+	}
+}
+
+static void
+poll_sysctl_pollhz(struct netmsg *msg)
+{
+	struct pollctx *pctx;
+	int cpuid;
+
+	cpuid = mycpu->gd_cpuid;
+	KKASSERT(cpuid < POLLCTX_MAX);
+
+	pctx = poll_context[cpuid];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == cpuid);
+
+	pctx->pollhz = msg->nm_lmsg.u.ms_result;
+	if (pctx->polling_enabled && pctx->poll_handlers)
+		systimer_adjust_periodic(&pctx->pollclock, pctx->pollhz);
+	lwkt_replymsg(&msg->nm_lmsg, 0);
+}
+
+static void
+poll_sysctl_polling(struct netmsg *msg)
+{
+	struct pollctx *pctx;
+	int cpuid;
+
+	cpuid = mycpu->gd_cpuid;
+	KKASSERT(cpuid < POLLCTX_MAX);
+
+	pctx = poll_context[cpuid];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == cpuid);
+
+	pctx->polling_enabled = msg->nm_lmsg.u.ms_result;
+	if (pctx->polling_enabled && pctx->poll_handlers)
+		systimer_adjust_periodic(&pctx->pollclock, pctx->pollhz);
+	else
+		systimer_adjust_periodic(&pctx->pollclock, 1);
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }

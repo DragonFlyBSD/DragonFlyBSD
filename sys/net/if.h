@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.18 2007/03/24 05:57:49 sephe Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.19 2007/09/30 04:37:27 sephe Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -259,6 +259,7 @@ struct	ifreq {
 		int	ifru_media;
 		void   *ifru_data;
 		int	ifru_cap[2];
+		int	ifru_pollcpu;
 	} ifr_ifru;
 #define	ifr_addr	ifr_ifru.ifru_addr	/* address */
 #define	ifr_dstaddr	ifr_ifru.ifru_dstaddr	/* other end of p-to-p link */
@@ -272,6 +273,7 @@ struct	ifreq {
 #define	ifr_data	ifr_ifru.ifru_data	/* for use by interface */
 #define	ifr_reqcap	ifr_ifru.ifru_cap[0]	/* requested capabilities */
 #define	ifr_curcap	ifr_ifru.ifru_cap[1]	/* current capabilities */
+#define ifr_pollcpu	ifr_ifru.ifru_pollcpu	/* polling(4) cpu */
 };
 
 #define	_SIZEOF_ADDR_IFREQ(ifr) \

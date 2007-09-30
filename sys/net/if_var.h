@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.40 2007/09/09 03:51:25 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.41 2007/09/30 04:37:27 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -210,8 +210,11 @@ struct ifnet {
 #ifdef DEVICE_POLLING
 	void	(*if_poll)		/* IFF_POLLING support */
 		(struct ifnet *, enum poll_cmd, int);
+	int	if_poll_cpuid;
 #else
-	void	(*if_poll_unused)(void); /* placeholder */
+	/* Place holders */
+	void	(*if_poll_unused)(void);
+	int	if_poll_cpuid_used;
 #endif
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
@@ -502,6 +505,7 @@ int	if_clone_destroy(const char *);
 typedef	void poll_handler_t (struct ifnet *ifp, enum poll_cmd cmd, int count);
 int	ether_poll_register(struct ifnet *);
 int	ether_poll_deregister(struct ifnet *);
+int	ether_pollcpu_register(struct ifnet *, int);
 #endif /* DEVICE_POLLING */
 #endif /* _KERNEL */
 

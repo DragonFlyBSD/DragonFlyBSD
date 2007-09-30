@@ -32,7 +32,7 @@
  *
  *	@(#)sockio.h	8.1 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/sockio.h,v 1.14.2.6 2002/02/07 15:12:37 ambrisko Exp $
- * $DragonFly: src/sys/sys/sockio.h,v 1.4 2005/12/21 16:40:25 corecode Exp $
+ * $DragonFly: src/sys/sys/sockio.h,v 1.5 2007/09/30 04:37:27 sephe Exp $
  */
 
 #ifndef	_SYS_SOCKIO_H_
@@ -115,5 +115,8 @@
 #define SIOCIFCREATE	_IOWR('i', 122, struct ifreq)	/* create clone if */
 #define SIOCIFDESTROY	 _IOW('i', 121, struct ifreq)	/* destroy clone if */
 #define SIOCIFGCLONERS	_IOWR('i', 120, struct if_clonereq) /* get cloners */
+
+#define SIOCSIFPOLLCPU	 _IOW('i', 125, struct ifreq)	/* set polling(4) cpu */
+#define SIOCGIFPOLLCPU	_IOWR('i', 126, struct ifreq)	/* set polling(4) cpu */
 
 #endif /* !_SYS_SOCKIO_H_ */

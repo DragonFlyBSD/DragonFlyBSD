@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.55 2007/08/27 16:15:42 hasso Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.56 2007/09/30 04:37:27 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -195,6 +195,11 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		lwkt_serialize_init(serializer);
 	}
 	ifp->if_serializer = serializer;
+
+#ifdef DEVICE_POLLING
+	/* Device is not in polling mode by default */
+	ifp->if_poll_cpuid = -1;
+#endif
 
 	TAILQ_INSERT_TAIL(&ifnet, ifp, if_link);
 	ifp->if_index = ++if_index;
@@ -1129,6 +1134,21 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 	case SIOCGIFPHYS:
 		ifr->ifr_phys = ifp->if_physical;
+		break;
+
+	case SIOCGIFPOLLCPU:
+#ifdef DEVICE_POLLING
+		ifr->ifr_pollcpu = ifp->if_poll_cpuid;
+#else
+		ifr->ifr_pollcpu = -1;
+#endif
+		break;
+
+	case SIOCSIFPOLLCPU:
+#ifdef DEVICE_POLLING
+		if ((ifp->if_flags & IFF_POLLING) == 0)
+			ether_pollcpu_register(ifp, ifr->ifr_pollcpu);
+#endif
 		break;
 
 	case SIOCSIFFLAGS:

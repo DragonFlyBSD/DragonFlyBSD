@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.113.2.4 2006/02/09 10:48:43 yar Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.29 2007/01/01 01:42:23 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.30 2007/09/30 04:37:27 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -799,6 +799,27 @@ setifname(const char *val, int dummy __unused, int s,
 	printname = 0;
 }
 
+static void
+setifpollcpu(const char *val, int dummy __unused, int s, 
+    const struct afswtch *afp)
+{
+	int pollcpu;
+
+	pollcpu = atoi(val);
+	if (pollcpu < 0) {
+		warn("pollcpu < 0");
+		return;
+	}
+
+	setifflags("-polling", -IFF_POLLING, s, afp);
+
+	ifr.ifr_pollcpu = pollcpu;
+	if (ioctl(s, SIOCSIFPOLLCPU, (caddr_t)&ifr) < 0) {
+		warn("ioctl (set pollcpu)");
+		return;
+	}
+}
+
 /*
  * Expand the compacted form of addresses as returned via the
  * configuration read via sysctl().
@@ -911,6 +932,11 @@ status(const struct afswtch *afp, int addrcount, struct	sockaddr_dl *sdl,
 	strncpy(ifs.ifs_name, name, sizeof ifs.ifs_name);
 	if (ioctl(s, SIOCGIFSTATUS, &ifs) == 0) 
 		printf("%s", ifs.ascii);
+
+	if (flags & IFF_POLLING) {
+		if (ioctl(s, SIOCGIFPOLLCPU, &ifr) == 0 && ifr.ifr_pollcpu >= 0)
+			printf("\tpollcpu: %d\n", ifr.ifr_pollcpu);
+	}
 
 	close(s);
 	return;
@@ -1063,6 +1089,7 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD("noicmp",	IFF_LINK1,	setifflags),
 	DEF_CMD_ARG("mtu",			setifmtu),
 	DEF_CMD_ARG("name",			setifname),
+	DEF_CMD_ARG("pollcpu",			setifpollcpu)
 };
 
 static __constructor void
