@@ -25,13 +25,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.35 2007/09/30 05:12:25 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.36 2007/10/01 07:31:45 sephe Exp $
  */
 
 #include "opt_polling.h"
 
 #include <sys/param.h>
-#include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>			/* needed by net/if.h		*/
 #include <sys/sysctl.h>
@@ -333,7 +332,7 @@ pollclock(systimer_t info, struct intrframe *frame __unused)
 	microuptime(&t);
 	delta = (t.tv_usec - pctx->prev_t.tv_usec) +
 		(t.tv_sec - pctx->prev_t.tv_sec)*1000000;
-	if (delta * hz < 500000)
+	if (delta * pctx->pollhz < 500000)
 		pctx->short_ticks++;
 	else
 		pctx->prev_t = t;
@@ -403,7 +402,7 @@ netisr_pollmore(struct netmsg *msg)
 	microuptime(&t);
 	kern_load = (t.tv_usec - pctx->poll_start_t.tv_usec) +
 		(t.tv_sec - pctx->poll_start_t.tv_sec)*1000000;	/* us */
-	kern_load = (kern_load * hz) / 10000;			/* 0..100 */
+	kern_load = (kern_load * pctx->pollhz) / 10000;		/* 0..100 */
 	if (kern_load > (100 - pctx->user_frac)) { /* try decrease ticks */
 		if (pctx->poll_burst > 1)
 			pctx->poll_burst--;
@@ -469,8 +468,8 @@ netisr_poll(struct netmsg *msg)
 		 * handlers, we do all here.
 		 */
 
-		if (pctx->reg_frac > hz)
-			pctx->reg_frac = hz;
+		if (pctx->reg_frac > pctx->pollhz)
+			pctx->reg_frac = pctx->pollhz;
 		else if (pctx->reg_frac < 1)
 			pctx->reg_frac = 1;
 		if (pctx->reg_frac_count > pctx->reg_frac)
