@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.40 2007/10/01 10:03:49 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.41 2007/10/01 11:18:44 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -109,29 +109,29 @@ struct pollctx {
 	struct sysctl_ctx_list	poll_sysctl_ctx;
 	struct sysctl_oid	*poll_sysctl_tree;
 
-	uint32_t		poll_burst;
-	uint32_t		poll_each_burst;
-	uint32_t		poll_burst_max;
-	uint32_t		user_frac;
-	int			reg_frac_count;
-	uint32_t		reg_frac;
-	uint32_t		short_ticks;
-	uint32_t		lost_polls;
-	uint32_t		pending_polls;
-	int			residual_burst;
-	uint32_t		phase;
-	uint32_t		suspect;
-	uint32_t		stalled;
-	struct timeval		poll_start_t;
-	struct timeval		prev_t;
+	uint32_t		poll_burst;		/* state */
+	uint32_t		poll_each_burst;	/* tunable */
+	uint32_t		poll_burst_max;		/* tunable */
+	uint32_t		user_frac;		/* tunable */
+	int			reg_frac_count;		/* state */
+	uint32_t		reg_frac;		/* tunable */
+	uint32_t		short_ticks;		/* statistics */
+	uint32_t		lost_polls;		/* statistics */
+	uint32_t		pending_polls;		/* state */
+	int			residual_burst;		/* state */
+	uint32_t		phase;			/* state */
+	uint32_t		suspect;		/* statistics */
+	uint32_t		stalled;		/* statistics */
+	struct timeval		poll_start_t;		/* state */
+	struct timeval		prev_t;			/* state */
 
 	uint32_t		poll_handlers; /* next free entry in pr[]. */
 	struct pollrec		pr[POLL_LIST_LEN];
 
 	int			poll_cpuid;
 	struct systimer		pollclock;
-	int			polling_enabled;
-	int			pollhz;
+	int			polling_enabled;	/* tunable */
+	int			pollhz;			/* tunable */
 
 	struct netmsg		poll_netmsg;
 	struct netmsg		poll_more_netmsg;
@@ -186,6 +186,18 @@ static void	schedpoll_oncpu(struct pollctx *, struct netmsg *, netisr_fn_t);
 
 void		init_device_poll_pcpu(int);	/* per-cpu init routine */
 
+static __inline void
+poll_reset_state(struct pollctx *pctx)
+{
+	pctx->poll_burst = 5;
+	pctx->reg_frac_count = 0;
+	pctx->pending_polls = 0;
+	pctx->residual_burst = 0;
+	pctx->phase = 0;
+	bzero(&pctx->poll_start_t, sizeof(pctx->poll_start_t));
+	bzero(&pctx->prev_t, sizeof(pctx->prev_t));
+}
+
 /*
  * Initialize per-cpu polling(4) context.  Called from kern_clock.c:
  */
@@ -205,7 +217,6 @@ init_device_poll_pcpu(int cpuid)
 
 	pctx = kmalloc(sizeof(*pctx), M_DEVBUF, M_WAITOK | M_ZERO);
 
-	pctx->poll_burst = 5;
 	pctx->poll_each_burst = 5;
 	pctx->poll_burst_max = 150; /* good for 100Mbit net and HZ=1000 */
 	pctx->user_frac = 50;
@@ -215,6 +226,7 @@ init_device_poll_pcpu(int cpuid)
 	pctx->poll_cpuid = cpuid;
 	netmsg_init(&pctx->poll_netmsg, &netisr_adone_rport, 0, NULL);
 	netmsg_init(&pctx->poll_more_netmsg, &netisr_adone_rport, 0, NULL);
+	poll_reset_state(pctx);
 
 	KASSERT(cpuid < POLLCTX_MAX, ("cpu id must < %d", cpuid));
 	poll_context[cpuid] = pctx;
@@ -469,6 +481,13 @@ netisr_pollmore(struct netmsg *msg)
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 
+	if (pctx->poll_handlers == 0)
+		return;
+
+	KASSERT(pctx->polling_enabled,
+		("# of registered poll handlers are not zero, "
+		 "but polling is not enabled\n"));
+
 	pctx->phase = 5;
 	if (pctx->residual_burst > 0) {
 		schedpoll(pctx);
@@ -533,6 +552,13 @@ netisr_poll(struct netmsg *msg)
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 
+	if (pctx->poll_handlers == 0)
+		return;
+
+	KASSERT(pctx->polling_enabled,
+		("# of registered poll handlers are not zero, "
+		 "but polling is not enabled\n"));
+
 	pctx->phase = 3;
 	if (pctx->residual_burst == 0) { /* first call in this tick */
 		microuptime(&pctx->poll_start_t);
@@ -548,46 +574,19 @@ netisr_poll(struct netmsg *msg)
 		pctx->residual_burst : pctx->poll_each_burst;
 	pctx->residual_burst -= cycles;
 
-	if (pctx->polling_enabled) {
-		for (i = 0 ; i < pctx->poll_handlers ; i++) {
-			struct ifnet *ifp = pctx->pr[i].ifp;
+	for (i = 0 ; i < pctx->poll_handlers ; i++) {
+		struct ifnet *ifp = pctx->pr[i].ifp;
 
-			if (!lwkt_serialize_try(ifp->if_serializer))
-				continue;
+		if (!lwkt_serialize_try(ifp->if_serializer))
+			continue;
 
-			if ((ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING))
-			    == (IFF_UP|IFF_RUNNING|IFF_POLLING))
-				ifp->if_poll(ifp, arg, cycles);
+		if ((ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING))
+		    == (IFF_UP|IFF_RUNNING|IFF_POLLING))
+			ifp->if_poll(ifp, arg, cycles);
 
-			lwkt_serialize_exit(ifp->if_serializer);
-		}
-	} else {	/* unregister */
-		for (i = 0 ; i < pctx->poll_handlers ; i++) {
-			struct ifnet *ifp = pctx->pr[i].ifp;
-
-			lwkt_serialize_enter(ifp->if_serializer);
-
-			if ((ifp->if_flags & IFF_POLLING) == 0) {
-				KKASSERT(ifp->if_poll_cpuid < 0);
-				lwkt_serialize_exit(ifp->if_serializer);
-				continue;
-			}
-			ifp->if_flags &= ~IFF_POLLING;
-			ifp->if_poll_cpuid = -1;
-
-			/*
-			 * Only call the interface deregistration
-			 * function if the interface is still 
-			 * running.
-			 */
-			if (ifp->if_flags & IFF_RUNNING)
-				ifp->if_poll(ifp, POLL_DEREGISTER, 1);
-
-			lwkt_serialize_exit(ifp->if_serializer);
-		}
-		pctx->residual_burst = 0;
-		pctx->poll_handlers = 0;
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
+
 	schedpollmore(pctx);
 	pctx->phase = 4;
 }
@@ -752,8 +751,10 @@ poll_deregister(struct netmsg *msg)
 			pctx->pr[i].ifp = pctx->pr[pctx->poll_handlers].ifp;
 		}
 
-		if (pctx->poll_handlers == 0)
+		if (pctx->poll_handlers == 0) {
 			systimer_adjust_periodic(&pctx->pollclock, 1);
+			poll_reset_state(pctx);
+		}
 		rc = 0;
 	}
 	lwkt_replymsg(&msg->nm_lmsg, rc);
@@ -941,10 +942,42 @@ poll_sysctl_polling(struct netmsg *msg)
 	 * cut the polling systimer frequency to 1hz.
 	 */
 	pctx->polling_enabled = msg->nm_lmsg.u.ms_result;
-	if (pctx->polling_enabled && pctx->poll_handlers)
+	if (pctx->polling_enabled && pctx->poll_handlers) {
 		systimer_adjust_periodic(&pctx->pollclock, pctx->pollhz);
-	else
+	} else {
 		systimer_adjust_periodic(&pctx->pollclock, 1);
+		poll_reset_state(pctx);
+	}
+
+	if (!pctx->polling_enabled && pctx->poll_handlers != 0) {
+		int i;
+
+		for (i = 0 ; i < pctx->poll_handlers ; i++) {
+			struct ifnet *ifp = pctx->pr[i].ifp;
+
+			lwkt_serialize_enter(ifp->if_serializer);
+
+			if ((ifp->if_flags & IFF_POLLING) == 0) {
+				KKASSERT(ifp->if_poll_cpuid < 0);
+				lwkt_serialize_exit(ifp->if_serializer);
+				continue;
+			}
+			ifp->if_flags &= ~IFF_POLLING;
+			ifp->if_poll_cpuid = -1;
+
+			/*
+			 * Only call the interface deregistration
+			 * function if the interface is still 
+			 * running.
+			 */
+			if (ifp->if_flags & IFF_RUNNING)
+				ifp->if_poll(ifp, POLL_DEREGISTER, 1);
+
+			lwkt_serialize_exit(ifp->if_serializer);
+		}
+		pctx->poll_handlers = 0;
+	}
+
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
