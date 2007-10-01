@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.36 2007/10/01 07:31:45 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.37 2007/10/01 08:52:40 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -165,6 +165,7 @@ static void	poll_register(struct netmsg *);
 static void	poll_deregister(struct netmsg *);
 static void	poll_sysctl_pollhz(struct netmsg *);
 static void	poll_sysctl_polling(struct netmsg *);
+static void	poll_sysctl_regfrac(struct netmsg *);
 
 /* Systimer handler */
 static void	pollclock(systimer_t, struct intrframe *);
@@ -172,6 +173,7 @@ static void	pollclock(systimer_t, struct intrframe *);
 /* Sysctl handlers */
 static int	sysctl_pollhz(SYSCTL_HANDLER_ARGS);
 static int	sysctl_polling(SYSCTL_HANDLER_ARGS);
+static int	sysctl_regfrac(SYSCTL_HANDLER_ARGS);
 static void	poll_add_sysctl(struct sysctl_ctx_list *,
 				struct sysctl_oid_list *, struct pollctx *);
 
@@ -298,6 +300,28 @@ sysctl_polling(SYSCTL_HANDLER_ARGS)
 
 	netmsg_init(&msg, &curthread->td_msgport, 0, poll_sysctl_polling);
 	msg.nm_lmsg.u.ms_result = enabled;
+
+	port = cpu_portfn(pctx->poll_cpuid);
+	lwkt_domsg(port, &msg.nm_lmsg, 0);
+	return 0;
+}
+
+static int
+sysctl_regfrac(SYSCTL_HANDLER_ARGS)
+{
+	struct pollctx *pctx = arg1;
+	struct netmsg msg;
+	lwkt_port_t port;
+	uint32_t reg_frac;
+	int error;
+
+	reg_frac = pctx->reg_frac;
+	error = sysctl_handle_int(oidp, &reg_frac, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	netmsg_init(&msg, &curthread->td_msgport, 0, poll_sysctl_regfrac);
+	msg.nm_lmsg.u.ms_result = reg_frac;
 
 	port = cpu_portfn(pctx->poll_cpuid);
 	lwkt_domsg(port, &msg.nm_lmsg, 0);
@@ -468,12 +492,6 @@ netisr_poll(struct netmsg *msg)
 		 * handlers, we do all here.
 		 */
 
-		if (pctx->reg_frac > pctx->pollhz)
-			pctx->reg_frac = pctx->pollhz;
-		else if (pctx->reg_frac < 1)
-			pctx->reg_frac = 1;
-		if (pctx->reg_frac_count > pctx->reg_frac)
-			pctx->reg_frac_count = pctx->reg_frac - 1;
 		if (pctx->reg_frac_count-- == 0) {
 			arg = POLL_AND_CHECK_STATUS;
 			pctx->reg_frac_count = pctx->reg_frac - 1;
@@ -771,6 +789,10 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 			CTLTYPE_INT | CTLFLAG_RW, pctx, 0, sysctl_pollhz,
 			"I", "Device polling frequency");
 
+	SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "reg_frac",
+			CTLTYPE_UINT | CTLFLAG_RW, pctx, 0, sysctl_regfrac,
+			"IU", "Every this many cycles poll register");
+
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "phase", CTLFLAG_RD,
 			&pctx->phase, 0, "Polling phase");
 
@@ -792,10 +814,6 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "user_frac", CTLFLAG_RW,
 			&pctx->user_frac, 0,
 			"Desired user fraction of cpu time");
-
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "reg_frac", CTLFLAG_RW,
-			&pctx->reg_frac, 0,
-			"Every this many cycles poll register");
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "short_ticks", CTLFLAG_RW,
 			&pctx->short_ticks, 0,
@@ -854,6 +872,16 @@ poll_sysctl_pollhz(struct netmsg *msg)
 	pctx->pollhz = msg->nm_lmsg.u.ms_result;
 	if (pctx->polling_enabled && pctx->poll_handlers)
 		systimer_adjust_periodic(&pctx->pollclock, pctx->pollhz);
+
+	/*
+	 * Make sure that reg_frac and reg_frac_count are within valid range.
+	 */
+	if (pctx->reg_frac > pctx->pollhz) {
+		pctx->reg_frac = pctx->pollhz;
+		if (pctx->reg_frac_count > pctx->reg_frac)
+			pctx->reg_frac_count = pctx->reg_frac - 1;
+	}
+
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
@@ -879,5 +907,32 @@ poll_sysctl_polling(struct netmsg *msg)
 		systimer_adjust_periodic(&pctx->pollclock, pctx->pollhz);
 	else
 		systimer_adjust_periodic(&pctx->pollclock, 1);
+	lwkt_replymsg(&msg->nm_lmsg, 0);
+}
+
+static void
+poll_sysctl_regfrac(struct netmsg *msg)
+{
+	struct pollctx *pctx;
+	uint32_t reg_frac;
+	int cpuid;
+
+	cpuid = mycpu->gd_cpuid;
+	KKASSERT(cpuid < POLLCTX_MAX);
+
+	pctx = poll_context[cpuid];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == cpuid);
+
+	reg_frac = msg->nm_lmsg.u.ms_result;
+	if (reg_frac > pctx->pollhz)
+		reg_frac = pctx->pollhz;
+	else if (reg_frac < 1)
+		reg_frac = 1;
+
+	pctx->reg_frac = reg_frac;
+	if (pctx->reg_frac_count > pctx->reg_frac)
+		pctx->reg_frac_count = pctx->reg_frac - 1;
+
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
