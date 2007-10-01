@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.37 2007/10/01 08:52:40 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.38 2007/10/01 09:03:28 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -85,7 +85,8 @@
  * Other parameters can should be left to their default values.
  * The following constraints hold
  *
- *	1 <= poll_each_burst <= poll_burst <= poll_burst_max
+ *	1 <= poll_burst <= poll_burst_max
+ *	1 <= poll_each_burst <= poll_burst_max
  *	MIN_POLL_BURST_MAX <= poll_burst_max <= MAX_POLL_BURST_MAX
  */
 
@@ -802,7 +803,7 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "stalled", CTLFLAG_RW,
 			&pctx->stalled, 0, "potential stalls");
 
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "burst", CTLFLAG_RW,
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "burst", CTLFLAG_RD,
 			&pctx->poll_burst, 0, "Current polling burst size");
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "each_burst", CTLFLAG_RW,
@@ -826,7 +827,7 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "pending_polls", CTLFLAG_RD,
 			&pctx->pending_polls, 0, "Do we need to poll again");
 
-	SYSCTL_ADD_INT(ctx, parent, OID_AUTO, "residual_burst", CTLFLAG_RW,
+	SYSCTL_ADD_INT(ctx, parent, OID_AUTO, "residual_burst", CTLFLAG_RD,
 		       &pctx->residual_burst, 0,
 		       "# of residual cycles in burst");
 
