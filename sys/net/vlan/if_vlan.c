@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.23 2006/12/22 23:44:57 swildner Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.24 2007/10/01 12:56:36 sephe Exp $
  */
 
 /*
@@ -423,7 +423,7 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 	ifv->ifv_if.if_ipackets++;
 	lwkt_serialize_exit(rcvif->if_serializer);
 	lwkt_serialize_enter(ifv->ifv_if.if_serializer);
-	ether_input(&ifv->ifv_if, NULL, m);
+	ether_input(&ifv->ifv_if, m);
 	lwkt_serialize_exit(ifv->ifv_if.if_serializer);
 	lwkt_serialize_enter(rcvif->if_serializer);
 	return 0;
@@ -471,7 +471,7 @@ vlan_input(struct ether_header *eh, struct mbuf *m)
 	ifv->ifv_if.if_ipackets++;
 	lwkt_serialize_exit(rcvif->if_serializer);
 	lwkt_serialize_enter(ifv->ifv_if.if_serializer);
-	ether_input(&ifv->ifv_if, NULL, m);
+	ether_input(&ifv->ifv_if, m);
 	lwkt_serialize_exit(ifv->ifv_if.if_serializer);
 	lwkt_serialize_enter(rcvif->if_serializer);
 	return 0;

@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.41 2007/09/30 04:37:27 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.42 2007/10/01 12:56:36 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -455,7 +455,7 @@ void	ether_ifattach(struct ifnet *, uint8_t *, struct lwkt_serialize *);
 void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int,
 			struct lwkt_serialize *);
 void	ether_ifdetach(struct ifnet *);
-void	ether_input(struct ifnet *, struct ether_header *, struct mbuf *);
+void	ether_input(struct ifnet *, struct mbuf *);
 void	ether_demux(struct ifnet *, struct ether_header *, struct mbuf *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, int, caddr_t);

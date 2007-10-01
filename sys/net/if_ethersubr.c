@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.43 2007/09/08 12:50:34 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.44 2007/10/01 12:56:36 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -531,46 +531,30 @@ ether_ipfw_chk(
 }
 
 /*
- * XXX merge this function with ether_input.
- */
-static void
-ether_input_internal(struct ifnet *ifp, struct mbuf *m)
-{
-	ether_input(ifp, NULL, m);
-}
-
-/*
- * Process a received Ethernet packet. We have two different interfaces:
- * one (conventional) assumes the packet in the mbuf, with the ethernet
- * header provided separately in *eh. The second one (new) has everything
- * in the mbuf, and we can tell it because eh == NULL.
- * The caller MUST MAKE SURE that there are at least
- * sizeof(struct ether_header) bytes in the first mbuf.
+ * Process a received Ethernet packet.
+ *
+ * The ethernet header is assumed to be in the mbuf so the caller
+ * MUST MAKE SURE that there are at least sizeof(struct ether_header)
+ * bytes in the first mbuf.
  *
  * This allows us to concentrate in one place a bunch of code which
  * is replicated in all device drivers. Also, many functions called
  * from ether_input() try to put the eh back into the mbuf, so we
- * can later propagate the 'contiguous packet' interface to them,
- * and handle the old interface just here.
+ * can later propagate the 'contiguous packet' interface to them.
  *
- * NOTA BENE: for many drivers "eh" is a pointer into the first mbuf or
+ * NOTA BENE: for all drivers "eh" is a pointer into the first mbuf or
  * cluster, right before m_data. So be very careful when working on m,
  * as you could destroy *eh !!
  *
- * First we perform any link layer operations, then continue
- * to the upper layers with ether_demux().
+ * First we perform any link layer operations, then continue to the
+ * upper layers with ether_demux().
  */
 void
-ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
+ether_input(struct ifnet *ifp, struct mbuf *m)
 {
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	struct ether_header *eh;
 
-	/* XXX old crufty stuff, needs to be removed */
-	if (eh != NULL) {
-		kprintf("ether_input got mbuf without embedded ethernet header");
-		m_free(m);
-		return;
-	}
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (m->m_len < sizeof(struct ether_header)) {
 		/* XXX error in the caller. */
@@ -578,7 +562,6 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 		return;
 	}
 	m->m_pkthdr.rcvif = ifp;
-	eh = mtod(m, struct ether_header *);
 
 	BPF_MTAP(ifp, m);
 
@@ -618,6 +601,8 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 				("bridge_input_p changed rcvif\n"));
 		}
 	}
+
+	eh = mtod(m, struct ether_header *);
 
 	/* XXX old crufty stuff, needs to be removed */
 	m_adj(m, sizeof(struct ether_header));
@@ -852,7 +837,7 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
 	if (ifp->if_baudrate == 0)
 		ifp->if_baudrate = 10000000;
 	ifp->if_output = ether_output;
-	ifp->if_input = ether_input_internal;
+	ifp->if_input = ether_input;
 	ifp->if_resolvemulti = ether_resolvemulti;
 	ifp->if_broadcastaddr = etherbroadcastaddr;
 	sdl = IF_LLSOCKADDR(ifp);
