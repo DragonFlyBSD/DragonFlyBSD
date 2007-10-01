@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.38 2007/10/01 09:03:28 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.39 2007/10/01 09:37:30 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -167,6 +167,7 @@ static void	poll_deregister(struct netmsg *);
 static void	poll_sysctl_pollhz(struct netmsg *);
 static void	poll_sysctl_polling(struct netmsg *);
 static void	poll_sysctl_regfrac(struct netmsg *);
+static void	poll_sysctl_burstmax(struct netmsg *);
 
 /* Systimer handler */
 static void	pollclock(systimer_t, struct intrframe *);
@@ -175,6 +176,7 @@ static void	pollclock(systimer_t, struct intrframe *);
 static int	sysctl_pollhz(SYSCTL_HANDLER_ARGS);
 static int	sysctl_polling(SYSCTL_HANDLER_ARGS);
 static int	sysctl_regfrac(SYSCTL_HANDLER_ARGS);
+static int	sysctl_burstmax(SYSCTL_HANDLER_ARGS);
 static void	poll_add_sysctl(struct sysctl_ctx_list *,
 				struct sysctl_oid_list *, struct pollctx *);
 
@@ -323,6 +325,32 @@ sysctl_regfrac(SYSCTL_HANDLER_ARGS)
 
 	netmsg_init(&msg, &curthread->td_msgport, 0, poll_sysctl_regfrac);
 	msg.nm_lmsg.u.ms_result = reg_frac;
+
+	port = cpu_portfn(pctx->poll_cpuid);
+	lwkt_domsg(port, &msg.nm_lmsg, 0);
+	return 0;
+}
+
+static int
+sysctl_burstmax(SYSCTL_HANDLER_ARGS)
+{
+	struct pollctx *pctx = arg1;
+	struct netmsg msg;
+	lwkt_port_t port;
+	uint32_t burst_max;
+	int error;
+
+	burst_max = pctx->poll_burst_max;
+	error = sysctl_handle_int(oidp, &burst_max, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (burst_max < MIN_POLL_BURST_MAX)
+		burst_max = MIN_POLL_BURST_MAX;
+	else if (burst_max > MAX_POLL_BURST_MAX)
+		burst_max = MAX_POLL_BURST_MAX;
+
+	netmsg_init(&msg, &curthread->td_msgport, 0, poll_sysctl_burstmax);
+	msg.nm_lmsg.u.ms_result = burst_max;
 
 	port = cpu_portfn(pctx->poll_cpuid);
 	lwkt_domsg(port, &msg.nm_lmsg, 0);
@@ -497,10 +525,6 @@ netisr_poll(struct netmsg *msg)
 			arg = POLL_AND_CHECK_STATUS;
 			pctx->reg_frac_count = pctx->reg_frac - 1;
 		}
-		if (pctx->poll_burst_max < MIN_POLL_BURST_MAX)
-			pctx->poll_burst_max = MIN_POLL_BURST_MAX;
-		else if (pctx->poll_burst_max > MAX_POLL_BURST_MAX)
-			pctx->poll_burst_max = MAX_POLL_BURST_MAX;
 
 		if (pctx->poll_each_burst < 1)
 			pctx->poll_each_burst = 1;
@@ -794,6 +818,10 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 			CTLTYPE_UINT | CTLFLAG_RW, pctx, 0, sysctl_regfrac,
 			"IU", "Every this many cycles poll register");
 
+	SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "burst_max",
+			CTLTYPE_UINT | CTLFLAG_RW, pctx, 0, sysctl_burstmax,
+			"IU", "Max Polling burst size");
+
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "phase", CTLFLAG_RD,
 			&pctx->phase, 0, "Polling phase");
 
@@ -808,9 +836,6 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "each_burst", CTLFLAG_RW,
 			&pctx->poll_each_burst, 0, "Max size of each burst");
-
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "burst_max", CTLFLAG_RW,
-			&pctx->poll_burst_max, 0, "Max Polling burst size");
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "user_frac", CTLFLAG_RW,
 			&pctx->user_frac, 0,
@@ -934,6 +959,30 @@ poll_sysctl_regfrac(struct netmsg *msg)
 	pctx->reg_frac = reg_frac;
 	if (pctx->reg_frac_count > pctx->reg_frac)
 		pctx->reg_frac_count = pctx->reg_frac - 1;
+
+	lwkt_replymsg(&msg->nm_lmsg, 0);
+}
+
+static void
+poll_sysctl_burstmax(struct netmsg *msg)
+{
+	struct pollctx *pctx;
+	int cpuid;
+
+	cpuid = mycpu->gd_cpuid;
+	KKASSERT(cpuid < POLLCTX_MAX);
+
+	pctx = poll_context[cpuid];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == cpuid);
+
+	pctx->poll_burst_max = msg->nm_lmsg.u.ms_result;
+	if (pctx->poll_each_burst > pctx->poll_burst_max)
+		pctx->poll_each_burst = pctx->poll_burst_max;
+	if (pctx->poll_burst > pctx->poll_burst_max)
+		pctx->poll_burst = pctx->poll_burst_max;
+	if (pctx->residual_burst > pctx->poll_burst_max)
+		pctx->residual_burst = pctx->poll_burst_max;
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
