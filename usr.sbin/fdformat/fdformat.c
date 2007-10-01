@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/fdformat/fdformat.c,v 1.11.2.4 2001/07/19 13:20:42 joerg Exp $
- * $DragonFly: src/usr.sbin/fdformat/fdformat.c,v 1.4 2004/03/24 18:23:46 cpressey Exp $
+ * $DragonFly: src/usr.sbin/fdformat/fdformat.c,v 1.5 2007/10/01 08:25:12 swildner Exp $
  */
 
 /*
@@ -232,7 +232,7 @@ main(int argc, char **argv)
 	int fill = 0xf6, quiet = 0, verify = 1, verify_only = 0, confirm = 0;
 	int fd, c, i, track, error, tracks_per_dot, bytes_per_track, errs;
 	int fdopts;
-	const char *devname, *suffix;
+	const char *dev_name, *suffix;
 	struct fd_type fdt;
 #define MAXPRINTERRS 10
 	struct fdc_status fdcs[MAXPRINTERRS];
@@ -319,13 +319,13 @@ main(int argc, char **argv)
 	case 1720: suffix = ".1720"; break;
 	}
 
-	devname = makename(argv[optind], suffix);
+	dev_name = makename(argv[optind], suffix);
 
-	if ((fd = open(devname, O_RDWR)) < 0)
-		err(1, "%s", devname);
+	if ((fd = open(dev_name, O_RDWR)) < 0)
+		err(1, "%s", dev_name);
 
 	if (ioctl(fd, FD_GTYPE, &fdt) < 0)
-		errx(1, "not a floppy disk: %s", devname);
+		errx(1, "not a floppy disk: %s", dev_name);
 	fdopts = FDOPT_NOERRLOG;
 	if (ioctl(fd, FD_SOPTS, &fdopts) == -1)
 		err(1, "ioctl(FD_SOPTS, FDOPT_NOERRLOG)");
@@ -358,12 +358,12 @@ main(int argc, char **argv)
 		if (!quiet)
 			printf("Verify %dK floppy `%s'.\n",
 				fdt.tracks * fdt.heads * bytes_per_track / 1024,
-				devname);
+				dev_name);
 	}
 	else if (!quiet && !confirm) {
 		printf("Format %dK floppy `%s'? (y/n): ",
 			fdt.tracks * fdt.heads * bytes_per_track / 1024,
-			devname);
+			dev_name);
 		if (!yes()) {
 			printf("Not confirmed.\n");
 			return(3);
@@ -374,8 +374,6 @@ main(int argc, char **argv)
 	 * Formatting.
 	 */
 	if (!quiet) {
-		int i;
-
 		printf("Processing ");
 		for (i = 0; i < (fdt.tracks * fdt.heads) / tracks_per_dot; i++)
 			putchar('-');
