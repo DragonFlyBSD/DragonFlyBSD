@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.39 2007/10/01 09:37:30 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.40 2007/10/01 10:03:49 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -168,6 +168,7 @@ static void	poll_sysctl_pollhz(struct netmsg *);
 static void	poll_sysctl_polling(struct netmsg *);
 static void	poll_sysctl_regfrac(struct netmsg *);
 static void	poll_sysctl_burstmax(struct netmsg *);
+static void	poll_sysctl_eachburst(struct netmsg *);
 
 /* Systimer handler */
 static void	pollclock(systimer_t, struct intrframe *);
@@ -177,6 +178,7 @@ static int	sysctl_pollhz(SYSCTL_HANDLER_ARGS);
 static int	sysctl_polling(SYSCTL_HANDLER_ARGS);
 static int	sysctl_regfrac(SYSCTL_HANDLER_ARGS);
 static int	sysctl_burstmax(SYSCTL_HANDLER_ARGS);
+static int	sysctl_eachburst(SYSCTL_HANDLER_ARGS);
 static void	poll_add_sysctl(struct sysctl_ctx_list *,
 				struct sysctl_oid_list *, struct pollctx *);
 
@@ -357,6 +359,28 @@ sysctl_burstmax(SYSCTL_HANDLER_ARGS)
 	return 0;
 }
 
+static int
+sysctl_eachburst(SYSCTL_HANDLER_ARGS)
+{
+	struct pollctx *pctx = arg1;
+	struct netmsg msg;
+	lwkt_port_t port;
+	uint32_t each_burst;
+	int error;
+
+	each_burst = pctx->poll_each_burst;
+	error = sysctl_handle_int(oidp, &each_burst, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	netmsg_init(&msg, &curthread->td_msgport, 0, poll_sysctl_eachburst);
+	msg.nm_lmsg.u.ms_result = each_burst;
+
+	port = cpu_portfn(pctx->poll_cpuid);
+	lwkt_domsg(port, &msg.nm_lmsg, 0);
+	return 0;
+}
+
 /*
  * Hook from polling systimer. Tries to schedule a netisr, but keeps
  * track of lost ticks due to the previous handler taking too long.
@@ -512,24 +536,11 @@ netisr_poll(struct netmsg *msg)
 	pctx->phase = 3;
 	if (pctx->residual_burst == 0) { /* first call in this tick */
 		microuptime(&pctx->poll_start_t);
-		/*
-		 * Check that paremeters are consistent with runtime
-		 * variables. Some of these tests could be done at sysctl
-		 * time, but the savings would be very limited because we
-		 * still have to check against reg_frac_count and
-		 * poll_each_burst. So, instead of writing separate sysctl
-		 * handlers, we do all here.
-		 */
 
 		if (pctx->reg_frac_count-- == 0) {
 			arg = POLL_AND_CHECK_STATUS;
 			pctx->reg_frac_count = pctx->reg_frac - 1;
 		}
-
-		if (pctx->poll_each_burst < 1)
-			pctx->poll_each_burst = 1;
-		else if (pctx->poll_each_burst > pctx->poll_burst_max)
-			pctx->poll_each_burst = pctx->poll_burst_max;
 
 		pctx->residual_burst = pctx->poll_burst;
 	}
@@ -822,6 +833,10 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 			CTLTYPE_UINT | CTLFLAG_RW, pctx, 0, sysctl_burstmax,
 			"IU", "Max Polling burst size");
 
+	SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "each_burst",
+			CTLTYPE_UINT | CTLFLAG_RW, pctx, 0, sysctl_eachburst,
+			"IU", "Max size of each burst");
+
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "phase", CTLFLAG_RD,
 			&pctx->phase, 0, "Polling phase");
 
@@ -833,9 +848,6 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "burst", CTLFLAG_RD,
 			&pctx->poll_burst, 0, "Current polling burst size");
-
-	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "each_burst", CTLFLAG_RW,
-			&pctx->poll_each_burst, 0, "Max size of each burst");
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "user_frac", CTLFLAG_RW,
 			&pctx->user_frac, 0,
@@ -983,6 +995,30 @@ poll_sysctl_burstmax(struct netmsg *msg)
 		pctx->poll_burst = pctx->poll_burst_max;
 	if (pctx->residual_burst > pctx->poll_burst_max)
 		pctx->residual_burst = pctx->poll_burst_max;
+
+	lwkt_replymsg(&msg->nm_lmsg, 0);
+}
+
+static void
+poll_sysctl_eachburst(struct netmsg *msg)
+{
+	struct pollctx *pctx;
+	uint32_t each_burst;
+	int cpuid;
+
+	cpuid = mycpu->gd_cpuid;
+	KKASSERT(cpuid < POLLCTX_MAX);
+
+	pctx = poll_context[cpuid];
+	KKASSERT(pctx != NULL);
+	KKASSERT(pctx->poll_cpuid == cpuid);
+
+	each_burst = msg->nm_lmsg.u.ms_result;
+	if (each_burst > pctx->poll_burst_max)
+		each_burst = pctx->poll_burst_max;
+	else if (each_burst < 1)
+		each_burst = 1;
+	pctx->poll_each_burst = each_burst;
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
