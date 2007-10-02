@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.132 2007/10/02 13:16:42 hasso Exp $
+# $DragonFly: src/sys/config/LINT,v 1.133 2007/10/02 13:37:38 hasso Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2070,6 +2070,12 @@ device		pcf0	at isa? port 0x320 irq 5
 
 # Intel Core and newer CPUs on-die digital thermal sensor support
 device		coretemp
+
+# HW monitoring devices lm(4) and it(4).
+device		lm0	at isa? port 0x290
+device		it0	at isa? port 0x290
+device		it1	at isa? port 0xc00
+device		it2	at isa? port 0xd00
 
 #---------------------------------------------------------------------------
 # ISDN4BSD

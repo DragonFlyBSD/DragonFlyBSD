@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.52 2007/06/09 17:56:27 swildner Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.53 2007/10/02 13:37:38 hasso Exp $
 
 platform	pc32
 machine		i386
@@ -176,6 +176,12 @@ device		npx0	at nexus? port IO_NPX irq 13
 
 # Power management support (see LINT for more options)
 device		apm0	at nexus? disable flags 0x20 # Advanced Power Management
+
+# HW monitoring devices
+device		lm0	at isa? port 0x290
+device		it0	at isa?	port 0x290
+device		it1	at isa?	port 0xc00
+device		it2	at isa?	port 0xd00
 
 # PCCARD (PCMCIA) support
 device		pccard
