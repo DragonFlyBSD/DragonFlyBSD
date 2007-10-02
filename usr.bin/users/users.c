@@ -32,8 +32,8 @@
  *
  * @(#) Copyright (c) 1980, 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)users.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/users/users.c,v 1.5 1999/08/28 01:07:14 peter Exp $
- * $DragonFly: src/usr.bin/users/users.c,v 1.4 2004/09/12 11:54:00 joerg Exp $
+ * $FreeBSD: src/usr.bin/users/users.c,v 1.8 2002/09/04 23:29:09 dwmalone Exp $
+ * $DragonFly: src/usr.bin/users/users.c,v 1.5 2007/10/02 16:38:10 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -105,5 +105,5 @@ usage(void)
 int
 scmp(const void *p, const void *q)
 {
-	return(strncmp((const char *)p, (const char *)q, UT_NAMESIZE));
+	return(strncmp(p, q, UT_NAMESIZE));
 }
