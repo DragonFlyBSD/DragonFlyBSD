@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.24 2007/09/23 13:38:07 hasso Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.25 2007/10/02 12:57:01 hasso Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -462,8 +462,8 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define HW_FLOATINGPT	10		/* int: has HW floating point? */
 #define HW_MACHINE_ARCH	11		/* string: machine architecture */
 #define HW_MACHINE_PLATFORM 12		/* string: platform architecture */
-#define HW_MACHINE_RES13 13		/* no longer used (was machine_uname) */
-#define	HW_MAXID	14		/* number of valid hw ids */
+#define HW_SENSORS	13		/* node: hardware sensors */
+#define HW_MAXID	14		/* number of valid hw ids */
 
 #define CTL_HW_NAMES { \
 	{ 0, 0 }, \
@@ -477,6 +477,9 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	{ "disknames", CTLTYPE_STRUCT }, \
 	{ "diskstats", CTLTYPE_STRUCT }, \
 	{ "floatingpoint", CTLTYPE_INT }, \
+	{ "arch", CTLTYPE_STRING }, \
+	{ "platform", CTLTYPE_STRING }, \
+	{ "sensors", CTLTYPE_NODE }, \
 }
 
 /*

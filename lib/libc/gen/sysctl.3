@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
-.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.6 2007/02/01 10:33:26 corecode Exp $
+.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.7 2007/10/02 12:57:00 hasso Exp $
 .\"
 .Dd January 23, 2001
 .Dt SYSCTL 3
@@ -285,6 +285,7 @@ privilege may change the value.
 .It "HW\_MACHINE\_ARCH	string	no"
 .\".It "HW\_DISKNAMES	integer	no"
 .\".It "HW\_DISKSTATS	integer	no"
+.It "HW_SENSORS	node	not applicable"
 .El
 .Pp
 .Bl -tag -width 6n
@@ -308,6 +309,34 @@ Nonzero if the floating point support is in hardware.
 The machine dependent architecture type.
 .\".It Fa HW_DISKNAMES
 .\".It Fa HW_DISKSTATS
+.It Li HW_SENSORS
+Third level comprises an array of
+.Li struct sensordev
+structures containing information about devices
+that may attach hardware monitoring sensors.
+.Pp
+Third, fourth and fifth levels together comprise an array of
+.Li struct sensor
+structures containing snapshot readings of hardware monitoring sensors.
+In such usage, third level indicates the numerical representation
+of the sensor device name to which the sensor is attached
+(device's xname and number shall be matched with the help of
+.Li struct sensordev
+structure above),
+fourth level indicates sensor type and
+fifth level is an ordinal sensor number (unique to
+the specified sensor type on the specified sensor device).
+.Pp
+The
+.Sy sensordev
+and
+.Sy sensor
+structures
+and
+.Sy sensor_type
+enumeration
+are defined in
+.Aq Pa sys/sensors.h .
 .El
 .Ss CTL_KERN
 The string and integer information available for the CTL_KERN level

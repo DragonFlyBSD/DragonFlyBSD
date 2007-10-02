@@ -31,7 +31,7 @@
 .\"
 .\"	From: @(#)sysctl.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/sbin/sysctl/sysctl.8,v 1.23.2.17 2003/05/19 07:49:34 brueffer Exp $
-.\" $DragonFly: src/sbin/sysctl/sysctl.8,v 1.6 2006/09/21 16:16:07 dillon Exp $
+.\" $DragonFly: src/sbin/sysctl/sysctl.8,v 1.7 2007/10/02 12:57:00 hasso Exp $
 .\"
 .Dd March 10, 2002
 .Dt SYSCTL 8
@@ -203,6 +203,7 @@ denote
 .It "hw.pagesize	integer	no
 .It "hw.floatingpoint	integer	no
 .It "hw.machine_arch	string	no
+.It "hw.sensors.<xname>.<type><numt>	struct	no
 .It "machdep.console_device	udev_t	no
 .It "machdep.adjkerntz	integer	yes
 .It "machdep.disable_rtc_set	integer	yes

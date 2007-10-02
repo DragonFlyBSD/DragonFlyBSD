@@ -32,7 +32,7 @@
  *
  * @(#)cmdtab.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/cmdtab.c,v 1.5 1999/08/28 01:05:59 peter Exp $
- * $DragonFly: src/usr.bin/systat/cmdtab.c,v 1.4 2007/05/31 11:38:36 hasso Exp $
+ * $DragonFly: src/usr.bin/systat/cmdtab.c,v 1.5 2007/10/02 12:57:01 hasso Exp $
  */
 
 #include "systat.h"
@@ -76,6 +76,9 @@ struct	cmdtab cmdtab[] = {
 	{ "icmp6",	showicmp6,	fetchicmp6,	labelicmp6,
 	  initicmp6,	openicmp6,	closeicmp6,	cmdmode,
 	  reseticmp6,	CF_LOADAV },
+	{ "sensors",	showsensors,	fetchsensors,	labelsensors,
+	  initsensors,	opensensors,	closesensors,	0,
+	  0,		CF_LOADAV },
         { 0 }
 };
 struct  cmdtab *curcmd = &cmdtab[0];

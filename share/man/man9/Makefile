@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.61 2007/09/14 22:53:56 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.62 2007/10/02 12:57:00 hasso Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -109,6 +109,7 @@ MAN=	accept_filter.9 \
 	rtalloc.9 \
 	rtentry.9 \
 	sbuf.9 \
+	sensor_attach.9 \
 	serializer.9 \
 	sleep.9 \
 	spinlock.9 \
@@ -422,6 +423,13 @@ MLINKS+=sbuf.9 sbuf_bcat.9 \
 	sbuf.9 sbuf_setpos.9 \
 	sbuf.9 sbuf_trim.9 \
 	sbuf.9 sbuf_vprintf.9
+MLINKS+=sensor_attach.9 sensordev_install.9 \
+	sensor_attach.9 sensordev_deinstall.9 \
+	sensor_attach.9 sensor_detach.9 \
+	sensor_attach.9 ksensordev.9 \
+	sensor_attach.9 ksensor.9 \
+	sensor_attach.9 sensor_task_register.9 \
+	sensor_attach.9 sensor_task_unregister.9
 MLINKS+=serializer.9 ASSERT_SERIALIZED.9 \
 	serializer.9 lwkt_serialize_enter.9 \
 	serializer.9 lwkt_serialize_exit.9 \

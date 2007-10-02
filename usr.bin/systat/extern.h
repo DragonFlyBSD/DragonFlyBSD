@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/systat/extern.h,v 1.6 2007/05/31 11:38:36 hasso Exp $
+ * $DragonFly: src/usr.bin/systat/extern.h,v 1.7 2007/10/02 12:57:01 hasso Exp $
  */
 
 #include <sys/cdefs.h>
@@ -81,6 +81,7 @@ void	 closekre(WINDOW *);
 void	 closembufs(WINDOW *);
 void	 closenetstat(WINDOW *);
 void	 closepigs(WINDOW *);
+void	 closesensors(WINDOW *);
 void	 closeswap(WINDOW *);
 void	 closetcp(WINDOW *);
 int	 cmdiostat(char *, char *);
@@ -104,6 +105,7 @@ void	 fetchkre(void);
 void	 fetchmbufs(void);
 void	 fetchnetstat(void);
 void	 fetchpigs(void);
+void	 fetchsensors(void);
 void	 fetchswap(void);
 void	 fetchtcp(void);
 int	 initicmp(void);
@@ -116,6 +118,7 @@ int	 initkre(void);
 int	 initmbufs(void);
 int	 initnetstat(void);
 int	 initpigs(void);
+int	 initsensors(void);
 int	 initswap(void);
 int	 inittcp(void);
 int	 keyboard(void);
@@ -131,6 +134,7 @@ void	 labelmbufs(void);
 void	 labelnetstat(void);
 void	 labelpigs(void);
 void	 labels(void);
+void	 labelsensors(void);
 void	 labelswap(void);
 void	 labeltcp(void);
 void	 load(void);
@@ -146,6 +150,7 @@ WINDOW	*openkre(void);
 WINDOW	*openmbufs(void);
 WINDOW	*opennetstat(void);
 WINDOW	*openpigs(void);
+WINDOW	*opensensors(void);
 WINDOW	*openswap(void);
 WINDOW	*opentcp(void);
 int	 prefix(char *, char *);
@@ -164,6 +169,7 @@ void	 showkre(void);
 void	 showmbufs(void);
 void	 shownetstat(void);
 void	 showpigs(void);
+void	 showsensors(void);
 void	 showswap(void);
 void	 showtcp(void);
 void	 status(void);

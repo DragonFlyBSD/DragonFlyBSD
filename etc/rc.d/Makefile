@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.16 2001/01/14 15:37:22 minoura Exp $
 # $FreeBSD: src/etc/rc.d/Makefile,v 1.20 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/Makefile,v 1.22 2007/08/12 14:37:48 swildner Exp $
+# $DragonFly: src/etc/rc.d/Makefile,v 1.23 2007/10/02 12:57:00 hasso Exp $
 
 .include <bsd.own.mk>
 
@@ -22,7 +22,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	dntpd othermta pf pflog ppp ppp-user pppoed pwcheck \
 	quota random rarpd rcconf.sh resident rndcontrol root route6d routed \
 	routing rpcbind rtadvd rtsold rwho sysdb savecore securelevel sendmail \
-	serial sppp sshd swap1 syscons sysctl syslogd timed ttys usbd \
+	sensorsd serial sppp sshd swap1 syscons sysctl syslogd timed ttys usbd \
 	varsym vinum virecover watchdogd wpa_supplicant \
 	ypbind yppasswdd ypserv ypset ypupdated ypxfrd
 FILESDIR=	/etc/rc.d

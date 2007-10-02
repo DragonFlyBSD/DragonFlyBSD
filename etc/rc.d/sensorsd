@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# $DragonFly: src/etc/rc.d/sensorsd,v 1.1 2007/10/02 12:57:00 hasso Exp $
+
+# PROVIDE: sensorsd
+# REQUIRE: syslogd
+
+. /etc/rc.subr
+
+name="sensorsd"
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+
+load_rc_config $name
+run_rc_command "$1"

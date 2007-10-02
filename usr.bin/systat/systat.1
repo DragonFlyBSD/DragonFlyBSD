@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)systat.1	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/usr.bin/systat/systat.1,v 1.23.2.9 2002/12/29 16:35:40 schweikh Exp $
-.\" $DragonFly: src/usr.bin/systat/systat.1,v 1.5 2007/05/31 11:38:37 hasso Exp $
+.\" $DragonFly: src/usr.bin/systat/systat.1,v 1.6 2007/10/02 12:57:01 hasso Exp $
 .\"
 .Dd May 31, 2007
 .Dt SYSTAT 1
@@ -97,6 +97,7 @@ to be one of:
 .Ic mbufs ,
 .Ic netstat ,
 .Ic pigs ,
+.Ic sensors ,
 .Ic swap ,
 .Ic tcp ,
 or
@@ -259,6 +260,11 @@ statistics in bar graph form (default).
 Toggle the display of kilobytes per transaction.
 (the default is to
 not display kilobytes per transaction).
+.It Ic sensors
+Display, in the lower window,
+the current values of available hardware sensors,
+in a format similar to that of
+.Xr sysctl 8 .
 .El
 .It Ic swap
 Show information about swap space usage on all the
@@ -532,6 +538,7 @@ For port names.
 .Xr tcp 4 ,
 .Xr udp 4 ,
 .Xr iostat 8 ,
+.Xr sysctl 8 ,
 .Xr vmstat 8
 .Sh HISTORY
 The

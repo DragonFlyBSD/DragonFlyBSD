@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.188 2007/09/14 19:08:59 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.189 2007/10/02 12:57:00 hasso Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -31,7 +31,7 @@ BIN1=	amd.map auth.conf \
 	inetd.conf login.access login.conf \
 	motd modems networks newsyslog.conf \
 	pf.conf phones printcap profile \
-	remote \
+	remote sensorsd.conf \
 	shells sysctl.conf syslog.conf usbd.conf \
 	etc.${MACHINE_ARCH}/ttys
 .if defined(BINARY_UPGRADE) # location of these depends on upgrade method

@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.34 2007/05/14 19:28:39 dillon Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.35 2007/10/02 12:57:01 hasso Exp $
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
@@ -108,6 +108,7 @@ SUBDIR= 802_11 \
 	rtsold \
 	rwhod \
 	sa \
+	sensorsd \
 	setkey \
 	sliplogin \
 	slstat \

@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.45 2007/08/12 17:14:26 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.46 2007/10/02 12:57:00 hasso Exp $
 .Dd August 10, 2007
 .Dt RC.CONF 5
 .Os
@@ -128,6 +128,22 @@ is set to
 these are the flags to pass to the
 .Xr battd 8
 daemon.
+.It Va sensorsd_enable
+.Pq Vt bool
+Set to
+.Dq Li NO
+by default.
+Setting this to
+.Dq Li YES
+enables
+.Xr sensorsd 8 ,
+a sensors monitoring and logging daemon.
+.It Va sensorsd_flags
+.Pq Vt str
+Empty by default.
+This variable contains additional flags passed to the
+.Xr sensorsd 8
+program.
 .It Va pccard_ifconfig
 .Pq Vt str
 List of arguments to be passed to
@@ -2789,6 +2805,7 @@ has not completed within the specified time (in seconds).
 .Xr rtsold 8 ,
 .Xr rwhod 8 ,
 .Xr savecore 8 ,
+.Xr sensorsd 8 ,
 .Xr sshd 8 ,
 .Xr swapon 8 ,
 .Xr sysctl 8 ,
