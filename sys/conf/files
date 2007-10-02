@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.182 2007/10/02 12:57:00 hasso Exp $
+# $DragonFly: src/sys/conf/files,v 1.183 2007/10/02 13:16:42 hasso Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -251,6 +251,7 @@ dev/atm/hfa/fore_vcm.c		optional hfa
 dev/netif/ie/if_ie.c		optional ie isa
 dev/powermng/ichsmb/ichsmb.c	optional ichsmb
 dev/powermng/ichsmb/ichsmb_pci.c	optional ichsmb pci
+dev/powermng/coretemp/coretemp.c	optional coretemp
 dev/raid/ida/ida.c		optional ida
 dev/raid/ida/ida_disk.c	optional ida
 dev/raid/ida/ida_eisa.c	optional ida eisa

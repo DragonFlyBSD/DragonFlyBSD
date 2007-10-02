@@ -32,7 +32,7 @@
  *
  *	from: @(#)specialreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/specialreg.h,v 1.19.2.3 2003/01/22 17:24:28 jhb Exp $
- * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.8 2007/01/12 23:12:59 tgen Exp $
+ * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.9 2007/10/02 13:16:42 hasso Exp $
  */
 
 #ifndef _CPU_SPECIALREG_H_
@@ -142,6 +142,7 @@
 #define MSR_BIOS_SIGN		0x08b
 #define MSR_PERFCTR0		0x0c1
 #define MSR_PERFCTR1		0x0c2
+#define MSR_IA32_EXT_CONFIG	0x0ee	/* Undocumented. Core Solo/Duo only */
 #define MSR_MTRRcap		0x0fe
 #define MSR_MCG_CAP		0x179
 #define MSR_MCG_STATUS		0x17a
