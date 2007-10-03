@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/polling.4,v 1.27 2007/04/06 14:25:14 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/polling.4,v 1.11 2007/10/02 10:27:40 swildner Exp $
+.\" $DragonFly: src/share/man/man4/polling.4,v 1.12 2007/10/03 09:55:25 sephe Exp $
 .\"
 .Dd October 2, 2007
 .Dt POLLING 4
@@ -96,7 +96,7 @@ The following tunables can be set from
 If set to non-zero,
 .Nm
 is enabled.
-Default is disabled.
+Default is enabled.
 .Pp
 .It Va kern.polling.cpumask
 A bitmask that controls which CPUs support device polling.
@@ -116,7 +116,7 @@ is the CPU number):
 If set to non-zero,
 .Nm
 is enabled.
-Default is disabled.
+Default is enabled.
 .Pp
 .It Va kern.polling.X.pollhz
 The polling frequency, whose range is 1 to 30000.
