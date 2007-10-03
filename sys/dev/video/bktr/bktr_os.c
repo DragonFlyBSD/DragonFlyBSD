@@ -1,4 +1,4 @@
-/*
+/*-
  * 1. Redistributions of source code must retain the 
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
  * All rights reserved.
@@ -30,8 +30,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.45 2004/03/17 17:50:28 njl Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.18 2006/12/22 23:26:26 swildner Exp $
+ * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.54 2007/02/23 12:18:34 piso Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.19 2007/10/03 19:27:08 swildner Exp $
  */
 
 /*
@@ -62,10 +62,10 @@
 #include <sys/mman.h>
 #include <sys/poll.h>
 #include <sys/select.h>
-#include <sys/vnode.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/selinfo.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -198,16 +198,16 @@ bktr_probe( device_t dev )
 				device_set_desc(dev, "BrookTree 848A");
 			else
 				device_set_desc(dev, "BrookTree 848");
-			return 0;
+			return BUS_PROBE_DEFAULT;
 		case PCI_PRODUCT_BROOKTREE_BT849:
 			device_set_desc(dev, "BrookTree 849A");
-			return 0;
+			return BUS_PROBE_DEFAULT;
 		case PCI_PRODUCT_BROOKTREE_BT878:
 			device_set_desc(dev, "BrookTree 878");
-			return 0;
+			return BUS_PROBE_DEFAULT;
 		case PCI_PRODUCT_BROOKTREE_BT879:
 			device_set_desc(dev, "BrookTree 879");
-			return 0;
+			return BUS_PROBE_DEFAULT;
 		}
 	};
 
@@ -663,8 +663,15 @@ bktr_ioctl(struct dev_ioctl_args *ap)
 		return (ENXIO);
 	}
 
+#ifdef BKTR_GPIO_ACCESS
+	if (bktr->bigbuf == 0 && cmd != BT848_GPIO_GET_EN &&
+	    cmd != BT848_GPIO_SET_EN && cmd != BT848_GPIO_GET_DATA &&
+	    cmd != BT848_GPIO_SET_DATA)	/* no frame buffer allocated (ioctl failed) */
+		return( ENOMEM );
+#else
 	if (bktr->bigbuf == 0)	/* no frame buffer allocated (ioctl failed) */
 		return( ENOMEM );
+#endif
 
 	switch ( FUNCTION( minor(dev) ) ) {
 	case VIDEO_DEV:

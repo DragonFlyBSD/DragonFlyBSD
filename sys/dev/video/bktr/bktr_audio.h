@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_audio.h,v 1.3 2003/08/12 09:45:34 alex Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_audio.h,v 1.3 2004/05/15 17:54:12 joerg Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_audio.h,v 1.4 2007/10/03 19:27:08 swildner Exp $ */
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
  * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
@@ -14,7 +14,7 @@
  *
  */
 
-/*
+/*-
  * 1. Redistributions of source code must retain the
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
  * All rights reserved.

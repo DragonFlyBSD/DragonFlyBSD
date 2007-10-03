@@ -1,8 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/CHANGELOG.TXT,v 1.19 2002/05/16 22:43:18 eric Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/CHANGELOG.TXT,v 1.4 2004/05/15 17:54:12 joerg Exp $ */
-/*
- * MAINTAINER = Roger Hardiman <roger@freebsd.org>
- */
+/* $FreeBSD: src/sys/dev/bktr/CHANGELOG.TXT,v 1.22 2006/08/04 07:56:32 yar Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/CHANGELOG.TXT,v 1.5 2007/10/03 19:27:08 swildner Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -186,7 +183,7 @@
                            video_open() function select PAL rather than NTSC.
                            This fixed all the hangs on my Dual Crystal card
                            when using a PAL video signal. As a result, you
-                           can loose the tsleep (of 2 seconds - now 0.25!!)
+                           can lose the tsleep (of 2 seconds - now 0.25!!)
                            which I previously added. (Unless someone else
                            wanted the 0.25 second tsleep).
 
@@ -519,4 +516,5 @@
                   support for audio on Hauppauge cards without the audio mux.
                   The MSP is used for audio selection. (the 44xxx models)
 
-
+[see http://www.freebsd.org/cgi/cvsweb.cgi/src/sys/dev/bktr/
+for newer change logs ]

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1998, 2001 Nicolas Souchu
  * All rights reserved.
  *
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bktr/bktr_i2c.h,v 1.4 2002/03/23 15:47:08 nsouch Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.h,v 1.3 2004/05/15 17:54:12 joerg Exp $
+ * $FreeBSD: src/sys/dev/bktr/bktr_i2c.h,v 1.5 2006/09/18 20:17:42 jhb Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.h,v 1.4 2007/10/03 19:27:08 swildner Exp $
  */
 #ifndef _BT848_I2C_H
 #define _BT848_I2C_H

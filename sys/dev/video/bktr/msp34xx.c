@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1997-2001 Gerd Knorr <kraxel@bytesex.org>
  * All rights reserved.
  *
@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/msp34xx.c,v 1.5 2004/12/16 23:19:57 julian Exp
- * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.7 2006/12/22 23:26:26 swildner Exp $
+ * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.8 2007/10/03 19:27:08 swildner Exp $
  */
 
 /*

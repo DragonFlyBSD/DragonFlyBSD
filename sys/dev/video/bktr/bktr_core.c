@@ -1,4 +1,4 @@
-/*
+/*-
  * 1. Redistributions of source code must retain the 
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
  * All rights reserved.
@@ -61,8 +61,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.138 2005/01/09 17:42:03 cognet Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.21 2006/12/28 21:23:59 dillon Exp $
+ * $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.140 2005/12/04 10:06:03 ru Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.22 2007/10/03 19:27:08 swildner Exp $
  */
 
 /*
@@ -875,7 +875,7 @@ video_open( bktr_ptr_t bktr )
 
 	OUTB(bktr, BKTR_ADC, SYNC_LEVEL);
 
-#if BKTR_SYSTEM_DEFAULT == BROOKTREE_PAL
+#if defined(BKTR_SYSTEM_DEFAULT) && BKTR_SYSTEM_DEFAULT == BROOKTREE_PAL
 	video_format = 0;
 #else
 	video_format = 1;

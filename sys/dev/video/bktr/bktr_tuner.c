@@ -1,4 +1,4 @@
-/*
+/*-
  * 1. Redistributions of source code must retain the
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
  * All rights reserved.
@@ -30,8 +30,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bktr/bktr_tuner.c,v 1.18 2005/01/23 07:13:09 julian Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.9 2006/12/22 23:26:26 swildner Exp $
+ * $FreeBSD: src/sys/dev/bktr/bktr_tuner.c,v 1.20 2005/11/13 13:26:37 netchild Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_tuner.c,v 1.10 2007/10/03 19:27:08 swildner Exp $
  */
 
 
@@ -47,8 +47,8 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/vnode.h>
 #include <sys/bus.h>
+#include <sys/selinfo.h>
 
 #include <bus/pci/pcivar.h>
 
@@ -257,17 +257,27 @@ static const struct TUNER tuners[] = {
              TSBH1_FCONTROL,
              0x00 },
            { 0x00, 0x00 },                      /* band-switch crosspoints */
-           { 0x01, 0x02, 0x08, 0x00 } },         /* the band-switch values */
+           { 0x01, 0x02, 0x08, 0x00 } },        /* the band-switch values */
 
 	/* MT2032 Microtune */
 	{ "MT2032",				/* the 'name' */
-	   TTYPE_PAL,			/* input type */
+	   TTYPE_PAL,				/* input type */
 	   { TSA552x_SCONTROL,			/* control byte for Tuner PLL */
 	     TSA552x_SCONTROL,
 	     TSA552x_SCONTROL,
 	     0x00 },
 	   { 0x00, 0x00 },			/* band-switch crosspoints */
 	   { 0xa0, 0x90, 0x30, 0x00 } },	/* the band-switch values */
+
+	 /* LG TPI8PSB12P PAL */
+	 { "LG TPI8PSB12P PAL",                 /* the 'name' */
+	   TTYPE_PAL,                           /* input type */
+	   { TSA552x_SCONTROL,                  /* control byte for Tuner PLL */
+	     TSA552x_SCONTROL,
+	     TSA552x_SCONTROL,
+	     0x00 },
+	   { 0x00, 0x00 },                      /* band-switch crosspoints */
+	   { 0xa0, 0x90, 0x30, 0x8e } },        /* the band-switch values */
 };
 
 
@@ -689,7 +699,9 @@ frequency_lookup( bktr_ptr_t bktr, int channel )
 #undef TBL_CHNL
 
 
-#define TBL_IF	freqTable[ bktr->tuner.chnlset ].ptr[ 1 ]
+#define	TBL_IF	(bktr->format_params == BT848_IFORM_F_NTSCJ || \
+                 bktr->format_params == BT848_IFORM_F_NTSCM ? \
+                 nabcst[1] : weurope[1])
 
 
 /* Initialise the tuner structures in the bktr_softc */

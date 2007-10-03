@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_tuner.h,v 1.6 2005/01/23 07:13:09 julian Exp */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.h,v 1.4 2005/03/12 11:35:27 corecode Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_tuner.h,v 1.7 2005/11/13 13:26:37 netchild Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.h,v 1.5 2007/10/03 19:27:08 swildner Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -11,7 +11,7 @@
  *
  */
 
-/*
+/*-
  * 1. Redistributions of source code must retain the
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
  * All rights reserved.
@@ -46,34 +46,32 @@
 
 /* Definitions for Tuners */
 
-#define NO_TUNER                0
-#define TEMIC_NTSC              1
-#define TEMIC_PAL               2
-#define TEMIC_SECAM             3
-#define PHILIPS_NTSC            4
-#define PHILIPS_PAL             5
-#define PHILIPS_SECAM           6
-#define TEMIC_PALI              7
-#define PHILIPS_PALI            8
-#define PHILIPS_FR1236_NTSC     9    /* These have FM radio support */
-#define PHILIPS_FR1216_PAL      10   /* These have FM radio support */
-#define PHILIPS_FR1236_SECAM    11   /* These have FM radio support */
-#define ALPS_TSCH5              12
-#define ALPS_TSBH1              13
-#define TUNER_MT2032            14
-#define Bt848_MAX_TUNER         15
+#define NO_TUNER		0
+#define TEMIC_NTSC		1
+#define TEMIC_PAL		2
+#define TEMIC_SECAM		3
+#define PHILIPS_NTSC		4
+#define PHILIPS_PAL		5
+#define PHILIPS_SECAM		6
+#define TEMIC_PALI		7
+#define PHILIPS_PALI		8
+#define PHILIPS_FR1236_NTSC	9	/* These have FM radio support */
+#define PHILIPS_FR1216_PAL	10	/* These have FM radio support */
+#define PHILIPS_FR1236_SECAM	11	/* These have FM radio support */
+#define ALPS_TSCH5		12
+#define ALPS_TSBH1		13
+#define TUNER_MT2032		14
+#define LG_TPI8PSB12P_PAL	15
+#define Bt848_MAX_TUNER		16
 
 /* experimental code for Automatic Frequency Control */ 
 #define TUNER_AFC
-
-int mt2032_init(bktr_ptr_t bktr);                                              
 
 /*
  * Fill in the tuner entries in the bktr_softc based on the selected tuner
  * type (from the list of tuners above)
  */
 void	select_tuner( bktr_ptr_t bktr, int tuner_type );
-
 
 /*
  * The Channel Set maps TV channels eg Ch 36, Ch 51, onto frequencies
@@ -96,6 +94,7 @@ int	get_tuner_status( bktr_ptr_t bktr );
 int	do_afc( bktr_ptr_t bktr, int addr, int frequency );
 #endif /* TUNER_AFC */
 
+int mt2032_init(bktr_ptr_t bktr);                                              
 
 /* 
  * This is for start-up convenience only, NOT mandatory.

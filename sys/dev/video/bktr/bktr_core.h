@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_core.h,v 1.5 2001/09/12 08:37:02 julian Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.h,v 1.6 2006/12/22 23:26:26 swildner Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_core.h,v 1.7 2005/01/06 01:42:31 imp Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.h,v 1.7 2007/10/03 19:27:08 swildner Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -16,7 +16,7 @@
  *
  */
 
-/*
+/*-
  * 1. Redistributions of source code must retain the
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
  * All rights reserved.

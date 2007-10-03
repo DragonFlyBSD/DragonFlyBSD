@@ -1,8 +1,8 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_mem.h,v 1.1 2000/09/10 14:34:08 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.h,v 1.3 2004/05/15 17:54:12 joerg Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_mem.h,v 1.2 2005/01/06 01:42:31 imp Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.h,v 1.4 2007/10/03 19:27:08 swildner Exp $ */
 
 /*
- * This is prt of the Driver for Video Capture Cards (Frame grabbers)
+ * This is part of the Driver for Video Capture Cards (Frame grabbers)
  * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
  * chipset.
  * Copyright Roger Hardiman.
@@ -14,7 +14,7 @@
  *            time the bktr driver is loaded.
  */
 
-/*
+/*-
  * 1. Redistributions of source code must retain the
  * Copyright (c) 2000 Roger Hardiman
  * All rights reserved.

@@ -1,4 +1,4 @@
-/*
+/*-
  * 1. Redistributions of source code must retain the
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
  * All rights reserved.
@@ -30,8 +30,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bktr/bktr_audio.c,v 1.13 2003/12/08 07:59:18 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.9 2006/12/22 23:26:26 swildner Exp $
+ * $FreeBSD: src/sys/dev/bktr/bktr_audio.c,v 1.16 2005/05/29 04:42:18 nyan Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.10 2007/10/03 19:27:08 swildner Exp $
  */
 
 /*
@@ -53,8 +53,8 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/vnode.h>
 #include <sys/bus.h>
+#include <sys/selinfo.h>
 
 #include <bus/pci/pcivar.h>
 

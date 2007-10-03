@@ -1,6 +1,6 @@
-/*
- * $FreeBSD: src/sys/dev/bktr/bktr_reg.h,v 1.46 2003/12/01 19:03:50 truckman Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.6 2004/05/19 22:52:52 dillon Exp $
+/*-
+ * $FreeBSD: src/sys/dev/bktr/bktr_reg.h,v 1.50 2005/05/24 20:42:08 cognet Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.7 2007/10/03 19:27:08 swildner Exp $
  *
  * Copyright (c) 1999 Roger Hardiman
  * Copyright (c) 1998 Amancio Hasty
@@ -474,7 +474,7 @@ struct bktr_softc {
     int         vbiinsert;      /* Position for next write into circular buffer */
     int         vbistart;       /* Position of last read from circular buffer */
     int         vbisize;        /* Number of bytes in the circular buffer */
-    u_long	vbi_sequence_number;	/* sequence number for VBI */
+    uint32_t	vbi_sequence_number;	/* sequence number for VBI */
     int		vbi_read_blocked;	/* user process blocked on read() from /dev/vbi */
     struct selinfo vbi_select;	/* Data used by select() on /dev/vbi */
     

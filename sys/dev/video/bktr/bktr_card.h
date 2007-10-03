@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_card.h,v 1.11 2005/01/06 01:42:31 imp Exp */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_card.h,v 1.4 2005/03/12 11:35:27 corecode Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_card.h,v 1.12 2005/11/13 13:26:37 netchild Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_card.h,v 1.5 2007/10/03 19:27:08 swildner Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -15,7 +15,7 @@
  *
  */
 
-/*
+/*-
  * 1. Redistributions of source code must retain the
  * Copyright (c) 1997 Amancio Hasty, 1999 Roger Hardiman
  * All rights reserved.
@@ -78,12 +78,13 @@
 #define CARD_LEADTEK		15
 #define CARD_TERRATVPLUS	16
 #define CARD_IO_BCTV3		17
-#define CARD_TERRATEC_TVALUE	18
-#define CARD_AOPEN_VA1000       19
-#define CARD_PINNACLE_PCTV_RAVE 20
-#define CARD_PIXELVIEW_PLAYTV_PAK 21
-#define Bt848_MAX_CARD         22
-
+#define CARD_AOPEN_VA1000	18
+#define CARD_PINNACLE_PCTV_RAVE	19
+#define CARD_PIXELVIEW_PLAYTV_PAK	20
+#define CARD_TERRATVALUE	21
+#define CARD_PIXELVIEW_PLAYTV_PRO_REV_4C	22
+#define Bt848_MAX_CARD		23
+ 
 #define CARD_IO_GV		CARD_IO_BCTV2
 
 int	signCard( bktr_ptr_t bktr, int offset, int count, u_char* sig );
