@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.8 2007/09/30 12:32:20 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.9 2007/10/03 04:53:19 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -399,6 +399,8 @@ struct bwi_rf {
 	int			(*rf_calc_rssi)
 				(struct bwi_mac *,
 				 const struct bwi_rxbuf_hdr *);
+
+	void			(*rf_lo_update)(struct bwi_mac *);
 
 #define BWI_TSSI_MAX		64
 	int8_t			rf_txpower_map0[BWI_TSSI_MAX];
