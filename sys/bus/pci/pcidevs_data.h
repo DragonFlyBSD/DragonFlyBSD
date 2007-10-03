@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.28 2007/07/18 11:55:39 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.29 2007/10/03 09:24:00 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.27 2007/05/03 07:58:06 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.28 2007/07/18 11:54:57 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -6615,6 +6615,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Lucent Technologies",
 	    "FW322/323 IEEE 1394 OHCI Controller",
+	},
+	{
+	    PCI_VENDOR_LUCENT, PCI_PRODUCT_LUCENT_ET1310,
+	    0,
+	    "Lucent Technologies",
+	    "ET1310 10/100/1000M Ethernet",
+	},
+	{
+	    PCI_VENDOR_LUCENT, PCI_PRODUCT_LUCENT_ET1310_FAST,
+	    0,
+	    "Lucent Technologies",
+	    "ET1310 10/100M Ethernet",
 	},
 	{
 	    PCI_VENDOR_MACRONIX, PCI_PRODUCT_MACRONIX_MX98713,

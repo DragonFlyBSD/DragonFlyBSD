@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.28 2007/07/18 11:55:39 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.29 2007/10/03 09:24:00 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.27 2007/05/03 07:58:06 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.28 2007/07/18 11:54:57 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -1966,6 +1966,8 @@
 #define	PCI_PRODUCT_LUCENT_OR3TP12	0x5401		/* Lucent ORCA FPGA w/64-bit PCI ASIC core */
 #define	PCI_PRODUCT_LUCENT_USBHC	0x5801		/* USB Host Controller */
 #define	PCI_PRODUCT_LUCENT_FW322_323	0x5811		/* FW322/323 IEEE 1394 OHCI Controller */
+#define	PCI_PRODUCT_LUCENT_ET1310	0xed00		/* ET1310 10/100/1000M Ethernet */
+#define	PCI_PRODUCT_LUCENT_ET1310_FAST	0xed01		/* ET1310 10/100M Ethernet */
 
 /* Macronix */
 #define	PCI_PRODUCT_MACRONIX_MX98713	0x0512		/* MX98713 (PMAC) 10/100 Ethernet */
