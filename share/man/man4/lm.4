@@ -1,6 +1,6 @@
 .\" $OpenBSD: lm.4,v 1.16 2007/05/26 22:38:55 cnst Exp $
 .\" $NetBSD: lm.4,v 1.11 2001/09/22 01:22:49 wiz Exp $
-.\" $DragonFly: src/share/man/man4/lm.4,v 1.1 2007/10/02 13:37:38 hasso Exp $
+.\" $DragonFly: src/share/man/man4/lm.4,v 1.2 2007/10/03 19:53:05 hasso Exp $
 .\"
 .\" Copyright (c) 2000 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -43,17 +43,9 @@
 .Nm lm
 .Nd NatSemi LM78/79/81 and Winbond Super I/O Hardware Monitor
 .Sh SYNOPSIS
-.Cd "device isa"
-.Cd "device lm"
-.Pp
-In
-.Pa /boot/device.hints :
-.Cd hint.lm.0.at="isa"
-.Cd hint.lm.0.port="0x290"
-.Cd hint.lm.1.at="isa"
-.Cd hint.lm.1.port="0x280"
-.Cd hint.lm.2.at="isa"
-.Cd hint.lm.2.port="0x310"
+.Cd "device lm0 at isa? port 0x290"
+.Cd "device lm1 at isa? port 0x280"
+.Cd "device lm2 at isa? port 0x310"
 .Sh DESCRIPTION
 The
 .Nm
@@ -99,13 +91,11 @@ ASUS AS99127F
 The
 .Nm
 driver first appeared in
-.Nx 1.5 ;
-.Ox
-support was added in
-.Ox 3.4 ;
-.Fx
-support was added in
-.Fx 7.XXX .
+.Nx 1.5 ,
+was ported to 
+.Ox 3.4
+and imported into
+.Dx 1.11 .
 .Sh AUTHORS
 .An -nosplit
 The

@@ -1,5 +1,5 @@
 .\" $OpenBSD: it.4,v 1.8 2006/09/08 15:09:14 jmc Exp $
-.\" $DragonFly: src/share/man/man4/it.4,v 1.1 2007/10/02 13:37:38 hasso Exp $
+.\" $DragonFly: src/share/man/man4/it.4,v 1.2 2007/10/03 19:53:05 hasso Exp $
 .\"
 .\" Copyright (c) 2003 Julien Bordet <zejames@greygats.org>
 .\" All rights reserved.
@@ -31,17 +31,9 @@
 .Nm it
 .Nd ITE IT8705F/12F/16F and SiS SiS950 Super I/O Hardware Monitor
 .Sh SYNOPSIS
-.Cd "device isa"
-.Cd "device it"
-.Pp
-In
-.Pa /boot/device.hints :
-.Cd hint.it.0.at="isa"
-.Cd hint.it.0.port="0x290"
-.Cd hint.it.1.at="isa"
-.Cd hint.it.1.port="0xc00"
-.Cd hint.it.2.at="isa"
-.Cd hint.it.2.port="0xd00"
+.Cd "device it0 at isa? port 0x290"
+.Cd "device it1 at isa? port 0xc00"
+.Cd "device it2 at isa? port 0xd00"
 .Sh DESCRIPTION
 The
 .Nm
@@ -85,10 +77,9 @@ For some devices, sensors' names and numbers will be different.
 The
 .Nm
 driver first appeared in
-.Ox 3.4 .
-.Fx
-support was added in
-.Fx 7.XXX .
+.Ox 3.4
+and was imported into
+.Dx 1.11 .
 .Sh AUTHORS
 .An -nosplit
 The
