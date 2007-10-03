@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kobj.h,v 1.8 2003/09/22 21:32:49 peter Exp $
- * $DragonFly: src/sys/sys/kobj.h,v 1.10 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/kobj.h,v 1.11 2007/10/03 18:58:20 dillon Exp $
  */
 
 #ifndef _SYS_KOBJ_H_
@@ -123,6 +123,16 @@ DEFINE_CLASS_0(name, name ## _class, methods, size)
 #define DEFINE_CLASS_0(name, classvar, methods, size)	\
 							\
 struct kobj_class classvar = {				\
+	#name, methods, size, NULL, 0, NULL		\
+}
+
+/*
+ * Define a class with no base classes using the named structure
+ * as an extension of the kobj_class structure.
+ */
+#define DEFINE_CLASS_EXT(name, classvar, methods, size, extname)	\
+							\
+struct extname classvar = {				\
 	#name, methods, size, NULL, 0, NULL		\
 }
 

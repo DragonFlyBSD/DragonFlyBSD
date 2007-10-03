@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/iconv.h,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
- * $DragonFly: src/sys/sys/iconv.h,v 1.5 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/sys/iconv.h,v 1.6 2007/10/03 18:58:20 dillon Exp $
  */
 #ifndef _SYS_ICONV_H_
 #define _SYS_ICONV_H_
@@ -111,8 +111,10 @@ struct iconv_cspair {
 	TAILQ_ENTRY(iconv_cspair)	cp_link;
 };
 
-#define	KICONV_CONVERTER(name,size) 				\
-    static DEFINE_CLASS(iconv_ ## name, iconv_ ## name ## _methods, (size)); \
+#define	KICONV_CONVERTER(name,size) 			\
+    static DEFINE_CLASS_EXT(iconv_ ## name, iconv_ ## name ## _class,	\
+			    iconv_ ## name ## _methods, \
+			    (size), iconv_converter_class); \
     static moduledata_t iconv_ ## name ## _mod = {	\
 	"iconv_"#name, iconv_converter_handler,		\
 	(void*)&iconv_ ## name ## _class		\
