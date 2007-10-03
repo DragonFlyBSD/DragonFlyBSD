@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.11 2007/09/30 12:32:20 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.12 2007/10/03 09:18:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -393,7 +393,7 @@ bwi_attach(device_t dev)
 		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 
 		pci_write_config(dev, PCIR_INTLINE, irq, 4);
-		pci_write_config(dev, BWI_PCIR_BAR, irq, 4);
+		pci_write_config(dev, BWI_PCIR_BAR, mem, 4);
 	}
 #endif	/* !BURN_BRIDGE */
 
