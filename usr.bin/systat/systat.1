@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)systat.1	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/usr.bin/systat/systat.1,v 1.23.2.9 2002/12/29 16:35:40 schweikh Exp $
-.\" $DragonFly: src/usr.bin/systat/systat.1,v 1.6 2007/10/02 12:57:01 hasso Exp $
+.\" $DragonFly: src/usr.bin/systat/systat.1,v 1.7 2007/10/04 11:12:34 swildner Exp $
 .\"
 .Dd May 31, 2007
 .Dt SYSTAT 1
@@ -260,12 +260,12 @@ statistics in bar graph form (default).
 Toggle the display of kilobytes per transaction.
 (the default is to
 not display kilobytes per transaction).
+.El
 .It Ic sensors
 Display, in the lower window,
 the current values of available hardware sensors,
 in a format similar to that of
 .Xr sysctl 8 .
-.El
 .It Ic swap
 Show information about swap space usage on all the
 swap areas compiled into the kernel.
