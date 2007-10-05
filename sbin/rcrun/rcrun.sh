@@ -2,7 +2,7 @@
 #
 # rcng command
 #
-# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.6 2005/12/20 15:25:45 swildner Exp $
+# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.7 2007/10/05 23:55:47 swildner Exp $
 
 dostart()
 {
@@ -178,7 +178,8 @@ list)
 	fi
 	;;
 *)
-	echo "$0 {start|stop|restart|rcvar|list|forcestart|faststart} <rcng_list>"
+	echo "usage: rcrun start|stop|restart|rcvar|list|forcestart|faststart|disable|enable"
+	echo "             script ..."
 	;;
 esac
 
