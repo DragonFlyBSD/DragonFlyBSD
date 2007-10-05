@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.189 2007/10/02 12:57:00 hasso Exp $
+# $DragonFly: src/etc/Makefile,v 1.190 2007/10/05 23:52:24 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -172,6 +172,7 @@ upgrade_etc:	preupgrade
 .if exists(${DESTDIR}/usr/lib/crtbegin.o)
 	csh -c "rm -f ${DESTDIR}/usr/lib/gcc2/{crtbegin.o,crtbeginS.o,crtend.o,crtendS.o}"
 	csh -c "rm -f ${DESTDIR}/usr/lib/gcc3/{crtbegin.o,crtbeginS.o,crtend.o,crtendS.o}"
+	csh -c "rm -f ${DESTDIR}/usr/lib/crt{1,begin,beginS,end,endS,i,n}.o"
 .endif
 .if exists(${DESTDIR}/usr/include/netproto/802_11/if_wavelan_ieee.h)
 	rm -f ${DESTDIR}/usr/include/dev/netif/wi/if_wavelan_ieee.h
