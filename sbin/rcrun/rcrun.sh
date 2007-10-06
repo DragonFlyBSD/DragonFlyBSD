@@ -2,7 +2,7 @@
 #
 # rcng command
 #
-# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.7 2007/10/05 23:55:47 swildner Exp $
+# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.8 2007/10/06 17:31:21 swildner Exp $
 
 dostart()
 {
@@ -167,7 +167,7 @@ rcvar)
 	done
 	;;
 list)
-	if [ X$@ = X ]; then
+	if [ "X$*" = X ]; then
 	    for i in `varsym -a -s | egrep '^rcng_'`; do
 		echo $i
 	    done
