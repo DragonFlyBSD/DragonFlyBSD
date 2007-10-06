@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.190 2007/10/05 23:52:24 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.191 2007/10/06 22:36:18 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -537,6 +537,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -rf ${DESTDIR}/usr/share/man/{man,cat}n"
 	csh -c "rm -rf ${DESTDIR}/usr/share/man/ja/{man,cat}n"
 	rm -rf ${DESTDIR}/usr/share/man/en.ISO8859-1/catn
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/psignal.9.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)

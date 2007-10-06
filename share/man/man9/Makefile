@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.63 2007/10/06 20:41:54 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.64 2007/10/06 22:36:18 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -87,6 +87,7 @@ MAN=	accept_filter.9 \
 	kmalloc.9 \
 	kobj.9 \
 	kprintf.9 \
+	ksignal.9 \
 	ktr.9 \
 	lock.9 \
 	make_dev.9 \
@@ -104,7 +105,6 @@ MAN=	accept_filter.9 \
 	pfil.9 \
 	physio.9 \
 	posix4.9 \
-	psignal.9 \
 	resettodr.9 \
 	rman.9 \
 	rtalloc.9 \
@@ -331,6 +331,8 @@ MLINKS+=kprintf.9 krateprintf.9 \
 	kprintf.9 log.9 \
 	kprintf.9 tprintf.9 \
 	kprintf.9 uprintf.9
+MLINKS+=ksignal.9 gsignal.9 \
+	ksignal.9 pgsignal.9
 MLINKS+=ktr.9 KTR_INFO.9 \
 	ktr.9 KTR_INFO_MASTER.9 \
 	ktr.9 KTR_LOG.9 \
@@ -379,8 +381,6 @@ MLINKS+=pfil.9 pfil_add_hook.9 \
 	pfil.9 pfil_remove_hook.9 \
 	pfil.9 pfil_run_hooks.9
 MLINKS+=posix4.9 p1003_1b.9
-MLINKS+=psignal.9 gsignal.9 \
-	psignal.9 pgsignal.9
 MLINKS+=rman.9 rman_activate_resource.9 \
 	rman.9 rman_await_resource.9 \
 	rman.9 rman_deactivate_resource.9 \

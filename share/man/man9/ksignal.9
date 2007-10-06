@@ -34,13 +34,13 @@
 .\"
 .\"	$NetBSD: psignal.9,v 1.1 1996/06/22 22:57:35 pk Exp $
 .\" $FreeBSD: src/share/man/man9/psignal.9,v 1.7.2.2 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/ksignal.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/ksignal.9,v 1.3 2007/10/06 22:36:18 swildner Exp $
 .\"
 .Dd June 22, 1996
-.Dt PSIGNAL 9
+.Dt KSIGNAL 9
 .Os
 .Sh NAME
-.Nm psignal ,
+.Nm ksignal ,
 .Nm pgsignal ,
 .Nm gsignal
 .Nd post signal to a process or process group
@@ -48,7 +48,7 @@
 .In sys/types.h
 .In sys/signalvar.h
 .Ft void
-.Fn psignal "struct proc *p" "int signum"
+.Fn ksignal "struct proc *p" "int signum"
 .Ft void
 .Fn pgsignal "struct pgrp *pgrp" "int signum" "int checkctty"
 .Ft void
@@ -61,7 +61,7 @@ common to all three functions should be in the range
 .Bq 1- Ns Dv NSIG .
 .Pp
 The
-.Fn psignal
+.Fn ksignal
 function posts signal number
 .Fa signum
 to the process represented by the process structure
@@ -70,7 +70,7 @@ With a few exceptions noted below, the target process signal disposition is
 updated and is marked as runnable, so further handling of the signal is done
 in the context of the target process after a context switch.
 Note that
-.Fn psignal
+.Fn ksignal
 does not by itself cause a context switch to happen.
 .Pp
 The target process is not marked as runnable in the following cases:
@@ -96,7 +96,7 @@ regardless of the signal action
 .El
 .Pp
 If the target process is being traced
-.Fn psignal
+.Fn ksignal
 behaves as if the target process were taking the default action for
 .Fa signum .
 This allows the tracing process to be notified of the signal.
@@ -118,7 +118,7 @@ of the process group structure
 pointed at by
 .Fa pgrp
 and calling
-.Fn psignal
+.Fn ksignal
 as appropriate.
 If
 .Fa pgrp
