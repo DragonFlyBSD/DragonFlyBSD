@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.6 2007/09/17 12:13:24 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.7 2007/10/06 04:05:57 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -340,7 +340,7 @@ bwi_mac_init(struct bwi_mac *mac)
 	/*
 	 * Initialize PHY
 	 */
-	CSR_WRITE_4(sc, BWI_BBP_ATTEN, 0);
+	CSR_WRITE_2(sc, BWI_BBP_ATTEN, 0);
 	bwi_phy_init(mac);
 
 	/* TODO: interference mitigation */
