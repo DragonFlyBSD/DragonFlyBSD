@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/uuid.h,v 1.6 2005/10/07 13:37:10 marcel Exp $
- * $DragonFly: src/sys/sys/uuid.h,v 1.4 2007/06/19 06:07:51 dillon Exp $
+ * $DragonFly: src/sys/sys/uuid.h,v 1.5 2007/10/09 17:19:09 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -52,6 +52,8 @@ struct uuid {
 };
 
 #ifdef _KERNEL
+
+typedef struct uuid uuid_t;
 
 #define	UUID_NODE_LEN	_UUID_NODE_LEN
 
