@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.8 2007/08/15 03:15:07 dillon Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.9 2007/10/09 17:28:08 dillon Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -422,9 +422,9 @@ struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
 RB_PROTOTYPE2(name, type, field, cmp, datatype);			\
 struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
 
-#define RB_PROTOTYPEX(name, type, field, cmp, datatype)			\
+#define RB_PROTOTYPEX(name, ext, type, field, cmp, datatype)		\
 RB_PROTOTYPE(name, type, field, cmp);					\
-struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
+struct type *name##_RB_LOOKUP_##ext (struct name *, datatype)		\
 
 /* Main rb operation.
  * Moves node close to the key of elm to top
