@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.12 2007/01/17 17:31:19 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.35 2004/07/22 05:42:14 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.13 2007/10/09 09:46:56 y0netan1 Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -119,10 +119,9 @@ acpi_timer_read(void)
 static int
 acpi_timer_identify(driver_t *driver, device_t parent)
 {
-    device_t	dev;
-    char	desc[40];
-    u_long	rlen, rstart;
-    int		i, j, rid, rtype;
+    device_t dev;
+    u_long rlen, rstart;
+    int rid, rtype;
 
     /*
      * Just try once, do nothing if the 'acpi' bus is rescanned.
@@ -132,7 +131,7 @@ acpi_timer_identify(driver_t *driver, device_t parent)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
-    if (acpi_disabled("timer"))
+    if (acpi_disabled("timer") || acpi_timer_dev)
 	return (ENXIO);
 
     if ((dev = BUS_ADD_CHILD(parent, parent, 0, "acpi_timer", 0)) == NULL) {
@@ -142,15 +141,37 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     acpi_timer_dev = dev;
 
     rid = 0;
+    rtype = AcpiGbl_FADT.XPmTimerBlock.SpaceId ?
+	SYS_RES_IOPORT : SYS_RES_MEMORY;
     rlen = AcpiGbl_FADT.PmTimerLength;
-    rtype = (AcpiGbl_FADT.XPmTimerBlock.SpaceId)
-      ? SYS_RES_IOPORT : SYS_RES_MEMORY;
     rstart = AcpiGbl_FADT.XPmTimerBlock.Address;
-    bus_set_resource(dev, rtype, rid, rstart, rlen);
+    if (bus_set_resource(dev, rtype, rid, rstart, rlen)) {
+	device_printf(dev, "couldn't set resource (%s 0x%lx+0x%lx)\n",
+	    (rtype == SYS_RES_IOPORT) ? "port" : "mem", rstart, rlen);
+	return (ENXIO);
+    }
+    return (0);
+}
+
+static int
+acpi_timer_probe(device_t dev)
+{
+    char desc[40];
+    int i, j, rid, rtype;
+
+    ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+
+    if (dev != acpi_timer_dev)
+	return (ENXIO);
+
+    rid = 0;
+    rtype = AcpiGbl_FADT.XPmTimerBlock.SpaceId ?
+	SYS_RES_IOPORT : SYS_RES_MEMORY;
     acpi_timer_reg = bus_alloc_resource_any(dev, rtype, &rid, RF_ACTIVE);
     if (acpi_timer_reg == NULL) {
-	device_printf(dev, "couldn't allocate I/O resource (%s 0x%lx)\n",
-		      rtype == SYS_RES_IOPORT ? "port" : "mem", rstart);
+	device_printf(dev, "couldn't allocate resource (%s 0x%lx)\n",
+	    (rtype == SYS_RES_IOPORT) ? "port" : "mem",
+	    (u_long)AcpiGbl_FADT.XPmTimerBlock.Address);
 	return (ENXIO);
     }
     acpi_timer_bsh = rman_get_bushandle(acpi_timer_reg);
@@ -187,21 +208,26 @@ acpi_timer_identify(driver_t *driver, device_t parent)
 
     cputimer_register(&acpi_cputimer);
     cputimer_select(&acpi_cputimer, 0);
+    /* Release the resource, we'll allocate it again during attach. */
+    bus_release_resource(dev, rtype, rid, acpi_timer_reg);
     return (0);
-}
-
-static int
-acpi_timer_probe(device_t dev)
-{
-    if (dev == acpi_timer_dev)
-	return (0);
-
-    return (ENXIO);
 }
 
 static int
 acpi_timer_attach(device_t dev)
 {
+    int rid, rtype;
+
+    ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+
+    rid = 0;
+    rtype = AcpiGbl_FADT.XPmTimerBlock.SpaceId ?
+	SYS_RES_IOPORT : SYS_RES_MEMORY;
+    acpi_timer_reg = bus_alloc_resource_any(dev, rtype, &rid, RF_ACTIVE);
+    if (acpi_timer_reg == NULL)
+	return (ENXIO);
+    acpi_timer_bsh = rman_get_bushandle(acpi_timer_reg);
+    acpi_timer_bst = rman_get_bustag(acpi_timer_reg);
     return (0);
 }
 
