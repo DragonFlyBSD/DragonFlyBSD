@@ -31,12 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/alist.h,v 1.1 2007/04/09 17:09:58 dillon Exp $
+ * $DragonFly: src/sys/sys/alist.h,v 1.2 2007/10/09 17:18:09 dillon Exp $
  */
 /*
  * Implements a power-of-2 aligned and sized resource bitmap.  The
  * number of blocks need not be a power-of-2, but all allocations must
- * be a power of 2 and will be aligned on return.
+ * be a power of 2 and will be aligned on return.  Frees do not have to
+ * be aligned.
  *
  * alist = alist_create(blocks, malloctype)
  * (void)  alist_destroy(alist, malloctype)
