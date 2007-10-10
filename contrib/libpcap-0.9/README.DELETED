@@ -37,11 +37,11 @@ gencode.c.orig
 gencode.c.rej
 install-sh
 lbl/
-libpcap-0.9/
+libpcap-0.9
 missing/
 mkdep
 msdos/
-net/
+net
 packaging/
 pcap-dag.c
 pcap-dag.h
