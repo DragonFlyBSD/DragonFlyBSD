@@ -1,4 +1,21 @@
 
+Oct 08, 2007: libarchive 2.3.4 released
+Oct 05, 2007: Continuing work on bsdcpio test suite.
+Oct 05, 2007: New cpio.5 manpage, updates to "History" of bsdcpio.1 and
+	bsdtar.1 manpages.
+Oct 05, 2007: Fix zip reader to immediately return EOF if you try
+	to read body of non-regular file.  In particular, this fixes
+	bsdtar extraction of zip archives.
+
+Sep 30, 2007: libarchive 2.3.3 released
+Sep 26, 2007: Rework Makefile.am so that the enable/disable options
+	actually do the right things.
+Sep 26, 2007: cpio-odc and cpio-newc archives no longer write bodies
+	for non-regular files.
+Sep 26, 2007: Test harness for bsdcpio is in place, needs more tests written.
+	This is much nicer than the ragtag collection of test scripts
+	that bsdtar has.
+
 Sep 20, 2007: libarchive 2.3.2 released
 Sep 20, 2007: libarchive 2.3.1 broke bsdtar because the archive_write_data()
 	fix was implemented incorrectly.
