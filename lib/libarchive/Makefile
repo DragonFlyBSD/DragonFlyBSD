@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.17 2007/09/24 02:43:45 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.18 2007/10/10 17:59:08 pavalos Exp $
 
 LIB=	archive
 
@@ -80,9 +80,11 @@ MAN=	archive_entry.3					\
 	archive_util.3					\
 	archive_write.3					\
 	archive_write_disk.3				\
+	cpio.5						\
 	libarchive.3					\
 	libarchive-formats.5				\
 	libarchive_internals.3				\
+	mtree.5						\
 	tar.5
 
 MLINKS+=	archive_entry.3 archive_entry_acl_add_entry.3
