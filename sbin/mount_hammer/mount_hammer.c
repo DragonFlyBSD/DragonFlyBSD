@@ -1,0 +1,127 @@
+/*
+ * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ * 
+ * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.1 2007/10/10 19:35:19 dillon Exp $
+ */
+
+#include <sys/types.h>
+#include <sys/diskslice.h>
+#include <sys/diskmbr.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <vfs/hammer/hammer_mount.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <uuid.h>
+#include <err.h>
+#include <assert.h>
+
+#include "mntopts.h"
+
+static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_NULL };
+
+static void usage(void);
+
+int
+main(int ac, char **av)
+{
+	struct hammer_mount_info info;
+	struct vfsconf vfc;
+	int mount_flags;
+	int error;
+	int ch;
+	char *mountpt;
+
+	mount_flags = 0;
+	while ((ch = getopt(ac, av, "o:T:")) != -1) {
+		switch(ch) {
+		case 'T':
+			/* parse time */
+			errx(1, "-T option not currently supported");
+			break;
+		case 'o':
+			getmntopts(optarg, mopts, &mount_flags, 0);
+			break;
+		default:
+			usage();
+			/* not reached */
+		}
+	}
+	ac -= optind;
+	av += optind;
+
+	if (ac < 2) {
+		usage();
+		/* not reached */
+	}
+
+	/*
+	 * Mount arguments: vol [vol...] mountpt
+	 */
+	info.volumes = (const char **)av;
+	info.nvolumes = ac - 1;
+	mountpt = av[ac - 1];
+
+	/*
+	 * Load the hammer module if necessary (this bit stolen from
+	 * mount_null).
+	 */
+	error = getvfsbyname("hammer", &vfc);
+	if (error && vfsisloadable("hammer")) {
+		if (vfsload("hammer") != 0)
+			err(1, "vfsload(hammer)");
+		endvfsent();
+		error = getvfsbyname("hammer", &vfc);
+	}
+	if (error)
+		errx(1, "hammer filesystem is not available");
+
+	if (mount(vfc.vfc_name, mountpt, mount_flags, &info))
+		err(1, NULL);
+	exit(0);
+}
+
+static
+void
+usage(void)
+{
+	errx(1, "mount_hammer [-T time] [-o options] "
+		"volume [volume...] mount_pt");
+}
