@@ -27,6 +27,6 @@ mkdep
 packetdat.awk
 send-ack.awk
 stime.awk
-tcpdump-3.9/
+tcpdump-3.9
 tests/
 win32/
