@@ -30,7 +30,7 @@
 
 #ifndef lint
 static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/libpcap/savefile.c,v 1.126.2.27 2007/07/19 06:20:53 guy Exp $ (LBL)";
+    "@(#) $Header: /tcpdump/master/libpcap/savefile.c,v 1.126.2.30 2007/08/14 20:57:49 guy Exp $ (LBL)";
 #endif
 
 #ifdef HAVE_CONFIG_H
@@ -530,6 +530,27 @@ static const char rcsid[] _U_ =
  */
 #define LINKTYPE_SITA		196
 
+/*
+ * Various link-layer types, with a pseudo-header, for Endace DAG cards;
+ * encapsulates Endace ERF records.  Requested by Stephen Donnelly
+ * <stephen@endace.com>.
+ */
+#define LINKTYPE_ERF		197
+
+/*
+ * Special header prepended to Ethernet packets when capturing from a
+ * u10 Networks board.  Requested by Phil Mulholland
+ * <phil@u10networks.com>.
+ */
+#define LINKTYPE_RAIF1		198
+
+/*
+ * IPMB packet for IPMI, beginning with the I2C slave address, followed
+ * by the netFn and LUN, etc..  Requested by Chanthy Toeung
+ * <chanthy.toeung@ca.kontron.com>.
+ */
+#define LINKTYPE_IPMB		199
+
 
 static struct linktype_map {
 	int	dlt;
@@ -780,6 +801,15 @@ static struct linktype_map {
 
 	/* Various link-layer types for SITA */
 	{ DLT_SITA,		LINKTYPE_SITA },
+
+	/* Various link-layer types for Endace */
+	{ DLT_ERF,		LINKTYPE_ERF },
+
+	/* Special header for u10 Networks boards */
+	{ DLT_RAIF1,		LINKTYPE_RAIF1 },
+
+	/* IPMB */
+	{ DLT_IPMB,		LINKTYPE_IPMB },
 
 	{ -1,			-1 }
 };
