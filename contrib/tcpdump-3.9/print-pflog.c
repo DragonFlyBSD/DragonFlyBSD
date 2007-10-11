@@ -21,12 +21,26 @@
 
 #ifndef lint
 static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/tcpdump/print-pflog.c,v 1.13.2.2 2006/10/25 22:13:30 guy Exp $ (LBL)";
+    "@(#) $Header: /tcpdump/master/tcpdump/print-pflog.c,v 1.13.2.4 2007/09/13 17:18:10 gianluca Exp $ (LBL)";
 #endif
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#ifndef HAVE_NET_PFVAR_H
+#error "No pf headers available"
+#endif
+
+#include <sys/types.h>
+#ifndef WIN32
+#include <sys/socket.h>
+#endif
+#include <net/if.h>
+#include <net/pfvar.h>
+#include <net/if_pflog.h>
+
+
 
 #include <tcpdump-stdinc.h>
 
@@ -35,7 +49,6 @@ static const char rcsid[] _U_ =
 
 #include "interface.h"
 #include "addrtoname.h"
-#include "pf.h"
 
 static struct tok pf_reasons[] = {
 	{ 0,	"0(match)" },
