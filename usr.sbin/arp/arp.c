@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.9 2007/08/27 14:56:00 hasso Exp $
+ * $DragonFly: src/usr.sbin/arp/arp.c,v 1.10 2007/10/11 21:51:20 thomas Exp $
  */
 
 /*
@@ -586,12 +586,12 @@ void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-		"usage: arp [-n] hostname",
-		"       arp [-n] -a",
+		"usage: arp [-n] [-c cpu] hostname",
+		"       arp [-n] [-c cpu] -a",
 		"       arp -d hostname [pub]",
 		"       arp -d -a",
-		"       arp -s hostname ether_addr [temp] [pub]",
-		"       arp -S hostname ether_addr [temp] [pub]",
+		"       arp -s hostname ether_addr [temp] [pub [only]]",
+		"       arp -S hostname ether_addr [temp] [pub [only]]",
 		"       arp -f filename");
 	exit(1);
 }
