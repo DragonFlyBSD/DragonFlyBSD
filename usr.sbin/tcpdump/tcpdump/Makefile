@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.25.2.6 2002/07/05 11:30:32 fenner Exp $
-# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.12 2007/08/07 18:41:18 pavalos Exp $
+# $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.13 2007/10/11 02:46:51 pavalos Exp $
 
 
 TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump-3.9
@@ -33,14 +33,14 @@ SRCS+=	print-smb.c smbutil.c version.c
 CLEANFILES+=	version.c
 
 CONTRIBDIR= ${TCPDUMP_DISTDIR}
-SRCS+=	tcpdump.1.no_obj.patch
+SRCS+=	tcpdump.1.no_obj.patch print-pflog.c.patch
 
 CFLAGS+= -I${.CURDIR} -I${TCPDUMP_DISTDIR}
 CFLAGS+= -DHAVE_CONFIG_H -D_U_="__attribute__((unused))"
 
 CFLAGS+= -DHAVE_RES_STATE_EXT -DHAVE_NEW_RES_STATE -DUSE_GETIPNODEBY
 CFLAGS+= -DHAVE_PCAP_VERSION -UHAVE_YYDEBUG -DHAVE_GETADDRINFO -DHAVE_GETNAMEINFO
-CFLAGS+= -DHAVE_STRUCT_ETHER_ADDR
+CFLAGS+= -DHAVE_STRUCT_ETHER_ADDR -DHAVE_NET_PFVAR_H
 
 .if !defined(NOINET6)
 SRCS+=	print-ip6.c print-ip6opts.c print-mobility.c \
