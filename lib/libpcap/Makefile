@@ -1,18 +1,14 @@
 # Makefile for libpcap
 # $FreeBSD: src/lib/libpcap/Makefile,v 1.24.2.4 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libpcap/Makefile,v 1.10 2007/03/16 12:59:10 sephe Exp $
+# $DragonFly: src/lib/libpcap/Makefile,v 1.11 2007/10/11 00:21:59 pavalos Exp $
 
 SRCDIR=	${.CURDIR}/../../contrib/libpcap-0.9
-CONTRIBDIR=${SRCDIR}
-
-PATCHES!= echo ${.CURDIR}/patches/*.patch
 
 LIB=    pcap
 SRCS=	grammar.y tokdefs.h pcap-bpf.c version.h \
 	pcap.c inet.c fad-getad.c gencode.c optimize.c nametoaddr.c \
 	etherent.c savefile.c bpf_filter.c bpf_image.c bpf_dump.c \
 	scanner.l version.c
-SRCS+=	${PATCHES}
 INCS=	pcap.h pcap-namedb.h pcap-bpf.h pcap-int.h
 MAN=	pcap.3
 CLEANFILES=tokdefs.h version.c version.h

@@ -247,6 +247,9 @@ protochain	{
 
 gateway		return GATEWAY;
 
+type		return TYPE;
+subtype		return SUBTYPE;
+
 less		return LESS;
 greater		return GREATER;
 byte		return CBYTE;

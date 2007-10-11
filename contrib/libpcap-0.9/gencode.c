@@ -84,6 +84,9 @@ static const char rcsid[] _U_ =
 #endif /*INET6*/
 #include <pcap-namedb.h>
 
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
+
 #define ETHERMTU	1500
 
 #ifndef IPPROTO_SCTP
@@ -6532,6 +6535,21 @@ gen_pf_action(int action)
 		/* NOTREACHED */
 	}
 
+	return (b0);
+}
+
+/* IEEE 802.11 wireless header */
+struct block *
+gen_p80211_type(int type, int mask)
+{
+	struct block *b0;
+
+	if (linktype != DLT_IEEE802_11 && linktype != DLT_IEEE802_11_RADIO) {
+		bpf_error("action not supported on linktype 0x%x\n", linktype);
+		/* NOTREACHED */
+	}
+	b0 = gen_mcmp(OR_LINK, offsetof(struct ieee80211_frame, i_fc[0]),
+		      BPF_B, (bpf_int32)type, (bpf_int32)mask);
 	return (b0);
 }
 

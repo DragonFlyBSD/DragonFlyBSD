@@ -312,6 +312,8 @@ struct block *gen_pf_reason(int);
 struct block *gen_pf_action(int);
 struct block *gen_pf_dir(int);
 
+struct block *gen_p80211_type(int, int);
+
 void bpf_optimize(struct block **);
 void bpf_error(const char *, ...)
     __attribute__((noreturn, format (printf, 1, 2)));
