@@ -76,8 +76,9 @@ static const char rcsid[] _U_ =
 #ifdef HAVE_NET_PFVAR_H
 #include <sys/socket.h>
 #include <net/if.h>
-#include <net/pfvar.h>
-#include <net/if_pflog.h>
+#include <net/if_var.h>
+#include <net/pf/pfvar.h>
+#include <net/pf/if_pflog.h>
 #endif
 #ifndef offsetof
 #define offsetof(s, e) ((size_t)&((s *)0)->e)

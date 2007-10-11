@@ -54,8 +54,9 @@ struct rtentry;
 #include "gencode.h"
 #ifdef HAVE_NET_PFVAR_H
 #include <net/if.h>
-#include <net/pfvar.h>
-#include <net/if_pflog.h>
+#include <net/if_var.h>
+#include <net/pf/pfvar.h>
+#include <net/pf/if_pflog.h>
 #endif
 #include <pcap-namedb.h>
 

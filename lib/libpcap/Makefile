@@ -1,6 +1,6 @@
 # Makefile for libpcap
 # $FreeBSD: src/lib/libpcap/Makefile,v 1.24.2.4 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libpcap/Makefile,v 1.11 2007/10/11 00:21:59 pavalos Exp $
+# $DragonFly: src/lib/libpcap/Makefile,v 1.12 2007/10/11 01:07:29 pavalos Exp $
 
 SRCDIR=	${.CURDIR}/../../contrib/libpcap-0.9
 
@@ -15,7 +15,7 @@ CLEANFILES=tokdefs.h version.c version.h
 
 CFLAGS+=-DHAVE_CONFIG_H -Dyylval=pcap_lval -I${.CURDIR} -I.
 CFLAGS+=-D_U_="__attribute__((unused))"
-CFLAGS+=-DHAVE_STRUCT_ETHER_ADDR
+CFLAGS+=-DHAVE_STRUCT_ETHER_ADDR -DHAVE_NET_PFVAR_H
 .if !defined(NOINET6)
 CFLAGS+=-DINET6
 .endif
