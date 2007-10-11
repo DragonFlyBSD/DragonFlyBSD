@@ -37,7 +37,7 @@
  *
  *      @(#)bpf.h       7.1 (Berkeley) 5/7/91
  *
- * @(#) $Header: /tcpdump/master/libpcap/pcap-bpf.h,v 1.34.2.20 2007/07/19 06:20:53 guy Exp $ (LBL)
+ * @(#) $Header: /tcpdump/master/libpcap/pcap-bpf.h,v 1.34.2.24 2007/09/19 02:52:12 guy Exp $ (LBL)
  */
 
 /*
@@ -132,7 +132,7 @@ struct bpf_version {
 #define DLT_AX25	3	/* Amateur Radio AX.25 */
 #define DLT_PRONET	4	/* Proteon ProNET Token Ring */
 #define DLT_CHAOS	5	/* Chaos */
-#define DLT_IEEE802	6	/* IEEE 802 Networks */
+#define DLT_IEEE802	6	/* 802.5 Token Ring */
 #define DLT_ARCNET	7	/* ARCNET, with BSD-style header */
 #define DLT_SLIP	8	/* Serial Line IP */
 #define DLT_PPP		9	/* Point-to-point Protocol */
@@ -706,6 +706,40 @@ struct bpf_version {
  * (http://www.sita.aero/); requested by Fulko Hew (fulko.hew@gmail.com).
  */
 #define DLT_SITA		196
+
+/*
+ * Various link-layer types, with a pseudo-header, for Endace DAG cards;
+ * encapsulates Endace ERF records.  Requested by Stephen Donnelly
+ * <stephen@endace.com>.
+ */
+#define DLT_ERF			197
+
+/*
+ * Special header prepended to Ethernet packets when capturing from a
+ * u10 Networks board.  Requested by Phil Mulholland
+ * <phil@u10networks.com>.
+ */
+#define DLT_RAIF1		198
+
+/*
+ * IPMB packet for IPMI, beginning with the I2C slave address, followed
+ * by the netFn and LUN, etc..  Requested by Chanthy Toeung
+ * <chanthy.toeung@ca.kontron.com>.
+ */
+#define DLT_IPMB		199
+
+/*
+ * Juniper-private data link type, as per request from
+ * Hannes Gredler <hannes@juniper.net>. 
+ * The DLT_ is used for capturing data on a secure tunnel interface.
+ */
+#define DLT_JUNIPER_ST          200
+
+/*
+ * Bluetooth HCI UART transport layer (part H:4), with pseudo-header
+ * that includes direction information; requested by Paolo Abeni.
+ */
+#define DLT_BLUETOOTH_HCI_H4_WITH_PHDR	201
 
 
 /*
