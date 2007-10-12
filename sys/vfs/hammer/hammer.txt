@@ -1,19 +1,19 @@
-$DragonFly: src/sys/vfs/hammer/Attic/hammer.txt,v 1.1 2007/10/10 19:37:25 dillon Exp $
+$DragonFly: src/sys/vfs/hammer/Attic/hammer.txt,v 1.2 2007/10/12 17:17:20 dillon Exp $
 
 			       Hammer Filesystem
 
 (I) General Storage Abstraction
 
     HAMMER uses a basic 16K filesystem buffer for all I/O.  Buffers are
-    collected into clusters, cluster are collected into volumes, and a
-    single HAMMER filesystem may span multiple volumes.
+    collected into clusters, cluster are collected into super-clusters,
+    and super-clusters are collected into volumes.  A single HAMMER filesystem
+    may span multiple volumes.
 
-    HAMMER maintains a small hinted radix tree for block management in
-    each layer.  A small radix tree in the volume header manages cluster
-    allocations within a volume, one in the cluster header manages buffer
-    allocations within a cluster, and most buffers (pure data buffers
-    excepted) will embed a small tree to manage item allocations within
-    the buffer.
+    HAMMER maintains small hinted radix trees called A-Lists in several
+    places for storage management in each layer.  A major feature of the
+    A-list is the ability to stack with another A-list and pass hinting
+    information between the two to create an integrated storage management
+    entity.
 
     Volumes are typically specified as disk partitions, with one volume
     designated as the root volume containing the root cluster.  The root
@@ -25,15 +25,13 @@ $DragonFly: src/sys/vfs/hammer/Attic/hammer.txt,v 1.1 2007/10/10 19:37:25 dillon
     is live.   Whole volumes can be added and (with appropriate data
     migration) removed.
 
-    HAMMER's storage management limits it to 32768 volumes, 32768 clusters
-    per volume, and 32768 16K filesystem buffers per cluster.   A volume
-    is thus limited to 16TB and a HAMMER filesystem as a whole is limited
-    to 524288TB.  HAMMER's on-disk structures are designed to allow future
-    expansion through expansion of these limits.  In particular, the volume
-    id is intended to be expanded to a full 32 bits in the future and using
-    a larger buffer size will also greatly increase the cluster and volume
-    size limitations by increasing the number of elements the buffer-
-    restricted radix trees can manage.
+    HAMMER's storage management limits it to 32768 volumes.  Each volume
+    contains up to 16384 super-clusters and each super-cluster may contain
+    up to 32768 clusters.  A cluster may contain up to 4096 16K filesystem
+    buffers (64MB).  Volumes less then 2TB do away with the super-cluster
+    layer.  HAMMER can manage individual volumes up to 32768TB each.  The
+    total size of a HAMMER filesystem is, well, a lot, about 2^70 bytes of
+    storage space.
 
     HAMMER breaks all of its information down into objects and records.
     Records have a creation and deletion transaction id which allows HAMMER
