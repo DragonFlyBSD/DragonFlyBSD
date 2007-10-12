@@ -1,4 +1,4 @@
-/* $DragonFly: src/secure/lib/libcrypto/opensslconf-amd64.h,v 1.5 2007/03/28 19:05:58 pavalos Exp $ */
+/* $DragonFly: src/secure/lib/libcrypto/opensslconf-amd64.h,v 1.6 2007/10/12 19:50:15 pavalos Exp $ */
 /* opensslconf.h */
 /* WARNING: Generated automatically from opensslconf.h.in by Configure. */
 
@@ -22,6 +22,12 @@
 #endif
 #ifndef OPENSSL_NO_RFC3779
 # define OPENSSL_NO_RFC3779
+#endif
+#ifndef OPENSSL_NO_SEED
+# define OPENSSL_NO_SEED
+#endif
+#ifndef OPENSSL_NO_TLSEXT
+# define OPENSSL_NO_TLSEXT
 #endif
 
 #endif /* OPENSSL_DOING_MAKEDEPEND */
@@ -57,6 +63,12 @@
 # endif
 # if defined(OPENSSL_NO_RFC3779) && !defined(NO_RFC3779)
 #  define NO_RFC3779
+# endif
+# if defined(OPENSSL_NO_SEED) && !defined(NO_SEED)
+#  define NO_SEED
+# endif
+# if defined(OPENSSL_NO_TLSEXT) && !defined(NO_TLSEXT)
+#  define NO_TLSEXT
 # endif
 #endif
 

@@ -1,4 +1,4 @@
-# $DragonFly: src/secure/lib/libcrypto/Makefile.man,v 1.9 2007/03/28 19:05:58 pavalos Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.man,v 1.10 2007/10/12 19:50:15 pavalos Exp $
 # DO NOT EDIT: generated from man-makefile-update target
 MAN+= ASN1_OBJECT_new.3
 MLINKS+= ASN1_OBJECT_new.3 ASN1_OBJECT_free.3
@@ -653,7 +653,6 @@ MLINKS+= des.3 DES_crypt.3
 MLINKS+= des.3 DES_enc_read.3
 MLINKS+= des.3 DES_enc_write.3
 MAN+= des_modes.7
-MLINKS+= des_modes.7 Modes_of_DES.7
 MAN+= dh.3
 MAN+= dsa.3
 MAN+= ecdsa.3

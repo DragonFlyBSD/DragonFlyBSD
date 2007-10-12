@@ -13,6 +13,7 @@ INSTALL.W64
 INSTALL.WCE
 MacOS/
 Makefile
+Makefile.bak
 Makefile.org
 Makefile.shared
 Netware/
@@ -161,6 +162,7 @@ crypto/err/openssl.ec
 crypto/evp/Makefile
 crypto/evp/e_dsa.c
 crypto/evp/e_old.c
+crypto/evp/e_seed.c
 crypto/evp/evp_test.c
 crypto/evp/evptests.txt
 crypto/hmac/Makefile
@@ -247,6 +249,7 @@ crypto/ripemd/rmd160.c
 crypto/ripemd/rmdtest.c
 crypto/rsa/Makefile
 crypto/rsa/rsa_test.c
+crypto/seed/
 crypto/sha/Makefile
 crypto/sha/asm/
 crypto/sha/sha.c

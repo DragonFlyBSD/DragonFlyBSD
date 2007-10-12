@@ -1,7 +1,5 @@
 Original source can be downloaded from OpenSSL at
-<http://www.openssl.org/source/openssl-0.9.8e.tar.gz>.
-
-MD5 (openssl-0.9.8e.tar.gz) = 3a7ff24f6ea5cd711984722ad654b927
+<http://www.openssl.org/source/>.
 
 Here's some hints to upgrading:
 ./Configure shared no-asm --prefix=/usr --openssldir=/etc/ssl BSD-x86-elf
@@ -21,3 +19,5 @@ cvs add lib/libcrypto/man/*.3 lib/libssl/man/*.3 usr.bin/openssl/man/*.1
 cd ../crypto/openssl-0.9
 xargs rm -rf < README.DELETED
 # make sure things work then import and commit
+# cvs import hint:
+# cvs import src/crypto/openssl-0.9 OPENSSL v0_9_??
