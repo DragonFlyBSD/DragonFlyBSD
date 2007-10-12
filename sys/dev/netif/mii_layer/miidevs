@@ -1,4 +1,4 @@
-$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.12 2007/09/17 11:13:55 hasso Exp $
+$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.13 2007/10/12 14:02:55 sephe Exp $
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
 
@@ -64,6 +64,7 @@ oui QUALSEMI			0x006051	Quality Semiconductor
 oui REALTEK			0x000020	RealTek Semicondctor
 oui REALTEK2			0x00e04c	RealTek Semicondctor
 oui SEEQ			0x00a07d	Seeq
+oui AGERE			0x00a0bc	Agere Systems
 oui SIS				0x00e006	Silicon Integrated Systems
 oui TDK				0x00c039	TDK
 oui TI				0x080028	Texas Instruments
@@ -106,6 +107,9 @@ oui xxCICADA			0x00c08f	Cicada Semiconductor
 /*
  * List of known models.  Grouped by oui.
  */
+
+/* Agere Systems PHYs */
+model AGERE ET1011C		0x0004 ET1011C 10/100/1000baseT PHY
 
 /* Altima Communications PHYs */
 model xxALTIMA AC_UNKNOWN	0x0001 AC_UNKNOWN 10/100 media interface
