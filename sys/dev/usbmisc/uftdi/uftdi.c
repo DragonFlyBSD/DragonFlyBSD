@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.37 2007/06/22 05:53:05 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.19 2007/09/19 13:54:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.20 2007/10/12 11:15:53 hasso Exp $
  */
 
 /*-
@@ -389,33 +389,14 @@ static int
 uftdi_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	usbd_status err;
-	u_int8_t nifaces;
 
-	if (usb_lookup(uftdi_devs, uaa->vendor, uaa->product) == NULL)
+	if (uaa->iface == NULL)
 		return (UMATCH_NONE);
 
-	/* Get the number of interfaces. */
-	if (uaa->iface != NULL) {
-		nifaces = uaa->nifaces;
-	} else {
-		err = usbd_set_config_index(uaa->device, UFTDI_CONFIG_INDEX, 1);
-		if (err)
-			return (UMATCH_NONE);
-		err = usbd_interface_count(uaa->device, &nifaces);
-		if (err)
-			return (UMATCH_NONE);
-		usbd_set_config_index(uaa->device, USB_UNCONFIG_INDEX, 1);
-	}
-
-	if (nifaces <= 1)
-		return (UMATCH_VENDOR_PRODUCT);
-
-	/* Dual UART chip */
-	if (uaa->iface != NULL)
+	if (usb_lookup(uftdi_devs, uaa->vendor, uaa->product) != NULL)
 		return (UMATCH_VENDOR_IFACESUBCLASS);
-	else
-		return (UMATCH_NONE);
+
+	return (UMATCH_NONE);
 }
 
 static int
@@ -429,7 +410,6 @@ uftdi_attach(device_t self)
 	usb_endpoint_descriptor_t *ed;
 	char *devinfo;
 	int i;
-	usbd_status err;
 	struct ucom_softc *ucom = &sc->sc_ucom;
 	DPRINTFN(10,("\nuftdi_attach: sc=%p\n", sc));
 	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
@@ -441,26 +421,7 @@ uftdi_attach(device_t self)
 	device_printf(ucom->sc_dev, "%s\n", devinfo);
 	kfree(devinfo, M_USBDEV);
 
-	if (uaa->iface == NULL) {
-		/* Move the device into the configured state. */
-		err = usbd_set_config_index(dev, UFTDI_CONFIG_INDEX, 1);
-		if (err) {
-			device_printf(ucom->sc_dev,
-			    "failed to set configuration, err=%s\n",
-			    usbd_errstr(err));
-			goto bad;
-		}
-
-		err = usbd_device2interface_handle(dev, UFTDI_IFACE_INDEX, &iface);
-		if (err) {
-			device_printf(ucom->sc_dev,
-			    "failed to get interface, err=%s\n", usbd_errstr(err));
-			goto bad;
-		}
-	} else {
-		iface = uaa->iface;
-	}
-
+	iface = uaa->iface;
 	id = usbd_get_interface_descriptor(iface);
 	ucom->sc_iface = iface;
 
@@ -504,10 +465,7 @@ uftdi_attach(device_t self)
 		goto bad;
 	}
 	ucom->sc_parent  = sc;
-	if (uaa->iface == NULL)
-		ucom->sc_portno = FTDI_PIT_SIOA;
-	else
-		ucom->sc_portno = FTDI_PIT_SIOA + id->bInterfaceNumber;
+	ucom->sc_portno = FTDI_PIT_SIOA + id->bInterfaceNumber;
 	/* bulkin, bulkout set above */
 
   	ucom->sc_ibufsize = UFTDIIBUFSIZE;
