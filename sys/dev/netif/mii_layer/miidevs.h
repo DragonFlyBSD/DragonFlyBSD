@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.12 2007/09/17 11:29:36 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.13 2007/10/12 14:03:41 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -71,6 +71,7 @@
 #define	MII_OUI_REALTEK	0x000020	/* RealTek Semicondctor */
 #define	MII_OUI_REALTEK2	0x00e04c	/* RealTek Semicondctor */
 #define	MII_OUI_SEEQ	0x00a07d	/* Seeq */
+#define	MII_OUI_AGERE	0x00a0bc	/* Agere Systems */
 #define	MII_OUI_SIS	0x00e006	/* Silicon Integrated Systems */
 #define	MII_OUI_TDK	0x00c039	/* TDK */
 #define	MII_OUI_TI	0x080028	/* Texas Instruments */
@@ -113,6 +114,10 @@
 /*
  * List of known models.  Grouped by oui.
  */
+
+/* Agere Systems PHYs */
+#define	MII_MODEL_AGERE_ET1011C	0x0004
+#define	MII_STR_AGERE_ET1011C	"ET1011C 10/100/1000baseT PHY"
 
 /* Altima Communications PHYs */
 #define	MII_MODEL_xxALTIMA_AC_UNKNOWN	0x0001
