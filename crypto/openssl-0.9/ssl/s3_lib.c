@@ -542,11 +542,8 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 #endif
 
 #ifndef OPENSSL_NO_KRB5
-/* The Kerberos ciphers
-** 20000107 VRS: And the first shall be last,
-** in hopes of avoiding the lynx ssl renegotiation problem.
-*/
-/* Cipher 1E VRS */
+/* The Kerberos ciphers */
+/* Cipher 1E */
 	{
 	1,
 	SSL3_TXT_KRB5_DES_64_CBC_SHA,
@@ -560,7 +557,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 1F VRS */
+/* Cipher 1F */
 	{
 	1,
 	SSL3_TXT_KRB5_DES_192_CBC3_SHA,
@@ -574,7 +571,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 20 VRS */
+/* Cipher 20 */
 	{
 	1,
 	SSL3_TXT_KRB5_RC4_128_SHA,
@@ -588,7 +585,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 21 VRS */
+/* Cipher 21 */
 	{
 	1,
 	SSL3_TXT_KRB5_IDEA_128_CBC_SHA,
@@ -602,7 +599,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 22 VRS */
+/* Cipher 22 */
 	{
 	1,
 	SSL3_TXT_KRB5_DES_64_CBC_MD5,
@@ -616,7 +613,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 23 VRS */
+/* Cipher 23 */
 	{
 	1,
 	SSL3_TXT_KRB5_DES_192_CBC3_MD5,
@@ -630,7 +627,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 24 VRS */
+/* Cipher 24 */
 	{
 	1,
 	SSL3_TXT_KRB5_RC4_128_MD5,
@@ -644,7 +641,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 25 VRS */
+/* Cipher 25 */
 	{
 	1,
 	SSL3_TXT_KRB5_IDEA_128_CBC_MD5,
@@ -658,7 +655,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 26 VRS */
+/* Cipher 26 */
 	{
 	1,
 	SSL3_TXT_KRB5_DES_40_CBC_SHA,
@@ -672,7 +669,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 27 VRS */
+/* Cipher 27 */
 	{
 	1,
 	SSL3_TXT_KRB5_RC2_40_CBC_SHA,
@@ -686,7 +683,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 28 VRS */
+/* Cipher 28 */
 	{
 	1,
 	SSL3_TXT_KRB5_RC4_40_SHA,
@@ -700,7 +697,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 29 VRS */
+/* Cipher 29 */
 	{
 	1,
 	SSL3_TXT_KRB5_DES_40_CBC_MD5,
@@ -714,7 +711,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 2A VRS */
+/* Cipher 2A */
 	{
 	1,
 	SSL3_TXT_KRB5_RC2_40_CBC_MD5,
@@ -728,7 +725,7 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 
-/* Cipher 2B VRS */
+/* Cipher 2B */
 	{
 	1,
 	SSL3_TXT_KRB5_RC4_40_MD5,
@@ -742,8 +739,8 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS,
 	},
 #endif	/* OPENSSL_NO_KRB5 */
-/* New AES ciphersuites */
 
+/* New AES ciphersuites */
 /* Cipher 2F */
 	{
 	1,
@@ -1164,6 +1161,95 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[]={
 	SSL_ALL_STRENGTHS
 	},
 #endif /* OPENSSL_NO_CAMELLIA */
+
+#ifndef OPENSSL_NO_SEED
+	/* SEED ciphersuites from RFC4162 */
+
+	/* Cipher 96 */
+	{
+	1,
+	TLS1_TXT_RSA_WITH_SEED_SHA,
+	TLS1_CK_RSA_WITH_SEED_SHA,
+	SSL_kRSA|SSL_aRSA|SSL_SEED|SSL_SHA1|SSL_TLSV1,
+	SSL_NOT_EXP|SSL_MEDIUM,
+	0,
+	128,
+	128,
+	SSL_ALL_CIPHERS,
+	SSL_ALL_STRENGTHS,
+	},
+
+	/* Cipher 97 */
+	{
+	0, /* not implemented (non-ephemeral DH) */
+	TLS1_TXT_DH_DSS_WITH_SEED_SHA,
+	TLS1_CK_DH_DSS_WITH_SEED_SHA,
+	SSL_kDHd|SSL_aDH|SSL_SEED|SSL_SHA1|SSL_TLSV1,
+	SSL_NOT_EXP|SSL_MEDIUM,
+	0,
+	128,
+	128,
+	SSL_ALL_CIPHERS,
+	SSL_ALL_STRENGTHS,
+	},
+
+	/* Cipher 98 */
+	{
+	0, /* not implemented (non-ephemeral DH) */
+	TLS1_TXT_DH_RSA_WITH_SEED_SHA,
+	TLS1_CK_DH_RSA_WITH_SEED_SHA,
+	SSL_kDHr|SSL_aDH|SSL_SEED|SSL_SHA1|SSL_TLSV1,
+	SSL_NOT_EXP|SSL_MEDIUM,
+	0,
+	128,
+	128,
+	SSL_ALL_CIPHERS,
+	SSL_ALL_STRENGTHS,
+	},
+
+	/* Cipher 99 */
+	{
+	1,
+	TLS1_TXT_DHE_DSS_WITH_SEED_SHA,
+	TLS1_CK_DHE_DSS_WITH_SEED_SHA,
+	SSL_kEDH|SSL_aDSS|SSL_SEED|SSL_SHA1|SSL_TLSV1,
+	SSL_NOT_EXP|SSL_MEDIUM,
+	0,
+	128,
+	128,
+	SSL_ALL_CIPHERS,
+	SSL_ALL_STRENGTHS,
+	},
+
+	/* Cipher 9A */
+	{
+	1,
+	TLS1_TXT_DHE_RSA_WITH_SEED_SHA,
+	TLS1_CK_DHE_RSA_WITH_SEED_SHA,
+	SSL_kEDH|SSL_aRSA|SSL_SEED|SSL_SHA1|SSL_TLSV1,
+	SSL_NOT_EXP|SSL_MEDIUM,
+	0,
+	128,
+	128,
+	SSL_ALL_CIPHERS,
+	SSL_ALL_STRENGTHS,
+	},
+
+	/* Cipher 9B */
+	{
+	1,
+	TLS1_TXT_ADH_WITH_SEED_SHA,
+	TLS1_CK_ADH_WITH_SEED_SHA,
+	SSL_kEDH|SSL_aNULL|SSL_SEED|SSL_SHA1|SSL_TLSV1,
+	SSL_NOT_EXP|SSL_MEDIUM,
+	0,
+	128,
+	128,
+	SSL_ALL_CIPHERS,
+	SSL_ALL_STRENGTHS,
+	},
+
+#endif /* OPENSSL_NO_SEED */
 
 #ifndef OPENSSL_NO_ECDH
 	/* Cipher C001 */
@@ -1818,6 +1904,39 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		}
 		break;
 #endif /* !OPENSSL_NO_ECDH */
+#ifndef OPENSSL_NO_TLSEXT
+	case SSL_CTRL_SET_TLSEXT_HOSTNAME:
+ 		if (larg == TLSEXT_NAMETYPE_host_name)
+			{
+			if (s->tlsext_hostname != NULL) 
+				OPENSSL_free(s->tlsext_hostname);
+			s->tlsext_hostname = NULL;
+
+			ret = 1;
+			if (parg == NULL) 
+				break;
+			if (strlen((char *)parg) > TLSEXT_MAXLEN_host_name)
+				{
+				SSLerr(SSL_F_SSL3_CTRL, SSL_R_SSL3_EXT_INVALID_SERVERNAME);
+				return 0;
+				}
+			if ((s->tlsext_hostname = BUF_strdup((char *)parg)) == NULL)
+				{
+				SSLerr(SSL_F_SSL3_CTRL, ERR_R_INTERNAL_ERROR);
+				return 0;
+				}
+			}
+		else
+			{
+			SSLerr(SSL_F_SSL3_CTRL, SSL_R_SSL3_EXT_INVALID_SERVERNAME_TYPE);
+			return 0;
+			}
+ 		break;
+	case SSL_CTRL_SET_TLSEXT_DEBUG_ARG:
+		s->tlsext_debug_arg=parg;
+		ret = 1;
+		break;
+#endif /* !OPENSSL_NO_TLSEXT */
 	default:
 		break;
 		}
@@ -1867,6 +1986,12 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void))
 		{
 		s->cert->ecdh_tmp_cb = (EC_KEY *(*)(SSL *, int, int))fp;
 		}
+		break;
+#endif
+#ifndef OPENSSL_NO_TLSEXT
+	case SSL_CTRL_SET_TLSEXT_DEBUG_CB:
+		s->tlsext_debug_cb=(void (*)(SSL *,int ,int,
+					unsigned char *, int, void *))fp;
 		break;
 #endif
 	default:
@@ -2002,6 +2127,36 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 		}
 		break;
 #endif /* !OPENSSL_NO_ECDH */
+#ifndef OPENSSL_NO_TLSEXT
+	case SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG:
+		ctx->tlsext_servername_arg=parg;
+		break;
+	case SSL_CTRL_SET_TLSEXT_TICKET_KEYS:
+	case SSL_CTRL_GET_TLSEXT_TICKET_KEYS:
+		{
+		unsigned char *keys = parg;
+		if (!keys)
+			return 48;
+		if (larg != 48)
+			{
+			SSLerr(SSL_F_SSL3_CTX_CTRL, SSL_R_INVALID_TICKET_KEYS_LENGTH);
+			return 0;
+			}
+		if (cmd == SSL_CTRL_SET_TLSEXT_TICKET_KEYS)
+			{
+			memcpy(ctx->tlsext_tick_key_name, keys, 16);
+			memcpy(ctx->tlsext_tick_hmac_key, keys + 16, 16);
+			memcpy(ctx->tlsext_tick_aes_key, keys + 32, 16);
+			}
+		else
+			{
+			memcpy(keys, ctx->tlsext_tick_key_name, 16);
+			memcpy(keys + 16, ctx->tlsext_tick_hmac_key, 16);
+			memcpy(keys + 32, ctx->tlsext_tick_aes_key, 16);
+			}
+		return 1;
+		}
+#endif /* !OPENSSL_NO_TLSEXT */
 	/* A Thawte special :-) */
 	case SSL_CTRL_EXTRA_CHAIN_CERT:
 		if (ctx->extra_certs == NULL)
@@ -2045,6 +2200,11 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void))
 		{
 		cert->ecdh_tmp_cb = (EC_KEY *(*)(SSL *, int, int))fp;
 		}
+		break;
+#endif
+#ifndef OPENSSL_NO_TLSEXT
+	case SSL_CTRL_SET_TLSEXT_SERVERNAME_CB:
+		ctx->tlsext_servername_callback=(int (*)(SSL *,int *,void *))fp;
 		break;
 #endif
 	default:
@@ -2092,6 +2252,7 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 	SSL_CIPHER *c,*ret=NULL;
 	STACK_OF(SSL_CIPHER) *prio, *allow;
 	int i,j,ok;
+
 	CERT *cert;
 	unsigned long alg,mask,emask;
 
