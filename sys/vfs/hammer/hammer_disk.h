@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammerfs.h,v 1.1 2007/10/10 19:37:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.1 2007/10/12 18:57:45 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -53,7 +53,9 @@
  * A HAMMER filesystem may spam multiple volumes.
  *
  * A HAMMER filesystem uses a 16K filesystem buffer size.  All filesystem
- * I/O is done in multiples of 16K.
+ * I/O is done in multiples of 16K.  Most buffer-sized headers such as those
+ * used by volumes, super-clusters, clusters, and basic filesystem buffers
+ * use fixed-sized A-lists which are heavily dependant on HAMMER_BUFSIZE.
  */
 #define HAMMER_BUFSIZE	16384
 #define HAMMER_BUFMASK	(HAMMER_BUFSIZE - 1)
@@ -63,40 +65,6 @@
  * synchronized with the time of day in nanoseconds.
  */
 typedef u_int64_t hammer_tid_t;
-
-/*
- * Storage allocations are managed in powers of 2 with a hinted radix tree
- * based in volume and cluster headers.  The tree is not necessarily
- * contained within the header and may recurse into other storage elements.
- *
- * The allocator's basic storage element is the hammer_almeta structure
- * which is laid out recursively in a buffer.  Allocations are driven using
- * a template called hammer_alist which is constructed in memory and NOT
- * stored in the filesystem.
- */
-struct hammer_almeta {
-	u_int32_t	bm_bitmap;
-	int32_t		bm_bighint;
-};
-
-#define HAMMER_ALMETA_SIZE	8
-
-struct hammer_alist {
-	int32_t	bl_blocks;	/* area of coverage */
-	int32_t	bl_radix;	/* coverage radix */
-	int32_t	bl_skip;	/* starting skip for linear layout */
-	int32_t bl_free;	/* number of free blocks */
-	int32_t bl_rootblks;	/* meta-blocks allocated for tree */
-};
-
-typedef struct hammer_almeta	hammer_almeta_t;
-typedef struct hammer_alist	*hammer_alist_t;
-
-#define HAMMER_ALIST_META_RADIX	(sizeof(u_int32_t) * 4)   /* 16 */
-#define HAMMER_ALIST_BMAP_RADIX	(sizeof(u_int32_t) * 8)   /* 32 */
-#define HAMMER_ALIST_BLOCK_NONE	((int32_t)-1)
-#define HAMMER_ALIST_FORWARDS	0x0001
-#define HAMMER_ALIST_BACKWARDS	0x0002
 
 /*
  * Most HAMMER data structures are embedded in 16K filesystem buffers.
@@ -111,19 +79,24 @@ typedef struct hammer_alist	*hammer_alist_t;
 
 #define HAMMER_FSBUF_HEAD_SIZE	128
 #define HAMMER_FSBUF_MAXBLKS	256
-#define HAMMER_FSBUF_METAELMS	10	/* 10 elements needed for 256 blks */
+#define HAMMER_FSBUF_METAELMS	HAMMER_ALIST_METAELMS_256_1LYR	/* 11 */
 
 struct hammer_fsbuf_head {
 	u_int64_t buf_type;
 	u_int32_t buf_crc;
 	u_int32_t buf_reserved07;
-	u_int32_t reserved[8];
+	u_int32_t reserved[6];
 	struct hammer_almeta buf_almeta[HAMMER_FSBUF_METAELMS];
 };
 
 typedef struct hammer_fsbuf_head *hammer_fsbuf_head_t;
 
+/*
+ * Note: Pure-data buffers contain pure-data and have no buf_type.
+ * Piecemeal data buffers do have a header and use HAMMER_FSBUF_DATA.
+ */
 #define HAMMER_FSBUF_VOLUME	0xC8414D4DC5523031ULL	/* HAMMER01 */
+#define HAMMER_FSBUF_SUPERCL	0xC8414D52C3555052ULL	/* HAMRSUPR */
 #define HAMMER_FSBUF_CLUSTER	0xC8414D52C34C5553ULL	/* HAMRCLUS */
 #define HAMMER_FSBUF_RECORDS	0xC8414D52D2454353ULL	/* HAMRRECS */
 #define HAMMER_FSBUF_BTREE	0xC8414D52C2545245ULL	/* HAMRBTRE */
@@ -140,20 +113,38 @@ typedef struct hammer_fsbuf_head *hammer_fsbuf_head_t;
  * HAMMER Volume header
  *
  * A HAMMER filesystem is built from any number of block devices,  Each block
- * device contains a volume header followed by however many clusters
- * fit in the volume.  Clusters cannot be migrated but the data they contain
- * can, so HAMMER can use a truncated cluster for any extra space at the
- * end of the volume.
+ * device contains a volume header followed by however many super-clusters
+ * and clusters fit into the volume.  Clusters cannot be migrated but the
+ * data they contain can, so HAMMER can use a truncated cluster for any
+ * extra space at the end of the volume.
  *
  * The volume containing the root cluster is designated as the master volume.
  * The root cluster designation can be moved to any volume.
  *
  * The volume header takes up an entire 16K filesystem buffer and includes
- * an A-list to manage the clusters contained within the volume (up to 32768).
- * With 512M clusters a volume will be limited to 16TB.
+ * a one or two-layered A-list to manage the clusters making up the volume.
+ * A volume containing up to 32768 clusters (2TB) can be managed with a
+ * single-layered A-list.  A two-layer A-list is capable of managing up
+ * to 16384 super-clusters with each super-cluster containing 32768 clusters
+ * (32768 TB per volume total).  The number of volumes is limited to 32768
+ * but it only takes 512 to fill out a 64 bit address space so for all
+ * intents and purposes the filesystem has no limits.
+ *
+ * cluster addressing within a volume depends on whether a single or
+ * duel-layer A-list is used.  If a duel-layer A-list is used a 16K
+ * super-cluster buffer is needed for every 16384 clusters in the volume.
+ * However, because the A-list's hinting is grouped in multiples of 16
+ * we group 16 super-cluster buffers together (starting just after the
+ * volume header), followed by 16384x16 clusters, and repeat.
+ *
+ * NOTE: A 32768-element single-layer and 16384-element duel-layer A-list
+ * is the same size.
  */
-#define HAMMER_VOL_MAXCLUSTERS	32768
-#define HAMMER_VOL_METAELMS	1094
+#define HAMMER_VOL_MAXCLUSTERS		32768	/* 1-layer */
+#define HAMMER_VOL_MAXSUPERCLUSTERS	16384	/* 2-layer */
+#define HAMMER_VOL_SUPERCLUSTER_GROUP	16
+#define HAMMER_VOL_METAELMS_1LYR	HAMMER_ALIST_METAELMS_32K_1LYR
+#define HAMMER_VOL_METAELMS_2LYR	HAMMER_ALIST_METAELMS_16K_2LYR
 
 struct hammer_volume_ondisk {
 	struct hammer_fsbuf_head head;
@@ -191,24 +182,82 @@ struct hammer_volume_ondisk {
 
 	char	reserved[1024];
 
-	hammer_almeta_t	vol_almeta[HAMMER_VOL_METAELMS];
+	/*
+	 * Meta elements for the volume header's A-list, which is either a
+	 * 1-layer A-list capable of managing 32768 clusters, or a 2-layer
+	 * A-list capable of managing 16384 super-clusters (each of which
+	 * can handle 32768 clusters).
+	 */
+	union {
+		hammer_almeta_t	super[HAMMER_VOL_METAELMS_2LYR];
+		hammer_almeta_t	normal[HAMMER_VOL_METAELMS_1LYR];
+	} vol_almeta;
 	u_int32_t	vol0_bitmap[1024];
 };
 
-#define HAMMER_VOLF_VALID	0x0001	/* valid entry */
-#define HAMMER_VOLF_OPEN	0x0002	/* volume is open */
+#define HAMMER_VOLF_VALID		0x0001	/* valid entry */
+#define HAMMER_VOLF_OPEN		0x0002	/* volume is open */
+#define HAMMER_VOLF_SUPERCL_ENABLE	0x0004	/* enable supercluster layer */
+#define HAMMER_VOLF_SUPERCL_RESERVE	0x0008	/* supercluster layout */
+
+/*
+ * HAMMER Super-cluster header
+ *
+ * A super-cluster is used to increase the maximum size of a volume.
+ * HAMMER's volume header can manage up to 32768 direct clusters or
+ * 16384 super-clusters.  Each super-cluster (which is basically just
+ * a 16K filesystem buffer) can manage up to 32768 clusters.  So adding
+ * a super-cluster layer allows a HAMMER volume to be sized upwards of
+ * around 32768TB instead of 2TB.
+ *
+ * Any volume initially formatted to be over 32G reserves space for the layer
+ * but the layer is only enabled if the volume exceeds 2TB.
+ */
+#define HAMMER_SUPERCL_METAELMS		HAMMER_ALIST_METAELMS_32K_1LYR
+
+struct hammer_supercl_ondisk {
+	struct hammer_fsbuf_head head;
+	uuid_t	vol_fsid;	/* identify filesystem - sanity check */
+	uuid_t	vol_fstype;	/* identify filesystem type - sanity check */
+	int32_t reserved[1024];
+
+	hammer_almeta_t	scl_meta[HAMMER_SUPERCL_METAELMS];
+};
 
 /*
  * HAMMER Cluster header
  *
- * The cluster header contains all the information required to identify a
- * cluster, locate critical information areas within the cluster, and
- * to manage space within the cluster.
+ * A cluster is limited to 64MB and is made up of 4096 16K filesystem
+ * buffers.  The cluster header contains four A-lists to manage these
+ * buffers.
  *
- * A Cluster contains pure data, incremental data, b-tree nodes, and records.
+ * master_alist - This is a non-layered A-list which manages pure-data
+ *		  allocations and allocations on behalf of other A-lists.
+ *
+ * btree_alist  - This is a layered A-list which manages filesystem buffers
+ *		  containing B-Tree nodes.
+ *
+ * record_alist - This is a layered A-list which manages filesystem buffers
+ *		  containing records.
+ *
+ * mdata_alist  - This is a layered A-list which manages filesystem buffers
+ *		  containing piecemeal record data.
+ * 
+ * General storage management works like this:  All the A-lists except the
+ * master start in an all-allocated state.  Now lets say you wish to allocate
+ * a B-Tree node out the btree_alist.  If the allocation fails you allocate
+ * a pure data block out of master_alist and then free that  block in
+ * btree_alist, thereby assigning more space to the btree_alist, and then
+ * retry your allocation out of the btree_alist.  In the reverse direction,
+ * filesystem buffers can be garbage collected back to master_alist simply
+ * by doing whole-buffer allocations in btree_alist and then freeing the
+ * space in master_alist.  The whole-buffer-allocation approach to garbage
+ * collection works because A-list allocations are always power-of-2 sized
+ * and aligned.
  */
-#define HAMMER_CLU_MAXBUFFERS	32768
-#define HAMMER_CLU_METAELMS	1094
+#define HAMMER_CLU_MAXBUFFERS		4096
+#define HAMMER_CLU_MASTER_METAELMS	HAMMER_ALIST_METAELMS_4K_1LYR
+#define HAMMER_CLU_SLAVE_METAELMS	HAMMER_ALIST_METAELMS_4K_2LYR
 
 struct hammer_cluster_ondisk {
 	struct hammer_fsbuf_head head;
@@ -238,37 +287,32 @@ struct hammer_cluster_ondisk {
 	u_int32_t idx_reserved03;
 
 	/* 
-	 * Specify the range of information stored in this cluster.  These
-	 * structures match the B-Tree elements in our parent cluster
-	 * (if any) that point to us.  Note that clu_objend is
-	 * range-inclusive, not range-exclusive so e.g. 0-1023 instead
-	 * of 0-1024.
-	 */
-	int64_t	clu_parent;		/* parent vol & cluster */
-	struct hammer_base_elm clu_objstart;
-	struct hammer_base_elm clu_objend;
-
-	/*
-	 * The root node of the cluster's B-Tree is embedded in the
-	 * cluster header.  The node is 504 bytes.
-	 */
-	struct hammer_btree_node clu_btree_root;
-
-	/*
-	 * HAMMER needs a separate bitmap to indicate which buffers are
-	 * managed (contain a hammer_fsbuf_head).  Any buffers not so
-	 * designated are either unused or contain pure data.
+	 * Specify the range of information stored in this cluster as two
+	 * btree elements.  These elements exist as separate records that
+	 * point to us in the parent cluster's B-Tree.
 	 *
-	 * synchronized_rec_id is the synchronization point for the
-	 * cluster.  Any records with a greater or equal rec_id found
-	 * when recovering a cluster are likely incomplete and will be
-	 * ignored.
+	 * Note that clu_btree_end is range-inclusive, not range-exclusive.
+	 * i.e. 0-1023 instead of 0,1024.
 	 */
-	u_int64_t synchronized_rec_id;
-	u_int32_t managed_buffers_bitmap[HAMMER_CLU_MAXBUFFERS/32];
+	struct hammer_base_elm clu_btree_beg;
+	struct hammer_base_elm clu_btree_end;
 
-	char	reserved[1024];
-	hammer_almeta_t	clu_almeta[HAMMER_CLU_METAELMS];
+	/*
+	 * The cluster's B-Tree root can change as a side effect of insertion
+	 * and deletion operations so store an offset instead of embedding
+	 * the root node.
+	 */
+	int32_t		clu_btree_root;
+	int32_t		clu_btree_parent_vol_no;
+	int32_t		clu_btree_parent_clu_no;
+	hammer_tid_t	clu_btree_parent_clu_id;
+
+	u_int64_t synchronized_rec_id;
+
+	hammer_almeta_t	clu_master_meta[HAMMER_CLU_MASTER_METAELMS];
+	hammer_almeta_t	clu_btree_meta[HAMMER_CLU_SLAVE_METAELMS];
+	hammer_almeta_t	clu_record_meta[HAMMER_CLU_SLAVE_METAELMS];
+	hammer_almeta_t	clu_mdata_meta[HAMMER_CLU_SLAVE_METAELMS];
 };
 
 /*
@@ -308,10 +352,20 @@ struct hammer_base_record {
 				/* 40 */
 };
 
+/*
+ * Record types are fairly straightforward.  The B-Tree includes the record
+ * type in its index sort.
+ *
+ * In particular please note that it is possible to create a pseudo-
+ * filesystem within a HAMMER filesystem by creating a special object
+ * type within a directory.  Pseudo-filesystems are used as replication
+ * targets and even though they are built within a HAMMER filesystem they
+ * get their own obj_id space (and thus can serve as a replication target)
+ * and look like a mount point to the system.
+ */
 #define HAMMER_RECTYPE_UNKNOWN		0
 #define HAMMER_RECTYPE_INODE		1	/* inode in obj_id space */
-#define HAMMER_RECTYPE_SLAVE		2	/* slave inode */
-#define HAMMER_RECTYPE_OBJZONE		3	/* subdivide obj_id space */
+#define HAMMER_RECTYPE_PSEUDO_INODE	2	/* pseudo filesysem */
 #define HAMMER_RECTYPE_DATA_CREATE	0x10
 #define HAMMER_RECTYPE_DATA_ZEROFILL	0x11
 #define HAMMER_RECTYPE_DATA_DELETE	0x12
@@ -330,8 +384,13 @@ struct hammer_base_record {
 #define HAMMER_OBJTYPE_REGFILE		2
 #define HAMMER_OBJTYPE_DBFILE		3
 #define HAMMER_OBJTYPE_FIFO		4
-#define HAMMER_OBJTYPE_DEVNODE		5
-#define HAMMER_OBJTYPE_SOFTLINK		6
+#define HAMMER_OBJTYPE_CDEV		5
+#define HAMMER_OBJTYPE_BDEV		6
+#define HAMMER_OBJTYPE_SOFTLINK		7
+#define HAMMER_OBJTYPE_PSEUDOFS		8	/* pseudo filesystem obj */
+
+#define HAMMER_OBJTYPE_CLUSTER_BEG	0x10
+#define HAMMER_OBJTYPE_CLUSTER_END	0x11
 
 /*
  * Generic full-sized record
@@ -421,7 +480,7 @@ struct hammer_entry_record {
 /*
  * Hammer rollup record
  */
-union hammer_record {
+union hammer_record_ondisk {
 	struct hammer_base_record	base;
 	struct hammer_generic_record	generic;
 	struct hammer_inode_record	inode;
@@ -429,19 +488,19 @@ union hammer_record {
 	struct hammer_entry_record	entry;
 };
 
-typedef union hammer_record *hammer_record_t;
+typedef union hammer_record_ondisk *hammer_record_ondisk_t;
 
 /*
  * Filesystem buffer for records
  */
 #define HAMMER_RECORD_NODES	\
 	((HAMMER_BUFSIZE - sizeof(struct hammer_fsbuf_head)) / \
-	sizeof(union hammer_record))
+	sizeof(union hammer_record_ondisk))
 
 struct hammer_fsbuf_recs {
 	struct hammer_fsbuf_head	head;
 	char				unused[32];
-	union hammer_record		recs[HAMMER_RECORD_NODES];
+	union hammer_record_ondisk	recs[HAMMER_RECORD_NODES];
 };
 
 /*
@@ -484,18 +543,23 @@ struct hammer_inode_data {
 #define HAMMER_INODE_DATA_VERSION	1
 
 /*
+ * Rollup various structures embedded as record data
+ */
+union hammer_data {
+	struct hammer_inode_data inode;
+};
+
+
+/*
  * Function library support available to kernel and userland
  */
-void hammer_alist_template(hammer_alist_t, int blocks, int maxmeta);
-void hammer_alist_init(hammer_alist_t bl, hammer_almeta_t *meta);
-int32_t hammer_alist_alloc(hammer_alist_t bl, hammer_almeta_t *meta,
-			int32_t count);
-int32_t hammer_alist_alloc_rev(hammer_alist_t bl, hammer_almeta_t *meta,
-			int32_t count);
+void hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
+			   int32_t base_radix, int32_t maxmeta);
+void hammer_alist_init(hammer_alist_config_t bl, hammer_almeta_t meta);
+int32_t hammer_alist_alloc(hammer_alist_t live, int32_t count);
+int32_t hammer_alist_alloc_rev(hammer_alist_t live, int32_t count);
 #if 0
-int32_t hammer_alist_alloc_from(hammer_alist_t bl, hammer_almeta_t *meta,
-			int32_t count, int32_t start, int flags);
+int32_t hammer_alist_alloc_from(hammer_alist_t live, int32_t cnt, int32_t beg);
 #endif
-void hammer_alist_free(hammer_alist_t bl, hammer_almeta_t *meta,
-			int32_t blkno, int32_t count);
+void hammer_alist_free(hammer_alist_t live, int32_t blkno, int32_t count);
 

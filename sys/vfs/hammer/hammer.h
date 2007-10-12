@@ -31,16 +31,18 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.1 2007/10/10 19:37:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.2 2007/10/12 18:57:45 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
- * implementation.  See hammerfs.h for on-disk structures.
+ * implementation.  See hammer_disk.h for on-disk structures.
  */
 
 #include <sys/tree.h>
 #include <sys/malloc.h>
-#include "hammerfs.h"
+#include <sys/buf.h>
+#include "hammer_disk.h"
+#include "hammer_alist.h"
 #include "hammer_mount.h"
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
@@ -61,7 +63,20 @@ typedef struct hammer_inode_info {
  */
 struct hammer_btree_info {
 	struct hammer_base_elm key;
+	struct hammer_cluster *cluster;
+	struct buf *bp_node;
+	struct buf *bp2;
+	struct buf *bp3;
+	struct hammer_btree_node *node;	/* marker for insertion/deletion */
+	int index;			/* marker for insertion/deletion */
+	union hammer_btree_elm *elm;	/* marker for insertion/deletion */
+	union hammer_record_ondisk *rec;/* returned record pointer */
+	union hammer_data_ondisk *data;	/* returned data pointer */
 };
+
+#define HAMMER_BTREE_GET_RECORD		0x0001
+#define HAMMER_BTREE_GET_DATA		0x0002
+#define HAMMER_BTREE_CLUSTER_TAG	0x0004	/* stop at the cluster tag */
 
 /*
  * Structures used to internally represent an inode
@@ -76,7 +91,9 @@ struct hammer_inode {
 	RB_ENTRY(hammer_inode) rb_node;
 	u_int64_t	obj_id;		/* (key) object identifier */
 	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
-	struct hammer_mount *hmp;
+	struct vnode	*vp;
+	struct hammer_inode_record ino_rec;
+	struct hammer_inode_data ino_data;
 };
 
 /*
@@ -96,20 +113,29 @@ RB_PROTOTYPE2(hammer_clu_rb_tree, hammer_cluster, rb_node,
 struct hammer_volume {
 	RB_ENTRY(hammer_volume) rb_node;
 	struct hammer_clu_rb_tree rb_clus_root;
+	struct buf *bp;
 	struct hammer_volume_ondisk *ondisk;
 	int32_t	vol_no;
 	int32_t	vol_clsize;
 	int64_t cluster_base;	/* base offset of cluster 0 */
-	char *vol_name;
+	char	*vol_name;
 	struct vnode *devvp;
 	struct hammer_mount *hmp;
+	int	lock_count;
+	int	ref_count;
+	int	flags;
 };
+
+#define HAMFS_CLUSTER_DIRTY	0x0001
 
 struct hammer_cluster {
 	RB_ENTRY(hammer_cluster) rb_node;
+	struct buf *bp;
 	struct hammer_cluster_ondisk *ondisk;
 	struct hammer_volume *volume;
 	int32_t clu_no;
+	int	lock_count;
+	int	ref_count;
 };
 
 /*
@@ -138,13 +164,14 @@ int	hammer_vfs_vget(struct mount *mp, ino_t ino, struct  vnode **vpp);
 int	hammer_unload_inode(struct hammer_inode *inode, void *data __unused);
 int	hammer_unload_volume(struct hammer_volume *volume, void *data __unused);
 int	hammer_load_volume(struct hammer_mount *hmp, const char *volname);
-struct hammer_cluster *hammer_load_cluster(struct hammer_mount *hmp,
-				struct hammer_volume *volume, int clu_no,
-				int *errorp);
+struct hammer_cluster *hammer_load_cluster(struct hammer_volume *volume,
+					   int clu_no, int *errorp);
 
-int	hammer_btree_lookup(struct hammer_mount *hmp,
-				struct hammer_btree_info *info);
+int	hammer_btree_lookup(struct hammer_btree_info *info, int flags);
+void	hammer_btree_lookup_done(struct hammer_btree_info *info);
 
+void	*hammer_bread(struct hammer_cluster *cluster, int32_t cloff,
+		      int *errorp, struct buf **bufp);
 
 #endif
 

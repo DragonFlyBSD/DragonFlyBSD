@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.1 2007/10/10 19:37:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.2 2007/10/12 18:57:45 dillon Exp $
  */
 
 /*
@@ -46,7 +46,12 @@
  */
 
 /*
- * Common base for all B-Tree element types (40 bytes)
+ * Common base for all B+Tree element types (40 bytes)
+ *
+ * Note that obj_type is set to the object type of the record represents
+ * an inode or a cluster range.  A cluster range is special in that the
+ * B-Tree nodes represent a range within the B-Tree inclusive of rec_type
+ * field, so obj_type must be used to detect the cluster range entries.
  */
 struct hammer_base_elm {
 	int64_t	obj_id;		/* 00 object record is associated with */
@@ -56,27 +61,15 @@ struct hammer_base_elm {
 	hammer_tid_t delete_tid; /* 18 transaction id for record update/del */
 
 	u_int16_t rec_type;	/* 20 */
-	u_int16_t obj_type;	/* 22 (only if rec_type is an inode) */
-	u_int32_t reserved01;	/* 24 */
+	u_int16_t obj_type;	/* 22 (special) */
+	int32_t subtree_offset;	/* 24 (B+Tree recursion) */
 				/* 28 */
-};
-
-/*
- * Internal B-Tree element (40 + 16 = 56 bytes)
- */
-struct hammer_internal_elm {
-	struct hammer_base_elm base;
-	int32_t subtree_offset;
-	u_int32_t reserved01;
-	u_int32_t reserved02;
-	u_int32_t reserved03;
-
 };
 
 /*
  * Leaf B-Tree element (40 + 16 = 56 bytes)
  */
-struct hammer_leaf_elm {
+struct hammer_record_elm {
 	struct hammer_base_elm base;
 	int32_t rec_offset;
 	int32_t data_offset;
@@ -89,9 +82,10 @@ struct hammer_leaf_elm {
  */
 struct hammer_cluster_elm {
 	struct hammer_base_elm base;
-	u_int64_t clu_id;		/* cluster id (sanity check) */
-	u_int32_t vol_no;
-	u_int32_t cluster_no;
+	int32_t	rec_offset;		/* cluster recursion record */
+	u_int32_t verifier;		/* low 32 bits of target clu_id */
+	int32_t	vol_no;
+	int32_t	cluster_no;
 };
 
 /*
@@ -99,8 +93,7 @@ struct hammer_cluster_elm {
  */
 union hammer_btree_elm {
 	struct hammer_base_elm base;
-	struct hammer_internal_elm internal;
-	struct hammer_leaf_elm leaf;
+	struct hammer_record_elm record;
 	struct hammer_cluster_elm cluster;
 };
 
@@ -118,7 +111,7 @@ struct hammer_btree_node {
 	 * B-Tree node header (56 bytes)
 	 */
 	int32_t		count;	/* number of elements in B-Tree node */
-	u_int32_t	parent;	/* parent B-Tree node in current cluster */
+	int32_t		parent;	/* parent B-Tree node in current cluster */
 	u_int32_t	reserved[12];
 
 	/*
