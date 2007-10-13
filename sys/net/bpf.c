@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.41 2007/08/27 16:15:42 hasso Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.42 2007/10/13 09:53:51 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -138,6 +138,9 @@ bpf_movein(struct uio *uio, int linktype, struct mbuf **mp,
 	int error;
 	int len;
 	int hlen;
+
+	*datlen = 0;
+	*mp = NULL;
 
 	/*
 	 * Build a sockaddr based on the data link layer type.
