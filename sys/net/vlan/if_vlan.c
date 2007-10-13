@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.24 2007/10/01 12:56:36 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.25 2007/10/13 09:43:19 sephe Exp $
  */
 
 /*
@@ -100,7 +100,7 @@ static	int vlan_clone_create(struct if_clone *, int);
 static	void vlan_clone_destroy(struct ifnet *);
 static	void vlan_start(struct ifnet *ifp);
 static	void vlan_ifinit(void *foo);
-static	int vlan_input(struct ether_header *eh, struct mbuf *m);
+static	int vlan_input(const struct ether_header *eh, struct mbuf *m);
 static	int vlan_input_tag(struct mbuf *m, uint16_t t);
 static	int vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr,
 		struct ucred *cr);
@@ -430,7 +430,7 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 }
 
 static int
-vlan_input(struct ether_header *eh, struct mbuf *m)
+vlan_input(const struct ether_header *eh, struct mbuf *m)
 {
 	struct ifvlan *ifv;
 	struct ifnet *rcvif;

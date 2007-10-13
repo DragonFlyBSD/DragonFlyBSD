@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.13 2006/05/20 02:42:08 dillon Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.14 2007/10/13 09:43:19 sephe Exp $
  *
  */
 
@@ -367,7 +367,7 @@ extern	int  (*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 extern	void (*ng_ether_attach_p)(struct ifnet *ifp);
 extern	void (*ng_ether_detach_p)(struct ifnet *ifp);
 
-extern	int (*vlan_input_p)(struct ether_header *eh, struct mbuf *m);
+extern	int (*vlan_input_p)(const struct ether_header *eh, struct mbuf *m);
 extern	int (*vlan_input_tag_p)(struct mbuf *m, uint16_t t);
 
 #define VLAN_INPUT_TAG(m, t) do {			\

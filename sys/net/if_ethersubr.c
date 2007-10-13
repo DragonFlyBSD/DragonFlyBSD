@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.46 2007/10/13 08:49:35 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.47 2007/10/13 09:43:19 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -113,7 +113,7 @@ int	(*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 void	(*ng_ether_attach_p)(struct ifnet *ifp);
 void	(*ng_ether_detach_p)(struct ifnet *ifp);
 
-int	(*vlan_input_p)(struct ether_header *eh, struct mbuf *m);
+int	(*vlan_input_p)(const struct ether_header *eh, struct mbuf *m);
 int	(*vlan_input_tag_p)(struct mbuf *m, uint16_t t);
 
 static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
