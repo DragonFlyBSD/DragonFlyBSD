@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.45 2007/10/13 08:14:50 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.46 2007/10/13 08:49:35 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -79,7 +79,7 @@
 #ifdef IPX
 #include <netproto/ipx/ipx.h>
 #include <netproto/ipx/ipx_if.h>
-int (*ef_inputp)(struct ifnet*, struct ether_header *eh, struct mbuf *m);
+int (*ef_inputp)(struct ifnet*, const struct ether_header *eh, struct mbuf *m);
 int (*ef_outputp)(struct ifnet *ifp, struct mbuf **mp, struct sockaddr *dst,
 		  short *tp, int *hlen);
 #endif

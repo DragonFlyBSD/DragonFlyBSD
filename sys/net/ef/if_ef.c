@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.22 2006/12/22 23:44:55 swildner Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.23 2007/10/13 08:49:35 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -93,7 +93,8 @@ struct ef_link {
 static SLIST_HEAD(ef_link_head, ef_link) efdev = {NULL};
 static int efcount;
 
-extern int (*ef_inputp)(struct ifnet*, struct ether_header *eh, struct mbuf *m);
+extern int (*ef_inputp)(struct ifnet*, const struct ether_header *eh,
+		struct mbuf *m);
 extern int (*ef_outputp)(struct ifnet *ifp, struct mbuf **mp,
 		struct sockaddr *dst, short *tp, int *hlen);
 
@@ -105,7 +106,7 @@ static int ef_detach(struct efnet *sc);
 static void ef_init(void *);
 static int ef_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void ef_start(struct ifnet *);
-static int ef_input(struct ifnet*, struct ether_header *, struct mbuf *);
+static int ef_input(struct ifnet*, const struct ether_header *, struct mbuf *);
 static int ef_output(struct ifnet *ifp, struct mbuf **mp,
 		struct sockaddr *dst, short *tp, int *hlen);
 
@@ -243,8 +244,7 @@ ef_start(struct ifnet *ifp)
  * parameter passing but simplify the code
  */
 static int __inline
-ef_inputEII(struct mbuf *m, struct ether_header *eh, struct llc* l,
-	u_short ether_type)
+ef_inputEII(struct mbuf *m, struct llc* l, u_short ether_type)
 {
 	int isr;
 
@@ -272,8 +272,7 @@ ef_inputEII(struct mbuf *m, struct ether_header *eh, struct llc* l,
 }
 
 static int __inline
-ef_inputSNAP(struct mbuf *m, struct ether_header *eh, struct llc* l,
-	u_short ether_type)
+ef_inputSNAP(struct mbuf *m, struct llc* l, u_short ether_type)
 {
 	int isr;
 
@@ -292,8 +291,7 @@ ef_inputSNAP(struct mbuf *m, struct ether_header *eh, struct llc* l,
 }
 
 static int __inline
-ef_input8022(struct mbuf *m, struct ether_header *eh, struct llc* l,
-	u_short ether_type)
+ef_input8022(struct mbuf *m, struct llc* l, u_short ether_type)
 {
 	int isr;
 
@@ -315,7 +313,7 @@ ef_input8022(struct mbuf *m, struct ether_header *eh, struct llc* l,
  * Called from ether_input()
  */
 static int
-ef_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
+ef_input(struct ifnet *ifp, const struct ether_header *eh, struct mbuf *m)
 {
 	u_short ether_type;
 	int ft = -1;
@@ -382,7 +380,7 @@ ef_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	 */
 	switch(ft) {
 	case ETHER_FT_EII:
-		return (ef_inputEII(m, eh, l, ether_type));
+		return (ef_inputEII(m, l, ether_type));
 		break;
 #ifdef IPX
 	case ETHER_FT_8023:		/* only IPX can be here */
@@ -390,10 +388,10 @@ ef_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 		break;
 #endif
 	case ETHER_FT_SNAP:
-		return (ef_inputSNAP(m, eh, l, ether_type));
+		return (ef_inputSNAP(m, l, ether_type));
 		break;
 	case ETHER_FT_8022:
-		return (ef_input8022(m, eh, l, ether_type));
+		return (ef_input8022(m, l, ether_type));
 		break;
 	default:
 		EFDEBUG("No support for frame %d and proto %04x\n",
