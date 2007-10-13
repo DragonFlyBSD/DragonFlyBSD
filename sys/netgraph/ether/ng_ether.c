@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.11 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.12 2007/10/13 10:50:34 sephe Exp $
  */
 
 /*
@@ -83,18 +83,18 @@ typedef struct private *priv_p;
 
 /* Functional hooks called from if_ethersubr.c */
 static void	ng_ether_input(struct ifnet *ifp,
-		    struct mbuf **mp, struct ether_header *eh);
+		    struct mbuf **mp, const struct ether_header *eh);
 static void	ng_ether_input_orphan(struct ifnet *ifp,
-		    struct mbuf *m, struct ether_header *eh);
+		    struct mbuf *m, const struct ether_header *eh);
 static int	ng_ether_output(struct ifnet *ifp, struct mbuf **mp);
 static void	ng_ether_attach(struct ifnet *ifp);
 static void	ng_ether_detach(struct ifnet *ifp); 
 
 /* Other functions */
 static void	ng_ether_input2(node_p node,
-		    struct mbuf **mp, struct ether_header *eh);
+		    struct mbuf **mp, const struct ether_header *eh);
 static int	ng_ether_glueback_header(struct mbuf **mp,
-			struct ether_header *eh);
+			const struct ether_header *eh);
 static int	ng_ether_rcv_lower(node_p node, struct mbuf *m, meta_p meta);
 static int	ng_ether_rcv_upper(node_p node, struct mbuf *m, meta_p meta);
 
@@ -210,7 +210,7 @@ NETGRAPH_INIT(ether, &ng_ether_typestruct);
  */
 static void
 ng_ether_input(struct ifnet *ifp,
-	struct mbuf **mp, struct ether_header *eh)
+	struct mbuf **mp, const struct ether_header *eh)
 {
 	const node_p node = IFP2NG(ifp);
 	const priv_p priv = node->private;
@@ -229,7 +229,7 @@ ng_ether_input(struct ifnet *ifp,
  */
 static void
 ng_ether_input_orphan(struct ifnet *ifp,
-	struct mbuf *m, struct ether_header *eh)
+	struct mbuf *m, const struct ether_header *eh)
 {
 	const node_p node = IFP2NG(ifp);
 	const priv_p priv = node->private;
@@ -252,7 +252,7 @@ ng_ether_input_orphan(struct ifnet *ifp,
  * NOTE: this function will get called at splimp()
  */
 static void
-ng_ether_input2(node_p node, struct mbuf **mp, struct ether_header *eh)
+ng_ether_input2(node_p node, struct mbuf **mp, const struct ether_header *eh)
 {
 	const priv_p priv = node->private;
 	meta_p meta = NULL;
@@ -359,7 +359,7 @@ ng_ether_detach(struct ifnet *ifp)
  * the front of an incoming packet.
  */
 static int
-ng_ether_glueback_header(struct mbuf **mp, struct ether_header *eh)
+ng_ether_glueback_header(struct mbuf **mp, const struct ether_header *eh)
 {
 	struct mbuf *m = *mp;
 	int error = 0;

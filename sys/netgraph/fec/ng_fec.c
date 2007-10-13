@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.19 2006/12/22 23:44:57 swildner Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.20 2007/10/13 10:50:34 sephe Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -172,7 +172,7 @@ typedef struct ng_fec_private *priv_p;
 
 /* Interface methods */
 static void	ng_fec_input(struct ifnet *, struct mbuf **,
-			struct ether_header *);
+			const struct ether_header *);
 static void	ng_fec_start(struct ifnet *ifp);
 static int	ng_fec_choose_port(struct ng_fec_bundle *b,
 			struct mbuf *m, struct ifnet **ifp);
@@ -724,7 +724,7 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
  */
 static void 
 ng_fec_input(struct ifnet *ifp, struct mbuf **m0,
-		struct ether_header *eh)
+		const struct ether_header *eh)
 {
 	struct ng_node		*node;
 	struct ng_fec_private	*priv;

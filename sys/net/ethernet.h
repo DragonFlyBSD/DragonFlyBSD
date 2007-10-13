@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.14 2007/10/13 09:43:19 sephe Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.15 2007/10/13 10:50:34 sephe Exp $
  *
  */
 
@@ -360,9 +360,9 @@ struct ifnet;
 struct mbuf;
 
 extern	void (*ng_ether_input_p)(struct ifnet *ifp,
-		struct mbuf **mp, struct ether_header *eh);
+		struct mbuf **mp, const struct ether_header *eh);
 extern	void (*ng_ether_input_orphan_p)(struct ifnet *ifp,
-		struct mbuf *m, struct ether_header *eh);
+		struct mbuf *m, const struct ether_header *eh);
 extern	int  (*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 extern	void (*ng_ether_attach_p)(struct ifnet *ifp);
 extern	void (*ng_ether_detach_p)(struct ifnet *ifp);

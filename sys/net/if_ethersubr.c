@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.47 2007/10/13 09:43:19 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.48 2007/10/13 10:50:34 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -106,9 +106,9 @@ extern u_char	aarp_org_code[3];
 
 /* netgraph node hooks for ng_ether(4) */
 void	(*ng_ether_input_p)(struct ifnet *ifp,
-		struct mbuf **mp, struct ether_header *eh);
+		struct mbuf **mp, const struct ether_header *eh);
 void	(*ng_ether_input_orphan_p)(struct ifnet *ifp,
-		struct mbuf *m, struct ether_header *eh);
+		struct mbuf *m, const struct ether_header *eh);
 int	(*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 void	(*ng_ether_attach_p)(struct ifnet *ifp);
 void	(*ng_ether_detach_p)(struct ifnet *ifp);
