@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.48 2007/10/13 10:50:34 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.49 2007/10/13 11:32:34 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -627,14 +627,17 @@ ether_input(struct ifnet *ifp, struct mbuf *m)
  * Upper layer processing for a received Ethernet packet.
  */
 void
-ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
+ether_demux(struct ifnet *ifp, struct ether_header *eh0, struct mbuf *m)
 {
+	struct ether_header eh;
 	int isr;
 	u_short ether_type;
 	struct ip_fw *rule = NULL;
 #ifdef NETATALK
 	struct llc *l;
 #endif
+
+	eh = *eh0;
 
 	/* Extract info from dummynet tag, ignore others */
 	while (m->m_type == MT_TAG) {
@@ -658,7 +661,7 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
          * evaluation, to see if the carp ether_dhost values break any
          * of these checks!
          */
-	if (ifp->if_carp && carp_forus(ifp->if_carp, eh->ether_dhost))
+	if (ifp->if_carp && carp_forus(ifp->if_carp, eh.ether_dhost))
 		goto pre_stats;
 #endif
 
@@ -669,8 +672,8 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	 * happen when the interface is in promiscuous mode.
 	 */
 	if (((ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC)) == IFF_PROMISC) &&
-	    (eh->ether_dhost[0] & 1) == 0 &&
-	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
+	    (eh.ether_dhost[0] & 1) == 0 &&
+	    bcmp(eh.ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
 		m_freem(m);
 		return;
 	}
@@ -684,8 +687,8 @@ pre_stats:
 		m_freem(m);
 		return;
 	}
-	if (eh->ether_dhost[0] & 1) {
-		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
+	if (eh.ether_dhost[0] & 1) {
+		if (bcmp(ifp->if_broadcastaddr, eh.ether_dhost,
 			 ifp->if_addrlen) == 0)
 			m->m_flags |= M_BCAST;
 		else
@@ -695,14 +698,13 @@ pre_stats:
 
 post_stats:
 	if (IPFW_LOADED && ether_ipfw != 0) {
-		if (!ether_ipfw_chk(&m, NULL, &rule, eh, FALSE)) {
+		if (!ether_ipfw_chk(&m, NULL, &rule, &eh, FALSE)) {
 			m_freem(m);
 			return;
 		}
-		eh = mtod(m, struct ether_header *);
 	}
 
-	ether_type = ntohs(eh->ether_type);
+	ether_type = ntohs(eh.ether_type);
 
 	switch (ether_type) {
 #ifdef INET
@@ -730,7 +732,7 @@ post_stats:
 
 #ifdef IPX
 	case ETHERTYPE_IPX:
-		if (ef_inputp && ef_inputp(ifp, eh, m) == 0)
+		if (ef_inputp && ef_inputp(ifp, &eh, m) == 0)
 			return;
 		isr = NETISR_IPX;
 		break;
@@ -754,7 +756,7 @@ post_stats:
 
 	case ETHERTYPE_VLAN:
 		if (vlan_input_p != NULL)
-			(*vlan_input_p)(eh, m);
+			(*vlan_input_p)(&eh, m);
 		else {
 			m->m_pkthdr.rcvif->if_noproto++;
 			m_freem(m);
@@ -763,7 +765,7 @@ post_stats:
 
 	default:
 #ifdef IPX
-		if (ef_inputp && ef_inputp(ifp, eh, m) == 0)
+		if (ef_inputp && ef_inputp(ifp, &eh, m) == 0)
 			return;
 #endif
 #ifdef NS
@@ -805,7 +807,7 @@ post_stats:
 dropanyway:
 #endif
 		if (ng_ether_input_orphan_p != NULL)
-			(*ng_ether_input_orphan_p)(ifp, m, eh);
+			(*ng_ether_input_orphan_p)(ifp, m, &eh);
 		else
 			m_freem(m);
 		return;
