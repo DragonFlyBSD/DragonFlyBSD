@@ -34,8 +34,8 @@
 .\"
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
-.\" $DragonFly: src/share/man/man8/rc.8,v 1.8 2007/03/25 11:35:11 swildner Exp $
-.Dd November 4, 2002
+.\" $DragonFly: src/share/man/man8/rc.8,v 1.9 2007/10/13 23:39:46 swildner Exp $
+.Dd October 13, 2007
 .Dt RC 8
 .Os
 .Sh NAME
@@ -261,6 +261,9 @@ This latter check is not performed by standard
 .Dx
 scripts if the system is starting directly to multi-user mode, to
 speed up the boot process.
+If
+.Cm faststart
+is given, skip the PID check.
 If
 .Cm forcestart
 is given, ignore the
@@ -561,8 +564,8 @@ is unnecessary, but is often included.
 .Xr kill 1 ,
 .Xr rc.conf 5 ,
 .Xr init 8 ,
-.Xr rc.subr 8 ,
 .Xr rcorder 8 ,
+.Xr rc.subr 8 ,
 .Xr reboot 8 ,
 .Xr savecore 8
 .Sh HISTORY
