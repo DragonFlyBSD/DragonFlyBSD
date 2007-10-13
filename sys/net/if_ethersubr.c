@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.44 2007/10/01 12:56:36 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.45 2007/10/13 08:14:50 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -138,7 +138,8 @@ const uint8_t etherbroadcastaddr[ETHER_ADDR_LEN] = {
 #define IFP2AC(ifp) ((struct arpcom *)(ifp))
 
 static boolean_t ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
-				struct ip_fw **rule, struct ether_header *eh,
+				struct ip_fw **rule,
+				const struct ether_header *eh,
 				boolean_t shared);
 
 static int ether_ipfw;
@@ -450,7 +451,7 @@ ether_ipfw_chk(
 	struct mbuf **m0,
 	struct ifnet *dst,
 	struct ip_fw **rule,
-	struct ether_header *eh,
+	const struct ether_header *eh,
 	boolean_t shared)
 {
 	struct ether_header save_eh = *eh;	/* might be a ptr in m */
@@ -508,7 +509,7 @@ ether_ipfw_chk(
 		 * Prepend the header, optimize for the common case of
 		 * eh pointing into the mbuf.
 		 */
-		if ((void *)(eh + 1) == (void *)m->m_data) {
+		if ((const void *)(eh + 1) == (void *)m->m_data) {
 			m->m_data -= ETHER_HDR_LEN ;
 			m->m_len += ETHER_HDR_LEN ;
 			m->m_pkthdr.len += ETHER_HDR_LEN ;
