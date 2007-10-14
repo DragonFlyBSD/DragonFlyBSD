@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.10 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.11 2007/10/14 04:52:44 sephe Exp $
  */
 
 /*
@@ -131,7 +131,7 @@ systimer_add(systimer_t info)
 {
     struct globaldata *gd = mycpu;
 
-    KKASSERT((info->flags & (SYSTF_ONQUEUE|SYSTF_IPIRUNNING)) == 0);
+    KKASSERT((info->flags & SYSTF_ONQUEUE) == 0);
     crit_enter();
     if (info->gd == gd) {
 	systimer_t scan1;
@@ -163,6 +163,7 @@ systimer_add(systimer_t info)
 	info->queue = &gd->gd_systimerq;
     } else {
 #ifdef SMP
+	KKASSERT((info->flags & SYSTF_IPIRUNNING) == 0);
 	info->flags |= SYSTF_IPIRUNNING;
 	lwkt_send_ipiq(info->gd, (ipifunc1_t)systimer_add, info);
 #else
