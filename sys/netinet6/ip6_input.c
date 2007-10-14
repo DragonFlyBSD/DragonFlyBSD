@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.34 2007/05/23 08:57:09 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.35 2007/10/14 18:15:19 hasso Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -702,11 +702,25 @@ hbhcheck:
 		nxt = hbh->ip6h_nxt;
 
 		/*
-		 * accept the packet if a router alert option is included
-		 * and we act as an IPv6 router.
+		 * If we are acting as a router and the packet contains a
+		 * router alert option, see if we know the option value.
+		 * Currently, we only support the option value for MLD, in which
+		 * case we should pass the packet to the multicast routing
+		 * daemon.
 		 */
-		if (rtalert != ~0 && ip6_forwarding)
-			ours = 1;
+		if (rtalert != ~0 && ip6_forwarding) {
+			switch (rtalert) {
+			case IP6OPT_RTALERT_MLD:
+				ours = 1;
+				break;
+			default:
+				/*
+				 * RFC2711 requires unrecognized values must be
+				 * silently ignored.
+				 */
+				break;
+			}
+		}
 	} else
 		nxt = ip6->ip6_nxt;
 
