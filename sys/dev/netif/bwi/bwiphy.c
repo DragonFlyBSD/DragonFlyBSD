@@ -31,10 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwiphy.c,v 1.3 2007/10/03 04:53:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwiphy.c,v 1.4 2007/10/14 04:15:18 sephe Exp $
  */
 
 #include <sys/param.h>
+#include <sys/bitops.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
@@ -61,12 +62,11 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcidevs.h>
 
-#include "bitops.h"
-#include "if_bwireg.h"
-#include "if_bwivar.h"
-#include "bwirf.h"
-#include "bwiphy.h"
-#include "bwimac.h"
+#include <dev/netif/bwi/if_bwireg.h>
+#include <dev/netif/bwi/if_bwivar.h>
+#include <dev/netif/bwi/bwirf.h>
+#include <dev/netif/bwi/bwiphy.h>
+#include <dev/netif/bwi/bwimac.h>
 
 static void	bwi_phy_init_11a(struct bwi_mac *);
 static void	bwi_phy_init_11g(struct bwi_mac *);

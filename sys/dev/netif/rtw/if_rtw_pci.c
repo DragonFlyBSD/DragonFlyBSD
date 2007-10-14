@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: if_rtw_pci.c,v 1.4 2005/12/04 17:44:02 christos Exp $
- * $DragonFly: src/sys/dev/netif/rtw/if_rtw_pci.c,v 1.3 2006/12/01 07:52:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/if_rtw_pci.c,v 1.4 2007/10/14 04:15:17 sephe Exp $
  */
 
 /*
@@ -93,9 +93,9 @@
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
 
-#include "rtwreg.h"
-#include "sa2400reg.h"
-#include "rtwvar.h"
+#include <dev/netif/rtw/rtwreg.h>
+#include <dev/netif/rtw/sa2400reg.h>
+#include <dev/netif/rtw/rtwvar.h>
 
 /*
  * PCI configuration space registers

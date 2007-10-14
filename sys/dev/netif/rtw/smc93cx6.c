@@ -20,7 +20,7 @@
  *
  * $FreeBSD: src/sys/dev/aic7xxx/93cx6.c,v 1.5 2000/01/07 23:08:17 gibbs Exp $
  * $NetBSD: smc93cx6.c,v 1.12 2005/12/11 12:21:28 christos Exp $
- * $DragonFly: src/sys/dev/netif/rtw/smc93cx6.c,v 1.4 2007/04/12 18:35:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/smc93cx6.c,v 1.5 2007/10/14 04:15:17 sephe Exp $
  */
 
 /*
@@ -63,7 +63,7 @@
 #include <sys/systm.h>
 #include <sys/bus.h>
 
-#include "smc93cx6var.h"
+#include <dev/netif/rtw/smc93cx6var.h>
 
 /*
  * Right now, we only have to read the SEEPROM.  But we make it easier to

@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwphy.c,v 1.9 2006/03/08 00:24:06 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwphy.c,v 1.3 2006/10/25 20:55:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwphy.c,v 1.4 2007/10/14 04:15:17 sephe Exp $
  */
 
 /*
@@ -38,6 +38,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/bitops.h>
 #include <sys/bus.h>
 #include <sys/socket.h>
 
@@ -48,13 +49,12 @@
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
 
-#include "rtwbitop.h"
-#include "rtwreg.h"
-#include "max2820reg.h"
-#include "sa2400reg.h"
-#include "rtwvar.h"
-#include "rtwphyio.h"
-#include "rtwphy.h"
+#include <dev/netif/rtw/rtwreg.h>
+#include <dev/netif/rtw/max2820reg.h>
+#include <dev/netif/rtw/sa2400reg.h>
+#include <dev/netif/rtw/rtwvar.h>
+#include <dev/netif/rtw/rtwphyio.h>
+#include <dev/netif/rtw/rtwphy.h>
 
 static int	rtw_max2820_pwrstate(struct rtw_rf *, enum rtw_pwrstate);
 static int	rtw_sa2400_pwrstate(struct rtw_rf *, enum rtw_pwrstate);
@@ -88,7 +88,8 @@ rtw_bbp_init(struct rtw_regs *regs, struct rtw_bbpset *bb, int antdiv,
 	sys2 = bb->bb_sys2;
 	if (antdiv)
 		sys2 |= RTW_BBP_SYS2_ANTDIV;
-	sys3 = bb->bb_sys3 | SHIFTIN(cs_threshold, RTW_BBP_SYS3_CSTHRESH_MASK);
+	sys3 = bb->bb_sys3 |
+	       __SHIFTIN(cs_threshold, RTW_BBP_SYS3_CSTHRESH_MASK);
 
 #define	RTW_BBP_WRITE_OR_RETURN(reg, val) \
 	if ((rc = rtw_bbp_write(regs, reg, val)) != 0) \
@@ -194,8 +195,8 @@ rtw_sa2400_tune(struct rtw_rf *rf, u_int freq)
 	n = freq / 4;
 	nf = (freq % 4) * 2;
 
-	syna = SHIFTIN(nf, SA2400_SYNA_NF_MASK) |
-	       SHIFTIN(n, SA2400_SYNA_N_MASK);
+	syna = __SHIFTIN(nf, SA2400_SYNA_NF_MASK) |
+	       __SHIFTIN(n, SA2400_SYNA_N_MASK);
 	verify_syna(freq, syna);
 
 	/*
@@ -203,9 +204,9 @@ rtw_sa2400_tune(struct rtw_rf *rf, u_int freq)
 	 * compensation charge pump value to agree with the fractional
 	 * modulus.
 	 */
-	synb = SHIFTIN(11, SA2400_SYNB_R_MASK) | SA2400_SYNB_L_NORMAL |
+	synb = __SHIFTIN(11, SA2400_SYNB_R_MASK) | SA2400_SYNB_L_NORMAL |
 	       SA2400_SYNB_ON | SA2400_SYNB_ONE |
-	       SHIFTIN(80, SA2400_SYNB_FC_MASK); /* agrees w/ SA2400_SYNA_FM = 0 */
+	       __SHIFTIN(80, SA2400_SYNB_FC_MASK); /* agrees w/ SA2400_SYNA_FM = 0 */
 
 	sync = SA2400_SYNC_CP_NORMAL;
 
@@ -261,7 +262,7 @@ rtw_sa2400_manrx_init(struct rtw_sa2400 *sa)
 	 */
 	manrx = SA2400_MANRX_AHSN;
 	manrx |= SA2400_MANRX_TEN;
-	manrx |= SHIFTIN(1023, SA2400_MANRX_RXGAIN_MASK);
+	manrx |= __SHIFTIN(1023, SA2400_MANRX_RXGAIN_MASK);
 
 	return rtw_rfbus_write(&sa->sa_bus, RTW_RFCHIPID_PHILIPS, SA2400_MANRX,
 			       manrx);
@@ -351,10 +352,10 @@ rtw_sa2400_agc_init(struct rtw_sa2400 *sa)
 {
 	uint32_t agc;
 
-	agc = SHIFTIN(25, SA2400_AGC_MAXGAIN_MASK);
-	agc |= SHIFTIN(7, SA2400_AGC_BBPDELAY_MASK);
-	agc |= SHIFTIN(15, SA2400_AGC_LNADELAY_MASK);
-	agc |= SHIFTIN(27, SA2400_AGC_RXONDELAY_MASK);
+	agc = __SHIFTIN(25, SA2400_AGC_MAXGAIN_MASK);
+	agc |= __SHIFTIN(7, SA2400_AGC_BBPDELAY_MASK);
+	agc |= __SHIFTIN(15, SA2400_AGC_LNADELAY_MASK);
+	agc |= __SHIFTIN(27, SA2400_AGC_RXONDELAY_MASK);
 
 	return rtw_rfbus_write(&sa->sa_bus, RTW_RFCHIPID_PHILIPS, SA2400_AGC,
 			       agc);
@@ -644,7 +645,7 @@ rtw_max2820_tune(struct rtw_rf *rf, u_int freq)
 		return -1;
 
 	return rtw_rfbus_write(bus, RTW_RFCHIPID_MAXIM, MAX2820_CHANNEL,
-			       SHIFTIN(freq - 2400, MAX2820_CHANNEL_CF_MASK));
+			       __SHIFTIN(freq - 2400, MAX2820_CHANNEL_CF_MASK));
 }
 
 static void
@@ -695,8 +696,8 @@ rtw_max2820_init(struct rtw_rf *rf, u_int freq, uint8_t opaque_txpower,
 	 */
 	rc = rtw_rfbus_write(bus, RTW_RFCHIPID_MAXIM, MAX2820_RECEIVE,
 			     MAX2820_RECEIVE_DL_DEFAULT |
-			     SHIFTIN(4, MAX2820A_RECEIVE_1C_MASK) |
-			     SHIFTIN(1, MAX2820A_RECEIVE_2C_MASK));
+			     __SHIFTIN(4, MAX2820A_RECEIVE_1C_MASK) |
+			     __SHIFTIN(1, MAX2820A_RECEIVE_2C_MASK));
 	if (rc != 0)
 		return rc;
 

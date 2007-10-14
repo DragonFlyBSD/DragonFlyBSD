@@ -31,10 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.7 2007/10/06 04:05:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.8 2007/10/14 04:15:18 sephe Exp $
  */
 
 #include <sys/param.h>
+#include <sys/bitops.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
@@ -62,12 +63,11 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcidevs.h>
 
-#include "bitops.h"
-#include "if_bwireg.h"
-#include "if_bwivar.h"
-#include "bwiphy.h"
-#include "bwirf.h"
-#include "bwimac.h"
+#include <dev/netif/bwi/if_bwireg.h>
+#include <dev/netif/bwi/if_bwivar.h>
+#include <dev/netif/bwi/bwiphy.h>
+#include <dev/netif/bwi/bwirf.h>
+#include <dev/netif/bwi/bwimac.h>
 
 struct bwi_retry_lim {
 	uint16_t	shretry;

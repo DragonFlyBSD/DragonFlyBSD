@@ -31,10 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.12 2007/10/03 09:18:24 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.13 2007/10/14 04:15:18 sephe Exp $
  */
 
 #include <sys/param.h>
+#include <sys/bitops.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
@@ -61,11 +62,10 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcidevs.h>
 
-#include "bitops.h"
-#include "if_bwireg.h"
-#include "if_bwivar.h"
-#include "bwimac.h"
-#include "bwirf.h"
+#include <dev/netif/bwi/if_bwireg.h>
+#include <dev/netif/bwi/if_bwivar.h>
+#include <dev/netif/bwi/bwimac.h>
+#include <dev/netif/bwi/bwirf.h>
 
 struct bwi_clock_freq {
 	u_int		clkfreq_min;

@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: si4136reg.h,v 1.4 2006/03/08 08:26:50 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/si4136reg.h,v 1.1 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/si4136reg.h,v 1.2 2007/10/14 04:15:17 sephe Exp $
  */
 
 #ifndef _DEV_IC_SI4136REG_H_
@@ -47,11 +47,11 @@
 #define SI4126_MAIN	0	/* main configuration */
 #define	SI4126_MAIN_AUXSEL_MASK	__BITS(13, 12)	/* aux. output pin function */
 /* reserved */
-#define	SI4126_MAIN_AUXSEL_RSVD		SHIFTIN(0x0, SI4126_MAIN_AUXSEL_MASK)
+#define	SI4126_MAIN_AUXSEL_RSVD		__SHIFTIN(0x0, SI4126_MAIN_AUXSEL_MASK)
 /* force low */
-#define	SI4126_MAIN_AUXSEL_FRCLOW	SHIFTIN(0x1, SI4126_MAIN_AUXSEL_MASK)
+#define	SI4126_MAIN_AUXSEL_FRCLOW	__SHIFTIN(0x1, SI4126_MAIN_AUXSEL_MASK)
 /* Lock Detect (LDETB) */
-#define	SI4126_MAIN_AUXSEL_LDETB	SHIFTIN(0x3, SI4126_MAIN_AUXSEL_MASK)
+#define	SI4126_MAIN_AUXSEL_LDETB	__SHIFTIN(0x3, SI4126_MAIN_AUXSEL_MASK)
 
 #define	SI4126_MAIN_IFDIV_MASK	__BITS(11, 10)	/* IFOUT = IFVCO
 						 * frequency / 2**IFDIV.

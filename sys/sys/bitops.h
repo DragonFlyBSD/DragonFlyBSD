@@ -28,41 +28,41 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/rtw/Attic/rtwbitop.h,v 1.1 2006/09/03 07:37:58 sephe Exp $
+ * $DragonFly: src/sys/sys/bitops.h,v 1.1 2007/10/14 04:15:17 sephe Exp $
  */
+
+#ifndef _SYS_BITOPS_H_
+#define _SYS_BITOPS_H_
 
 /*
- * BIT(n): Return a bitmask with bit m set, where the least
- *         significant bit is bit 0.
+ * __BIT(n): Return a bitmask with bit n set, where the least
+ *           significant bit is bit 0.
  *
- * BITS(m, n): Return a bitmask with bits m through n, inclusive,
- *             set.  It does not matter whether m>n or m<=n.
- *             The least significant bit is bit 0.
+ * __BITS(m, n): Return a bitmask with bits m through n, inclusive,
+ *               set.  It does not matter whether m>n or m<=n.  The
+ *               least significant bit is bit 0.
  *
- * A "bitfield" is a span of consecutive bits defined by a
- * bitmask, where 1s select the bits in the bitfield.  SHIFTIN,
- * SHIFTOUT, and SHIFTOUT_MASK help read and write bitfields
- * from device registers.
+ * A "bitfield" is a span of consecutive bits defined by a bitmask,
+ * where 1s select the bits in the bitfield.  __SHIFTIN, __SHIFTOUT,
+ * and __SHIFTOUT_MASK help read and write bitfields from device
+ * registers.
  *
- * SHIFTIN(v, mask): Left-shift bits `v' into the bitfield
- *                   defined by `mask', and return them.  No
- *                   side-effects.
+ * __SHIFTIN(v, mask): Left-shift bits `v' into the bitfield
+ *                     defined by `mask', and return them.  No
+ *                     side-effects.
  *
- * SHIFTOUT(v, mask): Extract and return the bitfield selected
- *                    by `mask' from `v', right-shifting the
- *                    bits so that the rightmost selected bit
- *                    is at bit 0.  No side-effects.
+ * __SHIFTOUT(v, mask): Extract and return the bitfield selected
+ *                      by `mask' from `v', right-shifting the
+ *                      bits so that the rightmost selected bit
+ *                      is at bit 0.  No side-effects.
  *
- * SHIFTOUT_MASK(mask): Right-shift the bits in `mask' so that
- *                      the rightmost non-zero bit is at bit
- *                      0.  This is useful for finding the
- *                      greatest unsigned value that a bitfield
- *                      can hold.  No side-effects.  Note that
- *                      SHIFTOUT_MASK(m) = SHIFTOUT(m, m).
+ * __SHIFTOUT_MASK(mask): Right-shift the bits in `mask' so that
+ *                        the rightmost non-zero bit is at bit
+ *                        0.  This is useful for finding the
+ *                        greatest unsigned value that a bitfield
+ *                        can hold.  No side-effects.  Note that
+ *                        __SHIFTOUT_MASK(m) = __SHIFTOUT(m, m).
  */
-
-#ifndef _RTWBITOP_H
-#define _RTWBITOP_H
 
 /* __BIT(n): nth bit, where __BIT(0) == 0x1. */
 #define	__BIT(__n) (((__n) == 32) ? 0 : ((uint32_t)1 << (__n)))
@@ -71,11 +71,11 @@
 #define	__BITS(__m, __n)	\
 	((__BIT(MAX((__m), (__n)) + 1) - 1) ^ (__BIT(MIN((__m), (__n))) - 1))
 
-/* find least significant bit that is set */
+/* Find least significant bit that is set */
 #define	__LOWEST_SET_BIT(__mask) ((((__mask) - 1) & (__mask)) ^ (__mask))
 
-#define	SHIFTOUT(__x, __mask) (((__x) & (__mask)) / __LOWEST_SET_BIT(__mask))
-#define	SHIFTIN(__x, __mask) ((__x) * __LOWEST_SET_BIT(__mask))
-#define	SHIFTOUT_MASK(__mask) SHIFTOUT((__mask), (__mask))
+#define	__SHIFTOUT(__x, __mask) (((__x) & (__mask)) / __LOWEST_SET_BIT(__mask))
+#define	__SHIFTIN(__x, __mask) ((__x) * __LOWEST_SET_BIT(__mask))
+#define	__SHIFTOUT_MASK(__mask) __SHIFTOUT((__mask), (__mask))
 
-#endif	/* !_RTWBITOP_H */
+#endif	/* !_SYS_BITOPS_H_ */

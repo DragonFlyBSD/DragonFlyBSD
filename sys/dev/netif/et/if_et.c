@@ -31,10 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.1 2007/10/12 14:12:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.2 2007/10/14 04:15:18 sephe Exp $
  */
 
 #include <sys/param.h>
+#include <sys/bitops.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
@@ -61,11 +62,10 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcidevs.h>
 
-#include "miibus_if.h"
+#include <dev/netif/et/if_etreg.h>
+#include <dev/netif/et/if_etvar.h>
 
-#include "bitops.h"
-#include "if_etreg.h"
-#include "if_etvar.h"
+#include "miibus_if.h"
 
 static int	et_probe(device_t);
 static int	et_attach(device_t);
