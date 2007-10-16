@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.1 2007/10/12 18:57:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.2 2007/10/16 18:16:42 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -79,6 +79,7 @@ typedef u_int64_t hammer_tid_t;
 
 #define HAMMER_FSBUF_HEAD_SIZE	128
 #define HAMMER_FSBUF_MAXBLKS	256
+#define HAMMER_FSBUF_BLKMASK	(HAMMER_FSBUF_MAXBLKS - 1)
 #define HAMMER_FSBUF_METAELMS	HAMMER_ALIST_METAELMS_256_1LYR	/* 11 */
 
 struct hammer_fsbuf_head {
@@ -148,7 +149,7 @@ typedef struct hammer_fsbuf_head *hammer_fsbuf_head_t;
 
 struct hammer_volume_ondisk {
 	struct hammer_fsbuf_head head;
-	int64_t vol_beg;	/* byte offset of first cluster in volume */
+	int64_t vol_beg;	/* byte offset of first cl/supercl in volume */
 	int64_t vol_end;	/* byte offset of volume EOF */
 	int64_t vol_locked;	/* reserved clusters are >= this offset */
 
@@ -160,12 +161,12 @@ struct hammer_volume_ondisk {
 	int32_t vol_count;	/* number of volumes making up FS */
 
 	u_int32_t vol_version;	/* version control information */
-	u_int32_t vol_segsize;	/* cluster size power of 2, 512M max */
+	u_int32_t vol_reserved01;
 	u_int32_t vol_flags;	/* volume flags */
 	u_int32_t vol_rootvol;	/* which volume is the root volume? */
 
 	int32_t vol_clsize;	/* cluster size (same for all volumes) */
-	u_int32_t vol_reserved05;
+	int32_t vol_nclusters;
 	u_int32_t vol_reserved06;
 	u_int32_t vol_reserved07;
 
@@ -189,8 +190,8 @@ struct hammer_volume_ondisk {
 	 * can handle 32768 clusters).
 	 */
 	union {
-		hammer_almeta_t	super[HAMMER_VOL_METAELMS_2LYR];
-		hammer_almeta_t	normal[HAMMER_VOL_METAELMS_1LYR];
+		struct hammer_almeta	super[HAMMER_VOL_METAELMS_2LYR];
+		struct hammer_almeta	normal[HAMMER_VOL_METAELMS_1LYR];
 	} vol_almeta;
 	u_int32_t	vol0_bitmap[1024];
 };
@@ -214,6 +215,7 @@ struct hammer_volume_ondisk {
  * but the layer is only enabled if the volume exceeds 2TB.
  */
 #define HAMMER_SUPERCL_METAELMS		HAMMER_ALIST_METAELMS_32K_1LYR
+#define HAMMER_SCL_MAXCLUSTERS		HAMMER_VOL_MAXCLUSTERS
 
 struct hammer_supercl_ondisk {
 	struct hammer_fsbuf_head head;
@@ -221,7 +223,7 @@ struct hammer_supercl_ondisk {
 	uuid_t	vol_fstype;	/* identify filesystem type - sanity check */
 	int32_t reserved[1024];
 
-	hammer_almeta_t	scl_meta[HAMMER_SUPERCL_METAELMS];
+	struct hammer_almeta	scl_meta[HAMMER_SUPERCL_METAELMS];
 };
 
 /*
@@ -258,6 +260,7 @@ struct hammer_supercl_ondisk {
 #define HAMMER_CLU_MAXBUFFERS		4096
 #define HAMMER_CLU_MASTER_METAELMS	HAMMER_ALIST_METAELMS_4K_1LYR
 #define HAMMER_CLU_SLAVE_METAELMS	HAMMER_ALIST_METAELMS_4K_2LYR
+#define HAMMER_CLU_MAXBYTES		(HAMMER_CLU_MAXBUFFERS * HAMMER_BUFSIZE)
 
 struct hammer_cluster_ondisk {
 	struct hammer_fsbuf_head head;
@@ -281,9 +284,9 @@ struct hammer_cluster_ondisk {
 	u_int32_t clu_reserved06;
 	u_int32_t clu_reserved07;
 
-	int32_t idx_data;	/* data append point (byte offset) */
-	int32_t idx_index;	/* index append point (byte offset) */
-	int32_t idx_record;	/* record prepend point (byte offset) */
+	int32_t idx_data;	/* data append point (element no) */
+	int32_t idx_index;	/* index append point (element no) */
+	int32_t idx_record;	/* record prepend point (element no) */
 	u_int32_t idx_reserved03;
 
 	/* 
@@ -309,10 +312,10 @@ struct hammer_cluster_ondisk {
 
 	u_int64_t synchronized_rec_id;
 
-	hammer_almeta_t	clu_master_meta[HAMMER_CLU_MASTER_METAELMS];
-	hammer_almeta_t	clu_btree_meta[HAMMER_CLU_SLAVE_METAELMS];
-	hammer_almeta_t	clu_record_meta[HAMMER_CLU_SLAVE_METAELMS];
-	hammer_almeta_t	clu_mdata_meta[HAMMER_CLU_SLAVE_METAELMS];
+	struct hammer_almeta	clu_master_meta[HAMMER_CLU_MASTER_METAELMS];
+	struct hammer_almeta	clu_btree_meta[HAMMER_CLU_SLAVE_METAELMS];
+	struct hammer_almeta	clu_record_meta[HAMMER_CLU_SLAVE_METAELMS];
+	struct hammer_almeta	clu_mdata_meta[HAMMER_CLU_SLAVE_METAELMS];
 };
 
 /*
@@ -510,6 +513,7 @@ struct hammer_fsbuf_recs {
 
 #define HAMMER_DATA_SIZE	(HAMMER_BUFSIZE - sizeof(struct hammer_fsbuf_head))
 #define HAMMER_DATA_BLKSIZE	64
+#define HAMMER_DATA_BLKMASK	(HAMMER_DATA_BLKSIZE-1)
 #define HAMMER_DATA_NODES	(HAMMER_DATA_SIZE / HAMMER_DATA_BLKSIZE)
 
 struct hammer_fsbuf_data {
@@ -517,6 +521,17 @@ struct hammer_fsbuf_data {
 	u_int8_t		data[HAMMER_DATA_NODES][HAMMER_DATA_BLKSIZE];
 };
 
+/*
+ * Filesystem buffer rollup
+ */
+union hammer_fsbuf_ondisk {
+	struct hammer_fsbuf_head	head;
+	struct hammer_fsbuf_btree	btree;
+	struct hammer_fsbuf_recs	record;
+	struct hammer_fsbuf_data	data;
+};
+
+typedef union hammer_fsbuf_ondisk *hammer_fsbuf_ondisk_t;
 
 /*
  * HAMMER UNIX Attribute data
@@ -548,18 +563,4 @@ struct hammer_inode_data {
 union hammer_data {
 	struct hammer_inode_data inode;
 };
-
-
-/*
- * Function library support available to kernel and userland
- */
-void hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
-			   int32_t base_radix, int32_t maxmeta);
-void hammer_alist_init(hammer_alist_config_t bl, hammer_almeta_t meta);
-int32_t hammer_alist_alloc(hammer_alist_t live, int32_t count);
-int32_t hammer_alist_alloc_rev(hammer_alist_t live, int32_t count);
-#if 0
-int32_t hammer_alist_alloc_from(hammer_alist_t live, int32_t cnt, int32_t beg);
-#endif
-void hammer_alist_free(hammer_alist_t live, int32_t blkno, int32_t count);
 

@@ -38,7 +38,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.2 2007/10/12 18:57:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.3 2007/10/16 18:16:42 dillon Exp $
  */
 /*
  * This module implements a generic allocator through the use of a hinted
@@ -113,17 +113,17 @@ void panic(const char *ctl, ...);
  */
 
 static int32_t hammer_alst_leaf_alloc_fwd(hammer_almeta_t scan,
-					int32_t blk, int count);
+					int32_t blk, int count, int32_t atblk);
 static int32_t hammer_alst_meta_alloc_fwd(hammer_alist_t live,
 					hammer_almeta_t scan,
 					int32_t blk, int32_t count,
-					int32_t radix, int skip);
+					int32_t radix, int skip, int32_t atblk);
 static int32_t hammer_alst_leaf_alloc_rev(hammer_almeta_t scan,
-					int32_t blk, int count);
+					int32_t blk, int count, int32_t atblk);
 static int32_t hammer_alst_meta_alloc_rev(hammer_alist_t live,
 					hammer_almeta_t scan,
 					int32_t blk, int32_t count,
-					int32_t radix, int skip);
+					int32_t radix, int skip, int32_t atblk);
 static void hammer_alst_leaf_free(hammer_almeta_t scan,
 					int32_t relblk, int count);
 static void hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
@@ -311,11 +311,11 @@ hammer_alist_alloc(hammer_alist_t live, int32_t count)
 			KKASSERT(bl->bl_radix == HAMMER_ALIST_BMAP_RADIX);
 #endif
 			blk = hammer_alst_leaf_alloc_fwd(
-				    live->meta + 1, 0, count);
+				    live->meta + 1, 0, count, 0);
 		} else {
 			blk = hammer_alst_meta_alloc_fwd(
 				    live, live->meta + 1,
-				    0, count, bl->bl_radix, bl->bl_skip);
+				    0, count, bl->bl_radix, bl->bl_skip, 0);
 		}
 		if (blk != HAMMER_ALIST_BLOCK_NONE)
 			live->meta->bm_alist_freeblks -= count;
@@ -324,7 +324,39 @@ hammer_alist_alloc(hammer_alist_t live, int32_t count)
 }
 
 int32_t 
-hammer_alist_alloc_rev(hammer_alist_t live, int32_t count)
+hammer_alist_alloc_fwd(hammer_alist_t live, int32_t count, int32_t atblk)
+{
+	int32_t blk = HAMMER_ALIST_BLOCK_NONE;
+	hammer_alist_config_t bl = live->config;
+
+	KKASSERT((count | (count - 1)) == (count << 1) - 1);
+
+	if (bl && count <= bl->bl_radix) {
+		/*
+		 * When skip is 1 we are at a leaf.  If we are the terminal
+		 * allocator we use our native leaf functions and radix will
+		 * be HAMMER_ALIST_BMAP_RADIX.  Otherwise we are a meta node
+		 * which will chain to another allocator.
+		 */
+		if (bl->bl_skip == 1 && bl->bl_terminal) {
+#ifndef _KERNEL
+			KKASSERT(bl->bl_radix == HAMMER_ALIST_BMAP_RADIX);
+#endif
+			blk = hammer_alst_leaf_alloc_fwd(
+				    live->meta + 1, 0, count, atblk);
+		} else {
+			blk = hammer_alst_meta_alloc_fwd(
+				    live, live->meta + 1,
+				    0, count, bl->bl_radix, bl->bl_skip, atblk);
+		}
+		if (blk != HAMMER_ALIST_BLOCK_NONE)
+			live->meta->bm_alist_freeblks -= count;
+	}
+	return(blk);
+}
+
+int32_t 
+hammer_alist_alloc_rev(hammer_alist_t live, int32_t count, int32_t atblk)
 {
 	hammer_alist_config_t bl = live->config;
 	int32_t blk = HAMMER_ALIST_BLOCK_NONE;
@@ -337,36 +369,17 @@ hammer_alist_alloc_rev(hammer_alist_t live, int32_t count)
 			KKASSERT(bl->bl_radix == HAMMER_ALIST_BMAP_RADIX);
 #endif
 			blk = hammer_alst_leaf_alloc_rev(
-				    live->meta + 1, 0, count);
+				    live->meta + 1, 0, count, atblk);
 		} else {
 			blk = hammer_alst_meta_alloc_rev(
 				    live, live->meta + 1,
-				    0, count, bl->bl_radix, bl->bl_skip);
+				    0, count, bl->bl_radix, bl->bl_skip, atblk);
 		}
 		if (blk != HAMMER_ALIST_BLOCK_NONE)
 			live->meta->bm_alist_freeblks -= count;
 	}
 	return(blk);
 }
-
-#if 0
-
-/*
- * hammer_alist_alloc_from()
- *
- *	An extended version of hammer_alist_alloc() which locates free space
- *	starting at the specified block either forwards or backwards.
- *	HAMMER_ALIST_BLOCK_NONE is returned if space could not be allocated.
- *
- *	Note: when allocating from a particular point forwards space is never
- *	allocated behind that start point, and similarly when going backwards.
- */
-int32_t 
-hammer_alist_alloc_from(hammer_alist_t live, int32_t count, int32_t start)
-{
-}
-
-#endif
 
 /*
  * alist_free()
@@ -395,6 +408,18 @@ hammer_alist_free(hammer_alist_t live, int32_t blkno, int32_t count)
 				      bl->bl_radix, bl->bl_skip, 0);
 	}
 	live->meta->bm_alist_freeblks += count;
+}
+
+int
+hammer_alist_isfull(hammer_alist_t live)
+{
+	return(live->meta->bm_alist_freeblks == 0);
+}
+
+int
+hammer_alist_isempty(hammer_alist_t live)
+{
+	return(live->meta->bm_alist_freeblks == live->config->bl_radix);
 }
 
 #ifdef ALIST_DEBUG
@@ -439,9 +464,11 @@ hammer_alist_print(hammer_alist_t live, int tab)
  */
 
 static int32_t
-hammer_alst_leaf_alloc_fwd(hammer_almeta_t scan, int32_t blk, int count)
+hammer_alst_leaf_alloc_fwd(hammer_almeta_t scan, int32_t blk,
+			   int count, int32_t atblk)
 {
 	u_int32_t orig = scan->bm_bitmap;
+	int32_t saveblk = blk;
 
 	/*
 	 * Optimize bitmap all-allocated case.  Also, count = 1
@@ -453,8 +480,13 @@ hammer_alst_leaf_alloc_fwd(hammer_almeta_t scan, int32_t blk, int count)
 		return(HAMMER_ALIST_BLOCK_NONE);
 	}
 
+#if 0
 	/*
 	 * Optimized code to allocate one bit out of the bitmap
+	 *
+	 * mask iterates e.g. 00001111 00000011 00000001
+	 *
+	 * mask starts at 00001111
 	 */
 	if (count == 1) {
 		u_int32_t mask;
@@ -474,6 +506,7 @@ hammer_alst_leaf_alloc_fwd(hammer_almeta_t scan, int32_t blk, int count)
 		scan->bm_bitmap &= ~(1 << r);
 		return(blk + r);
 	}
+#endif
 
 	/*
 	 * non-optimized code to allocate N bits out of the bitmap.
@@ -494,18 +527,21 @@ hammer_alst_leaf_alloc_fwd(hammer_almeta_t scan, int32_t blk, int count)
 		mask = (u_int32_t)-1 >> n;
 
 		for (j = 0; j <= n; j += count) {
-			if ((orig & mask) == mask) {
+			if ((orig & mask) == mask && blk >= atblk) {
 				scan->bm_bitmap &= ~mask;
-				return(blk + j);
+				return(blk);
 			}
 			mask = mask << count;
+			blk += count;
 		}
 	}
 
 	/*
-	 * We couldn't allocate count in this subtree, update bighint.
+	 * We couldn't allocate count in this subtree, update bighint if
+	 * atblk didn't interfere with the hinting mechanism.
 	 */
-	scan->bm_bighint = count - 1;
+	if (saveblk >= atblk)
+		scan->bm_bighint = count - 1;
 	return(HAMMER_ALIST_BLOCK_NONE);
 }
 
@@ -513,9 +549,11 @@ hammer_alst_leaf_alloc_fwd(hammer_almeta_t scan, int32_t blk, int count)
  * This version allocates blocks in the reverse direction.
  */
 static int32_t
-hammer_alst_leaf_alloc_rev(hammer_almeta_t scan, int32_t blk, int count)
+hammer_alst_leaf_alloc_rev(hammer_almeta_t scan, int32_t blk,
+			   int count, int32_t atblk)
 {
 	u_int32_t orig = scan->bm_bitmap;
+	int32_t saveblk;
 
 	/*
 	 * Optimize bitmap all-allocated case.  Also, count = 1
@@ -527,6 +565,7 @@ hammer_alst_leaf_alloc_rev(hammer_almeta_t scan, int32_t blk, int count)
 		return(HAMMER_ALIST_BLOCK_NONE);
 	}
 
+#if 0
 	/*
 	 * Optimized code to allocate one bit out of the bitmap
 	 */
@@ -548,6 +587,7 @@ hammer_alst_leaf_alloc_rev(hammer_almeta_t scan, int32_t blk, int count)
 		scan->bm_bitmap &= ~(1 << r);
 		return(blk + r);
 	}
+#endif
 
 	/*
 	 * non-optimized code to allocate N bits out of the bitmap.
@@ -568,20 +608,25 @@ hammer_alst_leaf_alloc_rev(hammer_almeta_t scan, int32_t blk, int count)
 		u_int32_t mask;
 
 		mask = ((u_int32_t)-1 >> n) << n;
+		blk += n;
+		saveblk = blk;
 
 		for (j = n; j >= 0; j -= count) {
-			if ((orig & mask) == mask) {
+			if ((orig & mask) == mask && blk <= atblk) {
 				scan->bm_bitmap &= ~mask;
-				return(blk + j);
+				return(blk);
 			}
 			mask = mask >> count;
+			blk -= count;
 		}
 	}
 
 	/*
-	 * We couldn't allocate count in this subtree, update bighint.
+	 * We couldn't allocate count in this subtree, update bighint if
+	 * atblk didn't interfere with it.
 	 */
-	scan->bm_bighint = count - 1;
+	if (saveblk <= atblk)
+		scan->bm_bighint = count - 1;
 	return(HAMMER_ALIST_BLOCK_NONE);
 }
 
@@ -598,13 +643,14 @@ hammer_alst_leaf_alloc_rev(hammer_almeta_t scan, int32_t blk, int count)
 static int32_t
 hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 			   int32_t blk, int32_t count,
-			   int32_t radix, int skip
+			   int32_t radix, int skip, int32_t atblk
 ) {
 	hammer_alist_config_t bl;
-	int i;
 	u_int32_t mask;
 	u_int32_t pmask;
+	int32_t saveblk;
 	int next_skip;
+	int i;
 
 	/*
 	 * ALL-ALLOCATED special case
@@ -631,17 +677,20 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 	 */
 	if (count >= radix) {
 		int n = count / radix * 2;	/* number of bits */
+		int nd2 = n / 2;
 		int j;
 
 		mask = (u_int32_t)-1 >> (HAMMER_ALIST_BMAP_RADIX - n);
-		for (j = 0; j < HAMMER_ALIST_META_RADIX; j += n / 2) {
-			if ((scan->bm_bitmap & mask) == mask) {
+		saveblk = blk;
+		for (j = 0; j < HAMMER_ALIST_META_RADIX; j += nd2) {
+			if ((scan->bm_bitmap & mask) == mask && blk >= atblk) {
 				scan->bm_bitmap &= ~mask;
-				return(blk + j * radix);
+				return(blk);
 			}
 			mask <<= n;
+			blk += radix * nd2;
 		}
-		if (scan->bm_bighint >= count)
+		if (scan->bm_bighint >= count && saveblk >= atblk)
 			scan->bm_bighint = count >> 1;
 		return(HAMMER_ALIST_BLOCK_NONE);
 	}
@@ -650,6 +699,7 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 	 * If the count is too big we couldn't allocate anything from a
 	 * recursion even if the sub-tree were entirely free.
 	 */
+	saveblk = blk;
 	if (count > radix)
 		goto failed;
 
@@ -667,21 +717,22 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 		for (i = 0; i < HAMMER_ALIST_META_RADIX; ++i) {
 			/*
 			 * If the next layer is completely free then call
-			 * its init function to initialize it and mark it
-			 * partially free.
+			 * its init function to initialize it, then free
+			 * all of its blocks before trying to allocate from
+			 * it.
 			 *
 			 * bl_radix_init returns an error code or 0 on
 			 * success.
 			 */
-			if ((scan->bm_bitmap & mask) == mask) {
-				int32_t v;
-
-				v = bl->bl_blocks - blk;
-				if (v > radix)
-					v = radix;
-				if (bl->bl_radix_init(live->info, blk, radix, v) == 0) {
+			if ((scan->bm_bitmap & mask) == mask &&
+			    blk + radix > atblk) {
+				if (bl->bl_radix_init(live->info, blk, radix) == 0) {
+					int32_t empty;
 					scan->bm_bitmap &= ~mask;
 					scan->bm_bitmap |= pmask;
+					bl->bl_radix_free(live->info, blk,
+							  radix, 0, radix,
+							  &empty);
 				}
 			}
 
@@ -691,15 +742,19 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 			 * it is completely full then clear both bits to
 			 * propogate the condition.
 			 */
-			if ((scan->bm_bitmap & mask) == pmask) {
+			if ((scan->bm_bitmap & mask) == pmask &&
+			    blk + radix > atblk) {
 				int32_t r;
 				int32_t full;
 
 				r = bl->bl_radix_alloc_fwd(live->info, blk,
-							   radix, count, &full);
+							   radix, count, atblk,
+							   &full);
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
-					if (full)
+					if (full) {
 						scan->bm_bitmap &= ~mask;
+						bl->bl_radix_destroy(live->info, blk, radix);
+					}
 					return(r);
 				}
 			}
@@ -721,12 +776,18 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 				 */
 				break;
 			}
+
+			/*
+			 * Initialize bitmap if allocating from the all-free
+			 * case.
+			 */
 			if ((scan->bm_bitmap & mask) == mask) {
 				scan[i].bm_bitmap = (u_int32_t)-1;
 				scan[i].bm_bighint = radix;
 			}
 
-			if (count <= scan[i].bm_bighint) {
+			if (count <= scan[i].bm_bighint &&
+			    blk + radix > atblk) {
 				/*
 				 * count fits in object, recurse into the
 				 * next layer.  If the next_skip is 1 it
@@ -737,12 +798,12 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 
 				if (next_skip == 1 && bl->bl_terminal) {
 					r = hammer_alst_leaf_alloc_fwd(
-						&scan[i], blk, count);
+						&scan[i], blk, count, atblk);
 				} else {
 					r = hammer_alst_meta_alloc_fwd(
 						live, &scan[i],
 						blk, count,
-						radix, next_skip);
+						radix, next_skip, atblk);
 				}
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
 					if (scan[i].bm_bitmap == 0) {
@@ -764,7 +825,7 @@ failed:
 	/*
 	 * We couldn't allocate count in this subtree, update bighint.
 	 */
-	if (scan->bm_bighint >= count)
+	if (scan->bm_bighint >= count && saveblk >= atblk)
 		scan->bm_bighint = count >> 1;
 	return(HAMMER_ALIST_BLOCK_NONE);
 }
@@ -775,13 +836,14 @@ failed:
 static int32_t
 hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 			   int32_t blk, int32_t count,
-			   int32_t radix, int skip
+			   int32_t radix, int skip, int32_t atblk
 ) {
 	hammer_alist_config_t bl;
 	int i;
 	int j;
 	u_int32_t mask;
 	u_int32_t pmask;
+	int32_t saveblk;
 	int next_skip;
 
 	/*
@@ -809,6 +871,7 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 	 */
 	if (count >= radix) {
 		int n = count / radix * 2;	/* number of bits */
+		int nd2 = n / 2;		/* number of radi */
 		int j;
 
 		/*
@@ -816,14 +879,17 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 		 */
 		mask = (u_int32_t)-1 >> (HAMMER_ALIST_BMAP_RADIX - n) <<
 			(HAMMER_ALIST_BMAP_RADIX - n);
-		for (j = HAMMER_ALIST_META_RADIX - n / 2; j >= 0; j -= n / 2) {
-			if ((scan->bm_bitmap & mask) == mask) {
+		blk += (HAMMER_ALIST_META_RADIX - nd2) * radix;
+		saveblk = blk;
+		for (j = HAMMER_ALIST_META_RADIX - nd2; j >= 0; j -= nd2) {
+			if ((scan->bm_bitmap & mask) == mask && blk <= atblk) {
 				scan->bm_bitmap &= ~mask;
-				return(blk + j * radix);
+				return(blk);
 			}
 			mask >>= n;
+			blk -= nd2 * radix;
 		}
-		if (scan->bm_bighint >= count)
+		if (scan->bm_bighint >= count && saveblk <= atblk)
 			scan->bm_bighint = count >> 1;
 		return(HAMMER_ALIST_BLOCK_NONE);
 	}
@@ -832,8 +898,10 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 	 * If the count is too big we couldn't allocate anything from a
 	 * recursion even if the sub-tree were entirely free.
 	 */
-	if (count > radix)
-		goto failed;
+	if (count > radix) {
+		saveblk = atblk;	/* make it work for the conditional */
+		goto failed;		/* at the failed label */
+	}
 
 	if (skip == 1) {
 		/*
@@ -843,6 +911,7 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 		mask = 0xC0000000;
 		pmask = 0x40000000;
 		blk += radix * HAMMER_ALIST_META_RADIX - radix;
+		saveblk = blk;
 
 		for (i = 0; i < HAMMER_ALIST_META_RADIX; ++i) {
 			/*
@@ -850,15 +919,14 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 			 * its init function to initialize it and mark it
 			 * partially free.
 			 */
-			if ((scan->bm_bitmap & mask) == mask) {
-				int32_t v;
-
-				v = bl->bl_blocks - blk;
-				if (v > radix)
-					v = radix;
-				if (bl->bl_radix_init(live->info, blk, radix, v) == 0) {
+			if ((scan->bm_bitmap & mask) == mask && blk <= atblk) {
+				if (bl->bl_radix_init(live->info, blk, radix) == 0) {
+					int32_t empty;
 					scan->bm_bitmap &= ~mask;
 					scan->bm_bitmap |= pmask;
+					bl->bl_radix_free(live->info, blk,
+							  radix, 0, radix,
+							  &empty);
 				}
 			}
 
@@ -868,15 +936,18 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 			 * it is completely full then clear both bits to
 			 * propogate the condition.
 			 */
-			if ((scan->bm_bitmap & mask) == pmask) {
+			if ((scan->bm_bitmap & mask) == pmask && blk <= atblk) {
 				int32_t r;
 				int32_t full;
 
 				r = bl->bl_radix_alloc_rev(live->info, blk,
-							   radix, count, &full);
+							   radix, count,
+							   atblk, &full);
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
-					if (full)
+					if (full) {
 						scan->bm_bitmap &= ~mask;
+						bl->bl_radix_destroy(live->info, blk, radix);
+					}
 					return(r);
 				}
 			}
@@ -895,9 +966,11 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 		 */
 		next_skip = (skip - 1) / HAMMER_ALIST_META_RADIX;
 		j = 0;
-		for (i = 1; i <= skip; i += next_skip) {
-			if (scan[i].bm_bighint == (int32_t)-1)
+		for (i = 1; i < skip; i += next_skip) {
+			if (scan[i].bm_bighint == (int32_t)-1) {
+				KKASSERT(j != 0);
 				break;
+			}
 			blk += radix;
 			j += 2;
 		}
@@ -906,6 +979,7 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 		mask = 0x00000003 << j;
 		pmask = 0x00000001 << j;
 		i -= next_skip;
+		saveblk = blk;
 
 		while (i >= 1) {
 			/*
@@ -921,19 +995,19 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 			 * Handle various count cases.  Bighint may be too
 			 * large but is never too small.
 			 */
-			if (count <= scan[i].bm_bighint) {
+			if (count <= scan[i].bm_bighint && blk <= atblk) {
 				/*
 				 * count fits in object
 				 */
 				int32_t r;
 				if (next_skip == 1 && bl->bl_terminal) {
 					r = hammer_alst_leaf_alloc_rev(
-						&scan[i], blk, count);
+						&scan[i], blk, count, atblk);
 				} else {
 					r = hammer_alst_meta_alloc_rev(
 						live, &scan[i],
 						blk, count,
-						radix, next_skip);
+						radix, next_skip, atblk);
 				}
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
 					if (scan[i].bm_bitmap == 0) {
@@ -944,12 +1018,6 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 					}
 					return(r);
 				}
-			} else if (count > radix) {
-				/*
-				 * count does not fit in object even if it were
-				 * completely free.
-				 */
-				break;
 			}
 			blk -= radix;
 			mask >>= 2;
@@ -964,7 +1032,7 @@ failed:
 	 * Since we are restricted to powers of 2, the next highest count
 	 * we might be able to allocate is (count >> 1).
 	 */
-	if (scan->bm_bighint >= count)
+	if (scan->bm_bighint >= count && saveblk <= atblk)
 		scan->bm_bighint = count >> 1;
 	return(HAMMER_ALIST_BLOCK_NONE);
 }
@@ -1059,22 +1127,39 @@ hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 
 			if (freeBlk == blk && count >= radix) {
 				/*
-				 * All-free case, no need to update sub-tree
+				 * When the sub-tree becomes entirely free
+				 * we have to destroy it if it was previously
+				 * partially allocated.  If it was previously
+				 * fully allocated it has already been
+				 * destroyed (or never inited in the first
+				 * place).
 				 */
+				int32_t empty;
+
+				if ((scan->bm_bitmap & mask) != 0) {
+					bl->bl_radix_free(live->info, blk, radix,
+							  freeBlk - blk, v, &empty);
+					bl->bl_radix_destroy(live->info, blk, radix);
+				}
 				scan->bm_bitmap |= mask;
 				scan->bm_bighint = radix * HAMMER_ALIST_META_RADIX;
 				/* XXX bighint not being set properly */
 			} else {
 				/*
-				 * Recursion case
+				 * Recursion case.  If freeing from an 
+				 * all-allocated state init the sub-tree
+				 * first.
 				 */
 				int32_t empty;
 
-				bl->bl_radix_free(live->info, freeBlk, v,
-						  radix, blk, &empty);
+				if ((scan->bm_bitmap & mask) == 0)
+					bl->bl_radix_init(live->info, blk, radix);
+				bl->bl_radix_free(live->info, blk, radix,
+						  freeBlk - blk, v, &empty);
 				if (empty) {
 					scan->bm_bitmap |= mask;
 					scan->bm_bighint = radix * HAMMER_ALIST_META_RADIX;
+					bl->bl_radix_destroy(live->info, blk, radix);
 					/* XXX bighint not being set properly */
 				} else {
 					scan->bm_bitmap |= pmask;
@@ -1366,62 +1451,76 @@ static int32_t layer_radix = -1;
 
 static
 int
-debug_radix_init(void *info, int32_t blk, int32_t radix, int32_t count)
+debug_radix_init(void *info, int32_t blk, int32_t radix)
 {
 	hammer_alist_t layer;
 	int layer_no = blk / layer_radix;
 
-	printf("lower layer: init (%04x,%d) for %d blks\n", blk, radix, count);
+	printf("lower layer: init (%04x,%d)\n", blk, radix);
 	KKASSERT(layers[layer_no] == NULL);
-	layer = layers[layer_no] = hammer_alist_create(count, 1, NULL); 
-	hammer_alist_free(layer, 0, count);
+	layer = layers[layer_no] = hammer_alist_create(radix, 1, NULL); 
 	return(0);
 }
 
 static
+int
+debug_radix_destroy(void *info, int32_t blk, int32_t radix)
+{
+	hammer_alist_t layer;
+	int layer_no = blk / layer_radix;
+
+	printf("lower layer: destroy (%04x,%d)\n", blk, radix);
+	layer = layers[layer_no];
+	KKASSERT(layer != NULL);
+	hammer_alist_destroy(layer, NULL);
+	layers[layer_no] = NULL;
+	return(0);
+}
+
+
+static
 int32_t
 debug_radix_alloc_fwd(void *info, int32_t blk, int32_t radix,
-		      int32_t count, int32_t *fullp)
+		      int32_t count, int32_t atblk, int32_t *fullp)
 {
 	hammer_alist_t layer = layers[blk / layer_radix];
+	int32_t r;
 
-	return(hammer_alist_alloc(layer, count));
+	r = hammer_alist_alloc_fwd(layer, count, atblk - blk);
+	*fullp = (layer->meta->bm_alist_freeblks == 0);
+	if (r != HAMMER_ALIST_BLOCK_NONE)
+		r += blk;
+	return(r);
 }
 
 static
 int32_t
 debug_radix_alloc_rev(void *info, int32_t blk, int32_t radix,
-		      int32_t count, int32_t *fullp)
+		      int32_t count, int32_t atblk, int32_t *fullp)
 {
 	hammer_alist_t layer = layers[blk / layer_radix];
+	int32_t r;
 
-	blk = hammer_alist_alloc_rev(layer, count);
+	r = hammer_alist_alloc_rev(layer, count, atblk - blk);
 	*fullp = (layer->meta->bm_alist_freeblks == 0);
-	if (*fullp) {
-		hammer_alist_destroy(layer, NULL);
-		layers[blk / layer_radix] = NULL;
-	}
-	return(blk);
+	if (r != HAMMER_ALIST_BLOCK_NONE)
+		r += blk;
+	return(r);
 }
 
 static
 void
-debug_radix_free(void *info, int32_t freeBlk, int32_t count,
-		 int32_t radix, int32_t blk, int32_t *emptyp)
+debug_radix_free(void *info, int32_t blk, int32_t radix,
+		 int32_t base_blk, int32_t count, int32_t *emptyp)
 {
 	int layer_no = blk / layer_radix;
 	hammer_alist_t layer = layers[layer_no];
 
 	if (layer == NULL) {
-		/*
-		 * XXX layer_radix isn't correct if the total number
-		 * of blocks only partially fills this layer.  Don't
-		 * worry about it.
-		 */
 		layer = hammer_alist_create(layer_radix, 1, NULL); 
 		layers[layer_no] = layer;
 	}
-	hammer_alist_free(layer, freeBlk - blk, count);
+	hammer_alist_free(layer, base_blk, count);
 	*emptyp = (layer->meta->bm_alist_freeblks == layer_radix);
 }
 
@@ -1478,6 +1577,7 @@ main(int ac, char **av)
 		size, live->config->bl_radix / layer_radix, layer_radix);
 
 	live->config->bl_radix_init = debug_radix_init;
+	live->config->bl_radix_destroy = debug_radix_destroy;
 	live->config->bl_radix_alloc_fwd = debug_radix_alloc_fwd;
 	live->config->bl_radix_alloc_rev = debug_radix_alloc_rev;
 	live->config->bl_radix_free = debug_radix_free;
@@ -1489,6 +1589,7 @@ main(int ac, char **av)
 		char buf[1024];
 		int32_t da = 0;
 		int32_t count = 0;
+		int32_t atblk;
 		int32_t blk;
 
 		kprintf("%d/%d> ",
@@ -1501,16 +1602,17 @@ main(int ac, char **av)
 			hammer_alist_print(live, 0);
 			break;
 		case 'a':
-			if (sscanf(buf + 1, "%d", &count) == 1) {
-				blk = hammer_alist_alloc(live, count);
+			if (sscanf(buf + 1, "%d %d", &count, &atblk) >= 1) {
+				blk = hammer_alist_alloc_fwd(live, count, atblk);
 				kprintf("    R=%04x\n", blk);
 			} else {
 				kprintf("?\n");
 			}
 			break;
 		case 'r':
-			if (sscanf(buf + 1, "%d", &count) == 1) {
-				blk = hammer_alist_alloc_rev(live, count);
+			atblk = HAMMER_ALIST_BLOCK_MAX;
+			if (sscanf(buf + 1, "%d %d", &count, &atblk) >= 1) {
+				blk = hammer_alist_alloc_rev(live, count, atblk);
 				kprintf("    R=%04x\n", blk);
 			} else {
 				kprintf("?\n");

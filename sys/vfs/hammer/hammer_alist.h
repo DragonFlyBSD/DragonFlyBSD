@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.1 2007/10/12 18:57:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.2 2007/10/16 18:16:42 dillon Exp $
  */
 
 /*
@@ -79,14 +79,16 @@ typedef struct hammer_alist_config {
 	int32_t	bl_skip;	/* starting skip for linear layout */
 	int32_t bl_rootblks;	/* meta-blocks allocated for tree */
 	int32_t bl_terminal;	/* terminal alist, else layer recursion */
-	int	(*bl_radix_init)(void *info, int32_t blk, int32_t radix,
-					int32_t count);
+	int	(*bl_radix_init)(void *info, int32_t blk, int32_t radix);
+	int	(*bl_radix_destroy)(void *info, int32_t blk, int32_t radix);
 	int32_t (*bl_radix_alloc_fwd)(void *info, int32_t blk, int32_t radix,
-					int32_t count, int32_t *fullp);
+					int32_t count, int32_t atblk,
+					int32_t *fullp);
 	int32_t (*bl_radix_alloc_rev)(void *info, int32_t blk, int32_t radix,
-					int32_t count, int32_t *fullp);
-	void	(*bl_radix_free)(void *info, int32_t freeBlk, int32_t count,
-					int32_t radix, int32_t blk,
+					int32_t count, int32_t atblk,
+					int32_t *fullp);
+	void	(*bl_radix_free)(void *info, int32_t blk, int32_t radix,
+					int32_t base_blk, int32_t count,
 					int32_t *emptyp);
 	void	(*bl_radix_print)(void *info, int32_t blk, int32_t radix,
 					int tab);
@@ -104,6 +106,7 @@ typedef struct hammer_alist_live {
 #define HAMMER_ALIST_META_RADIX	(sizeof(int32_t) * 4)   /* 16 */
 #define HAMMER_ALIST_BMAP_RADIX	(sizeof(int32_t) * 8)   /* 32 */
 #define HAMMER_ALIST_BLOCK_NONE	((int32_t)-1)
+#define HAMMER_ALIST_BLOCK_MAX	((int32_t)0x7fffffff)
 
 /*
  * Hard-code some pre-calculated constants for managing varying numbers
@@ -115,4 +118,19 @@ typedef struct hammer_alist_live {
 
 #define HAMMER_ALIST_METAELMS_4K_1LYR	139
 #define HAMMER_ALIST_METAELMS_4K_2LYR	275
+
+/*
+ * Function library support available to kernel and userland
+ */
+void hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
+                           int32_t base_radix, int32_t maxmeta);
+void hammer_alist_init(hammer_alist_t live);
+int32_t hammer_alist_alloc(hammer_alist_t live, int32_t count);
+int32_t hammer_alist_alloc_fwd(hammer_alist_t live,
+			   int32_t count, int32_t atblk);
+int32_t hammer_alist_alloc_rev(hammer_alist_t live,
+			   int32_t count, int32_t atblk);
+int hammer_alist_isfull(hammer_alist_t live);
+int hammer_alist_isempty(hammer_alist_t live);
+void hammer_alist_free(hammer_alist_t live, int32_t blkno, int32_t count);
 
