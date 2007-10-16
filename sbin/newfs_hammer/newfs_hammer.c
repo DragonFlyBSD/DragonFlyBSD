@@ -31,77 +31,45 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.1 2007/10/10 19:35:53 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.2 2007/10/16 18:30:53 dillon Exp $
  */
 
-#include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <vfs/hammer/hammerfs.h>
+#include "newfs_hammer.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <uuid.h>
-#include <assert.h>
-
-struct vol_info {
-	const char *name;
-	int volno;
-	int fd;
-	off_t size;
-	const char *type;
-} *VolInfoArray;
-
-uint32_t crc32(const void *buf, size_t size);
-
-static void usage(void);
-static void check_volume(struct vol_info *info);
-static void format_volume(struct vol_info *info, int nvols, uuid_t *fsid,
-		const char *label, int32_t clsize);
-static int32_t format_cluster(struct vol_info *info,
-		struct hammer_volume_ondisk *vol, int isroot);
-static void format_root(struct vol_info *info,
-		struct hammer_volume_ondisk *vol,
-		struct hammer_cluster_ondisk *cl,
-		struct hammer_fsbuf_recs *recbuf,
-		struct hammer_fsbuf_data *databuf,
-		int recoff, int dataoff);
+static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(off_t size);
-static int64_t getsize(const char *str, int64_t minval, int64_t maxval);
-static hammer_tid_t createtid(void);
-#if 0
-static void add_record(struct vol_info *info, struct hammer_volume_ondisk *vol,
-	       struct hammer_cluster_ondisk *cl, hammer_record_t rec,
-	       void *data, int bytes);
-#endif
+static void check_volume(struct volume_info *vol);
+static void format_volume(struct volume_info *vol, int nvols,const char *label);
+static int32_t format_cluster(struct volume_info *vol, int isroot);
+static void format_root(struct cluster_info *cluster);
+static void usage(void);
 
+struct hammer_alist_config Buf_alist_config;
+struct hammer_alist_config Vol_normal_alist_config;
+struct hammer_alist_config Vol_super_alist_config;
+struct hammer_alist_config Supercl_alist_config;
+struct hammer_alist_config Clu_master_alist_config;
+struct hammer_alist_config Clu_slave_alist_config;
 uuid_t Hammer_FSType;
-struct hammer_alist Buf_alist;
-struct hammer_alist Vol_alist;
-struct hammer_alist Clu_alist;
+uuid_t Hammer_FSId;
+int32_t ClusterSize;
+int	UsingSuperClusters;
+int	NumVolumes;
+struct volume_info *VolBase;
 
 int
 main(int ac, char **av)
 {
 	int i;
 	int ch;
-	int nvols;
-	uuid_t fsid;
-	int32_t clsize;
 	u_int32_t status;
 	off_t total;
+	int64_t max_volume_size;
 	const char *label = NULL;
 
 	/*
-	 * Sanity check basic filesystem structures
+	 * Sanity check basic filesystem structures.  No cookies for us
+	 * if it gets broken!
 	 */
 	assert(sizeof(struct hammer_almeta) == HAMMER_ALMETA_SIZE);
 	assert(sizeof(struct hammer_fsbuf_head) == HAMMER_FSBUF_HEAD_SIZE);
@@ -110,47 +78,55 @@ main(int ac, char **av)
 	assert(sizeof(struct hammer_fsbuf_data) == HAMMER_BUFSIZE);
 	assert(sizeof(struct hammer_fsbuf_recs) == HAMMER_BUFSIZE);
 	assert(sizeof(struct hammer_fsbuf_btree) == HAMMER_BUFSIZE);
-
-	clsize = 0;
+	assert(sizeof(union hammer_fsbuf_ondisk) == HAMMER_BUFSIZE);
 
 	/*
 	 * Generate a filesysem id and lookup the filesystem type
 	 */
-	uuidgen(&fsid, 1);
+	uuidgen(&Hammer_FSId, 1);
 	uuid_name_lookup(&Hammer_FSType, "DragonFly HAMMER", &status);
 	if (status != uuid_s_ok) {
-		fprintf(stderr, "uuids file does not have the DragonFly HAMMER filesystem type\n");
-		exit(1);
+		errx(1, "uuids file does not have the DragonFly "
+			"HAMMER filesystem type");
 	}
 
 	/*
 	 * Initialize the alist templates we will be using
 	 */
-	hammer_alist_template(&Buf_alist,
-			      HAMMER_FSBUF_MAXBLKS, HAMMER_FSBUF_METAELMS);
-	hammer_alist_template(&Vol_alist,
-			      HAMMER_VOL_MAXCLUSTERS, HAMMER_VOL_METAELMS);
-	hammer_alist_template(&Clu_alist,
-			      HAMMER_CLU_MAXBUFFERS, HAMMER_CLU_METAELMS);
+	hammer_alist_template(&Buf_alist_config, HAMMER_FSBUF_MAXBLKS,
+			      1, HAMMER_FSBUF_METAELMS);
+	hammer_alist_template(&Vol_normal_alist_config, HAMMER_VOL_MAXCLUSTERS,
+			      1, HAMMER_VOL_METAELMS_1LYR);
+	hammer_alist_template(&Vol_super_alist_config,
+			      HAMMER_VOL_MAXSUPERCLUSTERS,
+			      HAMMER_SCL_MAXCLUSTERS, HAMMER_VOL_METAELMS_2LYR);
+	hammer_super_alist_template(&Vol_super_alist_config);
+	hammer_alist_template(&Supercl_alist_config, HAMMER_VOL_MAXCLUSTERS,
+			      1, HAMMER_SUPERCL_METAELMS);
+	hammer_alist_template(&Clu_master_alist_config, HAMMER_CLU_MAXBUFFERS,
+			      1, HAMMER_CLU_MASTER_METAELMS);
+	hammer_alist_template(&Clu_slave_alist_config, HAMMER_CLU_MAXBUFFERS,
+			      HAMMER_FSBUF_MAXBLKS, HAMMER_CLU_SLAVE_METAELMS);
+	hammer_buffer_alist_template(&Clu_slave_alist_config);
 
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "L:s:")) != -1) {
+	while ((ch = getopt(ac, av, "L:s:S")) != -1) {
 		switch(ch) {
 		case 'L':
 			label = optarg;
 			break;
 		case 's':
-			/*
-			 * The cluster's size is limited by type chunking and
-			 * A-List limitations.  Each chunk must be at least
-			 * HAMMER_BUFSIZE and the A-List cannot accomodate
-			 * more then 32768 buffers.
-			 */
-			clsize = getsize(optarg, 
+			ClusterSize = getsize(optarg, 
 					 HAMMER_BUFSIZE * 256LL,
-					 HAMMER_BUFSIZE * 32768LL);
+					 HAMMER_CLU_MAXBYTES, 1);
+			break;
+		case 'S':
+			/*
+			 * Force the use of super-clusters
+			 */
+			UsingSuperClusters = 1;
 			break;
 		default:
 			usage();
@@ -169,46 +145,66 @@ main(int ac, char **av)
 	 */
 	ac -= optind;
 	av += optind;
-	nvols = ac;
+	NumVolumes = ac;
 
-	VolInfoArray = malloc(sizeof(*VolInfoArray) * nvols);
 	total = 0;
-	for (i = 0; i < nvols; ++i) {
-		VolInfoArray[i].name = av[i];
-		VolInfoArray[i].volno = i;
-		check_volume(&VolInfoArray[i]);
-		total += VolInfoArray[i].size;
+	for (i = 0; i < NumVolumes; ++i) {
+		struct volume_info *vol;
+
+		vol = calloc(1, sizeof(struct volume_info));
+		vol->fd = -1;
+		vol->vol_no = i;
+		vol->name = av[i];
+		vol->next = VolBase;
+		VolBase = vol;
+
+		/*
+		 * Load up information on the volume and initialize
+		 * its remaining fields.
+		 */
+		check_volume(vol);
+		total += vol->size;
 	}
 
 	/*
-	 * Calculate the size of a cluster (clsize).  A cluster is broken
+	 * Calculate the size of a cluster.  A cluster is broken
 	 * down into 256 chunks which must be at least filesystem buffer
 	 * sized.  This gives us a minimum chunk size of around 4MB.
 	 */
-	if (clsize == 0) {
-		clsize = HAMMER_BUFSIZE * 256;
-		while (clsize < total / nvols / 256 && clsize < 0x80000000U) {
-			clsize <<= 1;
+	if (ClusterSize == 0) {
+		ClusterSize = HAMMER_BUFSIZE * 256;
+		while (ClusterSize < total / NumVolumes / 256 &&
+		       ClusterSize < HAMMER_CLU_MAXBYTES) {
+			ClusterSize <<= 1;
 		}
 	}
 
 	printf("---------------------------------------------\n");
 	printf("%d volume%s total size %s\n",
-		nvols, (nvols == 1 ? "" : "s"), sizetostr(total));
-	printf("cluster-size:        %s\n", sizetostr(clsize));
-	printf("max-volume-size:     %s\n",
-		sizetostr((int64_t)clsize * 32768LL));
+		NumVolumes, (NumVolumes == 1 ? "" : "s"), sizetostr(total));
+	printf("cluster-size:        %s\n", sizetostr(ClusterSize));
+
+	if (UsingSuperClusters) {
+		max_volume_size = (int64_t)HAMMER_VOL_MAXSUPERCLUSTERS * \
+				  HAMMER_SCL_MAXCLUSTERS * ClusterSize;
+	} else {
+		max_volume_size = (int64_t)HAMMER_VOL_MAXCLUSTERS * ClusterSize;
+	}
+	printf("max-volume-size:     %s\n", sizetostr(max_volume_size));
+
 	printf("max-filesystem-size: %s\n",
-		sizetostr((int64_t)clsize * 32768LL * 32768LL));
+	       (max_volume_size * 32768LL < max_volume_size) ?
+	       "Unlimited" :
+	       sizetostr(max_volume_size * 32768LL));
 	printf("\n");
 
 	/*
-	 * Format volumes.  Format the root volume last so vol0_nexttid
-	 * represents the next TID globally.
+	 * Format the volumes.
 	 */
-	for (i = nvols - 1; i >= 0; --i) {
-		format_volume(&VolInfoArray[i], nvols, &fsid, label, clsize);
+	for (i = 0; i < NumVolumes; ++i) {
+		format_volume(get_volume(i), NumVolumes, label);
 	}
+	flush_all_volumes();
 	return(0);
 }
 
@@ -246,8 +242,11 @@ sizetostr(off_t size)
 	return(buf);
 }
 
+/*
+ * Convert a string to a 64 bit signed integer with various requirements.
+ */
 static int64_t
-getsize(const char *str, int64_t minval, int64_t maxval)
+getsize(const char *str, int64_t minval, int64_t maxval, int powerof2)
 {
 	int64_t val;
 	char *ptr;
@@ -271,26 +270,33 @@ getsize(const char *str, int64_t minval, int64_t maxval)
 		val *= 1024;
 		break;
 	default:
-		fprintf(stderr, "Unknown suffix in number '%s'\n", str);
-		exit(1);
+		errx(1, "Unknown suffix in number '%s'\n", str);
+		/* not reached */
 	}
 	if (ptr[1]) {
-		fprintf(stderr, "Unknown suffix in number '%s'\n", str);
-		exit(1);
+		errx(1, "Unknown suffix in number '%s'\n", str);
+		/* not reached */
 	}
 	if (val < minval) {
-		fprintf(stderr, "Value too small: %s, min is %s\n",
-			str, sizetostr(minval));
-		exit(1);
+		errx(1, "Value too small: %s, min is %s\n",
+		     str, sizetostr(minval));
+		/* not reached */
 	}
 	if (val > maxval) {
-		fprintf(stderr, "Value too large: %s, max is %s\n",
-			str, sizetostr(maxval));
-		exit(1);
+		errx(1, "Value too large: %s, max is %s\n",
+		     str, sizetostr(maxval));
+		/* not reached */
+	}
+	if (powerof2 && (val ^ (val - 1)) != ((val << 1) - 1)) {
+		errx(1, "Value not power of 2: %s\n", str);
+		/* not reached */
 	}
 	return(val);
 }
 
+/*
+ * Generate a transaction id
+ */
 static hammer_tid_t
 createtid(void)
 {
@@ -305,111 +311,13 @@ createtid(void)
 	return(lasttid++);
 }
 
-static void *
-allocbuffer(u_int64_t type)
-{
-	hammer_fsbuf_head_t head;
-
-	head = malloc(HAMMER_BUFSIZE);
-	bzero(head, HAMMER_BUFSIZE);
-	head->buf_type = type;
-
-	/*
-	 * Filesystem buffer alist.  The alist starts life in an
-	 * all-allocated state.  The alist will be in-band or out-of-band
-	 * depending on the type of buffer and the number of blocks under
-	 * management will also depend on the type of buffer.
-	 */
-	hammer_alist_init(&Buf_alist, head->buf_almeta);
-	/* crc is set on writeout */
-	return(head);
-}
-
-static void *
-allocindexbuffer(struct vol_info *info, struct hammer_volume_ondisk *vol,
-		 struct hammer_cluster_ondisk *cl, int64_t cloff, int64_t *poff)
-{
-	hammer_fsbuf_head_t head;
-	int32_t clno;
-
-	head = allocbuffer(HAMMER_FSBUF_BTREE);
-	clno = hammer_alist_alloc(&Clu_alist, cl->clu_almeta, 1);
-	assert(clno != HAMMER_ALIST_BLOCK_NONE);
-	*poff = cloff + clno * HAMMER_BUFSIZE;
-
-	/*
-	 * Setup the allocation space for b-tree nodes
-	 */
-	hammer_alist_free(&Buf_alist, head->buf_almeta,
-			  0, HAMMER_BTREE_NODES - 1);
-	return(head);
-}
-
-static void *
-allocrecbuffer(struct vol_info *info, struct hammer_volume_ondisk *vol,
-	       struct hammer_cluster_ondisk *cl, int64_t cloff, int64_t *poff)
-{
-	hammer_fsbuf_head_t head;
-	int32_t clno;
-
-	head = allocbuffer(HAMMER_FSBUF_RECORDS);
-	clno = hammer_alist_alloc_rev(&Clu_alist, cl->clu_almeta, 1);
-	assert(clno != HAMMER_ALIST_BLOCK_NONE);
-	*poff = cloff + clno * HAMMER_BUFSIZE;
-
-	/*
-	 * Setup the allocation space for records nodes
-	 */
-	hammer_alist_free(&Buf_alist, head->buf_almeta,
-			  0, HAMMER_RECORD_NODES - 1);
-	return(head);
-}
-
-static void *
-allocdatabuffer(struct vol_info *info, struct hammer_volume_ondisk *vol,
-	       struct hammer_cluster_ondisk *cl, int64_t cloff, int64_t *poff)
-{
-	hammer_fsbuf_head_t head;
-	int32_t clno;
-
-	head = allocbuffer(HAMMER_FSBUF_DATA);
-	clno = hammer_alist_alloc_rev(&Clu_alist, cl->clu_almeta, 1);
-	assert(clno != HAMMER_ALIST_BLOCK_NONE);
-	*poff = cloff + clno * HAMMER_BUFSIZE;
-
-	/*
-	 * Setup the allocation space for piecemeal data
-	 */
-	hammer_alist_free(&Buf_alist, head->buf_almeta,
-			  0, HAMMER_DATA_NODES - 1);
-	return(head);
-}
-
-static void
-writebuffer(struct vol_info *info, int64_t offset, hammer_fsbuf_head_t buf)
-{
-	buf->buf_crc = 0;
-	buf->buf_crc = crc32(buf, HAMMER_BUFSIZE);
-
-	if (lseek(info->fd, offset, 0) < 0) {
-		fprintf(stderr, "volume %d seek failed: %s\n", info->volno,
-			strerror(errno));
-		exit(1);
-	}
-	if (write(info->fd, buf, HAMMER_BUFSIZE) != HAMMER_BUFSIZE) {
-		fprintf(stderr, "volume %d write failed @%016llx: %s\n",
-			info->volno, offset, strerror(errno));
-		exit(1);
-	}
-}
-
 /*
  * Check basic volume characteristics.  HAMMER filesystems use a minimum
  * of a 16KB filesystem buffer size.
  */
 static
 void
-check_volume(struct vol_info *info)
+check_volume(struct volume_info *vol)
 {
 	struct partinfo pinfo;
 	struct stat st;
@@ -417,23 +325,17 @@ check_volume(struct vol_info *info)
 	/*
 	 * Get basic information about the volume
 	 */
-	info->fd = open(info->name, O_RDWR);
-	if (info->fd < 0) {
-		fprintf(stderr, "Unable to open %s R+W: %s\n",
-			info->name, strerror(errno));
-		exit(1);
-	}
-	if (ioctl(info->fd, DIOCGPART, &pinfo) < 0) {
+	vol->fd = open(vol->name, O_RDWR);
+	if (vol->fd < 0)
+		err(1, "Unable to open %s R+W", vol->name);
+	if (ioctl(vol->fd, DIOCGPART, &pinfo) < 0) {
 		/*
 		 * Allow the formatting of regular filews as HAMMER volumes
 		 */
-		if (fstat(info->fd, &st) < 0) {
-			fprintf(stderr, "Unable to stat %s: %s\n",
-				info->name, strerror(errno));
-			exit(1);
-		}
-		info->size = st.st_size;
-		info->type = "REGFILE";
+		if (fstat(vol->fd, &st) < 0)
+			err(1, "Unable to stat %s", vol->name);
+		vol->size = st.st_size;
+		vol->type = "REGFILE";
 	} else {
 		/*
 		 * When formatting a block device as a HAMMER volume the
@@ -441,21 +343,37 @@ check_volume(struct vol_info *info)
 		 * filesystem buffers.
 		 */
 		if (pinfo.reserved_blocks) {
-			fprintf(stderr, "HAMMER cannot be placed in a partition which overlaps the disklabel or MBR\n");
-			exit(1);
+			errx(1, "HAMMER cannot be placed in a partition "
+				"which overlaps the disklabel or MBR");
 		}
 		if (pinfo.media_blksize > 16384 ||
 		    16384 % pinfo.media_blksize) {
-			fprintf(stderr, "A media sector size of %d is not supported\n", pinfo.media_blksize);
-			exit(1);
+			errx(1, "A media sector size of %d is not supported",
+			     pinfo.media_blksize);
 		}
 
-		info->size = pinfo.media_size;
-		info->type = "DEVICE";
+		vol->size = pinfo.media_size;
+		vol->type = "DEVICE";
 	}
-	printf("volume %d %s %-15s size %s\n",
-	       info->volno, info->type, info->name,
-	       sizetostr(info->size));
+	printf("Volume %d %s %-15s size %s\n",
+	       vol->vol_no, vol->type, vol->name,
+	       sizetostr(vol->size));
+
+	/*
+	 * Strictly speaking we do not need to enable super clusters unless
+	 * we have volumes > 2TB, but turning them on doesn't really hurt
+	 * and if we don't the user may get confused if he tries to expand
+	 * the size of an existing volume.
+	 */
+	if (vol->size > 200LL * 1024 * 1024 * 1024 && !UsingSuperClusters) {
+		UsingSuperClusters = 1;
+		printf("Enabling super-clusters\n");
+	}
+
+	/*
+	 * Reserve space for (future) boot junk
+	 */
+	vol->vol_cluster_off = HAMMER_BUFSIZE * 16;
 }
 
 /*
@@ -463,63 +381,113 @@ check_volume(struct vol_info *info)
  */
 static
 void
-format_volume(struct vol_info *info, int nvols, uuid_t *fsid,
-	      const char *label, int32_t clsize)
+format_volume(struct volume_info *vol, int nvols, const char *label)
 {
-	struct hammer_volume_ondisk *vol;
+	struct hammer_volume_ondisk *ondisk;
 	int32_t nclusters;
 	int32_t minclsize;
+	int32_t nscl_groups;
+	int64_t scl_group_size;
+	int64_t scl_header_size;
+	int64_t n64;
 
-	minclsize = clsize / 2;
+	/*
+	 * The last cluster in a volume may wind up truncated.  It must be
+	 * at least minclsize to really be workable as a cluster.
+	 */
+	minclsize = ClusterSize / 4;
+	if (minclsize < HAMMER_BUFSIZE * 64)
+		minclsize = HAMMER_BUFSIZE * 64;
 
-	vol = allocbuffer(HAMMER_FSBUF_VOLUME);
+	/*
+	 * Initialize basic information in the on-disk volume structure.
+	 */
+	ondisk = vol->ondisk;
 
-	vol->vol_fsid = *fsid;
-	vol->vol_fstype = Hammer_FSType;
-	snprintf(vol->vol_name, sizeof(vol->vol_name), "%s", label);
-	vol->vol_no = info->volno;
-	vol->vol_count = nvols;
-	vol->vol_version = 1;
-	vol->vol_clsize = clsize;
-	vol->vol_flags = 0;
+	ondisk->vol_fsid = Hammer_FSId;
+	ondisk->vol_fstype = Hammer_FSType;
+	snprintf(ondisk->vol_name, sizeof(ondisk->vol_name), "%s", label);
+	ondisk->vol_no = vol->vol_no;
+	ondisk->vol_count = nvols;
+	ondisk->vol_version = 1;
+	ondisk->vol_clsize = ClusterSize;
+	if (UsingSuperClusters) {
+		ondisk->vol_flags = HAMMER_VOLF_SUPERCL_ENABLE |
+				    HAMMER_VOLF_SUPERCL_RESERVE;
+	}
 
-	vol->vol_beg = HAMMER_BUFSIZE;
-	vol->vol_end = info->size;
+	ondisk->vol_beg = vol->vol_cluster_off;
+	ondisk->vol_end = vol->size;
 
-	if (vol->vol_end < vol->vol_beg) {
-		printf("volume %d %s is too small to hold the volume header\n",
-		       info->volno, info->name);
-		exit(1);
+	if (ondisk->vol_end < ondisk->vol_beg) {
+		errx(1, "volume %d %s is too small to hold the volume header",
+		     vol->vol_no, vol->name);
 	}
 
 	/*
-	 * Out-of-band volume alist - manage clusters within the volume.
+	 * Our A-lists have been initialized but are marked all-allocated.
+	 * Calculate the actual number of clusters in the volume and free
+	 * them to get the filesystem ready for work.  The clusters will
+	 * be initialized on-demand.
+	 *
+	 * If using super-clusters we must still calculate nclusters but
+	 * we only need to initialize superclusters that are not going
+	 * to wind up in the all-free state, which will only be the last
+	 * supercluster.  hammer_alist_free() will recurse into the
+	 * supercluster infrastructure and create the necessary superclusters.
+	 *
+	 * NOTE: The nclusters calculation ensures that the volume EOF does
+	 * not occur in the middle of a supercluster buffer array.
 	 */
-	hammer_alist_init(&Vol_alist, vol->vol_almeta);
-	nclusters = (vol->vol_end - vol->vol_beg + minclsize) / clsize;
-	if (nclusters > 32768) {
-		fprintf(stderr, "Volume is too large, max %s\n",
-			sizetostr((int64_t)nclusters * clsize));
-		exit(1);
-		/*nclusters = 32768;*/
+	if (UsingSuperClusters) {
+		/*
+		 * Figure out how many full super-cluster groups we will have.
+		 * This calculation does not include the partial supercluster
+		 * group at the end.
+		 */
+		scl_header_size = (int64_t)HAMMER_BUFSIZE *
+				  HAMMER_VOL_SUPERCLUSTER_GROUP;
+		scl_group_size = scl_header_size +
+				 (int64_t)HAMMER_VOL_SUPERCLUSTER_GROUP *
+				 ClusterSize * HAMMER_SCL_MAXCLUSTERS;
+		nscl_groups = (ondisk->vol_end - ondisk->vol_beg) /
+				scl_group_size;
+		nclusters = nscl_groups * HAMMER_SCL_MAXCLUSTERS *
+				HAMMER_VOL_SUPERCLUSTER_GROUP;
+
+		/*
+		 * Figure out how much space we have left and calculate the
+		 * remaining number of clusters.
+		 */
+		n64 = (ondisk->vol_end - ondisk->vol_beg) -
+			(nscl_groups * scl_group_size);
+		if (n64 > scl_header_size) {
+			nclusters += (n64 + minclsize) / ClusterSize;
+		}
+		printf("%d clusters, %d full super-cluster groups\n",
+			nclusters, nscl_groups);
+		hammer_alist_free(&vol->alist, 0, nclusters);
+	} else {
+		nclusters = (ondisk->vol_end - ondisk->vol_beg + minclsize) /
+			    ClusterSize;
+		if (nclusters > HAMMER_VOL_MAXCLUSTERS) {
+			errx(1, "Volume is too large, max %s\n",
+			     sizetostr((int64_t)nclusters * ClusterSize));
+		}
+		hammer_alist_free(&vol->alist, 0, nclusters);
 	}
-	hammer_alist_free(&Vol_alist, vol->vol_almeta, 0, nclusters);
+	ondisk->vol_nclusters = nclusters;
 
 	/*
 	 * Place the root cluster in volume 0.
 	 */
-	vol->vol_rootvol = 0;
-	if (info->volno == vol->vol_rootvol) {
-		vol->vol0_rootcluster = format_cluster(info, vol, 1);
-		vol->vol0_recid = 1;
+	ondisk->vol_rootvol = 0;
+	if (ondisk->vol_no == ondisk->vol_rootvol) {
+		ondisk->vol0_rootcluster = format_cluster(vol, 1);
+		ondisk->vol0_recid = 1;
 		/* global next TID */
-		vol->vol0_nexttid = createtid();
+		ondisk->vol0_nexttid = createtid();
 	}
-
-	/*
-	 * Generate the CRC and write out the volume header
-	 */
-	writebuffer(info, 0, &vol->head);
 }
 
 /*
@@ -527,177 +495,154 @@ format_volume(struct vol_info *info, int nvols, uuid_t *fsid,
  */
 static
 int32_t
-format_cluster(struct vol_info *info, struct hammer_volume_ondisk *vol,
-	       int isroot)
+format_cluster(struct volume_info *vol, int isroot)
 {
-	struct hammer_cluster_ondisk *cl;
-	union hammer_record rec;
-	struct hammer_fsbuf_recs *recbuf;
-	struct hammer_fsbuf_btree *idxbuf;
-	struct hammer_fsbuf_data *databuf;
-	int clno;
-	int nbuffers;
-	int64_t cloff;
-	int64_t idxoff;
-	int64_t recoff;
-	int64_t dataoff;
 	hammer_tid_t clu_id = createtid();
+	struct cluster_info *cluster;
+	struct hammer_cluster_ondisk *ondisk;
+	int nbuffers;
+	int clno;
 
-	clno = hammer_alist_alloc(&Vol_alist, vol->vol_almeta, 1);
+	/*
+	 * Allocate a cluster
+	 */
+	clno = hammer_alist_alloc(&vol->alist, 1);
 	if (clno == HAMMER_ALIST_BLOCK_NONE) {
 		fprintf(stderr, "volume %d %s has insufficient space\n",
-			info->volno, info->name);
+			vol->vol_no, vol->name);
 		exit(1);
 	}
-	cloff = vol->vol_beg + clno * vol->vol_clsize;
-	printf("allocate cluster id=%016llx %d@%08llx\n", clu_id, clno, cloff);
+	cluster = get_cluster(vol, clno);
+	printf("allocate cluster id=%016llx %d@%08llx\n",
+	       clu_id, clno, cluster->clu_offset);
 
-	bzero(&rec, sizeof(rec));
-	cl = allocbuffer(HAMMER_FSBUF_CLUSTER);
+	ondisk = cluster->ondisk;
 
-	cl->vol_fsid = vol->vol_fsid;
-	cl->vol_fstype = vol->vol_fstype;
-	cl->clu_gen = 1;
-	cl->clu_id = clu_id;
-	cl->clu_no = clno;
-	cl->clu_flags = 0;
-	cl->clu_start = HAMMER_BUFSIZE;
-	if (info->size - cloff > vol->vol_clsize)
-		cl->clu_limit = vol->vol_clsize;
+	ondisk->vol_fsid = vol->ondisk->vol_fsid;
+	ondisk->vol_fstype = vol->ondisk->vol_fstype;
+	ondisk->clu_gen = 1;
+	ondisk->clu_id = clu_id;
+	ondisk->clu_no = clno;
+	ondisk->clu_flags = 0;
+	ondisk->clu_start = HAMMER_BUFSIZE;
+	if (vol->size - cluster->clu_offset > ClusterSize)
+		ondisk->clu_limit = ClusterSize;
 	else
-		cl->clu_limit = (u_int32_t)(info->size - cloff);
+		ondisk->clu_limit = (u_int32_t)(vol->size - cluster->clu_offset);
 
 	/*
 	 * In-band filesystem buffer management A-List.  The first filesystem
 	 * buffer is the cluster header itself.
 	 */
-	hammer_alist_init(&Clu_alist, cl->clu_almeta);
-	nbuffers = cl->clu_limit / HAMMER_BUFSIZE;
-	hammer_alist_free(&Clu_alist, cl->clu_almeta, 1, nbuffers - 1);
+	nbuffers = ondisk->clu_limit / HAMMER_BUFSIZE;
+	hammer_alist_free(&cluster->alist_master, 1, nbuffers - 1);
+	printf("cluster %d has %d buffers\n", cluster->clu_no, nbuffers);
 
 	/*
-	 * Buffer Iterators
+	 * Buffer Iterators in elements.  Each buffer has 256 elements.
+	 * The data and B-Tree indices are forward allocations while the
+	 * record index allocates backwards.
 	 */
-	cl->idx_data = 1;
-	cl->idx_index = 0;
-	cl->idx_record = nbuffers - 1;
-	cl->clu_parent = 0;	/* we are the root cluster (vol,cluster) */
+	ondisk->idx_data = 1 * HAMMER_FSBUF_MAXBLKS;
+	ondisk->idx_index = 0 * HAMMER_FSBUF_MAXBLKS;
+	ondisk->idx_record = nbuffers * HAMMER_FSBUF_MAXBLKS;
 
-	/*
-	 * Allocate a buffer for the B-Tree index and another to hold
-	 * records.  The B-Tree buffer isn't strictly required since
-	 * the only records we allocate comfortably fit in cl->clu_btree_root
-	 * but do it anyway to guarentee some locality of reference.
-	 */
-	idxbuf = allocindexbuffer(info, vol, cl, cloff, &idxoff);
-	recbuf = allocrecbuffer(info, vol, cl, cloff, &recoff);
-	databuf = allocdatabuffer(info, vol, cl, cloff, &dataoff);
+	/* XXX root cluster */
+	ondisk->clu_btree_parent_vol_no = 0;
+	ondisk->clu_btree_parent_clu_no = 0;
+	ondisk->clu_btree_parent_clu_id = 0;
 
 	/*
 	 * Cluster 0 is the root cluster.  Set the B-Tree range for this
 	 * cluster to the entire key space and format the root directory. 
 	 */
-	if (clu_id == 0) {
-		cl->clu_objstart.obj_id = -0x8000000000000000LL;
-		cl->clu_objstart.key = -0x8000000000000000LL;
-		cl->clu_objstart.create_tid = 0;
-		cl->clu_objstart.delete_tid = 0;
-		cl->clu_objstart.rec_type = 0;
-		cl->clu_objstart.obj_type = 0;
+	if (isroot) {
+		ondisk->clu_btree_beg.obj_id = -0x8000000000000000LL;
+		ondisk->clu_btree_beg.key = -0x8000000000000000LL;
+		ondisk->clu_btree_beg.create_tid = 0;
+		ondisk->clu_btree_beg.delete_tid = 0;
+		ondisk->clu_btree_beg.rec_type = 0;
+		ondisk->clu_btree_beg.obj_type = 0;
 
-		cl->clu_objend.obj_id = 0x7FFFFFFFFFFFFFFFLL;
-		cl->clu_objend.key = 0x7FFFFFFFFFFFFFFFLL;
-		cl->clu_objend.create_tid = 0xFFFFFFFFFFFFFFFFULL;
-		cl->clu_objend.delete_tid = 0xFFFFFFFFFFFFFFFFULL;
-		cl->clu_objend.rec_type = 0xFFFFU;
-		cl->clu_objend.obj_type = 0xFFFFU;
+		ondisk->clu_btree_end.obj_id = 0x7FFFFFFFFFFFFFFFLL;
+		ondisk->clu_btree_end.key = 0x7FFFFFFFFFFFFFFFLL;
+		ondisk->clu_btree_end.create_tid = 0xFFFFFFFFFFFFFFFFULL;
+		ondisk->clu_btree_end.delete_tid = 0xFFFFFFFFFFFFFFFFULL;
+		ondisk->clu_btree_end.rec_type = 0xFFFFU;
+		ondisk->clu_btree_end.obj_type = 0xFFFFU;
 
-		format_root(info, vol, cl, recbuf, databuf,
-			    (int)(recoff - cloff), (int)(dataoff - cloff));
+		format_root(cluster);
 	}
 
 	/*
 	 * Write-out and update the index, record, and cluster buffers
 	 */
-	writebuffer(info, idxoff, &idxbuf->head);
-	writebuffer(info, recoff, &recbuf->head);
-	writebuffer(info, dataoff, &databuf->head);
-	writebuffer(info, cloff, &cl->head);
 	return(clno);
 }
 
 /*
- * Format the root directory.  Basically we just lay down the inode record
- * and create a degenerate entry in the cluster's root btree.
- *
- * There is no '.' or '..'.
+ * Format the root directory.
  */
 static
 void
-format_root(struct vol_info *info, struct hammer_volume_ondisk *vol,
-	    struct hammer_cluster_ondisk *cl, struct hammer_fsbuf_recs *recbuf,
-	    struct hammer_fsbuf_data *databuf, int recoff, int dataoff)
+format_root(struct cluster_info *cluster)
 {
-	struct hammer_inode_record *record;
-	struct hammer_inode_data *inode_data;
-	struct hammer_leaf_elm *elm;
-	int recblk;
-	int inodeblk;
+	int32_t btree_off;
+	int32_t rec_off;
+	int32_t data_off;
+	struct hammer_btree_node *bnode;
+	union hammer_record_ondisk *rec;
+	struct hammer_inode_data *idata;
+	struct hammer_record_elm *elm;
 
-	/*
-	 * Allocate record and data space and calculate cluster-relative
-	 * offsets for intra-cluster references.
-	 */
-	recblk = hammer_alist_alloc(&Buf_alist, recbuf->head.buf_almeta, 1);
-	assert(recblk != HAMMER_ALIST_BLOCK_NONE);
-	inodeblk = hammer_alist_alloc(&Buf_alist, databuf->head.buf_almeta, 1);
-	assert(inodeblk != HAMMER_ALIST_BLOCK_NONE);
-	assert(sizeof(*inode_data) <= HAMMER_DATA_BLKSIZE);
-
-	record = &recbuf->recs[recblk].inode;
-	recoff += offsetof(struct hammer_fsbuf_recs, recs[recblk]);
-
-	inode_data = (void *)databuf->data[inodeblk];
-	dataoff += offsetof(struct hammer_fsbuf_data, data[inodeblk][0]);
+	bnode = alloc_btree_element(cluster, &btree_off);
+	rec = alloc_record_element(cluster, &rec_off);
+	idata = alloc_data_element(cluster, sizeof(*idata), &data_off);
 
 	/*
 	 * Populate the inode data and inode record for the root directory.
 	 */
-	inode_data->version = HAMMER_INODE_DATA_VERSION;
-	inode_data->mode = 0755;
+	idata->version = HAMMER_INODE_DATA_VERSION;
+	idata->mode = 0755;
 
-	record->base.obj_id = 1;
-	record->base.key = 0;
-	record->base.create_tid = createtid();
-	record->base.delete_tid = 0;
-	record->base.rec_type = HAMMER_RECTYPE_INODE;
-	record->base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
-	record->base.data_offset = dataoff;
-	record->base.data_len = sizeof(*inode_data);
-	record->base.data_crc = crc32(inode_data, sizeof(*inode_data));
-	record->ino_atime  = record->base.create_tid;
-	record->ino_mtime  = record->base.create_tid;
-	record->ino_size   = 0;
-	record->ino_nlinks = 1;
+	rec->base.obj_id = 1;
+	rec->base.key = 0;
+	rec->base.create_tid = createtid();
+	rec->base.delete_tid = 0;
+	rec->base.rec_type = HAMMER_RECTYPE_INODE;
+	rec->base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
+	rec->base.data_offset = data_off;
+	rec->base.data_len = sizeof(*idata);
+	rec->base.data_crc = crc32(idata, sizeof(*idata));
+	rec->inode.ino_atime  = rec->base.create_tid;
+	rec->inode.ino_mtime  = rec->base.create_tid;
+	rec->inode.ino_size   = 0;
+	rec->inode.ino_nlinks = 1;
 
 	/*
-	 * Insert the record into the B-Tree.  The B-Tree is empty so just
-	 * install the record manually.
+	 * Assign the cluster's root B-Tree node.
 	 */
-	assert(cl->clu_btree_root.count == 0);
-	cl->clu_btree_root.count = 1;
-	elm = &cl->clu_btree_root.elms[0].leaf;
-	elm->base.obj_id = record->base.obj_id;
-	elm->base.key = record->base.key;
-	elm->base.create_tid = record->base.create_tid;
-	elm->base.delete_tid = record->base.delete_tid;
-	elm->base.rec_type = record->base.rec_type;
-	elm->base.obj_type = record->base.obj_type;
+	assert(cluster->ondisk->clu_btree_root == 0);
+	cluster->ondisk->clu_btree_root = btree_off;
 
-	elm->rec_offset = recoff;
-	elm->data_offset = record->base.data_offset;
-	elm->data_len = record->base.data_len;
-	elm->data_crc = record->base.data_crc;
+	/*
+	 * Create a root with a single element pointing to the inode
+	 * record.
+	 */
+	bnode->count = 1;
+
+	elm = &bnode->elms[0].record;
+	elm->base.obj_id = rec->base.obj_id;
+	elm->base.key = rec->base.key;
+	elm->base.create_tid = rec->base.create_tid;
+	elm->base.delete_tid = rec->base.delete_tid;
+	elm->base.rec_type = rec->base.rec_type;
+	elm->base.obj_type = rec->base.obj_type;
+
+	elm->rec_offset = rec_off;
+	elm->data_offset = rec->base.data_offset;
+	elm->data_len = rec->base.data_len;
+	elm->data_crc = rec->base.data_crc;
 }
 
 void
