@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.23 2007/09/02 13:27:23 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.24 2007/10/16 11:28:40 sephe Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -73,6 +73,7 @@
 #include <sys/socketvar.h>
 #include <sys/time.h>
 #include <sys/sysctl.h>
+#include <sys/systimer.h>
 #include <sys/thread2.h>
 #include <net/if.h>
 #include <net/route.h>
@@ -81,10 +82,15 @@
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
 #include <net/ipfw/ip_fw.h>
-#include "ip_dummynet.h"
+#include <net/dummynet/ip_dummynet.h>
 #include <netinet/ip_var.h>
+#include <net/netmsg2.h>
 
 #include <netinet/if_ether.h> /* for struct arpcom */
+
+#ifndef DUMMYNET_CALLOUT_FREQ_MAX
+#define DUMMYNET_CALLOUT_FREQ_MAX	30000
+#endif
 
 /*
  * We keep a private variable for the simulation time, but we could
@@ -125,12 +131,16 @@ static void heap_extract(struct dn_heap *h, void *obj);
 static void transmit_event(struct dn_pipe *pipe);
 static void ready_event(struct dn_flow_queue *q);
 
+static int sysctl_dn_hz(SYSCTL_HANDLER_ARGS);
+
 static struct dn_pipe *all_pipes = NULL ;	/* list of all pipes */
 static struct dn_flow_set *all_flow_sets = NULL ;/* list of all flow_sets */
 
-static struct callout dn_timeout;
+static struct netmsg dn_netmsg;
+static struct systimer dn_clock;
+static int dn_hz = 1000;
+static int dn_cpu = 0; /* TODO tunable */
 
-#ifdef SYSCTL_NODE
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, dummynet,
 		CTLFLAG_RW, 0, "Dummynet");
 SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, hash_size,
@@ -156,13 +166,15 @@ SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_avg_pkt_size,
 	CTLFLAG_RD, &red_avg_pkt_size, 0, "RED Medium packet size");
 SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_max_pkt_size,
 	CTLFLAG_RD, &red_max_pkt_size, 0, "RED Max packet size");
-#endif
+SYSCTL_PROC(_net_inet_ip_dummynet, OID_AUTO, hz, CTLTYPE_INT | CTLFLAG_RW,
+	    0, 0, sysctl_dn_hz, "I", "Dummynet callout frequency");
 
 static int config_pipe(struct dn_pipe *p);
 static int ip_dn_ctl(struct sockopt *sopt);
 
 static void rt_unref(struct rtentry *);
-static void dummynet(void *);
+static void dummynet_clock(systimer_t, struct intrframe *);
+static void dummynet(struct netmsg *);
 static void dummynet_flush(void);
 void dummynet_drain(void);
 static ip_dn_io_t dummynet_io;
@@ -475,7 +487,7 @@ transmit_event(struct dn_pipe *pipe)
  * either a pipe (WF2Q) or a flow_queue (per-flow queueing)
  */
 #define SET_TICKS(pkt, q, p)	\
-    (pkt->dn_m->m_pkthdr.len*8*hz - (q)->numbytes + p->bandwidth - 1 ) / \
+    (pkt->dn_m->m_pkthdr.len*8*dn_hz - (q)->numbytes + p->bandwidth - 1 ) / \
 	    p->bandwidth ;
 
 /*
@@ -531,7 +543,7 @@ ready_event(struct dn_flow_queue *q)
     q->numbytes += ( curr_time - q->sched_time ) * p->bandwidth;
     while ( (pkt = q->head) != NULL ) {
 	int len = pkt->dn_m->m_pkthdr.len;
-	int len_scaled = p->bandwidth ? len*8*hz : 0 ;
+	int len_scaled = p->bandwidth ? len*8*dn_hz : 0 ;
 	if (len_scaled > q->numbytes )
 	    break ;
 	q->numbytes -= len_scaled ;
@@ -599,7 +611,7 @@ ready_event_wfq(struct dn_pipe *p)
 	    struct dn_pkt *pkt = q->head;
 	    struct dn_flow_set *fs = q->fs;
 	    u_int64_t len = pkt->dn_m->m_pkthdr.len;
-	    int len_scaled = p->bandwidth ? len*8*hz : 0 ;
+	    int len_scaled = p->bandwidth ? len*8*dn_hz : 0 ;
 
 	    heap_extract(sch, NULL); /* remove queue from heap */
 	    p->numbytes -= len_scaled ;
@@ -690,7 +702,7 @@ ready_event_wfq(struct dn_pipe *p)
  * increment the current tick counter and schedule expired events.
  */
 static void
-dummynet(void * __unused unused)
+dummynet(struct netmsg *msg)
 {
     void *p ; /* generic parameter to handler */
     struct dn_heap *h ;
@@ -702,6 +714,10 @@ dummynet(void * __unused unused)
     heaps[1] = &wfq_ready_heap ;	/* wfq queues */
     heaps[2] = &extract_heap ;		/* delay line */
     crit_enter(); /* see note on top, splnet() is not enough */
+
+    /* Reply ASAP */
+    lwkt_replymsg(&msg->nm_lmsg, 0);
+
     curr_time++ ;
     for (i=0; i < 3 ; i++) {
 	h = heaps[i];
@@ -735,7 +751,6 @@ dummynet(void * __unused unused)
 	    pe->sum -= q->fs->weight ;
 	}
     crit_exit();
-    callout_reset(&dn_timeout, 1, dummynet, NULL);
 }
 
 /*
@@ -1476,7 +1491,7 @@ config_pipe(struct dn_pipe *p)
      * delay = ms, must be translated into ticks.
      * qsize = slots/bytes
      */
-    p->delay = ( p->delay * hz ) / 1000 ;
+    p->delay = ( p->delay * dn_hz ) / 1000 ;
     /* We need either a pipe number or a flow_set number */
     if (p->pipe_nr == 0 && pfs->fs_nr == 0)
 	return EINVAL ;
@@ -1771,7 +1786,7 @@ dummynet_get(struct sockopt *sopt)
 	 * After each flow_set, copy the queue descriptor it owns.
 	 */
 	bcopy(p, bp, sizeof( *p ) );
-	pipe_bp->delay = (pipe_bp->delay * 1000) / hz ;
+	pipe_bp->delay = (pipe_bp->delay * 1000) / dn_hz ;
 	/*
 	 * XXX the following is a hack based on ->next being the
 	 * first field in dn_pipe and dn_flow_set. The correct
@@ -1859,8 +1874,59 @@ ip_dn_ctl(struct sockopt *sopt)
 }
 
 static void
+dummynet_clock(systimer_t info __unused, struct intrframe *frame __unused)
+{
+    KASSERT(mycpu->gd_cpuid == dn_cpu,
+	    ("systimer comes on a different cpu!\n"));
+
+    crit_enter();
+    if (dn_netmsg.nm_lmsg.ms_flags & MSGF_DONE)
+	lwkt_sendmsg(cpu_portfn(mycpu->gd_cpuid), &dn_netmsg.nm_lmsg);
+    crit_exit();
+}
+
+static int
+sysctl_dn_hz(SYSCTL_HANDLER_ARGS)
+{
+	int error, val;
+
+	val = dn_hz;
+	error = sysctl_handle_int(oidp, &val, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (val <= 0)
+		return EINVAL;
+	else if (val > DUMMYNET_CALLOUT_FREQ_MAX)
+		val = DUMMYNET_CALLOUT_FREQ_MAX;
+
+	crit_enter();
+	dn_hz = val;
+	systimer_adjust_periodic(&dn_clock, val);
+	crit_exit();
+
+	return 0;
+}
+
+static void
+ip_dn_register_systimer(struct netmsg *msg)
+{
+    systimer_init_periodic_nq(&dn_clock, dummynet_clock, NULL, dn_hz);
+    lwkt_replymsg(&msg->nm_lmsg, 0);
+}
+
+static void
+ip_dn_deregister_systimer(struct netmsg *msg)
+{
+    systimer_del(&dn_clock);
+    lwkt_replymsg(&msg->nm_lmsg, 0);
+}
+
+static void
 ip_dn_init(void)
 {
+    struct netmsg smsg;
+    lwkt_port_t port;
+
     kprintf("DUMMYNET initialized (011031)\n");
     all_pipes = NULL ;
     all_flow_sets = NULL ;
@@ -1875,8 +1941,30 @@ ip_dn_init(void)
     ip_dn_ctl_ptr = ip_dn_ctl;
     ip_dn_io_ptr = dummynet_io;
     ip_dn_ruledel_ptr = dn_rule_delete;
-    callout_init(&dn_timeout);
-    callout_reset(&dn_timeout, 1, dummynet, NULL);
+
+    netmsg_init(&dn_netmsg, &netisr_adone_rport, 0, dummynet);
+
+    netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_register_systimer);
+    port = cpu_portfn(dn_cpu);
+    lwkt_domsg(port, &smsg.nm_lmsg, 0);
+}
+
+static void
+ip_dn_stop(void)
+{
+    struct netmsg smsg;
+    lwkt_port_t port;
+
+    netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_deregister_systimer);
+    port = cpu_portfn(dn_cpu);
+    lwkt_domsg(port, &smsg.nm_lmsg, 0);
+
+    dummynet_flush();
+    ip_dn_ctl_ptr = NULL;
+    ip_dn_io_ptr = NULL;
+    ip_dn_ruledel_ptr = NULL;
+
+    netmsg_service_sync();
 }
 
 static int
@@ -1900,11 +1988,7 @@ dummynet_modevent(module_t mod, int type, void *data)
 		return EINVAL ;
 #else
 		crit_enter();
-		callout_stop(&dn_timeout);
-		dummynet_flush();
-		ip_dn_ctl_ptr = NULL;
-		ip_dn_io_ptr = NULL;
-		ip_dn_ruledel_ptr = NULL;
+		ip_dn_stop();
 		crit_exit();
 #endif
 		break ;
