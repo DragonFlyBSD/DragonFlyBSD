@@ -55,7 +55,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.46 2007/04/29 01:29:31 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.47 2007/10/16 11:12:59 sephe Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -165,7 +165,8 @@ struct globaldata {
 	struct tslpque	*gd_tsleep_hash;	/* tsleep/wakeup support */
 	struct spinlock	*gd_spinlock_rd;	/* Shared spinlock held */
 	int		gd_spinlocks_wr;	/* Exclusive spinlocks held */
-	void		*gd_reserved[13];	/* future fields */
+	struct systimer	*gd_systimer_inprog;	/* in-progress systimer */
+	void		*gd_reserved[12];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 

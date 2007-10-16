@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.11 2007/10/14 04:52:44 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.12 2007/10/16 11:12:59 sephe Exp $
  */
 
 /*
@@ -90,24 +90,31 @@ systimer_intr(sysclock_t *timep, int dummy, struct intrframe *frame)
 	}
 
 	/*
-	 * Dequeue and execute
+	 * Dequeue and execute, detect a loss of the systimer.  Note
+	 * that the in-progress systimer pointer can only be used to
+	 * detect a loss of the systimer, it is only useful within
+	 * this code sequence and becomes stale otherwise.
 	 */
 	info->flags &= ~SYSTF_ONQUEUE;
 	TAILQ_REMOVE(info->queue, info, node);
+	gd->gd_systimer_inprog = info;
 	crit_exit();
 	info->func(info, frame);
 	crit_enter();
 
 	/*
-	 * Reinstall if periodic.  If this is a non-queued periodic
-	 * interrupt do not allow multiple events to build up (used
-	 * for things like the callout timer to prevent premature timeouts
-	 * due to long interrupt disablements, BIOS 8254 glitching, and so
-	 * forth).  However, we still want to keep things synchronized between
-	 * cpus for efficient handling of the timer interrupt so jump in
-	 * multiples of the periodic rate.
+	 * The caller may deleted or even re-queue the systimer itself
+	 * with a delete/add sequence.  If the caller does not mess with
+	 * the systimer we will requeue the periodic interval automatically.
+	 *
+	 * If this is a non-queued periodic interrupt, do not allow multiple
+	 * events to build up (used for things like the callout timer to
+	 * prevent premature timeouts due to long interrupt disablements,
+	 * BIOS 8254 glitching, and so forth).  However, we still want to
+	 * keep things synchronized between cpus for efficient handling of
+	 * the timer interrupt so jump in multiples of the periodic rate.
 	 */
-	if (info->periodic) {
+	if (gd->gd_systimer_inprog == info && info->periodic) {
 	    if (info->which != sys_cputimer) {
 		info->periodic = sys_cputimer->fromhz(info->freq);
 		info->which = sys_cputimer;
@@ -121,6 +128,7 @@ systimer_intr(sysclock_t *timep, int dummy, struct intrframe *frame)
 	    }
 	    systimer_add(info);
 	}
+	gd->gd_systimer_inprog = NULL;
     }
     --gd->gd_syst_nest;
     crit_exit();
@@ -181,12 +189,26 @@ systimer_add(systimer_t info)
 void
 systimer_del(systimer_t info)
 {
-    KKASSERT(info->gd == mycpu && (info->flags & SYSTF_IPIRUNNING) == 0);
+    struct globaldata *gd = info->gd;
+
+    KKASSERT(gd == mycpu && (info->flags & SYSTF_IPIRUNNING) == 0);
+
     crit_enter();
+
     if (info->flags & SYSTF_ONQUEUE) {
 	TAILQ_REMOVE(info->queue, info, node);
 	info->flags &= ~SYSTF_ONQUEUE;
     }
+
+    /*
+     * Deal with dispatch races by clearing the in-progress systimer
+     * pointer.  Only a direct pointer comparison can be used, the
+     * actual contents of the structure gd_systimer_inprog points to,
+     * if not equal to info, may be stale.
+     */
+    if (gd->gd_systimer_inprog == info)
+	gd->gd_systimer_inprog = NULL;
+
     crit_exit();
 }
 
