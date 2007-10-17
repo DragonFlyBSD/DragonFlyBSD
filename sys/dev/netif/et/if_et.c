@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.3 2007/10/17 12:01:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.4 2007/10/17 13:25:04 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -123,12 +123,13 @@ static int	et_start_rxdma(struct et_softc *);
 static int	et_start_txdma(struct et_softc *);
 static int	et_stop_rxdma(struct et_softc *);
 static int	et_stop_txdma(struct et_softc *);
-static int	et_enable_txrx(struct et_softc *);
+static int	et_enable_txrx(struct et_softc *, int);
 static void	et_reset(struct et_softc *);
 static int	et_bus_config(device_t);
 static void	et_get_eaddr(device_t, uint8_t[]);
 static void	et_setmulti(struct et_softc *);
 static void	et_tick(void *);
+static void	et_setmedia(struct et_softc *);
 
 static const struct et_dev {
 	uint16_t	vid;
@@ -499,33 +500,7 @@ et_miibus_writereg(device_t dev, int phy, int reg, int val0)
 static void
 et_miibus_statchg(device_t dev)
 {
-	struct et_softc *sc = device_get_softc(dev);
-	struct mii_data *mii = device_get_softc(sc->sc_miibus);
-	uint32_t cfg2, ctrl;
-
-	cfg2 = CSR_READ_4(sc, ET_MAC_CFG2);
-	cfg2 &= ~(ET_MAC_CFG2_MODE_MII | ET_MAC_CFG2_MODE_GMII |
-		  ET_MAC_CFG2_FDX | ET_MAC_CFG2_BIGFRM);
-	cfg2 |= ET_MAC_CFG2_LENCHK | ET_MAC_CFG2_CRC | ET_MAC_CFG2_PADCRC |
-		__SHIFTIN(7, ET_MAC_CFG2_PREAMBLE_LEN);
-
-	ctrl = CSR_READ_4(sc, ET_MAC_CTRL);
-	ctrl &= ~(ET_MAC_CTRL_GHDX | ET_MAC_CTRL_MODE_MII);
-
-	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T) {
-		cfg2 |= ET_MAC_CFG2_MODE_GMII;
-	} else {
-		cfg2 |= ET_MAC_CFG2_MODE_MII;
-		ctrl |= ET_MAC_CTRL_MODE_MII;
-	}
-
-	if ((mii->mii_media_active & IFM_GMASK) == IFM_FDX)
-		cfg2 |= ET_MAC_CFG2_FDX;
-	else
-		ctrl |= ET_MAC_CTRL_GHDX;
-
-	CSR_WRITE_4(sc, ET_MAC_CTRL, ctrl);
-	CSR_WRITE_4(sc, ET_MAC_CFG2, cfg2);
+	et_setmedia(device_get_softc(dev));
 }
 
 static int
@@ -577,6 +552,7 @@ et_stop(struct et_softc *sc)
 
 	sc->sc_tx = 0;
 	sc->sc_tx_intr = 0;
+	sc->sc_txrx_enabled = 0;
 
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
@@ -1132,15 +1108,7 @@ et_init(void *xsc)
 	if (error)
 		goto back;
 
-	error = et_enable_txrx(sc);
-	if (error)
-		goto back;
-
-	error = et_start_rxdma(sc);
-	if (error)
-		goto back;
-
-	error = et_start_txdma(sc);
+	error = et_enable_txrx(sc, 1);
 	if (error)
 		goto back;
 
@@ -1215,6 +1183,9 @@ et_start(struct ifnet *ifp)
 	int trans;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (!sc->sc_txrx_enabled)
+		return;
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
@@ -1796,11 +1767,11 @@ et_start_txdma(struct et_softc *sc)
 }
 
 static int
-et_enable_txrx(struct et_softc *sc)
+et_enable_txrx(struct et_softc *sc, int media_upd)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t val;
-	int i;
+	int i, error;
 
 	val = CSR_READ_4(sc, ET_MAC_CFG1);
 	val |= ET_MAC_CFG1_TXEN | ET_MAC_CFG1_RXEN;
@@ -1808,7 +1779,10 @@ et_enable_txrx(struct et_softc *sc)
 		 ET_MAC_CFG1_LOOPBACK);
 	CSR_WRITE_4(sc, ET_MAC_CFG1, val);
 
-	et_ifmedia_upd(ifp);
+	if (media_upd)
+		et_ifmedia_upd(ifp);
+	else
+		et_setmedia(sc);
 
 #define NRETRY	100
 
@@ -1822,10 +1796,23 @@ et_enable_txrx(struct et_softc *sc)
 	}
 	if (i == NRETRY) {
 		if_printf(ifp, "can't enable RX/TX\n");
-		return ETIMEDOUT;
+		return 0;
 	}
+	sc->sc_txrx_enabled = 1;
 
 #undef NRETRY
+
+	/*
+	 * Start TX/RX DMA engine
+	 */
+	error = et_start_rxdma(sc);
+	if (error)
+		return error;
+
+	error = et_start_txdma(sc);
+	if (error)
+		return error;
+
 	return 0;
 }
 
@@ -1837,6 +1824,9 @@ et_rxeof(struct et_softc *sc)
 	struct et_rxstat_ring *rxst_ring = &sc->sc_rxstat_ring;
 	uint32_t rxs_stat_ring;
 	int rxst_wrap, rxst_index;
+
+	if (!sc->sc_txrx_enabled)
+		return;
 
 	bus_dmamap_sync(rxsd->rxsd_dtag, rxsd->rxsd_dmap,
 			BUS_DMASYNC_POSTREAD);
@@ -2052,6 +2042,9 @@ et_txeof(struct et_softc *sc)
 	uint32_t tx_done;
 	int end, wrap;
 
+	if (!sc->sc_txrx_enabled)
+		return;
+
 	if (tbd->tbd_used == 0)
 		return;
 
@@ -2098,10 +2091,17 @@ et_tick(void *xsc)
 {
 	struct et_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct mii_data *mii = device_get_softc(sc->sc_miibus);
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	mii_tick(device_get_softc(sc->sc_miibus));
+	mii_tick(mii);
+	if (!sc->sc_txrx_enabled && (mii->mii_media_status & IFM_ACTIVE) &&
+	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
+		if_printf(ifp, "Link up, enable TX/RX\n");
+		if (et_enable_txrx(sc, 0) == 0)
+			ifp->if_start(ifp);
+	}
 	callout_reset(&sc->sc_tick, hz, et_tick, sc);
 
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -2256,4 +2256,35 @@ et_sysctl_rx_intr_delay(SYSCTL_HANDLER_ARGS)
 back:
 	lwkt_serialize_exit(ifp->if_serializer);
 	return error;
+}
+
+static void
+et_setmedia(struct et_softc *sc)
+{
+	struct mii_data *mii = device_get_softc(sc->sc_miibus);
+	uint32_t cfg2, ctrl;
+
+	cfg2 = CSR_READ_4(sc, ET_MAC_CFG2);
+	cfg2 &= ~(ET_MAC_CFG2_MODE_MII | ET_MAC_CFG2_MODE_GMII |
+		  ET_MAC_CFG2_FDX | ET_MAC_CFG2_BIGFRM);
+	cfg2 |= ET_MAC_CFG2_LENCHK | ET_MAC_CFG2_CRC | ET_MAC_CFG2_PADCRC |
+		__SHIFTIN(7, ET_MAC_CFG2_PREAMBLE_LEN);
+
+	ctrl = CSR_READ_4(sc, ET_MAC_CTRL);
+	ctrl &= ~(ET_MAC_CTRL_GHDX | ET_MAC_CTRL_MODE_MII);
+
+	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T) {
+		cfg2 |= ET_MAC_CFG2_MODE_GMII;
+	} else {
+		cfg2 |= ET_MAC_CFG2_MODE_MII;
+		ctrl |= ET_MAC_CTRL_MODE_MII;
+	}
+
+	if ((mii->mii_media_active & IFM_GMASK) == IFM_FDX)
+		cfg2 |= ET_MAC_CFG2_FDX;
+	else
+		ctrl |= ET_MAC_CTRL_GHDX;
+
+	CSR_WRITE_4(sc, ET_MAC_CTRL, ctrl);
+	CSR_WRITE_4(sc, ET_MAC_CFG2, cfg2);
 }

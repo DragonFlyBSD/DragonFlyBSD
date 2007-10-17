@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_etvar.h,v 1.1 2007/10/12 14:12:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_etvar.h,v 1.2 2007/10/17 13:25:04 sephe Exp $
  */
 
 #ifndef _IF_ETVAR_H
@@ -182,6 +182,7 @@ struct et_rxbuf_data {
 struct et_softc {
 	struct arpcom		arpcom;
 	int			sc_if_flags;
+	int			sc_txrx_enabled;
 
 	int			sc_mem_rid;
 	struct resource		*sc_mem_res;
