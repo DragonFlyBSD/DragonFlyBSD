@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/vlan.4,v 1.1.2.6 2002/08/30 11:53:56 yar Exp $
-.\" $DragonFly: src/share/man/man4/vlan.4,v 1.7 2007/05/26 22:54:28 swildner Exp $
+.\" $DragonFly: src/share/man/man4/vlan.4,v 1.8 2007/10/17 12:48:23 sephe Exp $
 .\"
 .Dd July 25, 2001
 .Dt VLAN 4
@@ -136,6 +136,10 @@ in the
 .Pa /sys/dev/netif/de/if_de.c
 source file and rebuilding the kernel.
 The hack works only for the 21041, 21140, and 21140A chips.
+.It Xr et 4
+supports long frames for
+.Nm
+natively.
 .It Xr fxp 4
 supports long frames for
 .Nm
