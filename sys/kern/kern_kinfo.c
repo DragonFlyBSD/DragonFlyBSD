@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.14 2007/08/14 20:29:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.15 2007/10/17 23:30:31 dillon Exp $
  */
 
 /*
@@ -63,7 +63,15 @@
 void
 fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 {
-	struct session *sess = p->p_pgrp->pg_session;
+	struct session *sess;
+	struct pgrp *pgrp;
+
+	/*
+	 * NOTE: pgrp and sess can wind up NULL if we caught a process
+	 * in the middle of exiting.
+	 */
+	pgrp = p->p_pgrp;
+	sess = pgrp ? pgrp->pg_session : NULL;
 
 	bzero(kp, sizeof(*kp));
 
@@ -98,15 +106,19 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 		kp->kp_ppid = p->p_oppid;
 	else
 		kp->kp_ppid = p->p_pptr != NULL ? p->p_pptr->p_pid : -1;
-	kp->kp_pgid = p->p_pgrp->pg_id;
-	kp->kp_jobc = p->p_pgrp->pg_jobc;
-	kp->kp_sid = sess->s_sid;
-	bcopy(sess->s_login, kp->kp_login, MAXLOGNAME);
-	if (sess->s_ttyvp != NULL)
-		kp->kp_auxflags |= KI_CTTY;
-	if (SESS_LEADER(p))
-		kp->kp_auxflags |= KI_SLEADER;
-	if (((p->p_flag & P_CONTROLT) != 0) && (sess->s_ttyp != NULL)) {
+	if (pgrp) {
+		kp->kp_pgid = pgrp->pg_id;
+		kp->kp_jobc = pgrp->pg_jobc;
+	}
+	if (sess) {
+		kp->kp_sid = sess->s_sid;
+		bcopy(sess->s_login, kp->kp_login, MAXLOGNAME);
+		if (sess->s_ttyvp != NULL)
+			kp->kp_auxflags |= KI_CTTY;
+		if (SESS_LEADER(p))
+			kp->kp_auxflags |= KI_SLEADER;
+	}
+	if (sess && (p->p_flag & P_CONTROLT) != 0 && sess->s_ttyp != NULL) {
 		kp->kp_tdev = dev2udev(sess->s_ttyp->t_dev);
 		if (sess->s_ttyp->t_pgrp != NULL)
 			kp->kp_tpgid = sess->s_ttyp->t_pgrp->pg_id;
