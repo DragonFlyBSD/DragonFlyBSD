@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.2 2007/10/14 04:15:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.3 2007/10/17 12:01:57 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -336,6 +336,8 @@ et_attach(device_t dev)
 	ifp->if_start = et_start;
 	ifp->if_watchdog = et_watchdog;
 	ifp->if_mtu = ETHERMTU;
+	ifp->if_capabilities = IFCAP_VLAN_MTU;
+	ifp->if_capenable = ifp->if_capabilities;
 	ifq_set_maxlen(&ifp->if_snd, ET_TX_NDESC);
 	ifq_set_ready(&ifp->if_snd);
 
