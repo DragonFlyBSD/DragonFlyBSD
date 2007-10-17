@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwireg.h,v 1.2 2007/09/16 09:58:27 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwireg.h,v 1.3 2007/10/17 11:10:40 sephe Exp $
  */
 
 #ifndef _IF_BWIREG_H
@@ -318,6 +318,7 @@
 #define BWI_ADDR_FILTER_BSSID		3
 #define BWI_ADDR_FILTER_DATA		0x422
 
+#define BWI_MAC_GPIO_CTRL		0x49c
 #define BWI_MAC_GPIO_MASK		0x49e
 #define BWI_MAC_PRE_TBTT		0x612
 #define BWI_MAC_SLOTTIME		0x684
@@ -373,6 +374,12 @@
 #define BWI_SPROM_CARD_INFO_LOCALE	__BITS(11, 8)
 #define BWI_SPROM_LOCALE_JAPAN		5
 #define BWI_SPROM_PA_PARAM_11BG		0x5e
+#define BWI_SPROM_GPIO01		0x64
+#define BWI_SPROM_GPIO_0		__BITS(7, 0)
+#define BWI_SPROM_GPIO_1		__BITS(15, 8)
+#define BWI_SPROM_GPIO23		0x66
+#define BWI_SPROM_GPIO_2		__BITS(7, 0)
+#define BWI_SPROM_GPIO_3		__BITS(15, 8)
 #define BWI_SPROM_MAX_TXPWR		0x68
 #define BWI_SPROM_MAX_TXPWR_MASK_11BG	__BITS(7, 0)	/* XXX */
 #define BWI_SPROM_MAX_TXPWR_MASK_11A	__BITS(15, 8)	/* XXX */
@@ -393,6 +400,24 @@
 #define BWI_CARD_F_NO_SLOWCLK		__BIT(5)	/* no slow clock */
 #define BWI_CARD_F_EXT_LNA		__BIT(12)	/* external LNA */
 #define BWI_CARD_F_ALT_IQ		__BIT(15)	/* alternate I/Q */
+
+/*
+ * SPROM GPIO
+ */
+#define BWI_LED_ACT_LOW		__BIT(7)
+#define BWI_LED_ACT_MASK	__BITS(6, 0)
+#define BWI_LED_ACT_OFF		0
+#define BWI_LED_ACT_ON		1
+#define BWI_LED_ACT_ACTIVE	2
+#define BWI_LED_ACT_RFEN	3
+#define BWI_LED_ACT_5GHZ	4
+#define BWI_LED_ACT_2GHZ	5
+#define BWI_LED_ACT_11G		6
+#define BWI_LED_ACT_MID		7
+#define BWI_LED_ACT_FAST	8
+#define BWI_LED_ACT_UNKN	9
+#define BWI_LED_ACT_RUN		10
+#define BWI_LED_ACT_NULL	11
 
 /*
  * BBP IDs

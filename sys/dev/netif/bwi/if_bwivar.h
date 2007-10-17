@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.9 2007/10/03 04:53:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.10 2007/10/17 11:10:40 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -299,6 +299,13 @@ struct bwi_fw_iv {
 #define BWI_FW_IV_OFS_MASK	__BITS(14, 0)
 #define BWI_FW_IV_IS_32BIT	__BIT(15)
 
+struct bwi_led {
+	uint8_t			l_flags;	/* BWI_LED_F_ */
+	uint8_t			l_act;		/* BWI_LED_ACT_ */
+};
+
+#define BWI_LED_F_ACTLOW	0x1
+
 enum bwi_clock_mode {
 	BWI_CLOCK_MODE_SLOW,
 	BWI_CLOCK_MODE_FAST,
@@ -468,6 +475,7 @@ do {						\
 } while (0)
 
 #define BWI_MAC_MAX		2
+#define BWI_LED_MAX		4
 
 enum bwi_bus_space {
 	BWI_BUS_SPACE_30BIT = 1,
@@ -544,6 +552,8 @@ struct bwi_softc {
 
 	int			sc_nmac;
 	struct bwi_mac		sc_mac[BWI_MAC_MAX];
+
+	struct bwi_led		sc_leds[BWI_LED_MAX];
 
 	enum bwi_bus_space	sc_bus_space;
 	bus_dma_tag_t		sc_parent_dtag;
@@ -630,6 +640,7 @@ struct bwi_softc {
 #define BWI_DBG_RX		0x00000400
 #define BWI_DBG_TX		0x00000800
 #define BWI_DBG_TXEOF		0x00001000
+#define BWI_DBG_LED		0x00002000
 
 uint16_t	bwi_read_sprom(struct bwi_softc *, uint16_t);
 int		bwi_regwin_switch(struct bwi_softc *, struct bwi_regwin *,

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.13 2007/10/14 04:15:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.14 2007/10/17 11:10:40 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -175,6 +175,9 @@ static const char *bwi_regwin_name(const struct bwi_regwin *);
 static uint32_t	bwi_regwin_disable_bits(struct bwi_softc *);
 static void	bwi_regwin_info(struct bwi_softc *, uint16_t *, uint8_t *);
 static int	bwi_regwin_select(struct bwi_softc *, int);
+
+static void	bwi_led_attach(struct bwi_softc *);
+static void	bwi_led_newstate(struct bwi_softc *, enum ieee80211_state);
 
 static const struct bwi_dev {
 	uint16_t	vid;
@@ -489,7 +492,7 @@ bwi_attach(device_t dev)
 
 	bwi_get_card_flags(sc);
 
-	/* TODO: LED */
+	bwi_led_attach(sc);
 
 	for (i = 0; i < sc->sc_nmac; ++i) {
 		struct bwi_regwin *old;
@@ -1664,6 +1667,7 @@ bwi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 	callout_stop(&sc->sc_calib_ch);
 
 	ieee80211_ratectl_newstate(ic, nstate);
+	bwi_led_newstate(sc, nstate);
 
 	if (nstate == IEEE80211_S_INIT)
 		goto back;
@@ -3595,4 +3599,106 @@ bwi_rx_radiotap(struct bwi_softc *sc, struct mbuf *m,
 	sc->sc_rx_th.wr_antnoise = BWI_NOISE_FLOOR;
 
 	bpf_ptap(sc->sc_drvbpf, m, &sc->sc_rx_th, sc->sc_rx_th_len);
+}
+
+static void
+bwi_led_attach(struct bwi_softc *sc)
+{
+	const static uint8_t led_default_act[BWI_LED_MAX] = {
+		BWI_LED_ACT_ACTIVE,
+		BWI_LED_ACT_2GHZ,
+		BWI_LED_ACT_5GHZ,
+		BWI_LED_ACT_OFF
+	};
+
+	uint16_t gpio, val[BWI_LED_MAX];
+	int i;
+
+	gpio = bwi_read_sprom(sc, BWI_SPROM_GPIO01);
+	val[0] = __SHIFTOUT(gpio, BWI_SPROM_GPIO_0);
+	val[1] = __SHIFTOUT(gpio, BWI_SPROM_GPIO_1);
+
+	gpio = bwi_read_sprom(sc, BWI_SPROM_GPIO23);
+	val[2] = __SHIFTOUT(gpio, BWI_SPROM_GPIO_2);
+	val[3] = __SHIFTOUT(gpio, BWI_SPROM_GPIO_3);
+
+	for (i = 0; i < BWI_LED_MAX; ++i) {
+		struct bwi_led *led = &sc->sc_leds[i];
+
+		if (val[i] == 0xff) {
+			led->l_act = led_default_act[i];
+			if (i == 0 && sc->sc_pci_subvid == PCI_VENDOR_COMPAQ)
+				led->l_act = BWI_LED_ACT_RFEN;
+		} else {
+			if (val[i] & BWI_LED_ACT_LOW)
+				led->l_flags |= BWI_LED_F_ACTLOW;
+			led->l_act = __SHIFTOUT(val[i], BWI_LED_ACT_MASK);
+		}
+
+		DPRINTF(sc, BWI_DBG_LED | BWI_DBG_ATTACH,
+			"%dth led, act %d, lowact %d\n", i,
+			led->l_act, led->l_flags & BWI_LED_F_ACTLOW);
+	}
+}
+
+static void
+bwi_led_newstate(struct bwi_softc *sc, enum ieee80211_state nstate)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	uint16_t val;
+	int i;
+
+	if ((ic->ic_if.if_flags & IFF_RUNNING) == 0)
+		return;
+
+	val = CSR_READ_2(sc, BWI_MAC_GPIO_CTRL);
+	for (i = 0; i < BWI_LED_MAX; ++i) {
+		struct bwi_led *led = &sc->sc_leds[i];
+		int on;
+
+		if (led->l_act == BWI_LED_ACT_UNKN ||
+		    led->l_act == BWI_LED_ACT_NULL) {
+			/* Don't touch it */
+			continue;
+		}
+
+		switch (led->l_act) {
+		case BWI_LED_ACT_ON:	/* Always on */
+			on = 1;
+			break;
+		case BWI_LED_ACT_OFF:	/* Always off */
+		case BWI_LED_ACT_5GHZ:	/* TODO: 11A */
+		case BWI_LED_ACT_MID:	/* Blinking ones */
+		case BWI_LED_ACT_FAST:
+			on = 0;
+			break;
+		default:
+			on = 1;
+			switch (nstate) {
+			case IEEE80211_S_INIT:
+				on = 0;
+				break;
+			case IEEE80211_S_RUN:
+				if (led->l_act == BWI_LED_ACT_11G &&
+				    ic->ic_curmode != IEEE80211_MODE_11G)
+					on = 0;
+				break;
+			default:
+				if (led->l_act == BWI_LED_ACT_RUN ||
+				    led->l_act == BWI_LED_ACT_ACTIVE)
+					on = 0;
+				break;
+			}
+			break;
+		}
+
+		if (led->l_flags & BWI_LED_F_ACTLOW)
+			on = !on;
+
+		if (on)
+			val |= (1 << i);
+		else
+			val &= ~(1 << i);
+	}
+	CSR_WRITE_2(sc, BWI_MAC_GPIO_CTRL, val);
 }
