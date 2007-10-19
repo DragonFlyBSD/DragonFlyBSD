@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.10 2007/10/17 11:10:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.11 2007/10/19 14:27:04 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -54,6 +54,12 @@
 #define BWI_LGRETRY		4
 #define BWI_SHRETRY_FB		3
 #define BWI_LGRETRY_FB		2
+
+#define BWI_LED_EVENT_NONE	-1
+#define BWI_LED_EVENT_POLL	0
+#define BWI_LED_EVENT_TX	1
+#define BWI_LED_EVENT_RX	2
+#define BWI_LED_SLOWDOWN(dur)	(dur) = (((dur) * 3) / 2)
 
 #define BWI_NOISE_FLOOR		-95	/* TODO: noise floor calc */
 #define BWI_FRAME_MIN_LEN(hdr)	\
@@ -302,9 +308,13 @@ struct bwi_fw_iv {
 struct bwi_led {
 	uint8_t			l_flags;	/* BWI_LED_F_ */
 	uint8_t			l_act;		/* BWI_LED_ACT_ */
+	uint8_t			l_mask;
 };
 
 #define BWI_LED_F_ACTLOW	0x1
+#define BWI_LED_F_BLINK		0x2
+#define BWI_LED_F_POLLABLE	0x4
+#define BWI_LED_F_SLOW		0x8
 
 enum bwi_clock_mode {
 	BWI_CLOCK_MODE_SLOW,
@@ -553,6 +563,14 @@ struct bwi_softc {
 	int			sc_nmac;
 	struct bwi_mac		sc_mac[BWI_MAC_MAX];
 
+	int			sc_rx_rate;
+	int			sc_tx_rate;
+
+	int			sc_led_blinking;
+	int			sc_led_ticks;
+	struct bwi_led		*sc_blink_led;
+	struct callout		sc_led_blink_ch;
+	int			sc_led_blink_offdur;
 	struct bwi_led		sc_leds[BWI_LED_MAX];
 
 	enum bwi_bus_space	sc_bus_space;
@@ -602,7 +620,7 @@ struct bwi_softc {
 
 	void			(*sc_setup_rxdesc)
 				(struct bwi_softc *, int, bus_addr_t, int);
-	void			(*sc_rxeof)(struct bwi_softc *);
+	int			(*sc_rxeof)(struct bwi_softc *);
 
 	void			(*sc_setup_txdesc)
 				(struct bwi_softc *, struct bwi_ring_data *,
@@ -621,6 +639,8 @@ struct bwi_softc {
 	int			sc_fw_version;	/* BWI_FW_VERSION[34] */
 	int			sc_dwell_time;	/* milliseconds */
 	uint32_t		sc_debug;	/* BWI_DBG_ */
+	int			sc_led_idle;
+	int			sc_led_blink;
 };
 
 #define BWI_F_BUS_INITED	0x1

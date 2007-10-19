@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwireg.h,v 1.3 2007/10/17 11:10:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwireg.h,v 1.4 2007/10/19 14:27:04 sephe Exp $
  */
 
 #ifndef _IF_BWIREG_H
@@ -404,20 +404,38 @@
 /*
  * SPROM GPIO
  */
-#define BWI_LED_ACT_LOW		__BIT(7)
-#define BWI_LED_ACT_MASK	__BITS(6, 0)
-#define BWI_LED_ACT_OFF		0
-#define BWI_LED_ACT_ON		1
-#define BWI_LED_ACT_ACTIVE	2
-#define BWI_LED_ACT_RFEN	3
-#define BWI_LED_ACT_5GHZ	4
-#define BWI_LED_ACT_2GHZ	5
-#define BWI_LED_ACT_11G		6
-#define BWI_LED_ACT_MID		7
-#define BWI_LED_ACT_FAST	8
-#define BWI_LED_ACT_UNKN	9
-#define BWI_LED_ACT_RUN		10
-#define BWI_LED_ACT_NULL	11
+#define BWI_LED_ACT_LOW			__BIT(7)
+#define BWI_LED_ACT_MASK		__BITS(6, 0)
+#define BWI_LED_ACT_OFF			0
+#define BWI_LED_ACT_ON			1
+#define BWI_LED_ACT_BLINK		2
+#define BWI_LED_ACT_RF_ENABLED		3
+#define BWI_LED_ACT_5GHZ		4
+#define BWI_LED_ACT_2GHZ		5
+#define BWI_LED_ACT_11G			6
+#define BWI_LED_ACT_BLINK_SLOW		7
+#define BWI_LED_ACT_BLINK_POLL		8
+#define BWI_LED_ACT_UNKN		9
+#define BWI_LED_ACT_ASSOC		10
+#define BWI_LED_ACT_NULL		11
+
+#define BWI_VENDOR_LED_ACT_COMPAQ	\
+	BWI_LED_ACT_RF_ENABLED,		\
+	BWI_LED_ACT_2GHZ,		\
+	BWI_LED_ACT_5GHZ,		\
+	BWI_LED_ACT_OFF
+
+#define BWI_VENDOR_LED_ACT_LINKSYS	\
+	BWI_LED_ACT_ASSOC,		\
+	BWI_LED_ACT_2GHZ,		\
+	BWI_LED_ACT_5GHZ,		\
+	BWI_LED_ACT_OFF
+
+#define BWI_VENDOR_LED_ACT_DEFAULT	\
+	BWI_LED_ACT_BLINK,		\
+	BWI_LED_ACT_2GHZ,		\
+	BWI_LED_ACT_5GHZ,		\
+	BWI_LED_ACT_OFF
 
 /*
  * BBP IDs

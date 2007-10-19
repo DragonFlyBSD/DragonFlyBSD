@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.14 2007/10/17 11:10:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.15 2007/10/19 14:27:04 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ static void	bwi_free_txstats32(struct bwi_softc *);
 static void	bwi_setup_rx_desc32(struct bwi_softc *, int, bus_addr_t, int);
 static void	bwi_setup_tx_desc32(struct bwi_softc *, struct bwi_ring_data *,
 				    int, bus_addr_t, int);
-static void	bwi_rxeof32(struct bwi_softc *);
+static int	bwi_rxeof32(struct bwi_softc *);
 static void	bwi_start_tx32(struct bwi_softc *, uint32_t, int);
 static void	bwi_txeof_status32(struct bwi_softc *);
 
@@ -124,12 +124,12 @@ static void	bwi_free_txstats64(struct bwi_softc *);
 static void	bwi_setup_rx_desc64(struct bwi_softc *, int, bus_addr_t, int);
 static void	bwi_setup_tx_desc64(struct bwi_softc *, struct bwi_ring_data *,
 				    int, bus_addr_t, int);
-static void	bwi_rxeof64(struct bwi_softc *);
+static int	bwi_rxeof64(struct bwi_softc *);
 static void	bwi_start_tx64(struct bwi_softc *, uint32_t, int);
 static void	bwi_txeof_status64(struct bwi_softc *);
 
 static void	bwi_intr(void *);
-static void	bwi_rxeof(struct bwi_softc *, int);
+static int	bwi_rxeof(struct bwi_softc *, int);
 static void	_bwi_txeof(struct bwi_softc *, uint16_t, int, int);
 static void	bwi_txeof(struct bwi_softc *);
 static void	bwi_txeof_status(struct bwi_softc *, int);
@@ -137,7 +137,7 @@ static void	bwi_enable_intrs(struct bwi_softc *, uint32_t);
 static void	bwi_disable_intrs(struct bwi_softc *, uint32_t);
 static int	bwi_calc_rssi(struct bwi_softc *, const struct bwi_rxbuf_hdr *);
 static void	bwi_rx_radiotap(struct bwi_softc *, struct mbuf *,
-				struct bwi_rxbuf_hdr *, const void *, int);
+				struct bwi_rxbuf_hdr *, const void *, int, int);
 
 static int	bwi_dma_alloc(struct bwi_softc *);
 static void	bwi_dma_free(struct bwi_softc *);
@@ -178,6 +178,10 @@ static int	bwi_regwin_select(struct bwi_softc *, int);
 
 static void	bwi_led_attach(struct bwi_softc *);
 static void	bwi_led_newstate(struct bwi_softc *, enum ieee80211_state);
+static void	bwi_led_event(struct bwi_softc *, int);
+static void	bwi_led_blink_start(struct bwi_softc *, int, int);
+static void	bwi_led_blink_next(void *);
+static void	bwi_led_blink_end(void *);
 
 static const struct bwi_dev {
 	uint16_t	vid;
@@ -292,6 +296,44 @@ static const struct {
 
 #undef CLKSRC
 
+#define VENDOR_LED_ACT(vendor)				\
+{							\
+	.vid = PCI_VENDOR_##vendor,			\
+	.led_act = { BWI_VENDOR_LED_ACT_##vendor }	\
+}
+
+static const struct {
+	uint16_t	vid;
+	uint8_t		led_act[BWI_LED_MAX];
+} bwi_vendor_led_act[] = {
+	VENDOR_LED_ACT(COMPAQ),
+	VENDOR_LED_ACT(LINKSYS)
+};
+
+static const uint8_t bwi_default_led_act[BWI_LED_MAX] =
+	{ BWI_VENDOR_LED_ACT_DEFAULT };
+
+#undef VENDOR_LED_ACT
+
+static const struct {
+	int	on_dur;
+	int	off_dur;
+} bwi_led_duration[109] = {
+	[0]	= { 400, 100 },
+	[2]	= { 150, 75 },
+	[4]	= { 90, 45 },
+	[11]	= { 66, 34 },
+	[12]	= { 53, 26 },
+	[18]	= { 42, 21 },
+	[22]	= { 35, 17 },
+	[24]	= { 32, 16 },
+	[36]	= { 21, 10 },
+	[48]	= { 16, 8 },
+	[72]	= { 11, 5 },
+	[96]	= { 9, 4 },
+	[108]	= { 7, 3 }
+};
+
 #ifdef BWI_DEBUG
 static uint32_t	bwi_debug = BWI_DBG_ATTACH | BWI_DBG_INIT | BWI_DBG_TXPOWER;
 TUNABLE_INT("hw.bwi.debug", (int *)&bwi_debug);
@@ -339,6 +381,124 @@ bwi_setup_desc32(struct bwi_softc *sc, struct bwi_desc32 *desc_array,
 	desc->ctrl = htole32(ctrl);
 }
 
+/* XXX does not belong here */
+uint8_t
+bwi_rate2plcp(uint8_t rate)
+{
+	rate &= IEEE80211_RATE_VAL;
+
+	switch (rate) {
+	case 2:		return 0xa;
+	case 4:		return 0x14;
+	case 11:	return 0x37;
+	case 22:	return 0x6e;
+	case 44:	return 0xdc;
+
+	case 12:	return 0xb;
+	case 18:	return 0xf;
+	case 24:	return 0xa;
+	case 36:	return 0xe;
+	case 48:	return 0x9;
+	case 72:	return 0xd;
+	case 96:	return 0x8;
+	case 108:	return 0xc;
+
+	default:
+		panic("unsupported rate %u\n", rate);
+	}
+}
+
+/* XXX does not belong here */
+#define IEEE80211_OFDM_PLCP_RATE_MASK	__BITS(3, 0)
+#define IEEE80211_OFDM_PLCP_LEN_MASK	__BITS(16, 5)
+
+static __inline void
+bwi_ofdm_plcp_header(uint32_t *plcp0, int pkt_len, uint8_t rate)
+{
+	uint32_t plcp;
+
+	plcp = __SHIFTIN(bwi_rate2plcp(rate), IEEE80211_OFDM_PLCP_RATE_MASK) |
+	       __SHIFTIN(pkt_len, IEEE80211_OFDM_PLCP_LEN_MASK);
+	*plcp0 = htole32(plcp);
+}
+
+/* XXX does not belong here */
+struct ieee80211_ds_plcp_hdr {
+	uint8_t		i_signal;
+	uint8_t		i_service;
+	uint16_t	i_length;
+	uint16_t	i_crc;
+} __packed;
+
+#define IEEE80211_DS_PLCP_SERVICE_LOCKED	0x04
+#define IEEE80211_DS_PLCL_SERVICE_PBCC		0x08
+#define IEEE80211_DS_PLCP_SERVICE_LENEXT5	0x20
+#define IEEE80211_DS_PLCP_SERVICE_LENEXT6	0x40
+#define IEEE80211_DS_PLCP_SERVICE_LENEXT7	0x80
+
+static __inline void
+bwi_ds_plcp_header(struct ieee80211_ds_plcp_hdr *plcp, int pkt_len,
+		   uint8_t rate)
+{
+	int len, service, pkt_bitlen;
+
+	pkt_bitlen = pkt_len * NBBY;
+	len = howmany(pkt_bitlen * 2, rate);
+
+	service = IEEE80211_DS_PLCP_SERVICE_LOCKED;
+	if (rate == (11 * 2)) {
+		int pkt_bitlen1;
+
+		/*
+		 * PLCP service field needs to be adjusted,
+		 * if TX rate is 11Mbytes/s
+		 */
+		pkt_bitlen1 = len * 11;
+		if (pkt_bitlen1 - pkt_bitlen >= NBBY)
+			service |= IEEE80211_DS_PLCP_SERVICE_LENEXT7;
+	}
+
+	plcp->i_signal = bwi_rate2plcp(rate);
+	plcp->i_service = service;
+	plcp->i_length = htole16(len);
+	/* NOTE: do NOT touch i_crc */
+}
+
+static __inline void
+bwi_plcp_header(void *plcp, int pkt_len, uint8_t rate)
+{
+	enum ieee80211_modtype modtype;
+
+	/*
+	 * Assume caller has zeroed 'plcp'
+	 */
+
+	modtype = ieee80211_rate2modtype(rate);
+	if (modtype == IEEE80211_MODTYPE_OFDM)
+		bwi_ofdm_plcp_header(plcp, pkt_len, rate);
+	else if (modtype == IEEE80211_MODTYPE_DS)
+		bwi_ds_plcp_header(plcp, pkt_len, rate);
+	else
+		panic("unsupport modulation type %u\n", modtype);
+}
+
+static __inline uint8_t
+bwi_ofdm_plcp2rate(const uint32_t *plcp0)
+{
+	uint32_t plcp;
+	uint8_t plcp_rate;
+
+	plcp = le32toh(*plcp0);
+	plcp_rate = __SHIFTOUT(plcp, IEEE80211_OFDM_PLCP_RATE_MASK);
+	return ieee80211_plcp2rate(plcp_rate, 1);
+}
+
+static __inline uint8_t
+bwi_ds_plcp2rate(const struct ieee80211_ds_plcp_hdr *hdr)
+{
+	return ieee80211_plcp2rate(hdr->i_signal, 0);
+}
+
 static int
 bwi_probe(device_t dev)
 {
@@ -375,6 +535,8 @@ bwi_attach(device_t dev)
 	 */
 	sc->sc_fw_version = BWI_FW_VERSION3;
 	sc->sc_dwell_time = 200;
+	sc->sc_led_idle = (2350 * hz) / 1000;
+	sc->sc_led_blink = 1;
 #ifdef BWI_DEBUG
 	sc->sc_debug = bwi_debug;
 #endif
@@ -456,6 +618,14 @@ bwi_attach(device_t dev)
 			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
 			"fw_version", CTLFLAG_RD, &sc->sc_fw_version, 0,
 			"Firmware version");
+	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			"led_idle", CTLFLAG_RW, &sc->sc_led_idle, 0,
+			"# ticks before LED enters idle state");
+	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+		       "led_blink", CTLFLAG_RW, &sc->sc_led_blink, 0,
+		       "Allow LED to blink");
 #ifdef BWI_DEBUG
 	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
 			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
@@ -1558,7 +1728,7 @@ bwi_intr(void *xsc)
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	uint32_t intr_status;
 	uint32_t txrx_intr_status[BWI_TXRX_NRING];
-	int i, txrx_error;
+	int i, txrx_error, tx = 0, rx_data = -1;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -1640,18 +1810,40 @@ bwi_intr(void *xsc)
 		if_printf(ifp, "intr noise\n");
 
 	if (txrx_intr_status[0] & BWI_TXRX_INTR_RX)
-		sc->sc_rxeof(sc);
+		rx_data = sc->sc_rxeof(sc);
 
-	if (txrx_intr_status[3] & BWI_TXRX_INTR_RX)
+	if (txrx_intr_status[3] & BWI_TXRX_INTR_RX) {
 		sc->sc_txeof_status(sc);
+		tx = 1;
+	}
 
-	if (intr_status & BWI_INTR_TX_DONE)
+	if (intr_status & BWI_INTR_TX_DONE) {
 		bwi_txeof(sc);
-
-	/* TODO:LED */
+		tx = 1;
+	}
 
 	/* Re-enable interrupts */
 	bwi_enable_intrs(sc, BWI_INIT_INTRS);
+
+	if (sc->sc_blink_led != NULL && sc->sc_led_blink) {
+		int evt = BWI_LED_EVENT_NONE;
+
+		if (tx && rx_data > 0) {
+			if (sc->sc_rx_rate > sc->sc_tx_rate)
+				evt = BWI_LED_EVENT_RX;
+			else
+				evt = BWI_LED_EVENT_TX;
+		} else if (tx) {
+			evt = BWI_LED_EVENT_TX;
+		} else if (rx_data > 0) {
+			evt = BWI_LED_EVENT_RX;
+		} else if (rx_data == 0) {
+			evt = BWI_LED_EVENT_POLL;
+		}
+
+		if (evt != BWI_LED_EVENT_NONE)
+			bwi_led_event(sc, evt);
+	}
 }
 
 static int
@@ -2509,14 +2701,14 @@ bwi_next_scan(void *xsc)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-static void
+static int
 bwi_rxeof(struct bwi_softc *sc, int end_idx)
 {
 	struct bwi_ring_data *rd = &sc->sc_rx_rdata;
 	struct bwi_rxbuf_data *rbd = &sc->sc_rx_bdata;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
-	int idx;
+	int idx, rx_data = 0;
 
 	idx = rbd->rbd_idx;
 	while (idx != end_idx) {
@@ -2525,9 +2717,9 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 		struct ieee80211_frame_min *wh;
 		struct ieee80211_node *ni;
 		struct mbuf *m;
-		const uint8_t *plcp;
+		const void *plcp;
 		uint16_t flags2;
-		int buflen, wh_ofs, hdr_extra, rssi;
+		int buflen, wh_ofs, hdr_extra, rssi, type, rate;
 
 		m = rb->rb_mbuf;
 		bus_dmamap_sync(sc->sc_buf_dtag, rb->rb_dmap,
@@ -2562,18 +2754,28 @@ bwi_rxeof(struct bwi_softc *sc, int end_idx)
 		m->m_len = m->m_pkthdr.len = buflen + sizeof(*hdr);
 		m_adj(m, sizeof(*hdr) + wh_ofs);
 
+		if (htole16(hdr->rxh_flags1) & BWI_RXH_F1_OFDM)
+			rate = bwi_ofdm_plcp2rate(plcp);
+		else
+			rate = bwi_ds_plcp2rate(plcp);
+
 		/* RX radio tap */
 		if (sc->sc_drvbpf != NULL)
-			bwi_rx_radiotap(sc, m, hdr, plcp, rssi);
+			bwi_rx_radiotap(sc, m, hdr, plcp, rate, rssi);
 
 		m_adj(m, -IEEE80211_CRC_LEN);
 
 		wh = mtod(m, struct ieee80211_frame_min *);
 		ni = ieee80211_find_rxnode(ic, wh);
 
-		ieee80211_input(ic, m, ni, rssi - BWI_NOISE_FLOOR,
-				le16toh(hdr->rxh_tsf));
+		type = ieee80211_input(ic, m, ni, rssi - BWI_NOISE_FLOOR,
+				       le16toh(hdr->rxh_tsf));
 		ieee80211_free_node(ni);
+
+		if (type == IEEE80211_FC0_TYPE_DATA) {
+			rx_data = 1;
+			sc->sc_rx_rate = rate;
+		}
 next:
 		idx = (idx + 1) % BWI_RX_NDESC;
 	}
@@ -2581,13 +2783,14 @@ next:
 	rbd->rbd_idx = idx;
 	bus_dmamap_sync(sc->sc_rxring_dtag, rd->rdata_dmap,
 			BUS_DMASYNC_PREWRITE);
+	return rx_data;
 }
 
-static void
+static int
 bwi_rxeof32(struct bwi_softc *sc)
 {
 	uint32_t val, rx_ctrl;
-	int end_idx;
+	int end_idx, rx_data;
 
 	rx_ctrl = sc->sc_rx_rdata.rdata_txrx_ctrl;
 
@@ -2595,16 +2798,19 @@ bwi_rxeof32(struct bwi_softc *sc)
 	end_idx = __SHIFTOUT(val, BWI_RX32_STATUS_INDEX_MASK) /
 		  sizeof(struct bwi_desc32);
 
-	bwi_rxeof(sc, end_idx);
+	rx_data = bwi_rxeof(sc, end_idx);
 
 	CSR_WRITE_4(sc, rx_ctrl + BWI_RX32_INDEX,
 		    end_idx * sizeof(struct bwi_desc32));
+
+	return rx_data;
 }
 
-static void
+static int
 bwi_rxeof64(struct bwi_softc *sc)
 {
 	/* TODO:64 */
+	return 0;
 }
 
 static void
@@ -2741,107 +2947,6 @@ bwi_free_tx_ring64(struct bwi_softc *sc, int ring_idx)
 	/* TODO:64 */
 }
 
-/* XXX does not belong here */
-uint8_t
-bwi_rate2plcp(uint8_t rate)
-{
-	rate &= IEEE80211_RATE_VAL;
-
-	switch (rate) {
-	case 2:		return 0xa;
-	case 4:		return 0x14;
-	case 11:	return 0x37;
-	case 22:	return 0x6e;
-	case 44:	return 0xdc;
-
-	case 12:	return 0xb;
-	case 18:	return 0xf;
-	case 24:	return 0xa;
-	case 36:	return 0xe;
-	case 48:	return 0x9;
-	case 72:	return 0xd;
-	case 96:	return 0x8;
-	case 108:	return 0xc;
-
-	default:
-		panic("unsupported rate %u\n", rate);
-	}
-}
-
-/* XXX does not belong here */
-#define IEEE80211_OFDM_PLCP_RATE_MASK	__BITS(3, 0)
-#define IEEE80211_OFDM_PLCP_LEN_MASK	__BITS(16, 5)
-
-static __inline void
-bwi_ofdm_plcp_header(uint32_t *plcp0, int pkt_len, uint8_t rate)
-{
-	uint32_t plcp;
-
-	plcp = __SHIFTIN(bwi_rate2plcp(rate), IEEE80211_OFDM_PLCP_RATE_MASK) |
-	       __SHIFTIN(pkt_len, IEEE80211_OFDM_PLCP_LEN_MASK);
-	*plcp0 = htole32(plcp);
-}
-
-/* XXX does not belong here */
-struct ieee80211_ds_plcp_hdr {
-	uint8_t		i_signal;
-	uint8_t		i_service;
-	uint16_t	i_length;
-	uint16_t	i_crc;
-} __packed;
-
-#define IEEE80211_DS_PLCP_SERVICE_LOCKED	0x04
-#define IEEE80211_DS_PLCL_SERVICE_PBCC		0x08
-#define IEEE80211_DS_PLCP_SERVICE_LENEXT5	0x20
-#define IEEE80211_DS_PLCP_SERVICE_LENEXT6	0x40
-#define IEEE80211_DS_PLCP_SERVICE_LENEXT7	0x80
-
-static __inline void
-bwi_ds_plcp_header(struct ieee80211_ds_plcp_hdr *plcp, int pkt_len,
-		   uint8_t rate)
-{
-	int len, service, pkt_bitlen;
-
-	pkt_bitlen = pkt_len * NBBY;
-	len = howmany(pkt_bitlen * 2, rate);
-
-	service = IEEE80211_DS_PLCP_SERVICE_LOCKED;
-	if (rate == (11 * 2)) {
-		int pkt_bitlen1;
-
-		/*
-		 * PLCP service field needs to be adjusted,
-		 * if TX rate is 11Mbytes/s
-		 */
-		pkt_bitlen1 = len * 11;
-		if (pkt_bitlen1 - pkt_bitlen >= NBBY)
-			service |= IEEE80211_DS_PLCP_SERVICE_LENEXT7;
-	}
-
-	plcp->i_signal = bwi_rate2plcp(rate);
-	plcp->i_service = service;
-	plcp->i_length = htole16(len);
-	/* NOTE: do NOT touch i_crc */
-}
-
-static __inline void
-bwi_plcp_header(void *plcp, int pkt_len, uint8_t rate)
-{
-	enum ieee80211_modtype modtype;
-
-	/*
-	 * Assume caller has zeroed 'plcp'
-	 */
-
-	modtype = ieee80211_rate2modtype(rate);
-	if (modtype == IEEE80211_MODTYPE_OFDM)
-		bwi_ofdm_plcp_header(plcp, pkt_len, rate);
-	else if (modtype == IEEE80211_MODTYPE_DS)
-		bwi_ds_plcp_header(plcp, pkt_len, rate);
-	else
-		panic("unsupport modulation type %u\n", modtype);
-}
-
 static int
 bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 	  struct ieee80211_node **ni0, int mgt_pkt)
@@ -2919,6 +3024,7 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 			  rate, rate_fb);
 		rate = rate_fb = (1 * 2); /* Force 1Mbits/s */
 	}
+	sc->sc_tx_rate = rate;
 
 	/*
 	 * TX radio tap
@@ -3552,41 +3658,17 @@ bwi_calc_rssi(struct bwi_softc *sc, const struct bwi_rxbuf_hdr *hdr)
 	return bwi_rf_calc_rssi(mac, hdr);
 }
 
-static __inline uint8_t
-bwi_ofdm_plcp2rate(const uint32_t *plcp0)
-{
-	uint32_t plcp;
-	uint8_t plcp_rate;
-
-	plcp = le32toh(*plcp0);
-	plcp_rate = __SHIFTOUT(plcp, IEEE80211_OFDM_PLCP_RATE_MASK);
-	return ieee80211_plcp2rate(plcp_rate, 1);
-}
-
-static __inline uint8_t
-bwi_ds_plcp2rate(const struct ieee80211_ds_plcp_hdr *hdr)
-{
-	return ieee80211_plcp2rate(hdr->i_signal, 0);
-}
-
 static void
 bwi_rx_radiotap(struct bwi_softc *sc, struct mbuf *m,
-		struct bwi_rxbuf_hdr *hdr, const void *plcp, int rssi)
+		struct bwi_rxbuf_hdr *hdr, const void *plcp,
+		int rate, int rssi)
 {
 	const struct ieee80211_frame_min *wh;
-	uint16_t flags1;
-	uint8_t rate;
 
 	KKASSERT(sc->sc_drvbpf != NULL);
 
-	flags1 = htole16(hdr->rxh_flags1);
-	if (flags1 & BWI_RXH_F1_OFDM)
-		rate = bwi_ofdm_plcp2rate(plcp);
-	else
-		rate = bwi_ds_plcp2rate(plcp);
-
 	sc->sc_rx_th.wr_flags = IEEE80211_RADIOTAP_F_FCS;
-	if (flags1 & BWI_RXH_F1_SHPREAMBLE)
+	if (htole16(hdr->rxh_flags1) & BWI_RXH_F1_SHPREAMBLE)
 		sc->sc_rx_th.wr_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
 
 	wh = mtod(m, const struct ieee80211_frame_min *);
@@ -3604,15 +3686,22 @@ bwi_rx_radiotap(struct bwi_softc *sc, struct mbuf *m,
 static void
 bwi_led_attach(struct bwi_softc *sc)
 {
-	const static uint8_t led_default_act[BWI_LED_MAX] = {
-		BWI_LED_ACT_ACTIVE,
-		BWI_LED_ACT_2GHZ,
-		BWI_LED_ACT_5GHZ,
-		BWI_LED_ACT_OFF
-	};
-
+	const uint8_t *led_act = NULL;
 	uint16_t gpio, val[BWI_LED_MAX];
 	int i;
+
+#define N(arr)	(int)(sizeof(arr) / sizeof(arr[0]))
+
+	for (i = 0; i < N(bwi_vendor_led_act); ++i) {
+		if (sc->sc_pci_subvid == bwi_vendor_led_act[i].vid) {
+			led_act = bwi_vendor_led_act[i].led_act;
+			break;
+		}
+	}
+	if (led_act == NULL)
+		led_act = bwi_default_led_act;
+
+#undef N
 
 	gpio = bwi_read_sprom(sc, BWI_SPROM_GPIO01);
 	val[0] = __SHIFTOUT(gpio, BWI_SPROM_GPIO_0);
@@ -3626,19 +3715,47 @@ bwi_led_attach(struct bwi_softc *sc)
 		struct bwi_led *led = &sc->sc_leds[i];
 
 		if (val[i] == 0xff) {
-			led->l_act = led_default_act[i];
-			if (i == 0 && sc->sc_pci_subvid == PCI_VENDOR_COMPAQ)
-				led->l_act = BWI_LED_ACT_RFEN;
+			led->l_act = led_act[i];
 		} else {
 			if (val[i] & BWI_LED_ACT_LOW)
 				led->l_flags |= BWI_LED_F_ACTLOW;
 			led->l_act = __SHIFTOUT(val[i], BWI_LED_ACT_MASK);
+		}
+		led->l_mask = (1 << i);
+
+		if (led->l_act == BWI_LED_ACT_BLINK_SLOW ||
+		    led->l_act == BWI_LED_ACT_BLINK_POLL ||
+		    led->l_act == BWI_LED_ACT_BLINK) {
+			led->l_flags |= BWI_LED_F_BLINK;
+			if (led->l_act == BWI_LED_ACT_BLINK_POLL)
+				led->l_flags |= BWI_LED_F_POLLABLE;
+			else if (led->l_act == BWI_LED_ACT_BLINK_SLOW)
+				led->l_flags |= BWI_LED_F_SLOW;
+
+			if (sc->sc_blink_led == NULL) {
+				sc->sc_blink_led = led;
+				if (led->l_flags & BWI_LED_F_SLOW)
+					BWI_LED_SLOWDOWN(sc->sc_led_idle);
+			}
 		}
 
 		DPRINTF(sc, BWI_DBG_LED | BWI_DBG_ATTACH,
 			"%dth led, act %d, lowact %d\n", i,
 			led->l_act, led->l_flags & BWI_LED_F_ACTLOW);
 	}
+	callout_init(&sc->sc_led_blink_ch);
+}
+
+static __inline uint16_t
+bwi_led_onoff(const struct bwi_led *led, uint16_t val, int on)
+{
+	if (led->l_flags & BWI_LED_F_ACTLOW)
+		on = !on;
+	if (on)
+		val |= led->l_mask;
+	else
+		val &= ~led->l_mask;
+	return val;
 }
 
 static void
@@ -3647,6 +3764,11 @@ bwi_led_newstate(struct bwi_softc *sc, enum ieee80211_state nstate)
 	struct ieee80211com *ic = &sc->sc_ic;
 	uint16_t val;
 	int i;
+
+	if (nstate == IEEE80211_S_INIT) {
+		callout_stop(&sc->sc_led_blink_ch);
+		sc->sc_led_blinking = 0;
+	}
 
 	if ((ic->ic_if.if_flags & IFF_RUNNING) == 0)
 		return;
@@ -3657,19 +3779,19 @@ bwi_led_newstate(struct bwi_softc *sc, enum ieee80211_state nstate)
 		int on;
 
 		if (led->l_act == BWI_LED_ACT_UNKN ||
-		    led->l_act == BWI_LED_ACT_NULL) {
-			/* Don't touch it */
+		    led->l_act == BWI_LED_ACT_NULL)
 			continue;
-		}
+
+		if ((led->l_flags & BWI_LED_F_BLINK) &&
+		    nstate != IEEE80211_S_INIT)
+			continue;
 
 		switch (led->l_act) {
-		case BWI_LED_ACT_ON:	/* Always on */
+		case BWI_LED_ACT_ON:		/* Always on */
 			on = 1;
 			break;
-		case BWI_LED_ACT_OFF:	/* Always off */
-		case BWI_LED_ACT_5GHZ:	/* TODO: 11A */
-		case BWI_LED_ACT_MID:	/* Blinking ones */
-		case BWI_LED_ACT_FAST:
+		case BWI_LED_ACT_OFF:		/* Always off */
+		case BWI_LED_ACT_5GHZ:		/* TODO: 11A */
 			on = 0;
 			break;
 		default:
@@ -3684,21 +3806,92 @@ bwi_led_newstate(struct bwi_softc *sc, enum ieee80211_state nstate)
 					on = 0;
 				break;
 			default:
-				if (led->l_act == BWI_LED_ACT_RUN ||
-				    led->l_act == BWI_LED_ACT_ACTIVE)
+				if (led->l_act == BWI_LED_ACT_ASSOC)
 					on = 0;
 				break;
 			}
 			break;
 		}
 
-		if (led->l_flags & BWI_LED_F_ACTLOW)
-			on = !on;
-
-		if (on)
-			val |= (1 << i);
-		else
-			val &= ~(1 << i);
+		val = bwi_led_onoff(led, val, on);
 	}
 	CSR_WRITE_2(sc, BWI_MAC_GPIO_CTRL, val);
+}
+
+static void
+bwi_led_event(struct bwi_softc *sc, int event)
+{
+	struct bwi_led *led = sc->sc_blink_led;
+	int rate;
+
+	if (event == BWI_LED_EVENT_POLL) {
+		if ((led->l_flags & BWI_LED_F_POLLABLE) == 0)
+			return;
+		if (ticks - sc->sc_led_ticks < sc->sc_led_idle)
+			return;
+	}
+
+	sc->sc_led_ticks = ticks;
+	if (sc->sc_led_blinking)
+		return;
+
+	switch (event) {
+	case BWI_LED_EVENT_RX:
+		rate = sc->sc_rx_rate;
+		break;
+	case BWI_LED_EVENT_TX:
+		rate = sc->sc_tx_rate;
+		break;
+	case BWI_LED_EVENT_POLL:
+		rate = 0;
+		break;
+	default:
+		panic("unknown LED event %d\n", event);
+		break;
+	}
+	bwi_led_blink_start(sc, bwi_led_duration[rate].on_dur,
+			    bwi_led_duration[rate].off_dur);
+}
+
+static void
+bwi_led_blink_start(struct bwi_softc *sc, int on_dur, int off_dur)
+{
+	struct bwi_led *led = sc->sc_blink_led;
+	uint16_t val;
+
+	val = CSR_READ_2(sc, BWI_MAC_GPIO_CTRL);
+	val = bwi_led_onoff(led, val, 1);
+	CSR_WRITE_2(sc, BWI_MAC_GPIO_CTRL, val);
+
+	if (led->l_flags & BWI_LED_F_SLOW) {
+		BWI_LED_SLOWDOWN(on_dur);
+		BWI_LED_SLOWDOWN(off_dur);
+	}
+
+	sc->sc_led_blinking = 1;
+	sc->sc_led_blink_offdur = off_dur;
+
+	callout_reset(&sc->sc_led_blink_ch, on_dur, bwi_led_blink_next, sc);
+}
+
+static void
+bwi_led_blink_next(void *xsc)
+{
+	struct bwi_softc *sc = xsc;
+	uint16_t val;
+
+	val = CSR_READ_2(sc, BWI_MAC_GPIO_CTRL);
+	val = bwi_led_onoff(sc->sc_blink_led, val, 0);
+	CSR_WRITE_2(sc, BWI_MAC_GPIO_CTRL, val);
+
+	callout_reset(&sc->sc_led_blink_ch, sc->sc_led_blink_offdur,
+		      bwi_led_blink_end, sc);
+}
+
+static void
+bwi_led_blink_end(void *xsc)
+{
+	struct bwi_softc *sc = xsc;
+
+	sc->sc_led_blinking = 0;
 }

@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/bwi.4,v 1.4 2007/10/18 10:56:24 sephe Exp $
+.\" $DragonFly: src/share/man/man4/bwi.4,v 1.5 2007/10/19 14:27:04 sephe Exp $
 .\"
 .Dd September 16, 2007
 .Dt BWI 4
@@ -62,6 +62,10 @@ Debug flags.
 Channel dwell time during scan (msec).
 .It Va fw_version
 Firmware version.
+.It Va led_idle
+Number of ticks before LED enters idle state.
+.It Va led_blink
+Allow LED to blink.
 .El
 .Sh HARDWARE
 The following cards are among those supported by the
