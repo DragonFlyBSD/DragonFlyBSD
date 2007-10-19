@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.72 2007/08/18 00:10:50 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.73 2007/10/19 18:02:22 tgen Exp $
 #
 
 #########################################################################
@@ -225,7 +225,7 @@ customizeiso:
 	cp ${PKGSRC_PKG_PATH}/${PKG} ${ISOROOT}/tmp/packages
 .endfor
 .for PKG in ${PKGSRC_PACKAGES}
-	${ENV} PKG_PATH=/tmp/packages chroot ${ISOROOT} ${PKGBIN_PKG_ADD} -I ${PKG}
+	${ENVCMD} PKG_PATH=/tmp/packages chroot ${ISOROOT} ${PKGBIN_PKG_ADD} -I ${PKG}
 .endfor
 	rm -rf ${ISOROOT}/tmp/packages
 	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
