@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.24 2007/05/17 23:50:00 dillon Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.25 2007/10/19 20:28:43 swildner Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -111,8 +111,8 @@ MLINKS+=glob.3 globfree.3
 MLINKS+=getcontext.3 setcontext.3
 MLINKS+=makecontext.3 swapcontext.3
 MLINKS+=popen.3 pclose.3
-MLINKS+=psignal.3 sys_siglist.3 psignal.3 sys_signame.3
-MLINKS+=psignal.3 strsignal.3 psignal.3 sys_siglist.3 psignal.3 sys_signame.3
+MLINKS+=psignal.3 strsignal.3 psignal.3 sys_nsig.3 psignal.3 sys_siglist.3 \
+	psignal.3 sys_signame.3
 MLINKS+=pwcache.3 group_from_gid.3 pwcache.3 user_from_uid.3
 MLINKS+=rand48.3 _rand48.3 rand48.3 drand48.3 rand48.3 erand48.3 \
 	rand48.3 jrand48.3 rand48.3 lcong48.3 rand48.3 lrand48.3 \
