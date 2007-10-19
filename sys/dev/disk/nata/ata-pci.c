@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.121 2007/02/23 12:18:33 piso Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.5 2007/06/05 18:30:40 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.6 2007/10/19 11:53:14 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -167,11 +167,15 @@ ata_pci_probe(device_t dev)
 	break;
     }
 
-    /* unknown chipset, try generic DMA if it seems possible */
-    if ((pci_get_class(dev) == PCIC_STORAGE) &&
-	(pci_get_subclass(dev) == PCIS_STORAGE_IDE)) {
-	if (!ata_generic_ident(dev))
-	    return ATA_PROBE_OK;
+    /* unknown chipset, try generic AHCI or DMA if it seems possible */
+    if (pci_get_class(dev) == PCIC_STORAGE) {
+	if (pci_get_subclass(dev) == PCIS_STORAGE_SATA) {
+	    if (!ata_genahci_ident(dev))
+		return ATA_PROBE_OK;
+	} else if (pci_get_subclass(dev) == PCIS_STORAGE_IDE) {
+	    if (!ata_generic_ident(dev))
+		return ATA_PROBE_OK;
+	}
     }
     return ENXIO;
 }

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.196 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.8 2007/06/17 16:34:43 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.9 2007/10/19 11:53:14 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -75,6 +75,7 @@ static void ata_ahci_reset(device_t dev);
 static void ata_ahci_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ata_ahci_dmainit(device_t dev);
 static int ata_ahci_setup_fis(struct ata_ahci_cmd_tab *ctp, struct ata_request *request);
+static int ata_genahci_chipinit(device_t dev);
 static int ata_acard_chipinit(device_t dev);
 static int ata_acard_allocate(device_t dev);
 static int ata_acard_status(device_t dev);
@@ -802,6 +803,44 @@ ata_ahci_setup_fis(struct ata_ahci_cmd_tab *ctp, struct ata_request *request)
     return ata_request2fis_h2d(request, &ctp->cfis[0]);
 }
 
+/*
+ * Generic AHCI part support functions.
+ */
+int
+ata_genahci_ident(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+    static struct ata_chip_id id = {0, 0, 0, 0x00, ATA_SA300, "AHCI"};
+    char buffer[64];
+
+    if(!(pci_read_config(dev, PCIR_PROGIF, 1) == PCIP_STORAGE_SATA_AHCI)) {
+	return ENXIO;
+    }
+
+    ksprintf(buffer, "GENERIC %s %s controller", id.text, ata_mode2str(id.max_dma));
+    device_set_desc_copy(dev, buffer);
+    ctlr->chip = &id;
+    ctlr->chipinit = ata_genahci_chipinit;
+    return 0;
+}
+
+static int
+ata_genahci_chipinit(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+
+    if (ata_setup_interrupt(dev))
+	return ENXIO;
+
+    /* Check if the chip has PCI BAR 5 as memory resource. */
+    ctlr->r_type2 = SYS_RES_MEMORY;
+    ctlr->r_rid2 = PCIR_BAR(5);	/* 0x24 */
+    if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
+					       &ctlr->r_rid2, RF_ACTIVE))) {
+	return ata_ahci_chipinit(dev);
+    } else
+	return ENXIO;
+}
 
 /*
  * Acard chipset support functions
@@ -1273,8 +1312,8 @@ ata_ati_ident(device_t dev)
      { ATA_ATI_IXP300_S1, 0x00, SIIMEMIO, 0, ATA_SA150, "IXP300" },
      { ATA_ATI_IXP400_S1, 0x00, SIIMEMIO, 0, ATA_SA150, "IXP400" },
      { ATA_ATI_IXP400_S2, 0x00, SIIMEMIO, 0, ATA_SA150, "IXP400" },
-     { ATA_ATI_SB600_S1,  0x00, SIIMEMIO, 0, ATA_SA300, "SB600"  },
-     { ATA_ATI_SB600_S2,  0x00, SIIMEMIO, 0, ATA_SA300, "SB600"  },
+     { ATA_ATI_SB600_S1,  0x00, ATIAHCI,     0, ATA_SA300, "SB600"  },
+     { ATA_ATI_SB600_S2,  0x00, ATIAHCI,     0, ATA_SA300, "SB600"  },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -1286,7 +1325,10 @@ ata_ati_ident(device_t dev)
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
 
-    /* the ATI SATA controller is actually a SiI 3112 controller*/
+    /*
+     * The ATI SATA controllers are actually a SiI 3112 controller, except
+     * for the SB600.
+     */
     if (ctlr->chip->cfg1 & SIIMEMIO)
 	ctlr->chipinit = ata_sii_chipinit;
     else
@@ -1301,6 +1343,22 @@ ata_ati_chipinit(device_t dev)
 
     if (ata_setup_interrupt(dev))
 	return ENXIO;
+
+    /* The SB600 needs special treatment. */
+    if (ctlr->chip->cfg1 & ATIAHCI) {
+	/* Check if the chip is configured as an AHCI part. */
+	if ((pci_get_subclass(dev) == PCIS_STORAGE_SATA) &&
+	    (pci_read_config(dev, PCIR_PROGIF, 1) == PCIP_STORAGE_SATA_AHCI)) {
+	    /* Check if the chip has PCI BAR 5 as memory resource. */
+	    ctlr->r_type2 = SYS_RES_MEMORY;
+	    ctlr->r_rid2 = PCIR_BAR(5);	/* 0x24 */
+	    if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
+						       &ctlr->r_rid2,
+						       RF_ACTIVE))) {
+		return ata_ahci_chipinit(dev);
+	    }
+	}
+    }
 
     ctlr->setmode = ata_ati_setmode;
     return 0;
