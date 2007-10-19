@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.64 2007/10/06 22:36:18 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.65 2007/10/19 20:39:25 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -514,17 +514,23 @@ MLINKS+=usbdi.9 usbd_abort_default_pipe.9 \
 	usbdi.9 usbd_abort_pipe.9 \
 	usbdi.9 usbd_alloc_buffer.9 \
 	usbdi.9 usbd_alloc_xfer.9 \
+	usbdi.9 usbd_bulk_transfer.9 \
 	usbdi.9 usbd_clear_endpoint_stall.9 \
 	usbdi.9 usbd_clear_endpoint_stall_async.9 \
 	usbdi.9 usbd_clear_endpoint_toggle.9 \
 	usbdi.9 usbd_close_pipe.9 \
 	usbdi.9 usbd_device2interface_handle.9 \
+	usbdi.9 usbd_devinfo.9 \
+	usbdi.9 usbd_dopoll.9 \
 	usbdi.9 usbd_do_request.9 \
 	usbdi.9 usbd_do_request_async.9 \
 	usbdi.9 usbd_do_request_flags.9 \
 	usbdi.9 usbd_do_request_flags_pipe.9 \
 	usbdi.9 usbd_endpoint_count.9 \
 	usbdi.9 usbd_errstr.9 \
+	usbdi.9 usb_detach_wait.9 \
+	usbdi.9 usb_detach_wakeup.9 \
+	usbdi.9 usbd_fill_deviceinfo.9 \
 	usbdi.9 usbd_find_edesc.9 \
 	usbdi.9 usbd_find_idesc.9 \
 	usbdi.9 usbd_free_buffer.9 \
@@ -547,12 +553,15 @@ MLINKS+=usbdi.9 usbd_abort_default_pipe.9 \
 	usbdi.9 usbd_interface2device_handle.9 \
 	usbdi.9 usbd_interface2endpoint_descriptor.9 \
 	usbdi.9 usbd_interface_count.9 \
+	usbdi.9 usbd_intr_transfer.9 \
 	usbdi.9 usbd_open_pipe.9 \
 	usbdi.9 usbd_open_pipe_intr.9 \
 	usbdi.9 usbd_pipe2device_handle.9 \
+	usbdi.9 usbd_ratecheck.9 \
 	usbdi.9 usbd_set_config_index.9 \
 	usbdi.9 usbd_set_config_no.9 \
 	usbdi.9 usbd_set_interface.9 \
+	usbdi.9 usbd_set_polling.9 \
 	usbdi.9 usbd_setup_default_xfer.9 \
 	usbdi.9 usbd_setup_isoc_xfer.9 \
 	usbdi.9 usbd_setup_xfer.9 \
