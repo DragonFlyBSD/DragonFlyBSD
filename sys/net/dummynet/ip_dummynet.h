@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.6 2007/10/20 07:36:20 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.7 2007/10/20 09:08:28 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -117,14 +117,13 @@ struct dn_heap {
  *   mh_flags	= PACKET_TYPE_DUMMYNET;
  *   mh_next	= <pointer to the actual mbuf>
  *
- * mh_nextpkt, mh_data are free for dummynet use (mh_nextpkt is used to
- * build a linked list of packets in a dummynet queue).
+ * mh_nextpkt, mh_data are free for dummynet use.
  */
 struct dn_pkt {
-    struct m_hdr hdr ;
-#define DN_NEXT_NC(x)	(x)->hdr.mh_nextpkt
-#define DN_NEXT(x)	(struct dn_pkt *)DN_NEXT_NC(x)
+    struct m_hdr hdr;
 #define dn_m	hdr.mh_next	/* packet to be forwarded */
+
+    struct dn_pkt *dn_next;
 
     struct ip_fw *rule;		/* matching rule */
     int dn_dir;			/* action when packet comes out. */
@@ -135,9 +134,9 @@ struct dn_pkt {
 
     dn_key output_time;		/* when the pkt is due for delivery	*/
     struct ifnet *ifp;		/* interface, for ip_output		*/
-    struct sockaddr_in *dn_dst ;
+    struct sockaddr_in *dn_dst;
     struct route ro;		/* route, for ip_output. MUST COPY	*/
-    int flags ;			/* flags, for ip_output (IPv6 ?)	*/
+    int flags;			/* flags, for ip_output (IPv6 ?)	*/
 };
 
 #endif

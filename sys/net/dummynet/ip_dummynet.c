@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.25 2007/10/20 07:36:20 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.26 2007/10/20 09:08:28 sephe Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -422,7 +422,7 @@ transmit_event(struct dn_pipe *pipe)
 	 * first unlink, then call procedures, since ip_input() can invoke
 	 * ip_output() and viceversa, thus causing nested calls
 	 */
-	pipe->head = DN_NEXT(pkt) ;
+	pipe->head = pkt->dn_next;
 
 	/*
 	 * The actual mbuf is preceded by a struct dn_pkt, resembling an mbuf
@@ -498,7 +498,7 @@ static void
 move_pkt(struct dn_pkt *pkt, struct dn_flow_queue *q,
 	struct dn_pipe *p, int len)
 {
-    q->head = DN_NEXT(pkt) ;
+    q->head = pkt->dn_next;
     q->len-- ;
     q->len_bytes -= len ;
 
@@ -507,9 +507,9 @@ move_pkt(struct dn_pkt *pkt, struct dn_flow_queue *q,
     if (p->head == NULL)
 	p->head = pkt;
     else
-	DN_NEXT_NC(p->tail) = (struct mbuf *)pkt;
+	p->tail->dn_next = pkt;
     p->tail = pkt;
-    DN_NEXT_NC(p->tail) = NULL;
+    p->tail->dn_next = NULL;
 }
 
 /*
@@ -1123,7 +1123,7 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
     pkt->hdr.mh_type = MT_TAG;
     pkt->hdr.mh_flags = PACKET_TAG_DUMMYNET;
     pkt->rule = fwa->rule ;
-    DN_NEXT_NC(pkt) = NULL;
+    pkt->dn_next = NULL;
     pkt->dn_m = m;
     pkt->dn_dir = dir ;
 
@@ -1146,7 +1146,7 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
     if (q->head == NULL)
 	q->head = pkt;
     else
-	DN_NEXT_NC(q->tail) = (struct mbuf *)pkt;
+	q->tail->dn_next = pkt;
     q->tail = pkt;
     q->len++;
     q->len_bytes += len ;
@@ -1242,7 +1242,7 @@ dropit:
 	struct dn_pkt *n = pkt ;		\
 	rt_unref ( n->ro.ro_rt ) ;		\
 	m_freem(n->dn_m);			\
-	pkt = DN_NEXT(n) ;			\
+	pkt = n->dn_next;			\
 	kfree(n, M_DUMMYNET) ;	}
 
 /*
@@ -1352,7 +1352,7 @@ dn_rule_delete_fs(struct dn_flow_set *fs, void *r)
 
     for (i = 0 ; i <= fs->rq_size ; i++) /* last one is ovflow */
 	for (q = fs->rq[i] ; q ; q = q->next )
-	    for (pkt = q->head ; pkt ; pkt = DN_NEXT(pkt) )
+	    for (pkt = q->head; pkt; pkt = pkt->dn_next)
 		if (pkt->rule == r)
 		    pkt->rule = ip_fw_default_rule ;
 }
@@ -1377,7 +1377,7 @@ dn_rule_delete(void *r)
     for ( p = all_pipes ; p ; p = p->next ) {
 	fs = &(p->fs) ;
 	dn_rule_delete_fs(fs, r);
-	for (pkt = p->head ; pkt ; pkt = DN_NEXT(pkt) )
+	for (pkt = p->head; pkt; pkt = pkt->dn_next)
 	    if (pkt->rule == r)
 		pkt->rule = ip_fw_default_rule ;
     }
