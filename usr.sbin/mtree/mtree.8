@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)mtree.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/usr.sbin/mtree/mtree.8,v 1.16.2.11 2003/03/11 22:31:29 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/mtree/mtree.8,v 1.4 2006/02/17 19:40:18 swildner Exp $
+.\" $DragonFly: src/usr.sbin/mtree/mtree.8,v 1.5 2007/10/20 13:30:33 swildner Exp $
 .\"
 .Dd February 26, 1999
 .Dt MTREE 8
@@ -155,7 +155,7 @@ the
 file.
 .El
 .Pp
-Specifications are mostly composed of ``keywords'', i.e. strings that
+Specifications are mostly composed of ``keywords'', i.e. strings
 that specify values relating to files.
 No keywords have default values, and if a keyword has no value set, no
 checks based on it are performed.
@@ -324,6 +324,17 @@ for distributions and other such things; the files in
 were used to create almost all directories in this
 .Dx
 distribution.
+.Pp
+To create an
+.Pa /etc/mtree
+style BSD.*.dist file, use
+.Nm
+.Fl c
+.Fl d
+.Fl i
+.Fl n
+.Fl k
+.Cm uname,gname,mode,nochange.
 .Sh DIAGNOSTICS
 .Ex -std
 .Sh SEE ALSO
