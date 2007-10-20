@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/bin/ed/ed.1,v 1.35 2005/01/16 16:41:56 ru Exp $
-.\" $DragonFly: src/bin/ed/ed.1,v 1.5 2007/05/12 21:22:10 swildner Exp $
+.\" $DragonFly: src/bin/ed/ed.1,v 1.6 2007/10/20 17:56:46 swildner Exp $
 .Dd July 3, 2004
 .Dt ED 1
 .Os
@@ -624,8 +624,9 @@ repeats the last non-null command list.
 .It H
 Toggle the printing of error explanations.
 By default, explanations are not printed.
-It is recommended that ed scripts begin with this command to
-aid in debugging.
+It is recommended that
+.Nm
+scripts begin with this command to aid in debugging.
 .It h
 Print an explanation of the last error.
 .It (.)i

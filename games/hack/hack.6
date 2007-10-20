@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/games/hack/hack.6,v 1.2.8.1 2001/07/22 11:01:22 dd Exp $
-.\" $DragonFly: src/games/hack/hack.6,v 1.3 2007/03/11 19:05:31 swildner Exp $
+.\" $DragonFly: src/games/hack/hack.6,v 1.4 2007/10/20 17:56:47 swildner Exp $
 .Dd March 31, 1985
 .Dt HACK 6
 .Os
@@ -56,8 +56,9 @@ This same directory contains several auxiliary files such as lockfiles and
 the list of topscorers and a subdirectory
 .Pa save
 where games are saved.
-The game administrator may however choose to install hack with a fixed
-playing ground, usually
+The game administrator may however choose to install
+.Nm
+with a fixed playing ground, usually
 .Pa /var/games/hackdir .
 .Pp
 The
@@ -108,7 +109,9 @@ Reader used instead of default (probably
 .It Ev HACKDIR
 Playground.
 .It Ev HACKOPTIONS
-String predefining several hack options (see help file).
+String predefining several
+.Nm
+options (see help file).
 .El
 .Pp
 Several other environment variables are used in debugging (wizard) mode,
@@ -121,9 +124,12 @@ and
 .Sh FILES
 .Bl -tag -width 24n -compact
 .It Pa hack
-The hack program.
+The
+.Nm
+program.
 .It Pa data, rumors
-Data files used by hack.
+Data files used by
+.Nm .
 .It Pa help, hh
 Help data files.
 .It Pa record
@@ -141,7 +147,11 @@ Lock file for record.
 .El
 .Sh AUTHORS
 Jay Fenlason (+ Kenny Woodland, Mike Thome and Jon Payne) wrote the
-original hack, very much like rogue (but full of bugs).
+original
+.Nm hack ,
+very much like
+.Xr rogue 6
+(but full of bugs).
 .Pp
 Andries Brouwer continuously deformed their sources into the current
 version - in fact an entirely different game.
