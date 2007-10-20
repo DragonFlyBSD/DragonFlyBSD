@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.27 2007/09/02 13:27:23 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.28 2007/10/20 10:28:44 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1851,7 +1851,7 @@ check_body:
 					break;
 
 				mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
-						sizeof(u_int16_t), M_NOWAIT);
+						 sizeof(u_int16_t), MB_DONTWAIT);
 				if (mtag == NULL) {
 					retval = IP_FW_PORT_DENY_FLAG;
 					goto done;

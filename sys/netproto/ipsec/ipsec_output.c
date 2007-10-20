@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.10 2006/12/22 23:57:54 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.11 2007/10/20 10:28:44 sephe Exp $
  */
 
 /*
@@ -131,7 +131,7 @@ ipsec_process_done(struct mbuf *m, struct ipsecrequest *isr)
 	 * packet.
 	 */
 	mtag = m_tag_get(PACKET_TAG_IPSEC_OUT_DONE,
-			sizeof(struct tdb_ident), M_NOWAIT);
+			 sizeof(struct tdb_ident), MB_DONTWAIT);
 	if (mtag == NULL) {
 		DPRINTF(("ipsec_process_done: could not get packet tag\n"));
 		error = ENOMEM;

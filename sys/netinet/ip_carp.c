@@ -25,7 +25,7 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.3 2007/08/27 16:15:42 hasso Exp $
+ * $DragonFly: src/sys/netinet/ip_carp.c,v 1.4 2007/10/20 10:28:44 sephe Exp $
  */
 
 #include "opt_carp.h"
@@ -808,7 +808,7 @@ carp_prepare_ad(struct mbuf *m, struct carp_softc *sc, struct carp_header *ch)
 	carp_hmac_generate(sc, ch->carp_counter, ch->carp_md);
 
 	/* Tag packet for carp_output */
-	mtag = m_tag_get(PACKET_TAG_CARP, sizeof(struct ifnet *), M_NOWAIT);
+	mtag = m_tag_get(PACKET_TAG_CARP, sizeof(struct ifnet *), MB_DONTWAIT);
 	if (mtag == NULL) {
 		m_freem(m);
 		SC2IFP(sc)->if_oerrors++;
@@ -1212,7 +1212,7 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
  			    (SC2IFP(sc)->if_flags & IFF_UP) && (SC2IFP(sc)->if_flags & IFF_RUNNING)) {
 				struct ifnet *ifp = SC2IFP(sc);
 				mtag = m_tag_get(PACKET_TAG_CARP,
-				    sizeof(struct ifnet *), M_NOWAIT);
+				    sizeof(struct ifnet *), MB_DONTWAIT);
 				if (mtag == NULL) {
 					/* better a bit than nothing */
 					CARP_UNLOCK(cif);

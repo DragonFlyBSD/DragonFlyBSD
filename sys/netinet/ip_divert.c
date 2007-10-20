@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.28 2007/04/22 01:13:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.29 2007/10/20 10:28:44 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -257,7 +257,7 @@ div_output(struct socket *so, struct mbuf *m,
 	 * with a 0 tag in mh_data is effectively untagged,
 	 * so we could optimize that case.
 	 */
-	mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT, sizeof(u_int16_t), M_NOWAIT);
+	mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT, sizeof(u_int16_t), MB_DONTWAIT);
 	if (mtag == NULL) {
 		error = ENOBUFS;
 		goto cantsend;
