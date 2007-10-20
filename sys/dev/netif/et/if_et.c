@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.4 2007/10/17 13:25:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.5 2007/10/20 05:22:57 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -192,8 +192,8 @@ struct et_bsize {
 };
 
 static const struct et_bsize	et_bufsize[ET_RX_NRING] = {
-	{ .bufsize = 0,	.newbuf = et_newbuf_hdr },
-	{ .bufsize = 0,	.newbuf = et_newbuf_cluster },
+	{ .bufsize = ET_RXDMA_CTRL_RING0_128,	.newbuf = et_newbuf_hdr },
+	{ .bufsize = ET_RXDMA_CTRL_RING1_2048,	.newbuf = et_newbuf_cluster },
 };
 
 static int
@@ -1090,7 +1090,7 @@ et_init(void *xsc)
 
 	et_stop(sc);
 
-	arr = ifp->if_mtu <= ETHERMTU ? et_bufsize : NULL;
+	arr = ET_FRAMELEN(ifp->if_mtu) < MCLBYTES ? et_bufsize : NULL;
 	for (i = 0; i < ET_RX_NRING; ++i) {
 		sc->sc_rx_data[i].rbd_bufsize = arr[i].bufsize;
 		sc->sc_rx_data[i].rbd_newbuf = arr[i].newbuf;
@@ -1164,8 +1164,18 @@ et_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCSIFMTU:
-		/* TODO */
+#ifdef notyet
+		if (ET_FRAMELEN(ifr->ifr_mtu) >= MCLBYTES) {
+			error = EOPNOTSUPP;
+			break;
+		}
+
+		ifp->if_mtu = ifr->ifr_mtu;
+		if (ifp->if_flags & IFF_RUNNING)
+			et_init(sc);
+#else
 		error = EOPNOTSUPP;
+#endif
 		break;
 
 	default:
@@ -1365,9 +1375,9 @@ et_chip_init(struct et_softc *sc)
 	/*
 	 * Split internal memory between TX and RX according to MTU
 	 */
-	if (ifp->if_mtu < 2048)
+	if (ET_FRAMELEN(ifp->if_mtu) < 2048)
 		rxq_end = 0x2bc;
-	else if (ifp->if_mtu < 8192)
+	else if (ET_FRAMELEN(ifp->if_mtu) < 8192)
 		rxq_end = 0x1ff;
 	else
 		rxq_end = 0x1b3;
@@ -1634,8 +1644,7 @@ et_init_mac(struct et_softc *sc)
 	CSR_WRITE_4(sc, ET_MAC_ADDR2, val);
 
 	/* Set max frame length */
-	CSR_WRITE_4(sc, ET_MAX_FRMLEN,
-		    ETHER_HDR_LEN + EVL_ENCAPLEN + ifp->if_mtu + ETHER_CRC_LEN);
+	CSR_WRITE_4(sc, ET_MAX_FRMLEN, ET_FRAMELEN(ifp->if_mtu));
 
 	/* Bring MAC out of reset state */
 	CSR_WRITE_4(sc, ET_MAC_CFG1, 0);
@@ -1676,7 +1685,7 @@ et_init_rxmac(struct et_softc *sc)
 	CSR_WRITE_4(sc, ET_UCAST_FILTADDR2, 0);
 	CSR_WRITE_4(sc, ET_UCAST_FILTADDR3, 0);
 
-	if (ifp->if_mtu > 8192) {
+	if (ET_FRAMELEN(ifp->if_mtu) > 8192) {
 		/*
 		 * In order to transmit jumbo packets greater than 8k,
 		 * the FIFO between RX MAC and RX DMA needs to be reduced
@@ -1882,14 +1891,22 @@ et_rxeof(struct et_softc *sc)
 				BUS_DMASYNC_POSTREAD);
 
 		if (rbd->rbd_newbuf(rbd, buf_idx, 0) == 0) {
-			m->m_pkthdr.len = m->m_len = buflen;
-			m->m_pkthdr.rcvif = ifp;
+			if (buflen < ETHER_CRC_LEN) {
+				m_freem(m);
+				ifp->if_ierrors++;
+			} else {
+				m->m_pkthdr.len = m->m_len = buflen;
+				m->m_pkthdr.rcvif = ifp;
 
-			ifp->if_ipackets++;
-			ifp->if_input(ifp, m);
+				m_adj(m, -ETHER_CRC_LEN);
+
+				ifp->if_ipackets++;
+				ifp->if_input(ifp, m);
+			}
 		} else {
 			ifp->if_ierrors++;
 		}
+		m = NULL;	/* Catch invalid reference */
 
 		rx_ring = &sc->sc_rx_ring[ring_idx];
 
@@ -2139,10 +2156,9 @@ et_newbuf(struct et_rxbuf_data *rbd, int buf_idx, int init, int len0)
 	if (m == NULL) {
 		error = ENOBUFS;
 
-		/* XXX for debug */
-		if_printf(&sc->arpcom.ac_if,
-			  "m_getl failed, size %d\n", len0);
 		if (init) {
+			if_printf(&sc->arpcom.ac_if,
+				  "m_getl failed, size %d\n", len0);
 			return error;
 		} else {
 			goto back;
@@ -2167,9 +2183,8 @@ et_newbuf(struct et_rxbuf_data *rbd, int buf_idx, int init, int len0)
 		}
 		m_freem(m);
 
-		/* XXX for debug */
-		if_printf(&sc->arpcom.ac_if, "can't load RX mbuf\n");
 		if (init) {
+			if_printf(&sc->arpcom.ac_if, "can't load RX mbuf\n");
 			return error;
 		} else {
 			goto back;

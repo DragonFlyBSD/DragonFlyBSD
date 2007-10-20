@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_etreg.h,v 1.1 2007/10/12 14:12:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_etreg.h,v 1.2 2007/10/20 05:22:57 sephe Exp $
  */
 
 #ifndef _IF_ETREG_H
@@ -136,8 +136,10 @@
 #define ET_RXDMA_CTRL			0x2000
 #define ET_RXDMA_CTRL_HALT		__BIT(0)
 #define ET_RXDMA_CTRL_RING0_SIZE	__BITS(9, 8)
+#define ET_RXDMA_CTRL_RING0_128		0		/* 0 - 127 */
 #define ET_RXDMA_CTRL_RING0_ENABLE	__BIT(10)
 #define ET_RXDMA_CTRL_RING1_SIZE	__BITS(12, 11)
+#define ET_RXDMA_CTRL_RING1_2048	0		/* 0 - 2047 */
 #define ET_RXDMA_CTRL_RING1_ENABLE	__BIT(13)
 #define ET_RXDMA_CTRL_HALTED		__BIT(17)
 

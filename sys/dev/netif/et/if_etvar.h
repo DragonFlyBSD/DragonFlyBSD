@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_etvar.h,v 1.2 2007/10/17 13:25:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_etvar.h,v 1.3 2007/10/20 05:22:57 sephe Exp $
  */
 
 #ifndef _IF_ETVAR_H
@@ -49,6 +49,9 @@
 #define ET_TX_RING_SIZE		(ET_TX_NDESC * sizeof(struct et_txdesc))
 #define ET_RX_RING_SIZE		(ET_RX_NDESC * sizeof(struct et_rxdesc))
 #define ET_RXSTAT_RING_SIZE	(ET_RX_NSTAT * sizeof(struct et_rxstat))
+
+#define ET_FRAMELEN(mtu)	(ETHER_HDR_LEN + EVL_ENCAPLEN + (mtu) +	\
+				 ETHER_CRC_LEN)
 
 #define CSR_WRITE_4(sc, reg, val)	\
 	bus_space_write_4((sc)->sc_mem_bt, (sc)->sc_mem_bh, (reg), (val))
