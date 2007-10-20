@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.24 2007/10/16 11:28:40 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.25 2007/10/20 07:36:20 sephe Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -1510,7 +1510,7 @@ config_pipe(struct dn_pipe *p)
 	    /* idle_heap is the only one from which we extract from the middle.
 	     */
 	    x->idle_heap.size = x->idle_heap.elements = 0 ;
-	    x->idle_heap.offset=OFFSET_OF(struct dn_flow_queue, heap_pos);
+	    x->idle_heap.offset = __offsetof(struct dn_flow_queue, heap_pos);
 	} else {
 	    x = b;
 	    crit_enter();

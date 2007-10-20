@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.5 2006/06/25 11:02:39 corecode Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.6 2007/10/20 07:36:20 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -70,12 +70,6 @@ typedef u_int64_t dn_key ;      /* sorting key */
  * XXX With this scaling, max 1000 flows, max weight 100, 1Gbit/s, the
  * virtual time wraps every 15 days.
  */
-
-/*
- * The OFFSET_OF macro is used to return the offset of a field within
- * a structure. It is used by the heap management routines.
- */
-#define OFFSET_OF(type, field) ((int)&( ((type *)0)->field) )
 
 /*
  * The maximum hash table size for queues.  This value must be a power
