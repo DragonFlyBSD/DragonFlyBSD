@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.15 2007/10/19 14:27:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.16 2007/10/21 09:50:33 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -537,6 +537,7 @@ bwi_attach(device_t dev)
 	sc->sc_dwell_time = 200;
 	sc->sc_led_idle = (2350 * hz) / 1000;
 	sc->sc_led_blink = 1;
+	sc->sc_txpwr_calib = 1;
 #ifdef BWI_DEBUG
 	sc->sc_debug = bwi_debug;
 #endif
@@ -626,6 +627,10 @@ bwi_attach(device_t dev)
 		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
 		       "led_blink", CTLFLAG_RW, &sc->sc_led_blink, 0,
 		       "Allow LED to blink");
+	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+		       "txpwr_calib", CTLFLAG_RW, &sc->sc_txpwr_calib, 0,
+		       "Enable software TX power calibration");
 #ifdef BWI_DEBUG
 	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
 			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,

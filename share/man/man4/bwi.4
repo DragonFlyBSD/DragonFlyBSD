@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/bwi.4,v 1.5 2007/10/19 14:27:04 sephe Exp $
+.\" $DragonFly: src/share/man/man4/bwi.4,v 1.6 2007/10/21 09:50:33 sephe Exp $
 .\"
 .Dd September 16, 2007
 .Dt BWI 4
@@ -55,7 +55,7 @@ The following per-interface variables are implemented in the
 branch of the
 .Xr sysctl 3
 MIB.
-.Bl -tag -width ".Va fw_version"
+.Bl -tag -width ".Va txpwr_calib"
 .It Va debug
 Debug flags.
 .It Va dwell_time
@@ -66,6 +66,8 @@ Firmware version.
 Number of ticks before LED enters idle state.
 .It Va led_blink
 Allow LED to blink.
+.It Va txpwr_calib
+Enable software TX power calibration.
 .El
 .Sh HARDWARE
 The following cards are among those supported by the

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.8 2007/10/14 04:15:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.9 2007/10/21 09:50:33 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1766,6 +1766,9 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 	int8_t tssi[4], tssi_avg, cur_txpwr;
 	int error, i, ofdm_tssi;
 	int txpwr_diff, rf_atten_adj, bbp_atten_adj;
+
+	if (!sc->sc_txpwr_calib)
+		return;
 
 	if (mac->mac_flags & BWI_MAC_F_TPCTL_ERROR) {
 		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "%s\n",

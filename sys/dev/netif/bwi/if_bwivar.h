@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.11 2007/10/19 14:27:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.12 2007/10/21 09:50:33 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -641,6 +641,7 @@ struct bwi_softc {
 	uint32_t		sc_debug;	/* BWI_DBG_ */
 	int			sc_led_idle;
 	int			sc_led_blink;
+	int			sc_txpwr_calib;
 };
 
 #define BWI_F_BUS_INITED	0x1
