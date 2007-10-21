@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.15 2007/10/17 23:30:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.16 2007/10/21 16:45:17 dillon Exp $
  */
 
 /*
@@ -84,9 +84,11 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	kp->kp_acflag = p->p_acflag;
 	kp->kp_traceflag = p->p_traceflag;
 	kp->kp_siglist = p->p_siglist;
-	kp->kp_sigignore = p->p_sigignore;
-	kp->kp_sigcatch = p->p_sigcatch;
-	kp->kp_sigflag = p->p_sigacts->ps_flag;
+	if (p->p_sigacts) {
+		kp->kp_sigignore = p->p_sigignore;	/* p_sigacts-> */
+		kp->kp_sigcatch = p->p_sigcatch;	/* p_sigacts-> */
+		kp->kp_sigflag = p->p_sigacts->ps_flag;
+	}
 	kp->kp_start = p->p_start;
 
 	strncpy(kp->kp_comm, p->p_comm, sizeof(kp->kp_comm) - 1);
