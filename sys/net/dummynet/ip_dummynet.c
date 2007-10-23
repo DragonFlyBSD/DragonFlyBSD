@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.26 2007/10/20 09:08:28 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.27 2007/10/23 15:01:15 sephe Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -2003,6 +2003,6 @@ static moduledata_t dummynet_mod = {
 	dummynet_modevent,
 	NULL
 };
-DECLARE_MODULE(dummynet, dummynet_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
+DECLARE_MODULE(dummynet, dummynet_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
 MODULE_DEPEND(dummynet, ipfw, 1, 1, 1);
 MODULE_VERSION(dummynet, 1);
