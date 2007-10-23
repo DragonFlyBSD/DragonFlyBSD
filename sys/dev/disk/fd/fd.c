@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.40 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.41 2007/10/23 03:04:49 y0netan1 Exp $
  *
  */
 
@@ -854,6 +854,7 @@ static driver_t fdc_driver = {
 };
 
 DRIVER_MODULE(fdc, isa, fdc_driver, fdc_devclass, 0, 0);
+DRIVER_MODULE(fdc, acpi, fdc_driver, fdc_devclass, 0, 0);
 
 /******************************************************************/
 /*

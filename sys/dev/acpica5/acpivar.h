@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.69 2004/05/28 07:15:55 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.11 2007/01/17 17:31:19 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.71 2004/06/13 22:52:30 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.12 2007/10/23 03:04:48 y0netan1 Exp $
  */
 
 #include "bus_if.h"
@@ -180,6 +180,15 @@ __ACPI_BUS_ACCESSOR(acpi, handle, ACPI, HANDLE, ACPI_HANDLE)
 __ACPI_BUS_ACCESSOR(acpi, magic, ACPI, MAGIC, int)
 __ACPI_BUS_ACCESSOR(acpi, private, ACPI, PRIVATE, void *)
 
+void acpi_fake_objhandler(ACPI_HANDLE h, UINT32 fn, void *data);
+static __inline device_t
+acpi_get_device(ACPI_HANDLE handle)
+{
+    void *dev = NULL;
+    AcpiGetData(handle, acpi_fake_objhandler, &dev);
+    return ((device_t)dev);
+}
+
 static __inline ACPI_OBJECT_TYPE
 acpi_get_type(device_t dev)
 {
@@ -212,7 +221,7 @@ void		acpi_EnterDebugger(void);
 #define ACPI_DEVINFO_PRESENT(x)	(((x) & 0x9) == 9)
 BOOLEAN		acpi_DeviceIsPresent(device_t dev);
 BOOLEAN		acpi_BatteryIsPresent(device_t dev);
-BOOLEAN		acpi_MatchHid(device_t dev, char *hid);
+BOOLEAN		acpi_MatchHid(ACPI_HANDLE h, char *hid);
 ACPI_STATUS	acpi_GetHandleInScope(ACPI_HANDLE parent, char *path,
 		    ACPI_HANDLE *result);
 uint32_t	acpi_TimerDelta(uint32_t end, uint32_t start);
@@ -269,6 +278,8 @@ struct acpi_parse_resource_set {
 extern struct	acpi_parse_resource_set acpi_res_parse_set;
 ACPI_STATUS	acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
 		    struct acpi_parse_resource_set *set, void *arg);
+extern struct	rman acpi_rman_io, acpi_rman_mem;
+struct resource_list_entry *acpi_sysres_find(int type, u_long addr);
 
 /* ACPI event handling */
 UINT32		acpi_event_power_button_sleep(void *context);

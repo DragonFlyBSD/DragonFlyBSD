@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_lid.c,v 1.22 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_lid.c,v 1.4 2007/01/17 17:31:19 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_lid.c,v 1.23 2004/06/13 22:52:30 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_lid.c,v 1.5 2007/10/23 03:04:48 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -82,7 +82,7 @@ static int
 acpi_lid_probe(device_t dev)
 {
     if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && !acpi_disabled("lid") &&
-	acpi_MatchHid(dev, "PNP0C0D")) {
+	acpi_MatchHid(acpi_get_handle(dev), "PNP0C0D")) {
 
 	device_set_desc(dev, "Control Method Lid Switch");
 	return (0);

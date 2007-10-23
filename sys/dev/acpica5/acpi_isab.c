@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_isab.c,v 1.7 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_isab.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_isab.c,v 1.8 2004/06/13 22:52:30 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_isab.c,v 1.4 2007/10/23 03:04:48 y0netan1 Exp $
  */
 
 /*
@@ -90,11 +90,13 @@ MODULE_DEPEND(acpi_isab, acpi, 1, 1, 1);
 static int
 acpi_isab_probe(device_t dev)
 {
+	ACPI_HANDLE h;
 
+	h = acpi_get_handle(dev);
 	if (acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
 	    !acpi_disabled("isa") &&
 	    devclass_get_device(isab_devclass, 0) == dev &&
-	    (acpi_MatchHid(dev, "PNP0A05") || acpi_MatchHid(dev, "PNP0A06"))) {
+	    (acpi_MatchHid(h, "PNP0A05") || acpi_MatchHid(h, "PNP0A06"))) {
 		device_set_desc(dev, "ACPI Generic ISA bridge");
 		return (0);
 	}

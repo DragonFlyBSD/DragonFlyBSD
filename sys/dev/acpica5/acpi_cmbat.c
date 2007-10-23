@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.29 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.10 2007/01/17 17:31:19 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.30 2004/06/13 22:52:30 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.11 2007/10/23 03:04:48 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -290,8 +290,8 @@ acpi_cmbat_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 static int
 acpi_cmbat_probe(device_t dev)
 {
-    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
-	!acpi_disabled("cmbat") && acpi_MatchHid(dev, "PNP0C0A")) {
+    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && !acpi_disabled("cmbat")
+	&& acpi_MatchHid(acpi_get_handle(dev), "PNP0C0A")) {
 
 	device_set_desc(dev, "Control Method Battery");
 	return (0);

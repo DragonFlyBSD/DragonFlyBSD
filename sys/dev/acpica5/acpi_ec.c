@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.12 2007/01/17 17:31:19 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.52 2004/06/13 22:52:30 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.13 2007/10/23 03:04:48 y0netan1 Exp $
  */
 /******************************************************************************
  *
@@ -137,8 +137,8 @@
  *
  *****************************************************************************/
  /*
-  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.12 2007/01/17 17:31:19 y0netan1 Exp $
+  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.52 2004/06/13 22:52:30 njl Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.13 2007/10/23 03:04:48 y0netan1 Exp $
   *
   */
 
@@ -440,7 +440,7 @@ acpi_ec_probe(device_t dev)
     if (DEV_ECDT(dev)) {
 	params = acpi_get_private(dev);
 	ret = 0;
-    } else if (acpi_MatchHid(dev, "PNP0C09")) {
+    } else if (acpi_MatchHid(acpi_get_handle(dev), "PNP0C09")) {
 	params = kmalloc(sizeof(struct acpi_ec_params), M_TEMP,
 			M_WAITOK | M_ZERO);
 	h = acpi_get_handle(dev);

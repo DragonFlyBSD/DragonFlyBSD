@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.41 2007/05/09 00:53:34 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.42 2007/10/23 03:04:49 y0netan1 Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -3051,6 +3051,7 @@ siocnputc(void *private, int c)
 }
 
 DRIVER_MODULE(sio, isa, sio_isa_driver, sio_devclass, 0, 0);
+DRIVER_MODULE(sio, acpi, sio_isa_driver, sio_devclass, 0, 0);
 #if NPCI > 0
 DRIVER_MODULE(sio, pci, sio_pci_driver, sio_devclass, 0, 0);
 #endif

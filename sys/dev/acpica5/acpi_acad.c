@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.26 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.7 2007/01/17 17:31:19 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.27 2004/06/13 22:52:30 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.8 2007/10/23 03:04:48 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -136,7 +136,7 @@ static int
 acpi_acad_probe(device_t dev)
 {
     if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && !acpi_disabled("acad") &&
-	acpi_MatchHid(dev, "ACPI0003")) {
+	acpi_MatchHid(acpi_get_handle(dev), "ACPI0003")) {
 	device_set_desc(dev, "AC Adapter");
 	return (0);
     }

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.11 2006/10/25 20:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.12 2007/10/23 03:04:49 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -150,6 +150,7 @@ static driver_t joy_isa_driver = {
 };
 
 DRIVER_MODULE(joy, isa, joy_isa_driver, joy_devclass, 0, 0);
+DRIVER_MODULE(joy, acpi, joy_isa_driver, joy_devclass, 0, 0);
 
 static int
 joyopen(struct dev_open_args *ap)

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/acpica/acpi_toshiba.c,v 1.8 2004/05/30 20:34:56 phk Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/Attic/acpi_toshiba.c,v 1.5 2006/12/23 00:27:02 swildner Exp $
+ * $FreeBSD: src/sys/dev/acpi_support/acpi_toshiba.c,v 1.10 2004/06/15 02:17:23 njl Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/Attic/acpi_toshiba.c,v 1.6 2007/10/23 03:04:49 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -213,13 +213,14 @@ TUNABLE_INT("hw.acpi.toshiba.enable_fn_keys", &enable_fn_keys);
 static int
 acpi_toshiba_probe(device_t dev)
 {
+	ACPI_HANDLE h;
 	int ret = ENXIO;
 
+	h = acpi_get_handle(dev);
 	if (!acpi_disabled("toshiba") &&
 	    acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
 	    device_get_unit(dev) == 0 &&
-	    (acpi_MatchHid(dev, "TOS6200") ||
-	     acpi_MatchHid(dev, "TOS6207"))) {
+	    (acpi_MatchHid(h, "TOS6200") || acpi_MatchHid(h, "TOS6207"))) {
 		device_set_desc(dev, "Toshiba HCI Extras");
 		ret = 0;
 	}
@@ -527,8 +528,7 @@ acpi_toshiba_video_probe(device_t dev)
 
 	if (!acpi_disabled("toshiba") &&
 	    acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
-	    device_get_unit(dev) == 0 &&
-	     acpi_MatchHid(dev, "TOS6201")) {
+	     acpi_MatchHid(acpi_get_handle(dev), "TOS6201")) {
 		device_quiet(dev);
 		device_set_desc(dev, "Toshiba Video");
 		ret = 0;
