@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_etvar.h,v 1.3 2007/10/20 05:22:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_etvar.h,v 1.4 2007/10/23 14:28:42 sephe Exp $
  */
 
 #ifndef _IF_ETVAR_H
@@ -39,7 +39,7 @@
 
 #define ET_ALIGN		0x1000
 #define ET_NSEG_MAX		32	/* XXX no limit actually */
-#define ET_NSEG_SPARE		5
+#define ET_NSEG_SPARE		8
 
 #define ET_TX_NDESC		512
 #define ET_RX_NDESC		512
@@ -50,8 +50,17 @@
 #define ET_RX_RING_SIZE		(ET_RX_NDESC * sizeof(struct et_rxdesc))
 #define ET_RXSTAT_RING_SIZE	(ET_RX_NSTAT * sizeof(struct et_rxstat))
 
+#define ET_JUMBO_FRAMELEN	(ET_MEM_SIZE - ET_MEM_RXSIZE_MIN -	\
+				 ET_MEM_TXSIZE_EX)
+#define ET_JUMBO_MTU		(ET_JUMBO_FRAMELEN - ETHER_HDR_LEN -	\
+				 EVL_ENCAPLEN - ETHER_CRC_LEN)
+
 #define ET_FRAMELEN(mtu)	(ETHER_HDR_LEN + EVL_ENCAPLEN + (mtu) +	\
 				 ETHER_CRC_LEN)
+
+#define ET_JSLOTS		(ET_RX_NDESC + 128)
+#define ET_JLEN			(ET_JUMBO_FRAMELEN + ETHER_ALIGN)
+#define ET_JUMBO_MEM_SIZE	(ET_JSLOTS * ET_JLEN)
 
 #define CSR_WRITE_4(sc, reg, val)	\
 	bus_space_write_4((sc)->sc_mem_bt, (sc)->sc_mem_bh, (reg), (val))
@@ -178,14 +187,36 @@ struct et_rxbuf_data {
 	struct et_softc		*rbd_softc;
 	struct et_rxdesc_ring	*rbd_ring;
 
+	int			rbd_jumbo;
 	int			rbd_bufsize;
 	et_newbuf_t		rbd_newbuf;
+};
+
+struct et_jslot;
+
+struct et_jumbo_data {
+	bus_dma_tag_t		jd_dtag;
+	bus_dmamap_t		jd_dmap;
+	void			*jd_buf;
+
+	struct lwkt_serialize	jd_serializer;
+	struct et_jslot		*jd_slots;
+	SLIST_HEAD(, et_jslot)	jd_free_slots;
+};
+
+struct et_jslot {
+	struct et_jumbo_data	*jslot_data;
+	void			*jslot_buf;
+	bus_addr_t		jslot_paddr;
+	int			jslot_inuse;
+	int			jslot_index;
+	SLIST_ENTRY(et_jslot)	jslot_link;
 };
 
 struct et_softc {
 	struct arpcom		arpcom;
 	int			sc_if_flags;
-	int			sc_txrx_enabled;
+	uint32_t		sc_flags;	/* ET_FLAG_ */
 
 	int			sc_mem_rid;
 	struct resource		*sc_mem_res;
@@ -213,6 +244,8 @@ struct et_softc {
 	struct et_rxbuf_data	sc_rx_data[ET_RX_NRING];
 	struct et_txbuf_data	sc_tx_data;
 
+	struct et_jumbo_data	sc_jumbo_data;
+
 	uint32_t		sc_tx;
 	uint32_t		sc_tx_intr;
 
@@ -227,5 +260,8 @@ struct et_softc {
 	int			sc_tx_intr_nsegs;
 	uint32_t		sc_timer;
 };
+
+#define ET_FLAG_TXRX_ENABLED	0x1
+#define ET_FLAG_JUMBO		0x2
 
 #endif	/* !_IF_ETVAR_H */

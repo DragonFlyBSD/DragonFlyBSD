@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/mii_layer/truephy.c,v 1.1 2007/10/12 14:12:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/truephy.c,v 1.2 2007/10/23 14:28:42 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,9 @@
 
 #include <net/if.h>
 #include <net/if_media.h>
+#include <net/if_arp.h>
+#include <net/ethernet.h>
+#include <net/vlan/if_vlan_var.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
@@ -47,6 +50,8 @@
 #include <dev/netif/mii_layer/truephyreg.h>
 
 #include "miibus_if.h"
+
+#define FRAMELEN(mtu)	(ETHER_HDR_LEN + EVL_ENCAPLEN + (mtu) + ETHER_CRC_LEN)
 
 static int	truephy_service(struct mii_softc *, struct mii_data *, int);
 static int	truephy_attach(device_t);
@@ -256,18 +261,20 @@ truephy_reset(struct mii_softc *sc)
 		PHY_READ(sc, MII_PHYIDR2);
 
 		PHY_READ(sc, TRUEPHY_CTRL);
-		PHY_WRITE(sc, TRUEPHY_CTRL, 0x6);
+		PHY_WRITE(sc, TRUEPHY_CTRL,
+			  TRUEPHY_CTRL_DIAG | TRUEPHY_CTRL_RSV1);
 
-		PHY_WRITE(sc, TRUEPHY_INDEX, 0x402);
+		PHY_WRITE(sc, TRUEPHY_INDEX, TRUEPHY_INDEX_MAGIC);
 		PHY_READ(sc, TRUEPHY_DATA);
 
-		PHY_WRITE(sc, TRUEPHY_CTRL, 0x2);
+		PHY_WRITE(sc, TRUEPHY_CTRL, TRUEPHY_CTRL_RSV1);
 	}
 
 	PHY_READ(sc, MII_BMCR);
 	PHY_READ(sc, TRUEPHY_CTRL);
 	PHY_WRITE(sc, MII_BMCR, BMCR_AUTOEN | BMCR_PDOWN | BMCR_S1000);
-	PHY_WRITE(sc, TRUEPHY_CTRL, 0x7);
+	PHY_WRITE(sc, TRUEPHY_CTRL,
+		  TRUEPHY_CTRL_DIAG | TRUEPHY_CTRL_RSV1 | TRUEPHY_CTRL_RSV0);
 
 #define N(arr)	(int)(sizeof(arr) / sizeof(arr[0]))
 
@@ -286,9 +293,18 @@ truephy_reset(struct mii_softc *sc)
 	PHY_READ(sc, MII_BMCR);
 	PHY_READ(sc, TRUEPHY_CTRL);
 	PHY_WRITE(sc, MII_BMCR, BMCR_AUTOEN |  BMCR_S1000);
-	PHY_WRITE(sc, TRUEPHY_CTRL, 0x2);
+	PHY_WRITE(sc, TRUEPHY_CTRL, TRUEPHY_CTRL_RSV1);
 
 	mii_phy_reset(sc);
+
+	if (FRAMELEN(sc->mii_pdata->mii_ifp->if_mtu) > 2048) {
+		int conf;
+
+		conf = PHY_READ(sc, TRUEPHY_CONF);
+		conf &= ~TRUEPHY_CONF_TXFIFO_MASK;
+		conf |= TRUEPHY_CONF_TXFIFO_24;
+		PHY_WRITE(sc, TRUEPHY_CONF, conf);
+	}
 }
 
 static void

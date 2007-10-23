@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/et.4,v 1.1 2007/10/12 14:12:42 sephe Exp $
+.\" $DragonFly: src/share/man/man4/et.4,v 1.2 2007/10/23 14:28:42 sephe Exp $
 .\"
 .Dd October 11, 2007
 .Dt ET 4
@@ -50,6 +50,13 @@ if_et_load="YES"
 The
 .Nm
 driver supports the PCIe Ethernet adapters based on Agere ET1310.
+.Pp
+Support for Jumbo Frames is provided via the interface MTU setting.
+Selecting an MTU larger than 1500 bytes with the
+.Xr ifconfig 8
+utility configures the adapter to receive and transmit Jumbo Frames.
+The maximum MTU setting for Jumbo Frames is 15572.
+This value coincides with the maximum Jumbo Frames size of 15594.
 .Pp
 The
 .Nm

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.5 2007/10/20 05:22:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.6 2007/10/23 14:28:42 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -99,6 +99,8 @@ static int	et_dma_mem_create(device_t, bus_size_t, bus_dma_tag_t *,
 static void	et_dma_mem_destroy(bus_dma_tag_t, void *, bus_dmamap_t);
 static int	et_dma_mbuf_create(device_t);
 static void	et_dma_mbuf_destroy(device_t, int, const int[]);
+static int	et_jumbo_mem_alloc(device_t);
+static void	et_jumbo_mem_free(device_t);
 static void	et_dma_ring_addr(void *, bus_dma_segment_t *, int, int);
 static void	et_dma_buf_addr(void *, bus_dma_segment_t *, int,
 				bus_size_t, int);
@@ -107,9 +109,14 @@ static int	et_init_rx_ring(struct et_softc *);
 static void	et_free_tx_ring(struct et_softc *);
 static void	et_free_rx_ring(struct et_softc *);
 static int	et_encap(struct et_softc *, struct mbuf **);
+static struct et_jslot *
+		et_jalloc(struct et_jumbo_data *);
+static void	et_jfree(void *);
+static void	et_jref(void *);
 static int	et_newbuf(struct et_rxbuf_data *, int, int, int);
 static int	et_newbuf_cluster(struct et_rxbuf_data *, int, int);
 static int	et_newbuf_hdr(struct et_rxbuf_data *, int, int);
+static int	et_newbuf_jumbo(struct et_rxbuf_data *, int, int);
 
 static void	et_stop(struct et_softc *);
 static int	et_chip_init(struct et_softc *);
@@ -130,6 +137,7 @@ static void	et_get_eaddr(device_t, uint8_t[]);
 static void	et_setmulti(struct et_softc *);
 static void	et_tick(void *);
 static void	et_setmedia(struct et_softc *);
+static void	et_setup_rxdesc(struct et_rxbuf_data *, int, bus_addr_t);
 
 static const struct et_dev {
 	uint16_t	vid;
@@ -188,12 +196,22 @@ TUNABLE_INT("hw.et_tx_intr_nsegs", &et_tx_intr_nsegs);
 
 struct et_bsize {
 	int		bufsize;
+	int		jumbo;
 	et_newbuf_t	newbuf;
 };
 
-static const struct et_bsize	et_bufsize[ET_RX_NRING] = {
-	{ .bufsize = ET_RXDMA_CTRL_RING0_128,	.newbuf = et_newbuf_hdr },
-	{ .bufsize = ET_RXDMA_CTRL_RING1_2048,	.newbuf = et_newbuf_cluster },
+static const struct et_bsize	et_bufsize_std[ET_RX_NRING] = {
+	{ .bufsize = ET_RXDMA_CTRL_RING0_128,	.jumbo = 0,
+	  .newbuf = et_newbuf_hdr },
+	{ .bufsize = ET_RXDMA_CTRL_RING1_2048,	.jumbo = 0,
+	  .newbuf = et_newbuf_cluster },
+};
+
+static const struct et_bsize	et_bufsize_jumbo[ET_RX_NRING] = {
+	{ .bufsize = ET_RXDMA_CTRL_RING0_128,	.jumbo = 0,
+	  .newbuf = et_newbuf_hdr },
+	{ .bufsize = ET_RXDMA_CTRL_RING1_16384,	.jumbo = 1,
+	  .newbuf = et_newbuf_jumbo },
 };
 
 static int
@@ -552,7 +570,7 @@ et_stop(struct et_softc *sc)
 
 	sc->sc_tx = 0;
 	sc->sc_tx_intr = 0;
-	sc->sc_txrx_enabled = 0;
+	sc->sc_flags &= ~ET_FLAG_TXRX_ENABLED;
 
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
@@ -771,6 +789,13 @@ et_dma_alloc(device_t dev)
 	if (error)
 		return error;
 
+	/*
+	 * Create jumbo buffer DMA stuffs
+	 * NOTE: Allow it to fail
+	 */
+	if (et_jumbo_mem_alloc(dev) == 0)
+		sc->sc_flags |= ET_FLAG_JUMBO;
+
 	return 0;
 }
 
@@ -826,6 +851,12 @@ et_dma_free(device_t dev)
 	et_dma_mbuf_destroy(dev, ET_TX_NDESC, rx_done);
 
 	/*
+	 * Destroy jumbo buffer DMA stuffs
+	 */
+	if (sc->sc_flags & ET_FLAG_JUMBO)
+		et_jumbo_mem_free(dev);
+
+	/*
 	 * Destroy top level DMA tag
 	 */
 	if (sc->sc_dtag != NULL)
@@ -845,7 +876,7 @@ et_dma_mbuf_create(device_t dev)
 	error = bus_dma_tag_create(sc->sc_dtag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   MCLBYTES, ET_NSEG_MAX,
+				   ET_JUMBO_FRAMELEN, ET_NSEG_MAX,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   BUS_DMA_ALLOCNOW, &sc->sc_mbuf_dtag);
 	if (error) {
@@ -1090,10 +1121,12 @@ et_init(void *xsc)
 
 	et_stop(sc);
 
-	arr = ET_FRAMELEN(ifp->if_mtu) < MCLBYTES ? et_bufsize : NULL;
+	arr = ET_FRAMELEN(ifp->if_mtu) < MCLBYTES ?
+	      et_bufsize_std : et_bufsize_jumbo;
 	for (i = 0; i < ET_RX_NRING; ++i) {
 		sc->sc_rx_data[i].rbd_bufsize = arr[i].bufsize;
 		sc->sc_rx_data[i].rbd_newbuf = arr[i].newbuf;
+		sc->sc_rx_data[i].rbd_jumbo = arr[i].jumbo;
 	}
 
 	error = et_init_tx_ring(sc);
@@ -1131,7 +1164,7 @@ et_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct et_softc *sc = ifp->if_softc;
 	struct mii_data *mii = device_get_softc(sc->sc_miibus);
 	struct ifreq *ifr = (struct ifreq *)data;
-	int error = 0;
+	int error = 0, max_framelen;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -1164,8 +1197,12 @@ et_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCSIFMTU:
-#ifdef notyet
-		if (ET_FRAMELEN(ifr->ifr_mtu) >= MCLBYTES) {
+		if (sc->sc_flags & ET_FLAG_JUMBO)
+			max_framelen = ET_JUMBO_FRAMELEN;
+		else
+			max_framelen = MCLBYTES - 1;
+
+		if (ET_FRAMELEN(ifr->ifr_mtu) > max_framelen) {
 			error = EOPNOTSUPP;
 			break;
 		}
@@ -1173,9 +1210,6 @@ et_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		ifp->if_mtu = ifr->ifr_mtu;
 		if (ifp->if_flags & IFF_RUNNING)
 			et_init(sc);
-#else
-		error = EOPNOTSUPP;
-#endif
 		break;
 
 	default:
@@ -1194,7 +1228,7 @@ et_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (!sc->sc_txrx_enabled)
+	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0)
 		return;
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
@@ -1296,8 +1330,10 @@ et_free_rx_ring(struct et_softc *sc)
 			struct et_rxbuf *rb = &rbd->rbd_buf[i];
 
 			if (rb->rb_mbuf != NULL) {
-				bus_dmamap_unload(sc->sc_mbuf_dtag,
-						  rb->rb_dmap);
+				if (!rbd->rbd_jumbo) {
+					bus_dmamap_unload(sc->sc_mbuf_dtag,
+							  rb->rb_dmap);
+				}
 				m_freem(rb->rb_mbuf);
 				rb->rb_mbuf = NULL;
 			}
@@ -1370,21 +1406,27 @@ et_chip_init(struct et_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t rxq_end;
-	int error;
+	int error, frame_len, rxmem_size;
 
 	/*
-	 * Split internal memory between TX and RX according to MTU
+	 * Split 16Kbytes internal memory between TX and RX
+	 * according to frame length.
 	 */
-	if (ET_FRAMELEN(ifp->if_mtu) < 2048)
-		rxq_end = 0x2bc;
-	else if (ET_FRAMELEN(ifp->if_mtu) < 8192)
-		rxq_end = 0x1ff;
-	else
-		rxq_end = 0x1b3;
-	CSR_WRITE_4(sc, ET_RXQ_START, 0);
-	CSR_WRITE_4(sc, ET_RXQ_END, rxq_end);
-	CSR_WRITE_4(sc, ET_TXQ_START, rxq_end + 1);
-	CSR_WRITE_4(sc, ET_TXQ_END, ET_INTERN_MEM_END);
+	frame_len = ET_FRAMELEN(ifp->if_mtu);
+	if (frame_len < 2048) {
+		rxmem_size = ET_MEM_RXSIZE_DEFAULT;
+	} else if (frame_len <= ET_RXMAC_CUT_THRU_FRMLEN) {
+		rxmem_size = ET_MEM_SIZE / 2;
+	} else {
+		rxmem_size = ET_MEM_SIZE -
+		roundup(frame_len + ET_MEM_TXSIZE_EX, ET_MEM_UNIT);
+	}
+	rxq_end = ET_QUEUE_ADDR(rxmem_size);
+
+	CSR_WRITE_4(sc, ET_RXQUEUE_START, ET_QUEUE_ADDR_START);
+	CSR_WRITE_4(sc, ET_RXQUEUE_END, rxq_end);
+	CSR_WRITE_4(sc, ET_TXQUEUE_START, rxq_end + 1);
+	CSR_WRITE_4(sc, ET_TXQUEUE_END, ET_QUEUE_ADDR_END);
 
 	/* No loopback */
 	CSR_WRITE_4(sc, ET_LOOPBACK, 0);
@@ -1685,17 +1727,19 @@ et_init_rxmac(struct et_softc *sc)
 	CSR_WRITE_4(sc, ET_UCAST_FILTADDR2, 0);
 	CSR_WRITE_4(sc, ET_UCAST_FILTADDR3, 0);
 
-	if (ET_FRAMELEN(ifp->if_mtu) > 8192) {
+	if (ET_FRAMELEN(ifp->if_mtu) > ET_RXMAC_CUT_THRU_FRMLEN) {
 		/*
-		 * In order to transmit jumbo packets greater than 8k,
-		 * the FIFO between RX MAC and RX DMA needs to be reduced
-		 * in size to (16k - MTU).  In order to implement this, we
-		 * must use "cut through" mode in the RX MAC, which chops
-		 * packets down into segments which are (max_size * 16).
-		 * In this case we selected 256 bytes, since this is the
-		 * size of the PCI-Express TLP's that the 1310 uses.
+		 * In order to transmit jumbo packets greater than
+		 * ET_RXMAC_CUT_THRU_FRMLEN bytes, the FIFO between
+		 * RX MAC and RX DMA needs to be reduced in size to
+		 * (ET_MEM_SIZE - ET_MEM_TXSIZE_EX - framelen).  In
+		 * order to implement this, we must use "cut through"
+		 * mode in the RX MAC, which chops packets down into
+		 * segments.  In this case we selected 256 bytes,
+		 * since this is the size of the PCI-Express TLP's
+		 * that the ET1310 uses.
 		 */
-		val = __SHIFTIN(16, ET_RXMAC_MC_SEGSZ_MAX) |
+		val = __SHIFTIN(ET_RXMAC_SEGSZ(256), ET_RXMAC_MC_SEGSZ_MAX) |
 		      ET_RXMAC_MC_SEGSZ_ENABLE;
 	} else {
 		val = 0;
@@ -1807,7 +1851,7 @@ et_enable_txrx(struct et_softc *sc, int media_upd)
 		if_printf(ifp, "can't enable RX/TX\n");
 		return 0;
 	}
-	sc->sc_txrx_enabled = 1;
+	sc->sc_flags |= ET_FLAG_TXRX_ENABLED;
 
 #undef NRETRY
 
@@ -1834,7 +1878,7 @@ et_rxeof(struct et_softc *sc)
 	uint32_t rxs_stat_ring;
 	int rxst_wrap, rxst_index;
 
-	if (!sc->sc_txrx_enabled)
+	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0)
 		return;
 
 	bus_dmamap_sync(rxsd->rxsd_dtag, rxsd->rxsd_dmap,
@@ -1851,7 +1895,6 @@ et_rxeof(struct et_softc *sc)
 		struct et_rxbuf_data *rbd;
 		struct et_rxdesc_ring *rx_ring;
 		struct et_rxstat *st;
-		struct et_rxbuf *rb;
 		struct mbuf *m;
 		int buflen, buf_idx, ring_idx;
 		uint32_t rxstat_pos, rxring_pos;
@@ -1885,10 +1928,7 @@ et_rxeof(struct et_softc *sc)
 		}
 
 		rbd = &sc->sc_rx_data[ring_idx];
-		rb = &rbd->rbd_buf[buf_idx];
-		m = rb->rb_mbuf;
-		bus_dmamap_sync(sc->sc_mbuf_dtag, rb->rb_dmap,
-				BUS_DMASYNC_POSTREAD);
+		m = rbd->rbd_buf[buf_idx].rb_mbuf;
 
 		if (rbd->rbd_newbuf(rbd, buf_idx, 0) == 0) {
 			if (buflen < ETHER_CRC_LEN) {
@@ -1960,7 +2000,8 @@ et_encap(struct et_softc *sc, struct mbuf **m0)
 		error = EFBIG;
 	}
 	if (error && error != EFBIG) {
-		if_printf(&sc->arpcom.ac_if, "can't load TX mbuf");
+		if_printf(&sc->arpcom.ac_if, "can't load TX mbuf, error %d\n",
+			  error);
 		goto back;
 	}
 	if (error) {	/* error == EFBIG */
@@ -2059,7 +2100,7 @@ et_txeof(struct et_softc *sc)
 	uint32_t tx_done;
 	int end, wrap;
 
-	if (!sc->sc_txrx_enabled)
+	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0)
 		return;
 
 	if (tbd->tbd_used == 0)
@@ -2113,7 +2154,8 @@ et_tick(void *xsc)
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	mii_tick(mii);
-	if (!sc->sc_txrx_enabled && (mii->mii_media_status & IFM_ACTIVE) &&
+	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0 &&
+	    (mii->mii_media_status & IFM_ACTIVE) &&
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		if_printf(ifp, "Link up, enable TX/RX\n");
 		if (et_enable_txrx(sc, 0) == 0)
@@ -2140,14 +2182,14 @@ static int
 et_newbuf(struct et_rxbuf_data *rbd, int buf_idx, int init, int len0)
 {
 	struct et_softc *sc = rbd->rbd_softc;
-	struct et_rxdesc_ring *rx_ring;
-	struct et_rxdesc *desc;
 	struct et_rxbuf *rb;
 	struct mbuf *m;
 	struct et_dmamap_ctx ctx;
 	bus_dma_segment_t seg;
 	bus_dmamap_t dmap;
 	int error, len;
+
+	KASSERT(!rbd->rbd_jumbo, ("calling %s with jumbo ring\n", __func__));
 
 	KKASSERT(buf_idx < ET_RX_NDESC);
 	rb = &rbd->rbd_buf[buf_idx];
@@ -2191,8 +2233,11 @@ et_newbuf(struct et_rxbuf_data *rbd, int buf_idx, int init, int len0)
 		}
 	}
 
-	if (!init)
+	if (!init) {
+		bus_dmamap_sync(sc->sc_mbuf_dtag, rb->rb_dmap,
+				BUS_DMASYNC_POSTREAD);
 		bus_dmamap_unload(sc->sc_mbuf_dtag, rb->rb_dmap);
+	}
 	rb->rb_mbuf = m;
 	rb->rb_paddr = seg.ds_addr;
 
@@ -2205,15 +2250,7 @@ et_newbuf(struct et_rxbuf_data *rbd, int buf_idx, int init, int len0)
 
 	error = 0;
 back:
-	rx_ring = rbd->rbd_ring;
-	desc = &rx_ring->rr_desc[buf_idx];
-
-	desc->rd_addr_hi = ET_ADDR_HI(rb->rb_paddr);
-	desc->rd_addr_lo = ET_ADDR_LO(rb->rb_paddr);
-	desc->rd_ctrl = __SHIFTIN(buf_idx, ET_RDCTRL_BUFIDX);
-
-	bus_dmamap_sync(rx_ring->rr_dtag, rx_ring->rr_dmap,
-			BUS_DMASYNC_PREWRITE);
+	et_setup_rxdesc(rbd, buf_idx, rb->rb_paddr);
 	return error;
 }
 
@@ -2302,4 +2339,182 @@ et_setmedia(struct et_softc *sc)
 
 	CSR_WRITE_4(sc, ET_MAC_CTRL, ctrl);
 	CSR_WRITE_4(sc, ET_MAC_CFG2, cfg2);
+}
+
+static int
+et_jumbo_mem_alloc(device_t dev)
+{
+	struct et_softc *sc = device_get_softc(dev);
+	struct et_jumbo_data *jd = &sc->sc_jumbo_data;
+	bus_addr_t paddr;
+	uint8_t *buf;
+	int error, i;
+
+	error = et_dma_mem_create(dev, ET_JUMBO_MEM_SIZE, &jd->jd_dtag,
+				  &jd->jd_buf, &paddr, &jd->jd_dmap);
+	if (error) {
+		device_printf(dev, "can't create jumbo DMA stuffs\n");
+		return error;
+	}
+
+	jd->jd_slots = kmalloc(sizeof(*jd->jd_slots) * ET_JSLOTS, M_DEVBUF,
+			       M_WAITOK | M_ZERO);
+	lwkt_serialize_init(&jd->jd_serializer);
+	SLIST_INIT(&jd->jd_free_slots);
+
+	buf = jd->jd_buf;
+	for (i = 0; i < ET_JSLOTS; ++i) {
+		struct et_jslot *jslot = &jd->jd_slots[i];
+
+		jslot->jslot_data = jd;
+		jslot->jslot_buf = buf;
+		jslot->jslot_paddr = paddr;
+		jslot->jslot_inuse = 0;
+		jslot->jslot_index = i;
+		SLIST_INSERT_HEAD(&jd->jd_free_slots, jslot, jslot_link);
+
+		buf += ET_JLEN;
+		paddr += ET_JLEN;
+	}
+	return 0;
+}
+
+static void
+et_jumbo_mem_free(device_t dev)
+{
+	struct et_softc *sc = device_get_softc(dev);
+	struct et_jumbo_data *jd = &sc->sc_jumbo_data;
+
+	KKASSERT(sc->sc_flags & ET_FLAG_JUMBO);
+
+	kfree(jd->jd_slots, M_DEVBUF);
+	et_dma_mem_destroy(jd->jd_dtag, jd->jd_buf, jd->jd_dmap);
+}
+
+static struct et_jslot *
+et_jalloc(struct et_jumbo_data *jd)
+{
+	struct et_jslot *jslot;
+
+	lwkt_serialize_enter(&jd->jd_serializer);
+
+	jslot = SLIST_FIRST(&jd->jd_free_slots);
+	if (jslot) {
+		SLIST_REMOVE_HEAD(&jd->jd_free_slots, jslot_link);
+		jslot->jslot_inuse = 1;
+	}
+
+	lwkt_serialize_exit(&jd->jd_serializer);
+	return jslot;
+}
+
+static void
+et_jfree(void *xjslot)
+{
+	struct et_jslot *jslot = xjslot;
+	struct et_jumbo_data *jd = jslot->jslot_data;
+
+	if (&jd->jd_slots[jslot->jslot_index] != jslot) {
+		panic("%s wrong jslot!?\n", __func__);
+	} else if (jslot->jslot_inuse == 0) {
+		panic("%s jslot already freed\n", __func__);
+	} else {
+		lwkt_serialize_enter(&jd->jd_serializer);
+
+		atomic_subtract_int(&jslot->jslot_inuse, 1);
+		if (jslot->jslot_inuse == 0) {
+			SLIST_INSERT_HEAD(&jd->jd_free_slots, jslot,
+					  jslot_link);
+		}
+
+		lwkt_serialize_exit(&jd->jd_serializer);
+	}
+}
+
+static void
+et_jref(void *xjslot)
+{
+	struct et_jslot *jslot = xjslot;
+	struct et_jumbo_data *jd = jslot->jslot_data;
+
+	if (&jd->jd_slots[jslot->jslot_index] != jslot)
+		panic("%s wrong jslot!?\n", __func__);
+	else if (jslot->jslot_inuse == 0)
+		panic("%s jslot already freed\n", __func__);
+	else
+		atomic_add_int(&jslot->jslot_inuse, 1);
+}
+
+static int
+et_newbuf_jumbo(struct et_rxbuf_data *rbd, int buf_idx, int init)
+{
+	struct et_softc *sc = rbd->rbd_softc;
+	struct et_rxbuf *rb;
+	struct mbuf *m;
+	struct et_jslot *jslot;
+	int error;
+
+	KASSERT(rbd->rbd_jumbo, ("calling %s with non-jumbo ring\n", __func__));
+
+	KKASSERT(buf_idx < ET_RX_NDESC);
+	rb = &rbd->rbd_buf[buf_idx];
+
+	error = ENOBUFS;
+
+	MGETHDR(m, init ? MB_WAIT : MB_DONTWAIT, MT_DATA);
+	if (m == NULL) {
+		if (init) {
+			if_printf(&sc->arpcom.ac_if, "MGETHDR failed\n");
+			return error;
+		} else {
+			goto back;
+		}
+	}
+
+	jslot = et_jalloc(&sc->sc_jumbo_data);
+	if (jslot == NULL) {
+		m_freem(m);
+
+		if (init) {
+			if_printf(&sc->arpcom.ac_if,
+				  "jslot allocation failed\n");
+			return error;
+		} else {
+			goto back;
+		}
+	}
+
+	m->m_ext.ext_arg = jslot;
+	m->m_ext.ext_buf = jslot->jslot_buf;
+	m->m_ext.ext_free = et_jfree;
+	m->m_ext.ext_ref = et_jref;
+	m->m_ext.ext_size = ET_JUMBO_FRAMELEN;
+	m->m_flags |= M_EXT;
+	m->m_data = m->m_ext.ext_buf;
+	m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
+
+	rb->rb_mbuf = m;
+	rb->rb_paddr = jslot->jslot_paddr;
+
+	error = 0;
+back:
+	et_setup_rxdesc(rbd, buf_idx, rb->rb_paddr);
+	return error;
+}
+
+static void
+et_setup_rxdesc(struct et_rxbuf_data *rbd, int buf_idx, bus_addr_t paddr)
+{
+	struct et_rxdesc_ring *rx_ring = rbd->rbd_ring;
+	struct et_rxdesc *desc;
+
+	KKASSERT(buf_idx < ET_RX_NDESC);
+	desc = &rx_ring->rr_desc[buf_idx];
+
+	desc->rd_addr_hi = ET_ADDR_HI(paddr);
+	desc->rd_addr_lo = ET_ADDR_LO(paddr);
+	desc->rd_ctrl = __SHIFTIN(buf_idx, ET_RDCTRL_BUFIDX);
+
+	bus_dmamap_sync(rx_ring->rr_dtag, rx_ring->rr_dmap,
+			BUS_DMASYNC_PREWRITE);
 }

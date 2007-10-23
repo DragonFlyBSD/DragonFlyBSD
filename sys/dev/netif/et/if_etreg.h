@@ -31,14 +31,17 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_etreg.h,v 1.2 2007/10/20 05:22:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_etreg.h,v 1.3 2007/10/23 14:28:42 sephe Exp $
  */
 
 #ifndef _IF_ETREG_H
 #define _IF_ETREG_H
 
-#define ET_INTERN_MEM_SIZE		0x400
-#define ET_INTERN_MEM_END		(ET_INTERN_MEM_SIZE - 1)
+#define ET_MEM_TXSIZE_EX		182
+#define ET_MEM_RXSIZE_MIN		608
+#define ET_MEM_RXSIZE_DEFAULT		11216
+#define ET_MEM_SIZE			16384
+#define ET_MEM_UNIT			16
 
 /*
  * PCI registers
@@ -84,10 +87,13 @@
 /*
  * CSR
  */
-#define ET_TXQ_START			0x0000
-#define ET_TXQ_END			0x0004
-#define ET_RXQ_START			0x0008
-#define ET_RXQ_END			0x000c
+#define ET_TXQUEUE_START		0x0000
+#define ET_TXQUEUE_END			0x0004
+#define ET_RXQUEUE_START		0x0008
+#define ET_RXQUEUE_END			0x000c
+#define ET_QUEUE_ADDR(addr)		(((addr) / ET_MEM_UNIT) - 1)
+#define ET_QUEUE_ADDR_START		0
+#define ET_QUEUE_ADDR_END		ET_QUEUE_ADDR(ET_MEM_SIZE)
 
 #define ET_PM				0x0010
 #define ET_PM_SYSCLK_GATE		__BIT(3)
@@ -136,10 +142,16 @@
 #define ET_RXDMA_CTRL			0x2000
 #define ET_RXDMA_CTRL_HALT		__BIT(0)
 #define ET_RXDMA_CTRL_RING0_SIZE	__BITS(9, 8)
-#define ET_RXDMA_CTRL_RING0_128		0		/* 0 - 127 */
+#define ET_RXDMA_CTRL_RING0_128		0		/* 127 */
+#define ET_RXDMA_CTRL_RING0_256		1		/* 255 */
+#define ET_RXDMA_CTRL_RING0_512		2		/* 511 */
+#define ET_RXDMA_CTRL_RING0_1024	3		/* 1023 */
 #define ET_RXDMA_CTRL_RING0_ENABLE	__BIT(10)
 #define ET_RXDMA_CTRL_RING1_SIZE	__BITS(12, 11)
-#define ET_RXDMA_CTRL_RING1_2048	0		/* 0 - 2047 */
+#define ET_RXDMA_CTRL_RING1_2048	0		/* 2047 */
+#define ET_RXDMA_CTRL_RING1_4096	1		/* 4095 */
+#define ET_RXDMA_CTRL_RING1_8192	2		/* 8191 */
+#define ET_RXDMA_CTRL_RING1_16384	3		/* 16383 (9022?) */
 #define ET_RXDMA_CTRL_RING1_ENABLE	__BIT(13)
 #define ET_RXDMA_CTRL_HALTED		__BIT(17)
 
@@ -212,6 +224,8 @@
 #define ET_RXMAC_MC_SEGSZ_ENABLE	__BIT(0)
 #define ET_RXMAC_MC_SEGSZ_FC		__BIT(1)
 #define ET_RXMAC_MC_SEGSZ_MAX		__BITS(9, 2)
+#define ET_RXMAC_SEGSZ(segsz)		((segsz) / ET_MEM_UNIT)
+#define ET_RXMAC_CUT_THRU_FRMLEN	8074
 
 #define ET_RXMAC_MC_WATERMARK		0x408c
 #define ET_RXMAC_SPACE_AVL		0x4094
