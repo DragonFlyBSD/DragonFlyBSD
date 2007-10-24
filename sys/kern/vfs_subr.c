@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.106 2007/07/31 01:14:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.107 2007/10/24 21:56:41 dillon Exp $
  */
 
 /*
@@ -1108,7 +1108,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	}
 
 	/*
-	 * If the vnode has not be deactivated, deactivated it.  Deactivation
+	 * If the vnode has not been deactivated, deactivated it.  Deactivation
 	 * can create new buffers and VM pages so we have to call vinvalbuf()
 	 * again to make sure they all get flushed.
 	 *
@@ -1135,7 +1135,6 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	}
 	KKASSERT((vp->v_flag & VOBJBUF) == 0);
 
-
 	/*
 	 * Reclaim the vnode.
 	 */
@@ -1148,6 +1147,16 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	vp->v_ops = &dead_vnode_vops_p;
 	vn_pollgone(vp);
 	vp->v_tag = VT_NON;
+
+	/*
+	 * If we are destroying an active vnode, reactivate it now that
+	 * we have reassociated it with deadfs.  This prevents the system
+	 * from crashing on the vnode due to it being unexpectedly marked
+	 * as inactive or reclaimed.
+	 */
+	if (active && (flags & DOCLOSE)) {
+		vp->v_flag &= ~(VINACTIVE|VRECLAIMED);
+	}
 }
 
 /*
