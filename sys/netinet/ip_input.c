@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.70 2007/08/14 13:30:35 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.71 2007/10/25 13:13:18 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -454,9 +454,7 @@ ip_input(struct mbuf *m)
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
 	boolean_t needredispatch = FALSE;
 	struct in_addr odst;			/* original dst address(NAT) */
-#if defined(FAST_IPSEC) || defined(IPDIVERT)
 	struct m_tag *mtag;
-#endif
 #ifdef FAST_IPSEC
 	struct tdb_ident *tdbi;
 	struct secpolicy *sp;
@@ -471,9 +469,6 @@ ip_input(struct mbuf *m)
 	/* Grab info from MT_TAG mbufs prepended to the chain. */
 	while (m != NULL && m->m_type == MT_TAG) {
 		switch(m->_m_tag_id) {
-		case PACKET_TAG_DUMMYNET:
-			args.rule = ((struct dn_pkt *)m)->rule;
-			break;
 		case PACKET_TAG_IPFORWARD:
 			args.next_hop = (struct sockaddr_in *)m->m_hdr.mh_data;
 			break;
@@ -485,6 +480,15 @@ ip_input(struct mbuf *m)
 		m = m->m_next;
 	}
 	KASSERT(m != NULL && (m->m_flags & M_PKTHDR), ("ip_input: no HDR"));
+
+	/* Extract info from dummynet tag */
+	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+	if (mtag != NULL) {
+		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->rule;
+
+		m_tag_delete(m, mtag);
+		mtag = NULL;
+	}
 
 	if (args.rule != NULL) {	/* dummynet already filtered us */
 		ip = mtod(m, struct ip *);

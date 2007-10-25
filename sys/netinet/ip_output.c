@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.37 2007/04/04 06:13:26 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.38 2007/10/25 13:13:18 sephe Exp $
  */
 
 #define _IP_VHL
@@ -135,6 +135,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	int isbroadcast, sw_csum;
 	struct in_addr pkt_dst;
 	struct route iproute;
+	struct m_tag *dn_mtag = NULL;
 #ifdef IPSEC
 	struct secpolicy *sp = NULL;
 	struct socket *so = inp ? inp->inp_socket : NULL;
@@ -154,20 +155,6 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	/* Grab info from MT_TAG mbufs prepended to the chain. */
 	while (m0 != NULL && m0->m_type == MT_TAG) {
 		switch(m0->_m_tag_id) {
-		case PACKET_TAG_DUMMYNET:
-			/*
-			 * the packet was already tagged, so part of the
-			 * processing was already done, and we need to go down.
-			 * Get parameters from the header.
-			 */
-			args.rule = ((struct dn_pkt *)m0)->rule;
-			opt = NULL ;
-			ro = &((struct dn_pkt *)m0)->ro;
-			imo = NULL ;
-			dst = ((struct dn_pkt *)m0)->dn_dst ;
-			ifp = ((struct dn_pkt *)m0)->ifp ;
-			flags = ((struct dn_pkt *)m0)->flags ;
-			break;
 		case PACKET_TAG_IPFORWARD:
 			args.next_hop = (struct sockaddr_in *)m0->m_data;
 			break;
@@ -180,6 +167,34 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	}
 	m = m0;
 	KASSERT(m != NULL && (m->m_flags & M_PKTHDR), ("ip_output: no HDR"));
+
+	/* Extract info from dummynet tag */
+	dn_mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+	if (dn_mtag != NULL) {
+		struct dn_pkt *dn_pkt = m_tag_data(dn_mtag);
+
+		/*
+		 * The packet was already tagged, so part of the
+		 * processing was already done, and we need to go down.
+		 * Get parameters from the tag.
+		 */
+		args.rule = dn_pkt->rule;
+		opt = NULL;
+		ro = &dn_pkt->ro;
+		imo = NULL;
+		dst = dn_pkt->dn_dst;
+		ifp = dn_pkt->ifp;
+		flags = dn_pkt->flags;
+
+		/*
+		 * Don't delete the dummynet tag here, just unlink it,
+		 * since some local variables (like 'ro' and 'dst') are
+		 * still referencing certain parts of it.
+		 * The dummynet tag will be freed at the end of the
+		 * output process.
+		 */
+		m_tag_unlink(m, dn_mtag);
+	}
 
 	if (ro == NULL) {
 		ro = &iproute;
@@ -1076,6 +1091,9 @@ done:
 	if (sp != NULL)
 		KEY_FREESP(&sp);
 #endif
+	if (dn_mtag != NULL)
+		m_tag_free(dn_mtag);
+
 	return (error);
 bad:
 	m_freem(m);

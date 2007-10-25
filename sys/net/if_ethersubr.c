@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.49 2007/10/13 11:32:34 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.50 2007/10/25 13:13:18 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -386,16 +386,17 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	struct ip_fw *rule = NULL;
 	int error = 0;
 	struct altq_pktattr pktattr;
+	struct m_tag *mtag;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	/* Extract info from dummynet tag, ignore others */
-	while (m->m_type == MT_TAG) {
-		if (m->m_flags == PACKET_TAG_DUMMYNET) {
-			rule = ((struct dn_pkt *)m)->rule;
-			break;
-		}
-		m = m->m_next;
+	/* Extract info from dummynet tag */
+	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+	if (mtag != NULL) {
+		rule = ((struct dn_pkt *)m_tag_data(mtag))->rule;
+
+		m_tag_delete(m, mtag);
+		mtag = NULL;
 	}
 
 	if (ifq_is_enabled(&ifp->if_snd))
@@ -633,20 +634,22 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh0, struct mbuf *m)
 	int isr;
 	u_short ether_type;
 	struct ip_fw *rule = NULL;
+	struct m_tag *mtag;
 #ifdef NETATALK
 	struct llc *l;
 #endif
 
 	eh = *eh0;
 
-	/* Extract info from dummynet tag, ignore others */
-	while (m->m_type == MT_TAG) {
-		if (m->m_flags == PACKET_TAG_DUMMYNET) {
-			rule = ((struct dn_pkt *)m)->rule;
-			ifp = m->m_next->m_pkthdr.rcvif;
-			break;
-		}
-		m = m->m_next;
+	/* Extract info from dummynet tag */
+	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+	if (mtag != NULL) {
+		rule = ((struct dn_pkt *)m_tag_data(mtag))->rule;
+		KKASSERT(ifp == NULL);
+		ifp = m->m_pkthdr.rcvif;
+
+		m_tag_delete(m, mtag);
+		mtag = NULL;
 	}
 	if (rule)	/* packet is passing the second time */
 		goto post_stats;

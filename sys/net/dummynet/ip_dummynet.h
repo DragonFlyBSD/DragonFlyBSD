@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.8 2007/10/20 11:10:50 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.9 2007/10/25 13:13:18 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -110,19 +110,10 @@ struct dn_heap {
  * struct dn_pkt identifies a packet in the dummynet queue, but
  * is also used to tag packets passed back to the various destinations
  * (ip_input(), ip_output()  and so on).
- * As such the first part of the structure must be a struct m_hdr,
- * followed by dummynet-specific parameters. The m_hdr must be
- * initialized with
- *   mh_type	= MT_TAG;
- *   mh_flags	= PACKET_TYPE_DUMMYNET;
- *   mh_next	= <pointer to the actual mbuf>
- *
- * mh_nextpkt, mh_data are free for dummynet use.
+ * It is a tag(PACKET_TAG_DUMMYNET) associated with the actual mbuf.
  */
 struct dn_pkt {
-    struct m_hdr hdr;
-#define dn_m	hdr.mh_next	/* packet to be forwarded */
-
+    struct mbuf *dn_m;
     struct dn_pkt *dn_next;
 
     struct ip_fw *rule;		/* matching rule */

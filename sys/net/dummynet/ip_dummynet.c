@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.27 2007/10/23 15:01:15 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.28 2007/10/25 13:13:18 sephe Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -418,6 +418,8 @@ transmit_event(struct dn_pipe *pipe)
     struct dn_pkt *pkt ;
 
     while ( (pkt = pipe->head) && DN_KEY_LEQ(pkt->output_time, curr_time) ) {
+    	struct rtentry *rt;
+
 	/*
 	 * first unlink, then call procedures, since ip_input() can invoke
 	 * ip_output() and viceversa, thus causing nested calls
@@ -425,45 +427,46 @@ transmit_event(struct dn_pipe *pipe)
 	pipe->head = pkt->dn_next;
 
 	/*
-	 * The actual mbuf is preceded by a struct dn_pkt, resembling an mbuf
-	 * (NOT A REAL one, just a small block of malloc'ed memory) with
-	 *     m_type = MT_TAG, m_flags = PACKET_TAG_DUMMYNET
-	 *     dn_m (m_next) = actual mbuf to be processed by ip_input/output
-	 * and some other fields.
-	 * The block IS FREED HERE because it contains parameters passed
-	 * to the called routine.
+	 * NOTE:
+	 * 'pkt' should _not_ be touched after calling
+	 * ip_output(), ip_input(), ether_demux() and ether_output_frame()
 	 */
 	switch (pkt->dn_dir) {
 	case DN_TO_IP_OUT:
-	    ip_output((struct mbuf *)pkt, NULL, NULL, 0, NULL, NULL);
-	    rt_unref (pkt->ro.ro_rt) ;
+	    /*
+	     * 'pkt' will be freed in ip_output, so we keep
+	     * a reference of the 'rtentry' beforehand.
+	     */
+	    rt = pkt->ro.ro_rt;
+	    ip_output(pkt->dn_m, NULL, NULL, 0, NULL, NULL);
+	    rt_unref(rt);
 	    break ;
 
 	case DN_TO_IP_IN :
-	    ip_input((struct mbuf *)pkt) ;
+	    ip_input(pkt->dn_m);
 	    break ;
 
 	case DN_TO_ETH_DEMUX:
 	    {
-		struct mbuf *m = (struct mbuf *)pkt ;
+		struct mbuf *m = pkt->dn_m;
 		struct ether_header *eh;
 
-		if (pkt->dn_m->m_len < ETHER_HDR_LEN &&
-		    (pkt->dn_m = m_pullup(pkt->dn_m, ETHER_HDR_LEN)) == NULL) {
+		if (m->m_len < ETHER_HDR_LEN &&
+		    (m = m_pullup(m, ETHER_HDR_LEN)) == NULL) {
 		    kprintf("dummynet: pullup fail, dropping pkt\n");
 		    break;
 		}
 		/*
 		 * same as ether_input, make eh be a pointer into the mbuf
 		 */
-		eh = mtod(pkt->dn_m, struct ether_header *);
-		m_adj(pkt->dn_m, ETHER_HDR_LEN);
+		eh = mtod(m, struct ether_header *);
+		m_adj(m, ETHER_HDR_LEN);
 		/* which consumes the mbuf */
 		ether_demux(NULL, eh, m);
 	    }
 	    break ;
 	case DN_TO_ETH_OUT:
-	    ether_output_frame(pkt->ifp, (struct mbuf *)pkt);
+	    ether_output_frame(pkt->ifp, pkt->dn_m);
 	    break;
 
 	default:
@@ -471,7 +474,6 @@ transmit_event(struct dn_pipe *pipe)
 	    m_freem(pkt->dn_m);
 	    break ;
 	}
-	kfree(pkt, M_DUMMYNET);
     }
     /* if there are leftover packets, put into the heap for next event */
     if ( (pkt = pipe->head) )
@@ -1059,6 +1061,7 @@ static int
 dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 {
     struct dn_pkt *pkt;
+    struct m_tag *tag;
     struct dn_flow_set *fs;
     struct dn_pipe *pipe ;
     u_int64_t len = m->m_pkthdr.len ;
@@ -1113,19 +1116,20 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
     if ( fs->flags_fs & DN_IS_RED && red_drops(fs, q, len) )
 	goto dropit ;
 
-    /* XXX expensive to zero, see if we can remove it*/
-    pkt = kmalloc(sizeof (*pkt), M_DUMMYNET, M_INTWAIT | M_ZERO | M_NULLOK);
-    if (pkt == NULL)
-	    goto dropit;	/* cannot allocate packet header        */
+    tag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt), MB_DONTWAIT /* XXX */);
+    if (tag == NULL)
+	goto dropit;
+    m_tag_prepend(m, tag);
 
+    pkt = m_tag_data(tag);
+    bzero(pkt, sizeof(*pkt)); /* XXX expensive to zero */
+    
     /* ok, i can handle the pkt now... */
     /* build and enqueue packet + parameters */
-    pkt->hdr.mh_type = MT_TAG;
-    pkt->hdr.mh_flags = PACKET_TAG_DUMMYNET;
-    pkt->rule = fwa->rule ;
+    pkt->rule = fwa->rule;
     pkt->dn_next = NULL;
     pkt->dn_m = m;
-    pkt->dn_dir = dir ;
+    pkt->dn_dir = dir;
 
     pkt->ifp = fwa->oif;
     if (dir == DN_TO_IP_OUT) {
@@ -1239,11 +1243,10 @@ dropit:
  * Doing this would probably save us the initial bzero of dn_pkt
  */
 #define DN_FREE_PKT(pkt)	{		\
-	struct dn_pkt *n = pkt ;		\
-	rt_unref ( n->ro.ro_rt ) ;		\
-	m_freem(n->dn_m);			\
+	struct dn_pkt *n = pkt;			\
 	pkt = n->dn_next;			\
-	kfree(n, M_DUMMYNET) ;	}
+	rt_unref (n->ro.ro_rt);			\
+	m_freem(n->dn_m);	}
 
 /*
  * Dispose all packets and flow_queues on a flow_set.

@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.41 2007/08/16 20:03:54 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.42 2007/10/25 13:13:18 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -529,12 +529,12 @@ m_getb(int len, int how, int type, int flags)
  * a private cookie value so that packet tag-related definitions
  * can be maintained privately.
  *
- * Note that the packet tag returned by m_tag_allocate has the default
- * memory alignment implemented by malloc.  To reference private data
+ * Note that the packet tag returned by m_tag_alloc has the default
+ * memory alignment implemented by kmalloc.  To reference private data
  * one can use a construct like:
  *
- *	struct m_tag *mtag = m_tag_allocate(...);
- *	struct foo *p = (struct foo *)(mtag+1);
+ *	struct m_tag *mtag = m_tag_alloc(...);
+ *	struct foo *p = m_tag_data(mtag);
  *
  * if the alignment of struct m_tag is sufficient for referencing members
  * of struct foo.  Otherwise it is necessary to embed struct m_tag within
@@ -544,7 +544,7 @@ m_getb(int len, int how, int type, int flags)
  *		struct m_tag	tag;
  *		...
  *	};
- *	struct foo *p = (struct foo *) m_tag_allocate(...);
+ *	struct foo *p = (struct foo *)m_tag_alloc(...);
  *	struct m_tag *mtag = &p->tag;
  */
 
@@ -569,6 +569,8 @@ m_getb(int len, int how, int type, int flags)
 /* struct ip6aux */
 #define	PACKET_TAG_IPFW_DIVERT			9 /* divert info */
 /* uint16_t */
+#define	PACKET_TAG_DUMMYNET			15 /* dummynet info */
+/* struct dn_pkt */
 #define	PACKET_TAG_CARP                         28 /* CARP info */
 
 /*
@@ -586,8 +588,6 @@ m_getb(int len, int how, int type, int flags)
 #define	_m_tag_id	m_hdr.mh_flags
 
 /* Packet tags used in the FreeBSD network stack */
-#define	PACKET_TAG_DUMMYNET			15 /* dummynet info */
-/* struct dn_pkt as fake mbuf */
 #define	PACKET_TAG_IPFORWARD			18 /* ipforward info */
 /* struct sockaddr_in * as m_data */
 
