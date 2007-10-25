@@ -31,7 +31,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/traceroute6/traceroute6.c,v 1.4.2.4 2001/07/03 11:02:18 ume Exp $
- * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.7 2007/10/25 08:12:42 hasso Exp $
  */
 
 /*-
@@ -836,6 +836,7 @@ main(int argc, char **argv)
 		struct in6_addr lastaddr;
 		int got_there = 0;
 		int unreachable = 0;
+		int gotlastaddr = 0;
 
 		Printf("%2d ", hops);
 		bzero(&lastaddr, sizeof(lastaddr));
@@ -849,10 +850,14 @@ main(int argc, char **argv)
 			while ((cc = wait_for_reply(rcvsock, &rcvmhdr))) {
 				gettimeofday(&t2, &tz);
 				if ((i = packet_ok(&rcvmhdr, cc, seq))) {
-					if (! IN6_ARE_ADDR_EQUAL(&Rcv.sin6_addr,
+					if (!gotlastaddr ||
+					    !IN6_ARE_ADDR_EQUAL(&Rcv.sin6_addr,
 							    &lastaddr)) {
+						if (gotlastaddr)
+							printf("\n   ");
 						print(&rcvmhdr, cc);
 						lastaddr = Rcv.sin6_addr;
+						++gotlastaddr;
 					}
 					Printf("  %g ms", deltaT(&t1, &t2));
 					switch(i - 1) {

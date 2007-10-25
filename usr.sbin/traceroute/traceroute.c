@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.8 2007/08/03 09:50:05 hasso Exp $
+ * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.9 2007/10/25 08:12:42 hasso Exp $
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  */
 
@@ -600,6 +600,7 @@ main(int argc, char *argv[])
 
 	for (ttl = first_ttl; ttl <= max_ttl; ++ttl) {
 		int got_there = 0, unreachable = 0, timeout = 0, loss;
+		int gotlastaddr = 0;
 		in_addr_t lastaddr = 0;
 		quad_t dt;
 
@@ -621,9 +622,13 @@ main(int argc, char *argv[])
 				/* Skip short packet */
 				if (i == 0)
 					continue;
-				if (from.sin_addr.s_addr != lastaddr) {
+				if (!gotlastaddr ||
+				    from.sin_addr.s_addr != lastaddr) {
+					if (gotlastaddr)
+						printf("\n   ");
 					print(packet, cc, &from);
 					lastaddr = from.sin_addr.s_addr;
+					++gotlastaddr;
 				}
 				dt = (quad_t)(t2.tv_sec - t1.tv_sec) * 1000000 +
 				    (quad_t)(t2.tv_usec - t1.tv_usec);
