@@ -1,6 +1,6 @@
 .\" $OpenBSD: lm.4,v 1.16 2007/05/26 22:38:55 cnst Exp $
 .\" $NetBSD: lm.4,v 1.11 2001/09/22 01:22:49 wiz Exp $
-.\" $DragonFly: src/share/man/man4/lm.4,v 1.4 2007/10/05 18:34:47 swildner Exp $
+.\" $DragonFly: src/share/man/man4/lm.4,v 1.5 2007/10/26 08:22:00 swildner Exp $
 .\"
 .\" Copyright (c) 2000 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -41,7 +41,7 @@
 .Os
 .Sh NAME
 .Nm lm
-.Nd NatSemi LM78/79/81 and Winbond Super I/O Hardware Monitor
+.Nd "NatSemi LM78/79/81 and Winbond Super I/O Hardware Monitor"
 .Sh SYNOPSIS
 .Cd "device lm0 at isa? port 0x290"
 .Cd "device lm1 at isa? port 0x280"
@@ -56,7 +56,7 @@ LM 78/79/81 and
 Super I/O
 hardware monitors,
 and registers compatible chips under the
-.Va HW_SENSORS
+.Dv HW_SENSORS
 .Xr sysctl 3
 tree.
 .Sh HARDWARE
