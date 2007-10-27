@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $NetBSD: readline.h,v 1.19 2006/11/24 00:01:17 christos Exp $
- * $DragonFly: src/lib/libedit/readline/readline.h,v 1.2 2007/05/05 00:27:40 pavalos Exp $
+ * $NetBSD: readline.h,v 1.21 2007/08/12 07:41:51 christos Exp $
+ * $DragonFly: src/lib/libedit/readline/readline.h,v 1.3 2007/10/27 22:27:16 pavalos Exp $
  */
 #ifndef _READLINE_H_
 #define _READLINE_H_
@@ -45,6 +45,7 @@ typedef void	  VFunction(void);
 typedef void	  VCPFunction(char *);
 typedef char	 *CPFunction(const char *, int);
 typedef char	**CPPFunction(const char *, int, int);
+typedef char     *rl_compentry_func_t(const char *, int);
 
 typedef struct _hist_entry {
 	const char	*line;
@@ -119,7 +120,7 @@ extern KEYMAP_ENTRY_ARRAY emacs_standard_keymap,
 			emacs_ctlx_keymap;
 extern int		rl_filename_completion_desired;
 extern int		rl_ignore_completion_duplicates;
-extern Function		*rl_getc_function;
+extern int		(*rl_getc_function)(FILE *);
 extern VFunction	*rl_redisplay_function;
 extern VFunction	*rl_completion_display_matches_hook;
 extern VFunction	*rl_prep_term_function;
@@ -184,6 +185,7 @@ void		 rl_set_screen_size(int, int);
 char 		*rl_filename_completion_function (const char *, int);
 int		 _rl_abort_internal(void);
 int		 _rl_qsort_string_compare(char **, char **);
+char 	       **rl_completion_matches(const char *, rl_compentry_func_t *);
 
 /*
  * The following are not implemented

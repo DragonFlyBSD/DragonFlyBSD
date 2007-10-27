@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $NetBSD: readline.c,v 1.70 2006/11/24 00:01:17 christos Exp $
- * $DragonFly: src/lib/libedit/readline.c,v 1.2 2007/05/05 00:27:39 pavalos Exp $
+ * $NetBSD: readline.c,v 1.72 2007/08/12 07:41:51 christos Exp $
+ * $DragonFly: src/lib/libedit/readline.c,v 1.3 2007/10/27 22:27:16 pavalos Exp $
  */
 
 #include "config.h"
@@ -109,7 +109,7 @@ Function *rl_completion_entry_function = NULL;
 CPPFunction *rl_attempted_completion_function = NULL;
 Function *rl_pre_input_hook = NULL;
 Function *rl_startup1_hook = NULL;
-Function *rl_getc_function = NULL;
+int (*rl_getc_function)(FILE *) = NULL;
 char *rl_terminal_name = NULL;
 int rl_already_prompted = 0;
 int rl_filename_completion_desired = 0;
@@ -211,7 +211,7 @@ _getc_function(EditLine *el, char *c)
 {
 	int i;
 
-	i = (*rl_getc_function)(NULL, 0);
+	i = (*rl_getc_function)(NULL);
 	if (i == -1)
 		return 0;
 	*c = i;
@@ -1166,7 +1166,7 @@ history_get(int num)
 		return (NULL);	/* error */
 
 	/* look backwards for event matching specified offset */
-	if (history(h, &ev, H_NEXT_EVENT, num))
+	if (history(h, &ev, H_NEXT_EVENT, num + 1))
 		return (NULL);
 
 	she.line = ev.str;
@@ -1204,7 +1204,7 @@ add_history(const char *line)
 HIST_ENTRY *
 remove_history(int num)
 {
-	static HIST_ENTRY she;
+	HIST_ENTRY *she;
 	HistEvent ev;
 
 	if (h == NULL || e == NULL)
@@ -1213,10 +1213,13 @@ remove_history(int num)
 	if (history(h, &ev, H_DEL, num) != 0)
 		return NULL;
 
-	she.line = ev.str;
-	she.data = NULL;
+	if ((she = malloc(sizeof(*she))) == NULL)
+		return NULL;
 
-	return &she;
+	she->line = ev.str;
+	she->data = NULL;
+
+	return she;
 }
 
 
@@ -1687,7 +1690,7 @@ rl_callback_read_char()
 }
 
 void 
-rl_callback_handler_install (const char *prompt, VCPFunction *linefunc)
+rl_callback_handler_install(const char *prompt, VCPFunction *linefunc)
 {
 	if (e == NULL) {
 		rl_initialize();
@@ -1703,6 +1706,7 @@ void
 rl_callback_handler_remove(void)
 {
 	el_set(e, EL_UNBUFFERED, 0);
+	rl_linefunc = NULL;
 }
 
 void
@@ -1846,6 +1850,61 @@ rl_set_screen_size(int rows, int cols)
 	el_set(e, EL_SETTC, "li", buf);
 	(void)snprintf(buf, sizeof(buf), "%d", cols);
 	el_set(e, EL_SETTC, "co", buf);
+}
+
+char **
+rl_completion_matches(const char *str, rl_compentry_func_t *fun)
+{
+	size_t len, max, i, j, min;
+	char **list, *match, *a, *b;
+
+	len = 1;
+	max = 10;
+	if ((list = malloc(max * sizeof(*list))) == NULL)
+		return NULL;
+
+	while ((match = (*fun)(str, (int)(len - 1))) != NULL) {
+		if (len == max) {
+			char **nl;
+			max += 10;
+			if ((nl = realloc(list, max * sizeof(*nl))) == NULL)
+				goto out;
+			list = nl;
+		}
+		list[len++] = match;
+	}
+	if (len == 1)
+		goto out;
+	list[len] = NULL;
+	if (len == 2) {
+		if ((list[0] = strdup(list[1])) == NULL)
+			goto out;
+		return list;
+	}
+	qsort(&list[1], len - 1, sizeof(*list),
+	    (int (*)(const void *, const void *)) strcmp);
+	min = SIZE_T_MAX;
+	for (i = 1, a = list[i]; i < len - 1; i++, a = b) {
+		b = list[i + 1];
+		for (j = 0; a[j] && a[j] == b[j]; j++)
+			continue;
+		if (min > j)
+			min = j;
+	}
+	if (min == 0 && *str) {
+		if ((list[0] = strdup(str)) == NULL)
+			goto out;
+	} else {
+		if ((list[0] = malloc(min + 1)) == NULL)
+			goto out;
+		(void)memcpy(list[0], list[1], min);
+		list[0][min] = '\0';
+	}
+	return list;
+
+out:
+	free(list);
+	return NULL;
 }
 
 char *
