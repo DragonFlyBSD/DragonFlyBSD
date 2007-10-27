@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.28 2007/10/25 13:13:18 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.29 2007/10/27 12:19:43 sephe Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -832,7 +832,11 @@ create_queue(struct dn_flow_set *fs, int i)
 	if ( fs->rq[i] != NULL )
 	    return fs->rq[i] ;
     }
-    q = kmalloc(sizeof(*q), M_DUMMYNET, M_WAITOK | M_ZERO);
+
+    q = kmalloc(sizeof(*q), M_DUMMYNET, M_INTWAIT | M_NULLOK | M_ZERO);
+    if (q == NULL)
+	return NULL;
+
     q->fs = fs ;
     q->hash_slot = i ;
     q->next = fs->rq[i] ;
@@ -906,7 +910,7 @@ find_queue(struct dn_flow_set *fs, struct ipfw_flow_id *id)
     if (q == NULL) { /* no match, need to allocate a new entry */
 	q = create_queue(fs, i);
 	if (q != NULL)
-	q->id = *id ;
+	    q->id = *id;
     }
     return q ;
 }
