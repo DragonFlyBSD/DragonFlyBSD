@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.3 2007/08/22 08:50:26 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.4 2007/10/27 22:36:47 pavalos Exp $
 
 .include "../Makefile.inc"
 
@@ -69,9 +69,9 @@ SRCS+=	tui-stack.c tui-win.c tui-windata.c tui-wingeneral.c tui-winsource.c
 SRCS+=	freebsd-uthread.c
 #SRCS+=	kthr.c trgt.c trgt_${MACHINE_ARCH}.c
 
-DPADD=	${LIBREADLINE} ${LIBKVM} ${LIBTERMCAP} ${LIBM}
+DPADD=	${LIBEDIT} ${LIBKVM} ${LIBTERMCAP} ${LIBM}
 DPADD+=	../libbfd/libbfd.a ../libopcodes/libopcodes.a ../libiberty/libiberty.a
-LDADD=	-lreadline -lkvm -ltermcap -lm
+LDADD=	-ledit -lkvm -ltermcap -lm
 LDADD+=	-L../libbfd -lbfd -L../libopcodes -lopcodes -L../libiberty -liberty
 
 .include "Makefile.${MACHINE_ARCH}"
