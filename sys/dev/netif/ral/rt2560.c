@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.15 2007/04/12 12:54:07 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.16 2007/10/28 02:29:06 sephe Exp $
  */
 
 /*
@@ -1427,8 +1427,8 @@ rt2560_intr(void *arg)
 /* quickly determine if a given rate is CCK or OFDM */
 #define RAL_RATE_IS_OFDM(rate) ((rate) >= 12 && (rate) != 22)
 
-#define RAL_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_FCS_LEN)
-#define RAL_CTS_SIZE	(sizeof(struct ieee80211_frame_cts) + IEEE80211_FCS_LEN)
+#define RAL_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_CRC_LEN)
+#define RAL_CTS_SIZE	(sizeof(struct ieee80211_frame_cts) + IEEE80211_CRC_LEN)
 
 #define RT2560_TXRX_TURNAROUND	10	/* us */
 
@@ -1745,7 +1745,7 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 		int rtsrate;
 
 		rtsrate = IEEE80211_IS_CHAN_5GHZ(ic->ic_curchan) ? 12 : 2;
-		dur = ieee80211_txtime(ni, m0->m_pkthdr.len + IEEE80211_FCS_LEN,
+		dur = ieee80211_txtime(ni, m0->m_pkthdr.len + IEEE80211_CRC_LEN,
 				       rate, ic->ic_flags) +
 		      ieee80211_txtime(ni, RAL_CTS_SIZE, rtsrate, ic->ic_flags)+
 		      ieee80211_txtime(ni, RAL_ACK_SIZE, ackrate, ic->ic_flags)+

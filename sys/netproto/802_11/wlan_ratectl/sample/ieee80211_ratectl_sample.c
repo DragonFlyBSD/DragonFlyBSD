@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/sample/sample.c,v 1.8.2.3 2006/03/14 23:22:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/sample/ieee80211_ratectl_sample.c,v 1.2 2007/05/07 10:45:42 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/sample/ieee80211_ratectl_sample.c,v 1.3 2007/10/28 02:29:06 sephe Exp $
  */
 
 /*
@@ -180,7 +180,7 @@ unicast_pkt_time(struct sample_softc *ssc, struct ieee80211_node *ni,
 	int i;
 
 	ack_dur = ieee80211_txtime(ni,
-			sizeof(struct ieee80211_frame_ack) + IEEE80211_FCS_LEN,
+			sizeof(struct ieee80211_frame_ack) + IEEE80211_CRC_LEN,
 			ieee80211_ack_rate(ni, rate), ic->ic_flags);
 	data_dur = ieee80211_txtime(ni, len, rate, ic->ic_flags);
 
@@ -211,11 +211,11 @@ unicast_pkt_time(struct sample_softc *ssc, struct ieee80211_node *ni,
 
 			rts_dur = ieee80211_txtime(ni,
 					sizeof(struct ieee80211_frame_rts) +
-					IEEE80211_FCS_LEN,
+					IEEE80211_CRC_LEN,
 					rts_rate, ic->ic_flags);
 			cts_dur = ieee80211_txtime(ni,
 					sizeof(struct ieee80211_frame_cts) +
-					IEEE80211_FCS_LEN,
+					IEEE80211_CRC_LEN,
 					ieee80211_ack_rate(ni, rts_rate),
 					ic->ic_flags);
 
@@ -234,7 +234,7 @@ unicast_pkt_time(struct sample_softc *ssc, struct ieee80211_node *ni,
 			/* Assume CTS is sent at 2Mbits/s */
 			tt += ieee80211_txtime(ni,
 				sizeof(struct ieee80211_frame_cts) +
-				IEEE80211_FCS_LEN,
+				IEEE80211_CRC_LEN,
 				4, ic->ic_flags);
 			tt += sifs;
 			rts_tries = 0;

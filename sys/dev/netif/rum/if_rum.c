@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.18 2007/07/27 18:07:21 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.19 2007/10/28 02:29:07 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -739,7 +739,7 @@ rum_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 /* quickly determine if a given rate is CCK or OFDM */
 #define RUM_RATE_IS_OFDM(rate)	((rate) >= 12 && (rate) != 22)
 
-#define RUM_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_FCS_LEN)
+#define RUM_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_CRC_LEN)
 
 static void
 rum_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)

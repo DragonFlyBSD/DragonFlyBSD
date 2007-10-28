@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.h,v 1.9.2.2 2006/08/10 06:07:49 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.8 2007/09/15 07:12:03 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.9 2007/10/28 02:29:06 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_H_
 #define _NET80211_IEEE80211_H_
@@ -40,7 +40,6 @@
  */
 
 #define	IEEE80211_ADDR_LEN	6		/* size of 802.11 address */
-#define IEEE80211_FCS_LEN	4		/* size of 802.11 frame FCS */
 
 /* is 802.11 address multicast/broadcast? */
 #define	IEEE80211_IS_MULTICAST(_a)	(*(_a) & 0x01)

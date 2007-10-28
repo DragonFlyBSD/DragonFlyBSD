@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.21 2007/05/07 14:14:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.22 2007/10/28 02:29:06 sephe Exp $
  */
 
 /*
@@ -1365,8 +1365,8 @@ rt2661_intr(void *arg)
 /* quickly determine if a given rate is CCK or OFDM */
 #define RAL_RATE_IS_OFDM(rate) ((rate) >= 12 && (rate) != 22)
 
-#define RAL_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_FCS_LEN)
-#define RAL_CTS_SIZE	(sizeof(struct ieee80211_frame_cts) + IEEE80211_FCS_LEN)
+#define RAL_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_CRC_LEN)
+#define RAL_CTS_SIZE	(sizeof(struct ieee80211_frame_cts) + IEEE80211_CRC_LEN)
 
 /*
  * This function is only used by the Rx radiotap code. It returns the rate at
@@ -1701,7 +1701,7 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 		rtsrate = IEEE80211_IS_CHAN_5GHZ(ic->ic_curchan) ? 12 : 2;
 
 		/* XXX: noack (QoS)? */
-		dur = ieee80211_txtime(ni, m0->m_pkthdr.len + IEEE80211_FCS_LEN,
+		dur = ieee80211_txtime(ni, m0->m_pkthdr.len + IEEE80211_CRC_LEN,
 				       rate, ic->ic_flags) +
 		      ieee80211_txtime(ni, RAL_CTS_SIZE, rtsrate, ic->ic_flags)+
 		      ieee80211_txtime(ni, RAL_ACK_SIZE, ackrate, ic->ic_flags)+

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.19 2007/07/27 18:07:21 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.20 2007/10/28 02:29:07 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -870,7 +870,7 @@ ural_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 /* quickly determine if a given rate is CCK or OFDM */
 #define RAL_RATE_IS_OFDM(rate) ((rate) >= 12 && (rate) != 22)
 
-#define RAL_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_FCS_LEN)
+#define RAL_ACK_SIZE	(sizeof(struct ieee80211_frame_ack) + IEEE80211_CRC_LEN)
 
 #define RAL_RXTX_TURNAROUND	5	/* us */
 
