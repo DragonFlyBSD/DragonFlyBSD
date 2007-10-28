@@ -33,7 +33,7 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.19 2007/07/24 20:38:20 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.20 2007/10/28 01:32:33 swildner Exp $
 
 tag="\$Name:  $"
 
@@ -123,8 +123,7 @@ do
 	if [ -r "$bsd_copyright" ]; then
 		COPYRIGHT=`sed \
 		    -e "s/\[year\]/$year/" \
-		    -e 's/\[your name here\]\.* /DragonFly Inc./' \
-		    -e 's/\[your name\]\.*/DragonFly Inc./' \
+		    -e 's/\[your name\]\.*/The DragonFly Project/' \
 		    -e '/\[id for your version control system, if any\]/d' \
 		    $bsd_copyright` 
 		break
@@ -134,8 +133,8 @@ done
 # no copyright found, use a dummy
 if [ X"$COPYRIGHT" = X ]; then
 	COPYRIGHT="/*
- * Copyright (c) $year
- *	DragonFly Inc. All rights reserved.
+ * Copyright (c) $year The DragonFly Project
+ * All rights reserved.
  *
  */"
 fi
@@ -158,8 +157,6 @@ fi
 i=`make -V KERN_IDENT`
 cat << EOF > vers.c
 $COPYRIGHT
-char sccspad[32 - 4 /* sizeof(sccs) */] = { '\\0' };
-char sccs[4] = { '@', '(', '#', ')' };
 char version[] = "${VERSION} #${v}: ${t}\\n    ${u}@${h}:${d}\\n";
 char ostype[] = "${TYPE}";
 char osrelease[] = "${RELEASE}";
