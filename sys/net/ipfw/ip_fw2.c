@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.30 2007/10/29 02:59:03 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.31 2007/10/29 12:23:57 sephe Exp $
  */
 
 #define        DEB(x)
@@ -839,7 +839,7 @@ realloc_dynamic_table(void)
 		kfree(ipfw_dyn_v, M_IPFW);
 	for (;;) {
 		ipfw_dyn_v = kmalloc(curr_dyn_buckets * sizeof(ipfw_dyn_rule *),
-		       M_IPFW, M_WAITOK | M_ZERO);
+		       M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
 		if (ipfw_dyn_v != NULL || curr_dyn_buckets <= 2)
 			break;
 		curr_dyn_buckets /= 2;
@@ -870,7 +870,7 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
 	}
 	i = hash_packet(id);
 
-	r = kmalloc(sizeof *r, M_IPFW, M_WAITOK | M_ZERO);
+	r = kmalloc(sizeof *r, M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
 	if (r == NULL) {
 		kprintf ("sorry cannot allocate state\n");
 		return NULL;
