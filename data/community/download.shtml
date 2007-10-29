@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.14 2007/08/07 16:57:07 justin Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.15 2007/10/29 12:28:18 pavalos Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -259,7 +259,7 @@ rsync
 
 <TR>
 <TD>TheShell.com (Ashburn, VA, USA)</TD>
-<TD>Code, daily snapshots, official ISOs</TD>
+<TD>Code, official ISOs</TD>
 <TD>
 <a href="http://www.theshell.com/pub/DragonFly/">HTTP</a>,
 <a href="ftp://ftp.theshell.com/pub/DragonFly/">FTP</a>, 
