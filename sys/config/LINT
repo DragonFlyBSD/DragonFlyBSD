@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.134 2007/10/12 14:12:42 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.135 2007/10/29 10:31:27 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1122,8 +1122,8 @@ options		VGA_DEBUG=2		# enable VGA debug output
 
 # If you can dispense with some vga driver features, you may want to
 # use the following options to save some memory.
-options 	VGA_NO_FONT_LOADING	# don't save/load font
-options 	VGA_NO_MODE_CHANGE	# don't change video modes
+#options 	VGA_NO_FONT_LOADING	# don't save/load font
+#options 	VGA_NO_MODE_CHANGE	# don't change video modes
 
 # Older video cards may require this option for proper operation.
 options 	VGA_SLOW_IOACCESS	# do byte-wide i/o's to TS and GDC regs
@@ -1162,10 +1162,10 @@ options 	SC_KERNEL_CONS_REV_ATTR="(FG_BLACK|BG_RED)"
 options 	SC_TWOBUTTON_MOUSE
 
 # You can selectively disable features in syscons.
-options 	SC_NO_CUTPASTE
-options 	SC_NO_FONT_LOADING
-options 	SC_NO_HISTORY
-options 	SC_NO_SYSMOUSE
+#options 	SC_NO_CUTPASTE
+#options 	SC_NO_FONT_LOADING
+#options 	SC_NO_HISTORY
+#options 	SC_NO_SYSMOUSE
 
 #
 # The Numeric Processing eXtension driver.  In addition to this, you
