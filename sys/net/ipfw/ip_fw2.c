@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.29 2007/10/23 15:01:15 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.30 2007/10/29 02:59:03 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1990,8 +1990,6 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 		return (EINVAL);
 
 	rule = kmalloc(l, M_IPFW, M_WAITOK | M_ZERO);
-	if (rule == NULL)
-		return (ENOSPC);
 
 	bcopy(input_rule, rule, l);
 
@@ -2007,7 +2005,7 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 	if (*head == NULL) {	/* default rule */
 		*head = rule;
 		goto done;
-        }
+	}
 
 	/*
 	 * If rulenum is 0, find highest numbered rule before the
