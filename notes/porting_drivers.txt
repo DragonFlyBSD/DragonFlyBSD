@@ -1,4 +1,4 @@
-$DragonFly: doc/notes/porting_drivers.txt,v 1.1 2006/12/03 20:49:59 dillon Exp $
+$DragonFly: doc/notes/porting_drivers.txt,v 1.2 2007/10/31 04:52:52 swildner Exp $
 
 		    PORTING FREEBSD DRIVERS TO DRAGONFLY
 
@@ -18,6 +18,12 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.1 2006/12/03 20:49:59 dillon Exp $
   reside in <bus/...>.  In particular, dev/pccard becomes bus/pccard.
   Note that defines in FreeBSD's pccard_cis.h reside in DragonFly's
   pccardreg.h .
+
+* The following kernel functions have been renamed in DragonFly:
+
+  malloc(), free() etc.	->	kmalloc(), kfree() etc.
+  printf() etc.		->	kprintf() etc.
+  psignal()		->	ksignal()
 
 * MUTEX conversion - mutexes are generally replaced by spinlocks.  However,
   DragonFly spinlocks are more restriction then FreeBSD mutexes so a
@@ -40,11 +46,11 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.1 2006/12/03 20:49:59 dillon Exp $
   the two.  Instead, the driver in DragonFly must obtain the spinlocks
   in question in the callback routine.
 
-* UMA conversion - generally speaking UMA should be converted to a stanard
-  malloc.
+* UMA conversion - generally speaking UMA should be converted to a standard
+  kmalloc.
 
   Note however that in FreeBSD M_NOWAIT is often used in cases where, in fact,
-  the malloc cannot fail without blowing something up or causing a fatal
+  the kmalloc cannot fail without blowing something up or causing a fatal
   (and very unexpected) I/O error.  M_INTWAIT should be used for these cases.
 
 * CDEVSW conversion - see other devices.  Generally speaking a major number
@@ -64,7 +70,6 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.1 2006/12/03 20:49:59 dillon Exp $
 * TSLEEP conversion.  The DragonFly tsleep does not have 'PRI' priorities.
   0 should be used.
 
-
 * BUS_* FUNCTIONS
 
   bus_setup_intr() - replace INTR_TYPE_* flags with 0.  There is an extra
@@ -72,4 +77,3 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.1 2006/12/03 20:49:59 dillon Exp $
   This can either be left NULL or you can convert the genera spinlock(s) for
   the driver into serializer locks and integrate the interrupt service
   routine with a serializer.
-   
