@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.185 2007/10/12 14:12:42 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.186 2007/11/01 22:05:23 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1136,6 +1136,13 @@ vfs/userfs/userfs_vfsops.c	optional userfs
 vfs/userfs/userfs_vnops.c	optional userfs
 vfs/userfs/userfs_inode.c	optional userfs
 vfs/userfs/userfs_elms.c	optional userfs
+vfs/hammer/hammer_alist.c	optional hammer
+vfs/hammer/hammer_inode.c	optional hammer
+vfs/hammer/hammer_vfsops.c	optional hammer
+vfs/hammer/hammer_vnops.c	optional hammer
+vfs/hammer/hammer_subs.c	optional hammer
+vfs/hammer/hammer_ondisk.c	optional hammer
+vfs/hammer/hammer_btree.c	optional hammer
 vm/default_pager.c		standard
 vm/device_pager.c		standard
 vm/phys_pager.c			standard

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.72 2007/09/02 13:27:23 sephe Exp $
+# $DragonFly: src/sys/conf/options,v 1.73 2007/11/01 22:05:23 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -158,6 +158,7 @@ FFS
 NFS
 NWFS
 USERFS
+HAMMER
 
 # If you are following the conditions in the copyright,
 # you can enable soft-updates which will speed up a lot of thigs
