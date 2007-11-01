@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.29 2007/10/27 12:19:43 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.30 2007/11/01 06:54:17 sephe Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -186,7 +186,7 @@ static void
 rt_unref(struct rtentry *rt)
 {
     if (rt == NULL)
-	return ;
+	return;
     if (rt->rt_refcnt <= 0)
 	kprintf("-- warning, refcnt now %ld, decreasing\n", rt->rt_refcnt);
     RTFREE(rt);
@@ -204,37 +204,38 @@ rt_unref(struct rtentry *rt)
  * as we basically stall a whole queue forever!!
  * Returns 1 on error, 0 on success
  */
-#define HEAP_FATHER(x) ( ( (x) - 1 ) / 2 )
-#define HEAP_LEFT(x) ( 2*(x) + 1 )
-#define HEAP_IS_LEFT(x) ( (x) & 1 )
-#define HEAP_RIGHT(x) ( 2*(x) + 2 )
-#define	HEAP_SWAP(a, b, buffer) { buffer = a ; a = b ; b = buffer ; }
-#define HEAP_INCREMENT	15
+#define HEAP_FATHER(x)		(((x) - 1) / 2)
+#define HEAP_LEFT(x)		(2*(x) + 1)
+#define HEAP_IS_LEFT(x)		((x) & 1)
+#define HEAP_RIGHT(x)		(2*(x) + 2)
+#define HEAP_SWAP(a, b, buffer)	{ buffer = a; a = b; b = buffer; }
+#define HEAP_INCREMENT		15
 
 static int
 heap_init(struct dn_heap *h, int new_size)
 {
     struct dn_heap_entry *p;
 
-    if (h->size >= new_size ) {
+    if (h->size >= new_size) {
 	kprintf("heap_init, Bogus call, have %d want %d\n",
 		h->size, new_size);
-	return 0 ;
+	return 0;
     }
-    new_size = (new_size + HEAP_INCREMENT ) & ~HEAP_INCREMENT ;
+
+    new_size = (new_size + HEAP_INCREMENT) & ~HEAP_INCREMENT;
     p = kmalloc(new_size * sizeof(*p), M_DUMMYNET, M_WAITOK | M_ZERO);
     if (h->size > 0) {
-	bcopy(h->p, p, h->size * sizeof(*p) );
+	bcopy(h->p, p, h->size * sizeof(*p));
 	kfree(h->p, M_DUMMYNET);
     }
-    h->p = p ;
-    h->size = new_size ;
-    return 0 ;
+    h->p = p;
+    h->size = new_size;
+    return 0;
 }
 
 /*
  * Insert element in heap. Normally, p != NULL, we insert p in
- * a new position and bubble up. If p == NULL, then the element is
+ * a new position and bubble up.  If p == NULL, then the element is
  * already in place, and key is the position where to start the
  * bubble-up.
  * Returns 1 on failure (cannot allocate new heap entry)
@@ -244,42 +245,47 @@ heap_init(struct dn_heap *h, int new_size)
  */
 #define SET_OFFSET(heap, node) \
     if (heap->offset > 0) \
-	    *((int *)((char *)(heap->p[node].object) + heap->offset)) = node ;
+	*((int *)((char *)(heap->p[node].object) + heap->offset)) = node;
+
 /*
  * RESET_OFFSET is used for sanity checks. It sets offset to an invalid value.
  */
 #define RESET_OFFSET(heap, node) \
     if (heap->offset > 0) \
-	    *((int *)((char *)(heap->p[node].object) + heap->offset)) = -1 ;
+	*((int *)((char *)(heap->p[node].object) + heap->offset)) = -1;
+
 static int
 heap_insert(struct dn_heap *h, dn_key key1, void *p)
 {
-    int son = h->elements ;
+    int son = h->elements;
 
-    if (p == NULL)	/* data already there, set starting point */
-	son = key1 ;
-    else {		/* insert new element at the end, possibly resize */
-	son = h->elements ;
-	if (son == h->size) /* need resize... */
-	    if (heap_init(h, h->elements+1) )
-		return 1 ; /* failure... */
-	h->p[son].object = p ;
-	h->p[son].key = key1 ;
-	h->elements++ ;
+    if (p == NULL) {	/* data already there, set starting point */
+	son = key1;
+    } else {		/* insert new element at the end, possibly resize */
+	son = h->elements;
+	if (son == h->size) { /* need resize... */
+	    if (heap_init(h, h->elements + 1))
+		return 1; /* failure... */
+	}
+	h->p[son].object = p;
+	h->p[son].key = key1;
+	h->elements++;
     }
-    while (son > 0) {				/* bubble up */
-	int father = HEAP_FATHER(son) ;
-	struct dn_heap_entry tmp  ;
 
-	if (DN_KEY_LT( h->p[father].key, h->p[son].key ) )
-	    break ; /* found right position */
+    while (son > 0) {	/* bubble up */
+	int father = HEAP_FATHER(son);
+	struct dn_heap_entry tmp;
+
+	if (DN_KEY_LT(h->p[father].key, h->p[son].key))
+	    break; /* found right position */
+
 	/* son smaller than father, swap and repeat */
-	HEAP_SWAP(h->p[son], h->p[father], tmp) ;
+	HEAP_SWAP(h->p[son], h->p[father], tmp);
 	SET_OFFSET(h, son);
-	son = father ;
+	son = father;
     }
     SET_OFFSET(h, son);
-    return 0 ;
+    return 0;
 }
 
 /*
@@ -288,40 +294,42 @@ heap_insert(struct dn_heap *h, dn_key key1, void *p)
 static void
 heap_extract(struct dn_heap *h, void *obj)
 {
-    int child, father, max = h->elements - 1 ;
+    int child, father, max = h->elements - 1;
 
     if (max < 0) {
 	kprintf("warning, extract from empty heap 0x%p\n", h);
-	return ;
+	return;
     }
-    father = 0 ; /* default: move up smallest child */
+
+    father = 0; /* default: move up smallest child */
     if (obj != NULL) { /* extract specific element, index is at offset */
 	if (h->offset <= 0)
-	    panic("*** heap_extract from middle not supported on this heap!!!\n");
-	father = *((int *)((char *)obj + h->offset)) ;
+	    panic("%s from middle not supported on this heap!!!\n", __func__);
+
+	father = *((int *)((char *)obj + h->offset));
 	if (father < 0 || father >= h->elements) {
-	    kprintf("dummynet: heap_extract, father %d out of bound 0..%d\n",
-		father, h->elements);
-	    panic("heap_extract");
+	    panic("%s father %d out of bound 0..%d\n", __func__,
+	    	  father, h->elements);
 	}
     }
     RESET_OFFSET(h, father);
-    child = HEAP_LEFT(father) ;		/* left child */
+
+    child = HEAP_LEFT(father);		/* left child */
     while (child <= max) {		/* valid entry */
-	if (child != max && DN_KEY_LT(h->p[child+1].key, h->p[child].key) )
-	    child = child+1 ;		/* take right child, otherwise left */
-	h->p[father] = h->p[child] ;
+	if (child != max && DN_KEY_LT(h->p[child + 1].key, h->p[child].key))
+	    child = child + 1;		/* take right child, otherwise left */
+	h->p[father] = h->p[child];
 	SET_OFFSET(h, father);
-	father = child ;
-	child = HEAP_LEFT(child) ;   /* left child for next loop */
+	father = child;
+	child = HEAP_LEFT(child);	/* left child for next loop */
     }
-    h->elements-- ;
+    h->elements--;
     if (father != max) {
 	/*
 	 * Fill hole with last entry and bubble up, reusing the insert code
 	 */
-	h->p[father] = h->p[max] ;
-	heap_insert(h, father, NULL); /* this one cannot fail */
+	h->p[father] = h->p[max];
+	heap_insert(h, father, NULL);	/* this one cannot fail */
     }
 }
 
@@ -373,10 +381,10 @@ heap_move(struct dn_heap *h, dn_key new_key, void *object)
 static void
 heapify(struct dn_heap *h)
 {
-    int i ;
+    int i;
 
-    for (i = 0 ; i < h->elements ; i++ )
-	heap_insert(h, i , NULL) ;
+    for (i = 0; i < h->elements; i++)
+	heap_insert(h, i , NULL);
 }
 
 /*
@@ -385,9 +393,9 @@ heapify(struct dn_heap *h)
 static void
 heap_free(struct dn_heap *h)
 {
-    if (h->size >0 )
+    if (h->size > 0)
 	kfree(h->p, M_DUMMYNET);
-    bzero(h, sizeof(*h) );
+    bzero(h, sizeof(*h));
 }
 
 /*
