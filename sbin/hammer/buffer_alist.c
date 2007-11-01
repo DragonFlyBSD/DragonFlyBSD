@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/buffer_alist.c,v 1.1 2007/10/16 18:30:53 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/buffer_alist.c,v 1.2 2007/11/01 22:26:37 dillon Exp $
  */
 /*
  * Implement the super-cluster A-list recursion for the cluster allocator.
@@ -50,7 +50,7 @@ buffer_alist_init(void *info, int32_t blk, int32_t radix)
 
 	/*
 	 * Calculate the buffer number, initialize based on the buffer type.
-	 * The buffer has already been allocated to assert that it has been
+	 * The buffer has already been allocated so assert that it has been
 	 * initialized.
 	 */
 	buf_no = blk / HAMMER_FSBUF_MAXBLKS;

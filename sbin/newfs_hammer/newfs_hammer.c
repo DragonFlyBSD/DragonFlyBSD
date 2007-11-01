@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.2 2007/10/16 18:30:53 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.3 2007/11/01 22:26:37 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -117,7 +117,7 @@ main(int ac, char **av)
 		case 'L':
 			label = optarg;
 			break;
-		case 's':
+		case 'c':
 			ClusterSize = getsize(optarg, 
 					 HAMMER_BUFSIZE * 256LL,
 					 HAMMER_CLU_MAXBYTES, 1);
@@ -411,10 +411,8 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	ondisk->vol_count = nvols;
 	ondisk->vol_version = 1;
 	ondisk->vol_clsize = ClusterSize;
-	if (UsingSuperClusters) {
-		ondisk->vol_flags = HAMMER_VOLF_SUPERCL_ENABLE |
-				    HAMMER_VOLF_SUPERCL_RESERVE;
-	}
+	if (UsingSuperClusters)
+		ondisk->vol_flags = HAMMER_VOLF_USINGSUPERCL;
 
 	ondisk->vol_beg = vol->vol_cluster_off;
 	ondisk->vol_end = vol->size;
@@ -483,7 +481,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	 */
 	ondisk->vol_rootvol = 0;
 	if (ondisk->vol_no == ondisk->vol_rootvol) {
-		ondisk->vol0_rootcluster = format_cluster(vol, 1);
+		ondisk->vol0_root_clu_id = format_cluster(vol, 1);
 		ondisk->vol0_recid = 1;
 		/* global next TID */
 		ondisk->vol0_nexttid = createtid();
@@ -547,10 +545,13 @@ format_cluster(struct volume_info *vol, int isroot)
 	ondisk->idx_index = 0 * HAMMER_FSBUF_MAXBLKS;
 	ondisk->idx_record = nbuffers * HAMMER_FSBUF_MAXBLKS;
 
-	/* XXX root cluster */
-	ondisk->clu_btree_parent_vol_no = 0;
-	ondisk->clu_btree_parent_clu_no = 0;
-	ondisk->clu_btree_parent_clu_id = 0;
+	/*
+	 * Initialize root cluster's parent cluster info.  -1's
+	 * indicate we are the root cluster and no parent exists.
+	 */
+	ondisk->clu_btree_parent_vol_no = -1;
+	ondisk->clu_btree_parent_clu_no = -1;
+	ondisk->clu_btree_parent_clu_id = -1;
 
 	/*
 	 * Cluster 0 is the root cluster.  Set the B-Tree range for this
@@ -590,10 +591,10 @@ format_root(struct cluster_info *cluster)
 	int32_t btree_off;
 	int32_t rec_off;
 	int32_t data_off;
-	struct hammer_btree_node *bnode;
+	hammer_btree_node_t bnode;
 	union hammer_record_ondisk *rec;
 	struct hammer_inode_data *idata;
-	struct hammer_record_elm *elm;
+	hammer_btree_leaf_elm_t elm;
 
 	bnode = alloc_btree_element(cluster, &btree_off);
 	rec = alloc_record_element(cluster, &rec_off);
@@ -605,17 +606,17 @@ format_root(struct cluster_info *cluster)
 	idata->version = HAMMER_INODE_DATA_VERSION;
 	idata->mode = 0755;
 
-	rec->base.obj_id = 1;
-	rec->base.key = 0;
-	rec->base.create_tid = createtid();
-	rec->base.delete_tid = 0;
-	rec->base.rec_type = HAMMER_RECTYPE_INODE;
-	rec->base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
+	rec->base.base.obj_id = 1;
+	rec->base.base.key = 0;
+	rec->base.base.create_tid = createtid();
+	rec->base.base.delete_tid = 0;
+	rec->base.base.rec_type = HAMMER_RECTYPE_INODE;
+	rec->base.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
 	rec->base.data_offset = data_off;
 	rec->base.data_len = sizeof(*idata);
 	rec->base.data_crc = crc32(idata, sizeof(*idata));
-	rec->inode.ino_atime  = rec->base.create_tid;
-	rec->inode.ino_mtime  = rec->base.create_tid;
+	rec->inode.ino_atime  = rec->base.base.create_tid;
+	rec->inode.ino_mtime  = rec->base.base.create_tid;
 	rec->inode.ino_size   = 0;
 	rec->inode.ino_nlinks = 1;
 
@@ -626,23 +627,19 @@ format_root(struct cluster_info *cluster)
 	cluster->ondisk->clu_btree_root = btree_off;
 
 	/*
-	 * Create a root with a single element pointing to the inode
-	 * record.
+	 * Create the root of the B-Tree.  The root is a leaf node so we
+	 * do not have to worry about boundary elements.
 	 */
-	bnode->count = 1;
+	bnode->base.count = 1;
+	bnode->base.type = HAMMER_BTREE_LEAF_NODE;
+	bnode->base.subtype = 0;
 
-	elm = &bnode->elms[0].record;
-	elm->base.obj_id = rec->base.obj_id;
-	elm->base.key = rec->base.key;
-	elm->base.create_tid = rec->base.create_tid;
-	elm->base.delete_tid = rec->base.delete_tid;
-	elm->base.rec_type = rec->base.rec_type;
-	elm->base.obj_type = rec->base.obj_type;
-
-	elm->rec_offset = rec_off;
-	elm->data_offset = rec->base.data_offset;
-	elm->data_len = rec->base.data_len;
-	elm->data_crc = rec->base.data_crc;
+	elm = &bnode->leaf.elms[0];
+	elm->base = rec->base.base;
+	elm->record.rec_offset = rec_off;
+	elm->record.data_offset = rec->base.data_offset;
+	elm->record.data_len = rec->base.data_len;
+	elm->record.data_crc = rec->base.data_crc;
 }
 
 void

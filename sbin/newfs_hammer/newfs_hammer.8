@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.1 2007/10/10 19:35:53 dillon Exp $
+.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.2 2007/11/01 22:26:37 dillon Exp $
 .Dd September 10, 2007
 .Dt NEWFS_HAMMER 8
 .Os
@@ -40,7 +40,8 @@
 .Sh SYNOPSIS
 .Nm
 .Fl L Ar label
-.Op Fl S Ar segment
+.Op Fl c Ar clusize
+.Op Fl S
 .Op Fl U Ar uuid
 .Ar special
 .Op special...
@@ -66,10 +67,16 @@ per-machine basis.
 .It Fl U Ar uuid
 All HAMMER filesystems are assigned a globally unique UUID.  If no UUID
 is specified one will be synthesized.
-.It Fl S Ar segsize
-HAMMER organizes file objects in segments.  Segments default to the maximum
-2G size but a smaller size may be chosen if desired.  This option is not
-recommended.  HAMMER will still use all available disk space regardless.
+.It Fl S
+Force the HAMMER filesystem to be formatted with a supercluster layer,
+allowing it to support volumes greater then 2TB.  This option is automatically
+enabled if formatting HAMMER on a large disk.
+.It Fl c Ar clusize
+HAMMER organizes file objects in clusters and supeclusters.  Clusters
+default to the maximum size, which is 64MB.  A smaller size may be chosen
+if desired.  This option is not recommended.  HAMMER will use a truncated
+cluster as the last cluster and still use all available disk space
+regardless of the cluster size.
 .El
 .Sh NOTES
 .Sh EXAMPLES
