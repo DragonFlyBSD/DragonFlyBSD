@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.34 2007/11/01 15:28:32 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.35 2007/11/01 15:48:26 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -1882,7 +1882,7 @@ dummynet_get(struct sockopt *sopt)
 
     error = sooptcopyout(sopt, buf, size);
     kfree(buf, M_TEMP);
-    return error ;
+    return error;
 }
 
 /*
@@ -1948,23 +1948,23 @@ dummynet_clock(systimer_t info __unused, struct intrframe *frame __unused)
 static int
 sysctl_dn_hz(SYSCTL_HANDLER_ARGS)
 {
-	int error, val;
+    int error, val;
 
-	val = dn_hz;
-	error = sysctl_handle_int(oidp, &val, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (val <= 0)
-		return EINVAL;
-	else if (val > DUMMYNET_CALLOUT_FREQ_MAX)
-		val = DUMMYNET_CALLOUT_FREQ_MAX;
+    val = dn_hz;
+    error = sysctl_handle_int(oidp, &val, 0, req);
+    if (error || req->newptr == NULL)
+	return error;
+    if (val <= 0)
+	return EINVAL;
+    else if (val > DUMMYNET_CALLOUT_FREQ_MAX)
+	val = DUMMYNET_CALLOUT_FREQ_MAX;
 
-	crit_enter();
-	dn_hz = val;
-	systimer_adjust_periodic(&dn_clock, val);
-	crit_exit();
+    crit_enter();
+    dn_hz = val;
+    systimer_adjust_periodic(&dn_clock, val);
+    crit_exit();
 
-	return 0;
+    return 0;
 }
 
 static void
@@ -2034,38 +2034,39 @@ ip_dn_stop(void)
 static int
 dummynet_modevent(module_t mod, int type, void *data)
 {
-	switch (type) {
-	case MOD_LOAD:
-		crit_enter();
-		if (DUMMYNET_LOADED) {
-		    crit_exit();
-		    kprintf("DUMMYNET already loaded\n");
-		    return EEXIST;
-		}
-		ip_dn_init();
-		crit_exit();
-		break;
-
-	case MOD_UNLOAD:
-#ifndef KLD_MODULE
-		kprintf("dummynet statically compiled, cannot unload\n");
-		return EINVAL ;
-#else
-		crit_enter();
-		ip_dn_stop();
-		crit_exit();
-#endif
-		break;
-	default:
-		break;
+    switch (type) {
+    case MOD_LOAD:
+	crit_enter();
+	if (DUMMYNET_LOADED) {
+	    crit_exit();
+	    kprintf("DUMMYNET already loaded\n");
+	    return EEXIST;
 	}
-	return 0;
+	ip_dn_init();
+	crit_exit();
+	break;
+    
+    case MOD_UNLOAD:
+#ifndef KLD_MODULE
+	kprintf("dummynet statically compiled, cannot unload\n");
+	return EINVAL ;
+#else
+	crit_enter();
+	ip_dn_stop();
+	crit_exit();
+#endif
+	break;
+
+    default:
+	break;
+    }
+    return 0;
 }
 
 static moduledata_t dummynet_mod = {
-	"dummynet",
-	dummynet_modevent,
-	NULL
+    "dummynet",
+    dummynet_modevent,
+    NULL
 };
 DECLARE_MODULE(dummynet, dummynet_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
 MODULE_DEPEND(dummynet, ipfw, 1, 1, 1);
