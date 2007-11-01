@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.36 2006/12/23 00:35:04 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.37 2007/11/01 22:48:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -207,6 +207,8 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	default:
 		return(EINVAL);
 	}
+
+	flags = ap->a_flags;
 	if (start < 0)
 		return(EINVAL);
 	if (fl->l_len == 0) {
@@ -218,7 +220,6 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 			return(EINVAL);
 	}
 	
-	flags = ap->a_flags;
 	type = fl->l_type;
 	/*
 	 * This isn't really correct for flock-style locks,
