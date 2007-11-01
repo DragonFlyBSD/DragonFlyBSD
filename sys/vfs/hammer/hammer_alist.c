@@ -38,7 +38,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.3 2007/10/16 18:16:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.4 2007/11/01 20:53:05 dillon Exp $
  */
 /*
  * This module implements a generic allocator through the use of a hinted
@@ -81,6 +81,7 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_page.h>
 
+#include "hammer_alist.h"
 #include "hammer_disk.h"
 
 #else

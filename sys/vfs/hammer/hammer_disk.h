@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.2 2007/10/16 18:16:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.3 2007/11/01 20:53:05 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -175,9 +175,8 @@ struct hammer_volume_ondisk {
 	 * volume making up a HAMMER filesytem, but only the master volume
 	 * contains valid data.
 	 */
-	int32_t vol0_rootcluster;	/* root cluster no (index) in rootvol */
-	u_int32_t vol0_reserved02;
-	u_int32_t vol0_reserved03;
+	int32_t vol0_root_clu_no;	/* root cluster no (index) in rootvol */
+	hammer_tid_t vol0_root_clu_id;	/* root cluster id */
 	hammer_tid_t vol0_nexttid;	/* next TID */
 	u_int64_t vol0_recid;		/* fs-wide record id allocator */
 
@@ -198,8 +197,7 @@ struct hammer_volume_ondisk {
 
 #define HAMMER_VOLF_VALID		0x0001	/* valid entry */
 #define HAMMER_VOLF_OPEN		0x0002	/* volume is open */
-#define HAMMER_VOLF_SUPERCL_ENABLE	0x0004	/* enable supercluster layer */
-#define HAMMER_VOLF_SUPERCL_RESERVE	0x0008	/* supercluster layout */
+#define HAMMER_VOLF_USINGSUPERCL	0x0004	/* using superclusters */
 
 /*
  * HAMMER Super-cluster header
@@ -338,20 +336,20 @@ struct hammer_cluster_ondisk {
  * Key comparison order:  obj_id, rec_type, key, create_tid
  */
 struct hammer_base_record {
-	int64_t	obj_id;		/* 00 object record is associated with */
-	int64_t key;		/* 08 indexing key (offset or namekey) */
+	/*
+	 * 40 byte base element info - same base as used in B-Tree internal
+	 * and leaf node element arrays.
+	 *
+	 * Fields: obj_id, key, create_tid, delete_tid, rec_type, obj_type,
+	 *	   reserved07.
+	 */
+	struct hammer_base_elm base; /* 00 base element info */
 
-	hammer_tid_t create_tid;/* 10 transaction id for record creation */
-	hammer_tid_t delete_tid;/* 18 transaction id for record update/delete */
-
-	u_int16_t rec_type;	/* 20 type of record */
-	u_int16_t obj_type;	/* 22 type of object (if inode) */
-	u_int32_t data_offset;	/* 24 intra-cluster data reference */
-				/*    An offset of 0 indicates zero-fill */
 	int32_t data_len;	/* 28 size of data (remainder zero-fill) */
 	u_int32_t data_crc;	/* 2C data sanity check */
 	u_int64_t rec_id;	/* 30 record id (iterator for recovery) */
-	u_int64_t reserved07;	/* 38 */
+	int32_t	  data_offset;	/* 38 cluster-relative data reference or 0 */
+	u_int32_t reserved07;	/* 3C */
 				/* 40 */
 };
 
@@ -369,6 +367,7 @@ struct hammer_base_record {
 #define HAMMER_RECTYPE_UNKNOWN		0
 #define HAMMER_RECTYPE_INODE		1	/* inode in obj_id space */
 #define HAMMER_RECTYPE_PSEUDO_INODE	2	/* pseudo filesysem */
+#define HAMMER_RECTYPE_CLUSTER		3	/* cluster reference */
 #define HAMMER_RECTYPE_DATA_CREATE	0x10
 #define HAMMER_RECTYPE_DATA_ZEROFILL	0x11
 #define HAMMER_RECTYPE_DATA_DELETE	0x12
@@ -392,8 +391,9 @@ struct hammer_base_record {
 #define HAMMER_OBJTYPE_SOFTLINK		7
 #define HAMMER_OBJTYPE_PSEUDOFS		8	/* pseudo filesystem obj */
 
-#define HAMMER_OBJTYPE_CLUSTER_BEG	0x10
-#define HAMMER_OBJTYPE_CLUSTER_END	0x11
+#define HAMMER_OBJTYPE_CLUSTER_FLAG	0x20
+#define HAMMER_OBJTYPE_CLUSTER_BEG	0x20
+#define HAMMER_OBJTYPE_CLUSTER_END	0x21
 
 /*
  * Generic full-sized record
@@ -560,7 +560,7 @@ struct hammer_inode_data {
 /*
  * Rollup various structures embedded as record data
  */
-union hammer_data {
+union hammer_data_ondisk {
 	struct hammer_inode_data inode;
 };
 
