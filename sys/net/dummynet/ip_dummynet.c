@@ -25,10 +25,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.31 2007/11/01 12:10:58 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.32 2007/11/01 13:43:31 sephe Exp $
  */
 
-#if !defined(KLD_MODULE)
+#ifndef KLD_MODULE
 #include "opt_ipfw.h"	/* for IPFW2 definition */
 #endif
 
@@ -45,11 +45,6 @@
  *  + scheduler and dummynet functions;
  *  + configuration and initialization.
  *
- * NOTA BENE: critical sections are protected by splimp()/splx()
- *    pairs. One would think that splnet() is enough as for most of
- *    the netinet code, but it is not so because when used with
- *    bridging, dummynet is invoked at splimp().
- *
  * Most important Changes:
  *
  * 011004: KLDable
@@ -63,30 +58,25 @@
  */
 
 #include <sys/param.h>
-#include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/kernel.h>
-#include <sys/module.h>
-#include <sys/proc.h>
-#include <sys/socket.h>
 #include <sys/socketvar.h>
-#include <sys/time.h>
 #include <sys/sysctl.h>
 #include <sys/systimer.h>
 #include <sys/thread2.h>
-#include <net/if.h>
+
+#include <net/ethernet.h>
 #include <net/route.h>
-#include <netinet/in.h>
-#include <netinet/in_systm.h>
-#include <netinet/in_var.h>
-#include <netinet/ip.h>
-#include <net/ipfw/ip_fw.h>
-#include <net/dummynet/ip_dummynet.h>
-#include <netinet/ip_var.h>
 #include <net/netmsg2.h>
 
-#include <netinet/if_ether.h> /* for struct arpcom */
+#include <netinet/in.h>
+#include <netinet/in_var.h>
+#include <netinet/ip.h>
+#include <netinet/ip_var.h>
+
+#include <net/ipfw/ip_fw.h>
+#include <net/dummynet/ip_dummynet.h>
 
 #ifndef DUMMYNET_CALLOUT_FREQ_MAX
 #define DUMMYNET_CALLOUT_FREQ_MAX	30000
@@ -96,14 +86,14 @@
  * We keep a private variable for the simulation time, but we could
  * probably use an existing one ("softticks" in sys/kern/kern_timer.c)
  */
-static dn_key curr_time = 0 ; /* current simulation time */
+static dn_key curr_time = 0; /* current simulation time */
 
-static int dn_hash_size = 64 ;	/* default hash size */
+static int dn_hash_size = 64;	/* default hash size */
 
 /* statistics on number of queue searches and search steps */
-static int searches, search_steps ;
-static int pipe_expire = 1 ;   /* expire queue if empty */
-static int dn_max_ratio = 16 ; /* max queues/buckets ratio */
+static int searches, search_steps;
+static int pipe_expire = 1;   /* expire queue if empty */
+static int dn_max_ratio = 16; /* max queues/buckets ratio */
 
 static int red_lookup_depth = 256;	/* RED - default lookup table depth */
 static int red_avg_pkt_size = 512;      /* RED - default medium packet size */
@@ -122,9 +112,9 @@ static int red_max_pkt_size = 1500;     /* RED - default max packet size */
 
 MALLOC_DEFINE(M_DUMMYNET, "dummynet", "dummynet heap");
 
-static struct dn_heap ready_heap, extract_heap, wfq_ready_heap ;
+static struct dn_heap ready_heap, extract_heap, wfq_ready_heap;
 
-static int heap_init(struct dn_heap *h, int size) ;
+static int heap_init(struct dn_heap *h, int size);
 static int heap_insert (struct dn_heap *h, dn_key key1, void *p);
 static void heap_extract(struct dn_heap *h, void *obj);
 
@@ -133,8 +123,8 @@ static void ready_event(struct dn_flow_queue *q);
 
 static int sysctl_dn_hz(SYSCTL_HANDLER_ARGS);
 
-static struct dn_pipe *all_pipes = NULL ;	/* list of all pipes */
-static struct dn_flow_set *all_flow_sets = NULL ;/* list of all flow_sets */
+static struct dn_pipe *all_pipes = NULL;	/* list of all pipes */
+static struct dn_flow_set *all_flow_sets = NULL;/* list of all flow_sets */
 
 static struct netmsg dn_netmsg;
 static struct systimer dn_clock;
@@ -176,11 +166,10 @@ static void rt_unref(struct rtentry *);
 static void dummynet_clock(systimer_t, struct intrframe *);
 static void dummynet(struct netmsg *);
 static void dummynet_flush(void);
-void dummynet_drain(void);
 static ip_dn_io_t dummynet_io;
 static void dn_rule_delete(void *);
 
-int if_tx_rdy(struct ifnet *ifp);
+void dummynet_drain(void);	/* XXX unused */
 
 static void
 rt_unref(struct rtentry *rt)
@@ -332,47 +321,6 @@ heap_extract(struct dn_heap *h, void *obj)
 	heap_insert(h, father, NULL);	/* this one cannot fail */
     }
 }
-
-#if 0
-/*
- * change object position and update references
- * XXX this one is never used!
- */
-static void
-heap_move(struct dn_heap *h, dn_key new_key, void *object)
-{
-    int temp;
-    int i ;
-    int max = h->elements-1 ;
-    struct dn_heap_entry buf ;
-
-    if (h->offset <= 0)
-	panic("cannot move items on this heap");
-
-    i = *((int *)((char *)object + h->offset));
-    if (DN_KEY_LT(new_key, h->p[i].key) ) { /* must move up */
-	h->p[i].key = new_key ;
-	for (; i>0 && DN_KEY_LT(new_key, h->p[(temp = HEAP_FATHER(i))].key) ;
-		 i = temp ) { /* bubble up */
-	    HEAP_SWAP(h->p[i], h->p[temp], buf) ;
-	    SET_OFFSET(h, i);
-	}
-    } else {		/* must move down */
-	h->p[i].key = new_key ;
-	while ( (temp = HEAP_LEFT(i)) <= max ) { /* found left child */
-	    if ((temp != max) && DN_KEY_GT(h->p[temp].key, h->p[temp+1].key))
-		temp++ ; /* select child with min key */
-	    if (DN_KEY_GT(new_key, h->p[temp].key)) { /* go down */
-		HEAP_SWAP(h->p[i], h->p[temp], buf) ;
-		SET_OFFSET(h, i);
-	    } else
-		break ;
-	    i = temp ;
-	}
-    }
-    SET_OFFSET(h, i);
-}
-#endif /* heap_move, unused */
 
 /*
  * heapify() will reorganize data inside an array to maintain the
@@ -791,35 +739,6 @@ dummynet(struct netmsg *msg)
 }
 
 /*
- * called by an interface when tx_rdy occurs.
- */
-int
-if_tx_rdy(struct ifnet *ifp)
-{
-    struct dn_pipe *p;
-
-    for (p = all_pipes; p; p = p->next)
-	if (p->ifp == ifp)
-	    break ;
-    if (p == NULL) {
-	for (p = all_pipes; p; p = p->next) {
-	    if (!strcmp(p->if_name, ifp->if_xname)) {
-		p->ifp = ifp;
-		DEB(kprintf("++ tx rdy from %s (now found)\n", ifp->if_xname);)
-		break;
-	    }
-    	}
-    }
-    if (p != NULL) {
-	DEB(kprintf("++ tx rdy from %s - qlen %d\n", ifp->if_xname,
-		ifp->if_snd.ifq_len);)
-	p->numbytes = 0; /* mark ready for I/O */
-	ready_event_wfq(p);
-    }
-    return 0;
-}
-
-/*
  * Unconditionally expire empty queues in case of shortage.
  * Returns the number of queues freed.
  */
@@ -1077,12 +996,12 @@ locate_flowset(int pipe_nr, struct ip_fw *rule)
 	for (fs = all_flow_sets; fs && fs->fs_nr != pipe_nr; fs = fs->next)
 	    ;	/* EMPTY */
     } else {
-	struct dn_pipe *p1;
+	struct dn_pipe *p;
 
-	for (p1 = all_pipes; p1 && p1->pipe_nr != pipe_nr; p1 = p1->next)
+	for (p = all_pipes; p && p->pipe_nr != pipe_nr; p = p->next)
 	    ;	/* EMPTY */
-	if (p1 != NULL)
-	    fs = &p1->fs;
+	if (p != NULL)
+	    fs = &p->fs;
     }
 
     /* record for the future */
@@ -1952,26 +1871,16 @@ dummynet_get(struct sockopt *sopt)
 static int
 ip_dn_ctl(struct sockopt *sopt)
 {
-    int error = 0;
     struct dn_pipe *p, tmp_pipe;
+    int error = 0;
 
     /* Disallow sets in really-really secure mode. */
     if (sopt->sopt_dir == SOPT_SET) {
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500034
-	error =  securelevel_ge(sopt->sopt_td->td_ucred, 3);
-	if (error)
-	    return (error);
-#else
 	if (securelevel >= 3)
-	    return (EPERM);
-#endif
+	    return EPERM;
     }
 
     switch (sopt->sopt_name) {
-    default:
-	kprintf("ip_dn_ctl -- unknown option %d", sopt->sopt_name);
-	return EINVAL;
-
     case IP_DUMMYNET_GET:
 	error = dummynet_get(sopt);
 	break;
@@ -1993,8 +1902,12 @@ ip_dn_ctl(struct sockopt *sopt)
 	error = sooptcopyin(sopt, p, sizeof(*p), sizeof(*p));
 	if (error)
 	    break;
-
 	error = delete_pipe(p);
+	break;
+
+    default:
+	kprintf("%s -- unknown option %d\n", __func__, sopt->sopt_name);
+	error = EINVAL;
 	break;
     }
     return error;
@@ -2055,8 +1968,10 @@ ip_dn_init(void)
     lwkt_port_t port;
 
     kprintf("DUMMYNET initialized (011031)\n");
+
     all_pipes = NULL;
     all_flow_sets = NULL;
+
     ready_heap.size = ready_heap.elements = 0;
     ready_heap.offset = 0;
 
@@ -2065,6 +1980,7 @@ ip_dn_init(void)
 
     extract_heap.size = extract_heap.elements = 0;
     extract_heap.offset = 0;
+
     ip_dn_ctl_ptr = ip_dn_ctl;
     ip_dn_io_ptr = dummynet_io;
     ip_dn_ruledel_ptr = dn_rule_delete;
@@ -2087,6 +2003,7 @@ ip_dn_stop(void)
     lwkt_domsg(port, &smsg.nm_lmsg, 0);
 
     dummynet_flush();
+
     ip_dn_ctl_ptr = NULL;
     ip_dn_io_ptr = NULL;
     ip_dn_ruledel_ptr = NULL;
