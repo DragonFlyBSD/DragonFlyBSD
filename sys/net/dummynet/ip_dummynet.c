@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.32 2007/11/01 13:43:31 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.33 2007/11/01 14:03:50 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -1256,10 +1256,12 @@ purge_flow_set(struct dn_flow_set *fs, int all)
 	/* RED - free lookup table */
 	if (fs->w_q_lookup)
 	    kfree(fs->w_q_lookup, M_DUMMYNET);
+
 	if (fs->rq)
 	    kfree(fs->rq, M_DUMMYNET);
-	/* if this fs is not part of a pipe, free it */
-	if (fs->pipe && fs != &(fs->pipe->fs))
+
+	/* If this fs is not part of a pipe, free it */
+	if (fs->pipe && fs != &fs->pipe->fs)
 	    kfree(fs, M_DUMMYNET);
     }
 }
@@ -1291,21 +1293,21 @@ purge_pipe(struct dn_pipe *pipe)
 static void
 dummynet_flush(void)
 {
-    struct dn_pipe *curr_p, *p;
-    struct dn_flow_set *fs, *curr_fs;
+    struct dn_pipe *p;
+    struct dn_flow_set *fs;
 
     crit_enter();
 
-    /* remove all references to pipes ...*/
+    /* Remove all references to pipes ... */
     flush_pipe_ptrs(NULL);
 
-    /* prevent future matches... */
+    /* Prevent future matches... */
     p = all_pipes;
     all_pipes = NULL;
     fs = all_flow_sets;
     all_flow_sets = NULL;
 
-    /* and free heaps so we don't have unwanted events */
+    /* Free heaps so we don't have unwanted events */
     heap_free(&ready_heap);
     heap_free(&wfq_ready_heap);
     heap_free(&extract_heap);
@@ -1315,16 +1317,18 @@ dummynet_flush(void)
     /*
      * Now purge all queued pkts and delete all pipes
      */
-    /* scan and purge all flow_sets. */
+    /* Scan and purge all flow_sets. */
     while (fs != NULL) {
-	curr_fs = fs;
-	fs = fs->next;
+	struct dn_flow_set *curr_fs = fs;
+
+	fs = curr_fs->next;
 	purge_flow_set(curr_fs, 1);
     }
     while (p != NULL) {
-	purge_pipe(p);
-	curr_p = p;
-	p = p->next;
+	struct dn_pipe *curr_p = p;
+
+	p = curr_p->next;
+	purge_pipe(curr_p);
 	kfree(curr_p, M_DUMMYNET);
     }
 }
@@ -2027,7 +2031,7 @@ dummynet_modevent(module_t mod, int type, void *data)
 		break;
 
 	case MOD_UNLOAD:
-#if !defined(KLD_MODULE)
+#ifndef KLD_MODULE
 		kprintf("dummynet statically compiled, cannot unload\n");
 		return EINVAL ;
 #else
