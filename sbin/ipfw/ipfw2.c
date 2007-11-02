@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.9 2007/11/02 12:50:20 sephe Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.10 2007/11/02 14:01:17 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -2271,7 +2271,7 @@ end_mask:
 		size_t len;
 		int lookup_depth, avg_pkt_size;
 		double s, idle, weight, w_q;
-		struct clockinfo clock;
+		int clock_hz;
 		int t;
 
 		if (pipe.fs.min_th >= pipe.fs.max_th)
@@ -2301,9 +2301,12 @@ end_mask:
 			    "net.inet.ip.dummynet.red_avg_pkt_size must"
 			    " be greater than zero");
 
-		len = sizeof(struct clockinfo);
-		if (sysctlbyname("kern.clockrate", &clock, &len, NULL, 0) == -1)
-			errx(1, "sysctlbyname(\"%s\")", "kern.clockrate");
+		len = sizeof(clock_hz);
+		if (sysctlbyname("net.inet.ip.dummynet.hz", &clock_hz, &len,
+				 NULL, 0) == -1) {
+			errx(1, "sysctlbyname(\"%s\")",
+			     "net.inet.ip.dummynet.hz");
+		}
 
 		/*
 		 * Ticks needed for sending a medium-sized packet.
@@ -2317,7 +2320,7 @@ end_mask:
 		if (pipe.bandwidth==0) /* this is a WF2Q+ queue */
 			s = 0;
 		else
-			s = clock.hz * avg_pkt_size * 8 / pipe.bandwidth;
+			s = clock_hz * avg_pkt_size * 8 / pipe.bandwidth;
 
 		/*
 		 * max idle time (in ticks) before avg queue size becomes 0.
