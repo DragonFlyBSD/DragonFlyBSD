@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.8 2006/06/25 11:02:37 corecode Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.9 2007/11/02 12:50:20 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1380,11 +1380,9 @@ list_pipes(void *data, int nbytes, int ac, char *av[])
 			continue;
 
 		/*
-		 * Print rate (or clocking interface)
+		 * Print rate
 		 */
-		if (p->if_name[0] != '\0')
-			sprintf(buf, "%s", p->if_name);
-		else if (b == 0)
+		if (b == 0)
 			sprintf(buf, "unlimited");
 		else if (b >= 1000000)
 			sprintf(buf, "%7.3f Mbit/s", b/1000000);
@@ -2209,25 +2207,17 @@ end_mask:
 			break;
 
 		case TOK_BW:
-			NEED1("bw needs bandwidth or interface\n");
+			NEED1("bw needs bandwidth\n");
 			if (do_pipe != 1)
 			    errx(EX_DATAERR, "bandwidth only valid for pipes");
 			/*
-			 * set clocking interface or bandwidth value
+			 * set bandwidth value
 			 */
-			if (av[0][0] >= 'a' && av[0][0] <= 'z') {
-			    int l = sizeof(pipe.if_name)-1;
-			    /* interface name */
-			    strncpy(pipe.if_name, av[0], l);
-			    pipe.if_name[l] = '\0';
-			    pipe.bandwidth = 0;
-			} else {
-			    pipe.if_name[0] = '\0';
-			    pipe.bandwidth = strtoul(av[0], &end, 0);
-			    pipe.bandwidth = getbw(av[0], NULL, 1000);
-			    if (pipe.bandwidth < 0)
-				errx(EX_DATAERR, "bandwidth too large");
-			}
+			pipe.if_name[0] = '\0';
+			pipe.bandwidth = strtoul(av[0], &end, 0);
+			pipe.bandwidth = getbw(av[0], NULL, 1000);
+			if (pipe.bandwidth < 0)
+			    errx(EX_DATAERR, "bandwidth too large");
 			ac--; av++;
 			break;
 

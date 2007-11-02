@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.13 2007/09/14 23:47:53 swildner Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.14 2007/11/02 12:50:20 sephe Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -1282,7 +1282,7 @@ configuration commands are the following:
 The following parameters can be configured for a pipe:
 .Pp
 .Bl -tag -width indent -compact
-.It Cm bw Ar bandwidth | device
+.It Cm bw Ar bandwidth
 Bandwidth, measured in
 .Sm off
 .Op Cm K | M
@@ -1293,17 +1293,6 @@ A value of 0 (default) means unlimited bandwidth.
 The unit must immediately follow the number, as in
 .Pp
 .Dl "ipfw pipe 1 config bw 300Kbit/s"
-.Pp
-If a device name is specified instead of a numeric value, as in
-.Pp
-.Dl "ipfw pipe 1 config bw tun0"
-.Pp
-then the transmit clock is supplied by the specified device.
-At the moment only the
-.Xr tun 4
-device supports this
-functionality, for use in conjunction with
-.Xr ppp 8 .
 .Pp
 .It Cm delay Ar ms-delay
 Propagation delay, measured in milliseconds.

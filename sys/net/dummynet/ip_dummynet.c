@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.38 2007/11/02 10:28:50 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.39 2007/11/02 12:50:20 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -557,16 +557,7 @@ ready_event_wfq(struct dn_pipe *p)
     struct dn_heap *sch = &p->scheduler_heap;
     struct dn_heap *neh = &p->not_eligible_heap;
 
-    if (p->if_name[0] == 0) { /* tx clock is simulated */
-	p->numbytes += (curr_time - p->sched_time) * p->bandwidth;
-    } else { /* tx clock is for real, the ifq must be empty or this is a NOP */
-	if (p->ifp && p->ifp->if_snd.ifq_head != NULL) {
-	    return;
-	} else {
-	    DEB(kprintf("pipe %d ready from %s --\n",
-		p->pipe_nr, p->if_name);)
-	}
-    }
+    p->numbytes += (curr_time - p->sched_time) * p->bandwidth;
 
     /*
      * While we have backlogged traffic AND credit, we need to do
@@ -622,11 +613,6 @@ ready_event_wfq(struct dn_pipe *p)
 	    heap_extract(neh, NULL);
 	    heap_insert(sch, q->F, q);
 	}
-
-	if (p->if_name[0] != '\0') {	/* tx clock is from a real thing */
-	    p->numbytes = -1; /* mark not ready for I/O */
-	    break;
-	}
     }
 
     if (sch->elements == 0 && neh->elements == 0 && p->numbytes >= 0 &&
@@ -648,11 +634,11 @@ ready_event_wfq(struct dn_pipe *p)
     }
 
     /*
-     * If we are getting clocks from dummynet (not a real interface) and
-     * If we are under credit, schedule the next ready event.
+     * If we are getting clocks from dummynet and if we are under credit,
+     * schedule the next ready event.
      * Also fix the delivery time of the last packet.
      */
-    if (p->if_name[0] == 0 && p->numbytes < 0) { /* This implies bandwidth>0 */
+    if (p->numbytes < 0) { /* This implies bandwidth>0 */
 	dn_key t = 0; /* Number of ticks i have to wait */
 
 	if (p->bandwidth > 0)
@@ -708,20 +694,12 @@ dummynet(struct netmsg *msg)
 	    p = h->p[0].object;		/* Store a copy before heap_extract */
 	    heap_extract(h, NULL);	/* Need to extract before processing */
 
-	    if (i == 0) {
+	    if (i == 0)
 		ready_event(p);
-	    } else if (i == 1) {
-		struct dn_pipe *pipe = p;
-
-		if (pipe->if_name[0] != '\0') {
-		    kprintf("*** bad ready_event_wfq for pipe %s\n",
-			pipe->if_name);
-		} else {
-		    ready_event_wfq(p);
-	    	}
-	    } else {
+	    else if (i == 1)
+		ready_event_wfq(p);
+	    else
 		transmit_event(p);
-	    }
 	}
     }
 
@@ -1562,9 +1540,10 @@ config_pipe(struct dn_pipe *p)
 
 	x->bandwidth = p->bandwidth;
 	x->numbytes = 0; /* Just in case... */
-	bcopy(p->if_name, x->if_name, sizeof(x->if_name));
-	x->ifp = NULL; /* Reset interface ptr */
 	x->delay = p->delay;
+
+	bzero(x->if_name, sizeof(x->if_name));	/* XXX nuke */
+	x->ifp = NULL; /* XXX nuke, Reset interface ptr */
 
 	set_fs_parms(&x->fs, pfs);
 
