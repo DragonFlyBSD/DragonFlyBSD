@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.9 2007/10/25 13:13:18 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.10 2007/11/02 06:27:24 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -72,10 +72,11 @@ typedef uint64_t dn_key;	/* sorting key */
  */
 
 /*
- * The maximum hash table size for queues.  This value must be a power
- * of 2.
+ * The maximum/minimum hash table size for queues.
+ * These values must be a power of 2.
  */
-#define DN_MAX_HASH_SIZE 65536
+#define DN_MIN_HASH_SIZE	4
+#define DN_MAX_HASH_SIZE	65536
 
 /*
  * A heap entry is made of a key and a pointer to the actual

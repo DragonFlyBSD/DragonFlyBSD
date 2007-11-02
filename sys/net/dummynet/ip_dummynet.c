@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.35 2007/11/01 15:48:26 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.36 2007/11/02 06:27:24 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -1241,12 +1241,14 @@ dropit:
 static void
 purge_flow_set(struct dn_flow_set *fs, int all)
 {
-    struct dn_pkt *pkt;
-    struct dn_flow_queue *q, *qn;
     int i;
 
     for (i = 0; i <= fs->rq_size; i++) {
-	for (q = fs->rq[i]; q ; q = qn) {
+	struct dn_flow_queue *q, *qn;
+
+	for (q = fs->rq[i]; q; q = qn) {
+	    struct dn_pkt *pkt;
+
 	    for (pkt = q->head; pkt;)
 		DN_FREE_PKT(pkt);
 
@@ -1455,10 +1457,12 @@ alloc_hash(struct dn_flow_set *x, struct dn_flow_set *pfs)
 	/* Allocate some slots */
 	if (l == 0)
 	    l = dn_hash_size;
-	if (l < 4)
-	    l = 4;
+
+	if (l < DN_MIN_HASH_SIZE)
+	    l = DN_MIN_HASH_SIZE;
 	else if (l > DN_MAX_HASH_SIZE)
 	    l = DN_MAX_HASH_SIZE;
+
 	x->rq_size = l;
     } else {
 	/* One is enough for null mask */
@@ -1719,7 +1723,7 @@ delete_pipe(struct dn_pipe *p)
 	flush_pipe_ptrs(&b->fs);
 
 	/* Remove all references to this pipe from flow_sets */
-	for (fs = all_flow_sets; fs; fs= fs->next) {
+	for (fs = all_flow_sets; fs; fs = fs->next) {
 	    if (fs->pipe == b) {
 		kprintf("++ ref to pipe %d from fs %d\n",
 			p->pipe_nr, fs->fs_nr);
@@ -1763,7 +1767,6 @@ delete_pipe(struct dn_pipe *p)
 #endif
 	}
 	purge_flow_set(b, 1);
-
     }
     error = 0;
 
