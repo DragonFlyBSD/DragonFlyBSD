@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.36 2007/11/02 06:27:24 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.37 2007/11/02 07:10:14 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -51,10 +51,8 @@
  * 010124: Fixed WF2Q behaviour
  * 010122: Fixed spl protection.
  * 000601: WF2Q support
- * 000106: large rewrite, use heaps to handle very many pipes.
- * 980513:	initial release
- *
- * include files marked with XXX are probably not needed
+ * 000106: Large rewrite, use heaps to handle very many pipes.
+ * 980513: Initial release
  */
 
 #include <sys/param.h>
@@ -206,7 +204,7 @@ heap_init(struct dn_heap *h, int new_size)
     struct dn_heap_entry *p;
 
     if (h->size >= new_size) {
-	kprintf("heap_init, Bogus call, have %d want %d\n",
+	kprintf("%s, Bogus call, have %d want %d\n", __func__,
 		h->size, new_size);
 	return 0;
     }
@@ -248,27 +246,27 @@ heap_insert(struct dn_heap *h, dn_key key1, void *p)
 {
     int son = h->elements;
 
-    if (p == NULL) {	/* data already there, set starting point */
+    if (p == NULL) {	/* Data already there, set starting point */
 	son = key1;
-    } else {		/* insert new element at the end, possibly resize */
+    } else {		/* Insert new element at the end, possibly resize */
 	son = h->elements;
-	if (son == h->size) { /* need resize... */
+	if (son == h->size) { /* Need resize... */
 	    if (heap_init(h, h->elements + 1))
-		return 1; /* failure... */
+		return 1; /* Failure... */
 	}
 	h->p[son].object = p;
 	h->p[son].key = key1;
 	h->elements++;
     }
 
-    while (son > 0) {	/* bubble up */
+    while (son > 0) {	/* Bubble up */
 	int father = HEAP_FATHER(son);
 	struct dn_heap_entry tmp;
 
 	if (DN_KEY_LT(h->p[father].key, h->p[son].key))
-	    break; /* found right position */
+	    break; /* Found right position */
 
-	/* son smaller than father, swap and repeat */
+	/* 'son' smaller than 'father', swap and repeat */
 	HEAP_SWAP(h->p[son], h->p[father], tmp);
 	SET_OFFSET(h, son);
 	son = father;
@@ -278,7 +276,7 @@ heap_insert(struct dn_heap *h, dn_key key1, void *p)
 }
 
 /*
- * remove top element from heap, or obj if obj != NULL
+ * Remove top element from heap, or obj if obj != NULL
  */
 static void
 heap_extract(struct dn_heap *h, void *obj)
@@ -290,8 +288,8 @@ heap_extract(struct dn_heap *h, void *obj)
 	return;
     }
 
-    father = 0; /* default: move up smallest child */
-    if (obj != NULL) { /* extract specific element, index is at offset */
+    father = 0; /* Default: move up smallest child */
+    if (obj != NULL) { /* Extract specific element, index is at offset */
 	if (h->offset <= 0)
 	    panic("%s from middle not supported on this heap!!!\n", __func__);
 
@@ -303,14 +301,14 @@ heap_extract(struct dn_heap *h, void *obj)
     }
     RESET_OFFSET(h, father);
 
-    child = HEAP_LEFT(father);		/* left child */
-    while (child <= max) {		/* valid entry */
+    child = HEAP_LEFT(father);		/* Left child */
+    while (child <= max) {		/* Valid entry */
 	if (child != max && DN_KEY_LT(h->p[child + 1].key, h->p[child].key))
-	    child = child + 1;		/* take right child, otherwise left */
+	    child = child + 1;		/* Take right child, otherwise left */
 	h->p[father] = h->p[child];
 	SET_OFFSET(h, father);
 	father = child;
-	child = HEAP_LEFT(child);	/* left child for next loop */
+	child = HEAP_LEFT(child);	/* Left child for next loop */
     }
     h->elements--;
     if (father != max) {
@@ -318,13 +316,13 @@ heap_extract(struct dn_heap *h, void *obj)
 	 * Fill hole with last entry and bubble up, reusing the insert code
 	 */
 	h->p[father] = h->p[max];
-	heap_insert(h, father, NULL);	/* this one cannot fail */
+	heap_insert(h, father, NULL);	/* This one cannot fail */
     }
 }
 
 /*
  * heapify() will reorganize data inside an array to maintain the
- * heap property. It is needed when we delete a bunch of entries.
+ * heap property.  It is needed when we delete a bunch of entries.
  */
 static void
 heapify(struct dn_heap *h)
@@ -336,7 +334,7 @@ heapify(struct dn_heap *h)
 }
 
 /*
- * cleanup the heap and free data structure
+ * Cleanup the heap and free data structure
  */
 static void
 heap_free(struct dn_heap *h)
@@ -347,7 +345,7 @@ heap_free(struct dn_heap *h)
 }
 
 /*
- * --- end of heap management functions ---
+ * --- End of heap management functions ---
  */
 
 /*
@@ -895,19 +893,17 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
      * Now, if avg < min_th the packet is enqueued.
      * If avg > max_th the packet is dropped. Otherwise, the packet is
      * dropped with probability P function of avg.
-     *
      */
 
     int64_t p_b = 0;
-    /* queue in bytes or packets ? */
     u_int q_size = (fs->flags_fs & DN_QSIZE_IS_BYTES) ? q->len_bytes : q->len;
 
     DEB(kprintf("\n%d q: %2u ", (int) curr_time, q_size);)
 
-    /* average queue size estimation */
+    /* Average queue size estimation */
     if (q_size != 0) {
 	/*
-	 * queue is not empty, avg <- avg + (q_size - avg) * w_q
+	 * Queue is not empty, avg <- avg + (q_size - avg) * w_q
 	 */
 	int diff = SCALE(q_size) - q->avg;
 	int64_t v = SCALE_MUL((int64_t)diff, (int64_t)fs->w_q);
@@ -915,7 +911,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 	q->avg += (int)v;
     } else {
 	/*
-	 * queue is empty, find for how long the queue has been
+	 * Queue is empty, find for how long the queue has been
 	 * empty and use a lookup table for computing
 	 * (1 - * w_q)^(idle_time/s) where s is the time to send a
 	 * (small) packet.
@@ -930,13 +926,15 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
     }
     DEB(kprintf("avg: %u ", SCALE_VAL(q->avg));)
 
-    /* should i drop ? */
+    /* Should i drop? */
 
     if (q->avg < fs->min_th) {
+	/* Accept packet */
 	q->count = -1;
-	return 0; /* accept packet ; */
+	return 0;
     }
-    if (q->avg >= fs->max_th) { /* average queue >=  max threshold */
+
+    if (q->avg >= fs->max_th) { /* Average queue >=  Max threshold */
 	if (fs->flags_fs & DN_IS_GENTLE_RED) {
 	    /*
 	     * According to Gentle-RED, if avg is greater than max_th the
@@ -947,12 +945,12 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 	    p_b = SCALE_MUL((int64_t)fs->c_3, (int64_t)q->avg) - fs->c_4;
 	} else {
 	    q->count = -1;
-	    kprintf("- drop");
+	    kprintf("- drop\n");
 	    return 1;
 	}
     } else if (q->avg > fs->min_th) {
 	/*
-	 * we compute p_b using the linear dropping function p_b = c_1 *
+	 * We compute p_b using the linear dropping function p_b = c_1 *
 	 * avg - c_2, where c_1 = max_p / (max_th - min_th), and c_2 =
 	 * max_p * min_th / (max_th - min_th)
 	 */
@@ -960,6 +958,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
     }
     if (fs->flags_fs & DN_QSIZE_IS_BYTES)
 	p_b = (p_b * len) / fs->max_pkt_size;
+
     if (++q->count == 0) {
 	q->random = krandom() & 0xffff;
     } else {
@@ -970,13 +969,13 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 	if (SCALE_MUL(p_b, SCALE((int64_t)q->count)) > q->random) {
 	    q->count = 0;
 	    DEB(kprintf("- red drop");)
-	    /* after a drop we calculate a new random value */
+	    /* After a drop we calculate a new random value */
 	    q->random = krandom() & 0xffff;
-	    return 1;    /* drop */
+	    return 1;    /* Drop */
 	}
     }
-    /* end of RED algorithm */
-    return 0; /* accept */
+    /* End of RED algorithm */
+    return 0; /* Accept */
 }
 
 static __inline struct dn_flow_set *
@@ -1010,7 +1009,7 @@ locate_flowset(int pipe_nr, struct ip_fw *rule)
 }
 
 /*
- * dummynet hook for packets. Below 'pipe' is a pipe or a queue
+ * Dummynet hook for packets.  Below 'pipe' is a pipe or a queue
  * depending on whether WF2Q or fixed bw is used.
  *
  * pipe_nr	pipe or queue the packet is destined for.
