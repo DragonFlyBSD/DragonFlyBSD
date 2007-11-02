@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.3 2007/11/01 20:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.4 2007/11/02 00:57:15 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -169,6 +169,10 @@ struct hammer_volume_ondisk {
 	int32_t vol_nclusters;
 	u_int32_t vol_reserved06;
 	u_int32_t vol_reserved07;
+
+	int32_t vol_stat_blocksize;	/* for statfs only */
+	int64_t	vol_stat_bytes;		/* for statfs only */
+	int64_t vol_stat_inodes;	/* for statfs only */
 
 	/*
 	 * These fields are initialized and space is reserved in every

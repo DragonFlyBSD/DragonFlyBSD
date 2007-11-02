@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.1 2007/11/01 20:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.2 2007/11/02 00:57:15 dillon Exp $
  */
 
 /*
@@ -89,6 +89,15 @@ static int btree_collapse(hammer_btree_cursor_t cursor);
 static int
 hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 {
+#if 0
+	kprintf("compare obj_id %016llx %016llx\n",
+		key1->obj_id, key2->obj_id);
+	kprintf("compare rec_type %04x %04x\n",
+		key1->rec_type, key2->rec_type);
+	kprintf("compare key %016llx %016llx\n",
+		key1->key, key2->key);
+#endif
+
 	if (key1->obj_id < key2->obj_id)
 		return(-1);
 	if (key1->obj_id > key2->obj_id)
@@ -104,10 +113,24 @@ hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 	if (key1->key > key2->key)
 		return(1);
 
-	if (key1->create_tid < key2->create_tid)
-		return(-1);
-	if (key1->create_tid > key2->create_tid)
-		return(1);
+	/*
+	 * This test has a number of special cases.  create_tid in key1 is
+	 * the as-of transction id, and delete_tid in key1 is NOT USED.
+	 *
+	 * A key1->create_tid of 0 indicates 'the most recent record if not
+	 * deleted'.  key2->create_tid is a HAMMER record and will never be
+	 * 0.   key2->delete_tid is the deletion transaction id or 0 if 
+	 * the record has not yet been deleted.
+	 */
+	if (key1->create_tid == 0) {
+		if (key2->delete_tid)
+			return(-1);
+	} else {
+		if (key1->create_tid < key2->create_tid)
+			return(-1);
+		if (key2->delete_tid && key1->create_tid >= key2->delete_tid)
+			return(1);
+	}
 
 	return(0);
 }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.1 2007/11/01 20:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.2 2007/11/02 00:57:15 dillon Exp $
  */
 
 #include "hammer.h"
@@ -43,6 +43,11 @@ static enum vtype hammer_get_vnode_type(u_int16_t obj_type);
 int
 hammer_vop_inactive(struct vop_inactive_args *ap)
 {
+#if 0
+	struct vnode *vp;
+
+	vp = ap->a_vp;
+#endif
 	return(0);
 }
 
@@ -114,6 +119,8 @@ loop:
 	}
 	vp = *vpp;
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
+	ip->obj_id = ino;
+	ip->obj_asof = iinfo.obj_asof;
 
 	/*
 	 * If we do not have an inode cached search the HAMMER on-disk B-Tree
@@ -163,6 +170,26 @@ loop:
 	}
 	return (error);
 }
+
+/*
+ * (called via RB_SCAN)
+ */
+int
+hammer_unload_inode(struct hammer_inode *ip, void *data)
+{
+	struct hammer_mount *hmp = data;
+	struct vnode *vp;
+
+	if ((vp = ip->vp) != NULL) {
+		ip->vp = NULL;
+		vp->v_data = NULL;
+		/* XXX */
+	}
+	RB_REMOVE(hammer_ino_rb_tree, &hmp->rb_inos_root, ip);
+	kfree(ip, M_HAMMER);
+	return(0);
+}
+
 
 /*
  * Convert a HAMMER filesystem object type to a vnode type
@@ -232,10 +259,13 @@ hammer_bread(struct hammer_cluster *cluster, int32_t cloff,
 	buf_off = cloff & HAMMER_BUFMASK;
 	if (buf_type) {
 		if (buf_type != buffer->ondisk->head.buf_type) {
+			kprintf("BUFFER HEAD TYPE MISMATCH %llx %llx\n",
+				buf_type, buffer->ondisk->head.buf_type);
 			*errorp = EIO;
 			return(NULL);
 		}
 		if (buf_off < sizeof(buffer->ondisk->head)) {
+			kprintf("BUFFER OFFSET TOO LOW %d\n", buf_off);
 			*errorp = EIO;
 			return(NULL);
 		}

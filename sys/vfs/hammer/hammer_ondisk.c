@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.1 2007/11/01 20:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.2 2007/11/02 00:57:15 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -281,7 +281,20 @@ hammer_unload_volume(struct hammer_volume *volume, void *data __unused)
 	/*
 	 * Sync clusters, sync volume
 	 */
+
+	/*
+	 * Clean up
+	 */
+	if (hmp->rootvol == volume) {
+		if (hmp->rootcl) {
+			hammer_put_cluster(hmp->rootcl);
+			hmp->rootcl = NULL;
+		}
+		hmp->rootvol = NULL;
+	}
+
 	/* flush_volume */
+	KKASSERT(volume->bp == NULL);
 
 	/*
 	 * Destroy the structure
@@ -425,6 +438,7 @@ again:
 			hammer_unlock(&supercl->lock);
 			return(NULL);
 		}
+		BUF_KERNPROC(supercl->bp);
 		supercl->ondisk = ondisk = (void *)supercl->bp->b_data;
 
 		supercl->alist.config = &Supercl_alist_config;
@@ -521,6 +535,7 @@ again:
 			hammer_unlock(&cluster->lock);
 			return(NULL);
 		}
+		BUF_KERNPROC(cluster->bp);
 		cluster->ondisk = ondisk = (void *)cluster->bp->b_data;
 
 		cluster->alist_master.config = &Clu_master_alist_config;
@@ -610,7 +625,7 @@ again:
 		buffer->volume = cluster->volume;
 		buffer->buf_offset = cluster->clu_offset +
 				     (buf_no * HAMMER_BUFSIZE);
-		hammer_lock(&cluster->lock);
+		hammer_lock(&buffer->lock);
 
 		/*
 		 * Insert the cluster into the RB tree and handle late
@@ -642,6 +657,7 @@ again:
 			hammer_unlock(&buffer->lock);
 			return(NULL);
 		}
+		BUF_KERNPROC(buffer->bp);
 		buffer->ondisk = ondisk = (void *)buffer->bp->b_data;
 		buffer->alist.config = &Buf_alist_config;
 		buffer->alist.meta = ondisk->head.buf_almeta;

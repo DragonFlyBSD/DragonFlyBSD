@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.1 2007/11/01 20:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.2 2007/11/02 00:57:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,6 +88,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 {
 	struct hammer_mount_info info;
 	struct hammer_mount *hmp;
+	struct vnode *rootvp;
 	const char *upath;	/* volume name in userspace */
 	char *path;		/* volume name in system space */
 	int error;
@@ -139,31 +140,36 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	}
 
 	/*
-	 * No errors at this point.  Locate the root directory using the
-	 * root cluster's B-Tree as a starting point.  The root directory
-	 * uses an obj_id of 1.  Leave the root directory cached referenced
-	 * but unlocked in hmp->rootvp.
+	 * No errors, setup enough of the mount point so we can lookup the
+	 * root vnode.
 	 */
-	error = hammer_vfs_vget(mp, 1, &hmp->rootvp);
-	if (error == 0)
-		vn_unlock(hmp->rootvp);
+	mp->mnt_iosize_max = MAXPHYS;
+	mp->mnt_kern_flag |= MNTK_FSMID;
+	mp->mnt_stat.f_fsid.val[0] = 0;	/* XXX */
+	mp->mnt_stat.f_fsid.val[1] = 0;	/* XXX */
+	vfs_getnewfsid(mp);		/* XXX */
+	mp->mnt_maxsymlinklen = 255;
+	mp->mnt_flag |= MNT_LOCAL;
+
+	vfs_add_vnodeops(mp, &hammer_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	/*
-	 * Setup the rest of the mount or clean up after an error.
+	 * Locate the root directory using the root cluster's B-Tree as a
+	 * starting point.  The root directory uses an obj_id of 1.
+	 *
+	 * FUTURE: Leave the root directory cached referenced but unlocked
+	 * in hmp->rootvp (need to flush it on unmount).
 	 */
-	if (error) {
-		hammer_free_hmp(mp);
-	} else {
-		mp->mnt_iosize_max = MAXPHYS;
-		mp->mnt_kern_flag |= MNTK_FSMID;
-		mp->mnt_stat.f_fsid.val[0] = 0;	/* XXX */
-		mp->mnt_stat.f_fsid.val[1] = 0;	/* XXX */
-		vfs_getnewfsid(mp);		/* XXX */
-		mp->mnt_maxsymlinklen = 255;
-		mp->mnt_flag |= MNT_LOCAL;
+	error = hammer_vfs_vget(mp, 1, &rootvp);
+	if (error == 0)
+		vput(rootvp);
+	/*vn_unlock(hmp->rootvp);*/
 
-		vfs_add_vnodeops(mp, &hammer_vnode_vops, &mp->mnt_vn_norm_ops);
-	}
+	/*
+	 * Cleanup and return.
+	 */
+	if (error)
+		hammer_free_hmp(mp);
 	return (error);
 }
 
@@ -174,6 +180,10 @@ hammer_vfs_unmount(struct mount *mp, int mntflags)
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 #endif
 	int flags;
+
+	/*
+	 *
+	 */
 
 	/*
 	 * Clean out the vnodes
@@ -198,6 +208,7 @@ hammer_free_hmp(struct mount *mp)
 {
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 
+#if 0
 	/*
 	 * Clean up the root vnode
 	 */
@@ -205,12 +216,13 @@ hammer_free_hmp(struct mount *mp)
 		vrele(hmp->rootvp);
 		hmp->rootvp = NULL;
 	}
+#endif
 
 	/*
 	 * Unload & flush inodes
 	 */
 	RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
-		hammer_unload_inode, NULL);
+		hammer_unload_inode, hmp);
 
 	/*
 	 * Unload & flush volumes
@@ -233,8 +245,15 @@ static int
 hammer_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
-	struct vnode *vp;
+	int error;
 
+	if (hmp->rootcl == NULL)
+		error = EIO;
+	else
+		error = hammer_vfs_vget(mp, 1, vpp);
+	return (error);
+#if 0
+	/* FUTURE - cached root vnode */
 	if ((vp = hmp->rootvp) != NULL) {
 		vref(vp);
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
@@ -244,16 +263,14 @@ hammer_vfs_root(struct mount *mp, struct vnode **vpp)
 		*vpp = NULL;
 		return (EIO);
 	}
+#endif
 }
 
 static int
 hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
-	/*struct hammer_mount *hmp = (void *)mp->mnt_data;*/
-	int error;
-
-	error = EINVAL;
-	return(error);
+	*sbp = mp->mnt_stat;
+	return(0);
 }
 
 static int

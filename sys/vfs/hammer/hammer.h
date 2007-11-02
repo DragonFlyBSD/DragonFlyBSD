@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.3 2007/11/01 20:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.4 2007/11/02 00:57:15 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -189,7 +189,7 @@ struct hammer_buffer {
  */
 struct hammer_mount {
 	struct mount *mp;
-	struct vnode *rootvp;
+	/*struct vnode *rootvp;*/
 	struct hammer_ino_rb_tree rb_inos_root;
 	struct hammer_vol_rb_tree rb_vols_root;
 	struct hammer_volume *rootvol;
@@ -217,7 +217,7 @@ int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
 int	hammer_vfs_vget(struct mount *mp, ino_t ino, struct  vnode **vpp);
 
-int	hammer_unload_inode(struct hammer_inode *inode, void *data __unused);
+int	hammer_unload_inode(struct hammer_inode *ip, void *data);
 int	hammer_unload_volume(struct hammer_volume *volume, void *data __unused);
 int	hammer_load_volume(struct hammer_mount *hmp, const char *volname);
 struct hammer_cluster *hammer_load_cluster(struct hammer_volume *volume,
