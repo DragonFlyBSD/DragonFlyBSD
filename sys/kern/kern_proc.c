@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.39 2007/08/12 16:32:13 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.40 2007/11/02 18:47:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -716,7 +716,9 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			return (0);
 		if (!PRISON_CHECK(cr1, p->p_ucred))
 			return (0);
+		PHOLD(p);
 		error = sysctl_out_proc(p, req, flags);
+		PRELE(p);
 		return (error);
 	}
 
