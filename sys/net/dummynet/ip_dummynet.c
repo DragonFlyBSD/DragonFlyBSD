@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.39 2007/11/02 12:50:20 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.40 2007/11/02 13:42:47 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -77,7 +77,7 @@
 #include <net/dummynet/ip_dummynet.h>
 
 #ifndef DUMMYNET_CALLOUT_FREQ_MAX
-#define DUMMYNET_CALLOUT_FREQ_MAX	30000
+#define DUMMYNET_CALLOUT_FREQ_MAX	10000
 #endif
 
 /*
