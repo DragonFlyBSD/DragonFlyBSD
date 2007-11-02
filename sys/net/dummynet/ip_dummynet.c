@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.37 2007/11/02 07:10:14 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.38 2007/11/02 10:28:50 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -353,7 +353,7 @@ heap_free(struct dn_heap *h)
  *
  * transmit_event() is called when the delay-line needs to enter
  * the scheduler, either because of existing pkts getting ready,
- * or new packets entering the queue. The event handled is the delivery
+ * or new packets entering the queue.  The event handled is the delivery
  * time of the packet.
  *
  * ready_event() does something similar with fixed-rate queues, and the
@@ -375,7 +375,7 @@ transmit_event(struct dn_pipe *pipe)
     	struct rtentry *rt;
 
 	/*
-	 * first unlink, then call procedures, since ip_input() can invoke
+	 * First unlink, then call procedures, since ip_input() can invoke
 	 * ip_output() and viceversa, thus causing nested calls
 	 */
 	pipe->head = pkt->dn_next;
@@ -394,11 +394,11 @@ transmit_event(struct dn_pipe *pipe)
 	    rt = pkt->ro.ro_rt;
 	    ip_output(pkt->dn_m, NULL, NULL, 0, NULL, NULL);
 	    rt_unref(rt);
-	    break ;
+	    break;
 
 	case DN_TO_IP_IN :
 	    ip_input(pkt->dn_m);
-	    break ;
+	    break;
 
 	case DN_TO_ETH_DEMUX:
 	    {
@@ -411,14 +411,14 @@ transmit_event(struct dn_pipe *pipe)
 		    break;
 		}
 		/*
-		 * same as ether_input, make eh be a pointer into the mbuf
+		 * Same as ether_input, make eh be a pointer into the mbuf
 		 */
 		eh = mtod(m, struct ether_header *);
 		m_adj(m, ETHER_HDR_LEN);
-		/* which consumes the mbuf */
 		ether_demux(NULL, eh, m);
 	    }
-	    break ;
+	    break;
+
 	case DN_TO_ETH_OUT:
 	    ether_output_frame(pkt->ifp, pkt->dn_m);
 	    break;
@@ -426,12 +426,12 @@ transmit_event(struct dn_pipe *pipe)
 	default:
 	    kprintf("dummynet: bad switch %d!\n", pkt->dn_dir);
 	    m_freem(pkt->dn_m);
-	    break ;
+	    break;
 	}
     }
 
     /*
-     * if there are leftover packets, put into the heap for next event
+     * If there are leftover packets, put into the heap for next event
      */
     if ((pkt = pipe->head)) {
 	/*
@@ -443,7 +443,7 @@ transmit_event(struct dn_pipe *pipe)
 }
 
 /*
- * the following macro computes how many ticks we have to wait
+ * The following macro computes how many ticks we have to wait
  * before being able to transmit a packet. The credit is taken from
  * either a pipe (WF2Q) or a flow_queue (per-flow queueing)
  */
@@ -452,7 +452,7 @@ transmit_event(struct dn_pipe *pipe)
 	    p->bandwidth;
 
 /*
- * extract pkt from queue, compute output time (could be now)
+ * Extract pkt from queue, compute output time (could be now)
  * and put into delay line (p_queue)
  */
 static void
@@ -494,7 +494,7 @@ ready_event(struct dn_flow_queue *q)
     p_was_empty = (p->head == NULL);
 
     /*
-     * schedule fixed-rate queues linked to this pipe:
+     * Schedule fixed-rate queues linked to this pipe:
      * Account for the bw accumulated since last scheduling, then
      * drain as many pkts as allowed by q->numbytes and move to
      * the delay line (in p) computing output time.
@@ -543,19 +543,19 @@ ready_event(struct dn_flow_queue *q)
 }
 
 /*
- * Called when we can transmit packets on WF2Q queues. Take pkts out of
+ * Called when we can transmit packets on WF2Q queues.  Take pkts out of
  * the queues at their start time, and enqueue into the delay line.
- * Packets are drained until p->numbytes < 0. As long as
+ * Packets are drained until p->numbytes < 0.  As long as
  * len_scaled >= p->numbytes, the packet goes into the delay line
- * with a deadline p->delay. For the last packet, if p->numbytes<0,
+ * with a deadline p->delay.  For the last packet, if p->numbytes < 0,
  * there is an additional delay.
  */
 static void
 ready_event_wfq(struct dn_pipe *p)
 {
     int p_was_empty = (p->head == NULL);
-    struct dn_heap *sch = &(p->scheduler_heap);
-    struct dn_heap *neh = &(p->not_eligible_heap);
+    struct dn_heap *sch = &p->scheduler_heap;
+    struct dn_heap *neh = &p->not_eligible_heap;
 
     if (p->if_name[0] == 0) { /* tx clock is simulated */
 	p->numbytes += (curr_time - p->sched_time) * p->bandwidth;
@@ -572,29 +572,30 @@ ready_event_wfq(struct dn_pipe *p)
      * While we have backlogged traffic AND credit, we need to do
      * something on the queue.
      */
-    while (p->numbytes >=0 && (sch->elements>0 || neh->elements >0)) {
-	if (sch->elements > 0) { /* have some eligible pkts to send out */
+    while (p->numbytes >= 0 && (sch->elements > 0 || neh->elements > 0)) {
+	if (sch->elements > 0) { /* Have some eligible pkts to send out */
 	    struct dn_flow_queue *q = sch->p[0].object;
 	    struct dn_pkt *pkt = q->head;
 	    struct dn_flow_set *fs = q->fs;
 	    uint64_t len = pkt->dn_m->m_pkthdr.len;
 	    int len_scaled = p->bandwidth ? len*8*dn_hz : 0;
 
-	    heap_extract(sch, NULL); /* remove queue from heap */
+	    heap_extract(sch, NULL);	/* Remove queue from heap */
 	    p->numbytes -= len_scaled;
 	    move_pkt(pkt, q, p, len);
 
-	    p->V += (len << MY_M) / p->sum; /* update V */
-	    q->S = q->F; /* update start time */
+	    p->V += (len << MY_M) / p->sum;	/* Update V */
+	    q->S = q->F;			/* Update start time */
+
 	    if (q->len == 0) {	/* Flow not backlogged any more */
 		fs->backlogged--;
-		heap_insert(&(p->idle_heap), q->F, q);
-	    } else {		/* still backlogged */
+		heap_insert(&p->idle_heap, q->F, q);
+	    } else {		/* Still backlogged */
 		/*
-		 * update F and position in backlogged queue, then
+		 * Update F and position in backlogged queue, then
 		 * put flow in not_eligible_heap (we will fix this later).
 		 */
-		len = (q->head)->dn_m->m_pkthdr.len;
+		len = q->head->dn_m->m_pkthdr.len;
 		q->F += (len << MY_M) / (uint64_t)fs->weight;
 		if (DN_KEY_LEQ(q->S, p->V))
 		    heap_insert(neh, q->S, q);
@@ -604,14 +605,17 @@ ready_event_wfq(struct dn_pipe *p)
 	}
 
 	/*
-	 * now compute V = max(V, min(S_i)). Remember that all elements in sch
-	 * have by definition S_i <= V so if sch is not empty, V is surely
-	 * the max and we must not update it. Conversely, if sch is empty
+	 * Now compute V = max(V, min(S_i)).  Remember that all elements in
+	 * sch have by definition S_i <= V so if sch is not empty, V is surely
+	 * the max and we must not update it.  Conversely, if sch is empty
 	 * we only need to look at neh.
 	 */
 	if (sch->elements == 0 && neh->elements > 0)
 	    p->V = MAX64(p->V, neh->p[0].key);
-	/* move from neh to sch any packets that have become eligible */
+
+	/*
+	 * Move from neh to sch any packets that have become eligible
+	 */
 	while (neh->elements > 0 && DN_KEY_LEQ(neh->p[0].key, p->V)) {
 	    struct dn_flow_queue *q = neh->p[0].object;
 
@@ -628,7 +632,7 @@ ready_event_wfq(struct dn_pipe *p)
     if (sch->elements == 0 && neh->elements == 0 && p->numbytes >= 0 &&
     	p->idle_heap.elements > 0) {
 	/*
-	 * no traffic and no events scheduled. We can get rid of idle-heap.
+	 * No traffic and no events scheduled.  We can get rid of idle-heap.
 	 */
 	int i;
 
@@ -648,8 +652,8 @@ ready_event_wfq(struct dn_pipe *p)
      * If we are under credit, schedule the next ready event.
      * Also fix the delivery time of the last packet.
      */
-    if (p->if_name[0] == 0 && p->numbytes < 0) { /* this implies bandwidth >0 */
-	dn_key t = 0; /* number of ticks i have to wait */
+    if (p->if_name[0] == 0 && p->numbytes < 0) { /* This implies bandwidth>0 */
+	dn_key t = 0; /* Number of ticks i have to wait */
 
 	if (p->bandwidth > 0)
 	    t = (p->bandwidth - 1 - p->numbytes) / p->bandwidth;
@@ -672,23 +676,23 @@ ready_event_wfq(struct dn_pipe *p)
 }
 
 /*
- * This is called once per tick, or HZ times per second. It is used to
+ * This is called once per tick, or dn_hz times per second.  It is used to
  * increment the current tick counter and schedule expired events.
  */
 static void
 dummynet(struct netmsg *msg)
 {
-    void *p; /* generic parameter to handler */
+    void *p;
     struct dn_heap *h;
     struct dn_heap *heaps[3];
     int i;
     struct dn_pipe *pe;
 
-    heaps[0] = &ready_heap;		/* fixed-rate queues */
-    heaps[1] = &wfq_ready_heap;		/* wfq queues */
-    heaps[2] = &extract_heap;		/* delay line */
+    heaps[0] = &ready_heap;		/* Fixed-rate queues */
+    heaps[1] = &wfq_ready_heap;		/* WF2Q queues */
+    heaps[2] = &extract_heap;		/* Delay line */
 
-    crit_enter(); /* see note on top, splnet() is not enough */
+    crit_enter();
 
     /* Reply ASAP */
     lwkt_replymsg(&msg->nm_lmsg, 0);
@@ -700,8 +704,10 @@ dummynet(struct netmsg *msg)
 	    DDB(if (h->p[0].key > curr_time)
 		kprintf("-- dummynet: warning, heap %d is %d ticks late\n",
 		    i, (int)(curr_time - h->p[0].key));)
-	    p = h->p[0].object; /* store a copy before heap_extract */
-	    heap_extract(h, NULL); /* need to extract before processing */
+
+	    p = h->p[0].object;		/* Store a copy before heap_extract */
+	    heap_extract(h, NULL);	/* Need to extract before processing */
+
 	    if (i == 0) {
 		ready_event(p);
 	    } else if (i == 1) {
@@ -720,15 +726,15 @@ dummynet(struct netmsg *msg)
     }
 
     /*
-     * sweep pipes trying to expire idle flow_queues
+     * Sweep pipes trying to expire idle flow_queues
      */
     for (pe = all_pipes; pe; pe = pe->next) {
 	if (pe->idle_heap.elements > 0 &&
 	    DN_KEY_LT(pe->idle_heap.p[0].key, pe->V)) {
 	    struct dn_flow_queue *q = pe->idle_heap.p[0].object;
 
-	    heap_extract(&(pe->idle_heap), NULL);
-	    q->S = q->F + 1; /* mark timestamp as invalid */
+	    heap_extract(&pe->idle_heap, NULL);
+	    q->S = q->F + 1; /* Mark timestamp as invalid */
 	    pe->sum -= q->fs->weight;
 	}
     }
@@ -1138,8 +1144,8 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 
     /*
      * If we reach this point the flow was previously idle, so we need
-     * to schedule it. This involves different actions for fixed-rate or
-     * WF2Q queues.
+     * to schedule it.  This involves different actions for fixed-rate
+     * or WF2Q queues.
      */
     if (is_pipe) {
 	/*
@@ -1157,12 +1163,13 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	    heap_insert(&ready_heap, curr_time + t, q);
     } else {
 	/*
-	 * WF2Q. First, compute start time S: if the flow was idle (S=F+1)
+	 * WF2Q:
+	 * First, compute start time S: if the flow was idle (S=F+1)
 	 * set S to the virtual time V for the controlling pipe, and update
 	 * the sum of weights for the pipe; otherwise, remove flow from
-	 * idle_heap and set S to max(F,V).
+	 * idle_heap and set S to max(F, V).
 	 * Second, compute finish time F = S + len/weight.
-	 * Third, if pipe was idle, update V=max(S, V).
+	 * Third, if pipe was idle, update V = max(S, V).
 	 * Fourth, count one more backlogged flow.
 	 */
 	if (DN_KEY_GT(q->S, q->F)) { /* Means timestamps are invalid */
@@ -1181,16 +1188,16 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	fs->backlogged++;
 
 	/*
-	 * Look at eligibility. A flow is not eligibile if S>V (when
+	 * Look at eligibility.  A flow is not eligibile if S>V (when
 	 * this happens, it means that there is some other flow already
 	 * scheduled for the same pipe, so the scheduler_heap cannot be
-	 * empty). If the flow is not eligible we just store it in the
-	 * not_eligible_heap. Otherwise, we store in the scheduler_heap
+	 * empty).  If the flow is not eligible we just store it in the
+	 * not_eligible_heap.  Otherwise, we store in the scheduler_heap
 	 * and possibly invoke ready_event_wfq() right now if there is
 	 * leftover credit.
 	 * Note that for all flows in scheduler_heap (SCH), S_i <= V,
-	 * and for all flows in not_eligible_heap (NEH), S_i > V .
-	 * So when we need to compute max( V, min(S_i) ) forall i in SCH+NEH,
+	 * and for all flows in not_eligible_heap (NEH), S_i > V.
+	 * So when we need to compute max(V, min(S_i)) forall i in SCH+NEH,
 	 * we only need to look into NEH.
 	 */
 	if (DN_KEY_GT(q->S, pipe->V)) {	/* Not eligible */
