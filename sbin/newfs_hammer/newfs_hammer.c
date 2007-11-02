@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.4 2007/11/02 00:38:36 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.5 2007/11/02 00:54:26 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -556,6 +556,10 @@ format_cluster(struct volume_info *vol, int isroot)
 	/*
 	 * Cluster 0 is the root cluster.  Set the B-Tree range for this
 	 * cluster to the entire key space and format the root directory. 
+	 *
+	 * Note that delete_tid for the ending range must be set to 0,
+	 * 0 indicates 'not deleted', aka 'the most recent'.  See
+	 * hammer_btree_cmp() in sys/vfs/hammer/hammer_btree.c.
 	 */
 	if (isroot) {
 		ondisk->clu_btree_beg.obj_id = -0x8000000000000000LL;
@@ -568,7 +572,7 @@ format_cluster(struct volume_info *vol, int isroot)
 		ondisk->clu_btree_end.obj_id = 0x7FFFFFFFFFFFFFFFLL;
 		ondisk->clu_btree_end.key = 0x7FFFFFFFFFFFFFFFLL;
 		ondisk->clu_btree_end.create_tid = 0xFFFFFFFFFFFFFFFFULL;
-		ondisk->clu_btree_end.delete_tid = 0xFFFFFFFFFFFFFFFFULL;
+		ondisk->clu_btree_end.delete_tid = 0;	/* special case */
 		ondisk->clu_btree_end.rec_type = 0xFFFFU;
 		ondisk->clu_btree_end.obj_type = 0xFFFFU;
 
