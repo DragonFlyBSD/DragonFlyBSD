@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.31 2007/09/03 17:06:22 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.32 2007/11/02 19:54:15 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -539,6 +539,10 @@ vfs_vptofh_t 	vfs_stdvptofh;
 vfs_init_t  	vfs_stdinit;
 vfs_uninit_t 	vfs_stduninit;
 vfs_extattrctl_t vfs_stdextattrctl;
+
+struct vop_access_args;
+int vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
+		      mode_t ino_mode, u_int32_t ino_flags);
 
 int     journal_mountctl(struct vop_mountctl_args *ap);
 void	journal_remove_all_journals(struct mount *mp, int flags);
