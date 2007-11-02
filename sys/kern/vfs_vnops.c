@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.53 2007/08/13 17:43:55 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.54 2007/11/02 19:52:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -845,6 +845,9 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	case VREG:
 		mode |= S_IFREG;
 		break;
+	case VDATABASE:
+		mode |= S_IFDB;
+		break;
 	case VDIR:
 		mode |= S_IFDIR;
 		break;
@@ -872,7 +875,10 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		return (EBADF);
 	};
 	sb->st_mode = mode;
-	sb->st_nlink = vap->va_nlink;
+	if (vap->va_nlink > (nlink_t)-1)
+		sb->st_nlink = (nlink_t)-1;
+	else
+		sb->st_nlink = vap->va_nlink;
 	sb->st_uid = vap->va_uid;
 	sb->st_gid = vap->va_gid;
 	sb->st_rdev = makeudev(vap->va_rmajor, vap->va_rminor);
@@ -934,7 +940,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	if (suser_cred(cred, 0))
 		sb->st_gen = 0;
 	else
-		sb->st_gen = vap->va_gen;
+		sb->st_gen = (u_int32_t)vap->va_gen;
 
 #if (S_BLKSIZE == 512)
 	/* Optimize this case */

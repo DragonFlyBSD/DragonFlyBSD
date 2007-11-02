@@ -63,7 +63,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfscache.h,v 1.11 2007/11/01 22:05:22 dillon Exp $
+ * $DragonFly: src/sys/sys/vfscache.h,v 1.12 2007/11/02 19:52:24 dillon Exp $
  */
 /*
  * This module serves as a focal point for virtually all filesystem and
@@ -93,6 +93,9 @@
 #ifndef _SYS_VFSOPS_H_
 #include <sys/vfsops.h>
 #endif
+#ifndef _SYS_UUID_H_
+#include <sys/uuid.h>
+#endif
 
 /*
  * Vnode types.  VNON means no type.
@@ -116,21 +119,23 @@ enum vtagtype	{
 /*
  * Vnode attributes.  A field value of VNOVAL represents a field whose value
  * is unavailable (getattr) or which is not to be changed (setattr).
+ *
+ * Some vattr fields may be wider then what is reported to userland.
  */
 struct vattr {
 	enum vtype	va_type;	/* vnode type (for create) */
-	nlink_t		va_nlink;	/* number of references to file */
+	u_int64_t	va_nlink;	/* number of references to file */
 	u_short		va_mode;	/* files access mode and type */
 	uid_t		va_uid;		/* owner user id */
 	gid_t		va_gid;		/* owner group id */
 	udev_t		va_fsid;	/* file system id */
-	long		va_fileid;	/* file id */
+	ino_t		va_fileid;	/* file id */
 	u_quad_t	va_size;	/* file size in bytes */
 	long		va_blocksize;	/* blocksize preferred for i/o */
 	struct timespec	va_atime;	/* time of last access */
 	struct timespec	va_mtime;	/* time of last modification */
 	struct timespec	va_ctime;	/* time file changed */
-	u_long		va_gen;		/* generation number of file */
+	u_int64_t	va_gen;		/* generation number of file */
 	u_long		va_flags;	/* flags defined for file */
 	int		va_rmajor;	/* device the special file represents */
 	int		va_rminor;
@@ -139,13 +144,22 @@ struct vattr {
 	u_int		va_vaflags;	/* operations flags, see below */
 	long		va_spare;	/* remain quad aligned */
 	int64_t		va_fsmid;	/* filesystem modification id */
+	uuid_t		va_uid_uuid;	/* native uuids if available */
+	uuid_t		va_gid_uuid;
+	uuid_t		va_fsid_uuid;
 };
 
 /*
  * Flags for va_vaflags.
+ *
+ * NOTE: The short versions for the uid, gid, and fsid are always populated
+ * even when the uuid versions are available.
  */
-#define	VA_UTIMES_NULL	0x01		/* utimes argument was NULL */
-#define VA_EXCLUSIVE	0x02		/* exclusive create request */
+#define	VA_UTIMES_NULL		0x0001	/* utimes argument was NULL */
+#define VA_EXCLUSIVE		0x0002	/* exclusive create request */
+#define VA_UID_UUID_VALID	0x0004	/* uuid fields also populated */
+#define VA_GID_UUID_VALID	0x0008	/* uuid fields also populated */
+#define VA_FSID_UUID_VALID	0x0010	/* uuid fields also populated */
 
 #if 0	/* NOT YET */
 

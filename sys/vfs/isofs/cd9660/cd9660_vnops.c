@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.37 2007/08/28 01:04:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.38 2007/11/02 19:52:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -103,6 +103,7 @@ cd9660_setattr(struct vop_setattr_args *ap)
  			return (EISDIR);
 		case VLNK:
 		case VREG:
+		case VDATABASE:
 			return (EROFS);
  		case VCHR:
  		case VBLK:

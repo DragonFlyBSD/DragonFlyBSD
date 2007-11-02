@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.75 2007/08/13 17:43:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.76 2007/11/02 19:52:28 dillon Exp $
  */
 
 
@@ -3211,7 +3211,7 @@ nfs_print(struct vop_print_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
 
-	kprintf("tag VT_NFS, fileid %ld fsid 0x%x",
+	kprintf("tag VT_NFS, fileid %lld fsid 0x%x",
 		np->n_vattr.va_fileid, np->n_vattr.va_fsid);
 	if (vp->v_type == VFIFO)
 		fifo_printinfo(vp);

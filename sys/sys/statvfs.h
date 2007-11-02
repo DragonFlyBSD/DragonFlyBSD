@@ -31,13 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/statvfs.h,v 1.5 2005/07/24 12:40:36 joerg Exp $
+ * $DragonFly: src/sys/sys/statvfs.h,v 1.6 2007/11/02 19:52:24 dillon Exp $
  */
 
 #ifndef _SYS_STATVFS_H_
 #define _SYS_STATVFS_H_
 
 #include <sys/types.h>
+#include <sys/uuid.h>
 
 /*
  * The POSIX 1003.1 standard uses free and available nomenclature to mean the
@@ -67,12 +68,24 @@ struct statvfs {
 	uint64_t  	f_asyncreads;	/* count of async reads since mount */
 	uint64_t  	f_asyncwrites;	/* count of async writes since mount */
 
-	uint32_t	f_spare[8];	
+	/*
+	 * DragonFly extensions - full uuid FSID and owner
+	 */
+	uuid_t		f_fsid_uuid;
+	uuid_t		f_uid_uuid;
 };
 
-/* f_flag definitions */
-#define ST_RDONLY	0x1	/* fs is read-only */
-#define ST_NOSUID	0x2	/* fs does not support ST_ISUID or ST_ISGID */
+/*
+ * f_flag definitions
+ */
+#define ST_RDONLY	0x00000001	/* fs is read-only */
+#define ST_NOSUID	0x00000002	/* ST_ISUID or ST_ISGID not supported */
+
+/*
+ * DragonFly specific flags
+ */
+#define ST_FSID_UUID	0x40000000	/* f_fsid_uuid field is valid */
+#define ST_OWNER_UUID	0x80000000	/* f_owner_uuid field is valid */
 
 __BEGIN_DECLS
 int	fstatvfs(int, struct statvfs *);

@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.84 2007/08/13 17:43:55 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.85 2007/11/02 19:52:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1498,7 +1498,7 @@ cache_inefficient_scan(struct nchandle *nch, struct ucred *cred,
 	if ((error = cache_vref(nch, cred, &pvp)) != 0)
 		return (error);
 	if (ncvp_debug)
-		kprintf("inefficient_scan: directory iosize %ld vattr fileid = %ld\n", vat.va_blocksize, (long)vat.va_fileid);
+		kprintf("inefficient_scan: directory iosize %ld vattr fileid = %lld\n", vat.va_blocksize, vat.va_fileid);
 	if ((blksize = vat.va_blocksize) == 0)
 		blksize = DEV_BSIZE;
 	rbuf = kmalloc(blksize, M_TEMP, M_WAITOK);
@@ -1533,7 +1533,7 @@ again:
 			    den->d_ino == vat.va_fileid) {
 				if (ncvp_debug) {
 					kprintf("cache_inefficient_scan: "
-					       "MATCHED inode %ld path %s/%*.*s\n",
+					       "MATCHED inode %lld path %s/%*.*s\n",
 					       vat.va_fileid, nch->ncp->nc_name,
 					       den->d_namlen, den->d_namlen,
 					       den->d_name);

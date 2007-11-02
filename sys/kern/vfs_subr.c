@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.107 2007/10/24 21:56:41 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.108 2007/11/02 19:52:25 dillon Exp $
  */
 
 /*
@@ -256,6 +256,7 @@ vattr_null(struct vattr *vap)
 	vap->va_gen = VNOVAL;
 	vap->va_vaflags = 0;
 	vap->va_fsmid = VNOVAL;
+	/* va_*_uuid fields are only valid if related flags are set */
 }
 
 /*

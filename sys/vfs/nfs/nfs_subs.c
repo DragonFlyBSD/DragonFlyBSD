@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.46 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.47 2007/11/02 19:52:28 dillon Exp $
  */
 
 /*
@@ -1231,8 +1231,7 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 		vap->va_size = fxdr_hyper(&fp->fa3_size);
 		vap->va_blocksize = NFS_FABLKSIZE;
 		vap->va_bytes = fxdr_hyper(&fp->fa3_used);
-		vap->va_fileid = fxdr_unsigned(int32_t,
-		    fp->fa3_fileid.nfsuquad[1]);
+		vap->va_fileid = fxdr_hyper(&fp->fa3_fileid);
 		fxdr_nfsv3time(&fp->fa3_atime, &vap->va_atime);
 		fxdr_nfsv3time(&fp->fa3_ctime, &vap->va_ctime);
 		vap->va_flags = 0;
@@ -1758,8 +1757,13 @@ void
 nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
 	      struct nfs_fattr *fp)
 {
-
-	fp->fa_nlink = txdr_unsigned(vap->va_nlink);
+	/*
+	 * NFS seems to truncate nlink to 16 bits, don't let it overflow.
+	 */
+	if (vap->va_nlink > 65535)
+		fp->fa_nlink = 65535;
+	else
+		fp->fa_nlink = txdr_unsigned(vap->va_nlink);
 	fp->fa_uid = txdr_unsigned(vap->va_uid);
 	fp->fa_gid = txdr_unsigned(vap->va_gid);
 	if (nfsd->nd_flag & ND_NFSV3) {
@@ -1771,8 +1775,7 @@ nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
 		fp->fa3_rdev.specdata2 = txdr_unsigned(vap->va_rminor);
 		fp->fa3_fsid.nfsuquad[0] = 0;
 		fp->fa3_fsid.nfsuquad[1] = txdr_unsigned(vap->va_fsid);
-		fp->fa3_fileid.nfsuquad[0] = 0;
-		fp->fa3_fileid.nfsuquad[1] = txdr_unsigned(vap->va_fileid);
+		txdr_hyper(vap->va_fileid, &fp->fa3_fileid);
 		txdr_nfsv3time(&vap->va_atime, &fp->fa3_atime);
 		txdr_nfsv3time(&vap->va_mtime, &fp->fa3_mtime);
 		txdr_nfsv3time(&vap->va_ctime, &fp->fa3_ctime);

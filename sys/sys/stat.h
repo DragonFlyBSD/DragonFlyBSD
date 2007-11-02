@@ -33,7 +33,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.11 2006/12/05 23:14:55 dillon Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.12 2007/11/02 19:52:24 dillon Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -139,6 +139,7 @@ struct stat {
 #define	S_IFDIR	 0040000		/* directory */
 #define	S_IFBLK	 0060000		/* block special */
 #define	S_IFREG	 0100000		/* regular */
+#define	S_IFDB	 0110000		/* record access file */
 #define	S_IFLNK	 0120000		/* symbolic link */
 #define	S_IFSOCK 0140000		/* socket */
 #define	S_IFWHT  0160000		/* whiteout */
@@ -149,6 +150,7 @@ struct stat {
 #define	S_ISCHR(m)	(((m) & 0170000) == 0020000)	/* char special */
 #define	S_ISBLK(m)	(((m) & 0170000) == 0060000)	/* block special */
 #define	S_ISREG(m)	(((m) & 0170000) == 0100000)	/* regular file */
+#define	S_ISDB(m)	(((m) & 0170000) == 0110000)	/* record access file */
 #define	S_ISFIFO(m)	(((m) & 0170000) == 0010000)	/* fifo or socket */
 #ifndef _POSIX_SOURCE
 #define	S_ISLNK(m)	(((m) & 0170000) == 0120000)	/* symbolic link */
