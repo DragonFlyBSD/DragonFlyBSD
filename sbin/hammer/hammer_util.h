@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.1 2007/10/16 18:30:53 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.2 2007/11/02 00:38:36 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -73,7 +73,8 @@ struct volume_info {
 	off_t		size;
 	const char	*type;
 
-	struct hammer_alist_live alist;
+	struct hammer_alist_live clu_alist;	/* cluster allocator */
+	struct hammer_alist_live buf_alist;	/* buffer head only */
 	struct hammer_volume_ondisk *ondisk;
 
 	struct supercl_info *supercl_base;
@@ -87,7 +88,8 @@ struct supercl_info {
 
 	struct volume_info	*volume;
 
-	struct hammer_alist_live alist;
+	struct hammer_alist_live clu_alist;
+	struct hammer_alist_live buf_alist;
 	struct hammer_supercl_ondisk *ondisk;
 };
 
@@ -111,7 +113,7 @@ struct cluster_info {
 struct buffer_info {
 	struct buffer_info	*next;
 	int32_t			buf_no;
-	int32_t			buf_offset;
+	int64_t			buf_offset;
 
 	struct cluster_info	*cluster;
 	struct volume_info	*volume;

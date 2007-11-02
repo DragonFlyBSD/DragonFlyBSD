@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.3 2007/11/01 22:26:37 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.4 2007/11/02 00:38:36 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -112,7 +112,7 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "L:s:S")) != -1) {
+	while ((ch = getopt(ac, av, "L:c:S")) != -1) {
 		switch(ch) {
 		case 'L':
 			label = optarg;
@@ -464,7 +464,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		}
 		printf("%d clusters, %d full super-cluster groups\n",
 			nclusters, nscl_groups);
-		hammer_alist_free(&vol->alist, 0, nclusters);
+		hammer_alist_free(&vol->clu_alist, 0, nclusters);
 	} else {
 		nclusters = (ondisk->vol_end - ondisk->vol_beg + minclsize) /
 			    ClusterSize;
@@ -472,7 +472,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 			errx(1, "Volume is too large, max %s\n",
 			     sizetostr((int64_t)nclusters * ClusterSize));
 		}
-		hammer_alist_free(&vol->alist, 0, nclusters);
+		hammer_alist_free(&vol->clu_alist, 0, nclusters);
 	}
 	ondisk->vol_nclusters = nclusters;
 
@@ -504,7 +504,7 @@ format_cluster(struct volume_info *vol, int isroot)
 	/*
 	 * Allocate a cluster
 	 */
-	clno = hammer_alist_alloc(&vol->alist, 1);
+	clno = hammer_alist_alloc(&vol->clu_alist, 1);
 	if (clno == HAMMER_ALIST_BLOCK_NONE) {
 		fprintf(stderr, "volume %d %s has insufficient space\n",
 			vol->vol_no, vol->name);

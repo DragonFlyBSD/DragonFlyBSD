@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.1 2007/10/16 18:30:53 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.2 2007/11/02 00:38:36 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -66,16 +66,19 @@ get_volume(int32_t vol_no)
 		vol->ondisk = ondisk = malloc(HAMMER_BUFSIZE);
 		bzero(ondisk, HAMMER_BUFSIZE);
 		if (UsingSuperClusters) {
-			vol->alist.config = &Vol_super_alist_config;
-			vol->alist.meta = ondisk->vol_almeta.super;
-			vol->alist.info = vol;
-			hammer_alist_init(&vol->alist);
+			vol->clu_alist.config = &Vol_super_alist_config;
+			vol->clu_alist.meta = ondisk->vol_almeta.super;
+			vol->clu_alist.info = vol;
+			hammer_alist_init(&vol->clu_alist);
 		} else {
-			vol->alist.config = &Vol_normal_alist_config;
-			vol->alist.meta = ondisk->vol_almeta.normal;
-			hammer_alist_init(&vol->alist);
+			vol->clu_alist.config = &Vol_normal_alist_config;
+			vol->clu_alist.meta = ondisk->vol_almeta.normal;
+			hammer_alist_init(&vol->clu_alist);
 		}
-	}
+		vol->buf_alist.config = &Buf_alist_config;
+		vol->buf_alist.meta = ondisk->head.buf_almeta;
+                initbuffer(&vol->buf_alist, &ondisk->head, HAMMER_FSBUF_VOLUME);
+        }
 	return(vol);
 }
 
@@ -123,9 +126,12 @@ get_supercl(struct volume_info *vol, int32_t scl_no)
 	if (scl->ondisk == NULL) {
 		scl->ondisk = ondisk = malloc(HAMMER_BUFSIZE);
 		bzero(ondisk, HAMMER_BUFSIZE);
-		scl->alist.config = &Supercl_alist_config;
-		scl->alist.meta = ondisk->scl_meta;
-		hammer_alist_init(&scl->alist);
+		scl->clu_alist.config = &Supercl_alist_config;
+		scl->clu_alist.meta = ondisk->scl_meta;
+		hammer_alist_init(&scl->clu_alist);
+		scl->buf_alist.config = &Buf_alist_config;
+		scl->buf_alist.meta = ondisk->head.buf_almeta;
+                initbuffer(&scl->buf_alist, &ondisk->head, HAMMER_FSBUF_SUPERCL);
 	}
 	return(scl);
 }
@@ -399,10 +405,7 @@ flush_cluster(struct cluster_info *cl)
 void
 flush_buffer(struct buffer_info *buf)
 {
-	int64_t buffer_offset;
-
-	buffer_offset = buf->buf_offset + buf->cluster->clu_offset;
-	writehammerbuf(buf->volume, buf->ondisk, buffer_offset);
+	writehammerbuf(buf->volume, buf->ondisk, buf->buf_offset);
 }
 
 /*
