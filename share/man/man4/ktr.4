@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
-.\" $DragonFly: src/share/man/man4/ktr.4,v 1.3 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ktr.4,v 1.4 2007/11/03 07:24:52 swildner Exp $
 .\"
-.Dd February 16, 2001
+.Dd November 2, 2007
 .Dt KTR 4
 .Os
 .Sh NAME
@@ -33,11 +33,20 @@
 .Nd kernel tracing facility
 .Sh SYNOPSIS
 .Cd options KTR
-.Cd options KTR_COMPILE=(KTR_LOCK|KTR_INTR|KTR_PROC)
-.Cd options KTR_CPUMASK=0x3
 .Cd options KTR_ENTRIES=8192
-.Cd options KTR_MASK=(KTR_INTR|KTR_PROC)
-.Cd options KTR_VERBOSE
+.Cd options KTR_VERBOSE=1
+.Cd options KTR_ALL
+.Cd options KTR_GIANT_CONTENTION
+.Cd options KTR_IF_BGE
+.Cd options KTR_IF_EM
+.Cd options KTR_IPIQ
+.Cd options KTR_MEMORY
+.Cd options KTR_SPIN_CONTENTION
+.\".Cd options KTR_TCP
+.\".Cd options KTR_TESTLOG
+.Cd options KTR_TOKENS
+.\".Cd options KTR_TSLEEP
+.Cd options KTR_USB_MEMORY
 .Sh DESCRIPTION
 The
 .Nm
@@ -46,7 +55,7 @@ they can be examined later when debugging.
 The only mandatory option to enable
 .Nm
 is
-.Dq Li options KTR .
+.Cd options KTR .
 .Pp
 The
 .Dv KTR_ENTRIES
@@ -55,49 +64,37 @@ It should be a power of two.
 The size of the buffer in the currently running kernel can be found via the
 read-only sysctl
 .Va debug.ktr.entries .
-By default the buffer contains 1024 entries.
-.Ss Event Masking
-Event levels can be enabled or disabled to trim excessive and overly verbose
-logging.
-First, a mask of events is specified at compile time via the
-.Dv KTR_COMPILE
-option to limit which events are actually compiled into the kernel.
-The default value for this option is for all events to be enabled.
+By default the buffer contains 2048 entries.
 .Pp
-Secondly, the actual events logged while the kernel runs can be further
-masked via the run time event mask.
-The
-.Dv KTR_MASK
-option sets the default value of the run time event mask.
-The runtime event mask can also be set by the
-.Xr loader 8
-via the
-.Va debug.ktr.mask
-environment variable.
-It can also be examined and set after booting via the
-.Va debug.ktr.mask
-sysctl.
-By default the run time mask is set to log only
-.Dv KTR_GEN
-events.
-The definitions of the event mask bits can be found in
-.In sys/ktr.h .
-.Pp
-Furthermore, there is a CPU event mask whose default value can be changed via
-the
-.Dv KTR_CPUMASK
-option.
-A CPU must have the bit corresponding to its logical id set in this bitmask
-for events that occur on it to be logged.
-This mask can be set by the
-.Xr loader 8
-via the
-.Va debug.ktr.cpumask
-environment variable.
-It can also be examined and set after booting via the
-.Va debug.ktr.cpumask
-sysctl.
-By default events on all CPUs are enabled.
+For debugging purposes, the following
+.Nm
+related kernel options exist:
+.Bl -tag -width ".Dv KTR_GIANT_CONTENTION"
+.It Dv KTR_ALL
+turns on all options
+.It Dv KTR_GIANT_CONTENTION
+contention of the giant lock
+.It Dv KTR_IF_BGE
+.Xr bge 4
+interrupts and sent/received packets
+.It Dv KTR_IF_EM
+.Xr em 4
+interrupts, polling and sent/received packets
+.It Dv KTR_IPIQ
+IPI related data (IPI requests, CPU synchronization etc.)
+.It Dv KTR_MEMORY
+.Xr kmalloc 9
+and
+.Xr kfree 9
+events
+.It Dv KTR_SPIN_CONTENTION
+.Xr spinlock 9
+contention
+.It Dv KTR_TOKENS
+LWKT token related events
+.It Dv KTR_USB_MEMORY
+USB memory allocation
+.El
 .Ss Verbose Mode
 By default, events are only logged to the internal buffer for examination
 later, but if the verbose flag is set then they are dumped to the kernel
@@ -118,7 +115,10 @@ The
 .Dv KTR_VERBOSE
 option sets the flag to one.
 .Ss Examining the Events
-The KTR buffer can be examined from within
+The KTR buffer can be examined with
+.Xr ktrdump 8 ,
+.Xr gdb 1
+or from within
 .Xr ddb 4
 via the
 .Ic show ktr Op Cm /v
@@ -138,6 +138,9 @@ output.
 Note that the events are displayed in reverse chronological order.
 That is, the most recent events are displayed first.
 .Sh SEE ALSO
+.Xr gdb 1 ,
+.Xr ddb 4 ,
+.Xr ktrdump 8 ,
 .Xr ktr 9
 .Sh HISTORY
 The KTR kernel tracing facility first appeared in
@@ -146,3 +149,5 @@ and was imported into
 .Fx 5.0
 and
 .Dx 1.1 .
+It was completely rewritten by Matthew Dillon in
+.Dx 1.3 .
