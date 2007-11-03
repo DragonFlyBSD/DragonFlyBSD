@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.10 2007/11/02 14:01:17 sephe Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.11 2007/11/03 13:14:29 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -51,6 +51,7 @@
 #include <netinet/ip_icmp.h>
 #include <net/ipfw/ip_fw.h>
 #include <net/route.h> /* def. of struct route */
+#include <net/ethernet.h>
 #include <net/dummynet/ip_dummynet.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -1245,8 +1246,8 @@ sort_q(const void *pa, const void *pb)
 	int rev = (do_sort < 0);
 	int field = rev ? -do_sort : do_sort;
 	long long res = 0;
-	const struct dn_flow_queue *a = pa;
-	const struct dn_flow_queue *b = pb;
+	const struct dn_ioc_flowqueue *a = pa;
+	const struct dn_ioc_flowqueue *b = pb;
 
 	switch (field) {
 	case 1: /* pkts */
@@ -1272,37 +1273,37 @@ sort_q(const void *pa, const void *pb)
 }
 
 static void
-list_queues(struct dn_flow_set *fs, struct dn_flow_queue *q)
+list_queues(struct dn_ioc_flowset *fs, struct dn_ioc_flowqueue *q)
 {
 	int l;
 
 	printf("    mask: 0x%02x 0x%08x/0x%04x -> 0x%08x/0x%04x\n",
-	    fs->flow_mask.proto,
-	    fs->flow_mask.src_ip, fs->flow_mask.src_port,
-	    fs->flow_mask.dst_ip, fs->flow_mask.dst_port);
+	    fs->flow_mask.u.ip.proto,
+	    fs->flow_mask.u.ip.src_ip, fs->flow_mask.u.ip.src_port,
+	    fs->flow_mask.u.ip.dst_ip, fs->flow_mask.u.ip.dst_port);
 	if (fs->rq_elements == 0)
 		return;
 
 	printf("BKT Prot ___Source IP/port____ "
 	    "____Dest. IP/port____ Tot_pkt/bytes Pkt/Byte Drp\n");
 	if (do_sort != 0)
-		heapsort(q, fs->rq_elements, sizeof *q, sort_q);
+		heapsort(q, fs->rq_elements, sizeof(*q), sort_q);
 	for (l = 0; l < fs->rq_elements; l++) {
 		struct in_addr ina;
 		struct protoent *pe;
 
-		ina.s_addr = htonl(q[l].id.src_ip);
+		ina.s_addr = htonl(q[l].id.u.ip.src_ip);
 		printf("%3d ", q[l].hash_slot);
-		pe = getprotobynumber(q[l].id.proto);
+		pe = getprotobynumber(q[l].id.u.ip.proto);
 		if (pe)
 			printf("%-4s ", pe->p_name);
 		else
-			printf("%4u ", q[l].id.proto);
+			printf("%4u ", q[l].id.u.ip.proto);
 		printf("%15s/%-5d ",
-		    inet_ntoa(ina), q[l].id.src_port);
-		ina.s_addr = htonl(q[l].id.dst_ip);
+		    inet_ntoa(ina), q[l].id.u.ip.src_port);
+		ina.s_addr = htonl(q[l].id.u.ip.dst_ip);
 		printf("%15s/%-5d ",
-		    inet_ntoa(ina), q[l].id.dst_port);
+		    inet_ntoa(ina), q[l].id.u.ip.dst_port);
 		printf("%4qu %8qu %2u %4u %3u\n",
 		    q[l].tot_pkts, q[l].tot_bytes,
 		    q[l].len, q[l].len_bytes, q[l].drops);
@@ -1313,7 +1314,7 @@ list_queues(struct dn_flow_set *fs, struct dn_flow_queue *q)
 }
 
 static void
-print_flowset_parms(struct dn_flow_set *fs, char *prefix)
+print_flowset_parms(struct dn_ioc_flowset *fs, char *prefix)
 {
 	int l;
 	char qs[30];
@@ -1352,21 +1353,21 @@ list_pipes(void *data, int nbytes, int ac, char *av[])
 {
 	u_long rulenum;
 	void *next = data;
-	struct dn_pipe *p = (struct dn_pipe *) data;
-	struct dn_flow_set *fs;
-	struct dn_flow_queue *q;
+	struct dn_ioc_pipe *p = (struct dn_ioc_pipe *)data;
+	struct dn_ioc_flowset *fs;
+	struct dn_ioc_flowqueue *q;
 	int l;
 
 	if (ac > 0)
 		rulenum = strtoul(*av++, NULL, 10);
 	else
 		rulenum = 0;
-	for (; nbytes >= sizeof *p; p = (struct dn_pipe *)next) {
+	for (; nbytes >= sizeof(*p); p = (struct dn_ioc_pipe *)next) {
 		double b = p->bandwidth;
 		char buf[30];
 		char prefix[80];
 
-		if (p->next != (struct dn_pipe *)DN_IS_PIPE)
+		if (p->fs.fs_type != DN_IS_PIPE)
 			break;	/* done with pipes, now queues */
 
 		/*
@@ -1393,22 +1394,22 @@ list_pipes(void *data, int nbytes, int ac, char *av[])
 
 		sprintf(prefix, "%05d: %s %4d ms ",
 		    p->pipe_nr, buf, p->delay);
-		print_flowset_parms(&(p->fs), prefix);
+		print_flowset_parms(&p->fs, prefix);
 		if (verbose)
 			printf("   V %20qd\n", p->V >> MY_M);
 
-		q = (struct dn_flow_queue *)(p+1);
-		list_queues(&(p->fs), q);
+		q = (struct dn_ioc_flowqueue *)(p+1);
+		list_queues(&p->fs, q);
 	}
-	for (fs = next; nbytes >= sizeof *fs; fs = next) {
+	for (fs = next; nbytes >= sizeof(*fs); fs = next) {
 		char prefix[80];
 
-		if (fs->next != (struct dn_flow_set *)DN_IS_QUEUE)
+		if (fs->fs_type != DN_IS_QUEUE)
 			break;
 		l = sizeof(*fs) + fs->rq_elements * sizeof(*q);
 		next = (void *)fs + l;
 		nbytes -= l;
-		q = (struct dn_flow_queue *)(fs+1);
+		q = (struct dn_ioc_flowqueue *)(fs+1);
 		sprintf(prefix, "q%05d: weight %d pipe %d ",
 		    fs->fs_nr, fs->weight, fs->parent_nr);
 		print_flowset_parms(fs, prefix);
@@ -1915,7 +1916,7 @@ static void
 delete(int ac, char *av[])
 {
 	u_int32_t rulenum;
-	struct dn_pipe pipe;
+	struct dn_ioc_pipe pipe;
 	int i;
 	int exitval = EX_OK;
 	int do_set = 0;
@@ -2033,7 +2034,7 @@ getbw(const char *str, u_short *flags, int kb)
 static void
 config_pipe(int ac, char **av)
 {
-	struct dn_pipe pipe;
+	struct dn_ioc_pipe pipe;
 	int i;
 	char *end;
 	u_int32_t a;
@@ -2092,11 +2093,12 @@ config_pipe(int ac, char **av)
 			 */
 			par = NULL;
 
-			pipe.fs.flow_mask.dst_ip = 0;
-			pipe.fs.flow_mask.src_ip = 0;
-			pipe.fs.flow_mask.dst_port = 0;
-			pipe.fs.flow_mask.src_port = 0;
-			pipe.fs.flow_mask.proto = 0;
+			pipe.fs.flow_mask.type = ETHERTYPE_IP;
+			pipe.fs.flow_mask.u.ip.dst_ip = 0;
+			pipe.fs.flow_mask.u.ip.src_ip = 0;
+			pipe.fs.flow_mask.u.ip.dst_port = 0;
+			pipe.fs.flow_mask.u.ip.src_port = 0;
+			pipe.fs.flow_mask.u.ip.proto = 0;
 			end = NULL;
 
 			while (ac >= 1) {
@@ -2110,28 +2112,28 @@ config_pipe(int ac, char **av)
 				    /*
 				     * special case, all bits significant
 				     */
-				    pipe.fs.flow_mask.dst_ip = ~0;
-				    pipe.fs.flow_mask.src_ip = ~0;
-				    pipe.fs.flow_mask.dst_port = ~0;
-				    pipe.fs.flow_mask.src_port = ~0;
-				    pipe.fs.flow_mask.proto = ~0;
+				    pipe.fs.flow_mask.u.ip.dst_ip = ~0;
+				    pipe.fs.flow_mask.u.ip.src_ip = ~0;
+				    pipe.fs.flow_mask.u.ip.dst_port = ~0;
+				    pipe.fs.flow_mask.u.ip.src_port = ~0;
+				    pipe.fs.flow_mask.u.ip.proto = ~0;
 				    pipe.fs.flags_fs |= DN_HAVE_FLOW_MASK;
 				    goto end_mask;
 
 			    case TOK_DSTIP:
-				    p32 = &pipe.fs.flow_mask.dst_ip;
+				    p32 = &pipe.fs.flow_mask.u.ip.dst_ip;
 				    break;
 
 			    case TOK_SRCIP:
-				    p32 = &pipe.fs.flow_mask.src_ip;
+				    p32 = &pipe.fs.flow_mask.u.ip.src_ip;
 				    break;
 
 			    case TOK_DSTPORT:
-				    p16 = &pipe.fs.flow_mask.dst_port;
+				    p16 = &pipe.fs.flow_mask.u.ip.dst_port;
 				    break;
 
 			    case TOK_SRCPORT:
-				    p16 = &pipe.fs.flow_mask.src_port;
+				    p16 = &pipe.fs.flow_mask.u.ip.src_port;
 				    break;
 
 			    case TOK_PROTO:
@@ -2159,7 +2161,7 @@ config_pipe(int ac, char **av)
 				    if (a > 255)
 					    errx(EX_DATAERR,
 						"mask: must be 8 bit");
-				    pipe.fs.flow_mask.proto = (u_int8_t)a;
+				    pipe.fs.flow_mask.u.ip.proto = (uint8_t)a;
 			    }
 			    if (a != 0)
 				    pipe.fs.flags_fs |= DN_HAVE_FLOW_MASK;
@@ -2213,8 +2215,6 @@ end_mask:
 			/*
 			 * set bandwidth value
 			 */
-			pipe.if_name[0] = '\0';
-			pipe.bandwidth = strtoul(av[0], &end, 0);
 			pipe.bandwidth = getbw(av[0], NULL, 1000);
 			if (pipe.bandwidth < 0)
 			    errx(EX_DATAERR, "bandwidth too large");

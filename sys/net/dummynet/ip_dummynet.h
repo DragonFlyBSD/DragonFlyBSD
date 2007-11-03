@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.10 2007/11/02 06:27:24 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.11 2007/11/03 13:14:29 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -105,7 +105,7 @@ struct dn_heap {
     struct dn_heap_entry *p;	/* really an array of "size" entries */
 };
 
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#ifdef _KERNEL
 
 /*
  * struct dn_pkt identifies a packet in the dummynet queue, but
@@ -130,8 +130,6 @@ struct dn_pkt {
     struct route ro;		/* route, for ip_output. MUST COPY */
     int flags;			/* flags, for ip_output (IPv6 ?) */
 };
-
-#endif
 
 /*
  * Overall structure of dummynet (with WF2Q+):
@@ -248,14 +246,7 @@ struct dn_flow_set {
     struct dn_flow_set *next;	/* next flow set in all_flow_sets list */
 
     u_short fs_nr;		/* flow_set number */
-    u_short flags_fs;
-#define DN_HAVE_FLOW_MASK	0x0001
-#define DN_IS_RED		0x0002
-#define DN_IS_GENTLE_RED	0x0004
-#define DN_QSIZE_IS_BYTES	0x0008	/* queue size is measured in bytes */
-#define DN_NOERROR		0x0010	/* do not report ENOBUFS on drops */
-#define DN_IS_PIPE		0x4000
-#define DN_IS_QUEUE		0x8000
+    u_short flags_fs;		/* see 'Flow set flags' */
 
     struct dn_pipe *pipe;	/* pointer to parent pipe */
     u_short parent_nr;		/* parent pipe#, 0 if local to a pipe */
@@ -275,10 +266,6 @@ struct dn_flow_set {
     int backlogged;		/* #active queues for this flowset */
 
     /* RED parameters */
-#define SCALE_RED		16
-#define SCALE(x)		((x) << SCALE_RED)
-#define SCALE_VAL(x)		((x) >> SCALE_RED)
-#define SCALE_MUL(x, y)		(((x) * (y)) >> SCALE_RED)
     int w_q;			/* queue weight (scaled) */
     int max_th;			/* maximum threshold for queue (scaled) */
     int min_th;			/* minimum threshold for queue (scaled) */
@@ -329,18 +316,9 @@ struct dn_pipe {		/* a pipe */
 
     dn_key sched_time;		/* time pipe was scheduled in ready_heap */
 
-    /*
-     * When the tx clock come from an interface (if_name[0] != '\0'), its name
-     * is stored below, whereas the ifp is filled when the rule is configured.
-     */
-    char if_name[IFNAMSIZ];
-    struct ifnet *ifp;
-    int ready;		/* set if ifp != NULL and we got a signal from it */
-
     struct dn_flow_set fs;	/* used with fixed-rate flows */
 };
 
-#ifdef _KERNEL
 typedef	int ip_dn_ctl_t(struct sockopt *); /* raw_ip.c */
 typedef	void ip_dn_ruledel_t(void *); /* ip_fw2.c */
 typedef	int ip_dn_io_t(struct mbuf *m, int pipe_nr, int dir,
@@ -349,6 +327,97 @@ extern	ip_dn_ctl_t *ip_dn_ctl_ptr;
 extern	ip_dn_ruledel_t *ip_dn_ruledel_ptr;
 extern	ip_dn_io_t *ip_dn_io_ptr;
 #define	DUMMYNET_LOADED	(ip_dn_io_ptr != NULL)
-#endif
+
+#endif	/* _KERNEL */
+
+struct dn_ioc_flowid {
+    uint16_t type;	/* ETHERTYPE_ */
+    uint16_t pad;
+    union {
+	struct {
+	    uint32_t dst_ip;
+	    uint32_t src_ip;
+	    uint16_t dst_port;
+	    uint16_t src_port;
+	    uint8_t proto;
+	    uint8_t flags;
+	} ip;
+	uint8_t pad[64];
+    } u;
+};
+
+struct dn_ioc_flowqueue {
+    u_int len;
+    u_int len_bytes;
+
+    uint64_t tot_pkts;
+    uint64_t tot_bytes;
+    uint32_t drops;
+
+    int hash_slot;		/* debugging/diagnostic */
+    dn_key S;			/* virtual start time */
+    dn_key F;			/* virtual finish time */
+
+    struct dn_ioc_flowid id;
+    uint8_t reserved[16];
+};
+
+struct dn_ioc_flowset {
+    u_short fs_type;		/* DN_IS_{QUEUE,PIPE}, MUST be first */
+
+    u_short fs_nr;		/* flow_set number */
+    u_short flags_fs;		/* see 'Flow set flags' */
+    u_short parent_nr;		/* parent pipe#, 0 if local to a pipe */
+
+    int weight;			/* WFQ queue weight */
+    int qsize;			/* queue size in slots or bytes */
+    int plr;			/* pkt loss rate (2^31-1 means 100%) */
+
+    /* Hash table information */
+    int rq_size;		/* number of slots */
+    int rq_elements;		/* active elements */
+
+    /* RED parameters */
+    int w_q;			/* queue weight (scaled) */
+    int max_th;			/* maximum threshold for queue (scaled) */
+    int min_th;			/* minimum threshold for queue (scaled) */
+    int max_p;			/* maximum value for p_b (scaled) */
+    int lookup_step;		/* granularity inside the lookup table */
+    int lookup_weight;		/* equal to (1-w_q)^t / (1-w_q)^(t+1) */
+
+    struct dn_ioc_flowid flow_mask;
+    uint8_t reserved[16];
+};
+
+struct dn_ioc_pipe {
+    struct dn_ioc_flowset fs;	/* MUST be first */
+
+    int pipe_nr;		/* pipe number */
+    int bandwidth;		/* bit/second */
+    int delay;			/* milliseconds */
+
+    dn_key V;			/* virtual time */
+
+    uint8_t reserved[16];
+};
+
+/*
+ * Flow set flags
+ */
+#define DN_HAVE_FLOW_MASK	0x0001
+#define DN_IS_RED		0x0002
+#define DN_IS_GENTLE_RED	0x0004
+#define DN_QSIZE_IS_BYTES	0x0008	/* queue size is measured in bytes */
+#define DN_NOERROR		0x0010	/* do not report ENOBUFS on drops */
+#define DN_IS_PIPE		0x4000
+#define DN_IS_QUEUE		0x8000
+
+/*
+ * Macros for RED
+ */
+#define SCALE_RED		16
+#define SCALE(x)		((x) << SCALE_RED)
+#define SCALE_VAL(x)		((x) >> SCALE_RED)
+#define SCALE_MUL(x, y)		(((x) * (y)) >> SCALE_RED)
 
 #endif /* !_IP_DUMMYNET_H */
