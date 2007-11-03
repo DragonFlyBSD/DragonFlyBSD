@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/polling.4,v 1.27 2007/04/06 14:25:14 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/polling.4,v 1.12 2007/10/03 09:55:25 sephe Exp $
+.\" $DragonFly: src/share/man/man4/polling.4,v 1.13 2007/11/03 07:35:52 swildner Exp $
 .\"
 .Dd October 2, 2007
 .Dt POLLING 4
@@ -88,6 +88,11 @@ feature.
 It is turned on and off with help of
 .Xr ifconfig 8
 command.
+An interface does not have to be
+.Dq up
+in order to turn on its
+.Nm
+feature.
 .Ss Loader Tunables
 The following tunables can be set from
 .Xr loader.conf 5 :
