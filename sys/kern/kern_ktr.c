@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.21 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.22 2007/11/03 17:43:39 swildner Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -129,10 +129,6 @@ KTR_INFO(KTR_TESTLOG, testlog, spin_end, 11, "spin_end", 0);
 MALLOC_DEFINE(M_KTR, "ktr", "ktr buffers");
 
 SYSCTL_NODE(_debug, OID_AUTO, ktr, CTLFLAG_RW, 0, "ktr");
-
-static int32_t	ktr_cpumask = -1;
-TUNABLE_INT("debug.ktr.cpumask", &ktr_cpumask);
-SYSCTL_INT(_debug_ktr, OID_AUTO, cpumask, CTLFLAG_RW, &ktr_cpumask, 0, "");
 
 static int	ktr_entries = KTR_ENTRIES;
 SYSCTL_INT(_debug_ktr, OID_AUTO, entries, CTLFLAG_RD, &ktr_entries, 0, "");
