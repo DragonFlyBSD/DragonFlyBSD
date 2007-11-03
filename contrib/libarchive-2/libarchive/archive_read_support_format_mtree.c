@@ -65,7 +65,6 @@ struct mtree {
 	char			*buff;
 	off_t			 offset;
 	int			 fd;
-	int			 bid;
 	int			 filetype;
 	int			 archive_format;
 	const char		*archive_format_name;
@@ -75,8 +74,8 @@ struct mtree {
 	struct archive_string	 contents_name;
 };
 
-static int	bid(struct archive_read *);
 static int	cleanup(struct archive_read *);
+static int	mtree_bid(struct archive_read *);
 static void	parse_escapes(char *, struct mtree_entry *);
 static int	parse_setting(struct archive_read *, struct mtree *,
 		    struct archive_entry *, char *, char *);
@@ -103,11 +102,10 @@ archive_read_support_format_mtree(struct archive *_a)
 		return (ARCHIVE_FATAL);
 	}
 	memset(mtree, 0, sizeof(*mtree));
-	mtree->bid = -1;
 	mtree->fd = -1;
 
 	r = __archive_read_register_format(a, mtree,
-	    bid, read_header, read_data, skip, cleanup);
+	    mtree_bid, read_header, read_data, skip, cleanup);
 
 	if (r != ARCHIVE_OK)
 		free(mtree);
@@ -144,17 +142,16 @@ cleanup(struct archive_read *a)
 
 
 static int
-bid(struct archive_read *a)
+mtree_bid(struct archive_read *a)
 {
 	struct mtree *mtree;
 	ssize_t bytes_read;
 	const void *h;
 	const char *signature = "#mtree";
 	const char *p;
+	int bid;
 
 	mtree = (struct mtree *)(a->format->data);
-	if (mtree->bid != -1)
-		return (mtree->bid);
 
 	/* Now let's look at the actual header and see if it matches. */
 	bytes_read = (a->decompressor->read_ahead)(a, &h, strlen(signature));
@@ -163,16 +160,16 @@ bid(struct archive_read *a)
 		return (bytes_read);
 
 	p = h;
-	mtree->bid = 0;
+	bid = 0;
 	while (bytes_read > 0 && *signature != '\0') {
 		if (*p != *signature)
-			return (mtree->bid = 0);
-		mtree->bid += 8;
+			return (bid = 0);
+		bid += 8;
 		p++;
 		signature++;
 		bytes_read--;
 	}
-	return (mtree->bid);
+	return (bid);
 }
 
 /*

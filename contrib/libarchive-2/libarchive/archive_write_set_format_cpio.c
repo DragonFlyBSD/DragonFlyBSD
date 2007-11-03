@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_cpio.c,v 1.11 2007/05/29 01:00:19 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_cpio.c,v 1.12 2007/10/12 04:11:31 kientzle Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -228,7 +228,7 @@ archive_write_cpio_finish(struct archive_write *a)
 
 	cpio = (struct cpio *)a->format_data;
 	trailer = archive_entry_new();
-	/* Why is this set to 1? */
+	/* nlink = 1 here for GNU cpio compat. */
 	archive_entry_set_nlink(trailer, 1);
 	archive_entry_set_pathname(trailer, "TRAILER!!!");
 	er = archive_write_cpio_header(a, trailer);

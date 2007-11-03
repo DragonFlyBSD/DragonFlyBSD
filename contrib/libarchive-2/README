@@ -5,7 +5,14 @@ This distribution bundle includes the following components:
    * libarchive: a library for reading and writing streaming archives
    * tar: the 'bsdtar' program is a full-featured 'tar'
           replacement built on libarchive
-   * minitar: a compact sample demonstrating use of libarchive
+   * cpio: the 'bsdcpio' program is a different interface to
+          essentially the same functionality
+   * examples: Some small example programs that you may find useful.
+   * examples/minitar: a compact sample demonstrating use of libarchive.
+          I use this for testing link pollution; it should produce a very
+          small executable file on most systems.
+   * contrib:  Various items sent to me by third parties;
+          please contact the authors with any questions.
 
 The top-level directory contains the following information files:
    * NEWS - highlights of recent changes
@@ -25,13 +32,17 @@ The following files in the top-level directory are used by the
 
 Guide to Documentation installed by this system:
  * bsdtar.1 explains the use of the bsdtar program
+ * bsdcpio.1 explains the use of the bsdcpio program
  * libarchive.3 gives an overview of the library as a whole
  * archive_read.3, archive_write.3, and archive_write_disk.3 provide
    detailed calling sequences for the read and write APIs
  * archive_entry.3 details the "struct archive_entry" utility class
+ * archive_internals.3 provides some insight into libarchive's
+   internal structure and operation.
  * libarchive-formats.5 documents the file formats supported by the library
- * tar.5 provides some detailed information about a variety of different
-   "tar" formats.
+ * cpio.5, mtree.5, and tar.5 provide detailed information about a
+   variety of different archive formats, including hard-to-find details
+   about modern cpio and tar variants.
 
 You should also read the copious comments in "archive.h" and the source
 code for the sample "bsdtar" program for more details.  Please let me know
@@ -53,6 +64,7 @@ Currently, the library automatically detects and reads the following:
   * ISO9660 CD-ROM images (with optional Rockridge extensions)
   * ZIP archives (with uncompressed or "deflate" compressed entries)
   * GNU and BSD 'ar' archives
+  * 'mtree' format
 
 The library can write:
   * gzip compression
@@ -62,6 +74,7 @@ The library can write:
   * "restricted" pax format, which will create ustar archives except for
     entries that require pax extensions (for long filenames, ACLs, etc).
   * POSIX octet-oriented cpio
+  * SVR4 "newc" cpio
   * shar archives
   * GNU and BSD 'ar' archives
 
@@ -89,10 +102,9 @@ Notes about the library architecture:
    environments where that matters.
 
  * On read, the library accepts whatever blocks you hand it.
-   Your read callback is free to pass the library a byte at a time
+   Your read callback is free to pass the library a byte at a time[1]
    or mmap the entire archive and give it to the library at once.
-   On write, the library always produces correctly-blocked
-   output.
+   On write, the library always produces correctly-blocked output.
 
  * The object-style approach allows you to have multiple archive streams
    open at once.  bsdtar uses this in its "@archive" extension.
@@ -112,3 +124,11 @@ Notes about the library architecture:
 
  * Note: "pax interchange format" is really an extended tar format,
    despite what the name says.
+
+[1]  Gzip and compress formats are identical in the first byte.
+For that reason, the first block must be at least two bytes if
+you have both of these formats enabled at read time.  This is
+currently the only restriction on block size.  (This restriction
+could be lifted by buffering the initial blocks prior to the
+compression tasting step, but it doesn't really seem worth the
+effort.)
