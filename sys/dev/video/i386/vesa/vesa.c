@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.22 2007/09/06 21:03:55 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.23 2007/11/03 22:24:53 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -667,13 +667,8 @@ vesa_bios_init(void)
 			continue;
 
 		/* reject unsupported modes */
-#if 0
-		if ((vmode.v_modeattr & (V_MODESUPP | V_MODEOPTINFO 
-					| V_MODENONVGA))
-		    != (V_MODESUPP | V_MODEOPTINFO))
-			continue;
-#else
-		if ((vmode.v_modeattr & V_MODEOPTINFO) == 0) {
+		if ((vmode.v_modeattr & (V_MODESUPP | V_MODEOPTINFO)) !=
+		    (V_MODESUPP | V_MODEOPTINFO)) {
 #if VESA_DEBUG > 1
 			kprintf("Rejecting VESA %s mode: %d x %d x %d bpp  attr = %x\n",
 			       vmode.v_modeattr & V_MODEGRAPHICS ? "graphics" : "text",
@@ -682,7 +677,6 @@ vesa_bios_init(void)
 #endif
 			continue;
 		}
-#endif
 
 		/* expand the array if necessary */
 		if (modes >= vesa_vmode_max) {
