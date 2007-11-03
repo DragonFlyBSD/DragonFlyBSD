@@ -72,9 +72,9 @@ struct header_old_cpio {
         unsigned short   c_gid;
         unsigned short   c_nlink;
         unsigned short   c_rdev;
-	unsigned int     c_mtime;
+	unsigned short   c_mtime[2];
         unsigned short   c_namesize;
-	unsigned int     c_filesize;
+	unsigned short   c_filesize[2];
 };
 .Ed
 .Pp
@@ -149,29 +149,37 @@ followed by the least-significant 16 bits.
 Each of the two 16 bit values are stored in machine-native byte order.
 .It Va namesize
 The number of bytes in the pathname that follows the header.
+This count includes the trailing NULL byte.
 .It Va filesize
 The size of the file.
 Note that this archive format is limited to
 four gigabyte file sizes.
 See
 .Va mtime
-above for notes on the storage of four-byte integers.
+above for a description of the storage of four-byte integers.
 .El
 .Pp
 The pathname immediately follows the fixed header.
-If the pathname has an odd length, an additional NULL
-byte is added after the pathname.
+If the
+.Cm namesize
+is odd, an additional NULL byte is added after the pathname.
 The file data is then appended, padded with NULL
 bytes to an even length.
+.Pp
+Hardlinked files are not given special treatment;
+the full file contents are included with each copy of the
+file.
 .Ss Portable ASCII Format
 .St -susv2
 standardized an ASCII variant that is portable across all
 platforms.
 It is commonly known as the
+.Dq old character
+format or as the
 .Dq odc
 format.
-It stores the numeric fields as 6-character or 11-character
-octal values.
+It stores the same numeric fields as the old binary format, but
+represents them as 6-character or 11-character octal values.
 .Bd -literal -offset indent
 struct cpio_odc_header {
         char    c_magic[6];
@@ -188,17 +196,10 @@ struct cpio_odc_header {
 };
 .Ed
 .Pp
-Except as specified below, the fields here match those specified
-for the old binary format above.
-.Bl -tag -width indent
-.It Va magic
-The string
-.Dq 070707 .
-.It Va namesize
-The count here includes a terminating NULL byte.
-.El
-.Pp
+The fields are identical to those in the old binary format.
 The name and file body follow the fixed header.
+Unlike the old binary format, there is no additional padding
+after the pathname or file contents.
 If the files being archived are themselves entirely ASCII, then
 the resulting archive will be entirely ASCII, except for the
 NULL byte that terminates the name field.
@@ -241,6 +242,10 @@ of the fixed header plus pathname is a multiple of four.
 Likewise, the file data is padded to a multiple of four bytes.
 Note that this format supports only 4 gigabyte files (unlike the
 older ASCII format, which supports 8 gigabyte files).
+.Pp
+In this format, hardlinked files are handled by setting the
+filesize to zero for each entry except the last one that
+appears in the archive.
 .Ss New CRC Format
 The CRC format is identical to the new ASCII format described
 in the previous section except that the magic field is set
@@ -305,10 +310,16 @@ utility.
 .Sh HISTORY
 The original cpio utility was written by Dick Haight
 while working in AT&T's Unix Support Group.
-It was first available in PWB/UNIX 1.0, the
+It appeared in 1977 as part of PWB/UNIX 1.0, the
 .Dq Programmer's Work Bench
 derived from
 .At v6
 that was used internally at AT&T.
-It became more generally available as part of
-.At v7 .
+Both the old binary and old character formats were in use
+by 1980, according to the System III source released
+by SCO under their
+.Dq Ancient Unix
+license.
+The character format was adopted as part of
+.St -p1003.1-88 .
+XXX when did "newc" appear?  Who invented it?  When did HP come out with their variant?  When did Sun introduce ACLs and extended attributes? XXX

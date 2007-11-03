@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.61 2007/08/18 21:53:25 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.62 2007/10/24 04:01:31 kientzle Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -128,8 +128,8 @@ struct archive_entry_header_gnutar {
 	char	isextended[1];
 	char	realsize[12];
 	/*
-	 * GNU doesn't use POSIX 'prefix' field; they use the 'L' (longname)
-	 * entry instead.
+	 * Old GNU format doesn't use POSIX 'prefix' field; they use
+	 * the 'L' (longname) entry instead.
 	 */
 };
 
@@ -318,23 +318,8 @@ archive_read_format_tar_bid(struct archive_read *a)
 		bytes_read = 0; /* Empty file. */
 	if (bytes_read < 0)
 		return (ARCHIVE_FATAL);
-	if (bytes_read == 0  &&  bid > 0) {
-		/* An archive without a proper end-of-archive marker. */
-		/* Hold our nose and bid 1 anyway. */
-		return (1);
-	}
-	if (bytes_read < 512) {
-		/* If it's a new archive, then just return a zero bid. */
-		if (bid == 0)
-			return (0);
-		/*
-		 * If we already know this is a tar archive,
-		 * then we have a problem.
-		 */
-		archive_set_error(&a->archive, ARCHIVE_ERRNO_FILE_FORMAT,
-		    "Truncated tar archive");
-		return (ARCHIVE_FATAL);
-	}
+	if (bytes_read < 512)
+		return (0);
 
 	/* If it's an end-of-archive mark, we can handle it. */
 	if ((*(const char *)h) == 0 && archive_block_is_null((const unsigned char *)h)) {
@@ -440,6 +425,7 @@ archive_read_format_tar_read_header(struct archive_read *a,
 		free(sp);
 	}
 	tar->sparse_last = NULL;
+	tar->realsize = -1; /* Mark this as "unset" */
 
 	r = tar_read_header(a, tar, entry);
 
@@ -449,8 +435,6 @@ archive_read_format_tar_read_header(struct archive_read *a,
 	 */
 	if (tar->sparse_list == NULL)
 		gnu_add_sparse_entry(tar, 0, tar->entry_bytes_remaining);
-
-	tar->realsize = archive_entry_size(entry);
 
 	if (r == ARCHIVE_OK) {
 		/*
@@ -579,15 +563,23 @@ tar_read_header(struct archive_read *a, struct tar *tar,
 
 	/* Read 512-byte header record */
 	bytes = (a->decompressor->read_ahead)(a, &h, 512);
-	if (bytes < 512) {
+	if (bytes < 0)
+		return (bytes);
+	if (bytes == 0) {
 		/*
-		 * If we're here, it's becase the _bid function accepted
-		 * this file.  So just call a short read end-of-archive
-		 * and be done with it.
+		 * An archive that just ends without a proper
+		 * end-of-archive marker.  Yes, there are tar programs
+		 * that do this; hold our nose and accept it.
 		 */
 		return (ARCHIVE_EOF);
 	}
+	if (bytes < 512) {
+		archive_set_error(&a->archive, ARCHIVE_ERRNO_FILE_FORMAT,
+		    "Truncated tar archive");
+		return (ARCHIVE_FATAL);
+	}
 	(a->decompressor->consume)(a, 512);
+
 
 	/* Check for end-of-archive mark. */
 	if (((*(const char *)h)==0) && archive_block_is_null((const unsigned char *)h)) {
@@ -934,6 +926,7 @@ header_common(struct archive_read *a, struct tar *tar,
 	archive_entry_set_uid(entry, tar_atol(header->uid, sizeof(header->uid)));
 	archive_entry_set_gid(entry, tar_atol(header->gid, sizeof(header->gid)));
 	tar->entry_bytes_remaining = tar_atol(header->size, sizeof(header->size));
+	tar->realsize = tar->entry_bytes_remaining;
 	archive_entry_set_size(entry, tar->entry_bytes_remaining);
 	archive_entry_set_mtime(entry, tar_atol(header->mtime, sizeof(header->mtime)), 0);
 
@@ -1365,9 +1358,10 @@ pax_attribute(struct tar *tar, struct archive_entry *entry,
 				tar->sparse_numbytes = -1;
 			}
 		}
-		if (wcscmp(key, L"GNU.sparse.size") == 0)
-			archive_entry_set_size(entry,
-			    tar_atol10(value, wcslen(value)));
+		if (wcscmp(key, L"GNU.sparse.size") == 0) {
+			tar->realsize = tar_atol10(value, wcslen(value));
+			archive_entry_set_size(entry, tar->realsize);
+		}
 
 		/* GNU "0.1" sparse pax format. */
 		if (wcscmp(key, L"GNU.sparse.map") == 0) {
@@ -1388,9 +1382,10 @@ pax_attribute(struct tar *tar, struct archive_entry *entry,
 		}
 		if (wcscmp(key, L"GNU.sparse.name") == 0)
 			archive_entry_copy_pathname_w(entry, value);
-		if (wcscmp(key, L"GNU.sparse.realsize") == 0)
-			archive_entry_set_size(entry,
-			    tar_atol10(value, wcslen(value)));
+		if (wcscmp(key, L"GNU.sparse.realsize") == 0) {
+			tar->realsize = tar_atol10(value, wcslen(value));
+			archive_entry_set_size(entry, tar->realsize);
+		}
 		break;
 	case 'L':
 		/* Our extensions */
@@ -1422,6 +1417,10 @@ pax_attribute(struct tar *tar, struct archive_entry *entry,
 			archive_entry_set_ino(entry, tar_atol10(value, wcslen(value)));
 		else if (wcscmp(key, L"SCHILY.nlink")==0)
 			archive_entry_set_nlink(entry, tar_atol10(value, wcslen(value)));
+		else if (wcscmp(key, L"SCHILY.realsize")==0) {
+			tar->realsize = tar_atol10(value, wcslen(value));
+			archive_entry_set_size(entry, tar->realsize);
+		}
 		break;
 	case 'a':
 		if (wcscmp(key, L"atime")==0) {
@@ -1471,11 +1470,24 @@ pax_attribute(struct tar *tar, struct archive_entry *entry,
 		/* POSIX has reserved 'security.*' */
 		/* Someday: if (wcscmp(key, L"security.acl")==0) { ... } */
 		if (wcscmp(key, L"size")==0) {
-			tar->entry_bytes_remaining = tar_atol10(value, wcslen(value));
-			archive_entry_set_size(entry, tar->entry_bytes_remaining);
+			/* "size" is the size of the data in the entry. */
+			tar->entry_bytes_remaining
+			    = tar_atol10(value, wcslen(value));
+			/*
+			 * But, "size" is not necessarily the size of
+			 * the file on disk; if this is a sparse file,
+			 * the disk size may have already been set from
+			 * GNU.sparse.realsize or GNU.sparse.size or
+			 * an old GNU header field or SCHILY.realsize
+			 * or ....
+			 */
+			if (tar->realsize < 0) {
+				archive_entry_set_size(entry,
+				    tar->entry_bytes_remaining);
+				tar->realsize
+				    = tar->entry_bytes_remaining;
+			}
 		}
-		tar->entry_bytes_remaining = 0;
-
 		break;
 	case 'u':
 		if (wcscmp(key, L"uid")==0)
@@ -1594,8 +1606,9 @@ header_gnutar(struct archive_read *a, struct tar *tar,
 	archive_entry_set_ctime(entry,
 	    tar_atol(header->ctime, sizeof(header->ctime)), 0);
 	if (header->realsize[0] != 0) {
-		archive_entry_set_size(entry,
-		    tar_atol(header->realsize, sizeof(header->realsize)));
+		tar->realsize
+		    = tar_atol(header->realsize, sizeof(header->realsize));
+		archive_entry_set_size(entry, tar->realsize);
 	}
 
 	if (header->sparse[0].offset[0] != 0) {
