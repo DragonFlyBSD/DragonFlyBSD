@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.32 2007/11/04 04:28:52 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.33 2007/11/04 06:57:46 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1982,6 +1982,18 @@ ipfw_inc_static_count(struct ip_fw *rule)
 	static_len += RULESIZE(rule);
 }
 
+static __inline void
+ipfw_dec_static_count(struct ip_fw *rule)
+{
+	int l = RULESIZE(rule);
+
+	KASSERT(static_count > 0, ("invalid static count %u\n", static_count));
+	static_count--;
+
+	KASSERT(static_len >= l, ("invalid static len %u\n", static_len));
+	static_len -= l;
+}
+
 /*
  * Add a new rule to the list. Copy the rule into a malloc'ed area, then
  * possibly create a rule number and add the rule to the list.
@@ -2066,7 +2078,6 @@ static struct ip_fw *
 delete_rule(struct ip_fw **head, struct ip_fw *prev, struct ip_fw *rule)
 {
 	struct ip_fw *n;
-	int l = RULESIZE(rule);
 
 	n = rule->next;
 	remove_dyn_rule(rule, NULL /* force removal */);
@@ -2074,8 +2085,7 @@ delete_rule(struct ip_fw **head, struct ip_fw *prev, struct ip_fw *rule)
 		*head = n;
 	else
 		prev->next = n;
-	static_count--;
-	static_len -= l;
+	ipfw_dec_static_count(rule);
 
 	if (DUMMYNET_LOADED)
 		ip_dn_ruledel_ptr(rule);
