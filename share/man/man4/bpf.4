@@ -21,7 +21,7 @@
 .\" distributed with 4.3BSD Unix.
 .\"
 .\" $FreeBSD: src/share/man/man4/bpf.4,v 1.21.2.11 2002/04/07 04:57:13 dd Exp $
-.\" $DragonFly: src/share/man/man4/bpf.4,v 1.5 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bpf.4,v 1.6 2007/11/04 19:04:42 swildner Exp $
 .\"
 .Dd January 16, 1996
 .Dt BPF 4
@@ -127,7 +127,7 @@ file.
 The (third) argument to
 .Xr ioctl 2
 should be a pointer to the type indicated.
-.Bl -tag -width BIOCGRTIMEOUT
+.Bl -tag -width ".Dv BIOCGRTIMEOUT"
 .It Dv BIOCGBLEN
 .Pq Li u_int
 Returns the required buffer length for reads on
@@ -163,7 +163,8 @@ packets promiscuously.  This problem can be remedied with an
 appropriate filter.
 .It Dv BIOCFLUSH
 Flushes the buffer of incoming packets,
-and resets the statistics that are returned by BIOCGSTATS.
+and resets the statistics that are returned by
+.Dv BIOCGSTATS .
 .It Dv BIOCGETIF
 .Pq Li "struct ifreq"
 Returns the name of the hardware interface that the file is listening on.

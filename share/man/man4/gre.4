@@ -1,6 +1,6 @@
 .\" $NetBSD: gre.4,v 1.28 2002/06/10 02:49:35 itojun Exp $
 .\"  $FreeBSD: src/share/man/man4/gre.4,v 1.1.2.1 2002/12/01 14:03:11 sobomax Exp $
-.\"  $DragonFly: src/share/man/man4/gre.4,v 1.3 2007/07/29 17:27:45 swildner Exp $
+.\"  $DragonFly: src/share/man/man4/gre.4,v 1.4 2007/11/04 19:04:42 swildner Exp $
 .\"
 .\" Copyright 1998 (c) The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -87,25 +87,25 @@ interfaces support a number of
 .Xr ioctl 2 Ns s ,
 such as:
 .Bl -tag -width aaa
-.It GRESADDRS :
+.It Dv GRESADDRS :
 Set the IP address of the local tunnel end.  This is the source address
 set by or displayed by ifconfig for the
 .Sy gre Ns Ar X
 interface.
-.It GRESADDRD :
+.It Dv GRESADDRD :
 Set the IP address of the remote tunnel end.  This is the destination address
 set by or displayed by ifconfig for the
 .Sy gre Ns Ar X
 interface.
-.It GREGADDRS :
+.It Dv GREGADDRS :
 Query the IP address that is set for the local tunnel end.  This is the
 address the encapsulation header carries as local address (i.e. the real
 address of the tunnel start point.)
-.It GREGADDRD :
+.It Dv GREGADDRD :
 Query the IP address that is set for the remote tunnel end.  This is the
 address the encapsulated packets are sent to (i.e. the real address of
 the remote tunnel endpoint.)
-.It GRESPROTO :
+.It Dv GRESPROTO :
 Set the operation mode to the specified IP protocol value.  The
 protocol is passed to the interface in (struct ifreq)-\*[Gt]ifr_flags.
 The operation mode can also be given as
@@ -123,7 +123,7 @@ The link1 flag is not used to choose encapsulation, but to modify the
 internal route search for the remote tunnel endpoint, see the
 .Sx BUGS
 section below.
-.It GREGPROTO :
+.It Dv GREGPROTO :
 Query operation mode.
 .El
 .Pp

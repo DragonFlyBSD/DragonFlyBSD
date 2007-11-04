@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/cx.4,v 1.7.2.6 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/cx.4,v 1.4 2006/11/14 22:27:49 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/cx.4,v 1.5 2007/11/04 19:04:42 swildner Exp $
 .\"
 .Dd December 12, 1994
 .Dt CX 4 i386
@@ -94,7 +94,7 @@ Here # is the channel number in hexadecimal form, 0-9-a-f.
 The driver fulfills the following standard ioctl requests (see
 .Xr ioctl 2 ) :
 .Pp
-.Bl -tag -width TIOCXXXXX -compact
+.Bl -tag -width ".Dv TIOCSBRK" -compact
 .It Dv TIOCSBRK
 Start sending BREAK.
 .It Dv TIOCCBRK
@@ -110,30 +110,30 @@ and could be changed by
 .Dv TIOCMBIS ,
 .Dv TIOCMBIC
 ioctl calls.
-.It TIOCCDTR
+.It Dv TIOCCDTR
 Clear DTR signal (DTR := 0).
-.It TIOCMSET
+.It Dv TIOCMSET
 Set the given values of DTR and RTS signals (<DTR:RTS> := data).
 The signals DTR and RTS are controlled by
 .Dv TIOCM_DTR
 and
 .Dv TIOCM_RTS
 bits of the data argument of the ioctl system call.
-.It TIOCMBIS
+.It Dv TIOCMBIS
 Set DTR and RTS signals (<DTR:RTS> |= data).
 The signals DTR and RTS are controlled by
 .Dv TIOCM_DTR
 and
 .Dv TIOCM_RTS
 bits of the data argument of the ioctl system call.
-.It TIOCMBIC
+.It Dv TIOCMBIC
 Clear DTR and RTS signals (<DTR:RTS> &= ~data).
 The signals DTR and RTS are controlled by
 .Dv TIOCM_DTR
 and
 .Dv TIOCM_RTS
 bits of the data argument of the ioctl system call.
-.It TIOCMGET
+.It Dv TIOCMGET
 Determine the state of the modem signals of the line.
 After the call the data argument contains the following bits:
 .Pp
@@ -202,10 +202,10 @@ The actual channel options control functions are implemented via
 the ioctl-s on the special device file /dev/cronyx.
 There are the following ioctl-s available:
 .Pp
-.Bl -tag -width CXIOCXXXXXXX -compact
-.It CXIOCGETMODE
+.Bl -tag -width ".Dv CXIOCGETMODE" -compact
+.It Dv CXIOCGETMODE
 Get the channel option values.
-.It CXIOCSETMODE
+.It Dv CXIOCSETMODE
 Set the channel option values.
 .El
 .Pp

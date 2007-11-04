@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/keyboard.4,v 1.19.2.5 2001/08/17 13:08:38 ru Exp $
-.\" $DragonFly: src/share/man/man4/keyboard.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/keyboard.4,v 1.3 2007/11/04 19:04:42 swildner Exp $
 .\"
 .Dd January 8, 1995
 .Dt KEYBOARD 4
@@ -59,7 +59,9 @@ pressed, and the number with bit 7 as 1 when released.
 This makes it
 possible to make the mapping of the keys fully configurable.
 .Pp
-The meaning of every key is programmable via the PIO_KEYMAP ioctl call, that
+The meaning of every key is programmable via the
+.Dv PIO_KEYMAP
+ioctl call, that
 takes a structure keymap_t as argument.
 The layout of this structure is as
 follows:
@@ -113,10 +115,14 @@ The
 utility is used to load such a description into/outof
 the kernel at runtime.
 This makes it possible to change the key
-assignments at runtime, or more important to get (GIO_KEYMAP ioctl)
+assignments at runtime, or more important to get
+.Dv ( GIO_KEYMAP
+ioctl)
 the exact key meanings from the kernel (fx. used by the X server).
 .Pp
-The function keys can be programmed using the SETFKEY ioctl call.
+The function keys can be programmed using the
+.Dv SETFKEY
+ioctl call.
 .Pp
 This ioctl takes a argument of the type fkeyarg_t:
 .Bd -literal -offset indent
@@ -131,7 +137,9 @@ The field keynum defines which function key that is programmed.
 The array keydef should contain the new string to be used (MAXFK long),
 and the length should be entered in flen.
 .Pp
-The GETFKEY ioctl call works in a similar manner, except it returns
+The
+.Dv GETFKEY
+ioctl call works in a similar manner, except it returns
 the current setting of keynum.
 .Pp
 The function keys are numbered like this:

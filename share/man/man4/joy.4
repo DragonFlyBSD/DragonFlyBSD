@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/joy.4,v 1.12.4.10 2002/07/22 14:21:51 ru Exp $
-.\" $DragonFly: src/share/man/man4/joy.4,v 1.4 2007/10/13 09:01:11 swildner Exp $
+.\" $DragonFly: src/share/man/man4/joy.4,v 1.5 2007/11/04 19:04:42 swildner Exp $
 .\"
 .Dd January 23, 1995
 .Dt JOY 4
@@ -45,7 +45,7 @@ perl -e 'open(JOY,"/dev/joy0")||die;while(1)
 Several ioctl() calls are also available.
 They take an argument of
 type int *
-.Bl -tag -width JOY_SET_X_OFFSET
+.Bl -tag -width ".Dv JOY_SET_X_OFFSET"
 .It Dv JOY_SETTIMEOUT Fa int *limit
 Set the time limit (in microseconds) for reading the joystick
 status.

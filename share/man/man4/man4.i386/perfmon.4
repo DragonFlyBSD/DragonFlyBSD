@@ -27,7 +27,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/perfmon.4,v 1.8.2.5 2001/08/17 13:08:46 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/perfmon.4,v 1.3 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/perfmon.4,v 1.4 2007/11/04 19:04:42 swildner Exp $
 .Dd March 26, 1996
 .Dt PERFMON 4 i386
 .Os
@@ -75,7 +75,7 @@ numbers used are the correct ones for the CPU type being measured.
 The following
 .Xr ioctl 2
 requests are defined:
-.Bl -tag -width PMIOTSTAMP
+.Bl -tag -width ".Dv PMIOTSTAMP"
 .It Dv PMIOSETUP
 .Pq Li "struct pmc"
 Set up a counter with parameters and flags defined in the structure.

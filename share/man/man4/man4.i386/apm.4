@@ -10,7 +10,7 @@
 .\" use.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/apm.4,v 1.13.2.5 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/apm.4,v 1.5 2007/05/12 21:15:35 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/apm.4,v 1.6 2007/11/04 19:04:42 swildner Exp $
 .\"
 .Dd November 1, 1994
 .Dt APM 4 i386
@@ -51,17 +51,17 @@ can control APM, or retrieve APM status information via this interface.
 exports the following interfaces.  These symbols are defined in
 .In machine/apm_bios.h .
 .Bl -tag -width 4n -offset indent
-.It Sy APMIO_SUSPEND
+.It Dv APMIO_SUSPEND
 Suspend system.
-.It Sy APMIO_GET
+.It Dv APMIO_GET
 Get power management information.
-.It Sy APMIO_ENABLE
-.It Sy APMIO_DISABLE
+.It Dv APMIO_ENABLE
+.It Dv APMIO_DISABLE
 Enable / Disable power management.
-.It Sy APMIO_HALTCPU
-.It Sy APMIO_NOTHALTCPU
+.It Dv APMIO_HALTCPU
+.It Dv APMIO_NOTHALTCPU
 Control execution of HLT in the kernel context switch routine.
-.It Sy APMIO_GETPWSTATUS
+.It Dv APMIO_GETPWSTATUS
 Get per battery information.
 .Pp
 Some APM implementations execute the HLT
@@ -82,7 +82,7 @@ On some implementations that do not support CPU clock slowdown, APM
 might not execute HLT.
 .Nm
 disables
-.Sy APMIO_NOTHALTCPU
+.Dv APMIO_NOTHALTCPU
 operation on such machines.
 .Pp
 The current version of
