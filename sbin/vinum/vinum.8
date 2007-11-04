@@ -32,7 +32,7 @@
 .\"
 .\" $Id: vinum.8,v 1.48 2001/01/15 22:15:05 grog Exp $
 .\" $FreeBSD: src/sbin/vinum/vinum.8,v 1.33.2.10 2002/12/29 16:35:38 schweikh Exp $
-.\" $DragonFly: src/sbin/vinum/vinum.8,v 1.7 2007/08/11 22:57:42 swildner Exp $
+.\" $DragonFly: src/sbin/vinum/vinum.8,v 1.8 2007/11/04 16:34:55 swildner Exp $
 .\"
 .Dd August 11, 2007
 .Dt VINUM 8
@@ -1730,9 +1730,8 @@ Define a subdisk.  Options may be:
 .Bl -hang -width 18n
 .It Cm name Ar name
 Specify the name of a subdisk.  It is not necessary to specify a name for a
-subdisk, see
-.Sx OBJECT NAMING
-above.  Note that you must specify the keyword
+subdisk.
+Note that you must specify the keyword
 .Cm name
 if you wish to name a subdisk.
 .It Cm plexoffset Ar offset
