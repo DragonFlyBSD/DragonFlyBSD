@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.31 2007/10/29 12:23:57 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.32 2007/11/04 04:28:52 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1975,6 +1975,13 @@ flush_pipe_ptrs(struct dn_flow_set *match)
 	}
 }
 
+static __inline void
+ipfw_inc_static_count(struct ip_fw *rule)
+{
+	static_count++;
+	static_len += RULESIZE(rule);
+}
+
 /*
  * Add a new rule to the list. Copy the rule into a malloc'ed area, then
  * possibly create a rule number and add the rule to the list.
@@ -1986,11 +1993,9 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 	struct ip_fw *rule, *f, *prev;
 	int l = RULESIZE(input_rule);
 
-	if (*head == NULL && input_rule->rulenum != IPFW_DEFAULT_RULE)
-		return (EINVAL);
+	KKASSERT(*head != NULL);
 
 	rule = kmalloc(l, M_IPFW, M_WAITOK | M_ZERO);
-
 	bcopy(input_rule, rule, l);
 
 	rule->next = NULL;
@@ -2001,11 +2006,6 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 	rule->timestamp = 0;
 
 	crit_enter();
-
-	if (*head == NULL) {	/* default rule */
-		*head = rule;
-		goto done;
-	}
 
 	/*
 	 * If rulenum is 0, find highest numbered rule before the
@@ -2045,9 +2045,8 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 		}
 	}
 	flush_rule_ptrs();
-done:
-	static_count++;
-	static_len += l;
+
+	ipfw_inc_static_count(rule);
 	crit_exit();
 	DEB(kprintf("++ installed rule %d, static count now %d\n",
 		rule->rulenum, static_count);)
@@ -2670,31 +2669,42 @@ done:
 }
 
 static void
+ipfw_init_default_rule(struct ip_fw **head)
+{
+	struct ip_fw *def_rule;
+
+	KKASSERT(*head == NULL);
+
+	def_rule = kmalloc(sizeof(*def_rule), M_IPFW, M_WAITOK | M_ZERO);
+
+	def_rule->act_ofs = 0;
+	def_rule->rulenum = IPFW_DEFAULT_RULE;
+	def_rule->cmd_len = 1;
+	def_rule->set = 31;
+
+	def_rule->cmd[0].len = 1;
+#ifdef IPFIREWALL_DEFAULT_TO_ACCEPT
+	def_rule->cmd[0].opcode = O_ACCEPT;
+#else
+	def_rule->cmd[0].opcode = O_DENY;
+#endif
+
+	*head = def_rule;
+	ipfw_inc_static_count(def_rule);
+
+	/* Install the default rule */
+	ip_fw_default_rule = def_rule;
+}
+
+static void
 ipfw_init(void)
 {
-	struct ip_fw default_rule;
-
 	ip_fw_chk_ptr = ipfw_chk;
 	ip_fw_ctl_ptr = ipfw_ctl;
+
 	layer3_chain = NULL;
+	ipfw_init_default_rule(&layer3_chain);
 
-	bzero(&default_rule, sizeof default_rule);
-
-	default_rule.act_ofs = 0;
-	default_rule.rulenum = IPFW_DEFAULT_RULE;
-	default_rule.cmd_len = 1;
-	default_rule.set = 31;
-
-	default_rule.cmd[0].len = 1;
-	default_rule.cmd[0].opcode =
-#ifdef IPFIREWALL_DEFAULT_TO_ACCEPT
-				1 ? O_ACCEPT :
-#endif
-				O_DENY;
-
-	add_rule(&layer3_chain, &default_rule);
-
-	ip_fw_default_rule = layer3_chain;
 	kprintf("ipfw2 initialized, divert %s, "
 		"rule-based forwarding enabled, default to %s, logging ",
 #ifdef IPDIVERT
@@ -2702,7 +2712,8 @@ ipfw_init(void)
 #else
 		"disabled",
 #endif
-		default_rule.cmd[0].opcode == O_ACCEPT ? "accept" : "deny");
+		ip_fw_default_rule->cmd[0].opcode == O_ACCEPT ?
+		"accept" : "deny");
 
 #ifdef IPFIREWALL_VERBOSE
 	fw_verbose = 1;
