@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.5 2007/11/05 08:58:35 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.6 2007/11/05 13:11:16 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -139,33 +139,33 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
  *		to skip past the last instruction of the block.
  *
  * NOTA BENE: in a couple of places we assume that
- *	sizeof(ipfw_insn) == sizeof(u_int32_t)
+ *	sizeof(ipfw_insn) == sizeof(uint32_t)
  * this needs to be fixed.
  *
  */
 typedef struct	_ipfw_insn {	/* template for instructions */
 	enum ipfw_opcodes	opcode:8;
-	u_int8_t	len;	/* numer of 32-byte words */
+	uint8_t		len;	/* numer of 32-byte words */
 #define	F_NOT		0x80
 #define	F_OR		0x40
 #define	F_LEN_MASK	0x3f
 #define	F_LEN(cmd)	((cmd)->len & F_LEN_MASK)
 
-	u_int16_t	arg1;
+	uint16_t	arg1;
 } ipfw_insn;
 
 /*
  * The F_INSN_SIZE(type) computes the size, in 4-byte words, of
  * a given type.
  */
-#define	F_INSN_SIZE(t)	((sizeof (t))/sizeof(u_int32_t))
+#define	F_INSN_SIZE(t)	((sizeof (t))/sizeof(uint32_t))
 
 /*
  * This is used to store an array of 16-bit entries (ports etc.)
  */
 typedef struct	_ipfw_insn_u16 {
 	ipfw_insn o;
-	u_int16_t ports[2];	/* there may be more */
+	uint16_t ports[2];	/* there may be more */
 } ipfw_insn_u16;
 
 /*
@@ -174,7 +174,7 @@ typedef struct	_ipfw_insn_u16 {
  */
 typedef struct	_ipfw_insn_u32 {
 	ipfw_insn o;
-	u_int32_t d[1];	/* one or more */
+	uint32_t d[1];	/* one or more */
 } ipfw_insn_u32;
 
 /*
@@ -230,14 +230,14 @@ typedef struct	_ipfw_insn_pipe {
  */
 typedef struct	_ipfw_insn_limit {
 	ipfw_insn o;
-	u_int8_t _pad;
-	u_int8_t limit_mask;	/* combination of DYN_* below	*/
+	uint8_t _pad;
+	uint8_t limit_mask;	/* combination of DYN_* below	*/
 #define	DYN_SRC_ADDR	0x1
 #define	DYN_SRC_PORT	0x2
 #define	DYN_DST_ADDR	0x4
 #define	DYN_DST_PORT	0x8
 
-	u_int16_t conn_limit;
+	uint16_t conn_limit;
 } ipfw_insn_limit;
 
 /*
@@ -245,8 +245,8 @@ typedef struct	_ipfw_insn_limit {
  */
 typedef struct  _ipfw_insn_log {
         ipfw_insn o;
-	u_int32_t max_log;	/* how many do we log -- 0 = all */
-	u_int32_t log_left;	/* how many left to log 	*/
+	uint32_t max_log;	/* how many do we log -- 0 = all */
+	uint32_t log_left;	/* how many left to log 	*/
 } ipfw_insn_log;
 
 #ifdef _KERNEL
@@ -279,16 +279,16 @@ typedef struct  _ipfw_insn_log {
 struct ip_fw {
 	struct ip_fw	*next;		/* linked list of rules		*/
 	struct ip_fw	*next_rule;	/* ptr to next [skipto] rule	*/
-	u_int16_t	act_ofs;	/* offset of action in 32-bit units */
-	u_int16_t	cmd_len;	/* # of 32-bit words in cmd	*/
-	u_int16_t	rulenum;	/* rule number			*/
-	u_int8_t	set;		/* rule set (0..31)		*/
-	u_int8_t	usr_flags;	/* IPFW_USR_F_			*/
+	uint16_t	act_ofs;	/* offset of action in 32-bit units */
+	uint16_t	cmd_len;	/* # of 32-bit words in cmd	*/
+	uint16_t	rulenum;	/* rule number			*/
+	uint8_t		set;		/* rule set (0..31)		*/
+	uint8_t		usr_flags;	/* IPFW_USR_F_			*/
 
 	/* These fields are present in all rules.			*/
-	u_int64_t	pcnt;		/* Packet counter		*/
-	u_int64_t	bcnt;		/* Byte counter			*/
-	u_int32_t	timestamp;	/* tv_sec of last match		*/
+	uint64_t	pcnt;		/* Packet counter		*/
+	uint64_t	bcnt;		/* Byte counter			*/
+	uint32_t	timestamp;	/* tv_sec of last match		*/
 
 	ipfw_insn	cmd[1];		/* storage for commands		*/
 };
@@ -300,12 +300,12 @@ struct ip_fw {
  * parts of the code.
  */
 struct ipfw_flow_id {
-	u_int32_t	dst_ip;
-	u_int32_t	src_ip;
-	u_int16_t	dst_port;
-	u_int16_t	src_port;
-	u_int8_t	proto;
-	u_int8_t	flags;	/* protocol-specific flags */
+	uint32_t	dst_ip;
+	uint32_t	src_ip;
+	uint16_t	dst_port;
+	uint16_t	src_port;
+	uint8_t		proto;
+	uint8_t		flags;	/* protocol-specific flags */
 };
 
 /*
@@ -318,18 +318,18 @@ struct _ipfw_dyn_rule {
 	struct ipfw_flow_id id;		/* (masked) flow id		*/
 	struct ip_fw *rule;		/* pointer to rule		*/
 	ipfw_dyn_rule *parent;		/* pointer to parent rule	*/
-	u_int32_t	expire;		/* expire time			*/
-	u_int64_t	pcnt;		/* packet match counter		*/
-	u_int64_t	bcnt;		/* byte match counter		*/
-	u_int32_t	bucket;		/* which bucket in hash table	*/
-	u_int32_t	state;		/* state of this rule (typically a
+	uint32_t	expire;		/* expire time			*/
+	uint64_t	pcnt;		/* packet match counter		*/
+	uint64_t	bcnt;		/* byte match counter		*/
+	uint32_t	bucket;		/* which bucket in hash table	*/
+	uint32_t	state;		/* state of this rule (typically a
 					 * combination of TCP flags)
 					 */
-	u_int32_t	ack_fwd;	/* most recent ACKs in forward	*/
-	u_int32_t	ack_rev;	/* and reverse directions (used	*/
+	uint32_t	ack_fwd;	/* most recent ACKs in forward	*/
+	uint32_t	ack_rev;	/* and reverse directions (used	*/
 					/* to generate keepalives)	*/
-	u_int16_t	dyn_type;	/* rule type			*/
-	u_int16_t	count;		/* refcount			*/
+	uint16_t	dyn_type;	/* rule type			*/
+	uint16_t	count;		/* refcount			*/
 };
 
 /*
@@ -357,7 +357,7 @@ struct ip_fw_args {
 	int flags;			/* for dummynet			*/
 
 	struct ipfw_flow_id f_id;	/* grabbed from IP header	*/
-	u_int32_t	retval;
+	uint32_t	retval;
 };
 
 /*

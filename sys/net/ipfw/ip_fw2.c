@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.35 2007/11/05 09:25:44 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.36 2007/11/05 13:11:16 sephe Exp $
  */
 
 #define        DEB(x)
@@ -82,7 +82,7 @@
  * are disabled. Set 31 is reserved for the default rule
  * and CANNOT be disabled.
  */
-static u_int32_t set_disable;
+static uint32_t set_disable;
 
 static int fw_verbose;
 static int verbose_limit;
@@ -153,18 +153,18 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, verbose_limit, CTLFLAG_RW,
  * passes through the firewall. XXX check the latter!!!
  */
 static ipfw_dyn_rule **ipfw_dyn_v = NULL;
-static u_int32_t dyn_buckets = 256; /* must be power of 2 */
-static u_int32_t curr_dyn_buckets = 256; /* must be power of 2 */
+static uint32_t dyn_buckets = 256; /* must be power of 2 */
+static uint32_t curr_dyn_buckets = 256; /* must be power of 2 */
 
 /*
  * Timeouts for various events in handing dynamic rules.
  */
-static u_int32_t dyn_ack_lifetime = 300;
-static u_int32_t dyn_syn_lifetime = 20;
-static u_int32_t dyn_fin_lifetime = 1;
-static u_int32_t dyn_rst_lifetime = 1;
-static u_int32_t dyn_udp_lifetime = 10;
-static u_int32_t dyn_short_lifetime = 5;
+static uint32_t dyn_ack_lifetime = 300;
+static uint32_t dyn_syn_lifetime = 20;
+static uint32_t dyn_fin_lifetime = 1;
+static uint32_t dyn_rst_lifetime = 1;
+static uint32_t dyn_udp_lifetime = 10;
+static uint32_t dyn_short_lifetime = 5;
 
 /*
  * Keepalives are sent if dyn_keepalive is set. They are sent every
@@ -174,14 +174,14 @@ static u_int32_t dyn_short_lifetime = 5;
  * than dyn_keepalive_period.
  */
 
-static u_int32_t dyn_keepalive_interval = 20;
-static u_int32_t dyn_keepalive_period = 5;
-static u_int32_t dyn_keepalive = 1;	/* do send keepalives */
+static uint32_t dyn_keepalive_interval = 20;
+static uint32_t dyn_keepalive_period = 5;
+static uint32_t dyn_keepalive = 1;	/* do send keepalives */
 
-static u_int32_t static_count;		/* # of static rules */
-static u_int32_t static_ioc_len;	/* bytes of static rules */
-static u_int32_t dyn_count;		/* # of dynamic rules */
-static u_int32_t dyn_max = 4096;	/* max # of dynamic rules */
+static uint32_t static_count;		/* # of static rules */
+static uint32_t static_ioc_len;	/* bytes of static rules */
+static uint32_t dyn_count;		/* # of dynamic rules */
+static uint32_t dyn_max = 4096;	/* max # of dynamic rules */
 
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_buckets, CTLFLAG_RW,
     &dyn_buckets, 0, "Number of dyn. buckets");
@@ -226,7 +226,7 @@ ip_dn_ruledel_t *ip_dn_ruledel_ptr = NULL;	/* hook into dummynet */
 /*
  * This macro maps an ip pointer into a layer3 header pointer of type T
  */
-#define	L3HDR(T, ip) ((T *)((u_int32_t *)(ip) + (ip)->ip_hl))
+#define	L3HDR(T, ip) ((T *)((uint32_t *)(ip) + (ip)->ip_hl))
 
 static __inline int
 icmptype_match(struct ip *ip, ipfw_insn_u32 *cmd)
@@ -260,7 +260,7 @@ is_icmp_query(struct ip *ip)
  */
 
 static int
-flags_match(ipfw_insn *cmd, u_int8_t bits)
+flags_match(ipfw_insn *cmd, uint8_t bits)
 {
 	u_char want_clear;
 	bits = ~bits;
@@ -400,7 +400,7 @@ iface_match(struct ifnet *ifp, ipfw_insn_if *cmd)
 	return(0);	/* no match, fail ... */
 }
 
-static u_int64_t norule_counter;	/* counter for ipfw_log(NULL...) */
+static uint64_t norule_counter;	/* counter for ipfw_log(NULL...) */
 
 #define SNPARGS(buf, len) buf + len, sizeof(buf) > len ? sizeof(buf) - len : 0
 #define SNP(buf) buf, sizeof(buf)
@@ -600,7 +600,7 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 static __inline int
 hash_packet(struct ipfw_flow_id *id)
 {
-	u_int32_t i;
+	uint32_t i;
 
 	i = (id->dst_ip) ^ (id->src_ip) ^ (id->dst_port) ^ (id->src_port);
 	i &= (curr_dyn_buckets - 1);
@@ -647,7 +647,7 @@ hash_packet(struct ipfw_flow_id *id)
 static void
 remove_dyn_rule(struct ip_fw *rule, ipfw_dyn_rule *keep_me)
 {
-	static u_int32_t last_remove = 0;
+	static uint32_t last_remove = 0;
 
 #define FORCE (keep_me == NULL)
 
@@ -778,7 +778,7 @@ next:
 		case BOTH_SYN | (TH_FIN << 8) :
  			if (tcp) {
 #define _SEQ_GE(a,b) ((int)(a) - (int)(b) >= 0)
-			    u_int32_t ack = ntohl(tcp->th_ack);
+			    uint32_t ack = ntohl(tcp->th_ack);
 			    if (dir == MATCH_FORWARD) {
 				if (q->ack_fwd == 0 || _SEQ_GE(ack, q->ack_fwd))
 				    q->ack_fwd = ack;
@@ -866,7 +866,7 @@ realloc_dynamic_table(void)
  * - "parent" rules for the above (O_LIMIT_PARENT).
  */
 static ipfw_dyn_rule *
-add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
+add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 {
 	ipfw_dyn_rule *r;
 	int i;
@@ -992,7 +992,7 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
 
 	case O_LIMIT: /* limit number of sessions */
 	    {
-		u_int16_t limit_mask = cmd->limit_mask;
+		uint16_t limit_mask = cmd->limit_mask;
 		struct ipfw_flow_id id;
 		ipfw_dyn_rule *parent;
 
@@ -1047,7 +1047,7 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
  * Otherwise we are sending a keepalive, and flags & TH_
  */
 static void
-send_pkt(struct ipfw_flow_id *id, u_int32_t seq, u_int32_t ack, int flags)
+send_pkt(struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 {
 	struct mbuf *m;
 	struct ip *ip;
@@ -1289,10 +1289,10 @@ ipfw_chk(struct ip_fw_args *args)
 	 * src_ip, dst_ip	ip addresses, in NETWORK format.
 	 *	Only valid for IPv4 packets.
 	 */
-	u_int8_t proto;
-	u_int16_t src_port = 0, dst_port = 0;	/* NOTE: host format	*/
+	uint8_t proto;
+	uint16_t src_port = 0, dst_port = 0;	/* NOTE: host format	*/
 	struct in_addr src_ip, dst_ip;		/* NOTE: network format	*/
-	u_int16_t ip_len=0;
+	uint16_t ip_len=0;
 	int dyn_dir = MATCH_UNKNOWN;
 	ipfw_dyn_rule *q = NULL;
 
@@ -1404,7 +1404,7 @@ after_ip_checks:
 
 		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
 		if (mtag != NULL)
-			skipto = *(u_int16_t *)m_tag_data(mtag);
+			skipto = *(uint16_t *)m_tag_data(mtag);
 		else
 			skipto = 0;
 
@@ -1543,11 +1543,11 @@ check_body:
 
 			case O_MACADDR2:
 				if (args->eh != NULL) {	/* have MAC header */
-					u_int32_t *want = (u_int32_t *)
+					uint32_t *want = (uint32_t *)
 						((ipfw_insn_mac *)cmd)->addr;
-					u_int32_t *mask = (u_int32_t *)
+					uint32_t *mask = (uint32_t *)
 						((ipfw_insn_mac *)cmd)->mask;
-					u_int32_t *hdr = (u_int32_t *)args->eh;
+					uint32_t *hdr = (uint32_t *)args->eh;
 
 					match =
 					    ( want[0] == (hdr[0] & mask[0]) &&
@@ -1558,9 +1558,9 @@ check_body:
 
 			case O_MAC_TYPE:
 				if (args->eh != NULL) {
-					u_int16_t t =
+					uint16_t t =
 					    ntohs(args->eh->ether_type);
-					u_int16_t *p =
+					uint16_t *p =
 					    ((ipfw_insn_u16 *)cmd)->ports;
 					int i;
 
@@ -1615,8 +1615,8 @@ check_body:
 			case O_IP_DST_SET:
 			case O_IP_SRC_SET:
 				if (hlen > 0) {
-					u_int32_t *d = (u_int32_t *)(cmd+1);
-					u_int32_t addr =
+					uint32_t *d = (uint32_t *)(cmd+1);
+					uint32_t addr =
 					    cmd->opcode == O_IP_DST_SET ?
 						args->f_id.dst_ip :
 						args->f_id.src_ip;
@@ -1661,10 +1661,10 @@ check_body:
 				 */
 				if ((proto==IPPROTO_UDP || proto==IPPROTO_TCP)
 				    && offset == 0) {
-					u_int16_t x =
+					uint16_t x =
 					    (cmd->opcode == O_IP_SRCPORT) ?
 						src_port : dst_port ;
-					u_int16_t *p =
+					uint16_t *p =
 					    ((ipfw_insn_u16 *)cmd)->ports;
 					int i;
 
@@ -1860,12 +1860,12 @@ check_body:
 					break;
 
 				mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
-						 sizeof(u_int16_t), MB_DONTWAIT);
+						 sizeof(uint16_t), MB_DONTWAIT);
 				if (mtag == NULL) {
 					retval = IP_FW_PORT_DENY_FLAG;
 					goto done;
 				}
-				*(u_int16_t *)m_tag_data(mtag) = f->rulenum;
+				*(uint16_t *)m_tag_data(mtag) = f->rulenum;
 				m_tag_prepend(m, mtag);
 				retval = (cmd->opcode == O_DIVERT) ?
 				    cmd->arg1 :
@@ -2159,7 +2159,7 @@ free_chain(struct ip_fw **chain, int kill_default)
 /**
  * Remove all rules with given number, and also do set manipulation.
  *
- * The argument is an u_int32_t. The low 16 bit are the rule or set number,
+ * The argument is an uint32_t. The low 16 bit are the rule or set number,
  * the next 8 bits are the new set, the top 8 bits are the command:
  *
  *	0	delete rules with given number
@@ -2169,11 +2169,11 @@ free_chain(struct ip_fw **chain, int kill_default)
  *	4	swap sets with given numbers
  */
 static int
-del_entry(struct ip_fw **chain, u_int32_t arg)
+del_entry(struct ip_fw **chain, uint32_t arg)
 {
 	struct ip_fw *prev, *rule;
-	u_int16_t rulenum;
-	u_int8_t cmd, new_set;
+	uint16_t rulenum;
+	uint8_t cmd, new_set;
 
 	rulenum = arg & 0xffff;
 	cmd = (arg >> 24) & 0xff;
@@ -2685,13 +2685,13 @@ ipfw_ctl(struct sockopt *sopt)
 		 * IP_FW_DEL is used for deleting single rules or sets,
 		 * and (ab)used to atomically manipulate sets. Argument size
 		 * is used to distinguish between the two:
-		 *    sizeof(u_int32_t)
+		 *    sizeof(uint32_t)
 		 *	delete single rule or set of rules,
 		 *	or reassign rules (or sets) to a different set.
-		 *    2*sizeof(u_int32_t)
+		 *    2*sizeof(uint32_t)
 		 *	atomic disable/enable sets.
-		 *	first u_int32_t contains sets to be disabled,
-		 *	second u_int32_t contains sets to be enabled.
+		 *	first uint32_t contains sets to be disabled,
+		 *	second uint32_t contains sets to be enabled.
 		 */
 		error = sooptcopyin(sopt, masks,
 			sizeof(masks), sizeof(masks[0]));
