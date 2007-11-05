@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.23 2007/08/07 10:42:41 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.24 2007/11/05 13:32:28 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -92,126 +92,112 @@ struct uscan_info {
 /* Table of scanners that may work with this driver. */
 static const struct uscan_info uscanner_devs[] = {
   /* Acer Peripherals */
- {{ USB_VENDOR_ACERP, USB_PRODUCT_ACERP_ACERSCAN_320U }, 0 },
- {{ USB_VENDOR_ACERP, USB_PRODUCT_ACERP_ACERSCAN_640U }, 0 },
- {{ USB_VENDOR_ACERP, USB_PRODUCT_ACERP_ACERSCAN_620U }, 0 },
- {{ USB_VENDOR_ACERP, USB_PRODUCT_ACERP_ACERSCAN_C310U }, 0 },
-
+ {{ USB_DEVICE(0x04a5, 0x2022) }, 0 }, /* Acerscan 320U */
+ {{ USB_DEVICE(0x04a5, 0x2040) }, 0 }, /* Acerscan 640U */
+ {{ USB_DEVICE(0x04a5, 0x2060) }, 0 }, /* Acerscan 620U */
+ {{ USB_DEVICE(0x04a5, 0x12a6) }, 0 }, /* Acerscan C310U */
   /* AGFA */
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCAN1236U }, 0 },
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCAN1212U }, 0 },
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCAN1212U2 }, 0 },
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCANTOUCH }, 0 },
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCANE40 }, 0 },
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCANE50 }, 0 },
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCANE20 }, 0 },
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCANE25 }, 0 },
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCANE26 }, 0 },
- {{ USB_VENDOR_AGFA, USB_PRODUCT_AGFA_SNAPSCANE52 }, 0 },
-
+ {{ USB_DEVICE(0x06bd, 0x0002) }, 0 }, /* SnapScan 1236U */
+ {{ USB_DEVICE(0x06bd, 0x0001) }, 0 }, /* SnapScan 1212U */
+ {{ USB_DEVICE(0x06bd, 0x2061) }, 0 }, /* SnapScan 1212U */
+ {{ USB_DEVICE(0x06bd, 0x0100) }, 0 }, /* SnapScan Touch */
+ {{ USB_DEVICE(0x06bd, 0x208d) }, 0 }, /* SnapScan e40 */
+ {{ USB_DEVICE(0x06bd, 0x208f) }, 0 }, /* SnapScan e50 */
+ {{ USB_DEVICE(0x06bd, 0x2091) }, 0 }, /* SnapScan e20 */
+ {{ USB_DEVICE(0x06bd, 0x2095) }, 0 }, /* SnapScan e25 */
+ {{ USB_DEVICE(0x06bd, 0x2097) }, 0 }, /* SnapScan e26 */
+ {{ USB_DEVICE(0x06bd, 0x20fd) }, 0 }, /* SnapScan e52 */
   /* Avision */
- {{ USB_VENDOR_AVISION, USB_PRODUCT_AVISION_1200U }, 0 },
-
+ {{ USB_DEVICE(0x0638, 0x0268) }, 0 }, /* Avision 1200U */
   /* Canon */
- {{ USB_VENDOR_CANON, USB_PRODUCT_CANON_N656U }, 0 },
- {{ USB_VENDOR_CANON, USB_PRODUCT_CANON_N676U }, 0 },
- {{ USB_VENDOR_CANON, USB_PRODUCT_CANON_D660U }, 0 },
-
+ {{ USB_DEVICE(0x04a9, 0x2206) }, 0 }, /* CanoScan N656U */
+ {{ USB_DEVICE(0x04a9, 0x220d) }, 0 }, /* CanoScan N676U */
+ {{ USB_DEVICE(0x04a9, 0x2208) }, 0 }, /* CanoScan D660U */
   /* Kye */
- {{ USB_VENDOR_KYE, USB_PRODUCT_KYE_VIVIDPRO }, 0 },
-
+ {{ USB_DEVICE(0x0458, 0x2001) }, 0 }, /* ColorPage Vivid-Pro */
   /* HP */
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_2200C }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_3300C }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_3400CSE }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_4100C }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_4200C }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_4300C }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_S20 }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_5200C }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_5300C }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_5400C }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_6200C }, 0 },
- {{ USB_VENDOR_HP, USB_PRODUCT_HP_6300C }, 0 },
-
+ {{ USB_DEVICE(0x03f0, 0x0605) }, 0 }, /* ScanJet 2200C */
+ {{ USB_DEVICE(0x03f0, 0x0205) }, 0 }, /* ScanJet 3300C */
+ {{ USB_DEVICE(0x03f0, 0x0405) }, 0 }, /* ScanJet 3400cse */
+ {{ USB_DEVICE(0x03f0, 0x0101) }, 0 }, /* Scanjet 4100C */
+ {{ USB_DEVICE(0x03f0, 0x0105) }, 0 }, /* ScanJet 4200C */
+ {{ USB_DEVICE(0x03f0, 0x0305) }, 0 }, /* Scanjet 4300C */
+ {{ USB_DEVICE(0x03f0, 0x0102) }, 0 }, /* Photosmart S20 */
+ {{ USB_DEVICE(0x03f0, 0x0401) }, 0 }, /* Scanjet 5200C */
+ {{ USB_DEVICE(0x03f0, 0x0701) }, 0 }, /* Scanjet 5300C */
+ {{ USB_DEVICE(0x03f0, 0x1005) }, 0 }, /* Scanjet 5400C */
+ {{ USB_DEVICE(0x03f0, 0x0201) }, 0 }, /* ScanJet 6200C */
+ {{ USB_DEVICE(0x03f0, 0x0601) }, 0 }, /* Scanjet 6300C */
+  /* Scanlogic */
+ {{ USB_DEVICE(0x04ce, 0x0300) }, 0 }, /* Phantom 336CX - C3 */
   /* Microtek */
- {{ USB_VENDOR_SCANLOGIC, USB_PRODUCT_SCANLOGIC_336CX }, 0 },
- {{ USB_VENDOR_MICROTEK, USB_PRODUCT_MICROTEK_X6U }, 0 },
- {{ USB_VENDOR_MICROTEK, USB_PRODUCT_MICROTEK_336CX }, 0 },
- {{ USB_VENDOR_MICROTEK, USB_PRODUCT_MICROTEK_336CX2 }, 0 },
- {{ USB_VENDOR_MICROTEK, USB_PRODUCT_MICROTEK_C6 }, 0 },
- {{ USB_VENDOR_MICROTEK, USB_PRODUCT_MICROTEK_V6USL }, 0 },
- {{ USB_VENDOR_MICROTEK, USB_PRODUCT_MICROTEK_V6USL2 }, 0 },
- {{ USB_VENDOR_MICROTEK, USB_PRODUCT_MICROTEK_V6UL }, 0 },
-
+ {{ USB_DEVICE(0x05da, 0x0099) }, 0 }, /* Phantom 336CX - C3 */
+ {{ USB_DEVICE(0x05da, 0x0094) }, 0 }, /* ScanMaker X6 - X6U */
+ {{ USB_DEVICE(0x05da, 0x00a0) }, 0 }, /* Phantom 336CX - C3 */
+ {{ USB_DEVICE(0x05da, 0x009a) }, 0 }, /* Phantom C6 */
+ {{ USB_DEVICE(0x05da, 0x00a3) }, 0 }, /* ScanMaker V6USL */
+ {{ USB_DEVICE(0x05da, 0x80a3) }, 0 }, /* ScanMaker V6USL */
+ {{ USB_DEVICE(0x05da, 0x80ac) }, 0 }, /* ScanMaker V6UL */
   /* Minolta */
- {{ USB_VENDOR_MINOLTA, USB_PRODUCT_MINOLTA_5400 }, 0 },
-
+ {{ USB_DEVICE(0x0686, 0x400e) }, 0 }, /* Dimage 5400 */
   /* Mustek */
- {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_1200CU }, 0 },
- {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_BEARPAW1200F }, 0 },
- {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_BEARPAW1200TA }, 0 },
- {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_600USB }, 0 },
- {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_600CU }, 0 },
- {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_1200USB }, 0 },
- {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_1200UB }, 0 },
- {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_1200USBPLUS }, 0 },
- {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_1200CUPLUS }, 0 },
-
+ {{ USB_DEVICE(0x055f, 0x0001) }, 0 }, /* 1200 CU */
+ {{ USB_DEVICE(0x055f, 0x0010) }, 0 }, /* BearPaw 1200F */
+ {{ USB_DEVICE(0x055f, 0x021e) }, 0 }, /* BearPaw 1200TA */
+ {{ USB_DEVICE(0x055f, 0x0873) }, 0 }, /* 600 USB */
+ {{ USB_DEVICE(0x055f, 0x0002) }, 0 }, /* 600 CU */
+ {{ USB_DEVICE(0x055f, 0x0003) }, 0 }, /* 1200 USB */
+ {{ USB_DEVICE(0x055f, 0x0006) }, 0 }, /* 1200 UB */
+ {{ USB_DEVICE(0x055f, 0x0007) }, 0 }, /* 1200 USB */
+ {{ USB_DEVICE(0x055f, 0x0008) }, 0 }, /* 1200 CU */
   /* National */
- {{ USB_VENDOR_NATIONAL, USB_PRODUCT_NATIONAL_BEARPAW1200 }, 0 },
- {{ USB_VENDOR_NATIONAL, USB_PRODUCT_NATIONAL_BEARPAW2400 }, 0 },
-
+ {{ USB_DEVICE(0x0400, 0x1000) }, 0 }, /* BearPaw 1200 */
+ {{ USB_DEVICE(0x0400, 0x1001) }, 0 }, /* BearPaw 2400 */
   /* Primax */
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_G2X300 }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_G2E300 }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_G2300 }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_G2E3002 }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_9600 }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_600U }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_6200 }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_19200 }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_1200U }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_G600 }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_636I }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_G2600 }, 0 },
- {{ USB_VENDOR_PRIMAX, USB_PRODUCT_PRIMAX_G2E600 }, 0 },
-
+ {{ USB_DEVICE(0x0461, 0x0300) }, 0 }, /* G2-200 */
+ {{ USB_DEVICE(0x0461, 0x0301) }, 0 }, /* G2E-300 */
+ {{ USB_DEVICE(0x0461, 0x0302) }, 0 }, /* G2-300 */
+ {{ USB_DEVICE(0x0461, 0x0303) }, 0 }, /* G2E-300 */
+ {{ USB_DEVICE(0x0461, 0x0340) }, 0 }, /* Colorado USB 9600 */
+ {{ USB_DEVICE(0x0461, 0x0341) }, 0 }, /* Colorado 600u */
+ {{ USB_DEVICE(0x0461, 0x0345) }, 0 }, /* Visioneer 6200 */
+ {{ USB_DEVICE(0x0461, 0x0360) }, 0 }, /* Colorado USB 19200 */
+ {{ USB_DEVICE(0x0461, 0x0361) }, 0 }, /* Colorado 1200u */
+ {{ USB_DEVICE(0x0461, 0x0380) }, 0 }, /* G2-600 */
+ {{ USB_DEVICE(0x0461, 0x0381) }, 0 }, /* ReadyScan 636i */
+ {{ USB_DEVICE(0x0461, 0x0382) }, 0 }, /* G2-600 */
+ {{ USB_DEVICE(0x0461, 0x0383) }, 0 }, /* G2E-600 */
   /* Epson */
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_636 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_610 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1200 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1240 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1250 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1600 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1640 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_640U }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1650 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1660 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1260 }, 0 },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_GT9700F }, USC_KEEP_OPEN },
- {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_GT9300UF }, 0 },
-
+ {{ USB_DEVICE(0x04b8, 0x0101) }, 0 }, /* Perfection 636U/636Photo */
+ {{ USB_DEVICE(0x04b8, 0x0103) }, 0 }, /* Perfection 610 */
+ {{ USB_DEVICE(0x04b8, 0x0104) }, 0 }, /* Perfection 1200U/1200Photo */
+ {{ USB_DEVICE(0x04b8, 0x010b) }, 0 }, /* Perfection 1240U/1240Photo */
+ {{ USB_DEVICE(0x04b8, 0x010f) }, 0 }, /* Perfection 1250U/1250Photo */
+ {{ USB_DEVICE(0x04b8, 0x0107) }, 0 }, /* Expression 1600 */
+ {{ USB_DEVICE(0x04b8, 0x010a) }, 0 }, /* Perfection 1640SU */
+ {{ USB_DEVICE(0x04b8, 0x010c) }, 0 }, /* Perfection 640U */
+ {{ USB_DEVICE(0x04b8, 0x0110) }, 0 }, /* Perfection 1650 */
+ {{ USB_DEVICE(0x04b8, 0x011e) }, 0 }, /* Perfection 1660 */
+ {{ USB_DEVICE(0x04b8, 0x011d) }, 0 }, /* Perfection 1260 */
+ {{ USB_DEVICE(0x04b8, 0x0112) }, USC_KEEP_OPEN }, /* GT-9700F */
+ {{ USB_DEVICE(0x04b8, 0x011b) }, 0 }, /* GT-9300UF */
   /* UMAX */
- {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA1220U }, 0 },
- {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA1236U }, 0 },
- {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA2000U }, 0 },
- {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA2100U }, 0 },
- {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA2200U }, 0 },
- {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA3400 }, 0 },
-
+ {{ USB_DEVICE(0x1606, 0x0010) }, 0 }, /* Astra 1220U */
+ {{ USB_DEVICE(0x1606, 0x0002) }, 0 }, /* Astra 1236U */
+ {{ USB_DEVICE(0x1606, 0x0030) }, 0 }, /* Astra 2000U */
+ {{ USB_DEVICE(0x1606, 0x0130) }, 0 }, /* Astra 2100U */
+ {{ USB_DEVICE(0x1606, 0x0230) }, 0 }, /* Astra 2200U */
+ {{ USB_DEVICE(0x1606, 0x0060) }, 0 }, /* Astra 3400 */
   /* Visioneer */
- {{ USB_VENDOR_VISIONEER, USB_PRODUCT_VISIONEER_3000 }, 0 },
- {{ USB_VENDOR_VISIONEER, USB_PRODUCT_VISIONEER_5300 }, 0 },
- {{ USB_VENDOR_VISIONEER, USB_PRODUCT_VISIONEER_7600 }, 0 },
- {{ USB_VENDOR_VISIONEER, USB_PRODUCT_VISIONEER_6100 }, 0 },
- {{ USB_VENDOR_VISIONEER, USB_PRODUCT_VISIONEER_6200 }, 0 },
- {{ USB_VENDOR_VISIONEER, USB_PRODUCT_VISIONEER_8100 }, 0 },
- {{ USB_VENDOR_VISIONEER, USB_PRODUCT_VISIONEER_8600 }, 0 },
-
+ {{ USB_DEVICE(0x04a7, 0x0224) }, 0 }, /* Scanport 3000 */
+ {{ USB_DEVICE(0x04a7, 0x0221) }, 0 }, /* OneTouch 5300 */
+ {{ USB_DEVICE(0x04a7, 0x0211) }, 0 }, /* OneTouch 7600 */
+ {{ USB_DEVICE(0x04a7, 0x0231) }, 0 }, /* OneTouch 6100 */
+ {{ USB_DEVICE(0x04a7, 0x0311) }, 0 }, /* OneTouch 6200 */
+ {{ USB_DEVICE(0x04a7, 0x0321) }, 0 }, /* OneTouch 8100 */
+ {{ USB_DEVICE(0x04a7, 0x0331) }, 0 }, /* OneTouch 8600 */
   /* Ultima */
- {{ USB_VENDOR_ULTIMA, USB_PRODUCT_ULTIMA_1200UBPLUS }, 0 },
-
+ {{ USB_DEVICE(0x05d8, 0x4002) }, 0 }, /* 1200 UB Plus */
 };
 #define uscanner_lookup(v, p) ((const struct uscan_info *)usb_lookup(uscanner_devs, v, p))
 

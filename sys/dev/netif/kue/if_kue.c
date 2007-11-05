@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.25 2007/07/01 21:24:02 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.26 2007/11/05 13:32:27 hasso Exp $
  */
 
 /*
@@ -99,26 +99,25 @@ MODULE_DEPEND(kue, usb, 1, 1, 1);
 /*
  * Various supported device vendors/products.
  */
-static struct kue_type kue_devs[] = {
-	{ USB_VENDOR_AOX, USB_PRODUCT_AOX_USB101 },
-	{ USB_VENDOR_KLSI, USB_PRODUCT_AOX_USB101 },
-	{ USB_VENDOR_ADS, USB_PRODUCT_ADS_UBS10BT },
-	{ USB_VENDOR_ATEN, USB_PRODUCT_ATEN_UC10T },
-	{ USB_VENDOR_NETGEAR, USB_PRODUCT_NETGEAR_EA101 },
-	{ USB_VENDOR_PERACOM, USB_PRODUCT_PERACOM_ENET },
-	{ USB_VENDOR_PERACOM, USB_PRODUCT_PERACOM_ENET2 },
-	{ USB_VENDOR_ENTREGA, USB_PRODUCT_ENTREGA_E45 },
-	{ USB_VENDOR_3COM, USB_PRODUCT_3COM_3C19250 },
-	{ USB_VENDOR_COREGA, USB_PRODUCT_COREGA_ETHER_USB_T },
-	{ USB_VENDOR_DLINK, USB_PRODUCT_DLINK_DSB650C },
-	{ USB_VENDOR_SMC, USB_PRODUCT_SMC_2102USB },
-	{ USB_VENDOR_LINKSYS, USB_PRODUCT_LINKSYS_USB10T },
-	{ USB_VENDOR_KLSI, USB_PRODUCT_KLSI_DUH3E10BT },
-	{ USB_VENDOR_KLSI, USB_PRODUCT_KLSI_DUH3E10BTN },
-	{ USB_VENDOR_PERACOM, USB_PRODUCT_PERACOM_ENET3 },
-	{ USB_VENDOR_IODATA, USB_PRODUCT_IODATA_USBETT },
-	{ USB_VENDOR_ABOCOM, USB_PRODUCT_ABOCOM_URE450 },
-	{ 0, 0 }
+static const struct usb_devno kue_devs[] = {
+	{ USB_DEVICE(0x03e8, 0x0008) }, /* AOX USB101 */
+	{ USB_DEVICE(0x04bb, 0x0901) }, /* I-O DATA USBETT */
+	{ USB_DEVICE(0x0506, 0x03e8) }, /* 3Com 3C19250 */
+	{ USB_DEVICE(0x0557, 0x2002) }, /* ATen UC10T */
+	{ USB_DEVICE(0x0565, 0x0002) }, /* Peracom Ethernet adapter */
+	{ USB_DEVICE(0x0565, 0x0003) }, /* Peracom Ethernet adapter*/
+	{ USB_DEVICE(0x0565, 0x0005) }, /* Peracom Ethernet adapter */
+	{ USB_DEVICE(0x05e9, 0x0008) }, /* AOX (rebranded Kawasaki?) USB101*/
+	{ USB_DEVICE(0x05e9, 0x0008) }, /* Kawasaki LSI DUH3E10BT */
+	{ USB_DEVICE(0x05e9, 0x0009) }, /* Kawasaki LSI DUH3E10BTN */
+	{ USB_DEVICE(0x066b, 0x2202) }, /* Linksys USB10T */
+	{ USB_DEVICE(0x06e1, 0x0008) }, /* ADS UBS-10BT */
+	{ USB_DEVICE(0x0707, 0x0100) }, /* SMC 2102USB */
+	{ USB_DEVICE(0x07aa, 0x0001) }, /* Corega USB-T*/
+	{ USB_DEVICE(0x07b8, 0x4000) }, /* AboCom URE450 */
+	{ USB_DEVICE(0x0846, 0x1001) }, /* Netgear EA101 */
+	{ USB_DEVICE(0x1645, 0x0005) }, /* Entrega E45*/
+	{ USB_DEVICE(0x2001, 0x4000) }, /* D-Link DSB650C */
 };
 
 static int kue_match(device_t);
@@ -384,21 +383,12 @@ static int
 kue_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	struct kue_type			*t;
 
-	if (!uaa->iface)
+	if (uaa->iface == NULL)
 		return(UMATCH_NONE);
 
-	t = kue_devs;
-	while(t->kue_vid) {
-		if (uaa->vendor == t->kue_vid &&
-		    uaa->product == t->kue_did) {
-			return(UMATCH_VENDOR_PRODUCT);
-		}
-		t++;
-	}
-
-	return(UMATCH_NONE);
+	return (usb_lookup(kue_devs, uaa->vendor, uaa->product) != NULL ?
+	    UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 
 /*

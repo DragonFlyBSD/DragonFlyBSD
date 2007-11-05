@@ -25,7 +25,7 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.16 2007/08/07 10:42:41 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.17 2007/11/05 13:32:28 hasso Exp $
  */
 
 /*
@@ -199,16 +199,11 @@ struct ucom_callback uvscom_callback = {
 };
 
 static const struct usb_devno uvscom_devs [] = {
-	/* SUNTAC U-Cable type D2 */
-	{ USB_VENDOR_SUNTAC, USB_PRODUCT_SUNTAC_DS96L },
-	/* SUNTAC Ir-Trinity */
-	{ USB_VENDOR_SUNTAC, USB_PRODUCT_SUNTAC_IS96U },
-	/* SUNTAC U-Cable type P1 */
-	{ USB_VENDOR_SUNTAC, USB_PRODUCT_SUNTAC_PS64P1 },
-	/* SUNTAC Slipper U */
-	{ USB_VENDOR_SUNTAC, USB_PRODUCT_SUNTAC_VS10U },
+	{ USB_DEVICE(0x05db, 0x0003) }, /* SUNTAC U-Cable type D2 */
+	{ USB_DEVICE(0x05db, 0x0005) }, /* SUNTAC U-Cable type P1 */
+	{ USB_DEVICE(0x05db, 0x0009) }, /* SUNTAC Slipper U */
+	{ USB_DEVICE(0x05db, 0x000a) }, /* SUNTAC Ir-Trinity */
 };
-#define uvscom_lookup(v, p) usb_lookup(uvscom_devs, v, p)
 
 static device_probe_t uvscom_match;
 static device_attach_t uvscom_attach;
@@ -240,7 +235,7 @@ uvscom_match(device_t self)
 	if (uaa->iface != NULL)
 		return (UMATCH_NONE);
 
-	return (uvscom_lookup(uaa->vendor, uaa->product) != NULL ?
+	return (usb_lookup(uvscom_devs, uaa->vendor, uaa->product) != NULL ?
 		UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 

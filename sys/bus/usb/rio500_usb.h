@@ -21,16 +21,10 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/rio500_usb.h,v 1.1 2000/04/08 17:02:13 n_hibma Exp $
- * $DragonFly: src/sys/bus/usb/rio500_usb.h,v 1.5 2007/06/27 12:27:59 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/rio500_usb.h,v 1.6 2007/11/05 13:32:27 hasso Exp $
  */
 
 #include <sys/ioccom.h>
-#ifndef USB_VENDOR_DIAMOND
-#define USB_VENDOR_DIAMOND 0x841
-#endif
-#ifndef USB_PRODUCT_DIAMOND_RIO500USB
-#define USB_PRODUCT_DIAMOND_RIO500USB 0x1
-#endif
 
 struct RioCommand
 {

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kuereg.h,v 1.13 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kuereg.h,v 1.4 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kuereg.h,v 1.5 2007/11/05 13:32:27 hasso Exp $
  */
 
 /*
@@ -131,11 +131,6 @@ struct kue_ether_desc {
 #define KUE_ENDPT_TX		0x1
 #define KUE_ENDPT_INTR		0x2
 #define KUE_ENDPT_MAX		0x3
-
-struct kue_type {
-	u_int16_t		kue_vid;
-	u_int16_t		kue_did;
-};
 
 struct kue_softc;
 

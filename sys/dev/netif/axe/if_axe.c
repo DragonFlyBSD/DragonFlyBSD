@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.23 2007/07/01 21:24:02 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.24 2007/11/05 13:32:27 hasso Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -103,16 +103,15 @@
 /*
  * Various supported device vendors/products.
  */
-static struct axe_type axe_devs[] = {
-	{ USB_VENDOR_ASIX, USB_PRODUCT_ASIX_AX88172 },
-	{ USB_VENDOR_DLINK, USB_PRODUCT_DLINK_DUBE100 },
-	{ USB_VENDOR_JVC, USB_PRODUCT_JVC_MP_PRX1 },
-	{ USB_VENDOR_LINKSYS2, USB_PRODUCT_LINKSYS2_USB200M },
-	{ USB_VENDOR_MELCO, USB_PRODUCT_MELCO_LUAU2KTX },
-	{ USB_VENDOR_NETGEAR, USB_PRODUCT_NETGEAR_FA120 },
-	{ USB_VENDOR_SYSTEMTALKS, USB_PRODUCT_SYSTEMTALKS_SGCX2UL },
-	{ USB_VENDOR_SITECOM, USB_PRODUCT_SITECOM_LN029 },
-	{ 0, 0 }
+static struct usb_devno axe_devs[] = {
+	{ USB_DEVICE(0x0411, 0x003d) }, /* Melco LUA-U2-KTX */
+	{ USB_DEVICE(0x04f1, 0x3008) }, /* JVC MP-PRX1 */
+	{ USB_DEVICE(0x077b, 0x2226) }, /* Linksys USB200M */
+	{ USB_DEVICE(0x0846, 0x1040) }, /* BayNETGEAR FA120 */
+	{ USB_DEVICE(0x086e, 0x1920) }, /* System Talks SGC-X2UL */
+	{ USB_DEVICE(0x0b95, 0x1720) }, /* ASIX Electronics AX88172 */
+	{ USB_DEVICE(0x2001, 0x1a00) }, /* D-Link DUBE100 */
+	{ USB_DEVICE(0x6189, 0x182d) }, /* Sitecom LN029 */
 };
 
 static int axe_match(device_t);
@@ -372,21 +371,12 @@ static int
 axe_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	struct axe_type			*t;
 
 	if (!uaa->iface)
 		return(UMATCH_NONE);
 
-	t = axe_devs;
-	while(t->axe_vid) {
-		if (uaa->vendor == t->axe_vid &&
-		    uaa->product == t->axe_did) {
-			return(UMATCH_VENDOR_PRODUCT);
-		}
-		t++;
-	}
-
-	return(UMATCH_NONE);
+	return (usb_lookup(axe_devs, uaa->vendor, uaa->product) != NULL ?
+	    UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 
 /*

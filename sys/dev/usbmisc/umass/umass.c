@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.27 2007/07/02 23:52:05 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.28 2007/11/05 13:32:28 hasso Exp $
  */
 
 /*
@@ -255,15 +255,11 @@ typedef int (*command_transform_f)	(struct umass_softc *sc,
 
 
 struct umass_devdescr_t {
-	u_int32_t	vid;
-#	define VID_WILDCARD	0xffffffff
-#	define VID_EOT		0xfffffffe
-	u_int32_t	pid;
-#	define PID_WILDCARD	0xffffffff
-#	define PID_EOT		0xfffffffe
-	u_int32_t	rid;
-#	define RID_WILDCARD	0xffffffff
-#	define RID_EOT		0xfffffffe
+	u_int32_t	vendor;
+	u_int32_t	product;
+	u_int32_t	release;
+#	define WILDCARD_ID	0xffffffff
+#	define EOT_ID		0xfffffffe
 
 	/* wire and command protocol */
 	u_int16_t	proto;
@@ -312,105 +308,129 @@ struct umass_devdescr_t {
 };
 
 static struct umass_devdescr_t umass_devdescrs[] = {
-	{ USB_VENDOR_ASAHIOPTICAL, PID_WILDCARD, RID_WILDCARD,
-	  UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
-	  RS_NO_CLEAR_UA
+	/* All Asahi Optical products */
+	{ .vendor = 0x0a17, .product = WILDCARD_ID, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
+	  .quirks = RS_NO_CLEAR_UA
 	},
-	{ USB_VENDOR_FUJIPHOTO, USB_PRODUCT_FUJIPHOTO_MASS0100, RID_WILDCARD,
-	  UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
-	  RS_NO_CLEAR_UA
+	/* Fujiphoto mass storage products */
+	{ .vendor = 0x04cb, .product = 0x0100, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
+	  .quirks = RS_NO_CLEAR_UA
 	},
-	{ USB_VENDOR_GENESYS,  USB_PRODUCT_GENESYS_GL641USB2IDE, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
+	/* Genesys Logic GL641USB USB-IDE Bridge */
+	{ .vendor = 0x05e3, .product = 0x0702, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
 	},
-	{ USB_VENDOR_GENESYS,  USB_PRODUCT_GENESYS_GL641USB, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
+	/* Genesys Logic GL641USB CompactFlash Card Reader */
+	{ .vendor = 0x05e3, .product = 0x0700, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
 	},
-	{ USB_VENDOR_HITACHI, USB_PRODUCT_HITACHI_DVDCAM_USB, RID_WILDCARD,
-	  UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
-	  NO_INQUIRY
+	/* Hitachi DVDCAM USB HS Interface */
+	{ .vendor = 0x04a4, .product = 0x001e, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
+	  .quirks = NO_INQUIRY
 	},
-	{ USB_VENDOR_HP, USB_PRODUCT_HP_CDW8200, RID_WILDCARD,
-	  UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
-	  NO_TEST_UNIT_READY | NO_START_STOP
+	/* HP CD-Writer Plus 8200e */
+	{ .vendor = 0x03f0, .product = 0x0207, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
+	  .quirks = NO_TEST_UNIT_READY | NO_START_STOP
 	},
-	{ USB_VENDOR_INSYSTEM, USB_PRODUCT_INSYSTEM_USBCABLE, RID_WILDCARD,
-	  UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
-	  NO_TEST_UNIT_READY | NO_START_STOP | ALT_IFACE_1
+	/* In-System USB cable */
+	{ .vendor = 0x05ab, .product = 0x081a, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
+	  .quirks = NO_TEST_UNIT_READY | NO_START_STOP | ALT_IFACE_1
 	},
-	{ USB_VENDOR_IOMEGA, USB_PRODUCT_IOMEGA_ZIP100, RID_WILDCARD,
-	  /* XXX This is not correct as there are Zip drives that use ATAPI.
-	   */
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  NO_TEST_UNIT_READY
+	/* Iomega Zip 100 */
+	{ .vendor = 0x059b, .product = 0x0001, .release = WILDCARD_ID,
+	  /* XXX This is not correct as there are Zip drives that use ATAPI. */
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_TEST_UNIT_READY
 	},
-	{ USB_VENDOR_LOGITEC, USB_PRODUCT_LOGITEC_LDR_H443U2, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  NO_QUIRKS
+	/* Logitech DVD Multi-plus unit LDR-H443U2 */
+	{ .vendor = 0x0789, .product = 0x00b3, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
 	},
-	{ USB_VENDOR_MELCO,  USB_PRODUCT_MELCO_DUBPXXG, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
+	/* Melco USB-IDE Bridge: DUB-PxxG */
+	{ .vendor = 0x0411, .product = 0x001c, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
 	},
-	{ USB_VENDOR_MICROTECH, USB_PRODUCT_MICROTECH_DPCM, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
-	  NO_TEST_UNIT_READY | NO_START_STOP
+	/* Microtech USB CameraMate */
+	{ .vendor = 0x07af, .product = 0x0006, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
+	  .quirks = NO_TEST_UNIT_READY | NO_START_STOP
 	},
-	{ USB_VENDOR_MSYSTEMS, USB_PRODUCT_MSYSTEMS_DISKONKEY, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  IGNORE_RESIDUE | NO_GETMAXLUN | RS_NO_CLEAR_UA
+	/* M-Systems DiskOnKey */
+	{ .vendor = 0x08ec, .product = 0x0010, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE | NO_GETMAXLUN | RS_NO_CLEAR_UA
 	},
-	{ USB_VENDOR_MSYSTEMS, USB_PRODUCT_MSYSTEMS_DISKONKEY2, RID_WILDCARD,
-	  UMASS_PROTO_ATAPI | UMASS_PROTO_BBB,
-	  NO_QUIRKS
+	/* M-Systems DiskOnKey */
+	{ .vendor = 0x08ec, .product = 0x0011, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
 	},
-	{ USB_VENDOR_OLYMPUS, USB_PRODUCT_OLYMPUS_C1, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  WRONG_CSWSIG
+	/* Olympus C-1 Digital Camera */
+	{ .vendor = 0x07b4, .product = 0x0102, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = WRONG_CSWSIG
 	},
-	{ USB_VENDOR_PANASONIC, USB_PRODUCT_PANASONIC_KXLCB20AN, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  NO_QUIRKS
+	/* Panasonic CD-R Drive KXL-CB20AN */
+	{ .vendor = 0x04da, .product = 0x0d0a, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
 	},
-	{ USB_VENDOR_PANASONIC, USB_PRODUCT_PANASONIC_KXLCB35AN, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  NO_QUIRKS
+	/* Panasonic DVD-ROM & CD-R/RW */
+	{ .vendor = 0x04da, .product = 0x0d0e, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
 	},
-	{ USB_VENDOR_PEN, USB_PRODUCT_PEN_ATTACHE, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  IGNORE_RESIDUE
+	/* Pen USB 2.0 Flash Drive */
+	{ .vendor = 0x0d7d, .product = 0x1300, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
 	},
-	{ USB_VENDOR_SCANLOGIC, USB_PRODUCT_SCANLOGIC_SL11R, RID_WILDCARD,
-	  UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
-	  NO_QUIRKS
+	/* ScanLogic SL11R-IDE */
+	{ .vendor = 0x04ce, .product = 0x0002, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
+	  .quirks = NO_QUIRKS
 	},
-	{ USB_VENDOR_SHUTTLE, USB_PRODUCT_SHUTTLE_EUSB, RID_WILDCARD,
-	  UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
-	  NO_TEST_UNIT_READY | NO_START_STOP | SHUTTLE_INIT
+	/* Shuttle Technology E-USB Bridge */
+	{ .vendor = 0x04e6, .product = 0x0001, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
+	  .quirks = NO_TEST_UNIT_READY | NO_START_STOP | SHUTTLE_INIT
 	},
-	{ USB_VENDOR_SIGMATEL, USB_PRODUCT_SIGMATEL_I_BEAD100, RID_WILDCARD,
-	  UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
-	  SHUTTLE_INIT
+	/* Sigmatel i-Bead 100 MP3 Player */
+	{ .vendor = 0x066f, .product = 0x8008, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = SHUTTLE_INIT
 	},
-	{ USB_VENDOR_SONY, USB_PRODUCT_SONY_DSC, RID_WILDCARD,
-	  UMASS_PROTO_RBC | UMASS_PROTO_CBI,
-	  NO_QUIRKS
+	/* Sony DSC cameras */
+	{ .vendor = 0x054c, .product = 0x0010, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
 	},
-	{ USB_VENDOR_SONY, USB_PRODUCT_SONY_MSC, RID_WILDCARD,
-	  UMASS_PROTO_RBC | UMASS_PROTO_CBI,
-	  NO_QUIRKS
+	/* Sony MSC memory stick slot */
+	{ .vendor = 0x054c, .product = 0x0032, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
 	},
-	{ USB_VENDOR_TREK, USB_PRODUCT_TREK_THUMBDRIVE_8MB, RID_WILDCARD,
-          UMASS_PROTO_ATAPI | UMASS_PROTO_BBB,
-	  IGNORE_RESIDUE
+	/* Trek Technology ThumbDrive 8MB */
+	{ .vendor = 0x0a16, .product = 0x9988, .release = WILDCARD_ID,
+          .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
 	},
-	{ USB_VENDOR_YANO,  USB_PRODUCT_YANO_U640MO, RID_WILDCARD,
-	  UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
-	  FORCE_SHORT_INQUIRY
+	/* Yano U640MO-03 */
+	{ .vendor = 0x094f, .product = 0x0101, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
+	  .quirks = FORCE_SHORT_INQUIRY
 	},
-	{ VID_EOT, PID_EOT, RID_EOT, 0, 0 }
+	{ .vendor = EOT_ID, .product = EOT_ID, .release = EOT_ID,
+	  .proto  = 0, .quirks = 0 }
 };
 
 
@@ -718,8 +738,7 @@ umass_match_proto(struct umass_softc *sc, usbd_interface_handle iface,
 	/* An entry specifically for Y-E Data devices as they don't fit in the
 	 * device description table.
 	 */
-	if (UGETW(dd->idVendor) == USB_VENDOR_YEDATA
-	    && UGETW(dd->idProduct) == USB_PRODUCT_YEDATA_FLASHBUSTERU) {
+	if (UGETW(dd->idVendor) == 0x057b && UGETW(dd->idProduct) == 0x0000) {
 
 		/* Revisions < 1.28 do not handle the inerrupt endpoint
 		 * very well.
@@ -744,22 +763,22 @@ umass_match_proto(struct umass_softc *sc, usbd_interface_handle iface,
 	/* Check the list of supported devices for a match. While looking,
 	 * check for wildcarded and fully matched. First match wins.
 	 */
-	for (i = 0; umass_devdescrs[i].vid != VID_EOT && !found; i++) {
-		if (umass_devdescrs[i].vid == VID_WILDCARD &&
-		    umass_devdescrs[i].pid == PID_WILDCARD &&
-		    umass_devdescrs[i].rid == RID_WILDCARD) {
+	for (i = 0; umass_devdescrs[i].vendor != EOT_ID && !found; i++) {
+		if (umass_devdescrs[i].vendor == WILDCARD_ID &&
+		    umass_devdescrs[i].product == WILDCARD_ID &&
+		    umass_devdescrs[i].release == WILDCARD_ID) {
 			kprintf("umass: ignoring invalid wildcard quirk\n");
 			continue;
 		}
-		if ((umass_devdescrs[i].vid == UGETW(dd->idVendor) ||
-		     umass_devdescrs[i].vid == VID_WILDCARD)
-		 && (umass_devdescrs[i].pid == UGETW(dd->idProduct) ||
-		     umass_devdescrs[i].pid == PID_WILDCARD)) {
-			if (umass_devdescrs[i].rid == RID_WILDCARD) {
+		if ((umass_devdescrs[i].vendor == UGETW(dd->idVendor) ||
+		     umass_devdescrs[i].vendor == WILDCARD_ID)
+		 && (umass_devdescrs[i].product == UGETW(dd->idProduct) ||
+		     umass_devdescrs[i].product == WILDCARD_ID)) {
+			if (umass_devdescrs[i].release == WILDCARD_ID) {
 				sc->proto = umass_devdescrs[i].proto;
 				sc->quirks = umass_devdescrs[i].quirks;
 				return (UMATCH_VENDOR_PRODUCT);
-			} else if (umass_devdescrs[i].rid ==
+			} else if (umass_devdescrs[i].release ==
 			    UGETW(dd->bcdDevice)) {
 				sc->proto = umass_devdescrs[i].proto;
 				sc->quirks = umass_devdescrs[i].quirks;

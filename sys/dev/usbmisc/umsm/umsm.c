@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.2 2007/08/19 17:16:43 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.3 2007/11/05 13:32:28 hasso Exp $	*/
 /*	$OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $	*/
 
 /*
@@ -63,27 +63,27 @@ struct ucom_callback umsm_callback = {
 };
 
 static const struct usb_devno umsm_devs[] = {
-	{ USB_VENDOR_AIRPRIME,	USB_PRODUCT_AIRPRIME_PC5220 },
-	{ USB_VENDOR_DELL,	USB_PRODUCT_DELL_W5500 },
-	{ USB_VENDOR_KYOCERA2,	USB_PRODUCT_KYOCERA2_KPC650 },
-	{ USB_VENDOR_NOVATEL,	USB_PRODUCT_NOVATEL_EXPRESSCARD },
-	{ USB_VENDOR_NOVATEL,	USB_PRODUCT_NOVATEL_MERLINV620 },
-	{ USB_VENDOR_NOVATEL,	USB_PRODUCT_NOVATEL_S720 },
-	{ USB_VENDOR_NOVATEL,	USB_PRODUCT_NOVATEL_U720 },
-	{ USB_VENDOR_NOVATEL,	USB_PRODUCT_NOVATEL_XU870 },
-	{ USB_VENDOR_NOVATEL,	USB_PRODUCT_NOVATEL_ES620 },
-	{ USB_VENDOR_QUALCOMM,	USB_PRODUCT_QUALCOMM_MSM_HSDPA },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_EM5625 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_AIRCARD_580 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_AIRCARD_595 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_AIRCARD_875 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_MC5720 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_MC5720_2 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_MC5725 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_MC8755 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_MC8755_2 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_MC8765 },
-	{ USB_VENDOR_SIERRA,	USB_PRODUCT_SIERRA_MC8775 },
+	{ USB_DEVICE(0x05c6, 0x6613) }, /* Qualcomm HSDPA MSM */
+	{ USB_DEVICE(0x0c88, 0x17da) }, /* Kyocera KPC650 */
+	{ USB_DEVICE(0x0f3d, 0x0112) }, /* AirPrime PC5220 */
+	{ USB_DEVICE(0x1199, 0x0017) }, /* Sierra Wireless EM5625 */
+	{ USB_DEVICE(0x1199, 0x0018) }, /* Sierra Wireless MC5720 */
+	{ USB_DEVICE(0x1199, 0x0019) }, /* Sierra Wireless AirCard 595 */
+	{ USB_DEVICE(0x1199, 0x0020) }, /* Sierra Wireless MC5725 */
+	{ USB_DEVICE(0x1199, 0x0112) }, /* Sierra Wireless Aircard 580 */
+	{ USB_DEVICE(0x1199, 0x0218) }, /* Sierra Wireless MC5720 */
+	{ USB_DEVICE(0x1199, 0x6802) }, /* Sierra Wireless MC8755 */
+	{ USB_DEVICE(0x1199, 0x6803) }, /* Sierra Wireless MC8765 */
+	{ USB_DEVICE(0x1199, 0x6804) }, /* Sierra Wireless MC8755 */
+	{ USB_DEVICE(0x1199, 0x6812) }, /* Sierra Wireless MC8775 */
+	{ USB_DEVICE(0x1199, 0x6820) }, /* Sierra Wireless Aircard 875 */
+	{ USB_DEVICE(0x1410, 0x1100) }, /* Novatel Wireless ExpressCard 3G */
+	{ USB_DEVICE(0x1410, 0x1110) }, /* Novatel Wireless Merlin V620 */
+	{ USB_DEVICE(0x1410, 0x1130) }, /* Novatel Wireless S720 */
+	{ USB_DEVICE(0x1410, 0x1430) }, /* Novatel Wireless XU870 */
+	{ USB_DEVICE(0x1410, 0x2100) }, /* Novatel Wireless ES620 */
+	{ USB_DEVICE(0x1410, 0x2110) }, /* Novatel Wireless U720 */
+	{ USB_DEVICE(0x413c, 0x8115) }, /* Dell W5500 */
 };
 
 static device_probe_t umsm_match;

@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.20 2007/08/07 10:42:40 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.21 2007/11/05 13:32:28 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -135,8 +135,7 @@ ufm_match(device_t self)
 	dd = usbd_get_device_descriptor(uaa->device);
 
 	if (dd &&
-	    ((UGETW(dd->idVendor) == USB_VENDOR_CYPRESS &&
-	    UGETW(dd->idProduct) == USB_PRODUCT_CYPRESS_FMRADIO)))
+	    ((UGETW(dd->idVendor) == 0x04b4 && UGETW(dd->idProduct) == 0x1002)))
 		return UMATCH_VENDOR_PRODUCT;
 	else
 		return UMATCH_NONE;

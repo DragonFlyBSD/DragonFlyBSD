@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.15 2007/07/02 23:52:05 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.16 2007/11/05 13:32:28 hasso Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -216,6 +216,13 @@ static void udbp_out_transfer_cb	(usbd_xfer_handle xfer,
 					usbd_private_handle priv,
 					usbd_status err);
 
+static const struct usb_devno udbp_devs[] = {
+	{ USB_DEVICE(0x0525, 0x1080) }, /* NetChip Turbo-Connect */
+	{ USB_DEVICE(0x0547, 0x2720) }, /* Anchor EZLINK */
+	{ USB_DEVICE(0x067b, 0x0000) }, /* Prolific PL2301 */
+	{ USB_DEVICE(0x067b, 0x0001) }, /* Prolofic PL2302 */
+};
+
 static device_probe_t udbp_match;
 static device_attach_t udbp_attach;
 static device_detach_t udbp_detach;
@@ -241,33 +248,12 @@ static int
 udbp_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	usb_interface_descriptor_t *id;
-	if (!uaa->iface)
-	  return (UMATCH_NONE);
-	id = usbd_get_interface_descriptor(uaa->iface);
 
-	/* XXX Julian, add the id of the device if you have one to test
-	 * things with. run 'usbdevs -v' and note the 3 ID's that appear.
-	 * The Vendor Id and Product Id are in hex and the Revision Id is in
-	 * bcd. But as usual if the revision is 0x101 then you should compare
-	 * the revision id in the device descriptor with 0x101
-	 * Or go search the file usbdevs.h. Maybe the device is already in
-	 * there.
-	 */
-	if ((uaa->vendor == USB_VENDOR_NETCHIP &&
-	     uaa->product == USB_PRODUCT_NETCHIP_TURBOCONNECT))
-		return(UMATCH_VENDOR_PRODUCT);
+	if (uaa->iface == NULL)
+		return (UMATCH_NONE);
 
-	if ((uaa->vendor == USB_VENDOR_PROLIFIC &&
-	     (uaa->product == USB_PRODUCT_PROLIFIC_PL2301 ||
-	      uaa->product == USB_PRODUCT_PROLIFIC_PL2302)))
-		return(UMATCH_VENDOR_PRODUCT);
-
-	if ((uaa->vendor == USB_VENDOR_ANCHOR &&
-	     uaa->product == USB_PRODUCT_ANCHOR_EZLINK))
-		return(UMATCH_VENDOR_PRODUCT);
-
-	return (UMATCH_NONE);
+	return (usb_lookup(udbp_devs, uaa->vendor, uaa->product) != NULL) ?
+	    UMATCH_VENDOR_PRODUCT : UMATCH_NONE;
 }
 
 static int

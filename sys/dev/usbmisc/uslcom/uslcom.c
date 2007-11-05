@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.5 2007/08/19 17:16:43 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.6 2007/11/05 13:32:28 hasso Exp $	*/
 /*	$OpenBSD: uslcom.c,v 1.12 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -111,28 +111,28 @@ struct ucom_callback uslcom_callback = {
 };
 
 static const struct usb_devno uslcom_devs[] = {
-	{ USB_VENDOR_BALTECH,		USB_PRODUCT_BALTECH_CARDREADER },
-	{ USB_VENDOR_DYNASTREAM,	USB_PRODUCT_DYNASTREAM_ANTDEVBOARD },
-	{ USB_VENDOR_JABLOTRON,		USB_PRODUCT_JABLOTRON_PC60B },
-	{ USB_VENDOR_PLX,		USB_PRODUCT_PLX_CA42 },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_ARGUSISP },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_CP210X_1 },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_CP210X_2 },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_CRUMB128 },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_DEGREECONT },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_DESKTOPMOBILE },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_EDG1228 },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_IPLINK1220 },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_LIPOWSKY_HARP },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_LIPOWSKY_JTAG },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_LIPOWSKY_LIN },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_POLOLU },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_RIGBLASTER },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_RIGTALK },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_SUNNTO },
-	{ USB_VENDOR_SILABS,		USB_PRODUCT_SILABS_TRACIENT_RFID },
-	{ USB_VENDOR_SILABS2,		USB_PRODUCT_SILABS2_DCU11CLONE },
-	{ USB_VENDOR_USI,		USB_PRODUCT_USI_MC60 }
+	{ USB_DEVICE(0x0fcf, 0x1003) }, /* ANT development board */
+	{ USB_DEVICE(0x10a6, 0xaa26) }, /* Noname DCU-11 clone */
+	{ USB_DEVICE(0x10ab, 0x10c5) }, /* USI MC60 */
+	{ USB_DEVICE(0x10b5, 0xac70) }, /* PLX CA-42 */
+	{ USB_DEVICE(0x10c4, 0x803b) }, /* Pololu Serial */
+	{ USB_DEVICE(0x10c4, 0x8053) }, /* Enfora EDG1228 */
+	{ USB_DEVICE(0x10c4, 0x8066) }, /* Argussoft In-System Programmer */
+	{ USB_DEVICE(0x10c4, 0x807a) }, /* Crumb128 board */
+	{ USB_DEVICE(0x10c4, 0x80ca) }, /* Degree Controls */
+	{ USB_DEVICE(0x10c4, 0x80dd) }, /* Tracient RFID */
+	{ USB_DEVICE(0x10c4, 0x80f6) }, /* Suunto sports */
+	{ USB_DEVICE(0x10c4, 0x813d) }, /* Burnside Desktop mobile */
+	{ USB_DEVICE(0x10c4, 0x814a) }, /* West Mountain Radio RIGblaster */
+	{ USB_DEVICE(0x10c4, 0x814b) }, /* West Mountain Radio RIGtalk */
+	{ USB_DEVICE(0x10c4, 0x815e) }, /* IP-Link 1220 */
+	{ USB_DEVICE(0x10c4, 0x81c8) }, /* Lipowsky Baby-JTAG */
+	{ USB_DEVICE(0x10c4, 0x81e2) }, /* Lipowsky Baby-LIN */
+	{ USB_DEVICE(0x10c4, 0x8218) }, /* Lipowsky HARP-1 */
+	{ USB_DEVICE(0x10c4, 0xea60) }, /* Silicon Labs CP210x */
+	{ USB_DEVICE(0x10c4, 0xea61) }, /* Silicon Labs CP210x */
+	{ USB_DEVICE(0x13ad, 0x9999) }, /* Baltech card reader */
+	{ USB_DEVICE(0x16d6, 0x0001) }, /* Jablotron PC-60B */
 };
 
 static device_probe_t uslcom_match;

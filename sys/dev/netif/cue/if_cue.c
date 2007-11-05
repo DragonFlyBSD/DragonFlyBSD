@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.28 2007/07/01 21:24:02 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.29 2007/11/05 13:32:27 hasso Exp $
  */
 
 /*
@@ -79,11 +79,10 @@
 /*
  * Various supported device vendors/products.
  */
-static struct cue_type cue_devs[] = {
-	{ USB_VENDOR_CATC, USB_PRODUCT_CATC_NETMATE },
-	{ USB_VENDOR_CATC, USB_PRODUCT_CATC_NETMATE2 },
-	{ USB_VENDOR_SMARTBRIDGES, USB_PRODUCT_SMARTBRIDGES_SMARTLINK },
-	{ 0, 0 }
+static struct usb_devno cue_devs[] = {
+	{ USB_DEVICE(0x0423, 0x000a) }, /* CATC Netmate */
+	{ USB_DEVICE(0x0423, 0x000c) }, /* CATC Netmate2 */
+	{ USB_DEVICE(0x08d1, 0x0001) }, /* SmartBridges SmartLink */
 };
 
 static int cue_match(device_t);
@@ -396,21 +395,12 @@ static int
 cue_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	struct cue_type			*t;
 
-	if (!uaa->iface)
+	if (uaa->iface == NULL)
 		return(UMATCH_NONE);
 
-	t = cue_devs;
-	while(t->cue_vid) {
-		if (uaa->vendor == t->cue_vid &&
-		    uaa->product == t->cue_did) {
-			return(UMATCH_VENDOR_PRODUCT);
-		}
-		t++;
-	}
-
-	return(UMATCH_NONE);
+	return (usb_lookup(cue_devs, uaa->vendor, uaa->product) != NULL) ?
+	    UMATCH_VENDOR_PRODUCT : UMATCH_NONE;
 }
 
 /*

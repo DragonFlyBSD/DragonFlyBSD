@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.16 2007/08/19 17:16:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.17 2007/11/05 13:32:27 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -205,23 +205,13 @@ struct ucom_callback ubsa_callback = {
 	NULL
 };
 
-static const struct ubsa_product {
-	uint16_t	vendor;
-	uint16_t	product;
-} ubsa_products [] = {
-	/* BELKIN F5U103 */
-	{ USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_F5U103 },
-	/* BELKIN F5U120 */
-	{ USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_F5U120 },
-	/* GoHubs GO-COM232 */
-	{ USB_VENDOR_ETEK, USB_PRODUCT_ETEK_1COM },
-	/* GoHubs GO-COM232 */
-	{ USB_VENDOR_GOHUBS, USB_PRODUCT_GOHUBS_GOCOM232 },
-	/* HandyTech's Braille displays */
-	{ USB_VENDOR_GOHUBS, USB_PRODUCT_GOHUBS_HANDYLINK },
-	/* Peracom */
-	{ USB_VENDOR_PERACOM, USB_PRODUCT_PERACOM_SERIAL1 },
-	{ 0, 0 }
+static const struct usb_devno ubsa_devs [] = {
+	{ USB_DEVICE(0x050d, 0x0103) }, /* Belkin F5U103 serial adapter */
+	{ USB_DEVICE(0x050d, 0x1203) }, /* Belkin F5U120-PC hub */
+	{ USB_DEVICE(0x0565, 0x0001) }, /* Peracom serial converter */
+	{ USB_DEVICE(0x056c, 0x8007) }, /* e-TEK Labs serial port */
+	{ USB_DEVICE(0x0921, 0x1001) }, /* GoHubs GoCOM232 serial converter */
+	{ USB_DEVICE(0x0921, 0x1200) }, /* HandyTech's Braille displays */
 };
 
 static device_probe_t ubsa_match;
@@ -251,18 +241,12 @@ static int
 ubsa_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	int i;
 
 	if (uaa->iface != NULL)
 		return (UMATCH_NONE);
 
-	for (i = 0; ubsa_products[i].vendor != 0; i++) {
-		if (ubsa_products[i].vendor == uaa->vendor &&
-		    ubsa_products[i].product == uaa->product) {
-			return (UMATCH_VENDOR_PRODUCT);
-		}
-	}
-	return (UMATCH_NONE);
+	return (usb_lookup(ubsa_devs, uaa->vendor, uaa->product) != NULL ?
+	    UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 
 static int

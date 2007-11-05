@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.23 2007/08/07 10:42:41 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.24 2007/11/05 13:32:28 hasso Exp $
  */
 
 /*
@@ -148,29 +148,25 @@ static driver_t urio_driver = {
 	sizeof(struct urio_softc)
 };
 
+static const struct usb_devno urio_devs[] = {
+	{ USB_DEVICE(0x045a, 0x5001) }, /* Diamond Multimedia Rio 600 */
+	{ USB_DEVICE(0x045a, 0x5002) }, /* Diamond Multimedia Rio 800 */
+	{ USB_DEVICE(0x0841, 0x0001) }, /* Diamond Multimedia Rio 500 */
+};
+
 MODULE_DEPEND(urio, usb, 1, 1, 1);
 
 static int
 urio_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	usb_device_descriptor_t *dd;
 
 	DPRINTFN(10,("urio_match\n"));
-	if (!uaa->iface)
-		return UMATCH_NONE;
+	if (uaa->iface == NULL)
+		return (UMATCH_NONE);
 
-	dd = usbd_get_device_descriptor(uaa->device);
-
-	if (dd &&
-	    ((UGETW(dd->idVendor) == USB_VENDOR_DIAMOND &&
-	    UGETW(dd->idProduct) == USB_PRODUCT_DIAMOND_RIO500USB) ||
-	    (UGETW(dd->idVendor) == USB_VENDOR_DIAMOND2 &&
-	      (UGETW(dd->idProduct) == USB_PRODUCT_DIAMOND2_RIO600USB ||
-	      UGETW(dd->idProduct) == USB_PRODUCT_DIAMOND2_RIO800USB))))
-		return UMATCH_VENDOR_PRODUCT;
-	else
-		return UMATCH_NONE;
+	return (usb_lookup(urio_devs, uaa->vendor, uaa->product) != NULL ?
+		UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 
 static int

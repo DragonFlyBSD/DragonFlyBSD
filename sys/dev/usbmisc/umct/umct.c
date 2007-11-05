@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.12 2007/08/19 17:16:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.13 2007/11/05 13:32:28 hasso Exp $
  */
 
 /*
@@ -107,16 +107,12 @@ static struct ucom_callback umct_callback = {
 	NULL			/* ucom_write */
 };
 
-static const struct umct_product {
-	uint16_t	vendor;
-	uint16_t	product;
-} umct_products[] = {
-	{ USB_VENDOR_MCT, USB_PRODUCT_MCT_USB232 },
-	{ USB_VENDOR_MCT, USB_PRODUCT_MCT_SITECOM_USB232 },
-	{ USB_VENDOR_MCT, USB_PRODUCT_MCT_DU_H3SP_USB232 },
-	{ USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_F5U109 },
-	{ USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_F5U409 },
-	{ 0, 0 }
+static const struct usb_devno umct_products[] = {
+	{ USB_DEVICE(0x050d, 0x0109) }, /* Belkin F5U109 */
+	{ USB_DEVICE(0x050d, 0x0409) }, /* Belkin F5U409 */
+	{ USB_DEVICE(0x0711, 0x0200) }, /* D-Link DU-H3SP USB BAY Hub */
+	{ USB_DEVICE(0x0711, 0x0210) }, /* MCT USB-232 */
+	{ USB_DEVICE(0x0711, 0x0230) }, /* Sitecom USB-232 */
 };
 
 static device_probe_t	umct_match;
@@ -145,19 +141,12 @@ static int
 umct_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	int i;
 
 	if (uaa->iface != NULL)
 		return (UMATCH_NONE);
 
-	for (i = 0; umct_products[i].vendor != 0; i++) {
-		if (umct_products[i].vendor == uaa->vendor &&
-		    umct_products[i].product == uaa->product) {
-			return (UMATCH_VENDOR_PRODUCT);
-		}
-	}
-
-	return (UMATCH_NONE);
+	return (usb_lookup(umct_products, uaa->vendor, uaa->product) != NULL) ?
+	    UMATCH_VENDOR_PRODUCT : UMATCH_NONE;
 }
 
 static int
@@ -246,8 +235,11 @@ umct_attach(device_t self)
 
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_OUT) {
 			ucom->sc_bulkout_no = ed->bEndpointAddress;
-			if (uaa->product == USB_PRODUCT_MCT_SITECOM_USB232)
-				ucom->sc_obufsize = 16; /* device is broken */
+			/* MCT Sitecom USB-232 device is broken. The bulk out
+			 * endpoint descriptor reports 32 bytes, but data will
+			 * get dropped if this value is used. */
+			if (uaa->vendor == 0x0711 && uaa->product == 0x0230)
+				ucom->sc_obufsize = 16;
 			else
 				ucom->sc_obufsize = UGETW(ed->wMaxPacketSize);
 			continue;

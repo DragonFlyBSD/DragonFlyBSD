@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.9 2007/07/01 21:24:02 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.10 2007/11/05 13:32:27 hasso Exp $
  */
 
 /*
@@ -116,10 +116,9 @@ SYSCTL_INT(_hw_rue, OID_AUTO, debug, CTLFLAG_RW, &rue_debug, 0,
  * Various supported device vendors/products.
  */
 
-static struct rue_type rue_devs[] = {
-	{ USB_VENDOR_MELCO, USB_PRODUCT_MELCO_LUAKTX },
-	{ USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_USBKR100 },
-	{ 0, 0 }
+static const struct usb_devno rue_devs[] = {
+	{ USB_DEVICE(0x0411, 0x0012) }, /* Melco LUA-KTX*/
+	{ USB_DEVICE(0x0bda, 0x8150) }, /* Realtek USBKR100 (GREEN HOUSE) */
 };
 
 static int rue_match(device_t);
@@ -512,21 +511,12 @@ static int
 rue_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	struct rue_type	*t;
 
 	if (uaa->iface == NULL)
 		return (UMATCH_NONE);
 
-	t = rue_devs;
-	while (t->rue_vid) {
-		if (uaa->vendor == t->rue_vid &&
-		    uaa->product == t->rue_did) {
-			return (UMATCH_VENDOR_PRODUCT);
-		}
-		t++;
-	}
-
-	return (UMATCH_NONE);
+	return (usb_lookup(rue_devs, uaa->vendor, uaa->product) != NULL ?
+		UMATCH_VENDOR_PRODUCT : UMATCH_NONE);
 }
 
 /*

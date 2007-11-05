@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.29 2007/07/03 19:28:16 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.30 2007/11/05 13:32:28 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -240,10 +240,9 @@ uhid_attach(device_t self)
 
 	sc->sc_ep_addr = ed->bEndpointAddress;
 
-	if (uaa->vendor == USB_VENDOR_WACOM &&
-	    uaa->product == USB_PRODUCT_WACOM_GRAPHIRE /* &&
+	/* The report descriptor for the Wacom Graphire is broken. */
+	if (uaa->vendor == 0x056a && uaa->product == 0x0010 /* &&
 	    uaa->revision == 0x???? */) { /* XXX should use revision */
-		/* The report descriptor for the Wacom Graphire is broken. */
 		size = sizeof uhid_graphire_report_descr;
 		desc = kmalloc(size, M_USBDEV, M_INTWAIT);
 		err = USBD_NORMAL_COMPLETION;

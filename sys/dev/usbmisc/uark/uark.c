@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uark/uark.c,v 1.3 2007/08/19 17:16:43 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uark/uark.c,v 1.4 2007/11/05 13:32:27 hasso Exp $	*/
 /*	$OpenBSD: uark.c,v 1.9 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -86,7 +86,7 @@ struct ucom_callback uark_callback = {
 };
 
 static const struct usb_devno uark_devs[] = {
-	{ USB_VENDOR_ARKMICRO,		USB_PRODUCT_ARKMICRO_ARK3116 }
+	{ USB_DEVICE(0x6547, 0x0232) } /* Arkmicro Technologies ARK3116 */
 };
 
 static device_probe_t uark_match;

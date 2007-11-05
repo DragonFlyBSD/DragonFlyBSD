@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_quirks.c,v 1.50 2004/06/23 02:30:52 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_quirks.c,v 1.41.2.4 2006/02/15 22:51:08 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_quirks.c,v 1.7 2007/06/28 13:55:12 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_quirks.c,v 1.8 2007/11/05 13:32:27 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -59,56 +59,112 @@ static const struct usbd_quirk_entry {
 	u_int16_t bcdDevice;
 	struct usbd_quirks quirks;
 } usb_quirks[] = {
- { USB_VENDOR_KYE, USB_PRODUCT_KYE_NICHE,	    0x100, { UQ_NO_SET_PROTO}},
- { USB_VENDOR_INSIDEOUT, USB_PRODUCT_INSIDEOUT_EDGEPORT4,
-   						    0x094, { UQ_SWAP_UNICODE}},
- { USB_VENDOR_DALLAS, USB_PRODUCT_DALLAS_J6502,	    0x0a2, { UQ_BAD_ADC }},
- { USB_VENDOR_DALLAS, USB_PRODUCT_DALLAS_J6502,	    0x0a2, { UQ_AU_NO_XU }},
- { USB_VENDOR_ALTEC, USB_PRODUCT_ALTEC_ADA70,	    0x103, { UQ_BAD_ADC }},
- { USB_VENDOR_ALTEC, USB_PRODUCT_ALTEC_ASC495,      0x000, { UQ_BAD_AUDIO }},
- { USB_VENDOR_QTRONIX, USB_PRODUCT_QTRONIX_980N,    0x110, { UQ_SPUR_BUT_UP }},
- { USB_VENDOR_ALCOR2, USB_PRODUCT_ALCOR2_KBD_HUB,   0x001, { UQ_SPUR_BUT_UP }},
- { USB_VENDOR_MCT, USB_PRODUCT_MCT_HUB0100,         0x102, { UQ_BUS_POWERED }},
- { USB_VENDOR_MCT, USB_PRODUCT_MCT_USB232,          0x102, { UQ_BUS_POWERED }},
- { USB_VENDOR_METRICOM, USB_PRODUCT_METRICOM_RICOCHET_GS,
- 	0x100, { UQ_ASSUME_CM_OVER_DATA }},
- { USB_VENDOR_SANYO, USB_PRODUCT_SANYO_SCP4900,
- 	0x000, { UQ_ASSUME_CM_OVER_DATA }},
- { USB_VENDOR_TI, USB_PRODUCT_TI_UTUSB41,	    0x110, { UQ_POWER_CLAIM }},
- { USB_VENDOR_TELEX, USB_PRODUCT_TELEX_MIC1,	    0x009, { UQ_AU_NO_FRAC }},
- { USB_VENDOR_SILICONPORTALS, USB_PRODUCT_SILICONPORTALS_YAPPHONE,
-   						    0x100, { UQ_AU_INP_ASYNC }},
- /* XXX These should have a revision number, but I don't know what they are. */
- { USB_VENDOR_HP, USB_PRODUCT_HP_895C,		    ANY,   { UQ_BROKEN_BIDIR }},
- { USB_VENDOR_HP, USB_PRODUCT_HP_880C,		    ANY,   { UQ_BROKEN_BIDIR }},
- { USB_VENDOR_HP, USB_PRODUCT_HP_815C,		    ANY,   { UQ_BROKEN_BIDIR }},
- { USB_VENDOR_HP, USB_PRODUCT_HP_810C,		    ANY,   { UQ_BROKEN_BIDIR }},
- { USB_VENDOR_HP, USB_PRODUCT_HP_830C,		    ANY,   { UQ_BROKEN_BIDIR }},
- { USB_VENDOR_HP, USB_PRODUCT_HP_1220C,		    ANY,   { UQ_BROKEN_BIDIR }},
- /* YAMAHA router's ucdDevice is the version of farmware and often changes. */
- { USB_VENDOR_YAMAHA, USB_PRODUCT_YAMAHA_RTA54I,
-	ANY, { UQ_ASSUME_CM_OVER_DATA }},
- { USB_VENDOR_YAMAHA, USB_PRODUCT_YAMAHA_RTA55I,
-	ANY, { UQ_ASSUME_CM_OVER_DATA }},
- { USB_VENDOR_YAMAHA, USB_PRODUCT_YAMAHA_RTW65B,
-	ANY, { UQ_ASSUME_CM_OVER_DATA }},
- { USB_VENDOR_YAMAHA, USB_PRODUCT_YAMAHA_RTW65I,
-	ANY, { UQ_ASSUME_CM_OVER_DATA }},
- { USB_VENDOR_QUALCOMM, USB_PRODUCT_QUALCOMM_CDMA_MSM,
-	ANY, { UQ_ASSUME_CM_OVER_DATA }},
- { USB_VENDOR_QUALCOMM2, USB_PRODUCT_QUALCOMM2_CDMA_MSM,
-	ANY, { UQ_ASSUME_CM_OVER_DATA }},
- { USB_VENDOR_SUNTAC, USB_PRODUCT_SUNTAC_AS64LX,
-	0x100, { UQ_ASSUME_CM_OVER_DATA }},
+ /* KYE Niche mouse */
+ { .idVendor = 0x0458, .idProduct = 0x0001, .bcdDevice = 0x100,
+   .quirks   = { UQ_NO_SET_PROTO}},
+ /* Inside Out Networks EdgePort/4 RS232 */
+ { .idVendor = 0x1608, .idProduct = 0x0001, .bcdDevice = 0x094,
+   .quirks   = { UQ_SWAP_UNICODE}},
+ /* Dallas Semiconductor J-6502 speakers */
+ { .idVendor = 0x04fa, .idProduct = 0x4201, .bcdDevice = 0x0a2,
+   .quirks   = { UQ_BAD_ADC | UQ_AU_NO_XU }},
+ /* Altec Lansing ADA70 speakers */
+ { .idVendor = 0x04d2, .idProduct = 0x0070, .bcdDevice = 0x103,
+   .quirks   = { UQ_BAD_ADC }},
+ /* Altec Lansing ASC495 speakers */
+ { .idVendor = 0x04d2, .idProduct = 0xff05, .bcdDevice = 0x000,
+   .quirks   = { UQ_BAD_AUDIO }},
+ /* Qtronix Scorpion-980N keyboard */
+ { .idVendor = 0x05c7, .idProduct = 0x2011, .bcdDevice = 0x110,
+   .quirks   = { UQ_SPUR_BUT_UP }},
+ /* Alcor Micro, Inc. kbd hub */
+ { .idVendor = 0x0566, .idProduct = 0x2802, .bcdDevice = 0x001,
+   .quirks   = { UQ_SPUR_BUT_UP }},
+ /* MCT Corp. hub */
+ { .idVendor = 0x0711, .idProduct = 0x0100, .bcdDevice = 0x102,
+   .quirks   = { UQ_BUS_POWERED }},
+ /* MCT Corp. USB-232 interface */
+ { .idVendor = 0x0711, .idProduct = 0x0210, .bcdDevice = 0x102,
+   .quirks   = { UQ_BUS_POWERED }},
+ /* Metricom Ricochet GS */
+ { .idVendor = 0x0870, .idProduct = 0x0001, .bcdDevice = 0x100,
+   .quirks   = { UQ_ASSUME_CM_OVER_DATA }},
+ /* Sanyo SCP-4900 USB Phone */
+ { .idVendor = 0x0474, .idProduct = 0x0701, .bcdDevice = 0x000,
+   .quirks   = { UQ_ASSUME_CM_OVER_DATA }},
+ /* Texas Instruments UT-USB41 hub */
+ { .idVendor = 0x0451, .idProduct = 0x1446, .bcdDevice = 0x110,
+   .quirks   = { UQ_POWER_CLAIM }},
+ /* Telex Communications Enhanced USB Microphone */
+ { .idVendor = 0x0562, .idProduct = 0x0001, .bcdDevice = 0x009,
+   .quirks   = { UQ_AU_NO_FRAC }},
+ /* Silicon Portals Inc. YAP Phone */
+ { .idVendor = 0x1527, .idProduct = 0x0201, .bcdDevice = 0x100,
+   .quirks   = { UQ_AU_INP_ASYNC }},
+
+ /*
+  * XXX All these HP devices should have a revision number,
+  * but I don't know what they are.
+  */
+ /* HP DeskJet 895C */
+ { .idVendor = 0x03f0, .idProduct = 0x0004, .bcdDevice = ANY,
+   .quirks   = { UQ_BROKEN_BIDIR }},
+ /* HP DeskJet 880C */
+ { .idVendor = 0x03f0, .idProduct = 0x0104, .bcdDevice = ANY,
+   .quirks   = { UQ_BROKEN_BIDIR }},
+ /* HP DeskJet 815C */
+ { .idVendor = 0x03f0, .idProduct = 0x0204, .bcdDevice = ANY,
+   .quirks   = { UQ_BROKEN_BIDIR }},
+ /* HP DeskJet 810C/812C */
+ { .idVendor = 0x03f0, .idProduct = 0x0304, .bcdDevice = ANY,
+   .quirks   = { UQ_BROKEN_BIDIR }},
+ /* HP DeskJet 830C */
+ { .idVendor = 0x03f0, .idProduct = 0x0404, .bcdDevice = ANY,
+   .quirks   = { UQ_BROKEN_BIDIR }},
+ /* HP DeskJet 1220C */
+ { .idVendor = 0x03f0, .idProduct = 0x0212, .bcdDevice = ANY,
+   .quirks   = { UQ_BROKEN_BIDIR }},
+ 
+ /*
+  * YAMAHA router's ucdDevice is the version of firmware and
+  * often changes.
+  */
+ /* YAMAHA NetVolante RTA54i Broadband&ISDN Router */
+ { .idVendor = 0x0499, .idProduct = 0x4000, .bcdDevice = ANY,
+   .quirks   = { UQ_ASSUME_CM_OVER_DATA }},
+ /* YAMAHA NetVolante RTA55i Broadband VoIP Router */
+ { .idVendor = 0x0499, .idProduct = 0x4004, .bcdDevice = ANY,
+   .quirks   = { UQ_ASSUME_CM_OVER_DATA }},
+ /* YAMAHA NetVolante RTW65b Broadband Wireless Router */
+ { .idVendor = 0x0499, .idProduct = 0x4001, .bcdDevice = ANY,
+   .quirks   = { UQ_ASSUME_CM_OVER_DATA }},
+ /* YAMAHA NetVolante RTW65i Broadband&ISDN Wireless Router */
+ { .idVendor = 0x0499, .idProduct = 0x4002, .bcdDevice = ANY,
+   .quirks   = { UQ_ASSUME_CM_OVER_DATA }},
+
+ /* Qualcomm CDMA Technologies MSM modem */
+ { .idVendor = 0x05c6, .idProduct = 0x3196, .bcdDevice = ANY,
+   .quirks   = { UQ_ASSUME_CM_OVER_DATA }},
+ /* Qualcomm CDMA Technologies MSM phone */
+ { .idVendor = 0x1004, .idProduct = 0x6000, .bcdDevice = ANY,
+   .quirks   = { UQ_ASSUME_CM_OVER_DATA }},
+ /* SUNTAC U-Cable type A3 */
+ { .idVendor = 0x05db, .idProduct = 0x000b, .bcdDevice = 0x100,
+   .quirks   = { UQ_ASSUME_CM_OVER_DATA }},
+
  /* Devices which should be ignored by uhid */
- { USB_VENDOR_APC, USB_PRODUCT_APC_UPSPRO500,
-	ANY, { UQ_HID_IGNORE }},
- { USB_VENDOR_DELORME, USB_PRODUCT_DELORME_EARTHMATE,
-	ANY, { UQ_HID_IGNORE }},
- { USB_VENDOR_MGE, USB_PRODUCT_MGE_UPS1,
-	ANY, { UQ_HID_IGNORE }},
- { USB_VENDOR_MGE, USB_PRODUCT_MGE_UPS2,
-	ANY, { UQ_HID_IGNORE }},
+ /* APC Back-UPS Pro 500 */
+ { .idVendor = 0x051d, .idProduct = 0x0002, .bcdDevice = ANY,
+   .quirks   = { UQ_HID_IGNORE }},
+ /* Delorme Publishing Earthmate GPS */
+ { .idVendor = 0x1163, .idProduct = 0x0100, .bcdDevice = ANY,
+   .quirks   = { UQ_HID_IGNORE }},
+ /* MGE UPS Systems ProtectionCenter */
+ { .idVendor = 0x0463, .idProduct = 0x0001, .bcdDevice = ANY,
+   .quirks   = { UQ_HID_IGNORE }},
+ /* MGE UPS Systems ProtectionCenter */
+ { .idVendor = 0x0463, .idProduct = 0xffff, .bcdDevice = ANY,
+   .quirks   = { UQ_HID_IGNORE }},
  { 0, 0, 0, { 0 } }
 };
 

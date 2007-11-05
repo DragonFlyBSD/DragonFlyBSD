@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.22 2007/08/19 17:16:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.23 2007/11/05 13:32:28 hasso Exp $
  */
 
 /*-
@@ -208,90 +208,52 @@ struct ucom_callback uplcom_callback = {
 };
 
 static const struct usb_devno uplcom_devs[] = {
-	/* Alcatel One Touch 535/735 phones */
-	{ USB_VENDOR_ALCATEL, USB_PRODUCT_ALCATEL_OT535 },
-	/* Alcor AU9720 USB to serial controller */
-	{ USB_VENDOR_ALCOR, USB_PRODUCT_ALCOR_AU9720 },
-	/* Anchor serial */
-	{ USB_VENDOR_ANCHOR, USB_PRODUCT_ANCHOR_SERIAL },
-	/* Aten UC232A USB to serial adapter */
-	{ USB_VENDOR_ATEN, USB_PRODUCT_ATEN_UC232A },
-	/* Belkin F5U257 USB to serial adapter */
-	{ USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_F5U257 },
-	/* ELECOM UC-SGT USB to serial adapters */
-	{ USB_VENDOR_ELECOM, USB_PRODUCT_ELECOM_UCSGT },
-	{ USB_VENDOR_ELECOM, USB_PRODUCT_ELECOM_UCSGT0 },
-	/* HAL Corporation Crossam2+USB */
-	{ USB_VENDOR_HAL, USB_PRODUCT_HAL_IMR001 },
-	/* Huawei UMTS/HSDPA adapters */
-	{ USB_VENDOR_HUAWEI, USB_PRODUCT_HUAWEI_MOBILE },
-	/* I/O DATA USB-RSAQ USB to serial cable */
-	{ USB_VENDOR_IODATA, USB_PRODUCT_IODATA_USBRSAQ },
-	/* I/O DATA USB-RSAQ5 USB to serial cable */
-	{ USB_VENDOR_IODATA, USB_PRODUCT_IODATA_USBRSAQ5 },
-	/* Itegno GSM/GPRS modem */
-	{ USB_VENDOR_ITEGNO, USB_PRODUCT_ITEGNO_GSM },
-	/* Itegno CDMA 1x card */
-	{ USB_VENDOR_ITEGNO, USB_PRODUCT_ITEGNO_CDMA },
-	/* Leadtek 9531 GPS */
-	{ USB_VENDOR_LEADTEK, USB_PRODUCT_LEADTEK_9531 },
-	/* Mobile Action MA-620 IrDA */
-	{ USB_VENDOR_MOBILEACTION, USB_PRODUCT_MOBILEACTION_MA620 },
-	/* Willcom W-SIM */
-	{ USB_VENDOR_NETINDEX, USB_PRODUCT_NETINDEX_WSIM },
-	/* Nokia CA-42 USB data cable clones*/
-	{ USB_VENDOR_NOKIA, USB_PRODUCT_NOKIA_CA42 },
-	/* Panasonic 50" touch panel */
-	{ USB_VENDOR_PANASONIC, USB_PRODUCT_PANASONIC_TYTP50P6S },
-	/* PLX CA-42 USB data cable clone */
-	{ USB_VENDOR_PLX, USB_PRODUCT_PLX_CA42 },
-	/* Unbranded DCU-11 clone */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_DCU11 },
-	/* IOGEAR/ATEN UC-232A, ST Lab USB-SERIAL-X etc */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_PL2303 },
-	/* Microsoft OEM Pharos 360 GPS */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_PL2303X },
-	/* I/O DATA USB-RSAQ2 USB to serial cable */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_RSAQ2 },
-	/* I/O DATA USB-RSAQ3 USB to serial cable */
-	{ USB_VENDOR_PROLIFIC, USB_PRODUCT_PROLIFIC_RSAQ3 },
-	/* RADIOSHACK USB cable */
-	{ USB_VENDOR_RADIOSHACK, USB_PRODUCT_RADIOSHACK_USBCABLE },
-	/* RATOC REX-USB60 USB to serial cable */
-	{ USB_VENDOR_RATOC, USB_PRODUCT_RATOC_REXUSB60 },
-	/* Sagem USB data cables */
-	{ USB_VENDOR_SAGEM, USB_PRODUCT_SAGEM_USBSERIAL },
-	/* Samsung I330 smartphone cradle */
-	{ USB_VENDOR_SAMSUNG, USB_PRODUCT_SAMSUNG_I330 },
-	/* Siemens SX1 cellphone */
-	{ USB_VENDOR_SIEMENS3, USB_PRODUCT_SIEMENS3_SX1 },
-	/* Siemens x65 series cellphones */
-	{ USB_VENDOR_SIEMENS3, USB_PRODUCT_SIEMENS3_X65 },
-	/* Siemens x75 series cellphones */
-	{ USB_VENDOR_SIEMENS3, USB_PRODUCT_SIEMENS3_X75 },
-	/* Sitecom USB to serial cable */
-	{ USB_VENDOR_SITECOM, USB_PRODUCT_SITECOM_CN104 },
-	/* Smart Technologies USB to serial adapter */
-	{ USB_VENDOR_SMART, USB_PRODUCT_SMART_PL2303 },
-	/* Sony-Ericsson DCU-10 and DCU-11 USB data cables */
-	{ USB_VENDOR_SUSTEEN, USB_PRODUCT_SUSTEEN_DCU10 },
-	/* Susteen Datapilot Universal-2 Phone Cable */
-	{ USB_VENDOR_SUSTEEN, USB_PRODUCT_SUSTEEN_U2 },
-	/* SOURCENEXT KeikaiDenwa 8 */
-	{ USB_VENDOR_SOURCENEXT, USB_PRODUCT_SOURCENEXT_KEIKAI8 },
-	/* SOURCENEXT KeikaiDenwa 8 with charger */
-	{ USB_VENDOR_SOURCENEXT, USB_PRODUCT_SOURCENEXT_KEIKAI8_CHG },
-	/* Speed Dragon Multimedia MS3303H USB to serial controller */
-	{ USB_VENDOR_SPEEDDRAGON, USB_PRODUCT_SPEEDDRAGON_MS3303H },
-	/* Syntech CPT-8001C barcode scanner USB IR cradle */
-	{ USB_VENDOR_SYNTECH, USB_PRODUCT_SYNTECH_SERIAL },
-	/* TDK USB-PHS adapter UHA6400 */
-	{ USB_VENDOR_TDK, USB_PRODUCT_TDK_UHA6400 },
-	/* TDK USB-PDC adapter UPA9664 */
-	{ USB_VENDOR_TDK, USB_PRODUCT_TDK_UPA9664 },
-	/* Tripp-Lite U209-000-R USB to serial cable */
-	{ USB_VENDOR_TRIPPLITE, USB_PRODUCT_TRIPPLITE_U209 },
-	{ 0, 0 }
+	{ USB_DEVICE(0x0413, 0x2101) }, /* Leadtek 9531 GPS */
+	{ USB_DEVICE(0x0421, 0x1234) }, /* Nokia CA-42 USB data cable clones*/
+	{ USB_DEVICE(0x04bb, 0x0a03) }, /* I/O DATA USB-RSAQ USB to serial */
+	{ USB_DEVICE(0x04bb, 0x0a0e) }, /* I/O DATA USB-RSAQ5 USB to serial */
+	{ USB_DEVICE(0x04bf, 0x0115) }, /* TDK USB-PDC adapter UPA9664 */
+	{ USB_DEVICE(0x04bf, 0x0117) }, /* TDK USB-PHS adapter UHA6400 */
+	{ USB_DEVICE(0x04da, 0x3900) }, /* Panasonic 50" touch panel */
+	{ USB_DEVICE(0x04e8, 0x8001) }, /* Samsung I330 smartphone cradle */
+	{ USB_DEVICE(0x050d, 0x0257) }, /* Belkin F5U257 USB to serial */
+	{ USB_DEVICE(0x0547, 0x2008) }, /* Anchor serial */
+	{ USB_DEVICE(0x0557, 0x2008) }, /* Aten UC232A USB to serial */
+	{ USB_DEVICE(0x056e, 0x5003) }, /* ELECOM UC-SGT USB to serial */
+	{ USB_DEVICE(0x056e, 0x5004) }, /* ELECOM UC-SGT USB to serial */
+	{ USB_DEVICE(0x0584, 0xb000) }, /* RATOC REX-USB60 USB to serial */
+	{ USB_DEVICE(0x058f, 0x9720) }, /* Alcor AU9720 USB to serial */
+	{ USB_DEVICE(0x067b, 0x04bb) }, /* I/O DATA USB-RSAQ2 USB to serial */
+	{ USB_DEVICE(0x067b, 0x1234) }, /* Unbranded DCU-11 clone */
+	{ USB_DEVICE(0x067b, 0x2303) }, /* IOGEAR/ATEN UC-232A, ST Lab
+					   USB-SERIAL-X etc */
+	{ USB_DEVICE(0x067b, 0xaaa0) }, /* Microsoft OEM Pharos 360 GPS */
+	{ USB_DEVICE(0x067b, 0xaaa2) }, /* I/O DATA USB-RSAQ3 USB to serial */
+	{ USB_DEVICE(0x0731, 0x0528) }, /* Sony-Ericsson DCU-10/DCU-11 */
+	{ USB_DEVICE(0x0731, 0x2003) }, /* Susteen Datapilot Universal-2 Phone
+					   Cable */
+	{ USB_DEVICE(0x0745, 0x0001) }, /* Syntech CPT-8001C barcode scanner
+					   USB cradle */
+	{ USB_DEVICE(0x079b, 0x0027) }, /* Sagem USB data cables */
+	{ USB_DEVICE(0x0833, 0x012e) }, /* SOURCENEXT KeikaiDenwa 8 with
+					   charger */
+	{ USB_DEVICE(0x0833, 0x039f) }, /* SOURCENEXT KeikaiDenwa 8 */
+	{ USB_DEVICE(0x0b41, 0x0011) }, /* HAL Corporation Crossam2+USB */
+	{ USB_DEVICE(0x0b8c, 0x2303) }, /* Smart Technologies USB to serial */
+	{ USB_DEVICE(0x0df7, 0x0620) }, /* Mobile Action MA-620 IrDA */
+	{ USB_DEVICE(0x0e55, 0x110b) }, /* Speed Dragon MS3303H */
+	{ USB_DEVICE(0x0eba, 0x1080) }, /* Itegno GSM/GPRS modem */
+	{ USB_DEVICE(0x0eba, 0x2080) }, /* Itegno CDMA 1x card */
+	{ USB_DEVICE(0x10b5, 0xac70) }, /* PLX CA-42 USB data cable clone */
+	{ USB_DEVICE(0x11f5, 0x0001) }, /* Siemens SX1 cellphone */
+	{ USB_DEVICE(0x11f5, 0x0003) }, /* Siemens x65 series cellphones */
+	{ USB_DEVICE(0x11f5, 0x0004) }, /* Siemens x75 series cellphones */
+	{ USB_DEVICE(0x11f6, 0x2001) }, /* Willcom W-SIM */
+	{ USB_DEVICE(0x11f7, 0x02df) }, /* Alcatel One Touch 535/735 phones */
+	{ USB_DEVICE(0x12d1, 0x1001) }, /* Huawei UMTS/HSDPA adapters */
+	{ USB_DEVICE(0x1453, 0x4026) }, /* RADIOSHACK USB cable */
+	{ USB_DEVICE(0x2478, 0x2008) }, /* Tripp-Lite U209-000-R */
+	{ USB_DEVICE(0x6189, 0x2068) }, /* Sitecom USB to serial cable */
 };
 
 static device_probe_t uplcom_match;

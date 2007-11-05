@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_ruereg.h,v 1.3 2004/05/23 12:35:24 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_ruereg.h,v 1.1 2005/09/19 02:53:27 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_ruereg.h,v 1.2 2007/11/05 13:32:27 hasso Exp $
  */
 
 #ifndef _IF_RUEREG_H_
@@ -181,11 +181,6 @@ struct rue_rxpkt {
 #define RUE_RXSTAT_MCAST	0x08
 
 #define RUE_RXSTAT_MASK		RUE_RXSTAT_VALID
-
-struct rue_type {
-	uint16_t		rue_vid;
-	uint16_t		rue_did;
-};
 
 #define RUE_TX_LIST_CNT		1
 #define RUE_RX_LIST_CNT		1

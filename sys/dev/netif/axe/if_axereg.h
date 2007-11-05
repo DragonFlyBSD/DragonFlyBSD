@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axereg.h,v 1.2 2003/06/15 21:45:43 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axereg.h,v 1.4 2005/05/25 11:38:59 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axereg.h,v 1.5 2007/11/05 13:32:27 hasso Exp $
  */
 
 /*
@@ -116,11 +116,6 @@
 #define AXE_ENDPT_TX		0x1
 #define AXE_ENDPT_INTR		0x2
 #define AXE_ENDPT_MAX		0x3
-
-struct axe_type {
-	u_int16_t		axe_vid;
-	u_int16_t		axe_did;
-};
 
 struct axe_softc;
 

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.13 2007/07/01 21:24:04 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.14 2007/11/05 13:32:28 hasso Exp $
  */
 
 /*
@@ -205,25 +205,23 @@ struct uvisor_type {
 #define PALM4	0x0001
 };
 static const struct uvisor_type uvisor_devs[] = {
-	{{ USB_VENDOR_HANDSPRING, USB_PRODUCT_HANDSPRING_VISOR }, 0 },
-	{{ USB_VENDOR_HANDSPRING, USB_PRODUCT_HANDSPRING_TREO }, PALM4 },
-	{{ USB_VENDOR_PALM, USB_PRODUCT_PALM_M500 }, PALM4 },
-	{{ USB_VENDOR_PALM, USB_PRODUCT_PALM_M505 }, PALM4 },
-	{{ USB_VENDOR_PALM, USB_PRODUCT_PALM_M515 }, PALM4 },
-	{{ USB_VENDOR_PALM, USB_PRODUCT_PALM_I705 }, PALM4 },
-	{{ USB_VENDOR_PALM, USB_PRODUCT_PALM_M125 }, PALM4 },
-	{{ USB_VENDOR_PALM, USB_PRODUCT_PALM_M130 }, PALM4 },
-	{{ USB_VENDOR_PALM, USB_PRODUCT_PALM_TUNGSTEN_Z }, PALM4 },
-	{{ USB_VENDOR_PALM, USB_PRODUCT_PALM_TUNGSTEN_T }, PALM4 },
-	{{ USB_VENDOR_PALM, USB_PRODUCT_PALM_ZIRE }, PALM4 },
-	{{ USB_VENDOR_SONY, USB_PRODUCT_SONY_CLIE_40 }, 0 },
-	{{ USB_VENDOR_SONY, USB_PRODUCT_SONY_CLIE_41 }, 0 },
-	{{ USB_VENDOR_SONY, USB_PRODUCT_SONY_CLIE_S360 }, PALM4 },
-	{{ USB_VENDOR_SONY, USB_PRODUCT_SONY_CLIE_NX60 }, PALM4 },
-/*	{{ USB_VENDOR_SONY, USB_PRODUCT_SONY_CLIE_25 }, PALM4 },*/
+	{{ USB_DEVICE(0x054c, 0x0066) }, 0 },	  /* Sony Clie v4.0 */
+	{{ USB_DEVICE(0x054c, 0x0095) }, PALM4 }, /* Sony Clie s360 */
+	{{ USB_DEVICE(0x054c, 0x009a) }, 0 },	  /* Sony Clie v4.1 */
+	{{ USB_DEVICE(0x054c, 0x00da) }, PALM4 }, /* Sony Clie nx60 */
+	{{ USB_DEVICE(0x082d, 0x0100) }, 0 },	  /* Handspring Visor */
+	{{ USB_DEVICE(0x082d, 0x0200) }, PALM4 }, /* Handspring Treo */
+	{{ USB_DEVICE(0x0830, 0x0001) }, PALM4 }, /* Palm m500 */
+	{{ USB_DEVICE(0x0830, 0x0002) }, PALM4 }, /* Palm m505 */
+	{{ USB_DEVICE(0x0830, 0x0003) }, PALM4 }, /* Palm m515 */
+	{{ USB_DEVICE(0x0830, 0x0020) }, PALM4 }, /* Palm i705 */
+	{{ USB_DEVICE(0x0830, 0x0031) }, PALM4 }, /* Palm Tungsten Z */
+	{{ USB_DEVICE(0x0830, 0x0040) }, PALM4 }, /* Palm m125 */
+	{{ USB_DEVICE(0x0830, 0x0050) }, PALM4 }, /* Palm m130 */
+	{{ USB_DEVICE(0x0830, 0x0060) }, PALM4 }, /* Palm Tungsten T */
+	{{ USB_DEVICE(0x0830, 0x0070) }, PALM4 }, /* Palm Palm Zire */
 };
 #define uvisor_lookup(v, p) ((const struct uvisor_type *)usb_lookup(uvisor_devs, v, p))
-
 
 static int
 uvisor_match(device_t self)

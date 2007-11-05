@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cuereg.h,v 1.12 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cuereg.h,v 1.7 2005/05/25 11:59:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cuereg.h,v 1.8 2007/11/05 13:32:27 hasso Exp $
  */
 
 /*
@@ -138,11 +138,6 @@
 #define CUE_ENDPT_TX		0x1
 #define CUE_ENDPT_INTR		0x2
 #define CUE_ENDPT_MAX		0x3
-
-struct cue_type {
-	u_int16_t		cue_vid;
-	u_int16_t		cue_did;
-};
 
 struct cue_softc;
 

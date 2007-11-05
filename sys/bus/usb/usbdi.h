@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi.h,v 1.64 2004/10/23 13:26:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.h,v 1.59 2005/05/16 06:58:43 imp Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi.h,v 1.9 2007/06/28 06:32:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.h,v 1.10 2007/11/05 13:32:27 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -212,6 +212,8 @@ struct usb_devno {
 	u_int16_t ud_vendor;
 	u_int16_t ud_product;
 };
+#define USB_DEVICE(vid, pid) \
+	.ud_vendor = (vid), .ud_product = (pid)
 const struct usb_devno *usb_match_device(const struct usb_devno *,
 	u_int, u_int, u_int16_t, u_int16_t);
 #define usb_lookup(tbl, vendor, product) \
