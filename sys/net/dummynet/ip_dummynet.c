@@ -25,15 +25,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.41 2007/11/03 13:14:29 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.42 2007/11/05 13:26:08 sephe Exp $
  */
 
 #ifndef KLD_MODULE
 #include "opt_ipfw.h"	/* for IPFW2 definition */
 #endif
 
-#define DEB(x)
-#define DDB(x)	x
+#ifdef DUMMYNET_DEBUG
+#define DPRINTF(fmt, ...)	kprintf(fmt, __VA_ARGS__)
+#else
+#define DPRINTF(fmt, ...)	((void)0)
+#endif
 
 /*
  * This module implements IP dummynet, a bandwidth limiter/delay emulator
@@ -687,9 +690,10 @@ dummynet(struct netmsg *msg)
     for (i = 0; i < 3; i++) {
 	h = heaps[i];
 	while (h->elements > 0 && DN_KEY_LEQ(h->p[0].key, curr_time)) {
-	    DDB(if (h->p[0].key > curr_time)
+	    if (h->p[0].key > curr_time) {
 		kprintf("-- dummynet: warning, heap %d is %d ticks late\n",
-		    i, (int)(curr_time - h->p[0].key));)
+		    i, (int)(curr_time - h->p[0].key));
+	    }
 
 	    p = h->p[0].object;		/* Store a copy before heap_extract */
 	    heap_extract(h, NULL);	/* Need to extract before processing */
@@ -882,7 +886,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
     int64_t p_b = 0;
     u_int q_size = (fs->flags_fs & DN_QSIZE_IS_BYTES) ? q->len_bytes : q->len;
 
-    DEB(kprintf("\n%d q: %2u ", (int) curr_time, q_size);)
+    DPRINTF("\n%d q: %2u ", (int)curr_time, q_size);
 
     /* Average queue size estimation */
     if (q_size != 0) {
@@ -908,7 +912,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 		     SCALE_MUL(q->avg, fs->w_q_lookup[t]) : 0;
 	}
     }
-    DEB(kprintf("avg: %u ", SCALE_VAL(q->avg));)
+    DPRINTF("avg: %u ", SCALE_VAL(q->avg));
 
     /* Should i drop? */
 
@@ -952,7 +956,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 	 */
 	if (SCALE_MUL(p_b, SCALE((int64_t)q->count)) > q->random) {
 	    q->count = 0;
-	    DEB(kprintf("- red drop");)
+	    DPRINTF("%s", "- red drop");
 	    /* After a drop we calculate a new random value */
 	    q->random = krandom() & 0xffff;
 	    return 1;    /* Drop */
@@ -1187,8 +1191,8 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	    if (pipe->numbytes >= 0) {	/* Pipe is idle */
 		if (pipe->scheduler_heap.elements != 1)
 		    kprintf("*** OUCH! pipe should have been idle!\n");
-		DEB(kprintf("Waking up pipe %d at %d\n",
-			pipe->pipe_nr, (int)(q->F >> MY_M)); )
+		DPRINTF("Waking up pipe %d at %d\n",
+			pipe->pipe_nr, (int)(q->F >> MY_M));
 		pipe->sched_time = curr_time;
 		ready_event_wfq(pipe);
 	    }
