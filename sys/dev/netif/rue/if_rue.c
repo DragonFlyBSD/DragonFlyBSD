@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.10 2007/11/05 13:32:27 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.11 2007/11/05 19:09:43 hasso Exp $
  */
 
 /*
@@ -88,7 +88,6 @@
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
 #include <bus/usb/usbdivar.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_ethersubr.h>
 
 #include <dev/netif/mii_layer/mii.h>

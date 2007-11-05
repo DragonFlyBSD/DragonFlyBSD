@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.24 2007/11/05 13:32:27 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.25 2007/11/05 19:09:43 hasso Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -89,7 +89,6 @@
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
 #include <bus/usb/usbdivar.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_ethersubr.h>
 
 #include "../mii_layer//mii.h"

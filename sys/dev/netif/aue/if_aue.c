@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.34 2007/11/05 13:32:27 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.35 2007/11/05 19:09:43 hasso Exp $
  */
 
 /*
@@ -83,7 +83,6 @@
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
 #include <bus/usb/usbdivar.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_ethersubr.h>
 
 #include "../mii_layer/mii.h"

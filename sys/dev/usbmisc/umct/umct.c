@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.13 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.14 2007/11/05 19:09:44 hasso Exp $
  */
 
 /*
@@ -49,7 +49,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 #include "../ucom/ucomvar.h"
 
 /* The UMCT advertises the standard 8250 UART registers */

@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.24 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.25 2007/11/05 19:09:44 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -68,8 +68,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-
-#include <bus/usb/usbdevs.h>
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (uscannerdebug) kprintf x

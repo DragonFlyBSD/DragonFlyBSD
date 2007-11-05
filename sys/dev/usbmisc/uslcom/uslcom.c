@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.6 2007/11/05 13:32:28 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.7 2007/11/05 19:09:44 hasso Exp $	*/
 /*	$OpenBSD: uslcom.c,v 1.12 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -30,7 +30,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 
 #include <dev/usbmisc/ucom/ucomvar.h>
 

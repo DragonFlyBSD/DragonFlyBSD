@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.24 2007/08/07 10:42:40 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.25 2007/11/05 19:09:43 hasso Exp $
  */
 
 /*
@@ -63,7 +63,6 @@
 #include <bus/usb/usbhid.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_quirks.h>
 #include <bus/usb/hid.h>
 

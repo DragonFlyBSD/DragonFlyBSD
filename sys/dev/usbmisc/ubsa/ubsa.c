@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.17 2007/11/05 13:32:27 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.18 2007/11/05 19:09:43 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,6 @@
 
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_quirks.h>
 
 #include "../ucom/ucomvar.h"

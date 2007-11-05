@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.28 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.29 2007/11/05 19:09:43 hasso Exp $
  */
 
 /*
@@ -110,7 +110,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>

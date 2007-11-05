@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.14 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.15 2007/11/05 19:09:44 hasso Exp $
  */
 
 /*
@@ -71,7 +71,6 @@
 
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 
 #include "../ucom/ucomvar.h"
 

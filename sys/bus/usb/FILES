@@ -1,13 +1,11 @@
 $FreeBSD: src/sys/dev/usb/FILES,v 1.6 2003/04/14 14:04:07 ticso Exp $
-$DragonFly: src/sys/bus/usb/FILES,v 1.3 2003/12/30 01:01:44 dillon Exp $
+$DragonFly: src/sys/bus/usb/FILES,v 1.4 2007/11/05 19:09:42 hasso Exp $
 
 A small roadmap of the USB files:
 
 FILES			this file
 Makefile		to install .h files
-Makefile.usbdevs	to run devlist2h.awk
 TODO			just a list of things to do
-devlist2h.awk		script to generate usbdevs*.h
 dsbr100io.h		API for ufm.c
 ehci.c			Host controller driver for EHCI
 ehcireg.h		Hardware definitions for EHCI
@@ -51,9 +49,6 @@ usb_quirks.c		table of non-conforming USB devices and their problems
 usb_quirks.h		API for usb_quirks.c
 usb_subr.c		various subroutines used by USB code
 usbcdc.h		USB CDC class definitions
-usbdevs			data base of known device
-usbdevs.h		generated from usbdevs
-usbdevs_data.h		generated from usbdevs
 usbdi.c			implementation of the USBDI API, which all drivers use
 usbdi.h			API for usbdi.c
 usbdi_util.c		utilities built on top of usbdi.h

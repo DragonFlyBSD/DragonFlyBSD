@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.24 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.25 2007/11/05 19:09:44 hasso Exp $
  */
 
 /*
@@ -68,7 +68,6 @@
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
 
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/rio500_usb.h>
 
 #ifdef USB_DEBUG

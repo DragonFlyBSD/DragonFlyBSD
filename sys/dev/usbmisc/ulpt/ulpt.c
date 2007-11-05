@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.22 2007/07/02 23:52:05 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.23 2007/11/05 19:09:43 hasso Exp $
  */
 
 /*
@@ -62,7 +62,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_quirks.h>
 
 #define	TIMEOUT		hz*16	/* wait up to 16 seconds for a ready */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.21 2007/11/05 13:32:27 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.22 2007/11/05 19:09:43 hasso Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -49,7 +49,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 
 #include <dev/netif/ural/if_uralreg.h>
 #include <dev/netif/ural/if_uralvar.h>

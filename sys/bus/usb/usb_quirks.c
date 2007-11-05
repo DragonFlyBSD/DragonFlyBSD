@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_quirks.c,v 1.50 2004/06/23 02:30:52 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_quirks.c,v 1.41.2.4 2006/02/15 22:51:08 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_quirks.c,v 1.8 2007/11/05 13:32:27 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_quirks.c,v 1.9 2007/11/05 19:09:42 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -43,8 +43,6 @@
 #include <sys/systm.h>
 
 #include <bus/usb/usb.h>
-
-#include "usbdevs.h"
 #include <bus/usb/usb_quirks.h>
 
 #ifdef USB_DEBUG

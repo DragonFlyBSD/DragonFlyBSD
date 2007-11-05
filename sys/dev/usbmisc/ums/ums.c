@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.28 2007/07/03 19:28:16 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.29 2007/11/05 19:09:44 hasso Exp $
  */
 
 /*
@@ -65,7 +65,6 @@
 
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_quirks.h>
 #include <bus/usb/hid.h>
 

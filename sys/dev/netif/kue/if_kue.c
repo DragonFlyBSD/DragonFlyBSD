@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.26 2007/11/05 13:32:27 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.27 2007/11/05 19:09:43 hasso Exp $
  */
 
 /*
@@ -88,7 +88,6 @@
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
 #include <bus/usb/usbdivar.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_ethersubr.h>
 
 #include "if_kuereg.h"

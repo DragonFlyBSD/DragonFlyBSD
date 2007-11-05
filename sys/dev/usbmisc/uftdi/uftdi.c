@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.37 2007/06/22 05:53:05 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.21 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.22 2007/11/05 19:09:43 hasso Exp $
  */
 
 /*-
@@ -67,7 +67,6 @@
 
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 
 #include "../ucom/ucomvar.h"
 

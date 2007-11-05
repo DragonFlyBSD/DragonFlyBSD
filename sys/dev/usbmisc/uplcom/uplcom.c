@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.23 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.24 2007/11/05 19:09:44 hasso Exp $
  */
 
 /*-
@@ -105,7 +105,6 @@
 
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_quirks.h>
 
 #include "../ucom/ucomvar.h"

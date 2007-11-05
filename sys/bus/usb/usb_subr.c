@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.76.2.3 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.24 2007/07/03 19:28:16 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.25 2007/11/05 19:09:42 hasso Exp $	*/
 
 /* Also already have from NetBSD:
  *	$NetBSD: usb_subr.c,v 1.102 2003/01/01 16:21:50 augustss Exp $
@@ -64,7 +64,6 @@
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
 #include <bus/usb/usbdivar.h>
-#include "usbdevs.h"
 #include <bus/usb/usb_quirks.h>
 
 #define delay(d)         DELAY(d)
@@ -87,24 +86,6 @@ static usbd_status usbd_probe_and_attach(device_t parent,
 				 usbd_device_handle dev, int port, int addr);
 
 static u_int32_t usb_cookie_no = 0;
-
-#ifdef USBVERBOSE
-typedef u_int16_t usb_vendor_id_t;
-typedef u_int16_t usb_product_id_t;
-
-/*
- * Descriptions of of known vendors and devices ("products").
- */
-struct usb_knowndev {
-	usb_vendor_id_t		vendor;
-	usb_product_id_t	product;
-	int			flags;
-	char			*vendorname, *productname;
-};
-#define	USB_KNOWNDEV_NOPROD	0x01		/* match on vendor only */
-
-#include "usbdevs_data.h"
-#endif /* USBVERBOSE */
 
 static const char * const usbd_error_strs[] = {
 	"NORMAL_COMPLETION",
@@ -199,9 +180,6 @@ usbd_devinfo_vp(usbd_device_handle dev, char *v, char *p, int usedev)
 {
 	usb_device_descriptor_t *udd = &dev->ddesc;
 	char *vendor = 0, *product = 0;
-#ifdef USBVERBOSE
-	const struct usb_knowndev *kdp;
-#endif
 
 	if (dev == NULL) {
 		v[0] = p[0] = '\0';
@@ -227,25 +205,7 @@ usbd_devinfo_vp(usbd_device_handle dev, char *v, char *p, int usedev)
 		vendor = NULL;
 		product = NULL;
 	}
-#ifdef USBVERBOSE
-	if (vendor == NULL || product == NULL) {
-		for(kdp = usb_knowndevs;
-		    kdp->vendorname != NULL;
-		    kdp++) {
-			if (kdp->vendor == UGETW(udd->idVendor) &&
-			    (kdp->product == UGETW(udd->idProduct) ||
-			     (kdp->flags & USB_KNOWNDEV_NOPROD) != 0))
-				break;
-		}
-		if (kdp->vendorname != NULL) {
-			if (vendor == NULL)
-			    vendor = kdp->vendorname;
-			if (product == NULL)
-			    product = (kdp->flags & USB_KNOWNDEV_NOPROD) == 0 ?
-				kdp->productname : NULL;
-		}
-	}
-#endif
+
 	if (vendor != NULL && *vendor)
 		strcpy(v, vendor);
 	else

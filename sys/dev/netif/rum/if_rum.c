@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.20 2007/11/05 13:32:27 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.21 2007/11/05 19:09:43 hasso Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -49,7 +49,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 
 #include "if_rumreg.h"
 #include "if_rumvar.h"

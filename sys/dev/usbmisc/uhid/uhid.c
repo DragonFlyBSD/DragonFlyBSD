@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.30 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.31 2007/11/05 19:09:43 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -72,7 +72,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbhid.h>
 
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
 #include <bus/usb/hid.h>

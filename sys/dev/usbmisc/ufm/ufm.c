@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.21 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.22 2007/11/05 19:09:43 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,6 @@
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
 
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/dsbr100io.h>
 
 #ifdef USB_DEBUG

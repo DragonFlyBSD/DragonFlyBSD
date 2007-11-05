@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.31 2007/08/07 13:14:11 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.32 2007/11/05 19:09:43 hasso Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -89,7 +89,6 @@
 
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_quirks.h>
 
 #include "ucomvar.h"

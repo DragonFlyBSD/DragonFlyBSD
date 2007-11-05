@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.3 2007/11/05 13:32:28 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.4 2007/11/05 19:09:44 hasso Exp $	*/
 /*	$OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $	*/
 
 /*
@@ -32,7 +32,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 #include <dev/usbmisc/ucom/ucomvar.h>
 
 #ifdef UMSM_DEBUG

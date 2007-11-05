@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uark/uark.c,v 1.4 2007/11/05 13:32:27 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uark/uark.c,v 1.5 2007/11/05 19:09:43 hasso Exp $	*/
 /*	$OpenBSD: uark.c,v 1.9 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -30,7 +30,6 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 
 #include <dev/usbmisc/ucom/ucomvar.h>
 

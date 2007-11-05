@@ -1,6 +1,6 @@
 # Makefile - module build for usb.ko
 #
-# $DragonFly: src/sys/bus/usb/usb/Makefile,v 1.3 2005/07/18 14:50:56 dillon Exp $
+# $DragonFly: src/sys/bus/usb/usb/Makefile,v 1.4 2007/11/05 19:09:43 hasso Exp $
 
 S		 = ${.CURDIR}/../../..
 .PATH:		 $S/bus/pci $S/bus/usb
@@ -15,7 +15,6 @@ SRCS		 = bus_if.h device_if.h usb_if.h usb_if.c \
 		   usb_port.h \
 		   usb_quirks.c usb_quirks.h \
 		   usb_subr.c \
-		   usbdevs.h usbdevs_data.h \
 		   usbdi.c usbdi.h usbdivar.h \
 		   usbdi_util.c usbdi_util.h \
 		   usb_ethersubr.c
@@ -28,5 +27,3 @@ NOMAN		 =
 
 .include <bsd.kmod.mk>
 
-regen:
-	cd ${.CURDIR} && ${MAKE} -f Makefile.usbdevs regen

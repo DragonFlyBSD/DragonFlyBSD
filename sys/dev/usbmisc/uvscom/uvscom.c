@@ -25,7 +25,7 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.17 2007/11/05 13:32:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.18 2007/11/05 19:09:44 hasso Exp $
  */
 
 /*
@@ -55,7 +55,6 @@
 
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
-#include <bus/usb/usbdevs.h>
 #include <bus/usb/usb_quirks.h>
 
 #include "../ucom/ucomvar.h"

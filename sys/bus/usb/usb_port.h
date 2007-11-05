@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.20 2007/07/03 19:28:16 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.21 2007/11/05 19:09:42 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -58,8 +58,6 @@
  */
 
 #include "opt_usb.h"
-
-#define USBVERBOSE
 
 #define Static static
 
