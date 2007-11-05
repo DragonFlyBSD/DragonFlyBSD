@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.4 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.5 2007/11/05 08:58:35 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -249,6 +249,8 @@ typedef struct  _ipfw_insn_log {
 	u_int32_t log_left;	/* how many left to log 	*/
 } ipfw_insn_log;
 
+#ifdef _KERNEL
+
 /*
  * Here we have the structure representing an ipfw rule.
  *
@@ -281,7 +283,7 @@ struct ip_fw {
 	u_int16_t	cmd_len;	/* # of 32-bit words in cmd	*/
 	u_int16_t	rulenum;	/* rule number			*/
 	u_int8_t	set;		/* rule set (0..31)		*/
-	u_int8_t	_pad;		/* padding			*/
+	u_int8_t	usr_flags;	/* IPFW_USR_F_			*/
 
 	/* These fields are present in all rules.			*/
 	u_int64_t	pcnt;		/* Packet counter		*/
@@ -291,11 +293,7 @@ struct ip_fw {
 	ipfw_insn	cmd[1];		/* storage for commands		*/
 };
 
-#define ACTION_PTR(rule)				\
-	(ipfw_insn *)( (u_int32_t *)((rule)->cmd) + ((rule)->act_ofs) )
-
-#define RULESIZE(rule)  (sizeof(struct ip_fw) + \
-	((struct ip_fw *)(rule))->cmd_len * 4 - 4)
+#define RULESIZE(rule)	(sizeof(struct ip_fw) + (rule)->cmd_len * 4 - 4)
 
 /*
  * This structure is used as a flow mask and a flow id for various
@@ -335,28 +333,8 @@ struct _ipfw_dyn_rule {
 };
 
 /*
- * Definitions for IP option names.
- */
-#define	IP_FW_IPOPT_LSRR	0x01
-#define	IP_FW_IPOPT_SSRR	0x02
-#define	IP_FW_IPOPT_RR		0x04
-#define	IP_FW_IPOPT_TS		0x08
-
-/*
- * Definitions for TCP option names.
- */
-#define	IP_FW_TCPOPT_MSS	0x01
-#define	IP_FW_TCPOPT_WINDOW	0x02
-#define	IP_FW_TCPOPT_SACK	0x04
-#define	IP_FW_TCPOPT_TS		0x08
-#define	IP_FW_TCPOPT_CC		0x10
-
-#define	ICMP_REJECT_RST		0x100	/* fake ICMP code (send a TCP RST) */
-
-/*
  * Main firewall chains definitions and global var's definitions.
  */
-#ifdef _KERNEL
 
 #define	IP_FW_PORT_DYNT_FLAG	0x10000
 #define	IP_FW_PORT_TEE_FLAG	0x20000
@@ -399,6 +377,90 @@ extern ip_fw_ctl_t *ip_fw_ctl_ptr;
 extern int fw_one_pass;
 extern int fw_enable;
 #define	IPFW_LOADED	(ip_fw_chk_ptr != NULL)
+
 #endif /* _KERNEL */
+
+#define ACTION_PTR(rule)	\
+	(ipfw_insn *)((uint32_t *)((rule)->cmd) + ((rule)->act_ofs))
+
+struct ipfw_ioc_rule {
+	uint16_t	act_ofs;	/* offset of action in 32-bit units */
+	uint16_t	cmd_len;	/* # of 32-bit words in cmd	*/
+	uint16_t	rulenum;	/* rule number			*/
+	uint8_t		set;		/* rule set (0..31)		*/
+	uint8_t		usr_flags;	/* IPFW_USR_F_ 			*/
+
+	/* Rule set information */
+	uint32_t	set_disable;	/* disabled rule sets		*/
+	uint32_t	static_count;	/* # of static rules		*/
+	uint32_t	static_len;	/* total length of static rules	*/
+
+	/* Statistics */
+	uint64_t	pcnt;		/* Packet counter		*/
+	uint64_t	bcnt;		/* Byte counter			*/
+	uint32_t	timestamp;	/* tv_sec of last match		*/
+
+	uint8_t		reserved[16];
+
+	ipfw_insn	cmd[1];		/* storage for commands		*/
+};
+
+#define IPFW_USR_F_NORULE	0x01
+
+#define IPFW_RULE_SIZE_MAX	255	/* unit: uint32_t */
+
+#define IOC_RULESIZE(rule)	\
+	(sizeof(struct ipfw_ioc_rule) + (rule)->cmd_len * 4 - 4)
+
+struct ipfw_ioc_flowid {
+	uint16_t	type;	/* ETHERTYPE_ */
+	uint16_t	pad;
+	union {
+		struct {
+			uint32_t dst_ip;
+			uint32_t src_ip;
+			uint16_t dst_port;
+			uint16_t src_port;
+			uint8_t proto;
+		} ip;
+		uint8_t pad[64];
+	} u;
+};
+
+struct ipfw_ioc_state {
+	uint32_t	expire;		/* expire time			*/
+	uint64_t	pcnt;		/* packet match counter		*/
+	uint64_t	bcnt;		/* byte match counter		*/
+
+	uint16_t	dyn_type;	/* rule type			*/
+	uint16_t	count;		/* refcount			*/
+
+	uint16_t	rulenum;
+	uint16_t	pad;
+
+	int		cpu;		/* reserved			*/
+
+	struct ipfw_ioc_flowid id;	/* (masked) flow id		*/
+	uint8_t		reserved[16];
+};
+
+/*
+ * Definitions for IP option names.
+ */
+#define	IP_FW_IPOPT_LSRR	0x01
+#define	IP_FW_IPOPT_SSRR	0x02
+#define	IP_FW_IPOPT_RR		0x04
+#define	IP_FW_IPOPT_TS		0x08
+
+/*
+ * Definitions for TCP option names.
+ */
+#define	IP_FW_TCPOPT_MSS	0x01
+#define	IP_FW_TCPOPT_WINDOW	0x02
+#define	IP_FW_TCPOPT_SACK	0x04
+#define	IP_FW_TCPOPT_TS		0x08
+#define	IP_FW_TCPOPT_CC		0x10
+
+#define	ICMP_REJECT_RST		0x100	/* fake ICMP code (send a TCP RST) */
 
 #endif /* _IPFW2_H */

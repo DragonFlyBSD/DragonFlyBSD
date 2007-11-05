@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.11 2007/11/03 13:14:29 sephe Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.12 2007/11/05 08:58:35 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -802,7 +802,7 @@ show_prerequisites(int *flags, int want, int cmd)
 }
 
 static void
-show_ipfw(struct ip_fw *rule, int pcwidth, int bcwidth)
+show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 {
 	static int twidth = 0;
 	int l;
@@ -812,7 +812,7 @@ show_ipfw(struct ip_fw *rule, int pcwidth, int bcwidth)
 	ipfw_insn_log *logptr = NULL; /* set if we find an O_LOG */
 	int or_block = 0;	/* we are in an or block */
 
-	u_int32_t set_disable = (u_int32_t)(rule->next_rule);
+	u_int32_t set_disable = rule->set_disable;
 
 	if (set_disable & (1 << rule->set)) { /* disabled */
 		if (!show_sets)
@@ -946,7 +946,8 @@ show_ipfw(struct ip_fw *rule, int pcwidth, int bcwidth)
 	/*
 	 * then print the body.
 	 */
-	if (rule->_pad & 1) {	/* empty rules before options */
+	if (rule->usr_flags & IPFW_USR_F_NORULE) {
+		/* empty rules before options */
 		if (!do_compact)
 			printf(" ip from any to any");
 		flags |= HAVE_IP | HAVE_OPTIONS;
@@ -1203,7 +1204,7 @@ show_ipfw(struct ip_fw *rule, int pcwidth, int bcwidth)
 }
 
 static void
-show_dyn_ipfw(ipfw_dyn_rule *d, int pcwidth, int bcwidth)
+show_dyn_ipfw(struct ipfw_ioc_state *d, int pcwidth, int bcwidth)
 {
 	struct protoent *pe;
 	struct in_addr a;
@@ -1213,7 +1214,7 @@ show_dyn_ipfw(ipfw_dyn_rule *d, int pcwidth, int bcwidth)
 			return;
 	}
 
-	printf("%05d %*llu %*llu (%ds)", (int)(d->rule), pcwidth, d->pcnt,
+	printf("%05u %*llu %*llu (%ds)", d->rulenum, pcwidth, d->pcnt,
 	    bcwidth, d->bcnt, d->expire);
 	switch (d->dyn_type) {
 	case O_LIMIT_PARENT:
@@ -1227,16 +1228,16 @@ show_dyn_ipfw(ipfw_dyn_rule *d, int pcwidth, int bcwidth)
 		break;
 	}
 
-	if ((pe = getprotobynumber(d->id.proto)) != NULL)
+	if ((pe = getprotobynumber(d->id.u.ip.proto)) != NULL)
 		printf(" %s", pe->p_name);
 	else
-		printf(" proto %u", d->id.proto);
+		printf(" proto %u", d->id.u.ip.proto);
 
-	a.s_addr = htonl(d->id.src_ip);
-	printf(" %s %d", inet_ntoa(a), d->id.src_port);
+	a.s_addr = htonl(d->id.u.ip.src_ip);
+	printf(" %s %d", inet_ntoa(a), d->id.u.ip.src_port);
 
-	a.s_addr = htonl(d->id.dst_ip);
-	printf(" <-> %s %d", inet_ntoa(a), d->id.dst_port);
+	a.s_addr = htonl(d->id.u.ip.dst_ip);
+	printf(" <-> %s %d", inet_ntoa(a), d->id.u.ip.dst_port);
 	printf("\n");
 }
 
@@ -1441,12 +1442,12 @@ sets_handler(int ac, char *av[])
 		void *data;
 		char *msg;
 
-		nbytes = sizeof(struct ip_fw);
+		nbytes = sizeof(struct ipfw_ioc_rule);
 		if ((data = malloc(nbytes)) == NULL)
 			err(EX_OSERR, "malloc");
 		if (getsockopt(s, IPPROTO_IP, IP_FW_GET, data, &nbytes) < 0)
 			err(EX_OSERR, "getsockopt(IP_FW_GET)");
-		set_disable = (u_int32_t)(((struct ip_fw *)data)->next_rule);
+		set_disable = ((struct ipfw_ioc_rule *)data)->set_disable;
 
 		for (i = 0, msg = "disable" ; i < 31; i++)
 			if (  (set_disable & (1<<i))) {
@@ -1557,10 +1558,10 @@ sysctl_handler(int ac, char *av[], int which)
 static void
 list(int ac, char *av[])
 {
-	struct ip_fw *r;
-	ipfw_dyn_rule *dynrules, *d;
+	struct ipfw_ioc_rule *r;
+	struct ipfw_ioc_state *dynrules, *d;
 
-	void *lim, *data = NULL;
+	void *data = NULL;
 	int bcwidth, n, nbytes, nstat, ndyn, pcwidth, width;
 	int exitval = EX_OK;
 	int lac;
@@ -1594,28 +1595,23 @@ list(int ac, char *av[])
 	}
 
 	/*
-	 * Count static rules. They have variable size so we
-	 * need to scan the list to count them.
+	 * Count static rules.
 	 */
-	for (nstat = 1, r = data, lim = data + nbytes;
-		    r->rulenum < 65535 && (void *)r < lim;
-		    ++nstat, r = (void *)r + RULESIZE(r) )
-		; /* nothing */
+	r = data;
+	nstat = r->static_count;
 
 	/*
 	 * Count dynamic rules. This is easier as they have
 	 * fixed size.
 	 */
-	r = (void *)r + RULESIZE(r);
-	dynrules = (ipfw_dyn_rule *)r ;
-	n = (void *)r - data;
-	ndyn = (nbytes - n) / sizeof *dynrules;
+	dynrules = (struct ipfw_ioc_state *)((void *)r + r->static_len);
+	ndyn = (nbytes - r->static_len) / sizeof(*dynrules);
 
 	/* if showing stats, figure out column widths ahead of time */
 	bcwidth = pcwidth = 0;
 	if (do_acct) {
 		for (n = 0, r = data; n < nstat;
-		    n++, r = (void *)r + RULESIZE(r)) {
+		    n++, r = (void *)r + IOC_RULESIZE(r)) {
 			/* packet counter */
 			width = snprintf(NULL, 0, "%llu", r->pcnt);
 			if (width > pcwidth)
@@ -1641,7 +1637,7 @@ list(int ac, char *av[])
 	/* if no rule numbers were specified, list all rules */
 	if (ac == 0) {
 		for (n = 0, r = data; n < nstat;
-		    n++, r = (void *)r + RULESIZE(r) )
+		    n++, r = (void *)r + IOC_RULESIZE(r) )
 			show_ipfw(r, pcwidth, bcwidth);
 
 		if (do_dynamic && ndyn) {
@@ -1663,7 +1659,7 @@ list(int ac, char *av[])
 			continue;
 		}
 		for (n = seen = 0, r = data; n < nstat;
-		    n++, r = (void *)r + RULESIZE(r) ) {
+		    n++, r = (void *)r + IOC_RULESIZE(r) ) {
 			if (r->rulenum > rnum)
 				break;
 			if (r->rulenum == rnum) {
@@ -1687,9 +1683,9 @@ list(int ac, char *av[])
 				/* already warned */
 				continue;
 			for (n = 0, d = dynrules; n < ndyn; n++, d++) {
-				if ((int)(d->rule) > rnum)
+				if (d->rulenum > rnum)
 					break;
-				if ((int)(d->rule) == rnum)
+				if (d->rulenum == rnum)
 					show_dyn_ipfw(d, pcwidth, bcwidth);
 			}
 		}
@@ -2518,12 +2514,14 @@ add(int ac, char *av[])
 	 * Some things that need to go out of order (prob, action etc.)
 	 * go into actbuf[].
 	 */
-	static u_int32_t rulebuf[255], actbuf[255], cmdbuf[255];
+	static uint32_t rulebuf[IPFW_RULE_SIZE_MAX];
+	static uint32_t actbuf[IPFW_RULE_SIZE_MAX];
+	static uint32_t cmdbuf[IPFW_RULE_SIZE_MAX];
 
 	ipfw_insn *src, *dst, *cmd, *action, *prev = NULL;
 	ipfw_insn *first_cmd;	/* first match pattern */
 
-	struct ip_fw *rule;
+	struct ipfw_ioc_rule *rule;
 
 	/*
 	 * various flags used to record that we entered some fields.
@@ -2543,7 +2541,7 @@ add(int ac, char *av[])
 	bzero(cmdbuf, sizeof(cmdbuf));
 	bzero(rulebuf, sizeof(rulebuf));
 
-	rule = (struct ip_fw *)rulebuf;
+	rule = (struct ipfw_ioc_rule *)rulebuf;
 	cmd = (ipfw_insn *)cmdbuf;
 	action = (ipfw_insn *)actbuf;
 
@@ -2875,7 +2873,7 @@ read_options:
 		 * nothing specified so far, store in the rule to ease
 		 * printout later.
 		 */
-		 rule->_pad = 1;
+		 rule->usr_flags = IPFW_USR_F_NORULE;
 	}
 	prev = NULL;
 	while (ac) {

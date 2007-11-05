@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.33 2007/11/04 06:57:46 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.34 2007/11/05 08:58:35 sephe Exp $
  */
 
 #define        DEB(x)
@@ -98,7 +98,7 @@ static struct ip_fw *layer3_chain;
 MALLOC_DEFINE(M_IPFW, "IpFw/IpAcct", "IpFw/IpAcct chain's");
 
 static int fw_debug = 1;
-static int autoinc_step = 100; /* bounded to 1..1000 in add_rule() */
+static int autoinc_step = 100; /* bounded to 1..1000 in ipfw_add_rule() */
 
 #ifdef SYSCTL_NODE
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw, CTLFLAG_RW, 0, "Firewall");
@@ -178,8 +178,8 @@ static u_int32_t dyn_keepalive_interval = 20;
 static u_int32_t dyn_keepalive_period = 5;
 static u_int32_t dyn_keepalive = 1;	/* do send keepalives */
 
-static u_int32_t static_count;	/* # of static rules */
-static u_int32_t static_len;	/* size in bytes of static rules */
+static u_int32_t static_count;		/* # of static rules */
+static u_int32_t static_ioc_len;	/* bytes of static rules */
 static u_int32_t dyn_count;		/* # of dynamic rules */
 static u_int32_t dyn_max = 4096;	/* max # of dynamic rules */
 
@@ -210,6 +210,14 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_keepalive, CTLFLAG_RW,
 
 #endif /* SYSCTL_NODE */
 
+/**
+ * dummynet needs a reference to the default rule, because rules can be
+ * deleted while packets hold a reference to them. When this happens,
+ * dummynet changes the reference to the default rule (it could well be a
+ * NULL pointer, but this way we do not need to check for the special
+ * case, plus here he have info on the default behaviour).
+ */
+struct ip_fw *ip_fw_default_rule;
 
 static ip_fw_chk_t	ipfw_chk;
 
@@ -618,6 +626,7 @@ hash_packet(struct ipfw_flow_id *id)
 		prev->next = q = q->next;				\
 	else								\
 		head = q = q->next;					\
+	KASSERT(dyn_count > 0, ("invalid dyn count %u\n", dyn_count));	\
 	dyn_count--;							\
 	kfree(old_q, M_IPFW); }
 
@@ -1979,19 +1988,38 @@ static __inline void
 ipfw_inc_static_count(struct ip_fw *rule)
 {
 	static_count++;
-	static_len += RULESIZE(rule);
+	static_ioc_len += IOC_RULESIZE(rule);
 }
 
 static __inline void
 ipfw_dec_static_count(struct ip_fw *rule)
 {
-	int l = RULESIZE(rule);
+	int l = IOC_RULESIZE(rule);
 
 	KASSERT(static_count > 0, ("invalid static count %u\n", static_count));
 	static_count--;
 
-	KASSERT(static_len >= l, ("invalid static len %u\n", static_len));
-	static_len -= l;
+	KASSERT(static_ioc_len >= l,
+		("invalid static len %u\n", static_ioc_len));
+	static_ioc_len -= l;
+}
+
+static struct ip_fw *
+ipfw_create_rule(const struct ipfw_ioc_rule *ioc_rule)
+{
+	struct ip_fw *rule;
+
+	rule = kmalloc(RULESIZE(ioc_rule), M_IPFW, M_WAITOK | M_ZERO);
+
+	rule->act_ofs = ioc_rule->act_ofs;
+	rule->cmd_len = ioc_rule->cmd_len;
+	rule->rulenum = ioc_rule->rulenum;
+	rule->set = ioc_rule->set;
+	rule->usr_flags = ioc_rule->usr_flags;
+
+	bcopy(ioc_rule->cmd, rule->cmd, rule->cmd_len * 4 /* XXX */);
+
+	return rule;
 }
 
 /*
@@ -2000,22 +2028,13 @@ ipfw_dec_static_count(struct ip_fw *rule)
  * Update the rule_number in the input struct so the caller knows it as well.
  */
 static int
-add_rule(struct ip_fw **head, struct ip_fw *input_rule)
+ipfw_add_rule(struct ip_fw **head, struct ipfw_ioc_rule *ioc_rule)
 {
 	struct ip_fw *rule, *f, *prev;
-	int l = RULESIZE(input_rule);
 
 	KKASSERT(*head != NULL);
 
-	rule = kmalloc(l, M_IPFW, M_WAITOK | M_ZERO);
-	bcopy(input_rule, rule, l);
-
-	rule->next = NULL;
-	rule->next_rule = NULL;
-
-	rule->pcnt = 0;
-	rule->bcnt = 0;
-	rule->timestamp = 0;
+	rule = ipfw_create_rule(ioc_rule);
 
 	crit_enter();
 
@@ -2038,7 +2057,7 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 		}
 		if (rule->rulenum < IPFW_DEFAULT_RULE - autoinc_step)
 			rule->rulenum += autoinc_step;
-		input_rule->rulenum = rule->rulenum;
+		ioc_rule->rulenum = rule->rulenum;
 	}
 
 	/*
@@ -2056,10 +2075,12 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 			break;
 		}
 	}
-	flush_rule_ptrs();
 
+	flush_rule_ptrs();
 	ipfw_inc_static_count(rule);
+
 	crit_exit();
+
 	DEB(kprintf("++ installed rule %d, static count now %d\n",
 		rule->rulenum, static_count);)
 	return (0);
@@ -2108,6 +2129,21 @@ free_chain(struct ip_fw **chain, int kill_default)
 	while ( (rule = *chain) != NULL &&
 	    (kill_default || rule->rulenum != IPFW_DEFAULT_RULE) )
 		delete_rule(chain, NULL, rule);
+
+	if (kill_default) {
+		ip_fw_default_rule = NULL;
+		KASSERT(static_count == 0,
+			("%u static rules remains\n", static_count));
+		KASSERT(static_ioc_len == 0,
+			("%u bytes of static rules remains\n", static_ioc_len));
+	} else {
+		KASSERT(static_count == 1,
+			("%u static rules remains\n", static_count));
+		KASSERT(static_ioc_len == IOC_RULESIZE(ip_fw_default_rule),
+			("%u bytes of static rules remains, should be %u\n",
+			 static_ioc_len, IOC_RULESIZE(ip_fw_default_rule)));
+	}
+	KASSERT(dyn_count == 0, ("%u dyn rule remains\n", dyn_count));
 }
 
 /**
@@ -2278,28 +2314,29 @@ zero_entry(int rulenum, int log_only)
  * Fortunately rules are simple, so this mostly need to check rule sizes.
  */
 static int
-check_ipfw_struct(struct ip_fw *rule, int size)
+ipfw_ctl_check_rule(struct ipfw_ioc_rule *rule, int size)
 {
 	int l, cmdlen = 0;
-	int have_action=0;
+	int have_action = 0;
 	ipfw_insn *cmd;
 
+	/* Check for valid size */
 	if (size < sizeof(*rule)) {
 		kprintf("ipfw: rule too short\n");
-		return (EINVAL);
+		return EINVAL;
 	}
-	/* first, check for valid size */
-	l = RULESIZE(rule);
+	l = IOC_RULESIZE(rule);
 	if (l != size) {
 		kprintf("ipfw: size mismatch (have %d want %d)\n", size, l);
-		return (EINVAL);
+		return EINVAL;
 	}
+
 	/*
 	 * Now go for the individual checks. Very simple ones, basically only
 	 * instruction sizes.
 	 */
-	for (l = rule->cmd_len, cmd = rule->cmd ;
-			l > 0 ; l -= cmdlen, cmd += cmdlen) {
+	for (l = rule->cmd_len, cmd = rule->cmd; l > 0;
+	     l -= cmdlen, cmd += cmdlen) {
 		cmdlen = F_LEN(cmd);
 		if (cmdlen > l) {
 			kprintf("ipfw: opcode %d size truncated\n",
@@ -2455,6 +2492,133 @@ bad_size:
 	return EINVAL;
 }
 
+static int
+ipfw_ctl_add_rule(struct sockopt *sopt)
+{
+	struct ipfw_ioc_rule *ioc_rule;
+	uint32_t rule_buf[IPFW_RULE_SIZE_MAX];
+	size_t size;
+	int error;
+
+	ioc_rule = (struct ipfw_ioc_rule *)rule_buf;
+	error = sooptcopyin(sopt, ioc_rule, sizeof(rule_buf),
+			    sizeof(*ioc_rule));
+	if (error)
+		return error;
+
+	size = sopt->sopt_valsize;
+	error = ipfw_ctl_check_rule(ioc_rule, size);
+	if (error)
+		return error;
+
+	error = ipfw_add_rule(&layer3_chain, ioc_rule);
+	if (error)
+		return error;
+
+	if (sopt->sopt_dir == SOPT_GET)
+		error = sooptcopyout(sopt, ioc_rule, IOC_RULESIZE(ioc_rule));
+	return error;
+}
+
+static void *
+ipfw_copy_rule(const struct ip_fw *rule, struct ipfw_ioc_rule *ioc_rule)
+{
+	ioc_rule->act_ofs = rule->act_ofs;
+	ioc_rule->cmd_len = rule->cmd_len;
+	ioc_rule->rulenum = rule->rulenum;
+	ioc_rule->set = rule->set;
+	ioc_rule->usr_flags = rule->usr_flags;
+
+	ioc_rule->set_disable = set_disable;
+	ioc_rule->static_count = static_count;
+	ioc_rule->static_len = static_ioc_len;
+
+	ioc_rule->pcnt = rule->pcnt;
+	ioc_rule->bcnt = rule->bcnt;
+	ioc_rule->timestamp = rule->timestamp;
+
+	bcopy(rule->cmd, ioc_rule->cmd, ioc_rule->cmd_len * 4 /* XXX */);
+
+	return ((uint8_t *)ioc_rule + IOC_RULESIZE(ioc_rule));
+}
+
+static void
+ipfw_copy_state(const ipfw_dyn_rule *dyn_rule,
+		struct ipfw_ioc_state *ioc_state)
+{
+	const struct ipfw_flow_id *id;
+	struct ipfw_ioc_flowid *ioc_id;
+
+	ioc_state->expire = TIME_LEQ(dyn_rule->expire, time_second) ?
+			    0 : dyn_rule->expire - time_second;
+	ioc_state->pcnt = dyn_rule->pcnt;
+	ioc_state->bcnt = dyn_rule->bcnt;
+
+	ioc_state->dyn_type = dyn_rule->dyn_type;
+	ioc_state->count = dyn_rule->count;
+
+	ioc_state->rulenum = dyn_rule->rule->rulenum;
+
+	id = &dyn_rule->id;
+	ioc_id = &ioc_state->id;
+
+	ioc_id->type = ETHERTYPE_IP;
+	ioc_id->u.ip.dst_ip = id->dst_ip;
+	ioc_id->u.ip.src_ip = id->src_ip;
+	ioc_id->u.ip.dst_port = id->dst_port;
+	ioc_id->u.ip.src_port = id->src_port;
+	ioc_id->u.ip.proto = id->proto;
+}
+
+static int
+ipfw_ctl_get_rules(struct sockopt *sopt)
+{
+	struct ip_fw *rule;
+	void *buf, *bp;
+	size_t size;
+	int error;
+
+	/*
+	 * pass up a copy of the current rules. Static rules
+	 * come first (the last of which has number IPFW_DEFAULT_RULE),
+	 * followed by a possibly empty list of dynamic rule.
+	 */
+	crit_enter();
+
+	size = static_ioc_len;	/* size of static rules */
+	if (ipfw_dyn_v)		/* add size of dyn.rules */
+		size += (dyn_count * sizeof(struct ipfw_ioc_state));
+
+	/*
+	 * XXX todo: if the user passes a short length just to know
+	 * how much room is needed, do not bother filling up the
+	 * buffer, just jump to the sooptcopyout.
+	 */
+	bp = buf = kmalloc(size, M_TEMP, M_WAITOK | M_ZERO);
+
+	for (rule = layer3_chain; rule; rule = rule->next)
+		bp = ipfw_copy_rule(rule, bp);
+
+	if (ipfw_dyn_v) {
+		struct ipfw_ioc_state *ioc_state;
+		int i;
+
+		ioc_state = bp;
+		for (i = 0; i < curr_dyn_buckets; i++) {
+			ipfw_dyn_rule *p;
+
+			for (p = ipfw_dyn_v[i]; p != NULL;
+			     p = p->next, ioc_state++)
+				ipfw_copy_state(p, ioc_state);
+		}
+	}
+
+	crit_exit();
+
+	error = sooptcopyout(sopt, buf, size);
+	kfree(buf, M_TEMP);
+	return error;
+}
 
 /**
  * {set|get}sockopt parser.
@@ -2463,10 +2627,8 @@ static int
 ipfw_ctl(struct sockopt *sopt)
 {
 	int error, rulenum;
+	uint32_t masks[2];
 	size_t size;
-	struct ip_fw *bp , *buf, *rule;
-
-	static u_int32_t rule_buf[255];	/* we copy the data here */
 
 	/*
 	 * Disallow modifications in really-really secure mode, but still allow
@@ -2474,79 +2636,15 @@ ipfw_ctl(struct sockopt *sopt)
 	 */
 	if (sopt->sopt_name == IP_FW_ADD ||
 	    (sopt->sopt_dir == SOPT_SET && sopt->sopt_name != IP_FW_RESETLOG)) {
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500034
-		error = securelevel_ge(sopt->sopt_td->td_ucred, 3);
-		if (error)
-			return (error);
-#else /* FreeBSD 4.x */
 		if (securelevel >= 3)
-			return (EPERM);
-#endif
+			return EPERM;
 	}
 
 	error = 0;
 
 	switch (sopt->sopt_name) {
 	case IP_FW_GET:
-		/*
-		 * pass up a copy of the current rules. Static rules
-		 * come first (the last of which has number IPFW_DEFAULT_RULE),
-		 * followed by a possibly empty list of dynamic rule.
-		 * The last dynamic rule has NULL in the "next" field.
-		 */
-		crit_enter();
-		size = static_len;	/* size of static rules */
-		if (ipfw_dyn_v)		/* add size of dyn.rules */
-			size += (dyn_count * sizeof(ipfw_dyn_rule));
-
-		/*
-		 * XXX todo: if the user passes a short length just to know
-		 * how much room is needed, do not bother filling up the
-		 * buffer, just jump to the sooptcopyout.
-		 */
-		buf = kmalloc(size, M_TEMP, M_WAITOK);
-
-		bp = buf;
-		for (rule = layer3_chain; rule ; rule = rule->next) {
-			int i = RULESIZE(rule);
-			bcopy(rule, bp, i);
-			/*
-			 * abuse 'next_rule' to store the set_disable word
-			 */
-			bcopy(&set_disable, &(((struct ip_fw *)bp)->next_rule),
-			    sizeof(set_disable));
-			bp = (struct ip_fw *)((char *)bp + i);
-		}
-		if (ipfw_dyn_v) {
-			int i;
-			ipfw_dyn_rule *p, *dst, *last = NULL;
-
-			dst = (ipfw_dyn_rule *)bp;
-			for (i = 0 ; i < curr_dyn_buckets ; i++ )
-				for ( p = ipfw_dyn_v[i] ; p != NULL ;
-				    p = p->next, dst++ ) {
-					bcopy(p, dst, sizeof *p);
-					bcopy(&(p->rule->rulenum), &(dst->rule),
-					    sizeof(p->rule->rulenum));
-					/*
-					 * store a non-null value in "next".
-					 * The userland code will interpret a
-					 * NULL here as a marker
-					 * for the last dynamic rule.
-					 */
-					dst->next = dst ;
-					last = dst ;
-					dst->expire =
-					    TIME_LEQ(dst->expire, time_second) ?
-						0 : dst->expire - time_second ;
-				}
-			if (last != NULL) /* mark last dynamic rule */
-				last->next = NULL;
-		}
-		crit_exit();
-
-		error = sooptcopyout(sopt, buf, size);
-		kfree(buf, M_TEMP);
+		error = ipfw_ctl_get_rules(sopt);
 		break;
 
 	case IP_FW_FLUSH:
@@ -2569,17 +2667,7 @@ ipfw_ctl(struct sockopt *sopt)
 		break;
 
 	case IP_FW_ADD:
-		rule = (struct ip_fw *)rule_buf; /* XXX do a malloc */
-		error = sooptcopyin(sopt, rule, sizeof(rule_buf),
-			sizeof(struct ip_fw) );
-		size = sopt->sopt_valsize;
-		if (error || (error = check_ipfw_struct(rule, size)))
-			break;
-
-		error = add_rule(&layer3_chain, rule);
-		size = RULESIZE(rule);
-		if (!error && sopt->sopt_dir == SOPT_GET)
-			error = sooptcopyout(sopt, rule, size);
+		error = ipfw_ctl_add_rule(sopt);
 		break;
 
 	case IP_FW_DEL:
@@ -2595,19 +2683,31 @@ ipfw_ctl(struct sockopt *sopt)
 		 *	first u_int32_t contains sets to be disabled,
 		 *	second u_int32_t contains sets to be enabled.
 		 */
-		error = sooptcopyin(sopt, rule_buf,
-			2*sizeof(u_int32_t), sizeof(u_int32_t));
+		error = sooptcopyin(sopt, masks,
+			sizeof(masks), sizeof(masks[0]));
 		if (error)
 			break;
+
 		size = sopt->sopt_valsize;
-		if (size == sizeof(u_int32_t))	/* delete or reassign */
-			error = del_entry(&layer3_chain, rule_buf[0]);
-		else if (size == 2*sizeof(u_int32_t)) /* set enable/disable */
+		if (size == sizeof(masks[0])) {
+			/*
+			 * Delete or reassign static rule
+			 */
+			error = del_entry(&layer3_chain, masks[0]);
+		} else if (size == sizeof(masks)) {
+			/*
+			 * Set enable/disable
+			 */
+			crit_enter();
+
 			set_disable =
-			    (set_disable | rule_buf[0]) & ~rule_buf[1] &
-			    ~(1<<31); /* set 31 always enabled */
-		else
+			    (set_disable | masks[0]) & ~masks[1] &
+			    ~(1 << 31); /* set 31 always enabled */
+
+			crit_exit();
+		} else {
 			error = EINVAL;
+		}
 		break;
 
 	case IP_FW_ZERO:
@@ -2628,17 +2728,8 @@ ipfw_ctl(struct sockopt *sopt)
 		error = EINVAL;
 	}
 
-	return (error);
+	return error;
 }
-
-/**
- * dummynet needs a reference to the default rule, because rules can be
- * deleted while packets hold a reference to them. When this happens,
- * dummynet changes the reference to the default rule (it could well be a
- * NULL pointer, but this way we do not need to check for the special
- * case, plus here he have info on the default behaviour).
- */
-struct ip_fw *ip_fw_default_rule;
 
 /*
  * This procedure is only used to handle keepalives. It is invoked

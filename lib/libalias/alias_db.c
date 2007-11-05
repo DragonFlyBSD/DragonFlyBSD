@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_db.c,v 1.21.2.14 2002/07/24 03:21:24 luigi Exp $
- * $DragonFly: src/lib/libalias/alias_db.c,v 1.5 2007/09/02 13:27:22 sephe Exp $
+ * $DragonFly: src/lib/libalias/alias_db.c,v 1.6 2007/11/05 08:58:35 sephe Exp $
  */
 
 /*
@@ -2693,7 +2693,7 @@ fill_rule(void *buf, int bufsize, int rulenum,
 	enum ipfw_opcodes action, int proto,
 	struct in_addr sa, u_int16_t sp, struct in_addr da, u_int16_t dp)
 {
-    struct ip_fw *rule = (struct ip_fw *)buf;
+    struct ipfw_ioc_rule *rule = buf;
     ipfw_insn *cmd = (ipfw_insn *)rule->cmd;
 
     bzero(buf, bufsize);
@@ -2800,7 +2800,7 @@ PunchFWHole(struct alias_link *link) {
      *	add fwhole accept tcp from DAddr DPort to OAddr OPort
      */
     if (GetOriginalPort(link) != 0 && GetDestPort(link) != 0) {
-	u_int32_t rulebuf[255];
+	u_int32_t rulebuf[IPFW_RULE_SIZE_MAX];
 	int i;
 
 	i = fill_rule(rulebuf, sizeof(rulebuf), fwhole,
