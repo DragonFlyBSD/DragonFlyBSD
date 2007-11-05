@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.34 2007/11/05 08:58:35 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.35 2007/11/05 09:25:44 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2130,8 +2130,19 @@ free_chain(struct ip_fw **chain, int kill_default)
 	    (kill_default || rule->rulenum != IPFW_DEFAULT_RULE) )
 		delete_rule(chain, NULL, rule);
 
+	KASSERT(dyn_count == 0, ("%u dyn rule remains\n", dyn_count));
+
 	if (kill_default) {
-		ip_fw_default_rule = NULL;
+		ip_fw_default_rule = NULL;	/* Reset default rule */
+
+		if (ipfw_dyn_v != NULL) {
+			/*
+			 * Free dynamic rules(state) hash table
+			 */
+			kfree(ipfw_dyn_v, M_IPFW);
+			ipfw_dyn_v = NULL;
+		}
+
 		KASSERT(static_count == 0,
 			("%u static rules remains\n", static_count));
 		KASSERT(static_ioc_len == 0,
@@ -2143,7 +2154,6 @@ free_chain(struct ip_fw **chain, int kill_default)
 			("%u bytes of static rules remains, should be %u\n",
 			 static_ioc_len, IOC_RULESIZE(ip_fw_default_rule)));
 	}
-	KASSERT(dyn_count == 0, ("%u dyn rule remains\n", dyn_count));
 }
 
 /**
