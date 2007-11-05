@@ -170,7 +170,7 @@ DDEESSCCRRIIPPTTIIOONN
        --qqf    Process  saved messages in the queue once and do not fork(), but
               run in the foreground.
 
-       --qqG name
+       --qqG_n_a_m_e
               Process jobs in queue group called _n_a_m_e only.
 
        --qq[_!]I_s_u_b_s_t_r
@@ -462,4 +462,4 @@ HHIISSTTOORRYY
 
 
 
-                         $Date: 2003/12/01 17:02:41 $              SENDMAIL(8)
+                         $Date: 2007/08/02 05:42:33 $              SENDMAIL(8)

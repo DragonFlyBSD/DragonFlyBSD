@@ -379,8 +379,6 @@ This builds manpages from source using *roff.
 bldSOURCES - This should be defined to a space separated list of man source
 files.
 
-bldINSTALLABLE - This should be set if the library should be installed in
-confLIBDIR.
 
 library
 -------
@@ -390,5 +388,7 @@ This builds a static library from C sources.
 bldSOURCES - This should be defined to a space separated list of C source
 files that make up the library.
 
+bldINSTALLABLE - This should be set if the library should be installed in
+confLIBDIR.
 
-$Revision: 8.97 $, Last updated $Date: 2006/10/06 20:51:04 $
+$Revision: 8.98 $, Last updated $Date: 2007/05/18 16:26:09 $
