@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.42 2007/11/05 13:26:08 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.43 2007/11/05 14:06:06 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -79,9 +79,26 @@
 #include <net/ipfw/ip_fw.h>
 #include <net/dummynet/ip_dummynet.h>
 
-#ifndef DUMMYNET_CALLOUT_FREQ_MAX
-#define DUMMYNET_CALLOUT_FREQ_MAX	10000
+#ifndef DN_CALLOUT_FREQ_MAX
+#define DN_CALLOUT_FREQ_MAX	10000
 #endif
+
+/*
+ * The maximum/minimum hash table size for queues.
+ * These values must be a power of 2.
+ */
+#define DN_MIN_HASH_SIZE	4
+#define DN_MAX_HASH_SIZE	65536
+
+/*
+ * Some macros are used to compare key values and handle wraparounds.
+ * MAX64 returns the largest of two key values.
+ */
+#define DN_KEY_LT(a, b)		((int64_t)((a) - (b)) < 0)
+#define DN_KEY_LEQ(a, b)	((int64_t)((a) - (b)) <= 0)
+#define DN_KEY_GT(a, b)		((int64_t)((a) - (b)) > 0)
+#define DN_KEY_GEQ(a, b)	((int64_t)((a) - (b)) >= 0)
+#define MAX64(x, y)		((((int64_t)((y) - (x))) > 0) ? (y) : (x))
 
 /*
  * We keep a private variable for the simulation time, but we could
@@ -1994,8 +2011,8 @@ sysctl_dn_hz(SYSCTL_HANDLER_ARGS)
 	return error;
     if (val <= 0)
 	return EINVAL;
-    else if (val > DUMMYNET_CALLOUT_FREQ_MAX)
-	val = DUMMYNET_CALLOUT_FREQ_MAX;
+    else if (val > DN_CALLOUT_FREQ_MAX)
+	val = DN_CALLOUT_FREQ_MAX;
 
     crit_enter();
     dn_hz = val;
