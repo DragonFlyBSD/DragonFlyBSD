@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.12 2007/11/05 14:06:06 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.13 2007/11/05 15:16:46 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -306,8 +306,7 @@ struct dn_pipe {		/* a pipe */
 
 typedef int	ip_dn_ctl_t(struct sockopt *);	/* raw_ip.c */
 typedef void	ip_dn_ruledel_t(void *);	/* ip_fw2.c */
-typedef int	ip_dn_io_t(struct mbuf *m, int pipe_nr, int dir,
-			   struct ip_fw_args *fwa);
+typedef int	ip_dn_io_t(struct mbuf *, int, int, struct ip_fw_args *);
 
 extern ip_dn_ctl_t	*ip_dn_ctl_ptr;
 extern ip_dn_ruledel_t	*ip_dn_ruledel_ptr;

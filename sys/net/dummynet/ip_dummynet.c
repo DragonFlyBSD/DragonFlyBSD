@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.43 2007/11/05 14:06:06 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.44 2007/11/05 15:16:46 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -100,92 +100,99 @@
 #define DN_KEY_GEQ(a, b)	((int64_t)((a) - (b)) >= 0)
 #define MAX64(x, y)		((((int64_t)((y) - (x))) > 0) ? (y) : (x))
 
+MALLOC_DEFINE(M_DUMMYNET, "dummynet", "dummynet heap");
+
+static dn_key	curr_time = 0;		/* current simulation time */
+static int	dn_hash_size = 64;	/* default hash size */
+static int	pipe_expire = 1;	/* expire queue if empty */
+static int	dn_max_ratio = 16;	/* max queues/buckets ratio */
+
 /*
- * We keep a private variable for the simulation time, but we could
- * probably use an existing one ("softticks" in sys/kern/kern_timer.c)
+ * Statistics on number of queue searches and search steps
  */
-static dn_key curr_time = 0; /* current simulation time */
+static int	searches;
+static int	search_steps;
 
-static int dn_hash_size = 64;	/* default hash size */
-
-/* statistics on number of queue searches and search steps */
-static int searches, search_steps;
-static int pipe_expire = 1;   /* expire queue if empty */
-static int dn_max_ratio = 16; /* max queues/buckets ratio */
-
-static int red_lookup_depth = 256;	/* RED - default lookup table depth */
-static int red_avg_pkt_size = 512;      /* RED - default medium packet size */
-static int red_max_pkt_size = 1500;     /* RED - default max packet size */
+/*
+ * RED parameters
+ */
+static int	red_lookup_depth = 256;	/* default lookup table depth */
+static int	red_avg_pkt_size = 512;	/* default medium packet size */
+static int	red_max_pkt_size = 1500;/* default max packet size */
 
 /*
  * Three heaps contain queues and pipes that the scheduler handles:
  *
- * ready_heap contains all dn_flow_queue related to fixed-rate pipes.
- *
- * wfq_ready_heap contains the pipes associated with WF2Q flows
- *
- * extract_heap contains pipes associated with delay lines.
- *
+ *  + ready_heap	contains all dn_flow_queue related to fixed-rate pipes.
+ *  + wfq_ready_heap	contains the pipes associated with WF2Q flows
+ *  + extract_heap	contains pipes associated with delay lines.
  */
+static struct dn_heap	ready_heap;
+static struct dn_heap	extract_heap;
+static struct dn_heap	wfq_ready_heap;
 
-MALLOC_DEFINE(M_DUMMYNET, "dummynet", "dummynet heap");
-
-static struct dn_heap ready_heap, extract_heap, wfq_ready_heap;
-
-static int heap_init(struct dn_heap *h, int size);
-static int heap_insert (struct dn_heap *h, dn_key key1, void *p);
-static void heap_extract(struct dn_heap *h, void *obj);
-
-static void transmit_event(struct dn_pipe *pipe);
-static void ready_event(struct dn_flow_queue *q);
-
-static int sysctl_dn_hz(SYSCTL_HANDLER_ARGS);
-
-static struct dn_pipe *all_pipes = NULL;	/* list of all pipes */
+static struct dn_pipe	*all_pipes = NULL;	/* list of all pipes */
 static struct dn_flow_set *all_flow_sets = NULL;/* list of all flow_sets */
 
-static struct netmsg dn_netmsg;
-static struct systimer dn_clock;
-static int dn_hz = 1000;
-static int dn_cpu = 0; /* TODO tunable */
+/*
+ * Variables for dummynet systimer
+ */
+static struct netmsg	dn_netmsg;
+static struct systimer	dn_clock;
+static int		dn_hz = 1000;
+static int		dn_cpu = 0; /* TODO tunable */
 
-SYSCTL_NODE(_net_inet_ip, OID_AUTO, dummynet,
-		CTLFLAG_RW, 0, "Dummynet");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, hash_size,
-	    CTLFLAG_RW, &dn_hash_size, 0, "Default hash table size");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, curr_time,
-	    CTLFLAG_RD, &curr_time, 0, "Current tick");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, ready_heap,
-	    CTLFLAG_RD, &ready_heap.size, 0, "Size of ready heap");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, extract_heap,
-	    CTLFLAG_RD, &extract_heap.size, 0, "Size of extract heap");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, searches,
-	    CTLFLAG_RD, &searches, 0, "Number of queue searches");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, search_steps,
-	    CTLFLAG_RD, &search_steps, 0, "Number of queue search steps");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, expire,
-	    CTLFLAG_RW, &pipe_expire, 0, "Expire queue if empty");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, max_chain_len,
-	    CTLFLAG_RW, &dn_max_ratio, 0,
-	"Max ratio between dynamic queues and buckets");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_lookup_depth,
-	CTLFLAG_RD, &red_lookup_depth, 0, "Depth of RED lookup table");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_avg_pkt_size,
-	CTLFLAG_RD, &red_avg_pkt_size, 0, "RED Medium packet size");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_max_pkt_size,
-	CTLFLAG_RD, &red_max_pkt_size, 0, "RED Max packet size");
+static int	sysctl_dn_hz(SYSCTL_HANDLER_ARGS);
+
+SYSCTL_NODE(_net_inet_ip, OID_AUTO, dummynet, CTLFLAG_RW, 0, "Dummynet");
+
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, hash_size, CTLFLAG_RW,
+	   &dn_hash_size, 0, "Default hash table size");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, curr_time, CTLFLAG_RD,
+	   &curr_time, 0, "Current tick");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, expire, CTLFLAG_RW,
+	   &pipe_expire, 0, "Expire queue if empty");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, max_chain_len, CTLFLAG_RW,
+	   &dn_max_ratio, 0, "Max ratio between dynamic queues and buckets");
+
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, ready_heap, CTLFLAG_RD,
+	   &ready_heap.size, 0, "Size of ready heap");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, extract_heap, CTLFLAG_RD,
+	   &extract_heap.size, 0, "Size of extract heap");
+
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, searches, CTLFLAG_RD,
+	   &searches, 0, "Number of queue searches");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, search_steps, CTLFLAG_RD,
+	   &search_steps, 0, "Number of queue search steps");
+
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_lookup_depth, CTLFLAG_RD,
+	   &red_lookup_depth, 0, "Depth of RED lookup table");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_avg_pkt_size, CTLFLAG_RD,
+	   &red_avg_pkt_size, 0, "RED Medium packet size");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_max_pkt_size, CTLFLAG_RD,
+	   &red_max_pkt_size, 0, "RED Max packet size");
+
 SYSCTL_PROC(_net_inet_ip_dummynet, OID_AUTO, hz, CTLTYPE_INT | CTLFLAG_RW,
 	    0, 0, sysctl_dn_hz, "I", "Dummynet callout frequency");
 
-static int config_pipe(struct dn_ioc_pipe *);
-static int ip_dn_ctl(struct sockopt *sopt);
+static int	heap_init(struct dn_heap *, int);
+static int	heap_insert(struct dn_heap *, dn_key, void *);
+static void	heap_extract(struct dn_heap *, void *);
 
-static void rt_unref(struct rtentry *);
-static void dummynet_clock(systimer_t, struct intrframe *);
-static void dummynet(struct netmsg *);
-static void dummynet_flush(void);
-static ip_dn_io_t dummynet_io;
-static void dn_rule_delete(void *);
+static void	transmit_event(struct dn_pipe *);
+static void	ready_event(struct dn_flow_queue *);
+static void	ready_event_wfq(struct dn_pipe *);
+
+static int	config_pipe(struct dn_ioc_pipe *);
+static void	dummynet_flush(void);
+static void	rt_unref(struct rtentry *);
+
+static void	dummynet_clock(systimer_t, struct intrframe *);
+static void	dummynet(struct netmsg *);
+
+static ip_dn_io_t	dummynet_io;
+static ip_dn_ruledel_t	dummynet_ruledel;
+static ip_dn_ctl_t	dummynet_ctl;
 
 void dummynet_drain(void);	/* XXX unused */
 
@@ -379,7 +386,7 @@ heap_free(struct dn_heap *h)
  * ready_event() does something similar with fixed-rate queues, and the
  * event handled is the finish time of the head pkt.
  *
- * wfq_ready_event() does something similar with WF2Q queues, and the
+ * ready_event_wfq() does something similar with WF2Q queues, and the
  * event handled is the start time of the head pkt.
  *
  * In all cases, we make sure that the data structures are consistent
@@ -1372,7 +1379,7 @@ dn_rule_delete_fs(struct dn_flow_set *fs, void *r)
  * from packets matching this rule.
  */
 void
-dn_rule_delete(void *r)
+dummynet_ruledel(void *r)
 {
     struct dn_pipe *p;
     struct dn_flow_set *fs;
@@ -1944,7 +1951,7 @@ dummynet_get(struct sockopt *sopt)
  * Handler for the various dummynet socket options (get, flush, config, del)
  */
 static int
-ip_dn_ctl(struct sockopt *sopt)
+dummynet_ctl(struct sockopt *sopt)
 {
     struct dn_ioc_pipe tmp_ioc_pipe;
     int error = 0;
@@ -2056,9 +2063,9 @@ ip_dn_init(void)
     extract_heap.size = extract_heap.elements = 0;
     extract_heap.offset = 0;
 
-    ip_dn_ctl_ptr = ip_dn_ctl;
+    ip_dn_ctl_ptr = dummynet_ctl;
     ip_dn_io_ptr = dummynet_io;
-    ip_dn_ruledel_ptr = dn_rule_delete;
+    ip_dn_ruledel_ptr = dummynet_ruledel;
 
     netmsg_init(&dn_netmsg, &netisr_adone_rport, 0, dummynet);
 
