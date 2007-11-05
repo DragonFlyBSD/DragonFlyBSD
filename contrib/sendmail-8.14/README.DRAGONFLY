@@ -1,8 +1,8 @@
 
-		SENDMAIL-8.14.1 AS USED BY DRAGONFLY
+		SENDMAIL-8.14.2 AS USED BY DRAGONFLY
 
     This directory contains a selected set of files from the
-    sendmail.8.14.1.tar.gz distribution.  No files have been moved
+    sendmail.8.14.2.tar.gz distribution.  No files have been moved
     or modified from their extracted position.
 
     This distribution was downloaded from the following site:
@@ -43,8 +43,8 @@
 
 	* import the new version:
 
-	  cd sendmail-8.14.1
-	  cvs import src/contrib/sendmail-8.14 SENDMAIL v8_14_1
+	  cd sendmail-8.14.2
+	  cvs import src/contrib/sendmail-8.14 SENDMAIL v8_14_2
 
 	* redirect the build directory to the new directory in the
 	  directories listed above.
