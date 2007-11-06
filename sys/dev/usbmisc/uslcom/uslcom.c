@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.8 2007/11/06 07:37:01 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.9 2007/11/06 20:25:26 hasso Exp $	*/
 /*	$OpenBSD: uslcom.c,v 1.12 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -120,6 +120,7 @@ static const struct usb_devno uslcom_devs[] = {
 	{ USB_DEVICE(0x10c4, 0x807a) }, /* Crumb128 board */
 	{ USB_DEVICE(0x10c4, 0x80ca) }, /* Degree Controls */
 	{ USB_DEVICE(0x10c4, 0x80dd) }, /* Tracient RFID */
+	{ USB_DEVICE(0x10c4, 0x80ed) }, /* Track Systems Traqmate */
 	{ USB_DEVICE(0x10c4, 0x80f6) }, /* Suunto sports */
 	{ USB_DEVICE(0x10c4, 0x813d) }, /* Burnside Desktop mobile */
 	{ USB_DEVICE(0x10c4, 0x814a) }, /* West Mountain Radio RIGblaster */
@@ -371,6 +372,7 @@ uslcom_param(void *vsc, int portno, struct termios *t)
 	case 38400:
 	case 57600:
 	case 115200:
+	case 230400:
 	case 460800:
 	case 921600:
 		req.bmRequestType = USLCOM_WRITE;
