@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.6 2007/11/05 13:11:16 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.7 2007/11/06 14:42:51 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -367,8 +367,6 @@ struct ip_fw_args {
 /* Firewall hooks */
 struct sockopt;
 struct dn_flow_set;
-
-void flush_pipe_ptrs(struct dn_flow_set *match); /* used by dummynet */
 
 typedef int ip_fw_chk_t (struct ip_fw_args *args);
 typedef int ip_fw_ctl_t (struct sockopt *);

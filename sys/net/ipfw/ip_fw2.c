@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.36 2007/11/05 13:11:16 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.37 2007/11/06 14:42:51 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1962,26 +1962,6 @@ flush_rule_ptrs(void)
 
 	for (rule = layer3_chain; rule; rule = rule->next)
 		rule->next_rule = NULL;
-}
-
-/*
- * When pipes/queues are deleted, clear the "pipe_ptr" pointer to a given
- * pipe/queue, or to all of them (match == NULL).
- * Must be called at splimp().
- */
-void
-flush_pipe_ptrs(struct dn_flow_set *match)
-{
-	struct ip_fw *rule;
-
-	for (rule = layer3_chain; rule; rule = rule->next) {
-		ipfw_insn_pipe *cmd = (ipfw_insn_pipe *)ACTION_PTR(rule);
-
-		if (cmd->o.opcode != O_PIPE && cmd->o.opcode != O_QUEUE)
-			continue;
-		if (match == NULL || cmd->pipe_ptr == match)
-			cmd->pipe_ptr = NULL;
-	}
 }
 
 static __inline void

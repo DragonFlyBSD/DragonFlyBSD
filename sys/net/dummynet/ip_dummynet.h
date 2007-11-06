@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.14 2007/11/06 04:09:45 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.15 2007/11/06 14:42:52 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -224,10 +224,10 @@ struct dn_flow_queue {
  * latter case, the structure is located inside the struct dn_pipe).
  */
 struct dn_flow_set {
-    struct dn_flow_set *next;	/* next flow set in all_flow_sets list */
-
     u_short fs_nr;		/* flow_set number */
     u_short flags_fs;		/* see 'Flow set flags' */
+
+    LIST_ENTRY(dn_flow_set) fs_link;
 
     struct dn_pipe *pipe;	/* pointer to parent pipe */
     u_short parent_nr;		/* parent pipe#, 0 if local to a pipe */
@@ -262,6 +262,7 @@ struct dn_flow_set {
     int avg_pkt_size;		/* medium packet size */
     int max_pkt_size;		/* max packet size */
 };
+LIST_HEAD(dn_flowset_head, dn_flow_set);
 
 /*
  * Pipe descriptor. Contains global parameters, delay-line queue, and the
@@ -276,13 +277,12 @@ struct dn_flow_set {
  *    each tick so we do not slow down too much operations during forwarding.
  */
 struct dn_pipe {		/* a pipe */
-    struct dn_pipe *next;
-
     int pipe_nr;		/* number */
     int bandwidth;		/* really, bytes/tick. */
     int delay;			/* really, ticks */
 
     struct dn_pkt_queue p_queue;/* packets in delay line */
+    LIST_ENTRY(dn_pipe) p_link;
 
     /* WF2Q+ */
     struct dn_heap scheduler_heap; /* top extract - key Finish time*/
@@ -297,6 +297,7 @@ struct dn_pipe {		/* a pipe */
 
     struct dn_flow_set fs;	/* used with fixed-rate flows */
 };
+LIST_HEAD(dn_pipe_head, dn_pipe);
 
 typedef int	ip_dn_ctl_t(struct sockopt *);	/* raw_ip.c */
 typedef void	ip_dn_ruledel_t(void *);	/* ip_fw2.c */
@@ -399,5 +400,10 @@ struct dn_ioc_pipe {
 #define SCALE(x)		((x) << SCALE_RED)
 #define SCALE_VAL(x)		((x) >> SCALE_RED)
 #define SCALE_MUL(x, y)		(((x) * (y)) >> SCALE_RED)
+
+/*
+ * Maximum pipe number
+ */
+#define DN_PIPE_NR_MAX		65536
 
 #endif /* !_IP_DUMMYNET_H */
