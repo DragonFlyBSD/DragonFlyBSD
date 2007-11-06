@@ -35,7 +35,7 @@
  *
  *	@(#)quota.h	8.3 (Berkeley) 8/19/94
  * $FreeBSD: src/sys/ufs/ufs/quota.h,v 1.15.2.1 2003/02/27 12:04:13 das Exp $
- * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.8 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.9 2007/11/06 17:11:38 dillon Exp $
  */
 
 #ifndef _VFS_UFS_QUOTA_H_
@@ -125,7 +125,7 @@ struct ufs_dquot {
 	uint16_t dq_flags;		/* flags, see below */
 	uint16_t dq_type;		/* quota type of this dquot */
 	uint32_t dq_cnt;		/* count of active references */
-	uint32_t dq_id;		/* identifier this applies to */
+	uint32_t dq_id;			/* identifier this applies to */
 	struct	ufsmount *dq_ump;	/* filesystem that this is taken from */
 	struct	ufs_dqblk dq_dqb;	/* actual usage & quotas */
 };

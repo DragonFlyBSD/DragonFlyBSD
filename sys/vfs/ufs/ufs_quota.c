@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.24 2006/09/05 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.25 2007/11/06 17:11:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,6 +66,7 @@ static int ufs_dqget (struct vnode *,
 		u_long, struct ufsmount *, int, struct ufs_dquot **);
 static int ufs_dqsync (struct vnode *, struct ufs_dquot *);
 static void ufs_dqflush (struct vnode *);
+static void ufs_quotawarn(struct ufs_dquot *dq);
 
 #ifdef DIAGNOSTIC
 static void ufs_dqref (struct ufs_dquot *);
@@ -127,6 +128,10 @@ ufs_chkdq(struct inode *ip, long change, struct ucred *cred, int flags)
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if ((dq = ip->i_dquot[i]) == NODQUOT)
 				continue;
+			if (dq->dq_ump->um_quotas[dq->dq_type] == ip->i_vnode) {
+				ufs_quotawarn(dq);
+				continue;
+			}
 			while (dq->dq_flags & DQ_LOCK) {
 				dq->dq_flags |= DQ_WANT;
 				(void) tsleep((caddr_t)dq, 0, "chkdq1", 0);
@@ -145,6 +150,10 @@ ufs_chkdq(struct inode *ip, long change, struct ucred *cred, int flags)
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if ((dq = ip->i_dquot[i]) == NODQUOT)
 				continue;
+			if (dq->dq_ump->um_quotas[dq->dq_type] == ip->i_vnode) {
+				ufs_quotawarn(dq);
+				continue;
+			}
 			error = ufs_chkdqchg(ip, change, cred, i);
 			if (error)
 				return (error);
@@ -153,6 +162,10 @@ ufs_chkdq(struct inode *ip, long change, struct ucred *cred, int flags)
 	for (i = 0; i < MAXQUOTAS; i++) {
 		if ((dq = ip->i_dquot[i]) == NODQUOT)
 			continue;
+		if (dq->dq_ump->um_quotas[dq->dq_type] == ip->i_vnode) {
+			ufs_quotawarn(dq);
+			continue;
+		}
 		while (dq->dq_flags & DQ_LOCK) {
 			dq->dq_flags |= DQ_WANT;
 			(void) tsleep((caddr_t)dq, 0, "chkdq2", 0);
@@ -240,6 +253,10 @@ ufs_chkiq(struct inode *ip, long change, struct ucred *cred, int flags)
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if ((dq = ip->i_dquot[i]) == NODQUOT)
 				continue;
+			if (dq->dq_ump->um_quotas[dq->dq_type] == ip->i_vnode) {
+				ufs_quotawarn(dq);
+				continue;
+			}
 			while (dq->dq_flags & DQ_LOCK) {
 				dq->dq_flags |= DQ_WANT;
 				(void) tsleep((caddr_t)dq, 0, "chkiq1", 0);
@@ -258,6 +275,10 @@ ufs_chkiq(struct inode *ip, long change, struct ucred *cred, int flags)
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if ((dq = ip->i_dquot[i]) == NODQUOT)
 				continue;
+			if (dq->dq_ump->um_quotas[dq->dq_type] == ip->i_vnode) {
+				ufs_quotawarn(dq);
+				continue;
+			}
 			error = ufs_chkiqchg(ip, change, cred, i);
 			if (error)
 				return (error);
@@ -266,6 +287,10 @@ ufs_chkiq(struct inode *ip, long change, struct ucred *cred, int flags)
 	for (i = 0; i < MAXQUOTAS; i++) {
 		if ((dq = ip->i_dquot[i]) == NODQUOT)
 			continue;
+		if (dq->dq_ump->um_quotas[dq->dq_type] == ip->i_vnode) {
+			ufs_quotawarn(dq);
+			continue;
+		}
 		while (dq->dq_flags & DQ_LOCK) {
 			dq->dq_flags |= DQ_WANT;
 			(void) tsleep((caddr_t)dq, 0, "chkiq2", 0);
@@ -331,6 +356,23 @@ ufs_chkiqchg(struct inode *ip, long change, struct ucred *cred, int type)
 		}
 	}
 	return (0);
+}
+
+/*
+ * To avoid a deadlock we disallow quota operations on the quota file itself.
+ * This generally means that quotacheck was not run on the filesystem.
+ */
+static
+void
+ufs_quotawarn(struct ufs_dquot *dq)
+{
+	static int dqticks;
+	if (dqticks / hz != ticks / hz) {
+		dqticks = ticks / hz;
+		uprintf("%s: warning, quota file expanded, quotacheck "
+			"was not run!\n",
+			dq->dq_ump->um_mountp->mnt_stat.f_mntfromname); 
+	}
 }
 
 #ifdef DIAGNOSTIC
