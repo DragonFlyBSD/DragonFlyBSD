@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.46 2007/11/06 14:42:52 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.47 2007/11/06 15:34:30 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -1329,8 +1329,15 @@ purge_flow_set(struct dn_flow_set *fs, int all)
 	if (fs->rq)
 	    kfree(fs->rq, M_DUMMYNET);
 
-	/* If this fs is not part of a pipe, free it */
-	if (fs->pipe && fs != &fs->pipe->fs)
+	/*
+	 * If this fs is not part of a pipe, free it
+	 *
+	 * fs->pipe == NULL could happen, if 'fs' is a WF2Q and
+	 * - No packet belongs to that flow set is delivered by
+	 *   dummynet_io(), i.e. parent pipe is not installed yet.
+	 * - Parent pipe is deleted.
+	 */
+	if (fs->pipe == NULL || (fs->pipe && fs != &fs->pipe->fs))
 	    kfree(fs, M_DUMMYNET);
     }
 }
