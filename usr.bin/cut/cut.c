@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cut.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/cut/cut.c,v 1.9.2.3 2001/07/30 09:59:16 dd Exp $
- * $DragonFly: src/usr.bin/cut/cut.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $DragonFly: src/usr.bin/cut/cut.c,v 1.4 2007/11/06 05:50:23 hsu Exp $
  */
 
 #include <ctype.h>
@@ -53,6 +53,7 @@ char	dchar;
 int	dflag;
 int	fflag;
 int	sflag;
+int	wflag;
 
 void	c_cut (FILE *, const char *);
 void	f_cut (FILE *, const char *);
@@ -74,7 +75,7 @@ main(int argc, char **argv)
 
 	/* Since we don't support multi-byte characters, the -c and -b 
 	   options are equivalent, and the -n option is meaningless. */
-	while ((ch = getopt(argc, argv, "b:c:d:f:sn")) != -1)
+	while ((ch = getopt(argc, argv, "b:c:d:f:snw")) != -1)
 		switch(ch) {
 		case 'b':
 		case 'c':
@@ -96,6 +97,9 @@ main(int argc, char **argv)
 			break;
 		case 'n':
 			break;
+		case 'w':
+			wflag = 1;
+			break;
 		case '?':
 		default:
 			usage();
@@ -104,9 +108,9 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (fflag) {
-		if (cflag)
+		if (cflag || (wflag && dflag))
 			usage();
-	} else if (!cflag || dflag || sflag)
+	} else if (!cflag || dflag || sflag || wflag)
 		usage();
 
 	if (*argv)
@@ -211,6 +215,19 @@ c_cut(FILE *fp, const char *fname)
 	}
 }
 
+int
+is_delim(int ch)
+{
+	if (wflag) {
+		if (ch == ' ' || ch == '\t')
+			return 1;
+	} else {
+		if (ch == dchar)
+			return 1;
+	}
+	return 0;
+}
+
 void
 f_cut(FILE *fp, const char *fname __unused)
 {
@@ -220,7 +237,8 @@ f_cut(FILE *fp, const char *fname __unused)
 	char *lbuf, *mlbuf = NULL;
 	size_t lbuflen;
 
-	for (sep = dchar; (lbuf = fgetln(fp, &lbuflen)) != NULL;) {
+	sep = wflag ? ' ' : dchar;
+	while ((lbuf = fgetln(fp, &lbuflen)) != NULL) {
 		/* Assert EOL has a newline. */
 		if (*(lbuf + lbuflen - 1) != '\n') {
 			/* Can't have > 1 line with no trailing newline. */
@@ -235,7 +253,7 @@ f_cut(FILE *fp, const char *fname __unused)
 		for (isdelim = 0, p = lbuf;; ++p) {
 			ch = *p;
 			/* this should work if newline is delimiter */
-			if (ch == sep)
+			if (is_delim(ch))
 				isdelim = 1;
 			if (ch == '\n') {
 				if (!isdelim && !sflag)
@@ -251,11 +269,17 @@ f_cut(FILE *fp, const char *fname __unused)
 			if (*pos) {
 				if (output++)
 					(void)putchar(sep);
-				while ((ch = *p++) != '\n' && ch != sep)
+				while ((ch = *p++) != '\n' && !is_delim(ch))
 					(void)putchar(ch);
+				/* compress whitespace */
+				if (wflag && ch != '\n')
+					while (is_delim(*p)) p++;
 			} else {
-				while ((ch = *p++) != '\n' && ch != sep)
+				while ((ch = *p++) != '\n' && !is_delim(ch))
 					continue;
+				/* compress whitespace */
+				if (wflag && ch != '\n')
+					while (is_delim(*p)) p++;
 			}
 			if (ch == '\n')
 				break;
@@ -281,6 +305,6 @@ usage(void)
 	(void)fprintf(stderr, "%s\n%s\n%s\n",
 		"usage: cut -b list [-n] [file ...]",
 		"       cut -c list [file ...]",
-		"       cut -f list [-s] [-d delim] [file ...]");
+		"       cut -f list [-s] [-w | -d delim] [file ...]");
 	exit(1);
 }
