@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.93 2007/11/06 03:49:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.94 2007/11/06 20:06:26 dillon Exp $
  */
 
 /*
@@ -1206,14 +1206,23 @@ brelse(struct buf *bp)
 	 * Buffers placed in the EMPTY or EMPTYKVA had better already be
 	 * disassociated from their vnode.
 	 */
-
 	if (bp->b_flags & B_LOCKED) {
 		/*
 		 * Buffers that are locked cannot be freed regardless of
 		 * their state.
+		 *
+		 * If B_DELWRI is set we do allow the buffer to be written -
+		 * it will return to the locked queue after the write has
+		 * completed.
 		 */
-		bp->b_qindex = BQUEUE_LOCKED;
-		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
+		if ((bp->b_flags & (B_DELWRI|B_ERROR|B_INVAL|
+				    B_NOCACHE|B_RELBUF)) == B_DELWRI &&
+		    bp->b_bufsize) {
+			bp->b_qindex = BQUEUE_DIRTY;
+		} else {
+			bp->b_qindex = BQUEUE_LOCKED;
+		}
+		TAILQ_INSERT_TAIL(&bufqueues[bp->b_qindex], bp, b_freelist);
 	} else if (bp->b_bufsize == 0) {
 		/*
 		 * Buffers with no memory.  Due to conditionals near the top
@@ -1325,10 +1334,18 @@ bqrelse(struct buf *bp)
 		return;
 	}
 	if (bp->b_flags & B_LOCKED) {
+		/*
+		 * Locked buffers are released to the locked queue.  However,
+		 * if the buffer is dirty it will first go into the dirty
+		 * queue and later on after the I/O completes successfully it
+		 * will be released to the locked queue.
+		 */
 		bp->b_flags &= ~B_ERROR;
-		bp->b_qindex = BQUEUE_LOCKED;
-		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
-		/* buffers with stale but valid contents */
+		if (bp->b_flags & B_DELWRI)
+			bp->b_qindex = BQUEUE_DIRTY;
+		else
+			bp->b_qindex = BQUEUE_LOCKED;
+		TAILQ_INSERT_TAIL(&bufqueues[bp->b_qindex], bp, b_freelist);
 	} else if (bp->b_flags & B_DELWRI) {
 		bp->b_qindex = BQUEUE_DIRTY;
 		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY], bp, b_freelist);
@@ -2399,6 +2416,36 @@ loop:
 		crit_exit();
 	}
 	return (bp);
+}
+
+/*
+ * regetblk(bp)
+ *
+ * Reacquire a buffer that was previously released to the locked queue.
+ *
+ * The caller is assumed to have known the state of the buffer when it was
+ * locked so the state of the buffer is not otherwise modified.  In
+ * particular, we don't have to worry about VMIO causing B_CACHE to get
+ * cleared because the underlying pages were never unwired.
+ *
+ * Typically the way this works is a caller acquires and validates a buffer,
+ * releases it with B_LOCKED set, then later reacquires it with
+ * regetblk().  The caller is responsible for setting and clearing
+ * B_LOCKED.
+ *
+ * It is also possible for this to be called on a passively released buffer
+ * where B_LOCKED has not been set.  For this to work properly the caller
+ * must have a bioops interlock on the buffer which sets B_LOCKED if an
+ * attempt is made to destroy it while we are blocked in our BUF_LOCK.
+ * Otherwise races occur.
+ */
+void
+regetblk(struct buf *bp)
+{
+	BUF_LOCK(bp, LK_EXCLUSIVE | LK_RETRY);
+	crit_enter();
+	bremfree(bp);
+	crit_exit();
 }
 
 /*

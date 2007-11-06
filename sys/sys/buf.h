@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.39 2007/11/06 03:49:59 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.40 2007/11/06 20:06:24 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -358,6 +358,7 @@ int	inmem (struct vnode *, off_t);
 struct buf *findblk (struct vnode *, off_t);
 struct buf *getblk (struct vnode *, off_t, int, int, int);
 struct buf *geteblk (int);
+void regetblk(struct buf *bp);
 struct bio *push_bio(struct bio *);
 void pop_bio(struct bio *);
 int	biowait (struct buf *);
