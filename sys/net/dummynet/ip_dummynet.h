@@ -25,18 +25,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.13 2007/11/05 15:16:46 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.14 2007/11/06 04:09:45 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
 #define _IP_DUMMYNET_H
-
-/*
- * Definition of dummynet data structures. In the structures, I decided
- * not to use the macros in <sys/queue.h> in the hope of making the code
- * easier to port to other architectures. The type of lists and queue we
- * use here is pretty simple anyways.
- */
 
 /*
  * We start with a heap, which is used in the scheduler to decide when to
@@ -108,7 +101,7 @@ struct dn_heap {
  */
 struct dn_pkt {
     struct mbuf *dn_m;
-    struct dn_pkt *dn_next;
+    TAILQ_ENTRY(dn_pkt) dn_next;
 
     struct ip_fw *rule;		/* matching rule */
     int dn_dir;			/* action when packet comes out. */
@@ -123,6 +116,7 @@ struct dn_pkt {
     struct route ro;		/* route, for ip_output. MUST COPY */
     int flags;			/* flags, for ip_output (IPv6 ?) */
 };
+TAILQ_HEAD(dn_pkt_queue, dn_pkt);
 
 /*
  * Overall structure of dummynet (with WF2Q+):
@@ -189,7 +183,7 @@ struct dn_flow_queue {
     struct dn_flow_queue *next;
     struct ipfw_flow_id id;
 
-    struct dn_pkt *head, *tail;	/* queue of packets */
+    struct dn_pkt_queue queue;	/* queue of packets */
     u_int len;
     u_int len_bytes;
     u_long numbytes;		/* credit for transmission (dynamic queues) */
@@ -288,7 +282,7 @@ struct dn_pipe {		/* a pipe */
     int bandwidth;		/* really, bytes/tick. */
     int delay;			/* really, ticks */
 
-    struct dn_pkt *head, *tail;	/* packets in delay line */
+    struct dn_pkt_queue p_queue;/* packets in delay line */
 
     /* WF2Q+ */
     struct dn_heap scheduler_heap; /* top extract - key Finish time*/
