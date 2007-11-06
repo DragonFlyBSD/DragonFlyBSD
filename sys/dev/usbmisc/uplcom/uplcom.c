@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.24 2007/11/05 19:09:44 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.25 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*-
@@ -324,23 +324,15 @@ uplcom_attach(device_t self)
 	usb_config_descriptor_t *cdesc;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
-	char *devinfo;
 	usbd_status err;
 	int i;
 
-	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
-
 	bzero(sc, sizeof (struct uplcom_softc));
 
-	usbd_devinfo(dev, 0, devinfo);
 	ucom->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
-
-	device_printf(ucom->sc_dev, "%s\n", devinfo);
 
 	DPRINTF(("uplcom attach: sc = %p\n", sc));
 
@@ -519,11 +511,9 @@ uplcom_attach(device_t self)
 	TASK_INIT(&sc->sc_task, 0, uplcom_notify, sc);
 	ucom_attach(&sc->sc_ucom);
 
-	kfree(devinfo, M_USBDEV);
 	return 0;
 
 error:
-	kfree(devinfo, M_USBDEV);
 	return ENXIO;
 }
 

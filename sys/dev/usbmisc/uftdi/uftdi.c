@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.37 2007/06/22 05:53:05 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.22 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.23 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*-
@@ -536,18 +536,12 @@ uftdi_attach(device_t self)
 	usbd_interface_handle iface;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
-	char *devinfo;
 	int i;
 	struct ucom_softc *ucom = &sc->sc_ucom;
 	DPRINTFN(10,("\nuftdi_attach: sc=%p\n", sc));
-	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 
 	ucom->sc_dev = self;
 	ucom->sc_udev = dev;
-
-	usbd_devinfo(dev, 0, devinfo);
-	device_printf(ucom->sc_dev, "%s\n", devinfo);
-	kfree(devinfo, M_USBDEV);
 
 	iface = uaa->iface;
 	id = usbd_get_interface_descriptor(iface);

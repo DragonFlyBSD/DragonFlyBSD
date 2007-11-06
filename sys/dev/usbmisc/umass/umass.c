@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.29 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.30 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*
@@ -853,7 +853,6 @@ umass_attach(device_t self)
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
-	char devinfo[1024];
 	int i;
 	int err;
 
@@ -862,9 +861,7 @@ umass_attach(device_t self)
 	 * call umass_detach without specifically initialising the struct.
 	 */
 
-	usbd_devinfo(uaa->device, 0, devinfo);
 	sc->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
 
 	sc->iface = uaa->iface;
 	sc->ifaceno = uaa->ifaceno;
@@ -873,7 +870,6 @@ umass_attach(device_t self)
 	(void) umass_match_proto(sc, sc->iface, uaa->device);
 
 	id = usbd_get_interface_descriptor(sc->iface);
-	kprintf("%s: %s\n", device_get_nameunit(sc->sc_dev), devinfo);
 #ifdef USB_DEBUG
 	kprintf("%s: ", device_get_nameunit(sc->sc_dev));
 	switch (sc->proto&UMASS_PROTO_COMMAND) {

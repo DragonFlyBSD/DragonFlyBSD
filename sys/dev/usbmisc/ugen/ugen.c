@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.32 2007/07/03 19:28:16 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.33 2007/11/06 07:37:01 hasso Exp $
  */
 
 /* 
@@ -217,15 +217,10 @@ ugen_attach(device_t self)
 	struct ugen_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle udev;
-	char devinfo[1024];
 	usbd_status err;
 	int conf;
 
-	usbd_devinfo(uaa->device, 0, devinfo);
 	sc->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-	kprintf("%s: %s\n", device_get_nameunit(sc->sc_dev), devinfo);
-
 	sc->sc_udev = udev = uaa->device;
 
 	memset(sc->sc_endpoints, 0, sizeof sc->sc_endpoints);

@@ -60,7 +60,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.11 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.18 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.19 2007/11/06 07:37:01 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -258,14 +258,11 @@ ubsa_attach(device_t self)
 	usb_config_descriptor_t *cdesc;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
-	char *devinfo;
 	usbd_status err;
 	int i;
 
 	dev = uaa->device;
-	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
-
 	bzero(sc, sizeof (struct ubsa_softc));
 
 	/*
@@ -275,14 +272,9 @@ ubsa_attach(device_t self)
 	sc->sc_dtr = -1;
 	sc->sc_rts = -1;
 
-	usbd_devinfo(dev, 0, devinfo);
 	ucom->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
-
-	device_printf(ucom->sc_dev, "%s\n", devinfo);
 
 	DPRINTF(("ubsa attach: sc = %p\n", sc));
 
@@ -382,11 +374,9 @@ ubsa_attach(device_t self)
 
 	ucom_attach(ucom);
 
-	kfree(devinfo, M_USBDEV);
 	return 0;
 
 error:
-	kfree(devinfo, M_USBDEV);
 	return ENXIO;
 }
 

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.15 2007/11/05 19:09:44 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.16 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*
@@ -246,26 +246,20 @@ uvisor_attach(device_t self)
 	usbd_interface_handle iface;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
-	char *devinfo;
 	const char *devname;
 	int i;
 	usbd_status err;
 	struct ucom_softc *ucom;
 
-	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
 
 	bzero(sc, sizeof (struct uvisor_softc));
-	usbd_devinfo(dev, 0, devinfo);
 
 	ucom->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
 
 	devname = device_get_nameunit(ucom->sc_dev);
-	kprintf("%s: %s\n", devname, devinfo);
 
 	DPRINTFN(10,("\nuvisor_attach: sc=%p\n", sc));
 
@@ -283,8 +277,6 @@ uvisor_attach(device_t self)
 		       devname, usbd_errstr(err));
 		goto bad;
 	}
-
-	kprintf("%s: %s\n", devname, devinfo);
 
 	sc->sc_flags = uvisor_lookup(uaa->vendor, uaa->product)->uv_flags;
 

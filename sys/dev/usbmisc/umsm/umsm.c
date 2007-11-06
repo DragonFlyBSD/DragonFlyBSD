@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.4 2007/11/05 19:09:44 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.5 2007/11/06 07:37:01 hasso Exp $	*/
 /*	$OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $	*/
 
 /*
@@ -129,25 +129,17 @@ umsm_attach(device_t self)
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
 	usbd_status error;
-	char *devinfo;
 	const char *devname;
 	int i;
 
-	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
-
 	bzero(sc, sizeof (struct umsm_softc));
 
-	usbd_devinfo(uaa->device, 0, devinfo);
 	ucom->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-
 	ucom->sc_udev = uaa->device;
 	ucom->sc_iface = uaa->iface;
 
 	devname = device_get_nameunit(ucom->sc_dev);
-	kprintf("%s: %s\n", devname, devinfo);
-	kfree(devinfo, M_USBDEV);
 
 	if (usbd_set_config_index(ucom->sc_udev, UMSM_CONFIG_NO, 1) != 0) {
 		device_printf(ucom->sc_dev, "could not set configuration no\n");

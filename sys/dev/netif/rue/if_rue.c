@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.11 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.12 2007/11/06 07:37:00 hasso Exp $
  */
 
 /*
@@ -528,7 +528,6 @@ rue_attach(device_t self)
 {
 	struct rue_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	char				devinfo[1024];
 	uint8_t				eaddr[ETHER_ADDR_LEN];
 	struct ifnet			*ifp;
 	usb_interface_descriptor_t	*id;
@@ -550,10 +549,6 @@ rue_attach(device_t self)
 	}
 
 	id = usbd_get_interface_descriptor(sc->rue_iface);
-
-	usbd_devinfo(uaa->device, 0, devinfo);
-	device_set_desc_copy(self, devinfo);
-	device_printf(self, "%s\n", devinfo);
 
 	/* Find endpoints */
 	for (i = 0; i < id->bNumEndpoints; i++) {

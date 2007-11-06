@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.21 2007/11/05 19:09:43 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.22 2007/11/06 07:37:00 hasso Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -259,15 +259,11 @@ rum_attach(device_t self)
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
 	usbd_status error;
-	char devinfo[1024];
 	int i, ntries;
 	uint32_t tmp;
 
 	sc->sc_udev = uaa->device;
-
-	usbd_devinfo(uaa->device, 0, devinfo);
 	sc->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
 
 	if (usbd_set_config_no(sc->sc_udev, RT2573_CONFIG_NO, 0) != 0) {
 		kprintf("%s: could not set configuration no\n",

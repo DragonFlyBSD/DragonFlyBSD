@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.31 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.32 2007/11/06 07:37:01 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -202,16 +202,11 @@ uhid_attach(device_t self)
 	int size;
 	void *desc;
 	usbd_status err;
-	char devinfo[1024];
 
 	sc->sc_udev = uaa->device;
 	sc->sc_iface = iface;
 	id = usbd_get_interface_descriptor(iface);
-	usbd_devinfo(uaa->device, 0, devinfo);
 	sc->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
-	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
 	ed = usbd_interface2endpoint_descriptor(iface, 0);
 	if (ed == NULL) {

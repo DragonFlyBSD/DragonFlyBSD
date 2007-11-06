@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.27 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.28 2007/11/06 07:37:00 hasso Exp $
  */
 
 /*
@@ -399,7 +399,6 @@ kue_attach(device_t self)
 {
 	struct kue_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	char			devinfo[1024];
 	struct ifnet		*ifp;
 	usbd_status		err;
 	usb_interface_descriptor_t	*id;
@@ -411,10 +410,6 @@ kue_attach(device_t self)
 	sc->kue_unit = device_get_unit(self);
 
 	id = usbd_get_interface_descriptor(uaa->iface);
-
-	usbd_devinfo(uaa->device, 0, devinfo);
-	device_set_desc_copy(self, devinfo);
-	kprintf("%s: %s\n", device_get_nameunit(self), devinfo);
 
 	/* Find endpoints. */
 	for (i = 0; i < id->bNumEndpoints; i++) {

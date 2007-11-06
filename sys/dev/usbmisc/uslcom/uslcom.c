@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.7 2007/11/05 19:09:44 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uslcom/uslcom.c,v 1.8 2007/11/06 07:37:01 hasso Exp $	*/
 /*	$OpenBSD: uslcom.c,v 1.12 2007/06/13 06:25:03 mbalmer Exp $	*/
 
 /*
@@ -178,23 +178,15 @@ uslcom_attach(device_t self)
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
 	usbd_status error;
-	char *devinfo;
 	int i;
 
-	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
 
 	bzero(sc, sizeof (struct uslcom_softc));
 
-	usbd_devinfo(uaa->device, 0, devinfo);
 	ucom->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-
 	ucom->sc_udev = uaa->device;
 	ucom->sc_iface = uaa->iface;
-
-	device_printf(ucom->sc_dev, "%s\n", devinfo);
-	kfree(devinfo, M_USBDEV);
 
 	if (usbd_set_config_index(ucom->sc_udev, USLCOM_CONFIG_NO, 1) != 0) {
 		device_printf(ucom->sc_dev, "could not set configuration no\n");

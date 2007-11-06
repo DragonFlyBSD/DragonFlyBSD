@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.12 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.14 2007/11/05 19:09:44 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.15 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*
@@ -158,21 +158,15 @@ umct_attach(device_t self)
 	usb_config_descriptor_t *cdesc;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
-	char *devinfo;
 	usbd_status err;
 	int i;
 
 	dev = uaa->device;
-	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT | M_ZERO);
 	bzero(sc, sizeof(struct umct_softc));
 	ucom = &sc->sc_ucom;
 	ucom->sc_dev = self;
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
-
-	usbd_devinfo(dev, 0, devinfo);
-	device_set_desc_copy(self, devinfo);
-	device_printf(ucom->sc_dev, "%s\n", devinfo);
 
 	ucom->sc_bulkout_no = -1;
 	ucom->sc_bulkin_no = -1;
@@ -269,11 +263,9 @@ umct_attach(device_t self)
 	TASK_INIT(&sc->sc_task, 0, umct_notify, sc);
 	ucom_attach(ucom);
 
-	kfree(devinfo, M_USBDEV);
 	return 0;
 
 error:
-	kfree(devinfo, M_USBDEV);
 	return ENXIO;
 }
 

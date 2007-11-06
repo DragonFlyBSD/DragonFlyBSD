@@ -1,7 +1,7 @@
 /*
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.21 2007/11/05 19:09:44 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.22 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*-
@@ -241,19 +241,15 @@ umodem_attach(device_t self)
 	usbd_device_handle dev = uaa->device;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
-	char *devinfo = NULL;
 	const char *devname;
 	usbd_status err;
 	int data_ifcno;
 	int i;
 	struct ucom_softc *ucom;
 
-	devinfo = kmalloc(1024, M_USBDEV, M_INTWAIT);
-	usbd_devinfo(dev, 0, devinfo);
 	ucom = &sc->sc_ucom;
 	ucom->sc_dev = self;
 	sc->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
 	ucom->sc_udev = dev;
 	ucom->sc_iface = uaa->iface;
 
@@ -263,8 +259,6 @@ umodem_attach(device_t self)
 	devname = device_get_nameunit(sc->sc_dev);
 	/* XXX ? use something else ? XXX */
 	id = usbd_get_interface_descriptor(sc->sc_ctl_iface);
-	kprintf("%s: %s, iclass %d/%d\n", devname, devinfo,
-	  id->bInterfaceClass, id->bInterfaceSubClass);
 	sc->sc_ctl_iface_no = id->bInterfaceNumber;
 
 	sc->sc_data_iface_no = data_ifcno =
@@ -384,12 +378,10 @@ umodem_attach(device_t self)
 
 	ucom_attach(&sc->sc_ucom);
 
-	kfree(devinfo, M_USBDEV);
 	return 0;
 
  bad:
 	ucom->sc_dying = 1;
-	kfree(devinfo, M_USBDEV);
 	return ENXIO;
 }
 

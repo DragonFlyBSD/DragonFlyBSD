@@ -1,6 +1,6 @@
 /*	$NetBSD: uhub.c,v 1.68 2004/06/29 06:30:05 mycroft Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhub.c,v 1.69.2.1 2005/12/18 15:51:31 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.18 2007/07/02 23:52:04 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhub.c,v 1.19 2007/11/06 07:37:00 hasso Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -170,7 +170,6 @@ uhub_attach(device_t self)
 	struct uhub_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_device_handle dev = uaa->device;
-	char *devinfo;
 	usbd_status err;
 	struct usbd_hub *hub = NULL;
 	usb_device_request_t req;
@@ -180,12 +179,9 @@ uhub_attach(device_t self)
 	usb_endpoint_descriptor_t *ed;
 	struct usbd_tt *tts = NULL;
 
-	devinfo = kmalloc(1024, M_TEMP, M_WAITOK);
 	DPRINTFN(1,("uhub_attach\n"));
 	sc->sc_hub = dev;
-	usbd_devinfo(dev, 1, devinfo);
 	sc->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
 
 	if (dev->depth > 0 && UHUB_IS_HIGH_SPEED(sc)) {
 		kprintf("%s: %s transaction translator%s\n",
@@ -197,14 +193,12 @@ uhub_attach(device_t self)
 	if (err) {
 		DPRINTF(("%s: configuration failed, error=%s\n",
 			 device_get_nameunit(sc->sc_dev), usbd_errstr(err)));
-		kfree(devinfo, M_TEMP);
 		return ENXIO;
 	}
 
 	if (dev->depth > USB_HUB_MAX_DEPTH) {
 		kprintf("%s: hub depth (%d) exceeded, hub ignored\n",
 		       device_get_nameunit(sc->sc_dev), USB_HUB_MAX_DEPTH);
-		kfree(devinfo, M_TEMP);
 		return ENXIO;
 	}
 
@@ -224,7 +218,6 @@ uhub_attach(device_t self)
 	if (err) {
 		DPRINTF(("%s: getting hub descriptor failed, error=%s\n",
 			 device_get_nameunit(sc->sc_dev), usbd_errstr(err)));
-		kfree(devinfo, M_TEMP);
 		return ENXIO;
 	}
 
@@ -365,7 +358,6 @@ uhub_attach(device_t self)
  bad:
 	if (hub)
 		kfree(hub, M_USBDEV);
-	kfree(devinfo, M_TEMP);
 	dev->hub = NULL;
 	return ENXIO;
 }

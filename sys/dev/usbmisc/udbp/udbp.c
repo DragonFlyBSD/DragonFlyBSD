@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.17 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.18 2007/11/06 07:37:01 hasso Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -262,7 +262,6 @@ udbp_attach(device_t self)
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed, *ed_bulkin = NULL, *ed_bulkout = NULL;
 	usbd_status err;
-	char devinfo[1024];
 	int i;
 	static int ngudbp_done_init=0;
 
@@ -270,11 +269,7 @@ udbp_attach(device_t self)
 	/* fetch the interface handle for the first interface */
 	(void) usbd_device2interface_handle(uaa->device, 0, &iface);
 	id = usbd_get_interface_descriptor(iface);
-	usbd_devinfo(uaa->device, 0, devinfo);
 	sc->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
-	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
 	/* Find the two first bulk endpoints */
 	for (i = 0 ; i < id->bNumEndpoints; i++) {

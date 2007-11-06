@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.76.2.3 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.25 2007/11/05 19:09:42 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.26 2007/11/06 07:37:00 hasso Exp $	*/
 
 /* Also already have from NetBSD:
  *	$NetBSD: usb_subr.c,v 1.102 2003/01/01 16:21:50 augustss Exp $
@@ -748,17 +748,24 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 	usbd_status err;
 	device_t *tmpdv;
 	usbd_interface_handle ifaces[256]; /* 256 is the absolute max */
+	char *devinfo;
 
 	/* XXX FreeBSD may leak resources on failure cases -- fixme */
  	device_t bdev;
 	struct usb_attach_arg *uaap;
 
+	devinfo = kmalloc(1024, M_USB, M_NOWAIT);
+	if (devinfo == NULL) {
+		device_printf(parent,
+			      "Can't allocate memory for probe string\n");
+		return (USBD_NOMEM);
+	}
 	bdev = device_add_child(parent, NULL, -1);
 	if (!bdev) {
+		kfree(devinfo, M_USB);
 		device_printf(parent, "Device creation failed\n");
 		return (USBD_INVAL);
 	}
-	device_quiet(bdev);
 	uaap = kmalloc(sizeof(uaa), M_USB, M_WAITOK);
 	device_set_ivars(bdev, uaap);
 	uaa.device = dev;
@@ -781,7 +788,10 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 	dev->subdevs[0] = bdev;
 	dev->subdevs[1] = 0;
 	*uaap = uaa;
+	usbd_devinfo(dev, 1, devinfo);
+	device_set_desc_copy(bdev, devinfo);
 	if (device_probe_and_attach(bdev) == 0) {
+		kfree(devinfo, M_USB);
 		return (USBD_NORMAL_COMPLETION);
 	}
 
@@ -810,6 +820,7 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 			kprintf("%s: port %d, set config at addr %d failed\n",
 			       device_get_nameunit(parent), port, addr);
 #endif
+			kfree(devinfo, M_USB);
  			return (err);
 		}
 		nifaces = dev->cdesc->bNumInterface;
@@ -833,6 +844,8 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 			dev->subdevs[found + 1] = 0;
 			dev->ifacenums[found] = i;
 			*uaap = uaa;
+			usbd_devinfo(dev, 1, devinfo);
+			device_set_desc_copy(bdev, devinfo);
 			if (device_probe_and_attach(bdev) == 0) {
 				ifaces[i] = 0; /* consumed */
 				found++;
@@ -842,6 +855,7 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 				if (!bdev) {
 					device_printf(parent,
 					    "Device add failed\n");
+					kfree(devinfo, M_USB);
 					return (USBD_NORMAL_COMPLETION);
 				}
 				uaap = kmalloc(sizeof(uaa), M_USB, M_WAITOK);
@@ -853,6 +867,8 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 		}
 		if (found != 0) {
 			/* remove the last created child.  It is unused */
+			kfree(uaap, M_USB);
+			kfree(devinfo, M_USB);
 			device_delete_child(parent, bdev);
 			/* kfree(uaap, M_USB); */ /* May be needed? xxx */
 			return (USBD_NORMAL_COMPLETION);
@@ -879,6 +895,9 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 	dev->subdevs[0] = bdev;
 	dev->subdevs[1] = 0;
 	*uaap = uaa;
+	usbd_devinfo(dev, 1, devinfo);
+	device_set_desc_copy(bdev, devinfo);
+	kfree(devinfo, M_USB);
 	if (device_probe_and_attach(bdev) == 0)
 		return (USBD_NORMAL_COMPLETION);
 

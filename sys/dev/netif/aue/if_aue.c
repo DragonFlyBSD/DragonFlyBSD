@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.35 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.36 2007/11/06 07:37:00 hasso Exp $
  */
 
 /*
@@ -619,7 +619,6 @@ aue_attach(device_t self)
 {
 	struct aue_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	char			devinfo[1024];
 	u_char			eaddr[ETHER_ADDR_LEN];
 	struct ifnet		*ifp;
 	usbd_interface_handle	iface;
@@ -627,8 +626,6 @@ aue_attach(device_t self)
 	usb_interface_descriptor_t	*id;
 	usb_endpoint_descriptor_t	*ed;
 	int			i;
-
-	usbd_devinfo(uaa->device, 0, devinfo);
 
 	sc->aue_udev = uaa->device;
 	callout_init(&sc->aue_stat_timer);
@@ -652,10 +649,6 @@ aue_attach(device_t self)
 	sc->aue_vendor = uaa->vendor;
 
 	id = usbd_get_interface_descriptor(sc->aue_iface);
-
-	usbd_devinfo(uaa->device, 0, devinfo);
-	device_set_desc_copy(self, devinfo);
-	device_printf(self, "%s\n", devinfo);
 
 	/* Find endpoints. */
 	for (i = 0; i < id->bNumEndpoints; i++) {

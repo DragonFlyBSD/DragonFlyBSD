@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.23 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.24 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*
@@ -200,17 +200,12 @@ ulpt_attach(device_t self)
 	usb_interface_descriptor_t *id, *iend;
 	usb_config_descriptor_t *cdesc;
 	usbd_status err;
-	char devinfo[1024];
 	usb_endpoint_descriptor_t *ed;
 	u_int8_t epcount;
 	int i, altno;
 
 	DPRINTFN(10,("ulpt_attach: sc=%p\n", sc));
-	usbd_devinfo(dev, 0, devinfo);
 	sc->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
-	       devinfo, ifcd->bInterfaceClass, ifcd->bInterfaceSubClass);
 
 	/* XXX
 	 * Stepping through the alternate settings needs to be abstracted out.
@@ -296,42 +291,6 @@ ulpt_attach(device_t self)
 	sc->sc_iface = iface;
 	sc->sc_ifaceno = id->bInterfaceNumber;
 	sc->sc_udev = dev;
-
-#if 0
-/*
- * This code is disabled because for some mysterious reason it causes
- * printing not to work.  But only sometimes, and mostly with
- * UHCI and less often with OHCI.  *sigh*
- */
-	{
-	usb_config_descriptor_t *cd = usbd_get_config_descriptor(dev);
-	usb_device_request_t req;
-	int len, alen;
-
-	req.bmRequestType = UT_READ_CLASS_INTERFACE;
-	req.bRequest = UR_GET_DEVICE_ID;
-	USETW(req.wValue, cd->bConfigurationValue);
-	USETW2(req.wIndex, id->bInterfaceNumber, id->bAlternateSetting);
-	USETW(req.wLength, sizeof devinfo - 1);
-	err = usbd_do_request_flags(dev, &req, devinfo, USBD_SHORT_XFER_OK,
-		  &alen, USBD_DEFAULT_TIMEOUT);
-	if (err) {
-		kprintf("%s: cannot get device id\n", device_get_nameunit(sc->sc_dev));
-	} else if (alen <= 2) {
-		kprintf("%s: empty device id, no printer connected?\n",
-		       device_get_nameunit(sc->sc_dev));
-	} else {
-		/* devinfo now contains an IEEE-1284 device ID */
-		len = ((devinfo[0] & 0xff) << 8) | (devinfo[1] & 0xff);
-		if (len > sizeof devinfo - 3)
-			len = sizeof devinfo - 3;
-		devinfo[len] = 0;
-		kprintf("%s: device id <", device_get_nameunit(sc->sc_dev));
-		ieee1284_print_id(devinfo+2);
-		kprintf(">\n");
-	}
-	}
-#endif
 
 	dev_ops_add(&ulpt_ops, -1, device_get_unit(self));
 	make_dev(&ulpt_ops, device_get_unit(self),

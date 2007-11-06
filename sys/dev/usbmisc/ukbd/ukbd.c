@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.25 2007/11/05 19:09:43 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.26 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*
@@ -174,7 +174,6 @@ ukbd_attach(device_t self)
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_interface_handle iface = uaa->iface;
 	usb_interface_descriptor_t *id;
-	char devinfo[1024];
 
 	keyboard_switch_t *sw;
 	keyboard_t *kbd;
@@ -186,11 +185,7 @@ ukbd_attach(device_t self)
 		return ENXIO;
 
 	id = usbd_get_interface_descriptor(iface);
-	usbd_devinfo(uaa->device, 0, devinfo);
 	sc->sc_dev = self;
-	device_set_desc_copy(self, devinfo);
-	kprintf("%s: %s, iclass %d/%d\n", device_get_nameunit(sc->sc_dev),
-	       devinfo, id->bInterfaceClass, id->bInterfaceSubClass);
 
 	arg[0] = (void *)uaa;
 	arg[1] = (void *)ukbd_intr;
