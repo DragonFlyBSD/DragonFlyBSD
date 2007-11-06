@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.84 2007/08/30 20:41:00 pavalos Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.85 2007/11/06 20:21:06 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1387,6 +1387,8 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 
 	error = 0;
 	sig = 0;
+	ets.tv_sec = 0;		/* silence compiler warning */
+	ets.tv_nsec = 0;	/* silence compiler warning */
 	SIG_CANTMASK(waitset);
 	savedmask = lp->lwp_sigmask;
 
@@ -1432,7 +1434,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		 * signals.
 		 */
 		if (timeout) {
-			if (!timevalid) {
+			if (timevalid == 0) {
 				error = EINVAL;
 				break;
 			}
