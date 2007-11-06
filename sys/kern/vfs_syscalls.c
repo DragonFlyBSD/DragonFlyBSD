@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.121 2007/09/10 15:08:43 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.122 2007/11/06 03:49:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,6 +66,8 @@
 #include <sys/kern_syscall.h>
 #include <sys/objcache.h>
 #include <sys/sysctl.h>
+
+#include <sys/buf2.h>
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
 
@@ -2871,11 +2873,8 @@ sys_fsync(struct fsync_args *uap)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if ((obj = vp->v_object) != NULL)
 		vm_object_page_clean(obj, 0, 0, 0);
-	if ((error = VOP_FSYNC(vp, MNT_WAIT)) == 0 &&
-	    vp->v_mount && (vp->v_mount->mnt_flag & MNT_SOFTDEP) &&
-	    bioops.io_fsync) {
-		error = (*bioops.io_fsync)(vp);
-	}
+	if ((error = VOP_FSYNC(vp, MNT_WAIT)) == 0 && vp->v_mount)
+		error = buf_fsync(vp);
 	vn_unlock(vp);
 	fdrop(fp);
 	return (error);

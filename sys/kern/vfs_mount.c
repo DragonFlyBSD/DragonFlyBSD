@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.28 2007/06/14 02:55:23 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.29 2007/11/06 03:49:58 dillon Exp $
  */
 
 /*
@@ -121,6 +121,8 @@ static TAILQ_HEAD(,mountscan_info) mountscan_list;
 static struct lwkt_token mountlist_token;
 static TAILQ_HEAD(,vmntvnodescan_info) mntvnodescan_list;
 struct lwkt_token mntvnode_token;
+
+static TAILQ_HEAD(,bio_ops) bio_ops_list = TAILQ_HEAD_INITIALIZER(bio_ops_list);
 
 /*
  * Called from vfsinit()
@@ -1132,5 +1134,39 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 #endif
 	++info->busy;
 	return(0);
+}
+
+void
+add_bio_ops(struct bio_ops *ops)
+{
+	TAILQ_INSERT_TAIL(&bio_ops_list, ops, entry);
+}
+
+void
+rem_bio_ops(struct bio_ops *ops)
+{
+	TAILQ_REMOVE(&bio_ops_list, ops, entry);
+}
+
+/*
+ * This calls the bio_ops io_sync function either for a mount point
+ * or generally.
+ *
+ * WARNING: softdeps is weirdly coded and just isn't happy unless
+ * io_sync is called with a NULL mount from the general syncing code.
+ */
+void
+bio_ops_sync(struct mount *mp)
+{
+	struct bio_ops *ops;
+
+	if (mp) {
+		if ((ops = mp->mnt_bioops) != NULL)
+			ops->io_sync(mp);
+	} else {
+		TAILQ_FOREACH(ops, &bio_ops_list, entry) {
+			ops->io_sync(NULL);
+		}
+	}
 }
 

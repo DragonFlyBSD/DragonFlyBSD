@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.92 2007/08/13 17:31:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.93 2007/11/06 03:49:58 dillon Exp $
  */
 
 /*
@@ -79,8 +79,6 @@ enum bufq_type {
 TAILQ_HEAD(bqueues, buf) bufqueues[BUFFER_QUEUES];
 
 static MALLOC_DEFINE(M_BIOBUF, "BIO buffer", "BIO buffer");
-
-struct	bio_ops bioops;		/* I/O operation notification */
 
 struct buf *buf;		/* buffer header pool */
 
@@ -379,7 +377,7 @@ bufinit(void)
 		bp->b_qindex = BQUEUE_EMPTY;
 		initbufbio(bp);
 		xio_init(&bp->b_xio);
-		LIST_INIT(&bp->b_dep);
+		buf_dep_init(bp);
 		BUF_LOCKINIT(bp);
 		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_EMPTY], bp, b_freelist);
 	}
@@ -1013,10 +1011,13 @@ brelse(struct buf *bp)
 		/*
 		 * Either a failed I/O or we were asked to free or not
 		 * cache the buffer.
+		 *
+		 * NOTE: HAMMER will set B_LOCKED in buf_deallocate if the
+		 * buffer cannot be immediately freed.
 		 */
 		bp->b_flags |= B_INVAL;
-		if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_deallocate)
-			(*bioops.io_deallocate)(bp);
+		if (LIST_FIRST(&bp->b_dep) != NULL)
+			buf_deallocate(bp);
 		if (bp->b_flags & B_DELWRI) {
 			--numdirtybuffers;
 			numdirtywakeup(lodirtybuffers);
@@ -1025,10 +1026,12 @@ brelse(struct buf *bp)
 	}
 
 	/*
-	 * We must clear B_RELBUF if B_DELWRI is set.  If vfs_vmio_release() 
-	 * is called with B_DELWRI set, the underlying pages may wind up
-	 * getting freed causing a previous write (bdwrite()) to get 'lost'
-	 * because pages associated with a B_DELWRI bp are marked clean.
+	 * We must clear B_RELBUF if B_DELWRI or B_LOCKED is set.
+	 * If vfs_vmio_release() is called with either bit set, the
+	 * underlying pages may wind up getting freed causing a previous
+	 * write (bdwrite()) to get 'lost' because pages associated with
+	 * a B_DELWRI bp are marked clean.  Pages associated with a
+	 * B_LOCKED buffer may be mapped by the filesystem.
 	 * 
 	 * We still allow the B_INVAL case to call vfs_vmio_release(), even
 	 * if B_DELWRI is set.
@@ -1036,7 +1039,7 @@ brelse(struct buf *bp)
 	 * If B_DELWRI is not set we may have to set B_RELBUF if we are low
 	 * on pages to return pages to the VM page queues.
 	 */
-	if (bp->b_flags & B_DELWRI)
+	if (bp->b_flags & (B_DELWRI | B_LOCKED))
 		bp->b_flags &= ~B_RELBUF;
 	else if (vm_page_count_severe())
 		bp->b_flags |= B_RELBUF;
@@ -1204,7 +1207,14 @@ brelse(struct buf *bp)
 	 * disassociated from their vnode.
 	 */
 
-	if (bp->b_bufsize == 0) {
+	if (bp->b_flags & B_LOCKED) {
+		/*
+		 * Buffers that are locked cannot be freed regardless of
+		 * their state.
+		 */
+		bp->b_qindex = BQUEUE_LOCKED;
+		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
+	} else if (bp->b_bufsize == 0) {
 		/*
 		 * Buffers with no memory.  Due to conditionals near the top
 		 * of brelse() such buffers should probably already be
@@ -1229,12 +1239,6 @@ brelse(struct buf *bp)
 		bp->b_flags |= B_INVAL;
 		bp->b_qindex = BQUEUE_CLEAN;
 		TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
-	} else if (bp->b_flags & B_LOCKED) {
-		/*
-		 * Buffers that are locked.
-		 */
-		bp->b_qindex = BQUEUE_LOCKED;
-		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
 	} else {
 		/*
 		 * Remaining buffers.  These buffers are still associated with
@@ -1273,7 +1277,7 @@ brelse(struct buf *bp)
 	 * We've already handled the B_INVAL case ( B_DELWRI will be clear
 	 * if B_INVAL is set ).
 	 */
-	if ((bp->b_flags & B_LOCKED) == 0 && !(bp->b_flags & B_DELWRI))
+	if ((bp->b_flags & (B_LOCKED|B_DELWRI)) == 0)
 		bufcountwakeup();
 
 	/*
@@ -1343,7 +1347,7 @@ bqrelse(struct buf *bp)
 	}
 
 	if ((bp->b_flags & B_LOCKED) == 0 &&
-	    ((bp->b_flags & B_INVAL) || !(bp->b_flags & B_DELWRI))) {
+	    ((bp->b_flags & B_INVAL) || (bp->b_flags & B_DELWRI) == 0)) {
 		bufcountwakeup();
 	}
 
@@ -1679,6 +1683,22 @@ restart:
 		}
 		bremfree(bp);
 
+		/*
+		 * Dependancies must be handled before we disassociate the
+		 * vnode.
+		 *
+		 * NOTE: HAMMER will set B_LOCKED if the buffer cannot
+		 * be immediately disassociated.  HAMMER then becomes
+		 * responsible for releasing the buffer.
+		 */
+		if (LIST_FIRST(&bp->b_dep) != NULL) {
+			buf_deallocate(bp);
+			if (bp->b_flags & B_LOCKED) {
+				bqrelse(bp);
+				goto restart;
+			}
+		}
+
 		if (qindex == BQUEUE_CLEAN) {
 			if (bp->b_flags & B_VMIO) {
 				bp->b_flags &= ~B_ASYNC;
@@ -1698,8 +1718,6 @@ restart:
 
 		KASSERT(bp->b_vp == NULL, ("bp3 %p flags %08x vnode %p qindex %d unexpectededly still associated!", bp, bp->b_flags, bp->b_vp, qindex));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
-		if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_deallocate)
-			(*bioops.io_deallocate)(bp);
 
 		/*
 		 * critical section protection is not required when
@@ -1718,8 +1736,7 @@ restart:
 		bp->b_xio.xio_npages = 0;
 		bp->b_dirtyoff = bp->b_dirtyend = 0;
 		reinitbufbio(bp);
-
-		LIST_INIT(&bp->b_dep);
+		buf_dep_init(bp);
 
 		/*
 		 * If we are defragging then free the buffer.
@@ -1928,7 +1945,8 @@ flushbufqueues(void)
 	bp = TAILQ_FIRST(&bufqueues[BQUEUE_DIRTY]);
 
 	while (bp) {
-		KASSERT((bp->b_flags & B_DELWRI), ("unexpected clean buffer %p", bp));
+		KASSERT((bp->b_flags & B_DELWRI),
+			("unexpected clean buffer %p", bp));
 		if (bp->b_flags & B_DELWRI) {
 			if (bp->b_flags & B_INVAL) {
 				if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0)
@@ -1939,9 +1957,8 @@ flushbufqueues(void)
 				break;
 			}
 			if (LIST_FIRST(&bp->b_dep) != NULL &&
-			    bioops.io_countdeps &&
 			    (bp->b_flags & B_DEFERRED) == 0 &&
-			    (*bioops.io_countdeps)(bp, 0)) {
+			    buf_countdeps(bp, 0)) {
 				TAILQ_REMOVE(&bufqueues[BQUEUE_DIRTY],
 					     bp, b_freelist);
 				TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY],
@@ -2868,8 +2885,8 @@ biodone(struct bio *bio)
 	/*
 	 * Warning: softupdates may re-dirty the buffer.
 	 */
-	if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_complete)
-		(*bioops.io_complete)(bp);
+	if (LIST_FIRST(&bp->b_dep) != NULL)
+		buf_complete(bp);
 
 	if (bp->b_flags & B_VMIO) {
 		int i;

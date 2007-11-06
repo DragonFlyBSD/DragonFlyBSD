@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.56 2007/08/21 17:26:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.57 2007/11/06 03:50:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -467,10 +467,8 @@ spec_strategy(struct vop_strategy_args *ap)
 	int chunksize;
 	int maxiosize;
 
-	if (bp->b_cmd != BUF_CMD_READ &&
-	    (LIST_FIRST(&bp->b_dep)) != NULL && bioops.io_start) {
-		(*bioops.io_start)(bp);
-	}
+	if (bp->b_cmd != BUF_CMD_READ && LIST_FIRST(&bp->b_dep) != NULL)
+		buf_start(bp);
 
 	/*
 	 * Collect statistics on synchronous and asynchronous read
@@ -514,7 +512,7 @@ spec_strategy(struct vop_strategy_args *ap)
 	 */
 	nbp = kmalloc(sizeof(*bp), M_DEVBUF, M_INTWAIT|M_ZERO);
 	initbufbio(nbp);
-	LIST_INIT(&nbp->b_dep);
+	buf_dep_init(nbp);
 	BUF_LOCKINIT(nbp);
 	BUF_LOCK(nbp, LK_EXCLUSIVE);
 	BUF_KERNPROC(nbp);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.49 2007/07/11 23:42:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.50 2007/11/06 03:50:02 dillon Exp $
  */
 /*
  * Copyright (c) 1995 Jason R. Thorpe.
@@ -108,7 +108,7 @@
  * @(#)cd.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $
  * $NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.49 2007/07/11 23:42:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.50 2007/11/06 03:50:02 dillon Exp $
  */
 
 /*
@@ -274,7 +274,7 @@ getccdbuf(void)
 	/*
 	 * independant struct buf initialization
 	 */
-	LIST_INIT(&cbp->cb_buf.b_dep);
+	buf_dep_init(&cbp->cb_buf);
 	BUF_LOCKINIT(&cbp->cb_buf);
 	BUF_LOCK(&cbp->cb_buf, LK_EXCLUSIVE);
 	BUF_KERNPROC(&cbp->cb_buf);

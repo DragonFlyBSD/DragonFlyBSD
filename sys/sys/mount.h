@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.32 2007/11/02 19:54:15 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.33 2007/11/06 03:50:00 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -110,6 +110,25 @@ struct statfs {
 };
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+/*
+ * bio_ops are associated with the mount structure and used in conjuction
+ * with the b_dep field in a buffer.  Currently softupdates and HAMMER
+ * utilize this field.
+ */
+struct buf;
+
+struct bio_ops {
+	TAILQ_ENTRY(bio_ops) entry;
+	void	(*io_start) (struct buf *);
+	void	(*io_complete) (struct buf *);
+	void	(*io_deallocate) (struct buf *);
+	int	(*io_fsync) (struct vnode *);
+	int	(*io_sync) (struct mount *);
+	void	(*io_movedeps) (struct buf *, struct buf *);
+	int	(*io_countdeps) (struct buf *, int);
+};
+
 /*
  * Structure per mounted file system.  Each mounted file system has an
  * array of operations and an instance record.  The file systems are
@@ -167,6 +186,8 @@ struct mount {
 	struct journallst mnt_jlist;		/* list of active journals */
 	u_int8_t	*mnt_jbitmap;		/* streamid bitmap */
 	int16_t		mnt_streamid;		/* last streamid */
+
+	struct bio_ops	*mnt_bioops;		/* BIO ops (hammer, softupd) */
 };
 
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
@@ -543,6 +564,8 @@ vfs_extattrctl_t vfs_stdextattrctl;
 struct vop_access_args;
 int vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 		      mode_t ino_mode, u_int32_t ino_flags);
+void	add_bio_ops(struct bio_ops *ops);
+void	rem_bio_ops(struct bio_ops *ops);
 
 int     journal_mountctl(struct vop_mountctl_args *ap);
 void	journal_remove_all_journals(struct mount *mp, int flags);

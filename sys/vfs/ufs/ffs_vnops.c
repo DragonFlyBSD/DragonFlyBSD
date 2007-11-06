@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.18 2007/08/28 01:04:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.19 2007/11/06 03:50:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,7 @@ ffs_checkdeferred(struct buf *bp)
 {
 	if (LIST_FIRST(&bp->b_dep) != NULL &&
 	    (bp->b_flags & B_DEFERRED) == 0 &&
-	    bioops.io_countdeps && (*bioops.io_countdeps)(bp, 0)) {
+	    buf_countdeps(bp, 0)) {
 		bp->b_flags |= B_DEFERRED;
 		return(1);
 	}

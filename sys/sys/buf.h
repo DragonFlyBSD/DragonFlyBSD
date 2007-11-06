@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.38 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.39 2007/11/06 03:49:59 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -85,21 +85,6 @@ RB_PROTOTYPE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, off_t);
  * To avoid including <ufs/ffs/softdep.h> 
  */   
 LIST_HEAD(workhead, worklist);
-/*
- * These are currently used only by the soft dependency code, hence
- * are stored once in a global variable. If other subsystems wanted
- * to use these hooks, a pointer to a set of bio_ops could be added
- * to each buffer.
- */
-extern struct bio_ops {
-	void	(*io_start) (struct buf *);
-	void	(*io_complete) (struct buf *);
-	void	(*io_deallocate) (struct buf *);
-	int 	(*io_fsync) (struct vnode *);
-	int 	(*io_sync) (struct mount *);
-	void	(*io_movedeps) (struct buf *, struct buf *);
-	int 	(*io_countdeps) (struct buf *, int);
-} bioops;
 
 typedef enum buf_cmd {
 	BUF_CMD_DONE = 0,
@@ -154,6 +139,8 @@ typedef enum buf_cmd {
  *	device-relative block numbers for buffer cache operations that occur
  *	directly on a block device will be in the first BIO layer.
  *
+ *	b_ops - initialized if a buffer has a bio_ops
+ *
  *	NOTE!!! Only the BIO subsystem accesses b_bio1 and b_bio2 directly.
  *	ALL STRATEGY LAYERS FOR BOTH VNODES AND DEVICES ONLY ACCESS THE BIO
  *	PASSED TO THEM, AND WILL PUSH ANOTHER BIO LAYER IF FORWARDING THE
@@ -184,6 +171,7 @@ struct buf {
 	int	b_dirtyoff;		/* Offset in buffer of dirty region. */
 	int	b_dirtyend;		/* Offset of end of dirty region. */
 	struct	xio b_xio;  		/* data buffer page list management */
+	struct  bio_ops *b_ops;		/* bio_ops used w/ b_dep */
 	struct	workhead b_dep;		/* List of filesystem dependencies. */
 };
 
@@ -395,6 +383,7 @@ int	allocbuf (struct buf *bp, int size);
 int	scan_all_buffers (int (*)(struct buf *, void *), void *);
 void	reassignbuf (struct buf *);
 struct	buf *trypbuf (int *);
+void	bio_ops_sync(struct mount *mp);
 
 #endif	/* _KERNEL */
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */

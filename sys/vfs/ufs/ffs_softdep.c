@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.52 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.53 2007/11/06 03:50:02 dillon Exp $
  */
 
 /*
@@ -206,13 +206,13 @@ static	void softdep_move_dependencies(struct buf *, struct buf *);
 static	int softdep_count_dependencies(struct buf *bp, int);
 
 static struct bio_ops softdep_bioops = {
-	softdep_disk_io_initiation,		/* io_start */
-	softdep_disk_write_complete,		/* io_complete */
-	softdep_deallocate_dependencies,	/* io_deallocate */
-	softdep_fsync,				/* io_fsync */
-	softdep_process_worklist,		/* io_sync */
-	softdep_move_dependencies,		/* io_movedeps */
-	softdep_count_dependencies,		/* io_countdeps */
+	.io_start = softdep_disk_io_initiation,
+	.io_complete = softdep_disk_write_complete,
+	.io_deallocate = softdep_deallocate_dependencies,
+	.io_fsync = softdep_fsync,
+	.io_sync = softdep_process_worklist,
+	.io_movedeps = softdep_move_dependencies,
+	.io_countdeps = softdep_count_dependencies,
 };
 
 /*
@@ -417,16 +417,29 @@ sema_release(struct sema *semap)
 	(item)->wk_state |= ONWORKLIST;		\
 	LIST_INSERT_HEAD(head, item, wk_list);	\
 } while (0)
+
+#define WORKLIST_INSERT_BP(bp, item) do {	\
+	(item)->wk_state |= ONWORKLIST;		\
+	(bp)->b_ops = &softdep_bioops;		\
+	LIST_INSERT_HEAD(&(bp)->b_dep, item, wk_list);	\
+} while (0)
+
 #define WORKLIST_REMOVE(item) do {		\
 	(item)->wk_state &= ~ONWORKLIST;	\
 	LIST_REMOVE(item, wk_list);		\
 } while (0)
+
 #define WORKITEM_FREE(item, type) FREE(item, DtoM(type))
 
 #else /* DEBUG */
 static	void worklist_insert(struct workhead *, struct worklist *);
 static	void worklist_remove(struct worklist *);
 static	void workitem_free(struct worklist *, int);
+
+#define WORKLIST_INSERT_BP(bp, item) do {	\
+	(bp)->b_ops = &softdep_bioops;		\
+	worklist_insert(&(bp)->b_dep, item);	\
+} while (0)
 
 #define WORKLIST_INSERT(head, item) worklist_insert(head, item)
 #define WORKLIST_REMOVE(item) worklist_remove(item)
@@ -736,15 +749,16 @@ softdep_move_dependencies(struct buf *oldbp, struct buf *newbp)
 
 	if (LIST_FIRST(&newbp->b_dep) != NULL)
 		panic("softdep_move_dependencies: need merge code");
-	wktail = 0;
+	wktail = NULL;
 	ACQUIRE_LOCK(&lk);
 	while ((wk = LIST_FIRST(&oldbp->b_dep)) != NULL) {
 		LIST_REMOVE(wk, wk_list);
-		if (wktail == 0)
+		if (wktail == NULL)
 			LIST_INSERT_HEAD(&newbp->b_dep, wk, wk_list);
 		else
 			LIST_INSERT_AFTER(wktail, wk, wk_list);
 		wktail = wk;
+		newbp->b_ops = &softdep_bioops;
 	}
 	FREE_LOCK(&lk);
 }
@@ -1099,7 +1113,6 @@ void
 softdep_initialize(void)
 {
 	callout_init(&handle);
-	bioops = softdep_bioops;	/* XXX hack */
 
 	LIST_INIT(&mkdirlisthd);
 	LIST_INIT(&softdep_workitem_pending);
@@ -1112,6 +1125,7 @@ softdep_initialize(void)
 	sema_init(&inodedep_in_progress, "inodedep", 0, 0);
 	newblk_hashtbl = hashinit(64, M_NEWBLK, &newblk_hash);
 	sema_init(&newblk_in_progress, "newblk", 0, 0);
+	add_bio_ops(&softdep_bioops);
 }
 
 /*
@@ -1128,6 +1142,7 @@ softdep_mount(struct vnode *devvp, struct mount *mp, struct fs *fs)
 
 	mp->mnt_flag &= ~MNT_ASYNC;
 	mp->mnt_flag |= MNT_SOFTDEP;
+	mp->mnt_bioops = &softdep_bioops;
 	/*
 	 * When doing soft updates, the counters in the
 	 * superblock may have gotten out of sync, so we have
@@ -1267,9 +1282,10 @@ bmsafemap_lookup(struct buf *bp)
 	if (lk.lkt_held == NOHOLDER)
 		panic("bmsafemap_lookup: lock not held");
 #endif
-	LIST_FOREACH(wk, &bp->b_dep, wk_list)
+	LIST_FOREACH(wk, &bp->b_dep, wk_list) {
 		if (wk->wk_type == D_BMSAFEMAP)
 			return (WK_BMSAFEMAP(wk));
+	}
 	FREE_LOCK(&lk);
 	MALLOC(bmsafemap, struct bmsafemap *, sizeof(struct bmsafemap),
 		M_BMSAFEMAP, M_SOFTDEP_FLAGS);
@@ -1281,7 +1297,7 @@ bmsafemap_lookup(struct buf *bp)
 	LIST_INIT(&bmsafemap->sm_inodedephd);
 	LIST_INIT(&bmsafemap->sm_newblkhd);
 	ACQUIRE_LOCK(&lk);
-	WORKLIST_INSERT(&bp->b_dep, &bmsafemap->sm_list);
+	WORKLIST_INSERT_BP(bp, &bmsafemap->sm_list);
 	return (bmsafemap);
 }
 
@@ -1369,7 +1385,7 @@ softdep_setup_allocdirect(struct inode *ip, ufs_lbn_t lbn, ufs_daddr_t newblkno,
 	LIST_REMOVE(newblk, nb_hash);
 	FREE(newblk, M_NEWBLK);
 
-	WORKLIST_INSERT(&bp->b_dep, &adp->ad_list);
+	WORKLIST_INSERT_BP(bp, &adp->ad_list);
 	if (lbn >= NDADDR) {
 		/* allocating an indirect block */
 		if (oldblkno != 0) {
@@ -1385,8 +1401,9 @@ softdep_setup_allocdirect(struct inode *ip, ufs_lbn_t lbn, ufs_daddr_t newblkno,
 		 * deletions.
 		 */
 		if ((ip->i_mode & IFMT) == IFDIR &&
-		    pagedep_lookup(ip, lbn, DEPALLOC, &pagedep) == 0)
-			WORKLIST_INSERT(&bp->b_dep, &pagedep->pd_list);
+		    pagedep_lookup(ip, lbn, DEPALLOC, &pagedep) == 0) {
+			WORKLIST_INSERT_BP(bp, &pagedep->pd_list);
+		}
 	}
 	/*
 	 * The list of allocdirects must be kept in sorted and ascending
@@ -1606,8 +1623,8 @@ softdep_setup_allocindir_page(struct inode *ip, ufs_lbn_t lbn,
 	 */
 	if ((ip->i_mode & IFMT) == IFDIR &&
 	    pagedep_lookup(ip, lbn, DEPALLOC, &pagedep) == 0)
-		WORKLIST_INSERT(&nbp->b_dep, &pagedep->pd_list);
-	WORKLIST_INSERT(&nbp->b_dep, &aip->ai_list);
+		WORKLIST_INSERT_BP(nbp, &pagedep->pd_list);
+	WORKLIST_INSERT_BP(nbp, &aip->ai_list);
 	FREE_LOCK(&lk);
 	setup_allocindir_phase2(bp, ip, aip);
 }
@@ -1631,7 +1648,7 @@ softdep_setup_allocindir_meta(struct buf *nbp, struct inode *ip,
 
 	aip = newallocindir(ip, ptrno, newblkno, 0);
 	ACQUIRE_LOCK(&lk);
-	WORKLIST_INSERT(&nbp->b_dep, &aip->ai_list);
+	WORKLIST_INSERT_BP(nbp, &aip->ai_list);
 	FREE_LOCK(&lk);
 	setup_allocindir_phase2(bp, ip, aip);
 }
@@ -1668,7 +1685,7 @@ setup_allocindir_phase2(struct buf *bp, struct inode *ip,
 		}
 		if (indirdep == NULL && newindirdep) {
 			indirdep = newindirdep;
-			WORKLIST_INSERT(&bp->b_dep, &indirdep->ir_list);
+			WORKLIST_INSERT_BP(bp, &indirdep->ir_list);
 			newindirdep = NULL;
 		}
 		FREE_LOCK(&lk);
@@ -1990,7 +2007,7 @@ deallocate_dependencies(struct buf *bp, struct inodedep *inodedep)
 			bcopy(bp->b_data, indirdep->ir_savebp->b_data,
 			    bp->b_bcount);
 			WORKLIST_REMOVE(wk);
-			WORKLIST_INSERT(&indirdep->ir_savebp->b_dep, wk);
+			WORKLIST_INSERT_BP(indirdep->ir_savebp, wk);
 			continue;
 
 		case D_PAGEDEP:
@@ -2446,7 +2463,7 @@ softdep_setup_directory_add(struct buf *bp, struct inode *dp, off_t diroffset,
 		mkdir1->md_buf = newdirbp;
 		ACQUIRE_LOCK(&lk);
 		LIST_INSERT_HEAD(&mkdirlisthd, mkdir1, md_mkdirs);
-		WORKLIST_INSERT(&newdirbp->b_dep, &mkdir1->md_list);
+		WORKLIST_INSERT_BP(newdirbp, &mkdir1->md_list);
 		FREE_LOCK(&lk);
 		bdwrite(newdirbp);
 		/*
@@ -2466,7 +2483,7 @@ softdep_setup_directory_add(struct buf *bp, struct inode *dp, off_t diroffset,
 	 * Link into parent directory pagedep to await its being written.
 	 */
 	if (pagedep_lookup(dp, lbn, DEPALLOC, &pagedep) == 0)
-		WORKLIST_INSERT(&bp->b_dep, &pagedep->pd_list);
+		WORKLIST_INSERT_BP(bp, &pagedep->pd_list);
 	dap->da_pagedep = pagedep;
 	LIST_INSERT_HEAD(&pagedep->pd_diraddhd[DIRADDHASH(offset)], dap,
 	    da_pdlist);
@@ -2696,7 +2713,7 @@ newdirrem(struct buf *bp, struct inode *dp, struct inode *ip,
 	lbn = lblkno(dp->i_fs, dp->i_offset);
 	offset = blkoff(dp->i_fs, dp->i_offset);
 	if (pagedep_lookup(dp, lbn, DEPALLOC, &pagedep) == 0)
-		WORKLIST_INSERT(&bp->b_dep, &pagedep->pd_list);
+		WORKLIST_INSERT_BP(bp, &pagedep->pd_list);
 	dirrem->dm_pagedep = pagedep;
 	/*
 	 * Check for a diradd dependency for the same directory entry.
@@ -3465,7 +3482,7 @@ softdep_disk_write_complete(struct buf *bp)
 	 */
 	while ((wk = LIST_FIRST(&reattach)) != NULL) {
 		WORKLIST_REMOVE(wk);
-		WORKLIST_INSERT(&bp->b_dep, wk);
+		WORKLIST_INSERT_BP(bp, wk);
 	}
 #ifdef DEBUG
 	if (lk.lkt_held != SPECIAL_FLAG)
@@ -3978,7 +3995,7 @@ softdep_update_inodeblock(struct inode *ip, struct buf *bp,
 	 */
 	inodedep->id_state &= ~COMPLETE;
 	if ((inodedep->id_state & ONWORKLIST) == 0)
-		WORKLIST_INSERT(&bp->b_dep, &inodedep->id_list);
+		WORKLIST_INSERT_BP(bp, &inodedep->id_list);
 	/*
 	 * Any new dependencies associated with the incore inode must 
 	 * now be moved to the list associated with the buffer holding
@@ -4069,6 +4086,13 @@ softdep_fsync(struct vnode *vp)
 	int error, flushparent;
 	ino_t parentino;
 	ufs_lbn_t lbn;
+
+	/*
+	 * Move check from original kernel code, possibly not needed any
+	 * more with the per-mount bioops.
+	 */
+	if ((vp->v_mount->mnt_flag & MNT_SOFTDEP) == 0)
+		return (0);
 
 	ip = VTOI(vp);
 	fs = ip->i_fs;
@@ -5099,7 +5123,6 @@ drain_output(struct vnode *vp, int islocked)
 static void
 softdep_deallocate_dependencies(struct buf *bp)
 {
-
 	if ((bp->b_flags & B_ERROR) == 0)
 		panic("softdep_deallocate_dependencies: dangling deps");
 	softdep_error(bp->b_vp->v_mount->mnt_stat.f_mntfromname, bp->b_error);

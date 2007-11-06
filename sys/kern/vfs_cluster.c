@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.30 2007/08/13 17:31:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.31 2007/11/06 03:49:58 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -914,9 +914,8 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 			/*
 			 * check for latent dependencies to be handled 
 			 */
-			if (LIST_FIRST(&tbp->b_dep) != NULL && bioops.io_start)
-				(*bioops.io_start)(tbp);
-
+			if (LIST_FIRST(&tbp->b_dep) != NULL)
+				buf_start(tbp);
 		}
 	finishcluster:
 		pmap_qenter(trunc_page((vm_offset_t) bp->b_data),

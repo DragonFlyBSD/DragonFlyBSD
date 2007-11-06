@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.60 2007/09/21 09:07:03 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.61 2007/11/06 03:49:58 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -329,8 +329,9 @@ boot(int howto)
 			 * Process soft update work queue if buffers don't sync
 			 * after 6 iterations by permitting the syncer to run.
 			 */
-			if (iter > 5 && bioops.io_sync)
-				(*bioops.io_sync)(NULL);
+			if (iter > 5)
+				bio_ops_sync(NULL);
+ 
 			sys_sync(NULL); /* YYY was sync(&proc0, NULL). why proc0 ? */
 			tsleep(boot, 0, "shutdn", hz * iter / 20 + 1);
 		}

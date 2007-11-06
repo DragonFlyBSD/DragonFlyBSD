@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.23 2006/12/28 21:24:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.24 2007/11/06 03:50:01 dillon Exp $
  */
 
 /*
@@ -222,7 +222,7 @@ vm_pager_bufferinit(void)
 		bp->b_kvasize = MAXPHYS;
 		TAILQ_INSERT_HEAD(&bswlist, bp, b_freelist);
 		BUF_LOCKINIT(bp);
-		LIST_INIT(&bp->b_dep);
+		buf_dep_init(bp);
 	}
 
 	/*

@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.18 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.19 2007/11/06 03:49:59 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -56,6 +56,12 @@
 #endif
 #ifndef _SYS_SPINLOCK2_H_
 #include <sys/spinlock2.h>	/* crit_*() functions */
+#endif
+#ifndef _SYS_MOUNT_H_
+#include <sys/mount.h>
+#endif
+#ifndef _SYS_VNODE_H_
+#include <sys/vnode.h>
 #endif
 
 /*
@@ -177,6 +183,78 @@ static __inline struct bio *
 bioq_first(struct bio_queue_head *head)
 {
 	return (TAILQ_FIRST(&head->queue));
+}
+
+/*
+ * biodeps inlines - used by softupdates and HAMMER.
+ */
+static __inline void
+buf_dep_init(struct buf *bp)
+{
+	bp->b_ops = NULL;
+	LIST_INIT(&bp->b_dep);
+}
+
+static __inline void
+buf_deallocate(struct buf *bp)
+{
+	struct bio_ops *ops = bp->b_ops;
+
+	if (ops)
+		ops->io_deallocate(bp);
+}
+
+static __inline int
+buf_countdeps(struct buf *bp, int n)
+{
+	struct bio_ops *ops = bp->b_ops;
+	int r;
+
+	if (ops)
+		r = ops->io_countdeps(bp, n);
+	else
+		r = 0;
+	return(r);
+}
+
+static __inline void
+buf_start(struct buf *bp)
+{
+	struct bio_ops *ops = bp->b_ops;
+
+	if (ops)
+		ops->io_start(bp);
+}
+
+static __inline void
+buf_complete(struct buf *bp)
+{
+	struct bio_ops *ops = bp->b_ops;
+
+	if (ops)
+		ops->io_complete(bp);
+}
+
+static __inline int
+buf_fsync(struct vnode *vp)
+{
+	struct bio_ops *ops = vp->v_mount->mnt_bioops;
+	int r;
+
+	if (ops)
+		r = ops->io_fsync(vp);
+	else
+		r = 0;
+	return(r);
+}
+
+static __inline void
+buf_movedeps(struct buf *bp1, struct buf *bp2)
+{
+	struct bio_ops *ops = bp1->b_ops;
+
+	if (ops)
+		ops->io_movedeps(bp1, bp2);
 }
 
 #endif /* _KERNEL */

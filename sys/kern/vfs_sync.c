@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.16 2007/08/08 00:12:51 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.17 2007/11/06 03:49:58 dillon Exp $
  */
 
 /*
@@ -238,10 +238,9 @@ sched_sync(void)
 		}
 
 		/*
-		 * Do soft update processing.
+		 * Do sync processing for each mount.
 		 */
-		if (bioops.io_sync)
-			(*bioops.io_sync)(NULL);
+		bio_ops_sync(NULL);
 
 		/*
 		 * The variable rushjob allows the kernel to speed up the
