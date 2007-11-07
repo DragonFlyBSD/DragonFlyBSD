@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.2 2007/11/02 00:57:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.3 2007/11/07 00:43:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -105,6 +105,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	hmp = kmalloc(sizeof(*hmp), M_HAMMER, M_WAITOK | M_ZERO);
 	mp->mnt_data = (qaddr_t)hmp;
 	hmp->mp = mp;
+	hmp->zbuf = kmalloc(HAMMER_BUFSIZE, M_HAMMER, M_WAITOK | M_ZERO);
 	RB_INIT(&hmp->rb_vols_root);
 	RB_INIT(&hmp->rb_inos_root);
 
@@ -180,16 +181,16 @@ hammer_vfs_unmount(struct mount *mp, int mntflags)
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 #endif
 	int flags;
-
-	/*
-	 *
-	 */
+	int error;
 
 	/*
 	 * Clean out the vnodes
 	 */
-	flags = WRITECLOSE | ((mntflags & MNT_FORCE) ? FORCECLOSE : 0);
-	vflush(mp, 0, flags);
+	flags = 0;
+	if (mntflags & MNT_FORCE)
+		flags |= FORCECLOSE;
+	if ((error = vflush(mp, 0, flags)) != 0)
+		return (error);
 
 	/*
 	 * Clean up the internal mount structure and related entities.  This
@@ -222,7 +223,7 @@ hammer_free_hmp(struct mount *mp)
 	 * Unload & flush inodes
 	 */
 	RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
-		hammer_unload_inode, hmp);
+		hammer_unload_inode, NULL);
 
 	/*
 	 * Unload & flush volumes
@@ -231,7 +232,9 @@ hammer_free_hmp(struct mount *mp)
 		hammer_unload_volume, NULL);
 
 	mp->mnt_data = NULL;
+	mp->mnt_flag &= ~MNT_LOCAL;
 	hmp->mp = NULL;
+	kfree(hmp->zbuf, M_HAMMER);
 	kfree(hmp, M_HAMMER);
 }
 

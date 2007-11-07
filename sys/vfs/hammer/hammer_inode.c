@@ -31,118 +31,160 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.2 2007/11/02 00:57:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.3 2007/11/07 00:43:24 dillon Exp $
  */
 
 #include "hammer.h"
 #include <sys/buf.h>
 #include <sys/buf2.h>
 
-static enum vtype hammer_get_vnode_type(u_int16_t obj_type);
-
 int
 hammer_vop_inactive(struct vop_inactive_args *ap)
 {
-#if 0
-	struct vnode *vp;
+	struct hammer_inode *ip = VTOI(ap->a_vp);
 
-	vp = ap->a_vp;
-#endif
+	if (ip == NULL)
+		vrecycle(ap->a_vp);
 	return(0);
 }
 
 int
 hammer_vop_reclaim(struct vop_reclaim_args *ap)
 {
-	struct hammer_mount *hmp;
 	struct hammer_inode *ip;
 	struct vnode *vp;
 
 	vp = ap->a_vp;
-	hmp = (void *)vp->v_mount->mnt_data;
-	if ((ip = vp->v_data) != NULL) {
-		ip->vp = NULL;
-		vp->v_data = NULL;
-		RB_REMOVE(hammer_ino_rb_tree, &hmp->rb_inos_root, ip);
-		kfree(ip, M_HAMMER);
-	}
+	if ((ip = vp->v_data) != NULL)
+		hammer_unload_inode(ip, NULL);
 	return(0);
 }
 
 /*
- * Lookup or create the vnode associated with the specified inode number.
- * ino_t in DragonFly is 64 bits which matches the 64 bit HAMMER inode
- * number.
+ * Obtain a vnode for the specified inode number.  An exclusively locked
+ * vnode is returned.
+ *
+ * To avoid deadlocks we cannot hold the inode lock while we are creating
+ * a new vnode.  We can prevent the inode from going away, however.  If
+ * we race another vget we just throw away our newly created vnode.
  */
 int
 hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	struct hammer_inode *ip;
+	int error;
+
+	/*
+	 * Get/allocate the hammer_inode structure.  The structure must be
+	 * unlocked while we manipulate the related vnode to avoid a
+	 * deadlock.
+	 */
+	ip = hammer_get_inode(hmp, ino, &error);
+	if (ip == NULL) {
+		*vpp = NULL;
+		return(error);
+	}
+	hammer_lock_to_ref(&ip->lock);
+	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
+	hammer_put_inode_ref(ip);
+	return (error);
+}
+
+/*
+ * Return a locked vnode for the specified inode.  The inode must be
+ * referenced but NOT LOCKED on entry and will remain referenced on
+ * return.
+ */
+int
+hammer_get_vnode(struct hammer_inode *ip, int lktype, struct vnode **vpp)
+{
+	struct vnode *vp;
+	int error = 0;
+
+	for (;;) {
+		if ((vp = ip->vp) == NULL) {
+			error = getnewvnode(VT_HAMMER, ip->hmp->mp, vpp, 0, 0);
+			if (error)
+				break;
+			if (ip->vp == NULL) {
+				vp = *vpp;
+				ip->vp = vp;
+				vp->v_type = hammer_get_vnode_type(
+						ip->ino_rec.base.base.obj_type);
+				vp->v_data = (void *)ip;
+				/* vnode locked by getnewvnode() */
+				break;
+			}
+			vp->v_type = VBAD;
+			vx_put(vp);
+		} else {
+			/*
+			 * loop if the vget fails (aka races), or if the vp
+			 * no longer matches ip->vp.
+			 */
+			if (vget(vp, LK_EXCLUSIVE) == 0) {
+				if (vp == ip->vp)
+					break;
+				vput(vp);
+			}
+		}
+	}
+	return(error);
+}
+
+/*
+ * Get and lock a HAMMER inode.  These functions do not attach or detach
+ * the related vnode.
+ */
+struct hammer_inode *
+hammer_get_inode(struct hammer_mount *hmp, u_int64_t obj_id, int *errorp)
+{
 	struct hammer_btree_info binfo;
 	struct hammer_inode_info iinfo;
 	struct hammer_base_elm key;
 	struct hammer_inode *ip;
-	struct vnode *vp;
-	int error;
 
 	/*
 	 * Determine if we already have an inode cached.  If we do then
 	 * we are golden.
 	 */
-	iinfo.obj_id = ino;
-	iinfo.obj_asof = 0;
+	iinfo.obj_id = obj_id;
+	iinfo.obj_asof = HAMMER_MAX_TID;	/* XXX */
 loop:
 	ip = hammer_ino_rb_tree_RB_LOOKUP_INFO(&hmp->rb_inos_root, &iinfo);
 	if (ip) {
-		vp = ip->vp;
-		if (vget(vp, LK_EXCLUSIVE) != 0)
-			goto loop;
-		ip = hammer_ino_rb_tree_RB_LOOKUP_INFO(&hmp->rb_inos_root, 
-						       &iinfo);
-		if (ip == NULL || ip->vp != vp) {
-			vput(vp);
-			goto loop;
-		}
-		*vpp = vp;
-		return(0);
+		hammer_lock(&ip->lock);
+		*errorp = 0;
+		return(ip);
 	}
 
-	/*
-	 * Lookup failed, instantiate a new vnode and inode in-memory
-	 * structure so we don't block in kmalloc later on when holding
-	 * locked buffer cached buffers.
-	 */
-	error = getnewvnode(VT_HAMMER, mp, vpp, 0, 0);
-	if (error) {
-		*vpp = NULL;
-		return (error);
-	}
-	vp = *vpp;
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
-	ip->obj_id = ino;
+	ip->obj_id = obj_id;
 	ip->obj_asof = iinfo.obj_asof;
+	ip->hmp = hmp;
 
 	/*
 	 * If we do not have an inode cached search the HAMMER on-disk B-Tree
 	 * for it.
 	 */
 	hammer_btree_info_init(&binfo, hmp->rootcl);
-	key.obj_id = ino;
+	key.obj_id = ip->obj_id;
 	key.key = 0;
-	key.create_tid = 0;
+	key.create_tid = iinfo.obj_asof;
 	key.delete_tid = 0;
 	key.rec_type = HAMMER_RECTYPE_INODE;
 	key.obj_type = 0;
 
-	error = hammer_btree_lookup(&binfo, &key, HAMMER_BTREE_GET_RECORD |
-					          HAMMER_BTREE_GET_DATA);
+	*errorp = hammer_btree_lookup(&binfo, &key, HAMMER_BTREE_GET_RECORD |
+					            HAMMER_BTREE_GET_DATA);
 
 	/*
 	 * On success the B-Tree lookup will hold the appropriate
 	 * buffer cache buffers and provide a pointer to the requested
 	 * information.  Copy the information to the in-memory inode.
 	 */
-	if (error == 0) {
+	if (*errorp == 0) {
 		ip->ino_rec = binfo.rec->inode;
 		ip->ino_data = binfo.data->inode;
 	}
@@ -153,70 +195,65 @@ loop:
 	 * inode into the B-Tree.  It is possible to race another lookup
 	 * insertion of the same inode so deal with that condition too.
 	 */
-	if (error == 0) {
+	if (*errorp == 0) {
 		if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
-			vp->v_type = VBAD;
-			vx_put(vp);
 			kfree(ip, M_HAMMER);
 			goto loop;
 		}
-		ip->vp = vp;
-		vp->v_data = (void *)ip;
-		vp->v_type =
-			hammer_get_vnode_type(ip->ino_rec.base.base.obj_type);
-		*vpp = vp;
 	} else {
-		*vpp = NULL;
+		kfree(ip, M_HAMMER);
+		ip = NULL;
 	}
-	return (error);
+	return (ip);
+}
+
+void
+hammer_lock_inode(struct hammer_inode *ip)
+{
+	hammer_lock(&ip->lock);
+}
+
+void
+hammer_put_inode(struct hammer_inode *ip)
+{
+	hammer_unlock(&ip->lock);
+}
+
+void
+hammer_put_inode_ref(struct hammer_inode *ip)
+{
+	hammer_unref(&ip->lock);
 }
 
 /*
  * (called via RB_SCAN)
  */
 int
-hammer_unload_inode(struct hammer_inode *ip, void *data)
+hammer_unload_inode(struct hammer_inode *ip, void *data __unused)
 {
-	struct hammer_mount *hmp = data;
 	struct vnode *vp;
 
+	KKASSERT(ip->lock.refs == 0);
 	if ((vp = ip->vp) != NULL) {
 		ip->vp = NULL;
 		vp->v_data = NULL;
 		/* XXX */
 	}
-	RB_REMOVE(hammer_ino_rb_tree, &hmp->rb_inos_root, ip);
+	RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
 	kfree(ip, M_HAMMER);
 	return(0);
 }
 
-
 /*
- * Convert a HAMMER filesystem object type to a vnode type
+ * A transaction has modified an inode, requiring a new record and possibly
+ * also data to be written out.
  */
-static
-enum vtype
-hammer_get_vnode_type(u_int16_t obj_type)
+void
+hammer_modify_inode(struct hammer_transaction *trans,
+		    struct hammer_inode *ip, int flags)
 {
-	switch(obj_type) {
-	case HAMMER_OBJTYPE_DIRECTORY:
-		return(VDIR);
-	case HAMMER_OBJTYPE_REGFILE:
-		return(VREG);
-	case HAMMER_OBJTYPE_DBFILE:
-		return(VDATABASE);
-	case HAMMER_OBJTYPE_FIFO:
-		return(VFIFO);
-	case HAMMER_OBJTYPE_CDEV:
-		return(VCHR);
-	case HAMMER_OBJTYPE_BDEV:
-		return(VBLK);
-	case HAMMER_OBJTYPE_SOFTLINK:
-		return(VLNK);
-	default:
-		return(VBAD);
-	}
-	/* not reached */
+	ip->flags |= flags;
+	KKASSERT(0);
 }
 
 /*
@@ -246,7 +283,7 @@ hammer_bread(struct hammer_cluster *cluster, int32_t cloff,
 	if (buffer == NULL || buffer->cluster != cluster ||
 	    buffer->buf_no != buf_no) {
 		if (buffer)
-			hammer_put_buffer(buffer);
+			hammer_put_buffer(buffer, 0);
 		buffer = hammer_get_buffer(cluster, buf_no, 0, errorp);
 		*bufferp = buffer;
 		if (buffer == NULL)

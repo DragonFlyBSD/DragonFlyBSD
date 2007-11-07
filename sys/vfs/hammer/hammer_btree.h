@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.3 2007/11/01 20:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.4 2007/11/07 00:43:24 dillon Exp $
  */
 
 /*
@@ -74,10 +74,11 @@
 /*
  * Common base for all B+Tree element types (40 bytes)
  *
- * Note that obj_type is set to the object type of the record represents
- * an inode or a cluster range.  A cluster range is special in that the
- * B-Tree nodes represent a range within the B-Tree inclusive of rec_type
- * field, so obj_type must be used to detect the cluster range entries.
+ * Note that obj_type is set to the object type the record represents
+ * if an inode, directory entry, or a cluster range.  A cluster range is
+ * special in that the B-Tree nodes represent a range within the B-Tree
+ * inclusive of rec_type field, so obj_type must be used to detect the
+ * cluster range entries.
  *
  * The special field is used as a subtree pointer for internal nodes,
  * and reserved for leaf nodes.
@@ -90,7 +91,8 @@ struct hammer_base_elm {
 	hammer_tid_t delete_tid; /* 18 transaction id for record update/del */
 
 	u_int16_t rec_type;	/* 20 */
-	u_int16_t obj_type;	/* 22 (special) */
+	u_int8_t obj_type;	/* 22 (special) */
+	u_int8_t reserved06;	/* 23 (special) */
 	int32_t reserved07;	/* 24 (future) */
 				/* 28 */
 };
@@ -274,6 +276,7 @@ struct hammer_btree_cursor {
 	hammer_btree_node_t node;		/* internal or leaf node */
 	int index;
 	int parent_index;
+	int last_error;
 };
 
 typedef struct hammer_btree_cursor *hammer_btree_cursor_t;

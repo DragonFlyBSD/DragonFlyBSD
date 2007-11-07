@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.2 2007/11/02 00:57:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.3 2007/11/07 00:43:24 dillon Exp $
  */
 
 /*
@@ -98,34 +98,47 @@ hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 		key1->key, key2->key);
 #endif
 
-	if (key1->obj_id < key2->obj_id)
-		return(-1);
-	if (key1->obj_id > key2->obj_id)
-		return(1);
+	/*
+	 * A key1->obj_id of 0 matches any object id
+	 */
+	if (key1->obj_id) {
+		if (key1->obj_id < key2->obj_id)
+			return(-4);
+		if (key1->obj_id > key2->obj_id)
+			return(4);
+	}
 
-	if (key1->rec_type < key2->rec_type)
-		return(-1);
-	if (key1->rec_type > key2->rec_type)
-		return(1);
+	/*
+	 * A key1->rec_type of 0 matches any record type.
+	 */
+	if (key1->rec_type) {
+		if (key1->rec_type < key2->rec_type)
+			return(-3);
+		if (key1->rec_type > key2->rec_type)
+			return(3);
+	}
 
+	/*
+	 * There is no special case for key.  0 means 0.
+	 */
 	if (key1->key < key2->key)
-		return(-1);
+		return(-2);
 	if (key1->key > key2->key)
-		return(1);
+		return(2);
 
 	/*
 	 * This test has a number of special cases.  create_tid in key1 is
 	 * the as-of transction id, and delete_tid in key1 is NOT USED.
 	 *
-	 * A key1->create_tid of 0 indicates 'the most recent record if not
-	 * deleted'.  key2->create_tid is a HAMMER record and will never be
+	 * A key1->create_tid of 0 matches any record regardles of when
+	 * it was created or destroyed.  0xFFFFFFFFFFFFFFFFULL should be
+	 * used to search for the most current state of the object.
+	 *
+	 * key2->create_tid is a HAMMER record and will never be
 	 * 0.   key2->delete_tid is the deletion transaction id or 0 if 
 	 * the record has not yet been deleted.
 	 */
-	if (key1->create_tid == 0) {
-		if (key2->delete_tid)
-			return(-1);
-	} else {
+	if (key1->create_tid) {
 		if (key1->create_tid < key2->create_tid)
 			return(-1);
 		if (key2->delete_tid && key1->create_tid >= key2->delete_tid)
@@ -218,15 +231,15 @@ void
 hammer_btree_cursor_done(hammer_btree_cursor_t cursor)
 {
 	if (cursor->node_buffer) {
-		hammer_put_buffer(cursor->node_buffer);
+		hammer_put_buffer(cursor->node_buffer, 0);
 		cursor->node_buffer = NULL;
 	}
 	if (cursor->parent_buffer) {
-		hammer_put_buffer(cursor->parent_buffer);
+		hammer_put_buffer(cursor->parent_buffer, 0);
 		cursor->parent_buffer = NULL;
 	}
 	if (cursor->cluster) {
-		hammer_put_cluster(cursor->cluster);
+		hammer_put_cluster(cursor->cluster, 0);
 		cursor->cluster = NULL;
 	}
 	cursor->node = NULL;
@@ -262,11 +275,11 @@ hammer_btree_info_done(hammer_btree_info_t info)
 {
 	hammer_btree_cursor_done(&info->cursor);
 	if (info->data_buffer) {
-		hammer_put_buffer(info->data_buffer);
+		hammer_put_buffer(info->data_buffer, 0);
 		info->data_buffer = NULL;
 	}
 	if (info->record_buffer) {
-		hammer_put_buffer(info->record_buffer);
+		hammer_put_buffer(info->record_buffer, 0);
 		info->record_buffer = NULL;
 	}
 	info->data = NULL;
@@ -321,11 +334,12 @@ btree_search(hammer_btree_cursor_t cursor, hammer_base_elm_t key, int flags)
 		 */
 		if (cursor->parent == NULL &&
 		    (flags & HAMMER_BTREE_CLUSTER_TAG)) {
-			return(EIO);
+			error = EIO;
+			goto done;
 		}
 		error = btree_cursor_up(cursor);
 		if (error)
-			return(error);
+			goto done;
 	}
 	KKASSERT(cursor->node != NULL);
 
@@ -344,7 +358,7 @@ btree_search(hammer_btree_cursor_t cursor, hammer_base_elm_t key, int flags)
 			break;
 		error = btree_cursor_up(cursor);
 		if (error)
-			return (error);
+			goto done;
 	}
 
 	/*
@@ -364,7 +378,7 @@ btree_search(hammer_btree_cursor_t cursor, hammer_base_elm_t key, int flags)
 		KKASSERT(cursor->node->base.count != 0);
 		error = btree_cursor_up(cursor);
 		if (error)
-			return (error);
+			goto done;
 	}
 
 new_cluster:
@@ -382,14 +396,14 @@ new_cluster:
 		if ((flags & HAMMER_BTREE_DELETE) && cursor->parent == NULL) {
 			error = btree_collapse(cursor);
 			if (error)
-				return (error);
+				goto done;
 		}
 
 		/*
-		 * Scan the node (XXX binary search) to find the subtree
-		 * index to push down into.  We go one-past, then back-up.
-		 * The key should never be less then the left-hand boundary
-		 * so I should never wind up 0.
+		 * Scan the node to find the subtree index to push down into.
+		 * We go one-past, then back-up.  The key should never be
+		 * less then the left-hand boundary so I should never wind
+		 * up 0.
 		 */
 		node = &cursor->node->internal;
 		for (i = 0; i < node->base.count; ++i) {
@@ -416,7 +430,7 @@ new_cluster:
 			if (node->base.count == HAMMER_BTREE_INT_ELMS) {
 				error = btree_split_internal(cursor);
 				if (error)
-					return(error);
+					goto done;
 				/*
 				 * reload stale pointers
 				 */
@@ -439,7 +453,7 @@ new_cluster:
 			if (node->elms[i].subtree_count <= 1) {
 				error = btree_rebalance_node(cursor);
 				if (error)
-					return(error);
+					goto done;
 				/* cursor->index is invalid after call */
 				goto new_cluster;
 			}
@@ -451,7 +465,7 @@ new_cluster:
 		 */
 		error = btree_cursor_down(cursor);
 		if (error)
-			return (error);
+			goto done;
 	}
 
 
@@ -485,10 +499,11 @@ new_cluster:
 			    (flags & HAMMER_BTREE_CLUSTER_TAG) == 0) {
 				error = btree_cursor_down(cursor);
 				if (error)
-					return (error);
+					goto done;
 				goto new_cluster;
 			}
-			return(0);
+			error = 0;
+			goto done;
 		}
 	}
 
@@ -504,7 +519,7 @@ new_cluster:
 				cursor->index = i - 1;
 				error = btree_cursor_down(cursor);
 				if (error)
-					return (error);
+					goto done;
 				goto new_cluster;
 			}
 		} else {
@@ -513,7 +528,7 @@ new_cluster:
 				cursor->index = i;
 				error = btree_cursor_down(cursor);
 				if (error)
-					return (error);
+					goto done;
 				goto new_cluster;
 			}
 		}
@@ -538,9 +553,171 @@ new_cluster:
 		node = &cursor->node->internal;
 		*/
 		if (error)
-			return(error);
+			goto done;
 	}
-	return(ENOENT);
+	error = ENOENT;
+
+	/*
+	 * Set the cursor's last_error.  This is used primarily by
+	 * btree_search_fwd() to determine whether it needs to skip
+	 * the current element or not.
+	 */
+done:
+	cursor->last_error = error;
+	return(error);
+}
+
+/*
+ * Ignoring key->key, iterate records after a search.  The next record which
+ * matches the key (except for key->key) is returned.   To synchronize with
+ * btree_search() we only check the record at the current cursor index if
+ * cursor->last_error is ENOENT, indicating that it is at an insertion point
+ * (so if we are not at the end of the node's array, the current record
+ * will be the 'next' record to check).
+ *
+ * Records associated with regular files use the ending offset of the data
+ * block (non inclusive) as their key.  E.g. if you write 20 bytes to a
+ * file at offset 10, the HAMMER record will use a key of 30 for that record.
+ * This way the cursor is properly positioned after a search so the first
+ * record returned by btree_iterate() is (likely) the one containing the
+ * desired data.  This also means the results of the initial search are
+ * ignored.
+ *
+ * This function is also used to iterate through database records, though
+ * in that case the caller utilizes any exact match located by btree_search()
+ * before diving into the iteration.
+ */
+int
+hammer_btree_iterate(hammer_btree_cursor_t cursor, hammer_base_elm_t key)
+{
+	hammer_btree_node_t node;
+	struct hammer_base_elm save_base;
+	int64_t save_key;
+	int error;
+	int r;
+	int s;
+
+	/*
+	 * If last_error is not zero we are at the insertion point and must
+	 * start at the current element.  If last_error is zero the caller
+	 * has already processed the current cursor (or doesn't care about
+	 * it) and we must iterate forwards.
+	 */
+	node = cursor->node;
+	if (cursor->index < node->base.count && cursor->last_error == 0)
+		++cursor->index;
+
+	for (;;) {
+		/*
+		 * We iterate up the tree while we are at the last element.
+		 *
+		 * If we hit the root of the cluster we have to cursor up
+		 * into the parent cluster, but then search to position
+		 * the cursor at the next logical element in the iteration.
+		 * We ignore an ENOENT error in this case.
+		 *
+		 * XXX this could be optimized by storing the information in
+		 * the parent reference.
+		 */
+goupagain:
+		while (cursor->index == node->base.count) {
+			if (cursor->parent == NULL) {
+				save_base = *cursor->right_bound;
+				error = btree_cursor_up(cursor);
+				if (error)
+					goto done;
+				error = btree_search(cursor, &save_base, 0);
+				if (error == ENOENT)
+					error = 0;
+				if (error)
+					goto done;
+				node = cursor->node;
+				/* node cannot be empty. cursor->index is 0 */
+				KKASSERT(cursor->index != node->base.count);
+				/* do not further increment the index */
+			} else {
+				error = btree_cursor_up(cursor);
+				if (error)
+					goto done;
+				node = cursor->node;
+				KKASSERT(cursor->index != node->base.count);
+				++cursor->index;
+			}
+		}
+
+		/*
+		 * Iterate down the tree while we are at an internal node.
+		 * Nodes cannot be empty, assert the case because if one is
+		 * we will wind up in an infinite loop.
+		 *
+		 * We can avoid iterating through large swaths of transaction
+		 * id space if the left and right separators are the same
+		 * except for their transaction spaces.  We can then skip
+		 * the node if the left and right transaction spaces are the
+		 * same sign.  This directly optimized accesses to files with
+		 * HUGE transactional histories, such as database files.
+		 */
+		while (node->base.type == HAMMER_BTREE_INTERNAL_NODE) {
+			struct hammer_btree_internal_elm *elm;
+
+			elm = &node->internal.elms[cursor->index];
+			if (elm[0].base.obj_id == elm[1].base.obj_id &&
+			    elm[0].base.rec_type == elm[1].base.rec_type &&
+			    elm[0].base.key == elm[1].base.key) {
+				save_key = key->key;
+				key->key = elm[0].base.key;
+				r = hammer_btree_cmp(key, &elm[0].base);
+				key->key = elm[1].base.key;
+				s = hammer_btree_cmp(key, &elm[1].base);
+				key->key = save_key;
+				if ((r < 0 && s < 0) || (r > 0 && s > 0)) {
+					++cursor->index;
+					goto goupagain;
+				}
+			}
+			error = btree_cursor_down(cursor);
+			if (error)
+				goto done;
+			KKASSERT(cursor->index != node->base.count);
+			node = cursor->node;
+		}
+
+		/*
+		 * Determine if the record at the cursor matches, sans
+		 * key->key (which is what we are iterating).
+		 */
+		{
+			union hammer_btree_leaf_elm *elm;
+
+			elm = &node->leaf.elms[cursor->index];
+			save_key = key->key;
+			key->key = elm->base.key;
+			r = hammer_btree_cmp(key, &elm->base);
+			key->key = save_key;
+		}
+
+		/*
+		 * The iteration stops if the obj_id or rec_type no longer
+		 * match (unless the original key set those to 0, meaning the
+		 * caller WANTS to iterate through those as well), denoted
+		 * by -3,-2 or +2,+3 return values.  Otherwise the mismatch
+		 * is due to the transaction id and we can get both negative
+		 * and positive values... we have to skip those records and 
+		 * continue searching.
+		 */
+		if (r == 0) {
+			error = 0;
+			break;
+		}
+		if (r < -2 || r > 2) {
+			error = ENOENT;
+			break;
+		}
+		++cursor->index;
+	}
+done:
+	cursor->last_error = error;
+	return(error);
 }
 
 /*
@@ -558,15 +735,24 @@ new_cluster:
 int
 hammer_btree_lookup(hammer_btree_info_t info, hammer_base_elm_t key, int flags)
 {
-	hammer_btree_leaf_elm_t elm;
+	int error;
+
+	error = btree_search(&info->cursor, key, flags);
+	if (error == 0 &&
+	    (flags & (HAMMER_BTREE_GET_RECORD|HAMMER_BTREE_GET_DATA))) {
+		error = hammer_btree_extract(info, flags);
+	}
+	return(error);
+}
+
+int
+hammer_btree_extract(hammer_btree_info_t info, int flags)
+{
 	struct hammer_cluster *cluster;
+	hammer_btree_leaf_elm_t elm;
 	int32_t cloff;
 	int error;
 	int iscl;
-
-	error = btree_search(&info->cursor, key, flags);
-	if (error)
-		return (error);
 
 	/* 
 	 * Extract the record and data reference if requested.
@@ -580,6 +766,8 @@ hammer_btree_lookup(hammer_btree_info_t info, hammer_base_elm_t key, int flags)
 	elm = &info->cursor.node->leaf.elms[info->cursor.index];
 	iscl = (elm->base.obj_type & HAMMER_OBJTYPE_CLUSTER_FLAG) != 0;
 	cluster = info->cursor.cluster;
+	error = 0;
+
 	if ((flags & HAMMER_BTREE_GET_RECORD) && error == 0) {
 		cloff = iscl ? elm->cluster.rec_offset : elm->record.rec_offset;
 
@@ -616,9 +804,10 @@ hammer_btree_insert(struct hammer_btree_info *info, hammer_btree_leaf_elm_t elm)
 	struct hammer_btree_cursor *cursor;
 	struct hammer_btree_internal_node *parent;
 	struct hammer_btree_leaf_node *leaf;
-	int error;
 	int i;
 
+#if 0
+	/* HANDLED BY CALLER */
 	/*
 	 * Issue a search to get our cursor at the right place.  The search
 	 * will get us to a leaf node.
@@ -632,6 +821,7 @@ hammer_btree_insert(struct hammer_btree_info *info, hammer_btree_leaf_elm_t elm)
 			error = EEXIST;
 		return (error);
 	}
+#endif
 
 	/*
 	 * Insert the element at the leaf node and update the count in the
@@ -670,9 +860,10 @@ hammer_btree_delete(struct hammer_btree_info *info, hammer_base_elm_t key)
 	struct hammer_btree_cursor *cursor;
 	struct hammer_btree_internal_node *parent;
 	struct hammer_btree_leaf_node *leaf;
-	int error;
 	int i;
 
+#if 0
+	/* HANDLED BY CALLER */
 	/*
 	 * Locate the leaf element to delete.  The search is also responsible
 	 * for doing some of the rebalancing work on its way down.
@@ -680,6 +871,7 @@ hammer_btree_delete(struct hammer_btree_info *info, hammer_base_elm_t key)
 	error = btree_search(&info->cursor, key, HAMMER_BTREE_DELETE);
 	if (error)
 		return (error);
+#endif
 
 	/*
 	 * Delete the element from the leaf node.  We leave empty leafs alone
@@ -755,7 +947,7 @@ btree_cursor_set_cluster_by_value(hammer_btree_cursor_t cursor,
 		if (volume) {
 			cluster = hammer_get_cluster(volume, clu_no,
 						     &error, 0);
-			hammer_put_volume(volume);
+			hammer_put_volume(volume, 0);
 		} else {
 			cluster = NULL;
 		}
@@ -772,7 +964,7 @@ btree_cursor_set_cluster_by_value(hammer_btree_cursor_t cursor,
 		} else {
 			error = EIO;
 		}
-		hammer_put_cluster(cluster);
+		hammer_put_cluster(cluster, 0);
 	}
 	return (error);
 }
@@ -792,7 +984,7 @@ btree_cursor_set_cluster(hammer_btree_cursor_t cursor,
 				    &cursor->node_buffer);
 	cursor->index = 0;
 	if (cursor->parent) {
-		hammer_put_buffer(cursor->parent_buffer);
+		hammer_put_buffer(cursor->parent_buffer, 0);
 		cursor->parent_buffer = NULL;
 		cursor->parent = NULL;
 		cursor->parent_index = 0;
@@ -825,15 +1017,19 @@ btree_cursor_up(hammer_btree_cursor_t cursor)
 	if (cursor->parent == NULL) {
 		/*
 		 * We are at the root of the cluster, pop up to the root
-		 * of the parent cluster.  Return EIO if we are at the
+		 * of the parent cluster.  Return ENOENT if we are at the
 		 * root cluster of the filesystem.
 		 */
 		ondisk = cursor->cluster->ondisk;
-		error = btree_cursor_set_cluster_by_value(
-			    cursor,
-			    ondisk->clu_btree_parent_vol_no,
-			    ondisk->clu_btree_parent_clu_no,
-			    ondisk->clu_btree_parent_clu_id);
+		if (ondisk->clu_btree_parent_vol_no < 0) {
+			error = ENOENT;
+		} else {
+			error = btree_cursor_set_cluster_by_value(
+				    cursor,
+				    ondisk->clu_btree_parent_vol_no,
+				    ondisk->clu_btree_parent_clu_no,
+				    ondisk->clu_btree_parent_clu_id);
+		}
 	} else {
 		/*
 		 * Copy the current node's parent info into the node and load
@@ -867,7 +1063,7 @@ btree_cursor_up(hammer_btree_cursor_t cursor)
 				 hammer_bclu_offset(cursor->node_buffer,
 						    cursor->node));
 		} else {
-			hammer_put_buffer(cursor->parent_buffer);
+			hammer_put_buffer(cursor->parent_buffer, 0);
 			cursor->parent = NULL;
 			cursor->parent_buffer = NULL;
 			cursor->parent_index = 0;
@@ -918,7 +1114,6 @@ btree_cursor_down(hammer_btree_cursor_t cursor)
 		KKASSERT(node->base.type == HAMMER_BTREE_INTERNAL_NODE);
 		elm = &node->internal.elms[cursor->index];
 		KKASSERT(elm->subtree_offset != 0);
-
 		cursor->parent_index = cursor->index;
 		cursor->parent = &cursor->node->internal;
 		hammer_dup_buffer(&cursor->parent_buffer, cursor->node_buffer);
@@ -929,8 +1124,20 @@ btree_cursor_down(hammer_btree_cursor_t cursor)
 					    &error,
 					    &cursor->node_buffer);
 		cursor->index = 0;
+		cursor->left_bound = &elm[0].base;
+		cursor->right_bound = &elm[1].base;
 		KKASSERT(cursor->node == NULL ||
 			 cursor->node->base.parent == elm->subtree_offset);
+#ifdef INVARIANTS
+		/*
+		 * The bounds of an internal node must match the parent's
+		 * partitioning values.  Leaf nodes do not store bounds.
+		 */
+		if (cursor->node->base.type == HAMMER_BTREE_INTERNAL_NODE) {
+			KKASSERT(hammer_btree_cmp(cursor->left_bound, &cursor->node->internal.elms[0].base) == 0);
+			KKASSERT(hammer_btree_cmp(cursor->right_bound, &cursor->node->internal.elms[cursor->node->base.count].base) == 0);
+		}
+#endif
 	}
 	return(error);
 }
@@ -1091,7 +1298,7 @@ btree_split_internal(hammer_btree_cursor_t cursor)
 	if (cursor->index >= split) {
 		cursor->index -= split;
 		cursor->node = (hammer_btree_node_t)new_node;
-		hammer_put_buffer(cursor->node_buffer);
+		hammer_put_buffer(cursor->node_buffer, 0);
 		cursor->node_buffer = new_buffer;
 	}
 
@@ -1239,7 +1446,7 @@ btree_split_leaf(hammer_btree_cursor_t cursor)
 	if (cursor->index >= split) {
 		cursor->index -= split;
 		cursor->node = (hammer_btree_node_t)new_leaf;
-		hammer_put_buffer(cursor->node_buffer);
+		hammer_put_buffer(cursor->node_buffer, 0);
 		cursor->node_buffer = new_buffer;
 	}
 
@@ -1401,7 +1608,7 @@ btree_rebalance_node(hammer_btree_cursor_t cursor)
 		child->base.count = j;
 		hammer_modify_buffer(child_buffer[i]);
 		if (subchild_buffer)
-			hammer_put_buffer(subchild_buffer);
+			hammer_put_buffer(subchild_buffer, 0);
 
 		/*
 		 * If we have run out of elements, break out
@@ -1424,7 +1631,7 @@ btree_rebalance_node(hammer_btree_cursor_t cursor)
 		node->elms[n] = node->elms[node->base.count];
 		while (i < node->base.count) {
 			hammer_free_btree_ptr(child_buffer[i], children[i]);
-			hammer_put_buffer(child_buffer[i]);
+			hammer_put_buffer(child_buffer[i], 0);
 			++i;
 		}
 		node->base.count = n;
@@ -1439,7 +1646,7 @@ failed:
 	hammer_modify_buffer(cursor->node_buffer);
 	for (i = 0; i < node->base.count; ++i) {
 		if (child_buffer[i])
-			hammer_put_buffer(child_buffer[i]);
+			hammer_put_buffer(child_buffer[i], 0);
 	}
 	return (error);
 }
@@ -1595,7 +1802,7 @@ btree_collapse(hammer_btree_cursor_t cursor)
 		root->base.type = HAMMER_BTREE_INTERNAL_NODE;
 		root->base.subtype = subsubtype;
 		if (subchild_buffer)
-			hammer_put_buffer(subchild_buffer);
+			hammer_put_buffer(subchild_buffer, 0);
 	}
 	root_modified = 1;
 
@@ -1607,7 +1814,7 @@ done:
 		hammer_modify_buffer(cursor->node_buffer);
 	for (i = 0; i < count; ++i) {
 		if (child_buffer[i])
-			hammer_put_buffer(child_buffer[i]);
+			hammer_put_buffer(child_buffer[i], 0);
 	}
 	return(error);
 }

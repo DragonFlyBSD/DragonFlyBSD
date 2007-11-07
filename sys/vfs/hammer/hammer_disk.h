@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.4 2007/11/02 00:57:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.5 2007/11/07 00:43:24 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -65,6 +65,8 @@
  * synchronized with the time of day in nanoseconds.
  */
 typedef u_int64_t hammer_tid_t;
+
+#define HAMMER_MAX_TID	0xFFFFFFFFFFFFFFFFULL
 
 /*
  * Most HAMMER data structures are embedded in 16K filesystem buffers.
@@ -183,6 +185,7 @@ struct hammer_volume_ondisk {
 	hammer_tid_t vol0_root_clu_id;	/* root cluster id */
 	hammer_tid_t vol0_nexttid;	/* next TID */
 	u_int64_t vol0_recid;		/* fs-wide record id allocator */
+	u_int64_t vol0_synchronized_rec_id; /* XXX */
 
 	char	reserved[1024];
 
@@ -369,23 +372,16 @@ struct hammer_base_record {
  * and look like a mount point to the system.
  */
 #define HAMMER_RECTYPE_UNKNOWN		0
+#define HAMMER_RECTYPE_LOWEST		1	/* lowest record type avail */
 #define HAMMER_RECTYPE_INODE		1	/* inode in obj_id space */
 #define HAMMER_RECTYPE_PSEUDO_INODE	2	/* pseudo filesysem */
 #define HAMMER_RECTYPE_CLUSTER		3	/* cluster reference */
-#define HAMMER_RECTYPE_DATA_CREATE	0x10
-#define HAMMER_RECTYPE_DATA_ZEROFILL	0x11
-#define HAMMER_RECTYPE_DATA_DELETE	0x12
-#define HAMMER_RECTYPE_DATA_UPDATE	0x13
-#define HAMMER_RECTYPE_DIR_CREATE	0x20
-#define HAMMER_RECTYPE_DIR_DELETE	0x22
-#define HAMMER_RECTYPE_DIR_UPDATE	0x23
-#define HAMMER_RECTYPE_DB_CREATE	0x30
-#define HAMMER_RECTYPE_DB_DELETE	0x32
-#define HAMMER_RECTYPE_DB_UPDATE	0x33
-#define HAMMER_RECTYPE_EXT_CREATE	0x40	/* ext attributes */
-#define HAMMER_RECTYPE_EXT_DELETE	0x42
-#define HAMMER_RECTYPE_EXT_UPDATE	0x43
+#define HAMMER_RECTYPE_DATA		0x10
+#define HAMMER_RECTYPE_DIRENTRY		0x11
+#define HAMMER_RECTYPE_DB		0x12
+#define HAMMER_RECTYPE_EXT		0x13	/* ext attributes */
 
+#define HAMMER_OBJTYPE_UNKNOWN		0	/* (never exists on-disk) */
 #define HAMMER_OBJTYPE_DIRECTORY	1
 #define HAMMER_OBJTYPE_REGFILE		2
 #define HAMMER_OBJTYPE_DBFILE		3
@@ -475,13 +471,16 @@ struct hammer_data_record {
  * Directory entries are indexed with a 128 bit namekey rather then an
  * offset.  A portion of the namekey is an iterator or randomizer to deal
  * with collisions.
+ *
+ * Note that base.base.obj_type holds the filesystem object type of obj_id,
+ * e.g. a den_type equivalent.
+ *
  */
 struct hammer_entry_record {
 	struct hammer_base_record base;
 	u_int64_t obj_id;		/* object being referenced */
 	u_int64_t reserved01;
-	u_int8_t  den_type;		/* cached file type */
-	char	  den_name[15];		/* short file names fit in record */
+	char	  den_name[16];		/* short file names fit in record */
 };
 
 /*
@@ -547,14 +546,28 @@ typedef union hammer_fsbuf_ondisk *hammer_fsbuf_ondisk_t;
  * state_sum allows a filesystem object to be validated to a degree by
  * generating a checksum of all of its pieces (in no particular order) and
  * checking it against this field.
+ *
+ * short_data_off allows a small amount of data to be embedded in the
+ * hammer_inode_data structure.  HAMMER typically uses this to represent
+ * up to 64 bytes of data, or to hold symlinks.  Remember that allocations
+ * are in powers of 2 so 64, 192, 448, or 960 bytes of embedded data is
+ * support (64+64, 64+192, 64+448 64+960).
+ *
+ * parent_obj_id is only valid for directories (which cannot be hard-linked),
+ * and specifies the parent directory obj_id.  This field will also be set
+ * for non-directory inodes as a recovery aid, but can wind up specifying
+ * stale information.  However, since object id's are not reused, the worse
+ * that happens is that the recovery code is unable to use it.
  */
 struct hammer_inode_data {
 	u_int16_t version;	/* inode data version */
 	u_int16_t mode;		/* basic unix permissions */
 	u_int32_t uflags;	/* chflags */
-	u_int64_t reserved01;
-	u_int64_t reserved02;
-	u_int64_t state_sum;	/* cumulative checksum */
+	u_int16_t short_data_off; /* degenerate data case */
+	u_int16_t short_data_len;
+	u_int32_t state_sum;
+	u_int64_t ctime;
+	u_int64_t parent_obj_id;/* parent directory obj_id */
 	uuid_t	uid;
 	uuid_t	gid;
 };
