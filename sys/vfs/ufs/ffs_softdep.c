@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.53 2007/11/06 03:50:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.54 2007/11/07 00:46:39 dillon Exp $
  */
 
 /*
@@ -204,6 +204,8 @@ static	int softdep_fsync(struct vnode *);
 static	int softdep_process_worklist(struct mount *);
 static	void softdep_move_dependencies(struct buf *, struct buf *);
 static	int softdep_count_dependencies(struct buf *bp, int);
+static  int softdep_checkread(struct buf *bp);
+static  int softdep_checkwrite(struct buf *bp);
 
 static struct bio_ops softdep_bioops = {
 	.io_start = softdep_disk_io_initiation,
@@ -213,6 +215,8 @@ static struct bio_ops softdep_bioops = {
 	.io_sync = softdep_process_worklist,
 	.io_movedeps = softdep_move_dependencies,
 	.io_countdeps = softdep_count_dependencies,
+	.io_checkread = softdep_checkread,
+	.io_checkwrite = softdep_checkwrite
 };
 
 /*
@@ -3059,6 +3063,22 @@ markernext(struct worklist *marker)
 	next = LIST_NEXT(marker, wk_list);
 	LIST_REMOVE(marker, wk_list);
 	return next;
+}
+
+/*
+ * checkread, checkwrite
+ *
+ */
+static  int
+softdep_checkread(struct buf *bp)
+{
+	return(0);
+}
+
+static  int
+softdep_checkwrite(struct buf *bp)
+{
+	return(0);
 }
 
 /*

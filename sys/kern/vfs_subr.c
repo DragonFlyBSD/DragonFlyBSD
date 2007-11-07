@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.108 2007/11/02 19:52:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.109 2007/11/07 00:46:36 dillon Exp $
  */
 
 /*
@@ -393,6 +393,9 @@ vinvalbuf_bp(struct buf *bp, void *data)
 	 * check for it.  Note that vfs_bio_awrite expects
 	 * buffers to reside on a queue, while bwrite() and
 	 * brelse() do not.
+	 *
+	 * NOTE:  NO B_LOCKED CHECK.  Also no buf_checkwrite()
+	 * check.  This code will write out the buffer, period.
 	 */
 	if (((bp->b_flags & (B_DELWRI | B_INVAL)) == B_DELWRI) &&
 	    (info->flags & V_SAVE)) {

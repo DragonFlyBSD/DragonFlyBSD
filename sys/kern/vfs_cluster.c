@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.31 2007/11/06 03:49:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.32 2007/11/07 00:46:36 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -390,7 +390,10 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 			 * with VMIO-backed buffers.
 			 */
 			if ((tbp->b_flags & (B_CACHE|B_LOCKED)) ||
-			    (tbp->b_flags & B_VMIO) == 0) {
+			    (tbp->b_flags & B_VMIO) == 0 ||
+			    (LIST_FIRST(&tbp->b_dep) != NULL &&
+			     buf_checkread(tbp))
+			) {
 				bqrelse(tbp);
 				break;
 			}
@@ -753,6 +756,7 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		 */
 		if (((tbp = findblk(vp, start_loffset)) == NULL) ||
 		  ((tbp->b_flags & (B_LOCKED | B_INVAL | B_DELWRI)) != B_DELWRI) ||
+		  (LIST_FIRST(&tbp->b_dep) != NULL && buf_checkwrite(tbp)) ||
 		  BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT)) {
 			start_loffset += size;
 			bytes -= size;
@@ -838,6 +842,7 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 				  != (B_DELWRI | B_CLUSTEROK |
 				    (bp->b_flags & (B_VMIO | B_NEEDCOMMIT))) ||
 				    (tbp->b_flags & B_LOCKED) ||
+		  (LIST_FIRST(&tbp->b_dep) != NULL && buf_checkwrite(tbp)) ||
 				    BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT)) {
 					crit_exit();
 					break;

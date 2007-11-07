@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.94 2007/11/06 20:06:26 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.95 2007/11/07 00:46:36 dillon Exp $
  */
 
 /*
@@ -1208,21 +1208,11 @@ brelse(struct buf *bp)
 	 */
 	if (bp->b_flags & B_LOCKED) {
 		/*
-		 * Buffers that are locked cannot be freed regardless of
-		 * their state.
-		 *
-		 * If B_DELWRI is set we do allow the buffer to be written -
-		 * it will return to the locked queue after the write has
-		 * completed.
+		 * Buffers that are locked are placed in the locked queue
+		 * immediately, regardless of their state.
 		 */
-		if ((bp->b_flags & (B_DELWRI|B_ERROR|B_INVAL|
-				    B_NOCACHE|B_RELBUF)) == B_DELWRI &&
-		    bp->b_bufsize) {
-			bp->b_qindex = BQUEUE_DIRTY;
-		} else {
-			bp->b_qindex = BQUEUE_LOCKED;
-		}
-		TAILQ_INSERT_TAIL(&bufqueues[bp->b_qindex], bp, b_freelist);
+		bp->b_qindex = BQUEUE_LOCKED;
+		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
 	} else if (bp->b_bufsize == 0) {
 		/*
 		 * Buffers with no memory.  Due to conditionals near the top
@@ -1341,11 +1331,8 @@ bqrelse(struct buf *bp)
 		 * will be released to the locked queue.
 		 */
 		bp->b_flags &= ~B_ERROR;
-		if (bp->b_flags & B_DELWRI)
-			bp->b_qindex = BQUEUE_DIRTY;
-		else
-			bp->b_qindex = BQUEUE_LOCKED;
-		TAILQ_INSERT_TAIL(&bufqueues[bp->b_qindex], bp, b_freelist);
+		bp->b_qindex = BQUEUE_LOCKED;
+		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
 	} else if (bp->b_flags & B_DELWRI) {
 		bp->b_qindex = BQUEUE_DIRTY;
 		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY], bp, b_freelist);
@@ -1987,10 +1974,17 @@ flushbufqueues(void)
 
 			/*
 			 * Only write it out if we can successfully lock
-			 * it.
+			 * it.  If the buffer has a dependancy,
+			 * buf_checkwrite must also return 0.
 			 */
 			if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
-				vfs_bio_awrite(bp);
+				if (LIST_FIRST(&bp->b_dep) != NULL &&
+				    buf_checkwrite(bp)) {
+					bremfree(bp);
+					brelse(bp);
+				} else {
+					vfs_bio_awrite(bp);
+				}
 				++r;
 				break;
 			}
@@ -2421,27 +2415,17 @@ loop:
 /*
  * regetblk(bp)
  *
- * Reacquire a buffer that was previously released to the locked queue.
+ * Reacquire a buffer that was previously released to the locked queue,
+ * or reacquire a buffer which is interlocked by having bioops->io_deallocate
+ * set B_LOCKED (which handles the acquisition race).
  *
- * The caller is assumed to have known the state of the buffer when it was
- * locked so the state of the buffer is not otherwise modified.  In
- * particular, we don't have to worry about VMIO causing B_CACHE to get
- * cleared because the underlying pages were never unwired.
- *
- * Typically the way this works is a caller acquires and validates a buffer,
- * releases it with B_LOCKED set, then later reacquires it with
- * regetblk().  The caller is responsible for setting and clearing
- * B_LOCKED.
- *
- * It is also possible for this to be called on a passively released buffer
- * where B_LOCKED has not been set.  For this to work properly the caller
- * must have a bioops interlock on the buffer which sets B_LOCKED if an
- * attempt is made to destroy it while we are blocked in our BUF_LOCK.
- * Otherwise races occur.
+ * To this end, either B_LOCKED must be set or the dependancy list must be
+ * non-empty.
  */
 void
 regetblk(struct buf *bp)
 {
+	KKASSERT((bp->b_flags & B_LOCKED) || LIST_FIRST(&bp->b_dep) != NULL);
 	BUF_LOCK(bp, LK_EXCLUSIVE | LK_RETRY);
 	crit_enter();
 	bremfree(bp);

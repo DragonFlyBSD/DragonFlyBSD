@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.40 2007/11/06 20:06:24 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.41 2007/11/07 00:46:38 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -232,6 +232,12 @@ struct buf {
  *			does a turn-around VOP_WRITE from its strategy
  *			routine.  This flag prevents bwrite() from blocking
  *			in wdrain, avoiding a deadlock situation.
+ *
+ *	B_LOCKED	The buffer will be released to the locked queue
+ *			regardless of its current state.  Note that
+ *			if B_DELWRI is set, no I/O occurs until the caller
+ *			acquires the buffer, clears B_LOCKED, then releases
+ *			it again.
  */
 
 #define	B_AGE		0x00000001	/* Move to age queue when I/O done. */

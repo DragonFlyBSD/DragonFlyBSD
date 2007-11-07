@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.33 2007/11/06 03:50:00 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.34 2007/11/07 00:46:38 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -127,6 +127,8 @@ struct bio_ops {
 	int	(*io_sync) (struct mount *);
 	void	(*io_movedeps) (struct buf *, struct buf *);
 	int	(*io_countdeps) (struct buf *, int);
+	int	(*io_checkread) (struct buf *);
+	int	(*io_checkwrite) (struct buf *);
 };
 
 /*
