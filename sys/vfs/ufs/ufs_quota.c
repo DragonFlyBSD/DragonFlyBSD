@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.25 2007/11/06 17:11:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.26 2007/11/07 17:38:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -367,7 +367,8 @@ void
 ufs_quotawarn(struct ufs_dquot *dq)
 {
 	static int dqticks;
-	if (dqticks / hz != ticks / hz) {
+
+	if (dqticks != ticks / hz) {
 		dqticks = ticks / hz;
 		uprintf("%s: warning, quota file expanded, quotacheck "
 			"was not run!\n",
