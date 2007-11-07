@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.192 2007/10/14 00:03:10 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.193 2007/11/07 16:10:43 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -539,6 +539,8 @@ upgrade_etc:	preupgrade
 	rm -rf ${DESTDIR}/usr/share/man/en.ISO8859-1/catn
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/psignal.9.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/openssl/man/{man,cat}7/Modes_of_DES.7.gz"
+	rm -f ${DESTDIR}/usr/include/bus/usb/usbdevs.h
+	rm -f ${DESTDIR}/usr/include/bus/usb/usbdevs_data.h
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
