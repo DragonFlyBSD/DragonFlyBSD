@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.47 2007/11/06 15:34:30 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.48 2007/11/07 06:23:37 sephe Exp $
  */
 
 #ifndef KLD_MODULE
@@ -765,7 +765,6 @@ dummynet(struct netmsg *msg)
 static int
 expire_queues(struct dn_flow_set *fs)
 {
-    struct dn_flow_queue *q, *prev;
     int i, initial_elements = fs->rq_elements;
 
     if (fs->last_expired == time_second)
@@ -774,20 +773,21 @@ expire_queues(struct dn_flow_set *fs)
     fs->last_expired = time_second;
 
     for (i = 0; i <= fs->rq_size; i++) { /* Last one is overflow */
-	for (prev = NULL, q = fs->rq[i]; q != NULL;) {
-	    if (!TAILQ_EMPTY(&q->queue) || q->S != q->F + 1) {
-		prev = q;
-		q = q->next;
- 	    } else {	/* Entry is idle, expire it */
-		struct dn_flow_queue *old_q = q;
+	struct dn_flow_queue *q, *qn;
 
-		if (prev != NULL)
-		    prev->next = q = q->next;
-		else
-		    fs->rq[i] = q = q->next;
-		fs->rq_elements-- ;
-		kfree(old_q, M_DUMMYNET);
-	    }
+	LIST_FOREACH_MUTABLE(q, &fs->rq[i], q_link, qn) {
+	    if (!TAILQ_EMPTY(&q->queue) || q->S != q->F + 1)
+		continue;
+
+ 	    /*
+	     * Entry is idle, expire it
+	     */
+	    LIST_REMOVE(q, q_link);
+	    kfree(q, M_DUMMYNET);
+
+	    KASSERT(fs->rq_elements > 0,
+		    ("invalid rq_elements %d\n", fs->rq_elements));
+	    fs->rq_elements--;
 	}
     }
     return initial_elements - fs->rq_elements;
@@ -808,8 +808,8 @@ create_queue(struct dn_flow_set *fs, int i)
 	 * No way to get room, use or create overflow queue.
 	 */
 	i = fs->rq_size;
-	if (fs->rq[i] != NULL)
-	    return fs->rq[i];
+	if (!LIST_EMPTY(&fs->rq[i]))
+	    return LIST_FIRST(&fs->rq[i]);
     }
 
     q = kmalloc(sizeof(*q), M_DUMMYNET, M_INTWAIT | M_NULLOK | M_ZERO);
@@ -818,11 +818,11 @@ create_queue(struct dn_flow_set *fs, int i)
 
     q->fs = fs;
     q->hash_slot = i;
-    q->next = fs->rq[i];
     q->S = q->F + 1;   /* hack - mark timestamp as invalid */
-    fs->rq[i] = q;
-    fs->rq_elements++;
     TAILQ_INIT(&q->queue);
+
+    LIST_INSERT_HEAD(&fs->rq[i], q, q_link);
+    fs->rq_elements++;
 
     return q;
 }
@@ -835,12 +835,14 @@ create_queue(struct dn_flow_set *fs, int i)
 static struct dn_flow_queue *
 find_queue(struct dn_flow_set *fs, struct ipfw_flow_id *id)
 {
-    struct dn_flow_queue *q, *prev;
+    struct dn_flow_queue *q;
     int i = 0;
 
     if (!(fs->flags_fs & DN_HAVE_FLOW_MASK)) {
-	q = fs->rq[0];
+	q = LIST_FIRST(&fs->rq[0]);
     } else {
+	struct dn_flow_queue *qn;
+
 	/* First, do the masking */
 	id->dst_ip &= fs->flow_mask.dst_ip;
 	id->src_ip &= fs->flow_mask.src_ip;
@@ -858,9 +860,12 @@ find_queue(struct dn_flow_set *fs, struct ipfw_flow_id *id)
 	    (id->proto);
 	i = i % fs->rq_size;
 
-	/* Finally, scan the current list for a match */
+	/*
+	 * Finally, scan the current list for a match and
+	 * expire idle flow queues
+	 */
 	searches++;
-	for (prev = NULL, q = fs->rq[i]; q;) {
+	LIST_FOREACH_MUTABLE(q, &fs->rq[i], q_link, qn) {
 	    search_steps++;
 	    if (id->dst_ip == q->id.dst_ip &&
 		id->src_ip == q->id.src_ip &&
@@ -871,24 +876,20 @@ find_queue(struct dn_flow_set *fs, struct ipfw_flow_id *id)
 		break; /* Found */
 	    } else if (pipe_expire && TAILQ_EMPTY(&q->queue) &&
 	    	       q->S == q->F + 1) {
-		/* Entry is idle and not in any heap, expire it */
-		struct dn_flow_queue *old_q = q;
+		/*
+		 * Entry is idle and not in any heap, expire it
+		 */
+		LIST_REMOVE(q, q_link);
+		kfree(q, M_DUMMYNET);
 
-		if (prev != NULL)
-		    prev->next = q = q->next;
-		else
-		    fs->rq[i] = q = q->next;
+		KASSERT(fs->rq_elements > 0,
+			("invalid rq_elements %d\n", fs->rq_elements));
 		fs->rq_elements--;
-		kfree(old_q, M_DUMMYNET);
-		continue;
 	    }
-	    prev = q;
-	    q = q->next;
 	}
-	if (q && prev != NULL) { /* Found and not in front */
-	    prev->next = q->next;
-	    q->next = fs->rq[i];
-	    fs->rq[i] = q;
+	if (q && LIST_FIRST(&fs->rq[i]) != q) { /* Found and not in front */
+	    LIST_REMOVE(q, q_link);
+	    LIST_INSERT_HEAD(&fs->rq[i], q, q_link);
 	}
     }
     if (q == NULL) {	/* No match, need to allocate a new entry */
@@ -1302,11 +1303,14 @@ static void
 purge_flow_set(struct dn_flow_set *fs, int all)
 {
     int i;
+#ifdef INVARIANTS
+    int rq_elements = 0;
+#endif
 
     for (i = 0; i <= fs->rq_size; i++) {
-	struct dn_flow_queue *q, *qn;
+	struct dn_flow_queue *q;
 
-	for (q = fs->rq[i]; q; q = qn) {
+	while ((q = LIST_FIRST(&fs->rq[i])) != NULL) {
 	    struct dn_pkt *pkt;
 
 	    while ((pkt = TAILQ_FIRST(&q->queue)) != NULL) {
@@ -1314,11 +1318,17 @@ purge_flow_set(struct dn_flow_set *fs, int all)
 		DN_FREE_PKT(pkt);
 	    }
 
-	    qn = q->next;
+	    LIST_REMOVE(q, q_link);
 	    kfree(q, M_DUMMYNET);
+
+#ifdef INVARIANTS
+	    rq_elements++;
+#endif
 	}
-	fs->rq[i] = NULL;
     }
+    KASSERT(rq_elements == fs->rq_elements,
+	    ("# rq elements mismatch, freed %d, total %d\n",
+	     rq_elements, fs->rq_elements));
     fs->rq_elements = 0;
 
     if (all) {
@@ -1436,7 +1446,7 @@ dn_rule_delete_fs(struct dn_flow_set *fs, void *r)
     for (i = 0; i <= fs->rq_size; i++) { /* Last one is ovflow */
 	struct dn_flow_queue *q;
 
-	for (q = fs->rq[i]; q; q = q->next) {
+	LIST_FOREACH(q, &fs->rq[i], q_link) {
 	    struct dn_pkt *pkt;
 
 	    TAILQ_FOREACH(pkt, &q->queue, dn_next) {
@@ -1539,6 +1549,8 @@ config_red(const struct dn_ioc_flowset *ioc_fs, struct dn_flow_set *x)
 static void
 alloc_hash(struct dn_flow_set *x, const struct dn_ioc_flowset *ioc_fs)
 {
+    int i, alloc_size;
+
     if (x->flags_fs & DN_HAVE_FLOW_MASK) {
 	int l = ioc_fs->rq_size;
 
@@ -1556,9 +1568,14 @@ alloc_hash(struct dn_flow_set *x, const struct dn_ioc_flowset *ioc_fs)
 	/* One is enough for null mask */
 	x->rq_size = 1;
     }
-    x->rq = kmalloc((1 + x->rq_size) * sizeof(struct dn_flow_queue *),
+    alloc_size = x->rq_size + 1;
+
+    x->rq = kmalloc(alloc_size * sizeof(struct dn_flowqueue_head),
 		    M_DUMMYNET, M_WAITOK | M_ZERO);
     x->rq_elements = 0;
+
+    for (i = 0; i < alloc_size; ++i)
+	LIST_INIT(&x->rq[i]);
 }
 
 static void
@@ -1653,7 +1670,7 @@ config_pipe(struct dn_ioc_pipe *ioc_pipe)
 	    for (i = 0; i <= x->fs.rq_size; i++) {
 		struct dn_flow_queue *q;
 
-		for (q = x->fs.rq[i]; q; q = q->next)
+		LIST_FOREACH(q, &x->fs.rq[i], q_link)
 		    q->numbytes = 0;
 	    }
 	}
@@ -1857,12 +1874,13 @@ dn_copy_flowid(const struct ipfw_flow_id *id, struct dn_ioc_flowid *ioc_id)
 static void *
 dn_copy_flowqueues(const struct dn_flow_set *fs, void *bp)
 {
-    const struct dn_flow_queue *q;
     struct dn_ioc_flowqueue *ioc_fq = bp;
     int i, copied = 0;
 
     for (i = 0; i <= fs->rq_size; i++) {
-	for (q = fs->rq[i]; q; q = q->next, ioc_fq++) {
+	const struct dn_flow_queue *q;
+
+	LIST_FOREACH(q, &fs->rq[i], q_link) {
 	    if (q->hash_slot != i) {	/* XXX ASSERT */
 		kprintf("++ at %d: wrong slot (have %d, "
 			"should be %d)\n", copied, q->hash_slot, i);
@@ -1883,6 +1901,8 @@ dn_copy_flowqueues(const struct dn_flow_set *fs, void *bp)
 	    ioc_fq->S = q->S;
 	    ioc_fq->F = q->F;
 	    dn_copy_flowid(&q->id, &ioc_fq->id);
+
+	    ioc_fq++;
 	}
     }
 

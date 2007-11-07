@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.15 2007/11/06 14:42:52 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.16 2007/11/07 06:23:37 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -180,8 +180,8 @@ TAILQ_HEAD(dn_pkt_queue, dn_pkt);
  * flow arrives.
  */
 struct dn_flow_queue {
-    struct dn_flow_queue *next;
     struct ipfw_flow_id id;
+    LIST_ENTRY(dn_flow_queue) q_link;
 
     struct dn_pkt_queue queue;	/* queue of packets */
     u_int len;
@@ -211,6 +211,7 @@ struct dn_flow_queue {
      * to test this when the queue is empty.
      */
 };
+LIST_HEAD(dn_flowqueue_head, dn_flow_queue);
 
 /*
  * flow_set descriptor.  Contains the "template" parameters for the queue
@@ -241,7 +242,7 @@ struct dn_flow_set {
     /* hash table of queues onto this flow_set */
     int rq_size;		/* number of slots */
     int rq_elements;		/* active elements */
-    struct dn_flow_queue **rq;	/* array of rq_size entries */
+    struct dn_flowqueue_head *rq;/* array of rq_size entries */
 
     uint32_t last_expired;	/* do not expire too frequently */
     int backlogged;		/* #active queues for this flowset */
