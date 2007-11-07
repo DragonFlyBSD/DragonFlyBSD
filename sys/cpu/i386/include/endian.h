@@ -34,7 +34,7 @@
  *
  *	from: @(#)endian.h	7.8 (Berkeley) 4/3/91
  * $FreeBSD: src/sys/i386/include/endian.h,v 1.18 1999/12/29 04:33:01 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/endian.h,v 1.7 2006/11/07 06:43:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/endian.h,v 1.8 2007/11/07 17:42:50 dillon Exp $
  */
 
 #ifndef _CPU_ENDIAN_H_
@@ -99,25 +99,10 @@
 
 #if defined(__GNUC__) || defined(__INTEL_COMPILER_with_DragonFly_endian)
 
-#if (defined(_KERNEL)  && !defined(I386_CPU) && \
-	(defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU))) || \
-    defined(__i486__) || defined(__i586__) || defined(__i686__) || \
-    defined(__k6__) || defined(__athlon__) || defined(__k8__) || \
-    defined(__pentium4__)
-
 #define __byte_swap32_var(x) \
 	__extension__ ({ register __uint32_t __X = (x); \
 	   __asm ("bswap %0" : "+r" (__X)); \
 	   __X; })
-
-#else /* !I386_CPU */
-
-#define __byte_swap32_var(x) \
-	__extension__ ({ register __uint32_t __X = (x); \
-	   __asm ("xchgb %h0, %b0\n\trorl $16, %0\n\txchgb %h0, %b0" \
-	       : "+q" (__X)); \
-	   __X; })
-#endif /* !I386_CPU */
 
 #define __byte_swap16_var(x) \
 	__extension__ ({ register __uint16_t __X = (x); \

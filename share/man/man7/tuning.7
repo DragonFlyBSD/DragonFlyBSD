@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.15 2007/09/14 23:47:53 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.16 2007/11/07 17:42:47 dillon Exp $
 .\"
 .Dd March 4, 2007
 .Dt TUNING 7
@@ -747,14 +747,12 @@ There are a number of
 options that can be commented out.
 If you only want the kernel to run
 on a Pentium class CPU, you can easily remove
-.Dv I386_CPU
-and
 .Dv I486_CPU ,
 but only remove
 .Dv I586_CPU
 if you are sure your CPU is being recognized as a Pentium II or better.
-Some clones may be recognized as a Pentium or even a 486 and not be able
-to boot without those options.
+Some clones may be recognized as a Pentium and not be able to boot
+without those options.
 If it works, great!
 The operating system
 will be able to better-use higher-end CPU features for MMU, task switching,

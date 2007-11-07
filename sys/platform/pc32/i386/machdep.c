@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.127 2007/07/02 16:52:01 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.128 2007/11/07 17:42:50 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1058,10 +1058,7 @@ cpu_setregs(void)
 	cr0 = rcr0();
 	cr0 |= CR0_NE;			/* Done by npxinit() */
 	cr0 |= CR0_MP | CR0_TS;		/* Done at every execve() too. */
-#ifdef I386_CPU
-	if (cpu_class != CPUCLASS_386)
-#endif
-		cr0 |= CR0_WP | CR0_AM;
+	cr0 |= CR0_WP | CR0_AM;
 	load_cr0(cr0);
 	load_gs(_udatasel);
 }

@@ -1,4 +1,4 @@
-$DragonFly: src/share/doc/handbook/Attic/handbook.txt,v 1.1 2006/07/14 21:42:07 swildner Exp $
+$DragonFly: src/share/doc/handbook/Attic/handbook.txt,v 1.2 2007/11/07 17:42:50 dillon Exp $
 
                                DragonFly Handbook
 
@@ -8269,7 +8269,6 @@ Acknowledgments
 
    This is the machine architecture. It must be either i386, or amd64.
 
- cpu          I386_CPU
  cpu          I486_CPU
  cpu          I586_CPU
  cpu          I686_CPU

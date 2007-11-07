@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/platform/pc32/conf/options,v 1.1 2006/10/22 16:09:13 dillon Exp $
+# $DragonFly: src/sys/platform/pc32/conf/options,v 1.2 2007/11/07 17:42:50 dillon Exp $
 #
 
 DISABLE_PSE
@@ -65,7 +65,6 @@ CPU_DISABLE_SSE			opt_cpu.h
 CPU_ATHLON_SSE_HACK		opt_cpu.h
 
 # The CPU type affects the endian conversion functions all over the kernel.
-I386_CPU		opt_global.h
 I486_CPU		opt_global.h
 I586_CPU		opt_global.h
 I686_CPU		opt_global.h

@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.22 2007/08/15 03:10:49 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.23 2007/11/07 17:42:50 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -853,10 +853,7 @@ cpu_setregs(void)
 	cr0 = rcr0();
 	cr0 |= CR0_NE;			/* Done by npxinit() */
 	cr0 |= CR0_MP | CR0_TS;		/* Done at every execve() too. */
-#ifdef I386_CPU
-	if (cpu_class != CPUCLASS_386)
-#endif
-		cr0 |= CR0_WP | CR0_AM;
+	cr0 |= CR0_WP | CR0_AM;
 	load_cr0(cr0);
 	load_gs(_udatasel);
 #endif
