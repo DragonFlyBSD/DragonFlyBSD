@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.82 2007/05/24 20:51:16 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.83 2007/11/07 18:24:06 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -78,6 +78,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/socketvar2.h>
 #include <net/netmsg2.h>
 
 #ifdef SCTP

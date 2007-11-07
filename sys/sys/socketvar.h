@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.29 2007/08/09 00:55:47 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.30 2007/11/07 18:24:04 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -215,23 +215,6 @@ struct	xsocket {
 	SSB_AIO | SSB_KNOTE | SSB_MEVENT)))
 
 /* do we have to send all at once on a socket? */
-/*
- * Set lock on sockbuf sb; sleep if lock is already held.
- * Unless SSB_NOINTR is set on signalsockbuf, sleep is interruptible.
- * Returns error without lock if sleep is interrupted.
- */
-#define ssb_lock(ssb, wf) ((ssb)->ssb_flags & SSB_LOCK ? \
-		(((wf) == M_WAITOK) ? _ssb_lock(ssb) : EWOULDBLOCK) : \
-		((ssb)->ssb_flags |= SSB_LOCK), 0)
-
-/* release lock on signalsockbuf sb */
-#define	ssb_unlock(ssb) { \
-	(ssb)->ssb_flags &= ~SSB_LOCK; \
-	if ((ssb)->ssb_flags & SSB_WANT) { \
-		(ssb)->ssb_flags &= ~SSB_WANT; \
-		wakeup((caddr_t)&(ssb)->ssb_flags); \
-	} \
-}
 
 /*
  * How much space is there in a socket buffer (so->so_snd or so->so_rcv)?
