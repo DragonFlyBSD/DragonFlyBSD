@@ -26,7 +26,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/taskqueue.9,v 1.21 2007/07/09 06:24:10 jmg Exp $
-.\" $DragonFly: src/share/man/man9/taskqueue.9,v 1.1 2007/08/10 18:53:19 swildner Exp $
+.\" $DragonFly: src/share/man/man9/taskqueue.9,v 1.2 2007/11/07 21:38:00 swildner Exp $
 .\"
 .Dd August 10, 2007
 .Dt TASKQUEUE 9
@@ -84,7 +84,7 @@ The arguments to
 .Fn taskqueue_create
 include a name that should be unique,
 a set of
-.Xr malloc 9
+.Xr kmalloc 9
 flags that specify whether the call to
 .Fn malloc
 is allowed to sleep,

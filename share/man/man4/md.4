@@ -6,7 +6,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/share/man/man4/md.4,v 1.3.2.4 2001/06/18 22:00:12 dd Exp $
-.\" $DragonFly: src/share/man/man4/md.4,v 1.4 2007/06/15 10:45:33 swildner Exp $
+.\" $DragonFly: src/share/man/man4/md.4,v 1.5 2007/11/07 21:38:00 swildner Exp $
 .\"
 .Dd July 4, 2000
 .Dt MD 4
@@ -18,27 +18,27 @@
 .Cd device md
 .Pp
 To specify the default maximum size of
-.Xr malloc 9
+.Xr kmalloc 9
 backed disks:
 .Cd options MD_NSECT=20000
 .Sh DESCRIPTION
 The
 .Nm
 driver provides support for two kinds of memory backed virtual disks:
-.Xr malloc 9
+.Xr kmalloc 9
 backed
 and pre-loaded module backed.
 .Pp
 The
-.Xr malloc 9
+.Xr kmalloc 9
 backed
 disks
 are severely limited in size by constraints imposed by
-.Xr malloc 9 .
+.Xr kmalloc 9 .
 Specifically, only one malloc bucket is used, which means that all
 .Nm
 devices with
-.Xr malloc 9
+.Xr kmalloc 9
 backing must share the malloc per-bucket quota.
 The exact size of this quota varies,
 in particular with the amount of RAM in the system.
@@ -57,7 +57,7 @@ The default maximum size of a
 .Nm
 disk
 backed by
-.Xr malloc 9
+.Xr kmalloc 9
 is 20,000 sectors of 512 bytes each.
 This can be changed
 with the kernel option
@@ -76,7 +76,7 @@ is also allowed for backward compatibility.
 These devices are backed by the RAM reserved by the
 .Xr loader 8 ,
 and as such not limited by the
-.Xr malloc 9
+.Xr kmalloc 9
 size constraints.
 However, this also means that the storage cannot be released.
 For the same reason,
@@ -94,14 +94,14 @@ whereby opening device number N creates device instance number N+1.
 The
 .Xr vmstat 8
 utility can be used to monitor memory usage by
-.Xr malloc 9
+.Xr kmalloc 9
 backed
 .Nm
 disks,
 but not those backed by pre-loaded modules.
 .Sh EXAMPLES
 To mount a
-.Xr malloc 9
+.Xr kmalloc 9
 backed
 .Nm
 device on
