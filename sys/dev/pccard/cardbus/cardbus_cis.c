@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus_cis.c,v 1.50 2005/02/20 20:36:16 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.6 2007/07/05 12:08:54 sephe Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.7 2007/11/09 10:20:30 swildner Exp $
  */
 
 /*
@@ -647,7 +647,7 @@ cardbus_parse_cis(device_t cbdev, device_t child,
     struct tuple_callbacks *callbacks)
 {
 	uint8_t tupledata[MAXTUPLESIZE];
-	int tupleid;
+	int tupleid = CISTPL_NULL;
 	int len;
 	int expect_linktarget;
 	uint32_t start, off;
