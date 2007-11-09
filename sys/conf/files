@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.190 2007/11/07 09:07:44 hasso Exp $
+# $DragonFly: src/sys/conf/files,v 1.191 2007/11/09 18:36:20 hasso Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1206,6 +1206,7 @@ dev/usbmisc/umsm/umsm.c		optional umsm ucom
 dev/usbmisc/uplcom/uplcom.c	optional uplcom ucom
 dev/usbmisc/urio/urio.c		optional urio
 dev/usbmisc/uslcom/uslcom.c	optional uslcom ucom
+dev/usbmisc/uticom/uticom.c	optional uticom ucom
 dev/usbmisc/ulpt/ulpt.c		optional ulpt
 dev/usbmisc/ukbd/ukbd.c		optional ukbd
 dev/usbmisc/umass/umass.c	optional umass
