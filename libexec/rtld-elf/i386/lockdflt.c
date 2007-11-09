@@ -23,14 +23,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/lockdflt.c,v 1.5.2.4 2002/07/11 23:52:32 jdp Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/lockdflt.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/lockdflt.c,v 1.3 2007/11/09 19:38:50 hasso Exp $
  */
 
 /*
  * Thread locking implementation for the dynamic linker.
  *
- * On 80486 and later CPUs we use the "simple, non-scalable
- * reader-preference lock" from:
+ * We use the "simple, non-scalable reader-preference lock" from:
  *
  *   J. M. Mellor-Crummey and M. L. Scott. "Scalable Reader-Writer
  *   Synchronization for Shared-Memory Multiprocessors." 3rd ACM Symp. on
@@ -41,12 +40,6 @@
  * contain a count of readers desiring the lock.  The algorithm requires
  * atomic "compare_and_store" and "add" operations.
  *
- * The "compare_and_store" operation requires the "cmpxchg" instruction
- * on the x86.  Unfortunately, the 80386 CPU does not support that
- * instruction -- only the 80486 and later models support it.  So on the
- * 80386 we must use simple test-and-set exclusive locks instead.  We
- * determine which kind of lock to use by trying to execute a "cmpxchg"
- * instruction and catching the SIGILL which results on the 80386.
  */
 
 #include <setjmp.h>
@@ -78,18 +71,6 @@ cmpxchgl(int old, int new, volatile int *m)
 	    : "+m"(*m), "=a"(result)
 	    : "r"(new), "1"(old)
 	    : "cc");
-
-	return result;
-}
-
-static inline int
-xchgl(int v, volatile int *m)
-{
-	int result;
-
-	__asm __volatile ("xchgl %0, %1"
-	    : "=r"(result), "+m"(*m)
-	    : "0"(v));
 
 	return result;
 }
@@ -133,37 +114,7 @@ lock_destroy(void *lock)
 }
 
 /*
- * Crude exclusive locks for the 80386, which does not support the
- * cmpxchg instruction.
- */
-static void
-lock80386_acquire(void *lock)
-{
-    Lock *l = (Lock *)lock;
-    sigset_t tmp_oldsigmask;
-
-    for ( ; ; ) {
-	sigprocmask(SIG_BLOCK, &fullsigmask, &tmp_oldsigmask);
-	if (xchgl(1, &l->lock) == 0)
-	    break;
-	sigprocmask(SIG_SETMASK, &tmp_oldsigmask, NULL);
-	while (l->lock != 0)
-	    ;	/* Spin */
-    }
-    oldsigmask = tmp_oldsigmask;
-}
-
-static void
-lock80386_release(void *lock)
-{
-    Lock *l = (Lock *)lock;
-
-    l->lock = 0;
-    sigprocmask(SIG_SETMASK, &oldsigmask, NULL);
-}
-
-/*
- * Better reader/writer locks for the 80486 and later CPUs.
+ * Reader/writer locks.
  */
 static void
 rlock_acquire(void *lock)
@@ -207,42 +158,6 @@ wlock_release(void *lock)
     sigprocmask(SIG_SETMASK, &oldsigmask, NULL);
 }
 
-/*
- * Code to determine at runtime whether the CPU supports the cmpxchg
- * instruction.  This instruction allows us to use locks that are more
- * efficient, but it didn't exist on the 80386.
- */
-static jmp_buf sigill_env;
-
-static void
-sigill(int sig)
-{
-    longjmp(sigill_env, 1);
-}
-
-static int
-cpu_supports_cmpxchg(void)
-{
-    struct sigaction act, oact;
-    int result;
-    volatile int lock;
-
-    memset(&act, 0, sizeof act);
-    act.sa_handler = sigill;
-    sigemptyset(&act.sa_mask);
-    act.sa_flags = 0;
-
-    sigaction(SIGILL, &act, &oact);
-    if (setjmp(sigill_env) == 0) {
-	lock = 0;
-	cmpxchgl(0, 1, &lock);
-	result = 1;
-    } else
-	result = 0;
-    sigaction(SIGILL, &oact, NULL);
-    return result;
-}
-
 void
 lockdflt_init(LockInfo *li)
 {
@@ -250,17 +165,10 @@ lockdflt_init(LockInfo *li)
     li->context_destroy = NULL;
     li->lock_create = lock_create;
     li->lock_destroy = lock_destroy;
-    if (cpu_supports_cmpxchg()) {
-	/* Use fast locks that require an 80486 or later. */
-	li->rlock_acquire = rlock_acquire;
-	li->wlock_acquire = wlock_acquire;
-	li->rlock_release = rlock_release;
-	li->wlock_release = wlock_release;
-    } else {
-	/* It's a cruddy old 80386. */
-	li->rlock_acquire = li->wlock_acquire = lock80386_acquire;
-	li->rlock_release = li->wlock_release = lock80386_release;
-    }
+    li->rlock_acquire = rlock_acquire;
+    li->wlock_acquire = wlock_acquire;
+    li->rlock_release = rlock_release;
+    li->wlock_release = wlock_release;
     /*
      * Construct a mask to block all signals except traps which might
      * conceivably be generated within the dynamic linker itself.
