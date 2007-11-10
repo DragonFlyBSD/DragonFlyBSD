@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.191 2007/11/09 18:36:20 hasso Exp $
+# $DragonFly: src/sys/conf/files,v 1.192 2007/11/10 19:02:04 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -100,7 +100,7 @@ ddb/db_variables.c			optional ddb
 ddb/db_watch.c				optional ddb
 ddb/db_write_cmd.c			optional ddb
 dev/raid/aac/aac.c			optional aac
-#dev/raid/aac/aac_debug.c		optional aac
+dev/raid/aac/aac_debug.c		optional aac
 dev/raid/aac/aac_disk.c			optional aac
 dev/raid/aac/aac_pci.c			optional aac pci
 dev/raid/aac/aac_linux.c		optional aac compat_linux

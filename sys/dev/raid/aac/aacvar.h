@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.17 2007/05/15 22:44:08 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.18 2007/11/10 19:02:04 swildner Exp $
  */
 
 #include <sys/thread2.h>
@@ -380,11 +380,9 @@ struct aac_softc
 extern void		aac_free(struct aac_softc *sc);
 extern int		aac_attach(struct aac_softc *sc);
 extern int		aac_detach(device_t dev);
-extern int		aac_shutdown(device_t dev);
 extern int		aac_suspend(device_t dev); 
 extern int		aac_resume(device_t dev);
 extern void		aac_intr(void *arg);
-extern devclass_t	aac_devclass;
 extern void		aac_submit_bio(struct aac_disk *ad, struct bio *bio);
 extern void		aac_biodone(struct bio *bio, const char *code);
 extern int		aac_dump_enqueue(struct aac_disk *ad, u_int64_t lba,
@@ -414,13 +412,11 @@ extern int		aac_sync_fib(struct aac_softc *sc, u_int32_t command,
 	} while (0)
 # define debug_called(level)						\
 	do {								\
-	if (level <= AAC_DEBUG) kprintf(__func__ ": called\n");	\
+	if (level <= AAC_DEBUG) kprintf("%s: called\n", __func__); \
 	} while (0)
 
-extern void	aac_print_queues(struct aac_softc *sc);
-extern void	aac_panic(struct aac_softc *sc, char *reason);
 extern void	aac_print_fib(struct aac_softc *sc, struct aac_fib *fib,
-			      char *caller);
+			      const char *caller);
 extern void	aac_print_aif(struct aac_softc *sc,
 			      struct aac_aif_command *aif);
 
@@ -429,9 +425,6 @@ extern void	aac_print_aif(struct aac_softc *sc,
 #else
 # define debug(level, fmt, args...)
 # define debug_called(level)
-
-# define aac_print_queues(sc)
-# define aac_panic(sc, reason)
 
 # define AAC_PRINT_FIB(sc, fib)
 # define aac_print_aif(sc, aac_aif_command)

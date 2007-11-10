@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.73 2007/11/01 22:05:23 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.74 2007/11/10 19:02:04 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -36,8 +36,11 @@ AAC_DEBUG		opt_aac.h	# Debugging levels:
 					# 0 - quiet, only emit warnings
 					# 1 - noisy, emit major function
 					#     points and things done
-					# 2 - extremely noisy, emit trace
-					#     items in loops, etc.
+					# 2 - noisier, emit trace items
+					#     in loops, etc.
+					# 3 - even more noisy, more function
+					#     points
+					# 4 - noisiest
 
 # Adaptec aic7xxx SCSI controller options
 AHC_ALLOW_MEMIO		opt_aic7xxx.h	# Allow PCI devices to use memory

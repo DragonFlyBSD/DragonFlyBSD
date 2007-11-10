@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.32 2007/07/11 23:46:58 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.33 2007/11/10 19:02:04 swildner Exp $
  */
 
 /*
@@ -70,6 +70,7 @@ static void	aac_startup(void *arg);
 static void	aac_add_container(struct aac_softc *sc,
 				  struct aac_mntinforesp *mir, int f);
 static void	aac_get_bus_info(struct aac_softc *sc);
+static int	aac_shutdown(device_t dev);
 
 /* Command Processing */
 static void	aac_timeout(void *ssc);
@@ -514,7 +515,7 @@ aac_detach(device_t dev)
  * Note that we can assume that the bioq on the controller is empty, as we won't
  * allow shutdown if any device is open.
  */
-int
+static int
 aac_shutdown(device_t dev)
 {
 	struct aac_softc *sc;

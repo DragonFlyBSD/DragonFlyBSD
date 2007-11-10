@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.18 2007/06/17 23:50:16 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.19 2007/11/10 19:02:04 swildner Exp $
  */
 
 #include "opt_aac.h"
@@ -81,7 +81,7 @@ static struct dev_ops aac_disk_ops = {
 	.d_dump =		aac_disk_dump,
 };
 
-devclass_t		aac_disk_devclass;
+static devclass_t	aac_disk_devclass;
 
 static device_method_t aac_disk_methods[] = {
 	DEVMETHOD(device_probe,	aac_disk_probe),
