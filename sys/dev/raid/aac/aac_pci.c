@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_pci.c,v 1.3.2.19 2003/11/01 18:44:51 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.11 2007/11/10 19:02:04 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.12 2007/11/10 19:50:29 swildner Exp $
  */
 
 /*
@@ -76,7 +76,7 @@ static driver_t aac_pci_driver = {
 	sizeof(struct aac_softc)
 };
 
-static devclass_t	aac_devclass;
+devclass_t	aac_devclass;
 
 DRIVER_MODULE(aac, pci, aac_pci_driver, aac_devclass, 0, 0);
 

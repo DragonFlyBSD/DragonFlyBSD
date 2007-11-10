@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_debug.c,v 1.2.2.5 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_debug.c,v 1.5 2007/11/10 19:02:04 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_debug.c,v 1.6 2007/11/10 19:50:29 swildner Exp $
  */
 
 /*
@@ -49,6 +49,112 @@
 #include "aacvar.h"
 
 #ifdef AAC_DEBUG
+void	aac_printstate0(void);
+
+static void	aac_print_queues(struct aac_softc *sc);
+
+/*
+ * Dump the command queue indices
+ */
+void
+aac_print_queues(struct aac_softc *sc)
+{
+	device_printf(sc->aac_dev, "FIB queue header at %p  queues at %p\n",
+	    &sc->aac_queues->qt_qindex[AAC_HOST_NORM_CMD_QUEUE][0],
+	    &sc->aac_queues->qt_HostNormCmdQueue[0]);
+	device_printf(sc->aac_dev, "HOST_NORM_CMD  %d/%d (%d)\n", 
+	    sc->aac_queues->qt_qindex[AAC_HOST_NORM_CMD_QUEUE][
+				      AAC_PRODUCER_INDEX],
+	    sc->aac_queues->qt_qindex[AAC_HOST_NORM_CMD_QUEUE][
+				      AAC_CONSUMER_INDEX], 
+	    AAC_HOST_NORM_CMD_ENTRIES);
+	device_printf(sc->aac_dev, "HOST_HIGH_CMD  %d/%d (%d)\n", 
+	    sc->aac_queues->qt_qindex[AAC_HOST_HIGH_CMD_QUEUE][
+				      AAC_PRODUCER_INDEX],
+	    sc->aac_queues->qt_qindex[AAC_HOST_HIGH_CMD_QUEUE][
+				      AAC_CONSUMER_INDEX], 
+	    AAC_HOST_HIGH_CMD_ENTRIES);
+	device_printf(sc->aac_dev, "ADAP_NORM_CMD  %d/%d (%d)\n", 
+	    sc->aac_queues->qt_qindex[AAC_ADAP_NORM_CMD_QUEUE][
+				      AAC_PRODUCER_INDEX],
+	    sc->aac_queues->qt_qindex[AAC_ADAP_NORM_CMD_QUEUE][
+				      AAC_CONSUMER_INDEX], 
+	    AAC_ADAP_NORM_CMD_ENTRIES);
+	device_printf(sc->aac_dev, "ADAP_HIGH_CMD  %d/%d (%d)\n", 
+	    sc->aac_queues->qt_qindex[AAC_ADAP_HIGH_CMD_QUEUE][
+				      AAC_PRODUCER_INDEX],
+	    sc->aac_queues->qt_qindex[AAC_ADAP_HIGH_CMD_QUEUE][
+				      AAC_CONSUMER_INDEX], 
+	    AAC_ADAP_HIGH_CMD_ENTRIES);
+	device_printf(sc->aac_dev, "HOST_NORM_RESP %d/%d (%d)\n", 
+	    sc->aac_queues->qt_qindex[AAC_HOST_NORM_RESP_QUEUE][
+				      AAC_PRODUCER_INDEX],
+	    sc->aac_queues->qt_qindex[AAC_HOST_NORM_RESP_QUEUE][
+				      AAC_CONSUMER_INDEX],
+	    AAC_HOST_NORM_RESP_ENTRIES);
+	device_printf(sc->aac_dev, "HOST_HIGH_RESP %d/%d (%d)\n", 
+	    sc->aac_queues->qt_qindex[AAC_HOST_HIGH_RESP_QUEUE][
+				      AAC_PRODUCER_INDEX],
+	    sc->aac_queues->qt_qindex[AAC_HOST_HIGH_RESP_QUEUE][
+				      AAC_CONSUMER_INDEX],
+	    AAC_HOST_HIGH_RESP_ENTRIES);
+	device_printf(sc->aac_dev, "ADAP_NORM_RESP %d/%d (%d)\n", 
+	    sc->aac_queues->qt_qindex[AAC_ADAP_NORM_RESP_QUEUE][
+				      AAC_PRODUCER_INDEX],
+	    sc->aac_queues->qt_qindex[AAC_ADAP_NORM_RESP_QUEUE][
+				      AAC_CONSUMER_INDEX],
+	    AAC_ADAP_NORM_RESP_ENTRIES);
+	device_printf(sc->aac_dev, "ADAP_HIGH_RESP %d/%d (%d)\n", 
+	    sc->aac_queues->qt_qindex[AAC_ADAP_HIGH_RESP_QUEUE][
+				      AAC_PRODUCER_INDEX],
+	    sc->aac_queues->qt_qindex[AAC_ADAP_HIGH_RESP_QUEUE][
+				      AAC_CONSUMER_INDEX],
+	    AAC_ADAP_HIGH_RESP_ENTRIES);
+	device_printf(sc->aac_dev, "AACQ_FREE      %d/%d\n", 
+	    sc->aac_qstat[AACQ_FREE].q_length, sc->aac_qstat[AACQ_FREE].q_max);
+	device_printf(sc->aac_dev, "AACQ_BIO       %d/%d\n", 
+	    sc->aac_qstat[AACQ_BIO].q_length, sc->aac_qstat[AACQ_BIO].q_max);
+	device_printf(sc->aac_dev, "AACQ_READY     %d/%d\n", 
+	    sc->aac_qstat[AACQ_READY].q_length,
+	    sc->aac_qstat[AACQ_READY].q_max);
+	device_printf(sc->aac_dev, "AACQ_BUSY      %d/%d\n", 
+	    sc->aac_qstat[AACQ_BUSY].q_length, sc->aac_qstat[AACQ_BUSY].q_max);
+	device_printf(sc->aac_dev, "AACQ_COMPLETE  %d/%d\n", 
+	    sc->aac_qstat[AACQ_COMPLETE].q_length,
+	    sc->aac_qstat[AACQ_COMPLETE].q_max);
+}
+
+/*
+ * Print the command queue states for controller 0 (callable from DDB)
+ */
+void
+aac_printstate0(void)
+{
+	struct aac_softc *sc;
+
+	sc = devclass_get_softc(aac_devclass, 0);
+
+	aac_print_queues(sc);
+	switch (sc->aac_hwif) {
+	case AAC_HWIF_I960RX:
+		device_printf(sc->aac_dev, "IDBR 0x%08x  IIMR 0x%08x  "
+		    "IISR 0x%08x\n", AAC_GETREG4(sc, AAC_RX_IDBR),
+		    AAC_GETREG4(sc, AAC_RX_IIMR), AAC_GETREG4(sc, AAC_RX_IISR));
+		device_printf(sc->aac_dev, "ODBR 0x%08x  OIMR 0x%08x  "
+		    "OISR 0x%08x\n", AAC_GETREG4(sc, AAC_RX_ODBR),
+		    AAC_GETREG4(sc, AAC_RX_OIMR), AAC_GETREG4(sc, AAC_RX_OISR));
+		AAC_SETREG4(sc, AAC_RX_OIMR, 0/*~(AAC_DB_COMMAND_READY |
+			    AAC_DB_RESPONSE_READY | AAC_DB_PRINTF)*/);
+		device_printf(sc->aac_dev, "ODBR 0x%08x  OIMR 0x%08x  "
+		    "OISR 0x%08x\n", AAC_GETREG4(sc, AAC_RX_ODBR),
+		    AAC_GETREG4(sc, AAC_RX_OIMR), AAC_GETREG4(sc, AAC_RX_OISR));
+		break;
+	case AAC_HWIF_STRONGARM:
+		/* XXX implement */
+		break;
+	}
+}
+
 /*
  * Print a FIB
  */
