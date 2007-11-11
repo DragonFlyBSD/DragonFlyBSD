@@ -1,3 +1,4 @@
-# $DragonFly: site/data/.htaccess,v 1.2 2006/11/17 03:41:05 justin Exp $ 
+# $DragonFly: site/data/.htaccess,v 1.3 2007/11/11 05:37:09 justin Exp $ 
 Redirect permanent /index.cgi http://www.dragonflybsd.org/index.shtml
 Redirect permanent /missing.cgi http://www.dragonflybsd.org/missing.shtml
+Redirect permanent /main/team.shtml http://www.dragonflybsd.org/about/team.shtml
