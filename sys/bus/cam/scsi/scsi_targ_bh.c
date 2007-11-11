@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.13 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.14 2007/11/11 23:59:14 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -37,6 +37,7 @@
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 #include <sys/uio.h>
 
 #include "../cam.h"

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.15 2007/11/11 23:56:40 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.16 2007/11/11 23:59:14 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -675,7 +675,6 @@ targusermerge(struct targ_softc *softc, struct targ_cmd_descr *descr,
 	if (k_ccbh->func_code == XPT_ABORT) {
 		struct ccb_abort *cab;
 		struct ccb_hdr *ccb_h;
-		int s;
 
 		cab = (struct ccb_abort *)ccb;
 		crit_enter();
