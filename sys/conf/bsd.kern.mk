@@ -1,9 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.13 2007/10/03 10:07:48 sephe Exp $
-
-.if ${CCVER} != gcc34
-CNOWARNFLAGS=	-Wno-pointer-sign
-.endif
+# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.14 2007/11/11 07:43:18 sephe Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
@@ -14,7 +10,7 @@ CNOWARNFLAGS=	-Wno-pointer-sign
 #
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		${CNOWARNFLAGS} -ansi
+		-ansi
 #
 # The following flags are next up for working on:
 #	-W
