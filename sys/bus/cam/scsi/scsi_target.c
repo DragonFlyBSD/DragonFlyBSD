@@ -27,13 +27,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.14 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.15 2007/11/11 23:56:40 pavalos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/malloc.h>
 #include <sys/poll.h>
 #include <sys/vnode.h>
@@ -103,24 +104,15 @@ static struct filterops targread_filtops =
 	{ 1, NULL, targreadfiltdetach, targreadfilt };
 
 #define TARG_CDEV_MAJOR 65
-static struct cdevsw targ_cdevsw = {
-	/* name */	"targ",
-	/* maj */	TARG_CDEV_MAJOR,
-	/* flags */	D_KQFILTER,
-	/* port */      NULL,
-	/* clone */     NULL,
-
-	/* open */	targopen,
-	/* close */	targclose,
-	/* read */	targread,
-	/* write */	targwrite,
-	/* ioctl */	targioctl,
-	/* poll */	targpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	targkqfilter
+static struct dev_ops targ_ops = {
+	{ "targ", TARG_CDEV_MAJOR, D_KQFILTER },
+	.d_open = targopen,
+	.d_close = targclose,
+	.d_read = targread,
+	.d_write = targwrite,
+	.d_ioctl = targioctl,
+	.d_poll = targpoll,
+	.d_kqfilter = targkqfilter
 };
 
 static cam_status	targendislun(struct cam_path *path, int enable,
@@ -165,8 +157,9 @@ static MALLOC_DEFINE(M_TARG, "TARG", "TARG data");
 
 /* Create softc and initialize it. Only one proc can open each targ device. */
 static int
-targopen(cdev_t dev, int flags, int fmt, struct proc *p)
+targopen(struct dev_open_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
 	struct targ_softc *softc;
 
 	if (dev->si_drv1 != 0) {
@@ -178,7 +171,7 @@ targopen(cdev_t dev, int flags, int fmt, struct proc *p)
 	reference_dev(dev);		/* save ref for later destroy_dev() */
 
 	/* Create the targ device, allocate its softc, initialize it */
-	make_dev(&targ_cdevsw, minor(dev), UID_ROOT, GID_WHEEL, 0600,
+	make_dev(&targ_ops, minor(dev), UID_ROOT, GID_WHEEL, 0600,
 			 "targ%d", lminor(dev));
 	MALLOC(softc, struct targ_softc *, sizeof(*softc), M_TARG,
 	       M_INTWAIT | M_ZERO);
@@ -197,8 +190,9 @@ targopen(cdev_t dev, int flags, int fmt, struct proc *p)
 
 /* Disable LUN if enabled and teardown softc */
 static int
-targclose(cdev_t dev, int flag, int fmt, struct proc *p)
+targclose(struct dev_close_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
 	struct targ_softc     *softc;
 	int    error;
 
@@ -220,20 +214,20 @@ targclose(cdev_t dev, int flag, int fmt, struct proc *p)
 
 /* Enable/disable LUNs, set debugging level */
 static int
-targioctl(cdev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
+targioctl(struct dev_ioctl_args *ap)
 {
 	struct targ_softc *softc;
 	cam_status	   status;
 
-	softc = (struct targ_softc *)dev->si_drv1;
+	softc = (struct targ_softc *)ap->a_head.a_dev->si_drv1;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case TARGIOCENABLE:
 	{
 		struct ioc_enable_lun	*new_lun;
 		struct cam_path		*path;
 
-		new_lun = (struct ioc_enable_lun *)addr;
+		new_lun = (struct ioc_enable_lun *)ap->a_data;
 		status = xpt_create_path(&path, /*periph*/NULL,
 					 new_lun->path_id,
 					 new_lun->target_id,
@@ -291,7 +285,7 @@ targpoll(struct dev_poll_args *ap)
 	struct targ_softc *softc;
 	int	revents;
 
-	softc = (struct targ_softc *)dev->si_drv1;
+	softc = (struct targ_softc *)ap->a_head.a_dev->si_drv1;
 
 	/* Poll for write() is always ok. */
 	revents = ap->a_events & (POLLOUT | POLLWRNORM);
@@ -304,7 +298,7 @@ targpoll(struct dev_poll_args *ap)
 		}
 		/* Only sleep if the user didn't poll for write. */
 		if (revents == 0)
-			selrecord(p, &softc->read_select);
+			selrecord(curthread, &softc->read_select);
 		crit_exit();
 	}
 	ap->a_events = revents;
@@ -312,11 +306,12 @@ targpoll(struct dev_poll_args *ap)
 }
 
 static int
-targkqfilter(cdev_t dev, struct knote *kn)
+targkqfilter(struct dev_kqfilter_args *ap)
 {
+	struct	knote *kn = ap->a_kn;
 	struct  targ_softc *softc;
 
-	softc = (struct targ_softc *)dev->si_drv1;
+	softc = (struct targ_softc *)ap->a_head.a_dev->si_drv1;
 	kn->kn_hook = (caddr_t)softc;
 	kn->kn_fop = &targread_filtops;
 	crit_enter();
@@ -516,15 +511,16 @@ targdtor(struct cam_periph *periph)
 
 /* Receive CCBs from user mode proc and send them to the HBA */
 static int
-targwrite(cdev_t dev, struct uio *uio, int ioflag)
+targwrite(struct dev_write_args *ap)
 {
+	struct uio *uio = ap->a_uio;
 	union ccb *user_ccb;
 	struct targ_softc *softc;
 	struct targ_cmd_descr *descr;
 	int write_len, error;
 	int func_code, priority;
 
-	softc = (struct targ_softc *)dev->si_drv1;
+	softc = (struct targ_softc *)ap->a_head.a_dev->si_drv1;
 	write_len = error = 0;
 	CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH,
 		  ("write - uio_resid %d\n", uio->uio_resid));
@@ -814,8 +810,9 @@ targdone(struct cam_periph *periph, union ccb *done_ccb)
 
 /* Return CCBs to the user from the user queue and abort queue */
 static int
-targread(cdev_t dev, struct uio *uio, int ioflag)
+targread(struct dev_read_args *ap)
 {
+	struct uio *uio = ap->a_uio;
 	struct descr_queue	*abort_queue;
 	struct targ_cmd_descr	*user_descr;
 	struct targ_softc	*softc;
@@ -826,7 +823,7 @@ targread(cdev_t dev, struct uio *uio, int ioflag)
 
 	error = 0;
 	read_len = 0;
-	softc = (struct targ_softc *)dev->si_drv1;
+	softc = (struct targ_softc *)ap->a_head.a_dev->si_drv1;
 	user_queue = &softc->user_ccb_queue;
 	abort_queue = &softc->abort_queue;
 	CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH, ("targread\n"));
@@ -836,7 +833,7 @@ targread(cdev_t dev, struct uio *uio, int ioflag)
 	ccb_h = TAILQ_FIRST(user_queue);
 	user_descr = TAILQ_FIRST(abort_queue);
 	while (ccb_h == NULL && user_descr == NULL) {
-		if ((ioflag & IO_NDELAY) == 0) {
+		if ((ap->a_ioflag & IO_NDELAY) == 0) {
 			error = tsleep(user_queue, PCATCH, "targrd", 0);
 			ccb_h = TAILQ_FIRST(user_queue);
 			user_descr = TAILQ_FIRST(abort_queue);
@@ -1004,7 +1001,7 @@ targgetdescr(struct targ_softc *softc)
 static void
 targinit(void)
 {
-	cdevsw_add(&targ_cdevsw, 0, 0);
+	dev_ops_add(&targ_ops, 0, 0);
 }
 
 static void
