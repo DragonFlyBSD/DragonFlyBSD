@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.41 2007/10/01 11:18:44 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.42 2007/11/11 07:38:29 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -189,6 +189,7 @@ void		init_device_poll_pcpu(int);	/* per-cpu init routine */
 static __inline void
 poll_reset_state(struct pollctx *pctx)
 {
+	crit_enter();
 	pctx->poll_burst = 5;
 	pctx->reg_frac_count = 0;
 	pctx->pending_polls = 0;
@@ -196,6 +197,7 @@ poll_reset_state(struct pollctx *pctx)
 	pctx->phase = 0;
 	bzero(&pctx->poll_start_t, sizeof(pctx->poll_start_t));
 	bzero(&pctx->prev_t, sizeof(pctx->prev_t));
+	crit_exit();
 }
 
 /*
@@ -262,7 +264,9 @@ init_device_poll_pcpu(int cpuid)
 static __inline void
 schedpoll(struct pollctx *pctx)
 {
+	crit_enter();
 	schedpoll_oncpu(pctx, &pctx->poll_netmsg, netisr_poll);
+	crit_exit();
 }
 
 static __inline void
@@ -470,6 +474,7 @@ netisr_pollmore(struct netmsg *msg)
 	struct pollctx *pctx;
 	struct timeval t;
 	int kern_load, cpuid;
+	uint32_t pending_polls;
 
 	cpuid = mycpu->gd_cpuid;
 	KKASSERT(cpuid < POLLCTX_MAX);
@@ -507,8 +512,12 @@ netisr_pollmore(struct netmsg *msg)
 			pctx->poll_burst++;
 	}
 
+	crit_enter();
 	pctx->pending_polls--;
-	if (pctx->pending_polls == 0) {	/* we are done */
+	pending_polls = pctx->pending_polls;
+	crit_exit();
+
+	if (pending_polls == 0) {	/* we are done */
 		pctx->phase = 0;
 	} else {
 		/*
@@ -550,7 +559,9 @@ netisr_poll(struct netmsg *msg)
 	KKASSERT(pctx->poll_cpuid == cpuid);
 	KKASSERT(pctx == msg->nm_lmsg.u.ms_resultp);
 
+	crit_enter();
 	lwkt_replymsg(&msg->nm_lmsg, 0);
+	crit_exit();
 
 	if (pctx->poll_handlers == 0)
 		return;
