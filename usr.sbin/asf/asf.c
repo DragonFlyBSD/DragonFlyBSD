@@ -25,7 +25,7 @@
  */
 /* $Id: asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
 /* $FreeBSD: src/usr.sbin/asf/asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
-/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.2 2006/01/11 02:00:13 corecode Exp $ */
+/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.3 2007/11/12 11:17:59 hasso Exp $ */
 
 #define MAXLINE 1024
 #include <ctype.h>
@@ -164,12 +164,11 @@ usage(const char *myname)
 {
     fprintf(stderr,
 	"Usage:\n"
-	"%s [-a] [-f] [-k] [-s] [-x] [modules-path [outfile]]\n\n"
+	"%s [-a] [-f] [-k] [-s] [modules-path [outfile]]\n\n"
 	"\t-a\tappend to outfile)\n"
 	"\t-f\tfind the module in any subdirectory of module-path\n"
 	"\t-k\ttake input from kldstat(8)\n"
 	"\t-s\tdon't prepend subdir for module path\n"
-	"\t-x\tdon't append \".debug\" to module name\n",
 	myname);
 }
 
