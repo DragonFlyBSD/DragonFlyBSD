@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.20 2007/11/11 16:08:08 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.21 2007/11/12 23:48:52 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -37,10 +37,8 @@
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/conf.h>
-#include <sys/proc.h>
 #include <sys/errno.h>
 #include <sys/devicestat.h>
-#include <sys/proc.h>
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 
