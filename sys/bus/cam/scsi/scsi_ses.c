@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.20 2006/12/22 23:12:16 swildner Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.21 2007/11/12 21:33:51 pavalos Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -33,7 +33,6 @@
 #include <sys/types.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
-#include <sys/stat.h>
 #include <sys/conf.h>
 #include <sys/buf.h>
 #include <sys/errno.h>
@@ -46,7 +45,6 @@
 #include "../cam_extend.h"
 #include "../cam_periph.h"
 #include "../cam_xpt_periph.h"
-#include "../cam_queue.h"
 #include "../cam_debug.h"
 
 #include "scsi_all.h"
