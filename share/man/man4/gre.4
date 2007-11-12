@@ -35,7 +35,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/gre.4,v 1.7 2006/10/19 07:41:47 danger Exp $
-.\" $DragonFly: src/share/man/man4/gre.4,v 1.5 2007/11/11 22:15:30 swildner Exp $
+.\" $DragonFly: src/share/man/man4/gre.4,v 1.6 2007/11/12 19:07:40 swildner Exp $
 .\"
 .Dd November 11, 2007
 .Dt GRE 4
@@ -313,7 +313,7 @@ A description of MOBILE encapsulation can be found in RFC 2004.
 .An Heiko W.Rupp Aq hwr@pilhuhn.de
 .Sh BUGS
 The
-.Fn compute_route
+.Fn gre_compute_route
 code in
 .Pa if_gre.c
 toggles the last bit of the
