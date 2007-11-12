@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.36 2007/11/12 07:27:50 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.37 2007/11/12 21:48:39 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -4106,18 +4106,18 @@ xptpathid(const char *sim_name, int sim_unit, int sim_bus)
 {
 	path_id_t pathid;
 	int i, dunit, val;
-	char buf[32], *strval;
+	char buf[32];
 
 	pathid = CAM_XPT_PATH_ID;
 	ksnprintf(buf, sizeof(buf), "%s%d", sim_name, sim_unit);
 	i = -1;
-	while ((i = resource_locate(i, "scbus")) != -1) {
+	while ((i = resource_query_string(i, "at", buf)) != -1) {
+		if (strcmp(resource_query_name(i), "scbus")) {
+			/* Avoid a bit of foot shooting. */
+			continue;
+		}
 		dunit = resource_query_unit(i);
 		if (dunit < 0)		/* unwired?! */
-			continue;
-		if (resource_string_value("scbus", dunit, "at", &strval) != 0)
-			continue;
-		if (strcmp(buf, strval) != 0)
 			continue;
 		if (resource_int_value("scbus", dunit, "bus", &val) == 0) {
 			if (sim_bus == val) {
