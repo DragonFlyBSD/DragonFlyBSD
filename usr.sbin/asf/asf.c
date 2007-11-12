@@ -25,7 +25,7 @@
  */
 /* $Id: asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
 /* $FreeBSD: src/usr.sbin/asf/asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
-/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.3 2007/11/12 11:17:59 hasso Exp $ */
+/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.4 2007/11/12 21:19:11 swildner Exp $ */
 
 #define MAXLINE 1024
 #include <ctype.h>
@@ -168,7 +168,7 @@ usage(const char *myname)
 	"\t-a\tappend to outfile)\n"
 	"\t-f\tfind the module in any subdirectory of module-path\n"
 	"\t-k\ttake input from kldstat(8)\n"
-	"\t-s\tdon't prepend subdir for module path\n"
+	"\t-s\tdon't prepend subdir for module path\n",
 	myname);
 }
 
