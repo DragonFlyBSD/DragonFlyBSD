@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.20 2007/05/13 18:33:56 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.21 2007/11/13 00:28:27 pavalos Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -79,7 +79,6 @@
 #include <bus/cam/cam_periph.h>
 
 #include <bus/cam/scsi/scsi_all.h>
-#include <bus/cam/scsi/scsi_message.h>
 #include <bus/cam/scsi/scsi_low.h>
 
 /**************************************************************

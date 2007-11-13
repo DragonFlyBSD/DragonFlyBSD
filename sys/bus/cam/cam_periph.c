@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.21 2007/05/17 08:19:02 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.22 2007/11/13 00:28:27 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,6 @@
 
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
-#include <bus/cam/scsi/scsi_da.h>
 #include <bus/cam/scsi/scsi_pass.h>
 
 static	u_int		camperiphnextunit(struct periph_driver *p_drv,

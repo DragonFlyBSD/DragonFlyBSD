@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.19 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.20 2007/11/13 00:28:27 pavalos Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -76,7 +76,6 @@
 #include <sys/types.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
-#include <sys/stat.h>
 #include <sys/conf.h>
 #include <sys/buf.h>
 #include <sys/chio.h>
