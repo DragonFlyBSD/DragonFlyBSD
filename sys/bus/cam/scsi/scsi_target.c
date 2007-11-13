@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.16 2007/11/11 23:59:14 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.17 2007/11/13 14:09:32 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -250,7 +250,7 @@ targioctl(struct dev_ioctl_args *ap)
 		struct ccb_debug cdbg;
 
 		bzero(&cdbg, sizeof cdbg);
-		if (*((int *)addr) != 0)
+		if (*((int *)ap->a_data) != 0)
 			cdbg.flags = CAM_DEBUG_PERIPH;
 		else
 			cdbg.flags = CAM_DEBUG_NONE;
