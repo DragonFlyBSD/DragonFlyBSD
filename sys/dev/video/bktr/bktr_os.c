@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.54 2007/02/23 12:18:34 piso Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.19 2007/10/03 19:27:08 swildner Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.20 2007/11/13 19:43:32 swildner Exp $
  */
 
 /*
@@ -651,6 +651,7 @@ static int
 bktr_ioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
 	bktr_ptr_t	bktr;
 	int		unit;
 
@@ -675,9 +676,9 @@ bktr_ioctl(struct dev_ioctl_args *ap)
 
 	switch ( FUNCTION( minor(dev) ) ) {
 	case VIDEO_DEV:
-		return( video_ioctl( bktr, unit, ap->a_cmd, ap->a_data, curthread ) );
+		return( video_ioctl( bktr, unit, cmd, ap->a_data, curthread ) );
 	case TUNER_DEV:
-		return( tuner_ioctl( bktr, unit, ap->a_cmd, ap->a_data, curthread ) );
+		return( tuner_ioctl( bktr, unit, cmd, ap->a_data, curthread ) );
 	}
 
 	return( ENXIO );
