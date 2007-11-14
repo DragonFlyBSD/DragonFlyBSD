@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/ntoskrnl_var.h,v 1.15 2004/04/20 02:27:38 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/ntoskrnl_var.h,v 1.3 2004/09/19 02:44:35 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/ntoskrnl_var.h,v 1.4 2007/11/14 18:27:52 swildner Exp $
  */
 
 #ifndef _NTOSKRNL_VAR_H_
@@ -221,15 +221,10 @@ typedef struct nt_objref nt_objref;
 #define EVENT_TYPE_SYNC		1
 
 /*
- * We need to use the timeout()/untimeout() API for ktimers
- * since timers can be initialized, but not destroyed (so
- * malloc()ing our own callout structures would mean a leak,
- * since there'd be no way to free() them). This means we
- * need to use struct callout_handle, which is really just a
- * pointer. To make it easier to deal with, we use a union
- * to overlay the callout_handle over the k_timerlistentry.
+ * For ktimers, we use a struct callout pointer in a union
+ * to overlay the callout handle over the k_timerlistentry.
  * The latter is a list_entry, which is two pointers, so
- * there's enough space available to hide a callout_handle
+ * there's enough space available to hide a callout handle
  * there.
  */
 

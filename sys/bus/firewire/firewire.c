@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.19 2007/08/24 15:58:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.20 2007/11/14 18:27:52 swildner Exp $
  *
  */
 
@@ -486,7 +486,7 @@ firewire_detach(device_t dev)
 	callout_stop(&sc->fc->retry_probe_callout);
 	callout_stop(&sc->fc->busprobe_callout);
 
-	/* XXX xfree_free and untimeout on all xfers */
+	/* XXX xfree_free and callout_stop on all xfers */
 	for (fwdev = STAILQ_FIRST(&sc->fc->devices); fwdev != NULL;
 							fwdev = fwdev_next) {
 		fwdev_next = STAILQ_NEXT(fwdev, link);

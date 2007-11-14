@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.65 2007/10/19 20:39:25 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.66 2007/11/14 18:27:52 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -23,6 +23,7 @@ MAN=	accept_filter.9 \
 	bus_release_resource.9 \
 	bus_set_resource.9 \
 	BUS_SETUP_INTR.9 \
+	callout.9 \
 	cd.9 \
 	copy.9 \
 	crit_enter.9 \
@@ -123,7 +124,6 @@ MAN=	accept_filter.9 \
 	sysctl_ctx_init.9 \
 	taskqueue.9 \
 	time.9 \
-	timeout.9 \
 	tvtohz.9 \
 	uio.9 \
 	usbdi.9 \
@@ -212,6 +212,15 @@ MLINKS+=BUS_READ_IVAR.9 BUS_WRITE_IVAR.9
 MLINKS+=BUS_SETUP_INTR.9 bus_setup_intr.9 \
 	BUS_SETUP_INTR.9 BUS_TEARDOWN_INTR.9 \
 	BUS_SETUP_INTR.9 bus_teardown_intr.9
+MLINKS+=callout.9 callout_active.9 \
+	callout.9 callout_deactivate.9 \
+	callout.9 callout_init.9 \
+	callout.9 callout_init_mp.9 \
+	callout.9 callout_pending.9 \
+	callout.9 callout_reset.9 \
+	callout.9 callout_stop.9 \
+	callout.9 timeout.9 \
+	callout.9 untimeout.9
 MLINKS+=copy.9 copyin.9 \
 	copy.9 copyinstr.9 \
 	copy.9 copyout.9 \
@@ -501,12 +510,6 @@ MLINKS+=taskqueue.9 TASK_INIT.9 \
 MLINKS+=time.9 boottime.9 \
 	time.9 mono_time.9 \
 	time.9 runtime.9
-MLINKS+=timeout.9 callout.9 \
-	timeout.9 callout_handle_init.9 \
-	timeout.9 callout_init.9 \
-	timeout.9 callout_reset.9 \
-	timeout.9 callout_stop.9 \
-	timeout.9 untimeout.9
 MLINKS+=tvtohz.9 tvtohz_high.9 \
 	tvtohz.9 tvtohz_low.9
 MLINKS+=uio.9 uiomove.9

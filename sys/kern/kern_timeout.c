@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.26 2007/06/28 20:24:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.27 2007/11/14 18:27:52 swildner Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -317,74 +317,6 @@ loop:
 	goto loop;
 	/* NOT REACHED */
 }
-
-#if 0
-
-/*
- * timeout --
- *	Execute a function after a specified length of time.
- *
- * untimeout --
- *	Cancel previous timeout function call.
- *
- * callout_handle_init --
- *	Initialize a handle so that using it with untimeout is benign.
- *
- *	See AT&T BCI Driver Reference Manual for specification.  This
- *	implementation differs from that one in that although an 
- *	identification value is returned from timeout, the original
- *	arguments to timeout as well as the identifier are used to
- *	identify entries for untimeout.
- */
-struct callout_handle
-timeout(timeout_t *ftn, void *arg, int to_ticks)
-{
-	softclock_pcpu_t sc;
-	struct callout *new;
-	struct callout_handle handle;
-
-	sc = &softclock_pcpu_ary[mycpu->gd_cpuid];
-	crit_enter();
-
-	/* Fill in the next free callout structure. */
-	new = SLIST_FIRST(&sc->callfree);
-	if (new == NULL) {
-		/* XXX Attempt to malloc first */
-		panic("timeout table full");
-	}
-	SLIST_REMOVE_HEAD(&sc->callfree, c_links.sle);
-	
-	callout_reset(new, to_ticks, ftn, arg);
-
-	handle.callout = new;
-	crit_exit();
-	return (handle);
-}
-
-void
-untimeout(timeout_t *ftn, void *arg, struct callout_handle handle)
-{
-	/*
-	 * Check for a handle that was initialized
-	 * by callout_handle_init, but never used
-	 * for a real timeout.
-	 */
-	if (handle.callout == NULL)
-		return;
-
-	crit_enter();
-	if (handle.callout->c_func == ftn && handle.callout->c_arg == arg)
-		callout_stop(handle.callout);
-	crit_exit();
-}
-
-void
-callout_handle_init(struct callout_handle *handle)
-{
-	handle->callout = NULL;
-}
-
-#endif
 
 /*
  * New interface; clients allocate their own callout structures.

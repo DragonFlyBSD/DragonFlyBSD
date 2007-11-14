@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/i4b/isdnd/isdnd.rc.5,v 1.11.2.5 2001/08/10 23:17:32 obrien Exp $
-.\" $DragonFly: src/usr.sbin/i4b/isdnd/isdnd.rc.5,v 1.7 2007/05/17 08:19:03 swildner Exp $
+.\" $DragonFly: src/usr.sbin/i4b/isdnd/isdnd.rc.5,v 1.8 2007/11/14 18:27:52 swildner Exp $
 .\"
 .\"     last edit-date: [Sat Jul 21 13:27:41 2001]
 .\"
@@ -541,7 +541,7 @@ than the requested channel!
 (mandatory)
 .It Li isdntxdel-incoming
 A delay value suitable for the
-.Xr timeout 9
+.Xr callout_reset 9
 kernel subroutine to delay the transmission of the first packet after a
 successful connection is made by this value for
 .Em incoming
@@ -556,7 +556,7 @@ IP over raw HDLC ISDN driver.
 (optional)
 .It Li isdntxdel-outgoing
 A delay value suitable for the
-.Xr timeout 9
+.Xr callout_reset 9
 kernel subroutine to delay the transmission of the first packet after a
 successful connection is made by this value for
 .Em outgoing

@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.24 2007/09/15 20:06:38 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.25 2007/11/14 18:27:52 swildner Exp $
  *
  */
 
@@ -677,7 +677,7 @@ END_DEBUG
 	fc = target->sbp->fd.fc;
 	sbp_alloc_lun(target);
 
-	/* XXX untimeout mgm_ocb and dequeue */
+	/* XXX callout_stop mgm_ocb and dequeue */
 	for (i=0; i < target->num_lun; i++) {
 		sdev = target->luns[i];
 		if (sdev == NULL)
