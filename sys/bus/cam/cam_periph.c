@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.22 2007/11/13 00:28:27 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.23 2007/11/14 02:05:35 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -200,8 +200,7 @@ cam_periph_find(struct cam_path *path, char *name)
 			continue;
 
 		crit_enter();
-		for (periph = TAILQ_FIRST(&(*p_drv)->units); periph != NULL;
-		     periph = TAILQ_NEXT(periph, unit_links)) {
+		TAILQ_FOREACH(periph, &(*p_drv)->units, unit_links) {
 			if (xpt_path_comp(periph->path, path) == 0) {
 				crit_exit();
 				return(periph);
@@ -677,17 +676,17 @@ cam_periph_getccb(struct cam_periph *periph, u_int32_t priority)
 
 	crit_enter();
 	
-	while (periph->ccb_list.slh_first == NULL) {
+	while (SLIST_FIRST(&periph->ccb_list) == NULL) {
 		if (periph->immediate_priority > priority)
 			periph->immediate_priority = priority;
 		xpt_schedule(periph, priority);
-		if ((periph->ccb_list.slh_first != NULL)
-		 && (periph->ccb_list.slh_first->pinfo.priority == priority))
+		if ((SLIST_FIRST(&periph->ccb_list) != NULL)
+		 && (SLIST_FIRST(&periph->ccb_list)->pinfo.priority == priority))
 			break;
 		tsleep(&periph->ccb_list, 0, "cgticb", 0);
 	}
 
-	ccb_h = periph->ccb_list.slh_first;
+	ccb_h = SLIST_FIRST(&periph->ccb_list);
 	SLIST_REMOVE_HEAD(&periph->ccb_list, periph_links.sle);
 	crit_exit();
 	return ((union ccb *)ccb_h);

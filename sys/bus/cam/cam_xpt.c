@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.37 2007/11/12 21:48:39 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.38 2007/11/14 02:05:35 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1195,8 +1195,7 @@ ptstartover:
 		 * find the passthrough driver associated with that
 		 * peripheral driver.
 		 */
-		for (periph = TAILQ_FIRST(&(*p_drv)->units); periph != NULL;
-		     periph = TAILQ_NEXT(periph, unit_links)) {
+		TAILQ_FOREACH(periph, &(*p_drv)->units, unit_links) {
 
 			if (periph->unit_number == unit) {
 				break;
@@ -1218,9 +1217,9 @@ ptstartover:
 
 			base_periph_found = 1;
 			device = periph->path->device;
-			for (i = 0, periph = device->periphs.slh_first;
+			for (i = 0, periph = SLIST_FIRST(&device->periphs);
 			     periph != NULL;
-			     periph = periph->periph_links.sle_next, i++) {
+			     periph = SLIST_NEXT(periph, periph_links), i++) {
 				/*
 				 * Check to see whether we have a
 				 * passthrough device or not. 
@@ -1233,7 +1232,7 @@ ptstartover:
 					       periph->periph_name);
 					ccb->cgdl.unit_number =
 						periph->unit_number;
-					if (periph->periph_links.sle_next)
+					if (SLIST_NEXT(periph, periph_links))
 						ccb->cgdl.status =
 							CAM_GDEVLIST_MORE_DEVS;
 					else
@@ -3021,9 +3020,9 @@ xpt_action(union ccb *start_ccb)
 		 * Traverse the list of peripherals and attempt to find 
 		 * the requested peripheral.
 		 */
-		for (nperiph = periph_head->slh_first, i = 0;
+		for (nperiph = SLIST_FIRST(periph_head), i = 0;
 		     (nperiph != NULL) && (i <= cgdl->index);
-		     nperiph = nperiph->periph_links.sle_next, i++) {
+		     nperiph = SLIST_NEXT(nperiph, periph_links), i++) {
 			if (i == cgdl->index) {
 				strncpy(cgdl->periph_name,
 					nperiph->periph_name,
@@ -4532,7 +4531,7 @@ xpt_get_ccb(struct cam_ed *device)
 	union ccb *new_ccb;
 
 	crit_enter();
-	if ((new_ccb = (union ccb *)ccb_freeq.slh_first) == NULL) {
+	if ((new_ccb = (union ccb *)SLIST_FIRST(&ccb_freeq)) == NULL) {
 		new_ccb = kmalloc(sizeof(*new_ccb), M_DEVBUF, M_INTWAIT);
 		SLIST_INSERT_HEAD(&ccb_freeq, &new_ccb->ccb_h,
 				  xpt_links.sle);
@@ -4767,9 +4766,7 @@ xpt_find_bus(path_id_t path_id)
 {
 	struct cam_eb *bus;
 
-	for (bus = TAILQ_FIRST(&xpt_busses);
-	     bus != NULL;
-	     bus = TAILQ_NEXT(bus, links)) {
+	TAILQ_FOREACH(bus, &xpt_busses, links) {
 		if (bus->path_id == path_id) {
 			bus->refcount++;
 			break;
@@ -4783,9 +4780,7 @@ xpt_find_target(struct cam_eb *bus, target_id_t	target_id)
 {
 	struct cam_et *target;
 
-	for (target = TAILQ_FIRST(&bus->et_entries);
-	     target != NULL;
-	     target = TAILQ_NEXT(target, links)) {
+	TAILQ_FOREACH(target, &bus->et_entries, links) {
 		if (target->target_id == target_id) {
 			target->refcount++;
 			break;
@@ -4799,9 +4794,7 @@ xpt_find_device(struct cam_et *target, lun_id_t lun_id)
 {
 	struct cam_ed *device;
 
-	for (device = TAILQ_FIRST(&target->ed_entries);
-	     device != NULL;
-	     device = TAILQ_NEXT(device, links)) {
+	TAILQ_FOREACH(device, &target->ed_entries, links) {
 		if (device->lun_id == lun_id) {
 			device->refcount++;
 			break;

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.21 2007/11/13 00:28:27 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.22 2007/11/14 02:05:35 pavalos Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -304,15 +304,13 @@ scsi_low_find_ccb(struct scsi_low_softc *slp, u_int target, u_int lun, void *osd
 	if ((cb = slp->sl_Qnexus) != NULL && cb->osdep == osdep)
 		return cb;
 
-	for (cb = TAILQ_FIRST(&slp->sl_start); cb != NULL;
-	     cb = TAILQ_NEXT(cb, ccb_chain))
+	TAILQ_FOREACH(cb, &slp->sl_start, ccb_chain)
 	{
 		if (cb->osdep == osdep)
 			return cb;
 	}
 
-	for (cb = TAILQ_FIRST(&li->li_discq); cb != NULL;
-	     cb = TAILQ_NEXT(cb, ccb_chain))
+	TAILQ_FOREACH(cb, &li->li_discq, ccb_chain)
 	{
 		if (cb->osdep == osdep)
 			return cb;
@@ -1374,18 +1372,14 @@ step1:
 			if (cb->ccb_tc < 0)
 				goto bus_reset;
 		}
-		else for (ti = TAILQ_FIRST(&slp->sl_titab); ti != NULL;
-		          ti = TAILQ_NEXT(ti, ti_chain))
+		else TAILQ_FOREACH(ti, &slp->sl_titab, ti_chain)
 		{
 			if (ti->ti_disc == 0)
 				continue;
 
-			for (li = LIST_FIRST(&ti->ti_litab); li != NULL;
-			     li = LIST_NEXT(li, lun_chain))
+			LIST_FOREACH(li, &ti->ti_litab, lun_chain)
 			{
-				for (cb = TAILQ_FIRST(&li->li_discq); 
-				     cb != NULL;
-				     cb = TAILQ_NEXT(cb, ccb_chain))
+				TAILQ_FOREACH(cb, &li->li_discq, ccb_chain)
 				{
 					cb->ccb_tc -=
 						SCSI_LOW_TIMEOUT_CHECK_INTERVAL;
@@ -1803,8 +1797,7 @@ scsi_low_start(struct scsi_low_softc *slp)
 	}
 #endif	/* SCSI_LOW_DIAGNOSTIC */
 
-	for (cb = TAILQ_FIRST(&slp->sl_start); cb != NULL;
-	     cb = TAILQ_NEXT(cb, ccb_chain))
+	TAILQ_FOREACH(cb, &slp->sl_start, ccb_chain)
 	{
 		li = cb->li;
 
@@ -2248,8 +2241,7 @@ scsi_low_reset_nexus_target(struct scsi_low_softc *slp, struct targ_info *ti,
 {
 	struct lun_info *li;
 
-	for (li = LIST_FIRST(&ti->ti_litab); li != NULL;
-	     li = LIST_NEXT(li, lun_chain))
+	LIST_FOREACH(li, &ti->ti_litab, lun_chain)
 	{
 		scsi_low_reset_nexus_lun(slp, li, fdone);
 		li->li_state = SCSI_LOW_LUN_SLEEP;
@@ -2273,8 +2265,7 @@ scsi_low_reset_nexus_target(struct scsi_low_softc *slp, struct targ_info *ti,
 	}
 	scsi_low_calcf_target(ti);
 
-	for (li = LIST_FIRST(&ti->ti_litab); li != NULL;
-	     li = LIST_NEXT(li, lun_chain))
+	LIST_FOREACH(li, &ti->ti_litab, lun_chain)
 	{
 		li->li_flags = 0;
 
@@ -2305,8 +2296,7 @@ scsi_low_reset_nexus(struct scsi_low_softc *slp, int fdone)
 		topcb = NULL;
 	}
 
-	for (ti = TAILQ_FIRST(&slp->sl_titab); ti != NULL;
-	     ti = TAILQ_NEXT(ti, ti_chain))
+	TAILQ_FOREACH(ti, &slp->sl_titab, ti_chain)
 	{
 		scsi_low_reset_nexus_target(slp, ti, fdone);
 		scsi_low_bus_release(slp, ti);
@@ -2381,8 +2371,7 @@ scsi_low_establish_ccb(struct targ_info *ti, struct lun_info *li, scsi_low_tag_t
 	if (li == NULL)
 		return NULL;
 
-	cb = TAILQ_FIRST(&li->li_discq);
-	for ( ; cb != NULL; cb = TAILQ_NEXT(cb, ccb_chain))
+	TAILQ_FOREACH(cb, &li->li_discq, ccb_chain)
 		if (cb->ccb_tag == tag)
 			goto found;
 	return cb;
@@ -3053,8 +3042,7 @@ scsi_low_msginfunc_lcc(struct scsi_low_softc *slp)
 	if (cb->ccb_error != 0)
 		goto bad;
 
-	for (ncb = TAILQ_FIRST(&slp->sl_start); ncb != NULL;
-	     ncb = TAILQ_NEXT(ncb, ccb_chain))
+	TAILQ_FOREACH(ncb, &slp->sl_start, ccb_chain)
 	{
 		if (ncb->li == li)
 			goto cmd_link_start;
@@ -4081,8 +4069,7 @@ scsi_low_info(struct scsi_low_softc *slp, struct targ_info *ti, u_char *s)
 	kprintf(">>>>> SCSI_LOW_INFO(0x%lx): %s\n", (u_long) slp->sl_Tnexus, s);
 	if (ti == NULL)
 	{
-		for (ti = TAILQ_FIRST(&slp->sl_titab); ti != NULL;
-		     ti = TAILQ_NEXT(ti, ti_chain))
+		TAILQ_FOREACH(ti, &slp->sl_titab, ti_chain)
 		{
 			scsi_low_print(slp, ti);
 		}

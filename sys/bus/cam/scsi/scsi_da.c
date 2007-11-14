@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.40 2007/07/23 19:20:43 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.41 2007/11/14 02:05:35 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -1162,8 +1162,7 @@ daasync(void *callback_arg, u_int32_t code,
 		 * that will occur.
 		 */
 		softc->flags |= DA_FLAG_RETRY_UA;
-		for (ccbh = LIST_FIRST(&softc->pending_ccbs);
-		     ccbh != NULL; ccbh = LIST_NEXT(ccbh, periph_links.le))
+		LIST_FOREACH(ccbh, &softc->pending_ccbs, periph_links.le)
 			ccbh->ccb_state |= DA_CCB_RETRY_UA;
 		crit_exit();
 		/* FALLTHROUGH*/
