@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.42 2007/10/25 13:13:18 sephe Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.43 2007/11/16 02:45:45 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -239,6 +239,7 @@ struct mbuf {
 #define	PF_MBUF_FRAGCACHE	0x00000010
 #define	ALTQ_MBUF_TAGGED	0x00000020	/* altq_qid is valid */
 #define	IPFW_MBUF_SKIP_FIREWALL	0x00000040
+#define DUMMYNET_MBUF_TAGGED	0x00000080
 
 /*
  * mbuf types.

@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.71 2007/10/25 13:13:18 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.72 2007/11/16 02:45:45 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -268,11 +268,9 @@ static const int ipstealth = 0;
 
 /* Firewall hooks */
 ip_fw_chk_t *ip_fw_chk_ptr;
+ip_fw_dn_io_t *ip_fw_dn_io_ptr;
 int fw_enable = 1;
 int fw_one_pass = 1;
-
-/* Dummynet hooks */
-ip_dn_io_t *ip_dn_io_ptr;
 
 struct pfil_head inet_pfil_hook;
 
@@ -484,7 +482,7 @@ ip_input(struct mbuf *m)
 	/* Extract info from dummynet tag */
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	if (mtag != NULL) {
-		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->rule;
+		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
 
 		m_tag_delete(m, mtag);
 		mtag = NULL;
@@ -630,9 +628,9 @@ iphack:
 		ip = mtod(m, struct ip *);	/* just in case m changed */
 		if (i == 0 && args.next_hop == NULL)	/* common case */
 			goto pass;
-		if (DUMMYNET_LOADED && (i & IP_FW_PORT_DYNT_FLAG)) {
+		if (i & IP_FW_PORT_DYNT_FLAG) {
 			/* Send packet to the appropriate pipe */
-			ip_dn_io_ptr(m, i&0xffff, DN_TO_IP_IN, &args);
+			ip_fw_dn_io_ptr(m, i&0xffff, DN_TO_IP_IN, &args);
 			return;
 		}
 #ifdef IPDIVERT

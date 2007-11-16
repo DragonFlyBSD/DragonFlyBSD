@@ -25,12 +25,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.48 2007/11/07 06:23:37 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.49 2007/11/16 02:45:45 sephe Exp $
  */
-
-#ifndef KLD_MODULE
-#include "opt_ipfw.h"	/* for IPFW2 definition */
-#endif
 
 #ifdef DUMMYNET_DEBUG
 #define DPRINTF(fmt, ...)	kprintf(fmt, __VA_ARGS__)
@@ -39,8 +35,7 @@
 #endif
 
 /*
- * This module implements IP dummynet, a bandwidth limiter/delay emulator
- * used in conjunction with the ipfw package.
+ * This module implements IP dummynet, a bandwidth limiter/delay emulator.
  * Description of the data structures used is in ip_dummynet.h
  * Here you mainly find the following blocks of code:
  *  + variable declarations;
@@ -68,15 +63,12 @@
 #include <sys/thread2.h>
 
 #include <net/ethernet.h>
-#include <net/route.h>
 #include <net/netmsg2.h>
+#include <net/route.h>
 
-#include <netinet/in.h>
 #include <netinet/in_var.h>
-#include <netinet/ip.h>
 #include <netinet/ip_var.h>
 
-#include <net/ipfw/ip_fw.h>
 #include <net/dummynet/ip_dummynet.h>
 
 #ifndef DN_CALLOUT_FREQ_MAX
@@ -106,6 +98,8 @@
 	((((nr) >> 12) ^ ((nr) >> 8) ^ ((nr) >> 4) ^ (nr)) & DN_NR_HASH_MASK)
 
 MALLOC_DEFINE(M_DUMMYNET, "dummynet", "dummynet heap");
+
+extern int	ip_dn_cpu;
 
 static dn_key	curr_time = 0;		/* current simulation time */
 static int	dn_hash_size = 64;	/* default hash size */
@@ -145,7 +139,6 @@ static struct dn_flowset_head	flowset_table[DN_NR_HASH_MAX];
 static struct netmsg	dn_netmsg;
 static struct systimer	dn_clock;
 static int		dn_hz = 1000;
-static int		dn_cpu = 0; /* TODO tunable */
 
 static int	sysctl_dn_hz(SYSCTL_HANDLER_ARGS);
 
@@ -190,7 +183,6 @@ static void	ready_event_wfq(struct dn_pipe *);
 
 static int	config_pipe(struct dn_ioc_pipe *);
 static void	dummynet_flush(void);
-static void	rt_unref(struct rtentry *);
 
 static void	dummynet_clock(systimer_t, struct intrframe *);
 static void	dummynet(struct netmsg *);
@@ -205,18 +197,7 @@ typedef void	(*dn_flowset_iter_t)(struct dn_flow_set *, void *);
 static void	dn_iterate_flowset(dn_flowset_iter_t, void *);
 
 static ip_dn_io_t	dummynet_io;
-static ip_dn_ruledel_t	dummynet_ruledel;
 static ip_dn_ctl_t	dummynet_ctl;
-
-static void
-rt_unref(struct rtentry *rt)
-{
-    if (rt == NULL)
-	return;
-    if (rt->rt_refcnt <= 0)
-	kprintf("-- warning, refcnt now %ld, decreasing\n", rt->rt_refcnt);
-    RTFREE(rt);
-}
 
 /*
  * Heap management functions.
@@ -412,62 +393,8 @@ transmit_event(struct dn_pipe *pipe)
 
     while ((pkt = TAILQ_FIRST(&pipe->p_queue)) &&
     	   DN_KEY_LEQ(pkt->output_time, curr_time)) {
-    	struct rtentry *rt;
-
-	/*
-	 * First unlink, then call procedures, since ip_input() can invoke
-	 * ip_output() and viceversa, thus causing nested calls
-	 */
 	TAILQ_REMOVE(&pipe->p_queue, pkt, dn_next);
-
-	/*
-	 * NOTE:
-	 * 'pkt' should _not_ be touched after calling
-	 * ip_output(), ip_input(), ether_demux() and ether_output_frame()
-	 */
-	switch (pkt->dn_dir) {
-	case DN_TO_IP_OUT:
-	    /*
-	     * 'pkt' will be freed in ip_output, so we keep
-	     * a reference of the 'rtentry' beforehand.
-	     */
-	    rt = pkt->ro.ro_rt;
-	    ip_output(pkt->dn_m, NULL, NULL, 0, NULL, NULL);
-	    rt_unref(rt);
-	    break;
-
-	case DN_TO_IP_IN :
-	    ip_input(pkt->dn_m);
-	    break;
-
-	case DN_TO_ETH_DEMUX:
-	    {
-		struct mbuf *m = pkt->dn_m;
-		struct ether_header *eh;
-
-		if (m->m_len < ETHER_HDR_LEN &&
-		    (m = m_pullup(m, ETHER_HDR_LEN)) == NULL) {
-		    kprintf("dummynet: pullup fail, dropping pkt\n");
-		    break;
-		}
-		/*
-		 * Same as ether_input, make eh be a pointer into the mbuf
-		 */
-		eh = mtod(m, struct ether_header *);
-		m_adj(m, ETHER_HDR_LEN);
-		ether_demux(NULL, eh, m);
-	    }
-	    break;
-
-	case DN_TO_ETH_OUT:
-	    ether_output_frame(pkt->ifp, pkt->dn_m);
-	    break;
-
-	default:
-	    kprintf("dummynet: bad switch %d!\n", pkt->dn_dir);
-	    m_freem(pkt->dn_m);
-	    break;
-	}
+	ip_dn_packet_redispatch(pkt);
     }
 
     /*
@@ -833,7 +760,7 @@ create_queue(struct dn_flow_set *fs, int i)
  * so that further searches take less time.
  */
 static struct dn_flow_queue *
-find_queue(struct dn_flow_set *fs, struct ipfw_flow_id *id)
+find_queue(struct dn_flow_set *fs, struct dn_flow_id *id)
 {
     struct dn_flow_queue *q;
     int i = 0;
@@ -844,20 +771,20 @@ find_queue(struct dn_flow_set *fs, struct ipfw_flow_id *id)
 	struct dn_flow_queue *qn;
 
 	/* First, do the masking */
-	id->dst_ip &= fs->flow_mask.dst_ip;
-	id->src_ip &= fs->flow_mask.src_ip;
-	id->dst_port &= fs->flow_mask.dst_port;
-	id->src_port &= fs->flow_mask.src_port;
-	id->proto &= fs->flow_mask.proto;
-	id->flags = 0; /* we don't care about this one */
+	id->fid_dst_ip &= fs->flow_mask.fid_dst_ip;
+	id->fid_src_ip &= fs->flow_mask.fid_src_ip;
+	id->fid_dst_port &= fs->flow_mask.fid_dst_port;
+	id->fid_src_port &= fs->flow_mask.fid_src_port;
+	id->fid_proto &= fs->flow_mask.fid_proto;
+	id->fid_flags = 0; /* we don't care about this one */
 
 	/* Then, hash function */
-	i = ((id->dst_ip) & 0xffff) ^
-	    ((id->dst_ip >> 15) & 0xffff) ^
-	    ((id->src_ip << 1) & 0xffff) ^
-	    ((id->src_ip >> 16 ) & 0xffff) ^
-	    (id->dst_port << 1) ^ (id->src_port) ^
-	    (id->proto);
+	i = ((id->fid_dst_ip) & 0xffff) ^
+	    ((id->fid_dst_ip >> 15) & 0xffff) ^
+	    ((id->fid_src_ip << 1) & 0xffff) ^
+	    ((id->fid_src_ip >> 16 ) & 0xffff) ^
+	    (id->fid_dst_port << 1) ^ (id->fid_src_port) ^
+	    (id->fid_proto);
 	i = i % fs->rq_size;
 
 	/*
@@ -867,12 +794,12 @@ find_queue(struct dn_flow_set *fs, struct ipfw_flow_id *id)
 	searches++;
 	LIST_FOREACH_MUTABLE(q, &fs->rq[i], q_link, qn) {
 	    search_steps++;
-	    if (id->dst_ip == q->id.dst_ip &&
-		id->src_ip == q->id.src_ip &&
-		id->dst_port == q->id.dst_port &&
-		id->src_port == q->id.src_port &&
-		id->proto == q->id.proto &&
-		id->flags == q->id.flags) {
+	    if (id->fid_dst_ip == q->id.fid_dst_ip &&
+		id->fid_src_ip == q->id.fid_src_ip &&
+		id->fid_dst_port == q->id.fid_dst_port &&
+		id->fid_src_port == q->id.fid_src_port &&
+		id->fid_proto == q->id.fid_proto &&
+		id->fid_flags == q->id.fid_flags) {
 		break; /* Found */
 	    } else if (pipe_expire && TAILQ_EMPTY(&q->queue) &&
 	    	       q->S == q->F + 1) {
@@ -1091,7 +1018,7 @@ dn_locate_flowset(int pipe_nr, int is_pipe)
  * fwa->flags	flags from the caller, only used in ip_output
  */
 static int
-dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
+dummynet_io(struct mbuf *m)
 {
     struct dn_pkt *pkt;
     struct m_tag *tag;
@@ -1099,20 +1026,15 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
     struct dn_pipe *pipe;
     uint64_t len = m->m_pkthdr.len;
     struct dn_flow_queue *q = NULL;
-    int is_pipe;
-    ipfw_insn *cmd;
+    int is_pipe, pipe_nr;
 
     crit_enter();
 
-    cmd = fwa->rule->cmd + fwa->rule->act_ofs;
-    if (cmd->opcode == O_LOG)
-	cmd += F_LEN(cmd);
+    tag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+    pkt = m_tag_data(tag);
 
-    KASSERT(cmd->opcode == O_PIPE || cmd->opcode == O_QUEUE,
-    	    ("Rule is not PIPE or QUEUE, opcode %d\n", cmd->opcode));
-
-    is_pipe = (cmd->opcode == O_PIPE);
-    pipe_nr &= 0xffff;
+    is_pipe = pkt->dn_flags & DN_FLAGS_IS_PIPE;
+    pipe_nr = pkt->pipe_nr;
 
     /*
      * This is a dummynet rule, so we expect a O_PIPE or O_QUEUE rule
@@ -1133,7 +1055,7 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	}
     }
 
-    q = find_queue(fs, &fwa->f_id);
+    q = find_queue(fs, &pkt->id);
     if (q == NULL)
 	goto dropit;	/* Cannot allocate queue */
 
@@ -1157,39 +1079,6 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
     if ((fs->flags_fs & DN_IS_RED) && red_drops(fs, q, len))
 	goto dropit;
 
-    /*
-     * Build and enqueue packet + parameters
-     */
-    tag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt), MB_DONTWAIT /* XXX */);
-    if (tag == NULL)
-	goto dropit;
-    m_tag_prepend(m, tag);
-
-    pkt = m_tag_data(tag);
-    bzero(pkt, sizeof(*pkt)); /* XXX expensive to zero */
-
-    pkt->rule = fwa->rule;
-    pkt->dn_m = m;
-    pkt->dn_dir = dir;
-
-    pkt->ifp = fwa->oif;
-    if (dir == DN_TO_IP_OUT) {
-	/*
-	 * We need to copy *ro because for ICMP pkts (and maybe others)
-	 * the caller passed a pointer into the stack; dst might also be
-	 * a pointer into *ro so it needs to be updated.
-	 */
-	pkt->ro = *(fwa->ro);
-	if (fwa->ro->ro_rt)
-	    fwa->ro->ro_rt->rt_refcnt++;
-	if (fwa->dst == (struct sockaddr_in *)&fwa->ro->ro_dst) {
-	    /* 'dst' points into 'ro' */
-	    fwa->dst = (struct sockaddr_in *)&(pkt->ro.ro_dst);
-	}
-
-	pkt->dn_dst = fwa->dst;
-	pkt->flags = fwa->flags;
-    }
     TAILQ_INSERT_TAIL(&q->queue, pkt, dn_next);
     q->len++;
     q->len_bytes += len;
@@ -1279,19 +1168,8 @@ dropit:
     crit_exit();
     if (q)
 	q->drops++;
-    m_freem(m);
-    return ((fs && (fs->flags_fs & DN_NOERROR)) ? 0 : ENOBUFS);
+    return ENOBUFS;
 }
-
-/*
- * Below, the rt_unref is only needed when (pkt->dn_dir == DN_TO_IP_OUT)
- * Doing this would probably save us the initial bzero of dn_pkt
- */
-#define DN_FREE_PKT(pkt)		\
-do {					\
-	rt_unref((pkt)->ro.ro_rt);	\
-	m_freem((pkt)->dn_m);		\
-} while (0)
 
 /*
  * Dispose all packets and flow_queues on a flow_set.
@@ -1315,7 +1193,7 @@ purge_flow_set(struct dn_flow_set *fs, int all)
 
 	    while ((pkt = TAILQ_FIRST(&q->queue)) != NULL) {
 	    	TAILQ_REMOVE(&q->queue, pkt, dn_next);
-		DN_FREE_PKT(pkt);
+	    	ip_dn_packet_free(pkt);
 	    }
 
 	    LIST_REMOVE(q, q_link);
@@ -1366,7 +1244,7 @@ purge_pipe(struct dn_pipe *pipe)
 
     while ((pkt = TAILQ_FIRST(&pipe->p_queue)) != NULL) {
 	TAILQ_REMOVE(&pipe->p_queue, pkt, dn_next);
-	DN_FREE_PKT(pkt);
+	ip_dn_packet_free(pkt);
     }
 
     heap_free(&pipe->scheduler_heap);
@@ -1375,8 +1253,7 @@ purge_pipe(struct dn_pipe *pipe)
 }
 
 /*
- * Delete all pipes and heaps returning memory. Must also
- * remove references from all ipfw rules to all pipes.
+ * Delete all pipes and heaps returning memory.
  */
 static void
 dummynet_flush(void)
@@ -1433,63 +1310,6 @@ dummynet_flush(void)
 	purge_pipe(p);
 	kfree(p, M_DUMMYNET);
     }
-}
-
-
-extern struct ip_fw *ip_fw_default_rule;
-
-static void
-dn_rule_delete_fs(struct dn_flow_set *fs, void *r)
-{
-    int i;
-
-    for (i = 0; i <= fs->rq_size; i++) { /* Last one is ovflow */
-	struct dn_flow_queue *q;
-
-	LIST_FOREACH(q, &fs->rq[i], q_link) {
-	    struct dn_pkt *pkt;
-
-	    TAILQ_FOREACH(pkt, &q->queue, dn_next) {
-		if (pkt->rule == r)
-		    pkt->rule = ip_fw_default_rule;
-	    }
-	}
-    }
-}
-
-static void
-dn_ruledel_pipe_cb(struct dn_pipe *pipe, void *rule)
-{
-    struct dn_pkt *pkt;
-
-    dn_rule_delete_fs(&pipe->fs, rule);
-
-    TAILQ_FOREACH(pkt, &pipe->p_queue, dn_next) {
-	if (pkt->rule == rule)
-	    pkt->rule = ip_fw_default_rule;
-    }
-}
-
-static void
-dn_ruledel_fs_cb(struct dn_flow_set *fs, void *rule)
-{
-    dn_rule_delete_fs(fs, rule);
-}
-
-/*
- * When a firewall rule is deleted, scan all queues and remove the flow-id
- * from packets matching this rule.
- */
-void
-dummynet_ruledel(void *r)
-{
-    /*
-     * If the rule references a queue (dn_flow_set), then scan
-     * the flow set, otherwise scan pipes. Should do either, but doing
-     * both does not harm.
-     */
-    dn_iterate_flowset(dn_ruledel_fs_cb, r);
-    dn_iterate_pipe(dn_ruledel_pipe_cb, r);
 }
 
 /*
@@ -1579,14 +1399,14 @@ alloc_hash(struct dn_flow_set *x, const struct dn_ioc_flowset *ioc_fs)
 }
 
 static void
-set_flowid_parms(struct ipfw_flow_id *id, const struct dn_ioc_flowid *ioc_id)
+set_flowid_parms(struct dn_flow_id *id, const struct dn_ioc_flowid *ioc_id)
 {
-    id->dst_ip = ioc_id->u.ip.dst_ip;
-    id->src_ip = ioc_id->u.ip.src_ip;
-    id->dst_port = ioc_id->u.ip.dst_port;
-    id->src_port = ioc_id->u.ip.src_port;
-    id->proto = ioc_id->u.ip.proto;
-    id->flags = ioc_id->u.ip.flags;
+    id->fid_dst_ip = ioc_id->u.ip.dst_ip;
+    id->fid_src_ip = ioc_id->u.ip.src_ip;
+    id->fid_dst_port = ioc_id->u.ip.dst_port;
+    id->fid_src_port = ioc_id->u.ip.src_port;
+    id->fid_proto = ioc_id->u.ip.proto;
+    id->fid_flags = ioc_id->u.ip.flags;
 }
 
 static void
@@ -1860,15 +1680,15 @@ back:
  * helper function used to copy data from kernel in DUMMYNET_GET
  */
 static void
-dn_copy_flowid(const struct ipfw_flow_id *id, struct dn_ioc_flowid *ioc_id)
+dn_copy_flowid(const struct dn_flow_id *id, struct dn_ioc_flowid *ioc_id)
 {
     ioc_id->type = ETHERTYPE_IP;
-    ioc_id->u.ip.dst_ip = id->dst_ip;
-    ioc_id->u.ip.src_ip = id->src_ip;
-    ioc_id->u.ip.dst_port = id->dst_port;
-    ioc_id->u.ip.src_port = id->src_port;
-    ioc_id->u.ip.proto = id->proto;
-    ioc_id->u.ip.flags = id->flags;
+    ioc_id->u.ip.dst_ip = id->fid_dst_ip;
+    ioc_id->u.ip.src_ip = id->fid_src_ip;
+    ioc_id->u.ip.dst_port = id->fid_dst_port;
+    ioc_id->u.ip.src_port = id->fid_src_port;
+    ioc_id->u.ip.proto = id->fid_proto;
+    ioc_id->u.ip.flags = id->fid_flags;
 }
 
 static void *
@@ -2081,7 +1901,7 @@ dummynet_ctl(struct sockopt *sopt)
 static void
 dummynet_clock(systimer_t info __unused, struct intrframe *frame __unused)
 {
-    KASSERT(mycpu->gd_cpuid == dn_cpu,
+    KASSERT(mycpu->gd_cpuid == ip_dn_cpu,
 	    ("systimer comes on a different cpu!\n"));
 
     crit_enter();
@@ -2152,12 +1972,11 @@ ip_dn_init(void)
 
     ip_dn_ctl_ptr = dummynet_ctl;
     ip_dn_io_ptr = dummynet_io;
-    ip_dn_ruledel_ptr = dummynet_ruledel;
 
     netmsg_init(&dn_netmsg, &netisr_adone_rport, 0, dummynet);
 
     netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_register_systimer);
-    port = cpu_portfn(dn_cpu);
+    port = cpu_portfn(ip_dn_cpu);
     lwkt_domsg(port, &smsg.nm_lmsg, 0);
 }
 
@@ -2168,14 +1987,13 @@ ip_dn_stop(void)
     lwkt_port_t port;
 
     netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_deregister_systimer);
-    port = cpu_portfn(dn_cpu);
+    port = cpu_portfn(ip_dn_cpu);
     lwkt_domsg(port, &smsg.nm_lmsg, 0);
 
     dummynet_flush();
 
     ip_dn_ctl_ptr = NULL;
     ip_dn_io_ptr = NULL;
-    ip_dn_ruledel_ptr = NULL;
 
     netmsg_service_sync();
 }
@@ -2218,5 +2036,4 @@ static moduledata_t dummynet_mod = {
     NULL
 };
 DECLARE_MODULE(dummynet, dummynet_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
-MODULE_DEPEND(dummynet, ipfw, 1, 1, 1);
 MODULE_VERSION(dummynet, 1);

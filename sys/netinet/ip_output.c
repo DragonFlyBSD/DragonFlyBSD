@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.38 2007/10/25 13:13:18 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.39 2007/11/16 02:45:45 sephe Exp $
  */
 
 #define _IP_VHL
@@ -178,7 +178,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		 * processing was already done, and we need to go down.
 		 * Get parameters from the tag.
 		 */
-		args.rule = dn_pkt->rule;
+		args.rule = dn_pkt->dn_priv;
 		opt = NULL;
 		ro = &dn_pkt->ro;
 		imo = NULL;
@@ -760,7 +760,7 @@ spd_done:
 		ip = mtod(m, struct ip *);
 		if (off == 0 && dst == old)		/* common case */
 			goto pass;
-		if (DUMMYNET_LOADED && (off & IP_FW_PORT_DYNT_FLAG)) {
+		if (off & IP_FW_PORT_DYNT_FLAG) {
 			/*
 			 * pass the pkt to dummynet. Need to include
 			 * pipe number, m, ifp, ro, dst because these are
@@ -774,8 +774,8 @@ spd_done:
 			args.dst = dst;
 			args.flags = flags;
 
-			error = ip_dn_io_ptr(m, off & 0xffff, DN_TO_IP_OUT,
-				&args);
+			error = 0;
+			ip_fw_dn_io_ptr(m, off & 0xffff, DN_TO_IP_OUT, &args);
 			goto done;
 		}
 #ifdef IPDIVERT

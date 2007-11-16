@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.50 2007/10/25 13:13:18 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.51 2007/11/16 02:45:44 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -393,7 +393,7 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	/* Extract info from dummynet tag */
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	if (mtag != NULL) {
-		rule = ((struct dn_pkt *)m_tag_data(mtag))->rule;
+		rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
 
 		m_tag_delete(m, mtag);
 		mtag = NULL;
@@ -491,7 +491,7 @@ ether_ipfw_chk(
 	if (i == 0)					/* a PASS rule.  */
 		return TRUE;
 
-	if (DUMMYNET_LOADED && (i & IP_FW_PORT_DYNT_FLAG)) {
+	if (i & IP_FW_PORT_DYNT_FLAG) {
 		/*
 		 * Pass the pkt to dummynet, which consumes it.
 		 * If shared, make a copy and keep the original.
@@ -521,8 +521,8 @@ ether_ipfw_chk(
 			bcopy(&save_eh, mtod(m, struct ether_header *),
 			      ETHER_HDR_LEN);
 		}
-		ip_dn_io_ptr(m, (i & 0xffff),
-			     dst ? DN_TO_ETH_OUT: DN_TO_ETH_DEMUX, &args);
+		ip_fw_dn_io_ptr(m, (i & 0xffff),
+			dst ? DN_TO_ETH_OUT: DN_TO_ETH_DEMUX, &args);
 		return FALSE;
 	}
 	/*
@@ -644,7 +644,7 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh0, struct mbuf *m)
 	/* Extract info from dummynet tag */
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	if (mtag != NULL) {
-		rule = ((struct dn_pkt *)m_tag_data(mtag))->rule;
+		rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
 		KKASSERT(ifp == NULL);
 		ifp = m->m_pkthdr.rcvif;
 

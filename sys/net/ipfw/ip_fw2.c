@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.37 2007/11/06 14:42:51 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.38 2007/11/16 02:45:45 sephe Exp $
  */
 
 #define        DEB(x)
@@ -33,7 +33,7 @@
  * Implement IP packet firewall (new version)
  */
 
-#if !defined(KLD_MODULE)
+#ifndef KLD_MODULE
 #include "opt_ipfw.h"
 #include "opt_ipdn.h"
 #include "opt_ipdivert.h"
@@ -86,6 +86,10 @@ static uint32_t set_disable;
 
 static int fw_verbose;
 static int verbose_limit;
+
+#ifdef KLD_MODULE
+static int ipfw_refcnt;
+#endif
 
 static struct callout ipfw_timeout_h;
 #define	IPFW_DEFAULT_RULE	65535
@@ -221,7 +225,35 @@ struct ip_fw *ip_fw_default_rule;
 
 static ip_fw_chk_t	ipfw_chk;
 
-ip_dn_ruledel_t *ip_dn_ruledel_ptr = NULL;	/* hook into dummynet */
+static __inline int
+ipfw_free_rule(struct ip_fw *rule)
+{
+	KASSERT(rule->refcnt > 0, ("invalid refcnt %u\n", rule->refcnt));
+	atomic_subtract_int(&rule->refcnt, 1);
+	if (atomic_cmpset_int(&rule->refcnt, 0, 1)) {
+		kfree(rule, M_IPFW);
+		return 1;
+	}
+	return 0;
+}
+
+static void
+ipfw_unref_rule(void *priv)
+{
+	ipfw_free_rule(priv);
+#ifdef KLD_MODULE
+	atomic_subtract_int(&ipfw_refcnt, 1);
+#endif
+}
+
+static __inline void
+ipfw_ref_rule(struct ip_fw *rule)
+{
+#ifdef KLD_MODULE
+	atomic_add_int(&ipfw_refcnt, 1);
+#endif
+	atomic_add_int(&rule->refcnt, 1);
+}
 
 /*
  * This macro maps an ip pointer into a layer3 header pointer of type T
@@ -1392,6 +1424,10 @@ after_ip_checks:
 		if (fw_one_pass)
 			return 0;
 
+		/* This rule was deleted */
+		if (args->rule->rule_flags & IPFW_RULE_F_INVALID)
+			return IP_FW_PORT_DENY_FLAG;
+
 		f = args->rule->next_rule;
 		if (f == NULL)
 			f = lookup_next_rule(args->rule);
@@ -1950,6 +1986,75 @@ pullup_failed:
 	return(IP_FW_PORT_DENY_FLAG);
 }
 
+static void
+ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
+{
+	struct m_tag *mtag;
+	struct dn_pkt *pkt;
+	ipfw_insn *cmd;
+	const struct ipfw_flow_id *id;
+	struct dn_flow_id *fid;
+
+	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt), MB_DONTWAIT);
+	if (mtag == NULL) {
+		m_freem(m);
+		return;
+	}
+	m_tag_prepend(m, mtag);
+
+	pkt = m_tag_data(mtag);
+	bzero(pkt, sizeof(*pkt));
+
+	cmd = fwa->rule->cmd + fwa->rule->act_ofs;
+	if (cmd->opcode == O_LOG)
+		cmd += F_LEN(cmd);
+	KASSERT(cmd->opcode == O_PIPE || cmd->opcode == O_QUEUE,
+		("Rule is not PIPE or QUEUE, opcode %d\n", cmd->opcode));
+
+	pkt->dn_m = m;
+	pkt->dn_flags = (dir & DN_FLAGS_DIR_MASK);
+	pkt->ifp = fwa->oif;
+	pkt->cpuid = mycpu->gd_cpuid;
+	pkt->pipe_nr = pipe_nr;
+
+	id = &fwa->f_id;
+	fid = &pkt->id;
+	fid->fid_dst_ip = id->dst_ip;
+	fid->fid_src_ip = id->src_ip;
+	fid->fid_dst_port = id->dst_port;
+	fid->fid_src_port = id->src_port;
+	fid->fid_proto = id->proto;
+	fid->fid_flags = id->flags;
+
+	ipfw_ref_rule(fwa->rule);
+	pkt->dn_priv = fwa->rule;
+	pkt->dn_unref_priv = ipfw_unref_rule;
+
+	if (cmd->opcode == O_PIPE)
+		pkt->dn_flags |= DN_FLAGS_IS_PIPE;
+
+	if (dir == DN_TO_IP_OUT) {
+		/*
+		 * We need to copy *ro because for ICMP pkts (and maybe
+		 * others) the caller passed a pointer into the stack;
+		 * dst might also be a pointer into *ro so it needs to
+		 * be updated.
+		 */
+		pkt->ro = *(fwa->ro);
+		if (fwa->ro->ro_rt)
+			fwa->ro->ro_rt->rt_refcnt++;
+		if (fwa->dst == (struct sockaddr_in *)&fwa->ro->ro_dst) {
+			/* 'dst' points into 'ro' */
+			fwa->dst = (struct sockaddr_in *)&(pkt->ro.ro_dst);
+		}
+		pkt->dn_dst = fwa->dst;
+		pkt->flags = fwa->flags;
+	}
+
+	m->m_pkthdr.fw_flags |= DUMMYNET_MBUF_TAGGED;
+	ip_dn_queue(m);
+}
+
 /*
  * When a rule is added/deleted, clear the next_rule pointers in all rules.
  * These will be reconstructed on the fly as packets are matched.
@@ -1998,6 +2103,8 @@ ipfw_create_rule(const struct ipfw_ioc_rule *ioc_rule)
 	rule->usr_flags = ioc_rule->usr_flags;
 
 	bcopy(ioc_rule->cmd, rule->cmd, rule->cmd_len * 4 /* XXX */);
+
+	rule->refcnt = 1;
 
 	return rule;
 }
@@ -2088,9 +2195,13 @@ delete_rule(struct ip_fw **head, struct ip_fw *prev, struct ip_fw *rule)
 		prev->next = n;
 	ipfw_dec_static_count(rule);
 
-	if (DUMMYNET_LOADED)
-		ip_dn_ruledel_ptr(rule);
-	kfree(rule, M_IPFW);
+	/* Mark the rule as invalid */
+	rule->rule_flags |= IPFW_RULE_F_INVALID;
+	rule->next_rule = NULL;
+
+	/* Try to free this rule */
+	ipfw_free_rule(rule);
+
 	return n;
 }
 
@@ -2780,6 +2891,8 @@ ipfw_init_default_rule(struct ip_fw **head)
 	def_rule->cmd[0].opcode = O_DENY;
 #endif
 
+	def_rule->refcnt = 1;
+
 	*head = def_rule;
 	ipfw_inc_static_count(def_rule);
 
@@ -2792,6 +2905,7 @@ ipfw_init(void)
 {
 	ip_fw_chk_ptr = ipfw_chk;
 	ip_fw_ctl_ptr = ipfw_ctl;
+	ip_fw_dn_io_ptr = ipfw_dummynet_io;
 
 	layer3_chain = NULL;
 	ipfw_init_default_rule(&layer3_chain);
@@ -2842,14 +2956,20 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		break;
 
 	case MOD_UNLOAD:
-#if !defined(KLD_MODULE)
+#ifndef KLD_MODULE
 		kprintf("ipfw statically compiled, cannot unload\n");
 		err = EBUSY;
 #else
-                crit_enter();
+		if (ipfw_refcnt != 0) {
+			err = EBUSY;
+			break;
+		}
+
+		crit_enter();
 		callout_stop(&ipfw_timeout_h);
 		ip_fw_chk_ptr = NULL;
 		ip_fw_ctl_ptr = NULL;
+		ip_fw_dn_io_ptr = NULL;
 		free_chain(&layer3_chain, 1 /* kill default rule */);
 		crit_exit();
 		kprintf("IP firewall unloaded\n");

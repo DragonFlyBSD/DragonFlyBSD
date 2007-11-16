@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.16 2007/11/07 06:23:37 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.17 2007/11/16 02:45:45 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -92,6 +92,29 @@ struct dn_heap {
     struct dn_heap_entry *p;	/* really an array of "size" entries */
 };
 
+struct dn_flow_id {
+    uint16_t fid_type;	/* ETHERTYPE_ */
+    uint16_t pad;
+    union {
+	struct {
+	    uint32_t dst_ip;
+	    uint32_t src_ip;
+	    uint16_t dst_port;
+	    uint16_t src_port;
+	    uint8_t proto;
+	    uint8_t flags;
+	} inet;
+    } fid_u;
+#define fid_dst_ip	fid_u.inet.dst_ip
+#define fid_src_ip	fid_u.inet.src_ip
+#define fid_dst_port	fid_u.inet.dst_port
+#define fid_src_port	fid_u.inet.src_port
+#define fid_proto	fid_u.inet.proto
+#define fid_flags	fid_u.inet.flags
+};
+
+typedef void	(*ip_dn_unref_priv_t)(void *);
+
 /*
  * struct dn_pkt identifies a packet in the dummynet queue, but is also used
  * to tag packets passed back to the various destinations (ip_input(),
@@ -103,18 +126,29 @@ struct dn_pkt {
     struct mbuf *dn_m;
     TAILQ_ENTRY(dn_pkt) dn_next;
 
-    struct ip_fw *rule;		/* matching rule */
-    int dn_dir;			/* action when packet comes out. */
-#define DN_TO_IP_OUT	1
-#define DN_TO_IP_IN	2
-#define DN_TO_ETH_DEMUX	4
-#define DN_TO_ETH_OUT	5
+    void *dn_priv;
+    ip_dn_unref_priv_t dn_unref_priv;
+
+    uint32_t dn_flags;		/* action when packet comes out. */
+#define DN_FLAGS_IS_PIPE	0x10
+#define DN_FLAGS_DIR_MASK	0x0f
+#define DN_TO_IP_OUT		1
+#define DN_TO_IP_IN		2
+#define DN_TO_ETH_DEMUX		4
+#define DN_TO_ETH_OUT		5
+#define DN_TO_MAX		6
 
     dn_key output_time;		/* when the pkt is due for delivery */
     struct ifnet *ifp;		/* interface, for ip_output */
     struct sockaddr_in *dn_dst;
     struct route ro;		/* route, for ip_output. MUST COPY */
     int flags;			/* flags, for ip_output (IPv6 ?) */
+
+    u_short pipe_nr;		/* pipe/flow_set number */
+    u_short pad;
+
+    struct dn_flow_id id;	/* flow id */
+    int cpuid;			/* target cpu, for IP_OUT/ETH_DEMUX/ETH_OUT */
 };
 TAILQ_HEAD(dn_pkt_queue, dn_pkt);
 
@@ -180,7 +214,7 @@ TAILQ_HEAD(dn_pkt_queue, dn_pkt);
  * flow arrives.
  */
 struct dn_flow_queue {
-    struct ipfw_flow_id id;
+    struct dn_flow_id id;
     LIST_ENTRY(dn_flow_queue) q_link;
 
     struct dn_pkt_queue queue;	/* queue of packets */
@@ -237,7 +271,7 @@ struct dn_flow_set {
     int qsize;			/* queue size in slots or bytes */
     int plr;			/* pkt loss rate (2^31-1 means 100%) */
 
-    struct ipfw_flow_id flow_mask;
+    struct dn_flow_id flow_mask;
 
     /* hash table of queues onto this flow_set */
     int rq_size;		/* number of slots */
@@ -301,12 +335,14 @@ struct dn_pipe {		/* a pipe */
 LIST_HEAD(dn_pipe_head, dn_pipe);
 
 typedef int	ip_dn_ctl_t(struct sockopt *);	/* raw_ip.c */
-typedef void	ip_dn_ruledel_t(void *);	/* ip_fw2.c */
-typedef int	ip_dn_io_t(struct mbuf *, int, int, struct ip_fw_args *);
+typedef int	ip_dn_io_t(struct mbuf *);
 
 extern ip_dn_ctl_t	*ip_dn_ctl_ptr;
-extern ip_dn_ruledel_t	*ip_dn_ruledel_ptr;
 extern ip_dn_io_t	*ip_dn_io_ptr;
+
+void	ip_dn_queue(struct mbuf *);
+void	ip_dn_packet_free(struct dn_pkt *);
+void	ip_dn_packet_redispatch(struct dn_pkt *);
 
 #define	DUMMYNET_LOADED	(ip_dn_io_ptr != NULL)
 

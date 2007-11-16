@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.7 2007/11/06 14:42:51 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.8 2007/11/16 02:45:45 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -290,8 +290,13 @@ struct ip_fw {
 	uint64_t	bcnt;		/* Byte counter			*/
 	uint32_t	timestamp;	/* tv_sec of last match		*/
 
+	uint32_t	refcnt;		/* Ref count for transit pkts	*/
+	uint32_t	rule_flags;	/* IPFW_RULE_F_			*/
+
 	ipfw_insn	cmd[1];		/* storage for commands		*/
 };
+
+#define IPFW_RULE_F_INVALID	0x1
 
 #define RULESIZE(rule)	(sizeof(struct ip_fw) + (rule)->cmd_len * 4 - 4)
 
@@ -368,10 +373,14 @@ struct ip_fw_args {
 struct sockopt;
 struct dn_flow_set;
 
-typedef int ip_fw_chk_t (struct ip_fw_args *args);
-typedef int ip_fw_ctl_t (struct sockopt *);
-extern ip_fw_chk_t *ip_fw_chk_ptr;
-extern ip_fw_ctl_t *ip_fw_ctl_ptr;
+typedef int	ip_fw_chk_t(struct ip_fw_args *);
+typedef int	ip_fw_ctl_t(struct sockopt *);
+typedef void	ip_fw_dn_io_t(struct mbuf *, int, int, struct ip_fw_args *);
+
+extern ip_fw_chk_t	*ip_fw_chk_ptr;
+extern ip_fw_ctl_t	*ip_fw_ctl_ptr;
+extern ip_fw_dn_io_t	*ip_fw_dn_io_ptr;
+
 extern int fw_one_pass;
 extern int fw_enable;
 #define	IPFW_LOADED	(ip_fw_chk_ptr != NULL)
