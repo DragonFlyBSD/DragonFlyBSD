@@ -1,6 +1,6 @@
+/* $DragonFly: src/usr.bin/less/defines.h,v 1.6 2007/11/16 22:32:32 pavalos Exp $ */
 /* defines.h.  Generated from defines.h.in by configure.  */
 /* defines.h.in.  Generated from configure.ac by autoheader.  */
-/* $DragonFly: src/usr.bin/less/defines.h,v 1.5 2007/06/03 04:23:45 pavalos Exp $ */
 
 
 /* Unix definition file for less.  -*- C -*-
@@ -284,6 +284,9 @@
 /* Define to 1 if you have the `stat' function. */
 #define HAVE_STAT 1
 
+/* Define HAVE_STAT_INO if your struct stat has st_ino and st_dev. */
+#define HAVE_STAT_INO 1
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
 
@@ -352,6 +355,12 @@
 
 /* Define HAVE_VOID if your compiler supports the "void" type. */
 #define HAVE_VOID 1
+
+/* Define HAVE_WCTYPE if you have iswupper, iswlower, towupper, towlower. */
+#define HAVE_WCTYPE 1
+
+/* Define to 1 if you have the <wctype.h> header file. */
+#define HAVE_WCTYPE_H 1
 
 /* Define to 1 if you have the `_setjmp' function. */
 #define HAVE__SETJMP 1
