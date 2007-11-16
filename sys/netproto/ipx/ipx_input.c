@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.16 2007/05/23 08:57:08 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.17 2007/11/16 05:07:36 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,6 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <net/netisr.h>
-#include <net/intrq.h>
 
 #include "ipx.h"
 #include "spx.h"

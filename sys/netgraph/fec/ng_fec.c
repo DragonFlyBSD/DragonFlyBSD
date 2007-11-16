@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.20 2007/10/13 10:50:34 sephe Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.21 2007/11/16 05:07:36 sephe Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -106,7 +106,6 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
-#include <net/intrq.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
 

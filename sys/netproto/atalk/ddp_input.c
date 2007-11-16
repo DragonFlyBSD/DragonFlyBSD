@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.14 2007/05/23 08:57:06 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.15 2007/11/16 05:07:36 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -19,7 +19,6 @@
 #include <net/if.h>
 #include <net/netisr.h>
 #include <net/route.h>
-#include <net/intrq.h>
 
 #include "at.h"
 #include "at_var.h"

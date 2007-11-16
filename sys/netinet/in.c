@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.20 2006/09/30 22:38:21 swildner Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.21 2007/11/16 05:07:36 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -272,7 +272,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 				return (ENOBUFS);
 			bzero(ia, sizeof *ia);
 			/*
-			 * Protect from ipintr() traversing address list
+			 * Protect from NETISR_IP traversing address list
 			 * while we're modifying it.
 			 */
 			crit_enter();
@@ -442,7 +442,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	}
 
 	/*
-	 * Protect from ipintr() traversing address list while we're modifying
+	 * Protect from NETISR_IP traversing address list while we're modifying
 	 * it.
 	 */
 	lwkt_serialize_enter(ifp->if_serializer);

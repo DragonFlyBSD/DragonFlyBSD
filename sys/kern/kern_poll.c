@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.42 2007/11/11 07:38:29 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.43 2007/11/16 05:07:36 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -456,15 +456,13 @@ pollclock(systimer_t info, struct intrframe *frame __unused)
  * another NETISR_POLL call, or adapting the burst size for the next cycle.
  *
  * It is very bad to fetch large bursts of packets from a single card at once,
- * because the burst could take a long time to be completely processed, or
- * could saturate the intermediate queue (ipintrq or similar) leading to
- * losses or unfairness. To reduce the problem, and also to account better for
- * time spent in network-related processing, we split the burst in smaller
- * chunks of fixed size, giving control to the other netisr's between chunks.
- * This helps in improving the fairness, reducing livelock (because we
- * emulate more closely the "process to completion" that we have with
- * fastforwarding) and accounting for the work performed in low level
- * handling and forwarding.
+ * because the burst could take a long time to be completely processed leading
+ * to unfairness. To reduce the problem, and also to account better for time
+ * spent in network-related processing, we split the burst in smaller chunks
+ * of fixed size, giving control to the other netisr's between chunks.  This
+ * helps in improving the fairness, reducing livelock (because we emulate more
+ * closely the "process to completion" that we have with fastforwarding) and
+ * accounting for the work performed in low level handling and forwarding.
  */
 
 /* ARGSUSED */

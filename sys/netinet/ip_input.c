@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.72 2007/11/16 02:45:45 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.73 2007/11/16 05:07:36 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -103,7 +103,6 @@
 #include <net/pfil.h>
 #include <net/route.h>
 #include <net/netisr.h>
-#include <net/intrq.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -203,20 +202,12 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, check_interface, CTLFLAG_RW,
 static int ipprintfs = 0;
 #endif
 
-static struct ifqueue ipintrq;
-static int ipqmaxlen = IFQ_MAXLEN;
-
 extern	struct domain inetdomain;
 extern	struct protosw inetsw[];
 u_char	ip_protox[IPPROTO_MAX];
 struct	in_ifaddrhead in_ifaddrhead;		/* first inet address */
 struct	in_ifaddrhashhead *in_ifaddrhashtbl;	/* inet addr hash table */
 u_long	in_ifaddrhmask;				/* mask for hash table */
-
-SYSCTL_INT(_net_inet_ip, IPCTL_INTRQMAXLEN, intr_queue_maxlen, CTLFLAG_RW,
-    &ipintrq.ifq_maxlen, 0, "Maximum size of the IP input queue");
-SYSCTL_INT(_net_inet_ip, IPCTL_INTRQDROPS, intr_queue_drops, CTLFLAG_RD,
-    &ipintrq.ifq_drops, 0, "Number of packets dropped from the IP input queue");
 
 struct ip_stats ipstats_percpu[MAXCPU];
 #ifdef SMP
@@ -251,7 +242,6 @@ SYSCTL_STRUCT(_net_inet_ip, IPCTL_STATS, stats, CTLFLAG_RW,
     (((((x) & 0xF) | ((((x) >> 8) & 0xF) << 4)) ^ (y)) & IPREASS_HMASK)
 
 static struct ipq ipq[IPREASS_NHASH];
-const  int    ipintrq_present = 1;
 
 #ifdef IPCTL_DEFMTU
 SYSCTL_INT(_net_inet_ip, IPCTL_DEFMTU, mtu, CTLFLAG_RW,
@@ -355,7 +345,6 @@ ip_init(void)
 	maxfragsperpacket = 16;
 
 	ip_id = time_second & 0xffff;
-	ipintrq.ifq_maxlen = ipqmaxlen;
 
 	/*
 	 * Initialize IP statistics counters for each CPU.
