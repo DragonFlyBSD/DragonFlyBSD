@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.22 2007/11/17 20:28:46 pavalos Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.23 2007/11/17 23:47:17 pavalos Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -276,14 +276,17 @@ sesasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 	{
 		cam_status status;
 		struct ccb_getdev *cgd;
+		int inq_len;
 
 		cgd = (struct ccb_getdev *)arg;
+
+		inq_len = cgd->inq_data.additional_length + 4;
 
 		/*
 		 * PROBLEM: WE NEED TO LOOK AT BYTES 48-53 TO SEE IF THIS IS
 		 * PROBLEM: IS A SAF-TE DEVICE.
 		 */
-		switch (ses_type(&cgd->inq_data, cgd->inq_len)) {
+		switch (ses_type(&cgd->inq_data, inq_len)) {
 		case SES_SES:
 		case SES_SES_SCSI2:
 		case SES_SES_PASSTHROUGH:
@@ -733,9 +736,6 @@ static enctyp
 ses_type(void *buf, int buflen)
 {
 	unsigned char *iqd = buf;
-
-	if (buflen == 0)
-		buflen = 256;	/* per SPC-2 */
 
 	if (buflen < 8+SEN_ID_LEN)
 		return (SES_NONE);
