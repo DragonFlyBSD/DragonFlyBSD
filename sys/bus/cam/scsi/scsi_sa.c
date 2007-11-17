@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.22 2007/11/17 20:28:46 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.23 2007/11/17 22:41:11 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -1471,36 +1471,36 @@ saregister(struct cam_periph *periph, void *arg)
 	dev_ops_add(&sa_ops, SA_UNITMASK, SA_UNIT(periph->unit_number));
 	make_dev(&sa_ops, SAMINOR(SA_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_R), UID_ROOT, GID_OPERATOR,
-	    0660, "r%s%d.ctl", periph->periph_name, periph->unit_number);
+	    0660, "%s%d.ctl", periph->periph_name, periph->unit_number);
 
 	make_dev(&sa_ops, SAMINOR(SA_NOT_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_R), UID_ROOT, GID_OPERATOR,
-	    0660, "r%s%d", periph->periph_name, periph->unit_number);
+	    0660, "%s%d", periph->periph_name, periph->unit_number);
 
 	make_dev(&sa_ops, SAMINOR(SA_NOT_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_NR), UID_ROOT, GID_OPERATOR,
-	    0660, "nr%s%d", periph->periph_name, periph->unit_number);
+	    0660, "n%s%d", periph->periph_name, periph->unit_number);
 
 	make_dev(&sa_ops, SAMINOR(SA_NOT_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_ER), UID_ROOT, GID_OPERATOR,
-	    0660, "er%s%d", periph->periph_name, periph->unit_number);
+	    0660, "e%s%d", periph->periph_name, periph->unit_number);
 
 	for (i = 0; i < SA_NUM_MODES; i++) {
 
 		make_dev(&sa_ops,
 		    SAMINOR(SA_NOT_CTLDEV, periph->unit_number, i, SA_ATYPE_R),
-		    UID_ROOT, GID_OPERATOR, 0660, "r%s%d.%d",
+		    UID_ROOT, GID_OPERATOR, 0660, "%s%d.%d",
 		    periph->periph_name, periph->unit_number, i);
 
 		make_dev(&sa_ops,
 		    SAMINOR(SA_NOT_CTLDEV, periph->unit_number, i, SA_ATYPE_NR),
-		    UID_ROOT, GID_OPERATOR, 0660, "nr%s%d.%d",
+		    UID_ROOT, GID_OPERATOR, 0660, "n%s%d.%d",
 		    periph->periph_name, periph->unit_number, i);
 
 
 		make_dev(&sa_ops,
 		    SAMINOR(SA_NOT_CTLDEV, periph->unit_number, i, SA_ATYPE_ER),
-		    UID_ROOT, GID_OPERATOR, 0660, "er%s%d.%d",
+		    UID_ROOT, GID_OPERATOR, 0660, "e%s%d.%d",
 		    periph->periph_name, periph->unit_number, i);
 	}
 
