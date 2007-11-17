@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.20 2007/11/13 00:28:27 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.21 2007/11/17 20:28:46 pavalos Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -212,7 +212,7 @@ static struct periph_driver chdriver =
 	TAILQ_HEAD_INITIALIZER(chdriver.units), /* generation */ 0
 };
 
-DATA_SET(periphdriver_set, chdriver);
+PERIPHDRIVER_DECLARE(ch, chdriver);
 
 static struct dev_ops ch_ops = {
 	{ "ch", CH_CDEV_MAJOR, 0 },

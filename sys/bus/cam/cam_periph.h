@@ -26,22 +26,42 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.h,v 1.6.2.1 2000/05/07 18:16:49 n_hibma Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.6 2006/04/30 20:23:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.7 2007/11/17 20:28:46 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_PERIPH_H
 #define _CAM_CAM_PERIPH_H 1
 
 #include <sys/queue.h>
-#ifndef _SYS_LINKER_SET_H_
-#include <sys/linker_set.h>
-#endif
 
 #ifdef _KERNEL
 
 extern struct cam_periph *xpt_periph;
 
-SET_DECLARE(periphdriver_set, struct periph_driver);
+extern struct periph_driver **periph_drivers;
+void periphdriver_register(void *);
+
+#include <sys/module.h>
+#define PERIPHDRIVER_DECLARE(name, driver) \
+	static int name ## _modevent(module_t mod, int type, void *data) \
+	{ \
+		switch (type) { \
+		case MOD_LOAD: \
+			periphdriver_register(data); \
+			break; \
+		case MOD_UNLOAD: \
+			kprintf(#name " module unload - not possible for this module type\n"); \
+			return EINVAL; \
+		} \
+		return 0; \
+	} \
+	static moduledata_t name ## _mod = { \
+		#name, \
+		name ## _modevent, \
+		(void *)&driver \
+	}; \
+	DECLARE_MODULE(name, name ## _mod, SI_SUB_DRIVERS, SI_ORDER_ANY); \
+	MODULE_DEPEND(name, cam, 1, 1, 1)
 
 typedef void (periph_init_t)(void); /*
 				     * Callback informing the peripheral driver

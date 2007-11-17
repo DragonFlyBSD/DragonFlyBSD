@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.41 2007/11/14 02:05:35 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.42 2007/11/17 20:28:46 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -496,7 +496,7 @@ static struct periph_driver dadriver =
 	TAILQ_HEAD_INITIALIZER(dadriver.units), /* generation */ 0
 };
 
-DATA_SET(periphdriver_set, dadriver);
+PERIPHDRIVER_DECLARE(da, dadriver);
 
 /* For 2.2-stable support */
 #ifndef D_DISK

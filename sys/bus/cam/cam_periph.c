@@ -27,14 +27,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.23 2007/11/14 02:05:35 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.24 2007/11/17 20:28:46 pavalos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
 #include <sys/malloc.h>
-#include <sys/linker_set.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
 #include <sys/devicestat.h>
@@ -64,6 +63,29 @@ static	u_int		camperiphunit(struct periph_driver *p_drv,
 static	void		camperiphdone(struct cam_periph *periph, 
 					union ccb *done_ccb);
 static  void		camperiphfree(struct cam_periph *periph);
+
+static int nperiph_drivers;
+struct periph_driver **periph_drivers;
+
+void
+periphdriver_register(void *data)
+{
+	struct periph_driver **newdrivers, **old;
+	int ndrivers;
+
+	ndrivers = nperiph_drivers + 2;
+	newdrivers = kmalloc(sizeof(*newdrivers) * ndrivers, M_TEMP, M_WAITOK);
+	if (periph_drivers)
+		bcopy(periph_drivers, newdrivers,
+		      sizeof(*newdrivers) * nperiph_drivers);
+	newdrivers[nperiph_drivers] = (struct periph_driver *)data;
+	newdrivers[nperiph_drivers + 1] = NULL;
+	old = periph_drivers;
+	periph_drivers = newdrivers;
+	if (old)
+		kfree(old, M_TEMP);
+	nperiph_drivers++;
+}
 
 cam_status
 cam_periph_alloc(periph_ctor_t *periph_ctor,
@@ -109,7 +131,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	
 	init_level++;
 
-	SET_FOREACH(p_drv, periphdriver_set) {
+	for (p_drv = periph_drivers; *p_drv != NULL; p_drv++) {
 		if (strcmp((*p_drv)->driver_name, name) == 0)
 			break;
 	}
@@ -195,7 +217,7 @@ cam_periph_find(struct cam_path *path, char *name)
 	struct periph_driver **p_drv;
 	struct cam_periph *periph;
 
-	SET_FOREACH(p_drv, periphdriver_set) {
+	for (p_drv = periph_drivers; *p_drv != NULL; p_drv++) {
 		if (name != NULL && (strcmp((*p_drv)->driver_name, name) != 0))
 			continue;
 
@@ -383,7 +405,7 @@ camperiphfree(struct cam_periph *periph)
 {
 	struct periph_driver **p_drv;
 
-	SET_FOREACH(p_drv, periphdriver_set) {
+	for (p_drv = periph_drivers; *p_drv != NULL; p_drv++) {
 		if (strcmp((*p_drv)->driver_name, periph->periph_name) == 0)
 			break;
 	}

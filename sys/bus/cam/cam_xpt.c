@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.38 2007/11/14 02:05:35 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.39 2007/11/17 20:28:46 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -592,8 +592,8 @@ static struct periph_driver probe_driver =
 	TAILQ_HEAD_INITIALIZER(probe_driver.units)
 };
 
-DATA_SET(periphdriver_set, xpt_driver);
-DATA_SET(periphdriver_set, probe_driver);
+PERIPHDRIVER_DECLARE(xpt, xpt_driver);
+PERIPHDRIVER_DECLARE(probe, probe_driver);
 
 #define XPT_CDEV_MAJOR 104
 
@@ -1173,7 +1173,7 @@ ptstartover:
 		cur_generation = xsoftc.generation;
 
 		/* first find our driver in the list of drivers */
-		SET_FOREACH(p_drv, periphdriver_set) {
+		for (p_drv = periph_drivers; *p_drv != NULL; p_drv++) {
 			if (strcmp((*p_drv)->driver_name, name) == 0)
 				break;
 		}
@@ -2333,7 +2333,7 @@ xptplistperiphfunc(struct cam_periph *periph, void *arg)
 			 * peripheral driver linker set entry would cost
 			 * more in the long run than doing this quick lookup.
 			 */
-			SET_FOREACH(pdrv, periphdriver_set) {
+			for (pdrv = periph_drivers; *pdrv != NULL; pdrv++) {
 				if (strcmp((*pdrv)->driver_name,
 				    periph->periph_name) == 0)
 					break;
@@ -2535,14 +2535,14 @@ xptpdrvtraverse(struct periph_driver **start_pdrv,
 	 * change while the system is running), the list traversal should
 	 * be modified to work like the other traversal functions.
 	 */
-	SET_FOREACH(pdrv, periphdriver_set) {
-		if (start_pdrv == NULL || start_pdrv == pdrv) {
-			retval = tr_func(pdrv, arg);
-			if (retval == 0)
-				return(retval);
-			start_pdrv = NULL; /* traverse remainder */
-		}
+	for (pdrv = (start_pdrv ? start_pdrv : periph_drivers);
+	     *pdrv != NULL; pdrv++) {
+		retval = tr_func(pdrv, arg);
+
+		if (retval == 0)
+			return(retval);
 	}
+
 	return(retval);
 }
 
@@ -6081,6 +6081,7 @@ static void
 xpt_finishconfig(struct cam_periph *periph, union ccb *done_ccb)
 {
 	struct	periph_driver **p_drv;
+	int	i;
 
 	if (done_ccb != NULL) {
 		CAM_DEBUG(done_ccb->ccb_h.path, CAM_DEBUG_TRACE,
@@ -6105,8 +6106,9 @@ xpt_finishconfig(struct cam_periph *periph, union ccb *done_ccb)
 	if (busses_to_config == 0) {
 		/* Register all the peripheral drivers */
 		/* XXX This will have to change when we have loadable modules */
-		SET_FOREACH(p_drv, periphdriver_set) {
-			(*p_drv)->init();
+		p_drv = periph_drivers;
+		for (i = 0; p_drv[i] != NULL; i++) {
+			(*p_drv[i]->init)();
 		}
 
 		/*

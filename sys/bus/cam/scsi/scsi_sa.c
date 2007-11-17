@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.21 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.22 2007/11/17 20:28:46 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -416,7 +416,7 @@ static struct periph_driver sadriver =
 	TAILQ_HEAD_INITIALIZER(sadriver.units), /* generation */ 0
 };
 
-DATA_SET(periphdriver_set, sadriver);
+PERIPHDRIVER_DECLARE(sa, sadriver);
 
 /* For 2.2-stable support */
 #ifndef D_TAPE

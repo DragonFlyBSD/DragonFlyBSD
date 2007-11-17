@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.21 2007/11/12 21:33:51 pavalos Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.22 2007/11/17 20:28:46 pavalos Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -175,7 +175,7 @@ static struct periph_driver sesdriver = {
 	TAILQ_HEAD_INITIALIZER(sesdriver.units), /* generation */ 0
 };
 
-DATA_SET(periphdriver_set, sesdriver);
+PERIPHDRIVER_DECLARE(ses, sesdriver);
 
 static struct dev_ops ses_ops = {
 	{ "ses", SES_CDEV_MAJOR, 0 }, 

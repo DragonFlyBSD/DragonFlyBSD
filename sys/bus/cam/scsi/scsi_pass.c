@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.21 2007/11/12 23:48:52 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.22 2007/11/17 20:28:46 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -108,7 +108,7 @@ static struct periph_driver passdriver =
 	TAILQ_HEAD_INITIALIZER(passdriver.units), /* generation */ 0
 };
 
-DATA_SET(periphdriver_set, passdriver);
+PERIPHDRIVER_DECLARE(pass, passdriver);
 
 static struct dev_ops pass_ops = {
 	{ "pass", PASS_CDEV_MAJOR, 0 },

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.18 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.19 2007/11/17 20:28:46 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -117,7 +117,7 @@ static struct periph_driver ptdriver =
 	TAILQ_HEAD_INITIALIZER(ptdriver.units), /* generation */ 0
 };
 
-DATA_SET(periphdriver_set, ptdriver);
+PERIPHDRIVER_DECLARE(pt, ptdriver);
 
 #define PT_CDEV_MAJOR 61
 

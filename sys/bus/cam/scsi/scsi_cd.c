@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.34 2007/11/14 02:05:35 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.35 2007/11/17 20:28:46 pavalos Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -293,7 +293,7 @@ static struct periph_driver cddriver =
 	TAILQ_HEAD_INITIALIZER(cddriver.units), /* generation */ 0
 };
 
-DATA_SET(periphdriver_set, cddriver);
+PERIPHDRIVER_DECLARE(cd, cddriver);
 
 /* For 2.2-stable support */
 #ifndef D_DISK

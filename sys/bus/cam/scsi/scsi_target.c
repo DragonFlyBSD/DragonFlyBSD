@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.17 2007/11/13 14:09:32 sephe Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.18 2007/11/17 20:28:46 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -151,7 +151,7 @@ static struct periph_driver targdriver =
 	targinit, "targ",
 	TAILQ_HEAD_INITIALIZER(targdriver.units), /* generation */ 0
 };
-DATA_SET(periphdriver_set, targdriver);
+PERIPHDRIVER_DECLARE(targ, targdriver);
 
 static MALLOC_DEFINE(M_TARG, "TARG", "TARG data");
 
