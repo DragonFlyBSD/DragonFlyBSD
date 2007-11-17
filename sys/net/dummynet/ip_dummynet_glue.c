@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.1 2007/11/16 02:45:45 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.2 2007/11/17 08:07:27 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -72,6 +72,9 @@ ip_dn_queue(struct mbuf *m)
 	lwkt_port_t port;
 
 	KASSERT(m->m_type != MT_TAG, ("mbuf contains old style tag!\n"));
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
+		("mbuf is not tagged for dummynet!\n"));
 
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
@@ -90,6 +93,9 @@ ip_dn_packet_free(struct dn_pkt *pkt)
 	struct mbuf *m = pkt->dn_m;
 
 	KASSERT(m->m_type != MT_TAG, ("mbuf contains old style tag!\n"));
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
+		("mbuf is not tagged for dummynet!\n"));
 
 	if (pkt->cpuid == mycpuid) {
 		ip_dn_freepkt(pkt);
@@ -131,6 +137,9 @@ ip_dn_packet_redispatch(struct dn_pkt *pkt)
 
 	m = pkt->dn_m;
 	KASSERT(m->m_type != MT_TAG, ("mbuf contains old style tag!\n"));
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
+		("mbuf is not tagged for dummynet!\n"));
 
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0, dispatch);
@@ -172,10 +181,14 @@ ip_dn_freepkt_dispatch(struct netmsg *nmsg)
 
 	nmp = (struct netmsg_packet *)nmsg;
 	m = nmp->nm_packet;
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
+		("mbuf is not tagged for dummynet!\n"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-	pkt = m_tag_data(mtag);
+	KKASSERT(mtag != NULL);
 
+	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
 		("%s: dummynet packet was delivered to wrong cpu! "
 		 "target cpuid %d, mycpuid %d\n", __func__,
@@ -199,6 +212,9 @@ ip_dn_dispatch(struct netmsg *nmsg)
 
 	nmp = (struct netmsg_packet *)nmsg;
 	m = nmp->nm_packet;
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
+		("mbuf is not tagged for dummynet!\n"));
 
 	if (DUMMYNET_LOADED) {
 		if (ip_dn_io_ptr(m) == 0)
@@ -209,6 +225,8 @@ ip_dn_dispatch(struct netmsg *nmsg)
 	 * ip_dn_io_ptr() failed or dummynet(4) is not loaded
 	 */
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+	KKASSERT(mtag != NULL);
+
 	pkt = m_tag_data(mtag);
 	ip_dn_packet_free(pkt);
 }
@@ -226,10 +244,12 @@ ip_dn_ip_output(struct netmsg *nmsg)
 
 	nmp = (struct netmsg_packet *)nmsg;
 	m = nmp->nm_packet;
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
+		("mbuf is not tagged for dummynet!\n"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	KKASSERT(mtag != NULL);
-	KKASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED);
 
 	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
@@ -278,10 +298,12 @@ ip_dn_ip_input(struct netmsg *nmsg)
 
 	nmp = (struct netmsg_packet *)nmsg;
 	m = nmp->nm_packet;
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
+		("mbuf is not tagged for dummynet!\n"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	KKASSERT(mtag != NULL);
-	KKASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED);
 
 	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
@@ -316,10 +338,12 @@ ip_dn_ether_demux(struct netmsg *nmsg)
 
 	nmp = (struct netmsg_packet *)nmsg;
 	m = nmp->nm_packet;
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
+		("mbuf is not tagged for dummynet!\n"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	KKASSERT(mtag != NULL);
-	KKASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED);
 
 	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
@@ -364,10 +388,12 @@ ip_dn_ether_output(struct netmsg *nmsg)
 
 	nmp = (struct netmsg_packet *)nmsg;
 	m = nmp->nm_packet;
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
+		("mbuf is not tagged for dummynet!\n"));
 
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	KKASSERT(mtag != NULL);
-	KKASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED);
 
 	pkt = m_tag_data(mtag);
 	KASSERT(pkt->cpuid == mycpuid,
