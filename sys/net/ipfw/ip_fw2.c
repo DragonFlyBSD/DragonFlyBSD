@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.38 2007/11/16 02:45:45 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.39 2007/11/17 08:05:43 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1994,6 +1994,8 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	ipfw_insn *cmd;
 	const struct ipfw_flow_id *id;
 	struct dn_flow_id *fid;
+
+	M_ASSERTPKTHDR(m);
 
 	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt), MB_DONTWAIT);
 	if (mtag == NULL) {
