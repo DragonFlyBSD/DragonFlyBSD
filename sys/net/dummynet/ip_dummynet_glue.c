@@ -31,12 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.2 2007/11/17 08:07:27 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.3 2007/11/17 08:30:00 sephe Exp $
  */
 
 #include <sys/param.h>
+#include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/msgport.h>
+#include <sys/sysctl.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -64,6 +66,12 @@ static void	ip_dn_freepkt(struct dn_pkt *);
 
 ip_dn_io_t	*ip_dn_io_ptr;
 int		ip_dn_cpu = 0;
+
+TUNABLE_INT("net.inet.ip.dummynet.cpu", &ip_dn_cpu);
+
+SYSCTL_NODE(_net_inet_ip, OID_AUTO, dummynet, CTLFLAG_RW, 0, "Dummynet");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, cpu, CTLFLAG_RD,
+	   &ip_dn_cpu, 0, "CPU to run dummynet");
 
 void
 ip_dn_queue(struct mbuf *m)

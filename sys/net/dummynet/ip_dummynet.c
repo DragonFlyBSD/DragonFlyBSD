@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.49 2007/11/16 02:45:45 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.50 2007/11/17 08:30:00 sephe Exp $
  */
 
 #ifdef DUMMYNET_DEBUG
@@ -142,7 +142,7 @@ static int		dn_hz = 1000;
 
 static int	sysctl_dn_hz(SYSCTL_HANDLER_ARGS);
 
-SYSCTL_NODE(_net_inet_ip, OID_AUTO, dummynet, CTLFLAG_RW, 0, "Dummynet");
+SYSCTL_DECL(_net_inet_ip_dummynet);
 
 SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, hash_size, CTLFLAG_RW,
 	   &dn_hash_size, 0, "Default hash table size");
