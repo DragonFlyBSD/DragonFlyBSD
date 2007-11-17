@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.50 2007/11/17 08:30:00 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.51 2007/11/17 09:23:53 sephe Exp $
  */
 
 #ifdef DUMMYNET_DEBUG
@@ -1901,12 +1901,13 @@ dummynet_ctl(struct sockopt *sopt)
 static void
 dummynet_clock(systimer_t info __unused, struct intrframe *frame __unused)
 {
-    KASSERT(mycpu->gd_cpuid == ip_dn_cpu,
-	    ("systimer comes on a different cpu!\n"));
+    KASSERT(mycpuid == ip_dn_cpu,
+    	    ("dummynet systimer comes on cpu%d, should be %d!\n",
+	     mycpuid, ip_dn_cpu));
 
     crit_enter();
-    if (dn_netmsg.nm_lmsg.ms_flags & MSGF_DONE)
-	lwkt_sendmsg(cpu_portfn(mycpu->gd_cpuid), &dn_netmsg.nm_lmsg);
+    if (DUMMYNET_LOADED && (dn_netmsg.nm_lmsg.ms_flags & MSGF_DONE))
+	lwkt_sendmsg(cpu_portfn(mycpuid), &dn_netmsg.nm_lmsg);
     crit_exit();
 }
 
@@ -1933,25 +1934,21 @@ sysctl_dn_hz(SYSCTL_HANDLER_ARGS)
 }
 
 static void
-ip_dn_register_systimer(struct netmsg *msg)
+ip_dn_init_dispatch(struct netmsg *msg)
 {
-    systimer_init_periodic_nq(&dn_clock, dummynet_clock, NULL, dn_hz);
-    lwkt_replymsg(&msg->nm_lmsg, 0);
-}
+    int i, error = 0;
 
-static void
-ip_dn_deregister_systimer(struct netmsg *msg)
-{
-    systimer_del(&dn_clock);
-    lwkt_replymsg(&msg->nm_lmsg, 0);
-}
+    KASSERT(mycpuid == ip_dn_cpu,
+    	    ("%s runs on cpu%d, instead of cpu%d", __func__,
+	     mycpuid, ip_dn_cpu));
 
-static void
-ip_dn_init(void)
-{
-    struct netmsg smsg;
-    lwkt_port_t port;
-    int i;
+    crit_enter();
+
+    if (DUMMYNET_LOADED) {
+	kprintf("DUMMYNET already loaded\n");
+	error = EEXIST;
+	goto back;
+    }
 
     kprintf("DUMMYNET initialized (011031)\n");
 
@@ -1974,26 +1971,46 @@ ip_dn_init(void)
     ip_dn_io_ptr = dummynet_io;
 
     netmsg_init(&dn_netmsg, &netisr_adone_rport, 0, dummynet);
+    systimer_init_periodic_nq(&dn_clock, dummynet_clock, NULL, dn_hz);
 
-    netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_register_systimer);
-    port = cpu_portfn(ip_dn_cpu);
-    lwkt_domsg(port, &smsg.nm_lmsg, 0);
+back:
+    crit_exit();
+    lwkt_replymsg(&msg->nm_lmsg, error);
+}
+
+static void
+ip_dn_stop_dispatch(struct netmsg *msg)
+{
+    crit_enter();
+
+    dummynet_flush();
+
+    ip_dn_ctl_ptr = NULL;
+    ip_dn_io_ptr = NULL;
+
+    systimer_del(&dn_clock);
+
+    crit_exit();
+    lwkt_replymsg(&msg->nm_lmsg, 0);
+}
+
+static int
+ip_dn_init(void)
+{
+    struct netmsg smsg;
+
+    netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_init_dispatch);
+    lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
+    return smsg.nm_lmsg.ms_error;
 }
 
 static void
 ip_dn_stop(void)
 {
     struct netmsg smsg;
-    lwkt_port_t port;
 
-    netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_deregister_systimer);
-    port = cpu_portfn(ip_dn_cpu);
-    lwkt_domsg(port, &smsg.nm_lmsg, 0);
-
-    dummynet_flush();
-
-    ip_dn_ctl_ptr = NULL;
-    ip_dn_io_ptr = NULL;
+    netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_stop_dispatch);
+    lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
 
     netmsg_service_sync();
 }
@@ -2003,24 +2020,14 @@ dummynet_modevent(module_t mod, int type, void *data)
 {
     switch (type) {
     case MOD_LOAD:
-	crit_enter();
-	if (DUMMYNET_LOADED) {
-	    crit_exit();
-	    kprintf("DUMMYNET already loaded\n");
-	    return EEXIST;
-	}
-	ip_dn_init();
-	crit_exit();
-	break;
-    
+	return ip_dn_init();
+
     case MOD_UNLOAD:
 #ifndef KLD_MODULE
 	kprintf("dummynet statically compiled, cannot unload\n");
-	return EINVAL ;
+	return EINVAL;
 #else
-	crit_enter();
 	ip_dn_stop();
-	crit_exit();
 #endif
 	break;
 
