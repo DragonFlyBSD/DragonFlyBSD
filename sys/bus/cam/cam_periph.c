@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.25 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.26 2007/11/18 18:49:53 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1614,7 +1614,13 @@ cam_periph_error(union ccb *ccb, cam_flags camflags,
 					 /*getcount_only*/0);
 	}
 
-	if (error != 0 && bootverbose) {
+	/*
+	 * If we have an error and are booting verbosely, whine
+	 * *unless* this was a non-retryable selection timeout.
+	 */
+	if (error != 0 && bootverbose &&
+	    !(status == CAM_SEL_TIMEOUT && (camflags & CAM_RETRY_SELTO) == 0)) {
+
 
 		if (action_string == NULL)
 			action_string = "Unretryable Error";
