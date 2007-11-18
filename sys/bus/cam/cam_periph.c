@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.26 2007/11/18 18:49:53 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.27 2007/11/18 19:11:23 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1344,6 +1344,9 @@ camperiphscsisenseerror(union ccb *ccb, cam_flags camflags,
 
 		switch (err_action & SS_MASK) {
 		case SS_NOP:
+			action_string = "No Recovery Action Needed";
+			error = 0;
+			break;
 		case SS_RETRY:
 			action_string = "Retrying Command";
 			error = ERESTART;
