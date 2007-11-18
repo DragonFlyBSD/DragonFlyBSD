@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.26 2007/04/22 01:13:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.27 2007/11/18 13:00:28 sephe Exp $
  */
 
 #include "opt_inet6.h"
@@ -341,10 +341,7 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
 			break;
 
 		case IP_DUMMYNET_GET:
-			if (DUMMYNET_LOADED)
-				error = ip_dn_ctl_ptr(sopt);
-			else
-				error = ENOPROTOOPT;
+			error = ip_dn_sockopt(sopt);
 			break ;
 
 		case MRT_INIT:
@@ -396,10 +393,7 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
 		case IP_DUMMYNET_CONFIGURE:
 		case IP_DUMMYNET_DEL:
 		case IP_DUMMYNET_FLUSH:
-			if (DUMMYNET_LOADED)
-				error = ip_dn_ctl_ptr(sopt);
-			else
-				error = ENOPROTOOPT ;
+			error = ip_dn_sockopt(sopt);
 			break ;
 
 		case IP_RSVP_ON:

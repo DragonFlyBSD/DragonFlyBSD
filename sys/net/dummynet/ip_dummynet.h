@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.17 2007/11/16 02:45:45 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.18 2007/11/18 13:00:28 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -334,7 +334,13 @@ struct dn_pipe {		/* a pipe */
 };
 LIST_HEAD(dn_pipe_head, dn_pipe);
 
-typedef int	ip_dn_ctl_t(struct sockopt *);	/* raw_ip.c */
+struct dn_sopt {
+	int	dn_sopt_name;
+	void	*dn_sopt_arg;
+	size_t	dn_sopt_arglen;
+};
+
+typedef int	ip_dn_ctl_t(struct dn_sopt *);
 typedef int	ip_dn_io_t(struct mbuf *);
 
 extern ip_dn_ctl_t	*ip_dn_ctl_ptr;
@@ -343,6 +349,7 @@ extern ip_dn_io_t	*ip_dn_io_ptr;
 void	ip_dn_queue(struct mbuf *);
 void	ip_dn_packet_free(struct dn_pkt *);
 void	ip_dn_packet_redispatch(struct dn_pkt *);
+int	ip_dn_sockopt(struct sockopt *);
 
 #define	DUMMYNET_LOADED	(ip_dn_io_ptr != NULL)
 

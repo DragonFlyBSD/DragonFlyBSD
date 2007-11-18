@@ -31,13 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.3 2007/11/17 08:30:00 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.4 2007/11/18 13:00:28 sephe Exp $
  */
 
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/msgport.h>
+#include <sys/socketvar.h>
 #include <sys/sysctl.h>
 
 #include <net/if.h>
@@ -59,10 +60,15 @@ static void	ip_dn_ether_demux(struct netmsg *);
 static void	ip_dn_ip_input(struct netmsg *);
 static void	ip_dn_ip_output(struct netmsg *);
 
+static void	ip_dn_sockopt_dispatch(struct netmsg *);
 static void	ip_dn_freepkt_dispatch(struct netmsg *);
 static void	ip_dn_dispatch(struct netmsg *);
 
 static void	ip_dn_freepkt(struct dn_pkt *);
+
+static int	ip_dn_sockopt_flush(struct sockopt *);
+static int	ip_dn_sockopt_get(struct sockopt *);
+static int	ip_dn_sockopt_config(struct sockopt *);
 
 ip_dn_io_t	*ip_dn_io_ptr;
 int		ip_dn_cpu = 0;
@@ -155,6 +161,39 @@ ip_dn_packet_redispatch(struct dn_pkt *pkt)
 
 	port = cpu_portfn(pkt->cpuid);
 	lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
+}
+
+int
+ip_dn_sockopt(struct sockopt *sopt)
+{
+	int error = 0;
+
+	/* Disallow sets in really-really secure mode. */
+	if (sopt->sopt_dir == SOPT_SET) {
+		if (securelevel >= 3)
+			return EPERM;
+	}
+
+	switch (sopt->sopt_name) {
+	case IP_DUMMYNET_GET:
+		error = ip_dn_sockopt_get(sopt);
+		break;
+
+	case IP_DUMMYNET_FLUSH:
+		error = ip_dn_sockopt_flush(sopt);
+		break;
+
+	case IP_DUMMYNET_DEL:
+	case IP_DUMMYNET_CONFIGURE:
+		error = ip_dn_sockopt_config(sopt);
+		break;
+
+	default:
+		kprintf("%s -- unknown option %d\n", __func__, sopt->sopt_name);
+		error = EINVAL;
+		break;
+	}
+	return error;
 }
 
 static void
@@ -421,4 +460,90 @@ ip_dn_ether_output(struct netmsg *nmsg)
 
 	if (unref_priv)
 		unref_priv(priv);
+}
+
+static void
+ip_dn_sockopt_dispatch(struct netmsg *nmsg)
+{
+	lwkt_msg *msg = &nmsg->nm_lmsg;
+	struct dn_sopt *dn_sopt = msg->u.ms_resultp;
+	int error;
+
+	KASSERT(ip_dn_cpu == mycpuid,
+		("%s: dummynet sockopt is done on wrong cpu! "
+		 "dummynet cpuid %d, mycpuid %d\n", __func__,
+		 ip_dn_cpu, mycpuid));
+
+	if (DUMMYNET_LOADED)
+		error = ip_dn_ctl_ptr(dn_sopt);
+	else
+		error = ENOPROTOOPT;
+	lwkt_replymsg(msg, error);
+}
+
+static int
+ip_dn_sockopt_flush(struct sockopt *sopt)
+{
+	struct dn_sopt dn_sopt;
+	struct netmsg smsg;
+
+	bzero(&dn_sopt, sizeof(dn_sopt));
+	dn_sopt.dn_sopt_name = sopt->sopt_name;
+
+	netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_sockopt_dispatch);
+	smsg.nm_lmsg.u.ms_resultp = &dn_sopt;
+	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
+
+	return smsg.nm_lmsg.ms_error;
+}
+
+static int
+ip_dn_sockopt_get(struct sockopt *sopt)
+{
+	struct dn_sopt dn_sopt;
+	struct netmsg smsg;
+	int error;
+
+	bzero(&dn_sopt, sizeof(dn_sopt));
+	dn_sopt.dn_sopt_name = sopt->sopt_name;
+
+	netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_sockopt_dispatch);
+	smsg.nm_lmsg.u.ms_resultp = &dn_sopt;
+	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
+
+	error = smsg.nm_lmsg.ms_error;
+	if (error) {
+		KKASSERT(dn_sopt.dn_sopt_arg == NULL);
+		KKASSERT(dn_sopt.dn_sopt_arglen == 0);
+		return error;
+	}
+
+	error = sooptcopyout(sopt, dn_sopt.dn_sopt_arg, dn_sopt.dn_sopt_arglen);
+	kfree(dn_sopt.dn_sopt_arg, M_TEMP);
+	return error;
+}
+
+static int
+ip_dn_sockopt_config(struct sockopt *sopt)
+{
+	struct dn_ioc_pipe tmp_ioc_pipe;
+	struct dn_sopt dn_sopt;
+	struct netmsg smsg;
+	int error;
+
+	error = sooptcopyin(sopt, &tmp_ioc_pipe, sizeof(tmp_ioc_pipe),
+			    sizeof(tmp_ioc_pipe));
+	if (error)
+		return error;
+
+	bzero(&dn_sopt, sizeof(dn_sopt));
+	dn_sopt.dn_sopt_name = sopt->sopt_name;
+	dn_sopt.dn_sopt_arg = &tmp_ioc_pipe;
+	dn_sopt.dn_sopt_arglen = sizeof(tmp_ioc_pipe);
+
+	netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_sockopt_dispatch);
+	smsg.nm_lmsg.u.ms_resultp = &dn_sopt;
+	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
+
+	return smsg.nm_lmsg.ms_error;
 }

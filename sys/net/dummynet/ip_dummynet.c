@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.51 2007/11/17 09:23:53 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.52 2007/11/18 13:00:28 sephe Exp $
  */
 
 #ifdef DUMMYNET_DEBUG
@@ -653,10 +653,10 @@ dummynet(struct netmsg *msg)
     heaps[1] = &wfq_ready_heap;		/* WF2Q queues */
     heaps[2] = &extract_heap;		/* Delay line */
 
-    crit_enter();
-
     /* Reply ASAP */
+    crit_enter();
     lwkt_replymsg(&msg->nm_lmsg, 0);
+    crit_exit();
 
     curr_time++;
     for (i = 0; i < 3; i++) {
@@ -681,8 +681,6 @@ dummynet(struct netmsg *msg)
 
     /* Sweep pipes trying to expire idle flow_queues */
     dn_iterate_pipe(dn_expire_pipe_cb, NULL);
-
-    crit_exit();
 }
 
 /*
@@ -1028,8 +1026,6 @@ dummynet_io(struct mbuf *m)
     struct dn_flow_queue *q = NULL;
     int is_pipe, pipe_nr;
 
-    crit_enter();
-
     tag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
     pkt = m_tag_data(tag);
 
@@ -1161,11 +1157,9 @@ dummynet_io(struct mbuf *m)
 	}
     }
 done:
-    crit_exit();
     return 0;
 
 dropit:
-    crit_exit();
     if (q)
 	q->drops++;
     return ENOBUFS;
@@ -1264,8 +1258,6 @@ dummynet_flush(void)
     struct dn_flow_set *fs;
     int i;
 
-    crit_enter();
-
     /*
      * Prevent future matches...
      */
@@ -1293,8 +1285,6 @@ dummynet_flush(void)
     heap_free(&ready_heap);
     heap_free(&wfq_ready_heap);
     heap_free(&extract_heap);
-
-    crit_exit();
 
     /*
      * Now purge all queued pkts and delete all pipes
@@ -1461,8 +1451,6 @@ config_pipe(struct dn_ioc_pipe *ioc_pipe)
     if (ioc_pipe->pipe_nr > DN_PIPE_NR_MAX || ioc_pipe->pipe_nr < 0)
 	return EINVAL;
 
-    crit_enter();
-
     error = EINVAL;
     if (ioc_pipe->pipe_nr != 0) {	/* This is a pipe */
 	struct dn_pipe *x, *p;
@@ -1549,7 +1537,6 @@ config_pipe(struct dn_ioc_pipe *ioc_pipe)
     error = 0;
 
 back:
-    crit_exit();
     return error;
 }
 
@@ -1625,8 +1612,6 @@ delete_pipe(const struct dn_ioc_pipe *ioc_pipe)
     if (ioc_pipe->pipe_nr > DN_NR_HASH_MAX || ioc_pipe->pipe_nr < 0)
     	return EINVAL;
 
-    crit_enter();
-
     error = EINVAL;
     if (ioc_pipe->pipe_nr != 0) {	/* This is an old-style pipe */
 	/* Locate pipe */
@@ -1672,7 +1657,6 @@ delete_pipe(const struct dn_ioc_pipe *ioc_pipe)
     error = 0;
 
 back:
-    crit_exit();
     return error;
 }
 
@@ -1822,13 +1806,10 @@ dn_copyout_fs_cb(struct dn_flow_set *fs, void *bp0)
 }
 
 static int
-dummynet_get(struct sockopt *sopt)
+dummynet_get(struct dn_sopt *dn_sopt)
 {
     char *buf, *bp;
     size_t size = 0;
-    int error = 0;
-
-    crit_enter();
 
     /*
      * Compute size of data structures: list of pipes and flow_sets.
@@ -1843,31 +1824,23 @@ dummynet_get(struct sockopt *sopt)
     dn_iterate_pipe(dn_copyout_pipe_cb, &bp);
     dn_iterate_flowset(dn_copyout_fs_cb, &bp);
 
-    crit_exit();
-
-    error = sooptcopyout(sopt, buf, size);
-    kfree(buf, M_TEMP);
-    return error;
+    /* Temp memory will be freed by caller */
+    dn_sopt->dn_sopt_arg = buf;
+    dn_sopt->dn_sopt_arglen = size;
+    return 0;
 }
 
 /*
  * Handler for the various dummynet socket options (get, flush, config, del)
  */
 static int
-dummynet_ctl(struct sockopt *sopt)
+dummynet_ctl(struct dn_sopt *dn_sopt)
 {
-    struct dn_ioc_pipe tmp_ioc_pipe;
     int error = 0;
 
-    /* Disallow sets in really-really secure mode. */
-    if (sopt->sopt_dir == SOPT_SET) {
-	if (securelevel >= 3)
-	    return EPERM;
-    }
-
-    switch (sopt->sopt_name) {
+    switch (dn_sopt->dn_sopt_name) {
     case IP_DUMMYNET_GET:
-	error = dummynet_get(sopt);
+	error = dummynet_get(dn_sopt);
 	break;
 
     case IP_DUMMYNET_FLUSH:
@@ -1875,23 +1848,17 @@ dummynet_ctl(struct sockopt *sopt)
 	break;
 
     case IP_DUMMYNET_CONFIGURE:
-	error = sooptcopyin(sopt, &tmp_ioc_pipe, sizeof(tmp_ioc_pipe),
-			    sizeof(tmp_ioc_pipe));
-	if (error)
-	    break;
-	error = config_pipe(&tmp_ioc_pipe);
+	KKASSERT(dn_sopt->dn_sopt_arglen == sizeof(struct dn_ioc_pipe));
+	error = config_pipe(dn_sopt->dn_sopt_arg);
 	break;
 
     case IP_DUMMYNET_DEL:	/* Remove a pipe or flow_set */
-	error = sooptcopyin(sopt, &tmp_ioc_pipe, sizeof(tmp_ioc_pipe),
-			    sizeof(tmp_ioc_pipe));
-	if (error)
-	    break;
-	error = delete_pipe(&tmp_ioc_pipe);
+	KKASSERT(dn_sopt->dn_sopt_arglen == sizeof(struct dn_ioc_pipe));
+	error = delete_pipe(dn_sopt->dn_sopt_arg);
 	break;
 
     default:
-	kprintf("%s -- unknown option %d\n", __func__, sopt->sopt_name);
+	kprintf("%s -- unknown option %d\n", __func__, dn_sopt->dn_sopt_name);
 	error = EINVAL;
 	break;
     }
