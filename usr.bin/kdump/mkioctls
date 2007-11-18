@@ -1,7 +1,7 @@
 set -e
 
 # $FreeBSD: src/usr.bin/kdump/mkioctls,v 1.15.2.5 2002/11/15 18:22:31 ru Exp $
-# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.7 2007/05/20 23:21:37 dillon Exp $
+# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.8 2007/11/18 17:53:02 pavalos Exp $
 
 if [ "x$1" = "x-s" ]; then
 	use_switch=1
@@ -58,8 +58,8 @@ BEGIN {
 	print "#include <netinet6/in6_var.h>"
 	print "#include <netinet6/nd6.h>"
 	print "#include <netinet6/ip6_mroute.h>"
-	print "#include <cam/cam.h>"
 	print "#include <stdio.h>"
+	print "#include <cam/cam.h>"
 	print ""
 	print ioctl_includes
 	print ""

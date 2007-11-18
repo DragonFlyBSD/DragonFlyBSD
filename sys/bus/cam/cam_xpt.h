@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.h,v 1.3 1999/12/29 04:54:27 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.h,v 1.3 2007/11/18 17:53:01 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_XPT_H
@@ -63,6 +63,8 @@ void			xpt_free_path(struct cam_path *path);
 int			xpt_path_comp(struct cam_path *path1,
 				      struct cam_path *path2);
 void			xpt_print_path(struct cam_path *path);
+int			xpt_path_string(struct cam_path *path, char *str,
+					size_t str_len);
 path_id_t		xpt_path_path_id(struct cam_path *path);
 target_id_t		xpt_path_target_id(struct cam_path *path);
 lun_id_t		xpt_path_lun_id(struct cam_path *path);

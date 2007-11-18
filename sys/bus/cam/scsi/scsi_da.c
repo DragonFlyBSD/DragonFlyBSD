@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.42 2007/11/17 20:28:46 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.43 2007/11/18 17:53:01 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -530,9 +530,12 @@ daopen(struct dev_open_args *ap)
 
 	unit = dkunit(dev);
 	part = dkpart(dev);
+	crit_enter();
 	periph = cam_extend_get(daperiphs, unit);
-	if (periph == NULL)
+	if (periph == NULL) {
+		crit_exit();
 		return (ENXIO);	
+	}
 
 	softc = (struct da_softc *)periph->softc;
 
@@ -541,16 +544,18 @@ daopen(struct dev_open_args *ap)
 	     unit, part));
 
 	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
+		crit_exit();
 		return (error); /* error code from tsleep */
 	}
 
 	if ((softc->flags & DA_FLAG_OPEN) == 0) {
-		if (cam_periph_acquire(periph) != CAM_REQ_CMP)
+		if (cam_periph_acquire(periph) != CAM_REQ_CMP) {
+			crit_exit();
 			return(ENXIO);
+		}
 		softc->flags |= DA_FLAG_OPEN;
 	}
 
-	crit_enter();
 	if ((softc->flags & DA_FLAG_PACK_INVALID) != 0) {
 		/* Invalidate our pack information. */
 		disk_invalidate(&softc->disk);
@@ -631,10 +636,6 @@ daopen(struct dev_open_args *ap)
 		info.d_secpercyl = softc->params.heads *
 				   softc->params.secs_per_track;
 		disk_setdiskinfo(&softc->disk, &info);
-
-		if ((softc->flags & DA_FLAG_PACK_REMOVABLE) != 0 &&
-		    (softc->quirks & DA_Q_NO_PREVENT) == 0)
-			daprevent(periph, PR_PREVENT);
 	
 		/*
 		 * Check to see whether or not the blocksize is set yet.
@@ -647,10 +648,11 @@ daopen(struct dev_open_args *ap)
 		}
 	}
 	
-	if (error != 0) {
+	if (error == 0) {
 		if ((softc->flags & DA_FLAG_PACK_REMOVABLE) != 0 &&
 		    (softc->quirks & DA_Q_NO_PREVENT) == 0)
-			daprevent(periph, PR_ALLOW);
+			daprevent(periph, PR_PREVENT);
+	} else {
 		softc->flags &= ~DA_FLAG_OPEN;
 		cam_periph_release(periph);
 	}
@@ -1588,10 +1590,8 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			else
 				sf = 0;
 
-			/* Retry selection timeouts */
-			sf |= SF_RETRY_SELTO;
-
-			if ((error = daerror(done_ccb, 0, sf)) == ERESTART) {
+			error = daerror(done_ccb, CAM_RETRY_SELTO, sf);
+			if (error == ERESTART) {
 				/*
 				 * A retry was scheuled, so
 				 * just return.
@@ -1648,6 +1648,8 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 						 /*timeout*/0,
 						 /*getcount_only*/0);
 		} else {
+			if ((done_ccb->ccb_h.status & CAM_DEV_QFRZN) != 0)
+				panic("REQ_CMP with QFRZN");
 			bp->b_resid = csio->resid;
 			if (csio->resid > 0)
 				bp->b_flags |= B_ERROR;
@@ -1729,8 +1731,8 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			 * Retry any UNIT ATTENTION type errors.  They
 			 * are expected at boot.
 			 */
-			error = daerror(done_ccb, 0, SF_RETRY_UA |
-					SF_RETRY_SELTO | SF_NO_PRINT);
+			error = daerror(done_ccb, CAM_RETRY_SELTO,
+					SF_RETRY_UA|SF_NO_PRINT);
 			if (error == ERESTART) {
 				/*
 				 * A retry was scheuled, so
@@ -1746,13 +1748,14 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				struct ccb_getdev cgd;
 
 				/* Don't wedge this device's queue */
-				cam_release_devq(done_ccb->ccb_h.path,
-						 /*relsim_flags*/0,
-						 /*reduction*/0,
-						 /*timeout*/0,
-						 /*getcount_only*/0);
-
 				status = done_ccb->ccb_h.status;
+				if ((status & CAM_DEV_QFRZN) != 0)
+					cam_release_devq(done_ccb->ccb_h.path,
+							 /*relsim_flags*/0,
+							 /*reduction*/0,
+							 /*timeout*/0,
+							 /*getcount_only*/0);
+
 
 				xpt_setup_ccb(&cgd.ccb_h, 
 					      done_ccb->ccb_h.path,
@@ -1780,15 +1783,21 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				 * unit not supported" (0x25) error.
 				 */
 				if ((have_sense) && (asc != 0x25)
-				 && (error_code == SSD_CURRENT_ERROR))
+				 && (error_code == SSD_CURRENT_ERROR)) {
+					const char *sense_key_desc;
+					const char *asc_desc;
+
+					scsi_sense_desc(sense_key, asc, ascq,
+							&cgd.inq_data,
+							&sense_key_desc,
+							&asc_desc);
 					ksnprintf(announce_buf,
 					    sizeof(announce_buf),
 						"Attempt to query device "
 						"size failed: %s, %s",
-						scsi_sense_key_text[sense_key],
-						scsi_sense_desc(asc,ascq,
-								&cgd.inq_data));
-				else { 
+						sense_key_desc,
+						asc_desc);
+				} else {
 					if (have_sense)
 						scsi_sense_print(
 							&done_ccb->csio);
@@ -1819,7 +1828,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			taskqueue_enqueue(taskqueue_thread[mycpuid],
 			    &softc->sysctl_task);
 		}
-		softc->state = DA_STATE_NORMAL;		
+		softc->state = DA_STATE_NORMAL;
 		/*
 		 * Since our peripheral may be invalidated by an error
 		 * above or an external event, we must release our CCB
@@ -1959,7 +1968,7 @@ dagetcapacity(struct cam_periph *periph)
 	ccb->ccb_h.ccb_bio = NULL;
  
 	error = cam_periph_runccb(ccb, daerror,
-				  /*cam_flags*/SF_RETRY_SELTO,
+				  /*cam_flags*/CAM_RETRY_SELTO,
 				  /*sense_flags*/SF_RETRY_UA,
 				  &softc->device_stats);
  
@@ -1994,7 +2003,7 @@ dagetcapacity(struct cam_periph *periph)
 	ccb->ccb_h.ccb_bio = NULL;
  
 	error = cam_periph_runccb(ccb, daerror,
-				  /*cam_flags*/SF_RETRY_SELTO,
+				  /*cam_flags*/CAM_RETRY_SELTO,
 				  /*sense_flags*/SF_RETRY_UA,
 				  &softc->device_stats);
  

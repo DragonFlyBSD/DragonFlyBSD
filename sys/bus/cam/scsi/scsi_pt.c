@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.19 2007/11/17 20:28:46 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.20 2007/11/18 17:53:01 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -585,9 +585,8 @@ ptdone(struct cam_periph *periph, union ccb *done_ccb)
 			else
 				sf = 0;
 
-			sf |= SF_RETRY_SELTO;
-
-			if ((error = pterror(done_ccb, 0, sf)) == ERESTART) {
+			error = pterror(done_ccb, CAM_RETRY_SELTO, sf);
+			if (error == ERESTART) {
 				/*
 				 * A retry was scheuled, so
 				 * just return.

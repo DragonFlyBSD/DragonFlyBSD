@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.15 2007/06/07 23:45:01 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.16 2007/11/18 17:53:02 pavalos Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -79,6 +79,8 @@ static __inline u_long ulmin(u_long a, u_long b) { return (a < b ? a : b); }
 /* Prototypes for non-quad routines. */
 u_int32_t karc4random (void);
 int	 bcmp (const void *, const void *, size_t);
+void	*bsearch (const void *, const void *, size_t,
+		     size_t, int (*)(const void *, const void *));
 #ifndef HAVE_INLINE_FFS
 int	 ffs (int);
 #endif

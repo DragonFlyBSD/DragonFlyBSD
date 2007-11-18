@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
-# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.10 2005/05/07 17:38:33 swildner Exp $
+# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.11 2007/11/18 17:53:01 pavalos Exp $
 #
 # The include file <bsd.libnames.mk> define library names. 
 # Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 
@@ -91,6 +91,7 @@ LIBREADLINE?=	${DESTDIR}${LIBDIR}/libreadline.a
 LIBRESOLV?=	${DESTDIR}${LIBDIR}/libresolv.a	# XXX doesn't exist
 LIBROKEN?=	${DESTDIR}${LIBDIR}/libroken.a	# XXX in secure dist, not base
 LIBRPCSVC?=	${DESTDIR}${LIBDIR}/librpcsvc.a
+LIBSBUF?=	${DESTDIR}${LIBDIR}/libsbuf.a
 LIBSCRYPT?=	"don't use LIBSCRYPT, use LIBCRYPT"
 LIBSMB?=	${DESTDIR}${LIBDIR}/libsmb.a
 LIBDESCRYPT?=	"don't use LIBDESCRYPT, use LIBCRYPT"

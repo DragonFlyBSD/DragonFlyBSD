@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_debug.h,v 1.6 1999/12/29 04:54:25 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_debug.h,v 1.3 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_debug.h,v 1.4 2007/11/18 17:53:01 pavalos Exp $
  */
 #ifndef	_CAM_CAM_DEBUG_H
 #define _CAM_CAM_DEBUG_H 1
@@ -54,7 +54,7 @@ typedef enum {
 extern struct cam_path *cam_dpath;
 /* Current debug levels set */
 extern u_int32_t cam_dflags;
-/* Printf delay value (to prevent scrolling */
+/* Printf delay value (to prevent scrolling) */
 extern u_int32_t cam_debug_delay;
  
 /* Debugging macros. */

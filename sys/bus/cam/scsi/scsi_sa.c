@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.23 2007/11/17 22:41:11 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.24 2007/11/18 17:53:01 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -1918,8 +1918,8 @@ samount(struct cam_periph *periph, int oflags, cdev_t dev)
 			QFRLS(ccb);
 			scsi_rewind(&ccb->csio, 1, sadone, MSG_SIMPLE_Q_TAG,
 			    FALSE, SSD_FULL_SIZE, REWIND_TIMEOUT);
-			error = cam_periph_runccb(ccb, saerror, 0,
-			    SF_NO_PRINT | SF_RETRY_SELTO | SF_RETRY_UA,
+			error = cam_periph_runccb(ccb, saerror, CAM_RETRY_SELTO,
+			    SF_NO_PRINT | SF_RETRY_UA,
 			    &softc->device_stats);
 			QFRLS(ccb);
 			if (error) {
@@ -1936,9 +1936,9 @@ samount(struct cam_periph *periph, int oflags, cdev_t dev)
 		scsi_read_block_limits(&ccb->csio, 5, sadone, MSG_SIMPLE_Q_TAG,
 		    rblim, SSD_FULL_SIZE, SCSIOP_TIMEOUT);
 
-		error = cam_periph_runccb(ccb, saerror, 0,
-		    SF_NO_PRINT | SF_RETRY_UA | SF_RETRY_SELTO,
-		    &softc->device_stats);
+		error = cam_periph_runccb(ccb, saerror, CAM_RETRY_SELTO,
+		    SF_NO_PRINT | SF_RETRY_UA, &softc->device_stats);
+
 		QFRLS(ccb);
 		xpt_release_ccb(ccb);
 
@@ -1952,7 +1952,7 @@ samount(struct cam_periph *periph, int oflags, cdev_t dev)
 			softc->max_blk = ~0;
 			softc->min_blk = 0;
 		} else {
-			if (softc->scsi_rev >= SCSI_REV_3) {
+			if (softc->scsi_rev >= SCSI_REV_SPC) {
 				softc->blk_gran = RBL_GRAN(rblim);
 			} else {
 				softc->blk_gran = 0;

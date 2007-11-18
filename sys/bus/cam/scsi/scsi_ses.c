@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.23 2007/11/17 23:47:17 pavalos Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.24 2007/11/18 17:53:01 pavalos Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -658,7 +658,8 @@ sesioctl(struct dev_ioctl_args *ap)
 	return (error);
 }
 
-#define	SES_FLAGS	SF_NO_PRINT | SF_RETRY_SELTO | SF_RETRY_UA
+#define	SES_CFLAGS	CAM_RETRY_SELTO
+#define	SES_FLAGS	SF_NO_PRINT | SF_RETRY_UA
 static int
 ses_runcmd(struct ses_softc *ssc, char *cdb, int cdbl, char *dptr, int *dlenp)
 {
@@ -687,7 +688,7 @@ ses_runcmd(struct ses_softc *ssc, char *cdb, int cdbl, char *dptr, int *dlenp)
 	    dlen, sizeof (struct scsi_sense_data), cdbl, 60 * 1000);
 	bcopy(cdb, ccb->csio.cdb_io.cdb_bytes, cdbl);
 
-	error = cam_periph_runccb(ccb, seserror, 0, SES_FLAGS, NULL);
+	error = cam_periph_runccb(ccb, seserror, SES_CFLAGS, SES_FLAGS, NULL);
 	if ((ccb->ccb_h.status & CAM_DEV_QFRZN) != 0)
 		cam_release_devq(ccb->ccb_h.path, 0, 0, 0, FALSE);
 	if (error) {

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.35 2007/11/17 20:28:46 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.36 2007/11/18 17:53:01 pavalos Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -1639,10 +1639,8 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 			else
 				sf = 0;
 
-			/* Retry selection timeouts */
-			sf |= SF_RETRY_SELTO;
-
-			if ((error = cderror(done_ccb, 0, sf)) == ERESTART) {
+			error = cderror(done_ccb, CAM_RETRY_SELTO, sf);
+			if (error == ERESTART) {
 				/*
 				 * A retry was scheuled, so
 				 * just return.
@@ -1742,8 +1740,8 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 			 * Retry any UNIT ATTENTION type errors.  They
 			 * are expected at boot.
 			 */
-			error = cderror(done_ccb, 0, SF_RETRY_UA |
-					SF_NO_PRINT | SF_RETRY_SELTO);
+			error = cderror(done_ccb, CAM_RETRY_SELTO,
+					SF_RETRY_UA | SF_NO_PRINT);
 			if (error == ERESTART) {
 				/*
 				 * A retry was scheuled, so
@@ -1794,23 +1792,20 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 				 * supported" (0x25) error.
 				 */
 				if ((have_sense) && (asc != 0x25)
-				 && (error_code == SSD_CURRENT_ERROR))
+				 && (error_code == SSD_CURRENT_ERROR)) {
+					const char *sense_key_desc;
+					const char *asc_desc;
+
+					scsi_sense_desc(sense_key, asc, ascq,
+							&cgd.inq_data,
+							&sense_key_desc,
+							&asc_desc);
 					ksnprintf(announce_buf,
 					    sizeof(announce_buf),
 						"Attempt to query device "
 						"size failed: %s, %s",
-						scsi_sense_key_text[sense_key],
-						scsi_sense_desc(asc,ascq,
-								&cgd.inq_data));
-				else if ((have_sense == 0)
-				      && ((status & CAM_STATUS_MASK) ==
-					   CAM_SCSI_STATUS_ERROR)
-				      && (csio->scsi_status ==
-					  SCSI_STATUS_BUSY)) {
-					ksnprintf(announce_buf,
-					    sizeof(announce_buf),
-					    "Attempt to query device "
-					    "size failed: SCSI status: BUSY");
+						sense_key_desc,
+						asc_desc);
 				} else if (SID_TYPE(&cgd.inq_data) == T_CDROM) {
 					/*
 					 * We only print out an error for
@@ -2740,8 +2735,8 @@ cdprevent(struct cam_periph *periph, int action)
 		     SSD_FULL_SIZE,
 		     /* timeout */60000);
 	
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			/*sense_flags*/SF_RETRY_UA|SF_NO_PRINT|SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			/*sense_flags*/SF_RETRY_UA|SF_NO_PRINT);
 
 	xpt_release_ccb(ccb);
 
@@ -3042,8 +3037,8 @@ cdsize(struct cam_periph *periph, u_int32_t *size)
 			   SSD_FULL_SIZE,
 			   /* timeout */20000);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA|SF_NO_PRINT|SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA|SF_NO_PRINT);
 
 	xpt_release_ccb(ccb);
 
@@ -3305,9 +3300,8 @@ cdreadtoc(struct cam_periph *periph, u_int32_t mode, u_int32_t start,
 
 	scsi_cmd->op_code = READ_TOC;
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO |
-			 sense_flags);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA | sense_flags);
 
 	xpt_release_ccb(ccb);
 
@@ -3353,8 +3347,8 @@ cdreadsubchannel(struct cam_periph *periph, u_int32_t mode,
 	scsi_ulto2b(len, (u_int8_t *)scsi_cmd->data_len);
 	scsi_cmd->control = 0;
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA|SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	xpt_release_ccb(ccb);
 
@@ -3413,8 +3407,8 @@ cdgetmode(struct cam_periph *periph, struct cd_mode_params *data,
 	 */
 	STAILQ_INSERT_TAIL(&softc->mode_queue, data, links);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA|SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	xpt_release_ccb(ccb);
 
@@ -3549,8 +3543,8 @@ cdsetmode(struct cam_periph *periph, struct cd_mode_params *data)
 	/* See comments in cdgetmode() and cd6byteworkaround(). */
 	STAILQ_INSERT_TAIL(&softc->mode_queue, data, links);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	xpt_release_ccb(ccb);
 
@@ -3608,8 +3602,8 @@ cdplay(struct cam_periph *periph, u_int32_t blk, u_int32_t len)
 		      cdb_len,
 		      /*timeout*/50 * 1000);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	xpt_release_ccb(ccb);
 
@@ -3653,8 +3647,8 @@ cdplaymsf(struct cam_periph *periph, u_int32_t startm, u_int32_t starts,
         scsi_cmd->end_s = ends;
         scsi_cmd->end_f = endf; 
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 	
 	xpt_release_ccb(ccb);
 
@@ -3697,8 +3691,8 @@ cdplaytracks(struct cam_periph *periph, u_int32_t strack, u_int32_t sindex,
         scsi_cmd->end_track = etrack;
         scsi_cmd->end_index = eindex;
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	xpt_release_ccb(ccb);
 
@@ -3736,8 +3730,8 @@ cdpause(struct cam_periph *periph, u_int32_t go)
         scsi_cmd->op_code = PAUSE;
 	scsi_cmd->resume = go;
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA |SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	xpt_release_ccb(ccb);
 
@@ -3764,8 +3758,8 @@ cdstartunit(struct cam_periph *periph, int load)
 			/* sense_len */ SSD_FULL_SIZE,
 			/* timeout */ 50000);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	xpt_release_ccb(ccb);
 
@@ -3792,8 +3786,8 @@ cdstopunit(struct cam_periph *periph, u_int32_t eject)
 			/* sense_len */ SSD_FULL_SIZE,
 			/* timeout */ 50000);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	xpt_release_ccb(ccb);
 
@@ -3836,8 +3830,8 @@ cdsetspeed(struct cam_periph *periph, u_int32_t rdspeed, u_int32_t wrspeed)
 	scsi_ulto2b(rdspeed, scsi_cmd->readspeed);
 	scsi_ulto2b(wrspeed, scsi_cmd->writespeed);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	xpt_release_ccb(ccb);
 
@@ -3908,8 +3902,8 @@ cdreportkey(struct cam_periph *periph, struct dvd_authinfo *authinfo)
 			/* sense_len */ SSD_FULL_SIZE,
 			/* timeout */ 50000);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	if (error != 0)
 		goto bailout;
@@ -4085,8 +4079,8 @@ cdsendkey(struct cam_periph *periph, struct dvd_authinfo *authinfo)
 		      /* sense_len */ SSD_FULL_SIZE,
 		      /* timeout */ 50000);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 bailout:
 
@@ -4218,8 +4212,8 @@ cdreaddvdstructure(struct cam_periph *periph, struct dvd_struct *dvdstruct)
 				/* sense_len */ SSD_FULL_SIZE,
 				/* timeout */ 50000);
 
-	error = cdrunccb(ccb, cderror, /*cam_flags*/0,
-			 /*sense_flags*/SF_RETRY_UA | SF_RETRY_SELTO);
+	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
+			 /*sense_flags*/SF_RETRY_UA);
 
 	if (error != 0)
 		goto bailout;

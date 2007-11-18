@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.21 2007/11/17 20:28:46 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.22 2007/11/18 17:53:01 pavalos Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -596,8 +596,8 @@ chdone(struct cam_periph *periph, union ccb *done_ccb)
 		} else {
 			int error;
 
-			error = cherror(done_ccb, 0, SF_RETRY_UA |
-					SF_NO_PRINT | SF_RETRY_SELTO);
+			error = cherror(done_ccb, CAM_RETRY_SELTO,
+					SF_RETRY_UA | SF_NO_PRINT);
 			/*
 			 * Retry any UNIT ATTENTION type errors.  They
 			 * are expected at boot.
@@ -850,8 +850,8 @@ chmove(struct cam_periph *periph, struct changer_move *cm)
 			 /* sense_len */ SSD_FULL_SIZE,
 			 /* timeout */ CH_TIMEOUT_MOVE_MEDIUM);
 
-	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/0,
-				  /*sense_flags*/ SF_RETRY_UA | SF_RETRY_SELTO,
+	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/CAM_RETRY_SELTO,
+				  /*sense_flags*/ SF_RETRY_UA,
 				  &softc->device_stats);
 
 	xpt_release_ccb(ccb);
@@ -913,8 +913,8 @@ chexchange(struct cam_periph *periph, struct changer_exchange *ce)
 			     /* sense_len */ SSD_FULL_SIZE,
 			     /* timeout */ CH_TIMEOUT_EXCHANGE_MEDIUM);
 
-	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/0,
-				  /*sense_flags*/ SF_RETRY_UA | SF_RETRY_SELTO,
+	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/CAM_RETRY_SELTO,
+				  /*sense_flags*/ SF_RETRY_UA,
 				  &softc->device_stats);
 
 	xpt_release_ccb(ccb);
@@ -959,8 +959,8 @@ chposition(struct cam_periph *periph, struct changer_position *cp)
 				 /* sense_len */ SSD_FULL_SIZE,
 				 /* timeout */ CH_TIMEOUT_POSITION_TO_ELEMENT);
 
-	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ 0,
-				  /*sense_flags*/ SF_RETRY_UA | SF_RETRY_SELTO,
+	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ CAM_RETRY_SELTO,
+				  /*sense_flags*/ SF_RETRY_UA,
 				  &softc->device_stats);
 
 	xpt_release_ccb(ccb);
@@ -1115,8 +1115,8 @@ chgetelemstatus(struct cam_periph *periph,
 				 /* sense_len */ SSD_FULL_SIZE,
 				 /* timeout */ CH_TIMEOUT_READ_ELEMENT_STATUS);
 
-	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ 0,
-				  /*sense_flags*/ SF_RETRY_UA | SF_RETRY_SELTO,
+	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ CAM_RETRY_SELTO,
+				  /*sense_flags*/ SF_RETRY_UA,
 				  &softc->device_stats);
 
 	if (error)
@@ -1151,8 +1151,8 @@ chgetelemstatus(struct cam_periph *periph,
 				 /* sense_len */ SSD_FULL_SIZE,
 				 /* timeout */ CH_TIMEOUT_READ_ELEMENT_STATUS);
 	
-	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ 0,
-				  /*sense_flags*/ SF_RETRY_UA | SF_RETRY_SELTO,
+	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ CAM_RETRY_SELTO,
+				  /*sense_flags*/ SF_RETRY_UA,
 				  &softc->device_stats);
 
 	if (error)
@@ -1230,8 +1230,8 @@ chielem(struct cam_periph *periph,
 				      /* sense_len */ SSD_FULL_SIZE,
 				      /* timeout */ timeout);
 
-	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ 0,
-				  /*sense_flags*/ SF_RETRY_UA | SF_RETRY_SELTO,
+	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ CAM_RETRY_SELTO,
+				  /*sense_flags*/ SF_RETRY_UA,
 				  &softc->device_stats);
 
 	xpt_release_ccb(ccb);
@@ -1317,8 +1317,8 @@ chsetvoltag(struct cam_periph *periph,
 			     /* sense_len */ SSD_FULL_SIZE,
 			     /* timeout */ CH_TIMEOUT_SEND_VOLTAG);
 	
-	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ 0,
-				  /*sense_flags*/ SF_RETRY_UA | SF_RETRY_SELTO,
+	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ CAM_RETRY_SELTO,
+				  /*sense_flags*/ SF_RETRY_UA,
 				  &softc->device_stats);
 
 	xpt_release_ccb(ccb);
@@ -1374,9 +1374,8 @@ chgetparams(struct cam_periph *periph)
 			/* sense_len */ SSD_FULL_SIZE,
 			/* timeout */ CH_TIMEOUT_MODE_SENSE);
 
-	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ 0,
-				  /* sense_flags */ SF_RETRY_UA |
-				  SF_NO_PRINT | SF_RETRY_SELTO,
+	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ CAM_RETRY_SELTO,
+				  /* sense_flags */ SF_RETRY_UA|SF_NO_PRINT,
 				  &softc->device_stats);
 
 	if (error) {
@@ -1387,9 +1386,9 @@ chgetparams(struct cam_periph *periph)
 				ccb->csio.cdb_io.cdb_bytes;
 
 			sms->byte2 &= ~SMS_DBD;
-			error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ 0,
-				  		  /*sense_flags*/ SF_RETRY_UA |
-						  SF_RETRY_SELTO,
+			error = cam_periph_runccb(ccb, cherror,
+						  /*cam_flags*/ CAM_RETRY_SELTO,
+						  /*sense_flags*/ SF_RETRY_UA,
 						  &softc->device_stats);
 		} else {
 			/*
@@ -1438,9 +1437,9 @@ chgetparams(struct cam_periph *periph)
 			/* sense_len */ SSD_FULL_SIZE,
 			/* timeout */ CH_TIMEOUT_MODE_SENSE);
 	
-	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ 0,
-				  /* sense_flags */ SF_RETRY_UA | SF_NO_PRINT |
-				  SF_RETRY_SELTO, &softc->device_stats);
+	error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ CAM_RETRY_SELTO,
+				  /* sense_flags */ SF_RETRY_UA | SF_NO_PRINT,
+				  &softc->device_stats);
 
 	if (error) {
 		if (dbd) {
@@ -1450,9 +1449,9 @@ chgetparams(struct cam_periph *periph)
 				ccb->csio.cdb_io.cdb_bytes;
 
 			sms->byte2 &= ~SMS_DBD;
-			error = cam_periph_runccb(ccb, cherror, /*cam_flags*/ 0,
-				  		  /*sense_flags*/ SF_RETRY_UA |
-						  SF_RETRY_SELTO,
+			error = cam_periph_runccb(ccb, cherror,
+						  /*cam_flags*/ CAM_RETRY_SELTO,
+						  /*sense_flags*/ SF_RETRY_UA,
 						  &softc->device_stats);
 		} else {
 			/*

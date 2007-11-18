@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.193 2007/11/16 02:45:44 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.194 2007/11/18 17:53:01 pavalos Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1293,6 +1293,7 @@ dev/sound/usb/uaudio_pcm.c	optional snd_uaudio usb
 #
 libkern/arc4random.c			standard
 libkern/bcd.c				standard
+libkern/bsearch.c			standard
 libkern/crc32.c				standard
 libkern/cmpdi2.c			standard
 libkern/ucmpdi2.c			standard

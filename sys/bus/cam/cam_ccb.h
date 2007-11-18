@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.9 2007/05/16 20:59:37 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.10 2007/11/18 17:53:01 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -35,6 +35,9 @@
 #include <sys/queue.h>
 #include <sys/cdefs.h>
 #include <sys/time.h>
+#ifdef CAM_NEW_TRAN_CODE
+#include <machine/limits.h>
+#endif
 #include <sys/callout.h>
 #include "cam_debug.h"
 #include "scsi/scsi_all.h"
@@ -171,7 +174,7 @@ typedef enum {
 /* HBA engine commands 0x20->0x2F */
 	XPT_ENG_INQ		= 0x20 | XPT_FC_XPT_ONLY,
 				/* HBA engine feature inquiry */
-	XPT_ENG_EXEC		= 0x21 | XPT_FC_DEV_QUEUED | XPT_FC_XPT_ONLY,
+	XPT_ENG_EXEC		= 0x21 | XPT_FC_DEV_QUEUED,
 				/* HBA execute engine request */
 
 /* Target mode commands: 0x30->0x3F */
@@ -204,6 +207,33 @@ typedef enum {
     (((ccb)->ccb_h.func_code & XPT_FC_DEV_QUEUED) == XPT_FC_DEV_QUEUED)
 #define XPT_FC_IS_QUEUED(ccb) 	\
     (((ccb)->ccb_h.func_code & XPT_FC_QUEUED) != 0)
+
+#ifdef CAM_NEW_TRAN_CODE
+typedef enum {
+	PROTO_UNKNOWN,
+	PROTO_UNSPECIFIED,
+	PROTO_SCSI,	/* Small Computer System Interface */
+	PROTO_ATA,	/* AT Attachment */
+	PROTO_ATAPI,	/* AT Attachment Packetized Interface */
+} cam_proto;
+
+typedef enum {
+	XPORT_UNKNOWN,
+	XPORT_UNSPECIFIED,
+	XPORT_SPI,	/* SCSI Parallel Interface */
+	XPORT_FC,	/* Fiber Channel */
+	XPORT_SSA,	/* Serial Storage Architecture */
+	XPORT_USB,	/* Universal Serial Bus */
+	XPORT_PPB,	/* Parallel Port Bus */
+	XPORT_ATA	/* AT Attachment */
+} cam_xport;
+
+#define PROTO_VERSION_UNKNOWN (UINT_MAX - 1)
+#define PROTO_VERSION_UNSPECIFIED UINT_MAX
+#define XPORT_VERSION_UNKNOWN (UINT_MAX - 1)
+#define XPORT_VERSION_UNSPECIFIED UINT_MAX
+#endif /* CAM_NEW_TRAN_CODE */
+
 typedef union {
 	LIST_ENTRY(ccb_hdr) le;
 	SLIST_ENTRY(ccb_hdr) sle;
@@ -256,7 +286,7 @@ struct ccb_getdev {
 	struct	  ccb_hdr ccb_h;
 	struct scsi_inquiry_data inq_data;
 	u_int8_t  serial_num[252];
-	u_int8_t  inq_len;
+	u_int8_t  reserved;
 	u_int8_t  serial_num_len;
 };
 
@@ -486,7 +516,13 @@ typedef enum {
 	PIM_NO_6_BYTE   = 0x08  /* Do not send 6-byte commands */
 } pi_miscflag;
 
+#ifdef CAM_NEW_TRAN_CODE
 /* Path Inquiry CCB */
+struct ccb_pathinq_settings_spi {
+	u_int8_t ppr_options;
+};
+#endif /* CAM_NEW_TRAN_CODE */
+
 struct ccb_pathinq {
 	struct 	    ccb_hdr ccb_h;
 	u_int8_t    version_num;	/* Version number for the SIM/HBA */
@@ -507,6 +543,15 @@ struct ccb_pathinq {
 	u_int32_t   unit_number;	/* Unit number for SIM */
 	u_int32_t   bus_id;		/* Bus ID for SIM */
 	u_int32_t   base_transfer_speed;/* Base bus speed in KB/sec */
+#ifdef CAM_NEW_TRAN_CODE
+	cam_proto   protocol;
+	u_int	    protocol_version;
+	cam_xport   transport;
+	u_int	    transport_version;
+	union {
+		struct ccb_pathinq_settings_spi spi;
+	} xport_specific;
+#endif /* CAM_NEW_TRAN_CODE */
 };
 
 /* Path Statistics CCB */
@@ -644,24 +689,76 @@ struct ccb_termio {
 	union	ccb *termio_ccb;	/* Pointer to CCB to terminate */
 };
 
+#ifndef CAM_NEW_TRAN_CODE
 /* Get/Set transfer rate/width/disconnection/tag queueing settings */
 struct ccb_trans_settings {
 	struct	ccb_hdr ccb_h;
-	u_int	valid;	/* Which fields to honor */
-#define	CCB_TRANS_SYNC_RATE_VALID	0x01
-#define	CCB_TRANS_SYNC_OFFSET_VALID	0x02
-#define	CCB_TRANS_BUS_WIDTH_VALID	0x04
-#define	CCB_TRANS_DISC_VALID		0x08
-#define	CCB_TRANS_TQ_VALID		0x10
+	u_int	valid;  /* Which fields to honor */
+#define		CCB_TRANS_SYNC_RATE_VALID	0x01
+#define		CCB_TRANS_SYNC_OFFSET_VALID	0x02
+#define		CCB_TRANS_BUS_WIDTH_VALID	0x04
+#define		CCB_TRANS_DISC_VALID		0x08
+#define		CCB_TRANS_TQ_VALID		0x10
 	u_int	flags;
-#define	CCB_TRANS_CURRENT_SETTINGS	0x01
-#define	CCB_TRANS_USER_SETTINGS		0x02
-#define	CCB_TRANS_DISC_ENB		0x04
-#define	CCB_TRANS_TAG_ENB		0x08
+#define		CCB_TRANS_CURRENT_SETTINGS	0x01
+#define		CCB_TRANS_USER_SETTINGS		0x02
+#define		CCB_TRANS_DISC_ENB		0x04
+#define		CCB_TRANS_TAG_ENB		0x08
 	u_int	sync_period;
 	u_int	sync_offset;
 	u_int	bus_width;
 };
+
+#else /* CAM_NEW_TRAN_CODE */
+typedef enum {
+	CTS_TYPE_CURRENT_SETTINGS,
+	CTS_TYPE_USER_SETTINGS
+} cts_type;
+
+struct ccb_trans_settings_scsi
+{
+	u_int	valid;	/* Which fields to honor */
+#define	CTS_SCSI_VALID_TQ		0x01
+	u_int	flags;
+#define	CTS_SCSI_FLAGS_TAG_ENB		0x01
+};
+
+struct ccb_trans_settings_spi
+{
+	u_int	  valid;	/* Which fields to honor */
+#define	CTS_SPI_VALID_SYNC_RATE		0x01
+#define	CTS_SPI_VALID_SYNC_OFFSET	0x02
+#define	CTS_SPI_VALID_BUS_WIDTH		0x04
+#define	CTS_SPI_VALID_DISC		0x08
+#define CTS_SPI_VALID_PPR_OPTIONS	0x10
+	u_int	flags;
+#define	CTS_SPI_FLAGS_DISC_ENB		0x01
+#define	CTS_SPI_FLAGS_TAG_ENB		0x02
+	u_int	sync_period;
+	u_int	sync_offset;
+	u_int	bus_width;
+	u_int	ppr_options;
+};
+
+/* Get/Set transfer rate/width/disconnection/tag queueing settings */
+struct ccb_trans_settings {
+	struct	  ccb_hdr ccb_h;
+	cts_type  type;		/* Current or User settings */
+	cam_proto protocol;
+	u_int	  protocol_version;
+	cam_xport transport;
+	u_int	  transport_version;
+	union {
+		u_int  valid;	/* Which fields to honor */
+		struct ccb_trans_settings_scsi scsi;
+	} proto_specific;
+	union {
+		u_int  valid;	/* Which fields to honor */
+		struct ccb_trans_settings_spi spi;
+	} xport_specific;
+};
+
+#endif /* CAM_NEW_TRAN_CODE */
 
 /*
  * Calculate the geometry parameters for a device
