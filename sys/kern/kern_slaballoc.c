@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.50 2007/06/07 20:34:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.51 2007/11/18 09:53:19 sephe Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -292,6 +292,11 @@ malloc_uninit(void *data)
 
     if (type->ks_limit == 0)
 	panic("malloc_uninit on uninitialized type");
+
+#ifdef SMP
+    /* Make sure that all pending kfree()s are finished. */
+    lwkt_synchronize_ipiqs("muninit");
+#endif
 
 #ifdef INVARIANTS
     /*

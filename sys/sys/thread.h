@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.88 2007/04/25 11:45:28 swildner Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.89 2007/11/18 09:53:19 sephe Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -388,6 +388,7 @@ extern void lwkt_process_ipiq(void);
 extern void lwkt_process_ipiq_frame(struct intrframe *);
 #endif
 extern void lwkt_smp_stopped(void);
+extern void lwkt_synchronize_ipiqs(const char *);
 
 #endif /* SMP */
 

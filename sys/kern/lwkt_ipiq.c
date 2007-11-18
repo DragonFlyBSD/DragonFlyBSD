@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.22 2007/06/07 20:35:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.23 2007/11/18 09:53:19 sephe Exp $
  */
 
 /*
@@ -562,6 +562,33 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
      */
     atomic_poll_release_int(&ip->ip_npoll);
     return(wi != ip->ip_windex);
+}
+
+static void
+lwkt_sync_ipiq(void *arg)
+{
+    cpumask_t *cpumask = arg;
+
+    atomic_clear_int(cpumask, mycpu->gd_cpumask);
+    if (*cpumask == 0)
+	wakeup(cpumask);
+}
+
+void
+lwkt_synchronize_ipiqs(const char *wmesg)
+{
+    cpumask_t other_cpumask;
+
+    other_cpumask = mycpu->gd_other_cpus & smp_active_mask;
+    lwkt_send_ipiq_mask(other_cpumask, lwkt_sync_ipiq, &other_cpumask);
+
+    crit_enter();
+    while (other_cpumask != 0) {
+	tsleep_interlock(&other_cpumask);
+	if (other_cpumask != 0)
+	    tsleep(&other_cpumask, 0, wmesg, 0);
+    }
+    crit_exit();
 }
 
 #endif
