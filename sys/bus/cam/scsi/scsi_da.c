@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.43 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.44 2007/11/18 19:27:29 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -1925,8 +1925,8 @@ daprevent(struct cam_periph *periph, int action)
 		     SSD_FULL_SIZE,
 		     5000);
 
-	error = cam_periph_runccb(ccb, /*error_routine*/NULL, /*cam_flags*/0,
-				  /*sense_flags*/0, &softc->device_stats);
+	error = cam_periph_runccb(ccb, /*error_routine*/NULL, CAM_RETRY_SELTO,
+				  SF_RETRY_UA, &softc->device_stats);
 
 	if (error == 0) {
 		if (action == PR_ALLOW)

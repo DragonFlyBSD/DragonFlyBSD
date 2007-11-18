@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.20 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.21 2007/11/18 19:27:29 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -536,7 +536,7 @@ ptstart(struct cam_periph *periph, union ccb *start_ccb)
 				  /*sense_len*/SSD_FULL_SIZE,
 				  /*timeout*/softc->io_timeout);
 
-		start_ccb->ccb_h.ccb_state = PT_CCB_BUFFER_IO;
+		start_ccb->ccb_h.ccb_state = PT_CCB_BUFFER_IO_UA;
 
 		/*
 		 * Block out any asyncronous callbacks
