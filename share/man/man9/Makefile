@@ -1,10 +1,11 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.66 2007/11/14 18:27:52 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.67 2007/11/18 14:10:41 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
 	accf_http.9 \
 	acl.9 \
+	altq.9 \
 	at_exit.9 \
 	at_fork.9 \
 	bios.9 \
@@ -183,6 +184,16 @@ MLINKS+=accept_filter.9 accept_filt_add.9 \
 	accept_filter.9 accept_filt_del.9 \
 	accept_filter.9 accept_filt_generic_mod_event.9 \
 	accept_filter.9 accept_filt_get.9
+MLINKS+=altq.9 ifq_classify.9 \
+	altq.9 ifq_dequeue.9 \
+	altq.9 ifq_enqueue.9 \
+	altq.9 ifq_handoff.9 \
+	altq.9 ifq_is_empty.9 \
+	altq.9 ifq_is_enabled.9 \
+	altq.9 ifq_poll.9 \
+	altq.9 ifq_purge.9 \
+	altq.9 ifq_set_maxlen.9 \
+	altq.9 ifq_set_ready.9
 MLINKS+=at_exit.9 rm_at_exit.9
 MLINKS+=at_fork.9 rm_at_fork.9
 MLINKS+=bios.9 bios32.9 \
