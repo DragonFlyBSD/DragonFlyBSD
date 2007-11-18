@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.11 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.12 2007/11/18 19:04:08 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -2780,7 +2780,7 @@ scsi_start_stop(struct ccb_scsiio *csio, u_int32_t retries,
 	bzero(scsi_cmd, sizeof(*scsi_cmd));
 	scsi_cmd->opcode = START_STOP_UNIT;
 	if (start != 0) {
-		scsi_cmd->how |= SS_START;
+		scsi_cmd->how |= SSS_START;
 		/* it takes a lot of power to start a drive */
 		extra_flags |= CAM_HIGH_POWER;
 	}
