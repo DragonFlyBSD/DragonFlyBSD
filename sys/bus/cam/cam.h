@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.h,v 1.6.2.1 2000/03/17 22:36:21 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam.h,v 1.6 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam.h,v 1.7 2007/11/18 17:59:54 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_H
@@ -101,7 +101,7 @@ typedef enum {
 	CAM_REQ_ABORTED,	/* CCB request aborted by the host */
 	CAM_UA_ABORT,		/* Unable to abort CCB request */
 	CAM_REQ_CMP_ERR,	/* CCB request completed with an error */
-	CAM_BUSY,		/* CAM subsytem is busy */
+	CAM_BUSY,		/* CAM subsystem is busy */
 	CAM_REQ_INVALID,	/* CCB request was invalid */
 	CAM_PATH_INVALID,	/* Supplied Path ID is invalid */
 	CAM_DEV_NOT_THERE,	/* SCSI Device Not Installed/there */
