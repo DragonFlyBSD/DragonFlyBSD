@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.82 2007/08/15 03:15:06 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.83 2007/11/19 18:49:06 swildner Exp $
  */
 
 #include "opt_init_path.h"
@@ -470,7 +470,7 @@ static char init_path[MAXPATHLEN] =
 #ifdef	INIT_PATH
     __XSTRING(INIT_PATH);
 #else
-    "/sbin/init:/sbin/oinit:/sbin/init.bak:/stand/sysinstall";
+    "/sbin/init:/sbin/oinit:/sbin/init.bak";
 #endif
 SYSCTL_STRING(_kern, OID_AUTO, init_path, CTLFLAG_RD, init_path, 0, "");
 

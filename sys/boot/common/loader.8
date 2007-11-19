@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.15 2007/05/17 08:19:02 swildner Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.16 2007/11/19 18:49:06 swildner Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -360,7 +360,7 @@ Sets the list of binaries which the kernel will try to run as the initial
 process.
 The first matching binary is used.
 The default list is
-.Dq Li /sbin/init:/sbin/oinit:/sbin/init.bak:/stand/sysinstall .
+.Dq Li /sbin/init:/sbin/oinit:/sbin/init.bak .
 .It Va interpret
 Has the value
 .Dq Li ok

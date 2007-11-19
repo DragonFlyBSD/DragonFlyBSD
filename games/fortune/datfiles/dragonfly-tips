@@ -1,6 +1,6 @@
 This fortune brought to you by:
 $FreeBSD: src/games/fortune/datfiles/freebsd-tips,v 1.14.2.11 2003/03/15 08:48:29 dougb Exp $
-$DragonFly: src/games/fortune/datfiles/dragonfly-tips,v 1.2 2006/07/02 13:04:35 swildner Exp $
+$DragonFly: src/games/fortune/datfiles/dragonfly-tips,v 1.3 2007/11/19 18:49:06 swildner Exp $
 %
 Having trouble using fetch through a firewall? Try setting the environment
 variable FTP_PASSIVE_MODE to yes, and see fetch(3) for more details.
@@ -280,8 +280,7 @@ to TCP or UDP connections, but also for proxying them. See inetd(8) for
 details.
 %
 If other operating systems have damaged your Master Boot Record, you can
-reinstall it either with /stand/sysinstall or with boot0cfg(8). See
-"man boot0cfg" for details.
+reinstall it with boot0cfg(8). See "man boot0cfg" for details.
 %
 Need to see the calendar for this month? Simply type "cal".  To see the
 whole year, type "cal -y".

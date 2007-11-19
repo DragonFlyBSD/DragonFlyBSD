@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.38 2007/06/07 22:58:11 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.39 2007/11/19 18:49:06 swildner Exp $
  */
 
 #include "opt_ddb.h"
@@ -298,9 +298,8 @@ linker_load_file(const char* filename, linker_file_t* result)
 	     * Format not recognized or otherwise unloadable.
 	     * When loading a module that is statically built into
 	     * the kernel EEXIST percolates back up as the return
-	     * value.  Preserve this so that apps like sysinstall
-	     * can recognize this special case and not post bogus
-	     * dialog messages.
+	     * value.  Preserve this so that apps can recognize this
+	     * special case.
 	     */
 	    if (error != EEXIST)
 		    error = ENOEXEC;
