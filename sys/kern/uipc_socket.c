@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.45 2007/04/22 01:13:10 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.45.2.1 2007/11/19 18:17:10 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -95,6 +95,7 @@
 #include <vm/vm_zone.h>
 
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <machine/limits.h>
 
