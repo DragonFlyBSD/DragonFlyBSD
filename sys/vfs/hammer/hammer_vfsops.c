@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.3 2007/11/07 00:43:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.4 2007/11/19 00:53:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -118,7 +118,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		if (error == 0)
 			error = copyinstr(upath, path, MAXPATHLEN, NULL);
 		if (error == 0)
-			error = hammer_load_volume(hmp, path);
+			error = hammer_install_volume(hmp, path);
 		if (error)
 			break;
 	}

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.1 2007/11/07 00:43:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.2 2007/11/19 00:53:40 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -268,7 +268,8 @@ hammer_io_complete(struct buf *bp)
 /*
  * Callback from kernel when it wishes to deallocate a passively
  * associated structure.  This can only occur if the buffer is
- * passively associated with the structure.
+ * passively associated with the structure.  The kernel has locked
+ * the buffer.
  *
  * If we cannot disassociate we set B_LOCKED to prevent the buffer
  * from getting reused.
@@ -282,26 +283,55 @@ hammer_io_deallocate(struct buf *bp)
 
 	KKASSERT(io->io.released);
 	crit_enter();
-	if (io->io.lock.refs) {
-		bp->b_flags |= B_LOCKED;
-	} else {
-		hammer_lock(&io->io.lock);
-		KKASSERT(io->io.lock.refs == 1);
+
+	/*
+	 * First, ref the structure to prevent either the buffer or the
+	 * structure from going away.
+	 */
+	hammer_ref(&io->io.lock);
+
+	/*
+	 * Buffers can have active references from cached hammer_node's,
+	 * even if those nodes are themselves passively cached.  Attempt
+	 * to clean them out.  This may not succeed.
+	 */
+	if (io->io.type == HAMMER_STRUCTURE_BUFFER &&
+	    hammer_lock_ex_try(&io->io.lock) == 0) {
+		hammer_flush_buffer_nodes(&io->buffer);
+		hammer_unlock(&io->io.lock);
+	}
+
+	if (hammer_islastref(&io->io.lock)) {
+		/*
+		 * If we are the only ref left we can disassociate the
+		 * I/O.  It had better still be in a released state because
+		 * the kernel is holding a lock on the buffer.
+		 */
+		KKASSERT(io->io.released);
+		hammer_io_disassociate(io);
+		bp->b_flags &= ~B_LOCKED;
+
 		switch(io->io.type) {
 		case HAMMER_STRUCTURE_VOLUME:
-			hammer_put_volume(&io->volume, 1);
+			hammer_rel_volume(&io->volume, 1);
 			break;
 		case HAMMER_STRUCTURE_SUPERCL:
-			hammer_put_supercl(&io->supercl, 1);
+			hammer_rel_supercl(&io->supercl, 1);
 			break;
 		case HAMMER_STRUCTURE_CLUSTER:
-			hammer_put_cluster(&io->cluster, 1);
+			hammer_rel_cluster(&io->cluster, 1);
 			break;
 		case HAMMER_STRUCTURE_BUFFER:
-			hammer_put_buffer(&io->buffer, 1);
+			hammer_rel_buffer(&io->buffer, 1);
 			break;
 		}
 		/* NOTE: io may be invalid (kfree'd) here */
+	} else {
+		/*
+		 * Otherwise tell the kernel not to destroy the buffer
+		 */
+		bp->b_flags |= B_LOCKED;
+		hammer_unlock(&io->io.lock);
 	}
 	crit_exit();
 }
@@ -356,6 +386,17 @@ hammer_io_checkwrite(struct buf *bp)
 	}
 }
 
+/*
+ * Return non-zero if the caller should flush the structure associated
+ * with this io sub-structure.
+ */
+int
+hammer_io_checkflush(struct hammer_io *io)
+{
+	if (io->bp == NULL || (io->bp->b_flags & B_LOCKED))
+		return(1);
+	return(0);
+}
 
 /*
  * Return non-zero if we wish to delay the kernel's attempt to flush

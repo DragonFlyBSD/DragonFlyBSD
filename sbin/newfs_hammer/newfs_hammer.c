@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.5 2007/11/02 00:54:26 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.6 2007/11/19 00:53:39 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -551,7 +551,8 @@ format_cluster(struct volume_info *vol, int isroot)
 	 */
 	ondisk->clu_btree_parent_vol_no = -1;
 	ondisk->clu_btree_parent_clu_no = -1;
-	ondisk->clu_btree_parent_clu_id = -1;
+	ondisk->clu_btree_parent_offset = -1;
+	ondisk->clu_btree_parent_clu_gen = -1;
 
 	/*
 	 * Cluster 0 is the root cluster.  Set the B-Tree range for this
@@ -560,6 +561,11 @@ format_cluster(struct volume_info *vol, int isroot)
 	 * Note that delete_tid for the ending range must be set to 0,
 	 * 0 indicates 'not deleted', aka 'the most recent'.  See
 	 * hammer_btree_cmp() in sys/vfs/hammer/hammer_btree.c.
+	 *
+	 * The root cluster's key space represents the entire key space for
+	 * the filesystem.  The btree_end element appears to be inclusive
+	 * only because we can't overflow our variables.  It's actually
+	 * non-inclusive... that is, it is a right-side boundary element.
 	 */
 	if (isroot) {
 		ondisk->clu_btree_beg.obj_id = -0x8000000000000000LL;
@@ -574,7 +580,7 @@ format_cluster(struct volume_info *vol, int isroot)
 		ondisk->clu_btree_end.create_tid = 0xFFFFFFFFFFFFFFFFULL;
 		ondisk->clu_btree_end.delete_tid = 0;	/* special case */
 		ondisk->clu_btree_end.rec_type = 0xFFFFU;
-		ondisk->clu_btree_end.obj_type = 0xFFFFU;
+		ondisk->clu_btree_end.obj_type = 0;
 
 		format_root(cluster);
 	}
@@ -595,10 +601,10 @@ format_root(struct cluster_info *cluster)
 	int32_t btree_off;
 	int32_t rec_off;
 	int32_t data_off;
-	hammer_btree_node_t bnode;
+	hammer_node_ondisk_t bnode;
 	union hammer_record_ondisk *rec;
 	struct hammer_inode_data *idata;
-	hammer_btree_leaf_elm_t elm;
+	hammer_btree_elm_t elm;
 
 	bnode = alloc_btree_element(cluster, &btree_off);
 	rec = alloc_record_element(cluster, &rec_off);
@@ -634,16 +640,15 @@ format_root(struct cluster_info *cluster)
 	 * Create the root of the B-Tree.  The root is a leaf node so we
 	 * do not have to worry about boundary elements.
 	 */
-	bnode->base.count = 1;
-	bnode->base.type = HAMMER_BTREE_LEAF_NODE;
-	bnode->base.subtype = 0;
+	bnode->count = 1;
+	bnode->type = HAMMER_BTREE_TYPE_LEAF;
 
-	elm = &bnode->leaf.elms[0];
+	elm = &bnode->elms[0];
 	elm->base = rec->base.base;
-	elm->record.rec_offset = rec_off;
-	elm->record.data_offset = rec->base.data_offset;
-	elm->record.data_len = rec->base.data_len;
-	elm->record.data_crc = rec->base.data_crc;
+	elm->leaf.rec_offset = rec_off;
+	elm->leaf.data_offset = rec->base.data_offset;
+	elm->leaf.data_len = rec->base.data_len;
+	elm->leaf.data_crc = rec->base.data_crc;
 }
 
 void

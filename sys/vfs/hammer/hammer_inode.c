@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.3 2007/11/07 00:43:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.4 2007/11/19 00:53:40 dillon Exp $
  */
 
 #include "hammer.h"
@@ -63,10 +63,6 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 /*
  * Obtain a vnode for the specified inode number.  An exclusively locked
  * vnode is returned.
- *
- * To avoid deadlocks we cannot hold the inode lock while we are creating
- * a new vnode.  We can prevent the inode from going away, however.  If
- * we race another vget we just throw away our newly created vnode.
  */
 int
 hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
@@ -85,9 +81,8 @@ hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 		*vpp = NULL;
 		return(error);
 	}
-	hammer_lock_to_ref(&ip->lock);
 	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
-	hammer_put_inode_ref(ip);
+	hammer_rel_inode(ip);
 	return (error);
 }
 
@@ -107,42 +102,48 @@ hammer_get_vnode(struct hammer_inode *ip, int lktype, struct vnode **vpp)
 			error = getnewvnode(VT_HAMMER, ip->hmp->mp, vpp, 0, 0);
 			if (error)
 				break;
-			if (ip->vp == NULL) {
-				vp = *vpp;
-				ip->vp = vp;
-				vp->v_type = hammer_get_vnode_type(
-						ip->ino_rec.base.base.obj_type);
-				vp->v_data = (void *)ip;
-				/* vnode locked by getnewvnode() */
+			hammer_lock_ex(&ip->lock);
+			if (ip->vp != NULL) {
+				hammer_unlock(&ip->lock);
+				vp->v_type = VBAD;
+				vx_put(vp);
+				continue;
+			}
+			hammer_ref(&ip->lock);
+			vp = *vpp;
+			ip->vp = vp;
+			vp->v_type = hammer_get_vnode_type(
+					    ip->ino_rec.base.base.obj_type);
+			vp->v_data = (void *)ip;
+			/* vnode locked by getnewvnode() */
+			/* make related vnode dirty if inode dirty? */
+			hammer_unlock(&ip->lock);
+			break;
+		}
+
+		/*
+		 * loop if the vget fails (aka races), or if the vp
+		 * no longer matches ip->vp.
+		 */
+		if (vget(vp, LK_EXCLUSIVE) == 0) {
+			if (vp == ip->vp)
 				break;
-			}
-			vp->v_type = VBAD;
-			vx_put(vp);
-		} else {
-			/*
-			 * loop if the vget fails (aka races), or if the vp
-			 * no longer matches ip->vp.
-			 */
-			if (vget(vp, LK_EXCLUSIVE) == 0) {
-				if (vp == ip->vp)
-					break;
-				vput(vp);
-			}
+			vput(vp);
 		}
 	}
 	return(error);
 }
 
 /*
- * Get and lock a HAMMER inode.  These functions do not attach or detach
- * the related vnode.
+ * Acquire a HAMMER inode.  The returned inode is not locked.  These functions
+ * do not attach or detach the related vnode (use hammer_get_vnode() for
+ * that).
  */
 struct hammer_inode *
 hammer_get_inode(struct hammer_mount *hmp, u_int64_t obj_id, int *errorp)
 {
-	struct hammer_btree_info binfo;
 	struct hammer_inode_info iinfo;
-	struct hammer_base_elm key;
+	struct hammer_cursor cursor;
 	struct hammer_inode *ip;
 
 	/*
@@ -154,7 +155,7 @@ hammer_get_inode(struct hammer_mount *hmp, u_int64_t obj_id, int *errorp)
 loop:
 	ip = hammer_ino_rb_tree_RB_LOOKUP_INFO(&hmp->rb_inos_root, &iinfo);
 	if (ip) {
-		hammer_lock(&ip->lock);
+		hammer_ref(&ip->lock);
 		*errorp = 0;
 		return(ip);
 	}
@@ -163,21 +164,24 @@ loop:
 	ip->obj_id = obj_id;
 	ip->obj_asof = iinfo.obj_asof;
 	ip->hmp = hmp;
+	RB_INIT(&ip->rec_tree);
 
 	/*
+	 * Locate the on-disk inode.
 	 * If we do not have an inode cached search the HAMMER on-disk B-Tree
 	 * for it.
 	 */
-	hammer_btree_info_init(&binfo, hmp->rootcl);
-	key.obj_id = ip->obj_id;
-	key.key = 0;
-	key.create_tid = iinfo.obj_asof;
-	key.delete_tid = 0;
-	key.rec_type = HAMMER_RECTYPE_INODE;
-	key.obj_type = 0;
 
-	*errorp = hammer_btree_lookup(&binfo, &key, HAMMER_BTREE_GET_RECORD |
-					            HAMMER_BTREE_GET_DATA);
+	hammer_init_cursor_hmp(&cursor, hmp);
+	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.key = 0;
+	cursor.key_beg.create_tid = iinfo.obj_asof;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
+	cursor.key_beg.obj_type = 0;
+	cursor.flags = HAMMER_BTREE_GET_RECORD | HAMMER_BTREE_GET_DATA;
+
+	*errorp = hammer_btree_lookup(&cursor);
 
 	/*
 	 * On success the B-Tree lookup will hold the appropriate
@@ -185,10 +189,11 @@ loop:
 	 * information.  Copy the information to the in-memory inode.
 	 */
 	if (*errorp == 0) {
-		ip->ino_rec = binfo.rec->inode;
-		ip->ino_data = binfo.data->inode;
+		ip->ino_rec = cursor.record->inode;
+		ip->ino_data = cursor.data->inode;
 	}
-	hammer_btree_info_done(&binfo);
+	hammer_cache_node(cursor.node, &ip->cache);
+	hammer_done_cursor(&cursor);
 
 	/*
 	 * On success load the inode's record and data and insert the
@@ -196,7 +201,10 @@ loop:
 	 * insertion of the same inode so deal with that condition too.
 	 */
 	if (*errorp == 0) {
+		hammer_ref(&ip->lock);
 		if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
+			hammer_uncache_node(&ip->cache);
+			hammer_unref(&ip->lock);
 			kfree(ip, M_HAMMER);
 			goto loop;
 		}
@@ -207,39 +215,93 @@ loop:
 	return (ip);
 }
 
-void
-hammer_lock_inode(struct hammer_inode *ip)
+/*
+ * Create a new filesystem object, returning the inode in *ipp.  The
+ * returned inode will be referenced but not locked.
+ *
+ * The inode is created in-memory and will be delay-synchronized to the
+ * disk.
+ */
+int
+hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
+		    struct ucred *cred, struct hammer_inode *dip,
+		    struct hammer_inode **ipp)
 {
-	hammer_lock(&ip->lock);
+	struct hammer_mount *hmp;
+	struct hammer_inode *ip;
+
+	hmp = trans->hmp;
+	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
+	ip->obj_id = ++hmp->last_ino;
+	KKASSERT(ip->obj_id != 0);
+	ip->obj_asof = HAMMER_MAX_TID;	/* XXX */
+	ip->hmp = hmp;
+	ip->flags = HAMMER_INODE_DDIRTY | HAMMER_INODE_RDIRTY |
+		    HAMMER_INODE_ITIMES;
+	ip->last_tid = trans->tid;
+
+	RB_INIT(&ip->rec_tree);
+
+	ip->ino_rec.ino_atime = trans->tid;
+	ip->ino_rec.ino_mtime = trans->tid;
+	ip->ino_rec.ino_size = 0;
+	ip->ino_rec.ino_nlinks = 0;
+	/* XXX */
+	ip->ino_rec.base.rec_id = ++hmp->rootvol->ondisk->vol0_recid;
+	hammer_modify_volume(hmp->rootvol);
+	KKASSERT(ip->ino_rec.base.rec_id != 0);
+	ip->ino_rec.base.base.obj_id = ip->obj_id;
+	ip->ino_rec.base.base.key = 0;
+	ip->ino_rec.base.base.create_tid = trans->tid;
+	ip->ino_rec.base.base.delete_tid = 0;
+	ip->ino_rec.base.base.rec_type = HAMMER_RECTYPE_INODE;
+	ip->ino_rec.base.base.obj_type = hammer_get_obj_type(vap->va_type);
+
+	ip->ino_data.version = HAMMER_INODE_DATA_VERSION;
+	ip->ino_data.mode = vap->va_mode;
+	ip->ino_data.ctime = trans->tid;
+	ip->ino_data.parent_obj_id = (dip) ? dip->ino_rec.base.base.obj_id : 0;
+	if (vap->va_vaflags & VA_UID_UUID_VALID)
+		ip->ino_data.uid = vap->va_uid_uuid;
+	else
+		hammer_guid_to_uuid(&ip->ino_data.uid, vap->va_uid);
+	if (vap->va_vaflags & VA_GID_UUID_VALID)
+		ip->ino_data.gid = vap->va_gid_uuid;
+	else
+		hammer_guid_to_uuid(&ip->ino_data.gid, vap->va_gid);
+
+	hammer_ref(&ip->lock);
+	if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
+		hammer_unref(&ip->lock);
+		panic("hammer_create_inode: duplicate obj_id");
+	}
+	*ipp = ip;
+	return(0);
 }
 
 void
-hammer_put_inode(struct hammer_inode *ip)
+hammer_rel_inode(struct hammer_inode *ip)
 {
-	hammer_unlock(&ip->lock);
-}
-
-void
-hammer_put_inode_ref(struct hammer_inode *ip)
-{
+	/* XXX check last ref */
 	hammer_unref(&ip->lock);
 }
 
 /*
+ * Unload and destroy the specified inode.
+ *
  * (called via RB_SCAN)
  */
 int
 hammer_unload_inode(struct hammer_inode *ip, void *data __unused)
 {
-	struct vnode *vp;
-
 	KKASSERT(ip->lock.refs == 0);
-	if ((vp = ip->vp) != NULL) {
-		ip->vp = NULL;
-		vp->v_data = NULL;
-		/* XXX */
-	}
+	KKASSERT(ip->vp == NULL);
+	hammer_ref(&ip->lock);
 	RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
+
+	hammer_uncache_node(&ip->cache);
+
+	/* XXX flush */
 	kfree(ip, M_HAMMER);
 	return(0);
 }
@@ -253,25 +315,61 @@ hammer_modify_inode(struct hammer_transaction *trans,
 		    struct hammer_inode *ip, int flags)
 {
 	ip->flags |= flags;
+	ip->last_tid = trans->tid;
+}
+
+/************************************************************************
+ *		     HAMMER INODE MERGED-RECORD FUNCTIONS		*
+ ************************************************************************
+ *
+ * These functions augment the B-Tree scanning functions in hammer_btree.c
+ * by merging in-memory records with on-disk records.
+ */
+
+hammer_record_ondisk_t
+hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
+{
 	KKASSERT(0);
+	return(NULL);
+}
+
+hammer_record_ondisk_t
+hammer_ip_next(hammer_cursor_t cursor)
+{
+	KKASSERT(0);
+	return(NULL);
+}
+
+int
+hammer_ip_resolve_data(hammer_cursor_t cursor)
+{
+	KKASSERT(0);
+	return(NULL);
 }
 
 /*
  * Access the filesystem buffer containing the cluster-relative byte
  * offset, validate the buffer type, load *bufferp and return a
- * pointer to the requested data.
+ * pointer to the requested data.  The buffer is reference and locked on
+ * return.
  *
  * If buf_type is 0 the buffer is assumed to be a pure-data buffer and
  * no type or crc check is performed.
  *
+ * If *bufferp is not NULL on entry it is assumed to contain a locked
+ * and referenced buffer which will then be replaced.
+ *
+ * If the caller is holding another unrelated buffer locked it must be
+ * passed in reorderbuf so we can properly order buffer locks.
+ *
  * XXX add a flag for the buffer type and check the CRC here XXX
  */
 void *
-hammer_bread(struct hammer_cluster *cluster, int32_t cloff,
-	     u_int64_t buf_type,
-	     int *errorp, struct hammer_buffer **bufferp)
+hammer_bread(hammer_cluster_t cluster, int32_t cloff,
+	     u_int64_t buf_type, int *errorp,
+	     struct hammer_buffer **bufferp)
 {
-	struct hammer_buffer *buffer;
+	hammer_buffer_t buffer;
 	int32_t buf_no;
 	int32_t buf_off;
 
@@ -282,16 +380,19 @@ hammer_bread(struct hammer_cluster *cluster, int32_t cloff,
 	buffer = *bufferp;
 	if (buffer == NULL || buffer->cluster != cluster ||
 	    buffer->buf_no != buf_no) {
-		if (buffer)
-			hammer_put_buffer(buffer, 0);
+		if (buffer) {
+			hammer_unlock(&buffer->io.lock);
+			hammer_rel_buffer(buffer, 0);
+		}
 		buffer = hammer_get_buffer(cluster, buf_no, 0, errorp);
 		*bufferp = buffer;
 		if (buffer == NULL)
 			return(NULL);
+		hammer_lock_ex(&buffer->io.lock);
 	}
 
 	/*
-	 * Validate the buffer type and crc XXX
+	 * Validate the buffer type
 	 */
 	buf_off = cloff & HAMMER_BUFMASK;
 	if (buf_type) {
@@ -306,7 +407,6 @@ hammer_bread(struct hammer_cluster *cluster, int32_t cloff,
 			*errorp = EIO;
 			return(NULL);
 		}
-		/* XXX crc */
 	}
 
 	/*

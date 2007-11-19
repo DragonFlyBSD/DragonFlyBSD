@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.5 2007/11/07 00:43:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.6 2007/11/19 00:53:40 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -202,6 +202,8 @@ struct hammer_volume_ondisk {
 	u_int32_t	vol0_bitmap[1024];
 };
 
+typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
+
 #define HAMMER_VOLF_VALID		0x0001	/* valid entry */
 #define HAMMER_VOLF_OPEN		0x0002	/* volume is open */
 #define HAMMER_VOLF_USINGSUPERCL	0x0004	/* using superclusters */
@@ -230,6 +232,8 @@ struct hammer_supercl_ondisk {
 
 	struct hammer_almeta	scl_meta[HAMMER_SUPERCL_METAELMS];
 };
+
+typedef struct hammer_supercl_ondisk *hammer_supercl_ondisk_t;
 
 /*
  * HAMMER Cluster header
@@ -272,10 +276,8 @@ struct hammer_cluster_ondisk {
 	uuid_t	vol_fsid;	/* identify filesystem - sanity check */
 	uuid_t	vol_fstype;	/* identify filesystem type - sanity check */
 
-	u_int64_t clu_gen;	/* identify generation number of cluster */
-	u_int64_t clu_unused01;
-
 	hammer_tid_t clu_id;	/* unique cluster self identification */
+	hammer_tid_t clu_gen;	/* generation number */
 	int32_t vol_no;		/* cluster contained in volume (sanity) */
 	u_int32_t clu_flags;	/* cluster flags */
 
@@ -296,11 +298,10 @@ struct hammer_cluster_ondisk {
 
 	/* 
 	 * Specify the range of information stored in this cluster as two
-	 * btree elements.  These elements exist as separate records that
-	 * point to us in the parent cluster's B-Tree.
-	 *
-	 * Note that clu_btree_end is range-inclusive, not range-exclusive.
-	 * i.e. 0-1023 instead of 0,1024.
+	 * btree elements.   These elements match the left and right
+	 * boundary elements in the internal B-Tree node of the parent
+	 * cluster that points to the root of our cluster.  Because these
+	 * are boundary elements, the right boundary is range-NONinclusive.
 	 */
 	struct hammer_base_elm clu_btree_beg;
 	struct hammer_base_elm clu_btree_end;
@@ -308,12 +309,16 @@ struct hammer_cluster_ondisk {
 	/*
 	 * The cluster's B-Tree root can change as a side effect of insertion
 	 * and deletion operations so store an offset instead of embedding
-	 * the root node.
+	 * the root node.  The parent_offset is stale if the generation number
+	 * does not match.
+	 *
+	 * Parent linkages are explicit.
 	 */
 	int32_t		clu_btree_root;
 	int32_t		clu_btree_parent_vol_no;
 	int32_t		clu_btree_parent_clu_no;
-	hammer_tid_t	clu_btree_parent_clu_id;
+	int32_t		clu_btree_parent_offset;
+	hammer_tid_t	clu_btree_parent_clu_gen;
 
 	u_int64_t synchronized_rec_id;
 
@@ -322,6 +327,8 @@ struct hammer_cluster_ondisk {
 	struct hammer_almeta	clu_record_meta[HAMMER_CLU_SLAVE_METAELMS];
 	struct hammer_almeta	clu_mdata_meta[HAMMER_CLU_SLAVE_METAELMS];
 };
+
+typedef struct hammer_cluster_ondisk *hammer_cluster_ondisk_t;
 
 /*
  * HAMMER records are 96 byte entities encoded into 16K filesystem buffers.
@@ -370,12 +377,23 @@ struct hammer_base_record {
  * targets and even though they are built within a HAMMER filesystem they
  * get their own obj_id space (and thus can serve as a replication target)
  * and look like a mount point to the system.
+ *
+ * Inter-cluster records are special-cased in the B-Tree.  These records
+ * are referenced from a B-Tree INTERNAL node, NOT A LEAF.  This means
+ * that the element in the B-Tree node is actually a boundary element whos
+ * base element fields, including rec_type, reflect the boundary, NOT
+ * the inter-cluster record type.
+ *
+ * HAMMER_RECTYPE_CLUSTER - only set in the actual inter-cluster record,
+ * not set in the left or right boundary elements around the inter-cluster
+ * reference of an internal node in the B-Tree (because doing so would
+ * interfere with the boundary tests).
  */
 #define HAMMER_RECTYPE_UNKNOWN		0
 #define HAMMER_RECTYPE_LOWEST		1	/* lowest record type avail */
 #define HAMMER_RECTYPE_INODE		1	/* inode in obj_id space */
 #define HAMMER_RECTYPE_PSEUDO_INODE	2	/* pseudo filesysem */
-#define HAMMER_RECTYPE_CLUSTER		3	/* cluster reference */
+#define HAMMER_RECTYPE_CLUSTER		3	/* inter-cluster reference */
 #define HAMMER_RECTYPE_DATA		0x10
 #define HAMMER_RECTYPE_DIRENTRY		0x11
 #define HAMMER_RECTYPE_DB		0x12
@@ -390,10 +408,6 @@ struct hammer_base_record {
 #define HAMMER_OBJTYPE_BDEV		6
 #define HAMMER_OBJTYPE_SOFTLINK		7
 #define HAMMER_OBJTYPE_PSEUDOFS		8	/* pseudo filesystem obj */
-
-#define HAMMER_OBJTYPE_CLUSTER_FLAG	0x20
-#define HAMMER_OBJTYPE_CLUSTER_BEG	0x20
-#define HAMMER_OBJTYPE_CLUSTER_END	0x21
 
 /*
  * Generic full-sized record
@@ -570,6 +584,7 @@ struct hammer_inode_data {
 	u_int64_t parent_obj_id;/* parent directory obj_id */
 	uuid_t	uid;
 	uuid_t	gid;
+	/* XXX device, softlink extension */
 };
 
 #define HAMMER_INODE_DATA_VERSION	1

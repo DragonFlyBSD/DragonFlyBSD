@@ -31,14 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.1 2007/11/07 00:43:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.2 2007/11/19 00:53:40 dillon Exp $
  */
 
 #include "hammer.h"
 
 void
-hammer_start_transaction(struct hammer_mount *hmp,
-                         struct hammer_transaction *trans)
+hammer_start_transaction(struct hammer_transaction *trans,
+			 struct hammer_mount *hmp)
 {
 	struct timespec ts;
 

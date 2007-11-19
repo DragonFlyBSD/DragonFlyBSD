@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.2 2007/11/07 00:43:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.3 2007/11/19 00:53:40 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -40,12 +40,12 @@
 #include "hammer.h"
 
 void
-hammer_lock(struct hammer_lock *lock)
+hammer_lock_ex(struct hammer_lock *lock)
 {
 	thread_t td = curthread;
 
+	KKASSERT(lock->refs > 0);
 	crit_enter();
-	++lock->refs;
 	if (lock->locktd != td) {
 		while (lock->locktd != NULL) {
 			lock->wanted = 1;
@@ -53,21 +53,85 @@ hammer_lock(struct hammer_lock *lock)
 		}
 		lock->locktd = td;
 	}
+	++lock->lockcount;
 	crit_exit();
+}
+
+/*
+ * Try to obtain an exclusive lock
+ */
+int
+hammer_lock_ex_try(struct hammer_lock *lock)
+{
+	thread_t td = curthread;
+
+	KKASSERT(lock->refs > 0);
+	crit_enter();
+	if (lock->locktd != td) {
+		if (lock->locktd != NULL)
+			return(EAGAIN);
+		lock->locktd = td;
+	}
+	++lock->lockcount;
+	crit_exit();
+	return(0);
+}
+
+
+void
+hammer_lock_sh(struct hammer_lock *lock)
+{
+	KKASSERT(lock->refs > 0);
+	crit_enter();
+	while (lock->locktd != NULL) {
+		if (lock->locktd == curthread) {
+			++lock->lockcount;
+			crit_exit();
+			return;
+		}
+		lock->wanted = 1;
+		tsleep(lock, 0, "hmrlck", 0);
+	}
+	KKASSERT(lock->lockcount <= 0);
+	--lock->lockcount;
+	crit_exit();
+}
+
+void
+hammer_downgrade(struct hammer_lock *lock)
+{
+	KKASSERT(lock->lockcount == 1);
+	crit_enter();
+	lock->lockcount = -1;
+	lock->locktd = NULL;
+	if (lock->wanted) {
+		lock->wanted = 0;
+		wakeup(lock);
+	}
+	crit_exit();
+	/* XXX memory barrier */
 }
 
 void
 hammer_unlock(struct hammer_lock *lock)
 {
-	KKASSERT(lock->locktd == curthread);
-	KKASSERT(lock->refs > 0);
 	crit_enter();
-	if (--lock->refs == 0) {
-		lock->locktd = NULL;
-		if (lock->wanted) {
+	KKASSERT(lock->lockcount != 0);
+	if (lock->lockcount < 0) {
+		if (++lock->lockcount == 0 && lock->wanted) {
 			lock->wanted = 0;
 			wakeup(lock);
 		}
+	} else {
+		KKASSERT(lock->locktd == curthread);
+		if (--lock->lockcount == 0) {
+			lock->locktd = NULL;
+			if (lock->wanted) {
+				lock->wanted = 0;
+				wakeup(lock);
+			}
+		}
+
 	}
 	crit_exit();
 }
@@ -88,24 +152,6 @@ hammer_unref(struct hammer_lock *lock)
 	crit_exit();
 }
 
-void
-hammer_lock_to_ref(struct hammer_lock *lock)
-{
-	crit_enter();
-	++lock->refs;
-	hammer_unlock(lock);
-	crit_exit();
-}
-
-void
-hammer_ref_to_lock(struct hammer_lock *lock)
-{
-	crit_enter();
-	hammer_lock(lock);
-	--lock->refs;
-	crit_exit();
-}
-
 u_int32_t
 hammer_to_unix_xid(uuid_t *uuid)
 {
@@ -113,11 +159,28 @@ hammer_to_unix_xid(uuid_t *uuid)
 }
 
 void
-hammer_to_timespec(u_int64_t hammerts, struct timespec *ts)
+hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid)
 {
-	ts->tv_sec = hammerts / 1000000000;
-	ts->tv_nsec = hammerts % 1000000000;
+	bzero(uuid, sizeof(*uuid));
+	*(u_int32_t *)&uuid->node[2] = guid;
 }
+
+void
+hammer_to_timespec(hammer_tid_t tid, struct timespec *ts)
+{
+	ts->tv_sec = tid / 1000000000;
+	ts->tv_nsec = tid % 1000000000;
+}
+
+hammer_tid_t
+hammer_timespec_to_transid(struct timespec *ts)
+{
+	hammer_tid_t tid;
+
+	tid = ts->tv_nsec + (unsigned long)ts->tv_sec * 1000000000LL;
+	return(tid);
+}
+
 
 /*
  * Convert a HAMMER filesystem object type to a vnode type

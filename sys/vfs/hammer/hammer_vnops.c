@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.2 2007/11/07 00:43:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.3 2007/11/19 00:53:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,6 +106,11 @@ struct vop_ops hammer_vnode_vops = {
 	.vop_nwhiteout =	hammer_vop_nwhiteout
 };
 
+static int hammer_dounlink(struct nchandle *nch, struct vnode *dvp,
+			   struct ucred *cred, int flags);
+static int hammer_vop_strategy_read(struct vop_strategy_args *ap);
+static int hammer_vop_strategy_write(struct vop_strategy_args *ap);
+
 #if 0
 static
 int
@@ -139,13 +144,15 @@ hammer_vop_read(struct vop_read_args *ap)
 	struct uio *uio;
 	int error;
 	int n;
+	int seqcount;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
 	ip = VTOI(ap->a_vp);
 	error = 0;
+	seqcount = ap->a_ioflag >> 16;
 
-	hammer_start_transaction(ip->hmp, &trans);
+	hammer_start_transaction(&trans, ip->hmp);
 
 	/*
 	 * Access the data in HAMMER_BUFSIZE blocks via the buffer cache.
@@ -153,12 +160,14 @@ hammer_vop_read(struct vop_read_args *ap)
 	uio = ap->a_uio;
 	while (uio->uio_resid > 0 && uio->uio_offset < ip->ino_rec.ino_size) {
 		offset = uio->uio_offset & HAMMER_BUFMASK;
-		error = bread(ap->a_vp, uio->uio_offset - offset,
-			      HAMMER_BUFSIZE, &bp);
+		error = cluster_read(ap->a_vp, ip->ino_rec.ino_size,
+				     uio->uio_offset - offset, HAMMER_BUFSIZE,
+				     MAXBSIZE, seqcount, &bp);
 		if (error) {
 			brelse(bp);
 			break;
 		}
+		bp->b_flags |= B_CLUSTEROK;
 		n = HAMMER_BUFSIZE - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
@@ -166,7 +175,7 @@ hammer_vop_read(struct vop_read_args *ap)
 			n = (int)(ip->ino_rec.ino_size - uio->uio_offset);
 		error = uiomove((char *)bp->b_data + offset, n, uio);
 		if (error) {
-			brelse(bp);
+			bqrelse(bp);
 			break;
 		}
 		ip->ino_rec.ino_atime = trans.tid;
@@ -200,7 +209,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	/*
 	 * Create a transaction to cover the operations we perform.
 	 */
-	hammer_start_transaction(ip->hmp, &trans);
+	hammer_start_transaction(&trans, ip->hmp);
 	uio = ap->a_uio;
 
 	/*
@@ -243,6 +252,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			brelse(bp);
 			break;
 		}
+		bp->b_flags |= B_CLUSTEROK;
 		if (ip->ino_rec.ino_size < uio->uio_offset) {
 			ip->ino_rec.ino_size = uio->uio_offset;
 			ip->ino_rec.ino_mtime = trans.tid;
@@ -252,10 +262,8 @@ hammer_vop_write(struct vop_write_args *ap)
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
-			/* XXX B_CLUSTEROK SUPPORT */
 			bawrite(bp);
 		} else {
-			/* XXX B_CLUSTEROK SUPPORT */
 			bdwrite(bp);
 		}
 	}
@@ -330,20 +338,19 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	/*
 	 * Create a transaction to cover the operations we perform.
 	 */
-	hammer_start_transaction(dip->hmp, &trans);
+	hammer_start_transaction(&trans, dip->hmp);
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
-	 * returned inode will be locked.  We cannot hold the new
-	 * inode locked while doing other manipulations.
+	 * returned inode will be referenceds but not locked.
 	 */
-	error = hammer_alloc_inode(&trans, ap->a_vap, ap->a_cred, &nip);
+
+	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
 	if (error) {
 		hammer_abort_transaction(&trans);
 		*ap->a_vpp = NULL;
 		return (error);
 	}
-	hammer_lock_to_ref(&nip->lock);
 
 	/*
 	 * Add the new filesystem object to the directory.  This will also
@@ -355,13 +362,13 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 * Finish up.
 	 */
 	if (error) {
-		hammer_put_inode_ref(nip);
+		hammer_rel_inode(nip);
 		hammer_abort_transaction(&trans);
 		*ap->a_vpp = NULL;
 	} else {
 		hammer_commit_transaction(&trans);
 		error = hammer_get_vnode(nip, LK_EXCLUSIVE, ap->a_vpp);
-		hammer_put_inode_ref(nip);
+		hammer_rel_inode(nip);
 	}
 	return (error);
 }
@@ -423,58 +430,58 @@ static
 int
 hammer_vop_nresolve(struct vop_nresolve_args *ap)
 {
-	struct hammer_base_elm key;
 	struct namecache *ncp;
 	struct hammer_inode *dip;
-	struct hammer_btree_info info;
+	struct hammer_cursor cursor;
+	union hammer_record_ondisk *rec;
 	struct vnode *vp;
 	int64_t namekey;
 	int error;
-	const int flags = HAMMER_BTREE_GET_RECORD | HAMMER_BTREE_GET_DATA;
 
+	/*
+	 * Calculate the namekey and setup the key range for the scan.  This
+	 * works kinda like a chained hash table where the lower 32 bits
+	 * of the namekey synthesize the chain.
+	 *
+	 * The key range is inclusive of both key_beg and key_end.
+	 */
 	dip = VTOI(ap->a_dvp);
 	ncp = ap->a_nch->ncp;
 	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
 
-	hammer_btree_info_init(&info, dip->hmp->rootcl);
-        key.obj_id = dip->obj_id;
-	key.key = namekey;
-        key.create_tid = dip->obj_asof;
-        key.delete_tid = 0;
-        key.rec_type = HAMMER_RECTYPE_DIRENTRY;
-        key.obj_type = 0;
+	hammer_init_cursor_ip(&cursor, dip);
+        cursor.key_beg.obj_id = dip->obj_id;
+	cursor.key_beg.key = namekey;
+        cursor.key_beg.create_tid = dip->obj_asof;
+        cursor.key_beg.delete_tid = 0;
+        cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
+        cursor.key_beg.obj_type = 0;
+
+	cursor.key_end = cursor.key_beg;
+	cursor.key_end.key |= 0xFFFFFFFFULL;
 
 	/*
-	 * Issue a lookup on the namekey.  The entry should not be found
-	 * since the low bits of the key are 0.  This positions our cursor
-	 * properly for the iteration.
+	 * Scan all matching records (the chain), locate the one matching
+	 * the requested path component.  info->last_error contains the
+	 * error code on search termination and could be 0, ENOENT, or
+	 * something else.
+	 *
+	 * The hammer_ip_*() functions merge in-memory records with on-disk
+	 * records for the purposes of the search.
 	 */
-        error = hammer_btree_lookup(&info, &key, 0);
-	if (error != ENOENT) {
-		if (error == 0)
-			error = EIO;
-		goto done;
-	}
-
-	/*
-	 * Iterate through the keys as long as the upper 32 bits are
-	 * the same.
-	 */
-	while ((error = hammer_btree_iterate(&info.cursor, &key)) == 0) {
-		if ((error = hammer_btree_extract(&info, flags)) != 0)
+	rec = hammer_ip_first(&cursor, dip);
+	while (rec) {
+		if (hammer_ip_resolve_data(&cursor) != 0)  /* sets last_error */
 			break;
-		if ((namekey ^ info.rec->base.base.key) &
-		    (int64_t)0xFFFFFFFF00000000ULL) {
-			error = ENOENT;
+		if (ncp->nc_nlen == rec->entry.base.data_len &&
+		    bcmp(ncp->nc_name, (void *)cursor.data, ncp->nc_nlen) == 0) {
 			break;
 		}
-		if (ncp->nc_nlen == info.rec->base.data_len &&
-		    bcmp(ncp->nc_name, (void *)info.data, ncp->nc_nlen) == 0) {
-			break;
-		}
+		rec = hammer_ip_next(&cursor);
 	}
+	error = cursor.last_error;
 	if (error == 0) {
-		error = hammer_vfs_vget(dip->hmp->mp, info.rec->entry.obj_id, &vp);
+		error = hammer_vfs_vget(dip->hmp->mp, rec->entry.obj_id, &vp);
 		if (error == 0) {
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
@@ -483,8 +490,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	} else if (error == ENOENT) {
 		cache_setvp(ap->a_nch, NULL);
 	}
-done:
-        hammer_btree_info_done(&info);
+	hammer_done_cursor(&cursor);
 	return (error);
 }
 
@@ -533,7 +539,7 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 	/*
 	 * Create a transaction to cover the operations we perform.
 	 */
-	hammer_start_transaction(dip->hmp, &trans);
+	hammer_start_transaction(&trans, dip->hmp);
 
 	/*
 	 * Add the filesystem object to the directory.  Note that neither
@@ -575,20 +581,18 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	/*
 	 * Create a transaction to cover the operations we perform.
 	 */
-	hammer_start_transaction(dip->hmp, &trans);
+	hammer_start_transaction(&trans, dip->hmp);
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
-	 * returned inode will be locked.  We cannot hold the new
-	 * inode locked while doing other manipulations.
+	 * returned inode will be referenced but not locked.
 	 */
-	error = hammer_alloc_inode(&trans, ap->a_vap, ap->a_cred, &nip);
+	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
 	if (error) {
 		hammer_abort_transaction(&trans);
 		*ap->a_vpp = NULL;
 		return (error);
 	}
-	hammer_lock_to_ref(&nip->lock);
 
 	/*
 	 * Add the new filesystem object to the directory.  This will also
@@ -600,13 +604,13 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * Finish up.
 	 */
 	if (error) {
-		hammer_put_inode_ref(nip);
+		hammer_rel_inode(nip);
 		hammer_abort_transaction(&trans);
 		*ap->a_vpp = NULL;
 	} else {
 		hammer_commit_transaction(&trans);
 		error = hammer_get_vnode(nip, LK_EXCLUSIVE, ap->a_vpp);
-		hammer_put_inode_ref(nip);
+		hammer_rel_inode(nip);
 	}
 	return (error);
 }
@@ -633,20 +637,18 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	/*
 	 * Create a transaction to cover the operations we perform.
 	 */
-	hammer_start_transaction(dip->hmp, &trans);
+	hammer_start_transaction(&trans, dip->hmp);
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
-	 * returned inode will be locked.  We cannot hold the new
-	 * inode locked while doing other manipulations.
+	 * returned inode will be referenced but not locked.
 	 */
-	error = hammer_alloc_inode(&trans, ap->a_vap, ap->a_cred, &nip);
+	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
 	if (error) {
 		hammer_abort_transaction(&trans);
 		*ap->a_vpp = NULL;
 		return (error);
 	}
-	hammer_lock_to_ref(&nip->lock);
 
 	/*
 	 * Add the new filesystem object to the directory.  This will also
@@ -658,13 +660,13 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	 * Finish up.
 	 */
 	if (error) {
-		hammer_put_inode_ref(nip);
+		hammer_rel_inode(nip);
 		hammer_abort_transaction(&trans);
 		*ap->a_vpp = NULL;
 	} else {
 		hammer_commit_transaction(&trans);
 		error = hammer_get_vnode(nip, LK_EXCLUSIVE, ap->a_vpp);
-		hammer_put_inode_ref(nip);
+		hammer_rel_inode(nip);
 	}
 	return (error);
 }
@@ -726,7 +728,7 @@ static
 int
 hammer_vop_nremove(struct vop_nremove_args *ap)
 {
-	return EOPNOTSUPP;
+	return(hammer_dounlink(ap->a_nch, ap->a_dvp, ap->a_cred, 0));
 }
 
 /*
@@ -736,7 +738,93 @@ static
 int
 hammer_vop_nrename(struct vop_nrename_args *ap)
 {
-	return EOPNOTSUPP;
+	struct hammer_transaction trans;
+	struct namecache *fncp;
+	struct namecache *tncp;
+	struct hammer_inode *fdip;
+	struct hammer_inode *tdip;
+	struct hammer_inode *ip;
+	struct hammer_cursor cursor;
+	union hammer_record_ondisk *rec;
+	int64_t namekey;
+	int error;
+
+	fdip = VTOI(ap->a_fdvp);
+	tdip = VTOI(ap->a_tdvp);
+	fncp = ap->a_fnch->ncp;
+	tncp = ap->a_tnch->ncp;
+	hammer_start_transaction(&trans, fdip->hmp);
+
+	/*
+	 * Extract the hammer_inode from fncp and add link to the target
+	 * directory.
+	 */
+	ip = VTOI(fncp->nc_vp);
+	KKASSERT(ip != NULL);
+
+	error = hammer_add_directory(&trans, tdip, tncp, ip);
+
+	/*
+	 * Locate the record in the originating directory and remove it.
+	 *
+	 * Calculate the namekey and setup the key range for the scan.  This
+	 * works kinda like a chained hash table where the lower 32 bits
+	 * of the namekey synthesize the chain.
+	 *
+	 * The key range is inclusive of both key_beg and key_end.
+	 */
+	namekey = hammer_directory_namekey(fncp->nc_name, fncp->nc_nlen);
+
+	hammer_init_cursor_ip(&cursor, fdip);
+        cursor.key_beg.obj_id = fdip->obj_id;
+	cursor.key_beg.key = namekey;
+        cursor.key_beg.create_tid = fdip->obj_asof;
+        cursor.key_beg.delete_tid = 0;
+        cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
+        cursor.key_beg.obj_type = 0;
+
+	cursor.key_end = cursor.key_beg;
+	cursor.key_end.key |= 0xFFFFFFFFULL;
+
+	/*
+	 * Scan all matching records (the chain), locate the one matching
+	 * the requested path component.  info->last_error contains the
+	 * error code on search termination and could be 0, ENOENT, or
+	 * something else.
+	 *
+	 * The hammer_ip_*() functions merge in-memory records with on-disk
+	 * records for the purposes of the search.
+	 */
+	rec = hammer_ip_first(&cursor, fdip);
+	while (rec) {
+		if (hammer_ip_resolve_data(&cursor) != 0)
+			break;
+		if (fncp->nc_nlen == rec->entry.base.data_len &&
+		    bcmp(fncp->nc_name, cursor.data, fncp->nc_nlen) == 0) {
+			break;
+		}
+		rec = hammer_ip_next(&cursor);
+	}
+	error = cursor.last_error;
+
+	/*
+	 * If all is ok we have to get the inode so we can adjust nlinks.
+	 */
+	if (error)
+		goto done;
+	error = hammer_del_directory(&trans, &cursor, fdip, ip);
+	if (error == 0) {
+		cache_rename(ap->a_fnch, ap->a_tnch);
+		cache_setvp(ap->a_tnch, ip->vp);
+	}
+done:
+	if (error == 0) {
+		hammer_commit_transaction(&trans);
+	} else {
+		hammer_abort_transaction(&trans);
+	}
+        hammer_done_cursor(&cursor);
+	return (error);
 }
 
 /*
@@ -746,7 +834,9 @@ static
 int
 hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 {
-	return EOPNOTSUPP;
+	/* XXX check that directory is empty */
+
+	return(hammer_dounlink(ap->a_nch, ap->a_dvp, ap->a_cred, 0));
 }
 
 /*
@@ -756,7 +846,97 @@ static
 int
 hammer_vop_setattr(struct vop_setattr_args *ap)
 {
-	return EOPNOTSUPP;
+	struct hammer_transaction trans;
+	struct vattr *vap;
+	struct hammer_inode *ip;
+	int modflags;
+	int error;
+	u_int32_t flags;
+	uuid_t uuid;
+
+	vap = ap->a_vap;
+	ip = ap->a_vp->v_data;
+	modflags = 0;
+
+	if (ap->a_vp->v_mount->mnt_flag & MNT_RDONLY)
+		return(EROFS);
+
+	hammer_start_transaction(&trans, ip->hmp);
+	error = 0;
+
+	if (vap->va_flags != VNOVAL) {
+		flags = ip->ino_data.uflags;
+		error = vop_helper_setattr_flags(&flags, vap->va_flags,
+					 hammer_to_unix_xid(&ip->ino_data.uid),
+					 ap->a_cred);
+		if (error == 0) {
+			if (ip->ino_data.uflags != flags) {
+				ip->ino_data.uflags = flags;
+				modflags |= HAMMER_INODE_DDIRTY;
+			}
+			if (ip->ino_data.uflags & (IMMUTABLE | APPEND)) {
+				error = 0;
+				goto done;
+			}
+		}
+		goto done;
+	}
+	if (ip->ino_data.uflags & (IMMUTABLE | APPEND)) {
+		error = EPERM;
+		goto done;
+	}
+	if (vap->va_uid != (uid_t)VNOVAL) {
+		hammer_guid_to_uuid(&uuid, vap->va_uid);
+		if (bcmp(&uuid, &ip->ino_data.uid, sizeof(uuid)) == 0) {
+			ip->ino_data.uid = uuid;
+			modflags |= HAMMER_INODE_DDIRTY;
+		}
+	}
+	if (vap->va_gid != (uid_t)VNOVAL) {
+		hammer_guid_to_uuid(&uuid, vap->va_uid);
+		if (bcmp(&uuid, &ip->ino_data.gid, sizeof(uuid)) == 0) {
+			ip->ino_data.gid = uuid;
+			modflags |= HAMMER_INODE_DDIRTY;
+		}
+	}
+	if (vap->va_size != VNOVAL) {
+		switch(ap->a_vp->v_type) {
+		case VREG:
+		case VDATABASE:
+			error = hammer_delete_range(&trans, ip,
+						    vap->va_size,
+						    0x7FFFFFFFFFFFFFFFLL);
+			break;
+		default:
+			error = EINVAL;
+			goto done;
+		}
+	}
+	if (vap->va_atime.tv_sec != VNOVAL) {
+		ip->ino_rec.ino_atime =
+			hammer_timespec_to_transid(&vap->va_atime);
+		modflags |= HAMMER_INODE_ITIMES;
+	}
+	if (vap->va_mtime.tv_sec != VNOVAL) {
+		ip->ino_rec.ino_mtime =
+			hammer_timespec_to_transid(&vap->va_mtime);
+		modflags |= HAMMER_INODE_ITIMES;
+	}
+	if (vap->va_mode != (mode_t)VNOVAL) {
+		if (ip->ino_data.mode != vap->va_mode) {
+			ip->ino_data.mode = vap->va_mode;
+			modflags |= HAMMER_INODE_DDIRTY;
+		}
+	}
+done:
+	if (error) {
+		hammer_abort_transaction(&trans);
+	} else {
+		if (modflags)
+			hammer_modify_inode(&trans, ip, modflags);
+		hammer_commit_transaction(&trans);
+	}
+	return (error);
 }
 
 /*
@@ -776,115 +956,287 @@ static
 int
 hammer_vop_nwhiteout(struct vop_nwhiteout_args *ap)
 {
-	return EOPNOTSUPP;
+	return(hammer_dounlink(ap->a_nch, ap->a_dvp, ap->a_cred, ap->a_flags));
 }
 
 /*
  * hammer_vop_strategy { vp, bio }
+ *
+ * Strategy call, used for regular file read & write only.  Note that the
+ * bp may represent a cluster.
+ *
+ * To simplify operation and allow better optimizations in the future,
+ * this code does not make any assumptions with regards to buffer alignment
+ * or size.
  */
 static
 int
 hammer_vop_strategy(struct vop_strategy_args *ap)
 {
-	return EOPNOTSUPP;
+	struct buf *bp;
+	int error;
+
+	bp = ap->a_bio->bio_buf;
+
+	switch(bp->b_cmd) {
+	case BUF_CMD_READ:
+		error = hammer_vop_strategy_read(ap);
+		break;
+	case BUF_CMD_WRITE:
+		error = hammer_vop_strategy_write(ap);
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+	bp->b_error = error;
+	if (error)
+		bp->b_flags |= B_ERROR;
+	biodone(ap->a_bio);
+	return (error);
 }
 
-#if 0
-	struct hammer_data_record *data;
-	struct hammer_base_elm_t key;
-	hammer_btree_info info;
-	const int flags = HAMMER_BTREE_GET_RECORD | HAMMER_BTREE_GET_DATA;
-	int64_t base_offset;
-	int didinit;
-	int o;
+/*
+ * Read from a regular file.  Iterate the related records and fill in the
+ * BIO/BUF.  Gaps are zero-filled.
+ *
+ * The support code in hammer_object.c should be used to deal with mixed
+ * in-memory and on-disk records.
+ *
+ * XXX atime update
+ */
+static
+int
+hammer_vop_strategy_read(struct vop_strategy_args *ap)
+{
+	struct hammer_inode *ip = ap->a_vp->v_data;
+	struct hammer_cursor cursor;
+	hammer_record_ondisk_t rec;
+	hammer_base_elm_t base;
+	struct bio *bio;
+	struct buf *bp;
+	int64_t rec_offset;
+	int error;
+	int boff;
+	int roff;
+	int n;
 
-	hammer_btree_info_init(&info, ip->hmp->rootcl);
-        key.obj_id = ip->obj_id;
-        key.create_tid = ip->obj_asof;
-        key.delete_tid = 0;
-        key.rec_type = HAMMER_RECTYPE_DATA;
-        key.obj_type = 0;
-	key.key = uio->uio_offset;
+	bio = ap->a_bio;
+	bp = bio->bio_buf;
+
+	hammer_init_cursor_ip(&cursor, ip);
 
 	/*
-	 * Iterate through matching records.  Note that for data records
-	 * the base offset is the key - data_len, NOT the key.  This way
-	 * we don't have to special case a ranged search.
+	 * Key range (begin and end inclusive) to scan.  Note that the key's
+	 * stored in the actual records represent the 
 	 */
-	error = hammer_btree_lookup(&info, &key, 0);
-	if (error && error != ENOENT)
-		goto done;
-	while (uio->uio_resid > 0 && uio->uio_offset < ip->ino_rec.ino_size) {
-		if ((error = hammer_btree_iterate(&info.cursor, &key)) != 0)
+	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = bio->bio_offset;
+
+	cursor.key_end = cursor.key_beg;
+	cursor.key_end.key = bio->bio_offset + bp->b_bufsize - 1;
+
+	rec = hammer_ip_first(&cursor, ip);
+	boff = 0;
+
+	while (rec) {
+		if (hammer_ip_resolve_data(&cursor) != 0)
 			break;
+		base = &rec->base.base;
+
+		rec_offset = base->key - rec->data.base.data_len;
+
 		/*
-		 * XXX - possible to optimize the extract
+		 * Zero-fill any gap
 		 */
-		if ((error = hammer_btree_extract(&info, flags)) != 0)
-			break;
-		data = &info.rec->data;
-		base_offset = data->base.key - data->base.data_len;
-		if (uio->uio_offset < base_offset) {
-			if (base_offset - uio->uio_offset > HAMMER_BUFSIZE)
-				n = HAMMER_BUFSIZE;
-			else
-				n = (int)(base_offset - uio->uio_offset);
-			error = uiomove(ip->hmp->zbuf, n, uio);
-		} else {
-			o = (int)uio->uio_offset - base_offset;
-			if (o < data->base.data_len) {
-				n = data->base.data_len - o;
-				if (n > uio->uio_resid)
-					n = uio->uio_resid;
-				error = uiomove((char *)info.data + o, n, uio);
-			}
+		n = (int)(rec_offset - (bio->bio_offset + boff));
+		if (n > 0) {
+			kprintf("zfill %d bytes\n", n);
+			bzero((char *)bp->b_data + boff, n);
+			boff += n;
+			n = 0;
 		}
-		if (error)
+
+		/*
+		 * Calculate the data offset in the record and the number
+		 * of bytes we can copy.
+		 */
+		roff = -n;
+		n = rec->data.base.data_len - roff;
+		KKASSERT(n > 0);
+		if (n > bp->b_bufsize - boff)
+			n = bp->b_bufsize - boff;
+		bcopy((char *)cursor.data + roff, (char *)bp->b_data + boff, n);
+		boff += n;
+		if (boff == bp->b_bufsize)
 			break;
+		rec = hammer_ip_next(&cursor);
 	}
+	hammer_done_cursor(&cursor);
 
 	/*
-	 * Issue a lookup on the namekey.  The entry should not be found
-	 * since the low bits of the key are 0.  This positions our cursor
-	 * properly for the iteration.
+	 * There may have been a gap after the last record
 	 */
-	if (error != ENOENT) {
-		if (error == 0)
-			error = EIO;
-		goto done;
+	error = cursor.last_error;
+	if (error == ENOENT)
+		error = 0;
+	if (error == 0 && boff != bp->b_bufsize) {
+		bzero((char *)bp->b_data + boff, bp->b_bufsize - boff);
+		/* boff = bp->b_bufsize; */
 	}
+	bp->b_resid = 0;
+	return(error);
+}
+
+/*
+ * Write to a regular file.  Iterate the related records and mark for
+ * deletion.  If existing edge records (left and right side) overlap our
+ * write they have to be marked deleted and new records created, usually
+ * referencing a portion of the original data.  Then add a record to
+ * represent the buffer.
+ *
+ * The support code in hammer_object.c should be used to deal with mixed
+ * in-memory and on-disk records.
+ */
+static
+int
+hammer_vop_strategy_write(struct vop_strategy_args *ap)
+{
+	struct hammer_transaction trans;
+	hammer_inode_t ip;
+	struct bio *bio;
+	struct buf *bp;
+	int error;
+
+	bio = ap->a_bio;
+	bp = bio->bio_buf;
+	ip = ap->a_vp->v_data;
+	hammer_start_transaction(&trans, ip->hmp);
 
 	/*
-	 * Iterate through the keys as long as the upper 32 bits are
-	 * the same.
+	 * Delete any records overlapping our range.  This function will
+	 * properly
 	 */
-	while ((error = hammer_btree_iterate(&info, &key, flags)) == 0) {
-		if ((namekey ^ info.rec->base.base.key) &
-		    (int64_t)0xFFFFFFFF00000000ULL) {
-			error = ENOENT;
-			break;
-		}
-		if (ncp->nc_nlen == info.rec->base.data_len &&
-		    bcmp(ncp->nc_name, (void *)info->data, ncp->nc_nlen) == 0) {
-			break;
-		}
-	}
+	error = hammer_delete_range(&trans, ip, bio->bio_offset,
+				    bio->bio_offset + bp->b_bufsize - 1);
+
+	/*
+	 * Add a single record to cover the write
+	 */
 	if (error == 0) {
-		error = hammer_vfs_vget(dip->hmp->mp, info->rec->entry.obj_id, &vp);
+		error = hammer_add_data(&trans, ip, bio->bio_offset,
+					bp->b_data, bp->b_bufsize);
+	}
+
+	/*
+	 * If an error occured abort the transaction
+	 */
+	if (error) {
+		/* XXX undo deletion */
+		hammer_abort_transaction(&trans);
+		bp->b_resid = bp->b_bufsize;
+	} else {
+		hammer_commit_transaction(&trans);
+		bp->b_resid = 0;
+	}
+	return(error);
+}
+
+/*
+ * dounlink - disconnect a directory entry
+ *
+ * XXX whiteout support not really in yet
+ */
+static int
+hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
+		int flags)
+{
+	struct hammer_transaction trans;
+	struct namecache *ncp;
+	hammer_inode_t dip;
+	hammer_inode_t ip;
+	hammer_record_ondisk_t rec;
+	struct hammer_cursor cursor;
+	struct vnode *vp;
+	int64_t namekey;
+	int error;
+
+	/*
+	 * Calculate the namekey and setup the key range for the scan.  This
+	 * works kinda like a chained hash table where the lower 32 bits
+	 * of the namekey synthesize the chain.
+	 *
+	 * The key range is inclusive of both key_beg and key_end.
+	 */
+	dip = VTOI(dvp);
+	ncp = nch->ncp;
+	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
+
+	hammer_init_cursor_ip(&cursor, dip);
+        cursor.key_beg.obj_id = dip->obj_id;
+	cursor.key_beg.key = namekey;
+        cursor.key_beg.create_tid = dip->obj_asof;
+        cursor.key_beg.delete_tid = 0;
+        cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
+        cursor.key_beg.obj_type = 0;
+
+	cursor.key_end = cursor.key_beg;
+	cursor.key_end.key |= 0xFFFFFFFFULL;
+
+	hammer_start_transaction(&trans, dip->hmp);
+
+	/*
+	 * Scan all matching records (the chain), locate the one matching
+	 * the requested path component.  info->last_error contains the
+	 * error code on search termination and could be 0, ENOENT, or
+	 * something else.
+	 *
+	 * The hammer_ip_*() functions merge in-memory records with on-disk
+	 * records for the purposes of the search.
+	 */
+	rec = hammer_ip_first(&cursor, dip);
+	while (rec) {
+		if (hammer_ip_resolve_data(&cursor) != 0)
+			break;
+		if (ncp->nc_nlen == rec->entry.base.data_len &&
+		    bcmp(ncp->nc_name, cursor.data, ncp->nc_nlen) == 0) {
+			break;
+		}
+		rec = hammer_ip_next(&cursor);
+	}
+	error = cursor.last_error;
+
+	/*
+	 * If all is ok we have to get the inode so we can adjust nlinks.
+	 */
+	if (error == 0) {
+		ip = hammer_get_inode(dip->hmp, rec->entry.obj_id, &error);
+		if (error == 0)
+			error = hammer_del_directory(&trans, &cursor, dip, ip);
+		if (error == 0) {
+			cache_setunresolved(nch);
+			cache_setvp(nch, NULL);
+			/* XXX locking */
+			if (ip->vp)
+				cache_inval_vp(ip->vp, CINV_DESTROY);
+		}
+		hammer_rel_inode(ip);
+
+		error = hammer_vfs_vget(dip->hmp->mp, rec->entry.obj_id, &vp);
 		if (error == 0) {
 			vn_unlock(vp);
 			cache_setvp(nch, vp);
 			vrele(vp);
+			hammer_commit_transaction(&trans);
+		} else {
+			hammer_abort_transaction(&trans);
 		}
-	} else if (error == ENOENT) {
-		cache_setvp(nch, NULL);
 	}
-done:
-        hammer_btree_info_done(&info);
+        hammer_done_cursor(&cursor);
 	return (error);
-
-
-	return EOPNOTSUPP;
 }
 
-#endif
