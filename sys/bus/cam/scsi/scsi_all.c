@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.14 2007/11/18 19:34:50 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.15 2007/11/19 23:29:13 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -2023,10 +2023,8 @@ scsi_sense_sbuf(struct cam_device *device, struct ccb_scsiio *csio,
 			}
 		}
 
-		if (asc || ascq) {
-			sbuf_printf(sb, " asc:%x,%x\n%s%s", asc, ascq,
-				    path_str, asc_desc);
-		}
+		sbuf_printf(sb, " asc:%x,%x\n%s%s", asc, ascq,
+			    path_str, asc_desc);
 
 		if (sense->extra_len >= 7 && sense->fru) {
 			sbuf_printf(sb, " field replaceable unit: %x",
