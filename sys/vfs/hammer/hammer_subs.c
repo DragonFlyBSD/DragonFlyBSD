@@ -31,13 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.4 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.5 2007/11/20 22:55:40 dillon Exp $
  */
 /*
  * HAMMER structural locking
  */
 
 #include "hammer.h"
+#include <sys/dirent.h>
 
 void
 hammer_lock_ex(struct hammer_lock *lock)
@@ -210,6 +211,30 @@ hammer_get_vnode_type(u_int8_t obj_type)
 	/* not reached */
 }
 
+int
+hammer_get_dtype(u_int8_t obj_type)
+{
+	switch(obj_type) {
+	case HAMMER_OBJTYPE_DIRECTORY:
+		return(DT_DIR);
+	case HAMMER_OBJTYPE_REGFILE:
+		return(DT_REG);
+	case HAMMER_OBJTYPE_DBFILE:
+		return(DT_DBF);
+	case HAMMER_OBJTYPE_FIFO:
+		return(DT_FIFO);
+	case HAMMER_OBJTYPE_CDEV:
+		return(DT_CHR);
+	case HAMMER_OBJTYPE_BDEV:
+		return(DT_BLK);
+	case HAMMER_OBJTYPE_SOFTLINK:
+		return(DT_LNK);
+	default:
+		return(DT_UNKNOWN);
+	}
+	/* not reached */
+}
+
 u_int8_t
 hammer_get_obj_type(enum vtype vtype)
 {
@@ -239,13 +264,16 @@ hammer_get_obj_type(enum vtype vtype)
  * crc in the MSB and 0 in the LSB.  The caller will use the low bits to
  * generate a unique key and will scan all entries with the same upper
  * 32 bits when issuing a lookup.
+ *
+ * We strip bit 63 in order to provide a positive key, this way a seek
+ * offset of 0 will represent the base of the directory.
  */
 int64_t
 hammer_directory_namekey(void *name, int len)
 {
 	int64_t key;
 
-	key = (int64_t)crc32(name, len) << 32;
+	key = (int64_t)(crc32(name, len) & 0x7FFFFFFF) << 32;
 	return(key);
 }
 

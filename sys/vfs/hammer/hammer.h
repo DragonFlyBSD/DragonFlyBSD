@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.7 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.8 2007/11/20 22:55:40 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -179,7 +179,6 @@ struct hammer_record {
 	struct hammer_inode		*ip;
 	union hammer_record_ondisk	rec;
 	union hammer_data_ondisk	*data;
-	int32_t				data_len;
 	int				flags;
 };
 
@@ -440,12 +439,14 @@ hammer_tid_t hammer_alloc_tid(hammer_transaction_t trans);
 hammer_tid_t hammer_alloc_recid(hammer_transaction_t trans);
 
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);
+int hammer_get_dtype(u_int8_t obj_type);
 u_int8_t hammer_get_obj_type(enum vtype vtype);
 int64_t hammer_directory_namekey(void *name, int len);
 
 int	hammer_init_cursor_hmp(hammer_cursor_t cursor, hammer_mount_t hmp);
 int	hammer_init_cursor_ip(hammer_cursor_t cursor, hammer_inode_t ip);
 void	hammer_done_cursor(hammer_cursor_t cursor);
+void	hammer_mem_done(hammer_cursor_t cursor);
 
 int	hammer_btree_lookup(hammer_cursor_t cursor);
 int	hammer_btree_extract(hammer_cursor_t cursor, int flags);

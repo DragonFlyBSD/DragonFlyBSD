@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.2 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.3 2007/11/20 22:55:40 dillon Exp $
  */
 
 /*
@@ -93,6 +93,7 @@ struct hammer_cursor {
 	 */
 	struct hammer_inode *ip;
 	struct hammer_record *iprec;
+	struct hammer_rec_rb_tree_scan_info scan;
 };
 
 typedef struct hammer_cursor *hammer_cursor_t;

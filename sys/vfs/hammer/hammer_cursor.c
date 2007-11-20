@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.2 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.3 2007/11/20 22:55:40 dillon Exp $
  */
 
 /*
@@ -123,8 +123,8 @@ hammer_done_cursor(hammer_cursor_t cursor)
                 hammer_rel_buffer(cursor->record_buffer, 0);
                 cursor->record_buffer = NULL;
         }
-	if (cursor->iprec)
-		hammer_rel_mem_record(&cursor->iprec);
+	if (cursor->ip)
+		hammer_mem_done(cursor);
 
 	cursor->data = NULL;
 	cursor->record = NULL;

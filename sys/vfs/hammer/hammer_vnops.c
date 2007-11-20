@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.4 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.5 2007/11/20 22:55:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -559,6 +559,8 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 	if (error) {
 		hammer_abort_transaction(&trans);
 	} else {
+		cache_setunresolved(nch);
+		cache_setvp(nch, ap->a_vp);
 		hammer_commit_transaction(&trans);
 	}
 	return (error);
@@ -716,14 +718,101 @@ hammer_vop_print(struct vop_print_args *ap)
 }
 
 /*
- * hammer_vop_readdir { vp, uio, cred, *eofflag }
+ * hammer_vop_readdir { vp, uio, cred, *eofflag, *ncookies, off_t **cookies }
  */
 static
 int
 hammer_vop_readdir(struct vop_readdir_args *ap)
 {
-	kprintf("hammer_vop_readdir\n");
-	return EOPNOTSUPP;
+	struct hammer_cursor cursor;
+	struct hammer_inode *ip;
+	struct uio *uio;
+	hammer_record_ondisk_t rec;
+	hammer_base_elm_t base;
+	int error;
+	int cookie_index;
+	int ncookies;
+	off_t *cookies;
+	off_t saveoff;
+	int r;
+
+	ip = VTOI(ap->a_vp);
+	uio = ap->a_uio;
+	hammer_init_cursor_ip(&cursor, ip);
+
+	/*
+	 * Key range (begin and end inclusive) to scan.  Directory keys
+	 * directly translate to a 64 bit 'seek' position.
+	 */
+	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.delete_tid = 0;
+        cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = uio->uio_offset;
+
+	cursor.key_end = cursor.key_beg;
+	cursor.key_end.key = HAMMER_MAX_KEY;
+
+	if (ap->a_ncookies) {
+		ncookies = uio->uio_resid / 16 + 1;
+		if (ncookies > 1024)
+			ncookies = 1024;
+		cookies = kmalloc(ncookies * sizeof(off_t), M_TEMP, M_WAITOK);
+		cookie_index = 0;
+	} else {
+		ncookies = -1;
+		cookies = NULL;
+		cookie_index = 0;
+	}
+
+	saveoff = cursor.key_beg.key;
+	error = hammer_ip_first(&cursor, ip);
+
+	while (error == 0) {
+		error = hammer_ip_resolve_data(&cursor);
+		if (error)
+			break;
+		rec = cursor.record;
+		base = &rec->base.base;
+		saveoff = base->key;
+
+		r = vop_write_dirent(
+			     &error, uio, rec->entry.obj_id,
+			     rec->entry.base.data_len,
+			     hammer_get_dtype(rec->entry.base.base.obj_type),
+			     (void *)cursor.data);
+		if (r)
+			break;
+		++saveoff;
+		if (cookies)
+			cookies[cookie_index] = base->key;
+		++cookie_index;
+		if (cookie_index == ncookies)
+			break;
+		error = hammer_ip_next(&cursor);
+	}
+	hammer_done_cursor(&cursor);
+
+	if (ap->a_eofflag)
+		*ap->a_eofflag = (error == ENOENT);
+	if (error == ENOENT)
+		error = 0;
+	uio->uio_offset = saveoff;
+	if (error && cookie_index == 0) {
+		if (cookies) {
+			kfree(cookies, M_TEMP);
+			*ap->a_ncookies = 0;
+			*ap->a_cookies = NULL;
+		}
+	} else {
+		error = 0;
+		if (cookies) {
+			*ap->a_ncookies = cookie_index;
+			*ap->a_cookies = cookies;
+		}
+	}
+	return(error);
 }
 
 /*
@@ -900,14 +989,14 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	}
 	if (vap->va_uid != (uid_t)VNOVAL) {
 		hammer_guid_to_uuid(&uuid, vap->va_uid);
-		if (bcmp(&uuid, &ip->ino_data.uid, sizeof(uuid)) == 0) {
+		if (bcmp(&uuid, &ip->ino_data.uid, sizeof(uuid)) != 0) {
 			ip->ino_data.uid = uuid;
 			modflags |= HAMMER_INODE_DDIRTY;
 		}
 	}
 	if (vap->va_gid != (uid_t)VNOVAL) {
-		hammer_guid_to_uuid(&uuid, vap->va_uid);
-		if (bcmp(&uuid, &ip->ino_data.gid, sizeof(uuid)) == 0) {
+		hammer_guid_to_uuid(&uuid, vap->va_gid);
+		if (bcmp(&uuid, &ip->ino_data.gid, sizeof(uuid)) != 0) {
 			ip->ino_data.gid = uuid;
 			modflags |= HAMMER_INODE_DDIRTY;
 		}
@@ -1197,7 +1286,6 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 	hammer_inode_t ip;
 	hammer_record_ondisk_t rec;
 	struct hammer_cursor cursor;
-	struct vnode *vp;
 	int64_t namekey;
 	int error;
 
@@ -1263,11 +1351,7 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 		}
 		hammer_rel_inode(ip, 0);
 
-		error = hammer_vfs_vget(dip->hmp->mp, rec->entry.obj_id, &vp);
 		if (error == 0) {
-			vn_unlock(vp);
-			cache_setvp(nch, vp);
-			vrele(vp);
 			hammer_commit_transaction(&trans);
 		} else {
 			hammer_abort_transaction(&trans);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.5 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.6 2007/11/20 22:55:40 dillon Exp $
  */
 
 #include "hammer.h"
@@ -235,11 +235,11 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 {
 	hammer_mount_t hmp;
 	hammer_inode_t ip;
+	uid_t xuid;
 
 	hmp = trans->hmp;
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
 	ip->obj_id = hammer_alloc_tid(trans);
-	kprintf("object id %llx\n", ip->obj_id);
 	KKASSERT(ip->obj_id != 0);
 	ip->obj_asof = HAMMER_MAX_TID;	/* XXX */
 	ip->hmp = hmp;
@@ -268,13 +268,24 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->ino_data.mode = vap->va_mode;
 	ip->ino_data.ctime = trans->tid;
 	ip->ino_data.parent_obj_id = (dip) ? dip->ino_rec.base.base.obj_id : 0;
+
+	/*
+	 * Calculate default uid/gid and overwrite with information from
+	 * the vap.
+	 */
+	xuid = hammer_to_unix_xid(&dip->ino_data.uid);
+	ip->ino_data.gid = dip->ino_data.gid;
+	xuid = vop_helper_create_uid(hmp->mp, dip->ino_data.mode, xuid, cred,
+				     &vap->va_mode);
+	ip->ino_data.mode = vap->va_mode;
+
 	if (vap->va_vaflags & VA_UID_UUID_VALID)
 		ip->ino_data.uid = vap->va_uid_uuid;
-	else
-		hammer_guid_to_uuid(&ip->ino_data.uid, vap->va_uid);
+	else if (vap->va_uid != (uid_t)VNOVAL)
+		hammer_guid_to_uuid(&ip->ino_data.uid, xuid);
 	if (vap->va_vaflags & VA_GID_UUID_VALID)
 		ip->ino_data.gid = vap->va_gid_uuid;
-	else
+	else if (vap->va_gid != (gid_t)VNOVAL)
 		hammer_guid_to_uuid(&ip->ino_data.gid, vap->va_gid);
 
 	hammer_ref(&ip->lock);
@@ -287,13 +298,13 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 }
 
 /*
- * Release a reference on an inode and unload it if told to flush
+ * Release a reference on an inode and unload it if told to flush.
  */
 void
 hammer_rel_inode(struct hammer_inode *ip, int flush)
 {
 	hammer_unref(&ip->lock);
-	if (flush)
+	if (flush || ip->ino_rec.ino_nlinks == 0)
 		ip->flags |= HAMMER_INODE_FLUSH;
 	if (ip->lock.refs == 0 && (ip->flags & HAMMER_INODE_FLUSH))
 		hammer_unload_inode(ip, NULL);
@@ -311,11 +322,13 @@ hammer_unload_inode(struct hammer_inode *ip, void *data __unused)
 		("hammer_unload_inode: %d refs\n", ip->lock.refs));
 	KKASSERT(ip->vp == NULL);
 	hammer_ref(&ip->lock);
+
+	/* XXX flush inode to disk */
+	kprintf("flush inode %p\n", ip);
+
 	RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
 
 	hammer_uncache_node(&ip->cache);
-
-	/* XXX flush */
 	kfree(ip, M_HAMMER);
 	return(0);
 }

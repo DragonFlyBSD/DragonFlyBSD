@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.7 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.8 2007/11/20 22:55:40 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -67,6 +67,8 @@
 typedef u_int64_t hammer_tid_t;
 
 #define HAMMER_MAX_TID	0xFFFFFFFFFFFFFFFFULL
+#define HAMMER_MIN_KEY	-0x8000000000000000LL
+#define HAMMER_MAX_KEY	0x7FFFFFFFFFFFFFFFLL
 
 /*
  * Most HAMMER data structures are embedded in 16K filesystem buffers.
@@ -508,8 +510,10 @@ struct hammer_data_record {
  * offset.  A portion of the namekey is an iterator or randomizer to deal
  * with collisions.
  *
- * Note that base.base.obj_type holds the filesystem object type of obj_id,
- * e.g. a den_type equivalent.
+ * NOTE: base.base.obj_type holds the filesystem object type of obj_id,
+ *	 e.g. a den_type equivalent.
+ *
+ * NOTE: den_name / the filename data reference is NOT terminated with \0.
  *
  */
 struct hammer_entry_record {
