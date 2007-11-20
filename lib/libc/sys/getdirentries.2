@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)getdirentries.2	8.2 (Berkeley) 5/3/95
 .\" $FreeBSD: src/lib/libc/sys/getdirentries.2,v 1.12.2.6 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getdirentries.2,v 1.4 2006/07/31 19:29:41 corecode Exp $
+.\" $DragonFly: src/lib/libc/sys/getdirentries.2,v 1.5 2007/11/20 18:21:35 dillon Exp $
 .\"
 .Dd July 31, 2006
 .Dt GETDIRENTRIES 2
@@ -80,10 +80,10 @@ The data in the buffer is a series of
 .Em dirent
 structures each containing the following entries:
 .Bd -literal -offset indent
-u_int32_t d_fileno;
+ino_t     d_fileno;
 u_int8_t  d_type;
 u_int8_t  d_namlen;
-char	d_name[MAXNAMELEN + 1];	/* see below */
+char      d_name[...];	/* see below */
 .Ed
 .Pp
 The
@@ -176,6 +176,15 @@ An
 .Tn I/O
 error occurred while reading from or writing to the file system.
 .El
+.Sh BUGS
+Unfortunately, 
+.Fa *basep
+is only 32 bits wide on 32 bit platforms and
+may not be wide enough to accomodate the directory position cookie.
+Modern users should use
+.Xr lseek 2 .
+to retrieve and set the seek position within the directory.
+The seek offset is 64 bits wide on all platforms.
 .Sh SEE ALSO
 .Xr lseek 2 ,
 .Xr open 2
