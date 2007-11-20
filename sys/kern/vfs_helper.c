@@ -38,7 +38,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
- * $DragonFly: src/sys/kern/vfs_helper.c,v 1.2 2007/11/20 18:34:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_helper.c,v 1.3 2007/11/20 21:37:54 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -168,4 +168,17 @@ vop_helper_setattr_flags(u_int32_t *ino_flags, u_int32_t vaflags,
 	return(0);
 }
 
+uid_t
+vop_helper_create_uid(struct mount *mp, mode_t dmode, uid_t duid,
+		      struct ucred *cred, mode_t *modep)
+{
+#ifdef SUIDDIR
+	if ((mount->mnt_flag & MNT_SUIDDIR) && (dmode & ISUID) &&
+	    duid != cred->cr_uid && duid) {
+		*modep &= ~07111;
+		return(duid);
+	}
+#endif
+	return(cred->cr_uid);
+}
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.35 2007/11/20 18:34:00 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.36 2007/11/20 21:37:53 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -565,9 +565,11 @@ vfs_extattrctl_t vfs_stdextattrctl;
 
 struct vop_access_args;
 int vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
-		      mode_t ino_mode, u_int32_t ino_flags);
+			mode_t ino_mode, u_int32_t ino_flags);
 int vop_helper_setattr_flags(u_int32_t *ino_flags, u_int32_t vaflags,
-			     uid_t uid, struct ucred *cred);
+			uid_t uid, struct ucred *cred);
+uid_t vop_helper_create_uid(struct mount *mp, mode_t dmode, uid_t duid,
+			struct ucred *cred, mode_t *modep);
 
 void	add_bio_ops(struct bio_ops *ops);
 void	rem_bio_ops(struct bio_ops *ops);
