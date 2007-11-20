@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.6 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.7 2007/11/20 07:16:28 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -142,6 +142,18 @@ typedef struct hammer_fsbuf_head *hammer_fsbuf_head_t;
  *
  * NOTE: A 32768-element single-layer and 16384-element duel-layer A-list
  * is the same size.
+ *
+ * Special field notes:
+ *
+ *	vol_bot_beg - offset of boot area (mem_beg - bot_beg bytes)
+ *	vol_mem_beg - offset of memory log (clu_beg - mem_beg bytes)
+ *	vol_clo_beg - offset of cluster #0 in volume
+ *
+ *	The memory log area allows a kernel to cache new records and data
+ *	in memory without allocating space in the actual filesystem to hold
+ *	the records and data.  In the event that a filesystem becomes full,
+ *	any records remaining in memory can be flushed to the memory log
+ *	area.  This allows the kernel to immediately return success.
  */
 #define HAMMER_VOL_MAXCLUSTERS		32768	/* 1-layer */
 #define HAMMER_VOL_MAXSUPERCLUSTERS	16384	/* 2-layer */
@@ -149,10 +161,20 @@ typedef struct hammer_fsbuf_head *hammer_fsbuf_head_t;
 #define HAMMER_VOL_METAELMS_1LYR	HAMMER_ALIST_METAELMS_32K_1LYR
 #define HAMMER_VOL_METAELMS_2LYR	HAMMER_ALIST_METAELMS_16K_2LYR
 
+#define HAMMER_BOOT_MINBYTES		(32*1024)
+#define HAMMER_BOOT_NOMBYTES		(64LL*1024*1024)
+#define HAMMER_BOOT_MAXBYTES		(256LL*1024*1024)
+
+#define HAMMER_MEM_MINBYTES		(256*1024)
+#define HAMMER_MEM_NOMBYTES		(1LL*1024*1024*1024)
+#define HAMMER_MEM_MAXBYTES		(64LL*1024*1024*1024)
+
 struct hammer_volume_ondisk {
 	struct hammer_fsbuf_head head;
-	int64_t vol_beg;	/* byte offset of first cl/supercl in volume */
-	int64_t vol_end;	/* byte offset of volume EOF */
+	int64_t vol_bot_beg;	/* byte offset of boot area or 0 */
+	int64_t vol_mem_beg;	/* byte offset of memory log or 0 */
+	int64_t vol_clo_beg;	/* byte offset of first cl/supercl in volume */
+	int64_t vol_clo_end;	/* byte offset of volume EOF */
 	int64_t vol_locked;	/* reserved clusters are >= this offset */
 
 	uuid_t    vol_fsid;	/* identify filesystem */

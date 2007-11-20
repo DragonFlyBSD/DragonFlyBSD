@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.2 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.3 2007/11/20 07:16:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,25 +40,55 @@ void
 hammer_start_transaction(struct hammer_transaction *trans,
 			 struct hammer_mount *hmp)
 {
-	struct timespec ts;
+	int error;
 
-	getnanotime(&ts);
 	trans->hmp = hmp;
-	trans->tid = ts.tv_sec * 1000000000LL + ts.tv_nsec;
-	if (trans->tid < hmp->last_tid)
-		trans->tid = hmp->last_tid;
-	hmp->last_tid = trans->tid + 1;
+	trans->rootvol = hammer_get_root_volume(hmp, &error);
+	KKASSERT(error == 0);
+	trans->tid = hammer_alloc_tid(trans);
 }
 
 void
 hammer_abort_transaction(struct hammer_transaction *trans)
 {
+	hammer_rel_volume(trans->rootvol, 0);
 	KKASSERT(0);
 }
 
 void
 hammer_commit_transaction(struct hammer_transaction *trans)
 {
-	KKASSERT(0);
+	hammer_rel_volume(trans->rootvol, 0);
 }
 
+hammer_tid_t
+hammer_alloc_tid(hammer_transaction_t trans)
+{
+	hammer_volume_ondisk_t ondisk;
+	struct timespec ts;
+	hammer_tid_t tid;
+
+	getnanotime(&ts);
+	tid = ts.tv_sec * 1000000000LL + ts.tv_nsec;
+	ondisk = trans->rootvol->ondisk;
+	if (tid < ondisk->vol0_nexttid)
+		tid = ondisk->vol0_nexttid;
+	if (tid == 0xFFFFFFFFFFFFFFFFULL)
+		panic("hammer_start_transaction: Ran out of TIDs!");
+	ondisk->vol0_nexttid = tid + 1;
+	hammer_modify_volume(trans->rootvol);
+
+	return(tid);
+}
+
+hammer_tid_t
+hammer_alloc_recid(hammer_transaction_t trans)
+{
+	hammer_volume_ondisk_t ondisk;
+	hammer_tid_t recid;
+
+	ondisk = trans->rootvol->ondisk;
+	recid = ++ondisk->vol0_recid;
+	hammer_modify_volume(trans->rootvol);
+	return(recid);
+}

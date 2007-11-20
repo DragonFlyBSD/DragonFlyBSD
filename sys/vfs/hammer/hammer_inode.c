@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.4 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.5 2007/11/20 07:16:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -55,8 +55,11 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp;
 
 	vp = ap->a_vp;
-	if ((ip = vp->v_data) != NULL)
-		hammer_unload_inode(ip, NULL);
+	if ((ip = vp->v_data) != NULL) {
+		vp->v_data = NULL;
+		ip->vp = NULL;
+		hammer_rel_inode(ip, 1);
+	}
 	return(0);
 }
 
@@ -82,7 +85,7 @@ hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 		return(error);
 	}
 	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
-	hammer_rel_inode(ip);
+	hammer_rel_inode(ip, 0);
 	return (error);
 }
 
@@ -118,6 +121,8 @@ hammer_get_vnode(struct hammer_inode *ip, int lktype, struct vnode **vpp)
 			/* vnode locked by getnewvnode() */
 			/* make related vnode dirty if inode dirty? */
 			hammer_unlock(&ip->lock);
+			if (vp->v_type == VREG)
+				vinitvmio(vp, ip->ino_rec.ino_size);
 			break;
 		}
 
@@ -131,6 +136,7 @@ hammer_get_vnode(struct hammer_inode *ip, int lktype, struct vnode **vpp)
 			vput(vp);
 		}
 	}
+	*vpp = vp;
 	return(error);
 }
 
@@ -179,7 +185,7 @@ loop:
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
 	cursor.key_beg.obj_type = 0;
-	cursor.flags = HAMMER_BTREE_GET_RECORD | HAMMER_BTREE_GET_DATA;
+	cursor.flags = HAMMER_CURSOR_GET_RECORD | HAMMER_CURSOR_GET_DATA;
 
 	*errorp = hammer_btree_lookup(&cursor);
 
@@ -223,16 +229,17 @@ loop:
  * disk.
  */
 int
-hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
-		    struct ucred *cred, struct hammer_inode *dip,
+hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
+		    struct ucred *cred, hammer_inode_t dip,
 		    struct hammer_inode **ipp)
 {
-	struct hammer_mount *hmp;
-	struct hammer_inode *ip;
+	hammer_mount_t hmp;
+	hammer_inode_t ip;
 
 	hmp = trans->hmp;
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
-	ip->obj_id = ++hmp->last_ino;
+	ip->obj_id = hammer_alloc_tid(trans);
+	kprintf("object id %llx\n", ip->obj_id);
 	KKASSERT(ip->obj_id != 0);
 	ip->obj_asof = HAMMER_MAX_TID;	/* XXX */
 	ip->hmp = hmp;
@@ -247,8 +254,8 @@ hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 	ip->ino_rec.ino_size = 0;
 	ip->ino_rec.ino_nlinks = 0;
 	/* XXX */
-	ip->ino_rec.base.rec_id = ++hmp->rootvol->ondisk->vol0_recid;
-	hammer_modify_volume(hmp->rootvol);
+	kprintf("rootvol %p ondisk %p\n", hmp->rootvol, hmp->rootvol->ondisk);
+	ip->ino_rec.base.rec_id = hammer_alloc_recid(trans);
 	KKASSERT(ip->ino_rec.base.rec_id != 0);
 	ip->ino_rec.base.base.obj_id = ip->obj_id;
 	ip->ino_rec.base.base.key = 0;
@@ -273,17 +280,23 @@ hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 	hammer_ref(&ip->lock);
 	if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
 		hammer_unref(&ip->lock);
-		panic("hammer_create_inode: duplicate obj_id");
+		panic("hammer_create_inode: duplicate obj_id %llx", ip->obj_id);
 	}
 	*ipp = ip;
 	return(0);
 }
 
+/*
+ * Release a reference on an inode and unload it if told to flush
+ */
 void
-hammer_rel_inode(struct hammer_inode *ip)
+hammer_rel_inode(struct hammer_inode *ip, int flush)
 {
-	/* XXX check last ref */
 	hammer_unref(&ip->lock);
+	if (flush)
+		ip->flags |= HAMMER_INODE_FLUSH;
+	if (ip->lock.refs == 0 && (ip->flags & HAMMER_INODE_FLUSH))
+		hammer_unload_inode(ip, NULL);
 }
 
 /*
@@ -294,7 +307,8 @@ hammer_rel_inode(struct hammer_inode *ip)
 int
 hammer_unload_inode(struct hammer_inode *ip, void *data __unused)
 {
-	KKASSERT(ip->lock.refs == 0);
+	KASSERT(ip->lock.refs == 0,
+		("hammer_unload_inode: %d refs\n", ip->lock.refs));
 	KKASSERT(ip->vp == NULL);
 	hammer_ref(&ip->lock);
 	RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
@@ -316,35 +330,6 @@ hammer_modify_inode(struct hammer_transaction *trans,
 {
 	ip->flags |= flags;
 	ip->last_tid = trans->tid;
-}
-
-/************************************************************************
- *		     HAMMER INODE MERGED-RECORD FUNCTIONS		*
- ************************************************************************
- *
- * These functions augment the B-Tree scanning functions in hammer_btree.c
- * by merging in-memory records with on-disk records.
- */
-
-hammer_record_ondisk_t
-hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
-{
-	KKASSERT(0);
-	return(NULL);
-}
-
-hammer_record_ondisk_t
-hammer_ip_next(hammer_cursor_t cursor)
-{
-	KKASSERT(0);
-	return(NULL);
-}
-
-int
-hammer_ip_resolve_data(hammer_cursor_t cursor)
-{
-	KKASSERT(0);
-	return(NULL);
 }
 
 /*

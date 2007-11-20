@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.6 2007/11/19 00:53:39 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.7 2007/11/20 07:16:27 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -52,7 +52,9 @@ struct hammer_alist_config Clu_master_alist_config;
 struct hammer_alist_config Clu_slave_alist_config;
 uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
-int32_t ClusterSize;
+int64_t ClusterSize;
+int64_t BootAreaSize;
+int64_t MemAreaSize;
 int	UsingSuperClusters;
 int	NumVolumes;
 struct volume_info *VolBase;
@@ -112,15 +114,25 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "L:c:S")) != -1) {
+	while ((ch = getopt(ac, av, "L:b:c:m:S")) != -1) {
 		switch(ch) {
 		case 'L':
 			label = optarg;
+			break;
+		case 'b':
+			BootAreaSize = getsize(optarg,
+					 HAMMER_BUFSIZE,
+					 HAMMER_BOOT_MAXBYTES, 2);
 			break;
 		case 'c':
 			ClusterSize = getsize(optarg, 
 					 HAMMER_BUFSIZE * 256LL,
 					 HAMMER_CLU_MAXBYTES, 1);
+			break;
+		case 'm':
+			MemAreaSize = getsize(optarg,
+					 HAMMER_BUFSIZE,
+					 HAMMER_MEM_MAXBYTES, 2);
 			break;
 		case 'S':
 			/*
@@ -179,6 +191,28 @@ main(int ac, char **av)
 		}
 	}
 
+	/*
+	 * Calculate defaults for the boot and memory area sizes.
+	 */
+	if (BootAreaSize == 0) {
+		BootAreaSize = HAMMER_BOOT_NOMBYTES;
+		while (BootAreaSize > total / NumVolumes / 256)
+			BootAreaSize >>= 1;
+		if (BootAreaSize < HAMMER_BOOT_MINBYTES)
+			BootAreaSize = 0;
+	} else if (BootAreaSize < HAMMER_BOOT_MINBYTES) {
+		BootAreaSize = HAMMER_BOOT_MINBYTES;
+	}
+	if (MemAreaSize == 0) {
+		MemAreaSize = HAMMER_MEM_NOMBYTES;
+		while (MemAreaSize > total / NumVolumes / 256)
+			MemAreaSize >>= 1;
+		if (MemAreaSize < HAMMER_MEM_MINBYTES)
+			MemAreaSize = 0;
+	} else if (MemAreaSize < HAMMER_MEM_MINBYTES) {
+		MemAreaSize = HAMMER_MEM_MINBYTES;
+	}
+
 	printf("---------------------------------------------\n");
 	printf("%d volume%s total size %s\n",
 		NumVolumes, (NumVolumes == 1 ? "" : "s"), sizetostr(total));
@@ -188,7 +222,7 @@ main(int ac, char **av)
 		max_volume_size = (int64_t)HAMMER_VOL_MAXSUPERCLUSTERS * \
 				  HAMMER_SCL_MAXCLUSTERS * ClusterSize;
 	} else {
-		max_volume_size = (int64_t)HAMMER_VOL_MAXCLUSTERS * ClusterSize;
+		max_volume_size = HAMMER_VOL_MAXCLUSTERS * ClusterSize;
 	}
 	printf("max-volume-size:     %s\n", sizetostr(max_volume_size));
 
@@ -196,6 +230,8 @@ main(int ac, char **av)
 	       (max_volume_size * 32768LL < max_volume_size) ?
 	       "Unlimited" :
 	       sizetostr(max_volume_size * 32768LL));
+	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
+	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
 	printf("\n");
 
 	/*
@@ -287,8 +323,13 @@ getsize(const char *str, int64_t minval, int64_t maxval, int powerof2)
 		     str, sizetostr(maxval));
 		/* not reached */
 	}
-	if (powerof2 && (val ^ (val - 1)) != ((val << 1) - 1)) {
+	if ((powerof2 & 1) && (val ^ (val - 1)) != ((val << 1) - 1)) {
 		errx(1, "Value not power of 2: %s\n", str);
+		/* not reached */
+	}
+	if ((powerof2 & 2) && (val & HAMMER_BUFMASK)) {
+		errx(1, "Value not an integral multiple of %dK: %s", 
+		     HAMMER_BUFSIZE / 1024, str);
 		/* not reached */
 	}
 	return(val);
@@ -371,9 +412,9 @@ check_volume(struct volume_info *vol)
 	}
 
 	/*
-	 * Reserve space for (future) boot junk
+	 * Reserve space for (future) header junk
 	 */
-	vol->vol_cluster_off = HAMMER_BUFSIZE * 16;
+	vol->vol_alloc = HAMMER_BUFSIZE * 16;
 }
 
 /*
@@ -395,7 +436,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	 * The last cluster in a volume may wind up truncated.  It must be
 	 * at least minclsize to really be workable as a cluster.
 	 */
-	minclsize = ClusterSize / 4;
+	minclsize = (int32_t)(ClusterSize / 4);
 	if (minclsize < HAMMER_BUFSIZE * 64)
 		minclsize = HAMMER_BUFSIZE * 64;
 
@@ -410,14 +451,18 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	ondisk->vol_no = vol->vol_no;
 	ondisk->vol_count = nvols;
 	ondisk->vol_version = 1;
-	ondisk->vol_clsize = ClusterSize;
+	ondisk->vol_clsize = (int32_t)ClusterSize;
 	if (UsingSuperClusters)
 		ondisk->vol_flags = HAMMER_VOLF_USINGSUPERCL;
 
-	ondisk->vol_beg = vol->vol_cluster_off;
-	ondisk->vol_end = vol->size;
+	ondisk->vol_bot_beg = vol->vol_alloc;
+	vol->vol_alloc += BootAreaSize;
+	ondisk->vol_mem_beg = vol->vol_alloc;
+	vol->vol_alloc += MemAreaSize;
+	ondisk->vol_clo_beg = vol->vol_alloc;
+	ondisk->vol_clo_end = vol->size;
 
-	if (ondisk->vol_end < ondisk->vol_beg) {
+	if (ondisk->vol_clo_end < ondisk->vol_clo_beg) {
 		errx(1, "volume %d %s is too small to hold the volume header",
 		     vol->vol_no, vol->name);
 	}
@@ -448,7 +493,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		scl_group_size = scl_header_size +
 				 (int64_t)HAMMER_VOL_SUPERCLUSTER_GROUP *
 				 ClusterSize * HAMMER_SCL_MAXCLUSTERS;
-		nscl_groups = (ondisk->vol_end - ondisk->vol_beg) /
+		nscl_groups = (ondisk->vol_clo_end - ondisk->vol_clo_beg) /
 				scl_group_size;
 		nclusters = nscl_groups * HAMMER_SCL_MAXCLUSTERS *
 				HAMMER_VOL_SUPERCLUSTER_GROUP;
@@ -457,7 +502,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		 * Figure out how much space we have left and calculate the
 		 * remaining number of clusters.
 		 */
-		n64 = (ondisk->vol_end - ondisk->vol_beg) -
+		n64 = (ondisk->vol_clo_end - ondisk->vol_clo_beg) -
 			(nscl_groups * scl_group_size);
 		if (n64 > scl_header_size) {
 			nclusters += (n64 + minclsize) / ClusterSize;
@@ -466,11 +511,11 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 			nclusters, nscl_groups);
 		hammer_alist_free(&vol->clu_alist, 0, nclusters);
 	} else {
-		nclusters = (ondisk->vol_end - ondisk->vol_beg + minclsize) /
-			    ClusterSize;
+		nclusters = (ondisk->vol_clo_end - ondisk->vol_clo_beg +
+			     minclsize) / ClusterSize;
 		if (nclusters > HAMMER_VOL_MAXCLUSTERS) {
 			errx(1, "Volume is too large, max %s\n",
-			     sizetostr((int64_t)nclusters * ClusterSize));
+			     sizetostr(nclusters * ClusterSize));
 		}
 		hammer_alist_free(&vol->clu_alist, 0, nclusters);
 	}
@@ -524,7 +569,7 @@ format_cluster(struct volume_info *vol, int isroot)
 	ondisk->clu_flags = 0;
 	ondisk->clu_start = HAMMER_BUFSIZE;
 	if (vol->size - cluster->clu_offset > ClusterSize)
-		ondisk->clu_limit = ClusterSize;
+		ondisk->clu_limit = (u_int32_t)ClusterSize;
 	else
 		ondisk->clu_limit = (u_int32_t)(vol->size - cluster->clu_offset);
 

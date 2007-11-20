@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.4 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.5 2007/11/20 07:16:28 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -245,7 +245,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 		goto late_failure;
 	}
 	volume->vol_no = ondisk->vol_no;
-	volume->cluster_base = ondisk->vol_beg;
+	volume->cluster_base = ondisk->vol_clo_beg;
 	volume->vol_clsize = ondisk->vol_clsize;
 	volume->vol_flags = ondisk->vol_flags;
 	RB_INIT(&volume->rb_clus_root);
@@ -309,11 +309,11 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 * Sync clusters, sync volume
 	 */
 
+
 	/*
 	 * Clean up the root cluster, which is held unlocked in the root
 	 * volume.
 	 */
-	hammer_ref(&volume->io.lock);
 	if (hmp->rootvol == volume) {
 		if ((rootcl = hmp->rootcl) != NULL)
 			hmp->rootcl = NULL;
@@ -321,10 +321,25 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	}
 
 	/*
-	 * Flush the volume
+	 * Unload clusters and super-clusters.  Unloading a super-cluster
+	 * also unloads related clusters, but the filesystem may not be
+	 * using super-clusters so unload clusters anyway.
 	 */
-	KKASSERT(volume->io.lock.refs == 1);
+	RB_SCAN(hammer_clu_rb_tree, &volume->rb_clus_root, NULL,
+			hammer_unload_cluster, NULL);
+	RB_SCAN(hammer_scl_rb_tree, &volume->rb_scls_root, NULL,
+			hammer_unload_supercl, NULL);
+
+	/*
+	 * Release our buffer and flush anything left in the buffer cache.
+	 */
 	hammer_io_release(&volume->io, 1);
+
+	/*
+	 * There should be no references on the volume.
+	 */
+	KKASSERT(volume->io.lock.refs == 0);
+
 	volume->ondisk = NULL;
 	if (volume->devvp) {
 		if (ronly) {
@@ -579,6 +594,19 @@ hammer_load_supercl(hammer_supercl_t supercl, int isnew)
 }
 
 /*
+ * NOTE: Called from RB_SCAN, must return >= 0 for scan to continue.
+ */
+int
+hammer_unload_supercl(hammer_supercl_t supercl, void *data __unused)
+{
+	KKASSERT(supercl->io.lock.refs == 0);
+	hammer_ref(&supercl->io.lock);
+	hammer_io_release(&supercl->io, 1);
+	hammer_rel_supercl(supercl, 1);
+	return(0);
+}
+
+/*
  * Release a super-cluster.  We have to deal with several places where
  * another thread can ref the super-cluster.
  *
@@ -753,6 +781,21 @@ hammer_load_cluster(hammer_cluster_t cluster, int isnew)
 	}
 	hammer_unlock(&cluster->io.lock);
 	return (error);
+}
+
+/*
+ * NOTE: Called from RB_SCAN, must return >= 0 for scan to continue.
+ */
+int
+hammer_unload_cluster(hammer_cluster_t cluster, void *data __unused)
+{
+	hammer_ref(&cluster->io.lock);
+	RB_SCAN(hammer_buf_rb_tree, &cluster->rb_bufs_root, NULL,
+			hammer_unload_buffer, NULL);
+	KKASSERT(cluster->io.lock.refs == 1);
+	hammer_io_release(&cluster->io, 1);
+	hammer_rel_cluster(cluster, 1);
+	return(0);
 }
 
 /*
@@ -941,6 +984,20 @@ hammer_load_buffer(hammer_buffer_t buffer, u_int64_t buf_type)
 }
 
 /*
+ * NOTE: Called from RB_SCAN, must return >= 0 for scan to continue.
+ */
+int
+hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused)
+{
+	hammer_ref(&buffer->io.lock);
+	hammer_flush_buffer_nodes(buffer);
+	hammer_io_release(&buffer->io, 1);
+	KKASSERT(buffer->io.lock.refs == 1);
+	hammer_rel_buffer(buffer, 1);
+	return(0);
+}
+
+/*
  * Reference a buffer that is either already referenced or via a specially
  * handled pointer (aka cursor->buffer).
  */
@@ -1117,6 +1174,7 @@ hammer_ref_node(hammer_node_t node)
 	int error;
 
 	hammer_ref(&node->lock);
+	error = 0;
 	if (node->ondisk == NULL) {
 		hammer_lock_ex(&node->lock);
 		if (node->ondisk == NULL) {
@@ -1235,7 +1293,6 @@ hammer_cache_node(hammer_node_t node, struct hammer_node **cache)
 			*cache = node;
 		}
 	}
-	hammer_rel_node(node);
 }
 
 void

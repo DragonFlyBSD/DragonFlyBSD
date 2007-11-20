@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.6 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.7 2007/11/20 07:16:28 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -78,6 +78,7 @@ typedef struct hammer_inode_info {
 struct hammer_transaction {
 	struct hammer_mount *hmp;
 	hammer_tid_t	tid;
+	struct hammer_volume *rootvol;
 };
 
 typedef struct hammer_transaction *hammer_transaction_t;
@@ -158,6 +159,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_RDIRTY	0x0002	/* in-memory ino_rec is dirty */
 #define HAMMER_INODE_ITIMES	0x0004	/* in-memory mtime/atime modified */
 #define HAMMER_INODE_ONDISK	0x0010	/* inode is on-disk (else not yet) */
+#define HAMMER_INODE_FLUSH	0x0020	/* flush on last ref */
 
 #define HAMMER_MAX_INODE_CURSORS	4
 
@@ -173,7 +175,7 @@ typedef struct hammer_inode *hammer_inode_t;
  */
 struct hammer_record {
 	RB_ENTRY(hammer_record)		rb_node;
-	hammer_tid_t			last_tid;
+	struct hammer_lock		lock;
 	struct hammer_inode		*ip;
 	union hammer_record_ondisk	rec;
 	union hammer_data_ondisk	*data;
@@ -185,7 +187,7 @@ typedef struct hammer_record *hammer_record_t;
 
 #define HAMMER_RECF_ALLOCDATA		0x0001
 #define HAMMER_RECF_ONRBTREE		0x0002
-#define HAMMER_RECF_DELETION		0x0004	/* placemark a deletion */
+#define HAMMER_RECF_DELETED		0x0004
 
 /*
  * Structures used to internally represent a volume and a cluster
@@ -373,8 +375,6 @@ struct hammer_mount {
 	uuid_t	fsid;
 	udev_t	fsid_udev;
 	u_int32_t namekey_iterator;
-	hammer_tid_t last_tid;		/* tid for transaction id */
-	hammer_tid_t last_ino;		/* inode creation iterator */
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
@@ -405,17 +405,20 @@ void	hammer_put_inode_ref(struct hammer_inode *ip);
 
 int	hammer_unload_inode(hammer_inode_t ip, void *data __unused);
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
+int	hammer_unload_supercl(hammer_supercl_t supercl, void *data __unused);
+int	hammer_unload_cluster(hammer_cluster_t cluster, void *data __unused);
+int	hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused);
 int	hammer_install_volume(hammer_mount_t hmp, const char *volname);
 
-hammer_record_ondisk_t
-	hammer_ip_first(hammer_cursor_t cursor, hammer_inode_t ip);
-hammer_record_ondisk_t
-	hammer_ip_next(hammer_cursor_t cursor);
+int	hammer_ip_lookup(hammer_cursor_t cursor, hammer_inode_t ip);
+int	hammer_ip_first(hammer_cursor_t cursor, hammer_inode_t ip);
+int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 hammer_record_t
-	hammer_alloc_ip_record(struct hammer_transaction *trans,
+	hammer_alloc_mem_record(struct hammer_transaction *trans,
 			       hammer_inode_t ip);
-void	hammer_free_ip_record(hammer_record_t record);
+void	hammer_rel_mem_record(struct hammer_record **recordp);
+void	hammer_free_mem_record(hammer_record_t record);
 
 int	hammer_cursor_up(hammer_cursor_t cursor);
 int	hammer_cursor_toroot(hammer_cursor_t cursor);
@@ -433,6 +436,8 @@ u_int32_t hammer_to_unix_xid(uuid_t *uuid);
 void hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 void	hammer_to_timespec(hammer_tid_t tid, struct timespec *ts);
 hammer_tid_t hammer_timespec_to_transid(struct timespec *ts);
+hammer_tid_t hammer_alloc_tid(hammer_transaction_t trans);
+hammer_tid_t hammer_alloc_recid(hammer_transaction_t trans);
 
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);
 u_int8_t hammer_get_obj_type(enum vtype vtype);
@@ -484,7 +489,6 @@ void		hammer_cache_node(hammer_node_t node,
 void		hammer_uncache_node(struct hammer_node **cache);
 void		hammer_flush_node(hammer_node_t node);
 
-struct hammer_cluster *hammer_get_rootcl(struct hammer_mount *hmp);
 void hammer_dup_buffer(struct hammer_buffer **bufferp,
 			struct hammer_buffer *buffer);
 void hammer_dup_cluster(struct hammer_cluster **clusterp,
@@ -522,17 +526,17 @@ void hammer_modify_inode(struct hammer_transaction *trans,
 int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
 			struct hammer_inode **ipp);
-void hammer_rel_inode(hammer_inode_t ip);
+void hammer_rel_inode(hammer_inode_t ip, int flush);
 
-int  hammer_add_directory(struct hammer_transaction *trans,
+int  hammer_ip_add_directory(struct hammer_transaction *trans,
 			hammer_inode_t dip, struct namecache *ncp,
 			hammer_inode_t nip);
-int  hammer_del_directory(struct hammer_transaction *trans,
+int  hammer_ip_del_directory(struct hammer_transaction *trans,
 			hammer_cursor_t cursor, hammer_inode_t dip,
 			hammer_inode_t ip);
-int  hammer_delete_range(struct hammer_transaction *trans,
-			hammer_inode_t ip, int64_t off_beg, int64_t off_end);
-int  hammer_add_data(struct hammer_transaction *trans,
+int  hammer_ip_delete_range(struct hammer_transaction *trans,
+			hammer_inode_t ip, int64_t ran_beg, int64_t ran_end);
+int  hammer_ip_add_data(struct hammer_transaction *trans,
 			hammer_inode_t ip, int64_t offset,
 			void *data, int bytes);
 

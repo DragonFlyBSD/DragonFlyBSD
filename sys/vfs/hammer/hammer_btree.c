@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.4 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.5 2007/11/20 07:16:28 dillon Exp $
  */
 
 /*
@@ -127,10 +127,8 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 	 * Skip past the current record
 	 */
 	node = cursor->node->ondisk;
-	if (node == NULL) {
-		KKASSERT(cursor->last_error != 0);
-		return(cursor->last_error);
-	}
+	if (node == NULL)
+		return(ENOENT);
 	if (cursor->index < node->count)
 		++cursor->index;
 
@@ -178,6 +176,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		 * history.
 		 */
 		if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
+			KKASSERT(node->count != 0);
 			elm = &node->elms[cursor->index];
 			if (elm[0].base.obj_id == elm[1].base.obj_id &&
 			    elm[0].base.rec_type == elm[1].base.rec_type &&
@@ -213,7 +212,6 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			if (error)
 				break;
 			KKASSERT(cursor->index == 0);
-			KKASSERT(cursor->index != node->count);
 			node = cursor->node->ondisk;
 			continue;
 		}
@@ -244,7 +242,6 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		error = (r < 0) ? ENOENT : 0;
 		break;
 	}
-	cursor->last_error = error;
 	return(error);
 }
 
@@ -300,7 +297,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	cluster = cursor->node->cluster;
 	error = 0;
 
-	if ((flags & HAMMER_BTREE_GET_RECORD) && error == 0) {
+	if ((flags & HAMMER_CURSOR_GET_RECORD) && error == 0) {
 		cloff = elm->leaf.rec_offset;
 		cursor->record = hammer_bread(cluster, cloff,
 					      HAMMER_FSBUF_RECORDS, &error,
@@ -308,7 +305,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	} else {
 		cloff = 0;
 	}
-	if ((flags & HAMMER_BTREE_GET_DATA) && error == 0) {
+	if ((flags & HAMMER_CURSOR_GET_DATA) && error == 0) {
 		if ((cloff ^ elm->leaf.data_offset) & ~HAMMER_BUFMASK) {
 			/*
 			 * Data in different buffer than record
@@ -339,7 +336,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
  * The cursor is positioned such that the element at and beyond the cursor
  * are shifted to make room for the new record.
  *
- * The caller must call hammer_btree_lookup() with the HAMMER_BTREE_INSERT
+ * The caller must call hammer_btree_lookup() with the HAMMER_CURSOR_INSERT
  * flag set and that call must return ENOENT before this function can be
  * called.
  *
@@ -361,7 +358,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 	 * The search also does some setup for our insert, so there is always
 	 * room in the leaf.
 	 */
-	error = btree_search(cursor, HAMMER_BTREE_INSERT);
+	error = btree_search(cursor, HAMMER_CURSOR_INSERT);
 	if (error != ENOENT) {
 		if (error == 0)
 			error = EEXIST;
@@ -404,7 +401,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
  * The cursor is positioned such that the current element is the one
  * to be deleted.
  *
- * The caller must call hammer_btree_lookup() with the HAMMER_BTREE_DELETE
+ * The caller must call hammer_btree_lookup() with the HAMMER_CURSOR_DELETE
  * flag set and that call must return 0 before this function can be
  * called.
  *
@@ -429,7 +426,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	 * Locate the leaf element to delete.  The search is also responsible
 	 * for doing some of the rebalancing work on its way down.
 	 */
-	error = btree_search(cursor, HAMMER_BTREE_DELETE);
+	error = btree_search(cursor, HAMMER_CURSOR_DELETE);
 	if (error)
 		return (error);
 #endif
@@ -574,7 +571,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * XXX as an optimization it should be possible to unbalance the tree
 	 * and stop at the root of the current cluster.
 	 */
-	while (flags & HAMMER_BTREE_INSERT) {
+	while (flags & HAMMER_CURSOR_INSERT) {
 		if (btree_node_is_full(cursor->node->ondisk) == 0)
 			break;
 		if (cursor->parent == NULL)
@@ -600,8 +597,10 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * elements.
 	 *
 	 * NOTE: These cursor-up's CAN continue to cross cluster boundaries.
+	 *
+	 * XXX NOTE: Iterations may not set this flag anyway.
 	 */
-	while (flags & HAMMER_BTREE_DELETE) {
+	while (flags & HAMMER_CURSOR_DELETE) {
 		if (cursor->node->ondisk->count > 1)
 			break;
 		if (cursor->parent == NULL)
@@ -626,8 +625,10 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 * If we are a the root node and deleting, try to collapse
 		 * all of the root's children into the root.  This is the
 		 * only point where tree depth is reduced.
+		 *
+		 * XXX NOTE: Iterations may not set this flag anyway.
 		 */
-		if ((flags & HAMMER_BTREE_DELETE) && cursor->parent == NULL) {
+		if ((flags & HAMMER_CURSOR_DELETE) && cursor->parent == NULL) {
 			error = btree_collapse(cursor);
 			/* node becomes stale after call */
 			if (error)
@@ -663,7 +664,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 * adjust cursor->node and cursor->index if the current
 		 * index winds up in the new node.
 		 */
-		if (flags & HAMMER_BTREE_INSERT) {
+		if (flags & HAMMER_CURSOR_INSERT) {
 			if (node->count == HAMMER_BTREE_INT_ELMS) {
 				error = btree_split_internal(cursor);
 				if (error)
@@ -690,8 +691,10 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 *
 		 * XXX test for subtree_count < maxelms / 2, minus 1 or 2
 		 * for hysteresis?
+		 *
+		 * XXX NOTE: Iterations may not set this flag anyway.
 		 */
-		if (flags & HAMMER_BTREE_DELETE) {
+		if (flags & HAMMER_CURSOR_DELETE) {
 			if (node->elms[i].internal.subtree_count <= 1) {
 				error = btree_rebalance(cursor);
 				if (error)
@@ -753,7 +756,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * cursor->index.
 	 */
 	cursor->index = i;
-	if ((flags & HAMMER_BTREE_INSERT) &&
+	if ((flags & HAMMER_CURSOR_INSERT) &&
 	    node->count == HAMMER_BTREE_LEAF_ELMS) {
 		error = btree_split_leaf(cursor);
 		/* NOT USED
@@ -764,12 +767,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 			goto done;
 	}
 	error = ENOENT;
-
-	/*
-	 * Set the cursor's last_error.
-	 */
 done:
-	cursor->last_error = error;
 	return(error);
 }
 

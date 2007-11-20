@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/Attic/ondisk.c,v 1.2 2007/11/02 00:38:36 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/Attic/ondisk.c,v 1.3 2007/11/20 07:16:27 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -118,7 +118,7 @@ get_supercl(struct volume_info *vol, int32_t scl_no)
 				  HAMMER_VOL_SUPERCLUSTER_GROUP) +
 				  ((int64_t)HAMMER_VOL_SUPERCLUSTER_GROUP *
 				  ClusterSize * HAMMER_SCL_MAXCLUSTERS);
-		scl->scl_offset = vol->vol_cluster_off +
+		scl->scl_offset = vol->ondisk->vol_clo_beg +
 				  scl_group * scl_group_size +
 				  (scl_no % HAMMER_VOL_SUPERCLUSTER_GROUP) *
 				  HAMMER_BUFSIZE;
@@ -183,13 +183,13 @@ get_cluster(struct volume_info *vol, int32_t clu_no)
 			scl_group_size += HAMMER_VOL_SUPERCLUSTER_GROUP *
 					  HAMMER_BUFSIZE;
 			cl->clu_offset =
-				vol->vol_cluster_off +
+				vol->ondisk->vol_clo_beg +
 				scl_group * scl_group_size +
 				(HAMMER_BUFSIZE * HAMMER_VOL_SUPERCLUSTER_GROUP) +
 				 ((int64_t)clu_no % ((int64_t)HAMMER_SCL_MAXCLUSTERS * HAMMER_VOL_SUPERCLUSTER_GROUP)) *
 				 HAMMER_BUFSIZE;
 		} else {
-			cl->clu_offset = vol->vol_cluster_off +
+			cl->clu_offset = vol->ondisk->vol_clo_beg +
 					 (int64_t)clu_no * ClusterSize;
 		}
 	}

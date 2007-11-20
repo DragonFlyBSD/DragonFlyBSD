@@ -31,19 +31,20 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.2 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.3 2007/11/20 07:16:28 dillon Exp $
  */
 
 #include "hammer.h"
 
-static int hammer_add_record(hammer_transaction_t trans,
+static int hammer_mem_add(hammer_transaction_t trans,
 			     hammer_record_t record);
+static int hammer_mem_search(hammer_cursor_t cursor, hammer_inode_t ip);
 
 /*
  * Red-black tree support.
  */
 static int
-hammer_rec_rb_compare(struct hammer_record *rec1, struct hammer_record *rec2)
+hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 {
 	if (rec1->rec.base.base.rec_type < rec2->rec.base.base.rec_type)
 		return(-1);
@@ -63,7 +64,7 @@ hammer_rec_rb_compare(struct hammer_record *rec1, struct hammer_record *rec2)
 }
 
 static int
-hammer_rec_compare(struct hammer_base_elm *info, struct hammer_record *rec)
+hammer_rec_compare(hammer_base_elm_t info, hammer_record_t rec)
 {
         /*
          * A key1->rec_type of 0 matches any record type.
@@ -111,6 +112,98 @@ RB_GENERATE_XLOOKUP(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
 		    hammer_rec_compare, hammer_base_elm_t);
 
 /*
+ * Allocate a record for the caller to finish filling in
+ */
+hammer_record_t
+hammer_alloc_mem_record(struct hammer_transaction *trans, hammer_inode_t ip)
+{
+	hammer_record_t record;
+
+	record = kmalloc(sizeof(*record), M_HAMMER, M_WAITOK|M_ZERO);
+	record->ip = ip;
+	return (record);
+}
+
+/*
+ * Release a memory record.  If the record is marked for defered deletion,
+ * destroy the record when the last reference goes away.
+ */
+void
+hammer_rel_mem_record(struct hammer_record **recordp)
+{
+	hammer_record_t rec;
+
+	if ((rec = *recordp) != NULL) {
+		if (hammer_islastref(&rec->lock)) {
+			hammer_unref(&rec->lock);
+			if (rec->flags & HAMMER_RECF_DELETED)
+				hammer_free_mem_record(rec);
+		} else {
+			hammer_unref(&rec->lock);
+		}
+		*recordp = NULL;
+	}
+}
+
+/*
+ * Free a record.  Clean the structure up even though we are throwing it
+ * away as a sanity check.  The actual free operation is delayed while
+ * the record is referenced.
+ */
+void
+hammer_free_mem_record(hammer_record_t record)
+{
+	if (record->lock.refs) {
+		record->flags |= HAMMER_RECF_DELETED;
+		return;
+	}
+
+	if (record->flags & HAMMER_RECF_ONRBTREE) {
+		RB_REMOVE(hammer_rec_rb_tree, &record->ip->rec_tree, record);
+		record->flags &= ~HAMMER_RECF_ONRBTREE;
+	}
+	if (record->flags & HAMMER_RECF_ALLOCDATA) {
+		kfree(record->data, M_HAMMER);
+		record->flags &= ~HAMMER_RECF_ALLOCDATA;
+	}
+	record->data = NULL;
+	kfree(record, M_HAMMER);
+}
+
+/*
+ * Lookup an in-memory record given the key specified in the cursor.  Works
+ * just like hammer_btree_lookup() but operates on an inode's in-memory
+ * record list.
+ */
+static
+int
+hammer_mem_search(hammer_cursor_t cursor, hammer_inode_t ip)
+{
+	int error;
+
+	if (cursor->iprec)
+		hammer_rel_mem_record(&cursor->iprec);
+	cursor->ip = ip;
+	cursor->iprec = hammer_rec_rb_tree_RB_LOOKUP_INFO(
+				&ip->rec_tree, &cursor->key_beg);
+	if (cursor->iprec == NULL) {
+		error = ENOENT;
+	} else {
+		hammer_ref(&cursor->iprec->lock);
+		error = 0;
+	}
+	return(error);
+}
+
+/************************************************************************
+ *		     HAMMER IN-MEMORY RECORD FUNCTIONS			*
+ ************************************************************************
+ *
+ * These functions manipulate in-memory records.  Such records typically
+ * exist prior to being committed to disk or indexed via the on-disk B-Tree.
+ */
+
+/*
  * Add a directory entry (dip,ncp) which references inode (ip).
  *
  * Note that the low 32 bits of the namekey are set temporarily to create
@@ -119,15 +212,15 @@ RB_GENERATE_XLOOKUP(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
  * all 0's when synching to disk, which is not handled here.
  */
 int
-hammer_add_directory(struct hammer_transaction *trans,
+hammer_ip_add_directory(struct hammer_transaction *trans,
 		     struct hammer_inode *dip, struct namecache *ncp,
 		     struct hammer_inode *ip)
 {
-	struct hammer_record *record;
+	hammer_record_t record;
 	int error;
 	int bytes;
 
-	record = hammer_alloc_ip_record(trans, dip);
+	record = hammer_alloc_mem_record(trans, dip);
 
 	bytes = ncp->nc_nlen + 1;
 
@@ -146,76 +239,403 @@ hammer_add_directory(struct hammer_transaction *trans,
 		bcopy(ncp->nc_name, record->data, bytes);
 	}
 	record->data_len = bytes;
-	++dip->ino_rec.ino_nlinks;
-	hammer_modify_inode(trans, dip, HAMMER_INODE_RDIRTY);
-	error = hammer_add_record(trans, record);
+	++ip->ino_rec.ino_nlinks;
+	hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
+	error = hammer_mem_add(trans, record);
 	return(error);
 }
 
 /*
- * Allocate a record for the caller to finish filling in
+ * Delete the directory entry and update the inode link count.  The
+ * cursor must be seeked to the directory entry record being deleted.
+ *
+ * NOTE: HAMMER_CURSOR_DELETE may not have been set.  XXX remove flag.
  */
-struct hammer_record *
-hammer_alloc_ip_record(struct hammer_transaction *trans, hammer_inode_t ip)
+int
+hammer_ip_del_directory(struct hammer_transaction *trans,
+		     hammer_cursor_t cursor, struct hammer_inode *dip,
+		     struct hammer_inode *ip)
 {
-	hammer_record_t record;
+	int error;
 
-	record = kmalloc(sizeof(*record), M_HAMMER, M_WAITOK|M_ZERO);
-	record->last_tid = trans->tid;
-	record->ip = ip;
-	return (record);
+	if (cursor->record == &cursor->iprec->rec) {
+		/*
+		 * The directory entry was in-memory, just scrap the
+		 * record.
+		 */
+		hammer_free_mem_record(cursor->iprec);
+		error = 0;
+	} else {
+		/*
+		 * The directory entry was on-disk, mark the record and
+		 * B-Tree entry as deleted.  The B-Tree entry does not
+		 * have to be reindexed because a 'current' delete transid
+		 * will wind up in the same position as the live record.
+		 */
+		KKASSERT(ip->flags & HAMMER_INODE_ONDISK);
+		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_RECORD);
+		if (error == 0) {
+			cursor->node->ondisk->elms[cursor->index].base.delete_tid = trans->tid;
+			cursor->record->base.base.delete_tid = trans->tid;
+			hammer_modify_node(cursor->node);
+			hammer_modify_buffer(cursor->record_buffer);
+
+		}
+	}
+
+	/*
+	 * One less link
+	 */
+	if (error == 0) {
+		--ip->ino_rec.ino_nlinks;
+		hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
+	}
+	return(error);
 }
 
 /*
- * Free a record.  Clean the structure up even though we are throwing it
- * away as a sanity check.
+ * Add a data record to the filesystem.
+ *
+ * This is called via the strategy code, typically when the kernel wants to
+ * flush a buffer cache buffer, so this operation goes directly to the disk.
  */
-void
-hammer_free_ip_record(struct hammer_record *record)
+int
+hammer_ip_add_data(hammer_transaction_t trans, hammer_inode_t ip,
+		       int64_t offset, void *data, int bytes)
 {
-	if (record->flags & HAMMER_RECF_ONRBTREE) {
-		RB_REMOVE(hammer_rec_rb_tree, &record->ip->rec_tree, record);
-		record->flags &= ~HAMMER_RECF_ONRBTREE;
-	}
-	if (record->flags & HAMMER_RECF_ALLOCDATA) {
-		kfree(record->data, M_HAMMER);
-		record->flags &= ~HAMMER_RECF_ALLOCDATA;
-	}
-	record->data = NULL;
-	kfree(record, M_HAMMER);
+	panic("hammer_ip_add_data");
 }
 
 /*
- * Add the record to the inode's rec_tree.  Directory entries
+ * Add the record to the inode's rec_tree.  The low 32 bits of a directory
+ * entry's key is used to deal with hash collisions in the upper 32 bits.
+ * A unique 64 bit key is generated in-memory and may be regenerated a
+ * second time when the directory record is flushed to the on-disk B-Tree.
  */
 static
 int
-hammer_add_record(struct hammer_transaction *trans, hammer_record_t record)
+hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 {
 	while (RB_INSERT(hammer_rec_rb_tree, &record->ip->rec_tree, record)) {
 		if (record->rec.base.base.rec_type != HAMMER_RECTYPE_DIRENTRY){
-			hammer_free_ip_record(record);
+			hammer_free_mem_record(record);
 			return (EEXIST);
 		}
+		if (++trans->hmp->namekey_iterator == 0)
+			++trans->hmp->namekey_iterator;
 		record->rec.base.base.key &= ~(0xFFFFFFFFLL);
-		record->rec.base.base.key |= trans->hmp->namekey_iterator++;
+		record->rec.base.base.key |= trans->hmp->namekey_iterator;
 	}
 	record->flags |= HAMMER_RECF_ONRBTREE;
 	return(0);
 }
 
-#if 0
+/************************************************************************
+ *		     HAMMER INODE MERGED-RECORD FUNCTIONS		*
+ ************************************************************************
+ *
+ * These functions augment the B-Tree scanning functions in hammer_btree.c
+ * by merging in-memory records with on-disk records.
+ */
+
 /*
- * Delete records belonging to the specified range.  Deal with edge and
- * overlap cases.  This function sets the delete tid and breaks adds
- * up to two records to deal with edge cases, leaving the range as a gap.
- * The caller will then add records as appropriate.
+ * Locate a particular record either in-memory or on-disk.
+ *
+ * NOTE: This is basically a standalone routine, hammer_ip_next() may
+ * NOT be called to iterate results.
  */
 int
-hammer_delete_records(struct hammer_transaction *trans,
-		       struct hammer_inode *ip,
-		       hammer_base_elm_t ran_beg, hammer_base_elm_t ran_end)
+hammer_ip_lookup(hammer_cursor_t cursor, struct hammer_inode *ip)
 {
+	int error;
+
+	/*
+	 * If the element is in-memory return it without searching the
+	 * on-disk B-Tree
+	 */
+	error = hammer_mem_search(cursor, ip);
+	if (error == 0) {
+		cursor->record = &cursor->iprec->rec;
+		return(error);
+	}
+	if (error != ENOENT)
+		return(error);
+
+	/*
+	 * If the inode has on-disk components search the on-disk B-Tree.
+	 */
+	if ((ip->flags & HAMMER_INODE_ONDISK) == 0)
+		return(error);
+	error = hammer_btree_lookup(cursor);
+	if (error == 0)
+		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_RECORD);
+	return(error);
 }
 
-#endif
+/*
+ * Locate the first record within the cursor's key_beg/key_end range,
+ * restricted to a particular inode.  0 is returned on success, ENOENT
+ * if no records matched the requested range, or some other error.
+ *
+ * When 0 is returned hammer_ip_next() may be used to iterate additional
+ * records within the requested range.
+ */
+int
+hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
+{
+	int error;
+
+	/*
+	 * Clean up fields and setup for merged scan
+	 */
+	cursor->flags &= ~(HAMMER_CURSOR_ATEDISK | HAMMER_CURSOR_ATEMEM);
+	cursor->flags |= HAMMER_CURSOR_DISKEOF | HAMMER_CURSOR_MEMEOF;
+	if (cursor->iprec)
+		hammer_rel_mem_record(&cursor->iprec);
+
+	/*
+	 * Search the on-disk B-Tree
+	 */
+	if (ip->flags & HAMMER_INODE_ONDISK) {
+		error = hammer_btree_lookup(cursor);
+		if (error && error != ENOENT)
+			return(error);
+		if (error == 0)
+			cursor->flags &= ~HAMMER_CURSOR_DISKEOF;
+	}
+
+	/*
+	 * Search the in-memory record list (Red-Black tree)
+	 */
+	error = hammer_mem_search(cursor, ip);
+	if (error && error != ENOENT)
+		return(error);
+	if (error == 0)
+		cursor->flags &= ~HAMMER_CURSOR_MEMEOF;
+
+	/*
+	 * This will return the first matching record.
+	 */
+	return(hammer_ip_next(cursor));
+}
+
+/*
+ * Retrieve the next record in a merged iteration within the bounds of the
+ * cursor.  This call may be made multiple times after the cursor has been
+ * initially searched with hammer_ip_first().
+ *
+ * 0 is returned on success, ENOENT if no further records match the
+ * requested range, or some other error code is returned.
+ */
+int
+hammer_ip_next(hammer_cursor_t cursor)
+{
+	hammer_btree_elm_t elm;
+	hammer_record_t rec;
+	int error;
+	int r;
+
+	/*
+	 * Load the current on-disk and in-memory record.  If we ate any
+	 * records we have to get the next one. 
+	 *
+	 * Get the next on-disk record
+	 */
+	if (cursor->flags & HAMMER_CURSOR_ATEDISK) {
+		if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
+			error = hammer_btree_iterate(cursor);
+			if (error == 0)
+				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+			else
+				cursor->flags |= HAMMER_CURSOR_DISKEOF;
+		}
+	}
+
+	/*
+	 * Get the next in-memory record.  Records marked for defered
+	 * deletion must be skipped.
+	 */
+	if (cursor->flags & HAMMER_CURSOR_ATEMEM) {
+		if ((cursor->flags & HAMMER_CURSOR_MEMEOF) == 0) {
+			rec = cursor->iprec;
+			do {
+				rec = hammer_rec_rb_tree_RB_NEXT(rec);
+			} while(rec && (rec->flags & HAMMER_RECF_DELETED));
+			if (rec) {
+				cursor->flags &= ~HAMMER_CURSOR_ATEMEM;
+				hammer_ref(&rec->lock);
+			} else {
+				cursor->flags |= HAMMER_CURSOR_MEMEOF;
+			}
+			hammer_rel_mem_record(&cursor->iprec);
+			cursor->iprec = rec;
+		}
+	}
+
+	/*
+	 * Extract either the disk or memory record depending on their
+	 * relative position.
+	 */
+	error = 0;
+	switch(cursor->flags & (HAMMER_CURSOR_DISKEOF | HAMMER_CURSOR_MEMEOF)) {
+	case 0:
+		/*
+		 * Both entries valid
+		 */
+		elm = &cursor->node->ondisk->elms[cursor->index];
+		r = hammer_btree_cmp(&elm->base,
+				     &cursor->iprec->rec.base.base);
+		if (r < 0) {
+			error = hammer_btree_extract(cursor,
+						     HAMMER_CURSOR_GET_RECORD);
+			cursor->flags |= HAMMER_CURSOR_ATEDISK;
+			break;
+		}
+		/* fall through to the memory entry */
+	case HAMMER_CURSOR_DISKEOF:
+		/*
+		 * Only the memory entry is valid
+		 */
+		cursor->record = &cursor->iprec->rec;
+		cursor->flags |= HAMMER_CURSOR_ATEMEM;
+		break;
+	case HAMMER_CURSOR_MEMEOF:
+		/*
+		 * Only the disk entry is valid
+		 */
+		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_RECORD);
+		cursor->flags |= HAMMER_CURSOR_ATEDISK;
+		break;
+	default:
+		/*
+		 * Neither entry is valid
+		 *
+		 * XXX error not set properly
+		 */
+		cursor->record = NULL;
+		error = ENOENT;
+		break;
+	}
+	return(error);
+}
+
+/*
+ * Resolve the cursor->data pointer for the current cursor position in
+ * a merged iteration.
+ */
+int
+hammer_ip_resolve_data(hammer_cursor_t cursor)
+{
+	int error;
+
+	if (cursor->iprec && cursor->record == &cursor->iprec->rec) {
+		cursor->data = cursor->iprec->data;
+		error = 0;
+	} else {
+		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA);
+	}
+	return(error);
+}
+
+/*
+ * Delete all records within the specified range for inode ip.
+ *
+ * NOTE: An unaligned range will cause new records to be added to cover
+ * the edge cases.
+ *
+ * NOTE: ran_end is inclusive (e.g. 0,1023 instead of 0,1024).
+ */
+int
+hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
+		       int64_t ran_beg, int64_t ran_end)
+{
+	struct hammer_cursor cursor;
+	hammer_record_ondisk_t rec;
+	hammer_base_elm_t base;
+	int error;
+	int64_t off;
+
+	hammer_init_cursor_ip(&cursor, ip);
+
+	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = ran_beg;
+	cursor.key_end = cursor.key_beg;
+	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
+		cursor.key_beg.rec_type = HAMMER_RECTYPE_DB;
+		cursor.key_end.rec_type = HAMMER_RECTYPE_DB;
+		cursor.key_end.key = ran_end;
+	} else {
+		cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
+		cursor.key_end.rec_type = HAMMER_RECTYPE_DATA;
+		if (ran_end + MAXPHYS < ran_end)
+			cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
+		else
+			cursor.key_end.key = ran_end + MAXPHYS;
+	}
+
+	error = hammer_ip_first(&cursor, ip);
+
+	/*
+	 * Iterate through matching records and mark them as deleted.
+	 */
+	while (error == 0) {
+		rec = cursor.record;
+		base = &rec->base.base;
+
+		KKASSERT(base->delete_tid == 0);
+
+		/*
+		 * There may be overlap cases for regular file data.  Also
+		 * remember the key for a regular file record is the offset
+		 * of the last byte of the record (base + len - 1), NOT the
+		 * base offset.
+		 */
+		if (base->rec_type == HAMMER_RECTYPE_DATA) {
+			off = base->key - rec->base.data_len + 1;
+			/*
+			 * Check the left edge case
+			 */
+			if (off < ran_beg) {
+				panic("hammer left edge case\n");
+			}
+
+			/*
+			 * Check the right edge case.  Note that the
+			 * record can be completely out of bounds, which
+			 * terminates the search.
+			 *
+			 * base->key is (base_offset + bytes - 1), ran_end
+			 * works the same way.
+			 */
+			if (base->key > ran_end) {
+				if (base->key - rec->base.data_len + 1 > ran_end) {
+					kprintf("right edge OOB\n");
+					break;
+				}
+				panic("hammer right edge case\n");
+			}
+		}
+
+		/*
+		 * Mark the record and B-Tree entry as deleted
+		 */
+		if (cursor.record == &cursor.iprec->rec) {
+			hammer_free_mem_record(cursor.iprec);
+
+		} else {
+			cursor.node->ondisk->elms[cursor.index].base.delete_tid = trans->tid;
+			cursor.record->base.base.delete_tid = trans->tid;
+			hammer_modify_node(cursor.node);
+			hammer_modify_buffer(cursor.record_buffer);
+		}
+		error = hammer_ip_next(&cursor);
+	}
+	hammer_done_cursor(&cursor);
+	if (error == ENOENT)
+		error = 0;
+	return(error);
+}
+

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.4 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.5 2007/11/20 07:16:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		 struct ucred *cred)
 {
 	struct hammer_mount_info info;
-	struct hammer_mount *hmp;
+	hammer_mount_t hmp;
+	hammer_volume_t rootvol;
 	struct vnode *rootvp;
 	const char *upath;	/* volume name in userspace */
 	char *path;		/* volume name in system space */
@@ -106,6 +107,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	mp->mnt_data = (qaddr_t)hmp;
 	hmp->mp = mp;
 	hmp->zbuf = kmalloc(HAMMER_BUFSIZE, M_HAMMER, M_WAITOK | M_ZERO);
+	hmp->namekey_iterator = mycpu->gd_time_seconds;
 	RB_INIT(&hmp->rb_vols_root);
 	RB_INIT(&hmp->rb_inos_root);
 
@@ -155,6 +157,18 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	vfs_add_vnodeops(mp, &hammer_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	/*
+	 * The root volume's ondisk pointer is only valid if we hold a
+	 * reference to it.
+	 */
+	rootvol = hammer_get_root_volume(hmp, &error);
+	if (error)
+		goto done;
+	ksnprintf(mp->mnt_stat.f_mntfromname,
+		  sizeof(mp->mnt_stat.f_mntfromname), "%s",
+		  rootvol->ondisk->vol_name);
+	hammer_rel_volume(rootvol, 0);
+
+	/*
 	 * Locate the root directory using the root cluster's B-Tree as a
 	 * starting point.  The root directory uses an obj_id of 1.
 	 *
@@ -162,10 +176,12 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * in hmp->rootvp (need to flush it on unmount).
 	 */
 	error = hammer_vfs_vget(mp, 1, &rootvp);
-	if (error == 0)
-		vput(rootvp);
+	if (error)
+		goto done;
+	vput(rootvp);
 	/*vn_unlock(hmp->rootvp);*/
 
+done:
 	/*
 	 * Cleanup and return.
 	 */

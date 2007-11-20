@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.h,v 1.2 2007/11/02 00:38:36 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.h,v 1.3 2007/11/20 07:16:27 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -66,7 +66,7 @@ struct buffer_info;
 struct volume_info {
 	struct volume_info *next;
 	int		vol_no;
-	int64_t		vol_cluster_off;
+	int64_t		vol_alloc;
 
 	const char	*name;
 	int		fd;
@@ -130,7 +130,7 @@ extern struct hammer_alist_config Clu_master_alist_config;
 extern struct hammer_alist_config Clu_slave_alist_config;
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
-extern int32_t ClusterSize;
+extern int64_t ClusterSize;
 extern int UsingSuperClusters;
 extern int NumVolumes;
 extern struct volume_info *VolBase;

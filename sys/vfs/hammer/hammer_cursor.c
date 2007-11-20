@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.1 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.2 2007/11/20 07:16:28 dillon Exp $
  */
 
 /*
@@ -77,18 +77,20 @@ hammer_init_cursor_hmp(hammer_cursor_t cursor, hammer_mount_t hmp)
 int
 hammer_init_cursor_ip(hammer_cursor_t cursor, hammer_inode_t ip)
 {
+	hammer_node_t node;
 	int error;
 
 	if (ip->cache) {
 		bzero(cursor, sizeof(*cursor));
-		cursor->node = ip->cache;
-		error = hammer_ref_node(cursor->node);
+		node = ip->cache;
+		error = hammer_ref_node(node);
 		if (error == 0) {
-			hammer_lock_ex(&cursor->node->lock);
+			hammer_lock_ex(&node->lock);
+			cursor->node = node;
 			error = hammer_load_cursor_parent(cursor);
 		} else {
-			hammer_rel_node(cursor->node);
-			cursor->node = NULL;
+			node = NULL;
+			cursor->node = node;
 		}
 	} else {
 		error = hammer_init_cursor_hmp(cursor, ip->hmp);
@@ -121,6 +123,9 @@ hammer_done_cursor(hammer_cursor_t cursor)
                 hammer_rel_buffer(cursor->record_buffer, 0);
                 cursor->record_buffer = NULL;
         }
+	if (cursor->iprec)
+		hammer_rel_mem_record(&cursor->iprec);
+
 	cursor->data = NULL;
 	cursor->record = NULL;
 	cursor->left_bound = NULL;

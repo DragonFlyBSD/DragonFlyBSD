@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.2 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.3 2007/11/20 07:16:28 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -286,9 +286,11 @@ hammer_io_deallocate(struct buf *bp)
 
 	/*
 	 * First, ref the structure to prevent either the buffer or the
-	 * structure from going away.
+	 * structure from going away or being unexpectedly flushed.
 	 */
 	hammer_ref(&io->io.lock);
+
+	kprintf("iodeallocate bp %p\n", bp);
 
 	/*
 	 * Buffers can have active references from cached hammer_node's,
@@ -310,7 +312,13 @@ hammer_io_deallocate(struct buf *bp)
 		KKASSERT(io->io.released);
 		hammer_io_disassociate(io);
 		bp->b_flags &= ~B_LOCKED;
+		kprintf("iodeallocate bp %p - unlocked and dissed\n", bp);
 
+		/*
+		 * Perform final rights on the structure.  This can cause
+		 * a chain reaction - e.g. last buffer -> last cluster ->
+		 * last supercluster -> last volume.
+		 */
 		switch(io->io.type) {
 		case HAMMER_STRUCTURE_VOLUME:
 			hammer_rel_volume(&io->volume, 1);
@@ -325,14 +333,18 @@ hammer_io_deallocate(struct buf *bp)
 			hammer_rel_buffer(&io->buffer, 1);
 			break;
 		}
-		/* NOTE: io may be invalid (kfree'd) here */
 	} else {
 		/*
-		 * Otherwise tell the kernel not to destroy the buffer
+		 * Otherwise tell the kernel not to destroy the buffer.
+		 * 
+		 * We have to unref the structure without performing any
+		 * final rights to it to avoid a deadlock.
 		 */
 		bp->b_flags |= B_LOCKED;
-		hammer_unlock(&io->io.lock);
+		hammer_unref(&io->io.lock);
+		kprintf("iodeallocate bp %p - locked\n", bp);
 	}
+
 	crit_exit();
 }
 
