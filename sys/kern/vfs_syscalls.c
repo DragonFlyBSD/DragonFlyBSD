@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.122 2007/11/06 03:49:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.123 2007/11/20 18:35:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -3193,7 +3193,7 @@ kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
 	struct file *fp;
 	struct uio auio;
 	struct iovec aiov;
-	long loff;
+	off_t loff;
 	int error, eofflag;
 
 	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
@@ -3242,8 +3242,14 @@ unionread:
 		}
 #endif
 	}
+
+	/*
+	 * WARNING!  *basep may not be wide enough to accomodate the
+	 * seek offset.   XXX should we hack this to return the upper 32 bits
+	 * for offsets greater then 4G?
+	 */
 	if (basep) {
-		*basep = loff;
+		*basep = (long)loff;
 	}
 	*res = count - auio.uio_resid;
 done:
@@ -3263,9 +3269,9 @@ sys_getdirentries(struct getdirentries_args *uap)
 	int error;
 
 	error = kern_getdirentries(uap->fd, uap->buf, uap->count, &base,
-	    &uap->sysmsg_result, UIO_USERSPACE);
+				   &uap->sysmsg_result, UIO_USERSPACE);
 
-	if (error == 0)
+	if (error == 0 && uap->basep)
 		error = copyout(&base, uap->basep, sizeof(*uap->basep));
 	return (error);
 }
