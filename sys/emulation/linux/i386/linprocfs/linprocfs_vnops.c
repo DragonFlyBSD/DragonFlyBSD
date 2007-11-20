@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.41 2007/08/13 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.42 2007/11/20 21:03:48 dillon Exp $
  */
 
 /*
@@ -774,7 +774,7 @@ linprocfs_validfile(struct proc *p)
  *
  * linprocfs_readdir(struct vnode *a_vp, struct uio *a_uio,
  *		     struct ucred *a_cred, int *a_eofflag,
- *		     int *a_ncookies, u_long **a_cookies)
+ *		     int *a_ncookies, off_t **a_cookies)
  */
 static int
 linprocfs_readdir(struct vop_readdir_args *ap)

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.38 2007/11/02 19:52:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.39 2007/11/20 21:03:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -372,7 +372,7 @@ struct isoreaddir {
 	struct uio *uio;
 	off_t uio_off;
 	int eofflag;
-	u_long *cookies;
+	off_t *cookies;
 	int ncookies;
 };
 
@@ -456,7 +456,7 @@ assoc = (cl > 1) && (*cname == ASSOCCHAR);
  * Vnode op for readdir
  *
  * cd9660_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
- *		  int *a_eofflag, int *a_ncookies, u_long *a_cookies)
+ *		  int *a_eofflag, int *a_ncookies, off_t *a_cookies)
  */
 static int
 cd9660_readdir(struct vop_readdir_args *ap)
@@ -475,7 +475,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	int reclen;
 	u_short namelen;
 	int ncookies = 0;
-	u_long *cookies = NULL;
+	off_t *cookies = NULL;
 
 	dp = VTOI(vdp);
 	imp = dp->i_mnt;
@@ -505,7 +505,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 		ncookies = uio->uio_resid / 16 + 1;
 		if (ncookies > 1024)
 			ncookies = 1024;
-		MALLOC(cookies, u_long *, ncookies * sizeof(u_int),
+		MALLOC(cookies, off_t *, ncookies * sizeof(off_t),
 		       M_TEMP, M_WAITOK);
 		idp->cookies = cookies;
 		idp->ncookies = ncookies;

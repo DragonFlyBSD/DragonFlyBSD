@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.62 2007/08/13 17:31:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.63 2007/11/20 21:03:51 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1640,7 +1640,7 @@ ufs_symlink(struct vop_old_symlink_args *ap)
  * Vnode op for reading directories.
  *
  * ufs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
- *		int *a_eofflag, int *ncookies, u_long **a_cookies)
+ *		int *a_eofflag, int *ncookies, off_t **a_cookies)
  */
 static
 int
@@ -1657,7 +1657,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 	int pickup;	/* pickup point */
 	int ncookies;
 	int cookie_index;
-	u_long *cookies;
+	off_t *cookies;
 
 	if (uio->uio_offset < 0)
 		return (EINVAL);
@@ -1669,7 +1669,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 		ncookies = uio->uio_resid / 16 + 1;
 		if (ncookies > 1024)
 			ncookies = 1024;
-		cookies = kmalloc(ncookies * sizeof(u_long), M_TEMP, M_WAITOK);
+		cookies = kmalloc(ncookies * sizeof(off_t), M_TEMP, M_WAITOK);
 	} else {
 		ncookies = -1;	/* force conditionals below */
 		cookies = NULL;
@@ -1737,10 +1737,8 @@ ufs_readdir(struct vop_readdir_args *ap)
 			}
 			if (retval)
 				break;
-			if (cookies) {
-				cookies[cookie_index] =
-					(u_long)bp->b_loffset + offset;
-			}
+			if (cookies)
+				cookies[cookie_index] = bp->b_loffset + offset;
 			++cookie_index;
 			offset += dp->d_reclen;
 			if (cookie_index == ncookies)

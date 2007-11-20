@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.38 2007/08/13 17:31:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.39 2007/11/20 21:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1573,7 +1573,7 @@ union_symlink(struct vop_old_symlink_args *ap)
  * eliminating duplicate names from the returned data stream.
  *
  * union_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
- *		 int *a_eofflag, u_long *a_cookies, int a_ncookies)
+ *		 int *a_eofflag, off_t *a_cookies, int a_ncookies)
  */
 static int
 union_readdir(struct vop_readdir_args *ap)

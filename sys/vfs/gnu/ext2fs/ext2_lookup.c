@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.26 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.27 2007/11/20 21:03:50 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -218,18 +218,18 @@ ext2_readdir(struct vop_readdir_args *ap)
 		uio->uio_offset = startoffset + (caddr_t)dp - dirbuf;
 
 		if (!error && ap->a_ncookies != NULL) {
-			u_long *cookiep, *cookies, *ecookies;
+			off_t *cookiep, *cookies, *ecookies;
 			off_t off;
 
 			if (uio->uio_segflg != UIO_SYSSPACE || uio->uio_iovcnt != 1)
 				panic("ext2fs_readdir: unexpected uio from NFS server");
 			if (ncookies) {
-				MALLOC(cookies, u_long *,
-				       ncookies * sizeof(u_long),
+				MALLOC(cookies, off_t *,
+				       ncookies * sizeof(off_t),
 				       M_TEMP, M_WAITOK);
 			} else {
-				MALLOC(cookies, u_long *,
-				       sizeof(u_long), M_TEMP, M_WAITOK);
+				MALLOC(cookies, off_t *,
+				       sizeof(off_t), M_TEMP, M_WAITOK);
 			}
 			off = startoffset;
 			for (dp = (struct ext2_dir_entry_2 *)dirbuf,
@@ -237,7 +237,7 @@ ext2_readdir(struct vop_readdir_args *ap)
 			     cookiep < ecookies;
 			     dp = (struct ext2_dir_entry_2 *)((caddr_t) dp + dp->rec_len)) {
 				off += dp->rec_len;
-				*cookiep++ = (u_long) off;
+				*cookiep++ = off;
 			}
 			*ap->a_ncookies = ncookies;
 			*ap->a_cookies = cookies;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.45 2007/08/28 01:04:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.46 2007/11/20 21:03:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -807,7 +807,7 @@ hpfs_de_uiomove(int *error, struct hpfsmount *hpmp, struct hpfsdirent *dep,
 
 /*
  * hpfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
- *		int *a_ncookies, u_int **cookies)
+ *		int *a_ncookies, off_t **cookies)
  */
 int
 hpfs_readdir(struct vop_readdir_args *ap)
@@ -983,26 +983,16 @@ readdone:
 	uio->uio_offset = cnum;
 	dprintf(("[readdone]\n"));
 	if (!error && ap->a_ncookies != NULL) {
-#if defined(__DragonFly__)
-		u_long *cookies;
-		u_long *cookiep;
-#else /* defined(__NetBSD__) */
 		off_t *cookies;
 		off_t *cookiep;
-#endif
 
 		dprintf(("%d cookies, ",ncookies));
 		if (uio->uio_segflg != UIO_SYSSPACE || uio->uio_iovcnt != 1)
 			panic("hpfs_readdir: unexpected uio from NFS server");
-#if defined(__DragonFly__)
-		MALLOC(cookies, u_long *, ncookies * sizeof(u_long),
-		       M_TEMP, M_WAITOK);
-#else /* defined(__NetBSD__) */
 		MALLOC(cookies, off_t *, ncookies * sizeof(off_t),
 		       M_TEMP, M_WAITOK);
-#endif
 		for (cookiep = cookies, i=0; i < ncookies; i++)
-			*cookiep++ = (u_int)++num;
+			*cookiep++ = ++num;
 
 		*ap->a_ncookies = ncookies;
 		*ap->a_cookies = cookies;

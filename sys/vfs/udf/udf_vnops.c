@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.31 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.32 2007/11/20 21:03:51 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -533,7 +533,7 @@ udf_cmpname(char *cs0string, char *cmpname, int cs0len, int cmplen, struct udf_m
 
 struct udf_uiodir {
 	struct dirent *dirent;
-	u_long *cookies;
+	off_t *cookies;
 	int ncookies;
 	int acookies;
 	int eofflag;
@@ -691,7 +691,7 @@ udf_readdir(struct vop_readdir_args *a)
 	struct fileid_desc *fid;
 	struct udf_uiodir uiodir;
 	struct udf_dirstream *ds;
-	u_long *cookies = NULL;
+	off_t *cookies = NULL;
 	int ncookies;
 	int error = 0;
 	char *name;
@@ -715,7 +715,7 @@ udf_readdir(struct vop_readdir_args *a)
 		ncookies = uio->uio_resid / 8 + 1;
 		if (ncookies > 1024)
 			ncookies = 1024;
-		cookies = kmalloc(sizeof(u_long) * ncookies, M_TEMP, M_WAITOK);
+		cookies = kmalloc(sizeof(off_t) * ncookies, M_TEMP, M_WAITOK);
 		uiodir.ncookies = ncookies;
 		uiodir.cookies = cookies;
 		uiodir.acookies = 0;

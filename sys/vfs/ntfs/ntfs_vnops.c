@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.43 2007/08/28 01:04:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.44 2007/11/20 21:03:50 dillon Exp $
  *
  */
 
@@ -529,7 +529,7 @@ ntfs_close(struct vop_close_args *ap)
 
 /*
  * ntfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
- *		int *a_ncookies, u_int **cookies)
+ *		int *a_ncookies, off_t **cookies)
  */
 int
 ntfs_readdir(struct vop_readdir_args *ap)
@@ -646,24 +646,14 @@ readdone:
 		(u_int32_t)uio->uio_offset,uio->uio_resid));
 
 	if (!error && ap->a_ncookies != NULL) {
-#if defined(__DragonFly__)
-		u_long *cookies;
-		u_long *cookiep;
-#else /* defined(__NetBSD__) */
 		off_t *cookies;
 		off_t *cookiep;
-#endif
 
 		ddprintf(("ntfs_readdir: %d cookies\n",ncookies));
 		if (uio->uio_segflg != UIO_SYSSPACE || uio->uio_iovcnt != 1)
 			panic("ntfs_readdir: unexpected uio from NFS server");
-#if defined(__DragonFly__)
-		MALLOC(cookies, u_long *, ncookies * sizeof(u_long),
-		       M_TEMP, M_WAITOK);
-#else /* defined(__NetBSD__) */
 		MALLOC(cookies, off_t *, ncookies * sizeof(off_t),
 		       M_TEMP, M_WAITOK);
-#endif
 		cookiep = cookies;
 		while (off < num)
 			*cookiep++ = ++off;

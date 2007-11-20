@@ -32,7 +32,7 @@
  *
  *	@(#)dirent.h	8.3 (Berkeley) 8/10/94
  * $FreeBSD: src/sys/sys/dirent.h,v 1.11 1999/12/29 04:24:39 peter Exp $
- * $DragonFly: src/sys/sys/dirent.h,v 1.6 2006/08/13 19:19:47 dillon Exp $
+ * $DragonFly: src/sys/sys/dirent.h,v 1.7 2007/11/20 21:03:46 dillon Exp $
  */
 
 #ifndef	_SYS_DIRENT_H_
@@ -97,6 +97,7 @@ struct dirent {
 #define	DT_LNK		10
 #define	DT_SOCK		12
 #define	DT_WHT		14
+#define DT_DBF		15	/* database record file */
 
 /*
  * The _DIRENT_DIRSIZ macro gives the minimum record length which will hold

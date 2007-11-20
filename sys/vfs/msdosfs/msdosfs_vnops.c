@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.53 2007/11/02 19:52:27 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.54 2007/11/20 21:03:50 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1543,7 +1543,7 @@ msdosfs_symlink(struct vop_old_symlink_args *ap)
 /*
  * msdosfs_readdir(struct vnode *a_vp, struct uio *a_uio,
  *		   struct ucred *a_cred, int *a_eofflag, int *a_ncookies,
- *		   u_long **a_cookies)
+ *		   off_t **a_cookies)
  */
 static int
 msdosfs_readdir(struct vop_readdir_args *ap)
@@ -1562,7 +1562,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	struct msdosfsmount *pmp;
 	struct direntry *dentp;
 	struct uio *uio = ap->a_uio;
-	u_long *cookies = NULL;
+	off_t *cookies = NULL;
 	int ncookies = 0;
 	off_t offset, off;
 	int chksum = -1;
@@ -1610,7 +1610,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		ncookies = uio->uio_resid / 16 + 1;
 		if (ncookies > 1024)
 			ncookies = 1024;
-		MALLOC(cookies, u_long *, ncookies * sizeof(u_long), M_TEMP,
+		MALLOC(cookies, off_t *, ncookies * sizeof(off_t), M_TEMP,
 		       M_WAITOK);
 		*ap->a_cookies = cookies;
 		*ap->a_ncookies = ncookies;

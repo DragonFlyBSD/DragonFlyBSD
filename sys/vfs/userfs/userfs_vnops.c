@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/userfs/userfs_vnops.c,v 1.3 2007/09/07 21:42:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/userfs/userfs_vnops.c,v 1.4 2007/11/20 21:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -501,7 +501,7 @@ user_vop_print (struct vop_print_args *ap)
 
 /*
  * vop_readdir(struct vnode *vp, struct uio *uio, struct ucred *cred,
- *	       int *eofflag, int *ncookies, u_long **a_cookies)
+ *	       int *eofflag, int *ncookies, off_t **a_cookies)
  */
 static
 int

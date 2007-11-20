@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.38 2007/08/08 00:12:51 swildner Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.39 2007/11/20 21:03:50 dillon Exp $
  */
 
 /*
@@ -412,7 +412,7 @@ fdesc_setattr(struct vop_setattr_args *ap)
 
 /*
  * fdesc_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
- *		 int *a_eofflag, u_long *a_cookies, int a_ncookies)
+ *		 int *a_eofflag, off_t *a_cookies, int a_ncookies)
  */
 static int
 fdesc_readdir(struct vop_readdir_args *ap)

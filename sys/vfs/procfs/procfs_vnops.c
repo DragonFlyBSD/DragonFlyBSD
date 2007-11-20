@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.45 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.46 2007/11/20 21:03:50 dillon Exp $
  */
 
 /*
@@ -818,7 +818,7 @@ procfs_validfile(struct lwp *lp)
  * not pay off to buffer several entries locally to save uiomove calls.
  *
  * procfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
- *		  int *a_eofflag, int *a_ncookies, u_long **a_cookies)
+ *		  int *a_eofflag, int *a_ncookies, off_t **a_cookies)
  */
 static int
 procfs_readdir(struct vop_readdir_args *ap)

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.40 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.41 2007/11/20 21:03:50 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -707,7 +707,7 @@ smbfs_rmdir(struct vop_old_rmdir_args *ap)
  * smbfs_readdir call
  *
  * smbfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
- *		 int *a_eofflag, u_long *a_cookies, int a_ncookies)
+ *		 int *a_eofflag, off_t *a_cookies, int a_ncookies)
  */
 static int
 smbfs_readdir(struct vop_readdir_args *ap)

@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.38 2007/08/08 00:12:52 swildner Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.39 2007/11/20 21:03:50 dillon Exp $
  */
 
 /*
@@ -502,7 +502,7 @@ portal_setattr(struct vop_setattr_args *ap)
  *
  * portal_readdir(struct vnode *a_vp, struct uio *a_uio,
  *		  struct ucred *a_cred, int *a_eofflag,
- *		  u_long *a_cookies, int a_ncookies)
+ *		  off_t *a_cookies, int a_ncookies)
  */
 static int
 portal_readdir(struct vop_readdir_args *ap)

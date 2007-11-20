@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.35 2007/08/13 17:43:55 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.36 2007/11/20 21:03:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -562,7 +562,7 @@ vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
 
 int
 vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
-	struct ucred *cred, int *eofflag, int *ncookies, u_long **cookies)
+	struct ucred *cred, int *eofflag, int *ncookies, off_t **cookies)
 {
 	struct vop_readdir_args ap;
 	int error;

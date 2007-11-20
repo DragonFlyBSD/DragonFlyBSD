@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.29 2007/08/13 17:43:56 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.30 2007/11/20 21:03:46 dillon Exp $
  */
 
 /*
@@ -264,7 +264,7 @@ struct vop_readdir_args {
 	struct ucred *a_cred;
 	int *a_eofflag;
 	int *a_ncookies;
-	u_long **a_cookies;
+	off_t **a_cookies;
 };
 
 struct vop_readlink_args {
@@ -761,7 +761,7 @@ int vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
 		struct vattr *vap, char *target);
 int vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		struct ucred *cred, int *eofflag, 
-		int *ncookies, u_long **cookies);
+		int *ncookies, off_t **cookies);
 int vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		struct ucred *cred);
 int vop_inactive(struct vop_ops *ops, struct vnode *vp);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.37 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.38 2007/11/20 21:03:50 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -660,7 +660,7 @@ nwfs_rmdir(struct vop_old_rmdir_args *ap)
  * nwfs_readdir call
  *
  * nwfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
- *		int *a_eofflag, u_long *a_cookies, int a_ncookies)
+ *		int *a_eofflag, off_t *a_cookies, int a_ncookies)
  */
 static int
 nwfs_readdir(struct vop_readdir_args *ap)

@@ -32,7 +32,7 @@
  *
  *	@(#)dirent.h	8.2 (Berkeley) 7/28/94
  * $FreeBSD: src/include/dirent.h,v 1.7 1999/12/29 05:01:20 peter Exp $
- * $DragonFly: src/include/dirent.h,v 1.6 2005/11/19 22:26:54 swildner Exp $
+ * $DragonFly: src/include/dirent.h,v 1.7 2007/11/20 21:03:43 dillon Exp $
  */
 
 #ifndef _DIRENT_H_
@@ -58,10 +58,11 @@ typedef struct _dirdesc {
 	long	dd_size;	/* amount of data returned by getdirentries */
 	char	*dd_buf;	/* data buffer */
 	int	dd_len;		/* size of data buffer */
-	long	dd_seek;	/* magic cookie returned by getdirentries */
+	long	dd_unused01;	/* old magic cookie returned by getdirentries */
 	long	dd_rewind;	/* magic cookie for rewinding */
 	int	dd_flags;	/* flags for readdir */
 	void	*dd_lock;	/* hack to avoid include <pthread.h> */
+	off_t	dd_seek;	/* new magic cookie returned by getdirentries */
 } DIR;
 
 #define	dirfd(dirp)	((dirp)->dd_fd)
