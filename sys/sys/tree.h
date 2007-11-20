@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.9 2007/10/09 17:28:08 dillon Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.10 2007/11/20 22:52:23 dillon Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -695,6 +695,24 @@ name##_SCANCMP_ALL(struct type *type, void *data)			\
 	return(0);							\
 }									\
 									\
+static __inline void							\
+name##_scan_info_link(struct name##_scan_info *scan, struct name *head)	\
+{									\
+	scan->link = RB_INPROG(head);					\
+	RB_INPROG(head) = scan;						\
+}									\
+									\
+static __inline void							\
+name##_scan_info_done(struct name##_scan_info *scan, struct name *head)	\
+{									\
+	struct name##_scan_info **infopp;				\
+									\
+	infopp = &RB_INPROG(head);					\
+	while (*infopp != scan) 					\
+		infopp = &(*infopp)->link;				\
+	*infopp = scan->link;						\
+}									\
+									\
 STORQUAL int								\
 name##_RB_SCAN(struct name *head,					\
 		int (*scancmp)(struct type *, void *),			\
@@ -702,7 +720,6 @@ name##_RB_SCAN(struct name *head,					\
 		void *data)						\
 {									\
 	struct name##_scan_info info;					\
-	struct name##_scan_info **infopp;				\
 	struct type *best;						\
 	struct type *tmp;						\
 	int count;							\
@@ -732,8 +749,7 @@ name##_RB_SCAN(struct name *head,					\
 	count = 0;							\
 	if (best) {							\
 		info.node = RB_NEXT(name, head, best);			\
-		info.link = RB_INPROG(head);				\
-		RB_INPROG(head) = &info;				\
+		name##_scan_info_link(&info, head);			\
 		while ((comp = callback(best, data)) >= 0) {		\
 			count += comp;					\
 			best = info.node;				\
@@ -741,12 +757,9 @@ name##_RB_SCAN(struct name *head,					\
 				break;					\
 			info.node = RB_NEXT(name, head, best);		\
 		}							\
+		name##_scan_info_done(&info, head);			\
 		if (comp < 0)	/* error or termination */		\
 			count = comp;					\
-		infopp = &RB_INPROG(head);				\
-		while (*infopp != &info) 				\
-			infopp = &(*infopp)->link;			\
-		*infopp = info.link;					\
 	}								\
 	return(count);							\
 }									\
