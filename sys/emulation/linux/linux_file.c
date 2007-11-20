@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.37 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.38 2007/11/20 21:36:07 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -256,7 +256,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	struct l_dirent linux_dirent;
 	struct l_dirent64 linux_dirent64;
 	int buflen, error, eofflag, nbytes, justone;
-	u_long *cookies = NULL, *cookiep;
+	off_t *cookies = NULL, *cookiep;
 	int ncookies;
 
 	KKASSERT(p);

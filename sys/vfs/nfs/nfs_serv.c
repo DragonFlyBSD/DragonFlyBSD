@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.45 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.46 2007/11/20 21:36:08 dillon Exp $
  */
 
 /*
@@ -2788,7 +2788,7 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int siz, cnt, fullsiz, eofflag, rdonly, ncookies;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	u_quad_t off, toff, verf;
-	u_long *cookies = NULL, *cookiep; /* needs to be int64_t or off_t */
+	off_t *cookies = NULL, *cookiep;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
@@ -3013,7 +3013,7 @@ again:
 
 			/* Finish off the record */
 			if (v3) {
-				*tl = 0;
+				*tl = txdr_unsigned(*cookiep >> 32);
 				bp += NFSX_UNSIGNED;
 				nfsm_clget;
 			}
@@ -3078,7 +3078,7 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int len, nlen, rem, xfer, tsiz, i, error = 0, getret = 1;
 	int siz, cnt, fullsiz, eofflag, rdonly, dirlen, ncookies;
 	u_quad_t off, toff, verf;
-	u_long *cookies = NULL, *cookiep; /* needs to be int64_t or off_t */
+	off_t *cookies = NULL, *cookiep; /* needs to be int64_t or off_t */
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
@@ -3299,7 +3299,7 @@ again:
 			fl.fl_fhsize = txdr_unsigned(NFSX_V3FH);
 			fl.fl_fhok = nfs_true;
 			fl.fl_postopok = nfs_true;
-			fl.fl_off.nfsuquad[0] = 0;
+			fl.fl_off.nfsuquad[0] = txdr_unsigned(*cookiep >> 32);
 			fl.fl_off.nfsuquad[1] = txdr_unsigned(*cookiep);
 
 			nfsm_clget;
