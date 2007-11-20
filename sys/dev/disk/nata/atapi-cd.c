@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.8 2007/07/23 19:26:09 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.9 2007/11/20 09:25:21 hasso Exp $
  */
 
 #include "opt_ata.h"
@@ -1735,13 +1735,15 @@ static void
 acd_get_cap(device_t dev)
 {
     struct acd_softc *cdp = device_get_ivars(dev);
+    int8_t ccb[16] = { ATAPI_MODE_SENSE_BIG, 0, ATAPI_CDROM_CAP_PAGE,
+		       0, 0, 0, 0, sizeof(cdp->cap)>>8, sizeof(cdp->cap),
+		       0, 0, 0, 0, 0, 0, 0 };
     int count;
 
     /* get drive capabilities, some bugridden drives needs this repeated */
     for (count = 0 ; count < 5 ; count++) {
-	if (!acd_mode_sense(dev, ATAPI_CDROM_CAP_PAGE,
-			    (caddr_t)&cdp->cap, sizeof(cdp->cap)) &&
-			    cdp->cap.page_code == ATAPI_CDROM_CAP_PAGE) {
+	if (!ata_atapicmd(dev, ccb, (caddr_t)&cdp->cap, sizeof(cdp->cap),
+			  ATA_R_READ | ATA_R_QUIET, 5)) {
 	    cdp->cap.max_read_speed = ntohs(cdp->cap.max_read_speed);
 	    cdp->cap.cur_read_speed = ntohs(cdp->cap.cur_read_speed);
 	    cdp->cap.max_write_speed = ntohs(cdp->cap.max_write_speed);
@@ -1922,6 +1924,8 @@ acd_describe(device_t dev)
 		kprintf("CD-R "); break;
 	    case MST_CDRW:
 		kprintf("CD-RW "); break;
+	    case MST_DVD:
+	        kprintf("DVD "); break;
 	    case MST_DOOR_OPEN:
 		kprintf("door open"); break;
 	    case MST_NO_DISC:

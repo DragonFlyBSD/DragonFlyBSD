@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.h,v 1.45 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.h,v 1.2 2007/06/03 03:44:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.h,v 1.3 2007/11/20 09:25:21 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -100,6 +100,7 @@ struct cappage {
 #define MST_CDROM               0x00
 #define MST_CDR                 0x10
 #define MST_CDRW                0x20
+#define MST_DVD                 0x40
 
 #define MST_NO_DISC             0x70
 #define MST_DOOR_OPEN           0x71
