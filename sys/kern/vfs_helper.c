@@ -38,7 +38,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
- * $DragonFly: src/sys/kern/vfs_helper.c,v 1.1 2007/11/02 19:54:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_helper.c,v 1.2 2007/11/20 18:34:01 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -53,6 +53,7 @@
 #include <sys/unistd.h>
 #include <sys/vnode.h>
 #include <sys/file.h>		/* XXX */
+#include <sys/jail.h>
 
 /*
  * vop_helper_access()
@@ -137,4 +138,34 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 		mask |= S_IWOTH;
 	return ((ino_mode & mask) == mask ? 0 : EACCES);
 }
+
+int
+vop_helper_setattr_flags(u_int32_t *ino_flags, u_int32_t vaflags,
+			 uid_t uid, struct ucred *cred)
+{
+	int error;
+
+	/*
+	 * If uid doesn't match only the super-user can change the flags
+	 */
+	if (cred->cr_uid != uid &&
+	    (error = suser_cred(cred, PRISON_ROOT))) {
+		return(error);
+	}
+	if (cred->cr_uid == 0 &&
+	    (!jailed(cred)|| jail_chflags_allowed)) {
+		if ((*ino_flags & (SF_NOUNLINK|SF_IMMUTABLE|SF_APPEND)) &&
+		    securelevel > 0)
+			return (EPERM);
+		*ino_flags = vaflags;
+	} else {
+		if (*ino_flags & (SF_NOUNLINK|SF_IMMUTABLE|SF_APPEND) ||
+		    (vaflags & UF_SETTABLE) != vaflags)
+			return (EPERM);
+		*ino_flags &= SF_SETTABLE;
+		*ino_flags |= vaflags & UF_SETTABLE;
+	}
+	return(0);
+}
+
 
