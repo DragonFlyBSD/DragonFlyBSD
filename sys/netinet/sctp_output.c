@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.11 2007/04/22 01:13:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.11.2.1 2007/11/21 10:23:21 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -65,6 +65,7 @@
 #include <sys/domain.h>
 #endif
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #if (defined(__FreeBSD__) && __FreeBSD_version >= 500000)
 #include <sys/limits.h>
