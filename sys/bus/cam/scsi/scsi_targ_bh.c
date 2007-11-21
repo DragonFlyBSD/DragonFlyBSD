@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.15 2007/11/17 20:28:46 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.16 2007/11/21 22:10:16 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -464,7 +464,8 @@ targbhstart(struct cam_periph *periph, union ccb *start_ccb)
 		desc = (struct targbh_cmd_desc *)atio->ccb_h.ccb_descr;
 
 		/* Is this a tagged request? */
-		flags = atio->ccb_h.flags & (CAM_TAG_ACTION_VALID|CAM_DIR_MASK);
+		flags = atio->ccb_h.flags &
+		    (CAM_DIS_DISCONNECT|CAM_TAG_ACTION_VALID|CAM_DIR_MASK);
 
 		csio = &start_ccb->csio;
 		/*
@@ -506,6 +507,19 @@ targbhstart(struct cam_periph *periph, union ccb *start_ccb)
 		CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE,
 			  ("Sending a CTIO\n"));
 		xpt_action(start_ccb);
+		/*
+		 * If the queue was frozen waiting for the response
+		 * to this ATIO (for instance disconnection was disallowed),
+		 * then release it now that our response has been queued.
+		 */
+		if ((atio->ccb_h.status & CAM_DEV_QFRZN) != 0) {
+			cam_release_devq(periph->path,
+					 /*relsim_flags*/0,
+					 /*reduction*/0,
+					 /*timeout*/0,
+					 /*getcount_only*/0);
+			atio->ccb_h.status &= ~CAM_DEV_QFRZN;
+		}
 		crit_enter();
 		ccbh = TAILQ_FIRST(&softc->work_queue);
 		crit_exit();
@@ -533,6 +547,7 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 		struct ccb_accept_tio *atio;
 		struct targbh_cmd_desc *descr;
 		u_int8_t *cdb;
+		int priority;
 
 		atio = &done_ccb->atio;
 		descr = (struct targbh_cmd_desc*)atio->ccb_h.ccb_descr;
@@ -622,9 +637,16 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 
 		/* Queue us up to receive a Continue Target I/O ccb. */
-		TAILQ_INSERT_TAIL(&softc->work_queue, &atio->ccb_h,
-				  periph_links.tqe);
-		xpt_schedule(periph, /*priority*/1);
+		if ((atio->ccb_h.flags & CAM_DIS_DISCONNECT) != 0) {
+			TAILQ_INSERT_HEAD(&softc->work_queue, &atio->ccb_h,
+					  periph_links.tqe);
+			priority = 0;
+		} else {
+			TAILQ_INSERT_TAIL(&softc->work_queue, &atio->ccb_h,
+					  periph_links.tqe);
+			priority = 1;
+		}
+		xpt_schedule(periph, priority);
 		break;
 	}
 	case XPT_CONT_TARGET_IO:
@@ -649,7 +671,22 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 		done_ccb->ccb_h.flags &= ~CAM_SEND_SENSE;
 		done_ccb->ccb_h.status &= ~CAM_SENT_SENSE;
 
-		/* XXX Check for errors */
+		/*
+		 * Any errors will not change the data we return,
+		 * so make sure the queue is not left frozen.
+		 * XXX - At some point there may be errors that
+		 *       leave us in a connected state with the
+		 *       initiator...
+		 */
+		if ((done_ccb->ccb_h.status & CAM_DEV_QFRZN) != 0) {
+			kprintf("Releasing Queue\n");
+			cam_release_devq(done_ccb->ccb_h.path,
+					 /*relsim_flags*/0,
+					 /*reduction*/0,
+					 /*timeout*/0,
+					 /*getcount_only*/0); 
+			done_ccb->ccb_h.status &= ~CAM_DEV_QFRZN;
+		}
 		desc->data_resid -= desc->data_increment;
 		xpt_release_ccb(done_ccb);
 		if (softc->state != TARGBH_STATE_TEARDOWN) {
@@ -673,11 +710,23 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 	}
 	case XPT_IMMED_NOTIFY:
 	{
+		int frozen;
+
+		frozen = (done_ccb->ccb_h.status & CAM_DEV_QFRZN) != 0;
 		if (softc->state == TARGBH_STATE_TEARDOWN
 		 || done_ccb->ccb_h.status == CAM_REQ_ABORTED) {
 			kprintf("Freed an immediate notify\n");
 			kfree(done_ccb, M_DEVBUF);
+		} else {
+			/* Requeue for another immediate event */
+			xpt_action(done_ccb);
 		}
+		if (frozen != 0)
+			cam_release_devq(periph->path,
+					 /*relsim_flags*/0,
+					 /*opening reduction*/0,
+					 /*timeout*/0,
+					 /*getcount_only*/0);
 		break;
 	}
 	default:
