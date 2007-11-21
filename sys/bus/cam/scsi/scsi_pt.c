@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.21 2007/11/18 19:27:29 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.22 2007/11/21 21:28:41 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -448,6 +448,8 @@ ptasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 		cam_status status;
  
 		cgd = (struct ccb_getdev *)arg;
+		if (cgd == NULL)
+			break;
 
 		if (SID_TYPE(&cgd->inq_data) != T_PROCESSOR)
 			break;

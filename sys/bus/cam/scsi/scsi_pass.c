@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.23 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.24 2007/11/21 21:28:41 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -225,6 +225,8 @@ passasync(void *callback_arg, u_int32_t code,
 		cam_status status;
  
 		cgd = (struct ccb_getdev *)arg;
+		if (cgd == NULL)
+			break;
 
 		/*
 		 * Allocate a peripheral instance for

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.36 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.37 2007/11/21 21:28:41 pavalos Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -556,6 +556,8 @@ cdasync(void *callback_arg, u_int32_t code,
 		cam_status status;
 
 		cgd = (struct ccb_getdev *)arg;
+		if (cgd == NULL)
+			break;
 
 		if (SID_TYPE(&cgd->inq_data) != T_CDROM
 		    && SID_TYPE(&cgd->inq_data) != T_WORM)

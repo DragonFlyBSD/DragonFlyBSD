@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.24 2007/11/18 17:53:01 pavalos Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.25 2007/11/21 21:28:41 pavalos Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -279,6 +279,9 @@ sesasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 		int inq_len;
 
 		cgd = (struct ccb_getdev *)arg;
+		if (arg == NULL) {
+			break;
+		}
 
 		inq_len = cgd->inq_data.additional_length + 4;
 

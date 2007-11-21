@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.22 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.23 2007/11/21 21:28:41 pavalos Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -319,6 +319,8 @@ chasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 		cam_status status;
 
 		cgd = (struct ccb_getdev *)arg;
+		if (cgd == NULL)
+			break;
 
 		if (SID_TYPE(&cgd->inq_data)!= T_CHANGER)
 			break;
