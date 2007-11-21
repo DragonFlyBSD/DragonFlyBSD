@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.41 2007/11/20 00:03:21 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.42 2007/11/21 20:29:34 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1498,8 +1498,7 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 	       path->device->lun_id);
 	printf("%s%d: ", periph->periph_name, periph->unit_number);
 	scsi_print_inquiry(&path->device->inq_data);
-	if ((bootverbose)
-	 && (path->device->serial_num_len > 0)) {
+	if (bootverbose && path->device->serial_num_len > 0) {
 		/* Don't wrap the screen  - print only the first 60 chars */
 		printf("%s%d: Serial Number %.60s\n", periph->periph_name,
 		       periph->unit_number, path->device->serial_num);
@@ -1516,8 +1515,7 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 
 	speed = cpi.base_transfer_speed;
 	freq = 0;
-	if (cts.ccb_h.status == CAM_REQ_CMP
-	 && cts.transport == XPORT_SPI) {
+	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_SPI) {
 		struct	ccb_trans_settings_spi *spi;
 
 		spi = &cts.xport_specific.spi;
@@ -1530,12 +1528,11 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 		if ((spi->valid & CTS_SPI_VALID_BUS_WIDTH) != 0)
 			speed *= (0x01 << spi->bus_width);
 	}
-	if (cts.ccb_h.status == CAM_REQ_CMP
-	 && cts.transport == XPORT_FC) {
-		struct	ccb_trans_settings_fc *fc;
-
-		fc = &cts.xport_specific.fc;
-		speed = fc->bitrate;
+	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_FC) {
+		struct	ccb_trans_settings_fc *fc = &cts.xport_specific.fc;
+		if (fc->valid & CTS_FC_VALID_SPEED) {
+			speed = fc->bitrate;
+		}
 	}
 
 	mb = speed / 1000;
@@ -1547,8 +1544,7 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 		printf("%s%d: %dKB/s transfers", periph->periph_name,
 		       periph->unit_number, speed);
 	/* Report additional information about SPI connections */
-	if (cts.ccb_h.status == CAM_REQ_CMP
-	 && cts.transport == XPORT_SPI) {
+	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_SPI) {
 		struct	ccb_trans_settings_spi *spi;
 
 		spi = &cts.xport_specific.spi;
@@ -1571,17 +1567,16 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 			printf(")");
 		}
 	}
-	if (cts.ccb_h.status == CAM_REQ_CMP
-	 && cts.transport == XPORT_FC) {
+	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_FC) {
 		struct	ccb_trans_settings_fc *fc;
 
 		fc = &cts.xport_specific.fc;
-		if (fc->wwnn)
-			printf(" WWNN %q", (quad_t) fc->wwnn);
-		if (fc->wwpn)
-			printf(" WWPN %q", (quad_t) fc->wwpn);
-		if (fc->port)
-			printf(" PortID %u", fc->port);
+		if (fc->valid & CTS_FC_VALID_WWNN)
+			printf(" WWNN 0x%llx", (long long) fc->wwnn);
+		if (fc->valid & CTS_FC_VALID_WWPN)
+			printf(" WWPN 0x%llx", (long long) fc->wwpn);
+		if (fc->valid & CTS_FC_VALID_PORT)
+			printf(" PortID 0x%x", fc->port);
 	}
 
 	if (path->device->inq_flags & SID_CmdQue
@@ -6081,8 +6076,7 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 	}
 
 	/* SPI specific sanity checking */
-	if (cts->transport == XPORT_SPI
-	 && async_update == FALSE) {
+	if (cts->transport == XPORT_SPI && async_update == FALSE) {
 		u_int spi3caps;
 		struct ccb_trans_settings_spi *spi;
 		struct ccb_trans_settings_spi *cur_spi;
@@ -6118,8 +6112,8 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 		  && (inq_data->flags & SID_Sync) == 0
 		  && cts->type == CTS_TYPE_CURRENT_SETTINGS)
 		 || ((cpi.hba_inquiry & PI_SDTR_ABLE) == 0)
-		 || (cts->sync_offset == 0)
-		 || (cts->sync_period == 0)) {
+		 || (cur_spi->sync_offset == 0)
+		 || (cur_spi->sync_period == 0)) {
 			/* Force async */
 			spi->sync_period = 0;
 			spi->sync_offset = 0;
