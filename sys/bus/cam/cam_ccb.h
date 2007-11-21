@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.11 2007/11/19 23:52:10 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.12 2007/11/21 20:07:31 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -749,6 +749,18 @@ struct ccb_trans_settings_spi
 	u_int	ppr_options;
 };
 
+struct ccb_trans_settings_fc {
+	u_int     	valid;		/* Which fields to honor */
+#define	CTS_FC_VALID_WWNN		0x8000
+#define	CTS_FC_VALID_WWPN		0x4000
+#define	CTS_FC_VALID_PORT		0x2000
+#define	CTS_FC_VALID_SPEED		0x1000
+	u_int64_t	wwnn;		/* world wide node name */
+	u_int64_t 	wwpn;		/* world wide port name */
+	u_int32_t 	port;		/* 24 bit port id, if known */
+	u_int32_t 	bitrate;	/* Mbps */
+};
+
 /* Get/Set transfer rate/width/disconnection/tag queueing settings */
 struct ccb_trans_settings {
 	struct	  ccb_hdr ccb_h;
@@ -764,6 +776,7 @@ struct ccb_trans_settings {
 	union {
 		u_int  valid;	/* Which fields to honor */
 		struct ccb_trans_settings_spi spi;
+		struct ccb_trans_settings_fc fc;
 	} xport_specific;
 };
 
