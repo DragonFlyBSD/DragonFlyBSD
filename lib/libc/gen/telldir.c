@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/telldir.c,v 1.4.12.1 2001/03/05 09:39:59 obrien Exp $
- * $DragonFly: src/lib/libc/gen/telldir.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/telldir.c,v 1.5 2007/11/21 05:48:31 dillon Exp $
  *
  * @(#)telldir.c	8.1 (Berkeley) 6/4/93
  */
@@ -62,7 +62,7 @@
 struct ddloc {
 	struct	ddloc *loc_next;/* next structure in list */
 	long	loc_index;	/* key associated with structure */
-	long	loc_seek;	/* magic cookie returned by getdirentries */
+	off_t	loc_seek;	/* magic cookie returned by getdirentries */
 	long	loc_loc;	/* offset of entry in buffer */
 	const DIR* loc_dirp;	/* directory which used this entry */
 };
@@ -121,7 +121,7 @@ _seekdir(DIR *dirp, long loc)
 		return;
 	if (lp->loc_loc == dirp->dd_loc && lp->loc_seek == dirp->dd_seek)
 		goto found;
-	lseek(dirp->dd_fd, (off_t)lp->loc_seek, SEEK_SET);
+	lseek(dirp->dd_fd, lp->loc_seek, SEEK_SET);
 	dirp->dd_seek = lp->loc_seek;
 	dirp->dd_loc = 0;
 	while (dirp->dd_loc < lp->loc_loc) {

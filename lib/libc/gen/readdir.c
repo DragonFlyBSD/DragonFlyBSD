@@ -31,13 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/readdir.c,v 1.5.2.4 2002/02/26 22:53:57 alfred Exp $
- * $DragonFly: src/lib/libc/gen/readdir.c,v 1.8 2005/11/19 22:32:53 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/readdir.c,v 1.9 2007/11/21 05:48:31 dillon Exp $
  *
  * @(#)readdir.c	8.3 (Berkeley) 9/29/94
  */
 
 #include "namespace.h"
 #include <sys/param.h>
+#include <sys/file.h>
 #include <dirent.h>
 #include <errno.h>
 #include <string.h>
@@ -53,6 +54,7 @@ struct dirent *
 _readdir_unlocked(DIR *dirp)
 {
 	struct dirent *dp;
+	long dummy;
 
 	for (;;) {
 		if (dirp->dd_loc >= dirp->dd_size) {
@@ -61,8 +63,9 @@ _readdir_unlocked(DIR *dirp)
 			dirp->dd_loc = 0;
 		}
 		if (dirp->dd_loc == 0 && !(dirp->dd_flags & __DTF_READALL)) {
+			dirp->dd_seek = lseek(dirp->dd_fd, 0, SEEK_CUR);
 			dirp->dd_size = _getdirentries(dirp->dd_fd,
-			    dirp->dd_buf, dirp->dd_len, &dirp->dd_seek);
+			    dirp->dd_buf, dirp->dd_len, &dummy);
 			if (dirp->dd_size <= 0)
 				return (NULL);
 		}
