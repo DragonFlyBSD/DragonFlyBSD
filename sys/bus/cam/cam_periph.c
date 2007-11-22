@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.27 2007/11/18 19:11:23 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.28 2007/11/22 00:59:49 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -479,8 +479,8 @@ cam_periph_lock(struct cam_periph *periph, int flags)
 	/*
 	 * Increment the reference count on the peripheral
 	 * while we wait for our lock attempt to succeed
-	 * to ensure the peripheral doesn't dissappear
-	 * out from under us while we sleep.
+	 * to ensure the peripheral doesn't disappear out
+	 * from under us while we sleep.
 	 */
 	if (cam_periph_acquire(periph) != CAM_REQ_CMP)
 		return(ENXIO);
@@ -1488,7 +1488,7 @@ cam_periph_error(union ccb *ccb, cam_flags camflags,
 	status = ccb->ccb_h.status;
 	frozen = (status & CAM_DEV_QFRZN) != 0;
 	status &= CAM_STATUS_MASK;
-	relsim_flags = 0;
+	openings = relsim_flags = 0;
 
 	switch (status) {
 	case CAM_REQ_CMP:
@@ -1506,6 +1506,8 @@ cam_periph_error(union ccb *ccb, cam_flags camflags,
 	case CAM_AUTOSENSE_FAIL:
 		xpt_print_path(ccb->ccb_h.path);
 		kprintf("AutoSense Failed\n");
+		error = EIO;	/* we have to kill the command */
+		break;
 	case CAM_REQ_CMP_ERR:
 	case CAM_CMD_TIMEOUT:
 	case CAM_UNEXP_BUSFREE:
