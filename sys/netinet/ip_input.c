@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.73 2007/11/16 05:07:36 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.74 2007/11/22 19:57:14 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -177,7 +177,7 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, sendsourcequench, CTLFLAG_RW,
     &ip_sendsourcequench, 0,
     "Enable the transmission of source quench packets");
 
-int ip_do_randomid = 0;
+int ip_do_randomid = 1;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, random_id, CTLFLAG_RW,
     &ip_do_randomid, 0,
     "Assign random ip_id values");	
