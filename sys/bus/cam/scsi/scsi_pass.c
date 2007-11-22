@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.24 2007/11/21 21:28:41 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.25 2007/11/22 17:11:43 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -348,7 +348,7 @@ passopen(struct dev_open_args *ap)
 	}
 
 	/*
-	 * Don't allow access when we're running at a high securelvel.
+	 * Don't allow access when we're running at a high securelevel.
 	 */
 	if (securelevel > 1) {
 		crit_exit();
