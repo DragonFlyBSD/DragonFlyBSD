@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)mailaddr.7	8.1 (Berkeley) 6/16/93
 .\" $FreeBSD: src/share/man/man7/mailaddr.7,v 1.6.2.1 2001/08/17 13:08:49 ru Exp $
-.\" $DragonFly: src/share/man/man7/mailaddr.7,v 1.4 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/share/man/man7/mailaddr.7,v 1.5 2007/11/23 23:16:37 swildner Exp $
 .\"
 .Dd June 16, 1993
 .Dt MAILADDR 7
@@ -137,14 +137,14 @@ can often be sent to ``user@host.CSNET'' or ``user@host.BITNET'' respectively.
 .Rs
 .%A Crocker, D. H.
 .%T Standard for the Format of Arpa Internet Text Messages
-.%O RFC822
+.%O RFC 822
 .Re
 .Sh HISTORY
 .Nm Mailaddr
 appeared in
 .Bx 4.2 .
 .Sh BUGS
-The RFC822 group syntax (``group:user1,user2,user3;'') is not supported
+The RFC 822 group syntax (``group:user1,user2,user3;'') is not supported
 except in the special case of ``group:;'' because of a conflict with old
 berknet-style addresses.
 .Pp

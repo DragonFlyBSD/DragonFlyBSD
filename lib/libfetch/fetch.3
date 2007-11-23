@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libfetch/fetch.3,v 1.63 2007/05/24 20:28:14 des Exp $
-.\" $DragonFly: src/lib/libfetch/fetch.3,v 1.4 2007/08/05 21:48:12 swildner Exp $
+.\" $DragonFly: src/lib/libfetch/fetch.3,v 1.5 2007/11/23 23:16:36 swildner Exp $
 .\"
 .Dd July 1, 1998
 .Dt FETCH 3
@@ -127,7 +127,7 @@ uploading files using Uniform Resource Locators (URLs).
 .Fn fetchParseURL
 takes a URL in the form of a null-terminated string and splits it into
 its components function according to the Common Internet Scheme Syntax
-detailed in RFC1738.
+detailed in RFC 1738.
 A regular expression which produces this syntax is:
 .Bd -literal
     <scheme>:(//(<user>(:<pwd>)?@)?<host>(:<port>)?)?/(<document>)?
@@ -308,7 +308,7 @@ replacing them.
 .Fn fetchGetFTP
 and
 .Fn fetchPutFTP
-implement the FTP protocol as described in RFC959.
+implement the FTP protocol as described in RFC 959.
 .Pp
 If the
 .Ql p
@@ -342,7 +342,7 @@ and
 .Fn fetchPutHTTP
 functions implement the HTTP/1.1 protocol.
 With a little luck, there is
-even a chance that they comply with RFC2616 and RFC2617.
+even a chance that they comply with RFC 2616 and RFC 2617.
 .Pp
 If the
 .Ql d
@@ -564,7 +564,7 @@ HTTP_PROXY_AUTH=basic:*:<user>:<pwd>
 .%A J. K. Reynolds
 .%D October 1985
 .%B File Transfer Protocol
-.%O RFC959
+.%O RFC 959
 .Re
 .Rs
 .%A P. Deutsch
@@ -572,7 +572,7 @@ HTTP_PROXY_AUTH=basic:*:<user>:<pwd>
 .%A A. Marine.
 .%D May 1994
 .%T How to Use Anonymous FTP
-.%O RFC1635
+.%O RFC 1635
 .Re
 .Rs
 .%A T. Berners-Lee
@@ -580,7 +580,7 @@ HTTP_PROXY_AUTH=basic:*:<user>:<pwd>
 .%A M. McCahill
 .%D December 1994
 .%T Uniform Resource Locators (URL)
-.%O RFC1738
+.%O RFC 1738
 .Re
 .Rs
 .%A R. Fielding
@@ -592,7 +592,7 @@ HTTP_PROXY_AUTH=basic:*:<user>:<pwd>
 .%A T. Berners-Lee
 .%D January 1999
 .%B Hypertext Transfer Protocol -- HTTP/1.1
-.%O RFC2616
+.%O RFC 2616
 .Re
 .Rs
 .%A J. Franks
@@ -604,7 +604,7 @@ HTTP_PROXY_AUTH=basic:*:<user>:<pwd>
 .%A L. Stewart
 .%D June 1999
 .%B HTTP Authentication: Basic and Digest Access Authentication
-.%O RFC2617
+.%O RFC 2617
 .Re
 .Sh HISTORY
 The

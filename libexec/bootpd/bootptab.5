@@ -1,7 +1,7 @@
 .\" Copyright (c) 1988, 1989, 1991 Carnegie Mellon University
 .\"
 .\" $FreeBSD: src/libexec/bootpd/bootptab.5,v 1.4.2.4 2001/08/16 10:44:13 ru Exp $
-.\" $DragonFly: src/libexec/bootpd/bootptab.5,v 1.2 2003/06/17 04:27:07 dillon Exp $
+.\" $DragonFly: src/libexec/bootpd/bootptab.5,v 1.3 2007/11/23 23:16:36 swildner Exp $
 .\"
 .Dd October 31, 1991
 .Dt BOOTPTAB 5
@@ -106,15 +106,15 @@ There is also a generic tag,
 .Pf T Em n ,
 where
 .Em n
-is an RFC1084 vendor field tag number.  Thus it is possible to immediately
-take advantage of future extensions to RFC1084 without being forced to modify
+is an RFC 1084 vendor field tag number.  Thus it is possible to immediately
+take advantage of future extensions to RFC 1084 without being forced to modify
 .Nm bootpd
 first.  Generic data may be represented as either a stream of hexadecimal
 numbers or as a quoted string of
 .Tn ASCII
 characters.  The length of the generic
 data is automatically determined and inserted into the proper field(s) of the
-RFC1084-style bootp reply.
+RFC 1084 style bootp reply.
 .Pp
 The following tags take a whitespace-separated list of IP addresses:
 .Em cs ,
@@ -296,14 +296,14 @@ tag) may take one of the following keywords:
 .Em rfc1048
 or
 .Em rfc1084
-(which always forces an RFC1084-style reply), or
+(which always forces an RFC 1084 style reply), or
 .Em cmu
-(which always forces a CMU-style reply).
+(which always forces a CMU style reply).
 .Pp
 The
 .Em hn
 tag is strictly a boolean tag; it does not take the usual equals-sign and
-value.  Its presence indicates that the hostname should be sent to RFC1084
+value.  Its presence indicates that the hostname should be sent to RFC 1084
 clients.
 .Nm Bootpd
 attempts to send the entire hostname as it is specified in the configuration
@@ -406,4 +406,5 @@ mtoliver:ht=1:ha=00DD00FE1600:tc=.default:
 .Xr bootpd 8 ,
 .Xr tftpd 8
 .Pp
-DARPA Internet Request For Comments RFC951, RFC1048, RFC1084, Assigned Numbers
+DARPA Internet Request For Comments RFC 951, RFC 1048, RFC 1084,
+Assigned Numbers

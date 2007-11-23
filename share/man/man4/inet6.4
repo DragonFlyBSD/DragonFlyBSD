@@ -1,5 +1,5 @@
 .\"	$FreeBSD: src/share/man/man4/inet6.4,v 1.4.2.9 2002/05/15 16:45:30 ume Exp $
-.\"	$DragonFly: src/share/man/man4/inet6.4,v 1.4 2006/05/26 19:39:39 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/inet6.4,v 1.5 2007/11/23 23:16:37 swildner Exp $
 .\"	$KAME: inet6.4,v 1.21 2001/04/05 01:00:18 itojun Exp $
 .\"
 .\" Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -100,7 +100,7 @@ like link-local or site-local addresses.
 A scoped address is ambiguous to the kernel,
 if it is specified without a scope identifier.
 To manipulate scoped addresses properly from the userland,
-programs must use the advanced API defined in RFC2292.
+programs must use the advanced API defined in RFC 2292.
 A compact description of the advanced API is available in
 .Xr ip6 4 .
 If a scoped address is specified without an explicit scope,
@@ -382,7 +382,7 @@ stack implemented in the kernel.
 .It Dv IPV6CTL_USE_DEPRECATED
 .Pq ip6.use_deprecated
 Boolean: enable/disable use of deprecated address,
-specified in RFC2462 5.5.4.
+specified in RFC 2462 5.5.4.
 Defaults to on.
 .It Dv IPV6CTL_RR_PRUNE
 .Pq ip6.rr_prune
@@ -416,7 +416,7 @@ which initiates dynamic adaptation (default 128).
 .Ss Interaction between IPv4/v6 sockets
 The behavior of
 .Dv AF_INET6
-TCP/UDP socket is documented in RFC2553.
+TCP/UDP socket is documented in RFC 2553.
 Basically, it says this:
 .Bl -bullet -compact
 .It
@@ -456,7 +456,7 @@ socket and IPv6 should be routed to the
 socket.
 .El
 .Pp
-However, RFC2553 does not define the ordering constraint between calls to
+However, RFC 2553 does not define the ordering constraint between calls to
 .Xr bind 2 ,
 nor how IPv4 TCP/UDP port numbers and IPv6 TCP/UDP port numbers
 relate to each other
@@ -516,7 +516,7 @@ sockets.
 .Sh HISTORY
 The
 .Nm
-protocol interfaces are defined in RFC2553 and RFC2292.
+protocol interfaces are defined in RFC 2553 and RFC 2292.
 The implementation described herein appeared in the WIDE/KAME project.
 .Sh BUGS
 The IPv6 support is subject to change as the Internet protocols develop.

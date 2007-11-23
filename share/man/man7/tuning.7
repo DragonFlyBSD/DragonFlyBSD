@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.16 2007/11/07 17:42:47 dillon Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.17 2007/11/23 23:16:37 swildner Exp $
 .\"
 .Dd March 4, 2007
 .Dt TUNING 7
@@ -477,7 +477,7 @@ These extensions should be enabled and the TCP buffer size should be set
 to a value larger than 65536 in order to obtain good performance from
 certain types of network links; specifically, gigabit WAN links and
 high-latency satellite links.
-RFC1323 support is enabled by default.
+RFC 1323 support is enabled by default.
 .Pp
 The
 .Va net.inet.tcp.always_keepalive

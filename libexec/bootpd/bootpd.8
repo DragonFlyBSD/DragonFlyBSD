@@ -1,7 +1,7 @@
 .\" Copyright (c) 1988, 1989, 1991 Carnegie Mellon University
 .\"
 .\" $FreeBSD: src/libexec/bootpd/bootpd.8,v 1.10.2.5 2001/07/22 12:07:21 dd Exp $
-.\" $DragonFly: src/libexec/bootpd/bootpd.8,v 1.4 2006/02/17 19:33:31 swildner Exp $
+.\" $DragonFly: src/libexec/bootpd/bootpd.8,v 1.5 2007/11/23 23:16:36 swildner Exp $
 .\"
 .Dd November 6, 1993
 .Dt BOOTPD 8
@@ -30,7 +30,7 @@
 .Sh DESCRIPTION
 .Nm Bootpd
 implements an Internet Bootstrap Protocol (BOOTP) server as defined in
-RFC951, RFC1532, and RFC1533.
+RFC 951, RFC 1532, and RFC 1533.
 .Nm Bootpgw
 implements a simple BOOTP gateway which can be used to forward
 requests and responses between clients on one subnet and a
@@ -252,12 +252,12 @@ Current directory typically used by the TFTP server and
 .Xr tftpd 8
 .Pp
 DARPA Internet Request For Comments:
-.Bl -tag -width RFC1533 -compact
-.It RFC951
+.Bl -tag -width "RFC 1533" -compact
+.It RFC 951
 Bootstrap Protocol
-.It RFC1532
+.It RFC 1532
 Clarifications and Extensions for the Bootstrap Protocol
-.It RFC1533
+.It RFC 1533
 DHCP Options and BOOTP Vendor Extensions
 .El
 .Sh BUGS

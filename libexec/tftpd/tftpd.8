@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)tftpd.8	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/libexec/tftpd/tftpd.8,v 1.6.2.6 2003/04/06 19:42:56 dwmalone Exp $
-.\" $DragonFly: src/libexec/tftpd/tftpd.8,v 1.2 2003/06/17 04:27:08 dillon Exp $
+.\" $DragonFly: src/libexec/tftpd/tftpd.8,v 1.3 2007/11/23 23:16:36 swildner Exp $
 .\"
 .Dd September 14, 2000
 .Dt TFTPD 8
@@ -195,6 +195,6 @@ option was introduced in
 .Fx 4.3 .
 .Sh BUGS
 Files larger than 33488896 octets (65535 blocks) cannot be transferred
-without client and server supporting blocksize negotiation (RFC1783).
+without client and server supporting blocksize negotiation (RFC 1783).
 .Pp
 Many tftp clients will not transfer files over 16744448 octets (32767 blocks).

@@ -1,5 +1,5 @@
 .\"	$FreeBSD: src/share/man/man4/ipsec.4,v 1.3.2.10 2001/12/17 11:30:12 ru Exp $
-.\"	$DragonFly: src/share/man/man4/ipsec.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\"	$DragonFly: src/share/man/man4/ipsec.4,v 1.3 2007/11/23 23:16:37 swildner Exp $
 .\"	$KAME: ipsec.4,v 1.17 2001/06/27 15:25:10 itojun Exp $
 .\"
 .\" Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -74,7 +74,7 @@ Key management engine can be accessed from the userland by using
 sockets.
 The
 .Dv PF_KEY
-socket API is defined in RFC2367.
+socket API is defined in RFC 2367.
 .Pp
 Policy engine can be controlled by extended part of
 .Dv PF_KEY
@@ -193,26 +193,26 @@ The variables are interpreted as follows:
 If set to non-zero, the kernel clears type-of-service field in the IPv4 header
 during AH authentication data computation.
 The variable is for tweaking AH behavior to interoperate with devices that
-implement RFC1826 AH.
+implement RFC 1826 AH.
 It should be set to non-zero
 (clear the type-of-service field)
-for RFC2402 conformance.
+for RFC 2402 conformance.
 .It Li ipsec.ah_offsetmask
 During AH authentication data computation, the kernel will include
 16bit fragment offset field
 (including flag bits)
 in IPv4 header, after computing logical AND with the variable.
 The variable is for tweaking AH behavior to interoperate with devices that
-implement RFC1826 AH.
+implement RFC 1826 AH.
 It should be set to zero
 (clear the fragment offset field during computation)
-for RFC2402 conformance.
+for RFC 2402 conformance.
 .It Li ipsec.dfbit
 The variable configures the kernel behavior on IPv4 IPsec tunnel encapsulation.
 If set to 0, DF bit on the outer IPv4 header will be cleared.
 1 means that the outer DF bit is set regardless from the inner DF bit.
 2 means that the DF bit is copied from the inner header to the outer.
-The variable is supplied to conform to RFC2401 chapter 6.1.
+The variable is supplied to conform to RFC 2401 chapter 6.1.
 .It Li ipsec.ecn
 If set to non-zero, IPv4 IPsec tunnel encapsulation/decapsulation behavior will
 be friendly to ECN

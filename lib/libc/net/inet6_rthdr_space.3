@@ -1,6 +1,6 @@
 .\"	$KAME: inet6_rthdr_space.3,v 1.11 2005/01/05 03:00:44 itojun Exp $
 .\"	$FreeBSD: src/lib/libc/net/inet6_rthdr_space.3,v 1.14 2005/01/23 16:02:48 gnn Exp $
-.\"	$DragonFly: src/lib/libc/net/inet6_rthdr_space.3,v 1.4 2006/02/17 19:35:06 swildner Exp $
+.\"	$DragonFly: src/lib/libc/net/inet6_rthdr_space.3,v 1.5 2007/11/23 23:16:36 swildner Exp $
 .\"
 .\" Copyright (C) 2004 WIDE Project.
 .\" All rights reserved.
@@ -246,10 +246,10 @@ that segment.
 When an error occurs \-1 is returned.
 .Pp
 Note: Flags begin at index 0 while segments begin at index 1, to
-maintain consistency with the terminology and figures in RFC2460.
+maintain consistency with the terminology and figures in RFC 2460.
 .\"
 .Sh EXAMPLES
-RFC2292 gives comprehensive examples in chapter 8.
+RFC 2292 gives comprehensive examples in chapter 8.
 .\"
 .Sh DIAGNOSTICS
 The
@@ -281,14 +281,14 @@ functions return -1 on error.
 .%A W. Stevens
 .%A M. Thomas
 .%T "Advanced Sockets API for IPv6"
-.%N RFC2292
+.%N RFC 2292
 .%D February 1998
 .Re
 .Rs
 .%A S. Deering
 .%A R. Hinden
 .%T "Internet Protocol, Version 6 (IPv6) Specification"
-.%N RFC2460
+.%N RFC 2460
 .%D December 1998
 .Re
 .\"
