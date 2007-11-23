@@ -27,7 +27,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/ifnet.9,v 1.9.2.10 2003/06/15 02:22:30 hmp Exp $
-.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.7 2007/04/04 14:01:53 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.8 2007/11/23 23:03:57 swildner Exp $
 .Dd January 15, 1997
 .Os
 .Dt IFNET 9
@@ -376,7 +376,7 @@ Initialize and bring up the hardware,
 e.g., reset the chip and the watchdog timer and enable the receiver unit.
 Should mark the interface running,
 but not active
-.Dv ( IFF_RUNNING , ~IIF_OACTIVE ) .
+.Dv ( IFF_RUNNING , ~IFF_OACTIVE ) .
 .It Fn if_resolvemulti
 Check the requested multicast group membership,
 .Fa addr ,
@@ -897,7 +897,7 @@ function is called to perform the operation; qq.v.
 The socket's protocol control routine is called to implement the
 requested action.
 .Pp
-.It Dv OSIOGIFADDR
+.It Dv OSIOCGIFADDR
 .It Dv OSIOCGIFDSTADDR
 .It Dv OSIOCGIFBRDADDR
 .It Dv OSIOCGIFNETMASK
