@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.13 2007/10/19 11:53:14 tgen Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.14 2007/11/23 13:40:58 sephe Exp $
  *
  */
 
@@ -151,8 +151,9 @@
 #define PCIR_SUBVEND_1	0x34
 #define PCIR_SUBDEV_1	0x36
 
-/* config registers for header type 2 devices */
+/* config registers for header type 2 (Cardbus) devices */
 
+#define PCIR_CAP_PTR_2	0x14
 #define PCIR_SECSTAT_2	0x16
 
 #define PCIR_PRIBUS_2	0x18

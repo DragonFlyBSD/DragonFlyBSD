@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.40 2007/07/05 12:08:53 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.41 2007/11/23 13:40:58 sephe Exp $
  *
  */
 
@@ -433,10 +433,11 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 
 	switch (cfg->hdrtype) {
 	case 0:
-		ptrptr = 0x34;
+	case 1:
+		ptrptr = PCIR_CAP_PTR;
 		break;
 	case 2:
-		ptrptr = 0x14;
+		ptrptr = PCIR_CAP_PTR_2;
 		break;
 	default:
 		return;		/* no extended capabilities support */
@@ -459,7 +460,7 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 
 		/* Process this entry */
 		switch (REG(ptr, 1)) {
-		case 0x01:		/* PCI power management */
+		case PCIY_PMG:		/* PCI power management */
 			if (cfg->pp_cap == 0) {
 				cfg->pp_cap = REG(ptr + PCIR_POWER_CAP, 2);
 				cfg->pp_status = ptr + PCIR_POWER_STATUS;
