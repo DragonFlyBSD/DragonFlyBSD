@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.11 2007/11/23 14:36:17 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.12 2007/11/23 14:41:56 sephe Exp $
  *
  */
 
@@ -98,7 +98,7 @@ typedef struct pcicfg {
     u_int8_t	secondarybus;	/* bus on secondary side of bridge, if any */
     u_int8_t	subordinatebus;	/* topmost bus number behind bridge, if any */
 
-    struct pcicfg_pmgt pmgt;
+    struct pcicfg_pmgt pmgt;	/* power management */
 } pcicfgregs;
 
 /* additional type 1 device config header information (PCI to PCI bridge) */
