@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.10 2005/10/30 04:41:10 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.11 2007/11/23 14:36:17 sephe Exp $
  *
  */
 
@@ -51,6 +51,14 @@ typedef u_int64_t pci_addr_t;	/* u_int64_t for system with 64bit addresses */
 #else
 typedef u_int32_t pci_addr_t;	/* u_int64_t for system with 64bit addresses */
 #endif
+
+/* config values for PCI power management */
+struct pcicfg_pmgt {
+    u_int16_t	pp_cap;		/* PCI power management capabilities */
+    u_int8_t	pp_status;	/* config space address of PCI power status reg */
+    u_int8_t	pp_pmcsr;	/* config space address of PMCSR reg */
+    u_int8_t	pp_data;	/* config space address of PCI power data reg */
+};
 
 /* config header information common to all header types */
 
@@ -90,10 +98,7 @@ typedef struct pcicfg {
     u_int8_t	secondarybus;	/* bus on secondary side of bridge, if any */
     u_int8_t	subordinatebus;	/* topmost bus number behind bridge, if any */
 
-    u_int16_t	pp_cap;		/* PCI power management capabilities */
-    u_int8_t	pp_status;	/* config space address of PCI power status reg */
-    u_int8_t	pp_pmcsr;	/* config space address of PMCSR reg */
-    u_int8_t	pp_data;	/* config space address of PCI power data reg */
+    struct pcicfg_pmgt pmgt;
 } pcicfgregs;
 
 /* additional type 1 device config header information (PCI to PCI bridge) */

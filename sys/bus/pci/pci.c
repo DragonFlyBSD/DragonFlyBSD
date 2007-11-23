@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.41 2007/11/23 13:40:58 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.42 2007/11/23 14:36:17 sephe Exp $
  *
  */
 
@@ -461,12 +461,14 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 		/* Process this entry */
 		switch (REG(ptr, 1)) {
 		case PCIY_PMG:		/* PCI power management */
-			if (cfg->pp_cap == 0) {
-				cfg->pp_cap = REG(ptr + PCIR_POWER_CAP, 2);
-				cfg->pp_status = ptr + PCIR_POWER_STATUS;
-				cfg->pp_pmcsr = ptr + PCIR_POWER_PMCSR;
+			if (cfg->pmgt.pp_cap == 0) {
+				struct pcicfg_pmgt *pmgt = &cfg->pmgt;
+
+				pmgt->pp_cap = REG(ptr + PCIR_POWER_CAP, 2);
+				pmgt->pp_status = ptr + PCIR_POWER_STATUS;
+				pmgt->pp_pmcsr = ptr + PCIR_POWER_PMCSR;
 				if ((nextptr - ptr) > PCIR_POWER_DATA)
-					cfg->pp_data = ptr + PCIR_POWER_DATA;
+					pmgt->pp_data = ptr + PCIR_POWER_DATA;
 			}
 			break;
 		default:
@@ -508,25 +510,26 @@ pci_set_powerstate_method(device_t dev, device_t child, int state)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	pcicfgregs *cfg = &dinfo->cfg;
+	struct pcicfg_pmgt *pmgt = &cfg->pmgt;
 	u_int16_t status;
 	int result;
 
-	if (cfg->pp_cap != 0) {
-		status = PCI_READ_CONFIG(dev, child, cfg->pp_status, 2) & ~PCIM_PSTAT_DMASK;
+	if (pmgt->pp_cap != 0) {
+		status = PCI_READ_CONFIG(dev, child, pmgt->pp_status, 2) & ~PCIM_PSTAT_DMASK;
 		result = 0;
 		switch (state) {
 		case PCI_POWERSTATE_D0:
 			status |= PCIM_PSTAT_D0;
 			break;
 		case PCI_POWERSTATE_D1:
-			if (cfg->pp_cap & PCIM_PCAP_D1SUPP) {
+			if (pmgt->pp_cap & PCIM_PCAP_D1SUPP) {
 				status |= PCIM_PSTAT_D1;
 			} else {
 				result = EOPNOTSUPP;
 			}
 			break;
 		case PCI_POWERSTATE_D2:
-			if (cfg->pp_cap & PCIM_PCAP_D2SUPP) {
+			if (pmgt->pp_cap & PCIM_PCAP_D2SUPP) {
 				status |= PCIM_PSTAT_D2;
 			} else {
 				result = EOPNOTSUPP;
@@ -539,7 +542,7 @@ pci_set_powerstate_method(device_t dev, device_t child, int state)
 			result = EINVAL;
 		}
 		if (result == 0)
-			PCI_WRITE_CONFIG(dev, child, cfg->pp_status, status, 2);
+			PCI_WRITE_CONFIG(dev, child, pmgt->pp_status, status, 2);
 	} else {
 		result = ENXIO;
 	}
@@ -551,11 +554,12 @@ pci_get_powerstate_method(device_t dev, device_t child)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	pcicfgregs *cfg = &dinfo->cfg;
+	struct pcicfg_pmgt *pmgt = &cfg->pmgt;
 	u_int16_t status;
 	int result;
 
-	if (cfg->pp_cap != 0) {
-		status = PCI_READ_CONFIG(dev, child, cfg->pp_status, 2);
+	if (pmgt->pp_cap != 0) {
+		status = PCI_READ_CONFIG(dev, child, pmgt->pp_status, 2);
 		switch (status & PCIM_PSTAT_DMASK) {
 		case PCIM_PSTAT_D0:
 			result = PCI_POWERSTATE_D0;
