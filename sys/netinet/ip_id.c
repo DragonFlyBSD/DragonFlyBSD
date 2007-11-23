@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netinet/ip_id.c,v 1.7 2007/11/22 19:57:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_id.c,v 1.8 2007/11/23 22:29:51 dillon Exp $
  */
 
 /*
@@ -63,12 +63,10 @@ ip_initshuffle(void *dummy __unused)
 {
 	int i;
 
-	kprintf("INITSHUFFLE1\n");
 	for (i = 0; i < 65536; ++i)
 		ip_shuffle[i] = i;
 	for (i = 0; i < 65536; ++i)
 		ip_randomid();
-	kprintf("INITSHUFFLE2\n");
 }
 
 SYSINIT(ipshuffle, SI_SUB_PSEUDO, SI_ORDER_ANY, ip_initshuffle, NULL);
