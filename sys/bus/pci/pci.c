@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.43 2007/11/24 03:42:24 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.44 2007/11/24 06:47:37 sephe Exp $
  *
  */
 
@@ -423,11 +423,46 @@ pci_read_device(device_t pcib, int b, int s, int f, size_t size)
 #undef REG
 }
 
+static int
+pci_fixup_nextptr(int *nextptr0)
+{
+	int nextptr = *nextptr0;
+
+	/* "Next pointer" is only one byte */
+	KASSERT(nextptr <= 0xff, ("Illegal next pointer %d\n", nextptr));
+
+	if (nextptr & 0x3) {
+		/*
+		 * PCI local bus spec 3.0:
+		 *
+		 * "... The bottom two bits of all pointers are reserved
+		 *  and must be implemented as 00b although software must
+		 *  mask them to allow for future uses of these bits ..."
+		 */
+		if (bootverbose) {
+			kprintf("Illegal PCI extended capability "
+				"offset, fixup 0x%02x -> 0x%02x\n",
+				nextptr, nextptr & ~0x3);
+		}
+		nextptr &= ~0x3;
+	}
+	*nextptr0 = nextptr;
+
+	if (nextptr < 0x40) {
+		if (nextptr != 0) {
+			kprintf("Illegal PCI extended capability "
+				"offset 0x%02x", nextptr);
+		}
+		return 0;
+	}
+	return 1;
+}
+
 static void
 pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 {
 #define REG(n, w)	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
-	int	ptr, nextptr, ptrptr;
+	int nextptr, ptrptr;
 
 	if ((REG(PCIR_STATUS, 2) & PCIM_STATUS_CAPPRESENT) == 0) {
 		/* No capabilities */
@@ -450,39 +485,8 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 	/*
 	 * Read capability entries.
 	 */
-	for (;;) {
-		/* "Next pointer" is only one byte */
-		KASSERT(nextptr <= 0xff, ("Illegal next pointer %d\n", nextptr));
-
-		/* Sanity check */
-		if (nextptr & 0x3) {
-			/*
-			 * PCI local bus spec 3.0:
-			 *
-			 * "... The bottom two bits of all pointers are
-			 *  reserved and must be implemented as 00b
-			 *  although software must mask them to allow
-			 *  for future uses of these bits ..."
-			 */
-			if (bootverbose) {
-				kprintf("Illegal PCI extended capability "
-					"offset, adjust 0x%02x -> 0x%02x\n",
-					nextptr, nextptr & ~0x3);
-			}
-			nextptr &= ~0x3;
-		}
-
-		if (nextptr < 0x40) {
-			if (nextptr != 0) {
-				kprintf("Illegal PCI extended capability "
-					"offset 0x%02x", nextptr);
-			}
-			return;
-		}
-
-		/* Find the next entry */
-		ptr = nextptr;
-		nextptr = REG(ptr + 1, 1);
+	while (pci_fixup_nextptr(&nextptr)) {
+		int ptr = nextptr;
 
 		/* Process this entry */
 		switch (REG(ptr, 1)) {
@@ -493,13 +497,23 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 				pmgt->pp_cap = REG(ptr + PCIR_POWER_CAP, 2);
 				pmgt->pp_status = ptr + PCIR_POWER_STATUS;
 				pmgt->pp_pmcsr = ptr + PCIR_POWER_PMCSR;
-				if ((nextptr - ptr) > PCIR_POWER_DATA)
-					pmgt->pp_data = ptr + PCIR_POWER_DATA;
+				/*
+				 * XXX
+				 * Following way may be used to to test whether
+				 * 'data' register exists:
+				 * if 'data_select' register of
+				 * PCIR_POWER_STATUS(bits[12,9]) is read-only
+				 * then 'data' register is _not_ implemented.
+				 */
+				pmgt->pp_data = 0;
 			}
 			break;
 		default:
 			break;
 		}
+
+		/* Find the next entry */
+		nextptr = REG(ptr + 1, 1);
 	}
 #undef REG
 }
