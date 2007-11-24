@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.29 2007/11/24 05:18:35 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.30 2007/11/24 18:55:27 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1528,25 +1528,25 @@ cam_periph_error(union ccb *ccb, cam_flags camflags,
 	case CAM_CMD_TIMEOUT:
 		if (bootverbose && printed == 0) {
 			xpt_print_path(ccb->ccb_h.path);
-			kprintf("Command timed out");
+			kprintf("Command timed out\n");
 			printed++;
 		}
 	case CAM_UNEXP_BUSFREE:
 		if (bootverbose && printed == 0) {
 			xpt_print_path(ccb->ccb_h.path);
-			kprintf("Unexpected Bus Free");
+			kprintf("Unexpected Bus Free\n");
 			printed++;
 		}
 	case CAM_UNCOR_PARITY:
 		if (bootverbose && printed == 0) {
 			xpt_print_path(ccb->ccb_h.path);
-			kprintf("Uncorrected Parity Error");
+			kprintf("Uncorrected Parity Error\n");
 			printed++;
 		}
 	case CAM_DATA_RUN_ERR:
 		if (bootverbose && printed == 0) {
 			xpt_print_path(ccb->ccb_h.path);
-			kprintf("Data Overrun");
+			kprintf("Data Overrun\n");
 			printed++;
 		}
 		error = EIO;	/* we have to kill the command */
@@ -1576,7 +1576,7 @@ cam_periph_error(union ccb *ccb, cam_flags camflags,
 				error = ERESTART;
 				if (bootverbose && printed == 0) {
 					xpt_print_path(ccb->ccb_h.path);
-					kprintf("Selection Timeout");
+					kprintf("Selection Timeout\n");
 					printed++;
 				}
 
