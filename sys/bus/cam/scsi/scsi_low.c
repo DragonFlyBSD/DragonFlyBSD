@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.23 2007/11/24 02:08:50 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.24 2007/11/24 23:12:51 pavalos Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -3636,7 +3636,7 @@ io_resume:
 /**********************************************************
  * TAG operations
  **********************************************************/
-int
+static int
 scsi_low_alloc_qtag(struct slccb *cb)
 {
 	struct lun_info *li = cb->li;
@@ -3672,7 +3672,7 @@ found:
 #endif	/* SCSI_LOW_ALT_QTAG_ALLOCATE */
 }
 	
-int
+static int
 scsi_low_dealloc_qtag(struct slccb *cb)
 {
 	struct lun_info *li = cb->li;
@@ -3702,7 +3702,7 @@ scsi_low_dealloc_qtag(struct slccb *cb)
 	return 0;
 }
 
-struct slccb *
+static struct slccb *
 scsi_low_revoke_ccb(struct scsi_low_softc *slp, struct slccb *cb, int fdone)
 {
 	struct targ_info *ti = cb->ti;
@@ -3752,7 +3752,7 @@ scsi_low_revoke_ccb(struct scsi_low_softc *slp, struct slccb *cb, int fdone)
 	}
 }
 
-void
+static void
 scsi_low_reset_nexus_lun(struct scsi_low_softc *slp, struct lun_info *li, int fdone)
 {
 	struct slccb *cb, *ncb, *ecb;

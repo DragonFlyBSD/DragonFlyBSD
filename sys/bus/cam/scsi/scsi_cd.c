@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.38 2007/11/24 02:29:24 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.39 2007/11/24 23:12:51 pavalos Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -347,7 +347,7 @@ struct cdchanger {
 
 static STAILQ_HEAD(changerlist, cdchanger) changerq;
 
-void
+static void
 cdinit(void)
 {
 	cam_status status;

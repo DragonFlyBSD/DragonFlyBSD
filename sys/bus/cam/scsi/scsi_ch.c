@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.23 2007/11/21 21:28:41 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.24 2007/11/24 23:12:51 pavalos Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -223,7 +223,7 @@ static struct dev_ops ch_ops = {
 
 static struct extend_array *chperiphs;
 
-void
+static void
 chinit(void)
 {
 	cam_status status;

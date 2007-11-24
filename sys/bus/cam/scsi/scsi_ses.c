@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.25 2007/11/21 21:28:41 pavalos Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.26 2007/11/24 23:12:51 pavalos Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -185,7 +185,7 @@ static struct dev_ops ses_ops = {
 };
 static struct extend_array *sesperiphs;
 
-void
+static void
 sesinit(void)
 {
 	cam_status status;
@@ -1645,7 +1645,7 @@ static char *safte_2little = "Too Little Data Returned (%d) at line %d\n";
 	}
 
 
-int
+static int
 safte_softc_init(ses_softc_t *ssc, int doinit)
 {
 	int err, i, r;
@@ -1722,7 +1722,7 @@ safte_softc_init(ses_softc_t *ssc, int doinit)
 	return (0);
 }
 
-int
+static int
 safte_init_enc(ses_softc_t *ssc)
 {
 	int err;
@@ -1737,13 +1737,13 @@ safte_init_enc(ses_softc_t *ssc)
 	return (err);
 }
 
-int
+static int
 safte_get_encstat(ses_softc_t *ssc, int slpflg)
 {
 	return (safte_rdstat(ssc, slpflg));
 }
 
-int
+static int
 safte_set_encstat(ses_softc_t *ssc, uint8_t encstat, int slpflg)
 {
 	struct scfg *cc = ssc->ses_private;
@@ -1767,7 +1767,7 @@ safte_set_encstat(ses_softc_t *ssc, uint8_t encstat, int slpflg)
 	return (wrbuf16(ssc, SAFTE_WT_GLOBAL, cc->flag1, cc->flag2, 0, slpflg));
 }
 
-int
+static int
 safte_get_objstat(ses_softc_t *ssc, ses_objstat *obp, int slpflg)
 {
 	int i = (int)obp->obj_id;
@@ -1786,7 +1786,7 @@ safte_get_objstat(ses_softc_t *ssc, ses_objstat *obp, int slpflg)
 }
 
 
-int
+static int
 safte_set_objstat(ses_softc_t *ssc, ses_objstat *obp, int slp)
 {
 	int idx, err;
