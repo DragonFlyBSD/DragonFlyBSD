@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.30 2007/11/24 18:55:27 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.31 2007/11/24 19:19:43 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1105,7 +1105,7 @@ cam_periph_async(struct cam_periph *periph, u_int32_t code,
 	case AC_SENT_BDR:
 	case AC_BUS_RESET:
 	{
-		cam_periph_bus_settle(periph, SCSI_DELAY);
+		cam_periph_bus_settle(periph, scsi_delay);
 		break;
 	}
 	default:
