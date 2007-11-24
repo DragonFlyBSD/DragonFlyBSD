@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/camcontrol/camcontrol.8,v 1.19.2.12 2003/01/08 17:55:02 njl Exp $
-.\" $DragonFly: src/sbin/camcontrol/camcontrol.8,v 1.5 2007/05/13 22:25:41 swildner Exp $
+.\" $DragonFly: src/sbin/camcontrol/camcontrol.8,v 1.6 2007/11/24 19:22:51 pavalos Exp $
 .\"
 .Dd September 14, 1998
 .Dt CAMCONTROL 8
@@ -65,6 +65,10 @@
 .Op generic args
 .Nm
 .Ic stop
+.Op device id
+.Op generic args
+.Nm
+.Ic load
 .Op device id
 .Op generic args
 .Nm
@@ -255,9 +259,12 @@ start bit set.
 .It Ic stop
 Send the SCSI Start/Stop Unit (0x1B) command to the given device with the
 start bit cleared.
+.It Ic load
+Send the SCSI Start/Stop Unit (0x1B) command to the given device with the
+start bit set and the load/eject bit set.
 .It Ic eject
 Send the SCSI Start/Stop Unit (0x1B) command to the given device with the
-start bit cleared and the eject bit set.
+start bit cleared and the load/eject bit set.
 .It Ic rescan
 Tell the kernel to scan all busses in the system (with the
 .Ar all
