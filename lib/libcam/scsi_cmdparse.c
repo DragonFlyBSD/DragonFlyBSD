@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  * From: scsi.c,v 1.8 1997/02/22 15:07:54 peter Exp $
  * $FreeBSD: src/lib/libcam/scsi_cmdparse.c,v 1.3.2.1 2000/08/14 05:42:30 kbyanc Exp $
- * $DragonFly: src/lib/libcam/scsi_cmdparse.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libcam/scsi_cmdparse.c,v 1.3 2007/11/24 01:53:50 pavalos Exp $
  */
 #include <stdlib.h>
 #include <stdio.h>
@@ -98,7 +98,7 @@
 static int
 do_buff_decode(u_int8_t *databuf, size_t len,
 	       void (*arg_put)(void *, int , void *, int, char *),
-	       void *puthook, char *fmt, va_list ap)
+	       void *puthook, const char *fmt, va_list ap)
 {
 	int assigned = 0;
 	int width;
@@ -109,6 +109,7 @@ do_buff_decode(u_int8_t *databuf, size_t len,
 				   0x1f, 0x3f, 0x7f, 0xff};
 	int value;
 	u_char *base = databuf;
+	char *intendp;
 	char letter;
 	char field_name[80];
 
@@ -176,7 +177,8 @@ do_buff_decode(u_int8_t *databuf, size_t len,
 		case 't':	/* Bit (field) */
 		case 'b':	/* Bits */
 			fmt++;
-			width = strtol(fmt, &fmt, 10);
+			width = strtol(fmt, &intendp, 10);
+			fmt = intendp;
 			if (width > 8)
 				done = 1;
 			else {
@@ -201,7 +203,8 @@ do_buff_decode(u_int8_t *databuf, size_t len,
 		case 'i':	/* Integral values */
 			shift = 0;
 			fmt++;
-			width = strtol(fmt, &fmt, 10);
+			width = strtol(fmt, &intendp, 10);
+			fmt = intendp;
 			switch(width) {
 			case 1:
 				ARG_PUT(*databuf);
@@ -239,7 +242,8 @@ do_buff_decode(u_int8_t *databuf, size_t len,
 					   spaces  */
 			shift = 0;
 			fmt++;
-			width = strtol(fmt, &fmt, 10);
+			width = strtol(fmt, &intendp, 10);
+			fmt = intendp;
 			if (!suppress) {
 				if (arg_put)
 					(*arg_put)(puthook,
@@ -281,8 +285,10 @@ do_buff_decode(u_int8_t *databuf, size_t len,
 				 */
 				width = (arg_put) ? 0 : va_arg(ap, int);
 				fmt++;
-			} else
-				width = strtol(fmt, &fmt, 10);
+			} else {
+				width = strtol(fmt, &intendp, 10);
+				fmt = intendp;
+			}
 
 			if (plus)
 				databuf += width;	/* Relative seek */
@@ -339,10 +345,11 @@ do_buff_decode(u_int8_t *databuf, size_t len,
  */
 
 static int
-next_field(char **pp, char *fmt, int *width_p, int *value_p, char *name,
+next_field(const char **pp, char *fmt, int *width_p, int *value_p, char *name,
 	   int n_name, int *error_p, int *suppress_p)
 {
-	char *p = *pp;
+	const char *p = *pp;
+	char *intendp;
 
 	int something = 0;
 
@@ -402,7 +409,8 @@ next_field(char **pp, char *fmt, int *width_p, int *value_p, char *name,
 				suppress = 1;
 			} else if (isxdigit(*p)) {
 				something = 1;
-				value = strtol(p, &p, 16);
+				value = strtol(p, &intendp, 16);
+				p = intendp;
 				state = START_FIELD;
 			} else if (tolower(*p) == 'v') {
 				p++;
@@ -419,7 +427,8 @@ next_field(char **pp, char *fmt, int *width_p, int *value_p, char *name,
 
 				*fmt = 'i';
 				field_size = 8;
-				field_width = strtol(p, &p, 10);
+				field_width = strtol(p, &intendp, 10);
+				p = intendp;
 				state = DONE;
 
 			} else if (tolower(*p) == 't') {
@@ -434,7 +443,8 @@ next_field(char **pp, char *fmt, int *width_p, int *value_p, char *name,
 
 				*fmt = 'b';
 				field_size = 1;
-				field_width = strtol(p, &p, 10);
+				field_width = strtol(p, &intendp, 10);
+				p = intendp;
 				state = DONE;
 			} else if (tolower(*p) == 's') {
 				/* Seek */
@@ -446,7 +456,8 @@ next_field(char **pp, char *fmt, int *width_p, int *value_p, char *name,
 					value = *value_p;
 				} else {
 					something = 1;
-					value = strtol(p, &p, 0);
+					value = strtol(p, &intendp, 0);
+					p = intendp;
 				}
 				state = DONE;
 			} else {
@@ -471,7 +482,8 @@ next_field(char **pp, char *fmt, int *width_p, int *value_p, char *name,
 			if (isdigit(*p)) {
 				*fmt = 'b';
 				field_size = 1;
-				field_width = strtol(p, &p, 10);
+				field_width = strtol(p, &intendp, 10);
+				p = intendp;
 				state = DONE;
 			} else if (*p == 'i') {
 
@@ -480,7 +492,8 @@ next_field(char **pp, char *fmt, int *width_p, int *value_p, char *name,
 
 				*fmt = 'i';
 				field_size = 8;
-				field_width = strtol(p, &p, 10);
+				field_width = strtol(p, &intendp, 10);
+				p = intendp;
 				state = DONE;
 			} else if (*p == 'b') {
 
@@ -489,7 +502,8 @@ next_field(char **pp, char *fmt, int *width_p, int *value_p, char *name,
 
 				*fmt = 'b';
 				field_size = 1;
-				field_width = strtol(p, &p, 10);
+				field_width = strtol(p, &intendp, 10);
+				p = intendp;
 				state = DONE;
 			} else {
 				fprintf(stderr, "Invalid startfield %c "
@@ -520,7 +534,8 @@ next_field(char **pp, char *fmt, int *width_p, int *value_p, char *name,
 
 static int
 do_encode(u_char *buff, size_t vec_max, size_t *used,
-	  int (*arg_get)(void *, char *), void *gethook, char *fmt, va_list ap)
+	  int (*arg_get)(void *, char *), void *gethook, const char *fmt,
+	  va_list ap)
 {
 	int ind;
 	int shift;
@@ -640,7 +655,7 @@ do_encode(u_char *buff, size_t vec_max, size_t *used,
 }
 
 int
-csio_decode(struct ccb_scsiio *csio, char *fmt, ...)
+csio_decode(struct ccb_scsiio *csio, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -651,7 +666,7 @@ csio_decode(struct ccb_scsiio *csio, char *fmt, ...)
 }
 
 int
-csio_decode_visit(struct ccb_scsiio *csio, char *fmt,
+csio_decode_visit(struct ccb_scsiio *csio, const char *fmt,
 		  void (*arg_put)(void *, int, void *, int, char *),
 		  void *puthook)
 {
@@ -671,7 +686,7 @@ csio_decode_visit(struct ccb_scsiio *csio, char *fmt,
 }
 
 int
-buff_decode(u_int8_t *buff, size_t len, char *fmt, ...)
+buff_decode(u_int8_t *buff, size_t len, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -681,7 +696,7 @@ buff_decode(u_int8_t *buff, size_t len, char *fmt, ...)
 }
 
 int
-buff_decode_visit(u_int8_t *buff, size_t len, char *fmt,
+buff_decode_visit(u_int8_t *buff, size_t len, const char *fmt,
 		  void (*arg_put)(void *, int, void *, int, char *),
 		  void *puthook)
 {
@@ -705,7 +720,8 @@ buff_decode_visit(u_int8_t *buff, size_t len, char *fmt,
  */
 int
 csio_build(struct ccb_scsiio *csio, u_int8_t *data_ptr, u_int32_t dxfer_len,
-	   u_int32_t flags, int retry_count, int timeout, char *cmd_spec, ...)
+	   u_int32_t flags, int retry_count, int timeout, const char *cmd_spec,
+	   ...)
 {
 	size_t cmdlen;
 	int retval;
@@ -739,7 +755,7 @@ csio_build(struct ccb_scsiio *csio, u_int8_t *data_ptr, u_int32_t dxfer_len,
 int
 csio_build_visit(struct ccb_scsiio *csio, u_int8_t *data_ptr,
 		 u_int32_t dxfer_len, u_int32_t flags, int retry_count,
-		 int timeout, char *cmd_spec,
+		 int timeout, const char *cmd_spec,
 		 int (*arg_get)(void *hook, char *field_name), void *gethook)
 {
 	va_list ap;
@@ -779,7 +795,7 @@ csio_build_visit(struct ccb_scsiio *csio, u_int8_t *data_ptr,
 }
 
 int
-csio_encode(struct ccb_scsiio *csio, char *fmt, ...)
+csio_encode(struct ccb_scsiio *csio, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -792,7 +808,7 @@ csio_encode(struct ccb_scsiio *csio, char *fmt, ...)
 }
 
 int
-buff_encode_visit(u_int8_t *buff, size_t len, char *fmt,
+buff_encode_visit(u_int8_t *buff, size_t len, const char *fmt,
 		  int (*arg_get)(void *hook, char *field_name), void *gethook)
 {
 	va_list ap;
@@ -810,7 +826,7 @@ buff_encode_visit(u_int8_t *buff, size_t len, char *fmt,
 }
 
 int
-csio_encode_visit(struct ccb_scsiio *csio, char *fmt,
+csio_encode_visit(struct ccb_scsiio *csio, const char *fmt,
 		  int (*arg_get)(void *hook, char *field_name), void *gethook)
 {
 	va_list ap;

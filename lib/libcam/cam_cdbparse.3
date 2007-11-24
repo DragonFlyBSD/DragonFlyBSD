@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libcam/cam_cdbparse.3,v 1.3.2.11 2002/12/29 16:35:35 schweikh Exp $
-.\" $DragonFly: src/lib/libcam/cam_cdbparse.3,v 1.3 2006/05/26 19:39:38 swildner Exp $
+.\" $DragonFly: src/lib/libcam/cam_cdbparse.3,v 1.4 2007/11/24 01:53:50 pavalos Exp $
 .\"
 .\" This man page borrows heavily from the old scsi(3) man page, which had
 .\" the following copyright:
@@ -89,7 +89,7 @@
 .Fa "u_int32_t flags"
 .Fa "int retry_count"
 .Fa "int timeout"
-.Fa "char *cmd_spec"
+.Fa "const char *cmd_spec"
 .Fa "..."
 .Fc
 .Ft int
@@ -100,20 +100,20 @@
 .Fa "u_int32_t flags"
 .Fa "int retry_count"
 .Fa "int timeout"
-.Fa "char *cmd_spec"
+.Fa "const char *cmd_spec"
 .Fa "int (*arg_get)(void *hook, char *field_name)"
 .Fa "void *gethook"
 .Fc
 .Ft int
 .Fo csio_decode
 .Fa "struct ccb_scsiio *csio"
-.Fa "char *fmt"
+.Fa "const char *fmt"
 .Fa "..."
 .Fc
 .Ft int
 .Fo csio_decode_visit
 .Fa "struct ccb_scsiio *csio"
-.Fa "char *fmt"
+.Fa "const char *fmt"
 .Fa "void (*arg_put)(void *hook"
 .Fa "int letter"
 .Fa "void *val"
@@ -125,27 +125,27 @@
 .Fo buff_decode
 .Fa "u_int8_t *buff"
 .Fa "size_t len"
-.Fa "char *fmt"
+.Fa "const char *fmt"
 .Fa "..."
 .Fc
 .Ft int
 .Fo buff_decode_visit
 .Fa "u_int8_t *buff"
 .Fa "size_t len"
-.Fa "char *fmt"
+.Fa "const char *fmt"
 .Fa "void (*arg_put)(void *, int, void *, int, char *)"
 .Fa "void *puthook"
 .Fc
 .Ft int
 .Fo csio_encode
 .Fa "struct ccb_scsiio *csio"
-.Fa "char *fmt"
+.Fa "const char *fmt"
 .Fa "..."
 .Fc
 .Ft int
 .Fo csio_encode_visit
 .Fa "struct ccb_scsiio *csio"
-.Fa "char *fmt"
+.Fa "const char *fmt"
 .Fa "int (*arg_get)(void *hook, char *field_name)"
 .Fa "void *gethook"
 .Fc
@@ -153,7 +153,7 @@
 .Fo buff_encode_visit
 .Fa "u_int8_t *buff"
 .Fa "size_t len"
-.Fa "char *fmt"
+.Fa "const char *fmt"
 .Fa "int (*arg_get)(void *hook, char *field_name)"
 .Fa "void *gethook"
 .Fc
