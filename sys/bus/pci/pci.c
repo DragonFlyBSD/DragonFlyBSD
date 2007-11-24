@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.42 2007/11/23 14:36:17 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.43 2007/11/24 03:42:24 sephe Exp $
  *
  */
 
@@ -397,9 +397,7 @@ pci_read_device(device_t pcib, int b, int s, int f, size_t size)
 
 		pci_fixancient(cfg);
 		pci_hdrtypedata(pcib, b, s, f, cfg);
-
-		if (REG(PCIR_STATUS, 2) & PCIM_STATUS_CAPPRESENT)
-			pci_read_extcap(pcib, cfg);
+		pci_read_extcap(pcib, cfg);
 
 		STAILQ_INSERT_TAIL(devlist_head, devlist_entry, pci_links);
 
@@ -431,6 +429,11 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 #define REG(n, w)	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
 	int	ptr, nextptr, ptrptr;
 
+	if ((REG(PCIR_STATUS, 2) & PCIM_STATUS_CAPPRESENT) == 0) {
+		/* No capabilities */
+		return;
+	}
+
 	switch (cfg->hdrtype) {
 	case 0:
 	case 1:
@@ -440,20 +443,43 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 		ptrptr = PCIR_CAP_PTR_2;
 		break;
 	default:
-		return;		/* no extended capabilities support */
+		return;		/* No capabilities support */
 	}
-	nextptr = REG(ptrptr, 1);	/* sanity check? */
+	nextptr = REG(ptrptr, 1);
 
 	/*
 	 * Read capability entries.
 	 */
-	while (nextptr != 0) {
+	for (;;) {
+		/* "Next pointer" is only one byte */
+		KASSERT(nextptr <= 0xff, ("Illegal next pointer %d\n", nextptr));
+
 		/* Sanity check */
-		if (nextptr > 255) {
-			kprintf("illegal PCI extended capability offset %d\n",
-			    nextptr);
+		if (nextptr & 0x3) {
+			/*
+			 * PCI local bus spec 3.0:
+			 *
+			 * "... The bottom two bits of all pointers are
+			 *  reserved and must be implemented as 00b
+			 *  although software must mask them to allow
+			 *  for future uses of these bits ..."
+			 */
+			if (bootverbose) {
+				kprintf("Illegal PCI extended capability "
+					"offset, adjust 0x%02x -> 0x%02x\n",
+					nextptr, nextptr & ~0x3);
+			}
+			nextptr &= ~0x3;
+		}
+
+		if (nextptr < 0x40) {
+			if (nextptr != 0) {
+				kprintf("Illegal PCI extended capability "
+					"offset 0x%02x", nextptr);
+			}
 			return;
 		}
+
 		/* Find the next entry */
 		ptr = nextptr;
 		nextptr = REG(ptr + 1, 1);
