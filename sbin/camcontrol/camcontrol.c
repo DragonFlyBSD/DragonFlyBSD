@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.c,v 1.21.2.13 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.5 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.6 2007/11/24 01:38:46 pavalos Exp $
  */
 
 #include <sys/ioctl.h>
@@ -1446,7 +1446,7 @@ readdefects(struct cam_device *device, int argc, char **argv,
 						CAM_EPF_ALL, stderr);
 			goto defect_bailout;
 		}
-	} else {
+	} else if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
 		error = 1;
 		warnx("Error returned from read defect data command");
 		if (arglist & CAM_ARG_VERBOSE)
