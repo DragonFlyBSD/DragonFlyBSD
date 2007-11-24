@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.45 2007/11/21 21:28:41 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.46 2007/11/24 01:31:39 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -2124,7 +2124,7 @@ dashutdown(void * arg, int howto)
 				       /*begin_lba*/0, /* whole disk */
 				       /*lb_count*/0,
 				       SSD_FULL_SIZE,
-				       5 * 60 * 1000);
+				       60 * 60 * 1000);
 
 		xpt_polled_action(&ccb);
 
