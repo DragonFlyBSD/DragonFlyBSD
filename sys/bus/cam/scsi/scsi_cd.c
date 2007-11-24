@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.37 2007/11/21 21:28:41 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.38 2007/11/24 02:29:24 pavalos Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -322,10 +322,6 @@ static int num_changers;
 static int changer_min_busy_seconds = CHANGER_MIN_BUSY_SECONDS;
 static int changer_max_busy_seconds = CHANGER_MAX_BUSY_SECONDS;
 
-/*
- * XXX KDM this CAM node should be moved if we ever get more CAM sysctl
- * variables.
- */
 SYSCTL_NODE(_kern_cam, OID_AUTO, cd, CTLFLAG_RD, 0, "CAM CDROM driver");
 SYSCTL_NODE(_kern_cam_cd, OID_AUTO, changer, CTLFLAG_RD, 0, "CD Changer");
 SYSCTL_INT(_kern_cam_cd_changer, OID_AUTO, min_busy_seconds, CTLFLAG_RW,
