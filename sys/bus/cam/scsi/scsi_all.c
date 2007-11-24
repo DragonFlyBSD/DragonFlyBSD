@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.18 2007/11/24 03:09:57 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.19 2007/11/24 03:48:31 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -2584,32 +2584,6 @@ scsi_read_capacity_16(struct ccb_scsiio *csio, uint32_t retries,
 	       reladr |= SRC16_RELADR;
 }
 
-/* XXX allow specification of address and PMI bit and LBA */
-void
-scsi_read_capacity(struct ccb_scsiio *csio, u_int32_t retries,
-		   void (*cbfcnp)(struct cam_periph *, union ccb *),
-		   u_int8_t tag_action,
-		   struct scsi_read_capacity_data *rcap_buf,
-		   u_int8_t sense_len, u_int32_t timeout)
-{
-	struct scsi_read_capacity *scsi_cmd;
-
-	cam_fill_csio(csio,
-		      retries,
-		      cbfcnp,
-		      /*flags*/CAM_DIR_IN,
-		      tag_action,
-		      /*data_ptr*/(u_int8_t *)rcap_buf,
-		      /*dxfer_len*/sizeof(*rcap_buf),
-		      sense_len,
-		      sizeof(*scsi_cmd),
-		      timeout);
-
-	scsi_cmd = (struct scsi_read_capacity *)&csio->cdb_io.cdb_bytes;
-	bzero(scsi_cmd, sizeof(*scsi_cmd));
-	scsi_cmd->opcode = READ_CAPACITY;
-}
-
 /*
  * Prevent or allow the user to remove the media
  */
@@ -2636,6 +2610,56 @@ scsi_prevent(struct ccb_scsiio *csio, u_int32_t retries,
 	bzero(scsi_cmd, sizeof(*scsi_cmd));
 	scsi_cmd->opcode = PREVENT_ALLOW;
 	scsi_cmd->how = action;
+}
+
+/* XXX allow specification of address and PMI bit and LBA */
+void
+scsi_read_capacity(struct ccb_scsiio *csio, u_int32_t retries,
+		   void (*cbfcnp)(struct cam_periph *, union ccb *),
+		   u_int8_t tag_action,
+		   struct scsi_read_capacity_data *rcap_buf,
+		   u_int8_t sense_len, u_int32_t timeout)
+{
+	struct scsi_read_capacity *scsi_cmd;
+
+	cam_fill_csio(csio,
+		      retries,
+		      cbfcnp,
+		      /*flags*/CAM_DIR_IN,
+		      tag_action,
+		      /*data_ptr*/(u_int8_t *)rcap_buf,
+		      /*dxfer_len*/sizeof(*rcap_buf),
+		      sense_len,
+		      sizeof(*scsi_cmd),
+		      timeout);
+
+	scsi_cmd = (struct scsi_read_capacity *)&csio->cdb_io.cdb_bytes;
+	bzero(scsi_cmd, sizeof(*scsi_cmd));
+	scsi_cmd->opcode = READ_CAPACITY;
+}
+
+void
+scsi_report_luns(struct ccb_scsiio *csio, u_int32_t retries,
+		 void (*cbfcnp)(struct cam_periph *, union ccb *),
+		 u_int8_t tag_action, struct scsi_report_luns_data *rpl_buf,
+		 u_int32_t alloc_len, u_int8_t sense_len, u_int32_t timeout)
+{
+	struct scsi_report_luns *scsi_cmd;
+
+	cam_fill_csio(csio,
+		      retries,
+		      cbfcnp,
+		      /*flags*/CAM_DIR_IN,
+		      tag_action,
+		      /*data_ptr*/(u_int8_t *)rpl_buf,
+		      /*dxfer_len*/alloc_len,
+		      sense_len,
+		      sizeof(*scsi_cmd),
+		      timeout);
+	scsi_cmd = (struct scsi_report_luns *)&csio->cdb_io.cdb_bytes;
+	bzero(scsi_cmd, sizeof(*scsi_cmd));
+	scsi_cmd->opcode = REPORT_LUNS;
+	scsi_ulto4b(alloc_len, scsi_cmd->addr);
 }
 
 /*
