@@ -42,7 +42,7 @@
  *
  *	from: scsi_cd.h,v 1.10 1997/02/22 09:44:28 peter Exp $
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.h,v 1.2.6.3 2003/08/24 03:26:38 ken Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.h,v 1.3 2003/12/29 06:42:10 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.h,v 1.4 2007/11/24 02:36:13 pavalos Exp $
  */
 #ifndef	_SCSI_SCSI_CD_H
 #define _SCSI_SCSI_CD_H 1
@@ -157,7 +157,6 @@ struct scsi_read_toc
 	u_int8_t data_len[2];
 	u_int8_t control;
 };
-;
 
 struct scsi_read_cd_capacity
 {
