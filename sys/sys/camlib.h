@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.h,v 1.2 1999/08/28 00:04:06 peter Exp $
- * $DragonFly: src/sys/sys/camlib.h,v 1.5 2007/11/24 01:53:50 pavalos Exp $
+ * $DragonFly: src/sys/sys/camlib.h,v 1.6 2007/11/24 03:13:03 pavalos Exp $
  */
 /*
  * Buffer encoding/decoding routines taken from the original FreeBSD SCSI
@@ -90,7 +90,7 @@
 extern char cam_errbuf[];
 
 struct cam_device {
-	char 		device_path[MAXPATHLEN+1];/*
+	char 		device_path[MAXPATHLEN];  /*
 						   * Pathname of the device 
 						   * given by the user. This
 						   * may be null if the
