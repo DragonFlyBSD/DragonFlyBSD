@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.17 2007/11/22 17:35:12 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.18 2007/11/24 03:09:57 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -711,8 +711,6 @@ const char empty_string[] = "";
 #define SST(asc, ascq, action, desc) \
 	asc, ascq, action, empty_string
 #endif 
-
-static const char quantum[] = "QUANTUM";
 
 const struct sense_key_table_entry sense_key_table[] =
 {
