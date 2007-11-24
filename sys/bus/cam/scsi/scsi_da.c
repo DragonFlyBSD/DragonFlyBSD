@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.46 2007/11/24 01:31:39 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.47 2007/11/24 19:41:39 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -525,11 +525,9 @@ daopen(struct dev_open_args *ap)
 	struct da_softc *softc;
 	struct disk_info info;
 	int unit;
-	int part;
 	int error;
 
 	unit = dkunit(dev);
-	part = dkpart(dev);
 	crit_enter();
 	periph = cam_extend_get(daperiphs, unit);
 	if (periph == NULL) {
@@ -540,8 +538,8 @@ daopen(struct dev_open_args *ap)
 	softc = (struct da_softc *)periph->softc;
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE,
-	    ("daopen: dev=%s (unit %d , partition %d)\n", devtoname(dev),
-	     unit, part));
+	    ("daopen: dev=%s (unit %d)\n", devtoname(dev),
+	     unit));
 
 	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		crit_exit();
