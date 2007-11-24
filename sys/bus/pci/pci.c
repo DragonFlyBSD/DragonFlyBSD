@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.45 2007/11/24 13:04:16 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.46 2007/11/24 13:21:32 sephe Exp $
  *
  */
 
@@ -65,7 +65,7 @@
 devclass_t	pci_devclass;
 const char	*pcib_owner;
 
-static void		pci_read_extcap(device_t dev, pcicfgregs *cfg);
+static void		pci_read_capabilities(device_t dev, pcicfgregs *cfg);
 
 struct pci_quirk {
 	u_int32_t devid;	/* Vendor/device of the card */
@@ -397,7 +397,7 @@ pci_read_device(device_t pcib, int b, int s, int f, size_t size)
 
 		pci_fixancient(cfg);
 		pci_hdrtypedata(pcib, b, s, f, cfg);
-		pci_read_extcap(pcib, cfg);
+		pci_read_capabilities(pcib, cfg);
 
 		STAILQ_INSERT_TAIL(devlist_head, devlist_entry, pci_links);
 
@@ -459,7 +459,7 @@ pci_fixup_nextptr(int *nextptr0)
 }
 
 static void
-pci_read_extcap(device_t pcib, pcicfgregs *cfg)
+pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 {
 #define REG(n, w)	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
 	int nextptr, ptrptr;
