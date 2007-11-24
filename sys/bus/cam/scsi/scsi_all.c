@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.20 2007/11/24 19:19:43 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.21 2007/11/24 19:57:01 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -78,7 +78,9 @@
 #endif
 /*
  * All devices need _some_ sort of bus settle delay, so we'll set it to
- * a minimum value of 100ms.
+ * a minimum value of 100ms. Note that this is pertinent only for SPI-
+ * not transport like Fibre Channel or iSCSI where 'delay' is completely
+ * meaningless.
  */
 #ifndef SCSI_MIN_DELAY
 #define SCSI_MIN_DELAY 100
@@ -86,7 +88,7 @@
 /*
  * Make sure the user isn't using seconds instead of milliseconds.
  */
-#if (SCSI_DELAY < SCSI_MIN_DELAY)
+#if (SCSI_DELAY < SCSI_MIN_DELAY && SCSI_DELAY != 0)
 #error "SCSI_DELAY is in milliseconds, not seconds!  Please use a larger value"
 #endif
 
