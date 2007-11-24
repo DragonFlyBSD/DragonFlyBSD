@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.22 2007/11/14 02:05:35 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.23 2007/11/24 02:08:50 pavalos Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -155,7 +155,7 @@ static struct scsi_low_softc_tab sl_tab = LIST_HEAD_INITIALIZER(sl_tab);
 #endif	/* !SCSI_LOW_INFO_DETAIL */
 
 #ifdef	SCSI_LOW_STATICS
-struct scsi_low_statics {
+static struct scsi_low_statics {
 	int nexus_win;
 	int nexus_fail;
 	int nexus_disconnected;
