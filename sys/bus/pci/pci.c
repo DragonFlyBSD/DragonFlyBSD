@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.44 2007/11/24 06:47:37 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.45 2007/11/24 13:04:16 sephe Exp $
  *
  */
 
@@ -97,7 +97,7 @@ u_int32_t pci_numdevs = 0;
 static u_int32_t pci_generation = 0;
 
 device_t
-pci_find_bsf (u_int8_t bus, u_int8_t slot, u_int8_t func)
+pci_find_bsf(u_int8_t bus, u_int8_t slot, u_int8_t func)
 {
 	struct pci_devinfo *dinfo;
 
@@ -113,7 +113,7 @@ pci_find_bsf (u_int8_t bus, u_int8_t slot, u_int8_t func)
 }
 
 device_t
-pci_find_device (u_int16_t vendor, u_int16_t device)
+pci_find_device(u_int16_t vendor, u_int16_t device)
 {
 	struct pci_devinfo *dinfo;
 
