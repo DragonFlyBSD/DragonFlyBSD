@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.48 2007/11/25 04:42:38 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.49 2007/11/25 16:49:48 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -432,7 +432,6 @@ static struct da_quirk_entry da_quirk_table[] =
 static	d_open_t	daopen;
 static	d_close_t	daclose;
 static	d_strategy_t	dastrategy;
-static	d_ioctl_t	daioctl;
 static	d_dump_t	dadump;
 static	periph_init_t	dainit;
 static	void		daasync(void *callback_arg, u_int32_t code,
@@ -499,18 +498,12 @@ static struct periph_driver dadriver =
 
 PERIPHDRIVER_DECLARE(da, dadriver);
 
-/* For 2.2-stable support */
-#ifndef D_DISK
-#define D_DISK 0
-#endif
-
 static struct dev_ops da_ops = {
 	{ "da", DA_CDEV_MAJOR, D_DISK },
 	.d_open =	daopen,
 	.d_close =	daclose,
 	.d_read =	physread,
 	.d_write =	physwrite,
-	.d_ioctl =	daioctl,
 	.d_strategy =	dastrategy,
 	.d_dump =	dadump
 };
@@ -823,40 +816,6 @@ bad:
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
 	return(0);
-}
-
-/* For 2.2-stable support */
-#ifndef ENOIOCTL
-#define ENOIOCTL -1
-#endif
-
-static int
-daioctl(struct dev_ioctl_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct cam_periph *periph;
-	struct da_softc *softc;
-	int unit;
-	int error;
-
-	unit = dkunit(dev);
-	periph = cam_extend_get(daperiphs, unit);
-	if (periph == NULL)
-		return (ENXIO);	
-
-	softc = (struct da_softc *)periph->softc;
-
-	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("daioctl\n"));
-
-	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		return (error); /* error code from tsleep */
-	}	
-
-	error = cam_periph_ioctl(periph, ap->a_cmd, ap->a_data, daerror);
-
-	cam_periph_unlock(periph);
-	
-	return (error);
 }
 
 static int
