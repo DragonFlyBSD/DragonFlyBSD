@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.14 2007/11/23 13:40:58 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.15 2007/11/25 04:08:42 sephe Exp $
  *
  */
 
@@ -421,6 +421,35 @@
 #define PCIXM_STATUS_MAXSPLITS	0x0380	/* Maximum Split Transactions */
 #define PCIXM_STATUS_MAXCRDS	0x1C00	/* Maximum Cumulative Read Size */
 #define PCIXM_STATUS_RCVDSCEM	0x2000	/* Received a Split Comp w/Error msg */
+
+/* PCI Express definitions */
+
+#define PCIER_CAPABILITY	0x2
+#define PCIEM_CAP_VER_MASK	0x000f	/* Version */
+#define PCIEM_CAP_VER_1		0x0001
+#define PCIEM_CAP_PORT_TYPE	0x00f0	/* Port type mask */
+#define PCIEM_CAP_SLOT_IMPL	0x0100	/* Slot implemented,
+					 * valid only for root port and
+					 * switch downstream port
+					 */
+    /* PCI Express port types */
+#define PCIEM_END_POINT		0x0000	/* Endpoint device */
+#define PCIEM_LEG_END_POINT	0x0010	/* Legacy endpoint device */
+#define PCIEM_ROOT_PORT		0x0040	/* Root port */
+#define PCIEM_UP_STREAM_PORT	0x0050	/* Switch upstream port */
+#define PCIEM_DOWN_STREAM_PORT	0x0060	/* Switch downstream port */
+#define PCIEM_PCIE2PCI_BRIDGE	0x0070	/* PCI Express to PCI/PCI-X bridge */
+#define PCIEM_PCI2PCIE_BRIDGE	0x0080	/* PCI/PCI-X to PCI Express bridge */
+
+#define PCIER_SLOTCAP		0x14
+#define PCIEM_SLTCAP_ATTEN_BTN	0x00000001 /* Attention button present */
+#define PCIEM_SLTCAP_PWR_CTRL	0x00000002 /* Power controller present */
+#define PCIEM_SLTCAP_MRL_SNS	0x00000004 /* MRL sensor present */
+#define PCIEM_SLTCAP_ATTEN_IND	0x00000008 /* Attention indicator present */
+#define PCIEM_SLTCAP_PWR_IND	0x00000010 /* Power indicator present */
+#define PCIEM_SLTCAP_HP_SURP	0x00000020 /* Hot-Plug surprise */
+#define PCIEM_SLTCAP_HP_CAP	0x00000040 /* Hot-Plug capable */
+#define PCIEM_SLTCAP_HP_MASK	0x0000007f /* Hot-Plug related bits */
 
 /* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */
 
