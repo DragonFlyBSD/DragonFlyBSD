@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.76 2007/11/24 23:12:36 swildner Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.77 2007/11/25 00:13:28 swildner Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -242,9 +242,6 @@ int	ksetenv(const char *name, const char *value);
 int	kunsetenv(const char *name);
 void	kfreeenv(char *env);
 int	ktestenv(const char *name);
-/* XXX TGEN Get rid of these compat defines. */
-#define	testenv	ktestenv
-#define	freeenv kfreeenv
 int	kgetenv_int (const char *name, int *data);
 int	kgetenv_string (const char *name, char *data, int size);
 int	kgetenv_quad (const char *name, quad_t *data);

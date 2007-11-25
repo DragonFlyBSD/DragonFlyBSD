@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.15 2007/04/30 07:18:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.16 2007/11/25 00:13:28 swildner Exp $
  */
 
 /*
@@ -101,7 +101,7 @@ bios32_init(void *junk)
 		    kprintf("pcibios: PCI BIOS entry at 0x%x\n", PCIbios.entry);
 	    }
 	    if (p != NULL)
-		freeenv(p);
+		kfreeenv(p);
 	} else {
 	    kprintf("bios32: Bad BIOS32 Service Directory\n");
 	}
@@ -138,7 +138,7 @@ bios32_init(void *junk)
 	}
     }
     if (p != NULL)
-	freeenv(p);
+	kfreeenv(p);
     if (bootverbose) {
 	    /* look for other know signatures */
 	    kprintf("Other BIOS signatures found:\n");

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.160 2004/06/14 03:52:19 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.32 2007/10/23 03:04:48 y0netan1 Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.33 2007/11/25 00:13:28 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -273,7 +273,7 @@ acpi_Startup(void)
     if (debugpoint) {
 	if (!strcmp(debugpoint, "init"))
 	    acpi_EnterDebugger();
-	freeenv(debugpoint);
+	kfreeenv(debugpoint);
     }
 #endif
     error = AcpiInitializeTables(NULL, 16, TRUE);
@@ -448,7 +448,7 @@ acpi_attach(device_t dev)
     if (debugpoint) {
 	if (!strcmp(debugpoint, "tables"))
 	    acpi_EnterDebugger();
-	freeenv(debugpoint);
+	kfreeenv(debugpoint);
     }
 #endif
 
@@ -481,7 +481,7 @@ acpi_attach(device_t dev)
     if (debugpoint) {
 	if (!strcmp(debugpoint, "spaces"))
 	    acpi_EnterDebugger();
-	freeenv(debugpoint);
+	kfreeenv(debugpoint);
     }
 #endif
     /* Install the default address space handlers. */
@@ -527,11 +527,11 @@ acpi_attach(device_t dev)
     if (debugpoint) {
 	if (!strcmp(debugpoint, "enable"))
 	    acpi_EnterDebugger();
-	freeenv(debugpoint);
+	kfreeenv(debugpoint);
     }
 #endif
     flags = 0;
-    if (testenv("debug.acpi.avoid"))
+    if (ktestenv("debug.acpi.avoid"))
 	flags = ACPI_NO_DEVICE_INIT | ACPI_NO_OBJECT_INIT;
     if (ACPI_FAILURE(status = AcpiEnableSubsystem(flags))) {
 	device_printf(dev, "Could not enable ACPI: %s\n",
@@ -601,7 +601,7 @@ acpi_attach(device_t dev)
 	sc->acpi_verbose = 1;
     if ((env = kgetenv("hw.acpi.verbose")) && strcmp(env, "0")) {
 	sc->acpi_verbose = 1;
-	freeenv(env);
+	kfreeenv(env);
     }
 
     /* Only enable S4BIOS by default if the FACS says it is available. */
@@ -639,7 +639,7 @@ acpi_attach(device_t dev)
     if (debugpoint) {
 	if (!strcmp(debugpoint, "probe"))
 	    acpi_EnterDebugger();
-	freeenv(debugpoint);
+	kfreeenv(debugpoint);
     }
 #endif
 
@@ -674,7 +674,7 @@ acpi_attach(device_t dev)
     if (debugpoint) {
 	if (strcmp(debugpoint, "running") == 0)
 	    acpi_EnterDebugger();
-	freeenv(debugpoint);
+	kfreeenv(debugpoint);
     }
 #endif
 
@@ -2438,12 +2438,12 @@ acpi_avoid(ACPI_HANDLE handle)
 	while ((cp[len] != 0) && !isspace(cp[len]))
 	    len++;
 	if (!strncmp(cp, np, len)) {
-	    freeenv(env);
+	    kfreeenv(env);
 	    return(1);
 	}
 	cp += len;
     }
-    freeenv(env);
+    kfreeenv(env);
 
     return (0);
 }
@@ -2462,7 +2462,7 @@ acpi_disabled(char *subsys)
     if ((env = kgetenv("debug.acpi.disabled")) == NULL)
 	return (0);
     if (strcmp(env, "all") == 0) {
-	freeenv(env);
+	kfreeenv(env);
 	return (1);
     }
 
@@ -2477,12 +2477,12 @@ acpi_disabled(char *subsys)
 	while (cp[len] != '\0' && !isspace(cp[len]))
 	    len++;
 	if (strncmp(cp, subsys, len) == 0) {
-	    freeenv(env);
+	    kfreeenv(env);
 	    return (1);
 	}
 	cp += len;
     }
-    freeenv(env);
+    kfreeenv(env);
 
     return (0);
 }
@@ -2501,7 +2501,7 @@ acpi_enabled(char *subsys)
     if ((env = kgetenv("debug.acpi.enabled")) == NULL)
 	return (0);
     if (strcmp(env, "all") == 0) {
-	freeenv(env);
+	kfreeenv(env);
 	return (1);
     }
 
@@ -2516,12 +2516,12 @@ acpi_enabled(char *subsys)
 	while (cp[len] != '\0' && !isspace(cp[len]))
 	    len++;
 	if (strncmp(cp, subsys, len) == 0) {
-	    freeenv(env);
+	    kfreeenv(env);
 	    return (1);
 	}
 	cp += len;
     }
-    freeenv(env);
+    kfreeenv(env);
 
     return (0);
 }
@@ -2893,13 +2893,13 @@ acpi_set_debugging(void *junk)
 	if (strcmp("NONE", layer) != 0)
 	    kprintf(" layer '%s'", layer);
 	acpi_parse_debug(layer, &dbg_layer[0], &AcpiDbgLayer);
-	freeenv(layer);
+	kfreeenv(layer);
     }
     if (level != NULL) {
 	if (strcmp("NONE", level) != 0)
 	    kprintf(" level '%s'", level);
 	acpi_parse_debug(level, &dbg_level[0], &AcpiDbgLevel);
-	freeenv(level);
+	kfreeenv(level);
     }
     kprintf("\n");
 }

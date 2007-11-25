@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/kenv.9,v 1.7 2007/07/14 21:48:15 swildner Exp $
+.\" $DragonFly: src/share/man/man9/kenv.9,v 1.8 2007/11/25 00:13:28 swildner Exp $
 .\"
 .Dd January 16, 2007
 .Dt KENV 9
@@ -136,19 +136,6 @@ If successful, it returns
 .It Va kern.environment
 Current static kernel environment query OID.
 .El
-.Sh COMPATIBILITY
-For compatibility reasons,
-.Fn freeenv
-and
-.Fn testenv
-are mapped to
-.Fn kfreeenv
-and
-.Fn ktestenv
-respectively.
-However, this compatibility is set to be removed in the future, so new
-consumers should use the right calls.
-Also, existing code needs to be converted.
 .Sh FILES
 .Bl -tag -width ".Pa sys/kern/kern_environment.c"
 .It Pa sys/kern/kern_environment.c
