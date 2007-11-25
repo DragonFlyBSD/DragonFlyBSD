@@ -1,6 +1,6 @@
 .\" @(#)rpc.3n	2.4 88/08/08 4.0 RPCSRC; from 1.19 88/06/24 SMI
 .\" $FreeBSD: src/lib/libc/rpc/rpc.3,v 1.11.2.5 2001/12/14 18:33:56 ru Exp $
-.\" $DragonFly: src/lib/libc/rpc/rpc.3,v 1.6 2007/11/23 23:16:36 swildner Exp $
+.\" $DragonFly: src/lib/libc/rpc/rpc.3,v 1.7 2007/11/25 14:33:02 swildner Exp $
 .\"
 .Dd February 16, 1988
 .Dt RPC 3
@@ -106,6 +106,7 @@ Calls
 with the appropriate parameters.
 .Pp
 .It Xo
+.Ft int
 .Fo callrpc
 .Fa "char *host"
 .Fa "u_long prognum"

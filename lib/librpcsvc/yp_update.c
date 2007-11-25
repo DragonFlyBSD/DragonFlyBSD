@@ -36,7 +36,7 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/lib/librpcsvc/yp_update.c,v 1.2.2.1 2002/02/15 00:46:54 des Exp $
- * $DragonFly: src/lib/librpcsvc/yp_update.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/librpcsvc/yp_update.c,v 1.3 2007/11/25 14:33:02 swildner Exp $
  *
  * $FreeBSD: src/lib/librpcsvc/yp_update.c,v 1.2.2.1 2002/02/15 00:46:54 des Exp $
  */
@@ -57,14 +57,8 @@
 #endif
 
 int
-yp_update(domain, map, ypop, key, keylen, data, datalen)
-	char		*domain;
-	char		*map;
-	unsigned int	ypop;
-	char		*key;
-	int		keylen;
-	char		*data;
-	int		datalen;
+yp_update(char *domain, char *map, unsigned int ypop, char *key, int keylen,
+	  char *data, int datalen)
 {
 	char *master;
 	int rval;

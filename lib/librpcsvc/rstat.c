@@ -28,6 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)rstat.c	1.2 91/03/11 TIRPC 1.0; from 1.6 89/03/24 SMI
+ * $DragonFly: src/lib/librpcsvc/rstat.c,v 1.3 2007/11/25 14:33:02 swildner Exp $
  */
 
 /*
@@ -41,9 +42,7 @@
 #include <rpcsvc/rstat.h>
 
 int
-rstat(host, statp)
-	char *host;
-	struct statstime *statp;
+rstat(char *host, struct statstime *statp)
 {
 	return (callrpc(host, RSTATPROG, RSTATVERS_TIME, RSTATPROC_STATS,
 			xdr_void, (char *) NULL,
@@ -51,8 +50,7 @@ rstat(host, statp)
 }
 
 int
-havedisk(host)
-	char *host;
+havedisk(char *host)
 {
 	long have;
 	

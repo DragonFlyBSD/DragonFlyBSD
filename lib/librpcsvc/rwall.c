@@ -28,6 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)rwall.c	1.2 91/03/11 TIRPC 1.0; from  1.3 89/03/24 SMI
+ * $DragonFly: src/lib/librpcsvc/rwall.c,v 1.3 2007/11/25 14:33:02 swildner Exp $
  */
 
 /*
@@ -41,9 +42,7 @@
 #include <rpcsvc/rwall.h>
 
 int
-rwall(host, msg)
-	char *host;
-	char *msg;
+rwall(char *host, char *msg)
 {
 	return (callrpc(host, WALLPROG, WALLVERS, WALLPROC_WALL,
 			xdr_wrapstring, (char *) &msg,

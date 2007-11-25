@@ -28,7 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)secretkey.c 1.8 91/03/11 Copyr 1986 Sun Micro
- * $DragonFly: src/lib/librpcsvc/secretkey.c,v 1.4 2003/11/12 20:21:31 eirikn Exp $
+ * $DragonFly: src/lib/librpcsvc/secretkey.c,v 1.5 2007/11/25 14:33:02 swildner Exp $
  */
 
 /*
@@ -54,10 +54,7 @@ extern int xdecrypt ( char *, char * );
  * passwd to decrypt it.
  */
 int
-getsecretkey(netname, secretkey, passwd)
-	char *netname;
-	char *secretkey;
-	char *passwd;
+getsecretkey(char *netname, char *secretkey, char *passwd)
 {
 	char lookup[3 * HEXKEYBYTES];
 	char *p;

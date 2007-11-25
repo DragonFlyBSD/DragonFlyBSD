@@ -1,10 +1,11 @@
 #	from: @(#)Makefile    5.10 (Berkeley) 6/24/90
 # $FreeBSD: src/lib/librpcsvc/Makefile,v 1.13 1999/08/28 00:05:23 peter Exp $
-# $DragonFly: src/lib/librpcsvc/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
+# $DragonFly: src/lib/librpcsvc/Makefile,v 1.3 2007/11/25 14:33:02 swildner Exp $
 
 .PATH: ${DESTDIR}/usr/include/rpcsvc
 
 LIB=    rpcsvc
+WARNS?=	2
 
 RPCSRCS= klm_prot.x mount.x nfs_prot.x nlm_prot.x rex.x rnusers.x \
 	rquota.x rstat.x rwall.x sm_inter.x spray.x yppasswd.x ypxfrd.x \

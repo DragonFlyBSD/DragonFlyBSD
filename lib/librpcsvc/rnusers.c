@@ -28,7 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)rnusers.c	1.2 91/03/11 TIRPC 1.0; from 1.7 89/03/24 SMI
- * $DragonFly: src/lib/librpcsvc/rnusers.c,v 1.3 2005/08/04 17:27:09 drhodus Exp $
+ * $DragonFly: src/lib/librpcsvc/rnusers.c,v 1.4 2007/11/25 14:33:02 swildner Exp $
  */
 
 /*
@@ -43,7 +43,7 @@
 #include <rpcsvc/rnusers.h>
 
 int
-rusers(char *host, struct utmpidlearr *up)
+rusers(char *host, utmpidlearr *up)
 {
 	return (callrpc(host, RUSERSPROG, RUSERSVERS_IDLE, RUSERSPROC_NAMES,
 			xdr_void, (char *) NULL,

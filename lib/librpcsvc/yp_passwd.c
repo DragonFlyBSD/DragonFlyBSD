@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/librpcsvc/yp_passwd.c,v 1.2 1999/08/28 00:05:24 peter Exp $
- * $DragonFly: src/lib/librpcsvc/yp_passwd.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/librpcsvc/yp_passwd.c,v 1.3 2007/11/25 14:33:02 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -54,9 +54,7 @@ static const char rcsid[] = "$FreeBSD: src/lib/librpcsvc/yp_passwd.c,v 1.2 1999/
  * fooling gcc.
  */
 
-int _yppasswd(oldpass, newpw)
-	char *oldpass;
-	struct x_passwd *newpw;
+int _yppasswd(char *oldpass, struct x_passwd *newpw)
 {
 	char *server;
 	char *domain;
@@ -81,7 +79,8 @@ int _yppasswd(oldpass, newpw)
 	}
 
 	rval = callrpc(server, YPPASSWDPROG, YPPASSWDVERS, YPPASSWDPROC_UPDATE,
-		       xdr_yppasswd, (char *)&yppasswd, xdr_int, &result);
+		       xdr_yppasswd, (char *)&yppasswd, xdr_int,
+		       (char *)&result);
 
 	free(server);
 	if (rval || result)
