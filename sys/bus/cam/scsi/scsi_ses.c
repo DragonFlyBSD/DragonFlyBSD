@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.26 2007/11/24 23:12:51 pavalos Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.27 2007/11/25 01:21:42 pavalos Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -1638,9 +1638,9 @@ struct scfg {
 
 static char *safte_2little = "Too Little Data Returned (%d) at line %d\n";
 #define	SAFT_BAIL(r, x, k, l)	\
-	if (r >= x) { \
+	if ((r) >= (x)) { \
 		SES_LOG(ssc, safte_2little, x, __LINE__);\
-		SES_FREE(k, l); \
+		SES_FREE((k), (l)); \
 		return (EIO); \
 	}
 
