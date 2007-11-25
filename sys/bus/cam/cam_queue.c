@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_queue.c,v 1.5 1999/08/28 00:40:41 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.9 2007/05/13 18:33:56 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.10 2007/11/25 02:21:30 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -177,7 +177,7 @@ camq_remove(struct camq *queue, int index)
 /*
  * camq_change_priority:  Given an array of cam_pinfo* elements with the
  * Heap(1, num_entries) property, an index such that 1 <= index <= num_elements,
- * and an new priority for the element at index, change the priority of
+ * and a new priority for the element at index, change the priority of
  * element index and restore the Heap(0, num_elements) property.
  */
 void
