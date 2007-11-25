@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.31 2007/11/24 19:19:43 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.32 2007/11/25 01:30:55 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1447,7 +1447,7 @@ camperiphscsisenseerror(union ccb *ccb, cam_flags camflags,
 			break;
 		}
 		default:
-			panic("Unhandled error action %x\n", err_action);
+			panic("Unhandled error action %x", err_action);
 		}
 
 		if ((err_action & SS_MASK) >= SS_START) {
