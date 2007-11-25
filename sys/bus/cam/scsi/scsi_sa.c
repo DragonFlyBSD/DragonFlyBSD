@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.26 2007/11/25 18:14:26 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.27 2007/11/25 18:32:29 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -737,13 +737,17 @@ sastrategy(struct dev_strategy_args *ap)
 	 * Place it at the end of the queue.
 	 */
 	bioq_insert_tail(&softc->bio_queue, bio);
-
 	softc->queue_count++;
-	CAM_DEBUG(periph->path, CAM_DEBUG_INFO, ("sastrategy: enqueuing a %d "
-	    "%s byte %s queue count now %d\n", (int) bp->b_bcount,
-	     (softc->flags & SA_FLAG_FIXED)?  "fixed" : "variable",
-	     (bp->b_cmd == BUF_CMD_READ)? "read" : "write", softc->queue_count));
-
+#if	0
+	CAM_DEBUG(periph->path, CAM_DEBUG_INFO,
+	    ("sastrategy: queuing a %ld %s byte %s\n", bp->bio_bcount,
+	    (softc->flags & SA_FLAG_FIXED)?  "fixed" : "variable",
+	    (bp->bio_cmd == BIO_READ)? "read" : "write"));
+#endif
+	if (softc->queue_count > 1) {
+		CAM_DEBUG(periph->path, CAM_DEBUG_INFO,
+		    ("sastrategy: queue count now %d\n", softc->queue_count));
+	}
 	crit_exit();
 	
 	/*
@@ -1521,7 +1525,7 @@ sastart(struct cam_periph *periph, union ccb *start_ccb)
 
 	softc = (struct sa_softc *)periph->softc;
 
-	CAM_DEBUG(periph->path, CAM_DEBUG_INFO, ("sastart"));
+	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("sastart\n"));
 
 	
 	switch (softc->state) {
@@ -1616,12 +1620,20 @@ again:
 					biodone(bio);
 					break;
 				}
-				CAM_DEBUG(periph->path, CAM_DEBUG_INFO,
-				    ("Fixed Record Count is %d\n", length));
+#if	0
+				CAM_DEBUG(start_ccb->ccb_h.path, CAM_DEBUG_INFO,
+				    ("issuing a %d fixed record %s\n",
+				    length,  (bp->bio_cmd == BIO_READ)? "read" :
+				    "write"));
+#endif
 			} else {
 				length = bp->b_bcount;
+#if	0
 				CAM_DEBUG(start_ccb->ccb_h.path, CAM_DEBUG_INFO,
-				    ("Variable Record Count is %d\n", length));
+				    ("issuing a %d variable byte %s\n",
+				    length,  (bp->bio_cmd == BIO_READ)? "read" :
+				    "write"));
+#endif
 			}
 			devstat_start_transaction(&softc->device_stats);
 			/*
@@ -2799,6 +2811,21 @@ retry:
 		 * the saved value.
 		 */
 		switch (ccomp->hdr.pagecode & ~0x80) {
+		case SA_DEVICE_CONFIGURATION_PAGE:
+		{
+			struct scsi_dev_conf_page *dcp = &cpage->dconf;
+			if (calg == 0) {
+				dcp->sel_comp_alg = SA_COMP_NONE;
+				break;
+			}
+			if (calg != MT_COMP_ENABLE) {
+				dcp->sel_comp_alg = calg;
+			} else if (dcp->sel_comp_alg == SA_COMP_NONE &&
+			    softc->saved_comp_algorithm != 0) {
+				dcp->sel_comp_alg = softc->saved_comp_algorithm;
+			}
+			break;
+		}
 		case SA_DATA_COMPRESSION_PAGE:
 		if (ccomp->dcomp.dce_and_dcc & SA_DCP_DCC) {
 			struct scsi_data_compression_page *dcp = &cpage->dcomp;
@@ -2834,22 +2861,16 @@ retry:
 			}
 			break;
 		}
-		/* XXX: fall-through intentional ? */
-		case SA_DEVICE_CONFIGURATION_PAGE:
-		{
-			struct scsi_dev_conf_page *dcp = &cpage->dconf;
-			if (calg == 0) {
-				dcp->sel_comp_alg = SA_COMP_NONE;
-				break;
-			}
-			if (calg != MT_COMP_ENABLE) {
-				dcp->sel_comp_alg = calg;
-			} else if (dcp->sel_comp_alg == SA_COMP_NONE &&
-			    softc->saved_comp_algorithm != 0) {
-				dcp->sel_comp_alg = softc->saved_comp_algorithm;
-			}
-			break;
-		}
+		/*
+		 * Compression does not appear to be supported-
+		 * at least via the DATA COMPRESSION page. It
+		 * would be too much to ask us to believe that
+		 * the page itself is supported, but incorrectly
+		 * reports an ability to manipulate data compression,
+		 * so we'll assume that this device doesn't support
+		 * compression. We can just fall through for that.
+		 */
+		/* FALLTHROUGH */
 		default:
 			/*
 			 * The drive doesn't seem to support compression,
