@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/chio.h,v 1.15 1999/12/29 04:24:38 peter Exp $
- * $DragonFly: src/sys/sys/chio.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/chio.h,v 1.4 2007/11/25 17:59:22 pavalos Exp $
  */
 
 #ifndef	_SYS_CHIO_H_
@@ -55,6 +55,7 @@
 #define CHET_ST		1	/* storage transport (slot) */
 #define CHET_IE		2	/* import/export (portal) */
 #define CHET_DT		3	/* data transfer (drive) */
+#define CHET_MAX	CHET_DT
 
 /*
  * Maximum length of a volume identification string
