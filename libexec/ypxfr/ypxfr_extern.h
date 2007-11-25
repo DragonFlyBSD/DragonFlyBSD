@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/ypxfr/ypxfr_extern.h,v 1.7.2.1 2002/02/15 00:46:54 des Exp $
- * $DragonFly: src/libexec/ypxfr/ypxfr_extern.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/ypxfr/ypxfr_extern.h,v 1.3 2007/11/25 14:48:30 swildner Exp $
  */
 #include <sys/types.h>
 #include <limits.h>
@@ -61,4 +61,3 @@ extern unsigned	long ypxfr_get_order(char *, char *, char *, const int);
 extern int	ypxfr_match(char *, char *, char *, char *, unsigned long);
 extern char	*ypxfxerr_string(ypxfrstat);
 extern int	ypxfrd_get_map(char  *, char *, char *, char *);
-extern int	callrpc(char *, int, int, int, xdrproc_t, char *, xdrproc_t, char *);
