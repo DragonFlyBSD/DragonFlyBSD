@@ -32,7 +32,7 @@
  *
  * @(#)expand.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/expand.c,v 1.8 1999/08/28 01:05:06 peter Exp $
- * $DragonFly: src/usr.bin/rdist/expand.c,v 1.4 2004/07/24 19:45:10 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/expand.c,v 1.5 2007/11/25 18:10:07 swildner Exp $
  */
 
 #include "defs.h"
@@ -172,7 +172,7 @@ expstr(char *s)
 			savec = *tail;
 			*tail = '\0';
 		}
-		tp = lookup(cp, NULL, 0);
+		tp = lookup(cp, 0, NULL);
 		if (savec != '\0')
 			*tail = savec;
 		if (tp != NULL) {

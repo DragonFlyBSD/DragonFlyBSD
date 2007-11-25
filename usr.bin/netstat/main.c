@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.13 2007/08/16 20:03:58 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.14 2007/11/25 18:10:07 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -235,7 +235,7 @@ struct protox netgraphprotox[] = {
 	  NULL,		NULL,		"ctrl" },
 	{ N_NGSOCKS,	-1,		1,	netgraphprotopr,
 	  NULL,		NULL,		"data" },
-	{ -1,		NULL,		0,	0,
+	{ -1,		-1,		0,	0,
 	  0,		NULL,		0 }
 };
 

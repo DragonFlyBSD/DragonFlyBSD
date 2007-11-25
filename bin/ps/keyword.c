@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.29 2007/08/14 20:29:06 dillon Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.30 2007/11/25 18:10:06 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -163,7 +163,7 @@ static const VAR var[] = {
 	{"rss", "RSS", NULL, 0, p_rssize, NULL, 4, 0, 0, NULL, NULL},
 	{"rssize", "", "rsz", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"rsz", "RSZ", NULL, 0, rssize, NULL, 4, 0, 0, NULL, NULL},
-	{"rtprio", "RTPRIO", NULL, 0, rtprior, NULL, 7, NULL, 0, NULL, NULL},
+	{"rtprio", "RTPRIO", NULL, 0, rtprior, NULL, 7, 0, 0, NULL, NULL},
 	{"ruid", "RUID", NULL, 0, pvar, NULL, UIDLEN, POFF(ruid),
 		UINT, UIDFMT, NULL},
 	{"ruser", "RUSER", NULL, LJUST|DSIZ, runame, s_runame, USERLEN, 0, 0, NULL,

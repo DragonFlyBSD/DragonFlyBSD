@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/load_elf.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/load_elf.c,v 1.5 2005/02/20 16:30:39 swildner Exp $
+ * $DragonFly: src/sys/boot/common/load_elf.c,v 1.6 2007/11/25 18:10:07 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -490,7 +490,7 @@ nosyms:
 
     ef->strsz = 0;
     for (i = 0; i < ndp; i++) {
-	if (dp[i].d_tag == NULL)
+	if (dp[i].d_tag == 0)
 	    break;
 	switch (dp[i].d_tag) {
 	case DT_HASH:

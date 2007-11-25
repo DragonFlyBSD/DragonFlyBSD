@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kldunload/kldunload.c,v 1.10 1999/09/08 05:46:47 bde Exp $
- * $DragonFly: src/sbin/kldunload/kldunload.c,v 1.4 2005/03/09 16:59:40 liamfoy Exp $
+ * $DragonFly: src/sbin/kldunload/kldunload.c,v 1.5 2007/11/25 18:10:07 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/linker.h>
@@ -56,7 +56,7 @@ main(int argc, char** argv)
 	switch (c) {
 	case 'i':
 	    tmp = strtol(optarg, &ep, 10);
-	    if (*ep != NULL || tmp < INT_MIN || tmp > INT_MAX)
+	    if (*ep != '\0' || tmp < INT_MIN || tmp > INT_MAX)
 		errx(1, "invalid file id: %s", optarg);
 	    fileid = (int)tmp;
 	    break;

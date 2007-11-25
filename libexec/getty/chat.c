@@ -23,7 +23,7 @@
  * For semi-intelligent modem handling.
  *
  * $FreeBSD: src/libexec/getty/chat.c,v 1.6 1999/08/28 00:09:34 peter Exp $
- * $DragonFly: src/libexec/getty/chat.c,v 1.5 2005/05/07 20:00:20 corecode Exp $
+ * $DragonFly: src/libexec/getty/chat.c,v 1.6 2007/11/25 18:10:06 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -365,7 +365,7 @@ chat_expect(const char *str)
 							/* See if we can resync on a
 							 * partial match in our buffer
 							 */
-							while (j < i && memcmp(got + j, str, i - j) != NULL)
+							while (j < i && memcmp(got + j, str, i - j) != 0)
 								j++;
 							if (j < i)
 								memcpy(got, got + j, i - j);

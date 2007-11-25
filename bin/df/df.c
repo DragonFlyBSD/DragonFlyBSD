@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.8 2006/04/03 01:58:43 dillon Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.9 2007/11/25 18:10:06 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -606,7 +606,7 @@ makenetvfslist(void)
 		*strptr = ',';
 		free(listptr[i]);
 	}
-	*(--strptr) = NULL;
+	*(--strptr) = '\0';
 
 	free(listptr);
 	return (str);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)msgs.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/msgs/msgs.c,v 1.15.2.2 2003/02/11 21:31:56 mike Exp $
- * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.6 2005/08/09 20:05:55 joerg Exp $
+ * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.7 2007/11/25 18:10:07 swildner Exp $
  */
 
 /*
@@ -760,7 +760,7 @@ ask(const char *prompt)
 				for (n=0; in[n] > ' '; n++) { /* sizeof fname? */
 					fname[n] = in[n];
 				}
-				fname[n] = NULL;
+				fname[n] = '\0';
 			}
 			else
 				strcpy(fname, "Messages");
@@ -810,7 +810,7 @@ gfrsub(FILE *infile)
 
 	seensubj = seenfrom = NO;
 	local = YES;
-	subj[0] = from[0] = date[0] = NULL;
+	subj[0] = from[0] = date[0] = '\0';
 
 	/*
 	 * Is this a normal message?
@@ -833,12 +833,12 @@ gfrsub(FILE *infile)
 					*ptr++ = *in++;
 				}
 			}
-			*ptr = NULL;
+			*ptr = '\0';
 			if (*(in = nxtfld(in)))
 				strncpy(date, in, sizeof date);
 			else {
 				date[0] = '\n';
-				date[1] = NULL;
+				date[1] = '\0';
 			}
 		}
 		else {

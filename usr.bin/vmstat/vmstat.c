@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.21 2007/06/03 11:49:30 y0netan1 Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.22 2007/11/25 18:10:07 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -865,7 +865,7 @@ dozmem(void)
 	for (;;) {
 		if ((buf = realloc(buf, bufsize)) == NULL)
 			err(1, "realloc()");
-		if (sysctlbyname("vm.zone", buf, &bufsize, 0, NULL) == 0)
+		if (sysctlbyname("vm.zone", buf, &bufsize, NULL, 0) == 0)
 			break;
 		if (errno != ENOMEM)
 			err(1, "sysctl()");

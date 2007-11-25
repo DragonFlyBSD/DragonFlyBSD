@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.3 2005/09/10 18:25:53 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.3 2007/08/25 21:59:05 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.4 2007/11/25 18:10:06 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -146,11 +146,11 @@ kgdb_thr_init(void)
 				 * We are a kernel thread, so our td_pcb is
 				 * not used anyways.  An exception is the
 				 * dumping thread.
-				 * kt->pcb == NULL is a marker for
+				 * kt->pcb == 0 is a marker for
 				 * "non-dumping kernel thread".
 				 */
 				if (kt->tid != dumptid)
-					kt->pcb = NULL;
+					kt->pcb = 0;
 			}
 			first = kt;
 			addr = (uintptr_t)TAILQ_NEXT(&td, td_allq);

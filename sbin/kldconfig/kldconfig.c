@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kldconfig/kldconfig.c,v 1.3.2.1 2001/08/01 05:52:36 obrien Exp $
- * $DragonFly: src/sbin/kldconfig/kldconfig.c,v 1.3 2006/01/17 23:49:12 dillon Exp $
+ * $DragonFly: src/sbin/kldconfig/kldconfig.c,v 1.4 2007/11/25 18:10:07 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -113,14 +113,14 @@ getpath(void)
 
 	if (miblen == 0)
 		getmib();
-	if (sysctl(mib, miblen, NULL, &sz, NULL, NULL) == -1)
+	if (sysctl(mib, miblen, NULL, &sz, NULL, 0) == -1)
 		err(1, "getting path: sysctl(%s) - size only", pathctl);
 	if ((path = malloc(sz + 1)) == NULL) {
 		errno = ENOMEM;
 		err(1, "allocating %lu bytes for the path",
 		    (unsigned long)sz+1);
 	}
-	if (sysctl(mib, miblen, path, &sz, NULL, NULL) == -1)
+	if (sysctl(mib, miblen, path, &sz, NULL, 0) == -1)
 		err(1, "getting path: sysctl(%s)", pathctl);
 	modpath = path;
 }

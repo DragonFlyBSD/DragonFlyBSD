@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)init.c	8.1 (Berkeley) 7/15/93
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
- * $DragonFly: src/sbin/init/init.c,v 1.9 2005/11/06 12:23:40 swildner Exp $
+ * $DragonFly: src/sbin/init/init.c,v 1.10 2007/11/25 18:10:07 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -347,7 +347,7 @@ handle(sig_t handler, ...)
 	sa.sa_handler = handler;
 	sigfillset(&mask_everything);
 
-	while ((sig = va_arg(ap, int)) != NULL) {
+	while ((sig = va_arg(ap, int)) != 0) {
 		sa.sa_mask = mask_everything;
 		/* XXX SA_RESTART? */
 		sa.sa_flags = sig == SIGCHLD ? SA_NOCLDSTOP : 0;
@@ -367,7 +367,7 @@ delset(sigset_t *maskp, ...)
 
 	va_start(ap, maskp);
 
-	while ((sig = va_arg(ap, int)) != NULL)
+	while ((sig = va_arg(ap, int)) != 0)
 		sigdelset(maskp, sig);
 	va_end(ap);
 }

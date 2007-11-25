@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.27 2007/02/22 13:15:55 corecode Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.28 2007/11/25 18:10:06 swildner Exp $
  */
 
 /*
@@ -1253,7 +1253,7 @@ load_preload_objects(void)
     static const char delim[] = " \t:;";
 
     if (p == NULL)
-	return NULL;
+	return 0;
 
     p += strspn(p, delim);
     while (*p != '\0') {
@@ -2755,7 +2755,7 @@ free_tls(struct tls_tcb *tcb)
     tls_end = (Elf_Addr)tcb;
     tls_start = (Elf_Addr)tcb - data_size;
     for (i = 0; i < dtv_size; i++) {
-	if (dtv[i+2] != NULL && (dtv[i+2] < tls_start || dtv[i+2] > tls_end)) {
+	if (dtv[i+2] != 0 && (dtv[i+2] < tls_start || dtv[i+2] > tls_end)) {
 	    free((void *)dtv[i+2]);
 	}
     }
