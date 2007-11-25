@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.24 2007/11/18 17:53:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.25 2007/11/25 01:29:57 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -613,7 +613,7 @@ saclose(struct dev_close_args *ap)
 		break;
 	default:
 		xpt_print_path(periph->path);
-		panic("unknown mode 0x%x in saclose\n", mode);
+		panic("unknown mode 0x%x in saclose", mode);
 		/* NOTREACHED */
 		break;
 	}
