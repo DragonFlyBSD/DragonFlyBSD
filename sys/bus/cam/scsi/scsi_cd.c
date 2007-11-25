@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.39 2007/11/24 23:12:51 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.40 2007/11/25 04:42:38 pavalos Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -160,6 +160,7 @@ struct cd_softc {
 	int			bufs_left;
 	struct cam_periph	*periph;
 	int			minimum_command_size;
+	int			outstanding_cmds;
 	struct task		sysctl_task;
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
@@ -1117,7 +1118,7 @@ cdshorttimeout(void *arg)
 	 * this device.  If not, move it out of the active slot.
 	 */
 	if ((bioq_first(&changer->cur_device->bio_queue) == NULL)
-	 && (changer->cur_device->device_stats.busy_count == 0)) {
+	 && (changer->cur_device->outstanding_cmds == 0)) {
 		changer->flags |= CHANGER_MANUAL_CALL;
 		cdrunchangerqueue(changer);
 	}
@@ -1212,10 +1213,10 @@ cdrunchangerqueue(void *arg)
 	 */
 	if (changer->devq.qfrozen_cnt > 0) {
 
-		if (changer->cur_device->device_stats.busy_count > 0) {
+		if (changer->cur_device->outstanding_cmds > 0) {
 			changer->cur_device->flags |= CD_FLAG_SCHED_ON_COMP;
 			changer->cur_device->bufs_left = 
-				changer->cur_device->device_stats.busy_count;
+				changer->cur_device->outstanding_cmds;
 			if (called_from_timeout) {
 				callout_reset(&changer->long_handle,
 				        changer_max_busy_seconds * hz,
@@ -1321,7 +1322,7 @@ cdchangerschedule(struct cd_softc *softc)
 				cdrunchangerqueue(softc->changer);
 			}
 		} else if ((bioq_first(&softc->bio_queue) == NULL)
-		        && (softc->device_stats.busy_count == 0)) {
+		        && (softc->outstanding_cmds == 0)) {
 			softc->changer->flags |= CHANGER_MANUAL_CALL;
 			cdrunchangerqueue(softc->changer);
 		}
@@ -1569,6 +1570,7 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 			LIST_INSERT_HEAD(&softc->pending_ccbs,
 					 &start_ccb->ccb_h, periph_links.le);
 
+			softc->outstanding_cmds++;
 			/* We expect a unit attention from this device */
 			if ((softc->flags & CD_FLAG_RETRY_UA) != 0) {
 				start_ccb->ccb_h.ccb_state |= CD_CCB_RETRY_UA;
@@ -1687,6 +1689,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 		 */
 		crit_enter();
 		LIST_REMOVE(&done_ccb->ccb_h, periph_links.le);
+		softc->outstanding_cmds--;
 		crit_exit();
 
 		if (softc->flags & CD_FLAG_CHANGER)

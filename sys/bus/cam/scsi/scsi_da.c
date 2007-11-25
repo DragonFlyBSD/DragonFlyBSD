@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.47 2007/11/24 19:41:39 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.48 2007/11/25 04:42:38 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -142,6 +142,7 @@ struct da_softc {
 	da_quirks quirks;
 	int	 minimum_cmd_size;
 	int	 ordered_tag_count;
+	int	 outstanding_cmds;
 	struct	 disk_params params;
 	struct	 disk disk;
 	union	 ccb saved_ccb;
@@ -1450,6 +1451,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			LIST_INSERT_HEAD(&softc->pending_ccbs,
 					 &start_ccb->ccb_h, periph_links.le);
 
+			softc->outstanding_cmds++;
 			/* We expect a unit attention from this device */
 			if ((softc->flags & DA_FLAG_RETRY_UA) != 0) {
 				start_ccb->ccb_h.ccb_state |= DA_CCB_RETRY_UA;
@@ -1661,10 +1663,10 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		 */
 		crit_enter();
 		LIST_REMOVE(&done_ccb->ccb_h, periph_links.le);
-		crit_exit();
-
-		if (softc->device_stats.busy_count == 0)
+		softc->outstanding_cmds--;
+		if (softc->outstanding_cmds == 0)
 			softc->flags |= DA_FLAG_WENT_IDLE;
+		crit_exit();
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
 		biodone(bio);
@@ -2077,7 +2079,7 @@ dasendorderedtag(void *arg)
 		 && ((softc->flags & DA_FLAG_WENT_IDLE) == 0)) {
 			softc->flags |= DA_FLAG_NEED_OTAG;
 		}
-		if (softc->device_stats.busy_count > 0)
+		if (softc->outstanding_cmds > 0)
 			softc->flags &= ~DA_FLAG_WENT_IDLE;
 
 		softc->ordered_tag_count = 0;
