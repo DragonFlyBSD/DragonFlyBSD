@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.16 2007/11/21 22:10:16 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.17 2007/11/25 18:03:43 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -389,10 +389,7 @@ targbhdislun(struct cam_periph *periph)
 static cam_status
 targbhctor(struct cam_periph *periph, void *arg)
 {
-	struct ccb_pathinq *cpi;
 	struct targbh_softc *softc;
-
-	cpi = (struct ccb_pathinq *)arg;
 
 	/* Allocate our per-instance private storage */
 	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
