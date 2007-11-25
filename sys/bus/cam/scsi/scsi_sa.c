@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.25 2007/11/25 01:29:57 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.26 2007/11/25 18:14:26 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -444,13 +444,9 @@ saopen(struct dev_open_args *ap)
 	struct cam_periph *periph;
 	struct sa_softc *softc;
 	int unit;
-	int mode;
-	int density;
 	int error;
 
 	unit = SAUNIT(dev);
-	mode = SAMODE(dev);
-	density = SADENSITY(dev);
 
 	crit_enter();
 	periph = cam_extend_get(saperiphs, unit);
@@ -779,12 +775,10 @@ saioctl(struct dev_ioctl_args *ap)
 	int didlockperiph = 0;
 	int unit;
 	int mode;
-	int density;
 	int error = 0;
 
 	unit = SAUNIT(dev);
 	mode = SAMODE(dev);
-	density = SADENSITY(dev);
 	error = 0;		/* shut up gcc */
 	spaceop = 0;		/* shut up gcc */
 
@@ -2281,9 +2275,7 @@ sacheckeod(struct cam_periph *periph)
 {
 	int	error;
 	int	markswanted;
-	struct	sa_softc *softc;
 
-	softc = (struct sa_softc *)periph->softc;
 	markswanted = samarkswanted(periph);
 
 	if (markswanted > 0) {
@@ -2396,7 +2388,6 @@ saerror(union ccb *ccb, u_int32_t cflgs, u_int32_t sflgs)
 	case CAM_BDR_SENT:
 		if (ccb->ccb_h.retry_count <= 0) {
 			return (EIO);
-			break;
 		}
 		/* FALLTHROUGH */
 	default:
@@ -2843,6 +2834,7 @@ retry:
 			}
 			break;
 		}
+		/* XXX: fall-through intentional ? */
 		case SA_DEVICE_CONFIGURATION_PAGE:
 		{
 			struct scsi_dev_conf_page *dcp = &cpage->dconf;
