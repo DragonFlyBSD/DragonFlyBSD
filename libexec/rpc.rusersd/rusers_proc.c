@@ -31,13 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rpc.rusersd/rusers_proc.c,v 1.10 1999/08/28 00:09:56 peter Exp $
- * $DragonFly: src/libexec/rpc.rusersd/rusers_proc.c,v 1.3 2004/02/13 03:49:48 dillon Exp $
+ * $DragonFly: src/libexec/rpc.rusersd/rusers_proc.c,v 1.4 2007/11/25 01:28:23 swildner Exp $
  */
 
 #ifdef DEBUG
 #include <errno.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/stat.h>

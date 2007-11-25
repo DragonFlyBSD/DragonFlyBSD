@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/bigram/locate.bigram.c,v 1.11 1999/08/28 01:02:54 peter Exp $
- * $DragonFly: src/usr.bin/locate/bigram/locate.bigram.c,v 1.3 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/locate/bigram/locate.bigram.c,v 1.4 2007/11/25 01:28:23 swildner Exp $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)locate.bigram.c	8.1 (Berkeley) 6/6/93
@@ -50,6 +50,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/param.h>			/* for MAXPATHLEN */
 #include "locate.h"
 

@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/ipcp.c,v 1.12 1999/08/28 01:19:03 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/ipcp.c,v 1.4 2005/11/24 23:42:54 swildner Exp $
+ * $DragonFly: src/usr.sbin/pppd/ipcp.c,v 1.5 2007/11/25 01:28:24 swildner Exp $
  */
 
 /*
@@ -25,6 +25,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <netdb.h>

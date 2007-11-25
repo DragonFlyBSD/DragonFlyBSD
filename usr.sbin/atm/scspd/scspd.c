@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scspd.c,v 1.3.2.1 2000/12/11 01:03:29 obrien Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scspd.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scspd.c,v 1.4 2007/11/25 01:28:23 swildner Exp $
  */
 
 
@@ -55,6 +55,7 @@
 #include <libatm.h>
 #include <paths.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>

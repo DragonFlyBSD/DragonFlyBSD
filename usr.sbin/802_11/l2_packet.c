@@ -13,7 +13,7 @@
  * See README and COPYING for more details.
  *
  * $FreeBSD: src/usr.sbin/wpa/l2_packet.c,v 1.4 2007/07/09 15:57:10 sam Exp $
- * $DragonFly: src/usr.sbin/802_11/l2_packet.c,v 1.4 2007/08/07 11:25:36 sephe Exp $
+ * $DragonFly: src/usr.sbin/802_11/l2_packet.c,v 1.5 2007/11/25 01:28:23 swildner Exp $
  */
 
 /*
@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <pcap.h>
 
 #include "common.h"

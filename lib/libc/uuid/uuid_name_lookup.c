@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libc/uuid/uuid_name_lookup.c,v 1.4 2007/06/17 07:56:58 dillon Exp $
+ * $DragonFly: src/lib/libc/uuid/uuid_name_lookup.c,v 1.5 2007/11/25 01:28:23 swildner Exp $
  */
 /*
  * Implement UUID-to-NAME and NAME-to-UUID functions
@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /*
  * Implement a Red-Black tree to cache the UUID table and perform lookups

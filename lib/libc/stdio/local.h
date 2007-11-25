@@ -36,10 +36,11 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/local.h,v 1.10 2005/12/20 00:21:53 davidxu Exp $
+ * $DragonFly: src/lib/libc/stdio/local.h,v 1.11 2007/11/25 01:28:22 swildner Exp $
  */
 
 #include <sys/types.h> /* for off_t */
+#include <string.h>
 #include <wchar.h> /* for wchar_t */
 
 #ifndef _MACHINE_STDINT_H_

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_sig.c,v 1.25.2.13 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_sig.c,v 1.5 2007/01/08 21:41:53 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_sig.c,v 1.6 2007/11/25 01:28:23 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/types.h>
@@ -41,6 +41,7 @@
 #include <setjmp.h>
 #include <errno.h>
 #include <pthread.h>
+#include <string.h>
 #include "pthread_private.h"
 
 /* Prototypes: */

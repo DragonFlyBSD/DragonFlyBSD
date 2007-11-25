@@ -32,11 +32,12 @@
  *
  * @(#)terminal.c	8.2 (Berkeley) 2/16/95
  * $FreeBSD: src/usr.bin/telnet/terminal.c,v 1.3.6.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/terminal.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/telnet/terminal.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
  */
 
 #include <arpa/telnet.h>
 #include <sys/types.h>
+#include <stdlib.h>
 
 #include "ring.h"
 

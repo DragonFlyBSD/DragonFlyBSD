@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_log.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_log.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_log.c,v 1.4 2007/11/25 01:28:23 swildner Exp $
  */
 
 
@@ -56,6 +56,7 @@
 #include <varargs.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <syslog.h>
 
 #include "../scspd/scsp_msg.h"

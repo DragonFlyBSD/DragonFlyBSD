@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_hfsm.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_hfsm.c,v 1.4 2003/11/15 20:33:43 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_hfsm.c,v 1.5 2007/11/25 01:28:23 swildner Exp $
  */
 
 
@@ -51,6 +51,7 @@
 #include <errno.h>
 #include <libatm.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <syslog.h>
 
 #include "scsp_msg.h"

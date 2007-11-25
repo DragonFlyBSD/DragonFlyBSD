@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/ifstat.c,v 1.1 2003/01/04 22:07:24 phk Exp $
- * $DragonFly: src/usr.bin/systat/ifstat.c,v 1.2 2005/01/03 23:47:20 joerg Exp $
+ * $DragonFly: src/usr.bin/systat/ifstat.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -40,6 +40,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <float.h>
 #include <err.h>

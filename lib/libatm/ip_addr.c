@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/lib/libatm/ip_addr.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- *	@(#) $DragonFly: src/lib/libatm/ip_addr.c,v 1.3 2004/09/23 20:20:59 geekgod Exp $
+ *	@(#) $DragonFly: src/lib/libatm/ip_addr.c,v 1.4 2007/11/25 01:28:22 swildner Exp $
  *
  */
 
@@ -52,6 +52,7 @@
 #include <netatm/atm_ioctl.h>
 
 #include <netdb.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "libatm.h"

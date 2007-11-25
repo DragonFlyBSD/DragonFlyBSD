@@ -28,12 +28,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmdparse.y,v 1.2.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmdparse.y,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmdparse.y,v 1.3 2007/11/25 01:28:23 swildner Exp $
  */
 
 #include <stdio.h>
 #include <bitstring.h>
 #include <stdlib.h>
+#include <string.h>
 #include "apmd.h"
 
 #ifdef DEBUG

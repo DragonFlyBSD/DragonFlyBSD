@@ -29,7 +29,7 @@
  *
  * @(#)keylogin.c 1.4 91/03/11 Copyr 1986 Sun Micro
  *
- * $DragonFly: src/usr.bin/keylogin/keylogin.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
+ * $DragonFly: src/usr.bin/keylogin/keylogin.c,v 1.4 2007/11/25 01:28:23 swildner Exp $
  */
 
 /*
@@ -40,6 +40,7 @@
  * Set secret key on local machine
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <pwd.h>
 #include <unistd.h>

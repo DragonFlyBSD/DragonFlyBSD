@@ -9,7 +9,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 /*
  * $FreeBSD: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.8 1999/08/28 01:15:40 peter Exp $
- * $DragonFly: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.4 2003/11/15 23:33:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.5 2007/11/25 01:28:24 swildner Exp $
  */
 #include "bootparam_prot.h"
 #include <rpc/rpc.h>
@@ -23,6 +23,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 /* #define bp_address_u bp_address */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 int broadcast;

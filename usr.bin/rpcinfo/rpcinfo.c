@@ -4,7 +4,7 @@
  * @(#)rpcinfo.c 1.22 87/08/12 SMI
  * @(#)rpcinfo.c	2.2 88/08/11 4.0 RPCSRC
  * $FreeBSD: src/usr.bin/rpcinfo/rpcinfo.c,v 1.9.2.1 2001/03/04 09:00:23 kris Exp $
- * $DragonFly: src/usr.bin/rpcinfo/rpcinfo.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rpcinfo/rpcinfo.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
  */
 /*
  * rpcinfo: ping a particular rpc program
@@ -44,6 +44,8 @@
 #include <ctype.h>
 #include <rpc/rpc.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <rpc/pmap_prot.h>

@@ -32,7 +32,7 @@
  *
  * @(#)utilities.c	8.3 (Berkeley) 5/30/95
  * $FreeBSD: src/usr.bin/telnet/utilities.c,v 1.3.12.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/utilities.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/telnet/utilities.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
  */
 
 #define	TELOPTS
@@ -43,6 +43,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <ctype.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "general.h"

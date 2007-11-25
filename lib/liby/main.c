@@ -31,7 +31,10 @@
  * SUCH DAMAGE.
  *
  * @(#)main.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/liby/main.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
  */
+
+#include <stdlib.h>
 
 int
 main(void)

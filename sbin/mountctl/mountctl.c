@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.8 2005/11/06 12:42:26 swildner Exp $
+ * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.9 2007/11/25 01:28:23 swildner Exp $
  */
 /*
  * This utility implements the userland mountctl command which is used to
@@ -45,6 +45,7 @@
 #include <sys/time.h>
 #include <sys/mountctl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>

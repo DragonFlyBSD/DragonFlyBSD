@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ncpl_queue.c,v 1.2 1999/10/31 03:39:03 bp Exp $
- * $DragonFly: src/lib/libncp/ncpl_queue.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libncp/ncpl_queue.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
  *
  * NetWare queue interface
  *
@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <netncp/ncp_lib.h>
 
 int

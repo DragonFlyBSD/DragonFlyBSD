@@ -30,12 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.3.2.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.4 2005/11/25 00:32:49 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.5 2007/11/25 01:28:24 swildner Exp $
  */
 
 #include <sys/fcntl.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <limits.h>

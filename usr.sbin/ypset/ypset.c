@@ -27,12 +27,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypset/ypset.c,v 1.5.2.2 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypset/ypset.c,v 1.3 2005/11/24 22:23:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/ypset/ypset.c,v 1.4 2007/11/25 01:28:24 swildner Exp $
  */
 
 #include <err.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/param.h>

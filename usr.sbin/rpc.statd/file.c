@@ -29,13 +29,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/rpc.statd/file.c,v 1.2 2005/11/25 00:32:49 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.statd/file.c,v 1.3 2007/11/25 01:28:24 swildner Exp $
  */
 
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>

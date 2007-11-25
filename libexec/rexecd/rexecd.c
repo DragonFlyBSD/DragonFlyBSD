@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rexecd.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rexecd/rexecd.c,v 1.18.2.3 2002/05/14 22:27:21 des Exp $
- * $DragonFly: src/libexec/rexecd/rexecd.c,v 1.4 2007/05/18 17:05:12 dillon Exp $
+ * $DragonFly: src/libexec/rexecd/rexecd.c,v 1.5 2007/11/25 01:28:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -50,6 +50,7 @@
 #include <paths.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <skey.h>
 #include <string.h>
 #include <syslog.h>

@@ -29,7 +29,7 @@
  * @(#)get_myaddress.c 1.4 87/08/11 Copyr 1984 Sun Micro
  * @(#)get_myaddress.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/get_myaddress.c,v 1.18.2.1 2003/01/01 23:55:34 jdp Exp $
- * $DragonFly: src/lib/libc/rpc/get_myaddress.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
+ * $DragonFly: src/lib/libc/rpc/get_myaddress.c,v 1.5 2007/11/25 01:28:22 swildner Exp $
  */
 
 /*
@@ -45,6 +45,7 @@
 #include <rpc/pmap_prot.h>
 #include <sys/socket.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <net/if.h>
 #include <sys/ioctl.h>

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/stallion/stlstty/stlstty.c,v 1.1.2.1 2001/08/30 12:29:56 murray Exp $
- * $DragonFly: src/usr.sbin/stallion/stlstty/stlstty.c,v 1.3 2005/12/05 02:40:28 swildner Exp $
+ * $DragonFly: src/usr.sbin/stallion/stlstty/stlstty.c,v 1.4 2007/11/25 01:28:24 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -42,6 +42,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 

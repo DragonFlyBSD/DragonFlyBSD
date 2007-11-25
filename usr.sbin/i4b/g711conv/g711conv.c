@@ -70,11 +70,12 @@
  *	$Id: g711conv.c,v 1.5 1999/12/13 21:25:24 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.4.2.1 2001/08/01 17:45:02 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.5 2005/11/25 00:58:52 swildner Exp $
+ * $DragonFly: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.6 2007/11/25 01:28:24 swildner Exp $
  *
  *---------------------------------------------------------------------------*/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <i4b_machine/i4b_ioctl.h>
 

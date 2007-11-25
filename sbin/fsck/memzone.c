@@ -31,13 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/fsck/memzone.c,v 1.1 2006/10/12 04:04:03 dillon Exp $
+ * $DragonFly: src/sbin/fsck/memzone.c,v 1.2 2007/11/25 01:28:23 swildner Exp $
  */
 
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "memzone.h"
 

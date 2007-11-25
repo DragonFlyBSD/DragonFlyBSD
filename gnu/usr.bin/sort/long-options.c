@@ -17,11 +17,16 @@
 
 /* Jim Meyering (meyering@comco.com) */
 
+/*
+ * $DragonFly: src/gnu/usr.bin/sort/long-options.c,v 1.2 2007/11/25 01:28:22 swildner Exp $
+ */
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <getopt.h>
 #include "long-options.h"
 

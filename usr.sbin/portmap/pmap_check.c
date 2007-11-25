@@ -34,7 +34,7 @@
 /*
  * @(#) pmap_check.c 1.6 93/11/21 20:58:59
  * $FreeBSD: src/usr.sbin/portmap/pmap_check.c,v 1.6 2000/01/15 23:08:28 brian Exp $
- * $DragonFly: src/usr.sbin/portmap/pmap_check.c,v 1.4 2004/03/30 02:58:59 cpressey Exp $
+ * $DragonFly: src/usr.sbin/portmap/pmap_check.c,v 1.5 2007/11/25 01:28:24 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -47,6 +47,7 @@
 
 #include <netdb.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <syslog.h>
 #include <unistd.h>
 
