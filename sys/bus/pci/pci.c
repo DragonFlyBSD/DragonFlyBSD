@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.46 2007/11/24 13:21:32 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.47 2007/11/25 02:17:56 sephe Exp $
  *
  */
 
@@ -459,9 +459,38 @@ pci_fixup_nextptr(int *nextptr0)
 }
 
 static void
+pci_read_cap_pmgt(device_t pcib, int ptr, pcicfgregs *cfg)
+{
+#define REG(n, w)	\
+	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
+
+	struct pcicfg_pmgt *pmgt = &cfg->pmgt;
+
+	if (pmgt->pp_cap)
+		return;
+
+	pmgt->pp_cap = REG(ptr + PCIR_POWER_CAP, 2);
+	pmgt->pp_status = ptr + PCIR_POWER_STATUS;
+	pmgt->pp_pmcsr = ptr + PCIR_POWER_PMCSR;
+	/*
+	 * XXX
+	 * Following way may be used to to test whether
+	 * 'data' register exists:
+	 * if 'data_select' register of
+	 * PCIR_POWER_STATUS(bits[12,9]) is read-only
+	 * then 'data' register is _not_ implemented.
+	 */
+	pmgt->pp_data = 0;
+
+#undef REG
+}
+
+static void
 pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 {
-#define REG(n, w)	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
+#define REG(n, w)	\
+	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
+
 	int nextptr, ptrptr;
 
 	if ((REG(PCIR_STATUS, 2) & PCIM_STATUS_CAPPRESENT) == 0) {
@@ -491,22 +520,7 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 		/* Process this entry */
 		switch (REG(ptr, 1)) {
 		case PCIY_PMG:		/* PCI power management */
-			if (cfg->pmgt.pp_cap == 0) {
-				struct pcicfg_pmgt *pmgt = &cfg->pmgt;
-
-				pmgt->pp_cap = REG(ptr + PCIR_POWER_CAP, 2);
-				pmgt->pp_status = ptr + PCIR_POWER_STATUS;
-				pmgt->pp_pmcsr = ptr + PCIR_POWER_PMCSR;
-				/*
-				 * XXX
-				 * Following way may be used to to test whether
-				 * 'data' register exists:
-				 * if 'data_select' register of
-				 * PCIR_POWER_STATUS(bits[12,9]) is read-only
-				 * then 'data' register is _not_ implemented.
-				 */
-				pmgt->pp_data = 0;
-			}
+			pci_read_cap_pmgt(pcib, ptr, cfg);
 			break;
 		default:
 			break;
@@ -515,6 +529,7 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 		/* Find the next entry */
 		nextptr = REG(ptr + 1, 1);
 	}
+
 #undef REG
 }
 
