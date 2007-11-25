@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.13 2007/11/25 04:08:42 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.14 2007/11/25 10:31:41 sephe Exp $
  *
  */
 
@@ -107,6 +107,7 @@ typedef struct pcicfg {
 
     struct pcicfg_pmgt pmgt;	/* power management capability */
     struct pcicfg_expr expr;	/* PCI Express capability */
+    u_int8_t	pcixcap_ptr;	/* PCI-X capability PTR */
 } pcicfgregs;
 
 /* additional type 1 device config header information (PCI to PCI bridge) */
@@ -208,6 +209,8 @@ enum pci_device_ivars {
 	PCI_IVAR_SECONDARYBUS,
 	PCI_IVAR_SUBORDINATEBUS,
 	PCI_IVAR_ETHADDR,
+	PCI_IVAR_PCIXCAP_PTR,
+	PCI_IVAR_PCIECAP_PTR
 };
 
 /*
@@ -249,6 +252,8 @@ PCI_ACCESSOR(function,		FUNCTION,	u_int8_t)
 PCI_ACCESSOR(secondarybus,	SECONDARYBUS,	u_int8_t)
 PCI_ACCESSOR(subordinatebus,	SUBORDINATEBUS,	u_int8_t)
 PCI_ACCESSOR(ether,		ETHADDR,	uint8_t *)
+PCI_ACCESSOR(pcixcap_ptr,	PCIXCAP_PTR,	uint8_t)
+PCI_ACCESSOR(pciecap_ptr,	PCIECAP_PTR,	uint8_t)
 
 #undef PCI_ACCESSOR
 
@@ -292,6 +297,18 @@ static __inline void
 pci_disable_io(device_t dev, int space)
 {
     PCI_DISABLE_IO(device_get_parent(dev), dev, space);
+}
+
+static __inline int
+pci_is_pcie(device_t dev)
+{
+	return (pci_get_pciecap_ptr(dev) != 0);
+}
+
+static __inline int
+pci_is_pcix(device_t dev)
+{
+	return (pci_get_pcixcap_ptr(dev) != 0);
 }
 
 /*

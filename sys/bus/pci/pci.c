@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.48 2007/11/25 04:08:42 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.49 2007/11/25 10:31:40 sephe Exp $
  *
  */
 
@@ -566,6 +566,9 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 		switch (REG(ptr, 1)) {
 		case PCIY_PMG:		/* PCI power management */
 			pci_read_cap_pmgt(pcib, ptr, cfg);
+			break;
+		case PCIY_PCIX:		/* PCI-X */
+			cfg->pcixcap_ptr = ptr;
 			break;
 		case PCIY_EXPRESS:	/* PCI Express */
 			pci_read_cap_expr(pcib, ptr, cfg);
@@ -1870,6 +1873,12 @@ pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 		 */
 		*result = NULL;
 		return (EINVAL);
+	case PCI_IVAR_PCIXCAP_PTR:
+		*result = cfg->pcixcap_ptr;
+		break;
+	case PCI_IVAR_PCIECAP_PTR:
+		*result = cfg->expr.expr_ptr;
+		break;
 	default:
 		return ENOENT;
 	}
@@ -1901,6 +1910,8 @@ pci_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 	case PCI_IVAR_SLOT:
 	case PCI_IVAR_FUNCTION:
 	case PCI_IVAR_ETHADDR:
+	case PCI_IVAR_PCIXCAP_PTR:
+	case PCI_IVAR_PCIECAP_PTR:
 		return EINVAL;	/* disallow for now */
 
 	case PCI_IVAR_SECONDARYBUS:
