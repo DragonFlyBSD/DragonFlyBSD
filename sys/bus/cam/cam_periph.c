@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.34 2007/11/26 02:24:49 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.35 2007/11/26 02:50:04 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -953,13 +953,13 @@ camperiphdone(struct cam_periph *periph, union ccb *done_ccb)
 				if (sense_key != SSD_KEY_NO_SENSE) {
 					saved_ccb->ccb_h.status |=
 					    CAM_AUTOSNS_VALID;
+#if 0
 					xpt_print_path(saved_ccb->ccb_h.path);
 					kprintf("Recovered Sense\n");
-#if 0
 					scsi_sense_print(&saved_ccb->csio);
-#endif
 					cam_error_print(saved_ccb, CAM_ESF_ALL,
 							CAM_EPF_ALL);
+#endif
 					xpt_done_ccb = TRUE;
 				}
 			}
