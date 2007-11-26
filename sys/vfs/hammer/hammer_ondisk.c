@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.5 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.6 2007/11/26 05:03:11 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -150,7 +150,7 @@ hammer_nod_rb_compare(hammer_node_t node1, hammer_node_t node2)
 {
 	if (node1->node_offset < node2->node_offset)
 		return(-1);
-	if (node1->node_offset < node2->node_offset)
+	if (node1->node_offset > node2->node_offset)
 		return(1);
 	return(0);
 }
@@ -1411,10 +1411,12 @@ hammer_alloc_btree(hammer_cluster_t cluster, int *errorp)
 			*errorp = ENOSPC;
 			if (buffer)
 				hammer_rel_buffer(buffer, 0);
+			hammer_modify_cluster(cluster);
 			return(NULL);
 		}
 	}
 	cluster->ondisk->idx_index = elm_no;
+	hammer_modify_cluster(cluster);
 
 	/*
 	 * Load and return the B-Tree element
@@ -1448,7 +1450,40 @@ hammer_alloc_data(hammer_cluster_t cluster, int32_t bytes,
 	void *item;
 
 	/*
-	 * Allocate a data element
+	 * Deal with large data blocks.  The blocksize is HAMMER_BUFSIZE
+	 * for these allocations.
+	 */
+	if ((bytes & HAMMER_BUFMASK) == 0) {
+		nblks = bytes / HAMMER_BUFSIZE;
+		/* only one block allowed for now (so buffer can hold it) */
+		KKASSERT(nblks == 1);
+
+		buf_no = hammer_alist_alloc_fwd(&cluster->alist_master,
+						nblks,
+						cluster->ondisk->idx_ldata);
+		if (buf_no == HAMMER_ALIST_BLOCK_NONE) {
+			buf_no = hammer_alist_alloc_fwd(&cluster->alist_master,
+						nblks,
+						0);
+		}
+		hammer_modify_cluster(cluster);
+		if (buf_no == HAMMER_ALIST_BLOCK_NONE) {
+			*errorp = ENOSPC;
+			return(NULL);
+		}
+		cluster->ondisk->idx_ldata = buf_no;
+		buffer = *bufferp;
+		*bufferp = hammer_get_buffer(cluster, buf_no, -1, errorp);
+		if (buffer)
+			hammer_rel_buffer(buffer, 0);
+		buffer = *bufferp;
+		kprintf("allocate large buffer %p (%d)\n", buffer, buf_no);
+		return(buffer->ondisk);
+	}
+
+	/*
+	 * Allocate a data element.  The block size is HAMMER_DATA_BLKSIZE
+	 * (64 bytes) for these allocations.
 	 */
 	nblks = (bytes + HAMMER_DATA_BLKMASK) & ~HAMMER_DATA_BLKMASK;
 	live = &cluster->alist_mdata;
@@ -1462,10 +1497,12 @@ hammer_alloc_data(hammer_cluster_t cluster, int32_t bytes,
 		elm_no = hammer_alist_alloc(live, nblks);
 		if (elm_no == HAMMER_ALIST_BLOCK_NONE) {
 			*errorp = ENOSPC;
+			hammer_modify_cluster(cluster);
 			return(NULL);
 		}
 	}
 	cluster->ondisk->idx_index = elm_no;
+	hammer_modify_cluster(cluster);
 
 	/*
 	 * Load and return the B-Tree element
@@ -1479,7 +1516,7 @@ hammer_alloc_data(hammer_cluster_t cluster, int32_t bytes,
 		buffer = hammer_get_buffer(cluster, buf_no, 0, errorp);
 		*bufferp = buffer;
 	}
-	KKASSERT(buffer->ondisk->head.buf_type == HAMMER_FSBUF_BTREE);
+	KKASSERT(buffer->ondisk->head.buf_type == HAMMER_FSBUF_DATA);
 	item = &buffer->ondisk->data.data[elm_no & HAMMER_FSBUF_BLKMASK];
 	bzero(item, nblks * HAMMER_DATA_BLKSIZE);
 	*errorp = 0;
@@ -1510,10 +1547,12 @@ hammer_alloc_record(hammer_cluster_t cluster,
 		elm_no = hammer_alist_alloc(live, 1);
 		if (elm_no == HAMMER_ALIST_BLOCK_NONE) {
 			*errorp = ENOSPC;
+			hammer_modify_cluster(cluster);
 			return(NULL);
 		}
 	}
 	cluster->ondisk->idx_record = elm_no;
+	hammer_modify_cluster(cluster);
 
 	/*
 	 * Load and return the B-Tree element
@@ -1549,6 +1588,7 @@ hammer_free_btree_ptr(hammer_buffer_t buffer, hammer_node_ondisk_t node)
 	elm_no += buffer->buf_no * HAMMER_FSBUF_MAXBLKS;
 	live = &buffer->cluster->alist_btree;
 	hammer_alist_free(live, elm_no, 1);
+	hammer_modify_cluster(buffer->cluster);
 }
 
 void
@@ -1558,6 +1598,15 @@ hammer_free_data_ptr(hammer_buffer_t buffer, void *data, int bytes)
 	int32_t nblks;
 	hammer_alist_t live;
 
+	if ((bytes & HAMMER_BUFMASK) == 0) {
+		nblks = bytes / HAMMER_BUFSIZE;
+		KKASSERT(nblks == 1 && data == (void *)buffer->ondisk);
+		hammer_alist_free(&buffer->cluster->alist_master,
+				  buffer->buf_no, nblks);
+		hammer_modify_cluster(buffer->cluster);
+		return;
+	}
+
 	elm_no = ((char *)data - (char *)buffer->ondisk->data.data) /
 		 HAMMER_DATA_BLKSIZE;
 	KKASSERT(elm_no >= 0 && elm_no < HAMMER_DATA_NODES);
@@ -1565,6 +1614,7 @@ hammer_free_data_ptr(hammer_buffer_t buffer, void *data, int bytes)
 	nblks = (bytes + HAMMER_DATA_BLKMASK) & ~HAMMER_DATA_BLKMASK;
 	live = &buffer->cluster->alist_mdata;
 	hammer_alist_free(live, elm_no, nblks);
+	hammer_modify_cluster(buffer->cluster);
 }
 
 void
@@ -1578,6 +1628,7 @@ hammer_free_record_ptr(hammer_buffer_t buffer, union hammer_record_ondisk *rec)
 	elm_no += buffer->buf_no * HAMMER_FSBUF_MAXBLKS;
 	live = &buffer->cluster->alist_record;
 	hammer_alist_free(live, elm_no, 1);
+	hammer_modify_cluster(buffer->cluster);
 }
 
 void
@@ -1594,6 +1645,7 @@ hammer_free_btree(hammer_cluster_t cluster, int32_t bclu_offset)
 	KKASSERT(fsbuf_offset >= 0 && fsbuf_offset % blksize == 0);
 	elm_no += fsbuf_offset / blksize;
 	hammer_alist_free(live, elm_no, 1);
+	hammer_modify_cluster(cluster);
 }
 
 void
@@ -1603,7 +1655,17 @@ hammer_free_data(hammer_cluster_t cluster, int32_t bclu_offset, int32_t bytes)
 	int32_t fsbuf_offset = bclu_offset & HAMMER_BUFMASK;
 	hammer_alist_t live;
 	int32_t elm_no;
+	int32_t buf_no;
 	int32_t nblks;
+
+	if ((bytes & HAMMER_BUFMASK) == 0) {
+		nblks = bytes / HAMMER_BUFSIZE;
+		KKASSERT(nblks == 1 && (bclu_offset & HAMMER_BUFMASK) == 0);
+		buf_no = bclu_offset / HAMMER_BUFSIZE;
+		hammer_alist_free(&cluster->alist_master, buf_no, nblks);
+		hammer_modify_cluster(cluster);
+		return;
+	}
 
 	elm_no = bclu_offset / HAMMER_BUFSIZE * HAMMER_FSBUF_MAXBLKS;
 	fsbuf_offset -= offsetof(union hammer_fsbuf_ondisk, data.data[0][0]);
@@ -1612,6 +1674,7 @@ hammer_free_data(hammer_cluster_t cluster, int32_t bclu_offset, int32_t bytes)
 	KKASSERT(fsbuf_offset >= 0 && fsbuf_offset % blksize == 0);
 	elm_no += fsbuf_offset / blksize;
 	hammer_alist_free(live, elm_no, nblks);
+	hammer_modify_cluster(cluster);
 }
 
 void
@@ -1628,6 +1691,7 @@ hammer_free_record(hammer_cluster_t cluster, int32_t bclu_offset)
 	KKASSERT(fsbuf_offset >= 0 && fsbuf_offset % blksize == 0);
 	elm_no += fsbuf_offset / blksize;
 	hammer_alist_free(live, elm_no, 1);
+	hammer_modify_cluster(cluster);
 }
 
 
@@ -1662,6 +1726,7 @@ alloc_new_buffer(hammer_cluster_t cluster, hammer_alist_t live,
 		}
 	}
 	KKASSERT(buf_no != HAMMER_ALIST_BLOCK_NONE); /* XXX */
+	hammer_modify_cluster(cluster);
 
 	/*
 	 * The new buffer must be initialized (type != 0) regardless of
@@ -1870,6 +1935,7 @@ buffer_alist_alloc_fwd(void *info, int32_t blk, int32_t radix,
 		if (r != HAMMER_ALIST_BLOCK_NONE)
 			r += blk;
 		*fullp = hammer_alist_isfull(&buffer->alist);
+		hammer_modify_buffer(buffer);
 		hammer_rel_buffer(buffer, 0);
 	} else {
 		r = HAMMER_ALIST_BLOCK_NONE;
@@ -1896,6 +1962,7 @@ buffer_alist_alloc_rev(void *info, int32_t blk, int32_t radix,
 		if (r != HAMMER_ALIST_BLOCK_NONE)
 			r += blk;
 		*fullp = hammer_alist_isfull(&buffer->alist);
+		hammer_modify_buffer(buffer);
 		hammer_rel_buffer(buffer, 0);
 	} else {
 		r = HAMMER_ALIST_BLOCK_NONE;
@@ -1919,6 +1986,7 @@ buffer_alist_free(void *info, int32_t blk, int32_t radix,
 		KKASSERT(buffer->ondisk->head.buf_type != 0);
 		hammer_alist_free(&buffer->alist, base_blk, count);
 		*emptyp = hammer_alist_isempty(&buffer->alist);
+		hammer_modify_buffer(buffer);
 		hammer_rel_buffer(buffer, 0);
 	} else {
 		*emptyp = 0;
@@ -1980,6 +2048,7 @@ super_alist_alloc_fwd(void *info, int32_t blk, int32_t radix,
 		if (r != HAMMER_ALIST_BLOCK_NONE)
 			r += blk;
 		*fullp = hammer_alist_isfull(&supercl->alist);
+		hammer_modify_supercl(supercl);
 		hammer_rel_supercl(supercl, 0);
 	} else {
 		r = HAMMER_ALIST_BLOCK_NONE;
@@ -2005,6 +2074,7 @@ super_alist_alloc_rev(void *info, int32_t blk, int32_t radix,
 		if (r != HAMMER_ALIST_BLOCK_NONE)
 			r += blk;
 		*fullp = hammer_alist_isfull(&supercl->alist);
+		hammer_modify_supercl(supercl);
 		hammer_rel_supercl(supercl, 0);
 	} else { 
 		r = HAMMER_ALIST_BLOCK_NONE;
@@ -2027,6 +2097,7 @@ super_alist_free(void *info, int32_t blk, int32_t radix,
 	if (supercl) {
 		hammer_alist_free(&supercl->alist, base_blk, count);
 		*emptyp = hammer_alist_isempty(&supercl->alist);
+		hammer_modify_supercl(supercl);
 		hammer_rel_supercl(supercl, 0);
 	} else {
 		*emptyp = 0;

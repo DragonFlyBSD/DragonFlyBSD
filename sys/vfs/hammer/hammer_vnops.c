@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.5 2007/11/20 22:55:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.6 2007/11/26 05:03:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,7 @@
 #include <sys/lockf.h>
 #include <sys/event.h>
 #include <sys/stat.h>
+#include <vm/vm_extern.h>
 #include "hammer.h"
 
 /*
@@ -78,6 +79,8 @@ static int hammer_vop_nwhiteout(struct vop_nwhiteout_args *);
 struct vop_ops hammer_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_fsync =		hammer_vop_fsync,
+	.vop_getpages =		vop_stdgetpages,
+	.vop_putpages =		vop_stdputpages,
 	.vop_read =		hammer_vop_read,
 	.vop_write =		hammer_vop_write,
 	.vop_access =		hammer_vop_access,
@@ -127,7 +130,12 @@ static
 int
 hammer_vop_fsync(struct vop_fsync_args *ap)
 {
-	return EOPNOTSUPP;
+	hammer_inode_t ip;
+	int error;
+
+	ip = VTOI(ap->a_vp);
+	error = hammer_sync_inode(ip, ap->a_waitfor, 0);
+	return (error);
 }
 
 /*
@@ -138,7 +146,7 @@ int
 hammer_vop_read(struct vop_read_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	off_t offset;
 	struct buf *bp;
 	struct uio *uio;
@@ -160,14 +168,18 @@ hammer_vop_read(struct vop_read_args *ap)
 	uio = ap->a_uio;
 	while (uio->uio_resid > 0 && uio->uio_offset < ip->ino_rec.ino_size) {
 		offset = uio->uio_offset & HAMMER_BUFMASK;
+#if 0
 		error = cluster_read(ap->a_vp, ip->ino_rec.ino_size,
 				     uio->uio_offset - offset, HAMMER_BUFSIZE,
 				     MAXBSIZE, seqcount, &bp);
+#endif
+		error = bread(ap->a_vp, uio->uio_offset - offset,
+			      HAMMER_BUFSIZE, &bp);
 		if (error) {
 			brelse(bp);
 			break;
 		}
-		bp->b_flags |= B_CLUSTEROK;
+		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
 		n = HAMMER_BUFSIZE - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
@@ -200,6 +212,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	struct buf *bp;
 	int error;
 	int n;
+	int flags;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
@@ -229,14 +242,44 @@ hammer_vop_write(struct vop_write_args *ap)
 	 */
 	while (uio->uio_resid > 0) {
 		offset = uio->uio_offset & HAMMER_BUFMASK;
-		if (offset == 0 && uio->uio_resid >= HAMMER_BUFSIZE) {
+		if (uio->uio_segflg == UIO_NOCOPY) {
+			/*
+			 * Issuing a write with the same data backing the
+			 * buffer.  Instantiate the buffer to collect the
+			 * backing vm pages, then read-in any missing bits.
+			 *
+			 * This case is used by vop_stdputpages().
+			 */
+			bp = getblk(ap->a_vp, uio->uio_offset, HAMMER_BUFSIZE,
+				    0, 0);
+			if ((bp->b_flags & B_CACHE) == 0) {
+				bqrelse(bp);
+				error = bread(ap->a_vp,
+					      uio->uio_offset - offset,
+					      HAMMER_BUFSIZE, &bp);
+				if (error) {
+					brelse(bp);
+					break;
+				}
+			}
+		} else if (offset == 0 && uio->uio_resid >= HAMMER_BUFSIZE) {
+			/*
+			 * entirely overwrite the buffer
+			 */
 			bp = getblk(ap->a_vp, uio->uio_offset, HAMMER_BUFSIZE,
 				    0, 0);
 		} else if (offset == 0 && uio->uio_offset >= ip->ino_rec.ino_size) {
+			/*
+			 * XXX
+			 */
 			bp = getblk(ap->a_vp, uio->uio_offset, HAMMER_BUFSIZE,
 				    0, 0);
 			vfs_bio_clrbuf(bp);
 		} else {
+			/*
+			 * Partial overwrite, read in any missing bits then
+			 * replace the portion being written.
+			 */
 			error = bread(ap->a_vp, uio->uio_offset - offset,
 				      HAMMER_BUFSIZE, &bp);
 			if (error) {
@@ -252,13 +295,17 @@ hammer_vop_write(struct vop_write_args *ap)
 			brelse(bp);
 			break;
 		}
-		bp->b_flags |= B_CLUSTEROK;
+		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
 		if (ip->ino_rec.ino_size < uio->uio_offset) {
 			ip->ino_rec.ino_size = uio->uio_offset;
 			ip->ino_rec.ino_mtime = trans.tid;
-			hammer_modify_inode(&trans, ip,
-				HAMMER_INODE_RDIRTY | HAMMER_INODE_ITIMES);
+			flags = HAMMER_INODE_RDIRTY | HAMMER_INODE_ITIMES |
+				HAMMER_INODE_TID;
+			vnode_pager_setsize(ap->a_vp, ip->ino_rec.ino_size);
+		} else {
+			flags = HAMMER_INODE_TID;
 		}
+		hammer_modify_inode(&trans, ip, flags);
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
@@ -920,12 +967,12 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 		cache_setvp(ap->a_tnch, ip->vp);
 	}
 done:
+        hammer_done_cursor(&cursor);
 	if (error == 0) {
 		hammer_commit_transaction(&trans);
 	} else {
 		hammer_abort_transaction(&trans);
 	}
-        hammer_done_cursor(&cursor);
 	return (error);
 }
 
@@ -1001,13 +1048,22 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			modflags |= HAMMER_INODE_DDIRTY;
 		}
 	}
-	if (vap->va_size != VNOVAL) {
+	if (vap->va_size != VNOVAL && ip->ino_rec.ino_size != vap->va_size) {
 		switch(ap->a_vp->v_type) {
 		case VREG:
+			if (vap->va_size < ip->ino_rec.ino_size) {
+				vtruncbuf(ap->a_vp, vap->va_size,
+					  HAMMER_BUFSIZE);
+			} else if (vap->va_size > ip->ino_rec.ino_size) {
+				vnode_pager_setsize(ap->a_vp, vap->va_size);
+			}
+			/* fall through */
 		case VDATABASE:
 			error = hammer_ip_delete_range(&trans, ip,
 						    vap->va_size,
 						    0x7FFFFFFFFFFFFFFFLL);
+			ip->ino_rec.ino_size = vap->va_size;
+			modflags |= HAMMER_INODE_RDIRTY;
 			break;
 		default:
 			error = EINVAL;
@@ -1034,8 +1090,9 @@ done:
 	if (error) {
 		hammer_abort_transaction(&trans);
 	} else {
-		if (modflags)
-			hammer_modify_inode(&trans, ip, modflags);
+		if (modflags & (HAMMER_INODE_RDIRTY | HAMMER_INODE_DDIRTY))
+			modflags |= HAMMER_INODE_TID;
+		hammer_modify_inode(&trans, ip, modflags);
 		hammer_commit_transaction(&trans);
 	}
 	return (error);
@@ -1131,13 +1188,15 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 
 	/*
 	 * Key range (begin and end inclusive) to scan.  Note that the key's
-	 * stored in the actual records represent the 
+	 * stored in the actual records represent BASE+LEN, not BASE.  The
+	 * first record containing bio_offset will have a key > bio_offset.
 	 */
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = ip->obj_asof;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
-	cursor.key_beg.key = bio->bio_offset;
+	cursor.key_beg.key = bio->bio_offset + 1;
+	kprintf("READ AT OFFSET %lld\n", bio->bio_offset);
 
 	cursor.key_end = cursor.key_beg;
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
@@ -1145,7 +1204,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
 	} else {
-		ran_end = bio->bio_offset + bp->b_bufsize - 1;
+		ran_end = bio->bio_offset + bp->b_bufsize;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DATA;
 		if (ran_end + MAXPHYS < ran_end)
@@ -1164,7 +1223,8 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		rec = cursor.record;
 		base = &rec->base.base;
 
-		rec_offset = base->key - rec->data.base.data_len + 1;
+		rec_offset = base->key - rec->data.base.data_len;
+		kprintf("record offset %lld\n", rec_offset);
 
 		/*
 		 * Calculate the gap, if any, and zero-fill it.
@@ -1188,6 +1248,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 */
 		roff = -n;
 		n = rec->data.base.data_len - roff;
+		kprintf("roff = %d datalen %d\n", roff, rec->data.base.data_len);
 		KKASSERT(n > 0);
 		if (n > bp->b_bufsize - boff)
 			n = bp->b_bufsize - boff;
@@ -1232,6 +1293,8 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	struct buf *bp;
 	int error;
 
+	kprintf("vop_strategy_write\n");
+
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
 	ip = ap->a_vp->v_data;
@@ -1248,13 +1311,14 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 		error = hammer_ip_delete_range(&trans, ip, bio->bio_offset,
 				       bio->bio_offset + bp->b_bufsize - 1);
 	}
+	kprintf("delete_range %d\n", error);
 
 	/*
 	 * Add a single record to cover the write
 	 */
 	if (error == 0) {
-		error = hammer_ip_add_data(&trans, ip, bio->bio_offset,
-					   bp->b_data, bp->b_bufsize);
+		error = hammer_ip_sync_data(&trans, ip, bio->bio_offset,
+					    bp->b_data, bp->b_bufsize);
 	}
 
 	/*

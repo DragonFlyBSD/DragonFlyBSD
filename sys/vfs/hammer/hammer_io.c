@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.3 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.4 2007/11/26 05:03:11 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -110,6 +110,7 @@ hammer_io_disassociate(union hammer_io_structure *io)
 			bdwrite(bp);
 		else
 			bqrelse(bp);
+		io->io.released = 1;
 	}
 }
 
@@ -230,6 +231,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 			} else {
 				bdwrite(bp);
 				io->modified = 0;
+				io->released = 1;
 			}
 		} else if (flush) {
 			/*

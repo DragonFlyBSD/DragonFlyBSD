@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.4 2007/11/20 22:55:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.5 2007/11/26 05:03:11 dillon Exp $
  */
 
 #include "hammer.h"
@@ -309,6 +309,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 
 	record = hammer_alloc_mem_record(trans, dip);
 
+	kprintf("add to directory dip %p\n", dip);
 	bytes = ncp->nc_nlen;	/* NOTE: terminating \0 is NOT included */
 	if (++trans->hmp->namekey_iterator == 0)
 		++trans->hmp->namekey_iterator;
@@ -323,6 +324,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	record->rec.entry.obj_id = ip->obj_id;
 	if (bytes <= sizeof(record->rec.entry.den_name)) {
 		record->data = (void *)record->rec.entry.den_name;
+		record->flags |= HAMMER_RECF_EMBEDDED_DATA;
 	} else {
 		record->data = kmalloc(bytes, M_HAMMER, M_WAITOK);
 		record->flags |= HAMMER_RECF_ALLOCDATA;
@@ -330,7 +332,8 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	bcopy(ncp->nc_name, record->data, bytes);
 	record->rec.entry.base.data_len = bytes;
 	++ip->ino_rec.ino_nlinks;
-	hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
+	hammer_modify_inode(trans, ip,
+			    HAMMER_INODE_RDIRTY | HAMMER_INODE_TID);
 	error = hammer_mem_add(trans, record);
 	return(error);
 }
@@ -369,39 +372,209 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 			cursor->record->base.base.delete_tid = trans->tid;
 			hammer_modify_node(cursor->node);
 			hammer_modify_buffer(cursor->record_buffer);
-
 		}
 	}
 
 	/*
-	 * One less link.  Mark the inode and all of its records as deleted
-	 * when the last link goes away.  The inode will be automatically
-	 * flushed when its last reference goes away.
+	 * One less link.  The file may still be open in the OS even after
+	 * all links have gone away so we don't destroy the inode's data
+	 * here.
 	 */
 	if (error == 0) {
 		--ip->ino_rec.ino_nlinks;
-		if (ip->ino_rec.ino_nlinks == 0)
-			ip->ino_rec.base.base.delete_tid = trans->tid;
-		error = hammer_ip_delete_range(trans, ip,
-					       HAMMER_MIN_KEY, HAMMER_MAX_KEY);
-		KKASSERT(RB_EMPTY(&ip->rec_tree));
-		hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
+		hammer_modify_inode(trans, ip,
+				    HAMMER_INODE_RDIRTY | HAMMER_INODE_TID);
 	}
 	return(error);
 }
 
 /*
- * Add a data record to the filesystem.
- *
- * This is called via the strategy code, typically when the kernel wants to
- * flush a buffer cache buffer, so this operation goes directly to the disk.
+ * Sync data from a buffer cache buffer (typically) to the filesystem.  This
+ * is called via the strategy called from a cached data source.  This code
+ * is responsible for actually writing a data record out to the disk.
  */
 int
-hammer_ip_add_data(hammer_transaction_t trans, hammer_inode_t ip,
+hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 		       int64_t offset, void *data, int bytes)
 {
-	panic("hammer_ip_add_data");
+	struct hammer_cursor cursor;
+	hammer_record_ondisk_t rec;
+	union hammer_btree_elm elm;
+	void *bdata;
+	int error;
+
+	error = hammer_init_cursor_ip(&cursor, ip);
+	if (error)
+		return(error);
+	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.key = offset + bytes;
+	cursor.key_beg.create_tid = trans->tid;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
+	cursor.flags = HAMMER_CURSOR_INSERT;
+
+	/*
+	 * Issue a lookup to position the cursor and locate the cluster
+	 */
+	error = hammer_btree_lookup(&cursor);
+	if (error == 0) {
+		kprintf("hammer_ip_sync_data: duplicate data at (%lld,%d)\n",
+			offset, bytes);
+		error = EIO;
+	}
+	if (error != ENOENT)
+		goto done;
+
+	/*
+	 * Allocate record and data space now that we know which cluster
+	 * the B-Tree node ended up in.
+	 */
+	bdata = hammer_alloc_data(cursor.node->cluster, bytes, &error,
+				  &cursor.data_buffer);
+	if (bdata == NULL)
+		goto done;
+	rec = hammer_alloc_record(cursor.node->cluster, &error,
+				  &cursor.record_buffer);
+	if (rec == NULL)
+		goto fail1;
+
+	/*
+	 * Fill everything in and insert our B-Tree node.
+	 */
+	rec->base.base = cursor.key_beg;
+	rec->base.data_crc = crc32(data, bytes);
+	rec->base.rec_id = 0;	/* XXX */
+	rec->base.data_offset = hammer_bclu_offset(cursor.data_buffer, bdata);
+	rec->base.data_len = bytes;
+	hammer_modify_buffer(cursor.record_buffer);
+
+	bcopy(data, bdata, bytes);
+	hammer_modify_buffer(cursor.data_buffer);
+
+	elm.leaf.base = cursor.key_beg;
+	elm.leaf.rec_offset = hammer_bclu_offset(cursor.record_buffer, rec);
+	elm.leaf.data_offset = rec->base.data_offset;
+	elm.leaf.data_len = bytes;
+	elm.leaf.data_crc = rec->base.data_crc;
+
+	error = hammer_btree_insert(&cursor, &elm);
+	if (error == 0)
+		goto done;
+
+	hammer_free_record_ptr(cursor.record_buffer, rec);
+fail1:
+	hammer_free_data_ptr(cursor.data_buffer, bdata, bytes);
+done:
+	hammer_done_cursor(&cursor);
+	return(error);
 }
+
+/*
+ * Sync an in-memory record to the disk.  this is typically called via fsync
+ * from a cached record source.  This code is responsible for actually
+ * writing a record out to the disk.
+ */
+int
+hammer_ip_sync_record(hammer_record_t record)
+{
+	struct hammer_cursor cursor;
+	hammer_record_ondisk_t rec;
+	union hammer_btree_elm elm;
+	void *bdata;
+	int error;
+
+	error = hammer_init_cursor_ip(&cursor, record->ip);
+	if (error)
+		return(error);
+	cursor.key_beg = record->rec.base.base;
+	cursor.flags = HAMMER_CURSOR_INSERT;
+
+	/*
+	 * Issue a lookup to position the cursor and locate the cluster
+	 */
+	error = hammer_btree_lookup(&cursor);
+	if (error == 0) {
+		kprintf("hammer_ip_sync_record: duplicate rec at (%016llx)\n",
+			record->rec.base.base.key);
+		error = EIO;
+	}
+	if (error != ENOENT)
+		goto done;
+
+	/*
+	 * Allocate record and data space now that we know which cluster
+	 * the B-Tree node ended up in.
+	 */
+	if (record->data == NULL ||
+	    (record->flags & HAMMER_RECF_EMBEDDED_DATA)) {
+		bdata = record->data;
+	} else {
+		bdata = hammer_alloc_data(cursor.node->cluster,
+					  record->rec.base.data_len, &error,
+					  &cursor.data_buffer);
+		if (bdata == NULL)
+			goto done;
+	}
+	rec = hammer_alloc_record(cursor.node->cluster, &error,
+				  &cursor.record_buffer);
+	if (rec == NULL)
+		goto fail1;
+
+	/*
+	 * Fill everything in and insert our B-Tree node.
+	 *
+	 * XXX assign rec_id here
+	 */
+	*rec = record->rec;
+	kprintf("record->rec %p data %p\n", &record->rec, record->data);
+	if (bdata) {
+		rec->base.data_crc = crc32(record->data,
+					   record->rec.base.data_len);
+		if (record->flags & HAMMER_RECF_EMBEDDED_DATA) {
+			/*
+			 * Data embedded in record
+			 */
+			rec->base.data_offset = ((char *)bdata -
+						 (char *)&record->rec);
+			KKASSERT(rec->base.data_offset >= 0 && 
+				 rec->base.data_offset + rec->base.data_len <
+				  sizeof(*rec));
+			rec->base.data_offset += hammer_bclu_offset(cursor.record_buffer, rec);
+		} else {
+			/*
+			 * Data separate from record
+			 */
+			rec->base.data_offset = hammer_bclu_offset(cursor.data_buffer,bdata);
+			bcopy(record->data, bdata, rec->base.data_len);
+			hammer_modify_buffer(cursor.data_buffer);
+		}
+	}
+	rec->base.rec_id = 0;	/* XXX */
+
+	hammer_modify_buffer(cursor.record_buffer);
+
+	elm.leaf.base = cursor.key_beg;
+	elm.leaf.rec_offset = hammer_bclu_offset(cursor.record_buffer, rec);
+	elm.leaf.data_offset = rec->base.data_offset;
+	elm.leaf.data_len = rec->base.data_len;
+	elm.leaf.data_crc = rec->base.data_crc;
+
+	error = hammer_btree_insert(&cursor, &elm);
+	if (error == 0)
+		goto done;
+
+	hammer_free_record_ptr(cursor.record_buffer, rec);
+fail1:
+	if (record->data && (record->flags & HAMMER_RECF_EMBEDDED_DATA) == 0) {
+		hammer_free_data_ptr(cursor.data_buffer, bdata,
+				     rec->base.data_len);
+	}
+done:
+	hammer_done_cursor(&cursor);
+	kprintf("hammer_ip_sync_record_done %d\n", error);
+	return(error);
+}
+
 
 /*
  * Add the record to the inode's rec_tree.  The low 32 bits of a directory
@@ -491,20 +664,32 @@ hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
 		hammer_rel_mem_record(&cursor->iprec);
 
 	/*
-	 * Search the on-disk B-Tree
+	 * Search the on-disk B-Tree.  hammer_btree_lookup() only does an
+	 * exact lookup so if we get ENOENT we have to call the iterate
+	 * function to validate the first record after the begin key.
+	 *
+	 * The ATEDISK flag is used by hammer_btree_iterate to determine
+	 * whether it must index forwards or not.
 	 */
 	if (ip->flags & HAMMER_INODE_ONDISK) {
 		error = hammer_btree_lookup(cursor);
-		if (error && error != ENOENT)
+		if (error == ENOENT) {
+			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+			error = hammer_btree_iterate(cursor);
+		}
+		if (error && error != ENOENT) 
 			return(error);
 		if (error == 0) {
-			cursor->flags &= ~HAMMER_CURSOR_DISKEOF ;
-			cursor->flags &= ~HAMMER_CURSOR_ATEDISK ;
+			cursor->flags &= ~HAMMER_CURSOR_DISKEOF;
+			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+		} else {
+			cursor->flags |= HAMMER_CURSOR_ATEDISK;
 		}
 	}
 
 	/*
-	 * Search the in-memory record list (Red-Black tree)
+	 * Search the in-memory record list (Red-Black tree).  Unlike the
+	 * B-Tree search, mem_search checks for records in the range.
 	 */
 	error = hammer_mem_search(cursor, ip);
 	if (error && error != ENOENT)
@@ -727,7 +912,8 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 			hammer_free_mem_record(cursor.iprec);
 
 		} else {
-			cursor.node->ondisk->elms[cursor.index].base.delete_tid = trans->tid;
+			cursor.node->ondisk->
+			    elms[cursor.index].base.delete_tid = trans->tid;
 			cursor.record->base.base.delete_tid = trans->tid;
 			hammer_modify_node(cursor.node);
 			hammer_modify_buffer(cursor.record_buffer);

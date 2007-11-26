@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.8 2007/11/20 22:55:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.9 2007/11/26 05:03:11 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -318,7 +318,7 @@ struct hammer_cluster_ondisk {
 	int32_t idx_data;	/* data append point (element no) */
 	int32_t idx_index;	/* index append point (element no) */
 	int32_t idx_record;	/* record prepend point (element no) */
-	u_int32_t idx_reserved03;
+	int32_t idx_ldata;	/* large block data append pt (buf_no) */
 
 	/* 
 	 * Specify the range of information stored in this cluster as two

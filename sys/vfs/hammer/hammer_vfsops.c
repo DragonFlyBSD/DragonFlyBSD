@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.5 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.6 2007/11/26 05:03:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -150,6 +150,12 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	mp->mnt_kern_flag |= MNTK_FSMID;
 	mp->mnt_stat.f_fsid.val[0] = 0;	/* XXX */
 	mp->mnt_stat.f_fsid.val[1] = 0;	/* XXX */
+
+	/* 
+	 * note: f_iosize is used by vnode_pager_haspage() when constructing
+	 * its VOP_BMAP call.
+	 */
+	mp->mnt_stat.f_iosize = HAMMER_BUFSIZE;
 	vfs_getnewfsid(mp);		/* XXX */
 	mp->mnt_maxsymlinklen = 255;
 	mp->mnt_flag |= MNT_LOCAL;

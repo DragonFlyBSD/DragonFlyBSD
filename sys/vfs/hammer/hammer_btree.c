@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.5 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.6 2007/11/26 05:03:11 dillon Exp $
  */
 
 /*
@@ -129,8 +129,10 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 	node = cursor->node->ondisk;
 	if (node == NULL)
 		return(ENOENT);
-	if (cursor->index < node->count)
+	if (cursor->index < node->count && 
+	    (cursor->flags & HAMMER_CURSOR_ATEDISK)) {
 		++cursor->index;
+	}
 
 	/*
 	 * Loop until an element is found or we are done.
@@ -228,7 +230,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		 * old or too new but does not terminate the search.
 		 */
 		elm = &node->elms[cursor->index];
-		r = hammer_btree_cmp(&cursor->key_end, &elm->base);
+		r = hammer_btree_range_cmp(cursor, &elm->base);
 		if (r == -1 || r == 1) {
 			++cursor->index;
 			continue;
@@ -281,6 +283,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
 	hammer_cluster_t cluster;
+	u_int64_t buf_type;
 	int32_t cloff;
 	int error;
 
@@ -308,11 +311,23 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	if ((flags & HAMMER_CURSOR_GET_DATA) && error == 0) {
 		if ((cloff ^ elm->leaf.data_offset) & ~HAMMER_BUFMASK) {
 			/*
-			 * Data in different buffer than record
+			 * The data is not in the same buffer as the last
+			 * record we cached, but it could still be embedded
+			 * in a record.  Note that we may not have loaded the
+			 * record's buffer above, depending on flags.
 			 */
+			if ((elm->leaf.rec_offset ^ elm->leaf.data_offset) &
+			    ~HAMMER_BUFMASK) {
+				if (elm->leaf.data_len & HAMMER_BUFMASK)
+					buf_type = HAMMER_FSBUF_DATA;
+				else
+					buf_type = 0;	/* pure data buffer */
+			} else {
+				buf_type = HAMMER_FSBUF_RECORDS;
+			}
 			cursor->data = hammer_bread(cluster,
 						  elm->leaf.data_offset,
-						  HAMMER_FSBUF_DATA, &error,
+						  buf_type, &error,
 						  &cursor->data_buffer);
 		} else {
 			/*
@@ -321,6 +336,8 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 			 * though we don't use it in this case, in case
 			 * other records extracted during an iteration
 			 * go back to it.
+			 *
+			 * Just assume the buffer type is correct.
 			 */
 			cursor->data = (void *)
 				((char *)cursor->record_buffer->ondisk +
@@ -387,7 +404,12 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 	++node->count;
 	hammer_modify_node(cursor->node);
 
-	if ((parent = cursor->parent->ondisk) != NULL) {
+	/*
+	 * Adjust the sub-tree count in the parent.  note that the parent
+	 * may be in a different cluster.
+	 */
+	if (cursor->parent) {
+		parent = cursor->parent->ondisk;
 		i = cursor->parent_index;
 		++parent->elms[i].internal.subtree_count;
 		KKASSERT(parent->elms[i].internal.subtree_count <= node->count);
@@ -559,6 +581,8 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * while loop had better not have traversed up a cluster.
 	 */
 	KKASSERT(cursor->node != NULL && cursor->node->cluster == cluster);
+
+/*	hammer_print_btree_node(cursor->node->ondisk);*/
 
 	/*
 	 * If we are inserting we can't start at a full node if the parent
@@ -903,6 +927,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * a new root its parent pointer may have changed.
 	 */
 	elm->internal.subtree_offset = 0;
+	ondisk->count = split;
 
 	/*
 	 * Insert the separator into the parent, fixup the parent's
@@ -1060,9 +1085,10 @@ btree_split_leaf(hammer_cursor_t cursor)
 	/*
 	 * Cleanup the original node.  Because this is a leaf node and
 	 * leaf nodes do not have a right-hand boundary, there
-	 * aren't any special edge cases to clean up.
+	 * aren't any special edge cases to clean up.  We just fixup the
+	 * count.
 	 */
-	/* nothing to do */
+	ondisk->count = split;
 
 	/*
 	 * Insert the separator into the parent, fixup the parent's
@@ -1113,7 +1139,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 	if (cursor->index >= split) {
 		cursor->parent_index = parent_index + 1;
 		cursor->index -= split;
-		cursor->node = new_leaf;
 		hammer_unlock(&cursor->node->lock);
 		hammer_rel_node(cursor->node);
 		cursor->node = new_leaf;
@@ -1657,6 +1682,65 @@ hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 }
 
 /*
+ * Compare the element against the cursor's beginning and ending keys
+ */
+int
+hammer_btree_range_cmp(hammer_cursor_t cursor, hammer_base_elm_t key2)
+{
+	/*
+	 * A cursor->key_beg.obj_id of 0 matches any object id
+	 */
+	if (cursor->key_beg.obj_id) {
+		if (cursor->key_end.obj_id < key2->obj_id)
+			return(-4);
+		if (cursor->key_beg.obj_id > key2->obj_id)
+			return(4);
+	}
+
+	/*
+	 * A cursor->key_beg.rec_type of 0 matches any record type.
+	 */
+	if (cursor->key_beg.rec_type) {
+		if (cursor->key_end.rec_type < key2->rec_type)
+			return(-3);
+		if (cursor->key_beg.rec_type > key2->rec_type)
+			return(3);
+	}
+
+	/*
+	 * There is no special case for key.  0 means 0.
+	 */
+	if (cursor->key_end.key < key2->key)
+		return(-2);
+	if (cursor->key_beg.key > key2->key)
+		return(2);
+
+	/*
+	 * This test has a number of special cases.  create_tid in key1 is
+	 * the as-of transction id, and delete_tid in key1 is NOT USED.
+	 *
+	 * A key1->create_tid of 0 matches any record regardles of when
+	 * it was created or destroyed.  0xFFFFFFFFFFFFFFFFULL should be
+	 * used to search for the most current state of the object.
+	 *
+	 * key2->create_tid is a HAMMER record and will never be
+	 * 0.   key2->delete_tid is the deletion transaction id or 0 if 
+	 * the record has not yet been deleted.
+	 *
+	 * NOTE: only key_beg.create_tid is used for create_tid, we can only
+	 * do as-of scans at the moment.
+	 */
+	if (cursor->key_beg.create_tid) {
+		if (cursor->key_beg.create_tid < key2->create_tid)
+			return(-1);
+		if (key2->delete_tid && cursor->key_beg.create_tid >= key2->delete_tid)
+			return(1);
+	}
+
+	return(0);
+}
+
+/*
  * Create a separator half way inbetween key1 and key2.  For fields just
  * one unit apart, the separator will match key2.
  *
@@ -1719,3 +1803,60 @@ btree_max_elements(u_int8_t type)
 }
 #endif
 
+void
+hammer_print_btree_node(hammer_node_ondisk_t ondisk)
+{
+	hammer_btree_elm_t elm;
+	int i;
+
+	kprintf("node %p count=%d parent=%d type=%c\n",
+		ondisk, ondisk->count, ondisk->parent, ondisk->type);
+
+	/*
+	 * Dump both boundary elements if an internal node
+	 */
+	if (ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
+		for (i = 0; i <= ondisk->count; ++i) {
+			elm = &ondisk->elms[i];
+			hammer_print_btree_elm(elm, ondisk->type, i);
+		}
+	} else {
+		for (i = 0; i < ondisk->count; ++i) {
+			elm = &ondisk->elms[i];
+			hammer_print_btree_elm(elm, ondisk->type, i);
+		}
+	}
+}
+
+void
+hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i)
+{
+	kprintf("  %2d", i);
+	kprintf("\tobjid        = %016llx\n", elm->base.obj_id);
+	kprintf("\tkey          = %016llx\n", elm->base.key);
+	kprintf("\tcreate_tid   = %016llx\n", elm->base.create_tid);
+	kprintf("\tdelete_tid   = %016llx\n", elm->base.delete_tid);
+	kprintf("\trec_type     = %04x\n", elm->base.rec_type);
+	kprintf("\tobj_type     = %02x\n", elm->base.obj_type);
+	kprintf("\tsubtree_type = %02x\n", elm->subtree_type);
+
+	if (type == HAMMER_BTREE_TYPE_INTERNAL) {
+		if (elm->internal.rec_offset) {
+			kprintf("\tcluster_rec  = %08x\n",
+				elm->internal.rec_offset);
+			kprintf("\tcluster_id   = %08x\n",
+				elm->internal.subtree_cluid);
+			kprintf("\tvolno        = %08x\n",
+				elm->internal.subtree_volno);
+		} else {
+			kprintf("\tsubtree_off  = %08x\n",
+				elm->internal.subtree_offset);
+		}
+		kprintf("\tsubtree_count= %d\n", elm->internal.subtree_count);
+	} else {
+		kprintf("\trec_offset   = %08x\n", elm->leaf.rec_offset);
+		kprintf("\tdata_offset  = %08x\n", elm->leaf.data_offset);
+		kprintf("\tdata_len     = %08x\n", elm->leaf.data_len);
+		kprintf("\tdata_crc     = %08x\n", elm->leaf.data_crc);
+	}
+}

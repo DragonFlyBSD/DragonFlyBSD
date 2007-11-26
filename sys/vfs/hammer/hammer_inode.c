@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.6 2007/11/20 22:55:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.7 2007/11/26 05:03:11 dillon Exp $
  */
 
 #include "hammer.h"
@@ -43,8 +43,22 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 {
 	struct hammer_inode *ip = VTOI(ap->a_vp);
 
-	if (ip == NULL)
+	/*
+	 * Degenerate case
+	 */
+	if (ip == NULL) {
 		vrecycle(ap->a_vp);
+		return(0);
+	}
+
+	/*
+	 * If the inode no longer has any references we recover its
+	 * in-memory resources immediately.
+	 */
+	if (ip->ino_rec.ino_nlinks == 0 &&
+	    (ip->hmp->mp->mnt_flag & MNT_RDONLY) == 0) {
+		hammer_sync_inode(ip, MNT_NOWAIT, 1);
+	}
 	return(0);
 }
 
@@ -55,6 +69,10 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp;
 
 	vp = ap->a_vp;
+
+	/*
+	 * Release the vnode association and ask that the inode be flushed.
+	 */
 	if ((ip = vp->v_data) != NULL) {
 		vp->v_data = NULL;
 		ip->vp = NULL;
@@ -214,6 +232,7 @@ loop:
 			kfree(ip, M_HAMMER);
 			goto loop;
 		}
+		ip->flags |= HAMMER_INODE_ONDISK;
 	} else {
 		kfree(ip, M_HAMMER);
 		ip = NULL;
@@ -297,6 +316,59 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	return(0);
 }
 
+int
+hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip)
+{
+	struct hammer_cursor cursor;
+	hammer_record_t record;
+	int error;
+
+	/*
+	 * Locate the record on-disk and mark it as deleted
+	 *
+	 * XXX Update the inode record and data in-place if the retention
+	 * policy allows it.
+	 */
+	error = 0;
+
+	if (ip->flags & HAMMER_INODE_ONDISK) {
+		hammer_init_cursor_ip(&cursor, ip);
+		cursor.key_beg.obj_id = ip->obj_id;
+		cursor.key_beg.key = 0;
+		cursor.key_beg.create_tid = ip->obj_asof;
+		cursor.key_beg.delete_tid = 0;
+		cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
+		cursor.key_beg.obj_type = 0;
+		cursor.flags = HAMMER_CURSOR_GET_RECORD;
+
+		error = hammer_btree_lookup(&cursor);
+
+		if (error == 0) {
+			cursor.record->base.base.delete_tid = trans->tid;
+			hammer_modify_buffer(cursor.record_buffer);
+		}
+		hammer_cache_node(cursor.node, &ip->cache);
+		hammer_done_cursor(&cursor);
+	}
+
+	/*
+	 * Write out a new record if the in-memory inode is not marked
+	 * as having been deleted.
+	 */
+	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED) == 0) { 
+		record = hammer_alloc_mem_record(trans, ip);
+		record->rec.inode = ip->ino_rec;
+		record->rec.inode.base.base.create_tid = trans->tid;
+		record->rec.inode.base.data_len = sizeof(ip->ino_data);
+		record->data = (void *)&ip->ino_data;
+		error = hammer_ip_sync_record(record);
+		hammer_free_mem_record(record);
+		ip->flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY);
+		ip->flags |= HAMMER_INODE_ONDISK;
+	}
+	return(error);
+}
+
 /*
  * Release a reference on an inode and unload it if told to flush.
  */
@@ -318,13 +390,16 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 int
 hammer_unload_inode(struct hammer_inode *ip, void *data __unused)
 {
+	int error;
+
 	KASSERT(ip->lock.refs == 0,
 		("hammer_unload_inode: %d refs\n", ip->lock.refs));
 	KKASSERT(ip->vp == NULL);
 	hammer_ref(&ip->lock);
 
-	/* XXX flush inode to disk */
-	kprintf("flush inode %p\n", ip);
+	error = hammer_sync_inode(ip, MNT_WAIT, 1);
+	if (error)
+		kprintf("hammer_sync_inode failed error %d\n", error);
 
 	RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
 
@@ -342,7 +417,129 @@ hammer_modify_inode(struct hammer_transaction *trans,
 		    struct hammer_inode *ip, int flags)
 {
 	ip->flags |= flags;
-	ip->last_tid = trans->tid;
+	if (flags & HAMMER_INODE_TID)
+		ip->last_tid = trans->tid;
+}
+
+/*
+ * Sync any dirty buffers and records associated with an inode.  The
+ * inode's last_tid field is used as the transaction id for the sync,
+ * overriding any intermediate TIDs that were used for records.  Note
+ * that the dirty buffer cache buffers do not have any knowledge of
+ * the transaction id they were modified under.
+ */
+static int
+hammer_sync_inode_callback(hammer_record_t rec, void *data __unused)
+{
+	int error;
+
+	error = 0;
+	if ((rec->flags & HAMMER_RECF_DELETED) == 0)
+		error = hammer_ip_sync_record(rec);
+
+	if (error) {
+		kprintf("hammer_sync_inode_callback: sync failed rec %p\n",
+			rec);
+		return(-1);
+	}
+	hammer_free_mem_record(rec);
+	return(0);
+}
+
+/*
+ * XXX error handling
+ */
+int
+hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
+{
+	struct hammer_transaction trans;
+	int error;
+	int r;
+
+	hammer_lock_ex(&ip->lock);
+	hammer_start_transaction(&trans, ip->hmp);
+
+	/*
+	 * If the inode has been deleted (nlinks == 0), and the OS no longer
+	 * has any references to it (handle_delete != 0), clean up in-memory
+	 * data.
+	 *
+	 * NOTE: We do not set the RDIRTY flag when updating the delete_tid,
+	 * setting HAMMER_INODE_DELETED takes care of it.
+	 */
+	if (ip->ino_rec.ino_nlinks == 0 && handle_delete) {
+		if (ip->vp)
+			vtruncbuf(ip->vp, 0, HAMMER_BUFSIZE);
+		error = hammer_ip_delete_range(&trans, ip,
+					       HAMMER_MIN_KEY, HAMMER_MAX_KEY);
+		KKASSERT(RB_EMPTY(&ip->rec_tree));
+		ip->ino_rec.base.base.delete_tid = trans.tid;
+		hammer_modify_inode(&trans, ip,
+				    HAMMER_INODE_DELETED | HAMMER_INODE_TID);
+	}
+
+	/*
+	 * Sync the buffer cache
+	 */
+	if (ip->vp != NULL)
+		error = vfsync(ip->vp, waitfor, 1, NULL, NULL);
+	else
+		error = 0;
+
+	/*
+	 * Now sync related records
+	 */
+	if (error == 0) {
+		r = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
+			    hammer_sync_inode_callback, NULL);
+		if (r < 0)
+			error = EIO;
+	}
+
+	/*
+	 * Now update the inode's on-disk inode-data and/or on-disk record.
+	 */
+	switch(ip->flags & (HAMMER_INODE_DELETED|HAMMER_INODE_ONDISK)) {
+	case HAMMER_INODE_DELETED|HAMMER_INODE_ONDISK:
+		/*
+		 * If deleted and on-disk, don't set any additional flags.
+		 * the delete flag takes care of things.
+		 */
+		break;
+	case HAMMER_INODE_DELETED:
+		/*
+		 * Take care of the case where a deleted inode was never
+		 * flushed to the disk in the first place.
+		 */
+		ip->flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY);
+		while (RB_ROOT(&ip->rec_tree))
+			hammer_free_mem_record(RB_ROOT(&ip->rec_tree));
+		break;
+	case HAMMER_INODE_ONDISK:
+		/*
+		 * If already on-disk, do not set any additional flags.
+		 */
+		break;
+	default:
+		/*
+		 * If not on-disk and not deleted, set both dirty flags
+		 * to force an initial record to be written.
+		 */
+		ip->flags |= HAMMER_INODE_RDIRTY | HAMMER_INODE_DDIRTY;
+		break;
+	}
+
+	/*
+	 * If RDIRTY or DDIRTY is set, write out a new record.  If the
+	 * inode is already on-disk, the old record is marked as deleted.
+	 */
+	if (ip->flags & (HAMMER_INODE_RDIRTY | HAMMER_INODE_DDIRTY |
+			 HAMMER_INODE_DELETED)) {
+		error = hammer_update_inode(&trans, ip);
+	}
+	hammer_commit_transaction(&trans);
+	hammer_unlock(&ip->lock);
+	return(error);
 }
 
 /*
@@ -379,14 +576,14 @@ hammer_bread(hammer_cluster_t cluster, int32_t cloff,
 	if (buffer == NULL || buffer->cluster != cluster ||
 	    buffer->buf_no != buf_no) {
 		if (buffer) {
-			hammer_unlock(&buffer->io.lock);
+			/*hammer_unlock(&buffer->io.lock);*/
 			hammer_rel_buffer(buffer, 0);
 		}
 		buffer = hammer_get_buffer(cluster, buf_no, 0, errorp);
 		*bufferp = buffer;
 		if (buffer == NULL)
 			return(NULL);
-		hammer_lock_ex(&buffer->io.lock);
+		/*hammer_lock_ex(&buffer->io.lock);*/
 	}
 
 	/*
