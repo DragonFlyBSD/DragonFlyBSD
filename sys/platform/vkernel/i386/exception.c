@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.8 2007/07/01 03:04:14 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.9 2007/11/26 03:57:58 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -98,6 +98,7 @@ init_exceptions(void)
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGSEGV, &sa, NULL);
 	sigaction(SIGTRAP, &sa, NULL);
+	sigaction(SIGFPE, &sa, NULL);
 
 #ifdef DDB
 	sa.sa_sigaction = exc_debugger;
