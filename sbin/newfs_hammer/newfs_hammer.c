@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.7 2007/11/20 07:16:27 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.8 2007/11/26 21:39:09 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -589,6 +589,12 @@ format_cluster(struct volume_info *vol, int isroot)
 	ondisk->idx_data = 1 * HAMMER_FSBUF_MAXBLKS;
 	ondisk->idx_index = 0 * HAMMER_FSBUF_MAXBLKS;
 	ondisk->idx_record = nbuffers * HAMMER_FSBUF_MAXBLKS;
+
+	/*
+	 * Iterator for whole-buffer data allocations. The iterator is
+	 * the buf_no.
+	 */
+	ondisk->idx_ldata = 1;
 
 	/*
 	 * Initialize root cluster's parent cluster info.  -1's
