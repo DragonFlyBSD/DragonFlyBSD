@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.60 2007/08/14 13:30:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.61 2007/11/26 11:05:58 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -2715,7 +2715,7 @@ em_get_buf(int i, struct adapter *adapter, struct mbuf *nmp, int how)
 				mtod(mp, void *), mp->m_len,
 				em_dmamap_cb, &paddr, 0);
 	if (error) {
-		m_free(mp);
+		m_freem(mp);
 		return (error);
 	}
 	rx_buffer->m_head = mp;
