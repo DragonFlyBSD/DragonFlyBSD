@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.5 2007/11/26 05:03:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.6 2007/11/26 21:38:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -309,7 +309,6 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 
 	record = hammer_alloc_mem_record(trans, dip);
 
-	kprintf("add to directory dip %p\n", dip);
 	bytes = ncp->nc_nlen;	/* NOTE: terminating \0 is NOT included */
 	if (++trans->hmp->namekey_iterator == 0)
 		++trans->hmp->namekey_iterator;
@@ -356,6 +355,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		 * The directory entry was in-memory, just scrap the
 		 * record.
 		 */
+		kprintf("del directory mem record\n");
 		hammer_free_mem_record(cursor->iprec);
 		error = 0;
 	} else {
@@ -384,6 +384,9 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		--ip->ino_rec.ino_nlinks;
 		hammer_modify_inode(trans, ip,
 				    HAMMER_INODE_RDIRTY | HAMMER_INODE_TID);
+		if (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))
+			hammer_sync_inode(ip, MNT_NOWAIT, 1);
+
 	}
 	return(error);
 }
@@ -420,6 +423,8 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	if (error == 0) {
 		kprintf("hammer_ip_sync_data: duplicate data at (%lld,%d)\n",
 			offset, bytes);
+		hammer_print_btree_elm(&cursor.node->ondisk->elms[cursor.index],
+				       HAMMER_BTREE_TYPE_LEAF, cursor.index);
 		error = EIO;
 	}
 	if (error != ENOENT)
@@ -526,7 +531,6 @@ hammer_ip_sync_record(hammer_record_t record)
 	 * XXX assign rec_id here
 	 */
 	*rec = record->rec;
-	kprintf("record->rec %p data %p\n", &record->rec, record->data);
 	if (bdata) {
 		rec->base.data_crc = crc32(record->data,
 					   record->rec.base.data_len);
@@ -571,7 +575,6 @@ fail1:
 	}
 done:
 	hammer_done_cursor(&cursor);
-	kprintf("hammer_ip_sync_record_done %d\n", error);
 	return(error);
 }
 
@@ -827,9 +830,12 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
  * Delete all records within the specified range for inode ip.
  *
  * NOTE: An unaligned range will cause new records to be added to cover
- * the edge cases.
+ * the edge cases. (XXX not implemented yet).
  *
  * NOTE: ran_end is inclusive (e.g. 0,1023 instead of 0,1024).
+ *
+ * NOTE: Record keys for regular file data have to be special-cased since
+ * they indicate the end of the range (key = base + bytes).
  */
 int
 hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
@@ -839,6 +845,7 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_record_ondisk_t rec;
 	hammer_base_elm_t base;
 	int error;
+	int isregfile;
 	int64_t off;
 
 	hammer_init_cursor_ip(&cursor, ip);
@@ -847,19 +854,26 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 	cursor.key_beg.create_tid = ip->obj_asof;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
-	cursor.key_beg.key = ran_beg;
+
+	/*
+	 * The key in the B-Tree is (base+bytes), so the first possible
+	 * matching key is ran_beg + 1.
+	 */
+	cursor.key_beg.key = ran_beg + 1;
 	cursor.key_end = cursor.key_beg;
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.key = ran_end;
+		isregfile = 0;
 	} else {
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DATA;
-		if (ran_end + MAXPHYS < ran_end)
+		if (ran_end + MAXPHYS + 1 < ran_end)
 			cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
 		else
-			cursor.key_end.key = ran_end + MAXPHYS;
+			cursor.key_end.key = ran_end + MAXPHYS + 1;
+		isregfile = 1;
 	}
 
 	error = hammer_ip_first(&cursor, ip);
@@ -880,12 +894,14 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 		 * base offset.
 		 */
 		if (base->rec_type == HAMMER_RECTYPE_DATA) {
-			off = base->key - rec->base.data_len + 1;
+			off = base->key - rec->base.data_len;
 			/*
-			 * Check the left edge case
+			 * Check the left edge case.  We currently do not
+			 * split existing records.
 			 */
 			if (off < ran_beg) {
-				panic("hammer left edge case\n");
+				panic("hammer left edge case %016llx %d\n",
+					base->key, rec->base.data_len);
 			}
 
 			/*
@@ -893,11 +909,12 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 			 * record can be completely out of bounds, which
 			 * terminates the search.
 			 *
-			 * base->key is (base_offset + bytes - 1), ran_end
-			 * works the same way.
+			 * base->key is exclusive of the right edge while
+			 * ran_end is inclusive of the right edge.  The
+			 * (key - data_len) left boundary is inclusive.
 			 */
-			if (base->key > ran_end) {
-				if (base->key - rec->base.data_len + 1 > ran_end) {
+			if (base->key > ran_end + 1) {
+				if (base->key - rec->base.data_len > ran_end) {
 					kprintf("right edge OOB\n");
 					break;
 				}
@@ -910,7 +927,6 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 		 */
 		if (cursor.record == &cursor.iprec->rec) {
 			hammer_free_mem_record(cursor.iprec);
-
 		} else {
 			cursor.node->ondisk->
 			    elms[cursor.index].base.delete_tid = trans->tid;

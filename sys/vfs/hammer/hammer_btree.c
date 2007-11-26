@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.6 2007/11/26 05:03:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.7 2007/11/26 21:38:37 dillon Exp $
  */
 
 /*
@@ -118,10 +118,12 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 {
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
-	int64_t save_key;
 	int error;
 	int r;
+#if 0
 	int s;
+	int64_t save_key;
+#endif
 
 	/*
 	 * Skip past the current record
@@ -180,6 +182,11 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 			KKASSERT(node->count != 0);
 			elm = &node->elms[cursor->index];
+#if 0
+			/*
+			 * temporarily disable this optimization, it needs
+			 * more of a theoretical review.
+			 */
 			if (elm[0].base.obj_id == elm[1].base.obj_id &&
 			    elm[0].base.rec_type == elm[1].base.rec_type &&
 			    elm[0].base.key == elm[1].base.key) {
@@ -210,6 +217,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 					continue;
 				}
 			}
+#endif
 			error = hammer_cursor_down(cursor);
 			if (error)
 				break;
@@ -237,11 +245,9 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		}
 
 		/*
-		 * The search ends if the element goes beyond our key_end
-		 * (after checking transactional return values above).
-		 * Otherwise we have a successful match.
+		 * We either found a match or are now out of bounds.
 		 */
-		error = (r < 0) ? ENOENT : 0;
+		error = r ? ENOENT : 0;
 		break;
 	}
 	return(error);
@@ -581,8 +587,6 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * while loop had better not have traversed up a cluster.
 	 */
 	KKASSERT(cursor->node != NULL && cursor->node->cluster == cluster);
-
-/*	hammer_print_btree_node(cursor->node->ondisk);*/
 
 	/*
 	 * If we are inserting we can't start at a full node if the parent
@@ -944,6 +948,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	parent_elm->internal.base = elm->base;	/* separator P */
 	parent_elm->internal.subtree_offset = new_node->node_offset;
 	parent_elm->internal.subtree_count = new_node->ondisk->count;
+	++ondisk->count;
 
 	/*
 	 * The cluster's root pointer may have to be updated.
@@ -987,6 +992,14 @@ btree_split_internal(hammer_cursor_t cursor)
 		hammer_unlock(&new_node->lock);
 		hammer_rel_node(new_node);
 	}
+
+	/*
+	 * Fixup left and right bounds
+	 */
+	parent_elm = &parent->ondisk->elms[cursor->parent_index];
+	cursor->left_bound = &elm[0].internal.base;
+	cursor->right_bound = &elm[1].internal.base;
+
 	return (0);
 }
 
@@ -1108,6 +1121,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	hammer_make_separator(&elm[-1].base, &elm[0].base, &parent_elm->base);
 	parent_elm->internal.subtree_offset = new_leaf->node_offset;
 	parent_elm->internal.subtree_count = new_leaf->ondisk->count;
+	++ondisk->count;
 
 	/*
 	 * The cluster's root pointer may have to be updated.
@@ -1147,6 +1161,14 @@ btree_split_leaf(hammer_cursor_t cursor)
 		hammer_unlock(&new_leaf->lock);
 		hammer_rel_node(new_leaf);
 	}
+
+	/*
+	 * Fixup left and right bounds
+	 */
+	parent_elm = &parent->ondisk->elms[cursor->parent_index];
+	cursor->left_bound = &elm[0].internal.base;
+	cursor->right_bound = &elm[1].internal.base;
+
 	return (0);
 }
 

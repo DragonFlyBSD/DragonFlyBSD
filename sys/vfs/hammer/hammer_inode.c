@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.7 2007/11/26 05:03:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.8 2007/11/26 21:38:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -324,14 +324,19 @@ hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	int error;
 
 	/*
-	 * Locate the record on-disk and mark it as deleted
+	 * Locate the record on-disk and mark it as deleted.  Both the B-Tree
+	 * node and the record must be marked deleted.  Adjusting delete_tid
+	 * does not effect the element position in the B-Tree.
+	 *
+	 * If the inode is already deleted on-disk we have nothing to do.
 	 *
 	 * XXX Update the inode record and data in-place if the retention
 	 * policy allows it.
 	 */
 	error = 0;
 
-	if (ip->flags & HAMMER_INODE_ONDISK) {
+	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
+	    HAMMER_INODE_ONDISK) {
 		hammer_init_cursor_ip(&cursor, ip);
 		cursor.key_beg.obj_id = ip->obj_id;
 		cursor.key_beg.key = 0;
@@ -345,7 +350,10 @@ hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip)
 
 		if (error == 0) {
 			cursor.record->base.base.delete_tid = trans->tid;
+			cursor.node->ondisk->elms[cursor.index].leaf.base.delete_tid = trans->tid;
 			hammer_modify_buffer(cursor.record_buffer);
+			hammer_modify_node(cursor.node);
+			ip->flags |= HAMMER_INODE_DELONDISK;
 		}
 		hammer_cache_node(cursor.node, &ip->cache);
 		hammer_done_cursor(&cursor);
@@ -354,6 +362,9 @@ hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	/*
 	 * Write out a new record if the in-memory inode is not marked
 	 * as having been deleted.
+	 *
+	 * If the inode has been deleted permanently, HAMMER_INODE_DELONDISK
+	 * will remain set and prevent further updates.
 	 */
 	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED) == 0) { 
 		record = hammer_alloc_mem_record(trans, ip);
@@ -363,7 +374,8 @@ hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip)
 		record->data = (void *)&ip->ino_data;
 		error = hammer_ip_sync_record(record);
 		hammer_free_mem_record(record);
-		ip->flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY);
+		ip->flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
+			       HAMMER_INODE_DELONDISK);
 		ip->flags |= HAMMER_INODE_ONDISK;
 	}
 	return(error);

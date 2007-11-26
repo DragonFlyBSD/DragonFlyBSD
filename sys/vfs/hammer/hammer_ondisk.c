@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.6 2007/11/26 05:03:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.7 2007/11/26 21:38:37 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1477,7 +1477,6 @@ hammer_alloc_data(hammer_cluster_t cluster, int32_t bytes,
 		if (buffer)
 			hammer_rel_buffer(buffer, 0);
 		buffer = *bufferp;
-		kprintf("allocate large buffer %p (%d)\n", buffer, buf_no);
 		return(buffer->ondisk);
 	}
 

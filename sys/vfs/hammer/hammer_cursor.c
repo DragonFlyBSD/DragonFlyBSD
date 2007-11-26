@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.3 2007/11/20 22:55:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.4 2007/11/26 21:38:37 dillon Exp $
  */
 
 /*
@@ -373,9 +373,11 @@ hammer_cursor_down(hammer_cursor_t cursor)
 	cursor->index = 0;
 
 	/*
-	 * Extract element to push into at (node,index)
+	 * Extract element to push into at (node,index), set bounds.
 	 */
 	elm = &node->ondisk->elms[cursor->parent_index];
+	cursor->left_bound = &elm[0].internal.base;
+	cursor->right_bound = &elm[1].internal.base;
 
 	/*
 	 * Ok, push down into elm.  If rec_offset is non-zero this is

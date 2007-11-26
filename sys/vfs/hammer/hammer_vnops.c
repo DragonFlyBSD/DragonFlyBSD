@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.6 2007/11/26 05:03:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.7 2007/11/26 21:38:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -499,7 +499,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	dip = VTOI(ap->a_dvp);
 	ncp = ap->a_nch->ncp;
 	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
-	kprintf("hammer_vop_nresolve %s dip %p\n", ncp->nc_name, dip);
 
 	hammer_init_cursor_ip(&cursor, dip);
         cursor.key_beg.obj_id = dip->obj_id;
@@ -542,7 +541,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		cache_setvp(ap->a_nch, NULL);
 	}
 	hammer_done_cursor(&cursor);
-	kprintf("hammer_vop_nresolve error %d\n", error);
 	return (error);
 }
 
@@ -740,7 +738,6 @@ static
 int
 hammer_vop_open(struct vop_open_args *ap)
 {
-	kprintf("hammer_vop_open\n");
 	return(vop_stdopen(ap));
 }
 
@@ -1000,6 +997,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	struct hammer_inode *ip;
 	int modflags;
 	int error;
+	int64_t aligned_size;
 	u_int32_t flags;
 	uuid_t uuid;
 
@@ -1057,7 +1055,14 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			} else if (vap->va_size > ip->ino_rec.ino_size) {
 				vnode_pager_setsize(ap->a_vp, vap->va_size);
 			}
-			/* fall through */
+			aligned_size = (vap->va_size + HAMMER_BUFMASK) &
+					~(int64_t)HAMMER_BUFMASK;
+			error = hammer_ip_delete_range(&trans, ip,
+						    aligned_size,
+						    0x7FFFFFFFFFFFFFFFLL);
+			ip->ino_rec.ino_size = vap->va_size;
+			modflags |= HAMMER_INODE_RDIRTY;
+			break;
 		case VDATABASE:
 			error = hammer_ip_delete_range(&trans, ip,
 						    vap->va_size,
@@ -1196,7 +1201,6 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.key = bio->bio_offset + 1;
-	kprintf("READ AT OFFSET %lld\n", bio->bio_offset);
 
 	cursor.key_end = cursor.key_beg;
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
@@ -1224,7 +1228,6 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		base = &rec->base.base;
 
 		rec_offset = base->key - rec->data.base.data_len;
-		kprintf("record offset %lld\n", rec_offset);
 
 		/*
 		 * Calculate the gap, if any, and zero-fill it.
@@ -1248,7 +1251,6 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 */
 		roff = -n;
 		n = rec->data.base.data_len - roff;
-		kprintf("roff = %d datalen %d\n", roff, rec->data.base.data_len);
 		KKASSERT(n > 0);
 		if (n > bp->b_bufsize - boff)
 			n = bp->b_bufsize - boff;
@@ -1293,8 +1295,6 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	struct buf *bp;
 	int error;
 
-	kprintf("vop_strategy_write\n");
-
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
 	ip = ap->a_vp->v_data;
@@ -1311,7 +1311,6 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 		error = hammer_ip_delete_range(&trans, ip, bio->bio_offset,
 				       bio->bio_offset + bp->b_bufsize - 1);
 	}
-	kprintf("delete_range %d\n", error);
 
 	/*
 	 * Add a single record to cover the write
