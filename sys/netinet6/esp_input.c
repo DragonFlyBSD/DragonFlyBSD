@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.15 2007/05/13 18:33:58 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.16 2007/11/26 11:43:09 sephe Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -435,7 +435,7 @@ noreplaycheck:
 				goto bad;
 			}
 			if (!ip_lengthcheck(&m)) {
-				m = NULL;	/* freed in ip_lengthcheck() */
+				/* freed in ip_lengthcheck() */
 				goto bad;
 			}
 			(*inetsw[ip_protox[nxt]].pr_input)(m, off, nxt);

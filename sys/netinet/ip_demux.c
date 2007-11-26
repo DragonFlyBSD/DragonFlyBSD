@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.35 2007/11/26 10:55:42 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.36 2007/11/26 11:43:09 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -93,8 +93,7 @@ ip_lengthcheck(struct mbuf **mp)
 	/* The packet must be at least the size of an IP header. */
 	if (m->m_pkthdr.len < sizeof(struct ip)) {
 		ipstat.ips_tooshort++;
-		m_freem(m);
-		return FALSE;
+		goto fail;
 	}
 
 	/* The fixed IP header must reside completely in the first mbuf. */
@@ -102,7 +101,7 @@ ip_lengthcheck(struct mbuf **mp)
 		m = m_pullup(m, sizeof(struct ip));
 		if (m == NULL) {
 			ipstat.ips_toosmall++;
-			return FALSE;
+			goto fail;
 		}
 	}
 
@@ -112,8 +111,7 @@ ip_lengthcheck(struct mbuf **mp)
 	iphlen = ip->ip_hl << 2;
 	if (iphlen < sizeof(struct ip)) {	/* minimum header length */
 		ipstat.ips_badhlen++;
-		m_freem(m);
-		return FALSE;
+		goto fail;
 	}
 
 	/* The full IP header must reside completely in the one mbuf. */
@@ -121,7 +119,7 @@ ip_lengthcheck(struct mbuf **mp)
 		m = m_pullup(m, iphlen);
 		if (m == NULL) {
 			ipstat.ips_badhlen++;
-			return FALSE;
+			goto fail;
 		}
 		ip = mtod(m, struct ip *);
 	}
@@ -148,14 +146,13 @@ ip_lengthcheck(struct mbuf **mp)
 	case IPPROTO_TCP:
 		if (iplen < iphlen + sizeof(struct tcphdr)) {
 			++tcpstat.tcps_rcvshort;
-			m_freem(m);
-			return FALSE;
+			goto fail;
 		}
 		if (m->m_len < iphlen + sizeof(struct tcphdr)) {
 			m = m_pullup(m, iphlen + sizeof(struct tcphdr));
 			if (m == NULL) {
 				tcpstat.tcps_rcvshort++;
-				return FALSE;
+				goto fail;
 			}
 			ip = mtod(m, struct ip *);
 		}
@@ -164,28 +161,26 @@ ip_lengthcheck(struct mbuf **mp)
 		if (thoff < sizeof(struct tcphdr) ||
 		    thoff + iphlen > ntohs(ip->ip_len)) {
 			tcpstat.tcps_rcvbadoff++;
-			m_freem(m);
-			return FALSE;
+			goto fail;
 		}
 		if (m->m_len < iphlen + thoff) {
 			m = m_pullup(m, iphlen + thoff);
 			if (m == NULL) {
 				tcpstat.tcps_rcvshort++;
-				return FALSE;
+				goto fail;
 			}
 		}
 		break;
 	case IPPROTO_UDP:
 		if (iplen < iphlen + sizeof(struct udphdr)) {
 			++udpstat.udps_hdrops;
-			m_freem(m);
-			return FALSE;
+			goto fail;
 		}
 		if (m->m_len < iphlen + sizeof(struct udphdr)) {
 			m = m_pullup(m, iphlen + sizeof(struct udphdr));
 			if (m == NULL) {
 				udpstat.udps_hdrops++;
-				return FALSE;
+				goto fail;
 			}
 		}
 		break;
@@ -193,14 +188,19 @@ ip_lengthcheck(struct mbuf **mp)
 ipcheckonly:
 		if (iplen < iphlen) {
 			++ipstat.ips_badlen;
-			m_freem(m);
-			return FALSE;
+			goto fail;
 		}
 		break;
 	}
 
 	*mp = m;
 	return TRUE;
+
+fail:
+	if (m != NULL)
+		m_freem(m);
+	*mp = NULL;
+	return FALSE;
 }
 
 /*
@@ -221,10 +221,8 @@ ip_mport(struct mbuf **mptr)
 	lwkt_port_t port;
 	int cpu;
 
-	if (!ip_lengthcheck(mptr)) {
-		*mptr = NULL;
+	if (!ip_lengthcheck(mptr))
 		return (NULL);
-	}
 
 	m = *mptr;
 	ip = mtod(m, struct ip *);
