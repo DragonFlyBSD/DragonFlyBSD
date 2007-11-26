@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.34 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.35 2007/11/26 10:55:42 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -93,7 +93,7 @@ ip_lengthcheck(struct mbuf **mp)
 	/* The packet must be at least the size of an IP header. */
 	if (m->m_pkthdr.len < sizeof(struct ip)) {
 		ipstat.ips_tooshort++;
-		m_free(m);
+		m_freem(m);
 		return FALSE;
 	}
 
@@ -112,7 +112,7 @@ ip_lengthcheck(struct mbuf **mp)
 	iphlen = ip->ip_hl << 2;
 	if (iphlen < sizeof(struct ip)) {	/* minimum header length */
 		ipstat.ips_badhlen++;
-		m_free(m);
+		m_freem(m);
 		return FALSE;
 	}
 
@@ -148,7 +148,7 @@ ip_lengthcheck(struct mbuf **mp)
 	case IPPROTO_TCP:
 		if (iplen < iphlen + sizeof(struct tcphdr)) {
 			++tcpstat.tcps_rcvshort;
-			m_free(m);
+			m_freem(m);
 			return FALSE;
 		}
 		if (m->m_len < iphlen + sizeof(struct tcphdr)) {
@@ -164,7 +164,7 @@ ip_lengthcheck(struct mbuf **mp)
 		if (thoff < sizeof(struct tcphdr) ||
 		    thoff + iphlen > ntohs(ip->ip_len)) {
 			tcpstat.tcps_rcvbadoff++;
-			m_free(m);
+			m_freem(m);
 			return FALSE;
 		}
 		if (m->m_len < iphlen + thoff) {
@@ -178,7 +178,7 @@ ip_lengthcheck(struct mbuf **mp)
 	case IPPROTO_UDP:
 		if (iplen < iphlen + sizeof(struct udphdr)) {
 			++udpstat.udps_hdrops;
-			m_free(m);
+			m_freem(m);
 			return FALSE;
 		}
 		if (m->m_len < iphlen + sizeof(struct udphdr)) {
@@ -193,7 +193,7 @@ ip_lengthcheck(struct mbuf **mp)
 ipcheckonly:
 		if (iplen < iphlen) {
 			++ipstat.ips_badlen;
-			m_free(m);
+			m_freem(m);
 			return FALSE;
 		}
 		break;
