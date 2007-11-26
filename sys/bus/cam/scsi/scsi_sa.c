@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.27 2007/11/25 18:32:29 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.28 2007/11/26 00:40:08 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -2784,8 +2784,10 @@ retry:
 	/* set the speed to the current value */
 	mode_hdr->dev_spec = current_speed;
 
-	/* set single-initiator buffering mode */
-	mode_hdr->dev_spec |= SMH_SA_BUF_MODE_SIBUF;
+	/* if set, set single-initiator buffering mode */
+	if (softc->buffer_mode == SMH_SA_BUF_MODE_SIBUF) {
+		mode_hdr->dev_spec |= SMH_SA_BUF_MODE_SIBUF;
+	}
 
 	if (mode_blk)
 		mode_hdr->blk_desc_len = sizeof(struct scsi_mode_blk_desc);
