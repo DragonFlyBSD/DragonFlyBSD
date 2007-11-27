@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/Attic/super_alist.c,v 1.2 2007/11/02 00:38:36 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/Attic/super_alist.c,v 1.3 2007/11/27 07:44:38 dillon Exp $
  */
 /*
  * Implement the super-cluster A-list recursion for the cluster allocator.
@@ -54,15 +54,12 @@ super_alist_init(void *info, int32_t blk, int32_t radix)
 	 */
 	sclno = blk / HAMMER_SCL_MAXCLUSTERS;
 	supercl = get_supercl(vol, sclno);
-
-	printf("super_alist_init: blk %d radix %d\n", blk, radix);
 	return(0);
 }
 
 static int
 super_alist_destroy(void *info, int32_t blk, int32_t radix)
 {
-	printf("super_alist_destroy: blk %d radix %d\n", blk, radix);
 	return(0);
 }
 
@@ -112,8 +109,6 @@ super_alist_free(void *info, int32_t blk, int32_t radix,
 
 	sclno = blk / HAMMER_SCL_MAXCLUSTERS;
 	supercl = get_supercl(vol, sclno);
-	printf("super_alist_free: blk %d radix %d base_blk %d count %d\n",
-	       blk, radix, base_blk, count);
 	hammer_alist_free(&supercl->clu_alist, base_blk, count);
 	*emptyp = hammer_alist_isempty(&supercl->clu_alist);
 }

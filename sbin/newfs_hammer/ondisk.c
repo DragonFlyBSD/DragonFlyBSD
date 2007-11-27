@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/Attic/ondisk.c,v 1.3 2007/11/20 07:16:27 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/Attic/ondisk.c,v 1.4 2007/11/27 07:44:38 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -327,7 +327,7 @@ alloc_record_element(struct cluster_info *cluster, int32_t *offp)
 	if (elm_no == HAMMER_ALIST_BLOCK_NONE) {
 		alloc_new_buffer(cluster, live,
 				 HAMMER_FSBUF_RECORDS, HAMMER_RECORD_NODES);
-		elm_no = hammer_alist_alloc(live, 1);
+		elm_no = hammer_alist_alloc_rev(live, 1,HAMMER_ALIST_BLOCK_MAX);
 		assert(elm_no != HAMMER_ALIST_BLOCK_NONE);
 	}
 	cluster->ondisk->idx_record = elm_no;
@@ -346,7 +346,13 @@ alloc_new_buffer(struct cluster_info *cluster, hammer_alist_t live,
 	int32_t buf_no;
 	struct buffer_info *buf;
 
-	buf_no = hammer_alist_alloc(&cluster->alist_master, 1);
+	if (type == HAMMER_FSBUF_RECORDS) {
+		buf_no = hammer_alist_alloc_rev(&cluster->alist_master, 1,
+						HAMMER_ALIST_BLOCK_MAX);
+	} else {
+		buf_no = hammer_alist_alloc_fwd(&cluster->alist_master, 1, 
+						0);
+	}
 	assert(buf_no != HAMMER_ALIST_BLOCK_NONE);
 	buf = get_buffer(cluster, buf_no, type);
 	hammer_alist_free(live, buf_no * HAMMER_FSBUF_MAXBLKS, nelements);

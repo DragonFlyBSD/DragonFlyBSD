@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.8 2007/11/26 21:39:09 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.9 2007/11/27 07:44:38 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -100,14 +100,15 @@ main(int ac, char **av)
 	hammer_alist_template(&Vol_normal_alist_config, HAMMER_VOL_MAXCLUSTERS,
 			      1, HAMMER_VOL_METAELMS_1LYR);
 	hammer_alist_template(&Vol_super_alist_config,
-			      HAMMER_VOL_MAXSUPERCLUSTERS,
+			  HAMMER_VOL_MAXSUPERCLUSTERS * HAMMER_SCL_MAXCLUSTERS,
 			      HAMMER_SCL_MAXCLUSTERS, HAMMER_VOL_METAELMS_2LYR);
 	hammer_super_alist_template(&Vol_super_alist_config);
 	hammer_alist_template(&Supercl_alist_config, HAMMER_VOL_MAXCLUSTERS,
 			      1, HAMMER_SUPERCL_METAELMS);
 	hammer_alist_template(&Clu_master_alist_config, HAMMER_CLU_MAXBUFFERS,
 			      1, HAMMER_CLU_MASTER_METAELMS);
-	hammer_alist_template(&Clu_slave_alist_config, HAMMER_CLU_MAXBUFFERS,
+	hammer_alist_template(&Clu_slave_alist_config,
+			      HAMMER_CLU_MAXBUFFERS * HAMMER_FSBUF_MAXBLKS,
 			      HAMMER_FSBUF_MAXBLKS, HAMMER_CLU_SLAVE_METAELMS);
 	hammer_buffer_alist_template(&Clu_slave_alist_config);
 
