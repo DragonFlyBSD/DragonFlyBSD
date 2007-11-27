@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.51 2007/11/16 02:45:44 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.52 2007/11/27 11:06:31 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -557,13 +557,31 @@ ether_input(struct ifnet *ifp, struct mbuf *m)
 	struct ether_header *eh;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
+	M_ASSERTPKTHDR(m);
+
+	/* Discard packet if interface is not up */
+	if (!(ifp->if_flags & IFF_UP)) {
+		m_freem(m);
+		return;
+	}
 
 	if (m->m_len < sizeof(struct ether_header)) {
 		/* XXX error in the caller. */
 		m_freem(m);
 		return;
 	}
+	eh = mtod(m, struct ether_header *);
+
 	m->m_pkthdr.rcvif = ifp;
+
+	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
+		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
+			 ifp->if_addrlen) == 0)
+			m->m_flags |= M_BCAST;
+		else
+			m->m_flags |= M_MCAST;
+		ifp->if_imcasts++;
+	}
 
 	BPF_MTAP(ifp, m);
 
@@ -601,10 +619,11 @@ ether_input(struct ifnet *ifp, struct mbuf *m)
 
 			KASSERT(ifp == m->m_pkthdr.rcvif,
 				("bridge_input_p changed rcvif\n"));
+
+			/* 'm' may be changed by bridge_input_p() */
+			eh = mtod(m, struct ether_header *);
 		}
 	}
-
-	eh = mtod(m, struct ether_header *);
 
 	/* XXX old crufty stuff, needs to be removed */
 	m_adj(m, sizeof(struct ether_header));
@@ -665,7 +684,7 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh0, struct mbuf *m)
          * of these checks!
          */
 	if (ifp->if_carp && carp_forus(ifp->if_carp, eh.ether_dhost))
-		goto pre_stats;
+		goto post_stats;
 #endif
 
 	/*
@@ -679,24 +698,6 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh0, struct mbuf *m)
 	    bcmp(eh.ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
 		m_freem(m);
 		return;
-	}
-
-#ifdef CARP
-pre_stats:
-#endif
-
-	/* Discard packet if interface is not up */
-	if (!(ifp->if_flags & IFF_UP)) {
-		m_freem(m);
-		return;
-	}
-	if (eh.ether_dhost[0] & 1) {
-		if (bcmp(ifp->if_broadcastaddr, eh.ether_dhost,
-			 ifp->if_addrlen) == 0)
-			m->m_flags |= M_BCAST;
-		else
-			m->m_flags |= M_MCAST;
-		ifp->if_imcasts++;
 	}
 
 post_stats:
