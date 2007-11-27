@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.6 2007/11/26 21:38:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.7 2007/11/27 07:48:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -39,7 +39,7 @@
 static int hammer_mem_add(hammer_transaction_t trans,
 			     hammer_record_t record);
 static int hammer_mem_lookup(hammer_cursor_t cursor, hammer_inode_t ip);
-static int hammer_mem_search(hammer_cursor_t cursor, hammer_inode_t ip);
+static int hammer_mem_first(hammer_cursor_t cursor, hammer_inode_t ip);
 
 /*
  * Red-black tree support.
@@ -109,9 +109,14 @@ hammer_rec_compare(hammer_base_elm_t info, hammer_record_t rec)
 }
 
 /*
- * RB_SCAN comparison code for hammer_mem_search().  The argument order
+ * RB_SCAN comparison code for hammer_mem_first().  The argument order
  * is reversed so the comparison result has to be negated.  key_beg and
- * key_end are both inclusive boundaries.
+ * key_end are both range-inclusive.
+ *
+ * The creation timestamp can cause hammer_rec_compare() to return -1 or +1.
+ * These do not stop the scan.
+ *
+ * Localized deletions are not cached in-memory.
  */
 static
 int
@@ -121,12 +126,12 @@ hammer_rec_scan_cmp(hammer_record_t rec, void *data)
 	int r;
 
 	r = hammer_rec_compare(&cursor->key_beg, rec);
-	if (r > 0)
+	if (r > 1)
 		return(-1);
 	if (r == 0)
 		return(0);
 	r = hammer_rec_compare(&cursor->key_end, rec);
-	if (r <= 0)
+	if (r < -1)
 		return(1);
 	return(0);
 }
@@ -139,7 +144,7 @@ RB_GENERATE_XLOOKUP(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
  * Allocate a record for the caller to finish filling in
  */
 hammer_record_t
-hammer_alloc_mem_record(struct hammer_transaction *trans, hammer_inode_t ip)
+hammer_alloc_mem_record(hammer_inode_t ip)
 {
 	hammer_record_t record;
 
@@ -228,7 +233,7 @@ hammer_mem_lookup(hammer_cursor_t cursor, hammer_inode_t ip)
 }
 
 /*
- * hammer_mem_search() - locate the first in-memory record matching the
+ * hammer_mem_first() - locate the first in-memory record matching the
  * cursor.
  *
  * The RB_SCAN function we use is designed as a callback.  We terminate it
@@ -240,6 +245,22 @@ hammer_rec_scan_callback(hammer_record_t rec, void *data)
 {
 	hammer_cursor_t cursor = data;
 
+	/*
+	 * Skip if not visible due to our as-of TID
+	 */
+        if (cursor->key_beg.create_tid) {
+                if (cursor->key_beg.create_tid < rec->rec.base.base.create_tid)
+                        return(0);
+                if (rec->rec.base.base.delete_tid &&
+		    cursor->key_beg.create_tid >=
+		     rec->rec.base.base.delete_tid) {
+                        return(0);
+		}
+        }
+
+	/*
+	 * Return the first matching record and stop the scan
+	 */
 	if (cursor->iprec == NULL) {
 		cursor->iprec = rec;
 		hammer_ref(&rec->lock);
@@ -250,7 +271,7 @@ hammer_rec_scan_callback(hammer_record_t rec, void *data)
 
 static
 int
-hammer_mem_search(hammer_cursor_t cursor, hammer_inode_t ip)
+hammer_mem_first(hammer_cursor_t cursor, hammer_inode_t ip)
 {
 	if (cursor->iprec)
 		hammer_rel_mem_record(&cursor->iprec);
@@ -263,6 +284,11 @@ hammer_mem_search(hammer_cursor_t cursor, hammer_inode_t ip)
 	cursor->scan.node = NULL;
 	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_scan_cmp,
 				   hammer_rec_scan_callback, cursor);
+
+	/*
+	 * Adjust scan.node and keep it linked into the RB-tree so we can
+	 * hold the cursor through third party modifications of the RB-tree.
+	 */
 	if (cursor->iprec) {
 		cursor->scan.node = hammer_rec_rb_tree_RB_NEXT(cursor->iprec);
 		return(0);
@@ -307,7 +333,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	int error;
 	int bytes;
 
-	record = hammer_alloc_mem_record(trans, dip);
+	record = hammer_alloc_mem_record(dip);
 
 	bytes = ncp->nc_nlen;	/* NOTE: terminating \0 is NOT included */
 	if (++trans->hmp->namekey_iterator == 0)
@@ -692,9 +718,9 @@ hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
 
 	/*
 	 * Search the in-memory record list (Red-Black tree).  Unlike the
-	 * B-Tree search, mem_search checks for records in the range.
+	 * B-Tree search, mem_first checks for records in the range.
 	 */
-	error = hammer_mem_search(cursor, ip);
+	error = hammer_mem_first(cursor, ip);
 	if (error && error != ENOENT)
 		return(error);
 	if (error == 0) {
@@ -744,20 +770,30 @@ hammer_ip_next(hammer_cursor_t cursor)
 	 * Get the next in-memory record.  The record can be ripped out
 	 * of the RB tree so we maintain a scan_info structure to track
 	 * the next node.
+	 *
+	 * hammer_rec_scan_cmp:  Is the record still in our general range,
+	 *			 (non-inclusive of snapshot exclusions)?
+	 * hammer_rec_scan_callback: Is the record in our snapshot?
 	 */
 	if (cursor->flags & HAMMER_CURSOR_ATEMEM) {
 		if ((cursor->flags & HAMMER_CURSOR_MEMEOF) == 0) {
+			hammer_rel_mem_record(&cursor->iprec);
 			rec = cursor->scan.node;	/* next node */
-			if (rec) {
+			while (rec) {
+				if (hammer_rec_scan_cmp(rec, cursor) != 0)
+					break;
+				if (hammer_rec_scan_callback(rec, cursor) != 0)
+					break;
+				rec = hammer_rec_rb_tree_RB_NEXT(rec);
+			}
+			if (cursor->iprec) {
 				cursor->flags &= ~HAMMER_CURSOR_ATEMEM;
-				hammer_ref(&rec->lock);
+				hammer_ref(&cursor->iprec->lock);
 				cursor->scan.node =
 					hammer_rec_rb_tree_RB_NEXT(rec);
 			} else {
 				cursor->flags |= HAMMER_CURSOR_MEMEOF;
 			}
-			hammer_rel_mem_record(&cursor->iprec);
-			cursor->iprec = rec;
 		}
 	}
 

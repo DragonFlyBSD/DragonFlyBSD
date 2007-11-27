@@ -38,7 +38,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.4 2007/11/01 20:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.5 2007/11/27 07:48:52 dillon Exp $
  */
 /*
  * This module implements a generic allocator through the use of a hinted
@@ -178,6 +178,7 @@ hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
 	 * If base_radix != 1 the caller will have to initialize the callback
 	 * fields to implement the lower level allocator.
 	 */
+	KKASSERT((int64_t)radix * (int64_t)base_radix < 0x80000000LL);
 	radix *= base_radix;
 
 	bzero(bl, sizeof(*bl));
@@ -770,7 +771,7 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 		 * more accurate size hints.
 		 */
 		next_skip = (skip - 1) / HAMMER_ALIST_META_RADIX;
-		for (i = 1; i <= skip; i += next_skip) {
+		for (i = 1; i < skip; i += next_skip) {
 			if (scan[i].bm_bighint == (int32_t)-1) {
 				/* 
 				 * Terminator
@@ -1183,6 +1184,8 @@ hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 		while (i <= skip && blk < freeBlk + count) {
 			int32_t v;
 
+			KKASSERT(mask != 0);
+
 			v = blk + radix - freeBlk;
 			if (v > count)
 				v = count;
@@ -1268,11 +1271,13 @@ hammer_alst_radix_init(hammer_almeta_t scan, int32_t radix,
 	mask = 0x00000003;
 	pmask = 0x00000001;
 
-	for (i = 1; i <= skip; i += next_skip) {
+	for (i = 1; i < skip; i += next_skip) {
 		/*
 		 * We eat up to this record
 		 */
 		memindex = i;
+
+		KKASSERT(mask != 0);
 
 		if (count >= radix) {
 			/*
@@ -1397,9 +1402,10 @@ hammer_alst_radix_print(hammer_alist_t live, hammer_almeta_t scan,
 			mask <<= 2;
 		}
 	} else {
-		next_skip = ((u_int)skip / HAMMER_ALIST_META_RADIX);
+		next_skip = ((u_int)(skip - 1) / HAMMER_ALIST_META_RADIX);
 
-		for (i = 1; i <= skip; i += next_skip) {
+		for (i = 1; i < skip; i += next_skip) {
+			KKASSERT(mask != 0);
 			if (scan[i].bm_bighint == (int32_t)-1) {
 				kprintf(
 				    "%*.*s(%04x,%d): Terminator\n",
@@ -1427,7 +1433,7 @@ hammer_alst_radix_print(hammer_alist_t live, hammer_almeta_t scan,
 				    &scan[i],
 				    blk,
 				    radix,
-				    next_skip - 1,
+				    next_skip,
 				    tab
 				);
 			}
@@ -1603,6 +1609,7 @@ main(int ac, char **av)
 			hammer_alist_print(live, 0);
 			break;
 		case 'a':
+			atblk = 0;
 			if (sscanf(buf + 1, "%d %d", &count, &atblk) >= 1) {
 				blk = hammer_alist_alloc_fwd(live, count, atblk);
 				kprintf("    R=%04x\n", blk);

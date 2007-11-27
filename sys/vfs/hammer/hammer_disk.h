@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.9 2007/11/26 05:03:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.10 2007/11/27 07:48:52 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -130,17 +130,21 @@ typedef struct hammer_fsbuf_head *hammer_fsbuf_head_t;
  * a one or two-layered A-list to manage the clusters making up the volume.
  * A volume containing up to 32768 clusters (2TB) can be managed with a
  * single-layered A-list.  A two-layer A-list is capable of managing up
- * to 16384 super-clusters with each super-cluster containing 32768 clusters
- * (32768 TB per volume total).  The number of volumes is limited to 32768
+ * to 4096 super-clusters with each super-cluster containing 32768 clusters
+ * (8192 TB per volume total).  The number of volumes is limited to 32768
  * but it only takes 512 to fill out a 64 bit address space so for all
  * intents and purposes the filesystem has no limits.
  *
  * cluster addressing within a volume depends on whether a single or
  * duel-layer A-list is used.  If a duel-layer A-list is used a 16K
- * super-cluster buffer is needed for every 16384 clusters in the volume.
+ * super-cluster buffer is needed for every 32768 clusters in the volume.
  * However, because the A-list's hinting is grouped in multiples of 16
  * we group 16 super-cluster buffers together (starting just after the
  * volume header), followed by 16384x16 clusters, and repeat.
+ *
+ * The number of super-clusters is limited to 4096 because the A-list's
+ * master radix is stored as a 32 bit signed quantity which will overflow
+ * if more then 4096*32768 elements is specified.  XXX
  *
  * NOTE: A 32768-element single-layer and 16384-element duel-layer A-list
  * is the same size.
@@ -158,7 +162,7 @@ typedef struct hammer_fsbuf_head *hammer_fsbuf_head_t;
  *	area.  This allows the kernel to immediately return success.
  */
 #define HAMMER_VOL_MAXCLUSTERS		32768	/* 1-layer */
-#define HAMMER_VOL_MAXSUPERCLUSTERS	16384	/* 2-layer */
+#define HAMMER_VOL_MAXSUPERCLUSTERS	4096	/* 2-layer */
 #define HAMMER_VOL_SUPERCLUSTER_GROUP	16
 #define HAMMER_VOL_METAELMS_1LYR	HAMMER_ALIST_METAELMS_32K_1LYR
 #define HAMMER_VOL_METAELMS_2LYR	HAMMER_ALIST_METAELMS_16K_2LYR
@@ -540,7 +544,7 @@ typedef union hammer_record_ondisk *hammer_record_ondisk_t;
  * Filesystem buffer for records
  */
 #define HAMMER_RECORD_NODES	\
-	((HAMMER_BUFSIZE - sizeof(struct hammer_fsbuf_head)) / \
+	((HAMMER_BUFSIZE - sizeof(struct hammer_fsbuf_head) - 32) / \
 	sizeof(union hammer_record_ondisk))
 
 struct hammer_fsbuf_recs {

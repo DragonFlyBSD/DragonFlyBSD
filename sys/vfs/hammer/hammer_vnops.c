@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.7 2007/11/26 21:38:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.8 2007/11/27 07:48:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -437,7 +437,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 #if 0
 	if (cache_check_fsmid_vp(ap->a_vp, &ip->fsmid) &&
 	    (vp->v_mount->mnt_flag & MNT_RDONLY) == 0 &&
-	    ip->obj_asof == 0
+	    ip->obj_asof == XXX
 	) {
 		/* LAZYMOD XXX */
 	}
@@ -482,12 +482,39 @@ int
 hammer_vop_nresolve(struct vop_nresolve_args *ap)
 {
 	struct namecache *ncp;
-	struct hammer_inode *dip;
+	hammer_inode_t dip;
+	hammer_inode_t ip;
+	hammer_tid_t asof;
 	struct hammer_cursor cursor;
 	union hammer_record_ondisk *rec;
 	struct vnode *vp;
 	int64_t namekey;
 	int error;
+	int i;
+	int nlen;
+
+	/*
+	 * Misc initialization, plus handle as-of name extensions.  Look for
+	 * the '@@' extension.  Note that as-of files and directories cannot
+	 * be modified.
+	 *
+	 *
+	 */
+	dip = VTOI(ap->a_dvp);
+	ncp = ap->a_nch->ncp;
+	asof = dip->obj_asof;
+	nlen = ncp->nc_nlen;
+
+	for (i = 0; i < nlen; ++i) {
+		if (ncp->nc_name[i] == '@' && ncp->nc_name[i+1] == '@') {
+			asof = hammer_now_tid() - 
+			       strtoq(ncp->nc_name + i + 2, NULL, 0) *
+			       1000000000LL;
+			kprintf("ASOF %016llx\n", asof);
+			break;
+		}
+	}
+	nlen = i;
 
 	/*
 	 * Calculate the namekey and setup the key range for the scan.  This
@@ -496,14 +523,12 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 *
 	 * The key range is inclusive of both key_beg and key_end.
 	 */
-	dip = VTOI(ap->a_dvp);
-	ncp = ap->a_nch->ncp;
-	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
+	namekey = hammer_directory_namekey(ncp->nc_name, nlen);
 
 	hammer_init_cursor_ip(&cursor, dip);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
-        cursor.key_beg.create_tid = dip->obj_asof;
+        cursor.key_beg.create_tid = asof;
         cursor.key_beg.delete_tid = 0;
         cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
         cursor.key_beg.obj_type = 0;
@@ -524,14 +549,21 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		if (error)
 			break;
 		rec = cursor.record;
-		if (ncp->nc_nlen == rec->entry.base.data_len &&
-		    bcmp(ncp->nc_name, cursor.data, ncp->nc_nlen) == 0) {
+		if (nlen == rec->entry.base.data_len &&
+		    bcmp(ncp->nc_name, cursor.data, nlen) == 0) {
 			break;
 		}
 		error = hammer_ip_next(&cursor);
 	}
 	if (error == 0) {
-		error = hammer_vfs_vget(dip->hmp->mp, rec->entry.obj_id, &vp);
+		ip = hammer_get_inode(dip->hmp, rec->entry.obj_id,
+				      asof, &error);
+		if (error == 0) {
+			error = hammer_get_vnode(ip, LK_EXCLUSIVE, &vp);
+			hammer_rel_inode(ip, 0);
+		} else {
+			vp = NULL;
+		}
 		if (error == 0) {
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
@@ -1211,10 +1243,10 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		ran_end = bio->bio_offset + bp->b_bufsize;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DATA;
-		if (ran_end + MAXPHYS < ran_end)
+		if (ran_end + MAXPHYS + 1 < ran_end)
 			cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
 		else
-			cursor.key_end.key = ran_end + MAXPHYS;
+			cursor.key_end.key = ran_end + MAXPHYS + 1;
 	}
 
 	error = hammer_ip_first(&cursor, ip);
@@ -1268,6 +1300,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	if (error == ENOENT)
 		error = 0;
 	if (error == 0 && boff != bp->b_bufsize) {
+		KKASSERT(boff < bp->b_bufsize);
 		bzero((char *)bp->b_data + boff, bp->b_bufsize - boff);
 		/* boff = bp->b_bufsize; */
 	}
@@ -1402,7 +1435,8 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 	 * If all is ok we have to get the inode so we can adjust nlinks.
 	 */
 	if (error == 0) {
-		ip = hammer_get_inode(dip->hmp, rec->entry.obj_id, &error);
+		ip = hammer_get_inode(dip->hmp, rec->entry.obj_id,
+				      dip->hmp->asof, &error);
 		if (error == 0)
 			error = hammer_ip_del_directory(&trans, &cursor, dip, ip);
 		if (error == 0) {

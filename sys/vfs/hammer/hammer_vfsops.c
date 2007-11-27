@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.6 2007/11/26 05:03:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.7 2007/11/27 07:48:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,6 +106,12 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	hmp = kmalloc(sizeof(*hmp), M_HAMMER, M_WAITOK | M_ZERO);
 	mp->mnt_data = (qaddr_t)hmp;
 	hmp->mp = mp;
+	if (info.asof) {
+		mp->mnt_flag |= MNT_RDONLY;
+		hmp->asof = info.asof;
+	} else {
+		hmp->asof = HAMMER_MAX_TID;
+	}
 	hmp->zbuf = kmalloc(HAMMER_BUFSIZE, M_HAMMER, M_WAITOK | M_ZERO);
 	hmp->namekey_iterator = mycpu->gd_time_seconds;
 	RB_INIT(&hmp->rb_vols_root);

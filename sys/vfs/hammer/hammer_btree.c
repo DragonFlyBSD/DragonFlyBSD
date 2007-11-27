@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.7 2007/11/26 21:38:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.8 2007/11/27 07:48:52 dillon Exp $
  */
 
 /*
@@ -92,6 +92,7 @@ static int btree_search(hammer_cursor_t cursor, int flags);
 static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
 static int btree_remove(hammer_node_t node, int index);
+static int btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm);
 #if 0
 static int btree_rebalance(hammer_cursor_t cursor);
 static int btree_collapse(hammer_cursor_t cursor);
@@ -841,6 +842,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	int made_root;
 	int split;
 	int error;
+	int i;
 	const int esize = sizeof(*elm);
 
 	/* 
@@ -948,7 +950,19 @@ btree_split_internal(hammer_cursor_t cursor)
 	parent_elm->internal.base = elm->base;	/* separator P */
 	parent_elm->internal.subtree_offset = new_node->node_offset;
 	parent_elm->internal.subtree_count = new_node->ondisk->count;
+	parent_elm->internal.subtree_type = new_node->ondisk->type;
 	++ondisk->count;
+
+	/*
+	 * The children of new_node need their parent pointer set to new_node.
+	 */
+	for (i = 0; i < new_node->ondisk->count; ++i) {
+		elm = &new_node->ondisk->elms[i];
+		error = btree_set_parent(new_node, elm);
+		if (error) {
+			panic("btree_split_internal: btree-fixup problem");
+		}
+	}
 
 	/*
 	 * The cluster's root pointer may have to be updated.
@@ -1121,6 +1135,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	hammer_make_separator(&elm[-1].base, &elm[0].base, &parent_elm->base);
 	parent_elm->internal.subtree_offset = new_leaf->node_offset;
 	parent_elm->internal.subtree_count = new_leaf->ondisk->count;
+	parent_elm->internal.subtree_type = new_leaf->ondisk->type;
 	++ondisk->count;
 
 	/*
@@ -1246,6 +1261,63 @@ btree_remove(hammer_node_t node, int index)
 	hammer_unlock(&parent->lock);
 	hammer_rel_node(parent);
 	return (error);
+}
+
+/*
+ * The child represented by the element in internal node node needs
+ * to have its parent pointer adjusted.
+ */
+static
+int
+btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm)
+{
+	hammer_volume_t volume;
+	hammer_cluster_t cluster;
+	hammer_node_t child;
+	int error;
+
+	error = 0;
+
+	switch(elm->internal.subtree_type) {
+	case HAMMER_BTREE_TYPE_LEAF:
+	case HAMMER_BTREE_TYPE_INTERNAL:
+		child = hammer_get_node(node->cluster,
+					elm->internal.subtree_offset, &error);
+		if (error == 0) {
+			hammer_lock_ex(&child->lock);
+			child->ondisk->parent = node->node_offset;
+			hammer_modify_node(child);
+			hammer_unlock(&child->lock);
+			hammer_rel_node(child);
+		}
+		break;
+	case HAMMER_BTREE_TYPE_CLUSTER:
+		volume = hammer_get_volume(node->cluster->volume->hmp,
+					elm->internal.subtree_volno, &error);
+		if (error)
+			break;
+		cluster = hammer_get_cluster(volume,
+					elm->internal.subtree_cluid,
+					&error, 0);
+                hammer_rel_volume(volume, 0);
+		if (error)
+			break;
+		hammer_lock_ex(&cluster->io.lock);
+		cluster->ondisk->clu_btree_parent_offset = node->node_offset;
+		hammer_unlock(&cluster->io.lock);
+		KKASSERT(cluster->ondisk->clu_btree_parent_clu_no ==
+			 node->cluster->clu_no);
+		KKASSERT(cluster->ondisk->clu_btree_parent_vol_no ==
+			 node->cluster->volume->vol_no);
+		hammer_modify_cluster(cluster);
+		hammer_rel_cluster(cluster, 0);
+		break;
+	default:
+		hammer_print_btree_elm(elm, HAMMER_BTREE_TYPE_INTERNAL, -1);
+		panic("btree_set_parent: bad subtree_type");
+		break; /* NOT REACHED */
+	}
+	return(error);
 }
 
 #if 0

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.10 2007/11/26 21:38:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.11 2007/11/27 07:48:52 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -377,6 +377,7 @@ struct hammer_mount {
 	char *zbuf;	/* HAMMER_BUFSIZE bytes worth of all-zeros */
 	uuid_t	fsid;
 	udev_t	fsid_udev;
+	hammer_tid_t asof;
 	u_int32_t namekey_iterator;
 };
 
@@ -397,13 +398,12 @@ extern struct bio_ops hammer_bioops;
 
 int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
-int	hammer_vfs_vget(struct mount *mp, ino_t ino, struct  vnode **vpp);
-
+int	hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
 int	hammer_get_vnode(struct hammer_inode *ip, int lktype,
 			struct vnode **vpp);
 struct hammer_inode *hammer_get_inode(hammer_mount_t hmp,
-			u_int64_t obj_id, int *errorp);
-int	hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip);
+			u_int64_t obj_id, hammer_tid_t asof, int *errorp);
+int	hammer_update_inode(hammer_inode_t ip);
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
 
@@ -419,8 +419,7 @@ int	hammer_ip_first(hammer_cursor_t cursor, hammer_inode_t ip);
 int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 hammer_record_t
-	hammer_alloc_mem_record(struct hammer_transaction *trans,
-			       hammer_inode_t ip);
+	hammer_alloc_mem_record(hammer_inode_t ip);
 void	hammer_rel_mem_record(struct hammer_record **recordp);
 void	hammer_free_mem_record(hammer_record_t record);
 
@@ -441,6 +440,7 @@ void hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 void	hammer_to_timespec(hammer_tid_t tid, struct timespec *ts);
 hammer_tid_t hammer_timespec_to_transid(struct timespec *ts);
 hammer_tid_t hammer_alloc_tid(hammer_transaction_t trans);
+hammer_tid_t hammer_now_tid(void);
 hammer_tid_t hammer_alloc_recid(hammer_transaction_t trans);
 
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);

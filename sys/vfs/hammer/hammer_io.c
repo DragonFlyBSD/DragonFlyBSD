@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.4 2007/11/26 05:03:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.5 2007/11/27 07:48:52 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -67,6 +67,7 @@ hammer_io_disassociate(union hammer_io_structure *io)
 	int released;
 
 	LIST_INIT(&bp->b_dep);	/* clear the association */
+	bp->b_ops = NULL;
 	io->io.bp = NULL;
 	modified = io->io.modified;
 	released = io->io.released;
@@ -292,8 +293,6 @@ hammer_io_deallocate(struct buf *bp)
 	 */
 	hammer_ref(&io->io.lock);
 
-	kprintf("iodeallocate bp %p\n", bp);
-
 	/*
 	 * Buffers can have active references from cached hammer_node's,
 	 * even if those nodes are themselves passively cached.  Attempt
@@ -314,7 +313,6 @@ hammer_io_deallocate(struct buf *bp)
 		KKASSERT(io->io.released);
 		hammer_io_disassociate(io);
 		bp->b_flags &= ~B_LOCKED;
-		kprintf("iodeallocate bp %p - unlocked and dissed\n", bp);
 
 		/*
 		 * Perform final rights on the structure.  This can cause
@@ -344,7 +342,6 @@ hammer_io_deallocate(struct buf *bp)
 		 */
 		bp->b_flags |= B_LOCKED;
 		hammer_unref(&io->io.lock);
-		kprintf("iodeallocate bp %p - locked\n", bp);
 	}
 
 	crit_exit();
