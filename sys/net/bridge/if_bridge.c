@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.25 2007/06/16 15:27:27 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.26 2007/11/27 11:15:30 sephe Exp $
  */
 
 /*
@@ -1780,7 +1780,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 	bridge_span(sc, m);
 
-	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
+	if (m->m_flags & (M_BCAST | M_MCAST)) {
 		/* Tap off 802.1D packets; they do not get forwarded. */
 		if (memcmp(eh->ether_dhost, bstp_etheraddr,
 		    ETHER_ADDR_LEN) == 0) {
@@ -1798,12 +1798,6 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 				goto out;
 			}
 		}
-
-		if (bcmp(etherbroadcastaddr, eh->ether_dhost,
-		    sizeof(etherbroadcastaddr)) == 0)
-			m->m_flags |= M_BCAST;
-		else
-			m->m_flags |= M_MCAST;
 
 		/*
 		 * Make a deep copy of the packet and enqueue the copy
