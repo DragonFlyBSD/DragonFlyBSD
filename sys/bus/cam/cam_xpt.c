@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.44 2007/11/28 21:05:00 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.45 2007/11/28 21:29:18 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1318,6 +1318,8 @@ cam_module_event_handler(module_t mod, int what, void *arg)
 		xpt_init(NULL);
 	} else if (what == MOD_UNLOAD) {
 		return EBUSY;
+	} else {
+		return EOPNOTSUPP;
 	}
 
 	return 0;

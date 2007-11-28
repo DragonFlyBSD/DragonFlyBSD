@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.h,v 1.6.2.1 2000/05/07 18:16:49 n_hibma Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.7 2007/11/17 20:28:46 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.8 2007/11/28 21:29:18 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_PERIPH_H
@@ -52,6 +52,8 @@ void periphdriver_register(void *);
 		case MOD_UNLOAD: \
 			kprintf(#name " module unload - not possible for this module type\n"); \
 			return EINVAL; \
+		default: \
+			return EOPNOTSUPP; \
 		} \
 		return 0; \
 	} \
