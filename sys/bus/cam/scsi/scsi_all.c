@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.23 2007/11/28 20:55:37 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.24 2007/11/28 21:45:02 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -2108,9 +2108,7 @@ scsi_sense_sbuf(struct cam_device *device, struct ccb_scsiio *csio,
 
 	}
 	default:
-		sbuf_printf(sb, "error code %d",
-			    sense->error_code & SSD_ERRCODE);
-
+		sbuf_printf(sb, "Sense Error Code 0x%x", sense->error_code);
 		if (sense->error_code & SSD_ERRCODE_VALID) {
 			sbuf_printf(sb, " at block no. %d (decimal)",
 				    info = scsi_4btoul(sense->info));
