@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.c,v 1.21.2.13 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.6 2007/11/24 01:38:46 pavalos Exp $
+ * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.7 2007/11/28 21:12:11 pavalos Exp $
  */
 
 #include <sys/ioctl.h>
@@ -296,8 +296,11 @@ getdevtree(void)
 		return(1);
 	}
 
-	bzero(&(&ccb.ccb_h)[1],
-	      sizeof(struct ccb_dev_match) - sizeof(struct ccb_hdr));
+	bzero(&ccb, sizeof(union ccb));
+
+	ccb.ccb_h.path_id = CAM_XPT_PATH_ID;
+	ccb.ccb_h.target_id = CAM_TARGET_WILDCARD;
+	ccb.ccb_h.target_lun = CAM_LUN_WILDCARD;
 
 	ccb.ccb_h.func_code = XPT_DEV_MATCH;
 	bufsize = sizeof(struct dev_match_result) * 100;
@@ -3370,6 +3373,11 @@ main(int argc, char **argv)
 				errx(1, "numeric device specification must "
 				     "be either bus:target, or "
 				     "bus:target:lun");
+			/* default to 0 if lun was not specified */
+			if ((arglist & CAM_ARG_LUN) == 0) {
+				lun = 0;
+				arglist |= CAM_ARG_LUN;
+			}
 			optstart++;
 		} else {
 			if (cam_get_device(argv[2], name, sizeof name, &unit)
