@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.22 2007/11/25 17:09:06 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.23 2007/11/28 20:55:37 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1400,7 +1400,7 @@ static struct asc_table_entry asc_table[] = {
 			"End of user area encountered on this track") },
 /*      R       */{SST(0x63, 0x01, SS_FATAL|ENOSPC,
 			"Packet does not fit in available space") },
-/*      R       */{SST(0x64, 0x00, SS_RDEF,
+/*      R       */{SST(0x64, 0x00, SS_FATAL|ENXIO,
 			"Illegal mode for this track") },
 /*      R       */{SST(0x64, 0x01, SS_RDEF,
 			"Invalid packet size") },
