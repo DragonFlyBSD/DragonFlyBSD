@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.7 2007/06/08 13:52:09 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.8 2007/11/28 11:35:40 sephe Exp $
  */
 
 #include "opt_pci.h"
@@ -170,6 +170,30 @@ pcib_attach_common(device_t dev)
 	device_printf(dev, "  prefetched decode 0x%x-0x%x\n", sc->pmembase, sc->pmemlimit);
 	if (sc->flags & PCIB_SUBTRACTIVE)
 	    device_printf(dev, "  Subtractively decoded bridge.\n");
+    }
+
+    if (pci_is_pcie(dev) && pcie_slot_implemented(dev)) {
+	uint16_t slot_ctrl;
+	uint8_t ptr;
+
+	/*
+	 * XXX
+	 * Before proper PCI Express hot-plug support is in place,
+	 * disable all hot-plug interrupts on the PCI Express root
+	 * port or down stream port for now.
+	 */
+#define HPINTRS	(PCIEM_SLTCTL_HPINTR_MASK | PCIEM_SLTCTL_HPINTR_EN)
+
+	ptr = pci_get_pciecap_ptr(dev);
+	slot_ctrl = pci_read_config(dev, ptr + PCIER_SLOTCTRL, 2);
+	if (slot_ctrl & HPINTRS) {
+	    device_printf(dev, "Disable PCI Express hot-plug "
+	    		  "interrupts(0x%04x)\n", slot_ctrl & HPINTRS);
+	    slot_ctrl &= ~HPINTRS;
+	    pci_write_config(dev, ptr + PCIER_SLOTCTRL, slot_ctrl, 2);
+	}
+
+#undef HPINTRS
     }
 
     /*

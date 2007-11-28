@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.49 2007/11/25 10:31:40 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.50 2007/11/28 11:35:40 sephe Exp $
  *
  */
 
@@ -66,6 +66,7 @@ devclass_t	pci_devclass;
 const char	*pcib_owner;
 
 static void		pci_read_capabilities(device_t dev, pcicfgregs *cfg);
+static int		pcie_slotimpl(const pcicfgregs *);
 
 struct pci_quirk {
 	u_int32_t devid;	/* Vendor/device of the card */
@@ -125,6 +126,14 @@ pci_find_device(u_int16_t vendor, u_int16_t device)
 	}
 
 	return (NULL);
+}
+
+int
+pcie_slot_implemented(device_t dev)
+{
+	struct pci_devinfo *dinfo = device_get_ivars(dev);
+
+	return pcie_slotimpl(&dinfo->cfg);
 }
 
 /* return base address of memory or port map */
@@ -485,6 +494,38 @@ pci_read_cap_pmgt(device_t pcib, int ptr, pcicfgregs *cfg)
 #undef REG
 }
 
+static int
+pcie_slotimpl(const pcicfgregs *cfg)
+{
+	const struct pcicfg_expr *expr = &cfg->expr;
+	uint16_t port_type;
+
+	/*
+	 * Only version 1 can be parsed currently 
+	 */
+	if ((expr->expr_cap & PCIEM_CAP_VER_MASK) != PCIEM_CAP_VER_1)
+		return 0;
+
+	/*
+	 * - Slot implemented bit is meaningful iff current port is
+	 *   root port or down stream port.
+	 * - Testing for root port or down stream port is meanningful
+	 *   iff PCI configure has type 1 header.
+	 */
+
+	if (cfg->hdrtype != 1)
+		return 0;
+
+	port_type = expr->expr_cap & PCIEM_CAP_PORT_TYPE;
+	if (port_type != PCIE_ROOT_PORT && port_type != PCIE_DOWN_STREAM_PORT)
+		return 0;
+
+	if (!(expr->expr_cap & PCIEM_CAP_SLOT_IMPL))
+		return 0;
+
+	return 1;
+}
+
 static void
 pci_read_cap_expr(device_t pcib, int ptr, pcicfgregs *cfg)
 {
@@ -492,7 +533,6 @@ pci_read_cap_expr(device_t pcib, int ptr, pcicfgregs *cfg)
 	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
 
 	struct pcicfg_expr *expr = &cfg->expr;
-	uint16_t port_type;
 
 	expr->expr_ptr = ptr;
 	expr->expr_cap = REG(ptr + PCIER_CAPABILITY, 2);
@@ -504,28 +544,11 @@ pci_read_cap_expr(device_t pcib, int ptr, pcicfgregs *cfg)
 		return;
 
 	/*
-	 * Read slot capabilities
-	 *
-	 * Slot capabilities exists iff current port is root port or
-	 * down stream port, and the slot is implemented.
-	 *
-	 * - Testing for root port or down stream port is meanningful
-	 *   iff PCI configure has type 1 header.
-	 * - Slot implemented bit is meaningful iff current port is
-	 *   root port or down stream port.
+	 * Read slot capabilities.  Slot capabilities exists iff
+	 * current port's slot is implemented
 	 */
-	if (cfg->hdrtype != 1)
-		return;
-
-	port_type = expr->expr_cap & PCIEM_CAP_PORT_TYPE;
-	if (port_type != PCIEM_ROOT_PORT &&
-	    port_type != PCIEM_DOWN_STREAM_PORT)
-		return;
-
-	if (!(expr->expr_cap & PCIEM_CAP_SLOT_IMPL))
-		return;
-
-	expr->expr_slotcap = REG(ptr + PCIER_SLOTCAP, 4);
+	if (pcie_slotimpl(cfg))
+		expr->expr_slotcap = REG(ptr + PCIER_SLOTCAP, 4);
 
 #undef REG
 }
@@ -1360,41 +1383,39 @@ pci_print_verbose_expr(const pcicfgregs *cfg)
 	port_type = expr->expr_cap & PCIEM_CAP_PORT_TYPE;
 
 	switch (port_type) {
-	case PCIEM_END_POINT:
+	case PCIE_END_POINT:
 		port_name = "DEVICE";
 		break;
-	case PCIEM_LEG_END_POINT:
+	case PCIE_LEG_END_POINT:
 		port_name = "LEGDEV";
 		break;
-	case PCIEM_ROOT_PORT:
+	case PCIE_ROOT_PORT:
 		port_name = "ROOT";
 		break;
-	case PCIEM_UP_STREAM_PORT:
+	case PCIE_UP_STREAM_PORT:
 		port_name = "UPSTREAM";
 		break;
-	case PCIEM_DOWN_STREAM_PORT:
+	case PCIE_DOWN_STREAM_PORT:
 		port_name = "DOWNSTRM";
 		break;
-	case PCIEM_PCIE2PCI_BRIDGE:
+	case PCIE_PCIE2PCI_BRIDGE:
 		port_name = "PCIE2PCI";
 		break;
-	case PCIEM_PCI2PCIE_BRIDGE:
+	case PCIE_PCI2PCIE_BRIDGE:
 		port_name = "PCI2PCIE";
 		break;
 	default:
 		port_name = NULL;
 		break;
 	}
-	if ((port_type == PCIEM_ROOT_PORT ||
-	     port_type == PCIEM_DOWN_STREAM_PORT) &&
+	if ((port_type == PCIE_ROOT_PORT ||
+	     port_type == PCIE_DOWN_STREAM_PORT) &&
 	    !(expr->expr_cap & PCIEM_CAP_SLOT_IMPL))
 		port_name = NULL;
 	if (port_name != NULL)
 		kprintf("[%s]", port_name);
 
-	if ((port_type == PCIEM_ROOT_PORT ||
-	     port_type == PCIEM_DOWN_STREAM_PORT) &&
-	    (expr->expr_cap & PCIEM_CAP_SLOT_IMPL)) {
+	if (pcie_slotimpl(cfg)) {
 		kprintf(", slotcap=0x%08x", expr->expr_slotcap);
 		if (expr->expr_slotcap & PCIEM_SLTCAP_HP_CAP)
 			kprintf("[HOTPLUG]");
