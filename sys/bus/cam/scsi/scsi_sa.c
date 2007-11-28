@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.28 2007/11/26 00:40:08 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.29 2007/11/28 20:56:55 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -2422,7 +2422,7 @@ saerror(union ccb *ccb, u_int32_t cflgs, u_int32_t sflgs)
 			 * Grotesque as it seems, the few times
 			 * I've actually seen a non-zero resid,
 			 * the tape drive actually lied and had
-			 * writtent all the data!.
+			 * written all the data!.
 			 */
 			csio->resid = 0;
 		}
