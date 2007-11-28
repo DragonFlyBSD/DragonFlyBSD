@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.45 2007/11/28 21:29:18 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.46 2007/11/28 22:11:02 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -570,7 +570,6 @@ static struct xpt_softc xsoftc;
 /* Queues for our software interrupt handler */
 typedef TAILQ_HEAD(cam_isrq, ccb_hdr) cam_isrq_t;
 static cam_isrq_t cam_bioq;
-static cam_isrq_t cam_netq;
 
 /* "Pool" of inactive ccbs managed by xpt_alloc_ccb and xpt_free_ccb */
 static SLIST_HEAD(,ccb_hdr) ccb_freeq;
@@ -720,7 +719,6 @@ static xpt_devicefunc_t xptpassannouncefunc;
 static void	 xpt_finishconfig(struct cam_periph *periph, union ccb *ccb);
 static void	 xptaction(struct cam_sim *sim, union ccb *work_ccb);
 static void	 xptpoll(struct cam_sim *sim);
-static inthand2_t swi_camnet;
 static inthand2_t swi_cambio;
 static void	 camisr(cam_isrq_t *queue);
 #if 0
@@ -1336,7 +1334,6 @@ xpt_init(void *dummy)
 
 	TAILQ_INIT(&xpt_busses);
 	TAILQ_INIT(&cam_bioq);
-	TAILQ_INIT(&cam_netq);
 	SLIST_INIT(&ccb_freeq);
 	STAILQ_INIT(&highpowerq);
 
@@ -1394,7 +1391,6 @@ xpt_init(void *dummy)
 	}
 
 	/* Install our software interrupt handlers */
-	register_swi(SWI_CAMNET, swi_camnet, NULL, "swi_camnet", NULL);
 	register_swi(SWI_CAMBIO, swi_cambio, NULL, "swi_cambio", NULL);
 }
 
@@ -3500,7 +3496,6 @@ xpt_polled_action(union ccb *start_ccb)
 	   && (--timeout > 0)) {
 		DELAY(1000);
 		(*(sim->sim_poll))(sim);
-		swi_camnet(NULL, NULL);
 		swi_cambio(NULL, NULL);		
 	}
 	
@@ -3511,7 +3506,6 @@ xpt_polled_action(union ccb *start_ccb)
 		xpt_action(start_ccb);
 		while(--timeout > 0) {
 			(*(sim->sim_poll))(sim);
-			swi_camnet(NULL, NULL);
 			swi_cambio(NULL, NULL);
 			if ((start_ccb->ccb_h.status  & CAM_STATUS_MASK)
 			    != CAM_REQ_INPROG)
@@ -4245,7 +4239,6 @@ xpt_bus_deregister(path_id_t pathid)
 	xpt_async(AC_PATH_DEREGISTERED, &bus_path, NULL);
 
 	/* make sure all responses have been processed */
-	camisr(&cam_netq);
 	camisr(&cam_bioq);
 	
 	/* Release the reference count held while registered. */
@@ -4673,12 +4666,9 @@ xpt_done(union ccb *done_ccb)
 			done_ccb->ccb_h.pinfo.index = CAM_DONEQ_INDEX;
 			setsoftcambio();
 			break;
-		case CAM_PERIPH_NET:
-			TAILQ_INSERT_TAIL(&cam_netq, &done_ccb->ccb_h,
-					  sim_links.tqe);
-			done_ccb->ccb_h.pinfo.index = CAM_DONEQ_INDEX;
-			setsoftcamnet();
-			break;
+		default:
+			panic("unknown periph type %d",
+				done_ccb->ccb_h.path->periph->type);
 		}
 	}
 	crit_exit();
@@ -6770,12 +6760,6 @@ xptpoll(struct cam_sim *sim)
  * Should only be called by the machine interrupt dispatch routines,
  * so put these prototypes here instead of in the header.
  */
-
-static void
-swi_camnet(void *arg, void *frame)
-{
-	camisr(&cam_netq);
-}
 
 static void
 swi_cambio(void *arg, void *frame)
