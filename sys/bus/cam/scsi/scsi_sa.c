@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.30 2007/11/29 02:56:42 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.31 2007/11/29 03:31:15 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -827,10 +827,29 @@ saioctl(struct dev_ioctl_args *ap)
 			crit_exit();
 			break;
 
+		case MTIOCTOP:
+		{
+			struct mtop *mt = (struct mtop *) addr;
+
+			/*
+			 * Check to make sure it's an OP we can perform
+			 * with no media inserted.
+			 */
+			switch (mt->mt_op) {
+			case MTSETBSIZ:
+			case MTSETDNSTY:
+			case MTCOMP:
+				mt = NULL;
+				/* FALLTHROUGH */
+			default:
+				break;
+			}
+			if (mt != NULL) {
+				break;
+			}
+			/* FALLTHROUGH */
+		}
 		case MTIOCSETEOTMODEL:
-		case MTSETBSIZ:
-		case MTSETDNSTY:
-		case MTCOMP:
 			/*
 			 * We need to acquire the peripheral here rather
 			 * than at open time because we are sharing writable
