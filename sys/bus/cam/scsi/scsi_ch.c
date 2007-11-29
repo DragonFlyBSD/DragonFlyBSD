@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.25 2007/11/25 17:59:22 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.26 2007/11/29 01:48:15 pavalos Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -1164,6 +1164,8 @@ chgetelemstatus(struct cam_periph *periph,
 	 * Fill in the user status array.
 	 */
 	st_hdr = (struct read_element_status_header *)data;
+	pg_hdr = (struct read_element_status_page_header *)((uintptr_t)st_hdr +
+		  sizeof(struct read_element_status_header));
 	avail = scsi_2btoul(st_hdr->count);
 
 	if (avail != cesr->cesr_element_count) {
