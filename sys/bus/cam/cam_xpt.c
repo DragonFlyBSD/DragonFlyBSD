@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.52 2007/11/29 03:40:09 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.53 2007/11/29 03:57:25 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -4931,6 +4931,8 @@ xpt_release_device(struct cam_eb *bus, struct cam_et *target,
 		/* Release our slot in the devq */
 		devq = bus->sim->devq;
 		cam_devq_resize(devq, devq->alloc_queue.array_size - 1);
+		camq_fini(&device->drvq);
+		camq_fini(&device->ccbq.queue);
 		xpt_release_target(bus, target);
 		KKASSERT(device->refcount == 1);
 		kfree(device, M_DEVBUF);
