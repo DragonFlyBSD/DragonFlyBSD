@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.49 2007/11/28 22:37:05 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.50 2007/11/29 01:32:16 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -150,6 +150,7 @@ struct cam_ed {
 #define CAM_DEV_INQUIRY_DATA_VALID	0x40
 	u_int32_t	 tag_delay_count;
 #define	CAM_TAG_DELAY_COUNT		5
+	u_int32_t	 tag_saved_openings;
 	u_int32_t	 refcount;
 	struct		 callout c_handle;
 };
@@ -4859,6 +4860,7 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 		device->qfrozen_cnt = 0;
 		device->flags = CAM_DEV_UNCONFIGURED;
 		device->tag_delay_count = 0;
+		device->tag_saved_openings = 0;
 		device->refcount = 1;
 		callout_init(&device->c_handle);
 
@@ -4954,6 +4956,9 @@ xpt_dev_ccbq_resize(struct cam_path *path, int newopenings)
 	if (result == CAM_REQ_CMP && (diff < 0)) {
 		dev->flags |= CAM_DEV_RESIZE_QUEUE_NEEDED;
 	}
+	if ((dev->flags & CAM_DEV_TAG_AFTER_COUNT) != 0
+	 || (dev->inq_flags & SID_CmdQue) != 0)
+		dev->tag_saved_openings = newopenings;
 	/* Adjust the global limit */
 	xpt_max_ccbs += diff;
 	crit_exit();
@@ -5848,7 +5853,8 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 			done_ccb->ccb_h.func_code = XPT_GDEV_TYPE;
 			xpt_action(done_ccb);
 
-			xpt_async(AC_FOUND_DEVICE, xpt_periph->path, done_ccb);
+			xpt_async(AC_FOUND_DEVICE, done_ccb->ccb_h.path,
+				  done_ccb);
 		}
 		xpt_release_ccb(done_ccb);
 		break;
@@ -6512,7 +6518,11 @@ xpt_start_tags(struct cam_path *path)
 	device->flags &= ~CAM_DEV_TAG_AFTER_COUNT;
 	xpt_freeze_devq(path, /*count*/1);
 	device->inq_flags |= SID_CmdQue;
-	newopenings = min(device->quirk->maxtags, sim->max_tagged_dev_openings);
+	if (device->tag_saved_openings != 0)
+		newopenings = device->tag_saved_openings;
+	else
+		newopenings = min(device->quirk->maxtags,
+				  sim->max_tagged_dev_openings);
 	xpt_dev_ccbq_resize(path, newopenings);
 	xpt_setup_ccb(&crs.ccb_h, path, /*priority*/1);
 	crs.ccb_h.func_code = XPT_REL_SIMQ;
@@ -6690,6 +6700,7 @@ xpt_finishconfig(struct cam_periph *periph, union ccb *done_ccb)
 			if (done_ccb->ccb_h.status == CAM_REQ_CMP) {
 				done_ccb->ccb_h.func_code = XPT_SCAN_BUS;
 				done_ccb->ccb_h.cbfcnp = xpt_finishconfig;
+				done_ccb->crcn.flags = 0;
 				xpt_action(done_ccb);
 				return;
 			}
