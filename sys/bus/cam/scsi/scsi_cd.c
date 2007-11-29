@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.40 2007/11/25 04:42:38 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.41 2007/11/29 02:32:43 pavalos Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -1951,10 +1951,16 @@ cdioctl(struct dev_ioctl_args *ap)
 	/*
 	 * If we don't have media loaded, check for it.  If still don't
 	 * have media loaded, we can only do a load or eject.
+	 *
+	 * We only care whether media is loaded if this is a cd-specific ioctl
+	 * (thus the IOCGROUP check below).  Note that this will break if
+	 * anyone adds any ioctls into the switch statement below that don't
+	 * have their ioctl group set to 'c'.
 	 */
 	if (((softc->flags & CD_FLAG_VALID_MEDIA) == 0)
 	    && ((ap->a_cmd != CDIOCCLOSE)
-	    && (ap->a_cmd != CDIOCEJECT))) {
+	    && (ap->a_cmd != CDIOCEJECT))
+	    && (IOCGROUP(ap->a_cmd) == 'c')) {
 		error = cdcheckmedia(periph);
 		if (error != 0) {
 			cam_periph_unlock(periph);
