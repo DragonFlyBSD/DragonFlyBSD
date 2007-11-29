@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.40 2007/07/13 16:28:12 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.12 2007/09/12 08:31:43 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.13 2007/11/29 09:28:38 hasso Exp $
  */
 
 /*
@@ -132,12 +132,16 @@ static const struct agp_i810_match {
 	    "Intel 82815 (i815 GMCH) SVGA controller"},
 	{0x35778086, CHIP_I830, 0x00020000,
 	    "Intel 82830M (830M GMCH) SVGA controller"},
+	{0x25628086, CHIP_I830, 0x00020000,
+	    "Intel 82845M (845M GMCH) SVGA controller"},
 	{0x35828086, CHIP_I855, 0x00020000,
 	    "Intel 82852/5"},
 	{0x25728086, CHIP_I855, 0x00020000,
 	    "Intel 82865G (865G GMCH) SVGA controller"},
 	{0x25828086, CHIP_I915, 0x00020000,
 	    "Intel 82915G (915G GMCH) SVGA controller"},
+	{0x258A8086, CHIP_I915, 0x00020000,
+	    "Intel E7221 SVGA controller"},
 	{0x25928086, CHIP_I915, 0x00020000,
 	    "Intel 82915GM (915GM GMCH) SVGA controller"},
 	{0x27728086, CHIP_I915, 0x00020000,
