@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.51 2007/11/29 02:41:21 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.52 2007/11/29 03:40:09 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -5184,7 +5184,6 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 			struct cam_path *path;
 			cam_status status;
 
-			path = request_ccb->ccb_h.path;
 			status = xpt_create_path(&path, xpt_periph,
 						 path_id, target_id, lun_id);
 			if (status != CAM_REQ_CMP) {
