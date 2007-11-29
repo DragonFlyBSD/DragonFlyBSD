@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 1998, 1999, 2000, 2002 Kenneth D. Merry.
+.\" Copyright (c) 1998, 1999, 2000, 2002, 2005 Kenneth D. Merry.
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/camcontrol/camcontrol.8,v 1.19.2.12 2003/01/08 17:55:02 njl Exp $
-.\" $DragonFly: src/sbin/camcontrol/camcontrol.8,v 1.6 2007/11/24 19:22:51 pavalos Exp $
+.\" $DragonFly: src/sbin/camcontrol/camcontrol.8,v 1.7 2007/11/29 01:57:29 pavalos Exp $
 .\"
 .Dd September 14, 1998
 .Dt CAMCONTROL 8
@@ -139,6 +139,7 @@
 .Op device id
 .Op generic args
 .Op Fl q
+.Op Fl r
 .Op Fl w
 .Op Fl y
 .Nm
@@ -586,6 +587,11 @@ Be quiet, don't print any status messages.  This option will not disable
 the questions, however.  To disable questions, use the
 .Fl y
 argument, below.
+.It Fl r
+Run in
+.Dq report only
+mode.
+This will report status on a format that is already running on the drive.
 .It Fl w
 Issue a non-immediate format command.  By default,
 .Nm
