@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.24 2007/11/28 21:45:02 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.25 2007/11/29 03:10:24 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -2314,6 +2314,15 @@ scsi_calc_syncsrate(u_int period_factor)
 {
 	int i;
 	int num_syncrates;
+
+	/*
+	 * It's a bug if period is zero, but if it is anyway, don't
+	 * die with a divide fault- instead return something which
+	 * 'approximates' async
+	 */
+	if (period_factor == 0) {
+		return (3300);
+	}
 
 	num_syncrates = sizeof(scsi_syncrates) / sizeof(scsi_syncrates[0]);
 	/* See if the period is in the "exception" table */
