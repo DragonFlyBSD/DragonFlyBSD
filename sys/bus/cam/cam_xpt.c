@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.50 2007/11/29 01:32:16 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.51 2007/11/29 02:41:21 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -5200,8 +5200,8 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 					kfree(scan_info, M_TEMP);
 					request_ccb->ccb_h.status = CAM_REQ_CMP;
 					xpt_done(request_ccb);
-					break;
 				}
+				break;
 			}
 			xpt_setup_ccb(&request_ccb->ccb_h, path,
 				      request_ccb->ccb_h.pinfo.priority);
