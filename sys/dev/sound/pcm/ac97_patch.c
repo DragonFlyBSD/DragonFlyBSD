@@ -22,15 +22,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3.2.3 2007/06/08 17:33:38 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.5 2007/06/16 19:48:05 hasso Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3.2.4 2007/07/04 04:04:42 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.6 2007/11/30 07:38:39 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pcm/ac97_patch.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.5 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.6 2007/11/30 07:38:39 hasso Exp $");
 
 void ad1886_patch(struct ac97_info* codec)
 {
@@ -46,7 +46,13 @@ void ad1886_patch(struct ac97_info* codec)
 
 void ad198x_patch(struct ac97_info* codec)
 {
-	ac97_wrcd(codec, 0x76, ac97_rdcd(codec, 0x76) | 0x0420);
+	switch (ac97_getsubvendor(codec)) {
+	case 0x11931043:	/* Not for ASUS A9T (probably else too). */
+		break;
+	default:
+		ac97_wrcd(codec, 0x76, ac97_rdcd(codec, 0x76) | 0x0420);
+		break;
+	}
 }
 
 void ad1981b_patch(struct ac97_info* codec)
