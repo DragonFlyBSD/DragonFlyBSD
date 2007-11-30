@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.6.2.1 2007/05/13 21:09:24 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.4 2007/06/16 20:07:21 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.6.2.2 2007/07/04 04:05:22 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/hda/hdac_private.h,v 1.5 2007/11/30 07:41:28 hasso Exp $
  */
 
 #ifndef _HDAC_PRIVATE_H_
@@ -327,6 +327,8 @@ struct hdac_softc {
 	struct callout		poll_hda;
 	struct callout		poll_hdac;
 	struct callout		poll_jack;
+
+	struct task		unsolq_task;
 
 #define HDAC_UNSOLQ_MAX		64
 #define HDAC_UNSOLQ_READY	0
