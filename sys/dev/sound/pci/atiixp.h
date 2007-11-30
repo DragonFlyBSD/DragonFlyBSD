@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/atiixp.h,v 1.1.2.2 2006/03/02 00:09:30 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/atiixp.h,v 1.1 2007/01/04 21:47:02 corecode Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/atiixp.h,v 1.1.2.3 2007/11/06 02:08:25 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/atiixp.h,v 1.2 2007/11/30 08:01:43 hasso Exp $
  */
 
 #ifndef _ATIIXP_H_
@@ -53,6 +53,7 @@
 #define ATI_IXP_200_ID		0x4341
 #define ATI_IXP_300_ID		0x4361
 #define ATI_IXP_400_ID		0x4370
+#define ATI_IXP_SB600_ID	0x4384
 
 #define ATI_IXP_BASE_RATE	48000
 

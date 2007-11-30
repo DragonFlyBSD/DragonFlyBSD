@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/atiixp.c,v 1.2.2.7 2007/04/26 08:21:44 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.5 2007/06/16 20:07:19 dillon Exp $
+ * $FreeBSD: src/sys/dev/sound/pci/atiixp.c,v 1.2.2.8 2007/11/06 02:08:25 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.6 2007/11/30 08:01:43 hasso Exp $
  */
 
 /*
@@ -66,7 +66,7 @@
 
 #include <dev/sound/pci/atiixp.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.5 2007/06/16 20:07:19 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.6 2007/11/30 08:01:43 hasso Exp $");
 
 struct atiixp_dma_op {
 	volatile uint32_t addr;
@@ -157,6 +157,7 @@ static const struct {
 	{ ATI_VENDOR_ID, ATI_IXP_200_ID, "ATI IXP 200" },
 	{ ATI_VENDOR_ID, ATI_IXP_300_ID, "ATI IXP 300" },
 	{ ATI_VENDOR_ID, ATI_IXP_400_ID, "ATI IXP 400" },
+	{ ATI_VENDOR_ID, ATI_IXP_SB600_ID, "ATI IXP SB600" },
 };
 
 static void atiixp_enable_interrupts(struct atiixp_info *);
