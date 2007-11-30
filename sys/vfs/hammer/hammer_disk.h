@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.10 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.11 2007/11/30 00:16:56 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -546,6 +546,8 @@ typedef union hammer_record_ondisk *hammer_record_ondisk_t;
 #define HAMMER_RECORD_NODES	\
 	((HAMMER_BUFSIZE - sizeof(struct hammer_fsbuf_head) - 32) / \
 	sizeof(union hammer_record_ondisk))
+
+#define HAMMER_RECORD_SIZE	(64+32)
 
 struct hammer_fsbuf_recs {
 	struct hammer_fsbuf_head	head;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.9 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.10 2007/11/30 00:16:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -326,10 +326,11 @@ hammer_update_inode(hammer_inode_t ip)
 
 	/*
 	 * Locate the record on-disk and mark it as deleted.  Both the B-Tree
-	 * node and the record must be marked deleted.  Adjusting delete_tid
-	 * does not effect the element position in the B-Tree.
+	 * node and the record must be marked deleted.  The record may or
+	 * may not be physically deleted, depending on the retention policy.
 	 *
-	 * If the inode is already deleted on-disk we have nothing to do.
+	 * If the inode has already been deleted on-disk we have nothing
+	 * to do.
 	 *
 	 * XXX Update the inode record and data in-place if the retention
 	 * policy allows it.
@@ -350,11 +351,9 @@ hammer_update_inode(hammer_inode_t ip)
 		error = hammer_btree_lookup(&cursor);
 
 		if (error == 0) {
-			cursor.record->base.base.delete_tid = ip->last_tid;
-			cursor.node->ondisk->elms[cursor.index].leaf.base.delete_tid = ip->last_tid;
-			hammer_modify_buffer(cursor.record_buffer);
-			hammer_modify_node(cursor.node);
-			ip->flags |= HAMMER_INODE_DELONDISK;
+			error = hammer_ip_delete_record(&cursor, ip->last_tid);
+			if (error == 0)
+				ip->flags |= HAMMER_INODE_DELONDISK;
 		}
 		hammer_cache_node(cursor.node, &ip->cache);
 		hammer_done_cursor(&cursor);

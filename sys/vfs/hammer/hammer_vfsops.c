@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.7 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.8 2007/11/30 00:16:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -103,19 +103,41 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	/*
 	 * Interal mount data structure
 	 */
-	hmp = kmalloc(sizeof(*hmp), M_HAMMER, M_WAITOK | M_ZERO);
-	mp->mnt_data = (qaddr_t)hmp;
-	hmp->mp = mp;
+	if (mp->mnt_flag & MNT_UPDATE) {
+		hmp = (void *)mp->mnt_data;
+		KKASSERT(hmp != NULL);
+	} else {
+		hmp = kmalloc(sizeof(*hmp), M_HAMMER, M_WAITOK | M_ZERO);
+		mp->mnt_data = (qaddr_t)hmp;
+		hmp->mp = mp;
+		hmp->zbuf = kmalloc(HAMMER_BUFSIZE, M_HAMMER, M_WAITOK|M_ZERO);
+		hmp->namekey_iterator = mycpu->gd_time_seconds;
+	}
+	hmp->hflags = info.hflags;
 	if (info.asof) {
 		mp->mnt_flag |= MNT_RDONLY;
 		hmp->asof = info.asof;
 	} else {
 		hmp->asof = HAMMER_MAX_TID;
 	}
-	hmp->zbuf = kmalloc(HAMMER_BUFSIZE, M_HAMMER, M_WAITOK | M_ZERO);
-	hmp->namekey_iterator = mycpu->gd_time_seconds;
+
+	/*
+	 * Re-open read-write if originally read-only, or vise-versa XXX
+	 */
+	if (mp->mnt_flag & MNT_UPDATE) {
+		if (hmp->ronly == 0 && (mp->mnt_flag & MNT_RDONLY)) {
+			kprintf("HAMMER read-write -> read-only XXX\n");
+			hmp->ronly = 1;
+		} else if (hmp->ronly && (mp->mnt_flag & MNT_RDONLY) == 0) {
+			kprintf("HAMMER read-only -> read-write XXX\n");
+			hmp->ronly = 0;
+		}
+		return(0);
+	}
+
 	RB_INIT(&hmp->rb_vols_root);
 	RB_INIT(&hmp->rb_inos_root);
+	hmp->ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 
 	/*
 	 * Load volumes

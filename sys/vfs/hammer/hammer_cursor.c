@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.4 2007/11/26 21:38:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.5 2007/11/30 00:16:56 dillon Exp $
  */
 
 /*
@@ -130,6 +130,63 @@ hammer_done_cursor(hammer_cursor_t cursor)
 	cursor->record = NULL;
 	cursor->left_bound = NULL;
 	cursor->right_bound = NULL;
+}
+
+/*
+ * Acquire the parent B-Tree node of the specified node, returning a
+ * referenced but unlocked node.  NULL can be returned with *errorp == 0
+ * if node is the root node of the root cluster.
+ */
+static
+hammer_node_t
+hammer_get_parent_node(hammer_node_t node, int *errorp)
+{
+	hammer_cluster_t cluster;
+	hammer_node_t parent;
+
+	cluster = node->cluster;
+	if (node->ondisk->parent) {
+		/*
+		 * Local parent
+		 */
+		parent = hammer_get_node(cluster, node->ondisk->parent, errorp);
+	} else if (cluster->ondisk->clu_btree_parent_vol_no >= 0) {
+		/*
+		 * At cluster root, locate node in parent cluster
+		 */
+		hammer_cluster_ondisk_t ondisk;
+		hammer_cluster_t pcluster;
+		hammer_volume_t pvolume;
+		int32_t clu_no;
+		int32_t vol_no;
+
+		ondisk = cluster->ondisk;
+		vol_no = ondisk->clu_btree_parent_vol_no;
+		clu_no = ondisk->clu_btree_parent_clu_no;
+
+		/*
+		 * Acquire the node from (volume, cluster, offset)
+		 */
+		pvolume = hammer_get_volume(cluster->volume->hmp, vol_no,
+					    errorp);
+		if (*errorp)
+			return (NULL);
+		pcluster = hammer_get_cluster(pvolume, clu_no, errorp, 0);
+		hammer_rel_volume(pvolume, 0);
+		if (*errorp)
+			return (NULL);
+		parent = hammer_get_node(pcluster,
+					 ondisk->clu_btree_parent_offset,
+					 errorp);
+		hammer_rel_cluster(pcluster, 0);
+	} else {
+		/*
+		 * At root of root cluster, there is no parent.
+		 */
+		parent = NULL;
+		*errorp = 0;
+	}
+	return(parent);
 }
 
 /*
@@ -266,15 +323,36 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	return(0);
 }
 
-
 /*
  * Cursor up to our parent node.  Return ENOENT if we are at the root of
  * the root cluster.
+ *
+ * If doing a nonblocking cursor-up and we are unable to acquire the lock,
+ * the cursor remains unchanged.
  */
 int
-hammer_cursor_up(hammer_cursor_t cursor)
+hammer_cursor_up(hammer_cursor_t cursor, int nonblock)
 {
+	hammer_node_t save;
 	int error;
+
+	/*
+	 * If asked to do this non-blocking acquire a lock on the parent
+	 * now, before we mess with the cursor.
+	 */
+	if (nonblock) {
+		save = hammer_get_parent_node(cursor->parent, &error);
+		if (error)
+			return(error);
+		if (save) {
+			if (hammer_lock_ex_try(&save->lock) != 0) {
+				hammer_rel_node(save);
+				return(EAGAIN);
+			}
+		}
+	} else {
+		save = NULL;
+	}
 
 	/*
 	 * Set the node to its parent.  If the parent is NULL we are at
@@ -291,6 +369,10 @@ hammer_cursor_up(hammer_cursor_t cursor)
 		error = ENOENT;
 	} else {
 		error = hammer_load_cursor_parent(cursor);
+	}
+	if (save) {
+		hammer_unlock(&save->lock);
+		hammer_rel_node(save);
 	}
 	return(error);
 }
@@ -314,7 +396,7 @@ hammer_cursor_toroot(hammer_cursor_t cursor)
 	 * Parent is root of cluster?
 	 */
 	if (cursor->parent->ondisk->parent == 0)
-		return (hammer_cursor_up(cursor));
+		return (hammer_cursor_up(cursor, 0));
 
 	/*
 	 * Ok, reload the cursor with the root of the cluster, then

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.11 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.12 2007/11/30 00:16:56 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -375,6 +375,9 @@ struct hammer_mount {
 	struct hammer_volume *rootvol;
 	struct hammer_cluster *rootcl;
 	char *zbuf;	/* HAMMER_BUFSIZE bytes worth of all-zeros */
+	int	hflags;
+	int	ronly;
+	int	nvolumes;
 	uuid_t	fsid;
 	udev_t	fsid_udev;
 	hammer_tid_t asof;
@@ -418,12 +421,14 @@ int	hammer_ip_lookup(hammer_cursor_t cursor, hammer_inode_t ip);
 int	hammer_ip_first(hammer_cursor_t cursor, hammer_inode_t ip);
 int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
+int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid);
+
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip);
 void	hammer_rel_mem_record(struct hammer_record **recordp);
 void	hammer_free_mem_record(hammer_record_t record);
 
-int	hammer_cursor_up(hammer_cursor_t cursor);
+int	hammer_cursor_up(hammer_cursor_t cursor, int nonblock);
 int	hammer_cursor_toroot(hammer_cursor_t cursor);
 int	hammer_cursor_down(hammer_cursor_t cursor);
 
@@ -450,6 +455,7 @@ int64_t hammer_directory_namekey(void *name, int len);
 
 int	hammer_init_cursor_hmp(hammer_cursor_t cursor, hammer_mount_t hmp);
 int	hammer_init_cursor_ip(hammer_cursor_t cursor, hammer_inode_t ip);
+
 void	hammer_done_cursor(hammer_cursor_t cursor);
 void	hammer_mem_done(hammer_cursor_t cursor);
 
@@ -507,8 +513,6 @@ void *hammer_alloc_data(struct hammer_cluster *cluster, int32_t bytes,
 			int *errorp, struct hammer_buffer **bufferp);
 void *hammer_alloc_record(struct hammer_cluster *cluster,
 			int *errorp, struct hammer_buffer **bufferp);
-void hammer_free_btree_ptr(struct hammer_buffer *buffer,
-			hammer_node_ondisk_t node);
 void hammer_free_data_ptr(struct hammer_buffer *buffer, 
 			void *data, int bytes);
 void hammer_free_record_ptr(struct hammer_buffer *buffer,

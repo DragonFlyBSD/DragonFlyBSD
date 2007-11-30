@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.1 2007/10/10 19:35:19 dillon Exp $
+ * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.2 2007/11/30 00:16:54 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -52,10 +52,16 @@
 #include <uuid.h>
 #include <err.h>
 #include <assert.h>
+#include <ctype.h>
 
 #include "mntopts.h"
 
-static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_NULL };
+static void hammer_parsetime(u_int64_t *tidp, const char *timestr);
+
+#define MOPT_HAMMEROPTS		\
+	{ "history", 1, HMNT_NOHISTORY, 1 }
+
+static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS, MOPT_NULL };
 
 static void usage(void);
 
@@ -69,15 +75,18 @@ main(int ac, char **av)
 	int ch;
 	char *mountpt;
 
+	bzero(&info, sizeof(info));
+	info.asof = 0;
 	mount_flags = 0;
+	info.hflags = 0;
+
 	while ((ch = getopt(ac, av, "o:T:")) != -1) {
 		switch(ch) {
 		case 'T':
-			/* parse time */
-			errx(1, "-T option not currently supported");
+			hammer_parsetime(&info.asof, optarg);
 			break;
 		case 'o':
-			getmntopts(optarg, mopts, &mount_flags, 0);
+			getmntopts(optarg, mopts, &mount_flags, &info.hflags);
 			break;
 		default:
 			usage();
@@ -118,10 +127,79 @@ main(int ac, char **av)
 	exit(0);
 }
 
+/*
+ * Parse a timestamp for the mount point
+ *
+ * yyyymmddhhmmss
+ * -N[s/h/d/m/y]
+ */
+static
+void
+hammer_parsetime(u_int64_t *tidp, const char *timestr)
+{
+	struct tm tm;
+	time_t t;
+	int32_t n;
+	char c;
+	double seconds = 0;
+
+	t = time(NULL);
+
+	if (*timestr == 0)
+		usage();
+
+	if (isalpha(timestr[strlen(timestr)-1])) {
+		if (sscanf(timestr, "%d%c", &n, &c) != 2)
+			usage();
+		switch(c) {
+		case 'Y':
+			n *= 365;
+			goto days;
+		case 'M':
+			n *= 30;
+			/* fall through */
+		case 'D':
+		days:
+			n *= 24;
+			/* fall through */
+		case 'h':
+			n *= 60;
+			/* fall through */
+		case 'm':
+			n *= 60;
+			/* fall through */
+		case 's':
+			t -= n;
+			break;
+		default:
+			usage();
+		}
+	} else {
+		localtime_r(&t, &tm);
+		seconds = (double)tm.tm_sec;
+		tm.tm_year -= 1900;
+		tm.tm_mon -= 1;
+		n = sscanf(timestr, "%4d%2d%2d:%2d%2d%lf",
+			   &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+			   &tm.tm_hour, &tm.tm_min, &seconds);
+		tm.tm_mon += 1;
+		tm.tm_year += 19000;
+		tm.tm_sec = (int)seconds;
+		t = mktime(&tm);
+	}
+	localtime_r(&t, &tm);
+	printf("mount_hammer as-of %s", asctime(&tm));
+	*tidp = (u_int64_t)t * 1000000000 + 
+		(seconds - (int)seconds) * 1000000000;
+}
+
 static
 void
 usage(void)
 {
-	errx(1, "mount_hammer [-T time] [-o options] "
-		"volume [volume...] mount_pt");
+	fprintf(stderr, "mount_hammer [-T time] [-o options] "
+			"volume [volume...] mount_pt");
+	fprintf(stderr, "    time: +n[s/m/h/D/M/Y]\n"
+			"    time: yyyymmdd[:hhmmss]\n");
+	exit(1);
 }

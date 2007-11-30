@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.8 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.9 2007/11/30 00:16:56 dillon Exp $
  */
 
 /*
@@ -91,7 +91,7 @@
 static int btree_search(hammer_cursor_t cursor, int flags);
 static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
-static int btree_remove(hammer_node_t node, int index);
+static int btree_remove(hammer_cursor_t cursor);
 static int btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm);
 #if 0
 static int btree_rebalance(hammer_cursor_t cursor);
@@ -155,9 +155,12 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		 *
 		 * XXX this could be optimized by storing the information in
 		 * the parent reference.
+		 *
+		 * XXX we can lose the node lock temporarily, this could mess
+		 * up our scan.
 		 */
 		if (cursor->index == node->count) {
-			error = hammer_cursor_up(cursor);
+			error = hammer_cursor_up(cursor, 0);
 			if (error)
 				break;
 			node = cursor->node->ondisk;
@@ -430,14 +433,14 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
  * The cursor is positioned such that the current element is the one
  * to be deleted.
  *
- * The caller must call hammer_btree_lookup() with the HAMMER_CURSOR_DELETE
- * flag set and that call must return 0 before this function can be
- * called.
+ * On return the cursor will be positioned after the deleted element and
+ * MAY point to an internal node.  It will be suitable for the continuation
+ * of an iteration but not for an insertion or deletion.
  *
- * It is possible that we will be asked to delete the last element in a
- * leaf.  This case only occurs if the downward search was unable to
- * rebalance us, which in turn can occur if our parent has inter-cluster
- * elements.  So the 0-element case for a leaf is allowed.
+ * Deletions will attempt to partially rebalance the B-Tree in an upward
+ * direction.  It is possible to end up with empty leafs.  An empty internal
+ * node is impossible (worst case: it has one element pointing to an empty
+ * leaf).
  */
 int
 hammer_btree_delete(hammer_cursor_t cursor)
@@ -475,6 +478,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 		      (ondisk->count - i - 1) * sizeof(ondisk->elms[0]));
 	}
 	--ondisk->count;
+	hammer_modify_node(node);
 	if (cursor->parent != NULL) {
 		/*
 		 * Adjust parent's notion of the leaf's count.  subtree_count
@@ -491,26 +495,20 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	}
 
 	/*
-	 * If the leaf is empty try to remove the subtree reference
-	 * in at (parent, parent_index).  This will unbalance the
-	 * tree.
+	 * It is possible, but not desireable, to stop here.  If the element
+	 * count drops to 0 (which is allowed for a leaf), try recursively
+	 * remove the B-Tree node.
 	 *
-	 * Note that internal nodes must have at least one element
-	 * so their boundary information is properly laid out.  If
-	 * we would cause our parent to become empty we try to
-	 * recurse up the tree, but if that doesn't work we just
-	 * leave the tree with an empty leaf.
+	 * XXX rebalancing calls would go here too.
+	 *
+	 * This may reposition the cursor at one of the parent's of the
+	 * current node.
 	 */
 	if (ondisk->count == 0) {
-		error = btree_remove(cursor->parent, cursor->parent_index);
-		if (error == 0) {
-			hammer_free_btree(node->cluster, node->node_offset);
-		} else if (error == EAGAIN) {
-			hammer_modify_node(node);
+		error = btree_remove(cursor);
+		if (error == EAGAIN)
 			error = 0;
-		} /* else a real error occured XXX */
 	} else {
-		hammer_modify_node(node);
 		error = 0;
 	}
 	return(error);
@@ -566,7 +564,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		error = hammer_cursor_toroot(cursor);
 		if (error)
 			goto done;
-		error = hammer_cursor_up(cursor);
+		error = hammer_cursor_up(cursor, 0);
 		if (error)
 			goto done;
 		cluster = cursor->node->cluster;
@@ -578,7 +576,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 */
 	while (hammer_btree_cmp(&cursor->key_beg, cursor->left_bound) < 0 ||
 	       hammer_btree_cmp(&cursor->key_beg, cursor->right_bound) >= 0) {
-		error = hammer_cursor_up(cursor);
+		error = hammer_cursor_up(cursor, 0);
 		if (error)
 			goto done;
 	}
@@ -607,7 +605,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 			break;
 		if (cursor->parent->ondisk->count != HAMMER_BTREE_INT_ELMS)
 			break;
-		error = hammer_cursor_up(cursor);
+		error = hammer_cursor_up(cursor, 0);
 		/* cluster and node are now may become stale */
 		if (error)
 			goto done;
@@ -635,7 +633,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		if (cursor->parent == NULL)
 			break;
 		KKASSERT(cursor->node->ondisk->count != 0);
-		error = hammer_cursor_up(cursor);
+		error = hammer_cursor_up(cursor, 0);
 		/* cluster and node are now may become stale */
 		if (error)
 			goto done;
@@ -886,6 +884,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		made_root = 0;
 		parent = cursor->parent;
 		parent_index = cursor->parent_index;
+		KKASSERT(parent->cluster == node->cluster);
 	}
 
 	/*
@@ -905,7 +904,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	if (new_node == NULL) {
 		if (made_root) {
 			hammer_unlock(&parent->lock);
-			hammer_free_btree(node->cluster, parent->node_offset);
+			hammer_free_btree(parent->cluster, parent->node_offset);
 			hammer_rel_node(parent);
 		}
 		return(error);
@@ -1072,6 +1071,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 		made_root = 0;
 		parent = cursor->parent;
 		parent_index = cursor->parent_index;
+		KKASSERT(parent->cluster == leaf->cluster);
 	}
 
 	/*
@@ -1090,7 +1090,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	if (new_leaf == NULL) {
 		if (made_root) {
 			hammer_unlock(&parent->lock);
-			hammer_free_btree(leaf->cluster, parent->node_offset);
+			hammer_free_btree(parent->cluster, parent->node_offset);
 			hammer_rel_node(parent);
 		}
 		return(error);
@@ -1188,79 +1188,131 @@ btree_split_leaf(hammer_cursor_t cursor)
 }
 
 /*
- * Remove the element at (node, index).  If the internal node would become
- * empty passively recurse up the tree.
+ * Attempt to remove the empty B-Tree node at (cursor->node).  Returns 0
+ * on success, EAGAIN if we could not acquire the necessary locks, or some
+ * other error.
  *
- * A locked internal node is passed to this function, the node remains
- * locked on return.  Leaf nodes cannot be passed to this function.
+ * On return the cursor may end up pointing at an internal node, suitable
+ * for further iteration but not for insertion or deletion.
  *
- * Returns EAGAIN if we were unable to acquire the needed locks.  The caller
- * does not deal with the empty leaf until determines whether this recursion
- * has succeeded or not.
+ * cursor->node may be an internal node or a leaf node.
  */
 int
-btree_remove(hammer_node_t node, int index)
+btree_remove(hammer_cursor_t cursor)
 {
 	hammer_node_ondisk_t ondisk;
+	hammer_btree_elm_t elm;
+	hammer_node_t save;
+	hammer_node_t node;
 	hammer_node_t parent;
 	int error;
-
-	ondisk = node->ondisk;
-	KKASSERT(ondisk->count > 0);
+	int i;
 
 	/*
-	 * Remove the element, shifting remaining elements left one.
-	 * Note that our move must include the right-boundary element.
+	 * If we are at the root of the root cluster there is nothing to
+	 * remove, but an internal node at the root of a cluster is not
+	 * allowed to be empty so convert it to a leaf node.
 	 */
-	if (ondisk->count != 1) {
-		bcopy(&ondisk->elms[index+1], &ondisk->elms[index],
-		      (ondisk->count - index) * sizeof(ondisk->elms[0]));
-		--ondisk->count;
-		hammer_modify_node(node);
-		return(0);
-	}
-
-	/*
-	 * Internal nodes cannot drop to 0 elements, so remove the node
-	 * from ITS parent.  If the node is the root node, convert it to
-	 * an empty leaf node (which can drop to 0 elements).
-	 */
-	if (ondisk->parent == 0) {
-		ondisk->count = 0;
+	if (cursor->parent == NULL) {
+		ondisk = cursor->node->ondisk;
+		KKASSERT(ondisk->parent == 0);
 		ondisk->type = HAMMER_BTREE_TYPE_LEAF;
-		hammer_modify_node(node);
+		ondisk->count = 0;
+		hammer_modify_node(cursor->node);
+		kprintf("EMPTY ROOT OF ROOT CLUSTER -> LEAF\n");
 		return(0);
 	}
 
 	/*
-	 * Try to remove the node from its parent.  Return EAGAIN if we
-	 * cannot.
+	 * Retain a reference to cursor->node, ex-lock again (2 locks now)
+	 * so we do not lose the lock when we cursor around.
 	 */
-	parent = hammer_get_node(node->cluster, ondisk->parent, &error);
-	if (hammer_lock_ex_try(&parent->lock)) {
-		hammer_rel_node(parent);
-		return(EAGAIN);
+	save = cursor->node;
+	hammer_ref_node(save);
+	hammer_lock_ex(&save->lock);
+
+	/*
+	 * We need to be able to lock the parent of the parent.  Do this
+	 * non-blocking and return EAGAIN if the lock cannot be acquired.
+	 * non-blocking is required in order to avoid a deadlock.
+	 *
+	 * After we cursor up, parent is moved to node and the new parent
+	 * is the parent of the parent.
+	 */
+	error = hammer_cursor_up(cursor, 1);
+	if (error) {
+		kprintf("BTREE_REMOVE: Cannot lock parent\n");
+		hammer_unlock(&save->lock);
+		hammer_rel_node(save);
+		return(error);
 	}
-	ondisk = parent->ondisk;
-	for (index = 0; index < ondisk->count; ++index) {
-		if (ondisk->elms[index].internal.subtree_offset ==
-		    node->node_offset) {
-			break;
-		}
-	}
-	if (index == ondisk->count) {
-		kprintf("btree_remove: lost parent linkage to node\n");
-		error = EIO;
-	} else {
-		error = btree_remove(parent, index);
+
+	/*
+	 * At this point we want to remove the element at (node, index),
+	 * which is now the (original) parent pointing to the saved node.
+	 * Removing the element allows us to then free the node it was
+	 * pointing to.
+	 *
+	 * However, an internal node is not allowed to have 0 elements, so
+	 * if the count would drop to 0 we have to recurse.  It is possible
+	 * for the recursion to fail.
+	 *
+	 * NOTE: The cursor is in an indeterminant position after recursing,
+	 * but will still be suitable for an iteration.
+	 */
+	node = cursor->node;
+	KKASSERT(node->ondisk->count > 0);
+	if (node->ondisk->count == 1) {
+		error = btree_remove(cursor);
 		if (error == 0) {
-			hammer_free_btree(node->cluster, node->node_offset);
-			/* NOTE: node can be reallocated at any time now */
+			kprintf("BTREE_REMOVE: Successful!\n");
+			hammer_flush_node(save);
+			hammer_free_btree(save->cluster, save->node_offset);
+		} else {
+			kprintf("BTREE_REMOVE: Recursion failed %d\n", error);
+		}
+		hammer_unlock(&save->lock);
+		hammer_rel_node(save);
+		return(error);
+	}
+
+	/*
+	 * Remove the element at (node, index) and adjust the parent's
+	 * subtree_count.
+	 */
+	kprintf("BTREE_REMOVE: Removing element %d\n", cursor->index);
+	ondisk = node->ondisk;
+	i = cursor->index;
+	bcopy(&ondisk->elms[i+1], &ondisk->elms[i],
+	      (ondisk->count - i) * sizeof(ondisk->elms[0]));
+	--ondisk->count;
+	hammer_modify_node(cursor->node);
+
+	/*
+	 * Adjust the parent-parent's (now parent) reference to the parent
+	 * (now node).
+	 */
+	if ((parent = cursor->parent) != NULL) {
+		elm = &parent->ondisk->elms[cursor->parent_index];
+		if (elm->internal.subtree_count != ondisk->count) {
+			elm->internal.subtree_count = ondisk->count;
+			hammer_modify_node(parent);
+		}
+		if (elm->subtree_type != HAMMER_BTREE_TYPE_CLUSTER &&
+		    elm->subtree_type != ondisk->type) {
+			elm->subtree_type = ondisk->type;
+			hammer_modify_node(parent);
 		}
 	}
-	hammer_unlock(&parent->lock);
-	hammer_rel_node(parent);
-	return (error);
+		
+	/*
+	 * Free the saved node.
+	 */
+	hammer_flush_node(save);
+	hammer_free_btree(save->cluster, save->node_offset);
+	hammer_unlock(&save->lock);
+	hammer_rel_node(save);
+	return(0);
 }
 
 /*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.8 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.9 2007/11/30 00:16:56 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1577,24 +1577,6 @@ hammer_alloc_record(hammer_cluster_t cluster,
 	bzero(item, sizeof(union hammer_record_ondisk));
 	*errorp = 0;
 	return(item);
-}
-
-/*
- * Free HAMMER elements based on either a hammer_buffer and element pointer
- * or a cluster-relative byte offset.
- */
-void
-hammer_free_btree_ptr(hammer_buffer_t buffer, hammer_node_ondisk_t node)
-{
-	int32_t elm_no;
-	hammer_alist_t live;
-
-	elm_no = node - &buffer->ondisk->btree.nodes[0];
-	KKASSERT(elm_no >= 0 && elm_no < HAMMER_BTREE_NODES);
-	elm_no += buffer->buf_no * HAMMER_FSBUF_MAXBLKS;
-	live = &buffer->cluster->alist_btree;
-	hammer_alist_free(live, elm_no, 1);
-	hammer_modify_cluster(buffer->cluster);
 }
 
 void

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.8 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.9 2007/11/30 00:16:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1213,6 +1213,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	struct buf *bp;
 	int64_t rec_offset;
 	int64_t ran_end;
+	int64_t tmp64;
 	int error;
 	int boff;
 	int roff;
@@ -1243,7 +1244,8 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		ran_end = bio->bio_offset + bp->b_bufsize;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DATA;
-		if (ran_end + MAXPHYS + 1 < ran_end)
+		tmp64 = ran_end + MAXPHYS + 1;	/* work-around GCC-4 bug */
+		if (tmp64 < ran_end)
 			cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
 		else
 			cursor.key_end.key = ran_end + MAXPHYS + 1;

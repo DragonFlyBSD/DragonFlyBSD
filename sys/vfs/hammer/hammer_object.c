@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.7 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.8 2007/11/30 00:16:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -376,30 +376,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 {
 	int error;
 
-	if (cursor->record == &cursor->iprec->rec) {
-		/*
-		 * The directory entry was in-memory, just scrap the
-		 * record.
-		 */
-		kprintf("del directory mem record\n");
-		hammer_free_mem_record(cursor->iprec);
-		error = 0;
-	} else {
-		/*
-		 * The directory entry was on-disk, mark the record and
-		 * B-Tree entry as deleted.  The B-Tree entry does not
-		 * have to be reindexed because a 'current' delete transid
-		 * will wind up in the same position as the live record.
-		 */
-		KKASSERT(ip->flags & HAMMER_INODE_ONDISK);
-		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_RECORD);
-		if (error == 0) {
-			cursor->node->ondisk->elms[cursor->index].base.delete_tid = trans->tid;
-			cursor->record->base.base.delete_tid = trans->tid;
-			hammer_modify_node(cursor->node);
-			hammer_modify_buffer(cursor->record_buffer);
-		}
-	}
+	error = hammer_ip_delete_record(cursor, trans->tid);
 
 	/*
 	 * One less link.  The file may still be open in the OS even after
@@ -687,6 +664,7 @@ hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
 	/*
 	 * Clean up fields and setup for merged scan
 	 */
+	cursor->flags &= ~HAMMER_CURSOR_DELBTREE;
 	cursor->flags |= HAMMER_CURSOR_ATEDISK | HAMMER_CURSOR_ATEMEM;
 	cursor->flags |= HAMMER_CURSOR_DISKEOF | HAMMER_CURSOR_MEMEOF;
 	if (cursor->iprec)
@@ -754,15 +732,22 @@ hammer_ip_next(hammer_cursor_t cursor)
 	 * Load the current on-disk and in-memory record.  If we ate any
 	 * records we have to get the next one. 
 	 *
+	 * If we deleted the last on-disk record we had scanned ATEDISK will
+	 * be clear and DELBTREE will be set, forcing a call to iterate. The
+	 * fact that ATEDISK is clear causes iterate to re-test the 'current'
+	 * element.  If ATEDISK is set, iterate will skip the 'current'
+	 * element.
+	 *
 	 * Get the next on-disk record
 	 */
-	if (cursor->flags & HAMMER_CURSOR_ATEDISK) {
+	if (cursor->flags & (HAMMER_CURSOR_ATEDISK|HAMMER_CURSOR_DELBTREE)) {
 		if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
 			error = hammer_btree_iterate(cursor);
 			if (error == 0)
 				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 			else
-				cursor->flags |= HAMMER_CURSOR_DISKEOF;
+				cursor->flags |= HAMMER_CURSOR_DISKEOF |
+						 HAMMER_CURSOR_ATEDISK;
 		}
 	}
 
@@ -891,21 +876,26 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
 
-	/*
-	 * The key in the B-Tree is (base+bytes), so the first possible
-	 * matching key is ran_beg + 1.
-	 */
-	cursor.key_beg.key = ran_beg + 1;
 	cursor.key_end = cursor.key_beg;
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
+		cursor.key_beg.key = ran_beg;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.key = ran_end;
 		isregfile = 0;
 	} else {
+		/*
+		 * The key in the B-Tree is (base+bytes), so the first possible
+		 * matching key is ran_beg + 1.
+		 */
+		int64_t tmp64;
+
+		cursor.key_beg.key = ran_beg + 1;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DATA;
-		if (ran_end + MAXPHYS + 1 < ran_end)
+
+		tmp64 = ran_end + MAXPHYS + 1;	/* work around GCC-4 bug */
+		if (tmp64 < ran_end)
 			cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
 		else
 			cursor.key_end.key = ran_end + MAXPHYS + 1;
@@ -929,7 +919,9 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 		 * of the last byte of the record (base + len - 1), NOT the
 		 * base offset.
 		 */
+		kprintf("delete_range rec_type %02x\n", base->rec_type);
 		if (base->rec_type == HAMMER_RECTYPE_DATA) {
+			kprintf("delete_range loop key %016llx\n", base->key - rec->base.data_len);
 			off = base->key - rec->base.data_len;
 			/*
 			 * Check the left edge case.  We currently do not
@@ -948,8 +940,12 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 			 * base->key is exclusive of the right edge while
 			 * ran_end is inclusive of the right edge.  The
 			 * (key - data_len) left boundary is inclusive.
+			 *
+			 * XXX theory-check this test at some point, are
+			 * we missing a + 1 somewhere?  Note that ran_end
+			 * could overflow.
 			 */
-			if (base->key > ran_end + 1) {
+			if (base->key > ran_end) {
 				if (base->key - rec->base.data_len > ran_end) {
 					kprintf("right edge OOB\n");
 					break;
@@ -959,22 +955,98 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 		}
 
 		/*
-		 * Mark the record and B-Tree entry as deleted
+		 * Mark the record and B-Tree entry as deleted.  This will
+		 * also physically delete the B-Tree entry, record, and
+		 * data if the retention policy dictates.  The function
+		 * will set HAMMER_CURSOR_DELBTREE which hammer_ip_next()
+		 * uses to perform a fixup.
 		 */
-		if (cursor.record == &cursor.iprec->rec) {
-			hammer_free_mem_record(cursor.iprec);
-		} else {
-			cursor.node->ondisk->
-			    elms[cursor.index].base.delete_tid = trans->tid;
-			cursor.record->base.base.delete_tid = trans->tid;
-			hammer_modify_node(cursor.node);
-			hammer_modify_buffer(cursor.record_buffer);
-		}
+		error = hammer_ip_delete_record(&cursor, trans->tid);
+		if (error)
+			break;
 		error = hammer_ip_next(&cursor);
 	}
 	hammer_done_cursor(&cursor);
 	if (error == ENOENT)
 		error = 0;
+	return(error);
+}
+
+/*
+ * Delete the record at the current cursor
+ */
+int
+hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
+{
+	hammer_btree_elm_t elm;
+	hammer_mount_t hmp;
+	int error;
+
+	/*
+	 * In-memory (unsynchronized) records can simply be freed.
+	 */
+	cursor->flags &= ~HAMMER_CURSOR_DELBTREE;
+	if (cursor->record == &cursor->iprec->rec) {
+		hammer_free_mem_record(cursor->iprec);
+		return(0);
+	}
+
+	/*
+	 * On-disk records are marked as deleted by updating their delete_tid.
+	 */
+	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_RECORD);
+	elm = NULL;
+	hmp = cursor->node->cluster->volume->hmp;
+
+	if (error == 0) {
+		elm = &cursor->node->ondisk->elms[cursor->index];
+		cursor->record->base.base.delete_tid = tid;
+		elm->leaf.base.delete_tid = tid;
+		hammer_modify_buffer(cursor->record_buffer);
+		hammer_modify_node(cursor->node);
+	}
+
+	/*
+	 * If we were mounted with the nohistory option, we physically
+	 * delete the record.
+	 */
+	if (error == 0 && (hmp->hflags & HMNT_NOHISTORY)) {
+		int32_t rec_offset;
+		int32_t data_offset;
+		int32_t data_len;
+		hammer_cluster_t cluster;
+
+		rec_offset = elm->leaf.rec_offset;
+		data_offset = elm->leaf.data_offset;
+		data_len = elm->leaf.data_len;
+		kprintf("hammer_ip_delete_record: %08x %08x/%d\n",
+			rec_offset, data_offset, data_len);
+		cluster = cursor->node->cluster;
+		hammer_ref_cluster(cluster);
+
+		error = hammer_btree_delete(cursor);
+		if (error == 0) {
+			/*
+			 * This forces a fixup for the iteration because
+			 * the cursor is now either sitting at the 'next'
+			 * element or sitting at the end of a leaf.
+			 */
+			if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
+				cursor->flags |= HAMMER_CURSOR_DELBTREE;
+				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+			}
+			hammer_free_record(cluster, rec_offset);
+			if (data_offset - rec_offset < 0 ||
+			    data_offset - rec_offset >= HAMMER_RECORD_SIZE) {
+				hammer_free_data(cluster, data_offset,data_len);
+			}
+		}
+		hammer_rel_cluster(cluster, 0);
+		if (error) {
+			kprintf("hammer_ip_delete_record: unable to physically delete the record!\n");
+			error = 0;
+		}
+	}
 	return(error);
 }
 

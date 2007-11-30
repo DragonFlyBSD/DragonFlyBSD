@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.1 2007/10/10 19:35:19 dillon Exp $
+.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.2 2007/11/30 00:16:54 dillon Exp $
 .Dd October 10, 2007
 .Dt MOUNT_HAMMER 8
 .Os
@@ -53,7 +53,14 @@ The options are as follow:
 .Bl -tag -width indent
 .It Fl T Ar time
 Mount the filesystem as-of a particular time.  The mount will automatically
-be made read-only.
+be made read-only.  The time may be specified two ways.  A single integer
+followed by 's', 'm', 'h', 'D', 'M', or 'Y' issues a historical mount as-of
+a number of seconds, minutes, hours, days, months, or years ago.  A time
+specification of yyyymmdd[:hhmmss][.fractional] specifies an exact as-of
+timestamp in local (not GM) time.
+Set the TZ environment variable prior to running
+.Nm
+if you wish to specify the time by some other means.
 .It Fl o Ar mount-options
 Specify mount options, see
 .Xr mount 8 .
