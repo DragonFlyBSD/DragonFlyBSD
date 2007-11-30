@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.2 2007/11/01 22:26:37 dillon Exp $
+.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.3 2007/11/30 20:22:26 swildner Exp $
 .Dd September 10, 2007
 .Dt NEWFS_HAMMER 8
 .Os
@@ -43,48 +43,50 @@
 .Op Fl c Ar clusize
 .Op Fl S
 .Op Fl U Ar uuid
-.Ar special
-.Op special...
+.Ar special ...
 .Sh DESCRIPTION
 The
 .Nm
 utility creates a HAMMER filesystem on device
 .Ar special .
 If multiple devices are specified a single HAMMER filesystem is created
-which spans all of them.  HAMMER filesystems are sector-size agnostic,
-however the
-.DX
-implementation requires the sector size to be no larger then 16K.
+which spans all of them.
+HAMMER filesystems are sector-size agnostic, however the
+.Dx
+implementation requires the sector size to be no larger than 16K.
 HAMMER filesystems start at a relative offset of 0 and may only be created
 under out-of-band disk labels (disklabel64 or gpt labels), or in standard
 disklabel partitions which do not overlap the label area.
 .Pp
-The options are as follow:
+The options are as follows:
 .Bl -tag -width indent
 .It Fl L Ar label
 All HAMMER filesystems must be named and names should be unique on a
 per-machine basis.
 .It Fl U Ar uuid
-All HAMMER filesystems are assigned a globally unique UUID.  If no UUID
-is specified one will be synthesized.
+All HAMMER filesystems are assigned a globally unique UUID.
+If no UUID is specified one will be synthesized.
 .It Fl S
 Force the HAMMER filesystem to be formatted with a supercluster layer,
-allowing it to support volumes greater then 2TB.  This option is automatically
-enabled if formatting HAMMER on a large disk.
+allowing it to support volumes greater than 2TB.
+This option is automatically enabled if formatting HAMMER on a large disk.
 .It Fl c Ar clusize
-HAMMER organizes file objects in clusters and supeclusters.  Clusters
-default to the maximum size, which is 64MB.  A smaller size may be chosen
-if desired.  This option is not recommended.  HAMMER will use a truncated
-cluster as the last cluster and still use all available disk space
-regardless of the cluster size.
+HAMMER organizes file objects in clusters and superclusters.
+Clusters default to the maximum size, which is 64MB.
+A smaller size may be chosen if desired.
+This option is not recommended.
+HAMMER will use a truncated cluster as the last cluster and still use
+all available disk space regardless of the cluster size.
 .El
-.Sh NOTES
+.\".Sh NOTES
 .Sh EXAMPLES
 .Bd -literal -offset indent
 newfs_hammer -L Home /dev/ad0s1d
 .Ed
 .Pp
-Create a file system named 'Home' on
+Create a file system named
+.Sq Home
+on
 .Pa /dev/ad0s1d .
 .Sh DIAGNOSTICS
 Exit status is 0 on success and 1 on error.
@@ -96,6 +98,6 @@ Exit status is 0 on success and 1 on error.
 The
 .Nm
 utility first appeared in
-.Dx 2.0 .
+.Dx 1.11 .
 .Sh AUTHORS
 .An Matthew Dillon Aq dillon@backplane.com .

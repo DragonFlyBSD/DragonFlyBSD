@@ -30,49 +30,59 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.2 2007/11/30 00:16:54 dillon Exp $
+.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.3 2007/11/30 20:22:26 swildner Exp $
 .Dd October 10, 2007
 .Dt MOUNT_HAMMER 8
 .Os
 .Sh NAME
 .Nm mount_hammer
-.Nd construct a new HAMMER file system
+.Nd mount a HAMMER file system
 .Sh SYNOPSIS
 .Nm
-.Op Fl T Ar time
 .Op Fl o Ar mount-options
-.Ar special
-.Op special...
+.Op Fl T Ar time
+.Ar special ...
 .Ar mount-point
 .Sh DESCRIPTION
 The
 .Nm
 utility mounts a HAMMER filesystem backed by one or more block devices.
 .Pp
-The options are as follow:
+The options are as follows:
 .Bl -tag -width indent
-.It Fl T Ar time
-Mount the filesystem as-of a particular time.  The mount will automatically
-be made read-only.  The time may be specified two ways.  A single integer
-followed by 's', 'm', 'h', 'D', 'M', or 'Y' issues a historical mount as-of
-a number of seconds, minutes, hours, days, months, or years ago.  A time
-specification of yyyymmdd[:hhmmss][.fractional] specifies an exact as-of
-timestamp in local (not GM) time.
-Set the TZ environment variable prior to running
-.Nm
-if you wish to specify the time by some other means.
 .It Fl o Ar mount-options
-Specify mount options, see
-.Xr mount 8 .
-.El
-.Pp
-Mount options are a comma delimited set of options.  Supported mount
-options are:
+Specify mount options, which are a comma delimited set of options (see
+.Xr mount 8 ) .
+Supported mount options are:
 .Bl -tag -width indent
 .It Ar ro
 Issue a read-only mount.
 .El
-.Sh NOTES
+.It Fl T Ar time
+Mount the filesystem as-of a particular
+.Ar time .
+The mount will automatically be made read-only.
+The
+.Ar time
+may be specified two ways.
+A single integer followed by
+.Sq s ,
+.Sq m ,
+.Sq h ,
+.Sq D ,
+.Sq M ,
+or
+.Sq Y
+issues a historical mount as-of a number of seconds, minutes, hours, days,
+months, or years ago.
+A time specification of
+.Pf yyyymmdd Oo :hhmmss Oc Ns Op .fractional
+specifies an exact as-of timestamp in local (not UTC) time.
+Set the TZ environment variable prior to running
+.Nm
+if you wish to specify the time by some other means.
+.El
+.\".Sh NOTES
 .Sh EXAMPLES
 .Bd -literal -offset indent
 mount_hammer -o ro,noatime /dev/ad0s1d /dev/ad1s1d /mnt
@@ -90,6 +100,6 @@ Exit status is 0 on success and 1 on error.
 The
 .Nm
 utility first appeared in
-.Dx 2.0 .
+.Dx 1.11 .
 .Sh AUTHORS
 .An Matthew Dillon Aq dillon@backplane.com .
