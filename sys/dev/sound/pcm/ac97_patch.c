@@ -22,15 +22,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3.2.4 2007/07/04 04:04:42 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.6 2007/11/30 07:38:39 hasso Exp $
+ * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3.2.5 2007/10/31 03:59:24 ariff Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.7 2007/11/30 07:57:20 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pcm/ac97_patch.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.6 2007/11/30 07:38:39 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.7 2007/11/30 07:57:20 hasso Exp $");
 
 void ad1886_patch(struct ac97_info* codec)
 {
@@ -62,6 +62,7 @@ void ad1981b_patch(struct ac97_info* codec)
 	 */
 	switch (ac97_getsubvendor(codec)) {
 	case 0x02d91014:	/* IBM Thinkcentre */
+	case 0x099c103c:	/* HP nx6110 */
 		ac97_wrcd(codec, AC97_AD_JACK_SPDIF,
 		    ac97_rdcd(codec, AC97_AD_JACK_SPDIF) | 0x0800);
 		break;
