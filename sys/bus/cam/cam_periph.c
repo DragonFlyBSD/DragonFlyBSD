@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.37 2007/12/01 22:21:17 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.38 2007/12/01 22:54:18 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1629,6 +1629,8 @@ cam_periph_error(union ccb *ccb, cam_flags camflags,
 	case CAM_NO_HBA:
 	case CAM_PROVIDE_FAIL:
 	case CAM_REQ_TOO_BIG:
+	case CAM_LUN_INVALID:
+	case CAM_TID_INVALID:
 		error = EINVAL;
 		break;
 	case CAM_SCSI_BUS_RESET:
