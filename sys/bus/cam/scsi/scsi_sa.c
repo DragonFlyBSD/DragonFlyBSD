@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.31 2007/11/29 03:31:15 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.32 2007/12/01 22:21:18 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -107,6 +107,7 @@
  * Driver states
  */
 
+MALLOC_DEFINE(M_SCSISA, "SCSI sa", "SCSI sequential access buffers");
 
 typedef enum {
 	SA_STATE_NORMAL, SA_STATE_ABNORMAL
@@ -1381,7 +1382,7 @@ sacleanup(struct cam_periph *periph)
 	xpt_print_path(periph->path);
 	kprintf("removing device entry\n");
 	dev_ops_remove(&sa_ops, SA_UNITMASK, SA_UNIT(periph->unit_number));
-	kfree(softc, M_DEVBUF);
+	kfree(softc, M_SCSISA);
 }
 
 static void
@@ -1446,7 +1447,7 @@ saregister(struct cam_periph *periph, void *arg)
 		return (CAM_REQ_CMP_ERR);
 	}
 
-	softc = kmalloc(sizeof (*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	softc = kmalloc(sizeof (*softc), M_SCSISA, M_INTWAIT | M_ZERO);
 	softc->scsi_rev = SID_ANSI_REV(&cgd->inq_data);
 	softc->state = SA_STATE_NORMAL;
 	softc->fileno = (daddr_t) -1;

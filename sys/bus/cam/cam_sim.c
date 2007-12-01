@@ -26,12 +26,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.9 2007/06/14 01:09:30 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.10 2007/12/01 22:21:17 pavalos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
+#include <sys/kernel.h>
 
 #include "cam.h"
 #include "cam_ccb.h"
@@ -40,6 +41,8 @@
 #include "cam_xpt_sim.h"
 
 #define CAM_PATH_ANY (u_int32_t)-1
+
+MALLOC_DEFINE(M_CAMSIM, "CAM SIM", "CAM SIM buffers");
 
 struct cam_devq *
 cam_simq_alloc(u_int32_t max_sim_transactions)
@@ -84,7 +87,7 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 	else
 		cam_devq_reference(queue);
 
-	sim = kmalloc(sizeof(struct cam_sim), M_DEVBUF, M_INTWAIT | M_ZERO);
+	sim = kmalloc(sizeof(struct cam_sim), M_CAMSIM, M_INTWAIT | M_ZERO);
 	sim->sim_action = sim_action;
 	sim->sim_poll = sim_poll;
 	sim->sim_name = sim_name;
@@ -129,7 +132,7 @@ cam_sim_release(struct cam_sim *sim, int flags)
 			sim->devq = NULL;
 		}
 		sim->refcount = 0;
-		kfree(sim, M_DEVBUF);
+		kfree(sim, M_CAMSIM);
 	} else {
 		--sim->refcount;
 	}

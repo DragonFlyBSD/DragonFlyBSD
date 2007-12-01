@@ -27,13 +27,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.36 2007/11/28 21:55:59 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.37 2007/12/01 22:21:17 pavalos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
 #include <sys/malloc.h>
+#include <sys/kernel.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
 #include <sys/devicestat.h>
@@ -80,6 +81,8 @@ static	int		camperiphscsisenseerror(union ccb *ccb,
 
 static int nperiph_drivers;
 struct periph_driver **periph_drivers;
+
+MALLOC_DEFINE(M_CAMPERIPH, "CAM periph", "CAM peripheral buffers");
 
 void
 periphdriver_register(void *data)
@@ -141,7 +144,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 		return (CAM_REQ_INVALID);
 	}
 	
-	periph = kmalloc(sizeof(*periph), M_DEVBUF, M_INTWAIT | M_ZERO);
+	periph = kmalloc(sizeof(*periph), M_CAMPERIPH, M_INTWAIT | M_ZERO);
 	
 	init_level++;
 
@@ -210,7 +213,7 @@ failure:
 	case 2:
 		xpt_free_path(periph->path);
 	case 1:
-		kfree(periph, M_DEVBUF);
+		kfree(periph, M_CAMPERIPH);
 	case 0:
 		/* No cleanup to perform. */
 		break;
@@ -465,7 +468,7 @@ camperiphfree(struct cam_periph *periph)
 					  periph->path, arg);
 	}
 	xpt_free_path(periph->path);
-	kfree(periph, M_DEVBUF);
+	kfree(periph, M_CAMPERIPH);
 }
 
 /*

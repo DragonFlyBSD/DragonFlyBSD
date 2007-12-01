@@ -26,17 +26,22 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_queue.c,v 1.5 1999/08/28 00:40:41 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.10 2007/11/25 02:21:30 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.11 2007/12/01 22:21:17 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
 #include <sys/malloc.h>
+#include <sys/kernel.h>
 
 #include "cam.h"
 #include "cam_ccb.h"
 #include "cam_queue.h"
 #include "cam_debug.h"
+
+MALLOC_DEFINE(M_CAMQ, "CAM queue", "CAM queue buffers");
+MALLOC_DEFINE(M_CAMDEVQ, "CAM dev queue", "CAM dev queue buffers");
+MALLOC_DEFINE(M_CAMCCBQ, "CAM ccb queue", "CAM ccb queue buffers");
 
 static __inline int
 		queue_cmp(cam_pinfo **queue_array, int i, int j);
@@ -51,7 +56,7 @@ camq_alloc(int size)
 {
 	struct camq *camq;
 
-	camq = kmalloc(sizeof(*camq), M_DEVBUF, M_INTWAIT);
+	camq = kmalloc(sizeof(*camq), M_CAMQ, M_INTWAIT);
 	camq_init(camq, size);
 	return (camq);
 }
@@ -63,7 +68,7 @@ camq_init(struct camq *camq, int size)
 	camq->array_size = size;
 	if (camq->array_size != 0) {
 		camq->queue_array = kmalloc(size * sizeof(cam_pinfo *), 
-					M_DEVBUF, M_INTWAIT);
+					M_CAMQ, M_INTWAIT);
 		/*
 		 * Heap algorithms like everything numbered from 1, so
 		 * offset our pointer into the heap array by one element.
@@ -86,7 +91,7 @@ camq_free(struct camq *queue)
 {
 	if (queue != NULL) {
 		camq_fini(queue);
-		kfree(queue, M_DEVBUF);
+		kfree(queue, M_CAMQ);
 	}
 }
 
@@ -99,7 +104,7 @@ camq_fini(struct camq *queue)
 		 * our pointer into the heap array is offset by one element.
 		 */
 		queue->queue_array++;
-		kfree(queue->queue_array, M_DEVBUF);
+		kfree(queue->queue_array, M_CAMQ);
 	}
 }
 
@@ -113,7 +118,7 @@ camq_resize(struct camq *queue, int new_size)
 		panic("camq_resize: New queue size can't accommodate "
 		      "queued entries.");
 #endif
-	new_array = kmalloc(new_size * sizeof(cam_pinfo *), M_DEVBUF, M_INTWAIT);
+	new_array = kmalloc(new_size * sizeof(cam_pinfo *), M_CAMQ, M_INTWAIT);
 
 	/*
 	 * Heap algorithms like everything numbered from 1, so
@@ -124,7 +129,7 @@ camq_resize(struct camq *queue, int new_size)
 		queue->queue_array++;
 		bcopy(queue->queue_array, new_array,
 		      queue->entries * sizeof(cam_pinfo *));
-		kfree(queue->queue_array, M_DEVBUF);
+		kfree(queue->queue_array, M_CAMQ);
 	}
 	queue->queue_array = new_array-1;
 	queue->array_size = new_size;
@@ -198,7 +203,7 @@ cam_devq_alloc(int devices, int openings)
 {
 	struct cam_devq *devq;
 
-	devq = kmalloc(sizeof(*devq), M_DEVBUF, M_INTWAIT);
+	devq = kmalloc(sizeof(*devq), M_CAMDEVQ, M_INTWAIT);
 	cam_devq_init(devq, devices, openings);
 	return (devq);
 }
@@ -231,7 +236,7 @@ cam_devq_release(struct cam_devq *devq)
 			kprintf("cam_devq_release: WARNING active allocations %d active send %d!\n", devq->alloc_active, devq->send_active);
 		camq_fini(&devq->alloc_queue);
 		camq_fini(&devq->send_queue);
-		kfree(devq, M_DEVBUF);
+		kfree(devq, M_CAMDEVQ);
 	}
 }
 
@@ -253,7 +258,7 @@ cam_ccbq_alloc(int openings)
 {
 	struct cam_ccbq *ccbq;
 
-	ccbq = kmalloc(sizeof(*ccbq), M_DEVBUF, M_INTWAIT);
+	ccbq = kmalloc(sizeof(*ccbq), M_CAMCCBQ, M_INTWAIT);
 	cam_ccbq_init(ccbq, openings);
 	return (ccbq);
 }
@@ -263,7 +268,7 @@ cam_ccbq_free(struct cam_ccbq *ccbq)
 {
 	if (ccbq) {
 		camq_fini(&ccbq->queue);
-		kfree(ccbq, M_DEVBUF);
+		kfree(ccbq, M_CAMCCBQ);
 	}
 }
 

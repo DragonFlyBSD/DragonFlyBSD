@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.24 2007/11/24 23:12:51 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.25 2007/12/01 22:21:17 pavalos Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -77,6 +77,7 @@
 #include <bus/cam/cam_sim.h>
 #include <bus/cam/cam_debug.h>
 #include <bus/cam/cam_periph.h>
+#include <bus/cam/cam_xpt_periph.h>
 
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_low.h>
@@ -104,6 +105,8 @@
 #define	SCSI_LOW_DISK_WIDE	(SCSI_LOW_DISK_WIDE_16 | SCSI_LOW_DISK_WIDE_32)
 #define	SCSI_LOW_DISK_LFLAGS	0x0000ffff
 #define	SCSI_LOW_DISK_TFLAGS	0xffff0000
+
+MALLOC_DEFINE(M_SCSILOW, "SCSI low", "SCSI low buffers");
 
 /**************************************************************
  * Declarations
@@ -332,8 +335,8 @@ scsi_low_translate_error_code(struct slccb *cb, struct scsi_low_error_code *tp)
 /**************************************************************
  * SCSI INTERFACE (CAM)
  **************************************************************/
-#define	SCSI_LOW_MALLOC(size)		kmalloc((size), M_DEVBUF, M_INTWAIT)
-#define	SCSI_LOW_FREE(pt)		kfree((pt), M_DEVBUF)
+#define	SCSI_LOW_MALLOC(size)		kmalloc((size), M_SCSILOW, M_INTWAIT)
+#define	SCSI_LOW_FREE(pt)		kfree((pt), M_SCSILOW)
 #define	SCSI_LOW_ALLOC_CCB(flags)	scsi_low_get_ccb()
 
 static void scsi_low_poll_cam (struct cam_sim *);
@@ -399,14 +402,14 @@ static void
 scsi_low_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
 	xpt_free_path(ccb->ccb_h.path);
-	kfree(ccb, M_DEVBUF);
+	xpt_free_ccb(ccb);
 }
 
 static void
 scsi_low_rescan_bus_cam(struct scsi_low_softc *slp)
 {
   	struct cam_path *path;
-	union ccb *ccb = kmalloc(sizeof(union ccb), M_DEVBUF, M_INTWAIT | M_ZERO);
+	union ccb *ccb = xpt_alloc_ccb();
 	cam_status status;
 
 	status = xpt_create_path(&path, xpt_periph,
