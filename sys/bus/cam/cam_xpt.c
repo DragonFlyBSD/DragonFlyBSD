@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.59 2007/12/02 04:22:31 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.60 2007/12/02 05:32:26 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -6301,8 +6301,8 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 		  && (inq_data->flags & SID_Sync) == 0
 		  && cts->type == CTS_TYPE_CURRENT_SETTINGS)
 		 || ((cpi.hba_inquiry & PI_SDTR_ABLE) == 0)
-		 || (cur_spi->sync_offset == 0)
-		 || (cur_spi->sync_period == 0)) {
+		 || (spi->sync_offset == 0)
+		 || (spi->sync_period == 0)) {
 			/* Force async */
 			spi->sync_period = 0;
 			spi->sync_offset = 0;
