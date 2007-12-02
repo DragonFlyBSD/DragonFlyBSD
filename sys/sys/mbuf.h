@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.43 2007/11/16 02:45:45 sephe Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.44 2007/12/02 05:01:04 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -83,8 +83,9 @@ struct m_hdr {
 	struct	mbuf *mh_nextpkt;	/* next chain in queue/record */
 	caddr_t	mh_data;		/* location of data */
 	int	mh_len;			/* amount of data in this mbuf */
+	int	mh_flags;		/* flags; see below */
 	short	mh_type;		/* type of data in this mbuf */
-	short	mh_flags;		/* flags; see below */
+	short	mh_pad;			/* padding */
 	struct netmsg_packet mh_netmsg;	/* hardware->proto stack msg */
 };
 
