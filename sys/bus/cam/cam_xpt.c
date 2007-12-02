@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.60 2007/12/02 05:32:26 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.61 2007/12/02 05:38:03 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1544,6 +1544,9 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 	cts.ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
 	cts.type = CTS_TYPE_CURRENT_SETTINGS;
 	xpt_action((union ccb*)&cts);
+	if ((cts.ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+		return;
+	}
 
 	/* Ask the SIM for its base transfer speed */
 	xpt_setup_ccb(&cpi.ccb_h, path, /*priority*/1);
@@ -5726,6 +5729,9 @@ proberequestdefaultnegotiation(struct cam_periph *periph)
 	cts.flags = CCB_TRANS_USER_SETTINGS;
 #endif /* CAM_NEW_TRAN_CODE */
 	xpt_action((union ccb *)&cts);
+	if ((cts.ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+		return;
+	}
 	cts.ccb_h.func_code = XPT_SET_TRAN_SETTINGS;
 #ifdef CAM_NEW_TRAN_CODE
 	cts.type = CTS_TYPE_CURRENT_SETTINGS;
@@ -6254,7 +6260,9 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 		cur_cts.ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
 		cur_cts.type = cts->type;
 		xpt_action((union ccb *)&cur_cts);
-
+		if ((cur_cts.ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+			return;
+		}
 		cur_scsi = &cur_cts.proto_specific.scsi;
 		if ((scsi->valid & CTS_SCSI_VALID_TQ) == 0) {
 			scsi->flags &= ~CTS_SCSI_FLAGS_TAG_ENB;
