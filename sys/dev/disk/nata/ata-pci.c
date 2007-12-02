@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.121 2007/02/23 12:18:33 piso Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.6 2007/10/19 11:53:14 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.7 2007/12/02 05:03:17 sephe Exp $
  */
 
 #include "opt_ata.h"
@@ -51,6 +51,17 @@ static MALLOC_DEFINE(M_ATAPCI, "ata_pci", "ATA driver PCI");
 /* misc defines */
 #define IOMASK                  0xfffffffc
 #define ATA_PROBE_OK            -10
+
+static const struct none_atapci {
+	uint16_t	vendor;
+	uint16_t	device;
+	uint16_t	subvendor;
+	uint16_t	subdevice;
+} none_atapci_table[] = {
+	/* Appears on Intel PRO/1000 PM */
+	{ ATA_INTEL_ID, 0x108d, ATA_INTEL_ID, 0x0000 },
+	{ 0xffff, 0, 0, 0 }
+};
 
 int
 ata_legacy(device_t dev)
@@ -173,6 +184,19 @@ ata_pci_probe(device_t dev)
 	    if (!ata_genahci_ident(dev))
 		return ATA_PROBE_OK;
 	} else if (pci_get_subclass(dev) == PCIS_STORAGE_IDE) {
+	    uint16_t vendor, device, subvendor, subdevice;
+	    const struct none_atapci *e;
+
+	    vendor = pci_get_vendor(dev);
+	    device = pci_get_device(dev);
+	    subvendor = pci_get_subvendor(dev);
+	    subdevice = pci_get_subdevice(dev);
+	    for (e = none_atapci_table; e->vendor != 0xffff; ++e) {
+		if (e->vendor == vendor && e->device == device &&
+		    e->subvendor == subvendor && e->subdevice == subdevice)
+		    return ENXIO;
+	    }
+
 	    if (!ata_generic_ident(dev))
 		return ATA_PROBE_OK;
 	}
