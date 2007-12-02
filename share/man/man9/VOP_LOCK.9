@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/VOP_LOCK.9,v 1.8.2.3 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/VOP_LOCK.9,v 1.6 2006/04/23 16:23:12 swildner Exp $
+.\" $DragonFly: src/share/man/man9/VOP_LOCK.9,v 1.7 2007/12/02 22:39:56 swildner Exp $
 .\"
 .Dd April 23, 2006
 .Os
@@ -75,7 +75,6 @@ with these lock flags:
 .It Dv LK_NOWAIT Ta "Do not sleep to wait for lock"
 .It Dv LK_SLEEPFAIL Ta "Sleep, then return failure"
 .It Dv LK_CANRECURSE Ta "Allow recursive exclusive lock"
-.It Dv LK_NOPAUSE Ta "No spinloop"
 .El
 .Pp
 The lock type may be
