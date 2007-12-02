@@ -25,7 +25,7 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
-.\" $DragonFly: src/share/man/man9/lock.9,v 1.6 2007/04/05 20:01:19 swildner Exp $
+.\" $DragonFly: src/share/man/man9/lock.9,v 1.7 2007/12/02 22:31:31 swildner Exp $
 .\"
 .Dd June 29, 2006
 .Dt LOCK 9
@@ -70,7 +70,7 @@ The timeout value passed to
 .Xr tsleep 9 .
 .It Fa flags
 The flags the lock is to be initialized with.
-.Bl -tag -width ".Dv LG_CANRECURSE"
+.Bl -tag -width ".Dv LK_CANRECURSE"
 .It Dv LK_NOWAIT
 Do not sleep while acquiring the lock.
 .It Dv LK_SLEEPFAIL
