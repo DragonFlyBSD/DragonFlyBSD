@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.32 2007/12/01 22:21:18 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.33 2007/12/02 01:46:13 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -48,6 +48,7 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 #endif
+#include <sys/fcntl.h>
 #include <sys/devicestat.h>
 #include <machine/limits.h>
 
@@ -255,8 +256,10 @@ struct sa_softc {
 	 * Misc other flags/state
 	 */
 	u_int32_t
-				: 31,
-		ctrl_mode	: 1;	/* control device open */
+					: 29,
+		open_rdonly		: 1,	/* open read-only */
+		open_pending_mount	: 1,	/* open pending mount */
+		ctrl_mode		: 1;	/* control device open */
 };
 
 struct sa_quirk_entry {
@@ -469,12 +472,12 @@ saopen(struct dev_open_args *ap)
 		cam_periph_unlock(periph);
 		return (ENXIO);
 	}
+
 	if (SA_IS_CTRL(dev)) {
 		softc->ctrl_mode = 1;
 		cam_periph_unlock(periph);
 		return (0);
 	}
-
 
 	if (softc->flags & SA_FLAG_OPEN) {
 		error = EBUSY;
@@ -482,10 +485,24 @@ saopen(struct dev_open_args *ap)
 		error = ENXIO;
 	} else {
 		/*
+		 * Preserve whether this is a read_only open.
+		 */
+		softc->open_rdonly = (ap->a_oflags & O_RDWR) == O_RDONLY;
+
+		/*
 		 * The function samount ensures media is loaded and ready.
 		 * It also does a device RESERVE if the tape isn't yet mounted.
+		 *
+		 * If the mount fails and this was a non-blocking open,
+		 * make this a 'open_pending_mount' action.
 		 */
 		error = samount(periph, ap->a_oflags, dev);
+		if (error && (ap->a_oflags & O_NONBLOCK)) {
+			softc->flags |= SA_FLAG_OPEN;
+			softc->open_pending_mount = 1;
+			cam_periph_unlock(periph);
+			return (0);
+		}
 	}
 
 	if (error) {
@@ -523,8 +540,17 @@ saclose(struct dev_close_args *ap)
 		return (error);
 	}
 
+	softc->open_rdonly = 0; 
 	if (SA_IS_CTRL(dev)) {
 		softc->ctrl_mode = 0;
+		cam_periph_release(periph);
+		cam_periph_unlock(periph);
+		return (0);
+	}
+
+	if (softc->open_pending_mount) {
+		softc->flags &= ~SA_FLAG_OPEN;
+		softc->open_pending_mount = 0; 
 		cam_periph_release(periph);
 		cam_periph_unlock(periph);
 		return (0);
@@ -686,10 +712,31 @@ sastrategy(struct dev_strategy_args *ap)
 		goto bad;
 	}
 
+	/*
+	 * This should actually never occur as the write(2)
+	 * system call traps attempts to write to a read-only
+	 * file descriptor.
+	 */
+	if (bp->b_cmd == BUF_CMD_WRITE && softc->open_rdonly) {
+		crit_exit();
+		bp->b_error = EBADF;
+		goto bad;
+	}
+
 	crit_exit();
 
+	if (softc->open_pending_mount) {
+		int error = samount(periph, 0, dev);
+		if (error) {
+			bp->b_error = ENXIO;
+			goto bad;
+		}
+		saprevent(periph, PR_PREVENT);
+		softc->open_pending_mount = 0;
+	}
+
 	/*
-	 * If it's a null transfer, return immediatly
+	 * If it's a null transfer, return immediately
 	 */
 	if (bp->b_bcount == 0)
 		goto done;
@@ -768,6 +815,17 @@ done:
 	biodone(bio);
 	return(0);
 }
+
+
+#define	PENDING_MOUNT_CHECK(softc, periph, dev)		\
+	if (softc->open_pending_mount) {		\
+		error = samount(periph, 0, dev);	\
+		if (error) {				\
+			break;				\
+		}					\
+		saprevent(periph, PR_PREVENT);		\
+		softc->open_pending_mount = 0;		\
+	}
 
 static int
 saioctl(struct dev_ioctl_args *ap)
@@ -883,7 +941,7 @@ saioctl(struct dev_ioctl_args *ap)
 		 * If this isn't the control mode device, actually go out
 		 * and ask the drive again what it's set to.
 		 */
-		if (!SA_IS_CTRL(dev)) {
+		if (!SA_IS_CTRL(dev) && !softc->open_pending_mount) {
 			u_int8_t write_protect;
 			int comp_enabled, comp_supported;
 			error = sagetparams(periph, SA_PARAM_ALL,
@@ -980,7 +1038,8 @@ saioctl(struct dev_ioctl_args *ap)
 		bcopy((caddr_t) &softc->last_ctl_cdb, sep->ctl_cdb,
 		    sizeof (sep->ctl_cdb));
 
-		if (SA_IS_CTRL(dev) == 0 || didlockperiph)
+		if ((SA_IS_CTRL(dev) == 0 && softc->open_pending_mount) ||
+		    didlockperiph)
 			bzero((caddr_t) &softc->errinfo,
 			    sizeof (softc->errinfo));
 		error = 0;
@@ -990,6 +1049,8 @@ saioctl(struct dev_ioctl_args *ap)
 	{
 		struct mtop *mt;
 		int    count;
+
+		PENDING_MOUNT_CHECK(softc, periph, dev);
 
 		mt = (struct mtop *)addr;
 
@@ -1085,6 +1146,7 @@ saioctl(struct dev_ioctl_args *ap)
 			break;
 		}
 		case MTREW:	/* rewind */
+			PENDING_MOUNT_CHECK(softc, periph, dev);
 			sacheckeod(periph);
 			error = sarewind(periph);
 			/* see above */
@@ -1094,18 +1156,22 @@ saioctl(struct dev_ioctl_args *ap)
 			softc->filemarks = 0;
 			break;
 		case MTERASE:	/* erase */
+			PENDING_MOUNT_CHECK(softc, periph, dev);
 			error = saerase(periph, count);
 			softc->flags &=
 			    ~(SA_FLAG_TAPE_WRITTEN|SA_FLAG_TAPE_FROZEN);
 			softc->flags &= ~SA_FLAG_ERR_PENDING;
 			break;
 		case MTRETENS:	/* re-tension tape */
+			PENDING_MOUNT_CHECK(softc, periph, dev);
 			error = saretension(periph);		
 			softc->flags &=
 			    ~(SA_FLAG_TAPE_WRITTEN|SA_FLAG_TAPE_FROZEN);
 			softc->flags &= ~SA_FLAG_ERR_PENDING;
 			break;
 		case MTOFFL:	/* rewind and put the drive offline */
+
+			PENDING_MOUNT_CHECK(softc, periph, dev);
 
 			sacheckeod(periph);
 			/* see above */
@@ -1136,6 +1202,8 @@ saioctl(struct dev_ioctl_args *ap)
 			break;
 
 		case MTSETBSIZ:	/* Set block size for device */
+
+			PENDING_MOUNT_CHECK(softc, periph, dev);
 
 			error = sasetparams(periph, SA_PARAM_BLOCKSIZE, count,
 					    0, 0, 0);
@@ -1179,6 +1247,8 @@ saioctl(struct dev_ioctl_args *ap)
 			}
 			break;
 		case MTSETDNSTY:	/* Set density for device and mode */
+			PENDING_MOUNT_CHECK(softc, periph, dev);
+
 			if (count > UCHAR_MAX) {
 				error = EINVAL;	
 				break;
@@ -1188,6 +1258,7 @@ saioctl(struct dev_ioctl_args *ap)
 			}
 			break;
 		case MTCOMP:	/* enable compression */
+			PENDING_MOUNT_CHECK(softc, periph, dev);
 			/*
 			 * Some devices don't support compression, and
 			 * don't like it if you ask them for the
@@ -1211,15 +1282,19 @@ saioctl(struct dev_ioctl_args *ap)
 		error = 0;
 		break;
 	case MTIOCRDSPOS:
+		PENDING_MOUNT_CHECK(softc, periph, dev);
 		error = sardpos(periph, 0, (u_int32_t *) addr);
 		break;
 	case MTIOCRDHPOS:
+		PENDING_MOUNT_CHECK(softc, periph, dev);
 		error = sardpos(periph, 1, (u_int32_t *) addr);
 		break;
 	case MTIOCSLOCATE:
+		PENDING_MOUNT_CHECK(softc, periph, dev);
 		error = sasetpos(periph, 0, (u_int32_t *) addr);
 		break;
 	case MTIOCHLOCATE:
+		PENDING_MOUNT_CHECK(softc, periph, dev);
 		error = sasetpos(periph, 1, (u_int32_t *) addr);
 		break;
 	case MTIOCGETEOTMODEL:
@@ -3167,6 +3242,8 @@ sawritefilemarks(struct cam_periph *periph, int nmarks, int setmarks)
 	int	error, nwm = 0;
 
 	softc = (struct sa_softc *)periph->softc;
+	if (softc->open_rdonly)
+		return (EBADF);
 
 	ccb = cam_periph_getccb(periph, 1);
 	/*
@@ -3384,6 +3461,8 @@ saerase(struct cam_periph *periph, int longerase)
 	int error;
 
 	softc = (struct sa_softc *)periph->softc;
+	if (softc->open_rdonly)
+		return (EBADF);
 
 	ccb = cam_periph_getccb(periph, 1);
 
