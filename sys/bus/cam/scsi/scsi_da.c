@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.49 2007/11/25 16:49:48 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.50 2007/12/02 03:25:07 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -2020,9 +2020,23 @@ dasetgeom(struct cam_periph *periph, uint32_t block_len, uint64_t maxsector)
 	ccg.secs_per_track = 0;
 	ccg.cylinders = 0;
 	xpt_action((union ccb*)&ccg);
-	dp->heads = ccg.heads;
-	dp->secs_per_track = ccg.secs_per_track;
-	dp->cylinders = ccg.cylinders;
+	if ((ccg.ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+		/*
+		 * We don't know what went wrong here- but just pick
+		 * a geometry so we don't have nasty things like divide
+		 * by zero.
+		 */
+		dp->heads = 255;
+		dp->secs_per_track = 255;
+		dp->cylinders = dp->sectors / (255 * 255);
+		if (dp->cylinders == 0) {
+			dp->cylinders = 1;
+		}
+	} else {
+		dp->heads = ccg.heads;
+		dp->secs_per_track = ccg.secs_per_track;
+		dp->cylinders = ccg.cylinders;
+	}
 }
 
 static void
