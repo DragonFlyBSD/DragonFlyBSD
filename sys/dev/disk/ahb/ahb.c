@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.15 2007/05/13 18:33:57 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.16 2007/12/02 03:54:16 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -509,7 +509,7 @@ ahbxptattach(struct ahb_softc *ahb)
 	}
 
 	ahb->num_ecbs = MIN(ahb->num_ecbs,
-			    ahb->ha_inq_data->scsi_data.reserved[1]);
+			    ahb->ha_inq_data->scsi_data.spc2_flags);
 	kprintf("ahb%ld: %.8s %s SCSI Adapter, FW Rev. %.4s, ID=%d, %d ECBs\n",
 	       ahb->unit, ahb->ha_inq_data->scsi_data.product,
 	       (ahb->ha_inq_data->scsi_data.flags & 0x4) ? "Differential"
