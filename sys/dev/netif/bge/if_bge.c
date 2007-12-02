@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.87 2007/08/11 05:27:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.88 2007/12/02 07:41:10 sephe Exp $
  *
  */
 
@@ -3181,8 +3181,12 @@ bge_stop(struct bge_softc *sc)
 	 * Isolate/power down the PHY, but leave the media selection
 	 * unchanged so that things will be put back to normal when
 	 * we bring the interface back up.
+	 *
+	 * 'mii' may be NULL in the following cases:
+	 * - The device uses TBI.
+	 * - bge_stop() is called by bge_detach().
 	 */
-	if ((sc->bge_flags & BGE_FLAG_TBI) == 0) {
+	if (mii != NULL) {
 		itmp = ifp->if_flags;
 		ifp->if_flags |= IFF_UP;
 		ifm = mii->mii_media.ifm_cur;
