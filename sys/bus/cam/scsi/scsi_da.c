@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.50 2007/12/02 03:25:07 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.51 2007/12/02 05:30:08 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -461,8 +461,13 @@ static void		dashutdown(void *arg, int howto);
 #define	DA_DEFAULT_RETRY	4
 #endif
 
+#ifndef	DA_DEFAULT_SEND_ORDERED
+#define	DA_DEFAULT_SEND_ORDERED	1
+#endif
+
 static int da_retry_count = DA_DEFAULT_RETRY;
 static int da_default_timeout = DA_DEFAULT_TIMEOUT;
+static int da_send_ordered = DA_DEFAULT_SEND_ORDERED;
 static struct callout dasendorderedtag_ch;
 
 SYSCTL_NODE(_kern_cam, OID_AUTO, da, CTLFLAG_RD, 0,
@@ -473,6 +478,9 @@ TUNABLE_INT("kern.cam.da.retry_count", &da_retry_count);
 SYSCTL_INT(_kern_cam_da, OID_AUTO, default_timeout, CTLFLAG_RW,
            &da_default_timeout, 0, "Normal I/O timeout (in seconds)");
 TUNABLE_INT("kern.cam.da.default_timeout", &da_default_timeout);
+SYSCTL_INT(_kern_cam_da, OID_AUTO, da_send_ordered, CTLFLAG_RW,
+           &da_send_ordered, 0, "Send Ordered Tags");
+TUNABLE_INT("kern.cam.da.da_send_ordered", &da_send_ordered);
 
 /*
  * DA_ORDEREDTAG_INTERVAL determines how often, relative
@@ -980,7 +988,7 @@ dainit(void)
 	if (status != CAM_REQ_CMP) {
 		kprintf("da: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
-	} else {
+	} else if (da_send_ordered) {
 
 		/*
 		 * Schedule a periodic event to occasionally send an
@@ -2044,24 +2052,23 @@ dasendorderedtag(void *arg)
 {
 	struct da_softc *softc;
 
-	for (softc = SLIST_FIRST(&softc_list);
-	     softc != NULL;
-	     softc = SLIST_NEXT(softc, links)) {
-		crit_enter();
-		if ((softc->ordered_tag_count == 0) 
-		 && ((softc->flags & DA_FLAG_WENT_IDLE) == 0)) {
-			softc->flags |= DA_FLAG_NEED_OTAG;
+	if (da_send_ordered) {
+		SLIST_FOREACH(softc, &softc_list, links) {
+			crit_enter();
+			if ((softc->ordered_tag_count == 0) 
+			 && ((softc->flags & DA_FLAG_WENT_IDLE) == 0)) {
+				softc->flags |= DA_FLAG_NEED_OTAG;
+			}
+			if (softc->outstanding_cmds > 0)
+				softc->flags &= ~DA_FLAG_WENT_IDLE;
+			softc->ordered_tag_count = 0;
+			crit_exit();
 		}
-		if (softc->outstanding_cmds > 0)
-			softc->flags &= ~DA_FLAG_WENT_IDLE;
-
-		softc->ordered_tag_count = 0;
-		crit_exit();
+		/* Queue us up again */
+		callout_reset(&dasendorderedtag_ch,
+		    (da_default_timeout * hz) / DA_ORDEREDTAG_INTERVAL,
+		    dasendorderedtag, NULL);
 	}
-	/* Queue us up again */
-	callout_reset(&dasendorderedtag_ch,
-	    (da_default_timeout * hz) / DA_ORDEREDTAG_INTERVAL,
-	    dasendorderedtag, NULL);
 }
 
 /*
