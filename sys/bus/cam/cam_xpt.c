@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.56 2007/12/02 00:30:35 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.57 2007/12/02 03:01:55 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1569,6 +1569,13 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 		struct	ccb_trans_settings_fc *fc = &cts.xport_specific.fc;
 		if (fc->valid & CTS_FC_VALID_SPEED) {
 			speed = fc->bitrate;
+		}
+	}
+
+	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_SAS) {
+		struct	ccb_trans_settings_sas *sas = &cts.xport_specific.sas;
+		if (sas->valid & CTS_SAS_VALID_SPEED) {
+			speed = sas->bitrate;
 		}
 	}
 
