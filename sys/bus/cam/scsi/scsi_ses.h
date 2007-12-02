@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.h,v 1.2 2000/01/15 22:40:04 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.h,v 1.2 2003/06/17 04:28:19 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.h,v 1.3 2007/12/02 01:54:27 pavalos Exp $ */
 /*
  * Copyright (c) 2000 by Matthew Jacob
  * All rights reserved.
@@ -30,7 +30,7 @@
  *
  */
 
-#define	SESIOC			(('s' - 040) << 8)
+#define	SESIOC			('s' - 040)
 #define	SESIOC_GETNOBJ		_IO(SESIOC, 1)
 #define	SESIOC_GETOBJMAP	_IO(SESIOC, 2)
 #define	SESIOC_GETENCSTAT	_IO(SESIOC, 3)
