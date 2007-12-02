@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.25 2007/11/22 17:11:43 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.26 2007/12/02 04:24:11 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -368,7 +368,7 @@ passopen(struct dev_open_args *ap)
 	 */
 	if ((ap->a_oflags & O_NONBLOCK) != 0) {
 		xpt_print_path(periph->path);
-		kprintf("can't do nonblocking accesss\n");
+		kprintf("can't do nonblocking access\n");
 		crit_exit();
 		return(EINVAL);
 	}
