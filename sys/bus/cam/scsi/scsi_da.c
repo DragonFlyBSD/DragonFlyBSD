@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.51 2007/12/02 05:30:08 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.52 2007/12/02 16:38:11 pavalos Exp $
  */
 
 #ifdef _KERNEL
@@ -185,7 +185,6 @@ static struct da_quirk_entry da_quirk_table[] =
 		 */
 		{T_DIRECT, SIP_MEDIA_FIXED, "FUJITSU", "M2954*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	
 	},
 	{
 		/*
@@ -216,6 +215,7 @@ static struct da_quirk_entry da_quirk_table[] =
 	{
 		/*
 		 * Doesn't like the synchronize cache command.
+		 * Reported by: Blaz Zupan <blaz@gold.amis.net>
 		 */
 		{T_DIRECT, SIP_MEDIA_FIXED, quantum, "MAVERICK 540S", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
@@ -225,6 +225,14 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * Doesn't like the synchronize cache command.
 		 */
 		{T_DIRECT, SIP_MEDIA_FIXED, quantum, "LPS525S", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Doesn't like the synchronize cache command.
+		 * Reported by: walter@pelissero.de
+		 */
+		{T_DIRECT, SIP_MEDIA_FIXED, quantum, "LPS540S", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
@@ -242,38 +250,12 @@ static struct da_quirk_entry da_quirk_table[] =
 		{T_DIRECT, SIP_MEDIA_FIXED, quantum, "VIKING 2*", "*"},
 		/*quirks*/ DA_Q_NO_6_BYTE
 	},
-	/* XXX USB floppy quirks temporarily enabled for 4.9R */
-	/* USB floppy devices supported by umass(4) */
 	{
 		/*
-		 * This USB floppy drive uses the UFI command set. This
-		 * command set is a derivative of the ATAPI command set and
-		 * does not support READ_6 commands only READ_10. It also does
-		 * not support sync cache (0x35).
+		 * Doesn't like the synchronize cache command.
+		 * Reported by: walter@pelissero.de
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Y-E DATA", "USB-FDU", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/* Another USB floppy */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "MATSHITA", "FDD CF-VFDU*","*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * The vendor, product and version strings coming from the
-		 * controller are null terminated instead of being padded with
-		 * spaces. The trailing wildcard character '*' is required.
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SMSC*", "USB FDC*","*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * SmartDisk (Mitsumi) USB floppy drive
-		 * PR: kern/50226
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "MITSUMI", "USB FDD", "*"},
+		{T_DIRECT, SIP_MEDIA_FIXED, "CONNER", "CP3500*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
@@ -283,70 +265,71 @@ static struct da_quirk_entry da_quirk_table[] =
 		{T_DIRECT, SIP_MEDIA_FIXED, "COMPAQ", "RAID*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
-#ifdef DA_OLD_QUIRKS
 	/* USB mass storage devices supported by umass(4) */
 	{
 		/*
-		 * Sony Memory Stick adapter MSAC-US1 and
-		 * Sony PCG-C1VJ Internal Memory Stick Slot (MSC-U01).
-		 * Make all sony MS* products use this quirk.
+		 * EXATELECOM (Sigmatel) i-Bead 100/105 USB Flash MP3 Player
+		 * PR: kern/51675
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "MS*", "*"},
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "EXATEL", "i-BEAD10*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
-		 * Sony Memory Stick adapter for the CLIE series
-		 * of PalmOS PDA's
+		 * Power Quotient Int. (PQI) USB flash key
+		 * PR: kern/53067
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "CLIE*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Generic*", "USB Flash Disk*",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
-	{
-		/*
-		 * Intelligent Stick USB disk-on-key
-		 * PR: kern/53005
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB Card",
-		 "IntelligentStick*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Sony DSC cameras (DSC-S30, DSC-S50, DSC-S70)
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "Sony DSC", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Microtech USB CameraMate
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "eUSB    Compact*",
-		 "Compact Flash*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Olympus digital cameras (C-3040ZOOM, C-2040ZOOM, C-1)
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "OLYMPUS", "C-*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Olympus digital cameras (E-100RS, E-10).
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "OLYMPUS", "E-*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * KingByte Pen Drives
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "NO BRAND", "PEN DRIVE", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
+ 	{
+ 		/*
+ 		 * Creative Nomad MUVO mp3 player (USB)
+ 		 * PR: kern/53094
+ 		 */
+ 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "CREATIVE", "NOMAD_MUVO", "*"},
+ 		/*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
  	},
+	{
+		/*
+		 * Jungsoft NEXDISK USB flash key
+		 * PR: kern/54737
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "JUNGSOFT", "NEXDISK*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * FreeDik USB Mini Data Drive
+		 * PR: kern/54786
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "FreeDik*", "Mini Data Drive",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Sigmatel USB Flash MP3 Player
+		 * PR: kern/57046
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SigmaTel", "MSCN", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
+	},
+	{
+		/*
+		 * Neuros USB Digital Audio Computer
+		 * PR: kern/63645
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "NEUROS", "dig. audio comp.",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * SEAGRAND NP-900 MP3 Player
+		 * PR: kern/64563
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SEAGRAND", "NP-900*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
+	},
 	{
 		/*
 		 * iRiver iFP MP3 player (with UMS Firmware)
@@ -360,72 +343,216 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * Frontier Labs NEX IA+ Digital Audio Player, rev 1.10/0.01
 		 * PR: kern/70158
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "FL" , "NexIA+*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
- 	{
-		/*
-		 * FujiFilm Camera
-		 */
- 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "FUJIFILMUSB-DRIVEUNIT",
-		 "USB-DRIVEUNIT", "*"},
- 		/*quirks*/ DA_Q_NO_SYNC_CACHE
- 	},
-	{
-		/*
-		 * Minolta Dimage E203
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "MINOLTA", "DiMAGE E203", "*"},
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "FL" , "Nex*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
-		 * Apacer HandyDrive
-		 * PR: kern/43627
+		 * ZICPlay USB MP3 Player with FM
+		 * PR: kern/75057
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Apacer", "HandyDrive", "*"},
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "ACTIONS*" , "USB DISK*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
-		 * Daisy Technology PhotoClip on Zoran chip
-		 * PR: kern/43580
+		 * TEAC USB floppy mechanisms
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "ZORAN", "COACH", "*"},
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "TEAC" , "FD-05*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
-		 * Sony USB Key-Storage
-		 * PR: kern/46386
+		 * Kingston DataTraveler II+ USB Pen-Drive.
+		 * Reported by: Pawel Jakub Dawidek <pjd@FreeBSD.org>
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "Storage Media", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-#endif /* DA_OLD_QUIRKS */
-	{
-		/*
-		 * EXATELECOM (Sigmatel) i-Bead 100/105 USB Flash MP3 Player
-		 * PR: kern/51675
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "EXATEL", "i-BEAD10*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Kingston" , "DataTraveler II+",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
-		 * Jungsoft NEXDISK USB flash key
-		 * PR: kern/54737
+		 * Motorola E398 Mobile Phone (TransFlash memory card).
+		 * Reported by: Wojciech A. Koszek <dunstan@FreeBSD.czest.pl>
+		 * PR: usb/89889
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "JUNGSOFT", "NEXDISK*", "*"},
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Motorola" , "Motorola Phone",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Qware BeatZkey! Pro
+		 * PR: usb/79164
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "GENERIC", "USB DISK DEVICE",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Time DPA20B 1GB MP3 Player
+		 * PR: usb/81846
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB2.0*", "(FS) FLASH DISK*",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Samsung USB key 128Mb
+		 * PR: usb/90081
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB-DISK", "FreeDik-FlashUsb",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Kingston DataTraveler 2.0 USB Flash memory.
+		 * PR: usb/89196
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Kingston", "DataTraveler 2.0",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Creative MUVO Slim mp3 player (USB)
+		 * PR: usb/86131
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "CREATIVE", "MuVo Slim",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
+		},
+	{
+		/*
+		 * United MP5512 Portable MP3 Player (2-in-1 USB DISK/MP3)
+		 * PR: usb/80487
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Generic*", "MUSIC DISK",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * SanDisk Micro Cruzer 128MB
+		 * PR: usb/75970
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SanDisk" , "Micro Cruzer",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * TOSHIBA TransMemory USB sticks
+		 * PR: kern/94660
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "TOSHIBA", "TransMemory",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * PNY USB Flash keys
+		 * PR: usb/75578, usb/72344, usb/65436 
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "*" , "USB DISK*",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Genesys 6-in-1 Card Reader
+		 * PR: usb/94647
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Generic*", "STORAGE DEVICE*",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Rekam Digital CAMERA
+		 * PR: usb/98713
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "CAMERA*", "4MP-9J6*",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * iRiver H10 MP3 player
+		 * PR: usb/102547
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "iriver", "H10*",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * iRiver U10 MP3 player
+		 * PR: usb/92306
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "iriver", "U10*",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * X-Micro Flash Disk
+		 * PR: usb/96901
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "X-Micro", "Flash Disk",
+		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * EasyMP3 EM732X USB 2.0 Flash MP3 Player
+		 * PR: usb/96546
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "EM732X", "MP3 Player*",
+		"1.0"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Denver MP3 player
+		 * PR: usb/107101
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "DENVER", "MP3 PLAYER",
+		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Philips USB Key Audio KEY013
+		 * PR: usb/68412
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "PHILIPS", "Key*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE | DA_Q_NO_PREVENT
+	},
+	{
+		/*
+		 * JNC MP3 Player
+		 * PR: usb/94439
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "JNC*" , "MP3 Player*",
+		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * SAMSUNG MP0402H
+		 * PR: usb/108427
+		 */
+		{T_DIRECT, SIP_MEDIA_FIXED, "SAMSUNG", "MP0402H", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
-		 * Creative Nomad MUVO mp3 player (USB)
-		 * PR: kern/53094
+		 * I/O Magic USB flash - Giga Bank
+		 * PR: usb/108810
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "CREATIVE", "NOMAD_MUVO", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
+		{T_DIRECT, SIP_MEDIA_FIXED, "GS-Magic", "stor*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * JoyFly 128mb USB Flash Drive
+		 * PR: 96133
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB 2.0", "Flash Disk*",
+		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * ChipsBnk usb stick
+		 * PR: 103702
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "ChipsBnk", "USB*",
+		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 };
 

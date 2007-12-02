@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.33 2007/12/02 01:46:13 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.34 2007/12/02 16:38:11 pavalos Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -306,8 +306,8 @@ static struct sa_quirk_entry sa_quirk_table[] =
 		  "C15*", "*"}, SA_QUIRK_VARIABLE|SA_QUIRK_NO_CPAGE, 0,
 	},
 #endif
-	{
-		{ T_SEQUENTIAL, SIP_MEDIA_REMOVABLE, "HP",
+ 	{
+ 		{ T_SEQUENTIAL, SIP_MEDIA_REMOVABLE, "HP",
 		  "C56*", "*"}, SA_QUIRK_VARIABLE|SA_QUIRK_2FM, 0
 	},
 	{

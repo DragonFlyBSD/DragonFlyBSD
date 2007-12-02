@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.61 2007/12/02 05:38:03 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.62 2007/12/02 16:38:11 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -384,6 +384,11 @@ static struct xpt_quirk_entry xpt_quirk_table[] =
 		/*quirks*/0, /*mintags*/0, /*maxtags*/0
 	},
 	{
+		/* This does not support other than LUN 0 */
+		{ T_DIRECT, SIP_MEDIA_FIXED, "VMware*", "*", "*" },
+		CAM_QUIRK_NOLUNS, /*mintags*/2, /*maxtags*/255
+	},
+	{
 		/*
 		 * Broken tagged queuing drive.
 		 * Submitted by:
@@ -490,12 +495,41 @@ static struct xpt_quirk_entry xpt_quirk_table[] =
 	},
 	{
 		/*
+		 * The Hitachi CJ series with J8A8 firmware apparantly has
+		 * problems with tagged commands.
+		 * PR: 23536
+		 * Reported by: amagai@nue.org
+		 */
+		{ T_DIRECT, SIP_MEDIA_FIXED, "HITACHI", "DK32CJ*", "J8A8" },
+		CAM_QUIRK_NOLUNS, /*mintags*/0, /*maxtags*/0
+	},
+	{
+		/*
+		 * These are the large storage arrays.
+		 * Submitted by:  William Carrel <william.carrel@infospace.com>
+		 */
+		{ T_DIRECT, SIP_MEDIA_FIXED, "HITACHI", "OPEN*", "*" },
+		CAM_QUIRK_HILUNS, 2, 1024
+	},
+	{
+		/*
 		 * This old revision of the TDC3600 is also SCSI-1, and
 		 * hangs upon serial number probing.
 		 */
 		{
 			T_SEQUENTIAL, SIP_MEDIA_REMOVABLE, "TANDBERG",
 			" TDC 3600", "U07:"
+		},
+		CAM_QUIRK_NOSERIAL, /*mintags*/0, /*maxtags*/0
+	},
+	{
+		/*
+		 * Maxtor Personal Storage 3000XT (Firewire)
+		 * hangs upon serial number probing.
+		 */
+		{
+			T_DIRECT, SIP_MEDIA_FIXED, "Maxtor",
+			"1394 storage", "*"
 		},
 		CAM_QUIRK_NOSERIAL, /*mintags*/0, /*maxtags*/0
 	},
@@ -548,6 +582,27 @@ static struct xpt_quirk_entry xpt_quirk_table[] =
 		  "Tahiti 1", "*"
 		},
 		CAM_QUIRK_NOLUNS, /*mintags*/0, /*maxtags*/0
+	},
+	{
+		/* EasyRAID E5A aka. areca ARC-6010 */
+		{ T_DIRECT, SIP_MEDIA_FIXED, "easyRAID", "*", "*" },
+		  CAM_QUIRK_NOHILUNS, /*mintags*/2, /*maxtags*/255
+	},
+	{
+		{ T_ENCLOSURE, SIP_MEDIA_FIXED, "DP", "BACKPLANE", "*" },
+		CAM_QUIRK_NOLUNS, /*mintags*/0, /*maxtags*/0
+	},
+	{
+		/*
+		 * Western Digital My Book 250GB (USB)
+		 * hangs upon serial number probing.
+		 * PR: 107495
+		 */
+		{
+			T_DIRECT, SIP_MEDIA_FIXED, "WD",
+			"2500JB External", "*"
+		},
+		CAM_QUIRK_NOSERIAL, /*mintags*/0, /*maxtags*/0
 	},
 	{
 		/* Default tagged queuing parameters for all devices */
