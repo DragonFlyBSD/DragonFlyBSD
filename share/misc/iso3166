@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/misc/iso3166,v 1.6.2.2 2002/08/18 09:06:33 blackend Exp $
-# $DragonFly: src/share/misc/Attic/iso3166,v 1.7 2007/12/03 20:38:05 swildner Exp $
+# $DragonFly: src/share/misc/Attic/iso3166,v 1.8 2007/12/03 20:40:31 swildner Exp $
 #
 # ISO 3166-1:1997 country codes + accepted revisions
 # This includes many places that are not legally independent countries,
@@ -516,4 +516,4 @@ ZW	ZWE	716	Zimbabwe
 #  Inclusion of the new entries for "Serbia" and "Montenegro".
 #
 # Newsletter VI-1 2007-09-21
-#  Inclustion of the new entries for "Saint Martin" and "St. Barthelemy"
+#  Inclusion of the new entries for "Saint Martin" and "St. Barthelemy"
