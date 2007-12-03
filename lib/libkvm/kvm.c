@@ -36,7 +36,7 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.10 2007/04/29 01:36:04 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.11 2007/12/03 14:42:45 hasso Exp $
  */
 
 #include <sys/user.h>	/* MUST BE FIRST */
@@ -167,6 +167,11 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 		_kvm_syserr(kd, kd->program, "%s", mf);
 		goto failed;
 	}
+	if (S_ISREG(st.st_mode) && st.st_size <= 0) {
+		errno = EINVAL;
+		_kvm_syserr(kd, kd->program, "empty file");
+		goto failed;
+	}
 	if (fcntl(kd->pmfd, F_SETFD, FD_CLOEXEC) < 0) {
 		_kvm_syserr(kd, kd->program, "%s", mf);
 		goto failed;
@@ -180,10 +185,6 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 		 */
 		if (strcmp(mf, _PATH_DEVNULL) == 0) {
 			kd->vmfd = open(_PATH_DEVNULL, O_RDONLY);
-		} else if (strcmp(mf, _PATH_MEM) != 0) {
-			_kvm_err(kd, kd->program,
-				 "%s: not physical memory device", mf);
-			goto failed;
 		} else {
 			if ((kd->vmfd = open(_PATH_KMEM, flag)) < 0) {
 				_kvm_syserr(kd, kd->program, "%s", _PATH_KMEM);
@@ -458,7 +459,7 @@ kvm_readstr(kvm_t *kd, u_long kva, char *buf, size_t *lenp)
 					return NULL;
 				}
 			}
-			cc = read(kd->vmfd, &ch, 1);
+			cc = read(kd->pmfd, &ch, 1);
 			if ((ssize_t)cc < 0) {
 				_kvm_syserr(kd, 0, "kvm_readstr");
 				return NULL;
