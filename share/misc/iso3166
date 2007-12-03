@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/misc/iso3166,v 1.6.2.2 2002/08/18 09:06:33 blackend Exp $
-# $DragonFly: src/share/misc/Attic/iso3166,v 1.6 2007/05/13 18:33:56 swildner Exp $
+# $DragonFly: src/share/misc/Attic/iso3166,v 1.6.2.1 2007/12/03 20:42:55 swildner Exp $
 #
 # ISO 3166-1:1997 country codes + accepted revisions
 # This includes many places that are not legally independent countries,
@@ -202,6 +202,7 @@ RU	RUS	643	Russian Federation
 RW	RWA	646	Rwanda
 KN	KNA	659	Saint Kitts and Nevis
 LC	LCA	662	Saint Lucia
+MF	MAF	663	Saint Martin (French part)
 VC	VCT	670	Saint Vincent and the Grenadines
 WS	WSM	882	Samoa
 SM	SMR	674	San Marino
@@ -220,6 +221,7 @@ ZA	ZAF	710	South Africa
 GS	SGS	239	South Georgia and the South Sandwich Islands
 ES	ESP	724	Spain
 LK	LKA	144	Sri Lanka
+BL	BLM	652	St. Barthelemy
 SH	SHN	654	St. Helena
 PM	SPM	666	St. Pierre and Miquelon
 SD	SDN	736	Sudan
@@ -512,3 +514,6 @@ ZW	ZWE	716	Zimbabwe
 #
 # Newsletter V-12 2006-09-26
 #  Inclusion of the new entries for "Serbia" and "Montenegro".
+#
+# Newsletter VI-1 2007-09-21
+#  Inclusion of the new entries for "Saint Martin" and "St. Barthelemy"
