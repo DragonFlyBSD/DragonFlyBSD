@@ -1,8 +1,8 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751reg.h,v 1.1.2.1 2002/11/21 23:37:11 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751reg.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751reg.h,v 1.3 2007/12/04 09:11:12 hasso Exp $ */
 /*	$OpenBSD: hifn7751reg.h,v 1.35 2002/04/08 17:49:42 jason Exp $	*/
 
-/*
+/*-
  * Invertex AEON / Hifn 7751 driver
  * Copyright (c) 1999 Invertex Inc. All rights reserved.
  * Copyright (c) 1999 Theo de Raadt
@@ -50,8 +50,13 @@
  * Some PCI configuration space offset defines.  The names were made
  * identical to the names used by the Linux kernel.
  */
+#ifdef notyet
 #define	HIFN_BAR0		(PCIR_MAPS+0x0)	/* PUC register map */
 #define	HIFN_BAR1		(PCIR_MAPS+0x4)	/* DMA register map */
+#else
+#define	HIFN_BAR0		PCIR_BAR(0)	/* PUC register map */
+#define	HIFN_BAR1		PCIR_BAR(1)	/* DMA register map */
+#endif
 #define	HIFN_TRDY_TIMEOUT	0x40
 #define	HIFN_RETRY_TIMEOUT	0x41
 
@@ -64,6 +69,8 @@
 #define	PCI_PRODUCT_HIFN_6500	0x0006		/* 6500 */
 #define	PCI_PRODUCT_HIFN_7811	0x0007		/* 7811 */
 #define	PCI_PRODUCT_HIFN_7951	0x0012		/* 7951 */
+#define	PCI_PRODUCT_HIFN_7955	0x0020		/* 7954/7955 */
+#define	PCI_PRODUCT_HIFN_7956	0x001d		/* 7956 */
 
 #define	PCI_VENDOR_INVERTEX	0x14e1		/* Invertex */
 #define	PCI_PRODUCT_INVERTEX_AEON 0x0005	/* AEON */
@@ -211,6 +218,7 @@ typedef struct hifn_desc {
 #define	HIFN_1_DMA_CSR		0x40	/* DMA Status and Control */
 #define	HIFN_1_DMA_IER		0x44	/* DMA Interrupt Enable */
 #define	HIFN_1_DMA_CNFG		0x48	/* DMA Configuration */
+#define	HIFN_1_PLL		0x4c	/* 7955/7956: PLL config */
 #define	HIFN_1_7811_RNGENA	0x60	/* 7811: rng enable */
 #define	HIFN_1_7811_RNGCFG	0x64	/* 7811: rng config */
 #define	HIFN_1_7811_RNGDAT	0x68	/* 7811: rng data */
@@ -370,6 +378,41 @@ typedef struct hifn_desc {
 #define	HIFN_UNLOCK_SECRET1	0xf4
 #define	HIFN_UNLOCK_SECRET2	0xfc
 
+/*
+ * PLL config register
+ *
+ * This register is present only on 7954/7955/7956 parts. It must be
+ * programmed according to the bus interface method used by the h/w.
+ * Note that the parts require a stable clock.  Since the PCI clock
+ * may vary the reference clock must usually be used.  To avoid
+ * overclocking the core logic, setup must be done carefully, refer
+ * to the driver for details.  The exact multiplier required varies
+ * by part and system configuration; refer to the Hifn documentation.
+ */
+#define	HIFN_PLL_REF_SEL	0x00000001	/* REF/HBI clk selection */
+#define	HIFN_PLL_BP		0x00000002	/* bypass (used during setup) */
+/* bit 2 reserved */
+#define	HIFN_PLL_PK_CLK_SEL	0x00000008	/* public key clk select */
+#define	HIFN_PLL_PE_CLK_SEL	0x00000010	/* packet engine clk select */
+/* bits 5-9 reserved */
+#define	HIFN_PLL_MBSET		0x00000400	/* must be set to 1 */
+#define	HIFN_PLL_ND		0x00003800	/* Fpll_ref multiplier select */
+#define	HIFN_PLL_ND_SHIFT	11
+#define	HIFN_PLL_ND_2		0x00000000	/* 2x */
+#define	HIFN_PLL_ND_4		0x00000800	/* 4x */
+#define	HIFN_PLL_ND_6		0x00001000	/* 6x */
+#define	HIFN_PLL_ND_8		0x00001800	/* 8x */
+#define	HIFN_PLL_ND_10		0x00002000	/* 10x */
+#define	HIFN_PLL_ND_12		0x00002800	/* 12x */
+/* bits 14-15 reserved */
+#define	HIFN_PLL_IS		0x00010000	/* charge pump current select */
+/* bits 17-31 reserved */
+
+/*
+ * Board configuration specifies only these bits.
+ */
+#define        HIFN_PLL_CONFIG         (HIFN_PLL_IS|HIFN_PLL_ND|HIFN_PLL_REF_SEL)
+
 /*********************************************************************
  * Structs for board commands 
  *
@@ -385,6 +428,8 @@ typedef struct hifn_base_command {
 	volatile u_int16_t total_dest_count;
 } hifn_base_command_t;
 
+#define	HIFN_BASE_CMD_COMP		0x0100	/* enable compression engine */
+#define	HIFN_BASE_CMD_PAD		0x0200	/* enable padding engine */
 #define	HIFN_BASE_CMD_MAC		0x0400
 #define	HIFN_BASE_CMD_CRYPT		0x0800
 #define	HIFN_BASE_CMD_DECODE		0x2000
@@ -409,7 +454,8 @@ typedef struct hifn_crypt_command {
 #define	HIFN_CRYPT_CMD_ALG_DES		0x0000		/*   DES */
 #define	HIFN_CRYPT_CMD_ALG_3DES		0x0001		/*   3DES */
 #define	HIFN_CRYPT_CMD_ALG_RC4		0x0002		/*   RC4 */
-#define	HIFN_CRYPT_CMD_MODE_MASK	0x0018		/* DES mode: */
+#define	HIFN_CRYPT_CMD_ALG_AES		0x0003		/*   AES */
+#define	HIFN_CRYPT_CMD_MODE_MASK	0x0018		/* Encrypt/DES mode: */
 #define	HIFN_CRYPT_CMD_MODE_ECB		0x0000		/*   ECB */
 #define	HIFN_CRYPT_CMD_MODE_CBC		0x0008		/*   CBC */
 #define	HIFN_CRYPT_CMD_MODE_CFB		0x0010		/*   CFB */
@@ -420,6 +466,11 @@ typedef struct hifn_crypt_command {
 
 #define	HIFN_CRYPT_CMD_SRCLEN_M		0xc000
 #define	HIFN_CRYPT_CMD_SRCLEN_S		14
+
+#define	HIFN_CRYPT_CMD_KSZ_MASK		0x0600		/* AES key size: */
+#define	HIFN_CRYPT_CMD_KSZ_128		0x0000		/*  128 bit */
+#define	HIFN_CRYPT_CMD_KSZ_192		0x0200		/*  192 bit */
+#define	HIFN_CRYPT_CMD_KSZ_256		0x0400		/*  256 bit */
 
 /*
  * Structure to help build up the command data structure.
@@ -451,6 +502,64 @@ typedef struct hifn_mac_command {
  */
 #define	HIFN_MAC_CMD_POS_IPSEC		0x0200
 #define	HIFN_MAC_CMD_NEW_KEY		0x0800
+
+struct hifn_comp_command {
+	volatile u_int16_t masks;
+	volatile u_int16_t header_skip;
+	volatile u_int16_t source_count;
+	volatile u_int16_t reserved;
+};
+
+#define	HIFN_COMP_CMD_SRCLEN_M		0xc000
+#define	HIFN_COMP_CMD_SRCLEN_S		14
+#define	HIFN_COMP_CMD_ONE		0x0100	/* must be one */
+#define	HIFN_COMP_CMD_CLEARHIST		0x0010	/* clear history */
+#define	HIFN_COMP_CMD_UPDATEHIST	0x0008	/* update history */
+#define	HIFN_COMP_CMD_LZS_STRIP0	0x0004	/* LZS: strip zero */
+#define	HIFN_COMP_CMD_MPPC_RESTART	0x0004	/* MPPC: restart */
+#define	HIFN_COMP_CMD_ALG_MASK		0x0001	/* compression mode: */
+#define	HIFN_COMP_CMD_ALG_MPPC		0x0001	/*   MPPC */
+#define	HIFN_COMP_CMD_ALG_LZS		0x0000	/*   LZS */
+
+struct hifn_base_result {
+	volatile u_int16_t flags;
+	volatile u_int16_t session;
+	volatile u_int16_t src_cnt;		/* 15:0 of source count */
+	volatile u_int16_t dst_cnt;		/* 15:0 of dest count */
+};
+
+#define	HIFN_BASE_RES_DSTOVERRUN	0x0200	/* destination overrun */
+#define	HIFN_BASE_RES_SRCLEN_M		0xc000	/* 17:16 of source count */
+#define	HIFN_BASE_RES_SRCLEN_S		14
+#define	HIFN_BASE_RES_DSTLEN_M		0x3000	/* 17:16 of dest count */
+#define	HIFN_BASE_RES_DSTLEN_S		12
+
+struct hifn_comp_result {
+	volatile u_int16_t flags;
+	volatile u_int16_t crc;
+};
+
+#define	HIFN_COMP_RES_LCB_M		0xff00	/* longitudinal check byte */
+#define	HIFN_COMP_RES_LCB_S		8
+#define	HIFN_COMP_RES_RESTART		0x0004	/* MPPC: restart */
+#define	HIFN_COMP_RES_ENDMARKER		0x0002	/* LZS: end marker seen */
+#define	HIFN_COMP_RES_SRC_NOTZERO	0x0001	/* source expired */
+
+struct hifn_mac_result {
+	volatile u_int16_t flags;
+	volatile u_int16_t reserved;
+	/* followed by 0, 6, 8, or 10 u_int16_t's of the MAC, then crypt */
+};
+
+#define	HIFN_MAC_RES_MISCOMPARE		0x0002	/* compare failed */
+#define	HIFN_MAC_RES_SRC_NOTZERO	0x0001	/* source expired */
+
+struct hifn_crypt_result {
+	volatile u_int16_t flags;
+	volatile u_int16_t reserved;
+};
+
+#define	HIFN_CRYPT_RES_SRC_NOTZERO	0x0001	/* source expired */
 
 /*
  * The poll frequency and poll scalar defines are unshifted values used

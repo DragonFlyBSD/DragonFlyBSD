@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.h,v 1.2.2.5 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.h,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.h,v 1.3 2007/12/04 09:11:12 hasso Exp $	*/
 /*	$OpenBSD: cryptodev.h,v 1.31 2002/06/11 11:14:29 beck Exp $	*/
 
 /*
@@ -228,7 +228,8 @@ struct cryptodesc {
 					   place, so don't copy. */
 #define	CRD_F_IV_EXPLICIT	0x04	/* IV explicitly provided */
 #define	CRD_F_DSA_SHA_NEEDED	0x08	/* Compute SHA-1 of buffer for DSA */
-#define CRD_F_COMP		0x0f    /* Set when doing compression */
+#define	CRD_F_COMP		0x0f	/* Set when doing compression */
+#define	CRD_F_KEY_EXPLICIT	0x10	/* Key explicitly provided */
 
 	struct cryptoini	CRD_INI; /* Initialization/context data */
 #define crd_iv		CRD_INI.cri_iv

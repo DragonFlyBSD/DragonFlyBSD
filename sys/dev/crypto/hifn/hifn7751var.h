@@ -1,8 +1,8 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751var.h,v 1.1.2.2 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751var.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
-/*	$OpenBSD: hifn7751var.h,v 1.42 2002/04/08 17:49:42 jason Exp $	*/
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751var.h,v 1.3 2007/12/04 09:11:12 hasso Exp $ */
+/* $OpenBSD: hifn7751var.h,v 1.42 2002/04/08 17:49:42 jason Exp $ */
 
-/*
+/*-
  * Invertex AEON / Hifn 7751 driver
  * Copyright (c) 1999 Invertex Inc. All rights reserved.
  * Copyright (c) 1999 Theo de Raadt
@@ -68,6 +68,8 @@
 #define HIFN_3DES_KEY_LENGTH		24
 #define HIFN_MAX_CRYPT_KEY_LENGTH	HIFN_3DES_KEY_LENGTH
 #define HIFN_IV_LENGTH			8
+#define HIFN_AES_IV_LENGTH		16
+#define HIFN_MAX_IV_LENGTH		HIFN_AES_IV_LENGTH
 
 /*
  *  Length values for authentication
@@ -110,9 +112,8 @@ struct hifn_dma {
 };
 
 struct hifn_session {
-	int hs_state;
-	int hs_prev_op; /* XXX collapse into hs_flags? */
-	u_int8_t hs_iv[HIFN_IV_LENGTH];
+	int hs_used;
+	u_int8_t hs_iv[HIFN_MAX_IV_LENGTH];
 };
 
 #define	HIFN_RING_SYNC(sc, r, i, f)					\
@@ -153,7 +154,7 @@ struct hifn_softc {
 
 	u_int32_t		sc_dmaier;
 	u_int32_t		sc_drammodel;	/* 1=dram, 0=sram */
-
+	u_int32_t		sc_pllconfig;	/* 7954/7955/7956 PLL config */
 
 	struct hifn_dma		*sc_dma;
 	bus_dmamap_t		sc_dmamap;
@@ -162,11 +163,15 @@ struct hifn_softc {
 	int			sc_dmansegs;
 	int32_t			sc_cid;
 	int			sc_maxses;
+	int			sc_nsessions;
+	struct hifn_session	*sc_sessions;
 	int			sc_ramsize;
 	int			sc_flags;
 #define	HIFN_HAS_RNG		0x1	/* includes random number generator */
 #define	HIFN_HAS_PUBLIC		0x2	/* includes public key support */
-#define	HIFN_IS_7811		0x4	/* Hifn 7811 part */
+#define	HIFN_HAS_AES		0x4	/* includes AES support */
+#define	HIFN_IS_7811		0x8	/* Hifn 7811 part */
+#define	HIFN_IS_7956		0x10	/* Hifn 7956/7955 don't have SDRAM */
 	struct callout		sc_rngto;	/* for polling RNG */
 	struct callout		sc_tickto;	/* for managing DMA */
 	int			sc_rngfirst;
@@ -182,7 +187,6 @@ struct hifn_softc {
 	int			sc_needwakeup;	/* ops q'd wating on resources */
 	int			sc_curbatch;	/* # ops submitted w/o int */
 	int			sc_suspended;
-	struct hifn_session	sc_sessions[2048];
 };
 
 /*
@@ -263,7 +267,7 @@ struct hifn_operand {
 struct hifn_command {
 	u_int16_t session_num;
 	u_int16_t base_masks, cry_masks, mac_masks;
-	u_int8_t iv[HIFN_IV_LENGTH], *ck, mac[HIFN_MAC_KEY_LENGTH];
+	u_int8_t iv[HIFN_MAX_IV_LENGTH], *ck, mac[HIFN_MAC_KEY_LENGTH];
 	int cklen;
 	int sloplen, slopidx;
 

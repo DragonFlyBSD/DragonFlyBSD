@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptosoft.c,v 1.2.2.1 2002/11/21 23:34:23 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptosoft.c,v 1.5 2006/09/05 03:48:13 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptosoft.c,v 1.6 2007/12/04 09:11:12 hasso Exp $	*/
 /*	$OpenBSD: cryptosoft.c,v 1.35 2002/04/26 08:43:50 deraadt Exp $	*/
 
 /*
@@ -152,6 +152,17 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 			/* Get IV off buf */
 			COPYDATA(outtype, buf, crd->crd_inject, blks, iv);
 		}
+	}
+
+	if (crd->crd_flags & CRD_F_KEY_EXPLICIT) {
+		int error;
+
+		if (sw->sw_kschedule)
+			exf->zerokey(&(sw->sw_kschedule));
+		error = exf->setkey(&sw->sw_kschedule,
+				crd->crd_key, crd->crd_klen / 8);
+		if (error)
+			return (error);
 	}
 
 	ivp = iv;
