@@ -29,7 +29,7 @@
  *	from: @(#)rpc.h 1.9 88/02/08 SMI
  *	from: @(#)rpc.h	2.4 89/07/11 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/rpc.h,v 1.12 2000/01/26 09:02:40 shin Exp $
- * $DragonFly: src/include/rpc/rpc.h,v 1.5 2007/11/25 14:33:02 swildner Exp $
+ * $DragonFly: src/include/rpc/rpc.h,v 1.6 2007/12/04 20:59:15 swildner Exp $
  */
 
 /*
@@ -82,6 +82,8 @@ struct rpcent {
 __BEGIN_DECLS
 int		 callrpc(char *, int, int, int, xdrproc_t, char *, xdrproc_t,
 			 char *);
+int		 registerrpc(int, int, int, char *(*)(void), xdrproc_t,
+			     xdrproc_t);
 
 struct rpcent 	*getrpcbyname(char *);
 struct rpcent 	*getrpcbynumber(int);

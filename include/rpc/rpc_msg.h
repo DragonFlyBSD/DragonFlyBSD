@@ -29,7 +29,7 @@
  *	from: @(#)rpc_msg.h 1.7 86/07/16 SMI
  *	from: @(#)rpc_msg.h	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/rpc_msg.h,v 1.12 1999/08/27 23:45:05 peter Exp $
- * $DragonFly: src/include/rpc/rpc_msg.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
+ * $DragonFly: src/include/rpc/rpc_msg.h,v 1.4 2007/12/04 20:59:15 swildner Exp $
  */
 
 /*
@@ -183,6 +183,22 @@ extern bool_t	xdr_callhdr	(XDR *, struct rpc_msg *);
  * 	struct rpc_msg *rmsg;
  */
 extern bool_t	xdr_replymsg	(XDR *, struct rpc_msg *);
+
+/*
+ * XDR routine to handle an accepted rpc reply.
+ * xdr_accepted_reply(xdrs, rej)
+ * 	XDR *xdrs;
+ * 	struct accepted_reply *rej;
+ */
+extern bool_t	xdr_accepted_reply(XDR *, struct accepted_reply *);
+
+/*
+ * XDR routine to handle a rejected rpc reply.
+ * xdr_rejected_reply(xdrs, rej)
+ * 	XDR *xdrs;
+ * 	struct rejected_reply *rej;
+ */
+extern bool_t	xdr_rejected_reply(XDR *, struct rejected_reply *);
 
 /*
  * Fills in the error part of a reply message.
