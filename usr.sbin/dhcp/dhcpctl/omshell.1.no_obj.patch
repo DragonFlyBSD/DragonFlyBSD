@@ -1,0 +1,14 @@
+$DragonFly: src/usr.sbin/dhcp/dhcpctl/Attic/omshell.1.no_obj.patch,v 1.1 2007/12/05 21:41:41 swildner Exp $
+--- omshell.1	4 Jan 2005 19:58:53 -0000	1.1
++++ omshell.1	19 Dec 2006 12:01:01 -0000
+@@ -45,8 +45,8 @@
+ .I must
+ understand what objects are available and how to use them.
+ Documentation for OMAPI objects can be found in the documentation for
+-the server that provides them - for example, in the \fBdhcpd(1)\fR
+-manual page and the \fBdhclient(1)\fR manual page.
++the server that provides them - for example, in the \fBdhcpd(8)\fR
++manual page and the \fBdhclient(8)\fR manual page.
+ .SH CONTRIBUTIONS
+ .PP
+ This software is free software.  At various times its development has

@@ -1,8 +1,10 @@
-# $DragonFly: src/usr.sbin/dhcp/dhcpctl/Attic/Makefile.bin,v 1.1 2005/01/04 19:58:54 joerg Exp $
+# $DragonFly: src/usr.sbin/dhcp/dhcpctl/Attic/Makefile.bin,v 1.2 2007/12/05 21:41:41 swildner Exp $
 
 .include "${.CURDIR}/../Makefile.common"
 
 PROG=	omshell
+
+SRCS=	omshell.c omshell.1.no_obj.patch
 
 LDADD=	${LIBDHCP} ${LIBRES} ${LIBOMAPI} ${LIBDST} libdhcpctl.a
 
