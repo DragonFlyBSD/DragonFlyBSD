@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.32 2007/08/09 01:10:05 dillon Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.33 2007/12/05 20:46:34 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -163,7 +163,7 @@ rtable_init(void)
 
 /*
  * Our per-cpu table management protocol thread.  All route table operations
- * are chained through all cpus in order starting at cpu #0 in order to
+ * are sequentially chained through all cpus starting at cpu #0 in order to
  * maintain duplicate route tables on each cpu.  Having a spearate route
  * table management thread allows the protocol and interrupt threads to
  * issue route table changes.
