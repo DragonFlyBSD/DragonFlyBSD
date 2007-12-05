@@ -56,7 +56,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sleep.9,v 1.18.2.5 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/sleep.9,v 1.8 2007/08/21 19:16:19 corecode Exp $
+.\" $DragonFly: src/share/man/man9/sleep.9,v 1.9 2007/12/05 20:34:12 swildner Exp $
 .\" "
 .Dd January 9, 2007
 .Os
@@ -172,16 +172,16 @@ if awakened, otherwise an appropriate error code is returned.
 .Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er EWOULDBLOCK
-The timeout did expire.
+The timeout expired.
 .It Bq Er ERESTART
-The signal needs to be delivered to the system call should and
-it should be restarted if possible.
+A signal needs to be delivered and the system call should
+be restarted if possible.
 This only happens if
 .Dv PCATCH
 was set in
 .Fa flags .
 .It Bq Er EINTR
-The system needs to be interrupted by the signal.
+The system call needs to be interrupted by the signal.
 This only happens if
 .Dv PCATCH
 was set in
