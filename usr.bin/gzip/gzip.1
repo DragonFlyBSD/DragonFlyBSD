@@ -1,5 +1,5 @@
 .\"	$NetBSD: gzip.1,v 1.16 2004/04/27 02:25:06 mrg Exp $
-.\"	$DragonFly: src/usr.bin/gzip/gzip.1,v 1.1 2004/10/26 11:19:31 joerg Exp $
+.\"	$DragonFly: src/usr.bin/gzip/gzip.1,v 1.2 2007/12/06 19:54:52 hasso Exp $
 .\"
 .\" Copyright (c) 1997, 2003, 2004 Matthew R. Green
 .\" All rights reserved.
@@ -27,7 +27,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd April 27, 2004
+.Dd December 6, 2007
 .Dt GZIP 1
 .Os
 .Sh NAME
@@ -35,7 +35,7 @@
 .Nd compression/decompression tool using Lempel-Ziv coding (LZ77)
 .Sh SYNOPSIS
 .Nm
-.Op Fl cdfhlNnqrtVv
+.Op Fl cdfhklNnqrtVv
 .Op Fl S Ar suffix
 .Ar file
 .Oo
@@ -43,7 +43,7 @@
 .Oc
 .Oc
 .Nm gunzip
-.Op Fl cfhNqrtVv
+.Op Fl cfhkNqrtVv
 .Op Fl S Ar suffix
 .Ar file
 .Oo
@@ -130,6 +130,9 @@ with the
 option, allowing non-compressed data to pass through unchanged.
 .It Fl h , -help
 This option prints a usage summary and exits.
+.It Fl k , -keep
+Keep (don't delete) input files during compression
+or decompression.
 .It Fl l , -list
 This option displays information about the file's compressed and
 uncompressed size, ratio, uncompressed name.

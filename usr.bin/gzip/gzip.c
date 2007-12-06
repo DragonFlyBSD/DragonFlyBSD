@@ -1,5 +1,5 @@
 /*	$NetBSD: gzip.c,v 1.67 2004/09/11 11:07:44 dsl Exp $	*/
-/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.6 2006/10/25 08:27:27 swildner Exp $ */
+/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.7 2007/12/06 19:54:52 hasso Exp $ */
 
 /*
  * Copyright (c) 1997, 1998, 2003, 2004 Matthew R. Green
@@ -148,6 +148,7 @@ static	int	numflag = 6;		/* gzip -1..-9 value */
 
 #ifndef SMALL
 static	int	fflag;			/* force mode */
+static	int	kflag;			/* don't delete input files */
 static	int	nflag;			/* don't save name/timestamp */
 static	int	Nflag;			/* don't restore name/timestamp */
 static	int	qflag;			/* quiet mode */
@@ -224,6 +225,7 @@ static const struct option longopts[] = {
 	{ "uncompress",		no_argument,		0,	'd' },
 	{ "force",		no_argument,		0,	'f' },
 	{ "help",		no_argument,		0,	'h' },
+	{ "keep",		no_argument,		0,	'k' },
 	{ "list",		no_argument,		0,	'l' },
 	{ "no-name",		no_argument,		0,	'n' },
 	{ "name",		no_argument,		0,	'N' },
@@ -277,7 +279,7 @@ main(int argc, char **argv)
 #ifdef SMALL
 #define OPT_LIST "cdhHltV123456789"
 #else
-#define OPT_LIST "cdfhHlnNqrS:tvV123456789"
+#define OPT_LIST "cdfhHklnNqrS:tvV123456789"
 #endif
 
 	while ((ch = getopt_long(argc, argv, OPT_LIST, longopts, NULL)) != -1) {
@@ -303,6 +305,9 @@ main(int argc, char **argv)
 #ifndef SMALL
 		case 'f':
 			fflag = 1;
+			break;
+		case 'k':
+			kflag = 1;
 			break;
 		case 'n':
 			nflag = 1;
@@ -1075,6 +1080,9 @@ unlink_input(const char *file, struct stat *sb)
 {
 	struct stat nsb;
 
+	if (kflag)
+		return;
+
 	if (stat(file, &nsb) != 0)
 		/* Must be gone alrady */
 		return;
@@ -1678,7 +1686,7 @@ handle_dir(char *dir)
 
 	path_argv[0] = dir;
 	path_argv[1] = 0;
-	fts = fts_open(path_argv, FTS_PHYSICAL, NULL);
+	fts = fts_open(path_argv, FTS_PHYSICAL | FTS_NOCHDIR, NULL);
 	if (fts == NULL) {
 		warn("couldn't fts_open %s", dir);
 		return;
@@ -1696,7 +1704,7 @@ handle_dir(char *dir)
 			maybe_warn("%s", entry->fts_path);
 			continue;
 		case FTS_F:
-			handle_file(entry->fts_name, entry->fts_statp);
+			handle_file(entry->fts_path, entry->fts_statp);
 		}
 	}
 	(void)fts_close(fts);
@@ -1846,14 +1854,17 @@ usage(void)
 
 	fprintf(stderr, "%s\n", gzip_version);
 	fprintf(stderr,
-    "usage: %s [-" OPT_LIST "] [<file> [<file> ...]]\n"
-#ifndef SMALL
+#ifdef SMALL
+    "usage: %s [-" OPT_LIST "] [<file> [<file> ...]]\n",
+#else
+    "usage: %s [-123456789acdfhklLNnqrtVv] [-S .suffix] [<file> [<file> ...]]\n"
     " -c --stdout          write to stdout, keep original files\n"
     "    --to-stdout\n"
     " -d --decompress      uncompress files\n"
     "    --uncompress\n"
     " -f --force           force overwriting & compress links\n"
     " -h --help            display this help\n"
+    " -k --keep            don't delete input files during operation\n"
     " -n --no-name         don't save original file name or time stamp\n"
     " -N --name            save or restore original file name and time stamp\n"
     " -q --quiet           output no warnings\n"
@@ -1866,8 +1877,6 @@ usage(void)
     " -1 --fast            fastest (worst) compression\n"
     " -2 .. -8             set compression level\n"
     " -9 --best            best (slowest) compression\n",
-#else
-    ,
 #endif
 	    getprogname());
 	exit(0);
