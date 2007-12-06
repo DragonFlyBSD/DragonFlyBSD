@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.87 2007/08/11 18:18:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.88 2007/12/06 15:03:25 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1019,6 +1019,7 @@ tstop(void)
 	}
 	tsleep(lp->lwp_proc, 0, "stop", 0);
 	p->p_nstopped--;
+	lp->lwp_flag &= ~LWP_WSTOP;
 	crit_exit();
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.85 2007/11/06 20:21:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.86 2007/12/06 15:03:25 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1357,6 +1357,7 @@ proc_unstop(struct proc *p)
 			 * in the meantime.
 			 */
 			if (lp->lwp_flag & LWP_WSTOP) {
+				lp->lwp_flag &= ~LWP_WSTOP;
 				--p->p_nstopped;
 			} else {
 				if (bootverbose)
@@ -1370,7 +1371,6 @@ proc_unstop(struct proc *p)
 			break;
 
 		}
-		lp->lwp_flag &= ~LWP_WSTOP;
 	}
 	crit_exit();
 }
