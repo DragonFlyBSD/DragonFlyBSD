@@ -1,4 +1,24 @@
 
+Dec 04, 2007: libarchive 2.4.5 released
+Dec 04, 2007: Fix cpio/test/test_write_odc by setting the umask first.
+
+Dec 03, 2007: libarchive 2.4.4 released
+Dec 03, 2007: New configure options --disable-xattr and --disable-acl,
+	thanks to Samuli Suominen.
+
+Dec 03, 2007: libarchive 2.4.3 released
+Dec 03, 2007: Thanks to Lapo Luchini for sending me a ZIP file that
+	libarchive couldn't handle.  Fixed a bug in handling of
+	"length at end" flags in ZIP files.
+Dec 03, 2007: Fixed bsdcpio/bsdtar -help tests.
+Dec 02, 2007: First cut at real bsdtar test harness.
+
+Dec 02, 2007: libarchive 2.4.2 released
+
+Dec 02, 2007: libarchive 2.4.1 released
+Dec 02, 2007: Minor fixes, rough cut of mdoc-to-man conversion for
+	man pages.
+
 Oct 30, 2007: libarchive 2.4.0 released
 Oct 30, 2007: Minor compile fix thanks to Joerg Schilling.
 Oct 30, 2007: Only run the format auction once at the beginning of the
