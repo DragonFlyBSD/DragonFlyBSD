@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.35 2007/07/02 02:23:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.36 2007/12/06 22:25:49 dillon Exp $
  */
 
 /*
@@ -1231,25 +1231,39 @@ vm_page_cache(vm_page_t m)
 		kprintf("vm_page_cache: attempting to cache busy/held page\n");
 		return;
 	}
+
+	/*
+	 * Already in the cache (and thus not mapped)
+	 */
 	if ((m->queue - m->pc) == PQ_CACHE)
 		return;
 
 	/*
-	 * Remove all pmaps and indicate that the page is not
-	 * writeable or mapped.
+	 * Caller is required to test m->dirty, but note that the act of
+	 * removing the page from its maps can cause it to become dirty
+	 * on an SMP system due to another cpu running in usermode.
 	 */
-
-	vm_page_protect(m, VM_PROT_NONE);
-	if (m->dirty != 0) {
+	if (m->dirty) {
 		panic("vm_page_cache: caching a dirty page, pindex: %ld",
 			(long)m->pindex);
 	}
-	vm_page_unqueue_nowakeup(m);
-	m->queue = PQ_CACHE + m->pc;
-	vm_page_queues[m->queue].lcnt++;
-	TAILQ_INSERT_TAIL(&vm_page_queues[m->queue].pl, m, pageq);
-	vmstats.v_cache_count++;
-	vm_page_free_wakeup();
+
+	/*
+	 * Remove all pmaps and indicate that the page is not
+	 * writeable or mapped.  Deal with the case where the page
+	 * may have become dirty via a race.
+	 */
+	vm_page_protect(m, VM_PROT_NONE);
+	if (m->dirty) {
+		vm_page_deactivate(m);
+	} else {
+		vm_page_unqueue_nowakeup(m);
+		m->queue = PQ_CACHE + m->pc;
+		vm_page_queues[m->queue].lcnt++;
+		TAILQ_INSERT_TAIL(&vm_page_queues[m->queue].pl, m, pageq);
+		vmstats.v_cache_count++;
+		vm_page_free_wakeup();
+	}
 }
 
 /*
