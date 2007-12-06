@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.114 2007/08/30 20:41:00 pavalos Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.115 2007/12/06 22:15:06 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -356,6 +356,15 @@ struct	proc {
 #define	P_UPCALLWAIT	0x20000000 /* Wait for upcall or signal */
 #define P_XCPU		0x40000000 /* SIGXCPU */
 
+/*
+ * LWP_WSTOP: When set the thread will stop prior to return to userland
+ *	      and has been counted in the process stop-threads-count, but
+ *	      may still be running in kernel-land.
+ *
+ * LWP_WEXIT: When set the thread has been asked to exit and will not return
+ *	      to userland.  p_nthreads will not be decremented until the
+ *	      thread has actually exited.
+ */
 #define	LWP_ALTSTACK	0x0000001 /* have alternate signal stack */
 #define	LWP_OLDMASK	0x0000002 /* need to restore mask before pause */
 #define LWP_BREAKTSLEEP	0x0000004 /* Event pending, break tsleep on sigcont */
