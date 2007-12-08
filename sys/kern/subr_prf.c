@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.18 2007/07/30 21:40:30 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.19 2007/12/08 20:08:53 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -341,8 +341,8 @@ krateprintf(struct krate *rate, const char *fmt, ...)
 {
 	__va_list ap;
 
-	if (rate->ticks != ticks) {
-		rate->ticks = ticks;
+	if (rate->ticks != (int)time_second) {
+		rate->ticks = (int)time_second;
 		rate->count = 0;
 	}
 	if (rate->count < rate->freq) {
