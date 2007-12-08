@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.52 2007/11/18 13:00:28 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.53 2007/12/08 04:33:58 sephe Exp $
  */
 
 #ifdef DUMMYNET_DEBUG
@@ -1965,6 +1965,12 @@ static int
 ip_dn_init(void)
 {
     struct netmsg smsg;
+
+    if (ip_dn_cpu >= ncpus) {
+	kprintf("%s: CPU%d does not exist, switch to CPU0\n",
+		__func__, ip_dn_cpu);
+	ip_dn_cpu = 0;
+    }
 
     netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_init_dispatch);
     lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
