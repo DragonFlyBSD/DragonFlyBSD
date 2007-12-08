@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.14 2007/11/02 12:50:20 sephe Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.15 2007/12/08 04:47:31 sephe Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -1375,6 +1375,11 @@ same way as it happens when a device queue fills up. Setting this
 option reports the packet as successfully delivered, which can be
 needed for some experimental setups where you want to simulate
 loss or congestion at a remote router.
+.Pp
+.Em NOTE:
+This option is always on,
+since
+.Dx 1.11 .
 .Pp
 .It Cm plr Ar packet-loss-rate
 Packet loss rate.
