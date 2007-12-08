@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.29 2007/10/20 10:28:44 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.30 2007/12/08 10:20:45 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -292,12 +292,8 @@ div_output(struct socket *so, struct mbuf *m,
 		struct inpcb *const inp = so->so_pcb;
 		struct ip *const ip = mtod(m, struct ip *);
 
-		/*
-		 * Don't allow both user specified and setsockopt options,
-		 * and don't allow packet length sizes that will crash
-		 */
-		if (((ip->ip_hl != (sizeof *ip) >> 2) && inp->inp_options) ||
-		     ((u_short)ntohs(ip->ip_len) > m->m_pkthdr.len)) {
+		/* Don't allow packet length sizes that will crash */
+		if ((u_short)ntohs(ip->ip_len) > m->m_pkthdr.len) {
 			error = EINVAL;
 			goto cantsend;
 		}
@@ -308,11 +304,10 @@ div_output(struct socket *so, struct mbuf *m,
 
 		/* Send packet to output processing */
 		ipstat.ips_rawout++;			/* XXX */
-		error = ip_output(m,
-			    inp->inp_options, &inp->inp_route,
+		error = ip_output(m, NULL, NULL,
 			    (so->so_options & SO_DONTROUTE) |
 			    IP_ALLOWBROADCAST | IP_RAWOUTPUT,
-			    inp->inp_moptions, NULL);
+			    NULL, NULL);
 	} else {
 		if (m->m_pkthdr.rcvif == NULL) {
 			/*

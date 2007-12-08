@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/share/man/man4/divert.4,v 1.15.2.7 2002/03/13 18:38:44 keramida Exp $
-.\" $DragonFly: src/share/man/man4/divert.4,v 1.4 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/divert.4,v 1.5 2007/12/08 10:20:45 sephe Exp $
 .\"
 .Dd June 18, 1996
 .Dt DIVERT 4
@@ -138,8 +138,7 @@ Writing to a divert socket can return these errors, along with
 the usual errors possible when writing raw packets:
 .Bl -tag -width Er
 .It Bq Er EINVAL
-The packet had an invalid header, or the IP options in the packet
-and the socket options set were incompatible.
+The packet had an invalid header.
 .It Bq Er EADDRNOTAVAIL
 The destination address contained an IP address not equal to
 .Dv INADDR_ANY
