@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.29 2007/08/09 22:32:39 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.30 2007/12/09 17:23:53 corecode Exp $
  */
 
 #include "vinumhdr.h"
@@ -695,6 +695,14 @@ vinum_scandisk(char *devicename[], int drives)
     /* allocate a drive pointer list */
     drivelist = (int *) Malloc(drives * DRIVEPARTS * sizeof(int));
     CHECKALLOC(drivelist, "Can't allocate memory");
+    error = lock_config();				    /* make sure we're alone here */
+    if (error)
+	return error;
+    error = setjmp(command_fail);			    /* come back here on error */
+    if (error) {					    /* longjmped out */
+	unlock_config();
+	return error;
+    }
 
     /* Open all drives and find which was modified most recently */
     for (driveno = 0; driveno < drives; driveno++) {
@@ -790,6 +798,7 @@ vinum_scandisk(char *devicename[], int drives)
 	    log(LOG_WARNING, "vinum: no drives found\n");
 	else
 	    log(LOG_INFO, "vinum: no additional drives found\n");
+	unlock_config();
 	return ENOENT;
     }
     /*
@@ -871,6 +880,7 @@ vinum_scandisk(char *devicename[], int drives)
 	kprintf("vinum: couldn't read configuration");
     else
 	updateconfig(VF_READING_CONFIG);		    /* update from disk config */
+    unlock_config();
     return status;
 }
 
