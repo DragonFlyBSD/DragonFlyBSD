@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.121 2007/02/23 12:18:33 piso Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.7 2007/12/02 05:03:17 sephe Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.8 2007/12/09 22:32:16 tgen Exp $
  */
 
 #include "opt_ata.h"
@@ -217,7 +217,6 @@ ata_pci_attach(device_t dev)
     else
 	ctlr->channels = 1;
     ctlr->allocate = ata_pci_allocate;
-    ctlr->dmainit = ata_pci_dmainit;
     ctlr->dev = dev;
 
     /* if needed try to enable busmastering */
@@ -233,6 +232,8 @@ ata_pci_attach(device_t dev)
 	ctlr->r_rid1 = ATA_BMADDR_RID;
 	ctlr->r_res1 = bus_alloc_resource_any(dev, ctlr->r_type1, &ctlr->r_rid1,
 					      RF_ACTIVE);
+	/* Only set a dma init function if the device actually supports it. */
+        ctlr->dmainit = ata_pci_dmainit;
     }
 
     if (ctlr->chipinit(dev))
