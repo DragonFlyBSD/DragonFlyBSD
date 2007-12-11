@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf64.h,v 1.9 1999/08/28 00:51:42 peter Exp $
- * $DragonFly: src/sys/sys/elf64.h,v 1.5 2006/10/23 21:50:33 dillon Exp $
+ * $DragonFly: src/sys/sys/elf64.h,v 1.6 2007/12/11 18:10:51 wa1ter Exp $
  */
 
 #ifndef _SYS_ELF64_H_
@@ -45,7 +45,9 @@ typedef u_int64_t	Elf64_Addr;
 typedef u_int32_t	Elf64_Half;
 typedef u_int64_t	Elf64_Off;
 typedef int64_t		Elf64_Sword;
+typedef int64_t		Elf64_Sxword;
 typedef u_int64_t	Elf64_Word;
+typedef u_int64_t	Elf64_Xword;
 typedef u_int64_t	Elf64_Size;
 typedef u_int16_t	Elf64_Quarter;
 typedef Elf64_Half      Elf64_Hashelt;

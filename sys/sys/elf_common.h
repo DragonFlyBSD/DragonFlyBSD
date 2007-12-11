@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.20 2006/10/23 21:50:33 dillon Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.21 2007/12/11 18:10:51 wa1ter Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -73,6 +73,8 @@ typedef struct {
 #define ELFMAG1		'E'
 #define ELFMAG2		'L'
 #define ELFMAG3		'F'
+#define ELFMAG		"\177ELF"
+#define SELFMAG		4
 
 /* Values for e_ident[EI_VERSION] and e_version. */
 #define EV_NONE		0
