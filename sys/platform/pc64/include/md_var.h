@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/md_var.h,v 1.71 2004/01/29 00:05:03 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/md_var.h,v 1.3 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/include/md_var.h,v 1.4 2007/12/12 23:49:23 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -55,6 +55,7 @@ struct	thread;
 struct	reg;
 struct	fpreg;
 struct  dbreg;
+struct __mcontext;
 
 void	busdma_swi(void);
 void	cpu_setregs(void);
@@ -67,6 +68,9 @@ int	isa_nmi(int cd);
 void	setidt(int idx, alias_for_inthand_t *func, int typ, int dpl, int ist);
 int	user_dbreg_trap(void);
 void	fpstate_drop(struct thread *td);
+
+void npxpush(struct __mcontext *mctx);
+void npxpop(struct __mcontext *mctx);
 
 void	cpu_heavy_restore (void);
 void	cpu_kthread_restore (void);/* cannot be called from C */

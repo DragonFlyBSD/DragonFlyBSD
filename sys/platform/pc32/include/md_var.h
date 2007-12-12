@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.25 2007/01/09 23:34:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.26 2007/12/12 23:49:20 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -69,6 +69,7 @@ struct	fpreg;
 struct  dbreg;
 struct  mdglobaldata;
 struct  thread;
+struct	__mcontext;
 
 void	busdma_swi (void);
 void	cpu_gdinit (struct mdglobaldata *gd, int cpu);
@@ -113,5 +114,7 @@ void	setidt (int idx, alias_for_inthand_t *func, int typ, int dpl,
 void	userconfig (void);
 int     user_dbreg_trap (void);
 int     npxdna(void);
+void	npxpush(struct __mcontext *mctx);
+void	npxpop(struct __mcontext *mctx);
 
 #endif /* !_MACHINE_MD_VAR_H_ */

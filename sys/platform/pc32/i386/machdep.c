@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.128 2007/11/07 17:42:50 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.129 2007/12/12 23:49:19 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -498,6 +498,11 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	}
 
 	/*
+	 * Save the FPU state and reinit the FP unit
+	 */
+	npxpush(&sf.sf_uc.uc_mcontext);
+
+	/*
 	 * Copy the sigframe out to the user's stack.
 	 */
 	if (copyout(&sf, sfp, sizeof(struct sigframe)) != 0) {
@@ -596,15 +601,21 @@ sys_sigreturn(struct sigreturn_args *uap)
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
 	struct trapframe *regs;
+	ucontext_t uc;
 	ucontext_t *ucp;
-	int cs, eflags;
+	int cs;
+	int eflags;
+	int error;
 
-	ucp = uap->sigcntxp;
-
-	if (!useracc((caddr_t)ucp, sizeof(ucontext_t), VM_PROT_READ))
-		return (EFAULT);
-
+	/*
+	 * We have to copy the information into kernel space so userland
+	 * can't modify it while we are sniffing it.
+	 */
 	regs = lp->lwp_md.md_regs;
+	error = copyin(uap->sigcntxp, &uc, sizeof(uc));
+	if (error)
+		return (error);
+	ucp = &uc;
 	eflags = ucp->uc_mcontext.mc_eflags;
 
 	if (eflags & PSL_VM) {
@@ -677,6 +688,11 @@ sys_sigreturn(struct sigreturn_args *uap)
 		}
 		bcopy(&ucp->uc_mcontext.mc_gs, regs, sizeof(struct trapframe));
 	}
+
+	/*
+	 * Restore the FPU state from the frame
+	 */
+	npxpop(&ucp->uc_mcontext);
 
 	/*
 	 * Merge saved signal mailbox pending flag to maintain interlock

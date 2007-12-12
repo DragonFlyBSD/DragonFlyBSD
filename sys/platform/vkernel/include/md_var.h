@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.21 2007/07/10 13:19:08 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.22 2007/12/12 23:49:24 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -79,6 +79,7 @@ extern int	NetifNum;
 extern int	_ucodesel, _udatasel;
 
 struct mdglobaldata;
+struct __mcontext;
 
 vpte_t *pmap_kpte(vm_offset_t va);
 void cpu_gdinit (struct mdglobaldata *gd, int cpu);
@@ -99,6 +100,8 @@ void user_trap(struct trapframe *);
 void syscall2 (struct trapframe *);
 void vcons_set_mode(int);
 int npxdna(struct trapframe *);
+void npxpush(struct __mcontext *mctx);
+void npxpop(struct __mcontext *mctx);
 
 void signalintr(int intr);
 

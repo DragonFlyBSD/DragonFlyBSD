@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/Attic/cpu_regs.c,v 1.3 2007/11/07 20:56:20 swildner Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/Attic/cpu_regs.c,v 1.4 2007/12/12 23:49:22 dillon Exp $
  */
 
 #include "use_ether.h"
@@ -310,6 +310,11 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 #endif
 
 	/*
+	 * Save the FPU state and reinit the FP unit
+	 */
+	npxpush(&sf.sf_uc.uc_mcontext);
+
+	/*
 	 * Copy the sigframe out to the user's stack.
 	 */
 	if (copyout(&sf, sfp, sizeof(struct sigframe)) != 0) {
@@ -483,6 +488,11 @@ sys_sigreturn(struct sigreturn_args *uap)
 		}
 		/* bcopy(&ucp.uc_mcontext.mc_gs, regs, sizeof(struct trapframe)); */
 	}
+
+	/*
+	 * Restore the FPU state from the frame
+	 */
+	npxpop(&ucp.uc_mcontext);
 
 	/*
 	 * Merge saved signal mailbox pending flag to maintain interlock

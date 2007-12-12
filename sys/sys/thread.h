@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.89 2007/11/18 09:53:19 sephe Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.90 2007/12/12 23:49:24 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -284,6 +284,7 @@ struct thread {
 #define TDF_BLOCKQ		0x00100000	/* on block queue */
 #define TDF_MPSAFE		0x00200000	/* (thread creation) */
 #define TDF_EXITING		0x00400000	/* thread exiting */
+#define TDF_USINGFP		0x00800000	/* thread using fp coproc */
 
 /*
  * Thread priorities.  Typically only one thread from any given

@@ -36,7 +36,7 @@
  * 
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/npx.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/npx.c,v 1.3 2007/12/12 23:49:22 dillon Exp $
  */
 
 #include "opt_debug_npx.h"
@@ -127,7 +127,7 @@ npx_attach(device_t dev)
 void
 npxinit(u_short control)
 {
-	static union savefpu dummy;
+	static union savefpu dummy __aligned(16);
 
 	/*
 	 * fninit has the same h/w bugs as fnsave.  Use the detoxified
@@ -462,6 +462,17 @@ npxdna(struct trapframe *frame)
 		       mdcpu->gd_npxthread, curthread);
 		panic("npxdna");
 	}
+
+	/*
+	 * Setup the initial saved state if the thread has never before
+	 * used the FP unit.  This also occurs when a thread pushes a
+	 * signal handler and uses FP in the handler.
+	 */
+	if ((curthread->td_flags & TDF_USINGFP) == 0) {
+		curthread->td_flags |= TDF_USINGFP;
+		npxinit(__INITIAL_NPXCW__);
+	}
+
 	/*
 	 * The setting of gd_npxthread and the call to fpurstor() must not
 	 * be preempted by an interrupt thread or we will take an npxdna
@@ -535,6 +546,79 @@ fpusave(union savefpu *addr)
 	else
 		fnsave(addr);
 }
+
+/*
+ * Save the FP state to the mcontext structure.
+ *
+ * WARNING: If you want to try to npxsave() directly to mctx->mc_fpregs,
+ * then it MUST be 16-byte aligned.  Currently this is not guarenteed.
+ */
+void
+npxpush(mcontext_t *mctx)
+{
+	thread_t td = curthread;
+
+	if (td->td_flags & TDF_USINGFP) {
+		if (mdcpu->gd_npxthread == td) {
+			/*
+			 * XXX Note: This is a bit inefficient if the signal
+			 * handler uses floating point, extra faults will
+			 * occur.
+			 */
+			mctx->mc_ownedfp = _MC_FPOWNED_FPU;
+			npxsave(td->td_savefpu);
+		} else {
+			mctx->mc_ownedfp = _MC_FPOWNED_PCB;
+		}
+		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(mctx->mc_fpregs));
+		td->td_flags &= ~TDF_USINGFP;
+	} else {
+		mctx->mc_ownedfp = _MC_FPOWNED_NONE;
+	}
+}
+
+/*
+ * Restore the FP state from the mcontext structure.
+ */
+void
+npxpop(mcontext_t *mctx)
+{
+	thread_t td = curthread;
+
+	switch(mctx->mc_ownedfp) {
+	case _MC_FPOWNED_NONE:
+		/*
+		 * If the signal handler used the FP unit but the interrupted
+		 * code did not, release the FP unit.  Clear TDF_USINGFP will
+		 * force the FP unit to reinit so the interrupted code sees
+		 * a clean slate.
+		 */
+		if (td->td_flags & TDF_USINGFP) {
+			if (td == mdcpu->gd_npxthread)
+				npxsave(td->td_savefpu);
+			td->td_flags &= ~TDF_USINGFP;
+		}
+		break;
+	case _MC_FPOWNED_FPU:
+	case _MC_FPOWNED_PCB:
+		/*
+		 * Clear ownership of the FP unit and restore our saved state.
+		 *
+		 * NOTE: The signal handler may have set-up some FP state and
+		 * enabled the FP unit, so we have to restore no matter what.
+		 *
+		 * XXX: This is bit inefficient, if the code being returned
+		 * to is actively using the FP this results in multiple
+		 * kernel faults.
+		 */
+		if (td == mdcpu->gd_npxthread)
+			npxsave(td->td_savefpu);
+		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
+		td->td_flags |= TDF_USINGFP;
+		break;
+	}
+}
+
 
 #ifndef CPU_DISABLE_SSE
 /*

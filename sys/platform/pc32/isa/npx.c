@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.42 2007/02/22 15:50:49 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.43 2007/12/12 23:49:21 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -209,6 +209,8 @@ __asm("								\n\
 	iret							\n\
 ");
 #endif /* SMP */
+
+static struct krate badfprate = { 1 };
 
 /*
  * Probe routine.  Initialize cr0 to give correct behaviour for [f]wait
@@ -513,7 +515,7 @@ npx_attach(device_t dev)
 void
 npxinit(u_short control)
 {
-	static union savefpu dummy;
+	static union savefpu dummy __aligned(16);
 
 	if (!npx_exists)
 		return;
@@ -852,15 +854,29 @@ npx_intr(void *dummy)
 int
 npxdna(void)
 {
+	thread_t td = curthread;
 	u_long *exstat;
+	int didinit = 0;
 
 	if (!npx_exists)
 		return (0);
 	if (mdcpu->gd_npxthread != NULL) {
 		kprintf("npxdna: npxthread = %p, curthread = %p\n",
-		       mdcpu->gd_npxthread, curthread);
+		       mdcpu->gd_npxthread, td);
 		panic("npxdna");
 	}
+
+	/*
+	 * Setup the initial saved state if the thread has never before
+	 * used the FP unit.  This also occurs when a thread pushes a
+	 * signal handler and uses FP in the handler.
+	 */
+	if ((td->td_flags & TDF_USINGFP) == 0) {
+		td->td_flags |= TDF_USINGFP;
+		npxinit(__INITIAL_NPXCW__);
+		didinit = 1;
+	}
+
 	/*
 	 * The setting of gd_npxthread and the call to fpurstor() must not
 	 * be preempted by an interrupt thread or we will take an npxdna
@@ -873,8 +889,8 @@ npxdna(void)
 	/*
 	 * Record new context early in case frstor causes an IRQ13.
 	 */
-	mdcpu->gd_npxthread = curthread;
-	exstat = GET_FPU_EXSW_PTR(curthread);
+	mdcpu->gd_npxthread = td;
+	exstat = GET_FPU_EXSW_PTR(td);
 	*exstat = 0;
 	/*
 	 * The following frstor may cause an IRQ13 when the state being
@@ -888,7 +904,13 @@ npxdna(void)
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
-	fpurstor(curthread->td_savefpu);
+	if (td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) {
+		krateprintf(&badfprate,
+			    "FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
+			    td->td_savefpu->sv_xmm.sv_env.en_mxcsr, didinit);
+		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+	}
+	fpurstor(td->td_savefpu);
 	crit_exit();
 
 	return (1);
@@ -973,6 +995,90 @@ fpusave(union savefpu *addr)
 	else
 #endif
 		fnsave(addr);
+}
+
+/*
+ * Save the FP state to the mcontext structure.
+ *
+ * WARNING: If you want to try to npxsave() directly to mctx->mc_fpregs,
+ * then it MUST be 16-byte aligned.  Currently this is not guarenteed.
+ */
+void
+npxpush(mcontext_t *mctx)
+{
+	thread_t td = curthread;
+
+	if (td->td_flags & TDF_USINGFP) {
+		if (mdcpu->gd_npxthread == td) {
+			/*
+			 * XXX Note: This is a bit inefficient if the signal
+			 * handler uses floating point, extra faults will
+			 * occur.
+			 */
+			mctx->mc_ownedfp = _MC_FPOWNED_FPU;
+			npxsave(td->td_savefpu);
+		} else {
+			mctx->mc_ownedfp = _MC_FPOWNED_PCB;
+		}
+		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(mctx->mc_fpregs));
+		td->td_flags &= ~TDF_USINGFP;
+	} else {
+		mctx->mc_ownedfp = _MC_FPOWNED_NONE;
+	}
+}
+
+/*
+ * Restore the FP state from the mcontext structure.
+ */
+void
+npxpop(mcontext_t *mctx)
+{
+	thread_t td = curthread;
+
+	switch(mctx->mc_ownedfp) {
+	case _MC_FPOWNED_NONE:
+		/*
+		 * If the signal handler used the FP unit but the interrupted
+		 * code did not, release the FP unit.  Clear TDF_USINGFP will
+		 * force the FP unit to reinit so the interrupted code sees
+		 * a clean slate.
+		 */
+		if (td->td_flags & TDF_USINGFP) {
+			if (td == mdcpu->gd_npxthread)
+				npxsave(td->td_savefpu);
+			td->td_flags &= ~TDF_USINGFP;
+		}
+		break;
+	case _MC_FPOWNED_FPU:
+	case _MC_FPOWNED_PCB:
+		/*
+		 * Clear ownership of the FP unit and restore our saved state.
+		 *
+		 * NOTE: The signal handler may have set-up some FP state and
+		 * enabled the FP unit, so we have to restore no matter what.
+		 *
+		 * XXX: This is bit inefficient, if the code being returned
+		 * to is actively using the FP this results in multiple
+		 * kernel faults.
+		 *
+		 * WARNING: The saved state was exposed to userland and may
+		 * have to be sanitized to avoid a GP fault in the kernel.
+		 */
+		if (td == mdcpu->gd_npxthread)
+			npxsave(td->td_savefpu);
+		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
+		if (td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) {
+			krateprintf(&badfprate,
+				    "pid %d (%s) signal return from user: "
+				    "illegal FP MXCSR %08x\n",
+				    td->td_proc->p_pid,
+				    td->td_proc->p_comm,
+				    td->td_savefpu->sv_xmm.sv_env.en_mxcsr);
+			td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+		}
+		td->td_flags |= TDF_USINGFP;
+		break;
+	}
 }
 
 #ifndef CPU_DISABLE_SSE
