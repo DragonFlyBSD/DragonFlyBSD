@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2006 Matthias Schmidt <schmidtm @ mathematik . uni-marburg.de>
+# Copyright (c) 2006-07 Matthias Schmidt <schmidtm@mathematik.uni-marburg.de>
 #
 # All rights reserved.
 #
@@ -25,15 +25,38 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.1 2007/12/04 18:24:18 dillon Exp $
+# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.2 2007/12/12 23:26:38 dillon Exp $
 
-if [ `uname -s` = "FreeBSD" ]; then
-	PORTSDIR=/usr/ports
-	id=`uname -r | cut -d '.' -f 1`
-	INDEXFILE=INDEX-$id
-elif [ `uname -s` = "DragonFly" ] || [ `uname -s` = "NetBSD" ]; then
+UNAME=`uname -s`
+VERSION=`uname -r | cut -d '.' -f 1,2`
+SIMPLE=0
+
+if [ $UNAME = "DragonFly" ]; then
 	PORTSDIR=/usr/pkgsrc
+	PKGSUM=${PORTSDIR}/pkg_summary
+	PKGSRCBOX1=http://pkgbox.dragonflybsd.org/packages/${UNAME}-${VERSION}/i386/
+	PKGSRCBOX2=http://pkgbox.dragonflybsd.org/packages/DragonFly-1.10.1/i386/
 	INDEXFILE=INDEX
+	if [ ! -f ${PKGSUM} ]; then
+		echo "No pkgsrc(7) tree found.  Fetching pkg_summary(5) file."
+		FETCHPATH=${PKGSRCBOX1}/All/pkg_summary.bz2
+		mkdir -p ${PORTSDIR}
+		fetch -o ${PKGSUM}.bz2 ${FETCHPATH}
+		if [ $? -ne 0 ]; then
+			FETCHPATH=${PKGSRCBOX2}/All/pkg_summary.bz2
+			fetch -o ${PKGSUM}.bz2 ${FETCHPATH}
+		fi
+		if [ $? -ne 0 ]; then
+			echo "Unable to fetch pkg_summary"
+			exit 1
+		fi
+		bunzip2 < ${PKGSUM}.bz2 > ${PKGSUM}
+		rm -f ${PKGSUM}.bz2
+		SIMPLE=1
+	fi
+	if [ -e ${PKGSUM} -a ! -e ${PORTSDIR}/${INDEXFILE} ]; then
+		SIMPLE=1
+	fi
 fi
 
 if [ -z $1 ]; then 
@@ -41,13 +64,13 @@ if [ -z $1 ]; then
         exit 1  
 fi
 
-if [ ! -d $PORTSDIR ]; then 
-        echo "No Ports Tree Found!  Please install."
-        exit 1  
-fi
 
 case "$1" in
 	-i)
+		if [ ${SIMPLE} -eq 1 ]; then
+			grep "PKGNAME=$2" ${PKGSUM} | cut -d '=' -f 2
+			exit 1
+		fi
 		awk -F\| -v name="$2" \
 	    '{\
 		    if ($1 ~ name) { \
@@ -57,6 +80,10 @@ case "$1" in
 	    }' ${PORTSDIR}/${INDEXFILE}
 	;;
 	-k)
+		if [ ${SIMPLE} -eq 1 ]; then
+			grep "PKGNAME=$2" ${PKGSUM} | cut -d '=' -f 2
+			exit 1
+		fi
 		awk -F\| -v name="$2" \
 	    '{\
 		    if ($1 ~ name || $4 ~ name || $10 ~ name) { \
@@ -67,6 +94,11 @@ case "$1" in
 
 	;;
 	*)
+		if [ ${SIMPLE} -eq 1 ]; then
+			grep "PKGNAME=$1" ${PKGSUM} | cut -d '=' -f 2
+			exit 1
+		fi
+
 		awk -F\| -v name="$1" \
 	    '{\
 		    if ($1 ~ name) { \
