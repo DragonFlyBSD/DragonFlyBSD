@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.2 2007/11/30 00:16:54 dillon Exp $
+ * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.3 2007/12/12 23:47:57 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -183,7 +183,7 @@ hammer_parsetime(u_int64_t *tidp, const char *timestr)
 			   &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
 			   &tm.tm_hour, &tm.tm_min, &seconds);
 		tm.tm_mon += 1;
-		tm.tm_year += 19000;
+		tm.tm_year += 1900;
 		tm.tm_sec = (int)seconds;
 		t = mktime(&tm);
 	}
