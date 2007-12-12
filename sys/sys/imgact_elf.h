@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/imgact_elf.h,v 1.17.2.1 2000/07/06 22:26:40 obrien Exp $
- * $DragonFly: src/sys/sys/imgact_elf.h,v 1.7 2007/02/21 15:45:37 corecode Exp $
+ * $DragonFly: src/sys/sys/imgact_elf.h,v 1.8 2007/12/12 23:29:20 dillon Exp $
  */
 
 #ifndef _SYS_IMGACT_ELF_H_
@@ -47,14 +47,14 @@
  */
 typedef struct {
 	Elf32_Sword	execfd;
-	Elf32_Word	phdr;
-	Elf32_Word	phent;
-	Elf32_Word	phnum;
-	Elf32_Word	pagesz;
-	Elf32_Word	base;
-	Elf32_Word	flags;
-	Elf32_Word	entry;
-	Elf32_Word	trace;
+	Elf32_Size	phdr;
+	Elf32_Size	phent;
+	Elf32_Size	phnum;
+	Elf32_Size	pagesz;
+	Elf32_Size	base;
+	Elf32_Size	flags;
+	Elf32_Size	entry;
+	Elf32_Size	trace;
 } Elf32_Auxargs;
 
 typedef struct {
@@ -79,7 +79,7 @@ int	elf_remove_brand_entry (Elf32_Brandinfo *entry);
  * stack fixup routine.
  */
 typedef struct {
-	Elf64_Sword	execfd;
+	Elf64_Sxword	execfd;
 	Elf64_Addr	phdr;
 	Elf64_Word	phent;
 	Elf64_Word	phnum;
