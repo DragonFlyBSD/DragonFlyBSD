@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.30 2007/12/08 10:20:45 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.31 2007/12/12 13:57:36 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -289,7 +289,6 @@ div_output(struct socket *so, struct mbuf *m,
 
 	/* Reinject packet into the system as incoming or outgoing */
 	if (!sin || sin->sin_addr.s_addr == 0) {
-		struct inpcb *const inp = so->so_pcb;
 		struct ip *const ip = mtod(m, struct ip *);
 
 		/* Don't allow packet length sizes that will crash */
