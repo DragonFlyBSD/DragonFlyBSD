@@ -25,7 +25,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.2 2007/12/12 23:26:38 dillon Exp $
+# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.3 2007/12/13 17:14:57 swildner Exp $
 
 UNAME=`uname -s`
 VERSION=`uname -r | cut -d '.' -f 1,2`
@@ -60,25 +60,12 @@ if [ $UNAME = "DragonFly" ]; then
 fi
 
 if [ -z $1 ]; then 
-        echo "Usage: $0 [ -i | -k ] <name>"
+        echo "usage: $0 [-k | -v] package"
         exit 1  
 fi
 
 
 case "$1" in
-	-i)
-		if [ ${SIMPLE} -eq 1 ]; then
-			grep "PKGNAME=$2" ${PKGSUM} | cut -d '=' -f 2
-			exit 1
-		fi
-		awk -F\| -v name="$2" \
-	    '{\
-		    if ($1 ~ name) { \
-			    split($2, a, "/"); \
-			    printf("Name\t: %s-50\nDir\t: %-50s\nDesc\t: %-50s\nURL\t: %-50s\nDeps\t: %s\n\n", $1, $2, $4, $10, $9); \
-		    }
-	    }' ${PORTSDIR}/${INDEXFILE}
-	;;
 	-k)
 		if [ ${SIMPLE} -eq 1 ]; then
 			grep "PKGNAME=$2" ${PKGSUM} | cut -d '=' -f 2
@@ -92,6 +79,19 @@ case "$1" in
 		    }
 	    }' ${PORTSDIR}/${INDEXFILE}
 
+	;;
+	-v)
+		if [ ${SIMPLE} -eq 1 ]; then
+			grep "PKGNAME=$2" ${PKGSUM} | cut -d '=' -f 2
+			exit 1
+		fi
+		awk -F\| -v name="$2" \
+	    '{\
+		    if ($1 ~ name) { \
+			    split($2, a, "/"); \
+			    printf("Name\t: %s-50\nDir\t: %-50s\nDesc\t: %-50s\nURL\t: %-50s\nDeps\t: %s\n\n", $1, $2, $4, $10, $9); \
+		    }
+	    }' ${PORTSDIR}/${INDEXFILE}
 	;;
 	*)
 		if [ ${SIMPLE} -eq 1 ]; then
