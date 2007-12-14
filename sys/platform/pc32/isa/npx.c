@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.43 2007/12/12 23:49:21 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.44 2007/12/14 19:54:09 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -909,6 +909,7 @@ npxdna(void)
 			    "FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
 			    td->td_savefpu->sv_xmm.sv_env.en_mxcsr, didinit);
 		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+		lwpsignal(curproc, curthread->td_lwp, SIGFPE);
 	}
 	fpurstor(td->td_savefpu);
 	crit_exit();
@@ -1022,8 +1023,10 @@ npxpush(mcontext_t *mctx)
 		}
 		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(mctx->mc_fpregs));
 		td->td_flags &= ~TDF_USINGFP;
+		mctx->mc_fpformat = (cpu_fxsr) ? _MC_FPFMT_XMM : _MC_FPFMT_387;
 	} else {
 		mctx->mc_ownedfp = _MC_FPOWNED_NONE;
+		mctx->mc_fpformat = _MC_FPFMT_NODEV;
 	}
 }
 
