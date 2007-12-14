@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_kern.c,v 1.28.2.13 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_kern.c,v 1.6 2007/01/08 21:41:53 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_kern.c,v 1.7 2007/12/14 20:07:59 dillon Exp $
  *
  */
 #include <errno.h>
@@ -114,8 +114,7 @@ _thread_kern_sched(ucontext_t *ucp)
 
 	/* Check if this function was called from the signal handler: */
 	if (ucp != NULL) {
-		/* XXX - Save FP registers? */
-		FP_SAVE_UC(ucp);
+		/* FP registers now saved and restored by kernel */
 		called_from_handler = 1;
 		DBG_MSG("Entering scheduler due to signal\n");
 	}
@@ -157,8 +156,7 @@ _thread_kern_sched(ucontext_t *ucp)
 		if (ucp == NULL)
 			return;
 		else {
-			/* XXX - Restore FP registers? */
-			FP_RESTORE_UC(ucp);
+			/* NOTE: FP registers now saved and restored by kernel*/
 
 			/*
 			 * Set the process signal mask in the context; it

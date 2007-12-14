@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.14 2007/12/14 19:54:36 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.15 2007/12/14 20:07:59 dillon Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -77,22 +77,6 @@
 #define	SET_STACK_JB(jb, stk)	(jb)[0]._jb[2] = (int)(stk)
 #define	SET_STACK_SJB(sjb, stk)	(sjb)[0]._sjb[2] = (int)(stk)
 #define	SET_STACK_UC(ucp, stk)	(ucp)->uc_mcontext.mc_esp = (int)(stk)
-#define	FP_SAVE_UC(ucp)		do {			\
-	char	*fdata;					\
-	fdata = (char *) (ucp)->uc_mcontext.mc_fpregs;	\
-	if ((ucp)->uc_mcontext.mc_fpformat == _MC_FPFMT_XMM)	\
-		__asm__("fxsave %0": :"m"(*fdata));	\
-	else if ((ucp)->uc_mcontext.mc_fpformat == _MC_FPFMT_387)	\
-		__asm__("fnsave %0": :"m"(*fdata));	\
-} while (0)
-#define	FP_RESTORE_UC(ucp)	do {			\
-	char	*fdata;					\
-	fdata = (char *) (ucp)->uc_mcontext.mc_fpregs;	\
-	if ((ucp)->uc_mcontext.mc_fpformat == _MC_FPFMT_XMM)	\
-		__asm__("fxrstor %0": :"m"(*fdata));	\
-	else if ((ucp)->uc_mcontext.mc_fpformat == _MC_FPFMT_387)	\
-		__asm__("frstor %0": :"m"(*fdata));	\
-} while (0)
 #define SET_RETURN_ADDR_JB(jb, ra)	(jb)[0]._jb[0] = (int)(ra)
 #elif defined(__amd64__)
 #define	GET_STACK_JB(jb)	((unsigned long)((jb)[0]._jb[2]))
