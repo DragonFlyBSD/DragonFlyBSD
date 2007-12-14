@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.5 2007/11/19 00:53:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.6 2007/12/14 08:05:39 dillon Exp $
  */
 
 /*
@@ -62,8 +62,10 @@
  * that it makes it possible to cache pointers into the middle of the tree
  * and not have to start searches, insertions, OR deletions at the root node.
  * The boundary elements allow searches to progress in a definitive direction
- * from any point in the tree without revisting nodes.  This greatly improves
- * the efficiency of many operations, most especially record appends.
+ * from any point in the tree without revisting nodes.  It is also possible
+ * to terminate searches early and make minor adjustments to the boundaries
+ * (within the confines of the parent's boundaries) on the fly.  This greatly
+ * improves the efficiency of many operations, most especially record appends.
  *
  * HAMMER B-Trees are per-cluster.  The global multi-cluster B-Tree is
  * constructed by allowing internal nodes to link to the roots of other

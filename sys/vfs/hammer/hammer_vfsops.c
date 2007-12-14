@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.8 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.9 2007/12/14 08:05:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -184,6 +184,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * its VOP_BMAP call.
 	 */
 	mp->mnt_stat.f_iosize = HAMMER_BUFSIZE;
+	mp->mnt_stat.f_bsize = HAMMER_BUFSIZE;
 	vfs_getnewfsid(mp);		/* XXX */
 	mp->mnt_maxsymlinklen = 255;
 	mp->mnt_flag |= MNT_LOCAL;
@@ -322,6 +323,29 @@ hammer_vfs_root(struct mount *mp, struct vnode **vpp)
 static int
 hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
+	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	hammer_volume_t volume;
+	hammer_volume_ondisk_t ondisk;
+	int error;
+
+	volume = hammer_get_root_volume(hmp, &error);
+	if (error)
+		return(error);
+
+	ondisk = volume->ondisk;
+
+	mp->mnt_stat.f_bfree = mp->mnt_stat.f_blocks -
+				ondisk->vol0_stat_idx_bufs -
+				ondisk->vol0_stat_rec_bufs -
+				ondisk->vol0_stat_data_bufs;
+	if (mp->mnt_stat.f_bfree < 0)
+		mp->mnt_stat.f_bfree = 0;
+	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
+	mp->mnt_stat.f_files = ondisk->vol0_stat_inodes;
+	if (mp->mnt_stat.f_files < 0)
+		mp->mnt_stat.f_files = 0;
+
+	hammer_rel_volume(volume, 0);
 	*sbp = mp->mnt_stat;
 	return(0);
 }
@@ -329,6 +353,10 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 static int
 hammer_vfs_sync(struct mount *mp, int waitfor)
 {
-	return(0);
+	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	int error;
+
+	error = hammer_sync_hmp(hmp, waitfor);
+	return(error);
 }
 

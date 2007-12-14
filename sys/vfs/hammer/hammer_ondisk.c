@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.9 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.10 2007/12/14 08:05:39 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -66,6 +66,10 @@ static void writehammerbuf(hammer_volume_t vol, const void *data,
 #endif
 static int64_t calculate_cluster_offset(hammer_volume_t vol, int32_t clu_no);
 static int64_t calculate_supercl_offset(hammer_volume_t vol, int32_t scl_no);
+static int32_t hammer_alloc_master(hammer_cluster_t cluster, int nblks,
+			int32_t start, int isfwd);
+static void hammer_adjust_stats(hammer_cluster_t cluster,
+			u_int64_t buf_type, int nblks);
 
 struct hammer_alist_config Buf_alist_config;
 struct hammer_alist_config Vol_normal_alist_config;
@@ -248,8 +252,11 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 	volume->cluster_base = ondisk->vol_clo_beg;
 	volume->vol_clsize = ondisk->vol_clsize;
 	volume->vol_flags = ondisk->vol_flags;
+	volume->nblocks = ondisk->vol_nblocks; 
 	RB_INIT(&volume->rb_clus_root);
 	RB_INIT(&volume->rb_scls_root);
+
+	hmp->mp->mnt_stat.f_blocks += volume->nblocks;
 
 	if (RB_EMPTY(&hmp->rb_vols_root)) {
 		hmp->fsid = ondisk->vol_fsid;
@@ -309,6 +316,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 * Sync clusters, sync volume
 	 */
 
+	hmp->mp->mnt_stat.f_blocks -= volume->nblocks;
 
 	/*
 	 * Clean up the root cluster, which is held unlocked in the root
@@ -336,9 +344,12 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	hammer_io_release(&volume->io, 1);
 
 	/*
-	 * There should be no references on the volume.
+	 * There should be no references on the volume, no clusters, and
+	 * no super-clusters.
 	 */
 	KKASSERT(volume->io.lock.refs == 0);
+	KKASSERT(RB_EMPTY(&volume->rb_clus_root));
+	KKASSERT(RB_EMPTY(&volume->rb_scls_root));
 
 	volume->ondisk = NULL;
 	if (volume->devvp) {
@@ -405,6 +416,26 @@ hammer_get_volume(struct hammer_mount *hmp, int32_t vol_no, int *errorp)
 		*errorp = 0;
 	}
 	return(volume);
+}
+
+int
+hammer_ref_volume(hammer_volume_t volume)
+{
+	int error;
+
+	hammer_ref(&volume->io.lock);
+
+	/*
+	 * Deal with on-disk info
+	 */
+	if (volume->ondisk == NULL) {
+		error = hammer_load_volume(volume);
+		if (error)
+			hammer_rel_volume(volume, 1);
+	} else {
+		error = 0;
+	}
+	return (error);
 }
 
 hammer_volume_t
@@ -475,14 +506,17 @@ hammer_load_volume(hammer_volume_t volume)
 /*
  * Release a volume.  Call hammer_io_release on the last reference.  We have
  * to acquire an exclusive lock to interlock against volume->ondisk tests
- * in hammer_load_volume().
+ * in hammer_load_volume(), and hammer_io_release() also expects an exclusive
+ * lock to be held.
+ *
+ * Volumes are not unloaded from memory during normal operation.
  */
 void
 hammer_rel_volume(hammer_volume_t volume, int flush)
 {
-	if (hammer_islastref(&volume->io.lock)) {
+	if (volume->io.lock.refs == 1) {
 		hammer_lock_ex(&volume->io.lock);
-		if (hammer_islastref(&volume->io.lock)) {
+		if (volume->io.lock.refs == 1) {
 			volume->ondisk = NULL;
 			hammer_io_release(&volume->io, flush);
 		}
@@ -601,7 +635,6 @@ hammer_unload_supercl(hammer_supercl_t supercl, void *data __unused)
 {
 	KKASSERT(supercl->io.lock.refs == 0);
 	hammer_ref(&supercl->io.lock);
-	hammer_io_release(&supercl->io, 1);
 	hammer_rel_supercl(supercl, 1);
 	return(0);
 }
@@ -619,12 +652,12 @@ hammer_rel_supercl(hammer_supercl_t supercl, int flush)
 {
 	hammer_volume_t volume;
 
-	if (hammer_islastref(&supercl->io.lock)) {
+	if (supercl->io.lock.refs == 1) {
 		hammer_lock_ex(&supercl->io.lock);
-		if (hammer_islastref(&supercl->io.lock)) {
+		if (supercl->io.lock.refs == 1) {
 			hammer_io_release(&supercl->io, flush);
 			if (supercl->io.bp == NULL &&
-			    hammer_islastref(&supercl->io.lock)) {
+			    supercl->io.lock.refs == 1) {
 				volume = supercl->volume;
 				RB_REMOVE(hammer_scl_rb_tree,
 					  &volume->rb_scls_root, supercl);
@@ -659,6 +692,7 @@ again:
 		cluster->clu_no = clu_no;
 		cluster->volume = volume;
 		cluster->io.offset = calculate_cluster_offset(volume, clu_no);
+		cluster->state = HAMMER_CLUSTER_IDLE;
 		RB_INIT(&cluster->rb_bufs_root);
 		RB_INIT(&cluster->rb_nods_root);
 		cluster->io.type = HAMMER_STRUCTURE_CLUSTER;
@@ -791,9 +825,8 @@ hammer_unload_cluster(hammer_cluster_t cluster, void *data __unused)
 {
 	hammer_ref(&cluster->io.lock);
 	RB_SCAN(hammer_buf_rb_tree, &cluster->rb_bufs_root, NULL,
-			hammer_unload_buffer, NULL);
+		hammer_unload_buffer, NULL);
 	KKASSERT(cluster->io.lock.refs == 1);
-	hammer_io_release(&cluster->io, 1);
 	hammer_rel_cluster(cluster, 1);
 	return(0);
 }
@@ -837,31 +870,44 @@ hammer_rel_cluster(hammer_cluster_t cluster, int flush)
 	hammer_node_t node;
 	hammer_volume_t volume;
 
-	if (hammer_islastref(&cluster->io.lock)) {
+	if (cluster->io.lock.refs == 1) {
 		hammer_lock_ex(&cluster->io.lock);
-		if (hammer_islastref(&cluster->io.lock)) {
+		if (cluster->io.lock.refs == 1) {
+			/*
+			 * Release the I/O.  If we or the kernel wants to
+			 * flush, this will release the bp.  Otherwise the
+			 * bp may be written and flushed passively by the
+			 * kernel later on.
+			 */
 			hammer_io_release(&cluster->io, flush);
 
 			/*
-			 * Clean out the B-Tree node cache, if any, then
-			 * clean up the volume ref and free the cluster.
+			 * The B-Tree node cache is not counted in the
+			 * cluster's reference count.  Clean out the
+			 * cache.
 			 *
 			 * If the cluster acquires a new reference while we
 			 * are trying to clean it out, abort the cleaning.
-			 *
-			 * There really shouldn't be any nodes at this point
-			 * but we allow a node with no buffer association
-			 * so handle the case.
+			 * 
+			 * Any actively referenced nodes will reference the
+			 * related buffer and cluster, so a ref count check
+			 * should be sufficient.
 			 */
 			while (cluster->io.bp == NULL &&
-			       hammer_islastref(&cluster->io.lock) &&
+			       cluster->io.lock.refs == 1 &&
 			       (node = RB_ROOT(&cluster->rb_nods_root)) != NULL
 			) {
 				KKASSERT(node->lock.refs == 0);
 				hammer_flush_node(node);
 			}
+
+			/*
+			 * Final cleanup
+			 */
 			if (cluster->io.bp == NULL &&
-			    hammer_islastref(&cluster->io.lock)) {
+			    cluster->io.lock.refs == 1 &&
+			    RB_EMPTY(&cluster->rb_nods_root)) {
+				KKASSERT(RB_EMPTY(&cluster->rb_bufs_root));
 				volume = cluster->volume;
 				RB_REMOVE(hammer_clu_rb_tree,
 					  &volume->rb_clus_root, cluster);
@@ -992,7 +1038,6 @@ hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused)
 {
 	hammer_ref(&buffer->io.lock);
 	hammer_flush_buffer_nodes(buffer);
-	hammer_io_release(&buffer->io, 1);
 	KKASSERT(buffer->io.lock.refs == 1);
 	hammer_rel_buffer(buffer, 1);
 	return(0);
@@ -1041,9 +1086,9 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 	hammer_cluster_t cluster;
 	hammer_node_t node;
 
-	if (hammer_islastref(&buffer->io.lock)) {
+	if (buffer->io.lock.refs == 1) {
 		hammer_lock_ex(&buffer->io.lock);
-		if (hammer_islastref(&buffer->io.lock)) {
+		if (buffer->io.lock.refs == 1) {
 			hammer_io_release(&buffer->io, flush);
 
 			/*
@@ -1054,7 +1099,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 			 * are trying to clean it out, abort the cleaning.
 			 */
 			while (buffer->io.bp == NULL &&
-			       hammer_islastref(&buffer->io.lock) &&
+			       buffer->io.lock.refs == 1 &&
 			       (node = TAILQ_FIRST(&buffer->clist)) != NULL
 			) {
 				KKASSERT(node->lock.refs == 0);
@@ -1459,19 +1504,13 @@ hammer_alloc_data(hammer_cluster_t cluster, int32_t bytes,
 		/* only one block allowed for now (so buffer can hold it) */
 		KKASSERT(nblks == 1);
 
-		buf_no = hammer_alist_alloc_fwd(&cluster->alist_master,
-						nblks,
-						cluster->ondisk->idx_ldata);
-		if (buf_no == HAMMER_ALIST_BLOCK_NONE) {
-			buf_no = hammer_alist_alloc_fwd(&cluster->alist_master,
-						nblks,
-						0);
-		}
-		hammer_modify_cluster(cluster);
+		buf_no = hammer_alloc_master(cluster, nblks,
+					     cluster->ondisk->idx_ldata, 1);
 		if (buf_no == HAMMER_ALIST_BLOCK_NONE) {
 			*errorp = ENOSPC;
 			return(NULL);
 		}
+		hammer_adjust_stats(cluster, HAMMER_FSBUF_DATA, nblks);
 		cluster->ondisk->idx_ldata = buf_no;
 		buffer = *bufferp;
 		*bufferp = hammer_get_buffer(cluster, buf_no, -1, errorp);
@@ -1539,11 +1578,9 @@ hammer_alloc_record(hammer_cluster_t cluster,
 	 * Allocate a record element
 	 */
 	live = &cluster->alist_record;
-	kprintf("IDX_RECORD %d\n", cluster->ondisk->idx_record);
 	elm_no = hammer_alist_alloc_rev(live, 1, cluster->ondisk->idx_record);
 	if (elm_no == HAMMER_ALIST_BLOCK_NONE)
 		elm_no = hammer_alist_alloc_rev(live, 1,HAMMER_ALIST_BLOCK_MAX);
-	kprintf("hammer_alloc_record elm %08x\n", elm_no);
 	if (elm_no == HAMMER_ALIST_BLOCK_NONE) {
 		alloc_new_buffer(cluster, live,
 				 HAMMER_FSBUF_RECORDS, HAMMER_RECORD_NODES,
@@ -1591,6 +1628,7 @@ hammer_free_data_ptr(hammer_buffer_t buffer, void *data, int bytes)
 		KKASSERT(nblks == 1 && data == (void *)buffer->ondisk);
 		hammer_alist_free(&buffer->cluster->alist_master,
 				  buffer->buf_no, nblks);
+		hammer_adjust_stats(buffer->cluster, HAMMER_FSBUF_DATA, -nblks);
 		hammer_modify_cluster(buffer->cluster);
 		return;
 	}
@@ -1652,6 +1690,7 @@ hammer_free_data(hammer_cluster_t cluster, int32_t bclu_offset, int32_t bytes)
 		KKASSERT(nblks == 1 && (bclu_offset & HAMMER_BUFMASK) == 0);
 		buf_no = bclu_offset / HAMMER_BUFSIZE;
 		hammer_alist_free(&cluster->alist_master, buf_no, nblks);
+		hammer_adjust_stats(cluster, HAMMER_FSBUF_DATA, -nblks);
 		hammer_modify_cluster(cluster);
 		return;
 	}
@@ -1697,24 +1736,12 @@ alloc_new_buffer(hammer_cluster_t cluster, hammer_alist_t live,
 {
 	hammer_buffer_t buffer;
 	int32_t buf_no;
+	int isfwd;
 
 	start = start / HAMMER_FSBUF_MAXBLKS;	/* convert to buf_no */
 
-	if (type == HAMMER_FSBUF_RECORDS) {
-		buf_no = hammer_alist_alloc_rev(&cluster->alist_master,
-						1, start);
-		if (buf_no == HAMMER_ALIST_BLOCK_NONE) {
-			buf_no = hammer_alist_alloc_rev(&cluster->alist_master,
-						1, HAMMER_ALIST_BLOCK_MAX);
-		}
-	} else {
-		buf_no = hammer_alist_alloc_fwd(&cluster->alist_master,
-						1, start);
-		if (buf_no == HAMMER_ALIST_BLOCK_NONE) {
-			buf_no = hammer_alist_alloc_fwd(&cluster->alist_master,
-						1, 0);
-		}
-	}
+	isfwd = (type != HAMMER_FSBUF_RECORDS);
+	buf_no = hammer_alloc_master(cluster, 1, start, isfwd);
 	KKASSERT(buf_no != HAMMER_ALIST_BLOCK_NONE); /* XXX */
 	hammer_modify_cluster(cluster);
 
@@ -1729,14 +1756,82 @@ alloc_new_buffer(hammer_cluster_t cluster, hammer_alist_t live,
 	*bufferp = buffer;
 
 	/*
-	 * Finally, do a meta-free of the buffer's elements.
+	 * Finally, do a meta-free of the buffer's elements into the
+	 * type-specific A-list and update our statistics to reflect
+	 * the allocation.
 	 */
 	if (buffer) {
 		kprintf("alloc_new_buffer buf_no %d type %016llx nelms %d\n",
 			buf_no, type, nelements);
 		hammer_alist_free(live, buf_no * HAMMER_FSBUF_MAXBLKS,
 				  nelements);
+		hammer_adjust_stats(cluster, type, 1);
 	}
+}
+
+/*
+ * Sync dirty buffers to the media
+ */
+
+/*
+ * Sync the entire filesystem.
+ */
+int
+hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
+{
+	struct hammer_sync_info info;
+
+	info.error = 0;
+	info.waitfor = waitfor;
+
+	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
+		hammer_sync_volume, &info);
+	return(info.error);
+}
+
+int
+hammer_sync_volume(hammer_volume_t volume, void *data)
+{
+	struct hammer_sync_info *info = data;
+
+	RB_SCAN(hammer_clu_rb_tree, &volume->rb_clus_root, NULL,
+		hammer_sync_cluster, info);
+	if (hammer_ref_volume(volume) == 0) {
+		hammer_io_flush(&volume->io, info);
+		hammer_rel_volume(volume, 0);
+	}
+	return(0);
+}
+
+int
+hammer_sync_cluster(hammer_cluster_t cluster, void *data)
+{
+	struct hammer_sync_info *info = data;
+
+	if (cluster->state != HAMMER_CLUSTER_IDLE) {
+		RB_SCAN(hammer_buf_rb_tree, &cluster->rb_bufs_root, NULL,
+			hammer_sync_buffer, info);
+		if (hammer_ref_cluster(cluster) == 0) {
+			hammer_io_flush(&cluster->io, info);
+			hammer_rel_cluster(cluster, 0);
+		}
+	}
+	return(0);
+}
+
+int
+hammer_sync_buffer(hammer_buffer_t buffer, void *data)
+{
+	struct hammer_sync_info *info = data;
+
+	if (hammer_ref_buffer(buffer) == 0) {
+		hammer_lock_ex(&buffer->io.lock);
+		hammer_flush_buffer_nodes(buffer);
+		hammer_unlock(&buffer->io.lock);
+		hammer_io_flush(&buffer->io, info);
+		hammer_rel_buffer(buffer, 0);
+	}
+	return(0);
 }
 
 #if 0
@@ -1878,6 +1973,67 @@ calculate_supercl_offset(hammer_volume_t volume, int32_t scl_no)
 }
 
 /*
+ *
+ *
+ */
+static int32_t
+hammer_alloc_master(hammer_cluster_t cluster, int nblks,
+		    int32_t start, int isfwd)
+{
+	int32_t buf_no;
+
+	if (isfwd) {
+		buf_no = hammer_alist_alloc_fwd(&cluster->alist_master,
+						nblks, start);
+		if (buf_no == HAMMER_ALIST_BLOCK_NONE) {
+			buf_no = hammer_alist_alloc_fwd(&cluster->alist_master,
+						nblks, 0);
+		}
+	} else {
+		buf_no = hammer_alist_alloc_rev(&cluster->alist_master,
+						nblks, start);
+		if (buf_no == HAMMER_ALIST_BLOCK_NONE) {
+			buf_no = hammer_alist_alloc_rev(&cluster->alist_master,
+						nblks, HAMMER_ALIST_BLOCK_MAX);
+		}
+	}
+
+	/*
+	 * Recover space from empty record, b-tree, and data a-lists.
+	 */
+
+	return(buf_no);
+}
+
+/*
+ * Adjust allocation statistics
+ */
+static void
+hammer_adjust_stats(hammer_cluster_t cluster, u_int64_t buf_type, int nblks)
+{
+	switch(buf_type) {
+	case HAMMER_FSBUF_BTREE:
+		cluster->ondisk->stat_idx_bufs += nblks;
+		cluster->volume->ondisk->vol_stat_idx_bufs += nblks;
+		cluster->volume->hmp->rootvol->ondisk->vol0_stat_idx_bufs += nblks;
+		break;
+	case HAMMER_FSBUF_DATA:
+		cluster->ondisk->stat_data_bufs += nblks;
+		cluster->volume->ondisk->vol_stat_data_bufs += nblks;
+		cluster->volume->hmp->rootvol->ondisk->vol0_stat_data_bufs += nblks;
+		break;
+	case HAMMER_FSBUF_RECORDS:
+		cluster->ondisk->stat_rec_bufs += nblks;
+		cluster->volume->ondisk->vol_stat_rec_bufs += nblks;
+		cluster->volume->hmp->rootvol->ondisk->vol0_stat_rec_bufs += nblks;
+		break;
+	}
+	hammer_modify_cluster(cluster);
+	hammer_modify_volume(cluster->volume);
+	hammer_modify_volume(cluster->volume->hmp->rootvol);
+}
+
+/*
  * A-LIST SUPPORT
  *
  * Setup the parameters for the various A-lists we use in hammer.  The
@@ -1893,6 +2049,8 @@ calculate_supercl_offset(hammer_volume_t volume, int32_t scl_no)
 static int
 buffer_alist_init(void *info, int32_t blk, int32_t radix)
 {
+	return(0);
+#if 0
 	hammer_cluster_t cluster = info;
 	hammer_buffer_t buffer;
 	int32_t buf_no;
@@ -1905,15 +2063,37 @@ buffer_alist_init(void *info, int32_t blk, int32_t radix)
 	 */
 	buf_no = blk / HAMMER_FSBUF_MAXBLKS;
 	buffer = hammer_get_buffer(cluster, buf_no, 0, &error);
-	if (buffer)
+	if (buffer) {
+		hammer_adjust_stats(cluster, buffer->ondisk->head.buf_type, 1);
 		hammer_rel_buffer(buffer, 0);
+	}
 	return (error);
+#endif
 }
 
 static int
 buffer_alist_destroy(void *info, int32_t blk, int32_t radix)
 {
-	return (0);
+	return(0);
+#if 0
+	hammer_cluster_t cluster = info;
+	hammer_buffer_t buffer;
+	int32_t buf_no;
+	int error = 0;
+
+	/*
+	 * Calculate the buffer number, initialize based on the buffer type.
+	 * The buffer has already been allocated so assert that it has been
+	 * initialized.
+	 */
+	buf_no = blk / HAMMER_FSBUF_MAXBLKS;
+	buffer = hammer_get_buffer(cluster, buf_no, 0, &error);
+	if (buffer) {
+		hammer_adjust_stats(cluster, buffer->ondisk->head.buf_type, -1);
+		hammer_rel_buffer(buffer, 0);
+	}
+	return (error);
+#endif
 }
 
 /*
@@ -1989,6 +2169,7 @@ buffer_alist_free(void *info, int32_t blk, int32_t radix,
 		KKASSERT(buffer->ondisk->head.buf_type != 0);
 		hammer_alist_free(&buffer->alist, base_blk, count);
 		*emptyp = hammer_alist_isempty(&buffer->alist);
+		/* XXX don't bother updating the buffer is completely empty? */
 		hammer_modify_buffer(buffer);
 		hammer_rel_buffer(buffer, 0);
 	} else {

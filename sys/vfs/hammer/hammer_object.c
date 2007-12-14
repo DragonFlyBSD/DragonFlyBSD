@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.8 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.9 2007/12/14 08:05:39 dillon Exp $
  */
 
 #include "hammer.h"
@@ -919,9 +919,14 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 		 * of the last byte of the record (base + len - 1), NOT the
 		 * base offset.
 		 */
+#if 0
 		kprintf("delete_range rec_type %02x\n", base->rec_type);
+#endif
 		if (base->rec_type == HAMMER_RECTYPE_DATA) {
-			kprintf("delete_range loop key %016llx\n", base->key - rec->base.data_len);
+#if 0
+			kprintf("delete_range loop key %016llx\n",
+				base->key - rec->base.data_len);
+#endif
 			off = base->key - rec->base.data_len;
 			/*
 			 * Check the left edge case.  We currently do not
@@ -1019,8 +1024,10 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 		rec_offset = elm->leaf.rec_offset;
 		data_offset = elm->leaf.data_offset;
 		data_len = elm->leaf.data_len;
+#if 0
 		kprintf("hammer_ip_delete_record: %08x %08x/%d\n",
 			rec_offset, data_offset, data_len);
+#endif
 		cluster = cursor->node->cluster;
 		hammer_ref_cluster(cluster);
 

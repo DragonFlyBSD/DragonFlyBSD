@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.4 2007/11/27 07:44:38 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.5 2007/12/14 08:05:37 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -268,6 +268,9 @@ alloc_btree_element(struct cluster_info *cluster, int32_t *offp)
 	if (elm_no == HAMMER_ALIST_BLOCK_NONE) {
 		alloc_new_buffer(cluster, live,
 				 HAMMER_FSBUF_BTREE, HAMMER_BTREE_NODES);
+		++cluster->ondisk->stat_idx_bufs;
+		++cluster->volume->ondisk->vol_stat_idx_bufs;
+		++cluster->volume->ondisk->vol0_stat_idx_bufs;
 		elm_no = hammer_alist_alloc(live, 1);
 		assert(elm_no != HAMMER_ALIST_BLOCK_NONE);
 	}
@@ -300,6 +303,9 @@ alloc_data_element(struct cluster_info *cluster, int32_t bytes, int32_t *offp)
 	if (elm_no == HAMMER_ALIST_BLOCK_NONE) {
 		alloc_new_buffer(cluster, live,
 				 HAMMER_FSBUF_DATA, HAMMER_DATA_NODES);
+		++cluster->ondisk->stat_data_bufs;
+		++cluster->volume->ondisk->vol_stat_data_bufs;
+		++cluster->volume->ondisk->vol0_stat_data_bufs;
 		elm_no = hammer_alist_alloc(live, nblks);
 		assert(elm_no != HAMMER_ALIST_BLOCK_NONE);
 	}
@@ -327,6 +333,9 @@ alloc_record_element(struct cluster_info *cluster, int32_t *offp)
 	if (elm_no == HAMMER_ALIST_BLOCK_NONE) {
 		alloc_new_buffer(cluster, live,
 				 HAMMER_FSBUF_RECORDS, HAMMER_RECORD_NODES);
+		++cluster->ondisk->stat_rec_bufs;
+		++cluster->volume->ondisk->vol_stat_rec_bufs;
+		++cluster->volume->ondisk->vol0_stat_rec_bufs;
 		elm_no = hammer_alist_alloc_rev(live, 1,HAMMER_ALIST_BLOCK_MAX);
 		assert(elm_no != HAMMER_ALIST_BLOCK_NONE);
 	}

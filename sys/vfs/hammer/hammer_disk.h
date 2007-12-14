@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.11 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.12 2007/12/14 08:05:39 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -200,15 +200,30 @@ struct hammer_volume_ondisk {
 	u_int32_t vol_reserved06;
 	u_int32_t vol_reserved07;
 
-	int32_t vol_stat_blocksize;	/* for statfs only */
+	int32_t vol_blocksize;		/* for statfs only */
+	int64_t vol_nblocks;		/* total allocatable hammer bufs */
+
+	/*
+	 * This statistical information can get out of sync after a crash
+	 * and is recovered slowly.
+	 */
 	int64_t	vol_stat_bytes;		/* for statfs only */
-	int64_t vol_stat_inodes;	/* for statfs only */
+	int64_t unused08;		/* for statfs only */
+	int64_t vol_stat_data_bufs;	/* hammer bufs allocated to data */
+	int64_t vol_stat_rec_bufs;	/* hammer bufs allocated to records */
+	int64_t vol_stat_idx_bufs;	/* hammer bufs allocated to B-Tree */
 
 	/*
 	 * These fields are initialized and space is reserved in every
 	 * volume making up a HAMMER filesytem, but only the master volume
 	 * contains valid data.
 	 */
+	int64_t	vol0_stat_bytes;	/* for statfs only */
+	int64_t vol0_stat_inodes;	/* for statfs only */
+	int64_t vol0_stat_data_bufs;	/* hammer bufs allocated to data */
+	int64_t vol0_stat_rec_bufs;	/* hammer bufs allocated to records */
+	int64_t vol0_stat_idx_bufs;	/* hammer bufs allocated to B-Tree */
+
 	int32_t vol0_root_clu_no;	/* root cluster no (index) in rootvol */
 	hammer_tid_t vol0_root_clu_id;	/* root cluster id */
 	hammer_tid_t vol0_nexttid;	/* next TID */
@@ -319,10 +334,24 @@ struct hammer_cluster_ondisk {
 	u_int32_t clu_reserved06;
 	u_int32_t clu_reserved07;
 
+	/*
+	 * These fields are heuristics to aid in locality of reference
+	 * allocations.
+	 */
 	int32_t idx_data;	/* data append point (element no) */
 	int32_t idx_index;	/* index append point (element no) */
 	int32_t idx_record;	/* record prepend point (element no) */
 	int32_t idx_ldata;	/* large block data append pt (buf_no) */
+
+	/*
+	 * These fields can become out of sync after a filesystem crash
+	 * and are cleaned up in the background.  They are used for
+	 * reporting only.
+	 */
+	int32_t stat_inodes;	/* number of inodes in cluster */
+	int32_t stat_data_bufs; /* hammer bufs allocated to data */
+	int32_t stat_rec_bufs;	/* hammer bufs allocated to records */
+	int32_t stat_idx_bufs;	/* hammer bufs allocated to B-Tree */
 
 	/* 
 	 * Specify the range of information stored in this cluster as two
@@ -357,6 +386,8 @@ struct hammer_cluster_ondisk {
 };
 
 typedef struct hammer_cluster_ondisk *hammer_cluster_ondisk_t;
+
+#define HAMMER_CLUF_OPEN		0x0001	/* cluster is dirty */
 
 /*
  * HAMMER records are 96 byte entities encoded into 16K filesystem buffers.

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.9 2007/11/27 07:44:38 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.10 2007/12/14 08:05:37 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -521,6 +521,9 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		hammer_alist_free(&vol->clu_alist, 0, nclusters);
 	}
 	ondisk->vol_nclusters = nclusters;
+	ondisk->vol_nblocks = nclusters * ClusterSize / HAMMER_BUFSIZE -
+			      nclusters;
+	ondisk->vol_blocksize = HAMMER_BUFSIZE;
 
 	/*
 	 * Place the root cluster in volume 0.
@@ -681,6 +684,8 @@ format_root(struct cluster_info *cluster)
 	rec->inode.ino_mtime  = rec->base.base.create_tid;
 	rec->inode.ino_size   = 0;
 	rec->inode.ino_nlinks = 1;
+
+	++cluster->volume->ondisk->vol0_stat_inodes;
 
 	/*
 	 * Assign the cluster's root B-Tree node.

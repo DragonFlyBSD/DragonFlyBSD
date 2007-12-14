@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.12 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.13 2007/12/14 08:05:39 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -255,6 +255,7 @@ struct hammer_volume {
 	struct hammer_alist_live alist;
 	int32_t	vol_no;
 	int32_t	vol_clsize;
+	int64_t nblocks;	/* note: special calculation for statfs */
 	int64_t cluster_base;	/* base offset of cluster 0 */
 	char	*vol_name;
 	struct vnode *devvp;
@@ -278,6 +279,12 @@ struct hammer_supercl {
 
 typedef struct hammer_supercl *hammer_supercl_t;
 
+enum hammer_cluster_state {
+	HAMMER_CLUSTER_IDLE,
+	HAMMER_CLUSTER_ASYNC,
+	HAMMER_CLUSTER_OPEN
+};
+
 /*
  * In-memory cluster representing on-disk buffer
  *
@@ -298,6 +305,7 @@ struct hammer_cluster {
 	struct hammer_base_elm clu_btree_beg;	/* copy of on-disk info */
 	struct hammer_base_elm clu_btree_end;	/* copy of on-disk info */
 	int32_t clu_no;
+	enum hammer_cluster_state state;
 };
 
 typedef struct hammer_cluster *hammer_cluster_t;
@@ -386,6 +394,11 @@ struct hammer_mount {
 
 typedef struct hammer_mount	*hammer_mount_t;
 
+struct hammer_sync_info {
+	int error;
+	int waitfor;
+};
+
 #endif
 
 #if defined(_KERNEL)
@@ -422,6 +435,11 @@ int	hammer_ip_first(hammer_cursor_t cursor, hammer_inode_t ip);
 int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid);
+
+int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
+int	hammer_sync_volume(hammer_volume_t volume, void *data);
+int	hammer_sync_cluster(hammer_cluster_t cluster, void *data);
+int	hammer_sync_buffer(hammer_buffer_t buffer, void *data);
 
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip);
@@ -485,6 +503,7 @@ hammer_cluster_t hammer_get_cluster(hammer_volume_t volume,
 hammer_buffer_t	hammer_get_buffer(hammer_cluster_t cluster,
 			int32_t buf_no, u_int64_t buf_type, int *errorp);
 
+int		hammer_ref_volume(hammer_volume_t volume);
 int		hammer_ref_cluster(hammer_cluster_t cluster);
 int		hammer_ref_buffer(hammer_buffer_t buffer);
 void		hammer_flush_buffer_nodes(hammer_buffer_t buffer);
@@ -559,6 +578,8 @@ int hammer_io_read(struct vnode *devvp, struct hammer_io *io);
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
 void hammer_io_release(struct hammer_io *io, int flush);
 int hammer_io_checkflush(hammer_io_t io);
+void hammer_io_notify_cluster(hammer_cluster_t cluster);
+void hammer_io_flush(struct hammer_io *io, struct hammer_sync_info *info);
 
 #endif
 
@@ -586,13 +607,14 @@ hammer_modify_cluster(struct hammer_cluster *cluster)
 static __inline void
 hammer_modify_buffer(struct hammer_buffer *buffer)
 {
+	hammer_io_notify_cluster(buffer->cluster);
 	buffer->io.modified = 1;
 }
 
 static __inline void
 hammer_modify_node(struct hammer_node *node)
 {
-	node->buffer->io.modified = 1;
+	hammer_modify_buffer(node->buffer);
 }
 
 /*

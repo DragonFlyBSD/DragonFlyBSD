@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.10 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.11 2007/12/14 08:05:39 dillon Exp $
  */
 
 #include "hammer.h"
@@ -361,7 +361,8 @@ hammer_update_inode(hammer_inode_t ip)
 
 	/*
 	 * Write out a new record if the in-memory inode is not marked
-	 * as having been deleted.
+	 * as having been deleted.  Update our inode statistics if this
+	 * is the first application of the inode on-disk.
 	 *
 	 * If the inode has been deleted permanently, HAMMER_INODE_DELONDISK
 	 * will remain set and prevent further updates.
@@ -376,7 +377,11 @@ hammer_update_inode(hammer_inode_t ip)
 		hammer_free_mem_record(record);
 		ip->flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
 			       HAMMER_INODE_DELONDISK);
-		ip->flags |= HAMMER_INODE_ONDISK;
+		if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
+			++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+			hammer_modify_volume(ip->hmp->rootvol);
+			ip->flags |= HAMMER_INODE_ONDISK;
+		}
 	}
 	ip->flags &= ~HAMMER_INODE_TID;
 	return(error);
@@ -498,6 +503,8 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 		ip->ino_rec.base.base.delete_tid = trans.tid;
 		hammer_modify_inode(&trans, ip,
 				    HAMMER_INODE_DELETED | HAMMER_INODE_TID);
+		--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+		hammer_modify_volume(ip->hmp->rootvol);
 	}
 
 	/*

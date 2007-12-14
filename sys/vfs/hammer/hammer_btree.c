@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.9 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.10 2007/12/14 08:05:39 dillon Exp $
  */
 
 /*
@@ -531,6 +531,9 @@ hammer_btree_delete(hammer_cursor_t cursor)
  * and guarentee that the leaf it ends up on is not full.
  *
  * DELETIONS: The search will rebalance the tree on its way down.
+ *
+ * The search is only guarenteed to end up on a leaf if an error code of 0
+ * is returned, or if inserting and an error code of ENOENT is returned.
  */
 static 
 int
@@ -663,12 +666,9 @@ btree_search(hammer_cursor_t cursor, int flags)
 		}
 		node = cursor->node->ondisk;
 #endif
-
 		/*
 		 * Scan the node to find the subtree index to push down into.
-		 * We go one-past, then back-up.  The key should never be
-		 * less then the left-hand boundary so I should never wind
-		 * up 0.
+		 * We go one-past, then back-up.
 		 */
 		for (i = 0; i < node->count; ++i) {
 			r = hammer_btree_cmp(&cursor->key_beg,
@@ -676,12 +676,40 @@ btree_search(hammer_cursor_t cursor, int flags)
 			if (r < 0)
 				break;
 		}
-		KKASSERT(i != 0);
 
 		/*
-		 * The push-down index is now i - 1.
+		 * It is possible for the search to terminate at i == 0,
+		 * which is to the LEFT of the LEFT boundary but the RIGHT
+		 * of the parent's boundary on the left of the sub-tree
+		 * element.  This case can occur due to deletions (see
+		 * btree_remove()).
+		 *
+		 * When this case occurs an ENOENT return is guarenteed but
+		 * if inserting we must still terminate at a leaf.  The
+		 * solution is to make the node's left boundary inherit the
+		 * boundary stored in the parent.
+		 *
+		 * When doing this inheritance some fields in 'base' are
+		 * actually related to the internal element's child
+		 * specification and not to the key.  These have to be
+		 * retained.
 		 */
-		--i;
+		if (i == 0) {
+			u_int8_t save;
+			if ((flags & HAMMER_CURSOR_INSERT) == 0) {
+				cursor->index = 0;
+				return(ENOENT);
+			}
+			save = node->elms[0].subtree_type;
+			node->elms[0].base = *cursor->left_bound;
+			node->elms[0].subtree_type = save;
+			hammer_modify_node(cursor->node);
+		} else {
+			/*
+			 * The push-down index is now i - 1.
+			 */
+			--i;
+		}
 		cursor->index = i;
 
 		/*
@@ -1010,8 +1038,8 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * Fixup left and right bounds
 	 */
 	parent_elm = &parent->ondisk->elms[cursor->parent_index];
-	cursor->left_bound = &elm[0].internal.base;
-	cursor->right_bound = &elm[1].internal.base;
+	cursor->left_bound = &parent_elm[0].internal.base;
+	cursor->right_bound = &parent_elm[1].internal.base;
 
 	return (0);
 }
@@ -1181,8 +1209,8 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * Fixup left and right bounds
 	 */
 	parent_elm = &parent->ondisk->elms[cursor->parent_index];
-	cursor->left_bound = &elm[0].internal.base;
-	cursor->right_bound = &elm[1].internal.base;
+	cursor->left_bound = &parent_elm[0].internal.base;
+	cursor->right_bound = &parent_elm[1].internal.base;
 
 	return (0);
 }
@@ -1279,8 +1307,18 @@ btree_remove(hammer_cursor_t cursor)
 	/*
 	 * Remove the element at (node, index) and adjust the parent's
 	 * subtree_count.
+	 *
+	 * NOTE!  Removing the element will cause the left-hand boundary
+	 * to no longer match the child node:
+	 *
+	 * LxMxR (left, middle, right).  If the first 'x' element is
+	 * removed then you get LxR and L no longer matches the left-hand
+	 * boundary of the sub-node pointed to by what used to be the
+	 * second x.  This case is handled in btree_search().
 	 */
+#if 0
 	kprintf("BTREE_REMOVE: Removing element %d\n", cursor->index);
+#endif
 	ondisk = node->ondisk;
 	i = cursor->index;
 	bcopy(&ondisk->elms[i+1], &ondisk->elms[i],

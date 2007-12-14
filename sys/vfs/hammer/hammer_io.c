@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.5 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.6 2007/12/14 08:05:39 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -53,35 +53,26 @@
 #include <sys/buf2.h>
 
 /*
- * Helper routine which disassociates a buffer cache buf from a
- * hammer structure.
- *
- * If the io structures indicates that the buffer is not in a released
- * state we must dispose of it.
+ * Helper routine to disassociate a buffer cache buffer from an I/O
+ * structure.
  */
 static void
 hammer_io_disassociate(union hammer_io_structure *io)
 {
 	struct buf *bp = io->io.bp;
-	int modified;
-	int released;
 
 	LIST_INIT(&bp->b_dep);	/* clear the association */
 	bp->b_ops = NULL;
 	io->io.bp = NULL;
-	modified = io->io.modified;
-	released = io->io.released;
 
 	switch(io->io.type) {
 	case HAMMER_STRUCTURE_VOLUME:
 		io->volume.ondisk = NULL;
 		io->volume.alist.meta = NULL;
-		io->io.modified = 0;
 		break;
 	case HAMMER_STRUCTURE_SUPERCL:
 		io->supercl.ondisk = NULL;
 		io->supercl.alist.meta = NULL;
-		io->io.modified = 0;
 		break;
 	case HAMMER_STRUCTURE_CLUSTER:
 		io->cluster.ondisk = NULL;
@@ -89,31 +80,33 @@ hammer_io_disassociate(union hammer_io_structure *io)
 		io->cluster.alist_btree.meta = NULL;
 		io->cluster.alist_record.meta = NULL;
 		io->cluster.alist_mdata.meta = NULL;
-		io->io.modified = 0;
 		break;
 	case HAMMER_STRUCTURE_BUFFER:
 		io->buffer.ondisk = NULL;
 		io->buffer.alist.meta = NULL;
-		io->io.modified = 0;
 		break;
 	}
-	/*
-	 * 'io' now invalid.  If the buffer was not released we have to
-	 * dispose of it.
-	 *
-	 * disassociate can be called via hammer_io_checkwrite() with
-	 * the buffer in a released state (possibly with no lock held
-	 * at all, in fact).  Don't mess with it if we are in a released
-	 * state.
-	 */
-	if (released == 0) {
-		if (modified)
-			bdwrite(bp);
-		else
-			bqrelse(bp);
-		io->io.released = 1;
+	io->io.modified = 0;
+	io->io.released = 1;
+}
+
+/*
+ * Mark a cluster as being closed.  This is done as late as possible,
+ * only when we are asked to flush the cluster
+ */
+static void
+hammer_close_cluster(hammer_cluster_t cluster)
+{
+	while (cluster->state == HAMMER_CLUSTER_ASYNC)
+		tsleep(cluster, 0, "hmrdep", 0);
+	if (cluster->state == HAMMER_CLUSTER_OPEN) {
+		cluster->state = HAMMER_CLUSTER_IDLE;
+		cluster->ondisk->clu_flags &= ~HAMMER_CLUF_OPEN;
+		kprintf("CLOSE CLUSTER\n");
+		hammer_modify_cluster(cluster);
 	}
 }
+
 
 /*
  * Load bp for a HAMMER structure.
@@ -170,102 +163,202 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 }
 
 /*
- * Release the IO buffer on the last reference to a hammer structure.  At
- * this time the lock still has a reference.
+ * This routine is called when a buffer within a cluster is modified.  We
+ * mark the cluster open and immediately initiate asynchronous I/O.  Any
+ * related hammer_buffer write I/O blocks until our async write completes.
+ * This guarentees (inasmuch as the OS can) that the cluster recovery code
+ * will see a cluster marked open if a crash occured while the filesystem
+ * still had dirty buffers associated with that cluster.
+ */
+void
+hammer_io_notify_cluster(hammer_cluster_t cluster)
+{
+	struct hammer_io *io = &cluster->io;
+
+	if (cluster->state == HAMMER_CLUSTER_IDLE) {
+		hammer_lock_ex(&cluster->io.lock);
+		if (cluster->state == HAMMER_CLUSTER_IDLE) {
+			if (io->released)
+				regetblk(io->bp);
+			kprintf("MARK CLUSTER OPEN\n");
+			cluster->ondisk->clu_flags |= HAMMER_CLUF_OPEN;
+			cluster->state = HAMMER_CLUSTER_ASYNC;
+			hammer_modify_cluster(cluster);
+			bawrite(io->bp);
+			io->released = 1;
+			/* leave cluster marked as modified */
+		}
+		hammer_unlock(&cluster->io.lock);
+	}
+}
+
+/*
+ * This routine is called on the last reference to a hammer structure.  If
+ * flush is non-zero we have to completely disassociate the bp from the
+ * structure (which may involve blocking).  Otherwise we can leave the bp
+ * passively associated with the structure.
  *
- * We flush and disassociate the bp if flush is non-zero or if the kernel
- * tried to free/reuse the buffer.
+ * The caller is holding io->lock exclusively.
  */
 void
 hammer_io_release(struct hammer_io *io, int flush)
 {
 	union hammer_io_structure *iou = (void *)io;
+	hammer_cluster_t cluster;
 	struct buf *bp;
 
 	if ((bp = io->bp) != NULL) {
-		if (bp->b_flags & B_LOCKED) {
-			/*
-			 * The kernel wanted the buffer but couldn't get it,
-			 * give it up now.
-			 */
-			KKASSERT(io->released);
-			regetblk(bp);
-			io->released = 0;
-			BUF_KERNPROC(bp);
-			bp->b_flags &= ~B_LOCKED;
-			hammer_io_disassociate(iou);
-		} else if (io->released == 0) {
-			/*
-			 * We are holding a real lock on the buffer, release
-			 * it passively (hammer_io_deallocate is called
-			 * when the kernel really wants to reuse the buffer).
-			 */
-			if (flush) {
-				hammer_io_disassociate(iou);
-			} else {
-				if (io->modified)
-					bdwrite(bp);
-				else
-					bqrelse(bp);
-				io->modified = 0;
-				io->released = 1;
-			}
-		} else if (io->modified && (bp->b_flags & B_DELWRI) == 0) {
-			/*
-			 * We are holding the buffer passively but made
-			 * modifications to it.  The kernel has not initiated
-			 * I/O (else B_LOCKED would have been set), so just
-			 * check whether B_DELWRI is set.  Since we still
-			 * have lock references on the HAMMER structure the
-			 * kernel cannot throw the buffer away.
-			 *
-			 * We have to do this to avoid the situation where
-			 * the buffer is not marked B_DELWRI when modified
-			 * and in a released state, otherwise the kernel
-			 * will never try to flush the modified buffer!
-			 */
-			regetblk(bp);
-			BUF_KERNPROC(bp);
-			io->released = 0;
-			if (flush) {
-				hammer_io_disassociate(iou);
-			} else {
+		/*
+		 * If neither we nor the kernel want to flush the bp, we can
+		 * stop here.  Make sure the bp is passively released
+		 * before returning.  Even though we are still holding it,
+		 * we want to be notified when the kernel wishes to flush
+		 * it out so make sure B_DELWRI is properly set if we had
+		 * made modifications.
+		 */
+		if (flush == 0 && (bp->b_flags & B_LOCKED) == 0) {
+			if ((bp->b_flags & B_DELWRI) == 0 && io->modified) {
+				if (io->released)
+					regetblk(bp);
 				bdwrite(bp);
-				io->modified = 0;
+				io->released = 1;
+			} else if (io->released == 0) {
+				bqrelse(bp);
 				io->released = 1;
 			}
-		} else if (flush) {
-			/*
-			 * We are holding the buffer passively but were
-			 * asked to disassociate and flush it.
-			 */
-			regetblk(bp);
-			BUF_KERNPROC(bp);
-			io->released = 0;
+			return;
+		}
+
+		/*
+		 * We've been asked to flush the buffer.
+		 *
+		 * If this is a hammer_buffer we may have to wait for the
+		 * cluster header write to complete.
+		 */
+		if (iou->io.type == HAMMER_STRUCTURE_BUFFER &&
+		    (io->modified || (bp->b_flags & B_DELWRI))) {
+			cluster = iou->buffer.cluster;
+			while (cluster->state == HAMMER_CLUSTER_ASYNC)
+				tsleep(iou->buffer.cluster, 0, "hmrdep", 0);
+		}
+
+		/*
+		 * If we have an open cluster header, close it
+		 */
+		if (iou->io.type == HAMMER_STRUCTURE_CLUSTER) {
+			hammer_close_cluster(&iou->cluster);
+		}
+
+
+		/*
+		 * Ok the dependancies are all gone.  Check for the simple
+		 * disassociation case.
+		 */
+		if (io->released && (bp->b_flags & B_LOCKED) == 0 &&
+		    (io->modified == 0 || (bp->b_flags & B_DELWRI))) {
 			hammer_io_disassociate(iou);
-			/* io->released ignored */
-		} /* else just leave it associated in a released state */
+			return;
+		}
+
+		/*
+		 * Handle the more complex disassociation case.  Acquire the
+		 * buffer, clean up B_LOCKED, and deal with the modified
+		 * flag.
+		 */
+		if (io->released)
+			regetblk(bp);
+		bp->b_flags &= ~B_LOCKED;
+		if (io->modified || (bp->b_flags & B_DELWRI))
+			bawrite(bp);
+		else
+			bqrelse(bp);
+		io->released = 1;
+		hammer_io_disassociate(iou);
 	}
 }
+
+/*
+ * Flush dirty data, if any.
+ */
+void
+hammer_io_flush(struct hammer_io *io, struct hammer_sync_info *info)
+{
+	struct buf *bp;
+	int error;
+
+	if ((bp = io->bp) == NULL)
+		return;
+	if (bp->b_flags & B_DELWRI)
+		io->modified = 1;
+	if (io->modified == 0)
+		return;
+	kprintf("IO FLUSH BP %p TYPE %d REFS %d\n", bp, io->type, io->lock.refs);
+	hammer_lock_ex(&io->lock);
+
+	if ((bp = io->bp) != NULL && io->modified) {
+		if (io->released)
+			regetblk(bp);
+		io->released = 1;
+
+		/*
+		 * We own the bp now
+		 */
+		if (info->waitfor & MNT_WAIT) {
+			io->modified = 0;
+			error = bwrite(bp);
+			if (error)
+				info->error = error;
+		} else if (io->lock.refs == 1) {
+			io->modified = 0;
+			bawrite(bp);
+		} else {
+			kprintf("can't flush, %d refs\n", io->lock.refs);
+			/* structure is in-use, don't race the write */
+			bqrelse(bp);
+		}
+	}
+	hammer_unlock(&io->lock);
+}
+
 
 /*
  * HAMMER_BIOOPS
  */
 
 /*
- * Pre and post I/O callbacks.  No buffer munging is done so there is
- * nothing to do here.
+ * Pre and post I/O callbacks.
  */
 static void hammer_io_deallocate(struct buf *bp);
 
 static void
 hammer_io_start(struct buf *bp)
 {
+#if 0
+	union hammer_io_structure *io = (void *)LIST_FIRST(&bp->b_dep);
+
+	if (io->io.type == HAMMER_STRUCTURE_BUFFER) {
+		while (io->buffer.cluster->io_in_progress) {
+			kprintf("hammer_io_start: wait for cluster\n");
+			tsleep(io->buffer.cluster, 0, "hmrdep", 0);
+			kprintf("hammer_io_start: wait for cluster done\n");
+		}
+	}
+#endif
 }
 
 static void
 hammer_io_complete(struct buf *bp)
 {
+	union hammer_io_structure *io = (void *)LIST_FIRST(&bp->b_dep);
+
+	if (io->io.type == HAMMER_STRUCTURE_CLUSTER) {
+		if (io->cluster.state == HAMMER_CLUSTER_ASYNC) {
+			kprintf("cluster write complete flags %08x\n",
+				io->cluster.ondisk->clu_flags);
+			io->cluster.state = HAMMER_CLUSTER_OPEN;
+			wakeup(&io->cluster);
+		}
+	}
 }
 
 /*
@@ -284,6 +377,10 @@ hammer_io_deallocate(struct buf *bp)
 
 	/* XXX memory interlock, spinlock to sync cpus */
 
+	/*
+	 * Since the kernel is passing us a locked buffer, the HAMMER
+	 * structure had better not believe it has a lock on the buffer.
+	 */
 	KKASSERT(io->io.released);
 	crit_enter();
 
@@ -306,13 +403,16 @@ hammer_io_deallocate(struct buf *bp)
 
 	if (hammer_islastref(&io->io.lock)) {
 		/*
-		 * If we are the only ref left we can disassociate the
-		 * I/O.  It had better still be in a released state because
-		 * the kernel is holding a lock on the buffer.
+		 * If we are the only ref left we can disassociate the I/O.
+		 * It had better still be in a released state because the
+		 * kernel is holding a lock on the buffer.  Any passive
+		 * modifications should have already been synchronized with
+		 * the buffer.
 		 */
 		KKASSERT(io->io.released);
 		hammer_io_disassociate(io);
 		bp->b_flags &= ~B_LOCKED;
+		KKASSERT (io->io.modified == 0 || (bp->b_flags & B_DELWRI));
 
 		/*
 		 * Perform final rights on the structure.  This can cause
@@ -373,8 +473,12 @@ hammer_io_movedeps(struct buf *bp1, struct buf *bp2)
  * B_CACHE buffers so checkread just shouldn't happen, but if it does
  * allow it.
  *
- * Writing is a different case.  We don't want to write out a buffer
- * that HAMMER may be modifying passively.
+ * Writing is a different case.  We don't want the kernel to try to write
+ * out a buffer that HAMMER may be modifying passively or which has a
+ * dependancy.
+ *
+ * This code enforces the following write ordering: buffers, then cluster
+ * headers, then volume headers.
  */
 static int
 hammer_io_checkread(struct buf *bp)
@@ -385,14 +489,35 @@ hammer_io_checkread(struct buf *bp)
 static int
 hammer_io_checkwrite(struct buf *bp)
 {
-	union hammer_io_structure *io = (void *)LIST_FIRST(&bp->b_dep);
+	union hammer_io_structure *iou = (void *)LIST_FIRST(&bp->b_dep);
 
-	if (io->io.lock.refs) {
+	if (iou->io.type == HAMMER_STRUCTURE_BUFFER &&
+	    iou->buffer.cluster->state == HAMMER_CLUSTER_ASYNC) {
+		/*
+		 * Cannot write out a cluster buffer if the cluster header
+		 * I/O opening the cluster has not completed.
+		 */
+		kprintf("hammer_io_checkwrite: w/ depend - delayed\n");
+		bp->b_flags |= B_LOCKED;
+		return(-1);
+	} else if (iou->io.lock.refs) {
+		/*
+		 * Cannot write out a bp if its associated buffer has active
+		 * references.
+		 */
+		kprintf("hammer_io_checkwrite: w/ refs - delayed\n");
 		bp->b_flags |= B_LOCKED;
 		return(-1);
 	} else {
-		KKASSERT(bp->b_flags & B_DELWRI);
-		hammer_io_disassociate(io);
+		/*
+		 * We're good, but before we can let the kernel proceed we
+		 * may have to make some adjustments.
+		 */
+		if (iou->io.type == HAMMER_STRUCTURE_CLUSTER)
+			hammer_close_cluster(&iou->cluster);
+		kprintf("hammer_io_checkwrite: ok\n");
+		KKASSERT(iou->io.released);
+		hammer_io_disassociate(iou);
 		return(0);
 	}
 }
