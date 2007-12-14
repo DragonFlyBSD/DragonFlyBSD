@@ -28,14 +28,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/rtprio.2,v 1.13.2.9 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/rtprio.2,v 1.5 2007/12/14 22:51:57 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/rtprio.2,v 1.6 2007/12/14 23:12:55 swildner Exp $
 .\"
-.Dd July 23, 1994
+.Dd December 14, 2007
 .Dt RTPRIO 2
 .Os
 .Sh NAME
-.Nm rtprio
-.Nd examine or modify a process realtime or idle priority
+.Nm rtprio ,
+.Nm lwp_rtprio
+.Nd examine or modify a process/lwp realtime or idle priority
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -43,6 +44,8 @@
 .In sys/rtprio.h
 .Ft int
 .Fn rtprio "int function" "pid_t pid" "struct rtprio *rtp"
+.Ft int
+.Fn lwp_rtprio "int function" "pid_t pid" "lwpid_t tid" "struct rtprio *rtp"
 .Sh DESCRIPTION
 .Fn rtprio
 is used to lookup or change the realtime or idle priority of a process.
@@ -94,10 +97,20 @@ when no other real/normal priority process is runnable.
 Higher real/idle priority processes
 preempt lower real/idle priority processes.
 Processes of equal real/idle priority are run round-robin.
+.Pp
+The
+.Fn lwp_rtprio
+function is the lwp counterpart of
+.Fn rtprio .
+It takes one additional argument,
+.Fa tid ,
+specifying the lwp to be used, -1 for the current lwp.
 .Sh RETURN VALUES
-.Rv -std rtprio
+.Rv -std rtprio lwp_rtprio
 .Sh ERRORS
 .Fn rtprio
+and
+.Fn lwp_rtprio
 will fail if
 .Bl -tag -width Er
 .It Bq Er EINVAL
