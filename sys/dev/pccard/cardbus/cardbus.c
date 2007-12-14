@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.11 2007/07/05 12:08:54 sephe Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.12 2007/12/14 10:54:25 sephe Exp $
  */
 
 /*
@@ -367,8 +367,8 @@ cardbus_alloc_resources(device_t cbdev, device_t child)
 	bus_release_resource(cbdev, SYS_RES_IRQ, rid, res);
 	resource_list_add(&dinfo->pci.resources, SYS_RES_IRQ, rid, start, end,
 	    1);
-	dinfo->pci.cfg.intline = rman_get_start(res);
-	pci_write_config(child, PCIR_INTLINE, rman_get_start(res), 1);
+	dinfo->pci.cfg.intline = start;
+	pci_write_config(child, PCIR_INTLINE, start, 1);
 
 	kfree(barlist, M_DEVBUF);
 	return (0);
