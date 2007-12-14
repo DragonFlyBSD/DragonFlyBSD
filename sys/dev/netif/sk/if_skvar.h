@@ -66,7 +66,7 @@
  * $FreeBSD: /c/ncvs/src/sys/pci/if_skreg.h,v 1.9 2000/04/22 02:16:37 wpaul Exp $
  * $NetBSD: if_skvar.h,v 1.6 2005/05/30 04:35:22 christos Exp $
  * $OpenBSD: if_skvar.h,v 1.2 2005/12/22 20:54:47 brad Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skvar.h,v 1.3 2007/06/23 09:25:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skvar.h,v 1.4 2007/12/14 11:37:11 sephe Exp $
  */
 
 /*
@@ -152,6 +152,7 @@ struct sk_if_softc;
 
 /* Softc for the GEnesis controller. */
 struct sk_softc {
+	device_t		sk_dev;
 	int			sk_res_rid;
 	struct resource		*sk_res;
 	bus_space_handle_t	sk_bhandle;	/* bus space handle */

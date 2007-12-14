@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.53 2007/06/23 09:25:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.54 2007/12/14 11:37:10 sephe Exp $
  */
 
 /*
@@ -1326,6 +1326,7 @@ skc_attach(device_t dev)
 
 	DPRINTFN(2, ("begin skc_attach\n"));
 
+	sc->sk_dev = dev;
 	lwkt_serialize_init(&sc->sk_serializer);
 
 #ifndef BURN_BRIDGES
@@ -1522,12 +1523,29 @@ static int
 sk_detach(device_t dev)
 {
 	struct sk_if_softc *sc_if = device_get_softc(dev);
-	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 
-	if (device_is_attached(dev))
+	if (device_is_attached(dev)) {
+		struct sk_softc *sc = sc_if->sk_softc;
+		struct ifnet *ifp = &sc_if->arpcom.ac_if;
+
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		if (sc->sk_intrhand != NULL) {
+			if (sc->sk_if[SK_PORT_A] != NULL)
+				sk_stop(sc->sk_if[SK_PORT_A]);
+			if (sc->sk_if[SK_PORT_B] != NULL)
+				sk_stop(sc->sk_if[SK_PORT_B]);
+
+			bus_teardown_intr(sc->sk_dev, sc->sk_irq,
+					  sc->sk_intrhand);
+			sc->sk_intrhand = NULL;
+		}
+
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
+	}
 
-	bus_generic_detach(dev);
 	if (sc_if->sk_miibus != NULL)
 		device_delete_child(dev, sc_if->sk_miibus);
 
@@ -1541,20 +1559,13 @@ skc_detach(device_t dev)
 	struct sk_softc *sc = device_get_softc(dev);
 	int *port;
 
+#ifdef INVARIANTS
 	if (device_is_attached(dev)) {
-		lwkt_serialize_enter(&sc->sk_serializer);
-
-		if (sc->sk_if[SK_PORT_A] != NULL)
-			sk_stop(sc->sk_if[SK_PORT_A]);
-		if (sc->sk_if[SK_PORT_B] != NULL)
-			sk_stop(sc->sk_if[SK_PORT_B]);
-
-		bus_teardown_intr(dev, sc->sk_irq, sc->sk_intrhand);
-
-		lwkt_serialize_exit(&sc->sk_serializer);
+		KASSERT(sc->sk_intrhand == NULL,
+			("intr has not been torn down yet"));
 	}
+#endif
 
-	bus_generic_detach(dev);
 	if (sc->sk_devs[SK_PORT_A] != NULL) {
 		port = device_get_ivars(sc->sk_devs[SK_PORT_A]);
 		if (port != NULL) {
