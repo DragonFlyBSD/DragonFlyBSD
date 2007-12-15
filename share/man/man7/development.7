@@ -3,7 +3,7 @@
 .\" the DragonFly source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/development.7,v 1.4.2.2 2003/05/23 07:48:35 brueffer Exp $
-.\" $DragonFly: src/share/man/man7/development.7,v 1.8 2007/12/15 12:20:06 thomas Exp $
+.\" $DragonFly: src/share/man/man7/development.7,v 1.9 2007/12/15 16:49:43 thomas Exp $
 .\"
 .Dd December 15, 2007
 .Dt DEVELOPMENT 7
@@ -41,7 +41,8 @@ The last thing you want to do is to run an
 unstable environment on your master server which could lead to a situation
 where you lose the environment and/or cannot recover from a mistake.
 .Pp
-Create a partition called /DragonFly.
+Create a partition called
+.Pa /DragonFly .
 8-12GB is recommended.
 This partition will contain nearly all the development environment,
 including the CVS tree, broken-out source, and possibly even object files.
@@ -85,7 +86,8 @@ ln -s /DragonFly/DragonFly-CVS /home/dcvs
 The cron job should look something like this (please randomize the time of
 day!).
 Note that you can use the cvsup file example directly from
-/usr/share/examples without modification by supplying appropriate arguments
+.Pa /usr/share/examples
+without modification by supplying appropriate arguments
 to cvsup. Please use a cvsup mirror, see the
 .Dx
 site.
@@ -98,8 +100,13 @@ Run the cvsup manually the first time to pull down the archive.
 It could take
 all day depending on how fast your connection is!
 You will run all cvsup and cvs operations as root and you need to set
-up a ~/.cvsrc (/root/.cvsrc) file, as shown below, for proper cvs operation.
-Using ~/.cvsrc to specify cvs defaults is an excellent way
+up a
+.Pa ~/.cvsrc
+.Pa ( /root/.cvsrc )
+file, as shown below, for proper cvs operation.
+Using
+.Pa ~/.cvsrc
+to specify cvs defaults is an excellent way
 to "file and forget", but you should never forget that you put them in there.
 .Bd -literal -offset 4n
 # cvs -q
@@ -110,7 +117,9 @@ checkout -P
 .Pp
 Now use cvs to checkout a -RELEASE source tree and a -DEVELOPMENT source tree,
 as well as docs, to create your initial source environment.
-Keeping the broken-out source in /DragonFly allows you to export
+Keeping the broken-out source in
+.Pa /DragonFly
+allows you to export
 it to other machines via read-only NFS.
 This also means you only need to edit/maintain files in one place and all
 your clients automatically pick up the changes.
@@ -126,11 +135,21 @@ cvs -d /home/dcvs checkout src
 cvs -d /home/dcvs checkout doc
 .Ed
 .Pp
-Now create a softlink for /usr/src and /usr/src2.
-On the main server I always point /usr/src at -RELEASE and /usr/src2 at
+Now create a softlink for
+.Pa /usr/src
+and
+.Pa /usr/src2 .
+On the main server I always point
+.Pa /usr/src
+at -RELEASE and
+.Pa /usr/src2
+at
 -DEVELOPMENT.
-On client machines I usually do not have a /usr/src2 and I make
-/usr/src point at whatever version of
+On client machines I usually do not have a
+.Pa /usr/src2
+and I make
+.Pa /usr/src
+point at whatever version of
 .Dx
 the client box is intended to
 run.
@@ -141,10 +160,13 @@ ln -s /DragonFly/DragonFly-RELEASE/src src	(could be -DEVELOPMENT on a client)
 ln -s /DragonFly/DragonFly-DEVELOPMENT/src src2	(MASTER SERVER ONLY)
 .Ed
 .Pp
-Now you have to make a choice for /usr/obj.
+Now you have to make a choice for
+.Pa /usr/obj .
 Well, hopefully you made it already and chose the partition method.
 If you
-chose poorly you probably intend to put it in /DragonFly and, if so, this is
+chose poorly you probably intend to put it in
+.Pa /DragonFly
+and, if so, this is
 what you want to do:
 .Bd -literal -offset 4n
 (ONLY IF YOU MADE A POOR CHOICE AND PUT /usr/obj in /DragonFly!)
@@ -154,62 +176,98 @@ rm -rf obj
 ln -s /DragonFly/obj obj
 .Ed
 .Pp
-Alternatively you may chose simply to leave /usr/obj in /usr.
+Alternatively you may chose simply to leave
+.Pa /usr/obj
+in
+.Pa /usr .
 If your
-/usr is large enough this will work, but I do not recommend it for
-safety reasons (/usr/obj is constantly being modified, /usr is not).
+.Pa /usr
+is large enough this will work, but I do not recommend it for
+safety reasons
+.Pa ( /usr/obj
+is constantly being modified,
+.Pa /usr
+is not).
 .Pp
-Note that exporting /usr/obj via read-only NFS to your other boxes will
+Note that exporting
+.Pa /usr/obj
+via read-only NFS to your other boxes will
 allow you to build on your main server and install from your other boxes.
 If you also want to do builds on some or all of the clients you can simply
-have /usr/obj be a local directory on those clients.
-You should never export /usr/obj read-write, it will lead to all sorts of
+have
+.Pa /usr/obj
+be a local directory on those clients.
+You should never export
+.Pa /usr/obj
+read-write, it will lead to all sorts of
 problems and issues down the line and presents a security problem as well.
 It is far easier to do builds on the master server and then only do installs
 on the clients.
 .Pp
 .Sh EXPORTING VIA NFS FROM THE MASTER SERVER
-The master server needs to export /DragonFly and /usr/obj via NFS so all the
+The master server needs to export
+.Pa /DragonFly
+and
+.Pa /usr/obj
+via NFS so all the
 rest of your machines can get at them.
 I strongly recommend using a read-only export for both security and safety.
 The environment I am describing in this manual page is designed primarily
 around read-only NFS exports.
-Your /etc/exports file on the master server should contain the following lines:
+Your
+.Pa /etc/exports
+file on the master server should contain the following lines:
 .Bd -literal -offset 4n
 /DragonFly -ro -alldirs -maproot=root: -network YOURLAN -mask YOURLANMASK
 /usr/obj   -ro -alldirs -maproot=root: -network YOURLAN -mask YOURLANMASK
 .Ed
 .Pp
 Of course, NFS server operations must also be configured on that machine.
-This is typically done via your /etc/rc.conf:
+This is typically done via your
+.Pa /etc/rc.conf :
 .Bd -literal -offset 4n
 nfs_server_enable="YES"
 .Ed
 .Sh THE CLIENT ENVIRONMENT
 All of your client machines can import the development/build environment
-directory simply by NFS mounting /DragonFly and /usr/obj from the master
+directory simply by NFS mounting
+.Pa /DragonFly
+and
+.Pa /usr/obj
+from the master
 server.
-A typical /etc/fstab entry on your client machines will be something like this:
+A typical
+.Pa /etc/fstab
+entry on your client machines will be something like this:
 .Bd -literal -offset 4n
 masterserver:/DragonFly   /DragonFly      nfs     ro,bg    0       0
 masterserver:/usr/obj     /usr/obj        nfs     ro,bg    0       0
 .Ed
 .Pp
 And, of course, you should configure the client for NFS client operations
-via /etc/rc.conf.
+via
+.Pa /etc/rc.conf .
 In particular, this will turn on nfsiod which will improve client-side NFS
 performance:
 .Bd -literal -offset 4n
 nfs_client_enable="YES"
 .Ed
 .Pp
-Each client should create softlink for /usr/src that point
+Each client should create softlink for
+.Pa /usr/src
+that point
 into the NFS-mounted environment.
-If a particular client is running -DEVELOPMENT, /usr/src
-should be a softlink to /DragonFly/DragonFly-DEVELOPMENT/src.
-If it is running -RELEASE, /usr/src should be a softlink to
-/DragonFly/DragonFly-RELEASE/src.
-I do not usually create a /usr/src2 softlink on
+If a particular client is running -DEVELOPMENT,
+.Pa /usr/src
+should be a softlink to
+.Pa /DragonFly/DragonFly-DEVELOPMENT/src .
+If it is running -RELEASE,
+.Pa /usr/src
+should be a softlink to
+.Pa /DragonFly/DragonFly-RELEASE/src .
+I do not usually create a
+.Pa /usr/src2
+softlink on
 clients, that is used as a convenient shortcut when working on the source
 code on the master server only and could create massive confusion (of the
 human variety) on a client.
@@ -221,9 +279,14 @@ ln -s /DragonFly/DragonFly-XXX/src src
 .Pp
 .Sh BUILDING KERNELS
 Here is how you build a -RELEASE kernel (on your main development box).
-If you want to create a custom kernel, cp GENERIC to YOURKERNEL and then
+If you want to create a custom kernel, copy
+.Pa GENERIC
+to
+.Pa YOURKERNEL
+and then
 edit it before configuring and building.
-The kernel configuration file lives in /usr/src/sys/config/KERNELNAME.
+The kernel configuration file lives in
+.Pa /sys/config/KERNELNAME .
 .Bd -literal -offset 4n
 cd /usr/src
 make buildkernel KERNCONF=KERNELNAME
@@ -252,7 +315,9 @@ make installkernel KERNCONF=KERNELNAME
 .Sh BUILDING THE WORLD
 This environment is designed such that you do all builds on the master server,
 and then install from each client.
-You can do builds on a client only if /usr/obj is local to that client.
+You can do builds on a client only if
+.Pa /usr/obj
+is local to that client.
 Building the world is easy:
 .Bd -literal -offset 4n
 cd /usr/src
@@ -270,24 +335,40 @@ make buildworld
 .Ed
 .Sh INSTALLING THE WORLD
 You can build on your main development server and install on clients.
-The main development server must export /DragonFly and /usr/obj via
+The main development server must export
+.Pa /DragonFly
+and
+.Pa /usr/obj
+via
 read-only NFS to the clients.
 .Pp
 .Em NOTE!!!
-If /usr/obj is a softlink on the master server, it must also be the EXACT
+If
+.Pa /usr/obj
+is a softlink on the master server, it must also be the EXACT
 SAME softlink on each client.
-If /usr/obj is a directory in /usr or a mount point on the master server,
-then it must be (interchangeably) a directory in /usr or a mount point on
+If
+.Pa /usr/obj
+is a directory in
+.Pa /usr
+or a mount point on the master server,
+then it must be (interchangeably) a directory in
+.Pa /usr
+or a mount point on
 each client.
 This is because the
 absolute paths are expected to be the same when building the world as when
 installing it, and you generally build it on your main development box
 and install it from a client.
-If you do not setup /usr/obj properly you will not be able to build on
+If you do not setup
+.Pa /usr/obj
+properly you will not be able to build on
 machine and install on another.
 .Bd -literal -offset 4n
 (ON THE CLIENT)
-(remember /usr/src is pointing to the client's specific environment)
+(remember
+.Pa /usr/src
+is pointing to the client's specific environment)
 cd /usr/src
 make installworld
 .Ed
@@ -295,8 +376,12 @@ make installworld
 .Sy WARNING!
 If builds work on the master server but installs do not work from the
 clients, for example you try to install and the client complains that
-the install tried to write into the read-only /usr/obj, then it is likely
-that the /etc/make.conf file on the client does not match the one on the
+the install tried to write into the read-only
+.Pa /usr/obj ,
+then it is likely
+that the
+.Pa /etc/make.conf
+file on the client does not match the one on the
 master server closely enough and the install is trying to install something
 that was not built.
 .Sh DOING DEVELOPMENT ON A CLIENT (NOT JUST INSTALLING)
@@ -304,21 +389,37 @@ Developers often want to run buildkernel's or buildworld's on client
 boxes simply to life-test the box.
 You do this in the same manner that you buildkernel and buildworld on your
 master server.
-All you have to do is make sure that /usr/obj is pointing to local storage.
-If you followed my advise and made /usr/obj its own partition on the master
+All you have to do is make sure that
+.Pa /usr/obj
+is pointing to local storage.
+If you followed my advise and made
+.Pa /usr/obj
+its own partition on the master
 server,
 then it is typically going to be an NFS mount on the client.
-Simply unmounting /usr/obj will leave you with a /usr/obj that is a
-subdirectory in /usr which is typically local to the client.
+Simply unmounting
+.Pa /usr/obj
+will leave you with a
+.Pa /usr/obj
+that is a
+subdirectory in
+.Pa /usr
+which is typically local to the client.
 You can then do builds to your heart's content!
 .Sh MAINTAINING A LOCAL BRANCH
 I have described how to maintain two versions of the source tree, a stable
-version in /DragonFly/DragonFly-RELEASE and a current version
-in /DragonFly/DragonFly-DEVELOPMENT.
+version in
+.Pa /DragonFly/DragonFly-RELEASE
+and a current version
+in
+.Pa /DragonFly/DragonFly-DEVELOPMENT .
 There is absolutely nothing preventing you
 from breaking out other versions of the source tree
-into /DragonFly/XXX.
-In fact, my /DragonFly partition also contains
+into
+.Pa /DragonFly/XXX .
+In fact, my
+.Pa /DragonFly
+partition also contains
 .Fx ,
 .Ox ,
 .Nx ,
@@ -409,11 +510,15 @@ repository.
 For example,
 .Fl Pd
 is necessary when running "cvs update".
-These options are typically placed in your ~/.cvsrc (as already described)
+These options are typically placed in your
+.Pa ~/.cvsrc
+(as already described)
 so you do not have to respecify them every time you run a CVS command.
 Maintaining the CVS repository also gives you far more flexibility
 in regards to breaking out multiple versions of the source tree.
-It is a good idea to give your /DragonFly partition a lot of space (I recommend
+It is a good idea to give your
+.Pa /DragonFly
+partition a lot of space (I recommend
 8-12GB) precisely for that reason.
 If you can make it 15GB I would do it.
 .Pp
@@ -429,6 +534,7 @@ My recommendation is to only keep the cvs repository synchronized via cron.
 .Xr cvsup 1 ,
 .Xr crontab 5 ,
 .Xr exports 5 ,
+.Xr kernconf 5 ,
 .Xr make.conf 5 ,
 .Xr build 7 ,
 .Xr firewall 7 ,
