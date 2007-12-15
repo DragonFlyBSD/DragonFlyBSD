@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.21 2007/12/11 18:10:51 wa1ter Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.22 2007/12/15 11:39:15 swildner Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -64,7 +64,6 @@ typedef struct {
 #define EI_VERSION	6	/* ELF format version. */
 #define EI_OSABI	7	/* Operating system / ABI identification */
 #define EI_ABIVERSION	8	/* ABI version */
-#define OLD_EI_BRAND	8	/* Start of architecture identification. */
 #define EI_PAD		9	/* Start of padding (per SVR4 ABI). */
 #define EI_NIDENT	16	/* Size of e_ident array. */
 
