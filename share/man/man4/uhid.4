@@ -1,6 +1,6 @@
 .\" $NetBSD: uhid.4,v 1.13 2001/12/29 14:41:59 augustss Exp $
 .\" $FreeBSD: src/share/man/man4/uhid.4,v 1.1.2.3 2002/08/16 05:02:25 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/uhid.4,v 1.3 2005/08/04 21:06:32 swildner Exp $
+.\" $DragonFly: src/share/man/man4/uhid.4,v 1.4 2007/12/15 10:03:17 swildner Exp $
 .\"
 .\" Copyright (c) 1999, 2001 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -80,7 +80,7 @@ this feature.
 .It Dv USB_GET_REPORT (struct usb_ctl_report)
 Get a report from the device without waiting for data on
 the interrupt pipe.  The
-.Dv report
+.Fa report
 field indicates which report is requested.  It should be
 .Dv UHID_INPUT_REPORT ,
 .Dv UHID_OUTPUT_REPORT ,
@@ -92,16 +92,16 @@ struct usb_ctl_report {
 	int report;
 	u_char	data[1024];	/* used data size will vary */
 };
+.Ed
 .It Dv USB_SET_REPORT (struct usb_ctl_report)
 Set a report in the device.  The
-.Dv report
+.Fa report
 field indicates which report is to be set.  It should be
 .Dv UHID_INPUT_REPORT ,
 .Dv UHID_OUTPUT_REPORT ,
 or
 .Dv UHID_FEATURE_REPORT .
 This call may fail if the device does not support this feature.
-.Ed
 .El
 .Pp
 Use
