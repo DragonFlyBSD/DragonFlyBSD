@@ -24,7 +24,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ppi.4,v 1.4.2.7 2001/12/17 11:30:12 ru Exp $
-.\" $DragonFly: src/share/man/man4/ppi.4,v 1.3 2006/10/14 23:46:23 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ppi.4,v 1.4 2007/12/15 10:33:38 swildner Exp $
 .\"
 .Dd January 2, 1998
 .Dt PPI 4
@@ -72,8 +72,10 @@ a bit in the control register drives the corresponding output low.
 .It Dv SELECTIN
 .It Dv PCD
 .El
-.It Dv PPIGEPP , PPISEPP
-Get and set the contents of the EPP control register.
+.It Dv PPIGEPPA , PPISEPPA
+Get and set the address bits of the EPP control register.
+.It Dv PPIGEPPD , PPISEPPD
+Get and set the data bits of the EPP control register.
 .It Dv PPIGECR , PPISECR
 Get and set the contents of the ECP control register.
 .It Dv PPIGFIFO , PPISFIFO
