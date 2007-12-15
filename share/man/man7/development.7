@@ -1,28 +1,31 @@
 .\" Copyright (c) 1998 Matthew Dillon.  Terms and conditions are those of
 .\" the BSD Copyright as specified in the file "/usr/src/COPYRIGHT" in
-.\" the FreeBSD source tree.
+.\" the DragonFly source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/development.7,v 1.4.2.2 2003/05/23 07:48:35 brueffer Exp $
-.\" $DragonFly: src/share/man/man7/development.7,v 1.7 2006/10/24 17:09:45 swildner Exp $
+.\" $DragonFly: src/share/man/man7/development.7,v 1.8 2007/12/15 12:20:06 thomas Exp $
 .\"
-.Dd December 21, 2002
+.Dd December 15, 2007
 .Dt DEVELOPMENT 7
 .Os
 .Sh NAME
 .Nm development
-.Nd introduction to development with the FreeBSD codebase
+.Nd introduction to development with the DragonFly codebase
 .Sh DESCRIPTION
 This manual page describes how an ordinary sysop,
 .Ux admin, or developer
 can, without any special permission, obtain, maintain, and modify the
-.Fx
+.Dx
 codebase as well as how to maintaining a master build which can
 then be exported to other machines in your network.
 This manual page
 is targeted to system operators, programmers, and developers.
 .Pp
 Please note that what is being described here is based on a complete
-FreeBSD environment, not just the FreeBSD kernel.
+.Dx
+environment, not just the
+.Dx
+kernel.
 The methods described
 here are as applicable to production installations as it is to development
 environments.
@@ -30,20 +33,21 @@ You need a good 12-17GB of disk space on one machine to make this work
 conveniently.
 .Sh SETTING UP THE ENVIRONMENT ON THE MASTER SERVER
 Your master server should always run a stable, production version of the
-.Fx
+.Dx
 operating system.
-This does not prevent you from doing -CURRENT
+This does not prevent you from doing -PREVIEW or -DEVELOPMENT
 builds or development.
 The last thing you want to do is to run an
 unstable environment on your master server which could lead to a situation
 where you lose the environment and/or cannot recover from a mistake.
 .Pp
-Create a huge partition called /FreeBSD.
+Create a partition called /DragonFly.
 8-12GB is recommended.
 This partition will contain nearly all the development environment,
 including the CVS tree, broken-out source, and possibly even object files.
 You are going to export this partition to your other machines via a
-READ-ONLY NFS export so do not mix it with other more security-sensitive
+.Sy read-only
+NFS export so do not mix it with other more security-sensitive
 partitions.
 .Pp
 You have to make a choice in regards to
@@ -51,7 +55,7 @@ You have to make a choice in regards to
 You can put
 .Pa /usr/obj
 in
-.Pa /FreeBSD
+.Pa /DragonFly
 or you can make
 .Pa /usr/obj
 its own partition.
@@ -67,24 +71,27 @@ partition of at least 5GB.
 .Pp
 On the master server, use cvsup to automatically pull down and maintain
 the
-.Fx
+.Dx
 CVS archive once a day.
 The first pull will take a long time,
 it is several gigabytes, but once you have it the daily syncs will be quite
 small.
 .Bd -literal -offset 4n
-mkdir /FreeBSD/FreeBSD-CVS
-rm -rf /home/ncvs
-ln -s /FreeBSD/FreeBSD-CVS /home/ncvs
+mkdir /DragonFly/DragonFly-CVS
+rm -rf /home/dcvs
+ln -s /DragonFly/DragonFly-CVS /home/dcvs
 .Ed
 .Pp
 The cron job should look something like this (please randomize the time of
 day!).
 Note that you can use the cvsup file example directly from
 /usr/share/examples without modification by supplying appropriate arguments
-to cvsup.
+to cvsup. Please use a cvsup mirror, see the
+.Dx
+site.
 .Bd -literal -offset 4n
-33 6 * * *      /usr/local/bin/cvsup -g -r 20 -L 2 -h cvsup.freebsd.org /usr/share/examples/cvsup/cvs-supfile
+33 6 * * * /usr/local/bin/cvsup -gr 20 -L 2 -h cvsup.dragonflybsd.org \\
+  /usr/share/examples/cvsup/DragonFly-cvs-supfile
 .Ed
 .Pp
 Run the cvsup manually the first time to pull down the archive.
@@ -101,49 +108,50 @@ update -Pd
 checkout -P
 .Ed
 .Pp
-Now use cvs to checkout a -STABLE source tree and a -CURRENT source tree,
-as well as ports and docs, to create your initial source environment.
-Keeping the broken-out source and ports in /FreeBSD allows you to export
+Now use cvs to checkout a -RELEASE source tree and a -DEVELOPMENT source tree,
+as well as docs, to create your initial source environment.
+Keeping the broken-out source in /DragonFly allows you to export
 it to other machines via read-only NFS.
 This also means you only need to edit/maintain files in one place and all
 your clients automatically pick up the changes.
 .Bd -literal -offset 4n
-mkdir /FreeBSD/FreeBSD-4.x
-mkdir /FreeBSD/FreeBSD-current
+mkdir /DragonFly/DragonFly-RELEASE
+mkdir /DragonFly/DragonFly-DEVELOPMENT
 
-cd /FreeBSD/FreeBSD-4.x
-cvs -d /home/ncvs checkout -rRELENG_4 src
+cd /DragonFly/DragonFly-RELEASE
+cvs -d /home/dcvs checkout -r DragonFly_RELEASE_1_10_Slip src
 
-cd /FreeBSD/FreeBSD-current
-cvs -d /home/ncvs checkout src
-cvs -d /home/ncvs checkout ports
-cvs -d /home/ncvs checkout doc
+cd /DragonFly/DragonFly-DEVELOPMENT
+cvs -d /home/dcvs checkout src
+cvs -d /home/dcvs checkout doc
 .Ed
 .Pp
 Now create a softlink for /usr/src and /usr/src2.
-On the main server I always point /usr/src at -STABLE and /usr/src2 at
--CURRENT.
+On the main server I always point /usr/src at -RELEASE and /usr/src2 at
+-DEVELOPMENT.
 On client machines I usually do not have a /usr/src2 and I make
-/usr/src point at whatever version of FreeBSD the client box is intended to
+/usr/src point at whatever version of
+.Dx
+the client box is intended to
 run.
 .Bd -literal -offset 4n
 cd /usr
 rm -rf src src2
-ln -s /FreeBSD/FreeBSD-4.x/src src	(could be -CURRENT on a client)
-ln -s /FreeBSD/FreeBSD-current/src src2	(MASTER SERVER ONLY)
+ln -s /DragonFly/DragonFly-RELEASE/src src	(could be -DEVELOPMENT on a client)
+ln -s /DragonFly/DragonFly-DEVELOPMENT/src src2	(MASTER SERVER ONLY)
 .Ed
 .Pp
 Now you have to make a choice for /usr/obj.
 Well, hopefully you made it already and chose the partition method.
 If you
-chose poorly you probably intend to put it in /FreeBSD and, if so, this is
+chose poorly you probably intend to put it in /DragonFly and, if so, this is
 what you want to do:
 .Bd -literal -offset 4n
-(ONLY IF YOU MADE A POOR CHOICE AND PUT /usr/obj in /FreeBSD!)
-mkdir /FreeBSD/obj
+(ONLY IF YOU MADE A POOR CHOICE AND PUT /usr/obj in /DragonFly!)
+mkdir /DragonFly/obj
 cd /usr
 rm -rf obj
-ln -s /FreeBSD/obj obj
+ln -s /DragonFly/obj obj
 .Ed
 .Pp
 Alternatively you may chose simply to leave /usr/obj in /usr.
@@ -160,68 +168,30 @@ problems and issues down the line and presents a security problem as well.
 It is far easier to do builds on the master server and then only do installs
 on the clients.
 .Pp
-I usually maintain my ports tree via CVS.
-It is sitting right there in the master CVS archive and I've even told you
-to check it out (see above).
-With some fancy softlinks you can make the ports tree available both on your
-master server and on all of your other machines.
-Note that the ports tree exists only on the HEAD cvs branch, so its always
--CURRENT even on a -STABLE box.
-This is what you do:
-.Bd -literal -offset 4n
-(THESE COMMANDS ON THE MASTER SERVER AND ON ALL CLIENTS)
-cd /usr
-rm -rf ports
-ln -s /FreeBSD/FreeBSD-current/ports ports
-
-cd /usr/ports   			(this pushes into the softlink)
-rm -rf distfiles			(ON MASTER SERVER ONLY)
-ln -s /usr/ports.distfiles distfiles	(ON MASTER SERVER ONLY)
-
-mkdir /usr/ports.distfiles
-mkdir /usr/ports.workdir
-.Ed
-.Pp
-Since /usr/ports is softlinked into what will be read-only on all of your
-clients, you have to tell the ports system to use a different working
-directory to hold ports builds.
-You want to add a line to your /etc/make.conf file on the master server
-and on all your clients:
-.Bd -literal -offset 4n
-WRKDIRPREFIX=/usr/ports.workdir
-.Ed
-.Pp
-You should try to make the directory you use for the ports working directory
-as well as the directory used to hold distfiles consistent across all of your
-machines.
-If there isn't enough room in /usr/ports.distfiles and /usr/ports.workdir I
-usually make those softlinks (since this is on /usr these are per-machine) to
-where the distfiles and working space really are.
 .Sh EXPORTING VIA NFS FROM THE MASTER SERVER
-The master server needs to export /FreeBSD and /usr/obj via NFS so all the
+The master server needs to export /DragonFly and /usr/obj via NFS so all the
 rest of your machines can get at them.
 I strongly recommend using a read-only export for both security and safety.
 The environment I am describing in this manual page is designed primarily
 around read-only NFS exports.
-Your exports file on the master server should contain the following lines:
+Your /etc/exports file on the master server should contain the following lines:
 .Bd -literal -offset 4n
-/FreeBSD -ro -alldirs -maproot=root: -network YOURLAN -mask YOURLANMASK
-/usr/obj -ro -alldirs -maproot=root: -network YOURLAN -mask YOURLANMASK
+/DragonFly -ro -alldirs -maproot=root: -network YOURLAN -mask YOURLANMASK
+/usr/obj   -ro -alldirs -maproot=root: -network YOURLAN -mask YOURLANMASK
 .Ed
 .Pp
 Of course, NFS server operations must also be configured on that machine.
 This is typically done via your /etc/rc.conf:
 .Bd -literal -offset 4n
 nfs_server_enable="YES"
-nfs_server_flags="-u -t -n 4"
 .Ed
 .Sh THE CLIENT ENVIRONMENT
 All of your client machines can import the development/build environment
-directory simply by NFS mounting /FreeBSD and /usr/obj from the master
+directory simply by NFS mounting /DragonFly and /usr/obj from the master
 server.
 A typical /etc/fstab entry on your client machines will be something like this:
 .Bd -literal -offset 4n
-masterserver:/FreeBSD     /FreeBSD        nfs     ro,bg    0       0
+masterserver:/DragonFly   /DragonFly      nfs     ro,bg    0       0
 masterserver:/usr/obj     /usr/obj        nfs     ro,bg    0       0
 .Ed
 .Pp
@@ -233,12 +203,12 @@ performance:
 nfs_client_enable="YES"
 .Ed
 .Pp
-Each client should create softlinks for /usr/ports and /usr/src that point
+Each client should create softlink for /usr/src that point
 into the NFS-mounted environment.
-If a particular client is running -CURRENT, /usr/src
-should be a softlink to /FreeBSD/FreeBSD-current/src.
-If it is running -STABLE, /usr/src should be a softlink to
-/FreeBSD/FreeBSD-4.x/src.
+If a particular client is running -DEVELOPMENT, /usr/src
+should be a softlink to /DragonFly/DragonFly-DEVELOPMENT/src.
+If it is running -RELEASE, /usr/src should be a softlink to
+/DragonFly/DragonFly-RELEASE/src.
 I do not usually create a /usr/src2 softlink on
 clients, that is used as a convenient shortcut when working on the source
 code on the master server only and could create massive confusion (of the
@@ -246,23 +216,11 @@ human variety) on a client.
 .Bd -literal -offset 4n
 (ON EACH CLIENT)
 cd /usr
-rm -rf ports src
-ln -s /FreeBSD/FreeBSD-current/ports ports
-ln -s /FreeBSD/FreeBSD-XXX/src src
+ln -s /DragonFly/DragonFly-XXX/src src
 .Ed
 .Pp
-Don't forget to create the working directories so you can build ports, as
-previously described.
-If these are not good locations, make them softlinks to the correct location.
-Remember that /usr/ports/distfiles is exported by
-the master server and is therefore going to point to the same place
-(typically /usr/ports.distfiles) on every machine.
-.Bd -literal -offset 4n
-mkdir /usr/ports.distfiles
-mkdir /usr/ports.workdir
-.Ed
 .Sh BUILDING KERNELS
-Here is how you build a -STABLE kernel (on your main development box).
+Here is how you build a -RELEASE kernel (on your main development box).
 If you want to create a custom kernel, cp GENERIC to YOURKERNEL and then
 edit it before configuring and building.
 The kernel configuration file lives in /usr/src/sys/config/KERNELNAME.
@@ -271,18 +229,13 @@ cd /usr/src
 make buildkernel KERNCONF=KERNELNAME
 .Ed
 .Pp
-.Sy WARNING!
-If you are familiar with the old config/cd/make method of building
-a -STABLE kernel, note that the config method will put the build
-environment in /usr/src/sys/compile/KERNELNAME instead of in /usr/obj.
-.Pp
-Building a -CURRENT kernel
+Building a -DEVELOPMENT kernel
 .Bd -literal -offset 4n
 cd /usr/src2		(on the master server)
 make buildkernel KERNCONF=KERNELNAME
 .Ed
 .Sh INSTALLING KERNELS
-Installing a -STABLE kernel (typically done on a client.
+Installing a -RELEASE kernel (typically done on a client.
 Only do this on your main development server if you want to install a new
 kernel for your main development server):
 .Bd -literal -offset 4n
@@ -290,14 +243,7 @@ cd /usr/src
 make installkernel KERNCONF=KERNELNAME
 .Ed
 .Pp
-If you are using the older config/cd/make build mechanism for stable, you
-would install using:
-.Bd -literal -offset 4n
-cd /usr/src/sys/compile/KERNELNAME
-make install
-.Ed
-.Pp
-Installing a -CURRENT kernel (typically done only on a client)
+Installing a -DEVELOPMENT kernel (typically done only on a client)
 .Bd -literal -offset 4n
 (remember /usr/src is pointing to the client's specific environment)
 cd /usr/src
@@ -313,8 +259,8 @@ cd /usr/src
 make buildworld
 .Ed
 .Pp
-If you are on the master server you are running in a -STABLE environment, but
-that does not prevent you from building the -CURRENT world.
+If you are on the master server you are running in a -RELEASE environment, but
+that does not prevent you from building the -DEVELOPMENT world.
 Just cd into the appropriate source directory and you are set.
 Do not
 accidentally install it on your master server though!
@@ -324,7 +270,7 @@ make buildworld
 .Ed
 .Sh INSTALLING THE WORLD
 You can build on your main development server and install on clients.
-The main development server must export /FreeBSD and /usr/obj via
+The main development server must export /DragonFly and /usr/obj via
 read-only NFS to the clients.
 .Pp
 .Em NOTE!!!
@@ -367,28 +313,29 @@ subdirectory in /usr which is typically local to the client.
 You can then do builds to your heart's content!
 .Sh MAINTAINING A LOCAL BRANCH
 I have described how to maintain two versions of the source tree, a stable
-version in /FreeBSD/FreeBSD-4.x and a current version
-in /FreeBSD/FreeBSD-current.
+version in /DragonFly/DragonFly-RELEASE and a current version
+in /DragonFly/DragonFly-DEVELOPMENT.
 There is absolutely nothing preventing you
 from breaking out other versions of the source tree
-into /FreeBSD/XXX.
-In fact, my /FreeBSD partition also contains
+into /DragonFly/XXX.
+In fact, my /DragonFly partition also contains
+.Fx ,
 .Ox ,
 .Nx ,
 and various flavors of Linux.
-You may not necessarily be able to build non-FreeBSD operating systems on
+You may not necessarily be able to build non-DragonFly operating systems on
 your master server, but being able
 to collect and manage source distributions from a central server is a very
 useful thing to be able to do and you can certainly export to machines
 which can build those other operating systems.
 .Pp
 Many developers choose to maintain a local branch of
-.Fx
+.Dx
 to test patches or build a custom distribution.
 This can be done with CVS or another source code management system
 (SubVersion, Perforce, BitKeeper) with its own repository.
 Since the main
-.Fx
+.Dx
 tree is based on CVS, the former is convenient.
 .Pp
 First, you need to modify your cvsup environment to avoid it modifying
@@ -399,7 +346,7 @@ For more information, see
 .Xr cvsup 1 .
 .Pp
 The
-.Fx
+.Dx
 version of CVS examines a custom environmental variable,
 CVS_LOCAL_BRANCH_NUM, which specifies an integer to use when doing a cvs
 tag/rtag.
@@ -412,7 +359,7 @@ Future commits to this branch will produce revisions 1.4.1000.1,
 .Pp
 To fork your local branch, do:
 .Bd -literal -offset 4n
-cvs rtag -r RELENG_4 -b LOCAL_RELENG_4 src
+cvs rtag -r DragonFly_RELEASE_1_10_Slip -b LOCAL_DragonFly_RELEASE_1_10 src
 .Ed
 .Pp
 After this, you can check out a copy from your local repository using the
@@ -446,11 +393,9 @@ your source tree at any time without any network cost as follows:
 .Bd -literal -offset 4n
 (on the main development server)
 cd /usr/src
-cvs -d /home/ncvs update
+cvs -d /home/dcvs update
 cd /usr/src2
-cvs -d /home/ncvs update
-cd /usr/ports
-cvs -d /home/ncvs update
+cvs -d /home/dcvs update
 .Ed
 .Pp
 It is that simple, and since you are exporting the whole lot to your
@@ -459,7 +404,7 @@ source.
 This is a good time to also remind you that most of the cvs operations
 you do will be done as root, and that certain options are
 required for CVS to operate properly on the
-.Fx
+.Dx
 repository.
 For example,
 .Fl Pd
@@ -468,7 +413,7 @@ These options are typically placed in your ~/.cvsrc (as already described)
 so you do not have to respecify them every time you run a CVS command.
 Maintaining the CVS repository also gives you far more flexibility
 in regards to breaking out multiple versions of the source tree.
-It is a good idea to give your /FreeBSD partition a lot of space (I recommend
+It is a good idea to give your /DragonFly partition a lot of space (I recommend
 8-12GB) precisely for that reason.
 If you can make it 15GB I would do it.
 .Pp
@@ -480,7 +425,11 @@ a good time.
 My recommendation is to only keep the cvs repository synchronized via cron.
 .Sh SEE ALSO
 .Xr crontab 1 ,
+.Xr cvs 1 ,
+.Xr cvsup 1 ,
 .Xr crontab 5 ,
+.Xr exports 5 ,
+.Xr make.conf 5 ,
 .Xr build 7 ,
 .Xr firewall 7 ,
 .Xr release 7 ,
