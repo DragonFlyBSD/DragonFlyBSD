@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl.9,v 1.3 2006/04/28 23:21:36 keramida Exp $
-.\" $DragonFly: src/share/man/man9/sysctl.9,v 1.4 2007/09/23 10:45:47 hasso Exp $
+.\" $DragonFly: src/share/man/man9/sysctl.9,v 1.5 2007/12/15 09:07:13 swildner Exp $
 .\"
 .Dd June 22, 2006
 .Dt SYSCTL 9
@@ -233,8 +233,8 @@ process is <= 0.
 .It Dv CTLFLAG_PRISON
 This sysctl can be written to by processes in
 .Xr jail 2 .
-.It Dv CTLFLAG_SKIP
-When iterating the sysctl name space, do not list this sysctl.
+.\".It Dv CTLFLAG_SKIP
+.\"When iterating the sysctl name space, do not list this sysctl.
 .El
 .Pp
 When creating new sysctls, careful attention should be paid to the security
@@ -247,36 +247,36 @@ implement access control to limit the undesired exposure of information about
 other processes, network connections, etc.
 .Pp
 The following top level sysctl name spaces are commonly used:
-.Bl -tag -width machdep
-.It Dv compat
+.Bl -tag -width ".Va machdep"
+.It Va compat
 Compatibility layer information.
-.It Dv debug
+.It Va debug
 Debugging information.
 Various name spaces exist under
-.Dv debug .
-.It Dv hw
+.Va debug .
+.It Va hw
 Hardware and device driver information.
-.It Dv lwkt
+.It Va lwkt
 Information about the
 .Xr lwkt 9
 subsystem.
-.It Dv kern
+.It Va kern
 Kernel behavior tuning; generally deprecated in favor of more specific
 name spaces.
-.It Dv machdep
+.It Va machdep
 Machine-dependent configuration parameters.
-.It Dv net
+.It Va net
 Network subsystem.
 Various protocols have name spaces under
-.Dv net .
-.It Dv sysctl
+.Va net .
+.It Va sysctl
 Reserved name space for the implementation of sysctl.
-.It Dv user
+.It Va user
 Configuration settings relating to user application behavior.
 Generally, configuring applications using kernel sysctls is discouraged.
-.It Dv vfs
+.It Va vfs
 Virtual file system configuration and information.
-.It Dv vm
+.It Va vm
 Virtual memory subsystem configuration and information.
 .El
 .Sh EXAMPLES
