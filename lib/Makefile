@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.30 2007/05/17 21:09:47 dillon Exp $
+# $DragonFly: src/lib/Makefile,v 1.31 2007/12/15 07:13:18 sephe Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
@@ -16,6 +16,8 @@
 # libtacplus must be built before libpam.
 # libutil must be built before libpam.
 # libsbuf must be built before libcam.
+# libthread_xu must be built before libpthread.
+# ${_libc_r} must be built before libpthread.
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
@@ -25,8 +27,8 @@ SUBDIR=	libarchive libcom_err libcrypt libm libmd \
 	libcalendar libcam libcompat libdevstat libedit libfetch \
 	libftpio libipsec libipx libisc libkcore libkinfo libkvm libmagic \
 	${_libmilter} ${_libncp} libnetgraph libopie libpam \
-	libpcap libposix1e libpthread librpcsvc ${_libsm} ${_libsmb} \
-	${_libsmdb} ${_libsmutil} libstand libtelnet libthread_xu libusbhid \
+	libpcap libposix1e libthread_xu libpthread librpcsvc ${_libsm} \
+	${_libsmb} ${_libsmdb} ${_libsmutil} libstand libtelnet libusbhid \
 	${_libvgl} libwrap libxpg4 liby libz i18n_module pam_module \
 	libc_rtld libsctp
 
