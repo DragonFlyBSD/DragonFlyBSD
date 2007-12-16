@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)timed.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.sbin/timed/timed/timed.8,v 1.7.2.6 2003/03/11 22:31:34 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/timed/timed/timed.8,v 1.2 2003/06/17 04:30:03 dillon Exp $
+.\" $DragonFly: src/usr.sbin/timed/timed/timed.8,v 1.3 2007/12/16 02:55:38 thomas Exp $
 .\"
 .Dd June 6, 1993
 .Dt TIMED 8
@@ -48,10 +48,11 @@
 .Sh DESCRIPTION
 The
 .Nm
-utility is a time server daemon
-which is normally invoked at boot time from the
-.Xr rc.network 8
-file.
+utility is a time server daemon,
+it is invoked at boot time by setting the
+.Va timed_enable
+variable in
+.Xr rc.conf 5 .
 It synchronizes the host's time with the time of other
 machines, which are also running
 .Nm ,
@@ -255,6 +256,7 @@ log file for master timed
 .Xr gettimeofday 2 ,
 .Xr icmp 4 ,
 .Xr networks 5 ,
+.Xr rc.conf 5 ,
 .Xr timedc 8
 .Rs
 .%T "TSP: The Time Synchronization Protocol for UNIX 4.3BSD"

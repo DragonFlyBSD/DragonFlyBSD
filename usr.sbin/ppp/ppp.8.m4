@@ -26,7 +26,7 @@ changecom(,)dnl
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
-.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.8 2007/11/21 19:12:41 swildner Exp $
+.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.9 2007/12/16 02:55:38 thomas Exp $
 .\"
 .Dd September 20, 1995
 .Dt PPP 8
@@ -1181,7 +1181,7 @@ connection request, follow these steps:
 .Bl -enum
 .It
 Make sure the modem and (optionally)
-.Pa /etc/rc.serial
+.Pa /etc/rc.d/serial
 is configured correctly.
 .Bl -bullet -compact
 .It

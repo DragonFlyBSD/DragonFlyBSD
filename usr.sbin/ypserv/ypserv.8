@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ypserv/ypserv.8,v 1.22.2.8 2002/12/29 16:35:44 schweikh Exp $
-.\" $DragonFly: src/usr.sbin/ypserv/ypserv.8,v 1.7 2007/07/30 22:11:34 swildner Exp $
+.\" $DragonFly: src/usr.sbin/ypserv/ypserv.8,v 1.8 2007/12/16 02:55:38 thomas Exp $
 .\"
 .Dd February 4, 1995
 .Dt YPSERV 8
@@ -113,9 +113,9 @@ good general practice.
 .Pp
 The
 .Nm
-program is started by
-.Pa /etc/rc.network
-if it has been enabled in
+program is started at boot time by setting the
+.Va yp_server_enable
+variable in
 .Pa /etc/rc.conf .
 .Sh SPECIAL FEATURES
 There are some problems associated with distributing a
@@ -444,7 +444,9 @@ host access control file
 .Sh SEE ALSO
 .Xr ypcat 1 ,
 .Xr db 3 ,
+.Xr rc.conf 5 ,
 .Xr rpc.yppasswdd 8 ,
+.Xr tcpd 8 ,
 .Xr yp 8 ,
 .Xr ypbind 8 ,
 .Xr ypinit 8 ,
