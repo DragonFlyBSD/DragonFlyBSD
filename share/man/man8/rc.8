@@ -34,8 +34,8 @@
 .\"
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
-.\" $DragonFly: src/share/man/man8/rc.8,v 1.10 2007/10/14 00:14:36 swildner Exp $
-.Dd October 13, 2007
+.\" $DragonFly: src/share/man/man8/rc.8,v 1.11 2007/12/16 01:58:38 thomas Exp $
+.Dd December 16, 2007
 .Dt RC 8
 .Os
 .Sh NAME
@@ -189,12 +189,12 @@ In order of startup, these are:
 .It Pa NETWORKING
 Ensure basic network services are running, including general
 network configuration
-.Pq Pa network1 , network2 , network3 .
+.Pq Pa netif , routing , network_ipv6 , isdnd, ppp-user .
 .It Pa SERVERS
 Ensure basic services (such as
-.Pa NETWORKING , ppp-user , syslogd ,
+.Pa NETWORKING
 and
-.Pa isdnd )
+.Pa syslogd )
 exist for services that start early (such as
 .Pa named ) ,
 because they are required by
@@ -202,16 +202,16 @@ because they are required by
 below.
 .It Pa DAEMON
 Check-point before all general purpose daemons such as
-.Pa lpd
+.Pa dhcpd , ftpd
 and
-.Pa ntpd .
+.Pa lpd .
 .It Pa LOGIN
 Check-point before user login services
 .Pa ( inetd
 and
 .Pa sshd ) ,
 as well as services which might run commands as users
-.Pa ( cron
+.Pa ( cron , jail
 and
 .Pa sendmail ) .
 .El
@@ -377,28 +377,16 @@ is not set, when going from single-user to multi-user mode for example,
 the script does not do anything.
 .Pp
 The
-.Nm rc.early
-script is run very early in the startup process, immediately before the
-file system check.
-The
-.Nm rc.early
-script is deprecated.
-Any commands in this
-file should be separated out into
-.Nm rc.d/
-style scripts and integrated into the
-.Nm
-system.
-.Pp
-The
 .Pa /etc/rc.d/local
 script can execute scripts from multiple
 .Nm rc.d/
 directories.
 The default locations are
-.Pa /usr/local/etc/rc.d/
+.Pa /usr/pkg/etc/rc.d/ ,
+.Pa /usr/local/etc/rc.d/ ,
+.Pa /usr/pkg/xorg/etc/rc.d/
 and
-.Pa /usr/pkg/xorg/etc/rc.d/ ,
+.Pa /usr/X11R6/etc/rc.d/ ,
 but these may be overridden with the
 .Va local_startup
 .Xr rc.conf 5
@@ -409,18 +397,18 @@ The
 script is used to set any special configurations for serial devices.
 .Pp
 The
-.Pa /etc/rc.d/network*
+.Pa /etc/rc.d/{net*,routing}
 scripts are used to start the network.
 The network is started in several passes.
 The first pass,
-.Pa /etc/rc.d/network1 ,
-sets the hostname and domainname and configures the network
+.Pa /etc/rc.d/netif ,
+configures the network
 interfaces.
 The
-.Pa /etc/rc.d/network2
+.Pa /etc/rc.d/routing
 script starts routing and sets routing options.
 The
-.Pa /etc/rc.d/network3
+.Pa /etc/rc.d/netoptions
 script sets additional networking options.
 Finally, the
 .Pa /etc/rc.d/network_ipv6
@@ -428,7 +416,9 @@ script configures IPv6 interfaces and options.
 .Pp
 The
 .Nm rc.firewall
-script is used to configure rules for the kernel based firewall
+script is used to configure rules for the
+.Xr ipfw 4
+kernel based firewall
 service.
 It has several possible options:
 .Pp
@@ -562,6 +552,7 @@ at shutdown, the explicit
 is unnecessary, but is often included.
 .Sh SEE ALSO
 .Xr kill 1 ,
+.Xr ipfw 4 ,
 .Xr rc.conf 5 ,
 .Xr init 8 ,
 .Xr rcorder 8 ,
@@ -574,3 +565,9 @@ The
 .Nm
 utility appeared in
 .Bx 4.0 .
+The
+.Nm rc.d/
+facility was implemented in
+.Nx 1.5
+and appeared in
+.Dx 1.0 .
