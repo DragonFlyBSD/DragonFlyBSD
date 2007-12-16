@@ -27,7 +27,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.23 2007/11/21 22:02:32 swildner Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.24 2007/12/16 20:10:21 thomas Exp $
 
 .\"
 .Dd September 30, 2007
@@ -494,7 +494,7 @@ of the form
 .Ar startnet Ns - Ns Ar endnet .
 Appletalk uses this scheme instead of
 netmasks though
-.Fx
+.Dx
 implements it internally as a set of netmasks.
 .It Cm remove
 Another name for the
@@ -989,7 +989,7 @@ the mapping of text keys to WEP encryption is usually driver-specific.
 In particular, the
 .Tn Windows
 drivers do this mapping differently to
-.Fx .
+.Dx .
 A key may be cleared by setting it to
 .Ql - .
 If WEP is supported then there are at least four keys.
