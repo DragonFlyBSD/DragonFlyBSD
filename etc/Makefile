@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.198 2007/12/16 19:04:58 thomas Exp $
+# $DragonFly: src/etc/Makefile,v 1.199 2007/12/16 19:33:08 thomas Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -412,9 +412,9 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/modules/ibcs2.ko
 	rm -rf ${DESTDIR}/usr/share/examples/ibcs2
 	rm -f ${DESTDIR}/modules/streams.ko
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/streams.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/i386/streams.4.gz"
 	rm -f ${DESTDIR}/modules/svr4.ko
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/svr4.4.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/i386/svr4.4.gz"
 	rm -rf ${DESTDIR}/usr/include/net/oldbridge
 	rm -f ${DESTDIR}/usr/include/net/bridge/bridge.h
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/oldbridge.4.gz"
