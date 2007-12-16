@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)mount.8	8.8 (Berkeley) 6/16/94
 .\" $FreeBSD: src/sbin/mount/mount.8,v 1.31.2.12 2003/02/23 21:17:42 trhodes Exp $
-.\" $DragonFly: src/sbin/mount/mount.8,v 1.6 2006/05/14 18:07:29 swildner Exp $
+.\" $DragonFly: src/sbin/mount/mount.8,v 1.7 2007/12/16 20:12:09 thomas Exp $
 .\"
 .Dd June 16, 1994
 .Dt MOUNT 8
@@ -368,6 +368,7 @@ it has not been configured statically, using
 In this case, the above error message can also mean that you did not
 have permission to load the module.
 .Sh SEE ALSO
+.Xr lsvfs 1 ,
 .Xr mount 2 ,
 .Xr vfsload 3 ,
 .Xr fstab 5 ,
@@ -386,6 +387,7 @@ have permission to load the module.
 .Xr mount_procfs 8 ,
 .Xr mount_smbfs 8 ,
 .Xr mount_std 8 ,
+.Xr mount_udf 8 ,
 .Xr mount_union 8 ,
 .Xr sysctl 8 ,
 .Xr umount 8
