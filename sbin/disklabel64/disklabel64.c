@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.3 2007/07/24 19:48:44 dillon Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.4 2007/12/16 20:17:54 thomas Exp $
  */
 /*
  * Copyright (c) 1987, 1993
@@ -71,7 +71,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.3 2007/07/24 19:48:44 dillon Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.4 2007/12/16 20:17:54 thomas Exp $
  */
 
 #include <sys/param.h>
@@ -1512,21 +1512,21 @@ void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-		"usage: disklabel [-r] disk",
+		"usage: disklabel64 [-r] disk",
 		"\t\t(to read label)",
-		"       disklabel -w [-r] [-n] disk type [ packid ]",
+		"       disklabel64 -w [-r] [-n] disk type [ packid ]",
 		"\t\t(to write label with existing boot program)",
-		"       disklabel -e [-r] [-n] disk",
+		"       disklabel64 -e [-r] [-n] disk",
 		"\t\t(to edit label)",
-		"       disklabel -R [-r] [-n] disk protofile",
+		"       disklabel64 -R [-r] [-n] disk protofile",
 		"\t\t(to restore label with existing boot program)",
-		"       disklabel -B [-n] [ -b boot1 [ -s boot2 ] ] disk [ type ]",
+		"       disklabel64 -B [-n] [ -b boot1 [ -s boot2 ] ] disk [ type ]",
 		"\t\t(to install boot program with existing label)",
-		"       disklabel -w -B [-n] [ -b boot1 [ -s boot2 ] ] disk type [ packid ]",
+		"       disklabel64 -w -B [-n] [ -b boot1 [ -s boot2 ] ] disk type [ packid ]",
 		"\t\t(to write label and boot program)",
-		"       disklabel -R -B [-n] [ -b boot1 [ -s boot2 ] ] disk protofile [ type ]",
+		"       disklabel64 -R -B [-n] [ -b boot1 [ -s boot2 ] ] disk protofile [ type ]",
 		"\t\t(to restore label and boot program)",
-		"       disklabel [-NW] disk",
+		"       disklabel64 [-NW] disk",
 		"\t\t(to write disable/enable label)");
 	exit(1);
 }
