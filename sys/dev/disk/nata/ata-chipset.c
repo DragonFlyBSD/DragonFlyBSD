@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.196 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.10 2007/11/20 09:25:21 hasso Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.11 2007/12/17 09:24:40 hasso Exp $
  */
 
 #include "opt_ata.h"
@@ -1833,8 +1833,9 @@ ata_intel_ident(device_t dev)
      { ATA_I82801HB_R1,  0, AHCI, 0x00, ATA_SA300, "ICH8" },
      { ATA_I82801HB_AH4, 0, AHCI, 0x00, ATA_SA300, "ICH8" },
      { ATA_I82801HB_AH6, 0, AHCI, 0x00, ATA_SA300, "ICH8" },
-     { ATA_I82801HBM_S1, 0, AHCI, 0x00, ATA_SA300, "ICH8M" },
+     { ATA_I82801HBM_S1, 0,    0, 0x00, ATA_SA300, "ICH8M" },
      { ATA_I82801HBM_S2, 0, AHCI, 0x00, ATA_SA300, "ICH8M" },
+     { ATA_I82801HBM_S3, 0, AHCI, 0x00, ATA_SA300, "ICH8M" },
      { ATA_I31244,      0,    0, 0x00, ATA_SA150, "31244" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64]; 
