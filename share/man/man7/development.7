@@ -3,7 +3,7 @@
 .\" the DragonFly source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/development.7,v 1.4.2.2 2003/05/23 07:48:35 brueffer Exp $
-.\" $DragonFly: src/share/man/man7/development.7,v 1.9 2007/12/15 16:49:43 thomas Exp $
+.\" $DragonFly: src/share/man/man7/development.7,v 1.10 2007/12/17 18:36:34 swildner Exp $
 .\"
 .Dd December 15, 2007
 .Dt DEVELOPMENT 7
@@ -203,7 +203,6 @@ read-write, it will lead to all sorts of
 problems and issues down the line and presents a security problem as well.
 It is far easier to do builds on the master server and then only do installs
 on the clients.
-.Pp
 .Sh EXPORTING VIA NFS FROM THE MASTER SERVER
 The master server needs to export
 .Pa /DragonFly
@@ -276,7 +275,6 @@ human variety) on a client.
 cd /usr
 ln -s /DragonFly/DragonFly-XXX/src src
 .Ed
-.Pp
 .Sh BUILDING KERNELS
 Here is how you build a -RELEASE kernel (on your main development box).
 If you want to create a custom kernel, copy
