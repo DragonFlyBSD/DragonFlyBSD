@@ -28,7 +28,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/sa/sa.8,v 1.11.2.4 2003/03/11 22:31:33 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/sa/sa.8,v 1.3 2006/02/17 19:40:26 swildner Exp $
+.\" $DragonFly: src/usr.sbin/sa/sa.8,v 1.4 2007/12/17 18:13:10 swildner Exp $
 .\"
 .Dd February 25, 1994
 .Dt SA 8
@@ -75,25 +75,25 @@ after the last file is processed.
 .Pp
 The labels used in the output indicate the following, except
 where otherwise specified by individual options:
-.Bl -tag -width k*sec
-.It Dv avio
+.Bl -tag -width ".Li k*sec"
+.It Li avio
 Average number of I/O operations per execution
-.It Dv cp
+.It Li cp
 Sum of user and system time, in minutes
-.It Dv cpu
+.It Li cpu
 Same as
-.Dv cp
-.It Dv k
+.Li cp
+.It Li k
 CPU-time averaged core usage, in 1k units
-.It Dv k*sec
+.It Li k*sec
 CPU storage integral, in 1k-core seconds
-.It Dv re
+.It Li re
 Real time, in minutes
-.It Dv s
+.It Li s
 System time, in minutes
-.It Dv tio
+.It Li tio
 Total number of I/O operations
-.It Dv u
+.It Li u
 User time, in minutes
 .El
 .Pp
