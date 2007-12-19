@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.39 2007/11/17 08:05:43 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.40 2007/12/19 12:13:17 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1152,7 +1152,7 @@ send_pkt(struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 	ip->ip_len = m->m_pkthdr.len;
 	bzero (&sro, sizeof (sro));
 	ip_rtaddr(ip->ip_dst, &sro);
-	m->m_pkthdr.fw_flags |= IPFW_MBUF_SKIP_FIREWALL;
+	m->m_pkthdr.fw_flags |= IPFW_MBUF_GENERATED;
 	ip_output(m, NULL, &sro, 0, NULL, NULL);
 	if (sro.ro_rt)
 		RTFREE(sro.ro_rt);
@@ -1328,7 +1328,7 @@ ipfw_chk(struct ip_fw_args *args)
 	int dyn_dir = MATCH_UNKNOWN;
 	ipfw_dyn_rule *q = NULL;
 
-	if (m->m_pkthdr.fw_flags & IPFW_MBUF_SKIP_FIREWALL)
+	if (m->m_pkthdr.fw_flags & IPFW_MBUF_GENERATED)
 		return 0;	/* accept */
 	/*
 	 * dyn_dir = MATCH_UNKNOWN when rules unchecked,
