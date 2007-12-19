@@ -1,5 +1,5 @@
 /*
- * cOPyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
+ * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -65,7 +65,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.43 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.44 2007/12/19 11:10:42 sephe Exp $
  */
 
 #include "opt_ipsec.h"
