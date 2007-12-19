@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.35 2007/07/10 20:24:57 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.36 2007/12/19 11:00:22 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -325,14 +325,14 @@ cpu_portfn(int cpu)
 /* ARGSUSED */
 lwkt_port_t
 cpu0_soport(struct socket *so __unused, struct sockaddr *nam __unused,
-	    int req __unused)
+	    struct mbuf **dummy __unused, int req __unused)
 {
     return (&netisr_cpu[0].td_msgport);
 }
 
 lwkt_port_t
 sync_soport(struct socket *so __unused, struct sockaddr *nam __unused,
-	    int req __unused)
+	    struct mbuf **dummy __unused, int req __unused)
 {
     return (&netisr_sync_port);
 }

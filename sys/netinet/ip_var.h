@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.21 2007/08/16 20:03:57 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.22 2007/12/19 11:00:22 sephe Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -171,6 +171,10 @@ extern struct ip_stats	ipstats_percpu[MAXCPU];
 #define	IP_ROUTETOIF		SO_DONTROUTE	/* bypass routing tables */
 #define	IP_ALLOWBROADCAST	SO_BROADCAST	/* can send broadcast packets */
 
+/* direction passed to ip_mport as last parameter */
+#define IP_MPORT_IN		0 /* Find lwkt port for incoming packets */
+#define IP_MPORT_OUT		1 /* Find lwkt port for outgoing packets */
+
 struct ip;
 struct inpcb;
 struct route;
@@ -198,7 +202,9 @@ void	 ip_init(void);
 extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,
 			  struct ip_moptions *);
 struct lwkt_port *
-	 ip_mport(struct mbuf **);
+	 ip_mport_in(struct mbuf **);
+struct lwkt_port *
+	 ip_mport(struct mbuf **, int);
 boolean_t
 	 ip_lengthcheck(struct mbuf **);
 int	 ip_output(struct mbuf *,
@@ -229,6 +235,9 @@ extern void	(*rsvp_input_p)(struct mbuf *m, ...);
 #ifdef IPDIVERT
 void	div_init(void);
 void	div_input(struct mbuf *, ...);
+struct lwkt_port *
+	div_soport(struct socket *, struct sockaddr *,
+		   struct mbuf **, int);
 void	divert_packet(struct mbuf *m, int incoming, int port);
 extern struct pr_usrreqs div_usrreqs;
 #endif

@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.36 2007/11/26 11:43:09 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.37 2007/12/19 11:00:22 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -210,7 +210,7 @@ fail:
  * may be modified and a port pointer will be returned.
  */
 lwkt_port_t
-ip_mport(struct mbuf **mptr)
+ip_mport(struct mbuf **mptr, int dir)
 {
 	struct ip *ip;
 	int iphlen;
@@ -246,7 +246,8 @@ ip_mport(struct mbuf **mptr)
 		uh = (struct udphdr *)((caddr_t)ip + iphlen);
 
 		if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
-		    in_broadcast(ip->ip_dst, m->m_pkthdr.rcvif)) {
+		    (dir == IP_MPORT_IN &&
+		     in_broadcast(ip->ip_dst, m->m_pkthdr.rcvif))) {
 			cpu = 0;
 		} else {
 			cpu = INP_MPORT_HASH(ip->ip_src.s_addr,
@@ -262,11 +263,18 @@ ip_mport(struct mbuf **mptr)
 	return (port);
 }
 
+lwkt_port_t
+ip_mport_in(struct mbuf **mptr)
+{
+	return ip_mport(mptr, IP_MPORT_IN);
+}
+
 /*
  * Map a TCP socket to a protocol processing thread.
  */
 lwkt_port_t
-tcp_soport(struct socket *so, struct sockaddr *nam, int req)
+tcp_soport(struct socket *so, struct sockaddr *nam __unused,
+	   struct mbuf **dummy __unused, int req)
 {
 	struct inpcb *inp;
 
@@ -304,17 +312,18 @@ tcp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
  * Map a UDP socket to a protocol processing thread.
  */
 lwkt_port_t
-udp_soport(struct socket *so, struct sockaddr *nam, int req)
+udp_soport(struct socket *so, struct sockaddr *nam __unused,
+	   struct mbuf **dummy __unused, int req)
 {
 	struct inpcb *inp;
 
 	/*
 	 * The following processing all take place on Protocol Thread 0:
-	 *   only bind() and connect() have a non-null nam parameter
+	 *   bind() and connect()
 	 *   attach() has a null socket parameter
-	 *   Fast and slow timeouts pass in two NULLs
+	 *   Fast and slow timeouts pass in null socket parameter
 	 */
-	if (nam != NULL || so == NULL)
+	if (req == PRU_CONNECT || req == PRU_BIND || so == NULL)
 		return (&udp_thread[0].td_msgport);
 
 	inp = so->so_pcb;

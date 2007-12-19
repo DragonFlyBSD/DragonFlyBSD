@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.14 2007/08/16 20:03:57 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.15 2007/12/19 11:00:22 sephe Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -255,7 +255,7 @@ struct protosw inetsw[] = {
 #ifdef IPDIVERT
 { SOCK_RAW,	&inetdomain,	IPPROTO_DIVERT,	PR_ATOMIC|PR_ADDR,
   div_input,	0,		0,		ip_ctloutput,
-  cpu0_soport,
+  div_soport,
   div_init,	0,		0,		0,
   &div_usrreqs,
 },

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.83 2007/11/07 18:24:06 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.84 2007/12/19 11:00:22 sephe Exp $
  */
 
 #include "opt_ktrace.h"
@@ -288,7 +288,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 		fflags = lfp->f_flag;
 
 	/* optimize for uniprocessor case later XXX JH */
-	port = head->so_proto->pr_mport(head, NULL, PRU_PRED);
+	port = head->so_proto->pr_mport(head, NULL, NULL, PRU_PRED);
 	netmsg_init_abortable(&msg.nm_netmsg, &curthread->td_msgport,
 			      0,
 			      netmsg_so_notify,
@@ -482,7 +482,7 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 		struct netmsg_so_notify msg;
 		lwkt_port_t port;
 
-		port = so->so_proto->pr_mport(so, sa, PRU_PRED);
+		port = so->so_proto->pr_mport(so, sa, NULL, PRU_PRED);
 		netmsg_init_abortable(&msg.nm_netmsg, 
 				      &curthread->td_msgport,
 				      0,

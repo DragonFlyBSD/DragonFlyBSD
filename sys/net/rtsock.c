@@ -64,7 +64,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.40 2007/08/09 01:10:05 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.41 2007/12/19 11:00:22 sephe Exp $
  */
 
 #include "opt_sctp.h"
@@ -367,7 +367,7 @@ rts_input(struct mbuf *m, sa_family_t family)
 	struct netmsg_packet *pmsg;
 	lwkt_port_t port;
 
-	port = cpu0_soport(NULL, NULL, 0);
+	port = cpu0_soport(NULL, NULL, NULL, 0);
 	pmsg = &m->m_hdr.mh_netmsg;
 	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 
 		    0, rts_input_handler);

@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.19 2007/07/04 23:36:26 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.20 2007/12/19 11:00:22 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@ so_pru_abort(struct socket *so)
 	struct netmsg_pru_abort msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_ABORT);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_ABORT);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_abort);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_abort;
@@ -75,7 +75,7 @@ so_pru_accept(struct socket *so, struct sockaddr **nam)
 	struct netmsg_pru_accept msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_ACCEPT);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_ACCEPT);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_accept);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_accept;
@@ -93,7 +93,7 @@ so_pru_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct netmsg_pru_attach msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(NULL, NULL, PRU_ATTACH);
+	port = so->so_proto->pr_mport(NULL, NULL, NULL, PRU_ATTACH);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_attach);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_attach;
@@ -112,7 +112,7 @@ so_pru_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	lwkt_port_t port;
 
 	/* Send mesg to thread for new address. */
-	port = so->so_proto->pr_mport(NULL, nam, PRU_BIND);
+	port = so->so_proto->pr_mport(NULL, nam, NULL, PRU_BIND);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_bind);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_bind;
@@ -130,7 +130,7 @@ so_pru_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct netmsg_pru_connect msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, nam, PRU_CONNECT);
+	port = so->so_proto->pr_mport(so, nam, NULL, PRU_CONNECT);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_connect);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_connect;
@@ -148,7 +148,7 @@ so_pru_connect2(struct socket *so1, struct socket *so2)
 	struct netmsg_pru_connect2 msg;
 	lwkt_port_t port;
 
-	port = so1->so_proto->pr_mport(so1, NULL, PRU_CONNECT2);
+	port = so1->so_proto->pr_mport(so1, NULL, NULL, PRU_CONNECT2);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_connect2);
 	msg.nm_prufn = so1->so_proto->pr_usrreqs->pru_connect2;
@@ -168,7 +168,7 @@ so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp)
 	struct netmsg_pru_control msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_CONTROL);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_CONTROL);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_control);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_control;
@@ -189,7 +189,7 @@ so_pru_detach(struct socket *so)
 	struct netmsg_pru_detach msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_DETACH);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_DETACH);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_detach);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_detach;
@@ -205,7 +205,7 @@ so_pru_disconnect(struct socket *so)
 	struct netmsg_pru_disconnect msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_DISCONNECT);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_DISCONNECT);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_disconnect);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_disconnect;
@@ -221,7 +221,7 @@ so_pru_listen(struct socket *so, struct thread *td)
 	struct netmsg_pru_listen msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_LISTEN);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_LISTEN);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_listen);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_listen;
@@ -238,7 +238,7 @@ so_pru_peeraddr(struct socket *so, struct sockaddr **nam)
 	struct netmsg_pru_peeraddr msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_PEERADDR);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_PEERADDR);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_peeraddr);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_peeraddr;
@@ -255,7 +255,7 @@ so_pru_rcvd(struct socket *so, int flags)
 	struct netmsg_pru_rcvd msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_RCVD);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_RCVD);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_rcvd);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_rcvd;
@@ -272,7 +272,7 @@ so_pru_rcvoob(struct socket *so, struct mbuf *m, int flags)
 	struct netmsg_pru_rcvoob msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_RCVOOB);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_RCVOOB);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_rcvoob);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_rcvoob;
@@ -291,7 +291,12 @@ so_pru_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	struct netmsg_pru_send msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_SEND);
+	port = so->so_proto->pr_mport(so, addr, &m, PRU_SEND);
+	if (port == NULL) {
+		KKASSERT(m == NULL);
+		return EINVAL;
+	}
+
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_send);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_send;
@@ -312,7 +317,7 @@ so_pru_sense(struct socket *so, struct stat *sb)
 	struct netmsg_pru_sense msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_SENSE);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_SENSE);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_sense);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sense;
@@ -329,7 +334,7 @@ so_pru_shutdown(struct socket *so)
 	struct netmsg_pru_shutdown msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_SHUTDOWN);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_SHUTDOWN);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_shutdown);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_shutdown;
@@ -345,7 +350,7 @@ so_pru_sockaddr(struct socket *so, struct sockaddr **nam)
 	struct netmsg_pru_sockaddr msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_SOCKADDR);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_SOCKADDR);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_sockaddr);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sockaddr;
@@ -362,7 +367,7 @@ so_pru_sopoll(struct socket *so, int events, struct ucred *cred)
 	struct netmsg_pru_sopoll msg;
 	lwkt_port_t port;
 
-	port = so->so_proto->pr_mport(so, NULL, PRU_SOPOLL);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_SOPOLL);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_sopoll);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sopoll;

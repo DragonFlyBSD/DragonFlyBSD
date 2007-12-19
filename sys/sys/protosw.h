@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.19 2007/04/22 01:13:17 dillon Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.20 2007/12/19 11:00:23 sephe Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -92,7 +92,8 @@ struct protosw {
 	int	(*pr_ctloutput)(struct socket *, struct sockopt *);
 					/* control output (from above) */
 /* user-protocol hook */
-	struct lwkt_port *(*pr_mport)(struct socket *, struct sockaddr *, int);
+	struct lwkt_port *(*pr_mport)(struct socket *, struct sockaddr *,
+				      struct mbuf **, int);
 /* utility hooks */
 	void	(*pr_init) (void);	/* initialization hook */
 	void	(*pr_fasttimo) (void);
@@ -301,8 +302,10 @@ int	pru_rcvd_notsupp (struct socket *so, int flags);
 int	pru_rcvoob_notsupp (struct socket *so, struct mbuf *m, int flags);
 int	pru_sense_null (struct socket *so, struct stat *sb);
 
-struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *, int);
-struct lwkt_port *sync_soport(struct socket *, struct sockaddr *, int);
+struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *,
+			      struct mbuf **, int);
+struct lwkt_port *sync_soport(struct socket *, struct sockaddr *,
+			      struct mbuf **, int);
 
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 

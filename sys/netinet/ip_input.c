@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.74 2007/11/22 19:57:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.75 2007/12/19 11:00:22 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -358,7 +358,7 @@ ip_init(void)
 	bzero(&ipstat, sizeof(struct ip_stats));
 #endif
 
-	netisr_register(NETISR_IP, ip_mport, ip_input_handler);
+	netisr_register(NETISR_IP, ip_mport_in, ip_input_handler);
 }
 
 /*
@@ -1067,7 +1067,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 
 		ip->ip_off = htons(ip->ip_off);
 		ip->ip_len = htons(ip->ip_len);
-		port = ip_mport(&m);
+		port = ip_mport_in(&m);
 		if (port == NULL)
 			return;
 

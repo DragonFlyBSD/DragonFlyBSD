@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.31 2007/12/12 13:57:36 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.32 2007/12/19 11:00:22 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -76,6 +76,8 @@
  */
 #define	DIVSNDQ		(65536 + 100)
 #define	DIVRCVQ		(65536 + 100)
+
+#define DIV_IS_OUTPUT(sin)	((sin) == NULL || (sin)->sin_addr.s_addr == 0)
 
 /*
  * Divert sockets work in conjunction with ipfw, see the divert(4)
@@ -136,6 +138,72 @@ div_input(struct mbuf *m, ...)
 {
 	ipstat.ips_noproto++;
 	m_freem(m);
+}
+
+struct lwkt_port *
+div_soport(struct socket *so, struct sockaddr *nam,
+	   struct mbuf **mptr, int req)
+{
+	struct sockaddr_in *sin;
+	struct mbuf *m;
+	int dir;
+
+	/* Except for send(), everything happens on CPU0 */
+	if (req != PRU_SEND)
+		return cpu0_soport(so, nam, mptr, req);
+
+	sin = (struct sockaddr_in *)nam;
+	m = *mptr;
+	M_ASSERTPKTHDR(m);
+
+	m->m_pkthdr.rcvif = NULL;
+	dir = DIV_IS_OUTPUT(sin) ? IP_MPORT_OUT : IP_MPORT_IN;
+
+	if (sin != NULL) {
+		int i;
+
+		/*
+		 * Try locating the interface, if we originally had one.
+		 * This is done even for outgoing packets, since for a
+		 * forwarded packet, there must be an interface attached.
+		 *
+		 * Find receive interface with the given name, stuffed
+		 * (if it exists) in the sin_zero[] field.
+		 * The name is user supplied data so don't trust its size
+		 * or that it is zero terminated.
+		 */
+		for (i = 0; sin->sin_zero[i] && i < sizeof(sin->sin_zero); i++)
+			;
+		if (i > 0 && i < sizeof(sin->sin_zero))
+			m->m_pkthdr.rcvif = ifunit(sin->sin_zero);
+	}
+
+	if (dir == IP_MPORT_IN && m->m_pkthdr.rcvif == NULL) {
+		/*
+		 * No luck with the name, check by IP address.
+		 * Clear the port and the ifname to make sure
+		 * there are no distractions for ifa_ifwithaddr.
+		 *
+		 * Be careful not to trash sin->sin_port; it will
+		 * be used later in div_output().
+		 */
+		struct ifaddr *ifa;
+		u_short sin_port;
+
+		bzero(sin->sin_zero, sizeof(sin->sin_zero));
+		sin_port = sin->sin_port; /* save */
+		sin->sin_port = 0;
+		ifa = ifa_ifwithaddr((struct sockaddr *)sin);
+		if (ifa == NULL) {
+			m_freem(m);
+			*mptr = NULL;
+			return NULL;
+		}
+		sin->sin_port = sin_port; /* restore */
+		m->m_pkthdr.rcvif = ifa->ifa_ifp;
+	}
+
+	return ip_mport(mptr, dir);
 }
 
 /*
@@ -252,6 +320,9 @@ div_output(struct socket *so, struct mbuf *m,
 	int error = 0;
 	struct m_tag *mtag;
 
+	if (control)
+		m_freem(control);		/* XXX */
+
 	/*
 	 * Prepare the tag for divert info. Note that a packet
 	 * with a 0 tag in mh_data is effectively untagged,
@@ -263,32 +334,15 @@ div_output(struct socket *so, struct mbuf *m,
 		goto cantsend;
 	}
 	m_tag_prepend(m, mtag);
-	m->m_pkthdr.rcvif = NULL;	/* XXX is it necessary ? */
-
-	if (control)
-		m_freem(control);		/* XXX */
 
 	/* Loopback avoidance and state recovery */
-	if (sin) {
-		int i;
-
+	if (sin)
 		*(u_int16_t *)m_tag_data(mtag) = sin->sin_port;
-		/*
-		 * Find receive interface with the given name, stuffed
-		 * (if it exists) in the sin_zero[] field.
-		 * The name is user supplied data so don't trust its size
-		 * or that it is zero terminated.
-		 */
-		for (i = 0; sin->sin_zero[i] && i < sizeof sin->sin_zero; i++)
-			;
-		if ( i > 0 && i < sizeof sin->sin_zero)
-			m->m_pkthdr.rcvif = ifunit(sin->sin_zero);
-	} else {
+	else
 		*(u_int16_t *)m_tag_data(mtag) = 0;
-	}
 
 	/* Reinject packet into the system as incoming or outgoing */
-	if (!sin || sin->sin_addr.s_addr == 0) {
+	if (DIV_IS_OUTPUT(sin)) {
 		struct ip *const ip = mtod(m, struct ip *);
 
 		/* Don't allow packet length sizes that will crash */
@@ -308,26 +362,8 @@ div_output(struct socket *so, struct mbuf *m,
 			    IP_ALLOWBROADCAST | IP_RAWOUTPUT,
 			    NULL, NULL);
 	} else {
-		if (m->m_pkthdr.rcvif == NULL) {
-			/*
-			 * No luck with the name, check by IP address.
-			 * Clear the port and the ifname to make sure
-			 * there are no distractions for ifa_ifwithaddr.
-			 */
-			struct	ifaddr *ifa;
-
-			bzero(sin->sin_zero, sizeof sin->sin_zero);
-			sin->sin_port = 0;
-			ifa = ifa_ifwithaddr((struct sockaddr *) sin);
-			if (ifa == NULL) {
-				error = EADDRNOTAVAIL;
-				goto cantsend;
-			}
-			m->m_pkthdr.rcvif = ifa->ifa_ifp;
-		}
 		ip_input(m);
 	}
-
 	return error;
 
 cantsend:
@@ -430,13 +466,8 @@ static int
 div_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	 struct mbuf *control, struct thread *td)
 {
-	/* Packet must have a header (but that's about it) */
-	if (m->m_len < sizeof(struct ip) &&
-	    (m = m_pullup(m, sizeof(struct ip))) == NULL) {
-		ipstat.ips_toosmall++;
-		m_freem(m);
-		return EINVAL;
-	}
+	/* Length check already done in ip_mport() */
+	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 
 	/* Send packet */
 	return div_output(so, m, (struct sockaddr_in *)nam, control);

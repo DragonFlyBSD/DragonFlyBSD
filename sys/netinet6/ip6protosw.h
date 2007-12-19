@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6protosw.h,v 1.2.2.4 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.7 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.8 2007/12/19 11:00:23 sephe Exp $	*/
 /*	$KAME: ip6protosw.h,v 1.25 2001/09/26 06:13:03 keiichi Exp $	*/
 
 /*
@@ -142,7 +142,8 @@ struct ip6protosw {
 
 /* user-protocol hook */
 	struct lwkt_port *(*pr_soport)
-			(struct socket *, struct sockaddr *, int);
+			(struct socket *, struct sockaddr *,
+			 struct mbuf **, int);
 
 /* utility hooks */
 	void	(*pr_init)		/* initialization hook */
