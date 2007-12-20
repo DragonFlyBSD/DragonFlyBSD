@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.32 2007/12/19 11:00:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.33 2007/12/20 12:44:20 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -224,17 +224,18 @@ divert_packet(struct mbuf *m, int incoming, int port)
 
 	/* Sanity check */
 	KASSERT(port != 0, ("%s: port=0", __func__));
-
-	if ((mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL)
-		divsrc.sin_port = *(u_int16_t *)m_tag_data(mtag);
-	else
-		divsrc.sin_port = 0;
+	M_ASSERTPKTHDR(m);
 
 	/* Assure header */
 	if (m->m_len < sizeof(struct ip) &&
 	    (m = m_pullup(m, sizeof(struct ip))) == NULL)
 		return;
 	ip = mtod(m, struct ip *);
+
+	/* Locate the divert tag */
+	mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
+	KASSERT(mtag != NULL, ("%s no divert tag!", __func__));
+	divsrc.sin_port = *(u_int16_t *)m_tag_data(mtag);
 
 	/*
 	 * Record receive interface address, if any.
@@ -243,9 +244,6 @@ divert_packet(struct mbuf *m, int incoming, int port)
 	divsrc.sin_addr.s_addr = 0;
 	if (incoming) {
 		struct ifaddr *ifa;
-
-		/* Sanity check */
-		KASSERT((m->m_flags & M_PKTHDR), ("%s: !PKTHDR", __func__));
 
 		/* Find IP address for receive interface */
 		TAILQ_FOREACH(ifa, &m->m_pkthdr.rcvif->if_addrhead, ifa_link) {
