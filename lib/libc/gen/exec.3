@@ -31,9 +31,9 @@
 .\"
 .\"     @(#)exec.3	8.3 (Berkeley) 1/24/94
 .\" $FreeBSD: src/lib/libc/gen/exec.3,v 1.7.2.8 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/exec.3,v 1.4 2006/05/26 19:39:36 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/exec.3,v 1.5 2007/12/21 22:14:04 swildner Exp $
 .\"
-.Dd January 24, 1994
+.Dd December 21, 2007
 .Dt EXEC 3
 .Os
 .Sh NAME
@@ -70,7 +70,11 @@ The functions described in this manual page are front-ends for the function
 .Xr execve 2 .
 (See the manual page for
 .Xr execve 2
-for detailed information about the replacement of the current process.)
+for detailed information about the replacement of the current process.
+The
+.Xr script 7
+manual page provides detailed information about the execution of
+interpreter scripts.)
 .Pp
 The initial argument for these functions is the pathname of a file which
 is to be executed.
@@ -289,7 +293,8 @@ for any of the errors specified for the library function
 .Xr fork 2 ,
 .Xr ktrace 2 ,
 .Xr ptrace 2 ,
-.Xr environ 7
+.Xr environ 7 ,
+.Xr script 7
 .Sh STANDARDS
 The
 .Fn execl ,

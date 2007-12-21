@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/share/man/man7/Makefile,v 1.10.2.7 2002/12/28 19:09:50 dillon Exp $
-# $DragonFly: src/share/man/man7/Makefile,v 1.11 2007/08/18 08:46:32 swildner Exp $
+# $DragonFly: src/share/man/man7/Makefile,v 1.12 2007/12/21 22:14:04 swildner Exp $
 
 #MISSING: eqnchar.7 ms.7 term.7
 MAN=	ascii.7 \
@@ -18,6 +18,7 @@ MAN=	ascii.7 \
 	operator.7 \
 	pkgsrc.7 \
 	release.7 \
+	script.7 \
 	security.7 \
 	tuning.7 \
 	vkernel.7
