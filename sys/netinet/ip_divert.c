@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.34 2007/12/21 12:51:51 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.35 2007/12/21 13:17:51 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -441,9 +441,7 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = soreserve(so, div_sendspace, div_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
-	crit_enter();
 	error = in_pcballoc(so, &divcbinfo);
-	crit_exit();
 	if (error)
 		return error;
 	inp = (struct inpcb *)so->so_pcb;
@@ -488,25 +486,22 @@ div_disconnect(struct socket *so)
 static int
 div_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	struct inpcb *inp;
 	int error;
 
-	crit_enter();
-	inp = so->so_pcb;
-	/* in_pcbbind assumes that nam is a sockaddr_in
+	/*
+	 * in_pcbbind assumes that nam is a sockaddr_in
 	 * and in_pcbbind requires a valid address. Since divert
 	 * sockets don't we need to make sure the address is
 	 * filled in properly.
 	 * XXX -- divert should not be abusing in_pcbind
 	 * and should probably have its own family.
 	 */
-	if (nam->sa_family != AF_INET)
+	if (nam->sa_family != AF_INET) {
 		error = EAFNOSUPPORT;
-	else {
+	} else {
 		((struct sockaddr_in *)nam)->sin_addr.s_addr = INADDR_ANY;
-		error = in_pcbbind(inp, nam, td);
+		error = in_pcbbind(so->so_pcb, nam, td);
 	}
-	crit_exit();
 	return error;
 }
 
