@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.33 2007/12/20 12:44:20 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.34 2007/12/21 12:51:51 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -54,11 +54,17 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/thread2.h>
+#ifdef SMP
+#include <sys/msgport.h>
+#endif
 
 #include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/route.h>
+#ifdef SMP
+#include <net/netmsg2.h>
+#endif
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -78,6 +84,9 @@
 #define	DIVRCVQ		(65536 + 100)
 
 #define DIV_IS_OUTPUT(sin)	((sin) == NULL || (sin)->sin_addr.s_addr == 0)
+
+#define DIV_OUTPUT	0x10000
+#define DIV_INPUT	0x20000
 
 /*
  * Divert sockets work in conjunction with ipfw, see the divert(4)
@@ -212,29 +221,17 @@ div_soport(struct socket *so, struct sockaddr *nam,
  * Setup generic address and protocol structures for div_input routine,
  * then pass them along with mbuf chain.
  */
-void
-divert_packet(struct mbuf *m, int incoming, int port)
+static void
+div_packet(struct mbuf *m, int incoming, int port)
 {
 	struct sockaddr_in divsrc = { sizeof divsrc, AF_INET };
-	struct ip *ip;
 	struct inpcb *inp;
 	struct socket *sa;
 	struct m_tag *mtag;
 	u_int16_t nport;
 
-	/* Sanity check */
-	KASSERT(port != 0, ("%s: port=0", __func__));
-	M_ASSERTPKTHDR(m);
-
-	/* Assure header */
-	if (m->m_len < sizeof(struct ip) &&
-	    (m = m_pullup(m, sizeof(struct ip))) == NULL)
-		return;
-	ip = mtod(m, struct ip *);
-
 	/* Locate the divert tag */
 	mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
-	KASSERT(mtag != NULL, ("%s no divert tag!", __func__));
 	divsrc.sin_port = *(u_int16_t *)m_tag_data(mtag);
 
 	/*
@@ -302,6 +299,66 @@ divert_packet(struct mbuf *m, int incoming, int port)
 		ipstat.ips_noproto++;
 		ipstat.ips_delivered--;
 	}
+}
+
+#ifdef SMP
+static void
+div_packet_handler(struct netmsg *nmsg)
+{
+	struct netmsg_packet *nmp;
+	struct lwkt_msg *msg;
+	struct mbuf *m;
+	int port, incoming = 0;
+
+	nmp = (struct netmsg_packet *)nmsg;
+	m = nmp->nm_packet;
+
+	msg = &nmsg->nm_lmsg;
+	port = msg->u.ms_result32 & 0xffff;
+	if (msg->u.ms_result32 & DIV_INPUT)
+		incoming = 1;
+
+	div_packet(m, incoming, port);
+}
+#endif	/* SMP */
+
+void
+divert_packet(struct mbuf *m, int incoming, int port)
+{
+	/* Sanity check */
+	KASSERT(port != 0, ("%s: port=0", __func__));
+	M_ASSERTPKTHDR(m);
+
+	/* Assure header */
+	if (m->m_len < sizeof(struct ip) &&
+	    (m = m_pullup(m, sizeof(struct ip))) == NULL)
+		return;
+
+	/* Sanity check */
+	KASSERT(m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL) != NULL,
+		("%s no divert tag!", __func__));
+
+#ifdef SMP
+	if (mycpuid != 0) {
+		struct netmsg_packet *nmp;
+		struct lwkt_msg *msg;
+
+		nmp = &m->m_hdr.mh_netmsg;
+		netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
+			    div_packet_handler);
+		nmp->nm_packet = m;
+
+		msg = &nmp->nm_netmsg.nm_lmsg;
+		msg->u.ms_result32 = port; /* port is 16bits */
+		if (incoming)
+			msg->u.ms_result32 |= DIV_INPUT;
+		else
+			msg->u.ms_result32 |= DIV_OUTPUT;
+
+		lwkt_sendmsg(cpu_portfn(0), &nmp->nm_netmsg.nm_lmsg);
+	} else
+#endif
+	div_packet(m, incoming, port);
 }
 
 /*
