@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.6 2007/10/23 14:28:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.7 2007/12/21 19:02:29 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -192,7 +192,7 @@ static uint32_t	et_timer = 1000 * 1000 * 1000;	/* nanosec */
 TUNABLE_INT("hw.et.timer", &et_timer);
 TUNABLE_INT("hw.et.rx_intr_npkts", &et_rx_intr_npkts);
 TUNABLE_INT("hw.et.rx_intr_intvl", &et_rx_intr_delay);
-TUNABLE_INT("hw.et_tx_intr_nsegs", &et_tx_intr_nsegs);
+TUNABLE_INT("hw.et.tx_intr_nsegs", &et_tx_intr_nsegs);
 
 struct et_bsize {
 	int		bufsize;
