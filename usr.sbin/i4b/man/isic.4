@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/i4b/man/isic.4,v 1.8.2.8 2001/08/16 15:55:58 ru Exp $
-.\" $DragonFly: src/usr.sbin/i4b/man/isic.4,v 1.7 2007/05/17 08:19:03 swildner Exp $
+.\" $DragonFly: src/usr.sbin/i4b/man/isic.4,v 1.8 2007/12/21 10:43:59 swildner Exp $
 .\"
 .\"	last edit-date: [Fri Jan 26 14:32:33 2001]
 .\"
@@ -34,7 +34,6 @@
 .Nm isic
 .Nd isdn4bsd Siemens ISDN Chipset device driver
 .Sh SYNOPSIS
-.Ss FreeBSD (FreeBSD \(>= 4.0)
 Asuscom ISDNLink 128K (ISA PnP):
 .Cd options \&"ASUSCOM_IPAC\&"
 .Cd "device isic0"
@@ -91,84 +90,6 @@ USRobotics Sportster ISDN TA internal or Stollmann Tina-pp card:
 Eicon.Diehl DIVA 2.0 and 2.02 ISA PnP card:
 .Cd options \&"EICON_DIVA\&"
 .Cd "device isic0"
-.Ss NetBSD
-On the ISA bus:
-.Pp
-Teles S0/8 or Niccy 1008 card:
-.Cd options \&"TEL_S0_8\&"
-.Cd "isic0 at isa? iomem 0xd0000 irq 5"
-.Pp
-Teles S0/16 or Creatix ISDN-S0 or Niccy 1016 card:
-.Cd options \&"TEL_S0_16\&"
-.Cd "isic0 at isa? port 0xd80 iomem 0xd0000 irq 5"
-.Pp
-Teles S0/16.3 card:
-.Cd options \&"TEL_S0_16_3\&"
-.Cd "isic0 at isa? port 0xd80 irq 5"
-.Pp
-AVM A1 or AVM Fritz card:
-.Cd options \&"AVM_A1\&"
-.Cd "isic0 at isa? port 0x340 irq 5"
-.Pp
-USRobotics Sportster ISDN TA internal or Stollmann Tina-pp card:
-.Cd options \&"USR_STI\&"
-.Cd "isic0 at isa? port 0x268 irq 5"
-.Pp
-ITK ix1 micro card:
-.Cd options \&"ITKIX1\&"
-.Cd "isic0 at isa? port 0x398 irq 10"
-.Pp
-On the ISAPNP bus:
-.Pp
-Teles S0/16.3 PnP card
-.Cd options \&"TEL_S0_16_3_P\&"
-.Cd "isic* at isapnp?"
-.Pp
-Creatix ISDN-S0 P&P card
-.Cd options \&"CRTX_S0_P\&"
-.Cd "isic* at isapnp?"
-.Pp
-Dr. Neuhaus Niccy GO@
-.Cd options \&"DRN_NGO\&"
-.Cd "isic* at isapnp?"
-.Pp
-ELSA QuickStep 1000pro (ISA version):
-.Cd options \&"ELSA_QS1ISA\&"
-.Cd "isic* at isapnp?"
-.Pp
-Sedlbauer WinSpeed:
-.Cd options \&"SEDLBAUER\&"
-.Cd "isic* at isapnp?"
-.Pp
-Dynalink IS64PH:
-.Cd options \&"DYNALINK\&"
-.Cd "isic* at isapnp?"
-.Pp
-Cards on the PCI bus:
-.Pp
-ELSA QuickStep 1000pro (PCI version)
-.Cd options \&"ELSA_QS1PCI\&"
-.Cd "isic* at pci?"
-.Pp
-Cards on the PCMCIA or PCCARD bus:
-.Pp
-AVM Fritz!Card PCMCIA
-.Cd options \&"AVM_A1_PCMCIA\&"
-.Cd "isic* at pcmcia? function ?"
-.Pp
-ELSA MicroLink ISDN/MC
-.Cd options \&"ELSA_ISDNMC\&"
-.Cd "isic* at pcmcia? function ?"
-.Pp
-ELSA MicroLink MC/all
-.Cd options \&"ELSA_MCALL\&"
-.Cd "isic* at pcmcia? function ?"
-.Pp
-Cards on the Amiga Zorro bus:
-.Pp
-BSC/ITH ISDN Master, ITH ISDN MasterII or VMC ISDN Blaster
-.Cd "aster* at zbus?"
-.Cd "isic* at aster? port ?"
 .Sh DESCRIPTION
 The
 .Nm
