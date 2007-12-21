@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.142 2007/11/24 19:19:43 pavalos Exp $
+# $DragonFly: src/sys/config/LINT,v 1.143 2007/12/21 00:14:58 pavalos Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -934,6 +934,7 @@ device		ses			#SCSI SES/SAF-TE driver
 #                   CAM_DEBUG_SUBTRACE, and CAM_DEBUG_CDB
 #
 # CAM_MAX_HIGHPOWER: Maximum number of concurrent high power (start unit) cmds
+# CAM_NEW_TRAN_CODE: New transport layer code for CAM.
 # SCSI_NO_SENSE_STRINGS: When defined disables sense descriptions
 # SCSI_NO_OP_STRINGS: When defined disables opcode descriptions
 # SCSI_DELAY: The number of MILLISECONDS to freeze the SIM (scsi adapter)

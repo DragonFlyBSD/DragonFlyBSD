@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/scsi.4,v 1.18.2.7 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/scsi.4,v 1.3 2006/04/02 16:50:05 swildner Exp $
+.\" $DragonFly: src/share/man/man4/scsi.4,v 1.4 2007/12/21 00:14:58 pavalos Exp $
 .Dd October 15, 1998
 .Dt SCSI 4
 .Os
@@ -50,6 +50,7 @@
 .Cd "options CAM_DEBUG_LUN=-1"
 .Cd "options CAM_DEBUG_FLAGS=CAM_DEBUG_INFO|CAM_DEBUG_CDB"
 .Cd "options CAM_MAX_HIGHPOWER=4"
+.Cd "options CAM_NEW_TRAN_CODE"
 .Cd "options SCSI_NO_SENSE_STRINGS"
 .Cd "options SCSI_NO_OP_STRINGS"
 .Cd "options SCSI_DELAY=8000"
@@ -91,6 +92,8 @@ START UNIT command.  Starting a SCSI disk often takes significantly more
 electrical power than normal operation of the disk.  This option allows the
 user to specify how many concurrent high power commands may be outstanding
 without overloading the power supply on his computer.
+.It Dv CAM_NEW_TRAN_CODE
+This is a new transport layer code for CAM.
 .It Dv SCSI_NO_SENSE_STRINGS
 This eliminates text descriptions of each
 .Tn SCSI
