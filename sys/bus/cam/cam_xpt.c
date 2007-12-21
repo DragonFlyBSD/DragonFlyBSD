@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.62 2007/12/02 16:38:11 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.63 2007/12/21 00:02:53 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1581,18 +1581,18 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 	 * mask out CAM interrupts.
 	 */
 	crit_enter();
-	printf("%s%d at %s%d bus %d target %d lun %d\n",
+	kprintf("%s%d at %s%d bus %d target %d lun %d\n",
 	       periph->periph_name, periph->unit_number,
 	       path->bus->sim->sim_name,
 	       path->bus->sim->unit_number,
 	       path->bus->sim->bus_id,
 	       path->target->target_id,
 	       path->device->lun_id);
-	printf("%s%d: ", periph->periph_name, periph->unit_number);
+	kprintf("%s%d: ", periph->periph_name, periph->unit_number);
 	scsi_print_inquiry(&path->device->inq_data);
 	if (bootverbose && path->device->serial_num_len > 0) {
 		/* Don't wrap the screen  - print only the first 60 chars */
-		printf("%s%d: Serial Number %.60s\n", periph->periph_name,
+		kprintf("%s%d: Serial Number %.60s\n", periph->periph_name,
 		       periph->unit_number, path->device->serial_num);
 	}
 	xpt_setup_ccb(&cts.ccb_h, path, /*priority*/1);
@@ -1639,11 +1639,11 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 
 	mb = speed / 1000;
 	if (mb > 0)
-		printf("%s%d: %d.%03dMB/s transfers",
+		kprintf("%s%d: %d.%03dMB/s transfers",
 		       periph->periph_name, periph->unit_number,
 		       mb, speed % 1000);
 	else
-		printf("%s%d: %dKB/s transfers", periph->periph_name,
+		kprintf("%s%d: %dKB/s transfers", periph->periph_name,
 		       periph->unit_number, speed);
 	/* Report additional information about SPI connections */
 	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_SPI) {
@@ -1651,7 +1651,7 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 
 		spi = &cts.xport_specific.spi;
 		if (freq != 0) {
-			printf(" (%d.%03dMHz%s, offset %d", freq / 1000,
+			kprintf(" (%d.%03dMHz%s, offset %d", freq / 1000,
 			       freq % 1000,
 			       (spi->ppr_options & MSG_EXT_PPR_DT_REQ) != 0
 			     ? " DT" : "",
@@ -1660,13 +1660,13 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 		if ((spi->valid & CTS_SPI_VALID_BUS_WIDTH) != 0
 		 && spi->bus_width > 0) {
 			if (freq != 0) {
-				printf(", ");
+				kprintf(", ");
 			} else {
-				printf(" (");
+				kprintf(" (");
 			}
-			printf("%dbit)", 8 * (0x01 << spi->bus_width));
+			kprintf("%dbit)", 8 * (0x01 << spi->bus_width));
 		} else if (freq != 0) {
-			printf(")");
+			kprintf(")");
 		}
 	}
 	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_FC) {
@@ -1674,26 +1674,26 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 
 		fc = &cts.xport_specific.fc;
 		if (fc->valid & CTS_FC_VALID_WWNN)
-			printf(" WWNN 0x%llx", (long long) fc->wwnn);
+			kprintf(" WWNN 0x%llx", (long long) fc->wwnn);
 		if (fc->valid & CTS_FC_VALID_WWPN)
-			printf(" WWPN 0x%llx", (long long) fc->wwpn);
+			kprintf(" WWPN 0x%llx", (long long) fc->wwpn);
 		if (fc->valid & CTS_FC_VALID_PORT)
-			printf(" PortID 0x%x", fc->port);
+			kprintf(" PortID 0x%x", fc->port);
 	}
 
 	if (path->device->inq_flags & SID_CmdQue
 	 || path->device->flags & CAM_DEV_TAG_AFTER_COUNT) {
-		printf("\n%s%d: Tagged Queueing Enabled",
+		kprintf("\n%s%d: Tagged Queueing Enabled",
 		       periph->periph_name, periph->unit_number);
 	}
-	printf("\n");
+	kprintf("\n");
 
 	/*
 	 * We only want to print the caller's announce string if they've
 	 * passed one in..
 	 */
 	if (announce_string != NULL)
-		printf("%s%d: %s\n", periph->periph_name,
+		kprintf("%s%d: %s\n", periph->periph_name,
 		       periph->unit_number, announce_string);
 	crit_exit();
 }
@@ -6234,7 +6234,7 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 
 	if (cts->protocol != device->protocol) {
 		xpt_print_path(cts->ccb_h.path);
-		printf("Uninitialized Protocol %x:%x?\n",
+		kprintf("Uninitialized Protocol %x:%x?\n",
 		       cts->protocol, device->protocol);
 		cts->protocol = device->protocol;
 	}
@@ -6242,7 +6242,7 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 	if (cts->protocol_version > device->protocol_version) {
 		if (bootverbose) {
 			xpt_print_path(cts->ccb_h.path);
-			printf("Down reving Protocol Version from %d to %d?\n",
+			kprintf("Down reving Protocol Version from %d to %d?\n",
 			       cts->protocol_version, device->protocol_version);
 		}
 		cts->protocol_version = device->protocol_version;
@@ -6260,7 +6260,7 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 
 	if (cts->transport != device->transport) {
 		xpt_print_path(cts->ccb_h.path);
-		printf("Uninitialized Transport %x:%x?\n",
+		kprintf("Uninitialized Transport %x:%x?\n",
 		       cts->transport, device->transport);
 		cts->transport = device->transport;
 	}
@@ -6268,7 +6268,7 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 	if (cts->transport_version > device->transport_version) {
 		if (bootverbose) {
 			xpt_print_path(cts->ccb_h.path);
-			printf("Down reving Transport Version from %d to %d?\n",
+			kprintf("Down reving Transport Version from %d to %d?\n",
 			       cts->transport_version,
 			       device->transport_version);
 		}
