@@ -741,7 +741,7 @@ record_hardlink(struct cpio *cpio, struct archive_entry *entry)
          */
         for (le = cpio->links_head; le; le = le->next) {
                 if (le->dev == dev && le->ino == ino) {
-                        archive_entry_set_hardlink(entry, le->name);
+                        archive_entry_copy_hardlink(entry, le->name);
 
                         if (--le->links <= 0) {
                                 if (le->previous != NULL)
@@ -750,6 +750,7 @@ record_hardlink(struct cpio *cpio, struct archive_entry *entry)
                                         le->next->previous = le->previous;
                                 if (cpio->links_head == le)
                                         cpio->links_head = le->next;
+				free(le->name);
                                 free(le);
                         }
 
