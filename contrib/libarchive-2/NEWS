@@ -1,4 +1,14 @@
 
+Dec 13, 2007: libarchive 2.4.8 released
+Dec 13, 2007: gzip and bzip2 compression now handle zero-byte writes correctly,
+	Thanks to Damien Golding for bringing this to my attention.
+
+Dec 12, 2007: libarchive 2.4.7 released
+
+Dec 10, 2007: libarchive 2.4.6 released
+Dec 09, 2007: tar/test/test_copy.c verifies "tar -c | tar -x" copy pipeline
+Dec 07, 2007: Fix a couple of minor memory leaks.
+
 Dec 04, 2007: libarchive 2.4.5 released
 Dec 04, 2007: Fix cpio/test/test_write_odc by setting the umask first.
 
@@ -10,7 +20,7 @@ Dec 03, 2007: libarchive 2.4.3 released
 Dec 03, 2007: Thanks to Lapo Luchini for sending me a ZIP file that
 	libarchive couldn't handle.  Fixed a bug in handling of
 	"length at end" flags in ZIP files.
-Dec 03, 2007: Fixed bsdcpio/bsdtar -help tests.
+Dec 03, 2007: Fixed bsdcpio -help, bsdtar -help tests.
 Dec 02, 2007: First cut at real bsdtar test harness.
 
 Dec 02, 2007: libarchive 2.4.2 released

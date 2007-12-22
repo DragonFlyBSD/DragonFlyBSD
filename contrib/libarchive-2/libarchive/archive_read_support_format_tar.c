@@ -278,6 +278,8 @@ archive_read_format_tar_cleanup(struct archive_read *a)
 	archive_string_free(&tar->line);
 	archive_string_free(&tar->pax_global);
 	archive_string_free(&tar->pax_header);
+	archive_string_free(&tar->longname);
+	archive_string_free(&tar->longlink);
 	free(tar->pax_entry);
 	free(tar);
 	(a->format->data) = NULL;
