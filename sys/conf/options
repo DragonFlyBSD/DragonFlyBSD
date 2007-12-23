@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.75 2007/12/20 23:31:26 pavalos Exp $
+# $DragonFly: src/sys/conf/options,v 1.76 2007/12/23 04:46:04 pavalos Exp $
 #
 #        On the handling of kernel options
 #
@@ -205,7 +205,7 @@ CAM_DEBUG_BUS		opt_cam.h
 CAM_DEBUG_TARGET	opt_cam.h
 CAM_DEBUG_LUN		opt_cam.h
 CAM_DEBUG_FLAGS		opt_cam.h
-CAM_NEW_TRAN_CODE	opt.cam.h
+CAM_NEW_TRAN_CODE	opt_cam.h
 SCSI_DELAY		opt_scsi.h
 SCSI_NO_SENSE_STRINGS	opt_scsi.h
 SCSI_NO_OP_STRINGS	opt_scsi.h
