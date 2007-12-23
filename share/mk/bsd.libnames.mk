@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
-# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.11 2007/11/18 17:53:01 pavalos Exp $
+# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.12 2007/12/23 02:46:40 sephe Exp $
 #
 # The include file <bsd.libnames.mk> define library names. 
 # Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 
@@ -111,3 +111,6 @@ LIBWRAP?=	${DESTDIR}${LIBDIR}/libwrap.a
 LIBXPG4?=	${DESTDIR}${LIBDIR}/libxpg4.a
 LIBY?=		${DESTDIR}${LIBDIR}/liby.a
 LIBZ?=		${DESTDIR}${LIBDIR}/libz.a
+
+THREAD_LIB?=	thread_xu
+LIBTHREAD?=	${DESTDIR}${LIBDIR}/lib${THREAD_LIB}.a
