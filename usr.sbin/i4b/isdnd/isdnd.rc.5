@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/i4b/isdnd/isdnd.rc.5,v 1.11.2.5 2001/08/10 23:17:32 obrien Exp $
-.\" $DragonFly: src/usr.sbin/i4b/isdnd/isdnd.rc.5,v 1.8 2007/11/14 18:27:52 swildner Exp $
+.\" $DragonFly: src/usr.sbin/i4b/isdnd/isdnd.rc.5,v 1.9 2007/12/23 15:31:29 swildner Exp $
 .\"
 .\"     last edit-date: [Sat Jul 21 13:27:41 2001]
 .\"
@@ -605,7 +605,7 @@ upper limit for a connection on the B-channel to last.
 This feature is used to limit the connection time, _not_ number of attempts
 to establish a connection: when using this please take care to also enable
 the use of budgets to limit the connection establish attempts (otherwise
-the line will cycle thru an endless loop of connections and reconnections
+the line will cycle through an endless loop of connections and reconnections
 which will have an undesired effect on your telco bill)!
 .It Li ppp-auth-paranoid
 If set to

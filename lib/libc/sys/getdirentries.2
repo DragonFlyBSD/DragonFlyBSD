@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)getdirentries.2	8.2 (Berkeley) 5/3/95
 .\" $FreeBSD: src/lib/libc/sys/getdirentries.2,v 1.12.2.6 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getdirentries.2,v 1.7 2007/12/02 21:12:44 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/getdirentries.2,v 1.8 2007/12/23 15:31:28 swildner Exp $
 .\"
 .Dd July 31, 2006
 .Dt GETDIRENTRIES 2
@@ -192,7 +192,7 @@ function first appeared in
 Unfortunately,
 .Fa *basep
 is only 32 bits wide on 32 bit platforms and
-may not be wide enough to accomodate the directory position cookie.
+may not be wide enough to accommodate the directory position cookie.
 Modern users should use
 .Xr lseek 2 .
 to retrieve and set the seek position within the directory.

@@ -26,7 +26,7 @@ changecom(,)dnl
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
-.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.9 2007/12/16 02:55:38 thomas Exp $
+.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.10 2007/12/23 15:31:29 swildner Exp $
 .\"
 .Dd September 20, 1995
 .Dt PPP 8
@@ -1589,7 +1589,7 @@ is the IP number that your route to
 .Dq ui-gate
 would normally use.
 .Pp
-When routing your connection accross a public network such as the Internet,
+When routing your connection across a public network such as the Internet,
 it is preferable to encrypt the data.
 This can be done with the help of the MPPE protocol, although currently this
 means that you will not be able to also compress the traffic as MPPE is
