@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.25 2007/12/01 22:21:17 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.26 2007/12/23 07:00:55 pavalos Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -523,6 +523,10 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 		break;
 
 	case XPT_SET_TRAN_SETTINGS: {
+#ifdef	CAM_NEW_TRAN_CODE
+		struct ccb_trans_settings_scsi *scsi;
+		struct ccb_trans_settings_spi *spi;
+#endif
 		struct ccb_trans_settings *cts;
 		u_int val;
 
@@ -541,6 +545,7 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 			lun = 0;
 
 		crit_enter();
+#ifndef	CAM_NEW_TRAN_CODE
 		if ((cts->valid & (CCB_TRANS_BUS_WIDTH_VALID |
 				   CCB_TRANS_SYNC_RATE_VALID |
 				   CCB_TRANS_SYNC_OFFSET_VALID)) != 0)
@@ -590,6 +595,54 @@ scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 			if ((slp->sl_show_result & SHOW_CALCF_RES) != 0)
 				scsi_low_calcf_show(li);
 		}
+#else
+		scsi = &cts->proto_specific.scsi;
+		spi = &cts->xport_specific.spi;
+		if ((spi->valid & (CTS_SPI_VALID_BUS_WIDTH |
+				   CTS_SPI_VALID_SYNC_RATE |
+				   CTS_SPI_VALID_SYNC_OFFSET)) != 0)
+		{
+			if (spi->valid & CTS_SPI_VALID_BUS_WIDTH) {
+				val = spi->bus_width;
+				if (val < ti->ti_width)
+					ti->ti_width = val;
+			}
+			if (spi->valid & CTS_SPI_VALID_SYNC_RATE) {
+				val = spi->sync_period;
+				if (val == 0 || val > ti->ti_maxsynch.period)
+					ti->ti_maxsynch.period = val;
+			}
+			if (spi->valid & CTS_SPI_VALID_SYNC_OFFSET) {
+				val = spi->sync_offset;
+				if (val < ti->ti_maxsynch.offset)
+					ti->ti_maxsynch.offset = val;
+			}
+			ti->ti_flags_valid |= SCSI_LOW_TARG_FLAGS_QUIRKS_VALID;
+			scsi_low_calcf_target(ti);
+		}
+
+		if ((spi->valid & CTS_SPI_FLAGS_DISC_ENB) != 0 ||
+		    (scsi->flags & CTS_SCSI_FLAGS_TAG_ENB) != 0) {
+
+			li = scsi_low_alloc_li(ti, lun, 1);
+			if (spi->valid & CTS_SPI_FLAGS_DISC_ENB) {
+				li->li_quirks |= SCSI_LOW_DISK_DISC;
+			} else {
+				li->li_quirks &= ~SCSI_LOW_DISK_DISC;
+			}
+
+			if (scsi->flags & CTS_SCSI_FLAGS_TAG_ENB) {
+				li->li_quirks |= SCSI_LOW_DISK_QTAG;
+			} else {
+				li->li_quirks &= ~SCSI_LOW_DISK_QTAG;
+			}
+			li->li_flags_valid |= SCSI_LOW_LUN_FLAGS_QUIRKS_VALID;
+			scsi_low_calcf_target(ti);
+			scsi_low_calcf_lun(li);
+			if ((slp->sl_show_result & SHOW_CALCF_RES) != 0)
+				scsi_low_calcf_show(li);
+		}
+#endif
 		crit_exit();
 
 		ccb->ccb_h.status = CAM_REQ_CMP;

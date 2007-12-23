@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.15 2007/07/11 23:46:58 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.16 2007/12/23 07:00:57 pavalos Exp $"
 
 #define _DPT_C_
 
@@ -978,11 +978,39 @@ dpt_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_GET_TRAN_SETTINGS:
 	/* Get default/user set transfer settings for the target */
 	{
-		struct	ccb_trans_settings *cts;
-		u_int	target_mask;
+		struct	ccb_trans_settings *cts = &ccb->cts;
+#ifdef	CAM_NEW_TRAN_CODE
+		struct ccb_trans_settings_scsi *scsi =
+		    &cts->proto_specific.scsi;
+		struct ccb_trans_settings_spi *spi =
+		    &cts->xport_specific.spi;
+
+		cts->protocol = PROTO_SCSI;
+		cts->protocol_version = SCSI_REV_2;
+		cts->transport = XPORT_SPI;
+		cts->transport_version = 2;
  
-		cts = &ccb->cts;
-		target_mask = 0x01 << ccb->ccb_h.target_id;
+		if (cts->type == CTS_TYPE_USER_SETTINGS) {
+			spi->flags = CTS_SPI_FLAGS_DISC_ENB;
+			spi->bus_width = (dpt->max_id > 7)
+				       ? MSG_EXT_WDTR_BUS_8_BIT
+				       : MSG_EXT_WDTR_BUS_16_BIT;
+			spi->sync_period = 25; /* 10MHz */
+			if (spi->sync_period != 0)
+				spi->sync_offset = 15;
+			scsi->flags = CTS_SCSI_FLAGS_TAG_ENB;
+
+			spi->valid = CTS_SPI_VALID_SYNC_RATE
+				| CTS_SPI_VALID_SYNC_OFFSET
+				| CTS_SPI_VALID_SYNC_RATE
+				| CTS_SPI_VALID_BUS_WIDTH
+				| CTS_SPI_VALID_DISC;
+			scsi->valid = CTS_SCSI_VALID_TQ;
+			ccb->ccb_h.status = CAM_REQ_CMP;
+		} else {
+			ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
+		}
+#else
 		if ((cts->flags & CCB_TRANS_USER_SETTINGS) != 0) { 
 			cts->flags = CCB_TRANS_DISC_ENB|CCB_TRANS_TAG_ENB;
 			cts->bus_width = (dpt->max_id > 7)
@@ -1002,6 +1030,7 @@ dpt_action(struct cam_sim *sim, union ccb *ccb)
 		} else {
 			ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
 		}
+#endif
 		xpt_done(ccb);
 		break;
 	}
@@ -1066,6 +1095,12 @@ dpt_action(struct cam_sim *sim, union ccb *ccb)
 		strncpy(cpi->hba_vid, "DPT", HBA_IDLEN);
 		strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
 		cpi->unit_number = cam_sim_unit(sim);
+#ifdef	CAM_NEW_TRAN_CODE
+                cpi->transport = XPORT_SPI;
+                cpi->transport_version = 2;
+                cpi->protocol = PROTO_SCSI;
+                cpi->protocol_version = SCSI_REV_2;
+#endif
 		cpi->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advlib.c,v 1.15.2.1 2000/04/14 13:32:49 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.8 2006/12/22 23:26:15 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.9 2007/12/23 07:00:55 pavalos Exp $
  */
 /*
  * Ported from:
@@ -1128,11 +1128,26 @@ adv_set_syncrate(struct adv_softc *adv, struct cam_path *path,
 			 * new transfer parameters.
 			 */
 			struct	ccb_trans_settings neg;
+			memset(&neg, 0, sizeof (neg));
+#ifdef	CAM_NEW_TRAN_CODE
+			struct ccb_trans_settings_spi *spi =
+			    &neg.xport_specific.spi;
 
+			neg.protocol = PROTO_SCSI;
+			neg.protocol_version = SCSI_REV_2;
+			neg.transport = XPORT_SPI;
+			neg.transport_version = 2;
+
+			spi->sync_offset = offset;
+			spi->sync_period = period;
+			spi->valid |= CTS_SPI_VALID_SYNC_OFFSET;
+			spi->valid |= CTS_SPI_VALID_SYNC_RATE;
+#else
 			neg.sync_period = period;
 			neg.sync_offset = offset;
 			neg.valid = CCB_TRANS_SYNC_RATE_VALID
 				  | CCB_TRANS_SYNC_OFFSET_VALID;
+#endif
 			xpt_setup_ccb(&neg.ccb_h, path, /*priority*/1);
 			xpt_async(AC_TRANSFER_NEG, path, &neg);
 		}

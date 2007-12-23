@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_cam.c,v 1.1.2.3 2002/11/11 13:19:10 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.8 2006/10/25 20:56:00 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.9 2007/12/23 07:00:56 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -299,6 +299,12 @@ amr_cam_action(struct cam_sim *sim, union ccb *ccb)
 	cpi->unit_number = cam_sim_unit(sim);
 	cpi->bus_id = cam_sim_bus(sim);
 	cpi->base_transfer_speed = 132 * 1024;  /* XXX get from controller? */
+#ifdef	CAM_NEW_TRAN_CODE
+	cpi->transport = XPORT_SPI;
+	cpi->transport_version = 2;
+	cpi->protocol = PROTO_SCSI;
+	cpi->protocol_version = SCSI_REV_2;
+#endif
 	cpi->ccb_h.status = CAM_REQ_CMP;
 
 	break;
@@ -322,12 +328,35 @@ amr_cam_action(struct cam_sim *sim, union ccb *ccb)
 
     case XPT_GET_TRAN_SETTINGS:
     {
-	struct ccb_trans_settings	*cts;
+	struct ccb_trans_settings	*cts = &(ccb->cts);
 
 	debug(3, "XPT_GET_TRAN_SETTINGS");
 
-	cts = &(ccb->cts);
+#ifdef	CAM_NEW_TRAN_CODE
+	struct ccb_trans_settings_scsi *scsi = &cts->proto_specific.scsi;
+	struct ccb_trans_settings_spi *spi = &cts->xport_specific.spi;
 
+	cts->protocol = PROTO_SCSI;
+	cts->protocol_version = SCSI_REV_2;
+	cts->transport = XPORT_SPI;
+	cts->transport_version = 2;
+
+	if (cts->type == CTS_TYPE_USER_SETTINGS) {
+		ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
+		break;
+	}
+
+	spi->flags = CTS_SPI_FLAGS_DISC_ENB;
+	spi->bus_width = MSG_EXT_WDTR_BUS_32_BIT;
+	spi->sync_period = 6;   /* 40MHz how wide is this bus? */
+	spi->sync_offset = 31;  /* How to extract this from board? */
+
+	spi->valid = CTS_SPI_VALID_SYNC_RATE
+	    | CTS_SPI_VALID_SYNC_OFFSET
+	    | CTS_SPI_VALID_BUS_WIDTH
+	    | CTS_SPI_VALID_DISC;
+	scsi->valid = CTS_SCSI_VALID_TQ;
+#else
 	if ((cts->flags & CCB_TRANS_USER_SETTINGS) == 0) {
 		ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
 		break;
@@ -343,6 +372,7 @@ amr_cam_action(struct cam_sim *sim, union ccb *ccb)
 	    | CCB_TRANS_BUS_WIDTH_VALID
 	    | CCB_TRANS_DISC_VALID
 	    | CCB_TRANS_TQ_VALID;
+#endif
 	ccb->ccb_h.status = CAM_REQ_CMP;
 	break;
     }
