@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.15 2007/12/02 04:22:31 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.16 2007/12/24 00:14:52 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -747,7 +747,6 @@ struct ccb_trans_settings_spi
 #define CTS_SPI_VALID_PPR_OPTIONS	0x10
 	u_int	flags;
 #define	CTS_SPI_FLAGS_DISC_ENB		0x01
-#define	CTS_SPI_FLAGS_TAG_ENB		0x02
 	u_int	sync_period;
 	u_int	sync_offset;
 	u_int	bus_width;
