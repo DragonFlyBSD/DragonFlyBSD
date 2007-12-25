@@ -29,7 +29,7 @@
 .\"
 .\"	from: npx.4,v 1.1 1993/08/06 10:58:03 cgd Exp
 .\" $FreeBSD: src/share/man/man4/man4.i386/npx.4,v 1.9.2.3 2001/08/17 13:08:46 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/npx.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/npx.4,v 1.3 2007/12/25 12:40:32 swildner Exp $
 .\"
 .Dd August 28, 1993
 .Dt NPX 4 i386
@@ -42,42 +42,33 @@
 .Pp
 For hosts without a FPU coprocessor add:
 .Cd "options MATH_EMULATE"
-or
-.Cd "options GPL_MATH_EMULATE"
-.\" XXX this is awful hackery to get it to work right... -- cgd
-.\" What the heck does he mean? - cracauer
 .Sh DESCRIPTION
 The
 .Nm
 driver enables the use of the system's Numeric Processing Extension
-coprocessor,
-if one is present.  Numeric processing extensions are present in
-systems with
+coprocessor, if one is present.
+Numeric processing extensions are present in systems with
 .Sy 486DX
 CPUs and in systems with
-.Sy 387
-or
 .Sy 487SX
-coprocessors.  The
+coprocessors.
+The
 .Nm
 driver is required for proper system functioning regardless
 of whether or not a NPX is present.
 .Pp
-If there is no NPX present in the system, the MATH_EMULATE or
-GPL_MATH_EMULATE option must be defined in the kernel configuration
-file.
-It will provide support for the instructions normally executed by the
-NPX.
+If there is no NPX present in the system, the
+.Dv MATH_EMULATE
+option must be defined in the kernel configuration file.
+It will provide support for the instructions normally executed by the NPX.
 If there is no NPX in the system and the kernel is not built with math
 emulation, the system will not boot.
 .Pp
-You can choose to use a much more fully-featured math emulator (under the
-GPL license) by including the option GPL_MATH_EMULATE in your kernel
-configuration file instead of the MATH_EMULATE option.
-.Pp
 The
 .Sy GENERIC
-kernel configuration uses the MATH_EMULATE option.
+kernel configuration uses the
+.Dv MATH_EMULATE
+option.
 .Pp
 For a description of the possible "flags" values see the LINT kernel
 configuration file.
@@ -86,8 +77,7 @@ The emulator is much slower than the NPX coprocessor.
 This will result in poor floating-point math performance
 if the emulator must be used.
 .Pp
-The non-GPL emulator does not support the whole set of npx
-instructions.
+The emulator does not support the whole set of npx instructions.
 It is sufficient for booting and configuring a system, but it cannot
 support a system with normal workload unless care is taken to compile
 the whole system (including third-party packages) with compiler
@@ -99,6 +89,7 @@ the NPX to the CPU wired properly.
 If this is the case, the emulator must be used if consistent system
 operation is desired.
 .Pp
-When using the default MATH_EMULATE option,
-transcendental function instructions are not implemented.
+When using the
+.Dv MATH_EMULATE
+option, transcendental function instructions are not implemented.
 Emulation of other instructions is suspect.
