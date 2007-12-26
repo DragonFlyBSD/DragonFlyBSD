@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.143 2007/12/21 00:14:58 pavalos Exp $
+# $DragonFly: src/sys/config/LINT,v 1.144 2007/12/26 14:02:36 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1983,6 +1983,7 @@ device		nge		# NatSemi DP83820 and DP83821
 device		sk		# SysKonnect GEnesis, LinkSys EG1023, D-Link
 device		ti		# Alteon (``Tigon I'', ``Tigon II'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
+device		msk		# Marvell/SysKonnect Yukon II Gigabit Ethernet
 
 device		meteor
 
