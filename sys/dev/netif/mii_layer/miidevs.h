@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.13 2007/10/12 14:03:41 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.14 2007/12/26 13:02:38 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.12 2007/09/17 11:13:55 hasso Exp 
+ *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.13 2007/10/12 14:02:55 sephe Exp 
  */
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
@@ -60,6 +60,7 @@
 #define	MII_OUI_ALTIMA	0x0010a9	/* Altima Communications */
 #define	MII_OUI_AMD	0x00001a	/* Advanced Micro Devices */
 #define	MII_OUI_BROADCOM	0x001018	/* Broadcom Corporation */
+#define	MII_OUI_BROADCOM2	0x000af7	/* Broadcom Corporation */
 #define	MII_OUI_CICADA	0x0003f1	/* Cicada Semiconductor */
 #define	MII_OUI_DAVICOM	0x00606e	/* Davicom Semiconductor */
 #define	MII_OUI_ICS	0x00a0be	/* Integrated Circuit Systems */
@@ -197,6 +198,8 @@
 #define	MII_STR_xxBROADCOM2_BCM5755	"BCM5755 10/100/1000baseT PHY"
 #define	MII_MODEL_xxBROADCOM2_BCM5787	0x000e
 #define	MII_STR_xxBROADCOM2_BCM5787	"BCM5787 10/100/1000baseT PHY"
+#define	MII_MODEL_BROADCOM2_BCM5906	0x0004
+#define	MII_STR_BROADCOM2_BCM5906	"BCM5906 10/100baseTX PHY"
 
 /* Cicada Semiconductor PHYs (now owned by Vitesse?) */
 #define	MII_MODEL_CICADA_CS8201	0x0001
