@@ -1,4 +1,4 @@
-$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.13 2007/10/12 14:02:55 sephe Exp $
+$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.14 2007/12/26 13:02:03 sephe Exp $
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
 
@@ -53,6 +53,7 @@ $DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.13 2007/10/12 14:02:55 sephe
 oui ALTIMA			0x0010a9	Altima Communications
 oui AMD				0x00001a	Advanced Micro Devices
 oui BROADCOM			0x001018	Broadcom Corporation
+oui BROADCOM2			0x000af7	Broadcom Corporation
 oui CICADA			0x0003f1	Cicada Semiconductor
 oui DAVICOM			0x00606e	Davicom Semiconductor
 oui ICS				0x00a0be	Integrated Circuit Systems
@@ -153,6 +154,7 @@ model xxBROADCOM BCM5780	0x0035 BCM5780 10/100/1000baseT PHY
 model xxBROADCOM BCM5708C	0x0036 BCM5708C 10/100/1000baseT PHY
 model xxBROADCOM2 BCM5755	0x000c BCM5755 10/100/1000baseT PHY
 model xxBROADCOM2 BCM5787	0x000e BCM5787 10/100/1000baseT PHY
+model BROADCOM2 BCM5906		0x0004 BCM5906 10/100baseTX PHY
 
 /* Cicada Semiconductor PHYs (now owned by Vitesse?) */
 model CICADA CS8201		0x0001 Cicada CS8201 10/100/1000TX PHY
