@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
-.\" $DragonFly: src/share/man/man7/hier.7,v 1.12 2007/08/09 22:39:21 corecode Exp $
+.\" $DragonFly: src/share/man/man7/hier.7,v 1.13 2007/12/26 05:45:07 swildner Exp $
 .\"
 .Dd August 23, 2006
 .Dt HIER 7
@@ -41,7 +41,7 @@
 .Nd layout of filesystems
 .Sh DESCRIPTION
 A sketch of the filesystem hierarchy.
-.Bl -tag -width ".It Pa /modules/"
+.Bl -tag -width ".Pa /modules/"
 .It Pa /
 root directory of the filesystem
 .It Pa /bin/
@@ -49,7 +49,7 @@ user utilities fundamental to both single-user and multi-user environments
 .It Pa /boot/
 programs and configuration files used during operating system bootstrap
 .Pp
-.Bl -tag -width ".It Pa defaults/" -compact
+.Bl -tag -width ".Pa defaults/" -compact
 .It Pa defaults/
 default bootstrapping configuration files; see
 .Xr loader.conf 5
@@ -57,7 +57,7 @@ default bootstrapping configuration files; see
 .It Pa /dev/
 block and character device files
 .Pp
-.Bl -tag -width ".It Pa MAKEDEV" -compact
+.Bl -tag -width ".Pa MAKEDEV" -compact
 .It Pa MAKEDEV
 script for creating device files;
 see
@@ -70,7 +70,7 @@ see
 .It Pa /etc/
 system configuration files and scripts
 .Pp
-.Bl -tag -width ".It Pa defaults/" -compact
+.Bl -tag -width ".Pa defaults/" -compact
 .It Pa defaults/
 default system configuration files;
 see
@@ -139,7 +139,7 @@ temporary files that are not guaranteed to persist across system reboots
 .It Pa /usr/
 contains the majority of user utilities and applications
 .Pp
-.Bl -tag -width ".It Pa libdata/" -compact
+.Bl -tag -width ".Pa libdata/" -compact
 .It Pa bin/
 common utilities, programming tools, and applications
 .It Pa games/
@@ -147,7 +147,7 @@ useful and semi-frivolous programs
 .It Pa include/
 standard C include files
 .Pp
-.Bl -tag -width ".It Pa libmilter/" -compact
+.Bl -tag -width ".Pa libmilter/" -compact
 .It Pa arpa/
 C include files for Internet service protocols
 .It Pa c++/
@@ -155,7 +155,7 @@ C++ include files
 .It Pa cam/
 C include files for the Common Access Methods Layer
 .Pp
-.Bl -tag -width ".It Pa scsi/" -compact
+.Bl -tag -width ".Pa scsi/" -compact
 .It Pa scsi/
 The SCSI device on top of CAM
 .El
@@ -168,7 +168,7 @@ devices
 Include Files for various emulation layers
 .It Pa fs/
 .Pp
-.Bl -tag -width ".It Pa smbfs/" -compact
+.Bl -tag -width ".Pa smbfs/" -compact
 .It Pa smbfs/
 SMB/CIFS filesystem
 .El
@@ -177,7 +177,7 @@ SMB/CIFS filesystem
 ISC utility library libisc include files
 .It Pa isofs/
 .Pp
-.Bl -tag -width ".It Pa cd9660/" -compact
+.Bl -tag -width ".Pa cd9660/" -compact
 .It Pa cd9660/
 iso9660 filesystem
 .El
@@ -246,7 +246,7 @@ system C include files (kernel data structures)
 .It Pa ufs/
 C include files for UFS (The U-word File System)
 .Pp
-.Bl -tag -width ".It Pa ffs/" -compact
+.Bl -tag -width ".Pa ffs/" -compact
 .It Pa ffs/
 Fast filesystem
 .It Pa mfs/
@@ -266,13 +266,13 @@ see
 .It Pa lib/
 archive libraries
 .Pp
-.Bl -tag -width ".It Pa compat/" -compact
+.Bl -tag -width ".Pa compat/" -compact
 .It Pa aout/
 a.out archive libraries
 .It Pa compat/
 shared libraries for compatibility
 .Pp
-.Bl -tag -width ".It Pa aout/" -compact
+.Bl -tag -width ".Pa aout/" -compact
 .It Pa aout/
 a.out backward compatibility libraries
 .El
@@ -281,13 +281,13 @@ a.out backward compatibility libraries
 .It Pa libdata/
 misc. utility data files
 .Pp
-.Bl -tag -width ".It Pa stallion/" -compact
+.Bl -tag -width ".Pa stallion/" -compact
 .It Pa doscmd/
 files used by doscmd (drivers, fonts, etc.);
 see
 .Xr doscmd 1
 .Pp
-.Bl -tag -width ".It Pa fonts/" -compact
+.Bl -tag -width ".Pa fonts/" -compact
 .It Pa fonts/
 fonts used by doscmd
 .El
@@ -305,14 +305,14 @@ holds the download firmware images
 .It Pa libexec/
 system daemons & system utilities (executed by other programs)
 .Pp
-.Bl -tag -width ".It Pa binutils217/" -compact
+.Bl -tag -width ".Pa binutils217/" -compact
 .It Pa lpr/
 utilities and filters for LP print system;
 see
 .Xr lpr 1
 .It Pa binutils217/
 .Pp
-.Bl -tag -width ".It Pa ldscripts/" -compact
+.Bl -tag -width ".Pa ldscripts/" -compact
 .It Pa ldscripts/
 linker scripts;
 see
@@ -386,7 +386,7 @@ system daemons & system utilities (executed by users)
 .It Pa share/
 architecture-independent files
 .Pp
-.Bl -tag -width ".It Pa groff_font/" -compact
+.Bl -tag -width ".Pa groff_font/" -compact
 .It Pa calendar/
 a variety of pre-fab calendar files;
 see
@@ -396,7 +396,7 @@ word lists;
 see
 .Xr look 1
 .Pp
-.Bl -tag -width ".It Pa papers/" -compact
+.Bl -tag -width ".Pa papers/" -compact
 .It Pa web2
 words from Webster's 2nd International
 .It Pa words
@@ -410,7 +410,7 @@ see
 .It Pa doc/
 miscellaneous documentation;
 .Pp
-.Bl -tag -width ".It Pa handbook/" -compact
+.Bl -tag -width ".Pa handbook/" -compact
 .It Pa handbook/
 A copy of the handbook
 .El
@@ -440,7 +440,7 @@ see
 .It Pa misc/
 misc system-wide ASCII text files
 .Pp
-.Bl -tag -width ".It Pa termcap" -compact
+.Bl -tag -width ".Pa termcap" -compact
 .It Pa termcap
 terminal characteristics database;
 see
@@ -465,7 +465,7 @@ example . (dot) files for new accounts
 files used by
 .Xr syscons 4
 .Pp
-.Bl -tag -width ".It Pa scrnmaps/" -compact
+.Bl -tag -width ".Pa scrnmaps/" -compact
 .It Pa fonts/
 console fonts;
 see
@@ -506,7 +506,7 @@ see
 .Bx ,
 third-party, and/or local source files
 .Pp
-.Bl -tag -width ".It Pa kerberos5/" -compact
+.Bl -tag -width ".Pa kerberos5/" -compact
 .It Pa bin/
 source code for files in
 .Pa /bin
@@ -562,11 +562,11 @@ source code for files in
 .It Pa /var/
 multi-purpose log, temporary, transient, and spool files
 .Pp
-.Bl -tag -width ".It Pa preserve/" -compact
+.Bl -tag -width ".Pa preserve/" -compact
 .It Pa account/
 system accounting files
 .Pp
-.Bl -tag -width ".It Pa acct" -compact
+.Bl -tag -width ".Pa acct" -compact
 .It Pa acct
 execution accounting file;
 see
@@ -578,7 +578,7 @@ timed command scheduling files;
 see
 .Xr \&at 1
 .Pp
-.Bl -tag -width ".It Pa spool/" -compact
+.Bl -tag -width ".Pa spool/" -compact
 .It Pa jobs/
 directory containing job files
 .It Pa spool/
@@ -597,7 +597,7 @@ files used by cron;
 see
 .Xr cron 8
 .Pp
-.Bl -tag -width ".It Pa tabs/" -compact
+.Bl -tag -width ".Pa tabs/" -compact
 .It Pa tabs/
 crontab files;
 see
@@ -618,7 +618,7 @@ kerberos server databases; see
 .It Pa log/
 misc. system log files
 .Pp
-.Bl -tag -width ".It Pa wtmp" -compact
+.Bl -tag -width ".Pa wtmp" -compact
 .It Pa wtmp
 login/logout log;
 see
@@ -642,7 +642,7 @@ filesystem quota information files
 system information files describing various info about
 system since it was booted
 .Pp
-.Bl -tag -width ".It Pa ppp/" -compact
+.Bl -tag -width ".Pa ppp/" -compact
 .It Pa ppp/
 writable by the
 .Dq network
@@ -664,7 +664,7 @@ and
 .It Pa spool/
 misc. printer and mail system spooling directories
 .Pp
-.Bl -tag -width ".It Pa clientmqueue/" -compact
+.Bl -tag -width ".Pa clientmqueue/" -compact
 .It Pa clientmqueue/
 undelivered submission mail queue;
 see
@@ -690,7 +690,7 @@ public uucp temporary directory
 .It Pa tmp/
 temporary files that are kept between system reboots
 .Pp
-.Bl -tag -width ".It Pa vi.recover/" -compact
+.Bl -tag -width ".Pa vi.recover/" -compact
 .It Pa vi.recover/
 the directory where recovery files are stored
 .El
