@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.29 2007/10/03 09:24:00 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.30 2007/12/26 12:59:09 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.28 2007/07/18 11:54:57 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.29 2007/10/03 09:23:17 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -1141,6 +1141,8 @@
 #define	PCI_PRODUCT_BROADCOM_BCM4401B0	0x170c		/* BCM4401-B0 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5901	0x170d		/* BCM5901 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5901A2	0x170e		/* BCM5901A 10/100 Ethernet */
+#define	PCI_PRODUCT_BROADCOM_BCM5906	0x1712		/* BCM5906 */
+#define	PCI_PRODUCT_BROADCOM_BCM5906M	0x1713		/* BCM5906M */
 #define	PCI_PRODUCT_BROADCOM_BCM4301	0x4301		/* BCM4301 802.11b Wireless Lan */
 #define	PCI_PRODUCT_BROADCOM_BCM4307	0x4307		/* BCM4307 802.11b Wireless Lan */
 #define	PCI_PRODUCT_BROADCOM_BCM4311	0x4311		/* BCM4311 802.11a/b/g Wireless Lan */
