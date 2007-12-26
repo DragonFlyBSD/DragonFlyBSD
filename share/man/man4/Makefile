@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/18/93
 # $FreeBSD: src/share/man/man4/Makefile,v 1.83.2.66 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/share/man/man4/Makefile,v 1.73 2007/11/07 09:07:44 hasso Exp $
+# $DragonFly: src/share/man/man4/Makefile,v 1.74 2007/12/26 14:27:58 swildner Exp $
 
 MAN=	aac.4 \
 	acpi.4 \
@@ -122,6 +122,7 @@ MAN=	aac.4 \
 	moscom.4 \
 	mouse.4 \
 	mpt.4 \
+	msk.4 \
 	mtio.4 \
 	multicast.4 \
 	my.4 \
