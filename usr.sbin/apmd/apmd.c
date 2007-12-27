@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmd.c,v 1.3.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.5 2005/08/28 20:55:07 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.6 2007/12/27 15:29:40 matthias Exp $
  */
 
 #include <assert.h>
@@ -672,7 +672,7 @@ main(int ac, char* av[])
 	}
 
 	restart();
-	pidfile(getprogname());
+	pidfile(NULL);
 	event_loop();
  	exit(EXIT_SUCCESS);
 }

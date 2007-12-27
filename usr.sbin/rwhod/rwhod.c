@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.23 2005/07/01 13:13:00 liamfoy Exp $ 
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.24 2007/12/27 15:29:40 matthias Exp $ 
  */
 
 #include <sys/param.h>
@@ -232,7 +232,7 @@ main(int argc, char *argv[])
 		usage();
 #ifndef DEBUG
 	daemon(1, 0);
-	pidfile(getprogname());
+	pidfile(NULL);
 #endif
 	signal(SIGHUP, hup);
 	openlog("rwhod", LOG_PID, LOG_DAEMON);
