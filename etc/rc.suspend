@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.suspend,v 1.6 2004/01/21 03:03:40 njl Exp $
-# $DragonFly: src/etc/rc.suspend,v 1.3 2004/07/05 00:22:38 dillon Exp $
+# $DragonFly: src/etc/rc.suspend,v 1.4 2007/12/27 20:00:51 matthias Exp $
 #
 
 # sample run command file for APM Suspend Event
@@ -49,8 +49,8 @@ echo $$ 2> /dev/null > /var/run/rc.suspend.pid
 # pccardq | awk -F '~' '$5 == "filled" && $4 ~ /sio/ \
 #	{ printf("pccardc power %d 0", $1); }' | sh
 
-# UHCI has trouble resuming so we just load/unload it.  You
-# should add any other kernel modules you want unloaded here.
+# If a device driver has problems suspending, try unloading it before
+# suspend and reloading it on resume.  Example:
 # kldunload usb
 
 logger -t $subsystem suspend at `date +'%Y%m%d %H:%M:%S'`
