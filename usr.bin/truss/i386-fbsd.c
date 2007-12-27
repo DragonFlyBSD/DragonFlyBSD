@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/i386-fbsd.c,v 1.7.2.2 2001/10/29 20:12:56 des Exp $
- * $DragonFly: src/usr.bin/truss/i386-fbsd.c,v 1.3 2003/11/04 15:34:41 eirikn Exp $
+ * $DragonFly: src/usr.bin/truss/i386-fbsd.c,v 1.4 2007/12/27 00:59:25 nth Exp $
  */
 
 /*
@@ -157,7 +157,7 @@ i386_syscall_entry(int pid, int nargs) {
 
   fsc.number = syscall;
   fsc.name =
-    (syscall < 0 || syscall > nsyscalls) ? NULL : syscallnames[syscall];
+    (syscall < 0 || syscall >= nsyscalls) ? NULL : syscallnames[syscall];
   if (!fsc.name) {
     fprintf(outfile, "-- UNKNOWN SYSCALL %d --\n", syscall);
   }
