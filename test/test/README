@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.47 2007/09/13 23:40:24 cat Exp $
+$DragonFly: src/test/test/README,v 1.48 2007/12/27 00:24:39 nth Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -30,3 +30,4 @@ microphone check one-two, one-two
 commit bit is straight set 
 so whatcha-gonna-do ?
 
+Longue vie a la libellule!
