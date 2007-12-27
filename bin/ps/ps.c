@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.23 2007/08/14 20:29:06 dillon Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.24 2007/12/27 13:31:42 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -648,7 +648,7 @@ usage(void)
 {
 
 	fprintf(stderr, "%s\n%s\n%s\n",
-	    "usage: ps [-aChjlmrSTuvwx] [-O|o fmt] [-p pid] [-t tty] [-U user]",
+	    "usage: ps [-aChHjlmrSTuvwx] [-O|o fmt] [-p pid] [-t tty] [-U user]",
 	    "          [-M core] [-N system]",
 	    "       ps [-L]");
 	exit(1);
