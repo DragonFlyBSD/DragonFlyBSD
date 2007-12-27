@@ -29,7 +29,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/quot/quot.c,v 1.11.2.4 2002/03/15 18:12:41 mikeh Exp $
- * $DragonFly: src/usr.sbin/quot/quot.c,v 1.6 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/quot/quot.c,v 1.7 2007/12/27 02:25:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <fcntl.h>
 #include <fstab.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <paths.h>
 #include <pwd.h>
 #include <stdio.h>
@@ -392,8 +393,8 @@ dofsizes(int fd, struct fs *super, char *name)
 	for (fp = fsizes; fp; fp = fp->fsz_next) {
 		for (i = 0; i < FSZCNT; i++) {
 			if (fp->fsz_count[i])
-				printf("%d\t%d\t%d\n",fp->fsz_first + i,
-				    fp->fsz_count[i],
+				printf("%d\t%ju\t%d\n",fp->fsz_first + i,
+				    (uintmax_t)fp->fsz_count[i],
 				    SIZE(sz += fp->fsz_sz[i]));
 		}
 	}
@@ -453,9 +454,9 @@ donames(int fd, struct fs *super, char *name)
 		while ((c = getchar()) != EOF && c != '\n');
 	ungetc(c,stdin);
 	inode1 = -1;
-	while (scanf("%u",&inode) == 1) {
+	while (scanf("%"SCNuMAX,&inode) == 1) {
 		if (inode > maxino) {
-			warnx("illegal inode %d",inode);
+			warnx("illegal inode %ju",(uintmax_t)inode);
 			return;
 		}
 		errno = 0;
