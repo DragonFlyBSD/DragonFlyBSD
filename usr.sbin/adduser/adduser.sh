@@ -24,8 +24,8 @@
 #
 #       Email: Mike Makonnen <mtm@FreeBSD.Org>
 #
-# $FreeBSD: src/usr.sbin/adduser/adduser.sh,v 1.23 2004/06/06 17:55:55 mtm Exp $
-# $DragonFly: src/usr.sbin/adduser/adduser.sh,v 1.1 2004/06/21 17:47:12 cpressey Exp $
+# $FreeBSD: src/usr.sbin/adduser/adduser.sh,v 1.31 2007/10/20 00:45:31 mtm Exp $
+# $DragonFly: src/usr.sbin/adduser/adduser.sh,v 1.2 2007/12/28 16:37:10 matthias Exp $
 #
 
 # err msg
@@ -114,7 +114,7 @@ valid_shells() {
 		esac
 	done
 
-	# /usr/sbin/nologin is a special case
+	# /sbin/nologin is a special case
 	[ -x "${NOLOGIN_PATH}" ] && echo -n " ${NOLOGIN}"
 }
 
@@ -126,6 +126,17 @@ valid_shells() {
 fullpath_from_shell() {
 	_shell=$1
 	[ -z "$_shell" ] && return 1
+
+	# /sbin/nologin is a special case; it needs to be handled
+	# before the cat | while loop, since a 'return' from within
+	# a subshell will not terminate the function's execution, and
+	# the path to the nologin shell might be printed out twice.
+	#
+	if [ "$_shell" = "${NOLOGIN}" -o \
+	    "$_shell" = "${NOLOGIN_PATH}" ]; then
+		echo ${NOLOGIN_PATH}
+		return 0;
+	fi
 
 	cat ${ETCSHELLS} |
 	while read _path _junk ; do
@@ -141,12 +152,6 @@ fullpath_from_shell() {
 			;;
 		esac
 	done
-
-	# /usr/sbin/nologin is a special case
-	if [ "$_shell" = "${NOLOGIN}" ]; then
-		echo ${NOLOGIN_PATH}
-		return 0;
-	fi
 
 	return 1
 }
@@ -195,6 +200,7 @@ save_config() {
 	echo "udotdir=$udotdir"		>> ${ADDUSERCONF}
 	echo "msgfile=$msgfile"		>> ${ADDUSERCONF}
 	echo "disableflag=$disableflag" >> ${ADDUSERCONF}
+	echo "uidstart=$uidstart"       >> ${ADDUSERCONF}
 }
 
 # add_user
@@ -342,11 +348,17 @@ get_user() {
 			_input="`echo "$fileline" | cut -f1 -d:`"
 		fi
 
-		# There *must* be a username. If this is an interactive
-		# session give the user an opportunity to retry.
+		# There *must* be a username, and it must not exist. If
+		# this is an interactive session give the user an
+		# opportunity to retry.
 		#
 		if [ -z "$_input" ]; then
 			err "You must enter a username!"
+			[ -z "$fflag" ] && continue
+		fi
+		${PWCMD} usershow $_input > /dev/null 2>&1
+		if [ "$?" -eq 0 ]; then
+			err "User exists!"
 			[ -z "$fflag" ] && continue
 		fi
 		break
@@ -446,9 +458,6 @@ get_uid() {
 	uuid=${uidstart}
 	_input=
 	_prompt=
-
-	# No need to take down uids for a configuration saving run.
-	[ -n "$configflag" ] && return
 
 	if [ -n "$uuid" ]; then
 		_prompt="Uid [$uuid]: "
@@ -584,21 +593,22 @@ input_from_file() {
 	while read -r fileline ; do
 		case "$fileline" in
 		\#*|'')
-			return 0
+			;;
+		*)
+			get_user || continue
+			get_gecos
+			get_uid
+			get_logingroup
+			get_class
+			get_shell
+			get_homedir
+			get_password
+			get_expire_dates
+			ugroups="$defaultgroups"
+
+			add_user
 			;;
 		esac
-
-		get_user || continue
-		get_gecos
-		get_uid
-		get_logingroup
-		get_class
-		get_shell
-		get_homedir
-		get_password
-		get_expire_dates
-
-		add_user
 	done
 }
 
@@ -792,7 +802,7 @@ input_interactive() {
 	return 0
 }
 
-#### END SUBROUTINE DEFENITION ####
+#### END SUBROUTINE DEFINITION ####
 
 THISCMD=`/usr/bin/basename $0`
 DEFAULTSHELL=/bin/sh
@@ -802,7 +812,7 @@ MAILCMD="${MAILCMD:-mail}"
 ETCSHELLS="${ETCSHELLS:-/etc/shells}"
 NOHOME="/nonexistent"
 NOLOGIN="nologin"
-NOLOGIN_PATH="/usr/sbin/nologin"
+NOLOGIN_PATH="/sbin/nologin"
 GREPCMD="/usr/bin/grep"
 DATECMD="/bin/date"
 

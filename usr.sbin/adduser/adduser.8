@@ -24,10 +24,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/adduser/adduser.8,v 1.55 2004/06/06 17:55:55 mtm Exp $
-.\" $DragonFly: src/usr.sbin/adduser/adduser.8,v 1.4 2007/05/17 08:19:03 swildner Exp $
+.\" $FreeBSD: src/usr.sbin/adduser/adduser.8,v 1.60 2007/10/20 00:45:31 mtm Exp $
+.\" $DragonFly: src/usr.sbin/adduser/adduser.8,v 1.5 2007/12/28 16:37:10 matthias Exp $
 .\"
-.Dd March 30, 2004
+.Dd June 7, 2006
 .Dt ADDUSER 8
 .Os
 .Sh NAME
@@ -67,7 +67,9 @@ The user name is restricted to whatever
 .Xr pw 8
 will accept.
 Generally this means it
-may contain only lowercase characters or digits.
+may contain only lowercase characters or digits but cannot begin with the
+.Ql -
+character.
 Maximum length
 is 16 characters.
 The reasons for this limit are historical.
@@ -82,7 +84,7 @@ in
 and recompile the
 world; people have done this and it works, but you will have problems
 with any precompiled programs, or source that assumes the 8-character
-name limit and NIS.
+name limit, such as NIS.
 The NIS protocol mandates an 8-character username.
 If you need a longer login name for e-mail addresses,
 you can define an alias in
@@ -211,7 +213,7 @@ This option makes
 .Ar login_group
 the default.
 .It Fl G Ar groups
-Additional groups.
+Space-separated list of additional groups.
 This option allows the user to specify additional groups to add users to.
 The user is a member of these groups in addition to their login group.
 .It Fl h
@@ -432,6 +434,7 @@ logfile for
 .Xr login.conf 5 ,
 .Xr passwd 5 ,
 .Xr shells 5 ,
+.Xr adding_user 8 ,
 .Xr pw 8 ,
 .Xr pwd_mkdb 8 ,
 .Xr rmuser 8 ,
@@ -463,7 +466,7 @@ This means that shell commands can also be embedded in the message file.
 The
 .Nm
 utility attempts to mitigate the possibility of an attacker using this
-feature by refusing to evaluate the file if it is not owned and writeable
+feature by refusing to evaluate the file if it is not owned and writable
 only by the root user.
 In addition, shell special characters and operators will have to be
 escaped when used in the message file.
