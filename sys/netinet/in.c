@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.23 2007/12/28 11:46:38 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.24 2007/12/28 13:16:10 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -267,8 +267,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 			return (EADDRNOTAVAIL);
 		if (ia == NULL) {
 			ia = kmalloc(sizeof *ia, M_IFADDR, M_WAITOK | M_ZERO);
-			if (ia == NULL)
-				return (ENOBUFS);
+
 			/*
 			 * Protect from NETISR_IP traversing address list
 			 * while we're modifying it.
