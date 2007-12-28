@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.75 2007/12/19 11:00:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.76 2007/12/28 13:27:45 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -466,7 +466,7 @@ ip_input(struct mbuf *m)
 		}
 		m = m->m_next;
 	}
-	KASSERT(m != NULL && (m->m_flags & M_PKTHDR), ("ip_input: no HDR"));
+	M_ASSERTPKTHDR(m);
 
 	/* Extract info from dummynet tag */
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);

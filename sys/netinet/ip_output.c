@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.39 2007/11/16 02:45:45 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.40 2007/12/28 13:27:45 sephe Exp $
  */
 
 #define _IP_VHL
@@ -166,7 +166,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		m0 = m0->m_next;
 	}
 	m = m0;
-	KASSERT(m != NULL && (m->m_flags & M_PKTHDR), ("ip_output: no HDR"));
+	M_ASSERTPKTHDR(m);
 
 	/* Extract info from dummynet tag */
 	dn_mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
