@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.56 2007/09/30 04:37:27 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.57 2007/12/28 14:09:25 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -76,7 +76,6 @@
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
 #ifdef INET6
-#include <machine/clock.h> /* XXX: temporal workaround for fxp issue */
 #include <netinet6/in6_var.h>
 #include <netinet6/in6_ifattach.h>
 #endif
@@ -98,14 +97,27 @@ static int	ifq_classic_request(struct ifaltq *, int, void *);
 /*
  * System initialization
  */
-
 static void	if_attachdomain(void *);
 static void	if_attachdomain1(struct ifnet *);
-static int ifconf (u_long, caddr_t, struct ucred *);
-static void ifinit (void *);
-static void if_slowtimo (void *);
-static void link_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
-static int  if_rtdel (struct radix_node *, void *);
+static int	ifconf(u_long, caddr_t, struct ucred *);
+static void	ifinit(void *);
+static void	if_slowtimo(void *);
+static void	link_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
+static int	if_rtdel(struct radix_node *, void *);
+
+#ifdef INET6
+/*
+ * XXX: declare here to avoid to include many inet6 related files..
+ * should be more generalized?
+ */
+extern void	nd6_setmtu(struct ifnet *);
+#endif
+
+struct if_clone	*if_clone_lookup(const char *, int *);
+int		if_clone_list(struct if_clonereq *);
+
+SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
+SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
 
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
 
@@ -113,24 +125,16 @@ MALLOC_DEFINE(M_IFADDR, "ifaddr", "interface address");
 MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
 MALLOC_DEFINE(M_CLONE, "clone", "interface cloning framework");
 
-int	ifqmaxlen = IFQ_MAXLEN;
-struct	ifnethead ifnet;	/* depend on static init XXX */
+int			ifqmaxlen = IFQ_MAXLEN;
+struct ifnethead	ifnet;	/* depend on static init XXX */
 
-#ifdef INET6
-/*
- * XXX: declare here to avoid to include many inet6 related files..
- * should be more generalized?
- */
-extern void	nd6_setmtu (struct ifnet *);
-#endif
+LIST_HEAD(, if_clone)	if_cloners = LIST_HEAD_INITIALIZER(if_cloners);
+int			if_cloners_count;
 
-struct if_clone *if_clone_lookup (const char *, int *);
-int if_clone_list (struct if_clonereq *);
+struct callout		if_slowtimo_timer;
 
-LIST_HEAD(, if_clone) if_cloners = LIST_HEAD_INITIALIZER(if_cloners);
-int if_cloners_count;
-
-struct callout if_slowtimo_timer;
+int			if_index = 0;
+struct ifnet		**ifindex2ifnet = NULL;
 
 /*
  * Network interface utility routines.
@@ -157,9 +161,6 @@ ifinit(void *dummy)
 
 	if_slowtimo(0);
 }
-
-int if_index = 0;
-struct ifnet **ifindex2ifnet = NULL;
 
 /*
  * Attach an interface to the list of "active" interfaces.
@@ -886,8 +887,6 @@ ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
 	}
 	return (ifa_maybe);
 }
-
-#include <net/route.h>
 
 /*
  * Default action when installing a route with a Link Level gateway.
@@ -1924,9 +1923,6 @@ if_printf(struct ifnet *ifp, const char *fmt, ...)
 	return (retval);
 }
 
-SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
-SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
-
 void
 ifq_set_classic(struct ifaltq *ifq)
 {
@@ -1986,4 +1982,3 @@ ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 	crit_exit();
 	return(0);
 }
-
