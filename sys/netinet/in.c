@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.22 2007/12/28 11:37:08 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.23 2007/12/28 11:46:38 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -265,7 +265,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 
 		if (ifp == 0)
 			return (EADDRNOTAVAIL);
-		if (ia == (struct in_ifaddr *)0) {
+		if (ia == NULL) {
 			ia = kmalloc(sizeof *ia, M_IFADDR, M_WAITOK | M_ZERO);
 			if (ia == NULL)
 				return (ENOBUFS);
@@ -561,6 +561,7 @@ in_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		} else {
 			if (cmd == SIOCGLIFADDR) {
 				/* on getting an address, take the 1st match */
+				match.s_addr = 0; /* gcc4 warning */
 				cmp = 0;	/*XXX*/
 			} else {
 				/* on deleting an address, do exact match */
