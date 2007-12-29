@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.57 2007/12/28 14:09:25 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.58 2007/12/29 12:51:17 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -126,7 +126,7 @@ MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
 MALLOC_DEFINE(M_CLONE, "clone", "interface cloning framework");
 
 int			ifqmaxlen = IFQ_MAXLEN;
-struct ifnethead	ifnet;	/* depend on static init XXX */
+struct ifnethead	ifnet = TAILQ_HEAD_INITIALIZER(ifnet);
 
 LIST_HEAD(, if_clone)	if_cloners = LIST_HEAD_INITIALIZER(if_cloners);
 int			if_cloners_count;
@@ -178,12 +178,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	struct ifaltq *ifq;
 
 	static int if_indexlim = 8;
-	static boolean_t inited;
-
-	if (!inited) {
-		TAILQ_INIT(&ifnet);
-		inited = TRUE;
-	}
 
 	/*
 	 * The serializer can be passed in from the device, allowing the
