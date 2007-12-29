@@ -1,4 +1,4 @@
-$DragonFly: doc/notes/porting_drivers.txt,v 1.2 2007/10/31 04:52:52 swildner Exp $
+$DragonFly: doc/notes/porting_drivers.txt,v 1.3 2007/12/29 18:35:59 swildner Exp $
 
 		    PORTING FREEBSD DRIVERS TO DRAGONFLY
 
@@ -26,7 +26,7 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.2 2007/10/31 04:52:52 swildner Exp
   psignal()		->	ksignal()
 
 * MUTEX conversion - mutexes are generally replaced by spinlocks.  However,
-  DragonFly spinlocks are more restriction then FreeBSD mutexes so a
+  DragonFly spinlocks are more restrictive than FreeBSD mutexes so a
   direct replacement is not necessarily appropriate in all cases.  A lockmgr
   lock should be used when a direct replacement is not appropriate.
   In particular, DragonFly does not allow recursive exclusive spinlocks
@@ -46,6 +46,57 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.2 2007/10/31 04:52:52 swildner Exp
   the two.  Instead, the driver in DragonFly must obtain the spinlocks
   in question in the callback routine.
 
+  As a rule of thumb, MTX_DEF mutexes should be replaced with exclusive,
+  recursive lockmgr locks.
+
+  So, suppose the original code is using 
+	struct mtx my_mtx;
+  you'd normally rename it to
+	struct lock my_lock;
+
+  and change the initialization from something like
+	mtx_init(&my_mtx, "mymtx", "whatever", MTX_DEF);
+  to
+	lockinit(&my_lock, "mylock", 0, LK_EXCLUSIVE|LK_CANRECURSE);
+
+  Destroying it is trivial,
+	mtx_destroy(&my_mtx);
+  becomes
+	lockuninit(&my_lock);
+
+  You use the same function for locking and unlocking a lockmgr lock,
+  so exchange
+	mtx_lock(&my_mtx);
+  with
+	lockmgr(&my_lock, LK_EXCLUSIVE);
+  and
+	mtx_unlock(&my_mtx);
+  with
+	lockmgr(&my_lock, LK_RELEASE);
+
+  For testing the lock status, one would use
+	lockstatus(&my_lock, curthread);
+  in place of
+	mtx_owned(&my_mtx);
+
+  An
+	mtx_trylock(&my_mtx);
+  call is replaced with
+	lockmgr(&my_lock, LK_EXCLUSIVE|LK_NOWAIT);
+
+  As for mtx_assert() calls, translate them like this:
+
+	mtx_assert(&my_mtx, MA_OWNED) -> KKASSERT(lockstatus(&my_lock, curthread) != 0)
+	mtx_assert(&my_mtx, MA_NOTOWNED) -> KKASSERT(lockstatus(&my_lock, curthread) == 0)
+
+  In DragonFly, lockstatus() does not return information about whether there have been
+  recursive lock acquisitions, so there is no generic way to emulate the
+
+	mtx_assert(&my_mtx, MA_OWNED|MA_RECURSED);
+	mtx_assert(&my_mtx, MA_OWNED|MA_NOTRECURSED);
+
+  calls.
+	
 * UMA conversion - generally speaking UMA should be converted to a standard
   kmalloc.
 
