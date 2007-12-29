@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.9 2007/12/14 08:05:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.10 2007/12/29 09:01:27 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,6 +40,7 @@ static int hammer_mem_add(hammer_transaction_t trans,
 			     hammer_record_t record);
 static int hammer_mem_lookup(hammer_cursor_t cursor, hammer_inode_t ip);
 static int hammer_mem_first(hammer_cursor_t cursor, hammer_inode_t ip);
+static void hammer_free_mem_record(hammer_record_t record);
 
 /*
  * Red-black tree support.
@@ -67,19 +68,11 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 static int
 hammer_rec_compare(hammer_base_elm_t info, hammer_record_t rec)
 {
-        /*
-         * A key1->rec_type of 0 matches any record type.
-         */
-        if (info->rec_type) {
-                if (info->rec_type < rec->rec.base.base.rec_type)
-                        return(-3);
-                if (info->rec_type > rec->rec.base.base.rec_type)
-                        return(3);
-        }
+	if (info->rec_type < rec->rec.base.base.rec_type)
+		return(-3);
+	if (info->rec_type > rec->rec.base.base.rec_type)
+		return(3);
 
-        /*
-         * There is no special case for key.  0 means 0.
-         */
         if (info->key < rec->rec.base.base.key)
                 return(-2);
         if (info->key > rec->rec.base.base.key)
@@ -141,7 +134,8 @@ RB_GENERATE_XLOOKUP(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
 		    hammer_rec_compare, hammer_base_elm_t);
 
 /*
- * Allocate a record for the caller to finish filling in
+ * Allocate a record for the caller to finish filling in.  The record is
+ * returned referenced and locked.
  */
 hammer_record_t
 hammer_alloc_mem_record(hammer_inode_t ip)
@@ -150,12 +144,14 @@ hammer_alloc_mem_record(hammer_inode_t ip)
 
 	record = kmalloc(sizeof(*record), M_HAMMER, M_WAITOK|M_ZERO);
 	record->ip = ip;
+	hammer_ref(&record->lock);
+	hammer_lock_ex(&record->lock);
 	return (record);
 }
 
 /*
- * Release a memory record.  If the record is marked for defered deletion,
- * destroy the record when the last reference goes away.
+ * Release a memory record.  If the record was marked for defered deletion,
+ * and no references remain, the record is physically destroyed.
  */
 void
 hammer_rel_mem_record(struct hammer_record **recordp)
@@ -163,15 +159,28 @@ hammer_rel_mem_record(struct hammer_record **recordp)
 	hammer_record_t rec;
 
 	if ((rec = *recordp) != NULL) {
-		if (hammer_islastref(&rec->lock)) {
-			hammer_unref(&rec->lock);
+		hammer_unref(&rec->lock);
+		if (rec->lock.refs == 0) {
 			if (rec->flags & HAMMER_RECF_DELETED)
 				hammer_free_mem_record(rec);
-		} else {
-			hammer_unref(&rec->lock);
 		}
 		*recordp = NULL;
 	}
+}
+
+/*
+ * Drop a locked hammer in-memory record.  This function unlocks and
+ * dereferences the record.  If delete != 0 the record is marked for
+ * deletion.  Physical deletion only occurs when the last reference goes
+ * away.
+ */
+void
+hammer_drop_mem_record(hammer_record_t rec, int delete)
+{
+	if (delete)
+		rec->flags |= HAMMER_RECF_DELETED;
+	hammer_unlock(&rec->lock);
+	hammer_rel_mem_record(&rec);
 }
 
 /*
@@ -180,7 +189,7 @@ hammer_rel_mem_record(struct hammer_record **recordp)
  * the record is referenced.  However, the record is removed from the RB
  * tree immediately.
  */
-void
+static void
 hammer_free_mem_record(hammer_record_t record)
 {
 	if (record->flags & HAMMER_RECF_ONRBTREE) {
@@ -401,7 +410,8 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
  */
 int
 hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
-		       int64_t offset, void *data, int bytes)
+		       int64_t offset, void *data, int bytes,
+		       struct hammer_cursor **spike)
 {
 	struct hammer_cursor cursor;
 	hammer_record_ondisk_t rec;
@@ -473,6 +483,12 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 fail1:
 	hammer_free_data_ptr(cursor.data_buffer, bdata, bytes);
 done:
+	/*
+	 * If ENOSPC in cluster fill in the spike structure and return
+	 * ENOSPC.
+	 */
+	if (error == ENOSPC)
+		hammer_load_spike(&cursor, spike);
 	hammer_done_cursor(&cursor);
 	return(error);
 }
@@ -483,7 +499,7 @@ done:
  * writing a record out to the disk.
  */
 int
-hammer_ip_sync_record(hammer_record_t record)
+hammer_ip_sync_record(hammer_record_t record, struct hammer_cursor **spike)
 {
 	struct hammer_cursor cursor;
 	hammer_record_ondisk_t rec;
@@ -498,7 +514,12 @@ hammer_ip_sync_record(hammer_record_t record)
 	cursor.flags = HAMMER_CURSOR_INSERT;
 
 	/*
-	 * Issue a lookup to position the cursor and locate the cluster
+	 * Issue a lookup to position the cursor and locate the cluster.  The
+	 * target key should not exist.
+	 *
+	 * If we run out of space trying to adjust the B-Tree for the
+	 * insert, re-lookup without the insert flag so the cursor
+	 * is properly positioned for the spike.
 	 */
 	error = hammer_btree_lookup(&cursor);
 	if (error == 0) {
@@ -574,19 +595,135 @@ hammer_ip_sync_record(hammer_record_t record)
 fail1:
 	if (record->data && (record->flags & HAMMER_RECF_EMBEDDED_DATA) == 0) {
 		hammer_free_data_ptr(cursor.data_buffer, bdata,
-				     rec->base.data_len);
+				     record->rec.base.data_len);
 	}
 done:
+	/*
+	 * If ENOSPC in cluster fill in the spike structure and return
+	 * ENOSPC.
+	 */
+	if (error == ENOSPC)
+		hammer_load_spike(&cursor, spike);
 	hammer_done_cursor(&cursor);
 	return(error);
 }
 
+/*
+ * Write out a record using the specified cursor.  The caller does not have
+ * to seek the cursor.  The flags are used to determine whether the data
+ * (if any) is embedded in the record or not.
+ *
+ * The target cursor will be modified by this call.  Note in particular
+ * that HAMMER_CURSOR_INSERT is set.
+ */
+int
+hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t orec,
+		    void *data, int cursor_flags)
+{
+	union hammer_btree_elm elm;
+	hammer_record_ondisk_t nrec;
+	void *bdata;
+	int error;
+
+	cursor->key_beg = orec->base.base;
+	cursor->flags |= HAMMER_CURSOR_INSERT;
+
+	/*
+	 * Issue a lookup to position the cursor and locate the cluster.  The
+	 * target key should not exist.
+	 *
+	 * If we run out of space trying to adjust the B-Tree for the
+	 * insert, re-lookup without the insert flag so the cursor
+	 * is properly positioned for the spike.
+	 */
+	error = hammer_btree_lookup(cursor);
+	if (error == 0) {
+		kprintf("hammer_ip_sync_record: duplicate rec at (%016llx)\n",
+			orec->base.base.key);
+		error = EIO;
+	}
+	if (error != ENOENT)
+		goto done;
+
+	/*
+	 * Allocate record and data space now that we know which cluster
+	 * the B-Tree node ended up in.
+	 */
+	if (data == NULL ||
+	    (cursor_flags & HAMMER_RECF_EMBEDDED_DATA)) {
+		bdata = data;
+	} else {
+		bdata = hammer_alloc_data(cursor->node->cluster,
+					  orec->base.data_len, &error,
+					  &cursor->data_buffer);
+		if (bdata == NULL)
+			goto done;
+	}
+	nrec = hammer_alloc_record(cursor->node->cluster, &error,
+				  &cursor->record_buffer);
+	if (nrec == NULL)
+		goto fail1;
+
+	/*
+	 * Fill everything in and insert our B-Tree node.
+	 *
+	 * XXX assign rec_id here
+	 */
+	*nrec = *orec;
+	nrec->base.data_offset = 0;
+	if (bdata) {
+		nrec->base.data_crc = crc32(bdata, nrec->base.data_len);
+		if (cursor_flags & HAMMER_RECF_EMBEDDED_DATA) {
+			/*
+			 * Data embedded in record
+			 */
+			nrec->base.data_offset = ((char *)bdata - (char *)orec);
+			KKASSERT(nrec->base.data_offset >= 0 && 
+				 nrec->base.data_offset + nrec->base.data_len <
+				  sizeof(*nrec));
+			nrec->base.data_offset += hammer_bclu_offset(cursor->record_buffer, nrec);
+		} else {
+			/*
+			 * Data separate from record
+			 */
+			nrec->base.data_offset = hammer_bclu_offset(cursor->data_buffer, bdata);
+			bcopy(data, bdata, nrec->base.data_len);
+			hammer_modify_buffer(cursor->data_buffer);
+		}
+	}
+	nrec->base.rec_id = 0;	/* XXX */
+
+	hammer_modify_buffer(cursor->record_buffer);
+
+	elm.leaf.base = nrec->base.base;
+	elm.leaf.rec_offset = hammer_bclu_offset(cursor->record_buffer, nrec);
+	elm.leaf.data_offset = nrec->base.data_offset;
+	elm.leaf.data_len = nrec->base.data_len;
+	elm.leaf.data_crc = nrec->base.data_crc;
+
+	error = hammer_btree_insert(cursor, &elm);
+	if (error == 0)
+		goto done;
+
+	hammer_free_record_ptr(cursor->record_buffer, nrec);
+fail1:
+	if (data && (cursor_flags & HAMMER_RECF_EMBEDDED_DATA) == 0) {
+		hammer_free_data_ptr(cursor->data_buffer, bdata,
+				     orec->base.data_len);
+	}
+done:
+	/* leave cursor intact */
+	return(error);
+}
 
 /*
  * Add the record to the inode's rec_tree.  The low 32 bits of a directory
  * entry's key is used to deal with hash collisions in the upper 32 bits.
  * A unique 64 bit key is generated in-memory and may be regenerated a
  * second time when the directory record is flushed to the on-disk B-Tree.
+ *
+ * A locked and referenced record is passed to this function.  This function
+ * eats the lock and reference.
  */
 static
 int
@@ -594,7 +731,7 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 {
 	while (RB_INSERT(hammer_rec_rb_tree, &record->ip->rec_tree, record)) {
 		if (record->rec.base.base.rec_type != HAMMER_RECTYPE_DIRENTRY){
-			hammer_free_mem_record(record);
+			hammer_drop_mem_record(record, 1);
 			return (EEXIST);
 		}
 		if (++trans->hmp->namekey_iterator == 0)
@@ -603,6 +740,7 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 		record->rec.base.base.key |= trans->hmp->namekey_iterator;
 	}
 	record->flags |= HAMMER_RECF_ONRBTREE;
+	hammer_drop_mem_record(record, 0);
 	return(0);
 }
 
@@ -676,7 +814,8 @@ hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
 	 * function to validate the first record after the begin key.
 	 *
 	 * The ATEDISK flag is used by hammer_btree_iterate to determine
-	 * whether it must index forwards or not.
+	 * whether it must index forwards or not.  It is also used here
+	 * to select the next record from in-memory or on-disk.
 	 */
 	if (ip->flags & HAMMER_INODE_ONDISK) {
 		error = hammer_btree_lookup(cursor);
@@ -793,8 +932,7 @@ hammer_ip_next(hammer_cursor_t cursor)
 		 * Both entries valid
 		 */
 		elm = &cursor->node->ondisk->elms[cursor->index];
-		r = hammer_btree_cmp(&elm->base,
-				     &cursor->iprec->rec.base.base);
+		r = hammer_btree_cmp(&elm->base, &cursor->iprec->rec.base.base);
 		if (r < 0) {
 			error = hammer_btree_extract(cursor,
 						     HAMMER_CURSOR_GET_RECORD);
@@ -857,10 +995,13 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
  *
  * NOTE: Record keys for regular file data have to be special-cased since
  * they indicate the end of the range (key = base + bytes).
+ *
+ * NOTE: The spike structure must be filled in if we return ENOSPC.
  */
 int
 hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
-		       int64_t ran_beg, int64_t ran_end)
+		       int64_t ran_beg, int64_t ran_end,
+		       struct hammer_cursor **spike)
 {
 	struct hammer_cursor cursor;
 	hammer_record_ondisk_t rec;
@@ -901,6 +1042,7 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 			cursor.key_end.key = ran_end + MAXPHYS + 1;
 		isregfile = 1;
 	}
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
 	error = hammer_ip_first(&cursor, ip);
 
@@ -992,7 +1134,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	 */
 	cursor->flags &= ~HAMMER_CURSOR_DELBTREE;
 	if (cursor->record == &cursor->iprec->rec) {
-		hammer_free_mem_record(cursor->iprec);
+		hammer_free_mem_record(cursor->iprec); /* XXX */
 		return(0);
 	}
 
@@ -1043,8 +1185,8 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 			}
 			hammer_free_record(cluster, rec_offset);
-			if (data_offset - rec_offset < 0 ||
-			    data_offset - rec_offset >= HAMMER_RECORD_SIZE) {
+			if (data_offset && (data_offset - rec_offset < 0 ||
+			    data_offset - rec_offset >= HAMMER_RECORD_SIZE)) {
 				hammer_free_data(cluster, data_offset,data_len);
 			}
 		}

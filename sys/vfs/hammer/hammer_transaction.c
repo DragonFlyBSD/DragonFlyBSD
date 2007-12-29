@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.3 2007/11/20 07:16:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.4 2007/12/29 09:01:27 dillon Exp $
  */
 
 #include "hammer.h"
@@ -52,7 +52,6 @@ void
 hammer_abort_transaction(struct hammer_transaction *trans)
 {
 	hammer_rel_volume(trans->rootvol, 0);
-	KKASSERT(0);
 }
 
 void

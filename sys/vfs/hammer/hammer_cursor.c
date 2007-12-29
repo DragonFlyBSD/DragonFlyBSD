@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.5 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.6 2007/12/29 09:01:27 dillon Exp $
  */
 
 /*
@@ -67,6 +67,27 @@ hammer_init_cursor_hmp(hammer_cursor_t cursor, hammer_mount_t hmp)
 	}
 	if (error == 0)
 		error = hammer_load_cursor_parent(cursor);
+	return(error);
+}
+
+/*
+ * Initialize a fresh cursor at the root of the specified cluster and
+ * limit operations to within the cluster.
+ */
+int
+hammer_init_cursor_cluster(hammer_cursor_t cursor, hammer_cluster_t cluster)
+{
+	int error;
+
+	bzero(cursor, sizeof(*cursor));
+	cursor->flags |= HAMMER_CURSOR_INCLUSTER;
+	cursor->node = hammer_get_node(cluster,
+				       cluster->ondisk->clu_btree_root,
+				       &error);
+	if (error == 0) {
+		hammer_lock_ex(&cursor->node->lock);
+		error = hammer_load_cursor_parent(cursor);
+	}
 	return(error);
 }
 
@@ -183,6 +204,7 @@ hammer_get_parent_node(hammer_node_t node, int *errorp)
 		/*
 		 * At root of root cluster, there is no parent.
 		 */
+		KKASSERT(cluster->ondisk->clu_btree_parent_vol_no == -1);
 		parent = NULL;
 		*errorp = 0;
 	}
@@ -194,6 +216,10 @@ hammer_get_parent_node(hammer_node_t node, int *errorp)
  * cases.  (1) The parent is in the current cluster.  (2) We are at the
  * root of the cluster and the parent is in another cluster.  (3) We are at
  * the root of the root cluster.
+ *
+ * If HAMMER_CURSOR_INCLUSTER is set and we are at the root of the cluster,
+ * we do not access the parent cluster at all and make the cursor look like
+ * its at the root.
  */
 static
 int
@@ -206,7 +232,9 @@ hammer_load_cursor_parent(hammer_cursor_t cursor)
 
 	if (cursor->node->ondisk->parent) {
 		error = hammer_load_cursor_parent_local(cursor);
-	} else if (cluster->ondisk->clu_btree_parent_vol_no >= 0) {
+	} else if (cluster->ondisk->clu_btree_parent_vol_no >= 0 &&
+		   ((cursor->flags & HAMMER_CURSOR_INCLUSTER) == 0)
+	) {
 		error = hammer_load_cursor_parent_cluster(cursor);
 	} else {
 		cursor->parent = NULL;
@@ -261,7 +289,8 @@ int
 hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 {
 	hammer_cluster_ondisk_t ondisk;
-	hammer_cluster_t cluster;
+	hammer_cluster_t pcluster;
+	hammer_cluster_t ccluster;
 	hammer_volume_t volume;
 	hammer_node_t node;
 	hammer_node_t parent;
@@ -272,23 +301,25 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	int i;
 
 	node = cursor->node;
-	ondisk = node->cluster->ondisk;
+	ccluster = node->cluster;
+	ondisk = ccluster->ondisk;
 	vol_no = ondisk->clu_btree_parent_vol_no;
 	clu_no = ondisk->clu_btree_parent_clu_no;
 
 	/*
 	 * Acquire the node from (volume, cluster, offset)
 	 */
-	volume = hammer_get_volume(node->cluster->volume->hmp, vol_no, &error);
+	volume = hammer_get_volume(ccluster->volume->hmp, vol_no, &error);
 	if (error)
 		return (error);
-	cluster = hammer_get_cluster(volume, clu_no, &error, 0);
+	pcluster = hammer_get_cluster(volume, clu_no, &error, 0);
 	hammer_rel_volume(volume, 0);
 	if (error)
 		return (error);
-	parent = hammer_get_node(cluster, ondisk->clu_btree_parent_offset,
+	parent = hammer_get_node(pcluster, ondisk->clu_btree_parent_offset,
 				 &error);
-	hammer_rel_cluster(cluster, 0);
+	hammer_rel_cluster(pcluster, 0);
+	kprintf("parent %p clu_no %d\n", parent, clu_no);
 	if (error)
 		return (error);
 
@@ -298,8 +329,11 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	elm = NULL;
 	for (i = 0; i < parent->ondisk->count; ++i) {
 		elm = &parent->ondisk->elms[i];
+		if (elm->internal.subtree_type == HAMMER_BTREE_TYPE_CLUSTER)
+			kprintf("SUBTEST CLU %d\n", elm->internal.subtree_clu_no);
 		if (elm->internal.rec_offset != 0 &&
-		    elm->internal.subtree_cluid == clu_no) {
+		    elm->internal.subtree_type == HAMMER_BTREE_TYPE_CLUSTER &&
+		    elm->internal.subtree_clu_no == cursor->node->cluster->clu_no) {
 			break;
 		}
 	}
@@ -310,9 +344,9 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	cursor->right_bound = &elm[1].internal.base;
 
 	KKASSERT(hammer_btree_cmp(cursor->left_bound,
-		 &parent->cluster->ondisk->clu_btree_beg) == 0);
+		 &ccluster->ondisk->clu_btree_beg) == 0);
 	KKASSERT(hammer_btree_cmp(cursor->right_bound,
-		 &parent->cluster->ondisk->clu_btree_end) == 0);
+		 &ccluster->ondisk->clu_btree_end) == 0);
 
 	if (hammer_lock_ex_try(&parent->lock) != 0) {
 		hammer_unlock(&cursor->node->lock);
@@ -366,6 +400,10 @@ hammer_cursor_up(hammer_cursor_t cursor, int nonblock)
 	cursor->parent_index = 0;
 
 	if (cursor->node == NULL) {
+		error = ENOENT;
+	} else if ((cursor->flags & HAMMER_CURSOR_INCLUSTER) &&
+		   cursor->node->ondisk->parent == 0
+	) {
 		error = ENOENT;
 	} else {
 		error = hammer_load_cursor_parent(cursor);
@@ -464,10 +502,14 @@ hammer_cursor_down(hammer_cursor_t cursor)
 	/*
 	 * Ok, push down into elm.  If rec_offset is non-zero this is
 	 * an inter-cluster push, otherwise it is a intra-cluster push.
+	 *
+	 * Cursoring down through a cluster transition when the INCLUSTER
+	 * flag is set is not legal.
 	 */
 	if (elm->internal.rec_offset) {
-		vol_no = elm->internal.subtree_volno;
-		clu_no = elm->internal.subtree_cluid;
+		KKASSERT((cursor->flags & HAMMER_CURSOR_INCLUSTER) == 0);
+		vol_no = elm->internal.subtree_vol_no;
+		clu_no = elm->internal.subtree_clu_no;
 		volume = hammer_get_volume(node->cluster->volume->hmp,
 					   vol_no, &error);
 		if (error)
@@ -481,9 +523,14 @@ hammer_cursor_down(hammer_cursor_t cursor)
 				       &error);
 		hammer_rel_cluster(cluster, 0);
 	} else {
+		KKASSERT(elm->internal.subtree_offset != 0);
 		node = hammer_get_node(node->cluster,
 				       elm->internal.subtree_offset,
 				       &error);
+		if (error == 0) {
+			KKASSERT(elm->internal.subtree_type == node->ondisk->type);
+			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
+		}
 	}
 	if (error == 0) {
 		hammer_lock_ex(&node->lock);

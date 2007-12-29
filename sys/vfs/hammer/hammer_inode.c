@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.11 2007/12/14 08:05:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.12 2007/12/29 09:01:27 dillon Exp $
  */
 
 #include "hammer.h"
@@ -274,7 +274,6 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->ino_rec.ino_size = 0;
 	ip->ino_rec.ino_nlinks = 0;
 	/* XXX */
-	kprintf("rootvol %p ondisk %p\n", hmp->rootvol, hmp->rootvol->ondisk);
 	ip->ino_rec.base.rec_id = hammer_alloc_recid(trans);
 	KKASSERT(ip->ino_rec.base.rec_id != 0);
 	ip->ino_rec.base.base.obj_id = ip->obj_id;
@@ -321,6 +320,7 @@ int
 hammer_update_inode(hammer_inode_t ip)
 {
 	struct hammer_cursor cursor;
+	struct hammer_cursor *spike = NULL;
 	hammer_record_t record;
 	int error;
 
@@ -335,6 +335,7 @@ hammer_update_inode(hammer_inode_t ip)
 	 * XXX Update the inode record and data in-place if the retention
 	 * policy allows it.
 	 */
+retry:
 	error = 0;
 
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
@@ -373,17 +374,26 @@ hammer_update_inode(hammer_inode_t ip)
 		record->rec.inode.base.base.create_tid = ip->last_tid;
 		record->rec.inode.base.data_len = sizeof(ip->ino_data);
 		record->data = (void *)&ip->ino_data;
-		error = hammer_ip_sync_record(record);
-		hammer_free_mem_record(record);
-		ip->flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
-			       HAMMER_INODE_DELONDISK);
-		if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
-			++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
-			hammer_modify_volume(ip->hmp->rootvol);
-			ip->flags |= HAMMER_INODE_ONDISK;
+		error = hammer_ip_sync_record(record, &spike);
+		hammer_drop_mem_record(record, 1);
+		if (error == ENOSPC) {
+			error = hammer_spike(&spike);
+			if (error == 0)
+				goto retry;
+		}
+		KKASSERT(spike == NULL);
+		if (error == 0) {
+			ip->flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
+				       HAMMER_INODE_DELONDISK);
+			if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
+				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+				hammer_modify_volume(ip->hmp->rootvol);
+				ip->flags |= HAMMER_INODE_ONDISK;
+			}
 		}
 	}
-	ip->flags &= ~HAMMER_INODE_TID;
+	if (error == 0)
+		ip->flags &= ~HAMMER_INODE_TID;
 	return(error);
 }
 
@@ -448,22 +458,36 @@ hammer_modify_inode(struct hammer_transaction *trans,
  * overriding any intermediate TIDs that were used for records.  Note
  * that the dirty buffer cache buffers do not have any knowledge of
  * the transaction id they were modified under.
+ *
+ * If we can't sync due to a cluster becoming full the spike structure
+ * will be filled in and ENOSPC returned.  We must return -ENOSPC to
+ * terminate the RB_SCAN.
  */
 static int
-hammer_sync_inode_callback(hammer_record_t rec, void *data __unused)
+hammer_sync_inode_callback(hammer_record_t rec, void *data)
 {
+	struct hammer_cursor **spike = data;
 	int error;
 
-	error = 0;
+	hammer_ref(&rec->lock);
+	hammer_lock_ex(&rec->lock);
 	if ((rec->flags & HAMMER_RECF_DELETED) == 0)
-		error = hammer_ip_sync_record(rec);
+		error = hammer_ip_sync_record(rec, spike);
+	else
+		error = 0;
+
+	if (error == ENOSPC) {
+		hammer_drop_mem_record(rec, 0);
+		return(-error);
+	}
 
 	if (error) {
 		kprintf("hammer_sync_inode_callback: sync failed rec %p\n",
 			rec);
-		return(-1);
+		hammer_drop_mem_record(rec, 0);
+		return(-error);
 	}
-	hammer_free_mem_record(rec);
+	hammer_drop_mem_record(rec, 1);	/* ref & lock eaten by call */
 	return(0);
 }
 
@@ -474,8 +498,8 @@ int
 hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 {
 	struct hammer_transaction trans;
+	struct hammer_cursor *spike = NULL;
 	int error;
-	int r;
 
 	hammer_lock_ex(&ip->lock);
 	hammer_start_transaction(&trans, ip->hmp);
@@ -492,12 +516,17 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	 * force the inode update later on to use our transaction id or
 	 * the delete_tid of the inode may be less then the create_tid of
 	 * the inode update.  XXX shouldn't happen but don't take the chance.
+	 *
+	 * NOTE: The call to hammer_ip_delete_range() cannot return ENOSPC
+	 * so we can pass a NULL spike structure, because no partial data
+	 * deletion can occur (yet).
 	 */
 	if (ip->ino_rec.ino_nlinks == 0 && handle_delete) {
 		if (ip->vp)
 			vtruncbuf(ip->vp, 0, HAMMER_BUFSIZE);
 		error = hammer_ip_delete_range(&trans, ip,
-					       HAMMER_MIN_KEY, HAMMER_MAX_KEY);
+					       HAMMER_MIN_KEY, HAMMER_MAX_KEY,
+					       NULL);
 		KKASSERT(RB_EMPTY(&ip->rec_tree));
 		ip->flags &= ~HAMMER_INODE_TID;
 		ip->ino_rec.base.base.delete_tid = trans.tid;
@@ -518,11 +547,18 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	/*
 	 * Now sync related records
 	 */
-	if (error == 0) {
-		r = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
-			    hammer_sync_inode_callback, NULL);
-		if (r < 0)
-			error = EIO;
+	for (;;) {
+		error = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
+				hammer_sync_inode_callback, &spike);
+		KKASSERT(error <= 0);
+		if (error < 0)
+			error = -error;
+		if (error == ENOSPC) {
+			error = hammer_spike(&spike);
+			if (error == 0)
+				continue;
+		}
+		break;
 	}
 
 	/*
@@ -541,8 +577,12 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 		 * flushed to the disk in the first place.
 		 */
 		ip->flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY);
-		while (RB_ROOT(&ip->rec_tree))
-			hammer_free_mem_record(RB_ROOT(&ip->rec_tree));
+		while (RB_ROOT(&ip->rec_tree)) {
+			hammer_record_t rec = RB_ROOT(&ip->rec_tree);
+			hammer_ref(&rec->lock);
+			hammer_lock_ex(&rec->lock);
+			hammer_drop_mem_record(rec, 1);
+		}
 		break;
 	case HAMMER_INODE_ONDISK:
 		/*

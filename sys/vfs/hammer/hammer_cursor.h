@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.4 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.5 2007/12/29 09:01:27 dillon Exp $
  */
 
 /*
@@ -100,13 +100,17 @@ typedef struct hammer_cursor *hammer_cursor_t;
 
 #define HAMMER_CURSOR_GET_RECORD	0x0001
 #define HAMMER_CURSOR_GET_DATA		0x0002
-#define HAMMER_CURSOR_CLUSTER_TAG	0x0004	/* stop at the cluster tag */
+#define HAMMER_CURSOR_INCLUSTER		0x0004	/* stay in the cluster */
 #define HAMMER_CURSOR_INSERT		0x0008	/* adjust for insert */
 #define HAMMER_CURSOR_DELETE		0x0010	/* adjust for delete */
+#define HAMMER_CURSOR_END_INCLUSIVE	0x0020	/* key_end is inclusive */
+#define HAMMER_CURSOR_END_EXCLUSIVE	0x0040	/* key_end is exclusive (def) */
+#define HAMMER_CURSOR_ALLHISTORY	0x0080	/* return entire history */
 
 #define HAMMER_CURSOR_ATEDISK		0x0100
 #define HAMMER_CURSOR_ATEMEM		0x0200
 #define HAMMER_CURSOR_DISKEOF		0x0400
 #define HAMMER_CURSOR_MEMEOF		0x0800
 #define HAMMER_CURSOR_DELBTREE		0x1000	/* ip_delete from b-tree */
+#define HAMMER_CURSOR_DATA_EMBEDDED	0x2000	/* embedded flag on extract */
 

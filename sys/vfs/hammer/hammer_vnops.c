@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.9 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.10 2007/12/29 09:01:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -535,6 +535,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 
 	cursor.key_end = cursor.key_beg;
 	cursor.key_end.key |= 0xFFFFFFFFULL;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
 	/*
 	 * Scan all matching records (the chain), locate the one matching
@@ -829,6 +830,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 
 	cursor.key_end = cursor.key_beg;
 	cursor.key_end.key = HAMMER_MAX_KEY;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
 	if (ap->a_ncookies) {
 		ncookies = uio->uio_resid / 16 + 1;
@@ -965,6 +967,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 
 	cursor.key_end = cursor.key_beg;
 	cursor.key_end.key |= 0xFFFFFFFFULL;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
 	/*
 	 * Scan all matching records (the chain), locate the one matching
@@ -1025,6 +1028,7 @@ int
 hammer_vop_setattr(struct vop_setattr_args *ap)
 {
 	struct hammer_transaction trans;
+	struct hammer_cursor *spike = NULL;
 	struct vattr *vap;
 	struct hammer_inode *ip;
 	int modflags;
@@ -1078,7 +1082,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			modflags |= HAMMER_INODE_DDIRTY;
 		}
 	}
-	if (vap->va_size != VNOVAL && ip->ino_rec.ino_size != vap->va_size) {
+	while (vap->va_size != VNOVAL && ip->ino_rec.ino_size != vap->va_size) {
 		switch(ap->a_vp->v_type) {
 		case VREG:
 			if (vap->va_size < ip->ino_rec.ino_size) {
@@ -1091,14 +1095,16 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 					~(int64_t)HAMMER_BUFMASK;
 			error = hammer_ip_delete_range(&trans, ip,
 						    aligned_size,
-						    0x7FFFFFFFFFFFFFFFLL);
+						    0x7FFFFFFFFFFFFFFFLL,
+						    &spike);
 			ip->ino_rec.ino_size = vap->va_size;
 			modflags |= HAMMER_INODE_RDIRTY;
 			break;
 		case VDATABASE:
 			error = hammer_ip_delete_range(&trans, ip,
 						    vap->va_size,
-						    0x7FFFFFFFFFFFFFFFLL);
+						    0x7FFFFFFFFFFFFFFFLL,
+						    &spike);
 			ip->ino_rec.ino_size = vap->va_size;
 			modflags |= HAMMER_INODE_RDIRTY;
 			break;
@@ -1106,6 +1112,13 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			error = EINVAL;
 			goto done;
 		}
+		if (error == ENOSPC) {
+			error = hammer_spike(&spike);
+			if (error == 0)
+				continue;
+		}
+		KKASSERT(spike == NULL);
+		break;
 	}
 	if (vap->va_atime.tv_sec != VNOVAL) {
 		ip->ino_rec.ino_atime =
@@ -1250,6 +1263,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		else
 			cursor.key_end.key = ran_end + MAXPHYS + 1;
 	}
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
 	error = hammer_ip_first(&cursor, ip);
 	boff = 0;
@@ -1325,6 +1339,7 @@ int
 hammer_vop_strategy_write(struct vop_strategy_args *ap)
 {
 	struct hammer_transaction trans;
+	struct hammer_cursor *spike = NULL;
 	hammer_inode_t ip;
 	struct bio *bio;
 	struct buf *bp;
@@ -1335,16 +1350,19 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	ip = ap->a_vp->v_data;
 	hammer_start_transaction(&trans, ip->hmp);
 
+retry:
 	/*
 	 * Delete any records overlapping our range.  This function will
-	 * properly
+	 * (eventually) properly truncate partial overlaps.
 	 */
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
 		error = hammer_ip_delete_range(&trans, ip, bio->bio_offset,
-					       bio->bio_offset);
+					       bio->bio_offset, &spike);
 	} else {
 		error = hammer_ip_delete_range(&trans, ip, bio->bio_offset,
-				       bio->bio_offset + bp->b_bufsize - 1);
+					       bio->bio_offset +
+						bp->b_bufsize - 1,
+					       &spike);
 	}
 
 	/*
@@ -1352,8 +1370,20 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	 */
 	if (error == 0) {
 		error = hammer_ip_sync_data(&trans, ip, bio->bio_offset,
-					    bp->b_data, bp->b_bufsize);
+					    bp->b_data, bp->b_bufsize,
+					    &spike);
 	}
+
+	/*
+	 * If we ran out of space the spike structure will be filled in
+	 * and we must call hammer_spike with it, then retry.
+	 */
+	if (error == ENOSPC) {
+		error = hammer_spike(&spike);
+		if (error == 0)
+			goto retry;
+	}
+	KKASSERT(spike == NULL);
 
 	/*
 	 * If an error occured abort the transaction
@@ -1408,6 +1438,7 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 
 	cursor.key_end = cursor.key_beg;
 	cursor.key_end.key |= 0xFFFFFFFFULL;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
 	hammer_start_transaction(&trans, dip->hmp);
 

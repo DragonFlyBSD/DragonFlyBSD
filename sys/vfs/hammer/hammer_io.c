@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.6 2007/12/14 08:05:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.7 2007/12/29 09:01:27 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -267,12 +267,12 @@ hammer_io_release(struct hammer_io *io, int flush)
 		 */
 		if (io->released)
 			regetblk(bp);
+		io->released = 1;
 		bp->b_flags &= ~B_LOCKED;
 		if (io->modified || (bp->b_flags & B_DELWRI))
 			bawrite(bp);
 		else
 			bqrelse(bp);
-		io->released = 1;
 		hammer_io_disassociate(iou);
 	}
 }
@@ -312,8 +312,14 @@ hammer_io_flush(struct hammer_io *io, struct hammer_sync_info *info)
 			io->modified = 0;
 			bawrite(bp);
 		} else {
-			kprintf("can't flush, %d refs\n", io->lock.refs);
-			/* structure is in-use, don't race the write */
+			/*
+			 * structure is in-use, don't race the write, but
+			 * also set B_LOCKED so we know something tried to
+			 * flush it.
+			 */
+			kprintf("can't flush bp %p, %d refs - delaying\n",
+				bp, io->lock.refs);
+			bp->b_flags |= B_LOCKED;
 			bqrelse(bp);
 		}
 	}

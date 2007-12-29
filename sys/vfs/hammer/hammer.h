@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.13 2007/12/14 08:05:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.14 2007/12/29 09:01:27 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -255,6 +255,7 @@ struct hammer_volume {
 	struct hammer_alist_live alist;
 	int32_t	vol_no;
 	int32_t	vol_clsize;
+	int32_t clu_iterator;	/* cluster allocation iterator */
 	int64_t nblocks;	/* note: special calculation for statfs */
 	int64_t cluster_base;	/* base offset of cluster 0 */
 	char	*vol_name;
@@ -382,10 +383,11 @@ struct hammer_mount {
 	struct hammer_vol_rb_tree rb_vols_root;
 	struct hammer_volume *rootvol;
 	struct hammer_cluster *rootcl;
-	char *zbuf;	/* HAMMER_BUFSIZE bytes worth of all-zeros */
+	char	*zbuf;	/* HAMMER_BUFSIZE bytes worth of all-zeros */
 	int	hflags;
 	int	ronly;
 	int	nvolumes;
+	int	volume_iterator;
 	uuid_t	fsid;
 	udev_t	fsid_udev;
 	hammer_tid_t asof;
@@ -444,7 +446,7 @@ int	hammer_sync_buffer(hammer_buffer_t buffer, void *data);
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip);
 void	hammer_rel_mem_record(struct hammer_record **recordp);
-void	hammer_free_mem_record(hammer_record_t record);
+void	hammer_drop_mem_record(hammer_record_t record, int delete);
 
 int	hammer_cursor_up(hammer_cursor_t cursor, int nonblock);
 int	hammer_cursor_toroot(hammer_cursor_t cursor);
@@ -472,18 +474,20 @@ u_int8_t hammer_get_obj_type(enum vtype vtype);
 int64_t hammer_directory_namekey(void *name, int len);
 
 int	hammer_init_cursor_hmp(hammer_cursor_t cursor, hammer_mount_t hmp);
+int	hammer_init_cursor_cluster(hammer_cursor_t cursor, hammer_cluster_t cluster);
 int	hammer_init_cursor_ip(hammer_cursor_t cursor, hammer_inode_t ip);
 
 void	hammer_done_cursor(hammer_cursor_t cursor);
 void	hammer_mem_done(hammer_cursor_t cursor);
 
 int	hammer_btree_lookup(hammer_cursor_t cursor);
+int	hammer_btree_first(hammer_cursor_t cursor);
 int	hammer_btree_extract(hammer_cursor_t cursor, int flags);
 int	hammer_btree_iterate(hammer_cursor_t cursor);
 int	hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm);
 int	hammer_btree_delete(hammer_cursor_t cursor);
 int	hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
-int	hammer_btree_range_cmp(hammer_cursor_t cursor, hammer_base_elm_t key2);
+int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
 
@@ -527,6 +531,11 @@ void hammer_dup_buffer(struct hammer_buffer **bufferp,
 			struct hammer_buffer *buffer);
 void hammer_dup_cluster(struct hammer_cluster **clusterp,
 			struct hammer_cluster *cluster);
+hammer_cluster_t hammer_alloc_cluster(hammer_mount_t hmp,
+			hammer_cluster_t cluster_hint, int *errorp);
+void hammer_init_cluster(hammer_cluster_t cluster,
+			hammer_base_elm_t left_bound,
+			hammer_base_elm_t right_bound);
 hammer_node_t hammer_alloc_btree(struct hammer_cluster *cluster, int *errorp);
 void *hammer_alloc_data(struct hammer_cluster *cluster, int32_t bytes,
 			int *errorp, struct hammer_buffer **bufferp);
@@ -536,6 +545,7 @@ void hammer_free_data_ptr(struct hammer_buffer *buffer,
 			void *data, int bytes);
 void hammer_free_record_ptr(struct hammer_buffer *buffer,
 			union hammer_record_ondisk *rec);
+void hammer_free_cluster(hammer_cluster_t cluster);
 void hammer_free_btree(struct hammer_cluster *cluster, int32_t bclu_offset);
 void hammer_free_data(struct hammer_cluster *cluster, int32_t bclu_offset,
 			int32_t bytes);
@@ -568,11 +578,17 @@ int  hammer_ip_del_directory(struct hammer_transaction *trans,
 			hammer_cursor_t cursor, hammer_inode_t dip,
 			hammer_inode_t ip);
 int  hammer_ip_delete_range(struct hammer_transaction *trans,
-			hammer_inode_t ip, int64_t ran_beg, int64_t ran_end);
+			hammer_inode_t ip, int64_t ran_beg, int64_t ran_end,
+			struct hammer_cursor **spikep);
 int  hammer_ip_sync_data(struct hammer_transaction *trans,
 			hammer_inode_t ip, int64_t offset,
-			void *data, int bytes);
-int  hammer_ip_sync_record(hammer_record_t rec);
+			void *data, int bytes, struct hammer_cursor **spikep);
+int  hammer_ip_sync_record(hammer_record_t rec, struct hammer_cursor **spikep);
+int  hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t rec,
+			void *data, int cursor_flags);
+
+void hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep);
+int hammer_spike(struct hammer_cursor **spikep);
 
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io);
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);

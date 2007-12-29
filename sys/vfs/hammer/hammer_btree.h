@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.6 2007/12/14 08:05:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.7 2007/12/29 09:01:27 dillon Exp $
  */
 
 /*
@@ -128,11 +128,11 @@ struct hammer_btree_internal_elm {
 	struct hammer_base_elm base;
 	int32_t rec_offset;	/* 0 indicates internal reference */
 	int32_t subtree_offset;	/* offset or cluster id */
-	int32_t subtree_volno;	/* unused or volume number */
+	int32_t subtree_vol_no;	/* unused or volume number */
 	int32_t subtree_count;	/* hint: can be too small, but not too big */
 };
 
-#define subtree_cluid	subtree_offset
+#define subtree_clu_no	subtree_offset
 #define subtree_type	base.subtree_type
 
 /*
