@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.144 2007/12/26 14:02:36 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.145 2007/12/29 13:40:28 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1635,8 +1635,6 @@ device		asc0	at isa? port IO_ASC1 drq 3 irq 10
 device		spic0	at isa? irq 0 port 0x10a0
 device		stl0	at isa? port 0x2a0 irq 10
 device		stli0	at isa? port 0x2a0 iomem 0xcc000 flags 23 iosiz 0x1000
-# HOT1 Xilinx 6200 card (http://www.vcc.com/)
-device		xrpu
 # nullmodem terminal driver
 device		nmdm
 

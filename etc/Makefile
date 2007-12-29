@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.199 2007/12/16 19:33:08 thomas Exp $
+# $DragonFly: src/etc/Makefile,v 1.200 2007/12/29 13:40:27 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -547,6 +547,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/share/games/fortune/freebsd-tips.dat
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/rc.{atm,early,network,serial}.8.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/i386/rc.i386.8.gz"
+	rm -f ${DESTDIR}/usr/include/sys/xrpuio.h
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
