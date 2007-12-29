@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/periodic/daily/110.clean-tmps,v 1.6.2.4 2002/10/13 19:59:01 joerg Exp $
-# $DragonFly: src/etc/periodic/daily/110.clean-tmps,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: src/etc/periodic/daily/110.clean-tmps,v 1.13 2004/02/28 04:58:40 ache Exp $
+# $DragonFly: src/etc/periodic/daily/110.clean-tmps,v 1.3 2007/12/29 21:44:44 matthias Exp $
 #
 # Perform temporary directory cleaning so that long-lived systems
 # don't end up with excessively old files there.
@@ -29,9 +29,13 @@ case "$daily_clean_tmps_enable" in
 	    set -f noglob
 	    args="-atime +$daily_clean_tmps_days -mtime +$daily_clean_tmps_days"
 	    args="${args} -ctime +$daily_clean_tmps_days"
-	    [ -n "$daily_clean_tmps_ignore" ] &&
+	    dargs="-empty -mtime +$daily_clean_tmps_days"
+	    [ -n "$daily_clean_tmps_ignore" ] && {
 		args="$args "`echo " ${daily_clean_tmps_ignore% }" |
 		    sed 's/[ 	][ 	]*/ ! -name /g'`
+		dargs="$dargs "`echo " ${daily_clean_tmps_ignore% }" |
+		    sed 's/[ 	][ 	]*/ ! -name /g'`
+	    }
 	    case "$daily_clean_tmps_verbose" in
 		[Yy][Ee][Ss])
 		    print=-print;;
@@ -43,8 +47,7 @@ case "$daily_clean_tmps_enable" in
 		do
 		    [ ."${dir#/}" != ."$dir" -a -d $dir ] && cd $dir && {
 			find -d . -type f $args -delete $print
-			find -d . ! -name . -type d -empty -mtime \
-			    +$daily_clean_tmps_days -delete $print
+			find -d . ! -name . -type d $dargs -delete $print
 		    } | sed "s,^\\.,  $dir,"
 		done | tee /dev/stderr | wc -l)
 	    [ -z "$print" ] && rc=0

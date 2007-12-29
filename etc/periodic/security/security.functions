@@ -24,8 +24,8 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/etc/periodic/security/security.functions,v 1.1.2.2 2002/11/19 19:00:39 thomas Exp $
-# $DragonFly: src/etc/periodic/security/security.functions,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: src/etc/periodic/security/security.functions,v 1.5 2005/08/22 09:33:36 cperciva Exp $
+# $DragonFly: src/etc/periodic/security/security.functions,v 1.3 2007/12/29 21:44:44 matthias Exp $
 #
 
 #
@@ -44,7 +44,7 @@ check_diff() {
   rc=0
   if [ "$1" = "new_only" ]; then
     shift
-    filter="grep '^>'"
+    filter="grep '^[>+]'"
   else
     filter="cat"
   fi
@@ -53,7 +53,7 @@ check_diff() {
   msg="$1"; shift
 
   if [ "${tmpf}" = "-" ]; then
-    tmpf=`mktemp ${TMPDIR:-/tmp}/security.XXXXXXXXXX`
+    tmpf=`mktemp -t security`
     cat > ${tmpf}
   fi
 
@@ -68,7 +68,8 @@ check_diff() {
     [ $rc -lt 1 ] && rc=1
     echo ""
     echo "${msg}"
-    diff -b ${LOG}/${label}.today ${tmpf} | eval "${filter}"
+    diff ${daily_status_security_diff_flags} ${LOG}/${label}.today \
+	${tmpf} | eval "${filter}"
     mv ${LOG}/${label}.today ${LOG}/${label}.yesterday || rc=3
     mv ${tmpf} ${LOG}/${label}.today || rc=3
   fi
