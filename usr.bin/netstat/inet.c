@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.20 2007/08/16 20:03:58 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.21 2007/12/29 22:15:06 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -203,6 +203,7 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 		return;
 	}
 	if (!aflag && ( 
+		(proto == IPPROTO_TCP && tp->t_state == TCPS_LISTEN) ||
 		(af == AF_INET && inet_lnaof(inp->inp_laddr) == INADDR_ANY)
 #ifdef INET6
 	    || (af == AF_INET6 && IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
