@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.13 2007/12/30 00:47:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.14 2007/12/30 08:49:20 dillon Exp $
  */
 
 #include "hammer.h"
@@ -233,8 +233,9 @@ loop:
 	if (*errorp == 0) {
 		ip->ino_rec = cursor.record->inode;
 		ip->ino_data = cursor.data->inode;
+	} else if (cursor.node) {
+		hammer_cache_node(cursor.node, &ip->cache);
 	}
-	hammer_cache_node(cursor.node, &ip->cache);
 	hammer_done_cursor(&cursor);
 
 	/*
@@ -413,8 +414,9 @@ retry:
 			ip->flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
 				       HAMMER_INODE_DELONDISK);
 			if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
-				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 				hammer_modify_volume(ip->hmp->rootvol);
+				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+				hammer_modify_volume_done(ip->hmp->rootvol);
 				ip->flags |= HAMMER_INODE_ONDISK;
 			}
 		}
@@ -509,8 +511,8 @@ hammer_sync_inode_callback(hammer_record_t rec, void *data)
 	}
 
 	if (error) {
-		kprintf("hammer_sync_inode_callback: sync failed rec %p\n",
-			rec);
+		kprintf("hammer_sync_inode_callback: sync failed rec %p, error %d\n",
+			rec, error);
 		hammer_drop_mem_record(rec, 0);
 		return(-error);
 	}
@@ -552,14 +554,14 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 		if (ip->vp)
 			vtruncbuf(ip->vp, 0, HAMMER_BUFSIZE);
 		error = hammer_ip_delete_range_all(&trans, ip);
-		kprintf("delete_range_all error %d\n", error);
 		KKASSERT(RB_EMPTY(&ip->rec_tree));
 		ip->flags &= ~HAMMER_INODE_TID;
 		ip->ino_rec.base.base.delete_tid = trans.tid;
 		hammer_modify_inode(&trans, ip,
 				    HAMMER_INODE_DELETED | HAMMER_INODE_TID);
-		--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 		hammer_modify_volume(ip->hmp->rootvol);
+		--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+		hammer_modify_volume_done(ip->hmp->rootvol);
 	}
 
 	/*

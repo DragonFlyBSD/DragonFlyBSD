@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.7 2007/12/30 00:47:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.8 2007/12/30 08:49:20 dillon Exp $
  */
 
 /*
@@ -67,6 +67,7 @@ hammer_init_cursor_hmp(hammer_cursor_t cursor, hammer_mount_t hmp)
 	}
 	if (error == 0)
 		error = hammer_load_cursor_parent(cursor);
+	KKASSERT(error == 0);
 	return(error);
 }
 
@@ -88,6 +89,7 @@ hammer_init_cursor_cluster(hammer_cursor_t cursor, hammer_cluster_t cluster)
 		hammer_lock_ex(&cursor->node->lock);
 		error = hammer_load_cursor_parent(cursor);
 	}
+	KKASSERT(error == 0);
 	return(error);
 }
 
@@ -116,6 +118,7 @@ hammer_init_cursor_ip(hammer_cursor_t cursor, hammer_inode_t ip)
 	} else {
 		error = hammer_init_cursor_hmp(cursor, ip->hmp);
 	}
+	KKASSERT(error == 0);
 	return(error);
 }
 
@@ -454,6 +457,7 @@ hammer_cursor_toroot(hammer_cursor_t cursor)
 	cursor->node = hammer_get_node(cluster, cluster->ondisk->clu_btree_root,
 				       &error);
 	cursor->index = 0;
+	hammer_lock_ex(&cursor->node->lock);
 	hammer_rel_cluster(cluster, 0);
 	if (error == 0)
 		error = hammer_load_cursor_parent(cursor);
@@ -511,9 +515,11 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		clu_no = elm->internal.subtree_clu_no;
 		volume = hammer_get_volume(node->cluster->volume->hmp,
 					   vol_no, &error);
+		KKASSERT(error != EINVAL);
 		if (error)
 			return(error);
 		cluster = hammer_get_cluster(volume, clu_no, &error, 0);
+		KKASSERT(error != EINVAL);
 		hammer_rel_volume(volume, 0);
 		if (error)
 			return(error);

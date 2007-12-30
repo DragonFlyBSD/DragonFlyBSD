@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.15 2007/12/30 00:47:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.16 2007/12/30 08:49:20 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -87,8 +87,9 @@ typedef struct hammer_transaction *hammer_transaction_t;
  * HAMMER locks
  */
 struct hammer_lock {
-	int	refs;
-	int	lockcount;
+	int	refs;		/* active references delay writes */
+	int	modifying;	/* indicates buffer being modified */
+	int	lockcount;	/* lock count for exclusive/shared access */
 	int	wanted;
 	struct thread *locktd;
 };
@@ -97,6 +98,12 @@ static __inline int
 hammer_islocked(struct hammer_lock *lock)
 {
 	return(lock->lockcount != 0);
+}
+
+static __inline int
+hammer_isactive(struct hammer_lock *lock)
+{
+	return(lock->refs != 0);
 }
 
 static __inline int
@@ -163,6 +170,10 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_TID	0x0040	/* update in-memory last_tid */
 #define HAMMER_INODE_DELETED	0x0080	/* inode ready for deletion */
 #define HAMMER_INODE_DELONDISK	0x0100	/* delete synchronized to disk */
+
+#define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
+				 HAMMER_INODE_ITIMES|HAMMER_INODE_FLUSH|  \
+				 HAMMER_INODE_DELETED)
 
 #define HAMMER_MAX_INODE_CURSORS	4
 
@@ -602,6 +613,8 @@ void hammer_io_release(struct hammer_io *io, int flush);
 int hammer_io_checkflush(hammer_io_t io);
 void hammer_io_notify_cluster(hammer_cluster_t cluster);
 void hammer_io_flush(struct hammer_io *io, struct hammer_sync_info *info);
+void hammer_io_intend_modify(struct hammer_io *io);
+void hammer_io_modify_done(struct hammer_io *io);
 
 #endif
 
@@ -612,18 +625,45 @@ static __inline void
 hammer_modify_volume(struct hammer_volume *volume)
 {
 	volume->io.modified = 1;
+	++volume->io.lock.modifying;
+	if (volume->io.released)
+		hammer_io_intend_modify(&volume->io);
+}
+
+static __inline void
+hammer_modify_volume_done(struct hammer_volume *volume)
+{
+	hammer_io_modify_done(&volume->io);
 }
 
 static __inline void
 hammer_modify_supercl(struct hammer_supercl *supercl)
 {
 	supercl->io.modified = 1;
+	++supercl->io.lock.modifying;
+	if (supercl->io.released)
+		hammer_io_intend_modify(&supercl->io);
+}
+
+static __inline void
+hammer_modify_supercl_done(struct hammer_supercl *supercl)
+{
+	hammer_io_modify_done(&supercl->io);
 }
 
 static __inline void
 hammer_modify_cluster(struct hammer_cluster *cluster)
 {
 	cluster->io.modified = 1;
+	++cluster->io.lock.modifying;
+	if (cluster->io.released)
+		hammer_io_intend_modify(&cluster->io);
+}
+
+static __inline void
+hammer_modify_cluster_done(struct hammer_cluster *cluster)
+{
+	hammer_io_modify_done(&cluster->io);
 }
 
 static __inline void
@@ -631,12 +671,27 @@ hammer_modify_buffer(struct hammer_buffer *buffer)
 {
 	hammer_io_notify_cluster(buffer->cluster);
 	buffer->io.modified = 1;
+	++buffer->io.lock.modifying;
+	if (buffer->io.released)
+		hammer_io_intend_modify(&buffer->io);
+}
+
+static __inline void
+hammer_modify_buffer_done(struct hammer_buffer *buffer)
+{
+	hammer_io_modify_done(&buffer->io);
 }
 
 static __inline void
 hammer_modify_node(struct hammer_node *node)
 {
 	hammer_modify_buffer(node->buffer);
+}
+
+static __inline void
+hammer_modify_node_done(struct hammer_node *node)
+{
+	hammer_modify_buffer_done(node->buffer);
 }
 
 /*

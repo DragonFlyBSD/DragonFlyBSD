@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.8 2007/12/30 00:47:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.9 2007/12/30 08:49:20 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -101,9 +101,10 @@ hammer_close_cluster(hammer_cluster_t cluster)
 		tsleep(cluster, 0, "hmrdep", 0);
 	if (cluster->state == HAMMER_CLUSTER_OPEN) {
 		cluster->state = HAMMER_CLUSTER_IDLE;
-		cluster->ondisk->clu_flags &= ~HAMMER_CLUF_OPEN;
-		kprintf("CLOSE CLUSTER\n");
 		hammer_modify_cluster(cluster);
+		cluster->ondisk->clu_flags &= ~HAMMER_CLUF_OPEN;
+		hammer_modify_cluster_done(cluster);
+		kprintf("CLOSE CLUSTER\n");
 	}
 }
 
@@ -169,6 +170,8 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
  * This guarentees (inasmuch as the OS can) that the cluster recovery code
  * will see a cluster marked open if a crash occured while the filesystem
  * still had dirty buffers associated with that cluster.
+ *
+ * XXX
  */
 void
 hammer_io_notify_cluster(hammer_cluster_t cluster)
@@ -180,12 +183,11 @@ hammer_io_notify_cluster(hammer_cluster_t cluster)
 		if (cluster->state == HAMMER_CLUSTER_IDLE) {
 			if (io->released)
 				regetblk(io->bp);
+			io->released = 1;
 			kprintf("MARK CLUSTER OPEN\n");
 			cluster->ondisk->clu_flags |= HAMMER_CLUF_OPEN;
 			cluster->state = HAMMER_CLUSTER_ASYNC;
-			hammer_modify_cluster(cluster);
 			bawrite(io->bp);
-			io->released = 1;
 			/* leave cluster marked as modified */
 		}
 		hammer_unlock(&cluster->io.lock);
@@ -286,45 +288,92 @@ hammer_io_flush(struct hammer_io *io, struct hammer_sync_info *info)
 	struct buf *bp;
 	int error;
 
+again:
 	if ((bp = io->bp) == NULL)
 		return;
 	if (bp->b_flags & B_DELWRI)
 		io->modified = 1;
-	if (io->modified == 0)
-		return;
-	hammer_lock_ex(&io->lock);
 
-	if ((bp = io->bp) != NULL && io->modified) {
-		if (io->released)
-			regetblk(bp);
-		io->released = 1;
-
-		/*
-		 * We own the bp now
-		 */
-		if (info->waitfor & MNT_WAIT) {
-			io->modified = 0;
-			error = bwrite(bp);
-			if (error)
-				info->error = error;
-		} else if (io->lock.refs == 1) {
-			io->modified = 0;
-			bawrite(bp);
-		} else {
-			/*
-			 * structure is in-use, don't race the write, but
-			 * also set B_LOCKED so we know something tried to
-			 * flush it.
-			 */
-			kprintf("DELAYING IO FLUSH BP %p TYPE %d REFS %d\n",
-				bp, io->type, io->lock.refs);
-			bp->b_flags |= B_LOCKED;
-			bqrelse(bp);
-		}
+	/*
+	 * We can't initiate a write while the buffer is being modified
+	 * by someone.
+	 */
+	while (io->lock.modifying) {
+		io->lock.wanted = 1;
+		kprintf("DELAYING IO FLUSH BP %p TYPE %d REFS %d modifying %d\n",
+			bp, io->type, io->lock.refs, io->lock.modifying);
+		tsleep(&io->lock, 0, "hmrfls", 0);
 	}
+	hammer_lock_ex(&io->lock);
+	if (io->lock.modifying || io->bp == NULL) {
+		hammer_unlock(&io->lock);
+		goto again;
+	}
+
+	/*
+	 * Acquire ownership of the buffer cache buffer so we can flush it
+	 * out.
+	 */
+	if (io->released) {
+		if (io->modified == 0)
+			goto done;
+		regetblk(bp);
+	}
+	io->released = 1;
+
+	/*
+	 * Return the bp to the system, issuing I/O if necessary.  The
+	 * system will issue a callback to us when it actually wants to
+	 * throw the bp away.
+	 */
+	if (io->modified == 0) {
+		bqrelse(bp);
+	} else if (info->waitfor & MNT_WAIT) {
+		io->modified = 0;
+		error = bwrite(bp);
+		if (error)
+			info->error = error;
+	} else {
+		io->modified = 0;
+		bawrite(bp);
+	}
+done:
 	hammer_unlock(&io->lock);
 }
 
+/*
+ * Called prior to any modifications being made to ondisk data.  This
+ * forces the caller to wait for any writes to complete.  We explicitly
+ * avoid the write-modify race.
+ *
+ * This routine is only called on hammer structures which are already
+ * actively referenced.
+ */
+void
+hammer_io_intend_modify(struct hammer_io *io)
+{
+	KKASSERT(io->lock.refs != 0 && io->bp != NULL);
+	if (io->released) {
+		hammer_lock_ex(&io->lock);
+		if (io->released) {
+			regetblk(io->bp);
+			io->released = 0;
+			BUF_KERNPROC(io->bp);
+		}
+		hammer_unlock(&io->lock);
+	}
+}
+
+void
+hammer_io_modify_done(struct hammer_io *io)
+{
+	KKASSERT(io->lock.modifying > 0);
+	--io->lock.modifying;
+	if (io->lock.wanted && io->lock.modifying == 0) {
+		io->lock.wanted = 0;
+		wakeup(&io->lock);
+	}
+}
 
 /*
  * HAMMER_BIOOPS

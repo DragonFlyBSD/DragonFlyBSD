@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.12 2007/12/30 00:47:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.13 2007/12/30 08:49:20 dillon Exp $
  */
 
 /*
@@ -414,6 +414,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 	 * Remember that the right-hand boundary is not included in the
 	 * count.
 	 */
+	hammer_modify_node(cursor->node);
 	node = cursor->node->ondisk;
 	i = cursor->index;
 	KKASSERT(node->type == HAMMER_BTREE_TYPE_LEAF);
@@ -424,18 +425,19 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 	}
 	node->elms[i] = *elm;
 	++node->count;
-	hammer_modify_node(cursor->node);
+	hammer_modify_node_done(cursor->node);
 
 	/*
 	 * Adjust the sub-tree count in the parent.  note that the parent
 	 * may be in a different cluster.
 	 */
 	if (cursor->parent) {
+		hammer_modify_node(cursor->parent);
 		parent = cursor->parent->ondisk;
 		i = cursor->parent_index;
 		++parent->elms[i].internal.subtree_count;
+		hammer_modify_node_done(cursor->parent);
 		KKASSERT(parent->elms[i].internal.subtree_count <= node->count);
-		hammer_modify_node(cursor->parent);
 	}
 	return(0);
 }
@@ -485,12 +487,13 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	i = cursor->index;
 
 	KKASSERT(ondisk->type == HAMMER_BTREE_TYPE_LEAF);
+	hammer_modify_node(node);
 	if (i + 1 != ondisk->count) {
 		bcopy(&ondisk->elms[i+1], &ondisk->elms[i],
 		      (ondisk->count - i - 1) * sizeof(ondisk->elms[0]));
 	}
 	--ondisk->count;
-	hammer_modify_node(node);
+	hammer_modify_node_done(node);
 	if (cursor->parent != NULL) {
 		/*
 		 * Adjust parent's notion of the leaf's count.  subtree_count
@@ -499,11 +502,12 @@ hammer_btree_delete(hammer_cursor_t cursor)
 		 * the count below 0.
 		 */
 		parent = cursor->parent;
+		hammer_modify_node(parent);
 		elm = &parent->ondisk->elms[cursor->parent_index];
 		if (elm->internal.subtree_count)
 			--elm->internal.subtree_count;
+		hammer_modify_node_done(parent);
 		KKASSERT(elm->internal.subtree_count <= ondisk->count);
-		hammer_modify_node(parent);
 	}
 
 	/*
@@ -725,10 +729,11 @@ btree_search(hammer_cursor_t cursor, int flags)
 				cursor->index = 0;
 				return(ENOENT);
 			}
+			hammer_modify_node(cursor->node);
 			save = node->elms[0].subtree_type;
 			node->elms[0].base = *cursor->left_bound;
 			node->elms[0].subtree_type = save;
-			hammer_modify_node(cursor->node);
+			hammer_modify_node_done(cursor->node);
 		} else if (i == node->count) {
 			/*
 			 * Terminate early if not inserting and the key is
@@ -751,8 +756,9 @@ btree_search(hammer_cursor_t cursor, int flags)
 			 */
 			if (hammer_btree_cmp(&node->elms[i].base,
 					     cursor->right_bound) != 0) {
-				node->elms[i].base = *cursor->right_bound;
 				hammer_modify_node(cursor->node);
+				node->elms[i].base = *cursor->right_bound;
+				hammer_modify_node_done(cursor->node);
 			}
 			--i;
 		} else {
@@ -985,6 +991,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		if (parent == NULL)
 			return(error);
 		hammer_lock_ex(&parent->lock);
+		hammer_modify_node(parent);
 		ondisk = parent->ondisk;
 		ondisk->count = 1;
 		ondisk->parent = 0;
@@ -995,6 +1002,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		ondisk->elms[1].base = node->cluster->clu_btree_end;
 		made_root = 1;
 		parent_index = 0;	/* index of current node in parent */
+		hammer_modify_node_done(parent);
 	} else {
 		made_root = 0;
 		parent = cursor->parent;
@@ -1032,6 +1040,8 @@ btree_split_internal(hammer_cursor_t cursor)
 	 *
 	 * elm is the new separator.
 	 */
+	hammer_modify_node(new_node);
+	hammer_modify_node(node);
 	ondisk = node->ondisk;
 	elm = &ondisk->elms[split];
 	bcopy(elm, &new_node->ondisk->elms[0],
@@ -1047,6 +1057,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * a new root its parent pointer may have changed.
 	 */
 	elm->internal.subtree_offset = 0;
+	elm->internal.rec_offset = 0;
 	ondisk->count = split;
 
 	/*
@@ -1056,6 +1067,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 *
 	 * Remember that base.count does not include the right-hand boundary.
 	 */
+	hammer_modify_node(parent);
 	ondisk = parent->ondisk;
 	KKASSERT(ondisk->count != HAMMER_BTREE_INT_ELMS);
 	ondisk->elms[parent_index].internal.subtree_count = split;
@@ -1066,7 +1078,10 @@ btree_split_internal(hammer_cursor_t cursor)
 	parent_elm->internal.subtree_offset = new_node->node_offset;
 	parent_elm->internal.subtree_count = new_node->ondisk->count;
 	parent_elm->internal.subtree_type = new_node->ondisk->type;
+	parent_elm->internal.subtree_vol_no = 0;
+	parent_elm->internal.rec_offset = 0;
 	++ondisk->count;
+	hammer_modify_node_done(parent);
 
 	/*
 	 * The children of new_node need their parent pointer set to new_node.
@@ -1083,8 +1098,9 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * The cluster's root pointer may have to be updated.
 	 */
 	if (made_root) {
-		node->cluster->ondisk->clu_btree_root = parent->node_offset;
 		hammer_modify_cluster(node->cluster);
+		node->cluster->ondisk->clu_btree_root = parent->node_offset;
+		hammer_modify_cluster_done(node->cluster);
 		node->ondisk->parent = parent->node_offset;
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
@@ -1092,10 +1108,9 @@ btree_split_internal(hammer_cursor_t cursor)
 		}
 		cursor->parent = parent;	/* lock'd and ref'd */
 	}
+	hammer_modify_node_done(new_node);
+	hammer_modify_node_done(node);
 
-	hammer_modify_node(node);
-	hammer_modify_node(new_node);
-	hammer_modify_node(parent);
 
 	/*
 	 * Ok, now adjust the cursor depending on which element the original
@@ -1173,6 +1188,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 		if (parent == NULL)
 			return(error);
 		hammer_lock_ex(&parent->lock);
+		hammer_modify_node(parent);
 		ondisk = parent->ondisk;
 		ondisk->count = 1;
 		ondisk->parent = 0;
@@ -1181,6 +1197,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 		ondisk->elms[0].internal.subtree_type = leaf->ondisk->type;
 		ondisk->elms[0].internal.subtree_offset = leaf->node_offset;
 		ondisk->elms[1].base = leaf->cluster->clu_btree_end;
+		hammer_modify_node_done(parent);
 		made_root = 1;
 		parent_index = 0;	/* insertion point in parent */
 	} else {
@@ -1217,6 +1234,8 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * Create the new node.  P become the left-hand boundary in the
 	 * new node.  Copy the right-hand boundary as well.
 	 */
+	hammer_modify_node(leaf);
+	hammer_modify_node(new_leaf);
 	ondisk = leaf->ondisk;
 	elm = &ondisk->elms[split];
 	bcopy(elm, &new_leaf->ondisk->elms[0], (ondisk->count - split) * esize);
@@ -1241,6 +1260,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * Remember that base.count does not include the right-hand boundary.
 	 * We are copying parent_index+1 to parent_index+2, not +0 to +1.
 	 */
+	hammer_modify_node(parent);
 	ondisk = parent->ondisk;
 	KKASSERT(ondisk->count != HAMMER_BTREE_INT_ELMS);
 	ondisk->elms[parent_index].internal.subtree_count = split;
@@ -1251,14 +1271,18 @@ btree_split_leaf(hammer_cursor_t cursor)
 	parent_elm->internal.subtree_offset = new_leaf->node_offset;
 	parent_elm->internal.subtree_count = new_leaf->ondisk->count;
 	parent_elm->internal.subtree_type = new_leaf->ondisk->type;
+	parent_elm->internal.subtree_vol_no = 0;
+	parent_elm->internal.rec_offset = 0;
 	++ondisk->count;
+	hammer_modify_node_done(parent);
 
 	/*
 	 * The cluster's root pointer may have to be updated.
 	 */
 	if (made_root) {
-		leaf->cluster->ondisk->clu_btree_root = parent->node_offset;
 		hammer_modify_cluster(leaf->cluster);
+		leaf->cluster->ondisk->clu_btree_root = parent->node_offset;
+		hammer_modify_cluster_done(leaf->cluster);
 		leaf->ondisk->parent = parent->node_offset;
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
@@ -1266,10 +1290,8 @@ btree_split_leaf(hammer_cursor_t cursor)
 		}
 		cursor->parent = parent;	/* lock'd and ref'd */
 	}
-
-	hammer_modify_node(leaf);
-	hammer_modify_node(new_leaf);
-	hammer_modify_node(parent);
+	hammer_modify_node_done(leaf);
+	hammer_modify_node_done(new_leaf);
 
 	/*
 	 * Ok, now adjust the cursor depending on which element the original
@@ -1329,11 +1351,12 @@ btree_remove(hammer_cursor_t cursor)
 	 * allowed to be empty so convert it to a leaf node.
 	 */
 	if (cursor->parent == NULL) {
+		hammer_modify_node(cursor->node);
 		ondisk = cursor->node->ondisk;
 		KKASSERT(ondisk->parent == 0);
 		ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 		ondisk->count = 0;
-		hammer_modify_node(cursor->node);
+		hammer_modify_node_done(cursor->node);
 		kprintf("EMPTY ROOT OF ROOT CLUSTER -> LEAF\n");
 		return(0);
 	}
@@ -1415,12 +1438,13 @@ btree_remove(hammer_cursor_t cursor)
 #if 0
 	kprintf("BTREE_REMOVE: Removing element %d\n", cursor->index);
 #endif
+	hammer_modify_node(node);
 	ondisk = node->ondisk;
 	i = cursor->index;
 	bcopy(&ondisk->elms[i+1], &ondisk->elms[i],
 	      (ondisk->count - i) * sizeof(ondisk->elms[0]));
 	--ondisk->count;
-	hammer_modify_node(cursor->node);
+	hammer_modify_node_done(node);
 
 	/*
 	 * Adjust the parent-parent's (now parent) reference to the parent
@@ -1429,13 +1453,15 @@ btree_remove(hammer_cursor_t cursor)
 	if ((parent = cursor->parent) != NULL) {
 		elm = &parent->ondisk->elms[cursor->parent_index];
 		if (elm->internal.subtree_count != ondisk->count) {
-			elm->internal.subtree_count = ondisk->count;
 			hammer_modify_node(parent);
+			elm->internal.subtree_count = ondisk->count;
+			hammer_modify_node_done(parent);
 		}
 		if (elm->subtree_type != HAMMER_BTREE_TYPE_CLUSTER &&
 		    elm->subtree_type != ondisk->type) {
-			elm->subtree_type = ondisk->type;
 			hammer_modify_node(parent);
+			elm->subtree_type = ondisk->type;
+			hammer_modify_node_done(parent);
 		}
 	}
 		
@@ -1470,10 +1496,11 @@ btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm)
 		child = hammer_get_node(node->cluster,
 					elm->internal.subtree_offset, &error);
 		if (error == 0) {
+			hammer_modify_node(child);
 			hammer_lock_ex(&child->lock);
 			child->ondisk->parent = node->node_offset;
-			hammer_modify_node(child);
 			hammer_unlock(&child->lock);
+			hammer_modify_node_done(child);
 			hammer_rel_node(child);
 		}
 		break;
@@ -1488,14 +1515,15 @@ btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm)
                 hammer_rel_volume(volume, 0);
 		if (error)
 			break;
+		hammer_modify_cluster(cluster);
 		hammer_lock_ex(&cluster->io.lock);
 		cluster->ondisk->clu_btree_parent_offset = node->node_offset;
 		hammer_unlock(&cluster->io.lock);
+		hammer_modify_cluster_done(cluster);
 		KKASSERT(cluster->ondisk->clu_btree_parent_clu_no ==
 			 node->cluster->clu_no);
 		KKASSERT(cluster->ondisk->clu_btree_parent_vol_no ==
 			 node->cluster->volume->vol_no);
-		hammer_modify_cluster(cluster);
 		hammer_rel_cluster(cluster, 0);
 		break;
 	default:
@@ -1655,10 +1683,11 @@ btree_rebalance(hammer_cursor_t cursor)
 							&error,
 							&subchild_buffer, XXX);
 				if (subchild) {
+					hammer_modify_buffer(subchild_buffer);
 					subchild->base.parent =
 					    hammer_bclu_offset(child_buffer[i],
 								child);
-					hammer_modify_buffer(subchild_buffer);
+					hammer_modify_buffer_done(subchild_buffer);
 				}
 				/* XXX error */
 			}

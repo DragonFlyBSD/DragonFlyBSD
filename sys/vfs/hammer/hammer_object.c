@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.11 2007/12/30 00:47:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.12 2007/12/30 08:49:20 dillon Exp $
  */
 
 #include "hammer.h"
@@ -500,15 +500,17 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Fill everything in and insert our B-Tree node.
 	 */
+	hammer_modify_buffer(cursor.record_buffer);
 	rec->base.base = cursor.key_beg;
 	rec->base.data_crc = crc32(data, bytes);
 	rec->base.rec_id = 0;	/* XXX */
 	rec->base.data_offset = hammer_bclu_offset(cursor.data_buffer, bdata);
 	rec->base.data_len = bytes;
-	hammer_modify_buffer(cursor.record_buffer);
+	hammer_modify_buffer_done(cursor.record_buffer);
 
-	bcopy(data, bdata, bytes);
 	hammer_modify_buffer(cursor.data_buffer);
+	bcopy(data, bdata, bytes);
+	hammer_modify_buffer_done(cursor.data_buffer);
 
 	elm.leaf.base = cursor.key_beg;
 	elm.leaf.rec_offset = hammer_bclu_offset(cursor.record_buffer, rec);
@@ -595,6 +597,7 @@ hammer_ip_sync_record(hammer_record_t record, struct hammer_cursor **spike)
 	 *
 	 * XXX assign rec_id here
 	 */
+	hammer_modify_buffer(cursor.record_buffer);
 	*rec = record->rec;
 	if (bdata) {
 		rec->base.data_crc = crc32(record->data,
@@ -614,13 +617,13 @@ hammer_ip_sync_record(hammer_record_t record, struct hammer_cursor **spike)
 			 * Data separate from record
 			 */
 			rec->base.data_offset = hammer_bclu_offset(cursor.data_buffer,bdata);
-			bcopy(record->data, bdata, rec->base.data_len);
 			hammer_modify_buffer(cursor.data_buffer);
+			bcopy(record->data, bdata, rec->base.data_len);
+			hammer_modify_buffer_done(cursor.data_buffer);
 		}
 	}
 	rec->base.rec_id = 0;	/* XXX */
-
-	hammer_modify_buffer(cursor.record_buffer);
+	hammer_modify_buffer_done(cursor.record_buffer);
 
 	elm.leaf.base = cursor.key_beg;
 	elm.leaf.rec_offset = hammer_bclu_offset(cursor.record_buffer, rec);
@@ -710,6 +713,7 @@ hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t orec,
 	 *
 	 * XXX assign rec_id here
 	 */
+	hammer_modify_buffer(cursor->record_buffer);
 	*nrec = *orec;
 	nrec->base.data_offset = 0;
 	if (bdata) {
@@ -728,13 +732,13 @@ hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t orec,
 			 * Data separate from record
 			 */
 			nrec->base.data_offset = hammer_bclu_offset(cursor->data_buffer, bdata);
-			bcopy(data, bdata, nrec->base.data_len);
 			hammer_modify_buffer(cursor->data_buffer);
+			bcopy(data, bdata, nrec->base.data_len);
+			hammer_modify_buffer_done(cursor->data_buffer);
 		}
 	}
 	nrec->base.rec_id = 0;	/* XXX */
-
-	hammer_modify_buffer(cursor->record_buffer);
+	hammer_modify_buffer_done(cursor->record_buffer);
 
 	elm.leaf.base = nrec->base.base;
 	elm.leaf.rec_offset = hammer_bclu_offset(cursor->record_buffer, nrec);
@@ -1236,11 +1240,13 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	hmp = cursor->node->cluster->volume->hmp;
 
 	if (error == 0) {
-		elm = &cursor->node->ondisk->elms[cursor->index];
-		cursor->record->base.base.delete_tid = tid;
-		elm->leaf.base.delete_tid = tid;
 		hammer_modify_buffer(cursor->record_buffer);
+		cursor->record->base.base.delete_tid = tid;
+		hammer_modify_buffer_done(cursor->record_buffer);
 		hammer_modify_node(cursor->node);
+		elm = &cursor->node->ondisk->elms[cursor->index];
+		elm->leaf.base.delete_tid = tid;
+		hammer_modify_node_done(cursor->node);
 	}
 
 	/*

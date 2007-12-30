@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.11 2007/12/30 00:47:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.12 2007/12/30 08:49:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -428,6 +428,8 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 */
 
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
+	if (error)
+		kprintf("hammer_create_inode error %d\n", error);
 	if (error) {
 		hammer_abort_transaction(&trans);
 		*ap->a_vpp = NULL;
@@ -439,6 +441,8 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 * bump the inode's link count.
 	 */
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
+	if (error)
+		kprintf("hammer_ip_add_directory error %d\n", error);
 
 	/*
 	 * Finish up.
@@ -591,6 +595,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 * records for the purposes of the search.
 	 */
 	error = hammer_ip_first(&cursor, dip);
+	rec = NULL;
 	while (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error)
@@ -719,6 +724,8 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * returned inode will be referenced but not locked.
 	 */
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
+	if (error)
+		kprintf("hammer_mkdir error %d\n", error);
 	if (error) {
 		hammer_abort_transaction(&trans);
 		*ap->a_vpp = NULL;
@@ -730,6 +737,8 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * bump the inode's link count.
 	 */
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
+	if (error)
+		kprintf("hammer_mkdir (add) error %d\n", error);
 
 	/*
 	 * Finish up.

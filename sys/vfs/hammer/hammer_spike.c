@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.2 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.3 2007/12/30 08:49:20 dillon Exp $
  */
 
 #include "hammer.h"
@@ -155,6 +155,7 @@ hammer_spike(struct hammer_cursor **spikep)
 		hammer_node_ondisk_t ondisk;
 		hammer_btree_elm_t elm;
 		
+		hammer_modify_node(spike->parent);
 		ondisk = spike->parent->ondisk;
 		elm = &ondisk->elms[spike->parent_index];
 		elm->internal.subtree_type = HAMMER_BTREE_TYPE_CLUSTER;
@@ -162,18 +163,19 @@ hammer_spike(struct hammer_cursor **spikep)
 		elm->internal.subtree_clu_no = ncluster->clu_no;
 		elm->internal.subtree_vol_no = ncluster->volume->vol_no;
 		elm->internal.subtree_count = onode->ondisk->count; /*XXX*/
-		hammer_modify_node(spike->parent);
+		hammer_modify_node_done(spike->parent);
 		hammer_flush_node(onode);
 	}
 	{
 		hammer_cluster_ondisk_t ondisk;
 
+		hammer_modify_cluster(ncluster);
 		ondisk = ncluster->ondisk;
 		ondisk->clu_btree_parent_vol_no = ocluster->volume->vol_no;
 		ondisk->clu_btree_parent_clu_no = ocluster->clu_no;
 		ondisk->clu_btree_parent_offset = spike->parent->node_offset;
 		ondisk->clu_btree_parent_clu_gen = ocluster->ondisk->clu_gen;
-		hammer_modify_cluster(ncluster);
+		hammer_modify_cluster_done(ncluster);
 	}
 
 	/*
