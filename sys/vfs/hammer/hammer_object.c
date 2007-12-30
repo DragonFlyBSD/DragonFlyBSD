@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.10 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.11 2007/12/30 00:47:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -404,6 +404,47 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 }
 
 /*
+ * Add a record to an inode.
+ *
+ * The caller must allocate the record with hammer_alloc_mem_record(ip) and
+ * initialize the following additional fields:
+ *
+ * record->rec.entry.base.base.key
+ * record->rec.entry.base.base.rec_type
+ * record->rec.entry.base.base.data_len
+ * record->data		(a copy will be kmalloc'd if not embedded)
+ */
+int
+hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
+{
+	hammer_inode_t ip = record->ip;
+	int error;
+	int bytes;
+	void *data;
+
+	record->rec.base.base.obj_id = ip->obj_id;
+	record->rec.base.base.create_tid = trans->tid;
+	record->rec.base.base.obj_type = ip->ino_rec.base.base.obj_type;
+	bytes = record->rec.base.data_len;
+
+	if (record->data) {
+		if ((char *)record->data < (char *)&record->rec ||
+		    (char *)record->data >= (char *)(&record->rec + 1)) {
+			data = kmalloc(bytes, M_HAMMER, M_WAITOK);
+			record->flags |= HAMMER_RECF_ALLOCDATA;
+			bcopy(record->data, data, bytes);
+			record->data = data;
+		} else {
+			record->flags |= HAMMER_RECF_EMBEDDED_DATA;
+		}
+	}
+	hammer_modify_inode(trans, ip,
+			    HAMMER_INODE_RDIRTY | HAMMER_INODE_TID);
+	error = hammer_mem_add(trans, record);
+	return(error);
+}
+
+/*
  * Sync data from a buffer cache buffer (typically) to the filesystem.  This
  * is called via the strategy called from a cached data source.  This code
  * is responsible for actually writing a data record out to the disk.
@@ -565,7 +606,7 @@ hammer_ip_sync_record(hammer_record_t record, struct hammer_cursor **spike)
 			rec->base.data_offset = ((char *)bdata -
 						 (char *)&record->rec);
 			KKASSERT(rec->base.data_offset >= 0 && 
-				 rec->base.data_offset + rec->base.data_len <
+				 rec->base.data_offset + rec->base.data_len <=
 				  sizeof(*rec));
 			rec->base.data_offset += hammer_bclu_offset(cursor.record_buffer, rec);
 		} else {
@@ -1007,7 +1048,6 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_record_ondisk_t rec;
 	hammer_base_elm_t base;
 	int error;
-	int isregfile;
 	int64_t off;
 
 	hammer_init_cursor_ip(&cursor, ip);
@@ -1023,7 +1063,6 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.key = ran_end;
-		isregfile = 0;
 	} else {
 		/*
 		 * The key in the B-Tree is (base+bytes), so the first possible
@@ -1040,7 +1079,6 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 			cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
 		else
 			cursor.key_end.key = ran_end + MAXPHYS + 1;
-		isregfile = 1;
 	}
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
@@ -1100,6 +1138,58 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 				panic("hammer right edge case\n");
 			}
 		}
+
+		/*
+		 * Mark the record and B-Tree entry as deleted.  This will
+		 * also physically delete the B-Tree entry, record, and
+		 * data if the retention policy dictates.  The function
+		 * will set HAMMER_CURSOR_DELBTREE which hammer_ip_next()
+		 * uses to perform a fixup.
+		 */
+		error = hammer_ip_delete_record(&cursor, trans->tid);
+		if (error)
+			break;
+		error = hammer_ip_next(&cursor);
+	}
+	hammer_done_cursor(&cursor);
+	if (error == ENOENT)
+		error = 0;
+	return(error);
+}
+
+int
+hammer_ip_delete_range_all(hammer_transaction_t trans, hammer_inode_t ip)
+{
+	struct hammer_cursor cursor;
+	hammer_record_ondisk_t rec;
+	hammer_base_elm_t base;
+	int error;
+
+	hammer_init_cursor_ip(&cursor, ip);
+
+	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.rec_type = 0;
+	cursor.key_beg.key = HAMMER_MIN_KEY;
+
+	cursor.key_end = cursor.key_beg;
+	cursor.key_end.rec_type = 0xFFFF;
+	cursor.key_end.key = HAMMER_MAX_KEY;
+
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+
+	error = hammer_ip_first(&cursor, ip);
+
+	/*
+	 * Iterate through matching records and mark them as deleted.
+	 */
+	while (error == 0) {
+		rec = cursor.record;
+		base = &rec->base.base;
+
+		KKASSERT(base->delete_tid == 0);
 
 		/*
 		 * Mark the record and B-Tree entry as deleted.  This will

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.12 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.13 2007/12/30 00:47:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -135,6 +135,23 @@ hammer_get_vnode(struct hammer_inode *ip, int lktype, struct vnode **vpp)
 			ip->vp = vp;
 			vp->v_type = hammer_get_vnode_type(
 					    ip->ino_rec.base.base.obj_type);
+
+			switch(ip->ino_rec.base.base.obj_type) {
+			case HAMMER_OBJTYPE_CDEV:
+			case HAMMER_OBJTYPE_BDEV:
+				vp->v_ops = &ip->hmp->mp->mnt_vn_spec_ops;
+				addaliasu(vp, ip->ino_data.rmajor,
+					  ip->ino_data.rminor);
+				break;
+			case HAMMER_OBJTYPE_FIFO:
+				vp->v_ops = &ip->hmp->mp->mnt_vn_fifo_ops;
+				break;
+			default:
+				break;
+			}
+			if (ip->obj_id == HAMMER_OBJID_ROOT)
+				vp->v_flag |= VROOT;
+
 			vp->v_data = (void *)ip;
 			/* vnode locked by getnewvnode() */
 			/* make related vnode dirty if inode dirty? */
@@ -287,6 +304,16 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->ino_data.mode = vap->va_mode;
 	ip->ino_data.ctime = trans->tid;
 	ip->ino_data.parent_obj_id = (dip) ? dip->ino_rec.base.base.obj_id : 0;
+
+	switch(ip->ino_rec.base.base.obj_type) {
+	case HAMMER_OBJTYPE_CDEV:
+	case HAMMER_OBJTYPE_BDEV:
+		ip->ino_data.rmajor = vap->va_rmajor;
+		ip->ino_data.rminor = vap->va_rminor;
+		break;
+	default:
+		break;
+	}
 
 	/*
 	 * Calculate default uid/gid and overwrite with information from
@@ -524,9 +551,8 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	if (ip->ino_rec.ino_nlinks == 0 && handle_delete) {
 		if (ip->vp)
 			vtruncbuf(ip->vp, 0, HAMMER_BUFSIZE);
-		error = hammer_ip_delete_range(&trans, ip,
-					       HAMMER_MIN_KEY, HAMMER_MAX_KEY,
-					       NULL);
+		error = hammer_ip_delete_range_all(&trans, ip);
+		kprintf("delete_range_all error %d\n", error);
 		KKASSERT(RB_EMPTY(&ip->rec_tree));
 		ip->flags &= ~HAMMER_INODE_TID;
 		ip->ino_rec.base.base.delete_tid = trans.tid;

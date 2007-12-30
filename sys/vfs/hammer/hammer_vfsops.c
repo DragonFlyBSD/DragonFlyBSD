@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.10 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.11 2007/12/30 00:47:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -191,6 +191,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	mp->mnt_flag |= MNT_LOCAL;
 
 	vfs_add_vnodeops(mp, &hammer_vnode_vops, &mp->mnt_vn_norm_ops);
+	vfs_add_vnodeops(mp, &hammer_spec_vops, &mp->mnt_vn_spec_ops);
+	vfs_add_vnodeops(mp, &hammer_fifo_vops, &mp->mnt_vn_fifo_ops);
 
 	/*
 	 * The root volume's ondisk pointer is only valid if we hold a

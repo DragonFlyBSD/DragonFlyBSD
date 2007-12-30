@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.6 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.7 2007/12/30 00:47:22 dillon Exp $
  */
 
 /*
@@ -268,6 +268,8 @@ hammer_load_cursor_parent_local(hammer_cursor_t cursor)
 			break;
 		}
 	}
+	if (i == parent->ondisk->count)
+		panic("Bad B-Tree link: parent %p node %p\n", parent, node);
 	KKASSERT(i != parent->ondisk->count);
 	KKASSERT(parent->ondisk->elms[i].internal.rec_offset == 0);
 	cursor->parent = parent;
@@ -319,7 +321,6 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	parent = hammer_get_node(pcluster, ondisk->clu_btree_parent_offset,
 				 &error);
 	hammer_rel_cluster(pcluster, 0);
-	kprintf("parent %p clu_no %d\n", parent, clu_no);
 	if (error)
 		return (error);
 
@@ -329,8 +330,6 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	elm = NULL;
 	for (i = 0; i < parent->ondisk->count; ++i) {
 		elm = &parent->ondisk->elms[i];
-		if (elm->internal.subtree_type == HAMMER_BTREE_TYPE_CLUSTER)
-			kprintf("SUBTEST CLU %d\n", elm->internal.subtree_clu_no);
 		if (elm->internal.rec_offset != 0 &&
 		    elm->internal.subtree_type == HAMMER_BTREE_TYPE_CLUSTER &&
 		    elm->internal.subtree_clu_no == cursor->node->cluster->clu_no) {
@@ -529,6 +528,8 @@ hammer_cursor_down(hammer_cursor_t cursor)
 				       &error);
 		if (error == 0) {
 			KKASSERT(elm->internal.subtree_type == node->ondisk->type);
+			if(node->ondisk->parent != cursor->parent->node_offset)
+				kprintf("node %p %d vs %d\n", node, node->ondisk->parent, cursor->parent->node_offset);
 			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
 		}
 	}

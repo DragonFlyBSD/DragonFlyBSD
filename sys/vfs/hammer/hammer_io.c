@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.7 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.8 2007/12/30 00:47:22 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -292,7 +292,6 @@ hammer_io_flush(struct hammer_io *io, struct hammer_sync_info *info)
 		io->modified = 1;
 	if (io->modified == 0)
 		return;
-	kprintf("IO FLUSH BP %p TYPE %d REFS %d\n", bp, io->type, io->lock.refs);
 	hammer_lock_ex(&io->lock);
 
 	if ((bp = io->bp) != NULL && io->modified) {
@@ -317,8 +316,8 @@ hammer_io_flush(struct hammer_io *io, struct hammer_sync_info *info)
 			 * also set B_LOCKED so we know something tried to
 			 * flush it.
 			 */
-			kprintf("can't flush bp %p, %d refs - delaying\n",
-				bp, io->lock.refs);
+			kprintf("DELAYING IO FLUSH BP %p TYPE %d REFS %d\n",
+				bp, io->type, io->lock.refs);
 			bp->b_flags |= B_LOCKED;
 			bqrelse(bp);
 		}
@@ -359,8 +358,6 @@ hammer_io_complete(struct buf *bp)
 
 	if (io->io.type == HAMMER_STRUCTURE_CLUSTER) {
 		if (io->cluster.state == HAMMER_CLUSTER_ASYNC) {
-			kprintf("cluster write complete flags %08x\n",
-				io->cluster.ondisk->clu_flags);
 			io->cluster.state = HAMMER_CLUSTER_OPEN;
 			wakeup(&io->cluster);
 		}
@@ -503,7 +500,6 @@ hammer_io_checkwrite(struct buf *bp)
 		 * Cannot write out a cluster buffer if the cluster header
 		 * I/O opening the cluster has not completed.
 		 */
-		kprintf("hammer_io_checkwrite: w/ depend - delayed\n");
 		bp->b_flags |= B_LOCKED;
 		return(-1);
 	} else if (iou->io.lock.refs) {
@@ -511,7 +507,6 @@ hammer_io_checkwrite(struct buf *bp)
 		 * Cannot write out a bp if its associated buffer has active
 		 * references.
 		 */
-		kprintf("hammer_io_checkwrite: w/ refs - delayed\n");
 		bp->b_flags |= B_LOCKED;
 		return(-1);
 	} else {
@@ -521,7 +516,6 @@ hammer_io_checkwrite(struct buf *bp)
 		 */
 		if (iou->io.type == HAMMER_STRUCTURE_CLUSTER)
 			hammer_close_cluster(&iou->cluster);
-		kprintf("hammer_io_checkwrite: ok\n");
 		KKASSERT(iou->io.released);
 		hammer_io_disassociate(iou);
 		return(0);

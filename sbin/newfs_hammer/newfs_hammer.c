@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.10 2007/12/14 08:05:37 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.11 2007/12/30 00:47:20 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -671,7 +671,7 @@ format_root(struct cluster_info *cluster)
 	idata->version = HAMMER_INODE_DATA_VERSION;
 	idata->mode = 0755;
 
-	rec->base.base.obj_id = 1;
+	rec->base.base.obj_id = HAMMER_OBJID_ROOT;
 	rec->base.base.key = 0;
 	rec->base.base.create_tid = createtid();
 	rec->base.base.delete_tid = 0;

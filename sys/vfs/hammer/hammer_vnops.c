@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.10 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.11 2007/12/30 00:47:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/event.h>
 #include <sys/stat.h>
 #include <vm/vm_extern.h>
+#include <vfs/fifofs/fifo.h>
 #include "hammer.h"
 
 /*
@@ -76,6 +77,14 @@ static int hammer_vop_strategy(struct vop_strategy_args *);
 static int hammer_vop_nsymlink(struct vop_nsymlink_args *);
 static int hammer_vop_nwhiteout(struct vop_nwhiteout_args *);
 
+static int hammer_vop_fifoclose (struct vop_close_args *);
+static int hammer_vop_fiforead (struct vop_read_args *);
+static int hammer_vop_fifowrite (struct vop_write_args *);
+
+static int hammer_vop_specclose (struct vop_close_args *);
+static int hammer_vop_specread (struct vop_read_args *);
+static int hammer_vop_specwrite (struct vop_write_args *);
+
 struct vop_ops hammer_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_fsync =		hammer_vop_fsync,
@@ -107,6 +116,32 @@ struct vop_ops hammer_vnode_vops = {
 	.vop_strategy =		hammer_vop_strategy,
 	.vop_nsymlink =		hammer_vop_nsymlink,
 	.vop_nwhiteout =	hammer_vop_nwhiteout
+};
+
+struct vop_ops hammer_spec_vops = {
+	.vop_default =		spec_vnoperate,
+	.vop_fsync =		hammer_vop_fsync,
+	.vop_read =		hammer_vop_specread,
+	.vop_write =		hammer_vop_specwrite,
+	.vop_access =		hammer_vop_access,
+	.vop_close =		hammer_vop_specclose,
+	.vop_getattr =		hammer_vop_getattr,
+	.vop_inactive =		hammer_vop_inactive,
+	.vop_reclaim =		hammer_vop_reclaim,
+	.vop_setattr =		hammer_vop_setattr
+};
+
+struct vop_ops hammer_fifo_vops = {
+	.vop_default =		fifo_vnoperate,
+	.vop_fsync =		hammer_vop_fsync,
+	.vop_read =		hammer_vop_fiforead,
+	.vop_write =		hammer_vop_fifowrite,
+	.vop_access =		hammer_vop_access,
+	.vop_close =		hammer_vop_fifoclose,
+	.vop_getattr =		hammer_vop_getattr,
+	.vop_inactive =		hammer_vop_inactive,
+	.vop_reclaim =		hammer_vop_reclaim,
+	.vop_setattr =		hammer_vop_setattr
 };
 
 static int hammer_dounlink(struct nchandle *nch, struct vnode *dvp,
@@ -389,7 +424,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
-	 * returned inode will be referenceds but not locked.
+	 * returned inode will be referenced but not locked.
 	 */
 
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
@@ -469,6 +504,17 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_fsid_uuid = ip->hmp->fsid;
 	vap->va_vaflags = VA_UID_UUID_VALID | VA_GID_UUID_VALID |
 			  VA_FSID_UUID_VALID;
+
+	switch (ip->ino_rec.base.base.obj_type) {
+	case HAMMER_OBJTYPE_CDEV:
+	case HAMMER_OBJTYPE_BDEV:
+		vap->va_rmajor = ip->ino_data.rmajor;
+		vap->va_rminor = ip->ino_data.rminor;
+		break;
+	default:
+		break;
+	}
+
 	return(0);
 }
 
@@ -855,10 +901,13 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 		base = &rec->base.base;
 		saveoff = base->key;
 
+		if (base->obj_id != ip->obj_id)
+			panic("readdir: bad record at %p", cursor.node);
+
 		r = vop_write_dirent(
 			     &error, uio, rec->entry.obj_id,
-			     rec->entry.base.data_len,
 			     hammer_get_dtype(rec->entry.base.base.obj_type),
+			     rec->entry.base.data_len,
 			     (void *)cursor.data);
 		if (r)
 			break;
@@ -874,8 +923,6 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 
 	if (ap->a_eofflag)
 		*ap->a_eofflag = (error == ENOENT);
-	if (error == ENOENT)
-		error = 0;
 	uio->uio_offset = saveoff;
 	if (error && cookie_index == 0) {
 		if (cookies) {
@@ -884,7 +931,8 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 			*ap->a_cookies = NULL;
 		}
 	} else {
-		error = 0;
+		if (error == ENOENT)
+			error = 0;
 		if (cookies) {
 			*ap->a_ncookies = cookie_index;
 			*ap->a_cookies = cookies;
@@ -900,7 +948,35 @@ static
 int
 hammer_vop_readlink(struct vop_readlink_args *ap)
 {
-	return EOPNOTSUPP;
+	struct hammer_cursor cursor;
+	struct hammer_inode *ip;
+	int error;
+
+	ip = VTOI(ap->a_vp);
+	hammer_init_cursor_ip(&cursor, ip);
+
+	/*
+	 * Key range (begin and end inclusive) to scan.  Directory keys
+	 * directly translate to a 64 bit 'seek' position.
+	 */
+	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.delete_tid = 0;
+        cursor.key_beg.rec_type = HAMMER_RECTYPE_FIX;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = HAMMER_FIXKEY_SYMLINK;
+
+	error = hammer_ip_lookup(&cursor, ip);
+	if (error == 0) {
+		error = hammer_ip_resolve_data(&cursor);
+		if (error == 0) {
+			error = uiomove((char *)cursor.data,
+					cursor.record->generic.base.data_len,
+					ap->a_uio);
+		}
+	}
+	hammer_done_cursor(&cursor);
+	return(error);
 }
 
 /*
@@ -1155,7 +1231,80 @@ static
 int
 hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 {
-	return EOPNOTSUPP;
+	struct hammer_transaction trans;
+	struct hammer_inode *dip;
+	struct hammer_inode *nip;
+	struct nchandle *nch;
+	hammer_record_t record;
+	int error;
+	int bytes;
+
+	ap->a_vap->va_type = VLNK;
+
+	nch = ap->a_nch;
+	dip = VTOI(ap->a_dvp);
+
+	/*
+	 * Create a transaction to cover the operations we perform.
+	 */
+	hammer_start_transaction(&trans, dip->hmp);
+
+	/*
+	 * Create a new filesystem object of the requested type.  The
+	 * returned inode will be referenced but not locked.
+	 */
+
+	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
+	if (error) {
+		hammer_abort_transaction(&trans);
+		*ap->a_vpp = NULL;
+		return (error);
+	}
+
+	/*
+	 * Add the new filesystem object to the directory.  This will also
+	 * bump the inode's link count.
+	 */
+	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
+
+	/*
+	 * Add a record representing the symlink.  symlink stores the link
+	 * as pure data, not a string, and is no \0 terminated.
+	 */
+	if (error == 0) {
+		record = hammer_alloc_mem_record(nip);
+		bytes = strlen(ap->a_target);
+
+		record->rec.generic.base.base.key = HAMMER_FIXKEY_SYMLINK;
+		record->rec.generic.base.base.rec_type = HAMMER_RECTYPE_FIX;
+		record->rec.generic.base.data_len = bytes;
+		if (bytes <= sizeof(record->rec.generic.filler)) {
+			record->data = (void *)record->rec.generic.filler;
+			bcopy(ap->a_target, record->data, bytes);
+		} else {
+			record->data = (void *)ap->a_target;
+			/* will be reallocated by routine below */
+		}
+		error = hammer_ip_add_record(&trans, record);
+	}
+
+	/*
+	 * Finish up.
+	 */
+	if (error) {
+		hammer_rel_inode(nip, 0);
+		hammer_abort_transaction(&trans);
+		*ap->a_vpp = NULL;
+	} else {
+		hammer_commit_transaction(&trans);
+		error = hammer_get_vnode(nip, LK_EXCLUSIVE, ap->a_vpp);
+		hammer_rel_inode(nip, 0);
+		if (error == 0) {
+			cache_setunresolved(ap->a_nch);
+			cache_setvp(ap->a_nch, *ap->a_vpp);
+		}
+	}
+	return (error);
 }
 
 /*
@@ -1489,5 +1638,59 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 	}
         hammer_done_cursor(&cursor);
 	return (error);
+}
+
+/************************************************************************
+ *			    FIFO AND SPECFS OPS				*
+ ************************************************************************
+ *
+ */
+
+static int
+hammer_vop_fifoclose (struct vop_close_args *ap)
+{
+	/* XXX update itimes */
+	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
+}
+
+static int
+hammer_vop_fiforead (struct vop_read_args *ap)
+{
+	int error;
+
+	error = VOCALL(&fifo_vnode_vops, &ap->a_head);
+	/* XXX update access time */
+	return (error);
+}
+
+static int
+hammer_vop_fifowrite (struct vop_write_args *ap)
+{
+	int error;
+
+	error = VOCALL(&fifo_vnode_vops, &ap->a_head);
+	/* XXX update access time */
+	return (error);
+}
+
+static int
+hammer_vop_specclose (struct vop_close_args *ap)
+{
+	/* XXX update itimes */
+	return (VOCALL(&spec_vnode_vops, &ap->a_head));
+}
+
+static int
+hammer_vop_specread (struct vop_read_args *ap)
+{
+	/* XXX update access time */
+	return (VOCALL(&spec_vnode_vops, &ap->a_head));
+}
+
+static int
+hammer_vop_specwrite (struct vop_write_args *ap)
+{
+	/* XXX update last change time */
+	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }
 

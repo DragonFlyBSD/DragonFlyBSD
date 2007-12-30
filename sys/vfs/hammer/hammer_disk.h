@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.12 2007/12/14 08:05:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.13 2007/12/30 00:47:22 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -457,6 +457,9 @@ struct hammer_base_record {
 #define HAMMER_RECTYPE_DIRENTRY		0x11
 #define HAMMER_RECTYPE_DB		0x12
 #define HAMMER_RECTYPE_EXT		0x13	/* ext attributes */
+#define HAMMER_RECTYPE_FIX		0x14	/* fixed attribute */
+
+#define HAMMER_FIXKEY_SYMLINK		1
 
 #define HAMMER_OBJTYPE_UNKNOWN		0	/* (never exists on-disk) */
 #define HAMMER_OBJTYPE_DIRECTORY	1
@@ -620,10 +623,6 @@ typedef union hammer_fsbuf_ondisk *hammer_fsbuf_ondisk_t;
  * modifications to the contents of this structure will result in a record
  * replacement operation.
  *
- * state_sum allows a filesystem object to be validated to a degree by
- * generating a checksum of all of its pieces (in no particular order) and
- * checking it against this field.
- *
  * short_data_off allows a small amount of data to be embedded in the
  * hammer_inode_data structure.  HAMMER typically uses this to represent
  * up to 64 bytes of data, or to hold symlinks.  Remember that allocations
@@ -640,9 +639,8 @@ struct hammer_inode_data {
 	u_int16_t version;	/* inode data version */
 	u_int16_t mode;		/* basic unix permissions */
 	u_int32_t uflags;	/* chflags */
-	u_int16_t short_data_off; /* degenerate data case */
-	u_int16_t short_data_len;
-	u_int32_t state_sum;
+	u_int32_t rmajor;	/* used by device nodes */
+	u_int32_t rminor;	/* used by device nodes */
 	u_int64_t ctime;
 	u_int64_t parent_obj_id;/* parent directory obj_id */
 	uuid_t	uid;
@@ -651,6 +649,8 @@ struct hammer_inode_data {
 };
 
 #define HAMMER_INODE_DATA_VERSION	1
+
+#define HAMMER_OBJID_ROOT		1
 
 /*
  * Rollup various structures embedded as record data

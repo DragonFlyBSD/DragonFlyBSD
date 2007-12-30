@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.14 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.15 2007/12/30 00:47:22 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -406,6 +406,8 @@ struct hammer_sync_info {
 #if defined(_KERNEL)
 
 extern struct vop_ops hammer_vnode_vops;
+extern struct vop_ops hammer_spec_vops;
+extern struct vop_ops hammer_fifo_vops;
 extern struct hammer_alist_config Buf_alist_config;
 extern struct hammer_alist_config Vol_normal_alist_config;
 extern struct hammer_alist_config Vol_super_alist_config;
@@ -577,9 +579,13 @@ int  hammer_ip_add_directory(struct hammer_transaction *trans,
 int  hammer_ip_del_directory(struct hammer_transaction *trans,
 			hammer_cursor_t cursor, hammer_inode_t dip,
 			hammer_inode_t ip);
+int  hammer_ip_add_record(struct hammer_transaction *trans,
+			hammer_record_t record);
 int  hammer_ip_delete_range(struct hammer_transaction *trans,
 			hammer_inode_t ip, int64_t ran_beg, int64_t ran_end,
 			struct hammer_cursor **spikep);
+int  hammer_ip_delete_range_all(struct hammer_transaction *trans,
+			hammer_inode_t ip);
 int  hammer_ip_sync_data(struct hammer_transaction *trans,
 			hammer_inode_t ip, int64_t offset,
 			void *data, int bytes, struct hammer_cursor **spikep);

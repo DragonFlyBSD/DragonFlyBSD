@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.11 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.12 2007/12/30 00:47:22 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -949,7 +949,8 @@ hammer_rel_cluster(hammer_cluster_t cluster, int flush)
 			/*
 			 * Final cleanup
 			 */
-			if (cluster->io.bp == NULL &&
+			if (cluster != cluster->volume->hmp->rootcl &&
+			    cluster->io.bp == NULL &&
 			    cluster->io.lock.refs == 1 &&
 			    RB_EMPTY(&cluster->rb_nods_root)) {
 				KKASSERT(RB_EMPTY(&cluster->rb_bufs_root));

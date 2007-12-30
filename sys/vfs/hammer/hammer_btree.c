@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.11 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.12 2007/12/30 00:47:22 dillon Exp $
  */
 
 /*
@@ -181,7 +181,6 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			elm = &node->elms[cursor->index];
 			r = hammer_btree_cmp(&cursor->key_end, &elm[0].base);
 			s = hammer_btree_cmp(&cursor->key_beg, &elm[1].base);
-			kprintf("SCAN %d r/s %d/%d\n", cursor->index, r, s);
 			if (r < 0) {
 				error = ENOENT;
 				break;
