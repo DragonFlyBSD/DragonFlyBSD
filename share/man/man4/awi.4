@@ -1,15 +1,28 @@
 .\"     $NetBSD: awi.4,v 1.6 2000/03/22 11:24:33 onoe Exp $
 .\" $FreeBSD: src/share/man/man4/awi.4,v 1.11.2.2 2003/02/17 21:20:39 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/Attic/awi.4,v 1.9 2007/03/04 02:32:59 swildner Exp $
+.\" $DragonFly: src/share/man/man4/Attic/awi.4,v 1.10 2007/12/30 11:56:54 swildner Exp $
 .\"
-.Dd October 31, 1999
+.Dd December 30, 2007
 .Dt AWI 4
 .Os
 .Sh NAME
 .Nm awi
 .Nd "AMD PCnetMobile IEEE 802.11 PCMCIA wireless network driver"
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "device awi"
+.Cd "device wlan"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+if_awi_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
@@ -29,19 +42,21 @@ BSS) mode.
 .Pp
 In infrastructure mode, it communicates with an Access Point
 which serves as a link-layer bridge between an Ethernet and
-the wireless network.  An access point also provides roaming capability
-which allows wireless node to move between access points.
+the wireless network.
+An access point also provides roaming capability
+which allows wireless nodes to move between access points.
 .Pp
 In adhoc mode, it communicates peer to peer.
 Though it is more efficient to communicate between wireless nodes,
 the coverage is limited spatially due to lack of roaming capability.
 .Pp
-In addition to these two mode in IEEE 802.11 specification, the
+In addition to these two modes in IEEE the 802.11 specification, the
 .Nm
 driver also supports a variant of adhoc mode out of spec for DS radio cards,
-which makes possible to communicate with adhoc mode of
+which makes it possible to communicate with the adhoc mode of the
 .Xr wi 4
-driver.  The NWID doesn't affect in this mode.
+driver.
+The NWID does not affect in this mode.
 .Pp
 For more information on configuring this device, see
 .Xr ifconfig 8
@@ -79,7 +94,8 @@ and
 .Em DS2
 media types, while the FH cards support
 .Em FH1
-media type.  For each media type,
+media type.
+For each media type, the
 .Em adhoc
 mediaopt can be used to indicate the driver to operate in adhoc mode.
 For DS radio cards,
@@ -89,21 +105,12 @@ mediaopt can be used for
 compatible adhoc mode.
 .Sh DIAGNOSTICS
 .Bl -diag
-.It "awi0: unable to allocate memory space; using i/o only"
-Indicates that the driver was not able to allocate 32kb of PCMCIA bus
-address space into which to map the device; the driver will use the
-(slightly slower) i/o-space only access methods to read and write to
-the shared memory.  Since by default,
-.Nx ,
-only allocates 16kb of
-address space per PCMCIA controller, this message is in some sense to
-be expected and should not be a cause for alarm.
-See
-.Xr pcmcia 4
-for information on how to increase the memory available to the PCMCIA
-controller.
+.It "awi0: awi_pccard_probe: bad banner:"
+The device failed to initialize its firmware.
 .It "awi0: failed to complete selftest (%s)"
 The device failed to complete its self test.
+In some circumstances, resetting device after power on fails.
+Re-inserting the card or down-then-up interface may be helpful.
 .It "awi0: synced with no-bssid at channel %d"
 The device is ready to relay traffic at specified channel.
 .It "awi0: synced with %s ssid %s at channel %d"
@@ -131,7 +138,7 @@ The device failed to complete the request from the system.
 .\".Xr cnw 4 ,
 .Xr ifmedia 4 ,
 .Xr netintro 4 ,
-.Xr pcmcia 4 ,
+.Xr pccard 4 ,
 .Xr wi 4 ,
 .Xr ifconfig 8
 .Rs
@@ -151,7 +158,7 @@ driver was written by
 .An Bill Sommerfeld Aq sommerfeld@netbsd.org .
 Then the
 .Nm
-driver module completely rewritten to support cards with DS phy and
+driver module was completely rewritten to support cards with DS phy and
 to support adhoc mode by
 .An Atsushi Onoe Aq onoe@netbsd.org .
 .Sh BUGS
