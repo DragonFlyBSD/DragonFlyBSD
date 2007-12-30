@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/pw_scan.c,v 1.25 2004/01/18 21:33:25 charnier Exp $
- * $DragonFly: src/lib/libutil/pw_scan.c,v 1.2 2005/08/01 20:59:46 joerg Exp $
+ * $DragonFly: src/lib/libutil/pw_scan.c,v 1.3 2007/12/30 13:44:33 matthias Exp $
  */
 
 /*

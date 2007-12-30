@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -32,7 +28,7 @@
  *
  * @(#)logwtmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libutil/logwtmp.c,v 1.14 2000/01/15 03:26:54 shin Exp $
- * $DragonFly: src/lib/libutil/logwtmp.c,v 1.4 2005/03/04 04:31:11 cpressey Exp $
+ * $DragonFly: src/lib/libutil/logwtmp.c,v 1.5 2007/12/30 13:44:33 matthias Exp $
  */
 
 #include <sys/cdefs.h>
