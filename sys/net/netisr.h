@@ -65,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.28 2007/09/30 04:37:27 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.29 2007/12/30 20:02:56 hasso Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -99,6 +99,7 @@
 #define	NETISR_IPV6	28		/* same as AF_INET6 */
 #define	NETISR_NATM	29		/* same as AF_NATM */
 #define	NETISR_NETGRAPH	30		/* same as AF_NETGRAPH */
+#define	NETISR_BLUETOOTH 31
 
 #define	NETISR_MAX	32
 

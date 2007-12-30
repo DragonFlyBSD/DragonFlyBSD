@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/Makefile,v 1.20.2.1 2000/07/10 08:22:34 obrien Exp $
-# $DragonFly: src/sys/Makefile,v 1.15 2006/11/07 06:43:18 dillon Exp $
+# $DragonFly: src/sys/Makefile,v 1.16 2007/12/30 20:02:56 hasso Exp $
 
 # This is the old aout only boot loader.
 .if	exists(${.CURDIR}/boot) && ${MACHINE_ARCH} == "i386" && ${OBJFORMAT} == "elf"
@@ -12,7 +12,7 @@ SUBDIR=	boot
 .if defined(MODULES_OVERRIDE)
 SUBDIR+=${MODULES_OVERRIDE}
 .else
-SUBDIR+=bus crypto emulation dev kern net netgraph netproto vfs
+SUBDIR+=bus crypto emulation dev kern net netbt netgraph netproto vfs
 SUBDIR+=libiconv
 .endif
 .endif

@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.37 2007/12/12 23:47:32 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.38 2007/12/30 20:02:56 hasso Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -36,7 +36,7 @@ LHDRS=	aio.h errno.h fcntl.h linker_set.h mqueue.h poll.h sched.h \
 # Other directories, like 'bus' and 'netproto', are created using mtree.
 #
 # XXX allow these directories to not contain header files.
-LDIRS=	net netgraph netinet netinet6 sys vm
+LDIRS=	net netbt netgraph netinet netinet6 sys vm
 
 # Subdirectories containing header files to copy.  In symlink mode 
 # the subdirectory will be symlinked.  Care must be taken to adjust

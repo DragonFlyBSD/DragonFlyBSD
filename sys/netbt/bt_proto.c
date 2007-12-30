@@ -1,0 +1,190 @@
+/* $OpenBSD: bt_proto.c,v 1.4 2007/06/24 20:55:27 uwe Exp $ */
+/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
+
+/*
+ * Copyright (c) 2004 Alexander Yurchenko <grange@openbsd.org>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#include <sys/param.h>
+#include <sys/domain.h>
+#include <sys/protosw.h>
+#include <sys/socket.h>
+#include <sys/socketvar.h>
+#include <sys/queue.h>
+#include <sys/kernel.h>
+#include <sys/mbuf.h>
+#include <sys/sysctl.h>
+#include <sys/bus.h>
+#include <sys/malloc.h>
+#include <net/if.h>
+#include <net/pf/pfvar.h>
+
+#include <netbt/bluetooth.h>
+#include <netbt/hci.h>
+#include <netbt/l2cap.h>
+#include <netbt/rfcomm.h>
+#include <netbt/sco.h>
+
+MALLOC_DEFINE(M_BLUETOOTH, "Bluetooth", "Bluetooth system memory");
+
+extern struct pr_usrreqs hci_usrreqs;
+
+static int
+netbt_modevent(module_t mod, int type, void *data)
+{
+	switch (type) {
+	case MOD_LOAD:
+		break;
+	case MOD_UNLOAD:
+		return EBUSY;
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
+static moduledata_t netbt_mod = {
+	"netbt",
+	netbt_modevent,
+	NULL
+};
+
+DECLARE_MODULE(netbt, netbt_mod, SI_SUB_EXEC, SI_ORDER_ANY);
+
+struct domain btdomain;
+
+struct protosw btsw[] = {
+	{ /* raw HCI commands */
+		.pr_type = SOCK_RAW,
+		.pr_domain = &btdomain,
+		.pr_protocol = BTPROTO_HCI,
+		.pr_flags = (PR_ADDR | PR_ATOMIC),
+		.pr_input = 0,
+		.pr_output = 0,
+		.pr_ctlinput = 0,
+		.pr_ctloutput = hci_ctloutput,
+		.pr_mport = cpu0_soport,
+		.pr_init = 0,
+		.pr_fasttimo =	0,
+		.pr_slowtimo = 0,
+		.pr_drain = 0,
+		.pr_usrreqs = &hci_usrreqs
+	},
+	{ /* HCI SCO data (audio) */
+		.pr_type = SOCK_SEQPACKET,
+		.pr_domain = &btdomain,
+		.pr_protocol = BTPROTO_SCO,
+		.pr_flags = (PR_CONNREQUIRED | PR_ATOMIC ),
+		.pr_input = 0,
+		.pr_output = 0,
+		.pr_ctlinput = 0,
+		.pr_ctloutput = sco_ctloutput,
+		.pr_mport = cpu0_soport,
+		.pr_init = 0,
+		.pr_fasttimo =	0,
+		.pr_slowtimo = 0,
+		.pr_drain = 0,
+		.pr_usrreqs = &sco_usrreqs
+
+	},
+	{ /* L2CAP Connection Oriented */
+		.pr_type = SOCK_SEQPACKET,
+		.pr_domain = &btdomain,
+		.pr_protocol = BTPROTO_L2CAP,
+		.pr_flags = (PR_CONNREQUIRED | PR_ATOMIC ),
+		.pr_input = 0,
+		.pr_output = 0,
+		.pr_ctlinput = 0,
+		.pr_ctloutput = l2cap_ctloutput,
+		.pr_mport = cpu0_soport,
+		.pr_init = 0,
+		.pr_fasttimo =	0,
+		.pr_slowtimo = 0,
+		.pr_drain = 0,
+		.pr_usrreqs = &l2cap_usrreqs
+	},
+	{ /* RFCOMM */
+		.pr_type = SOCK_STREAM,
+		.pr_domain = &btdomain,
+		.pr_protocol = BTPROTO_RFCOMM,
+		.pr_flags = (PR_CONNREQUIRED | PR_WANTRCVD),
+		.pr_input = 0,
+		.pr_output = 0,
+		.pr_ctlinput = 0,
+		.pr_ctloutput = rfcomm_ctloutput,
+		.pr_mport = cpu0_soport,
+		.pr_init = 0,
+		.pr_fasttimo =	0,
+		.pr_slowtimo = 0,
+		.pr_drain = 0,
+		.pr_usrreqs = &rfcomm_usrreqs
+	},
+};
+
+static void
+netbt_dispose(struct mbuf* m)
+{
+	ZONE_DESTROY(l2cap_pdu_pool);
+	ZONE_DESTROY(l2cap_req_pool);
+	ZONE_DESTROY(rfcomm_credit_pool);
+}
+
+static void
+netbt_init(void)
+{
+	int error = 1;
+	do {
+		ZONE_CREATE(l2cap_pdu_pool, struct l2cap_pdu, "l2cap_pdu");
+		ZONE_CREATE(l2cap_req_pool, struct l2cap_req, "l2cap_req");
+		ZONE_CREATE(rfcomm_credit_pool, struct rfcomm_credit,
+		    "rfcomm_credit");
+		error = 0;
+	} while(0); 
+
+	if (error) {
+		netbt_dispose(NULL);
+		panic("Can't create vm_zones");
+	}
+}
+
+struct domain btdomain = {
+	.dom_family = AF_BLUETOOTH,
+	.dom_name = "bluetooth",
+	.dom_init = netbt_init,
+	.dom_externalize = NULL,
+	.dom_dispose = netbt_dispose,
+	.dom_protosw = btsw,
+	.dom_protoswNPROTOSW = &btsw[sizeof(btsw)/sizeof(btsw[0])],
+	.dom_next = SLIST_ENTRY_INITIALIZER,
+	.dom_rtattach = 0,
+	.dom_rtoffset = 32,
+	.dom_maxrtkey = sizeof(struct sockaddr_bt),
+	.dom_ifattach = 0,
+	.dom_ifdetach = 0,
+};
+
+DOMAIN_SET(bt);
+SYSCTL_NODE(_net, PF_BLUETOOTH, bt, CTLFLAG_RW, 0, "Bluetooth protocol");
+SYSCTL_NODE(_net_bt, BTPROTO_HCI, hci_unit, CTLFLAG_RW, 0,
+    "Bluetooth HCI protocol");
+
+static void
+netisr_netbt_setup(void *dummy __unused)
+{
+	netisr_register(NETISR_BLUETOOTH, cpu0_portfn, btintr);
+}
+
+SYSINIT(netbt_setup, SI_BOOT2_KLD, SI_ORDER_ANY, netisr_netbt_setup, NULL);

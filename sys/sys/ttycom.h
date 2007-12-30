@@ -37,7 +37,7 @@
  *
  *	@(#)ttycom.h	8.1 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/ttycom.h,v 1.16 2000/01/29 16:47:35 peter Exp $
- * $DragonFly: src/sys/sys/ttycom.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/ttycom.h,v 1.3 2007/12/30 20:02:57 hasso Exp $
  */
 
 #ifndef	_SYS_TTYCOM_H_
@@ -136,5 +136,6 @@ struct winsize {
 #define	SLIPDISC	4		/* serial IP discipline */
 #define	PPPDISC		5		/* PPP discipline */
 #define	NETGRAPHDISC	6		/* Netgraph tty node discipline */
+#define	BTUARTDISC	7		/* Bluetooth btuart discipline */
 
 #endif /* !_SYS_TTYCOM_H_ */
