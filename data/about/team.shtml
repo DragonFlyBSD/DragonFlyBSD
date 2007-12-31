@@ -1,7 +1,7 @@
 <!--#set var="title" value="The DragonFly Team" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/about/team.shtml,v 1.7 2007/09/23 02:33:43 yanyh Exp $ -->
+<!-- $DragonFly: site/data/about/team.shtml,v 1.8 2007/12/31 10:23:36 matthias Exp $ -->
 
 
 <p>
@@ -172,6 +172,13 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <a href="mailto:hrs 'at' allbsd 'dot' org">Hiroki Sato</a></td>
 <td valign="top">IPv6, KAME integration, i18n framework and documentation, mirro
 r in Japan (AllBSD) (commit access)
+</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:matthias 'at' dragonflybsd 'dot' org">Matthias Schmidt</a></td>
+<td valign="top">Anything and Everything
+(commit access)
 </td>
 </tr>
 
