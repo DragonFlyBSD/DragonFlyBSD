@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.16 2007/12/30 08:49:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.17 2007/12/31 05:33:12 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -202,6 +202,7 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_ONRBTREE		0x0002
 #define HAMMER_RECF_DELETED		0x0004
 #define HAMMER_RECF_EMBEDDED_DATA	0x0008
+#define HAMMER_RECF_SYNCING		0x0010
 
 /*
  * Structures used to internally represent a volume and a cluster
@@ -364,7 +365,12 @@ struct hammer_node {
 	hammer_node_ondisk_t	ondisk;		/* ptr to on-disk structure */
 	struct hammer_node	**cache1;	/* passive cache(s) */
 	struct hammer_node	**cache2;
+	int			flags;
 };
+
+#define HAMMER_NODE_DELETED	0x0001
+#define HAMMER_NODE_FLUSH	0x0002
+#define HAMMER_NODE_MODIFIED	0x0004
 
 typedef struct hammer_node	*hammer_node_t;
 
@@ -427,6 +433,17 @@ extern struct hammer_alist_config Clu_master_alist_config;
 extern struct hammer_alist_config Clu_slave_alist_config;
 extern struct bio_ops hammer_bioops;
 
+extern int hammer_debug_btree;
+extern int hammer_count_inodes;
+extern int hammer_count_records;
+extern int hammer_count_record_datas;
+extern int hammer_count_volumes;
+extern int hammer_count_supercls;
+extern int hammer_count_clusters;
+extern int hammer_count_buffers;
+extern int hammer_count_nodes;
+extern int hammer_count_spikes;
+
 int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
 int	hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
@@ -450,7 +467,8 @@ int	hammer_ip_first(hammer_cursor_t cursor, hammer_inode_t ip);
 int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid);
-
+int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
+			hammer_inode_t ip);
 int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
 int	hammer_sync_volume(hammer_volume_t volume, void *data);
 int	hammer_sync_cluster(hammer_cluster_t cluster, void *data);
@@ -458,8 +476,7 @@ int	hammer_sync_buffer(hammer_buffer_t buffer, void *data);
 
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip);
-void	hammer_rel_mem_record(struct hammer_record **recordp);
-void	hammer_drop_mem_record(hammer_record_t record, int delete);
+void	hammer_rel_mem_record(hammer_record_t record);
 
 int	hammer_cursor_up(hammer_cursor_t cursor, int nonblock);
 int	hammer_cursor_toroot(hammer_cursor_t cursor);

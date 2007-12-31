@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.8 2007/12/30 08:49:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.9 2007/12/31 05:33:12 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -271,6 +271,9 @@ hammer_get_obj_type(enum vtype vtype)
  *
  * We strip bit 63 in order to provide a positive key, this way a seek
  * offset of 0 will represent the base of the directory.
+ *
+ * This function can never return 0.  We use the MSB-0 space to synthesize
+ * artificial directory entries such as "." and "..".
  */
 int64_t
 hammer_directory_namekey(void *name, int len)
@@ -278,6 +281,8 @@ hammer_directory_namekey(void *name, int len)
 	int64_t key;
 
 	key = (int64_t)(crc32(name, len) & 0x7FFFFFFF) << 32;
+	if (key == 0)
+		key |= 0x100000000LL;
 	return(key);
 }
 

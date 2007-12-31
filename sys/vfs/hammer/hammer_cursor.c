@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.8 2007/12/30 08:49:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.9 2007/12/31 05:33:12 dillon Exp $
  */
 
 /*
@@ -346,9 +346,9 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	cursor->right_bound = &elm[1].internal.base;
 
 	KKASSERT(hammer_btree_cmp(cursor->left_bound,
-		 &ccluster->ondisk->clu_btree_beg) == 0);
+		 &ccluster->ondisk->clu_btree_beg) <= 0);
 	KKASSERT(hammer_btree_cmp(cursor->right_bound,
-		 &ccluster->ondisk->clu_btree_end) == 0);
+		 &ccluster->ondisk->clu_btree_end) >= 0);
 
 	if (hammer_lock_ex_try(&parent->lock) != 0) {
 		hammer_unlock(&cursor->node->lock);

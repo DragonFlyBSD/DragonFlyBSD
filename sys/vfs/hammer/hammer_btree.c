@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.13 2007/12/30 08:49:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.14 2007/12/31 05:33:12 dillon Exp $
  */
 
 /*
@@ -181,6 +181,23 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			elm = &node->elms[cursor->index];
 			r = hammer_btree_cmp(&cursor->key_end, &elm[0].base);
 			s = hammer_btree_cmp(&cursor->key_beg, &elm[1].base);
+			if (hammer_debug_btree) {
+				kprintf("BRACKETL %p:%d %016llx %02x %016llx %d\n",
+					cursor->node, cursor->index,
+					elm[0].internal.base.obj_id,
+					elm[0].internal.base.rec_type,
+					elm[0].internal.base.key,
+					r
+				);
+				kprintf("BRACKETR %p:%d %016llx %02x %016llx %d\n",
+					cursor->node, cursor->index + 1,
+					elm[1].internal.base.obj_id,
+					elm[1].internal.base.rec_type,
+					elm[1].internal.base.key,
+					s
+				);
+			}
+
 			if (r < 0) {
 				error = ENOENT;
 				break;
@@ -202,6 +219,15 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		} else {
 			elm = &node->elms[cursor->index];
 			r = hammer_btree_cmp(&cursor->key_end, &elm->base);
+			if (hammer_debug_btree) {
+				kprintf("ELEMENT  %p:%d %016llx %02x %016llx %d\n",
+					cursor->node, cursor->index,
+					elm[0].leaf.base.obj_id,
+					elm[0].leaf.base.rec_type,
+					elm[0].leaf.base.key,
+					r
+				);
+			}
 			if (r < 0) {
 				error = ENOENT;
 				break;
@@ -221,6 +247,16 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		/*
 		 * Return entry
 		 */
+		if (hammer_debug_btree) {
+			int i = cursor->index;
+			hammer_btree_elm_t elm = &cursor->node->ondisk->elms[i];
+			kprintf("ITERATE  %p:%d %016llx %02x %016llx\n",
+				cursor->node, i,
+				elm->internal.base.obj_id,
+				elm->internal.base.rec_type,
+				elm->internal.base.key
+			);
+		}
 		return(0);
 	}
 	return(error);
@@ -427,6 +463,13 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 	++node->count;
 	hammer_modify_node_done(cursor->node);
 
+	KKASSERT(hammer_btree_cmp(cursor->left_bound, &elm->leaf.base) <= 0);
+	KKASSERT(hammer_btree_cmp(cursor->right_bound, &elm->leaf.base) > 0);
+	if (i)
+		KKASSERT(hammer_btree_cmp(&node->elms[i-1].leaf.base, &elm->leaf.base) < 0);
+	if (i != node->count - 1)
+		KKASSERT(hammer_btree_cmp(&node->elms[i+1].leaf.base, &elm->leaf.base) > 0);
+
 	/*
 	 * Adjust the sub-tree count in the parent.  note that the parent
 	 * may be in a different cluster.
@@ -520,6 +563,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	 * This may reposition the cursor at one of the parent's of the
 	 * current node.
 	 */
+	KKASSERT(cursor->index <= ondisk->count);
 	if (ondisk->count == 0) {
 		error = btree_remove(cursor);
 		if (error == EAGAIN)
@@ -564,6 +608,15 @@ btree_search(hammer_cursor_t cursor, int flags)
 	int r;
 
 	flags |= cursor->flags;
+
+	if (hammer_debug_btree) {
+		kprintf("SEARCH   %p:%d %016llx %02x %016llx\n",
+			cursor->node, cursor->index,
+			cursor->key_beg.obj_id,
+			cursor->key_beg.rec_type,
+			cursor->key_beg.key
+		);
+	}
 
 	/*
 	 * Move our cursor up the tree until we find a node whos range covers
@@ -769,6 +822,16 @@ btree_search(hammer_cursor_t cursor, int flags)
 		}
 		cursor->index = i;
 
+		if (hammer_debug_btree) {
+			hammer_btree_elm_t elm = &node->elms[i];
+			kprintf("SEARCH-I %p:%d %016llx %02x %016llx\n",
+				cursor->node, i,
+				elm->internal.base.obj_id,
+				elm->internal.base.rec_type,
+				elm->internal.base.key
+			);
+		}
+
 		/*
 		 * Handle insertion and deletion requirements.
 		 *
@@ -879,8 +942,17 @@ btree_search(hammer_cursor_t cursor, int flags)
 		if (r == 0) {
 			cursor->index = i;
 			error = 0;
+			if (hammer_debug_btree) {
+				kprintf("SEARCH-L %p:%d (SUCCESS)\n",
+					cursor->node, i);
+			}
 			goto done;
 		}
+	}
+
+	if (hammer_debug_btree) {
+		kprintf("SEARCH-L %p:%d (FAILED)\n",
+			cursor->node, i);
 	}
 
 	/*
@@ -1027,7 +1099,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	if (new_node == NULL) {
 		if (made_root) {
 			hammer_unlock(&parent->lock);
-			hammer_free_btree(parent->cluster, parent->node_offset);
+			parent->flags |= HAMMER_NODE_DELETED;
 			hammer_rel_node(parent);
 		}
 		return(error);
@@ -1143,6 +1215,10 @@ btree_split_internal(hammer_cursor_t cursor)
 	parent_elm = &parent->ondisk->elms[cursor->parent_index];
 	cursor->left_bound = &parent_elm[0].internal.base;
 	cursor->right_bound = &parent_elm[1].internal.base;
+	KKASSERT(hammer_btree_cmp(cursor->left_bound,
+		 &cursor->node->ondisk->elms[0].internal.base) <= 0);
+	KKASSERT(hammer_btree_cmp(cursor->right_bound,
+		 &cursor->node->ondisk->elms[cursor->node->ondisk->count-1].internal.base) > 0);
 
 	return (0);
 }
@@ -1160,6 +1236,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	hammer_node_t new_leaf;
 	hammer_btree_elm_t elm;
 	hammer_btree_elm_t parent_elm;
+	hammer_base_elm_t mid_boundary;
 	int parent_index;
 	int made_root;
 	int split;
@@ -1223,7 +1300,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	if (new_leaf == NULL) {
 		if (made_root) {
 			hammer_unlock(&parent->lock);
-			hammer_free_btree(parent->cluster, parent->node_offset);
+			parent->flags |= HAMMER_NODE_DELETED;
 			hammer_rel_node(parent);
 		}
 		return(error);
@@ -1273,6 +1350,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	parent_elm->internal.subtree_type = new_leaf->ondisk->type;
 	parent_elm->internal.subtree_vol_no = 0;
 	parent_elm->internal.rec_offset = 0;
+	mid_boundary = &parent_elm->base;
 	++ondisk->count;
 	hammer_modify_node_done(parent);
 
@@ -1298,11 +1376,14 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * index was pointing at.  If we are >= the split point the push node
 	 * is now in the new node.
 	 *
-	 * NOTE: If we are at the split point itself we cannot stay with the
-	 * original node because the push index will point at the right-hand
-	 * boundary, which is illegal.
+	 * NOTE: If we are at the split point itself we need to select the
+	 * old or new node based on where key_beg's insertion point will be.
+	 * If we pick the wrong side the inserted element will wind up in
+	 * the wrong leaf node and outside that node's bounds.
 	 */
-	if (cursor->index >= split) {
+	if (cursor->index > split ||
+	    (cursor->index == split &&
+	     hammer_btree_cmp(&cursor->key_beg, mid_boundary) >= 0)) {
 		cursor->parent_index = parent_index + 1;
 		cursor->index -= split;
 		hammer_unlock(&cursor->node->lock);
@@ -1320,6 +1401,10 @@ btree_split_leaf(hammer_cursor_t cursor)
 	parent_elm = &parent->ondisk->elms[cursor->parent_index];
 	cursor->left_bound = &parent_elm[0].internal.base;
 	cursor->right_bound = &parent_elm[1].internal.base;
+	KKASSERT(hammer_btree_cmp(cursor->left_bound,
+		 &cursor->node->ondisk->elms[0].leaf.base) <= 0);
+	KKASSERT(hammer_btree_cmp(cursor->right_bound,
+		 &cursor->node->ondisk->elms[cursor->node->ondisk->count-1].leaf.base) > 0);
 
 	return (0);
 }
@@ -1330,9 +1415,12 @@ btree_split_leaf(hammer_cursor_t cursor)
  * other error.
  *
  * On return the cursor may end up pointing at an internal node, suitable
- * for further iteration but not for insertion or deletion.
+ * for further iteration but not for an immediate insertion or deletion.
  *
  * cursor->node may be an internal node or a leaf node.
+ *
+ * NOTE: If cursor->node has one element it is the parent trying to delete
+ * that element, make sure cursor->index is properly adjusted on success.
  */
 int
 btree_remove(hammer_cursor_t cursor)
@@ -1356,6 +1444,7 @@ btree_remove(hammer_cursor_t cursor)
 		KKASSERT(ondisk->parent == 0);
 		ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 		ondisk->count = 0;
+		cursor->index = 0;
 		hammer_modify_node_done(cursor->node);
 		kprintf("EMPTY ROOT OF ROOT CLUSTER -> LEAF\n");
 		return(0);
@@ -1379,10 +1468,8 @@ btree_remove(hammer_cursor_t cursor)
 	 */
 	error = hammer_cursor_up(cursor, 1);
 	if (error) {
-		kprintf("BTREE_REMOVE: Cannot lock parent\n");
-		hammer_unlock(&save->lock);
-		hammer_rel_node(save);
-		return(error);
+		kprintf("BTREE_REMOVE: Cannot lock parent, skipping\n");
+		goto failure;
 	}
 
 	/*
@@ -1403,15 +1490,12 @@ btree_remove(hammer_cursor_t cursor)
 	if (node->ondisk->count == 1) {
 		error = btree_remove(cursor);
 		if (error == 0) {
-			kprintf("BTREE_REMOVE: Successful!\n");
-			hammer_flush_node(save);
-			hammer_free_btree(save->cluster, save->node_offset);
+			/*kprintf("BTREE_REMOVE: Successful!\n");*/
+			goto success;
 		} else {
 			kprintf("BTREE_REMOVE: Recursion failed %d\n", error);
+			goto failure;
 		}
-		hammer_unlock(&save->lock);
-		hammer_rel_node(save);
-		return(error);
 	}
 
 	/*
@@ -1438,6 +1522,8 @@ btree_remove(hammer_cursor_t cursor)
 #if 0
 	kprintf("BTREE_REMOVE: Removing element %d\n", cursor->index);
 #endif
+	KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
+	KKASSERT(cursor->index < node->ondisk->count);
 	hammer_modify_node(node);
 	ondisk = node->ondisk;
 	i = cursor->index;
@@ -1464,15 +1550,20 @@ btree_remove(hammer_cursor_t cursor)
 			hammer_modify_node_done(parent);
 		}
 	}
-		
+
+success:
 	/*
-	 * Free the saved node.
+	 * Free the saved node.  If the saved node was the root of a
+	 * cluster, free the entire cluster.
 	 */
 	hammer_flush_node(save);
-	hammer_free_btree(save->cluster, save->node_offset);
+	save->flags |= HAMMER_NODE_DELETED;
+
+	error = 0;
+failure:
 	hammer_unlock(&save->lock);
 	hammer_rel_node(save);
-	return(0);
+	return(error);
 }
 
 /*
@@ -1535,214 +1626,6 @@ btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm)
 }
 
 #if 0
-
-/*
- * This routine is called on the internal node (node) prior to recursing down
- * through (node, index) when the node referenced by (node, index) MIGHT
- * have too few elements for the caller to perform a deletion.
- *
- * cursor->index is invalid on return because the separators may have gotten
- * adjusted, the caller must rescan the node's elements.  The caller may set
- * cursor->index to -1 if it wants us to do a general rebalancing.
- *
- * This routine rebalances the children of the (node), collapsing children
- * together if possible.  On return each child will have at least L/2-1
- * elements unless the node only has one child.
- * 
- * NOTE: Because we do not update the parent's parent in the split code,
- * the subtree_count used by the caller may be incorrect.  We correct it
- * here.  Also note that we cannot change the depth of the tree's leaf
- * nodes here (see btree_collapse()).
- *
- * NOTE: We make no attempt to rebalance inter-cluster elements.
- */
-static
-int
-btree_rebalance(hammer_cursor_t cursor)
-{
-	hammer_node_ondisk_t ondisk;
-	hammer_node_t node;
-	hammer_node_t children[HAMMER_BTREE_INT_ELMS];
-	hammer_node_t child;
-	hammer_btree_elm_t elm;
-	hammer_btree_elm_t elms;
-	int i, j, n, nelms, goal;
-	int maxelms, halfelms;
-	int error;
-
-	/*
-	 * If the elm being recursed through is an inter-cluster reference,
-	 * don't worry about it.
-	 */
-	ondisk = cursor->node->ondisk;
-	elm = &ondisk->elms[cursor->index];
-	if (elm->internal.subtree_type == HAMMER_BTREE_TYPE_CLUSTER)
-		return(0);
-
-	KKASSERT(elm->internal.subtree_offset != 0);
-	error = 0;
-
-	/*
-	 * Load the children of node and do any necessary corrections
-	 * to subtree_count.  subtree_count may be too low due to the
-	 * way insertions split nodes.  Get a count of the total number
-	 * of actual elements held by our children.
-	 */
-	error = 0;
-
-	for (i = n = 0; i < node->base.count; ++i) {
-		struct hammer_btree_internal_elm *elm;
-
-		elm = &node->elms[i];
-		children[i] = NULL;
-		child_buffer[i] = NULL;	/* must be preinitialized for bread */
-		if (elm->subtree_offset == 0)
-			continue;
-		child = hammer_bread(cursor->cluster, elm->subtree_offset,
-				     HAMMER_FSBUF_BTREE, &error,
-				     &child_buffer[i], XXX);
-		children[i] = child;
-		if (child == NULL)
-			continue;
-		XXX
-		KKASSERT(node->base.subtype == child->base.type);
-
-		/*
-		 * Accumulate n for a good child, update the node's count
-		 * if it was wrong.
-		 */
-		if (node->elms[i].subtree_count != child->base.count) {
-			node->elms[i].subtree_count = child->base.count;
-		}
-		n += node->elms[i].subtree_count;
-	}
-	if (error)
-		goto failed;
-
-	/*
-	 * Collect all the children's elements together
-	 */
-	nelms = n;
-	elms = kmalloc(sizeof(*elms) * (nelms + 1), M_HAMMER, M_WAITOK|M_ZERO);
-	for (i = n = 0; i < node->base.count; ++i) {
-		child = children[i];
-		for (j = 0; j < child->base.count; ++j) {
-			elms[n].owner = child;
-			if (node->base.subtype == HAMMER_BTREE_TYPE_LEAF)
-				elms[n].u.leaf = child->leaf.elms[j];
-			else
-				elms[n].u.internal = child->internal.elms[j];
-			++n;
-		}
-	}
-	KKASSERT(n == nelms);
-
-	/*
-	 * Store a boundary in the elms array to ease the code below.  This
-	 * is only used if the children are internal nodes.
-	 */
-	elms[n].u.internal = node->elms[i];
-
-	/*
-	 * Calculate the number of elements each child should have (goal) by
-	 * reducing the number of elements until we achieve at least
-	 * halfelms - 1 per child, unless we are a degenerate case.
-	 */
-	maxelms = btree_max_elements(node->base.subtype);
-	halfelms = maxelms / 2;
-
-	goal = halfelms - 1;
-	while (i && n / i < goal)
-		--i;
-
-	/*
-	 * Now rebalance using the specified goal
-	 */
-	for (i = n = 0; i < node->base.count; ++i) {
-		struct hammer_buffer *subchild_buffer = NULL;
-		struct hammer_btree_internal_node *subchild;
-
-		child = children[i];
-		for (j = 0; j < goal && n < nelms; ++j) {
-			if (node->base.subtype == HAMMER_BTREE_TYPE_LEAF) {
-				child->leaf.elms[j] = elms[n].u.leaf;
-			} else {
-				child->internal.elms[j] = elms[n].u.internal;
-			}
-
-			/*
-			 * If the element's parent has changed we have to
-			 * update the parent pointer.  This is somewhat
-			 * expensive.
-			 */
-			if (elms[n].owner != child &&
-			    node->base.subtype == HAMMER_BTREE_TYPE_INTERNAL) {
-				subchild = hammer_bread(cursor->cluster,
-							elms[n].u.internal.subtree_offset,
-							HAMMER_FSBUF_BTREE,
-							&error,
-							&subchild_buffer, XXX);
-				if (subchild) {
-					hammer_modify_buffer(subchild_buffer);
-					subchild->base.parent =
-					    hammer_bclu_offset(child_buffer[i],
-								child);
-					hammer_modify_buffer_done(subchild_buffer);
-				}
-				/* XXX error */
-			}
-			++n;
-		}
-		/* 
-		 * Set right boundary if the children are internal nodes.
-		 */
-		if (node->base.subtype == HAMMER_BTREE_TYPE_INTERNAL)
-			child->internal.elms[j] = elms[n].u.internal;
-		child->base.count = j;
-		hammer_modify_buffer(child_buffer[i]);
-		if (subchild_buffer)
-			hammer_put_buffer(subchild_buffer, 0);
-
-		/*
-		 * If we have run out of elements, break out
-		 */
-		if (n == nelms)
-			break;
-	}
-
-	/*
-	 * Physically destroy any left-over children.  These children's
-	 * elements have been packed into prior children.  The node's
-	 * right hand boundary and count gets shifted to index i.
-	 *
-	 * The subtree count in the node's parent MUST be updated because
-	 * we are removing elements.  The subtree_count field is allowed to
-	 * be too small, but not too large!
-	 */
-	if (i != node->base.count) {
-		n = i;
-		node->elms[n] = node->elms[node->base.count];
-		while (i < node->base.count) {
-			hammer_free_btree_ptr(child_buffer[i], children[i]);
-			hammer_put_buffer(child_buffer[i], 0);
-			++i;
-		}
-		node->base.count = n;
-		if (cursor->parent) {
-			cursor->parent->elms[cursor->parent_index].subtree_count = n;
-			hammer_modify_buffer(cursor->parent_buffer);
-		}
-	}
-
-	kfree(elms, M_HAMMER);
-failed:
-	hammer_modify_buffer(cursor->node_buffer);
-	for (i = 0; i < node->base.count; ++i) {
-		if (child_buffer[i])
-			hammer_put_buffer(child_buffer[i], 0);
-	}
-	return (error);
-}
 
 /*
  * This routine is only called if the cursor is at the root node and the

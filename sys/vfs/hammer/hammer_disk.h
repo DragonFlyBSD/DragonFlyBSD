@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.13 2007/12/30 00:47:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.14 2007/12/31 05:33:12 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -447,6 +447,9 @@ struct hammer_base_record {
  * not set in the left or right boundary elements around the inter-cluster
  * reference of an internal node in the B-Tree (because doing so would
  * interfere with the boundary tests).
+ *
+ * NOTE: hammer_ip_delete_range_all() deletes all record types greater
+ * then HAMMER_RECTYPE_INODE.
  */
 #define HAMMER_RECTYPE_UNKNOWN		0
 #define HAMMER_RECTYPE_LOWEST		1	/* lowest record type avail */

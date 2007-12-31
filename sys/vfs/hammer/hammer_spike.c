@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.3 2007/12/30 08:49:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.4 2007/12/31 05:33:12 dillon Exp $
  */
 
 #include "hammer.h"
@@ -48,6 +48,7 @@ hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep)
 	KKASSERT(cursor->node->ondisk->type == HAMMER_BTREE_TYPE_LEAF);
 	KKASSERT(*spikep == NULL);
 	*spikep = spike = kmalloc(sizeof(*spike), M_HAMMER, M_WAITOK|M_ZERO);
+	++hammer_count_spikes;
 
 	spike->parent = cursor->parent;
 	spike->parent_index = cursor->parent_index;
@@ -164,6 +165,7 @@ hammer_spike(struct hammer_cursor **spikep)
 		elm->internal.subtree_vol_no = ncluster->volume->vol_no;
 		elm->internal.subtree_count = onode->ondisk->count; /*XXX*/
 		hammer_modify_node_done(spike->parent);
+		onode->flags |= HAMMER_NODE_MODIFIED;
 		hammer_flush_node(onode);
 	}
 	{
@@ -199,7 +201,7 @@ hammer_spike(struct hammer_cursor **spikep)
 			}
 		}
 	}
-	hammer_free_btree(ocluster, onode->node_offset);
+	onode->flags |= HAMMER_NODE_DELETED;
 
 	/*
 	 * XXX I/O dependancy - new cluster must be flushed before current
@@ -223,6 +225,7 @@ failed3:
 	kprintf("UNLOAD SPIKE %p %d\n", spike, error);
 	hammer_unlock(&ocluster->io.lock);
 	hammer_done_cursor(spike);
+	--hammer_count_spikes;
 	kfree(spike, M_HAMMER);
 	*spikep = NULL;
 	return (error);

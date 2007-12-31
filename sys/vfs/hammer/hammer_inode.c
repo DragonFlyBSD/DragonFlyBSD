@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.14 2007/12/30 08:49:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.15 2007/12/31 05:33:12 dillon Exp $
  */
 
 #include "hammer.h"
@@ -203,6 +203,7 @@ loop:
 	}
 
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
+	++hammer_count_inodes;
 	ip->obj_id = obj_id;
 	ip->obj_asof = iinfo.obj_asof;
 	ip->hmp = hmp;
@@ -236,26 +237,32 @@ loop:
 	} else if (cursor.node) {
 		hammer_cache_node(cursor.node, &ip->cache);
 	}
-	hammer_done_cursor(&cursor);
 
 	/*
 	 * On success load the inode's record and data and insert the
 	 * inode into the B-Tree.  It is possible to race another lookup
 	 * insertion of the same inode so deal with that condition too.
+	 *
+	 * The cursor's locked node interlocks against others creating and
+	 * destroying ip while we were blocked.
 	 */
 	if (*errorp == 0) {
 		hammer_ref(&ip->lock);
 		if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
 			hammer_uncache_node(&ip->cache);
 			hammer_unref(&ip->lock);
+			--hammer_count_inodes;
 			kfree(ip, M_HAMMER);
+			hammer_done_cursor(&cursor);
 			goto loop;
 		}
 		ip->flags |= HAMMER_INODE_ONDISK;
 	} else {
+		--hammer_count_inodes;
 		kfree(ip, M_HAMMER);
 		ip = NULL;
 	}
+	hammer_done_cursor(&cursor);
 	return (ip);
 }
 
@@ -277,6 +284,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 
 	hmp = trans->hmp;
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
+	++hammer_count_inodes;
 	ip->obj_id = hammer_alloc_tid(trans);
 	KKASSERT(ip->obj_id != 0);
 	ip->obj_asof = hmp->asof;
@@ -403,7 +411,8 @@ retry:
 		record->rec.inode.base.data_len = sizeof(ip->ino_data);
 		record->data = (void *)&ip->ino_data;
 		error = hammer_ip_sync_record(record, &spike);
-		hammer_drop_mem_record(record, 1);
+		record->flags |= HAMMER_RECF_DELETED;
+		hammer_rel_mem_record(record);
 		if (error == ENOSPC) {
 			error = hammer_spike(&spike);
 			if (error == 0)
@@ -457,10 +466,11 @@ hammer_unload_inode(struct hammer_inode *ip, void *data __unused)
 	error = hammer_sync_inode(ip, MNT_WAIT, 1);
 	if (error)
 		kprintf("hammer_sync_inode failed error %d\n", error);
-
+	KKASSERT(RB_EMPTY(&ip->rec_tree));
 	RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
 
 	hammer_uncache_node(&ip->cache);
+	--hammer_count_inodes;
 	kfree(ip, M_HAMMER);
 	return(0);
 }
@@ -499,25 +509,17 @@ hammer_sync_inode_callback(hammer_record_t rec, void *data)
 	int error;
 
 	hammer_ref(&rec->lock);
-	hammer_lock_ex(&rec->lock);
-	if ((rec->flags & HAMMER_RECF_DELETED) == 0)
-		error = hammer_ip_sync_record(rec, spike);
-	else
-		error = 0;
-
-	if (error == ENOSPC) {
-		hammer_drop_mem_record(rec, 0);
-		return(-error);
-	}
+	error = hammer_ip_sync_record(rec, spike);
+	hammer_rel_mem_record(rec);
 
 	if (error) {
-		kprintf("hammer_sync_inode_callback: sync failed rec %p, error %d\n",
-			rec, error);
-		hammer_drop_mem_record(rec, 0);
-		return(-error);
+		error = -error;
+		if (error != -ENOSPC) {
+			kprintf("hammer_sync_inode_callback: sync failed rec "
+				"%p, error %d\n", rec, error);
+		}
 	}
-	hammer_drop_mem_record(rec, 1);	/* ref & lock eaten by call */
-	return(0);
+	return(error);
 }
 
 /*
@@ -608,8 +610,8 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 		while (RB_ROOT(&ip->rec_tree)) {
 			hammer_record_t rec = RB_ROOT(&ip->rec_tree);
 			hammer_ref(&rec->lock);
-			hammer_lock_ex(&rec->lock);
-			hammer_drop_mem_record(rec, 1);
+			rec->flags |= HAMMER_RECF_DELETED;
+			hammer_rel_mem_record(rec);
 		}
 		break;
 	case HAMMER_INODE_ONDISK:

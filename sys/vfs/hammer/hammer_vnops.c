@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.12 2007/12/30 08:49:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.13 2007/12/31 05:33:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,7 @@
 #include <sys/lockf.h>
 #include <sys/event.h>
 #include <sys/stat.h>
+#include <sys/dirent.h>
 #include <vm/vm_extern.h>
 #include <vfs/fifofs/fifo.h>
 #include "hammer.h"
@@ -870,22 +871,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 
 	ip = VTOI(ap->a_vp);
 	uio = ap->a_uio;
-	hammer_init_cursor_ip(&cursor, ip);
-
-	/*
-	 * Key range (begin and end inclusive) to scan.  Directory keys
-	 * directly translate to a 64 bit 'seek' position.
-	 */
-	cursor.key_beg.obj_id = ip->obj_id;
-	cursor.key_beg.create_tid = ip->obj_asof;
-	cursor.key_beg.delete_tid = 0;
-        cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
-	cursor.key_beg.obj_type = 0;
-	cursor.key_beg.key = uio->uio_offset;
-
-	cursor.key_end = cursor.key_beg;
-	cursor.key_end.key = HAMMER_MAX_KEY;
-	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+	saveoff = uio->uio_offset;
 
 	if (ap->a_ncookies) {
 		ncookies = uio->uio_resid / 16 + 1;
@@ -899,7 +885,56 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 		cookie_index = 0;
 	}
 
-	saveoff = cursor.key_beg.key;
+	/*
+	 * Handle artificial entries
+	 */
+	error = 0;
+	if (saveoff == 0) {
+		r = vop_write_dirent(&error, uio, ip->obj_id, DT_DIR, 1, ".");
+		if (r)
+			goto done;
+		if (cookies)
+			cookies[cookie_index] = saveoff;
+		++saveoff;
+		++cookie_index;
+		if (cookie_index == ncookies)
+			goto done;
+	}
+	if (saveoff == 1) {
+		if (ip->ino_data.parent_obj_id) {
+			r = vop_write_dirent(&error, uio,
+					     ip->ino_data.parent_obj_id,
+					     DT_DIR, 2, "..");
+		} else {
+			r = vop_write_dirent(&error, uio,
+					     ip->obj_id, DT_DIR, 2, "..");
+		}
+		if (r)
+			goto done;
+		if (cookies)
+			cookies[cookie_index] = saveoff;
+		++saveoff;
+		++cookie_index;
+		if (cookie_index == ncookies)
+			goto done;
+	}
+
+	/*
+	 * Key range (begin and end inclusive) to scan.  Directory keys
+	 * directly translate to a 64 bit 'seek' position.
+	 */
+	hammer_init_cursor_ip(&cursor, ip);
+	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.delete_tid = 0;
+        cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = saveoff;
+
+	cursor.key_end = cursor.key_beg;
+	cursor.key_end.key = HAMMER_MAX_KEY;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+
 	error = hammer_ip_first(&cursor, ip);
 
 	while (error == 0) {
@@ -930,10 +965,13 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	}
 	hammer_done_cursor(&cursor);
 
+done:
 	if (ap->a_eofflag)
 		*ap->a_eofflag = (error == ENOENT);
 	uio->uio_offset = saveoff;
 	if (error && cookie_index == 0) {
+		if (error == ENOENT)
+			error = 0;
 		if (cookies) {
 			kfree(cookies, M_TEMP);
 			*ap->a_ncookies = 0;
@@ -1020,16 +1058,19 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	tdip = VTOI(ap->a_tdvp);
 	fncp = ap->a_fnch->ncp;
 	tncp = ap->a_tnch->ncp;
+	ip = VTOI(fncp->nc_vp);
+	KKASSERT(ip != NULL);
 	hammer_start_transaction(&trans, fdip->hmp);
 
 	/*
-	 * Extract the hammer_inode from fncp and add link to the target
-	 * directory.
+	 * Remove tncp from the target directory and then link ip as
+	 * tncp. XXX pass trans to dounlink
 	 */
-	ip = VTOI(fncp->nc_vp);
-	KKASSERT(ip != NULL);
-
-	error = hammer_ip_add_directory(&trans, tdip, tncp, ip);
+	error = hammer_dounlink(ap->a_tnch, ap->a_tdvp, ap->a_cred, 0);
+	if (error == 0 || error == ENOENT)
+		error = hammer_ip_add_directory(&trans, tdip, tncp, ip);
+	if (error)
+		goto failed; /* XXX */
 
 	/*
 	 * Locate the record in the originating directory and remove it.
@@ -1079,12 +1120,14 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	if (error)
 		goto done;
 	error = hammer_ip_del_directory(&trans, &cursor, fdip, ip);
+
 	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
 		cache_setvp(ap->a_tnch, ip->vp);
 	}
 done:
         hammer_done_cursor(&cursor);
+failed:
 	if (error == 0) {
 		hammer_commit_transaction(&trans);
 	} else {
@@ -1100,8 +1143,6 @@ static
 int
 hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 {
-	/* XXX check that directory is empty */
-
 	return(hammer_dounlink(ap->a_nch, ap->a_dvp, ap->a_cred, 0));
 }
 
@@ -1624,10 +1665,16 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 
 	/*
 	 * If all is ok we have to get the inode so we can adjust nlinks.
+	 *
+	 * If the target is a directory, it must be empty.
 	 */
 	if (error == 0) {
 		ip = hammer_get_inode(dip->hmp, rec->entry.obj_id,
 				      dip->hmp->asof, &error);
+		if (error == 0 && ip->ino_rec.base.base.obj_type ==
+				  HAMMER_OBJTYPE_DIRECTORY) {
+			error = hammer_ip_check_directory_empty(&trans, ip);
+		}
 		if (error == 0)
 			error = hammer_ip_del_directory(&trans, &cursor, dip, ip);
 		if (error == 0) {
