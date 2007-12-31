@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.13 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.14 2007/12/31 05:44:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -270,8 +270,10 @@ hammer_vop_write(struct vop_write_args *ap)
 	/*
 	 * Check for illegal write offsets.  Valid range is 0...2^63-1
 	 */
-	if (uio->uio_offset < 0 || uio->uio_offset + uio->uio_resid <= 0)
+	if (uio->uio_offset < 0 || uio->uio_offset + uio->uio_resid <= 0) {
+		hammer_commit_transaction(&trans);
 		return (EFBIG);
+	}
 
 	/*
 	 * Access the data in HAMMER_BUFSIZE blocks via the buffer cache.
@@ -1685,13 +1687,12 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 				cache_inval_vp(ip->vp, CINV_DESTROY);
 		}
 		hammer_rel_inode(ip, 0);
-
-		if (error == 0) {
-			hammer_commit_transaction(&trans);
-		} else {
-			hammer_abort_transaction(&trans);
-		}
 	}
+
+	if (error == 0)
+		hammer_commit_transaction(&trans);
+	else
+		hammer_abort_transaction(&trans);
         hammer_done_cursor(&cursor);
 	return (error);
 }
