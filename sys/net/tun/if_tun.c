@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.31 2006/12/20 18:14:42 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.32 2007/12/31 04:58:53 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -183,21 +183,8 @@ tunclose(struct dev_close_args *ap)
 		if_down(ifp);
 		lwkt_serialize_exit(ifp->if_serializer);
 	}
-
-	if (ifp->if_flags & IFF_RUNNING) {
-		struct ifaddr *ifa;
-
-		lwkt_serialize_enter(ifp->if_serializer);
-		/* find internet addresses and delete routes */
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
-			if (ifa->ifa_addr->sa_family == AF_INET) {
-				rtinit(ifa, (int)RTM_DELETE,
-				    tp->tun_flags & TUN_DSTADDR ? RTF_HOST : 0);
-			}
-		}
-		ifp->if_flags &= ~IFF_RUNNING;
-		lwkt_serialize_exit(ifp->if_serializer);
-	}
+	ifp->if_flags &= ~IFF_RUNNING;
+	if_purgeaddrs_nolink(ifp);
 
 	funsetown(tp->tun_sigio);
 	selwakeup(&tp->tun_rsel);
@@ -231,10 +218,6 @@ tuninit(struct ifnet *ifp)
 			    si = (struct sockaddr_in *)ifa->ifa_addr;
 			    if (si->sin_addr.s_addr)
 				    tp->tun_flags |= TUN_IASET;
-
-			    si = (struct sockaddr_in *)ifa->ifa_dstaddr;
-			    if (si && si->sin_addr.s_addr)
-				    tp->tun_flags |= TUN_DSTADDR;
 			}
 #endif
 		}

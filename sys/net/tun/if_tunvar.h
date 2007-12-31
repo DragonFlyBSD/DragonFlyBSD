@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_tunvar.h,v 1.7 2000/01/23 01:47:12 brian Exp $
- * $DragonFly: src/sys/net/tun/if_tunvar.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tunvar.h,v 1.3 2007/12/31 04:58:54 sephe Exp $
  */
 
 #ifndef _NET_IF_TUNVAR_H_
@@ -36,7 +36,7 @@ struct tun_softc {
 #define	TUN_INITED	0x0002
 #define	TUN_RCOLL	0x0004
 #define	TUN_IASET	0x0008
-#define	TUN_DSTADDR	0x0010
+#define	TUN_DSTADDR	0x0010		/* unused */
 #define	TUN_LMODE	0x0020
 #define	TUN_RWAIT	0x0040
 #define	TUN_ASYNC	0x0080

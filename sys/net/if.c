@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.58 2007/12/29 12:51:17 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.59 2007/12/31 04:58:53 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -305,13 +305,50 @@ if_attachdomain1(struct ifnet *ifp)
 }
 
 /*
+ * Purge all addresses whose type is _not_ AF_LINK
+ */
+void
+if_purgeaddrs_nolink(struct ifnet *ifp)
+{
+	struct ifaddr *ifa, *next;
+
+	TAILQ_FOREACH_MUTABLE(ifa, &ifp->if_addrhead, ifa_link, next) {
+		/* Leave link ifaddr as it is */
+		if (ifa->ifa_addr->sa_family == AF_LINK)
+			continue;
+#ifdef INET
+		/* XXX: Ugly!! ad hoc just for INET */
+		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
+			struct ifaliasreq ifr;
+
+			bzero(&ifr, sizeof ifr);
+			ifr.ifra_addr = *ifa->ifa_addr;
+			if (ifa->ifa_dstaddr)
+				ifr.ifra_broadaddr = *ifa->ifa_dstaddr;
+			if (in_control(NULL, SIOCDIFADDR, (caddr_t)&ifr, ifp,
+				       NULL) == 0)
+				continue;
+		}
+#endif /* INET */
+#ifdef INET6
+		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET6) {
+			in6_purgeaddr(ifa);
+			/* ifp_addrhead is already updated */
+			continue;
+		}
+#endif /* INET6 */
+		TAILQ_REMOVE(&ifp->if_addrhead, ifa, ifa_link);
+		IFAFREE(ifa);
+	}
+}
+
+/*
  * Detach an interface, removing it from the
  * list of "active" interfaces.
  */
 void
 if_detach(struct ifnet *ifp)
 {
-	struct ifaddr *ifa;
 	struct radix_node_head	*rnh;
 	int i;
 	int cpu, origcpu;
@@ -339,31 +376,18 @@ if_detach(struct ifnet *ifp)
 	 */
 	ifp->if_lladdr = NULL;
 
-	for (ifa = TAILQ_FIRST(&ifp->if_addrhead); ifa;
-	     ifa = TAILQ_FIRST(&ifp->if_addrhead)) {
-#ifdef INET
-		/* XXX: Ugly!! ad hoc just for INET */
-		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
-			struct ifaliasreq ifr;
+	if_purgeaddrs_nolink(ifp);
+	if (!TAILQ_EMPTY(&ifp->if_addrhead)) {
+		struct ifaddr *ifa;
 
-			bzero(&ifr, sizeof ifr);
-			ifr.ifra_addr = *ifa->ifa_addr;
-			if (ifa->ifa_dstaddr)
-				ifr.ifra_broadaddr = *ifa->ifa_dstaddr;
-			if (in_control(NULL, SIOCDIFADDR, (caddr_t)&ifr, ifp,
-				       NULL) == 0)
-				continue;
-		}
-#endif /* INET */
-#ifdef INET6
-		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET6) {
-			in6_purgeaddr(ifa);
-			/* ifp_addrhead is already updated */
-			continue;
-		}
-#endif /* INET6 */
+		ifa = TAILQ_FIRST(&ifp->if_addrhead);
+		KASSERT(ifa->ifa_addr->sa_family == AF_LINK,
+			("non-link ifaddr is left on if_addrhead"));
+
 		TAILQ_REMOVE(&ifp->if_addrhead, ifa, ifa_link);
 		IFAFREE(ifa);
+		KASSERT(TAILQ_EMPTY(&ifp->if_addrhead),
+			("there are still ifaddrs left on if_addrhead"));
 	}
 
 #ifdef INET

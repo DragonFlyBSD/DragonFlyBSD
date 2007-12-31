@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.37 2007/09/16 17:02:49 pavalos Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.38 2007/12/31 04:58:53 sephe Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -322,36 +322,20 @@ tapclose(struct dev_close_args *ap)
 	 * interface, if we are in VMnet mode. just close the device.
 	 */
 
-	if (((tp->tap_flags & TAP_VMNET) == 0) && (ifp->if_flags & IFF_UP)) {
-		EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
-
-		/* Announce the departure of the interface. */
-		rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
-
-		if_down(ifp);
-		lwkt_serialize_enter(ifp->if_serializer);
-		if (ifp->if_flags & IFF_RUNNING) {
-			/* find internet addresses and delete routes */
-			struct ifaddr	*ifa = NULL;
-
-			TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
-				if (ifa->ifa_addr->sa_family == AF_INET) {
-					rtinit(ifa, (int)RTM_DELETE, 0);
-
-					/* remove address from interface */
-					bzero(ifa->ifa_addr, 
-						   sizeof(*(ifa->ifa_addr)));
-					bzero(ifa->ifa_dstaddr, 
-						   sizeof(*(ifa->ifa_dstaddr)));
-					bzero(ifa->ifa_netmask, 
-						   sizeof(*(ifa->ifa_netmask)));
-				}
-			}
-
-			ifp->if_flags &= ~IFF_RUNNING;
+	if ((tp->tap_flags & TAP_VMNET) == 0) {
+		if (ifp->if_flags & IFF_UP) {
+			lwkt_serialize_enter(ifp->if_serializer);
+			if_down(ifp);
+			lwkt_serialize_exit(ifp->if_serializer);
 		}
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifp->if_flags &= ~IFF_RUNNING;
 	}
+	if_purgeaddrs_nolink(ifp);
+
+	EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
+
+	/* Announce the departure of the interface. */
+	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
 
 	funsetown(tp->tap_sigio);
 	selwakeup(&tp->tap_rsel);
@@ -427,6 +411,9 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 				if (ifp->if_flags & IFF_UP) {
 					if ((ifp->if_flags & IFF_RUNNING) == 0)
 						tapifinit(tp);
+				} else {
+					/* We don't have a tapifstop() */
+					ifp->if_flags &= ~IFF_RUNNING;
 				}
 			}
 			break;

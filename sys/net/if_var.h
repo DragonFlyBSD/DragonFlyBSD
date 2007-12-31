@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.42 2007/10/01 12:56:36 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.43 2007/12/31 04:58:53 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -466,6 +466,7 @@ int	if_addmulti(struct ifnet *, struct sockaddr *, struct ifmultiaddr **);
 int	if_allmulti(struct ifnet *, int);
 void	if_attach(struct ifnet *, struct lwkt_serialize *);
 int	if_delmulti(struct ifnet *, struct sockaddr *);
+void	if_purgeaddrs_nolink(struct ifnet *);
 void	if_detach(struct ifnet *);
 void	if_down(struct ifnet *);
 void	if_link_state_change(struct ifnet *);
