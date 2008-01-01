@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/security.7,v 1.13.2.11 2002/04/13 02:04:44 keramida Exp $
-.\" $DragonFly: src/share/man/man7/security.7,v 1.11 2007/12/13 20:51:36 swildner Exp $
+.\" $DragonFly: src/share/man/man7/security.7,v 1.12 2008/01/01 17:22:02 matthias Exp $
 .\"
 .Dd September 18, 1999
 .Dt SECURITY 7
@@ -401,10 +401,11 @@ monitoring.  Given an NFS mount, you can write scripts out of simple system
 utilities such as
 .Xr find 1
 and
-.Xr md5 1
+.Xr md5 1 .
 It is best to physically md5 the client-box files boxes at least once a
 day, and to test control files such as those found in
-.Pa /etc
+.Pa /etc ,
+.Pa /usr/pkg/etc
 and
 .Pa /usr/local/etc
 even more often.  When mismatches are found relative to the base md5
