@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.h,v 1.76 2007/03/09 22:23:39 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.6 2007/12/17 09:24:40 hasso Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.7 2008/01/01 12:16:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -177,6 +177,11 @@ struct ata_connect_task {
 #define ATA_I82801HBM_S1        0x28288086
 #define ATA_I82801HBM_S2        0x28298086
 #define ATA_I82801HBM_S3        0x282a8086
+#define ATA_I82801IB_S1         0x29208086
+#define ATA_I82801IB_AH2        0x29218086
+#define ATA_I82801IB_AH6        0x29228086
+#define ATA_I82801IB_AH4        0x29238086
+#define ATA_I82801IB_S2         0x29268086
 #define ATA_I31244              0x32008086
 
 #define ATA_ITE_ID              0x1283
