@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.12 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.13 2008/01/01 01:00:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,7 @@
 #include "hammer.h"
 
 int hammer_debug_btree;
+int hammer_debug_tid;
 int hammer_count_inodes;
 int hammer_count_records;
 int hammer_count_record_datas;
@@ -61,6 +62,8 @@ int hammer_count_spikes;
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_btree, CTLFLAG_RW,
 	   &hammer_debug_btree, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_tid, CTLFLAG_RW,
+	   &hammer_debug_tid, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_inodes, CTLFLAG_RD,
 	   &hammer_count_inodes, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_records, CTLFLAG_RD,
@@ -311,7 +314,7 @@ hammer_free_hmp(struct mount *mp)
 	 * Unload & flush inodes
 	 */
 	RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
-		hammer_unload_inode, NULL);
+		hammer_unload_inode, (void *)MNT_WAIT);
 
 	/*
 	 * Unload & flush volumes

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.9 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.10 2008/01/01 01:00:03 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -294,6 +294,15 @@ hammer_now_tid(void)
 
 	getnanotime(&ts);
 	tid = ts.tv_sec * 1000000000LL + ts.tv_nsec;
+	return(tid);
+}
+
+hammer_tid_t
+hammer_str_to_tid(const char *str)
+{
+	hammer_tid_t tid;
+
+	tid = strtoq(str, NULL, 16) * 1000000000LL;
 	return(tid);
 }
 

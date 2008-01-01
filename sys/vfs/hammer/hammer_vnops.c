@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.14 2007/12/31 05:44:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.15 2008/01/01 01:00:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -226,8 +226,10 @@ hammer_vop_read(struct vop_read_args *ap)
 			bqrelse(bp);
 			break;
 		}
-		ip->ino_rec.ino_atime = trans.tid;
-		hammer_modify_inode(&trans, ip, HAMMER_INODE_ITIMES);
+		if ((ip->flags & HAMMER_INODE_RO) == 0) {
+			ip->ino_rec.ino_atime = trans.tid;
+			hammer_modify_inode(&trans, ip, HAMMER_INODE_ITIMES);
+		}
 		bqrelse(bp);
 	}
 	hammer_commit_transaction(&trans);
@@ -254,6 +256,9 @@ hammer_vop_write(struct vop_write_args *ap)
 		return (EINVAL);
 	ip = VTOI(ap->a_vp);
 	error = 0;
+
+	if (ip->flags & HAMMER_INODE_RO)
+		return (EROFS);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -336,13 +341,13 @@ hammer_vop_write(struct vop_write_args *ap)
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
 		if (ip->ino_rec.ino_size < uio->uio_offset) {
 			ip->ino_rec.ino_size = uio->uio_offset;
-			ip->ino_rec.ino_mtime = trans.tid;
-			flags = HAMMER_INODE_RDIRTY | HAMMER_INODE_ITIMES |
-				HAMMER_INODE_TID;
+			flags = HAMMER_INODE_RDIRTY;
 			vnode_pager_setsize(ap->a_vp, ip->ino_rec.ino_size);
 		} else {
-			flags = HAMMER_INODE_TID;
+			flags = 0;
 		}
+		ip->ino_rec.ino_mtime = trans.tid;
+		flags |= HAMMER_INODE_ITIMES;
 		hammer_modify_inode(&trans, ip, flags);
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
@@ -419,6 +424,9 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 
 	nch = ap->a_nch;
 	dip = VTOI(ap->a_dvp);
+
+	if (dip->flags & HAMMER_INODE_RO)
+		return (EROFS);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -545,29 +553,49 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	int error;
 	int i;
 	int nlen;
+	int flags;
 
 	/*
 	 * Misc initialization, plus handle as-of name extensions.  Look for
 	 * the '@@' extension.  Note that as-of files and directories cannot
 	 * be modified.
-	 *
-	 *
 	 */
 	dip = VTOI(ap->a_dvp);
 	ncp = ap->a_nch->ncp;
 	asof = dip->obj_asof;
 	nlen = ncp->nc_nlen;
+	flags = dip->flags;
 
 	for (i = 0; i < nlen; ++i) {
 		if (ncp->nc_name[i] == '@' && ncp->nc_name[i+1] == '@') {
-			asof = hammer_now_tid() - 
-			       strtoq(ncp->nc_name + i + 2, NULL, 0) *
-			       1000000000LL;
+			asof = hammer_str_to_tid(ncp->nc_name + i + 2);
 			kprintf("ASOF %016llx\n", asof);
+			flags |= HAMMER_INODE_RO;
 			break;
 		}
 	}
 	nlen = i;
+
+	/*
+	 * If there is no path component the time extension is relative to
+	 * dip.
+	 */
+	if (nlen == 0) {
+		ip = hammer_get_inode(dip->hmp, dip->obj_id, asof,
+				      flags, &error);
+		if (error == 0) {
+			error = hammer_get_vnode(ip, LK_EXCLUSIVE, &vp);
+			hammer_rel_inode(ip, 0);
+		} else {
+			vp = NULL;
+		}
+		if (error == 0) {
+			vn_unlock(vp);
+			cache_setvp(ap->a_nch, vp);
+			vrele(vp);
+		}
+		return(error);
+	}
 
 	/*
 	 * Calculate the namekey and setup the key range for the scan.  This
@@ -611,8 +639,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		error = hammer_ip_next(&cursor);
 	}
 	if (error == 0) {
-		ip = hammer_get_inode(dip->hmp, rec->entry.obj_id,
-				      asof, &error);
+		ip = hammer_get_inode(dip->hmp, rec->entry.obj_id, asof,
+				      flags, &error);
 		if (error == 0) {
 			error = hammer_get_vnode(ip, LK_EXCLUSIVE, &vp);
 			hammer_rel_inode(ip, 0);
@@ -646,14 +674,25 @@ int
 hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
 	struct hammer_inode *dip;
+	struct hammer_inode *ip;
 	u_int64_t parent_obj_id;
+	int error;
 
 	dip = VTOI(ap->a_dvp);
 	if ((parent_obj_id = dip->ino_data.parent_obj_id) == 0) {
 		*ap->a_vpp = NULL;
 		return ENOENT;
 	}
-	return(hammer_vfs_vget(dip->hmp->mp, parent_obj_id, ap->a_vpp));
+
+	ip = hammer_get_inode(dip->hmp, parent_obj_id, dip->obj_asof,
+			      dip->flags, &error);
+	if (ip == NULL) {
+		*ap->a_vpp = NULL;
+		return(error);
+	}
+	error = hammer_get_vnode(ip, LK_EXCLUSIVE, ap->a_vpp);
+	hammer_rel_inode(ip, 0);
+	return (error);
 }
 
 /*
@@ -672,6 +711,11 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 	nch = ap->a_nch;
 	dip = VTOI(ap->a_dvp);
 	ip = VTOI(ap->a_vp);
+
+	if (dip->flags & HAMMER_INODE_RO)
+		return (EROFS);
+	if (ip->flags & HAMMER_INODE_RO)
+		return (EROFS);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -716,6 +760,9 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	nch = ap->a_nch;
 	dip = VTOI(ap->a_dvp);
+
+	if (dip->flags & HAMMER_INODE_RO)
+		return (EROFS);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -781,6 +828,9 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	nch = ap->a_nch;
 	dip = VTOI(ap->a_dvp);
 
+	if (dip->flags & HAMMER_INODE_RO)
+		return (EROFS);
+
 	/*
 	 * Create a transaction to cover the operations we perform.
 	 */
@@ -829,6 +879,9 @@ static
 int
 hammer_vop_open(struct vop_open_args *ap)
 {
+	if ((ap->a_mode & FWRITE) && (VTOI(ap->a_vp)->flags & HAMMER_INODE_RO))
+		return (EROFS);
+
 	return(vop_stdopen(ap));
 }
 
@@ -1062,6 +1115,14 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	tncp = ap->a_tnch->ncp;
 	ip = VTOI(fncp->nc_vp);
 	KKASSERT(ip != NULL);
+
+	if (fdip->flags & HAMMER_INODE_RO)
+		return (EROFS);
+	if (tdip->flags & HAMMER_INODE_RO)
+		return (EROFS);
+	if (ip->flags & HAMMER_INODE_RO)
+		return (EROFS);
+
 	hammer_start_transaction(&trans, fdip->hmp);
 
 	/*
@@ -1171,6 +1232,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 
 	if (ap->a_vp->v_mount->mnt_flag & MNT_RDONLY)
 		return(EROFS);
+	if (ip->flags & HAMMER_INODE_RO)
+		return (EROFS);
 
 	hammer_start_transaction(&trans, ip->hmp);
 	error = 0;
@@ -1268,8 +1331,6 @@ done:
 	if (error) {
 		hammer_abort_transaction(&trans);
 	} else {
-		if (modflags & (HAMMER_INODE_RDIRTY | HAMMER_INODE_DDIRTY))
-			modflags |= HAMMER_INODE_TID;
 		hammer_modify_inode(&trans, ip, modflags);
 		hammer_commit_transaction(&trans);
 	}
@@ -1295,6 +1356,9 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	nch = ap->a_nch;
 	dip = VTOI(ap->a_dvp);
+
+	if (dip->flags & HAMMER_INODE_RO)
+		return (EROFS);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -1549,6 +1613,10 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
 	ip = ap->a_vp->v_data;
+
+	if (ip->flags & HAMMER_INODE_RO)
+		return (EROFS);
+
 	hammer_start_transaction(&trans, ip->hmp);
 
 retry:
@@ -1627,6 +1695,10 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 	 */
 	dip = VTOI(dvp);
 	ncp = nch->ncp;
+
+	if (dip->flags & HAMMER_INODE_RO)
+		return (EROFS);
+
 	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
 
 	hammer_init_cursor_ip(&cursor, dip);
@@ -1672,7 +1744,7 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 	 */
 	if (error == 0) {
 		ip = hammer_get_inode(dip->hmp, rec->entry.obj_id,
-				      dip->hmp->asof, &error);
+				      dip->hmp->asof, 0, &error);
 		if (error == 0 && ip->ino_rec.base.base.obj_type ==
 				  HAMMER_OBJTYPE_DIRECTORY) {
 			error = hammer_ip_check_directory_empty(&trans, ip);

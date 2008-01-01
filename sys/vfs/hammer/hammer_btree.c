@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.14 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.15 2008/01/01 01:00:03 dillon Exp $
  */
 
 /*
@@ -170,7 +170,6 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		/*
 		 * Check internal or leaf element.  Determine if the record
 		 * at the cursor has gone beyond the end of our range.
-		 * Remember that our key range is end-exclusive.
 		 *
 		 * Generally we recurse down through internal nodes.  An
 		 * internal node can only be returned if INCLUSTER is set
@@ -610,11 +609,12 @@ btree_search(hammer_cursor_t cursor, int flags)
 	flags |= cursor->flags;
 
 	if (hammer_debug_btree) {
-		kprintf("SEARCH   %p:%d %016llx %02x %016llx\n",
+		kprintf("SEARCH   %p:%d %016llx %02x key=%016llx tid=%016llx\n",
 			cursor->node, cursor->index,
 			cursor->key_beg.obj_id,
 			cursor->key_beg.rec_type,
-			cursor->key_beg.key
+			cursor->key_beg.key,
+			cursor->key_beg.create_tid
 		);
 	}
 
@@ -744,6 +744,14 @@ btree_search(hammer_cursor_t cursor, int flags)
 		/*
 		 * Scan the node to find the subtree index to push down into.
 		 * We go one-past, then back-up.
+		 *
+		 * We have a serious issue with the midpoints for internal
+		 * nodes when the midpoint bisects two historical records
+		 * (where only create_tid is different).  Short of iterating
+		 * through the record's entire history the only solution is
+		 * to calculate a midpoint that isn't a midpoint in that
+		 * case.   Please see hammer_make_separator() for more
+		 * information.
 		 */
 		for (i = 0; i < node->count; ++i) {
 			r = hammer_btree_cmp(&cursor->key_beg,
@@ -794,13 +802,22 @@ btree_search(hammer_cursor_t cursor, int flags)
 			 * index must be PAST the last element to prevent an
 			 * iteration from returning elements to the left of
 			 * key_beg.
+			 *
+			 * NOTE: For the case where the right hand boundary
+			 * separates two historical records (where only
+			 * create_tid differs), we rely on the boundary
+			 * being exactly equal to the next record.  This
+			 * is handled by hammer_make_separator().  If this
+			 * were not true we would have to fall through for
+			 * the r == 1 case.
 			 */
-			if ((flags & HAMMER_CURSOR_INSERT) == 0 &&
-			    hammer_btree_cmp(&cursor->key_beg,
-					     &node->elms[i].base) >= 0
-			) {
-				cursor->index = i;
-				return(ENOENT);
+			if ((flags & HAMMER_CURSOR_INSERT) == 0) {
+				r = hammer_btree_cmp(&cursor->key_beg,
+						     &node->elms[i].base);
+				if (r >= 0) {
+					cursor->index = i;
+					return(ENOENT);
+				}
 			}
 
 			/*
@@ -824,11 +841,12 @@ btree_search(hammer_cursor_t cursor, int flags)
 
 		if (hammer_debug_btree) {
 			hammer_btree_elm_t elm = &node->elms[i];
-			kprintf("SEARCH-I %p:%d %016llx %02x %016llx\n",
+			kprintf("SEARCH-I %p:%d %016llx %02x key=%016llx tid=%016llx\n",
 				cursor->node, i,
 				elm->internal.base.obj_id,
 				elm->internal.base.rec_type,
-				elm->internal.base.key
+				elm->internal.base.key,
+				elm->internal.base.create_tid
 			);
 		}
 
@@ -931,15 +949,24 @@ btree_search(hammer_cursor_t cursor, int flags)
 		r = hammer_btree_cmp(&cursor->key_beg, &node->elms[i].base);
 
 		/*
-		 * Stop if we've flipped past key_beg
+		 * Stop if we've flipped past key_beg.  This includes a
+		 * record whos create_tid is larger then our asof id.
 		 */
 		if (r < 0)
 			break;
 
 		/*
-		 * Return an exact match
+		 * Return an exact match.  In this case we have to do special
+		 * checks if the only difference in the records is the
+		 * create_ts, in order to properly match against our as-of
+		 * query.
 		 */
-		if (r == 0) {
+		if (r >= 0 && r <= 1) {
+			if ((cursor->flags & HAMMER_CURSOR_ALLHISTORY) == 0 &&
+			    hammer_btree_chkts(cursor->key_beg.create_tid,
+					       &node->elms[i].base) != 0) {
+				continue;
+			}
 			cursor->index = i;
 			error = 0;
 			if (hammer_debug_btree) {
@@ -1805,6 +1832,9 @@ done:
 /*
  * Compare two B-Tree elements, return -N, 0, or +N (e.g. similar to strcmp).
  *
+ * Note that for this particular function a return value of -1, 0, or +1
+ * can denote a match if create_tid is otherwise discounted.
+ *
  * See also hammer_rec_rb_compare() and hammer_rec_cmp() in hammer_object.c.
  */
 int
@@ -1824,6 +1854,11 @@ hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 		return(-2);
 	if (key1->key > key2->key)
 		return(2);
+
+	if (key1->create_tid < key2->create_tid)
+		return(-1);
+	if (key1->create_tid > key2->create_tid)
+		return(1);
 	return(0);
 }
 
@@ -1845,14 +1880,13 @@ hammer_btree_chkts(hammer_tid_t create_tid, hammer_base_elm_t base)
  * Create a separator half way inbetween key1 and key2.  For fields just
  * one unit apart, the separator will match key2.
  *
- * The handling of delete_tid is a little confusing.  It is only possible
- * to have one record in the B-Tree where all fields match except delete_tid.
- * This means, worse case, two adjacent elements may have a create_tid that
- * is one-apart and cause the separator to choose the right-hand element's
- * create_tid.  e.g.  (create,delete):  (1,x)(2,x) -> separator is (2,x).
+ * At the moment require that the separator never match key2 exactly.
  *
- * So all we have to do is set delete_tid to the right-hand element to
- * guarentee that the separator is properly between the two elements.
+ * We have to special case the separator between two historical keys,
+ * where all elements except create_tid match.  In this case our B-Tree
+ * searches can't figure out which branch of an internal node to go down
+ * unless the mid point's create_tid is exactly key2.
+ * (see btree_search()'s scan code on HAMMER_BTREE_TYPE_INTERNAL).
  */
 #define MAKE_SEPARATOR(key1, key2, dest, field)	\
 	dest->field = key1->field + ((key2->field - key1->field + 1) >> 1);
@@ -1865,8 +1899,13 @@ hammer_make_separator(hammer_base_elm_t key1, hammer_base_elm_t key2,
 	MAKE_SEPARATOR(key1, key2, dest, obj_id);
 	MAKE_SEPARATOR(key1, key2, dest, rec_type);
 	MAKE_SEPARATOR(key1, key2, dest, key);
-	MAKE_SEPARATOR(key1, key2, dest, create_tid);
-	dest->delete_tid = key2->delete_tid;
+	if (key1->obj_id == key2->obj_id &&
+	    key1->rec_type == key2->rec_type &&
+	    key1->key == key2->key) {
+		dest->create_tid = key2->create_tid;
+	} else {
+		dest->create_tid = 0;
+	}
 }
 
 #undef MAKE_SEPARATOR

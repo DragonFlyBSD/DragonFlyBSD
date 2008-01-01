@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.5 2007/12/30 08:49:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.6 2008/01/01 01:00:03 dillon Exp $
  */
 
 #include "hammer.h"
@@ -49,6 +49,18 @@ hammer_start_transaction(struct hammer_transaction *trans,
 }
 
 void
+hammer_start_transaction_tid(struct hammer_transaction *trans,
+			     struct hammer_mount *hmp, hammer_tid_t tid)
+{
+	int error;
+
+	trans->hmp = hmp;
+	trans->rootvol = hammer_get_root_volume(hmp, &error);
+	KKASSERT(error == 0);
+	trans->tid = tid;
+}
+
+void
 hammer_abort_transaction(struct hammer_transaction *trans)
 {
 	hammer_rel_volume(trans->rootvol, 0);
@@ -60,6 +72,11 @@ hammer_commit_transaction(struct hammer_transaction *trans)
 	hammer_rel_volume(trans->rootvol, 0);
 }
 
+/*
+ * Note: Successive transaction ids must be at least 2 apart so the
+ * B-Tree code can make a separator that does not match either the
+ * left or right hand sides.
+ */
 hammer_tid_t
 hammer_alloc_tid(hammer_transaction_t trans)
 {
@@ -75,7 +92,11 @@ hammer_alloc_tid(hammer_transaction_t trans)
 		tid = ondisk->vol0_nexttid;
 	if (tid == 0xFFFFFFFFFFFFFFFFULL)
 		panic("hammer_start_transaction: Ran out of TIDs!");
-	ondisk->vol0_nexttid = tid + 1;
+	if (hammer_debug_tid) {
+		kprintf("alloc_tid %016llx (0x%08x)\n",
+			tid, (int)(tid / 1000000000LL));
+	}
+	ondisk->vol0_nexttid = tid + 2;
 	hammer_modify_volume_done(trans->rootvol);
 
 	return(tid);

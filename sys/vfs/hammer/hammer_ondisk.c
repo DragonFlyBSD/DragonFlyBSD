@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.14 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.15 2008/01/01 01:00:03 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1341,11 +1341,11 @@ hammer_rel_node(hammer_node_t node)
 		 * Destroy the node if it is being deleted.  Free the node
 		 * in the bitmap after we have unhooked it.
 		 */
+		hammer_ref_cluster(cluster);
 		if (node->flags & (HAMMER_NODE_DELETED|HAMMER_NODE_FLUSH)) {
 			hammer_flush_node(node);
 			RB_REMOVE(hammer_nod_rb_tree, &cluster->rb_nods_root,
 				  node);
-			hammer_ref_cluster(cluster);
 			if ((buffer = node->buffer) != NULL) {
 				node->buffer = NULL;
 				hammer_remove_node_clist(buffer, node);
@@ -1406,11 +1406,18 @@ hammer_rel_node(hammer_node_t node)
 				hammer_remove_node_clist(buffer, node);
 			}
 			--hammer_count_nodes;
+			node->lock.refs = -1;	/* sanity */
 			kfree(node, M_HAMMER);
-			return;
+		} else {
+			hammer_unref(&node->lock);
 		}
 
-		hammer_unref(&node->lock);
+		/*
+		 * We have to do this last, after the node has been removed
+		 * from the cluster's RB tree or we risk a deadlock due to
+		 * hammer_rel_buffer->hammer_rel_cluster->(node deadlock)
+		 */
+		hammer_rel_cluster(cluster, 0);
 	} else {
 		hammer_unref(&node->lock);
 	}
@@ -1440,15 +1447,10 @@ hammer_cache_node(hammer_node_t node, struct hammer_node **cache)
 	 */
 again:
 	if (node->cache1 != cache) {
-		if (node->cache2 == cache) {
-			struct hammer_node **tmp;
-			tmp = node->cache1;
-			node->cache1 = node->cache2;
-			node->cache2 = tmp;
-		} else {
+		if (node->cache2 != cache) {
 			if ((old = *cache) != NULL) {
-				*cache = NULL;
-				hammer_flush_node(old); /* can block */
+				KKASSERT(node->lock.refs != 0);
+				hammer_uncache_node(cache);
 				goto again;
 			}
 			if (node->cache2)
@@ -1456,6 +1458,11 @@ again:
 			node->cache2 = node->cache1;
 			node->cache1 = cache;
 			*cache = node;
+		} else {
+			struct hammer_node **tmp;
+			tmp = node->cache1;
+			node->cache1 = node->cache2;
+			node->cache2 = tmp;
 		}
 	}
 }
@@ -1996,8 +2003,10 @@ alloc_new_buffer(hammer_cluster_t cluster, hammer_alist_t live,
 	 * the allocation.
 	 */
 	if (buffer) {
+#if 0
 		kprintf("alloc_new_buffer buf_no %d type %016llx nelms %d\n",
 			buf_no, type, nelements);
+#endif
 		hammer_modify_buffer(buffer);  /*XXX*/
 		hammer_alist_free(live, buf_no * HAMMER_FSBUF_MAXBLKS,
 				  nelements);
@@ -2021,6 +2030,7 @@ hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 	info.error = 0;
 	info.waitfor = waitfor;
 
+	kprintf("hammer_sync\n");
 	vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_NOWAIT,
 		      hammer_sync_scan1, hammer_sync_scan2, &info);
 

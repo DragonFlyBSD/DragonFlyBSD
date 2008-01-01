@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.13 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.14 2008/01/01 01:00:03 dillon Exp $
  */
 
 #include "hammer.h"
@@ -342,8 +342,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	bcopy(ncp->nc_name, record->data, bytes);
 	record->rec.entry.base.data_len = bytes;
 	++ip->ino_rec.ino_nlinks;
-	hammer_modify_inode(trans, ip,
-			    HAMMER_INODE_RDIRTY | HAMMER_INODE_TID);
+	hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
 	error = hammer_mem_add(trans, record);
 	return(error);
 }
@@ -365,15 +364,16 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 
 	/*
 	 * One less link.  The file may still be open in the OS even after
-	 * all links have gone away so we don't destroy the inode's data
-	 * here.
+	 * all links have gone away so we only try to sync if the OS has
+	 * no references and nlinks falls to 0.
 	 */
 	if (error == 0) {
 		--ip->ino_rec.ino_nlinks;
-		hammer_modify_inode(trans, ip,
-				    HAMMER_INODE_RDIRTY | HAMMER_INODE_TID);
-		if (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))
+		hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
+		if (ip->ino_rec.ino_nlinks == 0 &&
+		    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
 			hammer_sync_inode(ip, MNT_NOWAIT, 1);
+		}
 
 	}
 	return(error);
@@ -415,8 +415,7 @@ hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
 			record->flags |= HAMMER_RECF_EMBEDDED_DATA;
 		}
 	}
-	hammer_modify_inode(trans, ip,
-			    HAMMER_INODE_RDIRTY | HAMMER_INODE_TID);
+	hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
 	error = hammer_mem_add(trans, record);
 	return(error);
 }
@@ -803,6 +802,7 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 		record->rec.base.base.key |= trans->hmp->namekey_iterator;
 	}
 	record->flags |= HAMMER_RECF_ONRBTREE;
+	hammer_modify_inode(trans, record->ip, HAMMER_INODE_XDIRTY);
 	hammer_rel_mem_record(record);
 	return(0);
 }
@@ -1158,7 +1158,7 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 			 * we missing a + 1 somewhere?  Note that ran_end
 			 * could overflow.
 			 */
-			if (base->key > ran_end) {
+			if (base->key - 1 > ran_end) {
 				if (base->key - rec->base.data_len > ran_end) {
 					kprintf("right edge OOB\n");
 					break;
@@ -1269,6 +1269,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	if (error == 0) {
 		hammer_modify_buffer(cursor->record_buffer);
 		cursor->record->base.base.delete_tid = tid;
+
 		hammer_modify_buffer_done(cursor->record_buffer);
 		hammer_modify_node(cursor->node);
 		elm = &cursor->node->ondisk->elms[cursor->index];

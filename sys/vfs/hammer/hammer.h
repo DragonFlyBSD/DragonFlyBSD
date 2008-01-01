@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.17 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.18 2008/01/01 01:00:03 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -165,15 +165,17 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
 #define HAMMER_INODE_RDIRTY	0x0002	/* in-memory ino_rec is dirty */
 #define HAMMER_INODE_ITIMES	0x0004	/* in-memory mtime/atime modified */
+#define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records present */
 #define HAMMER_INODE_ONDISK	0x0010	/* inode is on-disk (else not yet) */
 #define HAMMER_INODE_FLUSH	0x0020	/* flush on last ref */
-#define HAMMER_INODE_TID	0x0040	/* update in-memory last_tid */
 #define HAMMER_INODE_DELETED	0x0080	/* inode ready for deletion */
 #define HAMMER_INODE_DELONDISK	0x0100	/* delete synchronized to disk */
+#define HAMMER_INODE_RO		0x0200	/* read-only (because of as-of) */
+#define HAMMER_INODE_GONE	0x0400	/* delete flushed out */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
-				 HAMMER_INODE_ITIMES|HAMMER_INODE_FLUSH|  \
-				 HAMMER_INODE_DELETED)
+				 HAMMER_INODE_XDIRTY|\
+				 HAMMER_INODE_ITIMES|HAMMER_INODE_DELETED)
 
 #define HAMMER_MAX_INODE_CURSORS	4
 
@@ -434,6 +436,7 @@ extern struct hammer_alist_config Clu_slave_alist_config;
 extern struct bio_ops hammer_bioops;
 
 extern int hammer_debug_btree;
+extern int hammer_debug_tid;
 extern int hammer_count_inodes;
 extern int hammer_count_records;
 extern int hammer_count_record_datas;
@@ -450,12 +453,12 @@ int	hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
 int	hammer_get_vnode(struct hammer_inode *ip, int lktype,
 			struct vnode **vpp);
 struct hammer_inode *hammer_get_inode(hammer_mount_t hmp,
-			u_int64_t obj_id, hammer_tid_t asof, int *errorp);
-int	hammer_update_inode(hammer_inode_t ip);
+			u_int64_t obj_id, hammer_tid_t asof, int flags,
+			int *errorp);
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
 
-int	hammer_unload_inode(hammer_inode_t ip, void *data __unused);
+int	hammer_unload_inode(hammer_inode_t ip, void *data);
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_unload_supercl(hammer_supercl_t supercl, void *data __unused);
 int	hammer_unload_cluster(hammer_cluster_t cluster, void *data __unused);
@@ -496,6 +499,7 @@ void	hammer_to_timespec(hammer_tid_t tid, struct timespec *ts);
 hammer_tid_t hammer_timespec_to_transid(struct timespec *ts);
 hammer_tid_t hammer_alloc_tid(hammer_transaction_t trans);
 hammer_tid_t hammer_now_tid(void);
+hammer_tid_t hammer_str_to_tid(const char *str);
 hammer_tid_t hammer_alloc_recid(hammer_transaction_t trans);
 
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);
@@ -590,6 +594,8 @@ void hammer_init_alist_config(void);
 
 void hammer_start_transaction(struct hammer_transaction *trans,
 			      struct hammer_mount *hmp);
+void hammer_start_transaction_tid(struct hammer_transaction *trans,
+			          struct hammer_mount *hmp, hammer_tid_t tid);
 void hammer_commit_transaction(struct hammer_transaction *trans);
 void hammer_abort_transaction(struct hammer_transaction *trans);
 
