@@ -37,7 +37,7 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.12 2007/06/29 05:12:40 dillon Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.13 2008/01/01 14:01:36 matthias Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -96,7 +96,7 @@
 /* Attempt to bypass the buffer cache */
 #define O_DIRECT	0x00010000
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define O_ROOTCRED	0x00020000	/* fp_open */
 #endif
 
