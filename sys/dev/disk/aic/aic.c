@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.10 2007/12/23 07:00:56 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.11 2008/01/02 11:41:52 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -286,7 +286,7 @@ aic_action(struct cam_sim *sim, union ccb *ccb)
 			spi->sync_period = ti->user.period;
 			spi->sync_offset = ti->user.offset;
 		}
-		crit_exit()
+		crit_exit();
 
 		spi->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
 		spi->valid = CTS_SPI_VALID_SYNC_RATE
