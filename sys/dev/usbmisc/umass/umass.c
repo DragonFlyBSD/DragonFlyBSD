@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.33 2008/01/02 10:43:28 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.34 2008/01/02 10:45:31 hasso Exp $
  */
 
 /*
@@ -1067,7 +1067,8 @@ umass_attach(device_t self)
 
 	/* Get the maximum LUN supported by the device.
 	 */
-	if ((sc->proto & UMASS_PROTO_WIRE) == UMASS_PROTO_BBB)
+	if (((sc->proto & UMASS_PROTO_WIRE) == UMASS_PROTO_BBB) &&
+	    !(sc->quirks & NO_GETMAXLUN))
 		sc->maxlun = umass_bbb_get_max_lun(sc);
 	else
 		sc->maxlun = 0;
