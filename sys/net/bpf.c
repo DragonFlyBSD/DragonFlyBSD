@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.42 2007/10/13 09:53:51 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.43 2008/01/02 12:30:34 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -83,7 +83,7 @@ MALLOC_DEFINE(M_BPF, "BPF", "BPF data");
 static int bpf_bufsize = BPF_DEFAULTBUFSIZE;
 SYSCTL_INT(_debug, OID_AUTO, bpf_bufsize, CTLFLAG_RW,
 	   &bpf_bufsize, 0, "");
-static int bpf_maxbufsize = BPF_MAXBUFSIZE;
+int bpf_maxbufsize = BPF_MAXBUFSIZE;
 SYSCTL_INT(_debug, OID_AUTO, bpf_maxbufsize, CTLFLAG_RW,
 	   &bpf_maxbufsize, 0, "");
 
