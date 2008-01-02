@@ -32,7 +32,7 @@
  *
  *	@(#)limits.h	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/i386/include/limits.h,v 1.14.2.2 2000/11/05 09:21:42 obrien Exp $
- * $DragonFly: src/sys/cpu/amd64/include/limits.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/limits.h,v 1.3 2008/01/02 23:06:44 swildner Exp $
  */
 
 #ifndef _CPU_LIMITS_H_
@@ -96,6 +96,9 @@
 #define	UQUAD_MAX	ULLONG_MAX	/* max value for a uquad_t */
 #define	QUAD_MAX	LLONG_MAX	/* max value for a quad_t */
 #define	QUAD_MIN	LLONG_MIN	/* min value for a quad_t */
+
+#define	LONG_BIT	64
+#define	WORD_BIT	32
 
 #endif /* !_POSIX_SOURCE */
 #endif /* !_ANSI_SOURCE */
