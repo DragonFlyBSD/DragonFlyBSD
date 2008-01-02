@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.34 2008/01/02 10:45:31 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.35 2008/01/02 19:29:59 hasso Exp $
  */
 
 /*
@@ -246,7 +246,7 @@ typedef void (*transfer_cb_f)	(struct umass_softc *sc, void *priv,
 typedef void (*wire_reset_f)	(struct umass_softc *sc, int status);
 typedef void (*wire_transfer_f)	(struct umass_softc *sc, int lun,
 				void *cmd, int cmdlen, void *data, int datalen,
-				int dir, transfer_cb_f cb, void *priv);
+				int dir, u_int timeout, transfer_cb_f cb, void *priv);
 typedef void (*wire_state_f)	(usbd_xfer_handle xfer,
 				usbd_private_handle priv, usbd_status err);
 
@@ -551,6 +551,7 @@ struct umass_softc {
 	unsigned char 		cam_scsi_command2[CAM_MAX_CDBLEN];
 	struct scsi_sense	cam_scsi_sense;
 	struct scsi_sense	cam_scsi_test_unit_ready;
+	int			timeout;		/* in msecs */
 
 	int			maxlun;			/* maximum LUN number */
 	struct callout		rescan_timeout;
@@ -638,7 +639,7 @@ static void umass_reset		(struct umass_softc *sc,
 static void umass_bbb_reset	(struct umass_softc *sc, int status);
 static void umass_bbb_transfer	(struct umass_softc *sc, int lun,
 				void *cmd, int cmdlen,
-		    		void *data, int datalen, int dir,
+		    		void *data, int datalen, int dir, u_int timeout,
 				transfer_cb_f cb, void *priv);
 static void umass_bbb_state	(usbd_xfer_handle xfer,
 				usbd_private_handle priv,
@@ -653,7 +654,7 @@ static int umass_cbi_adsc	(struct umass_softc *sc,
 static void umass_cbi_reset	(struct umass_softc *sc, int status);
 static void umass_cbi_transfer	(struct umass_softc *sc, int lun,
 				void *cmd, int cmdlen,
-		    		void *data, int datalen, int dir,
+		    		void *data, int datalen, int dir, u_int timeout,
 				transfer_cb_f cb, void *priv);
 static void umass_cbi_state	(usbd_xfer_handle xfer,
 				usbd_private_handle priv, usbd_status err);
@@ -1205,7 +1206,7 @@ umass_setup_transfer(struct umass_softc *sc, usbd_pipe_handle pipe,
 	/* Initialiase a USB transfer and then schedule it */
 
 	(void) usbd_setup_xfer(xfer, pipe, (void *) sc, buffer, buflen, flags,
-			UMASS_TIMEOUT, sc->state);
+			sc->timeout, sc->state);
 
 	err = usbd_transfer(xfer);
 	if (err && err != USBD_IN_PROGRESS) {
@@ -1326,12 +1327,14 @@ umass_bbb_reset(struct umass_softc *sc, int status)
 
 static void
 umass_bbb_transfer(struct umass_softc *sc, int lun, void *cmd, int cmdlen,
-		    void *data, int datalen, int dir,
+		    void *data, int datalen, int dir, u_int timeout,
 		    transfer_cb_f cb, void *priv)
 {
 	KASSERT(sc->proto & UMASS_PROTO_BBB,
 		("%s: umass_bbb_transfer: wrong sc->proto 0x%02x\n",
 			device_get_nameunit(sc->sc_dev), sc->proto));
+	/* Be a little generous. */
+	sc->timeout = timeout + UMASS_TIMEOUT;
 
 	/*
 	 * Do a Bulk-Only transfer with cmdlen bytes from cmd, possibly
@@ -1841,11 +1844,13 @@ umass_cbi_reset(struct umass_softc *sc, int status)
 static void
 umass_cbi_transfer(struct umass_softc *sc, int lun,
 		void *cmd, int cmdlen, void *data, int datalen, int dir,
-		transfer_cb_f cb, void *priv)
+		u_int timeout, transfer_cb_f cb, void *priv)
 {
 	KASSERT(sc->proto & (UMASS_PROTO_CBI|UMASS_PROTO_CBI_I),
 		("%s: umass_cbi_transfer: wrong sc->proto 0x%02x\n",
 			device_get_nameunit(sc->sc_dev), sc->proto));
+	/* Be a little generous. */
+	sc->timeout = timeout + UMASS_TIMEOUT;
 
 	/*
 	 * Do a CBI transfer with cmdlen bytes from cmd, possibly
@@ -2480,7 +2485,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 			}
 			sc->transfer(sc, ccb->ccb_h.target_lun, rcmd, rcmdlen,
 				     csio->data_ptr,
-				     csio->dxfer_len, dir,
+				     csio->dxfer_len, dir, ccb->ccb_h.timeout,
 				     umass_cam_cb, (void *) ccb);
 		} else {
 			ccb->ccb_h.status = CAM_REQ_INVALID;
@@ -2670,7 +2675,7 @@ umass_cam_cb(struct umass_softc *sc, void *priv, int residue, int status)
 				sc->transfer(sc, ccb->ccb_h.target_lun,
 					     rcmd, rcmdlen,
 					     &csio->sense_data,
-					     csio->sense_len, DIR_IN,
+					     csio->sense_len, DIR_IN, ccb->ccb_h.timeout,
 					     umass_cam_sense_cb, (void *) ccb);
 			} else {
 				panic("transform(REQUEST_SENSE) failed");
@@ -2770,7 +2775,7 @@ umass_cam_sense_cb(struct umass_softc *sc, void *priv, int residue, int status)
 					&rcmd, &rcmdlen)) {
 				sc->transfer(sc, ccb->ccb_h.target_lun,
 					     rcmd, rcmdlen,
-					     NULL, 0, DIR_NONE,
+					     NULL, 0, DIR_NONE, ccb->ccb_h.timeout,
 					     umass_cam_quirk_cb, (void *) ccb);
 			} else {
 				panic("transform(TEST_UNIT_READY) failed");
