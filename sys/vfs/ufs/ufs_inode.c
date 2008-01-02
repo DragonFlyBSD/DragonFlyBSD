@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.23 2008/01/02 20:15:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.24 2008/01/02 22:42:37 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -87,8 +87,6 @@ ufs_inactive(struct vop_inactive_args *ap)
 			(void)ufs_chkiq(ip, -1, NOCRED, FORCE);
 #endif
 		/* Must have a VM object to truncate */
-		if (vp->v_object == NULL)
-			vinitvmio(vp, 0);
 		error = ffs_truncate(vp, (off_t)0, 0, NOCRED);
 		ip->i_rdev = 0;
 		mode = ip->i_mode;
