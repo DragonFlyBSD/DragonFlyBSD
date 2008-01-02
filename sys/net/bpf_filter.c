@@ -38,7 +38,7 @@
  *      @(#)bpf_filter.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/net/bpf_filter.c,v 1.17 1999/12/29 04:38:31 peter Exp $
- * $DragonFly: src/sys/net/bpf_filter.c,v 1.8 2006/08/25 22:37:08 swildner Exp $
+ * $DragonFly: src/sys/net/bpf_filter.c,v 1.9 2008/01/02 11:22:03 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -326,7 +326,7 @@ bpf_filter(const struct bpf_insn *pc, u_char *p, u_int wirelen, u_int buflen)
 					return 0;
 				m = (struct mbuf *)p;
 				MINDEX(m, k);
-				A = mtod(m, char *)[k];
+				A = mtod(m, u_char *)[k];
 				continue;
 #else
 				return 0;
