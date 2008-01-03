@@ -2,8 +2,7 @@
 .\" Copyright (c) 2007 The DragonFly Project.  All rights reserved.
 .\" 
 .\" This code is derived from software contributed to The DragonFly Project
-.\" by Matthias Schmidt <schmidtm@mathematik.uni-marburg.de>, University of
-.\" Marburg.
+.\" by Matthias Schmidt <matthias@dragonflybsd.org>, University of Marburg.
 .\" 
 .\" All rights reserved.
 .\"
@@ -31,9 +30,9 @@
 .\" NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 .\" SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/usr.bin/pkg_search/pkg_search.1,v 1.5 2007/12/28 12:34:44 swildner Exp $
+.\" $DragonFly: src/usr.bin/pkg_search/pkg_search.1,v 1.6 2008/01/03 16:42:43 matthias Exp $
 .\"
-.Dd December 13, 2007
+.Dd January 03, 2008
 .Dt PKG_SEARCH 1
 .Os
 .Sh NAME
@@ -49,6 +48,14 @@ queries the
 .Xr pkgsrc 7
 index for a given
 .Ar package .
+If the
+.Xr pkgsrc 7
+index is not available
+.Nm
+fetches the
+.Xr pkg_summary 5
+file.  This file contains information about each package in a binary
+repository.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
@@ -69,11 +76,12 @@ command:
 .Xr pkg_create 1 ,
 .Xr pkg_delete 1 ,
 .Xr pkg_info 1 ,
+.Xr pkg_summary 5 ,
 .Xr pkgsrc 7
 .Sh AUTHORS
 .Nm
 was written by
-.An Matthias Schmidt Aq schmidtm@mathematik.uni-marburg.de .
+.An Matthias Schmidt Aq matthias@dragonflybsd.org .
 .Sh HISTORY
 The
 .Nm
