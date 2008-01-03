@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libpam/modules/pam_nologin/pam_nologin.8,v 1.7 2007/06/14 13:07:06 yar Exp $
-.\" $DragonFly: src/lib/pam_module/pam_nologin/pam_nologin.8,v 1.1 2008/01/02 17:41:30 matthias Exp $
+.\" $DragonFly: src/lib/pam_module/pam_nologin/pam_nologin.8,v 1.2 2008/01/03 18:18:37 swildner Exp $
 .\"
 .Dd June 10, 2007
 .Dt PAM_NOLOGIN 8
@@ -49,7 +49,7 @@ parameter, this is the
 feature.
 .Ss NoLogin Account Management Module
 The NoLogin account management component,
-.Fn pam_sm_acct_mgmt , 
+.Fn pam_sm_acct_mgmt ,
 verifies whether logins are administratively disabled via
 .Xr nologin 5 .
 It returns success if the user's login class has an "ignorenologin"
