@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,10 +26,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)nologin.8	8.1 (Berkeley) 6/19/93
-.\" $FreeBSD: src/sbin/nologin/nologin.5,v 1.7.2.4 2001/12/14 15:17:53 ru Exp $
-.\" $DragonFly: src/sbin/nologin/nologin.5,v 1.2 2003/06/17 04:27:34 dillon Exp $
+.\" $FreeBSD: src/usr.sbin/nologin/nologin.5,v 1.15 2007/05/10 11:22:24 yar Exp $
+.\" $DragonFly: src/sbin/nologin/nologin.5,v 1.3 2008/01/03 12:47:56 matthias Exp $
 .\"
-.Dd June 19, 1993
+.Dd May 10, 2007
 .Dt NOLOGIN 5
 .Os
 .Sh NAME
@@ -42,32 +38,48 @@
 .Sh DESCRIPTION
 Programs such as
 .Xr login 1
-disallow logins if the file
-.Pa /var/run/nologin
-exists.
-Programs display the contents of
-.Pa /var/run/nologin
-to the user and exit.
+disallow logins if the
+.Nm
+file exists.
+The programs display the contents of
+.Nm
+to the user if possible and interrupt the login sequence.
 This makes it simple to temporarily prevent incoming logins systemwide.
 .Pp
 To disable logins on a per-account basis,
 investigate
 .Xr nologin 8 .
 .Sh SECURITY
-Ignored by
-.Xr login 1
-for user root.
-.Sh FILES
-.Bl -tag -width /var/run/nologinxxx -compact
-.It Pa /var/run/nologin
 The
 .Nm
-file resides in
-.Pa /var/run .
+file is ignored for user root by default.
+.Sh IMPLEMENTATION NOTES
+The
+.Nm
+feature is implemented through
+.Xr login.conf 5 ,
+which allows to change the pathname of the
+file and to extend the list of users
+exempt from temporary login restriction.
+.Pp
+PAM-aware programs can be selectively configured to respect
+.Nm
+using the
+.Xr pam_nologin 8
+module via
+.Xr pam.conf 5 .
+.Pp
+.Sh FILES
+.Bl -tag -width ".Pa /var/run/nologin" -compact
+.It Pa /var/run/nologin
+default location of
+.Nm
 .El
 .Sh SEE ALSO
 .Xr login 1 ,
-.Xr rlogin 1 ,
-.Xr telnet 1 ,
+.Xr login.conf 5 ,
+.Xr pam.conf 5 ,
+.Xr rc.conf 5 ,
 .Xr nologin 8 ,
+.Xr pam_nologin 8 ,
 .Xr shutdown 8
