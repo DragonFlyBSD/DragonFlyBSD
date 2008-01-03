@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.9 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.10 2008/01/03 06:48:49 dillon Exp $
  */
 
 /*
@@ -44,27 +44,66 @@ static int hammer_load_cursor_parent_local(hammer_cursor_t cursor);
 static int hammer_load_cursor_parent_cluster(hammer_cursor_t cursor);
 
 /*
- * Initialize a fresh cursor at the root of the filesystem hierarchy.
- *
- * cursor->parent will be NULL on return since we are loading the root
- * node of the root cluster.
+ * Initialize a fresh cursor using the B-Tree node cache.  If the cache
+ * is not available initialize a fresh cursor at the root of the root
+ * cluster.
  */
 int
-hammer_init_cursor_hmp(hammer_cursor_t cursor, hammer_mount_t hmp)
+hammer_init_cursor_hmp(hammer_cursor_t cursor, struct hammer_node **cache,
+		       hammer_mount_t hmp)
 {
 	hammer_cluster_t cluster;
+	hammer_node_t node;
 	int error;
 
 	bzero(cursor, sizeof(*cursor));
-	cluster = hammer_get_root_cluster(hmp, &error);
-	if (error == 0) {
-		cursor->node = hammer_get_node(cluster,
-					       cluster->ondisk->clu_btree_root,
-					       &error);
-		hammer_rel_cluster(cluster, 0);
-		if (error == 0)
-			hammer_lock_ex(&cursor->node->lock);
+
+	/*
+	 * Step 1 - acquire a locked node from the cache if possible
+	 */
+	if (cache && *cache) {
+		node = *cache;
+		error = hammer_ref_node(node);
+		if (error == 0) {
+			hammer_lock_ex(&node->lock);
+			if (node->flags & HAMMER_NODE_DELETED) {
+				hammer_unlock(&node->lock);
+				hammer_rel_node(node);
+				node = NULL;
+			}
+		} else {
+			node = NULL;
+		}
+	} else {
+		node = NULL;
 	}
+
+	/*
+	 * Step 2 - If we couldn't get a node from the cache, get
+	 * the one from the root of the root cluster.
+	 */
+	while (node == NULL) {
+		cluster = hammer_get_root_cluster(hmp, &error);
+		if (error)
+			break;
+		node = hammer_get_node(cluster,
+				       cluster->ondisk->clu_btree_root,
+				       &error);
+		hammer_rel_cluster(cluster, 0);
+		if (error)
+			break;
+		hammer_lock_ex(&node->lock);
+		if (node->flags & HAMMER_NODE_DELETED) {
+			hammer_unlock(&node->lock);
+			hammer_rel_node(node);
+			node = NULL;
+		}
+	}
+
+	/*
+	 * Step 3 - finish initializing the cursor by acquiring the parent
+	 */
+	cursor->node = node;
 	if (error == 0)
 		error = hammer_load_cursor_parent(cursor);
 	KKASSERT(error == 0);
@@ -88,35 +127,6 @@ hammer_init_cursor_cluster(hammer_cursor_t cursor, hammer_cluster_t cluster)
 	if (error == 0) {
 		hammer_lock_ex(&cursor->node->lock);
 		error = hammer_load_cursor_parent(cursor);
-	}
-	KKASSERT(error == 0);
-	return(error);
-}
-
-/*
- * Initialize a fresh cursor using the B-Tree node cached by the
- * in-memory inode.
- */
-int
-hammer_init_cursor_ip(hammer_cursor_t cursor, hammer_inode_t ip)
-{
-	hammer_node_t node;
-	int error;
-
-	if (ip->cache) {
-		bzero(cursor, sizeof(*cursor));
-		node = ip->cache;
-		error = hammer_ref_node(node);
-		if (error == 0) {
-			hammer_lock_ex(&node->lock);
-			cursor->node = node;
-			error = hammer_load_cursor_parent(cursor);
-		} else {
-			node = NULL;
-			cursor->node = node;
-		}
-	} else {
-		error = hammer_init_cursor_hmp(cursor, ip->hmp);
 	}
 	KKASSERT(error == 0);
 	return(error);

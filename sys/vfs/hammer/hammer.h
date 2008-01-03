@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.18 2008/01/01 01:00:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.19 2008/01/03 06:48:49 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -155,7 +155,7 @@ struct hammer_inode {
 	struct hammer_inode_record ino_rec;
 	struct hammer_inode_data ino_data;
 	struct hammer_rec_rb_tree rec_tree;	/* red-black record tree */
-	struct hammer_node	*cache;	/* cached B-Tree node shortcut */
+	struct hammer_node	*cache[2];	/* search initiate cache */
 };
 
 typedef struct hammer_inode *hammer_inode_t;
@@ -453,6 +453,7 @@ int	hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
 int	hammer_get_vnode(struct hammer_inode *ip, int lktype,
 			struct vnode **vpp);
 struct hammer_inode *hammer_get_inode(hammer_mount_t hmp,
+			struct hammer_node **cache,
 			u_int64_t obj_id, hammer_tid_t asof, int flags,
 			int *errorp);
 void	hammer_put_inode(struct hammer_inode *ip);
@@ -507,9 +508,8 @@ int hammer_get_dtype(u_int8_t obj_type);
 u_int8_t hammer_get_obj_type(enum vtype vtype);
 int64_t hammer_directory_namekey(void *name, int len);
 
-int	hammer_init_cursor_hmp(hammer_cursor_t cursor, hammer_mount_t hmp);
+int	hammer_init_cursor_hmp(hammer_cursor_t cursor, struct hammer_node **cache, hammer_mount_t hmp);
 int	hammer_init_cursor_cluster(hammer_cursor_t cursor, hammer_cluster_t cluster);
-int	hammer_init_cursor_ip(hammer_cursor_t cursor, hammer_inode_t ip);
 
 void	hammer_done_cursor(hammer_cursor_t cursor);
 void	hammer_mem_done(hammer_cursor_t cursor);
@@ -534,10 +534,10 @@ hammer_cluster_t hammer_get_root_cluster(hammer_mount_t hmp, int *errorp);
 
 hammer_volume_t	hammer_get_volume(hammer_mount_t hmp,
 			int32_t vol_no, int *errorp);
-hammer_supercl_t hammer_get_supercl(hammer_volume_t volume,
-			int32_t scl_no, int *errorp, int isnew);
-hammer_cluster_t hammer_get_cluster(hammer_volume_t volume,
-			int32_t clu_no, int *errorp, int isnew);
+hammer_supercl_t hammer_get_supercl(hammer_volume_t volume, int32_t scl_no,
+			int *errorp, hammer_alloc_state_t isnew);
+hammer_cluster_t hammer_get_cluster(hammer_volume_t volume, int32_t clu_no,
+			int *errorp, hammer_alloc_state_t isnew);
 hammer_buffer_t	hammer_get_buffer(hammer_cluster_t cluster,
 			int32_t buf_no, u_int64_t buf_type, int *errorp);
 
@@ -638,6 +638,7 @@ void hammer_io_notify_cluster(hammer_cluster_t cluster);
 void hammer_io_flush(struct hammer_io *io, struct hammer_sync_info *info);
 void hammer_io_intend_modify(struct hammer_io *io);
 void hammer_io_modify_done(struct hammer_io *io);
+void hammer_io_clear_modify(struct hammer_io *io);
 
 #endif
 

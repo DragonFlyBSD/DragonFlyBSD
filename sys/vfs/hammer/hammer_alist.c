@@ -38,7 +38,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.5 2007/11/27 07:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.6 2008/01/03 06:48:49 dillon Exp $
  */
 /*
  * This module implements a generic allocator through the use of a hinted
@@ -62,8 +62,15 @@
  *
  * The radix tree supports allocator layering. By supplying a base_radix > 1
  * the allocator will issue callbacks to recurse into lower layers once 
- * higher layers have been exhausted.  Allocations in multiples of base_radix
- * will be entirely retained in the higher level allocator and never recurse.
+ * higher layers have been exhausted.
+ *
+ * ALLOCATIONS IN MULTIPLES OF base_radix WILL BE ENTIRELY RETAINED IN THE
+ * HIGHER LEVEL ALLOCATOR AND NEVER RECURSE.  This means the init function
+ * will never be called and the A-list will consider the underlying zone
+ * as being uninitialized.  If you then do a partial free, the A-list will
+ * call the init function before freeing.  Most users of this API, including
+ * HAMMER, only allocate and free whole zones, or only allocate and free
+ * partial zones, and never mix their metaphors.
  *
  * This code can be compiled stand-alone for debugging.
  */
@@ -125,8 +132,8 @@ static int32_t hammer_alst_meta_alloc_rev(hammer_alist_t live,
 					hammer_almeta_t scan,
 					int32_t blk, int32_t count,
 					int32_t radix, int skip, int32_t atblk);
-static void hammer_alst_leaf_free(hammer_almeta_t scan,
-					int32_t relblk, int count);
+static void hammer_alst_leaf_free(hammer_almeta_t scan, int32_t relblk,
+					int count);
 static void hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 					int32_t freeBlk, int32_t count, 
 					int32_t radix, int skip, int32_t blk);
@@ -207,14 +214,17 @@ hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
 }
 
 void
-hammer_alist_init(hammer_alist_t live)
+hammer_alist_init(hammer_alist_t live, int32_t start, int32_t count,
+		  enum hammer_alloc_state state)
 {
 	hammer_alist_config_t bl = live->config;
 
-	live->meta->bm_bighint = 0;
 	live->meta->bm_alist_freeblks = 0;
+	live->meta->bm_alist_base_freeblks = count;
 	hammer_alst_radix_init(live->meta + 1, bl->bl_radix,
 			       bl->bl_skip, bl->bl_blocks);
+	if (count && state == HAMMER_ASTATE_FREE)
+		hammer_alist_free(live, start, count);
 }
 
 #if !defined(_KERNEL) && defined(ALIST_DEBUG)
@@ -241,7 +251,7 @@ hammer_alist_init(hammer_alist_t live)
 
 hammer_alist_t 
 hammer_alist_create(int32_t blocks, int32_t base_radix,
-		    struct malloc_type *mtype)
+		    struct malloc_type *mtype, enum hammer_alloc_state state)
 {
 	hammer_alist_t live;
 	hammer_alist_config_t bl;
@@ -270,7 +280,7 @@ hammer_alist_create(int32_t blocks, int32_t base_radix,
 	}
 	kprintf("ALIST raw radix tree contains %d records\n", bl->bl_rootblks);
 #endif
-	hammer_alist_init(live);
+	hammer_alist_init(live, 0, blocks, state);
 	return(live);
 }
 
@@ -421,7 +431,8 @@ hammer_alist_isfull(hammer_alist_t live)
 int
 hammer_alist_isempty(hammer_alist_t live)
 {
-	return(live->meta->bm_alist_freeblks == live->config->bl_radix);
+	return((int)live->meta->bm_alist_freeblks ==
+	       live->meta->bm_alist_base_freeblks);
 }
 
 #ifdef ALIST_DEBUG
@@ -672,10 +683,10 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 	 *
 	 * Meta node bitmaps use 2 bits per block.
 	 *
-	 *	00	ALL-ALLOCATED
+	 *	00	ALL-ALLOCATED - UNINITIALIZED
 	 *	01	PARTIALLY-FREE/PARTIALLY-ALLOCATED
-	 *	10	(RESERVED)
-	 *	11	ALL-FREE
+	 *	10	ALL-ALLOCATED - INITIALIZED
+	 *	11	ALL-FREE      - UNINITIALIZED
 	 */
 	if (count >= radix) {
 		int n = count / radix * 2;	/* number of bits */
@@ -684,8 +695,13 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 
 		mask = (u_int32_t)-1 >> (HAMMER_ALIST_BMAP_RADIX - n);
 		saveblk = blk;
-		for (j = 0; j < HAMMER_ALIST_META_RADIX; j += nd2) {
+		for (j = 0; j < (int)HAMMER_ALIST_META_RADIX; j += nd2) {
 			if ((scan->bm_bitmap & mask) == mask && blk >= atblk) {
+				/*
+				 * NOTE: Marked all-allocate/uninitialized
+				 * rather then all-allocated/initialized.
+				 * See the warning at the top of the file.
+				 */
 				scan->bm_bitmap &= ~mask;
 				return(blk);
 			}
@@ -716,25 +732,22 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 		 * If skip is 1 we are a meta leaf node, which means there
 		 * is another allocation layer we have to dive down into.
 		 */
-		for (i = 0; i < HAMMER_ALIST_META_RADIX; ++i) {
+		for (i = 0; i < (int)HAMMER_ALIST_META_RADIX; ++i) {
 			/*
 			 * If the next layer is completely free then call
-			 * its init function to initialize it, then free
-			 * all of its blocks before trying to allocate from
-			 * it.
-			 *
-			 * bl_radix_init returns an error code or 0 on
-			 * success.
+			 * its init function to initialize it.
 			 */
 			if ((scan->bm_bitmap & mask) == mask &&
 			    blk + radix > atblk) {
-				if (bl->bl_radix_init(live->info, blk, radix) == 0) {
-					int32_t empty;
+				if (bl->bl_radix_init(live->info, blk, radix, HAMMER_ASTATE_FREE) == 0) {
+					/*
+					 * NOTE: Marked all-allocate/uninit-
+					 * ialized rather then all-allocated/
+					 * initialized.  See the warning at
+					 * the top of the file.
+					 */
 					scan->bm_bitmap &= ~mask;
 					scan->bm_bitmap |= pmask;
-					bl->bl_radix_free(live->info, blk,
-							  radix, 0, radix,
-							  &empty);
 				}
 			}
 
@@ -753,10 +766,8 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 							   radix, count, atblk,
 							   &full);
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
-					if (full) {
+					if (full)
 						scan->bm_bitmap &= ~mask;
-						bl->bl_radix_destroy(live->info, blk, radix);
-					}
 					return(r);
 				}
 			}
@@ -866,15 +877,14 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 	 *
 	 * Meta node bitmaps use 2 bits per block.
 	 *
-	 *	00	ALL-ALLOCATED
+	 *	00	ALL-ALLOCATED (uninitialized)
 	 *	01	PARTIALLY-FREE/PARTIALLY-ALLOCATED
-	 *	10	(RESERVED)
+	 *	10	ALL-ALLOCATED (initialized)
 	 *	11	ALL-FREE
 	 */
 	if (count >= radix) {
 		int n = count / radix * 2;	/* number of bits */
 		int nd2 = n / 2;		/* number of radi */
-		int j;
 
 		/*
 		 * Initial mask if e.g. n == 2:  1100....0000
@@ -915,20 +925,16 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 		blk += radix * HAMMER_ALIST_META_RADIX - radix;
 		saveblk = blk;
 
-		for (i = 0; i < HAMMER_ALIST_META_RADIX; ++i) {
+		for (i = 0; i < (int)HAMMER_ALIST_META_RADIX; ++i) {
 			/*
 			 * If the next layer is completely free then call
-			 * its init function to initialize it and mark it
-			 * partially free.
+			 * its init function to initialize it.  The init
+			 * function is responsible for the initial freeing.
 			 */
 			if ((scan->bm_bitmap & mask) == mask && blk <= atblk) {
-				if (bl->bl_radix_init(live->info, blk, radix) == 0) {
-					int32_t empty;
+				if (bl->bl_radix_init(live->info, blk, radix, HAMMER_ASTATE_FREE) == 0) {
 					scan->bm_bitmap &= ~mask;
 					scan->bm_bitmap |= pmask;
-					bl->bl_radix_free(live->info, blk,
-							  radix, 0, radix,
-							  &empty);
 				}
 			}
 
@@ -946,10 +952,8 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 							   radix, count,
 							   atblk, &full);
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
-					if (full) {
+					if (full)
 						scan->bm_bitmap &= ~mask;
-						bl->bl_radix_destroy(live->info, blk, radix);
-					}
 					return(r);
 				}
 			}
@@ -1117,7 +1121,8 @@ hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 		 * Our meta node is a leaf node, which means it must recurse
 		 * into another allocator.
 		 */
-		while (i < HAMMER_ALIST_META_RADIX && blk < freeBlk + count) {
+		while (i < (int)HAMMER_ALIST_META_RADIX &&
+		       blk < freeBlk + count) {
 			int32_t v;
 
 			v = blk + radix - freeBlk;
@@ -1126,21 +1131,23 @@ hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 
 			if (scan->bm_bighint == (int32_t)-1)
 				panic("hammer_alst_meta_free: freeing unexpected range");
+			KKASSERT((scan->bm_bitmap & mask) != mask);
 
 			if (freeBlk == blk && count >= radix) {
 				/*
-				 * When the sub-tree becomes entirely free
-				 * we have to destroy it if it was previously
-				 * partially allocated.  If it was previously
-				 * fully allocated it has already been
-				 * destroyed (or never inited in the first
-				 * place).
+				 * Freeing an entire zone.  Only recurse if
+				 * the zone was initialized.  A 00 state means
+				 * that the zone is marked all-allocated,
+				 * but was never initialized.
+				 *
+				 * Then set the zone to the all-free state (11).
 				 */
 				int32_t empty;
 
-				if ((scan->bm_bitmap & mask) != 0) {
+				if (scan->bm_bitmap & mask) {
 					bl->bl_radix_free(live->info, blk, radix,
 							  freeBlk - blk, v, &empty);
+					KKASSERT(empty);
 					bl->bl_radix_destroy(live->info, blk, radix);
 				}
 				scan->bm_bitmap |= mask;
@@ -1148,14 +1155,14 @@ hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 				/* XXX bighint not being set properly */
 			} else {
 				/*
-				 * Recursion case.  If freeing from an 
-				 * all-allocated state init the sub-tree
-				 * first.
+				 * Recursion case, partial free.  If 00 the
+				 * zone is marked all allocated but has never
+				 * been initialized, so we init it.
 				 */
 				int32_t empty;
 
 				if ((scan->bm_bitmap & mask) == 0)
-					bl->bl_radix_init(live->info, blk, radix);
+					bl->bl_radix_init(live->info, blk, radix, HAMMER_ASTATE_ALLOC);
 				bl->bl_radix_free(live->info, blk, radix,
 						  freeBlk - blk, v, &empty);
 				if (empty) {
@@ -1248,7 +1255,8 @@ hammer_alst_radix_init(hammer_almeta_t scan, int32_t radix,
 	u_int32_t pmask;
 
 	/*
-	 * Basic initialization of the almeta for meta or leaf nodes
+	 * Basic initialization of the almeta for meta or leaf nodes.  This
+	 * marks the element as all-allocated.
 	 */
 	if (scan) {
 		scan->bm_bighint = 0;
@@ -1456,19 +1464,38 @@ hammer_alst_radix_print(hammer_alist_t live, hammer_almeta_t scan,
 static struct hammer_alist_live **layers;	/* initialized by main */
 static int32_t layer_radix = -1;
 
+/*
+ * Initialize a zone.
+ *
+ * If allocating is non-zero this init is being called when transitioning out
+ * of an all-free state.  Allocate the zone and mark the whole mess as being
+ * free so the caller can then allocate out of this zone.
+ *
+ * If freeing this init is being called when transitioning out of an
+ * initial all-allocated (00) state.  Allocate the zone but leave the whole
+ * mess left all-allocated.  The caller will then free the appropriate range.
+ */
 static
 int
-debug_radix_init(void *info, int32_t blk, int32_t radix)
+debug_radix_init(void *info, int32_t blk, int32_t radix,
+		 enum hammer_alloc_state state)
 {
 	hammer_alist_t layer;
 	int layer_no = blk / layer_radix;
 
-	printf("lower layer: init (%04x,%d)\n", blk, radix);
+	printf("lower layer: init (%04x,%d) layer_radix=%d\n",
+	       blk, radix, layer_radix);
+	KKASSERT(layer_radix == radix);
 	KKASSERT(layers[layer_no] == NULL);
-	layer = layers[layer_no] = hammer_alist_create(radix, 1, NULL); 
+	layer = layers[layer_no] = hammer_alist_create(radix, 1, NULL, state); 
 	return(0);
 }
 
+/*
+ * This is called when a zone becomes entirely free, typically after a
+ * call to debug_radix_free() has indicated that the entire zone is now
+ * free.
+ */
 static
 int
 debug_radix_destroy(void *info, int32_t blk, int32_t radix)
@@ -1494,7 +1521,7 @@ debug_radix_alloc_fwd(void *info, int32_t blk, int32_t radix,
 	int32_t r;
 
 	r = hammer_alist_alloc_fwd(layer, count, atblk - blk);
-	*fullp = (layer->meta->bm_alist_freeblks == 0);
+	*fullp = hammer_alist_isfull(layer);
 	if (r != HAMMER_ALIST_BLOCK_NONE)
 		r += blk;
 	return(r);
@@ -1509,7 +1536,7 @@ debug_radix_alloc_rev(void *info, int32_t blk, int32_t radix,
 	int32_t r;
 
 	r = hammer_alist_alloc_rev(layer, count, atblk - blk);
-	*fullp = (layer->meta->bm_alist_freeblks == 0);
+	*fullp = hammer_alist_isfull(layer);
 	if (r != HAMMER_ALIST_BLOCK_NONE)
 		r += blk;
 	return(r);
@@ -1523,12 +1550,9 @@ debug_radix_free(void *info, int32_t blk, int32_t radix,
 	int layer_no = blk / layer_radix;
 	hammer_alist_t layer = layers[layer_no];
 
-	if (layer == NULL) {
-		layer = hammer_alist_create(layer_radix, 1, NULL); 
-		layers[layer_no] = layer;
-	}
+	KKASSERT(layer);
 	hammer_alist_free(layer, base_blk, count);
-	*emptyp = (layer->meta->bm_alist_freeblks == layer_radix);
+	*emptyp = hammer_alist_isempty(layer);
 }
 
 static
@@ -1576,7 +1600,8 @@ main(int ac, char **av)
 		exit(1);
 	}
 
-	live = hammer_alist_create(size, layer_radix, NULL);
+	live = hammer_alist_create(size, layer_radix, NULL,
+				   HAMMER_ASTATE_ALLOC);
 	layers = calloc(size, sizeof(hammer_alist_t));
 
 	printf("A-LIST TEST %d blocks, first-layer radix %d, "
@@ -1629,6 +1654,8 @@ main(int ac, char **av)
 		case 'f':
 			if (sscanf(buf + 1, "%x %d", &da, &count) == 2) {
 				hammer_alist_free(live, da, count);
+				if (hammer_alist_isempty(live))
+					kprintf("a-list is now 100%% empty\n");
 			} else {
 				kprintf("?\n");
 			}

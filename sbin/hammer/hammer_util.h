@@ -31,32 +31,40 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.3 2007/11/20 07:16:27 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.4 2008/01/03 06:48:45 dillon Exp $
  */
 
 #include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
-#include <sys/time.h>
+#include <sys/tree.h>
+#include <sys/queue.h>
+
 #include <vfs/hammer/hammer_alist.h>
 #include <vfs/hammer/hammer_disk.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
 #include <uuid.h>
-#include <assert.h>
-#include <err.h>
 
+/*
+ * Cache management - so the user code can keep its memory use under control
+ */
+struct volume_info;
 struct supercl_info;
 struct cluster_info;
 struct buffer_info;
+
+TAILQ_HEAD(volume_list, volume_info);
+
+struct cache_info {
+	TAILQ_ENTRY(cache_info) entry;
+	union {
+		struct volume_info *volume;
+		struct supercl_info *supercl;
+		struct cluster_info *cluster;
+		struct buffer_info *buffer;
+	} u;
+	enum cache_type { ISVOLUME, ISSUPERCL, ISCLUSTER, ISBUFFER } type;
+	int refs;	/* structural references */
+	int modified;	/* ondisk modified flag */
+	int delete;	/* delete flag - delete on last ref */
+};
 
 /*
  * These structures are used by newfs_hammer to track the filesystem
@@ -64,25 +72,28 @@ struct buffer_info;
  * is made to try to make this efficient.
  */
 struct volume_info {
-	struct volume_info *next;
-	int		vol_no;
-	int64_t		vol_alloc;
+	struct cache_info	cache;
+	TAILQ_ENTRY(volume_info) entry;
+	int			vol_no;
+	int64_t			vol_alloc;
 
-	const char	*name;
-	int		fd;
-	off_t		size;
-	const char	*type;
+	char			*name;
+	int			fd;
+	off_t			size;
+	const char		*type;
+	int			using_supercl;
 
 	struct hammer_alist_live clu_alist;	/* cluster allocator */
 	struct hammer_alist_live buf_alist;	/* buffer head only */
 	struct hammer_volume_ondisk *ondisk;
 
-	struct supercl_info *supercl_base;
-	struct cluster_info *cluster_base;
+	TAILQ_HEAD(, cluster_info) cluster_list;
+	TAILQ_HEAD(, supercl_info) supercl_list;
 };
 
 struct supercl_info {
-	struct supercl_info	*next;
+	struct cache_info	cache;
+	TAILQ_ENTRY(supercl_info) entry;
 	int32_t			scl_no;
 	int64_t			scl_offset;
 
@@ -94,7 +105,8 @@ struct supercl_info {
 };
 
 struct cluster_info {
-	struct cluster_info	*next;
+	struct cache_info	cache;
+	TAILQ_ENTRY(cluster_info) entry;
 	int32_t			clu_no;
 	int64_t			clu_offset;
 
@@ -107,11 +119,12 @@ struct cluster_info {
 	struct hammer_alist_live alist_mdata;
 	struct hammer_cluster_ondisk *ondisk;
 
-	struct buffer_info 	*buffer_base;
+	TAILQ_HEAD(, buffer_info) buffer_list;
 };
 
 struct buffer_info {
-	struct buffer_info	*next;
+	struct cache_info	cache;
+	TAILQ_ENTRY(buffer_info) entry;
 	int32_t			buf_no;
 	int64_t			buf_offset;
 
@@ -131,17 +144,30 @@ extern struct hammer_alist_config Clu_slave_alist_config;
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
 extern int64_t ClusterSize;
+extern int64_t BootAreaSize;
+extern int64_t MemAreaSize;
 extern int UsingSuperClusters;
 extern int NumVolumes;
-extern struct volume_info *VolBase;
+extern struct volume_list VolList;
 
 uint32_t crc32(const void *buf, size_t size);
 
+struct volume_info *setup_volume(int32_t vol_no, const char *filename,
+				int isnew, int oflags);
 struct volume_info *get_volume(int32_t vol_no);
-struct supercl_info *get_supercl(struct volume_info *vol, int32_t scl_no);
-struct cluster_info *get_cluster(struct volume_info *vol, int32_t clu_no);
+struct supercl_info *get_supercl(struct volume_info *vol, int32_t scl_no,
+				hammer_alloc_state_t isnew);
+struct cluster_info *get_cluster(struct volume_info *vol, int32_t clu_no,
+				hammer_alloc_state_t isnew);
 struct buffer_info *get_buffer(struct cluster_info *cl, int32_t buf_no,
 				int64_t buf_type);
+
+void init_alist_templates(void);
+void rel_volume(struct volume_info *volume);
+void rel_supercl(struct supercl_info *supercl);
+void rel_cluster(struct cluster_info *cluster);
+void rel_buffer(struct buffer_info *buffer);
+
 void *alloc_btree_element(struct cluster_info *cluster, int32_t *offp);
 void *alloc_data_element(struct cluster_info *cluster,
 				int32_t bytes, int32_t *offp);
@@ -155,3 +181,10 @@ void flush_buffer(struct buffer_info *buf);
 
 void hammer_super_alist_template(struct hammer_alist_config *conf); 
 void hammer_buffer_alist_template(struct hammer_alist_config *conf); 
+
+void hammer_cache_add(struct cache_info *cache, enum cache_type type);
+void hammer_cache_del(struct cache_info *cache);
+void hammer_cache_flush(void);
+
+void panic(const char *ctl, ...);
+

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.16 2008/01/01 01:00:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.17 2008/01/03 06:48:49 dillon Exp $
  */
 
 #include "hammer.h"
@@ -107,7 +107,7 @@ hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	 * unlocked while we manipulate the related vnode to avoid a
 	 * deadlock.
 	 */
-	ip = hammer_get_inode(hmp, ino, hmp->asof, 0, &error);
+	ip = hammer_get_inode(hmp, NULL, ino, hmp->asof, 0, &error);
 	if (ip == NULL) {
 		*vpp = NULL;
 		return(error);
@@ -194,8 +194,8 @@ hammer_get_vnode(struct hammer_inode *ip, int lktype, struct vnode **vpp)
  * certain flags are inherited.
  */
 struct hammer_inode *
-hammer_get_inode(struct hammer_mount *hmp, u_int64_t obj_id, hammer_tid_t asof,
-		 int flags, int *errorp)
+hammer_get_inode(struct hammer_mount *hmp, struct hammer_node **cache,
+		 u_int64_t obj_id, hammer_tid_t asof, int flags, int *errorp)
 {
 	struct hammer_inode_info iinfo;
 	struct hammer_cursor cursor;
@@ -227,11 +227,8 @@ loop:
 
 	/*
 	 * Locate the on-disk inode.
-	 * If we do not have an inode cached search the HAMMER on-disk B-Tree
-	 * for it.
 	 */
-
-	hammer_init_cursor_hmp(&cursor, hmp);
+	hammer_init_cursor_hmp(&cursor, cache, hmp);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = 0;
 	cursor.key_beg.create_tid = iinfo.obj_asof;
@@ -251,7 +248,9 @@ loop:
 	if (*errorp == 0) {
 		ip->ino_rec = cursor.record->inode;
 		ip->ino_data = cursor.data->inode;
-		hammer_cache_node(cursor.node, &ip->cache);
+		hammer_cache_node(cursor.node, &ip->cache[0]);
+		if (cache)
+			hammer_cache_node(cursor.node, cache);
 	}
 
 	/*
@@ -265,7 +264,8 @@ loop:
 	if (*errorp == 0) {
 		hammer_ref(&ip->lock);
 		if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
-			hammer_uncache_node(&ip->cache);
+			hammer_uncache_node(&ip->cache[0]);
+			hammer_uncache_node(&ip->cache[1]);
 			hammer_unref(&ip->lock);
 			--hammer_count_inodes;
 			kfree(ip, M_HAMMER);
@@ -397,7 +397,7 @@ retry:
 
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
-		hammer_init_cursor_ip(&cursor, ip);
+		hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 		cursor.key_beg.obj_id = ip->obj_id;
 		cursor.key_beg.key = 0;
 		cursor.key_beg.create_tid = ip->obj_asof;
@@ -413,7 +413,7 @@ retry:
 			if (error == 0)
 				ip->flags |= HAMMER_INODE_DELONDISK;
 		}
-		hammer_cache_node(cursor.node, &ip->cache);
+		hammer_cache_node(cursor.node, &ip->cache[0]);
 		hammer_done_cursor(&cursor);
 	}
 
@@ -470,7 +470,7 @@ hammer_update_itimes(hammer_inode_t ip)
 	error = 0;
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
-		hammer_init_cursor_ip(&cursor, ip);
+		hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 		cursor.key_beg.obj_id = ip->obj_id;
 		cursor.key_beg.key = 0;
 		cursor.key_beg.create_tid = ip->obj_asof;
@@ -490,7 +490,7 @@ hammer_update_itimes(hammer_inode_t ip)
 			ip->flags &= ~HAMMER_INODE_ITIMES;
 			/* XXX recalculate crc */
 		}
-		hammer_cache_node(cursor.node, &ip->cache);
+		hammer_cache_node(cursor.node, &ip->cache[0]);
 		hammer_done_cursor(&cursor);
 	}
 	return(error);
@@ -536,7 +536,8 @@ hammer_unload_inode(struct hammer_inode *ip, void *data)
 		KKASSERT(RB_EMPTY(&ip->rec_tree));
 		RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
 
-		hammer_uncache_node(&ip->cache);
+		hammer_uncache_node(&ip->cache[0]);
+		hammer_uncache_node(&ip->cache[1]);
 		--hammer_count_inodes;
 		kfree(ip, M_HAMMER);
 	} else {

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.2 2007/10/16 18:16:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.3 2008/01/03 06:48:49 dillon Exp $
  */
 
 /*
@@ -64,9 +64,18 @@ typedef struct hammer_almeta {
 	int32_t		bm_bighint;
 } *hammer_almeta_t;
 
-#define bm_alist_freeblks	bm_bitmap
+#define bm_alist_freeblks	bm_bitmap	/* housekeeping */
+#define bm_alist_base_freeblks	bm_bighint	/* housekeeping */
 
 #define HAMMER_ALMETA_SIZE	8
+
+enum hammer_alloc_state {
+	HAMMER_ASTATE_NONE,
+	HAMMER_ASTATE_ALLOC,
+	HAMMER_ASTATE_FREE
+};
+
+typedef enum hammer_alloc_state hammer_alloc_state_t;
 
 /*
  * This in-memory structure specifies how an a-list is configured and
@@ -79,7 +88,8 @@ typedef struct hammer_alist_config {
 	int32_t	bl_skip;	/* starting skip for linear layout */
 	int32_t bl_rootblks;	/* meta-blocks allocated for tree */
 	int32_t bl_terminal;	/* terminal alist, else layer recursion */
-	int	(*bl_radix_init)(void *info, int32_t blk, int32_t radix);
+	int	(*bl_radix_init)(void *info, int32_t blk, int32_t radix,
+					hammer_alloc_state_t state);
 	int	(*bl_radix_destroy)(void *info, int32_t blk, int32_t radix);
 	int32_t (*bl_radix_alloc_fwd)(void *info, int32_t blk, int32_t radix,
 					int32_t count, int32_t atblk,
@@ -124,7 +134,8 @@ typedef struct hammer_alist_live {
  */
 void hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
                            int32_t base_radix, int32_t maxmeta);
-void hammer_alist_init(hammer_alist_t live);
+void hammer_alist_init(hammer_alist_t live, int32_t start, int32_t count,
+			   hammer_alloc_state_t state);
 int32_t hammer_alist_alloc(hammer_alist_t live, int32_t count);
 int32_t hammer_alist_alloc_fwd(hammer_alist_t live,
 			   int32_t count, int32_t atblk);

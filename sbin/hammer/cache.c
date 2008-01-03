@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,24 +31,77 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.h,v 1.4 2008/01/03 06:48:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cache.c,v 1.1 2008/01/03 06:48:45 dillon Exp $
  */
 
 #include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
 #include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <assert.h>
+#include <unistd.h>
 #include <err.h>
+#include <fcntl.h>
 #include "hammer_util.h"
+
+static int CacheUse;
+static int CacheMax = 8 * 1024 * 1024;
+static TAILQ_HEAD(, cache_info) CacheList = TAILQ_HEAD_INITIALIZER(CacheList);
+
+void
+hammer_cache_add(struct cache_info *cache, enum cache_type type)
+{
+	TAILQ_INSERT_TAIL(&CacheList, cache, entry);
+	cache->type = type;
+	CacheUse += HAMMER_BUFSIZE;
+}
+
+void
+hammer_cache_del(struct cache_info *cache)
+{
+	TAILQ_REMOVE(&CacheList, cache, entry);
+	CacheUse -= HAMMER_BUFSIZE;
+}
+
+void
+hammer_cache_flush(void)
+{
+	struct cache_info *cache;
+	int target;
+
+	if (CacheUse >= CacheMax) {
+		target = CacheMax / 2;
+		while ((cache = TAILQ_FIRST(&CacheList)) != NULL) {
+			if (cache->refs) {
+				TAILQ_REMOVE(&CacheList, cache, entry);
+				TAILQ_INSERT_TAIL(&CacheList, cache, entry);
+				continue;
+			}
+			cache->refs = 1;
+			cache->delete = 1;
+
+			switch(cache->type) {
+			case ISVOLUME:
+				rel_volume(cache->u.volume);
+				break;
+			case ISSUPERCL:
+				rel_supercl(cache->u.supercl);
+				break;
+			case ISCLUSTER:
+				rel_cluster(cache->u.cluster);
+				break;
+			case ISBUFFER:
+				rel_buffer(cache->u.buffer);
+				break;
+			default:
+				errx(1, "hammer_cache_flush: unknown type: %d",
+				     (int)cache->type);
+				/* not reached */
+				break;
+			}
+			/* structure was freed */
+		}
+	}
+}
 

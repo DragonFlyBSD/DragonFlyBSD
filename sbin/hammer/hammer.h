@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.h,v 1.4 2008/01/03 06:48:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.1 2008/01/03 06:48:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -50,5 +50,7 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <err.h>
+#include <ctype.h>
+
 #include "hammer_util.h"
 

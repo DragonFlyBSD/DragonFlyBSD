@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/buffer_alist.c,v 1.2 2007/11/01 22:26:37 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/buffer_alist.c,v 1.3 2008/01/03 06:48:45 dillon Exp $
  */
 /*
  * Implement the super-cluster A-list recursion for the cluster allocator.
@@ -39,35 +39,30 @@
  * Volume A-list -> supercluster A-list -> cluster
  */
 
-#include "newfs_hammer.h"
+#include <sys/types.h>
+#include <assert.h>
+#include "hammer_util.h"
 
+/*
+ * Buffers are already initialized by alloc_new_buffer() so our init/destroy
+ * code shouldn't do anything.
+ */
 static int
-buffer_alist_init(void *info, int32_t blk, int32_t radix)
-{
-	struct cluster_info *cluster = info;
-	struct buffer_info *buf;
-	int32_t buf_no;
-
-	/*
-	 * Calculate the buffer number, initialize based on the buffer type.
-	 * The buffer has already been allocated so assert that it has been
-	 * initialized.
-	 */
-	buf_no = blk / HAMMER_FSBUF_MAXBLKS;
-	buf = get_buffer(cluster, buf_no, 0);
-	assert(buf->ondisk->head.buf_type != 0);
-
-	return(0);
-}
-
-static int
-buffer_alist_destroy(void *info, int32_t blk, int32_t radix)
+buffer_alist_init(void *info __unused, int32_t blk __unused,
+		  int32_t radix __unused, hammer_alloc_state_t state __unused)
 {
 	return(0);
 }
 
 static int
-buffer_alist_alloc_fwd(void *info, int32_t blk, int32_t radix,
+buffer_alist_destroy(void *info __unused, int32_t blk __unused,
+		     int32_t radix __unused)
+{
+	return(0);
+}
+
+static int
+buffer_alist_alloc_fwd(void *info, int32_t blk, int32_t radix __unused,
 		      int32_t count, int32_t atblk, int32_t *fullp)
 {
 	struct cluster_info *cluster = info;
@@ -83,11 +78,12 @@ buffer_alist_alloc_fwd(void *info, int32_t blk, int32_t radix,
 	if (r != HAMMER_ALIST_BLOCK_NONE)
 		r += blk;
 	*fullp = hammer_alist_isfull(&buf->alist);
+	rel_buffer(buf);
 	return(r);
 }
 
 static int
-buffer_alist_alloc_rev(void *info, int32_t blk, int32_t radix,
+buffer_alist_alloc_rev(void *info, int32_t blk, int32_t radix __unused,
 		      int32_t count, int32_t atblk, int32_t *fullp)
 {
 	struct cluster_info *cluster = info;
@@ -103,11 +99,12 @@ buffer_alist_alloc_rev(void *info, int32_t blk, int32_t radix,
 	if (r != HAMMER_ALIST_BLOCK_NONE)
 		r += blk;
 	*fullp = hammer_alist_isfull(&buf->alist);
+	rel_buffer(buf);
 	return(r);
 }
 
 static void
-buffer_alist_free(void *info, int32_t blk, int32_t radix,
+buffer_alist_free(void *info, int32_t blk, int32_t radix __unused,
 		 int32_t base_blk, int32_t count, int32_t *emptyp)
 {
 	struct cluster_info *cluster = info;
@@ -119,10 +116,12 @@ buffer_alist_free(void *info, int32_t blk, int32_t radix,
 	assert(buf->ondisk->head.buf_type != 0);
 	hammer_alist_free(&buf->alist, base_blk, count);
 	*emptyp = hammer_alist_isempty(&buf->alist);
+	rel_buffer(buf);
 }
 
 static void
-buffer_alist_print(void *info, int32_t blk, int32_t radix, int tab)
+buffer_alist_print(void *info __unused, int32_t blk __unused,
+		   int32_t radix __unused, int tab __unused)
 {
 }
 

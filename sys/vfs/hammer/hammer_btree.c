@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.15 2008/01/01 01:00:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.16 2008/01/03 06:48:49 dillon Exp $
  */
 
 /*
@@ -587,6 +587,11 @@ hammer_btree_delete(hammer_cursor_t cursor)
  * of space the search continues to the leaf (to position the cursor for
  * the spike), but ENOSPC is returned.
  *
+ * XXX this isn't optimal - we really need to just locate the end point and
+ * insert space going up, and if we get a deadlock just release and retry
+ * the operation.  Or something like that.  The insertion code can transit
+ * multiple clusters and run splits in unnecessary clusters.
+ *
  * DELETIONS: The search will rebalance the tree on its way down. XXX
  *
  * The search is only guarenteed to end up on a leaf if an error code of 0
@@ -601,6 +606,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 {
 	hammer_node_ondisk_t node;
 	hammer_cluster_t cluster;
+	hammer_btree_elm_t elm;
 	int error;
 	int enospc = 0;
 	int i;
@@ -675,7 +681,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * XXX as an optimization it should be possible to unbalance the tree
 	 * and stop at the root of the current cluster.
 	 */
-	while (flags & HAMMER_CURSOR_INSERT) {
+	while ((flags & HAMMER_CURSOR_INSERT) && enospc == 0) {
 		if (btree_node_is_full(cursor->node->ondisk) == 0)
 			break;
 		if (cursor->parent == NULL)
@@ -754,8 +760,8 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 * information.
 		 */
 		for (i = 0; i < node->count; ++i) {
-			r = hammer_btree_cmp(&cursor->key_beg,
-					     &node->elms[i].base);
+			elm = &node->elms[i];
+			r = hammer_btree_cmp(&cursor->key_beg, &elm->base);
 			if (r < 0)
 				break;
 		}
@@ -811,9 +817,10 @@ btree_search(hammer_cursor_t cursor, int flags)
 			 * were not true we would have to fall through for
 			 * the r == 1 case.
 			 */
+			elm = &node->elms[i];
 			if ((flags & HAMMER_CURSOR_INSERT) == 0) {
 				r = hammer_btree_cmp(&cursor->key_beg,
-						     &node->elms[i].base);
+						     &elm->base);
 				if (r >= 0) {
 					cursor->index = i;
 					return(ENOENT);
@@ -824,10 +831,10 @@ btree_search(hammer_cursor_t cursor, int flags)
 			 * Correct a right-hand boundary mismatch.  The push
 			 * index is the last element (i-1).
 			 */
-			if (hammer_btree_cmp(&node->elms[i].base,
+			if (hammer_btree_cmp(&elm->base,
 					     cursor->right_bound) != 0) {
 				hammer_modify_node(cursor->node);
-				node->elms[i].base = *cursor->right_bound;
+				elm->base = *cursor->right_bound;
 				hammer_modify_node_done(cursor->node);
 			}
 			--i;
@@ -840,7 +847,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		cursor->index = i;
 
 		if (hammer_debug_btree) {
-			hammer_btree_elm_t elm = &node->elms[i];
+			elm = &node->elms[i];
 			kprintf("SEARCH-I %p:%d %016llx %02x key=%016llx tid=%016llx\n",
 				cursor->node, i,
 				elm->internal.base.obj_id,
@@ -856,15 +863,18 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 * If inserting split full nodes.  The split code will
 		 * adjust cursor->node and cursor->index if the current
 		 * index winds up in the new node.
+		 *
+		 * If we run out of space we set enospc and continue on
+		 * to a leaf to provide the spike code with a good point
+		 * of entry.  Enospc is reset if we cross a cluster boundary.
 		 */
-		if (flags & HAMMER_CURSOR_INSERT) {
+		if ((flags & HAMMER_CURSOR_INSERT) && enospc == 0) {
 			if (node->count == HAMMER_BTREE_INT_ELMS) {
 				error = btree_split_internal(cursor);
 				if (error) {
 					if (error != ENOSPC)
 						goto done;
 					enospc = 1;
-					flags &= ~HAMMER_CURSOR_INSERT;
 				}
 				/*
 				 * reload stale pointers
@@ -902,20 +912,28 @@ btree_search(hammer_cursor_t cursor, int flags)
 		}
 #endif
 		/*
-		 * Cluster pushes are done with internal elements.  If this
-		 * is a cluster push (rec_offset != 0), and INCLUSTER is set,
-		 * we stop here.
+		 * A non-zero rec_offset specifies a cluster push.
+		 * If this is a cluster push we reset the enospc flag,
+		 * which reenables the insertion code in the new cluster.
+		 * This also ensures that if a spike occurs both its node
+		 * and its parent will be in the same cluster.
 		 *
-		 * However, because this is an internal node we have to
-		 * determine whether key_beg is within its range and return
-		 * 0 or ENOENT appropriately.
+		 * If INCLUSTER is set we terminate at the cluster boundary.
+		 * In this case we must determine whether key_beg is within
+		 * the cluster's boundary or not. XXX
 		 */
-		if ((flags & HAMMER_CURSOR_INCLUSTER) &&
-		    node->elms[i].internal.rec_offset) {
-			r = hammer_btree_cmp(&cursor->key_beg,
-					     &node->elms[i+1].base);
-			error = (r < 0) ? 0 : (enospc ? ENOSPC : ENOENT);
-			goto done;
+		elm = &node->elms[i];
+		if (elm->internal.rec_offset) {
+			KKASSERT(elm->subtree_type ==
+				 HAMMER_BTREE_TYPE_CLUSTER);
+			enospc = 0;
+			if (flags & HAMMER_CURSOR_INCLUSTER) {
+				KKASSERT((flags & HAMMER_CURSOR_INSERT) == 0);
+				r = hammer_btree_cmp(&cursor->key_beg,
+						     &elm[1].base);
+				error = (r < 0) ? 0 : ENOENT;
+				goto done;
+			}
 		}
 
 		/*

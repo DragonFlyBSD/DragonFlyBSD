@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/super_alist.c,v 1.3 2007/11/27 07:44:38 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/super_alist.c,v 1.4 2008/01/03 06:48:45 dillon Exp $
  */
 /*
  * Implement the super-cluster A-list recursion for the cluster allocator.
@@ -39,10 +39,12 @@
  * Volume A-list -> supercluster A-list -> cluster
  */
 
-#include "newfs_hammer.h"
+#include <sys/types.h>
+#include "hammer_util.h"
 
 static int
-super_alist_init(void *info, int32_t blk, int32_t radix)
+super_alist_init(void *info, int32_t blk, int32_t radix __unused,
+		 hammer_alloc_state_t state)
 {
 	struct volume_info *vol = info;
 	struct supercl_info *supercl;
@@ -53,18 +55,20 @@ super_alist_init(void *info, int32_t blk, int32_t radix)
 	 * and obtain the super-cluster buffer.
 	 */
 	sclno = blk / HAMMER_SCL_MAXCLUSTERS;
-	supercl = get_supercl(vol, sclno);
+	supercl = get_supercl(vol, sclno, state);
+	rel_supercl(supercl);
 	return(0);
 }
 
 static int
-super_alist_destroy(void *info, int32_t blk, int32_t radix)
+super_alist_destroy(void *info __unused, int32_t blk __unused,
+		    int32_t radix __unused)
 {
 	return(0);
 }
 
 static int
-super_alist_alloc_fwd(void *info, int32_t blk, int32_t radix,
+super_alist_alloc_fwd(void *info, int32_t blk, int32_t radix __unused,
 		      int32_t count, int32_t atblk, int32_t *fullp)
 {
 	struct volume_info *vol = info;
@@ -73,16 +77,17 @@ super_alist_alloc_fwd(void *info, int32_t blk, int32_t radix,
 	int32_t r;
 
 	sclno = blk / HAMMER_SCL_MAXCLUSTERS;
-	supercl = get_supercl(vol, sclno);
+	supercl = get_supercl(vol, sclno, 0);
 	r = hammer_alist_alloc_fwd(&supercl->clu_alist, count, atblk - blk);
 	if (r != HAMMER_ALIST_BLOCK_NONE)
 		r += blk;
 	*fullp = hammer_alist_isfull(&supercl->clu_alist);
+	rel_supercl(supercl);
 	return(r);
 }
 
 static int
-super_alist_alloc_rev(void *info, int32_t blk, int32_t radix,
+super_alist_alloc_rev(void *info, int32_t blk, int32_t radix __unused,
 		      int32_t count, int32_t atblk, int32_t *fullp)
 {
 	struct volume_info *vol = info;
@@ -91,16 +96,17 @@ super_alist_alloc_rev(void *info, int32_t blk, int32_t radix,
 	int32_t r;
 
 	sclno = blk / HAMMER_SCL_MAXCLUSTERS;
-	supercl = get_supercl(vol, sclno);
+	supercl = get_supercl(vol, sclno, 0);
 	r = hammer_alist_alloc_rev(&supercl->clu_alist, count, atblk - blk);
 	if (r != HAMMER_ALIST_BLOCK_NONE)
 		r += blk;
 	*fullp = hammer_alist_isfull(&supercl->clu_alist);
+	rel_supercl(supercl);
 	return(r);
 }
 
 static void
-super_alist_free(void *info, int32_t blk, int32_t radix,
+super_alist_free(void *info, int32_t blk, int32_t radix __unused,
 		 int32_t base_blk, int32_t count, int32_t *emptyp)
 {
 	struct volume_info *vol = info;
@@ -108,13 +114,16 @@ super_alist_free(void *info, int32_t blk, int32_t radix,
 	int32_t sclno;
 
 	sclno = blk / HAMMER_SCL_MAXCLUSTERS;
-	supercl = get_supercl(vol, sclno);
+	supercl = get_supercl(vol, sclno, 0);
+
 	hammer_alist_free(&supercl->clu_alist, base_blk, count);
 	*emptyp = hammer_alist_isempty(&supercl->clu_alist);
+	rel_supercl(supercl);
 }
 
 static void
-super_alist_print(void *info, int32_t blk, int32_t radix, int tab)
+super_alist_print(void *info __unused, int32_t blk __unused,
+		  int32_t radix __unused, int tab __unused)
 {
 }
 

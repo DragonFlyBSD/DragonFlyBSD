@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.11 2008/01/01 01:00:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.12 2008/01/03 06:48:49 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -105,6 +105,21 @@ hammer_close_cluster(hammer_cluster_t cluster)
 		cluster->ondisk->clu_flags &= ~HAMMER_CLUF_OPEN;
 		hammer_modify_cluster_done(cluster);
 		kprintf("CLOSE CLUSTER\n");
+	}
+}
+
+/*
+ * Hack XXX - called from kernel syncer via hammer_io_checkwrite() when it
+ * wants to flush buffer.
+ */
+static void
+hammer_close_cluster_quick(hammer_cluster_t cluster)
+{
+	if (cluster->state == HAMMER_CLUSTER_OPEN) {
+		cluster->state = HAMMER_CLUSTER_IDLE;
+		cluster->io.modified = 1;
+		cluster->ondisk->clu_flags &= ~HAMMER_CLUF_OPEN;
+		kprintf("CLOSE CLUSTER ON KERNEL WRITE\n");
 	}
 }
 
@@ -387,6 +402,31 @@ hammer_io_modify_done(struct hammer_io *io)
 }
 
 /*
+ * Mark an entity as not being dirty any more -- usually occurs when
+ * the governing a-list has freed the entire entity.
+ */
+void
+hammer_io_clear_modify(struct hammer_io *io)
+{
+	struct buf *bp;
+
+	io->modified = 0;
+	if ((bp = io->bp) != NULL) {
+		if (io->released)
+			regetblk(bp);
+		else
+			io->released = 1;
+		if (io->modified == 0) {
+			kprintf("hammer_io_clear_modify: cleared %p\n", io);
+			bundirty(bp);
+			bqrelse(bp);
+		} else {
+			bdwrite(bp);
+		}
+	}
+}
+
+/*
  * HAMMER_BIOOPS
  */
 
@@ -583,7 +623,7 @@ hammer_io_checkwrite(struct buf *bp)
 		 * so iou->io.modified should be 0.
 		 */
 		if (iou->io.type == HAMMER_STRUCTURE_CLUSTER)
-			hammer_close_cluster(&iou->cluster);
+			hammer_close_cluster_quick(&iou->cluster);
 		hammer_io_disassociate(iou);
 		return(0);
 	}

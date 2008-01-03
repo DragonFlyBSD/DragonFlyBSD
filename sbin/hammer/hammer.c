@@ -31,27 +31,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.1 2008/01/01 00:57:57 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.2 2008/01/03 06:48:45 dillon Exp $
  */
 
-#include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <uuid.h>
-#include <err.h>
-#include <assert.h>
-#include <ctype.h>
+#include "hammer.h"
 
 static void hammer_parsetime(u_int64_t *tidp, const char *timestr);
 static void usage(int exit_code);
@@ -61,6 +44,7 @@ main(int ac, char **av)
 {
 	u_int64_t tid;
 	int ch;
+	int status;
 
 	while ((ch = getopt(ac, av, "h")) != -1) {
 		switch(ch) {
@@ -82,15 +66,29 @@ main(int ac, char **av)
 	if (strcmp(av[0], "now") == 0) {
 		hammer_parsetime(&tid, "0s");
 		printf("0x%08x\n", (int)(tid / 1000000000LL));
-	} else if (strcmp(av[0], "stamp") == 0) {
+		exit(0);
+	}
+	if (strcmp(av[0], "stamp") == 0) {
 		if (av[1] == NULL)
 			usage(1);
 		hammer_parsetime(&tid, av[1]);
 		printf("0x%08x\n", (int)(tid / 1000000000LL));
-	} else {
-		usage(1);
-		/* not reached */
+		exit(0);
 	}
+
+	uuid_name_lookup(&Hammer_FSType, "DragonFly HAMMER", &status);
+	if (status != uuid_s_ok) {
+		errx(1, "uuids file does not have the DragonFly "
+			"HAMMER filesystem type");
+	}
+	init_alist_templates();
+
+	/*
+	 * Additional commands
+	 */
+
+	usage(1);
+	/* not reached */
 	return(0);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.11 2007/12/30 00:47:20 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.12 2008/01/03 06:48:48 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -43,21 +43,6 @@ static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static int32_t format_cluster(struct volume_info *vol, int isroot);
 static void format_root(struct cluster_info *cluster);
 static void usage(void);
-
-struct hammer_alist_config Buf_alist_config;
-struct hammer_alist_config Vol_normal_alist_config;
-struct hammer_alist_config Vol_super_alist_config;
-struct hammer_alist_config Supercl_alist_config;
-struct hammer_alist_config Clu_master_alist_config;
-struct hammer_alist_config Clu_slave_alist_config;
-uuid_t Hammer_FSType;
-uuid_t Hammer_FSId;
-int64_t ClusterSize;
-int64_t BootAreaSize;
-int64_t MemAreaSize;
-int	UsingSuperClusters;
-int	NumVolumes;
-struct volume_info *VolBase;
 
 int
 main(int ac, char **av)
@@ -92,25 +77,7 @@ main(int ac, char **av)
 			"HAMMER filesystem type");
 	}
 
-	/*
-	 * Initialize the alist templates we will be using
-	 */
-	hammer_alist_template(&Buf_alist_config, HAMMER_FSBUF_MAXBLKS,
-			      1, HAMMER_FSBUF_METAELMS);
-	hammer_alist_template(&Vol_normal_alist_config, HAMMER_VOL_MAXCLUSTERS,
-			      1, HAMMER_VOL_METAELMS_1LYR);
-	hammer_alist_template(&Vol_super_alist_config,
-			  HAMMER_VOL_MAXSUPERCLUSTERS * HAMMER_SCL_MAXCLUSTERS,
-			      HAMMER_SCL_MAXCLUSTERS, HAMMER_VOL_METAELMS_2LYR);
-	hammer_super_alist_template(&Vol_super_alist_config);
-	hammer_alist_template(&Supercl_alist_config, HAMMER_VOL_MAXCLUSTERS,
-			      1, HAMMER_SUPERCL_METAELMS);
-	hammer_alist_template(&Clu_master_alist_config, HAMMER_CLU_MAXBUFFERS,
-			      1, HAMMER_CLU_MASTER_METAELMS);
-	hammer_alist_template(&Clu_slave_alist_config,
-			      HAMMER_CLU_MAXBUFFERS * HAMMER_FSBUF_MAXBLKS,
-			      HAMMER_FSBUF_MAXBLKS, HAMMER_CLU_SLAVE_METAELMS);
-	hammer_buffer_alist_template(&Clu_slave_alist_config);
+	init_alist_templates();
 
 	/*
 	 * Parse arguments
@@ -164,12 +131,7 @@ main(int ac, char **av)
 	for (i = 0; i < NumVolumes; ++i) {
 		struct volume_info *vol;
 
-		vol = calloc(1, sizeof(struct volume_info));
-		vol->fd = -1;
-		vol->vol_no = i;
-		vol->name = av[i];
-		vol->next = VolBase;
-		VolBase = vol;
+		vol = setup_volume(i, av[i], 1, O_RDWR);
 
 		/*
 		 * Load up information on the volume and initialize
@@ -510,7 +472,8 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		}
 		printf("%d clusters, %d full super-cluster groups\n",
 			nclusters, nscl_groups);
-		hammer_alist_free(&vol->clu_alist, 0, nclusters);
+		hammer_alist_init(&vol->clu_alist, 0, nclusters,
+				  HAMMER_ASTATE_FREE);
 	} else {
 		nclusters = (ondisk->vol_clo_end - ondisk->vol_clo_beg +
 			     minclsize) / ClusterSize;
@@ -518,7 +481,8 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 			errx(1, "Volume is too large, max %s\n",
 			     sizetostr(nclusters * ClusterSize));
 		}
-		hammer_alist_free(&vol->clu_alist, 0, nclusters);
+		hammer_alist_init(&vol->clu_alist, 0, nclusters,
+				  HAMMER_ASTATE_FREE);
 	}
 	ondisk->vol_nclusters = nclusters;
 	ondisk->vol_nblocks = nclusters * ClusterSize / HAMMER_BUFSIZE -
@@ -529,7 +493,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	 * Place the root cluster in volume 0.
 	 */
 	ondisk->vol_rootvol = 0;
-	if (ondisk->vol_no == ondisk->vol_rootvol) {
+	if (ondisk->vol_no == (int)ondisk->vol_rootvol) {
 		ondisk->vol0_root_clu_id = format_cluster(vol, 1);
 		ondisk->vol0_recid = 1;
 		/* global next TID */
@@ -559,7 +523,7 @@ format_cluster(struct volume_info *vol, int isroot)
 			vol->vol_no, vol->name);
 		exit(1);
 	}
-	cluster = get_cluster(vol, clno);
+	cluster = get_cluster(vol, clno, 1);
 	printf("allocate cluster id=%016llx %d@%08llx\n",
 	       clu_id, clno, cluster->clu_offset);
 
@@ -706,17 +670,5 @@ format_root(struct cluster_info *cluster)
 	elm->leaf.data_offset = rec->base.data_offset;
 	elm->leaf.data_len = rec->base.data_len;
 	elm->leaf.data_crc = rec->base.data_crc;
-}
-
-void
-panic(const char *ctl, ...)
-{
-	va_list va;
-
-	va_start(va, ctl);
-	vfprintf(stderr, ctl, va);
-	va_end(va);
-	fprintf(stderr, "\n");
-	exit(1);
 }
 

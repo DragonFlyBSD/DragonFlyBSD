@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.14 2008/01/01 01:00:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.15 2008/01/03 06:48:49 dillon Exp $
  */
 
 #include "hammer.h"
@@ -436,7 +436,7 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	void *bdata;
 	int error;
 
-	error = hammer_init_cursor_ip(&cursor, ip);
+	error = hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 	if (error)
 		return(error);
 	cursor.key_beg.obj_id = ip->obj_id;
@@ -527,7 +527,8 @@ hammer_ip_sync_record(hammer_record_t record, struct hammer_cursor **spike)
 	void *bdata;
 	int error;
 
-	error = hammer_init_cursor_ip(&cursor, record->ip);
+	error = hammer_init_cursor_hmp(&cursor, &record->ip->cache[0],
+				       record->ip->hmp);
 	if (error)
 		return(error);
 	cursor.key_beg = record->rec.base.base;
@@ -1078,7 +1079,7 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 	int64_t off;
 
-	hammer_init_cursor_ip(&cursor, ip);
+	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = ip->obj_asof;
@@ -1197,7 +1198,7 @@ hammer_ip_delete_range_all(hammer_transaction_t trans, hammer_inode_t ip)
 	hammer_base_elm_t base;
 	int error;
 
-	hammer_init_cursor_ip(&cursor, ip);
+	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = ip->obj_asof;
@@ -1333,7 +1334,7 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	struct hammer_cursor cursor;
 	int error;
 
-	hammer_init_cursor_ip(&cursor, ip);
+	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = ip->obj_asof;
