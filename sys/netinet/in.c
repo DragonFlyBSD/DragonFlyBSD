@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.24 2007/12/28 13:16:10 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.25 2008/01/03 11:41:05 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -238,7 +238,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 
 	case SIOCAIFADDR:
 	case SIOCDIFADDR:
-		if (ifp == 0)
+		if (ifp == NULL)
 			return (EADDRNOTAVAIL);
 		if (ifra->ifra_addr.sin_family == AF_INET) {
 			for (oia = ia; ia; ia = TAILQ_NEXT(ia, ia_link)) {
@@ -254,7 +254,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 				return EDESTADDRREQ;
 			}
 		}
-		if (cmd == SIOCDIFADDR && ia == 0)
+		if (cmd == SIOCDIFADDR && ia == NULL)
 			return (EADDRNOTAVAIL);
 		/* FALLTHROUGH */
 	case SIOCSIFADDR:
@@ -263,7 +263,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		if (td && (error = suser(td)) != 0)
 			return error;
 
-		if (ifp == 0)
+		if (ifp == NULL)
 			return (EADDRNOTAVAIL);
 		if (ia == NULL) {
 			ia = kmalloc(sizeof *ia, M_IFADDR, M_WAITOK | M_ZERO);
@@ -304,7 +304,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCGIFNETMASK:
 	case SIOCGIFDSTADDR:
 	case SIOCGIFBRDADDR:
-		if (ia == (struct in_ifaddr *)0)
+		if (ia == NULL)
 			return (EADDRNOTAVAIL);
 		break;
 	}
