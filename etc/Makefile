@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.200 2007/12/29 13:40:27 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.201 2008/01/03 13:35:20 hasso Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -137,6 +137,7 @@ upgrade_etc:	preupgrade
 .endif
 	cd ${UPGRADE_SRCDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
+	cd ${UPGRADE_SRCDIR}/bluetooth; ${MAKE} install
 .if !exists(${DESTDIR}/etc/pam.d)
 	mkdir -p ${DESTDIR}/etc/pam.d
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/README ${DESTDIR}/etc/pam.d
