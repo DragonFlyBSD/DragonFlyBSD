@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.18 2007/08/14 20:29:06 dillon Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.19 2008/01/04 12:31:45 matthias Exp $
 .\"
 .Dd April 6, 2006
 .Dt PS 1
@@ -80,7 +80,7 @@ The options are as follows:
 .It Fl a
 Display information about other users' processes as well as your own.
 This can be disabled by setting the
-.Va kern.ps_showallprocs
+.Va security.ps_showallprocs
 sysctl to zero.
 .It Fl c
 Change the ``command'' column output to just contain the executable name,
