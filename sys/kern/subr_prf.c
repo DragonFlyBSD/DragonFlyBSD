@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.19 2007/12/08 20:08:53 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.20 2008/01/04 12:16:19 matthias Exp $
  */
 
 #include "opt_ddb.h"
@@ -109,7 +109,7 @@ SYSCTL_INT(_kern, OID_AUTO, log_console_output, CTLFLAG_RW,
     &log_console_output, 0, "");
 
 static int unprivileged_read_msgbuf = 1;
-SYSCTL_INT(_kern, OID_AUTO, unprivileged_read_msgbuf, CTLFLAG_RW,
+SYSCTL_INT(_security, OID_AUTO, unprivileged_read_msgbuf, CTLFLAG_RW,
     &unprivileged_read_msgbuf, 0,
     "Unprivileged processes may read the kernel message buffer");
 

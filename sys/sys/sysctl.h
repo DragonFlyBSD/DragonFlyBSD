@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.25 2007/10/02 12:57:01 hasso Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.26 2008/01/04 12:16:19 matthias Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -606,6 +606,7 @@ SYSCTL_DECL(_machdep);
 SYSCTL_DECL(_user);
 SYSCTL_DECL(_compat);
 SYSCTL_DECL(_lwkt);
+SYSCTL_DECL(_security);
 
 /*
  * Common second-level oids.

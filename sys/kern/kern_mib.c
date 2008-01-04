@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.15 2007/01/19 07:23:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.16 2008/01/04 12:16:19 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -77,6 +77,8 @@ SYSCTL_NODE(, CTL_LWKT,  lwkt,   CTLFLAG_RW, 0,
 
 SYSCTL_NODE(, OID_AUTO,  compat, CTLFLAG_RW, 0,
 	"Compatibility code");
+SYSCTL_NODE(, OID_AUTO,  security,   CTLFLAG_RW, 0,
+	"Security");
 
 SYSCTL_STRING(_kern, OID_AUTO, ident, CTLFLAG_RD,
     kern_ident, 0, "Kernel identifier");

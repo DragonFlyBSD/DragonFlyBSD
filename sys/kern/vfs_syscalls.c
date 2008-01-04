@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.123 2007/11/20 18:35:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.124 2008/01/04 12:16:19 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -1767,12 +1767,12 @@ sys_mkfifo(struct mkfifo_args *uap)
 }
 
 static int hardlink_check_uid = 0;
-SYSCTL_INT(_kern, OID_AUTO, hardlink_check_uid, CTLFLAG_RW,
+SYSCTL_INT(_security, OID_AUTO, hardlink_check_uid, CTLFLAG_RW,
     &hardlink_check_uid, 0, 
     "Unprivileged processes cannot create hard links to files owned by other "
     "users");
 static int hardlink_check_gid = 0;
-SYSCTL_INT(_kern, OID_AUTO, hardlink_check_gid, CTLFLAG_RW,
+SYSCTL_INT(_security, OID_AUTO, hardlink_check_gid, CTLFLAG_RW,
     &hardlink_check_gid, 0,
     "Unprivileged processes cannot create hard links to files owned by other "
     "groups");

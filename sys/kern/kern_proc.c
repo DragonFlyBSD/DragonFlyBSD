@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.40 2007/11/02 18:47:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.41 2008/01/04 12:16:19 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -63,10 +63,12 @@ MALLOC_DEFINE(M_SUBPROC, "subproc", "Proc sub-structures");
 
 int ps_showallprocs = 1;
 static int ps_showallthreads = 1;
-SYSCTL_INT(_kern, OID_AUTO, ps_showallprocs, CTLFLAG_RW,
-    &ps_showallprocs, 0, "");
-SYSCTL_INT(_kern, OID_AUTO, ps_showallthreads, CTLFLAG_RW,
-    &ps_showallthreads, 0, "");
+SYSCTL_INT(_security, OID_AUTO, ps_showallprocs, CTLFLAG_RW,
+    &ps_showallprocs, 0,
+    "Unprivileged processes can see proccesses with different UID/GID");
+SYSCTL_INT(_security, OID_AUTO, ps_showallthreads, CTLFLAG_RW,
+    &ps_showallthreads, 0,
+    "Unprivileged processes can see kernel threads");
 
 static void pgdelete(struct pgrp *);
 static void orphanpg(struct pgrp *pg);
