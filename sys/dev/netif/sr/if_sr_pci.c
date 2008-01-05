@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr_pci.c,v 1.15.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr_pci.c,v 1.6 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr_pci.c,v 1.7 2008/01/05 14:02:37 swildner Exp $
  */
 
 
@@ -184,7 +184,7 @@ sr_pci_attach(device_t device)
 	hc->memsize = 2 * hc->numports * SRC_WIN_SIZ;
 	hc->mem_start = contigmalloc(hc->memsize,
 				     M_DEVBUF,
-				     M_NOWAIT,
+				     M_NOWAIT | M_ZERO,
 				     0ul,
 				     0xfffffful,
 				     0x10000,
@@ -198,7 +198,6 @@ sr_pci_attach(device_t device)
 	hc->winmsk = 0xffffffff;
 	hc->mem_end = (caddr_t)((u_int)hc->mem_start + hc->memsize);
 	hc->mem_pstart = kvtop(hc->mem_start);
-	bzero(hc->mem_start, hc->memsize);
 
 	*fecrp = SR_FECR_DTR0
 	    | SR_FECR_DTR1

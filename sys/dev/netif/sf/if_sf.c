@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.30 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.31 2008/01/05 14:02:37 swildner Exp $
  */
 
 /*
@@ -742,15 +742,13 @@ sf_attach(device_t dev)
 
 	/* Allocate the descriptor queues. */
 	sc->sf_ldata = contigmalloc(sizeof(struct sf_list_data), M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->sf_ldata == NULL) {
 		kprintf("sf%d: no memory for list buffers!\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
-
-	bzero(sc->sf_ldata, sizeof(struct sf_list_data));
 
 	/* Do MII setup. */
 	if (mii_phy_probe(dev, &sc->sf_miibus,

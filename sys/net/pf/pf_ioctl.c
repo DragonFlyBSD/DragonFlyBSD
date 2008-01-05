@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.12 2007/05/13 18:33:58 swildner Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.13 2008/01/05 14:02:38 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -601,10 +601,9 @@ tagname2tag(struct pf_tags *head, char *tagname)
 
 	/* allocate and fill new struct pf_tagname */
 	tag = (struct pf_tagname *)kmalloc(sizeof(struct pf_tagname),
-	    M_TEMP, M_NOWAIT);
+	    M_TEMP, M_NOWAIT | M_ZERO);
 	if (tag == NULL)
 		return (0);
-	bzero(tag, sizeof(struct pf_tagname));
 	strlcpy(tag->name, tagname, sizeof(tag->name));
 	tag->tag = new_tagid;
 	tag->ref++;

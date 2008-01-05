@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1994 Regents of The University of Michigan.
  * All Rights Reserved.  See COPYRIGHT.
  *
- * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.11 2007/04/21 02:26:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.12 2008/01/05 14:02:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -414,8 +414,7 @@ at_pcballoc( struct socket *so )
 {
 	struct ddpcb	*ddp;
 
-	MALLOC(ddp, struct ddpcb *, sizeof *ddp, M_PCB, M_WAITOK);
-	bzero(ddp, sizeof *ddp);
+	MALLOC(ddp, struct ddpcb *, sizeof *ddp, M_PCB, M_WAITOK | M_ZERO);
 	ddp->ddp_lsat.sat_port = ATADDR_ANYPORT;
 
 	ddp->ddp_next = ddpcb;

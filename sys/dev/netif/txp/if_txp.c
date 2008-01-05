@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.43 2007/08/14 13:30:35 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.44 2008/01/05 14:02:37 swildner Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -253,8 +253,7 @@ txp_attach(device_t dev)
 		goto fail;
 
 	sc->sc_ldata = contigmalloc(sizeof(struct txp_ldata), M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
-	bzero(sc->sc_ldata, sizeof(struct txp_ldata));
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (txp_alloc_rings(sc)) {
 		error = ENXIO;

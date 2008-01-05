@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bpf.c,v 1.2.4.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bpf/ng_bpf.c,v 1.4 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/netgraph/bpf/ng_bpf.c,v 1.5 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_bpf.c,v 1.3 1999/12/03 20:30:23 archie Exp $
  */
 
@@ -236,10 +236,9 @@ ng_bpf_newhook(node_p node, hook_p hook, const char *name)
 	int error;
 
 	/* Create hook private structure */
-	MALLOC(hip, hinfo_p, sizeof(*hip), M_NETGRAPH, M_NOWAIT);
+	MALLOC(hip, hinfo_p, sizeof(*hip), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (hip == NULL)
 		return (ENOMEM);
-	bzero(hip, sizeof(*hip));
 	hip->hook = hook;
 	hook->private = hip;
 	hip->node = node;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/i686_mem.c,v 1.8.2.4 2002/09/24 08:12:51 mdodd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.7 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/i686_mem.c,v 1.8 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -573,8 +573,7 @@ i686_mrinit(struct mem_range_softc *sc)
 
     sc->mr_desc = 
 	(struct mem_range_desc *)kmalloc(nmdesc * sizeof(struct mem_range_desc), 
-					M_MEMDESC, M_WAITOK);
-    bzero(sc->mr_desc, nmdesc * sizeof(struct mem_range_desc));
+					M_MEMDESC, M_WAITOK | M_ZERO);
     sc->mr_ndesc = nmdesc;
 
     mrd = sc->mr_desc;

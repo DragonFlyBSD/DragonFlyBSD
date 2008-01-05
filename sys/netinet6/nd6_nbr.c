@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.21 2007/08/27 16:15:42 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.22 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -1065,7 +1065,7 @@ nd6_dad_start(struct ifaddr *ifa,
 		return;
 	}
 
-	dp = kmalloc(sizeof(*dp), M_IP6NDP, M_NOWAIT);
+	dp = kmalloc(sizeof(*dp), M_IP6NDP, M_NOWAIT | M_ZERO);
 	if (dp == NULL) {
 		log(LOG_ERR, "nd6_dad_start: memory allocation failed for "
 			"%s(%s)\n",
@@ -1073,7 +1073,6 @@ nd6_dad_start(struct ifaddr *ifa,
 			ifa->ifa_ifp ? if_name(ifa->ifa_ifp) : "???");
 		return;
 	}
-	bzero(dp, sizeof(*dp));
 	callout_init(&dp->dad_timer_ch);
 	TAILQ_INSERT_TAIL(&dadq, (struct dadq *)dp, dad_list);
 

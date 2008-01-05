@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_sample.c,v 1.7.2.3 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/ng_sample.c,v 1.3 2006/01/14 11:10:47 swildner Exp $
+ * $DragonFly: src/sys/netgraph/ng_sample.c,v 1.4 2008/01/05 14:02:38 swildner Exp $
  * $Whistle: ng_sample.c,v 1.13 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -153,10 +153,9 @@ ng_xxx_constructor(node_p *nodep)
 	int i, error;
 
 	/* Initialize private descriptor */
-	MALLOC(privdata, xxx_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT);
+	MALLOC(privdata, xxx_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
-	bzero(privdata, sizeof(struct XXX));
 	for (i = 0; i < XXX_NUM_DLCIS; i++) {
 		privdata->channel[i].dlci = -2;
 		privdata->channel[i].channel = i;

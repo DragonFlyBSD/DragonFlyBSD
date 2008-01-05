@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.15 2006/09/10 01:26:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.16 2008/01/05 14:02:37 swildner Exp $
  */
 
 /*
@@ -128,8 +128,7 @@ nmdminit(int n)
 	if (n & ~0x7f)
 		return;
 
-	pt = kmalloc(sizeof(*pt), M_NLMDM, M_WAITOK);
-	bzero(pt, sizeof(*pt));
+	pt = kmalloc(sizeof(*pt), M_NLMDM, M_WAITOK | M_ZERO);
 	dev_ops_add(&nmdm_ops, ~1, n << 1);
 	pt->part1.dev = dev1 = make_dev(&nmdm_ops, n << 1,
 	    0, 0, 0666, "nmdm%dA", n);

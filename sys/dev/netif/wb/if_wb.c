@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.39 2007/08/16 11:20:37 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.40 2008/01/05 14:02:37 swildner Exp $
  */
 
 /*
@@ -776,15 +776,13 @@ wb_attach(device_t dev)
 	wb_read_eeprom(sc, (caddr_t)&eaddr, 0, 3);
 
 	sc->wb_ldata = contigmalloc(sizeof(struct wb_list_data) + 8, M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->wb_ldata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
 		error = ENXIO;
 		goto fail;
 	}
-
-	bzero(sc->wb_ldata, sizeof(struct wb_list_data));
 
 	ifp->if_softc = sc;
 	ifp->if_mtu = ETHERMTU;

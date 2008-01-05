@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.30 2007/05/18 17:05:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.31 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -400,9 +400,8 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	so->so_snd.ssb_flags &= ~SSB_NOINTR;
 	so->so_snd.ssb_timeo = 0;
 
-	slp = (struct nfssvc_sock *)
-		kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
-	bzero((caddr_t)slp, sizeof (struct nfssvc_sock));
+	slp = (struct nfssvc_sock *)kmalloc(sizeof (struct nfssvc_sock),
+	    M_NFSSVC, M_WAITOK | M_ZERO);
 	STAILQ_INIT(&slp->ns_rec);
 	TAILQ_INIT(&slp->ns_uidlruhead);
 	TAILQ_INSERT_TAIL(&nfssvc_sockhead, slp, ns_chain);
@@ -443,8 +442,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 #endif
 	if (nfsd == (struct nfsd *)0) {
 		nsd->nsd_nfsd = nfsd = (struct nfsd *)
-			kmalloc(sizeof (struct nfsd), M_NFSD, M_WAITOK);
-		bzero((caddr_t)nfsd, sizeof (struct nfsd));
+			kmalloc(sizeof (struct nfsd), M_NFSD, M_WAITOK|M_ZERO);
 		crit_enter();
 		nfsd->nfsd_td = td;
 		TAILQ_INSERT_TAIL(&nfsd_head, nfsd, nfsd_chain);
@@ -838,15 +836,13 @@ nfsrv_init(int terminating)
 
 #if 0
 	nfs_udpsock = (struct nfssvc_sock *)
-	    kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
-	bzero((caddr_t)nfs_udpsock, sizeof (struct nfssvc_sock));
+	    kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK | M_ZERO);
 	STAILQ_INIT(&nfs_udpsock->ns_rec);
 	TAILQ_INIT(&nfs_udpsock->ns_uidlruhead);
 	TAILQ_INSERT_HEAD(&nfssvc_sockhead, nfs_udpsock, ns_chain);
 
 	nfs_cltpsock = (struct nfssvc_sock *)
-	    kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK);
-	bzero((caddr_t)nfs_cltpsock, sizeof (struct nfssvc_sock));
+	    kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK | M_ZERO);
 	STAILQ_INIT(&nfs_cltpsock->ns_rec);
 	TAILQ_INIT(&nfs_cltpsock->ns_uidlruhead);
 	TAILQ_INSERT_TAIL(&nfssvc_sockhead, nfs_cltpsock, ns_chain);

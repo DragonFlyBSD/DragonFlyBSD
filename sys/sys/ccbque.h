@@ -28,7 +28,7 @@
  *
  * $NetBSD$
  * $FreeBSD: src/sys/i386/isa/ccbque.h,v 1.3.6.2 2000/10/21 07:44:24 nyan Exp $
- * $DragonFly: src/sys/sys/ccbque.h,v 1.10 2006/11/07 19:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/ccbque.h,v 1.11 2008/01/05 14:02:41 swildner Exp $
  */
 /*
  * Common command control queue funcs.
@@ -87,12 +87,9 @@ DEV##_get_ccb(void)								\
 		}							\
 		else							\
 		{							\
-			cb = kmalloc(sizeof(*cb), M_DEVBUF, M_INTWAIT);	\
+			cb = kmalloc(sizeof(*cb), M_DEVBUF, M_INTWAIT|M_ZERO);\
 			if (cb != NULL)					\
-			{						\
-				bzero(cb, sizeof(*cb));			\
 				goto out;				\
-			}						\
 		}							\
 		CCBTYPE##que.count --;					\
 	}								\

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.28 2007/08/14 13:30:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.29 2008/01/05 14:02:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -308,14 +308,13 @@ gx_attach(device_t dev)
 
 	/* Allocate the ring buffers. */
 	gx->gx_rdata = contigmalloc(sizeof(struct gx_ring_data), M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (gx->gx_rdata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
 		error = ENXIO;
 		goto fail;
 	}
-	bzero(gx->gx_rdata, sizeof(struct gx_ring_data));
 
 	/* Set default tuneable values. */
 	gx->gx_tx_intr_delay = TUNABLE_TX_INTR_DELAY;

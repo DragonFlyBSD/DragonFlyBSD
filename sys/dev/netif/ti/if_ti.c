@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.47 2007/04/08 12:03:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.48 2008/01/05 14:02:37 swildner Exp $
  */
 
 /*
@@ -1480,15 +1480,13 @@ ti_attach(device_t dev)
 
 	/* Allocate the general information block and ring buffers. */
 	sc->ti_rdata = contigmalloc(sizeof(struct ti_ring_data), M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->ti_rdata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
 		error = ENXIO;
 		goto fail;
 	}
-
-	bzero(sc->ti_rdata, sizeof(struct ti_ring_data));
 
 	/* Try to allocate memory for jumbo buffers. */
 	if (ti_alloc_jumbo_mem(sc)) {

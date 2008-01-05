@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.39 2007/11/19 18:49:06 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.40 2008/01/05 14:02:38 swildner Exp $
  */
 
 #include "opt_ddb.h"
@@ -83,10 +83,9 @@ linker_add_class(const char* desc, void* priv,
 {
     linker_class_t lc;
 
-    lc = kmalloc(sizeof(struct linker_class), M_LINKER, M_NOWAIT);
+    lc = kmalloc(sizeof(struct linker_class), M_LINKER, M_NOWAIT | M_ZERO);
     if (!lc)
 	return ENOMEM;
-    bzero(lc, sizeof(*lc));
 
     lc->desc = desc;
     lc->priv = priv;
@@ -499,10 +498,9 @@ linker_file_add_dependancy(linker_file_t file, linker_file_t dep)
     linker_file_t* newdeps;
 
     newdeps = kmalloc((file->ndeps + 1) * sizeof(linker_file_t*),
-		     M_LINKER, M_WAITOK);
+		     M_LINKER, M_WAITOK | M_ZERO);
     if (newdeps == NULL)
 	return ENOMEM;
-    bzero(newdeps, (file->ndeps + 1) * sizeof(linker_file_t*));
 
     if (file->deps) {
 	bcopy(file->deps, newdeps, file->ndeps * sizeof(linker_file_t*));
@@ -607,12 +605,11 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 	cp = kmalloc(sizeof(struct common_symbol)
 		    + common_size
 		    + strlen(name) + 1,
-		    M_LINKER, M_WAITOK);
+		    M_LINKER, M_WAITOK | M_ZERO);
 	if (!cp) {
 	    KLD_DPF(SYM, ("linker_file_lookup_symbol: nomem\n"));
 	    return ENOMEM;
 	}
-	bzero(cp, sizeof(struct common_symbol) + common_size + strlen(name)+ 1);
 
 	cp->address = (caddr_t) (cp + 1);
 	cp->name = cp->address + common_size;

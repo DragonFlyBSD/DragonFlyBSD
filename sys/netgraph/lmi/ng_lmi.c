@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_lmi.c,v 1.5.2.3 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.7 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.8 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_lmi.c,v 1.38 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -192,10 +192,9 @@ nglmi_constructor(node_p *nodep)
 	sc_p sc;
 	int error = 0;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT);
+	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
-	bzero(sc, sizeof(*sc));
 
 	callout_init(&sc->timeout);
 	if ((error = ng_make_node_common(&typestruct, nodep))) {

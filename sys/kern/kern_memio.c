@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.30 2007/02/25 23:17:12 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.31 2008/01/05 14:02:38 swildner Exp $
  */
 
 /*
@@ -286,9 +286,8 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 				break;
 			}
 			if (zbuf == NULL) {
-				zbuf = (caddr_t)
-				    kmalloc(PAGE_SIZE, M_TEMP, M_WAITOK);
-				bzero(zbuf, PAGE_SIZE);
+				zbuf = (caddr_t)kmalloc(PAGE_SIZE, M_TEMP,
+				    M_WAITOK | M_ZERO);
 			}
 			c = min(iov->iov_len, PAGE_SIZE);
 			error = uiomove(zbuf, (int)c, uio);

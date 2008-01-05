@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.91 2004/11/05 17:46:14 kent Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.14.2.2 2006/04/04 17:34:10 ariff Exp $ */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.18 2007/09/15 21:28:15 swildner Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.19 2008/01/05 14:02:38 swildner Exp $: */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -3185,10 +3185,9 @@ audio_attach_mi(device_t dev)
 
 	/* Attach the children. */
 	/* PCM Audio */
-	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT);
+	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (func == NULL)
 		return (ENOMEM);
-	bzero(func, sizeof(*func));
 	func->func = SCF_PCM;
 	child = device_add_child(dev, "pcm", -1);
 	device_set_ivars(child, func);

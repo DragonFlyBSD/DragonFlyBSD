@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.54 2006/12/22 23:26:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.55 2008/01/05 14:02:37 swildner Exp $
  */
 
 /*
@@ -2077,15 +2077,13 @@ dc_attach(device_t dev)
 	}
 
 	sc->dc_ldata = contigmalloc(sizeof(struct dc_list_data), M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->dc_ldata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
 		error = ENXIO;
 		goto fail;
 	}
-
-	bzero(sc->dc_ldata, sizeof(struct dc_list_data));
 
 	ifp->if_softc = sc;
 	ifp->if_mtu = ETHERMTU;

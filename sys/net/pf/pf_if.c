@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.8 2006/12/22 23:44:57 swildner Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.9 2008/01/05 14:02:38 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -250,11 +250,10 @@ pfi_attach_ifnet(struct ifnet *ifp)
 		m = oldlim * sizeof(struct pfi_kif *);
 		mp = pfi_index2kif;
 		n = pfi_indexlim * sizeof(struct pfi_kif *);
-		np = kmalloc(n, PFI_MTYPE, M_NOWAIT);
+		np = kmalloc(n, PFI_MTYPE, M_NOWAIT | M_ZERO);
 		if (np == NULL)
 			panic("pfi_attach_ifnet: "
 			    "cannot allocate translation table");
-		bzero(np, n);
 		if (mp != NULL)
 			bcopy(mp, np, m);
 		pfi_index2kif = np;
@@ -692,17 +691,15 @@ pfi_if_create(const char *name, struct pfi_kif *q, int flags)
 {
 	struct pfi_kif *p;
 
-	p = kmalloc(sizeof(*p), PFI_MTYPE, M_NOWAIT);
+	p = kmalloc(sizeof(*p), PFI_MTYPE, M_NOWAIT | M_ZERO);
 	if (p == NULL)
 		return (NULL);
-	bzero(p, sizeof(*p));
 	p->pfik_ah_head = kmalloc(sizeof(*p->pfik_ah_head), PFI_MTYPE,
-	    M_NOWAIT);
+	    M_NOWAIT | M_ZERO);
 	if (p->pfik_ah_head == NULL) {
 		kfree(p, PFI_MTYPE);
 		return (NULL);
 	}
-	bzero(p->pfik_ah_head, sizeof(*p->pfik_ah_head));
 	TAILQ_INIT(p->pfik_ah_head);
 	TAILQ_INIT(&p->pfik_grouphead);
 	strlcpy(p->pfik_name, name, sizeof(p->pfik_name));

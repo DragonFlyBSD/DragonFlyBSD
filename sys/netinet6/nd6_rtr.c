@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.15 2006/12/22 23:57:53 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.16 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -736,12 +736,12 @@ defrtrlist_update(struct nd_defrouter *new)
 		return (NULL);
 	}
 
-	n = (struct nd_defrouter *)kmalloc(sizeof(*n), M_IP6NDP, M_NOWAIT);
+	n = (struct nd_defrouter *)kmalloc(sizeof(*n), M_IP6NDP,
+	    M_NOWAIT | M_ZERO);
 	if (n == NULL) {
 		crit_exit();
 		return (NULL);
 	}
-	bzero(n, sizeof(*n));
 	*n = *new;
 
 	/*
@@ -774,10 +774,10 @@ pfxrtr_add(struct nd_prefix *pr, struct nd_defrouter *dr)
 {
 	struct nd_pfxrouter *new;
 
-	new = (struct nd_pfxrouter *)kmalloc(sizeof(*new), M_IP6NDP, M_NOWAIT);
+	new = (struct nd_pfxrouter *)kmalloc(sizeof(*new), M_IP6NDP,
+	    M_NOWAIT | M_ZERO);
 	if (new == NULL)
 		return;
-	bzero(new, sizeof(*new));
 	new->router = dr;
 
 	LIST_INSERT_HEAD(&pr->ndpr_advrtrs, new, pfr_entry);
@@ -818,10 +818,10 @@ nd6_prelist_add(struct nd_prefix *pr, struct nd_defrouter *dr,
 	struct nd_prefix *new = NULL;
 	int i;
 
-	new = (struct nd_prefix *)kmalloc(sizeof(*new), M_IP6NDP, M_NOWAIT);
+	new = (struct nd_prefix *)kmalloc(sizeof(*new), M_IP6NDP,
+	    M_NOWAIT | M_ZERO);
 	if (new == NULL)
 		return ENOMEM;
-	bzero(new, sizeof(*new));
 	*new = *pr;
 	if (newp != NULL)
 		*newp = new;

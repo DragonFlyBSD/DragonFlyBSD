@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.26 2007/11/07 17:38:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.27 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -789,8 +789,8 @@ ufs_dqget(struct vnode *vp, u_long id, struct ufsmount *ump, int type,
 	if (TAILQ_EMPTY(&ufs_dqfreelist) && ufs_numdquot < MAXQUOTAS * desiredvnodes)
 		ufs_desireddquot += DQUOTINC;
 	if (ufs_numdquot < ufs_desireddquot) {
-		dq = (struct ufs_dquot *)kmalloc(sizeof *dq, M_DQUOT, M_WAITOK);
-		bzero((char *)dq, sizeof *dq);
+		dq = (struct ufs_dquot *)
+			kmalloc(sizeof *dq, M_DQUOT, M_WAITOK | M_ZERO);
 		ufs_numdquot++;
 	} else {
 		if ((dq = TAILQ_FIRST(&ufs_dqfreelist)) == NULL) {

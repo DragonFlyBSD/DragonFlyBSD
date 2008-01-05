@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.13 2006/12/22 23:44:57 swildner Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.14 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -534,16 +534,14 @@ ng_iface_constructor(node_p *nodep)
 	int error = 0;
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
-	bzero(priv, sizeof(*priv));
-	MALLOC(ifp, struct ifnet *, sizeof(*ifp), M_NETGRAPH, M_NOWAIT);
+	MALLOC(ifp, struct ifnet *, sizeof(*ifp), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (ifp == NULL) {
 		FREE(priv, M_NETGRAPH);
 		return (ENOMEM);
 	}
-	bzero(ifp, sizeof(*ifp));
 
 	/* Link them together */
 	ifp->if_softc = priv;

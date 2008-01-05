@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.12 2007/06/03 20:51:13 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.13 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -385,10 +385,9 @@ ng_ppp_constructor(node_p *nodep)
 	int i, error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
-	bzero(priv, sizeof(*priv));
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&ng_ppp_typestruct, nodep))) {

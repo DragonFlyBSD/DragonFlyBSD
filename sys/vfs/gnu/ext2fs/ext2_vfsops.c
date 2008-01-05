@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.55 2007/05/16 05:20:26 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.56 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -757,8 +757,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 			goto out;
 		}
 	}
-	ump = bsd_malloc(sizeof *ump, M_EXT2MNT, M_WAITOK);
-	bzero((caddr_t)ump, sizeof *ump);
+	ump = bsd_malloc(sizeof *ump, M_EXT2MNT, M_WAITOK | M_ZERO);
 	ump->um_malloctype = M_EXT2NODE;
 	ump->um_blkatoff = ext2_blkatoff;
 	ump->um_truncate = ext2_truncate;

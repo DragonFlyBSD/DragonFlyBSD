@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.26 2007/08/21 17:26:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.27 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -380,9 +380,8 @@ ntfs_ntlookup(struct ntfsmount *ntmp, ino_t ino, struct ntnode **ipp)
 	} while (LOCKMGR(&ntfs_hashlock, LK_EXCLUSIVE | LK_SLEEPFAIL));
 
 	MALLOC(ip, struct ntnode *, sizeof(struct ntnode),
-	       M_NTFSNTNODE, M_WAITOK);
+	       M_NTFSNTNODE, M_WAITOK | M_ZERO);
 	ddprintf(("ntfs_ntlookup: allocating ntnode: %d: %p\n", ino, ip));
-	bzero((caddr_t) ip, sizeof(struct ntnode));
 
 	/* Generic initialization */
 	ip->i_devvp = ntmp->ntm_devvp;
@@ -529,8 +528,7 @@ ntfs_attrtontvattr(struct ntfsmount *ntmp, struct ntvattr **rvapp,
 	*rvapp = NULL;
 
 	MALLOC(vap, struct ntvattr *, sizeof(struct ntvattr),
-		M_NTFSNTVATTR, M_WAITOK);
-	bzero(vap, sizeof(struct ntvattr));
+		M_NTFSNTVATTR, M_WAITOK | M_ZERO);
 	vap->va_ip = NULL;
 	vap->va_flag = rap->a_hdr.a_flag;
 	vap->va_type = rap->a_hdr.a_type;
@@ -712,8 +710,8 @@ ntfs_fget(struct ntfsmount *ntmp, struct ntnode *ip, int attrtype,
 	if (*fpp)
 		return (0);
 
-	MALLOC(fp, struct fnode *, sizeof(struct fnode), M_NTFSFNODE, M_WAITOK);
-	bzero(fp, sizeof(struct fnode));
+	MALLOC(fp, struct fnode *, sizeof(struct fnode), M_NTFSFNODE,
+	    M_WAITOK | M_ZERO);
 	dprintf(("ntfs_fget: allocating fnode: %p\n",fp));
 
 	fp->f_ip = ip;

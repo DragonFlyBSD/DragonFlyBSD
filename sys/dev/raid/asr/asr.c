@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.31 2007/12/23 07:00:56 pavalos Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.32 2008/01/05 14:02:38 swildner Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -767,8 +767,7 @@ asr_alloc_ccb (
         OUT union asr_ccb * new_ccb;
 
         if ((new_ccb = (union asr_ccb *)kmalloc(sizeof(*new_ccb),
-          M_DEVBUF, M_WAITOK)) != (union asr_ccb *)NULL) {
-                bzero (new_ccb, sizeof(*new_ccb));
+          M_DEVBUF, M_WAITOK | M_ZERO)) != (union asr_ccb *)NULL) {
                 new_ccb->ccb_h.pinfo.priority = 1;
                 new_ccb->ccb_h.pinfo.index = CAM_UNQUEUED_INDEX;
                 new_ccb->ccb_h.spriv_ptr0 = sc;
@@ -2091,10 +2090,9 @@ ASR_initOutBound (
                          * initialization time.
                          */
                         if ((sc->ha_Msgs = (PI2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)
-                          contigmalloc (size, M_DEVBUF, M_WAITOK, 0ul,
+                          contigmalloc (size, M_DEVBUF, M_WAITOK | M_ZERO, 0ul,
                             0xFFFFFFFFul, (u_long)sizeof(U32), 0ul))
                           != (PI2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)NULL) {
-                                (void)bzero ((char *)sc->ha_Msgs, size);
                                 sc->ha_Msgs_Phys = KVTOPHYS(sc->ha_Msgs);
                         }
                 }
@@ -2125,11 +2123,10 @@ ASR_setSysTab(
         int                           retVal;
 
         if ((SystemTable = (PI2O_SET_SYSTAB_HEADER)kmalloc (
-          sizeof(I2O_SET_SYSTAB_HEADER), M_TEMP, M_WAITOK))
+          sizeof(I2O_SET_SYSTAB_HEADER), M_TEMP, M_WAITOK | M_ZERO))
           == (PI2O_SET_SYSTAB_HEADER)NULL) {
                 return (ENOMEM);
         }
-        bzero (SystemTable, sizeof(I2O_SET_SYSTAB_HEADER));
         for (ha = Asr_softc; ha; ha = ha->ha_next) {
                 ++SystemTable->NumberEntries;
         }
@@ -2495,7 +2492,7 @@ asr_attach (ATTACH_ARGS)
         struct scsi_inquiry_data * iq;
         ATTACH_SET();
 
-        sc = kmalloc(sizeof(*sc), M_DEVBUF, M_INTWAIT);
+        sc = kmalloc(sizeof(*sc), M_DEVBUF, M_INTWAIT | M_ZERO);
         if (Asr_softc == (Asr_softc_t *)NULL) {
                 /*
                  *      Fixup the OS revision as saved in the dptsig for the
@@ -2507,7 +2504,6 @@ asr_attach (ATTACH_ARGS)
         /*
          *      Initialize the software structure
          */
-        bzero (sc, sizeof(*sc));
         LIST_INIT(&(sc->ha_ccb));
         /* Link us into the HA list */
         {
@@ -2664,13 +2660,12 @@ asr_attach (ATTACH_ARGS)
         kprintf ("asr%d:", unit);
 
         if ((iq = (struct scsi_inquiry_data *)kmalloc (
-            sizeof(struct scsi_inquiry_data), M_TEMP, M_WAITOK))
+            sizeof(struct scsi_inquiry_data), M_TEMP, M_WAITOK | M_ZERO))
           != (struct scsi_inquiry_data *)NULL) {
                 defAlignLong(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE,Message);
                 PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE             Message_Ptr;
                 int                                           posted = 0;
 
-                bzero (iq, sizeof(struct scsi_inquiry_data));
                 bzero (Message_Ptr
                   = getAlignLong(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE, Message),
                   sizeof(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE)

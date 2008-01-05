@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.25 2007/08/16 20:03:58 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.26 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -904,10 +904,9 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		 * with M_NOWAIT.
 		 */
 		ia = (struct in6_ifaddr *)
-			kmalloc(sizeof(*ia), M_IFADDR, M_NOWAIT);
+			kmalloc(sizeof(*ia), M_IFADDR, M_NOWAIT | M_ZERO);
 		if (ia == NULL)
 			return (ENOBUFS);
-		bzero((caddr_t)ia, sizeof(*ia));
 		/* Initialize the address and masks */
 		ia->ia_ifa.ifa_addr = (struct sockaddr *)&ia->ia_addr;
 		ia->ia_addr.sin6_family = AF_INET6;

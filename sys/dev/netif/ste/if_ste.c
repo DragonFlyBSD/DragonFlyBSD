@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.35 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.36 2008/01/05 14:02:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -930,15 +930,13 @@ ste_attach(device_t dev)
 
 	/* Allocate the descriptor queues. */
 	sc->ste_ldata = contigmalloc(sizeof(struct ste_list_data), M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->ste_ldata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
 		error = ENXIO;
 		goto fail;
 	}
-
-	bzero(sc->ste_ldata, sizeof(struct ste_list_data));
 
 	/* Do MII setup. */
 	if (mii_phy_probe(dev, &sc->ste_miibus,

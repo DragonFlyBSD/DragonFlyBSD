@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_srvcache.c	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_srvcache.c,v 1.21 2000/02/13 03:32:06 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.12 2006/09/05 03:48:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.13 2008/01/05 14:02:41 swildner Exp $
  */
 
 /*
@@ -219,8 +219,7 @@ loop:
 	NFS_DPF(RC, ("M%03x", nd->nd_retxid & 0xfff));
 	if (numnfsrvcache < desirednfsrvcache) {
 		rp = (struct nfsrvcache *)kmalloc((u_long)sizeof *rp,
-		    M_NFSD, M_WAITOK);
-		bzero((char *)rp, sizeof *rp);
+		    M_NFSD, M_WAITOK | M_ZERO);
 		numnfsrvcache++;
 		rp->rc_flag = RC_LOCKED;
 	} else {

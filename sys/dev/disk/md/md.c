@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.18 2007/09/05 05:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.19 2008/01/05 14:02:37 swildner Exp $
  *
  */
 
@@ -257,8 +257,7 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 						*secpp = (u_char *)uc;
 				} else {
 					if (!secpp) {
-						MALLOC(secpp, u_char **, (secno + nsec + 1) * sizeof(u_char *), M_MD, M_WAITOK);
-						bzero(secpp, (secno + nsec + 1) * sizeof(u_char *));
+						MALLOC(secpp, u_char **, (secno + nsec + 1) * sizeof(u_char *), M_MD, M_WAITOK | M_ZERO);
 						bcopy(sc->secp, secpp, sc->nsecp * sizeof(u_char *));
 						FREE(sc->secp, M_MD);
 						sc->secp = secpp;
@@ -363,8 +362,7 @@ mdcreate(void)
 {
 	struct md_s *sc;
 
-	MALLOC(sc, struct md_s *,sizeof(*sc), M_MD, M_WAITOK);
-	bzero(sc, sizeof(*sc));
+	MALLOC(sc, struct md_s *,sizeof(*sc), M_MD, M_WAITOK | M_ZERO);
 	sc->unit = mdunits++;
 	bioq_init(&sc->bio_queue);
 	devstat_add_entry(&sc->stats, "md", sc->unit, DEV_BSIZE,
@@ -402,8 +400,7 @@ mdcreate_malloc(void)
 	sc->type = MD_MALLOC;
 
 	sc->nsect = MD_NSECT;	/* for now */
-	MALLOC(sc->secp, u_char **, sizeof(u_char *), M_MD, M_WAITOK);
-	bzero(sc->secp, sizeof(u_char *));
+	MALLOC(sc->secp, u_char **, sizeof(u_char *), M_MD, M_WAITOK | M_ZERO);
 	sc->nsecp = 1;
 	kprintf("md%d: Malloc disk\n", sc->unit);
 }

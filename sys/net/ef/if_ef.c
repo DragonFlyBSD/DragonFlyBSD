@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.23 2007/10/13 08:49:35 sephe Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.24 2008/01/05 14:02:38 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -506,12 +506,11 @@ ef_load(void)
 		if (ifp->if_type != IFT_ETHER) continue;
 		EFDEBUG("Found interface %s\n", ifp->if_xname);
 		efl = (struct ef_link*)kmalloc(sizeof(struct ef_link), 
-		    M_IFADDR, M_WAITOK);
+		    M_IFADDR, M_WAITOK | M_ZERO);
 		if (efl == NULL) {
 			error = ENOMEM;
 			break;
 		}
-		bzero(efl, sizeof(*efl));
 
 		efl->el_ifp = ifp;
 #ifdef ETHER_II

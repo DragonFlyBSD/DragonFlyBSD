@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/envy24.c,v 1.11.2.2 2007/06/11 19:33:27 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.2 2007/06/16 20:07:19 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.3 2008/01/05 14:02:38 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -37,7 +37,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.2 2007/06/16 20:07:19 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.3 2008/01/05 14:02:38 swildner Exp $");
 
 MALLOC_DEFINE(M_ENVY24, "envy24", "envy24 audio");
 
@@ -2505,12 +2505,11 @@ envy24_pci_attach(device_t dev)
 	device_printf(dev, "envy24_pci_attach()\n");
 #endif
 	/* get sc_info data area */
-	if ((sc = kmalloc(sizeof(*sc), M_ENVY24, M_NOWAIT)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_ENVY24, M_NOWAIT | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
 
-	bzero(sc, sizeof(*sc));
 	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "snd_envy24 softc");
 	sc->dev = dev;
 

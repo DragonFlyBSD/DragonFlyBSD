@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $
- * $DragonFly: src/sys/net/gif/if_gif.c,v 1.18 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/gif/if_gif.c,v 1.19 2008/01/05 14:02:38 swildner Exp $
  * $KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $
  */
 
@@ -132,8 +132,7 @@ gif_clone_create(struct if_clone *ifc, int unit)
 {
 	struct gif_softc *sc;
 	
-	sc = kmalloc (sizeof(struct gif_softc), M_GIF, M_WAITOK);
-	bzero(sc, sizeof(struct gif_softc));
+	sc = kmalloc (sizeof(struct gif_softc), M_GIF, M_WAITOK | M_ZERO);
 
 	sc->gif_if.if_softc = sc;
 	if_initname(&(sc->gif_if), GIFNAME, unit);

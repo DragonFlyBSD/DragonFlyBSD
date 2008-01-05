@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.22 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.23 2008/01/05 14:02:38 swildner Exp $
  */
 
 #define FREEBSD_AOUT	1
@@ -115,10 +115,9 @@ link_aout_init(void* arg)
     if (dp) {
 	aout_file_t af;
 
-	af = kmalloc(sizeof(struct aout_file), M_LINKER, M_NOWAIT);
+	af = kmalloc(sizeof(struct aout_file), M_LINKER, M_NOWAIT | M_ZERO);
 	if (af == NULL)
 	    panic("link_aout_init: Can't create linker structures for kernel");
-	bzero(af, sizeof(*af));
 
 	af->address = 0;
 	af->dynamic = dp;
@@ -158,8 +157,7 @@ link_aout_load_module(const char* filename, linker_file_t* result)
 	return(0);			/* we can't handle this */
 
     /* Looks like we can handle this one */
-    af = kmalloc(sizeof(struct aout_file), M_LINKER, M_WAITOK);
-    bzero(af, sizeof(*af));
+    af = kmalloc(sizeof(struct aout_file), M_LINKER, M_WAITOK | M_ZERO);
     af->address = baseptr;
 
     /* Assume _DYNAMIC is the first data item. */
@@ -242,8 +240,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     /*
      * We have an a.out file, so make some space to read it in.
      */
-    af = kmalloc(sizeof(struct aout_file), M_LINKER, M_WAITOK);
-    bzero(af, sizeof(*af));
+    af = kmalloc(sizeof(struct aout_file), M_LINKER, M_WAITOK | M_ZERO);
     af->address = kmalloc(header.a_text + header.a_data + header.a_bss,
 			 M_LINKER, M_WAITOK);
     

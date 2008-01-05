@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_core.c,v 1.2.2.5 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.10 2006/10/24 06:18:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.11 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$KAME: ah_core.c,v 1.44 2001/03/12 11:24:39 itojun Exp $	*/
 
 /*
@@ -855,10 +855,9 @@ ah_hmac_sha2_384_init(struct ah_algorithm_state *state, struct secasvar *sav)
 
 	state->sav = sav;
 	state->foo = (void *)kmalloc(64 + 64 + sizeof(SHA384_CTX),
-	    M_TEMP, M_NOWAIT);
+	    M_TEMP, M_NOWAIT | M_ZERO);
 	if (!state->foo)
 		return ENOBUFS;
-	bzero(state->foo, 64 + 64 + sizeof(SHA384_CTX));
 
 	ipad = (u_char *)state->foo;
 	opad = (u_char *)(ipad + 64);
@@ -981,10 +980,9 @@ ah_hmac_sha2_512_init(struct ah_algorithm_state *state, struct secasvar *sav)
 
 	state->sav = sav;
 	state->foo = (void *)kmalloc(64 + 64 + sizeof(SHA512_CTX),
-	    M_TEMP, M_NOWAIT);
+	    M_TEMP, M_NOWAIT | M_ZERO);
 	if (!state->foo)
 		return ENOBUFS;
-	bzero(state->foo, 64 + 64 + sizeof(SHA512_CTX));
 
 	ipad = (u_char *)state->foo;
 	opad = (u_char *)(ipad + 64);

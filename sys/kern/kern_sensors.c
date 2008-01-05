@@ -1,5 +1,5 @@
 /* $OpenBSD: kern_sensors.c,v 1.19 2007/06/04 18:42:05 deraadt Exp $ */
-/* $DragonFly: src/sys/kern/kern_sensors.c,v 1.1 2007/10/02 12:57:01 hasso Exp $ */
+/* $DragonFly: src/sys/kern/kern_sensors.c,v 1.2 2008/01/05 14:02:38 swildner Exp $ */
 
 /*
  * Copyright (c) 2005 David Gwynne <dlg@openbsd.org>
@@ -350,8 +350,7 @@ sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS)
 		return (EPERM);
 
 	/* Grab a copy, to clear the kernel pointers */
-	usd = kmalloc(sizeof(*usd), M_TEMP, M_WAITOK);
-	bzero(usd, sizeof(*usd));
+	usd = kmalloc(sizeof(*usd), M_TEMP, M_WAITOK | M_ZERO);
 	usd->num = ksd->num;
 	strlcpy(usd->xname, ksd->xname, sizeof(usd->xname));
 	memcpy(usd->maxnumt, ksd->maxnumt, sizeof(usd->maxnumt));
@@ -375,8 +374,7 @@ sysctl_handle_sensor(SYSCTL_HANDLER_ARGS)
 		return (EPERM);
 
 	/* Grab a copy, to clear the kernel pointers */
-	us = kmalloc(sizeof(*us), M_TEMP, M_WAITOK);
-	bzero(us, sizeof(*us));
+	us = kmalloc(sizeof(*us), M_TEMP, M_WAITOK | M_ZERO);
 	memcpy(us->desc, ks->desc, sizeof(ks->desc));
 	us->tv = ks->tv;
 	us->value = ks->value;

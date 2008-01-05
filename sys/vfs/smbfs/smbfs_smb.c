@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_smb.c,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.9 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.10 2008/01/05 14:02:41 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1173,10 +1173,9 @@ smbfs_findopen(struct smbnode *dnp, const char *wildcard, int wclen, int attr,
 	struct smbfs_fctx *ctx;
 	int error;
 
-	ctx = kmalloc(sizeof(*ctx), M_SMBFSDATA, M_WAITOK);
+	ctx = kmalloc(sizeof(*ctx), M_SMBFSDATA, M_WAITOK | M_ZERO);
 	if (ctx == NULL)
 		return ENOMEM;
-	bzero(ctx, sizeof(*ctx));
 	ctx->f_ssp = dnp->n_mount->sm_share;
 	ctx->f_dnp = dnp;
 	ctx->f_flags = SMBFS_RDD_FINDFIRST;

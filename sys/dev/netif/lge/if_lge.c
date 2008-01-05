@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.39 2007/08/14 13:30:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.40 2008/01/05 14:02:37 swildner Exp $
  */
 
 /*
@@ -497,14 +497,13 @@ lge_attach(device_t dev)
 	sc->lge_unit = unit;
 
 	sc->lge_ldata = contigmalloc(sizeof(struct lge_list_data), M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->lge_ldata == NULL) {
 		kprintf("lge%d: no memory for list buffers!\n", unit);
 		error = ENXIO;
 		goto fail;
 	}
-	bzero(sc->lge_ldata, sizeof(struct lge_list_data));
 
 	/* Try to allocate memory for jumbo buffers. */
 	if (lge_alloc_jumbo_mem(sc)) {

@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_parse.c,v 1.3 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.c,v 1.3.2.8 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.9 2007/06/03 20:51:12 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_parse.c,v 1.10 2008/01/05 14:02:39 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -1061,12 +1061,11 @@ ng_parse_composite(const struct ng_parse_type *type, const char *s,
 	int align, len, blen, error = 0;
 
 	/* Initialize */
-	MALLOC(foff, int *, num * sizeof(*foff), M_NETGRAPH, M_NOWAIT);
+	MALLOC(foff, int *, num * sizeof(*foff), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (foff == NULL) {
 		error = ENOMEM;
 		goto done;
 	}
-	bzero(foff, num * sizeof(*foff));
 
 	/* Get opening brace/bracket */
 	if (ng_parse_get_token(s, off, &len)

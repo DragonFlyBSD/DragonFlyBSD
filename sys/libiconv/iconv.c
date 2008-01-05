@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/iconv.c,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
- * $DragonFly: src/sys/libiconv/iconv.c,v 1.7 2007/05/13 18:33:58 swildner Exp $
+ * $DragonFly: src/sys/libiconv/iconv.c,v 1.8 2008/01/05 14:02:38 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -186,8 +186,7 @@ iconv_register_cspair(const char *to, const char *from,
 	ucsfrom = strcmp(from, iconv_unicode_string) == 0;
 	if (!ucsfrom)
 		csize += strlen(from) + 1;
-	csp = kmalloc(csize, M_ICONV, M_WAITOK);
-	bzero(csp, csize);
+	csp = kmalloc(csize, M_ICONV, M_WAITOK | M_ZERO);
 	csp->cp_id = iconv_csid++;
 	csp->cp_dcp = dcp;
 	cp = (char*)(csp + 1);

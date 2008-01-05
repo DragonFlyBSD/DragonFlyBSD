@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/busdma_machdep.c,v 1.1 2007/01/05 22:18:20 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/busdma_machdep.c,v 1.2 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -263,14 +263,11 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 		/* Must bounce */
 		int maxpages;
 
-		*mapp = kmalloc(sizeof(**mapp), M_DEVBUF, M_INTWAIT);
-		if (*mapp == NULL) {
+		*mapp = kmalloc(sizeof(**mapp), M_DEVBUF, M_INTWAIT | M_ZERO);
+		if (*mapp == NULL)
 			return (ENOMEM);
-		} else {
-			/* Initialize the new map */
-			bzero(*mapp, sizeof(**mapp));
-			STAILQ_INIT(&((*mapp)->bpages));
-		}
+		/* Initialize the new map */
+		STAILQ_INIT(&((*mapp)->bpages));
 		/*
 		 * Attempt to add pages to our pool on a per-instance
 		 * basis up to a sane limit.
@@ -781,11 +778,10 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
 		struct bounce_page *bpage;
 
 		bpage = (struct bounce_page *)kmalloc(sizeof(*bpage), M_DEVBUF,
-						     M_INTWAIT);
+						     M_INTWAIT | M_ZERO);
 
 		if (bpage == NULL)
 			break;
-		bzero(bpage, sizeof(*bpage));
 		bpage->vaddr = (vm_offset_t)contigmalloc(PAGE_SIZE, M_DEVBUF,
 							 M_NOWAIT, 0ul,
 							 dmat->lowaddr,

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.4 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.5 2008/01/05 14:02:38 swildner Exp $
  */
 
 /*
@@ -509,9 +509,8 @@ twa_request_bus_scan(struct twa_softc *sc)
 	struct cam_path	*path;
 	union ccb	*ccb;
 
-	if ((ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK)) == NULL)
+	if ((ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK|M_ZERO)) == NULL)
 		return;
-	bzero(ccb, sizeof(union ccb));
 	if (xpt_create_path(&path, xpt_periph, cam_sim_path(sc->twa_sim),
 			CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP)
 		return;

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.58 2007/04/30 17:41:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.59 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -843,7 +843,7 @@ mptable_pass2(void)
 	MALLOC(io_apic_versions, u_int32_t *, sizeof(u_int32_t) * mp_napics,
 	    M_DEVBUF, M_WAITOK);
 	MALLOC(ioapic, volatile ioapic_t **, sizeof(ioapic_t *) * mp_napics,
-	    M_DEVBUF, M_WAITOK);
+	    M_DEVBUF, M_WAITOK | M_ZERO);
 	MALLOC(io_apic_ints, io_int *, sizeof(io_int) * (nintrs + FIXUP_EXTRA_APIC_INTS),
 	    M_DEVBUF, M_WAITOK);
 #endif
@@ -851,8 +851,6 @@ mptable_pass2(void)
 	    M_DEVBUF, M_WAITOK);
 
 #ifdef APIC_IO
-	bzero(ioapic, sizeof(ioapic_t *) * mp_napics);
-
 	for (i = 0; i < mp_napics; i++) {
 		ioapic[i] = permanent_io_mapping(io_apic_address[i]);
 	}

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/scope6.c,v 1.1.2.3 2002/04/01 15:29:04 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.10 2007/08/16 20:03:58 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.11 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$KAME: scope6.c,v 1.10 2000/07/24 13:29:31 itojun Exp $	*/
 
 /*
@@ -62,8 +62,8 @@ scope6_ifattach(struct ifnet *ifp)
 {
 	struct scope6_id *sid;
 
-	sid = (struct scope6_id *)kmalloc(sizeof(*sid), M_IFADDR, M_WAITOK);
-	bzero(sid, sizeof(*sid));
+	sid = (struct scope6_id *)kmalloc(sizeof(*sid), M_IFADDR,
+	    M_WAITOK | M_ZERO);
 
 	crit_enter();
 

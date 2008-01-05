@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.10 2007/09/15 20:06:39 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.11 2008/01/05 14:02:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -182,9 +182,7 @@ static void
 vpo_cam_rescan(struct vpo_data *vpo)
 {
         struct cam_path *path;
-        union ccb *ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK);
-
-        bzero(ccb, sizeof(union ccb));
+        union ccb *ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO);
 
         if (xpt_create_path(&path, xpt_periph, cam_sim_path(vpo->sim), 0, 0)
             != CAM_REQ_CMP) {

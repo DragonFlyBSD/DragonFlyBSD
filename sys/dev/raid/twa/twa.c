@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.6 2006/09/05 03:48:11 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.7 2008/01/05 14:02:38 swildner Exp $
  */
 
 /*
@@ -111,7 +111,7 @@ twa_setup(struct twa_softc *sc)
 
 	/* Allocate memory for the AEN queue. */
 	if ((aen_queue = kmalloc(sizeof(struct twa_event_packet) * TWA_Q_LENGTH,
-					M_DEVBUF, M_WAITOK)) == NULL) {
+					M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
 		/* 
 		 * This should not cause us to return error.  We will only be
 		 * unable to support AEN's.  But then, we will have to check
@@ -122,7 +122,6 @@ twa_setup(struct twa_softc *sc)
 		return(ENOMEM); /* any unfreed memory will be freed by twa_free */
 	}
 	/* Initialize the aen queue. */
-	bzero(aen_queue, sizeof(struct twa_event_packet) * TWA_Q_LENGTH);
 	for (i = 0; i < TWA_Q_LENGTH; i++)
 		sc->twa_aen_queue[i] = &(aen_queue[i]);
 

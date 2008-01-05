@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.19 2007/09/01 20:43:24 pavalos Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.20 2008/01/05 14:02:38 swildner Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -163,8 +163,8 @@ stfmodevent(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		stf = kmalloc(sizeof(struct stf_softc), M_STF, M_WAITOK);
-		bzero(stf, sizeof(struct stf_softc));
+		stf = kmalloc(sizeof(struct stf_softc), M_STF,
+		    M_WAITOK | M_ZERO);
 		sc = stf;
 
 		bzero(sc, sizeof(*sc));

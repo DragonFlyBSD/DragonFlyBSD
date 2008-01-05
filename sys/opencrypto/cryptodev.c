@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.21 2006/12/23 00:27:03 swildner Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.22 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -531,10 +531,9 @@ cryptodev_key(struct crypt_kop *kop)
 		return (EINVAL);
 	}
 
-	krp = (struct cryptkop *)kmalloc(sizeof *krp, M_XDATA, M_WAITOK);
+	krp = (struct cryptkop *)kmalloc(sizeof *krp, M_XDATA, M_WAITOK | M_ZERO);
 	if (!krp)
 		return (ENOMEM);
-	bzero(krp, sizeof *krp);
 	krp->krp_op = kop->crk_op;
 	krp->krp_status = kop->crk_status;
 	krp->krp_iparams = kop->crk_iparams;

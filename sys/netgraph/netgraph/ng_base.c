@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.25 2007/06/03 20:51:12 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.26 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -403,12 +403,11 @@ ng_make_node_common(struct ng_type *type, node_p *nodepp)
 	}
 
 	/* Make a node and try attach it to the type */
-	MALLOC(node, node_p, sizeof(*node), M_NETGRAPH, M_NOWAIT);
+	MALLOC(node, node_p, sizeof(*node), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (node == NULL) {
 		TRAP_ERROR;
 		return (ENOMEM);
 	}
-	bzero(node, sizeof(*node));
 	node->type = type;
 	node->refs++;				/* note reference */
 	type->refs++;
@@ -728,12 +727,11 @@ ng_add_hook(node_p node, const char *name, hook_p *hookp)
 	}
 
 	/* Allocate the hook and link it up */
-	MALLOC(hook, hook_p, sizeof(*hook), M_NETGRAPH, M_NOWAIT);
+	MALLOC(hook, hook_p, sizeof(*hook), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (hook == NULL) {
 		TRAP_ERROR;
 		return (ENOMEM);
 	}
-	bzero(hook, sizeof(*hook));
 	hook->refs = 1;
 	hook->flags = HK_INVALID;
 	hook->node = node;

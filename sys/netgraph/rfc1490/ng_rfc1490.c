@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_rfc1490.c,v 1.6.2.4 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/rfc1490/ng_rfc1490.c,v 1.5 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netgraph/rfc1490/ng_rfc1490.c,v 1.6 2008/01/05 14:02:40 swildner Exp $
  * $Whistle: ng_rfc1490.c,v 1.22 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -127,10 +127,9 @@ ng_rfc1490_constructor(node_p *nodep)
 	int error;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
-	bzero(priv, sizeof(*priv));
 
 	/* Call generic node constructor */
 	if ((error = ng_make_node_common(&typestruct, nodep))) {

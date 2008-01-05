@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_crypt.c,v 1.1.2.3 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_crypt.c,v 1.4 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_crypt.c,v 1.5 2008/01/05 14:02:40 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/malloc.h>
@@ -88,8 +88,7 @@ smb_encrypt(const u_char *apwd, u_char *C8, u_char *RN)
 #ifdef NETSMBCRYPTO
 	u_char *p, *P14, *S21;
 
-	p = kmalloc(14 + 21, M_SMBTEMP, M_WAITOK);
-	bzero(p, 14 + 21);
+	p = kmalloc(14 + 21, M_SMBTEMP, M_WAITOK | M_ZERO);
 	P14 = p;
 	S21 = p + 14;
 	bcopy(apwd, P14, min(14, strlen(apwd)));

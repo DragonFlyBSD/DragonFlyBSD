@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.11 2006/12/22 23:57:53 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.12 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -831,13 +831,12 @@ static int
 create_ra_entry(struct rp_addr **rapp)
 {
 	*rapp = (struct rp_addr *)kmalloc(sizeof(struct rp_addr), M_RR_ADDR,
-					 M_NOWAIT);
+					 M_NOWAIT | M_ZERO);
 	if (*rapp == NULL) {
 		log(LOG_ERR, "in6_prefix.c: init_newprefix:%d: ENOBUFS"
 		    "for rp_addr\n", __LINE__);
 		return ENOBUFS;
 	}
-	bzero(*rapp, sizeof(*(*rapp)));
 
 	return 0;
 }

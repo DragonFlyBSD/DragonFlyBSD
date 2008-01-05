@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tee.c,v 1.7.2.5 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/tee/ng_tee.c,v 1.5 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netgraph/tee/ng_tee.c,v 1.6 2008/01/05 14:02:40 swildner Exp $
  * $Whistle: ng_tee.c,v 1.18 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -154,10 +154,9 @@ ngt_constructor(node_p *nodep)
 	sc_p privdata;
 	int error = 0;
 
-	MALLOC(privdata, sc_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT);
+	MALLOC(privdata, sc_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
-	bzero(privdata, sizeof(*privdata));
 
 	if ((error = ng_make_node_common(&ng_tee_typestruct, nodep))) {
 		FREE(privdata, M_NETGRAPH);

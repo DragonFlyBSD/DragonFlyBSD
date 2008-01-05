@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_async.c,v 1.6.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/async/ng_async.c,v 1.6 2005/02/17 13:59:59 joerg Exp $
+ * $DragonFly: src/sys/netgraph/async/ng_async.c,v 1.7 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_async.c,v 1.17 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -183,10 +183,9 @@ nga_constructor(node_p *nodep)
 
 	if ((error = ng_make_node_common(&typestruct, nodep)))
 		return (error);
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT);
+	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
-	bzero(sc, sizeof(*sc));
 	sc->amode = MODE_HUNT;
 	sc->cfg.accm = ~0;
 	sc->cfg.amru = NG_ASYNC_DEFAULT_MRU;

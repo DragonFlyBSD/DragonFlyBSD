@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.109 2007/11/07 00:46:36 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.110 2008/01/05 14:02:38 swildner Exp $
  */
 
 /*
@@ -1617,8 +1617,7 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 		return (EINVAL);
 
 	i = sizeof(struct netcred) + argp->ex_addrlen + argp->ex_masklen;
-	np = (struct netcred *) kmalloc(i, M_NETADDR, M_WAITOK);
-	bzero((caddr_t) np, i);
+	np = (struct netcred *) kmalloc(i, M_NETADDR, M_WAITOK | M_ZERO);
 	saddr = (struct sockaddr *) (np + 1);
 	if ((error = copyin(argp->ex_addr, (caddr_t) saddr, argp->ex_addrlen)))
 		goto out;

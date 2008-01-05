@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.14 2007/08/27 13:15:14 hasso Exp $
+ ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.15 2008/01/05 14:02:41 swildner Exp $
  **/
 
 /**
@@ -3219,8 +3219,8 @@ load_devtab(void)
     char *name;
     int unit;
 
-    uc_devtab = kmalloc(sizeof(struct uc_device)*(count + 1),M_DEVL,M_WAITOK);
-    bzero(uc_devtab, sizeof(struct uc_device) * (count + 1));
+    uc_devtab = kmalloc(sizeof(struct uc_device)*(count + 1), M_DEVL,
+	M_WAITOK | M_ZERO);
     dt = 0;
     for (i = 0; i < count; i++) {
 	name = resource_query_name(i);

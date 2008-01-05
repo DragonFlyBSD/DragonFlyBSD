@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.16 2006/10/25 20:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.17 2008/01/05 14:02:38 swildner Exp $
  */
 /*
  * derived from
@@ -157,8 +157,7 @@ faith_clone_create(struct if_clone *ifc, int unit)
 {
 	struct faith_softc *sc;
 
-	sc = kmalloc(sizeof(struct faith_softc), M_FAITH, M_WAITOK);
-	bzero(sc, sizeof(struct faith_softc));
+	sc = kmalloc(sizeof(struct faith_softc), M_FAITH, M_WAITOK | M_ZERO);
 
 	sc->sc_if.if_softc = sc;
 	if_initname(&(sc->sc_if), FAITHNAME, unit);

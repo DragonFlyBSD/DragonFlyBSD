@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.14 2007/06/03 20:51:13 dillon Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.15 2008/01/05 14:02:40 swildner Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -407,8 +407,7 @@ ng_setsockaddr(struct socket *so, struct sockaddr **addr)
 	if (pcbp->sockdata->node->name != NULL)
 		sg_len += namelen = strlen(pcbp->sockdata->node->name);
 
-	MALLOC(sg, struct sockaddr_ng *, sg_len, M_SONAME, M_WAITOK);
-	bzero(sg, sg_len);
+	MALLOC(sg, struct sockaddr_ng *, sg_len, M_SONAME, M_WAITOK | M_ZERO);
 
 	if (pcbp->sockdata->node->name != NULL)
 		bcopy(pcbp->sockdata->node->name, sg->sg_data, namelen);
@@ -441,12 +440,11 @@ ng_attach_cntl(struct socket *so)
 
 	/* Allocate node private info */
 	MALLOC(privdata, struct ngsock *,
-	    sizeof(*privdata), M_NETGRAPH, M_WAITOK);
+	    sizeof(*privdata), M_NETGRAPH, M_WAITOK | M_ZERO);
 	if (privdata == NULL) {
 		ng_detach_common(pcbp, NG_CONTROL);
 		return (ENOMEM);
 	}
-	bzero(privdata, sizeof(*privdata));
 
 	/* Make the generic node components */
 	if ((error = ng_make_node_common(&typestruct, &privdata->node)) != 0) {
@@ -485,10 +483,9 @@ ng_attach_common(struct socket *so, int type)
 		return (error);
 
 	/* Allocate the pcb */
-	MALLOC(pcbp, struct ngpcb *, sizeof(*pcbp), M_PCB, M_WAITOK);
+	MALLOC(pcbp, struct ngpcb *, sizeof(*pcbp), M_PCB, M_WAITOK | M_ZERO);
 	if (pcbp == NULL)
 		return (ENOMEM);
-	bzero(pcbp, sizeof(*pcbp));
 	pcbp->type = type;
 
 	/* Link the pcb and the socket */

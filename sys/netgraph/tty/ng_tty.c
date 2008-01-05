@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.17 2006/12/20 18:14:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.18 2008/01/05 14:02:40 swildner Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -205,12 +205,11 @@ ngt_open(cdev_t dev, struct tty *tp)
 	}
 
 	/* Initialize private struct */
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_WAITOK);
+	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_WAITOK | M_ZERO);
 	if (sc == NULL) {
 		error = ENOMEM;
 		goto done;
 	}
-	bzero(sc, sizeof(*sc));
 	sc->tp = tp;
 	sc->hotchar = NG_TTY_DFL_HOTCHAR;
 	sc->qtail = &sc->qhead;

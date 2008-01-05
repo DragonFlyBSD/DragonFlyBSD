@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bridge.c,v 1.1.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.10 2007/06/03 20:51:12 dillon Exp $
+ * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.11 2008/01/05 14:02:39 swildner Exp $
  */
 
 /*
@@ -301,20 +301,18 @@ ng_bridge_constructor(node_p *nodep)
 	int error;
 
 	/* Allocate and initialize private info */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
-	bzero(priv, sizeof(*priv));
 	callout_init(&priv->timer);
 
 	/* Allocate and initialize hash table, etc. */
 	MALLOC(priv->tab, struct ng_bridge_bucket *,
-	    MIN_BUCKETS * sizeof(*priv->tab), M_NETGRAPH, M_NOWAIT);
+	    MIN_BUCKETS * sizeof(*priv->tab), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (priv->tab == NULL) {
 		FREE(priv, M_NETGRAPH);
 		return (ENOMEM);
 	}
-	bzero(priv->tab, MIN_BUCKETS * sizeof(*priv->tab));  /* init SLIST's */
 	priv->numBuckets = MIN_BUCKETS;
 	priv->hashMask = MIN_BUCKETS - 1;
 	priv->conf.debugLevel = 1;
@@ -859,10 +857,9 @@ ng_bridge_rehash(priv_p priv)
 
 	/* Allocate and initialize new table */
 	MALLOC(newTab, struct ng_bridge_bucket *,
-	    newNumBuckets * sizeof(*newTab), M_NETGRAPH, M_NOWAIT);
+	    newNumBuckets * sizeof(*newTab), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (newTab == NULL)
 		return;
-	bzero(newTab, newNumBuckets * sizeof(*newTab));
 
 	/* Move all entries from old table to new table */
 	for (oldBucket = 0; oldBucket < priv->numBuckets; oldBucket++) {

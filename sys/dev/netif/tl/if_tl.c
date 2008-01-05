@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.37 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.38 2008/01/05 14:02:37 swildner Exp $
  */
 
 /*
@@ -1141,15 +1141,13 @@ tl_attach(device_t dev)
 	 * Now allocate memory for the TX and RX lists.
 	 */
 	sc->tl_ldata = contigmalloc(sizeof(struct tl_list_data), M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->tl_ldata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
 		error = ENXIO;
 		goto fail;
 	}
-
-	bzero(sc->tl_ldata, sizeof(struct tl_list_data));
 
 	sc->tl_dinfo = t;
 	if (t->tl_vid == COMPAQ_VENDORID || t->tl_vid == TI_VENDORID)

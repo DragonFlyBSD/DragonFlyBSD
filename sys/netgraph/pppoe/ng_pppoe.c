@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pppoe.c,v 1.23.2.17 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.10 2007/06/03 20:51:13 dillon Exp $
+ * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.11 2008/01/05 14:02:39 swildner Exp $
  * $Whistle: ng_pppoe.c,v 1.10 1999/11/01 09:24:52 julian Exp $
  */
 #if 0
@@ -514,10 +514,9 @@ ng_pppoe_constructor(node_p *nodep)
 
 AAA
 	/* Initialize private descriptor */
-	MALLOC(privdata, priv_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT);
+	MALLOC(privdata, priv_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
-	bzero(privdata, sizeof(*privdata));
 
 	/* Call the 'generic' (ie, superclass) node constructor */
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
@@ -559,11 +558,9 @@ AAA
 		 * The infrastructure has already checked that it's unique,
 		 * so just allocate it and hook it in.
 		 */
-		MALLOC(sp, sessp, sizeof(*sp), M_NETGRAPH, M_NOWAIT);
-		if (sp == NULL) {
-				return (ENOMEM);
-		}
-		bzero(sp, sizeof(*sp));
+		MALLOC(sp, sessp, sizeof(*sp), M_NETGRAPH, M_NOWAIT | M_ZERO);
+		if (sp == NULL)
+			return (ENOMEM);
 
 		hook->private = sp;
 		sp->hook = hook;
@@ -654,13 +651,13 @@ AAA
 			/*
 			 * set up prototype header
 			 */
-			MALLOC(neg, negp, sizeof(*neg), M_NETGRAPH, M_NOWAIT);
+			MALLOC(neg, negp, sizeof(*neg), M_NETGRAPH,
+			    M_NOWAIT | M_ZERO);
 
 			if (neg == NULL) {
 				kprintf("pppoe: Session out of memory\n");
 				LEAVE(ENOMEM);
 			}
-			bzero(neg, sizeof(*neg));
 			MGETHDR(neg->m, MB_DONTWAIT, MT_DATA);
 			if(neg->m == NULL) {
 				kprintf("pppoe: Session out of mbufs\n");

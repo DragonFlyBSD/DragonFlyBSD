@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.46 2007/11/07 18:24:06 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.47 2008/01/05 14:02:38 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -1198,8 +1198,7 @@ do_setopt_accept_filter(struct socket *so, struct sockopt *sopt)
 		error = ENOENT;
 		goto out;
 	}
-	MALLOC(af, struct so_accf *, sizeof(*af), M_ACCF, M_WAITOK);
-	bzero(af, sizeof(*af));
+	MALLOC(af, struct so_accf *, sizeof(*af), M_ACCF, M_WAITOK | M_ZERO);
 	if (afp->accf_create != NULL) {
 		if (afap->af_name[0] != '\0') {
 			int len = strlen(afap->af_name) + 1;
@@ -1455,8 +1454,7 @@ sogetopt(struct socket *so, struct sockopt *sopt)
 			if ((so->so_options & SO_ACCEPTCONN) == 0)
 				return (EINVAL);
 			MALLOC(afap, struct accept_filter_arg *, sizeof(*afap),
-				M_TEMP, M_WAITOK);
-			bzero(afap, sizeof(*afap));
+				M_TEMP, M_WAITOK | M_ZERO);
 			if ((so->so_options & SO_ACCEPTFILTER) != 0) {
 				strcpy(afap->af_name, so->so_accf->so_accept_filter->accf_name);
 				if (so->so_accf->so_accept_filter_str != NULL)

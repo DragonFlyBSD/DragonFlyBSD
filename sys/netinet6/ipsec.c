@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.20 2007/10/20 10:28:44 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.21 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1150,10 +1150,9 @@ ipsec_deepcopy_policy(struct secpolicy *src)
 	q = &newchain;
 	for (p = src->req; p; p = p->next) {
 		*q = (struct ipsecrequest *)kmalloc(sizeof(struct ipsecrequest),
-			M_SECA, M_NOWAIT);
+			M_SECA, M_NOWAIT | M_ZERO);
 		if (*q == NULL)
 			goto fail;
-		bzero(*q, sizeof(**q));
 		(*q)->next = NULL;
 
 		(*q)->saidx.proto = p->saidx.proto;

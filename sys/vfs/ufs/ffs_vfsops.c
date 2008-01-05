@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.57 2007/06/17 05:08:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.58 2008/01/05 14:02:41 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -685,8 +685,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 		error = EROFS;          /* needs translation */
 		goto out;
 	}
-	ump = kmalloc(sizeof *ump, M_UFSMNT, M_WAITOK);
-	bzero((caddr_t)ump, sizeof *ump);
+	ump = kmalloc(sizeof *ump, M_UFSMNT, M_WAITOK | M_ZERO);
 	ump->um_malloctype = mtype;
 	ump->um_i_effnlink_valid = 1;
 	ump->um_fs = kmalloc((u_long)fs->fs_sbsize, M_UFSMNT,

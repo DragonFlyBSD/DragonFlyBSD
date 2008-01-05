@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.19 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.20 2008/01/05 14:02:38 swildner Exp $
  */
 
 /*
@@ -139,8 +139,7 @@ ptyinit(int n)
 	if (n & ~0xff)
 		return;
 
-	pt = kmalloc(sizeof(*pt), M_PTY, M_WAITOK);
-	bzero(pt, sizeof(*pt));
+	pt = kmalloc(sizeof(*pt), M_PTY, M_WAITOK | M_ZERO);
 	pt->devs = devs = make_dev(&pts_ops, n,
 	    0, 0, 0666, "tty%c%r", names[n / 32], n % 32);
 	pt->devc = devc = make_dev(&ptc_ops, n,
