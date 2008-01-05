@@ -1,9 +1,11 @@
-/*
+/*-
  *	File Name : trm.h	
  *				    
  *	Tekram DC395U/UW/F ,DC315/U 
  *   PCI SCSI Bus Master Host Adapter Device Driver	
  *   (SCSI chip set used Tekram ASIC TRM-S1040)	
+ *
+ * (C)Copyright 1995-2001 Tekram Technology Co.,Ltd.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.	
  *
  * $FreeBSD: src/sys/dev/trm/trm.h,v 1.1.2.2 2002/12/19 20:34:46 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.h,v 1.3 2008/01/05 22:24:08 pavalos Exp $
  */
 
 #ifndef trm_H
@@ -76,8 +78,8 @@ struct trm_target_info {
 
 /*;----------------------Segment Entry------------------------------------*/
 typedef  struct  _SGentry {
-       u_long		address;
-       u_long		length;
+       u_int32_t	address;
+       u_int32_t	length;
 } SGentry, *PSEG;
 /*
  *-----------------------------------------------------------------------
@@ -85,14 +87,14 @@ typedef  struct  _SGentry {
  *-----------------------------------------------------------------------
  */
 
-#define MAX_ADAPTER_NUM    	4
-#define MAX_DEVICES	      	16
-#define MAX_SG_LISTENTRY       	32
-#define MAX_TARGETS	       	16
-#define MAX_TAGS_CMD_QUEUE      32 /* MAX_CMD_QUEUE	20*/
-#define MAX_CMD_PER_LUN        	32
-#define MAX_SRB_CNT	       	MAX_CMD_PER_LUN*4
-#define MAX_START_JOB           MAX_CMD_PER_LUN*4
+#define TRM_MAX_ADAPTER_NUM    	4
+#define TRM_MAX_DEVICES	      	16
+#define TRM_MAX_SG_LISTENTRY   	32
+#define TRM_MAX_TARGETS	       	16
+#define TRM_MAX_TAGS_CMD_QUEUE  256 /* MAX_CMD_QUEUE	20*/
+#define TRM_MAX_CMD_PER_LUN    	32
+#define TRM_MAX_SRB_CNT	       	256
+#define TRM_MAX_START_JOB       256
 #define TRM_NSEG	        (btoc(MAXPHYS) + 1)
 #define TRM_MAXTRANSFER_SIZE    0xFFFFFF /* restricted by 24 bit counter */
 #define PAGELEN 	       	4096
@@ -143,19 +145,21 @@ struct	_SRB {
 	u_int8_t	CmdBlock[12];
 	u_long		Segment0[2];
 	u_long		Segment1[2];
-	u_long		PhysSRB;
 	struct _SRB	*pNextSRB;
 	struct _DCB	*pSRBDCB;
-	SGentry 	SegmentX[MAX_SG_LISTENTRY];
 	SGentry		SgSenseTemp;
+
+	PSEG		pSRBSGL;	/* scatter gather list */
+
+	u_int32_t	SRBSGPhyAddr;	/* a segment starting address */
+	u_int32_t	SRBTotalXferLength;
+
 	/*
 	 *	          CAM ccb
 	 */
-	union  ccb       *pccb;   
+	union  ccb      *pccb;
+	bus_dmamap_t	sg_dmamap;
 	bus_dmamap_t	 dmamap;
-	PSEG		SRBSGListPointer;       /* scatter gather list */
-	u_long		SRBTotalXferLength;
-	u_long		SRBSGPhyAddr;	   /* a segment starting address */
 	u_int16_t	SRBState;
 	u_int8_t *	pMsgPtr;
 	
@@ -171,8 +175,6 @@ struct	_SRB {
 	
 	u_int8_t	SRBStatus;
 	u_int8_t	RetryCnt;
-	/* b0-AutoReqSense,b6-Read,b7-write */
-	/* b4-settimeout,b5-Residual valid  */
 	u_int8_t	SRBFlag;   
 	u_int8_t	ScsiCmdLen;
 	u_int8_t	ScsiPhase;
@@ -187,25 +189,19 @@ typedef struct _SRB	TRM_SRB, *PSRB;
  */
 struct	_DCB
 {
-	struct _DCB	*pNextDCB;
-	struct _ACB	*pDCBACB;
-
 	PSRB		pWaitingSRB;
-	PSRB		pWaitLastSRB;
+	PSRB		pWaitingLastSRB;
 	
 	PSRB		pGoingSRB;
 	PSRB		pGoingLastSRB;
 	
 	PSRB		pActiveSRB;
-	PSRB		RevSRB;
-
-	u_long		TagMask;
 
 	u_int16_t	GoingSRBCnt;
-	u_int16_t	WaitSRBCnt;
+	u_int16_t	MaxActiveCommandCnt;
 
-	u_int8_t	TargetID;	   /*; SCSI Target ID  (SCSI Only) */
-	u_int8_t	TargetLUN;     /*; SCSI Log.  Unit (SCSI Only) */
+	u_int8_t	TargetID;	/*; SCSI Target ID  (SCSI Only) */
+	u_int8_t	TargetLUN;      /*; SCSI Log.  Unit (SCSI Only) */
 	u_int8_t	DCBFlag;
 	u_int8_t	DevType;
 
@@ -214,14 +210,14 @@ struct	_DCB
 	u_int8_t	SyncPeriod; 	/* for reg. */
 	u_int8_t	SyncOffset;   	/* for reg. and nego.(low nibble) */
 	
-	struct		trm_target_info tinfo; /* 10 bytes */
-
-	u_int16_t	MaxCommand;
 	u_int8_t	DevMode;
 	u_int8_t	AdpMode;
 
 	u_int8_t	IdentifyMsg;
-	u_int8_t	Reserved[3];	/*for dword alignment */
+	u_int8_t	DCBstatus;	/* DCB status */
+	/*u_int8_t	Reserved[3];	for dword alignment */
+	struct		trm_target_info tinfo; /* 10 bytes */
+	struct _DCB	*pNextDCB;
 };
 typedef struct _DCB	TRM_DCB, *PDCB;
 
@@ -232,11 +228,19 @@ typedef struct _DCB	TRM_DCB, *PDCB;
  */
 struct	_ACB
 {
+	device_t		dev;
+
 	bus_space_tag_t		tag;
 	bus_space_handle_t	bsh;
+	bus_dma_tag_t		parent_dmat;
 	bus_dma_tag_t		buffer_dmat;   /* dmat for buffer I/O */  
-	struct _ACB		*pNextACB;
-
+	bus_dma_tag_t		srb_dmat;
+	bus_dma_tag_t		sense_dmat; /* dmat for sense buffer */
+	bus_dma_tag_t		sg_dmat;
+	bus_dmamap_t		sense_dmamap;
+	bus_dmamap_t		srb_dmamap;
+	bus_addr_t		sense_busaddr;
+	struct scsi_sense_data	*sense_buffers;
 	struct resource		*iores, *irq;
 	void			*ih;
     /*
@@ -245,12 +249,10 @@ struct	_ACB
 	struct	   	 	cam_sim  *psim;
 	struct	    		cam_path *ppath;
 
-	TRM_SRB		SRB_array[MAX_SRB_CNT];	/* */
+	TRM_SRB			TmpSRB;
+	TRM_DCB			DCBarray[16][8];
 
-	TRM_SRB		TmpSRB;
-
-	PSRB	    		pTmpSRB;
-	PSRB			RevSRB;
+	u_int32_t		srb_physbase;
 
 	PSRB	    		pFreeSRB;
 	PDCB	    		pActiveDCB;
@@ -258,13 +260,8 @@ struct	_ACB
 	PDCB	    		pLinkDCB;
 	PDCB	    		pDCBRunRobin;
 
-	PDCB			pDCB[16][8];
-
 	u_int16_t    		max_id;
 	u_int16_t   	 	max_lun;
-
-	u_int16_t    		IOPortBase;
-	u_int16_t    		AdapterUnit;	/*; nth Adapter this driver */
 
 	u_int8_t    		msgin123[4];
 
@@ -277,7 +274,8 @@ struct	_ACB
 
 	u_int8_t    		TagMaxNum;
 	u_int8_t           	Config;
-	u_int8_t	 	Reserved[2];	/* for dword alignment     */
+	u_int8_t		AdaptType;
+	u_int8_t		AdapterUnit;	/* nth Adapter this driver */
 };
 typedef struct  _ACB		 TRM_ACB, *PACB;
 /*
@@ -322,6 +320,11 @@ typedef struct  _ACB		 TRM_ACB, *PACB;
  *   ---DCB Flag
  */
 #define ABORT_DEV_      		0x00000001
+
+/*
+ *   ---DCB status
+ */
+#define DS_IN_QUEUE			0x00000001
 
 /*
  *   ---SRB status 
@@ -415,12 +418,12 @@ typedef struct  _ACB		 TRM_ACB, *PACB;
 #define MSG_LINK_CMD_COMPL   		0x0A
 #define MSG_LINK_CMD_COMPL_FLG		0x0B
 #define MSG_BUS_RESET	    		0x0C
-#define MSG_ABORT_TAG	    		0x0D
+/* #define MSG_ABORT_TAG	    	0x0D */
 #define MSG_SIMPLE_QTAG   	  	0x20
 #define MSG_HEAD_QTAG	    		0x21
 #define MSG_ORDER_QTAG	    		0x22
 #define MSG_IGNOREWIDE	    		0x23
-#define MSG_IDENTIFY	    		0x80
+/* #define MSG_IDENTIFY	    		0x80 */
 #define MSG_HOST_ID	        	0xC0
 /*     bus wide length     */
 #define MSG_EXT_WDTR_BUS_8_BIT		0x00
@@ -717,6 +720,7 @@ typedef  struct  _EEprom {
 #define     ACTIVE_NEGPLUS      0x10	/* Enhance active negation     	*/
 #define     FILTER_DISABLE      0x08	/* Disable SCSI data filter    	*/
 #define     ACTIVE_NEG	        0x02	/* Enable active negation      	*/
+#define	    ACTIVE_HISLEW	0x01	/* Enable high slew rate (3/6 ns) */
 /*
  ***************************************
  */
@@ -779,19 +783,23 @@ typedef  struct  _EEprom {
 /*
  ***************************************
  */
-#define TRMREG_SCSI_TCR0     	0x9C	/* SCSI Target Control 0 (R/W) 	*/
+#define     TRMREG_SCSI_TCR00     	0x9C	/* SCSI Target Control 0 (R/W) 	*/
 /* ######### */
-#define     TCR0_WIDE_NEGO_DONE	   	0x8000	/* Wide       nego done */
-#define     TCR0_SYNC_NEGO_DONE	    0x4000	/* Synchronous nego done*/
-#define     TCR0_ENABLE_LVDS        0x2000	/* Enable LVDS synchronous*/
-#define     TCR0_ENABLE_WIDE        0x1000	/* Enable WIDE synchronous*/
-#define     TCR0_ENABLE_ALT	        0x0800	/* Enable alternate synchronous	*/
-#define     TCR0_PERIOD_MASK        0x0700	/* Transfer rate  	*/
+#define     TCR0_DO_WIDE_NEGO     	0x80	/* Do wide NEGO		      	*/
+#define     TCR0_DO_SYNC_NEGO      	0x40	/* Do sync NEGO	             	*/
+#define     TCR0_DISCONNECT_EN	    	0x20	/* Disconnection enable     	*/
+#define     TCR0_OFFSET_MASK	    	0x1F	/* Offset number	       	*/
+/*
+ ***************************************
+ */
+#define     TRMREG_SCSI_TCR01   	0x9D	/* SCSI Target Control 0 (R/W)  */
+/* ######### */
+#define     TCR0_ENABLE_LVDS    	0xF8	/* LVD   		   	*/
+#define     TCR0_ENABLE_WIDE    	0xF9	/* SE       			*/
+/*
+****************************************
+*/
 
-#define     TCR0_DO_WIDE_NEGO       0x0080	/* Do wide NEGO	       	*/
-#define     TCR0_DO_SYNC_NEGO       0x0040	/* Do sync NEGO		*/
-#define     TCR0_DISCONNECT_EN	    0x0020	/* Disconnection enable */
-#define     TCR0_OFFSET_MASK	    0x001F	/* Offset number       	*/
 /*
  ***************************************
  */
@@ -933,7 +941,7 @@ typedef struct NVRAM_STRUC {
 	u_int8_t       	NvramVendorID[2];	     /*5,6  Vendor ID  	*/
 	u_int8_t       	NvramDeviceID[2];	     /*7,8  Device ID  	*/
 	u_int8_t       	NvramReserved;		     /*9    Reserved   	*/
-	NVRAMTARGETTYPE	NvramTarget[MAX_TARGETS];/*										  *10,11,12,13
+	NVRAMTARGETTYPE	NvramTarget[TRM_MAX_TARGETS];/*										  *10,11,12,13
 	                                          *14,15,16,17									  * ....
 						  * ....
 						  *70,71,72,73
@@ -957,7 +965,7 @@ typedef struct NVRAM_STRUC {
 #define NO_SEEK         	0x00000010
 #define LUN_CHECK       	0x00000020
 
-/* Nvram Adapter Cfg bits definition */
+/* Nvram Adapter NvramChannelCfg bits definition */
 #define NAC_SCANLUN	    	        0x20    /* Include LUN as BIOS device*/
 #define NAC_POWERON_SCSI_RESET		0x04	/* Power on reset enable     */
 #define NAC_GREATER_1G	           	 0x02	/* > 1G support enable	     */
