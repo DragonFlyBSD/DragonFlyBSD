@@ -1,7 +1,7 @@
 set -e
 
 # $FreeBSD: src/usr.bin/kdump/mkioctls,v 1.15.2.5 2002/11/15 18:22:31 ru Exp $
-# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.8 2007/11/18 17:53:02 pavalos Exp $
+# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.9 2008/01/05 13:36:37 corecode Exp $
 
 if [ "x$1" = "x-s" ]; then
 	use_switch=1
@@ -32,7 +32,7 @@ ioctl_includes=`
 `
 
 awk -v x="$ioctl_includes" 'BEGIN {print x}' |
-	gcc -E -I$1 -dM - |
+	gcc -D_KERNEL_STRUCTURES -E -I$1 -dM - |
 	awk -v ioctl_includes="$ioctl_includes" -v use_switch="$use_switch" '
 BEGIN {
 	print "/* XXX obnoxious prerequisites. */"
