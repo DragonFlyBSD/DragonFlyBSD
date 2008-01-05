@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.26 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.27 2008/01/05 16:56:17 nth Exp $
  */
 
 #include <sys/param.h>
@@ -348,8 +348,6 @@ link_elf_load_module(const char *filename, linker_file_t *result)
 	return (EINVAL);
 
     ef = kmalloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
-    if (ef == NULL)
-	return (ENOMEM);
     ef->modptr = modptr;
     ef->address = *(caddr_t *)baseptr;
 #ifdef SPARSE_MAPPING
@@ -446,10 +444,6 @@ link_elf_load_file(const char* filename, linker_file_t* result)
      * Read the elf header from the file.
      */
     firstpage = kmalloc(PAGE_SIZE, M_LINKER, M_WAITOK);
-    if (firstpage == NULL) {
-	error = ENOMEM;
-	goto out;
-    }
     hdr = (Elf_Ehdr *)firstpage;
     error = vn_rdwr(UIO_READ, vp, firstpage, PAGE_SIZE, 0,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
@@ -639,10 +633,6 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     if (nbytes == 0 || hdr->e_shoff == 0)
 	goto nosyms;
     shdr = kmalloc(nbytes, M_LINKER, M_WAITOK | M_ZERO);
-    if (shdr == NULL) {
-	error = ENOMEM;
-	goto out;
-    }
     error = vn_rdwr(UIO_READ, vp,
 		    (caddr_t)shdr, nbytes, hdr->e_shoff,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
@@ -663,11 +653,6 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     ef->symbase = kmalloc(symcnt, M_LINKER, M_WAITOK);
     strcnt = shdr[symstrindex].sh_size;
     ef->strbase = kmalloc(strcnt, M_LINKER, M_WAITOK);
-
-    if (ef->symbase == NULL || ef->strbase == NULL) {
-	error = ENOMEM;
-	goto out;
-    }
     error = vn_rdwr(UIO_READ, vp,
 		    ef->symbase, symcnt, shdr[symtabindex].sh_offset,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
@@ -1012,8 +997,6 @@ link_elf_lookup_set(linker_file_t lf, const char *name,
 
 	len = strlen(name) + sizeof("__start_set_"); /* sizeof includes \0 */
 	setsym = kmalloc(len, M_LINKER, M_WAITOK);
-	if (setsym == NULL)
-	       return ENOMEM;
 
 	/* get address of first entry */
 	ksnprintf(setsym, len, "%s%s", "__start_set_", name);
