@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aicvar.h,v 1.2.2.1 2000/08/08 23:51:23 peter Exp $
- * $DragonFly: src/sys/dev/disk/aic/aicvar.h,v 1.3 2003/08/27 10:35:16 rob Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aicvar.h,v 1.4 2008/01/05 07:27:09 pavalos Exp $
  */
 
 struct aic_transinfo {
@@ -67,6 +67,8 @@ struct aic_scb {
 #define	SCB_DEVICE_RESET	0x04
 #define	SCB_SENSE		0x08
 
+enum { AIC6260, AIC6360, AIC6370, GM82C700 };
+
 struct aic_softc {
 	int			unit;
 	bus_space_tag_t		tag;
@@ -92,6 +94,10 @@ struct aic_softc {
 
 	struct aic_tinfo	tinfo[8];
 	struct aic_scb		scbs[256];
+
+	int			min_period;
+	int			max_period;
+	int			chip_type;
 };
 
 #define	AIC_DISC_ENABLE		0x01
@@ -101,6 +107,7 @@ struct aic_softc {
 #define	AIC_RESOURCE_SHORTAGE	0x10
 #define	AIC_DROP_MSGIN		0x20
 #define	AIC_BUSFREE_OK		0x40
+#define	AIC_FAST_ENABLE		0x80
 
 #define	AIC_IDLE		0x00
 #define	AIC_SELECTING		0x01
@@ -115,6 +122,8 @@ struct aic_softc {
 #define	AIC_MSG_MSGBUF		0x80
 
 #define	AIC_SYNC_PERIOD		(200 / 4)
+#define	AIC_FAST_SYNC_PERIOD	(100 / 4)
+#define	AIC_MIN_SYNC_PERIOD	112
 #define	AIC_SYNC_OFFSET		8
 
 #define	aic_inb(aic, port) \

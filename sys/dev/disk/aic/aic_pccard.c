@@ -24,17 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_pccard.c,v 1.1 2000/01/14 23:42:36 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.8 2006/10/25 20:55:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.9 2008/01/05 07:27:09 pavalos Exp $
  */
 
 #include <sys/param.h>
-#include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
  
-#include "aic6360reg.h"
 #include "aicvar.h"
 
 #include <bus/pccard/pccardvar.h>
@@ -51,7 +49,6 @@ struct aic_pccard_softc {
 
 static int aic_pccard_alloc_resources (device_t);
 static void aic_pccard_release_resources (device_t);
-static int aic_pccard_match(device_t);
 static int aic_pccard_probe (device_t);
 static int aic_pccard_attach (device_t);
 
@@ -81,8 +78,7 @@ aic_pccard_alloc_resources(device_t dev)
 		return (ENOMEM);
 
 	rid = 0;
-	sc->sc_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid,
-	    0ul, ~0ul, 1, RF_ACTIVE);
+	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE);
 	if (!sc->sc_irq) {
 		aic_pccard_release_resources(dev);
 		return (ENOMEM);
@@ -107,7 +103,7 @@ aic_pccard_release_resources(device_t dev)
 }
 
 static int
-aic_pccard_match(device_t dev)
+aic_pccard_probe(device_t dev)
 {
 	const struct pccard_product *pp;
 
@@ -121,10 +117,11 @@ aic_pccard_match(device_t dev)
 }
 
 static int
-aic_pccard_probe(device_t dev)
+aic_pccard_attach(device_t dev)
 {
 	struct aic_pccard_softc *sc = device_get_softc(dev);
 	struct aic_softc *aic = &sc->sc_aic;
+	int error;
 
 	if (aic_pccard_alloc_resources(dev))
 		return (ENXIO);
@@ -132,24 +129,8 @@ aic_pccard_probe(device_t dev)
 		aic_pccard_release_resources(dev);
 		return (ENXIO);
 	}
-	aic_pccard_release_resources(dev);
 
 	device_set_desc(dev, "Adaptec 6260/6360 SCSI controller");
-	return (0);
-}
-
-static int
-aic_pccard_attach(device_t dev)
-{
-	struct aic_pccard_softc *sc = device_get_softc(dev);
-	struct aic_softc *aic = &sc->sc_aic;
-	int error;
-
-	error = aic_pccard_alloc_resources(dev);
-	if (error) {
-		device_printf(dev, "resource allocation failed\n");
-		return (error);
-	}
 
 	error = aic_attach(aic);
 	if (error) {
@@ -192,14 +173,10 @@ aic_pccard_detach(device_t dev)
 
 static device_method_t aic_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		pccard_compat_probe),
-	DEVMETHOD(device_attach,	pccard_compat_attach),
+	DEVMETHOD(device_probe,		aic_pccard_probe),
+	DEVMETHOD(device_attach,	aic_pccard_attach),
 	DEVMETHOD(device_detach,	aic_pccard_detach),
 
-	/* Card interface */
-	DEVMETHOD(card_compat_match,	aic_pccard_match),
-	DEVMETHOD(card_compat_probe,	aic_pccard_probe),
-	DEVMETHOD(card_compat_attach,	aic_pccard_attach),
 	{ 0, 0 }
 };
 
@@ -210,4 +187,5 @@ static driver_t aic_pccard_driver = {
 
 extern devclass_t aic_devclass;
 
+MODULE_DEPEND(aic, cam, 1,1,1);
 DRIVER_MODULE(aic, pccard, aic_pccard_driver, aic_devclass, 0, 0);

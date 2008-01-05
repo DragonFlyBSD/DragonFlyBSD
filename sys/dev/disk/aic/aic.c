@@ -24,19 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.11 2008/01/02 11:41:52 hasso Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.12 2008/01/05 07:27:09 pavalos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/buf.h>   
 #include <sys/kernel.h>
-#include <sys/sysctl.h>
 #include <sys/bus.h>
 #include <sys/thread2.h>
-
-#include <machine/clock.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -326,25 +321,7 @@ aic_action(struct cam_sim *sim, union ccb *ccb)
 	}
 	case XPT_CALC_GEOMETRY:
 	{
-		struct ccb_calc_geometry *ccg;
-		u_int32_t size_mb;
-		u_int32_t secs_per_cylinder;
-		int extended = 0;
-
-		ccg = &ccb->ccg;
-		size_mb = ccg->volume_size
-			/ ((1024L * 1024L) / ccg->block_size);
-
-		if (size_mb >= 1024 && extended) {
-			ccg->heads = 255;
-			ccg->secs_per_track = 63;
-		} else {
-			ccg->heads = 64;
-			ccg->secs_per_track = 32;
-		}
-		secs_per_cylinder = ccg->heads * ccg->secs_per_track;
-		ccg->cylinders = ccg->volume_size / secs_per_cylinder;
-		ccb->ccb_h.status = CAM_REQ_CMP;
+		cam_calc_geometry(&ccb->ccg, /*extended*/1);
 		xpt_done(ccb);
 		break;
 	}
@@ -576,7 +553,7 @@ aic_spiordy(struct aic_softc *aic)
 /*
  * Reestablish a disconnected nexus.
  */
-void
+static void
 aic_reconnect(struct aic_softc *aic, int tag)
 {
 	struct aic_scb *scb;
@@ -585,6 +562,7 @@ aic_reconnect(struct aic_softc *aic, int tag)
 	CAM_DEBUG_PRINT(CAM_DEBUG_TRACE, ("aic_reconnect\n"));
 
 	/* Find the nexus */
+	scb = NULL;
 	TAILQ_FOREACH(ccb_h, &aic->nexus_ccbs, sim_links.tqe) {
 		scb = (struct aic_scb *)ccb_h->ccb_scb_ptr;
 		if (scb->target == aic->target && scb->lun == aic->lun &&
@@ -1501,12 +1479,26 @@ aic_reset(struct aic_softc *aic, int initiate_reset)
 	aic_outb(aic, DMACNTRL0, INTEN);
 }
 
+static char *aic_chip_names[] = {
+	"AIC6260", "AIC6360", "AIC6370", "GM82C700",
+};
+
+static struct {
+	int type;
+	char *idstring;
+} aic_chip_ids[] = {
+	{ AIC6360, IDSTRING_AIC6360 },
+	{ AIC6370, IDSTRING_AIC6370 },
+	{ GM82C700, IDSTRING_GM82C700 },
+};
+
 static void
 aic_init(struct aic_softc *aic)
 {
 	struct aic_scb *scb;
 	struct aic_tinfo *ti;
 	u_int8_t porta, portb;
+	char chip_id[33];
 	int i;
 
 	TAILQ_INIT(&aic->pending_ccbs);
@@ -1519,6 +1511,17 @@ aic_init(struct aic_softc *aic)
 	aic_chip_reset(aic);
 	aic_scsi_reset(aic);
 
+	/* determine the chip type from its ID string */
+	aic->chip_type = AIC6260;
+	aic_insb(aic, ID, chip_id, sizeof(chip_id) - 1);
+	chip_id[sizeof(chip_id) - 1] = '\0';
+	for (i = 0; i < sizeof(aic_chip_ids) / sizeof(aic_chip_ids[0]); i++) {
+		if (!strcmp(chip_id, aic_chip_ids[i].idstring)) {
+			aic->chip_type = aic_chip_ids[i].type;
+			break;
+		}
+	}
+
 	porta = aic_inb(aic, PORTA);
 	portb = aic_inb(aic, PORTB);
 
@@ -1529,8 +1532,23 @@ aic_init(struct aic_softc *aic)
 		aic->flags |= AIC_DISC_ENABLE;
 	if (PORTB_DMA(portb))
 		aic->flags |= AIC_DMA_ENABLE;
-	if (aic_inb(aic, REV))
+
+	/*
+	 * We can do fast SCSI (10MHz clock rate) if bit 4 of portb
+	 * is set and we've got a 6360.  The 6260 can only do standard
+	 * 5MHz SCSI.
+	 */
+	if (aic->chip_type > AIC6260 || aic_inb(aic, REV)) {
+		if (PORTB_FSYNC(portb))
+			aic->flags |= AIC_FAST_ENABLE;
 		aic->flags |= AIC_DWIO_ENABLE;
+	}
+
+	if (aic->flags & AIC_FAST_ENABLE)
+		aic->max_period = AIC_FAST_SYNC_PERIOD;
+	else
+		aic->max_period = AIC_SYNC_PERIOD;
+	aic->min_period = AIC_MIN_SYNC_PERIOD;
 
 	free_scbs = NULL;
 	for (i = 255; i >= 0; i--) {
@@ -1547,7 +1565,7 @@ aic_init(struct aic_softc *aic)
 		ti->flags = TINFO_TAG_ENB;
 		if (aic->flags & AIC_DISC_ENABLE)
 			ti->flags |= TINFO_DISC_ENB;
-		ti->user.period = AIC_SYNC_PERIOD;
+		ti->user.period = aic->max_period;
 		ti->user.offset = AIC_SYNC_OFFSET;
 		ti->scsirate = 0;
 	}
@@ -1604,14 +1622,15 @@ aic_attach(struct aic_softc *aic)
 
 	aic_init(aic);
 
-	kprintf("aic%d: %s", aic->unit,
-	    aic_inb(aic, REV) > 0 ? "aic6360" : "aic6260");
+	kprintf("aic%d: %s", aic->unit, aic_chip_names[aic->chip_type]);
 	if (aic->flags & AIC_DMA_ENABLE)
 		kprintf(", dma");
 	if (aic->flags & AIC_DISC_ENABLE)
 		kprintf(", disconnection");
 	if (aic->flags & AIC_PARITY_ENABLE)
 		kprintf(", parity check");
+	if (aic->flags & AIC_FAST_ENABLE)
+		kprintf(", fast SCSI");
 	kprintf("\n");
 	return (0);
 }

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1994 Charles Hannum.
  * Copyright (c) 1994 Jarle Greipsland.
  * All rights reserved.
@@ -30,7 +30,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic6360reg.h,v 1.1 1999/10/21 08:56:52 luoqi Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic6360reg.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic6360reg.h,v 1.3 2008/01/05 07:27:09 pavalos Exp $
  */
 
 #define SCSISEQ		0x00	/* SCSI sequence control */
@@ -73,7 +73,9 @@
 #define TEST		0x1e	/* Test register */
 #define ID		0x1f	/* ID register */
 
-#define IDSTRING "(C)1991ADAPTECAIC6360           "
+#define IDSTRING_AIC6360  "(C)1991ADAPTECAIC6360           "
+#define IDSTRING_AIC6370  "(C)1994ADAPTECAIC6370"
+#define IDSTRING_GM82C700 "(C)1993 GoldStarGM82C700        "
 
 /* What all the bits do */
 
@@ -321,8 +323,10 @@
 #define PORTA_PARITY(a)	((a) & 0x80)
 
 /* PORTB */
+#define PORTB_EXTTRAN(b)((b) & 1)
 #define PORTB_DISC(b)	((b) & 4)
 #define PORTB_SYNC(b)	((b) & 8)
+#define PORTB_FSYNC(b)	((b) & 0x10)
 #define PORTB_BOOT(b)	((b) & 0x40)
 #define PORTB_DMA(b)	((b) & 0x80)
 
