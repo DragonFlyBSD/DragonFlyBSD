@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.61 2007/11/06 03:49:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.62 2008/01/05 13:23:48 corecode Exp $
  */
 
 #include "opt_ddb.h"
@@ -144,6 +144,9 @@ globaldata_t panic_cpu_gd;		/* which cpu took the panic */
 #endif
 
 int bootverbose = 0;			/* note: assignment to force non-bss */
+SYSCTL_INT(_debug, OID_AUTO, bootverbose, CTLFLAG_RW,
+	   &bootverbose, 0, "Verbose kernel messages");
+
 int cold = 1;				/* note: assignment to force non-bss */
 int dumplo;				/* OBSOLETE - savecore compat */
 u_int64_t dumplo64;
