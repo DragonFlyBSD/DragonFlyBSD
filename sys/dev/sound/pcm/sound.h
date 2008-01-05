@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.63.2.3 2007/05/13 20:53:39 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.13 2007/06/16 20:07:22 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.14 2008/01/05 13:34:22 corecode Exp $
  */
 
 /*
@@ -65,6 +65,7 @@
 #include <sys/sysctl.h>
 #include <sys/kobj.h>
 #include <sys/thread2.h>
+#include <sys/taskqueue.h>
 
 #include <machine/clock.h>	/* for DELAY */
 

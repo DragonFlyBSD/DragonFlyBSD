@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.h,v 1.10.2.2 2007/05/13 20:50:31 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.h,v 1.4 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.h,v 1.5 2008/01/05 13:34:22 corecode Exp $
  */
 
 #define SND_DMA(b) (sndbuf_getflags((b)) & SNDBUF_F_DMA)
@@ -55,6 +55,7 @@ struct snd_dbuf {
 	bus_dma_tag_t dmatag;
 	bus_addr_t buf_addr;
 	struct selinfo sel;
+	struct task seltask;
 	struct pcm_channel *channel;
 	char name[SNDBUF_NAMELEN];
 };

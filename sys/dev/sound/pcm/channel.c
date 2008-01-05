@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.99.2.5 2007/05/13 20:53:39 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.14 2007/06/16 20:07:22 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.15 2008/01/05 13:34:22 corecode Exp $
  */
 
 #include "use_isa.h"
@@ -35,7 +35,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.14 2007/06/16 20:07:22 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.15 2008/01/05 13:34:22 corecode Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #if 0
@@ -141,8 +141,20 @@ chn_wakeup(struct pcm_channel *c)
 	CHN_LOCKASSERT(c);
 	if (SLIST_EMPTY(&c->children)) {
 		/*if (SEL_WAITING(sndbuf_getsel(bs)) && chn_polltrigger(c))*/
-		if (sndbuf_getsel(bs)->si_pid && chn_polltrigger(c))
-			selwakeup(sndbuf_getsel(bs));
+		if (sndbuf_getsel(bs)->si_pid && chn_polltrigger(c)) {
+			/*
+			 * We would call selwakeup() here, but as we
+			 * are in interrupt context, we'd have to
+			 * aquire the MP lock before.
+			 * Instead, we'll queue a task in a software
+			 * interrupt, which will run with the MP lock
+			 * held.
+			 *
+			 * buffer.c:sndbuf_seltask will then call
+			 * selwakeup() from safer context.
+			 */
+			taskqueue_enqueue(taskqueue_swi, &bs->seltask);
+		}
 	} else {
 		SLIST_FOREACH(pce, &c->children, link) {
 			CHN_LOCK(pce->channel);

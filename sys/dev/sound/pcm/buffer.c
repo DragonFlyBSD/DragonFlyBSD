@@ -24,14 +24,30 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.25.2.3 2007/04/26 08:21:43 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.9 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.10 2008/01/05 13:34:22 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.9 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.10 2008/01/05 13:34:22 corecode Exp $");
+
+/*
+ * sndbuf_seltask is a taskqueue callback routine, called from
+ * taskqueue_swi, which runs under the MP lock.
+ *
+ * The only purpose is to be able to selwakeup() from a sound
+ * interrupt, which is running without MP lock held and thus
+ * can't call selwakeup() directly.
+ */
+static void
+sndbuf_seltask(void *context, int pending)
+{
+	struct snd_dbuf *b = context;
+
+	selwakeup(sndbuf_getsel(b));
+}
 
 struct snd_dbuf *
 sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel)
@@ -42,6 +58,7 @@ sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel)
 	ksnprintf(b->name, SNDBUF_NAMELEN, "%s:%s", drv, desc);
 	b->dev = dev;
 	b->channel = channel;
+	TASK_INIT(&b->seltask, 0, sndbuf_seltask, b);
 
 	return b;
 }
