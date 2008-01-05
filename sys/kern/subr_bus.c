@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.40 2007/09/12 07:59:31 hasso Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.41 2008/01/05 13:30:33 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -212,7 +212,7 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
 	 */
 	for (i = 0; i < dc->maxunit; i++) {
 		if ((dev = dc->devices[i]) != NULL) {
-			if (dev->state == DS_ATTACHED)
+			if (dev->state >= DS_ATTACHED)
 				BUS_DRIVER_ADDED(dev, driver);
 		}
 	}
