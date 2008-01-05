@@ -26,7 +26,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/trm.4,v 1.5.2.1 2003/02/25 17:28:04 cognet Exp $
-.\" $DragonFly: src/share/man/man4/trm.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/trm.4,v 1.3 2008/01/05 22:46:35 pavalos Exp $
 .\"
 .Dd December 8, 2002
 .Dt TRM 4
@@ -35,14 +35,30 @@
 .Nm trm
 .Nd Tekram TRM-S1040 ASIC based PCI SCSI host adapter driver
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device scbus"
 .Cd "device trm"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+trm_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
 driver supports PCI SCSI host adapters based on the Tekram TRM-S1040 SCSI ASIC.
 .Sh HARDWARE
-Supported SCSI controllers include:
-.Bl -item -offset indent
+SCSI controllers supported by the
+.Nm
+driver include:
+.Pp
+.Bl -bullet -compact
 .It
 .Tn Tekram DC-315
 PCI Ultra SCSI adapter without BIOS and internal SCSI connector
@@ -58,6 +74,9 @@ PCI Ultra SCSI adapter with flash BIOS
 .It
 .Tn Tekram DC-395UW
 PCI Ultra-Wide SCSI adapter with flash BIOS
+.It
+.Tn Tekram DC-395U2W
+PCI Ultra2-Wide SCSI adapter with flash BIOS
 .El
 .Pp
 For the Tekram DC-310/U and DC-390F/U/UW/U2B/U2W/U3W PCI SCSI host adapters,
