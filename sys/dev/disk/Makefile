@@ -1,9 +1,9 @@
-# $DragonFly: src/sys/dev/disk/Makefile,v 1.3 2007/01/30 14:50:11 corecode Exp $
+# $DragonFly: src/sys/dev/disk/Makefile,v 1.4 2008/01/05 08:16:04 pavalos Exp $
 #
 
 .include "${.CURDIR}/../../platform/${MACHINE_PLATFORM}/Makefile.inc"
 
-SUBDIR= aha aic7xxx ccd ispfw md ncv nsp sbp stg trm vn vpo
+SUBDIR= aha aic aic7xxx ccd ispfw md ncv nsp sbp stg trm vn vpo
 
 .for dir in ${SUBDIR}
 .if empty(DEV_SUPPORT:Mdisk) && \
