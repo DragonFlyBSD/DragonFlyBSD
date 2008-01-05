@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_kern.c,v 1.3 2007/05/03 23:08:34 dillon Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_kern.c,v 1.4 2008/01/05 13:38:08 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -141,7 +141,7 @@ _thr_set_sched_other_prio(struct pthread *pth, int prio)
 	if ((init_status == 2) || ((prio >= min) && (prio <= max))) {
 		return 0;
 	}
-	errno = EINVAL;
+	errno = ENOTSUP;
 	return -1;
 }
 
