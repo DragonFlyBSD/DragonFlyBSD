@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.16 2007/10/28 02:29:06 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.17 2008/01/06 03:03:17 sephe Exp $
  */
 
 /*
@@ -1402,7 +1402,7 @@ rt2560_intr(void *arg)
 	if (r & RT2560_PRIO_DONE)
 		rt2560_prio_intr(sc);
 
-	if (r & (RT2560_TX_DONE | RT2560_ENCRYPTION_DONE)) {
+	if (r & (RT2560_RX_DONE | RT2560_TX_DONE | RT2560_ENCRYPTION_DONE)) {
 		int i;
 
 		for (i = 0; i < 2; ++i) {
