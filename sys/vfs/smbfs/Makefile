@@ -1,11 +1,10 @@
 # $FreeBSD: src/sys/modules/smbfs/Makefile,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $
-# $DragonFly: src/sys/vfs/smbfs/Makefile,v 1.6 2005/02/18 11:41:42 corecode Exp $
+# $DragonFly: src/sys/vfs/smbfs/Makefile,v 1.7 2008/01/06 16:15:29 nth Exp $
 
 .PATH:	${.CURDIR}/../../crypto/des \
 	${.CURDIR}/../../crypto/des/arch/${MACHINE_ARCH} \
 	${.CURDIR}/../../kern \
 	${.CURDIR}/../../libkern \
-	${.CURDIR}/../../netsmb \
 	${.CURDIR}/../../netproto/smb
 
 KMOD=	smbfs
