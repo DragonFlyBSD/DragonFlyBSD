@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.14 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.15 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -130,8 +130,6 @@ module_register(const moduledata_t *data, linker_file_t container)
     namelen = strlen(data->name) + 1;
     newmod = (module_t) kmalloc(sizeof(struct module) + namelen,
 			       M_MODULE, M_WAITOK);
-    if (newmod == 0)
-	return ENOMEM;
 
     newmod->refs = 1;
     newmod->id = nextid++;

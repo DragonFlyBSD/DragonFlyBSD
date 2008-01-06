@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.21 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.22 2008/01/06 16:55:50 swildner Exp $
  *
  */
 
@@ -398,14 +398,7 @@ labpcinit(void)
 
 	labpcs = kmalloc(NLABPC * sizeof(struct ctlr *), M_DEVBUF, 
 			M_WAITOK | M_ZERO);
-	/*
-	 * XXX this is really odd code, adding the device only if
-	 * the allocation fails?  it could be broken.
-	 */
-	if (labpcs) {
-		return 1;
-	}
-	return 0;
+	return 1;
 }
 
 static int

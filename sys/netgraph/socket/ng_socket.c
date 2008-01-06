@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.15 2008/01/05 14:02:40 swildner Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.16 2008/01/06 16:55:52 swildner Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -219,10 +219,6 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	 * the sockaddr header, and make sure it's NUL terminated */
 	len = sap->sg_len - 2;
 	MALLOC(path, char *, len + 1, M_NETGRAPH, M_WAITOK);
-	if (path == NULL) {
-		error = ENOMEM;
-		goto release;
-	}
 	bcopy(sap->sg_data, path, len);
 	path[len] = '\0';
 
@@ -234,10 +230,6 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	/* Move the data into a linear buffer as well. Messages are not
 	 * delivered in mbufs. */
 	MALLOC(msg, char *, len + 1, M_NETGRAPH, M_WAITOK);
-	if (msg == NULL) {
-		error = ENOMEM;
-		goto release;
-	}
 	m_copydata(m, 0, len, msg);
 
 	/* The callee will free the msg when done. The addr is our business. */
@@ -441,10 +433,6 @@ ng_attach_cntl(struct socket *so)
 	/* Allocate node private info */
 	MALLOC(privdata, struct ngsock *,
 	    sizeof(*privdata), M_NETGRAPH, M_WAITOK | M_ZERO);
-	if (privdata == NULL) {
-		ng_detach_common(pcbp, NG_CONTROL);
-		return (ENOMEM);
-	}
 
 	/* Make the generic node components */
 	if ((error = ng_make_node_common(&typestruct, &privdata->node)) != 0) {
@@ -484,8 +472,6 @@ ng_attach_common(struct socket *so, int type)
 
 	/* Allocate the pcb */
 	MALLOC(pcbp, struct ngpcb *, sizeof(*pcbp), M_PCB, M_WAITOK | M_ZERO);
-	if (pcbp == NULL)
-		return (ENOMEM);
 	pcbp->type = type;
 
 	/* Link the pcb and the socket */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.17 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.18 2008/01/06 16:55:50 swildner Exp $
  */
 
 /*
@@ -196,17 +196,9 @@ icioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	    sc->ic_obuf = kmalloc(sc->ic_if.if_mtu + ICHDRLEN,
 				  M_DEVBUF, M_WAITOK);
-	    if (!sc->ic_obuf) {
-		iicbus_release_bus(parent, icdev);
-		return ENOBUFS;
-	    }
 
 	    sc->ic_ifbuf = kmalloc(sc->ic_if.if_mtu + ICHDRLEN,
 				  M_DEVBUF, M_WAITOK);
-	    if (!sc->ic_ifbuf) {
-		iicbus_release_bus(parent, icdev);
-		return ENOBUFS;
-	    }
 
 	    iicbus_reset(parent, IIC_FASTEST, 0, NULL);
 
@@ -221,25 +213,9 @@ icioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	/* allocate input buffer */
 	sc->ic_ifbuf = kmalloc(ifr->ifr_mtu+ICHDRLEN, M_DEVBUF, M_WAITOK);
-	if (!sc->ic_ifbuf) {
-
-	    sc->ic_ifbuf = iptr;
-	    sc->ic_obuf = optr;
-
-	    return ENOBUFS;
-	}
 
 	/* allocate output buffer */
 	sc->ic_ifbuf = kmalloc(ifr->ifr_mtu+ICHDRLEN, M_DEVBUF, M_WAITOK);
-	if (!sc->ic_obuf) {
-
-	    kfree(sc->ic_ifbuf,M_DEVBUF);
-
-	    sc->ic_ifbuf = iptr;
-	    sc->ic_obuf = optr;
-
-	    return ENOBUFS;
-	}
 
 	if (iptr)
 	    kfree(iptr,M_DEVBUF);

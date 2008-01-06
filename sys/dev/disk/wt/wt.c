@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.19 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.20 2008/01/06 16:55:49 swildner Exp $
  *
  */
 
@@ -335,8 +335,6 @@ wtopen (struct dev_open_args *ap)
 
 	t->bsize = (minor (dev) & WT_BSIZE) ? 1024 : 512;
 	t->buf = kmalloc (t->bsize, M_TEMP, M_WAITOK);
-	if (! t->buf)
-		return (EAGAIN);
 
 	if (isa_dma_acquire(t->chan))
 		return(EBUSY);

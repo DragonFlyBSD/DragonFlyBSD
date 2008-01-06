@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.83 2007/11/19 18:49:06 swildner Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.84 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include "opt_init_path.h"
@@ -131,8 +131,6 @@ sysinit_add(struct sysinit **set, struct sysinit **set_end)
 	else
 		count += sysinit_end - sysinit;
 	newset = kmalloc(count * sizeof(*sipp), M_TEMP, M_WAITOK);
-	if (newset == NULL)
-		panic("cannot malloc for sysinit");
 	xipp = newset;
 	if (newsysinit) {
 		for (sipp = newsysinit; sipp < newsysinit_end; sipp++)

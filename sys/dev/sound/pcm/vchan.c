@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/vchan.c,v 1.17.2.5 2007/02/04 06:17:14 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.7 2007/06/16 19:48:05 hasso Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.8 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.7 2007/06/16 19:48:05 hasso Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/vchan.c,v 1.8 2008/01/06 16:55:51 swildner Exp $");
 
 /*
  * Default speed
@@ -161,8 +161,6 @@ vchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c,
 
 	KASSERT(dir == PCMDIR_PLAY, ("vchan_init: bad direction"));
 	ch = kmalloc(sizeof(*ch), M_DEVBUF, M_WAITOK | M_ZERO);
-	if (!ch)
-		return NULL;
 	ch->parent = parent;
 	ch->channel = c;
 	ch->fmt = AFMT_U8;
@@ -406,10 +404,6 @@ vchan_create(struct pcm_channel *parent)
 	CHN_UNLOCK(parent);
 
 	pce = kmalloc(sizeof(*pce), M_DEVBUF, M_WAITOK | M_ZERO);
-	if (!pce) {
-   		CHN_LOCK(parent);
-		return ENOMEM;
-	}
 
 	/* create a new playback channel */
 	child = pcm_chn_create(d, parent, &vchan_class, PCMDIR_VIRTUAL, parent);

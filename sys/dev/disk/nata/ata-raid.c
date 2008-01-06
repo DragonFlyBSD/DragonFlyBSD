@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.120 2006/04/15 10:27:41 maxim Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.7 2007/06/17 03:54:07 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.8 2008/01/06 16:55:49 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -986,11 +986,8 @@ ata_raid_create(struct ata_ioc_raid_config *config)
     if (array >= MAX_ARRAYS)
 	return ENOSPC;
 
-    if (!(rdp = (struct ar_softc*)kmalloc(sizeof(struct ar_softc), M_AR,
-					 M_WAITOK | M_ZERO))) {
-	kprintf("ar%d: no memory for metadata storage\n", array);
-	return ENOMEM;
-    }
+    rdp = (struct ar_softc*)kmalloc(sizeof(struct ar_softc), M_AR,
+	M_WAITOK | M_ZERO);
 
     for (disk = 0; disk < config->total_disks; disk++) {
 	if ((subdisk = devclass_get_device(ata_raid_sub_devclass,
@@ -1561,8 +1558,7 @@ ata_raid_wipe_metadata(struct ar_softc *rdp)
 		       rdp->lun, ata_raid_format(rdp));
 		return ENXIO;
 	    }
-	    if (!(meta = kmalloc(size, M_AR, M_WAITOK | M_ZERO)))
-		return ENOMEM;
+	    meta = kmalloc(size, M_AR, M_WAITOK | M_ZERO);
 	    if (ata_raid_rw(rdp->disks[disk].dev, lba, meta, size,
 			    ATA_R_WRITE | ATA_R_DIRECT)) {
 		device_printf(rdp->disks[disk].dev, "wipe metadata failed\n");
@@ -1584,9 +1580,8 @@ ata_raid_adaptec_read_meta(device_t dev, struct ar_softc **raidp)
     struct ar_softc *raid;
     int array, disk, retval = 0; 
 
-    if (!(meta = (struct adaptec_raid_conf *)
-	  kmalloc(sizeof(struct adaptec_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct adaptec_raid_conf *)
+	    kmalloc(sizeof(struct adaptec_raid_conf), M_AR, M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, ADP_LBA(parent),
 		    meta, sizeof(struct adaptec_raid_conf), ATA_R_READ)) {
@@ -1611,10 +1606,6 @@ ata_raid_adaptec_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto adaptec_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format && (raid->format != AR_F_ADAPTEC_RAID))
@@ -1700,9 +1691,8 @@ ata_raid_hptv2_read_meta(device_t dev, struct ar_softc **raidp)
     struct ar_softc *raid = NULL;
     int array, disk_number = 0, retval = 0;
 
-    if (!(meta = (struct hptv2_raid_conf *)
-	  kmalloc(sizeof(struct hptv2_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct hptv2_raid_conf *)kmalloc(sizeof(struct hptv2_raid_conf),
+	M_AR, M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, HPTV2_LBA(parent),
 		    meta, sizeof(struct hptv2_raid_conf), ATA_R_READ)) {
@@ -1734,10 +1724,6 @@ ata_raid_hptv2_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto hptv2_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format && (raid->format != AR_F_HPTV2_RAID))
@@ -1852,11 +1838,8 @@ ata_raid_hptv2_write_meta(struct ar_softc *rdp)
     struct timeval timestamp;
     int disk, error = 0;
 
-    if (!(meta = (struct hptv2_raid_conf *)
-	  kmalloc(sizeof(struct hptv2_raid_conf), M_AR, M_WAITOK | M_ZERO))) {
-	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
-	return ENOMEM;
-    }
+    meta = (struct hptv2_raid_conf *)kmalloc(sizeof(struct hptv2_raid_conf),
+	M_AR, M_WAITOK | M_ZERO);
 
     microtime(&timestamp);
     rdp->magic_0 = timestamp.tv_sec + 2;
@@ -1947,9 +1930,8 @@ ata_raid_hptv3_read_meta(device_t dev, struct ar_softc **raidp)
     struct ar_softc *raid = NULL;
     int array, disk_number, retval = 0;
 
-    if (!(meta = (struct hptv3_raid_conf *)
-	  kmalloc(sizeof(struct hptv3_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct hptv3_raid_conf *)kmalloc(sizeof(struct hptv3_raid_conf),
+	M_AR, M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, HPTV3_LBA(parent),
 		    meta, sizeof(struct hptv3_raid_conf), ATA_R_READ)) {
@@ -1981,10 +1963,6 @@ ata_raid_hptv3_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto hptv3_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format && (raid->format != AR_F_HPTV3_RAID))
@@ -2089,9 +2067,7 @@ ata_raid_intel_read_meta(device_t dev, struct ar_softc **raidp)
     int array, count, disk, volume = 1, retval = 0;
     char *tmp;
 
-    if (!(meta = (struct intel_raid_conf *)
-	  kmalloc(1536, M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct intel_raid_conf *)kmalloc(1536, M_AR, M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, INTEL_LBA(parent), meta, 1024, ATA_R_READ)) {
 	if (testing || bootverbose)
@@ -2132,10 +2108,6 @@ ata_raid_intel_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto intel_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format && (raid->format != AR_F_INTEL_RAID))
@@ -2276,11 +2248,7 @@ ata_raid_intel_write_meta(struct ar_softc *rdp)
     int count, disk, error = 0;
     char *tmp;
 
-    if (!(meta = (struct intel_raid_conf *)
-	  kmalloc(1536, M_AR, M_WAITOK | M_ZERO))) {
-	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
-	return ENOMEM;
-    }
+    meta = (struct intel_raid_conf *)kmalloc(1536, M_AR, M_WAITOK | M_ZERO);
 
     rdp->generation++;
     microtime(&timestamp);
@@ -2392,9 +2360,8 @@ ata_raid_ite_read_meta(device_t dev, struct ar_softc **raidp)
     int array, disk_number, count, retval = 0;
     u_int16_t *ptr;
 
-    if (!(meta = (struct ite_raid_conf *)
-	  kmalloc(sizeof(struct ite_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct ite_raid_conf *)kmalloc(sizeof(struct ite_raid_conf), M_AR,
+	M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, ITE_LBA(parent),
 		    meta, sizeof(struct ite_raid_conf), ATA_R_READ)) {
@@ -2433,10 +2400,6 @@ ata_raid_ite_read_meta(device_t dev, struct ar_softc **raidp)
 	if (!raid) {
 	    raidp[array] = (struct ar_softc *)kmalloc(sizeof(struct ar_softc),
 						     M_AR, M_WAITOK | M_ZERO);
-	    if (!(raid = raidp[array])) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto ite_out;
-	    }
 	}
 
 	switch (meta->type) {
@@ -2514,9 +2477,8 @@ ata_raid_jmicron_read_meta(device_t dev, struct ar_softc **raidp)
     u_int64_t disk_size;
     int count, array, disk, total_disks, retval = 0;
 
-    if (!(meta = (struct jmicron_raid_conf *)
-	  kmalloc(sizeof(struct jmicron_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct jmicron_raid_conf *)
+	kmalloc(sizeof(struct jmicron_raid_conf), M_AR, M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, JMICRON_LBA(parent),
 		    meta, sizeof(struct jmicron_raid_conf), ATA_R_READ)) {
@@ -2551,10 +2513,6 @@ jmicron_next:
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto jmicron_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format && (raid->format != AR_F_JMICRON_RAID))
@@ -2650,11 +2608,8 @@ ata_raid_jmicron_write_meta(struct ar_softc *rdp)
     u_int64_t disk_sectors;
     int disk, error = 0;
 
-    if (!(meta = (struct jmicron_raid_conf *)
-	  kmalloc(sizeof(struct jmicron_raid_conf), M_AR, M_WAITOK | M_ZERO))) {
-	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
-	return ENOMEM;
-    }
+    meta = (struct jmicron_raid_conf *)
+	kmalloc(sizeof(struct jmicron_raid_conf), M_AR, M_WAITOK | M_ZERO);
 
     rdp->generation++;
     switch (rdp->type) {
@@ -2737,9 +2692,8 @@ ata_raid_lsiv2_read_meta(device_t dev, struct ar_softc **raidp)
     struct ar_softc *raid = NULL;
     int array, retval = 0;
 
-    if (!(meta = (struct lsiv2_raid_conf *)
-	  kmalloc(sizeof(struct lsiv2_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct lsiv2_raid_conf *)kmalloc(sizeof(struct lsiv2_raid_conf),
+	M_AR, M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, LSIV2_LBA(parent),
 		    meta, sizeof(struct lsiv2_raid_conf), ATA_R_READ)) {
@@ -2766,10 +2720,6 @@ ata_raid_lsiv2_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array + meta->raid_number] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array + meta->raid_number]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto lsiv2_out;
-	    }
 	}
 	raid = raidp[array + meta->raid_number];
 	if (raid->format && (raid->format != AR_F_LSIV2_RAID))
@@ -2861,9 +2811,8 @@ ata_raid_lsiv3_read_meta(device_t dev, struct ar_softc **raidp)
     u_int8_t checksum, *ptr;
     int array, entry, count, disk_number, retval = 0;
 
-    if (!(meta = (struct lsiv3_raid_conf *)
-	  kmalloc(sizeof(struct lsiv3_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct lsiv3_raid_conf *)kmalloc(sizeof(struct lsiv3_raid_conf),
+	M_AR, M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, LSIV3_LBA(parent),
 		    meta, sizeof(struct lsiv3_raid_conf), ATA_R_READ)) {
@@ -2897,10 +2846,6 @@ ata_raid_lsiv3_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto lsiv3_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format && (raid->format != AR_F_LSIV3_RAID)) {
@@ -2997,9 +2942,8 @@ ata_raid_nvidia_read_meta(device_t dev, struct ar_softc **raidp)
     u_int32_t checksum, *ptr;
     int array, count, retval = 0;
 
-    if (!(meta = (struct nvidia_raid_conf *)
-	  kmalloc(sizeof(struct nvidia_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct nvidia_raid_conf *)kmalloc(sizeof(struct nvidia_raid_conf),
+	M_AR, M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, NVIDIA_LBA(parent),
 		    meta, sizeof(struct nvidia_raid_conf), ATA_R_READ)) {
@@ -3034,10 +2978,6 @@ ata_raid_nvidia_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array] =
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto nvidia_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format && (raid->format != AR_F_NVIDIA_RAID))
@@ -3122,9 +3062,8 @@ ata_raid_promise_read_meta(device_t dev, struct ar_softc **raidp, int native)
     u_int32_t checksum, *ptr;
     int array, count, disk, disksum = 0, retval = 0; 
 
-    if (!(meta = (struct promise_raid_conf *)
-	  kmalloc(sizeof(struct promise_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct promise_raid_conf *)
+	kmalloc(sizeof(struct promise_raid_conf), M_AR, M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, PROMISE_LBA(parent),
 		    meta, sizeof(struct promise_raid_conf), ATA_R_READ)) {
@@ -3177,10 +3116,6 @@ ata_raid_promise_read_meta(device_t dev, struct ar_softc **raidp, int native)
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto promise_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format &&
@@ -3305,11 +3240,8 @@ ata_raid_promise_write_meta(struct ar_softc *rdp)
     u_int32_t *ckptr;
     int count, disk, drive, error = 0;
 
-    if (!(meta = (struct promise_raid_conf *)
-	  kmalloc(sizeof(struct promise_raid_conf), M_AR, M_WAITOK))) {
-	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
-	return ENOMEM;
-    }
+    meta = (struct promise_raid_conf *)
+	kmalloc(sizeof(struct promise_raid_conf), M_AR, M_WAITOK);
 
     rdp->generation++;
     microtime(&timestamp);
@@ -3459,9 +3391,8 @@ ata_raid_sii_read_meta(device_t dev, struct ar_softc **raidp)
     u_int16_t checksum, *ptr;
     int array, count, disk, retval = 0;
 
-    if (!(meta = (struct sii_raid_conf *)
-	  kmalloc(sizeof(struct sii_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct sii_raid_conf *)kmalloc(sizeof(struct sii_raid_conf), M_AR,
+	M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, SII_LBA(parent),
 		    meta, sizeof(struct sii_raid_conf), ATA_R_READ)) {
@@ -3504,10 +3435,6 @@ ata_raid_sii_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto sii_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format && (raid->format != AR_F_SII_RAID))
@@ -3607,9 +3534,8 @@ ata_raid_sis_read_meta(device_t dev, struct ar_softc **raidp)
     struct ar_softc *raid = NULL;
     int array, disk_number, drive, retval = 0;
 
-    if (!(meta = (struct sis_raid_conf *)
-	  kmalloc(sizeof(struct sis_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct sis_raid_conf *)kmalloc(sizeof(struct sis_raid_conf), M_AR,
+	M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, SIS_LBA(parent),
 		    meta, sizeof(struct sis_raid_conf), ATA_R_READ)) {
@@ -3635,10 +3561,6 @@ ata_raid_sis_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto sis_out;
-	    }
 	}
 
 	raid = raidp[array];
@@ -3724,11 +3646,8 @@ ata_raid_sis_write_meta(struct ar_softc *rdp)
     struct timeval timestamp;
     int disk, error = 0;
 
-    if (!(meta = (struct sis_raid_conf *)
-	  kmalloc(sizeof(struct sis_raid_conf), M_AR, M_WAITOK | M_ZERO))) {
-	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
-	return ENOMEM;
-    }
+    meta = (struct sis_raid_conf *)kmalloc(sizeof(struct sis_raid_conf), M_AR,
+	M_WAITOK | M_ZERO);
 
     rdp->generation++;
     microtime(&timestamp);
@@ -3807,9 +3726,8 @@ ata_raid_via_read_meta(device_t dev, struct ar_softc **raidp)
     u_int8_t checksum, *ptr;
     int array, count, disk, retval = 0;
 
-    if (!(meta = (struct via_raid_conf *)
-	  kmalloc(sizeof(struct via_raid_conf), M_AR, M_WAITOK | M_ZERO)))
-	return ENOMEM;
+    meta = (struct via_raid_conf *)kmalloc(sizeof(struct via_raid_conf), M_AR,
+	M_WAITOK | M_ZERO);
 
     if (ata_raid_rw(parent, VIA_LBA(parent),
 		    meta, sizeof(struct via_raid_conf), ATA_R_READ)) {
@@ -3843,10 +3761,6 @@ ata_raid_via_read_meta(device_t dev, struct ar_softc **raidp)
 	    raidp[array] = 
 		(struct ar_softc *)kmalloc(sizeof(struct ar_softc), M_AR,
 					  M_WAITOK | M_ZERO);
-	    if (!raidp[array]) {
-		device_printf(parent, "failed to allocate metadata storage\n");
-		goto via_out;
-	    }
 	}
 	raid = raidp[array];
 	if (raid->format && (raid->format != AR_F_VIA_RAID))
@@ -3942,11 +3856,8 @@ ata_raid_via_write_meta(struct ar_softc *rdp)
     struct via_raid_conf *meta;
     int disk, error = 0;
 
-    if (!(meta = (struct via_raid_conf *)
-	  kmalloc(sizeof(struct via_raid_conf), M_AR, M_WAITOK | M_ZERO))) {
-	kprintf("ar%d: failed to allocate metadata storage\n", rdp->lun);
-	return ENOMEM;
-    }
+    meta = (struct via_raid_conf *)kmalloc(sizeof(struct via_raid_conf), M_AR,
+	M_WAITOK | M_ZERO);
 
     rdp->generation++;
 
@@ -4218,10 +4129,6 @@ ata_raid_module_event_handler(module_t mod, int what, void *arg)
 	/* setup table to hold metadata for all ATA PseudoRAID arrays */
 	ata_raid_arrays = kmalloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
 				M_AR, M_WAITOK | M_ZERO);
-	if (!ata_raid_arrays) {
-	    kprintf("ataraid: no memory for metadata storage\n");
-	    return ENOMEM;
-	}
 #endif
 	/* attach found PseudoRAID arrays */
 	for (i = 0; i < MAX_ARRAYS; i++) {

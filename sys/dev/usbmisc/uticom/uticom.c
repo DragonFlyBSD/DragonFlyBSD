@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/usbmisc/uticom/uticom.c,v 1.1 2007/11/07 08:31:08 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uticom/uticom.c,v 1.2 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -913,12 +913,6 @@ static int uticom_download_fw(struct uticom_softc *sc, unsigned int pipeno,
 
 	buffer_size = UTICOM_FW_BUFSZ + sizeof(struct uticom_fw_header);
 	buffer = kmalloc(buffer_size, M_USBDEV, M_WAITOK);
-
-	if (!buffer) {
-		device_printf(sc->sc_ucom.sc_dev,
-			      "uticom_download_fw: out of memory\n");
-		return ENOMEM;
-	}
 
 	memcpy(buffer, firmware, firmware_size);
 	memset(buffer + firmware_size, 0xff, buffer_size - firmware_size);

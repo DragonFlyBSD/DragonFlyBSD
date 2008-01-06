@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.19 2008/01/05 14:02:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.20 2008/01/06 16:55:52 swildner Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -384,8 +384,6 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	if (sotorawcb(so) != 0)
 		return EISCONN;	/* XXX panic? */
 	kp = (struct keycb *)kmalloc(sizeof *kp, M_PCB, M_WAITOK | M_ZERO); /* XXX */
-	if (kp == 0)
-		return ENOBUFS;
 
 	/*
 	 * The critical section is necessary to block protocols from sending

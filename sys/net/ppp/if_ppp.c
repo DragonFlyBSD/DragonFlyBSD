@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.36 2007/08/24 16:00:52 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.37 2008/01/06 16:55:52 swildner Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -545,9 +545,6 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	newcodelen = nbp->bf_len * sizeof(struct bpf_insn);
 	if (newcodelen != 0) {
 	    MALLOC(newcode, struct bpf_insn *, newcodelen, M_DEVBUF, M_WAITOK);
-	    if (newcode == 0) {
-		return EINVAL;		/* or sumpin */
-	    }
 	    if ((error = copyin((caddr_t)nbp->bf_insns, (caddr_t)newcode,
 			       newcodelen)) != 0) {
 		kfree(newcode, M_DEVBUF);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.20 2006/12/23 23:47:54 swildner Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.21 2008/01/06 16:55:51 swildner Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -630,8 +630,6 @@ shmrealloc(void)
 		return;
 
 	newsegs = kmalloc(shminfo.shmmni * sizeof(*newsegs), M_SHM, M_WAITOK);
-	if (newsegs == NULL)
-		return;
 	for (i = 0; i < shmalloced; i++)
 		bcopy(&shmsegs[i], &newsegs[i], sizeof(newsegs[0]));
 	for (; i < shminfo.shmmni; i++) {
@@ -651,8 +649,6 @@ shminit(void *dummy)
 	shminfo.shmmax = shminfo.shmall * PAGE_SIZE;
 	shmalloced = shminfo.shmmni;
 	shmsegs = kmalloc(shmalloced * sizeof(shmsegs[0]), M_SHM, M_WAITOK);
-	if (shmsegs == NULL)
-		panic("cannot allocate initial memory for sysvshm");
 	for (i = 0; i < shmalloced; i++) {
 		shmsegs[i].shm_perm.mode = SHMSEG_FREE;
 		shmsegs[i].shm_perm.seq = 0;

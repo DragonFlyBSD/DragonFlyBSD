@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_rq.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.10 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.11 2008/01/06 16:55:53 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -68,8 +68,6 @@ smb_rq_alloc(struct smb_connobj *layer, u_char cmd, struct smb_cred *scred,
 	int error;
 
 	MALLOC(rqp, struct smb_rq *, sizeof(*rqp), M_SMBRQ, M_WAITOK);
-	if (rqp == NULL)
-		return ENOMEM;
 	error = smb_rq_init(rqp, layer, cmd, scred);
 	rqp->sr_flags |= SMBR_ALLOCED;
 	if (error) {
@@ -366,8 +364,6 @@ smb_t2_alloc(struct smb_connobj *layer, u_short setup, struct smb_cred *scred,
 	int error;
 
 	MALLOC(t2p, struct smb_t2rq *, sizeof(*t2p), M_SMBRQ, M_WAITOK);
-	if (t2p == NULL)
-		return ENOMEM;
 	error = smb_t2_init(t2p, layer, setup, scred);
 	t2p->t2_flags |= SMBT2_ALLOCED;
 	if (error) {

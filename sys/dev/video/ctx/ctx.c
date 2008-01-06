@@ -9,7 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.11 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.12 2008/01/06 16:55:51 swildner Exp $
  */
 
 /*
@@ -221,8 +221,6 @@ ctxopen(struct dev_open_args *ap)
 	/* get space for the LUT buffer */
 
 	sr->lutp = kmalloc(LUTSIZE, M_DEVBUF, M_WAITOK);
-	if (sr->lutp == NULL)
-		return (ENOMEM);
 
 	sr->flag = OPEN;
 

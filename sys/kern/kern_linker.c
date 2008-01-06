@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.40 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.41 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include "opt_ddb.h"
@@ -260,10 +260,6 @@ linker_load_file(const char* filename, linker_file_t* result)
     }
 
     koname = kmalloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
-    if (koname == NULL) {
-	error = ENOMEM;
-	goto out;
-    }
     ksprintf(koname, "%s.ko", filename);
     lf = NULL;
     foundfile = 0;
@@ -324,8 +320,6 @@ linker_find_file_by_name(const char* filename)
     filename += i;
 
     koname = kmalloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
-    if (koname == NULL)
-	goto out;
     ksprintf(koname, "%s.ko", filename);
 
     lockmgr(&lock, LK_SHARED);
@@ -337,7 +331,6 @@ linker_find_file_by_name(const char* filename)
     }
     lockmgr(&lock, LK_RELEASE);
 
-out:
     if (koname)
 	kfree(koname, M_LINKER);
     return lf;
@@ -374,8 +367,6 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
     lockmgr(&lock, LK_EXCLUSIVE);
     namelen = strlen(filename) + 1;
     lf = kmalloc(sizeof(struct linker_file) + namelen, M_LINKER, M_WAITOK);
-    if (!lf)
-	goto out;
     bzero(lf, sizeof(*lf));
 
     lf->refs = 1;
@@ -393,7 +384,6 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
     lf->ops = ops;
     TAILQ_INSERT_TAIL(&linker_files, lf, link);
 
-out:
     lockmgr(&lock, LK_RELEASE);
     return lf;
 }
@@ -499,8 +489,6 @@ linker_file_add_dependancy(linker_file_t file, linker_file_t dep)
 
     newdeps = kmalloc((file->ndeps + 1) * sizeof(linker_file_t*),
 		     M_LINKER, M_WAITOK | M_ZERO);
-    if (newdeps == NULL)
-	return ENOMEM;
 
     if (file->deps) {
 	bcopy(file->deps, newdeps, file->ndeps * sizeof(linker_file_t*));
@@ -606,10 +594,6 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 		    + common_size
 		    + strlen(name) + 1,
 		    M_LINKER, M_WAITOK | M_ZERO);
-	if (!cp) {
-	    KLD_DPF(SYM, ("linker_file_lookup_symbol: nomem\n"));
-	    return ENOMEM;
-	}
 
 	cp->address = (caddr_t) (cp + 1);
 	cp->name = cp->address + common_size;
@@ -1098,8 +1082,8 @@ linker_strdup(const char *str)
 {
     char	*result;
 
-    if ((result = kmalloc((strlen(str) + 1), M_LINKER, M_WAITOK)) != NULL)
-	strcpy(result, str);
+    result = kmalloc(strlen(str) + 1, M_LINKER, M_WAITOK);
+    strcpy(result, str);
     return(result);
 }
 

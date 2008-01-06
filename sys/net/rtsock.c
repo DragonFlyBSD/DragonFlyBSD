@@ -64,7 +64,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.41 2007/12/19 11:00:22 sephe Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.42 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include "opt_sctp.h"
@@ -149,8 +149,6 @@ rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 		return EISCONN;	/* XXX panic? */
 
 	rp = kmalloc(sizeof *rp, M_PCB, M_WAITOK | M_ZERO);
-	if (rp == NULL)
-		return ENOBUFS;
 
 	/*
 	 * The critical section is necessary to block protocols from sending

@@ -34,7 +34,7 @@
  *	@(#)ipx.c
  *
  * $FreeBSD: src/sys/netipx/ipx.c,v 1.17.2.3 2003/04/04 09:35:43 tjr Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.13 2006/12/22 23:57:54 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.14 2008/01/06 16:55:52 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -130,8 +130,6 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 			oia = (struct ipx_ifaddr *)
 				kmalloc(sizeof(*ia), M_IFADDR,
 				M_WAITOK | M_ZERO);
-			if (oia == NULL)
-				return (ENOBUFS);
 			if ((ia = ipx_ifaddr) != NULL) {
 				for ( ; ia->ia_next != NULL; ia = ia->ia_next)
 					;

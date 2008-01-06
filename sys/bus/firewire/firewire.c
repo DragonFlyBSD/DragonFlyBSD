@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.20 2007/11/14 18:27:52 swildner Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.21 2008/01/06 16:55:49 swildner Exp $
  *
  */
 
@@ -587,8 +587,6 @@ fw_init_crom(struct firewire_comm *fc)
 
 	fc->crom_src_buf = (struct crom_src_buf *)
 		kmalloc(sizeof(struct crom_src_buf), M_FW, M_WAITOK | M_ZERO);
-	if (fc->crom_src_buf == NULL)
-		return;
 
 	src = &fc->crom_src_buf->src;
 	bzero(src, sizeof(struct crom_src));
@@ -774,7 +772,6 @@ fw_init(struct firewire_comm *fc)
 	SLIST_INIT(&fc->csrfree);
 	for( i = 0 ; i < FWMAXCSRDIR ; i++){
 		csrd = kmalloc(sizeof(struct csrdir), M_FW, M_WAITOK);
-		if(csrd == NULL) break;
 		SLIST_INSERT_HEAD(&fc->csrfree, csrd, link);
 	}
 

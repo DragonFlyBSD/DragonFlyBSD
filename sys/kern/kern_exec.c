@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.62 2007/08/28 01:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.63 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1030,8 +1030,6 @@ exec_register(const struct execsw *execsw_arg)
 		for (es = execsw; *es; es++)
 			count++;
 	newexecsw = kmalloc(count * sizeof(*es), M_TEMP, M_WAITOK);
-	if (newexecsw == NULL)
-		return ENOMEM;
 	xs = newexecsw;
 	if (execsw)
 		for (es = execsw; *es; es++)
@@ -1063,8 +1061,6 @@ exec_unregister(const struct execsw *execsw_arg)
 		if (*es != execsw_arg)
 			count++;
 	newexecsw = kmalloc(count * sizeof(*es), M_TEMP, M_WAITOK);
-	if (newexecsw == NULL)
-		return ENOMEM;
 	xs = newexecsw;
 	for (es = execsw; *es; es++)
 		if (*es != execsw_arg)

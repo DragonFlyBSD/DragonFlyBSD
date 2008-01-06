@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.69 2004/03/17 09:37:13 cperciva Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.18 2006/12/23 23:47:54 swildner Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.19 2008/01/06 16:55:51 swildner Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -166,14 +166,8 @@ seminit(void *dummy)
 	int i;
 
 	sem = kmalloc(sizeof(struct sem) * seminfo.semmns, M_SEM, M_WAITOK);
-	if (sem == NULL)
-		panic("sem is NULL");
 	sema = kmalloc(sizeof(struct semid_ds) * seminfo.semmni, M_SEM, M_WAITOK);
-	if (sema == NULL)
-		panic("sema is NULL");
 	semu = kmalloc(seminfo.semmnu * seminfo.semusz, M_SEM, M_WAITOK);
-	if (semu == NULL)
-		panic("semu is NULL");
 
 	for (i = 0; i < seminfo.semmni; i++) {
 		sema[i].sem_base = 0;

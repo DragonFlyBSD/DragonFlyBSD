@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.44 2008/01/05 14:02:37 swildner Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.45 2008/01/06 16:55:50 swildner Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -952,8 +952,6 @@ txp_alloc_rings(struct txp_softc *sc)
 			continue;
 		sc->sc_rxbufs[i].rb_sd = kmalloc(sizeof(struct txp_swdesc),
 		    M_DEVBUF, M_WAITOK);
-		if (sc->sc_rxbufs[i].rb_sd == NULL)
-			return(ENOBUFS);
 		sd = sc->sc_rxbufs[i].rb_sd;
 		sd->sd_mbuf = NULL;
 	}

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.17 2006/12/23 23:47:54 swildner Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.18 2008/01/06 16:55:51 swildner Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -130,17 +130,9 @@ msginit(void *dummy)
 
 	msginfo.msgmax = msginfo.msgseg * msginfo.msgssz;
 	msgpool = kmalloc(msginfo.msgmax, M_MSG, M_WAITOK);
-	if (msgpool == NULL)
-		panic("msgpool is NULL");
 	msgmaps = kmalloc(sizeof(struct msgmap) * msginfo.msgseg, M_MSG, M_WAITOK);
-	if (msgmaps == NULL)
-		panic("msgmaps is NULL");
 	msghdrs = kmalloc(sizeof(struct msg) * msginfo.msgtql, M_MSG, M_WAITOK);
-	if (msghdrs == NULL)
-		panic("msghdrs is NULL");
 	msqids = kmalloc(sizeof(struct msqid_ds) * msginfo.msgmni, M_MSG, M_WAITOK);
-	if (msqids == NULL)
-		panic("msqids is NULL");
 
 	/*
 	 * msginfo.msgssz should be a power of two for efficiency reasons.

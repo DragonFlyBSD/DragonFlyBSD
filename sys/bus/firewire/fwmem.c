@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.15 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.16 2008/01/06 16:55:49 swildner Exp $
  */
 
 #ifndef __DragonFly__
@@ -287,8 +287,6 @@ fwmem_open (struct dev_open_args *ap)
 	} else {
 		fms = (struct fwmem_softc *)kmalloc(sizeof(struct fwmem_softc),
 							M_FWMEM, M_WAITOK);
-		if (fms == NULL)
-			return ENOMEM;
 		bcopy(&fwmem_eui64, &fms->eui, sizeof(struct fw_eui64));
 		dev->si_drv1 = (void *)fms;
 		dev->si_iosize_max = DFLTPHYS;

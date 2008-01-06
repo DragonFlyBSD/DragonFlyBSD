@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.29 2007/09/09 09:14:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.30 2008/01/06 16:55:50 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -306,10 +306,6 @@ found:
 		xferq->bulkxfer = (struct fw_bulkxfer *) kmalloc(
 			sizeof(struct fw_bulkxfer) * xferq->bnchunk,
 							M_FWE, M_WAITOK);
-		if (xferq->bulkxfer == NULL) {
-			if_printf(ifp, "malloc failed\n");
-			return;
-		}
 		STAILQ_INIT(&xferq->stvalid);
 		STAILQ_INIT(&xferq->stfree);
 		STAILQ_INIT(&xferq->stdma);

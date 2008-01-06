@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.36 2007/11/06 07:37:00 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.37 2008/01/06 16:55:50 swildner Exp $
  */
 
 /*
@@ -823,8 +823,6 @@ aue_tx_list_init(struct aue_softc *sc)
 				return (ENOBUFS);
 		}
 		c->aue_buf = kmalloc(AUE_BUFSZ, M_USBDEV, M_WAITOK);
-		if (c->aue_buf == NULL)
-			return (ENOBUFS);
 	}
 
 	return (0);

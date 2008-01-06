@@ -8,7 +8,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/inflate.c,v 1.14 1999/12/29 04:54:39 peter Exp $
- * $DragonFly: src/sys/kern/inflate.c,v 1.7 2006/12/23 23:47:54 swildner Exp $
+ * $DragonFly: src/sys/kern/inflate.c,v 1.8 2008/01/06 16:55:51 swildner Exp $
  *
  *
  */
@@ -554,12 +554,7 @@ huft_build(struct inflate *glbl, unsigned *b, unsigned n, unsigned s,
 				l[h] = j;	/* set table size in stack */
 
 				/* allocate and link in new table */
-				if ((q = (struct huft *) kmalloc((z + 1) * sizeof(struct huft), M_GZIP, M_WAITOK)) ==
-				    (struct huft *) NULL) {
-					if (h)
-						huft_free(glbl, u[0]);
-					return 3;	/* not enough memory */
-				}
+				q = (struct huft *) kmalloc((z + 1) * sizeof(struct huft), M_GZIP, M_WAITOK);
 				glbl->gz_hufts += z + 1;	/* track memory usage */
 				*t = q + 1;	/* link to list for
 						 * huft_free() */

@@ -27,7 +27,7 @@
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
  * $FreeBSD: src/sys/dev/ipw/if_ipw.c,v 1.7.2.4 2006/01/29 15:13:01 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.20 2007/02/20 14:24:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.21 2008/01/06 16:55:50 swildner Exp $
  */
 
 /*-
@@ -1811,16 +1811,8 @@ ipw_cache_firmware(struct ipw_softc *sc, void *data)
 	p += sizeof hdr;
 
 	fw->main = kmalloc(fw->main_size, M_DEVBUF, M_WAITOK);
-	if (fw->main == NULL) {
-		error = ENOMEM;
-		goto fail1;
-	}
 
 	fw->ucode = kmalloc(fw->ucode_size, M_DEVBUF, M_WAITOK);
-	if (fw->ucode == NULL) {
-		error = ENOMEM;
-		goto fail2;
-	}
 
 	if ((error = copyin(p, fw->main, fw->main_size)) != 0)
 		goto fail3;
@@ -1837,7 +1829,7 @@ ipw_cache_firmware(struct ipw_softc *sc, void *data)
 	return 0;
 
 fail3:	kfree(fw->ucode, M_DEVBUF);
-fail2:	kfree(fw->main, M_DEVBUF);
+	kfree(fw->main, M_DEVBUF);
 fail1:
 
 	return error;

@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.36 2007/08/13 17:43:55 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.37 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -848,8 +848,6 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	n = unp_count;
 
 	unp_list = kmalloc(n * sizeof *unp_list, M_TEMP, M_WAITOK);
-	if (unp_list == NULL)
-		return ENOMEM;
 	
 	for (unp = LIST_FIRST(head), i = 0; unp && i < n;
 	     unp = LIST_NEXT(unp, unp_link)) {

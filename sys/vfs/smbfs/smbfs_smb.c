@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_smb.c,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.10 2008/01/05 14:02:41 swildner Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.11 2008/01/06 16:55:53 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1034,8 +1034,6 @@ smbfs_findopenLM2(struct smbfs_fctx *ctx, struct smbnode *dnp,
 	const char *wildcard, int wclen, int attr, struct smb_cred *scred)
 {
 	ctx->f_name = kmalloc(SMB_MAXFNAMELEN, M_SMBFSDATA, M_WAITOK);
-	if (ctx->f_name == NULL)
-		return ENOMEM;
 	ctx->f_infolevel = SMB_DIALECT(SSTOVC(ctx->f_ssp)) < SMB_DIALECT_NTLM0_12 ?
 	    SMB_INFO_STANDARD : SMB_FIND_FILE_DIRECTORY_INFO;
 	ctx->f_attrmask = attr;
@@ -1174,8 +1172,6 @@ smbfs_findopen(struct smbnode *dnp, const char *wildcard, int wclen, int attr,
 	int error;
 
 	ctx = kmalloc(sizeof(*ctx), M_SMBFSDATA, M_WAITOK | M_ZERO);
-	if (ctx == NULL)
-		return ENOMEM;
 	ctx->f_ssp = dnp->n_mount->sm_share;
 	ctx->f_dnp = dnp;
 	ctx->f_flags = SMBFS_RDD_FINDFIRST;

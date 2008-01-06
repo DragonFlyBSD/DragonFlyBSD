@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.12 2006/12/22 23:26:16 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.13 2008/01/06 16:55:49 swildner Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.
@@ -1050,19 +1050,8 @@ isp_pci_mbxdma(struct ispsoftc *isp)
 
 	len = sizeof (XS_T **) * isp->isp_maxcmds;
 	isp->isp_xflist = (XS_T **) kmalloc(len, M_DEVBUF, M_WAITOK | M_ZERO);
-	if (isp->isp_xflist == NULL) {
-		isp_prt(isp, ISP_LOGERR, "cannot alloc xflist array");
-		ISP_LOCK(isp);
-		return (1);
-	}
 	len = sizeof (bus_dmamap_t) * isp->isp_maxcmds;
 	pcs->dmaps = (bus_dmamap_t *) kmalloc(len, M_DEVBUF,  M_WAITOK);
-	if (pcs->dmaps == NULL) {
-		isp_prt(isp, ISP_LOGERR, "can't alloc dma map storage");
-		kfree(isp->isp_xflist, M_DEVBUF);
-		ISP_LOCK(isp);
-		return (1);
-	}
 
 	/*
 	 * Allocate and map the request, result queues, plus FC scratch area.

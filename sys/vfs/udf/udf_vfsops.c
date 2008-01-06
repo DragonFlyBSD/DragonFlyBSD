@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.26 2007/05/09 00:53:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.27 2008/01/06 16:55:53 swildner Exp $
  */
 
 /* udf_vfsops.c */
@@ -654,8 +654,6 @@ udf_find_partmaps(struct udf_mnt *udfmp, struct logvol_desc *lvd)
 		pms = &pmap->pms;
 		udfmp->s_table = kmalloc(pms->st_size, M_UDFMOUNT,
 					M_WAITOK | M_ZERO);
-		if (udfmp->s_table == NULL)
-			return(ENOMEM);
 
 		/* Calculate the number of sectors per packet. */
 		/* XXX Logical or physical? */

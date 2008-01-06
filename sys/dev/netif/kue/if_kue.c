@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.28 2007/11/06 07:37:00 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.29 2008/01/06 16:55:50 swildner Exp $
  */
 
 /*
@@ -592,8 +592,6 @@ kue_tx_list_init(struct kue_softc *sc)
 				return(ENOBUFS);
 		}
 		c->kue_buf = kmalloc(KUE_BUFSZ, M_USBDEV, M_WAITOK);
-		if (c->kue_buf == NULL)
-			return(ENOBUFS);
 	}
 
 	return(0);

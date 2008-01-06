@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.10 2004/06/11 18:57:31 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.18 2007/05/15 22:44:11 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.19 2008/01/06 16:55:51 swildner Exp $
  */
 
 /*
@@ -525,10 +525,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 	 */
 	tr->tr_length = (tu->tu_size + 511) & ~511;
 	if (tr->tr_length > 0) {
-	    if ((tr->tr_data = kmalloc(tr->tr_length, M_DEVBUF, M_WAITOK)) == NULL) {
-		error = ENOMEM;
-		goto cmd_done;
-	    }
+	    tr->tr_data = kmalloc(tr->tr_length, M_DEVBUF, M_WAITOK);
 	    if ((error = copyin(tu->tu_data, tr->tr_data, tu->tu_size)) != 0)
 		goto cmd_done;
 	    tr->tr_flags |= TWE_CMD_DATAIN | TWE_CMD_DATAOUT;
@@ -607,14 +604,11 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 	break;
 
     case TWEIO_SET_PARAM:
-	if ((data = kmalloc(tp->tp_size, M_DEVBUF, M_WAITOK)) == NULL) {
-	    error = ENOMEM;
-	} else {
-	    error = copyin(tp->tp_data, data, tp->tp_size);
-	    if (error == 0)
-		error = twe_set_param(sc, tp->tp_table_id, tp->tp_param_id, tp->tp_size, data);
-	    kfree(data, M_DEVBUF);
-	}
+	data = kmalloc(tp->tp_size, M_DEVBUF, M_WAITOK);
+	error = copyin(tp->tp_data, data, tp->tp_size);
+	if (error == 0)
+	    error = twe_set_param(sc, tp->tp_table_id, tp->tp_param_id, tp->tp_size, data);
+	kfree(data, M_DEVBUF);
 	break;
 
     case TWEIO_RESET:

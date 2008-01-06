@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.15 2008/01/05 14:02:39 swildner Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.16 2008/01/06 16:55:52 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -317,8 +317,6 @@ ng_eiface_constructor(node_p *nodep)
 
 	/* Allocate node and interface private structures */
 	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_ZERO);
-	if (priv == NULL)
-		return (ENOMEM);
 
 	ifp = &(priv->arpcom.ac_if);
 

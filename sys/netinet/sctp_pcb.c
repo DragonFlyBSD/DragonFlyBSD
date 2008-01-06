@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.12 2007/04/22 01:13:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.13 2008/01/06 16:55:52 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -5031,9 +5031,6 @@ sctp_initiate_iterator(asoc_func af, uint32_t pcb_state, uint32_t asoc_state,
 	}
 	MALLOC(it, struct sctp_iterator *, sizeof(struct sctp_iterator), M_PCB,
 	       M_WAITOK);
-	if (it == NULL) {
-		return (ENOMEM);
-	}
 	memset(it, 0, sizeof(*it));
 	it->function_toapply = af;
 	it->function_atend = ef;

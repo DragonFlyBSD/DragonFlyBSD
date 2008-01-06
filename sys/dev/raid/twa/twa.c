@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.7 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.8 2008/01/06 16:55:51 swildner Exp $
  */
 
 /*
@@ -110,17 +110,8 @@ twa_setup(struct twa_softc *sc)
 	}
 
 	/* Allocate memory for the AEN queue. */
-	if ((aen_queue = kmalloc(sizeof(struct twa_event_packet) * TWA_Q_LENGTH,
-					M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
-		/* 
-		 * This should not cause us to return error.  We will only be
-		 * unable to support AEN's.  But then, we will have to check
-		 * time and again to see if we can support AEN's, if we
-		 * continue.  So, we will just return error.
-		 */
-		twa_printf(sc, "Could not allocate memory for AEN queue.\n");
-		return(ENOMEM); /* any unfreed memory will be freed by twa_free */
-	}
+	aen_queue = kmalloc(sizeof(struct twa_event_packet) * TWA_Q_LENGTH,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
 	/* Initialize the aen queue. */
 	for (i = 0; i < TWA_Q_LENGTH; i++)
 		sc->twa_aen_queue[i] = &(aen_queue[i]);
@@ -172,11 +163,7 @@ twa_flash_firmware(struct twa_softc *sc)
 	tr->tr_cmd_pkt_type |= TWA_CMD_PKT_TYPE_INTERNAL;
 	/* Allocate sufficient memory to hold a chunk of the firmware image. */
 	fw_img_chunk_size = ((twa_fw_img_size/NUM_FW_IMAGE_CHUNKS) + 511) & ~511;
-	if ((tr->tr_data = kmalloc(fw_img_chunk_size, M_DEVBUF, M_WAITOK)) == NULL) {
-		twa_printf (sc, "Could not allocate memory for firmware image.\n"); 
-		error = ENOMEM;
-		goto out;
-	}
+	tr->tr_data = kmalloc(fw_img_chunk_size, M_DEVBUF, M_WAITOK);
 	remaining_img_size = twa_fw_img_size;
 	cmd = &(tr->tr_command->command.cmd_pkt_7k.download_fw);
 
@@ -582,11 +569,8 @@ twa_ioctl(struct twa_softc *sc, int cmd, void *buf)
 		 */
   		data_buf_size_adjusted = (user_buf->twa_drvr_pkt.buffer_length + 511) & ~511;
 		if ((tr->tr_length = data_buf_size_adjusted)) {
-			if ((tr->tr_data = kmalloc(data_buf_size_adjusted, M_DEVBUF, M_WAITOK)) == NULL) {
-				twa_printf(sc, "Could not alloc mem for fw_passthru data_buf.\n");
-				error = ENOMEM;
-				goto fw_passthru_done;
-			}
+			tr->tr_data = kmalloc(data_buf_size_adjusted, M_DEVBUF,
+			    M_WAITOK);
 			/* Copy the payload. */
 			if ((error = copyin((void *) (user_buf->pdata), 
 					(void *) (tr->tr_data),

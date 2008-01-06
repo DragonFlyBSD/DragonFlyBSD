@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.19 2006/12/22 23:44:56 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.20 2008/01/06 16:55:52 swildner Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -642,12 +642,6 @@ i4bioctl(struct dev_ioctl_args *ap)
 			prots2 = kmalloc(r->numprotos * sizeof(struct isdn_dr_prot),
 					M_DEVBUF, M_WAITOK);
 
-			if(!prots || !prots2)
-			{
-				error = ENOMEM;
-				goto download_done;
-			}
-
 			copyin(r->protocols, prots, r->numprotos * sizeof(struct isdn_dr_prot));
 
 			for(i = 0; i < r->numprotos; i++)
@@ -714,27 +708,14 @@ download_done:
 
 				req.in_param = kmalloc(r->in_param_len, M_DEVBUF, M_WAITOK);
 
-				if(!req.in_param)
-				{
-					error = ENOMEM;
-					goto diag_done;
-				}
 				error = copyin(r->in_param, req.in_param, req.in_param_len);
 				if (error)
 					goto diag_done;
 			}
 
 			if(req.out_param_len)
-			{
 				req.out_param = kmalloc(r->out_param_len, M_DEVBUF, M_WAITOK);
 
-				if(!req.out_param)
-				{
-					error = ENOMEM;
-					goto diag_done;
-				}
-			}
-			
 			error = ctrl_desc[r->controller].N_DIAGNOSTICS(r->controller, &req);
 
 			if(!error && req.out_param_len)

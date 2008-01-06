@@ -27,7 +27,7 @@
  *   Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_scatter.h,v 1.4.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_scatter.h,v 1.4 2006/09/05 03:48:10 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_scatter.h,v 1.5 2008/01/06 16:55:49 swildner Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -85,16 +85,6 @@ int DRM(sg_alloc)( DRM_IOCTL_ARGS )
 	bzero( (void *)entry->busaddr, pages * sizeof(*entry->busaddr) );
 
 	entry->virtual = kmalloc( pages << PAGE_SHIFT, DRM(M_DRM), M_WAITOK );
-	if ( !entry->virtual ) {
-		DRM(free)( entry->busaddr,
-			   entry->pages * sizeof(*entry->busaddr),
-			   DRM_MEM_PAGES );
-		DRM(free)( entry,
-			   sizeof(*entry),
-			   DRM_MEM_SGLISTS );
-		return ENOMEM;
-	}
-
 	bzero( entry->virtual, pages << PAGE_SHIFT );
 
 	entry->handle = (unsigned long)entry->virtual;

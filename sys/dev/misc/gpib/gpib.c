@@ -17,7 +17,7 @@
  * all derivative works or modified versions.
  *
  * $FreeBSD: src/sys/i386/isa/gpib.c,v 1.29 2000/01/29 16:17:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.14 2006/12/22 23:26:17 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.15 2008/01/06 16:55:50 swildner Exp $
  *
  */
 /*Please read the README file for usage information*/
@@ -162,10 +162,7 @@ gpopen(struct dev_open_args *ap)
 		return(EBUSY);
 	}
 
-	/* Have memory for buffer? */
 	sc->sc_inbuf = kmalloc(BUFSIZE, M_DEVBUF, M_WAITOK);
-	if (sc->sc_inbuf == 0)
-		return(ENOMEM);
 
         if (initgpib()) return(EBUSY);
         sc->sc_flags |= OPEN;

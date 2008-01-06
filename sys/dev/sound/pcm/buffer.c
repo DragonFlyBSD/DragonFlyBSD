@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.25.2.3 2007/04/26 08:21:43 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.10 2008/01/05 13:34:22 corecode Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.11 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.10 2008/01/05 13:34:22 corecode Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.11 2008/01/06 16:55:51 swildner Exp $");
 
 /*
  * sndbuf_seltask is a taskqueue callback routine, called from
@@ -211,17 +211,7 @@ sndbuf_remalloc(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 
 	chn_unlock(b->channel);
 	buf = kmalloc(bufsize, M_DEVBUF, M_WAITOK);
-	if (buf == NULL) {
-		ret = ENOMEM;
-		goto out;
-	}
-
 	tmpbuf = kmalloc(bufsize, M_DEVBUF, M_WAITOK);
-   	if (tmpbuf == NULL) {
-		kfree(buf, M_DEVBUF);
-		ret = ENOMEM;
-		goto out;
-	}
 	chn_lock(b->channel);
 
 	b->blkcnt = blkcnt;
@@ -242,7 +232,6 @@ sndbuf_remalloc(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 		kfree(f2, M_DEVBUF);
 
 	ret = 0;
-out:
 	chn_lock(b->channel);
 	return ret;
 }

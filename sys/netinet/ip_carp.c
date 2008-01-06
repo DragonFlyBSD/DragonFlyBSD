@@ -25,7 +25,7 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.4 2007/10/20 10:28:44 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_carp.c,v 1.5 2008/01/06 16:55:52 swildner Exp $
  */
 
 #include "opt_carp.h"
@@ -360,11 +360,6 @@ carp_clone_create(struct if_clone *ifc, int unit)
         MALLOC(sc, struct carp_softc *, sizeof(*sc), M_CARP, M_WAITOK|M_ZERO); 
 	ifp = SC2IFP(sc) = kmalloc(sizeof(struct ifnet), M_IFNET, M_WAITOK|M_ZERO); 
 
-	if (ifp == NULL) {
-		FREE(sc, M_CARP);
-		return (ENOSPC);
-	}
-		
 	sc->sc_flags_backup = 0;
 	sc->sc_suppress = 0;
 	sc->sc_advbase = CARP_DFLTINTV;
@@ -1476,10 +1471,6 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 
 		MALLOC(cif, struct carp_if *, sizeof(*cif), M_CARP,
 		    M_WAITOK|M_ZERO);
-		if (!cif) {
-			error = ENOBUFS;
-			goto cleanup;
-		}
 		if ((error = ifpromisc(ifp, 1))) {
 			FREE(cif, M_CARP);
 			goto cleanup;
@@ -1664,10 +1655,6 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 	if (!ifp->if_carp) {
 		MALLOC(cif, struct carp_if *, sizeof(*cif), M_CARP,
 		    M_WAITOK|M_ZERO);
-		if (!cif) {
-			error = ENOBUFS;
-			goto cleanup;
-		}
 		if ((error = ifpromisc(ifp, 1))) {
 			FREE(cif, M_CARP);
 			goto cleanup;

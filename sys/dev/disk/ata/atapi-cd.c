@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.36 2007/06/03 03:44:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.37 2008/01/06 16:55:49 swildner Exp $
  */
 
 #include "opt_ata.h"
@@ -851,10 +851,7 @@ acdioctl(struct dev_ioctl_args *ap)
 #ifndef CD_BUFFER_BLOCKS
 #define CD_BUFFER_BLOCKS 13
 #endif
-	    if (!(buffer = kmalloc(CD_BUFFER_BLOCKS * 2352, M_ACD, M_WAITOK))){
-		error = ENOMEM;
-		break;
-	    }
+	    buffer = kmalloc(CD_BUFFER_BLOCKS * 2352, M_ACD, M_WAITOK);
 	    bzero(ccb, sizeof(ccb));
 	    while (frames > 0) {
 		int8_t blocks;
@@ -1616,8 +1613,6 @@ acd_send_cue(struct acd_softc *cdp, struct cdr_cuesheet *cuesheet)
 	return error;
 
     buffer = kmalloc(cuesheet->len, M_ACD, M_WAITOK);
-    if (!buffer)
-	return ENOMEM;
     if ((error = copyin(cuesheet->entries, buffer, cuesheet->len)))
 	return error;
 #ifdef ACD_DEBUG

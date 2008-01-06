@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.32 2008/01/05 14:02:38 swildner Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.33 2008/01/06 16:55:51 swildner Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -766,12 +766,11 @@ asr_alloc_ccb (
 {
         OUT union asr_ccb * new_ccb;
 
-        if ((new_ccb = (union asr_ccb *)kmalloc(sizeof(*new_ccb),
-          M_DEVBUF, M_WAITOK | M_ZERO)) != (union asr_ccb *)NULL) {
-                new_ccb->ccb_h.pinfo.priority = 1;
-                new_ccb->ccb_h.pinfo.index = CAM_UNQUEUED_INDEX;
-                new_ccb->ccb_h.spriv_ptr0 = sc;
-        }
+        new_ccb = (union asr_ccb *)kmalloc(sizeof(*new_ccb), M_DEVBUF,
+	    M_WAITOK | M_ZERO);
+        new_ccb->ccb_h.pinfo.priority = 1;
+        new_ccb->ccb_h.pinfo.index = CAM_UNQUEUED_INDEX;
+        new_ccb->ccb_h.spriv_ptr0 = sc;
         return (new_ccb);
 } /* asr_alloc_ccb */
 
@@ -1635,11 +1634,8 @@ ASR_acquireLct (
          */
         MessageSizeInBytes = sizeof(I2O_EXEC_LCT_NOTIFY_MESSAGE)
           - sizeof(I2O_SG_ELEMENT) + sizeof(I2O_SGE_SIMPLE_ELEMENT);
-        if ((Message_Ptr = (PI2O_EXEC_LCT_NOTIFY_MESSAGE)kmalloc (
-          MessageSizeInBytes, M_TEMP, M_WAITOK))
-          == (PI2O_EXEC_LCT_NOTIFY_MESSAGE)NULL) {
-                return (ENOMEM);
-        }
+        Message_Ptr = (PI2O_EXEC_LCT_NOTIFY_MESSAGE)kmalloc (
+          MessageSizeInBytes, M_TEMP, M_WAITOK);
         (void)ASR_fillMessage((char *)Message_Ptr, MessageSizeInBytes);
         I2O_MESSAGE_FRAME_setVersionOffset(&(Message_Ptr->StdMessageFrame),
           (I2O_VERSION_11 +
@@ -1680,11 +1676,7 @@ ASR_acquireLct (
                 kfree (Message_Ptr, M_TEMP);
                 return (EINVAL);
         }
-        if ((sc->ha_LCT = (PI2O_LCT)kmalloc (len, M_TEMP, M_WAITOK))
-          == (PI2O_LCT)NULL) {
-                kfree (Message_Ptr, M_TEMP);
-                return (ENOMEM);
-        }
+        sc->ha_LCT = (PI2O_LCT)kmalloc (len, M_TEMP, M_WAITOK);
         /*
          *      since this code is reused in several systems, code efficiency
          * is greater by using a shift operation rather than a divide by
@@ -1748,14 +1740,8 @@ ASR_acquireLct (
                 {
                         PI2O_EXEC_LCT_NOTIFY_MESSAGE NewMessage_Ptr;
 
-                        if ((NewMessage_Ptr = (PI2O_EXEC_LCT_NOTIFY_MESSAGE)
-                            kmalloc (MessageSizeInBytes, M_TEMP, M_WAITOK))
-                            == (PI2O_EXEC_LCT_NOTIFY_MESSAGE)NULL) {
-                                kfree (sc->ha_LCT, M_TEMP);
-                                sc->ha_LCT = (PI2O_LCT)NULL;
-                                kfree (Message_Ptr, M_TEMP);
-                                return (ENOMEM);
-                        }
+                        NewMessage_Ptr = (PI2O_EXEC_LCT_NOTIFY_MESSAGE)
+                            kmalloc (MessageSizeInBytes, M_TEMP, M_WAITOK);
                         span = ((caddr_t)sg) - (caddr_t)Message_Ptr;
                         bcopy ((caddr_t)Message_Ptr,
                           (caddr_t)NewMessage_Ptr, span);
@@ -2122,21 +2108,15 @@ ASR_setSysTab(
         PI2O_SGE_SIMPLE_ELEMENT       sg;
         int                           retVal;
 
-        if ((SystemTable = (PI2O_SET_SYSTAB_HEADER)kmalloc (
-          sizeof(I2O_SET_SYSTAB_HEADER), M_TEMP, M_WAITOK | M_ZERO))
-          == (PI2O_SET_SYSTAB_HEADER)NULL) {
-                return (ENOMEM);
-        }
+        SystemTable = (PI2O_SET_SYSTAB_HEADER)kmalloc (
+          sizeof(I2O_SET_SYSTAB_HEADER), M_TEMP, M_WAITOK | M_ZERO);
         for (ha = Asr_softc; ha; ha = ha->ha_next) {
                 ++SystemTable->NumberEntries;
         }
-        if ((Message_Ptr = (PI2O_EXEC_SYS_TAB_SET_MESSAGE)kmalloc (
+        Message_Ptr = (PI2O_EXEC_SYS_TAB_SET_MESSAGE)kmalloc (
           sizeof(I2O_EXEC_SYS_TAB_SET_MESSAGE) - sizeof(I2O_SG_ELEMENT)
            + ((3+SystemTable->NumberEntries) * sizeof(I2O_SGE_SIMPLE_ELEMENT)),
-          M_TEMP, M_WAITOK)) == (PI2O_EXEC_SYS_TAB_SET_MESSAGE)NULL) {
-                kfree (SystemTable, M_TEMP);
-                return (ENOMEM);
-        }
+          M_TEMP, M_WAITOK);
         (void)ASR_fillMessage((char *)Message_Ptr,
           sizeof(I2O_EXEC_SYS_TAB_SET_MESSAGE) - sizeof(I2O_SG_ELEMENT)
            + ((3+SystemTable->NumberEntries) * sizeof(I2O_SGE_SIMPLE_ELEMENT)));
@@ -2659,84 +2639,82 @@ asr_attach (ATTACH_ARGS)
 
         kprintf ("asr%d:", unit);
 
-        if ((iq = (struct scsi_inquiry_data *)kmalloc (
-            sizeof(struct scsi_inquiry_data), M_TEMP, M_WAITOK | M_ZERO))
-          != (struct scsi_inquiry_data *)NULL) {
-                defAlignLong(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE,Message);
-                PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE             Message_Ptr;
-                int                                           posted = 0;
+        iq = (struct scsi_inquiry_data *)kmalloc (
+            sizeof(struct scsi_inquiry_data), M_TEMP, M_WAITOK | M_ZERO);
+        defAlignLong(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE,Message);
+        PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE             Message_Ptr;
+        int                                           posted = 0;
 
-                bzero (Message_Ptr
-                  = getAlignLong(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE, Message),
-                  sizeof(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE)
-                  - sizeof(I2O_SG_ELEMENT) + sizeof(I2O_SGE_SIMPLE_ELEMENT));
+        bzero (Message_Ptr
+          = getAlignLong(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE, Message),
+          sizeof(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE)
+          - sizeof(I2O_SG_ELEMENT) + sizeof(I2O_SGE_SIMPLE_ELEMENT));
 
-                I2O_MESSAGE_FRAME_setVersionOffset(
-                  (PI2O_MESSAGE_FRAME)Message_Ptr,
-                  I2O_VERSION_11
-                    | (((sizeof(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE)
-                    - sizeof(I2O_SG_ELEMENT))
-                        / sizeof(U32)) << 4));
-                I2O_MESSAGE_FRAME_setMessageSize(
-                  (PI2O_MESSAGE_FRAME)Message_Ptr,
-                  (sizeof(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE)
-                  - sizeof(I2O_SG_ELEMENT) + sizeof(I2O_SGE_SIMPLE_ELEMENT))
-                        / sizeof(U32));
-                I2O_MESSAGE_FRAME_setInitiatorAddress (
-                  (PI2O_MESSAGE_FRAME)Message_Ptr, 1);
-                I2O_MESSAGE_FRAME_setFunction(
-                  (PI2O_MESSAGE_FRAME)Message_Ptr, I2O_PRIVATE_MESSAGE);
-                I2O_PRIVATE_MESSAGE_FRAME_setXFunctionCode (
-                  (PI2O_PRIVATE_MESSAGE_FRAME)Message_Ptr,
-                  I2O_SCSI_SCB_EXEC);
-                PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setSCBFlags (Message_Ptr,
-                    I2O_SCB_FLAG_ENABLE_DISCONNECT
-                  | I2O_SCB_FLAG_SIMPLE_QUEUE_TAG
-                  | I2O_SCB_FLAG_SENSE_DATA_IN_BUFFER);
-                PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setInterpret(Message_Ptr, 1);
-                I2O_PRIVATE_MESSAGE_FRAME_setOrganizationID(
-                  (PI2O_PRIVATE_MESSAGE_FRAME)Message_Ptr,
-                  DPT_ORGANIZATION_ID);
-                PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setCDBLength(Message_Ptr, 6);
-                Message_Ptr->CDB[0] = INQUIRY;
-                Message_Ptr->CDB[4] = (unsigned char)sizeof(struct scsi_inquiry_data);
-                if (Message_Ptr->CDB[4] == 0) {
-                        Message_Ptr->CDB[4] = 255;
-                }
+        I2O_MESSAGE_FRAME_setVersionOffset(
+          (PI2O_MESSAGE_FRAME)Message_Ptr,
+          I2O_VERSION_11
+            | (((sizeof(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE)
+            - sizeof(I2O_SG_ELEMENT))
+                / sizeof(U32)) << 4));
+        I2O_MESSAGE_FRAME_setMessageSize(
+          (PI2O_MESSAGE_FRAME)Message_Ptr,
+          (sizeof(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE)
+          - sizeof(I2O_SG_ELEMENT) + sizeof(I2O_SGE_SIMPLE_ELEMENT))
+                / sizeof(U32));
+        I2O_MESSAGE_FRAME_setInitiatorAddress (
+          (PI2O_MESSAGE_FRAME)Message_Ptr, 1);
+        I2O_MESSAGE_FRAME_setFunction(
+          (PI2O_MESSAGE_FRAME)Message_Ptr, I2O_PRIVATE_MESSAGE);
+        I2O_PRIVATE_MESSAGE_FRAME_setXFunctionCode (
+          (PI2O_PRIVATE_MESSAGE_FRAME)Message_Ptr,
+          I2O_SCSI_SCB_EXEC);
+        PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setSCBFlags (Message_Ptr,
+            I2O_SCB_FLAG_ENABLE_DISCONNECT
+          | I2O_SCB_FLAG_SIMPLE_QUEUE_TAG
+          | I2O_SCB_FLAG_SENSE_DATA_IN_BUFFER);
+        PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setInterpret(Message_Ptr, 1);
+        I2O_PRIVATE_MESSAGE_FRAME_setOrganizationID(
+          (PI2O_PRIVATE_MESSAGE_FRAME)Message_Ptr,
+          DPT_ORGANIZATION_ID);
+        PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setCDBLength(Message_Ptr, 6);
+        Message_Ptr->CDB[0] = INQUIRY;
+        Message_Ptr->CDB[4] = (unsigned char)sizeof(struct scsi_inquiry_data);
+        if (Message_Ptr->CDB[4] == 0) {
+                Message_Ptr->CDB[4] = 255;
+        }
 
-                PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setSCBFlags (Message_Ptr,
-                  (I2O_SCB_FLAG_XFER_FROM_DEVICE
-                    | I2O_SCB_FLAG_ENABLE_DISCONNECT
-                    | I2O_SCB_FLAG_SIMPLE_QUEUE_TAG
-                    | I2O_SCB_FLAG_SENSE_DATA_IN_BUFFER));
+        PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setSCBFlags (Message_Ptr,
+          (I2O_SCB_FLAG_XFER_FROM_DEVICE
+            | I2O_SCB_FLAG_ENABLE_DISCONNECT
+            | I2O_SCB_FLAG_SIMPLE_QUEUE_TAG
+            | I2O_SCB_FLAG_SENSE_DATA_IN_BUFFER));
 
-                PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setByteCount(
-                  (PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE)Message_Ptr,
-                  sizeof(struct scsi_inquiry_data));
-                SG(&(Message_Ptr->SGL), 0,
-                  I2O_SGL_FLAGS_LAST_ELEMENT | I2O_SGL_FLAGS_END_OF_BUFFER,
-                  iq, sizeof(struct scsi_inquiry_data));
-                (void)ASR_queue_c(sc, (PI2O_MESSAGE_FRAME)Message_Ptr);
+        PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setByteCount(
+          (PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE)Message_Ptr,
+          sizeof(struct scsi_inquiry_data));
+        SG(&(Message_Ptr->SGL), 0,
+          I2O_SGL_FLAGS_LAST_ELEMENT | I2O_SGL_FLAGS_END_OF_BUFFER,
+          iq, sizeof(struct scsi_inquiry_data));
+        (void)ASR_queue_c(sc, (PI2O_MESSAGE_FRAME)Message_Ptr);
 
-                if (iq->vendor[0] && (iq->vendor[0] != ' ')) {
-                        kprintf (" ");
-                        ASR_prstring (iq->vendor, 8);
-                        ++posted;
-                }
-                if (iq->product[0] && (iq->product[0] != ' ')) {
-                        kprintf (" ");
-                        ASR_prstring (iq->product, 16);
-                        ++posted;
-                }
-                if (iq->revision[0] && (iq->revision[0] != ' ')) {
-                        kprintf (" FW Rev. ");
-                        ASR_prstring (iq->revision, 4);
-                        ++posted;
-                }
-                kfree ((caddr_t)iq, M_TEMP);
-                if (posted) {
-                        kprintf (",");
-                }
+        if (iq->vendor[0] && (iq->vendor[0] != ' ')) {
+                kprintf (" ");
+                ASR_prstring (iq->vendor, 8);
+                ++posted;
+        }
+        if (iq->product[0] && (iq->product[0] != ' ')) {
+                kprintf (" ");
+                ASR_prstring (iq->product, 16);
+                ++posted;
+        }
+        if (iq->revision[0] && (iq->revision[0] != ' ')) {
+                kprintf (" FW Rev. ");
+                ASR_prstring (iq->revision, 4);
+                ++posted;
+        }
+        kfree ((caddr_t)iq, M_TEMP);
+        if (posted) {
+                kprintf (",");
         }
         kprintf (" %d channel, %d CCBs, Protocol I2O\n", sc->ha_MaxBus + 1,
           (sc->ha_QueueSize > MAX_INBOUND) ? MAX_INBOUND : sc->ha_QueueSize);
@@ -3342,13 +3320,8 @@ ASR_queue_i(
                 return (EIO);
         }
         /* Copy in the message into a local allocation */
-        if ((Message_Ptr = (PI2O_MESSAGE_FRAME)kmalloc (
-          sizeof(I2O_MESSAGE_FRAME), M_TEMP, M_WAITOK))
-         == (PI2O_MESSAGE_FRAME)NULL) {
-                debug_usr_cmd_printf (
-                  "Failed to acquire I2O_MESSAGE_FRAME memory\n");
-                return (ENOMEM);
-        }
+        Message_Ptr = (PI2O_MESSAGE_FRAME)kmalloc (
+          sizeof(I2O_MESSAGE_FRAME), M_TEMP, M_WAITOK);
         if ((error = copyin ((caddr_t)Packet, (caddr_t)Message_Ptr,
           sizeof(I2O_MESSAGE_FRAME))) != 0) {
                 kfree (Message_Ptr, M_TEMP);
@@ -3409,12 +3382,8 @@ ASR_queue_i(
                 return (EINVAL);
         }
 
-        if ((Message_Ptr = (PI2O_MESSAGE_FRAME)kmalloc (MessageSizeInBytes,
-          M_TEMP, M_WAITOK)) == (PI2O_MESSAGE_FRAME)NULL) {
-                debug_usr_cmd_printf ("Failed to acquire frame[%d] memory\n",
-                  MessageSizeInBytes);
-                return (ENOMEM);
-        }
+        Message_Ptr = (PI2O_MESSAGE_FRAME)kmalloc (MessageSizeInBytes,
+          M_TEMP, M_WAITOK);
         if ((error = copyin ((caddr_t)Packet, (caddr_t)Message_Ptr,
           MessageSizeInBytes)) != 0) {
                 kfree (Message_Ptr, M_TEMP);
@@ -3425,14 +3394,8 @@ ASR_queue_i(
 
         /* Check the size of the reply frame, and start constructing */
 
-        if ((Reply_Ptr = (PI2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)kmalloc (
-          sizeof(I2O_MESSAGE_FRAME), M_TEMP, M_WAITOK))
-          == (PI2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)NULL) {
-                kfree (Message_Ptr, M_TEMP);
-                debug_usr_cmd_printf (
-                  "Failed to acquire I2O_MESSAGE_FRAME memory\n");
-                return (ENOMEM);
-        }
+        Reply_Ptr = (PI2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)kmalloc (
+          sizeof(I2O_MESSAGE_FRAME), M_TEMP, M_WAITOK);
         if ((error = copyin ((caddr_t)Reply, (caddr_t)Reply_Ptr,
           sizeof(I2O_MESSAGE_FRAME))) != 0) {
                 kfree (Reply_Ptr, M_TEMP);
@@ -3453,16 +3416,11 @@ ASR_queue_i(
                 return (EINVAL);
         }
 
-        if ((Reply_Ptr = (PI2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)kmalloc (
+        Reply_Ptr = (PI2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)kmalloc (
           ((ReplySizeInBytes > sizeof(I2O_SCSI_ERROR_REPLY_MESSAGE_FRAME))
             ? ReplySizeInBytes
             : sizeof(I2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)),
-          M_TEMP, M_WAITOK)) == (PI2O_SCSI_ERROR_REPLY_MESSAGE_FRAME)NULL) {
-                kfree (Message_Ptr, M_TEMP);
-                debug_usr_cmd_printf ("Failed to acquire frame[%d] memory\n",
-                  ReplySizeInBytes);
-                return (ENOMEM);
-        }
+          M_TEMP, M_WAITOK);
         (void)ASR_fillMessage ((char *)Reply_Ptr, ReplySizeInBytes);
         Reply_Ptr->StdReplyFrame.StdMessageFrame.InitiatorContext
           = Message_Ptr->InitiatorContext;
@@ -3524,15 +3482,9 @@ ASR_queue_i(
                                 Message_Ptr) & 0xF0) >> 2)),
                           I2O_SGE_SIMPLE_ELEMENT_getPhysicalAddress(sg), len);
 
-                        if ((elm = (struct ioctlSgList_S *)kmalloc (
+                        elm = (struct ioctlSgList_S *)kmalloc (
                           sizeof(*elm) - sizeof(elm->KernelSpace) + len,
-                          M_TEMP, M_WAITOK))
-                          == (struct ioctlSgList_S *)NULL) {
-                                debug_usr_cmd_printf (
-                                  "Failed to allocate SG[%d]\n", len);
-                                error = ENOMEM;
-                                break;
-                        }
+                          M_TEMP, M_WAITOK);
                         SLIST_INSERT_HEAD(&sgList, elm, link);
                         elm->FlagsCount = sg->FlagsCount;
                         elm->UserSpace = (caddr_t)
@@ -3612,17 +3564,10 @@ ASR_queue_i(
                                 {
                                         PI2O_MESSAGE_FRAME NewMessage_Ptr;
 
-                                        if ((NewMessage_Ptr
+                                        NewMessage_Ptr
                                           = (PI2O_MESSAGE_FRAME)
                                             kmalloc (MessageSizeInBytes,
-                                             M_TEMP, M_WAITOK))
-                                            == (PI2O_MESSAGE_FRAME)NULL) {
-                                                debug_usr_cmd_printf (
-                                                  "Failed to acquire frame[%d] memory\n",
-                                                  MessageSizeInBytes);
-                                                error = ENOMEM;
-                                                break;
-                                        }
+                                             M_TEMP, M_WAITOK);
                                         span = ((caddr_t)sg)
                                              - (caddr_t)Message_Ptr;
                                         bcopy ((caddr_t)Message_Ptr,

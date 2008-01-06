@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.31 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.32 2008/01/06 16:55:53 swildner Exp $
  *
  */
 
@@ -297,8 +297,6 @@ user_ldt_alloc(struct pcb *pcb, int len)
 
 	MALLOC(new_ldt, struct pcb_ldt *, sizeof(struct pcb_ldt),
 		M_SUBPROC, M_WAITOK);
-	if (new_ldt == NULL)
-		return NULL;
 
 	new_ldt->ldt_len = len = NEW_MAX_LD(len);
 	new_ldt->ldt_base = (caddr_t)kmem_alloc(&kernel_map,

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.20.2.2 2005/12/30 19:55:54 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.12 2007/05/08 02:31:42 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.13 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 #include <sys/lock.h>
 #endif
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.12 2007/05/08 02:31:42 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.13 2008/01/06 16:55:51 swildner Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -228,8 +228,6 @@ sndstat_register(device_t dev, char *str, sndstat_handler handler)
 	}
 
 	ent = kmalloc(sizeof *ent, M_DEVBUF, M_ZERO | M_WAITOK);
-	if (!ent)
-		return ENOSPC;
 
 	ent->dev = dev;
 	ent->str = str;

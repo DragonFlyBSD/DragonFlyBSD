@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.12 2006/10/12 01:32:51 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.13 2008/01/06 16:55:52 swildner Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -192,10 +192,6 @@ esp_init(struct secasvar *sav, struct xformsw *xsp)
 	 */
 	sav->ivlen = (txform == &enc_xform_null ? 0 : txform->blocksize);
 	sav->iv = (caddr_t) kmalloc(sav->ivlen, M_XDATA, M_WAITOK);
-	if (sav->iv == NULL) {
-		DPRINTF(("esp_init: no memory for IV\n"));
-		return EINVAL;
-	}
 	key_randomfill(sav->iv, sav->ivlen);	/*XXX*/
 
 	/*

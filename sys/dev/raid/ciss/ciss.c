@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.25 2007/12/23 07:00:57 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.26 2008/01/06 16:55:51 swildner Exp $
  */
 
 /*
@@ -1925,10 +1925,7 @@ ciss_user_command(struct ciss_softc *sc, IOCTL_Command_struct *ioc)
      */
     cr->cr_length = ioc->buf_size;
     if (ioc->buf_size > 0) {
-	if ((cr->cr_data = kmalloc(ioc->buf_size, CISS_MALLOC_CLASS, M_WAITOK)) == NULL) {
-	    error = ENOMEM;
-	    goto out;
-	}
+	cr->cr_data = kmalloc(ioc->buf_size, CISS_MALLOC_CLASS, M_WAITOK);
 	if ((error = copyin(ioc->buf, cr->cr_data, ioc->buf_size))) {
 	    debug(0, "copyin: bad data buffer %p/%d", ioc->buf, ioc->buf_size);
 	    goto out;
@@ -2106,10 +2103,7 @@ ciss_cam_rescan_target(struct ciss_softc *sc, int target)
 
     debug_called(1);
 
-    if ((ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO)) == NULL) {
-	ciss_printf(sc, "rescan failed (can't allocate CCB)\n");
-	return;
-    }
+    ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO);
     
     if (xpt_create_path(&sc->ciss_cam_path, xpt_periph, cam_sim_path(sc->ciss_cam_sim), target, 0)
 	!= CAM_REQ_CMP) {

@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.15 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.16 2008/01/06 16:55:49 swildner Exp $
  */
 
 #define ATRQ_CH 0
@@ -1231,10 +1231,6 @@ fwohci_db_init(struct fwohci_softc *sc, struct fwohci_dbch *dbch)
 	db_tr = (struct fwohcidb_tr *)
 		kmalloc(sizeof(struct fwohcidb_tr) * dbch->ndb,
 		M_FW, M_WAITOK | M_ZERO);
-	if(db_tr == NULL){
-		kprintf("fwohci_db_init: malloc(1) failed\n");
-		return;
-	}
 
 #define DB_SIZE(x) (sizeof(struct fwohcidb) * (x)->ndesc)
 	dbch->am = fwdma_malloc_multiseg(&sc->fc, DB_SIZE(dbch),

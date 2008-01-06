@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ds1.c,v 1.43.2.1 2006/01/18 01:05:34 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.9 2007/06/16 20:07:19 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.10 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -36,7 +36,7 @@
 #include <dev/sound/pci/ds1.h>
 #include <dev/sound/pci/ds1-fw.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.9 2007/06/16 20:07:19 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ds1.c,v 1.10 2008/01/06 16:55:51 swildner Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -940,14 +940,11 @@ ds_pci_attach(device_t dev)
 {
 	u_int32_t	data;
 	u_int32_t subdev, i;
-	struct sc_info *sc;
+	struct sc_info *sc = NULL;
 	struct ac97_info *codec = NULL;
 	char 		status[SND_STATUSLEN];
 
-	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		return ENXIO;
-	}
+	kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
 	sc->dev = dev;

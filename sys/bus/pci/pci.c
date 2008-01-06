@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.50 2007/11/28 11:35:40 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.51 2008/01/06 16:55:49 swildner Exp $
  *
  */
 
@@ -228,8 +228,6 @@ pci_readppb(device_t pcib, int b, int s, int f)
 	pcih1cfgregs *p;
 
 	p = kmalloc(sizeof (pcih1cfgregs), M_DEVBUF, M_WAITOK | M_ZERO);
-	if (p == NULL)
-		return (NULL);
 
 	p->secstat = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_SECSTAT_1, 2);
 	p->bridgectl = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_BRIDGECTL_1, 2);
@@ -272,8 +270,6 @@ pci_readpcb(device_t pcib, int b, int s, int f)
 	pcih2cfgregs *p;
 
 	p = kmalloc(sizeof (pcih2cfgregs), M_DEVBUF, M_WAITOK | M_ZERO);
-	if (p == NULL)
-		return (NULL);
 
 	p->secstat = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_SECSTAT_2, 2);
 	p->bridgectl = PCIB_READ_CONFIG(pcib, b, s, f, PCIR_BRIDGECTL_2, 2);
@@ -344,8 +340,6 @@ pci_read_device(device_t pcib, int b, int s, int f, size_t size)
 	if (PCIB_READ_CONFIG(pcib, b, s, f, PCIR_DEVVENDOR, 4) != -1) {
 
 		devlist_entry = kmalloc(size, M_DEVBUF, M_WAITOK | M_ZERO);
-		if (devlist_entry == NULL)
-			return (NULL);
 
 		cfg = &devlist_entry->cfg;
 		

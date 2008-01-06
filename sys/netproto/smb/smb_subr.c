@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.29 2007/03/01 01:46:52 corecode Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.30 2008/01/06 16:55:53 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -158,8 +158,6 @@ smb_memdup(const void *umem, int len)
 	if (len > 8 * 1024)
 		return NULL;
 	p = kmalloc(len, M_SMBSTR, M_WAITOK);
-	if (p == NULL)
-		return NULL;
 	bcopy(umem, p, len);
 	return p;
 }

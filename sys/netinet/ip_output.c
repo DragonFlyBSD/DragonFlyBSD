@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.40 2007/12/28 13:27:45 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.41 2008/01/06 16:55:52 swildner Exp $
  */
 
 #define _IP_VHL
@@ -1817,8 +1817,6 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 */
 		imo = kmalloc(sizeof *imo, M_IPMOPTS, M_WAITOK);
 
-		if (imo == NULL)
-			return (ENOBUFS);
 		*imop = imo;
 		imo->imo_multicast_ifp = NULL;
 		imo->imo_multicast_addr.s_addr = INADDR_ANY;

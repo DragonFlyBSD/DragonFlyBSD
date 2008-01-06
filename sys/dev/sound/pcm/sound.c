@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.93.2.5 2007/06/04 09:06:05 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.11 2007/06/16 20:07:22 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.12 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.11 2007/06/16 20:07:22 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.12 2008/01/06 16:55:51 swildner Exp $");
 
 devclass_t pcm_devclass;
 
@@ -76,8 +76,6 @@ snd_mtxcreate(const char *desc, const char *type)
 	struct lock	*m;
 
 	m = kmalloc(sizeof(*m), M_DEVBUF, M_WAITOK | M_ZERO);
-	if (m == NULL)
-		return NULL;
 	lockinit(m, __DECONST(char *, type), 0, LK_CANRECURSE);
 	return m;
 #else
@@ -461,8 +459,6 @@ pcm_chn_create(struct snddev_info *d, struct pcm_channel *parent, kobj_class_t c
 	}
 
 	ch = kmalloc(sizeof(*ch), M_DEVBUF, M_WAITOK | M_ZERO);
-	if (!ch)
-		return NULL;
 
 	ch->methods = kobj_create(cls, M_DEVBUF, M_WAITOK);
 	if (!ch->methods) {
@@ -590,9 +586,6 @@ pcm_chn_add(struct snddev_info *d, struct pcm_channel *ch)
 	 */
 
 	sce = kmalloc(sizeof(*sce), M_DEVBUF, M_WAITOK | M_ZERO);
-	if (!sce) {
-		return ENOMEM;
-	}
 
 	snd_mtxlock(d->lock);
 	sce->channel = ch;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.32 2006/12/22 23:57:53 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.33 2008/01/06 16:55:52 swildner Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1890,8 +1890,6 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 		im6o = (struct ip6_moptions *)
 			kmalloc(sizeof(*im6o), M_IPMOPTS, M_WAITOK);
 
-		if (im6o == NULL)
-			return (ENOBUFS);
 		*im6op = im6o;
 		im6o->im6o_multicast_ifp = NULL;
 		im6o->im6o_multicast_hlim = ip6_defmcasthlim;
@@ -2059,10 +2057,6 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 		 * address list for the given interface.
 		 */
 		imm = kmalloc(sizeof(*imm), M_IPMADDR, M_WAITOK);
-		if (imm == NULL) {
-			error = ENOBUFS;
-			break;
-		}
 		if ((imm->i6mm_maddr =
 		     in6_addmulti(&mreq->ipv6mr_multiaddr, ifp, &error)) == NULL) {
 			kfree(imm, M_IPMADDR);

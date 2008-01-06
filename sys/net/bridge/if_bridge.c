@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.26 2007/11/27 11:15:30 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.27 2008/01/06 16:55:52 swildner Exp $
  */
 
 /*
@@ -1240,8 +1240,6 @@ bridge_ioctl_addspan(struct bridge_softc *sc, void *arg)
 	}
 
 	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_WAITOK|M_ZERO);
-	if (bif == NULL)
-		return (ENOMEM);
 
 	bif->bif_ifp = ifs;
 	bif->bif_flags = IFBIF_SPAN;

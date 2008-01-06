@@ -1,7 +1,7 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.11 2006/12/22 23:26:18 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.12 2008/01/06 16:55:50 swildner Exp $
  */
 
 /*-
@@ -320,10 +320,6 @@ puc_pci_attach(device_t dev)
 		} else {
 			rle->res = kmalloc(sizeof(struct resource), M_DEVBUF,
 			    M_WAITOK | M_ZERO);
-			if (rle->res == NULL) {
-				kfree(pdev, M_DEVBUF);
-				return (ENOMEM);
-			}
 
 			rle->res->r_start = rman_get_start(res) +
 			    sc->sc_desc->ports[i].offset;

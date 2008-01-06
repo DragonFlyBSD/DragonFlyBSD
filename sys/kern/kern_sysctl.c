@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.28 2007/09/03 17:32:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.29 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -443,8 +443,7 @@ sysctl_add_oid(struct sysctl_ctx_list *clist, struct sysctl_oid_list *parent,
 	if (descr) {
 		int len = strlen(descr) + 1;
 		oidp->oid_descr = kmalloc(len, M_SYSCTLOID, M_WAITOK);
-		if (oidp->oid_descr)
-			strcpy((char *)(uintptr_t)(const void *)oidp->oid_descr, descr);
+		strcpy((char *)(uintptr_t)(const void *)oidp->oid_descr, descr);
 	};
 	/* Update the context, if used */
 	if (clist != NULL)

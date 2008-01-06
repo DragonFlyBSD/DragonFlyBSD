@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.22 2007/06/03 20:51:09 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.23 2008/01/06 16:55:50 swildner Exp $
  */
 
 /*
@@ -313,8 +313,6 @@ sr_attach(device_t device)
 	MALLOC(sc, struct sr_softc *,
 		hc->numports * sizeof(struct sr_softc),
 		M_DEVBUF, M_WAITOK | M_ZERO);
-	if (sc == NULL)
-		goto errexit;
 	hc->sc = sc;
 
 	/*

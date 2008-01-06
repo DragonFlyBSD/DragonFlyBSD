@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.55.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.13 2007/06/16 20:07:19 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.14 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -38,7 +38,7 @@
 #include <bus/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.13 2007/06/16 20:07:19 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.14 2008/01/06 16:55:51 swildner Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -1915,10 +1915,7 @@ emu_pci_attach(device_t dev)
 	int i, gotmic;
 	char status[SND_STATUSLEN];
 
-	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		return ENXIO;
-	}
+	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
 	sc->dev = dev;

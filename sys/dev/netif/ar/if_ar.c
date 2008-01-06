@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.22 2007/06/03 20:51:07 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.23 2008/01/06 16:55:50 swildner Exp $
  */
 
 /*
@@ -1087,8 +1087,6 @@ arc_init(struct ar_hardc *hc)
 
 	MALLOC(sc, struct ar_softc *, hc->numports * sizeof(struct ar_softc),
 		M_DEVBUF, M_WAITOK | M_ZERO);
-	if (sc == NULL)
-		return;
 	hc->sc = sc;
 
 	hc->txc_dtr[0] = AR_TXC_DTR_NOTRESET |

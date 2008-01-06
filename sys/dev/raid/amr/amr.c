@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.24 2007/05/15 22:44:09 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.25 2008/01/06 16:55:50 swildner Exp $
  */
 
 /*
@@ -430,10 +430,7 @@ amr_ioctl(struct dev_ioctl_args *ap)
 	debug(1, "AMR_IO_COMMAND  0x%x", au->au_cmd[0]);
 	/* handle inbound data buffer */
 	if (au->au_length != 0) {
-	    if ((dp = kmalloc(au->au_length, M_DEVBUF, M_WAITOK)) == NULL) {
-		error = ENOMEM;
-		break;
-	    }
+	    dp = kmalloc(au->au_length, M_DEVBUF, M_WAITOK);
 	    if ((error = copyin(au->au_buffer, dp, au->au_length)) != 0)
 		break;
 	    debug(2, "copyin %ld bytes from %p -> %p", au->au_length, au->au_buffer, dp);
@@ -446,10 +443,7 @@ amr_ioctl(struct dev_ioctl_args *ap)
 
 	/* handle SCSI passthrough command */
 	if (au->au_cmd[0] == AMR_CMD_PASS) {
-	    if ((apt = kmalloc(sizeof(*apt), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
-		error = ENOMEM;
-		break;
-	    }
+	    apt = kmalloc(sizeof(*apt), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	    /* copy cdb */
 	    apt->ap_cdb_length = au->au_cmd[2];

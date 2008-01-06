@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_socket.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.10 2007/04/22 01:13:15 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.11 2008/01/06 16:55:52 swildner Exp $
  */
 
 /*
@@ -556,8 +556,6 @@ atm_sock_sockaddr(struct socket *so, struct sockaddr **addr)
 	 * Return local interface address, if known
 	 */
 	satm = KM_ALLOC(sizeof *satm, M_SONAME, M_WAITOK);
-	if (satm == NULL)
-		return (ENOMEM);
 
 	KM_ZERO(satm, sizeof(*satm));
 	satm->satm_family = AF_ATM;
@@ -613,8 +611,6 @@ atm_sock_peeraddr(struct socket *so, struct sockaddr **addr)
 	 * Return remote address, if known
 	 */
 	satm = KM_ALLOC(sizeof *satm, M_SONAME, M_WAITOK);
-	if (satm == NULL)
-		return (ENOMEM);
 
 	KM_ZERO(satm, sizeof(*satm));
 	satm->satm_family = AF_ATM;
