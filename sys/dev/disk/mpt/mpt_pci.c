@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.9 2006/10/25 20:55:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.10 2008/01/06 01:29:00 swildner Exp $ */
 /*
  * PCI specific probe and attach routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -141,7 +141,6 @@ mpt_probe(device_t dev)
 	return (0);
 }
 
-#ifdef	RELENG_4
 static void
 mpt_set_options(mpt_softc_t *mpt)
 {
@@ -162,25 +161,6 @@ mpt_set_options(mpt_softc_t *mpt)
 	}
 
 }
-#else
-static void
-mpt_set_options(mpt_softc_t *mpt)
-{
-	int tval;
-
-	tval = 0;
-	if (resource_int_value(device_get_name(mpt->dev),
-	    device_get_unit(mpt->dev), "disable", &tval) == 0 && tval != 0) {
-		mpt->disabled = 1;
-	}
-	tval = 0;
-	if (resource_int_value(device_get_name(mpt->dev),
-	    device_get_unit(mpt->dev), "debug", &tval) == 0 && tval != 0) {
-		mpt->verbose += tval;
-	}
-}
-#endif
-
 
 static void
 mpt_link_peer(mpt_softc_t *mpt)
@@ -449,21 +429,12 @@ mpt_dma_mem_alloc(mpt_softc_t *mpt)
 	}
 
 	len = sizeof (request_t *) * MPT_REQ_MEM_SIZE(mpt);
-#ifdef	RELENG_4
 	mpt->request_pool = (request_t *) kmalloc(len, M_DEVBUF, M_WAITOK);
 	if (mpt->request_pool == NULL) {
 		device_printf(dev, "cannot allocate request pool\n");
 		return (1);
 	}
 	bzero(mpt->request_pool, len);
-#else
-	mpt->request_pool = (request_t *)
-	    kmalloc(len, M_DEVBUF, M_WAITOK | M_ZERO);
-	if (mpt->request_pool == NULL) {
-		device_printf(dev, "cannot allocate request pool\n");
-		return (1);
-	}
-#endif
 
 	/*
 	 * Create a dma tag for this device

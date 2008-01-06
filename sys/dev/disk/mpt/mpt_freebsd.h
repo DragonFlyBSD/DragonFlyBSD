@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.h,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.10 2006/10/25 20:55:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.11 2008/01/06 01:29:00 swildner Exp $ */
 /*
  * LSI MPT Host Adapter FreeBSD Wrapper Definitions (CAM version)
  *
@@ -33,21 +33,11 @@
 #ifndef  _MPT_FREEBSD_H_
 #define  _MPT_FREEBSD_H_
 
-#define RELENG_4	1
-
 #include <sys/param.h>
 #include <sys/systm.h>
-#ifdef	RELENG_4
 #include <sys/kernel.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>
-#else
-#include <sys/endian.h>
-#include <sys/lock.h>
-#include <sys/malloc.h>
-#include <sys/mutex.h>
-#include <sys/condvar.h>
-#endif
 #include <sys/proc.h>
 #include <sys/bus.h>
 #include <sys/thread2.h>
@@ -79,36 +69,11 @@
 
 #define INLINE __inline
 
-#ifdef	RELENG_4
 #define	MPT_IFLAGS		0
 #define	MPT_LOCK(mpt)		crit_enter()
 #define	MPT_UNLOCK(mpt)		crit_exit()
 #define	MPT_LOCK_SETUP(mpt)
 #define	MPT_LOCK_DESTROY(mpt)
-#else
-#if	LOCKING_WORKED_AS_IT_SHOULD
-#define	MPT_IFLAGS		INTR_MPSAFE
-#define	MPT_LOCK_SETUP(mpt)						\
-		mtx_init(&mpt->mpt_lock, "mpt", NULL, MTX_DEF);		\
-		mpt->mpt_locksetup = 1
-#define	MPT_LOCK_DESTROY(mpt)						\
-	if (mpt->mpt_locksetup) {					\
-		mtx_destroy(&mpt->mpt_lock);				\
-		mpt->mpt_locksetup = 0;					\
-	}
-
-#define	MPT_LOCK(mpt)		mtx_lock(&(mpt)->mpt_lock)
-#define	MPT_UNLOCK(mpt)		mtx_unlock(&(mpt)->mpt_lock)
-#else
-#define	MPT_IFLAGS		0
-#define	MPT_LOCK_SETUP(mpt)	do { } while (0)
-#define	MPT_LOCK_DESTROY(mpt)	do { } while (0)
-#define	MPT_LOCK(mpt)		do { } while (0)
-#define	MPT_UNLOCK(mpt)		do { } while (0)
-#endif
-#endif
-	
-
 
 /* Max MPT Reply we are willing to accept (must be power of 2) */
 #define MPT_REPLY_SIZE   	128
