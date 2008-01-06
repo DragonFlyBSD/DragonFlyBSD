@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.32 2007/12/31 04:58:53 sephe Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.33 2008/01/06 01:51:55 swildner Exp $
  */
 
 #include "opt_atalk.h"
@@ -107,8 +107,7 @@ tuncreate(cdev_t dev)
 	dev = make_dev(&tun_ops, minor(dev),
 	    UID_UUCP, GID_DIALER, 0600, "tun%d", lminor(dev));
 
-	MALLOC(sc, struct tun_softc *, sizeof(*sc), M_TUN, M_WAITOK);
-	bzero(sc, sizeof *sc);
+	MALLOC(sc, struct tun_softc *, sizeof(*sc), M_TUN, M_WAITOK | M_ZERO);
 	sc->tun_flags = TUN_INITED;
 
 	ifp = &sc->tun_if;
