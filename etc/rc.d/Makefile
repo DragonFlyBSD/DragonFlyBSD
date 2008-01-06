@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.16 2001/01/14 15:37:22 minoura Exp $
 # $FreeBSD: src/etc/rc.d/Makefile,v 1.20 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/Makefile,v 1.23 2007/10/02 12:57:00 hasso Exp $
+# $DragonFly: src/etc/rc.d/Makefile,v 1.24 2008/01/06 21:51:30 hasso Exp $
 
 .include <bsd.own.mk>
 
@@ -8,7 +8,7 @@
 #
 FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	amd apm apmd atm1 atm2.sh atm3.sh \
-	battd bootconf bootparams ccd cleanvar \
+	battd bootconf bootparams btconfig ccd cleanvar \
 	cleartmp cron dhclient dhcpd dhcrelay diskless dmesg dumpon \
 	fsck ftpd hostapd hostname \
 	inetd initdiskless initrandom ip6fw ipfilter ipfs ipfw ipmon \
@@ -21,9 +21,9 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	network_ipv6 nfsclient nfsd nfslocking nfsserver nisdomain ntpd \
 	dntpd othermta pf pflog ppp ppp-user pppoed pwcheck \
 	quota random rarpd rcconf.sh resident rndcontrol root route6d routed \
-	routing rpcbind rtadvd rtsold rwho sysdb savecore securelevel sendmail \
-	sensorsd serial sppp sshd swap1 syscons sysctl syslogd timed ttys usbd \
-	varsym vinum virecover watchdogd wpa_supplicant \
+	routing rpcbind rtadvd rtsold rwho sysdb savecore sdpd securelevel \
+	sendmail sensorsd serial sppp sshd swap1 syscons sysctl syslogd \
+	timed ttys usbd varsym vinum virecover watchdogd wpa_supplicant \
 	ypbind yppasswdd ypserv ypset ypupdated ypxfrd
 FILESDIR=	/etc/rc.d
 FILESMODE=	${BINMODE}

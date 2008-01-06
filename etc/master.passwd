@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/master.passwd,v 1.25.2.6 2002/06/30 17:57:17 des Exp $
-# $DragonFly: src/etc/master.passwd,v 1.4 2004/11/12 09:37:25 joerg Exp $
+# $DragonFly: src/etc/master.passwd,v 1.5 2008/01/06 21:51:30 hasso Exp $
 #
 root::0:0::0:0:Charlie &:/root:/bin/csh
 toor:*:0:0::0:0:Bourne-again Superuser:/root:
@@ -21,5 +21,6 @@ _ntp:*:65:65::0:0:ntpd privsep user:/var/empty:/sbin/nologin
 uucp:*:66:66::0:0:UUCP pseudo-user:/var/spool/uucppublic:/usr/libexec/uucp/uucico
 xten:*:67:67::0:0:X-10 daemon:/usr/local/xten:/sbin/nologin
 pop:*:68:6::0:0:Post Office Owner:/nonexistent:/sbin/nologin
+_sdpd:*:70:70::0:0:sdpd privsep user:/var/empty:/sbin/nologin
 www:*:80:80::0:0:World Wide Web Owner:/nonexistent:/sbin/nologin
 nobody:*:65534:65534::0:0:Unprivileged user:/nonexistent:/sbin/nologin

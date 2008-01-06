@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/group,v 1.19.2.3 2002/06/30 17:57:17 des Exp $
-# $DragonFly: src/etc/group,v 1.4 2004/11/12 09:37:25 joerg Exp $
+# $DragonFly: src/etc/group,v 1.5 2008/01/06 21:51:30 hasso Exp $
 #
 wheel:*:0:root
 daemon:*:1:daemon
@@ -26,6 +26,7 @@ uucp:*:66:
 xten:*:67:xten
 dialer:*:68:
 network:*:69:
+_sdpd:*:70:
 www:*:80:
 nogroup:*:65533:
 nobody:*:65534:

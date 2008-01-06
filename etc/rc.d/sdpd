@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# $NetBSD: sdpd,v 1.2 2007/03/18 15:53:54 plunky Exp $
+# $DragonFly: src/etc/rc.d/sdpd,v 1.1 2008/01/06 21:51:30 hasso Exp $
+
+# PROVIDE: sdpd
+# REQUIRE: bluetooth
+# BEFORE: LOGIN
+
+$rc_subr_loaded . /etc/rc.subr
+
+name="sdpd"
+rcvar=$name
+command="/usr/sbin/${name}"
+
+load_rc_config $name
+run_rc_command "$1"

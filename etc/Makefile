@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.201 2008/01/03 13:35:20 hasso Exp $
+# $DragonFly: src/etc/Makefile,v 1.202 2008/01/06 21:51:30 hasso Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -101,12 +101,18 @@ preupgrade:
 		pw -V ${DESTDIR}/etc useradd _ntp -u 65 \
 		   -c "ntpd privsep user" \
 		   -d /var/empty -s /sbin/nologin
+	(pw -V ${DESTDIR}/etc usershow _sdpd -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc useradd _sdpd -u 70 \
+		   -c "sdpd privsep user" \
+		   -d /var/empty -s /sbin/nologin
 	(pw -V ${DESTDIR}/etc groupshow authpf -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd authpf -g 63
 	(pw -V ${DESTDIR}/etc groupshow _pflogd -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd _pflogd -g 64
 	(pw -V ${DESTDIR}/etc groupshow _ntp -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd _ntp -g 65
+	(pw -V ${DESTDIR}/etc groupshow _sdpd -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc groupadd _sdpd -g 70
 
 upgrade_etc:	preupgrade
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
