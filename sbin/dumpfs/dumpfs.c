@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dumpfs.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/sbin/dumpfs/dumpfs.c,v 1.13.2.1 2001/01/22 18:10:11 iedowse Exp $
- * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.8 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.9 2008/01/07 12:07:06 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <fstab.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 union {
@@ -65,6 +66,7 @@ long	dev_bsize = 1;
 
 int	dumpfs(char *);
 int	dumpcg(char *, int, int);
+int	marshal(const char*);
 void	pbits(void *, int);
 void	usage(void);
 
@@ -72,10 +74,15 @@ int
 main(int argc, char **argv)
 {
 	struct fstab *fs;
-	int ch, eval;
+	int ch, domarshal, eval;
 
-	while ((ch = getopt(argc, argv, "")) != -1)
+	domarshal = 0;
+
+	while ((ch = getopt(argc, argv, "m")) != -1)
 		switch(ch) {
+		case 'm':
+			domarshal = 1;
+			break;
 		case '?':
 		default:
 			usage();
@@ -88,9 +95,15 @@ main(int argc, char **argv)
 
 	for (eval = 0; *argv; ++argv)
 		if ((fs = getfsfile(*argv)) == NULL)
-			eval |= dumpfs(*argv);
+			if (domarshal)
+				eval |= marshal(*argv);
+			else
+				eval |= dumpfs(*argv);
 		else
-			eval |= dumpfs(fs->fs_spec);
+			if (domarshal)
+				eval |= marshal(fs->fs_spec);
+			else
+				eval |= dumpfs(fs->fs_spec);
 	exit(eval);
 }
 
@@ -296,6 +309,80 @@ dumpcg(char *name, int fd, int c)
 	}
 	return (0);
 };
+
+int
+marshal(const char *name)
+{
+	ssize_t n;
+	int fd;
+	static char realname[12];
+
+	if ((fd = open(name, O_RDONLY, 0)) < 0)
+		goto err;
+	if (lseek(fd, (off_t)SBOFF, SEEK_SET) == (off_t)-1)
+		goto err;
+	if ((n = read(fd, &afs, SBSIZE)) == -1)
+		goto err;
+
+	if (n != SBSIZE) {
+		warnx("%s: non-existent or truncated superblock, skipped",
+		    name);
+		close(fd);
+ 		return (1);
+	}
+ 	if (afs.fs_magic != FS_MAGIC) {
+		warnx("%s: superblock has bad magic number, skipped", name);
+		close(fd);
+ 		return (1);
+ 	}
+
+	if(strncmp(name, "/dev", 4) == 0) {
+		snprintf(realname, 12, "%s", name);
+	} else {
+		snprintf(realname, 12, "/dev/%s", name);
+	}
+
+	printf("# newfs command for %s (%s)\n", name, realname);
+	printf("newfs ");
+	if (afs.fs_flags & FS_DOSOFTDEP)
+		printf("-U ");
+	printf("-a %d ", afs.fs_maxcontig);
+	printf("-b %d ", afs.fs_bsize);
+	/* -c calculated */
+	/* -d should be 0 per manpage */
+	printf("-e %d ", afs.fs_maxbpg);
+	printf("-f %d ", afs.fs_fsize);
+	printf("-g %d ", afs.fs_avgfilesize);
+	printf("-h %d ", afs.fs_avgfpdir);
+	/* -i calculated */
+	/* -j..l not implemented */
+	printf("-m %d ", afs.fs_minfree);
+	/* -n not implemented */
+	printf(" -o ");
+	switch (afs.fs_optim) {
+	case FS_OPTSPACE:
+		printf("space ");
+		break;
+	case FS_OPTTIME:
+		printf("time ");
+		break;
+	default:
+		printf("unknown ");
+		break;
+	}
+	/* -p..r not implemented */
+	printf("-s %jd ", (intmax_t)afs.fs_size);
+	printf("%s ", realname);
+	printf("\n");
+
+	return (0);
+
+err:    if (fd != -1)
+                close(fd);
+        warn("%s", name);
+        return (1);
+
+}
 
 void
 pbits(void *vp, int max)
