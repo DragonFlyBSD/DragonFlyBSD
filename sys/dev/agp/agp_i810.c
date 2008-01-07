@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.40 2007/07/13 16:28:12 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.14 2008/01/07 01:25:29 corecode Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.15 2008/01/07 01:27:17 corecode Exp $
  */
 
 /*
@@ -576,6 +576,11 @@ agp_i810_attach(device_t dev)
 		gatt->ag_physical = pgtblctl & ~1;
 	}
 
+	/* Add a device for the drm to attach to */
+	/* XXX This will go away once we have vgapci */
+	if (!device_add_child(dev, "drmsub", -1))
+		device_printf(dev, "could not add drm subdevice\n");
+
 	if (0)
 		agp_i810_dump_regs(dev);
 
@@ -586,6 +591,7 @@ static int
 agp_i810_detach(device_t dev)
 {
 	struct agp_i810_softc *sc = device_get_softc(dev);
+	device_t child;
 
 	agp_free_cdev(dev);
 
@@ -609,6 +615,11 @@ agp_i810_detach(device_t dev)
 
 	bus_release_resources(dev, sc->sc_res_spec, sc->sc_res);
 	agp_free_res(dev);
+
+	/* XXX This will go away once we have vgapci */
+	child = device_find_child(dev, "drmsub", 0);
+	if (child != NULL)
+		device_delete_child(dev, child);
 
 	return 0;
 }
