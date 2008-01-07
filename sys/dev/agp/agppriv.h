@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/pci/agppriv.h,v 1.6 2007/07/13 16:28:12 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.7 2008/01/07 01:25:29 corecode Exp $
+ *	$FreeBSD: src/sys/dev/agp/agppriv.h,v 1.8 2007/11/12 21:51:37 jhb Exp $
+ *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.8 2008/01/07 01:34:58 corecode Exp $
  */
 
 #ifndef _PCI_AGPPRIV_H_

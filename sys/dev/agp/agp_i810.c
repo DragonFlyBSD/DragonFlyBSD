@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.40 2007/07/13 16:28:12 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.15 2008/01/07 01:27:17 corecode Exp $
+ *	$FreeBSD: src/sys/dev/agp/agp_i810.c,v 1.43 2007/11/12 21:51:36 jhb Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.16 2008/01/07 01:34:58 corecode Exp $
  */
 
 /*

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/pci/agpvar.h,v 1.3 2005/12/20 20:05:21 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agpvar.h,v 1.3 2007/09/12 08:31:43 hasso Exp $
+ *	$FreeBSD: src/sys/dev/agp/agpvar.h,v 1.4 2007/11/12 21:51:37 jhb Exp $
+ *	$DragonFly: src/sys/dev/agp/agpvar.h,v 1.4 2008/01/07 01:34:58 corecode Exp $
  */
 
 #ifndef _PCI_AGPVAR_H_

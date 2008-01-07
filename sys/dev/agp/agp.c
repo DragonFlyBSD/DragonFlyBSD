@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/pci/agp.c,v 1.56 2007/07/13 16:28:11 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.29 2008/01/07 01:25:29 corecode Exp $
+ *	$FreeBSD: src/sys/dev/agp/agp.c,v 1.58 2007/11/12 21:51:36 jhb Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.30 2008/01/07 01:34:58 corecode Exp $
  */
 
 #include "opt_bus.h"

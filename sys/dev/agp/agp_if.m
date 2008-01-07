@@ -23,8 +23,8 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/pci/agp_if.m,v 1.3 2005/01/07 02:29:18 imp Exp $
-# $DragonFly: src/sys/dev/agp/agp_if.m,v 1.3 2007/09/12 08:31:43 hasso Exp $
+# $FreeBSD: src/sys/dev/agp/agp_if.m,v 1.4 2007/11/12 21:51:36 jhb Exp $
+# $DragonFly: src/sys/dev/agp/agp_if.m,v 1.4 2008/01/07 01:34:58 corecode Exp $
 #
 
 #include <sys/bus.h>
