@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.16 2007/10/21 16:45:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kinfo.c,v 1.17 2008/01/07 23:41:55 dillon Exp $
  */
 
 /*
@@ -59,6 +59,10 @@
 
 /*
  * Fill in a struct kinfo_proc.
+ *
+ * NOTE!  We may be asked to fill in kinfo_proc for a zombied process, and
+ * the process may be in the middle of being deallocated.  Check all pointers
+ * for NULL.
  */
 void
 fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
@@ -66,10 +70,6 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	struct session *sess;
 	struct pgrp *pgrp;
 
-	/*
-	 * NOTE: pgrp and sess can wind up NULL if we caught a process
-	 * in the middle of exiting.
-	 */
 	pgrp = p->p_pgrp;
 	sess = pgrp ? pgrp->pg_session : NULL;
 
@@ -94,14 +94,18 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	strncpy(kp->kp_comm, p->p_comm, sizeof(kp->kp_comm) - 1);
 	kp->kp_comm[sizeof(kp->kp_comm) - 1] = 0;
 
-	kp->kp_uid = p->p_ucred->cr_uid;
-	kp->kp_ngroups = p->p_ucred->cr_ngroups;
-	bcopy(p->p_ucred->cr_groups, kp->kp_groups,
-	      NGROUPS * sizeof(kp->kp_groups[0]));
-	kp->kp_ruid = p->p_ucred->cr_ruid;
-	kp->kp_svuid = p->p_ucred->cr_svuid;
-	kp->kp_rgid = p->p_ucred->cr_rgid;
-	kp->kp_svgid = p->p_ucred->cr_svgid;
+	if (p->p_ucred) {
+		kp->kp_uid = p->p_ucred->cr_uid;
+		kp->kp_ngroups = p->p_ucred->cr_ngroups;
+		if (p->p_ucred->cr_groups) {
+			bcopy(p->p_ucred->cr_groups, kp->kp_groups,
+			      NGROUPS * sizeof(kp->kp_groups[0]));
+		}
+		kp->kp_ruid = p->p_ucred->cr_ruid;
+		kp->kp_svuid = p->p_ucred->cr_svuid;
+		kp->kp_rgid = p->p_ucred->cr_rgid;
+		kp->kp_svgid = p->p_ucred->cr_svgid;
+	}
 
 	kp->kp_pid = p->p_pid;
 	if (p->p_oppid != 0)
@@ -138,14 +142,16 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	kp->kp_nice = p->p_nice;
 	kp->kp_swtime = p->p_swtime;
 
-	kp->kp_vm_map_size = p->p_vmspace->vm_map.size;
-	kp->kp_vm_rssize = vmspace_resident_count(p->p_vmspace);
-	kp->kp_vm_swrss = p->p_vmspace->vm_swrss;
-	kp->kp_vm_tsize = p->p_vmspace->vm_tsize;
-	kp->kp_vm_dsize = p->p_vmspace->vm_dsize;
-	kp->kp_vm_ssize = p->p_vmspace->vm_ssize;
+	if (p->p_vmspace) {
+		kp->kp_vm_map_size = p->p_vmspace->vm_map.size;
+		kp->kp_vm_rssize = vmspace_resident_count(p->p_vmspace);
+		kp->kp_vm_swrss = p->p_vmspace->vm_swrss;
+		kp->kp_vm_tsize = p->p_vmspace->vm_tsize;
+		kp->kp_vm_dsize = p->p_vmspace->vm_dsize;
+		kp->kp_vm_ssize = p->p_vmspace->vm_ssize;
+	}
 
-	if (jailed(p->p_ucred))
+	if (p->p_ucred && jailed(p->p_ucred))
 		kp->kp_jailid = p->p_ucred->cr_prison->pr_id;
 
 	kp->kp_ru = p->p_ru;
