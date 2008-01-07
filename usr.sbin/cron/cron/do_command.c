@@ -14,8 +14,8 @@
  * I'll try to keep a version up to date.  I can be reached as follows:
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
- * $FreeBSD: src/usr.sbin/cron/cron/do_command.c,v 1.15.2.5 2001/05/04 00:59:40 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.7 2006/03/18 20:29:50 dillon Exp $
+ * $FreeBSD: src/usr.sbin/cron/cron/do_command.c,v 1.27 2007/06/17 17:25:53 yar Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.8 2008/01/07 14:11:23 matthias Exp $
  */
 
 #include "cron.h"
@@ -29,7 +29,10 @@
 #if defined(LOGIN_CAP)
 # include <login_cap.h>
 #endif
-
+#ifdef PAM
+# include <security/pam_appl.h>
+# include <security/openpam.h>
+#endif
 
 static void		child_process(entry *, user *),
 			do_univ(user *);
@@ -91,6 +94,48 @@ child_process(entry *e, user *u)
 	 */
 	usernm = env_get("LOGNAME", e->envp);
 	mailto = env_get("MAILTO", e->envp);
+
+#ifdef PAM
+	/* use PAM to see if the user's account is available,
+	 * i.e., not locked or expired or whatever.  skip this
+	 * for system tasks from /etc/crontab -- they can run
+	 * as any user.
+	 */
+	if (strcmp(u->name, SYS_NAME)) {	/* not equal */
+		pam_handle_t *pamh = NULL;
+		int pam_err;
+		struct pam_conv pamc = {
+			.conv = openpam_nullconv,
+			.appdata_ptr = NULL
+		};
+
+		Debug(DPROC, ("[%d] checking account with PAM\n", getpid()))
+
+		/* u->name keeps crontab owner name while LOGNAME is the name
+		 * of user to run command on behalf of.  they should be the
+		 * same for a task from a per-user crontab.
+		 */
+		if (strcmp(u->name, usernm)) {
+			log_it(usernm, getpid(), "username ambiguity", u->name);
+			exit(ERROR_EXIT);
+		}
+
+		pam_err = pam_start("cron", usernm, &pamc, &pamh);
+		if (pam_err != PAM_SUCCESS) {
+			log_it("CRON", getpid(), "error", "can't start PAM");
+			exit(ERROR_EXIT);
+		}
+
+		pam_err = pam_acct_mgmt(pamh, PAM_SILENT);
+		/* Expired password shouldn't prevent the job from running. */
+		if (pam_err != PAM_SUCCESS && pam_err != PAM_NEW_AUTHTOK_REQD) {
+			log_it(usernm, getpid(), "USER", "account unavailable");
+			exit(ERROR_EXIT);
+		}
+
+		pam_end(pamh, pam_err);
+	}
+#endif
 
 #ifdef USE_SIGCHLD
 	/* our parent is watching for our death by catching SIGCHLD.  we

@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/database.c,v 1.8 1999/08/28 01:15:50 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/database.c,v 1.6 2005/08/08 18:36:28 joerg Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/database.c,v 1.7 2008/01/07 14:11:23 matthias Exp $
  */
 
 /* vix 26jan87 [RCS has the log]
@@ -84,7 +84,7 @@ load_database(cron_db *old_db)
 	new_db.head = new_db.tail = NULL;
 
 	if (syscron_stat.st_mtime) {
-		process_crontab("root", "*system*",
+		process_crontab("root", SYS_NAME,
 				SYSCRONTAB, &syscron_stat,
 				&new_db, old_db);
 	}
@@ -189,7 +189,7 @@ process_crontab(char *uname, char *fname, char *tabname, struct stat *statbuf,
 	int		crontab_fd = OK - 1;
 	user		*u;
 
-	if (strcmp(fname, "*system*") && !(pw = getpwnam(uname))) {
+	if (strcmp(fname, SYS_NAME) && !(pw = getpwnam(uname))) {
 		/* file doesn't have a user in passwd file.
 		 */
 		log_it(fname, getpid(), "ORPHAN", "no passwd entry");
