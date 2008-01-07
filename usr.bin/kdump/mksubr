@@ -17,7 +17,7 @@ set -e
 # MANUAL: Manually entered and must therefore be manually updated.
 
 # $FreeBSD: src/usr.bin/kdump/mksubr,v 1.9 2007/04/09 19:16:24 emaste Exp $
-# $DragonFly: src/usr.bin/kdump/mksubr,v 1.1 2008/01/01 14:09:02 matthias Exp $
+# $DragonFly: src/usr.bin/kdump/mksubr,v 1.2 2008/01/07 01:35:43 corecode Exp $
 
 LC_ALL=C; export LC_ALL
 
@@ -179,7 +179,7 @@ extern char *signames[]; /* from kdump.c */
 void
 signame (int sig)
 {
-	if (sig > 0 && sig < NSIG)
+	if (sig > 0 && sig < NSIG && signames[sig] != NULL)
 		(void)printf("SIG%s",signames[sig]);
 	else
 		(void)printf("SIG %d", sig);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.29 2006/05/20 14:27:22 netchild Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.9 2008/01/01 14:09:02 matthias Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.10 2008/01/07 01:35:43 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -757,7 +757,7 @@ ktrgenio(struct ktr_genio *ktr, int len)
 	(void)printf("\"\n");
 }
 
-char *signames[] = {
+char *signames[NSIG] = {
 	"NULL", "HUP", "INT", "QUIT", "ILL", "TRAP", "IOT",	/*  1 - 6  */
 	"EMT", "FPE", "KILL", "BUS", "SEGV", "SYS",		/*  7 - 12 */
 	"PIPE", "ALRM",  "TERM", "URG", "STOP", "TSTP",		/* 13 - 18 */
