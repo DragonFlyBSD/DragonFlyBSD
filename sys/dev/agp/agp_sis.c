@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_sis.c,v 1.20 2006/05/30 18:41:26 jkim Exp $
- *	$DragonFly: src/sys/dev/agp/agp_sis.c,v 1.6 2007/09/12 08:31:43 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_sis.c,v 1.7 2008/01/07 01:25:29 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -171,11 +171,8 @@ static int
 agp_sis_detach(device_t dev)
 {
 	struct agp_sis_softc *sc = device_get_softc(dev);
-	int error;
 
-	error = agp_generic_detach(dev);
-	if (error)
-		return error;
+	agp_free_cdev(dev);
 
 	/* Disable the aperture.. */
 	pci_write_config(dev, AGP_SIS_WINCTRL,
@@ -188,6 +185,7 @@ agp_sis_detach(device_t dev)
 	AGP_SET_APERTURE(dev, sc->initial_aperture);
 
 	agp_free_gatt(sc->gatt);
+	agp_free_res(dev);
 	return 0;
 }
 

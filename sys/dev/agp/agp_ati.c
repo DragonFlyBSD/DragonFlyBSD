@@ -26,7 +26,7 @@
  * Based on reading the Linux 2.6.8.1 driver by Dave Jones.
  *
  * $FreeBSD: src/sys/pci/agp_ati.c,v 1.3 2006/09/01 02:22:17 anholt Exp $
- * $DragonFly: src/sys/dev/agp/agp_ati.c,v 1.1 2007/09/12 08:31:43 hasso Exp $
+ * $DragonFly: src/sys/dev/agp/agp_ati.c,v 1.2 2008/01/07 01:25:29 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -253,17 +253,14 @@ static int
 agp_ati_detach(device_t dev)
 {
 	struct agp_ati_softc *sc = device_get_softc(dev);
-	int error;
 	u_int32_t apsize_reg, temp;
+
+	agp_free_cdev(dev);
 
 	if (sc->is_rs300)
 		apsize_reg = ATI_RS300_APSIZE;
 	else
 		apsize_reg = ATI_RS100_APSIZE;
-
-	error = agp_generic_detach(dev);
-	if (error)
-		return error;
 
 	/* Clear the GATT base */
 	WRITE4(ATI_GART_BASE, 0);
@@ -278,6 +275,7 @@ agp_ati_detach(device_t dev)
 	kfree(sc->ag_virtual, M_AGP);
 
 	bus_release_resource(dev, SYS_RES_MEMORY, ATI_GART_MMADDR, sc->regs);
+	agp_free_res(dev);
 
 	return 0;
 }

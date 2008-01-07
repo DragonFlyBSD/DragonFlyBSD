@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_via.c,v 1.23 2005/12/20 21:12:26 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_via.c,v 1.6 2007/09/12 08:31:43 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_via.c,v 1.7 2008/01/07 01:25:29 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -236,16 +236,14 @@ static int
 agp_via_detach(device_t dev)
 {
 	struct agp_via_softc *sc = device_get_softc(dev);
-	int error;
 
-	error = agp_generic_detach(dev);
-	if (error)
-		return error;
+	agp_free_cdev(dev);
 
 	pci_write_config(dev, sc->regs[REG_GARTCTRL], 0, 4);
 	pci_write_config(dev, sc->regs[REG_ATTBASE], 0, 4);
 	AGP_SET_APERTURE(dev, sc->initial_aperture);
 	agp_free_gatt(sc->gatt);
+	agp_free_res(dev);
 
 	return 0;
 }

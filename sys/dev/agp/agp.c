@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.56 2007/07/13 16:28:11 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.28 2008/01/05 14:02:37 swildner Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.29 2008/01/07 01:25:29 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -272,14 +272,27 @@ agp_generic_attach(device_t dev)
 	return 0;
 }
 
-int
-agp_generic_detach(device_t dev)
+void
+agp_free_cdev(device_t dev)
+{
+	dev_ops_remove(&agp_ops, -1, device_get_unit(dev));
+}
+
+void
+agp_free_res(device_t dev)
 {
 	struct agp_softc *sc = device_get_softc(dev);
 
-	bus_release_resource(dev, SYS_RES_MEMORY, AGP_APBASE, sc->as_aperture);
+	bus_release_resource(dev, SYS_RES_MEMORY, sc->as_aperture_rid,
+			     sc->as_aperture);
 	agp_flush_cache();
-	dev_ops_remove(&agp_ops, -1, device_get_unit(dev));
+}
+
+int
+agp_generic_detach(device_t dev)
+{
+	agp_free_cdev(dev);
+	agp_free_res(dev);
 	return 0;
 }
 

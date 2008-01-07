@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/agp_nvidia.c,v 1.11 2005/12/20 21:12:26 jhb Exp $
- * $DragonFly: src/sys/dev/agp/agp_nvidia.c,v 1.5 2007/09/12 08:31:43 hasso Exp $
+ * $DragonFly: src/sys/dev/agp/agp_nvidia.c,v 1.6 2008/01/07 01:25:29 corecode Exp $
  */
 
 /*
@@ -239,12 +239,9 @@ static int
 agp_nvidia_detach (device_t dev)
 {
 	struct agp_nvidia_softc *sc = device_get_softc(dev);
-	int error;
 	u_int32_t temp;
 
-	error = agp_generic_detach(dev);
-	if (error)
-		return (error);
+	agp_free_cdev(dev);
 
 	/* GART Control */
 	temp = pci_read_config(sc->dev, AGP_NVIDIA_0_APSIZE, 4);
@@ -262,6 +259,7 @@ agp_nvidia_detach (device_t dev)
 			 sc->initial_aperture);
 
 	agp_free_gatt(sc->gatt);
+	agp_free_res(dev);
 
 	return (0);
 }

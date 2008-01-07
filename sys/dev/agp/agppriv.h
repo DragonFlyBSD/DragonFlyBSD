@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agppriv.h,v 1.6 2007/07/13 16:28:12 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.6 2007/09/12 08:31:43 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agppriv.h,v 1.7 2008/01/07 01:25:29 corecode Exp $
  */
 
 #ifndef _PCI_AGPPRIV_H_
@@ -91,7 +91,9 @@ void			agp_flush_cache(void);
 u_int8_t		agp_find_caps(device_t dev);
 struct agp_gatt	       *agp_alloc_gatt(device_t dev);
 void			agp_set_aperture_resource(device_t dev, int rid);
+void			agp_free_cdev(device_t dev);
 void		        agp_free_gatt(struct agp_gatt *gatt);
+void			agp_free_res(device_t dev);
 int			agp_generic_attach(device_t dev);
 int			agp_generic_detach(device_t dev);
 int			agp_generic_get_aperture(device_t dev);

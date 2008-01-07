@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/agp_amd64.c,v 1.14 2006/10/09 20:26:32 jkim Exp $
- * $DragonFly: src/sys/dev/agp/agp_amd64.c,v 1.1 2007/09/12 08:31:43 hasso Exp $
+ * $DragonFly: src/sys/dev/agp/agp_amd64.c,v 1.2 2008/01/07 01:25:29 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -251,10 +251,9 @@ static int
 agp_amd64_detach(device_t dev)
 {
 	struct agp_amd64_softc *sc = device_get_softc(dev);
-	int i, error;
+	int i;
 
-	if ((error = agp_generic_detach(dev)))
-		return (error);
+	agp_free_cdev(dev);
 
 	for (i = 0; i < sc->n_mctrl; i++)
 		pci_cfgregwrite(0, sc->mctrl[i], 3, AGP_AMD64_APCTRL,
@@ -263,6 +262,7 @@ agp_amd64_detach(device_t dev)
 
 	AGP_SET_APERTURE(dev, sc->initial_aperture);
 	agp_free_gatt(sc->gatt);
+	agp_free_res(dev);
 
 	return (0);
 }

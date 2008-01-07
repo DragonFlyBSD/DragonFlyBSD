@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.40 2007/07/13 16:28:12 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.13 2007/11/29 09:28:38 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.14 2008/01/07 01:25:29 corecode Exp $
  */
 
 /*
@@ -586,11 +586,8 @@ static int
 agp_i810_detach(device_t dev)
 {
 	struct agp_i810_softc *sc = device_get_softc(dev);
-	int error;
 
-	error = agp_generic_detach(dev);
-	if (error)
-		return error;
+	agp_free_cdev(dev);
 
 	/* Clear the GATT base. */
 	if ( sc->chiptype == CHIP_I810 ) {
@@ -611,6 +608,7 @@ agp_i810_detach(device_t dev)
 	kfree(sc->gatt, M_AGP);
 
 	bus_release_resources(dev, sc->sc_res_spec, sc->sc_res);
+	agp_free_res(dev);
 
 	return 0;
 }

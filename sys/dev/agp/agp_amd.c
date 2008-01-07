@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_amd.c,v 1.23 2005/12/20 21:12:26 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.9 2007/09/12 08:31:43 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.10 2008/01/07 01:25:29 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -259,11 +259,8 @@ static int
 agp_amd_detach(device_t dev)
 {
 	struct agp_amd_softc *sc = device_get_softc(dev);
-	int error;
 
-	error = agp_generic_detach(dev);
-	if (error)
-		return error;
+	agp_free_cdev(dev);
 
 	/* Disable the TLB.. */
 	WRITE2(AGP_AMD751_STATUS,
@@ -279,6 +276,7 @@ agp_amd_detach(device_t dev)
 	AGP_SET_APERTURE(dev, sc->initial_aperture);
 
 	agp_amd_free_gatt(sc->gatt);
+	agp_free_res(dev);
 
 	bus_release_resource(dev, SYS_RES_MEMORY,
 			     AGP_AMD751_REGISTERS, sc->regs);

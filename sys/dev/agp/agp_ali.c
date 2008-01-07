@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_ali.c,v 1.18 2005/12/20 21:12:26 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_ali.c,v 1.6 2007/09/12 08:31:43 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_ali.c,v 1.7 2008/01/07 01:25:29 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -140,12 +140,9 @@ static int
 agp_ali_detach(device_t dev)
 {
 	struct agp_ali_softc *sc = device_get_softc(dev);
-	int error;
 	u_int32_t attbase;
 
-	error = agp_generic_detach(dev);
-	if (error)
-		return error;
+	agp_free_cdev(dev);
 
 	/* Disable the TLB.. */
 	pci_write_config(dev, AGP_ALI_TLBCTRL, 0x90, 1);
@@ -156,6 +153,7 @@ agp_ali_detach(device_t dev)
 	pci_write_config(dev, AGP_ALI_ATTBASE, attbase & 0xfff, 4);
 
 	agp_free_gatt(sc->gatt);
+	agp_free_res(dev);
 	return 0;
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_intel.c,v 1.34 2007/01/06 08:31:31 takawata Exp $
- *	$DragonFly: src/sys/dev/agp/agp_intel.c,v 1.8 2007/09/12 08:31:43 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_intel.c,v 1.9 2008/01/07 01:25:29 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -264,13 +264,10 @@ agp_intel_detach(device_t dev)
 {
 	struct agp_intel_softc *sc;
 	u_int32_t reg;
-	int error;
 
 	sc = device_get_softc(dev);
 
-	error = agp_generic_detach(dev);
-	if (error)
-		return (error);
+	agp_free_cdev(dev);
 
 	/* Disable aperture accesses. */
 	switch (pci_get_devid(dev)) {
@@ -307,6 +304,7 @@ agp_intel_detach(device_t dev)
 	pci_write_config(dev, AGP_INTEL_ATTBASE, 0, 4);
 	AGP_SET_APERTURE(dev, sc->initial_aperture);
 	agp_free_gatt(sc->gatt);
+	agp_free_res(dev);
 
 	return (0);
 }
