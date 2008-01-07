@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.10 2007/11/20 22:52:23 dillon Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.11 2008/01/07 01:22:30 corecode Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -386,11 +386,11 @@ struct {								\
 
 /* Generates prototypes and inline functions */
 #define RB_PROTOTYPE(name, type, field, cmp)				\
-	_RB_PROTOTYPE(, name, type, field, cmp)
-#define RB_STATIC_PROTOTYPE(name, type, field, cmp)			\
-	_RB_PROTOTYPE(static, name, type, field, cmp)
+	_RB_PROTOTYPE(name, type, field, cmp,)
+#define RB_PROTOTYPE_STATIC(name, type, field, cmp)			\
+	_RB_PROTOTYPE(name, type, field, cmp, __unused static)
 
-#define _RB_PROTOTYPE(STORQUAL, name, type, field, cmp)			\
+#define _RB_PROTOTYPE(name, type, field, cmp, STORQUAL)			\
 STORQUAL struct type *name##_RB_REMOVE(struct name *, struct type *);	\
 STORQUAL struct type *name##_RB_INSERT(struct name *, struct type *);	\
 STORQUAL struct type *name##_RB_FIND(struct name *, struct type *);	\
@@ -430,12 +430,12 @@ struct type *name##_RB_LOOKUP_##ext (struct name *, datatype)		\
  * Moves node close to the key of elm to top
  */
 #define RB_GENERATE(name, type, field, cmp)				\
-	_RB_GENERATE(, name, type, field, cmp)
+	_RB_GENERATE(name, type, field, cmp,)
 
-#define RB_STATIC_GENERATE(name, type, field, cmp)			\
-	_RB_GENERATE(static, name, type, field, cmp)
+#define RB_GENERATE_STATIC(name, type, field, cmp)			\
+	_RB_GENERATE(name, type, field, cmp, __unused static)
 
-#define _RB_GENERATE(STORQUAL, name, type, field, cmp)			\
+#define _RB_GENERATE(name, type, field, cmp, STORQUAL)			\
 static void								\
 name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 {									\
@@ -914,11 +914,11 @@ name##_RB_RLOOKUP(struct name *head, datatype value)			\
  */
 
 #define RB_GENERATE_XLOOKUP(name, ext, type, field, xcmp, datatype)	   \
-	_RB_GENERATE_XLOOKUP(,name, ext, type, field, xcmp, datatype)
-#define RB_STATIC_GENERATE_XLOOKUP(name, ext, type, field, xcmp, datatype) \
-	_RB_GENERATE_XLOOKUP(static, name, ext, type, field, xcmp, datatype)
+	_RB_GENERATE_XLOOKUP(name, ext, type, field, xcmp, datatype,)
+#define RB_GENERATE_XLOOKUP_STATIC(name, ext, type, field, xcmp, datatype) \
+	_RB_GENERATE_XLOOKUP(name, ext, type, field, xcmp, datatype, __unused static)
 
-#define _RB_GENERATE_XLOOKUP(STORQUAL, name, ext, type, field, xcmp, datatype)\
+#define _RB_GENERATE_XLOOKUP(name, ext, type, field, xcmp, datatype, STORQUAL)\
 									\
 STORQUAL struct type *							\
 name##_RB_LOOKUP_##ext (struct name *head, datatype value)		\

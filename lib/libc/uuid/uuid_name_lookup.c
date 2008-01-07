@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libc/uuid/uuid_name_lookup.c,v 1.5 2007/11/25 01:28:23 swildner Exp $
+ * $DragonFly: src/lib/libc/uuid/uuid_name_lookup.c,v 1.6 2008/01/07 01:22:30 corecode Exp $
  */
 /*
  * Implement UUID-to-NAME and NAME-to-UUID functions
@@ -60,11 +60,11 @@ static void uuid_loadcache(const char *path);
 static int uuid_name_loaded;
 
 RB_HEAD(uuid_urbtree, uuid_rbnode);
-RB_STATIC_PROTOTYPE(uuid_urbtree, uuid_rbnode, unode, uuid_urbcmp);
+RB_PROTOTYPE_STATIC(uuid_urbtree, uuid_rbnode, unode, uuid_urbcmp);
 static struct uuid_urbtree uuid_urbroot = RB_INITIALIZER(uuid_urbroot);
 
 RB_HEAD(uuid_nrbtree, uuid_rbnode);
-RB_STATIC_PROTOTYPE(uuid_nrbtree, uuid_rbnode, nnode, uuid_nrbcmp);
+RB_PROTOTYPE_STATIC(uuid_nrbtree, uuid_rbnode, nnode, uuid_nrbcmp);
 static struct uuid_nrbtree uuid_nrbroot = RB_INITIALIZER(uuid_nrbroot);
 
 static int
@@ -91,11 +91,11 @@ uuid_rbuuidcmp(const struct uuid *uuid, struct uuid_rbnode *node)
 	return(uuid_compare(uuid, &node->uuid, NULL));
 }
 
-RB_STATIC_GENERATE(uuid_urbtree, uuid_rbnode, unode, uuid_urbcmp)
-RB_STATIC_GENERATE(uuid_nrbtree, uuid_rbnode, nnode, uuid_nrbcmp)
-RB_STATIC_GENERATE_XLOOKUP(uuid_urbtree, UUID, uuid_rbnode, unode,
+RB_GENERATE_STATIC(uuid_urbtree, uuid_rbnode, unode, uuid_urbcmp)
+RB_GENERATE_STATIC(uuid_nrbtree, uuid_rbnode, nnode, uuid_nrbcmp)
+RB_GENERATE_XLOOKUP_STATIC(uuid_urbtree, UUID, uuid_rbnode, unode,
 			   uuid_rbuuidcmp, const struct uuid *)
-RB_STATIC_GENERATE_XLOOKUP(uuid_nrbtree, NAME, uuid_rbnode, nnode,
+RB_GENERATE_XLOOKUP_STATIC(uuid_nrbtree, NAME, uuid_rbnode, nnode,
 			   uuid_rbnamecmp, const char *)
 		
 
