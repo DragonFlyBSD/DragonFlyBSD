@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/rtld_start.S,v 1.3 1999/08/28 00:10:15 peter Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/rtld_start.S,v 1.3 2004/01/20 18:46:21 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/rtld_start.S,v 1.4 2008/01/08 00:02:04 corecode Exp $
  */
 
 	.text
@@ -75,13 +75,15 @@ _rtld_bind_start:
 	pushl	%eax			# Save %eax
 	pushl	%edx			# Save %edx
 	pushl	%ecx			# Save %ecx
-	pushl	20(%esp)		# Copy reloff argument
-	pushl	20(%esp)		# Copy obj argument
+	leal	24(%esp),%eax		# Calculate original stack addr
+	pushl	%eax			# Pass stack addr as 3. arg
+	pushl	24(%esp)		# Copy reloff argument
+	pushl	24(%esp)		# Copy obj argument
 
 	call	_rtld_bind@PLT		# Transfer control to the binder
 	/* Now %eax contains the entry point of the function being called. */
 
-	addl	$8,%esp			# Discard binder arguments
+	addl	$12,%esp		# Discard binder arguments
 	movl	%eax,20(%esp)		# Store target over obj argument
 	popl	%ecx			# Restore %ecx
 	popl	%edx			# Restore %edx

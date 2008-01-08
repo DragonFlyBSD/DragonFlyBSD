@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.28 2007/11/25 18:10:06 swildner Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.29 2008/01/08 00:02:04 corecode Exp $
  */
 
 /*
@@ -147,6 +147,12 @@ static const char *ld_library_path; /* Environment variable for search path */
 static char *ld_preload;	/* Environment variable for libraries to
 				   load first */
 static const char *ld_tracing;	/* Called from ldd(1) to print libs */
+				/* Optional function call tracing hook */
+static int (*rtld_functrace)(const char *caller_obj,
+			     const char *callee_obj,
+			     const char *callee_func,
+			     void *stack);
+static Obj_Entry *rtld_functrace_obj;	/* Object thereof */
 static Obj_Entry *obj_list;	/* Head of linked list of shared objects */
 static Obj_Entry **obj_tail;	/* Link field of last object in list */
 static Obj_Entry **preload_tail;
@@ -536,13 +542,14 @@ _rtld_call_init(void)
 }
 
 Elf_Addr
-_rtld_bind(Obj_Entry *obj, Elf_Word reloff)
+_rtld_bind(Obj_Entry *obj, Elf_Word reloff, void *stack)
 {
     const Elf_Rel *rel;
     const Elf_Sym *def;
     const Obj_Entry *defobj;
     Elf_Addr *where;
     Elf_Addr target;
+    int do_reloc = 1;
 
     rlock_acquire();
     if (obj->pltrel)
@@ -560,9 +567,27 @@ _rtld_bind(Obj_Entry *obj, Elf_Word reloff)
     dbg("\"%s\" in \"%s\" ==> %p in \"%s\"",
       defobj->strtab + def->st_name, basename(obj->path),
       (void *)target, basename(defobj->path));
-
-    reloc_jmpslot(where, target);
     rlock_release();
+
+    /*
+     * If we have a function call tracing hook, and the
+     * hook would like to keep tracing this one function,
+     * prevent the relocation so we will wind up here
+     * the next time again.
+     *
+     * We don't want to functrace calls from the functracer
+     * to avoid recursive loops.
+     */
+    if (rtld_functrace != NULL && obj != rtld_functrace_obj) {
+	if (rtld_functrace(obj->path,
+			   defobj->path,
+			   defobj->strtab + def->st_name,
+			   stack))
+	    do_reloc = 0;
+    }
+
+    if (do_reloc)
+	reloc_jmpslot(where, target);
     return target;
 }
 
@@ -1246,6 +1271,8 @@ load_needed_objects(Obj_Entry *first)
     return 0;
 }
 
+#define RTLD_FUNCTRACE "_rtld_functrace"
+
 static int
 load_preload_objects(void)
 {
@@ -1260,16 +1287,26 @@ load_preload_objects(void)
 	size_t len = strcspn(p, delim);
 	char *path;
 	char savech;
+	Obj_Entry *obj;
+	const Elf_Sym *sym;
 
 	savech = p[len];
 	p[len] = '\0';
 	if ((path = find_library(p, NULL)) == NULL)
 	    return -1;
-	if (load_object(path) == NULL)
+	obj = load_object(path);
+	if (obj == NULL)
 	    return -1;	/* XXX - cleanup */
 	p[len] = savech;
 	p += len;
 	p += strspn(p, delim);
+
+	/* Check for the magic tracing function */
+	sym = symlook_obj(RTLD_FUNCTRACE, elf_hash(RTLD_FUNCTRACE), obj, true);
+	if (sym != NULL) {
+		rtld_functrace = (void *)(obj->relocbase + sym->st_value);
+		rtld_functrace_obj = obj;
+	}
     }
     return 0;
 }
