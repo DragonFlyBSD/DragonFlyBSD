@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/abi,v 1.2 2003/05/05 15:38:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/abi,v 1.4 2006/05/22 06:26:29 swildner Exp $
+# $DragonFly: src/etc/rc.d/abi,v 1.5 2008/01/08 15:30:34 matthias Exp $
 #
 
 # PROVIDE: abi
@@ -34,7 +34,7 @@ start_cmd="linux_start"
 linux_start()
 {
 	echo -n ' linux'
-	if ! kldstat -v | grep -E 'linux(aout|elf)' > /dev/null; then
+	if [ `kldstat -q -m "linuxaout"` -eq 1 -o `kldstat -q -m "linuxelf"` -eq 1 ]; then
 		kldload linux > /dev/null 2>&1
 	fi
 	if [ -x /compat/linux/sbin/ldconfig ]; then

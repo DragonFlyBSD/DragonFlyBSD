@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/pf,v 1.3 2004/06/23 01:42:06 mlaier Exp $
-# $DragonFly: src/etc/rc.d/pf,v 1.3 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/pf,v 1.4 2008/01/08 15:30:34 matthias Exp $
 #
 
 # PROVIDE: pf
@@ -29,7 +29,7 @@ extra_commands="reload resync status"
 pf_prestart()
 {
 	# load pf kernel module if needed
-	if ! kldstat -v | grep -q pf\$; then
+	if [ `kldstat -q -m "pf"` -eq 1 ]; then
 		if kldload pf; then
 			info 'pf module loaded.'
 		else
@@ -80,7 +80,7 @@ pf_reload()
 pf_resync()
 {
 	# Don't resync if pf is not loaded
-	if ! kldstat -v | grep -q pf\$ ; then
+	if [ `kldstat -q -m "pf"` -eq 1 ]; then
 		 return
 	fi
 	${pf_program:-/sbin/pfctl} -f "${pf_rules}" ${pf_flags}
