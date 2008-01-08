@@ -23,21 +23,23 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sbin/kldstat/kldstat.c,v 1.7.2.2 2000/07/01 07:56:00 ps Exp $
- * $DragonFly: src/sbin/kldstat/kldstat.c,v 1.4 2005/04/22 02:23:23 swildner Exp $
+ * $FreeBSD: src/sbin/kldstat/kldstat.c,v 1.20 2007/10/22 04:12:57 jb Exp $
+ * $DragonFly: src/sbin/kldstat/kldstat.c,v 1.5 2008/01/08 15:27:57 matthias Exp $
  */
 
+#include <sys/cdefs.h>
+
+#include <err.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/module.h>
 #include <sys/linker.h>
 
-#include <err.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#define	POINTER_WIDTH	10
+#define	POINTER_WIDTH	((int)(sizeof(void *) * 2 + 2))
 
 static void
 printmod(int modid)
@@ -61,8 +63,9 @@ printfile(int fileid, int verbose)
     if (kldstat(fileid, &stat) < 0)
 	warn("can't stat file id %d", fileid);
     else
-	printf("%2d %4d %p %-8x %s\n",
-	       stat.id, stat.refs, stat.address, stat.size, stat.name);
+	printf("%2d %4d %p %-8jx %s\n",
+	       stat.id, stat.refs, stat.address, (uintmax_t)stat.size, 
+	       stat.name);
 
     if (verbose) {
 	printf("\tContains modules:\n");
@@ -76,7 +79,8 @@ printfile(int fileid, int verbose)
 static void
 usage(void)
 {
-    fprintf(stderr, "usage: kldstat [-v] [-i id] [-n name]\n");
+    fprintf(stderr, "usage: kldstat [-v] [-i id] [-n filename]\n");
+    fprintf(stderr, "       kldstat [-q] [-m modname]\n");
     exit(1);
 }
 
@@ -86,20 +90,26 @@ main(int argc, char** argv)
     int c;
     int verbose = 0;
     int fileid = 0;
-    long tmp;
+    int quiet = 0;
     char* filename = NULL;
-    char *ep;
+    char* modname = NULL;
+    char* p;
 
-    while ((c = getopt(argc, argv, "i:n:v")) != -1)
+    while ((c = getopt(argc, argv, "i:m:n:qv")) != -1)
 	switch (c) {
 	case 'i':
-	    tmp = strtol(optarg, &ep, 10);
-	    if (*ep != NULL || tmp < INT_MIN || tmp > INT_MAX)
-		errx(1, "invalid id value: %s", optarg);
-	    fileid = (int)tmp;
+	    fileid = (int)strtoul(optarg, &p, 10);
+	    if (*p != '\0')
+		usage();
+	    break;
+	case 'm':
+	    modname = optarg;
 	    break;
 	case 'n':
 	    filename = optarg;
+	    break;
+	case 'q':
+	    quiet = 1;
 	    break;
 	case 'v':
 	    verbose = 1;
@@ -113,13 +123,36 @@ main(int argc, char** argv)
     if (argc != 0)
 	usage();
 
+    if (modname != NULL) {
+	int modid;
+	struct module_stat stat;
+
+	if ((modid = modfind(modname)) < 0) {
+	    if (!quiet)
+		warn("can't find module %s", modname);
+	    return 1;
+	} else if (quiet) {
+	    return 0;
+	}
+
+	stat.version = sizeof(struct module_stat);
+	if (modstat(modid, &stat) < 0)
+	    warn("can't stat module id %d", modid);
+	else {
+	    printf("Id  Refs Name\n");
+	    printf("%3d %4d %s\n", stat.id, stat.refs, stat.name);
+	}
+
+	return 0;
+    }
+
     if (filename != NULL) {
 	if ((fileid = kldfind(filename)) < 0)
 	    err(1, "can't find file %s", filename);
     }
 
     printf("Id Refs Address%*c Size     Name\n", POINTER_WIDTH - 7, ' ');
-    if (fileid)
+    if (fileid != 0)
 	printfile(fileid, verbose);
     else
 	for (fileid = kldnext(0); fileid > 0; fileid = kldnext(fileid))
