@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/ktr.9,v 1.8 2005/03/08 01:37:36 hmp Exp $
-.\" $DragonFly: src/share/man/man9/ktr.9,v 1.10 2007/01/07 11:26:56 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ktr.9,v 1.11 2008/01/08 17:45:43 swildner Exp $
 .\"
-.Dd January 6, 2007
+.Dd January 8, 2008
 .Dt KTR 9
 .Os
 .Sh NAME
@@ -128,15 +128,30 @@ the console in addition to the event buffer.
 This example demonstrates a simple usage of the KTR facility:
 .Pp
 .Bd -literal -compact
-KTR_INFO_MASTER(ktrtest);
-KTR_INFO(KTR_TEST, ktrtest, t1, 0, "func() called", 0);
+#include <sys/ktr.h>
+
+\&...
+
+#if !defined(KTR_FOO)
+#define KTR_FOO		KTR_ALL
+#endif
+KTR_INFO_MASTER(foo);
+KTR_INFO(KTR_FOO, foo, func1, 0, "func1()", 0);
+KTR_INFO(KTR_FOO, foo, func2, 1, "func2(%d)", sizeof(int));
 
 \&...
 
 void
-func(void)
+func1(void)
 {
-	KTR_LOG(ktrtest_t1);
+	KTR_LOG(foo_func1);
+	...
+}
+
+void
+func2(int arg)
+{
+	KTR_LOG(foo_func2, arg);
 	...
 }
 .Ed
