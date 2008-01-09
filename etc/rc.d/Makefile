@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.16 2001/01/14 15:37:22 minoura Exp $
 # $FreeBSD: src/etc/rc.d/Makefile,v 1.20 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/Makefile,v 1.24 2008/01/06 21:51:30 hasso Exp $
+# $DragonFly: src/etc/rc.d/Makefile,v 1.25 2008/01/09 11:30:09 swildner Exp $
 
 .include <bsd.own.mk>
 
@@ -13,7 +13,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	fsck ftpd hostapd hostname \
 	inetd initdiskless initrandom ip6fw ipfilter ipfs ipfw ipmon \
 	ipnat ipsec ipxrouted isdnd jail \
-	kadmind kerberos keyserv kldxref kpasswdd \
+	kadmind kerberos keyserv kpasswdd \
 	ldconfig local localdaemons lpd \
 	mixer motd mountcritlocal mountcritremote \
 	mountd moused mroute6d mrouted msgs \
