@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.12 2008/01/03 06:48:48 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.13 2008/01/09 00:46:19 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -648,6 +648,7 @@ format_root(struct cluster_info *cluster)
 	rec->inode.ino_mtime  = rec->base.base.create_tid;
 	rec->inode.ino_size   = 0;
 	rec->inode.ino_nlinks = 1;
+	cluster->ondisk->synchronized_tid = rec->base.base.create_tid;
 
 	++cluster->volume->ondisk->vol0_stat_inodes;
 

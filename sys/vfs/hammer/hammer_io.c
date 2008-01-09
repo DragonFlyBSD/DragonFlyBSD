@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.12 2008/01/03 06:48:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.13 2008/01/09 00:46:22 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -62,8 +62,7 @@ hammer_io_disassociate(union hammer_io_structure *io)
 	struct buf *bp = io->io.bp;
 
 	KKASSERT(io->io.released && io->io.modified == 0);
-	LIST_INIT(&bp->b_dep);	/* clear the association */
-	bp->b_ops = NULL;
+	buf_dep_init(bp);
 	io->io.bp = NULL;
 	bp->b_flags &= ~B_LOCKED;
 
@@ -77,6 +76,7 @@ hammer_io_disassociate(union hammer_io_structure *io)
 		io->supercl.alist.meta = NULL;
 		break;
 	case HAMMER_STRUCTURE_CLUSTER:
+		/*KKASSERT((io->cluster.ondisk->clu_flags & HAMMER_CLUF_OPEN) == 0);*/
 		io->cluster.ondisk = NULL;
 		io->cluster.alist_master.meta = NULL;
 		io->cluster.alist_btree.meta = NULL;
@@ -110,14 +110,15 @@ hammer_close_cluster(hammer_cluster_t cluster)
 
 /*
  * Hack XXX - called from kernel syncer via hammer_io_checkwrite() when it
- * wants to flush buffer.
+ * wants to flush buffer.  Because we disassociate after this call and
+ * because the kernel is already intending to write out the buffer, don't
+ * set the io.modified bit.
  */
 static void
 hammer_close_cluster_quick(hammer_cluster_t cluster)
 {
 	if (cluster->state == HAMMER_CLUSTER_OPEN) {
 		cluster->state = HAMMER_CLUSTER_IDLE;
-		cluster->io.modified = 1;
 		cluster->ondisk->clu_flags &= ~HAMMER_CLUF_OPEN;
 		kprintf("CLOSE CLUSTER ON KERNEL WRITE\n");
 	}
@@ -258,7 +259,8 @@ hammer_io_release(struct hammer_io *io, int flush)
 		}
 
 		/*
-		 * Either we want to flush the buffer or the kernel tried.
+		 * Either we want to flush the buffer or the kernel tried to
+		 * flush the buffer.
 		 *
 		 * If this is a hammer_buffer we may have to wait for the
 		 * cluster header write to complete.

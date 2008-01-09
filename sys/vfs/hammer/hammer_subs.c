@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.10 2008/01/01 01:00:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.11 2008/01/09 00:46:22 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -72,8 +72,10 @@ hammer_lock_ex_try(struct hammer_lock *lock)
 	KKASSERT(lock->refs > 0);
 	crit_enter();
 	if (lock->locktd != td) {
-		if (lock->locktd != NULL || lock->lockcount)
+		if (lock->locktd != NULL || lock->lockcount) {
+			crit_exit();
 			return(EAGAIN);
+		}
 		lock->locktd = td;
 	}
 	KKASSERT(lock->lockcount >= 0);

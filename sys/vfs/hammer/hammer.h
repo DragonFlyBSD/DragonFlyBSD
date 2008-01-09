@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.19 2008/01/03 06:48:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.20 2008/01/09 00:46:22 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -463,6 +463,7 @@ int	hammer_unload_inode(hammer_inode_t ip, void *data);
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_unload_supercl(hammer_supercl_t supercl, void *data __unused);
 int	hammer_unload_cluster(hammer_cluster_t cluster, void *data __unused);
+void	hammer_update_syncid(hammer_cluster_t cluster, hammer_tid_t tid);
 int	hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused);
 int	hammer_install_volume(hammer_mount_t hmp, const char *volname);
 
@@ -575,6 +576,8 @@ void *hammer_alloc_data(struct hammer_cluster *cluster, int32_t bytes,
 			int *errorp, struct hammer_buffer **bufferp);
 void *hammer_alloc_record(struct hammer_cluster *cluster,
 			int *errorp, struct hammer_buffer **bufferp);
+void hammer_initbuffer(hammer_alist_t live, hammer_fsbuf_head_t head,
+			u_int64_t type);
 void hammer_free_data_ptr(struct hammer_buffer *buffer, 
 			void *data, int bytes);
 void hammer_free_record_ptr(struct hammer_buffer *buffer,
@@ -629,6 +632,7 @@ int  hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t rec,
 
 void hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep);
 int hammer_spike(struct hammer_cursor **spikep);
+int hammer_recover(struct hammer_cluster *cluster);
 
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io);
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);

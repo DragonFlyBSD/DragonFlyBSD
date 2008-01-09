@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.15 2008/01/03 06:48:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.16 2008/01/09 00:46:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -495,8 +495,10 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	elm.leaf.data_crc = rec->base.data_crc;
 
 	error = hammer_btree_insert(&cursor, &elm);
-	if (error == 0)
+	if (error == 0) {
+		hammer_update_syncid(cursor.record_buffer->cluster, trans->tid);
 		goto done;
+	}
 
 	hammer_free_record_ptr(cursor.record_buffer, rec);
 fail1:
@@ -646,6 +648,8 @@ again:
 	if (error == 0) {
 		record->flags |= HAMMER_RECF_DELETED;
 		record->flags &= ~HAMMER_RECF_SYNCING;
+		hammer_update_syncid(cursor.record_buffer->cluster,
+				     record->rec.base.base.create_tid);
 		goto done;
 	}
 
@@ -764,8 +768,11 @@ hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t orec,
 	elm.leaf.data_crc = nrec->base.data_crc;
 
 	error = hammer_btree_insert(cursor, &elm);
-	if (error == 0)
+	if (error == 0) {
+		hammer_update_syncid(cursor->record_buffer->cluster,
+				     nrec->base.base.create_tid);
 		goto done;
+	}
 
 	hammer_free_record_ptr(cursor->record_buffer, nrec);
 fail1:
@@ -1276,6 +1283,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 		elm = &cursor->node->ondisk->elms[cursor->index];
 		elm->leaf.base.delete_tid = tid;
 		hammer_modify_node_done(cursor->node);
+		hammer_update_syncid(cursor->record_buffer->cluster, tid);
 	}
 
 	/*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.3 2008/01/03 06:48:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.4 2008/01/09 00:46:22 dillon Exp $
  */
 
 /*
@@ -90,6 +90,10 @@ typedef struct hammer_alist_config {
 	int32_t bl_terminal;	/* terminal alist, else layer recursion */
 	int	(*bl_radix_init)(void *info, int32_t blk, int32_t radix,
 					hammer_alloc_state_t state);
+	int32_t	(*bl_radix_recover)(void *info, int32_t blk, int32_t radix,
+					int32_t count);
+	int32_t	(*bl_radix_find)(void *info, int32_t blk, int32_t radix,
+					int32_t atblk);
 	int	(*bl_radix_destroy)(void *info, int32_t blk, int32_t radix);
 	int32_t (*bl_radix_alloc_fwd)(void *info, int32_t blk, int32_t radix,
 					int32_t count, int32_t atblk,
@@ -112,6 +116,15 @@ typedef struct hammer_alist_live {
 	hammer_almeta_t meta;		/* location of meta array */
 	void *info;			/* chaining call info argument */
 } *hammer_alist_t;
+
+/*
+ * In-memory structure used to track A-list recovery operations.
+ */
+typedef struct hammer_alist_recover {
+	hammer_alist_t live;
+	int	error;
+} *hammer_alist_recover_t;
+
 
 #define HAMMER_ALIST_META_RADIX	(sizeof(int32_t) * 4)   /* 16 */
 #define HAMMER_ALIST_BMAP_RADIX	(sizeof(int32_t) * 8)   /* 32 */
@@ -136,11 +149,14 @@ void hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
                            int32_t base_radix, int32_t maxmeta);
 void hammer_alist_init(hammer_alist_t live, int32_t start, int32_t count,
 			   hammer_alloc_state_t state);
+int32_t hammer_alist_recover(hammer_alist_t live, int32_t blk, int32_t start,
+			   int32_t count);
 int32_t hammer_alist_alloc(hammer_alist_t live, int32_t count);
 int32_t hammer_alist_alloc_fwd(hammer_alist_t live,
 			   int32_t count, int32_t atblk);
 int32_t hammer_alist_alloc_rev(hammer_alist_t live,
 			   int32_t count, int32_t atblk);
+int32_t hammer_alist_find(hammer_alist_t live, int32_t atblk);
 int hammer_alist_isfull(hammer_alist_t live);
 int hammer_alist_isempty(hammer_alist_t live);
 void hammer_alist_free(hammer_alist_t live, int32_t blkno, int32_t count);

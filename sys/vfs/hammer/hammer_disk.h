@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.14 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.15 2008/01/09 00:46:22 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -59,6 +59,7 @@
  */
 #define HAMMER_BUFSIZE	16384
 #define HAMMER_BUFMASK	(HAMMER_BUFSIZE - 1)
+#define HAMMER_MAXDATA	(256*1024)
 
 /*
  * Hammer transction ids are 64 bit unsigned integers and are usually
@@ -335,8 +336,8 @@ struct hammer_cluster_ondisk {
 	u_int32_t clu_reserved07;
 
 	/*
-	 * These fields are heuristics to aid in locality of reference
-	 * allocations.
+	 * These fields are mostly heuristics to aid in locality of
+	 * reference allocations.
 	 */
 	int32_t idx_data;	/* data append point (element no) */
 	int32_t idx_index;	/* index append point (element no) */
@@ -377,16 +378,34 @@ struct hammer_cluster_ondisk {
 	int32_t		clu_btree_parent_offset;
 	hammer_tid_t	clu_btree_parent_clu_gen;
 
-	u_int64_t synchronized_rec_id;
+	/*
+	 * The synchronized record id is used for recovery purposes.
+	 */
+	u_int64_t synchronized_tid;
+	u_int32_t reserved16[510];
 
 	struct hammer_almeta	clu_master_meta[HAMMER_CLU_MASTER_METAELMS];
 	struct hammer_almeta	clu_btree_meta[HAMMER_CLU_SLAVE_METAELMS];
 	struct hammer_almeta	clu_record_meta[HAMMER_CLU_SLAVE_METAELMS];
 	struct hammer_almeta	clu_mdata_meta[HAMMER_CLU_SLAVE_METAELMS];
+
+	/*
+	 * A straight bitmap records which filesystem buffers contain records.
+	 * The recovery code reconstructs the A-lists using this bitmap.
+	 */
+	u_int32_t	clu_record_buf_bitmap[HAMMER_CLU_MAXBUFFERS / 32];
 };
 
 typedef struct hammer_cluster_ondisk *hammer_cluster_ondisk_t;
 
+/*
+ * Cluster clu_flags
+ *
+ * OPEN - A cluster is marked open and synchronized to disk prior to any
+ * modifications being made to either the cluster header or any cluster
+ * buffers.  If initial access to a cluster finds this flag set, the
+ * cluster is recovered before any further operations are performed on it.
+ */
 #define HAMMER_CLUF_OPEN		0x0001	/* cluster is dirty */
 
 /*
