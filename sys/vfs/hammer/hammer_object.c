@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.16 2008/01/09 00:46:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.17 2008/01/09 04:05:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -494,6 +494,13 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	elm.leaf.data_len = bytes;
 	elm.leaf.data_crc = rec->base.data_crc;
 
+	/*
+	 * Data records can wind up on-disk before the inode itself is
+	 * on-disk.  One must assume data records may be on-disk if either
+	 * HAMMER_INODE_DONDISK or HAMMER_INODE_ONDISK is set
+	 */
+	ip->flags |= HAMMER_INODE_DONDISK;
+
 	error = hammer_btree_insert(&cursor, &elm);
 	if (error == 0) {
 		hammer_update_syncid(cursor.record_buffer->cluster, trans->tid);
@@ -849,7 +856,7 @@ hammer_ip_lookup(hammer_cursor_t cursor, struct hammer_inode *ip)
 	/*
 	 * If the inode has on-disk components search the on-disk B-Tree.
 	 */
-	if ((ip->flags & HAMMER_INODE_ONDISK) == 0)
+	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DONDISK)) == 0)
 		return(error);
 	error = hammer_btree_lookup(cursor);
 	if (error == 0)
@@ -890,7 +897,7 @@ hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
 	 * whether it must index forwards or not.  It is also used here
 	 * to select the next record from in-memory or on-disk.
 	 */
-	if (ip->flags & HAMMER_INODE_ONDISK) {
+	if (ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DONDISK)) {
 		error = hammer_btree_lookup(cursor);
 		if (error == ENOENT) {
 			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
@@ -1167,10 +1174,8 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 			 * could overflow.
 			 */
 			if (base->key - 1 > ran_end) {
-				if (base->key - rec->base.data_len > ran_end) {
-					kprintf("right edge OOB\n");
+				if (base->key - rec->base.data_len > ran_end)
 					break;
-				}
 				panic("hammer right edge case\n");
 			}
 		}
