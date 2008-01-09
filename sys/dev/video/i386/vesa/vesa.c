@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.23 2007/11/03 22:24:53 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.24 2008/01/09 21:29:11 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -202,7 +202,6 @@ static int vesa_translate_mmodel(uint8_t vmodel);
 static void *vesa_fix_ptr(uint32_t p, uint16_t seg, uint16_t off, 
 			  u_char *buf);
 static int vesa_bios_init(void);
-static void vesa_clear_modes(video_info_t *info, int color);
 static vm_offset_t vesa_map_buffer(u_int paddr, size_t size);
 static void vesa_unmap_buffer(vm_offset_t vaddr, size_t size);
 static int vesa_probe_dpms(void);
@@ -788,16 +787,6 @@ vesa_bios_init(void)
 	return (0);
 }
 
-static void
-vesa_clear_modes(video_info_t *info, int color)
-{
-	while (info->vi_mode != EOT) {
-		if ((info->vi_flags & V_INFO_COLOR) != color)
-			info->vi_mode = NA;
-		++info;
-	}
-}
-
 static vm_offset_t
 vesa_map_buffer(u_int paddr, size_t size)
 {
@@ -890,14 +879,7 @@ vesa_configure(int flags)
 		vesa_adp = NULL;
 		return ENXIO;
 	}
-	vesa_adp->va_flags |= V_ADP_VESA;
-
-	/* remove conflicting modes if we have more than one adapter */
-	if (adapters > 1) {
-		vesa_clear_modes(vesa_vmode,
-				 (vesa_adp->va_flags & V_ADP_COLOR) ? 
-				     V_INFO_COLOR : 0);
-	}
+	vesa_adp->va_flags |= V_ADP_VESA | V_ADP_COLOR;
 
 	prevvidsw = vidsw[vesa_adp->va_index];
 	vidsw[vesa_adp->va_index] = &vesavidsw;
@@ -1053,11 +1035,6 @@ vesa_set_mode(video_adapter_t *adp, int mode)
 	kprintf("VESA: mode set!\n");
 #endif
 	vesa_adp->va_mode = mode;
-	vesa_adp->va_flags &= ~V_ADP_COLOR;
-	vesa_adp->va_flags |= 
-		(info.vi_flags & V_INFO_COLOR) ? V_ADP_COLOR : 0;
-	vesa_adp->va_crtc_addr =
-		(vesa_adp->va_flags & V_ADP_COLOR) ? COLOR_CRTC : MONO_CRTC;
 	if (info.vi_flags & V_INFO_LINEAR) {
 #if VESA_DEBUG > 1
 		kprintf("VESA: setting up LFB\n");

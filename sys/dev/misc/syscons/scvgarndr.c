@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.15 2006/02/19 09:16:26 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.16 2008/01/09 21:29:11 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -310,7 +310,6 @@ draw_txtmouse(scr_stat *scp, int x, int y)
 	u_char c;
 	int pos;
 	int xoffset, yoffset;
-	int crtc_addr;
 	int i;
 
 	/* prepare mousepointer char's bitmaps */
@@ -347,8 +346,7 @@ draw_txtmouse(scr_stat *scp, int x, int y)
 
 #if 1
 	/* wait for vertical retrace to avoid jitter on some videocards */
-	crtc_addr = scp->sc->adp->va_crtc_addr;
-	while (!(inb(crtc_addr + 6) & 0x08)) /* idle */ ;
+	while (!(inb(CRTC + 6) & 0x08)) /* idle */ ;
 #endif
 	c = scp->sc->mouse_char;
 	(*vidsw[scp->sc->adapter]->load_font)(scp->sc->adp, 0, 32, font_buf,

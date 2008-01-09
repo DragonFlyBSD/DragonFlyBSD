@@ -37,7 +37,7 @@
  *	@(#)fbio.h	8.2 (Berkeley) 10/30/93
  *
  * $FreeBSD: src/sys/sys/fbio.h,v 1.9.2.1 2000/05/05 09:16:16 nyan Exp $
- * $DragonFly: src/sys/sys/fbio.h,v 1.7 2007/08/19 12:16:10 swildner Exp $
+ * $DragonFly: src/sys/sys/fbio.h,v 1.8 2008/01/09 21:29:11 swildner Exp $
  */
 
 #ifndef _SYS_FBIO_H_
@@ -271,7 +271,6 @@ struct video_adapter {
 #define V_ADP_REGISTERED (1 << 18)
     int			va_io_base;
     int			va_io_size;
-    int			va_crtc_addr;
     int			va_mem_base;
     int			va_mem_size;
     vm_offset_t		va_window;	/* virtual address */
@@ -302,7 +301,6 @@ struct video_adapter_info {
     int			va_flags;
     int			va_io_base;
     int			va_io_size;
-    int			va_crtc_addr;
     int			va_mem_base;
     int			va_mem_size;
     u_int		va_window;	/* virtual address */
@@ -323,10 +321,6 @@ struct video_adapter_info {
     u_char		va_reserved[64];
 };
 typedef struct video_adapter_info video_adapter_info_t;
-
-/* some useful video adapter index */
-#define V_ADP_PRIMARY	0
-#define V_ADP_SECONDARY	1
 
 /* video mode numbers */
 

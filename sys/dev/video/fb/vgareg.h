@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vgareg.h,v 1.4 1999/12/29 04:35:37 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/vgareg.h,v 1.8 2006/09/10 01:26:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vgareg.h,v 1.9 2008/01/09 21:29:11 swildner Exp $
  */
 
 #ifndef _DEV_FB_VGAREG_H_
@@ -48,8 +48,7 @@
 #define VIDEO_BUF_SIZE		0x20000
 
 /* I/O port addresses */
-#define MONO_CRTC	(IO_MDA + 0x04)		/* crt controller base mono */
-#define COLOR_CRTC	(IO_CGA + 0x04)		/* crt controller base color */
+#define CRTC		(IO_CGA + 0x04)		/* crt controller base */
 #define MISC		(IO_VGA + 0x02)		/* misc output register */
 #define ATC		(IO_VGA + 0x00)		/* attribute controller */
 #define TSIDX		(IO_VGA + 0x04)		/* timing sequencer idx */

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.18 2007/04/30 07:18:52 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.19 2008/01/09 21:29:11 swildner Exp $
  */
 
 #include "opt_fb.h"
@@ -560,10 +560,10 @@ fb_dump_adp_info(char *driver, video_adapter_t *adp, int level)
     kprintf("%s%d: %s%d, %s, type:%s (%d), flags:0x%x\n", 
 	   FB_DRIVER_NAME, adp->va_index, driver, adp->va_unit, adp->va_name,
 	   adapter_name(adp->va_type), adp->va_type, adp->va_flags);
-    kprintf("%s%d: port:0x%x-0x%x, crtc:0x%x, mem:0x%x 0x%x\n",
+    kprintf("%s%d: port:0x%x-0x%x, mem:0x%x 0x%x\n",
 	   FB_DRIVER_NAME, adp->va_index,
 	   adp->va_io_base, adp->va_io_base + adp->va_io_size - 1,
-	   adp->va_crtc_addr, adp->va_mem_base, adp->va_mem_size);
+	   adp->va_mem_base, adp->va_mem_size);
     kprintf("%s%d: init mode:%d, bios mode:%d, current mode:%d\n",
 	   FB_DRIVER_NAME, adp->va_index,
 	   adp->va_initial_mode, adp->va_initial_bios_mode, adp->va_mode);
@@ -648,7 +648,6 @@ fb_commonioctl(video_adapter_t *adp, u_long cmd, caddr_t arg)
 		((video_adapter_info_t *)arg)->va_flags = adp->va_flags;
 		((video_adapter_info_t *)arg)->va_io_base = adp->va_io_base;
 		((video_adapter_info_t *)arg)->va_io_size = adp->va_io_size;
-		((video_adapter_info_t *)arg)->va_crtc_addr = adp->va_crtc_addr;
 		((video_adapter_info_t *)arg)->va_mem_base = adp->va_mem_base;
 		((video_adapter_info_t *)arg)->va_mem_size = adp->va_mem_size;
 		((video_adapter_info_t *)arg)->va_window
