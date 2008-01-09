@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.26 2007/08/20 05:44:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.27 2008/01/09 10:59:12 corecode Exp $
  */
 
 #include "opt_lint.h"
@@ -518,12 +518,18 @@ lockreinit(struct lock *lkp, char *wmesg, int timo, int flags)
 	spin_unlock_wr(&lkp->lk_spinlock);
 }
 
+/*
+ * Requires that the caller is the exclusive owner of this lock.
+ */
 void
 lockuninit(struct lock *l)
 {
-	spin_lock_wr(&l->lk_spinlock);
+	/*
+	 * At this point we should have removed all the references to this lock
+	 * so there can't be anyone waiting on it.
+	 */
 	KKASSERT(l->lk_waitcount == 0);
-	l->lk_wmesg = "BUG";
+
 	spin_uninit(&l->lk_spinlock);
 }
 
