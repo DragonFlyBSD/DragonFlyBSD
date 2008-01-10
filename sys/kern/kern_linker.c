@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.41 2008/01/06 16:55:51 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.42 2008/01/10 10:31:48 matthias Exp $
  */
 
 #include "opt_ddb.h"
@@ -38,6 +38,7 @@
 #include <sys/proc.h>
 #include <sys/lock.h>
 #include <sys/module.h>
+#include <sys/queue.h>
 #include <sys/linker.h>
 #include <sys/fcntl.h>
 #include <sys/libkern.h>
@@ -263,7 +264,7 @@ linker_load_file(const char* filename, linker_file_t* result)
     ksprintf(koname, "%s.ko", filename);
     lf = NULL;
     foundfile = 0;
-    for (lc = TAILQ_FIRST(&classes); lc; lc = TAILQ_NEXT(lc, link)) {
+    TAILQ_FOREACH(lc, &classes, link) {
 	KLD_DPF(FILE, ("linker_load_file: trying to load %s as %s\n",
 		       filename, lc->desc));
 
@@ -323,7 +324,7 @@ linker_find_file_by_name(const char* filename)
     ksprintf(koname, "%s.ko", filename);
 
     lockmgr(&lock, LK_SHARED);
-    for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {
+    TAILQ_FOREACH(lf, &linker_files, link) {
 	if (!strcmp(lf->filename, koname))
 	    break;
 	if (!strcmp(lf->filename, filename))
@@ -342,7 +343,7 @@ linker_find_file_by_id(int fileid)
     linker_file_t lf = 0;
 
     lockmgr(&lock, LK_SHARED);
-    for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link))
+    TAILQ_FOREACH(lf, &linker_files, link)
 	if (lf->id == fileid)
 	    break;
     lockmgr(&lock, LK_RELEASE);
@@ -553,7 +554,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 	}
 
 	/* If we have not found it in the dependencies, search globally */
-	for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {
+	TAILQ_FOREACH(lf, &linker_files, link) {
 	    /* But skip the current file if it's on the list */
 	    if (lf == file)
 		continue;
@@ -578,8 +579,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 	 */
 	struct common_symbol* cp;
 
-	for (cp = STAILQ_FIRST(&file->common); cp;
-	     cp = STAILQ_NEXT(cp, link))
+	STAILQ_FOREACH(cp, &file->common, link)
 	    if (!strcmp(cp->name, name)) {
 		KLD_DPF(SYM, ("linker_file_lookup_symbol: old common value=%x\n", cp->address));
 		*raddr = cp->address;
@@ -633,7 +633,7 @@ linker_ddb_lookup(const char *symstr, c_linker_sym_t *sym)
 {
     linker_file_t lf;
 
-    for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {
+    TAILQ_FOREACH(lf, &linker_files, link) {
 	if (lf->ops->lookup_symbol(lf, symstr, sym) == 0)
 	    return 0;
     }
@@ -651,7 +651,7 @@ linker_ddb_search_symbol(caddr_t value, c_linker_sym_t *sym, long *diffp)
 
     best = 0;
     bestdiff = off;
-    for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {
+    TAILQ_FOREACH(lf, &linker_files, link) {
 	if (lf->ops->search_symbol(lf, value, &es, &diff) != 0)
 	    continue;
 	if (es != 0 && diff < bestdiff) {
@@ -677,7 +677,7 @@ linker_ddb_symbol_values(c_linker_sym_t sym, linker_symval_t *symval)
 {
     linker_file_t lf;
 
-    for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {
+    TAILQ_FOREACH(lf, &linker_files, link) {
 	if (lf->ops->symbol_values(lf, sym, symval) == 0)
 	    return 0;
     }
@@ -920,7 +920,7 @@ sys_kldsym(struct kldsym_args *uap)
 	} else
 	    error = ENOENT;
     } else {
-	for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {
+	TAILQ_FOREACH(lf, &linker_files, link) {
 	    if (lf->ops->lookup_symbol(lf, symstr, &sym) == 0 &&
 		lf->ops->symbol_values(lf, sym, &symval) == 0) {
 		lookup.symvalue = (uintptr_t)symval.value;
@@ -1022,7 +1022,7 @@ linker_preload(void* arg)
 	    continue;
 	}
 	lf = NULL;
-	for (lc = TAILQ_FIRST(&classes); lc; lc = TAILQ_NEXT(lc, link)) {
+	TAILQ_FOREACH(lc, &classes, link) {
 	    error = lc->ops->load_file(modname, &lf);
 	    if (error) {
 		lf = NULL;
