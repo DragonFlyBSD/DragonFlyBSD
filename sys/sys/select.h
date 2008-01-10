@@ -32,7 +32,7 @@
  *
  *	@(#)select.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
- * $DragonFly: src/sys/sys/select.h,v 1.9 2006/06/18 01:00:35 corecode Exp $
+ * $DragonFly: src/sys/sys/select.h,v 1.10 2008/01/10 22:30:28 nth Exp $
  */
 
 #ifndef _SYS_SELECT_H_
@@ -85,6 +85,10 @@ __BEGIN_DECLS
 struct timeval;
 int	select(int, fd_set * __restrict, fd_set * __restrict,
 	       fd_set * __restrict, struct timeval * __restrict);
+struct timespec;
+int	 pselect(int, fd_set * __restrict, fd_set * __restrict,
+		fd_set * __restrict, const struct timespec * __restrict,
+		const sigset_t * __restrict);
 #endif
 __END_DECLS
 

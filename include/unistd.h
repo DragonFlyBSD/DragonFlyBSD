@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.21 2007/03/12 21:07:41 corecode Exp $
+ * $DragonFly: src/include/unistd.h,v 1.22 2008/01/10 22:30:27 nth Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -195,6 +195,10 @@ void	*sbrk(intptr_t);
 struct timeval;				/* select(2) */
 int	 select(int, fd_set * __restrict, fd_set * __restrict,
 		fd_set * __restrict, struct timeval * __restrict);
+struct timespec;			/* pselect(2) */
+int	 pselect(int, fd_set * __restrict, fd_set * __restrict,
+		fd_set * __restrict, const struct timespec * __restrict,
+		const sigset_t * __restrict);
 #endif
 int	 setdomainname(const char *, int);
 int	 setegid(gid_t);

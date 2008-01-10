@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_select.c,v 1.16.2.5 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_select.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_select.c,v 1.3 2008/01/10 22:30:27 nth Exp $
  */
 #include <unistd.h>
 #include <errno.h>
@@ -224,6 +224,51 @@ select(int numfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 
 	_thread_enter_cancellation_point();
 	ret = _select(numfds, readfds, writefds, exceptfds, timeout);
+	_thread_leave_cancellation_point();
+
+	return ret;
+}
+
+
+int
+pselect(int numfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
+	const struct timespec *timeout, const sigset_t *mask)
+{
+	sigset_t omask;
+	struct timeval tv;
+	struct timeval *tvp;
+	int ret;
+
+	_thread_enter_cancellation_point();
+
+	if (timeout != NULL) {
+		tv.tv_sec = timeout->tv_sec;
+		tv.tv_usec = (timeout->tv_nsec + 999) / 1000;
+		tvp = &tv;
+	} else {
+		tvp = NULL;
+	}
+
+	/*
+	 * XXX The masking/select/unmasking sequence below is not atomic.  See
+	 * man page.
+	 *
+	 * The Right Thing would be to mask/unmask signals kernel-side.  We do
+	 * this for single-threaded and libthread_xu processes but this is far
+	 * from trivial for libc_r because select() is actually a poll()
+	 * wrapper there and not using poll() would involve complex changes in
+	 * the user thread scheduler.  We're deprecating libc_r in favor of
+	 * libthread_xu so the usefulness of such a change is questionable.
+	 */
+
+	if (mask != NULL)
+		(void) sigprocmask(SIG_SETMASK, mask, &omask);
+
+	ret = _select(numfds, readfds, writefds, exceptfds, tvp);
+
+	if (mask != NULL)
+		(void) sigprocmask(SIG_SETMASK, &omask, NULL);
+
 	_thread_leave_cancellation_point();
 
 	return ret;

@@ -28,7 +28,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.8 2008/01/10 22:30:27 nth Exp $
  */
 
 /*
@@ -95,7 +95,7 @@
 
 extern int	__creat(const char *, mode_t);
 extern int	__pause(void);
-extern int	__pselect(int, fd_set *, fd_set *, fd_set *,
+extern int	__sys_pselect(int, fd_set *, fd_set *, fd_set *,
 			const struct timespec *, const sigset_t *);
 extern unsigned	__sleep(unsigned int);
 extern int	__system(const char *);
@@ -382,10 +382,9 @@ __poll(struct pollfd *fds, unsigned int nfds, int timeout)
 }
 
 __strong_reference(__poll, poll);
-#if 0
 
 int 
-_pselect(int count, fd_set *rfds, fd_set *wfds, fd_set *efds, 
+__pselect(int count, fd_set *rfds, fd_set *wfds, fd_set *efds,
 	const struct timespec *timo, const sigset_t *mask)
 {
 	struct pthread *curthread = tls_get_curthread();
@@ -393,13 +392,12 @@ _pselect(int count, fd_set *rfds, fd_set *wfds, fd_set *efds,
 	int ret;
 
 	oldcancel = _thr_cancel_enter(curthread);
-	ret = __pselect(count, rfds, wfds, efds, timo, mask);
+	ret = __sys_pselect(count, rfds, wfds, efds, timo, mask);
 	_thr_cancel_leave(curthread, oldcancel);
 
 	return (ret);
 }
-__strong_reference(_pselect, pselect);
-#endif
+__strong_reference(__pselect, pselect);
 
 
 int

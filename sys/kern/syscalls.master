@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.56 2007/06/16 20:00:37 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.57 2008/01/10 22:30:27 nth Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -681,3 +681,6 @@
 496	STD	BSD	{ lwpid_t lwp_gettid(void); }
 497	STD	BSD	{ int lwp_kill(pid_t pid, lwpid_t tid, int signum); }
 498	STD	BSD	{ int lwp_rtprio(int function, pid_t pid, lwpid_t tid, struct rtprio *rtp); }
+499	STD	BSD	{ int pselect(int nd, fd_set *in, fd_set *ou, \
+			    fd_set *ex, const struct timespec *ts,    \
+			    const sigset_t *sigmask); }

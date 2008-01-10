@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libbind/port_after.h,v 1.2 2006/09/20 21:48:39 victor Exp $ */
+/* $DragonFly: src/lib/libbind/port_after.h,v 1.3 2008/01/10 22:30:27 nth Exp $ */
 #ifndef port_after_h
 #define port_after_h
 
@@ -13,7 +13,6 @@
 #include <inttypes.h>
 #endif
 
-#define NEED_PSELECT
 #define HAVE_SA_LEN 1
 #define HAVE_MINIMUM_IFREQ 1
 #undef NEED_DAEMON

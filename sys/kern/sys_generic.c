@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.46 2007/08/15 03:15:06 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.47 2008/01/10 22:30:27 nth Exp $
  */
 
 #include "opt_ktrace.h"
@@ -77,6 +77,8 @@ static MALLOC_DEFINE(M_IOCTLMAP, "ioctlmap", "mapped ioctl handler buffer");
 static MALLOC_DEFINE(M_SELECT, "select", "select() buffer");
 MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 
+static int 	doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex,
+			struct timeval *tv, int *res);
 static int	pollscan (struct proc *, struct pollfd *, u_int, int *);
 static int	selscan (struct proc *, fd_mask **, fd_mask **,
 			int, int *);
@@ -760,6 +762,118 @@ SYSCTL_INT(_kern, OID_AUTO, nselcoll, CTLFLAG_RD, &nselcoll, 0, "");
 int
 sys_select(struct select_args *uap)
 {
+	struct timeval ktv;
+	struct timeval *ktvp;
+	int error;
+
+	/*
+	 * Get timeout if any.
+	 */
+	if (uap->tv != NULL) {
+		error = copyin(uap->tv, &ktv, sizeof (ktv));
+		if (error)
+			return (error);
+		error = itimerfix(&ktv);
+		if (error)
+			return (error);
+		ktvp = &ktv;
+	} else {
+		ktvp = NULL;
+	}
+
+	/*
+	 * Do real work.
+	 */
+	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktvp,
+			&uap->sysmsg_result);
+
+	return (error);
+}
+
+
+/*
+ * Pselect system call.
+ */
+int
+sys_pselect(struct pselect_args *uap)
+{
+	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
+	struct timespec kts;
+	struct timeval ktv;
+	struct timeval *ktvp;
+	sigset_t sigmask;
+	int error;
+
+	/*
+	 * Get timeout if any and convert it.
+	 * Round up during conversion to avoid timeout going off early.
+	 */
+	if (uap->ts != NULL) {
+		error = copyin(uap->ts, &kts, sizeof (kts));
+		if (error)
+			return (error);
+		ktv.tv_sec = kts.tv_sec;
+		ktv.tv_usec = (kts.tv_nsec + 999) / 1000;
+		error = itimerfix(&ktv);
+		if (error)
+			return (error);
+		ktvp = &ktv;
+	} else {
+		ktvp = NULL;
+	}
+
+	/*
+	 * Install temporary signal mask if any provided.
+	 */
+	if (uap->sigmask != NULL) {
+		error = copyin(uap->sigmask, &sigmask, sizeof(sigmask));
+		if (error)
+			return (error);
+		lp->lwp_oldsigmask = lp->lwp_sigmask;
+		SIG_CANTMASK(sigmask);
+		lp->lwp_sigmask = sigmask;
+	}
+
+	/*
+	 * Do real job.
+	 */
+	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktvp,
+			&uap->sysmsg_result);
+
+	if (uap->sigmask != NULL) {
+		/* doselect() responsible for turning ERESTART into EINTR */
+		KKASSERT(error != ERESTART);
+		if (error == EINTR) {
+			/*
+			 * We can't restore the previous signal mask now
+			 * because it could block the signal that interrupted
+			 * us.  So make a note to restore it after executing
+			 * the handler.
+			 */
+			lp->lwp_flag |= LWP_OLDMASK;
+		} else {
+			/*
+			 * No handler to run. Restore previous mask immediately.
+			 */
+			lp->lwp_sigmask = lp->lwp_oldsigmask;
+		}
+	}
+
+	return (error);
+}
+
+/*
+ * Common code for sys_select() and sys_pselect().
+ *
+ * in, out and ex are userland pointers.  tv must point to validated
+ * kernel-side timeout value or NULL for infinite timeout.  res must
+ * point to syscall return value.
+ */
+static int
+doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex, struct timeval *tv,
+		int *res)
+{
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = curproc;
 
@@ -775,23 +889,23 @@ sys_select(struct select_args *uap)
 	int ncoll, error, timo;
 	u_int nbufbytes, ncpbytes, nfdbits;
 
-	if (uap->nd < 0)
+	if (nd < 0)
 		return (EINVAL);
-	if (uap->nd > p->p_fd->fd_nfiles)
-		uap->nd = p->p_fd->fd_nfiles;   /* forgiving; slightly wrong */
+	if (nd > p->p_fd->fd_nfiles)
+		nd = p->p_fd->fd_nfiles;   /* forgiving; slightly wrong */
 
 	/*
 	 * Allocate just enough bits for the non-null fd_sets.  Use the
 	 * preallocated auto buffer if possible.
 	 */
-	nfdbits = roundup(uap->nd, NFDBITS);
+	nfdbits = roundup(nd, NFDBITS);
 	ncpbytes = nfdbits / NBBY;
 	nbufbytes = 0;
-	if (uap->in != NULL)
+	if (in != NULL)
 		nbufbytes += 2 * ncpbytes;
-	if (uap->ou != NULL)
+	if (ou != NULL)
 		nbufbytes += 2 * ncpbytes;
-	if (uap->ex != NULL)
+	if (ex != NULL)
 		nbufbytes += 2 * ncpbytes;
 	if (nbufbytes <= sizeof s_selbits)
 		selbits = &s_selbits[0];
@@ -806,13 +920,13 @@ sys_select(struct select_args *uap)
 	sbp = selbits;
 #define	getbits(name, x) \
 	do {								\
-		if (uap->name == NULL)					\
+		if (name == NULL)					\
 			ibits[x] = NULL;				\
 		else {							\
 			ibits[x] = sbp + nbufbytes / 2 / sizeof *sbp;	\
 			obits[x] = sbp;					\
 			sbp += ncpbytes / sizeof *sbp;			\
-			error = copyin(uap->name, ibits[x], ncpbytes);	\
+			error = copyin(name, ibits[x], ncpbytes);	\
 			if (error != 0)					\
 				goto done;				\
 		}							\
@@ -824,15 +938,8 @@ sys_select(struct select_args *uap)
 	if (nbufbytes != 0)
 		bzero(selbits, nbufbytes / 2);
 
-	if (uap->tv) {
-		error = copyin((caddr_t)uap->tv, (caddr_t)&atv,
-			sizeof (atv));
-		if (error)
-			goto done;
-		if (itimerfix(&atv)) {
-			error = EINVAL;
-			goto done;
-		}
+	if (tv != NULL) {
+		atv = *tv;
 		getmicrouptime(&rtv);
 		timevaladd(&atv, &rtv);
 	} else {
@@ -843,12 +950,12 @@ sys_select(struct select_args *uap)
 retry:
 	ncoll = nselcoll;
 	lp->lwp_flag |= LWP_SELECT;
-	error = selscan(p, ibits, obits, uap->nd, &uap->sysmsg_result);
-	if (error || uap->sysmsg_result)
+	error = selscan(p, ibits, obits, nd, res);
+	if (error || *res)
 		goto done;
 	if (atv.tv_sec || atv.tv_usec) {
 		getmicrouptime(&rtv);
-		if (timevalcmp(&rtv, &atv, >=)) 
+		if (timevalcmp(&rtv, &atv, >=))
 			goto done;
 		ttv = atv;
 		timevalsub(&ttv, &rtv);
@@ -875,7 +982,7 @@ done:
 	if (error == EWOULDBLOCK)
 		error = 0;
 #define	putbits(name, x) \
-	if (uap->name && (error2 = copyout(obits[x], uap->name, ncpbytes))) \
+	if (name && (error2 = copyout(obits[x], name, ncpbytes))) \
 		error = error2;
 	if (error == 0) {
 		int error2;

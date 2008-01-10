@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.108 2007/09/07 19:31:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.109 2008/01/10 22:30:27 nth Exp $
  */
 
 /*
@@ -302,6 +302,12 @@ recheck:
 		rel_mplock();
 		goto recheck;
 	}
+
+	/*
+	 * Make sure postsig() handled request to restore old signal mask after
+	 * running signal handler.
+	 */
+	KKASSERT((lp->lwp_flag & LWP_OLDMASK) == 0);
 }
 
 /*
