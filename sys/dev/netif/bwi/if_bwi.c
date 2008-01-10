@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.16 2007/10/21 09:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.17 2008/01/10 13:01:40 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -335,9 +335,13 @@ static const struct {
 };
 
 #ifdef BWI_DEBUG
+#ifdef BWI_DEBUG_VERBOSE
 static uint32_t	bwi_debug = BWI_DBG_ATTACH | BWI_DBG_INIT | BWI_DBG_TXPOWER;
-TUNABLE_INT("hw.bwi.debug", (int *)&bwi_debug);
+#else
+static uint32_t	bwi_debug;
 #endif
+TUNABLE_INT("hw.bwi.debug", (int *)&bwi_debug);
+#endif	/* BWI_DEBUG */
 
 static const uint8_t bwi_zero_addr[IEEE80211_ADDR_LEN];
 
