@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.41 2007/08/21 17:26:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.42 2008/01/10 07:34:04 dillon Exp $
  */
 
 
@@ -1103,7 +1103,7 @@ nfs_getcacheblk(struct vnode *vp, off_t loffset, int size, struct thread *td)
 	nmp = VFSTONFS(mp);
 
 	if (nmp->nm_flag & NFSMNT_INT) {
-		bp = getblk(vp, loffset, size, PCATCH, 0);
+		bp = getblk(vp, loffset, size, GETBLK_PCATCH, 0);
 		while (bp == NULL) {
 			if (nfs_sigintr(nmp, (struct nfsreq *)0, td))
 				return (NULL);

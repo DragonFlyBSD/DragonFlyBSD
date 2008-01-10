@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.41 2007/11/07 00:46:38 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.42 2008/01/10 07:34:03 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -182,6 +182,19 @@ struct buf {
 #define b_bio2		b_bio_array[1]	/* (typically) the disk layer */
 #define b_loffset	b_bio1.bio_offset
 
+
+/*
+ * Flags passed to getblk()
+ *
+ * GETBLK_PCATCH - Allow signals to be caught.  getblk() is allowed to return
+ *		   NULL if this flag is passed.
+ *
+ * GETBLK_BHEAVY - This is a heavy weight buffer, meaning that resolving
+ *		   writes can require additional buffers.
+ */
+#define GETBLK_PCATCH	0x0001	/* catch signals */
+#define GETBLK_BHEAVY	0x0002	/* heavy weight buffer */
+
 /*
  * These flags are kept in b_flags.
  *
@@ -260,7 +273,7 @@ struct buf {
 #define	B_CLUSTEROK	0x00020000	/* Pagein op, so swap() can count it. */
 #define	B_UNUSED40000	0x00040000
 #define	B_RAW		0x00080000	/* Set by physio for raw transfers. */
-#define	B_UNUSED100000	0x00100000
+#define	B_HEAVY		0x00100000	/* Heavy-weight buffer */
 #define	B_DIRTY		0x00200000	/* Needs writing later. */
 #define	B_RELBUF	0x00400000	/* Release VMIO buffer. */
 #define	B_WANT		0x00800000	/* Used by vm_pager.c */
@@ -354,6 +367,7 @@ int	bwrite (struct buf *);
 void	bdwrite (struct buf *);
 void	bawrite (struct buf *);
 void	bdirty (struct buf *);
+void	bheavy (struct buf *);
 void	bundirty (struct buf *);
 int	bowrite (struct buf *);
 void	brelse (struct buf *);
