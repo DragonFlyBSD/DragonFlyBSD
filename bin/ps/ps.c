@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.24 2007/12/27 13:31:42 matthias Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.25 2008/01/10 14:18:39 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
+#include <sys/mount.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -95,6 +96,7 @@ static void	 saveuser (KINFO *);
 static void	 scanvars (void);
 static void	 dynsizevars (KINFO *);
 static void	 sizevars (void);
+static int	 check_procfs(void);
 static void	 usage (void);
 static uid_t	*getuids(const char *, int *);
 
@@ -292,6 +294,15 @@ main(int argc, char **argv)
 		}
 	argc -= optind;
 	argv += optind;
+
+	/*
+	 * If the user specified ps -e then they want a copy of the process
+	 * environment kvm_getenvv(3) attempts to open /proc/<pid>/mem.
+	 * Check to make sure that procfs is mounted on /proc, otherwise
+	 * print a warning informing the user that output will be incomplete.
+	 */
+	if (needenv == 1 && check_procfs() == 0)
+		warnx("Process environment requires procfs(5)");
 
 #define	BACKWARD_COMPATIBILITY
 #ifdef	BACKWARD_COMPATIBILITY
@@ -641,6 +652,18 @@ kludge_oldps_options(char *s)
 	strcpy(ns, cp);		/* and append the number */
 
 	return (newopts);
+}
+
+static int
+check_procfs(void)
+{
+	struct statfs mnt;
+
+	if (statfs("/proc", &mnt) < 0)
+		return (0);
+	if (strcmp(mnt.f_fstypename, "procfs") != 0)
+		return (0);
+	return (1);
 }
 
 static void
