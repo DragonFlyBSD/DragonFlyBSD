@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/firmware.h,v 1.3 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/sys/firmware.h,v 1.4 2008/01/10 12:45:10 sephe Exp $
  */
 
 #ifndef _SYS_FIRMWARE_H_
@@ -64,7 +64,7 @@ struct fw_image {
 	bus_addr_t	 fw_dma_addr;
 }; 
 
-struct fw_image	*firmware_image_load(const char *);
+struct fw_image	*firmware_image_load(const char *, bus_dma_tag_t);
 void		firmware_image_unload(struct fw_image *);
 
 #endif

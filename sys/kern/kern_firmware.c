@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_firmware.c,v 1.8 2007/01/12 06:06:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_firmware.c,v 1.9 2008/01/10 12:45:10 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -45,12 +45,13 @@
 
 static TAILQ_HEAD(, fw_image) images;
 
-static struct fw_image	*firmware_image_load_file(const char *);
-static struct fw_image	*firmware_prepare_image(const char *, size_t);
+static struct fw_image	*firmware_image_load_file(const char *, bus_dma_tag_t);
+static struct fw_image	*firmware_prepare_image(const char *, size_t,
+						bus_dma_tag_t);
 static void		 firmware_destroy_image(struct fw_image *);
 
 struct fw_image *
-firmware_image_load(const char *image_name)
+firmware_image_load(const char *image_name, bus_dma_tag_t ptag)
 {
 	struct fw_image *img;
 
@@ -61,7 +62,7 @@ firmware_image_load(const char *image_name)
 		}
 	}
 
-	if ((img = firmware_image_load_file(image_name)) != NULL)
+	if ((img = firmware_image_load_file(image_name, ptag)) != NULL)
 		return(img);
 
 	return(NULL);
@@ -81,9 +82,13 @@ firmware_image_unload(struct fw_image *img)
 static void
 firmware_destroy_image(struct fw_image *img)
 {
-	bus_dmamap_unload(img->fw_dma_tag, img->fw_dma_map);
-	bus_dmamem_free(img->fw_dma_tag, img->fw_image, img->fw_dma_map);
-	bus_dma_tag_destroy(img->fw_dma_tag);
+	if (img->fw_dma_tag != NULL) {
+		bus_dmamap_unload(img->fw_dma_tag, img->fw_dma_map);
+		bus_dmamem_free(img->fw_dma_tag, img->fw_image, img->fw_dma_map);
+		bus_dma_tag_destroy(img->fw_dma_tag);
+	} else {
+		kfree(img->fw_image, M_DEVBUF);
+	}
 	kfree(__DECONST(char *, img->fw_name), M_DEVBUF);
 	kfree(img, M_DEVBUF);	
 }
@@ -100,7 +105,7 @@ firmware_dma_map(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 }
 
 static struct fw_image *
-firmware_prepare_image(const char *imgname, size_t imglen)
+firmware_prepare_image(const char *imgname, size_t imglen, bus_dma_tag_t ptag)
 {
 	struct fw_image *img;
 	int error;
@@ -110,7 +115,13 @@ firmware_prepare_image(const char *imgname, size_t imglen)
 	img->fw_refcnt = 1;
 	img->fw_imglen = imglen;
 
-	error = bus_dma_tag_create(NULL, 1, 0,
+	if (ptag == NULL) {
+		/* busdma(9) is not required */
+		img->fw_image = kmalloc(img->fw_imglen, M_DEVBUF, M_WAITOK);
+		return img;
+	}
+
+	error = bus_dma_tag_create(ptag, 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
 	    img->fw_imglen, 1, BUS_SPACE_MAXSIZE_32BIT, BUS_DMA_ALLOCNOW,
 	    &img->fw_dma_tag);
@@ -143,7 +154,7 @@ fail_tag_create:
 static char firmware_root[MAXPATHLEN] = "/etc/firmware/";
 
 static struct fw_image *
-firmware_image_load_file(const char *image_name) 
+firmware_image_load_file(const char *image_name, bus_dma_tag_t ptag)
 {
 	struct stat ub;
 	struct file *fp;
@@ -173,7 +184,7 @@ firmware_image_load_file(const char *image_name)
 	}
 
 	/* XXX: file type */
-	img = firmware_prepare_image(image_name, (size_t)ub.st_size);
+	img = firmware_prepare_image(image_name, (size_t)ub.st_size, ptag);
 	if (img == NULL)
 		goto fail_stat;
 
@@ -186,6 +197,7 @@ firmware_image_load_file(const char *image_name)
 	fp_close(fp);
 	TAILQ_INSERT_HEAD(&images, img, fw_link);
 
+	kfree(fw_path, M_TEMP);
 	return(img);
 
 fail_read:

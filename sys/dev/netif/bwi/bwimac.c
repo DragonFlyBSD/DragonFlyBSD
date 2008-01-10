@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.9 2007/10/21 09:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.10 2008/01/10 12:45:10 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -877,7 +877,7 @@ bwi_mac_fw_alloc(struct bwi_mac *mac)
 			  sc->sc_fw_version,
 			  mac->mac_rev >= 5 ? 5 : mac->mac_rev);
 
-		mac->mac_ucode = firmware_image_load(fwname);
+		mac->mac_ucode = firmware_image_load(fwname, NULL);
 		if (mac->mac_ucode == NULL) {
 			if_printf(ifp, "request firmware %s failed\n", fwname);
 			return ENOMEM;
@@ -892,7 +892,7 @@ bwi_mac_fw_alloc(struct bwi_mac *mac)
 			  sc->sc_fw_version,
 			  mac->mac_rev < 5 ? 4 : 5);
 
-		mac->mac_pcm = firmware_image_load(fwname);
+		mac->mac_pcm = firmware_image_load(fwname, NULL);
 		if (mac->mac_pcm == NULL) {
 			if_printf(ifp, "request firmware %s failed\n", fwname);
 			return ENOMEM;
@@ -917,7 +917,7 @@ bwi_mac_fw_alloc(struct bwi_mac *mac)
 		ksnprintf(fwname, sizeof(fwname), BWI_FW_IV_PATH,
 			  sc->sc_fw_version, idx);
 
-		mac->mac_iv = firmware_image_load(fwname);
+		mac->mac_iv = firmware_image_load(fwname, NULL);
 		if (mac->mac_iv == NULL) {
 			if_printf(ifp, "request firmware %s failed\n", fwname);
 			return ENOMEM;
@@ -943,7 +943,7 @@ bwi_mac_fw_alloc(struct bwi_mac *mac)
 		ksnprintf(fwname, sizeof(fwname), BWI_FW_IV_EXT_PATH,
 			  sc->sc_fw_version, idx);
 
-		mac->mac_iv_ext = firmware_image_load(fwname);
+		mac->mac_iv_ext = firmware_image_load(fwname, NULL);
 		if (mac->mac_iv_ext == NULL) {
 			if_printf(ifp, "request firmware %s failed\n", fwname);
 			return ENOMEM;

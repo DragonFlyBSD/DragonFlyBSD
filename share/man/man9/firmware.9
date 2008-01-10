@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/firmware.9,v 1.1 2007/09/14 22:53:56 swildner Exp $
+.\" $DragonFly: src/share/man/man9/firmware.9,v 1.2 2008/01/10 12:45:10 sephe Exp $
 .\"
-.Dd September 15, 2007
+.Dd January 10, 2008
 .Dt FIRMWARE 9
 .Os
 .Sh NAME
@@ -41,7 +41,7 @@
 .Sh SYNOPSIS
 .In sys/firmware.h
 .Ft struct fw_image *
-.Fn firmware_image_load "const char *image_name"
+.Fn firmware_image_load "const char *image_name" "bus_dma_tag_t parent_tag"
 .Ft void
 .Fn firmware_image_unload "struct fw_image *img"
 .Sh DESCRIPTION
@@ -55,6 +55,11 @@ function loads the firmware
 .Fa image_name
 into the kernel and returns a pointer to a
 .Vt struct fw_image.
+If
+.Fa parent_tag
+is not NULL,
+firmware will be loaded into contiguous physical memory
+according to it.
 The
 .Fn firmware_image_unload
 function unloads the image associated with
