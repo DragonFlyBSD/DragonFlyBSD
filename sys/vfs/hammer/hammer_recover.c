@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.1 2008/01/09 00:46:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.2 2008/01/10 07:41:03 dillon Exp $
  */
 
 #include "hammer.h"
@@ -142,7 +142,6 @@ hammer_recover(hammer_cluster_t cluster)
 			bzero(croot->ondisk, sizeof(*croot->ondisk));
 			croot->ondisk->count = 0;
 			croot->ondisk->type = HAMMER_BTREE_TYPE_LEAF;
-			hammer_modify_node_done(croot);
 			cluster->ondisk->clu_btree_root = croot->node_offset;
 		}
 	}
@@ -163,7 +162,6 @@ hammer_recover(hammer_cluster_t cluster)
 			continue;
 		hammer_recover_buffer_stage2(cluster, buf_no);
 	}
-	hammer_modify_cluster_done(cluster);
 
 	/*
 	 * Validate the parent cluster pointer. XXX
@@ -218,7 +216,6 @@ hammer_recover_buffer_stage1(hammer_cluster_t cluster, int32_t buf_no)
 			hammer_alist_free(&buffer->alist, rec_no, 1);
 		}
 	}
-	hammer_modify_buffer_done(buffer);
 	hammer_rel_buffer(buffer, 0);
 }
 
@@ -356,7 +353,6 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 						  &dbuf->ondisk->head,
 						  HAMMER_FSBUF_DATA);
 				dbuf->buf_type = HAMMER_FSBUF_DATA;
-				hammer_modify_buffer_done(dbuf);
 			}
 		} else {
 			/*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.4 2007/12/31 05:33:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.5 2008/01/10 07:41:03 dillon Exp $
  */
 
 #include "hammer.h"
@@ -164,7 +164,6 @@ hammer_spike(struct hammer_cursor **spikep)
 		elm->internal.subtree_clu_no = ncluster->clu_no;
 		elm->internal.subtree_vol_no = ncluster->volume->vol_no;
 		elm->internal.subtree_count = onode->ondisk->count; /*XXX*/
-		hammer_modify_node_done(spike->parent);
 		onode->flags |= HAMMER_NODE_MODIFIED;
 		hammer_flush_node(onode);
 	}
@@ -177,7 +176,6 @@ hammer_spike(struct hammer_cursor **spikep)
 		ondisk->clu_btree_parent_clu_no = ocluster->clu_no;
 		ondisk->clu_btree_parent_offset = spike->parent->node_offset;
 		ondisk->clu_btree_parent_clu_gen = ocluster->ondisk->clu_gen;
-		hammer_modify_cluster_done(ncluster);
 	}
 
 	/*

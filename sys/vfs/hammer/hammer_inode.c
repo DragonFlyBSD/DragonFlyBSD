@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.17 2008/01/03 06:48:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.18 2008/01/10 07:41:03 dillon Exp $
  */
 
 #include "hammer.h"
@@ -448,7 +448,6 @@ retry:
 			if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
 				hammer_modify_volume(ip->hmp->rootvol);
 				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
-				hammer_modify_volume_done(ip->hmp->rootvol);
 				ip->flags |= HAMMER_INODE_ONDISK;
 			}
 		}
@@ -486,7 +485,6 @@ hammer_update_itimes(hammer_inode_t ip)
 			hammer_modify_buffer(cursor.record_buffer);
 			rec->ino_atime = ip->ino_rec.ino_atime;
 			rec->ino_mtime = ip->ino_rec.ino_mtime;
-			hammer_modify_buffer_done(cursor.record_buffer);
 			ip->flags &= ~HAMMER_INODE_ITIMES;
 			/* XXX recalculate crc */
 		}
@@ -660,7 +658,6 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 		hammer_modify_inode(&trans, ip, HAMMER_INODE_DELETED);
 		hammer_modify_volume(ip->hmp->rootvol);
 		--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
-		hammer_modify_volume_done(ip->hmp->rootvol);
 	}
 
 	/*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.16 2008/01/03 06:48:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.17 2008/01/10 07:41:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -294,7 +294,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			 * This case is used by vop_stdputpages().
 			 */
 			bp = getblk(ap->a_vp, uio->uio_offset, HAMMER_BUFSIZE,
-				    0, 0);
+				    GETBLK_BHEAVY, 0);
 			if ((bp->b_flags & B_CACHE) == 0) {
 				bqrelse(bp);
 				error = bread(ap->a_vp,
@@ -310,13 +310,13 @@ hammer_vop_write(struct vop_write_args *ap)
 			 * entirely overwrite the buffer
 			 */
 			bp = getblk(ap->a_vp, uio->uio_offset, HAMMER_BUFSIZE,
-				    0, 0);
+				    GETBLK_BHEAVY, 0);
 		} else if (offset == 0 && uio->uio_offset >= ip->ino_rec.ino_size) {
 			/*
 			 * XXX
 			 */
 			bp = getblk(ap->a_vp, uio->uio_offset, HAMMER_BUFSIZE,
-				    0, 0);
+				    GETBLK_BHEAVY, 0);
 			vfs_bio_clrbuf(bp);
 		} else {
 			/*
@@ -329,6 +329,7 @@ hammer_vop_write(struct vop_write_args *ap)
 				brelse(bp);
 				break;
 			}
+			bheavy(bp);
 		}
 		n = HAMMER_BUFSIZE - offset;
 		if (n > uio->uio_resid)

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.21 2008/01/09 04:05:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.22 2008/01/10 07:41:03 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -88,7 +88,6 @@ typedef struct hammer_transaction *hammer_transaction_t;
  */
 struct hammer_lock {
 	int	refs;		/* active references delay writes */
-	int	modifying;	/* indicates buffer being modified */
 	int	lockcount;	/* lock count for exclusive/shared access */
 	int	wanted;
 	struct thread *locktd;
@@ -241,10 +240,13 @@ enum hammer_io_type { HAMMER_STRUCTURE_VOLUME,
 		      HAMMER_STRUCTURE_BUFFER };
 
 union hammer_io_structure;
+struct hammer_io;
 
 struct worklist {
 	LIST_ENTRY(worklist) node;
 };
+
+TAILQ_HEAD(hammer_io_list, hammer_io);
 
 struct hammer_io {
 	struct worklist worklist;
@@ -252,8 +254,13 @@ struct hammer_io {
 	enum hammer_io_type type;
 	struct buf	*bp;
 	int64_t		offset;
+	TAILQ_ENTRY(hammer_io) entry;	/* based on modified flag */
+	struct hammer_io_list  *entry_list;
+	struct hammer_io_list  deplist;
 	u_int		modified : 1;	/* bp's data was modified */
 	u_int		released : 1;	/* bp released (w/ B_LOCKED set) */
+	u_int		running : 1;	/* bp write IO in progress */
+	u_int		waiting : 1;	/* someone is waiting on us */
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -295,12 +302,6 @@ struct hammer_supercl {
 
 typedef struct hammer_supercl *hammer_supercl_t;
 
-enum hammer_cluster_state {
-	HAMMER_CLUSTER_IDLE,
-	HAMMER_CLUSTER_ASYNC,
-	HAMMER_CLUSTER_OPEN
-};
-
 /*
  * In-memory cluster representing on-disk buffer
  *
@@ -321,7 +322,6 @@ struct hammer_cluster {
 	struct hammer_base_elm clu_btree_beg;	/* copy of on-disk info */
 	struct hammer_base_elm clu_btree_end;	/* copy of on-disk info */
 	int32_t clu_no;
-	enum hammer_cluster_state state;
 };
 
 typedef struct hammer_cluster *hammer_cluster_t;
@@ -340,7 +340,6 @@ struct hammer_buffer {
 	u_int64_t buf_type;
 	struct hammer_alist_live alist;
 	struct hammer_node_list clist;
-	struct hammer_node *save_scan;
 };
 
 typedef struct hammer_buffer *hammer_buffer_t;
@@ -388,6 +387,8 @@ union hammer_io_structure {
 	struct hammer_cluster	cluster;
 	struct hammer_buffer	buffer;
 };
+
+typedef union hammer_io_structure *hammer_io_structure_t;
 
 #define HAMFS_CLUSTER_DIRTY	0x0001
 
@@ -548,7 +549,6 @@ int		hammer_ref_cluster(hammer_cluster_t cluster);
 int		hammer_ref_buffer(hammer_buffer_t buffer);
 void		hammer_flush_buffer_nodes(hammer_buffer_t buffer);
 
-
 void		hammer_rel_volume(hammer_volume_t volume, int flush);
 void		hammer_rel_supercl(hammer_supercl_t supercl, int flush);
 void		hammer_rel_cluster(hammer_cluster_t cluster, int flush);
@@ -557,6 +557,8 @@ void		hammer_rel_buffer(hammer_buffer_t buffer, int flush);
 hammer_node_t	hammer_get_node(hammer_cluster_t cluster,
 			int32_t node_offset, int *errorp);
 int		hammer_ref_node(hammer_node_t node);
+hammer_node_t	hammer_ref_node_safe(struct hammer_mount *hmp,
+			struct hammer_node **cache, int *errorp);
 void		hammer_rel_node(hammer_node_t node);
 void		hammer_cache_node(hammer_node_t node,
 			struct hammer_node **cache);
@@ -635,92 +637,27 @@ void hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep);
 int hammer_spike(struct hammer_cursor **spikep);
 int hammer_recover(struct hammer_cluster *cluster);
 
+void hammer_io_init(hammer_io_t io, enum hammer_io_type type);
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io);
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
 void hammer_io_release(struct hammer_io *io, int flush);
+void hammer_io_flush(struct hammer_io *io);
 int hammer_io_checkflush(hammer_io_t io);
 void hammer_io_notify_cluster(hammer_cluster_t cluster);
-void hammer_io_flush(struct hammer_io *io, struct hammer_sync_info *info);
-void hammer_io_intend_modify(struct hammer_io *io);
-void hammer_io_modify_done(struct hammer_io *io);
 void hammer_io_clear_modify(struct hammer_io *io);
+void hammer_io_waitdep(struct hammer_io *io);
+
+void hammer_modify_volume(hammer_volume_t volume);
+void hammer_modify_supercl(hammer_supercl_t supercl);
+void hammer_modify_cluster(hammer_cluster_t cluster);
+void hammer_modify_buffer(hammer_buffer_t buffer);
 
 #endif
-
-/*
- * Inline support functions (not kernel specific)
- */
-static __inline void
-hammer_modify_volume(struct hammer_volume *volume)
-{
-	volume->io.modified = 1;
-	++volume->io.lock.modifying;
-	if (volume->io.released)
-		hammer_io_intend_modify(&volume->io);
-}
-
-static __inline void
-hammer_modify_volume_done(struct hammer_volume *volume)
-{
-	hammer_io_modify_done(&volume->io);
-}
-
-static __inline void
-hammer_modify_supercl(struct hammer_supercl *supercl)
-{
-	supercl->io.modified = 1;
-	++supercl->io.lock.modifying;
-	if (supercl->io.released)
-		hammer_io_intend_modify(&supercl->io);
-}
-
-static __inline void
-hammer_modify_supercl_done(struct hammer_supercl *supercl)
-{
-	hammer_io_modify_done(&supercl->io);
-}
-
-static __inline void
-hammer_modify_cluster(struct hammer_cluster *cluster)
-{
-	cluster->io.modified = 1;
-	++cluster->io.lock.modifying;
-	if (cluster->io.released)
-		hammer_io_intend_modify(&cluster->io);
-}
-
-static __inline void
-hammer_modify_cluster_done(struct hammer_cluster *cluster)
-{
-	hammer_io_modify_done(&cluster->io);
-}
-
-static __inline void
-hammer_modify_buffer(struct hammer_buffer *buffer)
-{
-	hammer_io_notify_cluster(buffer->cluster);
-	buffer->io.modified = 1;
-	++buffer->io.lock.modifying;
-	if (buffer->io.released)
-		hammer_io_intend_modify(&buffer->io);
-}
-
-static __inline void
-hammer_modify_buffer_done(struct hammer_buffer *buffer)
-{
-	hammer_io_modify_done(&buffer->io);
-}
 
 static __inline void
 hammer_modify_node(struct hammer_node *node)
 {
 	hammer_modify_buffer(node->buffer);
-}
-
-static __inline void
-hammer_modify_node_done(struct hammer_node *node)
-{
-	hammer_modify_buffer_done(node->buffer);
 }
 
 /*

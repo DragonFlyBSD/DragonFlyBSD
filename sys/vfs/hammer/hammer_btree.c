@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.16 2008/01/03 06:48:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.17 2008/01/10 07:41:03 dillon Exp $
  */
 
 /*
@@ -460,7 +460,6 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 	}
 	node->elms[i] = *elm;
 	++node->count;
-	hammer_modify_node_done(cursor->node);
 
 	KKASSERT(hammer_btree_cmp(cursor->left_bound, &elm->leaf.base) <= 0);
 	KKASSERT(hammer_btree_cmp(cursor->right_bound, &elm->leaf.base) > 0);
@@ -478,7 +477,6 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 		parent = cursor->parent->ondisk;
 		i = cursor->parent_index;
 		++parent->elms[i].internal.subtree_count;
-		hammer_modify_node_done(cursor->parent);
 		KKASSERT(parent->elms[i].internal.subtree_count <= node->count);
 	}
 	return(0);
@@ -535,7 +533,6 @@ hammer_btree_delete(hammer_cursor_t cursor)
 		      (ondisk->count - i - 1) * sizeof(ondisk->elms[0]));
 	}
 	--ondisk->count;
-	hammer_modify_node_done(node);
 	if (cursor->parent != NULL) {
 		/*
 		 * Adjust parent's notion of the leaf's count.  subtree_count
@@ -548,7 +545,6 @@ hammer_btree_delete(hammer_cursor_t cursor)
 		elm = &parent->ondisk->elms[cursor->parent_index];
 		if (elm->internal.subtree_count)
 			--elm->internal.subtree_count;
-		hammer_modify_node_done(parent);
 		KKASSERT(elm->internal.subtree_count <= ondisk->count);
 	}
 
@@ -800,7 +796,6 @@ btree_search(hammer_cursor_t cursor, int flags)
 			save = node->elms[0].subtree_type;
 			node->elms[0].base = *cursor->left_bound;
 			node->elms[0].subtree_type = save;
-			hammer_modify_node_done(cursor->node);
 		} else if (i == node->count) {
 			/*
 			 * Terminate early if not inserting and the key is
@@ -835,7 +830,6 @@ btree_search(hammer_cursor_t cursor, int flags)
 					     cursor->right_bound) != 0) {
 				hammer_modify_node(cursor->node);
 				elm->base = *cursor->right_bound;
-				hammer_modify_node_done(cursor->node);
 			}
 			--i;
 		} else {
@@ -1119,7 +1113,6 @@ btree_split_internal(hammer_cursor_t cursor)
 		ondisk->elms[1].base = node->cluster->clu_btree_end;
 		made_root = 1;
 		parent_index = 0;	/* index of current node in parent */
-		hammer_modify_node_done(parent);
 	} else {
 		made_root = 0;
 		parent = cursor->parent;
@@ -1198,7 +1191,6 @@ btree_split_internal(hammer_cursor_t cursor)
 	parent_elm->internal.subtree_vol_no = 0;
 	parent_elm->internal.rec_offset = 0;
 	++ondisk->count;
-	hammer_modify_node_done(parent);
 
 	/*
 	 * The children of new_node need their parent pointer set to new_node.
@@ -1217,7 +1209,6 @@ btree_split_internal(hammer_cursor_t cursor)
 	if (made_root) {
 		hammer_modify_cluster(node->cluster);
 		node->cluster->ondisk->clu_btree_root = parent->node_offset;
-		hammer_modify_cluster_done(node->cluster);
 		node->ondisk->parent = parent->node_offset;
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
@@ -1225,8 +1216,6 @@ btree_split_internal(hammer_cursor_t cursor)
 		}
 		cursor->parent = parent;	/* lock'd and ref'd */
 	}
-	hammer_modify_node_done(new_node);
-	hammer_modify_node_done(node);
 
 
 	/*
@@ -1319,7 +1308,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 		ondisk->elms[0].internal.subtree_type = leaf->ondisk->type;
 		ondisk->elms[0].internal.subtree_offset = leaf->node_offset;
 		ondisk->elms[1].base = leaf->cluster->clu_btree_end;
-		hammer_modify_node_done(parent);
 		made_root = 1;
 		parent_index = 0;	/* insertion point in parent */
 	} else {
@@ -1397,7 +1385,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 	parent_elm->internal.rec_offset = 0;
 	mid_boundary = &parent_elm->base;
 	++ondisk->count;
-	hammer_modify_node_done(parent);
 
 	/*
 	 * The cluster's root pointer may have to be updated.
@@ -1405,7 +1392,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 	if (made_root) {
 		hammer_modify_cluster(leaf->cluster);
 		leaf->cluster->ondisk->clu_btree_root = parent->node_offset;
-		hammer_modify_cluster_done(leaf->cluster);
 		leaf->ondisk->parent = parent->node_offset;
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
@@ -1413,8 +1399,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 		}
 		cursor->parent = parent;	/* lock'd and ref'd */
 	}
-	hammer_modify_node_done(leaf);
-	hammer_modify_node_done(new_leaf);
 
 	/*
 	 * Ok, now adjust the cursor depending on which element the original
@@ -1490,7 +1474,6 @@ btree_remove(hammer_cursor_t cursor)
 		ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 		ondisk->count = 0;
 		cursor->index = 0;
-		hammer_modify_node_done(cursor->node);
 		kprintf("EMPTY ROOT OF ROOT CLUSTER -> LEAF\n");
 		return(0);
 	}
@@ -1575,7 +1558,6 @@ btree_remove(hammer_cursor_t cursor)
 	bcopy(&ondisk->elms[i+1], &ondisk->elms[i],
 	      (ondisk->count - i) * sizeof(ondisk->elms[0]));
 	--ondisk->count;
-	hammer_modify_node_done(node);
 
 	/*
 	 * Adjust the parent-parent's (now parent) reference to the parent
@@ -1586,13 +1568,11 @@ btree_remove(hammer_cursor_t cursor)
 		if (elm->internal.subtree_count != ondisk->count) {
 			hammer_modify_node(parent);
 			elm->internal.subtree_count = ondisk->count;
-			hammer_modify_node_done(parent);
 		}
 		if (elm->subtree_type != HAMMER_BTREE_TYPE_CLUSTER &&
 		    elm->subtree_type != ondisk->type) {
 			hammer_modify_node(parent);
 			elm->subtree_type = ondisk->type;
-			hammer_modify_node_done(parent);
 		}
 	}
 
@@ -1636,7 +1616,6 @@ btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm)
 			hammer_lock_ex(&child->lock);
 			child->ondisk->parent = node->node_offset;
 			hammer_unlock(&child->lock);
-			hammer_modify_node_done(child);
 			hammer_rel_node(child);
 		}
 		break;
@@ -1655,7 +1634,6 @@ btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm)
 		hammer_lock_ex(&cluster->io.lock);
 		cluster->ondisk->clu_btree_parent_offset = node->node_offset;
 		hammer_unlock(&cluster->io.lock);
-		hammer_modify_cluster_done(cluster);
 		KKASSERT(cluster->ondisk->clu_btree_parent_clu_no ==
 			 node->cluster->clu_no);
 		KKASSERT(cluster->ondisk->clu_btree_parent_vol_no ==

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.10 2008/01/03 06:48:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.11 2008/01/10 07:41:03 dillon Exp $
  */
 
 /*
@@ -62,8 +62,7 @@ hammer_init_cursor_hmp(hammer_cursor_t cursor, struct hammer_node **cache,
 	 * Step 1 - acquire a locked node from the cache if possible
 	 */
 	if (cache && *cache) {
-		node = *cache;
-		error = hammer_ref_node(node);
+		node = hammer_ref_node_safe(hmp, cache, &error);
 		if (error == 0) {
 			hammer_lock_ex(&node->lock);
 			if (node->flags & HAMMER_NODE_DELETED) {
@@ -71,8 +70,6 @@ hammer_init_cursor_hmp(hammer_cursor_t cursor, struct hammer_node **cache,
 				hammer_rel_node(node);
 				node = NULL;
 			}
-		} else {
-			node = NULL;
 		}
 	} else {
 		node = NULL;
