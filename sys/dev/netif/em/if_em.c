@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.61 2007/11/26 11:05:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.62 2008/01/10 10:44:28 matthias Exp $
  * $FreeBSD$
  */
 /*
@@ -212,6 +212,10 @@ static em_vendor_info_t em_vendor_info_array[] =
 	{ 0x8086, E1000_DEV_ID_82571EB_QUAD_COPPER_LOWPROFILE,
 						PCI_ANY_ID, PCI_ANY_ID, 0},
 
+	{ 0x8086, E1000_DEV_ID_82571EB_QUAD_FIBER,
+						PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82571PT_QUAD_COPPER,
+						PCI_ANY_ID, PCI_ANY_ID, 0},
 	{ 0x8086, E1000_DEV_ID_82572EI_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
 	{ 0x8086, E1000_DEV_ID_82572EI_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
 	{ 0x8086, E1000_DEV_ID_82572EI_SERDES,	PCI_ANY_ID, PCI_ANY_ID, 0},
@@ -238,6 +242,17 @@ static em_vendor_info_t em_vendor_info_array[] =
 	{ 0x8086, E1000_DEV_ID_ICH8_IFE_G,	PCI_ANY_ID, PCI_ANY_ID, 0},
 	{ 0x8086, E1000_DEV_ID_ICH8_IGP_M,	PCI_ANY_ID, PCI_ANY_ID, 0},
 
+	{ 0x8086, E1000_DEV_ID_ICH9_IGP_AMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_ICH9_IGP_C,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_ICH9_IFE,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_ICH9_IFE_GT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_ICH9_IFE_G,	PCI_ANY_ID, PCI_ANY_ID, 0},
+
+	{ 0x8086, E1000_DEV_ID_82575EB_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82575EB_FIBER_SERDES,
+						PCI_ANY_ID, PCI_ANY_ID, 0},
+	{ 0x8086, E1000_DEV_ID_82575GB_QUAD_COPPER,
+						PCI_ANY_ID, PCI_ANY_ID, 0},
 	{ 0x8086, 0x101A, PCI_ANY_ID, PCI_ANY_ID, 0},
 	{ 0x8086, 0x1014, PCI_ANY_ID, PCI_ANY_ID, 0},
 	/* required last entry */
@@ -867,6 +882,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			/* FALLTHROUGH */
 		case em_82571:
 		case em_82572:
+		case em_ich9lan:
 		case em_80003es2lan:	/* Limit Jumbo Frame size */
 			max_frame_size = 9234;
 			break;
@@ -1050,6 +1066,10 @@ em_init(void *arg)
 		break;
 	case em_ich8lan:
 		pba = E1000_PBA_8K;
+		break;
+	case em_ich9lan:
+#define E1000_PBA_10K   0x000A
+		pba = E1000_PBA_10K;
 		break;
 	default:
 		/* Devices before 82547 had a Packet Buffer of 64K.   */
@@ -1964,7 +1984,8 @@ em_allocate_pci_resources(device_t dev)
 	}
 
 	/* For ICH8 we need to find the flash memory. */
-	if (adapter->hw.mac_type == em_ich8lan) {
+	if ((adapter->hw.mac_type == em_ich8lan) ||
+	    (adapter->hw.mac_type == em_ich9lan)) {
 		rid = EM_FLASH;
 		adapter->flash_mem = bus_alloc_resource_any(dev,
 		    SYS_RES_MEMORY, &rid, RF_ACTIVE);

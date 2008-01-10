@@ -30,7 +30,7 @@ POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.h,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.11 2006/12/23 10:39:16 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.12 2008/01/10 10:44:28 matthias Exp $*/
 
 /* if_em_hw.h
  * Structures, enums, and macros for the MAC
@@ -72,6 +72,7 @@ typedef enum {
     em_82573,
     em_80003es2lan,
     em_ich8lan,
+    em_ich9lan,
     em_num_macs
 } em_mac_type;
 
@@ -471,6 +472,8 @@ int32_t em_check_phy_reset_block(struct em_hw *hw);
 #define E1000_DEV_ID_82547EI_MOBILE      0x101A
 #define E1000_DEV_ID_82571EB_COPPER      0x105E
 #define E1000_DEV_ID_82571EB_FIBER       0x105F
+#define E1000_DEV_ID_82571EB_QUAD_FIBER       0x10A5
+#define E1000_DEV_ID_82571PT_QUAD_COPPER      0x10D5
 #define E1000_DEV_ID_82571EB_SERDES      0x1060
 #define E1000_DEV_ID_82571EB_QUAD_COPPER 0x10A4
 #define E1000_DEV_ID_82571EB_QUAD_COPPER_LOWPROFILE  0x10BC
@@ -494,6 +497,14 @@ int32_t em_check_phy_reset_block(struct em_hw *hw);
 #define E1000_DEV_ID_ICH8_IFE_GT         0x10C4
 #define E1000_DEV_ID_ICH8_IFE_G          0x10C5
 #define E1000_DEV_ID_ICH8_IGP_M          0x104D
+#define E1000_DEV_ID_ICH9_IGP_AMT             0x10BD
+#define E1000_DEV_ID_ICH9_IGP_C               0x294C
+#define E1000_DEV_ID_ICH9_IFE                 0x10C0
+#define E1000_DEV_ID_ICH9_IFE_GT              0x10C3
+#define E1000_DEV_ID_ICH9_IFE_G               0x10C2
+#define E1000_DEV_ID_82575EB_COPPER           0x10A7
+#define E1000_DEV_ID_82575EB_FIBER_SERDES     0x10A9
+#define E1000_DEV_ID_82575GB_QUAD_COPPER      0x10D6
 
 
 #define NODE_ADDRESS_SIZE 6
@@ -3278,6 +3289,7 @@ struct em_host_command_info {
 #define ICH_FLASH_CYCLE_REPEAT_COUNT         10      /* 10 cycles */
 #define ICH_FLASH_SEG_SIZE_256               256
 #define ICH_FLASH_SEG_SIZE_4K                4096
+#define ICH_FLASH_SEG_SIZE_8K                8192
 #define ICH_FLASH_SEG_SIZE_64K               65536
 
 #define ICH_CYCLE_READ                       0x0
