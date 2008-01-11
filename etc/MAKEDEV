@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.36 2007/08/31 11:26:44 swildner Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.37 2008/01/11 11:23:51 hasso Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -508,8 +508,9 @@ all)
 	sh MAKEDEV smb0 smb1				# cdev, SMBus device
 	sh MAKEDEV usb usb0 uhid0 ums0 ulpt0 ugen0	# cdev, USB devices
 	sh MAKEDEV usb1 uhid1 ums1 ulpt1 ugen1		# cdev, USB devices
-	sh MAKEDEV usb2 usb3 usb4 usb5			# cdev, USB devices
+	sh MAKEDEV usb2 usb3 usb4 usb5 usb6 usb7	# cdev, USB devices
 	sh MAKEDEV urio0 uscanner0 umodem0		# cdev, USB devices too
+	sh MAKEDEV ucom0 ucom1 ucom2 ucom3		# cdev, USB serial devices
 	sh MAKEDEV bpf0 bpf1 bpf2 bpf3 			# cdev, network
 	sh MAKEDEV ipl tun0 tun1 tun2 tun3		# cdev, network
 	sh MAKEDEV tap0 tap1 tap2 tap3			# cdev, network
