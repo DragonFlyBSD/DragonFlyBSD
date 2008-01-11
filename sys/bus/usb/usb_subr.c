@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.76.2.3 2006/03/01 01:59:05 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.26 2007/11/06 07:37:00 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.27 2008/01/11 11:41:50 hasso Exp $	*/
 
 /* Also already have from NetBSD:
  *	$NetBSD: usb_subr.c,v 1.102 2003/01/01 16:21:50 augustss Exp $
@@ -860,7 +860,6 @@ usbd_probe_and_attach(device_t parent, usbd_device_handle dev,
 				}
 				uaap = kmalloc(sizeof(uaa), M_USB, M_WAITOK);
 				device_set_ivars(bdev, uaap);
-				device_quiet(bdev);
 			} else {
 				dev->subdevs[found] = 0;
 			}
