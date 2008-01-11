@@ -30,7 +30,7 @@ POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.c,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.12 2008/01/10 10:44:28 matthias Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.13 2008/01/11 10:34:15 sephe Exp $*/
 
 /* if_em_hw.c
  * Shared functions for accessing and configuring the MAC
@@ -9018,8 +9018,32 @@ em_erase_ich8_4k_segment(struct em_hw *hw, uint32_t bank)
         iteration = 1;
     } else if (hsfsts.hsf_status.berasesz == 0x2) {
 	if (hw->mac_type == em_ich9lan) {
+	    uint32_t gfpreg, sector_base_addr, sector_end_addr;
+
+	    gfpreg = E1000_READ_ICH_FLASH_REG(hw, ICH_FLASH_GFPREG);
+
+	    /*
+	     * sector_X_addr is a "sector"-aligned address (4096 bytes)
+	     * Add 1 to sector_end_addr since this sector is included in
+	     * the overall size.
+	     */
+	    sector_base_addr = gfpreg & ICH_GFPREG_BASE_MASK;
+	    sector_end_addr = ((gfpreg >> 16) & ICH_GFPREG_BASE_MASK) + 1;
+
+	    /*
+	     * find total size of the NVM, then cut in half since the tota
+	     * size represents two separate NVM banks.
+	     */
+	    bank_size = (sector_end_addr - sector_base_addr)
+	    		<< ICH_FLAGH_SECT_ADDR_SHIFT;
+	    bank_size /= 2;
+	    /* Word align */
+	    bank_size = (bank_size / sizeof(uint16_t)) * sizeof(uint16_t);
+
 	    sub_sector_size = ICH_FLASH_SEG_SIZE_8K;
 	    iteration = bank_size / ICH_FLASH_SEG_SIZE_8K;
+	} else {
+	    return error;
 	}
     } else if (hsfsts.hsf_status.berasesz == 0x3) {
         bank_size = ICH_FLASH_SEG_SIZE_64K;

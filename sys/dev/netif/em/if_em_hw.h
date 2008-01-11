@@ -30,7 +30,7 @@ POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.h,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.12 2008/01/10 10:44:28 matthias Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.13 2008/01/11 10:34:15 sephe Exp $*/
 
 /* if_em_hw.h
  * Structures, enums, and macros for the MAC
@@ -3319,6 +3319,7 @@ struct em_host_command_info {
 #define ICH_FLASH_SECTOR_SIZE      4096
 #define ICH_GFPREG_BASE_MASK       0x1FFF
 #define ICH_FLASH_LINEAR_ADDR_MASK 0x00FFFFFF
+#define ICH_FLAGH_SECT_ADDR_SHIFT  12
 
 /* ICH8 GbE Flash Hardware Sequencing Flash Status Register bit breakdown */
 /* Offset 04h HSFSTS */
