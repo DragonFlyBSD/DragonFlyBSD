@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.5 2007/11/06 07:37:01 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.6 2008/01/11 12:25:30 hasso Exp $	*/
 /*	$OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $	*/
 
 /*
@@ -36,15 +36,13 @@
 
 #ifdef UMSM_DEBUG
 static int	umsmdebug = 1;
-#define DPRINTFN(n, x)  do { if (umsmdebug > (n)) printf x; } while (0)
+#define DPRINTFN(n, x)  do { if (umsmdebug > (n)) kprintf x; } while (0)
 #else
 #define DPRINTFN(n, x)
 #endif
 #define DPRINTF(x) DPRINTFN(0, x)
 
 #define UMSMBUFSZ	2048
-#define UMSM_CONFIG_NO	0
-#define UMSM_IFACE_NO	0
 
 struct umsm_softc {
 	struct ucom_softc	 sc_ucom;
@@ -76,6 +74,7 @@ static const struct usb_devno umsm_devs[] = {
 	{ USB_DEVICE(0x1199, 0x6804) }, /* Sierra Wireless MC8755 */
 	{ USB_DEVICE(0x1199, 0x6812) }, /* Sierra Wireless MC8775 */
 	{ USB_DEVICE(0x1199, 0x6820) }, /* Sierra Wireless Aircard 875 */
+	{ USB_DEVICE(0x12d1, 0x1001) }, /* Huawei Mobile Connect */
 	{ USB_DEVICE(0x1410, 0x1100) }, /* Novatel Wireless ExpressCard 3G */
 	{ USB_DEVICE(0x1410, 0x1110) }, /* Novatel Wireless Merlin V620 */
 	{ USB_DEVICE(0x1410, 0x1130) }, /* Novatel Wireless S720 */
@@ -113,11 +112,11 @@ umsm_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 
-	if (uaa->iface != NULL)
+	if (uaa->iface == NULL)
 		return UMATCH_NONE;
 
 	return (usb_lookup(umsm_devs, uaa->vendor, uaa->product) != NULL) ?
-	    UMATCH_VENDOR_PRODUCT : UMATCH_NONE;
+	    UMATCH_VENDOR_IFACESUBCLASS : UMATCH_NONE;
 }
 
 static int
@@ -128,8 +127,6 @@ umsm_attach(device_t self)
 	struct ucom_softc *ucom;
 	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
-	usbd_status error;
-	const char *devname;
 	int i;
 
 	ucom = &sc->sc_ucom;
@@ -138,21 +135,6 @@ umsm_attach(device_t self)
 	ucom->sc_dev = self;
 	ucom->sc_udev = uaa->device;
 	ucom->sc_iface = uaa->iface;
-
-	devname = device_get_nameunit(ucom->sc_dev);
-
-	if (usbd_set_config_index(ucom->sc_udev, UMSM_CONFIG_NO, 1) != 0) {
-		device_printf(ucom->sc_dev, "could not set configuration no\n");
-		goto error;
-	}
-
-	/* get the first interface handle */
-	error = usbd_device2interface_handle(ucom->sc_udev, UMSM_IFACE_NO,
-	    &ucom->sc_iface);
-	if (error != 0) {
-		device_printf(ucom->sc_dev, "could not get interface handle\n");
-		goto error;
-	}
 
 	id = usbd_get_interface_descriptor(ucom->sc_iface);
 
@@ -188,8 +170,9 @@ umsm_attach(device_t self)
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, ucom->sc_udev,
 			   ucom->sc_dev);
 
-	DPRINTF(("umsm: in = 0x%x, out = 0x%x, intr = 0x%x\n",
-		 ucom->sc_bulkin_no, ucom->sc_bulkout_no, sc->sc_intr_number));
+	DPRINTF(("%s: in = 0x%x, out = 0x%x\n",
+		 device_get_nameunit(ucom->sc_dev), ucom->sc_bulkin_no,
+		 ucom->sc_bulkout_no));
 
 	ucom_attach(&sc->sc_ucom);
 
