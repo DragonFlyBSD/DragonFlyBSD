@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.6 2008/01/11 12:25:30 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.7 2008/01/11 19:45:27 hasso Exp $	*/
 /*	$OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $	*/
 
 /*
@@ -73,6 +73,7 @@ static const struct usb_devno umsm_devs[] = {
 	{ USB_DEVICE(0x1199, 0x6803) }, /* Sierra Wireless MC8765 */
 	{ USB_DEVICE(0x1199, 0x6804) }, /* Sierra Wireless MC8755 */
 	{ USB_DEVICE(0x1199, 0x6812) }, /* Sierra Wireless MC8775 */
+	{ USB_DEVICE(0x1199, 0x6813) }, /* Sierra Wireless MC8755 */
 	{ USB_DEVICE(0x1199, 0x6820) }, /* Sierra Wireless Aircard 875 */
 	{ USB_DEVICE(0x12d1, 0x1001) }, /* Huawei Mobile Connect */
 	{ USB_DEVICE(0x1410, 0x1100) }, /* Novatel Wireless ExpressCard 3G */
