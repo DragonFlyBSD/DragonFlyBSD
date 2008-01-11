@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.15 2008/01/09 00:46:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.16 2008/01/11 01:41:33 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -584,11 +584,23 @@ struct hammer_entry_record {
 };
 
 /*
+ * Spike record
+ */
+struct hammer_spike_record {
+	struct hammer_base_record base;
+	int32_t	  clu_no;
+	int32_t	  vol_no;
+	hammer_tid_t clu_id;
+	char	  reserved[16];
+};
+
+/*
  * Hammer rollup record
  */
 union hammer_record_ondisk {
 	struct hammer_base_record	base;
 	struct hammer_generic_record	generic;
+	struct hammer_spike_record	spike;
 	struct hammer_inode_record	inode;
 	struct hammer_data_record	data;
 	struct hammer_entry_record	entry;

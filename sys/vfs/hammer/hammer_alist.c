@@ -38,7 +38,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.7 2008/01/09 00:46:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.8 2008/01/11 01:41:33 dillon Exp $
  */
 /*
  * This module implements a generic allocator through the use of a hinted
@@ -843,8 +843,10 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 							   radix, count, atblk,
 							   &full);
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
-					if (full)
+					if (full) {
 						scan->bm_bitmap &= ~mask;
+						scan->bm_bitmap |= pmask << 1;
+					}
 					return(r);
 				}
 			}
@@ -922,6 +924,8 @@ failed:
 
 /*
  * This version allocates blocks in the reverse direction.
+ *
+ * This is really nasty code
  */
 static int32_t
 hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
@@ -984,13 +988,11 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 	}
 
 	/*
-	 * If the count is too big we couldn't allocate anything from a
-	 * recursion even if the sub-tree were entirely free.
+	 * NOTE: saveblk must represent the entire layer, not the base blk
+	 * of the last element.  Otherwise an atblk that is inside the
+	 * last element can cause bighint to be updated for a failed
+	 * allocation when we didn't actually test all available blocks.
 	 */
-	if (count > radix) {
-		saveblk = atblk;	/* make it work for the conditional */
-		goto failed;		/* at the failed label */
-	}
 
 	if (skip == 1) {
 		/*
@@ -999,8 +1001,10 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 		 */
 		mask = 0xC0000000;
 		pmask = 0x40000000;
-		blk += radix * HAMMER_ALIST_META_RADIX - radix;
+		blk += radix * HAMMER_ALIST_META_RADIX;
+
 		saveblk = blk;
+		blk -= radix;
 
 		for (i = 0; i < (int)HAMMER_ALIST_META_RADIX; ++i) {
 			/*
@@ -1029,8 +1033,10 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 							   radix, count,
 							   atblk, &full);
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
-					if (full)
+					if (full) {
 						scan->bm_bitmap &= ~mask;
+						scan->bm_bitmap |= pmask << 1;
+					}
 					return(r);
 				}
 			}
@@ -1057,12 +1063,13 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 			blk += radix;
 			j += 2;
 		}
+
+		saveblk = blk;
 		blk -= radix;
 		j -= 2;
 		mask = 0x00000003 << j;
 		pmask = 0x00000001 << j;
 		i -= next_skip;
-		saveblk = blk;
 
 		while (i >= 1) {
 			/*
@@ -1109,7 +1116,6 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 		}
 	}
 
-failed:
 	/*
 	 * We couldn't allocate count in this subtree, update bighint.
 	 * Since we are restricted to powers of 2, the next highest count
@@ -1341,6 +1347,7 @@ hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 					bl->bl_radix_destroy(live->info, blk, radix);
 					/* XXX bighint not being set properly */
 				} else {
+					scan->bm_bitmap &= ~mask;
 					scan->bm_bitmap |= pmask;
 					if (scan->bm_bighint < radix / 2)
 						scan->bm_bighint = radix / 2;
@@ -1362,6 +1369,7 @@ hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 			int32_t v;
 
 			KKASSERT(mask != 0);
+			KKASSERT(count != 0);
 
 			v = blk + radix - freeBlk;
 			if (v > count)
@@ -1389,12 +1397,17 @@ hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 							      radix, next_skip,
 							      blk);
 				}
-				if (scan[i].bm_bitmap == (u_int32_t)-1)
+				if (scan[i].bm_bitmap == (u_int32_t)-1) {
 					scan->bm_bitmap |= mask;
-				else
+					/* XXX bighint not set properly */
+					scan->bm_bighint = radix * HAMMER_ALIST_META_RADIX;
+				} else {
+					scan->bm_bitmap &= ~mask;
 					scan->bm_bitmap |= pmask;
-				if (scan->bm_bighint < scan[i].bm_bighint)
-					scan->bm_bighint = scan[i].bm_bighint;
+					/* XXX bighint not set properly */
+					if (scan->bm_bighint < scan[i].bm_bighint)
+						scan->bm_bighint = scan[i].bm_bighint;
+				}
 			}
 			mask <<= 2;
 			pmask <<= 2;
@@ -1488,8 +1501,10 @@ hammer_alst_radix_init(hammer_almeta_t scan, int32_t radix,
 			/*
 			 * Mark as partially allocated
 			 */
-			if (scan)
+			if (scan) {
+				scan->bm_bitmap &= ~mask;
 				scan->bm_bitmap |= pmask;
+			}
 		} else {
 			/*
 			 * Add terminator and break out.  The terminal

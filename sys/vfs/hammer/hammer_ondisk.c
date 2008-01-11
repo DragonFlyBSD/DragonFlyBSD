@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.18 2008/01/10 07:41:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.19 2008/01/11 01:41:33 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1585,7 +1585,7 @@ hammer_alloc_cluster(hammer_mount_t hmp, hammer_cluster_t cluster_hint,
 	 * Acquire the cluster.  On success this will force *errorp to 0.
 	 */
 	if (clu_no != HAMMER_ALIST_BLOCK_NONE) {
-		kprintf("ALLOC CLUSTER %d\n", clu_no);
+		kprintf("ALLOC CLUSTER %d:%d\n", volume->vol_no, clu_no);
 		cluster = hammer_get_cluster(volume, clu_no, errorp,
 					     HAMMER_ASTATE_FREE);
 		volume->clu_iterator = clu_no;
@@ -1938,6 +1938,7 @@ alloc_new_buffer(hammer_cluster_t cluster, u_int64_t type, hammer_alist_t live,
 {
 	hammer_buffer_t buffer;
 	int32_t buf_no;
+	int32_t base_blk;
 	int isfwd;
 
 	if (*bufferp)
@@ -1976,9 +1977,21 @@ alloc_new_buffer(hammer_cluster_t cluster, u_int64_t type, hammer_alist_t live,
 		 * Free the buffer to the appropriate slave list so the
 		 * cluster-based allocator sees it.
 		 */
-		hammer_alist_free(live, buf_no * HAMMER_FSBUF_MAXBLKS,
-				  HAMMER_FSBUF_MAXBLKS);
+		/*hammer_alist_free(live, buf_no * HAMMER_FSBUF_MAXBLKS,
+				  HAMMER_FSBUF_MAXBLKS);*/
+		base_blk = buf_no * HAMMER_FSBUF_MAXBLKS;
 
+		switch(type) {
+		case HAMMER_FSBUF_BTREE:
+			hammer_alist_free(live, base_blk, HAMMER_BTREE_NODES);
+			break;
+		case HAMMER_FSBUF_DATA:
+			hammer_alist_free(live, base_blk, HAMMER_DATA_NODES);
+			break;
+		case HAMMER_FSBUF_RECORDS:
+			hammer_alist_free(live, base_blk, HAMMER_RECORD_NODES);
+			break;
+		}
 	}
 
 	/*
@@ -2092,7 +2105,11 @@ hammer_sync_buffer(hammer_buffer_t buffer, void *data __unused)
 }
 
 /*
- * Generic buffer initialization
+ * Generic buffer initialization.  Initialize the A-list into an all-allocated
+ * state with the free block limit properly set.
+ *
+ * Note that alloc_new_buffer() will free the appropriate block range via
+ * the appropriate cluster alist, so the free count is properly propogated.
  */
 void
 hammer_initbuffer(hammer_alist_t live, hammer_fsbuf_head_t head, u_int64_t type)
@@ -2101,13 +2118,16 @@ hammer_initbuffer(hammer_alist_t live, hammer_fsbuf_head_t head, u_int64_t type)
 
 	switch(type) {
 	case HAMMER_FSBUF_BTREE:
-		hammer_alist_init(live, 0, HAMMER_BTREE_NODES, HAMMER_ASTATE_FREE);
+		hammer_alist_init(live, 0, HAMMER_BTREE_NODES,
+				  HAMMER_ASTATE_ALLOC);
 		break;
 	case HAMMER_FSBUF_DATA:
-		hammer_alist_init(live, 0, HAMMER_DATA_NODES, HAMMER_ASTATE_FREE);
+		hammer_alist_init(live, 0, HAMMER_DATA_NODES,
+				  HAMMER_ASTATE_ALLOC);
 		break;
 	case HAMMER_FSBUF_RECORDS:
-		hammer_alist_init(live, 0, HAMMER_RECORD_NODES, HAMMER_ASTATE_FREE);
+		hammer_alist_init(live, 0, HAMMER_RECORD_NODES,
+				  HAMMER_ASTATE_ALLOC);
 		break;
 	default:
 		hammer_alist_init(live, 0, 0, HAMMER_ASTATE_ALLOC);

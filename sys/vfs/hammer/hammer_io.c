@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.14 2008/01/10 07:41:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.15 2008/01/11 01:41:33 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -420,7 +420,9 @@ hammer_modify_buffer(hammer_buffer_t buffer)
 				cluster->io.released = 1;
 				cluster->io.running = 1;
 				bawrite(cluster->io.bp);
-				kprintf("OPEN CLUSTER %d\n", cluster->clu_no);
+				kprintf("OPEN CLUSTER %d:%d\n",
+					cluster->volume->vol_no,
+					cluster->clu_no);
 			}
 			hammer_unlock(&cluster->io.lock);
 		}
@@ -624,7 +626,9 @@ hammer_io_checkwrite(struct buf *bp)
 
 		if (TAILQ_EMPTY(&cluster->io.deplist)) {
 			cluster->ondisk->clu_flags &= ~HAMMER_CLUF_OPEN;
-			kprintf("CLOSE CLUSTER %d\n", cluster->clu_no);
+			kprintf("CLOSE CLUSTER %d:%d\n",
+				cluster->volume->vol_no,
+				cluster->clu_no);
 		}
 	}
 	return(0);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.5 2008/01/10 07:41:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.6 2008/01/11 01:41:34 dillon Exp $
  */
 
 #include "hammer.h"
@@ -87,6 +87,7 @@ hammer_spike(struct hammer_cursor **spikep)
 	hammer_cluster_t ocluster;
 	hammer_cluster_t ncluster;
 	hammer_node_t onode;
+	hammer_record_ondisk_t rec;
 	int error;
 
 	kprintf("hammer_spike: ENOSPC in cluster, spiking\n");
@@ -200,6 +201,17 @@ hammer_spike(struct hammer_cursor **spikep)
 		}
 	}
 	onode->flags |= HAMMER_NODE_DELETED;
+
+	/*
+	 * Add a record representing the spike using space freed up by the
+	 * above deletions.
+	 */
+	rec = hammer_alloc_record(ocluster, &error, &spike->record_buffer);
+	KKASSERT(error == 0);
+	rec->spike.base.base.rec_type = HAMMER_RECTYPE_CLUSTER;
+	rec->spike.clu_no = ncluster->clu_no;
+	rec->spike.vol_no = ncluster->volume->vol_no;
+	rec->spike.clu_id = 0;
 
 	/*
 	 * XXX I/O dependancy - new cluster must be flushed before current

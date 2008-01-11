@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.17 2008/01/10 07:41:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.18 2008/01/11 01:41:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -348,7 +348,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			flags = 0;
 		}
 		ip->ino_rec.ino_mtime = trans.tid;
-		flags |= HAMMER_INODE_ITIMES;
+		flags |= HAMMER_INODE_ITIMES | HAMMER_INODE_BUFS;
 		hammer_modify_inode(&trans, ip, flags);
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);

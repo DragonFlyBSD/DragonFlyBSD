@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.22 2008/01/10 07:41:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.23 2008/01/11 01:41:33 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -172,9 +172,10 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_RO		0x0200	/* read-only (because of as-of) */
 #define HAMMER_INODE_GONE	0x0400	/* delete flushed out */
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
+#define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
-				 HAMMER_INODE_XDIRTY|\
+				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	  \
 				 HAMMER_INODE_ITIMES|HAMMER_INODE_DELETED)
 
 #define HAMMER_MAX_INODE_CURSORS	4

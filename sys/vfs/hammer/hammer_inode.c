@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.18 2008/01/10 07:41:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.19 2008/01/11 01:41:33 dillon Exp $
  */
 
 #include "hammer.h"
@@ -661,12 +661,16 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	}
 
 	/*
-	 * Sync the buffer cache
+	 * Sync the buffer cache.
 	 */
-	if (ip->vp != NULL)
+	if (ip->vp != NULL) {
 		error = vfsync(ip->vp, waitfor, 1, NULL, NULL);
-	else
+		if (RB_ROOT(&ip->vp->v_rbdirty_tree) == NULL)
+			ip->flags &= ~HAMMER_INODE_BUFS;
+	} else {
 		error = 0;
+	}
+
 
 	/*
 	 * Now sync related records
