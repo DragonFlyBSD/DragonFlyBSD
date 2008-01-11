@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.15 2008/01/11 01:41:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.16 2008/01/11 05:45:19 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -73,7 +73,7 @@ hammer_io_init(hammer_io_t io, enum hammer_io_type type)
  * caller is responsible for dealing with the refs.
  *
  * This call can only be made when no action is required on the buffer.
- * HAMMER must own the buffer (released == 0) since mess around with it.
+ * HAMMER must own the buffer (released == 0) since we mess around with it.
  */
 static void
 hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
@@ -83,6 +83,7 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 	KKASSERT(TAILQ_EMPTY(&iou->io.deplist) && iou->io.modified == 0);
 	buf_dep_init(bp);
 	iou->io.bp = NULL;
+	bp->b_flags &= ~B_LOCKED;
 	if (elseit) {
 		KKASSERT(iou->io.released == 0);
 		iou->io.released = 1;

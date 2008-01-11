@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.19 2008/01/11 01:41:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.20 2008/01/11 05:45:19 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -2095,12 +2095,8 @@ hammer_sync_cluster(hammer_cluster_t cluster, void *data)
 int
 hammer_sync_buffer(hammer_buffer_t buffer, void *data __unused)
 {
-	if (hammer_ref_buffer(buffer) == 0) {
-		hammer_lock_ex(&buffer->io.lock);
-		hammer_flush_buffer_nodes(buffer);
-		hammer_unlock(&buffer->io.lock);
+	if (hammer_ref_buffer(buffer) == 0)
 		hammer_rel_buffer(buffer, 1);
-	}
 	return(0);
 }
 
