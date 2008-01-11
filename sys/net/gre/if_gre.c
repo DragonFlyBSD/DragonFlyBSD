@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.19 2006/12/22 23:44:55 swildner Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.20 2008/01/11 11:59:41 sephe Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -68,6 +68,7 @@
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/route.h>
+#include <net/if_clone.h>
 
 #ifdef INET
 #include <netinet/in.h>

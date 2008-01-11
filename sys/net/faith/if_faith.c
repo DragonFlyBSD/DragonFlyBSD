@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.17 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.18 2008/01/11 11:59:40 sephe Exp $
  */
 /*
  * derived from
@@ -68,6 +68,7 @@
 #include <net/netisr.h>
 #include <net/route.h>
 #include <net/bpf.h>
+#include <net/if_clone.h>
 
 #ifdef	INET
 #include <netinet/in.h>

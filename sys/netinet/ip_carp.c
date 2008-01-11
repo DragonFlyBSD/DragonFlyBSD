@@ -25,7 +25,7 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.5 2008/01/06 16:55:52 swildner Exp $
+ * $DragonFly: src/sys/netinet/ip_carp.c,v 1.6 2008/01/11 11:59:40 sephe Exp $
  */
 
 #include "opt_carp.h"
@@ -61,6 +61,7 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/route.h>
+#include <net/if_clone.h>
 
 #ifdef INET
 #include <netinet/in.h>

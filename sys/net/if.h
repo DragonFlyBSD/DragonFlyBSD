@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.19 2007/09/30 04:37:27 sephe Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.20 2008/01/11 11:59:40 sephe Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -73,31 +73,10 @@ struct ifnet;
 #define		IF_NAMESIZE	IFNAMSIZ
 #define		IF_MAXUNIT	0x7fff		/* if_unit is 15bits */
 
-#ifdef _KERNEL
-/*
- * Structure describing a `cloning' interface.
- */
-struct if_clone {
-	LIST_ENTRY(if_clone) ifc_list;	/* on list of cloners */
-	const char *ifc_name;		/* name of device, e.g. `gif' */
-	size_t ifc_namelen;		/* length of name */
-	int ifc_minifs;			/* minimum number of interfaces */
-	int ifc_maxunit;		/* maximum unit number */
-	unsigned char *ifc_units;	/* bitmap to handle units */
-	int ifc_bmlen;			/* bitmap length */
-
-	int	(*ifc_create)(struct if_clone *, int);
-	void	(*ifc_destroy)(struct ifnet *);
-};
-
-#define IF_CLONE_INITIALIZER(name, create, destroy, minifs, maxunit)	\
-	{ { 0 }, name, sizeof(name) - 1, minifs, maxunit, NULL, 0, create, destroy }
-#endif
-
 /*
  * Structure used to query names of interface cloners.
+ * XXX should be moved to net/if_clone.h
  */
-
 struct if_clonereq {
 	int	ifcr_total;		/* total cloners (out) */
 	int	ifcr_count;		/* room for this many in user buffer */

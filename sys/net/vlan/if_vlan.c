@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.25 2007/10/13 09:43:19 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.26 2008/01/11 11:59:41 sephe Exp $
  */
 
 /*
@@ -80,6 +80,7 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
+#include <net/if_clone.h>
 #include "if_vlan_var.h"
 
 #ifdef INET

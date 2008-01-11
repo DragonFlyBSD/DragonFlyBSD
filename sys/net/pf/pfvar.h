@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pfvar.h,v 1.8 2004/08/12 13:59:44 mlaier Exp $	*/
 /*	$OpenBSD: pfvar.h,v 1.187 2004/03/22 04:54:18 mcbride Exp $ */
 /* add	$OpenBSD: pfvar.h,v 1.194 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.3 2005/06/15 16:32:58 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.4 2008/01/11 11:59:41 sephe Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -43,6 +43,7 @@
 #include <sys/tree.h>
 
 #include <net/radix.h>
+#include <net/if_clone.h>
 #include <netinet/in.h>
 
 #ifdef _KERNEL

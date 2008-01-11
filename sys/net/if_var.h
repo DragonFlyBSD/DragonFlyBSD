@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.43 2007/12/31 04:58:53 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.44 2008/01/11 11:59:40 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -421,9 +421,6 @@ EVENTHANDLER_DECLARE(ifnet_attach_event, ifnet_attach_event_handler_t);
 /* interface detach event */
 typedef void (*ifnet_detach_event_handler_t)(void *, struct ifnet *);
 EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
-/* interface clone event */
-typedef void (*if_clone_event_handler_t)(void *, struct if_clone *);
-EVENTHANDLER_DECLARE(if_clone_event, if_clone_event_handler_t);
 
 static __inline void
 IFAREF(struct ifaddr *_ifa)
@@ -491,12 +488,6 @@ struct	ifaddr *ifaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
-
-void	if_clone_attach(struct if_clone *);
-void	if_clone_detach(struct if_clone *);
-
-int	if_clone_create(char *, int);
-int	if_clone_destroy(const char *);
 
 #define IF_LLSOCKADDR(ifp)						\
     ((struct sockaddr_dl *)(ifp)->if_lladdr->ifa_addr)

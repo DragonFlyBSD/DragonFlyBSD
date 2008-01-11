@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $
- * $DragonFly: src/sys/net/gif/if_gif.c,v 1.19 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/net/gif/if_gif.c,v 1.20 2008/01/11 11:59:41 sephe Exp $
  * $KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $
  */
 
@@ -57,6 +57,7 @@
 #include <net/netisr.h>
 #include <net/route.h>
 #include <net/bpf.h>
+#include <net/if_clone.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
