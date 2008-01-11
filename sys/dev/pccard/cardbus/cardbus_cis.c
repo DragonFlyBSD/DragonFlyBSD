@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus_cis.c,v 1.50 2005/02/20 20:36:16 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.7 2007/11/09 10:20:30 swildner Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.8 2008/01/11 10:53:46 sephe Exp $
  */
 
 /*
@@ -657,7 +657,8 @@ cardbus_parse_cis(device_t cbdev, device_t child,
 	bzero(tupledata, MAXTUPLESIZE);
 	expect_linktarget = TRUE;
 	if ((start = pci_read_config(child, CARDBUS_CIS_REG, 4)) == 0) {
-		device_printf(cbdev, "CIS pointer is 0!\n");
+		if (bootverbose)
+			device_printf(cbdev, "CIS pointer is 0!\n");
 		return (ENXIO);
 	}
 	off = 0;

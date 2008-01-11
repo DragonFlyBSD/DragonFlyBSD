@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.12 2007/12/14 10:54:25 sephe Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.13 2008/01/11 10:53:46 sephe Exp $
  */
 
 /*
@@ -136,8 +136,10 @@ cardbus_add_map(device_t cbdev, device_t child, int reg)
 		type = SYS_RES_IOPORT;
 
 	size = CARDBUS_MAPREG_MEM_SIZE(testval);
-	device_printf(cbdev, "Resource not specified in CIS: id=%x, size=%x\n",
-	    reg, size);
+	if (bootverbose) {
+		device_printf(cbdev, "Resource not specified in CIS: "
+			      "id=%x, size=%x\n", reg, size);
+	}
 	resource_list_add(&dinfo->pci.resources, type, reg, 0UL, ~0UL, size);
 }
 
