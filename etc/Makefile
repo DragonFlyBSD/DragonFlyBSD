@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.203 2008/01/09 11:30:08 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.204 2008/01/12 15:47:43 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -58,7 +58,7 @@ PAMD_CONF=	README convert.sh ftpd gdm imap login other pop3 sshd \
 	telnetd xdm xserver
 
 MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
-	BSD.var.dist BSD.x11.dist BSD.x11-4.dist
+	BSD.var.dist
 .if !defined(NO_SENDMAIL)
 MTREE+=	BSD.sendmail.dist
 .endif
@@ -556,6 +556,8 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/i386/rc.i386.8.gz"
 	rm -f ${DESTDIR}/usr/include/sys/xrpuio.h
 	rm -f ${DESTDIR}/etc/rc.d/kldxref
+	rm -f ${DESTDIR}/etc/mtree/BSD.x11.dist
+	rm -f ${DESTDIR}/etc/mtree/BSD.x11-4.dist
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)

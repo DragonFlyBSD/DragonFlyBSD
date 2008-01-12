@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.root.dist,v 1.45.2.4 2002/06/10 15:33:27 obrien Exp $
-# $DragonFly: src/etc/mtree/BSD.root.dist,v 1.8 2008/01/03 13:35:20 hasso Exp $
+# $DragonFly: src/etc/mtree/BSD.root.dist,v 1.9 2008/01/12 15:47:43 swildner Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -23,8 +23,8 @@
         ..
         defaults
         ..
-	firmware
-	..
+        firmware
+        ..
         isdn            mode=0700
         ..
         mail
@@ -32,14 +32,14 @@
         mtree
         ..
         namedb
-	    etc
-	    ..
-	    var
-		run	uname=bind gname=bind mode=0750
-		..
-	    ..
-	    s		uname=bind gname=bind mode=0750
-	    ..
+            etc
+            ..
+            var
+                run     uname=bind gname=bind mode=0750
+                ..
+            ..
+            s           uname=bind gname=bind mode=0750
+            ..
         ..
         periodic
             daily
@@ -51,12 +51,12 @@
             weekly
             ..
         ..
-	pam.d
-	..
+        pam.d
+        ..
         ppp
         ..
-	rc.d
-	..
+        rc.d
+        ..
         skel
         ..
         ssh
