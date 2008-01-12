@@ -1,6 +1,6 @@
 /*	$NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.154.2.4 2006/06/26 00:31:25 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.23 2007/06/29 22:56:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.24 2008/01/12 12:30:22 hasso Exp $	*/
 
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -2207,6 +2207,7 @@ ohci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 		usb_rem_task(xfer->pipe->device, &OXFER(xfer)->abort_task);
 		usb_transfer_complete(xfer);
 		crit_exit();
+		return;
 	}
 
 	if (xfer->device->bus->intr_context /* || !curproc REMOVED DFly */)
