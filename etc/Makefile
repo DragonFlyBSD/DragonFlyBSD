@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.204 2008/01/12 15:47:43 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.205 2008/01/12 16:30:47 matthias Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -558,6 +558,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/etc/rc.d/kldxref
 	rm -f ${DESTDIR}/etc/mtree/BSD.x11.dist
 	rm -f ${DESTDIR}/etc/mtree/BSD.x11-4.dist
+	rm -rf ${DESTDIR}/usr/share/doc/handbook/handbook.txt
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
