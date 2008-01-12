@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/poll.h,v 1.6.2.1 2000/08/21 12:25:58 sheldonh Exp $
- * $DragonFly: src/sys/sys/poll.h,v 1.6 2004/02/25 17:38:51 joerg Exp $
+ * $DragonFly: src/sys/sys/poll.h,v 1.7 2008/01/12 06:01:27 nant Exp $
  */
 
 #ifndef _SYS_POLL_H_
@@ -35,6 +35,8 @@
 /*
  * This file is intended to be compatible with the traditional poll.h.
  */
+
+typedef	unsigned int	nfds_t;
 
 /*
  * This structure is passed as an array to poll(2).
@@ -103,10 +105,8 @@ __BEGIN_DECLS
 /*
  * XXX logically, poll() should be declared in <poll.h>, but SVR4 at
  * least has it here in <sys/poll.h>.
- * XXX poll() has "unsigned long" nfds on SVR4, not unsigned as on the
- * other BSDs.
  */
-int	poll (struct pollfd *, unsigned int, int);
+int	poll (struct pollfd *, nfds_t, int);
 __END_DECLS
 
 #endif /* !_KERNEL */
