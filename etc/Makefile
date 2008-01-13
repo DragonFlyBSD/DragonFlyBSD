@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.205 2008/01/12 16:30:47 matthias Exp $
+# $DragonFly: src/etc/Makefile,v 1.206 2008/01/13 10:59:31 matthias Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -84,6 +84,22 @@ UPGRADE_SRCDIR?=${.CURDIR}
 distribute:
 	cd ${.CURDIR} ; ${MAKE} distribution DESTDIR=${DISTDIR}/${DISTRIBUTION}
 
+# Include file which contains obsolete files
+.if exists(${DESTDIR}/var/db/Makefile_upgrade.inc)
+.include "${DESTDIR}/var/db/Makefile_upgrade.inc"
+.else
+	@echo "Please do a make installworld first.  See build(7) for further"
+	@echo "information."
+.endif
+
+remove-obsolete-files:
+	@for item in ${TO_REMOVE}; do \
+		if [ -e ${DESTDIR}$${item} ]; then \
+			rm -rf "${DESTDIR}$${item}"; \
+		fi; \
+	done
+	@rm -f "${DESTDIR}/var/db/Makefile_upgrade.inc"
+
 preupgrade:
 .if !defined(NO_SENDMAIL)
 	(pw -V ${DESTDIR}/etc groupshow smmsp -q > /dev/null) || \
@@ -114,7 +130,7 @@ preupgrade:
 	(pw -V ${DESTDIR}/etc groupshow _sdpd -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd _sdpd -g 70
 
-upgrade_etc:	preupgrade
+upgrade_etc:	preupgrade remove-obsolete-files
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
 	cd ${UPGRADE_SRCDIR}/../share/mk; ${MAKE} install
 .endif
@@ -164,148 +180,25 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
 	${LN} -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
 	${LN} -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
-.if exists(${DESTDIR}/usr/sbin/named-checkzone)
-	rm -f ${DESTDIR}/usr/libexec/named-xfer
-	rm -f ${DESTDIR}/usr/bin/dnsquery
-	rm -f ${DESTDIR}/usr/bin/dnskeygen
-	rm -f ${DESTDIR}/usr/sbin/ndc
-.endif
-.if exists(${DESTDIR}/usr/bin/dnssec-makekeyset)
-	rm -f ${DESTDIR}/usr/bin/dnssec-makekeyset
-	rm -f ${DESTDIR}/usr/bin/dnssec-signkey
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/dnssec-makekeyset.8.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/dnssec-signkey.8.gz"
-.endif
-.if exists(${DESTDIR}/usr/lib/crtbegin.o)
-	csh -c "rm -f ${DESTDIR}/usr/lib/gcc2/{crtbegin.o,crtbeginS.o,crtend.o,crtendS.o}"
-	csh -c "rm -f ${DESTDIR}/usr/lib/gcc3/{crtbegin.o,crtbeginS.o,crtend.o,crtendS.o}"
-	csh -c "rm -f ${DESTDIR}/usr/lib/crt{1,begin,beginS,end,endS,i,n}.o"
-.endif
-.if exists(${DESTDIR}/usr/include/netproto/802_11/if_wavelan_ieee.h)
-	rm -f ${DESTDIR}/usr/include/dev/netif/wi/if_wavelan_ieee.h
-	rm -f ${DESTDIR}/usr/include/net/if_ieee80211.h
-.endif
 .if exists(${DESTDIR}/usr/lib/gcc2)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
 .endif
-	rm -f ${DESTDIR}/usr/sbin/pccardc ${DESTDIR}/usr/sbin/pccardd
-	rm -f ${DESTDIR}/usr/share/examples/etc/defaults/pccard.conf
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/pccard.conf.5.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/pccardc.8.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/pccardd.8.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/rc.pccard.8.gz"
-	rm -f ${DESTDIR}/etc/defaults/pccard ${DESTDIR}/etc/rc.d/pccard
-	rm -f ${DESTDIR}/etc/defaults/pccard.conf
-.if exists(${DESTDIR}/usr/libexec/gcc34) && exists(${DESTDIR}/usr/libexec/binutils215)
-	rm -rf ${DESTDIR}/usr/lib/gcc3
-	rm -rf ${DESTDIR}/usr/libexec/gcc3
-	rm -rf ${DESTDIR}/usr/libdata/ldscripts
-	rm -rf ${DESTDIR}/usr/libdata/gcc2
-	rm -rf ${DESTDIR}/usr/libdata/gcc3
-	rm -rf ${DESTDIR}/usr/libexec/elf
-	rm -rf ${DESTDIR}/usr/libexec/aout
-	rm -rf ${DESTDIR}/usr/bin/gcc2
-	rm -rf ${DESTDIR}/usr/bin/gcc3
-	rm -rf ${DESTDIR}/usr/include/g++
-	csh -c "rm -f ${DESTDIR}/usr/bin/{genassym,gensetdefs,nawk,ptx,send-pr}"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/{genassym,gensetdefs}.8.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/{cccp,gawk,nawk,send-pr}.1.gz"
-	csh -c "rm -f ${DESTDIR}/usr/libexec/{cc1,cc1obj,cc1plus}"
-	csh -c "rm -f ${DESTDIR}/usr/libexec/{cpp,cpp0,f771,objformat}"
-	csh -c "rm -f ${DESTDIR}/usr/libexec/binutils212/{cc1,cc1obj,cc1plus}"
-	csh -c "rm -f ${DESTDIR}/usr/libexec/binutils212/{cpp,cpp0,f771,objformat}"
-	csh -c "rm -f ${DESTDIR}/usr/libexec/binutils214/{cc1,cc1obj,cc1plus}"
-	csh -c "rm -f ${DESTDIR}/usr/libexec/binutils214/{cpp,cpp0,f771,objformat}"
-	csh -c "rm -f ${DESTDIR}/usr/lib/{libgcc.a,libgcc_p.a}"
-	csh -c "rm -f ${DESTDIR}/usr/lib/{libobjc.a,libobjc_p.a,libstdc++.a}"
-	csh -c "rm -f ${DESTDIR}/usr/lib/{libstdc++.so,libstdc++.so.3}"
-	csh -c "rm -f ${DESTDIR}/usr/lib/{libstdc++_p.a}"
-	rm -rf ${DESTDIR}/usr/libexec/binutils214
-.endif
-.if exists(${DESTDIR}/usr/libexec/binutils217)
-	rm -rf ${DESTDIR}/usr/libexec/binutils215
-.endif
-	rm -f ${DESTDIR}/usr/bin/makewhatis
-	rm -f ${DESTDIR}/usr/sbin/prebind
-	rm -f ${DESTDIR}/modules/checkpt.ko
-	csh -c "rm -rf ${DESTDIR}/usr/share/man/{man,cat}1aout"
-	csh -c "rm -rf ${DESTDIR}/usr/share/man/en.ISO8859-1/{man,cat}1aout"
-	rm -rf ${DESTDIR}/usr/libdata/perl
-	csh -c "rm -f ${DESTDIR}/usr/bin/{find2perl,perl5,perl5.00503,pod2latex}"
-	test -L ${DESTDIR}/usr/bin/perl || rm -f ${DESTDIR}/usr/bin/perl
-	csh -c "rm -f ${DESTDIR}/usr/bin/{pod2text,sperl5,sperl5.00503,splain,suidperl}"
-.for prog in a2p c2ph h2ph h2xs perlbug perlcc pl2pm pod2html pod2man s2p
-	rm -f ${DESTDIR}/usr/bin/${prog}
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${prog}.1.gz"
-.endfor
-	csh -c "rm -f ${DESTDIR}/usr/lib/{libperl.a,libperl.so,libperl.so.3,libperl_p.a}"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/perl.1.gz"
-.for man in 5004delta apio book bot call data debug delta diag doc dsc embed faq \
-	    faq1 faq2 faq3 faq4 faq5 faq6 faq7 faq8 faq9 form func guts hist \
-	    ipc locale lol mod modinstall modlib obj op opentut pod port re \
-	    ref reftut run sec style sub syn thrtut tie toc toot trap var xs \
-	    xstut 
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/perl${man}.1.gz"
-.endfor
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}7/style.perl.7.gz"
-	rm -rf ${DESTDIR}/usr/share/perl
-	rm -rf ${DESTDIR}/usr/share/examples/bc
 .if exists(${DESTDIR}/usr/share/info/dc.info.gz)
 	gzip -d ${DESTDIR}/usr/share/info/dc.info.gz
 	install-info --delete ${DESTDIR}/usr/share/info/dc.info ${DESTDIR}/usr/share/info/dir
 	rm -f ${DESTDIR}/usr/share/info/dc.info
 .endif
-	csh -c "rm -f ${DESTDIR}/usr/include/{gmp,mp}.h"
-	csh -c "rm -f ${DESTDIR}/usr/lib/{libmp.a,libmp_p.a,libmp.so,libmp.so.3}"
-	csh -c "rm -f ${DESTDIR}/usr/lib/{libgmp.a,libgmp_p.a,libgmp.so,libgmp.so.3}"
 .if exists(${DESTDIR}/usr/share/info/gmp.info.gz)
 	gzip -d ${DESTDIR}/usr/share/info/gmp.info.gz
 	install-info --delete ${DESTDIR}/usr/share/info/gmp.info ${DESTDIR}/usr/share/info/dir
 	rm -f ${DESTDIR}/usr/share/info/gmp.info
 .endif
-	rm -f ${DESTDIR}/etc/rc.d/ntpdate
-	rm -f ${DESTDIR}/usr/sbin/ntpdate
-	rm -f ${DESTDIR}/modules/if_wx.ko
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/wx.4.gz"
-	rm -f ${DESTDIR}/dev/rwcd*
-	rm -f ${DESTDIR}/dev/rwst*
-	rm -f ${DESTDIR}/dev/wcd*
-	rm -f ${DESTDIR}/dev/wd*
-	rm -f ${DESTDIR}/dev/wfd*
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/wst.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/{euc,utf2}.4.gz"
-	rm -f ${DESTDIR}/usr/share/syscons/keymaps/jp.pc98.iso.kbd
-	rm -f ${DESTDIR}/usr/share/syscons/keymaps/jp.pc98.kbd
-	csh -c "rm -f ${DESTDIR}/etc/rc.d/{bootconf.sh,lkm1,lkm2,lkm3,mountall,pcvt,wscons}"
-	rm -f ${DESTDIR}/modules/canbus.ko
 .for lib in ${COMPAT_LIBS:M*.so.*}
 .if exists(${DESTDIR}/usr/lib/${lib})
 	chflags noschg ${DESTDIR}/usr/lib/${lib}
 	rm -f ${DESTDIR}/usr/lib/${lib}
 .endif
 .endfor
-	rm -f ${DESTDIR}/usr/lib/libkeycap.a
-	rm -f ${DESTDIR}/usr/lib/libkeycap_p.a
-.for cmd in cursor fontedit ispcvt kcon loadfont mcon scon vt220keys vttest
-	rm -f ${DESTDIR}/usr/sbin/${cmd}
-.endfor
-.for man in cursor fontedit kcon loadfont mcon scon vt220keys vttest
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${man}.1.gz"
-.endfor
-.for man in keycap kgetent kgetflag kgetnum kgetstr
-	rm -f ${DESTDIR}/usr/share/man/{man,cat}3/${man}.3.gz
-.endfor
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/pcvt.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/vt.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/keycap.5.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/ispcvt.8.gz"
-	rm -f ${DESTDIR}/usr/share/misc/keycap.pcvt
-	rm -rf ${DESTDIR}/usr/share/misc/fonts
-	rm -rf ${DESTDIR}/usr/share/misc/pcvtfonts
-	rm -rf ${DESTDIR}/usr/share/pcvt
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/battd.1.gz"
-	rm -f ${DESTDIR}/usr/include/machine/bus_pc98.h
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/pcic.4.gz"
 .if exists(${DESTDIR}/usr/share/info/bzip2.info.gz)
 	gzip -d ${DESTDIR}/usr/share/info/bzip2.info.gz
 	install-info --delete ${DESTDIR}/usr/share/info/bzip2.info ${DESTDIR}/usr/share/info/dir
@@ -341,146 +234,6 @@ upgrade_etc:	preupgrade
 	install-info --delete ${DESTDIR}/usr/share/info/send-pr.info ${DESTDIR}/usr/share/info/dir
 	rm -f ${DESTDIR}/usr/share/info/send-pr.info
 .endif
-	rm -f ${DESTDIR}/usr/share/info/cpp2.info.gz
-	rm -f ${DESTDIR}/usr/share/info/gcc2.info.gz
-	rm -f ${DESTDIR}/usr/sbin/diskpart
-	rm -f ${DESTDIR}/usr/sbin/ibcs2
-	rm -f ${DESTDIR}/usr/sbin/linux
-	rm -f ${DESTDIR}/usr/sbin/ntp-genkeys
-	rm -f ${DESTDIR}/usr/sbin/ntpdc
-	rm -f ${DESTDIR}/usr/sbin/ntptime
-	rm -f ${DESTDIR}/usr/sbin/ntptimeset
-	rm -f ${DESTDIR}/usr/sbin/ntptrace
-	rm -f ${DESTDIR}/usr/sbin/scriptdump
-	rm -f ${DESTDIR}/usr/sbin/svr4
-	rm -f ${DESTDIR}/usr/bin/cvsbug
-	rm -f ${DESTDIR}/usr/bin/gdbreplay
-	rm -f ${DESTDIR}/usr/bin/gperf
-	rm -f ${DESTDIR}/usr/bin/joy
-	rm -f ${DESTDIR}/usr/bin/minigzip
-	rm -f ${DESTDIR}/usr/bin/ntpq
-	rm -f ${DESTDIR}/usr/bin/perldoc
-	rm -f ${DESTDIR}/usr/bin/sendbug
-.for man in gasp gperf minigzip sendbug
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/${man}.1.gz"
-.endfor
-.for man in dft_fgbg dllockinit dynamic_fieldinfo fgetrune fputrune fungetrune \
-	    mbmb mbrrune mbrune menu_attribs multibyte rune setinvalidrune \
-	    setrunelocale sgetrune sputrune archive_entry_gname_w \
-	    archive_entry_uname_w dbm_dirnfo exp10 exp10f
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/${man}.3.gz"
-.endfor
-.for man in drivers.conf gbk ntp.conf ntp.keys
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/${man}.5.gz"
-.endfor
-.for man in ibcs2 joy linux ntp-genkeys ntpdate ntpdc ntpq ntptime ntptrace \
-	    picobsd svr4 sysinstall cvsbug diskpart
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/${man}.8.gz"
-.endfor
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/suser_xxx.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/NDINIT.9.gz"
-	rm -f ${DESTDIR}/usr/share/examples/cvsup/DragonFly-supfile
-	rm -f ${DESTDIR}/usr/share/examples/cvsup/DragonFly-stable-supfile
-	rm -f ${DESTDIR}/usr/share/nls/*/.cat
-	rm -f ${DESTDIR}/usr/include/machine/gencount.h
-	rm -f ${DESTDIR}/usr/include/machine/pcvt_ioctl.h
-	rm -f ${DESTDIR}/usr/include/net/bpf_compat.h
-	rm -f ${DESTDIR}/usr/include/netinet/ipprotosw.h
-	rm -f ${DESTDIR}/usr/include/rune.h
-	rm -f ${DESTDIR}/usr/include/runetype.h
-	rm -f ${DESTDIR}/modules/if_snc.ko
-.for tzfile in Africa/Timbuktu America/Argentina/ComodRivadavia \
-	America/Indianapolis America/Louisville Europe/Belfast \
-	Pacific/Yap America/Coral_Harbour Africa/Asmera Atlantic/Faeroe 
-	rm -f ${DESTDIR}/usr/share/zoneinfo/${tzfile}
-.endfor
-	rm -rf ${DESTDIR}/usr/share/zoneinfo/SystemV
-.if exists(${DESTDIR}/usr/freebsd_pkg/sbin/pkg_add)
-	csh -c "rm -f ${DESTDIR}/usr/sbin/pkg_{install,add,create,delete,info,sign,version,check,update}"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/man1/pkg_{add,create,delete,info,sign,version,check,update}.1.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/cat1/pkg_{add,create,delete,info,sign,version,check,update}.1.gz"
-.endif
-	rm -f ${DESTDIR}/etc/rc.d/altqd
-	csh -c "rm -f ${DESTDIR}/etc/rc.d/network{,1,2,3}"
-	rm -f ${DESTDIR}/usr/share/examples/cvsup/DragonFly-dfports-supfile
-	rm -f ${DESTDIR}/etc/periodic/weekly/400.status-pkg
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}7/ports.7.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/SPLASSERT.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/spl.9.gz"
-.for splman in 0 bio clock high imp net softclock softtty statclock tty vm x
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/spl${splman}.9.gz"
-.endfor
-	rm -f ${DESTDIR}/modules/if_owi.ko
-	rm -f ${DESTDIR}/modules/umap.ko
-	rm -f ${DESTDIR}/sbin/mount_umap
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/mount_umap.8.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/isinff.3.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/isnanf.3.gz"
-	rm -f ${DESTDIR}/modules/ibcs2.ko
-	rm -rf ${DESTDIR}/usr/share/examples/ibcs2
-	rm -f ${DESTDIR}/modules/streams.ko
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/i386/streams.4.gz"
-	rm -f ${DESTDIR}/modules/svr4.ko
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/i386/svr4.4.gz"
-	rm -rf ${DESTDIR}/usr/include/net/oldbridge
-	rm -f ${DESTDIR}/usr/include/net/bridge/bridge.h
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/oldbridge.4.gz"
-	rm -f ${DESTDIR}/modules/bridge.ko
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_attach.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_crypto_attach.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_crypto_detach.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_crypto_wep_crypt.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_decap.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_lookup_node.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_timeout_nodes.9.gz"
-	rm -f ${DESTDIR}/usr/share/mk/bsd.port.mk
-	rm -f ${DESTDIR}/usr/share/mk/bsd.port.post.mk
-	rm -f ${DESTDIR}/usr/share/mk/bsd.port.pre.mk
-	rm -f ${DESTDIR}/usr/share/mk/bsd.port.subdir.mk
-	rm -f ${DESTDIR}/usr/share/mk/bsd.dfport.mk
-	rm -f ${DESTDIR}/usr/share/mk/bsd.dfport.post.mk
-	rm -f ${DESTDIR}/usr/share/mk/bsd.dfport.pre.mk
-	rm -f ${DESTDIR}/var/db/port.mkversion
-	rm -f ${DESTDIR}/usr/share/mk/bsd.kern.mk
-	rm -f ${DESTDIR}/modules/pcic.ko
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/worm.4.gz"
-	rm -f ${DESTDIR}/usr/include/sys/wormio.h
-	rm -rf ${DESTDIR}/usr/share/doc/ncurses
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/brconfig.8.gz"
-	rm -f ${DESTDIR}/sbin/brconfig
-	rm -f ${DESTDIR}/usr/share/mk/bsd.cpu.gcc[23].mk
-	rm -f ${DESTDIR}/modules/coda.ko
-	rm -f ${DESTDIR}/dev/zs0
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/archive_read_open_file.3.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/archive_write_open_file.3.gz"
-	csh -c "rm -f ${DESTDIR}/usr/include/{e,p,}mmintrin.h"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/reallocf.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/suser_proc.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/NgSendMsgReply.3.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/kobj_class_compile_static.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/include/machine/bus{,_memio,_pio}.h"
-	rm -f ${DESTDIR}/usr/include/machine/resource.h
-	rm -f ${DESTDIR}/usr/libexec/lukemftpd
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/lukemftpd.8.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/ftpd.conf.5.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/ftpusers.5.gz"
-	rm -f ${DESTDIR}/usr/include/machine/dvcfg.h
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/boot_i386.8.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/malloc.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/free.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/realloc.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}2/sys_{get,set}_tls_area.2.gz"
-	csh -c "rm -f ${DESTDIR}/modules/{snd,snd_pcm}.ko"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/snd.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/CTR{0,1,2,3,4,5,6}.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/a{sleep,wait}.9.gz"
-	rm -f ${DESTDIR}/usr/include/machine/physio_proc.h
-	rm -rf ${DESTDIR}/usr/include/c++/4.0 \
-		${DESTDIR}/usr/lib/gcc40 \
-		${DESTDIR}/usr/libexec/gcc40 \
-		${DESTDIR}/usr/libdata/gcc40
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/{cpp,g++,gcc,gcov}40.1.gz"
-	rm -f ${DESTDIR}/usr/share/mk/bsd.cpu.gcc40.mk
 .if exists(${DESTDIR}/usr/share/info/cpp40.info.gz)
 	gzip -d ${DESTDIR}/usr/share/info/cpp40.info.gz
 	install-info --delete ${DESTDIR}/usr/share/info/cpp40.info ${DESTDIR}/usr/share/info/dir
@@ -501,64 +254,11 @@ upgrade_etc:	preupgrade
 	install-info --delete ${DESTDIR}/usr/share/info/gccint40.info ${DESTDIR}/usr/share/info/dir
 	rm -f ${DESTDIR}/usr/share/info/gccint40.info
 .endif
-	rm -f ${DESTDIR}/usr/bin/gtar
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/gtar.1.gz"
 .if exists(${DESTDIR}/usr/share/info/tar.info.gz)
 	gzip -d ${DESTDIR}/usr/share/info/tar.info.gz
 	install-info --delete ${DESTDIR}/usr/share/info/tar.info ${DESTDIR}/usr/share/info/dir
 	rm -f ${DESTDIR}/usr/share/info/tar.info
 .endif
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/{f,s}uswintr.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/MULTI_DRIVER_MODULE.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/kame.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/archive_read_set_bytes_per_block.3.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/archive_write_prepare.3.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/archive_write_set_callbacks.3.gz"
-	rm -f ${DESTDIR}/usr/share/examples/cvsup/OpenDarwin-supfile
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/bus_generic_map_intr.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/VOP_BWRITE.9.gz"
-	rm -f ${DESTDIR}/usr/include/net/hostcache.h
-	rm -f ${DESTDIR}/usr/include/netinet/in_hostcache.h
-	rm -f ${DESTDIR}/usr/include/libdisk.h ${DESTDIR}/usr/lib/libdisk.a
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/{libdisk,Open_Disk,Clone_Disk,Free_Disk,Debug_Disk,Set_Bios_Geom,Delete_Chunk,Collapse_Disk,Collapse_Chunk,Create_Chunk,All_FreeBSD,CheckRules,Disk_Names,Set_Boot_Mgr,Set_Boot_Blocks,Write_Disk,Cyl_Aligned,Next_Cyl_Aligned,Prev_Cyl_Aligned,Track_Aligned,Next_Track_Aligned,Prev_Track_Aligned,Create_Chunk_DWIM,MakeDev,MakeDevDisk,ShowChunkFlags,ChunkCanBeRoot,slice_type_name}.3.gz"
-	rm -f ${DESTDIR}/dev/mcd*
-	rm -f ${DESTDIR}/dev/scd*
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/{m,s}cd.4.gz"
-	rm -f ${DESTDIR}/etc/rc.d/archdep
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/sata.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/snd_emu10kx.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/{cpu,mi}_switch.9.gz"
-	rm -f ${DESTDIR}/usr/libexec/getNAME
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}1/getNAME.1.gz"
-	rm -f ${DESTDIR}/modules/daemon_saver.ko
-	rm -f ${DESTDIR}/usr/include/net/if_arc.h
-	rm -f ${DESTDIR}/usr/include/net/iso88025.h
-	rm -f ${DESTDIR}/usr/include/netinet/if_fddi.h
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/cm.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/i386/oltr.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/fea.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/fpa.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/fla.4.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/nv.4.gz"
-	rm -f ${DESTDIR}/modules/if_nv.ko
-	csh -c "rm -rf ${DESTDIR}/usr/share/man/{man,cat}n"
-	csh -c "rm -rf ${DESTDIR}/usr/share/man/ja/{man,cat}n"
-	rm -rf ${DESTDIR}/usr/share/man/en.ISO8859-1/catn
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/psignal.9.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/openssl/man/{man,cat}7/Modes_of_DES.7.gz"
-	rm -f ${DESTDIR}/usr/include/bus/usb/usbdevs.h
-	rm -f ${DESTDIR}/usr/include/bus/usb/usbdevs_data.h
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/callout_handle_init.9"
-	rm -f ${DESTDIR}/usr/include/net/intrq.h
-	rm -f ${DESTDIR}/usr/share/games/fortune/freebsd-tips
-	rm -f ${DESTDIR}/usr/share/games/fortune/freebsd-tips.dat
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/rc.{atm,early,network,serial}.8.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/i386/rc.i386.8.gz"
-	rm -f ${DESTDIR}/usr/include/sys/xrpuio.h
-	rm -f ${DESTDIR}/etc/rc.d/kldxref
-	rm -f ${DESTDIR}/etc/mtree/BSD.x11.dist
-	rm -f ${DESTDIR}/etc/mtree/BSD.x11-4.dist
-	rm -rf ${DESTDIR}/usr/share/doc/handbook/handbook.txt
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
