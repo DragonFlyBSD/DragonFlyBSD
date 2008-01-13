@@ -1,5 +1,5 @@
 # $FreeBSD: src/tools/tools/README,v 1.18.2.2 2003/02/24 22:52:36 sam Exp $
-# $DragonFly: src/tools/tools/README,v 1.9 2008/01/13 18:21:50 matthias Exp $
+# $DragonFly: src/tools/tools/README,v 1.10 2008/01/13 19:05:27 matthias Exp $
 
 This directory is for tools.
 
@@ -13,9 +13,7 @@ commitsdb	A tool for reconstructing commit history using md5
 convert_usb_ids Convert FreeBSD USB device IDs to DragonFly device IDs.
 crypto		Exercise the crypto framework through /dev/crypto
 editing		Editor modes and the like to help editing FreeBSD code.
-epfe 		Extract printing filter examples from printing.sgml.
 genreadmedeleted  Create a README.DELETED suitable for the new contrib system.
-html-mv         Rename HTML generated filenames to human readable filenames.
 ifinfo		Uses the interface MIB to print out all the information
 		an interface exports in an ugly form.
 kdrv		KernelDriver; add/list/remove third-party kernel driver
@@ -29,7 +27,6 @@ scsi-defects	Get at the primary or grown defect list of a SCSI disk.
 splitpatch	Python script to split a large patch file into independent
 		patches.  Default name convention is compatible with
 		the patch framework.
-tcl_bmake	Generates a bmake Makefile for src/lib/libtcl.
 upgrade         Scripts used for upgrading an installed system.
 vop_table	Generates a HTML document that shows all the VOP's in
 		the kernel.
