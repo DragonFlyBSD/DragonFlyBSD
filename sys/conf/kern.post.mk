@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.11 2007/06/30 05:54:03 dillon Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.12 2008/01/13 08:41:15 swildner Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -111,25 +111,20 @@ kernel-install: kernel-installable
 		echo "You must build a kernel first." ; \
 		exit 1 ; \
 	fi
-.ifdef NOFSCHG
 .  if exists(${DESTDIR}/${DESTKERNNAME})
+.ifndef NOFSCHG
+	-chflags noschg ${DESTDIR}/${DESTKERNNAME}
+.endif
 .    ifdef NO_KERNEL_OLD_STRIP
 	cp -p ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
 .    else
 	${OBJCOPY} --strip-debug ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
 .    endif
 .  endif
+.ifdef NOFSCHG
 	${INSTALL} -m 555 -o root -g wheel \
 		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
 .else
-.  if exists(${DESTDIR}/${DESTKERNNAME})
-	-chflags noschg ${DESTDIR}/${DESTKERNNAME}
-.    ifdef NO_KERNEL_OLD_STRIP
-	cp -p ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
-.    else
-	${OBJCOPY} --strip-debug ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
-.    endif
-.  endif
 	${INSTALL} -m 555 -o root -g wheel -fschg \
 		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
 .endif
