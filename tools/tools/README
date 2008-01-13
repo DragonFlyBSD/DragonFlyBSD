@@ -1,5 +1,5 @@
 # $FreeBSD: src/tools/tools/README,v 1.18.2.2 2003/02/24 22:52:36 sam Exp $
-# $DragonFly: src/tools/tools/README,v 1.8 2007/07/07 12:01:00 swildner Exp $
+# $DragonFly: src/tools/tools/README,v 1.9 2008/01/13 18:21:50 matthias Exp $
 
 This directory is for tools.
 
@@ -10,6 +10,7 @@ Please make a subdir per program, and add a brief description to this file.
 
 commitsdb	A tool for reconstructing commit history using md5
 		checksums of the commit logs.
+convert_usb_ids Convert FreeBSD USB device IDs to DragonFly device IDs.
 crypto		Exercise the crypto framework through /dev/crypto
 editing		Editor modes and the like to help editing FreeBSD code.
 epfe 		Extract printing filter examples from printing.sgml.
