@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.25 2007/11/06 07:37:01 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.26 2008/01/13 16:04:02 hasso Exp $
  */
 
 /*-
@@ -249,7 +249,6 @@ static const struct usb_devno uplcom_devs[] = {
 	{ USB_DEVICE(0x11f5, 0x0004) }, /* Siemens x75 series cellphones */
 	{ USB_DEVICE(0x11f6, 0x2001) }, /* Willcom W-SIM */
 	{ USB_DEVICE(0x11f7, 0x02df) }, /* Alcatel One Touch 535/735 phones */
-	{ USB_DEVICE(0x12d1, 0x1001) }, /* Huawei UMTS/HSDPA adapters */
 	{ USB_DEVICE(0x1453, 0x4026) }, /* RADIOSHACK USB cable */
 	{ USB_DEVICE(0x2478, 0x2008) }, /* Tripp-Lite U209-000-R */
 	{ USB_DEVICE(0x6189, 0x2068) }, /* Sitecom USB to serial cable */
