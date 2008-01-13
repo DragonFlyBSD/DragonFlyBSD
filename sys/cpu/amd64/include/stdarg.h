@@ -32,7 +32,7 @@
  *
  *	@(#)stdarg.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/stdarg.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/stdarg.h,v 1.2 2008/01/13 18:02:20 corecode Exp $
  */
 
 #ifndef _CPU_STDARG_H_
@@ -41,7 +41,7 @@
 /*
  * GNUC mess
  */
-#if defined(__GNUC__) && (__GNUC__ == 2 && __GNUC_MINOR__ > 95 || __GNUC__ >= 3)
+#if defined(__GNUC__)
 typedef __builtin_va_list	__va_list;	/* internally known to gcc */
 #else
 typedef	char *			__va_list;
@@ -59,29 +59,14 @@ typedef __va_list		__gnuc_va_list;	/* compatibility w/GNU headers*/
 
 #ifdef __GNUC__
 
-#if __GNUC__ == 2
-#define __va_start(ap, last) \
-	((ap) = (__va_list)__builtin_next_arg(last))
-#define __va_arg(ap, type) \
-	(*(type *)((ap) += __va_size(type), (ap) - __va_size(type)))
-#define __va_copy(dest, src) \
-	((void)((dest) = (src)))
-#define __va_end(ap)
-#elif __GNUC__ >= 3
-#if __GNUC_MINOR__ >= 0 && __GNUC_MINOR__ <= 2
-#define __va_start(ap, last) \
-	__builtin_stdarg_start((ap), (last))
-#elif __GNUC__ == 3 && __GNUC_MINOR__ >= 3
 #define __va_start(ap, last) \
 	__builtin_va_start(ap, last)
-#endif
 #define __va_arg(ap, type) \
 	__builtin_va_arg((ap), type)
 #define __va_copy(dest, src) \
 	__builtin_va_copy((dest), (src))
 #define __va_end(ap) \
 	__builtin_va_end(ap)
-#endif
 
 #else /* !__GNUC__ */
 
