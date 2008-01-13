@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.1 2008/01/13 10:59:31 matthias Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.2 2008/01/13 17:51:36 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -515,3 +515,6 @@ TO_REMOVE+=/usr/share/man/cat1/gtar.1.gz
 TO_REMOVE+=/etc/mtree/BSD.x11.dist
 TO_REMOVE+=/etc/mtree/BSD.x11-4.dist
 TO_REMOVE+=/usr/share/doc/handbook
+TO_REMOVE+=/usr/share/examples/BSD_daemon
+TO_REMOVE+=/usr/share/examples/FreeBSD_version
+TO_REMOVE+=/usr/share/examples/worm

@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.50 2007/09/14 19:08:59 swildner Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.51 2008/01/13 17:51:36 swildner Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -100,14 +100,8 @@
         dict
         ..
         doc
-            handbook
-            ..
         ..
         examples
-            BSD_daemon
-            ..
-            FreeBSD_version
-            ..
             IPv6
             ..
             atm
@@ -223,8 +217,6 @@
                 ..
             ..
             tcsh
-            ..
-            worm
             ..
         ..
         games
