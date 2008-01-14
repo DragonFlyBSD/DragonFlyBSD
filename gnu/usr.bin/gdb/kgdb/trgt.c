@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/trgt.c,v 1.4 2005/09/10 18:25:53 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt.c,v 1.1 2006/03/07 15:48:11 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt.c,v 1.2 2008/01/14 21:36:38 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -98,22 +98,22 @@ kgdb_trgt_thread_alive(ptid_t ptid)
 	return (kgdb_thr_lookup_tid(ptid_get_tid(ptid)) != NULL);
 }
 
-static int
-kgdb_trgt_xfer_memory(CORE_ADDR memaddr, char *myaddr, int len, int write,
-    struct mem_attrib *attrib, struct target_ops *target)
+static LONGEST
+kgdb_trgt_xfer_partial(struct target_ops *ops, enum target_object object,
+		       const char *annex, gdb_byte *readbuf,
+		       const gdb_byte *writebuf,
+		       ULONGEST offset, LONGEST len)
 {
-	struct target_ops *tb;
-
 	if (kvm != NULL) {
 		if (len == 0)
 			return (0);
-		if (!write)
-			return (kvm_read(kvm, memaddr, myaddr, len));
-		else
-			return (kvm_write(kvm, memaddr, myaddr, len));
+		if (writebuf != NULL)
+			return (kvm_write(kvm, offset, writebuf, len));
+		if (readbuf != NULL)
+			return (kvm_read(kvm, offset, readbuf, len));
 	}
-	tb = find_target_beneath(target);
-	return (tb->to_xfer_memory(memaddr, myaddr, len, write, attrib, tb));
+	return (ops->beneath->to_xfer_partial(ops->beneath, object, annex,
+					      readbuf, writebuf, offset, len));
 }
 
 void
@@ -138,7 +138,7 @@ kgdb_target(void)
 	kgdb_trgt_ops.to_pid_to_str = kgdb_trgt_pid_to_str;
 	kgdb_trgt_ops.to_store_registers = kgdb_trgt_store_registers;
 	kgdb_trgt_ops.to_thread_alive = kgdb_trgt_thread_alive;
-	kgdb_trgt_ops.to_xfer_memory = kgdb_trgt_xfer_memory;
+	kgdb_trgt_ops.to_xfer_partial = kgdb_trgt_xfer_partial;
 	add_target(&kgdb_trgt_ops);
 	push_target(&kgdb_trgt_ops);
 

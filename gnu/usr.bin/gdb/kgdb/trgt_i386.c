@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.5 2005/09/11 05:36:30 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.4 2007/01/24 18:56:30 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.5 2008/01/14 21:36:38 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -49,14 +49,16 @@
 #include "kgdb.h"
 
 void
-kgdb_trgt_fetch_registers(int regno __unused)
+kgdb_trgt_fetch_registers(struct regcache *regcache, int regno)
 {
 	struct kthr *kt;
 	struct pcb pcb;
 
 	kt = kgdb_thr_lookup_tid(ptid_get_tid(inferior_ptid));
-	if (kt == NULL)
+	if (kt == NULL) {
+		regcache_raw_supply(regcache, regno, NULL);
 		return;
+	}
 
 	/*
 	 * kt->pcb == NULL is a marker for "non-dumping kernel thread".
@@ -82,13 +84,13 @@ kgdb_trgt_fetch_registers(int regno __unused)
 			warnx("kvm_read: %s", kvm_geterr(kvm));
 			memset(regs, 0, sizeof(regs));
 		}
-		supply_register(I386_EDI_REGNUM, &regs[0]);
-		supply_register(I386_ESI_REGNUM, &regs[1]);
-		supply_register(I386_EBX_REGNUM, &regs[2]);
-		supply_register(I386_EBP_REGNUM, &regs[3]);
-		supply_register(I386_EIP_REGNUM, &regs[4]);
+		regcache_raw_supply(regcache, I386_EDI_REGNUM, &regs[0]);
+		regcache_raw_supply(regcache, I386_ESI_REGNUM, &regs[1]);
+		regcache_raw_supply(regcache, I386_EBX_REGNUM, &regs[2]);
+		regcache_raw_supply(regcache, I386_EBP_REGNUM, &regs[3]);
+		regcache_raw_supply(regcache, I386_EIP_REGNUM, &regs[4]);
 		sp += 7 * sizeof(regs[0]);
-		supply_register(I386_ESP_REGNUM, &sp);
+		regcache_raw_supply(regcache, I386_ESP_REGNUM, &sp);
 		return;
 	}
 
@@ -96,16 +98,16 @@ kgdb_trgt_fetch_registers(int regno __unused)
 		warnx("kvm_read: %s", kvm_geterr(kvm));
 		memset(&pcb, 0, sizeof(pcb));
 	}
-	supply_register(I386_EBX_REGNUM, (char *)&pcb.pcb_ebx);
-	supply_register(I386_ESP_REGNUM, (char *)&pcb.pcb_esp);
-	supply_register(I386_EBP_REGNUM, (char *)&pcb.pcb_ebp);
-	supply_register(I386_ESI_REGNUM, (char *)&pcb.pcb_esi);
-	supply_register(I386_EDI_REGNUM, (char *)&pcb.pcb_edi);
-	supply_register(I386_EIP_REGNUM, (char *)&pcb.pcb_eip);
+	regcache_raw_supply(regcache, I386_EBX_REGNUM, (char *)&pcb.pcb_ebx);
+	regcache_raw_supply(regcache, I386_ESP_REGNUM, (char *)&pcb.pcb_esp);
+	regcache_raw_supply(regcache, I386_EBP_REGNUM, (char *)&pcb.pcb_ebp);
+	regcache_raw_supply(regcache, I386_ESI_REGNUM, (char *)&pcb.pcb_esi);
+	regcache_raw_supply(regcache, I386_EDI_REGNUM, (char *)&pcb.pcb_edi);
+	regcache_raw_supply(regcache, I386_EIP_REGNUM, (char *)&pcb.pcb_eip);
 }
 
 void
-kgdb_trgt_store_registers(int regno __unused)
+kgdb_trgt_store_registers(struct regcache *regcache, int regno __unused)
 {
 	fprintf_unfiltered(gdb_stderr, "XXX: %s\n", __func__);
 }
@@ -145,21 +147,23 @@ kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 	if (cache == NULL) {
 		cache = FRAME_OBSTACK_ZALLOC(struct kgdb_frame_cache);
 		*this_cache = cache;
-		cache->pc = frame_func_unwind(next_frame);
+		cache->pc = get_frame_address_in_block(next_frame);
 		find_pc_partial_function(cache->pc, &pname, NULL, NULL);
 
 		/*
-		 * Handle weird trapframe cases
+		 * Handle weird trapframe cases:
+		 *
+		 * 4 for pushed esp (IN the function!)
+		 * + 8 for cpl/intno (IN the function, only intrs)
 		 */
+		cache->intrframe = 4;
 		if (pname[0] == 'X')
-			cache->intrframe = 4;
-		else if (strcmp(pname, "calltrap") == 0)
-			cache->intrframe = 4;
-		else
-			cache->intrframe = 0;
-		frame_unwind_register(next_frame, SP_REGNUM, buf);
+			cache->intrframe += offsetof(struct intrframe, if_esp) -
+					    offsetof(struct trapframe, tf_esp);
+
+		frame_unwind_register(next_frame, I386_ESP_REGNUM, buf);
 		cache->sp = extract_unsigned_integer(buf,
-		    register_size(current_gdbarch, SP_REGNUM));
+		    register_size(current_gdbarch, I386_ESP_REGNUM));
 	}
 	return (cache);
 }
@@ -177,7 +181,7 @@ kgdb_trgt_trapframe_this_id(struct frame_info *next_frame, void **this_cache,
 static void
 kgdb_trgt_trapframe_prev_register(struct frame_info *next_frame,
     void **this_cache, int regnum, int *optimizedp, enum lval_type *lvalp,
-    CORE_ADDR *addrp, int *realnump, void *valuep)
+    CORE_ADDR *addrp, int *realnump, gdb_byte *valuep)
 {
 	char dummy_valuep[MAX_REGISTER_SIZE];
 	struct kgdb_frame_cache *cache;
@@ -228,7 +232,7 @@ kgdb_trgt_trapframe_sniffer(const struct frame_unwind *self,
 	char *pname;
 	CORE_ADDR pc;
 
-	pc = frame_unwind_address_in_block(next_frame);
+	pc = frame_unwind_address_in_block(next_frame, NORMAL_FRAME);
 	pname = NULL;
 	find_pc_partial_function(pc, &pname, NULL, NULL);
 	if (pname == NULL)
@@ -242,7 +246,7 @@ kgdb_trgt_trapframe_sniffer(const struct frame_unwind *self,
 }
 
 const struct frame_unwind kgdb_trgt_trapframe_unwind = {
-        UNKNOWN_FRAME,
+        NORMAL_FRAME,
         &kgdb_trgt_trapframe_this_id,
         &kgdb_trgt_trapframe_prev_register,
 	.sniffer = kgdb_trgt_trapframe_sniffer

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.3 2005/09/10 18:25:53 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.4 2007/11/25 18:10:06 swildner Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.5 2008/01/14 21:36:38 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -104,7 +104,7 @@ kgdb_thr_init(void)
 			kvm_read(kvm, prvspace +
 				 offsetof(struct privatespace, mdglobaldata),
 				 &gd, sizeof(struct mdglobaldata));
-			dumptid = gd.mi.gd_curthread;
+			dumptid = (intptr_t)gd.mi.gd_curthread;
 		} else {
 			/* We must be a live system */
 			dumptid = -1;

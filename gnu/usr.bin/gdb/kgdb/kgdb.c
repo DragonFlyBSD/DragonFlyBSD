@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/main.c,v 1.11 2006/01/04 23:17:52 kan Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kgdb.c,v 1.2 2007/08/25 21:59:05 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kgdb.c,v 1.3 2008/01/14 21:36:38 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -292,8 +292,8 @@ kgdb_init(char *argv0 __unused)
 
 	set_prompt("(kgdb) ");
 	kgdb_display_msgbuf();
-	print_stack_frame(get_selected_frame(),
-	    frame_relative_level(get_selected_frame()), 1);
+	print_stack_frame(get_selected_frame(NULL),
+	    frame_relative_level(get_selected_frame(NULL)), 1);
 }
 
 int

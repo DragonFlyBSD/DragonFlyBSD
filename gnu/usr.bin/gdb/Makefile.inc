@@ -1,6 +1,6 @@
-# $DragonFly: src/gnu/usr.bin/gdb/Makefile.inc,v 1.3 2006/03/07 15:48:11 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/Makefile.inc,v 1.4 2008/01/14 21:36:38 corecode Exp $
 
-BASEDIR=	${.CURDIR}/${RELATIVE}../../../../contrib/gdb-6.2.1
+BASEDIR=	${.CURDIR}/${RELATIVE}../../../../contrib/gdb-6
 
 GDBLIBS+=	${.OBJDIR}/../libopcodes/libopcodes.a
 GDBLIBS+=	${.OBJDIR}/../libgdb/libgdb.a

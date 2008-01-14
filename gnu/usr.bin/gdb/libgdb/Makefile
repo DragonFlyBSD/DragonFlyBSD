@@ -1,12 +1,9 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.4 2007/10/27 22:36:47 pavalos Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.5 2008/01/14 21:36:38 corecode Exp $
 
 .include "../Makefile.inc"
 
-#PROG=	gdb
 LIB=	gdb
 INTERNALLIB=	# yes
-
-#SUBDIR=	doc
 
 CONTRIBDIR=	${BASEDIR}/gdb
 .PATH:	${CONTRIBDIR} ${CONTRIBDIR}/cli ${CONTRIBDIR}/mi ${CONTRIBDIR}/signals
@@ -15,58 +12,129 @@ CONTRIBDIR=	${BASEDIR}/gdb
 CFLAGS+= -I${.OBJDIR} -I${.CURDIR} -I${BASEDIR}/include -I${BASEDIR}/bfd
 CFLAGS+= -I${CONTRIBDIR} -I${CONTRIBDIR}/config -I${.CURDIR}/../libbfd
 CFLAGS+= -I${BASEDIR} 
+CFLAGS+= -DTARGET_SYSTEM_ROOT='"/"' -DBINDIR='"/usr/bin"'
+CFLAGS+= -DMACHINE_ARCH='"${MACHINE_ARCH}"'
 
-.if defined(GDB_TUI)
-CFLAGS+= -DTUI=1
-SRCS=	tui-main.c
-.else
-#SRCS=	gdb.c
-.endif
+CLEANFILES+=	nm.h observer.h observer.inc tm.h xm.h gdb_stdint.h
 
-CLEANFILES+=	nm.h observer.h observer.inc tm.h xm.h
+SRCS+=	nm.h observer.h tm.h xm.h gdb_stdint.h
 
-SRCS+=	nm.h observer.h tm.h xm.h
+# The order of these sources is important,
+# because init.c below needs to obey a certain ordering
+# of function calls.
 
-# libgdb
-SRCS+=	annotate.c arch-utils.c auxv.c ax-gdb.c ax-general.c bcache.c
-SRCS+=	bfd-target.c block.c blockframe.c breakpoint.c buildsym.c
-SRCS+=	c-exp.y c-lang.c c-typeprint.c c-valprint.c charset.c cli-cmds.c
-SRCS+=	cli-decode.c cli-dump.c cli-interp.c cli-logging.c cli-out.c
-SRCS+=	cli-script.c cli-setshow.c cli-utils.c coff-pe-read.c coffread.c
-SRCS+=	complaints.c completer.c copying.c corefile.c corelow.c cp-abi.c
-SRCS+=	cp-namespace.c cp-support.c cp-valprint.c dbxread.c dcache.c demangle.c
-SRCS+=	dictionary.c disasm.c doublest.c dummy-frame.c dwarf2-frame.c
-SRCS+=	dwarf2expr.c dwarf2loc.c dwarf2read.c dwarfread.c elfread.c environ.c
-SRCS+=	eval.c event-loop.c event-top.c exec.c expprint.c f-exp.y f-lang.c
-SRCS+=	f-typeprint.c f-valprint.c fbsd-proc.c findvar.c fork-child.c
-SRCS+=	frame-base.c frame-unwind.c frame.c gcore.c gdb-events.c gdbarch.c
-SRCS+=	gdbtypes.c gnu-v2-abi.c gnu-v3-abi.c hpacc-abi.c inf-loop.c infcall.c
-SRCS+=	infcmd.c inflow.c infptrace.c infrun.c inftarg.c init.c interps.c
-SRCS+=	jv-exp.y jv-lang.c jv-typeprint.c jv-valprint.c kod-cisco.c kod.c
-SRCS+=	language.c linespec.c m2-exp.y m2-lang.c m2-typeprint.c m2-valprint.c
-SRCS+=	macrocmd.c macroexp.c macroscope.c macrotab.c main.c maint.c
-SRCS+=	mdebugread.c mem-break.c memattr.c mi-cmd-break.c mi-cmd-disas.c
-SRCS+=	mi-cmd-env.c mi-cmd-file.c mi-cmd-stack.c mi-cmd-var.c mi-cmds.c
-SRCS+=	mi-console.c mi-getopt.c mi-interp.c mi-main.c mi-out.c
-SRCS+=	mi-parse.c mi-symbol-cmds.c minsyms.c mipsread.c nlmread.c objc-exp.y
-SRCS+=	objc-lang.c objfiles.c observer.c osabi.c p-exp.y p-lang.c
-SRCS+=	p-typeprint.c p-valprint.c parse.c printcmd.c regcache.c reggroups.c
-SRCS+=	regset.c remote-fileio.c remote-utils.c remote.c scm-exp.c scm-lang.c
-SRCS+=	scm-valprint.c sentinel-frame.c ser-pipe.c ser-tcp.c ser-unix.c
-SRCS+=	serial.c signals.c solib-legacy.c solib-svr4.c solib.c source.c
-SRCS+=	stabsread.c
-SRCS+=	stack.c std-regs.c symfile.c symmisc.c symtab.c target.c thread.c
-SRCS+=	top.c tracepoint.c trad-frame.c tramp-frame.c typeprint.c
-SRCS+=	ui-file.c ui-out.c user-regs.c utils.c valarith.c valops.c valprint.c
-SRCS+=	values.c varobj.c version.c wrapper.c
-# tui specific
-.if defined(GDB_TUI)
-SRCS+=	tui.c tui-command.c tui-data.c tui-disasm.c tui-file.c tui-hooks.c
-SRCS+=	tui-interp.c tui-io.c tui-layout.c tui-out.c tui-regs.c tui-source.c
-SRCS+=	tui-stack.c tui-win.c tui-windata.c tui-wingeneral.c tui-winsource.c
-.endif
+# COMMON_OBS
+SRCS+=	version.c \
+	annotate.c \
+	auxv.c \
+	bfd-target.c \
+	blockframe.c breakpoint.c findvar.c regcache.c \
+	charset.c disasm.c dummy-frame.c \
+	source.c value.c eval.c valops.c valarith.c valprint.c printcmd.c \
+	block.c symtab.c symfile.c symmisc.c linespec.c dictionary.c \
+	infcall.c \
+	infcmd.c infrun.c \
+	expprint.c environ.c stack.c thread.c \
+	exceptions.c \
+	inf-child.c \
+	interps.c \
+	main.c \
+	macrotab.c macrocmd.c macroexp.c macroscope.c \
+	event-loop.c event-top.c inf-loop.c completer.c \
+	gdbarch.c arch-utils.c gdbtypes.c osabi.c copying.c \
+	memattr.c mem-break.c target.c parse.c language.c buildsym.c \
+	std-regs.c \
+	signals.c \
+	gdb-events.c \
+	exec.c bcache.c objfiles.c observer.c minsyms.c maint.c demangle.c \
+	dbxread.c coffread.c coff-pe-read.c \
+	dwarf2read.c mipsread.c stabsread.c corefile.c \
+	dwarf2expr.c dwarf2loc.c dwarf2-frame.c \
+	ada-lang.c c-lang.c f-lang.c objc-lang.c \
+	ui-out.c cli-out.c \
+	varobj.c vec.c wrapper.c \
+	jv-lang.c jv-valprint.c jv-typeprint.c \
+	m2-lang.c p-lang.c p-typeprint.c p-valprint.c \
+	scm-exp.c scm-lang.c scm-valprint.c \
+	sentinel-frame.c \
+	complaints.c typeprint.c \
+	ada-typeprint.c c-typeprint.c f-typeprint.c m2-typeprint.c \
+	ada-valprint.c c-valprint.c cp-valprint.c f-valprint.c m2-valprint.c \
+	serial.c mdebugread.c top.c utils.c \
+	ui-file.c \
+	user-regs.c \
+	frame.c frame-unwind.c doublest.c \
+	frame-base.c \
+	gnu-v2-abi.c gnu-v3-abi.c cp-abi.c cp-support.c \
+	cp-namespace.c \
+	reggroups.c regset.c \
+	trad-frame.c \
+	tramp-frame.c \
+	solib.c solib-null.c \
+	prologue-value.c memory-map.c \
+	target-descriptions.c target-memory.c xml-tdesc.c
+
+# TSOBS
+SRCS+=	inflow.o
+
+# SER_HARDWIRE
+SRCS+=	ser-base.c ser-unix.c ser-pipe.c ser-tcp.c
+
+# TDEPFILES (part 1, the other is in Makefile.ARCH)
+SRCS+=	bsd-uthread.c corelow.c solib-svr4.c
+
+# NATDEPFILES (part 1, the other is in Makefile.ARCH)
+SRCS+=	fork-child.c inf-ptrace.c gcore.c fbsd-nat.c
+
+# REMOTE_OBS
+SRCS+=	remote.c dcache.c tracepoint.c ax-general.c ax-gdb.c remote-fileio.c
+
+# SUBDIR_CLI_OBS
+SRCS+=  cli-dump.c \
+	cli-decode.c cli-script.c cli-cmds.c cli-setshow.c cli-utils.c \
+	cli-logging.c \
+	cli-interp.c
+
+# SUBDIR_MI_OBS
+SRCS+=	mi-out.c mi-console.c \
+	mi-cmds.c mi-cmd-env.c mi-cmd-var.c mi-cmd-break.c mi-cmd-stack.c \
+	mi-cmd-file.c mi-cmd-disas.c mi-symbol-cmds.c \
+	mi-interp.c \
+	mi-main.c mi-parse.c mi-getopt.c mi-common.c
+
+# CONFIG_OBS
+SRCS+=	elfread.c posix-hdep.c
+
+# SUBDIR_TUI_OBS
+SRCS+=	tui-command.c \
+	tui-data.c \
+	tui-disasm.c \
+	tui-file.c tui.c \
+	tui-hooks.c \
+	tui-interp.c \
+	tui-io.c \
+	tui-layout.c \
+	tui-out.c \
+	tui-regs.c \
+	tui-source.c \
+	tui-stack.c \
+	tui-win.c \
+	tui-windata.c \
+	tui-wingeneral.c \
+	tui-winsource.c
+
+# YYOBJ
+SRCS+=	c-exp.y \
+	cp-name-parser.y \
+	objc-exp.y \
+	ada-exp.y \
+	jv-exp.y \
+	f-exp.y m2-exp.y p-exp.y
+
+SRCS+=	init.c
+
 # kernel-debugger
-SRCS+=	freebsd-uthread.c
+#SRCS+=	freebsd-uthread.c
 #SRCS+=	kthr.c trgt.c trgt_${MACHINE_ARCH}.c
 
 DPADD=	${LIBEDIT} ${LIBKVM} ${LIBTERMCAP} ${LIBM}
@@ -93,5 +161,8 @@ observer.h: observer.sh observer.inc doc/observer.texi
 	sh ${CONTRIBDIR}/observer.sh h ${CONTRIBDIR}/doc/observer.texi ${.TARGET}
 observer.inc: observer.sh doc/observer.texi
 	sh ${CONTRIBDIR}/observer.sh inc ${CONTRIBDIR}/doc/observer.texi ${.TARGET}
+
+gdb_stdint.h:
+	touch ${.TARGET}
 
 .include <bsd.lib.mk>

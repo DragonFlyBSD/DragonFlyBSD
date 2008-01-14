@@ -1,14 +1,14 @@
-# $DragonFly: src/gnu/usr.bin/gdb/gdb/doc/Makefile,v 1.1 2004/10/24 19:05:39 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/gdb/doc/Makefile,v 1.2 2008/01/14 21:36:38 corecode Exp $
 
 RELATIVE=	../
 
 .include "../../Makefile.inc"
 
 SRCDIR=		${BASEDIR}/gdb/doc
-RLUSER=		${.CURDIR}/../../../../../contrib/readline-5.0/doc/rluser.texi
-HSUSER=		${.CURDIR}/../../../../../contrib/readline-5.0/doc/hsuser.texi
+READLINEDIR=	${BASEDIR}/readline/doc
 
-.PATH:		${SRCDIR}
+.PATH:		${SRCDIR} ${READLINEDIR}
+MAKEINFOFLAGS+=	-I ${READLINEDIR}
 
 INFO=	gdb gdbint stabs annotate
 
@@ -20,7 +20,7 @@ INFOENTRY_annotate=	"* GDB annotation.			Annotations for the GNU debugger (GDB).
 
 CLEANFILES=	gdb-cfg.texi
 
-gdb.info: gdb.texinfo fdl.texi gpl.texi agentexpr.texi gdb-cfg.texi GDBvn.texi rluser.texinfo inc-hist.texinfo
+gdb.info: gdb.texinfo fdl.texi gpl.texi agentexpr.texi gdb-cfg.texi GDBvn.texi rluser.texi inc-hist.texinfo
 
 gdb-cfg.texi: ${SRCDIR}/all-cfg.texi
 	cp ${SRCDIR}/all-cfg.texi ${.TARGET}
