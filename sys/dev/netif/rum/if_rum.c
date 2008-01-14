@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.23 2008/01/11 14:28:59 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.24 2008/01/14 19:27:11 josepht Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -96,6 +96,7 @@ static const struct usb_devno rum_devs[] = {
 	{ USB_DEVICE(0x1044, 0x800a) }, /* GIGABYTE GN-WI05GS */
 	{ USB_DEVICE(0x1371, 0x9022) }, /* (really) C-Net RT2573 */
 	{ USB_DEVICE(0x1371, 0x9032) }, /* (really) C-Net CWD854F */
+	{ USB_DEVICE(0x13b1, 0x0020) }, /* Cisco-Linksys WUSB54GC */
 	{ USB_DEVICE(0x1472, 0x0009) }, /* Huawei RT2573 */
 	{ USB_DEVICE(0x148f, 0x2573) }, /* Ralink RT2573 */
 	{ USB_DEVICE(0x148f, 0x2671) }, /* Ralink RT2671 */
