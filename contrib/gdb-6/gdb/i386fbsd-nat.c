@@ -108,7 +108,6 @@ i386fbsd_supply_pcb (struct regcache *regcache, struct pcb *pcb)
   regcache_raw_supply (regcache, I386_ESP_REGNUM, &pcb->pcb_esp);
   regcache_raw_supply (regcache, I386_EBX_REGNUM, &pcb->pcb_ebx);
   regcache_raw_supply (regcache, I386_EIP_REGNUM, &pcb->pcb_eip);
-  regcache_raw_supply (regcache, I386_GS_REGNUM, &pcb->pcb_gs);
 
   return 1;
 }
@@ -129,9 +128,6 @@ _initialize_i386fbsd_nat (void)
   t->to_find_memory_regions = fbsd_find_memory_regions;
   t->to_make_corefile_notes = fbsd_make_corefile_notes;
   add_target (t);
-
-  /* Support debugging kernel virtual memory images.  */
-  bsd_kvm_add_target (i386fbsd_supply_pcb);
 
   /* FreeBSD provides a kern.ps_strings sysctl that we can use to
      locate the sigtramp.  That way we can still recognize a sigtramp

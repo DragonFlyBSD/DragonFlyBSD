@@ -827,10 +827,6 @@ elf_i386_create_dynamic_sections (bfd *dynobj, struct bfd_link_info *info)
       || (!info->shared && !htab->srelbss))
     abort ();
 
-  if (htab->is_vxworks
-      && !elf_vxworks_create_dynamic_sections (dynobj, info, &htab->srelplt2))
-    return FALSE;
-
   return TRUE;
 }
 
@@ -4055,59 +4051,5 @@ elf_i386_post_process_headers (bfd *abfd,
 #define	elf_backend_post_process_headers	elf_i386_post_process_headers
 #undef	elf32_bed
 #define	elf32_bed				elf32_i386_fbsd_bed
-
-#include "elf32-target.h"
-
-/* VxWorks support.  */
-
-#undef	TARGET_LITTLE_SYM
-#define TARGET_LITTLE_SYM		bfd_elf32_i386_vxworks_vec
-#undef	TARGET_LITTLE_NAME
-#define TARGET_LITTLE_NAME		"elf32-i386-vxworks"
-#undef	ELF_OSABI
-
-/* Like elf_i386_link_hash_table_create but with tweaks for VxWorks.  */
-
-static struct bfd_link_hash_table *
-elf_i386_vxworks_link_hash_table_create (bfd *abfd)
-{
-  struct bfd_link_hash_table *ret;
-  struct elf_i386_link_hash_table *htab;
-
-  ret = elf_i386_link_hash_table_create (abfd);
-  if (ret)
-    {
-      htab = (struct elf_i386_link_hash_table *) ret;
-      htab->is_vxworks = 1;
-      htab->plt0_pad_byte = 0x90;
-    }
-
-  return ret;
-}
-
-
-#undef	elf_backend_post_process_headers
-#undef bfd_elf32_bfd_link_hash_table_create
-#define bfd_elf32_bfd_link_hash_table_create \
-  elf_i386_vxworks_link_hash_table_create
-#undef elf_backend_add_symbol_hook
-#define elf_backend_add_symbol_hook \
-  elf_vxworks_add_symbol_hook
-#undef elf_backend_link_output_symbol_hook
-#define elf_backend_link_output_symbol_hook \
-  elf_vxworks_link_output_symbol_hook
-#undef elf_backend_emit_relocs
-#define elf_backend_emit_relocs			elf_vxworks_emit_relocs
-#undef elf_backend_final_write_processing
-#define elf_backend_final_write_processing \
-  elf_vxworks_final_write_processing
-
-/* On VxWorks, we emit relocations against _PROCEDURE_LINKAGE_TABLE_, so
-   define it.  */
-#undef elf_backend_want_plt_sym
-#define elf_backend_want_plt_sym	1
-
-#undef	elf32_bed
-#define elf32_bed				elf32_i386_vxworks_bed
 
 #include "elf32-target.h"
