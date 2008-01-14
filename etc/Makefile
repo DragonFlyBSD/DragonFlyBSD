@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.206 2008/01/13 10:59:31 matthias Exp $
+# $DragonFly: src/etc/Makefile,v 1.207 2008/01/14 12:39:27 matthias Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -85,20 +85,21 @@ distribute:
 	cd ${.CURDIR} ; ${MAKE} distribution DESTDIR=${DISTDIR}/${DISTRIBUTION}
 
 # Include file which contains obsolete files
-.if exists(${DESTDIR}/var/db/Makefile_upgrade.inc)
-.include "${DESTDIR}/var/db/Makefile_upgrade.inc"
+.if exists(${DESTDIR}/etc/upgrade/Makefile_upgrade.inc)
+.include "${DESTDIR}/etc/upgrade/Makefile_upgrade.inc"
 .else
 	@echo "Please do a make installworld first.  See build(7) for further"
 	@echo "information."
 .endif
 
 remove-obsolete-files:
+	@echo "===> Remove now obsolete files"
 	@for item in ${TO_REMOVE}; do \
 		if [ -e ${DESTDIR}$${item} ]; then \
 			rm -rf "${DESTDIR}$${item}"; \
 		fi; \
 	done
-	@rm -f "${DESTDIR}/var/db/Makefile_upgrade.inc"
+	@rm -f "${DESTDIR}/etc/upgrade/Makefile_upgrade.inc"
 
 preupgrade:
 .if !defined(NO_SENDMAIL)

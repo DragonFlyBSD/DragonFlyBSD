@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.112 2008/01/13 10:59:31 matthias Exp $
+# $DragonFly: src/Makefile.inc1,v 1.113 2008/01/14 12:39:27 matthias Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -431,7 +431,6 @@ installcheck:
 .if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
 	@case `uname -r` in 1.2*|1.3-*|1.3.*|1.4.*|1.5.0-*|1.5.1-*|1.5.2-*|1.5.3-*) echo "You must upgrade your kernel to at least 1.5.4 and reboot before you can safely installworld, due to libc/system call ABI changes" ; exit 1;; esac
 .endif
-	install -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/var/db/
 # distributeworld
 #
 # Distributes everything compiled by a `buildworld'.
@@ -442,6 +441,7 @@ installcheck:
 #
 distributeworld installworld: installcheck
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
+	install -o root -g wheel -m 600 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
 
 #
 # reinstall
