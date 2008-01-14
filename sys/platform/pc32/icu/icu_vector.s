@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.30 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.31 2008/01/14 15:27:17 dillon Exp $
  */
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
@@ -144,6 +144,8 @@ IDTVEC(vec_name) ; 							\
 	enable_icus ;							\
 	movl	PCPU(curthread),%ebx ;					\
 	pushl	$0 ;			/* DUMMY CPL FOR DORETI */	\
+	testl	$-1,TD_NEST_COUNT(%ebx) ;				\
+	jne	1f ;							\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	jl	2f ;							\
 1: ;									\
@@ -198,6 +200,8 @@ IDTVEC(vec_name) ; 							\
 	enable_icus ;							\
 	movl	PCPU(curthread),%ebx ;					\
 	pushl	$0 ;			/* DUMMY CPL FOR DORETI */	\
+	testl	$-1,TD_NEST_COUNT(%ebx) ;				\
+	jne	1f ;							\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	jl	2f ;							\
 1: ;									\
@@ -208,10 +212,13 @@ IDTVEC(vec_name) ; 							\
 2: ;									\
 	/* set running bit, clear pending bit, run handler */		\
 	andl	$~IRQ_LBIT(irq_num), PCPU(ipending) ;			\
+	incl	TD_NEST_COUNT(%ebx) ;					\
 	sti ;								\
 	pushl	$irq_num ;						\
 	call	sched_ithd ;						\
 	addl	$4,%esp ;						\
+	cli ;								\
+	decl	TD_NEST_COUNT(%ebx) ;					\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\

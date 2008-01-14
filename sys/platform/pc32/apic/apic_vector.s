@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.36 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.37 2008/01/14 15:27:16 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -154,6 +154,8 @@ IDTVEC(vec_name) ;							\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
 	pushl	%eax ;							\
+	testl	$-1,TD_NEST_COUNT(%ebx) ;				\
+	jne	1f ;							\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	jl	2f ;							\
 1: ;									\
@@ -208,6 +210,8 @@ IDTVEC(vec_name) ;							\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
 	pushl	%eax ;		/* cpl do restore */			\
+	testl	$-1,TD_NEST_COUNT(%ebx) ;				\
+	jne	1f ;							\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	jl	2f ;							\
 1: ;									\
@@ -218,10 +222,13 @@ IDTVEC(vec_name) ;							\
 2: ;									\
 	/* set running bit, clear pending bit, run handler */		\
 	andl	$~IRQ_LBIT(irq_num), PCPU(ipending) ;			\
+	incl	TD_NEST_COUNT(%ebx) ;					\
 	sti ;								\
 	pushl	$irq_num ;						\
 	call	sched_ithd ;						\
 	addl	$4,%esp ;						\
+	cli ;								\
+	decl	TD_NEST_COUNT(%ebx) ;					\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
