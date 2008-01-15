@@ -373,8 +373,6 @@ gdb/MAINTAINERS
 gdb/acinclude.m4
 gdb/aclocal.m4
 gdb/ada-exp.c
-gdb/ada-lex.c
-gdb/ada-lex.l
 gdb/aix-thread.c
 gdb/alpha-linux-nat.c
 gdb/alpha-linux-tdep.c
