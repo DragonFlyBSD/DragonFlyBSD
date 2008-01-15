@@ -1795,7 +1795,9 @@ struct limits limits[] =
 # ifdef RLIMIT_SBSIZE
     { RLIMIT_SBSIZE,	"sbsize",	1,	""		},
 # endif /* RLIMIT_SBSIZE */
-
+#ifdef RLIMIT_POSIXLOCKS
+    { RLIMIT_POSIXLOCKS, "posixlocks",   1,      ""		},
+#endif /* RLIMIT_POSIXLOCKS */
     { -1, 		NULL, 		0, 	NULL		}
 };
 
