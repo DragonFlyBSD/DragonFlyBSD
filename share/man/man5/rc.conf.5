@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.47 2008/01/09 11:30:09 swildner Exp $
-.Dd August 10, 2007
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.48 2008/01/15 21:35:09 swildner Exp $
+.Dd January 15, 2008
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -68,7 +68,27 @@ variable below.
 The following list provides a name and short description for each
 variable that can be set in the
 .Nm
-file:
+file.
+To set a variable of
+.Vt bool
+type, specify either
+.Dq Li YES ,
+.Dq Li TRUE ,
+.Dq Li ON ,
+or
+.Dq Li 1 .
+To unset, specify
+.Dq Li NO ,
+.Dq Li FALSE ,
+.Dq Li OFF ,
+or
+.Dq Li 0 .
+These values are case insensitive.
+The
+.Va _enable
+postfix in the name of a variables for starting a service can be
+omitted (as in
+.Nx ) .
 .Bl -tag -width indent-two
 .It Va rc_debug
 .Pq Vt bool
