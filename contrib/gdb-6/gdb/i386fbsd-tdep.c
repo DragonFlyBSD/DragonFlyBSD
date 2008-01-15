@@ -172,12 +172,12 @@ i386fbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 /* From <machine/reg.h>.  */
 static int i386fbsd4_r_reg_offset[] =
 {
-  10 * 4, 9 * 4, 8 * 4, 7 * 4,	/* %eax, %ecx, %edx, %ebx */
-  16 * 4, 5 * 4,		/* %esp, %ebp */
-  4 * 4, 3 * 4,			/* %esi, %edi */
-  13 * 4, 15 * 4,		/* %eip, %eflags */
-  14 * 4, 17 * 4,		/* %cs, %ss */
-  2 * 4, 1 * 4, 0 * 4, 18 * 4	/* %ds, %es, %fs, %gs */
+  11 * 4, 10 * 4, 9 * 4, 8 * 4,	/* %eax, %ecx, %edx, %ebx */
+  18 * 4, 6 * 4,		/* %esp, %ebp */
+  5 * 4, 4 * 4,			/* %esi, %edi */
+  15 * 4, 4 * 4,		/* %eip, %eflags */
+  16 * 4, 19 * 4,		/* %cs, %ss */
+  3 * 4, 2 * 4, 1 * 4, 0 * 4	/* %ds, %es, %fs, %gs */
 };
 
 /* From <machine/signal.h>.  */
@@ -187,14 +187,14 @@ int i386fbsd4_sc_reg_offset[] =
   20 + 10 * 4,			/* %ecx */
   20 + 9 * 4,			/* %edx */
   20 + 8 * 4,			/* %ebx */
-  20 + 17 * 4,			/* %esp */
+  20 + 18 * 4,			/* %esp */
   20 + 6 * 4,			/* %ebp */
   20 + 5 * 4,			/* %esi */
   20 + 4 * 4,			/* %edi */
-  20 + 14 * 4,			/* %eip */
-  20 + 16 * 4,			/* %eflags */
-  20 + 15 * 4,			/* %cs */
-  20 + 18 * 4,			/* %ss */
+  20 + 15 * 4,			/* %eip */
+  20 + 17 * 4,			/* %eflags */
+  20 + 16 * 4,			/* %cs */
+  20 + 19 * 4,			/* %ss */
   20 + 3 * 4,			/* %ds */
   20 + 2 * 4,			/* %es */
   20 + 1 * 4,			/* %fs */
@@ -213,7 +213,7 @@ i386fbsd4_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   /* FreeBSD 4.0 introduced a new `struct reg'.  */
   tdep->gregset_reg_offset = i386fbsd4_r_reg_offset;
   tdep->gregset_num_regs = ARRAY_SIZE (i386fbsd4_r_reg_offset);
-  tdep->sizeof_gregset = 19 * 4;
+  tdep->sizeof_gregset = 20 * 4;
 
   /* FreeBSD 4.0 introduced a new `struct sigcontext'.  */
   tdep->sc_reg_offset = i386fbsd4_sc_reg_offset;
