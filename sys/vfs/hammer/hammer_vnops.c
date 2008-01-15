@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.18 2008/01/11 01:41:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.19 2008/01/15 06:02:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1186,10 +1186,8 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 		goto done;
 	error = hammer_ip_del_directory(&trans, &cursor, fdip, ip);
 
-	if (error == 0) {
+	if (error == 0)
 		cache_rename(ap->a_fnch, ap->a_tnch);
-		cache_setvp(ap->a_tnch, ip->vp);
-	}
 done:
         hammer_done_cursor(&cursor);
 failed:

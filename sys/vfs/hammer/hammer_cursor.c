@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.11 2008/01/10 07:41:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.12 2008/01/15 06:02:57 dillon Exp $
  */
 
 /*
@@ -341,7 +341,7 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	for (i = 0; i < parent->ondisk->count; ++i) {
 		elm = &parent->ondisk->elms[i];
 		if (elm->internal.rec_offset != 0 &&
-		    elm->internal.subtree_type == HAMMER_BTREE_TYPE_CLUSTER &&
+		    elm->base.subtree_type == HAMMER_BTREE_TYPE_CLUSTER &&
 		    elm->internal.subtree_clu_no == cursor->node->cluster->clu_no) {
 			break;
 		}
@@ -540,7 +540,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 				       elm->internal.subtree_offset,
 				       &error);
 		if (error == 0) {
-			KKASSERT(elm->internal.subtree_type == node->ondisk->type);
+			KKASSERT(elm->base.subtree_type == node->ondisk->type);
 			if(node->ondisk->parent != cursor->parent->node_offset)
 				kprintf("node %p %d vs %d\n", node, node->ondisk->parent, cursor->parent->node_offset);
 			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);

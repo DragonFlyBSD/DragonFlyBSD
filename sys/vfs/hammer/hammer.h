@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.23 2008/01/11 01:41:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.24 2008/01/15 06:02:57 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -373,7 +373,6 @@ struct hammer_node {
 
 #define HAMMER_NODE_DELETED	0x0001
 #define HAMMER_NODE_FLUSH	0x0002
-#define HAMMER_NODE_MODIFIED	0x0004
 
 typedef struct hammer_node	*hammer_node_t;
 
@@ -523,6 +522,8 @@ int	hammer_btree_first(hammer_cursor_t cursor);
 int	hammer_btree_extract(hammer_cursor_t cursor, int flags);
 int	hammer_btree_iterate(hammer_cursor_t cursor);
 int	hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm);
+int	hammer_btree_insert_cluster(hammer_cursor_t cursor,
+			hammer_cluster_t cluster, int32_t rec_offset);
 int	hammer_btree_delete(hammer_cursor_t cursor);
 int	hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
@@ -530,8 +531,8 @@ void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
 
 void	*hammer_bread(struct hammer_cluster *cluster, int32_t cloff,
-		      u_int64_t buf_type, int *errorp,
-		      struct hammer_buffer **bufferp);
+			u_int64_t buf_type, int *errorp,
+			struct hammer_buffer **bufferp);
 
 hammer_volume_t hammer_get_root_volume(hammer_mount_t hmp, int *errorp);
 hammer_cluster_t hammer_get_root_cluster(hammer_mount_t hmp, int *errorp);

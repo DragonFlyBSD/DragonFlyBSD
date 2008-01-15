@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.2 2008/01/10 07:41:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.3 2008/01/15 06:02:57 dillon Exp $
  */
 
 #include "hammer.h"
@@ -60,8 +60,10 @@ hammer_recover(hammer_cluster_t cluster)
 	int32_t r;
 	u_int32_t bitmap;
 
-	return(0); /* XXX temporarily disabled */
-	Debugger("hammer_recover");
+	return(0); /* XXX */
+
+	kprintf("HAMMER_RECOVER %d:%d\n",
+		cluster->volume->vol_no, cluster->clu_no);
 	KKASSERT(cluster->ondisk->synchronized_tid);
 
 	nbuffers = cluster->ondisk->clu_limit / HAMMER_BUFSIZE;
@@ -143,6 +145,7 @@ hammer_recover(hammer_cluster_t cluster)
 			croot->ondisk->count = 0;
 			croot->ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 			cluster->ondisk->clu_btree_root = croot->node_offset;
+			hammer_rel_node(croot);
 		}
 	}
 
@@ -162,6 +165,8 @@ hammer_recover(hammer_cluster_t cluster)
 			continue;
 		hammer_recover_buffer_stage2(cluster, buf_no);
 	}
+	kprintf("HAMMER_RECOVER DONE %d:%d\n",
+		cluster->volume->vol_no, cluster->clu_no);
 
 	/*
 	 * Validate the parent cluster pointer. XXX
@@ -182,6 +187,9 @@ hammer_recover_buffer_stage1(hammer_cluster_t cluster, int32_t buf_no)
 	int32_t rec_offset;
 	int error;
 
+	kprintf("recover buffer1 %d:%d:%d\n",
+		cluster->volume->vol_no,
+		cluster->clu_no, buf_no);
 	buffer = hammer_get_buffer(cluster, buf_no, 0, &error);
 	if (error) {
 		/*
@@ -202,9 +210,15 @@ hammer_recover_buffer_stage1(hammer_cluster_t cluster, int32_t buf_no)
 	hammer_alist_recover(&buffer->alist, 0, 0, HAMMER_RECORD_NODES);
 	rec_no = -1;
 	for (;;) {
-		rec_no = hammer_alist_find(&buffer->alist, rec_no + 1);
+		rec_no = hammer_alist_find(&buffer->alist, rec_no + 1,
+					   HAMMER_RECORD_NODES);
 		if (rec_no == HAMMER_ALIST_BLOCK_NONE)
 			break;
+#if 0
+		kprintf("recover record %d:%d:%d %d\n",
+			cluster->volume->vol_no,
+			cluster->clu_no, buf_no, rec_no);
+#endif
 		rec_offset = offsetof(union hammer_fsbuf_ondisk,
 				      record.recs[rec_no]);
 		rec_offset += buf_no * HAMMER_BUFSIZE;
@@ -235,6 +249,7 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	int32_t nblks;
 	int32_t dbuf_no;
 	int32_t dblk_no;
+	int32_t base_blk;
 	int32_t r;
 	int error = 0;
 
@@ -242,8 +257,11 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	 * Discard records created after the synchronization point and
 	 * undo any deletions made after the synchronization point.
 	 */
-	if (rec->base.base.create_tid > syncid)
+	if (rec->base.base.create_tid > syncid) {
+		kprintf("recover record: syncid too large %016llx/%016llx\n",
+			rec->base.base.create_tid, syncid);
 		return(EINVAL);
+	}
 
 	if (rec->base.base.delete_tid > syncid)
 		rec->base.base.delete_tid = 0;
@@ -251,13 +269,17 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	/*
 	 * Validate the record's B-Tree key
 	 */
-	if (hammer_btree_cmp(&rec->base.base,
-			     &cluster->ondisk->clu_btree_beg) < 0)  {
-		return(EINVAL);
-	}
-	if (hammer_btree_cmp(&rec->base.base,
-			     &cluster->ondisk->clu_btree_end) >= 0)  {
-		return(EINVAL);
+	if (rec->base.base.rec_type != HAMMER_RECTYPE_CLUSTER) {
+		if (hammer_btree_cmp(&rec->base.base,
+				     &cluster->ondisk->clu_btree_beg) < 0)  {
+			kprintf("recover record: range low\n");
+			return(EINVAL);
+		}
+		if (hammer_btree_cmp(&rec->base.base,
+				     &cluster->ondisk->clu_btree_end) >= 0)  {
+			kprintf("recover record: range high\n");
+			return(EINVAL);
+		}
 	}
 
 	/*
@@ -269,23 +291,32 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	data_len = rec->base.data_len;
 
 	if (data_len == 0)
-		rec->base.data_offset = 0;
+		rec->base.data_offset = data_offset = 0;
 	if (data_offset == 0)
-		return(0);
+		goto done;
+
+	/*
+	 * Non-zero data offset, recover the data
+	 */
 	if (data_offset < HAMMER_BUFSIZE ||
 	    data_offset >= cluster->ondisk->clu_limit ||
 	    data_len < 0 || data_len > HAMMER_MAXDATA ||
 	    data_offset + data_len > cluster->ondisk->clu_limit) {
+		kprintf("recover record: bad offset/len %d/%d\n",
+			data_offset, data_len);
 		return(EINVAL);
 	}
 
 	/*
 	 * Check data_offset relative to rec_offset
 	 */
-	if (data_offset < rec_offset && data_offset + data_len > rec_offset)
+	if (data_offset < rec_offset && data_offset + data_len > rec_offset) {
+		kprintf("recover record: bad offset: overlapping1\n");
 		return(EINVAL);
+	}
 	if (data_offset >= rec_offset &&
 	    data_offset < rec_offset + sizeof(struct hammer_base_record)) {
+		kprintf("recover record: bad offset: overlapping2\n");
 		return(EINVAL);
 	}
 
@@ -294,9 +325,11 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	 */
 	if (data_offset >= rec_offset &&
 	    data_offset < rec_offset + HAMMER_RECORD_SIZE) {
-		if (data_offset + data_len > rec_offset + HAMMER_RECORD_SIZE)
+		if (data_offset + data_len > rec_offset + HAMMER_RECORD_SIZE) {
+			kprintf("recover record: bad offset: overlapping3\n");
 			return(EINVAL);
-		return(0);
+		}
+		goto done;
 	}
 
 	/*
@@ -304,30 +337,39 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	 * or as a buffer sub-allocation.
 	 */
 	if ((data_len & HAMMER_BUFMASK) == 0) {
-		if (data_offset & HAMMER_BUFMASK)
+		if (data_offset & HAMMER_BUFMASK) {
+			kprintf("recover record: bad offset: unaligned\n");
 			return(EINVAL);
+		}
 		nblks = data_len / HAMMER_BUFSIZE;
 		dbuf_no = data_offset / HAMMER_BUFSIZE;
 
 		r = hammer_alist_alloc_fwd(&cluster->alist_master,
 					   nblks, dbuf_no);
-		if (r == HAMMER_ALIST_BLOCK_NONE)
+		if (r == HAMMER_ALIST_BLOCK_NONE) {
+			kprintf("recover record: cannot recover offset1\n");
 			return(EINVAL);
+		}
 		if (r != dbuf_no) {
+			kprintf("recover record: cannot recover offset2\n");
 			hammer_alist_free(&cluster->alist_master, r, nblks);
 			return(EINVAL);
 		}
 	} else {
 		if ((data_offset & ~HAMMER_BUFMASK) !=
-		    ((data_offset + data_len) & ~HAMMER_BUFMASK)) {
+		    ((data_offset + data_len - 1) & ~HAMMER_BUFMASK)) {
+			kprintf("recover record: overlaps multiple bufs\n");
 			return(EINVAL);
 		}
 		if ((data_offset & HAMMER_BUFMASK) <
 		    sizeof(struct hammer_fsbuf_head)) {
+			kprintf("recover record: data in header area\n");
 			return(EINVAL);
 		}
-		if (data_offset & HAMMER_DATA_BLKMASK)
+		if (data_offset & HAMMER_DATA_BLKMASK) {
+			kprintf("recover record: data blk unaligned\n");
 			return(EINVAL);
+		}
 
 		/*
 		 * Ok, recover the space in the data buffer.
@@ -354,6 +396,9 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 						  HAMMER_FSBUF_DATA);
 				dbuf->buf_type = HAMMER_FSBUF_DATA;
 			}
+			base_blk = dbuf_no * HAMMER_FSBUF_MAXBLKS;
+			hammer_alist_free(&cluster->alist_mdata, base_blk,
+					  HAMMER_DATA_NODES);
 		} else {
 			/*
 			 * We've seen this data buffer before.
@@ -361,11 +406,14 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 			dbuf = hammer_get_buffer(cluster, dbuf_no,
 						 0, &error);
 		}
-		if (error)
+		if (error) {
+			kprintf("recover record: data: getbuf failed\n");
 			return(EINVAL);
+		}
 
 		if (dbuf->buf_type != HAMMER_FSBUF_DATA) {
 			hammer_rel_buffer(dbuf, 0);
+			kprintf("recover record: data: wrong buffer type\n");
 			return(EINVAL);
 		}
 
@@ -381,24 +429,27 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 				offsetof(union hammer_fsbuf_ondisk, data.data[dblk_no]),
 				(data_offset & HAMMER_BUFMASK));
 			hammer_rel_buffer(dbuf, 0);
+			kprintf("recover record: data: not block aligned\n");
 			Debugger("bad data");
 			return(EINVAL);
 		}
-		dblk_no *= HAMMER_FSBUF_MAXBLKS;
+		dblk_no += dbuf_no * HAMMER_FSBUF_MAXBLKS;
 		r = hammer_alist_alloc_fwd(&cluster->alist_mdata, nblks, dblk_no);
 		if (r != dblk_no) {
 			if (r != HAMMER_ALIST_BLOCK_NONE)
 				hammer_alist_free(&cluster->alist_mdata, r, nblks);
 			hammer_rel_buffer(dbuf, 0);
+			kprintf("recover record: data: unable to realloc\n");
 			return(EINVAL);
 		}
 		hammer_rel_buffer(dbuf, 0);
 	}
+done:
 	return(0);
 }
 
 /*
- * Rebuild the B-Ttree for the records residing in the specified buffer.
+ * Rebuild the B-Tree for the records residing in the specified buffer.
  */
 static void
 hammer_recover_buffer_stage2(hammer_cluster_t cluster, int32_t buf_no)
@@ -427,7 +478,8 @@ hammer_recover_buffer_stage2(hammer_cluster_t cluster, int32_t buf_no)
 	 */
 	rec_no = -1;
 	for (;;) {
-		rec_no = hammer_alist_find(&buffer->alist, rec_no + 1);
+		rec_no = hammer_alist_find(&buffer->alist, rec_no + 1,
+					   HAMMER_RECORD_NODES);
 		if (rec_no == HAMMER_ALIST_BLOCK_NONE)
 			break;
 		rec_offset = offsetof(union hammer_fsbuf_ondisk,
@@ -451,14 +503,65 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 {
 	struct hammer_cursor cursor;
 	union hammer_btree_elm elm;
-	int error;
+	hammer_cluster_t ncluster;
+	int error = 0;
 
+	/*
+	 * Check for a spike record.
+	 */
+	kprintf("hammer_recover_btree cluster %p (%d) type %d\n",
+		cluster, cluster->clu_no, rec->base.base.rec_type);
+	if (rec->base.base.rec_type == HAMMER_RECTYPE_CLUSTER) {
+		hammer_volume_t ovolume = cluster->volume;
+		hammer_volume_t nvolume;
+
+		nvolume = hammer_get_volume(ovolume->hmp, rec->spike.vol_no,
+					    &error);
+		if (error)
+			return(error);
+		ncluster = hammer_get_cluster(nvolume, rec->spike.clu_no,
+					      &error, 0);
+		hammer_rel_volume(nvolume, 0);
+		if (error)
+			return(error);
+
+		/*
+		 * Validate the cluster.  Allow the offset to be fixed up.
+		 */
+		if (ncluster->ondisk->clu_btree_parent_vol_no != ovolume->vol_no ||
+		    ncluster->ondisk->clu_btree_parent_clu_no != cluster->clu_no) {
+			kprintf("hammer_recover: Bad cluster spike hookup: "
+				"%d:%d != %d:%d\n",
+				ncluster->ondisk->clu_btree_parent_vol_no,
+				ncluster->ondisk->clu_btree_parent_clu_no,
+				ovolume->vol_no,
+				ovolume->vol_no);
+			error = EINVAL;
+			hammer_rel_cluster(ncluster, 0);
+			return(error);
+		}
+	} else {
+		ncluster = NULL;
+	}
+
+	/*
+	 * Locate the insertion point.  Note that we are using the cluster-
+	 * localized cursor init so parent will start out NULL.
+	 */
+	kprintf("hammer_recover_btree init_cursor_cluster cluster %p (%d) type %d ncluster %p\n",
+		cluster, cluster->clu_no, rec->base.base.rec_type, ncluster);
 	error = hammer_init_cursor_cluster(&cursor, cluster);
 	if (error)
 		goto failed;
-	cursor.key_beg = rec->base.base;
-	cursor.flags = HAMMER_CURSOR_INSERT;
+	KKASSERT(cursor.node);
+	if (ncluster)
+		cursor.key_beg = ncluster->ondisk->clu_btree_beg;
+	else
+		cursor.key_beg = rec->base.base;
+	cursor.flags |= HAMMER_CURSOR_INSERT;
+
 	error = hammer_btree_lookup(&cursor);
+	KKASSERT(cursor.node);
 	if (error == 0) {
 		kprintf("hammer_recover_btree: Duplicate record\n");
 		hammer_print_btree_elm(&cursor.node->ondisk->elms[cursor.index], HAMMER_BTREE_TYPE_LEAF, cursor.index);
@@ -467,19 +570,41 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	if (error != ENOENT)
 		goto failed;
 
-	elm.leaf.base = rec->base.base;
-	elm.leaf.rec_offset = rec_offset;
-	elm.leaf.data_offset = rec->base.data_offset;
-	elm.leaf.data_len = rec->base.data_len;
-	elm.leaf.data_crc = rec->base.data_crc;
+	if (ncluster) {
+		/*
+		 * Spike record
+		 */
+		kprintf("recover spike clu %d %016llx-%016llx\n",
+			ncluster->clu_no,
+			ncluster->ondisk->clu_btree_beg.obj_id,
+			ncluster->ondisk->clu_btree_end.obj_id);
+		error = hammer_btree_insert_cluster(&cursor, ncluster,
+						    rec_offset);
+		kprintf("recover spike record error %d\n", error);
+		if (error)
+			Debugger("spike recovery");
+	} else {
+		/*
+		 * Normal record
+		 */
+		kprintf("recover recrd clu %d %016llx\n",
+			cluster->clu_no, rec->base.base.obj_id);
+		elm.leaf.base = rec->base.base;
+		elm.leaf.rec_offset = rec_offset;
+		elm.leaf.data_offset = rec->base.data_offset;
+		elm.leaf.data_len = rec->base.data_len;
+		elm.leaf.data_crc = rec->base.data_crc;
 
-	error = hammer_btree_insert(&cursor, &elm);
+		error = hammer_btree_insert(&cursor, &elm);
+	}
+
 	if (error) {
 		kprintf("hammer_recover_btree: insertion failed\n");
 	}
-	/* XXX cluster pushes? */
 
 failed:
+	if (ncluster)
+		hammer_rel_cluster(ncluster, 0);
 	hammer_done_cursor(&cursor);
 	return(error);
 }

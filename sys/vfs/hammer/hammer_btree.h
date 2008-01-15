@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.7 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.8 2008/01/15 06:02:57 dillon Exp $
  */
 
 /*
@@ -133,7 +133,6 @@ struct hammer_btree_internal_elm {
 };
 
 #define subtree_clu_no	subtree_offset
-#define subtree_type	base.subtree_type
 
 /*
  * Leaf B-Tree element (40 + 16 = 56 bytes).

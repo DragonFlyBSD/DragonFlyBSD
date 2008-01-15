@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.20 2008/01/11 05:45:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.21 2008/01/15 06:02:57 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -284,10 +284,16 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 	 */
 	if (error == 0 && ondisk->vol_rootvol == ondisk->vol_no) {
 		hmp->rootvol = volume;
+		if (bp) {
+			brelse(bp);
+			bp = NULL;
+		}
+		hammer_ref_volume(volume);
 		hmp->rootcl = hammer_get_cluster(volume,
 						 ondisk->vol0_root_clu_no,
 						 &error, 0);
 		hammer_rel_cluster(hmp->rootcl, 0);
+		hammer_rel_volume(volume, 0);
 		hmp->fsid_udev = dev2udev(vn_todev(volume->devvp));
 	}
 late_failure:
@@ -813,15 +819,18 @@ hammer_load_cluster(hammer_cluster_t cluster, hammer_alloc_state_t isnew)
 
 		if (isnew == 0) {
 			/*
+			 * Load cluster range info for easy access
+			 */
+			cluster->clu_btree_beg = ondisk->clu_btree_beg;
+			cluster->clu_btree_end = ondisk->clu_btree_end;
+
+			/*
 			 * Recover a cluster that was marked open.  This
 			 * can be rather involved and block for a hefty
 			 * chunk of time.
 			 */
-			if (ondisk->clu_flags & HAMMER_CLUF_OPEN)
+			/*if (ondisk->clu_flags & HAMMER_CLUF_OPEN)*/
 				hammer_recover(cluster);
-
-			cluster->clu_btree_beg = ondisk->clu_btree_beg;
-			cluster->clu_btree_end = ondisk->clu_btree_end;
 		}
 	} else if (isnew) {
 		error = hammer_io_new(volume->devvp, &cluster->io);
@@ -1811,7 +1820,8 @@ hammer_alloc_record(hammer_cluster_t cluster,
 		*bufferp = buffer;
 	}
 	KKASSERT(buffer->ondisk->head.buf_type == HAMMER_FSBUF_RECORDS);
-	KKASSERT((elm_no & HAMMER_FSBUF_BLKMASK) < HAMMER_RECORD_NODES);
+	KASSERT((elm_no & HAMMER_FSBUF_BLKMASK) < HAMMER_RECORD_NODES,
+		("elm_no %d (%d) out of bounds", elm_no, elm_no & HAMMER_FSBUF_BLKMASK));
 	hammer_modify_buffer(buffer);
 	item = &buffer->ondisk->record.recs[elm_no & HAMMER_FSBUF_BLKMASK];
 	bzero(item, sizeof(union hammer_record_ondisk));
@@ -1977,8 +1987,6 @@ alloc_new_buffer(hammer_cluster_t cluster, u_int64_t type, hammer_alist_t live,
 		 * Free the buffer to the appropriate slave list so the
 		 * cluster-based allocator sees it.
 		 */
-		/*hammer_alist_free(live, buf_no * HAMMER_FSBUF_MAXBLKS,
-				  HAMMER_FSBUF_MAXBLKS);*/
 		base_blk = buf_no * HAMMER_FSBUF_MAXBLKS;
 
 		switch(type) {
@@ -2350,6 +2358,7 @@ buffer_alist_alloc_fwd(void *info, int32_t blk, int32_t radix,
 		hammer_rel_buffer(buffer, 0);
 	} else {
 		r = HAMMER_ALIST_BLOCK_NONE;
+		*fullp = 1;
 	}
 	return(r);
 }
@@ -2376,7 +2385,7 @@ buffer_alist_alloc_rev(void *info, int32_t blk, int32_t radix,
 		hammer_rel_buffer(buffer, 0);
 	} else {
 		r = HAMMER_ALIST_BLOCK_NONE;
-		*fullp = 0;
+		*fullp = 1;
 	}
 	return(r);
 }
@@ -2521,7 +2530,7 @@ super_alist_alloc_fwd(void *info, int32_t blk, int32_t radix,
 		hammer_rel_supercl(supercl, 0);
 	} else {
 		r = HAMMER_ALIST_BLOCK_NONE;
-		*fullp = 0;
+		*fullp = 1;
 	}
 	return(r);
 }
@@ -2547,7 +2556,7 @@ super_alist_alloc_rev(void *info, int32_t blk, int32_t radix,
 		hammer_rel_supercl(supercl, 0);
 	} else { 
 		r = HAMMER_ALIST_BLOCK_NONE;
-		*fullp = 0;
+		*fullp = 1;
 	}
 	return(r);
 }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.6 2008/01/11 01:41:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.7 2008/01/15 06:02:57 dillon Exp $
  */
 
 #include "hammer.h"
@@ -160,12 +160,11 @@ hammer_spike(struct hammer_cursor **spikep)
 		hammer_modify_node(spike->parent);
 		ondisk = spike->parent->ondisk;
 		elm = &ondisk->elms[spike->parent_index];
-		elm->internal.subtree_type = HAMMER_BTREE_TYPE_CLUSTER;
-		elm->internal.rec_offset = -1; /* XXX */
+		elm->internal.base.subtree_type = HAMMER_BTREE_TYPE_CLUSTER;
+		elm->internal.rec_offset = -1; /* adjusted later */
 		elm->internal.subtree_clu_no = ncluster->clu_no;
 		elm->internal.subtree_vol_no = ncluster->volume->vol_no;
 		elm->internal.subtree_count = onode->ondisk->count; /*XXX*/
-		onode->flags |= HAMMER_NODE_MODIFIED;
 		hammer_flush_node(onode);
 	}
 	{
@@ -212,6 +211,12 @@ hammer_spike(struct hammer_cursor **spikep)
 	rec->spike.clu_no = ncluster->clu_no;
 	rec->spike.vol_no = ncluster->volume->vol_no;
 	rec->spike.clu_id = 0;
+
+	/*
+	 * Set the record offset
+	 */
+	spike->parent->ondisk->elms[spike->parent_index].internal.rec_offset =
+		hammer_bclu_offset(spike->record_buffer, rec);
 
 	/*
 	 * XXX I/O dependancy - new cluster must be flushed before current

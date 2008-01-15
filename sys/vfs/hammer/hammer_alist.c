@@ -38,7 +38,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.8 2008/01/11 01:41:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.9 2008/01/15 06:02:57 dillon Exp $
  */
 /*
  * This module implements a generic allocator through the use of a hinted
@@ -143,7 +143,8 @@ static int32_t	hammer_alst_radix_init(hammer_almeta_t scan,
 					int32_t radix, int skip, int32_t count);
 static void	hammer_alst_radix_recover(hammer_alist_recover_t info,
 					hammer_almeta_t scan, int32_t blk,
-					int32_t radix, int skip, int32_t count);
+					int32_t radix, int skip, int32_t count,
+					int32_t a_beg, int32_t a_end);
 #ifdef ALIST_DEBUG
 static void	hammer_alst_radix_print(hammer_alist_t live,
 					hammer_almeta_t scan, int32_t blk,
@@ -407,18 +408,20 @@ hammer_alist_alloc_rev(hammer_alist_t live, int32_t count, int32_t atblk)
 /*
  * hammer_alist_find()
  *
- *	Locate the first block >= atblk marked as allocated in the A-list
- *	and return it.  Return HAMMER_ALIST_BLOCK_NONE if no block could
- *	be found.
+ *	Locate the first block >= atblk and < maxblk marked as allocated
+ *	in the A-list and return it.  Return HAMMER_ALIST_BLOCK_NONE if
+ *	no block could be found.
  */
 int32_t
-hammer_alist_find(hammer_alist_t live, int32_t atblk)
+hammer_alist_find(hammer_alist_t live, int32_t atblk, int32_t maxblk)
 {
 	hammer_alist_config_t bl = live->config;
 	KKASSERT(live->config != NULL);
 	KKASSERT(atblk >= 0);
 	atblk = hammer_alst_find(live, live->meta + 1, 0, bl->bl_radix,
 				 bl->bl_skip, atblk);
+	if (atblk >= maxblk)
+		atblk = HAMMER_ALIST_BLOCK_NONE;
 	return(atblk);
 }
 
@@ -464,6 +467,9 @@ hammer_alist_free(hammer_alist_t live, int32_t blkno, int32_t count)
  * blk is usually passed as 0 at the top level and is adjusted as the recovery
  * code scans the A-list.  It is only used when recursing down a stacked
  * A-list.
+ *
+ * (start,count) describes the region of the A-list which is allowed to contain
+ * free blocks.  Any region to the left or right will be marked as allocated.
  */
 int
 hammer_alist_recover(hammer_alist_t live, int32_t blk, int32_t start,
@@ -471,7 +477,6 @@ hammer_alist_recover(hammer_alist_t live, int32_t blk, int32_t start,
 {
 	hammer_alist_config_t bl = live->config;
 	struct hammer_alist_recover info;
-	int32_t r;
 
 	info.live = live;
 	info.error = 0;
@@ -479,21 +484,10 @@ hammer_alist_recover(hammer_alist_t live, int32_t blk, int32_t start,
 	live->meta->bm_alist_freeblks = 0;
 	live->meta->bm_alist_base_freeblks = count;
 	hammer_alst_radix_recover(&info, live->meta + 1, blk, bl->bl_radix,
-				  bl->bl_skip, bl->bl_blocks);
+				  bl->bl_skip, bl->bl_blocks,
+				  start, start + count);
 	if (info.error)
 		return(info.error);
-
-	/*
-	 * Any garbage between 0 and start, and >= start, is removed.
-	 */
-	while ((r = hammer_alist_find(live, 0)) != HAMMER_ALIST_BLOCK_NONE &&
-	       r < start) {
-		hammer_alist_free(live, r, 1);
-	}
-	while ((r = hammer_alist_find(live, start + count)) !=
-		HAMMER_ALIST_BLOCK_NONE) {
-		hammer_alist_free(live, r, 1);
-	}
 	return(live->meta->bm_alist_freeblks);
 }
 
@@ -745,7 +739,7 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 	/*
 	 * ALL-ALLOCATED special case
 	 */
-	if (scan->bm_bitmap == 0)  {
+	if (scan->bm_bitmap == 0 || scan->bm_bitmap == 0xAAAAAAAAU)  {
 		scan->bm_bighint = 0;
 		return(HAMMER_ALIST_BLOCK_NONE);
 	}
@@ -840,15 +834,14 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 				int32_t full;
 
 				r = bl->bl_radix_alloc_fwd(live->info, blk,
-							   radix, count, atblk,
-							   &full);
-				if (r != HAMMER_ALIST_BLOCK_NONE) {
-					if (full) {
-						scan->bm_bitmap &= ~mask;
-						scan->bm_bitmap |= pmask << 1;
-					}
-					return(r);
+							   radix, count,
+							   atblk, &full);
+				if (full) {
+					scan->bm_bitmap &= ~mask;
+					scan->bm_bitmap |= pmask << 1;
 				}
+				if (r != HAMMER_ALIST_BLOCK_NONE)
+					return(r);
 			}
 			blk += radix;
 			mask <<= 2;
@@ -900,6 +893,9 @@ hammer_alst_meta_alloc_fwd(hammer_alist_t live, hammer_almeta_t scan,
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
 					if (scan[i].bm_bitmap == 0) {
 						scan->bm_bitmap &= ~mask;
+					} else if (scan[i].bm_bitmap == 0xAAAAAAAAU) {
+						scan->bm_bitmap &= ~mask;
+						scan->bm_bitmap |= pmask << 1;
 					} else {
 						scan->bm_bitmap &= ~mask;
 						scan->bm_bitmap |= pmask;
@@ -943,7 +939,7 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 	/*
 	 * ALL-ALLOCATED special case
 	 */
-	if (scan->bm_bitmap == 0)  {
+	if (scan->bm_bitmap == 0 || scan->bm_bitmap == 0xAAAAAAAAU)  {
 		scan->bm_bighint = 0;
 		return(HAMMER_ALIST_BLOCK_NONE);
 	}
@@ -1032,13 +1028,12 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 				r = bl->bl_radix_alloc_rev(live->info, blk,
 							   radix, count,
 							   atblk, &full);
-				if (r != HAMMER_ALIST_BLOCK_NONE) {
-					if (full) {
-						scan->bm_bitmap &= ~mask;
-						scan->bm_bitmap |= pmask << 1;
-					}
-					return(r);
+				if (full) {
+					scan->bm_bitmap &= ~mask;
+					scan->bm_bitmap |= pmask << 1;
 				}
+				if (r != HAMMER_ALIST_BLOCK_NONE)
+					return(r);
 			}
 			mask >>= 2;
 			pmask >>= 2;
@@ -1102,6 +1097,9 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
 				if (r != HAMMER_ALIST_BLOCK_NONE) {
 					if (scan[i].bm_bitmap == 0) {
 						scan->bm_bitmap &= ~mask;
+					} else if (scan[i].bm_bitmap == 0xAAAAAAAAU) {
+						scan->bm_bitmap &= ~mask;
+						scan->bm_bitmap |= pmask << 1;
 					} else {
 						scan->bm_bitmap &= ~mask;
 						scan->bm_bitmap |= pmask;
@@ -1165,7 +1163,8 @@ hammer_alst_find(hammer_alist_t live, hammer_almeta_t scan, int32_t blk,
 	next_skip = (skip - 1) / HAMMER_ALIST_META_RADIX;
 	mask = 0x00000003;
 	pmask = 0x00000001;
-	for (j = 0, i = 1; j < HAMMER_ALIST_META_RADIX; (i += next_skip), ++j) {
+	for (j = 0, i = 1; j < (int)HAMMER_ALIST_META_RADIX;
+	     (i += next_skip), ++j) {
 		/*
 		 * Check Terminator
 		 */
@@ -1342,9 +1341,10 @@ hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
 				bl->bl_radix_free(live->info, blk, radix,
 						  freeBlk - blk, v, &empty);
 				if (empty) {
+					if (scan->bm_bitmap & mask)
+						bl->bl_radix_destroy(live->info, blk, radix);
 					scan->bm_bitmap |= mask;
 					scan->bm_bighint = radix * HAMMER_ALIST_META_RADIX;
-					bl->bl_radix_destroy(live->info, blk, radix);
 					/* XXX bighint not being set properly */
 				} else {
 					scan->bm_bitmap &= ~mask;
@@ -1527,10 +1527,16 @@ hammer_alst_radix_init(hammer_almeta_t scan, int32_t radix,
  *
  *	This code is basically a duplicate of hammer_alst_radix_init()
  *	except it recovers the a-list instead of initializes it.
+ *
+ *	(a_beg,a_end) specifies the global allocatable range within
+ *	the radix tree.  The recovery code guarentees that blocks
+ *	within the tree but outside this range are marked as being
+ *	allocated to prevent them from being allocated.
  */
 static void	
 hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
-			  int32_t blk, int32_t radix, int skip, int32_t count)
+			  int32_t blk, int32_t radix, int skip, int32_t count,
+			  int32_t a_beg, int32_t a_end)
 {
 	hammer_alist_t live = info->live;
 	u_int32_t mask;
@@ -1552,6 +1558,8 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 	 */
 	if (skip == 1 && live->config->bl_terminal) {
 		for (i = 0; i < (int)HAMMER_ALIST_BMAP_RADIX; ++i) {
+			if (blk + i < a_beg || blk + i >= a_end)
+				scan->bm_bitmap &= ~(1 << i);
 			if (scan->bm_bitmap & (1 << i))
 				++info->live->meta->bm_alist_freeblks;
 		}
@@ -1578,6 +1586,22 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 		 *	11	ALL-FREE      - UNINITIALIZED
 		 */
 		KKASSERT(mask);
+
+		/*
+		 * Adjust the bitmap for out of bounds or partially out of
+		 * bounds elements.  If we are completely out of bounds
+		 * mark as all-allocated.  If we are partially out of
+		 * bounds do not allow the area to be marked all-free.
+		 */
+		if (blk + radix <= a_beg || blk >= a_end) {
+			scan->bm_bitmap &= ~mask;
+		} else if (blk < a_beg || blk + radix > a_end) {
+			if ((scan->bm_bitmap & mask) == mask) {
+				scan->bm_bitmap &= ~mask;
+				scan->bm_bitmap |= pmask;
+			}
+		}
+
 		if (count >= radix) {
 			/*
 			 * Recover the entire object
@@ -1600,20 +1624,20 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 				hammer_alst_radix_recover(
 				    info,
 				    &scan[i],
-				    blk,
-				    radix,
-				    next_skip,
-				    radix
+				    blk, radix,
+				    next_skip, radix,
+				    a_beg, a_end
 				);
 				if (scan[i].bm_bitmap == 0) {
-					scan->bm_bitmap =
-					    (scan->bm_bitmap & ~mask) |
-					    (pmask << 1);
+					scan->bm_bitmap &= ~mask;
+				} else if (scan[i].bm_bitmap == 0xAAAAAAAAU) {
+					scan->bm_bitmap &= ~mask;
+					scan->bm_bitmap |= pmask << 1;
 				} else if (scan[i].bm_bitmap == (u_int32_t)-1) {
 					scan->bm_bitmap |= mask;
 				} else {
-					scan->bm_bitmap =
-					    (scan->bm_bitmap & ~mask) | pmask;
+					scan->bm_bitmap &= ~mask;
+					scan->bm_bitmap |= pmask;
 				}
 			} else {
 				/*
@@ -1649,18 +1673,18 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 				hammer_alst_radix_recover(
 				    info,
 				    &scan[i],
-				    blk,
-				    radix,
-				    next_skip,
-				    count
+				    blk, radix,
+				    next_skip, count,
+				    a_beg, a_end
 				);
 				if (scan[i].bm_bitmap == 0) {
-					scan->bm_bitmap =
-					    (scan->bm_bitmap & ~mask) |
-					    (pmask << 1);
+					scan->bm_bitmap &= ~mask;
+				} else if (scan[i].bm_bitmap == 0xAAAAAAAAU) {
+					scan->bm_bitmap &= ~mask;
+					scan->bm_bitmap |= pmask << 1;
 				} else {
-					scan->bm_bitmap =
-					    (scan->bm_bitmap & ~mask) | pmask;
+					scan->bm_bitmap &= ~mask;
+					scan->bm_bitmap |= pmask;
 				}
 			} else {
 				n = live->config->bl_radix_recover(
@@ -1669,13 +1693,11 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 				if (n >= 0) {
 					live->meta->bm_alist_freeblks += n;
 					if (n == 0) {
-						scan->bm_bitmap =
-						    (scan->bm_bitmap & ~mask) |
-						    (pmask << 1);
+						scan->bm_bitmap &= ~mask;
+						scan->bm_bitmap |= pmask << 1;
 					} else {
-						scan->bm_bitmap =
-						    (scan->bm_bitmap & ~mask) |
-						    pmask;
+						scan->bm_bitmap &= ~mask;
+						scan->bm_bitmap |= pmask;
 					}
 				} else {
 					info->error = n;
@@ -1889,7 +1911,7 @@ debug_radix_find(void *info, int32_t blk, int32_t radix, int32_t atblk)
 	KKASSERT(layer_radix == radix);
 	KKASSERT(layers[layer_no] != NULL);
 	layer = layers[layer_no];
-	res = hammer_alist_find(layer, atblk - blk);
+	res = hammer_alist_find(layer, atblk - blk, radix);
 	if (res != HAMMER_ALIST_BLOCK_NONE)
 		res += blk;
 	return(res);
@@ -2040,7 +2062,7 @@ main(int ac, char **av)
 			hammer_alist_print(live, 0);
 			atblk = 0;
 			kprintf("allocated: ");
-			while ((atblk = hammer_alist_find(live, atblk)) != HAMMER_ALIST_BLOCK_NONE) {
+			while ((atblk = hammer_alist_find(live, atblk, size)) != HAMMER_ALIST_BLOCK_NONE) {
 				kprintf(" %d", atblk);
 				++atblk;
 			}
