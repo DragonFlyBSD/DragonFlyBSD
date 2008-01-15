@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.23 2007/11/06 07:37:00 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.24 2008/01/15 03:03:25 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -97,8 +97,6 @@ static const struct usb_devno ural_devs[] = {
 	{ USB_DEVICE(0x2001, 0x3c00) }, /* D-Link DWL-G122 */
 	{ USB_DEVICE(0x5a57, 0x0260) }, /* Zinwell RT2570 */
 };
-
-MODULE_DEPEND(ural, wlan, 1, 1, 1);
 
 static int		ural_alloc_tx_list(struct ural_softc *);
 static void		ural_free_tx_list(struct ural_softc *);
@@ -359,7 +357,11 @@ static driver_t ural_driver = {
 	sizeof(struct ural_softc)
 };
 
+DRIVER_MODULE(ural, uhub, ural_driver, ural_devclass, usbd_driver_load, 0);
+
 MODULE_DEPEND(ural, usb, 1, 1, 1);
+MODULE_DEPEND(ural, wlan, 1, 1, 1);
+MODULE_DEPEND(ural, wlan_ratectl_onoe, 1, 1, 1);
 
 static int
 ural_match(device_t self)
@@ -457,11 +459,6 @@ ural_attach(device_t self)
 
 	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
 	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
-	ic->ic_ratectl.rc_st_valid_stats =
-		IEEE80211_RATECTL_STATS_PKT_NORETRY |
-		IEEE80211_RATECTL_STATS_PKT_OK |
-		IEEE80211_RATECTL_STATS_PKT_ERR |
-		IEEE80211_RATECTL_STATS_RETRIES;
 	ic->ic_ratectl.rc_st_stats = ural_stats;
 	ic->ic_ratectl.rc_st_change = ural_ratectl_change;
 
@@ -2453,5 +2450,3 @@ ural_ratectl_change(struct ieee80211com *ic, u_int orc __unused, u_int nrc)
 		panic("unknown rate control algo %u\n", nrc);
 	}
 }
-
-DRIVER_MODULE(ural, uhub, ural_driver, ural_devclass, usbd_driver_load, 0);

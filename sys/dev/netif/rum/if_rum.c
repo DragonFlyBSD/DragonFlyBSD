@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.24 2008/01/14 19:27:11 josepht Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.25 2008/01/15 03:03:25 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -236,8 +236,11 @@ static driver_t rum_driver = {
 	sizeof(struct rum_softc)
 };
 
-MODULE_DEPEND(rum, usb, 1, 1, 1);
 DRIVER_MODULE(rum, uhub, rum_driver, rum_devclass, usbd_driver_load, 0);
+
+MODULE_DEPEND(rum, usb, 1, 1, 1);
+MODULE_DEPEND(rum, wlan, 1, 1, 1);
+MODULE_DEPEND(rum, wlan_ratectl_onoe, 1, 1, 1);
 
 static int
 rum_match(device_t self)
@@ -406,11 +409,6 @@ rum_attach(device_t self)
 
 	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
 	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
-	ic->ic_ratectl.rc_st_valid_stats =
-		IEEE80211_RATECTL_STATS_PKT_NORETRY |
-		IEEE80211_RATECTL_STATS_PKT_OK |
-		IEEE80211_RATECTL_STATS_PKT_ERR |
-		IEEE80211_RATECTL_STATS_RETRIES;
 	ic->ic_ratectl.rc_st_stats = rum_stats;
 	ic->ic_ratectl.rc_st_change = rum_ratectl_change;
 

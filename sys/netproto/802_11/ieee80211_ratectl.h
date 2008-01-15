@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.5 2007/04/01 13:59:40 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.6 2008/01/15 03:03:25 sephe Exp $
  */
 
 #ifndef _NET80211_IEEE80211_RATECTL_H
@@ -47,7 +47,6 @@ struct ieee80211_ratectl_state {
 	uint32_t	rc_st_flags;	   /* see IEEE80211_RATECTL_F_ */
 	u_int		rc_st_ratectl;	   /* see IEEE80211_RATECTL_ */
 	uint32_t	rc_st_ratectl_cap; /* see IEEE80211_RATECTL_CAP_ */
-	uint64_t	rc_st_valid_stats; /* see IEEE80211_RATECTL_STATS_ */
 	void		(*rc_st_change)(struct ieee80211com *, u_int, u_int);
 	void		(*rc_st_stats)(struct ieee80211com *,
 				       struct ieee80211_node *,
@@ -62,21 +61,13 @@ struct ieee80211_ratectl_res {
 	int		rc_res_tries;
 };
 
-#define IEEE80211_RATECTL_STATS_RES		0x1
-#define IEEE80211_RATECTL_STATS_PKT_NORETRY	0x2
-#define IEEE80211_RATECTL_STATS_PKT_OK		0x4
-#define IEEE80211_RATECTL_STATS_PKT_ERR		0x8
-#define IEEE80211_RATECTL_STATS_RETRIES		0x10
-
 #define IEEE80211_RATEIDX_MAX		5
 
 struct ieee80211_ratectl_stats {
-	struct ieee80211_ratectl_res	stats_res[IEEE80211_RATEIDX_MAX];
-	int				stats_res_len;
-	int				stats_pkt_noretry;
-	int				stats_pkt_ok;
-	int				stats_pkt_err;
-	int				stats_retries;
+	int		stats_pkt_noretry;
+	int		stats_pkt_ok;
+	int		stats_pkt_err;
+	int		stats_retries;
 };
 
 struct ieee80211_ratectl {

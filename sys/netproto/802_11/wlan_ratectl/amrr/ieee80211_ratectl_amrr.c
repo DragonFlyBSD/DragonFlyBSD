@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.9 2007/03/19 13:38:43 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.10 2008/01/15 03:03:25 sephe Exp $
  */
 
 /*
@@ -69,17 +69,6 @@
 #else
 #define	DPRINTF(asc, lv, fmt, ...)
 #endif
-
-#define AMRR_REQUIRE_STATS1	(IEEE80211_RATECTL_STATS_RES |		\
-				 IEEE80211_RATECTL_STATS_PKT_NORETRY)
-#define AMRR_REQUIRE_STATS2	(IEEE80211_RATECTL_STATS_PKT_NORETRY |	\
-				 IEEE80211_RATECTL_STATS_PKT_OK |	\
-				 IEEE80211_RATECTL_STATS_PKT_ERR |	\
-				 IEEE80211_RATECTL_STATS_RETRIES)
-#define AMRR_MEET_REQUIRE_STATS1(stats_mask)	\
-	(((stats_mask) & AMRR_REQUIRE_STATS1) == AMRR_REQUIRE_STATS1)
-#define AMRR_MEET_REQUIRE_STATS2(stats_mask)	\
-	(((stats_mask) & AMRR_REQUIRE_STATS2) == AMRR_REQUIRE_STATS2)
 
 static void	*amrr_attach(struct ieee80211com *);
 static void	amrr_detach(void *);
@@ -340,16 +329,9 @@ amrr_gather_stats(struct amrr_softc *asc, struct ieee80211_node *ni)
 
 	st->rc_st_stats(ic, ni, &stats);
 
-	if (AMRR_MEET_REQUIRE_STATS1(st->rc_st_valid_stats)) {
-		int i;
-
-		for (i = 0; i < stats.stats_res_len; ++i)
-			total_tries += stats.stats_res[i].rc_res_tries;
-	} else if (AMRR_MEET_REQUIRE_STATS2(st->rc_st_valid_stats)) {
-		total_tries = stats.stats_pkt_ok +
-			      stats.stats_pkt_err +
-			      stats.stats_retries;
-	}
+	total_tries = stats.stats_pkt_ok +
+		      stats.stats_pkt_err +
+		      stats.stats_retries;
 
 	ad->ad_tx_cnt += total_tries;
 	ad->ad_tx_failure_cnt += (total_tries - stats.stats_pkt_noretry);
@@ -380,12 +362,8 @@ amrr_ratectl(void *arg, struct ieee80211_node *ni)
 
 	old_rate = ni->ni_txrate;
 
-	if (st->rc_st_stats != NULL) {
-		if (!AMRR_MEET_REQUIRE_STATS1(st->rc_st_valid_stats) &&
-		    !AMRR_MEET_REQUIRE_STATS2(st->rc_st_valid_stats))
-			return;
+	if (st->rc_st_stats != NULL)
 		amrr_gather_stats(asc, ni);
-	}
   
   	DPRINTF(asc, 10, "tx_cnt: %u tx_failure_cnt: %u -- "
 		"threshold: %d\n",
@@ -509,15 +487,7 @@ amrr_sysctl_attach(struct amrr_softc *asc)
 static void *
 amrr_attach(struct ieee80211com *ic)
 {
-	const struct ieee80211_ratectl_state *st = &ic->ic_ratectl;
 	struct amrr_softc *asc;
-
-	if (st->rc_st_stats != NULL &&
-	    !AMRR_MEET_REQUIRE_STATS1(st->rc_st_valid_stats) &&
-	    !AMRR_MEET_REQUIRE_STATS2(st->rc_st_valid_stats)) {
-		if_printf(&ic->ic_if, "WARNING: %s needs more average "
-			  "statistics to work properly\n", amrr.rc_name);
-	}
 
 	amrr_nrefs++;
 

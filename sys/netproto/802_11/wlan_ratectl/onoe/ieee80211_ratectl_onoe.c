@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.8 2007/03/19 13:38:43 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.9 2008/01/15 03:03:25 sephe Exp $
  */
 
 /*
@@ -66,12 +66,6 @@
 #else
 #define	DPRINTF(osc, lv, fmt, ...)
 #endif
-
-#define ONOE_REQUIRE_STATS	(IEEE80211_RATECTL_STATS_PKT_OK |	\
-				 IEEE80211_RATECTL_STATS_PKT_ERR |	\
-				 IEEE80211_RATECTL_STATS_RETRIES)
-#define ONOE_MEET_REQUIRE_STATS(stats_mask)	\
-	(((stats_mask) & ONOE_REQUIRE_STATS) == ONOE_REQUIRE_STATS)
 
 /*
  * Default parameters for the rate control algorithm.  These are
@@ -351,11 +345,8 @@ onoe_ratectl(void *arg, struct ieee80211_node *ni)
 		return;
 	}
 
-	if (st->rc_st_stats != NULL) {
-		if (!ONOE_MEET_REQUIRE_STATS(st->rc_st_valid_stats))
-			return;
+	if (st->rc_st_stats != NULL)
 		onoe_gather_stats(osc, ni);
-	}
 
 	/*
 	 * Rate control
@@ -489,14 +480,7 @@ onoe_sysctl_attach(struct onoe_softc *osc)
 static void *
 onoe_attach(struct ieee80211com *ic)
 {
-	const struct ieee80211_ratectl_state *st = &ic->ic_ratectl;
 	struct onoe_softc *osc;
-
-	if (st->rc_st_stats != NULL &&
-	    !ONOE_MEET_REQUIRE_STATS(st->rc_st_valid_stats)) {
-		if_printf(&ic->ic_if, "WARNING: %s needs more average "
-			  "statistics to work properly\n", onoe.rc_name);
-	}
 
 	onoe_nrefs++;
 
