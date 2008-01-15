@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.26 2008/01/15 09:01:13 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.27 2008/01/15 09:45:35 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -73,6 +73,7 @@ static const struct usb_devno rum_devs[] = {
 	{ USB_DEVICE(0x0411, 0x00d9) }, /* Melco WLI-U2-G54HP */
 	{ USB_DEVICE(0x050d, 0x705a) }, /* Belkin F5D7050A */
 	{ USB_DEVICE(0x050d, 0x905b) }, /* Belkin F5D9050 ver3 */
+	{ USB_DEVICE(0x0586, 0x3415) },	/* ZyXEL RT2573 */
 	{ USB_DEVICE(0x06f8, 0xe010) }, /* Guillemot HWGUSB2-54-LB */
 	{ USB_DEVICE(0x06f8, 0xe020) }, /* Guillemot HWGUSB2-54V2-AP */
 	{ USB_DEVICE(0x0769, 0x31f3) }, /* Surecom RT2573 */
@@ -97,6 +98,7 @@ static const struct usb_devno rum_devs[] = {
 	{ USB_DEVICE(0x1371, 0x9022) }, /* (really) C-Net RT2573 */
 	{ USB_DEVICE(0x1371, 0x9032) }, /* (really) C-Net CWD854F */
 	{ USB_DEVICE(0x13b1, 0x0020) }, /* Cisco-Linksys WUSB54GC */
+	{ USB_DEVICE(0x13b1, 0x0023) },	/* Cisco-Linksys WUSB54GR */
 	{ USB_DEVICE(0x1472, 0x0009) }, /* Huawei RT2573 */
 	{ USB_DEVICE(0x148f, 0x2573) }, /* Ralink RT2573 */
 	{ USB_DEVICE(0x148f, 0x2671) }, /* Ralink RT2671 */
@@ -110,6 +112,7 @@ static const struct usb_devno rum_devs[] = {
 	{ USB_DEVICE(0x18c5, 0x0002) }, /* AMIT CG-WLUSB2GO */
 	{ USB_DEVICE(0x18e8, 0x6196) }, /* Qcom RT2573 */
 	{ USB_DEVICE(0x18e8, 0x6229) }, /* Qcom RT2573 */
+	{ USB_DEVICE(0x18e8, 0x6238) },	/* Qcom RT2573 */
 	{ USB_DEVICE(0x2019, 0xab01) }, /* Planex GW-US54HP */
 	{ USB_DEVICE(0x2019, 0xab50) }, /* Planex GW-US54Mini2 */
 	{ USB_DEVICE(0x2019, 0xed02) }, /* Planex GW-USMM */
