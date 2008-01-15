@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.7 2008/01/11 19:45:27 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.8 2008/01/15 14:19:11 hasso Exp $	*/
 /*	$OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $	*/
 
 /*
@@ -42,7 +42,7 @@ static int	umsmdebug = 1;
 #endif
 #define DPRINTF(x) DPRINTFN(0, x)
 
-#define UMSMBUFSZ	2048
+#define UMSMBUFSZ	4096
 
 struct umsm_softc {
 	struct ucom_softc	 sc_ucom;

@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.43 2007/08/12 16:57:31 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.44 2008/01/15 14:19:11 hasso Exp $
  */
 
 /*-
@@ -2307,7 +2307,7 @@ ttsetwater(struct tty *tp)
 		 * sizes and watermarks.
 		 */
 		cps = TTYHOG - 2 * 256;
-		tp->t_ififosize = 2 * 256;
+		tp->t_ififosize = 2 * 2048;
 		break;
 	default:
 		cps = tp->t_ispeedwat / 10;
