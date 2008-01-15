@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $DragonFly: src/tools/tools/convert_usb_ids/convert_usb_ids.sh,v 1.1 2008/01/13 18:21:50 matthias Exp $
+# $DragonFly: src/tools/tools/convert_usb_ids/convert_usb_ids.sh,v 1.2 2008/01/15 12:30:44 matthias Exp $
 
 ub=usbdevs
 
@@ -70,12 +70,22 @@ umass()
 				head -1 | awk '{print $5,$6,$7 }'`
 
 			# Output our version of the device id
+			printf "\t"
 			echo "/* $vendor_desc $product_name */"
+			printf "\t"
 			echo -n "{ .vendor = $vendor_id, .product = $product_id, "
-			echo "release = $release"
+			echo ".release = $release"
+			printf "\t"
 			echo "  .proto  = $proto"
+			printf "\t"
 			echo "  .quirks = $quirks"
+			printf "\t"
 			echo "},"
+			release=
+			vendor=
+			product=
+			quirks=
+			i=10
 		fi
 		let i=$i + 1 > /dev/null
 	done
