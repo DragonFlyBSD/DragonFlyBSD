@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.6 2008/01/15 03:03:25 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.7 2008/01/15 09:01:13 sephe Exp $
  */
 
 #ifndef _NET80211_IEEE80211_RATECTL_H
@@ -43,11 +43,10 @@ struct ieee80211_ratectl_stats;
 
 struct ieee80211_ratectl_state {
 	void		*rc_st_ctx;
-	void		*rc_st_param;
 	uint32_t	rc_st_flags;	   /* see IEEE80211_RATECTL_F_ */
 	u_int		rc_st_ratectl;	   /* see IEEE80211_RATECTL_ */
 	uint32_t	rc_st_ratectl_cap; /* see IEEE80211_RATECTL_CAP_ */
-	void		(*rc_st_change)(struct ieee80211com *, u_int, u_int);
+	void		*(*rc_st_attach)(struct ieee80211com *, u_int);
 	void		(*rc_st_stats)(struct ieee80211com *,
 				       struct ieee80211_node *,
 				       struct ieee80211_ratectl_stats *);

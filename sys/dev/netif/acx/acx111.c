@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.11 2007/03/19 13:38:43 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.12 2008/01/15 09:01:13 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,8 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/amrr/ieee80211_amrr_param.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
 
 #include <bus/pci/pcireg.h>
 
@@ -297,7 +299,7 @@ static int	acx111_write_config(struct acx_softc *, struct acx_config *);
 
 static void	acx111_set_bss_join_param(struct acx_softc *, void *, int);
 
-static void	acx111_ratectl_change(struct ieee80211com *, u_int, u_int);
+static void	*acx111_ratectl_attach(struct ieee80211com *, u_int);
 
 static uint8_t	_acx111_set_fw_txdesc_rate(struct acx_softc *,
 					   struct acx_txbuf *,
@@ -365,10 +367,13 @@ acx111_set_param(device_t dev)
 	ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
 	ic->ic_sup_rates[IEEE80211_MODE_11G] = acx_rates_11g;
 
+	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
+	IEEE80211_AMRR_PARAM_SETUP(&sc->sc_amrr_param);
+
 	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE |
 					   IEEE80211_RATECTL_CAP_AMRR;
 	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_AMRR;
-	ic->ic_ratectl.rc_st_change = acx111_ratectl_change;
+	ic->ic_ratectl.rc_st_attach = acx111_ratectl_attach;
 
 	sc->chip_init = acx111_init;
 	sc->chip_write_config = acx111_write_config;
@@ -612,33 +617,36 @@ acx111_set_bss_join_param(struct acx_softc *sc, void *param, int dtim_intvl)
 	bj->dtim_intvl = dtim_intvl;
 }
 
-static void
-acx111_ratectl_change(struct ieee80211com *ic, u_int orc, u_int nrc)
+static void *
+acx111_ratectl_attach(struct ieee80211com *ic, u_int rc)
 {
 	struct ifnet *ifp = &ic->ic_if;
 	struct acx_softc *sc = ifp->if_softc;
 	const int *tries;
+	void *ret;
 	int i;
 
-	switch (nrc) {
+	switch (rc) {
 	case IEEE80211_RATECTL_ONOE:
 		tries = acx111_onoe_tries;
 		sc->chip_set_fw_txdesc_rate = acx111_set_fw_txdesc_rate_onoe;
 		sc->chip_tx_complete = acx111_tx_complete_onoe;
+		ret = &sc->sc_onoe_param;
 		break;
 
 	case IEEE80211_RATECTL_AMRR:
 		tries = acx111_amrr_tries;
 		sc->chip_set_fw_txdesc_rate = acx111_set_fw_txdesc_rate_amrr;
 		sc->chip_tx_complete = acx111_tx_complete_amrr;
+		ret = &sc->sc_amrr_param;
 		break;
 
 	case IEEE80211_RATECTL_NONE:
 		/* This could only happen during detaching */
-		return;
+		return NULL;
 
 	default:
-		panic("unknown rate control algo %u\n", nrc);
+		panic("unknown rate control algo %u\n", rc);
 		break;
 	}
 
@@ -676,6 +684,7 @@ acx111_ratectl_change(struct ieee80211com *ic, u_int orc, u_int nrc)
 		DPRINTF((ifp, "%s set rate 0 nretry %d\n", __func__,
 			 sc->chip_rate_fallback));
 	}
+	return ret;
 }
 
 static void

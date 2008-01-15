@@ -34,16 +34,17 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.h,v 1.2 2004/12/31 22:41:45 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h,v 1.1 2006/10/24 14:39:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h,v 1.2 2008/01/15 09:01:13 sephe Exp $
  */
 
 #ifndef _IEEE80211_ONOE_PARAM_H
 #define _IEEE80211_ONOE_PARAM_H
 
 struct ieee80211_onoe_param {
-	int	onoe_interval;	/* unit: millisecond */
-	int	onoe_raise;
-	int	onoe_raise_threshold;
+	int	onoe_interval;		/* rate ctl interval (millisecond) */
+	int	onoe_raise;		/* add credit threshold */
+	int	onoe_raise_threshold;	/* rate ctl raise threshold */
+	int	onoe_debug;
 };
 
 #define IEEE80211_ONOE_INTERVAL		1000	/* 1 second */
@@ -58,6 +59,7 @@ do {						\
 		IEEE80211_ONOE_RAISE;		\
 	(param)->onoe_raise_threshold =		\
 		IEEE80211_ONOE_RAISE_THR;	\
+	(param)->onoe_debug = 0;		\
 } while (0)
 
 #endif	/* !_IEEE80211_ONOE_PARAM_H */

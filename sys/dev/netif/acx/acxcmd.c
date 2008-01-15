@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.9 2007/03/30 12:46:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.10 2008/01/15 09:01:13 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,8 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/amrr/ieee80211_amrr_param.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
 
 #define ACX_DEBUG
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.22 2007/05/13 22:25:42 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.23 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -94,6 +94,8 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/amrr/ieee80211_amrr_param.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

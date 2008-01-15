@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.10 2008/01/15 03:03:25 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.11 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -58,17 +58,38 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/wlan_ratectl/amrr/ieee80211_amrr_param.h>
-#include <netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.h>
 
 #define	AMRR_DEBUG
 #ifdef AMRR_DEBUG
 #define	DPRINTF(asc, lv, fmt, ...) do {		\
-	if ((asc)->debug >= lv)			\
+	if ((asc)->param->amrr_debug >= lv)	\
 		kprintf(fmt, __VA_ARGS__);	\
 } while (0)
 #else
 #define	DPRINTF(asc, lv, fmt, ...)
 #endif
+
+struct amrr_softc {
+	struct ieee80211com	*ic;
+	struct callout		timer;		/* periodic timer */
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_oid;
+
+	struct ieee80211_amrr_param *param;
+#define max_success_threshold	param->amrr_max_success_threshold
+#define min_success_threshold	param->amrr_min_success_threshold
+};
+
+struct amrr_data {
+  	/* AMRR statistics for this node */
+	u_int	ad_tx_cnt;
+	u_int	ad_tx_failure_cnt;
+
+        /* AMRR algorithm state for this node */
+  	u_int	ad_success_threshold;
+  	u_int	ad_success;
+  	u_int	ad_recovery;
+};
 
 static void	*amrr_attach(struct ieee80211com *);
 static void	amrr_detach(void *);
@@ -310,7 +331,7 @@ amrr_newstate(void *arg, enum ieee80211_state state)
 		 * Start the background rate control thread if we
 		 * are not configured to use a fixed xmit rate.
 		 */
-		interval = asc->interval;
+		interval = asc->param->amrr_interval;
 		if (ic->ic_opmode == IEEE80211_M_STA)
 			interval /= 2;
 		callout_reset(&asc->timer, (interval * hz) / 1000,
@@ -430,7 +451,7 @@ amrr_tick(void *arg)
 		else
 			ieee80211_iterate_nodes(&ic->ic_sta, amrr_ratectl, asc);
 	}
-	interval = asc->interval;
+	interval = asc->param->amrr_interval;
 	if (ic->ic_opmode == IEEE80211_M_STA)
 		interval /= 2;
 	callout_reset(&asc->timer, (interval * hz) / 1000, amrr_tick, asc);
@@ -441,24 +462,9 @@ amrr_tick(void *arg)
 static void
 amrr_sysctl_attach(struct amrr_softc *asc)
 {
-	struct ieee80211com *ic = asc->ic;
-	struct ieee80211_amrr_param *param;
-
-	param = ic->ic_ratectl.rc_st_param;
-	if (param != NULL) {
-		asc->interval = param->amrr_interval;
-		asc->max_success_threshold = param->amrr_max_success_threshold;
-		asc->min_success_threshold = param->amrr_min_success_threshold;
-	} else {
-		asc->interval = IEEE80211_AMRR_INTERVAL;
-		asc->max_success_threshold = IEEE80211_AMRR_MAX_SUCCESS_THR;
-		asc->min_success_threshold = IEEE80211_AMRR_MIN_SUCCESS_THR;
-	}
-	asc->debug = 0;
-
 	sysctl_ctx_init(&asc->sysctl_ctx);
 	asc->sysctl_oid = SYSCTL_ADD_NODE(&asc->sysctl_ctx,
-		SYSCTL_CHILDREN(ic->ic_sysctl_oid),
+		SYSCTL_CHILDREN(asc->ic->ic_sysctl_oid),
 		OID_AUTO, "amrr_ratectl", CTLFLAG_RD, 0, "");
 	if (asc->sysctl_oid == NULL) {
 		kprintf("wlan_ratectl_amrr: create sysctl tree failed\n");
@@ -467,21 +473,21 @@ amrr_sysctl_attach(struct amrr_softc *asc)
 
 	SYSCTL_ADD_INT(&asc->sysctl_ctx, SYSCTL_CHILDREN(asc->sysctl_oid),
 		       OID_AUTO, "interval", CTLFLAG_RW,
-		       &asc->interval, 0,
+		       &asc->param->amrr_interval, 0,
 		       "rate control: operation interval (ms)");
 
 	/* XXX bounds check values */
 	SYSCTL_ADD_INT(&asc->sysctl_ctx, SYSCTL_CHILDREN(asc->sysctl_oid),
 		       OID_AUTO, "max_sucess_threshold", CTLFLAG_RW,
-		       &asc->max_success_threshold, 0, "");
+		       &asc->param->amrr_max_success_threshold, 0, "");
 
 	SYSCTL_ADD_INT(&asc->sysctl_ctx, SYSCTL_CHILDREN(asc->sysctl_oid),
 		       OID_AUTO, "min_sucess_threshold", CTLFLAG_RW,
-		       &asc->min_success_threshold, 0, "");
+		       &asc->param->amrr_min_success_threshold, 0, "");
 
 	SYSCTL_ADD_INT(&asc->sysctl_ctx, SYSCTL_CHILDREN(asc->sysctl_oid),
 		       OID_AUTO, "debug", CTLFLAG_RW,
-		       &asc->debug, 0, "debug level");
+		       &asc->param->amrr_debug, 0, "debug level");
 }
 
 static void *
@@ -495,6 +501,8 @@ amrr_attach(struct ieee80211com *ic)
 
 	asc->ic = ic;
 	callout_init(&asc->timer);
+	asc->param = ic->ic_ratectl.rc_st_attach(ic, IEEE80211_RATECTL_AMRR);
+
 	amrr_sysctl_attach(asc);
 
 	amrr_newstate(asc, ic->ic_state);

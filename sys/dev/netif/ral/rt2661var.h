@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.7 2007/05/07 14:14:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.8 2008/01/15 09:01:13 sephe Exp $
  */
 
 #define RT2661_NCHAN_MAX	38
@@ -179,6 +179,9 @@ struct rt2661_softc {
 
 	struct sysctl_ctx_list		sysctl_ctx;
 	struct sysctl_oid		*sysctl_tree;
+
+	struct ieee80211_onoe_param	sc_onoe_param;
+	struct ieee80211_sample_param	sc_sample_param;
 
 	uint32_t			sc_keymap[2];
 };

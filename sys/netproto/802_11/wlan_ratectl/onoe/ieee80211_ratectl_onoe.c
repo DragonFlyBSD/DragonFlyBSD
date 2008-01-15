@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.9 2008/01/15 03:03:25 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.10 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -54,18 +54,36 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
-#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.h>
 
 #define ONOE_DEBUG
 
 #ifdef ONOE_DEBUG
 #define	DPRINTF(osc, lv, fmt, ...) do {		\
-	if ((osc)->debug >= lv)			\
+	if ((osc)->param->onoe_debug >= lv)	\
 		kprintf(fmt, __VA_ARGS__);	\
 } while (0)
 #else
 #define	DPRINTF(osc, lv, fmt, ...)
 #endif
+
+struct onoe_softc {
+	struct ieee80211com	*ic;
+	struct callout		timer;		/* periodic timer */
+
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_oid;
+
+	struct ieee80211_onoe_param *param;
+#define raise		param->onoe_raise
+#define raise_threshold	param->onoe_raise_threshold
+};
+
+struct onoe_data {
+	u_int		od_tx_ok;	/* tx ok pkt */
+	u_int		od_tx_err;	/* tx !ok pkt */
+	u_int		od_tx_retr;	/* tx retry count */
+	int		od_tx_upper;	/* tx upper rate req cnt */
+};
 
 /*
  * Default parameters for the rate control algorithm.  These are
@@ -307,7 +325,7 @@ onoe_newstate(void *arg, enum ieee80211_state state)
 		 * Start the background rate control thread if we
 		 * are not configured to use a fixed xmit rate.
 		 */
-		interval = osc->interval;
+		interval = osc->param->onoe_interval;
 		if (ic->ic_opmode == IEEE80211_M_STA)
 			interval /= 2;
 		callout_reset(&osc->timer, (interval * hz) / 1000,
@@ -422,7 +440,7 @@ onoe_tick(void *arg)
 			ieee80211_iterate_nodes(&ic->ic_sta, onoe_ratectl, osc);
 	}
 
-	interval = osc->interval;
+	interval = osc->param->onoe_interval;
 	if (ic->ic_opmode == IEEE80211_M_STA)
 		interval /= 2;
 	callout_reset(&osc->timer, (interval * hz) / 1000, onoe_tick, osc);
@@ -433,21 +451,6 @@ onoe_tick(void *arg)
 static void
 onoe_sysctl_attach(struct onoe_softc *osc)
 {
-	struct ieee80211com *ic = osc->ic;
-	struct ieee80211_onoe_param *param;
-
-	param = ic->ic_ratectl.rc_st_param;
-	if (param != NULL) {
-		osc->interval = param->onoe_interval;
-		osc->raise = param->onoe_raise;
-		osc->raise_threshold = param->onoe_raise_threshold;
-	} else {
-		osc->interval = IEEE80211_ONOE_INTERVAL;
-		osc->raise = IEEE80211_ONOE_RAISE;
-		osc->raise_threshold = IEEE80211_ONOE_RAISE_THR;
-	}
-	osc->debug = 0;
-
 	sysctl_ctx_init(&osc->sysctl_ctx);
 	osc->sysctl_oid = SYSCTL_ADD_NODE(&osc->sysctl_ctx,
 		SYSCTL_CHILDREN(osc->ic->ic_sysctl_oid),
@@ -458,22 +461,25 @@ onoe_sysctl_attach(struct onoe_softc *osc)
 	}
 
 	SYSCTL_ADD_INT(&osc->sysctl_ctx, SYSCTL_CHILDREN(osc->sysctl_oid),
-		       OID_AUTO, "interval", CTLFLAG_RW, &osc->interval, 0,
+		       OID_AUTO, "interval", CTLFLAG_RW,
+		       &osc->param->onoe_interval, 0,
 		       "rate control: operation interval (ms)");
 
 	/* XXX bounds check values */
 	SYSCTL_ADD_INT(&osc->sysctl_ctx, SYSCTL_CHILDREN(osc->sysctl_oid),
-		       OID_AUTO, "raise", CTLFLAG_RW, &osc->raise, 0,
+		       OID_AUTO, "raise", CTLFLAG_RW,
+		       &osc->param->onoe_raise, 0,
 		       "rate control: "
 		       "retry threshold to credit rate raise (%%)");
 
 	SYSCTL_ADD_INT(&osc->sysctl_ctx, SYSCTL_CHILDREN(osc->sysctl_oid),
 		       OID_AUTO, "raise_threshold", CTLFLAG_RW,
-		       &osc->raise_threshold, 0,
+		       &osc->param->onoe_raise_threshold, 0,
 		       "rate control: # good periods before raising rate");
 
 	SYSCTL_ADD_INT(&osc->sysctl_ctx, SYSCTL_CHILDREN(osc->sysctl_oid),
-		       OID_AUTO, "debug", CTLFLAG_RW, &osc->debug, 0,
+		       OID_AUTO, "debug", CTLFLAG_RW,
+		       &osc->param->onoe_debug, 0,
 		       "rate control: debug level");
 }
 
@@ -488,6 +494,8 @@ onoe_attach(struct ieee80211com *ic)
 
 	osc->ic = ic;
 	callout_init(&osc->timer);
+	osc->param = ic->ic_ratectl.rc_st_attach(ic, IEEE80211_RATECTL_ONOE);
+
 	onoe_sysctl_attach(osc);
 
 	onoe_newstate(osc, ic->ic_state);

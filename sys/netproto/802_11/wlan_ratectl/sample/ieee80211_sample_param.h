@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2004 INRIA
- * Copyright (c) 2002-2005 Sam Leffler, Errno Consulting
+ * Copyright (c) 2005 John Bicket
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,33 +33,29 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.h,v 1.2 2004/12/31 22:41:45 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/Attic/ieee80211_ratectl_amrr.h,v 1.2 2006/10/21 08:37:04 sephe Exp $
+ * $FreeBSD: src/sys/dev/ath/ath_rate/sample/sample.h,v 1.3.2.1 2006/02/24 19:51:11 sam Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/sample/ieee80211_sample_param.h,v 1.1 2008/01/15 09:01:13 sephe Exp $
  */
 
-#ifndef _IEEE80211_RATECTL_AMRR_H
-#define _IEEE80211_RATECTL_AMRR_H
+#ifndef _IEEE80211_SAMPLE_PARAM_H
+#define _IEEE80211_SAMPLE_PARAM_H
 
-struct amrr_softc {
-	struct ieee80211com	*ic;
-	struct callout		timer;		/* periodic timer */
-	struct sysctl_ctx_list	sysctl_ctx;
-	struct sysctl_oid	*sysctl_oid;
-	int			interval;	/* unit: ms */
-	int			max_success_threshold;
-	int			min_success_threshold;
-	int			debug;
+struct ieee80211_sample_param {
+	int	sample_smoothing_rate;	/* ewma percentage (out of 100) */
+	int	sample_rate;		/* send a different bit-rate 1/X pkts */
+	int	sample_debug;
 };
 
-struct amrr_data {
-  	/* AMRR statistics for this node */
-	u_int	ad_tx_cnt;
-	u_int	ad_tx_failure_cnt;
+#define IEEE80211_SAMPLE_SMOOTHING_RATE	95
+#define IEEE80211_SAMPLE_RATE		10
 
-        /* AMRR algorithm state for this node */
-  	u_int	ad_success_threshold;
-  	u_int	ad_success;
-  	u_int	ad_recovery;
-};
+#define IEEE80211_SAMPLE_PARAM_SETUP(param)	\
+do {						\
+	(param)->sample_smoothing_rate =	\
+		IEEE80211_SAMPLE_SMOOTHING_RATE;\
+	(param)->sample_rate =			\
+		IEEE80211_SAMPLE_RATE;		\
+	(param)->sample_debug = 0;		\
+} while (0)
 
-#endif	/* !_IEEE80211_RATECTL_AMRR_H */
+#endif	/* !_IEEE80211_SAMPLE_PARAM_H */

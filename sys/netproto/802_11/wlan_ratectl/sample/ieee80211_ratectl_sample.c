@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/sample/sample.c,v 1.8.2.3 2006/03/14 23:22:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/sample/ieee80211_ratectl_sample.c,v 1.3 2007/10/28 02:29:06 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/sample/ieee80211_ratectl_sample.c,v 1.4 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -52,18 +52,58 @@
 #include <net/if_arp.h>
 
 #include <netproto/802_11/ieee80211_var.h>
-#include <netproto/802_11/wlan_ratectl/sample/ieee80211_ratectl_sample.h>
+#include <netproto/802_11/wlan_ratectl/sample/ieee80211_sample_param.h>
 
 #define	SAMPLE_DEBUG
 
 #ifdef SAMPLE_DEBUG
 #define	DPRINTF(ssc, lv, fmt, ...) do {		\
-	if (ssc->debug >= lv)			\
+	if (ssc->param->sample_debug >= lv)	\
 		kprintf(fmt, __VA_ARGS__);	\
 } while (0)
 #else
 #define	DPRINTF(ssc, lv, fmt, ...)
 #endif
+
+struct sample_softc {
+	struct ieee80211com	*ic;
+
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_oid;
+
+	struct ieee80211_sample_param *param;
+#define smoothing_rate	param->sample_smoothing_rate
+};
+
+struct rate_stats {
+	unsigned average_tx_time;
+	int successive_failures;
+	int tries;
+	int total_packets;
+	int packets_acked;
+	unsigned perfect_tx_time; /* transmit time for 0 retries */
+	int last_tx;
+};
+
+#define NUM_PACKET_SIZE_BINS	3
+
+struct sample_data {
+	int started;
+	int static_rate_ndx;
+
+	struct rate_stats stats[NUM_PACKET_SIZE_BINS][IEEE80211_RATE_MAXSIZE];
+	int last_sample_ndx[NUM_PACKET_SIZE_BINS];
+
+	int current_sample_ndx[NUM_PACKET_SIZE_BINS];       
+	int packets_sent[NUM_PACKET_SIZE_BINS];
+
+	int current_rate[NUM_PACKET_SIZE_BINS];
+	int packets_since_switch[NUM_PACKET_SIZE_BINS];
+	unsigned ticks_since_switch[NUM_PACKET_SIZE_BINS];
+
+	int packets_since_sample[NUM_PACKET_SIZE_BINS];
+	unsigned sample_tt[NUM_PACKET_SIZE_BINS];
+};
 
 /*
  * This file is an implementation of the SampleRate algorithm
@@ -397,7 +437,7 @@ sample_findrate(void *arg, struct ieee80211_node *ni, int frame_len,
 		ndx = sd->static_rate_ndx;
 	} else {
 		if (sd->sample_tt[size_bin] <
-		    average_tx_time * (sd->packets_since_sample[size_bin] * ssc->sample_rate / 100)) {
+		    average_tx_time * (sd->packets_since_sample[size_bin] * ssc->param->sample_rate / 100)) {
 			/*
 			 * We want to limit the time measuring the
 			 * performance of other bit-rates to sample_rate%
@@ -764,10 +804,6 @@ sample_newstate(void *arg, enum ieee80211_state state)
 static void
 sample_sysctl_attach(struct sample_softc *ssc)
 {
-	ssc->smoothing_rate = 95;
-	ssc->sample_rate = 10;
-	ssc->debug = 0;
-
 	sysctl_ctx_init(&ssc->sysctl_ctx);
 	ssc->sysctl_oid = SYSCTL_ADD_NODE(&ssc->sysctl_ctx,
 		SYSCTL_CHILDREN(ssc->ic->ic_sysctl_oid),
@@ -780,19 +816,20 @@ sample_sysctl_attach(struct sample_softc *ssc)
 	/* XXX bounds check [0..100] */
 	SYSCTL_ADD_INT(&ssc->sysctl_ctx, SYSCTL_CHILDREN(ssc->sysctl_oid),
 		       OID_AUTO, "smoothing_rate", CTLFLAG_RW,
-		       &ssc->smoothing_rate, 0,
+		       &ssc->param->sample_smoothing_rate, 0,
 		       "rate control: "
 		       "retry threshold to credit rate raise (%%)");
 
 	/* XXX bounds check [2..100] */
 	SYSCTL_ADD_INT(&ssc->sysctl_ctx, SYSCTL_CHILDREN(ssc->sysctl_oid),
 		       OID_AUTO, "sample_rate", CTLFLAG_RW,
-		       &ssc->sample_rate, 0,
+		       &ssc->param->sample_rate, 0,
 		       "rate control: "
 		       "# good periods before raising rate");
 
 	SYSCTL_ADD_INT(&ssc->sysctl_ctx, SYSCTL_CHILDREN(ssc->sysctl_oid),
-		       OID_AUTO, "debug", CTLFLAG_RW, &ssc->debug, 0,
+		       OID_AUTO, "debug", CTLFLAG_RW,
+		       &ssc->param->sample_debug, 0,
 		       "rate control: debug level");
 }
 
@@ -804,7 +841,10 @@ sample_attach(struct ieee80211com *ic)
 	sample_nrefs++;
 
 	ssc = kmalloc(sizeof(struct sample_softc), M_DEVBUF, M_WAITOK | M_ZERO);
+
 	ssc->ic = ic;
+	ssc->param = ic->ic_ratectl.rc_st_attach(ic, IEEE80211_RATECTL_SAMPLE);
+
 	sample_sysctl_attach(ssc);
 
 	sample_newstate(ssc, ic->ic_state);

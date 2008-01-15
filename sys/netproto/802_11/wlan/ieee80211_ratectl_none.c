@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl_none.c,v 1.2 2007/03/19 13:38:43 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl_none.c,v 1.3 2008/01/15 09:01:13 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -74,6 +74,9 @@ const struct ieee80211_ratectl ieee80211_ratectl_none = {
 static void *
 none_ratectl_attach(struct ieee80211com *ic __unused)
 {
+	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+
+	rc_st->rc_st_attach(ic, IEEE80211_RATECTL_NONE);
 	return NULL;
 }
 

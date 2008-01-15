@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwvar.h,v 1.28 2006/02/16 20:17:16 perry Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwvar.h,v 1.4 2007/02/07 14:52:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwvar.h,v 1.5 2008/01/15 09:01:13 sephe Exp $
  */
 
 #ifndef _DEV_IC_RTWVAR_H_
@@ -507,6 +507,7 @@ struct rtw_softc {
 	struct ifqueue		sc_beaconq;
 	struct rtw_led_state	sc_led_state;
 	int			sc_hwverid;
+	struct ieee80211_onoe_param sc_onoe_param;
 };
 
 #define	sc_if		sc_ic.ic_if

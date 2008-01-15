@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.10 2007/02/16 11:46:47 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.11 2008/01/15 09:01:13 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -435,6 +435,8 @@ struct acx_softc {
 	struct sysctl_ctx_list	sc_sysctl_ctx;
 	struct sysctl_oid	*sc_sysctl_tree;
 
+	struct ieee80211_onoe_param sc_onoe_param;
+	struct ieee80211_amrr_param sc_amrr_param;
 	int			sc_long_retry_limit;
 	int			chip_short_retry_limit;
 	int			chip_rate_fallback;

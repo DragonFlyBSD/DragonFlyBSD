@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.22 2007/10/28 02:29:06 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.23 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -47,6 +47,8 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
+#include <netproto/802_11/wlan_ratectl/sample/ieee80211_sample_param.h>
 
 #include <dev/netif/ral/rt2661reg.h>
 #include <dev/netif/ral/rt2661var.h>
@@ -161,6 +163,7 @@ static int		rt2661_key_delete(struct ieee80211com *,
 static int		rt2661_key_set(struct ieee80211com *,
 				       const struct ieee80211_key *,
 				       const uint8_t mac[IEEE80211_ADDR_LEN]);
+static void		*rt2661_ratectl_attach(struct ieee80211com *, u_int);
 
 /*
  * Supported rates for 802.11a/b/g modes (in 500Kbps unit).
@@ -357,14 +360,17 @@ rt2661_attach(device_t dev, int id)
 	ic->ic_state = IEEE80211_S_INIT;
 	rt2661_led_newstate(sc, IEEE80211_S_INIT);
 
+	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
 	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
 	if (bbp_type == RT2661_BBP_2661D) {
 		ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
 	} else {
+		IEEE80211_SAMPLE_PARAM_SETUP(&sc->sc_sample_param);
 		ic->ic_ratectl.rc_st_ratectl_cap |=
 			IEEE80211_RATECTL_CAP_SAMPLE;
 		ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_SAMPLE;
 	}
+	ic->ic_ratectl.rc_st_attach = rt2661_ratectl_attach;
 
 	/* set device capabilities */
 	ic->ic_caps =
@@ -3283,4 +3289,29 @@ rt2661_key_set(struct ieee80211com *ic, const struct ieee80211_key *key,
 		RAL_WRITE(sc, RT2661_SEC_CSR4, 1);
 	}
 	return 1;
+}
+
+static void *
+rt2661_ratectl_attach(struct ieee80211com *ic, u_int rc)
+{
+	struct rt2661_softc *sc = ic->ic_if.if_softc;
+
+	switch (rc) {
+	case IEEE80211_RATECTL_ONOE:
+		return &sc->sc_onoe_param;
+
+	case IEEE80211_RATECTL_SAMPLE:
+		if ((ic->ic_ratectl.rc_st_ratectl_cap &
+		     IEEE80211_RATECTL_CAP_SAMPLE) == 0)
+			panic("sample rate control algo is not supported\n");
+		return &sc->sc_sample_param;
+
+	case IEEE80211_RATECTL_NONE:
+		/* This could only happen during detaching */
+		return NULL;
+
+	default:
+		panic("unknown rate control algo %u\n", rc);
+		return NULL;
+	}
 }

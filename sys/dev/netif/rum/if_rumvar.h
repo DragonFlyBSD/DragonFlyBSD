@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rumvar.h,v 1.6 2006/08/18 15:11:12 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rumvar.h,v 1.5 2007/06/28 06:32:32 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rumvar.h,v 1.6 2008/01/15 09:01:13 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -145,6 +145,8 @@ struct rum_softc {
 	}				sc_txtapu;
 #define sc_txtap	sc_txtapu.th
 	int				sc_txtap_len;
+
+	struct ieee80211_onoe_param	sc_onoe_param;
 };
 
 /* See the comment take from rt73 near RT2573_TX_LONG_RETRY */

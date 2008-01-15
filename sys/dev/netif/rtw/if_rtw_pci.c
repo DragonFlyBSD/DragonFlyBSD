@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: if_rtw_pci.c,v 1.4 2005/12/04 17:44:02 christos Exp $
- * $DragonFly: src/sys/dev/netif/rtw/if_rtw_pci.c,v 1.4 2007/10/14 04:15:17 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/if_rtw_pci.c,v 1.5 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -92,6 +92,7 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
 
 #include <dev/netif/rtw/rtwreg.h>
 #include <dev/netif/rtw/sa2400reg.h>

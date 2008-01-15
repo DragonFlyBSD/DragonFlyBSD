@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_uralvar.h,v 1.3.2.3 2006/01/29 14:16:36 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.6 2007/06/28 06:32:32 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_uralvar.h,v 1.7 2008/01/15 09:01:13 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -140,6 +140,8 @@ struct ural_softc {
 	}				sc_txtapu;
 #define sc_txtap	sc_txtapu.th
 	int				sc_txtap_len;
+
+	struct ieee80211_onoe_param	sc_onoe_param;
 };
 
 /*

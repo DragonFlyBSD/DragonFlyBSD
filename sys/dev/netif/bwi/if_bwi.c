@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.17 2008/01/10 13:01:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.18 2008/01/15 09:01:13 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -57,6 +57,7 @@
 
 #include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -89,6 +90,7 @@ static void	bwi_watchdog(struct ifnet *);
 static int	bwi_newstate(struct ieee80211com *, enum ieee80211_state, int);
 static void	bwi_updateslot(struct ifnet *);
 static int	bwi_media_change(struct ifnet *);
+static void	*bwi_ratectl_attach(struct ieee80211com *, u_int);
 
 static void	bwi_next_scan(void *);
 static void	bwi_calibrate(void *);
@@ -769,8 +771,10 @@ bwi_attach(device_t dev)
 	ic->ic_state = IEEE80211_S_INIT;
 	ic->ic_opmode = IEEE80211_M_STA;
 
+	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
 	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
 	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
+	ic->ic_ratectl.rc_st_attach = bwi_ratectl_attach;
 
 	ic->ic_updateslot = bwi_updateslot;
 
@@ -3903,4 +3907,21 @@ bwi_led_blink_end(void *xsc)
 	struct bwi_softc *sc = xsc;
 
 	sc->sc_led_blinking = 0;
+}
+
+static void *
+bwi_ratectl_attach(struct ieee80211com *ic, u_int rc)
+{
+	struct bwi_softc *sc = ic->ic_if.if_softc;
+
+	switch (rc) {
+	case IEEE80211_RATECTL_ONOE:
+		return &sc->sc_onoe_param;
+	case IEEE80211_RATECTL_NONE:
+		/* This could only happen during detaching */
+		return NULL;
+	default:
+		panic("unknown rate control algo %u\n", rc);
+		return NULL;
+	}
 }

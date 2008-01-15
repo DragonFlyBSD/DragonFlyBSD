@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.10 2007/03/19 13:38:43 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.11 2008/01/15 09:01:13 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,8 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/amrr/ieee80211_amrr_param.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
 
 #include <bus/pci/pcireg.h>
 
@@ -260,6 +262,8 @@ static void	acx100_init_fw_rxring(struct acx_softc *, uint32_t);
 static int	acx100_read_config(struct acx_softc *, struct acx_config *);
 static int	acx100_write_config(struct acx_softc *, struct acx_config *);
 
+static void	*acx100_ratectl_attach(struct ieee80211com *, u_int);
+
 static int	acx100_set_txpower(struct acx_softc *);
 
 static uint8_t	acx100_set_fw_txdesc_rate(struct acx_softc *,
@@ -324,8 +328,11 @@ acx100_set_param(device_t dev)
 	ic->ic_phytype = IEEE80211_T_DS;
 	ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
 
+	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
+
 	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
 	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
+	ic->ic_ratectl.rc_st_attach = acx100_ratectl_attach;
 
 	sc->chip_init = acx100_init;
 	sc->chip_set_wepkey = acx100_set_wepkey;
@@ -829,4 +836,21 @@ acx100_tx_complete(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 	ieee80211_ratectl_tx_complete(tx_buf->tb_node, frame_len,
 				      &rc_res, 1, data_retries, rts_retries,
 				      is_fail);
+}
+
+static void *
+acx100_ratectl_attach(struct ieee80211com *ic, u_int rc)
+{
+	struct acx_softc *sc = ic->ic_if.if_softc;
+
+	switch (rc) {
+	case IEEE80211_RATECTL_ONOE:
+		return &sc->sc_onoe_param;
+	case IEEE80211_RATECTL_NONE:
+		/* This could only happen during detaching */
+		return NULL;
+	default:
+		panic("unknown rate control algo %u\n", rc);
+		return NULL;
+	}
 }

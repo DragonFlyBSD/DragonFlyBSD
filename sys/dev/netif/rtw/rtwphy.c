@@ -29,7 +29,7 @@
  * OF SUCH DAMAGE.
  *
  * $NetBSD: rtwphy.c,v 1.9 2006/03/08 00:24:06 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtwphy.c,v 1.4 2007/10/14 04:15:17 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtwphy.c,v 1.5 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -48,6 +48,7 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
 
 #include <dev/netif/rtw/rtwreg.h>
 #include <dev/netif/rtw/max2820reg.h>

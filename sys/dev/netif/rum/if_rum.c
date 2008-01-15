@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.25 2008/01/15 03:03:25 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.26 2008/01/15 09:01:13 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -178,8 +178,7 @@ static void		rum_stats_update(usbd_xfer_handle, usbd_private_handle,
 static void		rum_stats(struct ieee80211com *,
 				  struct ieee80211_node *,
 				  struct ieee80211_ratectl_stats *);
-static void		rum_ratectl_change(struct ieee80211com *ic, u_int,
-					   u_int);
+static void		*rum_ratectl_attach(struct ieee80211com *, u_int);
 static int		rum_get_rssi(struct rum_softc *, uint8_t);
 
 /*
@@ -407,10 +406,12 @@ rum_attach(device_t self)
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
 
+	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
+	sc->sc_onoe_param.onoe_raise = 15;
 	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
 	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
 	ic->ic_ratectl.rc_st_stats = rum_stats;
-	ic->ic_ratectl.rc_st_change = rum_ratectl_change;
+	ic->ic_ratectl.rc_st_attach = rum_ratectl_attach;
 
 	ieee80211_ifattach(ic);
 
@@ -2217,31 +2218,20 @@ rum_stats(struct ieee80211com *ic, struct ieee80211_node *ni __unused,
 	bzero(&sc->sc_stats, sizeof(sc->sc_stats));
 }
 
-static void
-rum_ratectl_change(struct ieee80211com *ic, u_int orc __unused, u_int nrc)
+static void *
+rum_ratectl_attach(struct ieee80211com *ic, u_int rc)
 {
-	struct ieee80211_ratectl_state *st = &ic->ic_ratectl;
-	struct ieee80211_onoe_param *oparam;
+	struct rum_softc *sc = ic->ic_if.if_softc;
 
-	if (st->rc_st_param != NULL) {
-		kfree(st->rc_st_param, M_DEVBUF);
-		st->rc_st_param = NULL;
-	}
-
-	switch (nrc) {
+	switch (rc) {
 	case IEEE80211_RATECTL_ONOE:
-		oparam = kmalloc(sizeof(*oparam), M_DEVBUF, M_INTWAIT);
-
-		IEEE80211_ONOE_PARAM_SETUP(oparam);
-		oparam->onoe_raise = 15;
-
-		st->rc_st_param = oparam;
-		break;
+		return &sc->sc_onoe_param;
 	case IEEE80211_RATECTL_NONE:
 		/* This could only happen during detaching */
-		break;
+		return NULL;
 	default:
-		panic("unknown rate control algo %u\n", nrc);
+		panic("unknown rate control algo %u\n", rc);
+		return NULL;
 	}
 }
 

@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.h,v 1.2 2004/12/31 22:41:45 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_amrr_param.h,v 1.1 2006/10/24 14:39:44 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_amrr_param.h,v 1.2 2008/01/15 09:01:13 sephe Exp $
  */
 
 #ifndef _IEEE80211_AMRR_PARAM_H
@@ -45,6 +45,7 @@ struct ieee80211_amrr_param {
 	int	amrr_interval;	/* unit: millisecond */
 	int	amrr_max_success_threshold;
 	int	amrr_min_success_threshold;
+	int	amrr_debug;
 };
 
 #define IEEE80211_AMRR_INTERVAL		1000	/* 1 second */
@@ -59,6 +60,7 @@ do {						\
 		IEEE80211_AMRR_MAX_SUCCESS_THR;	\
 	(param)->amrr_min_success_threshold =	\
 		IEEE80211_AMRR_MIN_SUCCESS_THR;	\
+	(param)->amrr_debug = 0;		\
 } while (0)
 
 #endif	/* !_IEEE80211_AMRR_PARAM_H */

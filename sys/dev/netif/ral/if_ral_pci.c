@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/if_ral_pci.c,v 1.4 2006/03/05 23:27:51 silby Exp $
- * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.5 2007/04/02 14:25:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.6 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -45,6 +45,8 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
+#include <netproto/802_11/wlan_ratectl/sample/ieee80211_sample_param.h>
 
 #include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>

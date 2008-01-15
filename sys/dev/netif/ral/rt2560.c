@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.17 2008/01/06 03:03:17 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.18 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -46,6 +46,8 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
+#include <netproto/802_11/wlan_ratectl/sample/ieee80211_sample_param.h>
 
 #include <dev/netif/ral/rt2560reg.h>
 #include <dev/netif/ral/rt2560var.h>
@@ -136,6 +138,7 @@ static void		rt2560_set_rxantenna(struct rt2560_softc *, int);
 static void		rt2560_init(void *);
 static void		rt2560_stop(void *);
 static void		rt2560_intr(void *);
+static void		*rt2560_ratectl_attach(struct ieee80211com *, u_int);
 
 /*
  * Supported rates for 802.11a/b/g modes (in 500Kbps unit).
@@ -268,9 +271,12 @@ rt2560_attach(device_t dev, int id)
 	ic->ic_opmode = IEEE80211_M_STA; /* default to BSS mode */
 	ic->ic_state = IEEE80211_S_INIT;
 
+	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
+	IEEE80211_SAMPLE_PARAM_SETUP(&sc->sc_sample_param);
 	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE |
 					   IEEE80211_RATECTL_CAP_SAMPLE;
 	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_SAMPLE;
+	ic->ic_ratectl.rc_st_attach = rt2560_ratectl_attach;
 
 	/* set device capabilities */
 	ic->ic_caps =
@@ -2683,4 +2689,23 @@ rt2560_dma_map_mbuf(void *arg, bus_dma_segment_t *seg, int nseg,
 
 	KASSERT(nseg == 1, ("too many dma segments\n"));
 	*((bus_addr_t *)arg) = seg->ds_addr;
+}
+
+static void *
+rt2560_ratectl_attach(struct ieee80211com *ic, u_int rc)
+{
+	struct rt2560_softc *sc = ic->ic_if.if_softc;
+
+	switch (rc) {
+	case IEEE80211_RATECTL_SAMPLE:
+		return &sc->sc_sample_param;
+	case IEEE80211_RATECTL_ONOE:
+		return &sc->sc_onoe_param;
+	case IEEE80211_RATECTL_NONE:
+		/* This could only happen during detaching */
+		return NULL;
+	default:
+		panic("unknown rate control algo %u\n", rc);
+		return NULL;
+	}
 }

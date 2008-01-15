@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl.c,v 1.4 2007/04/01 13:59:41 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ratectl.c,v 1.5 2008/01/15 09:01:13 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -155,9 +155,6 @@ ieee80211_ratectl_change(struct ieee80211com *ic, u_int rc_idx)
 	/* Detach old rate control */
 	rc_old = ratectls[rc_st->rc_st_ratectl];
 	rc_old->rc_detach(rc_st->rc_st_ctx);
-
-	if (rc_st->rc_st_change != NULL)
-		rc_st->rc_st_change(ic, rc_st->rc_st_ratectl, rc_idx);
 
 	/* Attach new rate control */
 	rc_st->rc_st_ratectl = rc_idx;

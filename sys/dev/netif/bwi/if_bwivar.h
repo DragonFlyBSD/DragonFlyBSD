@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.12 2007/10/21 09:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.13 2008/01/15 09:01:13 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -632,6 +632,8 @@ struct bwi_softc {
 
 	struct sysctl_ctx_list	sc_sysctl_ctx;
 	struct sysctl_oid	*sc_sysctl_tree;
+
+	struct ieee80211_onoe_param sc_onoe_param;
 
 	/*
 	 * Sysctl variables

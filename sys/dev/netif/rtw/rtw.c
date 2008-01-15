@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.11 2007/10/14 04:15:17 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.12 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -91,6 +91,7 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
 
 #include <dev/netif/rtw/rtwreg.h>
 #include <dev/netif/rtw/rtwvar.h>
@@ -266,6 +267,8 @@ static int	rtw_get_rssi(struct rtw_softc *, uint8_t, uint8_t);
 static int	rtw_maxim_getrssi(uint8_t, uint8_t);
 static int	rtw_gct_getrssi(uint8_t, uint8_t);
 static int	rtw_philips_getrssi(uint8_t, uint8_t);
+
+static void	*rtw_ratectl_attach(struct ieee80211com *, u_int);
 
 #ifdef RTW_DEBUG
 static void
@@ -3863,8 +3866,10 @@ rtw_attach(device_t dev)
 	callout_init(&sc->sc_led_state.ls_fast_ch);
 	callout_init(&sc->sc_led_state.ls_slow_ch);
 
+	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
 	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
 	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
+	ic->ic_ratectl.rc_st_attach = rtw_ratectl_attach;
 
 	/*
 	 * Call MI attach routines.
@@ -4511,4 +4516,21 @@ rtw_philips_getrssi(uint8_t raw, uint8_t sq)
 		return 1;
 	else
 		return 0x32;
+}
+
+static void *
+rtw_ratectl_attach(struct ieee80211com *ic, u_int rc)
+{
+	struct rtw_softc *sc = ic->ic_if.if_softc;
+
+	switch (rc) {
+	case IEEE80211_RATECTL_ONOE:
+		return &sc->sc_onoe_param;
+	case IEEE80211_RATECTL_NONE:
+		/* This could only happen during detaching */
+		return NULL;
+	default:
+		panic("unknown rate control algo %u\n", rc);
+		return NULL;
+	}
 }
