@@ -1,5 +1,5 @@
 # $FreeBSD: src/bin/csh/Makefile,v 1.11.2.8 2002/02/19 00:36:40 mp Exp $
-# $DragonFly: src/bin/csh/Makefile,v 1.7 2005/07/07 11:49:55 corecode Exp $
+# $DragonFly: src/bin/csh/Makefile,v 1.8 2008/01/15 13:54:43 matthias Exp $
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 #
 # C Shell with process control; VM/UNIX VAX Makefile
@@ -9,7 +9,7 @@
 
 WARNS?=	0	# Net yet
 
-TCSHDIR= ${.CURDIR}/../../contrib/tcsh
+TCSHDIR= ${.CURDIR}/../../contrib/tcsh-6
 CONTRIBDIR=${TCSHDIR}
 .PATH: ${TCSHDIR}
 
@@ -20,18 +20,17 @@ SRCS=	sh.c sh.dir.c sh.dol.c sh.err.c sh.exec.c sh.char.c \
 	sh.exp.c sh.file.c sh.func.c sh.glob.c sh.hist.c sh.init.c \
 	sh.lex.c sh.misc.c sh.parse.c sh.print.c sh.proc.c sh.sem.c \
 	sh.set.c sh.time.c sh.char.h sh.dir.h sh.proc.h sh.h
-SRCS+=	sh.decls.h glob.c glob.h mi.termios.c mi.wait.h mi.varargs.h
+SRCS+=	sh.decls.h glob.c glob.h mi.termios.c
 SRCS+=	tw.decls.h tw.h tw.help.c tw.init.c tw.parse.c tw.spell.c \
 	tw.comp.c tw.color.c
 SRCS+=	ed.chared.c ed.decls.h ed.defns.c ed.h ed.init.c ed.inputl.c \
 	ed.refresh.c ed.screen.c ed.xmap.c ed.term.c ed.term.h
 SRCS+=	tc.alloc.c tc.bind.c tc.const.c tc.decls.h tc.disc.c \
-	tc.func.c tc.os.c tc.os.h tc.printf.c tc.prompt.c \
+	tc.func.c tc.nls.c tc.os.c tc.os.h tc.printf.c tc.prompt.c \
 	tc.sched.c tc.sig.c tc.sig.h tc.str.c sh.types.h tc.vers.c tc.wait.h \
 	tc.who.c tc.h
 GENHDRS= ed.defns.h sh.err.h tc.const.h tc.defs.c
 SRCS+=	${GENHDRS}
-SRCS+= sh.exp.c.patch
 
 MLINKS= csh.1 tcsh.1
 # MLINKS for Shell built in commands for which there are no userland
@@ -46,7 +45,7 @@ LINKS=	${BINDIR}/csh ${BINDIR}/tcsh
 CLEANFILES= ${GENHDRS} gethost.nx csh.1
 
 FILESDIR= ${SHAREDIR}/examples/tcsh
-FILES= complete.tcsh csh-mode.el
+FILES= complete.tcsh
 
 CATALOGS=	et:et_EE.ISO8859-15 \
 		finnish:fi_FI.ISO8859-1 \
