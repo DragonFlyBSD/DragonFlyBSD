@@ -1,0 +1,27 @@
+		tcsh-6.15.00 for DragonFly
+
+Get tcsh from ftp://ftp.astron.com/pub/tcsh/
+
+	ftp://ftp.astron.com/pub/tcsh/tcsh-6.15.00.tar.gz
+	MD5 (tcsh-6.15.00.tar.gz) = 67a0611620b080bd0eb032b1774382b6
+
+Extract tarball to /usr/src/contrib/tcsh-6
+
+Remove all files from README.DELETED
+
+	xargs rm -rf < README.DELETED
+
+Import the tcsh source
+
+	cvs import -m "Vendor import of tcsh 6.15.00" \
+		src/contrib/tcsh-6 TCSH tcsh_6_15_00
+
+Add our READMEs
+
+	Commit tcsh-6/README.{DRAGONFLY,DELETED}
+
+Redirect the build to the new source
+
+Bring in the custom DragonFly changes, eg
+Checkpoint support etc
+
