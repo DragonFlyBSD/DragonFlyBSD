@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.24 2008/01/16 12:31:25 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.25 2008/01/16 12:37:55 sephe Exp $
  */
 
 /*
@@ -145,11 +145,6 @@ static void		rt2661_stop(void *);
 static void		rt2661_intr(void *);
 static int		rt2661_load_microcode(struct rt2661_softc *,
 			    const uint8_t *, int);
-#ifdef notyet
-static void		rt2661_rx_tune(struct rt2661_softc *);
-static void		rt2661_radar_start(struct rt2661_softc *);
-static int		rt2661_radar_stop(struct rt2661_softc *);
-#endif
 static int		rt2661_prepare_beacon(struct rt2661_softc *);
 static void		rt2661_enable_tsf_sync(struct rt2661_softc *);
 static int		rt2661_get_rssi(struct rt2661_softc *, uint8_t, int);
@@ -2814,125 +2809,6 @@ rt2661_load_microcode(struct rt2661_softc *sc, const uint8_t *ucode, int size)
 	}
 	return 0;
 }
-
-#ifdef notyet
-/*
- * Dynamically tune Rx sensitivity (BBP register 17) based on average RSSI and
- * false CCA count.  This function is called periodically (every seconds) when
- * in the RUN state.  Values taken from the reference driver.
- */
-static void
-rt2661_rx_tune(struct rt2661_softc *sc)
-{
-	uint8_t bbp17;
-	uint16_t cca;
-	int lo, hi, dbm;
-
-	/*
-	 * Tuning range depends on operating band and on the presence of an
-	 * external low-noise amplifier.
-	 */
-	lo = 0x20;
-	if (IEEE80211_IS_CHAN_5GHZ(sc->sc_curchan))
-		lo += 0x08;
-	if ((IEEE80211_IS_CHAN_2GHZ(sc->sc_curchan) && sc->ext_2ghz_lna) ||
-	    (IEEE80211_IS_CHAN_5GHZ(sc->sc_curchan) && sc->ext_5ghz_lna))
-		lo += 0x10;
-	hi = lo + 0x20;
-
-	/* retrieve false CCA count since last call (clear on read) */
-	cca = RAL_READ(sc, RT2661_STA_CSR1) & 0xffff;
-
-	if (dbm >= -35) {
-		bbp17 = 0x60;
-	} else if (dbm >= -58) {
-		bbp17 = hi;
-	} else if (dbm >= -66) {
-		bbp17 = lo + 0x10;
-	} else if (dbm >= -74) {
-		bbp17 = lo + 0x08;
-	} else {
-		/* RSSI < -74dBm, tune using false CCA count */
-
-		bbp17 = sc->bbp17; /* current value */
-
-		hi -= 2 * (-74 - dbm);
-		if (hi < lo)
-			hi = lo;
-
-		if (bbp17 > hi) {
-			bbp17 = hi;
-
-		} else if (cca > 512) {
-			if (++bbp17 > hi)
-				bbp17 = hi;
-		} else if (cca < 100) {
-			if (--bbp17 < lo)
-				bbp17 = lo;
-		}
-	}
-
-	if (bbp17 != sc->bbp17) {
-		rt2661_bbp_write(sc, 17, bbp17);
-		sc->bbp17 = bbp17;
-	}
-}
-
-/*
- * Enter/Leave radar detection mode.
- * This is for 802.11h additional regulatory domains.
- */
-static void
-rt2661_radar_start(struct rt2661_softc *sc)
-{
-	uint32_t tmp;
-
-	/* disable Rx */
-	tmp = RAL_READ(sc, RT2661_TXRX_CSR0);
-	RAL_WRITE(sc, RT2661_TXRX_CSR0, tmp | RT2661_DISABLE_RX);
-
-	rt2661_bbp_write(sc, 82, 0x20);
-	rt2661_bbp_write(sc, 83, 0x00);
-	rt2661_bbp_write(sc, 84, 0x40);
-
-	/* save current BBP registers values */
-	sc->bbp18 = rt2661_bbp_read(sc, 18);
-	sc->bbp21 = rt2661_bbp_read(sc, 21);
-	sc->bbp22 = rt2661_bbp_read(sc, 22);
-	sc->bbp16 = rt2661_bbp_read(sc, 16);
-	sc->bbp17 = rt2661_bbp_read(sc, 17);
-	sc->bbp64 = rt2661_bbp_read(sc, 64);
-
-	rt2661_bbp_write(sc, 18, 0xff);
-	rt2661_bbp_write(sc, 21, 0x3f);
-	rt2661_bbp_write(sc, 22, 0x3f);
-	rt2661_bbp_write(sc, 16, 0xbd);
-	rt2661_bbp_write(sc, 17, sc->ext_5ghz_lna ? 0x44 : 0x34);
-	rt2661_bbp_write(sc, 64, 0x21);
-
-	/* restore Rx filter */
-	RAL_WRITE(sc, RT2661_TXRX_CSR0, tmp);
-}
-
-static int
-rt2661_radar_stop(struct rt2661_softc *sc)
-{
-	uint8_t bbp66;
-
-	/* read radar detection result */
-	bbp66 = rt2661_bbp_read(sc, 66);
-
-	/* restore BBP registers values */
-	rt2661_bbp_write(sc, 16, sc->bbp16);
-	rt2661_bbp_write(sc, 17, sc->bbp17);
-	rt2661_bbp_write(sc, 18, sc->bbp18);
-	rt2661_bbp_write(sc, 21, sc->bbp21);
-	rt2661_bbp_write(sc, 22, sc->bbp22);
-	rt2661_bbp_write(sc, 64, sc->bbp64);
-
-	return bbp66 == 1;
-}
-#endif
 
 static int
 rt2661_prepare_beacon(struct rt2661_softc *sc)
