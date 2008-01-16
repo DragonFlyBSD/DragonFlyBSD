@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uvisor.c,v 1.9 2001/01/23 14:04:14 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvisor.c,v 1.16 2003/11/08 11:23:07 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.16 2007/11/06 07:37:01 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvisor/uvisor.c,v 1.17 2008/01/16 12:23:01 matthias Exp $
  */
 
 /*
@@ -202,6 +202,8 @@ struct uvisor_type {
 	struct usb_devno	uv_dev;
 	u_int16_t		uv_flags;
 #define PALM4	0x0001
+#define VISOR   0x0002
+#define PALM35  0x0004
 };
 static const struct uvisor_type uvisor_devs[] = {
 	{{ USB_DEVICE(0x054c, 0x0066) }, 0 },	  /* Sony Clie v4.0 */
@@ -219,6 +221,16 @@ static const struct uvisor_type uvisor_devs[] = {
 	{{ USB_DEVICE(0x0830, 0x0050) }, PALM4 }, /* Palm m130 */
 	{{ USB_DEVICE(0x0830, 0x0060) }, PALM4 }, /* Palm Tungsten T */
 	{{ USB_DEVICE(0x0830, 0x0070) }, PALM4 }, /* Palm Palm Zire */
+	{{ USB_DEVICE(0x4766, 0x0001) }, PALM4 }, /* Aceeca MEZ1000 RDA */
+	{{ USB_DEVICE(0x091e, 0x0004) }, PALM4 }, /* Garmin iQue 3600 */
+	{{ USB_DEVICE(0x0e67, 0x0002) }, PALM4 }, /* Fossil, Wrist PDA */
+	{{ USB_DEVICE(0x082d, 0x0300) }, PALM4 }, /* Handspring Treo 600 */
+	{{ USB_DEVICE(0x0830, 0x0060) }, PALM4 }, /* Palm Tungsten T */
+	{{ USB_DEVICE(0x0830, 0x0061) }, PALM4 }, /* Palm Zire 31 */
+	{{ USB_DEVICE(0x04e8, 0x6601) }, PALM4 }, /* Samsung I500 Palm USB */
+	{{ USB_DEVICE(0x054c, 0x0038) }, PALM35 }, /* Sony Clie v3.5 */
+	{{ USB_DEVICE(0x054c, 0x0169) }, PALM4 }, /* Sony Clie tj37 */
+	{{ USB_DEVICE(0x12ef, 0x0100) }, PALM4 }, /* Tapwave Zodiac */
 };
 #define uvisor_lookup(v, p) ((const struct uvisor_type *)usb_lookup(uvisor_devs, v, p))
 
@@ -457,6 +469,28 @@ uvisor_init(struct uvisor_softc *sc)
 		USETW(req.wValue, 0);
 		USETW(req.wIndex, 0);
 		USETW(req.wLength, UVISOR_GET_PALM_INFORMATION_LEN);
+		err = usbd_do_request(sc->sc_ucom.sc_udev, &req, buffer);
+		if (err)
+			return (err);
+	}
+
+	if (sc->sc_flags & PALM35) {
+		/* get the config number */
+		req.bmRequestType = UT_READ;
+		req.bRequest = UR_GET_CONFIG;
+		USETW(req.wValue, 0);
+		USETW(req.wIndex, 0);
+		USETW(req.wLength, 1);
+		err = usbd_do_request(sc->sc_ucom.sc_udev, &req, buffer);
+		if (err)
+			return (err);
+
+		/* get the interface number */
+		req.bmRequestType = UT_READ_DEVICE;
+		req.bRequest = UR_GET_INTERFACE;
+		USETW(req.wValue, 0);
+		USETW(req.wIndex, 0);
+		USETW(req.wLength, 1);
 		err = usbd_do_request(sc->sc_ucom.sc_udev, &req, buffer);
 		if (err)
 			return (err);
