@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.19 2008/01/11 01:41:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.20 2008/01/16 01:15:36 dillon Exp $
  */
 
 #include "hammer.h"
@@ -231,11 +231,13 @@ loop:
 	hammer_init_cursor_hmp(&cursor, cache, hmp);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = 0;
-	cursor.key_beg.create_tid = iinfo.obj_asof;
+	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
 	cursor.key_beg.obj_type = 0;
-	cursor.flags = HAMMER_CURSOR_GET_RECORD | HAMMER_CURSOR_GET_DATA;
+	cursor.asof = iinfo.obj_asof;
+	cursor.flags = HAMMER_CURSOR_GET_RECORD | HAMMER_CURSOR_GET_DATA |
+		       HAMMER_CURSOR_ASOF;
 
 	*errorp = hammer_btree_lookup(&cursor);
 
@@ -400,11 +402,12 @@ retry:
 		hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 		cursor.key_beg.obj_id = ip->obj_id;
 		cursor.key_beg.key = 0;
-		cursor.key_beg.create_tid = ip->obj_asof;
+		cursor.key_beg.create_tid = 0;
 		cursor.key_beg.delete_tid = 0;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
 		cursor.key_beg.obj_type = 0;
-		cursor.flags = HAMMER_CURSOR_GET_RECORD;
+		cursor.asof = ip->obj_asof;
+		cursor.flags |= HAMMER_CURSOR_GET_RECORD | HAMMER_CURSOR_ASOF;
 
 		error = hammer_btree_lookup(&cursor);
 
@@ -472,11 +475,12 @@ hammer_update_itimes(hammer_inode_t ip)
 		hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 		cursor.key_beg.obj_id = ip->obj_id;
 		cursor.key_beg.key = 0;
-		cursor.key_beg.create_tid = ip->obj_asof;
+		cursor.key_beg.create_tid = 0;
 		cursor.key_beg.delete_tid = 0;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
 		cursor.key_beg.obj_type = 0;
-		cursor.flags = HAMMER_CURSOR_GET_RECORD;
+		cursor.asof = ip->obj_asof;
+		cursor.flags |= HAMMER_CURSOR_GET_RECORD | HAMMER_CURSOR_ASOF;
 
 		error = hammer_btree_lookup(&cursor);
 

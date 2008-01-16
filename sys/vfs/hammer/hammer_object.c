@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.18 2008/01/10 07:41:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.19 2008/01/16 01:15:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -57,9 +57,17 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 	if (rec1->rec.base.base.key > rec2->rec.base.base.key)
 		return(1);
 
-	if (rec1->rec.base.base.create_tid < rec2->rec.base.base.create_tid)
+	if (rec1->rec.base.base.delete_tid == 0) {
+		if (rec2->rec.base.base.delete_tid == 0)
+			return(0);
+		return(1);
+	}
+	if (rec2->rec.base.base.delete_tid == 0)
 		return(-1);
-	if (rec1->rec.base.base.create_tid > rec2->rec.base.base.create_tid)
+
+	if (rec1->rec.base.base.delete_tid < rec2->rec.base.base.delete_tid)
+		return(-1);
+	if (rec1->rec.base.base.delete_tid > rec2->rec.base.base.delete_tid)
 		return(1);
         return(0);
 }
@@ -77,26 +85,17 @@ hammer_rec_compare(hammer_base_elm_t info, hammer_record_t rec)
         if (info->key > rec->rec.base.base.key)
                 return(2);
 
-        /*
-         * This test has a number of special cases.  create_tid in key1 is
-         * the as-of transction id, and delete_tid in key1 is NOT USED.
-         *
-         * A key1->create_tid of 0 matches any record regardles of when
-         * it was created or destroyed.  0xFFFFFFFFFFFFFFFFULL should be
-         * used to search for the most current state of the object.
-         *
-         * key2->create_tid is a HAMMER record and will never be
-         * 0.   key2->delete_tid is the deletion transaction id or 0 if
-         * the record has not yet been deleted.
-         */
-        if (info->create_tid) {
-                if (info->create_tid < rec->rec.base.base.create_tid)
-                        return(-1);
-                if (rec->rec.base.base.delete_tid &&
-		    info->create_tid >= rec->rec.base.base.delete_tid) {
-                        return(1);
-		}
-        }
+	if (info->delete_tid == 0) {
+		if (rec->rec.base.base.delete_tid == 0)
+			return(0);
+		return(1);
+	}
+	if (rec->rec.base.base.delete_tid == 0)
+		return(-1);
+	if (info->delete_tid < rec->rec.base.base.delete_tid)
+		return(-1);
+	if (info->delete_tid > rec->rec.base.base.delete_tid)
+		return(1);
         return(0);
 }
 
@@ -120,8 +119,6 @@ hammer_rec_scan_cmp(hammer_record_t rec, void *data)
 	r = hammer_rec_compare(&cursor->key_beg, rec);
 	if (r > 1)
 		return(-1);
-	if (r == 0)
-		return(0);
 	r = hammer_rec_compare(&cursor->key_end, rec);
 	if (r < -1)
 		return(1);
@@ -227,12 +224,11 @@ hammer_rec_scan_callback(hammer_record_t rec, void *data)
 	/*
 	 * Skip if not visible due to our as-of TID
 	 */
-        if (cursor->key_beg.create_tid) {
-                if (cursor->key_beg.create_tid < rec->rec.base.base.create_tid)
+        if (cursor->flags & HAMMER_CURSOR_ASOF) {
+                if (cursor->asof < rec->rec.base.base.create_tid)
                         return(0);
                 if (rec->rec.base.base.delete_tid &&
-		    cursor->key_beg.create_tid >=
-		     rec->rec.base.base.delete_tid) {
+		    cursor->asof >= rec->rec.base.base.delete_tid) {
                         return(0);
 		}
         }
@@ -441,10 +437,11 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 		return(error);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = offset + bytes;
-	cursor.key_beg.create_tid = trans->tid;
+	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
-	cursor.flags = HAMMER_CURSOR_INSERT;
+	cursor.asof = trans->tid;
+	cursor.flags |= HAMMER_CURSOR_INSERT | HAMMER_CURSOR_ASOF;
 
 	/*
 	 * Issue a lookup to position the cursor and locate the cluster
@@ -477,7 +474,11 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Fill everything in and insert our B-Tree node.
 	 */
 	hammer_modify_buffer(cursor.record_buffer);
-	rec->base.base = cursor.key_beg;
+	rec->base.base.obj_id = ip->obj_id;
+	rec->base.base.key = offset + bytes;
+	rec->base.base.create_tid = trans->tid;
+	rec->base.base.delete_tid = 0;
+	rec->base.base.rec_type = HAMMER_RECTYPE_DATA;
 	rec->base.data_crc = crc32(data, bytes);
 	rec->base.rec_id = 0;	/* XXX */
 	rec->base.data_offset = hammer_bclu_offset(cursor.data_buffer, bdata);
@@ -486,7 +487,7 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_modify_buffer(cursor.data_buffer);
 	bcopy(data, bdata, bytes);
 
-	elm.leaf.base = cursor.key_beg;
+	elm.leaf.base = rec->base.base;
 	elm.leaf.rec_offset = hammer_bclu_offset(cursor.record_buffer, rec);
 	elm.leaf.data_offset = rec->base.data_offset;
 	elm.leaf.data_len = bytes;
@@ -539,7 +540,7 @@ hammer_ip_sync_record(hammer_record_t record, struct hammer_cursor **spike)
 	if (error)
 		return(error);
 	cursor.key_beg = record->rec.base.base;
-	cursor.flags = HAMMER_CURSOR_INSERT;
+	cursor.flags |= HAMMER_CURSOR_INSERT;
 
 	/*
 	 * Issue a lookup to position the cursor and locate the cluster.  The
@@ -560,6 +561,7 @@ again:
 				++hmp->namekey_iterator;
 			record->rec.base.base.key &= ~(0xFFFFFFFFLL);
 			record->rec.base.base.key |= hmp->namekey_iterator;
+			cursor.key_beg.key = record->rec.base.base.key;
 			goto again;
 		}
 		kprintf("hammer_ip_sync_record: duplicate rec at (%016llx)\n",
@@ -637,7 +639,7 @@ again:
 	}
 	rec->base.rec_id = 0;	/* XXX */
 
-	elm.leaf.base = cursor.key_beg;
+	elm.leaf.base = record->rec.base.base;
 	elm.leaf.rec_offset = hammer_bclu_offset(cursor.record_buffer, rec);
 	elm.leaf.data_offset = rec->base.data_offset;
 	elm.leaf.data_len = rec->base.data_len;
@@ -1090,9 +1092,11 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 
 	cursor.key_beg.obj_id = ip->obj_id;
-	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
+	cursor.asof = ip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
 
 	cursor.key_end = cursor.key_beg;
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
@@ -1207,7 +1211,7 @@ hammer_ip_delete_range_all(hammer_transaction_t trans, hammer_inode_t ip)
 	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 
 	cursor.key_beg.obj_id = ip->obj_id;
-	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE + 1;
@@ -1217,7 +1221,8 @@ hammer_ip_delete_range_all(hammer_transaction_t trans, hammer_inode_t ip)
 	cursor.key_end.rec_type = 0xFFFF;
 	cursor.key_end.key = HAMMER_MAX_KEY;
 
-	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+	cursor.asof = ip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 
 	error = hammer_ip_first(&cursor, ip);
 
@@ -1342,7 +1347,7 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 
 	cursor.key_beg.obj_id = ip->obj_id;
-	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE + 1;
@@ -1352,7 +1357,8 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	cursor.key_end.rec_type = 0xFFFF;
 	cursor.key_end.key = HAMMER_MAX_KEY;
 
-	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+	cursor.asof = ip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 
 	error = hammer_ip_first(&cursor, ip);
 	if (error == ENOENT)

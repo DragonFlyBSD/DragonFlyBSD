@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.19 2008/01/15 06:02:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.20 2008/01/16 01:15:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -610,14 +610,15 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	hammer_init_cursor_hmp(&cursor, &dip->cache[0], dip->hmp);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
-        cursor.key_beg.create_tid = asof;
+        cursor.key_beg.create_tid = 0;
         cursor.key_beg.delete_tid = 0;
         cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
         cursor.key_beg.obj_type = 0;
 
 	cursor.key_end = cursor.key_beg;
 	cursor.key_end.key |= 0xFFFFFFFFULL;
-	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+	cursor.asof = asof;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 
 	/*
 	 * Scan all matching records (the chain), locate the one matching
@@ -982,7 +983,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	 */
 	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 	cursor.key_beg.obj_id = ip->obj_id;
-	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
         cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
 	cursor.key_beg.obj_type = 0;
@@ -990,7 +991,8 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 
 	cursor.key_end = cursor.key_beg;
 	cursor.key_end.key = HAMMER_MAX_KEY;
-	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+	cursor.asof = ip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 
 	error = hammer_ip_first(&cursor, ip);
 
@@ -1064,11 +1066,13 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	 * directly translate to a 64 bit 'seek' position.
 	 */
 	cursor.key_beg.obj_id = ip->obj_id;
-	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
         cursor.key_beg.rec_type = HAMMER_RECTYPE_FIX;
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.key = HAMMER_FIXKEY_SYMLINK;
+	cursor.asof = ip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
 
 	error = hammer_ip_lookup(&cursor, ip);
 	if (error == 0) {
@@ -1151,14 +1155,15 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	hammer_init_cursor_hmp(&cursor, &fdip->cache[0], fdip->hmp);
         cursor.key_beg.obj_id = fdip->obj_id;
 	cursor.key_beg.key = namekey;
-        cursor.key_beg.create_tid = fdip->obj_asof;
+        cursor.key_beg.create_tid = 0;
         cursor.key_beg.delete_tid = 0;
         cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
         cursor.key_beg.obj_type = 0;
 
 	cursor.key_end = cursor.key_beg;
 	cursor.key_end.key |= 0xFFFFFFFFULL;
-	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+	cursor.asof = fdip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 
 	/*
 	 * Scan all matching records (the chain), locate the one matching
@@ -1508,10 +1513,12 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	 * first record containing bio_offset will have a key > bio_offset.
 	 */
 	cursor.key_beg.obj_id = ip->obj_id;
-	cursor.key_beg.create_tid = ip->obj_asof;
+	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.key = bio->bio_offset + 1;
+	cursor.asof = ip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
 
 	cursor.key_end = cursor.key_beg;
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
@@ -1704,14 +1711,15 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 	hammer_init_cursor_hmp(&cursor, &dip->cache[0], dip->hmp);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
-        cursor.key_beg.create_tid = dip->obj_asof;
+        cursor.key_beg.create_tid = 0;
         cursor.key_beg.delete_tid = 0;
         cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
         cursor.key_beg.obj_type = 0;
 
 	cursor.key_end = cursor.key_beg;
 	cursor.key_end.key |= 0xFFFFFFFFULL;
-	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+	cursor.asof = dip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 
 	hammer_start_transaction(&trans, dip->hmp);
 

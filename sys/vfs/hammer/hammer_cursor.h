@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.5 2007/12/29 09:01:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.6 2008/01/16 01:15:36 dillon Exp $
  */
 
 /*
@@ -68,10 +68,12 @@ struct hammer_cursor {
 	hammer_base_elm_t right_bound;
 
 	/*
-	 * Key or key range governing search
+	 * Key or key range governing search.  The cursor code may adjust
+	 * key_beg/key_end if asof is non-zero.
 	 */
 	struct hammer_base_elm key_beg;
 	struct hammer_base_elm key_end;
+	hammer_tid_t	asof;
 
 	/*
 	 * Related data and record references.  Note that the related buffers
@@ -113,4 +115,5 @@ typedef struct hammer_cursor *hammer_cursor_t;
 #define HAMMER_CURSOR_MEMEOF		0x0800
 #define HAMMER_CURSOR_DELBTREE		0x1000	/* ip_delete from b-tree */
 #define HAMMER_CURSOR_DATA_EMBEDDED	0x2000	/* embedded flag on extract */
+#define HAMMER_CURSOR_ASOF		0x4000	/* as-of lookup */
 

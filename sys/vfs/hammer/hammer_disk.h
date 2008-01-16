@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.16 2008/01/11 01:41:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.17 2008/01/16 01:15:36 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -425,7 +425,7 @@ typedef struct hammer_cluster_ondisk *hammer_cluster_ondisk_t;
  * This data can also be stored in-band in the record itself if it is small
  * enough.  Either way, (data_offset, data_len) points to it.
  *
- * Key comparison order:  obj_id, rec_type, key, create_tid
+ * Key comparison order:  obj_id, rec_type, key, delete_tid
  */
 struct hammer_base_record {
 	/*
