@@ -25,7 +25,7 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.19 2007/11/06 07:37:02 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.20 2008/01/16 12:24:31 matthias Exp $
  */
 
 /*
@@ -202,6 +202,7 @@ static const struct usb_devno uvscom_devs [] = {
 	{ USB_DEVICE(0x05db, 0x0005) }, /* SUNTAC U-Cable type P1 */
 	{ USB_DEVICE(0x05db, 0x0009) }, /* SUNTAC Slipper U */
 	{ USB_DEVICE(0x05db, 0x000a) }, /* SUNTAC Ir-Trinity */
+	{ USB_DEVICE(0x05db, 0x0011) }, /* SUNTAC U-Cable type */
 };
 
 static device_probe_t uvscom_match;
