@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.35 2008/01/02 19:29:59 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.36 2008/01/16 12:27:49 matthias Exp $
  */
 
 /*
@@ -306,49 +306,215 @@ struct umass_devdescr_t {
 #	define NO_INQUIRY		0x0400
 	/* Device cannot handle INQUIRY EVPD, return CHECK CONDITION */
 #	define NO_INQUIRY_EVPD		0x0800
+#	define READ_CAPACITY_OFFBY1	0x2000
 };
 
 static struct umass_devdescr_t umass_devdescrs[] = {
+	/* Addonics Cable 205  */
+	{ .vendor = 0x0bf6, .product = 0xa001, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* Addonics USB 2.0 Flash */
+	{ .vendor = 0x09df, .product = 0x1300, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
+	},
+	/* Addonics Attache 256MB USB */
+	{ .vendor = 0x09df, .product = 0x1400, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
+	},
+	/* Addonics USB 2.0 Flash */
+	{ .vendor = 0x09df, .product = 0x1420, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
+	},
+	/* AIPTEK PocketCAM 3Mega  */
+	{ .vendor = 0x08ca, .product = 0x2011, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
 	/* All Asahi Optical products */
 	{ .vendor = 0x0a17, .product = WILDCARD_ID, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
 	  .quirks = RS_NO_CLEAR_UA
+	},
+	/* Belkin USB to SCSI */
+	{ .vendor = 0x050d, .product = 0x0115, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* CASIO QV DigiCam  */
+	{ .vendor = 0x07cf, .product = 0x1001, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
+	  .quirks = NO_INQUIRY
+	},
+	/* CCYU EasyDisk ED1064  */
+	{ .vendor = 0x1065, .product = 0x2136, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* Century Century USB Disk */
+	{ .vendor = 0x07f7, .product = 0x011e, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
+	},
+	/* Desknote UCR-61S2B   */
+	{ .vendor = 0x1019, .product = 0x0c55, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* DMI CF/SM Reader/Writer  */
+	{ .vendor = 0x0c0b, .product = 0xa109, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Epson Stylus Photo 875DC */
+	{ .vendor = 0x03f8, .product = 0x0601, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
+	  .quirks = NO_INQUIRY
+	},
+	/* Epson Stylus Photo 895 */
+	{ .vendor = 0x03f8, .product = 0x0602, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Feiya 5-in-1 Card Reader */
+	{ .vendor = 0x090c, .product = 0x1132, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* Freecom DVD drive  */
+	{ .vendor = 0x07ab, .product = 0xfc01, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
 	},
 	/* Fujiphoto mass storage products */
 	{ .vendor = 0x04cb, .product = 0x0100, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
 	  .quirks = RS_NO_CLEAR_UA
 	},
-	/* Genesys Logic GL641USB USB-IDE Bridge */
+	/* Genesys GL641USB USB-IDE Bridge */
+	{ .vendor = 0x05e3, .product = 0x0701, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
+	},
+	/* Genesys GL641USB USB-IDE Bridge */
 	{ .vendor = 0x05e3, .product = 0x0702, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
 	},
-	/* Genesys Logic GL641USB CompactFlash Card Reader */
+	/* Genesys GL641USB CompactFlash Card */
 	{ .vendor = 0x05e3, .product = 0x0700, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
+	},
+	/* Genesys GL641USB 6-in-1 Card */
+	{ .vendor = 0x05e3, .product = 0x0760, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = WRONG_CSWSIG
+	},
+	/* Hagiwara FlashGate SmartMedia Card */
+	{ .vendor = 0x0693, .product = 0x0002, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
 	},
 	/* Hitachi DVDCAM USB HS Interface */
 	{ .vendor = 0x04a4, .product = 0x001e, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
 	  .quirks = NO_INQUIRY
 	},
-	/* HP CD-Writer Plus 8200e */
+	/* Hitachi DVD-CAM DZ-MV100A Camcorder */
+	{ .vendor = 0x04a4, .product = 0x0004, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Hewlett CD-Writer+ CD-4e  */
+	{ .vendor = 0x03f0, .product = 0x0307, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Hewlett CD-Writer Plus 8200e */
 	{ .vendor = 0x03f0, .product = 0x0207, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
 	  .quirks = NO_TEST_UNIT_READY | NO_START_STOP
+	},
+	/* Imagination DBX1 DSP core */
+	{ .vendor = 0x149a, .product = 0x2107, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = WRONG_CSWSIG
+	},
+	/* In-System ATAPI Adapter  */
+	{ .vendor = 0x05ab, .product = 0x0031, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
+	/* In-System USB Storage Adapter */
+	{ .vendor = 0x05ab, .product = 0x5701, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
 	},
 	/* In-System USB cable */
 	{ .vendor = 0x05ab, .product = 0x081a, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
 	  .quirks = NO_TEST_UNIT_READY | NO_START_STOP | ALT_IFACE_1
 	},
+	/* I-O DVD Multi-plus unit */
+	{ .vendor = 0x04bb, .product = 0x0204, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* I-O DVD Multi-plus unit */
+	{ .vendor = 0x04bb, .product = 0x0206, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
 	/* Iomega Zip 100 */
 	{ .vendor = 0x059b, .product = 0x0001, .release = WILDCARD_ID,
 	  /* XXX This is not correct as there are Zip drives that use ATAPI. */
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  .quirks = NO_TEST_UNIT_READY
+	},
+	/* Kyocera Finecam L3  */
+	{ .vendor = 0x0482, .product = 0x0105, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* Kyocera Finecam S3x  */
+	{ .vendor = 0x0482, .product = 0x0100, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
+	  .quirks = NO_INQUIRY
+	},
+	/* Kyocera Finecam S4  */
+	{ .vendor = 0x0482, .product = 0x0101, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
+	  .quirks = NO_INQUIRY
+	},
+	/* Kyocera Finecam S5  */
+	{ .vendor = 0x0482, .product = 0x0103, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* LaCie Hard Disk  */
+	{ .vendor = 0x059f, .product = 0xa601, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Lexar USB CF Reader */
+	{ .vendor = 0x05dc, .product = 0xb002, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* Lexar jumpSHOT CompactFlash Reader */
+	{ .vendor = 0x05dc, .product = 0x0001, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Logitech DVD Multi-plus unit */
+	{ .vendor = 0x046d, .product = 0x0033, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
 	},
 	/* Logitech DVD Multi-plus unit LDR-H443U2 */
 	{ .vendor = 0x0789, .product = 0x00b3, .release = WILDCARD_ID,
@@ -365,6 +531,41 @@ static struct umass_devdescr_t umass_devdescrs[] = {
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
 	  .quirks = NO_TEST_UNIT_READY | NO_START_STOP
 	},
+	/* Microtech USB-SCSI-DB25   */
+	{ .vendor = 0x07af, .product = 0x0004, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* Microtech USB-SCSI-HD50   */
+	{ .vendor = 0x07af, .product = 0x0005, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* Minolta Dimage E223  */
+	{ .vendor = 0x0686, .product = 0x4017, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Minolta Dimage F300  */
+	{ .vendor = 0x0686, .product = 0x4011, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* Mitsumi CD-R/RW Drive  */
+	{ .vendor = 0x03ee, .product = 0x0000, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Mitsumi USB FDD  */
+	{ .vendor = 0x03ee, .product = 0x6901, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Motorola E398 Mobile Phone */
+	{ .vendor = 0x22b8, .product = 0x4810, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_INQUIRY_EVPD | NO_GETMAXLUN
+	},
 	/* M-Systems DiskOnKey */
 	{ .vendor = 0x08ec, .product = 0x0010, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
@@ -375,10 +576,90 @@ static struct umass_devdescr_t umass_devdescrs[] = {
 	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_BBB,
 	  .quirks = NO_QUIRKS
 	},
+	/* Myson USB-IDE   */
+	{ .vendor = 0x04cf, .product = 0x8818, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY | IGNORE_RESIDUE
+	},
+	/* Neodio 8-in-1 Multi-format Flash */
+	{ .vendor = 0x0aec, .product = 0x3260, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY
+	},
+	/* Netac USB-CF-Card   */
+	{ .vendor = 0x0dd8, .product = 0x1060, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* Netac OnlyDisk   */
+	{ .vendor = 0x0dd8, .product = 0x0003, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
+	},
+	/* NetChip USB Clik! 40 */
+	{ .vendor = 0x0525, .product = 0xa140, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI,
+	  .quirks = NO_INQUIRY
+	},
 	/* Olympus C-1 Digital Camera */
 	{ .vendor = 0x07b4, .product = 0x0102, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  .quirks = WRONG_CSWSIG
+	},
+	/* Olympus C-700 Ultra Zoom */
+	{ .vendor = 0x07b4, .product = 0x0105, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* OnSpec SIIG/Datafab Memory Stick+CF */
+	{ .vendor = 0x07c4, .product = 0xa001, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* OnSpec USB to CF */
+	{ .vendor = 0x07c4, .product = 0xa109, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* OnSpec PNY/Datafab CF+SM Reader */
+	{ .vendor = 0x07c4, .product = 0xa005, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* OnSpec Simple Tech/Datafab CF+SM */
+	{ .vendor = 0x07c4, .product = 0xa006, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* OnSpec MDCFE-B USB CF */
+	{ .vendor = 0x07c4, .product = 0xa000, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* OnSpec MDSM-B reader  */
+	{ .vendor = 0x07c4, .product = 0xa103, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_INQUIRY
+	},
+	/* OnSpec Datafab-based Reader  */
+	{ .vendor = 0x07c4, .product = 0xa003, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* OnSpec FlashLink UCF-100 CompactFlash */
+	{ .vendor = 0x07c4, .product = 0xa400, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY | NO_GETMAXLUN
+	},
+	/* OnSpec ImageMate SDDR55  */
+	{ .vendor = 0x55aa, .product = 0xa103, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Panasonic CD-R Drive KXL-840AN */
+	{ .vendor = 0x04da, .product = 0x0d01, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_BBB,
+	  .quirks = NO_GETMAXLUN
 	},
 	/* Panasonic CD-R Drive KXL-CB20AN */
 	{ .vendor = 0x04da, .product = 0x0d0a, .release = WILDCARD_ID,
@@ -390,45 +671,270 @@ static struct umass_devdescr_t umass_devdescrs[] = {
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  .quirks = NO_QUIRKS
 	},
+	/* Panasonic LS-120 Camera  */
+	{ .vendor = 0x04da, .product = 0x0901, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_UFI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Plextor PlexWriter 40/12/40U  */
+	{ .vendor = 0x093b, .product = 0x0011, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_TEST_UNIT_READY
+	},
+	/* PNY USB 2.0 Flash */
+	{ .vendor = 0x154b, .product = 0x0010, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE | NO_START_STOP
+	},
 	/* Pen USB 2.0 Flash Drive */
 	{ .vendor = 0x0d7d, .product = 0x1300, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  .quirks = IGNORE_RESIDUE
 	},
-	/* ScanLogic SL11R-IDE */
+	/* Samsung YP-U2 MP3 Player */
+	{ .vendor = 0x04e8, .product = 0x5050, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = SHUTTLE_INIT | NO_GETMAXLUN
+	},
+	/* Samsung Digimax 410  */
+	{ .vendor = 0x0839, .product = 0x000a, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* SanDisk ImageMate SDDR-05a  */
+	{ .vendor = 0x0781, .product = 0x0001, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
+	  .quirks = READ_CAPACITY_OFFBY1 | NO_GETMAXLUN
+	},
+	/* SanDisk ImageMate SDDR-09  */
+	{ .vendor = 0x0781, .product = 0x0200, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = READ_CAPACITY_OFFBY1 | NO_GETMAXLUN
+	},
+	/* SanDisk ImageMate SDDR-12  */
+	{ .vendor = 0x0781, .product = 0x0100, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
+	  .quirks = READ_CAPACITY_OFFBY1 | NO_GETMAXLUN
+	},
+	/* SanDisk ImageMate SDDR-31  */
+	{ .vendor = 0x0781, .product = 0x0002, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = READ_CAPACITY_OFFBY1
+	},
+	/* SanDisk Cruzer Mini 256MB */
+	{ .vendor = 0x0781, .product = 0x7104, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
+	},
+	/* SanDisk Cruzer Micro 128MB */
+	{ .vendor = 0x0781, .product = 0x7112, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
+	},
+	/* SanDisk Cruzer Micro 256MB */
+	{ .vendor = 0x0781, .product = 0x7113, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
+	},
+	/* ScanLogic SL11R IDE Adapter */
 	{ .vendor = 0x04ce, .product = 0x0002, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
 	  .quirks = NO_QUIRKS
 	},
-	/* Shuttle Technology E-USB Bridge */
+	/* Shuttle CD-RW Device  */
+	{ .vendor = 0x04e6, .product = 0x0101, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Shuttle eUSB CompactFlash Adapter */
+	{ .vendor = 0x04e6, .product = 0x000a, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Shuttle E-USB Bridge  */
 	{ .vendor = 0x04e6, .product = 0x0001, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
 	  .quirks = NO_TEST_UNIT_READY | NO_START_STOP | SHUTTLE_INIT
 	},
-	/* Sigmatel i-Bead 100 MP3 Player */
+	/* Shuttle eUSB ATA/ATAPI Adapter */
+	{ .vendor = 0x04e6, .product = 0x0009, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Shuttle eUSB SmartMedia / */
+	{ .vendor = 0x04e6, .product = 0x0005, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Shuttle eUSCSI Bridge  */
+	{ .vendor = 0x04e6, .product = 0x0002, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* Shuttle Sony Hifd  */
+	{ .vendor = 0x04e6, .product = 0x0007, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Shuttle ImageMate SDDR09  */
+	{ .vendor = 0x04e6, .product = 0x0003, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Shuttle eUSB MultiMediaCard Adapter */
+	{ .vendor = 0x04e6, .product = 0x0006, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Sigmatel i-Bead 100 MP3 */
 	{ .vendor = 0x066f, .product = 0x8008, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  .quirks = SHUTTLE_INIT
+	},
+	/* SIIG WINTERREADER Reader  */
+	{ .vendor = 0x07cc, .product = 0x0330, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = IGNORE_RESIDUE
+	},
+	/* Skanhex MD 7425 Camera */
+	{ .vendor = 0x0d96, .product = 0x410a, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* Skanhex SX 520z Camera */
+	{ .vendor = 0x0d96, .product = 0x5200, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* Sony Clie v4.0 */
+	{ .vendor = 0x054c, .product = 0x006d, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
 	},
 	/* Sony DSC cameras */
 	{ .vendor = 0x054c, .product = 0x0010, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
 	  .quirks = NO_QUIRKS
 	},
-	/* Sony MSC memory stick slot */
+	/* Sony Handycam   */
+	{ .vendor = 0x054c, .product = 0x002e, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Sony Memorystick MSC-U03  */
+	{ .vendor = 0x054c, .product = 0x0069, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_UFI | UMASS_PROTO_CBI,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Sony Memorystick NW-MS7  */
+	{ .vendor = 0x054c, .product = 0x0025, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Sony PEG N760c Memorystick */
+	{ .vendor = 0x054c, .product = 0x0058, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* Sony Memorystick MSAC-US1  */
+	{ .vendor = 0x054c, .product = 0x002d, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Sony MSC memory stick */
 	{ .vendor = 0x054c, .product = 0x0032, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
 	  .quirks = NO_QUIRKS
 	},
-	/* Trek Technology ThumbDrive 8MB */
+	/* Sony Portable USB Harddrive */
+	{ .vendor = 0x054c, .product = 0x002b, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* Taugagreining CameraMate (DPCM_USB)  */
+	{ .vendor = 0x0436, .product = 0x0005, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* TEAC FD-05PUB floppy  */
+	{ .vendor = 0x0644, .product = 0x0000, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_UFI | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Trek IBM USB Memory */
+	{ .vendor = 0x0a16, .product = 0x8888, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* Trek ThumbDrive_8MB   */
 	{ .vendor = 0x0a16, .product = 0x9988, .release = WILDCARD_ID,
           .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_BBB,
 	  .quirks = IGNORE_RESIDUE
+	},
+	/* Trumpion Comotron C3310 MP3 */
+	{ .vendor = 0x090a, .product = 0x1100, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_UFI | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
+	/* Trumpion MP3 player  */
+	{ .vendor = 0x090a, .product = 0x1200, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_RBC,
+	  .quirks = NO_QUIRKS
+	},
+	/* Trumpion T33520 USB Flash */
+	{ .vendor = 0x090a, .product = 0x1001, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI,
+	  .quirks = NO_QUIRKS
+	},
+	/* TwinMOS Memory Disk IV */
+	{ .vendor = 0x126f, .product = 0x1325, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_QUIRKS
+	},
+	/* Vivitar Vivicam 35Xx  */
+	{ .vendor = 0x0636, .product = 0x0003, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* Western Firewire USB Combo */
+	{ .vendor = 0x1058, .product = 0x0200, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
+	},
+	/* Western External HDD  */
+	{ .vendor = 0x1058, .product = 0x0400, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
+	},
+	/* Western MyBook External HDD */
+	{ .vendor = 0x1058, .product = 0x0901, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY_EVPD
+	},
+	/* WinMaxGroup USB Flash Disk */
+	{ .vendor = 0x0ed1, .product = 0x6660, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = NO_INQUIRY
+	},
+	/* Yano METALWEAR-HDD   */
+	{ .vendor = 0x094f, .product = 0x05fc, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
 	},
 	/* Yano U640MO-03 */
 	{ .vendor = 0x094f, .product = 0x0101, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI_I,
 	  .quirks = FORCE_SHORT_INQUIRY
+	},
+	/* Y-E Flashbuster-U   */
+	{ .vendor = 0x057b, .product = 0x0000, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_CBI,
+	  .quirks = NO_GETMAXLUN
+	},
+	/* Zoran Digital Camera EX-20 */
+	{ .vendor = 0x0595, .product = 0x4343, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_ATAPI | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
 	},
 	{ .vendor = EOT_ID, .product = EOT_ID, .release = EOT_ID,
 	  .proto  = 0, .quirks = 0 }
@@ -2644,6 +3150,16 @@ umass_cam_cb(struct umass_softc *sc, void *priv, int residue, int status)
 	switch (status) {
 	case STATUS_CMD_OK:
 		ccb->ccb_h.status = CAM_REQ_CMP;
+		if ((sc->quirks & READ_CAPACITY_OFFBY1) &&
+		    (ccb->ccb_h.func_code == XPT_SCSI_IO) &&
+		    (csio->cdb_io.cdb_bytes[0] == READ_CAPACITY)) {
+			struct scsi_read_capacity_data *rcap;
+			uint32_t maxsector;
+
+			rcap = (struct scsi_read_capacity_data *)csio->data_ptr;
+			maxsector = scsi_4btoul(rcap->addr) - 1; 
+			scsi_ulto4b(maxsector, rcap->addr);
+		}
 		xpt_done(ccb);
 		break;
 
