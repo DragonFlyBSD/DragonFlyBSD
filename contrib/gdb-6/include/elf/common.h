@@ -442,6 +442,10 @@
 
 #define NT_FREEBSD_ABI_TAG	1
 
+/* Values for DragonFly .note.ABI-tag notes.  Note name is "DragonFly".  */
+
+#define NT_DRAGONFLY_ABI_TAG	1
+
 /* These three macros disassemble and assemble a symbol table st_info field,
    which contains the symbol binding and symbol type.  The STB_ and STT_
    defines identify the binding and type.  */

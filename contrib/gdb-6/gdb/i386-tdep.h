@@ -209,6 +209,7 @@ extern CORE_ADDR i386fbsd_sigtramp_start_addr;
 extern CORE_ADDR i386fbsd_sigtramp_end_addr;
 extern CORE_ADDR i386obsd_sigtramp_start_addr;
 extern CORE_ADDR i386obsd_sigtramp_end_addr;
+extern int i386dragonfly_sc_reg_offset[];
 extern int i386fbsd4_sc_reg_offset[];
 extern int i386fbsd_sc_reg_offset[];
 extern int i386nbsd_sc_reg_offset[];

@@ -57,6 +57,7 @@ static const char * const gdb_osabi_names[] =
   "GNU/Linux",
   "FreeBSD a.out",
   "FreeBSD ELF",
+  "DragonFly",
   "NetBSD a.out",
   "NetBSD ELF",
   "OpenBSD ELF",
@@ -451,6 +452,14 @@ generic_elf_osabi_sniff_abi_tag_sections: unknown OS number %d"),
 	  return;
 	}
 
+      /* DragonFly.  */
+      if (check_note (abfd, sect, note, "DragonFly", 4, NT_DRAGONFLY_ABI_TAG))
+	{
+	  /* There is no need to check the version yet.  */
+	  *osabi = GDB_OSABI_DRAGONFLY_ELF;
+	  return;
+	}
+
       return;
     }
       
@@ -502,7 +511,8 @@ generic_elf_osabi_sniffer (bfd *abfd)
       break;
 
     case ELFOSABI_FREEBSD:
-      osabi = GDB_OSABI_FREEBSD_ELF;
+      /* XXX HACK we hijacked the FreeBSD osabi :/ */
+      osabi = GDB_OSABI_DRAGONFLY_ELF;
       break;
 
     case ELFOSABI_NETBSD:

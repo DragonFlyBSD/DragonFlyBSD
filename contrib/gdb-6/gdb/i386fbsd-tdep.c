@@ -172,12 +172,12 @@ i386fbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 /* From <machine/reg.h>.  */
 static int i386fbsd4_r_reg_offset[] =
 {
-  11 * 4, 10 * 4, 9 * 4, 8 * 4,	/* %eax, %ecx, %edx, %ebx */
-  18 * 4, 6 * 4,		/* %esp, %ebp */
-  5 * 4, 4 * 4,			/* %esi, %edi */
-  15 * 4, 4 * 4,		/* %eip, %eflags */
-  16 * 4, 19 * 4,		/* %cs, %ss */
-  3 * 4, 2 * 4, 1 * 4, 0 * 4	/* %ds, %es, %fs, %gs */
+  10 * 4, 9 * 4, 8 * 4, 7 * 4,	/* %eax, %ecx, %edx, %ebx */
+  16 * 4, 5 * 4,		/* %esp, %ebp */
+  4 * 4, 3 * 4,			/* %esi, %edi */
+  13 * 4, 15 * 4,		/* %eip, %eflags */
+  14 * 4, 17 * 4,		/* %cs, %ss */
+  2 * 4, 1 * 4, 0 * 4, 18 * 4	/* %ds, %es, %fs, %gs */
 };
 
 /* From <machine/signal.h>.  */
@@ -187,14 +187,14 @@ int i386fbsd4_sc_reg_offset[] =
   20 + 10 * 4,			/* %ecx */
   20 + 9 * 4,			/* %edx */
   20 + 8 * 4,			/* %ebx */
-  20 + 18 * 4,			/* %esp */
+  20 + 17 * 4,			/* %esp */
   20 + 6 * 4,			/* %ebp */
   20 + 5 * 4,			/* %esi */
   20 + 4 * 4,			/* %edi */
-  20 + 15 * 4,			/* %eip */
-  20 + 17 * 4,			/* %eflags */
-  20 + 16 * 4,			/* %cs */
-  20 + 19 * 4,			/* %ss */
+  20 + 14 * 4,			/* %eip */
+  20 + 16 * 4,			/* %eflags */
+  20 + 15 * 4,			/* %cs */
+  20 + 18 * 4,			/* %ss */
   20 + 3 * 4,			/* %ds */
   20 + 2 * 4,			/* %es */
   20 + 1 * 4,			/* %fs */
@@ -213,11 +213,77 @@ i386fbsd4_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   /* FreeBSD 4.0 introduced a new `struct reg'.  */
   tdep->gregset_reg_offset = i386fbsd4_r_reg_offset;
   tdep->gregset_num_regs = ARRAY_SIZE (i386fbsd4_r_reg_offset);
-  tdep->sizeof_gregset = 20 * 4;
+  tdep->sizeof_gregset = 19 * 4;
 
   /* FreeBSD 4.0 introduced a new `struct sigcontext'.  */
   tdep->sc_reg_offset = i386fbsd4_sc_reg_offset;
   tdep->sc_num_regs = ARRAY_SIZE (i386fbsd4_sc_reg_offset);
+}
+
+/*
+ * Okay, I know this is blunt and shouldn't be in tdep,
+ * but in the long run we'll save quite some hassle with this.
+ */
+
+#include <machine/reg.h>
+static int i386dragonfly_r_reg_offset[] =
+{
+#define REGO(r) (offsetof(struct reg, r_ ## r))
+  REGO(eax),
+  REGO(ecx),
+  REGO(edx),
+  REGO(ebx),
+  REGO(esp),
+  REGO(ebp),
+  REGO(esi),
+  REGO(edi),
+  REGO(eip),
+  REGO(eflags),
+  REGO(cs),
+  REGO(ss),
+  REGO(ds),
+  REGO(es),
+  REGO(fs),
+  REGO(gs)
+#undef REGO
+};
+
+#include <machine/signal.h>
+int i386dragonfly_sc_reg_offset[] =
+{
+#define SCRO(r) (offsetof(struct sigcontext, sc_ ## r))
+  SCRO(eax),
+  SCRO(ecx),
+  SCRO(edx),
+  SCRO(ebx),
+  SCRO(esp),
+  SCRO(ebp),
+  SCRO(esi),
+  SCRO(edi),
+  SCRO(eip),
+  SCRO(eflags),
+  SCRO(cs),
+  SCRO(ss),
+  SCRO(ds),
+  SCRO(es),
+  SCRO(fs),
+  SCRO(gs)
+#undef SCRO
+};
+
+static void
+i386dragonfly_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
+{
+  struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+
+  i386fbsd4_init_abi(info, gdbarch);
+
+  tdep->gregset_reg_offset = i386dragonfly_r_reg_offset;
+  tdep->gregset_num_regs = ARRAY_SIZE (i386dragonfly_r_reg_offset);
+  tdep->sizeof_gregset = sizeof(struct reg);
+
+  tdep->sc_reg_offset = i386dragonfly_sc_reg_offset;
+  tdep->sc_num_regs = ARRAY_SIZE (i386dragonfly_sc_reg_offset);
 }
 
 
@@ -231,4 +297,6 @@ _initialize_i386fbsd_tdep (void)
 			  i386fbsdaout_init_abi);
   gdbarch_register_osabi (bfd_arch_i386, 0, GDB_OSABI_FREEBSD_ELF,
 			  i386fbsd4_init_abi);
+  gdbarch_register_osabi (bfd_arch_i386, 0, GDB_OSABI_DRAGONFLY_ELF,
+			  i386dragonfly_init_abi);
 }
