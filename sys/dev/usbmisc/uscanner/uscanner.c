@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.26 2007/11/06 07:37:01 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.27 2008/01/16 12:25:36 matthias Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -91,8 +91,11 @@ struct uscan_info {
 static const struct uscan_info uscanner_devs[] = {
   /* Acer Peripherals */
  {{ USB_DEVICE(0x04a5, 0x2022) }, 0 }, /* Acerscan 320U */
+ {{ USB_DEVICE(0x04a5, 0x20b0) }, 0 }, /* Benq 3300U/4300U */
  {{ USB_DEVICE(0x04a5, 0x2040) }, 0 }, /* Acerscan 640U */
+ {{ USB_DEVICE(0x04a5, 0x20be) }, 0 }, /* Acerscan 640BT */
  {{ USB_DEVICE(0x04a5, 0x2060) }, 0 }, /* Acerscan 620U */
+ {{ USB_DEVICE(0x04a5, 0x20c0) }, 0 }, /* Acerscan 1240U */
  {{ USB_DEVICE(0x04a5, 0x12a6) }, 0 }, /* Acerscan C310U */
   /* AGFA */
  {{ USB_DEVICE(0x06bd, 0x0002) }, 0 }, /* SnapScan 1236U */
@@ -110,7 +113,10 @@ static const struct uscan_info uscanner_devs[] = {
   /* Canon */
  {{ USB_DEVICE(0x04a9, 0x2206) }, 0 }, /* CanoScan N656U */
  {{ USB_DEVICE(0x04a9, 0x220d) }, 0 }, /* CanoScan N676U */
+ {{ USB_DEVICE(0x04a9, 0x2207) }, 0 }, /* CanoScan N1220U */
  {{ USB_DEVICE(0x04a9, 0x2208) }, 0 }, /* CanoScan D660U */
+ {{ USB_DEVICE(0x04a9, 0x220e) }, 0 }, /* CanoScan N1240U */
+ {{ USB_DEVICE(0x04a9, 0x2220) }, 0 }, /* CanoScan LIDE 25 */
   /* Kye */
  {{ USB_DEVICE(0x0458, 0x2001) }, 0 }, /* ColorPage Vivid-Pro */
   /* HP */
@@ -120,12 +126,14 @@ static const struct uscan_info uscanner_devs[] = {
  {{ USB_DEVICE(0x03f0, 0x0101) }, 0 }, /* Scanjet 4100C */
  {{ USB_DEVICE(0x03f0, 0x0105) }, 0 }, /* ScanJet 4200C */
  {{ USB_DEVICE(0x03f0, 0x0305) }, 0 }, /* Scanjet 4300C */
+ {{ USB_DEVICE(0x03f0, 0x3005) }, 0 }, /* ScanJet 4670v */
  {{ USB_DEVICE(0x03f0, 0x0102) }, 0 }, /* Photosmart S20 */
  {{ USB_DEVICE(0x03f0, 0x0401) }, 0 }, /* Scanjet 5200C */
  {{ USB_DEVICE(0x03f0, 0x0701) }, 0 }, /* Scanjet 5300C */
  {{ USB_DEVICE(0x03f0, 0x1005) }, 0 }, /* Scanjet 5400C */
  {{ USB_DEVICE(0x03f0, 0x0201) }, 0 }, /* ScanJet 6200C */
  {{ USB_DEVICE(0x03f0, 0x0601) }, 0 }, /* Scanjet 6300C */
+ {{ USB_DEVICE(0x03f0, 0x0b01) }, 0 }, /* Scanjet 82x0C */
   /* Scanlogic */
  {{ USB_DEVICE(0x04ce, 0x0300) }, 0 }, /* Phantom 336CX - C3 */
   /* Microtek */
@@ -151,6 +159,8 @@ static const struct uscan_info uscanner_devs[] = {
   /* National */
  {{ USB_DEVICE(0x0400, 0x1000) }, 0 }, /* BearPaw 1200 */
  {{ USB_DEVICE(0x0400, 0x1001) }, 0 }, /* BearPaw 2400 */
+  /* Nikon */
+ {{ USB_DEVICE(0x04b0, 0x4000) }, 0 }, /* CoolScan LS40 ED */
   /* Primax */
  {{ USB_DEVICE(0x0461, 0x0300) }, 0 }, /* G2-200 */
  {{ USB_DEVICE(0x0461, 0x0301) }, 0 }, /* G2E-300 */
@@ -177,8 +187,19 @@ static const struct uscan_info uscanner_devs[] = {
  {{ USB_DEVICE(0x04b8, 0x0110) }, 0 }, /* Perfection 1650 */
  {{ USB_DEVICE(0x04b8, 0x011e) }, 0 }, /* Perfection 1660 */
  {{ USB_DEVICE(0x04b8, 0x011d) }, 0 }, /* Perfection 1260 */
+ {{ USB_DEVICE(0x04b8, 0x011f) }, 0 }, /* Perfection 1670 */
+ {{ USB_DEVICE(0x04b8, 0x0120) }, 0 }, /* Perfection 1270 */
+ {{ USB_DEVICE(0x04b8, 0x080f) }, 0 }, /* Stylus Photo RX425 */
+ {{ USB_DEVICE(0x04b8, 0x011c) }, USC_KEEP_OPEN }, /* Perfection 3200 */
  {{ USB_DEVICE(0x04b8, 0x0112) }, USC_KEEP_OPEN }, /* GT-9700F */
  {{ USB_DEVICE(0x04b8, 0x011b) }, 0 }, /* GT-9300UF */
+ {{ USB_DEVICE(0x04b8, 0x0121) }, 0 }, /* Perfection 2480 */
+ {{ USB_DEVICE(0x04b8, 0x080e) }, USC_KEEP_OPEN }, /* CX-3500/3600/3650 MFP */
+ {{ USB_DEVICE(0x04b8, 0x0122) }, 0 }, /* Perfection 3590 */
+ {{ USB_DEVICE(0x04b8, 0x0820) }, 0 }, /* CX4200 MP */
+ {{ USB_DEVICE(0x04b8, 0x012a) }, 0 }, /* Perfection 4990 Photo */
+ {{ USB_DEVICE(0x04b8, 0x082b) }, 0 }, /* DX-50x0 MFP */
+ {{ USB_DEVICE(0x04b8, 0x082e) }, 0 }, /* DX-60x0 MFP */
   /* UMAX */
  {{ USB_DEVICE(0x1606, 0x0010) }, 0 }, /* Astra 1220U */
  {{ USB_DEVICE(0x1606, 0x0002) }, 0 }, /* Astra 1236U */
