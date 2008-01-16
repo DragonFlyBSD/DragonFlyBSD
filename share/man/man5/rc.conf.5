@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.48 2008/01/15 21:35:09 swildner Exp $
-.Dd January 15, 2008
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.49 2008/01/16 11:33:43 swildner Exp $
+.Dd January 16, 2008
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1485,6 +1485,51 @@ is set to
 these are the flags to pass to the
 .Xr dntpd 8
 daemon.
+.It Va btconfig_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+configure Bluetooth devices via
+.Xr btconfig 8
+at system boot time.
+.It Va btconfig_devices
+.Pq Vt str
+If
+.Va btconfig_enable
+is set to
+.Dq Li YES ,
+this is the list of Bluetooth devices to configure.
+If
+.Va btconfig_devices
+is not specified, all devices known to the system will be configured.
+A
+.Va btconfig_ Ns Aq Ar device
+variable can be set to specify parameters to be passed to
+.Ar device .
+.It Va btconfig_args
+.Pq Vt str
+If
+.Va btconfig_enable
+is set to
+.Dq Li YES ,
+this is the list of configuration parameters to pass to all Bluetooth
+devices.
+.It Va sdpd_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+run the Service Discovery Profile daemon
+.Xr ( sdpd 8 )
+at system boot time.
+.It Va sdpd_flags
+.Pq Vt str
+If
+.Va sdpd_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to the
+.Xr sdpd 8
+daemon.
 .It Va nis_client_enable
 .Pq Vt bool
 If set to
@@ -2786,6 +2831,7 @@ has not completed within the specified time (in seconds).
 .Xr amd 8 ,
 .Xr apm 8 ,
 .Xr atm 8 ,
+.Xr btconfig 8 ,
 .Xr cron 8 ,
 .Xr dhclient 8 ,
 .Xr dhcpd 8 ,
@@ -2824,6 +2870,7 @@ has not completed within the specified time (in seconds).
 .Xr rtsold 8 ,
 .Xr rwhod 8 ,
 .Xr savecore 8 ,
+.Xr sdpd 8 ,
 .Xr sensorsd 8 ,
 .Xr sshd 8 ,
 .Xr swapon 8 ,
