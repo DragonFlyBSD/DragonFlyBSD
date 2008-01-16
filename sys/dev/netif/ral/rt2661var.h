@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.8 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.9 2008/01/16 12:31:25 sephe Exp $
  */
 
 #define RT2661_NCHAN_MAX	38
@@ -144,9 +144,12 @@ struct rt2661_softc {
 	int				rx_ant;
 	int				tx_ant;
 	int				nb_ant;
+
 	int				ext_2ghz_lna;
+	int				rssi_2ghz_corr[2];
+	int				avg_rssi[2];
+
 	int				ext_5ghz_lna;
-	int				rssi_2ghz_corr;
 	int				rssi_5ghz_corr;
 
 	uint8_t				bbp18;
@@ -203,6 +206,12 @@ do { \
 
 #define RT2661_KEY_ISSET(sc, keyix) \
 	((sc)->sc_keymap[(keyix) / 32] & (1 << ((keyix) % 32)))
+
+#define RT2661_RESET_AVG_RSSI(sc) \
+do { \
+	(sc)->avg_rssi[0] = -1; \
+	(sc)->avg_rssi[1] = -1; \
+} while (0)
 
 int	rt2661_attach(device_t, int);
 int	rt2661_detach(void *);

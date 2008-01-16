@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.23 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.24 2008/01/16 12:31:25 sephe Exp $
  */
 
 /*
@@ -152,7 +152,7 @@ static int		rt2661_radar_stop(struct rt2661_softc *);
 #endif
 static int		rt2661_prepare_beacon(struct rt2661_softc *);
 static void		rt2661_enable_tsf_sync(struct rt2661_softc *);
-static int		rt2661_get_rssi(struct rt2661_softc *, uint8_t);
+static int		rt2661_get_rssi(struct rt2661_softc *, uint8_t, int);
 static void		rt2661_led_newstate(struct rt2661_softc *,
 					    enum ieee80211_state);
 static int		rt2661_key_alloc(struct ieee80211com *,
@@ -936,6 +936,8 @@ rt2661_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		break;
 
 	case IEEE80211_S_RUN:
+		RT2661_RESET_AVG_RSSI(sc);
+
 		rt2661_set_chan(sc, ic->ic_curchan);
 
 		ni = ic->ic_bss;
@@ -1229,7 +1231,9 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 		m->m_pkthdr.rcvif = ifp;
 		m->m_pkthdr.len = m->m_len = (flags >> 16) & 0xfff;
 
-		rssi = rt2661_get_rssi(sc, desc->rssi);
+		rssi = rt2661_get_rssi(sc, desc->rssi, 0);
+		if (sc->rf_rev == RT2661_RF_2529)
+			rt2661_get_rssi(sc, desc->rssi, 1);
 
 		wh = mtod(m, struct ieee80211_frame_min *);
 		if (wh->i_fc[1] & IEEE80211_FC1_WEP)
@@ -2460,7 +2464,8 @@ rt2661_read_config(struct rt2661_softc *sc)
 	sc->tx_ant   = (val >> 2)  & 0x3;
 	sc->nb_ant   = val & 0x3;
 
-	DPRINTF(("RF revision=%d\n", sc->rf_rev));
+	DPRINTF(("RF revision=%d, nb_ant %d, rxant %d, txant %d\n",
+		 sc->rf_rev, sc->nb_ant, sc->rx_ant, sc->tx_ant));
 
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_CONFIG2);
 	sc->ext_5ghz_lna = (val >> 6) & 0x1;
@@ -2470,12 +2475,14 @@ rt2661_read_config(struct rt2661_softc *sc)
 	    sc->ext_2ghz_lna, sc->ext_5ghz_lna));
 
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_RSSI_2GHZ_OFFSET);
-	if ((val & 0xff) != 0xff)
-		sc->rssi_2ghz_corr = (int8_t)(val & 0xff);	/* signed */
+	sc->rssi_2ghz_corr[0] = (int8_t)(val & 0xff);	/* signed */
+	sc->rssi_2ghz_corr[1] = (int8_t)(val >> 8);	/* signed */
 
 	/* Only [-10, 10] is valid */
-	if (sc->rssi_2ghz_corr < -10 || sc->rssi_2ghz_corr > 10)
-		sc->rssi_2ghz_corr = 0;
+	for (i = 0; i < 2; ++i) {
+		if (sc->rssi_2ghz_corr[i] < -10 || sc->rssi_2ghz_corr[i] > 10)
+			sc->rssi_2ghz_corr[i] = 0;
+	}
 
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_RSSI_5GHZ_OFFSET);
 	if ((val & 0xff) != 0xff)
@@ -2486,13 +2493,15 @@ rt2661_read_config(struct rt2661_softc *sc)
 		sc->rssi_5ghz_corr = 0;
 
 	/* adjust RSSI correction for external low-noise amplifier */
-	if (sc->ext_2ghz_lna)
-		sc->rssi_2ghz_corr -= 14;
+	if (sc->ext_2ghz_lna) {
+		sc->rssi_2ghz_corr[0] -= 14;
+		sc->rssi_2ghz_corr[1] -= 14;
+	}
 	if (sc->ext_5ghz_lna)
 		sc->rssi_5ghz_corr -= 14;
 
-	DPRINTF(("RSSI 2GHz corr=%d\nRSSI 5GHz corr=%d\n",
-	    sc->rssi_2ghz_corr, sc->rssi_5ghz_corr));
+	DPRINTF(("RSSI 2GHz corr0=%d corr1=%d\nRSSI 5GHz corr=%d\n",
+	    sc->rssi_2ghz_corr[0], sc->rssi_2ghz_corr[1], sc->rssi_5ghz_corr));
 
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_FREQ_OFFSET);
 	if ((val >> 8) != 0xff)
@@ -2708,11 +2717,14 @@ rt2661_init(void *priv)
 			rt2661_key_set(ic, k, mac);
 	}
 
+	RT2661_RESET_AVG_RSSI(sc);
+
 	if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 		if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
 			ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
-	} else
+	} else {
 		ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+	}
 #undef N
 }
 
@@ -2992,7 +3004,7 @@ rt2661_enable_tsf_sync(struct rt2661_softc *sc)
  * frame was received.  Correction values taken from the reference driver.
  */
 static int
-rt2661_get_rssi(struct rt2661_softc *sc, uint8_t raw)
+rt2661_get_rssi(struct rt2661_softc *sc, uint8_t raw, int i)
 {
 	int lna, agc, rssi;
 
@@ -3012,7 +3024,7 @@ rt2661_get_rssi(struct rt2661_softc *sc, uint8_t raw)
 	rssi = (2 * agc) - RT2661_NOISE_FLOOR;
 
 	if (IEEE80211_IS_CHAN_2GHZ(sc->sc_curchan)) {
-		rssi += sc->rssi_2ghz_corr;
+		rssi += sc->rssi_2ghz_corr[i];
 
 		if (lna == 1)
 			rssi -= 64;
@@ -3029,6 +3041,13 @@ rt2661_get_rssi(struct rt2661_softc *sc, uint8_t raw)
 			rssi -= 86;
 		else if (lna == 3)
 			rssi -= 100;
+	}
+
+	if (sc->avg_rssi[i] < 0) {
+		sc->avg_rssi[i] = rssi;
+	} else {
+		sc->avg_rssi[i] =
+		((sc->avg_rssi[i] << 3) - sc->avg_rssi[i] + rssi) >> 3;
 	}
 	return rssi;
 }
