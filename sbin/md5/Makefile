@@ -1,14 +1,16 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/9/93
-# $FreeBSD: src/sbin/md5/Makefile,v 1.9 2004/06/11 16:07:02 eik Exp $
-# $DragonFly: src/sbin/md5/Makefile,v 1.5 2006/10/17 00:55:42 pavalos Exp $
+# $FreeBSD: src/sbin/md5/Makefile,v 1.10 2005/03/09 19:23:04 cperciva Exp $
+# $DragonFly: src/sbin/md5/Makefile,v 1.6 2008/01/16 14:18:57 matthias Exp $
 
 PROG=	md5
 
 LINKS=	${BINDIR}/md5 ${BINDIR}/rmd160 \
-	${BINDIR}/md5 ${BINDIR}/sha1
+	${BINDIR}/md5 ${BINDIR}/sha1 \
+	${BINDIR}/md5 ${BINDIR}/sha256
 
 MLINKS=	md5.1 rmd160.1 \
-	md5.1 sha1.1
+	md5.1 sha1.1 \
+	md5.1 sha256.1
 
 WFORMAT?=	1
 

@@ -1,11 +1,12 @@
-.\" $FreeBSD: src/sbin/md5/md5.1,v 1.23 2005/01/17 07:44:09 ru Exp $
-.\" $DragonFly: src/sbin/md5/md5.1,v 1.7 2007/11/23 23:16:36 swildner Exp $
-.Dd June 6, 2004
+.\" $FreeBSD: src/sbin/md5/md5.1,v 1.24 2005/03/10 09:56:39 cperciva Exp $
+.\" $DragonFly: src/sbin/md5/md5.1,v 1.8 2008/01/16 14:18:57 matthias Exp $
+.Dd January 16, 2008
 .Dt MD5 1
 .Os
 .Sh NAME
 .Nm md5 ,
 .Nm sha1 ,
+.Nm sha256 ,
 .Nm rmd160
 .Nd calculate a message-digest fingerprint (checksum) for a file
 .Sh SYNOPSIS
@@ -17,6 +18,10 @@
 .Op Fl pqrtx
 .Op Fl s Ar string
 .Op Ar
+.Nm sha256
+.Op Fl pqrtx
+.Op Fl s Ar string
+.Op Ar
 .Nm rmd160
 .Op Fl pqrtx
 .Op Fl s Ar string
@@ -24,7 +29,8 @@
 .Sh DESCRIPTION
 The
 .Nm md5 ,
-.Nm sha1
+.Nm sha1 ,
+.Nm sha256
 and
 .Nm rmd160
 utilities take as input a message of arbitrary length and produce as
@@ -37,7 +43,7 @@ It is conjectured that it is computationally infeasible to
 produce two messages having the same message digest, or to produce any
 message having a given prespecified target message digest.
 The
-.Tn MD5 , SHA-1
+.Tn MD5 , SHA-1, SHA-256
 and
 .Tn RIPEMD-160
 algorithms are intended for digital signature applications, where a
@@ -89,7 +95,8 @@ Run a built-in test script.
 .Sh DIAGNOSTICS
 The
 .Nm md5 ,
-.Nm sha1
+.Nm sha1 ,
+.Nm sha256
 and
 .Nm rmd160
 utilities exit 0 on success,
