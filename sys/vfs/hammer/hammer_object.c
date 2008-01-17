@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.19 2008/01/16 01:15:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.20 2008/01/17 05:06:09 dillon Exp $
  */
 
 #include "hammer.h"
@@ -141,6 +141,7 @@ hammer_alloc_mem_record(hammer_inode_t ip)
 	++hammer_count_records;
 	record = kmalloc(sizeof(*record), M_HAMMER, M_WAITOK|M_ZERO);
 	record->ip = ip;
+	record->rec.base.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	hammer_ref(&record->lock);
 	return (record);
 }
@@ -474,6 +475,7 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Fill everything in and insert our B-Tree node.
 	 */
 	hammer_modify_buffer(cursor.record_buffer);
+	rec->base.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	rec->base.base.obj_id = ip->obj_id;
 	rec->base.base.key = offset + bytes;
 	rec->base.base.create_tid = trans->tid;

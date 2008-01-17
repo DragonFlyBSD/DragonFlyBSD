@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.12 2008/01/15 06:02:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.13 2008/01/17 05:06:09 dillon Exp $
  */
 
 /*
@@ -281,7 +281,6 @@ hammer_load_cursor_parent_local(hammer_cursor_t cursor)
 	if (i == parent->ondisk->count)
 		panic("Bad B-Tree link: parent %p node %p\n", parent, node);
 	KKASSERT(i != parent->ondisk->count);
-	KKASSERT(parent->ondisk->elms[i].internal.rec_offset == 0);
 	cursor->parent = parent;
 	cursor->parent_index = i;
 	cursor->left_bound = &elm[0].internal.base;
@@ -319,7 +318,8 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	clu_no = ondisk->clu_btree_parent_clu_no;
 
 	/*
-	 * Acquire the node from (volume, cluster, offset)
+	 * Acquire the node from (volume, cluster, offset).  This should
+	 * be a leaf node containing the HAMMER_BTREE_TYPE_SPIKE_END element.
 	 */
 	volume = hammer_get_volume(ccluster->volume->hmp, vol_no, &error);
 	if (error)
@@ -333,6 +333,7 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	hammer_rel_cluster(pcluster, 0);
 	if (error)
 		return (error);
+	KKASSERT(parent->ondisk->type == HAMMER_BTREE_TYPE_LEAF);
 
 	/* 
 	 * Ok, we have the node.  Locate the inter-cluster element
@@ -340,22 +341,26 @@ hammer_load_cursor_parent_cluster(hammer_cursor_t cursor)
 	elm = NULL;
 	for (i = 0; i < parent->ondisk->count; ++i) {
 		elm = &parent->ondisk->elms[i];
-		if (elm->internal.rec_offset != 0 &&
-		    elm->base.subtree_type == HAMMER_BTREE_TYPE_CLUSTER &&
-		    elm->internal.subtree_clu_no == cursor->node->cluster->clu_no) {
+
+		if (elm->leaf.base.btype == HAMMER_BTREE_TYPE_SPIKE_END &&
+		    elm->leaf.spike_clu_no == cursor->node->cluster->clu_no) {
 			break;
 		}
 	}
 	KKASSERT(i != parent->ondisk->count);
+	KKASSERT(i && elm[-1].leaf.base.btype == HAMMER_BTREE_TYPE_SPIKE_BEG);
 	cursor->parent = parent;
 	cursor->parent_index = i;
-	cursor->left_bound = &elm[0].internal.base;
-	cursor->right_bound = &elm[1].internal.base;
+	cursor->left_bound = &ccluster->ondisk->clu_btree_beg;
+	cursor->right_bound = &ccluster->ondisk->clu_btree_end;
 
-	KKASSERT(hammer_btree_cmp(cursor->left_bound,
-		 &ccluster->ondisk->clu_btree_beg) <= 0);
+	KKASSERT(hammer_btree_cmp(&elm[-1].leaf.base,
+		 &ccluster->ondisk->clu_btree_beg) == 0);
+	    /*
+	     * spike_end is an inclusive boundary and will != clu_btree_end
 	KKASSERT(hammer_btree_cmp(cursor->right_bound,
 		 &ccluster->ondisk->clu_btree_end) >= 0);
+	    */
 
 	if (hammer_lock_ex_try(&parent->lock) != 0) {
 		hammer_unlock(&cursor->node->lock);
@@ -491,7 +496,6 @@ hammer_cursor_down(hammer_cursor_t cursor)
 	 * The current node becomes the current parent
 	 */
 	node = cursor->node;
-	KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
 	KKASSERT(cursor->index >= 0 && cursor->index < node->ondisk->count);
 	if (cursor->parent) {
 		hammer_unlock(&cursor->parent->lock);
@@ -506,20 +510,38 @@ hammer_cursor_down(hammer_cursor_t cursor)
 	 * Extract element to push into at (node,index), set bounds.
 	 */
 	elm = &node->ondisk->elms[cursor->parent_index];
-	cursor->left_bound = &elm[0].internal.base;
-	cursor->right_bound = &elm[1].internal.base;
 
 	/*
-	 * Ok, push down into elm.  If rec_offset is non-zero this is
-	 * an inter-cluster push, otherwise it is a intra-cluster push.
+	 * Ok, push down into elm.  If elm specifies an internal or leaf
+	 * node the current node must be an internal node.  If elm specifies
+	 * a spike then the current node must be a leaf node.
 	 *
 	 * Cursoring down through a cluster transition when the INCLUSTER
 	 * flag is set is not legal.
 	 */
-	if (elm->internal.rec_offset) {
+	switch(elm->base.btype) {
+	case HAMMER_BTREE_TYPE_INTERNAL:
+	case HAMMER_BTREE_TYPE_LEAF:
+		KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
+		KKASSERT(elm->internal.subtree_offset != 0);
+		cursor->left_bound = &elm[0].internal.base;
+		cursor->right_bound = &elm[1].internal.base;
+		node = hammer_get_node(node->cluster,
+				       elm->internal.subtree_offset,
+				       &error);
+		if (error == 0) {
+			KKASSERT(elm->base.btype == node->ondisk->type);
+			if(node->ondisk->parent != cursor->parent->node_offset)
+				kprintf("node %p %d vs %d\n", node, node->ondisk->parent, cursor->parent->node_offset);
+			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
+		}
+		break;
+	case HAMMER_BTREE_TYPE_SPIKE_BEG:
+	case HAMMER_BTREE_TYPE_SPIKE_END:
+		KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_LEAF);
 		KKASSERT((cursor->flags & HAMMER_CURSOR_INCLUSTER) == 0);
-		vol_no = elm->internal.subtree_vol_no;
-		clu_no = elm->internal.subtree_clu_no;
+		vol_no = elm->leaf.spike_vol_no;
+		clu_no = elm->leaf.spike_clu_no;
 		volume = hammer_get_volume(node->cluster->volume->hmp,
 					   vol_no, &error);
 		KKASSERT(error != EINVAL);
@@ -530,21 +552,18 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		hammer_rel_volume(volume, 0);
 		if (error)
 			return(error);
+		cursor->left_bound = &cluster->ondisk->clu_btree_beg;
+		cursor->right_bound = &cluster->ondisk->clu_btree_end;
 		node = hammer_get_node(cluster,
 				       cluster->ondisk->clu_btree_root,
 				       &error);
 		hammer_rel_cluster(cluster, 0);
-	} else {
-		KKASSERT(elm->internal.subtree_offset != 0);
-		node = hammer_get_node(node->cluster,
-				       elm->internal.subtree_offset,
-				       &error);
-		if (error == 0) {
-			KKASSERT(elm->base.subtree_type == node->ondisk->type);
-			if(node->ondisk->parent != cursor->parent->node_offset)
-				kprintf("node %p %d vs %d\n", node, node->ondisk->parent, cursor->parent->node_offset);
-			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
-		}
+		break;
+	default:
+		panic("hammer_cursor_down: illegal btype %02x (%c)\n",
+		      elm->base.btype,
+		      (elm->base.btype ? elm->base.btype : '?'));
+		break;
 	}
 	if (error == 0) {
 		hammer_lock_ex(&node->lock);

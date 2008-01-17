@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.24 2008/01/15 06:02:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.25 2008/01/17 05:06:09 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -527,6 +527,8 @@ int	hammer_btree_insert_cluster(hammer_cursor_t cursor,
 int	hammer_btree_delete(hammer_cursor_t cursor);
 int	hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
+void	hammer_make_base_inclusive(hammer_base_elm_t key);
+
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
 

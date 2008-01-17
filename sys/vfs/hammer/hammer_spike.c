@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.7 2008/01/15 06:02:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.8 2008/01/17 05:06:09 dillon Exp $
  */
 
 #include "hammer.h"
@@ -70,8 +70,9 @@ hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep)
  * Spike code - make room in a cluster by spiking in a new cluster.
  *
  * The spike structure contains a locked and reference B-Tree leaf node.
- * The spike at a minimum must replace the node with a cluster reference
- * and then delete the contents of the node.
+ * The spike at a minimum must move the contents of the leaf into a
+ * new cluster and replace the leaf with two elements representing the
+ * SPIKE_BEG and SPIKE_END.
  *
  * Various optimizations are desireable, including merging the spike node
  * with an adjacent node that has already been spiked, if its cluster is
@@ -86,6 +87,8 @@ hammer_spike(struct hammer_cursor **spikep)
 	struct hammer_cursor ncursor;
 	hammer_cluster_t ocluster;
 	hammer_cluster_t ncluster;
+	hammer_node_ondisk_t ondisk;
+	hammer_btree_elm_t elm;
 	hammer_node_t onode;
 	hammer_record_ondisk_t rec;
 	int error;
@@ -103,6 +106,7 @@ hammer_spike(struct hammer_cursor **spikep)
 
 	error = 0;
 	onode = spike->node;
+
 	ocluster = onode->cluster;
 	hammer_lock_ex(&ocluster->io.lock);
 
@@ -138,6 +142,8 @@ hammer_spike(struct hammer_cursor **spikep)
 			spike->record->base.base.rec_type,
 			spike->record->base.base.obj_id,
 			spike->record->base.base.key);
+		KKASSERT(spike->record->base.base.rec_type !=
+			 HAMMER_RECTYPE_CLUSTER);
 		error = hammer_write_record(&ncursor, spike->record,
 					    spike->data, spike->flags);
 		if (error == ENOSPC) {
@@ -149,42 +155,11 @@ hammer_spike(struct hammer_cursor **spikep)
 	}
 
 	/*
-	 * Success!  Replace the parent reference to the leaf node with a
-	 * parent reference to the new cluster and fixup the new cluster's
-	 * parent reference.  This completes the spike operation.
-	 */
-	{
-		hammer_node_ondisk_t ondisk;
-		hammer_btree_elm_t elm;
-		
-		hammer_modify_node(spike->parent);
-		ondisk = spike->parent->ondisk;
-		elm = &ondisk->elms[spike->parent_index];
-		elm->internal.base.subtree_type = HAMMER_BTREE_TYPE_CLUSTER;
-		elm->internal.rec_offset = -1; /* adjusted later */
-		elm->internal.subtree_clu_no = ncluster->clu_no;
-		elm->internal.subtree_vol_no = ncluster->volume->vol_no;
-		elm->internal.subtree_count = onode->ondisk->count; /*XXX*/
-		hammer_flush_node(onode);
-	}
-	{
-		hammer_cluster_ondisk_t ondisk;
-
-		hammer_modify_cluster(ncluster);
-		ondisk = ncluster->ondisk;
-		ondisk->clu_btree_parent_vol_no = ocluster->volume->vol_no;
-		ondisk->clu_btree_parent_clu_no = ocluster->clu_no;
-		ondisk->clu_btree_parent_offset = spike->parent->node_offset;
-		ondisk->clu_btree_parent_clu_gen = ocluster->ondisk->clu_gen;
-	}
-
-	/*
 	 * Delete the records and data associated with the old leaf node,
 	 * then free the old leaf node (nothing references it any more).
 	 */
 	for (spike->index = 0; spike->index < onode->ondisk->count; 
 	     ++spike->index) {
-		hammer_btree_elm_t elm;
 		int32_t roff;
 
 		elm = &onode->ondisk->elms[spike->index];
@@ -199,7 +174,6 @@ hammer_spike(struct hammer_cursor **spikep)
 			}
 		}
 	}
-	onode->flags |= HAMMER_NODE_DELETED;
 
 	/*
 	 * Add a record representing the spike using space freed up by the
@@ -207,16 +181,48 @@ hammer_spike(struct hammer_cursor **spikep)
 	 */
 	rec = hammer_alloc_record(ocluster, &error, &spike->record_buffer);
 	KKASSERT(error == 0);
+	rec->spike.base.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	rec->spike.base.base.rec_type = HAMMER_RECTYPE_CLUSTER;
 	rec->spike.clu_no = ncluster->clu_no;
 	rec->spike.vol_no = ncluster->volume->vol_no;
 	rec->spike.clu_id = 0;
 
 	/*
-	 * Set the record offset
+	 * Construct the spike elements
 	 */
-	spike->parent->ondisk->elms[spike->parent_index].internal.rec_offset =
-		hammer_bclu_offset(spike->record_buffer, rec);
+	hammer_modify_node(onode);
+	ondisk = onode->ondisk;
+	ondisk->count = 2;
+
+	ondisk->elms[0].leaf.base = *spike->left_bound;
+	ondisk->elms[0].leaf.base.btype = HAMMER_BTREE_TYPE_SPIKE_BEG;
+	ondisk->elms[0].leaf.rec_offset =
+				hammer_bclu_offset(spike->record_buffer, rec);
+	ondisk->elms[0].leaf.spike_clu_no = ncluster->clu_no;
+	ondisk->elms[0].leaf.spike_vol_no = ncluster->volume->vol_no;
+	ondisk->elms[0].leaf.spike_unused01 = 0;
+
+	ondisk->elms[1].leaf.base = *spike->right_bound;
+	hammer_make_base_inclusive(&ondisk->elms[1].leaf.base);
+	ondisk->elms[1].leaf.base.btype = HAMMER_BTREE_TYPE_SPIKE_END;
+	ondisk->elms[1].leaf.rec_offset = ondisk->elms[0].leaf.rec_offset;
+	ondisk->elms[1].leaf.spike_clu_no = ncluster->clu_no;
+	ondisk->elms[1].leaf.spike_vol_no = ncluster->volume->vol_no;
+	ondisk->elms[1].leaf.spike_unused01 = 0;
+
+	/*
+	 * Adjust ncluster
+	 */
+	{
+		hammer_cluster_ondisk_t ondisk;
+
+		hammer_modify_cluster(ncluster);
+		ondisk = ncluster->ondisk;
+		ondisk->clu_btree_parent_vol_no = ocluster->volume->vol_no;
+		ondisk->clu_btree_parent_clu_no = ocluster->clu_no;
+		ondisk->clu_btree_parent_offset = onode->node_offset;
+		ondisk->clu_btree_parent_clu_gen = ocluster->ondisk->clu_gen;
+	}
 
 	/*
 	 * XXX I/O dependancy - new cluster must be flushed before current

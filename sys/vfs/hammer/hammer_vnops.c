@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.20 2008/01/16 01:15:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.21 2008/01/17 05:06:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1754,6 +1754,7 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 		ip = hammer_get_inode(dip->hmp, &dip->cache[1],
 				      rec->entry.obj_id,
 				      dip->hmp->asof, 0, &error);
+		KKASSERT(error != ENOENT);
 		if (error == 0 && ip->ino_rec.base.base.obj_type ==
 				  HAMMER_OBJTYPE_DIRECTORY) {
 			error = hammer_ip_check_directory_empty(&trans, ip);

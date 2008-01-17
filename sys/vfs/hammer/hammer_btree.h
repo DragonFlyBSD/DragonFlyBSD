@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.8 2008/01/15 06:02:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.9 2008/01/17 05:06:09 dillon Exp $
  */
 
 /*
@@ -90,8 +90,10 @@
  * inclusive of rec_type field, so obj_type must be used to detect the
  * cluster range entries.
  *
- * subtree_type is only used by internal B-Tree elements and indicates
- * whether we are referencing a cluster, a leaf, or an internal node.
+ * btype is only used by the elements making up an internal or leaf B-Tree
+ * node and applies to the node rather then to the key.  This means that
+ * btype must be assigned/reassigned after any update to the base_elm making
+ * up a B-Tree element.
  */
 struct hammer_base_elm {
 	int64_t	obj_id;		/* 00 object record is associated with */
@@ -102,7 +104,7 @@ struct hammer_base_elm {
 
 	u_int16_t rec_type;	/* 20 _RECTYPE_ */
 	u_int8_t obj_type;	/* 22 _OBJTYPE_ (restricted) */
-	u_int8_t subtree_type;	/* 23 B-Tree element type */
+	u_int8_t btype;		/* 23 B-Tree element type */
 	int32_t reserved07;	/* 24 (future) */
 				/* 28 */
 };
@@ -112,32 +114,23 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
 /*
  * Internal element (40 + 16 = 56 bytes).
  *
- * An internal element contains the left-hand boundary and a recursion to
- * another B-Tree node.  If rec_offset is 0 it points to another node in the
- * current cluster at subtree_offset.  Otherwise it points to the root
- * of another cluster at volno/cluid.
- *
- * sub-cluster references have an associated record while intra-cluster
- * references do not.
- *
- * subtree_count is the number of elements in an intra-cluster reference.
- * For inter-cluster references subtree_count is chaining depth heuristic
- * used to help balance the B-Tree globally.
+ * An internal element contains the left-hand boundary, right-hand boundary,
+ * and a recursion to another B-Tree node.
  */
 struct hammer_btree_internal_elm {
 	struct hammer_base_elm base;
-	int32_t rec_offset;	/* 0 indicates internal reference */
-	int32_t subtree_offset;	/* offset or cluster id */
-	int32_t subtree_vol_no;	/* unused or volume number */
-	int32_t subtree_count;	/* hint: can be too small, but not too big */
+	int32_t unused00;
+	int32_t subtree_offset;	/* cluster relative offset */
+	int32_t unused02;
+	int32_t unused03;
 };
-
-#define subtree_clu_no	subtree_offset
 
 /*
  * Leaf B-Tree element (40 + 16 = 56 bytes).
  *
- * A leaf
+ * A leaf element.  Note that the data_offset, data_len, and data_crc
+ * fields only apply to HAMMER_BTREE_TYPE_RECORD subtree_type's.  These
+ * fields are overloaded for spike elements.
  */
 struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
@@ -146,6 +139,10 @@ struct hammer_btree_leaf_elm {
 	int32_t data_len;
 	u_int32_t data_crc;
 };
+
+#define spike_clu_no	data_offset
+#define spike_vol_no	data_len
+#define spike_unused01	data_crc
 
 /*
  * Rollup btree leaf element types - 56 byte structure
@@ -190,7 +187,9 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
 
 #define HAMMER_BTREE_TYPE_INTERNAL	((u_int8_t)'I')
 #define HAMMER_BTREE_TYPE_LEAF		((u_int8_t)'L')
-#define HAMMER_BTREE_TYPE_CLUSTER	((u_int8_t)'C')
+#define HAMMER_BTREE_TYPE_RECORD	((u_int8_t)'R')
+#define HAMMER_BTREE_TYPE_SPIKE_BEG	((u_int8_t)'C')
+#define HAMMER_BTREE_TYPE_SPIKE_END	((u_int8_t)'E')
 
 struct hammer_node_ondisk {
 	/*
