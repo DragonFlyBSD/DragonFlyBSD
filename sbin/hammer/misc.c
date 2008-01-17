@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,30 +31,8 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.2 2008/01/17 04:59:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/misc.c,v 1.1 2008/01/17 04:59:48 dillon Exp $
  */
 
-#include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <err.h>
-#include <ctype.h>
-
-#include "hammer_util.h"
-
-extern int RecurseOpt;
-
-void hammer_cmd_show(int32_t vol_no, int32_t clu_no, int depth);
+#include "hammer.h"
 

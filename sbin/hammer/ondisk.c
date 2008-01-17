@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.7 2008/01/03 06:48:45 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.8 2008/01/17 04:59:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -65,11 +65,11 @@ struct hammer_alist_config Clu_master_alist_config;
 struct hammer_alist_config Clu_slave_alist_config;
 uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
-int64_t ClusterSize;
 int64_t BootAreaSize;
 int64_t MemAreaSize;
 int     UsingSuperClusters;
 int     NumVolumes;
+int	RootVolNo = -1;
 struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
 
 void
@@ -140,6 +140,13 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 		if (ondisk->vol_flags & HAMMER_VOLF_USINGSUPERCL)
 			vol->using_supercl = 1;
 		vol_no = ondisk->vol_no;
+		if (RootVolNo < 0) {
+			RootVolNo = ondisk->vol_rootvol;
+		} else if (RootVolNo != (int)ondisk->vol_rootvol) {
+			errx(1, "setup_volume: %s: root volume disagreement: "
+				"%d vs %d",
+				vol->name, RootVolNo, ondisk->vol_rootvol);
+		}
 
 		if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType)) != 0) {
 			errx(1, "setup_volume: %s: Header does not indicate "
@@ -153,7 +160,7 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 		}
 	}
 	vol->vol_no = vol_no;
-	if (UsingSuperClusters) {
+	if (vol->using_supercl) {
 		vol->clu_alist.config = &Vol_super_alist_config;
 		vol->clu_alist.meta = ondisk->vol_almeta.super;
 		vol->clu_alist.info = vol;
@@ -213,6 +220,7 @@ get_supercl(struct volume_info *vol, int32_t scl_no, hammer_alloc_state_t isnew)
 	struct supercl_info *scl;
 	int32_t scl_group;
 	int64_t scl_group_size;
+	int64_t clusterSize = vol->ondisk->vol_clsize;
 	int n;
 
 	assert(vol->using_supercl);
@@ -244,7 +252,7 @@ get_supercl(struct volume_info *vol, int32_t scl_no, hammer_alloc_state_t isnew)
 		scl_group_size = ((int64_t)HAMMER_BUFSIZE *
 				  HAMMER_VOL_SUPERCLUSTER_GROUP) +
 				  ((int64_t)HAMMER_VOL_SUPERCLUSTER_GROUP *
-				  ClusterSize * HAMMER_SCL_MAXCLUSTERS);
+				  clusterSize * HAMMER_SCL_MAXCLUSTERS);
 		scl->scl_offset = vol->ondisk->vol_clo_beg +
 				  scl_group * scl_group_size +
 				  (scl_no % HAMMER_VOL_SUPERCLUSTER_GROUP) *
@@ -305,6 +313,7 @@ get_cluster(struct volume_info *vol, int32_t clu_no, hammer_alloc_state_t isnew)
 	struct cluster_info *cl;
 	int32_t scl_group;
 	int64_t scl_group_size;
+	int64_t clusterSize = vol->ondisk->vol_clsize;
 	int n;
 
 	TAILQ_FOREACH(cl, &vol->cluster_list, entry) {
@@ -346,7 +355,7 @@ get_cluster(struct volume_info *vol, int32_t clu_no, hammer_alloc_state_t isnew)
 				((int64_t)HAMMER_BUFSIZE *
 				HAMMER_VOL_SUPERCLUSTER_GROUP) +
 				((int64_t)HAMMER_VOL_SUPERCLUSTER_GROUP *
-				ClusterSize * HAMMER_SCL_MAXCLUSTERS);
+				clusterSize * HAMMER_SCL_MAXCLUSTERS);
 			scl_group_size += HAMMER_VOL_SUPERCLUSTER_GROUP *
 					  HAMMER_BUFSIZE;
 			cl->clu_offset =
@@ -354,10 +363,10 @@ get_cluster(struct volume_info *vol, int32_t clu_no, hammer_alloc_state_t isnew)
 				scl_group * scl_group_size +
 				(HAMMER_BUFSIZE * HAMMER_VOL_SUPERCLUSTER_GROUP) +
 				 ((int64_t)clu_no % ((int64_t)HAMMER_SCL_MAXCLUSTERS * HAMMER_VOL_SUPERCLUSTER_GROUP)) *
-				 ClusterSize;
+				 clusterSize;
 		} else {
 			cl->clu_offset = vol->ondisk->vol_clo_beg +
-					 (int64_t)clu_no * ClusterSize;
+					 (int64_t)clu_no * clusterSize;
 		}
 	}
 	++cl->cache.refs;
@@ -499,6 +508,25 @@ rel_buffer(struct buffer_info *buffer)
 }
 
 /*
+ * Retrieve a pointer to a B-Tree node given a cluster offset.  The underlying
+ * bufp is freed if non-NULL and a referenced buffer is loaded into it.
+ */
+hammer_node_ondisk_t
+get_node(struct cluster_info *cl, int32_t offset, struct buffer_info **bufp)
+{
+	struct buffer_info *buf;
+
+	if (*bufp)
+		rel_buffer(*bufp);
+	*bufp = buf = get_buffer(cl, offset / HAMMER_BUFSIZE, 0);
+	if (buf->ondisk->head.buf_type != HAMMER_FSBUF_BTREE) {
+		errx(1, "get_node %d:%d:%d - not a B-Tree node buffer!",
+		     cl->volume->vol_no, cl->clu_no, offset);
+	}
+	return((void *)((char *)buf->ondisk + (offset & HAMMER_BUFMASK)));
+}
+
+/*
  * Allocate HAMMER elements - btree nodes, data storage, and record elements
  */
 void *
@@ -613,6 +641,10 @@ alloc_new_buffer(struct cluster_info *cluster, hammer_alist_t live,
 	assert(buf_no != HAMMER_ALIST_BLOCK_NONE);
 	buf = get_buffer(cluster, buf_no, type);
 	hammer_alist_free(live, buf_no * HAMMER_FSBUF_MAXBLKS, nelements);
+	if (type == HAMMER_FSBUF_RECORDS) {
+		cluster->ondisk->clu_record_buf_bitmap[buf_no >> 5] |=
+			1 << (buf_no & 31);
+	}
 /*	rel_buffer(buffer);XXX modified bit for multiple gets/rels */
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.13 2008/01/09 00:46:19 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.14 2008/01/17 04:59:50 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -43,6 +43,8 @@ static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static int32_t format_cluster(struct volume_info *vol, int isroot);
 static void format_root(struct cluster_info *cluster);
 static void usage(void);
+
+static int64_t ClusterSize;
 
 int
 main(int ac, char **av)
@@ -635,6 +637,7 @@ format_root(struct cluster_info *cluster)
 	idata->version = HAMMER_INODE_DATA_VERSION;
 	idata->mode = 0755;
 
+	rec->base.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	rec->base.base.obj_id = HAMMER_OBJID_ROOT;
 	rec->base.base.key = 0;
 	rec->base.base.create_tid = createtid();

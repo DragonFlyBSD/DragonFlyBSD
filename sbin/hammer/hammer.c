@@ -31,13 +31,16 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.2 2008/01/03 06:48:45 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.3 2008/01/17 04:59:48 dillon Exp $
  */
 
 #include "hammer.h"
 
 static void hammer_parsetime(u_int64_t *tidp, const char *timestr);
+static void hammer_parsedevs(const char *blkdevs);
 static void usage(int exit_code);
+
+int RecurseOpt;
 
 int
 main(int ac, char **av)
@@ -45,12 +48,19 @@ main(int ac, char **av)
 	u_int64_t tid;
 	int ch;
 	int status;
+	char *blkdevs = NULL;
 
-	while ((ch = getopt(ac, av, "h")) != -1) {
+	while ((ch = getopt(ac, av, "hf:r")) != -1) {
 		switch(ch) {
 		case 'h':
 			usage(0);
 			/* not reached */
+		case 'r':
+			RecurseOpt = 1;
+			break;
+		case 'f':
+			blkdevs = optarg;
+			break;
 		default:
 			usage(1);
 			/* not reached */
@@ -81,12 +91,18 @@ main(int ac, char **av)
 		errx(1, "uuids file does not have the DragonFly "
 			"HAMMER filesystem type");
 	}
+
 	init_alist_templates();
+	if (strcmp(av[0], "show") == 0) {
+		int32_t vol_no = -1;
+		int32_t clu_no = -1;
 
-	/*
-	 * Additional commands
-	 */
-
+		hammer_parsedevs(blkdevs);
+		if (ac > 1)
+			sscanf(av[1], "%d:%d", &vol_no, &clu_no);
+		hammer_cmd_show(vol_no, clu_no, 0);
+		exit(0);
+	}
 	usage(1);
 	/* not reached */
 	return(0);
@@ -159,14 +175,36 @@ hammer_parsetime(u_int64_t *tidp, const char *timestr)
 
 static
 void
+hammer_parsedevs(const char *blkdevs)
+{
+	char *copy;
+	char *volname;
+
+	if (blkdevs == NULL) {
+		errx(1, "A -f blkdevs specification is required "
+			"for this command");
+	}
+
+	copy = strdup(blkdevs);
+	while ((volname = copy) != NULL) {
+		if ((copy = strchr(copy, ':')) != NULL)
+			*copy++ = 0;
+		setup_volume(-1, volname, 0, O_RDONLY);
+	}
+}
+
+static
+void
 usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
 		"hammer now\n"
 		"hammer stamp <time>\n"
+		"hammer -f blkdevs [-r] show [vol_no[:clu_no]]\n"
 	);
 	fprintf(stderr, "    time: +n[s/m/h/D/M/Y]\n"
 			"    time: yyyymmdd[:hhmmss]\n");
 	exit(exit_code);
 }
+

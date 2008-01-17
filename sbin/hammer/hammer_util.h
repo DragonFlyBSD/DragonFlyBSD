@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.4 2008/01/03 06:48:45 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.5 2008/01/17 04:59:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -143,11 +143,11 @@ extern struct hammer_alist_config Clu_master_alist_config;
 extern struct hammer_alist_config Clu_slave_alist_config;
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
-extern int64_t ClusterSize;
 extern int64_t BootAreaSize;
 extern int64_t MemAreaSize;
 extern int UsingSuperClusters;
 extern int NumVolumes;
+extern int RootVolNo;
 extern struct volume_list VolList;
 
 uint32_t crc32(const void *buf, size_t size);
@@ -161,6 +161,8 @@ struct cluster_info *get_cluster(struct volume_info *vol, int32_t clu_no,
 				hammer_alloc_state_t isnew);
 struct buffer_info *get_buffer(struct cluster_info *cl, int32_t buf_no,
 				int64_t buf_type);
+hammer_node_ondisk_t get_node(struct cluster_info *cl, int32_t offset,
+				struct buffer_info **bufp);
 
 void init_alist_templates(void);
 void rel_volume(struct volume_info *volume);
