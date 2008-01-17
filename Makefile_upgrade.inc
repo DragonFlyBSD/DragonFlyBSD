@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.2 2008/01/13 17:51:36 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.3 2008/01/17 12:51:22 matthias Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -518,3 +518,4 @@ TO_REMOVE+=/usr/share/doc/handbook
 TO_REMOVE+=/usr/share/examples/BSD_daemon
 TO_REMOVE+=/usr/share/examples/FreeBSD_version
 TO_REMOVE+=/usr/share/examples/worm
+TO_REMOVE+=/usr/share/examples/tcsh/csh-mode.el
