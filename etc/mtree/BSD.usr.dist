@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.51 2008/01/13 17:51:36 swildner Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.52 2008/01/17 07:39:00 swildner Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -16,25 +16,25 @@
     ..
     lib
         debug
-	..
-	gcc34
-	    debug
-	    ..
-	    profile
-	    ..
-	..
-	gcc41
-	    debug
-	    ..
-	    profile
-	    ..
-	..
-	i18n
-	..
-	profile
-	..
-	security
-	..
+        ..
+        gcc34
+            debug
+            ..
+            profile
+            ..
+        ..
+        gcc41
+            debug
+            ..
+            profile
+            ..
+        ..
+        i18n
+        ..
+        profile
+        ..
+        security
+        ..
         aout
         ..
         compat
@@ -47,10 +47,10 @@
             fonts
             ..
         ..
-	gcc34
-	..
-	gcc41
-	..
+        gcc34
+        ..
+        gcc41
+        ..
         lint
         ..
         msdosfs
@@ -59,16 +59,16 @@
         ..
     ..
     libexec
-	binutils217
-	    ldscripts
-	    ..
-	    elf
-	    ..
-	..
-	gcc34
-	..
-	gcc41
-	..
+        binutils217
+            ldscripts
+            ..
+            elf
+            ..
+        ..
+        gcc34
+        ..
+        gcc41
+        ..
         lpr
             ru
             ..
@@ -167,8 +167,8 @@
             nwclient
             ..
             perfmon
-	    ..
-	    pf
+            ..
+            pf
             ..
             portal
             ..
@@ -204,8 +204,8 @@
                 print
                 ..
             ..
-	    splash
-	    ..
+            splash
+            ..
             startslip
             ..
             sunrpc
@@ -259,46 +259,46 @@
             devutf8
             ..
         ..
-	i18n
-	    csmapper
-		CP
-		..
-		EBCDIC
-		..
-		GB
-		..
-		ISO-8859
-		..
-		ISO646
-		..
-		JIS
-		..
-		KS
-		..
-		MISC
-		..
-	    ..
-	    esdb
-		CP
-		..
-		EBCDIC
-		..
-		EUC
-		..
-		ISO-2022
-		..
-		ISO-8859
-		..
-		ISO646
-		..
-		MISC
-		..
-		UTF
-		..
-	    ..
-	    iconv
-	    ..
-	..
+        i18n
+            csmapper
+                CP
+                ..
+                EBCDIC
+                ..
+                GB
+                ..
+                ISO-8859
+                ..
+                ISO646
+                ..
+                JIS
+                ..
+                KS
+                ..
+                MISC
+                ..
+            ..
+            esdb
+                CP
+                ..
+                EBCDIC
+                ..
+                EUC
+                ..
+                ISO-2022
+                ..
+                ISO-8859
+                ..
+                ISO646
+                ..
+                MISC
+                ..
+                UTF
+                ..
+            ..
+            iconv
+            ..
+        ..
         info
         ..
         isdn
@@ -494,16 +494,16 @@
             ..
             it_IT.UTF-8
             ..
-	    ja_JP.ISO2022-JP
-	    ..
-	    ja_JP.ISO2022-JP2
-	    ..
+            ja_JP.ISO2022-JP
+            ..
+            ja_JP.ISO2022-JP2
+            ..
             ja_JP.SJIS
             ..
             ja_JP.UTF-8
             ..
-	    ja_JP.ct
-	    ..
+            ja_JP.ct
+            ..
             ja_JP.eucJP
             ..
             kk_KZ.PT154
@@ -628,8 +628,8 @@
             ..
             zh_TW.UTF-8
             ..
-	    zh_TW.eucTW
-	    ..
+            zh_TW.eucTW
+            ..
         ..
         man
 /set uname=man 
@@ -1133,8 +1133,8 @@
             Africa
             ..
             America
-	    	Argentina
-	    	..
+                Argentina
+                ..
                 Indiana
                 ..
                 Kentucky
