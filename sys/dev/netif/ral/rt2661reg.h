@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.9 2007/05/07 14:14:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.10 2008/01/17 07:35:38 sephe Exp $
  */
 
 #define RT2661_NOISE_FLOOR	-95
@@ -324,6 +324,7 @@ struct rt2661_rx_desc {
 #define RT2661_EEPROM_CONFIG2		0x11
 #define RT2661_EEPROM_BBP_BASE		0x13
 #define RT2661_EEPROM_TXPOWER_2GHZ	0x23
+#define RT2661_EEPROM_TSSI5		0x2e
 #define RT2661_EEPROM_FREQ_OFFSET	0x2f
 #define RT2661_EEPROM_LED_OFFSET	0x30
 #define RT2661_EEPROM_TXPOWER_5GHZ	0x31

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.25 2008/01/16 12:37:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.26 2008/01/17 07:35:38 sephe Exp $
  */
 
 /*
@@ -159,6 +159,10 @@ static int		rt2661_key_set(struct ieee80211com *,
 				       const struct ieee80211_key *,
 				       const uint8_t mac[IEEE80211_ADDR_LEN]);
 static void		*rt2661_ratectl_attach(struct ieee80211com *, u_int);
+static void		rt2661_set_txpower(struct rt2661_softc *, int8_t);
+static void		rt2661_calibrate(void *);
+static void		rt2661_calib_txpower(struct rt2661_softc *);
+static void		rt2661_calib_rxsensibility(struct rt2661_softc *);
 
 /*
  * Supported rates for 802.11a/b/g modes (in 500Kbps unit).
@@ -186,14 +190,8 @@ static const struct {
 	RT2661_DEF_BBP
 };
 
-static const struct rfprog {
-	uint8_t		chan;
-	uint32_t	r1, r2, r3, r4;
-}  rt2661_rf5225_1[] = {
-	RT2661_RF5225_1
-}, rt2661_rf5225_2[] = {
-	RT2661_RF5225_2
-};
+static const struct rt2661_rfprog rt2661_rf5225_1[] = { RT2661_RF5225_1 };
+static const struct rt2661_rfprog rt2661_rf5225_2[] = { RT2661_RF5225_2 };
 
 #define LED_EE2MCU(bit)	{ \
 	.ee_bit		= RT2661_EE_LED_##bit, \
@@ -237,6 +235,31 @@ rt2661_cipher(const struct ieee80211_key *k)
 	}
 }
 
+static __inline int8_t
+rt2661_txpower(const struct rt2661_softc *sc, int8_t power)
+{
+	if (sc->sc_txpwr_corr > 0) {
+		if (power > sc->sc_txpwr_corr)
+			power -= sc->sc_txpwr_corr;
+		else
+			power = 0;
+	}
+	return power;
+}
+
+static __inline int
+rt2661_avgrssi(const struct rt2661_softc *sc)
+{
+	int rssi_dbm;
+
+	rssi_dbm = sc->avg_rssi[0] + RT2661_NOISE_FLOOR;
+	if (sc->rf_rev == RT2661_RF_2529) {
+		if (sc->avg_rssi[1] > sc->avg_rssi[0])
+			rssi_dbm = sc->avg_rssi[0] + RT2661_NOISE_FLOOR;
+	}
+	return rssi_dbm;
+}
+
 int
 rt2661_attach(device_t dev, int id)
 {
@@ -248,6 +271,7 @@ rt2661_attach(device_t dev, int id)
 	int error, i, ac, ntries, size = 0;
 
 	callout_init(&sc->scan_ch);
+	callout_init(&sc->calib_ch);
 
 	sc->sc_irq_rid = 0;
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_irq_rid,
@@ -461,12 +485,29 @@ rt2661_attach(device_t dev, int id)
 	/*
 	 * Add a few sysctl knobs.
 	 */
-	sc->dwelltime = 200;
+	sc->sc_dwelltime = 200;	/* milliseconds */
+	sc->sc_txpwr_corr = -1;	/* Disable */
+	sc->sc_calib_txpwr = 0;	/* Disable */
+	sc->sc_calib_rxsns = 0;	/* Disable */
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "dwell",
-	    CTLFLAG_RW, &sc->dwelltime, 0,
-	    "channel dwell time (ms) for AP/station scanning");
+	    CTLFLAG_RW, &sc->sc_dwelltime, 0,
+	    "Channel dwell time (ms) for AP/station scanning");
+
+	SYSCTL_ADD_INT(&sc->sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "txpwr_corr",
+	    CTLFLAG_RW, &sc->sc_txpwr_corr, 0,
+	    "TX power correction value (<0 no correction)");
+
+	SYSCTL_ADD_INT(&sc->sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "calib_txpwr",
+	    CTLFLAG_RW, &sc->sc_calib_txpwr, 0,
+	    "Enable TX power calibration (sta mode)");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "calib_rxsns",
+	    CTLFLAG_RW, &sc->sc_calib_rxsns, 0,
+	    "Enable RX sensibility calibration (sta mode)");
 
 	error = bus_setup_intr(dev, sc->sc_irq, INTR_MPSAFE, rt2661_intr,
 			       sc, &sc->sc_ih, ifp->if_serializer);
@@ -904,6 +945,7 @@ rt2661_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	ostate = ic->ic_state;
 	callout_stop(&sc->scan_ch);
+	callout_stop(&sc->calib_ch);
 
 	if (ostate != nstate)
 		rt2661_led_newstate(sc, nstate);
@@ -921,7 +963,7 @@ rt2661_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	case IEEE80211_S_SCAN:
 		rt2661_set_chan(sc, ic->ic_curchan);
-		callout_reset(&sc->scan_ch, (sc->dwelltime * hz) / 1000,
+		callout_reset(&sc->scan_ch, (sc->sc_dwelltime * hz) / 1000,
 		    rt2661_next_scan, sc);
 		break;
 
@@ -952,6 +994,11 @@ rt2661_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 		if (ic->ic_opmode != IEEE80211_M_MONITOR)
 			rt2661_enable_tsf_sync(sc);
+
+		if (ic->ic_opmode == IEEE80211_M_STA) {
+			sc->sc_txpwr_cnt = 0;
+			callout_reset(&sc->calib_ch, hz, rt2661_calibrate, sc);
+		}
 		break;
 	}	
 
@@ -2019,6 +2066,12 @@ rt2661_bbp_write(struct rt2661_softc *sc, uint8_t reg, uint8_t val)
 	RAL_WRITE(sc, RT2661_PHY_CSR3, tmp);
 
 	DPRINTFN(15, ("BBP R%u <- 0x%02x\n", reg, val));
+
+	/* XXX */
+	if (reg == 17) {
+		DPRINTF(("record bbp17 %#x\n", val));
+		sc->bbp17 = val;
+	}
 }
 
 static uint8_t
@@ -2240,42 +2293,10 @@ rt2661_select_band(struct rt2661_softc *sc, struct ieee80211_channel *c)
 }
 
 static void
-rt2661_set_chan(struct rt2661_softc *sc, struct ieee80211_channel *c)
+rt2661_set_txpower(struct rt2661_softc *sc, int8_t power)
 {
-	struct ieee80211com *ic = &sc->sc_ic;
-	const struct rfprog *rfprog;
-	uint8_t bbp3, bbp94 = RT2661_BBPR94_DEFAULT;
-	int8_t power;
-	u_int i, chan;
-
-	chan = ieee80211_chan2ieee(ic, c);
-	if (chan == 0 || chan == IEEE80211_CHAN_ANY)
-		return;
-
-	/* select the appropriate RF settings based on what EEPROM says */
-	rfprog = (sc->rfprog == 0) ? rt2661_rf5225_1 : rt2661_rf5225_2;
-
-	/* find the settings for this channel (we know it exists) */
-	for (i = 0; rfprog[i].chan != chan; i++);
-
-	power = sc->txpow[i];
-	if (power < 0) {
-		bbp94 += power;
-		power = 0;
-	} else if (power > 31) {
-		bbp94 += power - 31;
-		power = 31;
-	}
-
-	/*
-	 * If we are switching from the 2GHz band to the 5GHz band or
-	 * vice-versa, BBP registers need to be reprogrammed.
-	 */
-	if (c->ic_flags != sc->sc_curchan->ic_flags) {
-		rt2661_select_band(sc, c);
-		rt2661_select_antenna(sc);
-	}
-	sc->sc_curchan = c;
+	const struct rt2661_rfprog *rfprog = sc->rfprog;
+	int i = sc->sc_curchan_idx;
 
 	rt2661_rf_write(sc, RAL_RF1, rfprog[i].r1);
 	rt2661_rf_write(sc, RAL_RF2, rfprog[i].r2);
@@ -2295,6 +2316,51 @@ rt2661_set_chan(struct rt2661_softc *sc, struct ieee80211_channel *c)
 	rt2661_rf_write(sc, RAL_RF2, rfprog[i].r2);
 	rt2661_rf_write(sc, RAL_RF3, rfprog[i].r3 | power << 7);
 	rt2661_rf_write(sc, RAL_RF4, rfprog[i].r4 | sc->rffreq << 10);
+
+	sc->sc_txpwr = power;
+}
+
+static void
+rt2661_set_chan(struct rt2661_softc *sc, struct ieee80211_channel *c)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	const struct rt2661_rfprog *rfprog = sc->rfprog;
+	uint8_t bbp3, bbp94 = RT2661_BBPR94_DEFAULT;
+	int8_t power;
+	u_int i, chan;
+
+	chan = ieee80211_chan2ieee(ic, c);
+	if (chan == 0 || chan == IEEE80211_CHAN_ANY)
+		return;
+
+	/* find the settings for this channel (we know it exists) */
+	for (i = 0; rfprog[i].chan != chan; i++)
+		; /* EMPTY */
+	KASSERT(i < RT2661_NCHAN_MAX, ("invalid channel %d\n", chan));
+	sc->sc_curchan_idx = i;
+
+	power = sc->txpow[i];
+	if (power < 0) {
+		bbp94 += power;
+		power = 0;
+	} else if (power > 31) {
+		bbp94 += power - 31;
+		power = 31;
+	}
+
+	power = rt2661_txpower(sc, power);
+
+	/*
+	 * If we are switching from the 2GHz band to the 5GHz band or
+	 * vice-versa, BBP registers need to be reprogrammed.
+	 */
+	if (c->ic_flags != sc->sc_curchan->ic_flags) {
+		rt2661_select_band(sc, c);
+		rt2661_select_antenna(sc);
+	}
+	sc->sc_curchan = c;
+
+	rt2661_set_txpower(sc, power);
 
 	/* enable smart mode for MIMO-capable RFs */
 	bbp3 = rt2661_bbp_read(sc, 3);
@@ -2436,6 +2502,7 @@ rt2661_read_config(struct rt2661_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	uint16_t val;
+	uint8_t rfprog = 0;
 	int i, start_chan;
 
 	/* read MAC address */
@@ -2469,6 +2536,14 @@ rt2661_read_config(struct rt2661_softc *sc)
 	DPRINTF(("External 2GHz LNA=%d\nExternal 5GHz LNA=%d\n",
 	    sc->ext_2ghz_lna, sc->ext_5ghz_lna));
 
+	if (sc->ext_2ghz_lna) {
+		sc->bbp17_2ghz_min = 0x30;
+		sc->bbp17_2ghz_max = 0x50;
+	} else {
+		sc->bbp17_2ghz_min = 0x20;
+		sc->bbp17_2ghz_max = 0x40;
+	}
+
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_RSSI_2GHZ_OFFSET);
 	sc->rssi_2ghz_corr[0] = (int8_t)(val & 0xff);	/* signed */
 	sc->rssi_2ghz_corr[1] = (int8_t)(val >> 8);	/* signed */
@@ -2500,11 +2575,13 @@ rt2661_read_config(struct rt2661_softc *sc)
 
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_FREQ_OFFSET);
 	if ((val >> 8) != 0xff)
-		sc->rfprog = (val >> 8) & 0x3;
+		rfprog = (val >> 8) & 0x3;
 	if ((val & 0xff) != 0xff)
 		sc->rffreq = val & 0xff;
 
-	DPRINTF(("RF prog=%d\nRF freq=%d\n", sc->rfprog, sc->rffreq));
+	DPRINTF(("RF prog=%d\nRF freq=%d\n", rfprog, sc->rffreq));
+
+	sc->rfprog = rfprog == 0 ? rt2661_rf5225_1 : rt2661_rf5225_2;
 
 #define NCHAN_2GHZ	14
 #define NCHAN_5GHZ	24
@@ -2547,6 +2624,9 @@ rt2661_read_config(struct rt2661_softc *sc)
 		sc->mcu_led |= ((val >> RT2661_EE_LED_MODE_SHIFT) &
 				RT2661_EE_LED_MODE_MASK);
 	}
+
+	val = rt2661_eeprom_read(sc, RT2661_EEPROM_TSSI5);
+	DPRINTF(("tssi5 %#x\n", val));
 }
 
 static int
@@ -3209,4 +3289,108 @@ rt2661_ratectl_attach(struct ieee80211com *ic, u_int rc)
 		panic("unknown rate control algo %u\n", rc);
 		return NULL;
 	}
+}
+
+static void
+rt2661_calib_txpower(struct rt2661_softc *sc)
+{
+	int8_t txpower;
+	int rssi_dbm, cnt;
+
+	if (sc->sc_ic.ic_state != IEEE80211_S_RUN)
+		return;
+
+	cnt = sc->sc_txpwr_cnt;
+	sc->sc_txpwr_cnt++;
+
+	rssi_dbm = rt2661_avgrssi(sc);
+
+	txpower = sc->txpow[sc->sc_curchan_idx];
+	if (txpower < 0)
+		txpower = 0;
+	else if (txpower > 31)
+		txpower = 31;
+	txpower = rt2661_txpower(sc, txpower);
+
+#ifdef notyet
+	if (cnt % 4 == 0) {
+	} else {
+	}
+#endif
+
+	DPRINTF(("dbm %d, txpower %d\n", rssi_dbm, txpower));
+
+	if (rssi_dbm > -30) {
+		if (txpower > 16)
+			txpower -= 16;
+		else
+			txpower = 0;
+	} else if (rssi_dbm > -45) {
+		if (txpower > 6)
+			txpower -= 6;
+		else
+			txpower = 0;
+	}
+
+	if (txpower != sc->sc_txpwr)
+		rt2661_set_txpower(sc, txpower);
+}
+
+static void
+rt2661_calib_rxsensibility(struct rt2661_softc *sc)
+{
+#define MIDRANGE_RSSI	-74
+
+	uint8_t bbp17;
+	int rssi_dbm;
+
+	if (sc->sc_ic.ic_state != IEEE80211_S_RUN)
+		return;
+
+	rssi_dbm = rt2661_avgrssi(sc);
+
+	if (rssi_dbm >= MIDRANGE_RSSI) {
+		if (rssi_dbm >= -35)
+			bbp17 = 0x60;
+		else if (rssi_dbm >= -58)
+			bbp17 = sc->bbp17_2ghz_max;
+		else if (rssi_dbm >= -66)
+			bbp17 = sc->bbp17_2ghz_min + 0x10;
+		else
+			bbp17 = sc->bbp17_2ghz_min + 0x8;
+		if (sc->bbp17 != bbp17)
+			rt2661_bbp_write(sc, 17, bbp17);
+		return;
+	}
+
+	bbp17 = sc->bbp17_2ghz_max - (2 * (MIDRANGE_RSSI - rssi_dbm));
+	if (bbp17 < sc->bbp17_2ghz_min)
+		bbp17 = sc->bbp17_2ghz_min;
+
+	if (sc->bbp17 > bbp17) {
+		rt2661_bbp_write(sc, 17, bbp17);
+		return;
+	}
+	DPRINTF(("calibrate according to false CCA\n"));
+
+#undef MIDRANGE_RSSI
+}
+
+static void
+rt2661_calibrate(void *xsc)
+{
+	struct rt2661_softc *sc = xsc;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	if (sc->sc_calib_rxsns)
+		rt2661_calib_rxsensibility(sc);
+
+	if (sc->sc_calib_txpwr)
+		rt2661_calib_txpower(sc);
+
+	callout_reset(&sc->calib_ch, hz, rt2661_calibrate, sc);
+
+	lwkt_serialize_exit(ifp->if_serializer);
 }

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.9 2008/01/16 12:31:25 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.10 2008/01/17 07:35:38 sephe Exp $
  */
 
 #define RT2661_NCHAN_MAX	38
@@ -88,6 +88,11 @@ struct rt2661_rx_ring {
 	int			next;
 };
 
+struct rt2661_rfprog {
+	uint8_t		chan;
+	uint32_t	r1, r2, r3, r4;
+};
+
 struct rt2661_softc {
 	struct ieee80211com		sc_ic;
 	bus_space_tag_t			sc_st;
@@ -117,15 +122,19 @@ struct rt2661_softc {
 					 const uint8_t[IEEE80211_ADDR_LEN]);
 
 	struct callout			scan_ch;
+	struct callout			calib_ch;
 
 	int				sc_tx_timer;
 	int				sc_sifs;
 
 	struct ieee80211_channel	*sc_curchan;
+	int				sc_curchan_idx;
+	int				sc_txpwr_cnt;
+	int8_t				sc_txpwr;
 
 	uint8_t				rf_rev;
 
-	uint8_t				rfprog;
+	const struct rt2661_rfprog	*rfprog;
 	uint8_t				rffreq;
 
 	struct rt2661_tx_ring		txq[4];
@@ -148,6 +157,8 @@ struct rt2661_softc {
 	int				ext_2ghz_lna;
 	int				rssi_2ghz_corr[2];
 	int				avg_rssi[2];
+	uint8_t				bbp17_2ghz_min;
+	uint8_t				bbp17_2ghz_max;
 
 	int				ext_5ghz_lna;
 	int				rssi_5ghz_corr;
@@ -161,8 +172,6 @@ struct rt2661_softc {
 	uint16_t			mcu_led;
 
 	STAILQ_HEAD(, rt2661_tx_ratectl) tx_ratectl;
-
-	int				dwelltime;
 
 	struct bpf_if			*sc_drvbpf;
 
@@ -182,6 +191,11 @@ struct rt2661_softc {
 
 	struct sysctl_ctx_list		sysctl_ctx;
 	struct sysctl_oid		*sysctl_tree;
+
+	int				sc_txpwr_corr;
+	int				sc_calib_txpwr;
+	int				sc_calib_rxsns;
+	int				sc_dwelltime;
 
 	struct ieee80211_onoe_param	sc_onoe_param;
 	struct ieee80211_sample_param	sc_sample_param;
