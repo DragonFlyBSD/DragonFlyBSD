@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.1 2008/01/17 04:59:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.2 2008/01/17 05:14:49 dillon Exp $
  */
 
 #include "hammer.h"
@@ -67,6 +67,8 @@ hammer_cmd_show(int32_t vol_no, int32_t clu_no, int depth)
 	       depth);
 	node_offset = cluster->ondisk->clu_btree_root;
 	print_btree_node(cluster, node_offset, depth);
+	rel_cluster(cluster);
+	rel_volume(volume);
 }
 
 static void

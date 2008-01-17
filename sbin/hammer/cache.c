@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cache.c,v 1.1 2008/01/03 06:48:45 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cache.c,v 1.2 2008/01/17 05:14:49 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -47,6 +47,7 @@
 
 static int CacheUse;
 static int CacheMax = 8 * 1024 * 1024;
+static int NCache;
 static TAILQ_HEAD(, cache_info) CacheList = TAILQ_HEAD_INITIALIZER(CacheList);
 
 void
@@ -55,6 +56,7 @@ hammer_cache_add(struct cache_info *cache, enum cache_type type)
 	TAILQ_INSERT_TAIL(&CacheList, cache, entry);
 	cache->type = type;
 	CacheUse += HAMMER_BUFSIZE;
+	++NCache;
 }
 
 void
@@ -62,6 +64,7 @@ hammer_cache_del(struct cache_info *cache)
 {
 	TAILQ_REMOVE(&CacheList, cache, entry);
 	CacheUse -= HAMMER_BUFSIZE;
+	--NCache;
 }
 
 void
@@ -69,14 +72,21 @@ hammer_cache_flush(void)
 {
 	struct cache_info *cache;
 	int target;
+	int count = 0;
 
 	if (CacheUse >= CacheMax) {
 		target = CacheMax / 2;
 		while ((cache = TAILQ_FIRST(&CacheList)) != NULL) {
+			++count;
 			if (cache->refs) {
 				TAILQ_REMOVE(&CacheList, cache, entry);
 				TAILQ_INSERT_TAIL(&CacheList, cache, entry);
 				continue;
+			}
+			if (count == NCache) {
+				CacheMax += 8 * 1024 * 1024;
+				target = CacheMax / 2;
+				count = 0;
 			}
 			cache->refs = 1;
 			cache->delete = 1;
@@ -101,6 +111,8 @@ hammer_cache_flush(void)
 				break;
 			}
 			/* structure was freed */
+			if (CacheUse < target)
+				break;
 		}
 	}
 }
