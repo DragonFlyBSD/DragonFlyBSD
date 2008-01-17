@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.26 2008/01/17 07:35:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.27 2008/01/17 08:56:14 sephe Exp $
  */
 
 /*
@@ -162,7 +162,8 @@ static void		*rt2661_ratectl_attach(struct ieee80211com *, u_int);
 static void		rt2661_set_txpower(struct rt2661_softc *, int8_t);
 static void		rt2661_calibrate(void *);
 static void		rt2661_calib_txpower(struct rt2661_softc *);
-static void		rt2661_calib_rxsensibility(struct rt2661_softc *);
+static void		rt2661_calib_rxsensibility(struct rt2661_softc *,
+						   uint32_t);
 
 /*
  * Supported rates for 802.11a/b/g modes (in 500Kbps unit).
@@ -996,6 +997,12 @@ rt2661_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 			rt2661_enable_tsf_sync(sc);
 
 		if (ic->ic_opmode == IEEE80211_M_STA) {
+			uint32_t sta[4];
+
+#define N(arr)	(int)(sizeof(arr) / sizeof(arr[0]))
+			/* clear STA registers */
+			RAL_READ_REGION_4(sc, RT2661_STA_CSR0, sta, N(sta));
+#undef N
 			sc->sc_txpwr_cnt = 0;
 			callout_reset(&sc->calib_ch, hz, rt2661_calibrate, sc);
 		}
@@ -3337,7 +3344,7 @@ rt2661_calib_txpower(struct rt2661_softc *sc)
 }
 
 static void
-rt2661_calib_rxsensibility(struct rt2661_softc *sc)
+rt2661_calib_rxsensibility(struct rt2661_softc *sc, uint32_t false_cca)
 {
 #define MIDRANGE_RSSI	-74
 
@@ -3358,6 +3365,7 @@ rt2661_calib_rxsensibility(struct rt2661_softc *sc)
 			bbp17 = sc->bbp17_2ghz_min + 0x10;
 		else
 			bbp17 = sc->bbp17_2ghz_min + 0x8;
+
 		if (sc->bbp17 != bbp17)
 			rt2661_bbp_write(sc, 17, bbp17);
 		return;
@@ -3371,7 +3379,13 @@ rt2661_calib_rxsensibility(struct rt2661_softc *sc)
 		rt2661_bbp_write(sc, 17, bbp17);
 		return;
 	}
+
 	DPRINTF(("calibrate according to false CCA\n"));
+
+	if (false_cca > 512 && sc->bbp17 > sc->bbp17_2ghz_min)
+		rt2661_bbp_write(sc, 17, sc->bbp17 - 1);
+	else if (false_cca < 100 && sc->bbp17 < bbp17)
+		rt2661_bbp_write(sc, 17, sc->bbp17 + 1);
 
 #undef MIDRANGE_RSSI
 }
@@ -3381,11 +3395,15 @@ rt2661_calibrate(void *xsc)
 {
 	struct rt2661_softc *sc = xsc;
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	uint32_t false_cca;
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
+	false_cca = (RAL_READ(sc, RT2661_STA_CSR1) >> 16);
+	DPRINTF(("false cca %u\n", false_cca));
+
 	if (sc->sc_calib_rxsns)
-		rt2661_calib_rxsensibility(sc);
+		rt2661_calib_rxsensibility(sc, false_cca);
 
 	if (sc->sc_calib_txpwr)
 		rt2661_calib_txpower(sc);
