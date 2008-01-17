@@ -15,9 +15,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.10 2008/01/17 07:35:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.11 2008/01/17 13:33:11 sephe Exp $
  */
 
+#define RT2661_TSSI_LIMSZ	4
 #define RT2661_NCHAN_MAX	38
 #define RT2661_KEY_MAX		64
 
@@ -150,6 +151,7 @@ struct rt2661_softc {
 	}				bbp_prom[16];
 
 	int				hw_radio;
+	int				auto_txagc;
 	int				rx_ant;
 	int				tx_ant;
 	int				nb_ant;
@@ -159,6 +161,12 @@ struct rt2661_softc {
 	int				avg_rssi[2];
 	uint8_t				bbp17_2ghz_min;
 	uint8_t				bbp17_2ghz_max;
+
+	uint8_t				tssi_2ghz_up[RT2661_TSSI_LIMSZ];
+	uint8_t				tssi_2ghz_down[RT2661_TSSI_LIMSZ];
+	uint8_t				tssi_2ghz_ref;
+	int8_t				tssi_2ghz_step;
+	int8_t				tssi_2ghz_comp;
 
 	int				ext_5ghz_lna;
 	int				rssi_5ghz_corr;

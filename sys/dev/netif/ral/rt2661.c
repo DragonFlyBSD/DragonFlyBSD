@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.27 2008/01/17 08:56:14 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.28 2008/01/17 13:33:11 sephe Exp $
  */
 
 /*
@@ -2529,12 +2529,14 @@ rt2661_read_config(struct rt2661_softc *sc)
 	/* XXX: test if different from 0xffff? */
 	sc->rf_rev   = (val >> 11) & 0x1f;
 	sc->hw_radio = (val >> 10) & 0x1;
+	sc->auto_txagc = (val >> 9) & 0x1;
 	sc->rx_ant   = (val >> 4)  & 0x3;
 	sc->tx_ant   = (val >> 2)  & 0x3;
 	sc->nb_ant   = val & 0x3;
 
-	DPRINTF(("RF revision=%d, nb_ant %d, rxant %d, txant %d\n",
-		 sc->rf_rev, sc->nb_ant, sc->rx_ant, sc->tx_ant));
+	DPRINTF(("RF revision=%d\n", sc->rf_rev));
+	DPRINTF(("Number of ant %d, rxant %d, txant %d\n",
+		 sc->nb_ant, sc->rx_ant, sc->tx_ant));
 
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_CONFIG2);
 	sc->ext_5ghz_lna = (val >> 6) & 0x1;
@@ -2632,8 +2634,38 @@ rt2661_read_config(struct rt2661_softc *sc)
 				RT2661_EE_LED_MODE_MASK);
 	}
 
-	val = rt2661_eeprom_read(sc, RT2661_EEPROM_TSSI5);
-	DPRINTF(("tssi5 %#x\n", val));
+	/* TX power down step array */
+	val = rt2661_eeprom_read(sc, RT2661_EEPROM_2GHZ_TSSI1);
+	sc->tssi_2ghz_down[3] = val & 0xff;
+	sc->tssi_2ghz_down[2] = val >> 8;
+	val = rt2661_eeprom_read(sc, RT2661_EEPROM_2GHZ_TSSI2);
+	sc->tssi_2ghz_down[1] = val & 0xff;
+	sc->tssi_2ghz_down[0] = val >> 8;
+	DPRINTF(("2GHZ tssi down 0:%u 1:%u 2:%u 3:%u\n",
+		 sc->tssi_2ghz_down[0], sc->tssi_2ghz_down[1],
+		 sc->tssi_2ghz_down[2], sc->tssi_2ghz_down[3]));
+
+	/* TX power up step array */
+	val = rt2661_eeprom_read(sc, RT2661_EEPROM_2GHZ_TSSI3);
+	sc->tssi_2ghz_up[0] = val & 0xff;
+	sc->tssi_2ghz_up[1] = val >> 8;
+	val = rt2661_eeprom_read(sc, RT2661_EEPROM_2GHZ_TSSI4);
+	sc->tssi_2ghz_up[2] = val & 0xff;
+	sc->tssi_2ghz_up[3] = val >> 8;
+	DPRINTF(("2GHZ tssi up 0:%u 1:%u 2:%u 3:%u\n",
+		 sc->tssi_2ghz_up[0], sc->tssi_2ghz_up[1],
+		 sc->tssi_2ghz_up[2], sc->tssi_2ghz_up[3]));
+
+	/* TX power adjustment reference value and step */
+	val = rt2661_eeprom_read(sc, RT2661_EEPROM_2GHZ_TSSI5);
+	sc->tssi_2ghz_ref = val & 0xff;
+	sc->tssi_2ghz_step = val >> 8;
+	DPRINTF(("2GHZ tssi ref %u, step %d\n",
+		 sc->tssi_2ghz_ref, sc->tssi_2ghz_step));
+
+	if (sc->tssi_2ghz_ref == 0xff)
+		sc->auto_txagc = 0;
+	DPRINTF(("Auto TX AGC %d\n", sc->auto_txagc));
 }
 
 static int
@@ -3302,15 +3334,10 @@ static void
 rt2661_calib_txpower(struct rt2661_softc *sc)
 {
 	int8_t txpower;
-	int rssi_dbm, cnt;
+	int rssi_dbm;
 
 	if (sc->sc_ic.ic_state != IEEE80211_S_RUN)
 		return;
-
-	cnt = sc->sc_txpwr_cnt;
-	sc->sc_txpwr_cnt++;
-
-	rssi_dbm = rt2661_avgrssi(sc);
 
 	txpower = sc->txpow[sc->sc_curchan_idx];
 	if (txpower < 0)
@@ -3319,12 +3346,44 @@ rt2661_calib_txpower(struct rt2661_softc *sc)
 		txpower = 31;
 	txpower = rt2661_txpower(sc, txpower);
 
-#ifdef notyet
-	if (cnt % 4 == 0) {
-	} else {
-	}
-#endif
+	if (sc->auto_txagc) {
+		/*
+		 * Compensate TX power according to temperature change
+		 */
+		if (sc->sc_txpwr_cnt++ % 4 == 0) {
+			uint8_t bbp1;
+			int i;
 
+			/*
+			 * Adjust compensation very 4 seconds
+			 */
+			bbp1 = rt2661_bbp_read(sc, 1);
+			if (bbp1 > sc->tssi_2ghz_ref) {
+				for (i = 0; i < RT2661_TSSI_LIMSZ; ++i) {
+					if (bbp1 <= sc->tssi_2ghz_down[i])
+						break;
+				}
+				if (txpower > (sc->tssi_2ghz_step * i)) {
+					sc->tssi_2ghz_comp =
+					-(sc->tssi_2ghz_step * i);
+				} else {
+					sc->tssi_2ghz_comp = -txpower;
+				}
+			} else if (bbp1 < sc->tssi_2ghz_ref) {
+				for (i = 0; i < RT2661_TSSI_LIMSZ; ++i) {
+					if (bbp1 >= sc->tssi_2ghz_up[i])
+						break;
+				}
+				sc->tssi_2ghz_comp = sc->tssi_2ghz_step * i;
+			}
+		}
+		txpower += sc->tssi_2ghz_comp;
+	}
+
+	/*
+	 * Adjust TX power according to RSSI
+	 */
+	rssi_dbm = rt2661_avgrssi(sc);
 	DPRINTF(("dbm %d, txpower %d\n", rssi_dbm, txpower));
 
 	if (rssi_dbm > -30) {
