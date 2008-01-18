@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.19 2008/01/18 01:43:07 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.20 2008/01/18 02:15:43 sephe Exp $
  */
 
 /*
@@ -131,7 +131,7 @@ static void		rt2560_set_macaddr(struct rt2560_softc *, uint8_t *);
 static void		rt2560_get_macaddr(struct rt2560_softc *, uint8_t *);
 static void		rt2560_update_promisc(struct rt2560_softc *);
 static const char	*rt2560_get_rf(int);
-static void		rt2560_read_eeprom(struct rt2560_softc *);
+static void		rt2560_read_config(struct rt2560_softc *);
 static int		rt2560_bbp_init(struct rt2560_softc *);
 static void		rt2560_set_txantenna(struct rt2560_softc *, int);
 static void		rt2560_set_rxantenna(struct rt2560_softc *, int);
@@ -207,7 +207,7 @@ rt2560_attach(device_t dev, int id)
 	rt2560_get_macaddr(sc, ic->ic_myaddr);
 
 	/* retrieve RF rev. no and various other things from EEPROM */
-	rt2560_read_eeprom(sc);
+	rt2560_read_config(sc);
 
 	device_printf(dev, "MAC/BBP RT2560 (rev 0x%02x), RF %s\n",
 	    sc->asic_rev, rt2560_get_rf(sc->rf_rev));
@@ -2422,7 +2422,7 @@ rt2560_get_rf(int rev)
 }
 
 static void
-rt2560_read_eeprom(struct rt2560_softc *sc)
+rt2560_read_config(struct rt2560_softc *sc)
 {
 	uint16_t val;
 	int i;
@@ -2448,10 +2448,11 @@ rt2560_read_eeprom(struct rt2560_softc *sc)
 		sc->txpow[i * 2] = val & 0xff;
 		sc->txpow[i * 2 + 1] = val >> 8;
 	}
-#ifdef RAL_DEBUG
-	for (i = 0; i < 14; ++i)
+	for (i = 0; i < 14; ++i) {
+		if (sc->txpow[i] > 32)
+			sc->txpow[i] = 24;
 		DPRINTF(("tx power chan %d: %u\n", i + 1, sc->txpow[i]));
-#endif
+	}
 
 	val = rt2560_eeprom_read(sc, RT2560_EEPROM_CALIBRATE);
 	if ((val & 0xff) == 0xff)
