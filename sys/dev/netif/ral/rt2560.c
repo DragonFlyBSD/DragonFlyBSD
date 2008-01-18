@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.21 2008/01/18 03:52:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.22 2008/01/18 03:58:05 sephe Exp $
  */
 
 /*
@@ -118,9 +118,6 @@ static void		rt2560_rf_write(struct rt2560_softc *, uint8_t,
 			    uint32_t);
 static void		rt2560_set_chan(struct rt2560_softc *,
 			    struct ieee80211_channel *);
-#if 0
-static void		rt2560_disable_rf_tune(struct rt2560_softc *);
-#endif
 static void		rt2560_enable_tsf_sync(struct rt2560_softc *);
 static void		rt2560_update_plcp(struct rt2560_softc *);
 static void		rt2560_update_slot(struct ifnet *);
@@ -2200,27 +2197,6 @@ rt2560_set_chan(struct rt2560_softc *sc, struct ieee80211_channel *c)
 	sc->sc_sifs = IEEE80211_IS_CHAN_5GHZ(c) ? IEEE80211_DUR_OFDM_SIFS
 						: IEEE80211_DUR_SIFS;
 }
-
-#if 0
-/*
- * Disable RF auto-tuning.
- */
-static void
-rt2560_disable_rf_tune(struct rt2560_softc *sc)
-{
-	uint32_t tmp;
-
-	if (sc->rf_rev != RT2560_RF_2523) {
-		tmp = sc->rf_regs[RAL_RF1] & ~RAL_RF1_AUTOTUNE;
-		rt2560_rf_write(sc, RAL_RF1, tmp);
-	}
-
-	tmp = sc->rf_regs[RAL_RF3] & ~RAL_RF3_AUTOTUNE;
-	rt2560_rf_write(sc, RAL_RF3, tmp);
-
-	DPRINTFN(2, ("disabling RF autotune\n"));
-}
-#endif
 
 /*
  * Refer to IEEE Std 802.11-1999 pp. 123 for more information on TSF
