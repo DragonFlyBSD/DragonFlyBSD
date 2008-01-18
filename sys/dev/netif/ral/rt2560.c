@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.18 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.19 2008/01/18 01:43:07 sephe Exp $
  */
 
 /*
@@ -2445,9 +2445,13 @@ rt2560_read_eeprom(struct rt2560_softc *sc)
 	/* read Tx power for all b/g channels */
 	for (i = 0; i < 14 / 2; i++) {
 		val = rt2560_eeprom_read(sc, RT2560_EEPROM_TXPOWER + i);
-		sc->txpow[i * 2] = val >> 8;
-		sc->txpow[i * 2 + 1] = val & 0xff;
+		sc->txpow[i * 2] = val & 0xff;
+		sc->txpow[i * 2 + 1] = val >> 8;
 	}
+#ifdef RAL_DEBUG
+	for (i = 0; i < 14; ++i)
+		DPRINTF(("tx power chan %d: %u\n", i + 1, sc->txpow[i]));
+#endif
 
 	val = rt2560_eeprom_read(sc, RT2560_EEPROM_CALIBRATE);
 	if ((val & 0xff) == 0xff)
