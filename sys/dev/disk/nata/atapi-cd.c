@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.9 2007/11/20 09:25:21 hasso Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.10 2008/01/18 13:53:46 matthias Exp $
  */
 
 #include "opt_ata.h"
@@ -1339,7 +1339,8 @@ acd_get_progress(device_t dev, int *finished)
     request->flags = ATA_R_ATAPI | ATA_R_READ;
     request->timeout = 30;
     ata_queue_request(request);
-    if (!request->error && request->u.atapi.sense.error & ATA_SENSE_VALID)
+    if (!request->error &&
+	request->u.atapi.sense.specific & ATA_SENSE_SPEC_VALID)
 	*finished = ((request->u.atapi.sense.specific2 |
 		     (request->u.atapi.sense.specific1 << 8)) * 100) / 65535;
     else
