@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560reg.h,v 1.3 2007/02/05 15:19:04 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560reg.h,v 1.4 2008/01/18 03:52:02 sephe Exp $
  */
 
 #define RT2560_DEFAULT_RSSI_CORR	0x79
@@ -304,6 +304,7 @@ struct rt2560_rx_desc {
 #define RT2560_EEPROM_DELAY	1	/* minimum hold time (microsecond) */
 
 #define RT2560_EEPROM_CONFIG0	16
+#define RT2560_EEPROM_CONFIG1	17
 #define RT2560_EEPROM_BBP_BASE	19
 #define RT2560_EEPROM_TXPOWER	35
 #define RT2560_EEPROM_CALIBRATE	62

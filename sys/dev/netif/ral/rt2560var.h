@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.5 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.6 2008/01/18 03:52:02 sephe Exp $
  */
 
 struct rt2560_rx_radiotap_header {
@@ -165,7 +165,10 @@ struct rt2560_softc {
 
 	struct ieee80211_onoe_param sc_onoe_param;
 	struct ieee80211_sample_param sc_sample_param;
+	uint32_t		sc_flags;
 };
+
+#define RT2560_FLAG_RXSNS	0x1
 
 int	rt2560_attach(device_t, int);
 int	rt2560_detach(void *);

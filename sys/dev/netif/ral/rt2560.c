@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.20 2008/01/18 02:15:43 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.21 2008/01/18 03:52:02 sephe Exp $
  */
 
 /*
@@ -2438,8 +2438,12 @@ rt2560_read_config(struct rt2560_softc *sc)
 	/* read default values for BBP registers */
 	for (i = 0; i < 16; i++) {
 		val = rt2560_eeprom_read(sc, RT2560_EEPROM_BBP_BASE + i);
+		if (val == 0xffff || val == 0)
+			continue;
 		sc->bbp_prom[i].reg = val >> 8;
 		sc->bbp_prom[i].val = val & 0xff;
+		DPRINTF(("rom bbp reg:%u val:%#x\n",
+			 sc->bbp_prom[i].reg, sc->bbp_prom[i].val));
 	}
 
 	/* read Tx power for all b/g channels */
@@ -2461,6 +2465,14 @@ rt2560_read_config(struct rt2560_softc *sc)
 		sc->rssi_corr = val & 0xff;
 	DPRINTF(("rssi correction %d, calibrate 0x%02x\n",
 		 sc->rssi_corr, val));
+
+	val = rt2560_eeprom_read(sc, RT2560_EEPROM_CONFIG1);
+	if (val == 0xffff)
+		val = 0;
+	if ((val & 0x2) == 0) {
+		DPRINTF(("capable of RX sensitivity calibration\n"));
+		sc->sc_flags |= RT2560_FLAG_RXSNS;
+	}
 }
 
 static int
