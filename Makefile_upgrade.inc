@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.3 2008/01/17 12:51:22 matthias Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.4 2008/01/18 20:49:59 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -303,8 +303,6 @@ TO_REMOVE+=/usr/share/man/man3/exp10f.3.gz
 TO_REMOVE+=/usr/share/man/cat3/exp10f.3.gz
 TO_REMOVE+=/usr/share/man/man5/drivers.conf.5.gz
 TO_REMOVE+=/usr/share/man/cat5/drivers.conf.5.gz
-TO_REMOVE+=/usr/share/man/man5/gbk.5.gz
-TO_REMOVE+=/usr/share/man/cat5/gbk.5.gz
 TO_REMOVE+=/usr/share/man/man5/ntp.conf.5.gz
 TO_REMOVE+=/usr/share/man/cat5/ntp.conf.5.gz
 TO_REMOVE+=/usr/share/man/man5/ntp.keys.5.gz
