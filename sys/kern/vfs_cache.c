@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.85 2007/11/02 19:52:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.86 2008/01/18 19:13:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -975,48 +975,35 @@ cache_inval_vp_nonblock(struct vnode *vp)
 
 /*
  * The source ncp has been renamed to the target ncp.  Both fncp and tncp
- * must be locked.  Both will be set to unresolved, any children of tncp
- * will be disconnected (the prior contents of the target is assumed to be
- * destroyed by the rename operation, e.g. renaming over an empty directory),
- * and all children of fncp will be moved to tncp.
+ * must be locked.  The target ncp is destroyed (as a normal rename-over
+ * would destroy the target file or directory).
  *
- * XXX the disconnection could pose a problem, check code paths to make
- * sure any code that blocks can handle the parent being changed out from
- * under it.  Maybe we should lock the children (watch out for deadlocks) ?
- *
- * After we return the caller has the option of calling cache_setvp() if
- * the vnode of the new target ncp is known.
- *
- * Any process CD'd into any of the children will no longer be able to ".."
- * back out.  An rm -rf can cause this situation to occur.
+ * Because there may be references to the source ncp we cannot copy its
+ * contents to the target.  Instead the source ncp is relinked as the target
+ * and the target ncp is removed from the namecache topology.
  */
 void
 cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 {
 	struct namecache *fncp = fnch->ncp;
 	struct namecache *tncp = tnch->ncp;
-	struct namecache *scan;
-	int didwarn = 0;
+	char *oname;
 
-	_cache_setunresolved(fncp);
 	_cache_setunresolved(tncp);
-	while (_cache_inval(tncp, CINV_CHILDREN) != 0) {
-		if (didwarn++ % 10 == 0) {
-			kprintf("Warning: cache_rename: race during "
-				"rename %s->%s\n",
-				fncp->nc_name, tncp->nc_name);
-		}
-		tsleep(tncp, 0, "mvrace", hz / 10);
-		_cache_setunresolved(tncp);
-	}
-	while ((scan = TAILQ_FIRST(&fncp->nc_list)) != NULL) {
-		_cache_hold(scan);
-		cache_unlink_parent(scan);
-		cache_link_parent(scan, tncp);
-		if (scan->nc_flag & NCF_HASHED)
-			_cache_rehash(scan);
-		_cache_drop(scan);
-	}
+	cache_unlink_parent(fncp);
+	cache_link_parent(fncp, tncp->nc_parent);
+	cache_unlink_parent(tncp);
+	oname = fncp->nc_name;
+	fncp->nc_name = tncp->nc_name;
+	fncp->nc_nlen = tncp->nc_nlen;
+	tncp->nc_name = NULL;
+	tncp->nc_nlen = 0;
+	if (fncp->nc_flag & NCF_HASHED)
+		_cache_rehash(fncp);
+	if (tncp->nc_flag & NCF_HASHED)
+		_cache_rehash(tncp);
+	if (oname)
+		kfree(oname, M_VFSCACHE);
 }
 
 /*

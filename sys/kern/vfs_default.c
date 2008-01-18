@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.51 2007/08/28 01:04:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.52 2008/01/18 19:13:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1056,10 +1056,8 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 		KKASSERT(tvp == NULL);
 		KKASSERT((tcnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_RENAME(fdvp, fvp, &fcnp, tdvp, tvp, &tcnp);
-		if (error == 0) {
+		if (error == 0)
 			cache_rename(fnch, tnch);
-			cache_setvp(tnch, fvp);
-		}
 	} else if (error == 0) {
 		/*
 		 * Target exists.  VOP_OLD_RENAME should correctly delete the
@@ -1067,10 +1065,8 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 		 */
 		KKASSERT((tcnp.cn_flags & CNP_PDIRUNLOCK) == 0);
 		error = VOP_OLD_RENAME(fdvp, fvp, &fcnp, tdvp, tvp, &tcnp);
-		if (error == 0) {
+		if (error == 0)
 			cache_rename(fnch, tnch);
-			cache_setvp(tnch, fvp);
-		}
 	} else {
 		vrele(fdvp);
 		vrele(fvp);
