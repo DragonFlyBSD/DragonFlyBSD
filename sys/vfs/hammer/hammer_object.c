@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.20 2008/01/17 05:06:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.21 2008/01/18 07:02:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -349,6 +349,9 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
  * cursor must be seeked to the directory entry record being deleted.
  *
  * NOTE: HAMMER_CURSOR_DELETE may not have been set.  XXX remove flag.
+ *
+ * This function can return EDEADLK requiring the caller to terminate
+ * the cursor and retry.
  */
 int
 hammer_ip_del_directory(struct hammer_transaction *trans,
@@ -363,12 +366,16 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 	 * One less link.  The file may still be open in the OS even after
 	 * all links have gone away so we only try to sync if the OS has
 	 * no references and nlinks falls to 0.
+	 *
+	 * We have to terminate the cursor before syncing the inode to
+	 * avoid deadlocking against ourselves.
 	 */
 	if (error == 0) {
 		--ip->ino_rec.ino_nlinks;
 		hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
 		if (ip->ino_rec.ino_nlinks == 0 &&
 		    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
+			hammer_done_cursor(cursor);
 			hammer_sync_inode(ip, MNT_NOWAIT, 1);
 		}
 
@@ -433,6 +440,7 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	void *bdata;
 	int error;
 
+retry:
 	error = hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 	if (error)
 		return(error);
@@ -519,6 +527,8 @@ done:
 	if (error == ENOSPC)
 		hammer_load_spike(&cursor, spike);
 	hammer_done_cursor(&cursor);
+	if (error == EDEADLK)
+		goto retry;
 	return(error);
 }
 
@@ -537,6 +547,7 @@ hammer_ip_sync_record(hammer_record_t record, struct hammer_cursor **spike)
 	void *bdata;
 	int error;
 
+retry:
 	error = hammer_init_cursor_hmp(&cursor, &record->ip->cache[0],
 				       record->ip->hmp);
 	if (error)
@@ -554,22 +565,23 @@ hammer_ip_sync_record(hammer_record_t record, struct hammer_cursor **spike)
 	 * insert, re-lookup without the insert flag so the cursor
 	 * is properly positioned for the spike.
 	 */
-again:
-	error = hammer_btree_lookup(&cursor);
-	if (error == 0) {
-		if (record->rec.base.base.rec_type == HAMMER_RECTYPE_DIRENTRY) {
-			hmp = cursor.node->cluster->volume->hmp;
-			if (++hmp->namekey_iterator == 0)
-				++hmp->namekey_iterator;
-			record->rec.base.base.key &= ~(0xFFFFFFFFLL);
-			record->rec.base.base.key |= hmp->namekey_iterator;
-			cursor.key_beg.key = record->rec.base.base.key;
-			goto again;
+	for (;;) {
+		error = hammer_btree_lookup(&cursor);
+		if (error)
+			break;
+		if (record->rec.base.base.rec_type != HAMMER_RECTYPE_DIRENTRY) {
+			kprintf("hammer_ip_sync_record: duplicate rec "
+				"at (%016llx)\n", record->rec.base.base.key);
+			Debugger("duplicate record1");
+			error = EIO;
+			break;
 		}
-		kprintf("hammer_ip_sync_record: duplicate rec at (%016llx)\n",
-			record->rec.base.base.key);
-		Debugger("duplicate record1");
-		error = EIO;
+		hmp = cursor.node->cluster->volume->hmp;
+		if (++hmp->namekey_iterator == 0)
+			++hmp->namekey_iterator;
+		record->rec.base.base.key &= ~(0xFFFFFFFFLL);
+		record->rec.base.base.key |= hmp->namekey_iterator;
+		cursor.key_beg.key = record->rec.base.base.key;
 	}
 	if (error != ENOENT)
 		goto done;
@@ -676,6 +688,8 @@ done:
 	if (error == ENOSPC)
 		hammer_load_spike(&cursor, spike);
 	hammer_done_cursor(&cursor);
+	if (error == EDEADLK)
+		goto retry;
 	return(error);
 }
 
@@ -686,6 +700,9 @@ done:
  *
  * The target cursor will be modified by this call.  Note in particular
  * that HAMMER_CURSOR_INSERT is set.
+ *
+ * NOTE: This can return EDEADLK, requiring the caller to release its cursor
+ * and retry the operation.
  */
 int
 hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t orec,
@@ -869,6 +886,9 @@ hammer_ip_lookup(hammer_cursor_t cursor, struct hammer_inode *ip)
  *
  * When 0 is returned hammer_ip_next() may be used to iterate additional
  * records within the requested range.
+ *
+ * This function can return EDEADLK, requiring the caller to terminate
+ * the cursor and try again.
  */
 int
 hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
@@ -894,10 +914,14 @@ hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
 	 * The ATEDISK flag is used by hammer_btree_iterate to determine
 	 * whether it must index forwards or not.  It is also used here
 	 * to select the next record from in-memory or on-disk.
+	 *
+	 * EDEADLK can only occur if the lookup hit an empty internal
+	 * element and couldn't delete it.  Since this could only occur
+	 * in-range, we can just iterate from the failure point.
 	 */
 	if (ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DONDISK)) {
 		error = hammer_btree_lookup(cursor);
-		if (error == ENOENT) {
+		if (error == ENOENT || error == EDEADLK) {
 			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 			error = hammer_btree_iterate(cursor);
 		}
@@ -1091,6 +1115,7 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 	int64_t off;
 
+retry:
 	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 
 	cursor.key_beg.obj_id = ip->obj_id;
@@ -1193,6 +1218,8 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 		error = hammer_ip_next(&cursor);
 	}
 	hammer_done_cursor(&cursor);
+	if (error == EDEADLK)
+		goto retry;
 	if (error == ENOENT)
 		error = 0;
 	return(error);
@@ -1210,6 +1237,7 @@ hammer_ip_delete_range_all(hammer_transaction_t trans, hammer_inode_t ip)
 	hammer_base_elm_t base;
 	int error;
 
+retry:
 	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 
 	cursor.key_beg.obj_id = ip->obj_id;
@@ -1250,13 +1278,18 @@ hammer_ip_delete_range_all(hammer_transaction_t trans, hammer_inode_t ip)
 		error = hammer_ip_next(&cursor);
 	}
 	hammer_done_cursor(&cursor);
+	if (error == EDEADLK)
+		goto retry;
 	if (error == ENOENT)
 		error = 0;
 	return(error);
 }
 
 /*
- * Delete the record at the current cursor
+ * Delete the record at the current cursor.
+ *
+ * NOTE: This can return EDEADLK, requiring the caller to terminate the
+ * cursor and retry.
  */
 int
 hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
@@ -1284,10 +1317,14 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 		hammer_modify_buffer(cursor->record_buffer);
 		cursor->record->base.base.delete_tid = tid;
 
-		hammer_modify_node(cursor->node);
-		elm = &cursor->node->ondisk->elms[cursor->index];
-		elm->leaf.base.delete_tid = tid;
-		hammer_update_syncid(cursor->record_buffer->cluster, tid);
+		error = hammer_cursor_upgrade(cursor);
+		if (error == 0) {
+			hammer_modify_node(cursor->node);
+			elm = &cursor->node->ondisk->elms[cursor->index];
+			elm->leaf.base.delete_tid = tid;
+			hammer_update_syncid(cursor->record_buffer->cluster,
+					     tid);
+		}
 	}
 
 	/*

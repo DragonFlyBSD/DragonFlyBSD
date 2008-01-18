@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.21 2008/01/17 05:06:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.22 2008/01/18 07:02:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -555,6 +555,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	int i;
 	int nlen;
 	int flags;
+	u_int64_t obj_id;
 
 	/*
 	 * Misc initialization, plus handle as-of name extensions.  Look for
@@ -629,6 +630,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 */
 	error = hammer_ip_first(&cursor, dip);
 	rec = NULL;
+	obj_id = 0;
+
 	while (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error)
@@ -636,14 +639,15 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		rec = cursor.record;
 		if (nlen == rec->entry.base.data_len &&
 		    bcmp(ncp->nc_name, cursor.data, nlen) == 0) {
+			obj_id = rec->entry.obj_id;
 			break;
 		}
 		error = hammer_ip_next(&cursor);
 	}
+	hammer_done_cursor(&cursor);
 	if (error == 0) {
 		ip = hammer_get_inode(dip->hmp, &dip->cache[1],
-				      rec->entry.obj_id, asof,
-				      flags, &error);
+				      obj_id, asof, flags, &error);
 		if (error == 0) {
 			error = hammer_get_vnode(ip, LK_EXCLUSIVE, &vp);
 			hammer_rel_inode(ip, 0);
@@ -658,7 +662,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	} else if (error == ENOENT) {
 		cache_setvp(ap->a_nch, NULL);
 	}
-	hammer_done_cursor(&cursor);
 	return (error);
 }
 
@@ -1151,7 +1154,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	 * The key range is inclusive of both key_beg and key_end.
 	 */
 	namekey = hammer_directory_namekey(fncp->nc_name, fncp->nc_nlen);
-
+retry:
 	hammer_init_cursor_hmp(&cursor, &fdip->cache[0], fdip->hmp);
         cursor.key_beg.obj_id = fdip->obj_id;
 	cursor.key_beg.key = namekey;
@@ -1186,15 +1189,18 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 
 	/*
 	 * If all is ok we have to get the inode so we can adjust nlinks.
+	 *
+	 * WARNING: hammer_ip_del_directory() may have to terminate the
+	 * cursor to avoid a recursion.  It's ok to call hammer_done_cursor()
+	 * twice.
 	 */
-	if (error)
-		goto done;
-	error = hammer_ip_del_directory(&trans, &cursor, fdip, ip);
-
+	if (error == 0)
+		error = hammer_ip_del_directory(&trans, &cursor, fdip, ip);
+        hammer_done_cursor(&cursor);
 	if (error == 0)
 		cache_rename(ap->a_fnch, ap->a_tnch);
-done:
-        hammer_done_cursor(&cursor);
+	if (error == EDEADLK)
+		goto retry;
 failed:
 	if (error == 0) {
 		hammer_commit_transaction(&trans);
@@ -1706,8 +1712,10 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
 
-	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
+	hammer_start_transaction(&trans, dip->hmp);
 
+	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
+retry:
 	hammer_init_cursor_hmp(&cursor, &dip->cache[0], dip->hmp);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
@@ -1720,8 +1728,6 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 	cursor.key_end.key |= 0xFFFFFFFFULL;
 	cursor.asof = dip->obj_asof;
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
-
-	hammer_start_transaction(&trans, dip->hmp);
 
 	/*
 	 * Scan all matching records (the chain), locate the one matching
@@ -1759,6 +1765,11 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 				  HAMMER_OBJTYPE_DIRECTORY) {
 			error = hammer_ip_check_directory_empty(&trans, ip);
 		}
+		/*
+		 * WARNING: hammer_ip_del_directory() may have to terminate
+		 * the cursor to avoid a lock recursion.  It's ok to call
+		 * hammer_done_cursor() twice.
+		 */
 		if (error == 0)
 			error = hammer_ip_del_directory(&trans, &cursor, dip, ip);
 		if (error == 0) {
@@ -1770,12 +1781,14 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 		}
 		hammer_rel_inode(ip, 0);
 	}
+        hammer_done_cursor(&cursor);
+	if (error == EDEADLK)
+		goto retry;
 
 	if (error == 0)
 		hammer_commit_transaction(&trans);
 	else
 		hammer_abort_transaction(&trans);
-        hammer_done_cursor(&cursor);
 	return (error);
 }
 

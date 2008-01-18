@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.8 2008/01/17 05:06:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.9 2008/01/18 07:02:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -59,10 +59,10 @@ hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep)
 
 	if (spike->parent) {
 		hammer_ref_node(spike->parent);
-		hammer_lock_ex(&spike->parent->lock);
+		hammer_lock_sh(&spike->parent->lock);
 	}
 	hammer_ref_node(spike->node);
-	hammer_lock_ex(&spike->node->lock);
+	hammer_lock_sh(&spike->node->lock);
 	kprintf("LOAD SPIKE %p\n", spike);
 }
 
@@ -97,14 +97,20 @@ hammer_spike(struct hammer_cursor **spikep)
 	/*Debugger("ENOSPC");*/
 
 	/*
-	 * Lock and flush the cluster XXX
+	 * Validate and lock the spike.  If this fails due to a deadlock
+	 * we still return 0 since a spike is only called when the
+	 * caller intends to retry the operation.
 	 */
 	spike = *spikep;
 	KKASSERT(spike != NULL);
 	KKASSERT(spike->parent &&
 		 spike->parent->cluster == spike->node->cluster);
 
-	error = 0;
+	error = hammer_cursor_upgrade(spike);
+	if (error) {
+		error = 0;
+		goto failed4;
+	}
 	onode = spike->node;
 
 	ocluster = onode->cluster;
@@ -146,6 +152,7 @@ hammer_spike(struct hammer_cursor **spikep)
 			 HAMMER_RECTYPE_CLUSTER);
 		error = hammer_write_record(&ncursor, spike->record,
 					    spike->data, spike->flags);
+		KKASSERT(error != EDEADLK);
 		if (error == ENOSPC) {
 			kprintf("impossible ENOSPC error on spike\n");
 			error = EIO;
@@ -245,6 +252,7 @@ success:
 failed3:
 	kprintf("UNLOAD SPIKE %p %d\n", spike, error);
 	hammer_unlock(&ocluster->io.lock);
+failed4:
 	hammer_done_cursor(spike);
 	--hammer_count_spikes;
 	kfree(spike, M_HAMMER);

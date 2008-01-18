@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.21 2008/01/17 05:06:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.22 2008/01/18 07:02:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -228,6 +228,7 @@ loop:
 	/*
 	 * Locate the on-disk inode.
 	 */
+retry:
 	hammer_init_cursor_hmp(&cursor, cache, hmp);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = 0;
@@ -240,6 +241,10 @@ loop:
 		       HAMMER_CURSOR_ASOF;
 
 	*errorp = hammer_btree_lookup(&cursor);
+	if (*errorp == EDEADLK) {
+		hammer_done_cursor(&cursor);
+		goto retry;
+	}
 
 	/*
 	 * On success the B-Tree lookup will hold the appropriate
@@ -416,9 +421,11 @@ retry:
 			error = hammer_ip_delete_record(&cursor, last_tid);
 			if (error == 0)
 				ip->flags |= HAMMER_INODE_DELONDISK;
+			hammer_cache_node(cursor.node, &ip->cache[0]);
 		}
-		hammer_cache_node(cursor.node, &ip->cache[0]);
 		hammer_done_cursor(&cursor);
+		if (error == EDEADLK)
+			goto retry;
 	}
 
 	/*
@@ -470,6 +477,7 @@ hammer_update_itimes(hammer_inode_t ip)
 	struct hammer_inode_record *rec;
 	int error;
 
+retry:
 	error = 0;
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
@@ -484,7 +492,6 @@ hammer_update_itimes(hammer_inode_t ip)
 		cursor.flags |= HAMMER_CURSOR_GET_RECORD | HAMMER_CURSOR_ASOF;
 
 		error = hammer_btree_lookup(&cursor);
-
 		if (error == 0) {
 			rec = &cursor.record->inode;
 			hammer_modify_buffer(cursor.record_buffer);
@@ -492,9 +499,11 @@ hammer_update_itimes(hammer_inode_t ip)
 			rec->ino_mtime = ip->ino_rec.ino_mtime;
 			ip->flags &= ~HAMMER_INODE_ITIMES;
 			/* XXX recalculate crc */
+			hammer_cache_node(cursor.node, &ip->cache[0]);
 		}
-		hammer_cache_node(cursor.node, &ip->cache[0]);
 		hammer_done_cursor(&cursor);
+		if (error == EDEADLK)
+			goto retry;
 	}
 	return(error);
 }

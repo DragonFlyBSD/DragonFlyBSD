@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.20 2008/01/17 05:06:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.21 2008/01/18 07:02:41 dillon Exp $
  */
 
 /*
@@ -90,7 +90,8 @@
 static int btree_search(hammer_cursor_t cursor, int flags);
 static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
-static int btree_remove(hammer_cursor_t cursor);
+static int btree_remove(hammer_cursor_t cursor, int depth);
+static int btree_remove_deleted_element(hammer_cursor_t cursor);
 static int btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm);
 #if 0
 static int btree_rebalance(hammer_cursor_t cursor);
@@ -105,7 +106,7 @@ static void hammer_make_separator(hammer_base_elm_t key1,
  * Iterate records after a search.  The cursor is iterated forwards past
  * the current record until a record matching the key-range requirements
  * is found.  ENOENT is returned if the iteration goes past the ending
- * key.
+ * key. 
  *
  * The iteration is inclusive of key_beg and can be inclusive or exclusive
  * of key_end depending on whether HAMMER_CURSOR_END_INCLUSIVE is set.
@@ -117,6 +118,8 @@ static void hammer_make_separator(hammer_base_elm_t key1,
  * the iteration.  XXX future - in case of an inverted lock we may have
  * to reinitiate the lookup and set key_beg to properly pick up where we
  * left off.
+ *
+ * NOTE!  EDEADLK *CANNOT* be returned by this procedure.
  */
 int
 hammer_btree_iterate(hammer_cursor_t cursor)
@@ -161,7 +164,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		 * up our scan.
 		 */
 		if (cursor->index == node->count) {
-			error = hammer_cursor_up(cursor, 0);
+			error = hammer_cursor_up(cursor);
 			if (error)
 				break;
 			node = cursor->node->ondisk;
@@ -209,12 +212,21 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 				break;
 			}
 			KKASSERT(s <= 0);
-			KKASSERT(elm->internal.subtree_offset != 0);
-			error = hammer_cursor_down(cursor);
-			if (error)
-				break;
-			KKASSERT(cursor->index == 0);
-			node = cursor->node->ondisk;
+
+			/*
+			 * When iterating try to clean up any deleted
+			 * internal elements left over from btree_remove()
+			 * deadlocks, but it is ok if we can't.
+			 */
+			if (elm->internal.subtree_offset == 0)
+				btree_remove_deleted_element(cursor);
+			if (elm->internal.subtree_offset != 0) {
+				error = hammer_cursor_down(cursor);
+				if (error)
+					break;
+				KKASSERT(cursor->index == 0);
+				node = cursor->node->ondisk;
+			}
 			continue;
 		} else {
 			elm = &node->elms[cursor->index];
@@ -291,7 +303,9 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 
 /*
  * Lookup cursor->key_beg.  0 is returned on success, ENOENT if the entry
- * could not be found, and a fatal error otherwise.
+ * could not be found, EDEADLK if inserting and a retry is needed, and a
+ * fatal error otherwise.  When retrying, the caller must terminate the
+ * cursor and reinitialize it.
  * 
  * The cursor is suitably positioned for a deletion on success, and suitably
  * positioned for an insertion on ENOENT.
@@ -455,9 +469,12 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 int
 hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
-	hammer_node_ondisk_t parent;
 	hammer_node_ondisk_t node;
 	int i;
+	int error;
+
+	if ((error = hammer_cursor_upgrade(cursor)) != 0)
+		return(error);
 
 	/*
 	 * Insert the element at the leaf node and update the count in the
@@ -488,15 +505,6 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 	if (i != node->count - 1)
 		KKASSERT(hammer_btree_cmp(&node->elms[i+1].leaf.base, &elm->leaf.base) > 0);
 
-	/*
-	 * Adjust the sub-tree count in the parent.  note that the parent
-	 * may be in a different cluster.
-	 */
-	if (cursor->parent) {
-		hammer_modify_node(cursor->parent);
-		parent = cursor->parent->ondisk;
-		i = cursor->parent_index;
-	}
 	return(0);
 }
 
@@ -528,10 +536,11 @@ hammer_btree_insert_cluster(hammer_cursor_t cursor, hammer_cluster_t ncluster,
 	hammer_btree_elm_t   elm;
 	const int esize = sizeof(*elm);
 	u_int8_t save;
-	int error = 0;
+	int error;
 	int pi, i;
 
-	kprintf("cursor %p ncluster %p\n", cursor, ncluster);
+	if ((error = hammer_cursor_upgrade(cursor)) != 0)
+		return(error);
 	hammer_modify_node(cursor->node);
 	node = cursor->node->ondisk;
 	i = cursor->index;
@@ -580,6 +589,8 @@ hammer_btree_insert_cluster(hammer_cursor_t cursor, hammer_cluster_t ncluster,
 		kprintf("no parent\n");
 	} else {
 		kprintf("has parent\n");
+		if (error)
+			return(error);
 	}
 
 
@@ -741,6 +752,9 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	int error;
 	int i;
 
+	if ((error = hammer_cursor_upgrade(cursor)) != 0)
+		return(error);
+
 	/*
 	 * Delete the element from the leaf node. 
 	 *
@@ -776,12 +790,18 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	 *
 	 * This may reposition the cursor at one of the parent's of the
 	 * current node.
+	 *
+	 * Ignore deadlock errors, that simply means that btree_remove
+	 * was unable to recurse and had to leave the subtree_offset 
+	 * in the parent set to 0.
 	 */
 	KKASSERT(cursor->index <= ondisk->count);
 	if (ondisk->count == 0) {
 		do {
-			error = btree_remove(cursor);
+			error = btree_remove(cursor, 0);
 		} while (error == EAGAIN);
+		if (error == EDEADLK)
+			error = 0;
 	} else {
 		error = 0;
 	}
@@ -864,7 +884,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		if (error)
 			goto done;
 		KKASSERT(cursor->parent);
-		error = hammer_cursor_up(cursor, 0);
+		error = hammer_cursor_up(cursor);
 		if (error)
 			goto done;
 		cluster = cursor->node->cluster;
@@ -877,7 +897,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	while (hammer_btree_cmp(&cursor->key_beg, cursor->left_bound) < 0 ||
 	       hammer_btree_cmp(&cursor->key_beg, cursor->right_bound) >= 0) {
 		KKASSERT(cursor->parent);
-		error = hammer_cursor_up(cursor, 0);
+		error = hammer_cursor_up(cursor);
 		if (error)
 			goto done;
 	}
@@ -909,40 +929,12 @@ btree_search(hammer_cursor_t cursor, int flags)
 			break;
 		if (cursor->parent->ondisk->count != HAMMER_BTREE_INT_ELMS)
 			break;
-		error = hammer_cursor_up(cursor, 0);
+		error = hammer_cursor_up(cursor);
 		/* cluster and node are now may become stale */
 		if (error)
 			goto done;
 	}
 	/* cluster = cursor->node->cluster; not needed until next cluster = */
-
-#if 0
-	/*
-	 * If we are deleting we can't start at an internal node with only
-	 * one element unless it is root, because all of our code assumes
-	 * that internal nodes will never be empty.  Just do this generally
-	 * for both leaf and internal nodes to get better balance.
-	 *
-	 * This handles the case where the cursor is sitting at a leaf and
-	 * either the leaf or parent contain an insufficient number of
-	 * elements.
-	 *
-	 * NOTE: These cursor-up's CAN continue to cross cluster boundaries.
-	 *
-	 * XXX NOTE: Iterations may not set this flag anyway.
-	 */
-	while (flags & HAMMER_CURSOR_DELETE) {
-		if (cursor->node->ondisk->count > 1)
-			break;
-		if (cursor->parent == NULL)
-			break;
-		KKASSERT(cursor->node->ondisk->count != 0);
-		error = hammer_cursor_up(cursor, 0);
-		/* cluster and node are now may become stale */
-		if (error)
-			goto done;
-	}
-#endif
 
 new_cluster:
 	/*
@@ -951,23 +943,6 @@ new_cluster:
 	cluster = cursor->node->cluster;
 	node = cursor->node->ondisk;
 	while (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
-#if 0
-		/*
-		 * If we are a the root node and deleting, try to collapse
-		 * all of the root's children into the root.  This is the
-		 * only point where tree depth is reduced.
-		 *
-		 * XXX NOTE: Iterations may not set this flag anyway.
-		 */
-		if ((flags & HAMMER_CURSOR_DELETE) && cursor->parent == NULL) {
-			error = btree_collapse(cursor);
-			/* node becomes stale after call */
-			/* XXX ENOSPC */
-			if (error)
-				goto done;
-		}
-		node = cursor->node->ondisk;
-#endif
 		/*
 		 * Scan the node to find the subtree index to push down into.
 		 * We go one-past, then back-up.
@@ -984,16 +959,6 @@ new_cluster:
 		 */
 		for (i = 0; i <= node->count; ++i) {
 			elm = &node->elms[i];
-
-			KKASSERT(i == node->count ||
-				 elm->internal.subtree_offset != 0);
-#if 0
-			if (i < node->count &&
-			    elm->internal.subtree_offset == 0){
-				btree_remove_deleted_elements(cursor);
-				goto new_cluster;
-			}
-#endif
 			r = hammer_btree_cmp(&cursor->key_beg, &elm->base);
 			if (r < 0)
 				break;
@@ -1022,6 +987,10 @@ new_cluster:
 
 			/*
 			 * Correct a left-hand boundary mismatch.
+			 *
+			 * This is done without an exclusive lock XXX.  We
+			 * have to do this or the search will not terminate
+			 * at a leaf.
 			 */
 			hammer_modify_node(cursor->node);
 			save = node->elms[0].base.btype;
@@ -1046,6 +1015,10 @@ new_cluster:
 			 * Correct a right-hand boundary mismatch.
 			 * (actual push-down record is i-2 prior to
 			 * adjustments to i).
+			 *
+			 * This is done without an exclusive lock XXX.  We
+			 * have to do this or the search will not terminate
+			 * at a leaf.
 			 */
 			elm = &node->elms[i];
 			hammer_modify_node(cursor->node);
@@ -1060,9 +1033,9 @@ new_cluster:
 			--i;
 		}
 		cursor->index = i;
+		elm = &node->elms[i];
 
 		if (hammer_debug_btree) {
-			elm = &node->elms[i];
 			kprintf("SEARCH-I %p:%d %016llx %02x key=%016llx did=%016llx\n",
 				cursor->node, i,
 				elm->internal.base.obj_id,
@@ -1071,6 +1044,25 @@ new_cluster:
 				elm->internal.base.delete_tid
 			);
 		}
+
+		/*
+		 * When searching try to clean up any deleted
+		 * internal elements left over from btree_remove()
+		 * deadlocks.
+		 *
+		 * If we fail and we are doing an insertion lookup,
+		 * we have to return EDEADLK, because an insertion lookup
+		 * must terminate at a leaf.
+		 */
+		if (elm->internal.subtree_offset == 0) {
+			error = btree_remove_deleted_element(cursor);
+			if (error == 0)
+				goto new_cluster;
+			if (flags & HAMMER_CURSOR_INSERT)
+				return(EDEADLK);
+			return(ENOENT);
+		}
+
 
 		/*
 		 * Handle insertion and deletion requirements.
@@ -1349,6 +1341,9 @@ btree_split_internal(hammer_cursor_t cursor)
 	int i;
 	const int esize = sizeof(*elm);
 
+	if ((error = hammer_cursor_upgrade(cursor)) != 0)
+		return(error);
+
 	/* 
 	 * We are splitting but elms[split] will be promoted to the parent,
 	 * leaving the right hand node with one less element.  If the
@@ -1360,7 +1355,6 @@ btree_split_internal(hammer_cursor_t cursor)
 	split = (ondisk->count + 1) / 2;
 	if (cursor->index <= split)
 		--split;
-	error = 0;
 
 	/*
 	 * If we are at the root of the cluster, create a new root node with
@@ -1374,7 +1368,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	if (ondisk->parent == 0) {
 		parent = hammer_alloc_btree(node->cluster, &error);
 		if (parent == NULL)
-			return(error);
+			goto done;
 		hammer_lock_ex(&parent->lock);
 		hammer_modify_node(parent);
 		ondisk = parent->ondisk;
@@ -1415,7 +1409,7 @@ btree_split_internal(hammer_cursor_t cursor)
 			parent->flags |= HAMMER_NODE_DELETED;
 			hammer_rel_node(parent);
 		}
-		return(error);
+		goto done;
 	}
 	hammer_lock_ex(&new_node->lock);
 
@@ -1524,11 +1518,15 @@ btree_split_internal(hammer_cursor_t cursor)
 	KKASSERT(hammer_btree_cmp(cursor->right_bound,
 		 &cursor->node->ondisk->elms[cursor->node->ondisk->count].internal.base) >= 0);
 
-	return (0);
+done:
+	hammer_cursor_downgrade(cursor);
+	return (error);
 }
 
 /*
  * Same as the above, but splits a full leaf node.
+ *
+ * This function
  */
 static
 int
@@ -1547,6 +1545,9 @@ btree_split_leaf(hammer_cursor_t cursor)
 	int error;
 	int i;
 	const size_t esize = sizeof(*elm);
+
+	if ((error = hammer_cursor_upgrade(cursor)) != 0)
+		return(error);
 
 	/* 
 	 * Calculate the split point.  If the insertion point will be on
@@ -1578,7 +1579,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	if (ondisk->parent == 0) {
 		parent = hammer_alloc_btree(leaf->cluster, &error);
 		if (parent == NULL)
-			return(error);
+			goto done;
 		hammer_lock_ex(&parent->lock);
 		hammer_modify_node(parent);
 		ondisk = parent->ondisk;
@@ -1618,7 +1619,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 			parent->flags |= HAMMER_NODE_DELETED;
 			hammer_rel_node(parent);
 		}
-		return(error);
+		goto done;
 	}
 	hammer_lock_ex(&new_leaf->lock);
 
@@ -1727,7 +1728,9 @@ btree_split_leaf(hammer_cursor_t cursor)
 	KKASSERT(hammer_btree_cmp(cursor->right_bound,
 		 &cursor->node->ondisk->elms[cursor->node->ondisk->count-1].leaf.base) > 0);
 
-	return (0);
+done:
+	hammer_cursor_downgrade(cursor);
+	return (error);
 }
 
 /*
@@ -1744,7 +1747,7 @@ btree_split_leaf(hammer_cursor_t cursor)
  * that element, make sure cursor->index is properly adjusted on success.
  */
 int
-btree_remove(hammer_cursor_t cursor)
+btree_remove(hammer_cursor_t cursor, int depth)
 {
 	hammer_node_ondisk_t ondisk;
 	hammer_btree_elm_t elm;
@@ -1769,21 +1772,40 @@ btree_remove(hammer_cursor_t cursor)
 		cursor->index = 0;
 		error = 0;
 
+		if (depth > 16) {
+			Debugger("btree_remove: stack limit reached");
+			return(EDEADLK);
+		}
+
 		/*
-		 * When trying to delete a cluster retain a lock on the
-		 * cluster's root node (node) to prevent insertions while
-		 * we try to undo the spike.
+		 * When trying to delete a cluster we need to exclusively
+		 * lock the cluster root, its parent (leaf in parent cluster),
+		 * AND the parent of that leaf if it's going to be empty,
+		 * because we can't leave around an empty leaf.
+		 *
+		 * XXX this is messy due to potentially recursive locks.
+		 * downgrade the cursor, get a second shared lock on the
+		 * node that cannot deadlock because we only own shared locks
+		 * then, cursor-up, and re-upgrade everything.  If the
+		 * upgrades EDEADLK then don't try to remove the cluster
+		 * at this time.
 		 */
 		if ((parent = cursor->parent) != NULL) {
+			hammer_cursor_downgrade(cursor);
 			save = node;
 			hammer_ref_node(save);
-			hammer_lock_ex(&save->lock);
-			error = hammer_cursor_up(cursor, 1);
+			hammer_lock_sh(&save->lock);
+
+			error = hammer_cursor_up(cursor);
+			if (error == 0)
+				error = hammer_cursor_upgrade(cursor);
+			if (error == 0)
+				error = hammer_lock_upgrade(&save->lock);
+
 			if (error) {
+				/* may be EDEADLK */
 				kprintf("BTREE_REMOVE: Cannot delete cluster\n");
 				Debugger("BTREE_REMOVE");
-				if (error == EAGAIN)
-					error = 0;
 			} else {
 				/* 
 				 * cursor->node is now the leaf in the parent
@@ -1809,7 +1831,7 @@ btree_remove(hammer_cursor_t cursor)
 						    cursor->index - 2) * esize);
 				ondisk->count -= 2;
 				if (ondisk->count == 0)
-					error = btree_remove(cursor);
+					error = btree_remove(cursor, depth + 1);
 				hammer_flush_node(save);
 				save->flags |= HAMMER_NODE_DELETED;
 			}
@@ -1836,6 +1858,14 @@ btree_remove(hammer_cursor_t cursor)
 	node->flags |= HAMMER_NODE_DELETED;
 
 	/*
+	 * Don't blow up the kernel stack.
+	 */
+	if (depth > 20) {
+		kprintf("btree_remove: stack limit reached");
+		return(EDEADLK);
+	}
+
+	/*
 	 * If the parent would otherwise not become empty we can physically
 	 * remove the zero'd element.  Note however that in order to
 	 * guarentee a valid cursor we still need to be able to cursor up
@@ -1848,7 +1878,10 @@ btree_remove(hammer_cursor_t cursor)
 	 * XXX we can theoretically recalculate the midpoint but there isn't
 	 * much of a reason to do it.
 	 */
-	error = hammer_cursor_up(cursor, 1);
+	error = hammer_cursor_up(cursor);
+	if (error == 0)
+		error = hammer_cursor_upgrade(cursor);
+
 	if (error) {
 		kprintf("BTREE_REMOVE: Cannot lock parent, skipping\n");
 		Debugger("BTREE_REMOVE");
@@ -1865,11 +1898,49 @@ btree_remove(hammer_cursor_t cursor)
 	/* ondisk is node's ondisk */
 	/* elm is node's element */
 
+	/*
+	 * Remove the internal element that we zero'd out.  Tell the caller
+	 * to loop if it hits zero (to try to avoid eating up precious kernel
+	 * stack).
+	 */
 	KKASSERT(ondisk->count > 0);
 	bcopy(&elm[1], &elm[0], (ondisk->count - cursor->index) * esize);
 	--ondisk->count;
 	if (ondisk->count == 0)
 		error = EAGAIN;
+	return(error);
+}
+
+/*
+ * Attempt to remove the deleted internal element at the current cursor
+ * position.  If we are unable to remove the element we return EDEADLK.
+ *
+ * If the current internal node becomes empty we delete it in the parent
+ * and cursor up, looping until we finish or we deadlock.
+ *
+ * On return, if successful, the cursor will be pointing at the next
+ * iterative position in the B-Tree.  If unsuccessful the cursor will be
+ * pointing at the last deleted internal element that could not be
+ * removed.
+ */
+static 
+int
+btree_remove_deleted_element(hammer_cursor_t cursor)
+{
+	hammer_node_t node;
+	hammer_btree_elm_t elm; 
+	int error;
+
+	if ((error = hammer_cursor_upgrade(cursor)) != 0)
+		return(error);
+	node = cursor->node;
+	elm = &node->ondisk->elms[cursor->index];
+	if (elm->internal.subtree_offset == 0) {
+		do {
+			error = btree_remove(cursor, 0);
+			kprintf("BTREE REMOVE DELETED ELEMENT %d\n", error);
+		} while (error == EAGAIN);
+	}
 	return(error);
 }
 
@@ -1882,6 +1953,8 @@ btree_remove(hammer_cursor_t cursor)
  * If the element represents a spike the target cluster's header must
  * be adjusted to point to the element's new location.  This only
  * applies to HAMMER_SPIKE_END.
+ *
+ * XXX deadlock potential here with our exclusive locks
  */
 static
 int

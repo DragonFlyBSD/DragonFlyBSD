@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.3 2008/01/15 06:02:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.4 2008/01/18 07:02:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -561,6 +561,7 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	cursor.flags |= HAMMER_CURSOR_INSERT;
 
 	error = hammer_btree_lookup(&cursor);
+	KKASSERT(error != EDEADLK);
 	KKASSERT(cursor.node);
 	if (error == 0) {
 		kprintf("hammer_recover_btree: Duplicate record\n");
@@ -581,6 +582,7 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 		error = hammer_btree_insert_cluster(&cursor, ncluster,
 						    rec_offset);
 		kprintf("recover spike record error %d\n", error);
+		KKASSERT(error != EDEADLK);
 		if (error)
 			Debugger("spike recovery");
 	} else {
@@ -596,6 +598,7 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 		elm.leaf.data_crc = rec->base.data_crc;
 
 		error = hammer_btree_insert(&cursor, &elm);
+		KKASSERT(error != EDEADLK);
 	}
 
 	if (error) {

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.11 2008/01/09 00:46:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.12 2008/01/18 07:02:41 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -91,6 +91,7 @@ hammer_lock_sh(struct hammer_lock *lock)
 	crit_enter();
 	while (lock->locktd != NULL) {
 		if (lock->locktd == curthread) {
+			Debugger("hammer_lock_sh: lock_sh on exclusive");
 			++lock->lockcount;
 			crit_exit();
 			return;
@@ -103,8 +104,38 @@ hammer_lock_sh(struct hammer_lock *lock)
 	crit_exit();
 }
 
+/*
+ * Upgrade a shared lock to an exclusively held lock.  This function will
+ * return EDEADLK If there is more then one shared holder.
+ *
+ * No error occurs and no action is taken if the lock is already exclusively
+ * held by the caller.
+ */
+int
+hammer_lock_upgrade(struct hammer_lock *lock)
+{
+	int error;
+
+	crit_enter();
+	if (lock->lockcount > 0) {
+		KKASSERT(lock->locktd == curthread);
+		error = 0;
+	} else if (lock->lockcount == -1) {
+		lock->lockcount = 1;
+		lock->locktd = curthread;
+		error = 0;
+	} else {
+		error = EDEADLK;
+	}
+	crit_exit();
+	return(error);
+}
+
+/*
+ * Downgrade an exclusively held lock to a shared lock.
+ */
 void
-hammer_downgrade(struct hammer_lock *lock)
+hammer_lock_downgrade(struct hammer_lock *lock)
 {
 	KKASSERT(lock->lockcount == 1);
 	crit_enter();

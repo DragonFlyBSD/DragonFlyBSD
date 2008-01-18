@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.25 2008/01/17 05:06:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.26 2008/01/18 07:02:41 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -109,6 +109,18 @@ static __inline int
 hammer_islastref(struct hammer_lock *lock)
 {
 	return(lock->refs == 1);
+}
+
+/*
+ * This inline is specifically optimized for the case where the caller
+ * owns the lock, but wants to know what kind of lock he owns.  A
+ * negative value indicates a shared lock, a positive value indicates
+ * an exclusive lock.
+ */
+static __inline int
+hammer_lock_held(struct hammer_lock *lock)
+{
+	return(lock->lockcount);
 }
 
 /*
@@ -485,17 +497,20 @@ hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip);
 void	hammer_rel_mem_record(hammer_record_t record);
 
-int	hammer_cursor_up(hammer_cursor_t cursor, int nonblock);
+int	hammer_cursor_up(hammer_cursor_t cursor);
 int	hammer_cursor_toroot(hammer_cursor_t cursor);
 int	hammer_cursor_down(hammer_cursor_t cursor);
+int	hammer_cursor_upgrade(hammer_cursor_t cursor);
+void	hammer_cursor_downgrade(hammer_cursor_t cursor);
 
 void	hammer_lock_ex(struct hammer_lock *lock);
 int	hammer_lock_ex_try(struct hammer_lock *lock);
 void	hammer_lock_sh(struct hammer_lock *lock);
+int	hammer_lock_upgrade(struct hammer_lock *lock);
+void	hammer_lock_downgrade(struct hammer_lock *lock);
 void	hammer_unlock(struct hammer_lock *lock);
 void	hammer_ref(struct hammer_lock *lock);
 void	hammer_unref(struct hammer_lock *lock);
-void	hammer_downgrade(struct hammer_lock *lock);
 
 u_int32_t hammer_to_unix_xid(uuid_t *uuid);
 void hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid);

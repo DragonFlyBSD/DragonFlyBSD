@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.7 2008/01/17 05:06:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.8 2008/01/18 07:02:41 dillon Exp $
  */
 
 /*
@@ -44,10 +44,8 @@
  * treads MAY MODIFY YOUR CURSOR when you are not holding an exclusive
  * lock on the cursor's nodes.
  *
- * Most operations maintain an exclusive lock on their node and
- * parent node, but certain cursor operations may temporarily release
- * one or both locks.  In particular, a cursor_up operation may have
- * to temporarily release underlying locks to avoid a deadlock.
+ * The cursor module maintains a shared lock on cursor->node and
+ * cursor->parent.
  */
 struct hammer_cursor {
 	/*
@@ -56,8 +54,15 @@ struct hammer_cursor {
 	 */
 	hammer_node_t parent;
 	int parent_index;
+
 	hammer_node_t node;
 	int index;
+
+	/*
+	 * Set of a deadlock occurs.  hammer_done_cursor() will block on
+	 * this after releasing parent and node, before returning.
+	 */
+	hammer_node_t deadlk_node;
 
 	/*
 	 * Pointer to the current node's bounds.  Typically points to the

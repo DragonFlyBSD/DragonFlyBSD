@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.21 2008/01/15 06:02:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.22 2008/01/18 07:02:41 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -2047,8 +2047,9 @@ hammer_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	struct hammer_inode *ip;
 
 	ip = VTOI(vp);
-	if (vp->v_type == VNON || ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
-	    RB_EMPTY(&vp->v_rbdirty_tree))) {
+	if (vp->v_type == VNON || ip == NULL ||
+	    ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
+	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(-1);
 	}
 	return(0);
