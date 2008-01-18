@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.3 2008/01/17 04:59:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.4 2008/01/18 19:38:29 dillon Exp $
  */
 
 #include "hammer.h"
@@ -158,17 +158,20 @@ hammer_parsetime(u_int64_t *tidp, const char *timestr)
 	} else {
 		localtime_r(&t, &tm);
 		seconds = (double)tm.tm_sec;
-		tm.tm_year -= 1900;
-		tm.tm_mon -= 1;
+		tm.tm_year += 1900;
+		tm.tm_mon += 1;
 		n = sscanf(timestr, "%4d%2d%2d:%2d%2d%lf",
 			   &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
 			   &tm.tm_hour, &tm.tm_min, &seconds);
-		tm.tm_mon += 1;
-		tm.tm_year += 1900;
-		tm.tm_sec = (int)seconds;
+		tm.tm_mon -= 1;
+		tm.tm_year -= 1900;
+		/* if [:hhmmss] is omitted, assume :000000.0 */
+		if (n < 4)
+			tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
+		else
+			tm.tm_sec = (int)seconds;
 		t = mktime(&tm);
 	}
-	localtime_r(&t, &tm);
 	*tidp = (u_int64_t)t * 1000000000 + 
 		(seconds - (int)seconds) * 1000000000;
 }
