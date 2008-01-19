@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.h,v 1.10.2.7 2006/09/02 17:09:26 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.7 2008/01/19 07:03:55 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.8 2008/01/19 07:34:13 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_IOCTL_H_
 #define _NET80211_IEEE80211_IOCTL_H_
@@ -313,7 +313,7 @@ struct ieee80211req_sta_info {
 	uint16_t	isi_state;		/* state flags */
 	uint8_t		isi_authmode;		/* authentication algorithm */
 	uint8_t		isi_rssi;		/* receive signal strength */
-	uint8_t		isi_capinfo;		/* capabilities */
+	uint8_t		isi_capinfo;		/* deprecated */
 	uint8_t		isi_erp;		/* ERP element */
 	uint8_t		isi_macaddr[IEEE80211_ADDR_LEN];
 	uint8_t		isi_nrates;
@@ -328,6 +328,7 @@ struct ieee80211req_sta_info {
 	uint16_t	isi_txseqs[17];		/* seq to be transmitted */
 	uint16_t	isi_rxseqs[17];		/* seq previous for qos frames*/
 	uint16_t	isi_inact;		/* inactivity timer */
+	uint16_t	isi_capinfo2;		/* capabilities */
 	/* XXX frag state? */
 	/* variable length IE data */
 };

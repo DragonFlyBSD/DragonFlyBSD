@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.18.2.10 2006/08/10 06:09:23 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.19 2008/01/19 07:03:55 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.20 2008/01/19 07:34:13 sephe Exp $
  */
 
 /*-
@@ -1032,7 +1032,7 @@ list_stations(int s)
 			, si->isi_inact
 			, si->isi_txseqs[0]
 			, si->isi_rxseqs[0]
-			, getcaps(si->isi_capinfo)
+			, getcaps(si->isi_capinfo2)
 			, si->isi_erp
 		);
 		printies(vp, si->isi_ie_len, 24);
