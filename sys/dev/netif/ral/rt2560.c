@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.23 2008/01/19 10:08:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.24 2008/01/19 13:36:31 sephe Exp $
  */
 
 /*
@@ -136,6 +136,9 @@ static void		rt2560_init(void *);
 static void		rt2560_stop(void *);
 static void		rt2560_intr(void *);
 static void		*rt2560_ratectl_attach(struct ieee80211com *, u_int);
+static void		rt2560_calibrate(void *);
+static void		rt2560_calib_rxsensitivity(struct rt2560_softc *,
+						   uint32_t);
 
 /*
  * Supported rates for 802.11a/b/g modes (in 500Kbps unit).
@@ -188,6 +191,7 @@ rt2560_attach(device_t dev, int id)
 	int error, i;
 
 	callout_init(&sc->scan_ch);
+	callout_init(&sc->calib_ch);
 
 	sc->sc_irq_rid = 0;
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_irq_rid,
@@ -348,7 +352,8 @@ rt2560_attach(device_t dev, int id)
 	/*
 	 * Add a few sysctl knobs.
 	 */
-	sc->dwelltime = 200;
+	sc->sc_dwelltime = 200;	/* milliseconds */
+	sc->sc_calib_rxsns = 1;	/* Enable */
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
@@ -360,8 +365,15 @@ rt2560_attach(device_t dev, int id)
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "dwell",
-	    CTLFLAG_RW, &sc->dwelltime, 0,
+	    CTLFLAG_RW, &sc->sc_dwelltime, 0,
 	    "channel dwell time (ms) for AP/station scanning");
+
+	if (sc->sc_flags & RT2560_FLAG_RXSNS) {
+		SYSCTL_ADD_INT(&sc->sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "calib_rxsns",
+		    CTLFLAG_RW, &sc->sc_calib_rxsns, 0,
+		    "calibrate RX sensitivity (sta mode)");
+	}
 
 	error = bus_setup_intr(dev, sc->sc_irq, INTR_MPSAFE, rt2560_intr,
 			       sc, &sc->sc_ih, ifp->if_serializer);
@@ -816,6 +828,7 @@ rt2560_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	ostate = ic->ic_state;
 	callout_stop(&sc->scan_ch);
+	callout_stop(&sc->calib_ch);
 	ieee80211_ratectl_newstate(ic, nstate);
 
 	switch (nstate) {
@@ -831,7 +844,7 @@ rt2560_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	case IEEE80211_S_SCAN:
 		rt2560_set_chan(sc, ic->ic_curchan);
-		callout_reset(&sc->scan_ch, (sc->dwelltime * hz) / 1000,
+		callout_reset(&sc->scan_ch, (sc->sc_dwelltime * hz) / 1000,
 		    rt2560_next_scan, sc);
 		break;
 
@@ -844,6 +857,7 @@ rt2560_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		break;
 
 	case IEEE80211_S_RUN:
+		sc->sc_avgrssi = -1;
 		rt2560_set_chan(sc, ic->ic_curchan);
 
 		ni = ic->ic_bss;
@@ -875,6 +889,11 @@ rt2560_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 		if (ic->ic_opmode != IEEE80211_M_MONITOR)
 			rt2560_enable_tsf_sync(sc);
+		if (ic->ic_opmode == IEEE80211_M_STA) {
+			/* Clear false CCA counter */
+			RAL_READ(sc, RT2560_CNT3);
+			callout_reset(&sc->calib_ch, hz, rt2560_calibrate, sc);
+		}
 		break;
 	}
 
@@ -1178,6 +1197,8 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 	    BUS_DMASYNC_POSTREAD);
 
 	for (; sc->rxq.cur_decrypt != hw;) {
+		int rssi;
+
 		desc = &sc->rxq.desc[sc->rxq.cur_decrypt];
 		data = &sc->rxq.data[sc->rxq.cur_decrypt];
 
@@ -1245,6 +1266,12 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 		m->m_pkthdr.len = m->m_len =
 		    (le32toh(desc->flags) >> 16) & 0xfff;
 
+		rssi = RT2560_RSSI(sc, desc->rssi);
+		if (sc->sc_avgrssi < 0)
+			sc->sc_avgrssi = rssi;
+		else
+			sc->sc_avgrssi = ((sc->sc_avgrssi * 7) + rssi) >> 3;
+
 		if (sc->sc_drvbpf != NULL) {
 			struct rt2560_rx_radiotap_header *tap = &sc->sc_rxtap;
 			uint32_t tsf_lo, tsf_hi;
@@ -1260,7 +1287,7 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 			tap->wr_chan_freq = htole16(ic->ic_curchan->ic_freq);
 			tap->wr_chan_flags = htole16(ic->ic_curchan->ic_flags);
 			tap->wr_antenna = sc->rx_ant;
-			tap->wr_antsignal = RT2560_RSSI(sc, desc->rssi);
+			tap->wr_antsignal = rssi;
 
 			bpf_ptap(sc->sc_drvbpf, m, tap, sc->sc_rxtap_len);
 		}
@@ -1270,7 +1297,7 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 		    (struct ieee80211_frame_min *)wh);
 
 		/* send the frame to the 802.11 layer */
-		ieee80211_input(ic, m, ni, RT2560_RSSI(sc, desc->rssi), 0);
+		ieee80211_input(ic, m, ni, rssi, 0);
 
 		/* node is no longer needed */
 		ieee80211_free_node(ni);
@@ -2040,6 +2067,12 @@ rt2560_bbp_write(struct rt2560_softc *sc, uint8_t reg, uint8_t val)
 	RAL_WRITE(sc, RT2560_BBPCSR, tmp);
 
 	DPRINTFN(15, ("BBP R%u <- 0x%02x\n", reg, val));
+
+	/* XXX */
+	if (reg == 17) {
+		DPRINTF(("%s record bbp17 %#x\n", __func__, val));
+		sc->sc_bbp17 = val;
+	}
 }
 
 static uint8_t
@@ -2421,7 +2454,7 @@ static void
 rt2560_read_config(struct rt2560_softc *sc)
 {
 	uint16_t val;
-	int i;
+	int i, find_bbp17 = 0;
 
 	val = rt2560_eeprom_read(sc, RT2560_EEPROM_CONFIG0);
 	sc->rf_rev =   (val >> 11) & 0x7;
@@ -2440,7 +2473,19 @@ rt2560_read_config(struct rt2560_softc *sc)
 		sc->bbp_prom[i].val = val & 0xff;
 		DPRINTF(("rom bbp reg:%u val:%#x\n",
 			 sc->bbp_prom[i].reg, sc->bbp_prom[i].val));
+
+		if (sc->bbp_prom[i].reg == 17) {
+			if (sc->bbp_prom[i].val > 6)
+				sc->sc_bbp17_dynmin = sc->bbp_prom[i].val - 6;
+			else
+				sc->sc_bbp17_dynmin = 0;
+			find_bbp17 = 1;
+		}
 	}
+
+	sc->sc_bbp17_dynmax = 0x40;
+	if (!find_bbp17)
+		sc->sc_bbp17_dynmin = sc->sc_bbp17_dynmax - 6;
 
 	/* read Tx power for all b/g channels */
 	for (i = 0; i < 14 / 2; i++) {
@@ -2449,7 +2494,7 @@ rt2560_read_config(struct rt2560_softc *sc)
 		sc->txpow[i * 2 + 1] = val >> 8;
 	}
 	for (i = 0; i < 14; ++i) {
-		if (sc->txpow[i] > 32)
+		if (sc->txpow[i] > 31)
 			sc->txpow[i] = 24;
 		DPRINTF(("tx power chan %d: %u\n", i + 1, sc->txpow[i]));
 	}
@@ -2465,7 +2510,7 @@ rt2560_read_config(struct rt2560_softc *sc)
 	val = rt2560_eeprom_read(sc, RT2560_EEPROM_CONFIG1);
 	if (val == 0xffff)
 		val = 0;
-	if ((val & 0x2) == 0) {
+	if ((val & 0x2) == 0 && sc->asic_rev >= RT2560_ASICREV_D) {
 		DPRINTF(("capable of RX sensitivity calibration\n"));
 		sc->sc_flags |= RT2560_FLAG_RXSNS;
 	}
@@ -2494,14 +2539,13 @@ rt2560_bbp_init(struct rt2560_softc *sc)
 		    rt2560_def_bbp[i].val);
 	}
 
-#if 0
 	/* initialize BBP registers to values stored in EEPROM */
 	for (i = 0; i < 16; i++) {
-		if (sc->bbp_prom[i].reg == 0xff)
-			continue;
+		if (sc->bbp_prom[i].reg == 0 && sc->bbp_prom[i].val == 0)
+			break;
 		rt2560_bbp_write(sc, sc->bbp_prom[i].reg, sc->bbp_prom[i].val);
 	}
-#endif
+	rt2560_bbp_write(sc, 17, sc->sc_bbp17_dynmax);
 
 	return 0;
 #undef N
@@ -2651,11 +2695,14 @@ rt2560_init(void *priv)
 		}
 	}
 
+	sc->sc_avgrssi = -1;
+
 	if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 		if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
 			ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
-	} else
+	} else {
 		ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+	}
 #undef N
 }
 
@@ -2721,4 +2768,65 @@ rt2560_ratectl_attach(struct ieee80211com *ic, u_int rc)
 		panic("unknown rate control algo %u\n", rc);
 		return NULL;
 	}
+}
+
+static void
+rt2560_calib_rxsensitivity(struct rt2560_softc *sc, uint32_t false_cca)
+{
+#define MID_RX_SENSITIVITY	0x41
+
+	int rssi_dbm;
+
+	if (sc->sc_ic.ic_state != IEEE80211_S_RUN)
+		return;
+
+	rssi_dbm = sc->sc_avgrssi + RT2560_NOISE_FLOOR;
+	DPRINTF(("rssi dbm %d\n", rssi_dbm));
+
+	if (rssi_dbm < -80) {
+		/* Signal is too weak */
+		return;
+	} else if (rssi_dbm >= -74) {
+		uint8_t bbp17;
+
+		if (rssi_dbm >= -58)
+			bbp17 = 0x50;
+		else
+			bbp17 = MID_RX_SENSITIVITY;
+		if (sc->sc_bbp17 != bbp17)
+			rt2560_bbp_write(sc, 17, bbp17);
+		return;
+	}
+
+	if (sc->sc_bbp17 > MID_RX_SENSITIVITY) {
+		rt2560_bbp_write(sc, 17, MID_RX_SENSITIVITY);
+		return;
+	}
+
+	if (false_cca > 512 && sc->sc_bbp17 > sc->sc_bbp17_dynmin)
+		rt2560_bbp_write(sc, 17, sc->sc_bbp17 - 1);
+	else if (false_cca < 100 && sc->sc_bbp17 < sc->sc_bbp17_dynmax)
+		rt2560_bbp_write(sc, 17, sc->sc_bbp17 + 1);
+
+#undef MID_RX_SENSITIVITY
+}
+
+static void
+rt2560_calibrate(void *xsc)
+{
+	struct rt2560_softc *sc = xsc;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	uint32_t false_cca;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	false_cca = RAL_READ(sc, RT2560_CNT3) & 0xffff;
+	DPRINTF(("false CCA %u\n", false_cca));
+
+	if (sc->sc_calib_rxsns)
+		rt2560_calib_rxsensitivity(sc, false_cca);
+
+	callout_reset(&sc->calib_ch, hz, rt2560_calibrate, sc);
+
+	lwkt_serialize_exit(ifp->if_serializer);
 }

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.6 2008/01/18 03:52:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.7 2008/01/19 13:36:31 sephe Exp $
  */
 
 struct rt2560_rx_radiotap_header {
@@ -111,11 +111,12 @@ struct rt2560_softc {
 				    enum ieee80211_state, int);
 
 	struct callout		scan_ch;
+	struct callout		calib_ch;
 
 	int			sc_tx_timer;
 	int			sc_sifs;
 
-	uint32_t		asic_rev;
+	uint32_t		asic_rev;	/* RT2560_ASICREV_ */
 	uint32_t		eeprom_rev;
 	uint8_t			rf_rev;
 	uint8_t			rssi_corr;
@@ -142,7 +143,13 @@ struct rt2560_softc {
 	int			tx_ant;
 	int			nb_ant;
 
-	int			dwelltime;
+	int			sc_avgrssi;
+	uint8_t			sc_bbp17;
+	uint8_t			sc_bbp17_dynmax;
+	uint8_t			sc_bbp17_dynmin;
+
+	int			sc_dwelltime;
+	int			sc_calib_rxsns;
 
 	struct bpf_if		*sc_drvbpf;
 
@@ -169,6 +176,10 @@ struct rt2560_softc {
 };
 
 #define RT2560_FLAG_RXSNS	0x1
+
+#define RT2560_ASICREV_B	2
+#define RT2560_ASICREV_C	3
+#define RT2560_ASICREV_D	4
 
 int	rt2560_attach(device_t, int);
 int	rt2560_detach(void *);
