@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560reg.h,v 1.4 2008/01/18 03:52:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560reg.h,v 1.5 2008/01/19 10:08:52 sephe Exp $
  */
 
 #define RT2560_DEFAULT_RSSI_CORR	0x79
@@ -341,8 +341,8 @@ struct rt2560_rx_desc {
 	{ RT2560_TXCSR1,      0x07614562 },	\
 	{ RT2560_TXCSR8,      0x8c8d8b8a },	\
 	{ RT2560_ARTCSR0,     0x7038140a },	\
-	{ RT2560_ARTCSR1,     0x1d21252d },	\
-	{ RT2560_ARTCSR2,     0x1919191d },	\
+	{ RT2560_ARTCSR1,     0x21212929 },	\
+	{ RT2560_ARTCSR2,     0x1d1d1d1d },	\
 	{ RT2560_RXCSR0,      0xffffffff },	\
 	{ RT2560_RXCSR3,      0xb3aab3af },	\
 	{ RT2560_PCICSR,      0x000003b8 },	\

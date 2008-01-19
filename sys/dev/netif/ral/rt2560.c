@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.22 2008/01/18 03:58:05 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.23 2008/01/19 10:08:52 sephe Exp $
  */
 
 /*
@@ -2271,7 +2271,27 @@ rt2560_update_slot(struct ifnet *ifp)
 	uint16_t tx_sifs, tx_pifs, tx_difs, eifs;
 	uint32_t tmp;
 
+#ifdef foo
 	slottime = (ic->ic_flags & IEEE80211_F_SHSLOT) ? 9 : 20;
+#else
+	/*
+	 * Setting slot time according to "short slot time" capability
+	 * in beacon/probe_resp seems to cause problem to acknowledge
+	 * certain AP's data frames transimitted at CCK/DS rates: the
+	 * problematic AP keeps retransmitting data frames, probably
+	 * because MAC level acks are not received by hardware.
+	 * So we cheat a little bit here by claiming we are capable of
+	 * "short slot time" but setting hardware slot time to the normal
+	 * slot time.  ral(4) does not seem to have trouble to receive
+	 * frames transmitted using short slot time even if hardware
+	 * slot time is set to normal slot time.  If we didn't use this
+	 * trick, we would have to claim that short slot time is not
+	 * supported; this would give relative poor TX performance
+	 * (-1Mb~-2Mb lower) and the _whole_ BSS would stop using short
+	 * slot time.
+	 */
+	slottime = (ic->ic_curmode == IEEE80211_MODE_11A) ? 9 : 20;
+#endif
 
 	/* update the MAC slot boundaries */
 	tx_sifs = sc->sc_sifs - RT2560_TXRX_TURNAROUND;
