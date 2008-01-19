@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.h,v 1.10.2.7 2006/09/02 17:09:26 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.6 2006/11/25 07:03:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.7 2008/01/19 07:03:55 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_IOCTL_H_
 #define _NET80211_IEEE80211_IOCTL_H_
@@ -463,14 +463,15 @@ struct ieee80211req_scan_result {
 	uint8_t		isr_noise;
 	uint8_t		isr_rssi;
 	uint8_t		isr_intval;		/* beacon interval */
-	uint8_t		isr_capinfo;		/* capabilities */
+	uint8_t		isr_capinfo;		/* capabilities (deprecated) */
 	uint8_t		isr_erp;		/* ERP element */
 	uint8_t		isr_bssid[IEEE80211_ADDR_LEN];
 	uint8_t		isr_nrates;
 	uint8_t		isr_rates[IEEE80211_RATE_MAXSIZE];
 	uint8_t		isr_ssid_len;		/* SSID length */
 	uint8_t		isr_ie_len;		/* IE length */
-	uint8_t		isr_pad[5];
+	uint16_t	isr_capinfo2;		/* capabilities */
+	uint8_t		isr_pad[3];
 	/* variable length SSID followed by IE data */
 };
 

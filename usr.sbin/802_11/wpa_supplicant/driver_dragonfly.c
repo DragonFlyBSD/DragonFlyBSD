@@ -12,7 +12,7 @@
  * See README and COPYING for more details.
  *
  * $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/driver_freebsd.c,v 1.14 2007/06/11 03:57:46 sam Exp $
- * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/driver_dragonfly.c,v 1.2 2007/08/07 11:25:37 sephe Exp $
+ * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/driver_dragonfly.c,v 1.3 2008/01/19 07:03:55 sephe Exp $
  */
 
 #include <stdlib.h>
@@ -642,7 +642,7 @@ wpa_driver_bsd_get_scan_results(void *priv,
 		wsr->noise = sr->isr_noise;
 		wsr->qual = sr->isr_rssi;
 		wsr->level = 0;		/* XXX? */
-		wsr->caps = sr->isr_capinfo;
+		wsr->caps = sr->isr_capinfo2;
 		wsr->maxrate = getmaxrate(sr->isr_rates, sr->isr_nrates);
 		vp = (uint8_t *)(sr+1);
 		memcpy(wsr->ssid, vp, sr->isr_ssid_len);

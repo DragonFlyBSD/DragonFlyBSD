@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.15 2006/09/02 17:09:26 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.11 2007/10/13 08:02:05 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.12 2008/01/19 07:03:55 sephe Exp $
  */
 
 /*
@@ -1012,7 +1012,8 @@ get_scan_result(struct ieee80211req_scan_result *sr,
 	}
 	sr->isr_rssi = ic->ic_node_getrssi(ni);
 	sr->isr_intval = ni->ni_intval;
-	sr->isr_capinfo = ni->ni_capinfo;
+	sr->isr_capinfo = ni->ni_capinfo;	/* deprecated */
+	sr->isr_capinfo2 = ni->ni_capinfo;
 	sr->isr_erp = ni->ni_erp;
 	IEEE80211_ADDR_COPY(sr->isr_bssid, ni->ni_bssid);
 	sr->isr_nrates = ni->ni_rates.rs_nrates;
