@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/cerror.S,v 1.10 1999/08/27 23:59:38 peter Exp $
- * $DragonFly: src/lib/libc/i386/sys/cerror.S,v 1.5 2005/05/11 19:46:54 dillon Exp $
+ * $DragonFly: src/lib/libc/i386/sys/cerror.S,v 1.6 2008/01/19 13:30:51 corecode Exp $
  */
 
 #include "SYS.h"
@@ -47,11 +47,11 @@ HIDENAME(cerror):
 #ifdef PIC
 	/* The caller must execute the PIC prologue before jumping to cerror. */
 #ifdef __thread
-	movl	%eax, PIC_GOT(CNAME(errno))
+	movl	PIC_GOT(CNAME(errno)),%edx
 #else
 	movl	%gs:12,%edx
-	movl	%eax,(%edx)
 #endif
+	movl	%eax,(%edx)
 	PIC_EPILOGUE
 #else
 
@@ -73,7 +73,8 @@ HIDENAME(cerror):
 #ifdef PIC
 	/* The caller must execute the PIC prologue before jumping to cerror. */
 #ifdef __thread
-	movl    %eax, PIC_GOT(CNAME(errno))
+	movl    PIC_GOT(CNAME(errno)),%ecx
+	movl	%eax,(%ecx)
 #else
 	pushl   %eax
 	leal    errno@TLSGD(,%ebx,1), %eax
