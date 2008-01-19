@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libthread_xu/thread/Makefile.inc,v 1.4 2005/05/07 09:29:46 davidxu Exp $
+# $DragonFly: src/lib/libthread_xu/thread/Makefile.inc,v 1.5 2008/01/19 14:05:29 corecode Exp $
 
 # thr sources
 .PATH: ${.CURDIR}/thread
@@ -20,6 +20,7 @@ SRCS+= \
 	thr_fork.c \
 	thr_getprio.c \
 	thr_getschedparam.c \
+	thr_info.c \
 	thr_init.c \
 	thr_join.c \
 	thr_list.c \
