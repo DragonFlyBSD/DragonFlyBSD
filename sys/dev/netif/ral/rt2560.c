@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.24 2008/01/19 13:36:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.25 2008/01/19 16:10:36 sephe Exp $
  */
 
 /*
@@ -2143,12 +2143,17 @@ rt2560_set_chan(struct rt2560_softc *sc, struct ieee80211_channel *c)
 		return;
 
 	if (IEEE80211_IS_CHAN_2GHZ(c))
-		power = min(sc->txpow[chan - 1], 31);
+		sc->sc_curtxpow = min(sc->txpow[chan - 1], 31);
 	else
-		power = 31;
+		sc->sc_curtxpow = 31;
 
-	/* adjust txpower using ifconfig settings */
-	power -= (100 - ic->ic_txpowlimit) / 8;
+	if (ic->ic_txpowlimit > sc->sc_curtxpow)
+		ic->ic_txpowlimit = sc->sc_curtxpow;
+	else
+		sc->sc_curtxpow = ic->ic_txpowlimit;
+	ic->ic_bss->ni_txpower = sc->sc_curtxpow;
+
+	power = sc->sc_curtxpow;
 
 	DPRINTFN(2, ("setting channel to %u, txpower to %u\n", chan, power));
 
