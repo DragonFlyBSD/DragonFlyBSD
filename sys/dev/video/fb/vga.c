@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.24 2008/01/09 21:29:11 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.25 2008/01/19 08:50:12 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -165,13 +165,11 @@ typedef struct adp_state adp_state_t;
  * with a physical address in the following table, as verify_adapter()
  * will perform address conversion at run-time.
  */
-static video_adapter_t adapter_init_value = {
+static video_adapter_t biosadapter = {
     0, KD_VGA, VGA_DRIVER_NAME, 0, 0, V_ADP_COLOR, IO_VGA, 32,
     EGA_BUF_BASE, EGA_BUF_SIZE, CGA_BUF_BASE, CGA_BUF_SIZE, CGA_BUF_SIZE, 
-    0, 0, 0, 0, 3, 0
+    0, 0, 0, M_VGA_C80x25, M_C80x25, M_VGA_C80x25
 };
-
-static video_adapter_t	biosadapter;
 
 /* video driver declarations */
 static int			vga_configure(int flags);
@@ -693,7 +691,6 @@ probe_adapters(void)
     if ((readb(BIOS_PADDRTOVADDR(0x488)) & 0x0f) != 0x09)
 	    return 0;
 #endif /* VGA_NO_BIOS */
-    biosadapter = adapter_init_value;
 
     if (verify_adapter(&biosadapter) != 0)
 	return 0;
@@ -701,12 +698,9 @@ probe_adapters(void)
     biosadapter.va_flags |= V_ADP_PROBED;
 #ifndef VGA_NO_BIOS
     biosadapter.va_initial_bios_mode = readb(BIOS_PADDRTOVADDR(0x449));
-#else
-    biosadapter.va_initial_bios_mode = 3;	/* XXX */
-#endif
     biosadapter.va_mode = biosadapter.va_initial_mode =
 	map_bios_mode_num(biosadapter.va_initial_bios_mode);
-    biosadapter.va_unit = 0;
+#endif
 
     /*
      * Ensure a zero start address.  This is mainly to recover after
