@@ -28,7 +28,7 @@
  *
  *	from: @(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/extern.h,v 1.23 2004/05/02 11:25:37 tjr Exp $
- * $DragonFly: src/bin/ls/extern.h,v 1.7 2005/09/18 18:35:23 asmodai Exp $
+ * $DragonFly: src/bin/ls/extern.h,v 1.8 2008/01/19 15:33:42 matthias Exp $
  */
 
 int	 acccmp(const FTSENT *, const FTSENT *);
@@ -37,6 +37,8 @@ int	 modcmp(const FTSENT *, const FTSENT *);
 int	 revmodcmp(const FTSENT *, const FTSENT *);
 int	 namecmp(const FTSENT *, const FTSENT *);
 int	 revnamecmp(const FTSENT *, const FTSENT *);
+int	 sizecmp(const FTSENT *, const FTSENT *);
+int	 revsizecmp(const FTSENT *, const FTSENT *);
 int	 statcmp(const FTSENT *, const FTSENT *);
 int	 revstatcmp(const FTSENT *, const FTSENT *);
 

@@ -31,7 +31,7 @@
  *
  * @(#)cmp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/cmp.c,v 1.16 2005/01/10 08:39:23 imp Exp $
- * $DragonFly: src/bin/ls/cmp.c,v 1.6 2005/09/18 10:39:35 asmodai Exp $
+ * $DragonFly: src/bin/ls/cmp.c,v 1.7 2008/01/19 15:33:42 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -101,6 +101,24 @@ int
 revacccmp(const FTSENT *a, const FTSENT *b)
 {
 	return(acccmp(b, a));
+}
+
+int
+sizecmp(const FTSENT *a, const FTSENT *b)
+{
+	if (b->fts_statp->st_size >
+	    a->fts_statp->st_size)
+		return(1);
+	if (b->fts_statp->st_size <
+	    a->fts_statp->st_size)
+		return(-1);
+	return(strcoll(a->fts_name, b->fts_name));
+}
+
+int
+revsizecmp(const FTSENT *a, const FTSENT *b)
+{
+	return(sizecmp(b, a));
 }
 
 int

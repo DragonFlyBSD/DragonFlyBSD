@@ -30,7 +30,7 @@
 .\"
 .\"     @(#)ls.1	8.7 (Berkeley) 7/29/94
 .\" $FreeBSD: src/bin/ls/ls.1,v 1.86 2005/02/13 22:25:09 ru Exp $
-.\" $DragonFly: src/bin/ls/ls.1,v 1.5 2005/09/18 18:55:20 asmodai Exp $
+.\" $DragonFly: src/bin/ls/ls.1,v 1.6 2008/01/19 15:33:42 matthias Exp $
 .\"
 .Dd January 11, 2005
 .Dt LS 1
@@ -133,6 +133,9 @@ and
 options.
 .It Fl R
 Recursively list subdirectories encountered.
+.It Fl S
+Use the size of a file for sorting
+.Pq Fl t .
 .It Fl T
 When used with the
 .Fl l
