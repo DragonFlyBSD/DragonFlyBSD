@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.67 2007/11/18 14:10:41 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.68 2008/01/19 08:23:17 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -26,6 +26,7 @@ MAN=	accept_filter.9 \
 	BUS_SETUP_INTR.9 \
 	callout.9 \
 	cd.9 \
+	contigmalloc.9 \
 	copy.9 \
 	crit_enter.9 \
 	crypto.9 \
@@ -232,6 +233,7 @@ MLINKS+=callout.9 callout_active.9 \
 	callout.9 callout_stop.9 \
 	callout.9 timeout.9 \
 	callout.9 untimeout.9
+MLINKS+=contigmalloc.9 contigfree.9
 MLINKS+=copy.9 copyin.9 \
 	copy.9 copyinstr.9 \
 	copy.9 copyout.9 \
