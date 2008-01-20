@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.49 2008/01/16 11:33:43 swildner Exp $
-.Dd January 16, 2008
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.50 2008/01/20 11:23:35 swildner Exp $
+.Dd January 20, 2008
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -2658,6 +2658,21 @@ to be used within a jail.
 If set to
 .Dq Li YES ,
 allow applications within a jail to use System V IPC.
+.It Va newsyslog_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+run
+.Xr newsyslog 8
+before syslogd starts.
+.It Va newsyslog_flags
+.Pq Vt str
+If
+.Va newsyslog_enable
+is set to
+.Dq Li YES ,
+these are the flags passed to
+.Xr newsyslog 8 .
 .It Va resident_enable
 .Pq Vt bool
 If set to
