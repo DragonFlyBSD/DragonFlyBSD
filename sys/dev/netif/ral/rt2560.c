@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.25 2008/01/19 16:10:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.26 2008/01/20 04:42:25 sephe Exp $
  */
 
 /*
@@ -2143,7 +2143,7 @@ rt2560_set_chan(struct rt2560_softc *sc, struct ieee80211_channel *c)
 		return;
 
 	if (IEEE80211_IS_CHAN_2GHZ(c))
-		sc->sc_curtxpow = min(sc->txpow[chan - 1], 31);
+		sc->sc_curtxpow = sc->txpow[chan - 1];
 	else
 		sc->sc_curtxpow = 31;
 
