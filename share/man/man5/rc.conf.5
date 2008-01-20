@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.50 2008/01/20 11:23:35 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.51 2008/01/20 19:38:27 swildner Exp $
 .Dd January 20, 2008
 .Dt RC.CONF 5
 .Os
@@ -2778,16 +2778,6 @@ Otherwise set to the filename used to store cached entropy through reboots.
 This file should be located on the root file system to seed the
 .Xr random 4
 device as early as possible in the boot process.
-.It Va entropy_save_sz
-.Pq Vt int
-Size of the entropy cache files saved by
-.Nm save-entropy
-periodically.
-.It Va entropy_save_num
-.Pq Vt int
-Number of entropy cache files to save by
-.Nm save-entropy
-periodically.
 .It Va ipsec_enable
 .Pq Vt bool
 Set to
