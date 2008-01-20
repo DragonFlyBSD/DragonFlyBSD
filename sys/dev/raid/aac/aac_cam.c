@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2002 Adaptec, Inc.
  * All rights reserved.
  *
@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_cam.c,v 1.2.2.4 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_cam.c,v 1.7 2007/12/23 07:00:56 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_cam.c,v 1.8 2008/01/20 03:40:35 pavalos Exp $
  */
 
 /*
@@ -38,6 +38,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
+#include <sys/module.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -47,7 +48,6 @@
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
 
-#include "aac_compat.h"
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
@@ -62,11 +62,10 @@
 #include "aacreg.h"
 #include "aac_ioctl.h"
 #include "aacvar.h"
-#include "aac_cam.h"
 
 struct aac_cam {
 	device_t		dev;
-	struct aac_cam_inf	*inf;
+	struct aac_sim		*inf;
 	struct cam_sim		*sim;
 	struct cam_path		*path;
 };
@@ -80,7 +79,6 @@ static void aac_cam_complete(struct aac_command *);
 static u_int32_t aac_cam_reset_bus(struct cam_sim *, union ccb *);
 static u_int32_t aac_cam_abort_ccb(struct cam_sim *, union ccb *);
 static u_int32_t aac_cam_term_io(struct cam_sim *, union ccb *);
-static int aac_cam_get_tran_settings(struct aac_softc *, struct ccb_trans_settings *, u_int32_t);
 
 static devclass_t	aac_pass_devclass;
 
@@ -102,10 +100,29 @@ MODULE_DEPEND(aacp, cam, 1, 1, 1);
 
 MALLOC_DEFINE(M_AACCAM, "aaccam", "AAC CAM info");
 
+static void
+aac_cam_event(struct aac_softc *sc, struct aac_event *event, void *arg)
+{
+	struct aac_cam *camsc;
+
+	switch (event->ev_type) {
+	case AAC_EVENT_CMFREE:
+		camsc = arg;
+		kfree(event, M_AACCAM);
+		xpt_release_simq(camsc->sim, 1);
+		break;
+	default:
+		device_printf(sc->aac_dev, "unknown event %d in aac_cam\n",
+		    event->ev_type);
+		break;
+	}
+
+	return;
+}
+
 static int
 aac_cam_probe(device_t dev)
 {
-
 	debug_called(2);
 
 	return (0);
@@ -114,6 +131,19 @@ aac_cam_probe(device_t dev)
 static int
 aac_cam_detach(device_t dev)
 {
+	struct aac_cam *camsc;
+	debug_called(2);
+
+	camsc = (struct aac_cam *)device_get_softc(dev);
+
+	get_mplock();
+
+	xpt_async(AC_LOST_DEVICE, camsc->path, NULL);
+	xpt_free_path(camsc->path);
+	xpt_bus_deregister(cam_sim_path(camsc->sim));
+	cam_sim_free(camsc->sim);
+
+	rel_mplock();
 
 	return (0);
 }
@@ -128,12 +158,12 @@ aac_cam_attach(device_t dev)
 	struct cam_sim *sim;
 	struct cam_path *path;
 	struct aac_cam *camsc;
-	struct aac_cam_inf *inf;
+	struct aac_sim *inf;
 
 	debug_called(1);
 
 	camsc = (struct aac_cam *)device_get_softc(dev);
-	inf = (struct aac_cam_inf *)device_get_ivars(dev);
+	inf = (struct aac_sim *)device_get_ivars(dev);
 	camsc->inf = inf;
 
 	devq = cam_simq_alloc(inf->TargetsPerBus);
@@ -220,6 +250,8 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 		cpi->version_num = 1;
 		cpi->hba_inquiry = PI_WIDE_16;
 		cpi->target_sprt = 0;
+
+		/* Resetting via the passthrough causes problems. */
 		cpi->hba_misc = PIM_NOBUSRESET;
 		cpi->hba_eng_cnt = 0;
 		cpi->max_target = camsc->inf->TargetsPerBus;
@@ -243,12 +275,26 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 	}
 	case XPT_GET_TRAN_SETTINGS:
 	{
-		u_int32_t handle;
-
-		handle = AAC_BTL_TO_HANDLE(camsc->inf->BusNumber,
-		    ccb->ccb_h.target_id, ccb->ccb_h.target_lun);
-		ccb->ccb_h.status = aac_cam_get_tran_settings(sc, &ccb->cts,
-		    handle);
+#ifdef	CAM_NEW_TRAN_CODE
+		struct ccb_trans_settings_scsi *scsi =
+			&ccb->cts.proto_specific.scsi;
+		struct ccb_trans_settings_spi *spi =
+			&ccb->cts.xport_specific.spi;
+		ccb->cts.protocol = PROTO_SCSI;
+		ccb->cts.protocol_version = SCSI_REV_2;
+		ccb->cts.transport = XPORT_SPI;
+		ccb->cts.transport_version = 2;
+		if (ccb->ccb_h.target_lun != CAM_LUN_WILDCARD) {
+			scsi->valid = CTS_SCSI_VALID_TQ;
+			spi->valid |= CTS_SPI_VALID_DISC;
+		} else {
+			scsi->valid = 0;
+		}
+#else
+		ccb->cts.flags &= ~(CCB_TRANS_DISC_ENB | CCB_TRANS_TAG_ENB);
+		ccb->cts.valid = CCB_TRANS_DISC_VALID | CCB_TRANS_TQ_VALID;
+#endif
+		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		return;
 	}
@@ -282,10 +328,20 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 
 	/* Async ops that require communcation with the controller */
 
+	AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
 	if (aac_alloc_command(sc, &cm)) {
+		struct aac_event *event;
+
 		xpt_freeze_simq(sim, 1);
 		ccb->ccb_h.status = CAM_REQUEUE_REQ;
 		xpt_done(ccb);
+		event = kmalloc(sizeof(struct aac_event), M_AACCAM,
+				M_INTWAIT | M_ZERO);
+		event->ev_callback = aac_cam_event;
+		event->ev_arg = camsc;
+		event->ev_type = AAC_EVENT_CMFREE;
+		aac_add_event(sc, event);
+		AAC_LOCK_RELEASE(&sc->aac_io_lock);
 		return;
 	}
 
@@ -335,9 +391,14 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 			if ((ccb->ccb_h.flags & CAM_SCATTER_VALID) == 0) {
 				srb->data_len = csio->dxfer_len;
 				if (ccb->ccb_h.flags & CAM_DATA_PHYS) {
+					/*
+					 * XXX This isn't 64-bit clean.
+					 * However, this condition is not
+					 * normally used in CAM.
+					 */
 					srb->sg_map32.SgCount = 1;
 					srb->sg_map32.SgEntry[0].SgAddress =
-					    (u_int32_t)csio->data_ptr;
+					    (uint32_t)(uintptr_t)csio->data_ptr;
 					srb->sg_map32.SgEntry[0].SgByteCount =
 					    csio->dxfer_len;
 				} else {
@@ -368,6 +429,7 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 		} else {
 			ccb->ccb_h.status = CAM_REQ_CMP;
 			xpt_done(ccb);
+			AAC_LOCK_RELEASE(&sc->aac_io_lock);
 			return;
 		}
 	default:
@@ -397,6 +459,8 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 
 	aac_enqueue_ready(cm);
 	aac_startio(cm->cm_sc);
+
+	AAC_LOCK_RELEASE(&sc->aac_io_lock);
 
 	return;
 }
@@ -452,7 +516,7 @@ aac_cam_complete(struct aac_command *cm)
 				    srbr->sense_len);
 				ccb->csio.sense_len = sense_len;
 				ccb->ccb_h.status |= CAM_AUTOSNS_VALID;
-				scsi_sense_print(&ccb->csio);
+				/* scsi_sense_print(&ccb->csio); */
 			}
 
 			/* If this is an inquiry command, fake things out */
@@ -478,7 +542,6 @@ aac_cam_complete(struct aac_command *cm)
 	}
 
 	aac_release_command(cm);
-
 	xpt_done(ccb);
 
 	return;
@@ -502,7 +565,8 @@ aac_cam_reset_bus(struct cam_sim *sim, union ccb *ccb)
 		return (CAM_REQ_ABORTED);
 	}
 
-	aac_alloc_sync_fib(sc, &fib, 0);
+	AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
+	aac_alloc_sync_fib(sc, &fib);
 
 	vmi = (struct aac_vmioctl *)&fib->data[0];
 	bzero(vmi, sizeof(struct aac_vmioctl));
@@ -519,13 +583,15 @@ aac_cam_reset_bus(struct cam_sim *sim, union ccb *ccb)
 	e = aac_sync_fib(sc, ContainerCommand, 0, fib,
 	    sizeof(struct aac_vmioctl));
 	if (e) {
-		device_printf(sc->aac_dev, "Error 0x%x sending passthrough\n",
+		device_printf(sc->aac_dev,"Error %d sending ResetBus command\n",
 		    e);
 		aac_release_sync_fib(sc);
+		AAC_LOCK_RELEASE(&sc->aac_io_lock);
 		return (CAM_REQ_ABORTED);
 	}
 
 	aac_release_sync_fib(sc);
+	AAC_LOCK_RELEASE(&sc->aac_io_lock);
 	return (CAM_REQ_CMP);
 }
 
@@ -539,58 +605,4 @@ static u_int32_t
 aac_cam_term_io(struct cam_sim *sim, union ccb *ccb)
 {
 	return (CAM_UA_TERMIO);
-}
-
-static int
-aac_cam_get_tran_settings(struct aac_softc *sc, struct ccb_trans_settings *cts, u_int32_t handle)
-{
-	struct aac_fib *fib;
-	struct aac_vmioctl *vmi;
-	struct aac_vmi_devinfo_resp *vmi_resp;
-	int error;
-
-	aac_alloc_sync_fib(sc, &fib, 0);
-	vmi = (struct aac_vmioctl *)&fib->data[0];
-	bzero(vmi, sizeof(struct aac_vmioctl));
-
-	vmi->Command = VM_Ioctl;
-	vmi->ObjType = FT_DRIVE;
-	vmi->MethId = sc->scsi_method_id;
-	vmi->ObjId = handle;
-	vmi->IoctlCmd = GetDeviceProbeInfo;
-
-	error = aac_sync_fib(sc, ContainerCommand, 0, fib,
-	    sizeof(struct aac_vmioctl));
-	if (error) {
-		device_printf(sc->aac_dev, "Error %d sending VMIoctl command\n",
-		    error);
-		aac_release_sync_fib(sc);
-		return (CAM_REQ_INVALID);
-	}
-
-	vmi_resp = (struct aac_vmi_devinfo_resp *)&fib->data[0];
-	if (vmi_resp->Status != ST_OK) {
-		debug(1, "VM_Ioctl returned %d\n", vmi_resp->Status);
-		aac_release_sync_fib(sc);
-		return (CAM_REQ_CMP_ERR);
-	}
-
-	cts->bus_width = ((vmi_resp->Inquiry7 & 0x60) >> 5);
-	if (vmi_resp->ScsiRate) {
-		cts->sync_period =
-		    scsi_calc_syncparam((10000 / vmi_resp->ScsiRate));
-		cts->sync_offset = vmi_resp->ScsiOffset;
-	} else {
-		cts->sync_period = 0;
-		cts->sync_offset = 0;
-	}
-	cts->flags &= ~(CCB_TRANS_DISC_ENB | CCB_TRANS_TAG_ENB);
-	cts->valid = CCB_TRANS_DISC_VALID		|
-		     CCB_TRANS_SYNC_RATE_VALID		|
-		     CCB_TRANS_SYNC_OFFSET_VALID	|
-		     CCB_TRANS_BUS_WIDTH_VALID		|
-		     CCB_TRANS_TQ_VALID;
-
-	aac_release_sync_fib(sc);
-	return (CAM_REQ_CMP);
 }

@@ -27,9 +27,15 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.19 2007/11/10 19:50:29 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.20 2008/01/20 03:40:35 pavalos Exp $
  */
 
+#include <sys/buf.h>
+#include <sys/buf2.h>
+#include <sys/eventhandler.h>
+#include <sys/lock.h>
+#include <sys/selinfo.h>
+#include <sys/taskqueue.h>
 #include <sys/thread2.h>
 
 /*
@@ -48,13 +54,11 @@
 #define AAC_ADAPTER_FIBS	8
 
 /*
- * FIBs are allocated up-front, and the pool isn't grown.  We should allocate
- * enough here to let us keep the adapter busy without wasting large amounts
- * of kernel memory.  The current interface implementation limits us to 512
- * FIBs queued for the adapter at any one time.
+ * FIBs are allocated in page-size chunks and can grow up to the 512
+ * limit imposed by the hardware.
  */
-#define AAC_FIB_COUNT		128
-
+#define AAC_PREALLOCATE_FIBS	128
+#define AAC_NUM_MGT_FIB		8
 /*
  * The controller reports status events in AIFs.  We hang on to a number of
  * these in order to pass them out to user-space management tools.
@@ -94,14 +98,6 @@
 #define AAC_DISK_MAJOR	200
 
 /*
- * Driver Variable Definitions
- */
-
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
-# include <sys/taskqueue.h>
-#endif
-
-/*
  * Per-container data structure
  */
 struct aac_container
@@ -110,6 +106,19 @@ struct aac_container
 	device_t			co_disk;
 	int				co_found;
 	TAILQ_ENTRY(aac_container)	co_link;
+};
+
+/*
+ * Per-SIM data structure
+ */
+struct aac_sim
+{
+	device_t		sim_dev;
+	int			TargetsPerBus;
+	int			BusNumber;
+	int			InitiatorBusId;
+	struct aac_softc	*aac_sc;
+	TAILQ_ENTRY(aac_sim)	sim_link;
 };
 
 /*
@@ -143,7 +152,7 @@ struct aac_command
 
 	struct aac_fib		*cm_fib;	/* FIB associated with this
 						 * command */
-	u_int32_t		cm_fibphys;	/* bus address of the FIB */
+	u_int64_t		cm_fibphys;	/* bus address of the FIB */
 	struct buf		*cm_data;	/* pointer to data in kernel
 						 * space */
 	u_int32_t		cm_datalen;	/* data length */
@@ -163,12 +172,24 @@ struct aac_command
 #define AAC_ON_AACQ_READY	(1<<6)
 #define AAC_ON_AACQ_BUSY	(1<<7)
 #define AAC_ON_AACQ_COMPLETE	(1<<8)
-#define AAC_ON_AACQ_MASK	((1<<5)|(1<<6)|(1<<7)|(1<<8))
+#define AAC_ON_AACQ_NORM	(1<<10)
+#define AAC_ON_AACQ_AIF		(1<<11)
+#define AAC_ON_AACQ_MASK	((1<<5)|(1<<6)|(1<<7)|(1<<8)|(1<<10)|(1<11))
+#define AAC_QUEUE_FRZN		(1<<9)		/* Freeze the processing of
+						 * commands on the queue. */
 
 	void			(* cm_complete)(struct aac_command *cm);
 	void			*cm_private;
 	time_t			cm_timestamp;	/* command creation time */
 	int			cm_queue;
+	int			cm_index;
+};
+
+struct aac_fibmap {
+	TAILQ_ENTRY(aac_fibmap) fm_link;	/* list linkage */
+	struct aac_fib		*aac_fibs;
+	bus_dmamap_t		aac_fibmap;
+	struct aac_command	*aac_commands;
 };
 
 /*
@@ -216,10 +237,14 @@ struct aac_interface
 				   u_int32_t arg2, u_int32_t arg3);
 	int	(*aif_get_mailbox)(struct aac_softc *sc, int mb);
 	void	(*aif_set_interrupts)(struct aac_softc *sc, int enable);
+	int	(*aif_send_command)(struct aac_softc *sc, struct aac_command *cm);
+	int	(*aif_get_outb_queue)(struct aac_softc *sc);
+	void	(*aif_set_outb_queue)(struct aac_softc *sc, int index);
 };
 extern struct aac_interface	aac_rx_interface;
 extern struct aac_interface	aac_sa_interface;
 extern struct aac_interface	aac_fa_interface;
+extern struct aac_interface	aac_rkt_interface;
 
 #define AAC_GET_FWSTATUS(sc)		((sc)->aac_if.aif_get_fwstatus((sc)))
 #define AAC_QNOTIFY(sc, qbit)		((sc)->aac_if.aif_qnotify((sc), (qbit)))
@@ -235,6 +260,9 @@ extern struct aac_interface	aac_fa_interface;
 					0))
 #define AAC_UNMASK_INTERRUPTS(sc)	((sc)->aac_if.aif_set_interrupts((sc), \
 					1))
+#define AAC_SEND_COMMAND(sc, cm)	((sc)->aac_if.aif_send_command((sc), (cm)))
+#define AAC_GET_OUTB_QUEUE(sc)		((sc)->aac_if.aif_get_outb_queue((sc)))
+#define AAC_SET_OUTB_QUEUE(sc, idx)	((sc)->aac_if.aif_set_outb_queue((sc), (idx)))
 
 #define AAC_SETREG4(sc, reg, val)	bus_space_write_4(sc->aac_btag, \
 					sc->aac_bhandle, reg, val)
@@ -249,24 +277,11 @@ extern struct aac_interface	aac_fa_interface;
 #define AAC_GETREG1(sc, reg)		bus_space_read_1 (sc->aac_btag, \
 					sc->aac_bhandle, reg)
 
-TAILQ_HEAD(aac_container_tq, aac_container);
-
 /* Define the OS version specific locks */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
-#include <sys/lock.h>
-#include <sys/mutex.h>
-typedef struct mtx aac_lock_t;
-#define AAC_LOCK_INIT(l, s)	mtx_init(l, s, MTX_DEF)
-#define AAC_LOCK_ACQUIRE(l)	mtx_lock(l)
-#define AAC_LOCK_RELEASE(l)	mtx_unlock(l)
-#else
 typedef struct lock aac_lock_t;
-#define AAC_LOCK_INIT(l, s)	lockinit(l, "aac", 0, 0)
-#define AAC_LOCK_ACQUIRE(l)	lockmgr(l, LK_EXCLUSIVE|LK_RETRY)
+#define AAC_LOCK_INIT(l, s)	lockinit(l, s, 0, LK_EXCLUSIVE|LK_CANRECURSE)
+#define AAC_LOCK_ACQUIRE(l)	lockmgr(l, LK_EXCLUSIVE)
 #define AAC_LOCK_RELEASE(l)	lockmgr(l, LK_RELEASE)
-#endif
-
-#include <sys/selinfo.h>
 
 /*
  * Per-controller structure.
@@ -287,6 +302,7 @@ struct aac_softc
 	struct resource		*aac_irq;		/* interrupt */
 	int			aac_irq_rid;
 	void			*aac_intr;		/* interrupt handle */
+	eventhandler_tag	eh;
 
 	/* controller features, limits and status */
 	int			aac_state;
@@ -300,7 +316,8 @@ struct aac_softc
 	int			aac_hwif;
 #define AAC_HWIF_I960RX		0
 #define AAC_HWIF_STRONGARM	1
-#define	AAC_HWIF_FALCON		2
+#define AAC_HWIF_FALCON		2
+#define AAC_HWIF_RKT		3
 #define AAC_HWIF_UNKNOWN	-1
 	bus_dma_tag_t		aac_common_dmat;	/* common structure
 							 * DMA tag */
@@ -312,10 +329,9 @@ struct aac_softc
 
 	/* command/fib resources */
 	bus_dma_tag_t		aac_fib_dmat;	/* DMA tag for allocing FIBs */
-	struct aac_fib		*aac_fibs;
-	bus_dmamap_t		aac_fibmap;
-	u_int32_t		aac_fibphys;
-	struct aac_command	aac_command[AAC_FIB_COUNT];
+	TAILQ_HEAD(,aac_fibmap)	aac_fibmap_tqh;
+	u_int			total_fibs;
+	struct aac_command	*aac_commands;
 
 	/* command management */
 	TAILQ_HEAD(,aac_command) aac_free;	/* command structures 
@@ -325,6 +341,11 @@ struct aac_softc
 	TAILQ_HEAD(,aac_command) aac_busy;
 	TAILQ_HEAD(,aac_command) aac_complete;	/* commands which have been
 						 * returned by the controller */
+	TAILQ_HEAD(,aac_command) aac_aif;
+#if 0
+	TAILQ_HEAD(,aac_command) aac_norm;
+#endif
+	TAILQ_HEAD(,aac_event)  aac_ev_cmfree;
 	struct bio_queue_head	aac_bioq;
 	struct aac_queue_table	*aac_queues;
 	struct aac_queue_entry	*aac_qentries[AAC_QUEUE_COUNT];
@@ -332,18 +353,18 @@ struct aac_softc
 	struct aac_qstat	aac_qstat[AACQ_COUNT];	/* queue statistics */
 
 	/* connected containters */
-	struct aac_container_tq	aac_container_tqh;
+	TAILQ_HEAD(,aac_container)	aac_container_tqh;
 	aac_lock_t		aac_container_lock;
 
-	/* Protect the sync fib */
-#define AAC_SYNC_LOCK_FORCE	(1 << 0)
-	aac_lock_t		aac_sync_lock;
+	/*
+	 * The general I/O lock.  This protects the sync fib, the lists, the
+	 * queues, and the registers.
+	 */
+	aac_lock_t		aac_io_lock;
 
 	/* delayed activity infrastructure */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 	struct task		aac_task_complete;	/* deferred-completion
 							 * task */
-#endif
 	struct intr_config_hook	aac_ich;
 
 	/* management interface */
@@ -356,23 +377,61 @@ struct aac_softc
 	struct thread		*aifthread;
 	int			aifflags;
 #define AAC_AIFFLAGS_RUNNING	(1 << 0)
-#define AAC_AIFFLAGS_PENDING	(1 << 1)
+#define AAC_AIFFLAGS_AIF	(1 << 1)
 #define	AAC_AIFFLAGS_EXIT	(1 << 2)
 #define AAC_AIFFLAGS_EXITED	(1 << 3)
+#define AAC_AIFFLAGS_PRINTF	(1 << 4)
+#define	AAC_AIFFLAGS_ALLOCFIBS	(1 << 5)
+#define AAC_AIFFLAGS_PENDING	(AAC_AIFFLAGS_AIF | AAC_AIFFLAGS_PRINTF | \
+				 AAC_AIFFLAGS_ALLOCFIBS)
 	u_int32_t		flags;
 #define AAC_FLAGS_PERC2QC	(1 << 0)
 #define	AAC_FLAGS_ENABLE_CAM	(1 << 1)	/* No SCSI passthrough */
 #define	AAC_FLAGS_CAM_NORESET	(1 << 2)	/* Fake SCSI resets */
 #define	AAC_FLAGS_CAM_PASSONLY	(1 << 3)	/* Only create pass devices */
+#define	AAC_FLAGS_SG_64BIT	(1 << 4)	/* Use 64-bit S/G addresses */
 #define	AAC_FLAGS_4GB_WINDOW	(1 << 5)	/* Device can access host mem
  						 * 2GB-4GB range */
 #define	AAC_FLAGS_NO4GB		(1 << 6)	/* Can't access host mem >2GB */
 #define	AAC_FLAGS_256FIBS	(1 << 7)	/* Can only do 256 commands */
+#define AAC_FLAGS_BROKEN_MEMMAP	(1 << 8)	/* Broken HostPhysMemPages */
+#define AAC_FLAGS_SLAVE		(1 << 9)
+#define AAC_FLAGS_MASTER	(1 << 10)
+#define AAC_FLAGS_NEW_COMM	(1 << 11)	/* New comm. interface supported */
+#define AAC_FLAGS_RAW_IO	(1 << 12)	/* Raw I/O interface */
+#define AAC_FLAGS_ARRAY_64BIT	(1 << 13)	/* 64-bit array size */
   
 	u_int32_t		supported_options;
 	u_int32_t		scsi_method_id;
+	TAILQ_HEAD(,aac_sim)	aac_sim_tqh;
+
+	u_int32_t	aac_max_fibs;		/* max. FIB count */
+	u_int32_t	aac_max_fibs_alloc;	/* max. alloc. per alloc_commands() */
+	u_int32_t	aac_max_fib_size;	/* max. FIB size */
+	u_int32_t	aac_sg_tablesize;	/* max. sg count from host */
+	u_int32_t	aac_max_sectors;	/* max. I/O size from host (blocks) */
 };
 
+/*
+ * Event callback mechanism for the driver
+ */
+#define AAC_EVENT_NONE		0x00
+#define AAC_EVENT_CMFREE	0x01
+#define AAC_EVENT_MASK		0xff
+#define AAC_EVENT_REPEAT	0x100
+
+typedef void aac_event_cb_t(struct aac_softc *sc, struct aac_event *event,
+    void *arg);
+struct aac_event {
+	TAILQ_ENTRY(aac_event)	ev_links;
+	int			ev_type;
+	aac_event_cb_t		*ev_callback;
+	void			*ev_arg;
+};
+
+#ifndef AAC_DRIVER_BUILD
+# define AAC_DRIVER_BUILD 1
+#endif
 
 /*
  * Public functions
@@ -382,7 +441,8 @@ extern int		aac_attach(struct aac_softc *sc);
 extern int		aac_detach(device_t dev);
 extern int		aac_suspend(device_t dev); 
 extern int		aac_resume(device_t dev);
-extern void		aac_intr(void *arg);
+extern void		aac_new_intr(void *arg);
+extern void		aac_fast_intr(void *arg);
 extern devclass_t	aac_devclass;
 extern void		aac_submit_bio(struct aac_disk *ad, struct bio *bio);
 extern void		aac_biodone(struct bio *bio, const char *code);
@@ -393,12 +453,11 @@ extern void		aac_startio(struct aac_softc *sc);
 extern int		aac_alloc_command(struct aac_softc *sc,
 					  struct aac_command **cmp);
 extern void		aac_release_command(struct aac_command *cm);
-extern int		aac_alloc_sync_fib(struct aac_softc *sc,
-					 struct aac_fib **fib, int flags);
-extern void		aac_release_sync_fib(struct aac_softc *sc);
 extern int		aac_sync_fib(struct aac_softc *sc, u_int32_t command,
 				     u_int32_t xferstate, struct aac_fib *fib,
 				     u_int16_t datasize);
+extern void		aac_add_event(struct aac_softc *sc, struct aac_event
+				      *event);
 
 /*
  * Debugging levels:
@@ -468,7 +527,6 @@ aac_initq_ ## name (struct aac_softc *sc)				\
 static __inline void							\
 aac_enqueue_ ## name (struct aac_command *cm)				\
 {									\
-	crit_enter();							\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
 		kprintf("command %p is on another queue, flags = %#x\n",	\
 		       cm, cm->cm_flags);				\
@@ -477,12 +535,10 @@ aac_enqueue_ ## name (struct aac_command *cm)				\
 	TAILQ_INSERT_TAIL(&cm->cm_sc->aac_ ## name, cm, cm_link);	\
 	cm->cm_flags |= AAC_ON_ ## index;				\
 	AACQ_ADD(cm->cm_sc, index);					\
-	crit_exit();							\
 }									\
 static __inline void							\
 aac_requeue_ ## name (struct aac_command *cm)				\
 {									\
-	crit_enter();							\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
 		kprintf("command %p is on another queue, flags = %#x\n",	\
 		       cm, cm->cm_flags);				\
@@ -491,14 +547,12 @@ aac_requeue_ ## name (struct aac_command *cm)				\
 	TAILQ_INSERT_HEAD(&cm->cm_sc->aac_ ## name, cm, cm_link);	\
 	cm->cm_flags |= AAC_ON_ ## index;				\
 	AACQ_ADD(cm->cm_sc, index);					\
-	crit_exit();							\
 }									\
 static __inline struct aac_command *					\
 aac_dequeue_ ## name (struct aac_softc *sc)				\
 {									\
 	struct aac_command *cm;						\
 									\
-	crit_enter();							\
 	if ((cm = TAILQ_FIRST(&sc->aac_ ## name)) != NULL) {		\
 		if ((cm->cm_flags & AAC_ON_ ## index) == 0) {		\
 			kprintf("command %p not in queue, flags = %#x, "	\
@@ -510,13 +564,11 @@ aac_dequeue_ ## name (struct aac_softc *sc)				\
 		cm->cm_flags &= ~AAC_ON_ ## index;			\
 		AACQ_REMOVE(sc, index);					\
 	}								\
-	crit_exit();							\
 	return(cm);							\
 }									\
 static __inline void							\
 aac_remove_ ## name (struct aac_command *cm)				\
 {									\
-	crit_enter();							\
 	if ((cm->cm_flags & AAC_ON_ ## index) == 0) {			\
 		kprintf("command %p not in queue, flags = %#x, "		\
 		       "bit = %#x\n", cm, cm->cm_flags, 		\
@@ -526,7 +578,6 @@ aac_remove_ ## name (struct aac_command *cm)				\
 	TAILQ_REMOVE(&cm->cm_sc->aac_ ## name, cm, cm_link);		\
 	cm->cm_flags &= ~AAC_ON_ ## index;				\
 	AACQ_REMOVE(cm->cm_sc, index);					\
-	crit_exit();							\
 }									\
 struct hack
 
@@ -548,10 +599,8 @@ aac_initq_bio(struct aac_softc *sc)
 static __inline void
 aac_enqueue_bio(struct aac_softc *sc, struct bio *bio)
 {
-	crit_enter();
 	bioq_insert_tail(&sc->aac_bioq, bio);
 	AACQ_ADD(sc, AACQ_BIO);
-	crit_exit();
 }
 
 static __inline struct bio *
@@ -559,12 +608,10 @@ aac_dequeue_bio(struct aac_softc *sc)
 {
 	struct bio *bio;
 
-	crit_enter();
 	if ((bio = bioq_first(&sc->aac_bioq)) != NULL) {
 		bioq_remove(&sc->aac_bioq, bio);
 		AACQ_REMOVE(sc, AACQ_BIO);
 	}
-	crit_exit();
 	return(bio);
 }
 
@@ -577,5 +624,23 @@ aac_print_printf(struct aac_softc *sc)
 	 */
 	device_printf(sc->aac_dev, "**Monitor** %.*s", AAC_PRINTF_BUFSIZE,
 		      sc->aac_common->ac_printf);
+	sc->aac_common->ac_printf[0] = 0;
 	AAC_QNOTIFY(sc, AAC_DB_PRINTF);
 }
+
+static __inline int
+aac_alloc_sync_fib(struct aac_softc *sc, struct aac_fib **fib)
+{
+
+	KKASSERT(lockstatus(&sc->aac_io_lock, curthread) != 0);
+	*fib = &sc->aac_common->ac_sync_fib;
+	return (0);
+}
+
+static __inline void
+aac_release_sync_fib(struct aac_softc *sc)
+{
+
+	KKASSERT(lockstatus(&sc->aac_io_lock, curthread) != 0);
+}
+

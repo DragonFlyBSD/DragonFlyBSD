@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_debug.c,v 1.2.2.5 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_debug.c,v 1.7 2007/11/24 18:53:15 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_debug.c,v 1.8 2008/01/20 03:40:35 pavalos Exp $
  */
 
 /*
@@ -39,7 +39,6 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 
-#include "aac_compat.h"
 #include <sys/bus.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
@@ -345,10 +344,10 @@ aac_print_aif(struct aac_softc *sc, struct aac_aif_command *aif)
 			break;
 		case AifEnDiskSetEvent:		/* A disk set event occured. */
 			device_printf(sc->aac_dev, "(DiskSetEvent) event %d "
-				      "diskset %lld creator %lld\n",
+				      "diskset %jd creator %jd\n",
 				      aif->data.EN.data.EDS.eventType, 
-				      aif->data.EN.data.EDS.DsNum, 
-				      aif->data.EN.data.EDS.CreatorId);
+				      (intmax_t)aif->data.EN.data.EDS.DsNum, 
+				      (intmax_t)aif->data.EN.data.EDS.CreatorId);
 			break;
 		case AifDenMorphComplete: 	/* A morph operation
 						 * completed */

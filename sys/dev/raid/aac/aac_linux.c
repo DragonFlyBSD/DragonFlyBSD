@@ -27,13 +27,14 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_linux.c,v 1.1.4.1 2003/03/28 19:50:17 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.6 2007/04/30 07:18:51 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.7 2008/01/20 03:40:35 pavalos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/kernel.h>
+#include <sys/module.h>
 #include <sys/file.h>
 #include <sys/ioccom.h>
 #include <sys/mapped_ioctl.h>

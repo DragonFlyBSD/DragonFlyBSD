@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacreg.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacreg.h,v 1.3 2003/07/23 02:30:14 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacreg.h,v 1.4 2008/01/20 03:40:35 pavalos Exp $
  */
 
 /*
@@ -201,12 +201,17 @@ typedef enum {
 	/* Container Commands */
 	ContainerCommand =		500,
 	ContainerCommand64 =		501,
+	RawIo = 			502,	
 
 	/* Cluster Commands */
 	ClusterCommand =		550,
 
 	/* Scsi Port commands (scsi passthrough) */
 	ScsiPortCommand =		600,
+	ScsiPortCommandU64 =		601,
+	SataPortCommandU64 =		602,
+	SasSmpPassThrough =		603,
+	SasRequestPhyInfo =		612,
 
 	/* misc house keeping and generic adapter initiated commands */
 	AifRequest =			700,
@@ -215,7 +220,21 @@ typedef enum {
 	RequestAdapterInfo =		703,
 	IsAdapterPaused =		704,
 	SendHostTime =			705,
-	LastMiscCommand =		706
+	RequestSupplementAdapterInfo =	706,	/* Supp. Info for set in UCC
+						 * use only if supported 
+						 * (RequestAdapterInfo first) */
+	LastMiscCommand =		707,
+  
+	OnLineDiagnostic =		800,      
+	FduAdapterTest =		801, 
+	RequestCompatibilityId =	802,
+	AdapterEnvironmentInfo =	803,	/* temp. sensors */
+	NvsramEventLog =		900,
+	ResetNvsramEventLogPointers =	901,
+	EnableEventLog =		902,
+	DisableEventLog =		903,
+	EncryptedKeyTransportFIB=	904,    
+	KeyableFeaturesFIB=		905     
 } AAC_FibCommands;
 
 /*
@@ -271,6 +290,7 @@ typedef enum {
 struct aac_adapter_init {
 	u_int32_t	InitStructRevision;
 #define AAC_INIT_STRUCT_REVISION		3
+#define AAC_INIT_STRUCT_REVISION_4		4
 	u_int32_t	MiniPortRevision;
 #define AAC_INIT_STRUCT_MINIPORT_REVISION	1
 	u_int32_t	FilesystemRevision;
@@ -285,6 +305,12 @@ struct aac_adapter_init {
 #define	AAC_PAGE_SIZE				4096
 	u_int32_t	HostPhysMemPages;
 	u_int32_t	HostElapsedSeconds;
+	/* ADAPTER_INIT_STRUCT_REVISION_4 begins here */
+	u_int32_t	InitFlags;			/* flags for supported features */
+#define INITFLAGS_NEW_COMM_SUPPORTED	1
+	u_int32_t	MaxIoCommands;		/* max outstanding commands */
+	u_int32_t	MaxIoSize;			/* largest I/O command */
+	u_int32_t	MaxFibSize;			/* largest FIB to adapter */
 } __attribute__ ((packed));
 
 typedef u_int32_t	aac_phys_addr_t;
@@ -311,6 +337,11 @@ typedef enum {
 	CT_VOLUME_OF_MIRRORS,       /* volume of mirror */
 	CT_PSEUDO_RAID3,            /* really raid4 */
 	CT_RAID50,		    /* stripe of raid5 */
+	CT_RAID5D,		    /* raid5 distributed hot-sparing */
+	CT_RAID5D0,
+	CT_RAID1E,		    /* extended raid1 mirroring */
+	CT_RAID6,
+	CT_RAID60,
 } AAC_FSAVolType;
 
 /*
@@ -344,6 +375,19 @@ struct aac_sg_entry {
 	u_int32_t	SgByteCount;
 } __attribute__ ((packed));
 
+struct aac_sg_entry64 {
+	u_int64_t	SgAddress;
+	u_int32_t	SgByteCount;
+} __packed;
+
+struct aac_sg_entryraw {
+	u_int32_t	Next;		/* reserved for FW use */
+	u_int32_t	Prev;		/* reserved for FW use */
+	u_int64_t	SgAddress;
+	u_int32_t	SgByteCount;
+	u_int32_t	Flags;		/* reserved for FW use */
+} __packed;
+
 struct aac_sg_table {
 	u_int32_t		SgCount;
 	struct aac_sg_entry	SgEntry[0];
@@ -353,11 +397,17 @@ struct aac_sg_table {
  * Host-side scatter/gather list for 64-bit commands.
  */
 struct aac_sg_table64 {
-	u_int8_t	SgCount;
-	u_int8_t	SgSectorsPerPage;
-	u_int16_t	SgByteOffset;
-	u_int64_t	SgEntry[0];
+	u_int32_t	SgCount;
+	struct aac_sg_entry64	SgEntry64[0];
 } __attribute__ ((packed));
+
+/*
+ * s/g list for raw commands
+ */
+struct aac_sg_tableraw {
+	u_int32_t	SgCount;
+	struct aac_sg_entryraw	SgEntryRaw[0];
+} __packed;
 
 /*
  * Container creation data
@@ -417,6 +467,8 @@ typedef enum {
 	CPU_ALPHA,
 	CPU_P7,
 	CPU_I960_RX,
+	CPU_MIPS,
+	CPU_XSCALE,
 	CPU__last
 } AAC_CpuType;  
 
@@ -427,8 +479,12 @@ typedef enum {
 	CPUI960_RX,
 	CPUARM_SA110,
 	CPUARM_xxx,
-	CPUMPC_824x,
+	CPUPPC_603e,
 	CPUPPC_xxx,
+	CPUI960_80303,
+	CPU_XSCALE_80321,
+	CPU_MIPS_4KC,
+	CPU_MIPS_5KC,
 	CPUSUBTYPE__last
 } AAC_CpuSubType;
 
@@ -453,6 +509,20 @@ typedef enum {
 	PLAT_POBLANO_XXX,
 	PLAT_JALAPENO_P2,
 	PLAT_HABANERO,
+	PLAT_VULCAN,
+	PLAT_CRUSADER,
+	PLAT_LANCER,
+	PLAT_HARRIER,
+	PLAT_TERMINATOR,
+	PLAT_SKYHAWK,
+	PLAT_CORSAIR,
+	PLAT_JAGUAR,
+	PLAT_SATAHAWK,
+	PLAT_SATANATOR,
+	PLAT_PROWLER,
+	PLAT_BLACKBIRD,
+	PLAT_SABREEXPRESS,
+	PLAT_INTRUDER,
 	PLAT__last
 } AAC_Platform;
 
@@ -462,9 +532,14 @@ typedef enum {
 	OEM_FLAVOR_HP,
 	OEM_FLAVOR_IBM,
 	OEM_FLAVOR_CPQ,
-	OEM_FLAVOR_BRAND_X,
-	OEM_FLAVOR_BRAND_Y,
+	OEM_FLAVOR_FSC,
+	OEM_FLAVOR_DWS,
 	OEM_FLAVOR_BRAND_Z,
+	OEM_FLAVOR_LEGEND,
+	OEM_FLAVOR_HITACHI,
+	OEM_FLAVOR_ESG,
+	OEM_FLAVOR_ICP,
+	OEM_FLAVOR_SCM,
 	OEM_FLAVOR__last
 } AAC_OemFlavor;
 
@@ -498,6 +573,12 @@ typedef enum
 #define AAC_SUPPORTED_SGMAP_HOST64	0x400
 #define AAC_SUPPORTED_ALARM		0x800
 #define AAC_SUPPORTED_NONDASD		0x1000
+#define AAC_SUPPORTED_SCSI_MANAGED	0x2000	
+#define AAC_SUPPORTED_RAID_SCSI_MODE	0x4000	
+#define AAC_SUPPORTED_SUPPLEMENT_ADAPTER_INFO	0x10000
+#define AAC_SUPPORTED_NEW_COMM		0x20000
+#define AAC_SUPPORTED_64BIT_ARRAYSIZE	0x40000
+#define AAC_SUPPORTED_HEAT_SENSOR	0x80000
 
 /* 
  * Structure used to respond to a RequestAdapterInfo fib.
@@ -533,10 +614,16 @@ struct aac_adapter_info {
 /*
  * Synchronous commands to the monitor/kernel.
  */
+#define AAC_MONKER_BREAKPOINT	0x04
 #define AAC_MONKER_INITSTRUCT	0x05
 #define AAC_MONKER_SYNCFIB	0x0c
 #define AAC_MONKER_GETKERNVER	0x11
+#define AAC_MONKER_POSTRESULTS	0x14
 #define AAC_MONKER_GETINFO	0x19
+#define AAC_MONKER_GETDRVPROP	0x23
+#define AAC_MONKER_RCVTEMP	0x25
+#define AAC_MONKER_GETCOMMPREF	0x26
+#define AAC_MONKER_REINIT	0xee
 
 /*
  *  Adapter Status Register
@@ -551,6 +638,7 @@ struct aac_adapter_info {
  *  state of the adapter.
  */
 #define AAC_SELF_TEST_FAILED	0x00000004
+#define AAC_MONITOR_PANIC	0x00000020
 #define AAC_UP_AND_RUNNING	0x00000080
 #define AAC_KERNEL_PANIC	0x00000100
 
@@ -656,6 +744,7 @@ typedef enum {
 	AifJobScsiExercise,		/* SCSI device Exercise operation */
 	AifJobScsiVerifyRepair,		/* SCSI device Verify operation WITH
 					 * repair */
+	AifJobScsiWritePattern,		/* write pattern */
 	AifJobScsiMax = 99,		/* Max Scsi value */
 	AifJobCtrMin,			/* Min Ctr op value */
 	AifJobCtrZero,			/* Container clear operation */
@@ -669,6 +758,12 @@ typedef enum {
 	AifJobCtrPartCopy,		/* Container Partition copy operation */
 	AifJobCtrRebuildMirror,		/* Container Rebuild Mirror operation */
 	AifJobCtrCrazyCache,		/* crazy cache */
+	AifJobCtrCopyback,		/* Container Copyback operation */
+	AifJobCtrCompactRaid5D,		/* Container Compaction operation */
+	AifJobCtrExpandRaid5D,		/* Container Expansion operation */
+	AifJobCtrRebuildRaid6,		/* Container Rebuild Raid6 operation */
+	AifJobCtrScrubRaid6,		/* Container Scrub Raid6 operation */
+	AifJobCtrSSBackup,		/* Container snapshot backup task */
 	AifJobCtrMax = 199,		/* Max Ctr type operation */
 	AifJobFsMin,			/* Min Fs type operation */
 	AifJobFsCreate,			/* File System Create operation */
@@ -851,9 +946,10 @@ struct aac_aif_command {
 	u_int32_t	seqNumber;	/* To allow ordering of
 					 * reports (if necessary) */
 	union {
-	struct aac_AifEventNotify	EN;	/* Event notify structure */
-	struct aac_AifJobProgressReport	PR[1];	/* Progress report */
-	u_int8_t			AR[AAC_AIF_REPORT_MAX_SIZE];
+		struct aac_AifEventNotify	EN;	/* Event notify */
+		struct aac_AifJobProgressReport	PR[1];	/* Progress report */
+		u_int8_t			AR[AAC_AIF_REPORT_MAX_SIZE];
+		u_int8_t			data[AAC_FIB_DATASIZE - 8];
 	} data;
 } __attribute__ ((packed));
 
@@ -972,6 +1068,10 @@ typedef enum _VM_COMMANDS {
 	VM_CtBlockRead64,
 	VM_CtBlockWrite64,
 	VM_CtBlockVerify64,
+	VM_CtHostRead64,
+	VM_CtHostWrite64,
+	VM_DrvErrTblLog,	/* drive error table/log type of command */
+	VM_NameServe64		 
 } AAC_VMCommand;
 
 /*
@@ -1066,8 +1166,15 @@ struct aac_vmi_businf_resp {
 	struct aac_getbusinf	BusInf;
 } __attribute__ ((packed));
 
+#if 0
 #define AAC_BTL_TO_HANDLE(b, t, l) \
     (((b & 0x3f) << 7) | ((l & 0x7) << 4) | (t & 0xf))
+#else
+#define AAC_BTL_TO_HANDLE(b, t, l) \
+    ((((u_int32_t)b & 0x0f) << 24) | \
+     (((u_int32_t)l & 0xff) << 16) | \
+     ((u_int32_t)t & 0xffff))
+#endif
 #define GetDeviceProbeInfo 0x5
 
 struct aac_vmi_devinfo_resp {
@@ -1145,6 +1252,16 @@ struct aac_blockread {
 	struct aac_sg_table	SgMap;		/* variable size */
 } __attribute__ ((packed));
 
+struct aac_blockread64 {
+	u_int32_t		Command;
+	u_int16_t		ContainerId;
+	u_int16_t		SectorCount;
+	u_int32_t		BlockNumber;
+	u_int16_t		Pad;
+	u_int16_t		Flags;
+	struct aac_sg_table64	SgMap64;
+} __packed;
+
 struct aac_blockread_response {
 	u_int32_t		Status;
 	u_int32_t		ByteCount;
@@ -1159,11 +1276,31 @@ struct aac_blockwrite {
 	struct aac_sg_table	SgMap;		/* variable size */
 } __attribute__ ((packed));
 
+struct aac_blockwrite64 {
+	u_int32_t		Command;	/* not FSACommand! */
+	u_int16_t		ContainerId;
+	u_int16_t		SectorCount;
+	u_int32_t		BlockNumber;
+	u_int16_t		Pad;
+	u_int16_t		Flags;
+	struct aac_sg_table64	SgMap64;	/* variable size */
+} __packed;
+
 struct aac_blockwrite_response {
 	u_int32_t		Status;
 	u_int32_t		ByteCount;
 	u_int32_t		Committed;
 } __attribute__ ((packed));
+
+struct aac_raw_io {
+	u_int64_t		BlockNumber;
+	u_int32_t		ByteCount;
+	u_int16_t		ContainerId;
+	u_int16_t		Flags;				/* 0: W, 1: R */
+	u_int16_t		BpTotal;			/* reserved for FW use */
+	u_int16_t		BpComplete;			/* reserved for FW use */
+	struct aac_sg_tableraw	SgMapRaw;	/* variable size */
+} __packed;
 
 /*
  * Container shutdown command.
@@ -1231,6 +1368,11 @@ struct aac_srb_response {
 	u_int8_t	sense[AAC_HOST_SENSE_DATA_MAX];
 };
 
+/*
+ * Status codes for SCSI passthrough commands.  Since they are based on ASPI,
+ * they also exactly match CAM status codes in both enumeration and meaning.
+ * They seem to also be used as status codes for synchronous FIBs.
+ */
 enum {
 	AAC_SRB_STS_PENDING			= 0x00,
 	AAC_SRB_STS_SUCCESS,
@@ -1309,9 +1451,28 @@ enum {
 #define AAC_RX_ODBR		0x2c	/* outbound doorbell register */
 #define AAC_RX_OISR		0x30	/* outbound interrupt status register */
 #define AAC_RX_OIMR		0x34	/* outbound interrupt mask register */
+#define AAC_RX_IQUE		0x40	/* inbound queue */
+#define AAC_RX_OQUE		0x44	/* outbound queue */
 
 #define AAC_RX_MAILBOX		0x50	/* mailbox (20 bytes) */
 #define AAC_RX_FWSTATUS		0x6c
+
+/*
+ * Register definitions for the Adaptec 'Rocket' RAID-On-Chip adapters.
+ * Unsurprisingly, it's quite similar to the i960!
+ */
+
+#define AAC_RKT_IDBR		0x20	/* inbound doorbell register */
+#define AAC_RKT_IISR		0x24	/* inbound interrupt status register */
+#define AAC_RKT_IIMR		0x28	/* inbound interrupt mask register */
+#define AAC_RKT_ODBR		0x2c	/* outbound doorbell register */
+#define AAC_RKT_OISR		0x30	/* outbound interrupt status register */
+#define AAC_RKT_OIMR		0x34	/* outbound interrupt mask register */
+#define AAC_RKT_IQUE		0x40	/* inbound queue */
+#define AAC_RKT_OQUE		0x44	/* outbound queue */
+
+#define AAC_RKT_MAILBOX		0x1000	/* mailbox */
+#define AAC_RKT_FWSTATUS	0x101c	/* Firmware Status (mailbox 7) */
 
 /*
  * Common bit definitions for the doorbell registers.
@@ -1343,3 +1504,5 @@ enum {
 #define AAC_DB_INTERRUPTS	(AAC_DB_COMMAND_READY  |	\
 				 AAC_DB_RESPONSE_READY |	\
 				 AAC_DB_PRINTF)
+#define AAC_DB_INT_NEW_COMM		0x08		
+

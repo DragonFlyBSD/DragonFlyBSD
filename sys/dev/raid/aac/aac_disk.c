@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.19 2007/11/10 19:02:04 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.20 2008/01/20 03:40:35 pavalos Exp $
  */
 
 #include "opt_aac.h"
@@ -35,9 +35,9 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/module.h>
 #include <sys/sysctl.h>
 
-#include "aac_compat.h"
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
@@ -204,10 +204,13 @@ aac_disk_strategy(struct dev_strategy_args *ap)
 	}
 
 	/* perform accounting */
-	devstat_start_transaction(&sc->ad_stats);
 
 	/* pass the bio to the controller - it can work out who we are */
+	AAC_LOCK_ACQUIRE(&sc->ad_controller->aac_io_lock);
+	devstat_start_transaction(&sc->ad_stats);
 	aac_submit_bio(sc, bio);
+	AAC_LOCK_RELEASE(&sc->ad_controller->aac_io_lock);
+
 	return(0);
 }
 

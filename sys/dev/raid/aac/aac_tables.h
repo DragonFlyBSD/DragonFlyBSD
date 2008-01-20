@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_tables.h,v 1.1.2.3 2001/12/04 02:38:04 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_tables.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_tables.h,v 1.3 2008/01/20 03:40:35 pavalos Exp $
  */
 
 /*
@@ -41,7 +41,7 @@ static struct aac_code_lookup aac_command_status_table[] = {
 	{"I/O error",				5},
 	{"device not configured",		6},
 	{"too big",				7},
-	{"permission denoed",			13},
+	{"permission denied",			13},
 	{"file exists",				17},
 	{"cross-device link",			18},
 	{"operation not supported by device",	19},
@@ -67,7 +67,7 @@ static struct aac_code_lookup aac_command_status_table[] = {
 	{"bad type",				10007},
 	{"jukebox",				10008},
 	{"not mounted",				10009},
-	{"in maintenace mode",			10010},
+	{"in maintenance mode",			10010},
 	{"stale ACL",				10011},
 	{NULL, 					0},
 	{"unknown command status",		0}
@@ -80,8 +80,12 @@ static struct aac_code_lookup aac_cpu_variant[] = {
 	{"i960CX",		CPUI960_CX},
 	{"i960HX",		CPUI960_HX},
 	{"i960RX",		CPUI960_RX},
+	{"i960 80303",		CPUI960_80303},
 	{"StrongARM SA110",	CPUARM_SA110},
-	{"MPC824x",		CPUMPC_824x},
+	{"PPC603e",		CPUPPC_603e},
+	{"XScale 80321",	CPU_XSCALE_80321},
+	{"MIPS 4KC",		CPU_MIPS_4KC},
+	{"MIPS 5KC",		CPU_MIPS_5KC},
 	{"Unknown StrongARM",	CPUARM_xxx},
 	{"Unknown PowerPC",	CPUPPC_xxx},
 	{NULL, 0},
@@ -113,6 +117,11 @@ static struct aac_code_lookup aac_container_types[] = {
 	{"Volume of Mirrors",	CT_VOLUME_OF_MIRRORS},
 	{"Pseudo RAID 3",	CT_PSEUDO_RAID3},
 	{"RAID 0/5",		CT_RAID50},
+	{"RAID 5D",		CT_RAID5D},
+	{"RAID 0/5D",		CT_RAID5D0},
+	{"RAID 1E",		CT_RAID1E},
+	{"RAID 6",		CT_RAID6},
+	{"RAID 0/6",		CT_RAID60},
 	{NULL, 0},
 	{"unknown",		0}
 };
