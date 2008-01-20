@@ -1,4 +1,4 @@
-$DragonFly: src/lib/libpthread/README,v 1.1 2007/04/17 12:34:07 corecode Exp $
+$DragonFly: src/lib/libpthread/README,v 1.2 2008/01/20 19:14:09 corecode Exp $
 
 Proxy libpthread
 ================
@@ -7,13 +7,8 @@ We want to be able to switch between threading libraries at execution
 time.  This problem is solved by this proxy libpthread.  Its operation is
 as follows.
 
-During link time a library is needed which defines all necessary pthread
-functions.  By linking libpthread.so to any threading lib (default is
-libc_r.so), this requirement is (indirectly) met.
-
-Unfortuately ld wants to link in also recursively DT_NEEDED libs if any
-specified object needs a symbol from these libs.  We cheat by doing the
-following:  libc.so anyways defines all pthread functions as weak symbols
+The operation at link time is as follows.
+libc.so anyways defines all pthread functions as weak symbols
 except for pthread_create.  libpthread.so now also defines a dummy
 pthread_create as weak symbol and ld is satisfied.  At execution time
 later rtld will resolve all these references to the strong symbols in the

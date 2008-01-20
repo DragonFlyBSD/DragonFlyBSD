@@ -1,11 +1,9 @@
-# $DragonFly: src/lib/libpthread/Makefile,v 1.5 2007/12/23 02:46:40 sephe Exp $
+# $DragonFly: src/lib/libpthread/Makefile,v 1.6 2008/01/20 19:14:09 corecode Exp $
 
 LIBNAME=	libpthread
 SHLIB_MAJOR=	0
 SHLIB_NAME=	${LIBNAME}.so
 SONAME=		${SHLIB_NAME}.${SHLIB_MAJOR}
-DPADD=		${LIBTHREAD}
-LDADD=		-l${THREAD_LIB}	# or any lib defining the pthread interface
 
 SRCS=		dummy.c
 
