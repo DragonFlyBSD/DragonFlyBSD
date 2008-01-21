@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.h,v 1.13.2.2 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.h,v 1.8 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.h,v 1.9 2008/01/21 20:00:42 nth Exp $
  */
 
 #ifndef _VM_VM_ZONE_H_
@@ -27,6 +27,12 @@
 #include <sys/spinlock.h>
 #include <sys/thread.h>
 
+/*
+ * Zone allocator.
+ * Zones are deprecated, use <sys/objcache.h> instead for new developments.
+ * Zones are not thread-safe; the mp lock must be held while calling
+ * zone functions.
+ */
 typedef struct vm_zone {
 	struct spinlock zlock;		/* lock for data structure */
 	void		*zitems;	/* linked list of items */

@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.24 2007/01/12 03:05:49 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.25 2008/01/21 20:00:42 nth Exp $
  */
 
 #include <sys/param.h>
@@ -45,8 +45,8 @@ static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 static void *zget(vm_zone_t z);
 
 /*
- * Return an item from the specified zone.   This function is interrupt/MP
- * thread safe and is non-blocking for ZONE_INTERRUPT zones.
+ * Return an item from the specified zone.   This function is non-blocking for
+ * ZONE_INTERRUPT zones.
  */
 void *
 zalloc(vm_zone_t z)
@@ -84,8 +84,7 @@ zalloc(vm_zone_t z)
 }
 
 /*
- * Free an item to the specified zone.   This function is interrupt/MP
- * thread safe and is non-blocking.
+ * Free an item to the specified zone.   
  */
 void
 zfree(vm_zone_t z, void *item)
