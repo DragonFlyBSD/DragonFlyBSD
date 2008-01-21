@@ -38,7 +38,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.9 2008/01/15 06:02:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.10 2008/01/21 00:00:19 dillon Exp $
  */
 /*
  * This module implements a generic allocator through the use of a hinted
@@ -1642,6 +1642,10 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 			} else {
 				/*
 				 * Stacked meta node, recurse.
+				 *
+				 * XXX need a more sophisticated return
+				 * code to control how the bitmap is set
+				 * in the parent.
 				 */
 				n = live->config->bl_radix_recover(
 					    live->info,

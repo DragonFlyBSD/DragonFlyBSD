@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.26 2008/01/18 07:02:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.27 2008/01/21 00:00:19 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -274,6 +274,7 @@ struct hammer_io {
 	u_int		released : 1;	/* bp released (w/ B_LOCKED set) */
 	u_int		running : 1;	/* bp write IO in progress */
 	u_int		waiting : 1;	/* someone is waiting on us */
+	u_int		loading : 1;	/* ondisk is loading */
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -338,6 +339,12 @@ struct hammer_cluster {
 };
 
 typedef struct hammer_cluster *hammer_cluster_t;
+
+/*
+ * Passed to hammer_get_cluster()
+ */
+#define GET_CLUSTER_NEW		0x0001
+#define GET_CLUSTER_NORECOVER	0x0002
 
 /*
  * In-memory buffer (other then volume, super-cluster, or cluster),
@@ -477,7 +484,6 @@ int	hammer_unload_inode(hammer_inode_t ip, void *data);
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_unload_supercl(hammer_supercl_t supercl, void *data __unused);
 int	hammer_unload_cluster(hammer_cluster_t cluster, void *data __unused);
-void	hammer_update_syncid(hammer_cluster_t cluster, hammer_tid_t tid);
 int	hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused);
 int	hammer_install_volume(hammer_mount_t hmp, const char *volname);
 
@@ -519,7 +525,7 @@ hammer_tid_t hammer_timespec_to_transid(struct timespec *ts);
 hammer_tid_t hammer_alloc_tid(hammer_transaction_t trans);
 hammer_tid_t hammer_now_tid(void);
 hammer_tid_t hammer_str_to_tid(const char *str);
-hammer_tid_t hammer_alloc_recid(hammer_transaction_t trans);
+u_int64_t hammer_alloc_recid(hammer_cluster_t cluster);
 
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);
 int hammer_get_dtype(u_int8_t obj_type);
@@ -542,7 +548,6 @@ int	hammer_btree_insert_cluster(hammer_cursor_t cursor,
 int	hammer_btree_delete(hammer_cursor_t cursor);
 int	hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
-void	hammer_make_base_inclusive(hammer_base_elm_t key);
 
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
@@ -559,7 +564,7 @@ hammer_volume_t	hammer_get_volume(hammer_mount_t hmp,
 hammer_supercl_t hammer_get_supercl(hammer_volume_t volume, int32_t scl_no,
 			int *errorp, hammer_alloc_state_t isnew);
 hammer_cluster_t hammer_get_cluster(hammer_volume_t volume, int32_t clu_no,
-			int *errorp, hammer_alloc_state_t isnew);
+			int *errorp, int getflags);
 hammer_buffer_t	hammer_get_buffer(hammer_cluster_t cluster,
 			int32_t buf_no, u_int64_t buf_type, int *errorp);
 
@@ -655,6 +660,7 @@ int  hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t rec,
 void hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep);
 int hammer_spike(struct hammer_cursor **spikep);
 int hammer_recover(struct hammer_cluster *cluster);
+int buffer_alist_recover(void *info, int32_t blk, int32_t radix, int32_t count);
 
 void hammer_io_init(hammer_io_t io, enum hammer_io_type type);
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.9 2008/01/18 07:02:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.10 2008/01/21 00:00:19 dillon Exp $
  */
 
 #include "hammer.h"
@@ -56,6 +56,7 @@ hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep)
 	spike->index = cursor->index;
 	spike->left_bound = cursor->left_bound;
 	spike->right_bound = cursor->right_bound;
+	spike->key_beg = cursor->key_beg;
 
 	if (spike->parent) {
 		hammer_ref_node(spike->parent);
@@ -92,6 +93,7 @@ hammer_spike(struct hammer_cursor **spikep)
 	hammer_node_t onode;
 	hammer_record_ondisk_t rec;
 	int error;
+	int b, e;
 
 	kprintf("hammer_spike: ENOSPC in cluster, spiking\n");
 	/*Debugger("ENOSPC");*/
@@ -136,18 +138,21 @@ hammer_spike(struct hammer_cursor **spikep)
 		goto failed2;
 
 	/*
+	 * Calculate the range within the leaf to spike, expand it to either
+	 * side to try to open up more space in the current leaf
+	 */
+
+
+	/*
 	 * Copy the elements in the leaf node.
 	 */
 	for (spike->index = 0; spike->index < onode->ondisk->count; 
 	     ++spike->index) {
+		KKASSERT(spike->node->ondisk->elms[spike->index].leaf.base.btype == HAMMER_BTREE_TYPE_RECORD);
 		error = hammer_btree_extract(spike, HAMMER_CURSOR_GET_RECORD |
 						    HAMMER_CURSOR_GET_DATA);
 		if (error)
 			goto failed1;
-		kprintf("EXTRACT %04x %016llx %016llx\n",
-			spike->record->base.base.rec_type,
-			spike->record->base.base.obj_id,
-			spike->record->base.base.key);
 		KKASSERT(spike->record->base.base.rec_type !=
 			 HAMMER_RECTYPE_CLUSTER);
 		error = hammer_write_record(&ncursor, spike->record,
@@ -164,6 +169,9 @@ hammer_spike(struct hammer_cursor **spikep)
 	/*
 	 * Delete the records and data associated with the old leaf node,
 	 * then free the old leaf node (nothing references it any more).
+	 *
+	 * XXX I/O ordering issue, we're destroying these records too
+	 * early, but we need one for the spike allocation.  What to do?
 	 */
 	for (spike->index = 0; spike->index < onode->ondisk->count; 
 	     ++spike->index) {
@@ -188,6 +196,7 @@ hammer_spike(struct hammer_cursor **spikep)
 	 */
 	rec = hammer_alloc_record(ocluster, &error, &spike->record_buffer);
 	KKASSERT(error == 0);
+	rec->spike.base.rec_id = hammer_alloc_recid(ocluster);
 	rec->spike.base.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	rec->spike.base.base.rec_type = HAMMER_RECTYPE_CLUSTER;
 	rec->spike.clu_no = ncluster->clu_no;
@@ -195,7 +204,8 @@ hammer_spike(struct hammer_cursor **spikep)
 	rec->spike.clu_id = 0;
 
 	/*
-	 * Construct the spike elements
+	 * Construct the spike elements.  Note that the right boundary
+	 * is range-exclusive.
 	 */
 	hammer_modify_node(onode);
 	ondisk = onode->ondisk;
@@ -210,7 +220,6 @@ hammer_spike(struct hammer_cursor **spikep)
 	ondisk->elms[0].leaf.spike_unused01 = 0;
 
 	ondisk->elms[1].leaf.base = *spike->right_bound;
-	hammer_make_base_inclusive(&ondisk->elms[1].leaf.base);
 	ondisk->elms[1].leaf.base.btype = HAMMER_BTREE_TYPE_SPIKE_END;
 	ondisk->elms[1].leaf.rec_offset = ondisk->elms[0].leaf.rec_offset;
 	ondisk->elms[1].leaf.spike_clu_no = ncluster->clu_no;

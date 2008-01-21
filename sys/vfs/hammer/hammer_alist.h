@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.5 2008/01/15 06:02:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.6 2008/01/21 00:00:19 dillon Exp $
  */
 
 /*
@@ -149,8 +149,8 @@ void hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
                            int32_t base_radix, int32_t maxmeta);
 void hammer_alist_init(hammer_alist_t live, int32_t start, int32_t count,
 			   hammer_alloc_state_t state);
-int32_t hammer_alist_recover(hammer_alist_t live, int32_t blk, int32_t start,
-			   int32_t count);
+int32_t hammer_alist_recover(hammer_alist_t live, int32_t blk,
+			   int32_t start, int32_t count);
 int32_t hammer_alist_alloc(hammer_alist_t live, int32_t count);
 int32_t hammer_alist_alloc_fwd(hammer_alist_t live,
 			   int32_t count, int32_t atblk);

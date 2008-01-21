@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.22 2008/01/18 07:02:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.23 2008/01/21 00:00:19 dillon Exp $
  */
 
 #include "hammer.h"
@@ -323,8 +323,6 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->ino_rec.ino_size = 0;
 	ip->ino_rec.ino_nlinks = 0;
 	/* XXX */
-	ip->ino_rec.base.rec_id = hammer_alloc_recid(trans);
-	KKASSERT(ip->ino_rec.base.rec_id != 0);
 	ip->ino_rec.base.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	ip->ino_rec.base.base.obj_id = ip->obj_id;
 	ip->ino_rec.base.base.key = 0;

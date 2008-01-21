@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.21 2008/01/18 07:02:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.22 2008/01/21 00:00:19 dillon Exp $
  */
 
 #include "hammer.h"
@@ -428,6 +428,8 @@ hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
  * Sync data from a buffer cache buffer (typically) to the filesystem.  This
  * is called via the strategy called from a cached data source.  This code
  * is responsible for actually writing a data record out to the disk.
+ *
+ * This can only occur non-historically (i.e. 'current' data only).
  */
 int
 hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
@@ -450,7 +452,7 @@ retry:
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
 	cursor.asof = trans->tid;
-	cursor.flags |= HAMMER_CURSOR_INSERT | HAMMER_CURSOR_ASOF;
+	cursor.flags |= HAMMER_CURSOR_INSERT;
 
 	/*
 	 * Issue a lookup to position the cursor and locate the cluster
@@ -490,7 +492,7 @@ retry:
 	rec->base.base.delete_tid = 0;
 	rec->base.base.rec_type = HAMMER_RECTYPE_DATA;
 	rec->base.data_crc = crc32(data, bytes);
-	rec->base.rec_id = 0;	/* XXX */
+	rec->base.rec_id = hammer_alloc_recid(cursor.node->cluster);
 	rec->base.data_offset = hammer_bclu_offset(cursor.data_buffer, bdata);
 	rec->base.data_len = bytes;
 
@@ -511,10 +513,8 @@ retry:
 	ip->flags |= HAMMER_INODE_DONDISK;
 
 	error = hammer_btree_insert(&cursor, &elm);
-	if (error == 0) {
-		hammer_update_syncid(cursor.record_buffer->cluster, trans->tid);
+	if (error == 0)
 		goto done;
-	}
 
 	hammer_free_record_ptr(cursor.record_buffer, rec);
 fail1:
@@ -624,8 +624,6 @@ retry:
 
 	/*
 	 * Fill everything in and insert our B-Tree node.
-	 *
-	 * XXX assign rec_id here
 	 */
 	hammer_modify_buffer(cursor.record_buffer);
 	*rec = record->rec;
@@ -651,7 +649,7 @@ retry:
 			bcopy(record->data, bdata, rec->base.data_len);
 		}
 	}
-	rec->base.rec_id = 0;	/* XXX */
+	rec->base.rec_id = hammer_alloc_recid(cursor.node->cluster);
 
 	elm.leaf.base = record->rec.base.base;
 	elm.leaf.rec_offset = hammer_bclu_offset(cursor.record_buffer, rec);
@@ -667,8 +665,6 @@ retry:
 	if (error == 0) {
 		record->flags |= HAMMER_RECF_DELETED;
 		record->flags &= ~HAMMER_RECF_SYNCING;
-		hammer_update_syncid(cursor.record_buffer->cluster,
-				     record->rec.base.base.create_tid);
 		goto done;
 	}
 
@@ -755,8 +751,6 @@ hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t orec,
 
 	/*
 	 * Fill everything in and insert our B-Tree node.
-	 *
-	 * XXX assign rec_id here
 	 */
 	hammer_modify_buffer(cursor->record_buffer);
 	*nrec = *orec;
@@ -781,7 +775,7 @@ hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t orec,
 			bcopy(data, bdata, nrec->base.data_len);
 		}
 	}
-	nrec->base.rec_id = 0;	/* XXX */
+	nrec->base.rec_id = hammer_alloc_recid(cursor->node->cluster);
 
 	elm.leaf.base = nrec->base.base;
 	elm.leaf.rec_offset = hammer_bclu_offset(cursor->record_buffer, nrec);
@@ -790,11 +784,8 @@ hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t orec,
 	elm.leaf.data_crc = nrec->base.data_crc;
 
 	error = hammer_btree_insert(cursor, &elm);
-	if (error == 0) {
-		hammer_update_syncid(cursor->record_buffer->cluster,
-				     nrec->base.base.create_tid);
+	if (error == 0)
 		goto done;
-	}
 
 	hammer_free_record_ptr(cursor->record_buffer, nrec);
 fail1:
@@ -1322,8 +1313,6 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 			hammer_modify_node(cursor->node);
 			elm = &cursor->node->ondisk->elms[cursor->index];
 			elm->leaf.base.delete_tid = tid;
-			hammer_update_syncid(cursor->record_buffer->cluster,
-					     tid);
 		}
 	}
 

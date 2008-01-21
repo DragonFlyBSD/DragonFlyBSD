@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.17 2008/01/16 01:15:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.18 2008/01/21 00:00:19 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -381,7 +381,7 @@ struct hammer_cluster_ondisk {
 	/*
 	 * The synchronized record id is used for recovery purposes.
 	 */
-	u_int64_t synchronized_tid;
+	u_int64_t synchronized_rec_id;
 	u_int32_t reserved16[510];
 
 	struct hammer_almeta	clu_master_meta[HAMMER_CLU_MASTER_METAELMS];

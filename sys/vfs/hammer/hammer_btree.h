@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.9 2008/01/17 05:06:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.10 2008/01/21 00:00:19 dillon Exp $
  */
 
 /*
@@ -173,6 +173,10 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
  * Instead, each element specifies the subtype (elm->base.subtype).
  * This allows us to maintain an unbalanced B-Tree and to easily identify
  * special inter-cluster link elements.
+ *
+ * NOTE: FUTURE EXPANSION: The reserved fields in hammer_node_ondisk are
+ * reserved for left/right leaf linkage fields, flags, and other future
+ * features.
  */
 #define HAMMER_BTREE_LEAF_ELMS	14
 #define HAMMER_BTREE_INT_ELMS	(HAMMER_BTREE_LEAF_ELMS - 1)

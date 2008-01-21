@@ -31,16 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.4 2008/01/18 07:02:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.5 2008/01/21 00:00:19 dillon Exp $
  */
 
 #include "hammer.h"
 
-static void hammer_recover_buffer_stage1(hammer_cluster_t cluster,
+static int hammer_recover_buffer_stage2(hammer_cluster_t cluster,
 				int32_t buf_no);
-static void hammer_recover_buffer_stage2(hammer_cluster_t cluster,
-				int32_t buf_no);
-static int  hammer_recover_record(hammer_cluster_t cluster,
+static int hammer_recover_record(hammer_cluster_t cluster,
 				hammer_buffer_t buffer, int32_t rec_offset,
 				hammer_record_ondisk_t rec);
 static int hammer_recover_btree(hammer_cluster_t cluster,
@@ -57,20 +55,22 @@ hammer_recover(hammer_cluster_t cluster)
 {
 	int buf_no;
 	int nbuffers;
-	int32_t r;
+	int buffer_count;
+	int record_count;
 	u_int32_t bitmap;
 
-	return(0); /* XXX */
+	return(0);
 
 	kprintf("HAMMER_RECOVER %d:%d\n",
 		cluster->volume->vol_no, cluster->clu_no);
-	KKASSERT(cluster->ondisk->synchronized_tid);
+	KKASSERT(cluster->ondisk->synchronized_rec_id);
 
 	nbuffers = cluster->ondisk->clu_limit / HAMMER_BUFSIZE;
 	hammer_modify_cluster(cluster);
 
 	/*
-	 * Re-initialize the A-lists.
+	 * Re-initialize the master, B-Tree, and mdata A-lists, and
+	 * recover the record A-list.
 	 */
 	hammer_alist_init(&cluster->alist_master, 1, nbuffers - 1,
 			  HAMMER_ASTATE_FREE);
@@ -82,22 +82,15 @@ hammer_recover(hammer_cluster_t cluster)
 			  HAMMER_FSBUF_MAXBLKS,
 			  (nbuffers - 1) * HAMMER_FSBUF_MAXBLKS,
 			  HAMMER_ASTATE_ALLOC);
-	hammer_alist_init(&cluster->alist_record,
+	hammer_alist_recover(&cluster->alist_record,
+			  0,
 			  HAMMER_FSBUF_MAXBLKS,
-			  (nbuffers - 1) * HAMMER_FSBUF_MAXBLKS,
-			  HAMMER_ASTATE_ALLOC);
+			  (nbuffers - 1) * HAMMER_FSBUF_MAXBLKS);
 
+#if 0
 	/*
 	 * Scan the cluster's clu_record_buf_bitmap, reserve record buffers
-	 * from the master bitmap before we try to recover their data.  Free
-	 * the block of records to alist_record.
-	 *
-	 * We need to mark the blocks as free in alist_record so future
-	 * allocations will dive into the buffer A-list's, but we don't 
-	 * want to destroy the underlying buffer A-list's.  Because the
-	 * meta data in cluster->alist_record indicates state 00 (all-allocated
-	 * but not initialized), it will not dive down into the buffer when
-	 * freeing the entire buffer.
+	 * from the master bitmap.
 	 */
 	for (buf_no = 1; buf_no < nbuffers; ++buf_no) {
 		bitmap = cluster->ondisk->clu_record_buf_bitmap[buf_no >> 5];
@@ -109,15 +102,12 @@ hammer_recover(hammer_cluster_t cluster)
 			continue;
 		r = hammer_alist_alloc_fwd(&cluster->alist_master, 1, buf_no);
 		KKASSERT(r == buf_no);
-		hammer_alist_free(&cluster->alist_record,
-				  buf_no * HAMMER_FSBUF_MAXBLKS,
-				  HAMMER_FSBUF_MAXBLKS);
 	}
 
 	/*
 	 * Scan the cluster's clu_record_buf_bitmap, reassign buffers
 	 * from alist_master to alist_record, and reallocate individual
-	 * records and any related data reference if they meet the critera.
+	 * records and any related data reference if they meet the criteria.
 	 */
 	for (buf_no = 1; buf_no < nbuffers; ++buf_no) {
 		bitmap = cluster->ondisk->clu_record_buf_bitmap[buf_no >> 5];
@@ -129,6 +119,7 @@ hammer_recover(hammer_cluster_t cluster)
 			continue;
 		hammer_recover_buffer_stage1(cluster, buf_no);
 	}
+#endif
 
 	/*
 	 * The cluster is now in good enough shape that general allocations
@@ -147,14 +138,16 @@ hammer_recover(hammer_cluster_t cluster)
 			cluster->ondisk->clu_btree_root = croot->node_offset;
 			hammer_rel_node(croot);
 		}
+		KKASSERT(error == 0);
 	}
 
 	/*
 	 * Scan the cluster's clu_record_buf_bitmap again and regenerate
 	 * the B-Tree.
-	 *
-	 * XXX B-tree record for cluster-push
 	 */
+	buffer_count = 0;
+	record_count = 0;
+
 	for (buf_no = 1; buf_no < nbuffers; ++buf_no) {
 		bitmap = cluster->ondisk->clu_record_buf_bitmap[buf_no >> 5];
 		if (bitmap == 0) {
@@ -163,10 +156,12 @@ hammer_recover(hammer_cluster_t cluster)
 		}
 		if ((bitmap & (1 << (buf_no & 31))) == 0)
 			continue;
-		hammer_recover_buffer_stage2(cluster, buf_no);
+		++buffer_count;
+		record_count += hammer_recover_buffer_stage2(cluster, buf_no);
 	}
-	kprintf("HAMMER_RECOVER DONE %d:%d\n",
-		cluster->volume->vol_no, cluster->clu_no);
+	kprintf("HAMMER_RECOVER DONE %d:%d buffers=%d records=%d\n",
+		cluster->volume->vol_no, cluster->clu_no,
+		buffer_count, record_count);
 
 	/*
 	 * Validate the parent cluster pointer. XXX
@@ -177,15 +172,33 @@ hammer_recover(hammer_cluster_t cluster)
 /*
  * Reassign buf_no as a record buffer and recover any related data
  * references.
+ *
+ * This is used in the alist callback and must return a negative error
+ * code or a positive free block count.
  */
-static void
-hammer_recover_buffer_stage1(hammer_cluster_t cluster, int32_t buf_no)
+int
+buffer_alist_recover(void *info, int32_t blk, int32_t radix, int32_t count)
 {
+	hammer_cluster_t cluster;
 	hammer_record_ondisk_t rec;
 	hammer_buffer_t buffer;
+	int32_t buf_no;
 	int32_t rec_no;
 	int32_t rec_offset;
+	int32_t r;
 	int error;
+
+	/*
+	 * Extract cluster and buffer number to recover
+	 */
+	cluster = info;
+	buf_no = blk / HAMMER_FSBUF_MAXBLKS;
+
+	/*
+	 * Mark the buffer as allocated in the cluster's master A-list.
+	 */
+	r = hammer_alist_alloc_fwd(&cluster->alist_master, 1, buf_no);
+	KKASSERT(r == buf_no);
 
 	kprintf("recover buffer1 %d:%d:%d\n",
 		cluster->volume->vol_no,
@@ -199,15 +212,20 @@ hammer_recover_buffer_stage1(hammer_cluster_t cluster, int32_t buf_no)
 		kprintf("hammer_recover_buffer_stage1: error "
 			"recovering %d:%d:%d\n",
 			cluster->volume->vol_no, cluster->clu_no, buf_no);
-		return;
+		return(-error);
 	}
 
 	/*
 	 * Recover the buffer, scan and validate allocated records.  Records
 	 * which cannot be recovered are freed.
+	 *
+	 * The parent a-list must be properly adjusted so don't just call
+	 * hammer_alist_recover() on the underlying buffer.  Go through the
+	 * parent.
 	 */
 	hammer_modify_buffer(buffer);
-	hammer_alist_recover(&buffer->alist, 0, 0, HAMMER_RECORD_NODES);
+	count = hammer_alist_recover(&buffer->alist, 0, 0, HAMMER_RECORD_NODES);
+	kprintf("hammer_recover_buffer count1 %d/%d\n", count, HAMMER_RECORD_NODES);
 	rec_no = -1;
 	for (;;) {
 		rec_no = hammer_alist_find(&buffer->alist, rec_no + 1,
@@ -228,9 +246,12 @@ hammer_recover_buffer_stage1(hammer_cluster_t cluster, int32_t buf_no)
 			kprintf("hammer_recover_record: failed %d:%d@%d\n",
 				cluster->clu_no, buffer->buf_no, rec_offset);
 			hammer_alist_free(&buffer->alist, rec_no, 1);
+			++count;	/* free count */
 		}
 	}
+	kprintf("hammer_recover_buffer count2 %d/%d\n", count, HAMMER_RECORD_NODES);
 	hammer_rel_buffer(buffer, 0);
+	return(count);
 }
 
 /*
@@ -243,7 +264,7 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 			     int32_t rec_offset, hammer_record_ondisk_t rec)
 {
 	hammer_buffer_t dbuf;
-	hammer_tid_t syncid = cluster->ondisk->synchronized_tid;
+	u_int64_t syncid = cluster->ondisk->synchronized_rec_id;
 	int32_t data_offset;
 	int32_t data_len;
 	int32_t nblks;
@@ -254,17 +275,22 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	int error = 0;
 
 	/*
-	 * Discard records created after the synchronization point and
-	 * undo any deletions made after the synchronization point.
+	 * We have to discard any records with rec_id's greater then the
+	 * last sync of the cluster header (which guarenteed all related
+	 * buffers had been synced).  Otherwise the record may reference
+	 * information that was never synced to disk.
 	 */
-	if (rec->base.base.create_tid > syncid) {
+	if (rec->base.rec_id >= syncid) {
 		kprintf("recover record: syncid too large %016llx/%016llx\n",
-			rec->base.base.create_tid, syncid);
+			rec->base.rec_id, syncid);
 		return(EINVAL);
 	}
 
+#if 0
+	/* XXX undo incomplete deletions */
 	if (rec->base.base.delete_tid > syncid)
 		rec->base.base.delete_tid = 0;
+#endif
 
 	/*
 	 * Validate the record's B-Tree key
@@ -450,14 +476,17 @@ done:
 
 /*
  * Rebuild the B-Tree for the records residing in the specified buffer.
+ *
+ * Return the number of records recovered.
  */
-static void
+static int
 hammer_recover_buffer_stage2(hammer_cluster_t cluster, int32_t buf_no)
 {
 	hammer_record_ondisk_t rec;
 	hammer_buffer_t buffer;
 	int32_t rec_no;
 	int32_t rec_offset;
+	int record_count = 0;
 	int error;
 
 	buffer = hammer_get_buffer(cluster, buf_no, 0, &error);
@@ -469,7 +498,7 @@ hammer_recover_buffer_stage2(hammer_cluster_t cluster, int32_t buf_no)
 		kprintf("hammer_recover_buffer_stage2: error "
 			"recovering %d:%d:%d\n",
 			cluster->volume->vol_no, cluster->clu_no, buf_no);
-		return;
+		return(0);
 	}
 
 	/*
@@ -492,11 +521,17 @@ hammer_recover_buffer_stage2(hammer_cluster_t cluster, int32_t buf_no)
 				cluster->clu_no, buffer->buf_no, rec_offset);
 			/* XXX free the record and its data? */
 			/*hammer_alist_free(&buffer->alist, rec_no, 1);*/
+		} else {
+			++record_count;
 		}
 	}
 	hammer_rel_buffer(buffer, 0);
+	return(record_count);
 }
 
+/*
+ * Enter a single record into the B-Tree.
+ */
 static int
 hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 		      int32_t rec_offset, hammer_record_ondisk_t rec)
@@ -507,10 +542,11 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	int error = 0;
 
 	/*
-	 * Check for a spike record.
+	 * Check for a spike record.  When spiking into a new cluster do
+	 * NOT allow a recursive recovery to occur.  We use a lot of 
+	 * stack and the only thing we actually modify in the target
+	 * cluster is its parent pointer.
 	 */
-	kprintf("hammer_recover_btree cluster %p (%d) type %d\n",
-		cluster, cluster->clu_no, rec->base.base.rec_type);
 	if (rec->base.base.rec_type == HAMMER_RECTYPE_CLUSTER) {
 		hammer_volume_t ovolume = cluster->volume;
 		hammer_volume_t nvolume;
@@ -520,7 +556,7 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 		if (error)
 			return(error);
 		ncluster = hammer_get_cluster(nvolume, rec->spike.clu_no,
-					      &error, 0);
+					      &error, GET_CLUSTER_NORECOVER);
 		hammer_rel_volume(nvolume, 0);
 		if (error)
 			return(error);
@@ -547,9 +583,11 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	/*
 	 * Locate the insertion point.  Note that we are using the cluster-
 	 * localized cursor init so parent will start out NULL.
+	 *
+	 * The key(s) used for spike's are bounds and different from the
+	 * key embedded in the spike record.  A special B-Tree insertion
+	 * call is made to deal with spikes.
 	 */
-	kprintf("hammer_recover_btree init_cursor_cluster cluster %p (%d) type %d ncluster %p\n",
-		cluster, cluster->clu_no, rec->base.base.rec_type, ncluster);
 	error = hammer_init_cursor_cluster(&cursor, cluster);
 	if (error)
 		goto failed;
@@ -558,13 +596,14 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 		cursor.key_beg = ncluster->ondisk->clu_btree_beg;
 	else
 		cursor.key_beg = rec->base.base;
-	cursor.flags |= HAMMER_CURSOR_INSERT;
+	cursor.flags |= HAMMER_CURSOR_INSERT | HAMMER_CURSOR_RECOVER;
 
 	error = hammer_btree_lookup(&cursor);
 	KKASSERT(error != EDEADLK);
 	KKASSERT(cursor.node);
 	if (error == 0) {
-		kprintf("hammer_recover_btree: Duplicate record\n");
+		kprintf("hammer_recover_btree: Duplicate record cursor %p rec %p ncluster %p\n",
+			&cursor, rec, ncluster);
 		hammer_print_btree_elm(&cursor.node->ondisk->elms[cursor.index], HAMMER_BTREE_TYPE_LEAF, cursor.index);
 		Debugger("duplicate record");
 	}
@@ -589,8 +628,10 @@ hammer_recover_btree(hammer_cluster_t cluster, hammer_buffer_t buffer,
 		/*
 		 * Normal record
 		 */
+#if 0
 		kprintf("recover recrd clu %d %016llx\n",
 			cluster->clu_no, rec->base.base.obj_id);
+#endif
 		elm.leaf.base = rec->base.base;
 		elm.leaf.rec_offset = rec_offset;
 		elm.leaf.data_offset = rec->base.data_offset;
