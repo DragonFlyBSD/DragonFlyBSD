@@ -12,10 +12,11 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.25 2008/01/21 20:00:42 nth Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.26 2008/01/21 20:21:19 nth Exp $
  */
 
 #include <sys/param.h>
+#include <sys/queue.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
@@ -37,6 +38,7 @@ static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 #define	ZONE_ERROR_INVALID 0
 #define	ZONE_ERROR_NOTFREE 1
 #define	ZONE_ERROR_ALREADYFREE 2
+#define	ZONE_ERROR_CANT_DESTROY 3
 
 #define	ZONE_ROUNDING	32
 
@@ -118,7 +120,7 @@ zfree(vm_zone_t z, void *item)
  * zalloc, zfree, are the allocation/free routines.
  */
 
-struct vm_zone *zlist;	/* exported to vmstat */
+LIST_HEAD(zlist, vm_zone) zlist = LIST_HEAD_INITIALIZER(zlist);
 static int sysctl_vm_zone(SYSCTL_HANDLER_ARGS);
 static int zone_kmem_pages, zone_kern_pages, zone_kmem_kvaspace;
 
@@ -151,6 +153,12 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 {
 	int totsize;
 
+	/*
+	 * Only zones created with zinit() are destroyable.
+	 */
+	if (z->zflags & ZONE_DESTROYABLE)
+		zerror(ZONE_ERROR_CANT_DESTROY);
+
 	if ((z->zflags & ZONE_BOOT) == 0) {
 		z->zsize = (size + ZONE_ROUNDING - 1) & ~(ZONE_ROUNDING - 1);
 		spin_init(&z->zlock);
@@ -161,10 +169,11 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		z->znalloc = 0;
 		z->zitems = NULL;
 
-		z->znext = zlist;
-		zlist = z;
+		LIST_INSERT_HEAD(&zlist, z, zlink);
 	}
 
+	z->zkmvec = NULL;
+	z->zkmcur = z->zkmmax = 0;
 	z->zflags |= flags;
 
 	/*
@@ -180,7 +189,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 
 		z->zkva = kmem_alloc_pageable(&kernel_map, totsize);
 		if (z->zkva == 0) {
-			zlist = z->znext;
+			LIST_REMOVE(z, zlink);
 			return 0;
 		}
 
@@ -241,10 +250,14 @@ zinit(char *name, int size, int nentries, int flags, int zalloc)
 		return NULL;
 
 	z->zflags = 0;
-	if (zinitna(z, NULL, name, size, nentries, flags, zalloc) == 0) {
+	if (zinitna(z, NULL, name, size, nentries,
+	            flags & ~ZONE_DESTROYABLE, zalloc) == 0) {
 		kfree(z, M_ZONE);
 		return NULL;
 	}
+
+	if (flags & ZONE_DESTROYABLE)
+		z->zflags |= ZONE_DESTROYABLE;
 
 	return z;
 }
@@ -284,13 +297,51 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 	z->zmax = nitems;
 	z->ztotal = nitems;
 
-	if (zlist == 0) {
-		zlist = z;
-	} else {
-		z->znext = zlist;
-		zlist = z;
-	}
+	LIST_INSERT_HEAD(&zlist, z, zlink);
 }
+
+/*
+ * Release all resources owned by zone created with zinit().
+ */
+void
+zdestroy(vm_zone_t z)
+{
+	int i;
+
+	if (z == NULL)
+		zerror(ZONE_ERROR_INVALID);
+	if ((z->zflags & ZONE_DESTROYABLE) == 0)
+		zerror(ZONE_ERROR_CANT_DESTROY);
+
+	LIST_REMOVE(z, zlink);
+
+	/*
+	 * Release virtual mappings, physical memory and update sysctl stats.
+	 */
+	if (z->zflags & ZONE_INTERRUPT) {
+		/*
+		 * Free the mapping.
+		 */
+		kmem_free(&kernel_map, z->zkva, z->zpagemax*PAGE_SIZE);
+		atomic_subtract_int(&zone_kmem_kvaspace, z->zpagemax*PAGE_SIZE);
+		/*
+		 * Free the backing object and physical pages.
+		 */
+		vm_object_deallocate(z->zobj);
+		atomic_subtract_int(&zone_kmem_pages, z->zpagecount);
+	} else {
+		for (i=0; i < z->zkmcur; i++) {
+			kmem_free(&kernel_map, z->zkmvec[i],
+			    z->zalloc*PAGE_SIZE);
+			atomic_subtract_int(&zone_kern_pages, z->zalloc);
+		}
+		kfree(z->zkmvec, M_ZONE);
+	}
+
+	spin_uninit(&z->zlock);
+	kfree(z, M_ZONE);
+}
+
 
 /*
  * void *zalloc(vm_zone_t zone) --
@@ -334,6 +385,14 @@ zget(vm_zone_t z)
 			if (m == NULL)
 				break;
 
+			/*
+			 * Unbusy page so it can freed in zdestroy().  Make
+			 * sure it is not on any queue and so can not be
+			 * recycled under our feet.
+			 */
+			KKASSERT(m->queue == PQ_NONE);
+			vm_page_flag_clear(m, PG_BUSY);
+
 			zkva = z->zkva + z->zpagecount * PAGE_SIZE;
 			pmap_kenter(zkva, VM_PAGE_TO_PHYS(m)); /* YYY */
 			bzero((void *)zkva, PAGE_SIZE);
@@ -374,6 +433,17 @@ zget(vm_zone_t z)
 		if (item != NULL) {
 			zone_kern_pages += z->zalloc;	/* not MP-safe XXX */
 			bzero(item, nbytes);
+
+			if (z->zflags & ZONE_DESTROYABLE) {
+				if (z->zkmcur == z->zkmmax) {
+					z->zkmmax =
+						z->zkmmax==0 ? 1 : z->zkmmax*2;
+					z->zkmvec = krealloc(z->zkmvec,
+					    z->zkmmax * sizeof(z->zkmvec[0]),
+					    M_ZONE, M_WAITOK);
+				}
+				z->zkmvec[z->zkmcur++] = (vm_offset_t)item;
+			}
 		} else {
 			nbytes = 0;
 		}
@@ -427,7 +497,7 @@ static int
 sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 {
 	int error=0;
-	vm_zone_t curzone, nextzone;
+	vm_zone_t curzone;
 	char tmpbuf[128];
 	char tmpname[14];
 
@@ -437,12 +507,11 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 	if (error)
 		return (error);
 
-	for (curzone = zlist; curzone; curzone = nextzone) {
+	LIST_FOREACH(curzone, &zlist, zlink) {
 		int i;
 		int len;
 		int offset;
 
-		nextzone = curzone->znext;
 		len = strlen(curzone->zname);
 		if (len >= (sizeof(tmpname) - 1))
 			len = (sizeof(tmpname) - 1);
@@ -452,7 +521,7 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 		memcpy(tmpname, curzone->zname, len);
 		tmpname[len] = ':';
 		offset = 0;
-		if (curzone == zlist) {
+		if (curzone == LIST_FIRST(&zlist)) {
 			offset = 1;
 			tmpbuf[0] = '\n';
 		}
@@ -464,7 +533,7 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 			curzone->zfreecnt, curzone->znalloc);
 
 		len = strlen((char *)tmpbuf);
-		if (nextzone == NULL)
+		if (LIST_NEXT(curzone, zlink) == NULL)
 			tmpbuf[len - 1] = 0;
 
 		error = SYSCTL_OUT(req, tmpbuf, len);
@@ -490,6 +559,9 @@ zerror(int error)
 		break;
 	case ZONE_ERROR_ALREADYFREE:
 		msg = "zone: freeing free entry";
+		break;
+	case ZONE_ERROR_CANT_DESTROY:
+		msg = "zone: cannot destroy zone (not created with zinit()?)";
 		break;
 	default:
 		msg = "zone: invalid error";

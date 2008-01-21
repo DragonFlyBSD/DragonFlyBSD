@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.h,v 1.13.2.2 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.h,v 1.9 2008/01/21 20:00:42 nth Exp $
+ * $DragonFly: src/sys/vm/vm_zone.h,v 1.10 2008/01/21 20:21:19 nth Exp $
  */
 
 #ifndef _VM_VM_ZONE_H_
@@ -23,6 +23,7 @@
 #define ZONE_SPECIAL   0x0004	/* special vm_map_entry zone, see zget() */
 #define ZONE_BOOT      0x0010	/* Internal flag used by zbootinit */
 #define ZONE_USE_RESERVE 0x0020	/* use reserve memory if necessary */
+#define ZONE_DESTROYABLE 0x0040 /* can be zdestroy()'ed */
 
 #include <sys/spinlock.h>
 #include <sys/thread.h>
@@ -50,7 +51,15 @@ typedef struct vm_zone {
 	int		zallocflag;	/* flag for allocation */
 	struct vm_object *zobj;		/* object to hold zone */
 	char		*zname;		/* name for diags */
-	struct vm_zone	*znext;		/* list of zones for sysctl */
+	LIST_ENTRY(vm_zone) zlink;	/* link in zlist */
+ 	/*
+ 	 * The following fields track kmem_alloc()'ed blocks when
+ 	 * ZONE_DESTROYABLE set and normal zone (i.e. not ZONE_INTERRUPT nor
+ 	 * ZONE_SPECIAL).
+ 	 */
+ 	vm_offset_t	*zkmvec;	/* krealloc()'ed array */
+ 	int		zkmcur;		/* next free slot in zkmvec */
+ 	int		zkmmax;		/* # of slots in zkmvec */
 } *vm_zone_t;
 
 
@@ -63,5 +72,6 @@ void *		zalloc (vm_zone_t z);
 void		zfree (vm_zone_t z, void *item);
 void		zbootinit (vm_zone_t z, char *name, int size, void *item,
 			       int nitems);
+void		zdestroy(vm_zone_t z);
 
 #endif	/* _VM_VM_ZONE_H_ */

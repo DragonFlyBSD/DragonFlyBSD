@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/zone.9,v 1.9.2.4 2002/05/02 20:01:29 asmodai Exp $
-.\" $DragonFly: src/share/man/man9/zone.9,v 1.5 2008/01/21 20:00:42 nth Exp $
+.\" $DragonFly: src/share/man/man9/zone.9,v 1.6 2008/01/21 20:21:19 nth Exp $
 .\"
 .Dd January 27, 2001
 .Dt ZONE 9
@@ -33,6 +33,7 @@
 .Nm zbootinit ,
 .Nm zinitna ,
 .Nm zinit ,
+.Nm zdestroy ,
 .Nm zalloc ,
 .Nm zfree ,
 .Nd zone allocator
@@ -46,6 +47,8 @@
 .Fn zinitna "vm_zone_t z" "struct vm_object *obj" "char *name" "int size" "int nentries" "int flags" "int zalloc"
 .Ft vm_zone_t
 .Fn zinit "char *name" "int size" "int nentries" "int flags" "int zalloc"
+.Ft void
+.Fn zdestroy "vm_zone_t z"
 .Ft void *
 .Fn zalloc "vm_zone_t z"
 .Ft void
@@ -106,16 +109,19 @@ are the size of the items held by the zone and the initial size (in
 items) of the zone, respectively.
 The
 .Fa flags
-argument should be set to
+argument should have the
 .Dv ZONE_INTERRUPT
-if there is a chance that items may be allocated from the zone in
+bit set if there is a chance that items may be allocated from the zone in
 interrupt context; note that in this case, the zone will never grow
 larger than
 .Fa nentries
 items.
-In all other cases,
+The
 .Fa flags
-should be set to 0.
+argument should have the
+.Dv ZONE_DESTROYABLE
+bit set if the zone is to be destroyed with
+.Fn zdestroy .
 The final argument,
 .Fa zalloc ,
 indicates the number of VM pages by which the zone should grow every
@@ -153,6 +159,14 @@ pointer to a
 from which to allocate pages in the
 .Dv ZONE_INTERRUPT
 case.
+.Pp
+To release all the memory allocated for a zone, call
+.Fn zdestroy .
+Only zones created with
+.Fn zinit
+and with the
+.Dv ZONE_DESTROYABLE
+flag can be destroyed.
 .Pp
 To allocate an item from a zone, simply call
 .Fn zalloc
