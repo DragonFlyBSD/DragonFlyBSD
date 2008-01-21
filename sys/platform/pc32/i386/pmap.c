@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.81 2007/08/15 03:15:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.82 2008/01/21 10:28:04 corecode Exp $
  */
 
 /*
@@ -1747,15 +1747,8 @@ pmap_remove_all(vm_page_t m)
 	unsigned *pte, tpte;
 	pv_entry_t pv;
 
-#if defined(PMAP_DIAGNOSTIC)
-	/*
-	 * XXX this makes pmap_page_protect(NONE) illegal for non-managed
-	 * pages!
-	 */
-	if (!pmap_initialized || (m->flags & PG_FICTITIOUS)) {
-		panic("pmap_page_protect: illegal for unmanaged page, va: 0x%08llx", (long long)VM_PAGE_TO_PHYS(m));
-	}
-#endif
+	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
+		return;
 
 	pmap_inval_init(&info);
 	crit_enter();
