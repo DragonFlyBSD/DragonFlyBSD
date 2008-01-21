@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_tables.h,v 1.1.2.1 2000/10/27 10:06:56 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly_tables.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly_tables.h,v 1.3 2008/01/21 02:27:37 pavalos Exp $
  */
 
 /*
@@ -36,26 +36,12 @@ struct mly_code_lookup {
     u_int32_t	code;
 };
 
-extern char	*mly_describe_code(struct mly_code_lookup *table, u_int32_t code);
-
-#ifndef MLY_DEFINE_TABLES
-extern struct mly_code_lookup mly_table_bustype[];
-extern struct mly_code_lookup mly_table_controllertype[];
-extern struct mly_code_lookup mly_table_oemname[];
-extern struct mly_code_lookup mly_table_memorytype[];
-extern struct mly_code_lookup mly_table_cputype[];
-extern struct mly_code_lookup mly_table_event[];
-extern struct mly_code_lookup mly_table_device_state[];
-extern struct mly_code_lookup mly_table_device_type[];
-extern struct mly_code_lookup mly_table_stripe_size[];
-extern struct mly_code_lookup mly_table_cacheline_size[];
-
-#else /* MLY_DEFINE_TABLES */
+static char	*mly_describe_code(struct mly_code_lookup *table, u_int32_t code);
 
 /********************************************************************************
  * Look up a text description of a numeric code and return a pointer to same.
  */
-char *
+static char *
 mly_describe_code(struct mly_code_lookup *table, u_int32_t code)
 {
     int		i;
@@ -66,15 +52,17 @@ mly_describe_code(struct mly_code_lookup *table, u_int32_t code)
     return(table[i+1].string);
 }
 
-struct mly_code_lookup mly_table_bustype[] = {
+#if 0
+static struct mly_code_lookup mly_table_bustype[] = {
     {"SCSI",		0x00},
     {"FC-AL",		0x01},
     {"PCI",		0x03},
     {NULL,		0},
     {"unknown bus",	0}
 };
+#endif
 
-struct mly_code_lookup mly_table_controllertype[] = {
+static struct mly_code_lookup mly_table_controllertype[] = {
 #if 0	/* not supported by this driver */
     {"DAC960E",		0x01},	/* EISA */
     {"DAC960M",		0x08},	/* MCA */
@@ -100,7 +88,7 @@ struct mly_code_lookup mly_table_controllertype[] = {
     {"unknown adapter",	0}
 };    
 
-struct mly_code_lookup mly_table_oemname[] = {
+static struct mly_code_lookup mly_table_oemname[] = {
     {"Mylex",		MLY_OEM_MYLEX},
     {"IBM",		MLY_OEM_IBM},
     {"Hewlett-Packard",	MLY_OEM_HP},
@@ -111,7 +99,7 @@ struct mly_code_lookup mly_table_oemname[] = {
     {"unknown OEM",	0}
 };
 
-struct mly_code_lookup mly_table_memorytype[] = {
+static struct mly_code_lookup mly_table_memorytype[] = {
     {"DRAM",		0x01},
     {"EDRAM",		0x02},
     {"EDO RAM",		0x03},
@@ -120,7 +108,7 @@ struct mly_code_lookup mly_table_memorytype[] = {
     {"unknown memory",	0}
 };
 
-struct mly_code_lookup mly_table_cputype[] = {
+static struct mly_code_lookup mly_table_cputype[] = {
     {"i960CA",		0x01},
     {"i960RD",		0x02},
     {"i960RN",		0x03},
@@ -154,7 +142,7 @@ struct mly_code_lookup mly_table_cputype[] = {
  * r	rescan the device for possible state change
  *
  */
-struct mly_code_lookup mly_table_event[] = {
+static struct mly_code_lookup mly_table_event[] = {
     /* physical device events (0x0000 - 0x007f) */
     {"pr online",							0x0001},
     {"pr standby",							0x0002},
@@ -267,7 +255,7 @@ struct mly_code_lookup mly_table_event[] = {
  * Values here must be 16 characters or less, as they are packed into
  * the 'product' field in the SCSI inquiry data.
  */
-struct mly_code_lookup mly_table_device_state[] = {
+static struct mly_code_lookup mly_table_device_state[] = {
     {"offline",		MLY_DEVICE_STATE_OFFLINE},
     {"unconfigured",	MLY_DEVICE_STATE_UNCONFIGURED},
     {"online",		MLY_DEVICE_STATE_ONLINE},
@@ -283,7 +271,7 @@ struct mly_code_lookup mly_table_device_state[] = {
  * Values here must be 8 characters or less, as they are packed into
  * the 'vendor' field in the SCSI inquiry data.
  */
-struct mly_code_lookup mly_table_device_type[] = {
+static struct mly_code_lookup mly_table_device_type[] = {
     {"RAID 0",		MLY_DEVICE_TYPE_RAID0},
     {"RAID 1",		MLY_DEVICE_TYPE_RAID1},
     {"RAID 3",		MLY_DEVICE_TYPE_RAID3},		/* right asymmetric parity */
@@ -301,7 +289,8 @@ struct mly_code_lookup mly_table_device_type[] = {
     {"UNKNOWN",		0}
 };
 
-struct mly_code_lookup mly_table_stripe_size[] = {
+#if 0
+static struct mly_code_lookup mly_table_stripe_size[] = {
     {"NONE",		MLY_STRIPE_ZERO},
     {"512B",		MLY_STRIPE_512b},
     {"1k",		MLY_STRIPE_1k},
@@ -319,7 +308,7 @@ struct mly_code_lookup mly_table_stripe_size[] = {
     {"unknown",		0}
 };
 
-struct mly_code_lookup mly_table_cacheline_size[] = {
+static struct mly_code_lookup mly_table_cacheline_size[] = {
     {"NONE",		MLY_CACHELINE_ZERO},
     {"512B",		MLY_CACHELINE_512b},
     {"1k",		MLY_CACHELINE_1k},
@@ -332,5 +321,4 @@ struct mly_code_lookup mly_table_cacheline_size[] = {
     {NULL, 0},
     {"unknown",		0}
 };
-
-#endif /* MLY_DEFINE_TABLES */
+#endif

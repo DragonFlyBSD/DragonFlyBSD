@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.8 2006/12/22 23:26:24 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.9 2008/01/21 02:27:37 pavalos Exp $
  */
 
 #include <sys/thread2.h>
@@ -41,13 +41,18 @@
  * table this size (256k) would be too expensive, so we cap ourselves at a
  * reasonable limit.
  */
-#define MLY_MAXCOMMANDS		256	/* max commands per controller */
+#define MLY_MAX_COMMANDS	256	/* max commands per controller */
 
 /*
  * The firmware interface allows for a 16-bit s/g list length.  We limit 
  * ourselves to a reasonable maximum and ensure alignment.
  */
-#define MLY_MAXSGENTRIES	64	/* max S/G entries, limit 65535 */		
+#define MLY_MAX_SGENTRIES	64	/* max S/G entries, limit 65535 */		
+
+/*
+ * The interval at which we poke the controller for status updates (in seconds).
+ */
+#define MLY_PERIODIC_INTERVAL	1
 
 /********************************************************************************
  ********************************************************************************
@@ -55,14 +60,10 @@
  ********************************************************************************
  ********************************************************************************/
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 # include <sys/taskqueue.h>
-#endif
 
-#if defined(__DragonFly__) || __FreeBSD_version <= 500014
-# include <machine/clock.h>
-# undef offsetof
-# define offsetof(type, field) ((size_t)(&((type *)0)->field))
+#ifndef INTR_ENTROPY
+# define INTR_ENTROPY 0
 #endif
 
 /********************************************************************************
@@ -142,6 +143,7 @@ struct mly_command {
     void	(* mc_complete)(struct mly_command *mc);	/* completion handler */
     void	*mc_private;					/* caller-private data */
 
+    int				mc_timestamp;
 };
 
 /*
@@ -150,7 +152,7 @@ struct mly_command {
  * We can't use slot 0 due to the memory mailbox implementation.
  */
 #define MLY_SLOT_START		1
-#define MLY_SLOT_MAX		(MLY_SLOT_START + MLY_MAXCOMMANDS)
+#define MLY_SLOT_MAX		(MLY_SLOT_START + MLY_MAX_COMMANDS)
 
 /*
  * Per-controller structure.
@@ -196,22 +198,21 @@ struct mly_softc {
 
     /* controller features, limits and status */
     int			mly_state;
-#define MLY_STATE_SUSPEND	(1<<0)
 #define	MLY_STATE_OPEN		(1<<1)
 #define MLY_STATE_INTERRUPTS_ON	(1<<2)
 #define MLY_STATE_MMBOX_ACTIVE	(1<<3)
+#define MLY_STATE_CAM_FROZEN	(1<<4)
     struct mly_ioctl_getcontrollerinfo	*mly_controllerinfo;
     struct mly_param_controller		*mly_controllerparam;
     struct mly_btl			mly_btl[MLY_MAX_CHANNELS][MLY_MAX_TARGETS];
 
     /* command management */
-    struct mly_command		mly_command[MLY_MAXCOMMANDS];	/* commands */
+    struct mly_command		mly_command[MLY_MAX_COMMANDS];	/* commands */
     union mly_command_packet	*mly_packet;		/* command packets */
     bus_dma_tag_t		mly_packet_dmat;	/* packet DMA tag */
     bus_dmamap_t		mly_packetmap;		/* packet DMA map */
     u_int64_t			mly_packetphys;		/* packet array base address */
     TAILQ_HEAD(,mly_command)	mly_free;		/* commands available for reuse */
-    TAILQ_HEAD(,mly_command)	mly_ready;		/* commands ready to be submitted */
     TAILQ_HEAD(,mly_command)	mly_busy;
     TAILQ_HEAD(,mly_command)	mly_complete;		/* commands which have been returned by the controller */
     struct mly_qstat		mly_qstat[MLYQ_COUNT];	/* queue statistics */
@@ -221,16 +222,17 @@ struct mly_softc {
     u_int32_t			mly_event_counter;	/* next event for which we anticpiate status */
     u_int32_t			mly_event_waiting;	/* next event the controller will post status for */
     struct callout		mly_periodic;		/* periodic event handling */
+    struct callout		mly_timeout;		/* timeout event handling */
 
     /* CAM connection */
-    TAILQ_HEAD(,ccb_hdr)	mly_cam_ccbq;			/* outstanding I/O from CAM */
-    struct cam_sim		*mly_cam_sim[MLY_MAX_CHANNELS];
-    int				mly_cam_lowbus;
+    struct cam_devq		*mly_cam_devq;			/* CAM device queue */
+    struct cam_sim		*mly_cam_sim[MLY_MAX_CHANNELS];	/* CAM SIMs */
+    struct cam_path		*mly_cam_path;			/* rescan path */
+    int				mly_cam_channels;		/* total channel count */
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
     /* command-completion task */
-    struct task		mly_task_complete;	/* deferred-completion task */
-#endif
+    struct task			mly_task_complete;	/* deferred-completion task */
+    int				mly_qfrzn_cnt;		/* Track simq freezes */
 };
 
 /*
@@ -275,28 +277,15 @@ struct mly_softc {
 	} while(0);
 
 /*
- * Logical device number -> bus/target translation
+ * Bus/target/logical ID-related macros.
  */
-#define MLY_LOGDEV_BUS(sc, x)	(((x) / MLY_MAX_TARGETS) + (sc)->mly_controllerinfo->physical_channels_present)
-#define MLY_LOGDEV_TARGET(x)	((x) % MLY_MAX_TARGETS)
-
-/*
- * Public functions/variables
- */
-/* mly.c */
-extern int	mly_attach(struct mly_softc *sc);
-extern void	mly_detach(struct mly_softc *sc);
-extern void	mly_free(struct mly_softc *sc);
-extern void	mly_startio(struct mly_softc *sc);
-extern void	mly_done(struct mly_softc *sc);
-extern int	mly_alloc_command(struct mly_softc *sc, struct mly_command **mcp);
-extern void	mly_release_command(struct mly_command *mc);
-
-/* mly_cam.c */
-extern int	mly_cam_attach(struct mly_softc *sc);
-extern void	mly_cam_detach(struct mly_softc *sc);
-extern int	mly_cam_command(struct mly_softc *sc, struct mly_command **mcp);
-extern int	mly_name_device(struct mly_softc *sc, int bus, int target);
+#define MLY_LOGDEV_ID(sc, bus, target)	(((bus) - (sc)->mly_controllerinfo->physical_channels_present) * \
+					 MLY_MAX_TARGETS + (target))
+#define MLY_LOGDEV_BUS(sc, logdev)	(((logdev) / MLY_MAX_TARGETS) + \
+					 (sc)->mly_controllerinfo->physical_channels_present)
+#define MLY_LOGDEV_TARGET(sc, logdev)	((logdev) % MLY_MAX_TARGETS)
+#define MLY_BUS_IS_VIRTUAL(sc, bus)	((bus) >= (sc)->mly_controllerinfo->physical_channels_present)
+#define MLY_BUS_IS_VALID(sc, bus)	(((bus) < (sc)->mly_cam_channels) && ((sc)->mly_cam_sim[(bus)] != NULL))
 
 /********************************************************************************
  * Queue primitives
@@ -366,7 +355,20 @@ mly_remove_ ## name (struct mly_command *mc)				\
 struct hack
 
 MLYQ_COMMAND_QUEUE(free, MLYQ_FREE);
-MLYQ_COMMAND_QUEUE(ready, MLYQ_READY);
 MLYQ_COMMAND_QUEUE(busy, MLYQ_BUSY);
 MLYQ_COMMAND_QUEUE(complete, MLYQ_COMPLETE);
 
+/********************************************************************************
+ * space-fill a character string
+ */
+static __inline void
+padstr(char *targ, char *src, int len)
+{
+    while (len-- > 0) {
+	if (*src != 0) {
+	    *targ++ = *src++;
+	} else {
+	    *targ++ = ' ';
+	}
+    }
+}

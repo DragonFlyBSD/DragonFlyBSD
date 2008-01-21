@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.199 2008/01/18 19:06:29 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.200 2008/01/21 02:27:37 pavalos Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -310,8 +310,6 @@ dev/raid/mlx/mlx_disk.c		optional mlx
 dev/raid/mlx/mlx_pci.c		optional mlx
 dev/raid/mlx/mlx.c		optional mlx
 dev/raid/mly/mly.c		optional mly
-dev/raid/mly/mly_cam.c		optional mly
-dev/raid/mly/mly_pci.c		optional mly
 dev/disk/mpt/mpt.c		optional mpt
 dev/disk/mpt/mpt_debug.c	optional mpt
 dev/disk/mpt/mpt_freebsd.c	optional mpt

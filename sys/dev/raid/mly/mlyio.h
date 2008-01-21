@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mlyio.h,v 1.1.2.1 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyio.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mlyio.h,v 1.3 2008/01/21 02:27:37 pavalos Exp $
  */
 
 /********************************************************************************
@@ -60,11 +60,9 @@ struct mly_user_health
  */
 
 #define MLYQ_FREE	0
-#define MLYQ_CCB	1
-#define MLYQ_READY	2
-#define MLYQ_BUSY	3
-#define MLYQ_COMPLETE	4
-#define MLYQ_COUNT	5
+#define MLYQ_BUSY	1
+#define MLYQ_COMPLETE	2
+#define MLYQ_COUNT	3
 
 struct mly_qstat 
 {
