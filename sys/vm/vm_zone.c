@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.26 2008/01/21 20:21:19 nth Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.27 2008/01/21 20:59:28 nth Exp $
  */
 
 #include <sys/param.h>
@@ -335,7 +335,8 @@ zdestroy(vm_zone_t z)
 			    z->zalloc*PAGE_SIZE);
 			atomic_subtract_int(&zone_kern_pages, z->zalloc);
 		}
-		kfree(z->zkmvec, M_ZONE);
+		if (z->zkmvec != NULL)
+			kfree(z->zkmvec, M_ZONE);
 	}
 
 	spin_uninit(&z->zlock);
