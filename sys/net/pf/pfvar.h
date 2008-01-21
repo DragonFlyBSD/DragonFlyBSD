@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pfvar.h,v 1.8 2004/08/12 13:59:44 mlaier Exp $	*/
 /*	$OpenBSD: pfvar.h,v 1.187 2004/03/22 04:54:18 mcbride Exp $ */
 /* add	$OpenBSD: pfvar.h,v 1.194 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.4 2008/01/11 11:59:41 sephe Exp $ */
+/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.5 2008/01/21 21:16:59 nth Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -168,10 +168,10 @@ struct pfi_dynaddr {
  */
 
 /* XXX correct values for zinit? */
-#define	ZONE_CREATE(var, type, desc)				\
-		var = zinit(desc, sizeof(type), 1, 0, 1);	\
-		if (var == NULL) break
-#define	ZONE_DESTROY(a)		/* XXX */
+#define	ZONE_CREATE(var, type, desc)					\
+	var = zinit(desc, sizeof(type), 1, ZONE_DESTROYABLE, 1);	\
+	if (var == NULL) break
+#define	ZONE_DESTROY(a) zdestroy(a)
 
 #define	pool_get(p, f)	zalloc(*(p))
 #define	pool_put(p, o)	zfree(*(p), (o))
