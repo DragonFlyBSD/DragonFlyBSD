@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.16 2007/05/13 18:33:57 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.17 2008/01/21 04:51:41 pavalos Exp $
  */
 
  /*
@@ -1237,6 +1237,53 @@ btaction(struct cam_sim *sim, union ccb *ccb)
 
 		cts = &ccb->cts;
 		target_mask = 0x01 << ccb->ccb_h.target_id;
+#ifdef	CAM_NEW_TRAN_CODE
+		if (cts->type == CTS_TYPE_CURRENT_SETTINGS) {
+			struct ccb_trans_settings_scsi *scsi =
+			    &cts->proto_specific.scsi;
+			struct ccb_trans_settings_spi *spi =
+			    &cts->xport_specific.spi;
+			cts->protocol = PROTO_SCSI;
+			cts->protocol_version = SCSI_REV_2;
+			cts->transport = XPORT_SPI;
+			cts->transport_version = 2;
+
+			scsi->flags &= ~CTS_SCSI_FLAGS_TAG_ENB;
+			spi->flags &= ~CTS_SPI_FLAGS_DISC_ENB;
+
+			if ((bt->disc_permitted & target_mask) != 0)
+				spi->flags |= CTS_SPI_FLAGS_DISC_ENB;
+			if ((bt->tags_permitted & target_mask) != 0)
+				scsi->flags |= CTS_SCSI_FLAGS_TAG_ENB;
+
+			if ((bt->ultra_permitted & target_mask) != 0)
+				spi->sync_period = 12;
+			else if ((bt->fast_permitted & target_mask) != 0)
+				spi->sync_period = 25;
+			else if ((bt->sync_permitted & target_mask) != 0)
+				spi->sync_period = 50;
+			else
+				spi->sync_period = 0;
+
+			if (spi->sync_period != 0)
+				spi->sync_offset = 15;
+
+			spi->valid |= CTS_SPI_VALID_SYNC_RATE;
+			spi->valid |= CTS_SPI_VALID_SYNC_OFFSET;
+
+			spi->valid |= CTS_SPI_VALID_BUS_WIDTH;
+			if ((bt->wide_permitted & target_mask) != 0)
+				spi->bus_width = MSG_EXT_WDTR_BUS_16_BIT;
+			else
+				spi->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
+
+			if (cts->ccb_h.target_lun != CAM_LUN_WILDCARD) {
+				scsi->valid = CTS_SCSI_VALID_TQ;
+				spi->valid |= CTS_SPI_VALID_DISC;
+			} else
+				scsi->valid = 0;
+		} else {
+#else
 		if ((cts->flags & CCB_TRANS_USER_SETTINGS) != 0) {
 			cts->flags = 0;
 			if ((bt->disc_permitted & target_mask) != 0)
@@ -1265,6 +1312,7 @@ btaction(struct cam_sim *sim, union ccb *ccb)
 				   | CCB_TRANS_DISC_VALID
 				   | CCB_TRANS_TQ_VALID;
 		} else {
+#endif
 			btfetchtransinfo(bt, cts);
 		}
 
@@ -1335,6 +1383,12 @@ btaction(struct cam_sim *sim, union ccb *ccb)
 		strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
 		cpi->unit_number = cam_sim_unit(sim);
 		cpi->ccb_h.status = CAM_REQ_CMP;
+#ifdef	CAM_NEW_TRAN_CODE
+		cpi->transport = XPORT_SPI;
+		cpi->transport_version = 2;
+		cpi->protocol = PROTO_SCSI;
+		cpi->protocol_version = SCSI_REV_2;
+#endif
 		xpt_done(ccb);
 		break;
 	}
@@ -1648,12 +1702,24 @@ btdone(struct bt_softc *bt, struct bt_ccb *bccb, bt_mbi_comp_code_t comp_code)
 		case BTSTAT_TAGGED_MSG_REJECTED:
 		{
 			struct ccb_trans_settings neg; 
- 
+#ifdef	CAM_NEW_TRAN_CODE
+			struct ccb_trans_settings_scsi *scsi =
+			    &neg.proto_specific.scsi;
+
+			neg.protocol = PROTO_SCSI;
+			neg.protocol_version = SCSI_REV_2;
+			neg.transport = XPORT_SPI;
+			neg.transport_version = 2;
+			scsi->valid = CTS_SCSI_VALID_TQ;
+			scsi->flags = 0;
+#else
+
+			neg.flags = 0;
+			neg.valid = CCB_TRANS_TQ_VALID;
+#endif
 			xpt_print_path(csio->ccb_h.path);
 			kprintf("refuses tagged commands.  Performing "
 			       "non-tagged I/O\n");
-			neg.flags = 0;
-			neg.valid = CCB_TRANS_TQ_VALID;
 			xpt_setup_ccb(&neg.ccb_h, csio->ccb_h.path,
 				      /*priority*/1); 
 			xpt_async(AC_TRANSFER_NEG, csio->ccb_h.path, &neg);
@@ -2080,16 +2146,30 @@ btinitmboxes(struct bt_softc *bt) {
  * parameters for a particular target.
  */
 static void
-btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings* cts)
+btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings *cts)
 {
 	setup_data_t	setup_info;
 	u_int		target;
 	u_int		targ_offset;
 	u_int		targ_mask;
 	u_int		sync_period;
+	u_int		sync_offset;
+	u_int		bus_width;
 	int		error;
 	u_int8_t	param;
 	targ_syncinfo_t	sync_info;
+#ifdef	CAM_NEW_TRAN_CODE
+	struct ccb_trans_settings_scsi *scsi =
+	    &cts->proto_specific.scsi;
+	struct ccb_trans_settings_spi *spi =
+	    &cts->xport_specific.spi;
+
+	spi->valid = 0;
+	scsi->valid = 0;
+#else
+
+	cts->valid = 0;
+#endif
 
 	target = cts->ccb_h.target_id;
 	targ_offset = (target & 0x7);
@@ -2108,7 +2188,6 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings* cts)
 	if (error != 0) {
 		kprintf("%s: btfetchtransinfo - Inquire Setup Info Failed %x\n",
 		       bt_name(bt), error);
-		cts->valid = 0;
 		return;
 	}
 
@@ -2116,11 +2195,12 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings* cts)
 				 : setup_info.high_syncinfo[targ_offset];
 
 	if (sync_info.sync == 0)
-		cts->sync_offset = 0;
+		sync_offset = 0;
 	else
-		cts->sync_offset = sync_info.offset;
+		sync_offset = sync_info.offset;
 
-	cts->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
+
+	bus_width = MSG_EXT_WDTR_BUS_8_BIT;
 	if (strcmp(bt->firmware_ver, "5.06L") >= 0) {
 		u_int wide_active;
 
@@ -2129,7 +2209,7 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings* cts)
 		    		 : (setup_info.high_wide_active & targ_mask);
 
 		if (wide_active)
-			cts->bus_width = MSG_EXT_WDTR_BUS_16_BIT;
+			bus_width = MSG_EXT_WDTR_BUS_16_BIT;
 	} else if ((bt->wide_permitted & targ_mask) != 0) {
 		struct ccb_getdev cgd;
 
@@ -2145,7 +2225,7 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings* cts)
 		xpt_action((union ccb *)&cgd);
 		if ((cgd.ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP
 		 && (cgd.inq_data.flags & SID_WBus16) != 0)
-			cts->bus_width = MSG_EXT_WDTR_BUS_16_BIT;
+			bus_width = MSG_EXT_WDTR_BUS_16_BIT;
 	}
 
 	if (bt->firmware_ver[0] >= '3') {
@@ -2163,7 +2243,6 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings* cts)
 		if (error != 0) {
 			kprintf("%s: btfetchtransinfo - Inquire Sync "
 			       "Info Failed 0x%x\n", bt_name(bt), error);
-			cts->valid = 0;
 			return;
 		}
 		sync_period = sync_info.sync_rate[target] * 100;
@@ -2171,15 +2250,40 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings* cts)
 		sync_period = 2000 + (500 * sync_info.period);
 	}
 
+#ifdef	CAM_NEW_TRAN_CODE
+	cts->protocol = PROTO_SCSI;
+	cts->protocol_version = SCSI_REV_2;
+	cts->transport = XPORT_SPI;
+	cts->transport_version = 2;
+
+	spi->sync_period = sync_period;
+	spi->valid |= CTS_SPI_VALID_SYNC_RATE;
+	spi->sync_offset = sync_offset;
+	spi->valid |= CTS_SPI_VALID_SYNC_OFFSET;
+
+	spi->valid |= CTS_SPI_VALID_BUS_WIDTH;
+	spi->bus_width = bus_width;
+
+	if (cts->ccb_h.target_lun != CAM_LUN_WILDCARD) {
+		scsi->valid = CTS_SCSI_VALID_TQ;
+		spi->valid |= CTS_SPI_VALID_DISC;
+	} else
+		scsi->valid = 0;
+	
+#else
 	/* Convert ns value to standard SCSI sync rate */
 	if (cts->sync_offset != 0)
 		cts->sync_period = scsi_calc_syncparam(sync_period);
 	else
 		cts->sync_period = 0;
+	cts->sync_offset = sync_offset;
+	cts->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
 	
 	cts->valid = CCB_TRANS_SYNC_RATE_VALID
 		   | CCB_TRANS_SYNC_OFFSET_VALID
 		   | CCB_TRANS_BUS_WIDTH_VALID;
+
+#endif
         xpt_async(AC_TRANSFER_NEG, cts->ccb_h.path, cts);
 }
 
