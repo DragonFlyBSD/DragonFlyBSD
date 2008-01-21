@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.5 2008/01/17 04:59:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.6 2008/01/21 00:03:31 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -174,6 +174,8 @@ void *alloc_btree_element(struct cluster_info *cluster, int32_t *offp);
 void *alloc_data_element(struct cluster_info *cluster,
 				int32_t bytes, int32_t *offp);
 void *alloc_record_element(struct cluster_info *cluster, int32_t *offp);
+
+int hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 
 void flush_all_volumes(void);
 void flush_volume(struct volume_info *vol);

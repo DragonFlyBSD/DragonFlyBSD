@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cache.c,v 1.2 2008/01/17 05:14:49 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cache.c,v 1.3 2008/01/21 00:03:31 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -83,7 +83,7 @@ hammer_cache_flush(void)
 				TAILQ_INSERT_TAIL(&CacheList, cache, entry);
 				continue;
 			}
-			if (count == NCache) {
+			if (count >= NCache) {
 				CacheMax += 8 * 1024 * 1024;
 				target = CacheMax / 2;
 				count = 0;

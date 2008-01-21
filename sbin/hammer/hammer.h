@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.2 2008/01/17 04:59:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.3 2008/01/21 00:03:31 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,4 +57,5 @@
 extern int RecurseOpt;
 
 void hammer_cmd_show(int32_t vol_no, int32_t clu_no, int depth);
+
 
