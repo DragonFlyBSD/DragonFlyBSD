@@ -37,7 +37,7 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.12 2006/11/20 20:53:06 dillon Exp $
+ * $DragonFly: src/sys/vm/device_pager.c,v 1.13 2008/01/21 10:25:18 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -202,6 +202,7 @@ dev_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		 * with the new physical address.
 		 */
 		m[reqpage]->phys_addr = paddr;
+		m[reqpage]->valid = VM_PAGE_BITS_ALL;
 	} else {
 		/*
 		 * Replace the passed in reqpage page with our own fake page
