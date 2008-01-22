@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.69 2008/01/21 20:21:19 nth Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.70 2008/01/22 19:17:38 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -604,9 +604,9 @@ MLINKS+=vref.9 VREF.9
 MLINKS+=vslock.9 vsunlock.9
 MLINKS+=zone.9 zalloc.9 \
 	zone.9 zbootinit.9 \
+	zone.9 zdestroy.9 \
 	zone.9 zfree.9 \
 	zone.9 zinit.9 \
-	zone.9 zinitna.9 \
-	zone.9 zdestroy.9
+	zone.9 zinitna.9
 
 .include <bsd.prog.mk>

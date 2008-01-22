@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/zone.9,v 1.9.2.4 2002/05/02 20:01:29 asmodai Exp $
-.\" $DragonFly: src/share/man/man9/zone.9,v 1.6 2008/01/21 20:21:19 nth Exp $
+.\" $DragonFly: src/share/man/man9/zone.9,v 1.7 2008/01/22 19:17:38 swildner Exp $
 .\"
 .Dd January 27, 2001
 .Dt ZONE 9
@@ -54,7 +54,8 @@
 .Ft void
 .Fn zfree "vm_zone_t z" "void *item"
 .Sh DESCRIPTION
-The zone allocator is deprecated.  Use 
+The zone allocator is deprecated.
+Use
 .In sys/objcache.h
 for new developments.
 .Pp
@@ -180,8 +181,8 @@ calling
 .Fn zfree
 with a pointer to the zone and a pointer to the item.
 .Pp
-The zone functions are not SMP-safe.  The MP lock must be held while calling
-them.
+The zone functions are not SMP-safe.
+The MP lock must be held while calling them.
 .Sh RETURN VALUES
 The
 .Fn zinitna
