@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.26 2008/01/20 04:42:25 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.27 2008/01/23 02:37:40 sephe Exp $
  */
 
 /*
@@ -1528,8 +1528,6 @@ rt2560_setup_tx_desc(struct rt2560_softc *sc, struct rt2560_tx_desc *desc,
 
 	desc->flags = htole32(flags);
 	desc->flags |= htole32(len << 16);
-	if (!encrypt)
-		desc->flags |= htole32(RT2560_TX_VALID);
 
 	desc->physaddr = htole32(physaddr);
 	desc->wme = htole16(
@@ -1562,6 +1560,8 @@ rt2560_setup_tx_desc(struct rt2560_softc *sc, struct rt2560_tx_desc *desc,
 			desc->plcp_signal |= 0x08;
 	}
 
+	if (!encrypt)
+		desc->flags |= htole32(RT2560_TX_VALID);
 	desc->flags |= encrypt ? htole32(RT2560_TX_CIPHER_BUSY)
 			       : htole32(RT2560_TX_BUSY);
 }
