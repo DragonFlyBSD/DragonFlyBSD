@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.53 2008/01/13 10:05:21 matthias Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.54 2008/01/23 09:21:34 matthias Exp $
  */
 
 #ifdef _KERNEL
@@ -557,6 +557,13 @@ static struct da_quirk_entry da_quirk_table[] =
 	{
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Netac", "OnlyDisk*",
 		"2000"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * USB 2.0 (HS) Flash Disk MP3 player
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB 2.0", "(HS) Flash Disk", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 };
 
