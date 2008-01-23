@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.27 2008/01/21 20:59:28 nth Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.28 2008/01/23 17:35:48 nth Exp $
  */
 
 #include <sys/param.h>
@@ -38,7 +38,6 @@ static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 #define	ZONE_ERROR_INVALID 0
 #define	ZONE_ERROR_NOTFREE 1
 #define	ZONE_ERROR_ALREADYFREE 2
-#define	ZONE_ERROR_CANT_DESTROY 3
 
 #define	ZONE_ROUNDING	32
 
@@ -157,7 +156,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 	 * Only zones created with zinit() are destroyable.
 	 */
 	if (z->zflags & ZONE_DESTROYABLE)
-		zerror(ZONE_ERROR_CANT_DESTROY);
+		panic("zinitna: can't create destroyable zone");
 
 	if ((z->zflags & ZONE_BOOT) == 0) {
 		z->zsize = (size + ZONE_ROUNDING - 1) & ~(ZONE_ROUNDING - 1);
@@ -309,9 +308,9 @@ zdestroy(vm_zone_t z)
 	int i;
 
 	if (z == NULL)
-		zerror(ZONE_ERROR_INVALID);
+		panic("zdestroy: null zone");
 	if ((z->zflags & ZONE_DESTROYABLE) == 0)
-		zerror(ZONE_ERROR_CANT_DESTROY);
+		panic("zdestroy: undestroyable zone");
 
 	LIST_REMOVE(z, zlink);
 
@@ -560,9 +559,6 @@ zerror(int error)
 		break;
 	case ZONE_ERROR_ALREADYFREE:
 		msg = "zone: freeing free entry";
-		break;
-	case ZONE_ERROR_CANT_DESTROY:
-		msg = "zone: cannot destroy zone (not created with zinit()?)";
 		break;
 	default:
 		msg = "zone: invalid error";
