@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.8 2008/01/17 04:59:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.9 2008/01/24 02:16:47 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -79,20 +79,22 @@ init_alist_templates(void)
 	 * Initialize the alist templates we will be using
 	 */
 	hammer_alist_template(&Buf_alist_config, HAMMER_FSBUF_MAXBLKS,
-			      1, HAMMER_FSBUF_METAELMS);
+			      1, HAMMER_FSBUF_METAELMS, 0);
 	hammer_alist_template(&Vol_normal_alist_config, HAMMER_VOL_MAXCLUSTERS,
-			      1, HAMMER_VOL_METAELMS_1LYR);
+			      1, HAMMER_VOL_METAELMS_1LYR, 0);
 	hammer_alist_template(&Vol_super_alist_config,
 			  HAMMER_VOL_MAXSUPERCLUSTERS * HAMMER_SCL_MAXCLUSTERS,
-			      HAMMER_SCL_MAXCLUSTERS, HAMMER_VOL_METAELMS_2LYR);
+			      HAMMER_SCL_MAXCLUSTERS, HAMMER_VOL_METAELMS_2LYR,
+			      0);
 	hammer_super_alist_template(&Vol_super_alist_config);
 	hammer_alist_template(&Supercl_alist_config, HAMMER_VOL_MAXCLUSTERS,
-			      1, HAMMER_SUPERCL_METAELMS);
+			      1, HAMMER_SUPERCL_METAELMS, 0);
 	hammer_alist_template(&Clu_master_alist_config, HAMMER_CLU_MAXBUFFERS,
-			      1, HAMMER_CLU_MASTER_METAELMS);
+			      1, HAMMER_CLU_MASTER_METAELMS, 0);
 	hammer_alist_template(&Clu_slave_alist_config,
 			      HAMMER_CLU_MAXBUFFERS * HAMMER_FSBUF_MAXBLKS,
-			      HAMMER_FSBUF_MAXBLKS, HAMMER_CLU_SLAVE_METAELMS);
+			      HAMMER_FSBUF_MAXBLKS, HAMMER_CLU_SLAVE_METAELMS,
+			      1);
 	hammer_buffer_alist_template(&Clu_slave_alist_config);
 }
 
@@ -595,7 +597,8 @@ alloc_data_element(struct cluster_info *cluster, int32_t bytes, int32_t *offp)
 }
 
 void *
-alloc_record_element(struct cluster_info *cluster, int32_t *offp)
+alloc_record_element(struct cluster_info *cluster, int32_t *offp,
+		     u_int8_t rec_type)
 {
 	struct buffer_info *buf;
 	hammer_alist_t live;
@@ -621,6 +624,9 @@ alloc_record_element(struct cluster_info *cluster, int32_t *offp)
 	item = &buf->ondisk->record.recs[elm_no & HAMMER_FSBUF_BLKMASK];
 	*offp = buf->buf_no * HAMMER_BUFSIZE +
 		((char *)item - (char *)buf->ondisk);
+	++cluster->ondisk->stat_records;
+	if (rec_type == HAMMER_RECTYPE_CLUSTER)
+		++cluster->ondisk->stat_records;
 	return(item);
 }
 
@@ -641,11 +647,7 @@ alloc_new_buffer(struct cluster_info *cluster, hammer_alist_t live,
 	assert(buf_no != HAMMER_ALIST_BLOCK_NONE);
 	buf = get_buffer(cluster, buf_no, type);
 	hammer_alist_free(live, buf_no * HAMMER_FSBUF_MAXBLKS, nelements);
-	if (type == HAMMER_FSBUF_RECORDS) {
-		cluster->ondisk->clu_record_buf_bitmap[buf_no >> 5] |=
-			1 << (buf_no & 31);
-	}
-/*	rel_buffer(buffer);XXX modified bit for multiple gets/rels */
+	/* XXX modified bit for multiple gets/rels */
 }
 
 /*

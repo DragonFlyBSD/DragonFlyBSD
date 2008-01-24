@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.4 2008/01/18 19:38:29 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.5 2008/01/24 02:16:47 dillon Exp $
  */
 
 #include "hammer.h"
@@ -83,6 +83,28 @@ main(int ac, char **av)
 			usage(1);
 		hammer_parsetime(&tid, av[1]);
 		printf("0x%08x\n", (int)(tid / 1000000000LL));
+		exit(0);
+	}
+	if (strcmp(av[0], "namekey") == 0) {
+		int64_t key;
+
+		if (av[1] == NULL)
+			usage(1);
+		key = (int64_t)(crc32(av[1], strlen(av[1])) & 0x7FFFFFFF) << 32;
+		if (key == 0)
+			key |= 0x100000000LL;
+		printf("0x%016llx\n", key);
+		exit(0);
+	}
+	if (strcmp(av[0], "namekey32") == 0) {
+		int32_t key;
+
+		if (av[1] == NULL)
+			usage(1);
+		key = crc32(av[1], strlen(av[1])) & 0x7FFFFFFF;
+		if (key == 0)
+			++key;
+		printf("0x%08x\n", key);
 		exit(0);
 	}
 
