@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.23 2008/01/21 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.24 2008/01/24 02:14:45 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -413,11 +413,7 @@ hammer_get_volume(struct hammer_mount *hmp, int32_t vol_no, int *errorp)
 	/*
 	 * Deal with on-disk info
 	 */
-	while (volume->io.loading) {
-		hammer_lock_ex(&volume->io.lock);
-		hammer_unlock(&volume->io.lock);
-	}
-	if (volume->ondisk == NULL) {
+	if (volume->ondisk == NULL || volume->io.loading) {
 		*errorp = hammer_load_volume(volume);
 		if (*errorp) {
 			hammer_rel_volume(volume, 1);
@@ -439,11 +435,7 @@ hammer_ref_volume(hammer_volume_t volume)
 	/*
 	 * Deal with on-disk info
 	 */
-	while (volume->io.loading) {
-		hammer_lock_ex(&volume->io.lock);
-		hammer_unlock(&volume->io.lock);
-	}
-	if (volume->ondisk == NULL) {
+	if (volume->ondisk == NULL || volume->io.loading) {
 		error = hammer_load_volume(volume);
 		if (error)
 			hammer_rel_volume(volume, 1);
@@ -465,11 +457,7 @@ hammer_get_root_volume(struct hammer_mount *hmp, int *errorp)
 	/*
 	 * Deal with on-disk info
 	 */
-	while (volume->io.loading) {
-		hammer_lock_ex(&volume->io.lock);
-		hammer_unlock(&volume->io.lock);
-	}
-	if (volume->ondisk == NULL) {
+	if (volume->ondisk == NULL || volume->io.loading) {
 		*errorp = hammer_load_volume(volume);
 		if (*errorp) {
 			hammer_rel_volume(volume, 1);
@@ -493,7 +481,9 @@ hammer_load_volume(hammer_volume_t volume)
 	int error;
 
 	hammer_lock_ex(&volume->io.lock);
+	KKASSERT(volume->io.loading == 0);
 	volume->io.loading = 1;
+
 	if (volume->ondisk == NULL) {
 		error = hammer_io_read(volume->devvp, &volume->io);
 		if (error) {
@@ -602,11 +592,7 @@ again:
 	/*
 	 * Deal with on-disk info
 	 */
-	while (supercl->io.loading) {
-		hammer_lock_ex(&supercl->io.lock);
-		hammer_unlock(&supercl->io.lock);
-	}
-	if (supercl->ondisk == NULL || isnew) {
+	if (supercl->ondisk == NULL || isnew || supercl->io.loading) {
 		*errorp = hammer_load_supercl(supercl, isnew);
 		if (*errorp) {
 			hammer_rel_supercl(supercl, 1);
@@ -627,7 +613,9 @@ hammer_load_supercl(hammer_supercl_t supercl, hammer_alloc_state_t isnew)
 	int64_t nclusters;
 
 	hammer_lock_ex(&supercl->io.lock);
+	KKASSERT(supercl->io.loading == 0);
 	supercl->io.loading = 1;
+
 	if (supercl->ondisk == NULL) {
 		if (isnew)
 			error = hammer_io_new(volume->devvp, &supercl->io);
@@ -767,11 +755,7 @@ again:
 	/*
 	 * Deal with on-disk info
 	 */
-	while (cluster->io.loading) {
-		hammer_lock_ex(&cluster->io.lock);
-		hammer_unlock(&cluster->io.lock);
-	}
-	if (cluster->ondisk == NULL || getflags) {
+	if (cluster->ondisk == NULL || getflags || cluster->io.validated == 0) {
 		*errorp = hammer_load_cluster(cluster, getflags);
 		if (*errorp) {
 			hammer_rel_cluster(cluster, 1);
@@ -795,11 +779,7 @@ hammer_get_root_cluster(struct hammer_mount *hmp, int *errorp)
 	/*
 	 * Deal with on-disk info
 	 */
-	while (cluster->io.loading) {
-		hammer_lock_ex(&cluster->io.lock);
-		hammer_unlock(&cluster->io.lock);
-	}
-	if (cluster->ondisk == NULL) {
+	if (cluster->ondisk == NULL || cluster->io.validated == 0) {
 		*errorp = hammer_load_cluster(cluster, 0);
 		if (*errorp) {
 			hammer_rel_cluster(cluster, 1);
@@ -819,13 +799,20 @@ hammer_load_cluster(hammer_cluster_t cluster, int getflags)
 	struct hammer_cluster_ondisk *ondisk;
 	int error;
 
-	/*
-	 * Load the cluster's on-disk info
-	 */
 	hammer_lock_ex(&cluster->io.lock);
+	KKASSERT(cluster->io.loading == 0);
 	cluster->io.loading = 1;
+
 	if (cluster->ondisk == NULL) {
 		KKASSERT(TAILQ_EMPTY(&cluster->io.deplist));
+
+		/*
+		 * Unmodified buffers may be present, indicating that we
+		 * had already validated the cluster even though we no longer
+		 * have its ondisk info.
+		 */
+		if (RB_EMPTY(&cluster->rb_bufs_root))
+			cluster->io.validated = 0;
 		if (getflags & GET_CLUSTER_NEW)
 			error = hammer_io_new(volume->devvp, &cluster->io);
 		else
@@ -855,15 +842,6 @@ hammer_load_cluster(hammer_cluster_t cluster, int getflags)
 			 */
 			cluster->clu_btree_beg = ondisk->clu_btree_beg;
 			cluster->clu_btree_end = ondisk->clu_btree_end;
-
-			/*
-			 * Recover a cluster that was marked open.  This
-			 * can be rather involved and block for a hefty
-			 * chunk of time.
-			 */
-			/*if (ondisk->clu_flags & HAMMER_CLUF_OPEN)*/
-			if ((getflags & GET_CLUSTER_NORECOVER) == 0)
-				hammer_recover(cluster);
 		}
 	} else if (getflags & GET_CLUSTER_NEW) {
 		error = hammer_io_new(volume->devvp, &cluster->io);
@@ -946,6 +924,36 @@ hammer_load_cluster(hammer_cluster_t cluster, int getflags)
 			ondisk->clu_btree_root = croot->node_offset;
 			hammer_rel_node(croot);
 		}
+
+		/*
+		 * We just formatted this cluster, don't try to recover it!
+		 */
+		cluster->io.validated = 1;
+	}
+
+	/*
+	 * If no error occured handle automatic cluster recovery unless
+	 * the NORECOVER flag is passed.
+	 *
+	 * Setting hammer_debug_recover to 1 will force recovery on load
+	 * whether or not the cluster is marked open.
+	 *
+	 * Setting hammer_debug_recover to -1 will force NO recovery
+	 * regardless of state.
+	 *
+	 * io.validated can only be cleared if the buffer RB list is empty,
+	 * preventing us from trying to recover an actively referenced
+	 * cluster (which would blow the filesystem to smithereens).
+	 */
+	if (error == 0 && cluster->io.validated == 0) {
+		if ((getflags & GET_CLUSTER_NORECOVER) == 0) {
+			if ((cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN) ||
+			    hammer_debug_recover > 0) {
+				if (hammer_debug_recover >= 0)
+					hammer_recover(cluster);
+			}
+			cluster->io.validated = 1;
+		}
 	}
 	cluster->io.loading = 0;
 	hammer_unlock(&cluster->io.lock);
@@ -1007,11 +1015,7 @@ hammer_ref_cluster(hammer_cluster_t cluster)
 	/*
 	 * Deal with on-disk info
 	 */
-	while (cluster->io.loading) {
-		hammer_lock_ex(&cluster->io.lock);
-		hammer_unlock(&cluster->io.lock);
-	}
-	if (cluster->ondisk == NULL) {
+	if (cluster->ondisk == NULL || cluster->io.validated == 0) {
 		error = hammer_load_cluster(cluster, 0);
 		if (error)
 			hammer_rel_cluster(cluster, 1);
@@ -1127,11 +1131,7 @@ again:
 	/*
 	 * Deal with on-disk info
 	 */
-	while (buffer->io.loading) {
-		hammer_lock_ex(&buffer->io.lock);
-		hammer_unlock(&buffer->io.lock);
-	}
-	if (buffer->ondisk == NULL || buf_type) {
+	if (buffer->ondisk == NULL || buf_type || buffer->io.loading) {
 		*errorp = hammer_load_buffer(buffer, buf_type);
 		if (*errorp) {
 			hammer_rel_buffer(buffer, 1);
@@ -1155,7 +1155,9 @@ hammer_load_buffer(hammer_buffer_t buffer, u_int64_t buf_type)
 	 */
 	volume = buffer->volume;
 	hammer_lock_ex(&buffer->io.lock);
+	KKASSERT(buffer->io.loading == 0);
 	buffer->io.loading = 1;
+
 	if (buffer->ondisk == NULL) {
 		if (buf_type) {
 			error = hammer_io_new(volume->devvp, &buffer->io);
@@ -1210,11 +1212,7 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 	int error;
 
 	hammer_ref(&buffer->io.lock);
-	while (buffer->io.loading) {
-		hammer_lock_ex(&buffer->io.lock);
-		hammer_unlock(&buffer->io.lock);
-	}
-	if (buffer->ondisk == NULL) {
+	if (buffer->ondisk == NULL || buffer->io.loading) {
 		error = hammer_load_buffer(buffer, 0);
 		if (error) {
 			hammer_rel_buffer(buffer, 1);
@@ -1687,7 +1685,7 @@ hammer_init_cluster(hammer_cluster_t cluster, hammer_base_elm_t left_bound,
 void
 hammer_free_cluster(hammer_cluster_t cluster)
 {
-	hammer_modify_cluster(cluster);
+	hammer_modify_volume(cluster->volume);
 	hammer_alist_free(&cluster->volume->alist, cluster->clu_no, 1);
 }
 
@@ -1703,6 +1701,9 @@ hammer_free_cluster(hammer_cluster_t cluster)
  * iterator.  If that fails the first available block is used.  If that
  * fails a new buffer is allocated and associated with the buffer type
  * A-list and the element is allocated out of the new buffer.
+ *
+ * This function also ensures that the required minimum number of buffers is
+ * reserved to guarantee that recovery operations succeed.
  */
 
 hammer_node_t
@@ -1714,13 +1715,42 @@ hammer_alloc_btree(hammer_cluster_t cluster, int *errorp)
 	int32_t elm_no;
 	int32_t buf_no;
 	int32_t node_offset;
+	int32_t n;
+
+	hammer_modify_cluster(cluster);
+	buffer = NULL;
+	live = &cluster->alist_btree;
+
+	/*
+	 * If we aren't recovering then ensure the required minimum
+	 * reservation is met. XXX if the recovery code packs the B-Tree
+	 * we don't have to do this.
+	 *
+	 * Calculate the number of buffers needed to hold the B-Tree.
+	 */
+	if (cluster->io.validated) {
+		n = (cluster->ondisk->stat_records * 3 / 
+		    HAMMER_BTREE_INT_ELMS / HAMMER_BTREE_NODES) + 1;
+		if (cluster->ondisk->stat_idx_bufs < n) {
+			kprintf("hammer_alloc_btree: %d/%d buffers\n",
+				cluster->ondisk->stat_idx_bufs, n);
+		}
+		while (cluster->ondisk->stat_idx_bufs < n) {
+			alloc_new_buffer(cluster, HAMMER_FSBUF_BTREE, live,
+					 cluster->ondisk->idx_index, errorp,
+					 &buffer);
+			if (*errorp) {
+				if (buffer)
+					hammer_rel_buffer(buffer, 0);
+				return(NULL);
+			}
+		}
+	}
+
 
 	/*
 	 * Allocate a B-Tree element
 	 */
-	hammer_modify_cluster(cluster);
-	buffer = NULL;
-	live = &cluster->alist_btree;
 	elm_no = hammer_alist_alloc_fwd(live, 1, cluster->ondisk->idx_index);
 	if (elm_no == HAMMER_ALIST_BLOCK_NONE)
 		elm_no = hammer_alist_alloc_fwd(live, 1, 0);
@@ -1839,8 +1869,8 @@ hammer_alloc_data(hammer_cluster_t cluster, int32_t bytes,
 }
 
 void *
-hammer_alloc_record(hammer_cluster_t cluster,
-		    int *errorp, struct hammer_buffer **bufferp)
+hammer_alloc_record(hammer_cluster_t cluster, int *errorp,
+		    u_int8_t rec_type, struct hammer_buffer **bufferp)
 {
 	hammer_buffer_t buffer;
 	hammer_alist_t live;
@@ -1887,6 +1917,9 @@ hammer_alloc_record(hammer_cluster_t cluster,
 	item = &buffer->ondisk->record.recs[elm_no & HAMMER_FSBUF_BLKMASK];
 	bzero(item, sizeof(union hammer_record_ondisk));
 	*errorp = 0;
+	++cluster->ondisk->stat_records;
+	if (rec_type == HAMMER_RECTYPE_CLUSTER)
+		++cluster->ondisk->stat_records;
 	return(item);
 }
 
@@ -1918,7 +1951,8 @@ hammer_free_data_ptr(hammer_buffer_t buffer, void *data, int bytes)
 }
 
 void
-hammer_free_record_ptr(hammer_buffer_t buffer, union hammer_record_ondisk *rec)
+hammer_free_record_ptr(hammer_buffer_t buffer, union hammer_record_ondisk *rec,
+			u_int8_t rec_type)
 {
 	int32_t elm_no;
 	hammer_alist_t live;
@@ -1929,6 +1963,9 @@ hammer_free_record_ptr(hammer_buffer_t buffer, union hammer_record_ondisk *rec)
 	elm_no += buffer->buf_no * HAMMER_FSBUF_MAXBLKS;
 	live = &buffer->cluster->alist_record;
 	hammer_alist_free(live, elm_no, 1);
+	--buffer->cluster->ondisk->stat_records;
+	if (rec_type == HAMMER_RECTYPE_CLUSTER)
+		--buffer->cluster->ondisk->stat_records;
 }
 
 void
@@ -1979,7 +2016,8 @@ hammer_free_data(hammer_cluster_t cluster, int32_t bclu_offset, int32_t bytes)
 }
 
 void
-hammer_free_record(hammer_cluster_t cluster, int32_t bclu_offset)
+hammer_free_record(hammer_cluster_t cluster, int32_t bclu_offset,
+		   u_int8_t rec_type)
 {
 	const int32_t blksize = sizeof(union hammer_record_ondisk);
 	int32_t fsbuf_offset = bclu_offset & HAMMER_BUFMASK;
@@ -1993,6 +2031,9 @@ hammer_free_record(hammer_cluster_t cluster, int32_t bclu_offset)
 	KKASSERT(fsbuf_offset >= 0 && fsbuf_offset % blksize == 0);
 	elm_no += fsbuf_offset / blksize;
 	hammer_alist_free(live, elm_no, 1);
+	--cluster->ondisk->stat_records;
+	if (rec_type == HAMMER_RECTYPE_CLUSTER)
+		--cluster->ondisk->stat_records;
 }
 
 
@@ -2000,8 +2041,6 @@ hammer_free_record(hammer_cluster_t cluster, int32_t bclu_offset)
  * Allocate a new filesystem buffer and assign it to the specified
  * filesystem buffer type.  The new buffer will be added to the
  * type-specific A-list and initialized.
- *
- * buffers used for records will also be added to the clu_record_buf_bitmap.
  */
 static void
 alloc_new_buffer(hammer_cluster_t cluster, u_int64_t type, hammer_alist_t live,
@@ -2062,20 +2101,6 @@ alloc_new_buffer(hammer_cluster_t cluster, u_int64_t type, hammer_alist_t live,
 			break;
 		}
 	}
-
-	/*
-	 * And, finally, update clu_record_buf_bitmap for record buffers.
-	 * Since buffers are synced to disk before their associated cluster
-	 * header, a recovery operation will only see synced record buffers
-	 * in the bitmap.  XXX We can't use alist_record for recovery due
-	 * to the way we currently manage it.
-	 */
-	if (buffer && type == HAMMER_FSBUF_RECORDS) {
-		KKASSERT(buf_no >= 0 && buf_no < HAMMER_CLU_MAXBUFFERS);
-		hammer_modify_cluster(cluster);
-		cluster->ondisk->clu_record_buf_bitmap[buf_no >> 5] |=
-			(1 << (buf_no & 31));
-	}
 }
 
 /*
@@ -2093,7 +2118,6 @@ hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 	info.error = 0;
 	info.waitfor = waitfor;
 
-	kprintf("hammer_sync\n");
 	vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_NOWAIT,
 		      hammer_sync_scan1, hammer_sync_scan2, &info);
 
@@ -2447,7 +2471,6 @@ buffer_alist_free(void *info, int32_t blk, int32_t radix,
 		hammer_modify_buffer(buffer);
 		hammer_alist_free(&buffer->alist, base_blk, count);
 		*emptyp = hammer_alist_isempty(&buffer->alist);
-		/* XXX don't bother updating the buffer is completely empty? */
 		hammer_rel_buffer(buffer, 0);
 	} else {
 		*emptyp = 0;
@@ -2455,18 +2478,36 @@ buffer_alist_free(void *info, int32_t blk, int32_t radix,
 }
 
 static int32_t
-buffer_alist_find(void *info, int32_t blk, int32_t radix, int32_t atblk)
+buffer_alist_find(void *info, int32_t blk, int32_t radix, int32_t atblk,
+		  int flags)
 {
 	hammer_cluster_t cluster = info;
 	hammer_buffer_t buffer;
 	int32_t buf_no;
+	int32_t maxblks;
 	int error = 0;
 
 	buf_no = blk / HAMMER_FSBUF_MAXBLKS;
 	buffer = hammer_get_buffer(cluster, buf_no, 0, &error);
 	if (buffer) {
 		KKASSERT(buffer->ondisk->head.buf_type != 0);
-		blk = hammer_alist_find(&buffer->alist, atblk - blk, radix);
+		switch(buffer->ondisk->head.buf_type) {
+		case HAMMER_FSBUF_RECORDS:
+			maxblks = HAMMER_RECORD_NODES;
+			break;
+		case HAMMER_FSBUF_BTREE:
+			maxblks = HAMMER_BTREE_NODES;
+			break;
+		case HAMMER_FSBUF_DATA:
+			maxblks = HAMMER_DATA_NODES;
+			break;
+		default:
+			panic("buffer_alist_find: unknown buffer type");
+			maxblks = 0;
+			break;
+		}
+		blk = hammer_alist_find(&buffer->alist, atblk - blk, maxblks,
+					flags);
 		hammer_rel_buffer(buffer, 0);
 	} else {
 		blk = HAMMER_ALIST_BLOCK_NONE;
@@ -2563,9 +2604,10 @@ super_alist_destroy(void *info, int32_t blk, int32_t radix)
 		supercl = hammer_get_supercl(volume, scl_no, &error,
 					     HAMMER_ASTATE_FREE);
 					     /* XXX */
-		hammer_io_clear_modify(&supercl->io);
-		if (supercl)
+		if (supercl) {
+			hammer_io_clear_modify(&supercl->io);
 			hammer_rel_supercl(supercl, 0);
+		}
 	}
 	return (error);
 }
@@ -2643,6 +2685,33 @@ super_alist_free(void *info, int32_t blk, int32_t radix,
 	}
 }
 
+static int32_t
+super_alist_find(void *info, int32_t blk, int32_t radix, int32_t atblk,
+		  int flags)
+{
+	hammer_volume_t volume = info;
+	hammer_supercl_t supercl;
+	int32_t scl_no;
+	int32_t nclusters;
+	int error = 0;
+
+	scl_no = blk / HAMMER_SCL_MAXCLUSTERS;
+	supercl = hammer_get_supercl(volume, scl_no, &error, 0);
+	if (supercl) {
+		nclusters = supercl->volume->ondisk->vol_nclusters -
+			    ((int64_t)supercl->scl_no * HAMMER_SCL_MAXCLUSTERS);
+		KKASSERT(nclusters > 0);
+		if (nclusters > HAMMER_SCL_MAXCLUSTERS)
+			nclusters = HAMMER_SCL_MAXCLUSTERS;
+		blk = hammer_alist_find(&supercl->alist, atblk - blk,
+					nclusters, flags);
+		hammer_rel_supercl(supercl, 0);
+	} else {
+		blk = HAMMER_ALIST_BLOCK_NONE;
+	}
+	return(blk);
+}
+
 static void
 super_alist_print(void *info, int32_t blk, int32_t radix, int tab)
 {
@@ -2654,19 +2723,21 @@ hammer_init_alist_config(void)
 	hammer_alist_config_t config;
 
 	hammer_alist_template(&Buf_alist_config, HAMMER_FSBUF_MAXBLKS,
-			      1, HAMMER_FSBUF_METAELMS);
+			      1, HAMMER_FSBUF_METAELMS, 0);
 	hammer_alist_template(&Vol_normal_alist_config, HAMMER_VOL_MAXCLUSTERS,
-			      1, HAMMER_VOL_METAELMS_1LYR);
+			      1, HAMMER_VOL_METAELMS_1LYR, 0);
 	hammer_alist_template(&Vol_super_alist_config,
 			  HAMMER_VOL_MAXSUPERCLUSTERS * HAMMER_SCL_MAXCLUSTERS,
-			      HAMMER_SCL_MAXCLUSTERS, HAMMER_VOL_METAELMS_2LYR);
+			      HAMMER_SCL_MAXCLUSTERS, HAMMER_VOL_METAELMS_2LYR,
+			      0);
 	hammer_alist_template(&Supercl_alist_config, HAMMER_VOL_MAXCLUSTERS,
-			      1, HAMMER_SUPERCL_METAELMS);
+			      1, HAMMER_SUPERCL_METAELMS, 0);
 	hammer_alist_template(&Clu_master_alist_config, HAMMER_CLU_MAXBUFFERS,
-			      1, HAMMER_CLU_MASTER_METAELMS);
+			      1, HAMMER_CLU_MASTER_METAELMS, 0);
 	hammer_alist_template(&Clu_slave_alist_config,
 			      HAMMER_CLU_MAXBUFFERS * HAMMER_FSBUF_MAXBLKS,
-			      HAMMER_FSBUF_MAXBLKS, HAMMER_CLU_SLAVE_METAELMS);
+			      HAMMER_FSBUF_MAXBLKS, HAMMER_CLU_SLAVE_METAELMS,
+			      1);
 
 	config = &Vol_super_alist_config;
 	config->bl_radix_init = super_alist_init;
@@ -2675,6 +2746,7 @@ hammer_init_alist_config(void)
 	config->bl_radix_alloc_fwd = super_alist_alloc_fwd;
 	config->bl_radix_alloc_rev = super_alist_alloc_rev;
 	config->bl_radix_free = super_alist_free;
+	config->bl_radix_find = super_alist_find;
 	config->bl_radix_print = super_alist_print;
 
 	config = &Clu_slave_alist_config;

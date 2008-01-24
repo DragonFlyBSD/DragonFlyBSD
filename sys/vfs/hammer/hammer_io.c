@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.16 2008/01/11 05:45:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.17 2008/01/24 02:14:45 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -277,7 +277,10 @@ hammer_io_release(struct hammer_io *io, int flush)
 }
 
 /*
- * This routine is called with a locked IO when a flush is desired.
+ * This routine is called with a locked IO when a flush is desired and
+ * no other references to the structure exists other then ours.  This
+ * routine is ONLY called when HAMMER believes it is safe to flush a
+ * potentially modified buffer out.
  */
 void
 hammer_io_flush(struct hammer_io *io)
@@ -294,6 +297,25 @@ hammer_io_flush(struct hammer_io *io)
 
 	KKASSERT(io->bp);
 
+	/*
+	 * XXX - umount syncs buffers without referencing them, check for 0
+	 * also.
+	 */
+	KKASSERT(io->lock.refs == 0 || io->lock.refs == 1);
+
+	/*
+	 * Reset modified to 0 here and re-check it after the IO completes.
+	 * This is only legal when lock.refs == 1 (otherwise we might clear
+	 * the modified bit while there are still users of the cluster
+	 * modifying the data).
+	 *
+	 * NOTE: We have no dependancies so we don't have to worry about
+	 * cluster-open's here.
+	 *
+	 * Do this before potentially blocking so any attempt to modify the
+	 * ondisk while we are blocked blocks waiting for us.
+	 */
+	io->modified = 0;
 	bp = io->bp;
 
 	/*
@@ -375,6 +397,12 @@ hammer_io_modify(hammer_io_t io, struct hammer_io_list *list)
 			BUF_KERNPROC(io->bp);
 			io->released = 0;
 		}
+		/*
+		 * The modified bit should still be set because we have
+		 * a ref on the structure, so the kernel's checkwrite
+		 * should not have cleared it.
+		 */
+		KKASSERT(io->modified != 0);
 		hammer_unlock(&io->lock);
 	}
 	return(r);
@@ -477,6 +505,10 @@ hammer_io_start(struct buf *bp)
 
 /*
  * Post-IO completion kernel callback
+ *
+ * NOTE: HAMMER may modify a buffer after initiating I/O.  The modified bit
+ * may also be set if we were marking a cluster header open.  Only remove
+ * our dependancy if the modified bit is clear.
  */
 static void
 hammer_io_complete(struct buf *bp)
@@ -485,36 +517,15 @@ hammer_io_complete(struct buf *bp)
 
 	KKASSERT(iou->io.released == 1);
 
-	if (iou->io.modified == 0)
-		return;
-
 	/*
-	 * If we were writing the cluster header out and CLUF_OPEN is set,
-	 * do NOT clear the modify bit.  Just clear the IO running bit
-	 * and do a wakeup.
-	 */
-	if (iou->io.type == HAMMER_STRUCTURE_CLUSTER) {
-		if (iou->cluster.ondisk->clu_flags & HAMMER_CLUF_OPEN) {
-			iou->io.running = 0;
-			if (iou->io.waiting) {
-				iou->io.waiting = 0;
-				wakeup(iou);
-			}
-			return;
-		}
-	}
-	 
-
-	/*
-	 * If this was a write then clear the modified status and remove us
-	 * from the dependancy list.
+	 * If this was a write and the modified bit is still clear we can
+	 * remove ourselves from the dependancy list.
 	 *
 	 * If no lock references remain and we can acquire the IO lock and
 	 * someone at some point wanted us to flush (B_LOCKED test), then
 	 * try to dispose of the IO.
 	 */
-	iou->io.modified = 0;
-	if (iou->io.entry_list) {
+	if (iou->io.modified == 0 && iou->io.entry_list) {
 		TAILQ_REMOVE(iou->io.entry_list, &iou->io, entry);
 		iou->io.entry_list = NULL;
 	}
@@ -528,6 +539,7 @@ hammer_io_complete(struct buf *bp)
 	 * Someone wanted us to flush, try to clean out the buffer. 
 	 */
 	if ((bp->b_flags & B_LOCKED) && iou->io.lock.refs == 0) {
+		KKASSERT(iou->io.modified == 0);
 		hammer_io_deallocate(bp);
 		/* structure may be dead now */
 	}
@@ -620,17 +632,47 @@ hammer_io_checkwrite(struct buf *bp)
 	union hammer_io_structure *iou = (void *)LIST_FIRST(&bp->b_dep);
 
 	/*
-	 * A modified cluster with no dependancies can be closed.
+	 * A modified cluster with no dependancies can be closed.  It is
+	 * possible for the cluster to have been modified by the recovery
+	 * code without validation.  Only clear the open flag if the
+	 * cluster is validated.
 	 */
 	if (iou->io.type == HAMMER_STRUCTURE_CLUSTER && iou->io.modified) {
 		hammer_cluster_t cluster = &iou->cluster;
 
 		if (TAILQ_EMPTY(&cluster->io.deplist)) {
-			cluster->ondisk->clu_flags &= ~HAMMER_CLUF_OPEN;
-			kprintf("CLOSE CLUSTER %d:%d\n",
+			kprintf("CLOSE CLUSTER %d:%d ",
 				cluster->volume->vol_no,
 				cluster->clu_no);
+			if (cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN) {
+				if (cluster->io.validated) {
+					cluster->ondisk->clu_flags &=
+						~HAMMER_CLUF_OPEN;
+					kprintf("(closed)\n");
+				} else {
+					kprintf("(leave-open)\n");
+				}
+			} else {
+				kprintf("(header-only)\n");
+			}
 		}
+	}
+
+	/*
+	 * We are called from the kernel on delayed-write buffers, and
+	 * called from hammer_io_flush() on flush requests.  There should
+	 * be no dependancies in either case.
+	 *
+	 * In the case of delayed-writes, the introduction of a dependancy
+	 * will block until the bp can be reacquired, and the bp is then
+	 * simply not released until the dependancy can be satisfied.
+	 *
+	 * We can only clear the modified bit when entered from the kernel
+	 * if io.lock.refs == 0.
+	 */
+	KKASSERT(TAILQ_EMPTY(&iou->io.deplist));
+	if (iou->io.lock.refs == 0) {
+		iou->io.modified = 0;
 	}
 	return(0);
 }

@@ -38,7 +38,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.10 2008/01/21 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.c,v 1.11 2008/01/24 02:14:45 dillon Exp $
  */
 /*
  * This module implements a generic allocator through the use of a hinted
@@ -98,6 +98,7 @@
 #endif
 
 #include <sys/types.h>
+#include <sys/errno.h>
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -133,7 +134,7 @@ static int32_t hammer_alst_meta_alloc_rev(hammer_alist_t live,
 					int32_t radix, int skip, int32_t atblk);
 static int32_t hammer_alst_find(hammer_alist_t live, hammer_almeta_t scan,
 					int32_t blk, int32_t radix,
-					int32_t skip, int32_t atblk);
+					int32_t skip, int32_t atblk, int flags);
 static void hammer_alst_leaf_free(hammer_almeta_t scan, int32_t relblk,
 					int count);
 static void hammer_alst_meta_free(hammer_alist_t live, hammer_almeta_t scan,
@@ -164,7 +165,7 @@ static void	hammer_alst_radix_print(hammer_alist_t live,
  */
 void
 hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
-		      int32_t base_radix, int32_t maxmeta)
+		      int32_t base_radix, int32_t maxmeta, int inverted)
 {
 	int radix;
 	int skip;
@@ -202,6 +203,7 @@ hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
 	bl->bl_skip = skip;
 	bl->bl_rootblks = hammer_alst_radix_init(NULL, bl->bl_radix,
 						 bl->bl_skip, blocks);
+	bl->bl_inverted = inverted;
 	++bl->bl_rootblks;	/* one more for freeblks header */
 	if (base_radix == 1)
 		bl->bl_terminal = 1;
@@ -271,7 +273,7 @@ hammer_alist_create(int32_t blocks, int32_t base_radix,
 
 	live = kmalloc(sizeof(*live), mtype, M_WAITOK);
 	live->config = bl = kmalloc(sizeof(*bl), mtype, M_WAITOK);
-	hammer_alist_template(bl, blocks, base_radix, 0);
+	hammer_alist_template(bl, blocks, base_radix, 0, 0);
 
 	metasize = sizeof(*live->meta) * bl->bl_rootblks;
 	live->meta = kmalloc(metasize, mtype, M_WAITOK);
@@ -411,15 +413,24 @@ hammer_alist_alloc_rev(hammer_alist_t live, int32_t count, int32_t atblk)
  *	Locate the first block >= atblk and < maxblk marked as allocated
  *	in the A-list and return it.  Return HAMMER_ALIST_BLOCK_NONE if
  *	no block could be found.
+ *
+ *	HAMMER_ALIST_FIND_NOSTACK  - A special search mode which returns
+ *	all initialized blocks (whether allocated or free) on bl_base_radix
+ *	boundaries.  The all-free (11) state is treated as initialized only
+ *	if bl_inverted is set.
+ *
+ *	HAMMER_ALIST_FIND_INITONLY - only initialized blocks are returned.
+ *	Blocks belonging to the all-allocated/uninitialized state are not
+ *	returned.
  */
 int32_t
-hammer_alist_find(hammer_alist_t live, int32_t atblk, int32_t maxblk)
+hammer_alist_find(hammer_alist_t live, int32_t atblk, int32_t maxblk, int flags)
 {
 	hammer_alist_config_t bl = live->config;
 	KKASSERT(live->config != NULL);
 	KKASSERT(atblk >= 0);
 	atblk = hammer_alst_find(live, live->meta + 1, 0, bl->bl_radix,
-				 bl->bl_skip, atblk);
+				 bl->bl_skip, atblk, flags);
 	if (atblk >= maxblk)
 		atblk = HAMMER_ALIST_BLOCK_NONE;
 	return(atblk);
@@ -1131,12 +1142,14 @@ hammer_alst_meta_alloc_rev(hammer_alist_t live, hammer_almeta_t scan,
  */
 static int32_t
 hammer_alst_find(hammer_alist_t live, hammer_almeta_t scan, int32_t blk,
-		 int32_t radix, int32_t skip, int32_t atblk)
+		 int32_t radix, int32_t skip, int32_t atblk, int flags)
 {
 	u_int32_t mask;
 	u_int32_t pmask;
 	int32_t next_skip;
 	int32_t tmpblk;
+	int nostack = flags & HAMMER_ALIST_FIND_NOSTACK;
+	int initonly = flags & HAMMER_ALIST_FIND_INITONLY;
 	int i;
 	int j;
 
@@ -1176,39 +1189,96 @@ hammer_alst_find(hammer_alist_t live, hammer_almeta_t scan, int32_t blk,
 		 * Recurse if this meta might contain a desired block.
 		 */
 		if (blk + radix > atblk) {
-			if ((scan->bm_bitmap & mask) == 0) {
+			if (next_skip == 0 && nostack) {
+				/*
+				 * At base_radix and nostack was specified.
+				 */
+				if ((scan->bm_bitmap & mask) == 0) {
+					/*
+					 * 00 - all-allocated, uninitalized
+					 */
+					if (initonly == 0) {
+						if (atblk <= blk)
+							return(blk);
+					}
+				} else if ((scan->bm_bitmap & mask) != mask) {
+					/*
+					 * 01 or 10 - partially allocated
+					 * or all-allocated/initialized.
+					 */
+					if (atblk <= blk)
+						return(blk);
+				} else if ((scan->bm_bitmap & mask) == mask) {
+					/*
+					 * 11 - all free.  If inverted it is
+					 * initialized, however, and must be
+					 * returned for the no-stack case.
+					 */
+					if (live->config->bl_inverted) {
+						if (atblk <= blk)
+							return(blk);
+					}
+				}
+			} else if ((scan->bm_bitmap & mask) == 0) {
 				/*
 				 * 00 - all-allocated, uninitialized
 				 */
-				return(atblk < blk ? blk : atblk);
+				if (initonly == 0) {
+					goto return_all_meta;
+				}
+				/* else skip */
 			} else if ((scan->bm_bitmap & mask) == (pmask << 1)) {
 				/*
 				 * 10 - all-allocated, initialized
 				 */
-				return(atblk < blk ? blk : atblk);
+				goto return_all_meta;
 			} else if ((scan->bm_bitmap & mask) == mask) {
 				/* 
-				 * 11 - all-free (skip)
+				 * 11 - all-free (skip if not inverted)
+				 *
+				 * If nostack and inverted we must return
+				 * blocks on the base radix boundary.
 				 */
+				if (nostack && live->config->bl_inverted) {
+					int32_t bradix;
+
+return_all_meta:
+					bradix = live->config->bl_base_radix;
+					if (atblk <= blk)
+						return(blk);
+					atblk = (atblk + bradix - 1) & 
+						~(bradix - 1);
+					if (atblk < blk + radix)
+						return(atblk);
+				}
 			} else if (next_skip == 0) {
 				/*
 				 * Partially allocated but we have to recurse
 				 * into a stacked A-list.
+				 *
+				 * If no-stack is set the caller just wants
+				 * to know if the 
 				 */
+				if (atblk < blk)
+					atblk = blk;
 				tmpblk = live->config->bl_radix_find(
-						live->info, blk, radix, atblk);
+						live->info, blk, radix,
+						atblk, flags);
 				if (tmpblk != HAMMER_ALIST_BLOCK_NONE)
 					return(tmpblk);
+				/* else skip */
 			} else if ((scan->bm_bitmap & mask) == pmask) {
 				/*
 				 * 01 - partially-allocated
 				 */
+				if (atblk < blk)
+					atblk = blk;
 				tmpblk = hammer_alst_find(live, &scan[i],
 							  blk, radix,
-							  next_skip, atblk);
+							  next_skip, atblk,
+							  flags);
 				if (tmpblk != HAMMER_ALIST_BLOCK_NONE)
 					return(tmpblk);
-
 			}
 		}
 		mask <<= 2;
@@ -1532,6 +1602,8 @@ hammer_alst_radix_init(hammer_almeta_t scan, int32_t radix,
  *	the radix tree.  The recovery code guarentees that blocks
  *	within the tree but outside this range are marked as being
  *	allocated to prevent them from being allocated.
+ *
+ *
  */
 static void	
 hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
@@ -1583,7 +1655,8 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 		 *	00	ALL-ALLOCATED - UNINITIALIZED
 		 *	01	PARTIALLY-FREE/PARTIALLY-ALLOCATED
 		 *	10	ALL-ALLOCATED - INITIALIZED
-		 *	11	ALL-FREE      - UNINITIALIZED
+		 *	11	ALL-FREE      - UNINITIALIZED (INITIALIZED
+		 *				IF CONFIG SAYS INVERTED)
 		 */
 		KKASSERT(mask);
 
@@ -1610,16 +1683,30 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 				/*
 				 * All-allocated (uninited), do nothing
 				 */
-			} else if ((scan->bm_bitmap & mask) == mask) {
+			} else if ((scan->bm_bitmap & mask) == mask &&
+				   live->config->bl_inverted == 0) {
 				/*
-				 * All-free (uninited), do nothing
+				 * All-free (uninited), do nothing.
+				 *
+				 * (if inverted all-free is initialized and
+				 * must be recovered).
 				 */
 				live->meta->bm_alist_freeblks += radix;
 			} else if (next_skip) {
+				if ((scan->bm_bitmap & mask) == mask) {
+					/*
+					 * This is a special case.  If we
+					 * are inverted but in an all-free
+					 * state, it's actually initialized
+					 * (sorta) and we still have to dive
+					 * through to any stacked nodes so
+					 * we can call bl_radix_recover().
+					 */
+					scan[i].bm_bitmap = (u_int32_t)-1;
+				}
 				/*
 				 * Normal meta node, initialized.  Recover and
-				 * adjust to either an all-allocated (inited)
-				 * or partially-allocated state.
+				 * adjust to the proper state.
 				 */
 				hammer_alst_radix_recover(
 				    info,
@@ -1643,14 +1730,22 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 				/*
 				 * Stacked meta node, recurse.
 				 *
-				 * XXX need a more sophisticated return
-				 * code to control how the bitmap is set
-				 * in the parent.
+				 * If no free blocks are present mark the
+				 * meta node as all-allocated/initialized.
+				 * A return code of -EDOM will mark the
+				 * meta node as all-allocated/uninitialized.
+				 *
+				 * This can be really confusing. bl_inverted
+				 * has no function here because we are
+				 * ALREADY known to be in an initialized
+				 * state.
 				 */
 				n = live->config->bl_radix_recover(
 					    live->info,
 					    blk, radix, radix);
-				if (n >= 0) {
+				if (n == -EDOM) {
+					scan->bm_bitmap &= ~mask;
+				} else if (n >= 0) {
 					live->meta->bm_alist_freeblks += n;
 					if (n == 0) {
 						scan->bm_bitmap =
@@ -1691,10 +1786,22 @@ hammer_alst_radix_recover(hammer_alist_recover_t info, hammer_almeta_t scan,
 					scan->bm_bitmap |= pmask;
 				}
 			} else {
+				/*
+				 * If no free blocks are present mark the
+				 * meta node as all-allocated/initialized.
+				 * A return code of -EDOM will mark the
+				 * meta node as all-allocated/uninitialized.
+				 *
+				 * This can be really confusing. bl_inverted
+				 * has no function here because we are
+				 * ALREADY known to be in an initialized
+				 */
 				n = live->config->bl_radix_recover(
 					    live->info,
 					    blk, radix, count);
-				if (n >= 0) {
+				if (n == -EDOM) {
+					scan->bm_bitmap &= ~mask;
+				} else if (n >= 0) {
 					live->meta->bm_alist_freeblks += n;
 					if (n == 0) {
 						scan->bm_bitmap &= ~mask;
@@ -1906,7 +2013,8 @@ debug_radix_recover(void *info, int32_t blk, int32_t radix, int32_t count)
 
 static
 int32_t
-debug_radix_find(void *info, int32_t blk, int32_t radix, int32_t atblk)
+debug_radix_find(void *info, int32_t blk, int32_t radix, int32_t atblk,
+		 int flags)
 {
 	hammer_alist_t layer;
 	int layer_no = blk / layer_radix;
@@ -1915,7 +2023,7 @@ debug_radix_find(void *info, int32_t blk, int32_t radix, int32_t atblk)
 	KKASSERT(layer_radix == radix);
 	KKASSERT(layers[layer_no] != NULL);
 	layer = layers[layer_no];
-	res = hammer_alist_find(layer, atblk - blk, radix);
+	res = hammer_alist_find(layer, atblk - blk, radix, flags);
 	if (res != HAMMER_ALIST_BLOCK_NONE)
 		res += blk;
 	return(res);
@@ -2055,6 +2163,7 @@ main(int ac, char **av)
 		int32_t count = 0;
 		int32_t atblk;
 		int32_t blk;
+		int flags;
 
 		kprintf("%d/%d> ",
 			live->meta->bm_alist_freeblks, size);
@@ -2064,9 +2173,15 @@ main(int ac, char **av)
 		switch(buf[0]) {
 		case 'p':
 			hammer_alist_print(live, 0);
+
+			flags = 0;
+			if (buf[1] == 'i' || (buf[1] && buf[2] == 'i'))
+				flags |= HAMMER_ALIST_FIND_INITONLY;
+			if (buf[1] == 'm' || (buf[1] && buf[2] == 'm'))
+				flags |= HAMMER_ALIST_FIND_NOSTACK;
 			atblk = 0;
 			kprintf("allocated: ");
-			while ((atblk = hammer_alist_find(live, atblk, size)) != HAMMER_ALIST_BLOCK_NONE) {
+			while ((atblk = hammer_alist_find(live, atblk, size, flags)) != HAMMER_ALIST_BLOCK_NONE) {
 				kprintf(" %d", atblk);
 				++atblk;
 			}
@@ -2114,7 +2229,7 @@ main(int ac, char **av)
 		case '?':
 		case 'h':
 			puts(
-			    "p          -print\n"
+			    "p[i][m]    -print (initialized only) (meta-only)\n"
 			    "a %d       -allocate\n"
 			    "r %d       -allocate reverse\n"
 			    "f %x %d    -free\n"

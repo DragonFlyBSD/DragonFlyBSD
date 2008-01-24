@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.6 2008/01/21 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_alist.h,v 1.7 2008/01/24 02:14:45 dillon Exp $
  */
 
 /*
@@ -88,12 +88,13 @@ typedef struct hammer_alist_config {
 	int32_t	bl_skip;	/* starting skip for linear layout */
 	int32_t bl_rootblks;	/* meta-blocks allocated for tree */
 	int32_t bl_terminal;	/* terminal alist, else layer recursion */
+	int32_t bl_inverted;	/* all-free case is initialized, not uninit */
 	int	(*bl_radix_init)(void *info, int32_t blk, int32_t radix,
 					hammer_alloc_state_t state);
 	int32_t	(*bl_radix_recover)(void *info, int32_t blk, int32_t radix,
 					int32_t count);
 	int32_t	(*bl_radix_find)(void *info, int32_t blk, int32_t radix,
-					int32_t atblk);
+					int32_t atblk, int inited_only);
 	int	(*bl_radix_destroy)(void *info, int32_t blk, int32_t radix);
 	int32_t (*bl_radix_alloc_fwd)(void *info, int32_t blk, int32_t radix,
 					int32_t count, int32_t atblk,
@@ -143,10 +144,16 @@ typedef struct hammer_alist_recover {
 #define HAMMER_ALIST_METAELMS_4K_2LYR	275
 
 /*
+ * hammer_alist_find() flags
+ */
+#define HAMMER_ALIST_FIND_INITONLY		0x0001
+#define HAMMER_ALIST_FIND_NOSTACK		0x0002
+
+/*
  * Function library support available to kernel and userland
  */
 void hammer_alist_template(hammer_alist_config_t bl, int32_t blocks,
-                           int32_t base_radix, int32_t maxmeta);
+                           int32_t base_radix, int32_t maxmeta, int inverted);
 void hammer_alist_init(hammer_alist_t live, int32_t start, int32_t count,
 			   hammer_alloc_state_t state);
 int32_t hammer_alist_recover(hammer_alist_t live, int32_t blk,
@@ -156,7 +163,8 @@ int32_t hammer_alist_alloc_fwd(hammer_alist_t live,
 			   int32_t count, int32_t atblk);
 int32_t hammer_alist_alloc_rev(hammer_alist_t live,
 			   int32_t count, int32_t atblk);
-int32_t hammer_alist_find(hammer_alist_t live, int32_t atblk, int32_t maxblk);
+int32_t hammer_alist_find(hammer_alist_t live, int32_t atblk, int32_t maxblk,
+			   int flags);
 int hammer_alist_isfull(hammer_alist_t live);
 int hammer_alist_isempty(hammer_alist_t live);
 void hammer_alist_free(hammer_alist_t live, int32_t blkno, int32_t count);

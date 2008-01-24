@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.14 2008/01/18 07:02:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.15 2008/01/24 02:14:45 dillon Exp $
  */
 
 /*
@@ -110,6 +110,9 @@ hammer_init_cursor_hmp(hammer_cursor_t cursor, struct hammer_node **cache,
 /*
  * Initialize a fresh cursor at the root of the specified cluster and
  * limit operations to within the cluster.
+ *
+ * NOTE: cursor->parent will be set to NULL to avoid referencing B-Tree
+ * nodes in other clusters.
  */
 int
 hammer_init_cursor_cluster(hammer_cursor_t cursor, hammer_cluster_t cluster)
@@ -121,10 +124,10 @@ hammer_init_cursor_cluster(hammer_cursor_t cursor, hammer_cluster_t cluster)
 	cursor->node = hammer_get_node(cluster,
 				       cluster->ondisk->clu_btree_root,
 				       &error);
-	if (error == 0) {
+	if (error == 0)
 		hammer_lock_sh(&cursor->node->lock);
-		error = hammer_load_cursor_parent(cursor);
-	}
+	cursor->left_bound = &cluster->ondisk->clu_btree_beg;
+	cursor->right_bound = &cluster->ondisk->clu_btree_end;
 	KKASSERT(error == 0);
 	return(error);
 }
@@ -566,12 +569,20 @@ hammer_cursor_down(hammer_cursor_t cursor)
 				       &error);
 		if (error == 0) {
 			KKASSERT(elm->base.btype == node->ondisk->type);
-			if(node->ondisk->parent != cursor->parent->node_offset)
-				kprintf("node %p %d vs %d\n", node, node->ondisk->parent, cursor->parent->node_offset);
+			if (node->ondisk->parent != cursor->parent->node_offset)
+				panic("node %p %d vs %d\n", node, node->ondisk->parent, cursor->parent->node_offset);
 			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
 		}
 		break;
 	case HAMMER_BTREE_TYPE_SPIKE_BEG:
+		/* case not supported yet */
+		KKASSERT(0);
+		KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_LEAF);
+		KKASSERT(cursor->parent_index < node->ondisk->count - 1);
+		KKASSERT(elm[1].leaf.base.btype == HAMMER_BTREE_TYPE_SPIKE_END);
+		++elm;
+		++cursor->parent_index;
+		/* fall through */
 	case HAMMER_BTREE_TYPE_SPIKE_END:
 		KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_LEAF);
 		KKASSERT((cursor->flags & HAMMER_CURSOR_INCLUSTER) == 0);
@@ -587,6 +598,11 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		hammer_rel_volume(volume, 0);
 		if (error)
 			return(error);
+		KKASSERT(cluster->ondisk->clu_btree_parent_offset ==
+			 cursor->parent->node_offset);
+		KKASSERT(cluster->ondisk->clu_btree_parent_clu_no ==
+			 cursor->parent->cluster->clu_no);
+
 		cursor->left_bound = &cluster->ondisk->clu_btree_beg;
 		cursor->right_bound = &cluster->ondisk->clu_btree_end;
 		node = hammer_get_node(cluster,

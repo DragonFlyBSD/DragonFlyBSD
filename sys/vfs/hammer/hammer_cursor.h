@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.9 2008/01/21 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.10 2008/01/24 02:14:45 dillon Exp $
  */
 
 /*
@@ -63,6 +63,13 @@ struct hammer_cursor {
 	 * this after releasing parent and node, before returning.
 	 */
 	hammer_node_t deadlk_node;
+
+	/*
+	 * Set along with HAMMER_CURSOR_DELETE_CHECK when doing an as-of
+	 * search.  If ENOENT is returned and the flag is set, the caller
+	 * must iterate with a new delete_tid.
+	 */
+	hammer_tid_t  delete_check;
 
 	/*
 	 * Pointer to the current node's bounds.  Typically points to the
@@ -121,4 +128,5 @@ typedef struct hammer_cursor *hammer_cursor_t;
 #define HAMMER_CURSOR_DELBTREE		0x1000	/* ip_delete from b-tree */
 #define HAMMER_CURSOR_DATA_EMBEDDED	0x2000	/* embedded flag on extract */
 #define HAMMER_CURSOR_ASOF		0x4000	/* as-of lookup */
+#define HAMMER_CURSOR_DELETE_CHECK	0x8000	/* as-of lookup */
 

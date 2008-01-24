@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.18 2008/01/21 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.19 2008/01/24 02:14:45 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
@@ -67,9 +67,14 @@
  */
 typedef u_int64_t hammer_tid_t;
 
-#define HAMMER_MAX_TID	0xFFFFFFFFFFFFFFFFULL
-#define HAMMER_MIN_KEY	-0x8000000000000000LL
-#define HAMMER_MAX_KEY	0x7FFFFFFFFFFFFFFFLL
+#define HAMMER_MIN_TID		0ULL
+#define HAMMER_MAX_TID		0xFFFFFFFFFFFFFFFFULL
+#define HAMMER_MIN_KEY		-0x8000000000000000LL
+#define HAMMER_MAX_KEY		0x7FFFFFFFFFFFFFFFLL
+#define HAMMER_MIN_OBJID	HAMMER_MIN_KEY
+#define HAMMER_MAX_OBJID	HAMMER_MAX_KEY
+#define HAMMER_MIN_RECTYPE	0x0U
+#define HAMMER_MAX_RECTYPE	0xFFFFU
 
 /*
  * Most HAMMER data structures are embedded in 16K filesystem buffers.
@@ -221,6 +226,7 @@ struct hammer_volume_ondisk {
 	 */
 	int64_t	vol0_stat_bytes;	/* for statfs only */
 	int64_t vol0_stat_inodes;	/* for statfs only */
+	int64_t vol0_stat_records;	/* total records in filesystem */
 	int64_t vol0_stat_data_bufs;	/* hammer bufs allocated to data */
 	int64_t vol0_stat_rec_bufs;	/* hammer bufs allocated to records */
 	int64_t vol0_stat_idx_bufs;	/* hammer bufs allocated to B-Tree */
@@ -348,8 +354,13 @@ struct hammer_cluster_ondisk {
 	 * These fields can become out of sync after a filesystem crash
 	 * and are cleaned up in the background.  They are used for
 	 * reporting only.
+	 *
+	 * NOTE: stat_records counts a spike as two records even though there
+	 * is only one record.  This is done so we can properly calculate
+	 * the worst-case space needed to hold the B-Tree.
 	 */
 	int32_t stat_inodes;	/* number of inodes in cluster */
+	int32_t stat_records;	/* number of records in cluster */
 	int32_t stat_data_bufs; /* hammer bufs allocated to data */
 	int32_t stat_rec_bufs;	/* hammer bufs allocated to records */
 	int32_t stat_idx_bufs;	/* hammer bufs allocated to B-Tree */
@@ -380,6 +391,10 @@ struct hammer_cluster_ondisk {
 
 	/*
 	 * The synchronized record id is used for recovery purposes.
+	 *
+	 * For recovery purposes, only clu_record_meta[] is recovered.
+	 * The remaining a-list's are regenerated based on the records
+	 * found.
 	 */
 	u_int64_t synchronized_rec_id;
 	u_int32_t reserved16[510];
@@ -388,12 +403,6 @@ struct hammer_cluster_ondisk {
 	struct hammer_almeta	clu_btree_meta[HAMMER_CLU_SLAVE_METAELMS];
 	struct hammer_almeta	clu_record_meta[HAMMER_CLU_SLAVE_METAELMS];
 	struct hammer_almeta	clu_mdata_meta[HAMMER_CLU_SLAVE_METAELMS];
-
-	/*
-	 * A straight bitmap records which filesystem buffers contain records.
-	 * The recovery code reconstructs the A-lists using this bitmap.
-	 */
-	u_int32_t	clu_record_buf_bitmap[HAMMER_CLU_MAXBUFFERS / 32];
 };
 
 typedef struct hammer_cluster_ondisk *hammer_cluster_ondisk_t;

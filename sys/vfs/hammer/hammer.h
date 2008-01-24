@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.27 2008/01/21 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.28 2008/01/24 02:14:45 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -201,6 +201,9 @@ typedef struct hammer_inode *hammer_inode_t;
  * RB-Tree to synthesize the current state of the file.
  *
  * Only current (delete_tid == 0) unsynchronized records are kept in-memory.
+ *
+ * blocked is the count of the number of cursors (ip_first/ip_next) blocked
+ * on the record waiting for a synchronization to complete.
  */
 struct hammer_record {
 	RB_ENTRY(hammer_record)		rb_node;
@@ -209,6 +212,7 @@ struct hammer_record {
 	union hammer_record_ondisk	rec;
 	union hammer_data_ondisk	*data;
 	int				flags;
+	int				blocked;
 };
 
 typedef struct hammer_record *hammer_record_t;
@@ -218,6 +222,7 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_DELETED		0x0004
 #define HAMMER_RECF_EMBEDDED_DATA	0x0008
 #define HAMMER_RECF_SYNCING		0x0010
+#define HAMMER_RECF_WANTED		0x0020
 
 /*
  * Structures used to internally represent a volume and a cluster
@@ -275,6 +280,7 @@ struct hammer_io {
 	u_int		running : 1;	/* bp write IO in progress */
 	u_int		waiting : 1;	/* someone is waiting on us */
 	u_int		loading : 1;	/* ondisk is loading */
+	u_int		validated : 1;	/* ondisk has been validated */
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -396,6 +402,17 @@ struct hammer_node {
 typedef struct hammer_node	*hammer_node_t;
 
 /*
+ * List of locked nodes.
+ */
+struct hammer_node_locklist {
+	struct hammer_node_locklist *next;
+	hammer_node_t	node;
+};
+
+typedef struct hammer_node_locklist *hammer_node_locklist_t;
+
+
+/*
  * Common I/O management structure - embedded in in-memory structures
  * which are backed by filesystem buffers.
  */
@@ -458,6 +475,7 @@ extern struct bio_ops hammer_bioops;
 
 extern int hammer_debug_btree;
 extern int hammer_debug_tid;
+extern int hammer_debug_recover;
 extern int hammer_count_inodes;
 extern int hammer_count_records;
 extern int hammer_count_record_datas;
@@ -549,6 +567,10 @@ int	hammer_btree_delete(hammer_cursor_t cursor);
 int	hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
 
+int	hammer_btree_lock_children(hammer_cursor_t cursor,
+                        struct hammer_node_locklist **locklistp);
+void	hammer_btree_unlock_children(struct hammer_node_locklist **locklistp);
+
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
 
@@ -601,19 +623,20 @@ void hammer_init_cluster(hammer_cluster_t cluster,
 hammer_node_t hammer_alloc_btree(struct hammer_cluster *cluster, int *errorp);
 void *hammer_alloc_data(struct hammer_cluster *cluster, int32_t bytes,
 			int *errorp, struct hammer_buffer **bufferp);
-void *hammer_alloc_record(struct hammer_cluster *cluster,
-			int *errorp, struct hammer_buffer **bufferp);
+void *hammer_alloc_record(struct hammer_cluster *cluster, int *errorp,
+			u_int8_t rec_type, struct hammer_buffer **bufferp);
 void hammer_initbuffer(hammer_alist_t live, hammer_fsbuf_head_t head,
 			u_int64_t type);
 void hammer_free_data_ptr(struct hammer_buffer *buffer, 
 			void *data, int bytes);
 void hammer_free_record_ptr(struct hammer_buffer *buffer,
-			union hammer_record_ondisk *rec);
+			union hammer_record_ondisk *rec, u_int8_t rec_type);
 void hammer_free_cluster(hammer_cluster_t cluster);
 void hammer_free_btree(struct hammer_cluster *cluster, int32_t bclu_offset);
 void hammer_free_data(struct hammer_cluster *cluster, int32_t bclu_offset,
 			int32_t bytes);
-void hammer_free_record(struct hammer_cluster *cluster, int32_t bclu_offset);
+void hammer_free_record(struct hammer_cluster *cluster, int32_t bclu_offset,
+			u_int8_t rec_type);
 
 void hammer_put_volume(struct hammer_volume *volume, int flush);
 void hammer_put_supercl(struct hammer_supercl *supercl, int flush);

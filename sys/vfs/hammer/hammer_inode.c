@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.23 2008/01/21 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.24 2008/01/24 02:14:45 dillon Exp $
  */
 
 #include "hammer.h"
@@ -527,7 +527,7 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 /*
  * Unload and destroy the specified inode.
  *
- * (called via RB_SCAN)
+ * (typically called via RB_SCAN)
  */
 int
 hammer_unload_inode(struct hammer_inode *ip, void *data)
@@ -816,12 +816,14 @@ hammer_bread(hammer_cluster_t cluster, int32_t cloff,
 		if (buf_type != buffer->ondisk->head.buf_type) {
 			kprintf("BUFFER HEAD TYPE MISMATCH %llx %llx\n",
 				buf_type, buffer->ondisk->head.buf_type);
+			KKASSERT(0);
 			*errorp = EIO;
 			return(NULL);
 		}
 		if (buf_off < sizeof(buffer->ondisk->head)) {
 			kprintf("BUFFER OFFSET TOO LOW %d\n", buf_off);
 			*errorp = EIO;
+			KKASSERT(0);
 			return(NULL);
 		}
 	}
