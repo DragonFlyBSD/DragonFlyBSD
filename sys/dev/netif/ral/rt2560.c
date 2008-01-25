@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.32 2008/01/25 14:47:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.33 2008/01/25 15:09:42 sephe Exp $
  */
 
 /*
@@ -332,6 +332,7 @@ rt2560_attach(device_t dev, int id)
 	ic->ic_reset = rt2560_reset;
 	/* enable s/w bmiss handling in sta mode */
 	ic->ic_flags_ext |= IEEE80211_FEXT_SWBMISS;
+	ic->ic_txpowlimit = RT2560_DEFAULT_TXPOWER;
 
 	/* override state transition machine */
 	sc->sc_newstate = ic->ic_newstate;
@@ -2523,7 +2524,7 @@ rt2560_read_config(struct rt2560_softc *sc)
 	}
 	for (i = 0; i < 14; ++i) {
 		if (sc->txpow[i] > 31)
-			sc->txpow[i] = 24;
+			sc->txpow[i] = RT2560_DEFAULT_TXPOWER;
 		DPRINTF(("tx power chan %d: %u\n", i + 1, sc->txpow[i]));
 	}
 

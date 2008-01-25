@@ -15,14 +15,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560reg.h,v 1.6 2008/01/25 09:39:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560reg.h,v 1.7 2008/01/25 15:09:42 sephe Exp $
  */
 
 #define RT2560_DEFAULT_RSSI_CORR	0x79
 #define RT2560_NOISE_FLOOR		-95
 
-#define RT2560_RXSNS_MAX	0x50	/* inclusive */
-#define RT2560_RXSNS_DYNMAX	0x40	/* inclusive */
+#define RT2560_RXSNS_MAX		0x50	/* inclusive */
+#define RT2560_RXSNS_DYNMAX		0x40	/* inclusive */
+
+#define RT2560_DEFAULT_TXPOWER		24	/* dBm */
 
 #define RT2560_TX_RING_COUNT		48
 #define RT2560_ATIM_RING_COUNT		4
