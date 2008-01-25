@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.33 2008/01/25 15:09:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.34 2008/01/25 15:44:49 sephe Exp $
  */
 
 /*
@@ -983,7 +983,13 @@ rt2560_encryption_intr(struct rt2560_softc *sc)
 	bus_dmamap_sync(sc->txq.desc_dmat, sc->txq.desc_map,
 	    BUS_DMASYNC_POSTREAD);
 
-	for (; sc->txq.next_encrypt != hw;) {
+	while (sc->txq.next_encrypt != hw) {
+		if (sc->txq.next_encrypt == sc->txq.cur_encrypt) {
+			kprintf("hw encrypt %d, cur_encrypt %d\n", hw,
+				sc->txq.cur_encrypt);
+			break;
+		}
+
 		desc = &sc->txq.desc[sc->txq.next_encrypt];
 
 		if ((le32toh(desc->flags) & RT2560_TX_BUSY) ||
