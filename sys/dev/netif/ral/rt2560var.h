@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.9 2008/01/25 08:57:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.10 2008/01/25 09:39:52 sephe Exp $
  */
 
 struct rt2560_rx_radiotap_header {
@@ -152,7 +152,6 @@ struct rt2560_softc {
 	int			sc_dwelltime;
 	int			sc_calib_rxsns;
 	int			sc_rxsns;
-#define RT2560_RXSNS_MAX	0x50	/* inclusive */
 
 	struct bpf_if		*sc_drvbpf;
 

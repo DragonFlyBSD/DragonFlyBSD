@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.28 2008/01/25 08:57:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.29 2008/01/25 09:39:52 sephe Exp $
  */
 
 /*
@@ -2496,7 +2496,7 @@ rt2560_read_config(struct rt2560_softc *sc)
 		}
 	}
 
-	sc->sc_bbp17_dynmax = 0x40;
+	sc->sc_bbp17_dynmax = RT2560_RXSNS_DYNMAX;
 	if (!find_bbp17)
 		sc->sc_bbp17_dynmin = sc->sc_bbp17_dynmax - 6;
 
@@ -2787,7 +2787,7 @@ rt2560_ratectl_attach(struct ieee80211com *ic, u_int rc)
 static void
 rt2560_calib_rxsensitivity(struct rt2560_softc *sc, uint32_t false_cca)
 {
-#define MID_RX_SENSITIVITY	0x41
+#define MID_RX_SENSITIVITY	(RT2560_RXSNS_DYNMAX + 1)
 
 	int rssi_dbm;
 
@@ -2796,6 +2796,12 @@ rt2560_calib_rxsensitivity(struct rt2560_softc *sc, uint32_t false_cca)
 
 	rssi_dbm = sc->sc_avgrssi + RT2560_NOISE_FLOOR;
 	DPRINTF(("rssi dbm %d\n", rssi_dbm));
+
+	/*
+	 * Rx sensitivity is reduced, if bbp17 is increased, and vice versa.
+	 * Lower rx sensitivity could do a better job of reducing false CCA,
+	 * but on the other hand roaming range is decreased.
+	 */
 
 	if (rssi_dbm < -80) {
 		/* Signal is too weak */
@@ -2812,15 +2818,24 @@ rt2560_calib_rxsensitivity(struct rt2560_softc *sc, uint32_t false_cca)
 		return;
 	}
 
+	/* RSSI is [-80,74)dBm, if we reach here */
+
 	if (sc->sc_bbp17 > MID_RX_SENSITIVITY) {
 		rt2560_bbp_write(sc, 17, MID_RX_SENSITIVITY);
 		return;
 	}
 
-	if (false_cca > 512 && sc->sc_bbp17 > sc->sc_bbp17_dynmin)
-		rt2560_bbp_write(sc, 17, sc->sc_bbp17 - 1);
-	else if (false_cca < 100 && sc->sc_bbp17 < sc->sc_bbp17_dynmax)
+	/*
+	 * Dynamic rx sensitivity tuning to keep balance between number
+	 * of false CCA per second and roaming range:
+	 * Reduce rx sensitivity if false CCA is too high.
+	 * If false CCA is relatively low, rx sensitivity is increased to
+	 * extend roaming range.
+	 */
+	if (false_cca > 512 && sc->sc_bbp17 < sc->sc_bbp17_dynmax)
 		rt2560_bbp_write(sc, 17, sc->sc_bbp17 + 1);
+	else if (false_cca < 100 && sc->sc_bbp17 > sc->sc_bbp17_dynmin)
+		rt2560_bbp_write(sc, 17, sc->sc_bbp17 - 1);
 
 #undef MID_RX_SENSITIVITY
 }
