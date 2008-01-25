@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.20 2007/11/24 00:55:10 corecode Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.21 2008/01/25 23:32:41 swildner Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -67,6 +67,13 @@ typedef struct {
 	long rem;		/* remainder */
 } ldiv_t;
 
+#if __ISO_C_VISIBLE >= 1999
+typedef struct {
+        long long quot;
+        long long rem;
+} lldiv_t;
+#endif
+
 #ifndef NULL
 #define	NULL	0
 #endif
@@ -96,6 +103,9 @@ void	 free(void *);
 char	*getenv(const char *);
 long	 labs(long) __pure2;
 ldiv_t	 ldiv(long, long) __pure2;
+#if __ISO_C_VISIBLE >= 1999
+lldiv_t	 lldiv(long long, long long) __pure2;
+#endif
 void	*malloc(size_t);
 void	 qsort(void *, size_t, size_t, int(*)(const void *, const void *));
 int	 rand(void);
