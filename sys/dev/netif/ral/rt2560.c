@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.29 2008/01/25 09:39:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.30 2008/01/25 14:26:14 sephe Exp $
  */
 
 /*
@@ -1109,7 +1109,9 @@ rt2560_tx_intr(struct rt2560_softc *sc)
 	bus_dmamap_sync(sc->txq.desc_dmat, sc->txq.desc_map,
 	    BUS_DMASYNC_PREWRITE);
 
-	sc->sc_tx_timer = 0;
+	if (sc->txq.queued == 0 && sc->prioq.queued == 0)
+		sc->sc_tx_timer = 0;
+
 	ifp->if_flags &= ~IFF_OACTIVE;
 	rt2560_start(ifp);
 }
@@ -1175,7 +1177,9 @@ rt2560_prio_intr(struct rt2560_softc *sc)
 	bus_dmamap_sync(sc->prioq.desc_dmat, sc->prioq.desc_map,
 	    BUS_DMASYNC_PREWRITE);
 
-	sc->sc_tx_timer = 0;
+	if (sc->txq.queued == 0 && sc->prioq.queued == 0)
+		sc->sc_tx_timer = 0;
+
 	ifp->if_flags &= ~IFF_OACTIVE;
 	rt2560_start(ifp);
 }
