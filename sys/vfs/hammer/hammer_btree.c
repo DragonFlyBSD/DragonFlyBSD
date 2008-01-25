@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.25 2008/01/25 10:36:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.26 2008/01/25 21:50:56 dillon Exp $
  */
 
 /*
@@ -109,7 +109,7 @@ static void hammer_make_separator(hammer_base_elm_t key1,
  * of key_end depending on whether HAMMER_CURSOR_END_INCLUSIVE is set.
  *
  * When doing an as-of search (cursor->asof != 0), key_beg.create_tid
- * and key_beg.delete_tid may be modified by B-Tree functions.
+ * may be modified by B-Tree functions.
  *
  * cursor->key_beg may or may not be modified by this function during
  * the iteration.  XXX future - in case of an inverted lock we may have
@@ -370,24 +370,25 @@ hammer_btree_iterate(hammer_cursor_t cursor)
  * either direction to locate the requested element.
  *
  * Most of the logic implementing historical searches is handled here.  We
- * do an initial lookup with delete_tid set to the asof TID.  Due to the
- * way records are laid out, a forwards iteration may be required if
+ * do an initial lookup with create_tid set to the asof TID.  Due to the
+ * way records are laid out, a backwards iteration may be required if
  * ENOENT is returned to locate the historical record.  Here's the
  * problem:
  *
- * delete_tid:    10      15       20
+ * create_tid:    10      15       20
  *		     LEAF1   LEAF2
  * records:         (11)        (18)
  *
- * Lets say we want to do a lookup AS-OF timestamp 12.  We will traverse
- * LEAF1 but the only record in LEAF1 has a termination (delete_tid) of 11,
- * thus causing ENOENT to be returned.  We really need to check record 18
- * in LEAF2.  If it also fails then the search fails (e.g. it might represent
- * the range 14-18 and thus still not match our AS-OF timestamp of 12).
+ * Lets say we want to do a lookup AS-OF timestamp 17.  We will traverse
+ * LEAF2 but the only record in LEAF2 has a create_tid of 18, which is
+ * not visible and thus causes ENOENT to be returned.  We really need
+ * to check record 11 in LEAF1.  If it also fails then the search fails
+ * (e.g. it might represent the range 11-16 and thus still not match our
+ * AS-OF timestamp of 17).
  *
- * btree_search() will set HAMMER_CURSOR_DELETE_CHECK and the
- * cursor->delete_check TID if an iteration might be needed.  In the above
- * example delete_check would be set to 15.
+ * If this case occurs btree_search() will set HAMMER_CURSOR_CREATE_CHECK
+ * and the cursor->create_check TID if an iteration might be needed.
+ * In the above example create_check would be set to 14.
  */
 int
 hammer_btree_lookup(hammer_cursor_t cursor)
@@ -396,12 +397,12 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 
 	if (cursor->flags & HAMMER_CURSOR_ASOF) {
 		KKASSERT((cursor->flags & HAMMER_CURSOR_INSERT) == 0);
-		cursor->key_beg.delete_tid = cursor->asof;
+		cursor->key_beg.create_tid = cursor->asof;
 		for (;;) {
-			cursor->flags &= ~HAMMER_CURSOR_DELETE_CHECK;
+			cursor->flags &= ~HAMMER_CURSOR_CREATE_CHECK;
 			error = btree_search(cursor, 0);
 			if (error != ENOENT ||
-			    (cursor->flags & HAMMER_CURSOR_DELETE_CHECK) == 0) {
+			    (cursor->flags & HAMMER_CURSOR_CREATE_CHECK) == 0) {
 				/*
 				 * Stop if no error.
 				 * Stop if error other then ENOENT.
@@ -409,7 +410,7 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 				 */
 				break;
 			}
-			cursor->key_beg.delete_tid = cursor->delete_check;
+			cursor->key_beg.create_tid = cursor->create_check;
 			/* loop */
 		}
 	} else {
@@ -677,8 +678,8 @@ hammer_btree_insert_cluster(hammer_cursor_t cursor, hammer_cluster_t ncluster,
 	/*
 	 * SPIKE_END must be inclusive, not exclusive.
 	 */
-	KKASSERT(elm[1].leaf.base.delete_tid != 1);
-	--elm[1].leaf.base.delete_tid;
+	KKASSERT(elm[1].leaf.base.create_tid != 1);
+	--elm[1].leaf.base.create_tid;
 
 	/*
 	 * The target cluster's parent offset may have to be updated.
@@ -822,7 +823,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
  * filesystem, and it is not simple code.  Please note the following facts:
  *
  * - Internal node recursions have a boundary on the left AND right.  The
- *   right boundary is non-inclusive.  The delete_tid is a generic part
+ *   right boundary is non-inclusive.  The create_tid is a generic part
  *   of the key for internal nodes.
  *
  * - Leaf nodes contain terminal elements AND spikes.  A spike recurses into
@@ -838,10 +839,10 @@ hammer_btree_delete(hammer_cursor_t cursor)
  * - Filesystem lookups typically set HAMMER_CURSOR_ASOF, indicating a
  *   historical search.  ASOF and INSERT are mutually exclusive.  When
  *   doing an as-of lookup btree_search() checks for a right-edge boundary
- *   case.  If while recursing down the right-edge differs from the key
- *   by ONLY its delete_tid, HAMMER_CURSOR_DELETE_CHECK is set along
- *   with cursor->delete_check.  This is used by btree_lookup() to iterate.
- *   The iteration is necessary because as-of searches can wind up going
+ *   case.  If while recursing down the left-edge differs from the key
+ *   by ONLY its create_tid, HAMMER_CURSOR_CREATE_CHECK is set along
+ *   with cursor->create_check.  This is used by btree_lookup() to iterate.
+ *   The iteration backwards because as-of searches can wind up going
  *   down the wrong branch of the B-Tree.
  */
 static 
@@ -860,7 +861,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	flags |= cursor->flags;
 
 	if (hammer_debug_btree) {
-		kprintf("SEARCH   %d:%d:%08x[%d] %016llx %02x key=%016llx did=%016llx\n",
+		kprintf("SEARCH   %d:%d:%08x[%d] %016llx %02x key=%016llx cre=%016llx\n",
 			cursor->node->cluster->volume->vol_no,
 			cursor->node->cluster->clu_no,
 			cursor->node->node_offset, 
@@ -868,7 +869,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 			cursor->key_beg.obj_id,
 			cursor->key_beg.rec_type,
 			cursor->key_beg.key,
-			cursor->key_beg.delete_tid
+			cursor->key_beg.create_tid
 		);
 	}
 
@@ -919,9 +920,10 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * The delete-checks below are based on node, not parent.  Set the
 	 * initial delete-check based on the parent.
 	 */
-	if (s == -1) {
-		cursor->delete_check = cursor->right_bound->delete_tid;
-		cursor->flags |= HAMMER_CURSOR_DELETE_CHECK;
+	if (r == 1) {
+		KKASSERT(cursor->left_bound->create_tid != 1);
+		cursor->create_check = cursor->left_bound->create_tid - 1;
+		cursor->flags |= HAMMER_CURSOR_CREATE_CHECK;
 	}
 
 	/*
@@ -935,6 +937,9 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * is also full (because there is no way to split the node),
 	 * continue running up the tree until the requirement is satisfied
 	 * or we hit the root of the current cluster.
+	 *
+	 * (If inserting we aren't doing an as-of search so we don't have
+	 *  to worry about create_check).
 	 */
 	while ((flags & HAMMER_CURSOR_INSERT) && enospc == 0) {
 		if (cursor->node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
@@ -972,7 +977,7 @@ new_cluster:
 		 * The left and right boundaries are included in the loop
 		 * in order to detect edge cases.
 		 *
-		 * If the separator only differs by delete_tid (r == -1)
+		 * If the separator only differs by create_tid (r == 1)
 		 * and we are doing an as-of search, we may end up going
 		 * down a branch to the left of the one containing the
 		 * desired key.  This requires numerous special cases.
@@ -991,14 +996,12 @@ new_cluster:
 				kprintf(" IELM %p %d r=%d\n",
 					&node->elms[i], i, r);
 			}
-			if (r < 0) {
-				if (r == -1) {
-					cursor->delete_check =
-						elm->base.delete_tid;
-					cursor->flags |=
-						HAMMER_CURSOR_DELETE_CHECK;
-				}
+			if (r < 0)
 				break;
+			if (r == 1) {
+				KKASSERT(elm->base.create_tid != 1);
+				cursor->create_check = elm->base.create_tid - 1;
+				cursor->flags |= HAMMER_CURSOR_CREATE_CHECK;
 			}
 		}
 		if (hammer_debug_btree) {
@@ -1084,7 +1087,7 @@ new_cluster:
 
 		if (hammer_debug_btree) {
 			kprintf("RESULT-I %d:%d:%08x[%d] %016llx %02x "
-				"key=%016llx did=%016llx\n",
+				"key=%016llx cre=%016llx\n",
 				cursor->node->cluster->volume->vol_no,
 				cursor->node->cluster->clu_no,
 				cursor->node->node_offset,
@@ -1092,7 +1095,7 @@ new_cluster:
 				elm->internal.base.obj_id,
 				elm->internal.base.rec_type,
 				elm->internal.base.key,
-				elm->internal.base.delete_tid
+				elm->internal.base.create_tid
 			);
 		}
 
@@ -1207,7 +1210,7 @@ new_cluster:
 			 * spike.
 			 *
 			 * If doing an as-of search a Spike demark on a
-			 * delete_tid boundary must be pushed into and an
+			 * create_tid boundary must be pushed into and an
 			 * iteration will be forced if it turned out to be
 			 * the wrong choice.
 			 *
@@ -1217,39 +1220,21 @@ new_cluster:
 			 * enospc must be reset because we have crossed a
 			 * cluster boundary.
 			 */
-			if (r < 0) {
-				/*
-				 * Set the delete check if the stop element
-				 * only differs by its delete_tid.
-				 */
-				if (r == -1) {
-					cursor->delete_check =
-						elm->base.delete_tid;
-					cursor->flags |=
-						HAMMER_CURSOR_DELETE_CHECK;
-				}
+			if (r < 0)
 				goto failed;
+
+			/*
+			 * Set the create_check if the spike element
+			 * only differs by its create_tid.
+			 */
+			if (r == 1) {
+				cursor->create_check = elm->base.create_tid;
+				cursor->flags |= HAMMER_CURSOR_CREATE_CHECK;
 			}
 			if (i != node->count - 1)
 				continue;
 			panic("btree_search: illegal spike, no SPIKE_END "
 			      "in leaf node! %p\n", cursor->node);
-#if 0
-			/*
-			 * XXX This is not currently legal, you can only
-			 * cursor_down() from a SPIKE_END element, otherwise
-			 * the cursor parent is pointing at the wrong element
-			 * for deletions.
-			 */
-			if (flags & HAMMER_CURSOR_INCLUSTER)
-				goto success;
-			cursor->index = i;
-			error = hammer_cursor_down(cursor);
-			enospc = 0;
-			if (error)
-				goto done;
-			goto new_cluster;
-#endif
 		}
 		if (elm->leaf.base.btype == HAMMER_BTREE_TYPE_SPIKE_END) {
 			/*
@@ -1263,24 +1248,21 @@ new_cluster:
 			 * enospc must be reset because we have crossed a
 			 * cluster boundary.
 			 */
-			if (r > 0)
+			if (r > 0) {
+				/*
+				 * Continue the search but check for a
+				 * create_tid boundary.  Because the
+				 * SPIKE_END is inclusive we do not have
+				 * to subtract 1 to force an iteration to
+				 * go down the spike.
+				 */
+				if (r == 1) {
+					cursor->create_check =
+						elm->base.create_tid;
+					cursor->flags |=
+						HAMMER_CURSOR_CREATE_CHECK;
+				}
 				continue;
-
-			/*
-			 * We're trying to recurse, set the delete check
-			 * if the right boundary only differs by its
-			 * delete_tid and delete_tid is not 0.  Remember 
-			 * the spike_end is inclusive, so we have to set
-			 * delete_check one past.  A delete_tid of 0
-			 * represents infinity and cannot be incremented.
-			 *
-			 * We also have to set it for an exact match,
-			 * because the SPIKE_END is still an (inclusive)
-			 * boundary, not a match.
-			 */
-			if ((r == 0 || r == -1) && elm->base.delete_tid != 0) {
-				cursor->delete_check = elm->base.delete_tid + 1;
-				cursor->flags |= HAMMER_CURSOR_DELETE_CHECK;
 			}
 			if (flags & HAMMER_CURSOR_INCLUSTER)
 				goto success;
@@ -1294,20 +1276,19 @@ new_cluster:
 
 		/*
 		 * We are at a record element.  Stop if we've flipped past
-		 * key_beg, not counting the delete_tid test.
+		 * key_beg, not counting the create_tid test.  Allow the
+		 * r == 1 case (key_beg > element but differs only by its
+		 * create_tid) to fall through to the AS-OF check.
 		 */
 		KKASSERT (elm->leaf.base.btype == HAMMER_BTREE_TYPE_RECORD);
 
-		if (r < -1)
+		if (r < 0)
 			goto failed;
-		if (r > 0)
+		if (r > 1)
 			continue;
 
 		/*
-		 * Check our as-of timestamp against the element.   A
-		 * delete_tid that matches exactly in an as-of search
-		 * is actually a no-match (the record was deleted as-of
-		 * our timestamp so it isn't visible).
+		 * Check our as-of timestamp against the element.
 		 */
 		if (flags & HAMMER_CURSOR_ASOF) {
 			if (hammer_btree_chkts(cursor->asof,
@@ -1316,8 +1297,8 @@ new_cluster:
 			}
 			/* success */
 		} else {
-			if (r < 0)	/* can only be -1 */
-				goto failed;
+			if (r > 0)	/* can only be +1 */
+				continue;
 			/* success */
 		}
 success:
@@ -2245,7 +2226,7 @@ hammer_btree_unlock_children(struct hammer_node_locklist **locklistp)
  * Compare two B-Tree elements, return -N, 0, or +N (e.g. similar to strcmp).
  *
  * Note that for this particular function a return value of -1, 0, or +1
- * can denote a match if delete_tid is otherwise discounted.  A delete_tid
+ * can denote a match if create_tid is otherwise discounted.  A create_tid
  * of zero is considered to be 'infinity' in comparisons.
  *
  * See also hammer_rec_rb_compare() and hammer_rec_cmp() in hammer_object.c.
@@ -2269,20 +2250,19 @@ hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 		return(2);
 
 	/*
-	 * A delete_tid of zero indicates a record which has not been
-	 * deleted yet and must be considered to have a value of positive
-	 * infinity.
+	 * A create_tid of zero indicates a record which is undeletable
+	 * and must be considered to have a value of positive infinity.
 	 */
-	if (key1->delete_tid == 0) {
-		if (key2->delete_tid == 0)
+	if (key1->create_tid == 0) {
+		if (key2->create_tid == 0)
 			return(0);
 		return(1);
 	}
-	if (key2->delete_tid == 0)
+	if (key2->create_tid == 0)
 		return(-1);
-	if (key1->delete_tid < key2->delete_tid)
+	if (key1->create_tid < key2->create_tid)
 		return(-1);
-	if (key1->delete_tid > key2->delete_tid)
+	if (key1->create_tid > key2->create_tid)
 		return(1);
 	return(0);
 }
@@ -2311,10 +2291,8 @@ hammer_btree_chkts(hammer_tid_t asof, hammer_base_elm_t base)
  * one unit apart, the separator will match key2.  key1 is on the left-hand
  * side and key2 is on the right-hand side.
  *
- * delete_tid has to be special cased because a value of 0 represents
- * infinity, and records with a delete_tid of 0 can be replaced with 
- * a non-zero delete_tid when deleted and must maintain their proper
- * (as in the same) position in the B-Tree.
+ * create_tid has to be special cased because a value of 0 represents
+ * infinity.
  */
 #define MAKE_SEPARATOR(key1, key2, dest, field)	\
 	dest->field = key1->field + ((key2->field - key1->field + 1) >> 1);
@@ -2331,23 +2309,19 @@ hammer_make_separator(hammer_base_elm_t key1, hammer_base_elm_t key2,
 	if (key1->obj_id == key2->obj_id &&
 	    key1->rec_type == key2->rec_type &&
 	    key1->key == key2->key) {
-		if (key1->delete_tid == 0) {
+		if (key1->create_tid == 0) {
 			/*
-			 * Oops, a delete_tid of 0 means 'infinity', so
+			 * Oops, a create_tid of 0 means 'infinity', so
 			 * if everything matches this just isn't legal.
 			 */
-			panic("key1->delete_tid of 0 is impossible here");
-#if 0
-			KKASSERT(key1->btype == HAMMER_BTREE_TYPE_SPIKE_END);
-			dest->delete_tid = key1->delete_tid;
-#endif
-		} else if (key2->delete_tid == 0) {
-			dest->delete_tid = key1->delete_tid + 1;
+			panic("key1->create_tid of 0 is impossible here");
+		} else if (key2->create_tid == 0) {
+			dest->create_tid = key1->create_tid + 1;
 		} else {
-			MAKE_SEPARATOR(key1, key2, dest, delete_tid);
+			MAKE_SEPARATOR(key1, key2, dest, create_tid);
 		}
 	} else {
-		dest->delete_tid = 0;
+		dest->create_tid = 0;
 	}
 }
 

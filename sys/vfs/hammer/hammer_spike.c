@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.13 2008/01/25 10:36:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.14 2008/01/25 21:50:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -149,19 +149,19 @@ hammer_spike(struct hammer_cursor **spikep)
 		spike->key_beg = *spike->left_bound;
 	} else {
 		spike->key_beg = ondisk->elms[b-1].leaf.base;
-		if (spike->key_beg.delete_tid != 0) {
-			++spike->key_beg.delete_tid;
+		if (spike->key_beg.create_tid != 0) {
+			++spike->key_beg.create_tid;
 		} else if (spike->key_beg.key != HAMMER_MAX_KEY) {
 			++spike->key_beg.key;
-			spike->key_beg.delete_tid = 1;
+			spike->key_beg.create_tid = 1;
 		} else if (spike->key_beg.rec_type != HAMMER_MAX_RECTYPE) {
 			++spike->key_beg.rec_type;
 			spike->key_beg.key = HAMMER_MIN_KEY;
-			spike->key_beg.delete_tid = 1;
+			spike->key_beg.create_tid = 1;
 		} else if (spike->key_beg.obj_id != HAMMER_MAX_OBJID) {
 			++spike->key_beg.obj_id;
 			spike->key_beg.key = HAMMER_MIN_KEY;
-			spike->key_beg.delete_tid = 1;
+			spike->key_beg.create_tid = 1;
 			spike->key_beg.rec_type = HAMMER_MIN_RECTYPE;
 		} else {
 			panic("hammer_spike: illegal key");
@@ -324,20 +324,20 @@ hammer_spike(struct hammer_cursor **spikep)
 	/*
 	 * Make the SPIKE_END element inclusive.
 	 */
-	if (elm[1].leaf.base.delete_tid != 1) {
-		--elm[1].leaf.base.delete_tid;
+	if (elm[1].leaf.base.create_tid != 1) {
+		--elm[1].leaf.base.create_tid;
 	} else if (elm[0].leaf.base.key != HAMMER_MIN_KEY) {
 		--elm[0].leaf.base.key;
-		elm[0].leaf.base.delete_tid = 0; /* max value */
+		elm[0].leaf.base.create_tid = 0; /* max value */
 	} else if (elm[0].leaf.base.rec_type != HAMMER_MIN_RECTYPE) {
 		--elm[0].leaf.base.rec_type;
 		elm[0].leaf.base.key = HAMMER_MAX_KEY;
-		elm[0].leaf.base.delete_tid = 0; /* max value */
+		elm[0].leaf.base.create_tid = 0; /* max value */
 	} else if (elm[0].leaf.base.obj_id != HAMMER_MIN_OBJID) {
 		--elm[0].leaf.base.obj_id;
 		elm[0].leaf.base.rec_type = HAMMER_MAX_RECTYPE;
 		elm[0].leaf.base.key = HAMMER_MAX_KEY;
-		elm[0].leaf.base.delete_tid = 0; /* max value */
+		elm[0].leaf.base.create_tid = 0; /* max value */
 	} else {
 		panic("hammer_spike: illegal key");
 	}

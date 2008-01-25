@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.25 2008/01/25 10:36:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.26 2008/01/25 21:50:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -57,17 +57,17 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 	if (rec1->rec.base.base.key > rec2->rec.base.base.key)
 		return(1);
 
-	if (rec1->rec.base.base.delete_tid == 0) {
-		if (rec2->rec.base.base.delete_tid == 0)
+	if (rec1->rec.base.base.create_tid == 0) {
+		if (rec2->rec.base.base.create_tid == 0)
 			return(0);
 		return(1);
 	}
-	if (rec2->rec.base.base.delete_tid == 0)
+	if (rec2->rec.base.base.create_tid == 0)
 		return(-1);
 
-	if (rec1->rec.base.base.delete_tid < rec2->rec.base.base.delete_tid)
+	if (rec1->rec.base.base.create_tid < rec2->rec.base.base.create_tid)
 		return(-1);
-	if (rec1->rec.base.base.delete_tid > rec2->rec.base.base.delete_tid)
+	if (rec1->rec.base.base.create_tid > rec2->rec.base.base.create_tid)
 		return(1);
         return(0);
 }
@@ -85,16 +85,16 @@ hammer_rec_compare(hammer_base_elm_t info, hammer_record_t rec)
         if (info->key > rec->rec.base.base.key)
                 return(2);
 
-	if (info->delete_tid == 0) {
-		if (rec->rec.base.base.delete_tid == 0)
+	if (info->create_tid == 0) {
+		if (rec->rec.base.base.create_tid == 0)
 			return(0);
 		return(1);
 	}
-	if (rec->rec.base.base.delete_tid == 0)
+	if (rec->rec.base.base.create_tid == 0)
 		return(-1);
-	if (info->delete_tid < rec->rec.base.base.delete_tid)
+	if (info->create_tid < rec->rec.base.base.create_tid)
 		return(-1);
-	if (info->delete_tid > rec->rec.base.base.delete_tid)
+	if (info->create_tid > rec->rec.base.base.create_tid)
 		return(1);
         return(0);
 }
@@ -488,7 +488,7 @@ retry:
 		return(error);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = offset + bytes;
-	cursor.key_beg.create_tid = 0;
+	cursor.key_beg.create_tid = trans->tid;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
 	cursor.asof = trans->tid;
@@ -1397,6 +1397,8 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 
 	/*
 	 * On-disk records are marked as deleted by updating their delete_tid.
+	 * This does not effect their position in the B-Tree (which is based
+	 * on their create_tid).
 	 */
 	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_RECORD);
 	elm = NULL;
