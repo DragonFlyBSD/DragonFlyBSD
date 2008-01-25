@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.15 2008/01/21 00:03:24 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.16 2008/01/25 21:52:10 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -591,8 +591,8 @@ format_cluster(struct volume_info *vol, int isroot)
 	if (isroot) {
 		ondisk->clu_btree_beg.obj_id = -0x8000000000000000LL;
 		ondisk->clu_btree_beg.key = -0x8000000000000000LL;
-		ondisk->clu_btree_beg.create_tid = 0;
-		ondisk->clu_btree_beg.delete_tid = 0;
+		ondisk->clu_btree_beg.create_tid = 1;
+		ondisk->clu_btree_beg.delete_tid = 1;
 		ondisk->clu_btree_beg.rec_type = 0;
 		ondisk->clu_btree_beg.obj_type = 0;
 
@@ -628,7 +628,7 @@ format_root(struct cluster_info *cluster)
 	hammer_btree_elm_t elm;
 
 	bnode = alloc_btree_element(cluster, &btree_off);
-	rec = alloc_record_element(cluster, &rec_off);
+	rec = alloc_record_element(cluster, &rec_off, HAMMER_RECTYPE_INODE);
 	idata = alloc_data_element(cluster, sizeof(*idata), &data_off);
 
 	/*
