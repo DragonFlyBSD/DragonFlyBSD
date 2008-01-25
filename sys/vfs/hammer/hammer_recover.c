@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.6 2008/01/24 02:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.7 2008/01/25 05:49:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -63,10 +63,10 @@ hammer_recover(hammer_cluster_t cluster)
 	int nbuffers;
 	int buffer_count;
 	int record_count;
-	static int count;	/* XXX temporary */
 
 	kprintf("HAMMER_RECOVER %d:%d\n",
 		cluster->volume->vol_no, cluster->clu_no);
+	/*Debugger("RECOVER");*/
 	KKASSERT(cluster->ondisk->synchronized_rec_id);
 	if (RB_ROOT(&cluster->rb_bufs_root)) {
 		panic("hammer_recover: cluster %d:%d has cached buffers!",
@@ -285,7 +285,8 @@ buffer_alist_recover(void *info, int32_t blk, int32_t radix, int32_t count)
 			kprintf("hammer_recover_record: failed %d:%d@%d\n",
 				cluster->clu_no, buffer->buf_no, rec_offset);
 			hammer_alist_free(&buffer->alist, rec_no, 1);
-			Debugger("FAILED");
+			if (hammer_debug_recover_faults)
+				Debugger("FAILED");
 			++count;	/* free count */
 			--xcount;
 		}
@@ -328,7 +329,8 @@ hammer_recover_record(hammer_cluster_t cluster, hammer_buffer_t buffer,
 	if (rec->base.rec_id >= syncid) {
 		kprintf("recover record: syncid too large %016llx/%016llx\n",
 			rec->base.rec_id, syncid);
-		Debugger("DebugSyncid");
+		if (hammer_debug_recover_faults)
+			Debugger("DebugSyncid");
 		return(EINVAL);
 	}
 

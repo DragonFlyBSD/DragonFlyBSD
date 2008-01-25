@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.11 2008/01/24 02:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.12 2008/01/25 05:49:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -96,7 +96,6 @@ hammer_spike(struct hammer_cursor **spikep)
 	int error;
 	int b, e;
 	const int esize = sizeof(*elm);
-	static int count;	/* XXX temporary */
 
 	kprintf("hammer_spike: ENOSPC in cluster, spiking\n");
 	/*Debugger("ENOSPC");*/
@@ -257,13 +256,17 @@ hammer_spike(struct hammer_cursor **spikep)
 	 */
 	for (spike->index = b; spike->index < e; ++spike->index) {
 		int32_t roff;
+		u_int8_t rec_type;
 
 		elm = &onode->ondisk->elms[spike->index];
 		if (elm->leaf.base.btype == HAMMER_BTREE_TYPE_SPIKE_BEG)
 			continue;
 		KKASSERT(elm->leaf.rec_offset > 0);
-		hammer_free_record(ocluster, elm->leaf.rec_offset,
-				   elm->leaf.base.rec_type);
+		if (elm->leaf.base.btype == HAMMER_BTREE_TYPE_RECORD)
+			rec_type = elm->leaf.base.rec_type;
+		else
+			rec_type = HAMMER_RECTYPE_CLUSTER;
+		hammer_free_record(ocluster, elm->leaf.rec_offset, rec_type);
 		if (elm->leaf.base.btype == HAMMER_BTREE_TYPE_RECORD &&
 		    elm->leaf.data_offset) {
 			roff = elm->leaf.data_offset - elm->leaf.rec_offset;

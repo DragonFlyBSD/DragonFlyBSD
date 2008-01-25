@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.23 2008/01/24 02:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.24 2008/01/25 05:49:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1371,7 +1371,9 @@ retry:
 }
 
 /*
- * Delete the record at the current cursor.
+ * Delete the record at the current cursor.  On success the cursor will
+ * be positioned appropriately for an iteration but may no longer be at
+ * a leaf node.
  *
  * NOTE: This can return EDEADLK, requiring the caller to terminate the
  * cursor and retry.
@@ -1425,10 +1427,12 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 		data_offset = elm->leaf.data_offset;
 		data_len = elm->leaf.data_len;
 		rec_type = elm->leaf.base.rec_type;
-#if 0
-		kprintf("hammer_ip_delete_record: %08x %08x/%d\n",
-			rec_offset, data_offset, data_len);
-#endif
+		KKASSERT(rec_type == cursor->record->base.base.rec_type);
+
+		/*
+		 * We must ref the cluster to prevent it from being
+		 * freed prior to our freeing the last record.
+		 */
 		cluster = cursor->node->cluster;
 		hammer_ref_cluster(cluster);
 
@@ -1449,6 +1453,13 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 				hammer_free_data(cluster, data_offset,data_len);
 			}
 		}
+#if 0
+		kprintf("hammer_ip_delete_record: %d:%d:%08x %08x/%d "
+			"(%d remain in cluster)\n",
+			cluster->volume->vol_no, cluster->clu_no,
+			rec_offset, data_offset, data_len,
+			cluster->ondisk->stat_records);
+#endif
 		hammer_rel_cluster(cluster, 0);
 		if (error) {
 			panic("hammer_ip_delete_record: unable to physically delete the record!\n");

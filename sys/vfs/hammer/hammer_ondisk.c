@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.24 2008/01/24 02:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.25 2008/01/25 05:49:08 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -290,7 +290,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 		hammer_ref_volume(volume);
 		hmp->rootcl = hammer_get_cluster(volume,
 						 ondisk->vol0_root_clu_no,
-						 &error, 0);
+						 &error, GET_CLUSTER_NORECOVER);
 		hammer_rel_cluster(hmp->rootcl, 0);
 		hammer_rel_volume(volume, 0);
 		hmp->fsid_udev = dev2udev(vn_todev(volume->devvp));
@@ -736,6 +736,7 @@ again:
 		hammer_io_init(&cluster->io, HAMMER_STRUCTURE_CLUSTER);
 		cluster->io.offset = calculate_cluster_offset(volume, clu_no);
 		hammer_ref(&cluster->io.lock);
+		/* NOTE: cluster->io.validated expected to be 0 */
 
 		/*
 		 * Insert the cluster into the RB tree and handle late
@@ -811,8 +812,8 @@ hammer_load_cluster(hammer_cluster_t cluster, int getflags)
 		 * had already validated the cluster even though we no longer
 		 * have its ondisk info.
 		 */
-		if (RB_EMPTY(&cluster->rb_bufs_root))
-			cluster->io.validated = 0;
+		if (!RB_EMPTY(&cluster->rb_bufs_root))
+			KKASSERT(cluster->io.validated);
 		if (getflags & GET_CLUSTER_NEW)
 			error = hammer_io_new(volume->devvp, &cluster->io);
 		else
@@ -858,6 +859,8 @@ hammer_load_cluster(hammer_cluster_t cluster, int getflags)
 		hammer_node_t croot;
 		hammer_volume_ondisk_t voldisk;
 		int32_t nbuffers;
+
+		cluster->flags &= ~HAMMER_CLUSTER_DELETED;
 
 		hammer_modify_cluster(cluster);
 		ondisk = cluster->ondisk;
@@ -933,7 +936,9 @@ hammer_load_cluster(hammer_cluster_t cluster, int getflags)
 
 	/*
 	 * If no error occured handle automatic cluster recovery unless
-	 * the NORECOVER flag is passed.
+	 * the NORECOVER flag is passed (prevents recovery recursions) or
+	 * the cluster has been flagged for deletion (prevents an attempt
+	 * to recover a cluster which is no longer hooked into the tree).
 	 *
 	 * Setting hammer_debug_recover to 1 will force recovery on load
 	 * whether or not the cluster is marked open.
@@ -946,12 +951,15 @@ hammer_load_cluster(hammer_cluster_t cluster, int getflags)
 	 * cluster (which would blow the filesystem to smithereens).
 	 */
 	if (error == 0 && cluster->io.validated == 0) {
-		if ((getflags & GET_CLUSTER_NORECOVER) == 0) {
+		if ((getflags & GET_CLUSTER_NORECOVER) == 0 &&
+		    (cluster->flags & HAMMER_CLUSTER_DELETED) == 0) {
 			if ((cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN) ||
 			    hammer_debug_recover > 0) {
 				if (hammer_debug_recover >= 0)
 					hammer_recover(cluster);
 			}
+			cluster->io.validated = 1;
+		} else if ((cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN)==0) {
 			cluster->io.validated = 1;
 		}
 	}
@@ -1036,6 +1044,53 @@ void
 hammer_rel_cluster(hammer_cluster_t cluster, int flush)
 {
 	hammer_volume_t volume;
+
+	/*
+	 * Free a deleted cluster back to the pool when its last
+	 * active reference is released.  This prevents the cluster
+	 * from being reallocated until all its prior references go away.
+	 *
+	 * XXX implement a discard dependancy list which holds references
+	 * on clusters, preventing their deletion, until their parent cluster
+	 * has been flushed to disk.
+	 */
+	if (cluster->io.lock.refs == 1) {
+		if (cluster->flags & HAMMER_CLUSTER_DELETED) {
+			cluster->flags &= ~HAMMER_CLUSTER_DELETED;
+			kprintf("FREE CLUSTER %d", cluster->clu_no);
+			if (cluster->ondisk->stat_records) {
+				struct hammer_sync_info info;
+
+				info.error = 0;
+				info.waitfor = MNT_WAIT;
+				kprintf(" (still has %d records!)\n",
+					cluster->ondisk->stat_records);
+				Debugger("continue to recover cluster");
+				hammer_recover(cluster);
+				Debugger("continue to sync cluster");
+				hammer_sync_cluster(cluster, &info);
+				Debugger("now debug it");
+			}
+			kprintf("\n");
+
+			/*
+			 * Clean up any statistics we left hanging in the
+			 * cluster.
+			 */
+			hammer_adjust_stats(cluster, HAMMER_FSBUF_BTREE,
+					    -cluster->ondisk->stat_idx_bufs);
+			hammer_adjust_stats(cluster, HAMMER_FSBUF_DATA,
+					    -cluster->ondisk->stat_data_bufs);
+			hammer_adjust_stats(cluster, HAMMER_FSBUF_RECORDS,
+					    -cluster->ondisk->stat_rec_bufs);
+			/*
+			 * hammer_discard_cluster(cluster) - throw away
+			 * dirty backing store, recurse to any underlying
+			 * buffers. XXX
+			 */
+			hammer_free_cluster(cluster);
+		}
+	}
 
 	if (cluster->io.lock.refs == 1) {
 		hammer_lock_ex(&cluster->io.lock);
@@ -1465,12 +1520,9 @@ hammer_rel_node(hammer_node_t node)
 
 	cluster = buffer->cluster;
 	if (flags & HAMMER_NODE_DELETED) {
+		if (node_offset == cluster->ondisk->clu_btree_root)
+			KKASSERT(cluster->flags & HAMMER_CLUSTER_DELETED);
 		hammer_free_btree(cluster, node_offset);
-		if (node_offset == cluster->ondisk->clu_btree_root) {
-			kprintf("FREE CLUSTER %d\n", cluster->clu_no);
-			hammer_free_cluster(cluster);
-			/*hammer_io_undirty(&cluster->io);*/
-		}
 	}
 	hammer_rel_buffer(buffer, 0);
 }
@@ -1779,6 +1831,7 @@ hammer_alloc_btree(hammer_cluster_t cluster, int *errorp)
 	if (node) {
 		hammer_modify_node(node);
 		bzero(node->ondisk, sizeof(*node->ondisk));
+		KKASSERT((node->flags & (HAMMER_NODE_DELETED)) == 0);
 	} else {
 		hammer_alist_free(live, elm_no, 1);
 		hammer_rel_node(node);
@@ -2166,10 +2219,10 @@ hammer_sync_volume(hammer_volume_t volume, void *data)
 {
 	struct hammer_sync_info *info = data;
 
+	hammer_ref(&volume->io.lock);
 	RB_SCAN(hammer_clu_rb_tree, &volume->rb_clus_root, NULL,
 		hammer_sync_cluster, info);
-	if (hammer_ref_volume(volume) == 0)
-		hammer_rel_volume(volume, 1);
+	hammer_rel_volume(volume, 1);
 	return(0);
 }
 
@@ -2178,19 +2231,22 @@ hammer_sync_cluster(hammer_cluster_t cluster, void *data)
 {
 	struct hammer_sync_info *info = data;
 
+	/*
+	 * XXX check if cluster deleted and don't bother to sync it?
+	 */
+	hammer_ref(&cluster->io.lock);
 	RB_SCAN(hammer_buf_rb_tree, &cluster->rb_bufs_root, NULL,
 		hammer_sync_buffer, info);
 	/*hammer_io_waitdep(&cluster->io);*/
-	if (hammer_ref_cluster(cluster) == 0)
-		hammer_rel_cluster(cluster, 1);
+	hammer_rel_cluster(cluster, 1);
 	return(0);
 }
 
 int
 hammer_sync_buffer(hammer_buffer_t buffer, void *data __unused)
 {
-	if (hammer_ref_buffer(buffer) == 0)
-		hammer_rel_buffer(buffer, 1);
+	hammer_ref(&buffer->io.lock);
+	hammer_rel_buffer(buffer, 1);
 	return(0);
 }
 
@@ -2329,6 +2385,9 @@ hammer_alloc_master(hammer_cluster_t cluster, int nblks,
 static void
 hammer_adjust_stats(hammer_cluster_t cluster, u_int64_t buf_type, int nblks)
 {
+	if (nblks == 0)
+		return;
+
 	hammer_modify_cluster(cluster);
 	hammer_modify_volume(cluster->volume);
 	hammer_modify_volume(cluster->volume->hmp->rootvol);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.28 2008/01/24 02:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.29 2008/01/25 05:49:08 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -79,6 +79,7 @@ struct hammer_transaction {
 	struct hammer_mount *hmp;
 	hammer_tid_t	tid;
 	struct hammer_volume *rootvol;
+/*	TAILQ_HEAD(, hammer_io) recycle_list;*/
 };
 
 typedef struct hammer_transaction *hammer_transaction_t;
@@ -341,10 +342,14 @@ struct hammer_cluster {
 	struct hammer_nod_rb_tree rb_nods_root;	/* cursors in cluster */
 	struct hammer_base_elm clu_btree_beg;	/* copy of on-disk info */
 	struct hammer_base_elm clu_btree_end;	/* copy of on-disk info */
+	int	flags;
 	int32_t clu_no;
 };
 
 typedef struct hammer_cluster *hammer_cluster_t;
+
+#define HAMMER_CLUSTER_DELETED	0x0001
+#define HAMMER_CLUSTER_EMPTY	0x0002
 
 /*
  * Passed to hammer_get_cluster()
@@ -476,6 +481,7 @@ extern struct bio_ops hammer_bioops;
 extern int hammer_debug_btree;
 extern int hammer_debug_tid;
 extern int hammer_debug_recover;
+extern int hammer_debug_recover_faults;
 extern int hammer_count_inodes;
 extern int hammer_count_records;
 extern int hammer_count_record_datas;
@@ -699,6 +705,7 @@ void hammer_modify_volume(hammer_volume_t volume);
 void hammer_modify_supercl(hammer_supercl_t supercl);
 void hammer_modify_cluster(hammer_cluster_t cluster);
 void hammer_modify_buffer(hammer_buffer_t buffer);
+void hammer_modify_buffer_nodep(hammer_buffer_t buffer);
 
 #endif
 

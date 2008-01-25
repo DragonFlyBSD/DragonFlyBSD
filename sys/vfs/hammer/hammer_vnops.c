@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.22 2008/01/18 07:02:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.23 2008/01/25 05:49:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1760,7 +1760,12 @@ retry:
 		ip = hammer_get_inode(dip->hmp, &dip->cache[1],
 				      rec->entry.obj_id,
 				      dip->hmp->asof, 0, &error);
-		KKASSERT(error != ENOENT);
+		if (error == ENOENT) {
+			kprintf("obj_id %016llx\n", rec->entry.obj_id);
+			Debugger("ENOENT unlinking object that should exist, cont to sync");
+			hammer_sync_hmp(dip->hmp, MNT_NOWAIT);
+			Debugger("ENOENT - sync done");
+		}
 		if (error == 0 && ip->ino_rec.base.base.obj_type ==
 				  HAMMER_OBJTYPE_DIRECTORY) {
 			error = hammer_ip_check_directory_empty(&trans, ip);

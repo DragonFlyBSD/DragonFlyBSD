@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.24 2008/01/24 02:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.25 2008/01/25 05:49:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -492,7 +492,7 @@ retry:
 		error = hammer_btree_lookup(&cursor);
 		if (error == 0) {
 			rec = &cursor.record->inode;
-			hammer_modify_buffer(cursor.record_buffer);
+			hammer_modify_buffer_nodep(cursor.record_buffer);
 			rec->ino_atime = ip->ino_rec.ino_atime;
 			rec->ino_mtime = ip->ino_rec.ino_mtime;
 			ip->flags &= ~HAMMER_INODE_ITIMES;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.17 2008/01/24 02:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.18 2008/01/25 05:49:08 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -262,6 +262,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 		KKASSERT(TAILQ_EMPTY(&io->deplist));
 		if (io->released) {
 			regetblk(bp);
+			BUF_KERNPROC(bp);
 			io->released = 0;
 		}
 		hammer_io_disassociate((hammer_io_structure_t)io, 1);
@@ -315,7 +316,7 @@ hammer_io_flush(struct hammer_io *io)
 	 * Do this before potentially blocking so any attempt to modify the
 	 * ondisk while we are blocked blocks waiting for us.
 	 */
-	io->modified = 0;
+	io->modified = 0;	/* force interlock */
 	bp = io->bp;
 
 	/*
@@ -334,9 +335,12 @@ hammer_io_flush(struct hammer_io *io)
 	}
 	if (io->type == HAMMER_STRUCTURE_CLUSTER) {
 		/*
-		 * Mark the cluster closed if we can
+		 * Mark the cluster closed if we can.  XXX kludgy, must
+		 * set modified to 1 for the check.
 		 */
+		io->modified = 1;
 		hammer_io_checkwrite(io->bp);
+		io->modified = 0;
 	}
 	if (io->released) {
 		regetblk(bp);
@@ -361,50 +365,49 @@ hammer_io_flush(struct hammer_io *io)
  */
 
 /*
- * Ensure that the bp is acquired and return non-zero on a 0->1 transition
- * of the modified bit.
+ * Mark a HAMMER structure as undergoing modification.  Return 1 when applying
+ * a non-NULL ordering dependancy for the first time, 0 otherwise.
+ *
+ * list can be NULL, indicating that a structural modification is being made
+ * without creating an ordering dependancy.
  */
 static __inline
 int
 hammer_io_modify(hammer_io_t io, struct hammer_io_list *list)
 {
-	int r = 0;
+	int r;
 
+	/*
+	 * Shortcut if nothing to do.
+	 */
 	KKASSERT(io->lock.refs != 0 && io->bp != NULL);
-	if (io->modified == 0) {
-		hammer_lock_ex(&io->lock);
-		if (io->modified == 0) {
-			if (io->released) {
-				regetblk(io->bp);
-				BUF_KERNPROC(io->bp);
-				io->released = 0;
-			}
-			io->modified = 1;
-			io->entry_list = list;
-			if (list)
-				TAILQ_INSERT_TAIL(list, io, entry);
-			r = 1;
-		}
-		hammer_unlock(&io->lock);
-	} else if (io->released) {
-		/*
-		 * Make sure no IO is occuring while we modify the contents
-		 * of the buffer. XXX should be able to avoid doing this.
-		 */
-		hammer_lock_ex(&io->lock);
-		if (io->released) {
-			regetblk(io->bp);
-			BUF_KERNPROC(io->bp);
-			io->released = 0;
-		}
-		/*
-		 * The modified bit should still be set because we have
-		 * a ref on the structure, so the kernel's checkwrite
-		 * should not have cleared it.
-		 */
-		KKASSERT(io->modified != 0);
-		hammer_unlock(&io->lock);
+	if (io->modified && io->released == 0 &&
+	    (io->entry_list || list == NULL)) {
+		return(0);
 	}
+
+	hammer_lock_ex(&io->lock);
+	io->modified = 1;
+	if (io->released) {
+		regetblk(io->bp);
+		BUF_KERNPROC(io->bp);
+		io->released = 0;
+		KKASSERT(io->modified != 0);
+	}
+	if (io->entry_list == NULL) {
+		io->entry_list = list;
+		if (list) {
+			TAILQ_INSERT_TAIL(list, io, entry);
+			r = 1;
+		} else {
+			r = 0;
+		}
+	} else {
+		/* only one dependancy is allowed */
+		KKASSERT(list == NULL || io->entry_list == list);
+		r = 0;
+	}
+	hammer_unlock(&io->lock);
 	return(r);
 }
 
@@ -456,6 +459,17 @@ hammer_modify_buffer(hammer_buffer_t buffer)
 			hammer_unlock(&cluster->io.lock);
 		}
 	}
+}
+
+/*
+ * Modify a buffer without creating a cluster dependancy or forcing
+ * a cluster open operation.  This is used only for atime and mtime
+ * updates.
+ */
+void
+hammer_modify_buffer_nodep(hammer_buffer_t buffer)
+{
+	hammer_io_modify(&buffer->io, NULL);
 }
 
 /*
@@ -552,6 +566,13 @@ hammer_io_complete(struct buf *bp)
  *
  * If we cannot disassociate we set B_LOCKED to prevent the buffer
  * from getting reused.
+ *
+ * WARNING: Because this can be called directly by getnewbuf we cannot
+ * recurse into the tree.  If a bp cannot be immediately disassociated
+ * our only recourse is to set B_LOCKED.
+ *
+ * WARNING: If the HAMMER structure is passively cached we have to
+ * scrap it here.
  */
 static void
 hammer_io_deallocate(struct buf *bp)
@@ -559,17 +580,13 @@ hammer_io_deallocate(struct buf *bp)
 	hammer_io_structure_t iou = (void *)LIST_FIRST(&bp->b_dep);
 
 	KKASSERT((bp->b_flags & B_LOCKED) == 0 && iou->io.running == 0);
-	if (iou->io.modified) {
-		bp->b_flags |= B_LOCKED;
-		return;
-	}
-	hammer_ref(&iou->io.lock);
-	if (iou->io.lock.refs > 1 || iou->io.modified) {
-		hammer_unref(&iou->io.lock);
+	if (iou->io.lock.refs > 0 || iou->io.modified) {
 		bp->b_flags |= B_LOCKED;
 	} else {
+		/* XXX interlock against ref or another disassociate */
+		/* XXX this can leave HAMMER structures lying around */
 		hammer_io_disassociate(iou, 0);
-
+#if 0
 		switch(iou->io.type) {
 		case HAMMER_STRUCTURE_VOLUME:
 			hammer_rel_volume(&iou->volume, 1);
@@ -584,6 +601,7 @@ hammer_io_deallocate(struct buf *bp)
 			hammer_rel_buffer(&iou->buffer, 1);
 			break;
 		}
+#endif
 	}
 }
 
@@ -631,6 +649,8 @@ hammer_io_checkwrite(struct buf *bp)
 {
 	union hammer_io_structure *iou = (void *)LIST_FIRST(&bp->b_dep);
 
+	KKASSERT(TAILQ_EMPTY(&iou->io.deplist));
+
 	/*
 	 * A modified cluster with no dependancies can be closed.  It is
 	 * possible for the cluster to have been modified by the recovery
@@ -640,21 +660,19 @@ hammer_io_checkwrite(struct buf *bp)
 	if (iou->io.type == HAMMER_STRUCTURE_CLUSTER && iou->io.modified) {
 		hammer_cluster_t cluster = &iou->cluster;
 
-		if (TAILQ_EMPTY(&cluster->io.deplist)) {
-			kprintf("CLOSE CLUSTER %d:%d ",
-				cluster->volume->vol_no,
-				cluster->clu_no);
-			if (cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN) {
-				if (cluster->io.validated) {
-					cluster->ondisk->clu_flags &=
-						~HAMMER_CLUF_OPEN;
-					kprintf("(closed)\n");
-				} else {
-					kprintf("(leave-open)\n");
-				}
+		kprintf("CLOSE CLUSTER %d:%d ",
+			cluster->volume->vol_no,
+			cluster->clu_no);
+		if (cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN) {
+			if (cluster->io.validated) {
+				cluster->ondisk->clu_flags &=
+					~HAMMER_CLUF_OPEN;
+				kprintf("(closed)\n");
 			} else {
-				kprintf("(header-only)\n");
+				kprintf("(leave-open)\n");
 			}
+		} else {
+			kprintf("(header-only)\n");
 		}
 	}
 
@@ -670,7 +688,6 @@ hammer_io_checkwrite(struct buf *bp)
 	 * We can only clear the modified bit when entered from the kernel
 	 * if io.lock.refs == 0.
 	 */
-	KKASSERT(TAILQ_EMPTY(&iou->io.deplist));
 	if (iou->io.lock.refs == 0) {
 		iou->io.modified = 0;
 	}
