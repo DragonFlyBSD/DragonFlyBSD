@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.27 2008/01/23 02:37:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.28 2008/01/25 08:57:36 sephe Exp $
  */
 
 /*
@@ -139,6 +139,7 @@ static void		*rt2560_ratectl_attach(struct ieee80211com *, u_int);
 static void		rt2560_calibrate(void *);
 static void		rt2560_calib_rxsensitivity(struct rt2560_softc *,
 						   uint32_t);
+static int		rt2560_sysctl_rxsns(SYSCTL_HANDLER_ARGS);
 
 /*
  * Supported rates for 802.11a/b/g modes (in 500Kbps unit).
@@ -354,6 +355,7 @@ rt2560_attach(device_t dev, int id)
 	 */
 	sc->sc_dwelltime = 200;	/* milliseconds */
 	sc->sc_calib_rxsns = 1;	/* Enable */
+	sc->sc_rxsns = sc->sc_bbp17_dynmax;
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
@@ -367,6 +369,12 @@ rt2560_attach(device_t dev, int id)
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "dwell",
 	    CTLFLAG_RW, &sc->sc_dwelltime, 0,
 	    "channel dwell time (ms) for AP/station scanning");
+
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sysctl_tree),
+			OID_AUTO, "rx_sensitivity", CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, rt2560_sysctl_rxsns, "I",
+			"initial RX sensitivity");
 
 	if (sc->sc_flags & RT2560_FLAG_RXSNS) {
 		SYSCTL_ADD_INT(&sc->sysctl_ctx,
@@ -2550,7 +2558,8 @@ rt2560_bbp_init(struct rt2560_softc *sc)
 			break;
 		rt2560_bbp_write(sc, sc->bbp_prom[i].reg, sc->bbp_prom[i].val);
 	}
-	rt2560_bbp_write(sc, 17, sc->sc_bbp17_dynmax);
+	/* Set rx sensitivity to user specified value */
+	rt2560_bbp_write(sc, 17, sc->sc_rxsns);
 
 	return 0;
 #undef N
@@ -2795,7 +2804,7 @@ rt2560_calib_rxsensitivity(struct rt2560_softc *sc, uint32_t false_cca)
 		uint8_t bbp17;
 
 		if (rssi_dbm >= -58)
-			bbp17 = 0x50;
+			bbp17 = RT2560_RXSNS_MAX;
 		else
 			bbp17 = MID_RX_SENSITIVITY;
 		if (sc->sc_bbp17 != bbp17)
@@ -2834,4 +2843,37 @@ rt2560_calibrate(void *xsc)
 	callout_reset(&sc->calib_ch, hz, rt2560_calibrate, sc);
 
 	lwkt_serialize_exit(ifp->if_serializer);
+}
+
+static int
+rt2560_sysctl_rxsns(SYSCTL_HANDLER_ARGS)
+{
+	struct rt2560_softc *sc = arg1;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	int error = 0, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = sc->sc_rxsns;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+	if (v < sc->sc_bbp17_dynmin || v > RT2560_RXSNS_MAX) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (sc->sc_rxsns != v) {
+		/*
+		 * Adjust bbp17 iff ral(4) is up and running (i.e. hardware
+		 * is initialized)and rx sensitivity calibration is _not_
+		 * enabled.
+		 */
+		if ((ifp->if_flags & IFF_RUNNING) && !sc->sc_calib_rxsns)
+			rt2560_bbp_write(sc, 17, v);
+		sc->sc_rxsns = v;
+	}
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
 }
