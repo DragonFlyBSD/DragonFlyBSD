@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.5 2008/01/24 02:16:47 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.6 2008/01/25 05:53:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -41,6 +41,7 @@ static void hammer_parsedevs(const char *blkdevs);
 static void usage(int exit_code);
 
 int RecurseOpt;
+int VerboseOpt;
 
 int
 main(int ac, char **av)
@@ -50,7 +51,7 @@ main(int ac, char **av)
 	int status;
 	char *blkdevs = NULL;
 
-	while ((ch = getopt(ac, av, "hf:r")) != -1) {
+	while ((ch = getopt(ac, av, "hf:rv")) != -1) {
 		switch(ch) {
 		case 'h':
 			usage(0);
@@ -60,6 +61,9 @@ main(int ac, char **av)
 			break;
 		case 'f':
 			blkdevs = optarg;
+			break;
+		case 'v':
+			++VerboseOpt;
 			break;
 		default:
 			usage(1);
