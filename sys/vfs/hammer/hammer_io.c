@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.18 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.19 2008/01/25 10:36:03 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -452,9 +452,11 @@ hammer_modify_buffer(hammer_buffer_t buffer)
 				cluster->io.released = 1;
 				cluster->io.running = 1;
 				bawrite(cluster->io.bp);
-				kprintf("OPEN CLUSTER %d:%d\n",
-					cluster->volume->vol_no,
-					cluster->clu_no);
+				if (hammer_debug_general & 0x20) {
+					kprintf("OPEN CLUSTER %d:%d\n",
+						cluster->volume->vol_no,
+						cluster->clu_no);
+				}
 			}
 			hammer_unlock(&cluster->io.lock);
 		}
@@ -554,6 +556,7 @@ hammer_io_complete(struct buf *bp)
 	 */
 	if ((bp->b_flags & B_LOCKED) && iou->io.lock.refs == 0) {
 		KKASSERT(iou->io.modified == 0);
+		bp->b_flags &= ~B_LOCKED;
 		hammer_io_deallocate(bp);
 		/* structure may be dead now */
 	}
@@ -660,19 +663,23 @@ hammer_io_checkwrite(struct buf *bp)
 	if (iou->io.type == HAMMER_STRUCTURE_CLUSTER && iou->io.modified) {
 		hammer_cluster_t cluster = &iou->cluster;
 
-		kprintf("CLOSE CLUSTER %d:%d ",
-			cluster->volume->vol_no,
-			cluster->clu_no);
+		if (hammer_debug_general & 0x20) {
+			kprintf("CLOSE CLUSTER %d:%d ",
+				cluster->volume->vol_no, cluster->clu_no);
+		}
 		if (cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN) {
 			if (cluster->io.validated) {
 				cluster->ondisk->clu_flags &=
 					~HAMMER_CLUF_OPEN;
-				kprintf("(closed)\n");
+				if (hammer_debug_general & 0x20)
+					kprintf("(closed)\n");
 			} else {
-				kprintf("(leave-open)\n");
+				if (hammer_debug_general & 0x20)
+					kprintf("(leave-open)\n");
 			}
 		} else {
-			kprintf("(header-only)\n");
+			if (hammer_debug_general & 0x20)
+				kprintf("(header-only)\n");
 		}
 	}
 

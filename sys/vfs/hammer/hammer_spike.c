@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.12 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.13 2008/01/25 10:36:04 dillon Exp $
  */
 
 #include "hammer.h"
@@ -64,7 +64,8 @@ hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep)
 	}
 	hammer_ref_node(spike->node);
 	hammer_lock_sh(&spike->node->lock);
-	kprintf("LOAD SPIKE %p\n", spike);
+	if (hammer_debug_general & 0x40)
+		kprintf("LOAD SPIKE %p\n", spike);
 }
 
 /*
@@ -97,7 +98,8 @@ hammer_spike(struct hammer_cursor **spikep)
 	int b, e;
 	const int esize = sizeof(*elm);
 
-	kprintf("hammer_spike: ENOSPC in cluster, spiking\n");
+	if (hammer_debug_general & 0x40)
+		kprintf("hammer_spike: ENOSPC in cluster, spiking\n");
 	/*Debugger("ENOSPC");*/
 
 	/*
@@ -372,7 +374,8 @@ success:
 	hammer_unlock(&ncluster->io.lock);
 	hammer_rel_cluster(ncluster, 0);
 failed3:
-	kprintf("UNLOAD SPIKE %p %d\n", spike, error);
+	if (hammer_debug_general & 0x40)
+		kprintf("UNLOAD SPIKE %p %d\n", spike, error);
 	hammer_unlock(&ocluster->io.lock);
 failed4:
 	hammer_btree_unlock_children(&locklist);

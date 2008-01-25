@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.25 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.26 2008/01/25 10:36:04 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1057,7 +1057,8 @@ hammer_rel_cluster(hammer_cluster_t cluster, int flush)
 	if (cluster->io.lock.refs == 1) {
 		if (cluster->flags & HAMMER_CLUSTER_DELETED) {
 			cluster->flags &= ~HAMMER_CLUSTER_DELETED;
-			kprintf("FREE CLUSTER %d", cluster->clu_no);
+			if (hammer_debug_general & 0x80)
+				kprintf("FREE CLUSTER %d\n", cluster->clu_no);
 			if (cluster->ondisk->stat_records) {
 				struct hammer_sync_info info;
 
@@ -1071,7 +1072,6 @@ hammer_rel_cluster(hammer_cluster_t cluster, int flush)
 				hammer_sync_cluster(cluster, &info);
 				Debugger("now debug it");
 			}
-			kprintf("\n");
 
 			/*
 			 * Clean up any statistics we left hanging in the
@@ -1670,7 +1670,6 @@ hammer_alloc_cluster(hammer_mount_t hmp, hammer_cluster_t cluster_hint,
 	vol_no = vol_beg;
 	do {
 		volume = hammer_get_volume(hmp, vol_no, errorp);
-		kprintf("VOLUME %p %d\n", volume, vol_no);
 		if (*errorp) {
 			clu_no = HAMMER_ALIST_BLOCK_NONE;
 			break;
@@ -1705,7 +1704,10 @@ hammer_alloc_cluster(hammer_mount_t hmp, hammer_cluster_t cluster_hint,
 	 * Acquire the cluster.  On success this will force *errorp to 0.
 	 */
 	if (clu_no != HAMMER_ALIST_BLOCK_NONE) {
-		kprintf("ALLOC CLUSTER %d:%d\n", volume->vol_no, clu_no);
+		if (hammer_debug_general & 0x40) {
+			kprintf("ALLOC CLUSTER %d:%d\n", 
+				volume->vol_no, clu_no);
+		}
 		cluster = hammer_get_cluster(volume, clu_no, errorp,
 					     GET_CLUSTER_NEW);
 		volume->clu_iterator = clu_no;
@@ -1783,7 +1785,8 @@ hammer_alloc_btree(hammer_cluster_t cluster, int *errorp)
 	if (cluster->io.validated) {
 		n = (cluster->ondisk->stat_records * 3 / 
 		    HAMMER_BTREE_INT_ELMS / HAMMER_BTREE_NODES) + 1;
-		if (cluster->ondisk->stat_idx_bufs < n) {
+		if (hammer_debug_general &&
+		    cluster->ondisk->stat_idx_bufs < n) {
 			kprintf("hammer_alloc_btree: %d/%d buffers\n",
 				cluster->ondisk->stat_idx_bufs, n);
 		}
@@ -1943,7 +1946,6 @@ hammer_alloc_record(hammer_cluster_t cluster, int *errorp,
 		alloc_new_buffer(cluster, HAMMER_FSBUF_RECORDS, live,
 				 cluster->ondisk->idx_record, errorp, bufferp);
 		elm_no = hammer_alist_alloc_rev(live, 1,HAMMER_ALIST_BLOCK_MAX);
-		kprintf("hammer_alloc_record elm again %08x\n", elm_no);
 		if (elm_no == HAMMER_ALIST_BLOCK_NONE) {
 			*errorp = ENOSPC;
 			return(NULL);
@@ -2129,10 +2131,6 @@ alloc_new_buffer(hammer_cluster_t cluster, u_int64_t type, hammer_alist_t live,
 	 * A-list and update our statistics to reflect the allocation.
 	 */
 	if (buffer) {
-#if 0
-		kprintf("alloc_new_buffer buf_no %d type %016llx nelms %d\n",
-			buf_no, type, nelements);
-#endif
 		hammer_modify_buffer(buffer);  /*XXX*/
 		hammer_adjust_stats(cluster, type, 1);
 
@@ -2206,11 +2204,9 @@ hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);
 	}
-	if (vp->v_type != VCHR) {
-		error = VOP_FSYNC(vp, info->waitfor);
-		if (error)
-			info->error = error;
-	}
+	error = VOP_FSYNC(vp, info->waitfor);
+	if (error)
+		info->error = error;
 	return(0);
 }
 
@@ -2452,7 +2448,10 @@ buffer_alist_destroy(void *info, int32_t blk, int32_t radix)
 	int32_t buf_no;
 
 	buf_no = blk / HAMMER_FSBUF_MAXBLKS;
-	kprintf("destroy buffer %d:%d:%d\n", cluster->volume->vol_no, cluster->clu_no, buf_no);
+	if (hammer_debug_general & 0x80) {
+		kprintf("destroy buffer %d:%d:%d\n",
+			cluster->volume->vol_no, cluster->clu_no, buf_no);
+	}
 	return (0);
 }
 

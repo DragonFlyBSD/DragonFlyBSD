@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.15 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.16 2008/01/25 10:36:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <sys/buf2.h>
 #include "hammer.h"
 
+int hammer_debug_general;
 int hammer_debug_btree;
 int hammer_debug_tid;
 int hammer_debug_recover;	/* -1 will disable, +1 will force */
@@ -62,6 +63,8 @@ int hammer_count_nodes;
 int hammer_count_spikes;
 
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
+	   &hammer_debug_general, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_btree, CTLFLAG_RW,
 	   &hammer_debug_btree, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_tid, CTLFLAG_RW,

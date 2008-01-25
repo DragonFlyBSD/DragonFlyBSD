@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.24 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.25 2008/01/25 10:36:04 dillon Exp $
  */
 
 #include "hammer.h"
@@ -480,6 +480,8 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	void *bdata;
 	int error;
 
+	KKASSERT((offset & HAMMER_BUFMASK) == 0);
+	KKASSERT((bytes & HAMMER_BUFMASK) == 0);
 retry:
 	error = hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 	if (error)

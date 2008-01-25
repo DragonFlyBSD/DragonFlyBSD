@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.24 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.25 2008/01/25 10:36:03 dillon Exp $
  */
 
 /*
@@ -687,11 +687,13 @@ hammer_btree_insert_cluster(hammer_cursor_t cursor, hammer_cluster_t ncluster,
 	 * flushing it will only clear an existing open flag if the cluster
 	 * has been validated.
 	 */
-	kprintf("INSERT CLUSTER %d:%d -> %d:%d ",
-		ncluster->ondisk->clu_btree_parent_vol_no,
-		ncluster->ondisk->clu_btree_parent_clu_no,
-		ncluster->volume->vol_no,
-		ncluster->clu_no);
+	if (hammer_debug_general & 0x40) {
+		kprintf("INSERT CLUSTER %d:%d -> %d:%d ",
+			ncluster->ondisk->clu_btree_parent_vol_no,
+			ncluster->ondisk->clu_btree_parent_clu_no,
+			ncluster->volume->vol_no,
+			ncluster->clu_no);
+	}
 
 	ocluster = cursor->node->cluster;
 	if (ncluster->ondisk->clu_btree_parent_offset != node_offset ||
@@ -701,9 +703,11 @@ hammer_btree_insert_cluster(hammer_cursor_t cursor, hammer_cluster_t ncluster,
 		ncluster->ondisk->clu_btree_parent_offset = node_offset;
 		ncluster->ondisk->clu_btree_parent_clu_no = ocluster->clu_no;
 		ncluster->ondisk->clu_btree_parent_vol_no = ocluster->volume->vol_no;
-		kprintf("(offset fixup)\n");
+		if (hammer_debug_general & 0x40)
+			kprintf("(offset fixup)\n");
 	} else {
-		kprintf("(offset unchanged)\n");
+		if (hammer_debug_general & 0x40)
+			kprintf("(offset unchanged)\n");
 	}
 
 	return(0);

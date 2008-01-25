@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.23 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.24 2008/01/25 10:36:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -284,7 +284,17 @@ hammer_vop_write(struct vop_write_args *ap)
 	 * Access the data in HAMMER_BUFSIZE blocks via the buffer cache.
 	 */
 	while (uio->uio_resid > 0) {
+		int fixsize = 0;
+
 		offset = uio->uio_offset & HAMMER_BUFMASK;
+		n = HAMMER_BUFSIZE - offset;
+		if (n > uio->uio_resid)
+			n = uio->uio_resid;
+		if (uio->uio_offset + n > ip->ino_rec.ino_size) {
+			vnode_pager_setsize(ap->a_vp, uio->uio_offset + n);
+			fixsize = 1;
+		}
+
 		if (uio->uio_segflg == UIO_NOCOPY) {
 			/*
 			 * Issuing a write with the same data backing the
@@ -293,30 +303,26 @@ hammer_vop_write(struct vop_write_args *ap)
 			 *
 			 * This case is used by vop_stdputpages().
 			 */
-			bp = getblk(ap->a_vp, uio->uio_offset, HAMMER_BUFSIZE,
-				    GETBLK_BHEAVY, 0);
+			bp = getblk(ap->a_vp, uio->uio_offset - offset,
+				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
 			if ((bp->b_flags & B_CACHE) == 0) {
 				bqrelse(bp);
 				error = bread(ap->a_vp,
 					      uio->uio_offset - offset,
 					      HAMMER_BUFSIZE, &bp);
-				if (error) {
-					brelse(bp);
-					break;
-				}
 			}
 		} else if (offset == 0 && uio->uio_resid >= HAMMER_BUFSIZE) {
 			/*
 			 * entirely overwrite the buffer
 			 */
-			bp = getblk(ap->a_vp, uio->uio_offset, HAMMER_BUFSIZE,
-				    GETBLK_BHEAVY, 0);
+			bp = getblk(ap->a_vp, uio->uio_offset - offset,
+				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
 		} else if (offset == 0 && uio->uio_offset >= ip->ino_rec.ino_size) {
 			/*
 			 * XXX
 			 */
-			bp = getblk(ap->a_vp, uio->uio_offset, HAMMER_BUFSIZE,
-				    GETBLK_BHEAVY, 0);
+			bp = getblk(ap->a_vp, uio->uio_offset - offset,
+				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
 			vfs_bio_clrbuf(bp);
 		} else {
 			/*
@@ -325,18 +331,22 @@ hammer_vop_write(struct vop_write_args *ap)
 			 */
 			error = bread(ap->a_vp, uio->uio_offset - offset,
 				      HAMMER_BUFSIZE, &bp);
-			if (error) {
-				brelse(bp);
-				break;
-			}
-			bheavy(bp);
+			if (error == 0)
+				bheavy(bp);
 		}
-		n = HAMMER_BUFSIZE - offset;
-		if (n > uio->uio_resid)
-			n = uio->uio_resid;
-		error = uiomove((char *)bp->b_data + offset, n, uio);
+		if (error == 0)
+			error = uiomove((char *)bp->b_data + offset, n, uio);
+
+		/*
+		 * If we screwed up we have to undo any VM size changes we
+		 * made.
+		 */
 		if (error) {
 			brelse(bp);
+			if (fixsize) {
+				vtruncbuf(ap->a_vp, ip->ino_rec.ino_size,
+					  HAMMER_BUFSIZE);
+			}
 			break;
 		}
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
@@ -1233,6 +1243,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	struct hammer_inode *ip;
 	int modflags;
 	int error;
+	int truncating;
 	int64_t aligned_size;
 	u_int32_t flags;
 	uuid_t uuid;
@@ -1287,20 +1298,48 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	while (vap->va_size != VNOVAL && ip->ino_rec.ino_size != vap->va_size) {
 		switch(ap->a_vp->v_type) {
 		case VREG:
+			if (vap->va_size == ip->ino_rec.ino_size)
+				break;
 			if (vap->va_size < ip->ino_rec.ino_size) {
 				vtruncbuf(ap->a_vp, vap->va_size,
 					  HAMMER_BUFSIZE);
-			} else if (vap->va_size > ip->ino_rec.ino_size) {
+				truncating = 1;
+			} else {
 				vnode_pager_setsize(ap->a_vp, vap->va_size);
+				truncating = 0;
 			}
+			ip->ino_rec.ino_size = vap->va_size;
+			modflags |= HAMMER_INODE_RDIRTY;
 			aligned_size = (vap->va_size + HAMMER_BUFMASK) &
 					~(int64_t)HAMMER_BUFMASK;
-			error = hammer_ip_delete_range(&trans, ip,
+
+			if (truncating) {
+				error = hammer_ip_delete_range(&trans, ip,
 						    aligned_size,
 						    0x7FFFFFFFFFFFFFFFLL,
 						    &spike);
-			ip->ino_rec.ino_size = vap->va_size;
-			modflags |= HAMMER_INODE_RDIRTY;
+			}
+			/*
+			 * If truncating we have to clean out a portion of
+			 * the last block on-disk.
+			 */
+			if (truncating && error == 0 &&
+			    vap->va_size < aligned_size) {
+				struct buf *bp;
+				int offset;
+
+				offset = vap->va_size & HAMMER_BUFMASK;
+				error = bread(ap->a_vp,
+					      aligned_size - HAMMER_BUFSIZE,
+					      HAMMER_BUFSIZE, &bp);
+				if (error == 0) {
+					bzero(bp->b_data + offset,
+					      HAMMER_BUFSIZE - offset);
+					bdwrite(bp);
+				} else {
+					brelse(bp);
+				}
+			}
 			break;
 		case VDATABASE:
 			error = hammer_ip_delete_range(&trans, ip,
@@ -1562,7 +1601,6 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		if (n > 0) {
 			if (n > bp->b_bufsize - boff)
 				n = bp->b_bufsize - boff;
-			kprintf("zfill %d bytes\n", n);
 			bzero((char *)bp->b_data + boff, n);
 			boff += n;
 			n = 0;

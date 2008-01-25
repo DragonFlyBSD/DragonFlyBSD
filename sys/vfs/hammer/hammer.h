@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.29 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.30 2008/01/25 10:36:03 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -478,6 +478,7 @@ extern struct hammer_alist_config Clu_master_alist_config;
 extern struct hammer_alist_config Clu_slave_alist_config;
 extern struct bio_ops hammer_bioops;
 
+extern int hammer_debug_general;
 extern int hammer_debug_btree;
 extern int hammer_debug_tid;
 extern int hammer_debug_recover;
