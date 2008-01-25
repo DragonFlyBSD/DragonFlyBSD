@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.31 2008/01/25 14:43:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.32 2008/01/25 14:47:52 sephe Exp $
  */
 
 /*
@@ -288,7 +288,6 @@ rt2560_attach(device_t dev, int id)
 	    IEEE80211_C_TXPMGT |	/* tx power management */
 	    IEEE80211_C_SHPREAMBLE |	/* short preamble supported */
 	    IEEE80211_C_SHSLOT |	/* short slot time supported */
-	    IEEE80211_C_WEP |		/* WEP */
 	    IEEE80211_C_WPA;		/* 802.11i */
 
 	if (sc->rf_rev == RT2560_RF_5222) {
