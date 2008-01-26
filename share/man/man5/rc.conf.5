@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.51 2008/01/20 19:38:27 swildner Exp $
-.Dd January 20, 2008
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.52 2008/01/26 17:12:36 matthias Exp $
+.Dd January 26, 2008
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -866,6 +866,11 @@ Also, if your interface needs WPA authentication, it is possible to add
 to the
 .Va ifconfig_ Ns Aq Ar interface
 variable.
+This will start
+.Xr wpa_supplicant 8
+See
+.Xr wpa_supplicant.conf 5
+for configuring authentication information.
 .Pp
 Finally, you can add
 .Xr ifconfig 8
