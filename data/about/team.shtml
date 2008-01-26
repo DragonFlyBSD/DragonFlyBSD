@@ -1,7 +1,7 @@
 <!--#set var="title" value="The DragonFly Team" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/about/team.shtml,v 1.8 2007/12/31 10:23:36 matthias Exp $ -->
+<!-- $DragonFly: site/data/about/team.shtml,v 1.9 2008/01/26 17:00:09 nth Exp $ -->
 
 
 <p>
@@ -262,6 +262,11 @@ r in Japan (AllBSD) (commit access)
 <tr><td valign="top">
 <a href="mailto:noah.yan 'at' gmail 'dot' com">Yonghong Yan</a></td>
 <td valign="top">AMD64 port (commit access)</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:nthery 'at' gmail 'dot' com">Nicolas Thery (nth)</a></td>
+<td valign="top">Kernel and userland utilities (commit access)</td>
 </tr>
 
 </table>
