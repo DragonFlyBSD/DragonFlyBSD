@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.15 2007/10/29 12:28:18 pavalos Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.16 2008/01/27 03:39:56 justin Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -332,6 +332,14 @@ rsync
 </TD>
 </TR>
 
+<TR>
+<TD>boulder.tele.dk (Denmark)</TD>
+<TD>Daily Snapshots, Official ISOs</TD>
+<TD>
+<a href="http://boulder.tele.dk/pub/DragonFly/">HTTP</a>,
+<a href="ftp://boulder.tele.dk/pub/DragonFly/">FTP</a>
+</TD>
+</TR>
 
 
 <!-- binary packages after this -->
@@ -406,6 +414,14 @@ rsync
 </TD>
 </TR>
 
+<TR>
+<TD>boulder.tele.dk (Denmark)</TD>
+<TD>binary pkgsrc packages</TD>
+<TD>
+<a href="http://boulder.tele.dk/pub/DragonFly/packages/">i386
+packages</a>
+</TD>
+</TR>
 
 
 <!-- source only after this -->
