@@ -1,7 +1,7 @@
 This is the top level of the DragonFly source directory.  This file
 was last revised on:
 $FreeBSD: src/README,v 1.15.2.4 2002/04/26 16:01:35 bmah Exp $
-$DragonFly: src/README,v 1.8 2006/10/24 17:09:45 swildner Exp $
+$DragonFly: src/README,v 1.9 2008/01/27 09:08:39 nth Exp $
 
 For copyright information, please see the file COPYRIGHT in this
 directory (additional copyright information also exists for some
@@ -20,7 +20,7 @@ standard build targets and compile-time flags.
 
 Building a kernel is a somewhat involved process.  Documentation
 for it can be found at:
-   http://leaf.dragonflybsd.org/~justin/handbook/kernelconfig.html
+   http://wiki.dragonflybsd.org/index.cgi/kernelconfig.html
 Also see the the build(7) and config(8) man pages.
 
 Note: If you want to build and install the kernel with the
