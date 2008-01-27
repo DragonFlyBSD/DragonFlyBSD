@@ -26,9 +26,9 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/usb.4,v 1.32 2005/04/20 07:33:09 simon Exp $
-.\" $DragonFly: src/share/man/man4/usb.4,v 1.5 2006/12/10 02:16:26 sephe Exp $
+.\" $DragonFly: src/share/man/man4/usb.4,v 1.6 2008/01/27 05:19:13 swildner Exp $
 .\"
-.Dd November 26, 2006
+.Dd January 26, 2008
 .Dt USB 4
 .Os
 .Sh NAME
@@ -65,6 +65,96 @@ The
 .Nm uhub
 device will always be present as it is needed for the
 root hub.
+.Ss Storage devices
+.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.\".It Xr natausb 4
+.\"...
+.It Xr umass 4
+Mass Storage Devices, e.g., external disk drives
+.El
+.Ss Wired network interfaces
+.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.It Xr aue 4
+ADMtek AN986 Pegasus Ethernet driver
+.It Xr axe 4
+ASIX Electronics AX88172 Ethernet driver
+.It Xr cue 4
+CATC USB-EL1210A Ethernet driver
+.It Xr kue 4
+Kawasaki LSI KL5KUSB101B Ethernet driver
+.It Xr rue 4
+RealTek RTL8150 Ethernet driver
+.El
+.Ss Wireless network interfaces
+.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.It Xr rum 4
+Ralink Technology RT2501USB/RT2601USB IEEE 802.11 driver
+.It Xr ubt 4
+Bluetooth adapters
+.It Xr ural 4
+Ralink Technology RT2500USB IEEE 802.11 driver
+.El
+.Ss Serial and parallel interfaces
+.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.It Xr moscom 4
+MosChip Semiconductor MCS7703 based serial adapters
+.It Xr uark 4
+Arkmicro Technologies ARK3116 based serial adapters
+.It Xr ubsa 4
+Belkin serial adapters
+.It Xr uchcom 4
+WinChipHead CH341/CH340 serial adapters
+.It Xr ucom 4
+tty support
+.It Xr uftdi 4
+serial devices based on the FTDI chips
+.It Xr ulpt 4
+printer support
+.It Xr umct 4
+Magic Control Technology USB-232 based serial adapters
+.It Xr umsm 4
+Qualcomm MSM modem adapters
+.It Xr uplcom 4
+Prolific PL-2303/2303X/2303HX serial adapters
+.It Xr uslcom 4
+Silicon Laboratories CP2101, CP2102 and CP2103 USB to serial bridge
+.It Xr uticom 4
+Texas Instruments TUSB3410 RS232 to USB converter
+.It Xr uvisor 4
+support for the Handspring Visor, a Palmpilot compatible PDA
+.It Xr uvscom 4
+SUNTAC Slipper U VS-10U serial adapters
+.El
+.Ss Audio devices
+.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.It Xr snd_uaudio 4
+audio device driver
+.It Xr urio 4
+driver for the Rio500 MP3 player
+.El
+.Ss Radio receiver devices
+.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.It Xr ufm 4
+Cypress Semiconductor FM Radio
+.El
+.Ss Human Interface Devices
+.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.It Xr uhid 4
+generic driver for Human Interface Devices
+.It Xr uhidev 4
+base driver for all Human Interface Devices
+.It Xr ukbd 4
+keyboards that follow the boot protocol
+.It Xr ums 4
+mouse devices
+.El
+.Ss Miscellaneous devices
+.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.It Xr ugen 4
+generic device support
+.It Xr uscanner 4
+scanner support
+.El
 .Sh INTRODUCTION TO USB
 The
 .Tn USB
@@ -394,26 +484,10 @@ specifications can be found at:
 .Pp
 .D1 Pa http://www.usb.org/developers/docs/
 .Pp
-.Xr aue 4 ,
-.Xr axe 4 ,
-.Xr cue 4 ,
 .Xr ehci 4 ,
-.Xr kue 4 ,
 .Xr ohci 4 ,
 .Xr pci 4 ,
-.Xr rue 4 ,
-.Xr ucom 4 ,
-.Xr ugen 4 ,
 .Xr uhci 4 ,
-.Xr uhid 4 ,
-.Xr ukbd 4 ,
-.Xr ulpt 4 ,
-.Xr umass 4 ,
-.Xr ums 4 ,
-.Xr uplcom 4 ,
-.Xr urio 4 ,
-.Xr uscanner 4 ,
-.Xr uvscom 4 ,
 .Xr usbd 8 ,
 .Xr usbdevs 8
 .Sh HISTORY
