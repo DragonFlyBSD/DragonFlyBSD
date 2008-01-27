@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.20 2007/07/02 06:34:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.21 2008/01/27 22:32:57 nth Exp $
  */
 
 #include <sys/param.h>
@@ -130,7 +130,7 @@ struct objcache {
 	objcache_free_fn	*free;
 	void			*allocator_args;
 
-	SLIST_ENTRY(objcache)	oc_next;
+	LIST_ENTRY(objcache)	oc_next;
 	int			exhausted;	/* oops */
 
 	/* NUMA-cluster level caches */
@@ -140,7 +140,7 @@ struct objcache {
 };
 
 static struct spinlock objcachelist_spin;
-static SLIST_HEAD(objcachelist, objcache) allobjcaches;
+static LIST_HEAD(objcachelist, objcache) allobjcaches;
 
 static struct magazine *
 mag_alloc(int capacity)
@@ -250,7 +250,7 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 		cache_percpu->previous_magazine = mag_alloc(mag_capacity);
 	}
 	spin_lock_wr(&objcachelist_spin);
-	SLIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
+	LIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
 	spin_unlock_wr(&objcachelist_spin);
 
 	return (oc);
@@ -791,6 +791,10 @@ objcache_destroy(struct objcache *oc)
 	int clusterid, cpuid;
 	struct magazinelist tmplist;
 
+	spin_lock_wr(&objcachelist_spin);
+	LIST_REMOVE(oc, oc_next);
+	spin_unlock_wr(&objcachelist_spin);
+
 	SLIST_INIT(&tmplist);
 	for (clusterid = 0; clusterid < MAXCLUSTERS; clusterid++) {
 		depot = &oc->depot[clusterid];
@@ -884,7 +888,7 @@ objcache_timer(void *dummy)
 	SLIST_INIT(&tmplist);
 
 	spin_lock_wr(&objcachelist_spin);
-	SLIST_FOREACH(oc, &allobjcaches, oc_next) {
+	LIST_FOREACH(oc, &allobjcaches, oc_next) {
 		depot = &oc->depot[myclusterid];
 		if (depot->magcapacity < MAXMAGSIZE) {
 			if (depot->contested > objcache_contention_rate) {
