@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
-.\" $DragonFly: src/share/man/man7/hier.7,v 1.20 2008/01/17 23:02:40 swildner Exp $
+.\" $DragonFly: src/share/man/man7/hier.7,v 1.21 2008/01/27 06:24:57 swildner Exp $
 .\"
 .Dd January 17, 2008
 .Dt HIER 7
@@ -325,10 +325,6 @@ holds the download firmware images
 system daemons & system utilities (executed by other programs)
 .Pp
 .Bl -tag -width ".Pa binutils217/" -compact
-.It Pa lpr/
-utilities and filters for LP print system;
-see
-.Xr lpr 1
 .It Pa binutils217/
 .Pp
 .Bl -tag -width ".Pa ldscripts/" -compact
@@ -338,6 +334,10 @@ see
 .Xr ld 1
 .El
 .Pp
+.It Pa lpr/
+utilities and filters for LP print system;
+see
+.Xr lpr 1
 .It Pa sendmail/
 the sendmail binary;
 see
