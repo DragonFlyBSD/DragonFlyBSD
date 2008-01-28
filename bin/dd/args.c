@@ -14,11 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -36,7 +32,7 @@
  *
  * @(#)args.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/args.c,v 1.25.2.2 2001/01/23 14:20:03 asmodai Exp $
- * $DragonFly: src/bin/dd/args.c,v 1.5 2004/03/19 17:17:46 cpressey Exp $
+ * $DragonFly: src/bin/dd/args.c,v 1.6 2008/01/28 16:08:02 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -349,6 +345,7 @@ get_num(char *val)
 
 	switch (*expr) {
 	case 'b':
+	case 'B':
 		t = num;
 		num *= 512;
 		if (t > num)
@@ -356,6 +353,7 @@ get_num(char *val)
 		++expr;
 		break;
 	case 'k':
+	case 'K':
 		t = num;
 		num *= 1 << 10;
 		if (t > num)
@@ -363,6 +361,7 @@ get_num(char *val)
 		++expr;
 		break;
 	case 'm':
+	case 'M':
 		t = num;
 		num *= 1 << 20;
 		if (t > num)
@@ -370,6 +369,7 @@ get_num(char *val)
 		++expr;
 		break;
 	case 'g':
+	case 'G':
 		t = num;
 		num *= 1 << 30;
 		if (t > num)
