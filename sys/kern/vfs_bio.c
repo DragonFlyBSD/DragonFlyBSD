@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.96 2008/01/10 07:34:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.97 2008/01/28 07:19:06 nth Exp $
  */
 
 /*
@@ -1085,7 +1085,8 @@ brelse(struct buf *bp)
 	if (bp->b_flags & (B_DELWRI | B_LOCKED)) {
 		bp->b_flags &= ~B_RELBUF;
 	} else if (vm_page_count_severe()) {
-		buf_deallocate(bp);
+		if (LIST_FIRST(&bp->b_dep) != NULL)
+			buf_deallocate(bp);
 		if (bp->b_flags & (B_DELWRI | B_LOCKED))
 			bp->b_flags &= ~B_RELBUF;
 		else
