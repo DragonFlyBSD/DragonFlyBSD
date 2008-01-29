@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.47 2007/08/20 05:27:46 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.48 2008/01/29 19:54:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -144,6 +144,8 @@ main(int ac, char **av)
 	int n;
 	int real_vkernel_enable;
 	size_t real_vkernel_enable_size;
+	int supports_sse;
+	int supports_sse_size;
 	
 	save_ac = ac;
 	save_av = av;
@@ -289,6 +291,11 @@ main(int ac, char **av)
 	init_vkernel();
 	setrealcpu();
 	init_kqueue();
+
+	supports_sse_size = sizeof(supports_sse_size);
+	sysctlbyname("hw.instruction_sse", &supports_sse, &supports_sse_size,
+		     NULL, 0);
+	init_fpu(supports_sse);
 
 	/*
 	 * We boot from the first installed disk.

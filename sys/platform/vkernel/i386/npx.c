@@ -36,7 +36,7 @@
  * 
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.7 2007/12/12 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/npx.c,v 1.8 2008/01/29 19:54:56 dillon Exp $
  */
 
 #include "opt_debug_npx.h"
@@ -101,7 +101,9 @@ static	void	fpu_clean_state(void);
 
 int cpu_fxsr = 0;
 
-static	int	npx_attach	(device_t dev);
+static struct krate badfprate = { 1 };
+
+/*static	int	npx_attach	(device_t dev);*/
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
 
@@ -111,6 +113,11 @@ SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
 	"MMX/XMM optimized bcopy/copyin/copyout support");
 #endif
 
+static int      hw_instruction_sse;
+SYSCTL_INT(_hw, OID_AUTO, instruction_sse, CTLFLAG_RD,
+    &hw_instruction_sse, 0, "SIMD/MMX2 instructions available in CPU");
+
+#if 0
 /*
  * Attach routine - announce which it is, and wire into system
  */
@@ -119,6 +126,13 @@ npx_attach(device_t dev)
 {
 	npxinit(__INITIAL_NPXCW__);
 	return (0);
+}
+#endif
+
+void
+init_fpu(int supports_sse)
+{
+	cpu_fxsr = hw_instruction_sse = supports_sse;
 }
 
 /*
@@ -154,6 +168,7 @@ npxexit(void)
 		npxsave(curthread->td_savefpu);
 }
 
+#if 0
 /* 
  * The following mechanism is used to ensure that the FPE_... value
  * that is passed as a trapcode to the signal handler of the user
@@ -324,6 +339,7 @@ static char fpetable[128] = {
 	FPE_FLTDIV,	/* 7E - DNML | DZ | OFL | UFL | IMP | STK */
 	FPE_FLTSUB,	/* 7F - INV | DNML | DZ | OFL | UFL | IMP | STK */
 };
+#endif
 
 #if 0
 
@@ -455,11 +471,13 @@ npx_intr(void *dummy)
 int
 npxdna(struct trapframe *frame)
 {
+	thread_t td = curthread;
 	u_long *exstat;
+	int didinit = 0;
 
 	if (mdcpu->gd_npxthread != NULL) {
 		kprintf("npxdna: npxthread = %p, curthread = %p\n",
-		       mdcpu->gd_npxthread, curthread);
+		       mdcpu->gd_npxthread, td);
 		panic("npxdna");
 	}
 
@@ -471,6 +489,7 @@ npxdna(struct trapframe *frame)
 	if ((curthread->td_flags & TDF_USINGFP) == 0) {
 		curthread->td_flags |= TDF_USINGFP;
 		npxinit(__INITIAL_NPXCW__);
+		didinit = 1;
 	}
 
 	/*
@@ -485,8 +504,8 @@ npxdna(struct trapframe *frame)
 	/*
 	 * Record new context early in case frstor causes an IRQ13.
 	 */
-	mdcpu->gd_npxthread = curthread;
-	exstat = GET_FPU_EXSW_PTR(curthread);
+	mdcpu->gd_npxthread = td;
+	exstat = GET_FPU_EXSW_PTR(td);
 	*exstat = 0;
 	/*
 	 * The following frstor may cause an IRQ13 when the state being
@@ -500,6 +519,13 @@ npxdna(struct trapframe *frame)
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
+	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) && cpu_fxsr) {
+		krateprintf(&badfprate,
+			    "FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
+			    td->td_savefpu->sv_xmm.sv_env.en_mxcsr, didinit);
+		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+		lwpsignal(curproc, curthread->td_lwp, SIGFPE);
+	}
 	fpurstor(curthread->td_savefpu);
 	crit_exit();
 
@@ -572,8 +598,14 @@ npxpush(mcontext_t *mctx)
 		}
 		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(mctx->mc_fpregs));
 		td->td_flags &= ~TDF_USINGFP;
+		mctx->mc_fpformat =
+#ifndef CPU_DISABLE_SSE
+			(cpu_fxsr) ? _MC_FPFMT_XMM :
+#endif
+			_MC_FPFMT_387;
 	} else {
 		mctx->mc_ownedfp = _MC_FPOWNED_NONE;
+		mctx->mc_fpformat = _MC_FPFMT_NODEV;
 	}
 }
 
@@ -617,8 +649,16 @@ npxpop(mcontext_t *mctx)
 		if (td == mdcpu->gd_npxthread)
 			npxsave(td->td_savefpu);
 		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
-		if (td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF)
+		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) &&
+		    cpu_fxsr) {
+			krateprintf(&badfprate,
+				    "pid %d (%s) signal return from user: "
+				    "illegal FP MXCSR %08x\n",
+				    td->td_proc->p_pid,
+				    td->td_proc->p_comm,
+				    td->td_savefpu->sv_xmm.sv_env.en_mxcsr);
 			td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+		}
 		td->td_flags |= TDF_USINGFP;
 		break;
 	}

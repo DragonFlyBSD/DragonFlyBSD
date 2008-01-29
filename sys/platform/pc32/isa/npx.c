@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.45 2007/12/16 18:46:01 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.46 2008/01/29 19:55:00 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -904,7 +904,7 @@ npxdna(void)
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
-	if (td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) {
+	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) && cpu_fxsr) {
 		krateprintf(&badfprate,
 			    "FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
 			    td->td_savefpu->sv_xmm.sv_env.en_mxcsr, didinit);
@@ -1074,7 +1074,8 @@ npxpop(mcontext_t *mctx)
 		if (td == mdcpu->gd_npxthread)
 			npxsave(td->td_savefpu);
 		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
-		if (td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) {
+		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) &&
+		    cpu_fxsr) {
 			krateprintf(&badfprate,
 				    "pid %d (%s) signal return from user: "
 				    "illegal FP MXCSR %08x\n",

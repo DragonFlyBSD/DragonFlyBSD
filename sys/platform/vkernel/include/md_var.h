@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.22 2007/12/12 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/md_var.h,v 1.23 2008/01/29 19:54:58 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -95,6 +95,7 @@ void go_user (struct intrframe *frame);
 
 void init_exceptions(void);
 void init_kqueue(void);
+void init_fpu(int supports_sse);
 void kern_trap(struct trapframe *);
 void user_trap(struct trapframe *);
 void syscall2 (struct trapframe *);
