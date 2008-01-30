@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.12 2007/06/19 19:28:18 dillon Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.13 2008/01/30 11:46:33 cat Exp $
  */
 
 #include <ctype.h>
@@ -90,12 +90,14 @@ int nvndisks;
 int all = 0;
 int verbose = 0;
 int global = 0;
+int listopt = 0;
 u_long setopt = 0;
 u_long resetopt = 0;
 char *configfile;
 
 int config(struct vndisk *);
 void getoptions(struct vndisk *, char *);
+int getinfo(const char *vname);
 char *rawdevice(char *);
 void readconfig(int);
 static void usage(void);
@@ -113,7 +115,7 @@ main(int argc, char *argv[])
 	char *s;
 
 	configfile = _PATH_VNTAB;
-	while ((i = getopt(argc, argv, "acdef:gr:s:S:TZL:uv")) != -1)
+	while ((i = getopt(argc, argv, "acdef:glr:s:S:TZL:uv")) != -1)
 		switch (i) {
 
 		/* all -- use config file */
@@ -156,6 +158,10 @@ main(int argc, char *argv[])
 					errx(1, "invalid options '%s'", s);
 			}
 			flags |= VN_RESET;
+			break;
+
+		case 'l':
+			listopt = 1;
 			break;
 
 		/* set options */
@@ -204,6 +210,16 @@ main(int argc, char *argv[])
 		if (kldload("vn") < 0 || modfind("vn") < 0)
 			warnx( "cannot find or load \"vn\" kernel module");
 
+	if (listopt) {
+		if(argc > optind)
+			while(argc > optind) 
+				rv += getinfo( argv[optind++]);
+		else {
+			rv = getinfo( NULL );
+		}
+		exit(rv);
+	}
+
 	if (flags == 0)
 		flags = VN_CONFIG;
 	if (all) {
@@ -238,6 +254,95 @@ what_opt(char *str, u_long *p)
 	if (!strcmp(str,"all")) { *p |= ~0; return 0; }
 	if (!strcmp(str,"none")) { *p |= 0; return 0; }
 	return 1;
+}
+
+/*
+ *
+ * GETINFO
+ *
+ *	Print vnode disk information to stdout for the device at
+ *	path 'vname', or all existing 'vn' devices if none is given. 
+ *	Any 'vn' devices must exist under /dev in order to be queried.
+ *
+ *	Todo: correctly use vm_secsize for swap-backed vn's ..
+ */
+
+int
+getinfo( const char *vname )
+{
+	int i, vd, printlim = 0;
+	char vnpath[PATH_MAX], *tmp;
+
+	struct vn_user vnu;
+	struct stat sb;
+
+	if (vname == NULL) {
+		i = 0;
+		printlim = 1024;
+	}
+	else {
+		tmp = (char *) vname;
+		while (*tmp != NULL) {
+			if(isdigit(*tmp)){
+				i = atoi(tmp);
+				printlim = i + 1;
+				break;
+			}
+			tmp++;
+		}
+		if (tmp == NULL) {
+			printf("unknown vn device: %s", vname);
+			return 1;
+		}
+	}
+
+	snprintf(vnpath, sizeof(vnpath), "/dev/vn%d", i);
+
+	vd = open((char *)vnpath, O_RDONLY);
+	if (vd < 0) {
+		err(1, "open: %s", vnpath);
+		return 1;
+	}
+
+	for (i; i<printlim; i++) {
+
+		bzero((void *) &vnpath, sizeof(vnpath));
+		bzero((void *) &sb, sizeof(struct stat));
+		bzero((void *) &vnu, sizeof(struct vn_user));
+
+		vnu.vnu_unit = i;
+
+		snprintf(vnpath, sizeof(vnpath), "/dev/vn%d", vnu.vnu_unit);
+
+		if(stat(vnpath, &sb) < 0)
+			break;
+		else {
+        		if (ioctl(vd, VNIOCGET, &vnu) == -1) {
+				if (errno != ENXIO) {
+					err(1, "ioctl: %s", vname);
+                        		close(vd);
+                        		return 1;
+				}
+        		}
+
+			fprintf(stdout, "vn%d: ", vnu.vnu_unit);
+
+			if (vnu.vnu_file[0] == 0)
+				fprintf(stdout, "not in use\n");
+			else if ((strcmp(vnu.vnu_file, _VN_USER_SWAP)) == 0)
+				fprintf(stdout,
+					"consuming %d VM pages\n",
+					vnu.vnu_size);
+			else
+				fprintf(stdout, 
+					"covering %s on %s, inode %d\n", 
+					vnu.vnu_file,
+					devname(vnu.vnu_dev, S_IFBLK), 
+					vnu.vnu_ino);
+		}
+	}
+	close(vd);
+	return 0;
 }
 
 int

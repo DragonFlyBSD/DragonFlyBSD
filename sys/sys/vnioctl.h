@@ -40,11 +40,15 @@
  *	@(#)vnioctl.h	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/sys/vnioctl.h,v 1.4 1999/09/17 05:33:58 dillon Exp $
- * $DragonFly: src/sys/sys/vnioctl.h,v 1.3 2007/05/15 22:44:19 dillon Exp $
+ * $DragonFly: src/sys/sys/vnioctl.h,v 1.4 2008/01/30 11:46:33 cat Exp $
  */
 
 #ifndef _SYS_VNIOCTL_H_
 #define _SYS_VNIOCTL_H_
+
+#ifndef _SYS_PARAMH_H_
+#include <sys/param.h>		/* PATH_MAX */
+#endif
 
 /*
  * Ioctl definitions for file (vnode) disk pseudo-device.
@@ -58,6 +62,39 @@ struct vn_ioctl {
 };
 
 /*
+ * Structure used by userland to query vn devices.
+ *
+ * In file-backed configurations, vnu_file will contain the full path to
+ * the backing file, with vnu_dev and vnu_ino pointing to the appropriate
+ * filesystem entries for that file.
+ *
+ * In swap-backed configurations, vnu_file will contain the token "swap",
+ * with vnu_size and vnu_secsize indicating the portion of virtual memory
+ * in use by the vnode disk.
+ *
+ * Todo: verify vnu_file within a jail - path disclosure problem ?
+ */
+
+
+struct vn_user {
+        int     	vnu_unit;		/* vn unit */
+        char    	vnu_file[PATH_MAX];	/* vn description */
+#define _VN_USER_SWAP	"swap"			/* indicates swap-backed vn */
+	union {
+	        dev_t   	dev;		/* vn device */
+		u_int64_t	size;		/* size per vnu_secsize */
+	} data1;
+	union {
+        	ino_t   	ino;		/* vn inode */
+		int		secsize;	/* sector size */
+	} data2;
+};
+#define vnu_dev		data1.dev
+#define vnu_size	data1.size
+#define vnu_ino		data2.ino
+#define vnu_secsize	data2.secsize
+
+/*
  * Before you can use a unit, it must be configured with VNIOCSET.
  * The configuration persists across opens and closes of the device;
  * an VNIOCCLR must be used to reset a configuration.  An attempt to
@@ -69,6 +106,7 @@ struct vn_ioctl {
 #define VNIOCGCLEAR	_IOWR('F', 3, u_long )		/* reset --//-- */
 #define VNIOCUSET	_IOWR('F', 4, u_long )		/* set unit option */
 #define VNIOCUCLEAR	_IOWR('F', 5, u_long )		/* reset --//-- */
+#define VNIOCGET	_IOWR('F', 6, struct vn_user)	/* get disk info */
 
 #define VN_LABELS	0x1	/* Use disk(/slice) labels */
 #define VN_FOLLOW	0x2	/* Debug flow in vn driver */

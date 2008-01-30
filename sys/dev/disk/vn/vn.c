@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.35 2007/05/19 20:31:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.36 2008/01/30 11:46:33 cat Exp $
  */
 
 /*
@@ -140,6 +140,7 @@ static u_long	vn_options;
 
 static int	vnsetcred (struct vn_softc *vn, struct ucred *cred);
 static void	vnclear (struct vn_softc *vn);
+static int	vnget (cdev_t dev, struct vn_softc *vn , struct vn_user *vnu);
 static int	vn_modevent (module_t, int, void *);
 static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
 static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
@@ -457,6 +458,7 @@ vnioctl(struct dev_ioctl_args *ap)
 	case VNIOCDETACH:
 	case VNIOCGSET:
 	case VNIOCGCLEAR:
+	case VNIOCGET:
 	case VNIOCUSET:
 	case VNIOCUCLEAR:
 		goto vn_specific;
@@ -509,6 +511,10 @@ vnioctl(struct dev_ioctl_args *ap)
 		vnclear(vn);
 		IFOPT(vn, VN_FOLLOW)
 			kprintf("vnioctl: CLRed\n");
+		break;
+
+	case VNIOCGET:
+		error = vnget(dev, vn, (struct vn_user *) ap->a_data);
 		break;
 
 	case VNIOCGSET:
@@ -758,6 +764,82 @@ vnclear(struct vn_softc *vn)
 		vn->sc_object = NULL;
 	}
 	vn->sc_size = 0;
+}
+
+/*
+ * 	vnget:
+ *
+ *	populate a struct vn_user for the VNIOCGET ioctl.
+ *	interface conventions defined in sys/sys/vnioctl.h.
+ */
+
+static int
+vnget(cdev_t dev, struct vn_softc *vn, struct vn_user *vnu)
+{
+	int error, found = 0; 
+	char *freepath, *fullpath;
+	struct vattr vattr;
+
+	if (vnu->vnu_unit == -1) {
+		vnu->vnu_unit = dkunit(dev);
+	}
+	else if (vnu->vnu_unit < 0)
+		return (EINVAL);
+
+	SLIST_FOREACH(vn, &vn_list, sc_list) {
+
+		if(vn->sc_unit != vnu->vnu_unit)
+			continue;
+
+		found = 1;
+
+		if (vn->sc_flags & VNF_INITED && vn->sc_vp != NULL) {
+
+			/* note: u_cred checked in vnioctl above */
+			error = VOP_GETATTR(vn->sc_vp, &vattr);
+			if (error) {
+				kprintf("vnget: VOP_GETATTR for %p failed\n",
+					vn->sc_vp);
+				return (error);
+			}
+
+			error = vn_fullpath(curproc, vn->sc_vp,
+						&fullpath, &freepath);
+
+			if (error) {
+				kprintf("vnget: unable to resolve vp %p\n",
+					vn->sc_vp);
+				return(error);
+			}
+			
+			strlcpy(vnu->vnu_file, fullpath,
+				sizeof(vnu->vnu_file));
+			kfree(freepath, M_TEMP);
+			vnu->vnu_dev = vattr.va_fsid;
+			vnu->vnu_ino = vattr.va_fileid;
+
+		} 
+		else if (vn->sc_flags & VNF_INITED && vn->sc_object != NULL){
+
+			strlcpy(vnu->vnu_file, _VN_USER_SWAP,
+				sizeof(vnu->vnu_file));
+			vnu->vnu_size = vn->sc_size;
+			vnu->vnu_secsize = vn->sc_secsize;
+
+		} else {
+
+			bzero(vnu->vnu_file, sizeof(vnu->vnu_file));
+			vnu->vnu_dev = 0;
+			vnu->vnu_ino = 0;
+
+		}
+		break;
+	}
+
+	if (!found)
+		return(ENXIO);
+
+	return(0);
 }
 
 static int
