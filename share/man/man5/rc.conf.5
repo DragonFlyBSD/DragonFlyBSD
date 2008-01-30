@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.53 2008/01/26 17:20:56 matthias Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.54 2008/01/30 18:55:43 hasso Exp $
 .Dd January 26, 2008
 .Dt RC.CONF 5
 .Os
@@ -1535,6 +1535,22 @@ is set to
 these are the flags to pass to the
 .Xr sdpd 8
 daemon.
+.It Va bthcid_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+run the Bluetooth Link Key/PIN Code Manager daemon
+.Xr ( bthcid 8 )
+at system boot time.
+.It Va bthcid_flags
+.Pq Vt str
+If
+.Va bthcid_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to the
+.Xr bthcid 8
+daemon.
 .It Va nis_client_enable
 .Pq Vt bool
 If set to
@@ -2842,6 +2858,7 @@ has not completed within the specified time (in seconds).
 .Xr apm 8 ,
 .Xr atm 8 ,
 .Xr btconfig 8 ,
+.Xr bthcid 8 ,
 .Xr cron 8 ,
 .Xr dhclient 8 ,
 .Xr dhcpd 8 ,
