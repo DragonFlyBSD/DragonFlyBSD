@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.38 2008/01/30 14:10:19 hasso Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.39 2008/01/30 14:25:35 hasso Exp $
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
@@ -96,6 +96,7 @@ SUBDIR= 802_11 \
 	rdate \
 	repquota \
 	resident \
+	rfcomm_sppd \
 	rip6query \
 	rmt \
 	route6d \
