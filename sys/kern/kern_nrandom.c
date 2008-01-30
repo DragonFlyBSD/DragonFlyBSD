@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.4 2006/09/10 01:26:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.5 2008/01/30 19:28:02 dillon Exp $
  */
 /*			   --- NOTES ---
  *
@@ -358,7 +358,8 @@ L15_Discard(const LByteType numCalls)
 static void
 L15(const LByteType * const key, const size_t keyLen)
 {
-	L15_x = L15_y = L15_start_x = 0;
+	L15_x = L15_start_x = 0;
+	L15_y = L15_STATE_SIZE - 1;
 	L15_InitState();
 	L15_KSA(key, keyLen);
 	L15_Discard(L15_Byte());
@@ -429,6 +430,12 @@ rand_initialize(void)
 		L15_Vector((const LByteType *)&now.tv_nsec,
 			   sizeof(now.tv_nsec));
 	}
+
+	/*
+	 * Warm up the generator to get rid of weak initial states.
+	 */
+	for (i = 0; i < 10; ++i)
+		IBAA_Call();
 }
 
 /*
@@ -472,6 +479,7 @@ int
 add_buffer_randomness(const char *buf, int bytes)
 {
 	int error;
+	int i;
 
 	if (seedenable && securelevel <= 0) {
 		while (bytes >= sizeof(int)) {
@@ -480,6 +488,12 @@ add_buffer_randomness(const char *buf, int bytes)
 			bytes -= sizeof(int);
 		}
 		error = 0;
+
+		/*
+		 * Warm up the generator to get rid of weak initial states.
+		 */
+		for (i = 0; i < 10; ++i)
+			IBAA_Call();
 	} else {
 		error = EPERM;
 	}
