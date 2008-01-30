@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.37 2008/01/06 21:51:30 hasso Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.38 2008/01/30 14:10:19 hasso Exp $
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
@@ -20,6 +20,8 @@ SUBDIR= 802_11 \
 	authpf \
 	bootparamd \
 	btconfig \
+	bthcid \
+	btpin \
 	burncd \
 	cdcontrol \
 	chkgrp \
