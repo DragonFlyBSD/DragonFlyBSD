@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.5 2008/01/14 21:36:38 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.6 2008/01/31 21:59:06 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -15,9 +15,9 @@ CFLAGS+= -I${BASEDIR}
 CFLAGS+= -DTARGET_SYSTEM_ROOT='"/"' -DBINDIR='"/usr/bin"'
 CFLAGS+= -DMACHINE_ARCH='"${MACHINE_ARCH}"'
 
-CLEANFILES+=	nm.h observer.h observer.inc tm.h xm.h gdb_stdint.h
+CLEANFILES+=	observer.h observer.inc gdb_stdint.h
 
-SRCS+=	nm.h observer.h tm.h xm.h gdb_stdint.h
+SRCS+=	observer.h gdb_stdint.h
 
 # The order of these sources is important,
 # because init.c below needs to obey a certain ordering
