@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile.amd64,v 1.4 2008/01/14 21:36:38 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile.amd64,v 1.5 2008/01/31 14:30:13 corecode Exp $
 
 # TDEPFILES (part 2, cleaned)
 SRCS+=	amd64-tdep.o amd64fbsd-tdep.o \
@@ -6,12 +6,3 @@ SRCS+=	amd64-tdep.o amd64fbsd-tdep.o \
 
 # NATDEPFILES (part 2)
 SRCS+=	amd64-nat.o amd64bsd-nat.o amd64fbsd-nat.o
-
-nm.h:
-	echo '#include "i386/nm-fbsd64.h"' > ${.TARGET}
-
-tm.h:
-	echo '#include "i386/tm-fbsd.h"' > ${.TARGET}
-
-xm.h:
-	echo '#include "i386/xm-i386.h"' > ${.TARGET}
