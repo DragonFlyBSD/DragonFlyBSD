@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/trgt_amd64.c,v 1.6 2005/09/28 07:40:27 peter Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_amd64.c,v 1.1 2006/07/27 00:39:53 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_amd64.c,v 1.2 2008/01/31 14:30:52 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -47,31 +47,33 @@
 #include "kgdb.h"
 
 void
-kgdb_trgt_fetch_registers(int regno __unused)
+kgdb_trgt_fetch_registers(struct regcache *regcache, int regno)
 {
 	struct kthr *kt;
 	struct pcb pcb;
 
 	kt = kgdb_thr_lookup_tid(ptid_get_tid(inferior_ptid));
-	if (kt == NULL)
+	if (kt == NULL) {
+		regcache_raw_supply(regcache, regno, NULL);
 		return;
+	}
 	if (kvm_read(kvm, kt->pcb, &pcb, sizeof(pcb)) != sizeof(pcb)) {
 		warnx("kvm_read: %s", kvm_geterr(kvm));
 		memset(&pcb, 0, sizeof(pcb));
 	}
 
-	supply_register(AMD64_RBX_REGNUM, (char *)&pcb.pcb_rbx);
-	supply_register(AMD64_RBP_REGNUM, (char *)&pcb.pcb_rbp);
-	supply_register(AMD64_RSP_REGNUM, (char *)&pcb.pcb_rsp);
-	supply_register(AMD64_R8_REGNUM + 4, (char *)&pcb.pcb_r12);
-	supply_register(AMD64_R8_REGNUM + 5, (char *)&pcb.pcb_r13);
-	supply_register(AMD64_R8_REGNUM + 6, (char *)&pcb.pcb_r14);
-	supply_register(AMD64_R15_REGNUM, (char *)&pcb.pcb_r15);
-	supply_register(AMD64_RIP_REGNUM, (char *)&pcb.pcb_rip);
+	regcache_raw_supply(regcache, AMD64_RBX_REGNUM, (char *)&pcb.pcb_rbx);
+	regcache_raw_supply(regcache, AMD64_RBP_REGNUM, (char *)&pcb.pcb_rbp);
+	regcache_raw_supply(regcache, AMD64_RSP_REGNUM, (char *)&pcb.pcb_rsp);
+	regcache_raw_supply(regcache, AMD64_R8_REGNUM + 4, (char *)&pcb.pcb_r12);
+	regcache_raw_supply(regcache, AMD64_R8_REGNUM + 5, (char *)&pcb.pcb_r13);
+	regcache_raw_supply(regcache, AMD64_R8_REGNUM + 6, (char *)&pcb.pcb_r14);
+	regcache_raw_supply(regcache, AMD64_R15_REGNUM, (char *)&pcb.pcb_r15);
+	regcache_raw_supply(regcache, AMD64_RIP_REGNUM, (char *)&pcb.pcb_rip);
 }
 
 void
-kgdb_trgt_store_registers(int regno __unused)
+kgdb_trgt_store_registers(struct regcache *regcache, int regno __unused)
 {
 	fprintf_unfiltered(gdb_stderr, "XXX: %s\n", __func__);
 }
@@ -114,10 +116,10 @@ kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 	if (cache == NULL) {
 		cache = FRAME_OBSTACK_ZALLOC(struct kgdb_frame_cache);
 		*this_cache = cache;
-		cache->pc = frame_func_unwind(next_frame);
-		frame_unwind_register(next_frame, SP_REGNUM, buf);
+		cache->pc = get_frame_address_in_block(next_frame);
+		frame_unwind_register(next_frame, AMD64_RSP_REGNUM, buf);
 		cache->sp = extract_unsigned_integer(buf,
-		    register_size(current_gdbarch, SP_REGNUM));
+		    register_size(current_gdbarch, AMD64_RSP_REGNUM));
 	}
 	return (cache);
 }
@@ -166,7 +168,7 @@ kgdb_trgt_trapframe_prev_register(struct frame_info *next_frame,
 }
 
 const struct frame_unwind kgdb_trgt_trapframe_unwind = {
-        UNKNOWN_FRAME,
+        NORMAL_FRAME,
         &kgdb_trgt_trapframe_this_id,
         &kgdb_trgt_trapframe_prev_register
 };
