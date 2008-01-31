@@ -208,7 +208,6 @@ bfd/elf32-xc16x.c
 bfd/elf32-xstormy16.c
 bfd/elf32-xtensa.c
 bfd/elf64-alpha.c
-bfd/elf64-gen.c
 bfd/elf64-hppa.c
 bfd/elf64-hppa.h
 bfd/elf64-mips.c
