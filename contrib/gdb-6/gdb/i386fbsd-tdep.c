@@ -220,55 +220,44 @@ i386fbsd4_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   tdep->sc_num_regs = ARRAY_SIZE (i386fbsd4_sc_reg_offset);
 }
 
-/*
- * Okay, I know this is blunt and shouldn't be in tdep,
- * but in the long run we'll save quite some hassle with this.
- */
-
-#include <machine/reg.h>
 static int i386dragonfly_r_reg_offset[] =
 {
-#define REGO(r) (offsetof(struct reg, r_ ## r))
-  REGO(eax),
-  REGO(ecx),
-  REGO(edx),
-  REGO(ebx),
-  REGO(esp),
-  REGO(ebp),
-  REGO(esi),
-  REGO(edi),
-  REGO(eip),
-  REGO(eflags),
-  REGO(cs),
-  REGO(ss),
-  REGO(ds),
-  REGO(es),
-  REGO(fs),
-  REGO(gs)
-#undef REGO
+  44, /* %eax */
+  40, /* %ecx */
+  36, /* %edx */
+  32, /* %ebx */
+  72, /* %esp */
+  24, /* %ebp */
+  20, /* %esi */
+  16, /* %edi */
+  60, /* %eip */
+  68, /* %eflags */
+  64, /* %cs */
+  76, /* %ss */
+  12, /* %ds */
+  8, /* %es */
+  4, /* %fs */
+  0  /* %gs */
 };
 
-#include <machine/signal.h>
 int i386dragonfly_sc_reg_offset[] =
 {
-#define SCRO(r) (offsetof(struct sigcontext, sc_ ## r))
-  SCRO(eax),
-  SCRO(ecx),
-  SCRO(edx),
-  SCRO(ebx),
-  SCRO(esp),
-  SCRO(ebp),
-  SCRO(esi),
-  SCRO(edi),
-  SCRO(eip),
-  SCRO(eflags),
-  SCRO(cs),
-  SCRO(ss),
-  SCRO(ds),
-  SCRO(es),
-  SCRO(fs),
-  SCRO(gs)
-#undef SCRO
+  64, /* %eax */
+  60, /* %ecx */
+  56, /* %edx */
+  52, /* %ebx */
+  92, /* %esp */
+  44, /* %ebp */
+  40, /* %esi */
+  36, /* %edi */
+  80, /* %eip */
+  88, /* %eflags */
+  84, /* %cs */
+  96, /* %ss */
+  32, /* %ds */
+  28, /* %es */
+  24, /* %fs */
+  20  /* %gs */
 };
 
 static void
@@ -280,7 +269,7 @@ i386dragonfly_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 
   tdep->gregset_reg_offset = i386dragonfly_r_reg_offset;
   tdep->gregset_num_regs = ARRAY_SIZE (i386dragonfly_r_reg_offset);
-  tdep->sizeof_gregset = sizeof(struct reg);
+  tdep->sizeof_gregset = 80;
 
   tdep->sc_reg_offset = i386dragonfly_sc_reg_offset;
   tdep->sc_num_regs = ARRAY_SIZE (i386dragonfly_sc_reg_offset);
