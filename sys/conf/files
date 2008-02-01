@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.200 2008/01/21 02:27:37 pavalos Exp $
+# $DragonFly: src/sys/conf/files,v 1.201 2008/02/01 13:18:49 sephe Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -225,7 +225,6 @@ bus/firewire/fwohci_pci.c	optional firewire pci
 dev/netif/fwe/if_fwe.c		optional fwe
 dev/disk/sbp/sbp.c		optional sbp
 dev/netif/fxp/if_fxp.c		optional fxp
-dev/netif/gx/if_gx.c		optional gx
 dev/netif/msk/if_msk.c		optional msk
 dev/netif/nfe/if_nfe.c		optional nfe
 dev/atm/hea/eni.c		optional hea
@@ -336,7 +335,6 @@ dev/misc/ppi/ppi.c		optional ppi
 dev/misc/pps/pps.c		optional pps
 dev/disk/vpo/vpo.c		optional vpo
 dev/disk/vpo/vpoio.c	optional vpo
-dev/netif/ray/if_ray.c        optional ray pccard
 dev/crypto/rndtest/rndtest.c	optional rndtest
 dev/serial/rp/rp.c		optional nrp
 dev/serial/rp/rp_isa.c		optional nrp isa
@@ -870,7 +868,6 @@ netgraph/mppc/ng_mppc.c			optional netgraph_mppc_compression
 netgraph/mppc/mppcc.c			optional netgraph_mppc_compression
 netgraph/mppc/mppcd.c			optional netgraph_mppc_compression
 netgraph/mppc/ng_mppc.c			optional netgraph_mppc_encryption
-crypto/rc4/rc4.c			optional awi
 crypto/rc4/rc4.c			optional netgraph_mppc_encryption
 crypto/sha1.c				optional netgraph_mppc_encryption
 netgraph/one2many/ng_one2many.c		optional netgraph_one2many
@@ -1056,11 +1053,6 @@ dev/agp/agp_i810.c		optional agp
 dev/agp/agp_ati.c		optional agp
 dev/agp/agp_if.m		optional agp
 dev/disk/amd/amd.c		optional amd
-dev/netif/awi/am79c930.c	optional awi
-dev/netif/awi/awi.c		optional awi
-dev/netif/awi/awi_wep.c		optional awi
-dev/netif/awi/awi_wicfg.c	optional awi
-dev/netif/awi/if_awi_pccard.c	optional awi pccard
 dev/video/bktr/bktr_audio.c	optional bktr pci
 dev/video/bktr/bktr_card.c	optional bktr pci
 dev/video/bktr/bktr_core.c	optional bktr pci

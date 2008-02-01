@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.146 2008/01/21 07:25:22 pavalos Exp $
+# $DragonFly: src/sys/config/LINT,v 1.147 2008/02/01 13:18:49 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1389,14 +1389,12 @@ options 	PUC_FASTINTR
 # sbsh: Granch SBNI16 SHDSL modem PCI adapters
 # sr: RISCom/N2 hdlc sync 1/2 port V.35/X.21 serial driver (requires sppp)
 # wl: Lucent Wavelan (ISA card only).
-# awi: IEEE 802.11b PRISM I cards.
 # wi: Lucent WaveLAN/IEEE 802.11 PCMCIA adapters. Note: this supports both
 #     the PCMCIA and ISA cards: the ISA card is really a PCMCIA to ISA
 #     bridge with a PCMCIA adapter plugged into it.
 # an: Aironet 4500/4800 802.11 wireless adapters. Supports the PCMCIA,
 #     PCI and ISA varieties.
 # xe: Xircom/Intel EtherExpress Pro100/16 PC Card ethernet controller.
-# ray: Raytheon Raylink 802.11 wireless NICs, OEM as Webgear Aviator 2.4GHz
 #
 device ar0 at isa? port 0x300 irq 10 iomem 0xd0000
 device cs0 at isa? port 0x300
@@ -1427,7 +1425,6 @@ device		wlan_ratectl_amrr # 802.11 AMRR TX rate control algorithm
 device		wlan_ratectl_sample # 802.11 Sample TX rate control algorithm
 options 	WLCACHE		# enables the signal-strength cache
 options 	WLDEBUG		# enables verbose debugging output
-device		awi		# AMD PCnetMobile
 device		an		# Aironet Communications 4500/4800
 device		ipw		# Intel PRO/Wireless 2100
 device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
@@ -1439,7 +1436,6 @@ device		acx		# TI ACX100/ACX111.
 				# wlan_ratectl_onoe
 device wl0 at isa? port 0x300	# T1 speed ISA/radio lan
 device		xe		# Xircom PCMCIA
-device		ray		# Raytheon Raylink/Webgear Aviator
 device		ral		# Ralink Technology 802.11 wireless NIC
 				# Requires wlan_ratectl_onoe and
 				# wlan_ratectl_sample
@@ -1754,9 +1750,6 @@ options 	AHD_REG_PRETTY_PRINT
 # The `fxp' device provides support for the Intel EtherExpress Pro/100B
 # PCI Fast Ethernet adapters.
 #
-# The `gx' device provides support for the Intel Pro/1000 Gigabit Ethernet
-# PCI adapters (82542, 82543-F, 82543-T).
-#
 # The 'lge' device provides support for PCI gigabit ethernet adapters
 # based on the Level 1 LXT1001 NetCellerator chipset. This includes the
 # D-Link DGE-500SX, SMC TigerCard 1000 (SMC9462SX), and some Addtron cards.
@@ -1975,7 +1968,6 @@ device		vx		# 3Com 3c590, 3c595 (``Vortex'')
 device		bge		# Broadcom BCM570x (``Tigon III'')
 device		em		# Intel Pro/1000 (82542,82543,82544,82540)
 device		et		# Agere ET1310 10/100/1000 Ethernet
-device		gx		# Intel Pro/1000 (82542, 82543)
 device		lge		# Level 1 LXT1001 (``Mercury'')
 device		nfe		# nVidia nForce2/3 MCP04/51/55 CK804
 device		nge		# NatSemi DP83820 and DP83821
