@@ -1,4 +1,4 @@
-$DragonFly: src/sys/dev/netif/ndis/README,v 1.1 2004/07/29 21:51:55 dillon Exp $
+$DragonFly: src/sys/dev/netif/ndis/README,v 1.2 2008/02/01 08:39:58 hasso Exp $
 			USING IF_NDIS WITH WINDOWS DEVICE DRIVERS
 
 (1) Locate the .INF and .SYS file for the windows driver.  I have no idea
@@ -44,11 +44,11 @@ $DragonFly: src/sys/dev/netif/ndis/README,v 1.1 2004/07/29 21:51:55 dillon Exp $
     ndis0: 11g rates: 6Mbps 9Mbps 12Mbps 18Mbps 24Mbps 36Mbps 48Mbps 54Mbps
 
 (5) Bring the interface up and associate the SSID.  If you aren't sure
-    what your basestation id is you can use 'wicontrol -i ndis0 -l' to
+    what your basestation id is you can use 'ifconfig -v ndis0 list scan' to
     list available ssid's.
 
     # ifconfig ndis0 up
-    # wicontrol -i ndis0 -l
+    # ifconfig -v ndis0 list scan
     # ifconfig ssid "your_basestation_id"
 
 (6) Ifconfig should show the interface up and associated.  Run dhclient

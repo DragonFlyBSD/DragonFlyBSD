@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.5 2008/01/26 14:17:27 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.6 2008/02/01 08:39:58 hasso Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -519,3 +519,6 @@ TO_REMOVE+=/usr/share/examples/worm
 TO_REMOVE+=/usr/share/examples/tcsh/csh-mode.el
 TO_REMOVE+=/usr/share/man/man5/pbm.5.gz
 TO_REMOVE+=/usr/share/man/cat5/pbm.5.gz
+TO_REMOVE+=/usr/sbin/wicontrol
+TO_REMOVE+=/usr/share/man/man8/wicontrol.8.gz
+TO_REMOVE+=/usr/share/man/cat8/wicontrol.8.gz
