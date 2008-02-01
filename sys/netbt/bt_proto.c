@@ -1,5 +1,5 @@
 /* $OpenBSD: bt_proto.c,v 1.4 2007/06/24 20:55:27 uwe Exp $ */
-/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.2 2008/02/01 14:18:58 hasso Exp $ */
 
 /*
  * Copyright (c) 2004 Alexander Yurchenko <grange@openbsd.org>
@@ -177,9 +177,59 @@ struct domain btdomain = {
 };
 
 DOMAIN_SET(bt);
-SYSCTL_NODE(_net, PF_BLUETOOTH, bt, CTLFLAG_RW, 0, "Bluetooth protocol");
-SYSCTL_NODE(_net_bt, BTPROTO_HCI, hci_unit, CTLFLAG_RW, 0,
-    "Bluetooth HCI protocol");
+SYSCTL_NODE(_net, OID_AUTO, bluetooth, CTLFLAG_RD, 0,
+    "Bluetooth Protocol Family");
+
+/* HCI sysctls */
+SYSCTL_NODE(_net_bluetooth, OID_AUTO, hci, CTLFLAG_RD, 0,
+    "Host Controller Interface");
+SYSCTL_INT(_net_bluetooth_hci, OID_AUTO, sendspace, CTLFLAG_RW, &hci_sendspace,
+    0, "Socket Send Buffer Size");
+SYSCTL_INT(_net_bluetooth_hci, OID_AUTO, recvspace, CTLFLAG_RW, &hci_recvspace,
+    0, "Socket Receive Buffer Size");
+SYSCTL_INT(_net_bluetooth_hci, OID_AUTO, acl_expiry, CTLFLAG_RW,
+    &hci_acl_expiry, 0, "ACL Connection Expiry Time");
+SYSCTL_INT(_net_bluetooth_hci, OID_AUTO, memo_expiry, CTLFLAG_RW,
+    &hci_memo_expiry, 0, "Memo Expiry Time");
+SYSCTL_INT(_net_bluetooth_hci, OID_AUTO, eventq_max, CTLFLAG_RW,
+    &hci_eventq_max, 0, "Max Event queue length");
+SYSCTL_INT(_net_bluetooth_hci, OID_AUTO, aclrxq_max, CTLFLAG_RW,
+    &hci_aclrxq_max, 0, "Max ACL rx queue length");
+SYSCTL_INT(_net_bluetooth_hci, OID_AUTO, scorxq_max, CTLFLAG_RW,
+    &hci_scorxq_max, 0, "Max SCO rx queue length");
+
+/* L2CAP sysctls */
+SYSCTL_NODE(_net_bluetooth, OID_AUTO, l2cap, CTLFLAG_RD, 0,
+    "Logical Link Control & Adaption Protocol");
+SYSCTL_INT(_net_bluetooth_l2cap, OID_AUTO, sendspace, CTLFLAG_RW,
+    &l2cap_sendspace, 0, "Socket Send Buffer Size");
+SYSCTL_INT(_net_bluetooth_l2cap, OID_AUTO, recvspace, CTLFLAG_RW,
+    &l2cap_recvspace, 0, "Socket Receive Buffer Size");
+SYSCTL_INT(_net_bluetooth_l2cap, OID_AUTO, rtx, CTLFLAG_RW,
+    &l2cap_response_timeout, 0, "Response Timeout");
+SYSCTL_INT(_net_bluetooth_l2cap, OID_AUTO, ertx, CTLFLAG_RW,
+    &l2cap_response_extended_timeout, 0, "Extended Response Timeout");
+
+/* RFCOMM sysctls */
+SYSCTL_NODE(_net_bluetooth, OID_AUTO, rfcomm, CTLFLAG_RD, 0,
+    "Serial Cable Emulation");
+SYSCTL_INT(_net_bluetooth_rfcomm, OID_AUTO, sendspace, CTLFLAG_RW,
+    &rfcomm_sendspace, 0, "Socket Send Buffer Size");
+SYSCTL_INT(_net_bluetooth_rfcomm, OID_AUTO, recvspace, CTLFLAG_RW,
+    &rfcomm_recvspace, 0, "Socket Receive Buffer Size");
+SYSCTL_INT(_net_bluetooth_rfcomm, OID_AUTO, mtu_default, CTLFLAG_RW,
+    &rfcomm_mtu_default, 0, "Default MTU");
+SYSCTL_INT(_net_bluetooth_rfcomm, OID_AUTO, ack_timeout, CTLFLAG_RW,
+    &rfcomm_ack_timeout, 0, "Acknowledgement Timer");
+SYSCTL_INT(_net_bluetooth_rfcomm, OID_AUTO, mcc_timeout, CTLFLAG_RW,
+    &rfcomm_mcc_timeout, 0, "Response Timeout for Multiplexer Control Channel");
+
+/* SCO sysctls */
+SYSCTL_NODE(_net_bluetooth, OID_AUTO, sco, CTLFLAG_RD, 0, "SCO data");
+SYSCTL_INT(_net_bluetooth_sco, OID_AUTO, sendspace, CTLFLAG_RW, &sco_sendspace,
+    0, "Socket Send Buffer Size");
+SYSCTL_INT(_net_bluetooth_sco, OID_AUTO, recvspace, CTLFLAG_RW, &sco_recvspace,
+    0, "Socket Receive Buffer Size");
 
 static void
 netisr_netbt_setup(void *dummy __unused)
