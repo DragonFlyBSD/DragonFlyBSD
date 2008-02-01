@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/master.passwd,v 1.25.2.6 2002/06/30 17:57:17 des Exp $
-# $DragonFly: src/etc/master.passwd,v 1.5 2008/01/06 21:51:30 hasso Exp $
+# $DragonFly: src/etc/master.passwd,v 1.6 2008/02/01 09:05:28 hasso Exp $
 #
 root::0:0::0:0:Charlie &:/root:/bin/csh
 toor:*:0:0::0:0:Bourne-again Superuser:/root:
@@ -17,7 +17,6 @@ mailnull:*:26:26::0:0:Sendmail Default User:/var/spool/mqueue:/sbin/nologin
 bind:*:53:53::0:0:Bind Sandbox:/:/sbin/nologin
 proxy:*:62:62::0:0:Packet Filter pseudo-user:/nonexistent:/sbin/nologin
 _pflogd:*:64:64::0:0:pflogd privsep user:/var/empty:/sbin/nologin
-_ntp:*:65:65::0:0:ntpd privsep user:/var/empty:/sbin/nologin
 uucp:*:66:66::0:0:UUCP pseudo-user:/var/spool/uucppublic:/usr/libexec/uucp/uucico
 xten:*:67:67::0:0:X-10 daemon:/usr/local/xten:/sbin/nologin
 pop:*:68:6::0:0:Post Office Owner:/nonexistent:/sbin/nologin

@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.6 2008/02/01 08:39:58 hasso Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.7 2008/02/01 09:05:28 hasso Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -522,3 +522,10 @@ TO_REMOVE+=/usr/share/man/cat5/pbm.5.gz
 TO_REMOVE+=/usr/sbin/wicontrol
 TO_REMOVE+=/usr/share/man/man8/wicontrol.8.gz
 TO_REMOVE+=/usr/share/man/cat8/wicontrol.8.gz
+TO_REMOVE+=/usr/sbin/ntpd
+TO_REMOVE+=/etc/rc.d/ntpd
+TO_REMOVE+=/usr/share/man/man8/ntpd.8.gz
+TO_REMOVE+=/usr/share/man/cat8/ntpd.8.gz
+TO_REMOVE+=/usr/share/man/man5/ntpd.conf.5.gz
+TO_REMOVE+=/usr/share/man/cat5/ntpd.conf.5.gz
+TO_REMOVE+=/usr/share/examples/etc/ntpd.conf

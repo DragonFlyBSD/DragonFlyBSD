@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.209 2008/01/15 20:54:02 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.210 2008/02/01 09:05:28 hasso Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -115,10 +115,6 @@ preupgrade:
 		pw -V ${DESTDIR}/etc useradd _pflogd -u 64 \
 		   -c "pflogd privsep user" \
 		   -d /var/empty -s /sbin/nologin
-	(pw -V ${DESTDIR}/etc usershow _ntp -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc useradd _ntp -u 65 \
-		   -c "ntpd privsep user" \
-		   -d /var/empty -s /sbin/nologin
 	(pw -V ${DESTDIR}/etc usershow _sdpd -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc useradd _sdpd -u 70 \
 		   -c "sdpd privsep user" \
@@ -127,8 +123,6 @@ preupgrade:
 		pw -V ${DESTDIR}/etc groupadd authpf -g 63
 	(pw -V ${DESTDIR}/etc groupshow _pflogd -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd _pflogd -g 64
-	(pw -V ${DESTDIR}/etc groupshow _ntp -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc groupadd _ntp -g 65
 	(pw -V ${DESTDIR}/etc groupshow _sdpd -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd _sdpd -g 70
 
