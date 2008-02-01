@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.34 2007/11/06 22:06:33 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.35 2008/02/01 21:01:45 nth Exp $
 .\"
 .Dd September 27, 2007
 .Dt VKERNEL 7
@@ -267,7 +267,10 @@ process.
 It is possible to directly gdb the virtual kernel's process.
 It is recommended that you do a
 .Ql handle SIGSEGV noprint
-to ignore page faults processed by the virtual kernel itself.
+to ignore page faults processed by the virtual kernel itself and
+.Ql handle SIGSUSR1 noprint
+to ignore signals used for simulating inter-processor interrupts (SMP build
+only).
 .Sh EXAMPLES
 A couple of steps are necessary in order to prepare the system to build and
 run a virtual kernel.
