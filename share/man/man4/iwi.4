@@ -28,7 +28,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/iwi.4,v 1.10 2007/09/16 19:06:26 swildner Exp $
+.\" $DragonFly: src/share/man/man4/iwi.4,v 1.11 2008/02/01 08:18:36 hasso Exp $
 .\"
 .Dd March 1, 2005
 .Os
@@ -99,16 +99,6 @@ ifconfig iwi0 down -debug up
 It's worth noting that in BSS mode if you haven't specified an
 ssid, the driver will auto-assign an ssid, joining the best
 network available.
-.Pp
-In IBSS mode you must specify an ssid for the driver to join a network.
-If no network exists with the ssid name you have chosen the driver will
-auto-create a standalone IBSS network that others may later join. This
-behaviour is on by default, and may be controlled by -
-.Bd -literal -offset indent
-wicontrol iwi0 -c 0     Disables network auto-create behaviour.
-.Ed
-.Bd -literal -offset indent
-wicontrol iwi0 -c 1     Enables network auto-create behaviour.
 .Ed
 .Sh DIAGNOSTICS
 .Bl -diag
@@ -125,7 +115,6 @@ The driver will reset the hardware. This should not happen.
 .Xr wlan 4 ,
 .Xr ifconfig 8 ,
 .Xr iwicontrol 8 ,
-.Xr wicontrol 8 ,
 .Xr wpa_supplicant 8
 .Sh AUTHORS
 .An -nosplit
