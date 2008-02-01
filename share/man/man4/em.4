@@ -30,9 +30,9 @@
 .\" * Other names and brands may be claimed as the property of others.
 .\"
 .\" $FreeBSD: src/share/man/man4/em.4,v 1.2.2.6 2003/02/01 01:21:31 pdeuskar Exp $
-.\" $DragonFly: src/share/man/man4/em.4,v 1.9 2007/03/08 11:20:56 swildner Exp $
+.\" $DragonFly: src/share/man/man4/em.4,v 1.10 2008/02/01 13:28:32 matthias Exp $
 .\"
-.Dd March 4, 2007
+.Dd February 01, 2008
 .Dt EM 4
 .Os
 .Sh NAME
@@ -67,12 +67,69 @@ Some Intel gigabit adapters that support Jumbo Frames have a frame size
 limit of 9238 bytes, with a corresponding MTU size limit of 9216 bytes.
 The adapters with this limitation are based on the Intel(R)
 82571EB, 82572EI, 82573L, 82563EB and 82564EI LAN controllers.
+These correspond to the following product names:
 .Pp
-The following Intel gigabit LAN devices do not support Jumbo Frames:
+.Bl -bullet -compact
+.It
+Intel(R) PRO/1000 PT Server Adapter
+.It
+Intel(R) PRO/1000 PT Desktop Adapter
+.It
+Intel(R) PRO/1000 PT Network Connection
+.It
+Intel(R) PRO/1000 PT Dual Port Server Adapter
+.It
+Intel(R) PRO/1000 PT Dual Port Network Connection
+.It
+Intel(R) PRO/1000 PT Quad Port Server Adapter
+.It
+Intel(R) PRO/1000 PF Quad Port Server Adapter
+.It
+Intel(R) PRO/1000 PF Server Adapter
+.It
+Intel(R) PRO/1000 PF Network Connection
+.It
+Intel(R) PRO/1000 PF Dual Port Server Adapter
+.It
+Intel(R) PRO/1000 PB Server Connection
+.It
+Intel(R) PRO/1000 PL Network Connection
+.It
+Intel(R) PRO/1000 EB Network Connection with I/O Acceleration
+.It
+Intel(R) PRO/1000 EB Backplane Connection with I/O Acceleration
+.It
+Intel(R) 82566DM-2 Gigabit Network Connection
+.El
 .Pp
+Adapters based on the Intel(R) 82542 and 82573V/E controller do not
+support Jumbo Frames.
+These correspond to the following product names:
+.Pp
+.Bl -bullet -compact
+.It
+Intel(R) PRO/1000 Gigabit Server Adapter
+.It
 Intel(R) PRO/1000 PM Network Connection
+.El
 .Pp
-Adapters based on the Intel(R) 82542 and 82573 LAN controllers.
+Using Jumbo Frames at 10 or 100 Mbps may result in poor performance or
+loss of link.
+.Pp
+The following adapters do not support Jumbo Frames:
+.Pp
+.Bl -bullet -compact
+.It
+Intel(R) 82562V 10/100 Network Connection
+.It
+Intel(R) 82566DM Gigabit Network Connection
+.It
+Intel(R) 82566DC Gigabit Network Connection
+.It
+Intel(R) 82566MM Gigabit Network Connection
+.It
+Intel(R) 82566MC Gigabit Network Connection
+.El
 .Pp
 This driver version supports VLANs.
 For information on enabling VLANs,
