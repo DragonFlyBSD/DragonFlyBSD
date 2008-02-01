@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.41 2008/02/01 09:05:28 hasso Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.42 2008/02/01 13:52:41 sephe Exp $
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
@@ -91,7 +91,6 @@ SUBDIR= 802_11 \
 	quot \
 	quotaon \
 	rarpd \
-	raycontrol \
 	rdate \
 	repquota \
 	resident \
