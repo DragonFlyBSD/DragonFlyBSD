@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.var.dist,v 1.43.2.9 2002/06/30 17:57:17 des Exp $
-# $DragonFly: src/etc/mtree/BSD.var.dist,v 1.7 2008/01/12 15:47:43 swildner Exp $
+# $DragonFly: src/etc/mtree/BSD.var.dist,v 1.8 2008/02/02 18:24:00 matthias Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -69,6 +69,8 @@
     rwho            gname=daemon mode=0775
     ..
     spool
+        dma             uname=root gname=mail mode=0770
+        ..
         lock            uname=uucp gname=dialer mode=0775
         ..
 /set gname=daemon
