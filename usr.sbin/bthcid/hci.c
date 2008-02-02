@@ -1,5 +1,5 @@
 /* $NetBSD: hci.c,v 1.2 2007/01/25 20:33:41 plunky Exp $ */
-/* $DragonFly: src/usr.sbin/bthcid/hci.c,v 1.1 2008/01/30 14:10:19 hasso Exp $ */
+/* $DragonFly: src/usr.sbin/bthcid/hci.c,v 1.2 2008/02/02 09:21:24 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -184,10 +184,10 @@ static int
 process_pin_code_request_event(int sock, struct sockaddr_bt *addr,
 		bdaddr_t *bdaddr)
 {
-#warning TODO: Add search pin in config file	
+	/* TODO: Add search pin in config file */
 
 	uint8_t	*pin;
-	char 	*pin2;
+	uint8_t	*pin2;
 
 	syslog(LOG_DEBUG, "Got PIN_Code_Request event from %s, "
 			  "remote bdaddr %s",
