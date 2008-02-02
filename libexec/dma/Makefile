@@ -1,7 +1,8 @@
-# $DragonFly: src/libexec/dma/Makefile,v 1.1 2008/02/02 18:20:51 matthias Exp $
+# $DragonFly: src/libexec/dma/Makefile,v 1.2 2008/02/02 23:57:35 swildner Exp $
 #
 
 CFLAGS+= -DHAVE_CRYPTO -DHAVE_INET6
+CFLAGS+= -I${.CURDIR}
 
 DPADD=  ${LIBSSL} ${LIBCRYPTO}
 LDADD=  -lssl -lcrypto
