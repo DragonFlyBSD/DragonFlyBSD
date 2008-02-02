@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
-.\" $DragonFly: src/share/man/man7/hier.7,v 1.21 2008/01/27 06:24:57 swildner Exp $
+.\" $DragonFly: src/share/man/man7/hier.7,v 1.22 2008/02/02 18:25:26 matthias Exp $
 .\"
-.Dd January 17, 2008
+.Dd February 02, 2008
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -77,6 +77,9 @@ bluetooth configuration files
 default system configuration files;
 see
 .Xr rc 8
+.It Pa dma/
+.Xr dma 8
+configuration files
 .It Pa firmware/
 Firmware image files;
 see
@@ -690,6 +693,10 @@ misc. printer and mail system spooling directories
 undelivered submission mail queue;
 see
 .Xr sendmail 8
+.It Pa dma/
+undelivered mail queue;
+see
+.Xr dma 8
 .It Pa ftp/
 commonly
 .Pa ~ftp ;
