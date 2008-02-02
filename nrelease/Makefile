@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.73 2007/10/19 18:02:22 tgen Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.74 2008/02/02 19:23:24 swildner Exp $
 #
 
 #########################################################################
@@ -125,7 +125,7 @@ check:
 .endfor
 .for PKG in ${PKGSRC_PACKAGES}
 	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}/var/db/pkg -n ${PKG} > /dev/null 2>&1 || \
-		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make [installer_]fetch"; exit 1)
+		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make [installer] fetch"; exit 1)
 .endfor
 .if !exists(${PKGBIN_MKISOFS})
 	@echo "mkisofs is not installed.  It is part of the cdrecord package."
@@ -135,12 +135,12 @@ check:
 .endif
 .if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
 	@echo "The pkgsrc bootstrap kit is not installed.  You can install it with:"
-	@echo "    make [installer_]fetch"
+	@echo "    make [installer] fetch"
 	@exit 1
 .endif
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
-	@echo "    make [installer_]fetch"
+	@echo "    make [installer] fetch"
 	@exit 1
 .endif
 
