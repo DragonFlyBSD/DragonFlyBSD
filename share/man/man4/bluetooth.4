@@ -1,5 +1,5 @@
 .\" $NetBSD: bluetooth.4,v 1.9 2007/11/28 20:16:12 plunky Exp $
-.\" $DragonFly: src/share/man/man4/bluetooth.4,v 1.1 2008/02/01 14:22:03 hasso Exp $
+.\" $DragonFly: src/share/man/man4/bluetooth.4,v 1.2 2008/02/02 12:54:49 swildner Exp $
 .\"
 .\" Copyright (c) 2006 Itronix Inc.
 .\" All rights reserved.
@@ -162,7 +162,7 @@ Request secured link
 Link mode settings will be applied to the baseband link during L2CAP
 connection establishment.
 If the L2CAP connection is already established,
-.Dv EINPROGRESS
+.Er EINPROGRESS
 may be returned, and it is not possible to guarantee that data already queued
 .Pq from either end
 will not be delivered.
@@ -226,7 +226,7 @@ Request secured link
 Link mode settings will be applied to the baseband link during RFCOMM
 connection establishment.
 If the RFCOMM connection is already established,
-.Dv EINPROGRESS
+.Er EINPROGRESS
 may be returned, and it is not possible to guarantee that data already queued
 .Pq from either end
 will not be delivered.
