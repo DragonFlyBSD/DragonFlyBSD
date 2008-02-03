@@ -1,5 +1,5 @@
 /* $OpenBSD: ubt.c,v 1.9 2007/10/11 18:33:14 deraadt Exp $ */
-/* $DragonFly: src/sys/dev/usbmisc/ubt/ubt.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/ubt/ubt.c,v 1.2 2008/02/03 06:27:48 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -77,6 +77,7 @@
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/sysctl.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -216,6 +217,9 @@ struct ubt_softc {
 
 	/* Successfully attached */
 	int			 sc_ok;
+
+	struct sysctl_ctx_list	 sysctl_ctx;
+	struct sysctl_oid	*sysctl_tree;
 };
 
 /*
@@ -276,6 +280,7 @@ MODULE_DEPEND(ubt, bthub, 1, 1, 1);
 MODULE_DEPEND(ubt, usb, 1, 1, 1);
 
 static int ubt_set_isoc_config(struct ubt_softc *);
+static int ubt_sysctl_config(SYSCTL_HANDLER_ARGS);
 static void ubt_abortdealloc(struct ubt_softc *);
 
 /*
@@ -458,6 +463,32 @@ ubt_attach(device_t self)
 			   sc->sc_dev);
 	sc->sc_ok = 1;
 
+	sysctl_ctx_init(&sc->sysctl_ctx);
+	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
+					  SYSCTL_STATIC_CHILDREN(_hw),
+					  OID_AUTO,
+					  device_get_nameunit(sc->sc_dev),
+					  CTLFLAG_RD, 0, "");
+
+	if (sc->sysctl_tree == NULL) {
+		/* Failure isn't fatal */
+		device_printf(sc->sc_dev, "Unable to create sysctl tree\n");
+		return 0;
+	}
+
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+			OID_AUTO, "config", CTLTYPE_INT|CTLFLAG_RW, (void *)sc,
+			0, ubt_sysctl_config, "I", "Configuration number");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+		       OID_AUTO, "alt_config", CTLFLAG_RD, &sc->sc_alt_config,
+		       0, "Number of alternate configurations");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+		       OID_AUTO, "sco_rxsize", CTLFLAG_RD, &sc->sc_scord_size,
+		       0, "Max SCO receive size");
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+		       OID_AUTO, "sco_wrsize", CTLFLAG_RD, &sc->sc_scowr_size,
+		       0, "Max SCO transmit size");
+
 	return 0;
 }
 
@@ -492,6 +523,11 @@ ubt_detach(device_t self)
 	
 	if (sc->sc_refcnt-- > 0)
 		usb_detach_wait(sc->sc_dev);
+
+	if (sc->sysctl_tree != NULL) {
+		sc->sysctl_tree = NULL;
+		sysctl_ctx_free(&sc->sysctl_ctx);
+	}
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
 			   sc->sc_dev);
@@ -601,6 +637,28 @@ ubt_set_isoc_config(struct ubt_softc *sc)
 	sc->sc_scowr_addr = wr_addr;
 
 	return 0;
+}
+
+static int
+ubt_sysctl_config(SYSCTL_HANDLER_ARGS)
+{
+	struct ubt_softc *sc = (struct ubt_softc *)arg1;
+	int t, error;
+
+	t = sc->sc_config;
+	error = sysctl_handle_int(oidp, &t, sizeof(t), req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	if (t < 0 || t >= sc->sc_alt_config)
+		return EINVAL;
+
+	/* This may not change when the unit is enabled */
+	if (sc->sc_unit.hci_flags & BTF_RUNNING)
+		return EBUSY;
+
+	sc->sc_config = t;
+	return ubt_set_isoc_config(sc);
 }
 
 void
