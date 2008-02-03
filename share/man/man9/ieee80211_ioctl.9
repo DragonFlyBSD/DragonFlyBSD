@@ -25,7 +25,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man9/ieee80211_ioctl.9,v 1.6 2007/04/09 21:20:37 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ieee80211_ioctl.9,v 1.7 2008/02/03 02:14:48 swildner Exp $
 .\" $Id: ieee80211_ioctl.9,v 1.2 2004/07/07 12:59:39 ru Exp $
 .\"
 .Dd June 28, 2006
@@ -67,9 +67,7 @@ and
 .Fn ieee80211_cfgset
 functions implement a legacy interface for getting and setting 802.11
 interface attributes respectively.
-It is used by the
-.Xr wicontrol 8
-utility but should not be used by any new drivers.
+They should not be used by any new drivers.
 .Pp
 .\"
 The
@@ -105,7 +103,6 @@ a driver will typically reinitialize the hardware by calling
 .\"
 .Sh SEE ALSO
 .Xr ifconfig 8 ,
-.Xr wicontrol 8 ,
 .Xr ieee80211 9 ,
 .Xr ifnet 9
 .Sh HISTORY
