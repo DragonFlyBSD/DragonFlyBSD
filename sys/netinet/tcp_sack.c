@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.6 2007/04/22 01:13:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.7 2008/02/03 21:40:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -176,7 +176,7 @@ tcp_sack_ack_blocks(struct scoreboard *scb, tcp_seq th_ack)
 	sb = TAILQ_FIRST(&scb->sackblocks);
 	while (sb && SEQ_LEQ(sb->sblk_end, th_ack)) {
 		nb = TAILQ_NEXT(sb, sblk_list);
-		if (sb == scb->lastfound)
+		if (scb->lastfound == sb)
 			scb->lastfound = NULL;
 		TAILQ_REMOVE(&scb->sackblocks, sb, sblk_list);
 		free_sackblock(sb);
@@ -334,6 +334,8 @@ insert_block(struct scoreboard *scb, struct sackblock *newblock)
 		struct sackblock *nextblock;
 
 		nextblock = TAILQ_NEXT(sb, sblk_list);
+		if (scb->lastfound == sb)
+			scb->lastfound = NULL;
 		/* Remove completely overlapped block */
 		TAILQ_REMOVE(&scb->sackblocks, sb, sblk_list);
 		free_sackblock(sb);
@@ -346,6 +348,8 @@ insert_block(struct scoreboard *scb, struct sackblock *newblock)
 	    SEQ_GEQ(workingblock->sblk_end, sb->sblk_start)) {
 		/* Extend new block to cover partially overlapped old block. */
 		workingblock->sblk_end = sb->sblk_end;
+		if (scb->lastfound == sb)
+			scb->lastfound = NULL;
 		TAILQ_REMOVE(&scb->sackblocks, sb, sblk_list);
 		free_sackblock(sb);
 		--scb->nblocks;
