@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/dma.c,v 1.1 2008/02/02 18:20:51 matthias Exp $
+ * $DragonFly: src/libexec/dma/dma.c,v 1.2 2008/02/03 18:41:40 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -837,7 +837,8 @@ main(int argc, char **argv)
 	LIST_INIT(&queue.queue);
 	snprintf(tag, 254, "dma");
 
-	while ((ch = getopt(argc, argv, "A:b:Df:iL:o:qr:")) != -1) {
+	opterr = 0;
+	while ((ch = getopt(argc, argv, "A:b:Df:iL:o:O:q:r:")) != -1) {
 		switch (ch) {
 		case 'A':
 			/* -AX is being ignored, except for -A{c,m} */
@@ -869,6 +870,8 @@ main(int argc, char **argv)
 			if (optarg[0] != 'i')
 				break;
 			/* else FALLTRHOUGH */
+		case 'O':
+			break;
 		case 'i':
 			nodot = 1;
 			break;
@@ -883,6 +886,7 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
+	opterr = 1;
 
 	openlog(tag, LOG_PID | LOG_PERROR, LOG_MAIL);
 
