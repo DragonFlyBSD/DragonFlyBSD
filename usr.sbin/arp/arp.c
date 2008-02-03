@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.10 2007/10/11 21:51:20 thomas Exp $
+ * $DragonFly: src/usr.sbin/arp/arp.c,v 1.11 2008/02/03 00:41:44 swildner Exp $
  */
 
 /*
@@ -508,7 +508,6 @@ print_entry(struct sockaddr_dl *sdl,
 	const char *host;
 	struct hostent *hp;
 	char ifname[IF_NAMESIZE];
-	int seg;
 
 	if (nflag == 0)
 		hp = gethostbyaddr((caddr_t)&(addr->sin_addr),
