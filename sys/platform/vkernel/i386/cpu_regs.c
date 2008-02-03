@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.24 2007/12/12 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.25 2008/02/03 15:10:26 nth Exp $
  */
 
 #include "use_ether.h"
@@ -1063,115 +1063,13 @@ set_fpregs(struct lwp *lp, struct fpreg *fpregs)
 int
 fill_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
-        if (lp == NULL) {
-                dbregs->dr0 = rdr0();
-                dbregs->dr1 = rdr1();
-                dbregs->dr2 = rdr2();
-                dbregs->dr3 = rdr3();
-                dbregs->dr4 = rdr4();
-                dbregs->dr5 = rdr5();
-                dbregs->dr6 = rdr6();
-                dbregs->dr7 = rdr7();
-        } else {
-		struct pcb *pcb;
-
-                pcb = lp->lwp_thread->td_pcb;
-                dbregs->dr0 = pcb->pcb_dr0;
-                dbregs->dr1 = pcb->pcb_dr1;
-                dbregs->dr2 = pcb->pcb_dr2;
-                dbregs->dr3 = pcb->pcb_dr3;
-                dbregs->dr4 = 0;
-                dbregs->dr5 = 0;
-                dbregs->dr6 = pcb->pcb_dr6;
-                dbregs->dr7 = pcb->pcb_dr7;
-        }
-	return (0);
+	return (ENOSYS);
 }
 
 int
 set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
-	if (lp == NULL) {
-		load_dr0(dbregs->dr0);
-		load_dr1(dbregs->dr1);
-		load_dr2(dbregs->dr2);
-		load_dr3(dbregs->dr3);
-		load_dr4(dbregs->dr4);
-		load_dr5(dbregs->dr5);
-		load_dr6(dbregs->dr6);
-		load_dr7(dbregs->dr7);
-	} else {
-		struct pcb *pcb;
-		struct ucred *ucred;
-		int i;
-		uint32_t mask1, mask2;
-
-		/*
-		 * Don't let an illegal value for dr7 get set.	Specifically,
-		 * check for undefined settings.  Setting these bit patterns
-		 * result in undefined behaviour and can lead to an unexpected
-		 * TRCTRAP.
-		 */
-		for (i = 0, mask1 = 0x3<<16, mask2 = 0x2<<16; i < 8; 
-		     i++, mask1 <<= 2, mask2 <<= 2)
-			if ((dbregs->dr7 & mask1) == mask2)
-				return (EINVAL);
-		
-		pcb = lp->lwp_thread->td_pcb;
-		ucred = lp->lwp_proc->p_ucred;
-
-		/*
-		 * Don't let a process set a breakpoint that is not within the
-		 * process's address space.  If a process could do this, it
-		 * could halt the system by setting a breakpoint in the kernel
-		 * (if ddb was enabled).  Thus, we need to check to make sure
-		 * that no breakpoints are being enabled for addresses outside
-		 * process's address space, unless, perhaps, we were called by
-		 * uid 0.
-		 *
-		 * XXX - what about when the watched area of the user's
-		 * address space is written into from within the kernel
-		 * ... wouldn't that still cause a breakpoint to be generated
-		 * from within kernel mode?
-		 */
-
-		if (suser_cred(ucred, 0) != 0) {
-			if (dbregs->dr7 & 0x3) {
-				/* dr0 is enabled */
-				if (dbregs->dr0 >= VM_MAX_USER_ADDRESS)
-					return (EINVAL);
-			}
-
-			if (dbregs->dr7 & (0x3<<2)) {
-				/* dr1 is enabled */
-				if (dbregs->dr1 >= VM_MAX_USER_ADDRESS)
-					return (EINVAL);
-			}
-
-			if (dbregs->dr7 & (0x3<<4)) {
-				/* dr2 is enabled */
-				if (dbregs->dr2 >= VM_MAX_USER_ADDRESS)
-					return (EINVAL);
-			}
-
-			if (dbregs->dr7 & (0x3<<6)) {
-				/* dr3 is enabled */
-				if (dbregs->dr3 >= VM_MAX_USER_ADDRESS)
-					return (EINVAL);
-			}
-		}
-
-		pcb->pcb_dr0 = dbregs->dr0;
-		pcb->pcb_dr1 = dbregs->dr1;
-		pcb->pcb_dr2 = dbregs->dr2;
-		pcb->pcb_dr3 = dbregs->dr3;
-		pcb->pcb_dr6 = dbregs->dr6;
-		pcb->pcb_dr7 = dbregs->dr7;
-
-		pcb->pcb_flags |= PCB_DBREGS;
-	}
-
-	return (0);
+	return (ENOSYS);
 }
 
 #if 0

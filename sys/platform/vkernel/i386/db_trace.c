@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.8 2007/07/02 01:42:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/db_trace.c,v 1.9 2008/02/03 15:10:26 nth Exp $
  */
 
 #include <sys/param.h>
@@ -50,14 +50,7 @@
 #include <ddb/db_sym.h>
 #include <ddb/db_variables.h>
 
-db_varfcn_t db_dr0;
-db_varfcn_t db_dr1;
-db_varfcn_t db_dr2;
-db_varfcn_t db_dr3;
-db_varfcn_t db_dr4;
-db_varfcn_t db_dr5;
-db_varfcn_t db_dr6;
-db_varfcn_t db_dr7;
+static int db_dr(struct db_variable *vp, db_expr_t *valuep, int op);
 
 /*
  * Machine register set.
@@ -79,14 +72,14 @@ struct db_variable db_regs[] = {
 	{ "edi",	&ddb_regs.tf_edi,    FCN_NULL },
 	{ "eip",	&ddb_regs.tf_eip,    FCN_NULL },
 	{ "efl",	&ddb_regs.tf_eflags, FCN_NULL },
-	{ "dr0",	NULL,		     db_dr0 },
-	{ "dr1",	NULL,		     db_dr1 },
-	{ "dr2",	NULL,		     db_dr2 },
-	{ "dr3",	NULL,		     db_dr3 },
-	{ "dr4",	NULL,		     db_dr4 },
-	{ "dr5",	NULL,		     db_dr5 },
-	{ "dr6",	NULL,		     db_dr6 },
-	{ "dr7",	NULL,		     db_dr7 },
+	{ "dr0",	NULL,		     db_dr },
+	{ "dr1",	NULL,		     db_dr },
+	{ "dr2",	NULL,		     db_dr },
+	{ "dr3",	NULL,		     db_dr },
+	{ "dr4",	NULL,		     db_dr },
+	{ "dr5",	NULL,		     db_dr },
+	{ "dr6",	NULL,		     db_dr },
+	{ "dr7",	NULL,		     db_dr },
 };
 struct db_variable *db_eregs = db_regs + sizeof(db_regs)/sizeof(db_regs[0]);
 
@@ -112,10 +105,6 @@ static void	db_print_stack_entry(const char *, int, char **, int *, db_addr_t);
 static void	dl_symbol_values(int callpc, const char **name);
 
 
-static char	*watchtype_str(int type);
-static int	ki386_set_watch(int watchnum, unsigned int watchaddr, 
-                               int size, int access, struct dbreg * d);
-static int	ki386_clr_watch(int watchnum, struct dbreg * d);
 int		db_md_set_watchpoint(db_expr_t addr, db_expr_t size);
 int		db_md_clr_watchpoint(db_expr_t addr, db_expr_t size);
 void		db_md_list_watchpoints(void);
@@ -405,201 +394,30 @@ db_print_backtrace(void)
 	db_stack_trace_cmd(ebp, 1, -1, NULL);
 }
 
-#define DB_DRX_FUNC(reg)						\
-int									\
-db_ ## reg (struct db_variable *vp, db_expr_t *valuep, int op)		\
-{									\
-	if (op == DB_VAR_GET)						\
-		*valuep = r ## reg ();					\
-	else								\
-		load_ ## reg (*valuep); 				\
-									\
-	return(0);							\
-} 
-
-DB_DRX_FUNC(dr0)
-DB_DRX_FUNC(dr1)
-DB_DRX_FUNC(dr2)
-DB_DRX_FUNC(dr3)
-DB_DRX_FUNC(dr4)
-DB_DRX_FUNC(dr5)
-DB_DRX_FUNC(dr6)
-DB_DRX_FUNC(dr7)
-
 static int
-ki386_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
-	       struct dbreg *d)
+db_dr(struct db_variable *vp, db_expr_t *valuep, int op)
 {
-	int i;
-	unsigned int mask;
-	
-	if (watchnum == -1) {
-		for (i = 0, mask = 0x3; i < 4; i++, mask <<= 2)
-			if ((d->dr7 & mask) == 0)
-				break;
-		if (i < 4)
-			watchnum = i;
-		else
-			return(-1);
-	}
-	
-	switch (access) {
-	case DBREG_DR7_EXEC:
-		size = 1; /* size must be 1 for an execution breakpoint */
-		/* fall through */
-	case DBREG_DR7_WRONLY:
-	case DBREG_DR7_RDWR:
-		break;
-	default:
-		return(-1);
-	}
-
-	/*
-	 * we can watch a 1, 2, or 4 byte sized location
-	 */
-	switch (size) {
-	case 1:
-		mask = 0x00;
-		break;
-	case 2:
-		mask = 0x01 << 2;
-		break;
-	case 4:
-		mask = 0x03 << 2;
-		break;
-	default:
-		return(-1);
-	}
-
-	mask |= access;
-
-	/* clear the bits we are about to affect */
-	d->dr7 &= ~((0x3 << (watchnum * 2)) | (0x0f << (watchnum * 4 + 16)));
-
-	/* set drN register to the address, N=watchnum */
-	DBREG_DRX(d, watchnum) = watchaddr;
-
-	/* enable the watchpoint */
-	d->dr7 |= (0x2 << (watchnum * 2)) | (mask << (watchnum * 4 + 16));
-
-	return(watchnum);
+	if (op == DB_VAR_GET)
+		*valuep = 0;
+	return(-1);
 }
-
-
-int
-ki386_clr_watch(int watchnum, struct dbreg *d)
-{
-	if (watchnum < 0 || watchnum >= 4)
-		return(-1);
-	
-	d->dr7 &= ~((0x3 << (watchnum * 2)) | (0x0f << (watchnum * 4 + 16)));
-	DBREG_DRX(d, watchnum) = 0;
-	
-	return(0);
-}
-
 
 int
 db_md_set_watchpoint(db_expr_t addr, db_expr_t size)
 {
-	int avail, wsize;
-	int i;
-	struct dbreg d;
-	
-	fill_dbregs(NULL, &d);
-	
-	avail = 0;
-	for(i=0; i < 4; i++) {
-		if ((d.dr7 & (3 << (i * 2))) == 0)
-			avail++;
-	}
-	
-	if (avail * 4 < size)
-		return(-1);
-	
-	for (i=0; i < 4 && (size != 0); i++) {
-		if ((d.dr7 & (3 << (i * 2))) == 0) {
-			if (size > 4)
-				wsize = 4;
-			else
-				wsize = size;
-			if (wsize == 3)
-				wsize++;
-			ki386_set_watch(i, addr, wsize, DBREG_DR7_WRONLY, &d);
-			addr += wsize;
-			size -= wsize;
-		}
-	}
-
-	set_dbregs(NULL, &d);
-
-	return(0);
+	return(-1);
 }
 
 int
 db_md_clr_watchpoint(db_expr_t addr, db_expr_t size)
 {
-	int i;
-	struct dbreg d;
-
-	fill_dbregs(NULL, &d);
-
-	for(i=0; i<4; i++) {
-		if (d.dr7 & (3 << (i * 2))) {
-			if ((DBREG_DRX((&d), i) >= addr) && 
-			    (DBREG_DRX((&d), i) < addr + size))
-				ki386_clr_watch(i, &d);
-		}
-	}
-
-	set_dbregs(NULL, &d);
-
-	return(0);
-}
-
-static char *
-watchtype_str(int type)
-{
-	switch (type) {
-	case DBREG_DR7_EXEC:
-		return "execute";
-	case DBREG_DR7_RDWR:
-		return "read/write";
-	case DBREG_DR7_WRONLY:
-		return "write";
-	default:
-		return "invalid";
-	}
+	return(-1);
 }
 
 void
 db_md_list_watchpoints(void)
 {
-	int i;
-	struct dbreg d;
-
-	fill_dbregs(NULL, &d);
-
-	db_printf("\nhardware watchpoints:\n");
-	db_printf("  watch    status        type  len     address\n"
-		  "  -----  --------  ----------  ---  ----------\n");
-	for (i=0; i < 4; i++) {
-		if (d.dr7 & (0x03 << (i * 2))) {
-			unsigned type, len;
-			type = (d.dr7 >> (16 + (i * 4))) & 3;
-			len =  (d.dr7 >> (16 + (i * 4) + 2)) & 3;
-			db_printf("  %-5d  %-8s  %10s  %3d  0x%08x\n",
-				  i, "enabled", watchtype_str(type), 
-				  len + 1, DBREG_DRX((&d), i));
-		} else {
-			db_printf("  %-5d  disabled\n", i);
-		}
-	}
-
-	db_printf("\ndebug register values:\n");
-	for (i=0; i < 8; i++)
-		db_printf("  dr%d 0x%08x\n", i, DBREG_DRX((&d),i));
-	db_printf("\n");
+	/* no hardware watchpoints in vkernel */
 }
 
 /*
