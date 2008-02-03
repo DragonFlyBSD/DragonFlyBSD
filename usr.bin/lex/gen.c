@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/gen.c,v 2.56 96/05/25 20:43:38 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/gen.c,v 1.5 1999/10/27 07:56:44 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/gen.c,v 1.4 2005/08/04 17:31:22 drhodus Exp $ */
+/* $DragonFly: src/usr.bin/lex/gen.c,v 1.5 2008/02/03 13:14:12 corecode Exp $ */
 
 #include "flexdef.h"
 
@@ -282,6 +282,8 @@ void gen_find_action(void)
 		indent_puts( "yy_current_state = *--yy_state_ptr;" );
 		indent_puts( "yy_lp = yy_accept[yy_current_state];" );
 
+		outn(
+		"goto find_rule; /* avoid `defined but not used' warning */");
 		outn(
 		"find_rule: /* we branch to this label when backing up */" );
 
