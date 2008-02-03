@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.21 2008/01/27 22:32:57 nth Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.22 2008/02/03 13:37:56 nth Exp $
  */
 
 #include <sys/param.h>
@@ -185,6 +185,8 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 	int cpuid;
 	int need;
 	int factor;
+	int nmagdepot;
+	int i;
 
 	/* allocate object cache structure */
 	oc = kmalloc(__offsetof(struct objcache, cache_percpu[ncpus]),
@@ -249,6 +251,29 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 		cache_percpu->loaded_magazine = mag_alloc(mag_capacity);
 		cache_percpu->previous_magazine = mag_alloc(mag_capacity);
 	}
+
+	/* compute initial number of empty magazines in depot */
+	nmagdepot = 0;
+	if (cluster_limit > 0) {
+		/* max number of magazines in depot */
+		nmagdepot = (cluster_limit - ncpus * 2 * mag_capacity) /
+				mag_capacity;
+
+		/* retain at most 50% of the limit */
+		nmagdepot /= 2;
+	}
+	/* bound result to acceptable range */
+	if (nmagdepot < 2)
+		nmagdepot = 2;
+	if (nmagdepot > 10)
+		nmagdepot = 10;
+
+	/* put empty magazines in depot */
+	for (i = 0; i < nmagdepot; i++) {
+		struct magazine *mag = mag_alloc(mag_capacity);
+		SLIST_INSERT_HEAD(&depot->emptymagazines, mag, nextmagazine);
+	}
+
 	spin_lock_wr(&objcachelist_spin);
 	LIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
 	spin_unlock_wr(&objcachelist_spin);
