@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/dma.h,v 1.1 2008/02/02 18:20:51 matthias Exp $
+ * $DragonFly: src/libexec/dma/dma.h,v 1.2 2008/02/03 11:06:17 matthias Exp $
  */
 
 #ifndef DMA_H
@@ -43,6 +43,7 @@
 #endif /* HAVE_CRYPTO */
 
 #include <sys/queue.h>
+#include <stdint.h>
 #include <stdio.h>
 
 

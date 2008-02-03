@@ -1,15 +1,16 @@
 %{
-/* $DragonFly: src/libexec/dma/aliases_parse.y,v 1.1 2008/02/02 18:20:51 matthias Exp $ */
+/* $DragonFly: src/libexec/dma/aliases_parse.y,v 1.2 2008/02/03 11:06:17 matthias Exp $ */
 
 #include <err.h>
 #include <string.h>
 #include "dma.h"
 
 extern int yylineno;
-void yyerror(const char *);
+static void yyerror(const char *);
 int yywrap(void);
+int yylex(void);
 
-void
+static void
 yyerror(const char *msg)
 {
 	warnx("aliases line %d: %s", yylineno, msg);

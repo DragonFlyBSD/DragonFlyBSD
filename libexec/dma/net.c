@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/net.c,v 1.1 2008/02/02 18:20:51 matthias Exp $
+ * $DragonFly: src/libexec/dma/net.c,v 1.2 2008/02/03 11:06:17 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ extern struct authusers authusers;
 static jmp_buf timeout_alarm;
 
 static void
-sig_alarm(int signo)
+sig_alarm(int signo __unused)
 {
 	longjmp(timeout_alarm, 1);
 }
@@ -194,7 +194,7 @@ open_connection(struct qitem *it, const char *host)
 #endif
 	int fd, error = 0, port;
 
-	if (config->port != NULL)
+	if (config->port != 0)
 		port = config->port;
 	else
 		port = SMTP_PORT;
