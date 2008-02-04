@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/libexec/dma/dma.8,v 1.4 2008/02/03 19:07:45 matthias Exp $
+.\" $DragonFly: src/libexec/dma/dma.8,v 1.5 2008/02/04 08:58:54 matthias Exp $
 .\"
-.Dd February 3, 2008
+.Dd February 4, 2008
 .Dt DMA 8
 .Os
 .Sh NAME
@@ -116,8 +116,6 @@ virtusertable
 .Pp
 These three files are stored per default in
 .Pa /etc/dma .
-However every user can install it's own config files in
-.Pa $HOME/.dma .
 .Sh FILE FORMAT
 Every file contains parameters of the form
 .Sq name value .
@@ -175,18 +173,12 @@ Just stick with the default.
 Path to the
 .Sq virtusertable
 file.
-If you have your config in
-.Pa $HOME/.dma
-be sure to change this path accordingly.
 .It Ic AUTHPATH Xo
 (string, default=/etc/dma/auth.conf)
 .Xc
 Path to the
 .Sq auth.conf
 file.
-If you have your config in
-.Pa $HOME/.dma
-be sure to change this path accordingly.
 .It Ic VIRTUAL Xo
 (boolean, default=commented)
 .Xc

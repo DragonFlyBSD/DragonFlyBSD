@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/net.c,v 1.2 2008/02/03 11:06:17 matthias Exp $
+ * $DragonFly: src/libexec/dma/net.c,v 1.3 2008/02/04 08:58:54 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -184,14 +184,9 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 static int
 open_connection(struct qitem *it, const char *host)
 {
-#ifdef HAVE_INET6
 	struct addrinfo hints, *res, *res0;
 	char servname[128];
 	const char *errmsg = NULL;
-#else
-	struct hostent *hn;
-	struct sockaddr_in addr;
-#endif
 	int fd, error = 0, port;
 
 	if (config->port != 0)
@@ -199,7 +194,6 @@ open_connection(struct qitem *it, const char *host)
 	else
 		port = SMTP_PORT;
 
-#ifdef HAVE_INET6
 	/* Shamelessly taken from getaddrinfo(3) */
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
@@ -235,36 +229,6 @@ open_connection(struct qitem *it, const char *host)
 		return (-1);
 	}
 	freeaddrinfo(res0);
-#else
-	memset(&addr, 0, sizeof(addr));
-	fd = socket(AF_INET, SOCK_STREAM, 0);
-	addr.sin_family = AF_INET;
-
-	addr.sin_port = htons(port);
-	error = inet_pton(AF_INET, host, &addr.sin_addr);
-	if (error < 0) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: "
-			"address conversion failed: %m", it->queueid);
-		return (1);
-	}
-	hn = gethostbyname(host);
-	if (hn == NULL) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: cannot resolve "
-			"hostname (%s) %m", it->queueid, host);
-		return (-1);
-	} else {
-		memcpy(&addr.sin_addr, hn->h_addr, sizeof(struct in_addr));
-		if (hn->h_length != 4)
-			return (-1);
-	}
-
-	error = connect(fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (error < 0) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: "
-		       "connection failed : %m", it->queueid);
-		return (-1);
-	}
-#endif
 	return (fd);
 }
 

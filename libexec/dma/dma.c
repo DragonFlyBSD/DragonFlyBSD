@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/dma.c,v 1.2 2008/02/03 18:41:40 matthias Exp $
+ * $DragonFly: src/libexec/dma/dma.c,v 1.3 2008/02/04 08:58:54 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -825,11 +825,9 @@ main(int argc, char **argv)
 {
 	char *sender = NULL;
 	char tag[255];
-	char confpath[PATH_MAX];
 	struct qitem *it;
 	struct queue queue;
 	struct queue lqueue;
-	struct stat sb;
 	int i, ch;
 	int nodot = 0, doqueue = 0, showq = 0;
 
@@ -895,13 +893,7 @@ main(int argc, char **argv)
 		errx(1, "Cannot allocate enough memory");
 
 	memset(config, 0, sizeof(struct config));
-
-	/* Check if the user has its own config files */
-	snprintf(confpath, PATH_MAX, "%s/.dma/dma.conf", getenv("HOME"));
-	if (stat(confpath, &sb) < 0)
-		snprintf(confpath, PATH_MAX, "%s", CONF_PATH);
-
-	if (parse_conf(confpath, config) < 0) {
+	if (parse_conf(CONF_PATH, config) < 0) {
 		free(config);
 		errx(1, "reading config file");
 	}
