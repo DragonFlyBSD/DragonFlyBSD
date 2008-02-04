@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/network.subr,v 1.163 2005/06/30 04:52:47 brooks Exp $
-# $DragonFly: src/etc/network.subr,v 1.5 2007/07/10 22:36:01 swildner Exp $
+# $DragonFly: src/etc/network.subr,v 1.6 2008/02/04 19:03:06 swildner Exp $
 #
 
 #
@@ -136,16 +136,27 @@ ifconfig_getargs()
 	fi
 	_args=
 
+	is_optarg=no
 	for _arg in $_tmpargs; do
-		case $_arg in
-		[Dd][Hh][Cc][Pp])
-			;;
-		[Ww][Pp][Aa])
-			;;
-		*)
+		if [ "$is_optarg" = "no" ]; then
+			case $_arg in
+			[Dd][Hh][Cc][Pp])
+				;;
+			[Ww][Pp][Aa])
+				;;
+			*)
+				_args="$_args $_arg"
+				case $_arg in
+				authmode)
+					is_optarg=yes
+					;;
+				esac
+				;;
+			esac
+		else
 			_args="$_args $_arg"
-			;;
-		esac
+			is_optarg=no
+		fi
 	done
 
 	echo $_args
@@ -171,12 +182,20 @@ dhcpif()
 wpaif()
 {
 	_tmpargs=`_ifconfig_getargs $1`
+	is_optarg=no
 	for _arg in $_tmpargs; do
-		case $_arg in
-		[Ww][Pp][Aa])
-			return 0
-			;;
-		esac
+		if [ "$is_optarg" = "no" ]; then
+			case $_arg in
+			[Ww][Pp][Aa])
+				return 0
+				;;
+			authmode)
+				is_optarg=yes
+				;;
+			esac
+		else
+			is_optarg=no
+		fi
 	done
 	return 1
 }
