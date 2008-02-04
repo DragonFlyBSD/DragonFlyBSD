@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.4 2008/01/25 05:53:41 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.5 2008/02/04 08:34:22 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -74,6 +74,8 @@ specifies an exact as-of timestamp in local (not UTC) time.
 Set the TZ environment variable prior to running
 .Nm
 if you wish to specify the time by some other means.
+.It Ar history Ar path 
+Show the modification history for a HAMMER file's inode and data.
 .It Ar show Op vol_no[:clu_no]
 Dump the B-Tree starting at the specified volume and cluster, or
 at the root volume if not specified.
@@ -87,6 +89,38 @@ output as 0.
 .It Ar namekey32 Ar filename
 Generate the top 32 bits of a HAMMER 64 bit directory hash for the specified
 file name.
+.It Ar prune Ar filesystem Ar from Ar #{smhdMy} Ar to Ar #{smhdMy} Ar every Ar #{smhdMy}
+.It Ar prune Ar filesystem Op Ar using Ar filename
+Prune the filesystem, removing deleted records to free up physical disk
+space.  Specify a time range between the nearest modulo 0 boundary
+and prune the tree to the specified granularity within that range.
+.Pp
+The filesystem specification should be the root of any mounted HAMMER
+filesystem.  This command uses a filesystem ioctl to issue the pruning
+operation.  If you specify just the filesystem with no other parameters
+all prune directives matching that filesystem in the /etc/hammer.conf file
+will be used.  If you specify a
+.Ar using
+file then those directives contained in the file matching
+.Ar filesystem
+will be used.  Multiple directives may be specified when extracting from
+a file.  The directives must be in the same format: "prune ....", in
+ascending time order (per filesystem).  Matching prune elements must not
+have overlapping time specifications.
+.Pp
+Both the "from" and the "to" value must be an integral multiple
+of the "every" value, and the "to" value must be an integral multiple
+of the "from" value.  When you have multiple pruning rules you must
+take care to ensure that the range being pruned does not overlap ranges
+pruned later on, when the retained data is older.  If they do the retained
+data can wind up being destroyed.  For example, if you prune your data
+on a 30 minute granularity for the last 24 hours any later pruning must
+use a granularity that is a multiple of 30 minutes.  If you prune your
+data on a 30 minute boundary, then a 1 day boundary in a later pruning (on
+older data), then a pruning beyond that would have to be a multiple of
+1 day.  And so forth.
+.Pp
+Example: "hammer prune /mnt from 1h to 1d every 30m"
 .El
 .Sh EXAMPLES
 .Sh DIAGNOSTICS

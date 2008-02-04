@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.4 2008/01/25 05:53:41 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.5 2008/02/04 08:34:22 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -53,10 +53,13 @@
 #include <ctype.h>
 
 #include "hammer_util.h"
+#include <vfs/hammer/hammer_ioctl.h>
 
 extern int RecurseOpt;
 extern int VerboseOpt;
 
 void hammer_cmd_show(int32_t vol_no, int32_t clu_no, int depth);
+void hammer_cmd_prune(char **av, int ac);
+void hammer_cmd_history(const char *offset_str, char **av, int ac);
 
 

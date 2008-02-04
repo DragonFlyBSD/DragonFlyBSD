@@ -1,9 +1,9 @@
 #
-# $DragonFly: src/sbin/hammer/Makefile,v 1.3 2008/01/17 04:59:48 dillon Exp $
+# $DragonFly: src/sbin/hammer/Makefile,v 1.4 2008/02/04 08:34:22 dillon Exp $
 
 PROG=	hammer
 SRCS=	hammer.c buffer_alist.c ondisk.c cache.c super_alist.c \
-	misc.c cmd_show.c
+	misc.c cmd_show.c cmd_prune.c cmd_history.c
 MAN=	hammer.8
 
 CFLAGS+= -I${.CURDIR}/../../sys -DALIST_NO_DEBUG

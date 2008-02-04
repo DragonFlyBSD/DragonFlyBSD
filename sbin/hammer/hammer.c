@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.6 2008/01/25 05:53:41 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.7 2008/02/04 08:34:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -109,6 +109,15 @@ main(int ac, char **av)
 		if (key == 0)
 			++key;
 		printf("0x%08x\n", key);
+		exit(0);
+	}
+	if (strcmp(av[0], "prune") == 0) {
+		hammer_cmd_prune(av + 1, ac - 1);
+		exit(0);
+	}
+
+	if (strncmp(av[0], "history", 7) == 0) {
+		hammer_cmd_history(av[0] + 7, av + 1, ac - 1);
 		exit(0);
 	}
 
@@ -230,10 +239,14 @@ usage(int exit_code)
 		"hammer -h\n"
 		"hammer now\n"
 		"hammer stamp <time>\n"
+		"hammer prune <filesystem> [using <configfile>]\n"
+		"hammer prune <filesystem> from <modulo_time> to <modulo_time> every <modulo_time>\n"
+		"hammer history[@offset[,len]] <file-1>...<file-N>\n"
 		"hammer -f blkdevs [-r] show [vol_no[:clu_no]]\n"
 	);
-	fprintf(stderr, "    time: +n[s/m/h/D/M/Y]\n"
-			"    time: yyyymmdd[:hhmmss]\n");
+	fprintf(stderr, "time: +n[s/m/h/D/M/Y]\n"
+			"time: yyyymmdd[:hhmmss]\n"
+			"modulo_time: n{s,m,h,d,M,y}\n");
 	exit(exit_code);
 }
 
