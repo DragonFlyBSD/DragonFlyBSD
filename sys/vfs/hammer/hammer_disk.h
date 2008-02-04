@@ -31,8 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.19 2008/01/24 02:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.20 2008/02/04 08:33:17 dillon Exp $
  */
+
+#ifndef VFS_HAMMER_DISK_H_
+#define VFS_HAMMER_DISK_H_
 
 #ifndef _SYS_UUID_H_
 #include <sys/uuid.h>
@@ -702,3 +705,4 @@ union hammer_data_ondisk {
 	struct hammer_inode_data inode;
 };
 
+#endif

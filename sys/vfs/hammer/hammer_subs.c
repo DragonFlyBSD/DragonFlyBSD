@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.12 2008/01/18 07:02:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.13 2008/02/04 08:33:17 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -334,8 +334,12 @@ hammer_tid_t
 hammer_str_to_tid(const char *str)
 {
 	hammer_tid_t tid;
+	int len = strlen(str);
 
-	tid = strtoq(str, NULL, 16) * 1000000000LL;
+	if (len > 10)
+		tid = strtouq(str, NULL, 0);			/* full TID */
+	else
+		tid = strtouq(str, NULL, 0) * 1000000000LL;	/* time_t */
 	return(tid);
 }
 

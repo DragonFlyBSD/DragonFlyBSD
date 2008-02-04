@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.30 2008/01/25 10:36:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.31 2008/02/04 08:33:17 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -56,6 +56,7 @@
 #include "hammer_alist.h"
 #include "hammer_disk.h"
 #include "hammer_mount.h"
+#include "hammer_ioctl.h"
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -517,6 +518,7 @@ int	hammer_ip_first(hammer_cursor_t cursor, hammer_inode_t ip);
 int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid);
+int	hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes);
 int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
 			hammer_inode_t ip);
 int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
@@ -691,6 +693,9 @@ void hammer_load_spike(hammer_cursor_t cursor, struct hammer_cursor **spikep);
 int hammer_spike(struct hammer_cursor **spikep);
 int hammer_recover(struct hammer_cluster *cluster);
 int buffer_alist_recover(void *info, int32_t blk, int32_t radix, int32_t count);
+
+int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
+			struct ucred *cred);
 
 void hammer_io_init(hammer_io_t io, enum hammer_io_type type);
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io);

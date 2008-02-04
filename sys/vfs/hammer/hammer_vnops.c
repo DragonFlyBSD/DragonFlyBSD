@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.24 2008/01/25 10:36:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.25 2008/02/04 08:33:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -77,6 +77,7 @@ static int hammer_vop_setattr(struct vop_setattr_args *);
 static int hammer_vop_strategy(struct vop_strategy_args *);
 static int hammer_vop_nsymlink(struct vop_nsymlink_args *);
 static int hammer_vop_nwhiteout(struct vop_nwhiteout_args *);
+static int hammer_vop_ioctl(struct vop_ioctl_args *);
 
 static int hammer_vop_fifoclose (struct vop_close_args *);
 static int hammer_vop_fiforead (struct vop_read_args *);
@@ -116,7 +117,8 @@ struct vop_ops hammer_vnode_vops = {
 	.vop_setattr =		hammer_vop_setattr,
 	.vop_strategy =		hammer_vop_strategy,
 	.vop_nsymlink =		hammer_vop_nsymlink,
-	.vop_nwhiteout =	hammer_vop_nwhiteout
+	.vop_nwhiteout =	hammer_vop_nwhiteout,
+	.vop_ioctl =		hammer_vop_ioctl
 };
 
 struct vop_ops hammer_spec_vops = {
@@ -581,7 +583,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	for (i = 0; i < nlen; ++i) {
 		if (ncp->nc_name[i] == '@' && ncp->nc_name[i+1] == '@') {
 			asof = hammer_str_to_tid(ncp->nc_name + i + 2);
-			kprintf("ASOF %016llx\n", asof);
 			flags |= HAMMER_INODE_RO;
 			break;
 		}
@@ -618,7 +619,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 */
 	namekey = hammer_directory_namekey(ncp->nc_name, nlen);
 
-	hammer_init_cursor_hmp(&cursor, &dip->cache[0], dip->hmp);
+	error = hammer_init_cursor_hmp(&cursor, &dip->cache[0], dip->hmp);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -638,7 +639,9 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 * The hammer_ip_*() functions merge in-memory records with on-disk
 	 * records for the purposes of the search.
 	 */
-	error = hammer_ip_first(&cursor, dip);
+	if (error == 0)
+		error = hammer_ip_first(&cursor, dip);
+
 	rec = NULL;
 	obj_id = 0;
 
@@ -1481,6 +1484,19 @@ int
 hammer_vop_nwhiteout(struct vop_nwhiteout_args *ap)
 {
 	return(hammer_dounlink(ap->a_nch, ap->a_dvp, ap->a_cred, ap->a_flags));
+}
+
+/*
+ * hammer_vop_ioctl { vp, command, data, fflag, cred }
+ */
+static
+int
+hammer_vop_ioctl(struct vop_ioctl_args *ap)
+{
+	struct hammer_inode *ip = ap->a_vp->v_data;
+
+	return(hammer_ioctl(ip, ap->a_command, ap->a_data,
+			    ap->a_fflag, ap->a_cred));
 }
 
 /*

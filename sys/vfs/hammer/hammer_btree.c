@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.26 2008/01/25 21:50:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.27 2008/02/04 08:33:17 dillon Exp $
  */
 
 /*
@@ -2413,7 +2413,7 @@ void
 hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i)
 {
 	kprintf("  %2d", i);
-	kprintf("\tobjid        = %016llx\n", elm->base.obj_id);
+	kprintf("\tobj_id       = %016llx\n", elm->base.obj_id);
 	kprintf("\tkey          = %016llx\n", elm->base.key);
 	kprintf("\tcreate_tid   = %016llx\n", elm->base.create_tid);
 	kprintf("\tdelete_tid   = %016llx\n", elm->base.delete_tid);

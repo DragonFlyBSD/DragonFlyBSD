@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.26 2008/01/25 21:50:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.27 2008/02/04 08:33:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1421,56 +1421,69 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	 * delete the record.
 	 */
 	if (error == 0 && (hmp->hflags & HMNT_NOHISTORY)) {
-		int32_t rec_offset;
-		int32_t data_offset;
-		int32_t data_len;
-		u_int8_t rec_type;
-		hammer_cluster_t cluster;
-
-		rec_offset = elm->leaf.rec_offset;
-		data_offset = elm->leaf.data_offset;
-		data_len = elm->leaf.data_len;
-		rec_type = elm->leaf.base.rec_type;
-		KKASSERT(rec_type == cursor->record->base.base.rec_type);
-
-		/*
-		 * We must ref the cluster to prevent it from being
-		 * freed prior to our freeing the last record.
-		 */
-		cluster = cursor->node->cluster;
-		hammer_ref_cluster(cluster);
-
-		error = hammer_btree_delete(cursor);
-		if (error == 0) {
-			/*
-			 * This forces a fixup for the iteration because
-			 * the cursor is now either sitting at the 'next'
-			 * element or sitting at the end of a leaf.
-			 */
-			if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
-				cursor->flags |= HAMMER_CURSOR_DELBTREE;
-				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
-			}
-			hammer_free_record(cluster, rec_offset, rec_type);
-			if (data_offset && (data_offset - rec_offset < 0 ||
-			    data_offset - rec_offset >= HAMMER_RECORD_SIZE)) {
-				hammer_free_data(cluster, data_offset,data_len);
-			}
-		}
-#if 0
-		kprintf("hammer_ip_delete_record: %d:%d:%08x %08x/%d "
-			"(%d remain in cluster)\n",
-			cluster->volume->vol_no, cluster->clu_no,
-			rec_offset, data_offset, data_len,
-			cluster->ondisk->stat_records);
-#endif
-		hammer_rel_cluster(cluster, 0);
+		error = hammer_delete_at_cursor(cursor, NULL);
 		if (error) {
 			panic("hammer_ip_delete_record: unable to physically delete the record!\n");
 			error = 0;
 		}
 	}
 	return(error);
+}
+
+int
+hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes)
+{
+	hammer_btree_elm_t elm;
+	int32_t rec_offset;
+	int32_t data_offset;
+	int32_t data_len;
+	u_int8_t rec_type;
+	hammer_cluster_t cluster;
+	int error;
+
+	elm = &cursor->node->ondisk->elms[cursor->index];
+	KKASSERT(elm->base.btype == HAMMER_BTREE_TYPE_RECORD);
+
+	rec_offset = elm->leaf.rec_offset;
+	data_offset = elm->leaf.data_offset;
+	data_len = elm->leaf.data_len;
+	rec_type = elm->leaf.base.rec_type;
+
+	/*
+	 * We must ref the cluster to prevent it from being
+	 * freed prior to our freeing the last record.
+	 */
+	cluster = cursor->node->cluster;
+	hammer_ref_cluster(cluster);
+
+	error = hammer_btree_delete(cursor);
+	if (error == 0) {
+		/*
+		 * This forces a fixup for the iteration because
+		 * the cursor is now either sitting at the 'next'
+		 * element or sitting at the end of a leaf.
+		 */
+		if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
+			cursor->flags |= HAMMER_CURSOR_DELBTREE;
+			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+		}
+		hammer_free_record(cluster, rec_offset, rec_type);
+		if (data_offset && (data_offset - rec_offset < 0 ||
+		    data_offset - rec_offset >= HAMMER_RECORD_SIZE)) {
+			hammer_free_data(cluster, data_offset,data_len);
+			if (stat_bytes)
+				*stat_bytes += data_len;
+		}
+	}
+#if 0
+	kprintf("hammer_delete_at_cursor: %d:%d:%08x %08x/%d "
+		"(%d remain in cluster)\n",
+		cluster->volume->vol_no, cluster->clu_no,
+		rec_offset, data_offset, data_len,
+		cluster->ondisk->stat_records);
+#endif
+	hammer_rel_cluster(cluster, 0);
+	return (error);
 }
 
 /*
