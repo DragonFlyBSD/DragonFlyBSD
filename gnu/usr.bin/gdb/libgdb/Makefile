@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.6 2008/01/31 21:59:06 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.7 2008/02/04 01:38:11 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -75,7 +75,7 @@ SRCS+=	version.c \
 	target-descriptions.c target-memory.c xml-tdesc.c
 
 # TSOBS
-SRCS+=	inflow.o
+SRCS+=	inflow.c
 
 # SER_HARDWIRE
 SRCS+=	ser-base.c ser-unix.c ser-pipe.c ser-tcp.c
