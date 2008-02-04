@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/libexec/dma/dma.8,v 1.5 2008/02/04 08:58:54 matthias Exp $
+.\" $DragonFly: src/libexec/dma/dma.8,v 1.6 2008/02/04 10:11:41 matthias Exp $
 .\"
 .Dd February 4, 2008
 .Dt DMA 8
@@ -197,6 +197,14 @@ Only useful together with
 (string, default=empty)
 .Xc
 Path to your SSL certificate file.
+.It Ic SECURE Xo
+(boolean, default=commented)
+.Xc
+Change this entry to
+.Sq INSECURE
+to use plain text SMTP login over an insecure connection.
+You have to rename this variable manually to prevent that you send your
+password accidently over an insecure connection.
 .It Ic DEFER Xo
 (boolean, default=commented)
 .Xc

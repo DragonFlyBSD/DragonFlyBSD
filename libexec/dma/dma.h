@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/dma.h,v 1.2 2008/02/03 11:06:17 matthias Exp $
+ * $DragonFly: src/libexec/dma/dma.h,v 1.3 2008/02/04 10:11:41 matthias Exp $
  */
 
 #ifndef DMA_H
@@ -63,6 +63,7 @@
 #define SECURETRANS	0x4		/* SSL/TLS in general */
 #define TLSINIT		0x8		/* Flag for TLS init phase */
 #define DEFER		0x10		/* Defer mails */
+#define INSECURE	0x20		/* Allow plain login w/o encryption */
 
 struct stritem {
 	SLIST_ENTRY(stritem) next;

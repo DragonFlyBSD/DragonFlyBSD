@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/conf.c,v 1.1 2008/02/02 18:20:51 matthias Exp $
+ * $DragonFly: src/libexec/dma/conf.c,v 1.2 2008/02/04 10:11:41 matthias Exp $
  */
 
 #include <err.h>
@@ -241,6 +241,8 @@ parse_conf(const char *config_path, struct config *config)
 				config->features |= SECURETRANS;
 			else if (strcmp(word, "DEFER") == 0)
 				config->features |= DEFER;
+			else if (strcmp(word, "INSECURE") == 0)
+				config->features |= INSECURE;
 		}
 	}
 

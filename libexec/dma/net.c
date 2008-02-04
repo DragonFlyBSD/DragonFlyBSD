@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/net.c,v 1.3 2008/02/04 08:58:54 matthias Exp $
+ * $DragonFly: src/libexec/dma/net.c,v 1.4 2008/02/04 10:11:41 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -304,17 +304,28 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	}
 
 	if (do_auth == 1) {
-		syslog(LOG_INFO, "%s: Use SMTP authentication", it->queueid);
-		error = smtp_login(it, fd, a->login, a->password);
-		if (error < 0) {
-			syslog(LOG_ERR, "%s: remote delivery failed:"
-				" SMTP login failed: %m", it->queueid);
-			return (-1);
-		}
-		/* SMTP login is not available, so try without */
-		else if (error > 0)
-			syslog(LOG_ERR, "%s: SMTP login not available. Try without",
+		/*
+		 * Check if the user wants plain text login without using
+		 * encryption.
+		 */
+		if (((config->features & SECURETRANS) == 0) &&
+		    ((config->features & INSECURE) != 0)) {
+			syslog(LOG_INFO, "%s: Use SMTP authentication",
 				it->queueid);
+			error = smtp_login(it, fd, a->login, a->password);
+			if (error < 0) {
+				syslog(LOG_ERR, "%s: remote delivery failed:"
+					" SMTP login failed: %m", it->queueid);
+				return (-1);
+			}
+			/* SMTP login is not available, so try without */
+			else if (error > 0)
+				syslog(LOG_ERR, "%s: SMTP login not available."
+					" Try without", it->queueid);
+		} else {
+			syslog(LOG_ERR, "%s: Skip SMTP login. ",
+				it->queueid);
+		}
 	}
 
 	send_remote_command(fd, "MAIL FROM:<%s>", it->sender);
