@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.110 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.111 2008/02/05 20:49:49 dillon Exp $
  */
 
 /*
@@ -128,7 +128,7 @@ SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW,
 static void	vfs_free_addrlist (struct netexport *nep);
 static int	vfs_free_netcred (struct radix_node *rn, void *w);
 static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
-				       struct export_args *argp);
+				       const struct export_args *argp);
 
 extern int dev_ref_debug;
 
@@ -1590,7 +1590,7 @@ vfs_umountall_callback(struct mount *mp, void *data)
  */
 static int
 vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
-		struct export_args *argp)
+		const struct export_args *argp)
 {
 	struct netcred *np;
 	struct radix_node_head *rnh;
@@ -1693,7 +1693,8 @@ vfs_free_addrlist(struct netexport *nep)
 }
 
 int
-vfs_export(struct mount *mp, struct netexport *nep, struct export_args *argp)
+vfs_export(struct mount *mp, struct netexport *nep,
+	   const struct export_args *argp)
 {
 	int error;
 
@@ -1725,7 +1726,7 @@ vfs_export(struct mount *mp, struct netexport *nep, struct export_args *argp)
  */
 int
 vfs_setpublicfs(struct mount *mp, struct netexport *nep,
-		struct export_args *argp)
+		const struct export_args *argp)
 {
 	int error;
 	struct vnode *rvp;

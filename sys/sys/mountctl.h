@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.13 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.14 2008/02/05 20:49:52 dillon Exp $
  */
 
 #ifndef _SYS_MOUNTCTL_H_
@@ -64,10 +64,6 @@
 
 #define JIDMAX		32	/* id string buf[] size (incls \0) */
 
-/*
- * Data structures for the journaling API
- */
-
 #define MOUNTCTL_INSTALL_VFS_JOURNAL	1
 #define MOUNTCTL_REMOVE_VFS_JOURNAL	2
 #define MOUNTCTL_RESYNC_VFS_JOURNAL	3
@@ -78,6 +74,12 @@
 #define MOUNTCTL_REMOVE_BLK_JOURNAL	9
 #define MOUNTCTL_RESYNC_BLK_JOURNAL	10
 #define MOUNTCTL_STATUS_BLK_JOURNAL	11
+
+#define MOUNTCTL_SET_EXPORT		16	/* sys/mount.h:export_args */
+
+/*
+ * Data structures for the journaling API
+ */
 
 struct mountctl_install_journal {
 	char	id[JIDMAX];
@@ -263,6 +265,15 @@ void jrecord_file_data(struct jrecord *jrec, struct vnode *vp,
 
 MALLOC_DECLARE(M_JOURNAL);
 MALLOC_DECLARE(M_JFIFO);
+
+#else
+
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+int	mountctl (const char *path, int op, int fd, void *ctl, int ctllen,
+		  void *buf, int buflen);
+__END_DECLS
 
 #endif	/* kernel */
 

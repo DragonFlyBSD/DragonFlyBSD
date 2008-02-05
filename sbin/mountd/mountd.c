@@ -36,11 +36,12 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mountd.c	8.15 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mountd/mountd.c,v 1.39.2.5 2002/09/13 15:57:43 joerg Exp $
- * $DragonFly: src/sbin/mountd/mountd.c,v 1.8 2005/11/06 12:43:47 swildner Exp $
+ * $DragonFly: src/sbin/mountd/mountd.c,v 1.9 2008/02/05 20:49:51 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/mountctl.h>
 #include <sys/stat.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
@@ -745,8 +746,12 @@ get_exportlist(void)
 			struct msdosfs_args da;
 			struct ntfs_args na;
 		} targs;
+		struct export_args export;
 
-		if (!strcmp(fsp->f_fstypename, "mfs") ||
+		export.ex_flags = MNT_DELEXPORT;
+		if (mountctl(fsp->f_mntonname, MOUNTCTL_SET_EXPORT, -1,
+			     &export, sizeof(export), NULL, 0) == 0) {
+		} else if (!strcmp(fsp->f_fstypename, "mfs") ||
 		    !strcmp(fsp->f_fstypename, "ufs") ||
 		    !strcmp(fsp->f_fstypename, "msdos") ||
 		    !strcmp(fsp->f_fstypename, "ntfs") ||
@@ -1615,8 +1620,20 @@ do_mount(struct exportlist *ep, struct grouplist *grp, int exflags,
 		 * Also, needs to know how to export all types of local
 		 * exportable file systems and not just "ufs".
 		 */
-		while (mount(fsb->f_fstypename, dirp,
-		       fsb->f_flags | MNT_UPDATE, (caddr_t)&args) < 0) {
+		for (;;) {
+			int r;
+
+			r = mountctl(fsb->f_mntonname, MOUNTCTL_SET_EXPORT,
+				     -1,
+				     &args.ua.export, sizeof(args.ua.export),
+				     NULL, 0);
+			if (r < 0 && errno == EOPNOTSUPP) {
+				r = mount(fsb->f_fstypename, dirp,
+					  fsb->f_flags | MNT_UPDATE,
+					  (caddr_t)&args);
+			}
+			if (r >= 0)
+				break;
 			if (cp)
 				*cp-- = savedc;
 			else

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.9 2007/11/25 01:28:23 swildner Exp $
+ * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.10 2008/02/05 20:49:50 dillon Exp $
  */
 /*
  * This utility implements the userland mountctl command which is used to
@@ -51,7 +51,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-static volatile void usage(void);
+static void usage(void);
 static void parse_option_keyword(const char *opt, 
 		const char **wopt, const char **xopt);
 static int64_t getsize(const char *str);
@@ -456,7 +456,8 @@ mountctl_scan(void (*func)(const char *, const char *, int, void *),
 }
 
 static void
-mountctl_list(const char *keyword, const char *mountpt, int __unused fd, void *info)
+mountctl_list(const char *keyword __unused, const char *mountpt,
+	      int fd __unused, void *info)
 {
     struct mountctl_journal_ret_status *rstat = info;
 
@@ -559,13 +560,14 @@ mountctl_delete(const char *keyword, const char *mountpt,
 }
 
 static void
-mountctl_modify(const char *keyword, const char *mountpt, int fd, void __unused *info)
+mountctl_modify(const char *keyword __unused, const char *mountpt __unused,
+		int fd __unused, void *info __unused)
 {
     fprintf(stderr, "modify not yet implemented\n");
 }
 
 
-static volatile void
+static void
 usage(void)
 {
     printf(
@@ -582,7 +584,7 @@ usage(void)
 static int64_t
 getsize(const char *str)
 {
-    const char *suffix;
+    char *suffix;
     int64_t val;
 
     val = strtoll(str, &suffix, 0);
@@ -615,8 +617,6 @@ static const char *
 numtostr(int64_t num)
 {
     static char buf[64];
-    int n;
-    double v = num;
 
     if (num < 1024)
 	snprintf(buf, sizeof(buf), "%lld", num);
