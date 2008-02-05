@@ -35,7 +35,7 @@
  *
  * @(#)read.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/read.c,v 1.6.8.1 2001/01/24 08:41:14 ru Exp $
- * $DragonFly: src/usr.bin/tail/read.c,v 1.4 2005/03/01 21:37:33 cpressey Exp $
+ * $DragonFly: src/usr.bin/tail/read.c,v 1.5 2008/02/05 14:25:06 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -79,6 +79,7 @@ display_bytes(FILE *fp, off_t off)
 	}
 	if (ferror(fp)) {
 		ierr();
+		free(sp);
 		return 1;
 	}
 
@@ -112,6 +113,7 @@ display_bytes(FILE *fp, off_t off)
 		if ((len = p - sp) != 0)
 			WR(sp, len);
 	}
+	free(sp);
 	return 0;
 }
 
@@ -133,7 +135,7 @@ display_lines(FILE *fp, off_t off)
 		ssize_t len;
 		char *l;
 	} *lines;
-	int ch;
+	int ch, rc = 0;
 	char *p = NULL;
 	int blen, cnt, recno, wrap;
 	char *sp;
@@ -169,7 +171,8 @@ display_lines(FILE *fp, off_t off)
 	}
 	if (ferror(fp)) {
 		ierr();
-		return 1;
+		rc = 1;
+		goto out;
 	}
 	if (cnt) {
 		lines[recno].l = sp;
@@ -193,5 +196,10 @@ display_lines(FILE *fp, off_t off)
 		for (cnt = 0; cnt < recno; ++cnt)
 			WR(lines[cnt].l, lines[cnt].len);
 	}
-	return 0;
+out:
+	for (cnt = 0; cnt < off; cnt++)
+		free(lines[cnt].l);
+	free(sp);
+	free(lines);
+	return (rc);
 }
