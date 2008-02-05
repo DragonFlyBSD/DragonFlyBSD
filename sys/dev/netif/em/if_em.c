@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.62 2008/01/10 10:44:28 matthias Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.63 2008/02/05 11:12:27 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -2110,7 +2110,7 @@ em_hardware_init(struct adapter *adapter)
 	if (adapter->hw.mac_type == em_80003es2lan)
 		adapter->hw.fc_pause_time = 0xFFFF;
 	else
-		adapter->hw.fc_pause_time = 0x1000;
+		adapter->hw.fc_pause_time = 1000;
 	adapter->hw.fc_send_xon = TRUE;
 	adapter->hw.fc = E1000_FC_FULL;
 
