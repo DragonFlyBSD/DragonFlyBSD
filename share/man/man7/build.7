@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.13 2007/05/14 14:28:47 swildner Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.14 2008/02/05 19:22:04 swildner Exp $
 .\"
-.Dd January 6, 2007
+.Dd February 5, 2008
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -154,6 +154,11 @@ installed (the default is
 .It Ev MAKEOBJDIRPREFIX
 The directory hierarchy where the object files will be built (the default is
 .Pa /usr/obj ) .
+.It Ev __MAKE_CONF
+Used to override the path of
+.Xr make.conf 5
+(the default is
+.Pa /etc/make.conf ) .
 .It Ev KERNCONF
 The name of the kernel configuration file from which the kernel should
 be built (the default is
