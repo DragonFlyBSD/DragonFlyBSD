@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.31 2008/02/04 08:33:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.32 2008/02/05 07:58:43 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -535,7 +535,8 @@ int	hammer_cursor_toroot(hammer_cursor_t cursor);
 int	hammer_cursor_down(hammer_cursor_t cursor);
 int	hammer_cursor_upgrade(hammer_cursor_t cursor);
 void	hammer_cursor_downgrade(hammer_cursor_t cursor);
-
+int	hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node,
+			int index);
 void	hammer_lock_ex(struct hammer_lock *lock);
 int	hammer_lock_ex_try(struct hammer_lock *lock);
 void	hammer_lock_sh(struct hammer_lock *lock);
@@ -567,14 +568,19 @@ void	hammer_mem_done(hammer_cursor_t cursor);
 
 int	hammer_btree_lookup(hammer_cursor_t cursor);
 int	hammer_btree_first(hammer_cursor_t cursor);
+int	hammer_btree_last(hammer_cursor_t cursor);
 int	hammer_btree_extract(hammer_cursor_t cursor, int flags);
 int	hammer_btree_iterate(hammer_cursor_t cursor);
+int	hammer_btree_iterate_reverse(hammer_cursor_t cursor);
 int	hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm);
 int	hammer_btree_insert_cluster(hammer_cursor_t cursor,
 			hammer_cluster_t cluster, int32_t rec_offset);
 int	hammer_btree_delete(hammer_cursor_t cursor);
 int	hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
+int	hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid);
+int	hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid);
+
 
 int	hammer_btree_lock_children(hammer_cursor_t cursor,
                         struct hammer_node_locklist **locklistp);

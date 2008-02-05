@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.25 2008/02/04 08:33:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.26 2008/02/05 07:58:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -362,6 +362,18 @@ hammer_vop_write(struct vop_write_args *ap)
 		ip->ino_rec.ino_mtime = trans.tid;
 		flags |= HAMMER_INODE_ITIMES | HAMMER_INODE_BUFS;
 		hammer_modify_inode(&trans, ip, flags);
+
+		/*
+		 * The file write must be tagged with the same TID as the
+		 * inode, for consistency in case the inode changed size.
+		 * This guarantees the on-disk data records will have a
+		 * TID <= the inode TID representing the size change.
+		 *
+		 * If a prior write has not yet flushed, retain its TID.
+		 */
+		if (bp->b_tid == 0)
+			bp->b_tid = ip->last_tid;
+
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
@@ -1684,7 +1696,11 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
 
-	hammer_start_transaction(&trans, ip->hmp);
+	/*
+	 * Start a transaction using the TID stored with the bp.
+	 */
+	KKASSERT(bp->b_tid != 0);
+	hammer_start_transaction_tid(&trans, ip->hmp, bp->b_tid);
 
 retry:
 	/*
@@ -1731,6 +1747,7 @@ retry:
 	} else {
 		hammer_commit_transaction(&trans);
 		bp->b_resid = 0;
+		bp->b_tid = 0;
 	}
 	return(error);
 }

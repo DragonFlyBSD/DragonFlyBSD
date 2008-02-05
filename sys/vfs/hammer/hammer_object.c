@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.27 2008/02/04 08:33:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.28 2008/02/05 07:58:43 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1386,6 +1386,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	hammer_btree_elm_t elm;
 	hammer_mount_t hmp;
 	int error;
+	int dodelete;
 
 	/*
 	 * In-memory (unsynchronized) records can simply be freed.
@@ -1404,15 +1405,15 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	elm = NULL;
 	hmp = cursor->node->cluster->volume->hmp;
 
+	dodelete = 0;
 	if (error == 0) {
-		hammer_modify_buffer(cursor->record_buffer);
-		cursor->record->base.base.delete_tid = tid;
-
 		error = hammer_cursor_upgrade(cursor);
 		if (error == 0) {
 			hammer_modify_node(cursor->node);
 			elm = &cursor->node->ondisk->elms[cursor->index];
 			elm->leaf.base.delete_tid = tid;
+			hammer_modify_buffer(cursor->record_buffer);
+			cursor->record->base.base.delete_tid = tid;
 		}
 	}
 
@@ -1420,7 +1421,10 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	 * If we were mounted with the nohistory option, we physically
 	 * delete the record.
 	 */
-	if (error == 0 && (hmp->hflags & HMNT_NOHISTORY)) {
+	if (hmp->hflags & HMNT_NOHISTORY)
+		dodelete = 1;
+
+	if (error == 0 && dodelete) {
 		error = hammer_delete_at_cursor(cursor, NULL);
 		if (error) {
 			panic("hammer_ip_delete_record: unable to physically delete the record!\n");

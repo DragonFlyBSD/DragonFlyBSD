@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.15 2008/01/24 02:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.16 2008/02/05 07:58:43 dillon Exp $
  */
 
 /*
@@ -224,6 +224,35 @@ hammer_cursor_downgrade(hammer_cursor_t cursor)
 		hammer_lock_downgrade(&cursor->parent->lock);
 }
 
+/*
+ * Seek the cursor to the specified node and index.
+ */
+int
+hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node, int index)
+{
+	int error;
+
+	hammer_cursor_downgrade(cursor);
+	error = 0;
+
+	if (cursor->node != node) {
+		hammer_unlock(&cursor->node->lock);
+		hammer_rel_node(cursor->node);
+		cursor->node = node;
+		cursor->index = index;
+		hammer_ref_node(node);
+		hammer_lock_sh(&node->lock);
+
+		if (cursor->parent) {
+			hammer_unlock(&cursor->parent->lock);
+			hammer_rel_node(cursor->parent);
+			cursor->parent = NULL;
+			cursor->parent_index = 0;
+		}
+		error = hammer_load_cursor_parent(cursor);
+	}
+	return (error);
+}
 
 #if 0
 

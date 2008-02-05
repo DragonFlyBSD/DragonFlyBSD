@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.42 2008/01/10 07:34:03 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.43 2008/02/05 07:58:41 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -173,6 +173,7 @@ struct buf {
 	struct	xio b_xio;  		/* data buffer page list management */
 	struct  bio_ops *b_ops;		/* bio_ops used w/ b_dep */
 	struct	workhead b_dep;		/* List of filesystem dependencies. */
+	u_int64_t b_tid;		/* Transaction id */
 };
 
 /*

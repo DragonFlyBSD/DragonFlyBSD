@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/misc.c,v 1.2 2008/01/21 00:03:31 dillon Exp $
+ * $DragonFly: src/sbin/hammer/misc.c,v 1.3 2008/02/05 07:58:40 dillon Exp $
  */
 
 #include "hammer.h"
@@ -65,21 +65,16 @@ hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 	if (key1->key > key2->key)
 		return(2);
 
-	/*
-	 * A delete_tid of zero indicates a record which has not been
-	 * deleted yet and must be considered to have a value of positive
-	 * infinity.
-	 */
-	if (key1->delete_tid == 0) {
-		if (key2->delete_tid == 0)
+	if (key1->create_tid == 0) {
+		if (key2->create_tid == 0)
 			return(0);
 		return(1);
 	}
-	if (key2->delete_tid == 0)
+	if (key2->create_tid == 0)
 		return(-1);
-	if (key1->delete_tid < key2->delete_tid)
+	if (key1->create_tid < key2->create_tid)
 		return(-1);
-	if (key1->delete_tid > key2->delete_tid)
+	if (key1->create_tid > key2->create_tid)
 		return(1);
 	return(0);
 }

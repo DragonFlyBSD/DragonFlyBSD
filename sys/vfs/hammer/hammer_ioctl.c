@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.1 2008/02/04 08:33:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.2 2008/02/05 07:58:43 dillon Exp $
  */
 
 #include "hammer.h"
@@ -70,8 +70,15 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 /*
  * Iterate through the specified range of object ids and remove any
  * deleted records that fall entirely within a prune modulo.
+ *
+ * A reverse iteration is used to prevent overlapping records from being
+ * created during the iteration due to alignments.  This also allows us
+ * to adjust alignments without blowing up the B-Tree.
  */
-static int check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm);
+static int check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
+			int *realign_cre, int *realign_del);
+static int realign_prune(struct hammer_ioc_prune *prune, hammer_cursor_t cursor,
+			int realign_cre, int realign_del);
 
 static int
 hammer_ioc_prune(hammer_inode_t ip, struct hammer_ioc_prune *prune)
@@ -79,6 +86,9 @@ hammer_ioc_prune(hammer_inode_t ip, struct hammer_ioc_prune *prune)
 	struct hammer_cursor cursor;
 	hammer_btree_elm_t elm;
 	int error;
+	int isdir;
+	int realign_cre;
+	int realign_del;
 
 	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS) {
 		return(EINVAL);
@@ -93,43 +103,59 @@ retry:
 		hammer_done_cursor(&cursor);
 		return(error);
 	}
-	cursor.key_beg.obj_id = prune->cur_obj_id;
-	cursor.key_beg.key = prune->cur_key;
+	cursor.key_beg.obj_id = prune->beg_obj_id;
+	cursor.key_beg.key = HAMMER_MIN_KEY;
 	cursor.key_beg.create_tid = 1;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
-	cursor.key_end.obj_id = prune->end_obj_id;
-	cursor.key_end.key = HAMMER_MIN_KEY;
-	cursor.key_end.create_tid = 1;
+	cursor.key_end.obj_id = prune->cur_obj_id;
+	cursor.key_end.key = prune->cur_key;
+	cursor.key_end.create_tid = HAMMER_MAX_TID - 1;
 	cursor.key_end.delete_tid = 0;
-	cursor.key_end.rec_type = HAMMER_MIN_RECTYPE;
+	cursor.key_end.rec_type = HAMMER_MAX_RECTYPE;
 	cursor.key_end.obj_type = 0;
 
-	cursor.flags |= HAMMER_CURSOR_END_EXCLUSIVE;
+	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
-	error = hammer_btree_first(&cursor);
+	error = hammer_btree_last(&cursor);
 	while (error == 0) {
 		elm = &cursor.node->ondisk->elms[cursor.index];
-		if (check_prune(prune, elm) == 0) {
+		prune->cur_obj_id = elm->base.obj_id;
+		prune->cur_key = elm->base.key;
+		if (check_prune(prune, elm, &realign_cre, &realign_del) == 0) {
 			if (hammer_debug_general & 0x0200) {
 				kprintf("check %016llx %016llx: DELETE\n",
 					elm->base.obj_id, elm->base.key);
 			}
+
 			/*
 			 * NOTE: This can return EDEADLK
 			 */
-			prune->cur_obj_id = elm->base.obj_id;
-			prune->cur_key = elm->base.key;
-			if (elm->base.rec_type == HAMMER_RECTYPE_DIRENTRY)
-				++prune->stat_dirrecords;
+			isdir = (elm->base.rec_type == HAMMER_RECTYPE_DIRENTRY);
+
 			error = hammer_delete_at_cursor(&cursor,
 							&prune->stat_bytes);
-			if (error == 0)
-				++prune->stat_rawrecords;
+			if (error)
+				break;
+
+			if (isdir)
+				++prune->stat_dirrecords;
 			else
-				--prune->stat_dirrecords;
+				++prune->stat_rawrecords;
+		} else if (realign_cre >= 0 || realign_del >= 0) {
+			error = realign_prune(prune, &cursor,
+					      realign_cre, realign_del);
+			if (error == 0) {
+				cursor.flags |= HAMMER_CURSOR_ATEDISK;
+				if (hammer_debug_general & 0x0200) {
+					kprintf("check %016llx %016llx: "
+						"REALIGN\n",
+						elm->base.obj_id,
+						elm->base.key);
+				}
+			}
 		} else {
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			if (hammer_debug_general & 0x0100) {
@@ -138,7 +164,7 @@ retry:
 			}
 		}
 		if (error == 0)
-			error = hammer_btree_iterate(&cursor);
+			error = hammer_btree_iterate_reverse(&cursor);
 	}
 	if (error == ENOENT)
 		error = 0;
@@ -152,28 +178,143 @@ retry:
  * Check pruning list.  The list must be sorted in descending order.
  */
 static int
-check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm)
+check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
+	    int *realign_cre, int *realign_del)
 {
 	struct hammer_ioc_prune_elm *scan;
 	int i;
 
-	if (elm->base.delete_tid == 0)
-		return(-1);
+	*realign_cre = -1;
+	*realign_del = -1;
+
 	for (i = 0; i < prune->nelms; ++i) {
 		scan = &prune->elms[i];
+
+		/*
+		 * Locate the scan index covering the create and delete TIDs.
+		 */
+		if (*realign_cre < 0 &&
+		    elm->base.create_tid >= scan->beg_tid &&
+		    elm->base.create_tid < scan->end_tid) {
+			*realign_cre = i;
+		}
+		if (*realign_del < 0 && elm->base.delete_tid &&
+		    elm->base.delete_tid > scan->beg_tid &&
+		    elm->base.delete_tid <= scan->end_tid) {
+			*realign_del = i;
+		}
+
+		/*
+		 * Now check for loop termination.
+		 */
 		if (elm->base.create_tid >= scan->end_tid ||
-		    elm->base.delete_tid >= scan->end_tid) {
+		    elm->base.delete_tid > scan->end_tid) {
 			break;
 		}
-		if (elm->base.create_tid < scan->beg_tid)
-			continue;
-		KKASSERT(elm->base.delete_tid >= scan->beg_tid);
-		if (elm->base.create_tid / scan->mod_tid ==
+
+		/*
+		 * Now determine if we can delete the record.
+		 */
+		if (elm->base.delete_tid &&
+		    elm->base.create_tid >= scan->beg_tid &&
+		    elm->base.delete_tid <= scan->end_tid &&
+		    elm->base.create_tid / scan->mod_tid ==
 		    elm->base.delete_tid / scan->mod_tid) {
 			return(0);
 		}
 	}
 	return(-1);
+}
+
+/*
+ * Align the record to cover any gaps created through the deletion of
+ * records within the pruning space.  If we were to just delete the records
+ * there would be gaps which in turn would cause a snapshot that is NOT on
+ * a pruning boundary to appear corrupt to the user.  Forcing alignment
+ * of the create_tid and delete_tid for retained records 'reconnects'
+ * the previously contiguous space, making it contiguous again after the
+ * deletions.
+ *
+ * The use of a reverse iteration allows us to safely align the records and
+ * related elements without creating temporary overlaps.  XXX we should
+ * add ordering dependancies for record buffers to guarantee consistency
+ * during recovery.
+ */
+static int
+realign_prune(struct hammer_ioc_prune *prune,
+	      hammer_cursor_t cursor, int realign_cre, int realign_del)
+{
+	hammer_btree_elm_t elm;
+	hammer_tid_t delta;
+	hammer_tid_t mod;
+	hammer_tid_t tid;
+	int error;
+
+	hammer_cursor_downgrade(cursor);
+
+	elm = &cursor->node->ondisk->elms[cursor->index];
+	++prune->stat_realignments;
+
+	/*
+	 * Align the create_tid.  By doing a reverse iteration we guarantee
+	 * that all records after our current record have already been
+	 * aligned, allowing us to safely correct the right-hand-boundary
+	 * (because no record to our right if otherwise exactly matching
+	 * will have a create_tid to the left of our aligned create_tid).
+	 *
+	 * Ordering is important here XXX but disk write ordering for
+	 * inter-cluster corrections is not currently guaranteed.
+	 */
+	error = 0;
+	if (realign_cre >= 0) {
+		mod = prune->elms[realign_cre].mod_tid;
+		delta = elm->leaf.base.create_tid % mod;
+		if (delta) {
+			tid = elm->leaf.base.create_tid - delta + mod;
+
+			/* can EDEADLK */
+			error = hammer_btree_correct_rhb(cursor, tid + 1);
+			if (error == 0) {
+				error = hammer_btree_extract(cursor,
+						     HAMMER_CURSOR_GET_RECORD);
+			}
+			if (error == 0) {
+				/* can EDEADLK */
+				error = hammer_cursor_upgrade(cursor);
+			}
+			if (error == 0) {
+				hammer_modify_buffer(cursor->record_buffer);
+				cursor->record->base.base.create_tid = tid;
+				hammer_modify_node(cursor->node);
+				elm->leaf.base.create_tid = tid;
+			}
+		}
+	}
+
+	/*
+	 * Align the delete_tid.  This only occurs if the record is historical
+	 * was deleted at some point.  Realigning the delete_tid does not
+	 * move the record within the B-Tree but may cause it to temporarily
+	 * overlap a record that has not yet been pruned.
+	 */
+	if (error == 0 && realign_del >= 0) {
+		mod = prune->elms[realign_del].mod_tid;
+		delta = elm->leaf.base.delete_tid % mod;
+		hammer_modify_node(cursor->node);
+		if (delta) {
+			error = hammer_btree_extract(cursor,
+						     HAMMER_CURSOR_GET_RECORD);
+			if (error == 0) {
+				elm->leaf.base.delete_tid =
+						elm->leaf.base.delete_tid -
+						delta + mod;
+				hammer_modify_buffer(cursor->record_buffer);
+				cursor->record->base.base.delete_tid =
+						elm->leaf.base.delete_tid;
+			}
+		}
+	}
+	return (error);
 }
 
 /*

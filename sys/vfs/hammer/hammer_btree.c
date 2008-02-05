@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.27 2008/02/04 08:33:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.28 2008/02/05 07:58:43 dillon Exp $
  */
 
 /*
@@ -357,6 +357,230 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 }
 
 /*
+ * Iterate in the reverse direction.  This is used by the pruning code to
+ * avoid overlapping records.
+ */
+int
+hammer_btree_iterate_reverse(hammer_cursor_t cursor)
+{
+	hammer_node_ondisk_t node;
+	hammer_btree_elm_t elm;
+	int error;
+	int r;
+	int s;
+
+	/*
+	 * Skip past the current record.  For various reasons the cursor
+	 * may end up set to -1 or set to point at the end of the current
+	 * node.  These cases must be addressed.
+	 */
+	node = cursor->node->ondisk;
+	if (node == NULL)
+		return(ENOENT);
+	if (cursor->index != -1 && 
+	    (cursor->flags & HAMMER_CURSOR_ATEDISK)) {
+		--cursor->index;
+	}
+	if (cursor->index == cursor->node->ondisk->count)
+		--cursor->index;
+
+	/*
+	 * Loop until an element is found or we are done.
+	 */
+	for (;;) {
+		/*
+		 * We iterate up the tree and then index over one element
+		 * while we are at the last element in the current node.
+		 *
+		 * NOTE: This can pop us up to another cluster.
+		 *
+		 * If we are at the root of the root cluster, cursor_up
+		 * returns ENOENT.
+		 *
+		 * NOTE: hammer_cursor_up() will adjust cursor->key_beg
+		 * when told to re-search for the cluster tag.
+		 *
+		 * XXX this could be optimized by storing the information in
+		 * the parent reference.
+		 *
+		 * XXX we can lose the node lock temporarily, this could mess
+		 * up our scan.
+		 */
+		if (cursor->index == -1) {
+			error = hammer_cursor_up(cursor);
+			if (error) {
+				cursor->index = 0; /* sanity */
+				break;
+			}
+			/* reload stale pointer */
+			node = cursor->node->ondisk;
+			KKASSERT(cursor->index != node->count);
+			--cursor->index;
+			continue;
+		}
+
+		/*
+		 * Check internal or leaf element.  Determine if the record
+		 * at the cursor has gone beyond the end of our range.
+		 *
+		 * Generally we recurse down through internal nodes.  An
+		 * internal node can only be returned if INCLUSTER is set
+		 * and the node represents a cluster-push record.
+		 */
+		KKASSERT(cursor->index != node->count);
+		if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
+			elm = &node->elms[cursor->index];
+			r = hammer_btree_cmp(&cursor->key_end, &elm[0].base);
+			s = hammer_btree_cmp(&cursor->key_beg, &elm[1].base);
+			if (hammer_debug_btree) {
+				kprintf("BRACKETL %d:%d:%08x[%d] %016llx %02x %016llx %d\n",
+					cursor->node->cluster->volume->vol_no,
+					cursor->node->cluster->clu_no,
+					cursor->node->node_offset,
+					cursor->index,
+					elm[0].internal.base.obj_id,
+					elm[0].internal.base.rec_type,
+					elm[0].internal.base.key,
+					r
+				);
+				kprintf("BRACKETR %d:%d:%08x[%d] %016llx %02x %016llx %d\n",
+					cursor->node->cluster->volume->vol_no,
+					cursor->node->cluster->clu_no,
+					cursor->node->node_offset,
+					cursor->index + 1,
+					elm[1].internal.base.obj_id,
+					elm[1].internal.base.rec_type,
+					elm[1].internal.base.key,
+					s
+				);
+			}
+
+			if (s >= 0) {
+				error = ENOENT;
+				break;
+			}
+			KKASSERT(r >= 0);
+
+			/*
+			 * When iterating try to clean up any deleted
+			 * internal elements left over from btree_remove()
+			 * deadlocks, but it is ok if we can't.
+			 */
+			if (elm->internal.subtree_offset == 0) {
+				btree_remove_deleted_element(cursor);
+				/* note: elm also invalid */
+			} else if (elm->internal.subtree_offset != 0) {
+				error = hammer_cursor_down(cursor);
+				if (error)
+					break;
+				KKASSERT(cursor->index == 0);
+				cursor->index = cursor->node->ondisk->count - 1;
+			}
+			/* reload stale pointer */
+			node = cursor->node->ondisk;
+			continue;
+		} else {
+			elm = &node->elms[cursor->index];
+			s = hammer_btree_cmp(&cursor->key_beg, &elm->base);
+			if (hammer_debug_btree) {
+				kprintf("ELEMENT  %d:%d:%08x:%d %c %016llx %02x %016llx %d\n",
+					cursor->node->cluster->volume->vol_no,
+					cursor->node->cluster->clu_no,
+					cursor->node->node_offset,
+					cursor->index,
+					(elm[0].leaf.base.btype ?
+					 elm[0].leaf.base.btype : '?'),
+					elm[0].leaf.base.obj_id,
+					elm[0].leaf.base.rec_type,
+					elm[0].leaf.base.key,
+					s
+				);
+			}
+			if (s > 0) {
+				error = ENOENT;
+				break;
+			}
+
+			switch(elm->leaf.base.btype) {
+			case HAMMER_BTREE_TYPE_RECORD:
+				if ((cursor->flags & HAMMER_CURSOR_ASOF) &&
+				    hammer_btree_chkts(cursor->asof, &elm->base)) {
+					--cursor->index;
+					continue;
+				}
+				break;
+			case HAMMER_BTREE_TYPE_SPIKE_BEG:
+				/*
+				 * Skip the spike BEG record.  We will hit
+				 * the END record first since we are
+				 * iterating backwards.
+				 */
+				--cursor->index;
+				continue;
+			case HAMMER_BTREE_TYPE_SPIKE_END:
+				/*
+				 * The SPIKE_END element is inclusive, NOT
+				 * like a boundary, so be careful with the
+				 * match check.
+				 *
+				 * This code assumes that a preceding SPIKE_BEG
+				 * has already been checked.
+				 */
+				if (cursor->flags & HAMMER_CURSOR_INCLUSTER)
+					break;
+				error = hammer_cursor_down(cursor);
+				if (error)
+					break;
+				KKASSERT(cursor->index == 0);
+				/* reload stale pointer */
+				node = cursor->node->ondisk;
+
+				/*
+				 * If the cluster root is empty it and its
+				 * related spike can be deleted.  Ignore
+				 * errors.  Cursor
+				 */
+				if (node->count == 0) {
+					error = hammer_cursor_upgrade(cursor);
+					if (error == 0)
+						error = btree_remove(cursor);
+					hammer_cursor_downgrade(cursor);
+					error = 0;
+					/* reload stale pointer */
+					node = cursor->node->ondisk;
+				}
+				cursor->index = node->count - 1;
+				continue;
+			default:
+				error = EINVAL;
+				break;
+			}
+			if (error)
+				break;
+		}
+		/*
+		 * node pointer invalid after loop
+		 */
+
+		/*
+		 * Return entry
+		 */
+		if (hammer_debug_btree) {
+			int i = cursor->index;
+			hammer_btree_elm_t elm = &cursor->node->ondisk->elms[i];
+			kprintf("ITERATE  %p:%d %016llx %02x %016llx\n",
+				cursor->node, i,
+				elm->internal.base.obj_id,
+				elm->internal.base.rec_type,
+				elm->internal.base.key
+			);
+		}
+		return(0);
+	}
+	return(error);
+}
+
+/*
  * Lookup cursor->key_beg.  0 is returned on success, ENOENT if the entry
  * could not be found, EDEADLK if inserting and a retry is needed, and a
  * fatal error otherwise.  When retrying, the caller must terminate the
@@ -410,6 +634,10 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 				 */
 				break;
 			}
+			if (hammer_debug_btree) {
+				kprintf("CREATE_CHECK %016llx\n",
+					cursor->create_check);
+			}
 			cursor->key_beg.create_tid = cursor->create_check;
 			/* loop */
 		}
@@ -435,6 +663,28 @@ hammer_btree_first(hammer_cursor_t cursor)
 	if (error == ENOENT) {
 		cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 		error = hammer_btree_iterate(cursor);
+	}
+	cursor->flags |= HAMMER_CURSOR_ATEDISK;
+	return(error);
+}
+
+/*
+ * Similarly but for an iteration in the reverse direction.
+ */
+int
+hammer_btree_last(hammer_cursor_t cursor)
+{
+	struct hammer_base_elm save;
+	int error;
+
+	save = cursor->key_beg;
+	cursor->key_beg = cursor->key_end;
+	error = hammer_btree_lookup(cursor);
+	cursor->key_beg = save;
+	if (error == ENOENT ||
+	    (cursor->flags & HAMMER_CURSOR_END_INCLUSIVE) == 0) {
+		cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+		error = hammer_btree_iterate_reverse(cursor);
 	}
 	cursor->flags |= HAMMER_CURSOR_ATEDISK;
 	return(error);
@@ -1228,7 +1478,7 @@ new_cluster:
 			 * only differs by its create_tid.
 			 */
 			if (r == 1) {
-				cursor->create_check = elm->base.create_tid;
+				cursor->create_check = elm->base.create_tid - 1;
 				cursor->flags |= HAMMER_CURSOR_CREATE_CHECK;
 			}
 			if (i != node->count - 1)
@@ -1258,7 +1508,7 @@ new_cluster:
 				 */
 				if (r == 1) {
 					cursor->create_check =
-						elm->base.create_tid;
+						elm->base.create_tid - 1;
 					cursor->flags |=
 						HAMMER_CURSOR_CREATE_CHECK;
 				}
@@ -1834,6 +2084,293 @@ btree_split_leaf(hammer_cursor_t cursor)
 done:
 	hammer_btree_unlock_children(&locklist);
 	hammer_cursor_downgrade(cursor);
+	return (error);
+}
+
+/*
+ * Recursively correct the right-hand boundary's create_tid to (tid) as
+ * long as the rest of the key matches.  We have to recurse upward in
+ * the tree as well as down the left side of each parent's right node.
+ *
+ * Return EDEADLK if we were only partially successful, forcing the caller
+ * to try again.  The original cursor is not modified.  This routine can
+ * also fail with EDEADLK if it is forced to throw away a portion of its
+ * record history.
+ *
+ * The caller must pass a downgraded cursor to us (otherwise we can't dup it).
+ */
+struct hammer_rhb {
+	TAILQ_ENTRY(hammer_rhb) entry;
+	hammer_node_t	node;
+	int		index;
+};
+
+TAILQ_HEAD(hammer_rhb_list, hammer_rhb);
+
+int
+hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid)
+{
+	struct hammer_rhb_list rhb_list;
+	hammer_base_elm_t elm;
+	hammer_node_t orig_node;
+	struct hammer_rhb *rhb;
+	int orig_index;
+	int error;
+
+	TAILQ_INIT(&rhb_list);
+
+	/*
+	 * Save our position so we can restore it on return.  This also
+	 * gives us a stable 'elm'.
+	 */
+	orig_node = cursor->node;
+	hammer_ref_node(orig_node);
+	hammer_lock_sh(&orig_node->lock);
+	orig_index = cursor->index;
+	elm = &orig_node->ondisk->elms[orig_index].base;
+
+	/*
+	 * Now build a list of parents going up, allocating a rhb
+	 * structure for each one.
+	 */
+	while (cursor->parent) {
+		/*
+		 * Stop if we no longer have any right-bounds to fix up
+		 */
+		if (elm->obj_id != cursor->right_bound->obj_id ||
+		    elm->rec_type != cursor->right_bound->rec_type ||
+		    elm->key != cursor->right_bound->key) {
+			break;
+		}
+
+		/*
+		 * Stop if the right-hand bound's create_tid does not
+		 * need to be corrected.   Note that if the parent is
+		 * a cluster the bound is pointing at the actual bound
+		 * in the cluster header, not the SPIKE_END element in
+		 * the parent cluster, so we don't have to worry about
+		 * the fact that SPIKE_END is range-inclusive.
+		 */
+		if (cursor->right_bound->create_tid >= tid)
+			break;
+
+		KKASSERT(cursor->parent->ondisk->elms[cursor->parent_index].base.btype != HAMMER_BTREE_TYPE_SPIKE_BEG);
+
+		rhb = kmalloc(sizeof(*rhb), M_HAMMER, M_WAITOK|M_ZERO);
+		rhb->node = cursor->parent;
+		rhb->index = cursor->parent_index;
+		hammer_ref_node(rhb->node);
+		hammer_lock_sh(&rhb->node->lock);
+		TAILQ_INSERT_HEAD(&rhb_list, rhb, entry);
+
+		hammer_cursor_up(cursor);
+	}
+
+	/*
+	 * now safely adjust the right hand bound for each rhb.  This may
+	 * also require taking the right side of the tree and iterating down
+	 * ITS left side.
+	 */
+	error = 0;
+	while (error == 0 && (rhb = TAILQ_FIRST(&rhb_list)) != NULL) {
+		error = hammer_cursor_seek(cursor, rhb->node, rhb->index);
+		kprintf("CORRECT RHB %d:%d:%08x index %d type=%c\n",
+			rhb->node->cluster->volume->vol_no,
+			rhb->node->cluster->clu_no, rhb->node->node_offset,
+			rhb->index, cursor->node->ondisk->type);
+		if (error)
+			break;
+		TAILQ_REMOVE(&rhb_list, rhb, entry);
+		hammer_unlock(&rhb->node->lock);
+		hammer_rel_node(rhb->node);
+		kfree(rhb, M_HAMMER);
+
+		switch (cursor->node->ondisk->type) {
+		case HAMMER_BTREE_TYPE_INTERNAL:
+			/*
+			 * Right-boundary for parent at internal node
+			 * is one element to the right of the element whos
+			 * right boundary needs adjusting.  We must then
+			 * traverse down the left side correcting any left
+			 * bounds (which may now be too far to the left).
+			 */
+			++cursor->index;
+			error = hammer_btree_correct_lhb(cursor, tid);
+			break;
+		case HAMMER_BTREE_TYPE_LEAF:
+			/*
+			 * Right-boundary for parent at leaf node.  Both
+			 * the SPIKE_END and the cluster header must be
+			 * corrected, but we don't have to traverse down
+			 * (there's nothing TO traverse down other then what
+			 * we've already recorded).
+			 *
+			 * The SPIKE_END is range-inclusive.
+			 */
+			error = hammer_cursor_down(cursor);
+			if (error == 0)
+				error = hammer_lock_upgrade(&cursor->parent->lock);
+			if (error == 0) {
+				kprintf("hammer_btree_correct_rhb-X @%d:%d:%08x\n",
+					cursor->parent->cluster->volume->vol_no,
+					cursor->parent->cluster->clu_no,
+					cursor->parent->node_offset);
+				hammer_modify_node(cursor->parent);
+				elm = &cursor->parent->ondisk->elms[cursor->parent_index].base;
+				KKASSERT(elm->btype == HAMMER_BTREE_TYPE_SPIKE_END);
+				elm->create_tid = tid - 1;
+				hammer_modify_cluster(cursor->node->cluster);
+				cursor->node->cluster->ondisk->clu_btree_end.create_tid = tid;
+				cursor->node->cluster->clu_btree_end.create_tid = tid;
+			}
+			break;
+		default:
+			panic("hammer_btree_correct_rhb(): Bad node type");
+			error = EINVAL;
+			break;
+		}
+	}
+
+	/*
+	 * Cleanup
+	 */
+	while ((rhb = TAILQ_FIRST(&rhb_list)) != NULL) {
+		TAILQ_REMOVE(&rhb_list, rhb, entry);
+		hammer_unlock(&rhb->node->lock);
+		hammer_rel_node(rhb->node);
+		kfree(rhb, M_HAMMER);
+	}
+	error = hammer_cursor_seek(cursor, orig_node, orig_index);
+	hammer_unlock(&orig_node->lock);
+	hammer_rel_node(orig_node);
+	return (error);
+}
+
+/*
+ * Similar to rhb (in fact, rhb calls lhb), but corrects the left hand
+ * bound going downward starting at the current cursor position.
+ *
+ * This function does not restore the cursor after use.
+ */
+int
+hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
+{
+	struct hammer_rhb_list rhb_list;
+	hammer_base_elm_t elm;
+	hammer_base_elm_t cmp;
+	struct hammer_rhb *rhb;
+	int error;
+
+	TAILQ_INIT(&rhb_list);
+
+	cmp = &cursor->node->ondisk->elms[cursor->index].base;
+
+	/*
+	 * Record the node and traverse down the left-hand side for all
+	 * matching records needing a boundary correction.
+	 */
+	error = 0;
+	for (;;) {
+		rhb = kmalloc(sizeof(*rhb), M_HAMMER, M_WAITOK|M_ZERO);
+		rhb->node = cursor->node;
+		rhb->index = cursor->index;
+		hammer_ref_node(rhb->node);
+		hammer_lock_sh(&rhb->node->lock);
+		TAILQ_INSERT_HEAD(&rhb_list, rhb, entry);
+
+		if (cursor->node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
+			/*
+			 * Nothing to traverse down if we are at the right
+			 * boundary of an internal node.
+			 */
+			if (cursor->index == cursor->node->ondisk->count)
+				break;
+		} else {
+			elm = &cursor->node->ondisk->elms[cursor->index].base;
+			if (elm->btype == HAMMER_BTREE_TYPE_RECORD)
+				break;
+			KKASSERT(elm->btype == HAMMER_BTREE_TYPE_SPIKE_BEG);
+		}
+		error = hammer_cursor_down(cursor);
+		if (error)
+			break;
+
+		elm = &cursor->node->ondisk->elms[cursor->index].base;
+		if (elm->obj_id != cmp->obj_id ||
+		    elm->rec_type != cmp->rec_type ||
+		    elm->key != cmp->key) {
+			break;
+		}
+		if (elm->create_tid >= tid)
+			break;
+
+	}
+
+	/*
+	 * Now we can safely adjust the left-hand boundary from the bottom-up.
+	 * The last element we remove from the list is the caller's right hand
+	 * boundary, which must also be adjusted.
+	 */
+	while (error == 0 && (rhb = TAILQ_FIRST(&rhb_list)) != NULL) {
+		error = hammer_cursor_seek(cursor, rhb->node, rhb->index);
+		if (error)
+			break;
+		TAILQ_REMOVE(&rhb_list, rhb, entry);
+		hammer_unlock(&rhb->node->lock);
+		hammer_rel_node(rhb->node);
+		kfree(rhb, M_HAMMER);
+
+		elm = &cursor->node->ondisk->elms[cursor->index].base;
+		if (cursor->node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
+			kprintf("hammer_btree_correct_lhb-I @%d:%d:%08x @%d\n",
+				cursor->node->cluster->volume->vol_no,
+				cursor->node->cluster->clu_no,
+				cursor->node->node_offset, cursor->index);
+			hammer_modify_node(cursor->node);
+			elm->create_tid = tid;
+		} else if (elm->btype == HAMMER_BTREE_TYPE_SPIKE_BEG) {
+			/*
+			 * SPIKE_BEG, also correct cluster header.  Occurs
+			 * only while we are traversing the left-hand
+			 * boundary.
+			 */
+			kprintf("hammer_btree_correct_lhb-B @%d:%d:%08x\n",
+				cursor->node->cluster->volume->vol_no,
+				cursor->node->cluster->clu_no,
+				cursor->node->node_offset);
+			hammer_modify_node(cursor->node);
+			elm->create_tid = tid;
+
+			/*
+			 * We can only cursor down through SPIKE_END.
+			 */
+			++cursor->index;
+			error = hammer_cursor_down(cursor);
+			if (error == 0)
+				error = hammer_lock_upgrade(&cursor->parent->lock);
+			if (error == 0) {
+				hammer_modify_node(cursor->parent);
+				elm = &cursor->parent->ondisk->elms[cursor->parent_index - 1].base;
+				KKASSERT(elm->btype == HAMMER_BTREE_TYPE_SPIKE_BEG);
+				elm->create_tid = tid;
+				hammer_modify_cluster(cursor->node->cluster);
+				cursor->node->cluster->ondisk->clu_btree_end.create_tid = tid;
+				cursor->node->cluster->clu_btree_end.create_tid = tid;
+			}
+		} else {
+			panic("hammer_btree_correct_lhb(): Bad element type");
+		}
+	}
+
+	/*
+	 * Cleanup
+	 */
+	while ((rhb = TAILQ_FIRST(&rhb_list)) != NULL) {
+		TAILQ_REMOVE(&rhb_list, rhb, entry);
+		hammer_unlock(&rhb->node->lock);
+		hammer_rel_node(rhb->node);
+		kfree(rhb, M_HAMMER);
+	}
 	return (error);
 }
 

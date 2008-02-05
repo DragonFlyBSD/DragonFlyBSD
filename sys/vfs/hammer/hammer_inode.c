@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.25 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.26 2008/02/05 07:58:43 dillon Exp $
  */
 
 #include "hammer.h"
@@ -566,7 +566,9 @@ hammer_unload_inode(struct hammer_inode *ip, void *data)
  * HAMMER_INODE_ITIMES: mtime/atime has been updated
  *
  * last_tid is the TID to use to generate the correct TID when the inode
- * is synced to disk.
+ * is synced to disk.  The first inode record laid out on disk must match
+ * the transaction id of the related directory entry so only update last_tid
+ * if that has already occured.
  */
 void
 hammer_modify_inode(struct hammer_transaction *trans,
@@ -582,7 +584,8 @@ hammer_modify_inode(struct hammer_transaction *trans,
 			kprintf("hammer_modify_inode: %016llx (%08x)\n", 
 				trans->tid, (int)(trans->tid / 1000000000LL));
 		}
-		ip->last_tid = trans->tid;
+		if (ip->flags & HAMMER_INODE_ONDISK)
+			ip->last_tid = trans->tid;
 	}
 	ip->flags |= flags;
 }
