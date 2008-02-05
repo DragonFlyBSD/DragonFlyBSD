@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/dma.h,v 1.3 2008/02/04 10:11:41 matthias Exp $
+ * $DragonFly: src/libexec/dma/dma.h,v 1.4 2008/02/05 13:00:36 matthias Exp $
  */
 
 #ifndef DMA_H
@@ -47,23 +47,24 @@
 #include <stdio.h>
 
 
-#define VERSION	"DragonFly Mail Agent 1.0"
+#define VERSION	"DragonFly Mail Agent"
 
 #define BUF_SIZE	2048
 #define MIN_RETRY	300		/* 5 minutes */
 #define MAX_RETRY	(3*60*60)	/* retry at least every 3 hours */
 #define MAX_TIMEOUT	(5*24*60*60)	/* give up after 5 days */
 #define PATH_MAX	1024		/* Max path len */
-#define CONF_PATH	"/etc/dma/dma.conf"	/* /etc/dma/dma.conf */
-#define	SMTP_PORT	25		/* default SMTP port */
+#define	SMTP_PORT	25		/* Default SMTP port */
 #define CON_TIMEOUT	120		/* Connection timeout */
 
-#define VIRTUAL		0x1		/* Support for address rewrites */
-#define STARTTLS	0x2		/* StartTLS support */
-#define SECURETRANS	0x4		/* SSL/TLS in general */
-#define TLSINIT		0x8		/* Flag for TLS init phase */
-#define DEFER		0x10		/* Defer mails */
-#define INSECURE	0x20		/* Allow plain login w/o encryption */
+#define VIRTUAL		0x001		/* Support for address rewrites */
+#define STARTTLS	0x002		/* StartTLS support */
+#define SECURETRANS	0x004		/* SSL/TLS in general */
+#define TLSINIT		0x008		/* Flag for TLS init phase */
+#define DEFER		0x010		/* Defer mails */
+#define INSECURE	0x020		/* Allow plain login w/o encryption */
+
+#define CONF_PATH	"/etc/dma/dma.conf"	/* Default path to dma.conf */
 
 struct stritem {
 	SLIST_ENTRY(stritem) next;
