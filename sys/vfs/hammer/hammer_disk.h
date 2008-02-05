@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.20 2008/02/04 08:33:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.21 2008/02/05 01:44:04 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -78,6 +78,12 @@ typedef u_int64_t hammer_tid_t;
 #define HAMMER_MAX_OBJID	HAMMER_MAX_KEY
 #define HAMMER_MIN_RECTYPE	0x0U
 #define HAMMER_MAX_RECTYPE	0xFFFFU
+
+/*
+ * Don't include the whole mess unless the caller also has included
+ * the hammer alist header.  The ioctl code only needs hammer_tid_t.
+ */
+#ifdef HAMMER_ALIST_METAELMS_256_1LYR
 
 /*
  * Most HAMMER data structures are embedded in 16K filesystem buffers.
@@ -704,5 +710,7 @@ struct hammer_inode_data {
 union hammer_data_ondisk {
 	struct hammer_inode_data inode;
 };
+
+#endif /* HAMMER_ALIST_METAELMS_256_1LYR */
 
 #endif
