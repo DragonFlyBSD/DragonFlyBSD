@@ -35,7 +35,7 @@
  *
  * @(#)read.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/read.c,v 1.6.8.1 2001/01/24 08:41:14 ru Exp $
- * $DragonFly: src/usr.bin/tail/read.c,v 1.5 2008/02/05 14:25:06 matthias Exp $
+ * $DragonFly: src/usr.bin/tail/read.c,v 1.6 2008/02/05 14:35:43 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -176,6 +176,7 @@ display_lines(FILE *fp, off_t off)
 	}
 	if (cnt) {
 		lines[recno].l = sp;
+		sp = NULL;
 		lines[recno].len = cnt;
 		if (++recno == off) {
 			wrap = 1;
