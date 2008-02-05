@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.32 2008/02/05 07:58:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.33 2008/02/05 20:52:01 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -45,6 +45,7 @@
 #include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
+#include <sys/mountctl.h>
 #include <sys/vnode.h>
 #include <sys/globaldata.h>
 #include <sys/lockf.h>
@@ -69,7 +70,7 @@ struct hammer_mount;
  * the function hammer_ino_rb_tree_RB_LOOKUP_INFO(root, info).
  */
 typedef struct hammer_inode_info {
-	u_int64_t	obj_id;		/* (key) object identifier */
+	int64_t		obj_id;		/* (key) object identifier */
 	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
 } *hammer_inode_info_t;
 
@@ -455,6 +456,7 @@ struct hammer_mount {
 	udev_t	fsid_udev;
 	hammer_tid_t asof;
 	u_int32_t namekey_iterator;
+	struct netexport export;
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
@@ -496,7 +498,6 @@ extern int hammer_count_spikes;
 
 int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
-int	hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
 int	hammer_get_vnode(struct hammer_inode *ip, int lktype,
 			struct vnode **vpp);
 struct hammer_inode *hammer_get_inode(hammer_mount_t hmp,
@@ -615,6 +616,8 @@ void		hammer_rel_supercl(hammer_supercl_t supercl, int flush);
 void		hammer_rel_cluster(hammer_cluster_t cluster, int flush);
 void		hammer_rel_buffer(hammer_buffer_t buffer, int flush);
 
+int		hammer_vfs_export(struct mount *mp, int op,
+			const struct export_args *export);
 hammer_node_t	hammer_get_node(hammer_cluster_t cluster,
 			int32_t node_offset, int *errorp);
 int		hammer_ref_node(hammer_node_t node);

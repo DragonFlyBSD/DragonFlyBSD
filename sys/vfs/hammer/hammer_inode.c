@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.26 2008/02/05 07:58:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.27 2008/02/05 20:52:01 dillon Exp $
  */
 
 #include "hammer.h"
@@ -89,32 +89,6 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 		hammer_rel_inode(ip, 0);
 	}
 	return(0);
-}
-
-/*
- * Obtain a vnode for the specified inode number.  An exclusively locked
- * vnode is returned.
- */
-int
-hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
-{
-	struct hammer_mount *hmp = (void *)mp->mnt_data;
-	struct hammer_inode *ip;
-	int error;
-
-	/*
-	 * Get/allocate the hammer_inode structure.  The structure must be
-	 * unlocked while we manipulate the related vnode to avoid a
-	 * deadlock.
-	 */
-	ip = hammer_get_inode(hmp, NULL, ino, hmp->asof, 0, &error);
-	if (ip == NULL) {
-		*vpp = NULL;
-		return(error);
-	}
-	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
-	hammer_rel_inode(ip, 0);
-	return (error);
 }
 
 /*

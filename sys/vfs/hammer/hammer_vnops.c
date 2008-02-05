@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.26 2008/02/05 07:58:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.27 2008/02/05 20:52:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,6 +78,7 @@ static int hammer_vop_strategy(struct vop_strategy_args *);
 static int hammer_vop_nsymlink(struct vop_nsymlink_args *);
 static int hammer_vop_nwhiteout(struct vop_nwhiteout_args *);
 static int hammer_vop_ioctl(struct vop_ioctl_args *);
+static int hammer_vop_mountctl(struct vop_mountctl_args *);
 
 static int hammer_vop_fifoclose (struct vop_close_args *);
 static int hammer_vop_fiforead (struct vop_read_args *);
@@ -118,7 +119,8 @@ struct vop_ops hammer_vnode_vops = {
 	.vop_strategy =		hammer_vop_strategy,
 	.vop_nsymlink =		hammer_vop_nsymlink,
 	.vop_nwhiteout =	hammer_vop_nwhiteout,
-	.vop_ioctl =		hammer_vop_ioctl
+	.vop_ioctl =		hammer_vop_ioctl,
+	.vop_mountctl =		hammer_vop_mountctl
 };
 
 struct vop_ops hammer_spec_vops = {
@@ -1509,6 +1511,29 @@ hammer_vop_ioctl(struct vop_ioctl_args *ap)
 
 	return(hammer_ioctl(ip, ap->a_command, ap->a_data,
 			    ap->a_fflag, ap->a_cred));
+}
+
+static
+int
+hammer_vop_mountctl(struct vop_mountctl_args *ap)
+{
+	struct mount *mp;
+	int error;
+
+	mp = ap->a_head.a_ops->head.vv_mount;
+
+	switch(ap->a_op) {
+	case MOUNTCTL_SET_EXPORT:
+		if (ap->a_ctllen != sizeof(struct export_args))
+			error = EINVAL;
+		error = hammer_vfs_export(mp, ap->a_op,
+				      (const struct export_args *)ap->a_ctl);
+		break;
+	default:
+		error = journal_mountctl(ap);
+		break;
+	}
+	return(error);
 }
 
 /*

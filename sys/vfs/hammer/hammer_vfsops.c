@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.16 2008/01/25 10:36:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.17 2008/02/05 20:52:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -104,7 +104,15 @@ static int	hammer_vfs_root(struct mount *mp, struct vnode **vpp);
 static int	hammer_vfs_statfs(struct mount *mp, struct statfs *sbp,
 				struct ucred *cred);
 static int	hammer_vfs_sync(struct mount *mp, int waitfor);
+static int	hammer_vfs_vget(struct mount *mp, ino_t ino,
+				struct vnode **vpp);
 static int	hammer_vfs_init(struct vfsconf *conf);
+static int	hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp,
+				struct vnode **vpp);
+static int	hammer_vfs_vptofh(struct vnode *vp, struct fid *fhp);
+static int	hammer_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
+				int *exflagsp, struct ucred **credanonp);
+
 
 static struct vfsops hammer_vfsops = {
 	.vfs_mount	= hammer_vfs_mount,
@@ -113,7 +121,10 @@ static struct vfsops hammer_vfsops = {
 	.vfs_statfs	= hammer_vfs_statfs,
 	.vfs_sync	= hammer_vfs_sync,
 	.vfs_vget	= hammer_vfs_vget,
-	.vfs_init	= hammer_vfs_init
+	.vfs_init	= hammer_vfs_init,
+	.vfs_vptofh	= hammer_vfs_vptofh,
+	.vfs_fhtovp	= hammer_vfs_fhtovp,
+	.vfs_checkexp	= hammer_vfs_checkexp
 };
 
 MALLOC_DEFINE(M_HAMMER, "hammer-mount", "hammer mount");
@@ -224,8 +235,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	mp->mnt_iosize_max = MAXPHYS;
 	mp->mnt_kern_flag |= MNTK_FSMID;
-	mp->mnt_stat.f_fsid.val[0] = 0;	/* XXX */
-	mp->mnt_stat.f_fsid.val[1] = 0;	/* XXX */
 
 	/* 
 	 * note: f_iosize is used by vnode_pager_haspage() when constructing
@@ -233,7 +242,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	mp->mnt_stat.f_iosize = HAMMER_BUFSIZE;
 	mp->mnt_stat.f_bsize = HAMMER_BUFSIZE;
-	vfs_getnewfsid(mp);		/* XXX */
 	mp->mnt_maxsymlinklen = 255;
 	mp->mnt_flag |= MNT_LOCAL;
 
@@ -251,6 +259,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	ksnprintf(mp->mnt_stat.f_mntfromname,
 		  sizeof(mp->mnt_stat.f_mntfromname), "%s",
 		  rootvol->ondisk->vol_name);
+	mp->mnt_stat.f_fsid.val[0] =
+		crc32((char *)&rootvol->ondisk->vol_fsid + 0, 8);
+	mp->mnt_stat.f_fsid.val[1] =
+		crc32((char *)&rootvol->ondisk->vol_fsid + 8, 8);
 	hammer_rel_volume(rootvol, 0);
 
 	/*
@@ -340,6 +352,32 @@ hammer_free_hmp(struct mount *mp)
 }
 
 /*
+ * Obtain a vnode for the specified inode number.  An exclusively locked
+ * vnode is returned.
+ */
+int
+hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
+{
+	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	struct hammer_inode *ip;
+	int error;
+
+	/*
+	 * Get/allocate the hammer_inode structure.  The structure must be
+	 * unlocked while we manipulate the related vnode to avoid a
+	 * deadlock.
+	 */
+	ip = hammer_get_inode(hmp, NULL, ino, hmp->asof, 0, &error);
+	if (ip == NULL) {
+		*vpp = NULL;
+		return(error);
+	}
+	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
+	hammer_rel_inode(ip, 0);
+	return (error);
+}
+
+/*
  * Return the root vnode for the filesystem.
  *
  * HAMMER stores the root vnode in the hammer_mount structure so
@@ -407,6 +445,90 @@ hammer_vfs_sync(struct mount *mp, int waitfor)
 	int error;
 
 	error = hammer_sync_hmp(hmp, waitfor);
+	return(error);
+}
+
+/*
+ * Convert a vnode to a file handle.
+ */
+static int
+hammer_vfs_vptofh(struct vnode *vp, struct fid *fhp)
+{
+	hammer_inode_t ip;
+
+	KKASSERT(MAXFIDSZ >= 16);
+	ip = VTOI(vp);
+	fhp->fid_len = offsetof(struct fid, fid_data[16]);
+	fhp->fid_reserved = 0;
+	bcopy(&ip->obj_id, fhp->fid_data + 0, sizeof(ip->obj_id));
+	bcopy(&ip->obj_asof, fhp->fid_data + 8, sizeof(ip->obj_asof));
+	return(0);
+}
+
+
+/*
+ * Convert a file handle back to a vnode.
+ */
+static int
+hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
+{
+	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	struct hammer_inode *ip;
+	struct hammer_inode_info info;
+	int error;
+
+	bcopy(fhp->fid_data + 0, &info.obj_id, sizeof(info.obj_id));
+	bcopy(fhp->fid_data + 8, &info.obj_asof, sizeof(info.obj_asof));
+
+	/*
+	 * Get/allocate the hammer_inode structure.  The structure must be
+	 * unlocked while we manipulate the related vnode to avoid a
+	 * deadlock.
+	 */
+	ip = hammer_get_inode(hmp, NULL, info.obj_id, info.obj_asof, 0, &error);
+	if (ip == NULL) {
+		*vpp = NULL;
+		return(error);
+	}
+	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
+	hammer_rel_inode(ip, 0);
+	return (error);
+}
+
+static int
+hammer_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
+		    int *exflagsp, struct ucred **credanonp)
+{
+	hammer_mount_t hmp = (void *)mp->mnt_data;
+	struct netcred *np;
+	int error;
+
+	np = vfs_export_lookup(mp, &hmp->export, nam);
+	if (np) {
+		*exflagsp = np->netc_exflags;
+		*credanonp = &np->netc_anon;
+		error = 0;
+	} else {
+		error = EACCES;
+	}
+	return (error);
+
+}
+
+int
+hammer_vfs_export(struct mount *mp, int op, const struct export_args *export)
+{
+	hammer_mount_t hmp = (void *)mp->mnt_data;
+	int error;
+
+	switch(op) {
+	case MOUNTCTL_SET_EXPORT:
+		error = vfs_export(mp, &hmp->export, export);
+		break;
+	default:
+		error = EOPNOTSUPP;
+		break;
+	}
 	return(error);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mount.h,v 1.3 2007/11/30 00:16:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mount.h,v 1.4 2008/02/05 20:52:01 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -51,8 +51,10 @@ struct hammer_mount_info {
 	int		hflags;		/* extended hammer mount flags */
 	int		unused01;
 	u_int64_t	asof;		/* asof - HAMMER_MAX_TID is current */
+	struct export_args export;	/* export arguments */
 	u_int64_t	reserved[15];
 };
 
 #define HMNT_NOHISTORY	0x00000001
+#define HMNT_EXPORTREQ	0x00000002
 
