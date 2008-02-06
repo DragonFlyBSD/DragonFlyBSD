@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.42 2008/01/10 10:31:48 matthias Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.43 2008/02/06 22:37:46 nth Exp $
  */
 
 #include "opt_ddb.h"
@@ -483,7 +483,7 @@ out:
     return error;
 }
 
-int
+void
 linker_file_add_dependancy(linker_file_t file, linker_file_t dep)
 {
     linker_file_t* newdeps;
@@ -498,8 +498,6 @@ linker_file_add_dependancy(linker_file_t file, linker_file_t dep)
     file->deps = newdeps;
     file->deps[file->ndeps] = dep;
     file->ndeps++;
-
-    return 0;
 }
 
 /*

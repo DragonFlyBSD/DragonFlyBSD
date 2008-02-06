@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.23 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.24 2008/02/06 22:37:46 nth Exp $
  */
 
 #define FREEBSD_AOUT	1
@@ -348,9 +348,7 @@ load_dependancies(linker_file_t lf)
 	error = linker_load_file(name, &lfdep);
 	if (error)
 	    goto out;
-	error = linker_file_add_dependancy(lf, lfdep);
-	if (error)
-	    goto out;
+	linker_file_add_dependancy(lf, lfdep);
 	off = sodp->sod_next;
     }
 

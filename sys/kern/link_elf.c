@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.27 2008/01/05 16:56:17 nth Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.28 2008/02/06 22:37:46 nth Exp $
  */
 
 #include <sys/param.h>
@@ -748,9 +748,7 @@ load_dependancies(linker_file_t lf)
 	    error = linker_load_file(name, &lfdep);
 	    if (error)
 		goto out;
-	    error = linker_file_add_dependancy(lf, lfdep);
-	    if (error)
-		goto out;
+	    linker_file_add_dependancy(lf, lfdep);
 	}
     }
 

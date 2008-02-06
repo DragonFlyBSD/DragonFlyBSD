@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.10 2006/12/23 00:27:03 swildner Exp $
+ * $DragonFly: src/sys/sys/linker.h,v 1.11 2008/02/06 22:37:46 nth Exp $
  */
 
 #ifndef _SYS_LINKER_H_
@@ -191,7 +191,7 @@ int linker_file_unload(linker_file_t _file);
 /*
  * Add a dependancy to a file.
  */
-int linker_file_add_dependancy(linker_file_t _file, linker_file_t _dep);
+void linker_file_add_dependancy(linker_file_t _file, linker_file_t _dep);
 
 /*
  * Lookup a symbol in a file.  If deps is TRUE, look in dependancies
