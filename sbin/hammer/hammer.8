@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.5 2008/02/04 08:34:22 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.6 2008/02/06 09:00:28 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -90,6 +90,7 @@ output as 0.
 Generate the top 32 bits of a HAMMER 64 bit directory hash for the specified
 file name.
 .It Ar prune Ar filesystem Ar from Ar #{smhdMy} Ar to Ar #{smhdMy} Ar every Ar #{smhdMy}
+.It Ar prune Ar filesystem Ar everything
 .It Ar prune Ar filesystem Op Ar using Ar filename
 Prune the filesystem, removing deleted records to free up physical disk
 space.  Specify a time range between the nearest modulo 0 boundary
@@ -119,6 +120,10 @@ use a granularity that is a multiple of 30 minutes.  If you prune your
 data on a 30 minute boundary, then a 1 day boundary in a later pruning (on
 older data), then a pruning beyond that would have to be a multiple of
 1 day.  And so forth.
+.Pp
+The "prune <filesystem> everything" command will remove all historical records
+from the filesystem.  The long keyword is designed to prevent accidental use.
+This option is not recommended.
 .Pp
 Example: "hammer prune /mnt from 1h to 1d every 30m"
 .El

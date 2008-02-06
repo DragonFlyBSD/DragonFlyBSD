@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.2 2008/02/05 07:58:40 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.3 2008/02/06 09:00:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -75,6 +75,10 @@ hammer_cmd_prune(char **av, int ac)
 		if (ac == 2)
 			prune_usage(1);
 		hammer_prune_load_file(now_tid, &prune, filesystem, av[2]);
+	} else if (strcmp(av[1], "everything") == 0) {
+		prune.flags |= HAMMER_IOC_PRUNE_ALL;
+		if (ac > 2)
+			prune_usage(1);
 	} else {
 		if (hammer_prune_parse_line(now_tid, &prune, filesystem,
 					    av, ac) < 0) {
