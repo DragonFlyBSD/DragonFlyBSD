@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.27 2008/02/05 20:52:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.28 2008/02/06 08:59:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -230,7 +230,8 @@ hammer_vop_read(struct vop_read_args *ap)
 			bqrelse(bp);
 			break;
 		}
-		if ((ip->flags & HAMMER_INODE_RO) == 0) {
+		if ((ip->flags & HAMMER_INODE_RO) == 0 &&
+		    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
 			ip->ino_rec.ino_atime = trans.tid;
 			hammer_modify_inode(&trans, ip, HAMMER_INODE_ITIMES);
 		}
@@ -701,6 +702,12 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
  * locked.  A parent_obj_id of 0 does not necessarily indicate that we are
  * at the root, instead it could indicate that the directory we were in was
  * removed.
+ *
+ * NOTE: as-of sequences are not linked into the directory structure.  If
+ * we are at the root with a different asof then the mount point, reload
+ * the same directory with the mount point's asof.   I'm not sure what this
+ * will do to NFS.  We encode ASOF stamps in NFS file handles so it might not
+ * get confused, but it hasn't been tested.
  */
 static
 int
@@ -708,17 +715,30 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
 	struct hammer_inode *dip;
 	struct hammer_inode *ip;
-	u_int64_t parent_obj_id;
+	int64_t parent_obj_id;
+	hammer_tid_t asof;
 	int error;
 
 	dip = VTOI(ap->a_dvp);
-	if ((parent_obj_id = dip->ino_data.parent_obj_id) == 0) {
-		*ap->a_vpp = NULL;
-		return ENOENT;
+	asof = dip->obj_asof;
+	parent_obj_id = dip->ino_data.parent_obj_id;
+
+	if (parent_obj_id == 0) {
+		if (dip->obj_id == HAMMER_OBJID_ROOT &&
+		   asof != dip->hmp->asof) {
+			parent_obj_id = dip->obj_id;
+			asof = dip->hmp->asof;
+			*ap->a_fakename = kmalloc(19, M_TEMP, M_WAITOK);
+			ksnprintf(*ap->a_fakename, 19, "0x%016llx",
+				   dip->obj_asof);
+		} else {
+			*ap->a_vpp = NULL;
+			return ENOENT;
+		}
 	}
 
 	ip = hammer_get_inode(dip->hmp, &dip->cache[1], parent_obj_id,
-			      dip->obj_asof, dip->flags, &error);
+			      asof, dip->flags, &error);
 	if (ip == NULL) {
 		*ap->a_vpp = NULL;
 		return(error);
@@ -1164,10 +1184,19 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Remove tncp from the target directory and then link ip as
 	 * tncp. XXX pass trans to dounlink
+	 *
+	 * Force the inode sync-time to match the transaction so it is
+	 * in-sync with the creation of the target directory entry.
 	 */
 	error = hammer_dounlink(ap->a_tnch, ap->a_tdvp, ap->a_cred, 0);
-	if (error == 0 || error == ENOENT)
+	if (error == 0 || error == ENOENT) {
 		error = hammer_ip_add_directory(&trans, tdip, tncp, ip);
+		if (error == 0) {
+			ip->ino_data.parent_obj_id = tdip->obj_id;
+			hammer_modify_inode(&trans, ip,
+				HAMMER_INODE_DDIRTY | HAMMER_INODE_TIDLOCKED);
+		}
+	}
 	if (error)
 		goto failed; /* XXX */
 
@@ -1469,6 +1498,14 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 			/* will be reallocated by routine below */
 		}
 		error = hammer_ip_add_record(&trans, record);
+
+		/*
+		 * Set the file size to the length of the link.
+		 */
+		if (error == 0) {
+			nip->ino_rec.ino_size = bytes;
+			hammer_modify_inode(&trans, nip, HAMMER_INODE_RDIRTY);
+		}
 	}
 
 	/*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.27 2008/02/05 20:52:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.28 2008/02/06 08:59:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -133,8 +133,17 @@ hammer_get_vnode(struct hammer_inode *ip, int lktype, struct vnode **vpp)
 			default:
 				break;
 			}
-			if (ip->obj_id == HAMMER_OBJID_ROOT)
+
+			/*
+			 * Only mark as the root vnode if the ip is not
+			 * historical, otherwise the VFS cache will get
+			 * confused.  The other half of the special handling
+			 * is in hammer_vop_nlookupdotdot().
+			 */
+			if (ip->obj_id == HAMMER_OBJID_ROOT &&
+			    ip->obj_asof == ip->hmp->asof) {
 				vp->v_flag |= VROOT;
+			}
 
 			vp->v_data = (void *)ip;
 			/* vnode locked by getnewvnode() */
@@ -287,7 +296,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->obj_asof = hmp->asof;
 	ip->hmp = hmp;
 	ip->flags = HAMMER_INODE_DDIRTY | HAMMER_INODE_RDIRTY |
-		    HAMMER_INODE_ITIMES;
+		    HAMMER_INODE_ITIMES | HAMMER_INODE_TIDLOCKED;
 	ip->last_tid = trans->tid;
 
 	RB_INIT(&ip->rec_tree);
@@ -433,6 +442,12 @@ retry:
 				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 				ip->flags |= HAMMER_INODE_ONDISK;
 			}
+
+			/*
+			 * Unlock the sync TID if it was locked, now that
+			 * we have written it out to disk.
+			 */
+			ip->flags &= ~HAMMER_INODE_TIDLOCKED;
 		}
 	}
 	return(error);
@@ -558,7 +573,15 @@ hammer_modify_inode(struct hammer_transaction *trans,
 			kprintf("hammer_modify_inode: %016llx (%08x)\n", 
 				trans->tid, (int)(trans->tid / 1000000000LL));
 		}
-		if (ip->flags & HAMMER_INODE_ONDISK)
+
+		/*
+		 * Update the inode sync transaction id unless it's locked
+		 * due to some prior required synchroznization.  Locking the
+		 * tid in the new flags overrides this (used by rename).
+		 */
+		if ((ip->flags & HAMMER_INODE_TIDLOCKED) == 0)
+			ip->last_tid = trans->tid;
+		else if (flags & HAMMER_INODE_TIDLOCKED)
 			ip->last_tid = trans->tid;
 	}
 	ip->flags |= flags;

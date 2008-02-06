@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.33 2008/02/05 20:52:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.34 2008/02/06 08:59:28 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -41,12 +41,14 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/kernel.h>
+#include <sys/conf.h>
 #include <sys/systm.h>
 #include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/mountctl.h>
 #include <sys/vnode.h>
+#include <sys/proc.h>
 #include <sys/globaldata.h>
 #include <sys/lockf.h>
 #include <sys/buf.h>
@@ -188,6 +190,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_GONE	0x0400	/* delete flushed out */
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
+#define HAMMER_INODE_TIDLOCKED	0x2000	/* tid locked until inode synced */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	  \

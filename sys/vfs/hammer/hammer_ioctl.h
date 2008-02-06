@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.2 2008/02/05 07:58:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.3 2008/02/06 08:59:28 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -60,7 +60,7 @@ struct hammer_ioc_prune_elm {
 
 struct hammer_ioc_prune {
 	int		nelms;
-	int		reserved01;
+	int		flags;
 	int64_t		beg_obj_id;
 	int64_t		cur_obj_id;	/* initialize to end_obj_id */
 	int64_t		cur_key;	/* initialize to HAMMER_MAX_KEY */
@@ -73,6 +73,9 @@ struct hammer_ioc_prune {
 	int64_t		reserved02[7];
 	struct hammer_ioc_prune_elm elms[HAMMER_MAX_PRUNE_ELMS];
 };
+
+#define HAMMER_IOC_PRUNE_ALL	0x0001
+
 
 /*
  * HAMMERIOC_GETHISTORY

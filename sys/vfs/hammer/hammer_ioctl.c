@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.2 2008/02/05 07:58:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.3 2008/02/06 08:59:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -90,12 +90,12 @@ hammer_ioc_prune(hammer_inode_t ip, struct hammer_ioc_prune *prune)
 	int realign_cre;
 	int realign_del;
 
-	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS) {
+	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS)
 		return(EINVAL);
-	}
-	if (prune->beg_obj_id >= prune->end_obj_id) {
+	if (prune->beg_obj_id >= prune->end_obj_id)
 		return(EINVAL);
-	}
+	if ((prune->flags & HAMMER_IOC_PRUNE_ALL) && prune->nelms)
+		return(EINVAL);
 
 retry:
 	error = hammer_init_cursor_hmp(&cursor, NULL, ip->hmp);
@@ -124,6 +124,7 @@ retry:
 		elm = &cursor.node->ondisk->elms[cursor.index];
 		prune->cur_obj_id = elm->base.obj_id;
 		prune->cur_key = elm->base.key;
+
 		if (check_prune(prune, elm, &realign_cre, &realign_del) == 0) {
 			if (hammer_debug_general & 0x0200) {
 				kprintf("check %016llx %016llx: DELETE\n",
@@ -186,6 +187,16 @@ check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
 
 	*realign_cre = -1;
 	*realign_del = -1;
+
+	/*
+	 * If pruning everything remove all records with a non-zero
+	 * delete_tid.
+	 */
+	if (prune->flags & HAMMER_IOC_PRUNE_ALL) {
+		if (elm->base.delete_tid != 0)
+			return(0);
+		return(-1);
+	}
 
 	for (i = 0; i < prune->nelms; ++i) {
 		scan = &prune->elms[i];
