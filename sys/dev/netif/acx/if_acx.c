@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.23 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.24 2008/02/06 05:06:08 sephe Exp $
  */
 
 /*
@@ -400,6 +400,55 @@ acx_attach(device_t dev)
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, acx_sysctl_msdu_lifetime, "I",
 			"MSDU life time");
+	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+		       "long_retry_limit", CTLFLAG_RW,
+		       &sc->sc_long_retry_limit, 0, "Long retry limit");
+	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+		       "scan_dwell", CTLFLAG_RW,
+		       &sc->sc_scan_dwell, 0, "Scan channel dwell time (ms)");
+
+	/*
+	 * Nodes for statistics
+	 */
+	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
+			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			 "frag_error", CTLFLAG_RW, &sc->sc_stats.err_oth_frag,
+			 0, "Fragment errors");
+	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
+			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			 "tx_abort", CTLFLAG_RW, &sc->sc_stats.err_abort,
+			 0, "TX abortions");
+	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
+			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			 "tx_invalid", CTLFLAG_RW, &sc->sc_stats.err_param,
+			 0, "Invalid TX param in TX descriptor");
+	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
+			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			 "no_wepkey", CTLFLAG_RW, &sc->sc_stats.err_no_wepkey,
+			 0, "No WEP key exists");
+	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
+			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			 "msdu_timeout", CTLFLAG_RW,
+			 &sc->sc_stats.err_msdu_timeout,
+			 0, "MSDU timeouts");
+	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
+			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			 "ex_txretry", CTLFLAG_RW, &sc->sc_stats.err_ex_retry,
+			 0, "Excessive TX retries");
+	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
+			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			 "buf_oflow", CTLFLAG_RW, &sc->sc_stats.err_buf_oflow,
+			 0, "Buffer overflows");
+	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
+			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			 "dma_error", CTLFLAG_RW, &sc->sc_stats.err_dma,
+			 0, "DMA errors");
+	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
+			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+			 "unkn_error", CTLFLAG_RW, &sc->sc_stats.err_unkn,
+			 0, "Unknown errors");
 
 	ifp->if_softc = sc;
 	ifp->if_init = acx_init;
