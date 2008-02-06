@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.87 2008/02/06 00:27:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.88 2008/02/06 08:53:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -561,7 +561,11 @@ _cache_get_nonblock(struct namecache *ncp)
 int
 cache_get_nonblock(struct nchandle *nch)
 {
-	return(_cache_get_nonblock(nch->ncp));
+	int error;
+
+	if ((error = _cache_get_nonblock(nch->ncp)) == 0)
+		++nch->mount->mnt_refs;
+	return (error);
 }
 
 static __inline
@@ -1316,6 +1320,7 @@ force:
 			if (error) {
 				kprintf("lookupdotdot(longpath) failed %d "
 				       "dvp %p\n", error, dvp);
+				nch->ncp = NULL;
 				break;
 			}
 			continue;
@@ -1337,7 +1342,8 @@ force:
 		vn_unlock(pvp);
 
 		/*
-		 * Reuse makeit as a recursion depth counter.
+		 * Reuse makeit as a recursion depth counter.  On success
+		 * nch will be fully referenced.
 		 */
 		cache_fromdvp(pvp, cred, makeit + 1, nch);
 		vrele(pvp);
@@ -1352,17 +1358,21 @@ force:
 		 * ncp and dvp are both held but not locked.
 		 */
 		error = cache_inefficient_scan(nch, cred, dvp, fakename);
-		_cache_drop(nch->ncp);
 		if (error) {
 			kprintf("cache_fromdvp: scan %p (%s) failed on dvp=%p\n",
 				pvp, nch->ncp->nc_name, dvp);
-			nch->ncp = NULL;
+			cache_drop(nch);
+			/* nch was NULLed out, reload mount */
+			nch->mount = dvp->v_mount;
 			break;
 		}
 		if (ncvp_debug) {
 			kprintf("cache_fromdvp: scan %p (%s) succeeded\n",
 				pvp, nch->ncp->nc_name);
 		}
+		cache_drop(nch);
+		/* nch was NULLed out, reload mount */
+		nch->mount = dvp->v_mount;
 	}
 
 	if (fakename)
@@ -1401,6 +1411,7 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 	 */
 	vref(dvp);
 	nch.mount = dvp->v_mount;
+	nch.ncp = NULL;
 	fakename = NULL;
 
 	for (;;) {
@@ -1427,6 +1438,7 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 			vrele(pvp);
 			if (error) {
 				_cache_drop(nch.ncp);
+				nch.ncp = NULL;
 				vrele(dvp);
 			}
 			break;
@@ -1452,12 +1464,12 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 		if (*saved_dvp)
 		    vrele(*saved_dvp);
 		*saved_dvp = dvp;
+		_cache_drop(nch.ncp);
 	}
 	if (fakename)
 		kfree(fakename, M_TEMP);
 	return (error);
 }
-
 
 /*
  * Do an inefficient scan of the directory represented by ncp looking for
@@ -1593,7 +1605,11 @@ done:
 		}
 		if (rncp.ncp->nc_vp == NULL)
 			error = rncp.ncp->nc_error;
-		_cache_put(rncp.ncp);
+		/* 
+		 * Release rncp after a successful nlookup.  rncp was fully
+		 * referenced.
+		 */
+		cache_put(&rncp);
 	} else {
 		kprintf("cache_inefficient_scan: dvp %p NOT FOUND in %s\n",
 			dvp, nch->ncp->nc_name);
