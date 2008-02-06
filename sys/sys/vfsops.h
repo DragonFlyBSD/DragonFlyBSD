@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.30 2007/11/20 21:03:46 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.31 2008/02/06 00:27:26 dillon Exp $
  */
 
 /*
@@ -433,6 +433,7 @@ struct vop_nlookupdotdot_args {
 	struct vnode *a_dvp;
 	struct vnode **a_vpp;
 	struct ucred *a_cred;
+	char **a_fakename;
 };
 
 /*
@@ -800,7 +801,7 @@ int vop_mountctl(struct vop_ops *ops, int op, struct file *fp,
 int vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
 		struct vnode *dvp, struct ucred *cred);
 int vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
-		struct vnode **vpp, struct ucred *cred);
+		struct vnode **vpp, struct ucred *cred, char **fakename);
 int vop_ncreate(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 		struct vnode **vpp, struct ucred *cred, struct vattr *vap);
 int vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
@@ -1061,8 +1062,8 @@ extern struct syslink_desc vop_nrename_desc;
  */
 #define VOP_NRESOLVE(nch, dvp, cred)			\
 	vop_nresolve((nch)->mount->mnt_vn_use_ops, nch, dvp, cred)
-#define VOP_NLOOKUPDOTDOT(dvp, vpp, cred)		\
-	vop_nlookupdotdot(*(dvp)->v_ops, dvp, vpp, cred)
+#define VOP_NLOOKUPDOTDOT(dvp, vpp, cred, fakename)	\
+	vop_nlookupdotdot(*(dvp)->v_ops, dvp, vpp, cred, fakename)
 #define VOP_NCREATE(nch, dvp, vpp, cred, vap)		\
 	vop_ncreate((nch)->mount->mnt_vn_use_ops, nch, dvp, vpp, cred, vap)
 #define VOP_NMKDIR(nch, dvp, vpp, cred, vap)		\

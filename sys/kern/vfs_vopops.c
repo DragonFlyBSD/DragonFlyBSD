@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.36 2007/11/20 21:03:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.37 2008/02/06 00:27:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -952,7 +952,7 @@ vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
  */
 int
 vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
-	struct vnode **vpp, struct ucred *cred)
+	struct vnode **vpp, struct ucred *cred, char **fakename)
 {
 	struct vop_nlookupdotdot_args ap;
 	int error;
@@ -962,6 +962,7 @@ vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cred = cred;
+	ap.a_fakename = fakename;
 
 	DO_OPS(ops, error, &ap, vop_nlookupdotdot);
 	return(error);

@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.86 2008/01/18 19:13:15 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.87 2008/02/06 00:27:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1248,7 +1248,7 @@ cache_sync_fsmid_vp(struct vnode *vp)
  */
 
 static int cache_inefficient_scan(struct nchandle *nch, struct ucred *cred,
-				  struct vnode *dvp);
+				  struct vnode *dvp, char *fakename);
 static int cache_fromdvp_try(struct vnode *dvp, struct ucred *cred, 
 				  struct vnode **saved_dvp);
 
@@ -1258,11 +1258,13 @@ cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit,
 {
 	struct vnode *saved_dvp;
 	struct vnode *pvp;
+	char *fakename;
 	int error;
 
 	nch->ncp = NULL;
 	nch->mount = dvp->v_mount;
 	saved_dvp = NULL;
+	fakename = NULL;
 
 	/*
 	 * Temporary debugging code to force the directory scanning code
@@ -1322,7 +1324,12 @@ force:
 		/*
 		 * Get the parent directory and resolve its ncp.
 		 */
-		error = vop_nlookupdotdot(*dvp->v_ops, dvp, &pvp, cred);
+		if (fakename) {
+			kfree(fakename, M_TEMP);
+			fakename = NULL;
+		}
+		error = vop_nlookupdotdot(*dvp->v_ops, dvp, &pvp, cred,
+					  &fakename);
 		if (error) {
 			kprintf("lookupdotdot failed %d dvp %p\n", error, dvp);
 			break;
@@ -1344,7 +1351,7 @@ force:
 		 *
 		 * ncp and dvp are both held but not locked.
 		 */
-		error = cache_inefficient_scan(nch, cred, dvp);
+		error = cache_inefficient_scan(nch, cred, dvp, fakename);
 		_cache_drop(nch->ncp);
 		if (error) {
 			kprintf("cache_fromdvp: scan %p (%s) failed on dvp=%p\n",
@@ -1357,6 +1364,9 @@ force:
 				pvp, nch->ncp->nc_name);
 		}
 	}
+
+	if (fakename)
+		kfree(fakename, M_TEMP);
 
 	/*
 	 * hold it for real so the mount gets a ref
@@ -1383,6 +1393,7 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 	struct vnode *pvp;
 	int error;
 	static time_t last_fromdvp_report;
+	char *fakename;
 
 	/*
 	 * Loop getting the parent directory vnode until we get something we
@@ -1390,12 +1401,18 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 	 */
 	vref(dvp);
 	nch.mount = dvp->v_mount;
+	fakename = NULL;
 
 	for (;;) {
-		error = vop_nlookupdotdot(*dvp->v_ops, dvp, &pvp, cred);
+		if (fakename) {
+			kfree(fakename, M_TEMP);
+			fakename = NULL;
+		}
+		error = vop_nlookupdotdot(*dvp->v_ops, dvp, &pvp, cred,
+					  &fakename);
 		if (error) {
 			vrele(dvp);
-			return (error);
+			break;
 		}
 		vn_unlock(pvp);
 		if ((nch.ncp = TAILQ_FIRST(&pvp->v_namecache)) != NULL) {
@@ -1411,29 +1428,33 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 			if (error) {
 				_cache_drop(nch.ncp);
 				vrele(dvp);
-				return (error);
 			}
 			break;
 		}
 		vrele(dvp);
 		dvp = pvp;
 	}
-	if (last_fromdvp_report != time_second) {
-		last_fromdvp_report = time_second;
-		kprintf("Warning: extremely inefficient path resolution on %s\n",
-			nch.ncp->nc_name);
-	}
-	error = cache_inefficient_scan(&nch, cred, dvp);
+	if (error == 0) {
+		if (last_fromdvp_report != time_second) {
+			last_fromdvp_report = time_second;
+			kprintf("Warning: extremely inefficient path "
+				"resolution on %s\n",
+				nch.ncp->nc_name);
+		}
+		error = cache_inefficient_scan(&nch, cred, dvp, fakename);
 
-	/*
-	 * Hopefully dvp now has a namecache record associated with it.
-	 * Leave it referenced to prevent the kernel from recycling the
-	 * vnode.  Otherwise extremely long directory paths could result
-	 * in endless recycling.
-	 */
-	if (*saved_dvp)
-	    vrele(*saved_dvp);
-	*saved_dvp = dvp;
+		/*
+		 * Hopefully dvp now has a namecache record associated with
+		 * it.  Leave it referenced to prevent the kernel from
+		 * recycling the vnode.  Otherwise extremely long directory
+		 * paths could result in endless recycling.
+		 */
+		if (*saved_dvp)
+		    vrele(*saved_dvp);
+		*saved_dvp = dvp;
+	}
+	if (fakename)
+		kfree(fakename, M_TEMP);
 	return (error);
 }
 
@@ -1461,10 +1482,13 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
  * (which are likely to remain cached), the case does not actually run all
  * that often and has the supreme advantage of not polluting the namecache
  * algorithms.
+ *
+ * If a fakename is supplied just construct a namecache entry using the
+ * fake name.
  */
 static int
 cache_inefficient_scan(struct nchandle *nch, struct ucred *cred, 
-		       struct vnode *dvp)
+		       struct vnode *dvp, char *fakename)
 {
 	struct nlcomponent nlc;
 	struct nchandle rncp;
@@ -1486,6 +1510,19 @@ cache_inefficient_scan(struct nchandle *nch, struct ucred *cred,
 		return (error);
 	if (ncvp_debug)
 		kprintf("inefficient_scan: directory iosize %ld vattr fileid = %lld\n", vat.va_blocksize, vat.va_fileid);
+
+	/*
+	 * Use the supplied fakename if not NULL.  Fake names are typically
+	 * not in the actual filesystem hierarchy.  This is used by HAMMER
+	 * to glue @@timestamp recursions together.
+	 */
+	if (fakename) {
+		nlc.nlc_nameptr = fakename;
+		nlc.nlc_namelen = strlen(fakename);
+		rncp = cache_nlookup(nch, &nlc);
+		goto done;
+	}
+
 	if ((blksize = vat.va_blocksize) == 0)
 		blksize = DEV_BSIZE;
 	rbuf = kmalloc(blksize, M_TEMP, M_WAITOK);
@@ -1537,6 +1574,8 @@ again:
 		if (rncp.ncp == NULL && eofflag == 0 && uio.uio_resid != blksize)
 			goto again;
 	}
+	kfree(rbuf, M_TEMP);
+done:
 	vrele(pvp);
 	if (rncp.ncp) {
 		if (rncp.ncp->nc_flag & NCF_UNRESOLVED) {
@@ -1560,7 +1599,6 @@ again:
 			dvp, nch->ncp->nc_name);
 		error = ENOENT;
 	}
-	kfree(rbuf, M_TEMP);
 	return (error);
 }
 
