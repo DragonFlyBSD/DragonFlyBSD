@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.24 2008/02/06 05:06:08 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.25 2008/02/06 08:21:22 sephe Exp $
  */
 
 /*
@@ -76,6 +76,7 @@
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/firmware.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/rman.h>
@@ -106,13 +107,6 @@
 #include <dev/netif/acx/if_acxreg.h>
 #include <dev/netif/acx/if_acxvar.h>
 #include <dev/netif/acx/acxcmd.h>
-
-#define SIOCSLOADFW	_IOW('i', 137, struct ifreq)	/* load firmware */
-#define SIOCGRADIO	_IOW('i', 138, struct ifreq)	/* get radio type */
-#define SIOCGSTATS	_IOW('i', 139, struct ifreq)	/* get acx stats */
-#define SIOCSKILLFW	_IOW('i', 140, struct ifreq)	/* free firmware */
-#define SIOCGFWVER	_IOW('i', 141, struct ifreq)	/* get firmware ver */
-#define SIOCGHWID	_IOW('i', 142, struct ifreq)	/* get hardware id */
 
 static int	acx_probe(device_t);
 static int	acx_attach(device_t);
@@ -158,8 +152,10 @@ static int	acx_set_beacon_tmplt(struct acx_softc *,
 static int	acx_read_eeprom(struct acx_softc *, uint32_t, uint8_t *);
 static int	acx_read_phyreg(struct acx_softc *, uint32_t, uint8_t *);
 
-static int	acx_copyin_firmware(struct acx_softc *, struct ifreq *);
+static int	acx_alloc_firmware(struct acx_softc *);
 static void	acx_free_firmware(struct acx_softc *);
+static int	acx_setup_firmware(struct acx_softc *, struct fw_image *,
+				   const uint8_t **, int *);
 static int	acx_load_firmware(struct acx_softc *, uint32_t,
 				  const uint8_t *, int);
 static int	acx_load_radio_firmware(struct acx_softc *, const uint8_t *,
@@ -174,6 +170,7 @@ static int	acx_media_change(struct ifnet *);
 static int	acx_newstate(struct ieee80211com *, enum ieee80211_state, int);
 
 static int	acx_sysctl_msdu_lifetime(SYSCTL_HANDLER_ARGS);
+static int	acx_sysctl_free_firmware(SYSCTL_HANDLER_ARGS);
 
 const struct ieee80211_rateset	acx_rates_11b =
 	{ 5, { 2, 4, 11, 22, 44 } };
@@ -410,6 +407,21 @@ acx_attach(device_t dev)
 		       &sc->sc_scan_dwell, 0, "Scan channel dwell time (ms)");
 
 	/*
+	 * Nodes for firmware operation
+	 */
+	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+		       "combined_radio_fw", CTLFLAG_RW,
+		       &sc->sc_firmware.combined_radio_fw, 0,
+		       "Radio and base firmwares are combined");
+	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+			OID_AUTO, "free_fw",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, acx_sysctl_free_firmware, "I",
+			"Free firmware");
+
+	/*
 	 * Nodes for statistics
 	 */
 	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
@@ -594,11 +606,9 @@ acx_init(void *arg)
 	if (error)
 		return;
 
-	if (fw->base_fw == NULL) {
-		error = EINVAL;
-		if_printf(ifp, "base firmware is not loaded yet\n");
+	error = acx_alloc_firmware(sc);
+	if (error)
 		return;
-	}
 
 	error = acx_init_tx_ring(sc);
 	if (error) {
@@ -1014,35 +1024,6 @@ acx_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	req = (struct ifreq *)data;
 
 	switch (cmd) {
-	case SIOCSLOADFW:
-		error = suser_cred(cr, NULL_CRED_OKAY);
-		if (error)
-			break;
-
-		error = acx_copyin_firmware(sc, req);
-		break;
-	case SIOCSKILLFW:
-		error = suser_cred(cr, NULL_CRED_OKAY);
-		if (error)
-			break;
-		acx_free_firmware(sc);
-		break;
-	case SIOCGRADIO:
-		error = copyout(&sc->sc_radio_type, req->ifr_data,
-				sizeof(sc->sc_radio_type));
-		break;
-	case SIOCGFWVER:
-		error = copyout(&sc->sc_firmware_ver, req->ifr_data,
-				sizeof(sc->sc_firmware_ver));
-		break;
-	case SIOCGHWID:
-		error = copyout(&sc->sc_hardware_id, req->ifr_data,
-				sizeof(sc->sc_hardware_id));
-		break;
-	case SIOCGSTATS:
-		error = copyout(&sc->sc_stats, req->ifr_data,
-				sizeof(sc->sc_stats));
-		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if ((ifp->if_flags & IFF_RUNNING)) {
@@ -1685,56 +1666,104 @@ acx_write_phyreg(struct acx_softc *sc, uint32_t reg, uint8_t val)
 }
 
 static int
-acx_copyin_firmware(struct acx_softc *sc, struct ifreq *req)
+acx_alloc_firmware(struct acx_softc *sc)
 {
-	struct acx_firmware ufw, *kfw;
-	uint8_t *base_fw, *radio_fw;
-	int error;
+	struct acx_firmware *fw = &sc->sc_firmware;
+	char filename[64];
+	int error = 0;
 
-	kfw = &sc->sc_firmware;
-	base_fw = NULL;
-	radio_fw = NULL;
+	if (fw->base_fw_image == NULL) {
+		if (fw->combined_radio_fw) {
+			ksnprintf(filename, sizeof(filename),
+				  ACX_BASE_RADIO_FW_PATH,
+				  fw->fwdir, sc->sc_radio_type);
+		} else {
+			ksnprintf(filename, sizeof(filename),
+				  ACX_BASE_FW_PATH, fw->fwdir);
+		}
+		fw->base_fw_image = firmware_image_load(filename, NULL);
+		if (fw->base_fw_image == NULL) {
+			if_printf(&sc->sc_ic.ic_if, "load %s base fw failed\n",
+				  filename);
+			error = EIO;
+			goto back;
+		}
 
-	error = copyin(req->ifr_data, &ufw, sizeof(ufw));
-	if (error)
-		return error;
-
-	/*
-	 * For combined base firmware, there is no radio firmware.
-	 * But base firmware must exist.
-	 */
-	if (ufw.base_fw_len <= 0 || ufw.radio_fw_len < 0)
-		return EINVAL;
-
-	base_fw = kmalloc(ufw.base_fw_len, M_DEVBUF, M_INTWAIT);
-	error = copyin(ufw.base_fw, base_fw, ufw.base_fw_len);
-	if (error)
-		goto fail;
-
-	if (ufw.radio_fw_len > 0) {
-		radio_fw = kmalloc(ufw.radio_fw_len, M_DEVBUF, M_INTWAIT);
-		error = copyin(ufw.radio_fw, radio_fw, ufw.radio_fw_len);
+		error = acx_setup_firmware(sc, fw->base_fw_image,
+					   &fw->base_fw, &fw->base_fw_len);
 		if (error)
-			goto fail;
+			goto back;
 	}
 
-	kfw->base_fw_len = ufw.base_fw_len;
-	if (kfw->base_fw != NULL)
-		kfree(kfw->base_fw, M_DEVBUF);
-	kfw->base_fw = base_fw;
+	if (!fw->combined_radio_fw && fw->radio_fw_image == NULL) {
+		ksnprintf(filename, sizeof(filename), ACX_RADIO_FW_PATH,
+			  fw->fwdir, sc->sc_radio_type);
+		fw->radio_fw_image = firmware_image_load(filename, NULL);
+		if (fw->radio_fw_image == NULL) {
+			if_printf(&sc->sc_ic.ic_if, "load %s radio fw failed\n",
+				  filename);
+			error = EIO;
+			goto back;
+		}
 
-	kfw->radio_fw_len = ufw.radio_fw_len;
-	if (kfw->radio_fw != NULL)
-		kfree(kfw->radio_fw, M_DEVBUF);
-	kfw->radio_fw = radio_fw;
-
-	return 0;
-fail:
-	if (base_fw != NULL)
-		kfree(base_fw, M_DEVBUF);
-	if (radio_fw != NULL)
-		kfree(radio_fw, M_DEVBUF);
+		error = acx_setup_firmware(sc, fw->radio_fw_image,
+					   &fw->radio_fw, &fw->radio_fw_len);
+	}
+back:
+	if (error)
+		acx_free_firmware(sc);
 	return error;
+}
+
+static int
+acx_setup_firmware(struct acx_softc *sc, struct fw_image *img,
+		   const uint8_t **ptr, int *len)
+{
+	const struct acx_firmware_hdr *hdr;
+	const uint8_t *p;
+	uint32_t cksum;
+	int i;
+
+	*ptr = NULL;
+	*len = 0;
+
+	/*
+	 * Make sure that the firmware image contains more than just a header
+	 */
+	if (img->fw_imglen <= sizeof(*hdr)) {
+		if_printf(&sc->sc_ic.ic_if, "%s is invalid image, "
+			  "size %u (too small)\n",
+			  img->fw_name, img->fw_imglen);
+		return EINVAL;
+	}
+	hdr = (const struct acx_firmware_hdr *)img->fw_image;
+
+	/*
+	 * Verify length
+	 */
+	if (hdr->fwh_len != img->fw_imglen - sizeof(*hdr)) {
+		if_printf(&sc->sc_ic.ic_if, "%s is invalid image, "
+			  "size in hdr %u and image size %u mismatches\n",
+			  img->fw_name, hdr->fwh_len, img->fw_imglen);
+		return EINVAL;
+	}
+
+	/*
+	 * Verify cksum
+	 */
+	cksum = 0;
+	for (i = 0, p = (const uint8_t *)&hdr->fwh_len;
+	     i < img->fw_imglen - sizeof(hdr->fwh_cksum); ++i, ++p)
+		cksum += *p;
+	if (cksum != hdr->fwh_cksum) {
+		if_printf(&sc->sc_ic.ic_if, "%s is invalid image, "
+			  "checksum mismatch\n", img->fw_name);
+		return EINVAL;
+	}
+
+	*ptr = ((const uint8_t *)img->fw_image + sizeof(*hdr));
+	*len = img->fw_imglen - sizeof(*hdr);
+	return 0;
 }
 
 static void
@@ -1742,13 +1771,15 @@ acx_free_firmware(struct acx_softc *sc)
 {
 	struct acx_firmware *fw = &sc->sc_firmware;
 
-	if (fw->base_fw != NULL) {
-		kfree(fw->base_fw, M_DEVBUF);
+	if (fw->base_fw_image != NULL) {
+		firmware_image_unload(fw->base_fw_image);
+		fw->base_fw_image = NULL;
 		fw->base_fw = NULL;
 		fw->base_fw_len = 0;
 	}
-	if (fw->radio_fw != NULL) {
-		kfree(fw->radio_fw, M_DEVBUF);
+	if (fw->radio_fw_image != NULL) {
+		firmware_image_unload(fw->radio_fw_image);
+		fw->radio_fw_image = NULL;
 		fw->radio_fw = NULL;
 		fw->radio_fw_len = 0;
 	}
@@ -2586,6 +2617,28 @@ acx_sysctl_msdu_lifetime(SYSCTL_HANDLER_ARGS)
 		}
 	}
 	sc->sc_msdu_lifetime = v;
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+static int
+acx_sysctl_free_firmware(SYSCTL_HANDLER_ARGS)
+{
+	struct acx_softc *sc = arg1;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	int error = 0, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = 0;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+	if (v == 0)	/* Do nothing */
+		goto back;
+
+	acx_free_firmware(sc);
 back:
 	lwkt_serialize_exit(ifp->if_serializer);
 	return error;

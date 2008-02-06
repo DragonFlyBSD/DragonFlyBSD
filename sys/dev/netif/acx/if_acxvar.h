@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.11 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.12 2008/02/06 08:21:22 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -286,12 +286,22 @@ struct acx_buf_data {
 	int			tx_used_count;
 };
 
-struct acx_firmware {
-	uint8_t	*base_fw;
-	int	base_fw_len;
+struct acx_firmware_hdr {
+	uint32_t	fwh_cksum;
+	uint32_t	fwh_len;
+} __packed;
 
-	uint8_t	*radio_fw;
-	int	radio_fw_len;
+struct acx_firmware {
+	struct fw_image	*base_fw_image;
+	const uint8_t	*base_fw;
+	int		base_fw_len;
+
+	struct fw_image	*radio_fw_image;
+	const uint8_t	*radio_fw;
+	int		radio_fw_len;
+
+	int		combined_radio_fw;
+	const char	*fwdir;
 };
 
 struct acx_config {
@@ -435,6 +445,9 @@ struct acx_softc {
 	struct sysctl_ctx_list	sc_sysctl_ctx;
 	struct sysctl_oid	*sc_sysctl_tree;
 
+	/*
+	 * TX rate control
+	 */
 	struct ieee80211_onoe_param sc_onoe_param;
 	struct ieee80211_amrr_param sc_amrr_param;
 	int			sc_long_retry_limit;
@@ -488,6 +501,10 @@ struct acx_softc {
 #define ACX_RADIO_TYPE_RADIA	0x16
 #define ACX_RADIO_TYPE_UNKN17	0x17
 #define ACX_RADIO_TYPE_UNKN19	0x19
+
+#define ACX_BASE_FW_PATH	"acx/%s/wlangen.bin"
+#define ACX_RADIO_FW_PATH	"acx/%s/radio%02x.bin"
+#define ACX_BASE_RADIO_FW_PATH	"acx/%s/FwRad%02x.bin"
 
 extern const struct ieee80211_rateset	acx_rates_11b;
 extern const struct ieee80211_rateset	acx_rates_11g;

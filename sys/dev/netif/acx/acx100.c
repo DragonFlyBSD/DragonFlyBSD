@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.11 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.12 2008/02/06 08:21:22 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -306,6 +306,7 @@ acx100_set_param(device_t dev)
 {
 	struct acx_softc *sc = device_get_softc(dev);
 	struct ieee80211com *ic = &sc->sc_ic;
+	struct acx_firmware *fw = &sc->sc_firmware;
 
 	sc->chip_mem1_rid = PCIR_BAR(1);
 	sc->chip_mem2_rid = PCIR_BAR(2);
@@ -342,6 +343,9 @@ acx100_set_param(device_t dev)
 	sc->chip_tx_complete = acx100_tx_complete;
 	sc->chip_set_bss_join_param = acx100_set_bss_join_param;
 	sc->chip_proc_wep_rxbuf = acx100_proc_wep_rxbuf;
+
+	fw->combined_radio_fw = 0;
+	fw->fwdir = "100";
 }
 
 static int

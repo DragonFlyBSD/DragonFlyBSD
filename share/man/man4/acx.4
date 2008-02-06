@@ -28,9 +28,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/acx.4,v 1.11 2007/10/27 18:25:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/acx.4,v 1.12 2008/02/06 08:21:22 sephe Exp $
 .\"
-.Dd September 15, 2007
+.Dd February 6, 2008
 .Dt ACX 4
 .Os
 .Sh NAME
@@ -76,9 +76,23 @@ The following per-interface variables are implemented in the
 branch of the
 .Xr sysctl 3
 MIB.
-.Bl -tag -width ".Va msdu_lifetime"
+.Bl -tag -width ".Va combined_radio_fw"
 .It Va msdu_lifetime
 MSDU life time.
+.It Va long_retry_limit
+Long retry limit.
+.It Va scan_dwell
+Channel dwell time during scanning (unit: milliseconds)
+.It Va combined_radio_fw
+The base and radio firmwares are combined in one image file.
+By default,
+it is set to 1 for ACX111 parts and 0 for ACX100A and ACX100B parts.
+.It Va free_fw
+Set to non-zero value to free the loaded firmwares.
+This does not affect a running device.
+Firmwares will be reloaded from
+.Pa /etc/firmware/acx
+when device is brought up next time.
 .El
 .Sh HARDWARE
 The following cards are among those supported by the
@@ -115,16 +129,15 @@ An archive with firmware files that are known to work can be found at:
 http://leaf.dragonflybsd.org/~sephe/acx/acx_fw.tbz
 .Ed
 .Pp
-See
-.Xr acxcontrol 8
-for more information on loading firmware.
+The firmware files have to reside in
+.Pa /etc/firmware/acx
+and will be loaded when the interface is brought up.
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr cardbus 4 ,
 .Xr ifmedia 4 ,
 .Xr pci 4 ,
 .Xr wlan_ratectl 4 ,
-.Xr acxcontrol 8 ,
 .Xr hostapd 8 ,
 .Xr ifconfig 8 ,
 .Xr sysctl 8 ,
