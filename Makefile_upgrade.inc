@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.10 2008/02/07 11:44:23 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.11 2008/02/08 14:26:38 hasso Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -543,3 +543,6 @@ TO_REMOVE+=/usr/share/man/man4/gx.4.gz
 TO_REMOVE+=/usr/sbin/acxcontrol
 TO_REMOVE+=/usr/share/man/man8/acxcontrol.8.gz
 TO_REMOVE+=/usr/share/man/cat8/acxcontrol.8.gz
+TO_REMOVE+=/usr/sbin/btpin
+TO_REMOVE+=/usr/sbin/rfcomm_sppd
+TO_REMOVE+=/usr/sbin/sdpquery
