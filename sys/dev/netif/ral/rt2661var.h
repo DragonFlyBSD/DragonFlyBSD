@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.11 2008/01/17 13:33:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.12 2008/02/08 09:42:30 sephe Exp $
  */
 
 #define RT2661_TSSI_LIMSZ	4
@@ -204,6 +204,7 @@ struct rt2661_softc {
 	int				sc_calib_txpwr;
 	int				sc_calib_rxsns;
 	int				sc_dwelltime;
+	int				sc_debug;
 
 	struct ieee80211_onoe_param	sc_onoe_param;
 	struct ieee80211_sample_param	sc_sample_param;

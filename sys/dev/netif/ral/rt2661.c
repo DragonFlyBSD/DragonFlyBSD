@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.28 2008/01/17 13:33:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.29 2008/02/08 09:42:30 sephe Exp $
  */
 
 /*
@@ -55,13 +55,13 @@
 #include <dev/netif/ral/rt2661_ucode.h>
 
 #ifdef RAL_DEBUG
-#define DPRINTF(x)	do { if (ral_debug > 0) kprintf x; } while (0)
-#define DPRINTFN(n, x)	do { if (ral_debug >= (n)) kprintf x; } while (0)
-int ral_debug = 1;
-SYSCTL_INT(_debug, OID_AUTO, ral, CTLFLAG_RW, &ral_debug, 0, "ral debug level");
+#define DPRINTF(sc, x)		\
+	do { if ((sc)->sc_debug > 0) kprintf x; } while (0)
+#define DPRINTFN(sc, n, x)	\
+	do { if ((sc)->sc_debug >= (n)) kprintf x; } while (0)
 #else
-#define DPRINTF(x)
-#define DPRINTFN(n, x)
+#define DPRINTF(sc, x)
+#define DPRINTFN(sc, n, x)
 #endif
 
 MALLOC_DEFINE(M_RT2661, "rt2661_ratectl", "rt2661 rate control data");
@@ -273,6 +273,9 @@ rt2661_attach(device_t dev, int id)
 
 	callout_init(&sc->scan_ch);
 	callout_init(&sc->calib_ch);
+#ifdef RAL_DEBUG
+	sc->sc_debug = 1;
+#endif
 
 	sc->sc_irq_rid = 0;
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_irq_rid,
@@ -495,6 +498,12 @@ rt2661_attach(device_t dev, int id)
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "dwell",
 	    CTLFLAG_RW, &sc->sc_dwelltime, 0,
 	    "Channel dwell time (ms) for AP/station scanning");
+
+#ifdef RAL_DEBUG
+	SYSCTL_ADD_INT(&sc->sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "debug",
+	    CTLFLAG_RW, &sc->sc_debug, 0, "debug level");
+#endif
 
 	SYSCTL_ADD_INT(&sc->sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "txpwr_corr",
@@ -1119,12 +1128,12 @@ rt2661_tx_intr(struct rt2661_softc *sc)
 		switch (result) {
 		case RT2661_TX_SUCCESS:
 			retrycnt = RT2661_TX_RETRYCNT(val);
-			DPRINTFN(10, ("data frame sent successfully after "
+			DPRINTFN(sc, 10, ("data frame sent successfully after "
 			    "%d retries\n", retrycnt));
 			break;
 
 		case RT2661_TX_RETRY_FAIL:
-			DPRINTFN(9, ("sending data frame failed (too much "
+			DPRINTFN(sc, 9, ("sending data frame failed (too much "
 			    "retries)\n"));
 			break;
 
@@ -1171,7 +1180,7 @@ rt2661_tx_dma_intr(struct rt2661_softc *sc, struct rt2661_tx_ring *txq)
 		/* descriptor is no longer valid */
 		desc->flags &= ~htole32(RT2661_TX_VALID);
 
-		DPRINTFN(15, ("tx dma done q=%p idx=%u\n", txq, txq->next));
+		DPRINTFN(sc, 15, ("tx dma done q=%p idx=%u\n", txq, txq->next));
 
 		txq->queued--;
 		if (++txq->next >= txq->count)	/* faster than % count */
@@ -1221,13 +1230,13 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 			 * This should not happen since we did not request
 			 * to receive those frames when we filled TXRX_CSR0.
 			 */
-			DPRINTFN(5, ("CRC error flags 0x%08x\n", flags));
+			DPRINTFN(sc, 5, ("CRC error flags 0x%08x\n", flags));
 			ifp->if_ierrors++;
 			goto skip;
 		}
 
 		if (flags & RT2661_RX_CIPHER_MASK) {
-			DPRINTFN(5, ("cipher error 0x%08x\n", flags));
+			DPRINTFN(sc, 5, ("cipher error 0x%08x\n", flags));
 			ifp->if_ierrors++;
 			goto skip;
 		}
@@ -1286,7 +1295,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 
 		wh = mtod(m, struct ieee80211_frame_min *);
 		if (wh->i_fc[1] & IEEE80211_FC1_WEP)
-			DPRINTFN(5, ("keyix %d\n", RT2661_RX_KEYIX(flags)));
+			DPRINTFN(sc, 5, ("keyix %d\n", RT2661_RX_KEYIX(flags)));
 
 		ni = ieee80211_find_rxnode(ic, wh);
 
@@ -1329,7 +1338,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 
 skip:		desc->flags |= htole32(RT2661_RX_BUSY);
 
-		DPRINTFN(15, ("rx intr idx=%u\n", sc->rxq.cur));
+		DPRINTFN(sc, 15, ("rx intr idx=%u\n", sc->rxq.cur));
 
 		sc->rxq.cur = (sc->rxq.cur + 1) % RT2661_RX_RING_COUNT;
 	}
@@ -1647,7 +1656,7 @@ rt2661_tx_mgt(struct rt2661_softc *sc, struct mbuf *m0,
 	bus_dmamap_sync(sc->mgtq.desc_dmat, sc->mgtq.desc_map,
 	    BUS_DMASYNC_PREWRITE);
 
-	DPRINTFN(10, ("sending mgt frame len=%u idx=%u rate=%u\n",
+	DPRINTFN(sc, 10, ("sending mgt frame len=%u idx=%u rate=%u\n",
 	    m0->m_pkthdr.len, sc->mgtq.cur, rate));
 
 	/* kick mgt */
@@ -1870,7 +1879,7 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	bus_dmamap_sync(txq->data_dmat, data->map, BUS_DMASYNC_PREWRITE);
 	bus_dmamap_sync(txq->desc_dmat, txq->desc_map, BUS_DMASYNC_PREWRITE);
 
-	DPRINTFN(10, ("sending data frame len=%u idx=%u rate=%u\n",
+	DPRINTFN(sc, 10, ("sending data frame len=%u idx=%u rate=%u\n",
 	    m0->m_pkthdr.len, txq->cur, rate));
 
 	/* kick Tx */
@@ -2072,11 +2081,11 @@ rt2661_bbp_write(struct rt2661_softc *sc, uint8_t reg, uint8_t val)
 	tmp = RT2661_BBP_BUSY | (reg & 0x7f) << 8 | val;
 	RAL_WRITE(sc, RT2661_PHY_CSR3, tmp);
 
-	DPRINTFN(15, ("BBP R%u <- 0x%02x\n", reg, val));
+	DPRINTFN(sc, 15, ("BBP R%u <- 0x%02x\n", reg, val));
 
 	/* XXX */
 	if (reg == 17) {
-		DPRINTF(("record bbp17 %#x\n", val));
+		DPRINTF(sc, ("record bbp17 %#x\n", val));
 		sc->bbp17 = val;
 	}
 }
@@ -2134,7 +2143,7 @@ rt2661_rf_write(struct rt2661_softc *sc, uint8_t reg, uint32_t val)
 	/* remember last written value in sc */
 	sc->rf_regs[reg] = val;
 
-	DPRINTFN(15, ("RF R[%u] <- 0x%05x\n", reg & 3, val & 0x1fffff));
+	DPRINTFN(sc, 15, ("RF R[%u] <- 0x%05x\n", reg & 3, val & 0x1fffff));
 }
 
 static int
@@ -2249,7 +2258,7 @@ rt2661_set_ackrates(struct rt2661_softc *sc, const struct ieee80211_rateset *rs)
 
 	RAL_WRITE(sc, RT2661_TXRX_CSR5, mask);
 
-	DPRINTF(("Setting ack rate mask to 0x%x\n", mask));
+	DPRINTF(sc, ("Setting ack rate mask to 0x%x\n", mask));
 #undef RV
 }
 
@@ -2427,7 +2436,7 @@ rt2661_update_promisc(struct rt2661_softc *sc)
 
 	RAL_WRITE(sc, RT2661_TXRX_CSR0, tmp);
 
-	DPRINTF(("%s promiscuous mode\n", (ifp->if_flags & IFF_PROMISC) ?
+	DPRINTF(sc, ("%s promiscuous mode\n", (ifp->if_flags & IFF_PROMISC) ?
 	    "entering" : "leaving"));
 }
 
@@ -2534,15 +2543,15 @@ rt2661_read_config(struct rt2661_softc *sc)
 	sc->tx_ant   = (val >> 2)  & 0x3;
 	sc->nb_ant   = val & 0x3;
 
-	DPRINTF(("RF revision=%d\n", sc->rf_rev));
-	DPRINTF(("Number of ant %d, rxant %d, txant %d\n",
+	DPRINTF(sc, ("RF revision=%d\n", sc->rf_rev));
+	DPRINTF(sc, ("Number of ant %d, rxant %d, txant %d\n",
 		 sc->nb_ant, sc->rx_ant, sc->tx_ant));
 
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_CONFIG2);
 	sc->ext_5ghz_lna = (val >> 6) & 0x1;
 	sc->ext_2ghz_lna = (val >> 4) & 0x1;
 
-	DPRINTF(("External 2GHz LNA=%d\nExternal 5GHz LNA=%d\n",
+	DPRINTF(sc, ("External 2GHz LNA=%d\nExternal 5GHz LNA=%d\n",
 	    sc->ext_2ghz_lna, sc->ext_5ghz_lna));
 
 	if (sc->ext_2ghz_lna) {
@@ -2579,7 +2588,7 @@ rt2661_read_config(struct rt2661_softc *sc)
 	if (sc->ext_5ghz_lna)
 		sc->rssi_5ghz_corr -= 14;
 
-	DPRINTF(("RSSI 2GHz corr0=%d corr1=%d\nRSSI 5GHz corr=%d\n",
+	DPRINTF(sc, ("RSSI 2GHz corr0=%d corr1=%d\nRSSI 5GHz corr=%d\n",
 	    sc->rssi_2ghz_corr[0], sc->rssi_2ghz_corr[1], sc->rssi_5ghz_corr));
 
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_FREQ_OFFSET);
@@ -2588,7 +2597,7 @@ rt2661_read_config(struct rt2661_softc *sc)
 	if ((val & 0xff) != 0xff)
 		sc->rffreq = val & 0xff;
 
-	DPRINTF(("RF prog=%d\nRF freq=%d\n", rfprog, sc->rffreq));
+	DPRINTF(sc, ("RF prog=%d\nRF freq=%d\n", rfprog, sc->rffreq));
 
 	sc->rfprog = rfprog == 0 ? rt2661_rf5225_1 : rt2661_rf5225_2;
 
@@ -2612,12 +2621,12 @@ rt2661_read_config(struct rt2661_softc *sc)
 			continue;	/* skip invalid entries */
 		sc->bbp_prom[i].reg = val >> 8;
 		sc->bbp_prom[i].val = val & 0xff;
-		DPRINTF(("BBP R%d=%02x\n", sc->bbp_prom[i].reg,
+		DPRINTF(sc, ("BBP R%d=%02x\n", sc->bbp_prom[i].reg,
 		    sc->bbp_prom[i].val));
 	}
 
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_LED_OFFSET);
-	DPRINTF(("LED %02x\n", val));
+	DPRINTF(sc, ("LED %02x\n", val));
 	if (val == 0xffff) {
 		sc->mcu_led = RT2661_MCU_LED_DEFAULT;
 	} else {
@@ -2641,7 +2650,7 @@ rt2661_read_config(struct rt2661_softc *sc)
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_2GHZ_TSSI2);
 	sc->tssi_2ghz_down[1] = val & 0xff;
 	sc->tssi_2ghz_down[0] = val >> 8;
-	DPRINTF(("2GHZ tssi down 0:%u 1:%u 2:%u 3:%u\n",
+	DPRINTF(sc, ("2GHZ tssi down 0:%u 1:%u 2:%u 3:%u\n",
 		 sc->tssi_2ghz_down[0], sc->tssi_2ghz_down[1],
 		 sc->tssi_2ghz_down[2], sc->tssi_2ghz_down[3]));
 
@@ -2652,7 +2661,7 @@ rt2661_read_config(struct rt2661_softc *sc)
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_2GHZ_TSSI4);
 	sc->tssi_2ghz_up[2] = val & 0xff;
 	sc->tssi_2ghz_up[3] = val >> 8;
-	DPRINTF(("2GHZ tssi up 0:%u 1:%u 2:%u 3:%u\n",
+	DPRINTF(sc, ("2GHZ tssi up 0:%u 1:%u 2:%u 3:%u\n",
 		 sc->tssi_2ghz_up[0], sc->tssi_2ghz_up[1],
 		 sc->tssi_2ghz_up[2], sc->tssi_2ghz_up[3]));
 
@@ -2660,12 +2669,12 @@ rt2661_read_config(struct rt2661_softc *sc)
 	val = rt2661_eeprom_read(sc, RT2661_EEPROM_2GHZ_TSSI5);
 	sc->tssi_2ghz_ref = val & 0xff;
 	sc->tssi_2ghz_step = val >> 8;
-	DPRINTF(("2GHZ tssi ref %u, step %d\n",
+	DPRINTF(sc, ("2GHZ tssi ref %u, step %d\n",
 		 sc->tssi_2ghz_ref, sc->tssi_2ghz_step));
 
 	if (sc->tssi_2ghz_ref == 0xff)
 		sc->auto_txagc = 0;
-	DPRINTF(("Auto TX AGC %d\n", sc->auto_txagc));
+	DPRINTF(sc, ("Auto TX AGC %d\n", sc->auto_txagc));
 }
 
 static int
@@ -3070,7 +3079,7 @@ rt2661_led_newstate(struct rt2661_softc *sc, enum ieee80211_state nstate)
 	uint32_t mail = sc->mcu_led;
 
 	if (RAL_READ(sc, RT2661_H2M_MAILBOX_CSR) & RT2661_H2M_BUSY) {
-		DPRINTF(("%s failed\n", __func__));
+		DPRINTF(sc, ("%s failed\n", __func__));
 		return;
 	}
 
@@ -3127,7 +3136,7 @@ rt2661_read_txpower_config(struct rt2661_softc *sc, uint8_t txpwr_ofs,
 				tx_power = RT2661_TXPOWER_DEFAULT;
 
 			sc->txpow[chan_idx] = tx_power;
-			DPRINTF(("Channel=%d Tx power=%d\n",
+			DPRINTF(sc, ("Channel=%d Tx power=%d\n",
 			    rt2661_rf5225_1[chan_idx].chan, sc->txpow[chan_idx]));
 
 			++chan_idx;
@@ -3142,15 +3151,15 @@ rt2661_key_alloc(struct ieee80211com *ic, const struct ieee80211_key *key,
 {
 	struct rt2661_softc *sc = ic->ic_if.if_softc;
 
-	DPRINTF(("%s: ", __func__));
+	DPRINTF(sc, ("%s: ", __func__));
 
 	if (key->wk_flags & IEEE80211_KEY_SWCRYPT) {
-		DPRINTF(("alloc sw key\n"));
+		DPRINTF(sc, ("alloc sw key\n"));
 		return sc->sc_key_alloc(ic, key, keyix, rxkeyix);
 	}
 
 	if (key->wk_flags & IEEE80211_KEY_GROUP) {	/* Global key */
-		DPRINTF(("alloc group key\n"));
+		DPRINTF(sc, ("alloc group key\n"));
 
 		KASSERT(key >= &ic->ic_nw_keys[0] &&
 			key < &ic->ic_nw_keys[IEEE80211_WEP_NKID],
@@ -3161,7 +3170,7 @@ rt2661_key_alloc(struct ieee80211com *ic, const struct ieee80211_key *key,
 	} else {					/* Pairwise key */
 		int i;
 
-		DPRINTF(("alloc pairwise key\n"));
+		DPRINTF(sc, ("alloc pairwise key\n"));
 
 		for (i = IEEE80211_WEP_NKID; i < RT2661_KEY_MAX; ++i) {
 			if (!RT2661_KEY_ISSET(sc, i))
@@ -3187,21 +3196,21 @@ rt2661_key_delete(struct ieee80211com *ic, const struct ieee80211_key *key)
 	struct rt2661_softc *sc = ic->ic_if.if_softc;
 	uint32_t val;
 
-	DPRINTF(("%s: keyix %d, rxkeyix %d, ", __func__,
+	DPRINTF(sc, ("%s: keyix %d, rxkeyix %d, ", __func__,
 		 key->wk_keyix, key->wk_rxkeyix));
 
 	if (key->wk_flags & IEEE80211_KEY_SWCRYPT) {
-		DPRINTF(("delete sw key\n"));
+		DPRINTF(sc, ("delete sw key\n"));
 		return sc->sc_key_delete(ic, key);
 	}
 
 	if (key->wk_keyix < IEEE80211_WEP_NKID) {	/* Global key */
-		DPRINTF(("delete global key\n"));
+		DPRINTF(sc, ("delete global key\n"));
 		val = RAL_READ(sc, RT2661_SEC_CSR0);
 		val &= ~(1 << key->wk_keyix);
 		RAL_WRITE(sc, RT2661_SEC_CSR0, val);
 	} else {					/* Pairwise key */
-		DPRINTF(("delete pairwise key\n"));
+		DPRINTF(sc, ("delete pairwise key\n"));
 
 		RT2661_KEY_CLR(sc, key->wk_keyix);
 		if (key->wk_keyix < 32) {
@@ -3224,18 +3233,18 @@ rt2661_key_set(struct ieee80211com *ic, const struct ieee80211_key *key,
 	struct rt2661_softc *sc = ic->ic_if.if_softc;
 	uint32_t addr, val;
 
-	DPRINTF(("%s: keyix %d, rxkeyix %d, flags 0x%04x, ", __func__,
+	DPRINTF(sc, ("%s: keyix %d, rxkeyix %d, flags 0x%04x, ", __func__,
 		 key->wk_keyix, key->wk_rxkeyix, key->wk_flags));
 
 	if (key->wk_flags & IEEE80211_KEY_SWCRYPT) {
-		DPRINTF(("set sw key\n"));
+		DPRINTF(sc, ("set sw key\n"));
 		return sc->sc_key_set(ic, key, mac);
 	}
 
 	if (key->wk_keyix < IEEE80211_WEP_NKID) {	/* Global Key */
 		int cipher, keyix_shift;
 
-		DPRINTF(("set global key\n"));
+		DPRINTF(sc, ("set global key\n"));
 
 		/*
 		 * Install key content.
@@ -3264,7 +3273,7 @@ rt2661_key_set(struct ieee80211com *ic, const struct ieee80211_key *key,
 	} else {					/* Pairwise key */
 		uint8_t mac_cipher[IEEE80211_ADDR_LEN + 1];
 
-		DPRINTF(("set pairwise key\n"));
+		DPRINTF(sc, ("set pairwise key\n"));
 
 		/*
 		 * Install key content.
@@ -3384,7 +3393,7 @@ rt2661_calib_txpower(struct rt2661_softc *sc)
 	 * Adjust TX power according to RSSI
 	 */
 	rssi_dbm = rt2661_avgrssi(sc);
-	DPRINTF(("dbm %d, txpower %d\n", rssi_dbm, txpower));
+	DPRINTF(sc, ("dbm %d, txpower %d\n", rssi_dbm, txpower));
 
 	if (rssi_dbm > -30) {
 		if (txpower > 16)
@@ -3439,7 +3448,7 @@ rt2661_calib_rxsensibility(struct rt2661_softc *sc, uint32_t false_cca)
 		return;
 	}
 
-	DPRINTF(("calibrate according to false CCA\n"));
+	DPRINTF(sc, ("calibrate according to false CCA\n"));
 
 	if (false_cca > 512 && sc->bbp17 > sc->bbp17_2ghz_min)
 		rt2661_bbp_write(sc, 17, sc->bbp17 - 1);
@@ -3459,7 +3468,7 @@ rt2661_calibrate(void *xsc)
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	false_cca = (RAL_READ(sc, RT2661_STA_CSR1) >> 16);
-	DPRINTF(("false cca %u\n", false_cca));
+	DPRINTF(sc, ("false cca %u\n", false_cca));
 
 	if (sc->sc_calib_rxsns)
 		rt2661_calib_rxsensibility(sc, false_cca);

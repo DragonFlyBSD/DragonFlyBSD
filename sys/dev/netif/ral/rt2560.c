@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.34 2008/01/25 15:44:49 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.35 2008/02/08 09:42:29 sephe Exp $
  */
 
 /*
@@ -57,12 +57,13 @@
 	 ((rssi) - RT2560_NOISE_FLOOR - (sc)->rssi_corr) : 0)
 
 #ifdef RAL_DEBUG
-#define DPRINTF(x)	do { if (ral_debug > 0) kprintf x; } while (0)
-#define DPRINTFN(n, x)	do { if (ral_debug >= (n)) kprintf x; } while (0)
-extern int ral_debug;
+#define DPRINTF(sc, x)		\
+	do { if ((sc)->sc_debug > 0) kprintf x; } while (0)
+#define DPRINTFN(sc, n, x)	\
+	do { if ((sc)->sc_debug >= (n)) kprintf x; } while (0)
 #else
-#define DPRINTF(x)
-#define DPRINTFN(n, x)
+#define DPRINTF(sc, x)
+#define DPRINTFN(sc, n, x)
 #endif
 
 static void		rt2560_dma_map_addr(void *, bus_dma_segment_t *, int,
@@ -193,6 +194,9 @@ rt2560_attach(device_t dev, int id)
 
 	callout_init(&sc->scan_ch);
 	callout_init(&sc->calib_ch);
+#ifdef RAL_DEBUG
+	sc->sc_debug = 1;
+#endif
 
 	sc->sc_irq_rid = 0;
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_irq_rid,
@@ -369,6 +373,12 @@ rt2560_attach(device_t dev, int id)
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "dwell",
 	    CTLFLAG_RW, &sc->sc_dwelltime, 0,
 	    "channel dwell time (ms) for AP/station scanning");
+
+#ifdef RAL_DEBUG
+	SYSCTL_ADD_INT(&sc->sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "debug",
+	    CTLFLAG_RW, &sc->sc_debug, 0, "debug level");
+#endif
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx,
 			SYSCTL_CHILDREN(sc->sysctl_tree),
@@ -1005,7 +1015,7 @@ rt2560_encryption_intr(struct rt2560_softc *sc)
 		desc->flags |= htole32(RT2560_TX_VALID);
 		desc->flags |= htole32(RT2560_TX_BUSY);
 
-		DPRINTFN(15, ("encryption done idx=%u\n",
+		DPRINTFN(sc, 15, ("encryption done idx=%u\n",
 		    sc->txq.next_encrypt));
 
 		sc->txq.next_encrypt =
@@ -1056,20 +1066,20 @@ rt2560_tx_intr(struct rt2560_softc *sc)
 		failed = 0;
 		switch (flags & RT2560_TX_RESULT_MASK) {
 		case RT2560_TX_SUCCESS:
-			DPRINTFN(10, ("data frame sent successfully\n"));
+			DPRINTFN(sc, 10, ("data frame sent successfully\n"));
 			ifp->if_opackets++;
 			data_retries = 0;
 			break;
 
 		case RT2560_TX_SUCCESS_RETRY:
 			data_retries = (flags >> 5) & 0x7;
-			DPRINTFN(9, ("data frame sent after %u retries\n",
+			DPRINTFN(sc, 9, ("data frame sent after %u retries\n",
 				 data_retries));
 			ifp->if_opackets++;
 			break;
 
 		case RT2560_TX_FAIL_RETRY:
-			DPRINTFN(9, ("sending data frame failed (too much "
+			DPRINTFN(sc, 9, ("sending data frame failed (too much "
 			    "retries)\n"));
 			ifp->if_oerrors++;
 			data_retries = 7;
@@ -1106,7 +1116,7 @@ rt2560_tx_intr(struct rt2560_softc *sc)
 		/* descriptor is no longer valid */
 		desc->flags &= ~htole32(RT2560_TX_VALID);
 
-		DPRINTFN(15, ("tx done idx=%u\n", sc->txq.next));
+		DPRINTFN(sc, 15, ("tx done idx=%u\n", sc->txq.next));
 
 		sc->txq.queued--;
 		sc->txq.next = (sc->txq.next + 1) % RT2560_TX_RING_COUNT;
@@ -1148,16 +1158,16 @@ rt2560_prio_intr(struct rt2560_softc *sc)
 
 		switch (le32toh(desc->flags) & RT2560_TX_RESULT_MASK) {
 		case RT2560_TX_SUCCESS:
-			DPRINTFN(10, ("mgt frame sent successfully\n"));
+			DPRINTFN(sc, 10, ("mgt frame sent successfully\n"));
 			break;
 
 		case RT2560_TX_SUCCESS_RETRY:
-			DPRINTFN(9, ("mgt frame sent after %u retries\n",
+			DPRINTFN(sc, 9, ("mgt frame sent after %u retries\n",
 			    (le32toh(desc->flags) >> 5) & 0x7));
 			break;
 
 		case RT2560_TX_FAIL_RETRY:
-			DPRINTFN(9, ("sending mgt frame failed (too much "
+			DPRINTFN(sc, 9, ("sending mgt frame failed (too much "
 			    "retries)\n"));
 			break;
 
@@ -1179,7 +1189,7 @@ rt2560_prio_intr(struct rt2560_softc *sc)
 		/* descriptor is no longer valid */
 		desc->flags &= ~htole32(RT2560_TX_VALID);
 
-		DPRINTFN(15, ("prio done idx=%u\n", sc->prioq.next));
+		DPRINTFN(sc, 15, ("prio done idx=%u\n", sc->prioq.next));
 
 		sc->prioq.queued--;
 		sc->prioq.next = (sc->prioq.next + 1) % RT2560_PRIO_RING_COUNT;
@@ -1332,7 +1342,8 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 
 skip:		desc->flags = htole32(RT2560_RX_BUSY);
 
-		DPRINTFN(15, ("decryption done idx=%u\n", sc->rxq.cur_decrypt));
+		DPRINTFN(sc, 15, ("decryption done idx=%u\n",
+			 sc->rxq.cur_decrypt));
 
 		sc->rxq.cur_decrypt =
 		    (sc->rxq.cur_decrypt + 1) % RT2560_RX_RING_COUNT;
@@ -1371,20 +1382,20 @@ rt2560_rx_intr(struct rt2560_softc *sc)
 			 * This should not happen since we did not request
 			 * to receive those frames when we filled RXCSR0.
 			 */
-			DPRINTFN(5, ("PHY or CRC error flags 0x%08x\n",
+			DPRINTFN(sc, 5, ("PHY or CRC error flags 0x%08x\n",
 			    le32toh(desc->flags)));
 			data->drop = 1;
 		}
 
 		if (((le32toh(desc->flags) >> 16) & 0xfff) > MCLBYTES) {
-			DPRINTFN(5, ("bad length\n"));
+			DPRINTFN(sc, 5, ("bad length\n"));
 			data->drop = 1;
 		}
 
 		/* mark the frame for decryption */
 		desc->flags |= htole32(RT2560_RX_CIPHER_BUSY);
 
-		DPRINTFN(15, ("rx done idx=%u\n", sc->rxq.cur));
+		DPRINTFN(sc, 15, ("rx done idx=%u\n", sc->rxq.cur));
 
 		sc->rxq.cur = (sc->rxq.cur + 1) % RT2560_RX_RING_COUNT;
 	}
@@ -1422,7 +1433,7 @@ rt2560_beacon_expire(struct rt2560_softc *sc)
 
 	rt2560_tx_bcn(sc, data->m, data->ni);
 
-	DPRINTFN(15, ("beacon expired\n"));
+	DPRINTFN(sc, 15, ("beacon expired\n"));
 
 	sc->bcnq.next = (sc->bcnq.next + 1) % RT2560_BEACON_RING_COUNT;
 }
@@ -1431,7 +1442,7 @@ rt2560_beacon_expire(struct rt2560_softc *sc)
 static void
 rt2560_wakeup_expire(struct rt2560_softc *sc)
 {
-	DPRINTFN(2, ("wakeup expired\n"));
+	DPRINTFN(sc, 2, ("wakeup expired\n"));
 }
 
 static void
@@ -1637,7 +1648,7 @@ rt2560_tx_bcn(struct rt2560_softc *sc, struct mbuf *m0,
 	rt2560_setup_tx_desc(sc, desc, RT2560_TX_IFS_NEWBACKOFF |
 	    RT2560_TX_TIMESTAMP, m0->m_pkthdr.len, rate, 0, paddr);
 
-	DPRINTFN(10, ("sending beacon frame len=%u idx=%u rate=%u\n",
+	DPRINTFN(sc, 10, ("sending beacon frame len=%u idx=%u rate=%u\n",
 	    m0->m_pkthdr.len, sc->bcnq.cur, rate));
 
 	bus_dmamap_sync(sc->bcnq.data_dmat, data->map, BUS_DMASYNC_PREWRITE);
@@ -1715,7 +1726,7 @@ rt2560_tx_mgt(struct rt2560_softc *sc, struct mbuf *m0,
 	bus_dmamap_sync(sc->prioq.desc_dmat, sc->prioq.desc_map,
 	    BUS_DMASYNC_PREWRITE);
 
-	DPRINTFN(10, ("sending mgt frame len=%u idx=%u rate=%u\n",
+	DPRINTFN(sc, 10, ("sending mgt frame len=%u idx=%u rate=%u\n",
 	    m0->m_pkthdr.len, sc->prioq.cur, rate));
 
 	/* kick prio */
@@ -1913,7 +1924,7 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 	bus_dmamap_sync(sc->txq.desc_dmat, sc->txq.desc_map,
 	    BUS_DMASYNC_PREWRITE);
 
-	DPRINTFN(10, ("sending data frame len=%u idx=%u rate=%u\n",
+	DPRINTFN(sc, 10, ("sending data frame len=%u idx=%u rate=%u\n",
 	    m0->m_pkthdr.len, sc->txq.cur_encrypt, rate));
 
 	/* kick encrypt */
@@ -2096,11 +2107,11 @@ rt2560_bbp_write(struct rt2560_softc *sc, uint8_t reg, uint8_t val)
 	tmp = RT2560_BBP_WRITE | RT2560_BBP_BUSY | reg << 8 | val;
 	RAL_WRITE(sc, RT2560_BBPCSR, tmp);
 
-	DPRINTFN(15, ("BBP R%u <- 0x%02x\n", reg, val));
+	DPRINTFN(sc, 15, ("BBP R%u <- 0x%02x\n", reg, val));
 
 	/* XXX */
 	if (reg == 17) {
-		DPRINTF(("%s record bbp17 %#x\n", __func__, val));
+		DPRINTF(sc, ("%s record bbp17 %#x\n", __func__, val));
 		sc->sc_bbp17 = val;
 	}
 }
@@ -2158,7 +2169,7 @@ rt2560_rf_write(struct rt2560_softc *sc, uint8_t reg, uint32_t val)
 	/* remember last written value in sc */
 	sc->rf_regs[reg] = val;
 
-	DPRINTFN(15, ("RF R[%u] <- 0x%05x\n", reg & 0x3, val & 0xfffff));
+	DPRINTFN(sc, 15, ("RF R[%u] <- 0x%05x\n", reg & 0x3, val & 0xfffff));
 }
 
 static void
@@ -2185,7 +2196,8 @@ rt2560_set_chan(struct rt2560_softc *sc, struct ieee80211_channel *c)
 
 	power = sc->sc_curtxpow;
 
-	DPRINTFN(2, ("setting channel to %u, txpower to %u\n", chan, power));
+	DPRINTFN(sc, 2, ("setting channel to %u, txpower to %u\n",
+		 chan, power));
 
 	switch (sc->rf_rev) {
 	case RT2560_RF_2522:
@@ -2299,7 +2311,7 @@ rt2560_enable_tsf_sync(struct rt2560_softc *sc)
 		       RT2560_ENABLE_BEACON_GENERATOR;
 	RAL_WRITE(sc, RT2560_CSR14, tmp);
 
-	DPRINTF(("enabling TSF synchronization\n"));
+	DPRINTF(sc, ("enabling TSF synchronization\n"));
 }
 
 static void
@@ -2322,7 +2334,7 @@ rt2560_update_plcp(struct rt2560_softc *sc)
 		RAL_WRITE(sc, RT2560_PLCP11MCSR,  0x000b840b);
 	}
 
-	DPRINTF(("updating PLCP for %s preamble\n",
+	DPRINTF(sc, ("updating PLCP for %s preamble\n",
 	    (ic->ic_flags & IEEE80211_F_SHPREAMBLE) ? "short" : "long"));
 }
 
@@ -2377,7 +2389,7 @@ rt2560_update_slot(struct ifnet *ifp)
 	tmp = eifs << 16 | tx_difs;
 	RAL_WRITE(sc, RT2560_CSR19, tmp);
 
-	DPRINTF(("setting slottime to %uus\n", slottime));
+	DPRINTF(sc, ("setting slottime to %uus\n", slottime));
 }
 
 static void
@@ -2419,7 +2431,7 @@ rt2560_set_bssid(struct rt2560_softc *sc, uint8_t *bssid)
 	tmp = bssid[4] | bssid[5] << 8;
 	RAL_WRITE(sc, RT2560_CSR6, tmp);
 
-	DPRINTF(("setting BSSID to %6D\n", bssid, ":"));
+	DPRINTF(sc, ("setting BSSID to %6D\n", bssid, ":"));
 }
 
 static void
@@ -2433,7 +2445,7 @@ rt2560_set_macaddr(struct rt2560_softc *sc, uint8_t *addr)
 	tmp = addr[4] | addr[5] << 8;
 	RAL_WRITE(sc, RT2560_CSR4, tmp);
 
-	DPRINTF(("setting MAC address to %6D\n", addr, ":"));
+	DPRINTF(sc, ("setting MAC address to %6D\n", addr, ":"));
 }
 
 static void
@@ -2466,7 +2478,7 @@ rt2560_update_promisc(struct rt2560_softc *sc)
 
 	RAL_WRITE(sc, RT2560_RXCSR0, tmp);
 
-	DPRINTF(("%s promiscuous mode\n", (ifp->if_flags & IFF_PROMISC) ?
+	DPRINTF(sc, ("%s promiscuous mode\n", (ifp->if_flags & IFF_PROMISC) ?
 	    "entering" : "leaving"));
 }
 
@@ -2506,7 +2518,7 @@ rt2560_read_config(struct rt2560_softc *sc)
 			continue;
 		sc->bbp_prom[i].reg = val >> 8;
 		sc->bbp_prom[i].val = val & 0xff;
-		DPRINTF(("rom bbp reg:%u val:%#x\n",
+		DPRINTF(sc, ("rom bbp reg:%u val:%#x\n",
 			 sc->bbp_prom[i].reg, sc->bbp_prom[i].val));
 
 		if (sc->bbp_prom[i].reg == 17) {
@@ -2531,7 +2543,7 @@ rt2560_read_config(struct rt2560_softc *sc)
 	for (i = 0; i < 14; ++i) {
 		if (sc->txpow[i] > 31)
 			sc->txpow[i] = RT2560_DEFAULT_TXPOWER;
-		DPRINTF(("tx power chan %d: %u\n", i + 1, sc->txpow[i]));
+		DPRINTF(sc, ("tx power chan %d: %u\n", i + 1, sc->txpow[i]));
 	}
 
 	val = rt2560_eeprom_read(sc, RT2560_EEPROM_CALIBRATE);
@@ -2539,14 +2551,14 @@ rt2560_read_config(struct rt2560_softc *sc)
 		sc->rssi_corr = RT2560_DEFAULT_RSSI_CORR;
 	else
 		sc->rssi_corr = val & 0xff;
-	DPRINTF(("rssi correction %d, calibrate 0x%02x\n",
+	DPRINTF(sc, ("rssi correction %d, calibrate 0x%02x\n",
 		 sc->rssi_corr, val));
 
 	val = rt2560_eeprom_read(sc, RT2560_EEPROM_CONFIG1);
 	if (val == 0xffff)
 		val = 0;
 	if ((val & 0x2) == 0 && sc->asic_rev >= RT2560_ASICREV_D) {
-		DPRINTF(("capable of RX sensitivity calibration\n"));
+		DPRINTF(sc, ("capable of RX sensitivity calibration\n"));
 		sc->sc_flags |= RT2560_FLAG_RXSNS;
 	}
 }
@@ -2818,7 +2830,7 @@ rt2560_calib_rxsensitivity(struct rt2560_softc *sc, uint32_t false_cca)
 		return;
 
 	rssi_dbm = sc->sc_avgrssi + RT2560_NOISE_FLOOR;
-	DPRINTF(("rssi dbm %d\n", rssi_dbm));
+	DPRINTF(sc, ("rssi dbm %d\n", rssi_dbm));
 
 	/*
 	 * Rx sensitivity is reduced, if bbp17 is increased, and vice versa.
@@ -2873,7 +2885,7 @@ rt2560_calibrate(void *xsc)
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	false_cca = RAL_READ(sc, RT2560_CNT3) & 0xffff;
-	DPRINTF(("false CCA %u\n", false_cca));
+	DPRINTF(sc, ("false CCA %u\n", false_cca));
 
 	if (sc->sc_calib_rxsns)
 		rt2560_calib_rxsensitivity(sc, false_cca);
