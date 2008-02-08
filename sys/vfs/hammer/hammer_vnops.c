@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.28 2008/02/06 08:59:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.29 2008/02/08 08:31:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -666,7 +666,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 			break;
 		rec = cursor.record;
 		if (nlen == rec->entry.base.data_len &&
-		    bcmp(ncp->nc_name, cursor.data, nlen) == 0) {
+		    bcmp(ncp->nc_name, cursor.data1, nlen) == 0) {
 			obj_id = rec->entry.obj_id;
 			break;
 		}
@@ -1061,7 +1061,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 			     &error, uio, rec->entry.obj_id,
 			     hammer_get_dtype(rec->entry.base.base.obj_type),
 			     rec->entry.base.data_len,
-			     (void *)cursor.data);
+			     (void *)cursor.data1);
 		if (r)
 			break;
 		++saveoff;
@@ -1128,8 +1128,8 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	if (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error == 0) {
-			error = uiomove((char *)cursor.data,
-					cursor.record->generic.base.data_len,
+			error = uiomove((char *)cursor.data1,
+					cursor.record->base.data_len,
 					ap->a_uio);
 		}
 	}
@@ -1237,7 +1237,7 @@ retry:
 			break;
 		rec = cursor.record;
 		if (fncp->nc_nlen == rec->entry.base.data_len &&
-		    bcmp(fncp->nc_name, cursor.data, fncp->nc_nlen) == 0) {
+		    bcmp(fncp->nc_name, cursor.data1, fncp->nc_nlen) == 0) {
 			break;
 		}
 		error = hammer_ip_next(&cursor);
@@ -1284,7 +1284,6 @@ int
 hammer_vop_setattr(struct vop_setattr_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_cursor *spike = NULL;
 	struct vattr *vap;
 	struct hammer_inode *ip;
 	int modflags;
@@ -1362,8 +1361,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			if (truncating) {
 				error = hammer_ip_delete_range(&trans, ip,
 						    aligned_size,
-						    0x7FFFFFFFFFFFFFFFLL,
-						    &spike);
+						    0x7FFFFFFFFFFFFFFFLL);
 			}
 			/*
 			 * If truncating we have to clean out a portion of
@@ -1390,8 +1388,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		case VDATABASE:
 			error = hammer_ip_delete_range(&trans, ip,
 						    vap->va_size,
-						    0x7FFFFFFFFFFFFFFFLL,
-						    &spike);
+						    0x7FFFFFFFFFFFFFFFLL);
 			ip->ino_rec.ino_size = vap->va_size;
 			modflags |= HAMMER_INODE_RDIRTY;
 			break;
@@ -1399,12 +1396,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			error = EINVAL;
 			goto done;
 		}
-		if (error == ENOSPC) {
-			error = hammer_spike(&spike);
-			if (error == 0)
-				continue;
-		}
-		KKASSERT(spike == NULL);
 		break;
 	}
 	if (vap->va_atime.tv_sec != VNOVAL) {
@@ -1484,19 +1475,14 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 * as pure data, not a string, and is no \0 terminated.
 	 */
 	if (error == 0) {
-		record = hammer_alloc_mem_record(nip);
+		record = hammer_alloc_mem_record(nip, sizeof(struct hammer_base_record));
 		bytes = strlen(ap->a_target);
 
-		record->rec.generic.base.base.key = HAMMER_FIXKEY_SYMLINK;
-		record->rec.generic.base.base.rec_type = HAMMER_RECTYPE_FIX;
-		record->rec.generic.base.data_len = bytes;
-		if (bytes <= sizeof(record->rec.generic.filler)) {
-			record->data = (void *)record->rec.generic.filler;
-			bcopy(ap->a_target, record->data, bytes);
-		} else {
-			record->data = (void *)ap->a_target;
-			/* will be reallocated by routine below */
-		}
+		record->rec.base.base.key = HAMMER_FIXKEY_SYMLINK;
+		record->rec.base.base.rec_type = HAMMER_RECTYPE_FIX;
+		record->rec.base.data_len = bytes;
+		record->data = (void *)ap->a_target;
+		/* will be reallocated by routine below */
 		error = hammer_ip_add_record(&trans, record);
 
 		/*
@@ -1635,6 +1621,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	int error;
 	int boff;
 	int roff;
+	int x;
 	int n;
 
 	bio = ap->a_bio;
@@ -1653,7 +1640,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.key = bio->bio_offset + 1;
 	cursor.asof = ip->obj_asof;
-	cursor.flags |= HAMMER_CURSOR_ASOF;
+	cursor.flags |= HAMMER_CURSOR_ASOF | HAMMER_CURSOR_DATAEXTOK;
 
 	cursor.key_end = cursor.key_beg;
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
@@ -1708,7 +1695,25 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		KKASSERT(n > 0);
 		if (n > bp->b_bufsize - boff)
 			n = bp->b_bufsize - boff;
-		bcopy((char *)cursor.data + roff, (char *)bp->b_data + boff, n);
+		if (roff + n > cursor.data_split) {
+			if (roff < cursor.data_split) {
+				x = cursor.data_split - roff;
+				bcopy((char *)cursor.data1 + roff,
+				      (char *)bp->b_data + boff,
+				      x);
+				bcopy((char *)cursor.data2,
+				      (char *)bp->b_data + boff + x,
+				      n - x);
+			} else {
+				bcopy((char *)cursor.data2 + roff -
+				      cursor.data_split,
+				      (char *)bp->b_data + boff,
+				      n);
+			}
+		} else {
+			bcopy((char *)cursor.data1 + roff,
+			      (char *)bp->b_data + boff, n);
+		}
 		boff += n;
 		if (boff == bp->b_bufsize)
 			break;
@@ -1745,7 +1750,6 @@ int
 hammer_vop_strategy_write(struct vop_strategy_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_cursor *spike = NULL;
 	hammer_inode_t ip;
 	struct bio *bio;
 	struct buf *bp;
@@ -1764,19 +1768,17 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	KKASSERT(bp->b_tid != 0);
 	hammer_start_transaction_tid(&trans, ip->hmp, bp->b_tid);
 
-retry:
 	/*
 	 * Delete any records overlapping our range.  This function will
 	 * (eventually) properly truncate partial overlaps.
 	 */
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
 		error = hammer_ip_delete_range(&trans, ip, bio->bio_offset,
-					       bio->bio_offset, &spike);
+					       bio->bio_offset);
 	} else {
 		error = hammer_ip_delete_range(&trans, ip, bio->bio_offset,
 					       bio->bio_offset +
-						bp->b_bufsize - 1,
-					       &spike);
+						bp->b_bufsize - 1);
 	}
 
 	/*
@@ -1784,20 +1786,8 @@ retry:
 	 */
 	if (error == 0) {
 		error = hammer_ip_sync_data(&trans, ip, bio->bio_offset,
-					    bp->b_data, bp->b_bufsize,
-					    &spike);
+					    bp->b_data, bp->b_bufsize);
 	}
-
-	/*
-	 * If we ran out of space the spike structure will be filled in
-	 * and we must call hammer_spike with it, then retry.
-	 */
-	if (error == ENOSPC) {
-		error = hammer_spike(&spike);
-		if (error == 0)
-			goto retry;
-	}
-	KKASSERT(spike == NULL);
 
 	/*
 	 * If an error occured abort the transaction
@@ -1878,7 +1868,7 @@ retry:
 			break;
 		rec = cursor.record;
 		if (ncp->nc_nlen == rec->entry.base.data_len &&
-		    bcmp(ncp->nc_name, cursor.data, ncp->nc_nlen) == 0) {
+		    bcmp(ncp->nc_name, cursor.data1, ncp->nc_nlen) == 0) {
 			break;
 		}
 		error = hammer_ip_next(&cursor);

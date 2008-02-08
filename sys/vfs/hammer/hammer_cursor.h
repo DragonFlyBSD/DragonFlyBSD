@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.11 2008/01/25 21:50:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.12 2008/02/08 08:30:59 dillon Exp $
  */
 
 /*
@@ -92,10 +92,12 @@ struct hammer_cursor {
 	 * can be NULL when data and/or record is not, typically indicating
 	 * information referenced via an in-memory record.
 	 */
-	struct hammer_buffer *data_buffer;	/* extracted data & record */
-	union hammer_data_ondisk *data;
-	struct hammer_buffer *record_buffer;
+	struct hammer_buffer *record_buffer;	/* record+data */
+	struct hammer_buffer *data_buffer;	/* extended data */
 	union hammer_record_ondisk *record;
+	union hammer_data_ondisk *data1;
+	union hammer_data_ondisk *data2;
+	int	data_split;			/* data split point if any */
 
 	/*
 	 * Iteration and extraction control variables
@@ -114,19 +116,19 @@ typedef struct hammer_cursor *hammer_cursor_t;
 
 #define HAMMER_CURSOR_GET_RECORD	0x0001
 #define HAMMER_CURSOR_GET_DATA		0x0002
-#define HAMMER_CURSOR_INCLUSTER		0x0004	/* stay in the cluster */
+#define HAMMER_CURSOR_UNUSED0004	0x0004	
 #define HAMMER_CURSOR_INSERT		0x0008	/* adjust for insert */
 #define HAMMER_CURSOR_DELETE		0x0010	/* adjust for delete */
 #define HAMMER_CURSOR_END_INCLUSIVE	0x0020	/* key_end is inclusive */
 #define HAMMER_CURSOR_END_EXCLUSIVE	0x0040	/* key_end is exclusive (def) */
-#define HAMMER_CURSOR_RECOVER		0x0080	/* recovery insertion case */
+#define HAMMER_CURSOR_UNUSED0080	0x0080
 
 #define HAMMER_CURSOR_ATEDISK		0x0100
 #define HAMMER_CURSOR_ATEMEM		0x0200
 #define HAMMER_CURSOR_DISKEOF		0x0400
 #define HAMMER_CURSOR_MEMEOF		0x0800
 #define HAMMER_CURSOR_DELBTREE		0x1000	/* ip_delete from b-tree */
-#define HAMMER_CURSOR_DATA_EMBEDDED	0x2000	/* embedded flag on extract */
+#define HAMMER_CURSOR_DATAEXTOK		0x2000	/* allow data extension */
 #define HAMMER_CURSOR_ASOF		0x4000	/* as-of lookup */
 #define HAMMER_CURSOR_CREATE_CHECK	0x8000	/* as-of lookup */
 

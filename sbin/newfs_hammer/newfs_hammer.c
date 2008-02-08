@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.16 2008/01/25 21:52:10 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.17 2008/02/08 08:30:58 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -40,11 +40,8 @@ static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(off_t size);
 static void check_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label);
-static int32_t format_cluster(struct volume_info *vol, int isroot);
-static void format_root(struct cluster_info *cluster);
+static hammer_off_t format_root(void);
 static void usage(void);
-
-static int64_t ClusterSize;
 
 int
 main(int ac, char **av)
@@ -53,21 +50,13 @@ main(int ac, char **av)
 	int ch;
 	u_int32_t status;
 	off_t total;
-	int64_t max_volume_size;
 	const char *label = NULL;
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
 	 * if it gets broken!
 	 */
-	assert(sizeof(struct hammer_almeta) == HAMMER_ALMETA_SIZE);
-	assert(sizeof(struct hammer_fsbuf_head) == HAMMER_FSBUF_HEAD_SIZE);
 	assert(sizeof(struct hammer_volume_ondisk) <= HAMMER_BUFSIZE);
-	assert(sizeof(struct hammer_cluster_ondisk) <= HAMMER_BUFSIZE);
-	assert(sizeof(struct hammer_fsbuf_data) == HAMMER_BUFSIZE);
-	assert(sizeof(struct hammer_fsbuf_recs) == HAMMER_BUFSIZE);
-	assert(sizeof(struct hammer_fsbuf_btree) == HAMMER_BUFSIZE);
-	assert(sizeof(union hammer_fsbuf_ondisk) == HAMMER_BUFSIZE);
 
 	/*
 	 * Generate a filesysem id and lookup the filesystem type
@@ -79,12 +68,10 @@ main(int ac, char **av)
 			"HAMMER filesystem type");
 	}
 
-	init_alist_templates();
-
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "L:b:c:m:S")) != -1) {
+	while ((ch = getopt(ac, av, "L:b:m:")) != -1) {
 		switch(ch) {
 		case 'L':
 			label = optarg;
@@ -94,21 +81,10 @@ main(int ac, char **av)
 					 HAMMER_BUFSIZE,
 					 HAMMER_BOOT_MAXBYTES, 2);
 			break;
-		case 'c':
-			ClusterSize = getsize(optarg, 
-					 HAMMER_BUFSIZE * 256LL,
-					 HAMMER_CLU_MAXBYTES, 1);
-			break;
 		case 'm':
 			MemAreaSize = getsize(optarg,
 					 HAMMER_BUFSIZE,
 					 HAMMER_MEM_MAXBYTES, 2);
-			break;
-		case 'S':
-			/*
-			 * Force the use of super-clusters
-			 */
-			UsingSuperClusters = 1;
 			break;
 		default:
 			usage();
@@ -128,6 +104,7 @@ main(int ac, char **av)
 	ac -= optind;
 	av += optind;
 	NumVolumes = ac;
+	RootVolNo = 0;
 
 	total = 0;
 	for (i = 0; i < NumVolumes; ++i) {
@@ -141,19 +118,6 @@ main(int ac, char **av)
 		 */
 		check_volume(vol);
 		total += vol->size;
-	}
-
-	/*
-	 * Calculate the size of a cluster.  A cluster is broken
-	 * down into 256 chunks which must be at least filesystem buffer
-	 * sized.  This gives us a minimum chunk size of around 4MB.
-	 */
-	if (ClusterSize == 0) {
-		ClusterSize = HAMMER_BUFSIZE * 256;
-		while (ClusterSize < total / NumVolumes / 256 &&
-		       ClusterSize < HAMMER_CLU_MAXBYTES) {
-			ClusterSize <<= 1;
-		}
 	}
 
 	/*
@@ -181,20 +145,6 @@ main(int ac, char **av)
 	printf("---------------------------------------------\n");
 	printf("%d volume%s total size %s\n",
 		NumVolumes, (NumVolumes == 1 ? "" : "s"), sizetostr(total));
-	printf("cluster-size:        %s\n", sizetostr(ClusterSize));
-
-	if (UsingSuperClusters) {
-		max_volume_size = (int64_t)HAMMER_VOL_MAXSUPERCLUSTERS * \
-				  HAMMER_SCL_MAXCLUSTERS * ClusterSize;
-	} else {
-		max_volume_size = HAMMER_VOL_MAXCLUSTERS * ClusterSize;
-	}
-	printf("max-volume-size:     %s\n", sizetostr(max_volume_size));
-
-	printf("max-filesystem-size: %s\n",
-	       (max_volume_size * 32768LL < max_volume_size) ?
-	       "Unlimited" :
-	       sizetostr(max_volume_size * 32768LL));
 	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
 	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
 	printf("\n");
@@ -366,17 +316,6 @@ check_volume(struct volume_info *vol)
 	       sizetostr(vol->size));
 
 	/*
-	 * Strictly speaking we do not need to enable super clusters unless
-	 * we have volumes > 2TB, but turning them on doesn't really hurt
-	 * and if we don't the user may get confused if he tries to expand
-	 * the size of an existing volume.
-	 */
-	if (vol->size > 200LL * 1024 * 1024 * 1024 && !UsingSuperClusters) {
-		UsingSuperClusters = 1;
-		printf("Enabling super-clusters\n");
-	}
-
-	/*
 	 * Reserve space for (future) header junk
 	 */
 	vol->vol_alloc = HAMMER_BUFSIZE * 16;
@@ -390,20 +329,6 @@ void
 format_volume(struct volume_info *vol, int nvols, const char *label)
 {
 	struct hammer_volume_ondisk *ondisk;
-	int32_t nclusters;
-	int32_t minclsize;
-	int32_t nscl_groups;
-	int64_t scl_group_size;
-	int64_t scl_header_size;
-	int64_t n64;
-
-	/*
-	 * The last cluster in a volume may wind up truncated.  It must be
-	 * at least minclsize to really be workable as a cluster.
-	 */
-	minclsize = (int32_t)(ClusterSize / 4);
-	if (minclsize < HAMMER_BUFSIZE * 64)
-		minclsize = HAMMER_BUFSIZE * 64;
 
 	/*
 	 * Initialize basic information in the on-disk volume structure.
@@ -416,220 +341,63 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	ondisk->vol_no = vol->vol_no;
 	ondisk->vol_count = nvols;
 	ondisk->vol_version = 1;
-	ondisk->vol_clsize = (int32_t)ClusterSize;
-	if (UsingSuperClusters)
-		ondisk->vol_flags = HAMMER_VOLF_USINGSUPERCL;
 
 	ondisk->vol_bot_beg = vol->vol_alloc;
 	vol->vol_alloc += BootAreaSize;
 	ondisk->vol_mem_beg = vol->vol_alloc;
 	vol->vol_alloc += MemAreaSize;
-	ondisk->vol_clo_beg = vol->vol_alloc;
-	ondisk->vol_clo_end = vol->size;
+	ondisk->vol_buf_beg = vol->vol_alloc;
+	ondisk->vol_buf_end = vol->size & ~(int64_t)HAMMER_BUFMASK;
 
-	if (ondisk->vol_clo_end < ondisk->vol_clo_beg) {
+	if (ondisk->vol_buf_end < ondisk->vol_buf_beg) {
 		errx(1, "volume %d %s is too small to hold the volume header",
 		     vol->vol_no, vol->name);
 	}
 
-	/*
-	 * Our A-lists have been initialized but are marked all-allocated.
-	 * Calculate the actual number of clusters in the volume and free
-	 * them to get the filesystem ready for work.  The clusters will
-	 * be initialized on-demand.
-	 *
-	 * If using super-clusters we must still calculate nclusters but
-	 * we only need to initialize superclusters that are not going
-	 * to wind up in the all-free state, which will only be the last
-	 * supercluster.  hammer_alist_free() will recurse into the
-	 * supercluster infrastructure and create the necessary superclusters.
-	 *
-	 * NOTE: The nclusters calculation ensures that the volume EOF does
-	 * not occur in the middle of a supercluster buffer array.
-	 */
-	if (UsingSuperClusters) {
-		/*
-		 * Figure out how many full super-cluster groups we will have.
-		 * This calculation does not include the partial supercluster
-		 * group at the end.
-		 */
-		scl_header_size = (int64_t)HAMMER_BUFSIZE *
-				  HAMMER_VOL_SUPERCLUSTER_GROUP;
-		scl_group_size = scl_header_size +
-				 (int64_t)HAMMER_VOL_SUPERCLUSTER_GROUP *
-				 ClusterSize * HAMMER_SCL_MAXCLUSTERS;
-		nscl_groups = (ondisk->vol_clo_end - ondisk->vol_clo_beg) /
-				scl_group_size;
-		nclusters = nscl_groups * HAMMER_SCL_MAXCLUSTERS *
-				HAMMER_VOL_SUPERCLUSTER_GROUP;
-
-		/*
-		 * Figure out how much space we have left and calculate the
-		 * remaining number of clusters.
-		 */
-		n64 = (ondisk->vol_clo_end - ondisk->vol_clo_beg) -
-			(nscl_groups * scl_group_size);
-		if (n64 > scl_header_size) {
-			nclusters += (n64 + minclsize) / ClusterSize;
-		}
-		printf("%d clusters, %d full super-cluster groups\n",
-			nclusters, nscl_groups);
-		hammer_alist_init(&vol->clu_alist, 0, nclusters,
-				  HAMMER_ASTATE_FREE);
-	} else {
-		nclusters = (ondisk->vol_clo_end - ondisk->vol_clo_beg +
-			     minclsize) / ClusterSize;
-		if (nclusters > HAMMER_VOL_MAXCLUSTERS) {
-			errx(1, "Volume is too large, max %s\n",
-			     sizetostr(nclusters * ClusterSize));
-		}
-		hammer_alist_init(&vol->clu_alist, 0, nclusters,
-				  HAMMER_ASTATE_FREE);
-	}
-	ondisk->vol_nclusters = nclusters;
-	ondisk->vol_nblocks = nclusters * ClusterSize / HAMMER_BUFSIZE -
-			      nclusters;
+	ondisk->vol_nblocks = (ondisk->vol_buf_end - ondisk->vol_buf_beg) /
+			      HAMMER_BUFSIZE;
 	ondisk->vol_blocksize = HAMMER_BUFSIZE;
 
 	/*
-	 * Place the root cluster in volume 0.
+	 * Assign the root volume to volume 0.
 	 */
 	ondisk->vol_rootvol = 0;
+	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
 	if (ondisk->vol_no == (int)ondisk->vol_rootvol) {
-		ondisk->vol0_root_clu_id = format_cluster(vol, 1);
-		ondisk->vol0_recid = 1;
-		/* global next TID */
-		ondisk->vol0_nexttid = createtid();
+		/*
+		 * Create an empty FIFO starting at the first buffer
+		 * in volume 0.  hammer_off_t must be properly formatted
+		 * (see vfs/hammer/hammer_disk.h)
+		 */
+		ondisk->vol0_fifo_beg = HAMMER_ENCODE_RAW_BUFFER(0, 0);
+		ondisk->vol0_fifo_end = ondisk->vol0_fifo_beg;
+		ondisk->vol0_next_tid = createtid();
+		ondisk->vol0_next_seq = 1;
+
+		ondisk->vol0_btree_root = format_root();
+		++ondisk->vol0_stat_inodes;	/* root inode */
+
 	}
-}
-
-/*
- * Format a hammer cluster.  Returns byte offset in volume of cluster.
- */
-static
-int32_t
-format_cluster(struct volume_info *vol, int isroot)
-{
-	hammer_tid_t clu_id = createtid();
-	struct cluster_info *cluster;
-	struct hammer_cluster_ondisk *ondisk;
-	int nbuffers;
-	int clno;
-
-	/*
-	 * Allocate a cluster
-	 */
-	clno = hammer_alist_alloc(&vol->clu_alist, 1);
-	if (clno == HAMMER_ALIST_BLOCK_NONE) {
-		fprintf(stderr, "volume %d %s has insufficient space\n",
-			vol->vol_no, vol->name);
-		exit(1);
-	}
-	cluster = get_cluster(vol, clno, 1);
-	printf("allocate cluster id=%016llx %d@%08llx\n",
-	       clu_id, clno, cluster->clu_offset);
-
-	ondisk = cluster->ondisk;
-
-	ondisk->vol_fsid = vol->ondisk->vol_fsid;
-	ondisk->vol_fstype = vol->ondisk->vol_fstype;
-	ondisk->clu_gen = 1;
-	ondisk->clu_id = clu_id;
-	ondisk->clu_no = clno;
-	ondisk->clu_flags = 0;
-	ondisk->clu_start = HAMMER_BUFSIZE;
-	if (vol->size - cluster->clu_offset > ClusterSize)
-		ondisk->clu_limit = (u_int32_t)ClusterSize;
-	else
-		ondisk->clu_limit = (u_int32_t)(vol->size - cluster->clu_offset);
-
-	/*
-	 * In-band filesystem buffer management A-List.  The first filesystem
-	 * buffer is the cluster header itself.
-	 */
-	nbuffers = ondisk->clu_limit / HAMMER_BUFSIZE;
-	hammer_alist_free(&cluster->alist_master, 1, nbuffers - 1);
-	printf("cluster %d has %d buffers\n", cluster->clu_no, nbuffers);
-
-	/*
-	 * Buffer Iterators in elements.  Each buffer has 256 elements.
-	 * The data and B-Tree indices are forward allocations while the
-	 * record index allocates backwards.
-	 */
-	ondisk->idx_data = 1 * HAMMER_FSBUF_MAXBLKS;
-	ondisk->idx_index = 0 * HAMMER_FSBUF_MAXBLKS;
-	ondisk->idx_record = nbuffers * HAMMER_FSBUF_MAXBLKS;
-
-	/*
-	 * Iterator for whole-buffer data allocations. The iterator is
-	 * the buf_no.
-	 */
-	ondisk->idx_ldata = 1;
-
-	/*
-	 * Initialize root cluster's parent cluster info.  -1's
-	 * indicate we are the root cluster and no parent exists.
-	 */
-	ondisk->clu_btree_parent_vol_no = -1;
-	ondisk->clu_btree_parent_clu_no = -1;
-	ondisk->clu_btree_parent_offset = -1;
-	ondisk->clu_btree_parent_clu_gen = -1;
-
-	/*
-	 * Cluster 0 is the root cluster.  Set the B-Tree range for this
-	 * cluster to the entire key space and format the root directory. 
-	 *
-	 * Note that delete_tid for the ending range must be set to 0,
-	 * 0 indicates 'not deleted', aka 'the most recent'.  See
-	 * hammer_btree_cmp() in sys/vfs/hammer/hammer_btree.c.
-	 *
-	 * The root cluster's key space represents the entire key space for
-	 * the filesystem.  The btree_end element appears to be inclusive
-	 * only because we can't overflow our variables.  It's actually
-	 * non-inclusive... that is, it is a right-side boundary element.
-	 */
-	if (isroot) {
-		ondisk->clu_btree_beg.obj_id = -0x8000000000000000LL;
-		ondisk->clu_btree_beg.key = -0x8000000000000000LL;
-		ondisk->clu_btree_beg.create_tid = 1;
-		ondisk->clu_btree_beg.delete_tid = 1;
-		ondisk->clu_btree_beg.rec_type = 0;
-		ondisk->clu_btree_beg.obj_type = 0;
-
-		ondisk->clu_btree_end.obj_id = 0x7FFFFFFFFFFFFFFFLL;
-		ondisk->clu_btree_end.key = 0x7FFFFFFFFFFFFFFFLL;
-		ondisk->clu_btree_end.create_tid = 0xFFFFFFFFFFFFFFFFULL;
-		ondisk->clu_btree_end.delete_tid = 0;	/* special case */
-		ondisk->clu_btree_end.rec_type = 0xFFFFU;
-		ondisk->clu_btree_end.obj_type = 0;
-
-		format_root(cluster);
-	}
-
-	/*
-	 * Write-out and update the index, record, and cluster buffers
-	 */
-	return(clno);
 }
 
 /*
  * Format the root directory.
  */
 static
-void
-format_root(struct cluster_info *cluster)
+hammer_off_t
+format_root(void)
 {
-	int32_t btree_off;
-	int32_t rec_off;
-	int32_t data_off;
+	hammer_off_t btree_off;
+	hammer_off_t rec_off;
 	hammer_node_ondisk_t bnode;
-	union hammer_record_ondisk *rec;
+	hammer_record_ondisk_t rec;
 	struct hammer_inode_data *idata;
 	hammer_btree_elm_t elm;
 
-	bnode = alloc_btree_element(cluster, &btree_off);
-	rec = alloc_record_element(cluster, &rec_off, HAMMER_RECTYPE_INODE);
-	idata = alloc_data_element(cluster, sizeof(*idata), &data_off);
+	bnode = alloc_btree_element(&btree_off);
+	rec = alloc_record_element(&rec_off, HAMMER_RECTYPE_INODE,
+				   sizeof(rec->inode), sizeof(*idata),
+				   (void **)&idata);
 
 	/*
 	 * Populate the inode data and inode record for the root directory.
@@ -644,22 +412,13 @@ format_root(struct cluster_info *cluster)
 	rec->base.base.delete_tid = 0;
 	rec->base.base.rec_type = HAMMER_RECTYPE_INODE;
 	rec->base.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
-	rec->base.data_offset = data_off;
-	rec->base.data_len = sizeof(*idata);
-	rec->base.data_crc = crc32(idata, sizeof(*idata));
+	/* rec->base.data_offset - initialized by alloc_record_element */
+	/* rec->base.data_len 	 - initialized by alloc_record_element */
+	rec->base.head.hdr_crc = crc32(idata, sizeof(*idata));
 	rec->inode.ino_atime  = rec->base.base.create_tid;
 	rec->inode.ino_mtime  = rec->base.base.create_tid;
 	rec->inode.ino_size   = 0;
 	rec->inode.ino_nlinks = 1;
-	cluster->ondisk->synchronized_rec_id = 1;
-
-	++cluster->volume->ondisk->vol0_stat_inodes;
-
-	/*
-	 * Assign the cluster's root B-Tree node.
-	 */
-	assert(cluster->ondisk->clu_btree_root == 0);
-	cluster->ondisk->clu_btree_root = btree_off;
 
 	/*
 	 * Create the root of the B-Tree.  The root is a leaf node so we
@@ -671,8 +430,9 @@ format_root(struct cluster_info *cluster)
 	elm = &bnode->elms[0];
 	elm->base = rec->base.base;
 	elm->leaf.rec_offset = rec_off;
-	elm->leaf.data_offset = rec->base.data_offset;
+	elm->leaf.data_offset = rec->base.data_off;
 	elm->leaf.data_len = rec->base.data_len;
-	elm->leaf.data_crc = rec->base.data_crc;
+	elm->leaf.data_crc = rec->base.head.hdr_crc;
+	return(btree_off);
 }
 

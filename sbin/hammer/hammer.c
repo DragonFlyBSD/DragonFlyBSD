@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.7 2008/02/04 08:34:22 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.8 2008/02/08 08:30:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -48,7 +48,7 @@ main(int ac, char **av)
 {
 	u_int64_t tid;
 	int ch;
-	int status;
+	u_int32_t status;
 	char *blkdevs = NULL;
 
 	while ((ch = getopt(ac, av, "hf:rv")) != -1) {
@@ -127,15 +127,13 @@ main(int ac, char **av)
 			"HAMMER filesystem type");
 	}
 
-	init_alist_templates();
 	if (strcmp(av[0], "show") == 0) {
-		int32_t vol_no = -1;
-		int32_t clu_no = -1;
+		hammer_off_t node_offset = (hammer_off_t)-1;
 
 		hammer_parsedevs(blkdevs);
 		if (ac > 1)
-			sscanf(av[1], "%d:%d", &vol_no, &clu_no);
-		hammer_cmd_show(vol_no, clu_no, 0);
+			sscanf(av[1], "%llx", &node_offset);
+		hammer_cmd_show(node_offset, 0, NULL, NULL);
 		exit(0);
 	}
 	usage(1);

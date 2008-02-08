@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.3 2008/02/06 08:59:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.4 2008/02/08 08:30:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -294,7 +294,8 @@ realign_prune(struct hammer_ioc_prune *prune,
 				error = hammer_cursor_upgrade(cursor);
 			}
 			if (error == 0) {
-				hammer_modify_buffer(cursor->record_buffer);
+				hammer_modify_buffer(cursor->record_buffer,
+						     NULL, 0);
 				cursor->record->base.base.create_tid = tid;
 				hammer_modify_node(cursor->node);
 				elm->leaf.base.create_tid = tid;
@@ -319,7 +320,7 @@ realign_prune(struct hammer_ioc_prune *prune,
 				elm->leaf.base.delete_tid =
 						elm->leaf.base.delete_tid -
 						delta + mod;
-				hammer_modify_buffer(cursor->record_buffer);
+				hammer_modify_buffer(cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
 				cursor->record->base.base.delete_tid =
 						elm->leaf.base.delete_tid;
 			}

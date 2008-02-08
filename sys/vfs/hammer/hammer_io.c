@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.19 2008/01/25 10:36:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.20 2008/02/08 08:30:59 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -95,22 +95,9 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 	switch(iou->io.type) {
 	case HAMMER_STRUCTURE_VOLUME:
 		iou->volume.ondisk = NULL;
-		iou->volume.alist.meta = NULL;
-		break;
-	case HAMMER_STRUCTURE_SUPERCL:
-		iou->supercl.ondisk = NULL;
-		iou->supercl.alist.meta = NULL;
-		break;
-	case HAMMER_STRUCTURE_CLUSTER:
-		iou->cluster.ondisk = NULL;
-		iou->cluster.alist_master.meta = NULL;
-		iou->cluster.alist_btree.meta = NULL;
-		iou->cluster.alist_record.meta = NULL;
-		iou->cluster.alist_mdata.meta = NULL;
 		break;
 	case HAMMER_STRUCTURE_BUFFER:
 		iou->buffer.ondisk = NULL;
-		iou->buffer.alist.meta = NULL;
 		break;
 	}
 }
@@ -319,29 +306,6 @@ hammer_io_flush(struct hammer_io *io)
 	io->modified = 0;	/* force interlock */
 	bp = io->bp;
 
-	/*
-	 * If we are trying to flush a buffer we have to wait until the
-	 * cluster header for the mark-OPEN has completed its I/O.
-	 */
-	if (io->type == HAMMER_STRUCTURE_BUFFER) {
-		hammer_io_structure_t iou = (void *)io;
-		hammer_cluster_t cluster = iou->buffer.cluster;
-
-		if (cluster->io.running) {
-			kprintf("WAIT CLUSTER OPEN %d\n", cluster->clu_no);
-			hammer_io_wait(&cluster->io);
-			kprintf("WAIT CLUSTER OPEN OK\n");
-		}
-	}
-	if (io->type == HAMMER_STRUCTURE_CLUSTER) {
-		/*
-		 * Mark the cluster closed if we can.  XXX kludgy, must
-		 * set modified to 1 for the check.
-		 */
-		io->modified = 1;
-		hammer_io_checkwrite(io->bp);
-		io->modified = 0;
-	}
 	if (io->released) {
 		regetblk(bp);
 		/* BUF_KERNPROC(io->bp); */
@@ -412,24 +376,17 @@ hammer_io_modify(hammer_io_t io, struct hammer_io_list *list)
 }
 
 void
-hammer_modify_volume(hammer_volume_t volume)
+hammer_modify_volume(hammer_volume_t volume, void *base, int len)
 {
 	hammer_io_modify(&volume->io, NULL);
-}
 
-void
-hammer_modify_supercl(hammer_supercl_t supercl)
-{
-	hammer_io_modify(&supercl->io, &supercl->volume->io.deplist);
-}
-
-/*
- * Caller intends to modify a cluster's ondisk structure. 
- */
-void
-hammer_modify_cluster(hammer_cluster_t cluster)
-{
-	hammer_io_modify(&cluster->io, &cluster->volume->io.deplist);
+	if (len) {
+		intptr_t rel_offset = (intptr_t)base - (intptr_t)volume->ondisk;
+		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
+		hammer_generate_undo(volume->hmp,
+			 HAMMER_ENCODE_RAW_VOLUME(volume->vol_no, rel_offset),
+			 base, len);
+	}
 }
 
 /*
@@ -438,40 +395,16 @@ hammer_modify_cluster(hammer_cluster_t cluster)
  * buffer so get that I/O going now.
  */
 void
-hammer_modify_buffer(hammer_buffer_t buffer)
-{
-	hammer_cluster_t cluster = buffer->cluster;
-
-	if (hammer_io_modify(&buffer->io, &cluster->io.deplist)) {
-		hammer_modify_cluster(cluster);
-		if ((cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN) == 0) {
-			hammer_lock_ex(&cluster->io.lock);
-			if ((cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN) == 0) {
-				KKASSERT(cluster->io.released == 0);
-				cluster->ondisk->clu_flags |= HAMMER_CLUF_OPEN;
-				cluster->io.released = 1;
-				cluster->io.running = 1;
-				bawrite(cluster->io.bp);
-				if (hammer_debug_general & 0x20) {
-					kprintf("OPEN CLUSTER %d:%d\n",
-						cluster->volume->vol_no,
-						cluster->clu_no);
-				}
-			}
-			hammer_unlock(&cluster->io.lock);
-		}
-	}
-}
-
-/*
- * Modify a buffer without creating a cluster dependancy or forcing
- * a cluster open operation.  This is used only for atime and mtime
- * updates.
- */
-void
-hammer_modify_buffer_nodep(hammer_buffer_t buffer)
+hammer_modify_buffer(hammer_buffer_t buffer, void *base, int len)
 {
 	hammer_io_modify(&buffer->io, NULL);
+	if (len) {
+		intptr_t rel_offset = (intptr_t)base - (intptr_t)buffer->ondisk;
+		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
+		hammer_generate_undo(buffer->volume->hmp,
+				     buffer->buf_offset + rel_offset,
+				     base, len);
+	}
 }
 
 /*
@@ -594,12 +527,6 @@ hammer_io_deallocate(struct buf *bp)
 		case HAMMER_STRUCTURE_VOLUME:
 			hammer_rel_volume(&iou->volume, 1);
 			break;
-		case HAMMER_STRUCTURE_SUPERCL:
-			hammer_rel_supercl(&iou->supercl, 1);
-			break;
-		case HAMMER_STRUCTURE_CLUSTER:
-			hammer_rel_cluster(&iou->cluster, 1);
-			break;
 		case HAMMER_STRUCTURE_BUFFER:
 			hammer_rel_buffer(&iou->buffer, 1);
 			break;
@@ -653,35 +580,6 @@ hammer_io_checkwrite(struct buf *bp)
 	union hammer_io_structure *iou = (void *)LIST_FIRST(&bp->b_dep);
 
 	KKASSERT(TAILQ_EMPTY(&iou->io.deplist));
-
-	/*
-	 * A modified cluster with no dependancies can be closed.  It is
-	 * possible for the cluster to have been modified by the recovery
-	 * code without validation.  Only clear the open flag if the
-	 * cluster is validated.
-	 */
-	if (iou->io.type == HAMMER_STRUCTURE_CLUSTER && iou->io.modified) {
-		hammer_cluster_t cluster = &iou->cluster;
-
-		if (hammer_debug_general & 0x20) {
-			kprintf("CLOSE CLUSTER %d:%d ",
-				cluster->volume->vol_no, cluster->clu_no);
-		}
-		if (cluster->ondisk->clu_flags & HAMMER_CLUF_OPEN) {
-			if (cluster->io.validated) {
-				cluster->ondisk->clu_flags &=
-					~HAMMER_CLUF_OPEN;
-				if (hammer_debug_general & 0x20)
-					kprintf("(closed)\n");
-			} else {
-				if (hammer_debug_general & 0x20)
-					kprintf("(leave-open)\n");
-			}
-		} else {
-			if (hammer_debug_general & 0x20)
-				kprintf("(header-only)\n");
-		}
-	}
 
 	/*
 	 * We are called from the kernel on delayed-write buffers, and

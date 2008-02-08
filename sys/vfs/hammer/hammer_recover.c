@@ -31,10 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.7 2008/01/25 05:49:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.8 2008/02/08 08:31:00 dillon Exp $
  */
 
 #include "hammer.h"
+
+#if 0
 
 static int hammer_recover_buffer_stage2(hammer_cluster_t cluster,
 				int32_t buf_no);
@@ -762,3 +764,4 @@ failed:
 	return(error);
 }
 
+#endif

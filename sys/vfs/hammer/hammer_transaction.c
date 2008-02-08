@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.8 2008/01/21 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.9 2008/02/08 08:31:00 dillon Exp $
  */
 
 #include "hammer.h"
@@ -86,17 +86,17 @@ hammer_alloc_tid(hammer_transaction_t trans)
 
 	getnanotime(&ts);
 	tid = ts.tv_sec * 1000000000LL + ts.tv_nsec;
-	hammer_modify_volume(trans->rootvol);
+	hammer_modify_volume(trans->rootvol, NULL, 0);
 	ondisk = trans->rootvol->ondisk;
-	if (tid < ondisk->vol0_nexttid)
-		tid = ondisk->vol0_nexttid;
+	if (tid < ondisk->vol0_next_tid)
+		tid = ondisk->vol0_next_tid;
 	if (tid == 0xFFFFFFFFFFFFFFFFULL)
 		panic("hammer_start_transaction: Ran out of TIDs!");
 	if (hammer_debug_tid) {
 		kprintf("alloc_tid %016llx (0x%08x)\n",
 			tid, (int)(tid / 1000000000LL));
 	}
-	ondisk->vol0_nexttid = tid + 2;
+	ondisk->vol0_next_tid = tid + 2;
 
 	return(tid);
 }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.28 2008/02/06 08:59:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.29 2008/02/08 08:30:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -237,7 +237,7 @@ retry:
 	 */
 	if (*errorp == 0) {
 		ip->ino_rec = cursor.record->inode;
-		ip->ino_data = cursor.data->inode;
+		ip->ino_data = cursor.data1->inode;
 		hammer_cache_node(cursor.node, &ip->cache[0]);
 		if (cache)
 			hammer_cache_node(cursor.node, cache);
@@ -364,7 +364,6 @@ static int
 hammer_update_inode(hammer_inode_t ip)
 {
 	struct hammer_cursor cursor;
-	struct hammer_cursor *spike = NULL;
 	hammer_record_t record;
 	int error;
 	hammer_tid_t last_tid;
@@ -418,27 +417,21 @@ retry:
 	 * will remain set and prevent further updates.
 	 */
 	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED) == 0) { 
-		record = hammer_alloc_mem_record(ip);
+		record = hammer_alloc_mem_record(ip, sizeof(struct hammer_inode_record));
 		record->rec.inode = ip->ino_rec;
 		record->rec.inode.base.base.create_tid = last_tid;
 		record->rec.inode.base.data_len = sizeof(ip->ino_data);
 		record->data = (void *)&ip->ino_data;
-		error = hammer_ip_sync_record(record, &spike);
+		error = hammer_ip_sync_record(record);
 		record->flags |= HAMMER_RECF_DELETED;
 		hammer_rel_mem_record(record);
-		if (error == ENOSPC) {
-			error = hammer_spike(&spike);
-			if (error == 0)
-				goto retry;
-		}
-		KKASSERT(spike == NULL);
 		if (error == 0) {
 			ip->flags &= ~(HAMMER_INODE_RDIRTY |
 				       HAMMER_INODE_DDIRTY |
 				       HAMMER_INODE_DELONDISK |
 				       HAMMER_INODE_ITIMES);
 			if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
-				hammer_modify_volume(ip->hmp->rootvol);
+				hammer_modify_volume(ip->hmp->rootvol, NULL, 0);
 				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 				ip->flags |= HAMMER_INODE_ONDISK;
 			}
@@ -481,7 +474,7 @@ retry:
 		error = hammer_btree_lookup(&cursor);
 		if (error == 0) {
 			rec = &cursor.record->inode;
-			hammer_modify_buffer_nodep(cursor.record_buffer);
+			hammer_modify_buffer(cursor.record_buffer, NULL, 0);
 			rec->ino_atime = ip->ino_rec.ino_atime;
 			rec->ino_mtime = ip->ino_rec.ino_mtime;
 			ip->flags &= ~HAMMER_INODE_ITIMES;
@@ -593,19 +586,14 @@ hammer_modify_inode(struct hammer_transaction *trans,
  * overriding any intermediate TIDs that were used for records.  Note
  * that the dirty buffer cache buffers do not have any knowledge of
  * the transaction id they were modified under.
- *
- * If we can't sync due to a cluster becoming full the spike structure
- * will be filled in and ENOSPC returned.  We must return -ENOSPC to
- * terminate the RB_SCAN.
  */
 static int
-hammer_sync_inode_callback(hammer_record_t rec, void *data)
+hammer_sync_inode_callback(hammer_record_t rec, void *data __unused)
 {
-	struct hammer_cursor **spike = data;
 	int error;
 
 	hammer_ref(&rec->lock);
-	error = hammer_ip_sync_record(rec, spike);
+	error = hammer_ip_sync_record(rec);
 	hammer_rel_mem_record(rec);
 
 	if (error) {
@@ -625,7 +613,6 @@ int
 hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 {
 	struct hammer_transaction trans;
-	struct hammer_cursor *spike = NULL;
 	int error;
 
 	if ((ip->flags & HAMMER_INODE_MODMASK) == 0) {
@@ -654,10 +641,6 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	 * force the inode update later on to use our transaction id or
 	 * the delete_tid of the inode may be less then the create_tid of
 	 * the inode update.  XXX shouldn't happen but don't take the chance.
-	 *
-	 * NOTE: The call to hammer_ip_delete_range() cannot return ENOSPC
-	 * so we can pass a NULL spike structure, because no partial data
-	 * deletion can occur (yet).
 	 */
 	if (ip->ino_rec.ino_nlinks == 0 && handle_delete && 
 	    (ip->flags & HAMMER_INODE_GONE) == 0) {
@@ -668,7 +651,7 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 		KKASSERT(RB_EMPTY(&ip->rec_tree));
 		ip->ino_rec.base.base.delete_tid = trans.tid;
 		hammer_modify_inode(&trans, ip, HAMMER_INODE_DELETED);
-		hammer_modify_volume(ip->hmp->rootvol);
+		hammer_modify_volume(ip->hmp->rootvol, NULL, 0);
 		--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 	}
 
@@ -689,15 +672,10 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	 */
 	for (;;) {
 		error = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
-				hammer_sync_inode_callback, &spike);
+				hammer_sync_inode_callback, NULL);
 		KKASSERT(error <= 0);
 		if (error < 0)
 			error = -error;
-		if (error == ENOSPC) {
-			error = hammer_spike(&spike);
-			if (error == 0)
-				continue;
-		}
 		break;
 	}
 	if (RB_EMPTY(&ip->rec_tree))
@@ -762,76 +740,5 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	hammer_commit_transaction(&trans);
 	hammer_unlock(&ip->lock);
 	return(error);
-}
-
-/*
- * Access the filesystem buffer containing the cluster-relative byte
- * offset, validate the buffer type, load *bufferp and return a
- * pointer to the requested data.  The buffer is reference and locked on
- * return.
- *
- * If buf_type is 0 the buffer is assumed to be a pure-data buffer and
- * no type or crc check is performed.
- *
- * If *bufferp is not NULL on entry it is assumed to contain a locked
- * and referenced buffer which will then be replaced.
- *
- * If the caller is holding another unrelated buffer locked it must be
- * passed in reorderbuf so we can properly order buffer locks.
- *
- * XXX add a flag for the buffer type and check the CRC here XXX
- */
-void *
-hammer_bread(hammer_cluster_t cluster, int32_t cloff,
-	     u_int64_t buf_type, int *errorp,
-	     struct hammer_buffer **bufferp)
-{
-	hammer_buffer_t buffer;
-	int32_t buf_no;
-	int32_t buf_off;
-
-	/*
-	 * Load the correct filesystem buffer, replacing *bufferp.
-	 */
-	buf_no = cloff / HAMMER_BUFSIZE;
-	buffer = *bufferp;
-	if (buffer == NULL || buffer->cluster != cluster ||
-	    buffer->buf_no != buf_no) {
-		if (buffer) {
-			/*hammer_unlock(&buffer->io.lock);*/
-			hammer_rel_buffer(buffer, 0);
-		}
-		buffer = hammer_get_buffer(cluster, buf_no, 0, errorp);
-		*bufferp = buffer;
-		if (buffer == NULL)
-			return(NULL);
-		/*hammer_lock_ex(&buffer->io.lock);*/
-	}
-
-	/*
-	 * Validate the buffer type
-	 */
-	buf_off = cloff & HAMMER_BUFMASK;
-	if (buf_type) {
-		if (buf_type != buffer->ondisk->head.buf_type) {
-			kprintf("BUFFER HEAD TYPE MISMATCH %llx %llx\n",
-				buf_type, buffer->ondisk->head.buf_type);
-			KKASSERT(0);
-			*errorp = EIO;
-			return(NULL);
-		}
-		if (buf_off < sizeof(buffer->ondisk->head)) {
-			kprintf("BUFFER OFFSET TOO LOW %d\n", buf_off);
-			*errorp = EIO;
-			KKASSERT(0);
-			return(NULL);
-		}
-	}
-
-	/*
-	 * Return a pointer to the buffer data.
-	 */
-	*errorp = 0;
-	return((char *)buffer->ondisk + buf_off);
 }
 

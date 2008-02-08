@@ -31,10 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.14 2008/01/25 21:50:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/Attic/hammer_spike.c,v 1.15 2008/02/08 08:31:00 dillon Exp $
  */
 
 #include "hammer.h"
+
+#if 0
 
 /*
  * Load spike info given a cursor.  The cursor must point to the leaf node
@@ -386,3 +388,5 @@ failed4:
 	return (error);
 }
 
+
+#endif

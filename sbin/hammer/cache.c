@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cache.c,v 1.3 2008/01/21 00:03:31 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cache.c,v 1.4 2008/02/08 08:30:56 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -94,12 +94,6 @@ hammer_cache_flush(void)
 			switch(cache->type) {
 			case ISVOLUME:
 				rel_volume(cache->u.volume);
-				break;
-			case ISSUPERCL:
-				rel_supercl(cache->u.supercl);
-				break;
-			case ISCLUSTER:
-				rel_cluster(cache->u.cluster);
 				break;
 			case ISBUFFER:
 				rel_buffer(cache->u.buffer);

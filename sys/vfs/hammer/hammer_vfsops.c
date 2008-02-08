@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.17 2008/02/05 20:52:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.18 2008/02/08 08:31:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,11 +56,8 @@ int hammer_count_inodes;
 int hammer_count_records;
 int hammer_count_record_datas;
 int hammer_count_volumes;
-int hammer_count_supercls;
-int hammer_count_clusters;
 int hammer_count_buffers;
 int hammer_count_nodes;
-int hammer_count_spikes;
 
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
@@ -81,16 +78,10 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_record_datas, CTLFLAG_RD,
 	   &hammer_count_record_datas, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_volumes, CTLFLAG_RD,
 	   &hammer_count_volumes, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, count_supercls, CTLFLAG_RD,
-	   &hammer_count_supercls, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, count_clusters, CTLFLAG_RD,
-	   &hammer_count_clusters, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_buffers, CTLFLAG_RD,
 	   &hammer_count_buffers, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_nodes, CTLFLAG_RD,
 	   &hammer_count_nodes, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, count_spikes, CTLFLAG_RD,
-	   &hammer_count_spikes, 0, "");
 
 /*
  * VFS ABI
@@ -135,7 +126,7 @@ MODULE_VERSION(hammer, 1);
 static int
 hammer_vfs_init(struct vfsconf *conf)
 {
-	hammer_init_alist_config();
+	/*hammer_init_alist_config();*/
 	return(0);
 }
 
@@ -170,6 +161,20 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->zbuf = kmalloc(HAMMER_BUFSIZE, M_HAMMER, M_WAITOK|M_ZERO);
 		hmp->namekey_iterator = mycpu->gd_time_seconds;
 		/*TAILQ_INIT(&hmp->recycle_list);*/
+
+		hmp->root_btree_beg.obj_id = -0x8000000000000000LL;
+		hmp->root_btree_beg.key = -0x8000000000000000LL;
+		hmp->root_btree_beg.create_tid = 1;
+		hmp->root_btree_beg.delete_tid = 1;
+		hmp->root_btree_beg.rec_type = 0;
+		hmp->root_btree_beg.obj_type = 0;
+
+		hmp->root_btree_end.obj_id = 0x7FFFFFFFFFFFFFFFLL;
+		hmp->root_btree_end.key = 0x7FFFFFFFFFFFFFFFLL;
+		hmp->root_btree_end.create_tid = 0xFFFFFFFFFFFFFFFFULL;
+		hmp->root_btree_end.delete_tid = 0;   /* special case */
+		hmp->root_btree_end.rec_type = 0xFFFFU;
+		hmp->root_btree_end.obj_type = 0;
 	}
 	hmp->hflags = info.hflags;
 	if (info.asof) {
@@ -218,10 +223,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	if (error == 0 && hmp->rootvol == NULL) {
 		kprintf("hammer_mount: No root volume found!\n");
-		error = EINVAL;
-	}
-	if (error == 0 && hmp->rootcl == NULL) {
-		kprintf("hammer_mount: No root cluster found!\n");
 		error = EINVAL;
 	}
 	if (error) {
@@ -386,26 +387,13 @@ hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 static int
 hammer_vfs_root(struct mount *mp, struct vnode **vpp)
 {
+#if 0
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
+#endif
 	int error;
 
-	if (hmp->rootcl == NULL)
-		error = EIO;
-	else
-		error = hammer_vfs_vget(mp, 1, vpp);
+	error = hammer_vfs_vget(mp, 1, vpp);
 	return (error);
-#if 0
-	/* FUTURE - cached root vnode */
-	if ((vp = hmp->rootvp) != NULL) {
-		vref(vp);
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-		*vpp = vp;
-		return (0);
-	} else {
-		*vpp = NULL;
-		return (EIO);
-	}
-#endif
 }
 
 static int
@@ -415,25 +403,50 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	hammer_volume_t volume;
 	hammer_volume_ondisk_t ondisk;
 	int error;
+	int64_t bfree;
+	int32_t vol_no;
+	hammer_off_t fifo_beg;
+	hammer_off_t fifo_end;
 
 	volume = hammer_get_root_volume(hmp, &error);
 	if (error)
 		return(error);
-
 	ondisk = volume->ondisk;
 
-	mp->mnt_stat.f_bfree = mp->mnt_stat.f_blocks -
-				ondisk->vol0_stat_idx_bufs -
-				ondisk->vol0_stat_rec_bufs -
-				ondisk->vol0_stat_data_bufs;
-	if (mp->mnt_stat.f_bfree < 0)
-		mp->mnt_stat.f_bfree = 0;
-	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
+	/*
+	 * Basic stats
+	 */
 	mp->mnt_stat.f_files = ondisk->vol0_stat_inodes;
+	fifo_beg = ondisk->vol0_fifo_beg;
+	fifo_end = ondisk->vol0_fifo_end;
+	hammer_rel_volume(volume, 0);
+
+	/*
+	 * Calculate how many free blocks we have by counting the
+	 * blocks between fifo_end and fifo_beg.
+	 */
+	bfree = 0;
+	vol_no = HAMMER_VOL_DECODE(fifo_end);
+	for (;;) {
+		if (vol_no == HAMMER_VOL_DECODE(fifo_beg) &&
+		    fifo_end <= fifo_beg) {
+			bfree += (fifo_beg - fifo_end) & HAMMER_OFF_SHORT_MASK;
+			break;
+		}
+		volume = hammer_get_volume(hmp, vol_no, &error);
+		if (volume == NULL)
+			break;
+		bfree += volume->maxbuf_off - fifo_end;
+		if (++vol_no == hmp->nvolumes)
+			vol_no = 0;
+		fifo_end = HAMMER_ENCODE_RAW_BUFFER(vol_no, 0);
+		hammer_rel_volume(volume, 0);
+	}
+	mp->mnt_stat.f_bfree = bfree / HAMMER_BUFSIZE;
+	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
 	if (mp->mnt_stat.f_files < 0)
 		mp->mnt_stat.f_files = 0;
 
-	hammer_rel_volume(volume, 0);
 	*sbp = mp->mnt_stat;
 	return(0);
 }

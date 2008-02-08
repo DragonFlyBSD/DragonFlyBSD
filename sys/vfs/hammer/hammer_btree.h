@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.10 2008/01/21 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.11 2008/02/08 08:30:59 dillon Exp $
  */
 
 /*
@@ -112,40 +112,34 @@ struct hammer_base_elm {
 typedef struct hammer_base_elm *hammer_base_elm_t;
 
 /*
- * Internal element (40 + 16 = 56 bytes).
+ * Internal element (40 + 24 = 64 bytes).
  *
  * An internal element contains the left-hand boundary, right-hand boundary,
  * and a recursion to another B-Tree node.
  */
 struct hammer_btree_internal_elm {
 	struct hammer_base_elm base;
-	int32_t unused00;
-	int32_t subtree_offset;	/* cluster relative offset */
+	hammer_off_t unused00;
+	hammer_off_t subtree_offset;
 	int32_t unused02;
 	int32_t unused03;
 };
 
 /*
- * Leaf B-Tree element (40 + 16 = 56 bytes).
+ * Leaf B-Tree element (40 + 24 = 64 bytes).
  *
- * A leaf element.  Note that the data_offset, data_len, and data_crc
- * fields only apply to HAMMER_BTREE_TYPE_RECORD subtree_type's.  These
- * fields are overloaded for spike elements.
+ * A leaf element.
  */
 struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
-	int32_t rec_offset;
-	int32_t data_offset;
+	hammer_off_t rec_offset;
+	hammer_off_t data_offset;
 	int32_t data_len;
 	u_int32_t data_crc;
 };
 
-#define spike_clu_no	data_offset
-#define spike_vol_no	data_len
-#define spike_unused01	data_crc
-
 /*
- * Rollup btree leaf element types - 56 byte structure
+ * Rollup btree leaf element types - 64 byte structure
  */
 union hammer_btree_elm {
 	struct hammer_base_elm base;
@@ -156,10 +150,7 @@ union hammer_btree_elm {
 typedef union hammer_btree_elm *hammer_btree_elm_t;
 
 /*
- * B-Tree node (normal or meta) - 24 + 56 * 14 = 808 bytes (8-byte aligned)
- *
- * 20 B-Tree nodes fit in a 16K filesystem buffer, leaving us room for
- * the 128 byte filesystem buffer header and another 96 bytes of filler.
+ * B-Tree node (normal or meta)
  *
  * Each node contains 14 elements.  The last element for an internal node
  * is the right-boundary so internal nodes have one fewer logical elements
@@ -180,7 +171,6 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
  */
 #define HAMMER_BTREE_LEAF_ELMS	14
 #define HAMMER_BTREE_INT_ELMS	(HAMMER_BTREE_LEAF_ELMS - 1)
-#define HAMMER_BTREE_NODES	20
 
 /*
  * It is safe to combine two adjacent nodes if the total number of elements
@@ -192,21 +182,21 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
 #define HAMMER_BTREE_TYPE_INTERNAL	((u_int8_t)'I')
 #define HAMMER_BTREE_TYPE_LEAF		((u_int8_t)'L')
 #define HAMMER_BTREE_TYPE_RECORD	((u_int8_t)'R')
-#define HAMMER_BTREE_TYPE_SPIKE_BEG	((u_int8_t)'C')
-#define HAMMER_BTREE_TYPE_SPIKE_END	((u_int8_t)'E')
 
 struct hammer_node_ondisk {
 	/*
-	 * B-Tree node header (24 bytes)
+	 * B-Tree node header (64 bytes)
 	 */
+	struct hammer_fifo_head head;
+	hammer_off_t	parent;		/* 0 if at root of cluster */
 	int32_t		count;
-	int32_t		parent;		/* 0 if at root of cluster */
 	u_int8_t	type;
 	u_int8_t	reserved01;
 	u_int16_t	reserved02;
-	int32_t		reserved03;	/* future heuristic */
-	int32_t		reserved04;	/* future link_left */
-	int32_t		reserved05;	/* future link_right */
+	hammer_off_t	reserved03;	/* future link_left */
+	hammer_off_t	reserved04;	/* future link_right */
+	hammer_off_t	reserved05;
+	hammer_off_t	reserved06;
 
 	/*
 	 * Element array.  Internal nodes have one less logical element
@@ -220,15 +210,3 @@ struct hammer_node_ondisk {
 
 typedef struct hammer_node_ondisk *hammer_node_ondisk_t;
 
-/*
- * B-Tree filesystem buffer (16K exactly)
- */
-struct hammer_fsbuf_btree {
-        struct hammer_fsbuf_head        head;		/* 128 */
-	char				filler[96];
-        struct hammer_node_ondisk	nodes[HAMMER_BTREE_NODES];
-};
-
-#if HAMMER_BTREE_NODES * (HAMMER_BTREE_LEAF_ELMS * 56 + 24) + 128 + 96 != 16384
-#error "Sanity check hammer_fsbuf_btree"
-#endif

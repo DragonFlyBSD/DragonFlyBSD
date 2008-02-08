@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.4 2008/01/25 05:53:41 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.5 2008/02/08 08:30:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,8 +40,7 @@
 #define FLAG_TOOFARRIGHT	0x0002
 #define FLAG_BADTYPE		0x0004
 
-static void print_btree_node(struct cluster_info *cluster,
-			int32_t node_offset, int depth, int spike,
+static void print_btree_node(hammer_off_t node_offset, int depth, int spike,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
@@ -51,48 +50,27 @@ static int print_elm_flags(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
 			hammer_base_elm_t right_bound);
 
 void
-hammer_cmd_show(int32_t vol_no, int32_t clu_no, int depth)
+hammer_cmd_show(hammer_off_t node_offset, int depth,
+		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct volume_info *volume;
-	struct cluster_info *cluster;
-	int32_t node_offset;
 
-	if (vol_no == -1) {
-		if (RootVolNo < 0)
-			errx(1, "hammer show: root volume number unknown");
-		vol_no = RootVolNo;
+	if (node_offset == (hammer_off_t)-1) {
+		volume = get_volume(RootVolNo);
+		node_offset = volume->ondisk->vol0_btree_root;
+		if (VerboseOpt) {
+			printf("\trecords=%lld\n",
+			       volume->ondisk->vol0_stat_records);
+		}
+		rel_volume(volume);
 	}
-	volume = get_volume(vol_no);
-	if (volume == NULL)
-		errx(1, "hammer show: Unable to locate volume %d", vol_no);
-	if (clu_no == -1)
-		clu_no = volume->ondisk->vol0_root_clu_no;
-	cluster = get_cluster(volume, clu_no, 0);
-	printf("show %d:%d root@%08x parent@%d:%d:%08x depth %d\n",
-	       vol_no, clu_no,
-	       cluster->ondisk->clu_btree_root,
-	       cluster->ondisk->clu_btree_parent_vol_no,
-	       cluster->ondisk->clu_btree_parent_clu_no,
-	       cluster->ondisk->clu_btree_parent_offset,
-	       depth);
-	if (VerboseOpt) {
-		printf("\trecords=%d\n",
-		       cluster->ondisk->stat_records);
-	}
-	node_offset = cluster->ondisk->clu_btree_root;
-	print_btree_node(cluster, node_offset, depth, 0,
-			 &cluster->ondisk->clu_btree_beg,
-			 &cluster->ondisk->clu_btree_end);
-	print_btree_node(cluster, node_offset, depth, 1,
-			 &cluster->ondisk->clu_btree_beg,
-			 &cluster->ondisk->clu_btree_end);
-	rel_cluster(cluster);
-	rel_volume(volume);
+	printf("show %016llx depth %d\n", node_offset, depth);
+	print_btree_node(node_offset, depth, 0, left_bound, right_bound);
+	print_btree_node(node_offset, depth, 1, left_bound, right_bound);
 }
 
 static void
-print_btree_node(struct cluster_info *cluster, int32_t node_offset, int depth,
-		 int spike,
+print_btree_node(hammer_off_t node_offset, int depth, int spike,
 		 hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct buffer_info *buffer = NULL;
@@ -101,16 +79,13 @@ print_btree_node(struct cluster_info *cluster, int32_t node_offset, int depth,
 	int i;
 	int flags;
 
-	node = get_node(cluster, node_offset, &buffer);
+	node = get_node(node_offset, &buffer);
 
 	if (spike == 0) {
-		printf("    NODE %d:%d:%08x count=%d parent=%08x "
+		printf("    NODE %016llx count=%d parent=%016llx "
 		       "type=%c depth=%d {\n",
-		       cluster->volume->vol_no,
-		       cluster->clu_no,
-			node_offset, node->count, node->parent,
-			(node->type ? node->type : '?'),
-			depth);
+		       node_offset, node->count, node->parent,
+		       (node->type ? node->type : '?'), depth);
 
 		for (i = 0; i < node->count; ++i) {
 			elm = &node->elms[i];
@@ -133,19 +108,12 @@ print_btree_node(struct cluster_info *cluster, int32_t node_offset, int depth,
 		switch(node->type) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
 			if (elm->internal.subtree_offset) {
-				print_btree_node(cluster,
-						 elm->internal.subtree_offset,
+				print_btree_node(elm->internal.subtree_offset,
 						 depth + 1, spike,
 						 &elm[0].base, &elm[1].base);
 			}
 			break;
-		case HAMMER_BTREE_TYPE_LEAF:
-			if (RecurseOpt && spike &&
-			    elm->leaf.base.btype == HAMMER_BTREE_TYPE_SPIKE_END) {
-				hammer_cmd_show(elm->leaf.spike_vol_no,
-						elm->leaf.spike_clu_no,
-						depth + 1);
-			}
+		default:
 			break;
 		}
 	}
@@ -181,18 +149,12 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 
 	switch(type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
-		printf("suboff=%08x", elm->internal.subtree_offset);
+		printf("suboff=%016llx", elm->internal.subtree_offset);
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
-			printf("recoff=%08x", elm->leaf.rec_offset);
-			break;
-		case HAMMER_BTREE_TYPE_SPIKE_BEG:
-		case HAMMER_BTREE_TYPE_SPIKE_END:
-			printf("spike %d:%d",
-			       elm->leaf.spike_vol_no,
-			       elm->leaf.spike_clu_no);
+			printf("recoff=%016llx", elm->leaf.rec_offset);
 			break;
 		}
 		break;
@@ -214,12 +176,16 @@ print_elm_flags(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
 	case HAMMER_BTREE_TYPE_INTERNAL:
 		switch(btype) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
+			if (left_bound == NULL || right_bound == NULL)
+				break;
 			if (hammer_btree_cmp(&elm->base, left_bound) < 0)
 				flags |= FLAG_TOOFARLEFT;
 			if (hammer_btree_cmp(&elm->base, right_bound) > 0)
 				flags |= FLAG_TOOFARRIGHT;
 			break;
 		case HAMMER_BTREE_TYPE_LEAF:
+			if (left_bound == NULL || right_bound == NULL)
+				break;
 			if (hammer_btree_cmp(&elm->base, left_bound) < 0)
 				flags |= FLAG_TOOFARLEFT;
 			if (hammer_btree_cmp(&elm->base, right_bound) >= 0)
@@ -232,14 +198,9 @@ print_elm_flags(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
 		switch(btype) {
-		case HAMMER_BTREE_TYPE_SPIKE_END:
-			if (hammer_btree_cmp(&elm->base, left_bound) < 0)
-				flags |= FLAG_TOOFARLEFT;
-			if (hammer_btree_cmp(&elm->base, right_bound) > 0)
-				flags |= FLAG_TOOFARRIGHT;
-			break;
-		case HAMMER_BTREE_TYPE_SPIKE_BEG:
 		case HAMMER_BTREE_TYPE_RECORD:
+			if (left_bound == NULL || right_bound == NULL)
+				break;
 			if (hammer_btree_cmp(&elm->base, left_bound) < 0)
 				flags |= FLAG_TOOFARLEFT;
 			if (hammer_btree_cmp(&elm->base, right_bound) >= 0)
