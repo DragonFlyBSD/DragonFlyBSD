@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.16 2008/01/27 03:39:56 justin Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.17 2008/02/08 14:39:03 matthias Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -341,6 +341,13 @@ rsync
 </TD>
 </TR>
 
+<TR>
+<TD>Philipps-University Marburg (Germany)</TD>
+<TD>Official ISOs</TD>
+<TD>
+<a href="ftp://ftp.mathematik.uni-marburg.de/pub/mirror/dragonfly/">FTP</a>,
+</TD>
+</TR>
 
 <!-- binary packages after this -->
 <TR>
@@ -423,6 +430,12 @@ packages</a>
 </TD>
 </TR>
 
+<TR>
+<TD>Philipps-University Marburg (Germany)</TD>
+<TD>binary pkgsrc packages</TD>
+<TD><a href="ftp://ftp.mathematik.uni-marburg.de/pub/mirror/dragonfly/packages/stable/">i386 packages</a>
+</TD>
+</TR>
 
 <!-- source only after this -->
 
