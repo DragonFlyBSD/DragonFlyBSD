@@ -1,5 +1,5 @@
 # $NetBSD: Makefile,v 1.3 2007/05/28 12:06:31 tls Exp $
-# $DragonFly: src/usr.sbin/sdpquery/Attic/Makefile,v 1.1 2008/01/06 21:51:30 hasso Exp $
+# $DragonFly: src/usr.bin/sdpquery/Makefile,v 1.1 2008/02/08 14:06:25 hasso Exp $
 
 PROG=		sdpquery
 MAN=		sdpquery.1

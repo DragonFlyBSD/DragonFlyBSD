@@ -1,5 +1,5 @@
 /* $NetBSD: search.c,v 1.6 2007/11/06 21:35:52 plunky Exp $ */
-/* $DragonFly: src/usr.sbin/sdpquery/Attic/search.c,v 1.1 2008/01/06 21:51:30 hasso Exp $ */
+/* $DragonFly: src/usr.bin/sdpquery/search.c,v 1.1 2008/02/08 14:06:25 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.

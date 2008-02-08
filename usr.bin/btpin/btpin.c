@@ -1,5 +1,5 @@
 /* $NetBSD: btpin.c,v 1.3 2007/04/14 09:28:39 plunky Exp $ */
-/* $DragonFly: src/usr.sbin/btpin/Attic/btpin.c,v 1.1 2008/01/30 14:10:19 hasso Exp $ */
+/* $DragonFly: src/usr.bin/btpin/btpin.c,v 1.1 2008/02/08 14:06:25 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.

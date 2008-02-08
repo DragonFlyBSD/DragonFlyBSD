@@ -1,5 +1,5 @@
 /* $NetBSD: sdpquery.c,v 1.3 2007/03/30 21:25:00 plunky Exp $ */
-/* $DragonFly: src/usr.sbin/sdpquery/Attic/sdpquery.c,v 1.1 2008/01/06 21:51:30 hasso Exp $ */
+/* $DragonFly: src/usr.bin/sdpquery/sdpquery.c,v 1.1 2008/02/08 14:06:25 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.

@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.43 2008/02/06 08:21:22 sephe Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.44 2008/02/08 14:06:25 hasso Exp $
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
@@ -20,7 +20,6 @@ SUBDIR= 802_11 \
 	bootparamd \
 	btconfig \
 	bthcid \
-	btpin \
 	burncd \
 	cdcontrol \
 	chkgrp \
@@ -93,7 +92,6 @@ SUBDIR= 802_11 \
 	rdate \
 	repquota \
 	resident \
-	rfcomm_sppd \
 	rip6query \
 	rmt \
 	route6d \
@@ -110,7 +108,6 @@ SUBDIR= 802_11 \
 	rwhod \
 	sa \
 	sdpd \
-	sdpquery \
 	sensorsd \
 	setkey \
 	sliplogin \

@@ -1,5 +1,5 @@
 # $NetBSD: Makefile,v 1.2 2006/09/26 19:18:19 plunky Exp $
-# $DragonFly: src/usr.sbin/btpin/Attic/Makefile,v 1.1 2008/01/30 14:10:19 hasso Exp $
+# $DragonFly: src/usr.bin/btpin/Makefile,v 1.1 2008/02/08 14:06:25 hasso Exp $
 
 PROG=		btpin
 SRCS=		btpin.c

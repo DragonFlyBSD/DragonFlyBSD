@@ -1,5 +1,5 @@
 /* $NetBSD: rfcomm_sdp.c,v 1.1 2006/06/19 15:44:56 gdamore Exp $ */
-/* $DragonFly: src/usr.sbin/rfcomm_sppd/Attic/rfcomm_sdp.c,v 1.1 2008/01/30 14:25:35 hasso Exp $ */
+/* $DragonFly: src/usr.bin/rfcomm_sppd/rfcomm_sdp.c,v 1.1 2008/02/08 14:06:25 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
