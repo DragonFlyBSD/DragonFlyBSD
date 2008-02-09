@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.45 2007/05/24 20:51:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.46 2008/02/09 13:38:03 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -428,6 +428,17 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 }
 #endif /* INET6 */
 
+static void
+tcp_output_dispatch(struct netmsg *nmsg)
+{
+	struct lwkt_msg *msg = &nmsg->nm_lmsg;
+	struct tcpcb *tp = msg->u.ms_resultp;
+	int error;
+
+	error = tcp_output(tp);
+	lwkt_replymsg(msg, error);
+}
+
 /*
  * Initiate connection to peer.
  * Create a template for use in transmissions on this connection.
@@ -442,6 +453,9 @@ tcp_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 	struct sockaddr_in *sinp;
+#ifdef SMP
+	lwkt_port_t port;
+#endif
 
 	COMMON_START(so, inp);
 
@@ -462,7 +476,23 @@ tcp_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 
 	if ((error = tcp_connect(tp, nam, td)) != 0)
 		goto out;
-	error = tcp_output(tp);
+
+#ifdef SMP
+	port = tcp_addrport(inp->inp_faddr.s_addr, inp->inp_fport,
+			    inp->inp_laddr.s_addr, inp->inp_lport);
+	if (port != &curthread->td_msgport) {
+		struct netmsg nmsg;
+		struct lwkt_msg *msg;
+
+		netmsg_init(&nmsg, &curthread->td_msgport, 0,
+			    tcp_output_dispatch);
+		msg = &nmsg.nm_lmsg;
+		msg->u.ms_resultp = tp;
+
+		error = lwkt_domsg(port, msg, 0);
+	} else
+#endif
+		error = tcp_output(tp);
 	COMMON_END(PRU_CONNECT);
 }
 
@@ -982,6 +1012,16 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 
 	if (port != &curthread->td_msgport) {
 		struct netmsg_tcp_connect msg;
+		struct route *ro = &inp->inp_route;
+
+		/*
+		 * in_pcbladdr() may have allocated a route entry for us
+		 * on the current CPU, but we need a route entry on the
+		 * target CPU, so free it here.
+		 */
+		if (ro->ro_rt != NULL)
+			RTFREE(ro->ro_rt);
+		bzero(ro, sizeof(*ro));
 
 		netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 			    tcp_connect_handler);
