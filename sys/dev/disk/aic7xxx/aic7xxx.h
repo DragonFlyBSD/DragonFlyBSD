@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.h#85 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.h,v 1.56 2007/04/19 18:53:52 scottl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.h,v 1.6 2007/07/19 00:23:04 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.h,v 1.7 2008/02/09 18:13:13 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_H_
@@ -598,6 +598,7 @@ struct scb {
 	struct ahc_dma_seg 	 *sg_list;
 	bus_addr_t		  sg_list_phys;
 	u_int			  sg_count;/* How full ahc_dma_seg is */
+	aic_timer_t		  io_timer;
 };
 
 struct scb_data {
@@ -1225,7 +1226,6 @@ void			 ahc_pause_and_flushwork(struct ahc_softc *ahc);
 int			 ahc_suspend(struct ahc_softc *ahc); 
 int			 ahc_resume(struct ahc_softc *ahc);
 void			 ahc_softc_insert(struct ahc_softc *);
-struct ahc_softc	*ahc_find_softc(struct ahc_softc *ahc);
 void			 ahc_set_unit(struct ahc_softc *, int);
 void			 ahc_set_name(struct ahc_softc *, char *);
 int			 ahc_alloc_scbs(struct ahc_softc *ahc);

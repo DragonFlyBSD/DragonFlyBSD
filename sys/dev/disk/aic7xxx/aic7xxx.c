@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.111 2007/04/19 18:53:52 scottl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.26 2007/07/19 00:23:04 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.27 2008/02/09 18:13:13 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -3928,6 +3928,7 @@ ahc_alloc(void *platform_arg, char *name)
 		ahc_free(ahc);
 		ahc = NULL;
 	}
+	ahc_lockinit(ahc);
 	return (ahc);
 }
 
@@ -4004,22 +4005,6 @@ ahc_softc_insert(struct ahc_softc *ahc)
 	else
 		TAILQ_INSERT_TAIL(&ahc_tailq, ahc, links);
 	ahc->init_level++;
-}
-
-/*
- * Verify that the passed in softc pointer is for a
- * controller that is still configured.
- */
-struct ahc_softc *
-ahc_find_softc(struct ahc_softc *ahc)
-{
-	struct ahc_softc *list_ahc;
-
-	TAILQ_FOREACH(list_ahc, &ahc_tailq, links) {
-		if (list_ahc == ahc)
-			return (ahc);
-	}
-	return (NULL);
 }
 
 void
@@ -4574,6 +4559,7 @@ ahc_alloc_scbs(struct ahc_softc *ahc)
 #endif
 		next_scb->hscb = &scb_data->hscbs[scb_data->numscbs];
 		next_scb->hscb->tag = ahc->scb_data->numscbs;
+		aic_timer_init(&next_scb->io_timer);
 		SLIST_INSERT_HEAD(&ahc->scb_data->free_scbs,
 				  next_scb, links.sle);
 		segs += AHC_NSEG;
@@ -6988,8 +6974,6 @@ ahc_recover_commands(struct ahc_softc *ahc)
 	int	restart_needed;
 	u_int	last_phase;
 
-	ahc_lock();
-
 	/*
 	 * Pause the controller and manually flush any
 	 * commands that have just completed but that our
@@ -7009,7 +6993,6 @@ ahc_recover_commands(struct ahc_softc *ahc)
 		kprintf("%s: Timedout SCBs already complete. "
 		       "Interrupts may not be functioning.\n", ahc_name(ahc));
 		ahc_unpause(ahc);
-		ahc_unlock();
 		return;
 	}
 
@@ -7262,7 +7245,6 @@ bus_reset:
 		ahc_restart(ahc);
 	else
 		ahc_unpause(ahc);
-	ahc_unlock();
 }
 
 /************************* Target Mode ****************************************/
@@ -7399,10 +7381,8 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 		ahc_flag saved_flags;
 
 		kprintf("Configuring Target Mode\n");
-		ahc_lock();
 		if (LIST_FIRST(&ahc->pending_scbs) != NULL) {
 			ccb->ccb_h.status = CAM_BUSY;
-			ahc_unlock();
 			return;
 		}
 		saved_flags = ahc->flags;
@@ -7423,12 +7403,10 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			ahc->flags = saved_flags;
 			(void)ahc_loadseq(ahc);
 			ahc_restart(ahc);
-			ahc_unlock();
 			ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
 			return;
 		}
 		ahc_restart(ahc);
-		ahc_unlock();
 	}
 	cel = &ccb->cel;
 	target = ccb->ccb_h.target_id;
@@ -7487,7 +7465,6 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 		}
 		SLIST_INIT(&lstate->accept_tios);
 		SLIST_INIT(&lstate->immed_notifies);
-		ahc_lock();
 		ahc_pause(ahc);
 		if (target != CAM_TARGET_WILDCARD) {
 			tstate->enabled_luns[lun] = lstate;
@@ -7553,7 +7530,6 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			ahc_outb(ahc, SCSISEQ, scsiseq);
 		}
 		ahc_unpause(ahc);
-		ahc_unlock();
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_print_path(ccb->ccb_h.path);
 		kprintf("Lun now enabled for target mode\n");
@@ -7566,8 +7542,6 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			return;
 		}
 
-		ahc_lock();
-		
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		LIST_FOREACH(scb, &ahc->pending_scbs, pending_links) {
 			struct ccb_hdr *ccbh;
@@ -7577,7 +7551,6 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			 && !xpt_path_comp(ccbh->path, ccb->ccb_h.path)){
 				kprintf("CTIO pending\n");
 				ccb->ccb_h.status = CAM_REQ_INVALID;
-				ahc_unlock();
 				return;
 			}
 		}
@@ -7593,7 +7566,6 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 		}
 
 		if (ccb->ccb_h.status != CAM_REQ_CMP) {
-			ahc_unlock();
 			return;
 		}
 
@@ -7668,7 +7640,6 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 			}
 		}
 		ahc_unpause(ahc);
-		ahc_unlock();
 	}
 }
 

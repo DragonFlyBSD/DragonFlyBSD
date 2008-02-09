@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.h#107 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.h,v 1.27 2007/04/19 18:53:52 scottl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.13 2007/07/19 00:23:04 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.h,v 1.14 2008/02/09 18:13:13 pavalos Exp $
  */
 
 #ifndef _AIC79XX_H_
@@ -640,6 +640,7 @@ struct scb {
 	u_int			  sg_count;/* How full ahd_dma_seg is */
 #define	AHD_MAX_LQ_CRC_ERRORS 5
 	u_int			  crc_retry_count;
+	aic_timer_t		  io_timer;
 };
 
 TAILQ_HEAD(scb_tailq, scb);
@@ -1395,7 +1396,6 @@ void			 ahd_pause_and_flushwork(struct ahd_softc *ahd);
 int			 ahd_suspend(struct ahd_softc *ahd); 
 int			 ahd_resume(struct ahd_softc *ahd);
 void			 ahd_softc_insert(struct ahd_softc *);
-struct ahd_softc	*ahd_find_softc(struct ahd_softc *ahd);
 void			 ahd_set_unit(struct ahd_softc *, int);
 void			 ahd_set_name(struct ahd_softc *, char *);
 struct scb		*ahd_get_scb(struct ahd_softc *ahd, u_int col_idx);

@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7770.c#34 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7770.c,v 1.16 2003/12/17 00:02:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.8 2007/07/06 00:01:16 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.9 2008/02/09 18:13:13 pavalos Exp $
  */
 
 #ifdef __linux__
@@ -254,6 +254,7 @@ aic7770_config(struct ahc_softc *ahc, struct aic7770_identity *entry, u_int io)
 	if (error != 0)
 		return (error);
 
+	ahc_lock(ahc);
 	/*
 	 * Link this softc in with all other ahc instances.
 	 */
@@ -263,6 +264,8 @@ aic7770_config(struct ahc_softc *ahc, struct aic7770_identity *entry, u_int io)
 	 * Enable the board's BUS drivers
 	 */
 	ahc_outb(ahc, BCTL, ENABLE);
+
+	ahc_unlock(ahc);
 
 	return (0);
 }

@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#18 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.30 2005/12/05 11:58:32 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.12 2007/07/07 01:09:42 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.13 2008/02/09 18:13:13 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
@@ -126,6 +126,17 @@ extern devclass_t ahc_devclass;
 /* This driver supports target mode */
 #define AHC_TARGET_MODE 1
 
+/***************************** Core Includes **********************************/
+#ifdef AHC_REG_PRETTY_PRINT
+#define AIC_DEBUG_REGISTERS 1
+#else
+#define AIC_DEBUG_REGISTERS 0
+#endif
+#define	AIC_CORE_INCLUDE "aic7xxx.h"
+#define	AIC_LIB_PREFIX ahc
+#define	AIC_CONST_PREFIX AHC
+#include "aic_osm_lib.h"
+
 /************************** Softc/SCB Platform Data ***************************/
 struct ahc_platform_data {
 	/*
@@ -144,21 +155,11 @@ struct ahc_platform_data {
 	void			*ih;
 	eventhandler_tag	 eh;
 	struct thread		*recovery_thread;
+	struct lock		 lock;
 };
 
 struct scb_platform_data {
 };
-
-/***************************** Core Includes **********************************/
-#ifdef AHC_REG_PRETTY_PRINT
-#define AIC_DEBUG_REGISTERS 1
-#else
-#define AIC_DEBUG_REGISTERS 0
-#endif
-#define	AIC_CORE_INCLUDE "aic7xxx.h"
-#define	AIC_LIB_PREFIX ahc
-#define	AIC_CONST_PREFIX AHC
-#include "aic_osm_lib.h"
 
 /*************************** Device Access ************************************/
 #define ahc_inb(ahc, port)				\
@@ -184,19 +185,26 @@ ahc_flush_device_writes(struct ahc_softc *ahc)
 
 /**************************** Locking Primitives ******************************/
 /* Lock protecting internal data structures */
-static __inline void ahc_lock(void);
-static __inline void ahc_unlock(void);
+static __inline void ahc_lockinit(struct ahc_softc *);
+static __inline void ahc_lock(struct ahc_softc *);
+static __inline void ahc_unlock(struct ahc_softc *);
 
 static __inline void
-ahc_lock(void)
+ahc_lockinit(struct ahc_softc *ahc)
 {
-	crit_enter_id("ahc");
+	lockinit(&ahc->platform_data->lock, "ahc_lock", 0, LK_EXCLUSIVE|LK_CANRECURSE);
 }
 
 static __inline void
-ahc_unlock(void)
+ahc_lock(struct ahc_softc *ahc)
 {
-	crit_exit_id("ahc");
+	lockmgr(&ahc->platform_data->lock, LK_EXCLUSIVE);
+}
+
+static __inline void
+ahc_unlock(struct ahc_softc *ahc)
+{
+	lockmgr(&ahc->platform_data->lock, LK_RELEASE);
 }
 
 /************************* Initialization/Teardown ****************************/

@@ -33,12 +33,14 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic_osm_lib.h#5 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.h,v 1.4 2004/11/18 20:22:31 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.h,v 1.4 2007/07/06 05:58:26 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.h,v 1.5 2008/02/09 18:13:13 pavalos Exp $
  */
 
 /******************************** OS Includes *********************************/
 #if __FreeBSD_version >= 500000
 #include <sys/mutex.h>
+#else
+#include <sys/lock.h>
 #endif
 
 /*************************** Library Symbol Mapping ***************************/
@@ -223,8 +225,7 @@ aic_scb_timer_reset(struct scb *scb, u_int msec)
 	time = msec;
 	time *= hz;
 	time /= 1000;
-	callout_reset(&scb->io_ctx->ccb_h.timeout_ch, time,
-		aic_platform_timeout, scb);
+	callout_reset(&scb->io_timer, time, aic_platform_timeout, scb);
 }
 
 static __inline void
@@ -233,13 +234,7 @@ aic_scb_timer_start(struct scb *scb)
 	
 	if (AIC_SCB_DATA(scb->aic_softc)->recovery_scbs == 0
 	 && scb->io_ctx->ccb_h.timeout != CAM_TIME_INFINITY) {
-		uint64_t time;
-
-		time = scb->io_ctx->ccb_h.timeout;
-		time *= hz;
-		time /= 1000;
-		callout_reset(&scb->io_ctx->ccb_h.timeout_ch, time,
-		    aic_platform_timeout, scb);
+		aic_scb_timer_reset(scb, scb->io_ctx->ccb_h.timeout);
 	}
 }
 

@@ -33,7 +33,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.h#23 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.18 2005/12/06 11:19:36 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.11 2007/07/07 01:12:01 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.12 2008/02/09 18:13:13 pavalos Exp $
  */
 
 #ifndef _AIC79XX_FREEBSD_H_
@@ -116,6 +116,17 @@
 #define AHD_TARGET_MODE 1
 #endif
 
+/***************************** Core Includes **********************************/
+#ifdef AHD_REG_PRETTY_PRINT
+#define AIC_DEBUG_REGISTERS 1
+#else
+#define AIC_DEBUG_REGISTERS 0
+#endif
+#define	AIC_CORE_INCLUDE "aic79xx.h"
+#define	AIC_LIB_PREFIX ahd
+#define	AIC_CONST_PREFIX AHD
+#include "aic_osm_lib.h"
+
 /************************** Softc/SCB Platform Data ***************************/
 struct ahd_platform_data {
 	/*
@@ -132,21 +143,11 @@ struct ahd_platform_data {
 	void			*ih;
 	eventhandler_tag	 eh;
 	struct thread		*recovery_thread;
+	struct lock		 lock;
 };
 
 struct scb_platform_data {
 };
-
-/***************************** Core Includes **********************************/
-#ifdef AHD_REG_PRETTY_PRINT
-#define AIC_DEBUG_REGISTERS 1
-#else
-#define AIC_DEBUG_REGISTERS 0
-#endif
-#define	AIC_CORE_INCLUDE "aic79xx.h"
-#define	AIC_LIB_PREFIX ahd
-#define	AIC_CONST_PREFIX AHD
-#include "aic_osm_lib.h"
 
 /*************************** Device Access ************************************/
 #define ahd_inb(ahd, port)					\
@@ -187,19 +188,26 @@ ahd_flush_device_writes(struct ahd_softc *ahd)
 
 /**************************** Locking Primitives ******************************/
 /* Lock protecting internal data structures */
-static __inline void ahd_lock(void);
-static __inline void ahd_unlock(void);
+static __inline void ahd_lockinit(struct ahd_softc *);
+static __inline void ahd_lock(struct ahd_softc *);
+static __inline void ahd_unlock(struct ahd_softc *);
 
 static __inline void
-ahd_lock(void)
+ahd_lockinit(struct ahd_softc *ahd)
 {
-	crit_enter();
+	lockinit(&ahd->platform_data->lock, "ahd_lock", 0, LK_EXCLUSIVE|LK_CANRECURSE);
 }
 
 static __inline void
-ahd_unlock(void)
+ahd_lock(struct ahd_softc *ahd)
 {
-	crit_exit();
+	lockmgr(&ahd->platform_data->lock, LK_EXCLUSIVE);
+}
+
+static __inline void
+ahd_unlock(struct ahd_softc *ahd)
+{
+	lockmgr(&ahd->platform_data->lock, LK_RELEASE);
 }
 
 /********************************** PCI ***************************************/

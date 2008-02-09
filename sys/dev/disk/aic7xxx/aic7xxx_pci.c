@@ -42,7 +42,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_pci.c#78 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.35 2005/09/22 05:11:35 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.13 2007/08/04 21:42:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.14 2008/02/09 18:13:13 pavalos Exp $
  */
 
 #ifdef __linux__
@@ -1045,10 +1045,12 @@ ahc_pci_config(struct ahc_softc *ahc, struct ahc_pci_identity *entry)
 	if (error != 0)
 		return (error);
 
+	ahc_lock(ahc);
 	/*
 	 * Link this softc in with all other ahc instances.
 	 */
 	ahc_softc_insert(ahc);
+	ahc_unlock(ahc);
 	return (0);
 }
 

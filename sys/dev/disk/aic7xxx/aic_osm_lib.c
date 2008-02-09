@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic_osm_lib.c#5 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.c,v 1.3 2004/08/17 00:14:31 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.c,v 1.2 2007/07/06 04:56:22 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.c,v 1.3 2008/02/09 18:13:13 pavalos Exp $
  */
 
 static void	aic_recovery_thread(void *arg);
@@ -57,7 +57,7 @@ aic_set_recoveryscb(struct aic_softc *aic, struct scb *scb)
 			union ccb *ccb;
 
 			ccb = list_scb->io_ctx;
-			callout_stop(&ccb->ccb_h.timeout_ch);
+			callout_stop(&scb->io_timer);
 		}
 	}
 }
@@ -68,9 +68,9 @@ aic_platform_timeout(void *arg)
 	struct	scb *scb;
 	
 	scb = (struct scb *)arg; 
-	aic_lock();
+	aic_lock(scb->aic_softc);
 	aic_timeout(scb);
-	aic_unlock();
+	aic_unlock(scb->aic_softc);
 }
 
 int
@@ -92,9 +92,7 @@ void
 aic_terminate_recovery_thread(struct aic_softc *aic)
 {
 
-	aic_lock();
 	if (aic->platform_data->recovery_thread == NULL) {
-		aic_unlock();
 		return;
 	}
 	aic->flags |= AIC_SHUTDOWN_RECOVERY;
@@ -103,8 +101,12 @@ aic_terminate_recovery_thread(struct aic_softc *aic)
 	 * Sleep on a slightly different location 
 	 * for this interlock just for added safety.
 	 */
+	crit_enter();
+	aic_lock(aic);
+	tsleep_interlock(aic->platform_data);
+	aic_unlock(aic);
 	tsleep(aic->platform_data, 0, "thtrm", 0);
-	aic_unlock();
+	crit_exit();
 }
 
 static void
@@ -112,29 +114,27 @@ aic_recovery_thread(void *arg)
 {
 	struct aic_softc *aic;
 
-#if __FreeBSD_version >= 500000
-	mtx_lock(&Giant);
-#endif
 	aic = (struct aic_softc *)arg;
-	aic_lock();
+	aic_lock(aic);
 	for (;;) {
 		
 		if (LIST_EMPTY(&aic->timedout_scbs) != 0
-		 && (aic->flags & AIC_SHUTDOWN_RECOVERY) == 0)
+		 && (aic->flags & AIC_SHUTDOWN_RECOVERY) == 0) {
+			crit_enter();
+			tsleep_interlock(aic);
+			aic_unlock(aic);
 			tsleep(aic, 0, "idle", 0);
+			aic_lock(aic);
+			crit_exit();
+		}
 
 		if ((aic->flags & AIC_SHUTDOWN_RECOVERY) != 0)
 			break;
 
-		aic_unlock();
 		aic_recover_commands(aic);
-		aic_lock();
 	}
 	aic->platform_data->recovery_thread = NULL;
 	wakeup(aic->platform_data);
-	aic_unlock();
-#if __FreeBSD_version >= 500000
-	mtx_unlock(&Giant);
-#endif
+	aic_unlock(aic);
 	kthread_exit();
 }
