@@ -35,7 +35,7 @@
  *
  * @(#)sprint.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/sprint.c,v 1.11.2.5 2002/07/03 01:14:24 des Exp $
- * $DragonFly: src/usr.bin/finger/sprint.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/finger/sprint.c,v 1.4 2008/02/09 17:12:05 matthias Exp $
  */
 
 #include <db.h>
@@ -137,7 +137,7 @@ sflag_print(void)
 			} else {
 				(void)strftime(p, sizeof(p), "%R", lc);
 			}
-			(void)printf(" %-5.5s", p);
+			(void)printf(" %-5.5s ", p);
 office:
 			if (gflag)
 				goto no_gecos;
