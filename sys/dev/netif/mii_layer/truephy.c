@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/mii_layer/truephy.c,v 1.2 2007/10/23 14:28:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/truephy.c,v 1.3 2008/02/10 07:29:27 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -341,10 +341,14 @@ truephy_status(struct mii_softc *sc)
 		mii->mii_media_active |= IFM_10_T;
 		break;
 	default:
+		/* XXX will this ever happen? */
+		kprintf("invalid media SR %#x\n", sr);
 		mii->mii_media_active |= IFM_NONE;
-		break;
+		return;
 	}
 
 	if (sr & TRUEPHY_SR_FDX)
 		mii->mii_media_active |= IFM_FDX;
+	else
+		mii->mii_media_active |= IFM_HDX;
 }
