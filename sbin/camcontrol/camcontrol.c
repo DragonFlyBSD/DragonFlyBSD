@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.c,v 1.21.2.13 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.10 2008/02/10 00:01:01 pavalos Exp $
+ * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.11 2008/02/10 00:32:53 pavalos Exp $
  */
 
 #include <sys/ioctl.h>
@@ -946,10 +946,9 @@ scsixferrate(struct cam_device *device)
 		struct ccb_trans_settings_scsi *scsi =
 		    &ccb->cts.proto_specific.scsi;
 		if (scsi->valid & CTS_SCSI_VALID_TQ) {
-			if (scsi->flags & CTS_SCSI_FLAGS_TAG_ENB)
+			if (scsi->flags & CTS_SCSI_FLAGS_TAG_ENB) {
 				fprintf(stdout, ", Command Queueing Enabled");
-			else
-				fprintf(stdout, ", Command Queueing Supported");
+			}
 		}
 	}
 
