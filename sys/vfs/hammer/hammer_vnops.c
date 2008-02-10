@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.30 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.31 2008/02/10 18:58:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -380,6 +380,16 @@ hammer_vop_write(struct vop_write_args *ap)
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
+			bawrite(bp);
+		} else if ((ap->a_ioflag >> 16) > 1 &&
+			   (uio->uio_offset & HAMMER_BUFMASK) == 0) {
+			/*
+			 * If seqcount indicates sequential operation and
+			 * we just finished filling a buffer, push it out
+			 * now to prevent the buffer cache from becoming
+			 * too full, which would trigger non-optimal
+			 * flushes.
+			 */
 			bawrite(bp);
 		} else {
 			bdwrite(bp);

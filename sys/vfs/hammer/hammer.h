@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.36 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.37 2008/02/10 18:58:22 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -309,7 +309,8 @@ struct hammer_buffer {
 	RB_ENTRY(hammer_buffer) rb_node;
 	void *ondisk;
 	struct hammer_volume *volume;
-	hammer_off_t buf_offset;
+	hammer_off_t zone2_offset;
+	hammer_off_t zoneX_offset;
 	struct hammer_node_list clist;
 };
 

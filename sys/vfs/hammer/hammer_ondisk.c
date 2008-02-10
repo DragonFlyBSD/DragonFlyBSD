@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.29 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.30 2008/02/10 18:58:22 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -103,9 +103,9 @@ hammer_vol_rb_compare(hammer_volume_t vol1, hammer_volume_t vol2)
 static int
 hammer_buf_rb_compare(hammer_buffer_t buf1, hammer_buffer_t buf2)
 {
-	if (buf1->buf_offset < buf2->buf_offset)
+	if (buf1->zone2_offset < buf2->zone2_offset)
 		return(-1);
-	if (buf1->buf_offset > buf2->buf_offset)
+	if (buf1->zone2_offset > buf2->zone2_offset)
 		return(1);
 	return(0);
 }
@@ -123,7 +123,7 @@ hammer_nod_rb_compare(hammer_node_t node1, hammer_node_t node2)
 /*
  * Note: The lookup function for hammer_ino_rb_tree winds up being named
  * hammer_ino_rb_tree_RB_LOOKUP_INFO(root, info).  The other lookup
- * functions are normal, e.g. hammer_buf_rb_tree_RB_LOOKUP(root, buf_offset).
+ * functions are normal, e.g. hammer_buf_rb_tree_RB_LOOKUP(root, zone2_offset).
  */
 RB_GENERATE(hammer_ino_rb_tree, hammer_inode, rb_node, hammer_ino_rb_compare);
 RB_GENERATE_XLOOKUP(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
@@ -131,7 +131,7 @@ RB_GENERATE_XLOOKUP(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
 RB_GENERATE2(hammer_vol_rb_tree, hammer_volume, rb_node,
 	     hammer_vol_rb_compare, int32_t, vol_no);
 RB_GENERATE2(hammer_buf_rb_tree, hammer_buffer, rb_node,
-	     hammer_buf_rb_compare, hammer_off_t, buf_offset);
+	     hammer_buf_rb_compare, hammer_off_t, zone2_offset);
 RB_GENERATE2(hammer_nod_rb_tree, hammer_node, rb_node,
 	     hammer_nod_rb_compare, hammer_off_t, node_offset);
 
@@ -498,9 +498,11 @@ hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 {
 	hammer_buffer_t buffer;
 	hammer_volume_t volume;
+	hammer_off_t	zoneX_offset;
 	int vol_no;
 	int zone;
 
+	zoneX_offset = buf_offset;
 	zone = HAMMER_ZONE_DECODE(buf_offset);
 	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX) {
 		buf_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
@@ -529,7 +531,7 @@ again:
 	if (buffer == NULL) {
 		++hammer_count_buffers;
 		buffer = kmalloc(sizeof(*buffer), M_HAMMER, M_WAITOK|M_ZERO);
-		buffer->buf_offset = buf_offset;
+		buffer->zone2_offset = buf_offset;
 		buffer->volume = volume;
 		hammer_io_init(&buffer->io, HAMMER_STRUCTURE_BUFFER);
 		buffer->io.offset = volume->ondisk->vol_buf_beg +
@@ -551,6 +553,12 @@ again:
 	} else {
 		hammer_ref(&buffer->io.lock);
 	}
+
+	/*
+	 * Cache the blockmap translation
+	 */
+	if ((zoneX_offset & HAMMER_ZONE_RAW_BUFFER) != HAMMER_ZONE_RAW_BUFFER)
+		buffer->zoneX_offset = zoneX_offset;
 
 	/*
 	 * Deal with on-disk info
@@ -704,9 +712,11 @@ hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
 	int32_t xoff = (int32_t)buf_offset & HAMMER_BUFMASK;
 
 	buf_offset &= ~HAMMER_BUFMASK64;
+	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) != 0);
 
 	buffer = *bufferp;
-	if (buffer == NULL || buffer->buf_offset != buf_offset) {
+	if (buffer == NULL || (buffer->zone2_offset != buf_offset &&
+			       buffer->zoneX_offset != buf_offset)) {
 		if (buffer)
 			hammer_rel_buffer(buffer, 0);
 		buffer = hammer_get_buffer(hmp, buf_offset, 0, errorp);
@@ -741,7 +751,8 @@ hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
 	buf_offset &= ~HAMMER_BUFMASK64;
 
 	buffer = *bufferp;
-	if (buffer == NULL || buffer->buf_offset != buf_offset) {
+	if (buffer == NULL || (buffer->zone2_offset != buf_offset &&
+			       buffer->zoneX_offset != buf_offset)) {
 		if (buffer)
 			hammer_rel_buffer(buffer, 0);
 		buffer = hammer_get_buffer(hmp, buf_offset, 1, errorp);

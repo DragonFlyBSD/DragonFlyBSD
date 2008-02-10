@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.1 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.2 2008/02/10 18:58:22 dillon Exp $
  */
 
 /*
@@ -94,11 +94,7 @@ hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
 		bzero(blockmap, sizeof(*blockmap));
 		blockmap->phys_offset = hammer_freemap_alloc(hmp, errorp);
 		KKASSERT(*errorp == 0);
-		kprintf("ALLOC LAYER2 %016llx\n", blockmap->phys_offset);
 	}
-#if 0
-	kprintf("blkmap_alloc %016llx [%2d@%016llx]", alloc_offset, i, blockmap->phys_offset);
-#endif
 	KKASSERT(blockmap->phys_offset);
 
 	/*
@@ -118,14 +114,10 @@ hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
 		blockmap->phys_offset = hammer_freemap_alloc(hmp, errorp);
 		blockmap->bytes_free = HAMMER_LARGEBLOCK_SIZE;
 		KKASSERT(*errorp == 0);
-		kprintf("ALLOC LAYER1 %016llx\n", blockmap->phys_offset);
 	}
 
 	hammer_modify_buffer(buffer, blockmap, sizeof(*blockmap));
 	blockmap->bytes_free -= bytes;
-#if 0
-	kprintf("[%2d@%016llx] free=%d phys %016llx\n", i, blockmap->phys_offset, blockmap->bytes_free, blockmap->phys_offset + (result_offset & HAMMER_LARGEBLOCK_MASK64));
-#endif
 
 	hammer_modify_volume(root_volume, &rootmap->alloc_offset,
 			     sizeof(rootmap->alloc_offset));
