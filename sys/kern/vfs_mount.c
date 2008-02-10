@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.30 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.31 2008/02/10 13:45:21 corecode Exp $
  */
 
 /*
@@ -906,6 +906,7 @@ vmntvnodescan(
 	struct vnode *vp;
 	int r = 0;
 	int maxcount = 1000000;
+	int count = 0;
 
 	lwkt_gettoken(&ilock, &mntvnode_token);
 
@@ -981,12 +982,24 @@ vmntvnodescan(
 				break;
 		}
 
+next:
+		/*
+		 * Yield after some processing.  Depending on the number
+		 * of vnodes, we might wind up running for a long time.
+		 * Because threads are not preemptable, time critical
+		 * userland processes might starve.  Give them a chance
+		 * now and then.
+		 */
+		if (++count == 10000) {
+			lwkt_yield();
+			count = 0;
+		}
+
 		/*
 		 * Iterate.  If the vnode was ripped out from under us
 		 * info.vp will already point to the next vnode, otherwise
 		 * we have to obtain the next valid vnode ourselves.
 		 */
-next:
 		if (info.vp == vp)
 			info.vp = TAILQ_NEXT(vp, v_nmntvnodes);
 	}
