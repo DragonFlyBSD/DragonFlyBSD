@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.28 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.29 2008/02/10 09:51:01 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -49,6 +49,7 @@ static void hammer_free_volume(hammer_volume_t volume);
 static int hammer_load_volume(hammer_volume_t volume);
 static int hammer_load_buffer(hammer_buffer_t buffer, int isnew);
 static int hammer_load_node(hammer_node_t node);
+#if 0
 static hammer_off_t hammer_advance_fifo(hammer_volume_t volume,
 		hammer_off_t off, int32_t bytes);
 
@@ -56,6 +57,7 @@ static hammer_off_t hammer_alloc_fifo(hammer_mount_t hmp, int32_t rec_len,
 		int32_t data_len, struct hammer_buffer **rec_bufferp,
 		u_int16_t hdr_type, int can_cross, 
 		struct hammer_buffer **data2_bufferp, int *errorp);
+#endif
 
 /*
  * Red-Black tree support for various structures
@@ -487,8 +489,8 @@ hammer_rel_volume(hammer_volume_t volume, int flush)
  *				BUFFERS					*
  ************************************************************************
  *
- * Manage buffers.  Note that a buffer holds a reference to its associated
- * cluster, and its cluster will hold a reference to the cluster's volume.
+ * Manage buffers.  Currently all blockmap-backed zones are translated
+ * to zone-2 buffer offsets.
  */
 hammer_buffer_t
 hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
@@ -497,13 +499,21 @@ hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 	hammer_buffer_t buffer;
 	hammer_volume_t volume;
 	int vol_no;
+	int zone;
 
+	zone = HAMMER_ZONE_DECODE(buf_offset);
+	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX) {
+		buf_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
+		KKASSERT(*errorp == 0);
+	}
 	buf_offset &= ~HAMMER_BUFMASK64;
-	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
+	KKASSERT((buf_offset & HAMMER_ZONE_RAW_BUFFER) ==
+		 HAMMER_ZONE_RAW_BUFFER);
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
 	volume = hammer_get_volume(hmp, vol_no, errorp);
 	if (volume == NULL)
 		return(NULL);
+
 	/*
 	 * NOTE: buf_offset and maxbuf_off are both full offset
 	 * specifications.
@@ -777,30 +787,21 @@ hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
 hammer_node_t
 hammer_get_node(hammer_mount_t hmp, hammer_off_t node_offset, int *errorp)
 {
-	hammer_volume_t volume;
 	hammer_node_t node;
-	int32_t vol_no;
 
-	KKASSERT((node_offset & HAMMER_OFF_ZONE_MASK) ==
-		 HAMMER_ZONE_RAW_BUFFER);
-	vol_no = HAMMER_VOL_DECODE(node_offset);
-	volume = hammer_get_volume(hmp, vol_no, errorp);
-	if (volume == NULL)
-		return(NULL);
+	KKASSERT((node_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_BTREE);
 
 	/*
 	 * Locate the structure, allocating one if necessary.
 	 */
 again:
-	node = RB_LOOKUP(hammer_nod_rb_tree, &volume->rb_nods_root,
-			 node_offset);
+	node = RB_LOOKUP(hammer_nod_rb_tree, &hmp->rb_nods_root, node_offset);
 	if (node == NULL) {
 		++hammer_count_nodes;
 		node = kmalloc(sizeof(*node), M_HAMMER, M_WAITOK|M_ZERO);
 		node->node_offset = node_offset;
-		node->volume = volume;	/* not directly referenced */
-		if (RB_INSERT(hammer_nod_rb_tree, &volume->rb_nods_root,
-			      node)) {
+		node->hmp = hmp;
+		if (RB_INSERT(hammer_nod_rb_tree, &hmp->rb_nods_root, node)) {
 			--hammer_count_nodes;
 			kfree(node, M_HAMMER);
 			goto again;
@@ -812,7 +813,6 @@ again:
 		hammer_rel_node(node);
 		node = NULL;
 	}
-	hammer_rel_volume(volume, 0);
 	return(node);
 }
 
@@ -854,7 +854,7 @@ hammer_load_node(hammer_node_t node)
 		if ((buffer = node->buffer) != NULL) {
 			error = hammer_ref_buffer(buffer);
 		} else {
-			buffer = hammer_get_buffer(node->volume->hmp,
+			buffer = hammer_get_buffer(node->hmp,
 						   node->node_offset, 0,
 						   &error);
 			if (buffer) {
@@ -943,8 +943,10 @@ hammer_rel_node(hammer_node_t node)
 	 * it as being free.  Note that the disk space is physically
 	 * freed when the fifo cycles back through the node.
 	 */
-	if (node->flags & HAMMER_NODE_DELETED)
-		hammer_free_fifo(node->volume->hmp, node->node_offset);
+	if (node->flags & HAMMER_NODE_DELETED) {
+		hammer_blockmap_free(node->hmp, node->node_offset,
+				     sizeof(*node->ondisk));
+	}
 
 	/*
 	 * Destroy the node.  Record pertainant data because the node
@@ -1031,8 +1033,7 @@ hammer_flush_node(hammer_node_t node)
 	if (node->cache2)
 		*node->cache2 = NULL;
 	if (node->lock.refs == 0 && node->ondisk == NULL) {
-		RB_REMOVE(hammer_nod_rb_tree, &node->volume->rb_nods_root,
-			  node);
+		RB_REMOVE(hammer_nod_rb_tree, &node->hmp->rb_nods_root, node);
 		if ((buffer = node->buffer) != NULL) {
 			node->buffer = NULL;
 			TAILQ_REMOVE(&buffer->clist, node, entry);
@@ -1076,12 +1077,14 @@ hammer_alloc_btree(hammer_mount_t hmp, int *errorp)
 	hammer_node_t node = NULL;
 	hammer_off_t node_offset;
 
-	node_offset = hammer_alloc_fifo(hmp, sizeof(struct hammer_node_ondisk),
-				        0, &buffer, HAMMER_HEAD_TYPE_BTREE,
-					0, NULL,
-					errorp);
-	if (*errorp == 0)
+	node_offset = hammer_blockmap_alloc(hmp, HAMMER_ZONE_BTREE_INDEX,
+					    sizeof(struct hammer_node_ondisk),
+					    errorp);
+	if (*errorp == 0) {
 		node = hammer_get_node(hmp, node_offset, errorp);
+		hammer_modify_node(node);
+		bzero(node->ondisk, sizeof(*node->ondisk));
+	}
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
 	return(node);
@@ -1091,60 +1094,102 @@ hammer_alloc_btree(hammer_mount_t hmp, int *errorp)
  * The returned buffers are already appropriately marked as being modified.
  * If the caller marks them again unnecessary undo records may be generated.
  *
- * The core record (rec_len) cannot cross a buffer boundary.  The record + data
- * is only allowed to cross a buffer boundary for HAMMER_RECTYPE_DATA
+ * In-band data is indicated by data_bufferp == NULL.  Pass a data_len of 0
+ * for zero-fill (caller modifies data_len afterwords).
  */
 void *
 hammer_alloc_record(hammer_mount_t hmp, 
-                        hammer_off_t *rec_offp, u_int8_t rec_type, 
-                        int32_t rec_len, struct hammer_buffer **rec_bufferp,
-                        hammer_off_t *data_offp, int32_t data_len, 
-                        void **data1p, void **data2p, int32_t *data2_index,
-                        struct hammer_buffer **data2_bufferp,
-                        int *errorp)
+		    hammer_off_t *rec_offp, u_int8_t rec_type, 
+		    struct hammer_buffer **rec_bufferp,
+		    int32_t data_len, void **datap,
+		    struct hammer_buffer **data_bufferp, int *errorp)
 {
-	int32_t aligned_rec_len, n;
-	hammer_off_t rec_offset;
 	hammer_record_ondisk_t rec;
-	int can_cross;
+	hammer_off_t rec_offset;
+	hammer_off_t data_offset;
+	int32_t reclen;
 
-	aligned_rec_len = (rec_len + HAMMER_HEAD_ALIGN_MASK) &
-			  ~HAMMER_HEAD_ALIGN_MASK;
-	can_cross = (rec_type == HAMMER_RECTYPE_DATA);
+	if (datap)
+		*datap = NULL;
 
-	rec_offset = hammer_alloc_fifo(hmp, aligned_rec_len, data_len,
-				       rec_bufferp, HAMMER_HEAD_TYPE_RECORD,
-				       can_cross, data2_bufferp, errorp);
+	/*
+	 * Allocate the record
+	 */
+	rec_offset = hammer_blockmap_alloc(hmp, HAMMER_ZONE_RECORD_INDEX,
+					   HAMMER_RECORD_SIZE, errorp);
 	if (*errorp)
 		return(NULL);
+
+	/*
+	 * Allocate data
+	 */
+	if (data_len) {
+		if (data_bufferp == NULL) {
+			switch(rec_type) {
+			case HAMMER_RECTYPE_DATA:
+				reclen = offsetof(struct hammer_data_record,
+						  data[0]);
+				break;
+			case HAMMER_RECTYPE_DIRENTRY:
+				reclen = offsetof(struct hammer_entry_record,
+						  name[0]);
+				break;
+			default:
+				panic("hammer_alloc_record: illegal "
+				      "in-band data");
+				/* NOT REACHED */
+				reclen = 0;
+				break;
+			}
+			KKASSERT(reclen + data_len <= HAMMER_RECORD_SIZE);
+			data_offset = rec_offset + reclen;
+		} else if (data_len < HAMMER_BUFSIZE) {
+			data_offset = hammer_blockmap_alloc(hmp,
+						HAMMER_ZONE_SMALL_DATA_INDEX,
+						data_len, errorp);
+		} else {
+			data_offset = hammer_blockmap_alloc(hmp,
+						HAMMER_ZONE_LARGE_DATA_INDEX,
+						data_len, errorp);
+		}
+	} else {
+		data_offset = 0;
+	}
+	if (*errorp) {
+		hammer_blockmap_free(hmp, rec_offset, HAMMER_RECORD_SIZE);
+		return(NULL);
+	}
 
 	/*
 	 * Basic return values.
 	 */
 	*rec_offp = rec_offset;
-	if (data_offp)
-		*data_offp = rec_offset + aligned_rec_len;
-	rec = (void *)((char *)(*rec_bufferp)->ondisk +
-		       ((int32_t)rec_offset & HAMMER_BUFMASK));
-	if (data_len)
-		rec->base.data_off = rec_offset + aligned_rec_len;
+	rec = hammer_bread(hmp, rec_offset, errorp, rec_bufferp);
+	KKASSERT(*errorp == 0);
+	rec->base.data_off = data_offset;
 	rec->base.data_len = data_len;
-	if (data1p)
-		*data1p = (void *)((char *)rec + aligned_rec_len);
-	if (data2_index) {
-		n = ((int32_t)rec_offset & HAMMER_BUFMASK) +
-		     aligned_rec_len + data_len;
-		if (n > HAMMER_BUFSIZE) {
-			*data2_index = data_len - (n - HAMMER_BUFSIZE);
-			KKASSERT(can_cross != 0);
-			*data2p = (*data2_bufferp)->ondisk;
+	hammer_modify_buffer(*rec_bufferp, NULL, 0);
+
+	if (data_bufferp) {
+		if (data_len) {
+			*datap = hammer_bread(hmp, data_offset, errorp,
+					      data_bufferp);
+			KKASSERT(*errorp == 0);
+			hammer_modify_buffer(*data_bufferp, NULL, 0);
 		} else {
-			*data2_index = data_len;
-			*data2p = NULL;
+			*datap = NULL;
+		}
+	} else if (data_len) {
+		KKASSERT(data_offset + data_len - rec_offset <=
+			 HAMMER_RECORD_SIZE); 
+		if (datap) {
+			*datap = (void *)((char *)rec +
+					  (int32_t)(data_offset - rec_offset));
 		}
 	} else {
-		KKASSERT(data2p == NULL);
+		KKASSERT(datap == NULL);
 	}
+	KKASSERT(*errorp == 0);
 	return(rec);
 }
 
@@ -1156,6 +1201,8 @@ hammer_alloc_record(hammer_mount_t hmp,
 int
 hammer_generate_undo(hammer_mount_t hmp, hammer_off_t off, void *base, int len)
 {
+	return(0);
+#if 0
 	hammer_off_t rec_offset;
 	hammer_fifo_undo_t undo;
 	hammer_buffer_t buffer = NULL;
@@ -1173,7 +1220,10 @@ hammer_generate_undo(hammer_mount_t hmp, hammer_off_t off, void *base, int len)
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
 	return(error);
+#endif
 }
+
+#if 0
 
 /*
  * Allocate space from the FIFO.  The first rec_len bytes will be zero'd.
@@ -1191,6 +1241,7 @@ hammer_alloc_fifo(hammer_mount_t hmp, int32_t rec_len, int32_t data_len,
 	hammer_volume_t end_volume;
 	hammer_volume_ondisk_t ondisk;
 	hammer_fifo_head_t head;
+	hammer_fifo_tail_t tail;
 	hammer_off_t end_off = 0;
 	hammer_off_t tmp_off = 0;
 	int32_t end_vol_no;
@@ -1199,12 +1250,14 @@ hammer_alloc_fifo(hammer_mount_t hmp, int32_t rec_len, int32_t data_len,
 	int32_t aligned_bytes;
 	int must_pad;
 
-	aligned_bytes = (rec_len + data_len + HAMMER_HEAD_ALIGN_MASK) &
-			~HAMMER_HEAD_ALIGN_MASK;
+	aligned_bytes = (rec_len + data_len + HAMMER_TAIL_ONDISK_SIZE +
+			 HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK;
 
 	root_volume = hammer_get_root_volume(hmp, errorp);
-	while (root_volume) {
+	if (root_volume)
 		hammer_modify_volume(root_volume, NULL, 0);
+
+	while (root_volume) {
 		ondisk = root_volume->ondisk;
 
 		end_off = ondisk->vol0_fifo_end;
@@ -1278,6 +1331,10 @@ hammer_alloc_fifo(hammer_mount_t hmp, int32_t rec_len, int32_t data_len,
 		 * The entire record cannot cross a buffer boundary if
 		 * can_cross is 0.
 		 *
+		 * The entire record cannot cover more then two whole buffers
+		 * regardless.  Even if the data portion is 16K, this case
+		 * can occur due to the addition of the fifo_tail.
+		 *
 		 * It is illegal for a record to cross a volume boundary.
 		 *
 		 * It is illegal for a record to cross a recovery boundary
@@ -1302,36 +1359,79 @@ hammer_alloc_fifo(hammer_mount_t hmp, int32_t rec_len, int32_t data_len,
 			    HAMMER_OFF_SHORT_REC_MASK) {
 				must_pad = 1;
 			}
+			if (xoff + aligned_bytes - HAMMER_BUFSIZE >
+			    HAMMER_BUFSIZE) {
+				KKASSERT(xoff != 0);
+				must_pad = 1;
+			}
 		}
+
+		/*
+		 * Pad to end of the buffer if necessary.  PADs can be
+		 * squeezed into as little as 8 bytes (hence our alignment
+		 * requirement).  The crc, reserved, and sequence number
+		 * fields are not used, but initialize them anyway if there
+		 * is enough room.
+		 */
 		if (must_pad) {
-			must_pad = HAMMER_BUFSIZE - xoff;
+			xoff = HAMMER_BUFSIZE - xoff;
 			head->hdr_signature = HAMMER_HEAD_SIGNATURE;
 			head->hdr_type = HAMMER_HEAD_TYPE_PAD;
-			head->hdr_fwd_link = must_pad;
-			head->hdr_seq = 0; /* XXX seq */
-			KKASSERT((must_pad & 7) == 0);
+			head->hdr_size = xoff;
+			if (xoff >= HAMMER_HEAD_ONDISK_SIZE +
+				    HAMMER_TAIL_ONDISK_SIZE) {
+				head->hdr_crc = 0;
+				head->hdr_reserved02 = 0;
+				head->hdr_seq = 0;
+			}
+
+			tail = (void *)((char *)head + xoff -
+					HAMMER_TAIL_ONDISK_SIZE);
+			if ((void *)head != (void *)tail) {
+				tail->tail_signature = HAMMER_TAIL_SIGNATURE;
+				tail->tail_type = HAMMER_HEAD_TYPE_PAD;
+				tail->tail_size = xoff;
+			}
+			KKASSERT((xoff & HAMMER_HEAD_ALIGN_MASK) == 0);
 			ondisk->vol0_fifo_end =
 				hammer_advance_fifo((*rec_bufferp)->volume,
-						    end_off, must_pad);
-			/* XXX rev_link */
+						    end_off, xoff);
 			continue;
 		}
 
 		if (xoff + aligned_bytes > HAMMER_BUFSIZE) {
-			KKASSERT(xoff + aligned_bytes <= HAMMER_BUFSIZE * 2);
-			hammer_bnew(hmp, end_off + (HAMMER_BUFSIZE - xoff),
-				    errorp, data2_bufferp);
+			xoff = xoff + aligned_bytes - HAMMER_BUFSIZE;
+
+			KKASSERT(xoff <= HAMMER_BUFSIZE);
+			tail = hammer_bnew(hmp, end_off + aligned_bytes -
+						HAMMER_TAIL_ONDISK_SIZE,
+					   errorp, data2_bufferp);
 			hammer_modify_buffer(*data2_bufferp, NULL, 0);
 			if (*errorp)
 				goto done;
+
+			/*
+			 * Retry if someone else appended to the fifo while
+			 * we were blocked.
+			 */
+			if (ondisk->vol0_fifo_end != end_off)
+				continue;
+		} else {
+			tail = (void *)((char *)head + aligned_bytes -
+					HAMMER_TAIL_ONDISK_SIZE);
 		}
 
+		bzero(head, rec_len);
 		head->hdr_signature = HAMMER_HEAD_SIGNATURE;
 		head->hdr_type = hdr_type;
-		head->hdr_fwd_link = aligned_bytes / 64;
-		head->hdr_rev_link = -1; /* XXX */
+		head->hdr_size = aligned_bytes;
 		head->hdr_crc = 0;
-		head->hdr_seq = 0;	/* XXX */
+		head->hdr_seq = root_volume->ondisk->vol0_next_seq++;
+
+		tail->tail_signature = HAMMER_TAIL_SIGNATURE;
+		tail->tail_type = hdr_type;
+		tail->tail_size = aligned_bytes;
+
 		ondisk->vol0_fifo_end =
 			hammer_advance_fifo((*rec_bufferp)->volume,
 					    end_off, aligned_bytes);
@@ -1358,7 +1458,7 @@ hammer_free_fifo(hammer_mount_t hmp, hammer_off_t fifo_offset)
 	if (head) {
 		hammer_modify_buffer(buffer, &head->hdr_type,
 				     sizeof(head->hdr_type));
-		head->hdr_type |= HAMMER_HEAD_TYPEF_FREED;
+		head->hdr_type |= HAMMER_HEAD_FLAG_FREE;
 	}
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
@@ -1394,6 +1494,7 @@ hammer_advance_fifo(hammer_volume_t volume, hammer_off_t off, int32_t bytes)
 	}
 	return(off);
 }
+#endif
 
 /*
  * Sync dirty buffers to the media
@@ -1471,6 +1572,7 @@ hammer_sync_buffer(hammer_buffer_t buffer, void *data __unused)
 	return(0);
 }
 
+#if 0
 /*
  * Generic buffer initialization.  Initialize the A-list into an all-allocated
  * state with the free block limit properly set.
@@ -1483,9 +1585,10 @@ hammer_init_fifo(hammer_fifo_head_t head, u_int16_t type)
 {
 	head->hdr_signature = HAMMER_HEAD_SIGNATURE;
 	head->hdr_type = type;
-	head->hdr_rev_link = 0;
-	head->hdr_fwd_link = 0;
+	head->hdr_size = 0;
 	head->hdr_crc = 0;
 	head->hdr_seq = 0;
 }
+
+#endif
 

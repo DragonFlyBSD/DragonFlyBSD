@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.29 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.30 2008/02/10 09:51:01 dillon Exp $
  */
 
 /*
@@ -569,7 +569,6 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	hammer_btree_elm_t elm;
 	hammer_off_t rec_off;
 	hammer_off_t data_off;
-	hammer_off_t data_end;
 	int error;
 
 	/*
@@ -578,10 +577,8 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	 */
 	node = cursor->node->ondisk;
 	elm = &node->elms[cursor->index];
-	cursor->data1 = NULL;
-	cursor->data2 = NULL;
-	cursor->data_split = 0;
-	hmp = cursor->node->volume->hmp;
+	cursor->data = NULL;
+	hmp = cursor->node->hmp;
 	flags |= cursor->flags & HAMMER_CURSOR_DATAEXTOK;
 
 	/*
@@ -597,7 +594,6 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
 		flags &= ~HAMMER_CURSOR_GET_DATA;
 	data_off = elm->leaf.data_offset;
-	data_end = data_off + elm->leaf.data_len - 1;
 	if (data_off == 0)
 		flags &= ~HAMMER_CURSOR_GET_DATA;
 	rec_off = elm->leaf.rec_offset;
@@ -618,44 +614,17 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	if ((flags & HAMMER_CURSOR_GET_DATA) && error == 0) {
 		if ((rec_off ^ data_off) & ~HAMMER_BUFMASK64) {
 			/*
-			 * The data is not in the same buffer as the last
-			 * record we cached, but it could still be embedded
-			 * in a record.  Note that we may not have loaded the
-			 * record's buffer above, depending on flags.
-			 *
-			 * Assert that the data does not cross into additional
-			 * buffers.
+			 * Data and record are in different buffers.
 			 */
-			cursor->data_split = 0;
-			cursor->data2 = hammer_bread(hmp, data_off,
-						  &error, &cursor->data_buffer);
-			KKASSERT(((data_off ^ data_end) &
-				 ~HAMMER_BUFMASK64) == 0);
+			cursor->data = hammer_bread(hmp, data_off, &error,
+						    &cursor->data_buffer);
 		} else {
 			/*
-			 * The data starts in same buffer as record.  Check
-			 * to determine if the data extends into another
-			 * buffer.
+			 * Data resides in same buffer as record.
 			 */
-			cursor->data1 = (void *)
+			cursor->data = (void *)
 				((char *)cursor->record_buffer->ondisk +
 				((int32_t)data_off & HAMMER_BUFMASK));
-			if ((data_off ^ data_end) & ~HAMMER_BUFMASK64) {
-				cursor->data_split = HAMMER_BUFSIZE -
-					((int32_t)data_off & HAMMER_BUFMASK);
-				if (flags & HAMMER_CURSOR_DATAEXTOK) {
-					/*
-					 * NOTE: Assumes data buffer does not
-					 * cross a volume boundary.
-					 */
-					cursor->data2 = hammer_bread(hmp, data_off + cursor->data_split,
-								  &error, &cursor->data_buffer);
-				} else {
-					panic("Illegal data extension");
-				}
-			} else {
-				cursor->data_split = elm->leaf.data_len;
-			}
 		}
 	}
 	return(error);
@@ -1292,7 +1261,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	split = (ondisk->count + 1) / 2;
 	if (cursor->index <= split)
 		--split;
-	hmp = node->volume->hmp;
+	hmp = node->hmp;
 
 	/*
 	 * If we are at the root of the filesystem, create a new root node
@@ -1506,7 +1475,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	if (cursor->index <= split)
 		--split;
 	error = 0;
-	hmp = leaf->volume->hmp;
+	hmp = leaf->hmp;
 
 	elm = &ondisk->elms[split];
 
@@ -2044,7 +2013,7 @@ btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm)
 	switch(elm->base.btype) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
 	case HAMMER_BTREE_TYPE_LEAF:
-		child = hammer_get_node(node->volume->hmp,
+		child = hammer_get_node(node->hmp,
 					elm->internal.subtree_offset, &error);
 		if (error == 0) {
 			hammer_modify_node(child);
@@ -2090,7 +2059,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
 		case HAMMER_BTREE_TYPE_LEAF:
-			child = hammer_get_node(node->volume->hmp,
+			child = hammer_get_node(node->hmp,
 						elm->internal.subtree_offset,
 						&error);
 			break;

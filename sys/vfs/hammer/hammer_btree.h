@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.11 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.12 2008/02/10 09:51:01 dillon Exp $
  */
 
 /*
@@ -150,9 +150,9 @@ union hammer_btree_elm {
 typedef union hammer_btree_elm *hammer_btree_elm_t;
 
 /*
- * B-Tree node (normal or meta)
+ * B-Tree node (normal or meta)	(16x64 = 1K structure)
  *
- * Each node contains 14 elements.  The last element for an internal node
+ * Each node contains 15 elements.  The last element for an internal node
  * is the right-boundary so internal nodes have one fewer logical elements
  * then leaf nodes.
  *
@@ -169,7 +169,7 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
  * reserved for left/right leaf linkage fields, flags, and other future
  * features.
  */
-#define HAMMER_BTREE_LEAF_ELMS	14
+#define HAMMER_BTREE_LEAF_ELMS	15
 #define HAMMER_BTREE_INT_ELMS	(HAMMER_BTREE_LEAF_ELMS - 1)
 
 /*
@@ -187,7 +187,8 @@ struct hammer_node_ondisk {
 	/*
 	 * B-Tree node header (64 bytes)
 	 */
-	struct hammer_fifo_head head;
+	u_int32_t	signature;
+	u_int32_t	crc;
 	hammer_off_t	parent;		/* 0 if at root of cluster */
 	int32_t		count;
 	u_int8_t	type;
@@ -197,6 +198,7 @@ struct hammer_node_ondisk {
 	hammer_off_t	reserved04;	/* future link_right */
 	hammer_off_t	reserved05;
 	hammer_off_t	reserved06;
+	hammer_off_t	reserved07;
 
 	/*
 	 * Element array.  Internal nodes have one less logical element

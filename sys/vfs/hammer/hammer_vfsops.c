@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.18 2008/02/08 08:31:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.19 2008/02/10 09:51:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -175,6 +175,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_end.delete_tid = 0;   /* special case */
 		hmp->root_btree_end.rec_type = 0xFFFFU;
 		hmp->root_btree_end.obj_type = 0;
+		lockinit(&hmp->blockmap_lock, "blkmap", 0, 0);
 	}
 	hmp->hflags = info.hflags;
 	if (info.asof) {
@@ -200,6 +201,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	RB_INIT(&hmp->rb_vols_root);
 	RB_INIT(&hmp->rb_inos_root);
+	RB_INIT(&hmp->rb_nods_root);
 	hmp->ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 
 	/*
@@ -349,6 +351,7 @@ hammer_free_hmp(struct mount *mp)
 	mp->mnt_flag &= ~MNT_LOCAL;
 	hmp->mp = NULL;
 	kfree(hmp->zbuf, M_HAMMER);
+	lockuninit(&hmp->blockmap_lock);
 	kfree(hmp, M_HAMMER);
 }
 
@@ -404,9 +407,6 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	hammer_volume_ondisk_t ondisk;
 	int error;
 	int64_t bfree;
-	int32_t vol_no;
-	hammer_off_t fifo_beg;
-	hammer_off_t fifo_end;
 
 	volume = hammer_get_root_volume(hmp, &error);
 	if (error)
@@ -417,9 +417,11 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	 * Basic stats
 	 */
 	mp->mnt_stat.f_files = ondisk->vol0_stat_inodes;
+	bfree = 0;
+	hammer_rel_volume(volume, 0);
+#if 0
 	fifo_beg = ondisk->vol0_fifo_beg;
 	fifo_end = ondisk->vol0_fifo_end;
-	hammer_rel_volume(volume, 0);
 
 	/*
 	 * Calculate how many free blocks we have by counting the
@@ -442,6 +444,7 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 		fifo_end = HAMMER_ENCODE_RAW_BUFFER(vol_no, 0);
 		hammer_rel_volume(volume, 0);
 	}
+#endif
 	mp->mnt_stat.f_bfree = bfree / HAMMER_BUFSIZE;
 	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
 	if (mp->mnt_stat.f_files < 0)

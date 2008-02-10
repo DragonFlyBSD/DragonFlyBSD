@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.12 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.13 2008/02/10 09:51:01 dillon Exp $
  */
 
 /*
@@ -92,12 +92,10 @@ struct hammer_cursor {
 	 * can be NULL when data and/or record is not, typically indicating
 	 * information referenced via an in-memory record.
 	 */
-	struct hammer_buffer *record_buffer;	/* record+data */
+	struct hammer_buffer *record_buffer;	/* record (+ built-in data) */
 	struct hammer_buffer *data_buffer;	/* extended data */
 	union hammer_record_ondisk *record;
-	union hammer_data_ondisk *data1;
-	union hammer_data_ondisk *data2;
-	int	data_split;			/* data split point if any */
+	union hammer_data_ondisk *data;
 
 	/*
 	 * Iteration and extraction control variables

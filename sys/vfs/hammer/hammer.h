@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.35 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.36 2008/02/10 09:51:01 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -217,7 +217,6 @@ struct hammer_record {
 	union hammer_record_ondisk	rec;
 	union hammer_data_ondisk	*data;
 	int				flags;
-	int				rec_len;
 	int				blocked;
 };
 
@@ -226,7 +225,7 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_ALLOCDATA		0x0001
 #define HAMMER_RECF_ONRBTREE		0x0002
 #define HAMMER_RECF_DELETED		0x0004
-#define HAMMER_RECF_UNUSED0008		0x0008
+#define HAMMER_RECF_INBAND		0x0008
 #define HAMMER_RECF_SYNCING		0x0010
 #define HAMMER_RECF_WANTED		0x0020
 
@@ -287,7 +286,6 @@ typedef struct hammer_io *hammer_io_t;
 struct hammer_volume {
 	struct hammer_io io;
 	RB_ENTRY(hammer_volume) rb_node;
-	struct hammer_nod_rb_tree rb_nods_root;
 	struct hammer_buf_rb_tree rb_bufs_root;
 	struct hammer_volume_ondisk *ondisk;
 	int32_t	vol_no;
@@ -335,8 +333,8 @@ struct hammer_node {
 	TAILQ_ENTRY(hammer_node) entry;		/* per-buffer linkage */
 	RB_ENTRY(hammer_node)	rb_node;	/* per-cluster linkage */
 	hammer_off_t		node_offset;	/* full offset spec */
+	struct hammer_mount	*hmp;
 	struct hammer_buffer	*buffer;	/* backing buffer */
-	struct hammer_volume	*volume;	/* backing volume */
 	hammer_node_ondisk_t	ondisk;		/* ptr to on-disk structure */
 	struct hammer_node	**cache1;	/* passive cache(s) */
 	struct hammer_node	**cache2;
@@ -383,6 +381,7 @@ struct hammer_mount {
 	/*struct vnode *rootvp;*/
 	struct hammer_ino_rb_tree rb_inos_root;
 	struct hammer_vol_rb_tree rb_vols_root;
+	struct hammer_nod_rb_tree rb_nods_root;
 	struct hammer_volume *rootvol;
 	struct hammer_base_elm root_btree_beg;
 	struct hammer_base_elm root_btree_end;
@@ -396,6 +395,7 @@ struct hammer_mount {
 	hammer_tid_t asof;
 	u_int32_t namekey_iterator;
 	struct netexport export;
+	struct lock blockmap_lock;
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
@@ -445,6 +445,7 @@ int	hammer_install_volume(hammer_mount_t hmp, const char *volname);
 int	hammer_ip_lookup(hammer_cursor_t cursor, hammer_inode_t ip);
 int	hammer_ip_first(hammer_cursor_t cursor, hammer_inode_t ip);
 int	hammer_ip_next(hammer_cursor_t cursor);
+int	hammer_ip_resolve_record_and_data(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid);
 int	hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes);
@@ -455,7 +456,7 @@ int	hammer_sync_volume(hammer_volume_t volume, void *data);
 int	hammer_sync_buffer(hammer_buffer_t buffer, void *data);
 
 hammer_record_t
-	hammer_alloc_mem_record(hammer_inode_t ip, int32_t rec_len);
+	hammer_alloc_mem_record(hammer_inode_t ip);
 void	hammer_rel_mem_record(hammer_record_t record);
 
 int	hammer_cursor_up(hammer_cursor_t cursor);
@@ -550,19 +551,21 @@ void hammer_dup_buffer(struct hammer_buffer **bufferp,
 hammer_node_t hammer_alloc_btree(hammer_mount_t hmp, int *errorp);
 void *hammer_alloc_record(hammer_mount_t hmp,
 			hammer_off_t *rec_offp, u_int8_t rec_type,
-			int32_t rec_len, struct hammer_buffer **rec_bufferp,
-			hammer_off_t *data_offp, int32_t data_len,
-			void **data1p, void **data2p, int32_t *data2_index,
-			struct hammer_buffer **data2_bufferp,
-			int *errorp);
-void hammer_free_fifo(hammer_mount_t hmp, hammer_off_t fifo_offset);
-void hammer_unwind_fifo(hammer_mount_t hmp, hammer_off_t rec_offset);
-void hammer_init_fifo(hammer_fifo_head_t head, u_int16_t type);
+			struct hammer_buffer **rec_bufferp,
+			int32_t data_len, void **datap,
+			struct hammer_buffer **data_bufferp, int *errorp);
 int hammer_generate_undo(hammer_mount_t hmp, hammer_off_t undo_offset,
 			void *base, int len);
 
 void hammer_put_volume(struct hammer_volume *volume, int flush);
 void hammer_put_buffer(struct hammer_buffer *buffer, int flush);
+
+hammer_off_t hammer_freemap_alloc(hammer_mount_t hmp, int *errorp);
+hammer_off_t hammer_blockmap_alloc(hammer_mount_t hmp, int zone,
+			int bytes, int *errorp);
+int hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes);
+hammer_off_t hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
+			int *errorp);
 
 void hammer_start_transaction(struct hammer_transaction *trans,
 			      struct hammer_mount *hmp);
@@ -595,8 +598,6 @@ int  hammer_ip_sync_data(struct hammer_transaction *trans,
 			hammer_inode_t ip, int64_t offset,
 			void *data, int bytes);
 int  hammer_ip_sync_record(hammer_record_t rec);
-int  hammer_write_record(hammer_cursor_t cursor, hammer_record_ondisk_t rec,
-			int32_t rec_len, void *data, int cursor_flags);
 
 int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);

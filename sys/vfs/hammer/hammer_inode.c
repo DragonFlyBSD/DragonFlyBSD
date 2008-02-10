@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.29 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.30 2008/02/10 09:51:01 dillon Exp $
  */
 
 #include "hammer.h"
@@ -237,7 +237,7 @@ retry:
 	 */
 	if (*errorp == 0) {
 		ip->ino_rec = cursor.record->inode;
-		ip->ino_data = cursor.data1->inode;
+		ip->ino_data = cursor.data->inode;
 		hammer_cache_node(cursor.node, &ip->cache[0]);
 		if (cache)
 			hammer_cache_node(cursor.node, cache);
@@ -417,7 +417,7 @@ retry:
 	 * will remain set and prevent further updates.
 	 */
 	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED) == 0) { 
-		record = hammer_alloc_mem_record(ip, sizeof(struct hammer_inode_record));
+		record = hammer_alloc_mem_record(ip);
 		record->rec.inode = ip->ino_rec;
 		record->rec.inode.base.base.create_tid = last_tid;
 		record->rec.inode.base.data_len = sizeof(ip->ino_data);

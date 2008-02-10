@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.10 2008/02/08 08:30:56 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.11 2008/02/10 09:50:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -45,10 +45,13 @@
 #include <fcntl.h>
 #include "hammer_util.h"
 
+static void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
+		       struct buffer_info **bufferp);
+static hammer_off_t alloc_bigblock(void);
+#if 0
 static void init_fifo_head(hammer_fifo_head_t head, u_int16_t hdr_type);
 static hammer_off_t hammer_alloc_fifo(int32_t base_bytes, int32_t ext_bytes,
 			struct buffer_info **bufp, u_int16_t hdr_type);
-#if 0
 static void readhammerbuf(struct volume_info *vol, void *data,
 			int64_t offset);
 #endif
@@ -126,7 +129,7 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	vol->vol_no = vol_no;
 
 	if (isnew) {
-		init_fifo_head(&ondisk->head, HAMMER_HEAD_TYPE_VOL);
+		/*init_fifo_head(&ondisk->head, HAMMER_HEAD_TYPE_VOL);*/
 		vol->cache.modified = 1;
         }
 
@@ -242,6 +245,19 @@ rel_buffer(struct buffer_info *buffer)
 	}
 }
 
+void *
+get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
+		int isnew)
+{
+	struct buffer_info *buffer;
+
+	if (*bufferp) {
+		rel_buffer(*bufferp);
+	}
+	buffer = *bufferp = get_buffer(buf_offset, isnew);
+	return((char *)buffer->ondisk + ((int32_t)buf_offset & HAMMER_BUFMASK));
+}
+
 /*
  * Retrieve a pointer to a B-Tree node given a cluster offset.  The underlying
  * bufp is freed if non-NULL and a referenced buffer is loaded into it.
@@ -267,35 +283,38 @@ get_node(hammer_off_t node_offset, struct buffer_info **bufp)
 void *
 alloc_btree_element(hammer_off_t *offp)
 {
-	struct buffer_info *buf;
-	void *item;
+	struct buffer_info *buffer = NULL;
+	hammer_node_ondisk_t node;
 
-	*offp = hammer_alloc_fifo(sizeof(struct hammer_node_ondisk), 0,
-				  &buf, HAMMER_HEAD_TYPE_BTREE);
-	item = (char *)buf->ondisk + ((int32_t)*offp & HAMMER_BUFMASK);
-	/* XXX buf not released, ptr remains valid */
-	return(item);
+	node = alloc_blockmap(HAMMER_ZONE_BTREE_INDEX, sizeof(*node),
+			      offp, &buffer);
+	bzero(node, sizeof(*node));
+	/* XXX buffer not released, pointer remains valid */
+	return(node);
 }
 
 hammer_record_ondisk_t
-alloc_record_element(hammer_off_t *offp, u_int8_t rec_type,
-		     int32_t rec_len, int32_t data_len, void **datap)
+alloc_record_element(hammer_off_t *offp, int32_t data_len, void **datap)
 {
-	struct buffer_info *buf;
+	struct buffer_info *record_buffer = NULL;
+	struct buffer_info *data_buffer = NULL;
 	hammer_record_ondisk_t rec;
-	int32_t aligned_rec_len;
 
-	aligned_rec_len = (rec_len + HAMMER_HEAD_ALIGN_MASK) &
-			  ~HAMMER_HEAD_ALIGN_MASK;
+	rec = alloc_blockmap(HAMMER_ZONE_RECORD_INDEX, sizeof(*rec),
+			     offp, &record_buffer);
+	bzero(rec, sizeof(*rec));
 
-	*offp = hammer_alloc_fifo(aligned_rec_len, data_len, &buf,
-				  HAMMER_HEAD_TYPE_RECORD);
-	rec = (void *)((char *)buf->ondisk + ((int32_t)*offp & HAMMER_BUFMASK));
-	rec->base.base.rec_type = rec_type;
-	if (data_len) {
-		rec->base.data_off = *offp + aligned_rec_len;
+	if (data_len >= HAMMER_BUFSIZE) {
+		assert(data_len <= HAMMER_BUFSIZE); /* just one buffer */
+		*datap = alloc_blockmap(HAMMER_ZONE_LARGE_DATA_INDEX, data_len,
+					&rec->base.data_off, &data_buffer);
 		rec->base.data_len = data_len;
-		*datap = (char *)rec + aligned_rec_len;
+		bzero(*datap, data_len);
+	} else if (data_len) {
+		*datap = alloc_blockmap(HAMMER_ZONE_SMALL_DATA_INDEX, data_len,
+					&rec->base.data_off, &data_buffer);
+		rec->base.data_len = data_len;
+		bzero(*datap, data_len);
 	} else {
 		*datap = NULL;
 	}
@@ -304,13 +323,116 @@ alloc_record_element(hammer_off_t *offp, u_int8_t rec_type,
 }
 
 /*
+ * Format a new blockmap
+ */
+void
+format_blockmap(hammer_blockmap_entry_t blockmap, hammer_off_t zone_off)
+{
+	blockmap->phys_offset = alloc_bigblock();
+	blockmap->alloc_offset = zone_off;
+}
+
+static
+void *
+alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
+	       struct buffer_info **bufferp)
+{
+	struct buffer_info *buffer;
+	struct volume_info *volume;
+	hammer_blockmap_entry_t rootmap;
+	hammer_blockmap_entry_t blockmap;
+	void *ptr;
+	int i;
+
+	volume = get_volume(RootVolNo);
+
+	rootmap = &volume->ondisk->vol0_blockmap[zone];
+
+	/*
+	 * Alignment and buffer-boundary issues
+	 */
+	bytes = (bytes + 7) & ~7;
+	if ((rootmap->phys_offset ^ (rootmap->phys_offset + bytes - 1)) &
+	    ~HAMMER_BUFMASK64) {
+		volume->cache.modified = 1;
+		rootmap->phys_offset = (rootmap->phys_offset + bytes) &
+				       ~HAMMER_BUFMASK64;
+	}
+
+	/*
+	 * Dive layer 2
+	 */
+	i = (rootmap->alloc_offset >> (HAMMER_LARGEBLOCK_BITS +
+	     HAMMER_BLOCKMAP_BITS)) & HAMMER_BLOCKMAP_RADIX_MASK;
+
+	blockmap = get_buffer_data(rootmap->phys_offset + i * sizeof(*blockmap),
+				   bufferp, 0);
+	buffer = *bufferp;
+	if ((rootmap->alloc_offset & HAMMER_LARGEBLOCK_LAYER1_MASK) == 0) {
+		buffer->cache.modified = 1;
+		bzero(blockmap, sizeof(*blockmap));
+		blockmap->phys_offset = alloc_bigblock();
+	}
+
+	/*
+	 * Dive layer 1
+	 */
+	i = (rootmap->alloc_offset >> HAMMER_LARGEBLOCK_BITS) &
+	    HAMMER_BLOCKMAP_RADIX_MASK;
+
+	blockmap = get_buffer_data(
+		blockmap->phys_offset + i * sizeof(*blockmap), bufferp, 0);
+	buffer = *bufferp;
+
+	if ((rootmap->alloc_offset & HAMMER_LARGEBLOCK_MASK64) == 0) {
+		buffer->cache.modified = 1;
+		bzero(blockmap, sizeof(*blockmap));
+		blockmap->phys_offset = alloc_bigblock();
+		blockmap->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+	}
+
+	buffer->cache.modified = 1;
+	volume->cache.modified = 1;
+	blockmap->bytes_free -= bytes;
+	*result_offp = rootmap->alloc_offset;
+	rootmap->alloc_offset += bytes;
+
+	i = (rootmap->phys_offset >> HAMMER_BUFFER_BITS) &
+	    HAMMER_BUFFERS_PER_LARGEBLOCK_MASK;
+	ptr = get_buffer_data(
+		blockmap->phys_offset + i * HAMMER_BUFSIZE +
+		 ((int32_t)*result_offp & HAMMER_BUFMASK), bufferp, 0);
+	buffer->cache.modified = 1;
+
+	rel_volume(volume);
+	return(ptr);
+}
+
+static
+hammer_off_t
+alloc_bigblock(void)
+{
+	struct volume_info *volume;
+	hammer_off_t result_offset;
+
+	volume = get_volume(RootVolNo);
+	result_offset = volume->ondisk->vol0_free_off;
+	volume->ondisk->vol0_free_off += HAMMER_LARGEBLOCK_SIZE;
+	if ((volume->ondisk->vol0_free_off & HAMMER_OFF_SHORT_MASK) >
+	    (hammer_off_t)(volume->ondisk->vol_buf_end - volume->ondisk->vol_buf_beg)) {
+		panic("alloc_bigblock: Ran out of room, filesystem too small");
+	}
+	rel_volume(volume);
+	return(result_offset);
+}
+
+#if 0
+/*
  * Reserve space from the FIFO.  Make sure that bytes does not cross a 
  * record boundary.
  *
- * Initialize the fifo header, keep track of the previous entry's size
- * so the reverse poitner can be initialized (using lastBlk), and also
- * store a terminator (used by the recovery code) which will be overwritten
- * by the next allocation.
+ * Zero out base_bytes and initialize the fifo head and tail.  The
+ * data area is not zerod.
  */
 static
 hammer_off_t
@@ -320,12 +442,12 @@ hammer_alloc_fifo(int32_t base_bytes, int32_t ext_bytes,
 	struct buffer_info *buf;
 	struct volume_info *volume;
 	hammer_fifo_head_t head;
+	hammer_fifo_tail_t tail;
 	hammer_off_t off;
 	int32_t aligned_bytes;
-	static u_int32_t lastBlk;
 
-	aligned_bytes = (base_bytes + ext_bytes + HAMMER_HEAD_ALIGN_MASK) &
-			~HAMMER_HEAD_ALIGN_MASK;
+	aligned_bytes = (base_bytes + ext_bytes + HAMMER_TAIL_ONDISK_SIZE +
+			 HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK;
 
 	volume = get_volume(RootVolNo);
 	off = volume->ondisk->vol0_fifo_end;
@@ -335,7 +457,7 @@ hammer_alloc_fifo(int32_t base_bytes, int32_t ext_bytes,
 	 * only newfs_hammer uses this function.
 	 */
 	assert((off & ~HAMMER_BUFMASK64) ==
-		 ((off + aligned_bytes + sizeof(*head)) & ~HAMMER_BUFMASK));
+		((off + aligned_bytes) & ~HAMMER_BUFMASK));
 
 	*bufp = buf = get_buffer(off, 0);
 
@@ -345,26 +467,25 @@ hammer_alloc_fifo(int32_t base_bytes, int32_t ext_bytes,
 	head = (void *)((char *)buf->ondisk + ((int32_t)off & HAMMER_BUFMASK));
 	bzero(head, base_bytes);
 
+	head->hdr_signature = HAMMER_HEAD_SIGNATURE;
 	head->hdr_type = hdr_type;
-	head->hdr_rev_link = lastBlk;
-	head->hdr_fwd_link = aligned_bytes;
+	head->hdr_size = aligned_bytes;
 	head->hdr_seq = volume->ondisk->vol0_next_seq++;
-	lastBlk = head->hdr_fwd_link;
+
+	tail = (void*)((char *)head + aligned_bytes - HAMMER_TAIL_ONDISK_SIZE);
+	tail->tail_signature = HAMMER_TAIL_SIGNATURE;
+	tail->tail_type = hdr_type;
+	tail->tail_size = aligned_bytes;
 
 	volume->ondisk->vol0_fifo_end += aligned_bytes;
 	volume->cache.modified = 1;
-	head = (void *)((char *)head + aligned_bytes);
-	head->hdr_signature = HAMMER_HEAD_SIGNATURE;
-	head->hdr_type = HAMMER_HEAD_TYPE_TERM;
-	head->hdr_rev_link = lastBlk;
-	head->hdr_fwd_link = 0;
-	head->hdr_crc = 0;
-	head->hdr_seq = volume->ondisk->vol0_next_seq;
 
 	rel_volume(volume);
 
 	return(off);
 }
+
+#endif
 
 /*
  * Flush various tracking structures to disk
@@ -400,6 +521,7 @@ flush_buffer(struct buffer_info *buffer)
 	buffer->cache.modified = 0;
 }
 
+#if 0
 /*
  * Generic buffer initialization
  */
@@ -408,11 +530,12 @@ init_fifo_head(hammer_fifo_head_t head, u_int16_t hdr_type)
 {
 	head->hdr_signature = HAMMER_HEAD_SIGNATURE;
 	head->hdr_type = hdr_type;
-	head->hdr_rev_link = 0;
-	head->hdr_fwd_link = 0;
+	head->hdr_size = 0;
 	head->hdr_crc = 0;
 	head->hdr_seq = 0;
 }
+
+#endif
 
 #if 0
 /*

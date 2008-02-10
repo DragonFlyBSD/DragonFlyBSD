@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.22 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.23 2008/02/10 09:51:01 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -59,10 +59,19 @@
  * I/O is done in multiples of 16K.  Most buffer-sized headers such as those
  * used by volumes, super-clusters, clusters, and basic filesystem buffers
  * use fixed-sized A-lists which are heavily dependant on HAMMER_BUFSIZE.
+ *
+ * Per-volume storage limit: 52 bits		4096 TB
+ * Per-Zone storage limit: 59 bits		512 KTB (due to blockmap)
+ * Per-filesystem storage limit: 60 bits	1 MTB
  */
-#define HAMMER_BUFSIZE	16384
-#define HAMMER_BUFMASK	(HAMMER_BUFSIZE - 1)
-#define HAMMER_MAXDATA	(256*1024)
+#define HAMMER_BUFSIZE		16384
+#define HAMMER_BUFMASK		(HAMMER_BUFSIZE - 1)
+#define HAMMER_MAXDATA		(256*1024)
+#define HAMMER_BUFFER_BITS	14
+
+#if (1 << HAMMER_BUFFER_BITS) != HAMMER_BUFSIZE
+#error "HAMMER_BUFFER_BITS BROKEN"
+#endif
 
 #define HAMMER_BUFSIZE64	((u_int64_t)HAMMER_BUFSIZE)
 #define HAMMER_BUFMASK64	((u_int64_t)HAMMER_BUFMASK)
@@ -104,16 +113,45 @@ typedef u_int64_t hammer_off_t;
  * zone 0 (z,v,o):	reserved (for sanity)
  * zone 1 (z,v,o):	raw volume relative (offset 0 is the volume header)
  * zone 2 (z,v,o):	raw buffer relative (offset 0 is the first buffer)
- * zone 3-15     :	reserved
+ * zone 3 (z,o):	undo fifo	- blockmap backed
+ *
+ * zone 8 (z,o):	B-Tree		- blkmap-backed
+ * zone 9 (z,o):	Record		- blkmap-backed
+ * zone 10 (z,o):	Large-data	- blkmap-backed
  */
 
 #define HAMMER_ZONE_RAW_VOLUME		0x1000000000000000ULL
 #define HAMMER_ZONE_RAW_BUFFER		0x2000000000000000ULL
+#define HAMMER_ZONE_UNDO		0x3000000000000000ULL
+#define HAMMER_ZONE_RESERVED04		0x4000000000000000ULL
+#define HAMMER_ZONE_RESERVED05		0x5000000000000000ULL
+#define HAMMER_ZONE_RESERVED06		0x6000000000000000ULL
+#define HAMMER_ZONE_RESERVED07		0x7000000000000000ULL
+#define HAMMER_ZONE_BTREE		0x8000000000000000ULL
+#define HAMMER_ZONE_RECORD		0x9000000000000000ULL
+#define HAMMER_ZONE_LARGE_DATA		0xA000000000000000ULL
+#define HAMMER_ZONE_SMALL_DATA		0xB000000000000000ULL
+#define HAMMER_ZONE_RESERVED0C		0xC000000000000000ULL
+#define HAMMER_ZONE_RESERVED0D		0xD000000000000000ULL
+#define HAMMER_ZONE_RESERVED0E		0xE000000000000000ULL
+#define HAMMER_ZONE_RESERVED0F		0xF000000000000000ULL
+
+#define HAMMER_ZONE_RAW_VOLUME_INDEX	1
+#define HAMMER_ZONE_RAW_BUFFER_INDEX	2
+#define HAMMER_ZONE_UNDO_INDEX		3
+#define HAMMER_ZONE_BTREE_INDEX		8
+#define HAMMER_ZONE_RECORD_INDEX	9
+#define HAMMER_ZONE_LARGE_DATA_INDEX	10
+#define HAMMER_ZONE_SMALL_DATA_INDEX	11
+
+#define HAMMER_MAX_ZONES		16
 
 #define HAMMER_VOL_ENCODE(vol_no)			\
 	((hammer_off_t)((vol_no) & 255) << 52)
 #define HAMMER_VOL_DECODE(ham_off)			\
 	(int32_t)(((hammer_off_t)(ham_off) >> 52) & 255)
+#define HAMMER_ZONE_DECODE(ham_off)			\
+	(int32_t)(((hammer_off_t)(ham_off) >> 60))
 #define HAMMER_SHORT_OFF_ENCODE(offset)			\
 	((hammer_off_t)(offset) & HAMMER_OFF_SHORT_MASK)
 #define HAMMER_LONG_OFF_ENCODE(offset)			\
@@ -129,12 +167,64 @@ typedef u_int64_t hammer_off_t;
 	HAMMER_VOL_ENCODE(vol_no) |			\
 	HAMMER_SHORT_OFF_ENCODE(offset))
 
+/*
+ * Large-Block backing store
+ *
+ * A blockmap is a two-level map which translates a blockmap-backed zone
+ * offset into a raw zone 2 offset.  Each layer handles 18 bits.  The 8M
+ * large-block size is 23 bits so two layers gives us 23+18+18 = 59 bits
+ * of address space.
+ */
+#define HAMMER_LARGEBLOCK_SIZE		(8192 * 1024)
+#define HAMMER_LARGEBLOCK_MASK		(HAMMER_LARGEBLOCK_SIZE - 1)
+#define HAMMER_LARGEBLOCK_MASK64	((u_int64_t)HAMMER_LARGEBLOCK_SIZE - 1)
+#define HAMMER_LARGEBLOCK_BITS		23
+#if (1 << HAMMER_LARGEBLOCK_BITS) != HAMMER_LARGEBLOCK_SIZE
+#error "HAMMER_LARGEBLOCK_BITS BROKEN"
+#endif
+
+#define HAMMER_BUFFERS_PER_LARGEBLOCK			\
+	(HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE)
+#define HAMMER_BUFFERS_PER_LARGEBLOCK_MASK		\
+	(HAMMER_BUFFERS_PER_LARGEBLOCK - 1)
+#define HAMMER_BUFFERS_PER_LARGEBLOCK_MASK64		\
+	((hammer_off_t)HAMMER_BUFFERS_PER_LARGEBLOCK_MASK)
+
+#define HAMMER_BLOCKMAP_RADIX				\
+	(HAMMER_LARGEBLOCK_SIZE / sizeof(struct hammer_blockmap_entry))
+#define HAMMER_BLOCKMAP_RADIX_MASK			\
+	(HAMMER_BLOCKMAP_RADIX - 1)
+#define HAMMER_BLOCKMAP_BITS		18
+#if (1 << HAMMER_BLOCKMAP_BITS) != (HAMMER_LARGEBLOCK_SIZE / 32)
+#error "HAMMER_BLOCKMAP_BITS BROKEN"
+#endif
+
+#define HAMMER_LARGEBLOCK_LAYER1			\
+	((hammer_off_t)HAMMER_LARGEBLOCK_SIZE * HAMMER_BLOCKMAP_RADIX)
+#define HAMMER_LARGEBLOCK_LAYER2			\
+	(HAMMER_LARGEBLOCK_LAYER1 * HAMMER_BLOCKMAP_RADIX)
+
+#define HAMMER_LARGEBLOCK_LAYER1_MASK	(HAMMER_LARGEBLOCK_LAYER1 - 1)
+#define HAMMER_LARGEBLOCK_LAYER2_MASK	(HAMMER_LARGEBLOCK_LAYER2 - 1)
+
+struct hammer_blockmap_entry {
+	hammer_off_t	phys_offset;    /* zone-2 physical offset */
+	int32_t		bytes_free;     /* bytes free within the big-block */
+	u_int32_t	entry_crc;
+	u_int32_t	reserved01;
+	u_int32_t	reserved02;
+	hammer_off_t	alloc_offset;	/* zone-X logical offset */
+};
+
+typedef struct hammer_blockmap_entry *hammer_blockmap_entry_t;
 
 /*
  * All on-disk HAMMER structures which make up elements of the FIFO contain
- * a hammer_fifo_head structure.  This structure contains all the information
- * required to validate the fifo element and to scan the fifo in either
- * direction.
+ * a hammer_fifo_head and hammer_fifo_tail structure.  This structure
+ * contains all the information required to validate the fifo element
+ * and to scan the fifo in either direction.  The head is typically embedded
+ * in higher level hammer on-disk structures while the tail is typically
+ * out-of-band.  hdr_size is the size of the whole mess, including the tail.
  *
  * Nearly all such structures are guaranteed to not cross a 16K filesystem
  * buffer boundary.  The one exception is a record, whos related data may
@@ -144,38 +234,49 @@ typedef u_int64_t hammer_off_t;
  * (i.e. the base of the buffer will not be in the middle of a data record).
  * This is used to allow the recovery code to re-sync after hitting corrupted
  * data.
+ *
+ * PAD elements are allowed to take up only 8 bytes of space as a special
+ * case, containing only hdr_signature, hdr_type, and hdr_size fields,
+ * and with the tail overloaded onto the head structure for 8 bytes total.
  */
-#define HAMMER_HEAD_ONDISK_SIZE		32
+#define HAMMER_HEAD_ONDISK_SIZE		24
 #define HAMMER_HEAD_RECOVERY_ALIGNMENT  (16 * 1024 * 1024)
-#define HAMMER_HEAD_ALIGN		32
+#define HAMMER_HEAD_ALIGN		8
 #define HAMMER_HEAD_ALIGN_MASK		(HAMMER_HEAD_ALIGN - 1)
+#define HAMMER_TAIL_ONDISK_SIZE		8
 
 struct hammer_fifo_head {
 	u_int16_t hdr_signature;
 	u_int16_t hdr_type;
-	u_int32_t hdr_fwd_link;
-	u_int32_t hdr_rev_link;
+	u_int32_t hdr_size;	/* aligned size of the whole mess */
 	u_int32_t hdr_crc;
-	hammer_tid_t hdr_seq;
-	hammer_tid_t hdr_tid;
+	u_int32_t hdr_reserved02;
+	hammer_tid_t hdr_seq;	/* related sequence number */
+};
+
+struct hammer_fifo_tail {
+	u_int16_t tail_signature;
+	u_int16_t tail_type;
+	u_int32_t tail_size;	/* aligned size of the whole mess */
 };
 
 typedef struct hammer_fifo_head *hammer_fifo_head_t;
+typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
 
 /*
  * Fifo header types.
  */
-#define HAMMER_HEAD_TYPE_PAD	0xF000U		/* FIFO pad (also FREED) */
-#define HAMMER_HEAD_TYPE_VOL	0x7001U		/* Volume (dummy header) */
-#define HAMMER_HEAD_TYPE_BTREE	0x7002U		/* B-Tree node */
-#define HAMMER_HEAD_TYPE_UNDO	0x7003U		/* random UNDO information */
-#define HAMMER_HEAD_TYPE_DELETE	0x7004U		/* record deletion */
-#define HAMMER_HEAD_TYPE_RECORD	0x7005U		/* Filesystem record */
-#define HAMMER_HEAD_TYPE_TERM	0x7009U		/* Dummy Terminator */
+#define HAMMER_HEAD_TYPE_PAD	(0x0040U|HAMMER_HEAD_FLAG_FREE)
+#define HAMMER_HEAD_TYPE_VOL	0x0041U		/* Volume (dummy header) */
+#define HAMMER_HEAD_TYPE_BTREE	0x0042U		/* B-Tree node */
+#define HAMMER_HEAD_TYPE_UNDO	0x0043U		/* random UNDO information */
+#define HAMMER_HEAD_TYPE_DELETE	0x0044U		/* record deletion */
+#define HAMMER_HEAD_TYPE_RECORD	0x0045U		/* Filesystem record */
 
-#define HAMMER_HEAD_TYPEF_FREED	0x8000U		/* Indicates object freed */
+#define HAMMER_HEAD_FLAG_FREE	0x8000U		/* Indicates object freed */
 
 #define HAMMER_HEAD_SIGNATURE	0xC84EU
+#define HAMMER_TAIL_SIGNATURE	0xC74FU
 
 /*
  * Misc FIFO structures (except for the B-Tree node and hammer record)
@@ -224,11 +325,6 @@ typedef struct hammer_fifo_undo *hammer_fifo_undo_t;
  *	any records remaining in memory can be flushed to the memory log
  *	area.  This allows the kernel to immediately return success.
  */
-#define HAMMER_VOL_MAXCLUSTERS		32768	/* 1-layer */
-#define HAMMER_VOL_MAXSUPERCLUSTERS	4096	/* 2-layer */
-#define HAMMER_VOL_SUPERCLUSTER_GROUP	16
-#define HAMMER_VOL_METAELMS_1LYR	HAMMER_ALIST_METAELMS_32K_1LYR
-#define HAMMER_VOL_METAELMS_2LYR	HAMMER_ALIST_METAELMS_16K_2LYR
 
 #define HAMMER_BOOT_MINBYTES		(32*1024)
 #define HAMMER_BOOT_NOMBYTES		(64LL*1024*1024)
@@ -239,7 +335,8 @@ typedef struct hammer_fifo_undo *hammer_fifo_undo_t;
 #define HAMMER_MEM_MAXBYTES		(64LL*1024*1024*1024)
 
 struct hammer_volume_ondisk {
-	struct hammer_fifo_head head;
+	u_int64_t vol_signature;/* Signature */
+
 	int64_t vol_bot_beg;	/* byte offset of boot area or 0 */
 	int64_t vol_mem_beg;	/* byte offset of memory log or 0 */
 	int64_t vol_buf_beg;	/* byte offset of first buffer in volume */
@@ -250,7 +347,6 @@ struct hammer_volume_ondisk {
 	uuid_t    vol_fstype;	/* identify filesystem type */
 	char	  vol_name[64];	/* Name of volume */
 
-	u_int64_t vol_signature;/* Signature #2 */
 	int32_t vol_no;		/* volume number within filesystem */
 	int32_t vol_count;	/* number of volumes making up FS */
 
@@ -259,7 +355,7 @@ struct hammer_volume_ondisk {
 	u_int32_t vol_flags;	/* volume flags */
 	u_int32_t vol_rootvol;	/* which volume is the root volume? */
 
-	int32_t vol_reserved04;	/* cluster size (same for all volumes) */
+	int32_t vol_reserved04;
 	int32_t vol_reserved05;
 	u_int32_t vol_reserved06;
 	u_int32_t vol_reserved07;
@@ -269,6 +365,14 @@ struct hammer_volume_ondisk {
 	int64_t vol_nblocks;		/* total allocatable hammer bufs */
 
 	/*
+	 * bigblock freemap. 
+	 *
+	 * XXX not implemented yet, just use a sequential index at
+	 * the moment.
+	 */
+	hammer_off_t vol0_free_off;
+
+	/*
 	 * These fields are initialized and space is reserved in every
 	 * volume making up a HAMMER filesytem, but only the master volume
 	 * contains valid data.
@@ -276,11 +380,15 @@ struct hammer_volume_ondisk {
 	int64_t	vol0_stat_bytes;	/* for statfs only */
 	int64_t vol0_stat_inodes;	/* for statfs only */
 	int64_t vol0_stat_records;	/* total records in filesystem */
-	hammer_off_t vol0_fifo_beg;	/* CIRCULAR FIFO START */
-	hammer_off_t vol0_fifo_end;	/* CIRCULAR FIFO END */
 	hammer_off_t vol0_btree_root;	/* B-Tree root */
 	hammer_tid_t vol0_next_tid;	/* highest synchronized TID */
-	hammer_tid_t vol0_next_seq;	/* next SEQ no */
+	hammer_tid_t vol0_next_seq;	/* next SEQ no for undo */
+
+	/*
+	 * Blockmaps for zones.  Not all zones use a blockmap.
+	 */
+	struct hammer_blockmap_entry vol0_blockmap[HAMMER_MAX_ZONES];
+
 };
 
 typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
@@ -289,20 +397,20 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_VOLF_OPEN		0x0002	/* volume is open */
 
 /*
- * All HAMMER records have a common 72-byte base and a variable-length
- * extension, plus a possible data reference.  The data portion of the
- * HAMMER record can cross a filesystem buffer boundary (but not the primary
- * record portion).
- *
- * Current only relative in-band data offsets are supported, but the field
- * is large enough for future out-of-band references.
+ * All HAMMER records have a common 64-byte base and a 32 byte extension,
+ * plus a possible data reference.  The data reference can be in-band or
+ * out-of-band.
  */
+
+#define HAMMER_RECORD_SIZE		(64+32)
+
 struct hammer_base_record {
-	struct hammer_fifo_head head;	/* 16 byte fifo header */
+	u_int32_t	signature;	/* record signature */
+	u_int32_t	data_crc;	/* data crc */
 	struct hammer_base_elm base;	/* 40 byte base element */
 	hammer_off_t	data_off;	/* in-band or out-of-band */
 	int32_t		data_len;	/* size of data in bytes */
-	u_int32_t	reserved03;
+	u_int32_t	reserved02;
 };
 
 /*
@@ -407,6 +515,7 @@ struct hammer_inode_record {
  */
 struct hammer_data_record {
 	struct hammer_base_record base;
+	char	data[32];
 };
 
 /*
@@ -431,6 +540,7 @@ struct hammer_entry_record {
 	struct hammer_base_record base;
 	u_int64_t obj_id;		/* object being referenced */
 	u_int64_t reserved01;
+	char	name[16];
 };
 
 /*

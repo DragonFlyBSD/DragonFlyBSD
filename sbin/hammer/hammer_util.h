@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.8 2008/02/08 08:30:56 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.9 2008/02/10 09:50:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -105,15 +105,17 @@ struct volume_info *setup_volume(int32_t vol_no, const char *filename,
 				int isnew, int oflags);
 struct volume_info *get_volume(int32_t vol_no);
 struct buffer_info *get_buffer(hammer_off_t buf_offset, int isnew);
+void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
+				int isnew);
 hammer_node_ondisk_t get_node(hammer_off_t node_offset,
 				struct buffer_info **bufp);
 
 void rel_volume(struct volume_info *volume);
 void rel_buffer(struct buffer_info *buffer);
 
+void format_blockmap(hammer_blockmap_entry_t blockmap, hammer_off_t zone_off);
 void *alloc_btree_element(hammer_off_t *offp);
 hammer_record_ondisk_t alloc_record_element(hammer_off_t *offp,
-				u_int8_t rec_type, int32_t rec_len,
 				int32_t data_len, void **datap);
 int hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.29 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.30 2008/02/10 09:51:01 dillon Exp $
  */
 
 #include "hammer.h"
@@ -133,7 +133,7 @@ RB_GENERATE_XLOOKUP(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
  * returned referenced.
  */
 hammer_record_t
-hammer_alloc_mem_record(hammer_inode_t ip, int32_t rec_len)
+hammer_alloc_mem_record(hammer_inode_t ip)
 {
 	hammer_record_t record;
 
@@ -141,7 +141,6 @@ hammer_alloc_mem_record(hammer_inode_t ip, int32_t rec_len)
 	record = kmalloc(sizeof(*record), M_HAMMER, M_WAITOK|M_ZERO);
 	record->ip = ip;
 	record->rec.base.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	record->rec_len = rec_len;
 	hammer_ref(&record->lock);
 	return (record);
 }
@@ -352,7 +351,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	int error;
 	int bytes;
 
-	record = hammer_alloc_mem_record(dip, sizeof(struct hammer_entry_record));
+	record = hammer_alloc_mem_record(dip);
 
 	bytes = ncp->nc_nlen;	/* NOTE: terminating \0 is NOT included */
 	if (++trans->hmp->namekey_iterator == 0)
@@ -456,9 +455,7 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_record_ondisk_t rec;
 	union hammer_btree_elm elm;
 	hammer_off_t rec_offset;
-	hammer_off_t data_offset;
-	void *bdata1, *bdata2;
-	int32_t data2_index;
+	void *bdata;
 	int error;
 
 	KKASSERT((offset & HAMMER_BUFMASK) == 0);
@@ -494,12 +491,13 @@ retry:
 	 * can cross buffer boundaries so we may have to split our bcopy.
 	 */
 	rec = hammer_alloc_record(ip->hmp, &rec_offset, HAMMER_RECTYPE_DATA,
-				  sizeof(rec->data), &cursor.record_buffer,
-				  &data_offset, bytes, 
-				  &bdata1, &bdata2, &data2_index,
+				  &cursor.record_buffer,
+				  bytes, &bdata,
 				  &cursor.data_buffer, &error);
 	if (rec == NULL)
 		goto done;
+	if (hammer_debug_general & 0x1000)
+		kprintf("OOB RECOR2 DATA REC %016llx DATA %016llx LEN=%d\n", rec_offset, rec->base.data_off, rec->base.data_len);
 
 	/*
 	 * Fill everything in and insert our B-Tree node.
@@ -514,22 +512,16 @@ retry:
 	rec->base.base.create_tid = trans->tid;
 	rec->base.base.delete_tid = 0;
 	rec->base.base.rec_type = HAMMER_RECTYPE_DATA;
-	rec->base.head.hdr_crc = crc32(data, bytes);
-	KKASSERT(rec->base.data_off == data_offset);
+	rec->base.data_crc = crc32(data, bytes);
 	KKASSERT(rec->base.data_len == bytes);
 
-	if (data2_index < bytes) {
-		bcopy(data, bdata1, data2_index);
-		bcopy((char *)data + data2_index, bdata2, bytes - data2_index);
-	} else {
-		bcopy(data, bdata1, bytes);
-	}
+	bcopy(data, bdata, bytes);
 
 	elm.leaf.base = rec->base.base;
 	elm.leaf.rec_offset = rec_offset;
 	elm.leaf.data_offset = rec->base.data_off;
 	elm.leaf.data_len = bytes;
-	elm.leaf.data_crc = rec->base.head.hdr_crc;
+	elm.leaf.data_crc = rec->base.data_crc;
 
 	/*
 	 * Data records can wind up on-disk before the inode itself is
@@ -542,11 +534,7 @@ retry:
 	if (error == 0)
 		goto done;
 
-	/*
-	 * If we fail we may be able to unwind the allocation.
-	 */
-	rec->base.head.hdr_type |= HAMMER_HEAD_TYPEF_FREED;
-	hammer_unwind_fifo(ip->hmp, rec_offset);
+	hammer_blockmap_free(ip->hmp, rec_offset, HAMMER_RECORD_SIZE);
 done:
 	hammer_done_cursor(&cursor);
 	if (error == EDEADLK)
@@ -555,7 +543,7 @@ done:
 }
 
 /*
- * Sync an in-memory record to the disk.  this is typically called via fsync
+ * Sync an in-memory record to the disk.  This is typically called via fsync
  * from a cached record source.  This code is responsible for actually
  * writing a record out to the disk.
  */
@@ -567,9 +555,7 @@ hammer_ip_sync_record(hammer_record_t record)
 	hammer_mount_t hmp;
 	union hammer_btree_elm elm;
 	hammer_off_t rec_offset;
-	hammer_off_t data_offset;
-	void *bdata1;
-	int32_t alloc_data_len;
+	void *bdata;
 	int error;
 
 	hmp = record->ip->hmp;
@@ -653,19 +639,33 @@ retry:
 	 * marked as being modified and further calls to
 	 * hammer_modify_buffer() will result in unneeded UNDO records.
 	 *
-	 * Support zero-fill records.
+	 * Support zero-fill records (data == NULL and data_len != 0)
 	 */
-	if (record->data == NULL)
-		alloc_data_len = 0;
-	else
-		alloc_data_len = record->rec.base.data_len;
-
-	rec = hammer_alloc_record(hmp, &rec_offset,
-				  record->rec.base.base.rec_type,
-				  record->rec_len, &cursor.record_buffer,
-				  &data_offset, alloc_data_len,
-				  &bdata1, NULL, NULL,
-				  NULL, &error);
+	if (record->data == NULL) {
+		rec = hammer_alloc_record(hmp, &rec_offset,
+					  record->rec.base.base.rec_type,
+					  &cursor.record_buffer,
+					  0, &bdata,
+					  NULL, &error);
+		if (hammer_debug_general & 0x1000)
+			kprintf("NULL RECORD DATA\n");
+	} else if (record->flags & HAMMER_RECF_INBAND) {
+		rec = hammer_alloc_record(hmp, &rec_offset,
+					  record->rec.base.base.rec_type,
+					  &cursor.record_buffer,
+					  record->rec.base.data_len, &bdata,
+					  NULL, &error);
+		if (hammer_debug_general & 0x1000)
+			kprintf("INBAND RECORD DATA %016llx DATA %016llx LEN=%d\n", rec_offset, rec->base.data_off, record->rec.base.data_len);
+	} else {
+		rec = hammer_alloc_record(hmp, &rec_offset,
+					  record->rec.base.base.rec_type,
+					  &cursor.record_buffer,
+					  record->rec.base.data_len, &bdata,
+					  &cursor.data_buffer, &error);
+		if (hammer_debug_general & 0x1000)
+			kprintf("OOB RECORD DATA REC %016llx DATA %016llx LEN=%d\n", rec_offset, rec->base.data_off, record->rec.base.data_len);
+	}
 
 	if (rec == NULL)
 		goto done;
@@ -674,27 +674,24 @@ retry:
 	 * Fill in the remaining fields and insert our B-Tree node.
 	 */
 	rec->base.base = record->rec.base.base;
-	if (record->rec_len > sizeof(rec->base)) {
-		bcopy(&record->rec.base + 1, &rec->base + 1,
-		      record->rec_len - sizeof(rec->base));
-	}
+	bcopy(&record->rec.base + 1, &rec->base + 1,
+	      HAMMER_RECORD_SIZE - sizeof(record->rec.base));
 
 	/*
 	 * Copy the data and deal with zero-fill support.
 	 */
 	if (record->data) {
-		rec->base.head.hdr_crc = crc32(record->data, alloc_data_len);
-		KKASSERT(alloc_data_len == rec->base.data_len);
-		bcopy(record->data, bdata1, alloc_data_len);
+		rec->base.data_crc = crc32(record->data, rec->base.data_len);
+		bcopy(record->data, bdata, rec->base.data_len);
 	} else {
 		rec->base.data_len = record->rec.base.data_len;
 	}
 
 	elm.leaf.base = record->rec.base.base;
 	elm.leaf.rec_offset = rec_offset;
-	elm.leaf.data_offset = data_offset;
+	elm.leaf.data_offset = rec->base.data_off;
 	elm.leaf.data_len = rec->base.data_len;
-	elm.leaf.data_crc = rec->base.head.hdr_crc;
+	elm.leaf.data_crc = rec->base.data_crc;
 
 	error = hammer_btree_insert(&cursor, &elm);
 
@@ -709,8 +706,7 @@ retry:
 	/*
 	 * Try to unwind the fifo allocation
 	 */
-	rec->base.head.hdr_type |= HAMMER_HEAD_TYPEF_FREED;
-	hammer_unwind_fifo(hmp, rec_offset);
+	hammer_blockmap_free(hmp, rec_offset, HAMMER_RECORD_SIZE);
 done:
 	record->flags &= ~HAMMER_RECF_SYNCING;
 	hammer_done_cursor(&cursor);
@@ -735,8 +731,9 @@ static
 int
 hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 {
-	int bytes;
 	void *data;
+	int bytes;
+	int reclen;
 		
 	/*
 	 * Make a private copy of record->data
@@ -747,11 +744,22 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 		 * union, otherwise allocate a copy.
 		 */
 		bytes = record->rec.base.data_len;
-		if (bytes <= (int)sizeof(record->rec) - record->rec_len) {
-			bcopy(record->data,
-			      (char *)&record->rec + record->rec_len, bytes);
-			record->data = (void *)((char *)&record->rec +
-							record->rec_len);
+		switch(record->rec.base.base.rec_type) {
+		case HAMMER_RECTYPE_DIRENTRY:
+			reclen = offsetof(struct hammer_entry_record, name[0]);
+			break;
+		case HAMMER_RECTYPE_DATA:
+			reclen = offsetof(struct hammer_data_record, data[0]);
+			break;
+		default:
+			reclen = sizeof(record->rec);
+			break;
+		}
+		if (reclen + bytes <= HAMMER_RECORD_SIZE) {
+			bcopy(record->data, (char *)&record->rec + reclen,
+			      bytes);
+			record->data = (void *)((char *)&record->rec + reclen);
+			record->flags |= HAMMER_RECF_INBAND;
 		} else {
 			++hammer_count_record_datas;
 			data = kmalloc(bytes, M_HAMMER, M_WAITOK);
@@ -1019,7 +1027,7 @@ hammer_ip_next(hammer_cursor_t cursor)
 }
 
 /*
- * Resolve the cursor->data1/2 pointer for the current cursor position in
+ * Resolve the cursor->data pointer for the current cursor position in
  * a merged iteration.
  */
 int
@@ -1028,12 +1036,25 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
 	int error;
 
 	if (cursor->iprec && cursor->record == &cursor->iprec->rec) {
-		cursor->data1 = cursor->iprec->data;
-		cursor->data2 = NULL;
-		cursor->data_split = cursor->iprec->rec.base.data_len;
+		cursor->data = cursor->iprec->data;
 		error = 0;
 	} else {
 		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA);
+	}
+	return(error);
+}
+
+int
+hammer_ip_resolve_record_and_data(hammer_cursor_t cursor)
+{
+	int error;
+
+	if (cursor->iprec && cursor->record == &cursor->iprec->rec) {
+		cursor->data = cursor->iprec->data;
+		error = 0;
+	} else {
+		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA |
+						     HAMMER_CURSOR_GET_RECORD);
 	}
 	return(error);
 }
@@ -1260,7 +1281,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	 */
 	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_RECORD);
 	elm = NULL;
-	hmp = cursor->node->volume->hmp;
+	hmp = cursor->node->hmp;
 
 	dodelete = 0;
 	if (error == 0) {
@@ -1320,7 +1341,14 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes)
 			cursor->flags |= HAMMER_CURSOR_DELBTREE;
 			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 		}
-		hammer_free_fifo(cursor->node->volume->hmp, rec_offset);
+	}
+	if (error == 0) {
+		hammer_blockmap_free(cursor->node->hmp, rec_offset,
+				     sizeof(union hammer_record_ondisk));
+	}
+	if (error == 0 &&
+	    (data_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_LARGE_DATA) {
+		hammer_blockmap_free(cursor->node->hmp, data_offset, data_len);
 	}
 #if 0
 	kprintf("hammer_delete_at_cursor: %d:%d:%08x %08x/%d "

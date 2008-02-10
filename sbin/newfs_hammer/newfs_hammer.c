@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.17 2008/02/08 08:30:58 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.18 2008/02/10 09:50:56 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -57,6 +57,8 @@ main(int ac, char **av)
 	 * if it gets broken!
 	 */
 	assert(sizeof(struct hammer_volume_ondisk) <= HAMMER_BUFSIZE);
+	assert(sizeof(union hammer_record_ondisk) == HAMMER_RECORD_SIZE);
+	assert(sizeof(struct hammer_blockmap_entry) == 32);
 
 	/*
 	 * Generate a filesysem id and lookup the filesystem type
@@ -346,6 +348,11 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	vol->vol_alloc += BootAreaSize;
 	ondisk->vol_mem_beg = vol->vol_alloc;
 	vol->vol_alloc += MemAreaSize;
+
+	/*
+	 * The remaining area is the zone 2 buffer allocation area.  These
+	 * buffers
+	 */
 	ondisk->vol_buf_beg = vol->vol_alloc;
 	ondisk->vol_buf_end = vol->size & ~(int64_t)HAMMER_BUFMASK;
 
@@ -369,10 +376,21 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		 * in volume 0.  hammer_off_t must be properly formatted
 		 * (see vfs/hammer/hammer_disk.h)
 		 */
-		ondisk->vol0_fifo_beg = HAMMER_ENCODE_RAW_BUFFER(0, 0);
-		ondisk->vol0_fifo_end = ondisk->vol0_fifo_beg;
+		ondisk->vol0_free_off = HAMMER_ENCODE_RAW_BUFFER(0, 0);
 		ondisk->vol0_next_tid = createtid();
 		ondisk->vol0_next_seq = 1;
+		format_blockmap(
+			&ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
+			HAMMER_ZONE_BTREE);
+		format_blockmap(
+			&ondisk->vol0_blockmap[HAMMER_ZONE_RECORD_INDEX],
+			HAMMER_ZONE_RECORD);
+		format_blockmap(
+			&ondisk->vol0_blockmap[HAMMER_ZONE_LARGE_DATA_INDEX],
+			HAMMER_ZONE_LARGE_DATA);
+		format_blockmap(
+			&ondisk->vol0_blockmap[HAMMER_ZONE_SMALL_DATA_INDEX],
+			HAMMER_ZONE_SMALL_DATA);
 
 		ondisk->vol0_btree_root = format_root();
 		++ondisk->vol0_stat_inodes;	/* root inode */
@@ -395,9 +413,7 @@ format_root(void)
 	hammer_btree_elm_t elm;
 
 	bnode = alloc_btree_element(&btree_off);
-	rec = alloc_record_element(&rec_off, HAMMER_RECTYPE_INODE,
-				   sizeof(rec->inode), sizeof(*idata),
-				   (void **)&idata);
+	rec = alloc_record_element(&rec_off, sizeof(*idata), (void **)&idata);
 
 	/*
 	 * Populate the inode data and inode record for the root directory.
@@ -414,7 +430,7 @@ format_root(void)
 	rec->base.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
 	/* rec->base.data_offset - initialized by alloc_record_element */
 	/* rec->base.data_len 	 - initialized by alloc_record_element */
-	rec->base.head.hdr_crc = crc32(idata, sizeof(*idata));
+	rec->base.data_crc = crc32(idata, sizeof(*idata));
 	rec->inode.ino_atime  = rec->base.base.create_tid;
 	rec->inode.ino_mtime  = rec->base.base.create_tid;
 	rec->inode.ino_size   = 0;
@@ -432,7 +448,7 @@ format_root(void)
 	elm->leaf.rec_offset = rec_off;
 	elm->leaf.data_offset = rec->base.data_off;
 	elm->leaf.data_len = rec->base.data_len;
-	elm->leaf.data_crc = rec->base.head.hdr_crc;
+	elm->leaf.data_crc = rec->base.data_crc;
 	return(btree_off);
 }
 

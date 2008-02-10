@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.17 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.18 2008/02/10 09:51:01 dillon Exp $
  */
 
 /*
@@ -142,9 +142,7 @@ hammer_done_cursor(hammer_cursor_t cursor)
 		cursor->deadlk_node = NULL;
 	}
 
-	cursor->data1 = NULL;
-	cursor->data2 = NULL;
-	cursor->data_split = 0;
+	cursor->data = NULL;
 	cursor->record = NULL;
 	cursor->left_bound = NULL;
 	cursor->right_bound = NULL;
@@ -241,11 +239,11 @@ hammer_load_cursor_parent(hammer_cursor_t cursor)
 	int error;
 	int i;
 
-	hmp = cursor->node->volume->hmp;
+	hmp = cursor->node->hmp;
 
 	if (cursor->node->ondisk->parent) {
 		node = cursor->node;
-		parent = hammer_get_node(node->volume->hmp,
+		parent = hammer_get_node(node->hmp,
 					 node->ondisk->parent, &error);
 		if (error)
 			return(error);
@@ -354,11 +352,10 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		KKASSERT(elm->internal.subtree_offset != 0);
 		cursor->left_bound = &elm[0].internal.base;
 		cursor->right_bound = &elm[1].internal.base;
-		node = hammer_get_node(node->volume->hmp,
-				       elm->internal.subtree_offset,
+		node = hammer_get_node(node->hmp, elm->internal.subtree_offset,
 				       &error);
 		if (error == 0) {
-			KKASSERT(elm->base.btype == node->ondisk->type);
+			KASSERT(elm->base.btype == node->ondisk->type, ("BTYPE MISMATCH %c %c NODE %p\n", elm->base.btype, node->ondisk->type, node));
 			if (node->ondisk->parent != cursor->parent->node_offset)
 				panic("node %p %016llx vs %016llx\n", node, node->ondisk->parent, cursor->parent->node_offset);
 			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);

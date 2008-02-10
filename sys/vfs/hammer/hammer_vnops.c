@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.29 2008/02/08 08:31:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.30 2008/02/10 09:51:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -666,7 +666,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 			break;
 		rec = cursor.record;
 		if (nlen == rec->entry.base.data_len &&
-		    bcmp(ncp->nc_name, cursor.data1, nlen) == 0) {
+		    bcmp(ncp->nc_name, cursor.data, nlen) == 0) {
 			obj_id = rec->entry.obj_id;
 			break;
 		}
@@ -1047,7 +1047,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	error = hammer_ip_first(&cursor, ip);
 
 	while (error == 0) {
-		error = hammer_ip_resolve_data(&cursor);
+		error = hammer_ip_resolve_record_and_data(&cursor);
 		if (error)
 			break;
 		rec = cursor.record;
@@ -1061,7 +1061,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 			     &error, uio, rec->entry.obj_id,
 			     hammer_get_dtype(rec->entry.base.base.obj_type),
 			     rec->entry.base.data_len,
-			     (void *)cursor.data1);
+			     (void *)cursor.data);
 		if (r)
 			break;
 		++saveoff;
@@ -1128,7 +1128,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	if (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error == 0) {
-			error = uiomove((char *)cursor.data1,
+			error = uiomove((char *)cursor.data,
 					cursor.record->base.data_len,
 					ap->a_uio);
 		}
@@ -1237,7 +1237,7 @@ retry:
 			break;
 		rec = cursor.record;
 		if (fncp->nc_nlen == rec->entry.base.data_len &&
-		    bcmp(fncp->nc_name, cursor.data1, fncp->nc_nlen) == 0) {
+		    bcmp(fncp->nc_name, cursor.data, fncp->nc_nlen) == 0) {
 			break;
 		}
 		error = hammer_ip_next(&cursor);
@@ -1475,7 +1475,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 * as pure data, not a string, and is no \0 terminated.
 	 */
 	if (error == 0) {
-		record = hammer_alloc_mem_record(nip, sizeof(struct hammer_base_record));
+		record = hammer_alloc_mem_record(nip);
 		bytes = strlen(ap->a_target);
 
 		record->rec.base.base.key = HAMMER_FIXKEY_SYMLINK;
@@ -1621,7 +1621,6 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	int error;
 	int boff;
 	int roff;
-	int x;
 	int n;
 
 	bio = ap->a_bio;
@@ -1695,25 +1694,8 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		KKASSERT(n > 0);
 		if (n > bp->b_bufsize - boff)
 			n = bp->b_bufsize - boff;
-		if (roff + n > cursor.data_split) {
-			if (roff < cursor.data_split) {
-				x = cursor.data_split - roff;
-				bcopy((char *)cursor.data1 + roff,
-				      (char *)bp->b_data + boff,
-				      x);
-				bcopy((char *)cursor.data2,
-				      (char *)bp->b_data + boff + x,
-				      n - x);
-			} else {
-				bcopy((char *)cursor.data2 + roff -
-				      cursor.data_split,
-				      (char *)bp->b_data + boff,
-				      n);
-			}
-		} else {
-			bcopy((char *)cursor.data1 + roff,
-			      (char *)bp->b_data + boff, n);
-		}
+		bcopy((char *)cursor.data + roff,
+		      (char *)bp->b_data + boff, n);
 		boff += n;
 		if (boff == bp->b_bufsize)
 			break;
@@ -1868,7 +1850,7 @@ retry:
 			break;
 		rec = cursor.record;
 		if (ncp->nc_nlen == rec->entry.base.data_len &&
-		    bcmp(ncp->nc_name, cursor.data1, ncp->nc_nlen) == 0) {
+		    bcmp(ncp->nc_name, cursor.data, ncp->nc_nlen) == 0) {
 			break;
 		}
 		error = hammer_ip_next(&cursor);
