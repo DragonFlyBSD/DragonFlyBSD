@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.17 2008/02/08 14:39:03 matthias Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.18 2008/02/10 15:37:43 justin Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -345,7 +345,7 @@ rsync
 <TD>Philipps-University Marburg (Germany)</TD>
 <TD>Official ISOs</TD>
 <TD>
-<a href="ftp://ftp.mathematik.uni-marburg.de/pub/mirror/dragonfly/">FTP</a>,
+<a href="ftp://ftp.mathematik.uni-marburg.de/pub/mirror/dragonfly/">FTP</a>
 </TD>
 </TR>
 
