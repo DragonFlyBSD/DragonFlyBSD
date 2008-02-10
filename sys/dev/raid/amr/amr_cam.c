@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_cam.c,v 1.1.2.3 2002/11/11 13:19:10 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.9 2007/12/23 07:00:56 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.10 2008/02/10 00:01:03 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -299,12 +299,10 @@ amr_cam_action(struct cam_sim *sim, union ccb *ccb)
 	cpi->unit_number = cam_sim_unit(sim);
 	cpi->bus_id = cam_sim_bus(sim);
 	cpi->base_transfer_speed = 132 * 1024;  /* XXX get from controller? */
-#ifdef	CAM_NEW_TRAN_CODE
 	cpi->transport = XPORT_SPI;
 	cpi->transport_version = 2;
 	cpi->protocol = PROTO_SCSI;
 	cpi->protocol_version = SCSI_REV_2;
-#endif
 	cpi->ccb_h.status = CAM_REQ_CMP;
 
 	break;
@@ -332,7 +330,6 @@ amr_cam_action(struct cam_sim *sim, union ccb *ccb)
 
 	debug(3, "XPT_GET_TRAN_SETTINGS");
 
-#ifdef	CAM_NEW_TRAN_CODE
 	struct ccb_trans_settings_scsi *scsi = &cts->proto_specific.scsi;
 	struct ccb_trans_settings_spi *spi = &cts->xport_specific.spi;
 
@@ -356,23 +353,6 @@ amr_cam_action(struct cam_sim *sim, union ccb *ccb)
 	    | CTS_SPI_VALID_BUS_WIDTH
 	    | CTS_SPI_VALID_DISC;
 	scsi->valid = CTS_SCSI_VALID_TQ;
-#else
-	if ((cts->flags & CCB_TRANS_USER_SETTINGS) == 0) {
-		ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
-		break;
-        }
-
-	cts->flags = CCB_TRANS_DISC_ENB|CCB_TRANS_TAG_ENB;
-	cts->bus_width = MSG_EXT_WDTR_BUS_32_BIT;
-	cts->sync_period = 6;   /* 40MHz how wide is this bus? */
-	cts->sync_offset = 31;  /* How to extract this from board? */
-
-	cts->valid = CCB_TRANS_SYNC_RATE_VALID
-	    | CCB_TRANS_SYNC_OFFSET_VALID
-	    | CCB_TRANS_BUS_WIDTH_VALID
-	    | CCB_TRANS_DISC_VALID
-	    | CCB_TRANS_TQ_VALID;
-#endif
 	ccb->ccb_h.status = CAM_REQ_CMP;
 	break;
     }

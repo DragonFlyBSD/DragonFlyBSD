@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.33 2008/01/06 16:55:51 swildner Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.34 2008/02/10 00:01:03 pavalos Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -2889,7 +2889,6 @@ asr_action(
         /* Get default/user set transfer settings for the target */
         {
 		struct	ccb_trans_settings *cts = &(ccb->cts);
-#ifdef	CAM_NEW_TRAN_CODE
 		struct ccb_trans_settings_scsi *scsi =
 		    &cts->proto_specific.scsi;
 		struct ccb_trans_settings_spi *spi =
@@ -2916,23 +2915,6 @@ asr_action(
 		} else {
 			ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
 		}
-#else
-                if ((cts->flags & CCB_TRANS_USER_SETTINGS) != 0) {
-                        cts->flags = CCB_TRANS_DISC_ENB|CCB_TRANS_TAG_ENB;
-                        cts->bus_width = MSG_EXT_WDTR_BUS_16_BIT;
-                        cts->sync_period = 6; /* 40MHz */
-                        cts->sync_offset = 15;
-
-                        cts->valid = CCB_TRANS_SYNC_RATE_VALID
-                                   | CCB_TRANS_SYNC_OFFSET_VALID
-                                   | CCB_TRANS_BUS_WIDTH_VALID
-                                   | CCB_TRANS_DISC_VALID
-                                   | CCB_TRANS_TQ_VALID;
-                        ccb->ccb_h.status = CAM_REQ_CMP;
-                } else {
-                        ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
-                }
-#endif
                 xpt_done(ccb);
                 break;
         }
@@ -2999,12 +2981,10 @@ asr_action(
                 strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
                 cpi->unit_number = cam_sim_unit(sim);
                 cpi->ccb_h.status = CAM_REQ_CMP;
-#ifdef	CAM_NEW_TRAN_CODE
                 cpi->transport = XPORT_SPI;
                 cpi->transport_version = 2;
                 cpi->protocol = PROTO_SCSI;
                 cpi->protocol_version = SCSI_REV_2;
-#endif
                 xpt_done(ccb);
                 break;
         }

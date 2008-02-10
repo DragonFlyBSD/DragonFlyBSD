@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#18 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.30 2005/12/05 11:58:32 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.13 2008/02/09 18:13:13 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.14 2008/02/10 00:01:02 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
@@ -78,10 +78,6 @@
 
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
-
-#ifdef CAM_NEW_TRAN_CODE
-#define AHC_NEW_TRAN_SETTINGS
-#endif /* CAM_NEW_TRAN_CODE */
 
 /*************************** Attachment Bookkeeping ***************************/
 extern devclass_t ahc_devclass;

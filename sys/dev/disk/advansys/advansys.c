@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.12 2007/12/23 07:00:55 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.13 2008/02/10 00:01:02 pavalos Exp $
  */
 /*
  * Ported from:
@@ -281,19 +281,12 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 		ccb->ccb_h.status = CAM_REQ_INVALID;
 		xpt_done(ccb);
 		break;
-#ifdef  CAM_NEW_TRAN_CODE
 #define	IS_CURRENT_SETTINGS(c)	(c->type == CTS_TYPE_CURRENT_SETTINGS)
 #define	IS_USER_SETTINGS(c)	(c->type == CTS_TYPE_USER_SETTINGS)
-#else
-#define	IS_CURRENT_SETTINGS(c)	(c->flags & CCB_TRANS_CURRENT_SETTINGS)
-#define	IS_USER_SETTINGS(c)	(c->flags & CCB_TRANS_USER_SETTINGS)
-#endif
 	case XPT_SET_TRAN_SETTINGS:
 	{
-#ifdef	CAM_NEW_TRAN_CODE
 		struct ccb_trans_settings_scsi *scsi;
 		struct ccb_trans_settings_spi *spi;
-#endif
 		struct	 ccb_trans_settings *cts;
 		target_bit_vector targ_mask;
 		struct adv_transinfo *tconf;
@@ -319,7 +312,6 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 		}
 
 		crit_enter();
-#ifdef	CAM_NEW_TRAN_CODE
 		scsi = &cts->proto_specific.scsi;
 		spi = &cts->xport_specific.spi;
 		if ((update_type & ADV_TRANS_GOAL) != 0) {
@@ -385,71 +377,6 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 					 cts->ccb_h.target_id, spi->sync_period,
 					 spi->sync_offset, update_type);
 		}
-#else
-		if ((update_type & ADV_TRANS_GOAL) != 0) {
-			if ((cts->valid & CCB_TRANS_DISC_VALID) != 0) {
-				if ((cts->flags & CCB_TRANS_DISC_ENB) != 0)
-					adv->disc_enable |= targ_mask;
-				else
-					adv->disc_enable &= ~targ_mask;
-				adv_write_lram_8(adv, ADVV_DISC_ENABLE_B,
-						 adv->disc_enable); 
-			}
-
-			if ((cts->valid & CCB_TRANS_TQ_VALID) != 0) {
-				if ((cts->flags & CCB_TRANS_TAG_ENB) != 0)
-					adv->cmd_qng_enabled |= targ_mask;
-				else
-					adv->cmd_qng_enabled &= ~targ_mask;
-			}
-		}
-
-		if ((update_type & ADV_TRANS_USER) != 0) {
-			if ((cts->valid & CCB_TRANS_DISC_VALID) != 0) {
-				if ((cts->flags & CCB_TRANS_DISC_ENB) != 0)
-					adv->user_disc_enable |= targ_mask;
-				else
-					adv->user_disc_enable &= ~targ_mask;
-			}
-
-			if ((cts->valid & CCB_TRANS_TQ_VALID) != 0) {
-				if ((cts->flags & CCB_TRANS_TAG_ENB) != 0)
-					adv->user_cmd_qng_enabled |= targ_mask;
-				else
-					adv->user_cmd_qng_enabled &= ~targ_mask;
-			}
-		}
-		
-		/*
-		 * If the user specifies either the sync rate, or offset,
-		 * but not both, the unspecified parameter defaults to its
-		 * current value in transfer negotiations.
-		 */
-		if (((cts->valid & CCB_TRANS_SYNC_RATE_VALID) != 0)
-		 || ((cts->valid & CCB_TRANS_SYNC_OFFSET_VALID) != 0)) {
-			/*
-			 * If the user provided a sync rate but no offset,
-			 * use the current offset.
-			 */
-			if ((cts->valid & CCB_TRANS_SYNC_OFFSET_VALID) == 0)
-				cts->sync_offset = tconf->offset;
-
-			/*
-			 * If the user provided an offset but no sync rate,
-			 * use the current sync rate.
-			 */
-			if ((cts->valid & CCB_TRANS_SYNC_RATE_VALID) == 0)
-				cts->sync_period = tconf->period;
-
-			adv_period_offset_to_sdtr(adv, &cts->sync_period,
-						  &cts->sync_offset,
-						  cts->ccb_h.target_id);
-			
-			adv_set_syncrate(adv, /*struct cam_path */NULL,
-					 cts->ccb_h.target_id, cts->sync_period,
-					 cts->sync_offset, update_type);
-		}
-#endif
 
 		crit_exit();
 		ccb->ccb_h.status = CAM_REQ_CMP;
@@ -459,10 +386,8 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_GET_TRAN_SETTINGS:
 	/* Get default/user set transfer settings for the target */
 	{
-#ifdef	CAM_NEW_TRAN_CODE
 		struct ccb_trans_settings_scsi *scsi;
 		struct ccb_trans_settings_spi *spi;
-#endif
 		struct ccb_trans_settings *cts;
 		struct adv_transinfo *tconf;
 		target_bit_vector target_mask;
@@ -470,7 +395,6 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 		cts = &ccb->cts;
 		target_mask = ADV_TID_TO_TARGET_MASK(cts->ccb_h.target_id);
 
-#ifdef	CAM_NEW_TRAN_CODE
 		scsi = &cts->proto_specific.scsi;
 		spi = &cts->xport_specific.spi;
 
@@ -505,34 +429,6 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 			   | CTS_SPI_VALID_BUS_WIDTH
 			   | CTS_SPI_VALID_DISC;
 		scsi->valid = CTS_SCSI_VALID_TQ;
-#else
-		cts->flags &= ~(CCB_TRANS_DISC_ENB|CCB_TRANS_TAG_ENB);
-		crit_enter();
-		if ((cts->flags & CCB_TRANS_CURRENT_SETTINGS) != 0) {
-			tconf = &adv->tinfo[cts->ccb_h.target_id].current;
-			if ((adv->disc_enable & target_mask) != 0)
-				cts->flags |= CCB_TRANS_DISC_ENB;
-			if ((adv->cmd_qng_enabled & target_mask) != 0)
-				cts->flags |= CCB_TRANS_TAG_ENB;
-		} else {
-			tconf = &adv->tinfo[cts->ccb_h.target_id].user;
-			if ((adv->user_disc_enable & target_mask) != 0)
-				cts->flags |= CCB_TRANS_DISC_ENB;
-			if ((adv->user_cmd_qng_enabled & target_mask) != 0)
-				cts->flags |= CCB_TRANS_TAG_ENB;
-		}
-
-		cts->sync_period = tconf->period;
-		cts->sync_offset = tconf->offset;
-		crit_exit();
-
-		cts->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
-		cts->valid = CCB_TRANS_SYNC_RATE_VALID
-			   | CCB_TRANS_SYNC_OFFSET_VALID
-			   | CCB_TRANS_BUS_WIDTH_VALID
-			   | CCB_TRANS_DISC_VALID
-			   | CCB_TRANS_TQ_VALID;
-#endif
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
@@ -598,12 +494,10 @@ adv_action(struct cam_sim *sim, union ccb *ccb)
 		strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
 		cpi->unit_number = cam_sim_unit(sim);
 		cpi->ccb_h.status = CAM_REQ_CMP;
-#ifdef	CAM_NEW_TRAN_CODE
                 cpi->transport = XPORT_SPI;
                 cpi->transport_version = 2;
                 cpi->protocol = PROTO_SCSI;
                 cpi->protocol_version = SCSI_REV_2;
-#endif
 		xpt_done(ccb);
 		break;
 	}

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.9 2006/12/22 23:26:16 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.10 2008/02/10 00:01:02 pavalos Exp $ */
 /*
  * FreeBSD/CAM specific routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -1119,11 +1119,7 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		MPT_UNLOCK(mpt);
 		break;
 
-#ifdef	CAM_NEW_TRAN_CODE
 #define	IS_CURRENT_SETTINGS(c)	(c->type == CTS_TYPE_CURRENT_SETTINGS)
-#else
-#define	IS_CURRENT_SETTINGS(c)	(c->flags & CCB_TRANS_CURRENT_SETTINGS)
-#endif
 #define	DP_DISC_ENABLE	0x1
 #define	DP_DISC_DISABL	0x2
 #define	DP_DISC		(DP_DISC_ENABLE|DP_DISC_DISABL)
@@ -1151,33 +1147,6 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		if (mpt->is_fc == 0) {
 			u_int8_t dval = 0;
 			u_int period = 0, offset = 0;
-#ifndef	CAM_NEW_TRAN_CODE
-			if (cts->valid & CCB_TRANS_DISC_VALID) {
-				dval |= DP_DISC_ENABLE;
-			}
-			if (cts->valid & CCB_TRANS_TQ_VALID) {
-				dval |= DP_TQING_ENABLE;
-			}
-			if (cts->valid & CCB_TRANS_BUS_WIDTH_VALID) {
-				if (cts->bus_width)
-					dval |= DP_WIDE;
-				else
-					dval |= DP_NARROW;
-			}
-			/*
-			 * Any SYNC RATE of nonzero and SYNC_OFFSET
-			 * of nonzero will cause us to go to the
-			 * selected (from NVRAM) maximum value for
-			 * this device. At a later point, we'll
-			 * allow finer control.
-			 */
-			if ((cts->valid & CCB_TRANS_SYNC_RATE_VALID) &&
-			    (cts->valid & CCB_TRANS_SYNC_OFFSET_VALID)) {
-				dval |= DP_SYNC;
-				period = cts->sync_period;
-				offset = cts->sync_offset;
-			}
-#else
 			struct ccb_trans_settings_scsi *scsi =
 			    &cts->proto_specific.scsi;
 			struct ccb_trans_settings_spi *spi =
@@ -1211,7 +1180,6 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 				period = spi->sync_period;
 				offset = spi->sync_offset;
 			}
-#endif
 			if (dval & DP_DISC_ENABLE) {
 				mpt->mpt_disc_enable |= (1 << tgt);
 			} else if (dval & DP_DISC_DISABL) {
@@ -1256,21 +1224,6 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 		cts = &ccb->cts;
 		tgt = cts->ccb_h.target_id;
 		if (mpt->is_fc) {
-#ifndef	CAM_NEW_TRAN_CODE
-			/*
-			 * a lot of normal SCSI things don't make sense.
-			 */
-			cts->flags = CCB_TRANS_TAG_ENB | CCB_TRANS_DISC_ENB;
-			cts->valid = CCB_TRANS_DISC_VALID | CCB_TRANS_TQ_VALID;
-			/*
-			 * How do you measure the width of a high
-			 * speed serial bus? Well, in bytes.
-			 *
-			 * Offset and period make no sense, though, so we set
-			 * (above) a 'base' transfer speed to be gigabit.
-			 */
-			cts->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
-#else
 			struct ccb_trans_settings_fc *fc =
 			    &cts->xport_specific.fc;
 
@@ -1282,14 +1235,11 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 			fc->valid = CTS_FC_VALID_SPEED;
 			fc->bitrate = 100000;	/* XXX: Need for 2Gb/s */
 			/* XXX: need a port database for each target */
-#endif
 		} else {
-#ifdef	CAM_NEW_TRAN_CODE
 			struct ccb_trans_settings_scsi *scsi =
 			    &cts->proto_specific.scsi;
 			struct ccb_trans_settings_spi *spi =
 			    &cts->xport_specific.spi;
-#endif
 			u_int8_t dval, pval, oval;
 
 			/*
@@ -1339,29 +1289,6 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 				oval = (mpt->mpt_port_page0.Capabilities >> 16);
 				pval = (mpt->mpt_port_page0.Capabilities >>  8);
 			}
-#ifndef	CAM_NEW_TRAN_CODE
-			cts->flags &= ~(CCB_TRANS_DISC_ENB|CCB_TRANS_TAG_ENB);
-			if (dval & DP_DISC_ENABLE) {
-				cts->flags |= CCB_TRANS_DISC_ENB;
-			}
-			if (dval & DP_TQING_ENABLE) {
-				cts->flags |= CCB_TRANS_TAG_ENB;
-			}
-			if (dval & DP_WIDE) {
-				cts->bus_width = MSG_EXT_WDTR_BUS_16_BIT;
-			} else {
-				cts->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
-			}
-			cts->valid = CCB_TRANS_BUS_WIDTH_VALID |
-			    CCB_TRANS_DISC_VALID | CCB_TRANS_TQ_VALID;
-			if (oval) {
-				cts->sync_period = pval;
-				cts->sync_offset = oval;
-				cts->valid |=
-				    CCB_TRANS_SYNC_RATE_VALID |
-				    CCB_TRANS_SYNC_OFFSET_VALID;
-			}
-#else
 			cts->protocol = PROTO_SCSI;
 			cts->protocol_version = SCSI_REV_2;
 			cts->transport = XPORT_SPI;
@@ -1393,7 +1320,6 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 			} else {
 				scsi->valid = 0;
 			}
-#endif
 			if (mpt->verbose > 1) {
 				device_printf(mpt->dev, 
 				    "GET %s tgt %d flags %x period %x off %x\n",

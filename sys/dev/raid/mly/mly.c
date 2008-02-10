@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.19 2008/01/21 02:27:37 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.20 2008/02/10 00:01:03 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -2084,12 +2084,10 @@ mly_cam_action(struct cam_sim *sim, union ccb *ccb)
         cpi->unit_number = cam_sim_unit(sim);
         cpi->bus_id = cam_sim_bus(sim);
 	cpi->base_transfer_speed = 132 * 1024;	/* XXX what to set this to? */
-#ifdef	CAM_NEW_TRAN_CODE
 	cpi->transport = XPORT_SPI;
 	cpi->transport_version = 2;
 	cpi->protocol = PROTO_SCSI;
 	cpi->protocol_version = SCSI_REV_2;
-#endif
 	ccb->ccb_h.status = CAM_REQ_CMP;
 	break;
     }
@@ -2098,7 +2096,6 @@ mly_cam_action(struct cam_sim *sim, union ccb *ccb)
     {
 	struct ccb_trans_settings	*cts = &ccb->cts;
 	int				bus, target;
-#ifdef	CAM_NEW_TRAN_CODE
 	struct ccb_trans_settings_scsi *scsi = &cts->proto_specific.scsi;
 	struct ccb_trans_settings_spi *spi = &cts->xport_specific.spi;
 
@@ -2155,57 +2152,6 @@ mly_cam_action(struct cam_sim *sim, union ccb *ccb)
 	/* disconnect always OK */
 	spi->flags |= CTS_SPI_FLAGS_DISC_ENB;
 	spi->valid |= CTS_SPI_VALID_DISC;
-#else
-	cts->valid = 0;
-
-	bus = cam_sim_bus(sim);
-	target = cts->ccb_h.target_id;
-	/* XXX validate bus/target? */
-
-	debug(2, "XPT_GET_TRAN_SETTINGS %d:%d", bus, target);
-
-	/* logical device? */
-	if (sc->mly_btl[bus][target].mb_flags & MLY_BTL_LOGICAL) {
-	    /* nothing special for these */
-
-	/* physical device? */
-	} else if (sc->mly_btl[bus][target].mb_flags & MLY_BTL_PHYSICAL) {
-	    /* allow CAM to try tagged transactions */
-	    cts->flags |= CCB_TRANS_TAG_ENB;
-	    cts->valid |= CCB_TRANS_TQ_VALID;
-
-	    /* convert speed (MHz) to usec */
-	    if (sc->mly_btl[bus][target].mb_speed == 0) {
-		cts->sync_period = 1000000 / 5;
-	    } else {
-		cts->sync_period = 1000000 / sc->mly_btl[bus][target].mb_speed;
-	    }
-
-	    /* convert bus width to CAM internal encoding */
-	    switch (sc->mly_btl[bus][target].mb_width) {
-	    case 32:
-		cts->bus_width = MSG_EXT_WDTR_BUS_32_BIT;
-		break;
-	    case 16:
-		cts->bus_width = MSG_EXT_WDTR_BUS_16_BIT;
-		break;
-	    case 8:
-	    default:
-		cts->bus_width = MSG_EXT_WDTR_BUS_8_BIT;
-		break;
-	    }
-	    cts->valid |= CCB_TRANS_SYNC_RATE_VALID | CCB_TRANS_BUS_WIDTH_VALID;
-
-	    /* not a device, bail out */
-	} else {
-	    cts->ccb_h.status = CAM_REQ_CMP_ERR;
-	    break;
-	}
-
-	/* disconnect always OK */
-	cts->flags |= CCB_TRANS_DISC_ENB;
-	cts->valid |= CCB_TRANS_DISC_VALID;
-#endif
 
 	cts->ccb_h.status = CAM_REQ_CMP;
 	break;

@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.36 2008/01/16 12:27:49 matthias Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.37 2008/02/10 00:01:03 pavalos Exp $
  */
 
 /*
@@ -3058,21 +3058,11 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_GET_TRAN_SETTINGS:
 	{
 		struct ccb_trans_settings *cts = &ccb->cts;
-#ifdef	CAM_NEW_TRAN_CODE
 		cts->protocol = PROTO_SCSI;
 		cts->protocol_version = SCSI_REV_2;
 		cts->transport = XPORT_USB;
 		cts->transport_version = XPORT_VERSION_UNSPECIFIED;
 		cts->xport_specific.valid = 0;
-
-#else
-		DPRINTF(UDMASS_SCSI, ("%s:%d:%d:%d:XPT_GET_TRAN_SETTINGS:.\n",
-			device_get_nameunit(sc->sc_dev), cam_sim_path(sc->umass_sim),
-			ccb->ccb_h.target_id, ccb->ccb_h.target_lun));
-
-		cts->valid = 0;
-		cts->flags = 0;		/* no disconnection, tagging */
-#endif
 
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);

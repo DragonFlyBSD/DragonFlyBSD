@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.26 2007/12/23 07:00:56 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.27 2008/02/10 00:01:03 pavalos Exp $
  *
  */
 
@@ -2437,12 +2437,10 @@ END_DEBUG
 		strncpy(cpi->hba_vid, "SBP", HBA_IDLEN);
 		strncpy(cpi->dev_name, sim->sim_name, DEV_IDLEN);
 		cpi->unit_number = sim->unit_number;
-#ifdef	CAM_NEW_TRAN_CODE
                 cpi->transport = XPORT_SPI;	/* XX should have a FireWire */
                 cpi->transport_version = 2;
                 cpi->protocol = PROTO_SCSI;
                 cpi->protocol_version = SCSI_REV_2;
-#endif
 
 		cpi->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
@@ -2451,7 +2449,6 @@ END_DEBUG
 	case XPT_GET_TRAN_SETTINGS:
 	{
 		struct ccb_trans_settings *cts = &ccb->cts;
-#ifdef	CAM_NEW_TRAN_CODE
 		struct ccb_trans_settings_scsi *scsi =
 		    &cts->proto_specific.scsi;
 		struct ccb_trans_settings_spi *spi =
@@ -2465,11 +2462,6 @@ END_DEBUG
 		spi->flags = CTS_SPI_FLAGS_DISC_ENB;
 		scsi->valid = CTS_SCSI_VALID_TQ;
 		scsi->flags = CTS_SCSI_FLAGS_TAG_ENB;
-#else
-		/* Enable disconnect and tagged queuing */
-		cts->valid = CCB_TRANS_DISC_VALID | CCB_TRANS_TQ_VALID;
-		cts->flags = CCB_TRANS_DISC_ENB | CCB_TRANS_TAG_ENB;
-#endif
 SBP_DEBUG(1)
 		kprintf("%s:%d:%d XPT_GET_TRAN_SETTINGS:.\n",
 			device_get_nameunit(sbp->fd.dev),

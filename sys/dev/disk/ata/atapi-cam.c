@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.13 2007/12/23 07:00:56 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.14 2008/02/10 00:01:02 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -251,12 +251,10 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	cpi->unit_number = cam_sim_unit(sim);
 	cpi->bus_id = cam_sim_bus(sim);
 	cpi->base_transfer_speed = 3300;
-#ifdef	CAM_NEW_TRAN_CODE
 	cpi->transport = XPORT_ATA;
 	cpi->transport_version = 2;
 	cpi->protocol = PROTO_SCSI;
 	cpi->protocol_version = SCSI_REV_2;
-#endif
 	if (softc->ata_ch && ccb_h->target_id != CAM_TARGET_WILDCARD) {
 	    switch (softc->ata_ch->device[ccb_h->target_id].mode) {
 	    case ATA_PIO1:
@@ -322,7 +320,6 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 
     case XPT_GET_TRAN_SETTINGS: {
 	struct ccb_trans_settings *cts = &ccb->cts;
-#ifdef	CAM_NEW_TRAN_CODE
 	cts->protocol = PROTO_SCSI;
 	cts->protocol_version = SCSI_REV_2;
 	cts->transport = XPORT_ATA;
@@ -330,15 +327,6 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	cts->proto_specific.valid = 0;
 	cts->xport_specific.valid = 0;
 	/* nothing more to do */
-#else
-	/*
-	 * The default CAM transport code is very SCSI-specific and
-	 * doesn't understand IDE speeds very well.  Be silent about it
-	 * here and let it default to what is set in XPT_PATH_INQ
-	 */
-	cts->valid = (CCB_TRANS_DISC_VALID | CCB_TRANS_TQ_VALID);
-	cts->flags &= ~(CCB_TRANS_DISC_ENB | CCB_TRANS_TAG_ENB);
-#endif
 	ccb->ccb_h.status = CAM_REQ_CMP;
 	CAM_DEBUG(ccb->ccb_h.path, CAM_DEBUG_SUBTRACE, ("GET_TRAN_SETTINGS\n"));
 	xpt_done(ccb);

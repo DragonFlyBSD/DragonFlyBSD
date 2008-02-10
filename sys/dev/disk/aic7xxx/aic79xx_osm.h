@@ -33,7 +33,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.h#23 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.18 2005/12/06 11:19:36 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.12 2008/02/09 18:13:13 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.13 2008/02/10 00:01:02 pavalos Exp $
  */
 
 #ifndef _AIC79XX_FREEBSD_H_
@@ -71,10 +71,6 @@
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
 #include <bus/cam/scsi/scsi_iu.h>
-
-#ifdef CAM_NEW_TRAN_CODE
-#define AHD_NEW_TRAN_SETTINGS
-#endif /* CAM_NEW_TRAN_CODE */
 
 /****************************** Platform Macros *******************************/
 #define	SIM_IS_SCSIBUS_B(ahd, sim)	\

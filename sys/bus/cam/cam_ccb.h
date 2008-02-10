@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.16 2007/12/24 00:14:52 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.17 2008/02/10 00:01:01 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -35,9 +35,7 @@
 #include <sys/queue.h>
 #include <sys/cdefs.h>
 #include <sys/time.h>
-#ifdef CAM_NEW_TRAN_CODE
 #include <machine/limits.h>
-#endif
 #include <sys/callout.h>
 #include "cam_debug.h"
 #include "scsi/scsi_all.h"
@@ -208,7 +206,6 @@ typedef enum {
 #define XPT_FC_IS_QUEUED(ccb) 	\
     (((ccb)->ccb_h.func_code & XPT_FC_QUEUED) != 0)
 
-#ifdef CAM_NEW_TRAN_CODE
 typedef enum {
 	PROTO_UNKNOWN,
 	PROTO_UNSPECIFIED,
@@ -233,7 +230,6 @@ typedef enum {
 #define PROTO_VERSION_UNSPECIFIED UINT_MAX
 #define XPORT_VERSION_UNKNOWN (UINT_MAX - 1)
 #define XPORT_VERSION_UNSPECIFIED UINT_MAX
-#endif /* CAM_NEW_TRAN_CODE */
 
 typedef union {
 	LIST_ENTRY(ccb_hdr) le;
@@ -517,7 +513,6 @@ typedef enum {
 	PIM_SEQSCAN	= 0x04	/* Do bus scans sequentially, not in parallel */
 } pi_miscflag;
 
-#ifdef CAM_NEW_TRAN_CODE
 /* Path Inquiry CCB */
 struct ccb_pathinq_settings_spi {
 	u_int8_t ppr_options;
@@ -532,7 +527,6 @@ struct ccb_pathinq_settings_sas {
 	u_int32_t bitrate;	/* Mbps */
 };
 #define	PATHINQ_SETTINGS_SIZE	128
-#endif /* CAM_NEW_TRAN_CODE */
 
 struct ccb_pathinq {
 	struct 	    ccb_hdr ccb_h;
@@ -554,7 +548,6 @@ struct ccb_pathinq {
 	u_int32_t   unit_number;	/* Unit number for SIM */
 	u_int32_t   bus_id;		/* Bus ID for SIM */
 	u_int32_t   base_transfer_speed;/* Base bus speed in KB/sec */
-#ifdef CAM_NEW_TRAN_CODE
 	cam_proto   protocol;
 	u_int	    protocol_version;
 	cam_xport   transport;
@@ -565,7 +558,6 @@ struct ccb_pathinq {
 		struct ccb_pathinq_settings_sas sas;
 		char ccb_pathinq_settings_opaque[PATHINQ_SETTINGS_SIZE];
 	} xport_specific;
-#endif /* CAM_NEW_TRAN_CODE */
 };
 
 /* Path Statistics CCB */
@@ -703,27 +695,6 @@ struct ccb_termio {
 	union	ccb *termio_ccb;	/* Pointer to CCB to terminate */
 };
 
-#ifndef CAM_NEW_TRAN_CODE
-/* Get/Set transfer rate/width/disconnection/tag queueing settings */
-struct ccb_trans_settings {
-	struct	ccb_hdr ccb_h;
-	u_int	valid;  /* Which fields to honor */
-#define		CCB_TRANS_SYNC_RATE_VALID	0x01
-#define		CCB_TRANS_SYNC_OFFSET_VALID	0x02
-#define		CCB_TRANS_BUS_WIDTH_VALID	0x04
-#define		CCB_TRANS_DISC_VALID		0x08
-#define		CCB_TRANS_TQ_VALID		0x10
-	u_int	flags;
-#define		CCB_TRANS_CURRENT_SETTINGS	0x01
-#define		CCB_TRANS_USER_SETTINGS		0x02
-#define		CCB_TRANS_DISC_ENB		0x04
-#define		CCB_TRANS_TAG_ENB		0x08
-	u_int	sync_period;
-	u_int	sync_offset;
-	u_int	bus_width;
-};
-
-#else /* CAM_NEW_TRAN_CODE */
 typedef enum {
 	CTS_TYPE_CURRENT_SETTINGS,
 	CTS_TYPE_USER_SETTINGS
@@ -791,8 +762,6 @@ struct ccb_trans_settings {
 		struct ccb_trans_settings_sas sas;
 	} xport_specific;
 };
-
-#endif /* CAM_NEW_TRAN_CODE */
 
 /*
  * Calculate the geometry parameters for a device
