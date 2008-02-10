@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.46 2008/02/09 13:38:03 sephe Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.47 2008/02/10 11:14:25 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -428,6 +428,7 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 }
 #endif /* INET6 */
 
+#ifdef SMP
 static void
 tcp_output_dispatch(struct netmsg *nmsg)
 {
@@ -438,6 +439,7 @@ tcp_output_dispatch(struct netmsg *nmsg)
 	error = tcp_output(tp);
 	lwkt_replymsg(msg, error);
 }
+#endif
 
 /*
  * Initiate connection to peer.
