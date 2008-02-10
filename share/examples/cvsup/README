@@ -1,10 +1,10 @@
 # $FreeBSD: src/share/examples/cvsup/README,v 1.15.2.5 2002/12/03 05:58:04 kuriyama Exp $
-# $DragonFly: src/share/examples/cvsup/README,v 1.6 2007/04/01 12:20:50 swildner Exp $
+# $DragonFly: src/share/examples/cvsup/README,v 1.7 2008/02/10 22:25:36 swildner Exp $
 
 This directory contains sample "supfiles" for obtaining and updating
-the various BSD's via the Internet.  These supfiles will work with CVSup
-version 14.0 or later.  For general information on CVSup itself, please
-see http://www.freebsd.org/doc/handbook/cvsup.html
+DragonFly and the various BSDs via the Internet.  These supfiles will
+work with CVSup version 14.0 or later.  For general information on CVSup
+itself, please see http://www.freebsd.org/doc/handbook/cvsup.html
 
 To maintain the sources for DragonFlyBSD, use one of:
 
@@ -23,13 +23,11 @@ To maintain the sources for DragonFlyBSD, use one of:
 
 To maintain the sources for FreeBSD, use:
 
-        FreeBSD-cvs-supfile		Main source tree for FreeBSD
-
-	FreeBSD-ports-supfile		Latest FreeBSD ports tree.
+        FreeBSD-supfile		Main source tree for FreeBSD
 
     A list of mirrors is maintained at:
 
-        http://www.freebsd.org/doc/handbook/mirrors.html
+        http://www.freebsd.org/doc/handbook/cvsup.html#CVSUP-MIRRORS
 
 
 To maintain the sources for NetBSD, use:
@@ -47,8 +45,3 @@ To maintain the sources for OpenBSD, use:
     A list of mirrors is maintained at:
 
         http://www.openbsd.org/cvsup.html#CVSROOT
-
-To prevent CVSup from updating particular directories and files, use
-this file:
-
-	refuse

@@ -1,8 +1,8 @@
-# $FreeBSD: src/share/examples/cvsup/ports-supfile,v 1.36 2007/01/31 14:35:05 pav Exp $
-# $DragonFly: src/share/examples/cvsup/Attic/FreeBSD-ports-supfile,v 1.2 2007/04/01 12:20:50 swildner Exp $ src/share/examples/cvsup/ports-supfile,v 1.2 2003/06/17 04:36:57 dillon Exp $
+# $FreeBSD: src/share/examples/cvsup/cvs-supfile,v 1.47 2007/09/07 22:01:19 gabor Exp $
+# $DragonFly: src/share/examples/cvsup/FreeBSD-supfile,v 1.1 2008/02/10 22:25:36 swildner Exp $
 #
 # This file contains all of the "CVSup collections" that make up the
-# FreeBSD-current ports collection.
+# CVS development tree of the FreeBSD system.
 #
 # CVSup (CVS Update Protocol) allows you to download the latest CVS
 # tree (or any branch of development therefrom) to your system easily
@@ -11,12 +11,12 @@
 # currently using an X display server, you should run CVSup as follows
 # to keep your CVS tree up-to-date:
 #
-#	cvsup ports-supfile
+#	cvsup cvs-supfile
 #
 # If not running X, or invoking cvsup from a non-interactive script, then
 # run it as follows:
 #
-#	cvsup -g -L 2 ports-supfile
+#	cvsup -g -L 2 cvs-supfile
 #
 # You may wish to change some of the settings in this file to better
 # suit your system:
@@ -33,17 +33,16 @@
 #		This specifies the root where CVSup will store information
 #		about the collections you have transferred to your system.
 #		A setting of "/usr" will generate this information in
-#		/usr/sup.  Even if you are CVSupping a large number of
-#		collections, you will be hard pressed to generate more than
-#		~1MB of data in this directory.  You can override the
-#		"base" setting on the command line with cvsup's "-b base"
-#		option.  This directory must exist in order to run CVSup.
+#		/usr/sup.  You can override the "base" setting on the
+#		command line with cvsup's "-b base" option.  This directory
+#		must exist in order to run CVSup.
 #
-# prefix=/usr
+# prefix=/home/ncvs
 #		This specifies where to place the requested files.  A
-#		setting of "/usr" will place all of the files requested
-#		in "/usr/ports" (e.g., "/usr/ports/devel", "/usr/ports/lang").
-#		The prefix directory must exist in order to run CVSup.
+#		setting of "/home/ncvs" will place all of the files
+#		requested in /home/ncvs (e.g., "/home/ncvs/src/bin",
+#		"/home/ncvs/ports/archivers").  The prefix directory
+#		must exist in order to run CVSup.
 
 # Defaults that apply to all the collections
 #
@@ -51,14 +50,50 @@
 # listed at http://www.freebsd.org/doc/handbook/mirrors.html.
 *default host=CHANGE_THIS.FreeBSD.org
 *default base=/usr
-*default prefix=/usr
-*default release=cvs tag=.
+*default prefix=/home/ncvs
+*default release=cvs
 *default delete use-rel-suffix
 
 # If you seem to be limited by CPU rather than network or disk bandwidth, try
 # commenting out the following line.  (Normally, today's CPUs are fast enough
 # that you want to run compression.)
 *default compress
+
+## Main Source Tree.
+#
+# The easiest way to get the main source tree is to use the "src-all"
+# mega-collection.  It includes all of the individual "src-*" collections.
+src-all
+
+# These are the individual collections that make up "src-all".  If you
+# use these, be sure to comment out "src-all" above.
+#src-base
+#src-bin
+#src-cddl
+#src-contrib
+#src-etc
+#src-games
+#src-gnu
+#src-include
+#src-kerberos5
+#src-kerberosIV
+#src-lib
+#src-libexec
+#src-release
+#src-rescue
+#src-sbin
+#src-share
+#src-sys
+#src-tools
+#src-usrbin
+#src-usrsbin
+# These are the individual collections that make up FreeBSD's crypto
+# collection. They are no longer export-restricted and are a part of
+# src-all
+#src-crypto
+#src-eBones
+#src-secure
+#src-sys-crypto
 
 ## Ports Collection.
 #
@@ -68,13 +103,12 @@
 ports-all
 
 # These are the individual collections that make up "ports-all".  If you
-# use these, be sure to comment out "ports-all" above.
+# use these, be sure to comment out "ports-all" above and always include
+# "ports-base" if you use any of the other individual collections below.
+# Your ports may not build correctly without an up-to-date "ports-base".
 #
-# Be sure to ALWAYS cvsup the ports-base collection if you use any of the
-# other individual collections below. ports-base is a mandatory collection
-# for the ports collection, and your ports may not build correctly if it
-# is not kept up to date.
 #ports-base
+#
 #ports-accessibility
 #ports-arabic
 #ports-archivers
@@ -116,6 +150,7 @@ ports-all
 #ports-net-p2p
 #ports-news
 #ports-palm
+#ports-picobsd
 #ports-polish
 #ports-ports-mgmt
 #ports-portuguese
@@ -131,9 +166,37 @@ ports-all
 #ports-www
 #ports-x11
 #ports-x11-clocks
+#ports-x11-drivers
 #ports-x11-fm
 #ports-x11-fonts
 #ports-x11-servers
 #ports-x11-themes
 #ports-x11-toolkits
 #ports-x11-wm
+
+## Documentation
+#
+# The easiest way to get the doc tree is to use the "doc-all"
+# mega-collection.  It includes all of the individual "doc-*"
+# collections,
+doc-all
+
+## Website
+#
+# This collection retrieves the www tree of the FreeBSD
+# repository
+www
+
+## CVSROOT control files
+#
+# This is to get the control files that cvs(1) needs and the commit logs.
+cvsroot-all
+
+# These are the individual collections that make up "cvsroot-all"  If you
+# use these, be sure to comment out "cvsroot-all" above.  "cvsroot-common"
+# is a synthetic CVSROOT that has all the modules from the other CVSROOT-*
+# directories merged into one, and merged commitlogs via symlinks.
+#cvsroot-common
+#cvsroot-src
+#cvsroot-ports
+#cvsroot-doc
