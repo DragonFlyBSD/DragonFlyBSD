@@ -31,7 +31,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.5 2008/01/03 16:42:43 matthias Exp $
+# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.6 2008/02/10 11:01:46 matthias Exp $
 
 UNAME=`uname -s`
 VERSION=`uname -r | cut -d '.' -f 1,2`
@@ -68,7 +68,7 @@ bin_simple_search()
 {
 	awk -F= -v name="$1" '{
 		if ($1 == "PKGNAME") {
-			if ($2 ~ name) {
+			if (tolower($2) ~ name) {
 				printf("%-20s\t", $2);
 				found = 1;
 			}
@@ -83,7 +83,7 @@ bin_ext_search()
 {
 	awk -F= -v name="$1" '{
 		if ($1 == "PKGNAME")
-			if ($2 ~ name) {
+			if (tolower($2) ~ name) {
 				printf("\nName\t: %-50s\n", $2);
 				found = 1;
 			}
@@ -103,7 +103,7 @@ index_v_search()
 {
 	if [ ${KFLAG} -eq 0 ]; then
 		awk -F\| -v name="$1" '{
-			if ($1 ~ name) {
+			if (tolower($1) ~ name) {
 				split($2, a, "/");
 				printf("Name\t: %s-50\nDir\t: %-50s\nDesc\t: %-50s"\
 					"\nURL\t: %-50s\nDeps\t: %s\n\n", $1, $2, 
@@ -112,7 +112,8 @@ index_v_search()
 		}' ${PORTSDIR}/${INDEXFILE}
 	else
 		awk -F\| -v name="$1" '{
-			if ($1 ~ name || $4 ~ name || $12 ~ name) {
+			if (tolower($1) ~ name || tolower($4) ~ name ||
+			    tolower($12) ~ name) {
 				split($2, a, "/");
 				printf("Name\t: %s-50\nDir\t: %-50s\nDesc\t: %-50s"\
 					"\nURL\t: %-50s\nDeps\t: %s\n\n", $1, $2, 
@@ -127,14 +128,15 @@ index_search()
 {
 	if [ ${KFLAG} -eq 0 ]; then
 		awk -F\| -v name="$1" '{
-			if ($1 ~ name) {
+			if (tolower($1) ~ name) {
 				split($2, a, "/");
 				printf("%-20s\t%-25s\n", $1, $4);
 			}
 		}' ${PORTSDIR}/${INDEXFILE}
 	else
 		awk -F\| -v name="$1" '{
-			if ($1 ~ name || $4 ~ name || $12 ~ name) {
+			if (tolower($1) ~ name || tolower($4) ~ name ||
+			    tolower($12) ~ name) {
 				split($2, a, "/");
 				printf("%-20s\t%-25s\n", $1, $4);
 			}
