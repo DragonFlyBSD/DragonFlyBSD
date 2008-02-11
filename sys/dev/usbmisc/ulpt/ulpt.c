@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.24 2007/11/06 07:37:01 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.25 2008/02/11 16:56:53 dillon Exp $
  */
 
 /*
@@ -116,6 +116,8 @@ struct ulpt_softc {
 
 	int sc_refcnt;
 	u_char sc_dying;
+	int vendor;
+	int product;
 };
 
 static d_open_t ulptopen;
@@ -256,6 +258,8 @@ ulpt_attach(device_t self)
 
 	sc->sc_in = -1;
 	sc->sc_out = -1;
+	sc->vendor = uaa->vendor;
+	sc->product = uaa->product;
 	for (i = 0; i < epcount; i++) {
 		ed = usbd_interface2endpoint_descriptor(iface, i);
 		if (ed == NULL) {
@@ -365,6 +369,10 @@ void
 ulpt_reset(struct ulpt_softc *sc)
 {
 	usb_device_request_t req;
+	int other_fails;
+
+	/* The Brother HL1240 doesn't handle UT_WRITE_CLASS_OTHER */
+	other_fails = (sc->vendor == 0x04f9 && sc->product == 0x0006);
 
 	DPRINTFN(1, ("ulpt_reset\n"));
 	req.bRequest = UR_SOFT_RESET;
@@ -379,7 +387,8 @@ ulpt_reset(struct ulpt_softc *sc)
 	 * so we try both.
 	 */
 	req.bmRequestType = UT_WRITE_CLASS_OTHER;
-	if (usbd_do_request(sc->sc_udev, &req, 0)) {	/* 1.0 */
+	/* Some printers don't handle UT_WRITE_CLASS_OTHER */
+	if (other_fails || usbd_do_request(sc->sc_udev, &req, 0)) {/* 1.0 */
 		req.bmRequestType = UT_WRITE_CLASS_INTERFACE;
 		(void)usbd_do_request(sc->sc_udev, &req, 0); /* 1.1 */
 	}
