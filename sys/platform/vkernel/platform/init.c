@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.48 2008/01/29 19:54:59 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.49 2008/02/11 22:50:12 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -875,6 +875,7 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 
 	if (strcmp(netif, "auto") == 0) {
 		int i;
+		int lasterr = 0;
 
 		/*
 		 * Find first unused tap(4) device file
@@ -884,9 +885,10 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 			tap_fd = open(tap_dev, TAPDEV_OFLAGS);
 			if (tap_fd >= 0 || errno == ENOENT)
 				break;
+			lasterr = errno;
 		}
 		if (tap_fd < 0) {
-			warnx("Unable to find a free tap(4)");
+			warnc(lasterr, "Unable to find a free tap(4)");
 			return -1;
 		}
 	} else {
