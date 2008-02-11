@@ -1,5 +1,5 @@
 /* $NetBSD: rfcomm_sppd.c,v 1.8 2007/04/21 10:39:30 dsl Exp $ */
-/* $DragonFly: src/usr.bin/rfcomm_sppd/rfcomm_sppd.c,v 1.1 2008/02/08 14:06:25 hasso Exp $ */
+/* $DragonFly: src/usr.bin/rfcomm_sppd/rfcomm_sppd.c,v 1.2 2008/02/11 20:10:23 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -481,7 +481,7 @@ copy_data(int src, int dst)
 }
 
 void
-sighandler(int s)
+sighandler(int s __unused)
 {
 
 	done++;
