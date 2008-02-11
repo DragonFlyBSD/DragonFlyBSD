@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
-.\" $DragonFly: src/share/man/man4/ktr.4,v 1.4 2007/11/03 07:24:52 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ktr.4,v 1.5 2008/02/11 00:27:31 swildner Exp $
 .\"
 .Dd November 2, 2007
 .Dt KTR 4
@@ -113,7 +113,7 @@ event are output to the console in addition to the log message and the CPU
 number.
 The
 .Dv KTR_VERBOSE
-option sets the flag to one.
+option enables verbose mode and sets the flag to one.
 .Ss Examining the Events
 The KTR buffer can be examined with
 .Xr ktrdump 8 ,
