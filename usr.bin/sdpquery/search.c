@@ -1,5 +1,5 @@
 /* $NetBSD: search.c,v 1.6 2007/11/06 21:35:52 plunky Exp $ */
-/* $DragonFly: src/usr.bin/sdpquery/search.c,v 1.1 2008/02/08 14:06:25 hasso Exp $ */
+/* $DragonFly: src/usr.bin/sdpquery/search.c,v 1.2 2008/02/11 20:09:42 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -566,7 +566,8 @@ do_sdp_search(bdaddr_t *laddr, bdaddr_t *raddr, int argc, char const **argv)
 	struct service	*s;
 	void		*xs;
 	char		*ep;
-	int32_t		 n, type, value;
+	uint32_t	 n;
+	int32_t		 type, value;
 	uint16_t	 service;
 
 	if (argc != 1)
