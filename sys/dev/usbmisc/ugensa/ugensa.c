@@ -1,5 +1,5 @@
-/*	$DragonFly: src/sys/dev/usbmisc/umsm/Attic/umsm.c,v 1.8 2008/01/15 14:19:11 hasso Exp $	*/
-/*	$OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $	*/
+/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.1 2008/02/11 18:13:58 hasso Exp $ */
+/* $OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $ */
 
 /*
  * Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
@@ -17,7 +17,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* Driver for Qualcomm MSM EVDO and UMTS communication devices */
+/*
+ * Generic USB serial driver used for devices where hardware specific
+ * don't apply or doesn't make sense (for example Qualcomm MSM EVDO, UMTS
+ * and other similar communication devices).
+ */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -34,21 +38,21 @@
 #include <bus/usb/usbdi_util.h>
 #include <dev/usbmisc/ucom/ucomvar.h>
 
-#ifdef UMSM_DEBUG
-static int	umsmdebug = 1;
-#define DPRINTFN(n, x)  do { if (umsmdebug > (n)) kprintf x; } while (0)
+#ifdef UGENSA_DEBUG
+static int	ugensadebug = 1;
+#define DPRINTFN(n, x)  do { if (ugensadebug > (n)) kprintf x; } while (0)
 #else
 #define DPRINTFN(n, x)
 #endif
 #define DPRINTF(x) DPRINTFN(0, x)
 
-#define UMSMBUFSZ	4096
+#define UGENSABUFSZ	4096
 
-struct umsm_softc {
+struct ugensa_softc {
 	struct ucom_softc	 sc_ucom;
 };
 
-struct ucom_callback umsm_callback = {
+struct ucom_callback ugensa_callback = {
 	NULL,
 	NULL,
 	NULL,
@@ -59,7 +63,7 @@ struct ucom_callback umsm_callback = {
 	NULL
 };
 
-static const struct usb_devno umsm_devs[] = {
+static const struct usb_devno ugensa_devs[] = {
 	{ USB_DEVICE(0x05c6, 0x6613) }, /* Qualcomm HSDPA MSM */
 	{ USB_DEVICE(0x0c88, 0x17da) }, /* Kyocera KPC650 */
 	{ USB_DEVICE(0x0f3d, 0x0112) }, /* AirPrime PC5220 */
@@ -79,51 +83,52 @@ static const struct usb_devno umsm_devs[] = {
 	{ USB_DEVICE(0x1410, 0x1100) }, /* Novatel Wireless ExpressCard 3G */
 	{ USB_DEVICE(0x1410, 0x1110) }, /* Novatel Wireless Merlin V620 */
 	{ USB_DEVICE(0x1410, 0x1130) }, /* Novatel Wireless S720 */
+	{ USB_DEVICE(0x1410, 0x1410) }, /* Novatel Wireless U740 */
 	{ USB_DEVICE(0x1410, 0x1430) }, /* Novatel Wireless XU870 */
 	{ USB_DEVICE(0x1410, 0x2100) }, /* Novatel Wireless ES620 */
 	{ USB_DEVICE(0x1410, 0x2110) }, /* Novatel Wireless U720 */
 	{ USB_DEVICE(0x413c, 0x8115) }, /* Dell W5500 */
 };
 
-static device_probe_t umsm_match;
-static device_attach_t umsm_attach;
-static device_detach_t umsm_detach;
+static device_probe_t ugensa_match;
+static device_attach_t ugensa_attach;
+static device_detach_t ugensa_detach;
 
-static device_method_t umsm_methods[] = {
+static device_method_t ugensa_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe, umsm_match),
-	DEVMETHOD(device_attach, umsm_attach),
-	DEVMETHOD(device_detach, umsm_detach),
+	DEVMETHOD(device_probe, ugensa_match),
+	DEVMETHOD(device_attach, ugensa_attach),
+	DEVMETHOD(device_detach, ugensa_detach),
 	{ 0, 0 }
 };
 
-static driver_t umsm_driver = { 
+static driver_t ugensa_driver = { 
 	"ucom",
-	umsm_methods,
-	sizeof (struct umsm_softc)
+	ugensa_methods,
+	sizeof (struct ugensa_softc)
 };
 
-DRIVER_MODULE(umsm, uhub, umsm_driver, ucom_devclass, usbd_driver_load, 0);
-MODULE_DEPEND(umsm, usb, 1, 1, 1);
-MODULE_DEPEND(umsm, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
-MODULE_VERSION(umsm, 1);
+DRIVER_MODULE(ugensa, uhub, ugensa_driver, ucom_devclass, usbd_driver_load, 0);
+MODULE_DEPEND(ugensa, usb, 1, 1, 1);
+MODULE_DEPEND(ugensa, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
+MODULE_VERSION(ugensa, 1);
 
 static int
-umsm_match(device_t self)
+ugensa_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 
 	if (uaa->iface == NULL)
 		return UMATCH_NONE;
 
-	return (usb_lookup(umsm_devs, uaa->vendor, uaa->product) != NULL) ?
+	return (usb_lookup(ugensa_devs, uaa->vendor, uaa->product) != NULL) ?
 	    UMATCH_VENDOR_IFACESUBCLASS : UMATCH_NONE;
 }
 
 static int
-umsm_attach(device_t self)
+ugensa_attach(device_t self)
 {
-	struct umsm_softc *sc = device_get_softc(self);
+	struct ugensa_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	struct ucom_softc *ucom;
 	usb_interface_descriptor_t *id;
@@ -131,7 +136,7 @@ umsm_attach(device_t self)
 	int i;
 
 	ucom = &sc->sc_ucom;
-	bzero(sc, sizeof (struct umsm_softc));
+	bzero(sc, sizeof (struct ugensa_softc));
 
 	ucom->sc_dev = self;
 	ucom->sc_udev = uaa->device;
@@ -162,11 +167,11 @@ umsm_attach(device_t self)
 
 	ucom->sc_parent = sc;
 	ucom->sc_portno = UCOM_UNK_PORTNO;
-	ucom->sc_ibufsize = UMSMBUFSZ;
-	ucom->sc_obufsize = UMSMBUFSZ;
-	ucom->sc_ibufsizepad = UMSMBUFSZ;
+	ucom->sc_ibufsize = UGENSABUFSZ;
+	ucom->sc_obufsize = UGENSABUFSZ;
+	ucom->sc_ibufsizepad = UGENSABUFSZ;
 	ucom->sc_opkthdrlen = 0;
-	ucom->sc_callback = &umsm_callback;
+	ucom->sc_callback = &ugensa_callback;
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, ucom->sc_udev,
 			   ucom->sc_dev);
@@ -185,12 +190,12 @@ error:
 }
 
 static int
-umsm_detach(device_t self)
+ugensa_detach(device_t self)
 {
-	struct umsm_softc *sc = device_get_softc(self);
+	struct ugensa_softc *sc = device_get_softc(self);
 	int rv = 0;
 
-	DPRINTF(("umsm_detach: sc=%p\n", sc));
+	DPRINTF(("ugensa_detach: sc=%p\n", sc));
 	sc->sc_ucom.sc_dying = 1;
 	rv = ucom_detach(&sc->sc_ucom);
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_ucom.sc_udev,
@@ -201,9 +206,9 @@ umsm_detach(device_t self)
 
 #if 0 /* not yet */
 int
-umsm_activate(struct device *self, enum devact act)
+ugensa_activate(struct device *self, enum devact act)
 {
-	struct umsm_softc *sc = (struct umsm_softc *)self;
+	struct ugensa_softc *sc = (struct ugensa_softc *)self;
 	int rv = 0;
 
 	switch (act) {

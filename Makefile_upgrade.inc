@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.13 2008/02/10 22:34:25 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.14 2008/02/11 18:13:58 hasso Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -556,3 +556,5 @@ TO_REMOVE+=/usr/share/examples/cvsup/FreeBSD-standard-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/FreeBSD-www-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/refuse
 TO_REMOVE+=/usr/share/examples/cvsup/refuse.README
+TO_REMOVE+=/usr/share/man/man4/umsm.4.gz
+TO_REMOVE+=/usr/share/man/cat4/umsm.4.gz
