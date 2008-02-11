@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.43 2007/09/08 12:35:04 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.44 2008/02/11 16:42:39 nant Exp $
  */
 
 /*
@@ -223,11 +223,14 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 			break;
 		}
 		/* Announce a new entry if requested. */
-		if (rt->rt_flags & RTF_ANNOUNCE)
+		if (rt->rt_flags & RTF_ANNOUNCE) {
+			lwkt_serialize_enter(rt->rt_ifp->if_serializer);
 			arprequest(rt->rt_ifp,
 			    &SIN(rt_key(rt))->sin_addr,
 			    &SIN(rt_key(rt))->sin_addr,
 			    LLADDR(SDL(gate)));
+			lwkt_serialize_exit(rt->rt_ifp->if_serializer);
+		}
 		/*FALLTHROUGH*/
 	case RTM_RESOLVE:
 		if (gate->sa_family != AF_LINK ||
@@ -323,6 +326,8 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 	struct arphdr *ah;
 	struct sockaddr sa;
 	u_short ar_hrd;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((m = m_gethdr(MB_DONTWAIT, MT_DATA)) == NULL)
 		return;
