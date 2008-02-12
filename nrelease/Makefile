@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.74 2008/02/02 19:23:24 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.75 2008/02/12 02:06:12 dillon Exp $
 #
 
 #########################################################################
@@ -50,25 +50,26 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
-PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.10.0-RELEASE-BUILD
+PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
 
 ENVCMD?=	env
 TAR?=	tar
 
-PKGSRC_CDRECORD?=	cdrtools-2.01.01.27nb1.tgz
-PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20070801
+PKGSRC_CDRECORD?=	cdrtools-ossdvd-2.01.1.36nb2.tgz
+PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20080211
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
 # Default packages to be installed on the release ISO.
 #
-PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1.tgz
+PKGSRC_PACKAGES?=	cdrtools-ossdvd-2.01.1.36nb2.tgz
 
 # Even though buildiso wipes the packages, our check target has to run
 # first and old packages (listed as they appear in pkg_info) must be
 # cleaned out in order for the pkg_add -n test we use in the check target
 # to operate properly.
 #
-OLD_PKGSRC_PACKAGES?= cdrecord-2.00.3nb2 bootstrap-kit-20070205
+OLD_PKGSRC_PACKAGES?= cdrtools-2.01.01.27nb1 cdrecord-2.00.3nb2 \
+		      bootstrap-kit-20070205
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `pkgcustomizeiso'
@@ -78,10 +79,15 @@ REQ_ROOTSKELS= ${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
 .if defined(WITH_INSTALLER)
-OLD_PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6
+# note: the old dfuibe_install and curses depend on the old gettext and
+# must be removed for the old gettext to be removed.  The new dfuibe install
+# and curses are named the same as the old.
+#
+OLD_PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6 gettext-lib-0.14.5 \
+			dfuibe_installer-1.1.7nb1 dfuife_curses-1.5
 PKGSRC_PACKAGES+=	dfuibe_installer-1.1.7nb1.tgz dfuife_curses-1.5.tgz
-PKGSRC_PACKAGES+=	gettext-lib-0.14.5.tgz libaura-3.1.tgz \
-			libdfui-4.2.tgz libinstaller-5.1.tgz
+PKGSRC_PACKAGES+=	gettext-lib-0.14.6.tgz gettext-tools-0.14.6nb1.tgz
+PKGSRC_PACKAGES+=	libaura-3.1.tgz libdfui-4.2.tgz libinstaller-5.1.tgz
 ROOTSKELS+=		${.CURDIR}/installer
 .endif
 

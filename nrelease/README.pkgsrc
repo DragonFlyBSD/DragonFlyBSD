@@ -1,0 +1,49 @@
+$DragonFly: src/nrelease/README.pkgsrc,v 1.1 2008/02/12 02:06:12 dillon Exp $
+
+		    Generating bootstrap and nrelease packages
+
+    This README file describes how to create the bootstrap package kit and
+    binary packages needed by the nrelease build.
+
+    Creating the kit requires a test box or virtual kernel whos pkgsrc
+    infrastructure (/usr/pkg and /var/db/pkg) have been completely wiped,
+    because the bootstrap won't build otherwise.  I'm sure there's a way
+    to do it with environment variables too but I don't now how.
+
+    Wiping the installed packages means removing /usr/pkg and /var/db/pkg.
+    It is also a good idea to clean out cached binary packages in
+    /usr/pkgsrc/packages/
+
+    rm -rf /usr/obj/bootstrap-kit-20080211
+    ./bootstrap --workdir /usr/obj/bootstrap-kit-20080211 \
+		--binary-kit /usr/pkgsrc/packages/All/bootstrap-kit-20080211.tar
+
+    (rehash if running on csh)
+
+    cd /usr/pkgsrc/sysutils/dfuibe_installer
+    bmake clean-depends
+    cd /usr/pkgsrc/devel/gettext-lib
+    bmake package
+    cd /usr/pkgsrc/devel/gettext-tools/
+    bmake package
+    cd /usr/pkgsrc/devel/libaura/
+    bmake package
+    cd /usr/pkgsrc/devel/libdfui/
+    bmake package
+    cd /usr/pkgsrc/devel/libinstaller/
+    bmake package
+    cd /usr/pkgsrc/sysutils/dfuibe_installer
+    bmake package
+    cd /usr/pkgsrc/sysutils/cdrtools-ossdvd
+    bmake package
+
+    cd /usr/pkgsrc/packages/All
+    gzip -9 < bootstrap-kit-20080211.tar > bootstrap-kit-20080211.tgz
+
+    The binary packages needed for the build will then be in
+    /usr/pkgsrc/packages.
+
+    The packages are then placed in a location that the nrelease build
+    can fetch them from, you can use the PKGSRC_BOOTSTRAP_URL make variable
+    to specify the URL.
+
