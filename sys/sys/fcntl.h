@@ -37,7 +37,7 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.13 2008/01/01 14:01:36 matthias Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.14 2008/02/12 20:00:38 corecode Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -81,6 +81,7 @@
 #define	O_FSYNC		0x0080		/* synchronous writes */
 #define	O_NOFOLLOW	0x0100		/* don't follow symlinks */
 #endif
+#define	O_SYNC		0x0080		/* Same as O_FSYNC, but POSIX */
 #define	O_CREAT		0x0200		/* create if nonexistent */
 #define	O_TRUNC		0x0400		/* truncate to zero length */
 #define	O_EXCL		0x0800		/* error if already exists */
