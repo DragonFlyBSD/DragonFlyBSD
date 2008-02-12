@@ -1,7 +1,16 @@
-# $DragonFly: src/etc/bluetooth/Makefile,v 1.1 2008/01/03 13:35:20 hasso Exp $
+# $DragonFly: src/etc/bluetooth/Makefile,v 1.1.2.1 2008/02/12 21:49:33 hasso Exp $
 
-FILESDIR=	/etc/bluetooth
-FILES=		hosts protocols
-FILESMODE=	644
+FILESDIR=		/etc/bluetooth
+FILES=			protocols
+
+.if !exists(${DESTDIR}/etc/bluetooth/hosts)
+FILES+=			hosts
+FILESMODE_hosts=	644
+.endif
+
+.if !exists(${DESTDIR}/etc/bluetooth/bthcid.conf)
+FILES+=			bthcid.conf
+FILESMODE_bthcid.conf=	600
+.endif
 
 .include <bsd.prog.mk>
