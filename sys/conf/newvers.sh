@@ -33,9 +33,9 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.20 2007/10/28 01:32:33 swildner Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.20.2.1 2008/02/12 02:48:15 dillon Exp $
 
-tag="\$Name:  $"
+tag="\$Name: DragonFly_RELEASE_1_12 $"
 
 # Extract the tag name, if any.
 #
@@ -63,7 +63,7 @@ if [ "X${BRANCH}" = "XPreview" ]; then
     SHORTTAG="DEVELOPMENT_1_11"
 fi
 
-# This case occurs if the $Name:  $ field has not been expanded.
+# This case occurs if the $Name: DragonFly_RELEASE_1_12 $ field has not been expanded.
 #
 if [ "X${BRANCH}" = "X" ]; then
     BRANCH="UNKNOWN"
