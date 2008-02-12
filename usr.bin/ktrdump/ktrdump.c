@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.9 2007/06/08 18:46:32 swildner Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2008/02/12 23:19:24 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -66,6 +66,9 @@ static struct nlist nl[] = {
 	{ "_ktr_idx" },
 	{ "_ktr_buf" },
 	{ "_ncpus" },
+	{ NULL }
+};
+static struct nlist nl2[] = {
 	{ "_tsc_frequency" },
 	{ NULL }
 };
@@ -226,8 +229,8 @@ main(int ac, char **av)
 	if (kvm_read(kd, nl[4].n_value, &ncpus, sizeof(ncpus)) == -1)
 		errx(1, "%s", kvm_geterr(kd));
 	ktr_start_index = malloc(sizeof(*ktr_start_index) * ncpus);
-	if (version >= 3) {
-		if (kvm_read(kd, nl[5].n_value, &tts, sizeof(tts)) == -1)
+	if (version >= 3 && kvm_nlist(kd, nl2) == 0) {
+		if (kvm_read(kd, nl2[0].n_value, &tts, sizeof(tts)) == -1)
 			errx(1, "%s", kvm_geterr(kd));
 		tsc_frequency = (double)tts;
 	}
