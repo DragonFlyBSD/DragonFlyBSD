@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.44 2008/02/12 02:09:23 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.45 2008/02/12 02:26:05 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -48,20 +48,18 @@
 #define BSD4_4	1		/* XXX obsolete */
 
 /*
- * __DragonFly_version number.   Note that the name and comment are pattern
- * searched from conf/newvers.sh.
- *
- * Version changes should be documented in:
- *	doc/en_US.ISO8859-1/books/porters-handbook/book.sgml
+ * __DragonFly_version number.  The number doesn't really meaningfully
+ * translate to a version number.
  *
  * 170000 - base development version after 1.6 branch
  * 170001 - base development version before 1.8 branch
  * 190000 - base development version after 1.8 branch
  * 195000 - base development version after 1.10 branch
- * 197500 - base development version after 1.12 branch
+ * 197500 - base development version before 1.12 branch
+ * 197600 - base development version after 1.12 branch
  */
 #undef __DragonFly_version
-#define __DragonFly_version 197500	/* Master, propagated to newvers */
+#define __DragonFly_version 197600	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 
