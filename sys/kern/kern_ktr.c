@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.22 2007/11/03 17:43:39 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.23 2008/02/12 23:33:23 corecode Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -130,10 +130,10 @@ MALLOC_DEFINE(M_KTR, "ktr", "ktr buffers");
 
 SYSCTL_NODE(_debug, OID_AUTO, ktr, CTLFLAG_RW, 0, "ktr");
 
-static int	ktr_entries = KTR_ENTRIES;
+int		ktr_entries = KTR_ENTRIES;
 SYSCTL_INT(_debug_ktr, OID_AUTO, entries, CTLFLAG_RD, &ktr_entries, 0, "");
 
-static int	ktr_version = KTR_VERSION;
+int		ktr_version = KTR_VERSION;
 SYSCTL_INT(_debug_ktr, OID_AUTO, version, CTLFLAG_RD, &ktr_version, 0, "");
 
 static int	ktr_stacktrace = 1;
@@ -159,8 +159,8 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, testspincnt, CTLFLAG_RW, &ktr_testspincnt, 0, "
  * early boot (note however that we still use a critical section, XXX).
  */
 static struct	ktr_entry ktr_buf0[KTR_ENTRIES];
-static struct	ktr_entry *ktr_buf[MAXCPU] = { &ktr_buf0[0] };
-static int	ktr_idx[MAXCPU];
+struct		ktr_entry *ktr_buf[MAXCPU] = { &ktr_buf0[0] };
+int		ktr_idx[MAXCPU];
 #ifdef SMP
 static int	ktr_sync_state = 0;
 static int	ktr_sync_count;
