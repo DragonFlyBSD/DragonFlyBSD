@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/installer/etc/master.passwd,v 1.3 2005/07/07 13:08:14 joerg Exp $
+# $DragonFly: src/nrelease/installer/etc/master.passwd,v 1.4 2008/02/13 14:45:28 matthias Exp $
 #
 root::0:0::0:0:Charlie &:/root:/bin/csh
 toor:*:0:0::0:0:Bourne-again Superuser:/root:
@@ -17,9 +17,9 @@ mailnull:*:26:26::0:0:Sendmail Default User:/var/spool/mqueue:/sbin/nologin
 bind:*:53:53::0:0:Bind Sandbox:/:/sbin/nologin
 proxy:*:62:62::0:0:Packet Filter pseudo-user:/nonexistent:/sbin/nologin
 _pflogd:*:64:64::0:0:pflogd privsep user:/var/empty:/sbin/nologin
-_ntp:*:65:65::0:0:ntpd privsep user:/var/empty:/sbin/nologin
 uucp:*:66:66::0:0:UUCP pseudo-user:/var/spool/uucppublic:/usr/libexec/uucp/uucico
 xten:*:67:67::0:0:X-10 daemon:/usr/local/xten:/sbin/nologin
 pop:*:68:6::0:0:Post Office Owner:/nonexistent:/sbin/nologin
+_sdpd:*:70:70::0:0:sdpd privsep user:/var/empty:/sbin/nologin
 www:*:80:80::0:0:World Wide Web Owner:/nonexistent:/sbin/nologin
 nobody:*:65534:65534::0:0:Unprivileged user:/nonexistent:/sbin/nologin

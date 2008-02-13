@@ -8,7 +8,7 @@
 # If you discover any problem, please contact the bugs@lists.dragonflybsd.org
 # mailing list with the details.
 #
-# $DragonFly: src/UPDATING,v 1.23 2007/05/20 01:07:30 dillon Exp $
+# $DragonFly: src/UPDATING,v 1.24 2008/02/13 14:45:28 matthias Exp $
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+
@@ -156,7 +156,6 @@ add any that are missing:
 
 smmsp:*:25:25::0:0:Sendmail Submission User:/var/spool/clientmqueue:/sbin/nologin
 _pflogd:*:64:64::0:0:pflogd privsep user:/var/empty:/sbin/nologin
-_ntp:*:65:65::0:0:ntpd privsep user:/var/empty:/sbin/nologin
 
 The following groups may be missing from your group file.  Use vi /etc/group
 and add any that are missing:
@@ -164,7 +163,6 @@ and add any that are missing:
 smmsp:*:25:
 authpf:*:63:
 _pflogd:*:64:
-_ntp:*:65:
 
 
 > Upgrading to DragonFly from FreeBSD
