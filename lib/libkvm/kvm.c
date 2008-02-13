@@ -36,7 +36,7 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.11 2007/12/03 14:42:45 hasso Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.12 2008/02/13 00:12:46 corecode Exp $
  */
 
 #include <sys/user.h>	/* MUST BE FIRST */
@@ -283,6 +283,7 @@ kvm_nlist(kvm_t *kd, struct nlist *nl)
 	struct nlist *p;
 	int nvalid;
 	struct kld_sym_lookup lookup;
+	int error;
 
 	/*
 	 * If we can't use the kld symbol lookup, revert to the
@@ -315,9 +316,13 @@ kvm_nlist(kvm_t *kd, struct nlist *nl)
 		}
 	}
 	/*
-	 * Return the number of entries that weren't found.
+	 * Return the number of entries that weren't found. If they exist,
+	 * also fill internal error buffer.
 	 */
-	return ((p - nl) - nvalid);
+	error = ((p - nl) - nvalid);
+	if (error)
+		_kvm_syserr(kd, kd->program, "kvm_nlist");
+	return (error);
 }
 
 ssize_t
