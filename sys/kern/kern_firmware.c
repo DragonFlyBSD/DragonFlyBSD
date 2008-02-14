@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_firmware.c,v 1.9 2008/01/10 12:45:10 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_firmware.c,v 1.10 2008/02/14 12:30:31 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,7 @@
 #include <sys/systm.h>
 #include <machine/limits.h>
 
-static TAILQ_HEAD(, fw_image) images;
+static TAILQ_HEAD(, fw_image) images = TAILQ_HEAD_INITIALIZER(images);
 
 static struct fw_image	*firmware_image_load_file(const char *, bus_dma_tag_t);
 static struct fw_image	*firmware_prepare_image(const char *, size_t,
