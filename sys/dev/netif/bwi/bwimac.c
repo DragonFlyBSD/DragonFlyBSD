@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.11 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.12 2008/02/14 12:53:51 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -870,15 +870,26 @@ bwi_mac_fw_alloc(struct bwi_mac *mac)
 {
 	struct bwi_softc *sc = mac->mac_sc;
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	struct fw_image *img;
 	char fwname[64];
 	int idx;
+
+	/*
+	 * NB: serializer need to be released before loading firmware
+	 *     image to avoid possible dead lock
+	 */
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (mac->mac_ucode == NULL) {
 		ksnprintf(fwname, sizeof(fwname), BWI_FW_UCODE_PATH,
 			  sc->sc_fw_version,
 			  mac->mac_rev >= 5 ? 5 : mac->mac_rev);
 
-		mac->mac_ucode = firmware_image_load(fwname, NULL);
+		lwkt_serialize_exit(ifp->if_serializer);
+		img = firmware_image_load(fwname, NULL);
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		mac->mac_ucode = img;
 		if (mac->mac_ucode == NULL) {
 			if_printf(ifp, "request firmware %s failed\n", fwname);
 			return ENOMEM;
@@ -893,7 +904,11 @@ bwi_mac_fw_alloc(struct bwi_mac *mac)
 			  sc->sc_fw_version,
 			  mac->mac_rev < 5 ? 4 : 5);
 
-		mac->mac_pcm = firmware_image_load(fwname, NULL);
+		lwkt_serialize_exit(ifp->if_serializer);
+		img = firmware_image_load(fwname, NULL);
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		mac->mac_pcm = img;
 		if (mac->mac_pcm == NULL) {
 			if_printf(ifp, "request firmware %s failed\n", fwname);
 			return ENOMEM;
@@ -918,7 +933,11 @@ bwi_mac_fw_alloc(struct bwi_mac *mac)
 		ksnprintf(fwname, sizeof(fwname), BWI_FW_IV_PATH,
 			  sc->sc_fw_version, idx);
 
-		mac->mac_iv = firmware_image_load(fwname, NULL);
+		lwkt_serialize_exit(ifp->if_serializer);
+		img = firmware_image_load(fwname, NULL);
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		mac->mac_iv = img;
 		if (mac->mac_iv == NULL) {
 			if_printf(ifp, "request firmware %s failed\n", fwname);
 			return ENOMEM;
@@ -944,7 +963,11 @@ bwi_mac_fw_alloc(struct bwi_mac *mac)
 		ksnprintf(fwname, sizeof(fwname), BWI_FW_IV_EXT_PATH,
 			  sc->sc_fw_version, idx);
 
-		mac->mac_iv_ext = firmware_image_load(fwname, NULL);
+		lwkt_serialize_exit(ifp->if_serializer);
+		img = firmware_image_load(fwname, NULL);
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		mac->mac_iv_ext = img;
 		if (mac->mac_iv_ext == NULL) {
 			if_printf(ifp, "request firmware %s failed\n", fwname);
 			return ENOMEM;

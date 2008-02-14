@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.25 2008/02/06 08:21:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.26 2008/02/14 12:53:52 sephe Exp $
  */
 
 /*
@@ -1669,8 +1669,16 @@ static int
 acx_alloc_firmware(struct acx_softc *sc)
 {
 	struct acx_firmware *fw = &sc->sc_firmware;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	struct fw_image *img;
 	char filename[64];
 	int error = 0;
+
+	/*
+	 * NB: serializer need to be released before loading firmware
+	 *     image to avoid possible dead lock
+	 */
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (fw->base_fw_image == NULL) {
 		if (fw->combined_radio_fw) {
@@ -1681,10 +1689,14 @@ acx_alloc_firmware(struct acx_softc *sc)
 			ksnprintf(filename, sizeof(filename),
 				  ACX_BASE_FW_PATH, fw->fwdir);
 		}
-		fw->base_fw_image = firmware_image_load(filename, NULL);
+
+		lwkt_serialize_exit(ifp->if_serializer);
+		img = firmware_image_load(filename, NULL);
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		fw->base_fw_image = img;
 		if (fw->base_fw_image == NULL) {
-			if_printf(&sc->sc_ic.ic_if, "load %s base fw failed\n",
-				  filename);
+			if_printf(ifp, "load %s base fw failed\n", filename);
 			error = EIO;
 			goto back;
 		}
@@ -1698,10 +1710,14 @@ acx_alloc_firmware(struct acx_softc *sc)
 	if (!fw->combined_radio_fw && fw->radio_fw_image == NULL) {
 		ksnprintf(filename, sizeof(filename), ACX_RADIO_FW_PATH,
 			  fw->fwdir, sc->sc_radio_type);
-		fw->radio_fw_image = firmware_image_load(filename, NULL);
+
+		lwkt_serialize_exit(ifp->if_serializer);
+		img = firmware_image_load(filename, NULL);
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		fw->radio_fw_image = img;
 		if (fw->radio_fw_image == NULL) {
-			if_printf(&sc->sc_ic.ic_if, "load %s radio fw failed\n",
-				  filename);
+			if_printf(ifp, "load %s radio fw failed\n", filename);
 			error = EIO;
 			goto back;
 		}
