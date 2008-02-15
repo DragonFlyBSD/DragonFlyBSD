@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.19 2008/02/15 11:15:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.20 2008/02/15 11:48:15 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -3115,7 +3115,7 @@ bwi_encap(struct bwi_softc *sc, int idx, struct mbuf *m,
 		ack_rate = ieee80211_ack_rate(ni, rate_fb);
 		dur = ieee80211_txtime(ni,
 		sizeof(struct ieee80211_frame_ack) + IEEE80211_CRC_LEN,
-		ack_rate, ic->ic_flags & ~IEEE80211_F_SHPREAMBLE);
+		ack_rate, ic->ic_flags & IEEE80211_F_SHPREAMBLE);
 
 		hdr->txh_fb_duration = htole16(dur);
 	}
