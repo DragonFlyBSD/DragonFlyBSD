@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.13 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.14 2008/02/15 11:15:38 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -60,6 +60,12 @@
 #define BWI_LED_EVENT_TX	1
 #define BWI_LED_EVENT_RX	2
 #define BWI_LED_SLOWDOWN(dur)	(dur) = (((dur) * 3) / 2)
+
+enum bwi_txpwrcb_type {
+	BWI_TXPWR_INIT = 0,
+	BWI_TXPWR_FORCE = 1,
+	BWI_TXPWR_CALIB = 2
+};
 
 #define BWI_NOISE_FLOOR		-95	/* TODO: noise floor calc */
 #define BWI_FRAME_MIN_LEN(hdr)	\
@@ -474,6 +480,7 @@ struct bwi_mac {
 #define BWI_MAC_F_ENABLED	0x10
 #define BWI_MAC_F_LOCKED	0x20	/* for debug */
 #define BWI_MAC_F_TPCTL_ERROR	0x40
+#define BWI_MAC_F_PHYE_RESET	0x80
 
 #define BWI_CREATE_MAC(mac, sc, id, rev)	\
 do {						\
@@ -565,6 +572,7 @@ struct bwi_softc {
 
 	int			sc_rx_rate;
 	int			sc_tx_rate;
+	enum bwi_txpwrcb_type	sc_txpwrcb_type;
 
 	int			sc_led_blinking;
 	int			sc_led_ticks;

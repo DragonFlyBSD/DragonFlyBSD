@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.12 2008/02/14 12:53:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.13 2008/02/15 11:15:38 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1662,6 +1662,8 @@ bwi_mac_attach(struct bwi_softc *sc, int id, uint8_t rev)
 		mac->mac_flags |= BWI_MAC_F_HAS_TXSTATS;
 		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_ATTACH, "%s\n",
 			"has TX stats");
+	} else {
+		mac->mac_flags |= BWI_MAC_F_PHYE_RESET;
 	}
 
 	device_printf(sc->sc_dev, "MAC: rev %u\n", rev);
@@ -1783,7 +1785,7 @@ bwi_mac_adjust_tpctl(struct bwi_mac *mac, int rf_atten_adj, int bbp_atten_adj)
  * http://bcm-specs.sipsolutions.net/RecalculateTransmissionPower
  */
 void
-bwi_mac_calibrate_txpower(struct bwi_mac *mac)
+bwi_mac_calibrate_txpower(struct bwi_mac *mac, enum bwi_txpwrcb_type type)
 {
 	struct bwi_softc *sc = mac->mac_sc;
 	struct bwi_rf *rf = &mac->mac_rf;
@@ -1815,15 +1817,28 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "%s\n",
 			"no DS tssi");
 
-		if (mac->mac_phy.phy_mode == IEEE80211_MODE_11B)
-			return;
+		if (mac->mac_phy.phy_mode == IEEE80211_MODE_11B) {
+			if (type == BWI_TXPWR_FORCE) {
+				rf_atten_adj = 0;
+				bbp_atten_adj = 1;
+				goto calib;
+			} else {
+				return;
+			}
+		}
 
 		error = bwi_rf_get_latest_tssi(mac, tssi,
 				BWI_COMM_MOBJ_TSSI_OFDM);
 		if (error) {
 			DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "%s\n",
 				"no OFDM tssi");
-			return;
+			if (type == BWI_TXPWR_FORCE) {
+				rf_atten_adj = 0;
+				bbp_atten_adj = 1;
+				goto calib;
+			} else {
+				return;
+			}
 		}
 
 		for (i = 0; i < 4; ++i) {
@@ -1859,8 +1874,15 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 	txpwr_diff = rf->rf_txpower_max - cur_txpwr; /* XXX ni_txpower */
 
 	rf_atten_adj = -howmany(txpwr_diff, 8);
-	bbp_atten_adj = -(txpwr_diff / 2) -
-			(BWI_RF_ATTEN_FACTOR * rf_atten_adj);
+	if (type == BWI_TXPWR_INIT) {
+		/*
+		 * Move toward EEPROM max TX power as fast as we can
+		 */
+		bbp_atten_adj = -txpwr_diff;
+	} else {
+		bbp_atten_adj = -(txpwr_diff / 2);
+	}
+	bbp_atten_adj -= (BWI_RF_ATTEN_FACTOR * rf_atten_adj);
 
 	if (rf_atten_adj == 0 && bbp_atten_adj == 0) {
 		DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER, "%s\n",
@@ -1869,6 +1891,7 @@ bwi_mac_calibrate_txpower(struct bwi_mac *mac)
 		return;
 	}
 
+calib:
 	DPRINTF(sc, BWI_DBG_MAC | BWI_DBG_TXPOWER,
 		"rf atten adjust %d, bbp atten adjust %d\n",
 		rf_atten_adj, bbp_atten_adj);

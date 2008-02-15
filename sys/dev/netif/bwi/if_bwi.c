@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.18 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.19 2008/02/15 11:15:38 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -95,7 +95,9 @@ static void	*bwi_ratectl_attach(struct ieee80211com *, u_int);
 static void	bwi_next_scan(void *);
 static void	bwi_calibrate(void *);
 
-static int	bwi_stop(struct bwi_softc *);
+static void	bwi_newstate_begin(struct bwi_softc *, enum ieee80211_state);
+static void	bwi_init_statechg(struct bwi_softc *, int);
+static int	bwi_stop(struct bwi_softc *, int);
 static int	bwi_newbuf(struct bwi_softc *, int, int);
 static int	bwi_encap(struct bwi_softc *, int, struct mbuf *,
 			  struct ieee80211_node **, int);
@@ -831,7 +833,7 @@ bwi_detach(device_t dev)
 		int i;
 
 		lwkt_serialize_enter(ifp->if_serializer);
-		bwi_stop(sc);
+		bwi_stop(sc, 1);
 		bus_teardown_intr(dev, sc->sc_irq_res, sc->sc_irq_handle);
 		lwkt_serialize_exit(ifp->if_serializer);
 
@@ -867,7 +869,7 @@ bwi_shutdown(device_t dev)
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
 	lwkt_serialize_enter(ifp->if_serializer);
-	bwi_stop(sc);
+	bwi_stop(sc, 1);
 	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
@@ -1421,7 +1423,12 @@ bwi_set_clock_delay(struct bwi_softc *sc)
 static void
 bwi_init(void *xsc)
 {
-	struct bwi_softc *sc = xsc;
+	bwi_init_statechg(xsc, 1);
+}
+
+static void
+bwi_init_statechg(struct bwi_softc *sc, int statechg)
+{
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
 	struct bwi_mac *mac;
@@ -1429,7 +1436,7 @@ bwi_init(void *xsc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	error = bwi_stop(sc);
+	error = bwi_stop(sc, statechg);
 	if (error) {
 		if_printf(ifp, "can't stop\n");
 		return;
@@ -1489,15 +1496,21 @@ bwi_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	if (ic->ic_opmode != IEEE80211_M_MONITOR) {
-		if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
-			ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
+	if (statechg) {
+		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
+			if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
+				ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
+		} else {
+			ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+		}
 	} else {
-		ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+		ieee80211_new_state(ic, ic->ic_state, -1);
 	}
 back:
 	if (error)
-		bwi_stop(sc);
+		bwi_stop(sc, 1);
+	else
+		bwi_start(ifp);
 }
 
 static int
@@ -1538,7 +1551,7 @@ bwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t req, struct ucred *cr)
 				bwi_init(sc);
 		} else {
 			if (ifp->if_flags & IFF_RUNNING)
-				bwi_stop(sc);
+				bwi_stop(sc, 1);
 		}
 		break;
 	default:
@@ -1688,7 +1701,7 @@ bwi_watchdog(struct ifnet *ifp)
 }
 
 static int
-bwi_stop(struct bwi_softc *sc)
+bwi_stop(struct bwi_softc *sc, int state_chg)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
@@ -1697,7 +1710,10 @@ bwi_stop(struct bwi_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
+	if (state_chg)
+		ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
+	else
+		bwi_newstate_begin(sc, IEEE80211_S_INIT);
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		KKASSERT(sc->sc_cur_regwin->rw_type == BWI_REGWIN_T_MAC);
@@ -1738,6 +1754,7 @@ static void
 bwi_intr(void *xsc)
 {
 	struct bwi_softc *sc = xsc;
+	struct bwi_mac *mac;
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	uint32_t intr_status;
 	uint32_t txrx_intr_status[BWI_TXRX_NRING];
@@ -1760,6 +1777,9 @@ bwi_intr(void *xsc)
 	intr_status &= CSR_READ_4(sc, BWI_MAC_INTR_MASK);
 	if (intr_status == 0)		/* Nothing is interesting */
 		return;
+
+	KKASSERT(sc->sc_cur_regwin->rw_type == BWI_REGWIN_T_MAC);
+	mac = (struct bwi_mac *)sc->sc_cur_regwin;
 
 	txrx_error = 0;
 	DPRINTF(sc, BWI_DBG_INTR, "%s\n", "TX/RX intr");
@@ -1796,17 +1816,21 @@ bwi_intr(void *xsc)
 	/* Disable all interrupts */
 	bwi_disable_intrs(sc, BWI_ALL_INTRS);
 
-	if (intr_status & BWI_INTR_PHY_TXERR)
-		if_printf(ifp, "intr PHY TX error\n");
+	if (intr_status & BWI_INTR_PHY_TXERR) {
+		if (mac->mac_flags & BWI_MAC_F_PHYE_RESET) {
+			if_printf(ifp, "intr PHY TX error\n");
+			/* XXX to netisr0? */
+			bwi_init_statechg(sc, 0);
+			return;
+		}
+	}
 
 	if (txrx_error) {
 		/* TODO: reset device */
 	}
 
-	if (intr_status & BWI_INTR_TBTT) {
-		KKASSERT(sc->sc_cur_regwin->rw_type == BWI_REGWIN_T_MAC);
-		bwi_mac_config_ps((struct bwi_mac *)sc->sc_cur_regwin);
-	}
+	if (intr_status & BWI_INTR_TBTT)
+		bwi_mac_config_ps(mac);
 
 	if (intr_status & BWI_INTR_EO_ATIM)
 		if_printf(ifp, "EO_ATIM\n");
@@ -1859,6 +1883,19 @@ bwi_intr(void *xsc)
 	}
 }
 
+static void
+bwi_newstate_begin(struct bwi_softc *sc, enum ieee80211_state nstate)
+{
+	callout_stop(&sc->sc_scan_ch);
+	callout_stop(&sc->sc_calib_ch);
+
+	ieee80211_ratectl_newstate(&sc->sc_ic, nstate);
+	bwi_led_newstate(sc, nstate);
+
+	if (nstate == IEEE80211_S_INIT)
+		sc->sc_txpwrcb_type = BWI_TXPWR_INIT;
+}
+
 static int
 bwi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 {
@@ -1868,11 +1905,7 @@ bwi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	callout_stop(&sc->sc_scan_ch);
-	callout_stop(&sc->sc_calib_ch);
-
-	ieee80211_ratectl_newstate(ic, nstate);
-	bwi_led_newstate(sc, nstate);
+	bwi_newstate_begin(sc, nstate);
 
 	if (nstate == IEEE80211_S_INIT)
 		goto back;
@@ -1895,7 +1928,12 @@ bwi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		mac = (struct bwi_mac *)sc->sc_cur_regwin;
 
 		/* Initial TX power calibration */
-		bwi_mac_calibrate_txpower(mac);
+		bwi_mac_calibrate_txpower(mac, BWI_TXPWR_INIT);
+#ifdef notyet
+		sc->sc_txpwrcb_type = BWI_TXPWR_FORCE;
+#else
+		sc->sc_txpwrcb_type = BWI_TXPWR_CALIB;
+#endif
 	} else {
 		bwi_set_bssid(sc, bwi_zero_addr);
 	}
@@ -1908,8 +1946,7 @@ back:
 			      (sc->sc_dwell_time * hz) / 1000,
 			      bwi_next_scan, sc);
 	} else if (nstate == IEEE80211_S_RUN) {
-		/* XXX 15 seconds */
-		callout_reset(&sc->sc_calib_ch, hz * 15, bwi_calibrate, sc);
+		callout_reset(&sc->sc_calib_ch, hz, bwi_calibrate, sc);
 	}
 	return error;
 }
@@ -3650,8 +3687,10 @@ bwi_calibrate(void *xsc)
 		KKASSERT(sc->sc_cur_regwin->rw_type == BWI_REGWIN_T_MAC);
 		mac = (struct bwi_mac *)sc->sc_cur_regwin;
 
-		if (ic->ic_opmode != IEEE80211_M_MONITOR)
-			bwi_mac_calibrate_txpower(mac);
+		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
+			bwi_mac_calibrate_txpower(mac, sc->sc_txpwrcb_type);
+			sc->sc_txpwrcb_type = BWI_TXPWR_CALIB;
+		}
 
 		/* XXX 15 seconds */
 		callout_reset(&sc->sc_calib_ch, hz * 15, bwi_calibrate, sc);
