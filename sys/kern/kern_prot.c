@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.28 2007/03/12 21:07:42 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.29 2008/02/16 15:53:39 matthias Exp $
  */
 
 /*
@@ -116,7 +116,7 @@ sys_getpgrp(struct getpgrp_args *uap)
 }
 
 /*
- * Get an arbitary pid's process group id 
+ * Get an arbitrary pid's process group id 
  */
 int
 sys_getpgid(struct getpgid_args *uap)
@@ -136,7 +136,7 @@ found:
 }
 
 /*
- * Get an arbitary pid's session id.
+ * Get an arbitrary pid's session id.
  */
 int
 sys_getsid(struct getsid_args *uap)
