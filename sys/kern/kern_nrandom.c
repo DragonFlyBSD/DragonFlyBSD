@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.5 2008/01/30 19:28:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.6 2008/02/16 20:40:47 dillon Exp $
  */
 /*			   --- NOTES ---
  *
@@ -451,7 +451,7 @@ add_keyboard_randomness(u_char scancode)
 }
 
 /*
- * Interrupt events
+ * Interrupt events.  This is SMP safe and allowed to race.
  */
 void
 add_interrupt_randomness(int intr)
@@ -566,8 +566,11 @@ rand_thread_loop(void *dummy)
 		count = (int)(L15_Byte() * hz / (256 * 10) + hz / 10);
 		spin_unlock_wr(&rand_spin);
 		tsleep(rand_td, 0, "rwait", count);
-		rand_thread_signal = 0;
+		crit_enter();
 		lwkt_deschedule_self(rand_td);
+		cpu_sfence();
+		rand_thread_signal = 0;
+		crit_exit();
 		lwkt_switch();
 	}
 }
