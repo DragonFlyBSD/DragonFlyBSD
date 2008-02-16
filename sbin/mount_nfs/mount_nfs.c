@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.12 2006/03/27 16:18:13 dillon Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.13 2008/02/16 20:48:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -559,6 +559,7 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
 {
 	struct hostent *hp;
 	struct sockaddr_in saddr;
+	struct in_addr iaddr;
 	enum tryret ret;
 	int speclen, remoteerr;
 	char *hostp, *delimp, *errstr;
@@ -630,12 +631,16 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
 			_res.retrans = 3;
 			break;
 		}
-		if (isdigit(*hostp)) {
-			saddr.sin_addr.s_addr = inet_addr(hostp);
-			if (saddr.sin_addr.s_addr == INADDR_NONE) {
-				warnx("bad net address %s", hostp);
-				haserror = EAI_FAIL;
-			}
+		if (inet_aton(hostp, &iaddr)) {
+		  if ((hp = gethostbyaddr((char *) &iaddr, 
+					  sizeof(iaddr), 
+					  AF_INET)) != NULL) {
+		    	memmove(&saddr.sin_addr, hp->h_addr, 
+			    MIN(hp->h_length, (int)sizeof(saddr.sin_addr)));
+		  } else {
+		    warnx("bad net address %s", hostp);
+		    haserror = EAI_FAIL;
+		  }
 		} else if ((hp = gethostbyname(hostp)) != NULL) {
 			memmove(&saddr.sin_addr, hp->h_addr, 
 			    MIN(hp->h_length, (int)sizeof(saddr.sin_addr)));
