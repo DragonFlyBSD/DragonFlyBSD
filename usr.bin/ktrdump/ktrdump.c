@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2008/02/12 23:19:24 corecode Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.11 2008/02/17 10:23:57 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -596,7 +596,7 @@ earliest_ts(struct ktr_buffer *buf)
 	save = &buf->ents[earliest & fifo_mask];
 	for (scan = buf->end_idx - 1; scan != buf->beg_idx -1; --scan) {
 		i = scan & fifo_mask;
-		if (buf->ents[i].ktr_timestamp < save->ktr_timestamp)
+		if (buf->ents[i].ktr_timestamp <= save->ktr_timestamp)
 			earliest = scan;
 		/*
 		 * We may have gotten so far behind that beg_idx wrapped
