@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.38 2008/01/14 12:34:44 matthias Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.38.2.1 2008/02/17 21:30:13 swildner Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -65,9 +65,6 @@
 #	psm*	PS/2 mouse
 #	jogdial	Sony VAIO Jogdial
 #	sysmouse Mousesystems mouse emulator for syscons
-#
-# Time devices:
-#	refclock-* serial ports used by xntpd parse refclocks
 #
 # Terminal ports:
 #	tty*	general purpose serial ports
