@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.110 2007/09/27 18:27:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.111 2008/02/17 21:54:42 nant Exp $
  */
 
 /*
@@ -803,7 +803,7 @@ lwkt_preempt(thread_t ntd, int critpri)
      * The caller has put us in a critical section.  We can only preempt
      * if the caller of the caller was not in a critical section (basically
      * a local interrupt), as determined by the 'critpri' parameter.  We
-     * also acn't preempt if the caller is holding any spinlocks (even if
+     * also can't preempt if the caller is holding any spinlocks (even if
      * he isn't in a critical section).  This also handles the tokens test.
      *
      * YYY The target thread must be in a critical section (else it must
