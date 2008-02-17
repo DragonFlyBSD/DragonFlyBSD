@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.13 2007/06/23 10:13:39 swildner Exp $
+# $DragonFly: src/etc/rc.subr,v 1.14 2008/02/17 19:51:53 swildner Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -1002,9 +1002,6 @@ load_rc_config()
         	[ -n "$portmap_program" ] && rpcbind_program="$portmap_program"
         	[ -n "$portmap_flags" ] && rpcbind_flags="$portmap_flags"
         	[ -n "$single_mountd_enable" ] && mountd_enable="$single_mountd_enable"
-        	[ -n "$xntpd_enable" ] && ntpd_enable="$xntpd_enable"
-        	[ -n "$xntpd_program" ] && ntpd_program="$xntpd_program"
-        	[ -n "$xntpd_flags" ] && ntpd_flags="$xntpd_flags"
 		[ -n "$dhcp_program" ] && dhclient_program="$dhcp_program"
 		[ -n "$dhcp_flags" ] && dhclient_flags="$dhcp_flags"
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $DragonFly: src/sbin/newbtconf/newbtconf.sh,v 1.2 2005/07/02 21:05:56 swildner Exp $
+# $DragonFly: src/sbin/newbtconf/newbtconf.sh,v 1.3 2008/02/17 19:51:53 swildner Exp $
 # Setup a new config directory
 #
 if [ $# -lt 1 ] ; then
@@ -12,7 +12,7 @@ fi
 dir=$1
 
 FILES="defaultdomain dntpd.conf fstab ifconfig.* inetd.conf mrouted.conf \
-	mygate myname netstart nsswitch.conf ntpd.conf \
+	mygate myname netstart nsswitch.conf \
 	rc.conf rc.conf.d resolv.conf"
 
 if [ $dir = init ] ; then
