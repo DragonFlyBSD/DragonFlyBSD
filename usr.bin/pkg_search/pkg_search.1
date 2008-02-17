@@ -1,9 +1,9 @@
 .\"-
-.\" Copyright (c) 2007 The DragonFly Project.  All rights reserved.
-.\" 
+.\" Copyright (c) 2007-08 The DragonFly Project.  All rights reserved.
+.\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthias Schmidt <matthias@dragonflybsd.org>, University of Marburg.
-.\" 
+.\"
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -30,9 +30,9 @@
 .\" NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 .\" SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/usr.bin/pkg_search/pkg_search.1,v 1.9 2008/02/10 11:01:46 matthias Exp $
+.\" $DragonFly: src/usr.bin/pkg_search/pkg_search.1,v 1.10 2008/02/17 19:35:24 matthias Exp $
 .\"
-.Dd February 10, 2008
+.Dd February 17, 2008
 .Dt PKG_SEARCH 1
 .Os
 .Sh NAME
@@ -40,7 +40,7 @@
 .Nd print information about a package
 .Sh SYNOPSIS
 .Nm
-.Op Fl k | v
+.Op Fl k | s | v
 .Ar package
 .Sh DESCRIPTION
 .Nm
@@ -61,6 +61,8 @@ The options are as follows:
 .Bl -tag -width indent
 .It Fl k
 Also query the Info and WWW field.
+.It Fl s
+Show the description of a package.
 .It Fl v
 Print verbose information (Ports directory, URL, depencies)
 .El

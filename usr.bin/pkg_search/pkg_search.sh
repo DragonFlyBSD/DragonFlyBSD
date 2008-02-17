@@ -1,19 +1,19 @@
 #!/bin/sh
 #
-# Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+# Copyright (c) 2007-08 The DragonFly Project.  All rights reserved.
 #
 # This code is derived from software contributed to The DragonFly Project
 # by Matthias Schmidt <matthias@dragonflybsd.org>, University of Marburg.
 #
 # All rights reserved.
 #
-# Redistribution and use in source and binary forms, with or without 
+# Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
-# - Redistributions of source code must retain the above copyright notice, 
+# - Redistributions of source code must retain the above copyright notice,
 #   this list of conditions and the following disclaimer.
-# - Redistributions in binary form must reproduce the above copyright notice, 
-#   this list of conditions and the following disclaimer in the documentation 
+# - Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
 #   and/or other materials provided with the distribution.
 # - Neither the name of The DragonFly Project nor the names of its
 #   contributors may be used to endorse or promote products derived
@@ -31,7 +31,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.6 2008/02/10 11:01:46 matthias Exp $
+# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.7 2008/02/17 19:35:24 matthias Exp $
 
 UNAME=`uname -s`
 VERSION=`uname -r | cut -d '.' -f 1,2`
@@ -88,7 +88,7 @@ bin_ext_search()
 				found = 1;
 			}
 			else found = 0;
-		
+
 		if (found == 1 && $1 == "COMMENT")
 			printf("Desc\t: %-50s\n", $2);
 		if (found == 1 && $1 == "PKGPATH")
@@ -104,9 +104,8 @@ index_v_search()
 	if [ ${KFLAG} -eq 0 ]; then
 		awk -F\| -v name="$1" '{
 			if (tolower($1) ~ name) {
-				split($2, a, "/");
 				printf("Name\t: %s-50\nDir\t: %-50s\nDesc\t: %-50s"\
-					"\nURL\t: %-50s\nDeps\t: %s\n\n", $1, $2, 
+					"\nURL\t: %-50s\nDeps\t: %s\n\n", $1, $2,
 					$4, $12, $9);
 			}
 		}' ${PORTSDIR}/${INDEXFILE}
@@ -114,9 +113,8 @@ index_v_search()
 		awk -F\| -v name="$1" '{
 			if (tolower($1) ~ name || tolower($4) ~ name ||
 			    tolower($12) ~ name) {
-				split($2, a, "/");
 				printf("Name\t: %s-50\nDir\t: %-50s\nDesc\t: %-50s"\
-					"\nURL\t: %-50s\nDeps\t: %s\n\n", $1, $2, 
+					"\nURL\t: %-50s\nDeps\t: %s\n\n", $1, $2,
 					$4, $12, $9);
 			}
 		}' ${PORTSDIR}/${INDEXFILE}
@@ -129,7 +127,6 @@ index_search()
 	if [ ${KFLAG} -eq 0 ]; then
 		awk -F\| -v name="$1" '{
 			if (tolower($1) ~ name) {
-				split($2, a, "/");
 				printf("%-20s\t%-25s\n", $1, $4);
 			}
 		}' ${PORTSDIR}/${INDEXFILE}
@@ -137,21 +134,38 @@ index_search()
 		awk -F\| -v name="$1" '{
 			if (tolower($1) ~ name || tolower($4) ~ name ||
 			    tolower($12) ~ name) {
-				split($2, a, "/");
 				printf("%-20s\t%-25s\n", $1, $4);
 			}
 		}' ${PORTSDIR}/${INDEXFILE}
 	fi
 }
 
+show_description()
+{
+	PDESC=`awk -F\| -v name="$1" '{
+		if (tolower($1) == name) {
+			split($2, ppath, "/");
+			printf("%s\n", $5);
+		}
+	}' ${PORTSDIR}/${INDEXFILE}`
+	if [ -f "${PORTSDIR}/${PDESC}" ]; then
+		cat "${PORTSDIR}/${PDESC}"
+	else
+		echo "Unable to locate package $1.  Please provide the exact"
+		echo "package name as given by pkg_search(1).  You need the"
+		echo "complete pkgsrc(7) tree to perform this operation."
+	fi
+}
+
 usage()
 {
         echo "usage: $0 [-k | -v] package"
-        exit 1  
+        exit 1
 }
 
-args=`getopt kv $*`
+args=`getopt ksv $*`
 
+SFLAG=0
 KFLAG=0
 VFLAG=0
 
@@ -160,6 +174,8 @@ for i; do
 	case "$i" in
 	-k)
 		KFLAG=1; shift;;
+	-s)
+		SFLAG=1; shift;;
 	-v)
 		VFLAG=1; shift;;
 	--)
@@ -175,6 +191,8 @@ if [ ${VFLAG} -eq 0 -a ${NO_INDEX} -eq 1 ]; then
 	bin_simple_search $1
 elif [ ${VFLAG} -eq 1 -a ${NO_INDEX} -eq 1 ]; then
 	bin_ext_search $1
+elif [ ${SFLAG} -eq 1 -a ${NO_INDEX} -eq 0 ]; then
+	show_description $1
 elif [ ${VFLAG} -eq 0 -a ${NO_INDEX} -eq 0 ]; then
 	index_search $1
 elif [ ${VFLAG} -eq 1 -a ${NO_INDEX} -eq 0 ]; then
