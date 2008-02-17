@@ -28,9 +28,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/spinlock.9,v 1.6 2007/03/31 10:59:36 swildner Exp $
+.\" $DragonFly: src/share/man/man9/spinlock.9,v 1.7 2008/02/17 21:47:39 nant Exp $
 .\"
-.Dd May 27, 2006
+.Dd February 17, 2008
 .Os
 .Dt SPINLOCK 9
 .Sh NAME
@@ -184,6 +184,10 @@ Core spinlocks should not be used around large chunks of code.
 Holding one or more spinlocks will disable thread preemption by
 another thread (e.g. preemption by an interrupt thread), but will not
 disable FAST interrupts or IPIs.
+This means that a FAST interrupt can still operate during a spinlock,
+and any threaded interrupt (which is basically all interrupts except
+the clock interrupt) will still be scheduled for later execution, but
+will not be able to preempt the current thread.
 If you wish to disable FAST interrupts and IPIs you need to enter a
 critical section prior to obtaining the spinlock.
 .Pp
