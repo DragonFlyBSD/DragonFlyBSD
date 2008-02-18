@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/crit_enter.9,v 1.2 2007/05/13 20:29:48 hasso Exp $
+.\" $DragonFly: src/share/man/man9/crit_enter.9,v 1.3 2008/02/18 23:30:26 nant Exp $
 .\"
 .Dd July 5, 2006
 .Dt CRIT_ENTER 9
@@ -61,10 +61,15 @@ The
 and
 .Fn crit_exit
 functions are used to enter and exit a critical section of code.
-While a critical section is active, interrupts and IPIs are prevented from
-executing on the current CPU.
+Entering a critical section will disallow preemption of the currently
+running thread on the current CPU for the duration of the critical section.
+While a critical section is active, interrupts and IPIs are also prevented
+from executing on the current CPU.
 Instead, the interrupt code marks the interrupt as deferred and immediately
-returns.
+returns (without scheduling any interrupt thread).
+If an interrupt or an IPI is deferred in this way, it will be processed upon
+leaving the critical section.
+.Pp
 It is possible for a thread to sleep while holding a critical section,
 however this results in the critical section being given up for the time of
 the sleep and being reacquired after waking up.
@@ -76,6 +81,7 @@ and
 may be used to reduce the amount of generated code.
 .Pp
 Critical sections are per-CPU entities.
+They are typicaly used to interlock operations local to the CPU.
 A critical section on one CPU will not prevent an interrupt or IPI from
 occurring on some other CPU.
 If cross-CPU interlocks are required the more heavy weight
