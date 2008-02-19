@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/kernconf.5,v 1.3 2007/11/07 20:56:20 swildner Exp $
+.\" $DragonFly: src/share/man/man5/kernconf.5,v 1.4 2008/02/19 21:15:37 thomas Exp $
 .\"
 .Dd September 13, 2007
 .Os
@@ -151,6 +151,13 @@ Some pseudo-devices can have multiple or
 instances.
 .El
 .\".Sh OPTIONS
+.Sh FILES
+.Bl -tag -width "It Pa /sys/config/GENERIC"
+.It Pa /sys/config/LINT
+description of kernel configuration options
+.It Pa /sys/config/GENERIC
+default kernel configuration file
+.El
 .Sh SEE ALSO
 .Xr build 7 ,
 .Xr vkernel 7 ,
