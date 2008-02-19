@@ -2,10 +2,11 @@
 # Thelp DDisplay command help
 
 	help [topic [subtopic]]
+	help index
 	?
 
 	The help command displays help on commands and their usage.
-	$DragonFly: src/sys/boot/common/help.common,v 1.4 2006/05/11 08:23:19 swildner Exp $
+	$DragonFly: src/sys/boot/common/help.common,v 1.5 2008/02/19 21:41:07 thomas Exp $
 
 	In command help, a term enclosed with <...> indicates a value as
 	described by the term.  A term enclosed with [...] is optional,
@@ -17,7 +18,7 @@
 	If needed, disable the use of ACPI with:
 
 	unset acpi_load
-	$hint.acpi.0.disabled="1"
+	set hint.acpi.0.disabled="1"
 
 ################################################################################
 # Tautoboot DBoot after a delay
@@ -188,7 +189,7 @@
 
 	set currdev=<device>
 
-	Selects the default device.  Syntax for devices is odd.
+	Selects the default device.  See lsdev for available devices.
 
 ################################################################################
 # Tset Sinit_path DSet the list of init candidates
@@ -217,7 +218,7 @@
 	Variable substitution is performed on the prompt.  The default 
 	prompt can be set with:
 
-		set prompt=\$currdev>
+		set prompt=\${interpret}
 
 ################################################################################
 # Tset Srootdev DSet the root filesystem

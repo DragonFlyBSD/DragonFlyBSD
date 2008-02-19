@@ -3,19 +3,17 @@
 
 	$acpi_load
 
-	If set, the ACPI module will be loaded.  Clear it with
+	If the acpi_load variable is set, the ACPI module will be loaded.
+	The use of ACPI can be disabled with:
 
 	unset acpi_load
-
-	$hint.acpi.0.disabled="1"
-
-	If set, the ACPI module won't be loaded.
+	set hint.acpi.0.disabled="1"
 
 	Note that the ACPI autodetection sets a number of hints to
 	pass information to the ACPI module.  These should not be 
 	overridden, or system behaviour will be undefined.
 
-	$DragonFly: src/sys/boot/pc32/loader/help.i386,v 1.2 2003/11/10 06:08:36 dillon Exp $
+	$DragonFly: src/sys/boot/pc32/loader/help.i386,v 1.3 2008/02/19 21:41:07 thomas Exp $
 
 ################################################################################
 # Treboot DReboot the system

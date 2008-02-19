@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.16 2007/11/19 18:49:06 swildner Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.17 2008/02/19 21:41:07 thomas Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -154,6 +154,8 @@ Immediately proceeds to bootstrap the system, loading the kernel
 if necessary.
 Any flags or arguments are passed to the kernel, but they
 must precede the kernel name, if a kernel name is provided.
+Flags are described in
+.Xr boot 8 .
 .Pp
 .Em WARNING :
 The behavior of this builtin is changed if
@@ -363,7 +365,7 @@ The default list is
 .Dq Li /sbin/init:/sbin/oinit:/sbin/init.bak .
 .It Va interpret
 Has the value
-.Dq Li ok
+.Dq Li OK
 if the Forth's current state is interpreting.
 .It Va LINES
 Define the number of lines on the screen, to be used by the pager.
@@ -382,7 +384,7 @@ Value of
 .Nm Ns 's
 prompt.
 Defaults to
-.Dq Li "${currdev}>" .
+.Dq Li "\e${interpret}" .
 .It Va root_disk_unit
 If the code which detects the disk unit number for the root disk is
 confused, e.g. by a mix of SCSI and IDE disks, or IDE disks with
@@ -592,7 +594,7 @@ is processed
 handle exceptions.
 In this case, the use of a proxy is recommended.
 For example:
-.Dl : (boot) boot ;
+.Dl : (boot) boot \&;
 .Sh FICL
 .Tn FICL
 is a Forth interpreter written in C, in the form of a forth
@@ -656,7 +658,7 @@ This is the STRING word set's
 .It Ic cell-
 .It Ic -rot
 .El
-.Ss FREEBSD EXTRA WORDS
+.Ss DRAGONFLY EXTRA WORDS
 .Bl -tag -width XXXXXXXX
 .It Ic \&$ Pq --
 Evaluates the remainder of the input buffer, after having printed it first.
@@ -727,7 +729,7 @@ Activates or deactivates tracing.
 Does not work with
 .Ic catch .
 .El
-.Ss FREEBSD DEFINED ENVIRONMENTAL QUERIES
+.Ss DRAGONFLY DEFINED ENVIRONMENTAL QUERIES
 .Bl -tag -width Ds
 .It arch-i386
 .Ic TRUE
@@ -837,7 +839,8 @@ Unspecified error.
 .Xr loader.conf 5 ,
 .Xr tuning 7 ,
 .Xr boot 8 ,
-.Xr btxld 8
+.Xr btxld 8 ,
+.Xr loader.4th 8
 .Sh STANDARDS
 For the purposes of ANS Forth compliance, loader is an
 .Bf Em
