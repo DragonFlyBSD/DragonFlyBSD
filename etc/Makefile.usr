@@ -2,7 +2,7 @@
 #
 # Provides simple targets to download and maintain /usr/pkgsrc.
 #
-# $DragonFly: src/etc/Makefile.usr,v 1.4 2008/02/12 16:12:54 matthias Exp $
+# $DragonFly: src/etc/Makefile.usr,v 1.5 2008/02/19 20:54:23 thomas Exp $
 
 all:
 	@echo "Install or update /usr/pkgsrc using NetBSDs anoncvs"
@@ -21,8 +21,8 @@ all:
 	@echo "    make release-sys-extract"
 	@echo ""
 	@echo "If automating please restrict updates from the NetBSD anoncvs"
-	@echo "server to no more then once a week and run cvsups no more often"
-	@echo "then daily."
+	@echo "server to no more than once a week and run cvsups no more often"
+	@echo "than daily."
 
 pkgsrc-checkout:
 	cd ${.CURDIR}; \
