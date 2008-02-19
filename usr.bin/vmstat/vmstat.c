@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.22 2007/11/25 18:10:07 swildner Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.23 2008/02/19 18:19:15 thomas Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -753,12 +753,14 @@ dointr(void)
 		if (nwidth < (int)strlen(intrname[i]))
 			nwidth = (int)strlen(intrname[i]);
 	}
+	if (verbose) nwidth += 8;
 
-	printf("interrupt                   total       rate\n");
+	printf("%-*.*s %11s %10s\n",
+		nwidth, nwidth, "interrupt", "total", "rate");
 	inttotal = 0;
 	for (i = 0; i < nintr; ++i) {
 		int named;
-		char *infop, irqinfo[32];
+		char *infop, irqinfo[72];
 
 		if ((named = strncmp(intrname[i], "irq", 3)) != 0 ||
 		    intrcnt[i] > 0) {
