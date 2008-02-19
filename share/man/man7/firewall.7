@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/firewall.7,v 1.1.2.8 2003/04/29 07:57:22 brueffer Exp $
-.\" $DragonFly: src/share/man/man7/firewall.7,v 1.13 2008/01/26 15:14:41 swildner Exp $
+.\" $DragonFly: src/share/man/man7/firewall.7,v 1.14 2008/02/19 21:47:33 thomas Exp $
 .\"
 .Dd May 26, 2001
 .Dt FIREWALL 7
@@ -355,6 +355,7 @@ can use a light
 to indirectly bind services that do not otherwise give you the option.
 .Sh SEE ALSO
 .Xr dummynet 4 ,
+.Xr ipfw 4 ,
 .Xr ipnat 5 ,
 .Xr rc.conf 5 ,
 .Xr smb.conf 5 Pq Pa pkgsrc/net/samba ,
@@ -366,9 +367,13 @@ to indirectly bind services that do not otherwise give you the option.
 .Xr natd 8 ,
 .Xr nfsd 8
 .Sh ADDITIONAL READING
+.Xr ipf 4 ,
+.Xr pf 4 ,
 .Xr ipf 5 ,
+.Xr pf.conf 5 ,
 .Xr ipf 8 ,
 .Xr ipfstat 8
+.Xr pfctl 8
 .Sh HISTORY
 The
 .Nm
