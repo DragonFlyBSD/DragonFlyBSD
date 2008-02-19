@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/initdiskless,v 1.24 2003/06/30 21:47:06 brooks Exp $
-# $DragonFly: src/etc/rc.d/initdiskless,v 1.8 2007/04/26 23:34:27 dillon Exp $
+# $DragonFly: src/etc/rc.d/initdiskless,v 1.9 2008/02/19 22:02:47 thomas Exp $
 #
 # PROVIDE: initdiskless
 
@@ -42,11 +42,11 @@ dummy_rc_command "$1"
 #
 #	/conf/base		universal base
 #	/conf/default		modified by a secondary universal base
-#	/conf/${ipba}		modified based on the assigned broadcast IP
-#	/conf/${ip}		modified based on the machine's assigned IP
+#	/conf/${ipbca}		modified based on the assigned broadcast IP
+#	/conf/${ipa}		modified based on the machine's assigned IP
 #
 # Each of these directories may contain any number of subdirectories which
-# represent directories in / on the diskless machine.  The existance of
+# represent directories in / on the diskless machine.  The existence of
 # these subdirectories causes this script to create a MEMORY FILESYSTEM for
 # /<sub_directory_name>.  For example, if /conf/base/etc exists then a
 # memory filesystem will be created for /etc.

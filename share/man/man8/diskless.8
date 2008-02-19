@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man8/diskless.8,v 1.6.2.9 2003/01/25 18:56:44 dillon Exp $
-.\" $DragonFly: src/share/man/man8/diskless.8,v 1.9 2007/05/17 08:19:01 swildner Exp $
+.\" $DragonFly: src/share/man/man8/diskless.8,v 1.10 2008/02/19 22:02:47 thomas Exp $
 .\"
-.Dd April 18, 2001
+.Dd February 19, 2008
 .Dt DISKLESS 8
 .Os
 .Sh NAME
@@ -87,10 +87,6 @@ the actions found in
 .Pa /etc/rc.d/initdiskless
 and
 .Pa /etc/rc.d/diskless .
-In older systems the scripts are located in
-.Pa /etc/rc.diskless1
-and
-.Pa /etc/rc.diskless2 .
 .Sh CONFIGURATION
 In order to run a diskless client, you need the following:
 .Bl -bullet
@@ -172,9 +168,9 @@ in
 overriding directories situated in
 .Pa /conf/base ,
 .Pa /conf/default ,
-.Pa /conf/(broadcast-ip) ,
+.Pa /conf/<BROADCAST-IP> ,
 and
-.Pa /conf/(machine-ip) .
+.Pa /conf/<MACHINE-IP> .
 You should always create
 .Pa /conf/base/etc ,
 which will entirely replace the server's
@@ -219,8 +215,8 @@ and
 .Pp
 Overrides are hierarchical.  You can supply network-specific defaults
 in the
-.Pa /conf/<BROADCASTIP>/etc
-directory, where <BROADCASTIP> represents the broadcast IP address of
+.Pa /conf/<BROADCAST-IP>/etc
+directory, where <BROADCAST-IP> represents the broadcast IP address of
 the diskless system as given to it via
 .Tn BOOTP .
 The
@@ -231,7 +227,7 @@ features work in any of these directories.
 The configuration feature works on directories other then
 .Pa /etc ,
 you simply create the directory you wish to replace or override in
-.Pa /conf/{base,default,<broadcast>,<ip>}/*
+.Pa /conf/{base,default,<BROADCAST-IP>,<MACHINE-IP>}/*
 and work it in the same way that you work
 .Pa /etc .
 .Pp
@@ -283,17 +279,47 @@ will not be able to send/receive the bootp packets.
 Be warned that using unencrypted NFS to mount root and user
 partitions may expose information such as
 encryption keys.
+.Sh FILES
+.Bl -tag -width /usr/share/examples/diskless/clone_root -compact
+.It Pa /usr/share/examples/diskless/clone_root
+script to clone root filesystem
+.It Pa /conf/base
+1st override
+.It Pa /conf/default
+2nd override
+.It Pa /conf/<BROADCAST-IP>
+3rd override
+.It Pa /conf/<MACHINE-IP>
+4th override
+.It Pa /conf/{base,default,<BROADCAST-IP>,<MACHINE-IP>}/<DIR>
+override for
+.Pa /<DIR>
+.It Pa /conf/{base,default,<BROADCAST-IP>,<MACHINE-IP>}/<DIR>/md_size
+size of memory disk for
+.Pa /<DIR>
+.It Pa /conf/{base,default,<BROADCAST-IP>,<MACHINE-IP>}/<DIR>/diskless_remount
+path to mount on
+.Pa /<DIR>
+.It Pa /conf/{base,default,<BROADCAST-IP>,<MACHINE-IP>}/<DIR>.cpio.gz
+archive to unpack to
+.Pa /<DIR>
+.It Pa /conf/{base,default,<BROADCAST-IP>,<MACHINE-IP>}/<DIR>.remove
+files to remove from
+.Pa /<DIR>
+.El
 .Sh SEE ALSO
+.Xr bootptab 5 ,
 .Xr ethers 5 ,
 .Xr exports 5 ,
+.Xr rc.conf 5 ,
 .Xr bootpd 8 ,
+.Xr dhcpd 8 ,
 .Xr mountd 8 ,
 .Xr nfsd 8 ,
 .Xr pxeboot 8 ,
+.Xr rc.d/ 8 ,
 .Xr reboot 8 ,
 .Xr tftpd 8
-.Pp
-.Pa ports/net/etherboot
 .Sh BUGS
 This manpage is probably incomplete.
 .Pp
