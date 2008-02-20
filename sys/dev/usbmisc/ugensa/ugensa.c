@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.1 2008/02/11 18:13:58 hasso Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.2 2008/02/20 09:00:55 hasso Exp $ */
 /* $OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $ */
 
 /*
@@ -71,14 +71,23 @@ static const struct usb_devno ugensa_devs[] = {
 	{ USB_DEVICE(0x1199, 0x0018) }, /* Sierra Wireless MC5720 */
 	{ USB_DEVICE(0x1199, 0x0019) }, /* Sierra Wireless AirCard 595 */
 	{ USB_DEVICE(0x1199, 0x0020) }, /* Sierra Wireless MC5725 */
-	{ USB_DEVICE(0x1199, 0x0112) }, /* Sierra Wireless Aircard 580 */
+	{ USB_DEVICE(0x1199, 0x0021) }, /* Sierra Wireless AirCard 597E */
+	{ USB_DEVICE(0x1199, 0x0112) }, /* Sierra Wireless AirCard 580 */
+	{ USB_DEVICE(0x1199, 0x0120) }, /* Sierra Wireless AirCard 595U */
 	{ USB_DEVICE(0x1199, 0x0218) }, /* Sierra Wireless MC5720 */
+	{ USB_DEVICE(0x1199, 0x0220) }, /* Sierra Wireless MC5725 */
 	{ USB_DEVICE(0x1199, 0x6802) }, /* Sierra Wireless MC8755 */
 	{ USB_DEVICE(0x1199, 0x6803) }, /* Sierra Wireless MC8765 */
 	{ USB_DEVICE(0x1199, 0x6804) }, /* Sierra Wireless MC8755 */
 	{ USB_DEVICE(0x1199, 0x6812) }, /* Sierra Wireless MC8775 */
 	{ USB_DEVICE(0x1199, 0x6813) }, /* Sierra Wireless MC8755 */
-	{ USB_DEVICE(0x1199, 0x6820) }, /* Sierra Wireless Aircard 875 */
+	{ USB_DEVICE(0x1199, 0x6820) }, /* Sierra Wireless AirCard 875 */
+	{ USB_DEVICE(0x1199, 0x6832) }, /* Sierra Wireless MC8780 */
+	{ USB_DEVICE(0x1199, 0x6833) }, /* Sierra Wireless MC8781 */
+	{ USB_DEVICE(0x1199, 0x6850) }, /* Sierra Wireless AirCard 880 */
+	{ USB_DEVICE(0x1199, 0x6851) }, /* Sierra Wireless AirCard 881 */
+	{ USB_DEVICE(0x1199, 0x6852) }, /* Sierra Wireless AirCard 880E */
+	{ USB_DEVICE(0x1199, 0x6853) }, /* Sierra Wireless AirCard 881E */
 	{ USB_DEVICE(0x12d1, 0x1001) }, /* Huawei Mobile Connect */
 	{ USB_DEVICE(0x1410, 0x1100) }, /* Novatel Wireless ExpressCard 3G */
 	{ USB_DEVICE(0x1410, 0x1110) }, /* Novatel Wireless Merlin V620 */
