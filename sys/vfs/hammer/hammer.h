@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.37 2008/02/10 18:58:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.38 2008/02/20 00:55:51 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -561,10 +561,13 @@ int hammer_generate_undo(hammer_mount_t hmp, hammer_off_t undo_offset,
 void hammer_put_volume(struct hammer_volume *volume, int flush);
 void hammer_put_buffer(struct hammer_buffer *buffer, int flush);
 
-hammer_off_t hammer_freemap_alloc(hammer_mount_t hmp, int *errorp);
+hammer_off_t hammer_freemap_alloc(hammer_mount_t hmp, hammer_off_t owner,
+			int *errorp);
+void hammer_freemap_free(hammer_mount_t hmp, hammer_off_t phys_offset,
+			hammer_off_t owner, int *errorp);
 hammer_off_t hammer_blockmap_alloc(hammer_mount_t hmp, int zone,
 			int bytes, int *errorp);
-int hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes);
+void hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes);
 hammer_off_t hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *errorp);
 

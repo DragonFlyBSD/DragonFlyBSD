@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.2 2008/02/10 18:58:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.3 2008/02/20 00:55:51 dillon Exp $
  */
 
 /*
@@ -46,12 +46,15 @@ hammer_off_t
 hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
 {
 	hammer_volume_t root_volume;
-	hammer_blockmap_entry_t rootmap;
-	hammer_blockmap_entry_t blockmap;
+	hammer_blockmap_t rootmap;
+	struct hammer_blockmap_layer1 *layer1;
+	struct hammer_blockmap_layer2 *layer2;
 	hammer_buffer_t buffer = NULL;
+	hammer_off_t tmp_offset;
 	hammer_off_t alloc_offset;
-	hammer_off_t result_offset;
-	int32_t i;
+	hammer_off_t layer1_offset;
+	hammer_off_t layer2_offset;
+	hammer_off_t bigblock_offset;
 
 	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
 	root_volume = hammer_get_root_volume(hmp, errorp);
@@ -62,6 +65,7 @@ hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
 	KKASSERT(HAMMER_ZONE_DECODE(rootmap->phys_offset) ==
 		 HAMMER_ZONE_RAW_BUFFER_INDEX);
 	KKASSERT(HAMMER_ZONE_DECODE(rootmap->alloc_offset) == zone);
+	KKASSERT(HAMMER_ZONE_DECODE(rootmap->next_offset) == zone);
 
 	/*
 	 * Deal with alignment and buffer-boundary issues.
@@ -71,58 +75,66 @@ hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
 	 */
 	bytes = (bytes + 7) & ~7;
 	KKASSERT(bytes <= HAMMER_BUFSIZE);
+	KKASSERT(rootmap->next_offset <= rootmap->alloc_offset);
 
 	lockmgr(&hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
-	alloc_offset = rootmap->alloc_offset;
-	result_offset = alloc_offset + bytes;
-	if ((alloc_offset ^ (result_offset - 1)) & ~HAMMER_BUFMASK64) {
-		alloc_offset = (result_offset - 1) & ~HAMMER_BUFMASK64;
+	alloc_offset = rootmap->next_offset;
+	tmp_offset = alloc_offset + bytes;
+	if ((alloc_offset ^ (tmp_offset - 1)) & ~HAMMER_BUFMASK64) {
+		alloc_offset = (tmp_offset - 1) & ~HAMMER_BUFMASK64;
 	}
 
 	/*
-	 * Dive layer 2, each entry is a layer-1 entry.  If we are at the
-	 * start of a new entry, allocate a layer 1 large-block
+	 * Dive layer 1.  If we are starting a new layer 1 entry,
+	 * allocate a layer 2 block for it.
 	 */
-	i = (alloc_offset >> (HAMMER_LARGEBLOCK_BITS +
-	     HAMMER_BLOCKMAP_BITS)) & HAMMER_BLOCKMAP_RADIX_MASK;
-
-	blockmap = hammer_bread(hmp, rootmap->phys_offset + i * sizeof(*blockmap), errorp, &buffer);
+	layer1_offset = rootmap->phys_offset +
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(alloc_offset);
+	layer1 = hammer_bread(hmp, layer1_offset, errorp, &buffer);
 	KKASSERT(*errorp == 0);
 
-	if ((alloc_offset & HAMMER_LARGEBLOCK_LAYER1_MASK) == 0) {
-		hammer_modify_buffer(buffer, blockmap, sizeof(*blockmap));
-		bzero(blockmap, sizeof(*blockmap));
-		blockmap->phys_offset = hammer_freemap_alloc(hmp, errorp);
+	/*
+	 * Allocate layer2 backing store if necessary
+	 */
+	if ((alloc_offset == rootmap->alloc_offset &&
+	    (alloc_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0) ||
+	    layer1->phys_offset == HAMMER_BLOCKMAP_FREE
+	) {
+		hammer_modify_buffer(buffer, layer1, sizeof(*layer1));
+		bzero(layer1, sizeof(*layer1));
+		layer1->phys_offset = hammer_freemap_alloc(hmp, alloc_offset,
+							   errorp);
 		KKASSERT(*errorp == 0);
 	}
-	KKASSERT(blockmap->phys_offset);
+	KKASSERT(layer1->phys_offset);
 
 	/*
-	 * Dive layer 1, each entry is a large-block.  If we are at the
-	 * start of a new entry, allocate a large-block.
+	 * Dive layer 2, each entry represents a large-block.  If we are at
+	 * the start of a new entry, allocate a large-block.
 	 */
-	i = (alloc_offset >> HAMMER_LARGEBLOCK_BITS) &
-	    HAMMER_BLOCKMAP_RADIX_MASK;
-
-	blockmap = hammer_bread(hmp, blockmap->phys_offset + i * sizeof(*blockmap), errorp, &buffer);
+	layer2_offset = layer1->phys_offset +
+			HAMMER_BLOCKMAP_LAYER2_OFFSET(alloc_offset);
+	layer2 = hammer_bread(hmp, layer2_offset, errorp, &buffer);
 	KKASSERT(*errorp == 0);
 
-	if ((alloc_offset & HAMMER_LARGEBLOCK_MASK64) == 0) {
-		hammer_modify_buffer(buffer, blockmap, sizeof(*blockmap));
+	/*
+	 * Allocate the bigblock in layer2 if necesasry.
+	 */
+	if ((alloc_offset == rootmap->alloc_offset &&
+	    (alloc_offset & HAMMER_LARGEBLOCK_MASK64) == 0) ||
+	    layer2->u.phys_offset == HAMMER_BLOCKMAP_FREE
+	) {
+		hammer_modify_buffer(buffer, layer2, sizeof(*layer2));
 		/* XXX rootmap changed */
-		bzero(blockmap, sizeof(*blockmap));
-		blockmap->phys_offset = hammer_freemap_alloc(hmp, errorp);
-		blockmap->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+		bzero(layer2, sizeof(*layer2));
+		layer2->u.phys_offset = hammer_freemap_alloc(hmp, alloc_offset,
+							     errorp);
+		layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
 		KKASSERT(*errorp == 0);
 	}
 
-	hammer_modify_buffer(buffer, blockmap, sizeof(*blockmap));
-	blockmap->bytes_free -= bytes;
-
-	hammer_modify_volume(root_volume, &rootmap->alloc_offset,
-			     sizeof(rootmap->alloc_offset));
-	result_offset = alloc_offset;
-	rootmap->alloc_offset = alloc_offset + bytes;
+	hammer_modify_buffer(buffer, layer2, sizeof(*layer2));
+	layer2->bytes_free -= bytes;
 
 	/*
 	 * Calling bnew on the buffer backing the allocation gets it into
@@ -130,25 +142,107 @@ hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
 	 *
 	 * XXX This can only be done when appending into a new buffer.
 	 */
-	if (((int32_t)result_offset & HAMMER_BUFMASK) == 0) {
-		hammer_bnew(hmp, blockmap->phys_offset + (result_offset & HAMMER_LARGEBLOCK_MASK64), errorp, &buffer);
+	if (alloc_offset == rootmap->alloc_offset &&
+	    (alloc_offset & HAMMER_BUFMASK) == 0) {
+		bigblock_offset = layer2->u.phys_offset +
+				  (alloc_offset & HAMMER_LARGEBLOCK_MASK64);
+		hammer_bnew(hmp, bigblock_offset, errorp, &buffer);
 	}
+
+	/*
+	 * Adjust our iterator
+	 */
+	hammer_modify_volume(root_volume, rootmap, sizeof(*rootmap));
+	rootmap->next_offset = alloc_offset + bytes;
+	if (rootmap->alloc_offset < rootmap->next_offset)
+		rootmap->alloc_offset = rootmap->next_offset;
 
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
 	hammer_rel_volume(root_volume, 0);
 	lockmgr(&hmp->blockmap_lock, LK_RELEASE);
-	return(result_offset);
+	return(alloc_offset);
 }
 
 /*
  * Free (offset,bytes) in a zone
  */
-int
+void
 hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
 {
-	kprintf("hammer_blockmap_free %016llx %d\n", bmap_off, bytes);
-	return(0);
+	hammer_volume_t root_volume;
+	hammer_blockmap_t rootmap;
+	struct hammer_blockmap_layer1 *layer1;
+	struct hammer_blockmap_layer2 *layer2;
+	hammer_buffer_t buffer = NULL;
+	hammer_off_t layer1_offset;
+	hammer_off_t layer2_offset;
+	int error;
+	int zone;
+
+	bytes = (bytes + 7) & ~7;
+	KKASSERT(bytes <= HAMMER_BUFSIZE);
+	zone = HAMMER_ZONE_DECODE(bmap_off);
+	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	root_volume = hammer_get_root_volume(hmp, &error);
+	if (error)
+		return;
+	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
+	KKASSERT(rootmap->phys_offset != 0);
+	KKASSERT(HAMMER_ZONE_DECODE(rootmap->phys_offset) ==
+		 HAMMER_ZONE_RAW_BUFFER_INDEX);
+	KKASSERT(HAMMER_ZONE_DECODE(rootmap->alloc_offset) == zone);
+	KKASSERT(((bmap_off ^ (bmap_off + (bytes - 1))) & 
+		  ~HAMMER_LARGEBLOCK_MASK64) == 0);
+
+	if (bmap_off >= rootmap->alloc_offset) {
+		panic("hammer_blockmap_lookup: %016llx beyond EOF %016llx",
+		      bmap_off, rootmap->alloc_offset);
+		goto done;
+	}
+
+	/*
+	 * Dive layer 1.
+	 */
+	layer1_offset = rootmap->phys_offset +
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(bmap_off);
+	layer1 = hammer_bread(hmp, layer1_offset, &error, &buffer);
+	KKASSERT(error == 0);
+	KKASSERT(layer1->phys_offset);
+
+	/*
+	 * Dive layer 2, each entry represents a large-block.
+	 */
+	layer2_offset = layer1->phys_offset +
+			HAMMER_BLOCKMAP_LAYER2_OFFSET(bmap_off);
+	layer2 = hammer_bread(hmp, layer2_offset, &error, &buffer);
+
+	KKASSERT(error == 0);
+	KKASSERT(layer2->u.phys_offset);
+	hammer_modify_buffer(buffer, layer2, sizeof(*layer2));
+	layer2->bytes_free += bytes;
+
+	/*
+	 * If the big-block is free, return it to the free pool.  If our
+	 * iterator is in the wholely free block, leave the block intact
+	 * and reset the iterator.
+	 */
+	if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
+		if ((rootmap->next_offset ^ bmap_off) &
+		    ~HAMMER_LARGEBLOCK_MASK64) {
+			hammer_freemap_free(hmp, layer2->u.phys_offset,
+					    bmap_off, &error);
+			layer2->u.phys_offset = HAMMER_BLOCKMAP_FREE;
+		} else {
+			hammer_modify_volume(root_volume, rootmap,
+					     sizeof(*rootmap));
+			rootmap->next_offset &= ~HAMMER_LARGEBLOCK_MASK64;
+		}
+	}
+done:
+	if (buffer)
+		hammer_rel_buffer(buffer, 0);
+	hammer_rel_volume(root_volume, 0);
 }
 
 /*
@@ -158,12 +252,14 @@ hammer_off_t
 hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off, int *errorp)
 {
 	hammer_volume_t root_volume;
-	hammer_blockmap_entry_t rootmap;
-	hammer_blockmap_entry_t blockmap;
+	hammer_blockmap_t rootmap;
+	struct hammer_blockmap_layer1 *layer1;
+	struct hammer_blockmap_layer2 *layer2;
 	hammer_buffer_t buffer = NULL;
+	hammer_off_t layer1_offset;
+	hammer_off_t layer2_offset;
 	hammer_off_t result_offset;
 	int zone;
-	int i;
 
 	zone = HAMMER_ZONE_DECODE(bmap_off);
 	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
@@ -184,26 +280,25 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off, int *errorp)
 	}
 
 	/*
-	 * Dive layer 2, each entry is a layer-1 entry.  If we are at the
-	 * start of a new entry, allocate a layer 1 large-block
+	 * Dive layer 1.
 	 */
-	i = (bmap_off >> (HAMMER_LARGEBLOCK_BITS +
-	     HAMMER_BLOCKMAP_BITS)) & HAMMER_BLOCKMAP_RADIX_MASK;
-
-	blockmap = hammer_bread(hmp, rootmap->phys_offset + i * sizeof(*blockmap), errorp, &buffer);
+	layer1_offset = rootmap->phys_offset +
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(bmap_off);
+	layer1 = hammer_bread(hmp, layer1_offset, errorp, &buffer);
 	KKASSERT(*errorp == 0);
-	KKASSERT(blockmap->phys_offset);
+	KKASSERT(layer1->phys_offset);
 
 	/*
-	 * Dive layer 1, entry entry is a large-block.  If we are at the
-	 * start of a new entry, allocate a large-block.
+	 * Dive layer 2, each entry represents a large-block.
 	 */
-	i = (bmap_off >> HAMMER_LARGEBLOCK_BITS) & HAMMER_BLOCKMAP_RADIX_MASK;
+	layer2_offset = layer1->phys_offset +
+			HAMMER_BLOCKMAP_LAYER2_OFFSET(bmap_off);
+	layer2 = hammer_bread(hmp, layer2_offset, errorp, &buffer);
 
-	blockmap = hammer_bread(hmp, blockmap->phys_offset + i * sizeof(*blockmap), errorp, &buffer);
 	KKASSERT(*errorp == 0);
-	KKASSERT(blockmap->phys_offset);
-	result_offset = blockmap->phys_offset +
+	KKASSERT(layer2->u.phys_offset);
+
+	result_offset = layer2->u.phys_offset +
 			(bmap_off & HAMMER_LARGEBLOCK_MASK64);
 done:
 	if (buffer)

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.23 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.24 2008/02/20 00:55:51 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -114,6 +114,7 @@ typedef u_int64_t hammer_off_t;
  * zone 1 (z,v,o):	raw volume relative (offset 0 is the volume header)
  * zone 2 (z,v,o):	raw buffer relative (offset 0 is the first buffer)
  * zone 3 (z,o):	undo fifo	- blockmap backed
+ * zone 4 (z,v,o):	freemap		- freemap-backed self-mapping
  *
  * zone 8 (z,o):	B-Tree		- blkmap-backed
  * zone 9 (z,o):	Record		- blkmap-backed
@@ -123,7 +124,7 @@ typedef u_int64_t hammer_off_t;
 #define HAMMER_ZONE_RAW_VOLUME		0x1000000000000000ULL
 #define HAMMER_ZONE_RAW_BUFFER		0x2000000000000000ULL
 #define HAMMER_ZONE_UNDO		0x3000000000000000ULL
-#define HAMMER_ZONE_RESERVED04		0x4000000000000000ULL
+#define HAMMER_ZONE_FREEMAP		0x4000000000000000ULL
 #define HAMMER_ZONE_RESERVED05		0x5000000000000000ULL
 #define HAMMER_ZONE_RESERVED06		0x6000000000000000ULL
 #define HAMMER_ZONE_RESERVED07		0x7000000000000000ULL
@@ -139,6 +140,7 @@ typedef u_int64_t hammer_off_t;
 #define HAMMER_ZONE_RAW_VOLUME_INDEX	1
 #define HAMMER_ZONE_RAW_BUFFER_INDEX	2
 #define HAMMER_ZONE_UNDO_INDEX		3
+#define HAMMER_ZONE_FREEMAP_INDEX	4
 #define HAMMER_ZONE_BTREE_INDEX		8
 #define HAMMER_ZONE_RECORD_INDEX	9
 #define HAMMER_ZONE_LARGE_DATA_INDEX	10
@@ -167,6 +169,11 @@ typedef u_int64_t hammer_off_t;
 	HAMMER_VOL_ENCODE(vol_no) |			\
 	HAMMER_SHORT_OFF_ENCODE(offset))
 
+#define HAMMER_ENCODE_FREEMAP(vol_no, offset)		\
+	(HAMMER_ZONE_FREEMAP |				\
+	HAMMER_VOL_ENCODE(vol_no) |			\
+	HAMMER_SHORT_OFF_ENCODE(offset))
+
 /*
  * Large-Block backing store
  *
@@ -176,6 +183,7 @@ typedef u_int64_t hammer_off_t;
  * of address space.
  */
 #define HAMMER_LARGEBLOCK_SIZE		(8192 * 1024)
+#define HAMMER_LARGEBLOCK_SIZE64	((u_int64_t)HAMMER_LARGEBLOCK_SIZE)
 #define HAMMER_LARGEBLOCK_MASK		(HAMMER_LARGEBLOCK_SIZE - 1)
 #define HAMMER_LARGEBLOCK_MASK64	((u_int64_t)HAMMER_LARGEBLOCK_SIZE - 1)
 #define HAMMER_LARGEBLOCK_BITS		23
@@ -190,33 +198,82 @@ typedef u_int64_t hammer_off_t;
 #define HAMMER_BUFFERS_PER_LARGEBLOCK_MASK64		\
 	((hammer_off_t)HAMMER_BUFFERS_PER_LARGEBLOCK_MASK)
 
-#define HAMMER_BLOCKMAP_RADIX				\
-	(HAMMER_LARGEBLOCK_SIZE / sizeof(struct hammer_blockmap_entry))
-#define HAMMER_BLOCKMAP_RADIX_MASK			\
-	(HAMMER_BLOCKMAP_RADIX - 1)
-#define HAMMER_BLOCKMAP_BITS		18
-#if (1 << HAMMER_BLOCKMAP_BITS) != (HAMMER_LARGEBLOCK_SIZE / 32)
-#error "HAMMER_BLOCKMAP_BITS BROKEN"
-#endif
-
-#define HAMMER_LARGEBLOCK_LAYER1			\
-	((hammer_off_t)HAMMER_LARGEBLOCK_SIZE * HAMMER_BLOCKMAP_RADIX)
-#define HAMMER_LARGEBLOCK_LAYER2			\
-	(HAMMER_LARGEBLOCK_LAYER1 * HAMMER_BLOCKMAP_RADIX)
-
-#define HAMMER_LARGEBLOCK_LAYER1_MASK	(HAMMER_LARGEBLOCK_LAYER1 - 1)
-#define HAMMER_LARGEBLOCK_LAYER2_MASK	(HAMMER_LARGEBLOCK_LAYER2 - 1)
-
-struct hammer_blockmap_entry {
+/*
+ * Every blockmap has this root structure in the root volume header.
+ */
+struct hammer_blockmap {
 	hammer_off_t	phys_offset;    /* zone-2 physical offset */
-	int32_t		bytes_free;     /* bytes free within the big-block */
+	hammer_off_t	next_offset;	/* zone-X logical offset */
+	hammer_off_t	alloc_offset;	/* zone-X logical offset */
 	u_int32_t	entry_crc;
 	u_int32_t	reserved01;
-	u_int32_t	reserved02;
-	hammer_off_t	alloc_offset;	/* zone-X logical offset */
 };
 
-typedef struct hammer_blockmap_entry *hammer_blockmap_entry_t;
+typedef struct hammer_blockmap *hammer_blockmap_t;
+
+/*
+ * The blockmap is a 2-layer entity made up of big-blocks.  The first layer
+ * contains 262144 32-byte entries (18 bits), the second layer contains
+ * 524288 16-byte entries (19 bits), representing 8MB (23 bit) blockmaps.
+ * 18+19+23 = 60 bits.  The top four bits are the zone id.
+ *
+ * Layer 2 encodes the physical bigblock mapping for a blockmap.  The freemap
+ * uses this field to encode the virtual blockmap offset that allocated the
+ * physical block.
+ *
+ * NOTE:  The freemap maps the vol_no in the upper 8 bits of layer1.
+ *
+ * zone-4 blockmap offset: [z:4][layer1:18][layer2:19][bigblock:23]
+ */
+struct hammer_blockmap_layer1 {
+	hammer_off_t	blocks_free;	/* big-blocks free */
+	hammer_off_t	phys_offset;	/* UNAVAIL or zone-2 */
+	u_int32_t	layer1_crc;	/* crc of this entry */
+	u_int32_t	layer2_crc;	/* xor'd crc's of HAMMER_BLOCKSIZE */
+	hammer_off_t	reserved01;
+};
+
+struct hammer_blockmap_layer2 {
+	u_int32_t	entry_crc;
+	u_int32_t	bytes_free;	/* bytes free within this bigblock */
+	union {
+		hammer_off_t	owner;		/* used by freemap */
+		hammer_off_t	phys_offset;	/* used by blockmap */
+	} u;
+};
+
+#define HAMMER_BLOCKMAP_FREE	0ULL
+#define HAMMER_BLOCKMAP_UNAVAIL	((hammer_off_t)-1LL)
+
+#define HAMMER_BLOCKMAP_RADIX1	/* 262144 (18) */	\
+	(HAMMER_LARGEBLOCK_SIZE / sizeof(struct hammer_blockmap_layer1))
+#define HAMMER_BLOCKMAP_RADIX2	/* 524288 (19) */	\
+	(HAMMER_LARGEBLOCK_SIZE / sizeof(struct hammer_blockmap_layer2))
+
+#define HAMMER_BLOCKMAP_RADIX1_PERBUFFER	\
+	(HAMMER_BLOCKMAP_RADIX1 / (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE))
+#define HAMMER_BLOCKMAP_RADIX2_PERBUFFER	\
+	(HAMMER_BLOCKMAP_RADIX2 / (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE))
+
+#define HAMMER_BLOCKMAP_LAYER1	/* 18+19+23 */		\
+	(HAMMER_BLOCKMAP_RADIX1 * HAMMER_BLOCKMAP_LAYER2)
+#define HAMMER_BLOCKMAP_LAYER2	/* 19+23 */		\
+	(HAMMER_BLOCKMAP_RADIX2 * HAMMER_LARGEBLOCK_SIZE64)
+
+#define HAMMER_BLOCKMAP_LAYER1_MASK	(HAMMER_BLOCKMAP_LAYER1 - 1)
+#define HAMMER_BLOCKMAP_LAYER2_MASK	(HAMMER_BLOCKMAP_LAYER2 - 1)
+
+/*
+ * byte offset within layer1 or layer2 big-block for the entry representing
+ * a zone-2 physical offset. 
+ */
+#define HAMMER_BLOCKMAP_LAYER1_OFFSET(zone2_offset)	\
+	(((zone2_offset) & HAMMER_BLOCKMAP_LAYER1_MASK) / 	\
+	 HAMMER_BLOCKMAP_LAYER2 * sizeof(struct hammer_blockmap_layer1))
+
+#define HAMMER_BLOCKMAP_LAYER2_OFFSET(zone2_offset)	\
+	(((zone2_offset) & HAMMER_BLOCKMAP_LAYER2_MASK) /	\
+	HAMMER_LARGEBLOCK_SIZE64 * sizeof(struct hammer_blockmap_layer2))
 
 /*
  * All on-disk HAMMER structures which make up elements of the FIFO contain
@@ -365,18 +422,12 @@ struct hammer_volume_ondisk {
 	int64_t vol_nblocks;		/* total allocatable hammer bufs */
 
 	/*
-	 * bigblock freemap. 
-	 *
-	 * XXX not implemented yet, just use a sequential index at
-	 * the moment.
-	 */
-	hammer_off_t vol0_free_off;
-
-	/*
 	 * These fields are initialized and space is reserved in every
 	 * volume making up a HAMMER filesytem, but only the master volume
 	 * contains valid data.
 	 */
+	int64_t vol0_stat_bigblocks;	/* total bigblocks when fs is empty */
+	int64_t vol0_stat_freebigblocks;/* number of free bigblocks */
 	int64_t	vol0_stat_bytes;	/* for statfs only */
 	int64_t vol0_stat_inodes;	/* for statfs only */
 	int64_t vol0_stat_records;	/* total records in filesystem */
@@ -387,7 +438,7 @@ struct hammer_volume_ondisk {
 	/*
 	 * Blockmaps for zones.  Not all zones use a blockmap.
 	 */
-	struct hammer_blockmap_entry vol0_blockmap[HAMMER_MAX_ZONES];
+	struct hammer_blockmap	vol0_blockmap[HAMMER_MAX_ZONES];
 
 };
 

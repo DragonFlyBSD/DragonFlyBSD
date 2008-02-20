@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.9 2008/02/10 09:50:55 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.10 2008/02/20 00:55:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -70,7 +70,9 @@ struct volume_info {
 	struct cache_info	cache;
 	TAILQ_ENTRY(volume_info) entry;
 	int			vol_no;
-	int64_t			vol_alloc;
+	hammer_off_t		vol_alloc;	/* volume-relative offset */
+	hammer_off_t		vol_free_off;	/* zone-2 offset */
+	hammer_off_t		vol_free_end;	/* zone-2 offset */
 
 	char			*name;
 	int			fd;
@@ -113,11 +115,15 @@ hammer_node_ondisk_t get_node(hammer_off_t node_offset,
 void rel_volume(struct volume_info *volume);
 void rel_buffer(struct buffer_info *buffer);
 
-void format_blockmap(hammer_blockmap_entry_t blockmap, hammer_off_t zone_off);
+void format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_off);
 void *alloc_btree_element(hammer_off_t *offp);
 hammer_record_ondisk_t alloc_record_element(hammer_off_t *offp,
 				int32_t data_len, void **datap);
 int hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
+
+
+void format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap);
+int64_t initialize_freemap(struct volume_info *vol);
 
 void flush_all_volumes(void);
 void flush_volume(struct volume_info *vol);

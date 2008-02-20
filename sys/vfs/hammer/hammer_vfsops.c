@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.19 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.20 2008/02/20 00:55:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -417,34 +417,9 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	 * Basic stats
 	 */
 	mp->mnt_stat.f_files = ondisk->vol0_stat_inodes;
-	bfree = 0;
+	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_LARGEBLOCK_SIZE;
 	hammer_rel_volume(volume, 0);
-#if 0
-	fifo_beg = ondisk->vol0_fifo_beg;
-	fifo_end = ondisk->vol0_fifo_end;
 
-	/*
-	 * Calculate how many free blocks we have by counting the
-	 * blocks between fifo_end and fifo_beg.
-	 */
-	bfree = 0;
-	vol_no = HAMMER_VOL_DECODE(fifo_end);
-	for (;;) {
-		if (vol_no == HAMMER_VOL_DECODE(fifo_beg) &&
-		    fifo_end <= fifo_beg) {
-			bfree += (fifo_beg - fifo_end) & HAMMER_OFF_SHORT_MASK;
-			break;
-		}
-		volume = hammer_get_volume(hmp, vol_no, &error);
-		if (volume == NULL)
-			break;
-		bfree += volume->maxbuf_off - fifo_end;
-		if (++vol_no == hmp->nvolumes)
-			vol_no = 0;
-		fifo_end = HAMMER_ENCODE_RAW_BUFFER(vol_no, 0);
-		hammer_rel_volume(volume, 0);
-	}
-#endif
 	mp->mnt_stat.f_bfree = bfree / HAMMER_BUFSIZE;
 	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
 	if (mp->mnt_stat.f_files < 0)

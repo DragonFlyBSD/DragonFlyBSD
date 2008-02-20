@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.18 2008/02/10 09:50:56 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.19 2008/02/20 00:55:50 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -58,7 +58,8 @@ main(int ac, char **av)
 	 */
 	assert(sizeof(struct hammer_volume_ondisk) <= HAMMER_BUFSIZE);
 	assert(sizeof(union hammer_record_ondisk) == HAMMER_RECORD_SIZE);
-	assert(sizeof(struct hammer_blockmap_entry) == 32);
+	assert(sizeof(struct hammer_blockmap_layer1) == 32);
+	assert(sizeof(struct hammer_blockmap_layer2) == 16);
 
 	/*
 	 * Generate a filesysem id and lookup the filesystem type
@@ -152,10 +153,13 @@ main(int ac, char **av)
 	printf("\n");
 
 	/*
-	 * Format the volumes.
+	 * Format the volumes.  Format the root volume first so we can
+	 * bootstrap the freemap.
 	 */
+	format_volume(get_volume(RootVolNo), NumVolumes, label);
 	for (i = 0; i < NumVolumes; ++i) {
-		format_volume(get_volume(i), NumVolumes, label);
+		if (i != RootVolNo)
+			format_volume(get_volume(i), NumVolumes, label);
 	}
 	flush_all_volumes();
 	return(0);
@@ -318,7 +322,8 @@ check_volume(struct volume_info *vol)
 	       sizetostr(vol->size));
 
 	/*
-	 * Reserve space for (future) header junk
+	 * Reserve space for (future) header junk, setup our poor-man's
+	 * bigblock allocator.
 	 */
 	vol->vol_alloc = HAMMER_BUFSIZE * 16;
 }
@@ -330,7 +335,9 @@ static
 void
 format_volume(struct volume_info *vol, int nvols, const char *label)
 {
+	struct volume_info *root_vol;
 	struct hammer_volume_ondisk *ondisk;
+	int64_t freeblks;
 
 	/*
 	 * Initialize basic information in the on-disk volume structure.
@@ -365,20 +372,26 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 			      HAMMER_BUFSIZE;
 	ondisk->vol_blocksize = HAMMER_BUFSIZE;
 
-	/*
-	 * Assign the root volume to volume 0.
-	 */
-	ondisk->vol_rootvol = 0;
+	ondisk->vol_rootvol = RootVolNo;
 	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
-	if (ondisk->vol_no == (int)ondisk->vol_rootvol) {
-		/*
-		 * Create an empty FIFO starting at the first buffer
-		 * in volume 0.  hammer_off_t must be properly formatted
-		 * (see vfs/hammer/hammer_disk.h)
-		 */
-		ondisk->vol0_free_off = HAMMER_ENCODE_RAW_BUFFER(0, 0);
+
+	vol->vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	vol->vol_free_end = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, (ondisk->vol_buf_end - ondisk->vol_buf_beg) & ~HAMMER_LARGEBLOCK_MASK64);
+
+	/*
+	 * Format the root volume.
+	 */
+	if (vol->vol_no == RootVolNo) {
 		ondisk->vol0_next_tid = createtid();
 		ondisk->vol0_next_seq = 1;
+
+		format_freemap(vol,
+			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);
+
+		freeblks = initialize_freemap(vol);
+		ondisk->vol0_stat_freebigblocks = freeblks;
+		ondisk->vol0_stat_bigblocks = freeblks;
+
 		format_blockmap(
 			&ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
 			HAMMER_ZONE_BTREE);
@@ -394,7 +407,13 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 
 		ondisk->vol0_btree_root = format_root();
 		++ondisk->vol0_stat_inodes;	/* root inode */
-
+	} else {
+		freeblks = initialize_freemap(vol);
+		root_vol = get_volume(RootVolNo);
+		root_vol->cache.modified = 1;
+		root_vol->ondisk->vol0_stat_freebigblocks += freeblks;
+		root_vol->ondisk->vol0_stat_bigblocks += freeblks;
+		rel_volume(root_vol);
 	}
 }
 
