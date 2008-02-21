@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.2 2008/02/20 09:00:55 hasso Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.3 2008/02/21 09:00:19 hasso Exp $ */
 /* $OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $ */
 
 /*
@@ -88,15 +88,35 @@ static const struct usb_devno ugensa_devs[] = {
 	{ USB_DEVICE(0x1199, 0x6851) }, /* Sierra Wireless AirCard 881 */
 	{ USB_DEVICE(0x1199, 0x6852) }, /* Sierra Wireless AirCard 880E */
 	{ USB_DEVICE(0x1199, 0x6853) }, /* Sierra Wireless AirCard 881E */
+	{ USB_DEVICE(0x1199, 0x6855) }, /* Sierra Wireless AirCard 880U */
+	{ USB_DEVICE(0x1199, 0x6856) }, /* Sierra Wireless AirCard 881U */
 	{ USB_DEVICE(0x12d1, 0x1001) }, /* Huawei Mobile Connect */
-	{ USB_DEVICE(0x1410, 0x1100) }, /* Novatel Wireless ExpressCard 3G */
-	{ USB_DEVICE(0x1410, 0x1110) }, /* Novatel Wireless Merlin V620 */
-	{ USB_DEVICE(0x1410, 0x1130) }, /* Novatel Wireless S720 */
-	{ USB_DEVICE(0x1410, 0x1410) }, /* Novatel Wireless U740 */
-	{ USB_DEVICE(0x1410, 0x1430) }, /* Novatel Wireless XU870 */
-	{ USB_DEVICE(0x1410, 0x2100) }, /* Novatel Wireless ES620 */
-	{ USB_DEVICE(0x1410, 0x2110) }, /* Novatel Wireless U720 */
-	{ USB_DEVICE(0x413c, 0x8115) }, /* Dell W5500 */
+	{ USB_DEVICE(0x12d1, 0x1003) }, /* Huawei Mobile E220 */
+	{ USB_DEVICE(0x12d1, 0x1004) }, /* Huawei Mobile E220 */
+	{ USB_DEVICE(0x1410, 0x1100) }, /* Novatel Wireless Merlin XS620/S640 */
+	{ USB_DEVICE(0x1410, 0x1110) }, /* Novatel Wireless Merlin S620/V620 */
+	{ USB_DEVICE(0x1410, 0x1120) }, /* Novatel Wireless Merlin EX720 */
+	{ USB_DEVICE(0x1410, 0x1130) }, /* Novatel Wireless Merlin S720 */
+	{ USB_DEVICE(0x1410, 0x1400) }, /* Novatel Wireless Merlin U730 */
+	{ USB_DEVICE(0x1410, 0x1410) }, /* Novatel Wireless Merlin U740 */
+	{ USB_DEVICE(0x1410, 0x1420) }, /* Novatel Wireless Expedite EU870D */
+	{ USB_DEVICE(0x1410, 0x1430) }, /* Novatel Wireless Merlin XU870 */
+	{ USB_DEVICE(0x1410, 0x2100) }, /* Novatel Wireless Expedite EV620 */
+	{ USB_DEVICE(0x1410, 0x2110) }, /* Novatel Wireless Merlin ES620,
+					   Merlin ES720, Ovation U720 */
+	{ USB_DEVICE(0x1410, 0x2130) }, /* Novatel Wireless Merlin ES620 */
+	{ USB_DEVICE(0x1410, 0x2410) }, /* Novatel Wireless Expedite EU740 */
+	{ USB_DEVICE(0x1410, 0x4100) }, /* Novatel Wireless Ovation MC727 */
+	{ USB_DEVICE(0x1410, 0x4400) }, /* Novatel Wireless Ovation MC950D */
+	{ USB_DEVICE(0x16d5, 0x6501) }, /* AnyDATA ADU-E100A/D/H */
+	{ USB_DEVICE(0x413c, 0x8114) }, /* Dell Wireless 5700 */
+	{ USB_DEVICE(0x413c, 0x8115) }, /* Dell Wireless 5500 */
+	{ USB_DEVICE(0x413c, 0x8116) }, /* Dell Wireless 5505 */
+	{ USB_DEVICE(0x413c, 0x8117) }, /* Dell Wireless 5700 */
+	{ USB_DEVICE(0x413c, 0x8118) }, /* Dell Wireless 5510 */
+	{ USB_DEVICE(0x413c, 0x8128) }, /* Dell Wireless 5700 */
+	{ USB_DEVICE(0x413c, 0x8136) }, /* Dell Wireless 5520 */
+	{ USB_DEVICE(0x413c, 0x8137) }, /* Dell Wireless 5520 */
 };
 
 static device_probe_t ugensa_match;
