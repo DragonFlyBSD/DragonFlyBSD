@@ -2,7 +2,7 @@
 #
 # $NetBSD: ipfilter,v 1.10 2001/02/28 17:03:50 lukem Exp $
 # $FreeBSD: src/etc/rc.d/ipfilter,v 1.10 2003/04/30 02:54:17 mtm Exp $
-# $DragonFly: src/etc/rc.d/ipfilter,v 1.7 2008/01/08 15:30:34 matthias Exp $
+# $DragonFly: src/etc/rc.d/ipfilter,v 1.7.2.1 2008/02/21 22:43:32 hasso Exp $
 #
 
 # PROVIDE: ipfilter
@@ -30,7 +30,7 @@ extra_commands="reload resync status"
 
 ipfilter_loaded()
 {
-	if [ `kldstat -q -m "ipl"` -eq 1 ]; then
+	if ! kldstat -q -m "ipl"; then
 		return 1
 	else
 		return 0
