@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sys/sys/unistd.h,v 1.22.2.2 2000/08/22 01:46:30 jhb Exp $
- * $DragonFly: src/sys/sys/unistd.h,v 1.8 2007/03/01 01:46:53 corecode Exp $
+ * $DragonFly: src/sys/sys/unistd.h,v 1.8.4.1 2008/02/21 13:20:30 hasso Exp $
  */
 
 #ifndef _SYS_UNISTD_H_
@@ -200,6 +200,9 @@
 #define _PC_SYNC_IO		55
 
 #endif /* _P1003_1B_VISIBLE */
+
+#define _SC_NPROCESSORS_CONF	57
+#define _SC_NPROCESSORS_ONLN	58
 
 #ifndef _POSIX_SOURCE
 /*

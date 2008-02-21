@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)sysconf.c	8.2 (Berkeley) 3/20/94
- * $DragonFly: src/lib/libc/gen/sysconf.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/sysconf.c,v 1.4.10.1 2008/02/21 13:20:30 hasso Exp $
  */
 
 #include <sys/_posix.h>
@@ -286,6 +286,11 @@ sysconf(int name)
 		mib[1] = CTL_P1003_1B_TIMER_MAX;
 		goto yesno;
 #endif /* _P1003_1B_VISIBLE */
+	case _SC_NPROCESSORS_CONF:
+	case _SC_NPROCESSORS_ONLN:
+		mib[0] = CTL_HW;
+		mib[1] = HW_NCPU;
+		goto yesno;
 
 yesno:		if (sysctl(mib, 2, &value, &len, NULL, 0) == -1)
 			return (-1);

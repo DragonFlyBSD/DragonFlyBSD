@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/sysconf.3,v 1.5 2006/05/26 19:39:36 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/sysconf.3,v 1.5.8.1 2008/02/21 13:20:30 hasso Exp $
 .\"
-.Dd April 19, 1994
+.Dd February 21, 2008
 .Dt SYSCONF 3
 .Os
 .Sh NAME
@@ -158,6 +158,10 @@ otherwise \-1.
 .It Li _SC_2_UPE
 Return 1 if the system supports the User Portability Utilities Option,
 otherwise \-1.
+.It Li _SC_NPROCESSORS_CONF
+The number of processors configured.
+.It Li _SC_NPROCESSORS_ONLN
+The number of processors online.
 .El
 .Sh RETURN VALUES
 If the call to
@@ -192,6 +196,9 @@ Except for the fact that values returned by
 may change over the lifetime of the calling process,
 this function conforms to
 .St -p1003.1-88 .
+.Pp
+_SC_NPROCESSORS_CONF and _SC_NPROCESSORS_ONLN are nonstandard, but implemented
+in many systems.
 .Sh HISTORY
 The
 .Fn sysconf
