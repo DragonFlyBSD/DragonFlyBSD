@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.11 2007/12/27 15:29:40 matthias Exp $
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.12 2008/02/22 04:30:34 swildner Exp $
  *
  * Dedicated to my grandfather Peter Foy. Goodnight... 
  */
@@ -86,11 +86,11 @@ static void
 usage(void)
 {
 #ifdef DEBUG
-	fprintf(stderr, "usage: battd [-dEhT] [-p percent] [-t minutes] [-s status]\n"
-			"	      [-f device] [-e command] [-c seconds]\n");
+	fprintf(stderr, "usage: battd [-dEhT] [-c seconds] [-e command] [-f device]\n"
+			"	      [-p percentage] [-s status] [-t minutes]\n");
 #else
-	fprintf(stderr, "usage: battd [-EhT] [-p percent] [-t minutes] [-s status]\n"
-			"	      [-f device] [-e command] [-c seconds]\n");
+	fprintf(stderr, "usage: battd [-EhT] [-c seconds] [-e command] [-f device]\n"
+			"	      [-p percentage] [-s status] [-t minutes]\n");
 #endif
 	exit(EXIT_FAILURE);
 }

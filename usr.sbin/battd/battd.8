@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/usr.sbin/battd/battd.8,v 1.12 2007/09/02 19:30:48 swildner Exp $
+.\" $DragonFly: src/usr.sbin/battd/battd.8,v 1.13 2008/02/22 04:30:34 swildner Exp $
 .Dd May 29, 2005
 .Dt BATTD 8
 .Os
@@ -39,12 +39,13 @@
 .Nd Battery status monitoring daemon
 .Sh SYNOPSIS
 .Nm
-.Op Fl hEdT
-.Op Fl p Ar percentage
-.Op Fl t Ar minutes
-.Op Fl s Ar status
-.Op Fl f Ar device
+.Op Fl dEhT
 .Op Fl c Ar seconds
+.Op Fl e Ar command
+.Op Fl f Ar device
+.Op Fl p Ar percentage
+.Op Fl s Ar status
+.Op Fl t Ar minutes
 .Sh DESCRIPTION
 The
 .Nm
@@ -60,9 +61,10 @@ Interval in seconds for checking the battery status. Default is
 .Ar 30
 seconds.
 .It Fl d
-Start
+Start in debug mode (works when
 .Nm
-in debug mode.
+is compiled with
+.Fl DDEBUG ) .
 .It Fl e Ar command
 Execute
 .Ar command
