@@ -3,7 +3,7 @@
  *
  *	Implements structures used for variant symlink support.
  * 
- * $DragonFly: src/sys/sys/varsym.h,v 1.4 2008/02/22 05:10:55 swildner Exp $
+ * $DragonFly: src/sys/sys/varsym.h,v 1.5 2008/02/22 05:24:00 swildner Exp $
  */
 
 #ifndef _SYS_VARSYM_H_
@@ -66,7 +66,7 @@ __BEGIN_DECLS
 int	varsym_get(int mask, const char *wild, char *buf, int bufsize);
 int	varsym_list(int level, char *buf, int maxsize, int *marker);
 int	varsym_set(int level, const char *name, const char *data);
-_END_DECLS
+__END_DECLS
 
 #endif	/* _KERNEL */
 
