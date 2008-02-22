@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.86 2007/12/06 15:03:25 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.86.2.1 2008/02/22 18:43:00 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -2062,6 +2062,12 @@ coredump(struct lwp *lp, int sig)
 	/* Don't dump to non-regular files or files with links. */
 	if (vp->v_type != VREG ||
 	    VOP_GETATTR(vp, &vattr) || vattr.va_nlink != 1) {
+		error = EFAULT;
+		goto out1;
+	}
+
+	/* Don't dump to files current user does not own */
+	if (vattr.va_uid != p->p_ucred->cr_uid) {
 		error = EFAULT;
 		goto out1;
 	}
