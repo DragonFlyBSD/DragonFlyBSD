@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.38 2008/02/20 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.39 2008/02/23 03:01:08 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -395,6 +395,7 @@ struct hammer_mount {
 	udev_t	fsid_udev;
 	hammer_tid_t asof;
 	u_int32_t namekey_iterator;
+	hammer_off_t zone_limits[HAMMER_MAX_ZONES];
 	struct netexport export;
 	struct lock blockmap_lock;
 };

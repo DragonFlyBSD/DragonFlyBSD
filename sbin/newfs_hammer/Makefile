@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/sbin/newfs_hammer/Makefile,v 1.4 2008/02/08 08:30:58 dillon Exp $
+# $DragonFly: src/sbin/newfs_hammer/Makefile,v 1.5 2008/02/23 03:01:07 dillon Exp $
 
 PROG=	newfs_hammer
 MAN=	newfs_hammer.8
@@ -9,6 +9,6 @@ SRCS= newfs_hammer.c
 .PATH: ${.CURDIR}/../../sys/libkern
 SRCS+= crc32.c
 .PATH: ${.CURDIR}/../hammer
-SRCS+= ondisk.c cache.c
+SRCS+= ondisk.c cache.c blockmap.c
 
 .include <bsd.prog.mk>

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.5 2008/02/08 08:30:56 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.6 2008/02/23 03:01:06 dillon Exp $
  */
 
 #include "hammer.h"
@@ -48,6 +48,7 @@ static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 static int print_elm_flags(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
 			u_int8_t btype, hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
+static void print_bigblock_fill(hammer_off_t offset);
 
 void
 hammer_cmd_show(hammer_off_t node_offset, int depth,
@@ -83,9 +84,12 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 
 	if (spike == 0) {
 		printf("    NODE %016llx count=%d parent=%016llx "
-		       "type=%c depth=%d {\n",
+		       "type=%c depth=%d fill=",
 		       node_offset, node->count, node->parent,
 		       (node->type ? node->type : '?'), depth);
+		if (VerboseOpt)
+			print_bigblock_fill(node_offset);
+		printf(" {\n");
 
 		for (i = 0; i < node->count; ++i) {
 			elm = &node->elms[i];
@@ -154,7 +158,16 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	case HAMMER_BTREE_TYPE_LEAF:
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
+			printf("\n\t         ");
 			printf("recoff=%016llx", elm->leaf.rec_offset);
+			printf(" dataoff=%016llx/%d",
+				elm->leaf.data_offset, elm->leaf.data_len);
+			if (VerboseOpt) {
+				printf("\n\t         fills=");
+				print_bigblock_fill(elm->leaf.rec_offset);
+				printf(", ");
+				print_bigblock_fill(elm->leaf.data_offset);
+			}
 			break;
 		}
 		break;
@@ -216,5 +229,24 @@ print_elm_flags(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
 		break;
 	}
 	return(flags);
+}
+
+static
+void
+print_bigblock_fill(hammer_off_t offset)
+{
+	struct hammer_blockmap_layer1 layer1;
+	struct hammer_blockmap_layer2 layer2;
+	int fill;
+
+	blockmap_lookup(offset, &layer1, &layer2);
+	fill = layer2.bytes_free * 100 / HAMMER_LARGEBLOCK_SIZE;
+	fill = 100 - fill;
+
+	printf("z%d:%lld=%d%%",
+		HAMMER_ZONE_DECODE(offset),
+		(offset & ~HAMMER_OFF_ZONE_MASK) / HAMMER_LARGEBLOCK_SIZE,
+		fill
+	);
 }
 

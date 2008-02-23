@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.20 2008/02/20 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.21 2008/02/23 03:01:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,6 +58,7 @@ int hammer_count_record_datas;
 int hammer_count_volumes;
 int hammer_count_buffers;
 int hammer_count_nodes;
+int64_t hammer_zone_limit;
 
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
@@ -82,6 +83,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_buffers, CTLFLAG_RD,
 	   &hammer_count_buffers, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_nodes, CTLFLAG_RD,
 	   &hammer_count_nodes, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, zone_limit, CTLFLAG_RW,
+	   &hammer_zone_limit, 0, "");
 
 /*
  * VFS ABI
@@ -176,6 +179,19 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_end.rec_type = 0xFFFFU;
 		hmp->root_btree_end.obj_type = 0;
 		lockinit(&hmp->blockmap_lock, "blkmap", 0, 0);
+
+		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
+			hmp->zone_limits[i] =
+				HAMMER_ZONE_ENCODE(i, HAMMER_ZONE_LIMIT);
+			/*
+			 * Sysctl override for debugging (force the zone
+			 * the cycle more quickly then every 2^60 bytes).
+			 */
+			if (hammer_zone_limit) {
+				hmp->zone_limits[i] =
+				    HAMMER_ZONE_ENCODE(i, hammer_zone_limit);
+			}
+		}
 	}
 	hmp->hflags = info.hflags;
 	if (info.asof) {

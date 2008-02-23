@@ -1,8 +1,8 @@
 #
-# $DragonFly: src/sbin/hammer/Makefile,v 1.5 2008/02/08 08:30:56 dillon Exp $
+# $DragonFly: src/sbin/hammer/Makefile,v 1.6 2008/02/23 03:01:06 dillon Exp $
 
 PROG=	hammer
-SRCS=	hammer.c ondisk.c cache.c \
+SRCS=	hammer.c ondisk.c blockmap.c cache.c \
 	misc.c cmd_show.c cmd_prune.c cmd_history.c
 MAN=	hammer.8
 

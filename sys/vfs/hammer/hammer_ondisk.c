@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.30 2008/02/10 18:58:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.31 2008/02/23 03:01:08 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1176,10 +1176,11 @@ hammer_alloc_record(hammer_mount_t hmp,
 	 */
 	*rec_offp = rec_offset;
 	rec = hammer_bread(hmp, rec_offset, errorp, rec_bufferp);
+	hammer_modify_buffer(*rec_bufferp, NULL, 0);
+	bzero(rec, sizeof(*rec));
 	KKASSERT(*errorp == 0);
 	rec->base.data_off = data_offset;
 	rec->base.data_len = data_len;
-	hammer_modify_buffer(*rec_bufferp, NULL, 0);
 
 	if (data_bufferp) {
 		if (data_len) {

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.2 2008/02/20 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.3 2008/02/23 03:01:08 dillon Exp $
  */
 
 /*
@@ -84,18 +84,11 @@ new_volume:
 			if (vol_no >= hmp->nvolumes)
 				vol_no = 0;
 			result_offset = HAMMER_ENCODE_RAW_BUFFER(vol_no, 0);
-			if (++loops == 2) {
+			if (vol_no == 0 && ++loops == 2) {
 				*errorp = ENOSPC;
 				result_offset = 0;
 				goto done;
 			}
-		} else if (layer1->blocks_free == 0) {
-			/*
-			 * layer2 has no free blocks, skip to the next layer.
-			 */
-			result_offset = (result_offset + HAMMER_BLOCKMAP_LAYER2_MASK) & ~HAMMER_BLOCKMAP_LAYER2_MASK;
-			if (HAMMER_VOL_DECODE(result_offset) != vol_no)
-				goto new_volume;
 		} else {
 			layer2_offset = layer1->phys_offset +
 				HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
@@ -114,9 +107,20 @@ new_volume:
 				--ondisk->vol0_stat_freebigblocks;
 				break;
 			}
-			result_offset += HAMMER_LARGEBLOCK_SIZE;
-			if (HAMMER_VOL_DECODE(result_offset) != vol_no)
-				goto new_volume;
+			if (layer1->blocks_free == 0 ||
+			    layer2->u.owner == HAMMER_BLOCKMAP_UNAVAIL) {
+				/*
+				 * layer2 has no free blocks remaining,
+				 * skip to the next layer.
+				 */
+				result_offset = (result_offset + HAMMER_BLOCKMAP_LAYER2_MASK) & ~HAMMER_BLOCKMAP_LAYER2_MASK;
+				if (HAMMER_VOL_DECODE(result_offset) != vol_no)
+					goto new_volume;
+			} else {
+				result_offset += HAMMER_LARGEBLOCK_SIZE;
+				if (HAMMER_VOL_DECODE(result_offset) != vol_no)
+					goto new_volume;
+			}
 		}
 	}
 	kprintf("hammer_freemap_alloc %016llx\n", result_offset);

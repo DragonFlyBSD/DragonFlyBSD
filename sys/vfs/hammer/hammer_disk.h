@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.24 2008/02/20 00:55:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.25 2008/02/23 03:01:08 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -146,6 +146,13 @@ typedef u_int64_t hammer_off_t;
 #define HAMMER_ZONE_LARGE_DATA_INDEX	10
 #define HAMMER_ZONE_SMALL_DATA_INDEX	11
 
+/*
+ * Per-zone size limitation.  This just makes the iterator easier
+ * to deal with by preventing an iterator overflow.
+ */
+#define HAMMER_ZONE_LIMIT		\
+	(0x1000000000000000ULL - HAMMER_BLOCKMAP_LAYER2)
+
 #define HAMMER_MAX_ZONES		16
 
 #define HAMMER_VOL_ENCODE(vol_no)			\
@@ -154,6 +161,8 @@ typedef u_int64_t hammer_off_t;
 	(int32_t)(((hammer_off_t)(ham_off) >> 52) & 255)
 #define HAMMER_ZONE_DECODE(ham_off)			\
 	(int32_t)(((hammer_off_t)(ham_off) >> 60))
+#define HAMMER_ZONE_ENCODE(zone, ham_off)		\
+	(((hammer_off_t)(zone) << 60) | (ham_off))
 #define HAMMER_SHORT_OFF_ENCODE(offset)			\
 	((hammer_off_t)(offset) & HAMMER_OFF_SHORT_MASK)
 #define HAMMER_LONG_OFF_ENCODE(offset)			\

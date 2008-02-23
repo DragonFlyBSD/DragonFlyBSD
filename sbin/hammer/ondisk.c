@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.12 2008/02/20 00:55:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.13 2008/02/23 03:01:06 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -179,11 +179,15 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	void *ondisk;
 	struct buffer_info *buf;
 	struct volume_info *volume;
-	int n;
 	int vol_no;
+	int zone;
+	int n;
 
+	zone = HAMMER_ZONE_DECODE(buf_offset);
+	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX) {
+		buf_offset = blockmap_lookup(buf_offset, NULL, NULL);
+	}
 	assert((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
-
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
 	volume = get_volume(vol_no);
 	buf_offset &= ~HAMMER_BUFMASK64;
@@ -388,12 +392,28 @@ initialize_freemap(struct volume_info *vol)
 	printf("initialize freemap volume %d\n", vol->vol_no);
 
 	/*
-	 * Initialize the freemap.  Loop through all buffers.  Fix-up the
-	 * ones which have already been allocated (should only be self
-	 * bootstrap large-blocks).
+	 * Initialize the freemap.  First preallocate the bigblocks required
+	 * to implement layer2.   This preallocation is a bootstrap allocation
+	 * using blocks from the target volume.
 	 */
 	layer1_base = root_vol->ondisk->vol0_blockmap[
 					HAMMER_ZONE_FREEMAP_INDEX].phys_offset;
+	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	     phys_offset < aligned_vol_free_end;
+	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
+		layer1_offset = layer1_base +
+				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
+		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
+		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
+			layer1->phys_offset = alloc_bigblock(vol, 0);
+			layer1->blocks_free = 0;
+			buffer1->cache.modified = 1;
+		}
+	}
+
+	/*
+	 * Now fill everything in.
+	 */
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_LARGEBLOCK_SIZE) {
@@ -401,11 +421,7 @@ initialize_freemap(struct volume_info *vol)
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 
-		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
-			layer1->phys_offset = alloc_bigblock(root_vol, 0);
-			layer1->blocks_free = 0;
-			buffer1->cache.modified = 1;
-		}
+		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 		layer2_offset = layer1->phys_offset +
 				HAMMER_BLOCKMAP_LAYER2_OFFSET(phys_offset);
 
@@ -430,7 +446,7 @@ initialize_freemap(struct volume_info *vol)
 		/*
 		 * Finish-up layer 1
 		 */
-		if (layer1_offset - layer1_base != HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset + HAMMER_LARGEBLOCK_SIZE)) {
+		if (((phys_offset + HAMMER_LARGEBLOCK_SIZE) & HAMMER_BLOCKMAP_LAYER2_MASK) == 0) {
 			layer1->layer1_crc = crc32(layer1, sizeof(*layer1));
 			buffer1->cache.modified = 1;
 		}
@@ -517,7 +533,8 @@ void *
 alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	       struct buffer_info **bufferp)
 {
-	struct buffer_info *buffer;
+	struct buffer_info *buffer1 = NULL;
+	struct buffer_info *buffer2 = NULL;
 	struct volume_info *volume;
 	hammer_blockmap_t rootmap;
 	struct hammer_blockmap_layer1 *layer1;
@@ -548,10 +565,9 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	layer1_offset = rootmap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(rootmap->alloc_offset);
 
-	layer1 = get_buffer_data(layer1_offset, bufferp, 0);
-	buffer = *bufferp;
+	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 	if ((rootmap->alloc_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0) {
-		buffer->cache.modified = 1;
+		buffer1->cache.modified = 1;
 		bzero(layer1, sizeof(*layer1));
 		layer1->blocks_free = HAMMER_BLOCKMAP_RADIX2;
 		layer1->phys_offset = alloc_bigblock(NULL,
@@ -564,18 +580,19 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	layer2_offset = layer1->phys_offset +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(rootmap->alloc_offset);
 
-	layer2 = get_buffer_data(layer2_offset, bufferp, 0);
-	buffer = *bufferp;
+	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 	if ((rootmap->alloc_offset & HAMMER_LARGEBLOCK_MASK64) == 0) {
-		buffer->cache.modified = 1;
+		buffer2->cache.modified = 1;
 		bzero(layer2, sizeof(*layer2));
 		layer2->u.phys_offset = alloc_bigblock(NULL,
 						       rootmap->alloc_offset);
 		layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+		--layer1->blocks_free;
 	}
 
-	buffer->cache.modified = 1;
+	buffer1->cache.modified = 1;
+	buffer2->cache.modified = 1;
 	volume->cache.modified = 1;
 	layer2->bytes_free -= bytes;
 	*result_offp = rootmap->alloc_offset;
@@ -585,8 +602,12 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	bigblock_offset = layer2->u.phys_offset + 
 			  (*result_offp & HAMMER_LARGEBLOCK_MASK);
 	ptr = get_buffer_data(bigblock_offset, bufferp, 0);
-	buffer = *bufferp;
-	buffer->cache.modified = 1;
+	(*bufferp)->cache.modified = 1;
+
+	if (buffer1)
+		rel_buffer(buffer1);
+	if (buffer2)
+		rel_buffer(buffer2);
 
 	rel_volume(volume);
 	return(ptr);
