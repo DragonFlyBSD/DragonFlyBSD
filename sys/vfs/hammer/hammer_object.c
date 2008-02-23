@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.32 2008/02/23 21:27:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.33 2008/02/23 21:55:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -482,6 +482,7 @@ retry:
 			offset, bytes, trans->tid);
 		hammer_print_btree_elm(&cursor.node->ondisk->elms[cursor.index],
 				       HAMMER_BTREE_TYPE_LEAF, cursor.index);
+		panic("Duplicate data");
 		error = EIO;
 	}
 	if (error != ENOENT)

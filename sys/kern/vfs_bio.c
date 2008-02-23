@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.97 2008/01/28 07:19:06 nth Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.98 2008/02/23 21:55:49 dillon Exp $
  */
 
 /*
@@ -1802,6 +1802,7 @@ restart:
 		bp->b_bcount = 0;
 		bp->b_xio.xio_npages = 0;
 		bp->b_dirtyoff = bp->b_dirtyend = 0;
+		bp->b_tid = 0;
 		reinitbufbio(bp);
 		buf_dep_init(bp);
 		if (blkflags & GETBLK_BHEAVY)

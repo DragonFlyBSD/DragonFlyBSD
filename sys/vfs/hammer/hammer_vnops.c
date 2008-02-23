@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.32 2008/02/23 21:27:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.33 2008/02/23 21:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1399,6 +1399,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				if (error == 0) {
 					bzero(bp->b_data + offset,
 					      HAMMER_BUFSIZE - offset);
+					if (bp->b_tid == 0)
+						bp->b_tid = trans.tid;
 					bdwrite(bp);
 				} else {
 					brelse(bp);
