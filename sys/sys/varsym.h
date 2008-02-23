@@ -3,7 +3,7 @@
  *
  *	Implements structures used for variant symlink support.
  * 
- * $DragonFly: src/sys/sys/varsym.h,v 1.6 2008/02/23 00:42:44 swildner Exp $
+ * $DragonFly: src/sys/sys/varsym.h,v 1.7 2008/02/23 00:59:23 swildner Exp $
  */
 
 #ifndef _SYS_VARSYM_H_
@@ -59,5 +59,7 @@ void	varsymdrop(varsym_t var);
 void	varsymset_init(struct varsymset *varsymset, struct varsymset *copy);
 void	varsymset_clean(struct varsymset *varsymset);
 int	varsymreplace(char *cp, int linklen, int maxlen);
+
+#endif	/* _KERNEL */
 
 #endif
