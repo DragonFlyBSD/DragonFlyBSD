@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.4 2008/02/23 03:01:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.5 2008/02/23 20:55:23 dillon Exp $
  */
 
 /*
@@ -78,7 +78,6 @@ hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
 	 */
 	bytes = (bytes + 7) & ~7;
 	KKASSERT(bytes <= HAMMER_BUFSIZE);
-	KKASSERT(rootmap->next_offset <= rootmap->alloc_offset);
 
 	lockmgr(&hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
 	next_offset = rootmap->next_offset;
@@ -99,14 +98,18 @@ again:
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(next_offset);
 	layer1 = hammer_bread(hmp, layer1_offset, errorp, &buffer1);
 	KKASSERT(*errorp == 0);
+	KKASSERT(next_offset <= rootmap->alloc_offset);
 
 	/*
-	 * Allocate layer2 backing store in layer1 if necessary
+	 * Allocate layer2 backing store in layer1 if necessary.  next_offset
+	 * can skip to a bigblock boundary but alloc_offset is at least
+	 * bigblock=aligned so that's ok.
 	 */
-	if ((next_offset == rootmap->alloc_offset &&
-	    (next_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0) ||
-	    layer1->phys_offset == HAMMER_BLOCKMAP_FREE
+	if (next_offset == rootmap->alloc_offset &&
+	    ((next_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0 ||
+	    layer1->phys_offset == HAMMER_BLOCKMAP_FREE)
 	) {
+		KKASSERT((next_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0);
 		hammer_modify_buffer(buffer1, layer1, sizeof(*layer1));
 		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = hammer_freemap_alloc(hmp, next_offset,
@@ -170,7 +173,8 @@ again:
 			 * We have encountered a block that is already
 			 * partially allocated.  We must skip this block.
 			 */
-			kprintf("blockmap skip2 %016llx\n", next_offset);
+			kprintf("blockmap skip2 %016llx %d\n",
+				next_offset, layer2->bytes_free);
 			next_offset += HAMMER_LARGEBLOCK_SIZE;
 			if (next_offset >= hmp->zone_limits[zone]) {
 				next_offset = HAMMER_ZONE_ENCODE(zone, 0);
@@ -192,6 +196,7 @@ again:
 
 	hammer_modify_buffer(buffer2, layer2, sizeof(*layer2));
 	layer2->bytes_free -= bytes;
+	KKASSERT(layer2->bytes_free >= 0);
 
 	/*
 	 * If the buffer was completely free we do not have to read it from
@@ -204,12 +209,17 @@ again:
 	}
 
 	/*
-	 * Adjust our iterator
+	 * Adjust our iterator and alloc_offset.  The layer1 and layer2
+	 * space beyond alloc_offset is uninitialized.  alloc_offset must
+	 * be big-block aligned.
 	 */
 	hammer_modify_volume(root_volume, rootmap, sizeof(*rootmap));
 	rootmap->next_offset = next_offset + bytes;
-	if (rootmap->alloc_offset < rootmap->next_offset)
-		rootmap->alloc_offset = rootmap->next_offset;
+	if (rootmap->alloc_offset < rootmap->next_offset) {
+		rootmap->alloc_offset =
+		    (rootmap->next_offset + HAMMER_LARGEBLOCK_MASK) &
+		    ~HAMMER_LARGEBLOCK_MASK64;
+	}
 done:
 	if (buffer1)
 		hammer_rel_buffer(buffer1, 0);
@@ -283,6 +293,7 @@ hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
 	KKASSERT(layer2->u.phys_offset);
 	hammer_modify_buffer(buffer2, layer2, sizeof(*layer2));
 	layer2->bytes_free += bytes;
+	KKASSERT(layer2->bytes_free <= HAMMER_LARGEBLOCK_SIZE);
 
 	/*
 	 * If the big-block is free, return it to the free pool.  If our
@@ -298,6 +309,11 @@ hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
 
 			hammer_modify_buffer(buffer1, layer1, sizeof(*layer1));
 			++layer1->blocks_free;
+#if 0
+			/* 
+			 * XXX Not working yet - we aren't clearing it when
+			 * reallocating the block later on.
+			 */
 			if (layer1->blocks_free == HAMMER_BLOCKMAP_RADIX2) {
 				hammer_freemap_free(
 					hmp, layer1->phys_offset,
@@ -305,6 +321,7 @@ hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
 					&error);
 				layer1->phys_offset = HAMMER_BLOCKMAP_FREE;
 			}
+#endif
 		} else {
 			hammer_modify_volume(root_volume, rootmap,
 					     sizeof(*rootmap));

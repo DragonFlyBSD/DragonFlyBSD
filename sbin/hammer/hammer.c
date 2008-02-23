@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.8 2008/02/08 08:30:56 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.9 2008/02/23 20:55:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -134,6 +134,11 @@ main(int ac, char **av)
 		if (ac > 1)
 			sscanf(av[1], "%llx", &node_offset);
 		hammer_cmd_show(node_offset, 0, NULL, NULL);
+		exit(0);
+	}
+	if (strcmp(av[0], "blockmap") == 0) {
+		hammer_parsedevs(blkdevs);
+		hammer_cmd_blockmap();
 		exit(0);
 	}
 	usage(1);
@@ -241,6 +246,7 @@ usage(int exit_code)
 		"hammer prune <filesystem> from <modulo_time> to <modulo_time> every <modulo_time>\n"
 		"hammer history[@offset[,len]] <file-1>...<file-N>\n"
 		"hammer -f blkdevs [-r] show [vol_no[:clu_no]]\n"
+		"hammer -f blkdevs blockmap\n"
 	);
 	fprintf(stderr, "time: +n[s/m/h/D/M/Y]\n"
 			"time: yyyymmdd[:hhmmss]\n"

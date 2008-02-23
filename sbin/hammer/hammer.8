@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.6 2008/02/06 09:00:28 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.7 2008/02/23 20:55:21 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -82,6 +82,9 @@ at the root volume if not specified.
 The B-Tree is dumped recursively if the
 .Fl r
 option is specified.
+.It Ar blockmap
+Dump the btree, record, large-data, and small-data blockmaps, showing
+physical block assignments and free space percentages.
 .It Ar namekey Ar filename
 Generate a HAMMER 64 bit directory hash for the specified file name.
 The low 32 bits are used as an iterator for hash collisions and will be

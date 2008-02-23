@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.30 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.31 2008/02/23 20:55:23 dillon Exp $
  */
 
 #include "hammer.h"
@@ -704,7 +704,7 @@ retry:
 	}
 
 	/*
-	 * Try to unwind the fifo allocation
+	 * Try to unwind the allocation
 	 */
 	hammer_blockmap_free(hmp, rec_offset, HAMMER_RECORD_SIZE);
 done:
@@ -1346,9 +1346,16 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes)
 		hammer_blockmap_free(cursor->node->hmp, rec_offset,
 				     sizeof(union hammer_record_ondisk));
 	}
-	if (error == 0 &&
-	    (data_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_LARGE_DATA) {
-		hammer_blockmap_free(cursor->node->hmp, data_offset, data_len);
+	if (error == 0) {
+		switch(data_offset & HAMMER_OFF_ZONE_MASK) {
+		case HAMMER_ZONE_LARGE_DATA:
+		case HAMMER_ZONE_SMALL_DATA:
+			hammer_blockmap_free(cursor->node->hmp,
+					     data_offset, data_len);
+			break;
+		default:
+			break;
+		}
 	}
 #if 0
 	kprintf("hammer_delete_at_cursor: %d:%d:%08x %08x/%d "
