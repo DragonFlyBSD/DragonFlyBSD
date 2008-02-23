@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.31 2008/02/23 20:55:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.32 2008/02/23 21:27:07 dillon Exp $
  */
 
 #include "hammer.h"
@@ -477,8 +477,9 @@ retry:
 	 */
 	error = hammer_btree_lookup(&cursor);
 	if (error == 0) {
-		kprintf("hammer_ip_sync_data: duplicate data at (%lld,%d)\n",
-			offset, bytes);
+		kprintf("hammer_ip_sync_data: duplicate data at "
+			"(%lld,%d) tid %016llx\n",
+			offset, bytes, trans->tid);
 		hammer_print_btree_elm(&cursor.node->ondisk->elms[cursor.index],
 				       HAMMER_BTREE_TYPE_LEAF, cursor.index);
 		error = EIO;

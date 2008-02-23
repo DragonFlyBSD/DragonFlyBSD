@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.31 2008/02/10 18:58:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.32 2008/02/23 21:27:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -366,6 +366,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		flags |= HAMMER_INODE_ITIMES | HAMMER_INODE_BUFS;
 		hammer_modify_inode(&trans, ip, flags);
 
+#if 0
 		/*
 		 * The file write must be tagged with the same TID as the
 		 * inode, for consistency in case the inode changed size.
@@ -376,6 +377,15 @@ hammer_vop_write(struct vop_write_args *ap)
 		 */
 		if (bp->b_tid == 0)
 			bp->b_tid = ip->last_tid;
+#endif
+		/*
+		 * For now we can't use ip->last_tid because we may wind
+		 * up trying to flush the same buffer with the same TID
+		 * (but different data) multiple times, which will cause
+		 * a panic.
+		 */
+		if (bp->b_tid == 0)
+			bp->b_tid = trans.tid;
 
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
