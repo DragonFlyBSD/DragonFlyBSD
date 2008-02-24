@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.17 2007/08/22 13:24:44 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.18 2008/02/24 03:36:19 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -326,7 +326,8 @@ int	ieee80211_rate2media(struct ieee80211com *, int,
 int	ieee80211_media2rate(int);
 uint8_t	ieee80211_plcp2rate(uint8_t, int);
 u_int	ieee80211_mhz2ieee(u_int, u_int);
-u_int	ieee80211_chan2ieee(struct ieee80211com *, struct ieee80211_channel *);
+u_int	ieee80211_chan2ieee(struct ieee80211com *,
+		const struct ieee80211_channel *);
 u_int	ieee80211_ieee2mhz(u_int, u_int);
 int	ieee80211_setmode(struct ieee80211com *, enum ieee80211_phymode);
 enum ieee80211_phymode ieee80211_chan2mode(struct ieee80211com *,

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.15 2007/04/26 12:59:14 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.16 2008/02/24 03:36:19 sephe Exp $
  */
 
 /*
@@ -289,7 +289,7 @@ ieee80211_mhz2ieee(u_int freq, u_int flags)
  * Convert channel to IEEE channel number.
  */
 u_int
-ieee80211_chan2ieee(struct ieee80211com *ic, struct ieee80211_channel *c)
+ieee80211_chan2ieee(struct ieee80211com *ic, const struct ieee80211_channel *c)
 {
 	if (ic->ic_channels <= c && c <= &ic->ic_channels[IEEE80211_CHAN_MAX])
 		return c - ic->ic_channels;
