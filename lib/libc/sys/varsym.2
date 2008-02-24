@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/varsym.2,v 1.2 2008/02/23 00:43:50 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/varsym.2,v 1.3 2008/02/24 19:46:47 swildner Exp $
 .\"
 .Dd February 21, 2008
 .Os
@@ -107,16 +107,18 @@ System wide variables.
 Used internally.
 .El
 .Sh RETURN VALUES
-Upon successful completion, the
+.Rv -std varsym_get varsym_set
+.Pp
+The
 .Fn varsym_list
-function returns the number of bytes read;
+function returns the number of bytes read if successful;
 otherwise the value -1 is returned and the global variable
 .Fa errno
 is set to indicate the error.
 .Sh ERRORS
 The
-.Fn varsym_list
-function will fail when one of the following occurs:
+.Nm varsym
+system calls will fail when one of the following occurs:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 An invalid
@@ -131,13 +133,13 @@ Insufficient space for storing variable values was specified.
 .Xr varsym 1
 .Sh HISTORY
 The
-.Nm
+.Nm varsym
 system calls first appeared in
 .Dx 1.0 .
 .Sh AUTHORS
 .An -nosplit
 The
-.Nm
+.Nm varsym
 system calls were written by
 .An Matthew Dillon
 and this manual page was written by
