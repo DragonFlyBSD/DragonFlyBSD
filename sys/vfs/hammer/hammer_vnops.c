@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.33 2008/02/23 21:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.34 2008/02/24 19:48:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1786,11 +1786,26 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	}
 
 	/*
-	 * Add a single record to cover the write
+	 * Add a single record to cover the write.  We can write a record
+	 * with only the actual file data - for example, a small 200 byte
+	 * file does not have to write out a 16K record.
+	 *
+	 * While the data size does not have to be aligned, we still do it
+	 * to reduce fragmentation in a future allocation model.
 	 */
 	if (error == 0) {
+		int limit_size;
+
+		if (ip->ino_rec.ino_size - bio->bio_offset > bp->b_bufsize) {
+			limit_size = bp->b_bufsize;
+		} else {
+			limit_size = (int)(ip->ino_rec.ino_size -
+					   bio->bio_offset);
+			KKASSERT(limit_size >= 0);
+			limit_size = (limit_size + 63) & ~63;
+		}
 		error = hammer_ip_sync_data(&trans, ip, bio->bio_offset,
-					    bp->b_data, bp->b_bufsize);
+					    bp->b_data, limit_size);
 	}
 
 	/*

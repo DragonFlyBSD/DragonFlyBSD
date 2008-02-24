@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.33 2008/02/23 21:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.34 2008/02/24 19:48:45 dillon Exp $
  */
 
 #include "hammer.h"
@@ -446,6 +446,10 @@ hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
  * is responsible for actually writing a data record out to the disk.
  *
  * This can only occur non-historically (i.e. 'current' data only).
+ *
+ * The file offset must be HAMMER_BUFSIZE aligned but the data length
+ * can be truncated.  The record (currently) always represents a BUFSIZE
+ * swath of space whether the data is truncated or not.
  */
 int
 hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
@@ -459,7 +463,6 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 
 	KKASSERT((offset & HAMMER_BUFMASK) == 0);
-	KKASSERT((bytes & HAMMER_BUFMASK) == 0);
 retry:
 	error = hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
 	if (error)
