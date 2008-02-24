@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.31 2008/02/23 03:01:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.32 2008/02/24 20:08:50 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -155,6 +155,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 	struct buf *bp = NULL;
 	int error;
 	int ronly;
+	int setmp = 0;
 
 	mp = hmp->mp;
 	ronly = ((mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
@@ -202,6 +203,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 		return(error);
 	}
 	volume->devvp->v_rdev->si_mountpoint = mp;
+	setmp = 1;
 
 	/*
 	 * Extract the volume number from the volume header and do various
@@ -263,6 +265,8 @@ late_failure:
 		brelse(bp);
 	if (error) {
 		/*vinvalbuf(volume->devvp, V_SAVE, 0, 0);*/
+		if (setmp)
+			volume->devvp->v_rdev->si_mountpoint = NULL;
 		VOP_CLOSE(volume->devvp, ronly ? FREAD : FREAD|FWRITE);
 		hammer_free_volume(volume);
 	}
@@ -314,6 +318,11 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 
 	volume->ondisk = NULL;
 	if (volume->devvp) {
+		if (volume->devvp->v_rdev &&
+		    volume->devvp->v_rdev->si_mountpoint == hmp->mp
+		) {
+			volume->devvp->v_rdev->si_mountpoint = NULL;
+		}
 		if (ronly) {
 			vinvalbuf(volume->devvp, 0, 0, 0);
 			VOP_CLOSE(volume->devvp, FREAD);
@@ -340,12 +349,6 @@ hammer_free_volume(hammer_volume_t volume)
 		volume->vol_name = NULL;
 	}
 	if (volume->devvp) {
-		if (vn_isdisk(volume->devvp, NULL) &&
-		    volume->devvp->v_rdev &&
-		    volume->devvp->v_rdev->si_mountpoint == volume->hmp->mp
-		) {
-			volume->devvp->v_rdev->si_mountpoint = NULL;
-		}
 		vrele(volume->devvp);
 		volume->devvp = NULL;
 	}
