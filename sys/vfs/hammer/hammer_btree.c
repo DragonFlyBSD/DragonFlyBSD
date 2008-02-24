@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.30 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.31 2008/02/24 23:40:24 dillon Exp $
  */
 
 /*
@@ -2070,7 +2070,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 		if (child) {
 			if (hammer_lock_ex_try(&child->lock) != 0) {
 				if (cursor->deadlk_node == NULL) {
-					cursor->deadlk_node = node;
+					cursor->deadlk_node = child;
 					hammer_ref_node(cursor->deadlk_node);
 				}
 				error = EDEADLK;
