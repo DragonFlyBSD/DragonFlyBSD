@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.49 2007/05/01 23:53:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.50 2008/02/25 12:56:32 tgen Exp $
  *
  */
 
@@ -591,6 +591,7 @@ ithread_fast_handler(struct intrframe *frame)
      * preemption)
      */
     if (info->i_fast == 0) {
+    	++gd->gd_intr_nesting_level;
 	sched_ithd(intr);
 	return(1);
     }
