@@ -2,7 +2,7 @@
      "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-<!-- $DragonFly: site/data/includes/header.shtml,v 1.5 2007/08/07 02:01:47 justin Exp $ -->
+<!-- $DragonFly: site/data/includes/header.shtml,v 1.6 2008/02/26 18:52:47 dillon Exp $ -->
 <title><!--#echo var="title" --></title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <link href="/favicon.ico" rel="shortcut icon" type="image/x-icon">
@@ -29,7 +29,7 @@
 
 <ul class="minor">
 <li><a href="/community/download.shtml">Download</a>
-<li><a href="/community/release1_10.shtml">Release</a>
+<li><a href="/community/release1_12.shtml">Release</a>
 <li><a href="/community/mail.shtml">Mail</a>
 <li><a href="/community/news.shtml">News</a>
 <li><a href="http://leaf.dragonflybsd.org/mailarchive">Archive</a>

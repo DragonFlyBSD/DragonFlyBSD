@@ -1,11 +1,11 @@
 <!--#set var="title" value="DragonFly - August 2007 Release 1.10.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_10.shtml,v 1.4 2007/08/07 16:57:07 justin Exp $ -->
+<!-- $DragonFly: site/data/community/release1_10.shtml,v 1.5 2008/02/26 18:52:46 dillon Exp $ -->
 
 <h1>Obtaining DragonFly 1.10.x for your system</h1>
 
-<h2>1.10.0 ISO Images for CDs</h2>
+<h2>1.10.1 ISO Images for CDs</h2>
 
 <p>
 DragonFly CDs are 'live', which means that the CD will boot your system 
@@ -36,6 +36,8 @@ See the 'Download Site' list below for a list of download locations.
 <b>The MD5 for the release is:
 <br/>MD5 (dfly-1.10.0_REL.iso) = 51a86604eed9be4f795ca0f665396f8a
 <br/>MD5 (dfly-1.10.0_REL.iso.gz) = 1cea8b87f1d1933a2d24a36720b37a7e
+<br/>MD5 (dfly-1.10.1_REL.iso) = 81757008e8c795e7e2660fa3b1e11240
+<br/>MD5 (dfly-1.10.1_REL.iso.gz) = 17eeb23f70fba75834042c7a780b04f2
 
 </b><br /> </p>
 
@@ -65,6 +67,12 @@ See the 'Download Site' list below for a list of download locations.
 <TD>RELEASE CD</TD>
 <TD><A HREF="errata1_10.shtml">Errata</A></TD>
 </TR>
+<TR>
+<TD>1.10.1</TD>
+<TD>21-Aug-2007</TD>
+<TD>mbuf leak fixed and other bugs</TD>
+<TD><A HREF="errata1_10.shtml">Errata</A></TD>
+</TR>
 </TABLE>
 
 <p>
@@ -81,56 +89,56 @@ See the 'Download Site' list below for a list of download locations.
 
 <!--
 <TR><TD>Fortunaty.net</TD>
-<TD>1.10.0_REL image</TD>
-<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A></TD></TR>
+<TD>1.10.1_REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.10.1_REL.iso.gz">HTTP</A></TD></TR>
 -->
 
 <TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>1.10.0_REL image</TD>
+<TD>1.10.1_REL image</TD>
 <TD>
-    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">FTP</A>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.10.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.10.1_REL.iso.gz">FTP</A>
 </TD>
 </TR>
 
 <!--
 <TR><TD>BGP4.net (USA)</TD>
-<TD>1.10.0_REL image</TD>
+<TD>1.10.1_REL image</TD>
 <TD>
-    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">FTP</A>
+    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.10.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.10.1_REL.iso.gz">FTP</A>
 </TD></TR>
 -->
 
 <TR><TD>TheShell.com</TD>
-<TD>1.10.0_REL image</TD>
+<TD>1.10.1_REL image</TD>
 <TD>
-    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">FTP</A>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.10.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.10.1_REL.iso.gz">FTP</A>
 </TD></TR>
 
 <TR><TD>high5.net (Amsterdam)</TD>
-<TD>1.10.0_REL image</TD>
+<TD>1.10.1_REL image</TD>
 <TD>
-    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.10.0_REL.iso.gz">HTTP</A>
+    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.10.1_REL.iso.gz">HTTP</A>
 </TD></TR>
 
 <TR><TD>dragonflybsd.kiev.ua (Ukraine)</TD>
-<TD>1.10.0_REL image</TD>
+<TD>1.10.1_REL image</TD>
 <TD>
-    <A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/iso-images/dfly-1.10.0_REL.iso.gz">FTP</A>
+    <A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/iso-images/dfly-1.10.1_REL.iso.gz">FTP</A>
 </TD></TR>
 
 
 
 <TR><TD>Dragonflybsd.org (USA)</TD>
-<TD>1.10.0_REL image</TD>
-<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.10.0_REL.iso.gz">FTP</A>
+<TD>1.10.1_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.10.1_REL.iso.gz">FTP</A>
 (<I>try to find another site first</I>)</TD></TR>
 
 </TABLE>
 
-<h1>Release Notes for DragonFly 1.10.0</h1>
+<h1>Release Notes for DragonFly 1.10.1</h1>
 
 <p>
 1.10 is our sixth major DragonFly release.  DragonFly's policy is to
