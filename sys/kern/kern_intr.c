@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.50 2008/02/25 12:56:32 tgen Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.51 2008/02/27 15:20:17 tgen Exp $
  *
  */
 
@@ -589,9 +589,12 @@ ithread_fast_handler(struct intrframe *frame)
      * If we are not processing any FAST interrupts, just schedule the thing.
      * (since we aren't in a critical section, this can result in a
      * preemption)
+     *
+     * XXX Protect sched_ithd() call with gd_intr_nesting_level? Interrupts
+     * aren't enabled, but still...
      */
     if (info->i_fast == 0) {
-    	++gd->gd_intr_nesting_level;
+    	++gd->gd_cnt.v_intr;
 	sched_ithd(intr);
 	return(1);
     }
