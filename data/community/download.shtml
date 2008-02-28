@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.20 2008/02/28 20:23:03 swildner Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.21 2008/02/28 21:36:48 swildner Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -354,6 +354,7 @@ rsync
 <TD>Official ISOs</TD>
 <TD>
 <a href="http://mirrors.isc.org/pub/DragonFly/">HTTP</a>
+<a href="ftp://mirrors.isc.org/pub/DragonFly/">FTP</a>
 </TD>
 </TR>
 
