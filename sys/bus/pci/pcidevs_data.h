@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.30 2007/12/26 12:59:09 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.31 2008/02/28 18:15:31 swildner Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.29 2007/10/03 09:23:17 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.31 2008/02/28 18:12:51 swildner Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -9407,6 +9407,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "Cyber20x 2S1P 16850 PCI",
 	},
 	{
+	    PCI_VENDOR_SILAN, PCI_PRODUCT_SILAN_SC92301,
+	    0,
+	    "Hangzhou Silan Microelectronics",
+	    "SC92301 based fast ethernet adapter",
+	},
+	{
+	    PCI_VENDOR_SILAN, PCI_PRODUCT_SILAN_8139D,
+	    0,
+	    "Hangzhou Silan Microelectronics",
+	    "8139D fast ethernet adapter",
+	},
+	{
 	    PCI_VENDOR_SIS, PCI_PRODUCT_SIS_86C201,
 	    0,
 	    "Silicon Integrated System",
@@ -14978,6 +14990,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_RALINK, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Ralink Technologies",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_SILAN, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Hangzhou Silan Microelectronics",
 	    NULL,
 	},
 	{
