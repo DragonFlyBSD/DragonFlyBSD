@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.30 2007/12/26 12:57:52 sephe Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.31 2008/02/28 18:12:51 swildner Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -578,6 +578,7 @@ vendor FZJZEL		0x1796	FZ Juelich / ZEL
 vendor BELKIN		0x1799	Belkin
 vendor SANDBURST	0x17ba	Sandburst, Inc.
 vendor RALINK		0x1814	Ralink Technologies
+vendor SILAN		0x1904	Hangzhou Silan Microelectronics
 vendor SYMPHONY2	0x1c1c	Symphony Labs (2nd PCI Vendor ID)
 vendor TEKRAM2		0x1de1	Tekram Technology (2nd PCI Vendor ID)
 vendor HINT		0x3388	HiNT
@@ -2547,6 +2548,10 @@ product SIIG CYBER20_4S850	0x2052	Cyber20x 4S 16850 PCI
 product SIIG CYBER20_2S1P550	0x2060	Cyber20x 2S1P 16550 PCI
 product SIIG CYBER20_2S1P650	0x2061	Cyber20x 2S1P 16650 PCI
 product SIIG CYBER20_2S1P850	0x2062	Cyber20x 2S1P 16850 PCI
+
+/* Hangzhou Silan Microelectronics products */
+product SILAN SC92301		0x2301	SC92301 based fast ethernet adapter
+product SILAN 8139D		0x8139	8139D fast ethernet adapter
 
 /* Silicon Integrated System products */
 product SIS 86C201		0x0001	86C201
