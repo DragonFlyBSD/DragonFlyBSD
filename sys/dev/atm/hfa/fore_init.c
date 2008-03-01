@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_init.c,v 1.6 1999/08/29 10:28:09 bde Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.7 2006/12/20 18:14:38 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.8 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -190,8 +190,7 @@ failed:
  *	none
  */
 void
-fore_initialize_complete(fup)
-	Fore_unit	*fup;
+fore_initialize_complete(Fore_unit *fup)
 {
 	Aali		*aap = fup->fu_aali;
 
@@ -252,8 +251,7 @@ fore_initialize_complete(fup)
  *
  */
 static void
-fore_get_prom(fup)
-	Fore_unit	*fup;
+fore_get_prom(Fore_unit *fup)
 {
 	H_cmd_queue	*hcp;
 	Cmd_queue	*cqp;

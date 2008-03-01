@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_init.c,v 1.3 1999/08/28 00:41:44 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_init.c,v 1.4 2003/08/07 21:54:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_init.c,v 1.5 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -55,8 +55,7 @@
  *	error		error condition
  */
 int
-eni_init ( eup )
-	Eni_unit *eup;
+eni_init(Eni_unit *eup)
 {
 	u_long	words, order;
 

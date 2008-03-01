@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_vcm.c,v 1.4 1999/08/28 00:41:53 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_vcm.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_vcm.c,v 1.4 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -56,9 +56,7 @@
  *
  */
 int
-fore_instvcc(cup, cvp)
-	Cmn_unit	*cup;
-	Cmn_vcc		*cvp;
+fore_instvcc(Cmn_unit *cup, Cmn_vcc *cvp)
 {
 	Fore_vcc	*fvp = (Fore_vcc *)cvp;
 	Atm_attributes	*ap = &fvp->fv_connvc->cvc_attr;
@@ -116,9 +114,7 @@ fore_instvcc(cup, cvp)
  *
  */
 int
-fore_openvcc(cup, cvp)
-	Cmn_unit	*cup;
-	Cmn_vcc		*cvp;
+fore_openvcc(Cmn_unit *cup, Cmn_vcc *cvp)
 {
 	Fore_unit	*fup = (Fore_unit *)cup;
 	Fore_vcc	*fvp = (Fore_vcc *)cvp;
@@ -210,9 +206,7 @@ fore_openvcc(cup, cvp)
  *
  */
 int
-fore_closevcc(cup, cvp)
-	Cmn_unit	*cup;
-	Cmn_vcc		*cvp;
+fore_closevcc(Cmn_unit *cup, Cmn_vcc *cvp)
 {
 	Fore_unit	*fup = (Fore_unit *)cup;
 	Fore_vcc	*fvp = (Fore_vcc *)cvp;

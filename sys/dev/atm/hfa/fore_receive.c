@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_receive.c,v 1.5.2.2 2003/01/23 21:06:43 sam Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.7 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -54,8 +54,7 @@ static void	fore_recv_stack (void *, KBuffer *);
  *	else		allocation failed
  */
 int
-fore_recv_allocate(fup)
-	Fore_unit	*fup;
+fore_recv_allocate(Fore_unit *fup)
 {
 	caddr_t		memp;
 
@@ -112,8 +111,7 @@ fore_recv_allocate(fup)
  *	none
  */
 void
-fore_recv_initialize(fup)
-	Fore_unit	*fup;
+fore_recv_initialize(Fore_unit *fup)
 {
 	Aali		*aap = fup->fu_aali;
 	Recv_queue	*cqp;
@@ -204,8 +202,7 @@ fore_recv_initialize(fup)
  *	none
  */
 void
-fore_recv_drain(fup)
-	Fore_unit	*fup;
+fore_recv_drain(Fore_unit *fup)
 {
 	H_recv_queue	*hrp = NULL;
 	Recv_descr	*rdp;
@@ -503,9 +500,7 @@ free_ent:
  *	none
  */
 static void
-fore_recv_stack(tok, m)
-	void		*tok;
-	KBuffer		*m;
+fore_recv_stack(void *tok, KBuffer *m)
 {
 	Fore_vcc	*fvp = (Fore_vcc *)tok;
 	int		err;
@@ -532,8 +527,7 @@ fore_recv_stack(tok, m)
  *	none
  */
 void
-fore_recv_free(fup)
-	Fore_unit	*fup;
+fore_recv_free(Fore_unit *fup)
 {
 	/*
 	 * We'll just let fore_buf_free() take care of freeing any

@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.23 2007/05/13 18:33:57 swildner Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.24 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -387,13 +387,9 @@ STATIC INLINE	void en_write (struct en_softc *, u_int32_t,
  * that reads from the card.
  */
 
-STATIC INLINE u_int32_t en_read(sc, r)
-
-struct en_softc *sc;
-u_int32_t r;
-
+STATIC INLINE u_int32_t
+en_read(struct en_softc *sc, u_int32_t r)
 {
-
 #ifdef EN_DEBUG_RANGE
   if (r > MID_MAXOFF || (r % 4))
     panic("en_read out of range, r=0x%x", r);
@@ -407,11 +403,8 @@ u_int32_t r;
  * writes to the card.
  */
 
-STATIC INLINE void en_write(sc, r, v)
-
-struct en_softc *sc;
-u_int32_t r, v;
-
+STATIC INLINE void
+en_write(struct en_softc *sc, u_int32_t r, u_int32_t v)
 {
 #ifdef EN_DEBUG_RANGE
   if (r > MID_MAXOFF || (r % 4))
@@ -425,10 +418,8 @@ u_int32_t r, v;
  * en_k2sz: convert KBytes to a size parameter (a log2)
  */
 
-STATIC INLINE int en_k2sz(k)
-
-int k;
-
+STATIC INLINE int
+en_k2sz(int k)
 {
   switch(k) {
     case 1:   return(0);
@@ -450,10 +441,8 @@ int k;
  * en_b2sz: convert a DMA burst code to its byte size
  */
 
-STATIC INLINE int en_b2sz(b)
-
-int b;
-
+STATIC INLINE int
+en_b2sz(int b)
 {
   switch (b) {
     case MIDDMA_WORD:   return(1*4);
@@ -475,10 +464,8 @@ int b;
  * en_sz2b: convert a burst size (bytes) to DMA burst code
  */
 
-STATIC INLINE int en_sz2b(sz)
-
-int sz;
-
+STATIC INLINE int
+en_sz2b(int sz)
 {
   switch (sz) {
     case 1*4:  return(MIDDMA_WORD);
@@ -496,12 +483,8 @@ int sz;
  * en_dqneed: calculate number of DTQ/DRQ's needed for a buffer
  */
 
-STATIC INLINE int en_dqneed(sc, data, len, tx)
-
-struct en_softc *sc;
-caddr_t data;
-u_int len, tx;
-
+STATIC INLINE int
+en_dqneed(struct en_softc *sc, caddr_t data, u_int len, u_int tx)
 {
   int result, needalign, sz;
 
@@ -562,11 +545,8 @@ u_int len, tx;
  * after this call the sum of all the m_len's in the chain will be totlen.
  */
 
-STATIC INLINE struct mbuf *en_mget(sc, totlen, drqneed)
-
-struct en_softc *sc;
-u_int totlen, *drqneed;
-
+STATIC INLINE struct mbuf *
+en_mget(struct en_softc *sc, u_int totlen, u_int *drqneed)
 {
   struct mbuf *m;
   struct mbuf *top, **mp;
@@ -617,10 +597,8 @@ u_int totlen, *drqneed;
  * autoconfig stuff
  */
 
-void en_attach(sc)
-
-struct en_softc *sc;
-
+void
+en_attach(struct en_softc *sc)
 {
   struct ifnet *ifp = &sc->enif;
   int sz;
@@ -808,10 +786,8 @@ done_probe:
 			   should be n * 64.  at least 64*(NBURSTS+1).
 			   dell P6 with EDO DRAM has 1K bounday problem */
 
-STATIC void en_dmaprobe(sc)
-
-struct en_softc *sc;
-
+STATIC void
+en_dmaprobe(struct en_softc *sc)
 {
 #ifdef NBURSTS
   /* be careful. kernel stack is only 8K */
@@ -893,12 +869,7 @@ struct en_softc *sc;
  */
 
 static int
-en_dmaprobe_doit(sc, sp, dp, wmtry)
-
-struct en_softc *sc;
-u_int8_t *sp, *dp;
-int wmtry;
-
+en_dmaprobe_doit(struct en_softc *sc, u_int8_t *sp, u_int8_t *dp, int wmtry)
 {
   int lcv, retval = 4, cnt, count;
   u_int32_t reg, bcode, midvloc;
@@ -1093,13 +1064,8 @@ int wmtry;
  * txspeed[vci].
  */
 
-STATIC int en_ioctl(ifp, cmd, data, cr)
-
-struct ifnet *ifp;
-EN_IOCTL_CMDT cmd;
-caddr_t data;
-struct ucred *cr;
-
+STATIC int
+en_ioctl(struct ifnet *ifp, EN_IOCTL_CMDT cmd, caddr_t data, struct ucred *cr)
 {
     struct en_softc *sc = (struct en_softc *) ifp->if_softc;
     struct ifaddr *ifa = (struct ifaddr *) data;
@@ -1202,12 +1168,8 @@ struct ucred *cr;
  * en_rxctl: turn on and off VCs for recv.
  */
 
-STATIC int en_rxctl(sc, pi, on)
-
-struct en_softc *sc;
-struct atm_pseudoioctl *pi;
-int on;
-
+STATIC int
+en_rxctl(struct en_softc *sc, struct atm_pseudoioctl *pi, int on)
 {
   u_int vci, flags, slot;
   u_int32_t oldmode, newmode;
@@ -1300,10 +1262,8 @@ int on;
  * must en_init to recover.
  */
 
-void en_reset(sc)
-
-struct en_softc *sc;
-
+void
+en_reset(struct en_softc *sc)
 {
   struct mbuf *m;
   int lcv, slot;
@@ -1376,10 +1336,8 @@ struct en_softc *sc;
  * en_init: init board and sync the card with the data in the softc.
  */
 
-STATIC void en_init(sc)
-
-struct en_softc *sc;
-
+STATIC void
+en_init(struct en_softc *sc)
 {
   int vc, slot;
   u_int32_t loc;
@@ -1474,11 +1432,8 @@ struct en_softc *sc;
  * en_loadvc: load a vc tab entry from a slot
  */
 
-STATIC void en_loadvc(sc, vc)
-
-struct en_softc *sc;
-int vc;
-
+STATIC void
+en_loadvc(struct en_softc *sc, int vc)
 {
   int slot;
   u_int32_t reg = EN_READ(sc, MID_VC(vc));
@@ -1507,10 +1462,8 @@ int vc;
  * if there is one.    note that atm_output() has already locked us.
  */
 
-STATIC void en_start(ifp)
-
-struct ifnet *ifp;
-
+STATIC void
+en_start(struct ifnet *ifp)
 {
     struct en_softc *sc = (struct en_softc *) ifp->if_softc;
     struct mbuf *m, *lastm, *prev;
@@ -1699,9 +1652,8 @@ struct ifnet *ifp;
 
 STATIC int en_makeexclusive(struct en_softc *, struct mbuf **, struct mbuf *);
 
-STATIC int en_makeexclusive(sc, mm, prev)
-    struct en_softc *sc;
-    struct mbuf **mm, *prev;
+STATIC int
+en_makeexclusive(struct en_softc *sc, struct mbuf **mm, struct mbuf *prev)
 {
     struct mbuf *m, *new;
 
@@ -1748,11 +1700,8 @@ STATIC int en_makeexclusive(sc, mm, prev)
     return (1);
 }
 
-STATIC int en_mfix(sc, mm, prev)
-
-struct en_softc *sc;
-struct mbuf **mm, *prev;
-
+STATIC int
+en_mfix(struct en_softc *sc, struct mbuf **mm, struct mbuf *prev)
 {
   struct mbuf *m;
   u_char *d, *cp;
@@ -1823,11 +1772,8 @@ struct mbuf **mm, *prev;
  * en_txdma: start trasmit DMA, if possible
  */
 
-STATIC void en_txdma(sc, chan)
-
-struct en_softc *sc;
-int chan;
-
+STATIC void
+en_txdma(struct en_softc *sc, int chan)
 {
   struct mbuf *tmp;
   struct atm_pseudohdr *ap;
@@ -2042,12 +1988,8 @@ dequeue_drop:
  * en_txlaunch: launch an mbuf into the dma pool!
  */
 
-STATIC void en_txlaunch(sc, chan, l)
-
-struct en_softc *sc;
-int chan;
-struct en_launch *l;
-
+STATIC void
+en_txlaunch(struct en_softc *sc, int chan, struct en_launch *l)
 {
   struct mbuf *tmp;
   u_int32_t cur = sc->txslot[chan].cur,
@@ -2400,10 +2342,8 @@ done:
  * interrupt handler
  */
 
-EN_INTR_TYPE en_intr(arg)
-
-void *arg;
-
+EN_INTR_TYPE
+en_intr(void *arg)
 {
   struct en_softc *sc = (struct en_softc *) arg;
   struct mbuf *m;
@@ -2684,10 +2624,8 @@ void *arg;
  *
  */
 
-STATIC void en_service(sc)
-
-struct en_softc *sc;
-
+STATIC void
+en_service(struct en_softc *sc)
 {
   struct mbuf *m, *tmp;
   u_int32_t cur, dstart, rbd, pdu, *sav, dma, bcode, count, *data, *datastop;
@@ -3115,10 +3053,8 @@ done:
 #define END_BITS "\20\7SWSL\6DRQ\5DTQ\4RX\3TX\2MREGS\1STATS"
 
 /* Do not staticize - meant for calling from DDB! */
-int en_dump(unit, level)
-
-int unit, level;
-
+int
+en_dump(int unit, int level)
 {
   struct en_softc *sc;
   int lcv, cnt, slot;
@@ -3280,10 +3216,8 @@ int unit, level;
  */
 
 /* Do not staticize - meant for calling from DDB! */
-int en_dumpmem(unit, addr, len)
-
-int unit, addr, len;
-
+int
+en_dumpmem(int unit, int addr, int len)
 {
   struct en_softc *sc;
   u_int32_t reg;

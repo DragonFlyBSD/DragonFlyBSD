@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_buffer.c,v 1.5 2000/01/15 21:01:04 mks Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_buffer.c,v 1.4 2003/08/27 10:35:16 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_buffer.c,v 1.5 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -59,8 +59,7 @@ static void	fore_buf_supply_1l (Fore_unit *);
  *	else		allocation failed
  */
 int
-fore_buf_allocate(fup)
-	Fore_unit	*fup;
+fore_buf_allocate(Fore_unit *fup)
 {
 	caddr_t		memp;
 
@@ -129,8 +128,7 @@ fore_buf_allocate(fup)
  *	none
  */
 void
-fore_buf_initialize(fup)
-	Fore_unit	*fup;
+fore_buf_initialize(Fore_unit *fup)
 {
 	Aali		*aap = fup->fu_aali;
 	Buf_queue	*cqp;
@@ -284,8 +282,7 @@ fore_buf_initialize(fup)
  *	none
  */
 void
-fore_buf_supply(fup)
-	Fore_unit	*fup;
+fore_buf_supply(Fore_unit *fup)
 {
 
 	/*
@@ -316,8 +313,7 @@ fore_buf_supply(fup)
  *	none
  */
 static void
-fore_buf_supply_1s(fup)
-	Fore_unit	*fup;
+fore_buf_supply_1s(Fore_unit *fup)
 {
 	H_buf_queue	*hbp;
 	Buf_queue	*cqp;
@@ -458,8 +454,7 @@ fore_buf_supply_1s(fup)
  *	none
  */
 static void
-fore_buf_supply_1l(fup)
-	Fore_unit	*fup;
+fore_buf_supply_1l(Fore_unit *fup)
 {
 	H_buf_queue	*hbp;
 	Buf_queue	*cqp;
@@ -605,8 +600,7 @@ fore_buf_supply_1l(fup)
  *	none
  */
 static void
-fore_buf_drain(fup)
-	Fore_unit	*fup;
+fore_buf_drain(Fore_unit *fup)
 {
 	H_buf_queue	*hbp;
 
@@ -677,8 +671,7 @@ fore_buf_drain(fup)
  *	none
  */
 void
-fore_buf_free(fup)
-	Fore_unit	*fup;
+fore_buf_free(Fore_unit *fup)
 {
 	Buf_handle	*bhp;
 	KBuffer		*m;

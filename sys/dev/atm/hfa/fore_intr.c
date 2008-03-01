@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_intr.c,v 1.3 1999/08/28 00:41:50 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_intr.c,v 1.5 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_intr.c,v 1.6 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -51,8 +51,7 @@
  *
  */
 void
-fore_intr(arg)
-	void	*arg;
+fore_intr(void *arg)
 {
 	Fore_unit	*fup = arg;
 	Aali	*aap;
@@ -145,8 +144,7 @@ fore_intr(arg)
  *
  */
 void
-fore_watchdog(fup)
-	Fore_unit	*fup;
+fore_watchdog(Fore_unit *fup)
 {
 	/*
 	 * Try to prevent stuff happening after we've paniced

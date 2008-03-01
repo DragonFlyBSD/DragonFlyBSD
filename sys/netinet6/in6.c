@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.26 2008/01/05 14:02:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.27 2008/03/01 22:03:13 swildner Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -1614,10 +1614,7 @@ in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 }
 
 struct in6_multi_mship *
-in6_joingroup(ifp, addr, errorp)
-       struct ifnet *ifp;
-       struct in6_addr *addr;
-       int *errorp;
+in6_joingroup(struct ifnet *ifp, struct in6_addr *addr, int *errorp)
 {
        struct in6_multi_mship *imm;
 
@@ -1636,8 +1633,7 @@ in6_joingroup(ifp, addr, errorp)
 }
 
 int
-in6_leavegroup(imm)
-       struct in6_multi_mship *imm;
+in6_leavegroup(struct in6_multi_mship *imm)
 {
 
        if (imm->i6mm_maddr)

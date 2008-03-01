@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/blowfish/bf_skey.c,v 1.1.2.3 2002/03/26 10:12:23 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/blowfish/bf_skey.c,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/blowfish/bf_skey.c,v 1.3 2008/03/01 22:03:12 swildner Exp $	*/
 /*	$KAME: bf_skey.c,v 1.7 2002/02/27 01:33:59 itojun Exp $	*/
 
 /* crypto/bf/bf_skey.c */
@@ -68,10 +68,7 @@
 #include <crypto/blowfish/bf_pi.h>
 
 void
-BF_set_key(key, len, data)
-	BF_KEY *key;
-	int len;
-	unsigned char *data;
+BF_set_key(BF_KEY *key, int len, unsigned char *data)
 {
 	int i;
 	BF_LONG *p, ri, in[2];

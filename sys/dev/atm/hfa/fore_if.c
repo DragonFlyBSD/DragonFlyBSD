@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_if.c,v 1.5 1999/08/28 00:41:49 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_if.c,v 1.4 2006/12/20 18:14:38 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_if.c,v 1.5 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -52,10 +52,7 @@
  *	error		request failed - reason code
  */
 int
-fore_atm_ioctl(code, data, arg)
-	int	code;
-	caddr_t	data;
-	caddr_t	arg;
+fore_atm_ioctl(int code, caddr_t data, caddr_t arg)
 {
 	struct atminfreq	*aip = (struct atminfreq *)data;
 	struct atm_pif		*pip;
@@ -172,8 +169,7 @@ fore_atm_ioctl(code, data, arg)
  *
  */
 void
-fore_interface_free(fup)
-	Fore_unit	*fup;
+fore_interface_free(Fore_unit *fup)
 {
 
 	/*

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/sha1.c,v 1.2.2.4 2001/07/03 11:01:27 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/sha1.c,v 1.3 2003/08/27 10:59:04 rob Exp $	*/
+/*	$DragonFly: src/sys/crypto/sha1.c,v 1.4 2008/03/01 22:03:12 swildner Exp $	*/
 /*	$KAME: sha1.c,v 1.5 2000/11/08 06:13:08 itojun Exp $	*/
 
 /*
@@ -88,8 +88,7 @@ static u_int32_t _K[] = { 0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6 };
 static void sha1_step (struct sha1_ctxt *);
 
 static void
-sha1_step(ctxt)
-	struct sha1_ctxt *ctxt;
+sha1_step(struct sha1_ctxt *ctxt)
 {
 	u_int32_t	a, b, c, d, e;
 	size_t t, s;
@@ -173,8 +172,7 @@ sha1_step(ctxt)
 /*------------------------------------------------------------*/
 
 void
-sha1_init(ctxt)
-	struct sha1_ctxt *ctxt;
+sha1_init(struct sha1_ctxt *ctxt)
 {
 	bzero(ctxt, sizeof(struct sha1_ctxt));
 	H(0) = 0x67452301;
@@ -185,8 +183,7 @@ sha1_init(ctxt)
 }
 
 void
-sha1_pad(ctxt)
-	struct sha1_ctxt *ctxt;
+sha1_pad(struct sha1_ctxt *ctxt)
 {
 	size_t padlen;		/*pad length in bytes*/
 	size_t padstart;
@@ -220,10 +217,7 @@ sha1_pad(ctxt)
 }
 
 void
-sha1_loop(ctxt, input, len)
-	struct sha1_ctxt *ctxt;
-	const u_int8_t *input;
-	size_t len;
+sha1_loop(struct sha1_ctxt *ctxt, const u_int8_t *input, size_t len)
 {
 	size_t gaplen;
 	size_t gapstart;
@@ -248,9 +242,7 @@ sha1_loop(ctxt, input, len)
 }
 
 void
-sha1_result(ctxt, digest0)
-	struct sha1_ctxt *ctxt;
-	caddr_t digest0;
+sha1_result(struct sha1_ctxt *ctxt, caddr_t digest0)
 {
 	u_int8_t *digest;
 

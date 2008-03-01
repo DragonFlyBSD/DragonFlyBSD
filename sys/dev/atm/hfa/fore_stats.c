@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_stats.c,v 1.4 1999/08/28 00:41:52 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_stats.c,v 1.7 2005/06/02 21:36:09 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_stats.c,v 1.8 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -56,8 +56,7 @@
  *
  */
 int
-fore_get_stats(fup)
-	Fore_unit	*fup;
+fore_get_stats(Fore_unit *fup)
 {
 	H_cmd_queue	*hcp;
 	Cmd_queue	*cqp;

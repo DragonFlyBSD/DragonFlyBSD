@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.13 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.14 2008/03/01 22:03:13 swildner Exp $
  */
 /*
  * Ported from:
@@ -1288,8 +1288,7 @@ adv_poll(struct cam_sim *sim)
  * Attach all the sub-devices we can find
  */
 int
-adv_attach(adv)
-	struct adv_softc *adv;
+adv_attach(struct adv_softc *adv)
 {
 	struct ccb_setasync csa;
 	int max_sg;

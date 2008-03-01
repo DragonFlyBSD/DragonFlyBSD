@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_buffer.c,v 1.5 1999/08/28 00:41:43 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_buffer.c,v 1.6 2004/05/13 19:44:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_buffer.c,v 1.7 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -76,8 +76,7 @@ static int eni_mem_max = MAX_ENI_MEM;	/* Default to all available memory */
  *	size		memory size in bytes
  */
 static int
-eni_test_memory ( eup )
-	Eni_unit *eup;
+eni_test_memory(Eni_unit *eup)
 {
 	int	ram_size = 0;
 	int	i;
@@ -133,8 +132,7 @@ eni_test_memory ( eup )
  *
  */
 int
-eni_init_memory ( eup )
-	Eni_unit *eup;
+eni_init_memory(Eni_unit *eup)
 {
 
 	/*
@@ -184,9 +182,7 @@ eni_init_memory ( eup )
  *
  */
 caddr_t
-eni_allocate_buffer ( eup, size )
-	Eni_unit *eup;
-	u_long	*size;
+eni_allocate_buffer(Eni_unit *eup, u_long *size)
 {
 	int	nsize;
 	int	nclicks;
@@ -347,9 +343,7 @@ eni_allocate_buffer ( eup, size )
  *
  */
 void
-eni_free_buffer ( eup, base )
-	Eni_unit *eup;
-	caddr_t	base;
+eni_free_buffer(Eni_unit *eup, caddr_t base)
 {
 	Mbd	*eptr = eup->eu_memmap;
 	int	nclicks;

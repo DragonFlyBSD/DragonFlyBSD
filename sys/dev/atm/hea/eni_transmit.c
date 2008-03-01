@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_transmit.c,v 1.6 1999/12/21 08:24:35 eivind Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_transmit.c,v 1.7 2005/06/02 21:36:08 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_transmit.c,v 1.8 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -84,14 +84,8 @@ int	eni_pdu_print = 0;
  *	-1		no room in DMA list structure or DMA_GET_ADDR failed
  */
 int
-eni_set_dma ( eup, rx, dma_list, list_size, idx, val, addr, size )
-Eni_unit *eup;
-u_long	*dma_list;
-int	list_size;
-long	*idx;
-int	val;
-u_long	addr;
-int	size;
+eni_set_dma(Eni_unit *eup, int rx, u_long *dma_list, int list_size, long *idx,
+	    int val, u_long addr, int size)
 {
 	int	dsize;		/* Size of current DMA request */
 
@@ -233,8 +227,7 @@ int	size;
  *
  */
 void
-eni_xmit_drain ( eup )
-	Eni_unit *eup;
+eni_xmit_drain(Eni_unit *eup)
 {
 	KBuffer 	*m;
 	Eni_vcc		*evp;
@@ -390,10 +383,7 @@ eni_xmit_drain ( eup )
  *
  */
 void
-eni_output ( cup, cvp, m )
-	Cmn_unit	*cup;
-	Cmn_vcc		*cvp;
-	KBuffer		*m;
+eni_output(Cmn_unit *cup, Cmn_vcc *cvp, KBuffer *m)
 {
 	Eni_unit	*eup = (Eni_unit *)cup;
 	Eni_vcc		*evp = (Eni_vcc *)cvp;

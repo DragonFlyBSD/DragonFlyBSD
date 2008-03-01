@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_if.c,v 1.5 1999/08/28 00:41:44 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_if.c,v 1.6 2006/12/20 18:14:38 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_if.c,v 1.7 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -73,8 +73,7 @@ static void	eni_get_stats (Eni_unit *);
  *
  */
 void
-eni_zero_stats ( eup )
-	Eni_unit *eup;
+eni_zero_stats(Eni_unit *eup)
 {
 	int	val;
 
@@ -114,8 +113,7 @@ eni_zero_stats ( eup )
  *
  */
 static void
-eni_get_stats ( eup )
-	Eni_unit	*eup;
+eni_get_stats (Eni_unit *eup)
 {
 	/*
 	 * Write the SUNI master control register which
@@ -165,10 +163,7 @@ eni_get_stats ( eup )
  *
  */
 int
-eni_atm_ioctl ( code, data, arg )
-	int code;
-	caddr_t	data;
-	caddr_t	arg;
+eni_atm_ioctl(int code, caddr_t data, caddr_t arg)
 {
 	struct atminfreq	*aip = (struct atminfreq *)data;
 	struct atm_pif		*pip = (struct atm_pif *)arg;

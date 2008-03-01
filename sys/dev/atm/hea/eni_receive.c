@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_receive.c,v 1.5 1999/08/28 00:41:45 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.9 2005/06/02 21:36:08 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.10 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -65,8 +65,7 @@ extern int	eni_pdu_print;
  *
  */
 void
-eni_do_service ( eup )
-	Eni_unit *eup;
+eni_do_service(Eni_unit *eup)
 {
 	int		vcc;
 	Eni_vcc		*evp;
@@ -647,8 +646,7 @@ next_vcc:
  *
  */
 void
-eni_recv_drain ( eup )
-	Eni_unit *eup;
+eni_recv_drain(Eni_unit *eup)
 {
 	KBuffer 	*m;
 	Eni_vcc		*evp;
@@ -816,9 +814,7 @@ finish:
  *	none
  */
 static void
-eni_recv_stack ( tok, m )
-	void		*tok;
-	KBuffer		*m;
+eni_recv_stack(void *tok, KBuffer *m)
 {
 	Eni_vcc		*evp = (Eni_vcc *)tok;
 	int		err;

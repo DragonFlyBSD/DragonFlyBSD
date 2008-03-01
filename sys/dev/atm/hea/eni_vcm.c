@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_vcm.c,v 1.3 1999/08/28 00:41:47 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_vcm.c,v 1.6 2004/08/25 01:53:38 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_vcm.c,v 1.7 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -61,9 +61,7 @@
  *
  */
 int
-eni_instvcc(cup, cvp)
-	Cmn_unit	*cup;
-	Cmn_vcc		*cvp;
+eni_instvcc(Cmn_unit *cup, Cmn_vcc *cvp)
 {
 	Eni_unit	*eup = (Eni_unit *)cup;
 	Eni_vcc		*evp = (Eni_vcc *)cvp;
@@ -112,9 +110,7 @@ eni_instvcc(cup, cvp)
  *
  */
 int
-eni_openvcc ( cup, cvp )
-	Cmn_unit	*cup;
-	Cmn_vcc		*cvp;
+eni_openvcc(Cmn_unit *cup, Cmn_vcc *cvp)
 {
 	Eni_unit	*eup = (Eni_unit *)cup;
 	Eni_vcc		*evp = (Eni_vcc *)cvp;
@@ -217,9 +213,7 @@ eni_openvcc ( cup, cvp )
  *
  */
 int
-eni_closevcc ( cup, cvp )
-	Cmn_unit	*cup;
-	Cmn_vcc		*cvp;
+eni_closevcc(Cmn_unit *cup, Cmn_vcc *cvp)
 {
 	Eni_unit	*eup = (Eni_unit *)cup;
 	Eni_vcc		*evp = (Eni_vcc *)cvp;

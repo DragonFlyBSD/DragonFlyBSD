@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_output.c,v 1.5 2000/01/15 21:01:04 mks Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_output.c,v 1.5 2005/06/02 21:36:09 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_output.c,v 1.6 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -64,10 +64,7 @@ static void		fore_seg_dma_free (H_xmit_queue *, KBuffer *, int);
  *
  */
 void
-fore_output(cup, cvp, m)
-	Cmn_unit	*cup;
-	Cmn_vcc		*cvp;
-	KBuffer		*m;
+fore_output(Cmn_unit *cup, Cmn_vcc *cvp, KBuffer *m)
 {
 	Fore_unit	*fup = (Fore_unit *)cup;
 	Fore_vcc	*fvp = (Fore_vcc *)cvp;
@@ -218,12 +215,8 @@ fore_output(cup, cvp, m)
  *
  */
 static KBuffer *
-fore_xmit_segment(fup, m, hxp, segp, lenp)
-	Fore_unit	*fup;
-	KBuffer		*m;
-	H_xmit_queue	*hxp;
-	int		*segp;
-	int		*lenp;
+fore_xmit_segment(Fore_unit *fup, KBuffer *m, H_xmit_queue *hxp, int *segp,
+		  int *lenp)
 {
 	Xmit_descr	*xdp = hxp->hxq_descr;
 	Xmit_seg_descr	*xsp;
@@ -426,10 +419,7 @@ retry:
  *
  */
 static void
-fore_seg_dma_free(hxp, m0, nsegs)
-	H_xmit_queue	*hxp;
-	KBuffer		*m0;
-	int		nsegs;
+fore_seg_dma_free(H_xmit_queue *hxp, KBuffer *m0, int nsegs)
 {
 	KBuffer		*m = m0;
 	H_dma		*sdmap = hxp->hxq_dma;

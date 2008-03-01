@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_intr.c,v 1.4 1999/08/28 00:41:44 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_intr.c,v 1.6 2005/02/01 00:51:49 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_intr.c,v 1.7 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -58,8 +58,7 @@ static void	eni_suni_intr (Eni_unit *);
  *
  */
 static void
-eni_suni_intr ( eup )
-	Eni_unit *eup;
+eni_suni_intr(Eni_unit *eup)
 {
 	int	SuniInt;
 	int	val;
@@ -113,8 +112,7 @@ eni_suni_intr ( eup )
  *
  */
 void
-eni_intr ( arg )
-	void *arg;
+eni_intr(void *arg)
 {
 	Eni_unit	*eup = (Eni_unit *)arg;
 

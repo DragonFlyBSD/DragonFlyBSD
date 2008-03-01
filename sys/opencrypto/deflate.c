@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/deflate.c,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/deflate.c,v 1.3 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/deflate.c,v 1.4 2008/03/01 22:03:13 swildner Exp $	*/
 /* $OpenBSD: deflate.c,v 1.3 2001/08/20 02:45:22 hugh Exp $ */
 
 /*
@@ -52,11 +52,7 @@ int window_deflate = -12;
  */
 
 u_int32_t
-deflate_global(data, size, decomp, out)
-	u_int8_t *data;
-	u_int32_t size;
-	int decomp;
-	u_int8_t **out;
+deflate_global(u_int8_t *data, u_int32_t size, int decomp, u_int8_t **out)
 {
 	/* decomp indicates whether we compress (0) or decompress (1) */
 
@@ -172,9 +168,7 @@ bad:
 }
 
 void *
-z_alloc(nil, type, size)
-	void *nil;
-	u_int type, size;
+z_alloc(void *nil, u_int type, u_int size)
 {
 	void *ptr;
 
@@ -183,8 +177,7 @@ z_alloc(nil, type, size)
 }
 
 void
-z_free(nil, ptr)
-	void *nil, *ptr;
+z_free(void *nil, void *ptr)
 {
 	kfree(ptr, M_CRYPTO_DATA);
 }

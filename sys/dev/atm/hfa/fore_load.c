@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.13 2007/07/11 23:46:58 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.14 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -84,7 +84,7 @@ COMPAT_PCI_DRIVER(fore_pci, fore_pci_device);
  *
  */
 static int
-fore_start()
+fore_start(void)
 {
 
 	/*
@@ -129,9 +129,7 @@ fore_start()
  *
  */
 static const char *
-fore_pci_probe(config_id, device_id)
-	pcici_t	config_id;
-	pcidi_t	device_id;
+fore_pci_probe(pcici_t config_id, pcidi_t device_id)
 {
 
 	/*
@@ -170,9 +168,7 @@ fore_pci_probe(config_id, device_id)
  *
  */
 static void
-fore_pci_attach(config_id, unit)
-	pcici_t	config_id;
-	int	unit;
+fore_pci_attach(pcici_t config_id, int unit)
 {
 	Fore_unit	*fup;
 	vm_offset_t	va;
@@ -376,9 +372,7 @@ failed:
  *
  */
 static void
-fore_pci_shutdown(fup, howto)
-	void		*fup;
-	int		howto;
+fore_pci_shutdown(void *fup, int howto)
 {
 
 	fore_reset((Fore_unit *) fup);
@@ -399,8 +393,7 @@ fore_pci_shutdown(fup, howto)
  *	none
  */ 
 static void
-fore_unattach(fup)
-	Fore_unit	*fup;
+fore_unattach(Fore_unit *fup)
 {
 	/*
 	 * Reset the board and return it to cold_start state.
@@ -447,8 +440,7 @@ fore_unattach(fup)
  *	none
  */ 
 static void
-fore_reset(fup)
-	Fore_unit	*fup;
+fore_reset(Fore_unit *fup)
 {
 	/*
 	 * Reset the board and return it to cold_start state
@@ -536,9 +528,7 @@ MOD_DEV(fore, LM_DT_CHAR, -1, (void *)&fore_cdev);
  *
  */
 static int
-fore_load(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+fore_load(struct lkm_table *lkmtp, int cmd)
 {
 	return(fore_doload());
 }
@@ -560,9 +550,7 @@ fore_load(lkmtp, cmd)
  *
  */
 static int
-fore_unload(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+fore_unload(struct lkm_table *lkmtp, int cmd)
 {
 	return(fore_dounload());
 }
@@ -588,10 +576,7 @@ fore_unload(lkmtp, cmd)
  *
  */
 int
-fore_mod(lkmtp, cmd, ver)
-	struct lkm_table	*lkmtp;
-	int		cmd;
-	int		ver;
+fore_mod(struct lkm_table *lkmtp, int cmd, int ver)
 {
 	DISPATCH(lkmtp, cmd, ver, fore_load, fore_unload, lkm_nullcmd);
 }

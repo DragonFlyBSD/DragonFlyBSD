@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_command.c,v 1.6 1999/08/28 00:41:49 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_command.c,v 1.5 2006/12/20 18:14:38 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_command.c,v 1.6 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -59,8 +59,7 @@ static struct t_atm_cause	fore_cause = {
  *	else		allocation failed
  */
 int
-fore_cmd_allocate(fup)
-	Fore_unit	*fup;
+fore_cmd_allocate(Fore_unit *fup)
 {
 	caddr_t		memp;
 
@@ -118,8 +117,7 @@ fore_cmd_allocate(fup)
  *	none
  */
 void
-fore_cmd_initialize(fup)
-	Fore_unit	*fup;
+fore_cmd_initialize(Fore_unit *fup)
 {
 	Aali		*aap = fup->fu_aali;
 	Cmd_queue	*cqp;
@@ -199,8 +197,7 @@ fore_cmd_initialize(fup)
  *	none
  */
 void
-fore_cmd_drain(fup)
-	Fore_unit	*fup;
+fore_cmd_drain(Fore_unit *fup)
 {
 	H_cmd_queue	*hcp;
 	Fore_vcc	*fvp;
@@ -374,8 +371,7 @@ fore_cmd_drain(fup)
  *	none
  */
 void
-fore_cmd_free(fup)
-	Fore_unit	*fup;
+fore_cmd_free(Fore_unit *fup)
 {
 	H_cmd_queue	*hcp;
 

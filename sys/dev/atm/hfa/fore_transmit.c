@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_transmit.c,v 1.4 1999/08/28 00:41:53 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_transmit.c,v 1.4 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_transmit.c,v 1.5 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -48,8 +48,7 @@
  *	else		allocation failed
  */
 int
-fore_xmit_allocate(fup)
-	Fore_unit	*fup;
+fore_xmit_allocate(Fore_unit *fup)
 {
 	void		*memp;
 	H_xmit_queue	*hxp;
@@ -118,8 +117,7 @@ fore_xmit_allocate(fup)
  *	none
  */
 void
-fore_xmit_initialize(fup)
-	Fore_unit	*fup;
+fore_xmit_initialize(Fore_unit *fup)
 {
 	Aali		*aap = fup->fu_aali;
 	Xmit_queue	*cqp;
@@ -200,8 +198,7 @@ fore_xmit_initialize(fup)
  *	none
  */
 void
-fore_xmit_drain(fup)
-	Fore_unit	*fup;
+fore_xmit_drain(Fore_unit *fup)
 {
 	H_xmit_queue	*hxp;
 	H_dma		*sdmap;
@@ -291,8 +288,7 @@ fore_xmit_drain(fup)
  *	none
  */
 void
-fore_xmit_free(fup)
-	Fore_unit	*fup;
+fore_xmit_free(Fore_unit *fup)
 {
 	H_xmit_queue	*hxp;
 	H_dma		*sdmap;

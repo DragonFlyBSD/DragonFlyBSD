@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.19 2008/02/10 00:01:02 pavalos Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.20 2008/03/01 22:03:13 swildner Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -3821,8 +3821,7 @@ ncr_attach (device_t dev)
 */
 
 static void
-ncr_intr(vnp)
-	void *vnp;
+ncr_intr(void *vnp)
 {
 	ncb_p np = vnp;
 	crit_enter();

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.10 2007/07/11 23:46:56 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.11 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -179,8 +179,7 @@ eni_pci_probe ( pcici_t config_id, pcidi_t device_id )
  *
  */
 static int
-eni_get_ack ( eup )
-	Eni_unit	*eup;
+eni_get_ack(Eni_unit *eup)
 {
 	int		ack;
 
@@ -218,8 +217,7 @@ eni_get_ack ( eup )
  *
  */
 static int
-eni_get_sebyte( eup )
-	Eni_unit	*eup;
+eni_get_sebyte(Eni_unit *eup)
 {
 	int	i;
 	int	data;
@@ -262,8 +260,7 @@ eni_get_sebyte( eup )
  *
  */
 static void
-eni_read_seeprom ( eup )
-	Eni_unit	*eup;
+eni_read_seeprom(Eni_unit *eup)
 {
 	int	addr;
 	int	i, j;
@@ -567,8 +564,7 @@ failed:
  *
  */
 static void
-eni_pci_reset ( eup )
-	Eni_unit *eup;
+eni_pci_reset(Eni_unit *eup)
 {
 
 	/*
@@ -604,9 +600,7 @@ eni_pci_reset ( eup )
  *
  */
 static void
-eni_pci_shutdown ( eup, howto )
-	void	*eup;
-	int	howto;
+eni_pci_shutdown (void *eup, int howto)
 {
 
 	/* Do device reset */

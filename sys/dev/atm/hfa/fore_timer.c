@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_timer.c,v 1.3 1999/08/28 00:41:52 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_timer.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_timer.c,v 1.4 2008/03/01 22:03:13 swildner Exp $
  */
 
 /*
@@ -53,8 +53,7 @@
  *
  */
 void
-fore_timeout(tip)
-	struct atm_time	*tip;
+fore_timeout(struct atm_time *tip)
 {
 	Fore_unit	*fup;
 	int		i;
