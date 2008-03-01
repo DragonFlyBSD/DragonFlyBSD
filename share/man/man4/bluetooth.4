@@ -1,5 +1,5 @@
 .\" $NetBSD: bluetooth.4,v 1.9 2007/11/28 20:16:12 plunky Exp $
-.\" $DragonFly: src/share/man/man4/bluetooth.4,v 1.2 2008/02/02 12:54:49 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bluetooth.4,v 1.3 2008/03/01 17:54:16 swildner Exp $
 .\"
 .\" Copyright (c) 2006 Itronix Inc.
 .\" All rights reserved.
@@ -110,22 +110,22 @@ HCI
 .Xr sysctl 8
 controls:
 .Bl -tag -width XXX
-.It Dv net.bluetooth.hci.sendspace
+.It Va net.bluetooth.hci.sendspace
 Default send buffer size for HCI sockets.
-.It Dv net.bluetooth.hci.recvspace
+.It Va net.bluetooth.hci.recvspace
 Default receive buffer size for HCI sockets
-.It Dv net.bluetooth.hci.acl_expiry
+.It Va net.bluetooth.hci.acl_expiry
 If set, this is the time in seconds after which unused ACL data connections
 will be expired. If zero, connections will not be closed.
-.It Dv net.bluetooth.hci.memo_expiry
+.It Va net.bluetooth.hci.memo_expiry
 Time, in seconds, that the system will keep records of Bluetooth devices
 in the vicinity after an Inquiry Response packet has been recieved. This
 information is used for routing purposes.
-.It Dv net.bluetooth.hci.eventq_max
+.It Va net.bluetooth.hci.eventq_max
 The maximum number of packets on the low level Event queue.
-.It Dv net.bluetooth.hci.aclrxq_max
+.It Va net.bluetooth.hci.aclrxq_max
 The maximum number of packets on the low level ACL queue.
-.It Dv net.bluetooth.hci.scorxq_max
+.It Va net.bluetooth.hci.scorxq_max
 The maximum number of packets on the low level SCO queue.
 .El
 .It Cm BTPROTO_L2CAP
@@ -173,13 +173,13 @@ L2CAP
 .Xr sysctl 8
 controls:
 .Bl -tag -width XXX
-.It Dv net.bluetooth.l2cap.sendspace
+.It Va net.bluetooth.l2cap.sendspace
 Default send buffer size for L2CAP sockets.
-.It Dv net.bluetooth.l2cap.recvspace
+.It Va net.bluetooth.l2cap.recvspace
 Default receive buffer size for L2CAP sockets.
-.It Dv net.bluetooth.l2cap.rtx
+.It Va net.bluetooth.l2cap.rtx
 Response Timeout eXpiry for L2CAP signals.
-.It Dv net.bluetooth.l2cap.ertx
+.It Va net.bluetooth.l2cap.ertx
 Extended Response Timeout eXpiry for L2CAP signals.
 .El
 .It Cm BTPROTO_RFCOMM
@@ -237,15 +237,15 @@ RFCOMM
 .Xr sysctl 8
 controls:
 .Bl -tag -width XXX
-.It Dv net.bluetooth.rfcomm.sendspace
+.It Va net.bluetooth.rfcomm.sendspace
 Default send buffer size for RFCOMM sockets.
-.It Dv net.bluetooth.rfcomm.recvspace
+.It Va net.bluetooth.rfcomm.recvspace
 Default receive buffer size for RFCOMM sockets.
-.It Dv net.bluetooth.rfcomm.default_mtu
+.It Va net.bluetooth.rfcomm.default_mtu
 Maximum Frame Size (N1)
-.It Dv net.bluetooth.rfcomm.ack_timeout
+.It Va net.bluetooth.rfcomm.ack_timeout
 Acknowledgement Timer (T1)
-.It Dv net.bluetooth.rfcomm.mcc_timeout
+.It Va net.bluetooth.rfcomm.mcc_timeout
 Response Timer for Multiplexer Control Channel (T2)
 .El
 .It Cm BTPROTO_SCO
@@ -270,9 +270,9 @@ SCO
 .Xr sysctl 8
 controls:
 .Bl -tag -width XXX
-.It Dv net.bluetooth.sco.sendspace
+.It Va net.bluetooth.sco.sendspace
 Default send buffer size for SCO sockets.
-.It Dv net.bluetooth.sco.recvspace
+.It Va net.bluetooth.sco.recvspace
 Default receive buffer size for SCO sockets.
 .El
 .El
