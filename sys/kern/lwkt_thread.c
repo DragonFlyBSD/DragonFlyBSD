@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.111 2008/02/17 21:54:42 nant Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.112 2008/03/01 06:21:28 dillon Exp $
  */
 
 /*
@@ -524,10 +524,8 @@ lwkt_switch(void)
 	    td->td_release(td);
 
     crit_enter_gd(gd);
-#ifdef SMP
     if (td->td_toks)
 	    lwkt_relalltokens(td);
-#endif
 
     /*
      * We had better not be holding any spin locks, but don't get into an
@@ -696,8 +694,11 @@ again:
 #else
 	    /*
 	     * THREAD SELECTION FOR A UP MACHINE BUILD.  We don't have to
-	     * worry about tokens or the BGL.
+	     * worry about tokens or the BGL.  However, we still have
+	     * to call lwkt_getalltokens() in order to properly detect
+	     * stale tokens.  This call cannot fail for a UP build!
 	     */
+	    lwkt_getalltokens(ntd);
 	    ++gd->gd_cnt.v_swtch;
 	    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);

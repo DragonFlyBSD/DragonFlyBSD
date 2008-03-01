@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.90 2007/12/12 23:49:24 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.91 2008/03/01 06:21:26 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -89,34 +89,31 @@ struct intrframe;
  * preemption.  An interrupt which attempts to use the same token as the
  * thread being preempted will reschedule itself for non-preemptive
  * operation, so the new token code is capable of interlocking against
- * interrupts as well as other cpus.
+ * interrupts as well as other cpus.  This means that your token can only
+ * be (temporarily) lost if you *explicitly* block.
  *
  * Tokens are managed through a helper reference structure, lwkt_tokref,
  * which is typically declared on the caller's stack.  Multiple tokref's
  * may reference the same token.
  *
- * We do not actually have to track any information in the token itself
- * on UP systems.  Simply linking the reference into the thread's td_toks
- * list is sufficient.  We still track a global t_globalcount on UP for
- * debugging purposes.
+ * It is possible to detect that your token was temporarily lost via
+ * lwkt_token_is_stale(), which uses the t_lastowner field.  This field
+ * does NOT necessarily represent the current owner and can become stale
+ * (not point to a valid structure).  It is used solely to detect
+ * whether the token was temporarily lost to another thread.  The lost
+ * state is cleared by the function.
  */
-#ifdef SMP
 
 typedef struct lwkt_token {
+#ifdef SMP
     struct spinlock	t_spinlock;	/* Controls access */
+#else
+    struct spinlock	t_unused01;
+#endif
     struct thread	*t_owner;	/* The current owner of the token */
     int			t_count;	/* Per-thread count */
+    struct thread       *t_lastowner;	/* Last owner that acquired token */ 
 } lwkt_token;
-
-#else
-
-typedef struct lwkt_token {
-    struct spinlock	t_unused01;
-    struct thread	*t_unused02;
-    int			t_globalcount;	/* Global reference count */
-} lwkt_token;
-
-#endif
 
 typedef struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
@@ -361,6 +358,7 @@ extern void lwkt_relalltokens(thread_t);
 extern void lwkt_drain_token_requests(void);
 extern void lwkt_token_init(lwkt_token_t);
 extern void lwkt_token_uninit(lwkt_token_t);
+extern int  lwkt_token_is_stale(lwkt_tokref_t);
 
 extern void lwkt_token_pool_init(void);
 extern lwkt_token_t lwkt_token_pool_get(void *);
