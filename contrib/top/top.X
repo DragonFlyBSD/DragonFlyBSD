@@ -1,7 +1,7 @@
 .\" NOTE:  changes to the manual page for "top" should be made in the
 .\"        file "top.X" and NOT in the file "top.1".
 .\" $FreeBSD: src/contrib/top/top.X,v 1.6.6.2 2002/08/11 17:09:25 dwmalone Exp $
-.\" $DragonFly: src/contrib/top/top.X,v 1.4 2007/03/23 14:51:31 swildner Exp $
+.\" $DragonFly: src/contrib/top/top.X,v 1.5 2008/03/01 18:49:00 nant Exp $
 .nr N %topn%
 .nr D %delay%
 .TH TOP 1 Local
@@ -72,6 +72,9 @@ visible.
 .TP
 .B \-O
 Show only kernel threads.
+This option implies the 
+.BR \-T
+option.
 .TP
 .B \-b
 Use \*(lqbatch\*(rq mode.  In this mode, all input from the terminal is

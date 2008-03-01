@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.24 2007/04/30 22:48:26 hasso Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.25 2008/03/01 18:49:00 nant Exp $
  */
 
 
@@ -477,7 +477,7 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
     show_idle = sel->idle;
     show_self = sel->self;
     show_system = sel->system;
-    show_threads = sel->threads;
+    show_threads = sel->threads || sel->only_threads;
     show_only_threads = sel->only_threads;
     show_uid = sel->uid != -1;
     show_command = sel->command != NULL;
