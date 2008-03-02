@@ -1,7 +1,8 @@
-# $FreeBSD: src/gnu/usr.bin/groff/src/devices/grolj4/Makefile,v 1.4 2003/05/01 13:22:18 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/src/devices/grolj4/Makefile,v 1.3 2005/09/01 20:47:13 asmodai Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/src/devices/grolj4/Makefile,v 1.5 2005/10/20 10:57:52 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/src/devices/grolj4/Makefile,v 1.4 2008/03/02 23:02:01 swildner Exp $
 
 PROG_CXX=	grolj4
+MAN=		grolj4.1 lj4_font.5
 SRCS=		lj4.cpp
 DPADD=		${LIBDRIVER} ${LIBGROFF} ${LIBM}
 LDADD=		${LIBDRIVER} ${LIBGROFF} -lm

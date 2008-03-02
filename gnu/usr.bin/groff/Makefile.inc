@@ -1,5 +1,5 @@
-# $FreeBSD: src/gnu/usr.bin/groff/Makefile.inc,v 2.11 2005/06/10 07:06:07 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.5 2007/03/22 23:31:22 swildner Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/Makefile.inc,v 2.12 2005/10/20 10:57:52 ru Exp $
+# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.6 2008/03/02 23:02:01 swildner Exp $
 
 BINDIR?=	/usr/bin
 SHELL=		/bin/sh
@@ -62,6 +62,7 @@ localtmacdir=/usr/share/tmac
 docdir=/usr/src/contrib/groff/doc
 exampledir=XXX
 htmldocdir=XXX
+pdfdocdir=XXX
 indexext=.i
 common_words_file=/usr/share/dict/eign
 indexdir=/usr/share/dict/papers
@@ -107,6 +108,7 @@ revision=`sed -e 's/^0$$//' -e 's/^[1-9].*$$/.&/' $(GROFF_DIST)/REVISION`
 	-e "s;@DOCDIR@;$(docdir);g" \
 	-e "s;@EXAMPLEDIR@;$(exampledir);g" \
 	-e "s;@HTMLDOCDIR@;$(htmldocdir);g" \
+	-e "s;@PDFDOCDIR@;$(pdfdocdir);g" \
 	-e "s;@DEVICE@;$(DEVICE);g" \
 	-e "s;@DEFAULT_INDEX@;$(indexdir)/$(indexname);g" \
 	-e "s;@DEFAULT_INDEX_NAME@;$(indexname);g" \
