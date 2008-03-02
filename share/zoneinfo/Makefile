@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/zoneinfo/Makefile,v 1.16.2.3 2002/08/07 16:31:52 ru Exp $
-# $DragonFly: src/share/zoneinfo/Makefile,v 1.2 2003/06/17 04:37:04 dillon Exp $
+# $DragonFly: src/share/zoneinfo/Makefile,v 1.3 2008/03/02 14:28:37 swildner Exp $
 
 CLEANFILES+=	yearistype
 
@@ -23,6 +23,11 @@ YEARISTYPE=	${.OBJDIR}/yearistype
 YEARISTYPE=	${.CURDIR}/yearistype
 .endif
 
+FILES=			iso3166.tab zone.tab
+FILESDIR_iso3166.tab=	${SHAREDIR}/misc
+FILESNAME_iso3166.tab=	iso3166
+FILESDIR_zone.tab=	${SHAREDIR}/zoneinfo
+
 all: yearistype
 
 yearistype: yearistype.sh
@@ -34,7 +39,5 @@ beforeinstall:
 	zic -D -d ${DESTDIR}/usr/share/zoneinfo -p ${POSIXRULES} \
 	    -u ${BINOWN} -g ${BINGRP} \
 	    ${LEAPFILE} -y ${YEARISTYPE} ${TZFILES}
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${NOBINMODE} \
-	    ${.CURDIR}/zone.tab ${DESTDIR}/usr/share/zoneinfo/
 
 .include <bsd.prog.mk>

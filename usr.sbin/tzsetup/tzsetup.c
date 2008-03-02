@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/tzsetup/tzsetup.c,v 1.16.2.2 2002/03/06 06:17:41 obrien Exp $
- * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.6 2006/01/12 13:43:11 corecode Exp $
+ * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.7 2008/03/02 14:28:37 swildner Exp $
  */
 
 /*
@@ -197,14 +197,6 @@ read_iso3166_table(void)
 		if (t[0] < 'A' || t[0] > 'Z' || t[1] < 'A' || t[1] > 'Z')
 			errx(1, _PATH_ISO3166 ":%d: invalid code `%s'",
 			     lineno, t);
-
-		/* Now skip past the three-letter and numeric codes. */
-		name = strsep(&s, "\t"); /* 3-let */
-		if (name == 0 || strlen(name) != 3)
-			errx(1, _PATH_ISO3166 ":%d: invalid format", lineno);
-		name = strsep(&s, "\t"); /* numeric */
-		if (name == 0 || strlen(name) != 3)
-			errx(1, _PATH_ISO3166 ":%d: invalid format", lineno);
 
 		name = s;
 
