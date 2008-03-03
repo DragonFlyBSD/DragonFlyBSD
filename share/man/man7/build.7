@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.14 2008/02/05 19:22:04 swildner Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.15 2008/03/03 20:24:51 swildner Exp $
 .\"
 .Dd February 5, 2008
 .Dt BUILD 7
@@ -204,17 +204,6 @@ steps.
 In this case
 .Dq Nm make Cm installworld
 will tell you to do so.
-.Pp
-Also note that you should
-.Em never
-run
-.Dq Nm make Cm upgrade
-before having installed the new kernel and world because your
-system might (in the worst case) be rendered useless if you do so.
-This can happen because
-.Dq Nm make Cm upgrade
-might remove something that the old system still needs for
-functioning correctly.
 .Sh SEE ALSO
 .Xr cc 1 ,
 .Xr install 1 ,

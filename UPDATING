@@ -8,7 +8,7 @@
 # If you discover any problem, please contact the bugs@lists.dragonflybsd.org
 # mailing list with the details.
 #
-# $DragonFly: src/UPDATING,v 1.24 2008/02/13 14:45:28 matthias Exp $
+# $DragonFly: src/UPDATING,v 1.25 2008/03/03 20:24:51 swildner Exp $
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+
@@ -54,9 +54,6 @@ rest of your system.  The upgrade target is aware of stale files created by
 older DragonFly installations and should delete them automatically.
 
 	make upgrade
-
-NOTE! Never do a 'make upgrade' before 'make installworld' has been run.
-Doing so might leave your system in an unusable state.
 
 Once you've done a full build of the world and kernel you can do incremental
 upgrades of either by using the 'quickworld' and 'quickkernel' targets
