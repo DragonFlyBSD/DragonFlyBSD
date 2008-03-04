@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/dma.h,v 1.4 2008/02/05 13:00:36 matthias Exp $
+ * $DragonFly: src/libexec/dma/dma.h,v 1.5 2008/03/04 11:36:09 matthias Exp $
  */
 
 #ifndef DMA_H
@@ -60,7 +60,7 @@
 #define VIRTUAL		0x001		/* Support for address rewrites */
 #define STARTTLS	0x002		/* StartTLS support */
 #define SECURETRANS	0x004		/* SSL/TLS in general */
-#define TLSINIT		0x008		/* Flag for TLS init phase */
+#define NOSSL		0x008		/* Do not use SSL */
 #define DEFER		0x010		/* Defer mails */
 #define INSECURE	0x020		/* Allow plain login w/o encryption */
 
@@ -146,7 +146,7 @@ extern int smtp_init_crypto(struct qitem *, int, int);
 #endif /* HAVE_CRYPTO */
 
 /* net.c */
-extern int check_for_smtp_error(int, char *);
+extern int read_remote(int);
 extern ssize_t send_remote_command(int, const char*, ...);
 extern int deliver_remote(struct qitem *, const char **);
 

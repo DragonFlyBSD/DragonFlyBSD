@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/crypto.c,v 1.1 2008/02/02 18:20:51 matthias Exp $
+ * $DragonFly: src/libexec/dma/crypto.c,v 1.2 2008/03/04 11:36:08 matthias Exp $
  */
 
 #ifdef HAVE_CRYPTO
@@ -115,20 +115,20 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	if (((feature & SECURETRANS) != 0) &&
 	     (feature & STARTTLS) != 0) {
 		/* TLS init phase, disable SSL_write */
-		config->features |= TLSINIT;
+		config->features |= NOSSL;
 
 		send_remote_command(fd, "EHLO %s", hostname());
-		if (check_for_smtp_error(fd, buf) == 0) {
+		if (read_remote(fd) == 2) {
 			send_remote_command(fd, "STARTTLS");
-			if (check_for_smtp_error(fd, buf) < 0) {
+			if (read_remote(fd) != 2) {
 				syslog(LOG_ERR, "%s: remote delivery failed:"
 				  " STARTTLS not available: %m", it->queueid);
-				config->features &= ~TLSINIT;
+				config->features &= ~NOSSL;
 				return (-1);
 			}
 		}
 		/* End of TLS init phase, enable SSL_write/read */
-		config->features &= ~TLSINIT;
+		config->features &= ~NOSSL;
 	}
 
 	config->ssl = SSL_new(ctx);
