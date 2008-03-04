@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.h,v 1.17.2.5 2006/03/13 03:05:47 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_node.h,v 1.4 2006/11/26 02:12:34 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_node.h,v 1.5 2008/03/04 13:48:40 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_NODE_H_
 #define _NET80211_IEEE80211_NODE_H_
@@ -189,6 +189,8 @@ void	ieee80211_node_unauthorize(struct ieee80211_node *);
 
 void	ieee80211_begin_scan(struct ieee80211com *, int);
 int	ieee80211_next_scan(struct ieee80211com *);
+void	ieee80211_set_scanchan(struct ieee80211com *,
+		struct ieee80211_channel *);
 void	ieee80211_probe_curchan(struct ieee80211com *, int);
 void	ieee80211_create_ibss(struct ieee80211com*, struct ieee80211_channel *);
 void	ieee80211_reset_bss(struct ieee80211com *);

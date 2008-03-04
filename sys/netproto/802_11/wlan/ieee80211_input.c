@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.62.2.14 2006/09/02 15:16:12 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.21 2007/06/15 12:04:45 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_input.c,v 1.22 2008/03/04 13:48:40 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1948,23 +1948,31 @@ ieee80211_recv_mgmt(struct ieee80211com *ic, struct mbuf *m0,
 		}
 		if (scan.chan != scan.bchan &&
 		    ic->ic_phytype != IEEE80211_T_FH) {
-			/*
-			 * Frame was received on a channel different from the
-			 * one indicated in the DS params element id;
-			 * silently discard it.
-			 *
-			 * NB: this can happen due to signal leakage.
-			 *     But we should take it for FH phy because
-			 *     the rssi value should be correct even for
-			 *     different hop pattern in FH.
-			 */
-			IEEE80211_DISCARD(ic,
-			    IEEE80211_MSG_ELEMID | IEEE80211_MSG_INPUT,
-			    wh, ieee80211_mgt_subtype_name[subtype >>
-				IEEE80211_FC0_SUBTYPE_SHIFT],
-			    "for off-channel %u", scan.chan);
-			ic->ic_stats.is_rx_chanmismatch++;
-			return;
+			if ((ic->ic_caps_ext & IEEE80211_CEXT_AUTOSCAN) &&
+			    (ic->ic_flags & IEEE80211_F_SCAN) &&
+			    isset(ic->ic_chan_active, scan.chan)) {
+				ieee80211_set_scanchan(ic,
+					&ic->ic_channels[scan.chan]);
+				scan.bchan = scan.chan;
+			} else {
+				/*
+				 * Frame was received on a channel different
+				 * from the one indicated in the DS params
+				 * element id; silently discard it.
+				 *
+				 * NB: this can happen due to signal leakage.
+				 *     But we should take it for FH phy because
+				 *     the rssi value should be correct even for
+				 *     different hop pattern in FH.
+				 */
+				IEEE80211_DISCARD(ic,
+				    IEEE80211_MSG_ELEMID | IEEE80211_MSG_INPUT,
+				    wh, ieee80211_mgt_subtype_name[subtype >>
+					IEEE80211_FC0_SUBTYPE_SHIFT],
+				    "for off-channel %u", scan.chan);
+				ic->ic_stats.is_rx_chanmismatch++;
+				return;
+			}
 		}
 		if (!(IEEE80211_BINTVAL_MIN <= scan.bintval &&
 		      scan.bintval <= IEEE80211_BINTVAL_MAX)) {

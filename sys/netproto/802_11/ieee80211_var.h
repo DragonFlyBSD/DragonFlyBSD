@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.18 2008/02/24 03:36:19 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.19 2008/03/04 13:48:40 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -307,6 +307,9 @@ struct ieee80211com {
 						 */
 #define IEEE80211_CEXT_STRIP_MIC 0x00000004	/* CAPABILITY:
 						 * driver strips TKIP MIC
+						 */
+#define IEEE80211_CEXT_AUTOSCAN	0x00000008	/* CAPABILITY:
+						 * auto channel scanning
 						 */
 
 void	ieee80211_ifattach(struct ieee80211com *);

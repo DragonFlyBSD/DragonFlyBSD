@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.16 2007/03/06 14:51:22 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.17 2008/03/04 13:48:40 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -326,17 +326,7 @@ ieee80211_next_scan(struct ieee80211com *ic)
 			chan = &ic->ic_channels[0];
 		if (isset(ic->ic_chan_scan, ieee80211_chan2ieee(ic, chan))) {
 			clrbit(ic->ic_chan_scan, ieee80211_chan2ieee(ic, chan));
-			IEEE80211_DPRINTF(ic, IEEE80211_MSG_SCAN,
-			    "%s: chan %d->%d\n", __func__,
-			    ieee80211_chan2ieee(ic, ic->ic_curchan),
-			    ieee80211_chan2ieee(ic, chan));
-			ic->ic_curchan = chan;
-			/*
-			 * XXX drivers should do this as needed,
-			 * XXX for now maintain compatibility
-			 */
-			ic->ic_bss->ni_rates =
-				ic->ic_sup_rates[ieee80211_chan2mode(ic, chan)];
+			ieee80211_set_scanchan(ic, chan);
 			ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
 			return 1;
 		}
@@ -2399,4 +2389,18 @@ ieee80211_update_shpreamble(struct ieee80211com *ic,
 		break;
 	}
 	ieee80211_set_shortpreamble(ic, shpreamble);
+}
+
+void
+ieee80211_set_scanchan(struct ieee80211com *ic, struct ieee80211_channel *chan)
+{
+	IEEE80211_DPRINTF(ic, IEEE80211_MSG_SCAN, "%s: chan %d->%d\n", __func__,
+			  ieee80211_chan2ieee(ic, ic->ic_curchan),
+			  ieee80211_chan2ieee(ic, chan));
+	ic->ic_curchan = chan;
+	/*
+	 * XXX drivers should do this as needed,
+	 * XXX for now maintain compatibility
+	 */
+	ic->ic_bss->ni_rates = ic->ic_sup_rates[ieee80211_chan2mode(ic, chan)];
 }
