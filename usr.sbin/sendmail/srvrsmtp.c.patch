@@ -1,0 +1,58 @@
+$DragonFly: src/usr.sbin/sendmail/srvrsmtp.c.patch,v 1.2 2008/03/04 19:23:05 dillon Exp $
+
+Index: srvrsmtp.c
+===================================================================
+RCS file: /cvs/src/contrib/sendmail-8.14/sendmail/srvrsmtp.c,v
+retrieving revision 1.1.1.2
+diff -u -p -r1.1.1.2 srvrsmtp.c
+--- srvrsmtp.c	5 Nov 2007 01:37:48 -0000	1.1.1.2
++++ srvrsmtp.c	4 Mar 2008 19:17:35 -0000
+@@ -465,6 +465,8 @@ /* clear all SMTP state (for HELO/EHLO/R
+ #define CLEAR_STATE(cmd)					\
+ do								\
+ {								\
++	SM_RPOOL_T *orpool;					\
++								\
+ 	/* abort milter filters */				\
+ 	MILTER_ABORT(e);					\
+ 								\
+@@ -487,8 +489,9 @@ 	/* clean up a bit */					\
+ 	smtp.sm_gotmail = false;				\
+ 	SuprErrs = true;					\
+ 	dropenvelope(e, true, false);				\
+-	sm_rpool_free(e->e_rpool);				\
++	orpool = e->e_rpool;					\
+ 	e = newenvelope(e, CurEnv, sm_rpool_new_x(NULL));	\
++	sm_rpool_free(orpool);					\
+ 	CurEnv = e;						\
+ 	e->e_features = features;				\
+ 								\
+@@ -3285,6 +3288,7 @@ 	char *id;
+ 	char *oldid;
+ 	unsigned int features;
+ 	char buf[32];
++	SM_RPOOL_T *orpool;
+ 
+ 	SmtpPhase = "server DATA";
+ 	if (!smtp->sm_gotmail)
+@@ -3775,18 +3779,12 @@ 			if (WILL_BE_QUEUED(ee->e_sendmode))
+ 				dropenvelope(ee, true, false);
+ 		}
+ 	}
+-	sm_rpool_free(e->e_rpool);
+-
+-	/*
+-	**  At this point, e == &MainEnvelope, but if we did splitting,
+-	**  then CurEnv may point to an envelope structure that was just
+-	**  freed with the rpool.  So reset CurEnv *before* calling
+-	**  newenvelope.
+-	*/
+ 
+ 	CurEnv = e;
+ 	features = e->e_features;
++	orpool = e->e_rpool;
+ 	newenvelope(e, e, sm_rpool_new_x(NULL));
++	sm_rpool_free(orpool);
+ 	e->e_flags = BlankEnvelope.e_flags;
+ 	e->e_features = features;
+ 
