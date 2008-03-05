@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.70 2008/01/22 19:17:38 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.71 2008/03/05 17:20:23 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -463,6 +463,7 @@ MLINKS+=serializer.9 ASSERT_SERIALIZED.9 \
 	serializer.9 lwkt_serialize_init.9 \
 	serializer.9 lwkt_serialize_try.9
 MLINKS+=sleep.9 msleep.9 \
+	sleep.9 serialize_sleep.9 \
 	sleep.9 tsleep.9 \
 	sleep.9 wakeup.9 \
 	sleep.9 wakeup_one.9

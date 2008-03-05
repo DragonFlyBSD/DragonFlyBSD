@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/serializer.9,v 1.2 2007/04/03 09:14:33 swildner Exp $
+.\" $DragonFly: src/share/man/man9/serializer.9,v 1.3 2008/03/05 17:20:23 swildner Exp $
 .\"
 .Dd March 31, 2007
 .Os
@@ -136,6 +136,7 @@ functions return 0 on success and 1 on failure.
 .Pa sys/kern/lwkt_serialize.c
 .Sh SEE ALSO
 .Xr crit_enter 9 ,
+.Xr serialize_sleep 9 ,
 .Xr spinlock 9
 .Sh HISTORY
 The
