@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.26 2007/05/24 20:51:19 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.27 2008/03/05 13:03:29 sephe Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -29,6 +29,7 @@
 
 struct lwkt_msg;
 struct lwkt_port;
+struct lwkt_serialize;
 struct thread;
 
 typedef struct lwkt_msg		*lwkt_msg_t;
@@ -141,6 +142,7 @@ typedef struct lwkt_port {
     union {
 	struct spinlock	spin;
 	struct thread	*td;
+	struct lwkt_serialize *serialize;
 	void		*data;
     } mp_u;
     void *		(*mp_getport)(lwkt_port_t);
@@ -154,6 +156,7 @@ typedef struct lwkt_port {
 
 #define mpu_td		mp_u.td
 #define mpu_spin	mp_u.spin
+#define mpu_serialize	mp_u.serialize
 #define mpu_data	mp_u.data
 
 #endif
@@ -168,6 +171,7 @@ typedef struct lwkt_port {
 
 void lwkt_initport_thread(lwkt_port_t, struct thread *);
 void lwkt_initport_spin(lwkt_port_t);
+void lwkt_initport_serialize(lwkt_port_t, struct lwkt_serialize *);
 void lwkt_initport_panic(lwkt_port_t);
 void lwkt_initport_replyonly_null(lwkt_port_t);
 void lwkt_initport_replyonly(lwkt_port_t,

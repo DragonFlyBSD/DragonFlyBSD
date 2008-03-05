@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.44 2007/07/04 19:40:35 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.45 2008/03/05 13:03:29 sephe Exp $
  */
 
 #ifdef _KERNEL
@@ -65,6 +65,7 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <sys/spinlock2.h>
+#include <sys/serialize.h>
 
 #include <machine/stdarg.h>
 #include <machine/cpufunc.h>
@@ -212,6 +213,12 @@ static int lwkt_spin_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_spin_waitport(lwkt_port_t port, int flags);
 static void lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg);
 
+static void *lwkt_serialize_getport(lwkt_port_t port);
+static int lwkt_serialize_putport(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_serialize_waitmsg(lwkt_msg_t msg, int flags);
+static void *lwkt_serialize_waitport(lwkt_port_t port, int flags);
+static void lwkt_serialize_replyport(lwkt_port_t port, lwkt_msg_t msg);
+
 static void lwkt_null_replyport(lwkt_port_t port, lwkt_msg_t msg);
 static void *lwkt_panic_getport(lwkt_port_t port);
 static int lwkt_panic_putport(lwkt_port_t port, lwkt_msg_t msg);
@@ -275,6 +282,18 @@ lwkt_initport_spin(lwkt_port_t port)
 		   lwkt_spin_waitport,
 		   lwkt_spin_replyport);
     spin_init(&port->mpu_spin);
+}
+
+void
+lwkt_initport_serialize(lwkt_port_t port, struct lwkt_serialize *slz)
+{
+    _lwkt_initport(port,
+		   lwkt_serialize_getport,
+		   lwkt_serialize_putport,
+		   lwkt_serialize_waitmsg,
+		   lwkt_serialize_waitport,
+		   lwkt_serialize_replyport);
+    port->mpu_serialize = slz;
 }
 
 /*
@@ -797,6 +816,163 @@ lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	spin_unlock_wr(&port->mpu_spin);
 	if (dowakeup)
 	    wakeup(port);
+    }
+}
+
+/************************************************************************
+ *			  SERIALIZER PORT BACKEND			*
+ ************************************************************************
+ *
+ * This backend uses serializer to protect port accessing.  Callers are
+ * assumed to have serializer held.  This kind of port is usually created
+ * by network device driver along with _one_ lwkt thread to pipeline
+ * operations which may temporarily release serializer.
+ *
+ * Implementation is based on SPIN PORT BACKEND.
+ */
+
+static
+void *
+lwkt_serialize_getport(lwkt_port_t port)
+{
+    lwkt_msg_t msg;
+
+    ASSERT_SERIALIZED(port->mpu_serialize);
+
+    if ((msg = TAILQ_FIRST(&port->mp_msgq)) != NULL)
+	_lwkt_pullmsg(port, msg);
+    return(msg);
+}
+
+static
+int
+lwkt_serialize_putport(lwkt_port_t port, lwkt_msg_t msg)
+{
+    KKASSERT((msg->ms_flags & (MSGF_DONE | MSGF_REPLY)) == 0);
+    ASSERT_SERIALIZED(port->mpu_serialize);
+
+    msg->ms_target_port = port;
+    msg->ms_flags |= MSGF_QUEUED;
+    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
+    if (port->mp_flags & MSGPORTF_WAITING) {
+	port->mp_flags &= ~MSGPORTF_WAITING;
+	wakeup(port);
+    }
+    return (EASYNC);
+}
+
+static
+int
+lwkt_serialize_waitmsg(lwkt_msg_t msg, int flags)
+{
+    lwkt_port_t port;
+    int sentabort;
+    int error;
+
+    if ((msg->ms_flags & MSGF_DONE) == 0) {
+	port = msg->ms_reply_port;
+
+	ASSERT_SERIALIZED(port->mpu_serialize);
+
+	sentabort = 0;
+	while ((msg->ms_flags & MSGF_DONE) == 0) {
+	    void *won;
+
+	    /*
+	     * If message was sent synchronously from the beginning
+	     * the wakeup will be on the message structure, else it
+	     * will be on the port structure.
+	     */
+	    if (msg->ms_flags & MSGF_SYNC) {
+		won = msg;
+	    } else {
+		won = port;
+		port->mp_flags |= MSGPORTF_WAITING;
+	    }
+
+	    /*
+	     * Only messages which support abort can be interrupted.
+	     * We must still wait for message completion regardless.
+	     */
+	    if ((flags & PCATCH) && sentabort == 0) {
+		error = serialize_sleep(won, port->mpu_serialize, PCATCH,
+					"waitmsg", 0);
+		if (error) {
+		    sentabort = error;
+		    lwkt_serialize_exit(port->mpu_serialize);
+		    lwkt_abortmsg(msg);
+		    lwkt_serialize_enter(port->mpu_serialize);
+		}
+	    } else {
+		error = serialize_sleep(won, port->mpu_serialize, 0,
+					"waitmsg", 0);
+	    }
+	    /* see note at the top on the MSGPORTF_WAITING flag */
+	}
+	/*
+	 * Turn EINTR into ERESTART if the signal indicates.
+	 */
+	if (sentabort && msg->ms_error == EINTR)
+	    msg->ms_error = sentabort;
+	if (msg->ms_flags & MSGF_QUEUED)
+		_lwkt_pullmsg(port, msg);
+    } else {
+	if (msg->ms_flags & MSGF_QUEUED) {
+	    port = msg->ms_reply_port;
+
+	    ASSERT_SERIALIZED(port->mpu_serialize);
+	    _lwkt_pullmsg(port, msg);
+	}
+    }
+    return(msg->ms_error);
+}
+
+static
+void *
+lwkt_serialize_waitport(lwkt_port_t port, int flags)
+{
+    lwkt_msg_t msg;
+    int error;
+
+    ASSERT_SERIALIZED(port->mpu_serialize);
+
+    while ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL) {
+	port->mp_flags |= MSGPORTF_WAITING;
+	error = serialize_sleep(port, port->mpu_serialize, flags,
+				"waitport", 0);
+	/* see note at the top on the MSGPORTF_WAITING flag */
+	if (error)
+	    return(NULL);
+    }
+    _lwkt_pullmsg(port, msg);
+    return(msg);
+}
+
+static
+void
+lwkt_serialize_replyport(lwkt_port_t port, lwkt_msg_t msg)
+{
+    KKASSERT((msg->ms_flags & (MSGF_DONE|MSGF_QUEUED)) == 0);
+    ASSERT_SERIALIZED(port->mpu_serialize);
+
+    if (msg->ms_flags & MSGF_SYNC) {
+	/*
+	 * If a synchronous completion has been requested, just wakeup
+	 * the message without bothering to queue it to the target port.
+	 */
+	msg->ms_flags |= MSGF_DONE | MSGF_REPLY;
+	wakeup(msg);
+    } else {
+	/*
+	 * If an asynchronous completion has been requested the message
+	 * must be queued to the reply port.
+	 */
+	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
+	msg->ms_flags |= MSGF_REPLY | MSGF_DONE | MSGF_QUEUED;
+	if (port->mp_flags & MSGPORTF_WAITING) {
+	    port->mp_flags &= ~MSGPORTF_WAITING;
+	    wakeup(port);
+	}
     }
 }
 
