@@ -38,11 +38,11 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.147 2006/10/04 20:13:53 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.148 2008/03/05 10:37:24 corecode Exp $
  */
 
 #ifndef OLD_JOKE
-#define	OLD_JOKE 0
+#define	OLD_JOKE 1
 #endif /* OLD_JOKE */
 
 /**
