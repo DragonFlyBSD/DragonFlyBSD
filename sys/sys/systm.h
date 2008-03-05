@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.77 2007/11/25 00:13:28 swildner Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.78 2008/03/05 12:44:42 sephe Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -120,6 +120,7 @@ extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 
 struct intrframe;
 struct spinlock;
+struct lwkt_serialize;
 struct malloc_type;
 struct proc;
 struct xwait;
@@ -325,6 +326,8 @@ extern watchdog_tickle_fn	wdog_tickler;
  */
 int	tsleep (void *, int, const char *, int);
 int	msleep (void *, struct spinlock *, int, const char *, int);
+int	serialize_sleep(void *, struct lwkt_serialize *, int,
+			const char *, int);
 void	tsleep_interlock (void *chan);
 int	lwkt_sleep (const char *, int);
 void	tstop (void);

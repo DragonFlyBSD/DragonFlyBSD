@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.88 2007/12/06 15:03:25 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.89 2008/03/05 12:44:43 sephe Exp $
  */
 
 #include "opt_ktrace.h"
@@ -61,6 +61,7 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/serialize.h>
 
 #include <machine/cpu.h>
 #include <machine/smp.h>
@@ -610,6 +611,30 @@ msleep(void *ident, struct spinlock *spin, int flags,
 	crit_exit_gd(gd);
 
 	return (error);
+}
+
+/*
+ * Interlocked serializer sleep.  An exclusively held serializer must
+ * be passed to serialize_sleep().  The function will atomically release
+ * the serializer and tsleep on the ident, then reacquire the serializer
+ * and return.
+ */
+int
+serialize_sleep(void *ident, struct lwkt_serialize *slz, int flags,
+		const char *wmesg, int timo)
+{
+	int ret;
+
+	ASSERT_SERIALIZED(slz);
+
+	crit_enter();
+	tsleep_interlock(ident);
+	lwkt_serialize_exit(slz);
+	ret = tsleep(ident, flags, wmesg, timo);
+	lwkt_serialize_enter(slz);
+	crit_exit();
+
+	return ret;
 }
 
 /*
