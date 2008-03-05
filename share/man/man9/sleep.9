@@ -56,14 +56,15 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sleep.9,v 1.18.2.5 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/sleep.9,v 1.9 2007/12/05 20:34:12 swildner Exp $
+.\" $DragonFly: src/share/man/man9/sleep.9,v 1.10 2008/03/05 13:19:23 sephe Exp $
 .\" "
-.Dd January 9, 2007
+.Dd March 5, 2008
 .Os
 .Dt SLEEP 9
 .Sh NAME
 .Nm tsleep ,
 .Nm msleep ,
+.Nm serialize_sleep ,
 .Nm wakeup ,
 .Nm wakeup_one
 .Nd wait/sleep/block for events
@@ -75,6 +76,8 @@
 .Fn tsleep "void *ident" "int flag" "const char *wmesg" "int timo"
 .Ft int
 .Fn msleep "void *ident" "struct spinlock *spin" "int flag" "const char *wmesg" "int timo"
+.Ft int
+.Fn serialize_sleep "void *ident" "struct lwkt_serialize *slz" "int flag" "const char *wmesg" "int timo"
 .Ft void
 .Fn wakeup "void *ident"
 .Ft void
@@ -82,15 +85,17 @@
 .Sh DESCRIPTION
 The functions
 .Fn tsleep ,
-.Fn msleep
+.Fn msleep ,
+.Fn serialize_sleep ,
 and
 .Fn wakeup
 handle event-based process blocking.
 If a process must wait for an
 external event, it is put on sleep by
-.Fn tsleep
+.Fn tsleep ,
+.Fn msleep
 or
-.Fn msleep .
+.Fn serialize_sleep .
 The parameter
 .Ar ident
 is an arbitrary address that uniquely identifies the event on which
@@ -149,6 +154,21 @@ This is an atomic operation, which guarantees that a
 interlocked by
 .Fa spin
 will not be missed.
+.Pp
+The
+.Fn serialize_sleep
+function works like
+.Fn tsleep
+while at the same time releasing the serializer
+.Fa slz
+before sleeping and reacquiring it before
+.Fn serialize_sleep
+returns.
+This is an atomic operation, which guarantees that a
+.Fn wakeup
+interlocked by
+.Fa slz
+will not be missed.
 .Sh IMPLEMENTATION NOTES
 Unlike
 .Fx ,
@@ -189,7 +209,8 @@ was set in
 .El
 .Sh SEE ALSO
 .Xr ps 1 ,
-.Xr kmalloc 9
+.Xr kmalloc 9 ,
+.Xr serializer 9
 .Sh HISTORY
 The sleep/wakeup process synchronization mechanism is very old.
 It appeared in a very early version of Unix.
