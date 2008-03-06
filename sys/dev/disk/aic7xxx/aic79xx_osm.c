@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#35 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.23 2005/12/04 02:12:40 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.24 2008/03/06 20:01:29 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.25 2008/03/06 20:04:46 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -590,7 +590,6 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 		cpi->protocol = PROTO_SCSI;
 		cpi->protocol_version = SCSI_REV_2;
 		cpi->transport = XPORT_SPI;
-		cpi->transport_version = 2;
 		cpi->xport_specific.spi.ppr_options = SID_SPI_CLOCK_ST;
 		cpi->transport_version = 4;
 		cpi->xport_specific.spi.ppr_options = SID_SPI_CLOCK_DT_ST;
