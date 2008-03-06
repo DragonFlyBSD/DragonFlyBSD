@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/iwl/iwl2100.c,v 1.1 2008/03/05 14:10:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwl/iwl2100.c,v 1.2 2008/03/06 11:51:23 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1166,7 +1166,7 @@ iwl2100_alloc_firmware(struct iwl2100_softc *sc, enum ieee80211_opmode opmode)
 	};
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	const struct iwl2100_fwimg_hdr *hdr;
-	struct iwl2100_firmware *fw;
+	struct iwl2100_firmware *fw = NULL;
 	struct fw_image *image;
 	char filename[128];
 	int i, error;
