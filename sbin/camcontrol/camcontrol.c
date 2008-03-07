@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 1998, 1999, 2000, 2001, 2002, 2005, 2006 Kenneth D. Merry
+ * Copyright (c) 1997-2007 Kenneth D. Merry
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.c,v 1.21.2.13 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.11 2008/02/10 00:32:53 pavalos Exp $
+ * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.12 2008/03/07 08:44:24 pavalos Exp $
  */
 
 #include <sys/ioctl.h>
@@ -38,6 +38,7 @@
 #include <fcntl.h>
 #include <ctype.h>
 #include <err.h>
+#include <libutil.h>
 
 #include <cam/cam.h>
 #include <cam/cam_debug.h>
@@ -67,7 +68,8 @@ typedef enum {
 	CAM_CMD_TAG		= 0x0000000e,
 	CAM_CMD_RATE		= 0x0000000f,
 	CAM_CMD_DETACH		= 0x00000010,
-	CAM_CMD_REPORTLUNS	= 0x00000011
+	CAM_CMD_REPORTLUNS	= 0x00000011,
+	CAM_CMD_READCAP		= 0x00000012
 } cam_cmdmask;
 
 typedef enum {
@@ -127,6 +129,7 @@ struct camcontrol_opts option_table[] = {
 	{"load", CAM_CMD_STARTSTOP, CAM_ARG_START_UNIT | CAM_ARG_EJECT, NULL},
 	{"eject", CAM_CMD_STARTSTOP, CAM_ARG_EJECT, NULL},
 	{"reportluns", CAM_CMD_REPORTLUNS, CAM_ARG_NONE, "clr:"},
+	{"readcapacity", CAM_CMD_READCAP, CAM_ARG_NONE, "bhHNqs"},
 #endif /* MINIMALISTIC */
 	{"rescan", CAM_CMD_RESCAN, CAM_ARG_NONE, NULL},
 	{"reset", CAM_CMD_RESET, CAM_ARG_NONE, NULL},
@@ -197,6 +200,9 @@ static int	ratecontrol(struct cam_device *, int, int, int, char **,
 static int	scsiformat(struct cam_device *, int, char **, char *, int, int);
 static int	scsireportluns(struct cam_device *device, int argc, char **argv,
 			       char *combinedopt, int retry_count, int timeout);
+static int	scsireadcapacity(struct cam_device *device, int argc,
+				 char **argv, char *combinedopt,
+				 int retry_count, int timeout);
 #endif /* MINIMALISTIC */
 
 
@@ -3441,6 +3447,214 @@ bailout:
 	return (retval);
 }
 
+static int
+scsireadcapacity(struct cam_device *device, int argc, char **argv,
+		 char *combinedopt, int retry_count, int timeout)
+{
+	union ccb *ccb;
+	int blocksizeonly, humanize, numblocks, quiet, sizeonly, baseten;
+	struct scsi_read_capacity_data rcap;
+	struct scsi_read_capacity_data_long rcaplong;
+	uint64_t maxsector;
+	uint32_t block_len;
+	int retval;
+	int c;
+
+	blocksizeonly = 0;
+	humanize = 0;
+	numblocks = 0;
+	quiet = 0;
+	sizeonly = 0;
+	baseten = 0;
+	retval = 0;
+
+	ccb = cam_getccb(device);
+
+	if (ccb == NULL) {
+		warnx("%s: error allocating ccb", __func__);
+		return (1);
+	}
+
+	bzero(&(&ccb->ccb_h)[1],
+	      sizeof(struct ccb_scsiio) - sizeof(struct ccb_hdr));
+
+	while ((c = getopt(argc, argv, combinedopt)) != -1) {
+		switch (c) {
+		case 'b':
+			blocksizeonly++;
+			break;
+		case 'h':
+			humanize++;
+			baseten = 0;
+			break;
+		case 'H':
+			humanize++;
+			baseten++;
+			break;
+		case 'N':
+			numblocks++;
+			break;
+		case 'q':
+			quiet++;
+			break;
+		case 's':
+			sizeonly++;
+			break;
+		default:
+			break;
+		}
+	}
+
+	if ((blocksizeonly != 0)
+	 && (numblocks != 0)) {
+		warnx("%s: you can only specify one of -b or -N", __func__);
+		retval = 1;
+		goto bailout;
+	}
+
+	if ((blocksizeonly != 0)
+	 && (sizeonly != 0)) {
+		warnx("%s: you can only specify one of -b or -s", __func__);
+		retval = 1;
+		goto bailout;
+	}
+
+	if ((humanize != 0)
+	 && (quiet != 0)) {
+		warnx("%s: you can only specify one of -h/-H or -q", __func__);
+		retval = 1;
+		goto bailout;
+	}
+
+	if ((humanize != 0)
+	 && (blocksizeonly != 0)) {
+		warnx("%s: you can only specify one of -h/-H or -b", __func__);
+		retval = 1;
+		goto bailout;
+	}
+
+	scsi_read_capacity(&ccb->csio,
+			   /*retries*/ retry_count,
+			   /*cbfcnp*/ NULL,
+			   /*tag_action*/ MSG_SIMPLE_Q_TAG,
+			   &rcap,
+			   SSD_FULL_SIZE,
+			   /*timeout*/ timeout ? timeout : 5000);
+
+	/* Disable freezing the device queue */
+	ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
+
+	if (arglist & CAM_ARG_ERR_RECOVER)
+		ccb->ccb_h.flags |= CAM_PASS_ERR_RECOVER;
+
+	if (cam_send_ccb(device, ccb) < 0) {
+		warn("error sending READ CAPACITY command");
+
+		if (arglist & CAM_ARG_VERBOSE)
+			cam_error_print(device, ccb, CAM_ESF_ALL,
+					CAM_EPF_ALL, stderr);
+
+		retval = 1;
+		goto bailout;
+	}
+
+	if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+		cam_error_print(device, ccb, CAM_ESF_ALL, CAM_EPF_ALL, stderr);
+		retval = 1;
+		goto bailout;
+	}
+
+	maxsector = scsi_4btoul(rcap.addr);
+	block_len = scsi_4btoul(rcap.length);
+
+	/*
+	 * A last block of 2^32-1 means that the true capacity is over 2TB,
+	 * and we need to issue the long READ CAPACITY to get the real
+	 * capacity.  Otherwise, we're all set.
+	 */
+	if (maxsector != 0xffffffff)
+		goto do_print;
+
+	scsi_read_capacity_16(&ccb->csio,
+			      /*retries*/ retry_count,
+			      /*cbfcnp*/ NULL,
+			      /*tag_action*/ MSG_SIMPLE_Q_TAG,
+			      /*lba*/ 0,
+			      /*reladdr*/ 0,
+			      /*pmi*/ 0,
+			      &rcaplong,
+			      /*sense_len*/ SSD_FULL_SIZE,
+			      /*timeout*/ timeout ? timeout : 5000);
+
+	/* Disable freezing the device queue */
+	ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
+
+	if (arglist & CAM_ARG_ERR_RECOVER)
+		ccb->ccb_h.flags |= CAM_PASS_ERR_RECOVER;
+
+	if (cam_send_ccb(device, ccb) < 0) {
+		warn("error sending READ CAPACITY (16) command");
+
+		if (arglist & CAM_ARG_VERBOSE)
+			cam_error_print(device, ccb, CAM_ESF_ALL,
+					CAM_EPF_ALL, stderr);
+
+		retval = 1;
+		goto bailout;
+	}
+
+	if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+		cam_error_print(device, ccb, CAM_ESF_ALL, CAM_EPF_ALL, stderr);
+		retval = 1;
+		goto bailout;
+	}
+
+	maxsector = scsi_8btou64(rcaplong.addr);
+	block_len = scsi_4btoul(rcaplong.length);
+
+do_print:
+	if (blocksizeonly == 0) {
+		/*
+		 * Humanize implies !quiet, and also implies numblocks.
+		 */
+		if (humanize != 0) {
+			char tmpstr[6];
+			int64_t tmpbytes;
+			int ret;
+
+			tmpbytes = (maxsector + 1) * block_len;
+			ret = humanize_number(tmpstr, sizeof(tmpstr),
+					      tmpbytes, "", HN_AUTOSCALE,
+					      HN_B | HN_DECIMAL |
+					      ((baseten != 0) ?
+					      HN_DIVISOR_1000 : 0));
+			if (ret == -1) {
+				warnx("%s: humanize_number failed!", __func__);
+				retval = 1;
+				goto bailout;
+			}
+			fprintf(stdout, "Device Size: %s%s", tmpstr,
+				(sizeonly == 0) ?  ", " : "\n");
+		} else if (numblocks != 0) {
+			fprintf(stdout, "%s%ju%s", (quiet == 0) ?
+				"Blocks: " : "", (uintmax_t)maxsector + 1,
+				(sizeonly == 0) ? ", " : "\n");
+		} else {
+			fprintf(stdout, "%s%ju%s", (quiet == 0) ?
+				"Last Block: " : "", (uintmax_t)maxsector,
+				(sizeonly == 0) ? ", " : "\n");
+		}
+	}
+	if (sizeonly == 0)
+		fprintf(stdout, "%s%u%s\n", (quiet == 0) ?
+			"Block Length: " : "", block_len, (quiet == 0) ?
+			" bytes" : "");
+bailout:
+	cam_freeccb(ccb);
+
+	return (retval);
+}
+
 #endif /* MINIMALISTIC */
 
 void 
@@ -3454,6 +3668,8 @@ usage(int verbose)
 "        camcontrol tur        [dev_id][generic args]\n"
 "        camcontrol inquiry    [dev_id][generic args] [-D] [-S] [-R]\n"
 "        camcontrol reportluns [dev_id][generic args] [-c] [-l] [-r report]\n"
+"        camcontrol readcap    [dev_id][generic args] [-b] [-h] [-H] [-N]\n"
+"                              [-q] [-s]\n"
 "        camcontrol start      [dev_id][generic args]\n"
 "        camcontrol stop       [dev_id][generic args]\n"
 "        camcontrol load       [dev_id][generic args]\n"
@@ -3487,6 +3703,7 @@ usage(int verbose)
 "tur         send a test unit ready to the named device\n"
 "inquiry     send a SCSI inquiry command to the named device\n"
 "reportluns  send a SCSI report luns command to the device\n"
+"readcap     send a SCSI read capacity command to the device\n"
 "start       send a Start Unit command to the device\n"
 "stop        send a Stop Unit command to the device\n"
 "load        send a Start Unit command to the device with the load bit set\n"
@@ -3531,6 +3748,13 @@ usage(int verbose)
 "-c                only report a count of available LUNs\n"
 "-l                only print out luns, and not a count\n"
 "-r <reporttype>   specify \"default\", \"wellknown\" or \"all\"\n"
+"readcap arguments\n"
+"-b                only report the blocksize\n"
+"-h                human readable device size, base 2\n"
+"-H                human readable device size, base 10\n"
+"-N                print the number of blocks instead of last block\n"
+"-q                quiet, print numbers only\n"
+"-s                only report the last block/device size\n"
 "cmd arguments:\n"
 "-c cdb [args]     specify the SCSI CDB\n"
 "-i len fmt        specify input data and input data format\n"
@@ -3843,6 +4067,11 @@ main(int argc, char **argv)
 			error = scsireportluns(cam_dev, argc, argv,
 					       combinedopt, retry_count,
 					       timeout);
+			break;
+		case CAM_CMD_READCAP:
+			error = scsireadcapacity(cam_dev, argc, argv,
+						 combinedopt, retry_count,
+						 timeout);
 			break;
 #endif /* MINIMALISTIC */
 		case CAM_CMD_USAGE:
