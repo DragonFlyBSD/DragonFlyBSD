@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.53 2008/01/24 22:26:17 nant Exp $
+$DragonFly: src/test/test/README,v 1.54 2008/03/07 07:49:47 dave Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -47,3 +47,4 @@ At all events, thanks to the work of Clair Patterson, by 1953 the Earth at last
 had an age everyone could agree on. The only problem now was that it was older
 than the universe that contained it.
 
+I wondered why the baseball was getting bigger. Then it hit me.
