@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.75 2008/02/12 02:06:12 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.76 2008/03/07 20:29:24 swildner Exp $
 #
 
 #########################################################################
@@ -221,19 +221,17 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
-	# This is a really bad hack.  There seems to be no reliable way
-	# to install a package to a target directory prefix so we have to
-	# copy everything into the ISO root and do the install chrooted.
+	# There seems to be no reliable way to install a package to a target
+	# directory prefix so we mount_null our package directory into the
+	# ISO root and do the install chrooted.
 	#
-	rm -rf ${ISOROOT}/tmp/packages
 	mkdir ${ISOROOT}/tmp/packages
-.for PKG in ${PKGSRC_PACKAGES}
-	cp ${PKGSRC_PKG_PATH}/${PKG} ${ISOROOT}/tmp/packages
-.endfor
+	mount_null -o ro ${PKGSRC_PKG_PATH} ${ISOROOT}/tmp/packages
 .for PKG in ${PKGSRC_PACKAGES}
 	${ENVCMD} PKG_PATH=/tmp/packages chroot ${ISOROOT} ${PKGBIN_PKG_ADD} -I ${PKG}
 .endfor
-	rm -rf ${ISOROOT}/tmp/packages
+	umount ${ISOROOT}/tmp/packages
+	rmdir ${ISOROOT}/tmp/packages
 	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
 	chroot ${ISOROOT} ${PKGBIN_PKG_ADMIN} rebuild
 
