@@ -5,7 +5,7 @@
  *
  * @(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/fil.c,v 1.23.2.7 2004/07/04 09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.10 2006/12/23 00:27:02 swildner Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.11 2008/03/07 11:34:19 sephe Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -2031,8 +2031,17 @@ struct in_addr *inp;
 #  else /* linux */
 	struct sockaddr_in *sin;
 	struct ifaddr *ifa;
+#ifdef __DragonFly__
+	struct ifaddr_container *ifac;
+#endif
 
-#   if	defined(__DragonFly__) || (__FreeBSD_version >= 300000)
+#   if  defined(__DragonFly__)
+	ifac = TAILQ_FIRST(&ifp->if_addrheads[mycpuid]);
+	if (ifac != NULL)
+		ifa = ifac->ifa;
+	else
+		ifa = NULL;
+#   elif defined(__FreeBSD__) && (__FreeBSD_version >= 300000)
 	ifa = TAILQ_FIRST(&ifp->if_addrhead);
 #   else
 #    if defined(__NetBSD__) || defined(__OpenBSD__)
@@ -2060,7 +2069,13 @@ struct in_addr *inp;
 				break;
 		}
 #    endif
-#    if	defined(__DragonFly__) || (__FreeBSD_version >= 300000)
+#    if	defined(__DragonFly__)
+		ifac = TAILQ_NEXT(ifac, ifa_link);
+		if (ifac != NULL)
+			ifa = ifac->ifa;
+		else
+			ifa = NULL;
+#    elif defined(__FreeBSD__) && (__FreeBSD_version >= 300000)
 		ifa = TAILQ_NEXT(ifa, ifa_link);
 #    else
 #     if defined(__NetBSD__) || defined(__OpenBSD__)

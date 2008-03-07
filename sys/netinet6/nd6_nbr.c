@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.22 2008/01/05 14:02:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.23 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -1086,7 +1086,9 @@ nd6_dad_start(struct ifaddr *ifa,
 	 * (re)initialization.
 	 */
 	dp->dad_ifa = ifa;
-	IFAREF(ifa);	/* just for safety */
+	crit_enter();	/* XXX MP not MP safe */
+	_IFAREF(ifa, 0);	/* just for safety */
+	crit_exit();
 	dp->dad_count = ip6_dad_count;
 	dp->dad_ns_icount = dp->dad_na_icount = 0;
 	dp->dad_ns_ocount = dp->dad_ns_tcount = 0;
@@ -1127,7 +1129,9 @@ nd6_dad_stop(struct ifaddr *ifa)
 	TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
 	kfree(dp, M_IP6NDP);
 	dp = NULL;
-	IFAFREE(ifa);
+	crit_enter();	/* XXX MP not MP safe */
+	_IFAFREE(ifa, 0);
+	crit_exit();
 }
 
 static void
@@ -1171,7 +1175,9 @@ nd6_dad_timer(struct ifaddr *ifa)
 		TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
 		kfree(dp, M_IP6NDP);
 		dp = NULL;
-		IFAFREE(ifa);
+		crit_enter();	/* XXX MP not MP safe */
+		_IFAFREE(ifa, 0);
+		crit_exit();
 		goto done;
 	}
 
@@ -1249,7 +1255,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 			TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
 			kfree(dp, M_IP6NDP);
 			dp = NULL;
-			IFAFREE(ifa);
+			_IFAFREE(ifa, 0);
 		}
 	}
 
@@ -1288,7 +1294,9 @@ nd6_dad_duplicated(struct ifaddr *ifa)
 	TAILQ_REMOVE(&dadq, (struct dadq *)dp, dad_list);
 	kfree(dp, M_IP6NDP);
 	dp = NULL;
-	IFAFREE(ifa);
+	crit_enter();	/* XXX MP not MP safe */
+	_IFAFREE(ifa, 0);
+	crit_exit();
 }
 
 static void

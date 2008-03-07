@@ -1,5 +1,5 @@
 /*	$KAME: sctp_asconf.c,v 1.23 2004/08/17 06:28:01 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.6 2007/08/27 16:15:42 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_asconf.c,v 1.7 2008/03/07 11:34:20 sephe Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -2144,14 +2144,17 @@ static struct sockaddr *
 sctp_find_valid_localaddr(struct sctp_tcb *stcb)
 {
 	struct ifnet *ifn;
-	struct ifaddr *ifa;
 
 	TAILQ_FOREACH(ifn, &ifnet, if_list) {
+		struct ifaddr_container *ifac;
+
 		if (stcb->asoc.loopback_scope == 0 && ifn->if_type == IFT_LOOP) {
 			/* Skip if loopback_scope not set */
 			continue;
 		}
-		TAILQ_FOREACH(ifa, &ifn->if_addrlist, ifa_list) {
+		TAILQ_FOREACH(ifac, &ifn->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr->sa_family == AF_INET &&
 			    stcb->asoc.ipv4_addr_legal) {
 				struct sockaddr_in *sin;
@@ -2801,22 +2804,26 @@ sctp_check_address_list_all(struct sctp_tcb *stcb, struct mbuf *m, int offset,
     uint16_t site_scope, uint16_t ipv4_scope, uint16_t loopback_scope)
 {
 	struct ifnet *ifn;
-	struct ifaddr *ifa;
 
 	/* go through all our known interfaces */
 	TAILQ_FOREACH(ifn, &ifnet, if_list) {
+		struct ifaddr_container *ifac;
+
 		if (loopback_scope == 0 && ifn->if_type == IFT_LOOP) {
 			/* skip loopback interface */
 			continue;
 		}
 
 		/* go through each interface address */
-		TAILQ_FOREACH(ifa, &ifn->if_addrlist, ifa_list) {
+		TAILQ_FOREACH(ifac, &ifn->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			/* do i have it implicitly? */
 			if (sctp_cmpaddr(ifa->ifa_addr, init_addr)) {
 #ifdef SCTP_DEBUG
 				if (sctp_debug_on & SCTP_DEBUG_ASCONF2) {
-					kprintf("check_address_list_all: skipping ");
+					kprintf("check_address_list_all: "
+						"skipping ");
 					sctp_print_address(ifa->ifa_addr);
 				}
 #endif /* SCTP_DEBUG */

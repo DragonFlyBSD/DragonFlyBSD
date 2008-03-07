@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.8 2005/10/30 23:00:57 swildner Exp $
+ * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.9 2008/03/07 11:34:21 sephe Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -67,7 +67,7 @@ const char *inet6_n2a(struct in6_addr *);
 int main(int, char **);
 char *ifname(struct ifnet *);
 void kread(u_long, void *, int);
-void if6_addrlist(struct ifaddr *);
+void if6_addrlist(struct ifaddr_container *);
 void in6_multilist(struct in6_multi *);
 struct in6_multi * in6_multientry(struct in6_multi *);
 
@@ -134,10 +134,20 @@ main(int argc __unused, char **argv __unused)
 	}
 	KREAD(nl[N_IFNET].n_value, &ifp, struct ifnet *);
 	while (ifp) {
+		struct ifaddrhead head;
+		struct ifaddr_container ifac, *ifacp = NULL;
+
 		KREAD(ifp, &ifnet, struct ifnet);
 		printf("%s:\n", if_indextoname(ifnet.if_index, ifname));
 
-		if6_addrlist(TAILQ_FIRST(&ifnet.if_addrhead));
+		KREAD(ifnet.if_addrheads, &head, struct ifaddrhead);
+		if (TAILQ_FIRST(&head) != NULL) {
+			KREAD(TAILQ_FIRST(&head), &ifac,
+			      struct ifaddr_container);
+			ifacp = &ifac;
+		}
+
+		if6_addrlist(ifacp);
 		nifp = ifnet.if_link.tqe_next;
 
 		/* not supported */
@@ -170,13 +180,19 @@ kread(u_long addr, void *buf, int len)
 }
 
 void
-if6_addrlist(struct ifaddr *ifap)
+if6_addrlist(struct ifaddr_container *ifac)
 {
+	struct ifaddr *ifap;
 	struct ifaddr ifa;
 	struct sockaddr sa;
 	struct in6_ifaddr if6a;
 	struct in6_multi *mc = 0;
 	struct ifaddr *ifap0;
+
+	if (ifac != NULL)
+		ifap = ifac->ifa;
+	else
+		ifap = NULL;
 
 	ifap0 = ifap;
 	while (ifap) {
@@ -189,7 +205,13 @@ if6_addrlist(struct ifaddr *ifap)
 		KREAD(ifap, &if6a, struct in6_ifaddr);
 		printf("\tinet6 %s\n", inet6_n2a(&if6a.ia_addr.sin6_addr));
 	nextifap:
-		ifap = ifa.ifa_link.tqe_next;
+		if (TAILQ_NEXT(ifac, ifa_link) == NULL) {
+			ifap = NULL;
+		} else {
+			KREAD(TAILQ_NEXT(ifac, ifa_link), ifac,
+			      struct ifaddr_container);
+			ifap = ifac->ifa;
+		}
 	}
 	if (ifap0) {
 		struct ifnet ifnet;

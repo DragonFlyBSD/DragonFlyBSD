@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.c,v 1.36 2005/03/06 16:04:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.8 2007/04/22 01:13:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.9 2008/03/07 11:34:20 sephe Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -3621,12 +3621,15 @@ struct ifaddr *
 sctp_find_ifa_by_addr(struct sockaddr *sa)
 {
 	struct ifnet *ifn;
-	struct ifaddr *ifa;
 
 	/* go through all our known interfaces */
 	TAILQ_FOREACH(ifn, &ifnet, if_list) {
+		struct ifaddr_container *ifac;
+
 		/* go through each interface addresses */
-		TAILQ_FOREACH(ifa, &ifn->if_addrlist, ifa_list) {
+		TAILQ_FOREACH(ifac, &ifn->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			/* correct family? */
 			if (ifa->ifa_addr->sa_family != sa->sa_family)
 				continue;

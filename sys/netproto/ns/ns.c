@@ -32,7 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.16 2008/01/06 16:55:52 swildner Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.17 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,6 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct ns_aliasreq *ifra = (struct ns_aliasreq *)data;
 	struct ns_ifaddr *ia;
-	struct ifaddr *ifa = NULL; /* XXX used ininitialized ?*/
 	struct ns_ifaddr *oia;
 	int dstIsNew, hostIsNew;
 	int error = 0; /* initalize because of scoping */
@@ -134,8 +133,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCSIFADDR:
 	case SIOCSIFDSTADDR:
 		if (ia == (struct ns_ifaddr *)0) {
-			oia = (struct ns_ifaddr *)
-				kmalloc(sizeof *ia, M_IFADDR, M_WAITOK | M_ZERO);
+			oia = ifa_create(sizeof(*ia), M_WAITOK);
 			if ((ia = ns_ifaddr) != NULL) {
 				for ( ; ia->ia_next; ia = ia->ia_next)
 					;
@@ -144,7 +142,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 				ns_ifaddr = oia;
 			ia = oia;
 
-			TAILQ_INSERT_TAIL(&ifp->if_addrhead, ifa, ifa_link);
+			ifa_iflink(&ia->ia_ifa, ifp, 1);
 			ia->ia_ifp = ifp;
 			ia->ia_ifa.ifa_addr = (struct sockaddr *)&ia->ia_addr;
 
@@ -190,7 +188,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		ns_ifscrub(ifp, (struct ns_ifaddr *)ia);
 		/* XXX not on list */
 		oia = ia;
-		TAILQ_REMOVE(&ifp->if_addrhead, (struct ifaddr *)ia, ifa_link);
+		ifa_ifunlink(&ia->ia_ifa, ifp);
                 if (oia == (ia = ns_ifaddr)) {
                         ns_ifaddr = ia->ia_next;
                 } else {
@@ -202,7 +200,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
                         else
                                 kprintf("Didn't unlink nsifadr from list\n");
                 }
-		IFAFREE((&oia->ia_ifa));
+		ifa_destroy(&oia->ia_ifa);
 		if (0 == --ns_interfaces) {
 			/*
 			 * We reset to virginity and start all over again

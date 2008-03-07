@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.24 2007/05/17 21:07:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.25 2008/03/07 11:34:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -981,7 +981,6 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 	struct ifconf *ifc = (struct ifconf *)data;
 	struct l_ifreq ifr;
 	struct ifnet *ifp;
-	struct ifaddr *ifa;
 	struct iovec iov;
 	struct uio uio;
 	int error, ethno;
@@ -1002,6 +1001,8 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 
 	/* Return all AF_INET addresses of all interfaces */
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		struct ifaddr_container *ifac;
+
 		if (uio.uio_resid <= 0)
 			break;
 
@@ -1013,7 +1014,8 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 			strlcpy(ifr.ifr_name, ifp->if_xname, LINUX_IFNAMSIZ);
 
 		/* Walk the address list */
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
 			struct sockaddr *sa = ifa->ifa_addr;
 
 			if (uio.uio_resid <= 0)
@@ -1077,9 +1079,9 @@ linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 	struct l_ifreq *ifr = (struct l_ifreq *)data;
 	struct ifnet *ifp;
 	char ifname[IFNAMSIZ];
-	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 	struct l_sockaddr lsa;
+	struct ifaddr_container *ifac;
 
 	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
 	if (ifp->if_type == IFT_LOOP) {
@@ -1091,7 +1093,9 @@ linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 	if (ifp->if_type != IFT_ETHER)
 		return (ENOENT);
 
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		sdl = (struct sockaddr_dl*)ifa->ifa_addr;
 		if (sdl != NULL && (sdl->sdl_family == AF_LINK) &&
 		    (sdl->sdl_type == IFT_ETHER)) {

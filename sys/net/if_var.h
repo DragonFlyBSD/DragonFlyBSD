@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.44 2008/01/11 11:59:40 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.45 2008/03/07 11:34:19 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -84,6 +84,9 @@ struct	ether_header;
 struct	carp_if;
 struct	ucred;
 struct	lwkt_serialize;
+struct	ifaddr_container;
+struct	ifaddr;
+struct	lwkt_port;
 
 #include <sys/queue.h>		/* get TAILQ macros */
 
@@ -99,7 +102,7 @@ struct	lwkt_serialize;
 #define IF_DUNIT_NONE   -1
 
 TAILQ_HEAD(ifnethead, ifnet);	/* we use TAILQs so that the order of */
-TAILQ_HEAD(ifaddrhead, ifaddr);	/* instantiation is preserved in the list */
+TAILQ_HEAD(ifaddrhead, ifaddr_container); /* instantiation is preserved in the list */
 TAILQ_HEAD(ifprefixhead, ifprefix);
 LIST_HEAD(ifmultihead, ifmultiaddr);
 
@@ -177,7 +180,8 @@ struct ifnet {
 	char	if_xname[IFNAMSIZ];	/* external name (name + unit) */
 	const char *if_dname;		/* driver name */
 	int	if_dunit;		/* unit or IF_DUNIT_NONE */
-	struct	ifaddrhead if_addrhead;	/* linked list of addresses per if */
+	void	*if_addrhead_pad;
+	struct	ifaddrhead *if_addrheads;	/* linked list of addresses per if */
 	int	if_pcount;		/* number of promiscuous listeners */
 	struct	carp_if *if_carp;	/* carp interface structure */
 	struct	bpf_if *if_bpf;		/* packet filter structure */
@@ -253,8 +257,8 @@ typedef void if_init_f_t (void *);
 #define if_rawoutput(if, m, sa) if_output(if, m, sa, (struct rtentry *)0)
 
 /* for compatibility with other BSDs */
-#define	if_addrlist	if_addrhead
 #define	if_list		if_link
+
 
 /*
  * Output queues (ifp->if_snd) and slow device input queues (*ifp->if_slowq)
@@ -351,6 +355,15 @@ if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
 
 #endif /* _KERNEL */
 
+struct ifaddr_container {
+#define IFA_CONTAINER_MAGIC	0x19810219
+#define IFA_CONTAINER_DEAD	0xc0dedead
+	uint32_t		ifa_magic;  /* IFA_CONTAINER_MAGIC */
+	struct ifaddr		*ifa;
+	TAILQ_ENTRY(ifaddr_container)	ifa_link;   /* queue macro glue */
+	u_int			ifa_refcnt; /* references to this structure */
+};
+
 /*
  * The ifaddr structure contains information about one address
  * of an interface.  They are maintained by the different address families,
@@ -364,11 +377,12 @@ struct ifaddr {
 	struct	sockaddr *ifa_netmask;	/* used to determine subnet */
 	struct	if_data if_data;	/* not all members are meaningful */
 	struct	ifnet *ifa_ifp;		/* back-pointer to interface */
-	TAILQ_ENTRY(ifaddr) ifa_link;	/* queue macro glue */
+	void	*ifa_link_pad;
+	struct ifaddr_container *ifa_containers;
 	void	(*ifa_rtrequest)	/* check or clean routes (+ or -)'d */
 		(int, struct rtentry *, struct rt_addrinfo *);
 	u_short	ifa_flags;		/* mostly rt_flags for cloning */
-	u_int	ifa_refcnt;		/* references to this structure */
+	cpumask_t ifa_cpumask;
 	int	ifa_metric;		/* cost of going out this interface */
 #ifdef notdef
 	struct	rtentry *ifa_rt;	/* XXXX for ROUTETOIF ????? */
@@ -423,9 +437,20 @@ typedef void (*ifnet_detach_event_handler_t)(void *, struct ifnet *);
 EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
 
 static __inline void
+_IFAREF(struct ifaddr *_ifa, int _cpu_id)
+{
+	struct ifaddr_container *_ifac = &_ifa->ifa_containers[_cpu_id];
+
+	crit_enter();
+	KKASSERT(_ifac->ifa_magic == IFA_CONTAINER_MAGIC);
+	++_ifac->ifa_refcnt;
+	crit_exit();
+}
+
+static __inline void
 IFAREF(struct ifaddr *_ifa)
 {
-	++_ifa->ifa_refcnt;
+	_IFAREF(_ifa, mycpuid);
 }
 
 #include <sys/malloc.h>
@@ -433,13 +458,25 @@ IFAREF(struct ifaddr *_ifa)
 MALLOC_DECLARE(M_IFADDR);
 MALLOC_DECLARE(M_IFMADDR);
 
+void	ifac_free(struct ifaddr_container *, int);
+
+static __inline void
+_IFAFREE(struct ifaddr *_ifa, int _cpu_id)
+{
+	struct ifaddr_container *_ifac = &_ifa->ifa_containers[_cpu_id];
+
+	crit_enter();
+	KKASSERT(_ifac->ifa_magic == IFA_CONTAINER_MAGIC);
+	KKASSERT(_ifac->ifa_refcnt > 0);
+	if (--_ifac->ifa_refcnt == 0)
+		ifac_free(_ifac, _cpu_id);
+	crit_exit();
+}
+
 static __inline void
 IFAFREE(struct ifaddr *_ifa)
 {
-	if (_ifa->ifa_refcnt <= 0)
-		kfree(_ifa, M_IFADDR);
-	else
-		_ifa->ifa_refcnt--;
+	_IFAFREE(_ifa, mycpuid);
 }
 
 extern	struct ifnethead ifnet;
@@ -485,6 +522,12 @@ struct	ifaddr *ifa_ifwithdstaddr(struct sockaddr *);
 struct	ifaddr *ifa_ifwithnet(struct sockaddr *);
 struct	ifaddr *ifa_ifwithroute(int, struct sockaddr *, struct sockaddr *);
 struct	ifaddr *ifaof_ifpforaddr(struct sockaddr *, struct ifnet *);
+
+void	*ifa_create(int, int);
+void	ifa_destroy(struct ifaddr *);
+void	ifa_iflink(struct ifaddr *, struct ifnet *, int);
+void	ifa_ifunlink(struct ifaddr *, struct ifnet *);
+struct lwkt_port *ifa_portfn(int);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);

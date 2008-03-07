@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.12 2007/04/22 01:13:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.13 2008/03/07 11:34:20 sephe Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -1184,7 +1184,6 @@ sctp_fill_up_addresses(struct sctp_inpcb *inp,
 		       struct sockaddr_storage *sas)
 {
 	struct ifnet *ifn;
-	struct ifaddr *ifa;
 	int loopback_scope, ipv4_local_scope, local_scope, site_scope, actual;
 	int ipv4_addr_legal, ipv6_addr_legal;
 	actual = 0;
@@ -1222,12 +1221,17 @@ sctp_fill_up_addresses(struct sctp_inpcb *inp,
 
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUNDALL) {
 		TAILQ_FOREACH(ifn, &ifnet, if_list) {
+			struct ifaddr_container *ifac;
+
 			if ((loopback_scope == 0) &&
 			    (ifn->if_type == IFT_LOOP)) {
 				/* Skip loopback if loopback_scope not set */
 				continue;
 			}
-			TAILQ_FOREACH(ifa, &ifn->if_addrlist, ifa_list) {
+			TAILQ_FOREACH(ifac, &ifn->if_addrheads[mycpuid],
+				      ifa_link) {
+				struct ifaddr *ifa = ifac->ifa;
+
 				if (stcb) {
 				/*
 				 * For the BOUND-ALL case, the list
@@ -1382,10 +1386,13 @@ sctp_count_max_addresses(struct sctp_inpcb *inp)
 	 */
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUNDALL) {
 		struct ifnet *ifn;
-		struct ifaddr *ifa;
 
 		TAILQ_FOREACH(ifn, &ifnet, if_list) {
-			TAILQ_FOREACH(ifa, &ifn->if_addrlist, ifa_list) {
+			struct ifaddr_container *ifac;
+
+			TAILQ_FOREACH(ifac, &ifn->if_addrheads[mycpuid], ifa_link) {
+				struct ifaddr *ifa = ifac->ifa;
+
 				/* Count them if they are the right type */
 				if (ifa->ifa_addr->sa_family == AF_INET) {
 					if (inp->sctp_flags & SCTP_PCB_FLAGS_NEEDS_MAPPED_V4)

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.26 2008/01/05 14:02:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.27 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -628,12 +628,13 @@ static int
 regen_tmpaddr(struct in6_ifaddr *ia6) /* deprecated/invalidated temporary
 					 address */
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	struct ifnet *ifp;
 	struct in6_ifaddr *public_ifa6 = NULL;
 
 	ifp = ia6->ia_ifa.ifa_ifp;
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_list) {
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
 		struct in6_ifaddr *it6;
 
 		if (ifa->ifa_addr->sa_family != AF_INET6)
@@ -866,7 +867,7 @@ nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 int
 nd6_is_addr_neighbor(struct sockaddr_in6 *addr, struct ifnet *ifp)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	int i;
 
 #define IFADDR6(a) ((((struct in6_ifaddr *)(a))->ia_addr).sin6_addr)
@@ -885,7 +886,9 @@ nd6_is_addr_neighbor(struct sockaddr_in6 *addr, struct ifnet *ifp)
 	 * If the address matches one of our addresses,
 	 * it should be a neighbor.
 	 */
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			next: continue;
 

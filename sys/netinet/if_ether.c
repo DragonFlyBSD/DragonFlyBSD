@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.44 2008/02/11 16:42:39 nant Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.45 2008/03/07 11:34:20 sephe Exp $
  */
 
 /*
@@ -665,7 +665,7 @@ in_arpinput(struct mbuf *m)
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct ether_header *eh;
 	struct rtentry *rt;
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	struct in_ifaddr *ia;
 	struct sockaddr sa;
 	struct in_addr isaddr, itaddr, myaddr;
@@ -737,7 +737,9 @@ in_arpinput(struct mbuf *m)
 	 * No match, use the first inet address on the receive interface
 	 * as a dummy address for the rest of the function.
 	 */
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
 			ia = ifatoia(ifa);
 			goto match;

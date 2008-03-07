@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_var.h,v 1.3.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.8 2007/08/16 20:03:58 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.9 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: in6_var.h,v 1.56 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -494,14 +494,14 @@ MALLOC_DECLARE(M_IPMADDR);
 /* struct ifnet *ifp; */				\
 /* struct in6_ifaddr *ia; */				\
 do {									\
-	struct ifaddr *ifa;						\
-	TAILQ_FOREACH(ifa, &(ifp)->if_addrhead, ifa_list) {		\
-		if (!ifa->ifa_addr)					\
+	struct ifaddr_container *ifac;					\
+	TAILQ_FOREACH(ifac, &(ifp)->if_addrheads[mycpuid], ifa_list) {	\
+		if (!ifac->ifa->ifa_addr)				\
 			continue;					\
-		if (ifa->ifa_addr->sa_family == AF_INET6)		\
+		if (ifac->ifa->ifa_addr->sa_family == AF_INET6)		\
 			break;						\
 	}								\
-	(ia) = (struct in6_ifaddr *)ifa;				\
+	(ia) = ifac == NULL ? NULL : (struct in6_ifaddr *)(ifac->ifa);	\
 } while (0)
 
 #endif /* _KERNEL */

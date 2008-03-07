@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.16 2008/01/06 16:55:52 swildner Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.17 2008/03/07 11:34:20 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -344,8 +344,6 @@ ng_eiface_constructor(node_p *nodep)
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	ifp->if_flags = (IFF_SIMPLEX | IFF_BROADCAST | IFF_MULTICAST);
 
-	TAILQ_INIT(&ifp->if_addrhead);
-
 	/* Give this node name *
 	bzero(ifname, sizeof(ifname));
 	ksprintf(ifname, "if%s", ifp->if_xname);
@@ -431,7 +429,7 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 
 		case NGM_EIFACE_GET_IFADDRS:
 		    {
-			struct ifaddr *ifa;
+			struct ifaddr_container *ifac;
 			caddr_t ptr;
 			int buflen;
 
@@ -439,8 +437,9 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 
 			/* Determine size of response and allocate it */
 			buflen = 0;
-			TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
-				buflen += SA_SIZE(ifa->ifa_addr);
+			TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid],
+				      ifa_link)
+				buflen += SA_SIZE(ifac->ifa->ifa_addr);
 			NG_MKRESPONSE(resp, msg, buflen, M_NOWAIT);
 			if (resp == NULL) {
 				error = ENOMEM;
@@ -449,7 +448,9 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 
 			/* Add addresses */
 			ptr = resp->data;
-			TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+			TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid],
+				      ifa_link) {
+				struct ifaddr *ifa = ifac->ifa;
 				const int len = SA_SIZE(ifa->ifa_addr);
 
 				if (buflen < len) {

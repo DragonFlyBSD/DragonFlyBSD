@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.13 2008/01/06 16:55:52 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.14 2008/03/07 11:34:20 sephe Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -2552,9 +2552,13 @@ int
 sctp_is_address_on_local_host(struct sockaddr *addr)
 {
 	struct ifnet *ifn;
-	struct ifaddr *ifa;
+
 	TAILQ_FOREACH(ifn, &ifnet, if_list) {
-		TAILQ_FOREACH(ifa, &ifn->if_addrlist, ifa_list) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &ifn->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (addr->sa_family == ifa->ifa_addr->sa_family) {
 				/* same family */
 				if (addr->sa_family == AF_INET) {

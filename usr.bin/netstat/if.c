@@ -32,7 +32,7 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.11 2006/08/03 16:40:48 swildner Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.12 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -107,6 +107,7 @@ void
 intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 {
 	struct ifnet ifnet;
+	struct ifaddr_container ifac;
 	struct ifnethead ifnethead;
 	union {
 		struct ifaddr ifa;
@@ -123,6 +124,7 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 #endif
 	} ifaddr;
 	u_long ifaddraddr;
+	u_long ifaddrcont_addr;
 	u_long ifaddrfound;
 	u_long ifnetfound;
 	u_long opackets;
@@ -181,6 +183,8 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 		link_layer = 0;
 
 		if (ifaddraddr == 0) {
+			struct ifaddrhead head;
+
 			ifnetfound = ifnetaddr;
 			if (kread(ifnetaddr, (char *)&ifnet, sizeof ifnet))
 				return;
@@ -198,7 +202,21 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 			if ((ifnet.if_flags&IFF_UP) == 0)
 				*cp++ = '*';
 			*cp = '\0';
-			ifaddraddr = (u_long)TAILQ_FIRST(&ifnet.if_addrhead);
+
+			if (kread((u_long)ifnet.if_addrheads,
+				  (char *)&head, sizeof(head)))
+				return;
+
+			ifaddrcont_addr =
+				(u_long)TAILQ_FIRST(&head);
+			if (ifaddrcont_addr == 0) {
+				ifaddraddr = 0;
+			} else {
+				if (kread(ifaddrcont_addr, (char *)&ifac,
+					  sizeof(ifac)))
+					return;
+				ifaddraddr = (u_long)ifac.ifa;
+			}
 		}
 		ifaddrfound = ifaddraddr;
 
@@ -230,8 +248,18 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 				CP(&ifaddr);
 			sa = (struct sockaddr *)cp;
 			if (af != AF_UNSPEC && sa->sa_family != af) {
-				ifaddraddr =
-				    (u_long)TAILQ_NEXT(&ifaddr.ifa, ifa_link);
+				ifaddrcont_addr =
+					(u_long)TAILQ_NEXT(&ifac, ifa_link);
+				if (ifaddrcont_addr == 0) {
+					ifaddraddr = 0;
+				} else {
+					if (kread(ifaddrcont_addr,
+					    (char *)&ifac, sizeof(ifac))) {
+						ifaddraddr = 0;
+						continue;
+					}
+					ifaddraddr = (u_long)ifac.ifa;
+				}
 				continue;
 			}
 			printf("%-7.7s %-5lu ", name, ifnet.if_mtu);
@@ -351,7 +379,18 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 				ibytes = ifaddr.in.ia_ifa.if_ibytes;
 			}
 
-			ifaddraddr = (u_long)TAILQ_NEXT(&ifaddr.ifa, ifa_link);
+			ifaddrcont_addr =
+				(u_long)TAILQ_NEXT(&ifac, ifa_link);
+			if (ifaddrcont_addr == 0) {
+				ifaddraddr = 0;
+			} else {
+				if (kread(ifaddrcont_addr,
+				    (char *)&ifac, sizeof(ifac))) {
+					ifaddraddr = 0;
+				} else {
+					ifaddraddr = (u_long)ifac.ifa;
+				}
+			}
 		}
 
 		show_stat("lu", 8, ipackets, link_layer|network_layer);

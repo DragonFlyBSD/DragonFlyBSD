@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.17 2006/12/22 23:44:54 swildner Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.18 2008/03/07 11:34:19 sephe Exp $
  */
 
 /*
@@ -305,7 +305,7 @@ atm_input(struct ifnet *ifp, struct atm_pseudohdr *ah, struct mbuf *m,
 void
 atm_ifattach(struct ifnet *ifp, lwkt_serialize_t serializer)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	struct sockaddr_dl *sdl;
 
 	ifp->if_type = IFT_ATM;
@@ -319,15 +319,9 @@ atm_ifattach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifq_set_maxlen(&ifp->if_snd, 50);
 	if_attach(ifp, serializer);
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	for (ifa = TAILQ_FIRST(&ifp->if_addrlist); ifa != 0;
-	    ifa = TAILQ_NEXT(ifa, ifa_list))
-#elif defined(__DragonFly__) || (defined(__FreeBSD__) && (__FreeBSD__ > 2))
-	for (ifa = TAILQ_FIRST(&ifp->if_addrhead); ifa; 
-	    ifa = TAILQ_NEXT(ifa, ifa_link))
-#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__)
-	for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next) 
-#endif
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if ((sdl = (struct sockaddr_dl *)ifa->ifa_addr) &&
 		    sdl->sdl_family == AF_LINK) {
 			sdl->sdl_type = IFT_ATM;
@@ -337,5 +331,6 @@ atm_ifattach(struct ifnet *ifp, lwkt_serialize_t serializer)
 #endif
 			break;
 		}
+	}
 	bpfattach(ifp, DLT_ATM_RFC1483, sizeof(struct atmllc));
 }

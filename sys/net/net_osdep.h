@@ -1,7 +1,7 @@
 /*
  * $KAME: net_osdep.h,v 1.68 2001/12/21 08:14:58 itojun Exp $
  * $FreeBSD: src/sys/net/net_osdep.h,v 1.1.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/net_osdep.h,v 1.7 2006/05/20 02:42:08 dillon Exp $
+ * $DragonFly: src/sys/net/net_osdep.h,v 1.8 2008/03/07 11:34:19 sephe Exp $
  */
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -291,8 +291,6 @@ extern const char *if_name (struct ifnet *);
 
 #define HAVE_OLD_BPF
 
-#define ifa_list	ifa_link
-#define if_addrlist	if_addrhead
 #define if_list		if_link
 
 #define WITH_CONVERT_AND_STRIP_IP_LEN

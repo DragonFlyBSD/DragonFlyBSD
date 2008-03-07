@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.60 2008/01/11 11:59:40 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.61 2008/03/07 11:34:19 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -58,6 +58,7 @@
 #include <sys/thread.h>
 #include <sys/thread2.h>
 #include <sys/serialize.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -68,7 +69,10 @@
 #include <net/radix.h>
 #include <net/route.h>
 #include <net/if_clone.h>
+#include <net/netmsg2.h>
+
 #include <machine/stdarg.h>
+#include <machine/smp.h>
 
 #if defined(INET) || defined(INET6)
 /*XXX*/
@@ -84,6 +88,13 @@
 #if defined(COMPAT_43)
 #include <emulation/43bsd/43bsd_socket.h>
 #endif /* COMPAT_43 */
+
+struct netmsg_ifaddr {
+	struct netmsg	netmsg;
+	struct ifaddr	*ifa;
+	struct ifnet	*ifp;
+	int		tail;
+};
 
 /*
  * Support for non-ALTQ interfaces.
@@ -101,6 +112,7 @@ static void	if_attachdomain(void *);
 static void	if_attachdomain1(struct ifnet *);
 static int	ifconf(u_long, caddr_t, struct ucred *);
 static void	ifinit(void *);
+static void	ifaddrinit(void *);
 static void	if_slowtimo(void *);
 static void	link_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
 static int	if_rtdel(struct radix_node *, void *);
@@ -117,6 +129,8 @@ SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
 SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
 
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
+/* Must be after netisr_init */
+SYSINIT(ifaddr, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifaddrinit, NULL)
 
 MALLOC_DEFINE(M_IFADDR, "ifaddr", "interface address");
 MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
@@ -128,6 +142,7 @@ struct callout		if_slowtimo_timer;
 
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
+static struct thread	ifaddr_threads[MAXCPU];
 
 /*
  * Network interface utility routines.
@@ -169,6 +184,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	struct sockaddr_dl *sdl;
 	struct ifaddr *ifa;
 	struct ifaltq *ifq;
+	int i;
 
 	static int if_indexlim = 8;
 
@@ -191,6 +207,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 
 	TAILQ_INSERT_TAIL(&ifnet, ifp, if_link);
 	ifp->if_index = ++if_index;
+
 	/*
 	 * XXX -
 	 * The old code would work if the interface passed a pre-existing
@@ -198,7 +215,11 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	 * properly initialize the tailq, however, so we no longer allow
 	 * this unlikely case.
 	 */
-	TAILQ_INIT(&ifp->if_addrhead);
+	ifp->if_addrheads = kmalloc(ncpus * sizeof(struct ifaddrhead),
+				    M_IFADDR, M_WAITOK | M_ZERO);
+	for (i = 0; i < ncpus; ++i)
+		TAILQ_INIT(&ifp->if_addrheads[i]);
+
 	TAILQ_INIT(&ifp->if_prefixhead);
 	LIST_INIT(&ifp->if_multiaddrs);
 	getmicrotime(&ifp->if_lastchange);
@@ -232,7 +253,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		socksize = sizeof(*sdl);
 	socksize = ROUNDUP(socksize);
 	ifasize = sizeof(struct ifaddr) + 2 * socksize;
-	ifa = kmalloc(ifasize, M_IFADDR, M_WAITOK | M_ZERO);
+	ifa = ifa_create(ifasize, M_WAITOK);
 	sdl = (struct sockaddr_dl *)(ifa + 1);
 	sdl->sdl_len = socksize;
 	sdl->sdl_family = AF_LINK;
@@ -249,7 +270,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	sdl->sdl_len = masklen;
 	while (namelen != 0)
 		sdl->sdl_data[--namelen] = 0xff;
-	TAILQ_INSERT_HEAD(&ifp->if_addrhead, ifa, ifa_link);
+	ifa_iflink(ifa, ifp, 0 /* Insert head */);
 
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 
@@ -303,9 +324,12 @@ if_attachdomain1(struct ifnet *ifp)
 void
 if_purgeaddrs_nolink(struct ifnet *ifp)
 {
-	struct ifaddr *ifa, *next;
+	struct ifaddr_container *ifac, *next;
 
-	TAILQ_FOREACH_MUTABLE(ifa, &ifp->if_addrhead, ifa_link, next) {
+	TAILQ_FOREACH_MUTABLE(ifac, &ifp->if_addrheads[mycpuid],
+			      ifa_link, next) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		/* Leave link ifaddr as it is */
 		if (ifa->ifa_addr->sa_family == AF_LINK)
 			continue;
@@ -313,6 +337,14 @@ if_purgeaddrs_nolink(struct ifnet *ifp)
 		/* XXX: Ugly!! ad hoc just for INET */
 		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
 			struct ifaliasreq ifr;
+#ifdef IFADDR_DEBUG_VERBOSE
+			int i;
+
+			kprintf("purge in4 addr %p: ", ifa);
+			for (i = 0; i < ncpus; ++i)
+				kprintf("%d ", ifa->ifa_containers[i].ifa_refcnt);
+			kprintf("\n");
+#endif
 
 			bzero(&ifr, sizeof ifr);
 			ifr.ifra_addr = *ifa->ifa_addr;
@@ -325,13 +357,22 @@ if_purgeaddrs_nolink(struct ifnet *ifp)
 #endif /* INET */
 #ifdef INET6
 		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET6) {
+#ifdef IFADDR_DEBUG_VERBOSE
+			int i;
+
+			kprintf("purge in6 addr %p: ", ifa);
+			for (i = 0; i < ncpus; ++i)
+				kprintf("%d ", ifa->ifa_containers[i].ifa_refcnt);
+			kprintf("\n");
+#endif
+
 			in6_purgeaddr(ifa);
 			/* ifp_addrhead is already updated */
 			continue;
 		}
 #endif /* INET6 */
-		TAILQ_REMOVE(&ifp->if_addrhead, ifa, ifa_link);
-		IFAFREE(ifa);
+		ifa_ifunlink(ifa, ifp);
+		ifa_destroy(ifa);
 	}
 }
 
@@ -370,16 +411,16 @@ if_detach(struct ifnet *ifp)
 	ifp->if_lladdr = NULL;
 
 	if_purgeaddrs_nolink(ifp);
-	if (!TAILQ_EMPTY(&ifp->if_addrhead)) {
+	if (!TAILQ_EMPTY(&ifp->if_addrheads[mycpuid])) {
 		struct ifaddr *ifa;
 
-		ifa = TAILQ_FIRST(&ifp->if_addrhead);
+		ifa = TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa;
 		KASSERT(ifa->ifa_addr->sa_family == AF_LINK,
 			("non-link ifaddr is left on if_addrhead"));
 
-		TAILQ_REMOVE(&ifp->if_addrhead, ifa, ifa_link);
-		IFAFREE(ifa);
-		KASSERT(TAILQ_EMPTY(&ifp->if_addrhead),
+		ifa_ifunlink(ifa, ifp);
+		ifa_destroy(ifa);
+		KASSERT(TAILQ_EMPTY(&ifp->if_addrheads[mycpuid]),
 			("there are still ifaddrs left on if_addrhead"));
 	}
 
@@ -410,7 +451,7 @@ if_detach(struct ifnet *ifp)
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		lwkt_migratecpu(cpu);
 		for (i = 1; i <= AF_MAX; i++) {
-			if ((rnh = rt_tables[mycpuid][i]) == NULL)
+			if ((rnh = rt_tables[cpu][i]) == NULL)
 				continue;
 			rnh->rnh_walktree(rnh, if_rtdel, ifp);
 		}
@@ -433,6 +474,7 @@ if_detach(struct ifnet *ifp)
 		if_index--;
 
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
+	kfree(ifp->if_addrheads, M_IFADDR);
 	crit_exit();
 }
 
@@ -485,21 +527,26 @@ struct ifaddr *
 ifa_ifwithaddr(struct sockaddr *addr)
 {
 	struct ifnet *ifp;
-	struct ifaddr *ifa;
 
-	TAILQ_FOREACH(ifp, &ifnet, if_link)
-	    TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
-		if (ifa->ifa_addr->sa_family != addr->sa_family)
-			continue;
-		if (sa_equal(addr, ifa->ifa_addr))
-			return (ifa);
-		if ((ifp->if_flags & IFF_BROADCAST) && ifa->ifa_broadaddr &&
-		    /* IPv6 doesn't have broadcast */
-		    ifa->ifa_broadaddr->sa_len != 0 &&
-		    sa_equal(ifa->ifa_broadaddr, addr))
-			return (ifa);
+	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
+			if (ifa->ifa_addr->sa_family != addr->sa_family)
+				continue;
+			if (sa_equal(addr, ifa->ifa_addr))
+				return (ifa);
+			if ((ifp->if_flags & IFF_BROADCAST) &&
+			    ifa->ifa_broadaddr &&
+			    /* IPv6 doesn't have broadcast */
+			    ifa->ifa_broadaddr->sa_len != 0 &&
+			    sa_equal(ifa->ifa_broadaddr, addr))
+				return (ifa);
+		}
 	}
-	return ((struct ifaddr *)NULL);
+	return (NULL);
 }
 /*
  * Locate the point to point interface with a given destination address.
@@ -508,18 +555,24 @@ struct ifaddr *
 ifa_ifwithdstaddr(struct sockaddr *addr)
 {
 	struct ifnet *ifp;
-	struct ifaddr *ifa;
 
-	TAILQ_FOREACH(ifp, &ifnet, if_link)
-	    if (ifp->if_flags & IFF_POINTOPOINT)
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		struct ifaddr_container *ifac;
+
+		if (!(ifp->if_flags & IFF_POINTOPOINT))
+			continue;
+
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr->sa_family != addr->sa_family)
 				continue;
 			if (ifa->ifa_dstaddr &&
 			    sa_equal(addr, ifa->ifa_dstaddr))
 				return (ifa);
+		}
 	}
-	return ((struct ifaddr *)NULL);
+	return (NULL);
 }
 
 /*
@@ -530,8 +583,7 @@ struct ifaddr *
 ifa_ifwithnet(struct sockaddr *addr)
 {
 	struct ifnet *ifp;
-	struct ifaddr *ifa;
-	struct ifaddr *ifa_maybe = (struct ifaddr *) 0;
+	struct ifaddr *ifa_maybe = NULL;
 	u_int af = addr->sa_family;
 	char *addr_data = addr->sa_data, *cplim;
 
@@ -540,10 +592,10 @@ ifa_ifwithnet(struct sockaddr *addr)
 	 * so do that if we can.
 	 */
 	if (af == AF_LINK) {
-	    struct sockaddr_dl *sdl = (struct sockaddr_dl *)addr;
+		struct sockaddr_dl *sdl = (struct sockaddr_dl *)addr;
 
-	    if (sdl->sdl_index && sdl->sdl_index <= if_index)
-		return (ifindex2ifnet[sdl->sdl_index]->if_lladdr);
+		if (sdl->sdl_index && sdl->sdl_index <= if_index)
+			return (ifindex2ifnet[sdl->sdl_index]->if_lladdr);
 	}
 
 	/*
@@ -551,7 +603,10 @@ ifa_ifwithnet(struct sockaddr *addr)
 	 * addresses in this address family.
 	 */
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
 			char *cp, *cp2, *cp3;
 
 			if (ifa->ifa_addr->sa_family != af)
@@ -622,7 +677,7 @@ next:				continue;
 struct ifaddr *
 ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	char *cp, *cp2, *cp3;
 	char *cplim;
 	struct ifaddr *ifa_maybe = 0;
@@ -630,7 +685,9 @@ ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
 
 	if (af >= AF_MAX)
 		return (0);
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != af)
 			continue;
 		if (ifa_maybe == 0)
@@ -693,13 +750,16 @@ link_rtrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
 void
 if_unroute(struct ifnet *ifp, int flag, int fam)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 
 	ifp->if_flags &= ~flag;
 	getmicrotime(&ifp->if_lastchange);
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			pfctlinput(PRC_IFDOWN, ifa->ifa_addr);
+	}
 	ifq_purge(&ifp->if_snd);
 	rt_ifmsg(ifp);
 }
@@ -712,13 +772,16 @@ if_unroute(struct ifnet *ifp, int flag, int fam)
 void
 if_route(struct ifnet *ifp, int flag, int fam)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 
 	ifp->if_flags |= flag;
 	getmicrotime(&ifp->if_lastchange);
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			pfctlinput(PRC_IFUP, ifa->ifa_addr);
+	}
 	rt_ifmsg(ifp);
 #ifdef INET6
 	in6_if_up(ifp);
@@ -997,7 +1060,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
 
 		strlcpy(ifp->if_xname, new_name, sizeof(ifp->if_xname));
-		ifa = TAILQ_FIRST(&ifp->if_addrhead);
+		ifa = TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa;
 		/* XXX IFA_LOCK(ifa); */
 		sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 		namelen = strlen(new_name);
@@ -1276,13 +1339,13 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 {
 	struct ifconf *ifc = (struct ifconf *)data;
 	struct ifnet *ifp;
-	struct ifaddr *ifa;
 	struct sockaddr *sa;
 	struct ifreq ifr, *ifrp;
 	int space = ifc->ifc_len, error = 0;
 
 	ifrp = ifc->ifc_req;
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		struct ifaddr_container *ifac;
 		int addrs;
 
 		if (space <= sizeof ifr)
@@ -1300,7 +1363,9 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 		}
 
 		addrs = 0;
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (space <= sizeof ifr)
 				break;
 			sa = ifa->ifa_addr;
@@ -1577,7 +1642,6 @@ int
 if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 {
 	struct sockaddr_dl *sdl;
-	struct ifaddr *ifa;
 	struct ifreq ifr;
 
 	sdl = IF_LLSOCKADDR(ifp);
@@ -1602,6 +1666,8 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 	 */
 	lwkt_serialize_enter(ifp->if_serializer);
 	if ((ifp->if_flags & IFF_UP) != 0) {
+		struct ifaddr_container *ifac;
+
 		ifp->if_flags &= ~IFF_UP;
 		ifr.ifr_flags = ifp->if_flags;
 		ifr.ifr_flagshigh = ifp->if_flags >> 16;
@@ -1617,7 +1683,9 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 		 * Also send gratuitous ARPs to notify other nodes about
 		 * the address change.
 		 */
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr != NULL &&
 			    ifa->ifa_addr->sa_family == AF_INET)
 				arp_ifinit(ifp, ifa);
@@ -1753,4 +1821,195 @@ ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 	}
 	crit_exit();
 	return(0);
+}
+
+void *
+ifa_create(int size, int flags)
+{
+	struct ifaddr *ifa;
+	int i;
+
+	KASSERT(size >= sizeof(*ifa), ("ifaddr size too small\n"));
+
+	ifa = kmalloc(size, M_IFADDR, flags | M_ZERO);
+	if (ifa == NULL)
+		return NULL;
+
+	ifa->ifa_containers = kmalloc(ncpus * sizeof(struct ifaddr_container),
+				      M_IFADDR, M_WAITOK | M_ZERO);
+	ifa->ifa_cpumask = smp_active_mask;
+	for (i = 0; i < ncpus; ++i) {
+		struct ifaddr_container *ifac = &ifa->ifa_containers[i];
+
+		ifac->ifa_magic = IFA_CONTAINER_MAGIC;
+		ifac->ifa = ifa;
+		ifac->ifa_refcnt = 1;
+	}
+#ifdef IFADDR_DEBUG
+	kprintf("alloc ifa %p %d\n", ifa, size);
+#endif
+	return ifa;
+}
+
+struct ifac_free_arg {
+	struct ifaddr	*ifa;
+	int		cpuid;
+};
+
+static void
+ifac_free_dispatch(struct netmsg *nmsg)
+{
+	struct lwkt_msg *msg = &nmsg->nm_lmsg;
+	struct ifac_free_arg *arg = msg->u.ms_resultp;
+	struct ifaddr *ifa = arg->ifa;
+
+	ifa->ifa_cpumask &= ~(1 << arg->cpuid);
+	if (ifa->ifa_cpumask == 0) {
+#ifdef IFADDR_DEBUG
+		kprintf("free ifa %p\n", ifa);
+#endif
+		kfree(ifa->ifa_containers, M_IFADDR);
+		kfree(ifa, M_IFADDR);
+	}
+	lwkt_replymsg(msg, 0);
+}
+
+void
+ifac_free(struct ifaddr_container *ifac, int cpu_id)
+{
+	struct ifac_free_arg arg;
+	struct netmsg nmsg;
+	struct lwkt_msg *msg;
+
+	KKASSERT(ifac->ifa_magic == IFA_CONTAINER_MAGIC);
+	KKASSERT(ifac->ifa_refcnt == 0);
+
+	ifac->ifa_magic = IFA_CONTAINER_DEAD;
+
+	bzero(&arg, sizeof(arg));
+	arg.ifa = ifac->ifa;
+	arg.cpuid = cpu_id;
+#ifdef IFADDR_DEBUG_VERBOSE
+	kprintf("try free ifa %p cpu_id %d\n", ifac->ifa, arg.cpuid);
+#endif
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0, ifac_free_dispatch);
+	msg = &nmsg.nm_lmsg;
+	msg->u.ms_resultp = &arg;
+
+	lwkt_domsg(ifa_portfn(0), msg, 0);
+}
+
+static __inline void
+ifa_forwardmsg(struct lwkt_msg *lmsg, int next_cpu)
+{
+	if (next_cpu < ncpus)
+		lwkt_forwardmsg(ifa_portfn(next_cpu), lmsg);
+	else
+		lwkt_replymsg(lmsg, 0);
+}
+
+static void
+ifa_iflink_dispatch(struct netmsg *nmsg)
+{
+	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
+	struct ifaddr *ifa = msg->ifa;
+	struct ifnet *ifp = msg->ifp;
+	int cpu = mycpuid;
+
+	crit_enter();
+	if (msg->tail) {
+		TAILQ_INSERT_TAIL(&ifp->if_addrheads[cpu],
+				  &ifa->ifa_containers[cpu], ifa_link);
+	} else {
+		TAILQ_INSERT_HEAD(&ifp->if_addrheads[cpu],
+				  &ifa->ifa_containers[cpu], ifa_link);
+	}
+	crit_exit();
+
+	ifa_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+}
+
+void
+ifa_iflink(struct ifaddr *ifa, struct ifnet *ifp, int tail)
+{
+	struct netmsg_ifaddr msg;
+
+	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
+		    ifa_iflink_dispatch);
+	msg.ifa = ifa;
+	msg.ifp = ifp;
+	msg.tail = tail;
+
+	lwkt_domsg(ifa_portfn(0), &msg.netmsg.nm_lmsg, 0);
+}
+
+static void
+ifa_ifunlink_dispatch(struct netmsg *nmsg)
+{
+	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
+	struct ifaddr *ifa = msg->ifa;
+	struct ifnet *ifp = msg->ifp;
+	int cpu = mycpuid;
+
+	crit_enter();
+	TAILQ_REMOVE(&ifp->if_addrheads[cpu],
+		     &ifa->ifa_containers[cpu], ifa_link);
+	crit_exit();
+
+	ifa_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+}
+
+void
+ifa_ifunlink(struct ifaddr *ifa, struct ifnet *ifp)
+{
+	struct netmsg_ifaddr msg;
+
+	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
+		    ifa_ifunlink_dispatch);
+	msg.ifa = ifa;
+	msg.ifp = ifp;
+
+	lwkt_domsg(ifa_portfn(0), &msg.netmsg.nm_lmsg, 0);
+}
+
+static void
+ifa_destroy_dispatch(struct netmsg *nmsg)
+{
+	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
+
+	IFAFREE(msg->ifa);
+	ifa_forwardmsg(&nmsg->nm_lmsg, mycpuid + 1);
+}
+
+void
+ifa_destroy(struct ifaddr *ifa)
+{
+	struct netmsg_ifaddr msg;
+
+	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
+		    ifa_destroy_dispatch);
+	msg.ifa = ifa;
+
+	lwkt_domsg(ifa_portfn(0), &msg.netmsg.nm_lmsg, 0);
+}
+
+struct lwkt_port *
+ifa_portfn(int cpu)
+{
+	return &ifaddr_threads[cpu].td_msgport;
+}
+
+static void
+ifaddrinit(void *dummy __unused)
+{
+	int i;
+
+	for (i = 0; i < ncpus; ++i) {
+		struct thread *thr = &ifaddr_threads[i];
+
+		lwkt_create(netmsg_service_loop, NULL, NULL, thr, 0, i,
+			    "ifaddr %d", i);
+		netmsg_service_port_init(&thr->td_msgport);
+	}
 }

@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.76 2007/12/28 13:27:45 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.77 2008/03/07 11:34:20 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -432,7 +432,6 @@ ip_input(struct mbuf *m)
 	struct ip *ip;
 	struct ipq *fp;
 	struct in_ifaddr *ia = NULL;
-	struct ifaddr *ifa;
 	int i, hlen, checkif;
 	u_short sum;
 	struct in_addr pkt_dst;
@@ -715,7 +714,12 @@ pass:
 	 * into the stack for SIMPLEX interfaces handled by ether_output().
 	 */
 	if (m->m_pkthdr.rcvif->if_flags & IFF_BROADCAST) {
-		TAILQ_FOREACH(ifa, &m->m_pkthdr.rcvif->if_addrhead, ifa_link) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &m->m_pkthdr.rcvif->if_addrheads[mycpuid],
+			      ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr == NULL) /* shutdown/startup race */
 				continue;
 			if (ifa->ifa_addr->sa_family != AF_INET)

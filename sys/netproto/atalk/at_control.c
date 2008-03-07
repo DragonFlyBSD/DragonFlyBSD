@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
  *
- * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.12 2006/12/22 23:57:53 swildner Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.13 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -140,7 +140,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	 * allocate a fresh one. 
 	 */
 	if ( aa == (struct at_ifaddr *) 0 ) {
-	    aa0 = kmalloc(sizeof(struct at_ifaddr), M_IFADDR, M_WAITOK | M_ZERO);
+	    aa0 = ifa_create(sizeof(struct at_ifaddr), M_WAITOK);
 	    callout_init(&aa0->aa_ch);
 	    if (( aa = at_ifaddr ) != NULL ) {
 		/*
@@ -162,12 +162,6 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	    } else {
 		at_ifaddr = aa0;
 	    }
-	    /* 
-	     * Don't Add a reference for the aa itself!
-	     * I fell into this trap. IFAFREE tests for <=0
-	     * not <= 1 like RTFREE
-	     */
-	    /* aa->aa_ifa.ifa_refcnt++; DON'T DO THIS!! */
 	    aa = aa0;
 
 	    /*
@@ -175,12 +169,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	     * and link our new one on the end 
 	     */
 	    ifa = (struct ifaddr *)aa;
-	    TAILQ_INSERT_TAIL(&ifp->if_addrhead, ifa, ifa_link);
-
-	    /*
-	     * Add a reference for the linking into the ifp_if_addrlist.
-	     */
-	    ifa->ifa_refcnt++;
+	    ifa_iflink(ifa, ifp, 1);
 
 	    /*
 	     * As the at_ifaddr contains the actual sockaddrs,
@@ -282,13 +271,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	 * remove the ifaddr from the interface
 	 */
 	ifa0 = (struct ifaddr *)aa;
-	TAILQ_REMOVE(&ifp->if_addrhead, ifa0, ifa_link);
-
-	/*
-	 * refs goes from 1->0 if no external refs. note.. 
-	 * This will not free it ... looks for -1.
-	 */
-	IFAFREE(ifa0);
+	ifa_ifunlink(ifa0, ifp);
 
 	/*
 	 * Now remove the at_ifaddr from the parallel structure
@@ -316,10 +299,10 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	 * Now dump the memory we were using.
 	 * Decrement the reference count.
 	 * This should probably be the last reference
-	 * as the count will go from 0 to -1.
+	 * as the count will go from 1 to 0.
 	 * (unless there is still a route referencing this)
 	 */
-	IFAFREE(ifa0);
+	ifa_destroy(ifa0);
 	break;
 
     default:
@@ -816,37 +799,6 @@ aa_dosingleroute(struct ifaddr *ifa,
 	(flags & RTF_HOST)?(ifa->ifa_dstaddr):(ifa->ifa_addr),
 	(struct sockaddr *) &mask, flags, NULL));
 }
-
-#if 0
-
-static void
-aa_clean(void)
-{
-    struct at_ifaddr	*aa;
-    struct ifaddr	*ifa;
-    struct ifnet	*ifp;
-
-    while ( aa = at_ifaddr ) {
-	ifp = aa->aa_ifp;
-	at_scrub( ifp, aa );
-	at_ifaddr = aa->aa_next;
-	if (( ifa = ifp->if_addrlist ) == (struct ifaddr *)aa ) {
-	    ifp->if_addrlist = ifa->ifa_next;
-	} else {
-	    while ( ifa->ifa_next &&
-		    ( ifa->ifa_next != (struct ifaddr *)aa )) {
-		ifa = ifa->ifa_next;
-	    }
-	    if ( ifa->ifa_next ) {
-		ifa->ifa_next = ((struct ifaddr *)aa)->ifa_next;
-	    } else {
-		panic( "at_entry" );
-	    }
-	}
-    }
-}
-
-#endif
 
 static int
 aa_claim_addr(struct ifaddr *ifa, struct sockaddr *gw0)

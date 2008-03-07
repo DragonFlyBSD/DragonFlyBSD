@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.26 2007/04/22 01:13:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.27 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -1604,7 +1604,6 @@ ni6_addrs(struct icmp6_nodeinfo *ni6, struct mbuf *m, struct ifnet **ifpp,
 {
 	struct ifnet *ifp;
 	struct in6_ifaddr *ifa6;
-	struct ifaddr *ifa;
 	struct sockaddr_in6 *subj_ip6 = NULL; /* XXX pedant */
 	int addrs = 0, addrsofif, iffound = 0;
 	int niflags = ni6->ni_flags;
@@ -1627,9 +1626,13 @@ ni6_addrs(struct icmp6_nodeinfo *ni6, struct mbuf *m, struct ifnet **ifpp,
 
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
 	{
+		struct ifaddr_container *ifac;
+
 		addrsofif = 0;
-		TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link)
 		{
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr->sa_family != AF_INET6)
 				continue;
 			ifa6 = (struct in6_ifaddr *)ifa;
@@ -1697,7 +1700,6 @@ ni6_store_addrs(struct icmp6_nodeinfo *ni6, struct icmp6_nodeinfo *nni6,
 {
 	struct ifnet *ifp = ifp0 ? ifp0 : TAILQ_FIRST(&ifnet);
 	struct in6_ifaddr *ifa6;
-	struct ifaddr *ifa;
 	struct ifnet *ifp_dep = NULL;
 	int copied = 0, allow_deprecated = 0;
 	u_char *cp = (u_char *)(nni6 + 1);
@@ -1711,7 +1713,11 @@ again:
 
 	for (; ifp; ifp = TAILQ_NEXT(ifp, if_list))
 	{
-		TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr->sa_family != AF_INET6)
 				continue;
 			ifa6 = (struct in6_ifaddr *)ifa;

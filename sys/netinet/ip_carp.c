@@ -25,7 +25,7 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.6 2008/01/11 11:59:40 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_carp.c,v 1.7 2008/03/07 11:34:20 sephe Exp $
  */
 
 #include "opt_carp.h"
@@ -237,7 +237,7 @@ carp_hmac_prepare(struct carp_softc *sc)
 {
 	u_int8_t version = CARP_VERSION, type = CARP_ADVERTISEMENT;
 	u_int8_t vhid = sc->sc_vhid & 0xff;
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	int i;
 #ifdef INET6
 	struct in6_addr in6;
@@ -261,7 +261,9 @@ carp_hmac_prepare(struct carp_softc *sc)
 	SHA1Update(&sc->sc_sha1, (void *)&type, sizeof(type));
 	SHA1Update(&sc->sc_sha1, (void *)&vhid, sizeof(vhid));
 #ifdef INET
-	TAILQ_FOREACH(ifa, &SC2IFP(sc)->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &SC2IFP(sc)->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family == AF_INET)
 			SHA1Update(&sc->sc_sha1,
 			    (void *)&ifatoia(ifa)->ia_addr.sin_addr.s_addr,
@@ -269,7 +271,9 @@ carp_hmac_prepare(struct carp_softc *sc)
 	}
 #endif /* INET */
 #ifdef INET6
-	TAILQ_FOREACH(ifa, &SC2IFP(sc)->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &SC2IFP(sc)->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family == AF_INET6) {
 			in6 = ifatoia6(ifa)->ia_addr.sin6_addr;
 			in6_clearscope(&in6);
@@ -321,13 +325,15 @@ carp_hmac_verify(struct carp_softc *sc, u_int32_t counter[2],
 static void
 carp_setroute(struct carp_softc *sc, int cmd)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 
 	if (sc->sc_carpdev)
 		CARP_SCLOCK_ASSERT(sc);
 
 	crit_enter();
-	TAILQ_FOREACH(ifa, &SC2IFP(sc)->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &SC2IFP(sc)->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family == AF_INET &&
 		    sc->sc_carpdev != NULL) {
 			int count = carp_addrcount(
@@ -1039,9 +1045,10 @@ carp_send_ad_locked(struct carp_softc *sc)
 static void
 carp_send_arp(struct carp_softc *sc)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 
-	TAILQ_FOREACH(ifa, &SC2IFP(sc)->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &SC2IFP(sc)->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
 
 		if (ifa->ifa_addr->sa_family != AF_INET)
 			continue;
@@ -1057,11 +1064,12 @@ carp_send_arp(struct carp_softc *sc)
 static void
 carp_send_na(struct carp_softc *sc)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	struct in6_addr *in6;
 	static struct in6_addr mcast = IN6ADDR_LINKLOCAL_ALLNODES_INIT;
 
-	TAILQ_FOREACH(ifa, &SC2IFP(sc)->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &SC2IFP(sc)->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
 
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
@@ -1078,7 +1086,6 @@ static int
 carp_addrcount(struct carp_if *cif, struct in_ifaddr *ia, int type)
 {
 	struct carp_softc *vh;
-	struct ifaddr *ifa;
 	int count = 0;
 
 	CARP_LOCK_ASSERT(cif);
@@ -1087,8 +1094,12 @@ carp_addrcount(struct carp_if *cif, struct in_ifaddr *ia, int type)
 		if ((type == CARP_COUNT_RUNNING &&
 		    (SC2IFP(vh)->if_flags & IFF_UP) && (SC2IFP(vh)->if_flags & IFF_RUNNING)) ||
 		    (type == CARP_COUNT_MASTER && vh->sc_state == MASTER)) {
-			TAILQ_FOREACH(ifa, &SC2IFP(vh)->if_addrlist,
-			    ifa_list) {
+			struct ifaddr_container *ifac;
+
+			TAILQ_FOREACH(ifac, &SC2IFP(vh)->if_addrheads[mycpuid],
+				      ifa_link) {
+				struct ifaddr *ifa = ifac->ifa;
+
 				if (ifa->ifa_addr->sa_family == AF_INET &&
 				    ia->ia_addr.sin_addr.s_addr ==
 				    ifatoia(ifa)->ia_addr.sin_addr.s_addr)
@@ -1106,7 +1117,6 @@ carp_iamatch(void *v, struct in_ifaddr *ia,
 	struct carp_if *cif = v;
 	struct carp_softc *vh;
 	int index, count = 0;
-	struct ifaddr *ifa;
 
 	CARP_LOCK(cif);
 
@@ -1131,8 +1141,11 @@ carp_iamatch(void *v, struct in_ifaddr *ia,
 
 		TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
 			if ((SC2IFP(vh)->if_flags & IFF_UP) && (SC2IFP(vh)->if_flags & IFF_RUNNING)) {
-				TAILQ_FOREACH(ifa, &SC2IFP(vh)->if_addrlist,
-				    ifa_list) {
+				struct ifaddr_container *ifac;
+
+				TAILQ_FOREACH(ifac, &SC2IFP(vh)->if_addrheads[mycpuid], ifa_link) {
+					struct ifaddr *ifa = ifac->ifa;
+
 					if (ifa->ifa_addr->sa_family ==
 					    AF_INET &&
 					    ia->ia_addr.sin_addr.s_addr ==
@@ -1173,11 +1186,14 @@ carp_iamatch6(void *v, struct in6_addr *taddr)
 {
 	struct carp_if *cif = v;
 	struct carp_softc *vh;
-	struct ifaddr *ifa;
 
 	CARP_LOCK(cif);
 	TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
-		TAILQ_FOREACH(ifa, &SC2IFP(vh)->if_addrlist, ifa_list) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &SC2IFP(vh)->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (IN6_ARE_ADDR_EQUAL(taddr,
 			    &ifatoia6(ifa)->ia_addr.sin6_addr) &&
  			    (SC2IFP(vh)->if_flags & IFF_UP) && (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
@@ -1198,11 +1214,14 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 	struct m_tag *mtag;
 	struct carp_if *cif = v;
 	struct carp_softc *sc;
-	struct ifaddr *ifa;
 
 	CARP_LOCK(cif);
 	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list) {
-		TAILQ_FOREACH(ifa, &SC2IFP(sc)->if_addrlist, ifa_list) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &SC2IFP(sc)->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (IN6_ARE_ADDR_EQUAL(taddr,
 			    &ifatoia6(ifa)->ia_addr.sin6_addr) &&
  			    (SC2IFP(sc)->if_flags & IFF_UP) && (SC2IFP(sc)->if_flags & IFF_RUNNING)) {

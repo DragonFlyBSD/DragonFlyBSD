@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.14 2008/01/05 14:02:39 swildner Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.15 2008/03/07 11:34:20 sephe Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -580,7 +580,6 @@ ng_iface_constructor(node_p *nodep)
 	ifp->if_addrlen = 0;			/* XXX */
 	ifp->if_hdrlen = 0;			/* XXX */
 	ifp->if_baudrate = 64000;		/* XXX */
-	TAILQ_INIT(&ifp->if_addrhead);
 
 	/* Give this node the same name as the interface (if possible) */
 	bzero(ifname, sizeof(ifname));
@@ -675,10 +674,12 @@ ng_iface_rcvmsg(node_p node, struct ng_mesg *msg,
 		switch (msg->header.cmd) {
 		case NGM_CISCO_GET_IPADDR:	/* we understand this too */
 		    {
-			struct ifaddr *ifa;
+			struct ifaddr_container *ifac;
 
 			/* Return the first configured IP address */
-			TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+			TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid],
+				      ifa_link) {
+				struct ifaddr *ifa = ifac->ifa;
 				struct ng_cisco_ipaddr *ips;
 
 				if (ifa->ifa_addr->sa_family != AF_INET)
@@ -697,7 +698,7 @@ ng_iface_rcvmsg(node_p node, struct ng_mesg *msg,
 			}
 
 			/* No IP addresses on this interface? */
-			if (ifa == NULL)
+			if (ifac == NULL)
 				error = EADDRNOTAVAIL;
 			break;
 		    }

@@ -34,7 +34,7 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.12 2007/04/22 01:13:15 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.13 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include "opt_ipx.h"
@@ -157,10 +157,11 @@ ipx_input(struct mbuf *m, struct ipxpcb *ipxp)
 	ipx_ipx.sipx_zero[0] = '\0';
 	ipx_ipx.sipx_zero[1] = '\0';
 	if (ipx_neteqnn(ipx->ipx_sna.x_net, ipx_zeronet) && ifp != NULL) {
-		struct ifaddr *ifa;
+		struct ifaddr_container *ifac;
 
-		for (ifa = TAILQ_FIRST(&ifp->if_addrhead); ifa != NULL; 
-		     ifa = TAILQ_NEXT(ifa, ifa_link)) {
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr->sa_family == AF_IPX) {
 				ipx_ipx.sipx_addr.x_net =
 					IA_SIPX(ifa)->sipx_addr.x_net;

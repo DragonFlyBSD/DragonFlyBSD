@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.24 2008/01/06 16:55:53 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.25 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -967,12 +967,12 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 			struct bootpc_globalcontext *gctx,
 			struct thread *td)
 {
+	struct ifaddr_container *ifac;
 	struct sockaddr_in *sin;
 	int error;
 	
 	struct ifreq *ireq;
 	struct socket *so;
-	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 
 	error = socreate(AF_INET, &ifctx->so, SOCK_DGRAM, 0, td);
@@ -1038,12 +1038,15 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	/* Get HW address */
 	
 	sdl = NULL;
-	TAILQ_FOREACH(ifa, &ifctx->ifp->if_addrhead, ifa_link)
+	TAILQ_FOREACH(ifac, &ifctx->ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family == AF_LINK &&
 		    (sdl = ((struct sockaddr_dl *) ifa->ifa_addr)) != NULL &&
 		    sdl->sdl_type == IFT_ETHER)
 			break;
-	
+	}
+
 	if (sdl == NULL)
 		panic("bootpc: Unable to find HW address for %s",
 		      ifctx->ireq.ifr_name);

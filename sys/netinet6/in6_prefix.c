@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.12 2008/01/05 14:02:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.13 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -178,6 +178,7 @@ static struct rr_prefix *
 search_matched_prefix(struct ifnet *ifp, struct in6_prefixreq *ipr)
 {
 	struct ifprefix *ifpr;
+	struct ifaddr_container *ifac;
 	struct ifaddr *ifa;
 	struct rr_prefix *rpp;
 
@@ -192,15 +193,16 @@ search_matched_prefix(struct ifnet *ifp, struct in6_prefixreq *ipr)
 	 * which matches the addr
 	 */
 
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-	{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 		if (ipr->ipr_plen <=
 		    in6_matchlen(&ipr->ipr_prefix.sin6_addr, IFA_IN6(ifa)))
 			break;
 	}
-	if (ifa == NULL)
+	if (ifac == NULL)
 		return NULL;
 
 	rpp = ifpr2rp(((struct in6_ifaddr *)ifa)->ia6_ifpr);
@@ -232,8 +234,8 @@ search_matched_prefix(struct ifnet *ifp, struct in6_prefixreq *ipr)
 static int
 mark_matched_prefixes(u_long cmd, struct ifnet *ifp, struct in6_rrenumreq *irr)
 {
+	struct ifaddr_container *ifac;
 	struct ifprefix *ifpr;
-	struct ifaddr *ifa;
 	int matchlen, matched = 0;
 
 	/* search matched prefixes */
@@ -259,8 +261,8 @@ mark_matched_prefixes(u_long cmd, struct ifnet *ifp, struct in6_rrenumreq *irr)
 	 * search matched addr, and then search prefixes
 	 * which matche the addr
 	 */
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-	{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
 		struct rr_prefix *rpp;
 
 		if (ifa->ifa_addr->sa_family != AF_INET6)
@@ -402,11 +404,11 @@ assign_ra_entry(struct rr_prefix *rpp, int iilen, struct in6_ifaddr *ia)
 		 sizeof(*IA6_IN6(ia)) << 3, rpp->rp_plen, iilen);
 	/* link to ia, and put into list */
 	rap->ra_addr = ia;
-	IFAREF(&rap->ra_addr->ia_ifa);
+	crit_enter();
+	_IFAREF(&rap->ra_addr->ia_ifa, 0);
 #if 0 /* Can't do this now, because rpp may be on th stack. should fix it? */
 	ia->ia6_ifpr = rp2ifpr(rpp);
 #endif
-	crit_enter();
 	LIST_INSERT_HEAD(&rpp->rp_addrhead, rap, ra_entry);
 	crit_exit();
 
@@ -517,7 +519,9 @@ in6_prefix_add_ifid(int iilen, struct in6_ifaddr *ia)
 	if (rap != NULL) {
 		if (rap->ra_addr == NULL) {
 			rap->ra_addr = ia;
-			IFAREF(&rap->ra_addr->ia_ifa);
+			crit_enter();	/* XXX MP not MP safe */
+			_IFAREF(&rap->ra_addr->ia_ifa, 0);
+			crit_exit();
 		} else if (rap->ra_addr != ia) {
 			/* There may be some inconsistencies between addrs. */
 			log(LOG_ERR, "ip6_prefix.c: addr %s/%d matched prefix"
@@ -547,9 +551,9 @@ in6_prefix_remove_ifid(int iilen, struct in6_ifaddr *ia)
 	if (rap != NULL) {
 		crit_enter();
 		LIST_REMOVE(rap, ra_entry);
-		crit_exit();
 		if (rap->ra_addr)
-			IFAFREE(&rap->ra_addr->ia_ifa);
+			_IFAFREE(&rap->ra_addr->ia_ifa, 0);
+		crit_exit();
 		kfree(rap, M_RR_ADDR);
 	}
 
@@ -612,19 +616,23 @@ add_each_addr(struct socket *so, struct rr_prefix *rpp, struct rp_addr *rap)
 	ia6 = in6ifa_ifpwithaddr(rpp->rp_ifp, &ifra.ifra_addr.sin6_addr);
 	if (ia6 != NULL) {
 		if (ia6->ia6_ifpr == NULL) {
+			crit_enter();	/* XXX MP not MP safe */
 			/* link this addr and the prefix each other */
 			if (rap->ra_addr)
-				IFAFREE(&rap->ra_addr->ia_ifa);
+				_IFAFREE(&rap->ra_addr->ia_ifa, 0);
 			rap->ra_addr = ia6;
-			IFAREF(&rap->ra_addr->ia_ifa);
+			_IFAREF(&rap->ra_addr->ia_ifa, 0);
+			crit_exit();
 			ia6->ia6_ifpr = rp2ifpr(rpp);
 			return;
 		}
 		if (ia6->ia6_ifpr == rp2ifpr(rpp)) {
+			crit_enter();	/* XXX MP not MP safe */
 			if (rap->ra_addr)
-				IFAFREE(&rap->ra_addr->ia_ifa);
+				_IFAFREE(&rap->ra_addr->ia_ifa, 0);
 			rap->ra_addr = ia6;
-			IFAREF(&rap->ra_addr->ia_ifa);
+			_IFAREF(&rap->ra_addr->ia_ifa, 0);
+			crit_exit();
 			return;
 		}
 		/*
@@ -715,8 +723,11 @@ rrpr_update(struct socket *so, struct rr_prefix *new)
 			LIST_REMOVE(rap, ra_entry);
 			if (search_ifidwithprefix(rpp, &rap->ra_ifid)
 			    != NULL) {
-				if (rap->ra_addr)
-					IFAFREE(&rap->ra_addr->ia_ifa);
+				if (rap->ra_addr) {
+					crit_enter();	/* XXX MP not MP safe */
+					_IFAFREE(&rap->ra_addr->ia_ifa, 0);
+					crit_exit();
+				}
 				kfree(rap, M_RR_ADDR);
 				continue;
 			}
@@ -904,8 +915,11 @@ free_rp_entries(struct rr_prefix *rpp)
 
 		rap = LIST_FIRST(&rpp->rp_addrhead);
 		LIST_REMOVE(rap, ra_entry);
-		if (rap->ra_addr)
-			IFAFREE(&rap->ra_addr->ia_ifa);
+		if (rap->ra_addr) {
+			crit_enter();	/* XXX MP not MP safe */
+			_IFAFREE(&rap->ra_addr->ia_ifa, 0);
+			crit_exit();
+		}
 		kfree(rap, M_RR_ADDR);
 	}
 }
@@ -977,7 +991,9 @@ delete_each_prefix(struct rr_prefix *rpp, u_char origin)
 		rap->ra_addr->ia6_ifpr = NULL;
 
 		in6_purgeaddr(&rap->ra_addr->ia_ifa);
-		IFAFREE(&rap->ra_addr->ia_ifa);
+		crit_enter();	/* XXX MP not MP safe */
+		_IFAFREE(&rap->ra_addr->ia_ifa, 0);
+		crit_exit();
 		kfree(rap, M_RR_ADDR);
 	}
 	rp_remove(rpp);
@@ -1005,9 +1021,10 @@ delete_prefixes(struct ifnet *ifp, u_char origin)
 static int
 link_stray_ia6s(struct rr_prefix *rpp)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 
-	TAILQ_FOREACH(ifa, &rpp->rp_ifp->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &rpp->rp_ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
 		struct rp_addr *rap;
 		struct rr_prefix *orpp;
 		int error = 0;
@@ -1043,11 +1060,11 @@ int
 in6_prefix_ioctl(struct socket *so, u_long cmd, caddr_t data,
 		 struct ifnet *ifp)
 {
+	struct ifaddr_container *ifac;
 	struct rr_prefix *rpp, rp_tmp;
 	struct rp_addr *rap;
 	struct in6_prefixreq *ipr = (struct in6_prefixreq *)data;
 	struct in6_rrenumreq *irr = (struct in6_rrenumreq *)data;
-	struct ifaddr *ifa;
 	int error = 0;
 
 	/*
@@ -1123,7 +1140,9 @@ in6_prefix_ioctl(struct socket *so, u_long cmd, caddr_t data,
 			free_rp_entries(&rp_tmp);
 			break;
 		}
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_list) {
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_list) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr == NULL)
 				continue;	/* just for safety */
 			if (ifa->ifa_addr->sa_family != AF_INET6)

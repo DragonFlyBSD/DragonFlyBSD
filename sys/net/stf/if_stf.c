@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.20 2008/01/05 14:02:38 swildner Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.21 2008/03/07 11:34:20 sephe Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -273,12 +273,14 @@ stf_encapcheck(const struct mbuf *m, int off, int proto, void *arg)
 static struct in6_ifaddr *
 stf_getsrcifa6(struct ifnet *ifp)
 {
-	struct ifaddr *ia;
+	struct ifaddr_container *ifac;
 	struct in_ifaddr *ia4;
 	struct sockaddr_in6 *sin6;
 	struct in_addr in;
 
-	TAILQ_FOREACH(ia, &ifp->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ia = ifac->ifa;
+
 		if (ia->ifa_addr == NULL)
 			continue;
 		if (ia->ifa_addr->sa_family != AF_INET6)

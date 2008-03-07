@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.40 2007/12/19 12:13:17 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.41 2008/03/07 11:34:20 sephe Exp $
  */
 
 #define        DEB(x)
@@ -417,9 +417,11 @@ iface_match(struct ifnet *ifp, ipfw_insn_if *cmd)
 				return(1);
 		}
 	} else {
-		struct ifaddr *ia;
+		struct ifaddr_container *ifac;
 
-		TAILQ_FOREACH(ia, &ifp->if_addrhead, ifa_link) {
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ia = ifac->ifa;
+
 			if (ia->ifa_addr == NULL)
 				continue;
 			if (ia->ifa_addr->sa_family != AF_INET)

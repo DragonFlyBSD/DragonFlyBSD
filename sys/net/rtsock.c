@@ -64,7 +64,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.42 2008/01/06 16:55:51 swildner Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.43 2008/03/07 11:34:19 sephe Exp $
  */
 
 #include "opt_sctp.h"
@@ -405,7 +405,8 @@ fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
 	if (rtm->rtm_addrs & (RTA_IFP | RTA_IFA)) {
 		if (rt->rt_ifp != NULL) {
 			rtinfo->rti_ifpaddr =
-			    TAILQ_FIRST(&rt->rt_ifp->if_addrhead)->ifa_addr;
+			    TAILQ_FIRST(&rt->rt_ifp->if_addrheads[mycpuid])
+			    ->ifa->ifa_addr;
 			rtinfo->rti_ifaaddr = rt->rt_ifa->ifa_addr;
 			if (rt->rt_ifp->if_flags & IFF_POINTOPOINT)
 				rtinfo->rti_bcastaddr = rt->rt_ifa->ifa_dstaddr;
@@ -960,7 +961,8 @@ rt_ifamsg(int cmd, struct ifaddr *ifa)
 
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	rtinfo.rti_ifaaddr = ifa->ifa_addr;
-	rtinfo.rti_ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
+	rtinfo.rti_ifpaddr =
+		TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa->ifa_addr;
 	rtinfo.rti_netmask = ifa->ifa_netmask;
 	rtinfo.rti_bcastaddr = ifa->ifa_dstaddr;
 
@@ -992,8 +994,10 @@ rt_rtmsg(int cmd, struct rtentry *rt, struct ifnet *ifp, int error)
 	rtinfo.rti_dst = dst = rt_key(rt);
 	rtinfo.rti_gateway = rt->rt_gateway;
 	rtinfo.rti_netmask = rt_mask(rt);
-	if (ifp != NULL)
-		rtinfo.rti_ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
+	if (ifp != NULL) {
+		rtinfo.rti_ifpaddr =
+		TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa->ifa_addr;
+	}
 	rtinfo.rti_ifaaddr = rt->rt_ifa->ifa_addr;
 
 	m = rt_msg_mbuf(cmd, &rtinfo);
@@ -1064,8 +1068,10 @@ rt_newmaddrmsg(int cmd, struct ifmultiaddr *ifma)
 
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	rtinfo.rti_ifaaddr = ifma->ifma_addr;
-	if (ifp != NULL && !TAILQ_EMPTY(&ifp->if_addrhead))
-		rtinfo.rti_ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
+	if (ifp != NULL && !TAILQ_EMPTY(&ifp->if_addrheads[mycpuid])) {
+		rtinfo.rti_ifpaddr =
+		TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa->ifa_addr;
+	}
 	/*
 	 * If a link-layer address is present, present it as a ``gateway''
 	 * (similarly to how ARP entries, e.g., are presented).
@@ -1198,7 +1204,7 @@ sysctl_dumpentry(struct radix_node *rn, void *vw)
 	rtinfo.rti_genmask = rt->rt_genmask;
 	if (rt->rt_ifp != NULL) {
 		rtinfo.rti_ifpaddr =
-		    TAILQ_FIRST(&rt->rt_ifp->if_addrhead)->ifa_addr;
+		TAILQ_FIRST(&rt->rt_ifp->if_addrheads[mycpuid])->ifa->ifa_addr;
 		rtinfo.rti_ifaaddr = rt->rt_ifa->ifa_addr;
 		if (rt->rt_ifp->if_flags & IFF_POINTOPOINT)
 			rtinfo.rti_bcastaddr = rt->rt_ifa->ifa_dstaddr;
@@ -1226,15 +1232,18 @@ static int
 sysctl_iflist(int af, struct walkarg *w)
 {
 	struct ifnet *ifp;
-	struct ifaddr *ifa;
 	struct rt_addrinfo rtinfo;
 	int msglen, error;
 
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		struct ifaddr_container *ifac;
+		struct ifaddr *ifa;
+
 		if (w->w_arg && w->w_arg != ifp->if_index)
 			continue;
-		ifa = TAILQ_FIRST(&ifp->if_addrhead);
+		ifac = TAILQ_FIRST(&ifp->if_addrheads[mycpuid]);
+		ifa = ifac->ifa;
 		rtinfo.rti_ifpaddr = ifa->ifa_addr;
 		msglen = rt_msgsize(RTM_IFINFO, &rtinfo);
 		if (w->w_tmemsize < msglen && resizewalkarg(w, msglen) != 0)
@@ -1252,7 +1261,9 @@ sysctl_iflist(int af, struct walkarg *w)
 			if (error)
 				return (error);
 		}
-		while ((ifa = TAILQ_NEXT(ifa, ifa_link)) != NULL) {
+		while ((ifac = TAILQ_NEXT(ifac, ifa_link)) != NULL) {
+			ifa = ifac->ifa;
+
 			if (af && af != ifa->ifa_addr->sa_family)
 				continue;
 			if (curproc->p_ucred->cr_prison &&

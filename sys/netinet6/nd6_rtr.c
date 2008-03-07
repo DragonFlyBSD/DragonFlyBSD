@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.16 2008/01/05 14:02:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.17 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -456,8 +456,13 @@ nd6_rtmsg(int cmd, struct rtentry *rt)
 	info.rti_info[RTAX_DST] = rt_key(rt);
 	info.rti_info[RTAX_GATEWAY] = rt->rt_gateway;
 	info.rti_info[RTAX_NETMASK] = rt_mask(rt);
-	info.rti_info[RTAX_IFP] =
-		(struct sockaddr *)TAILQ_FIRST(&rt->rt_ifp->if_addrlist);
+	if (TAILQ_EMPTY(&rt->rt_ifp->if_addrheads[mycpuid])) {
+		info.rti_info[RTAX_IFP] = NULL;
+	} else {
+		info.rti_info[RTAX_IFP] =
+		(struct sockaddr *)
+		TAILQ_FIRST(&rt->rt_ifp->if_addrheads[mycpuid])->ifa;
+	}
 	info.rti_info[RTAX_IFA] = rt->rt_ifa->ifa_addr;
 
 	rt_missmsg(cmd, &info, rt->rt_flags, 0);
@@ -914,7 +919,7 @@ int
 prelist_update(struct nd_prefix *new, struct nd_defrouter *dr, struct mbuf *m)
 {
 	struct in6_ifaddr *ia6 = NULL, *ia6_match = NULL;
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	struct ifnet *ifp = new->ndpr_ifp;
 	struct nd_prefix *pr;
 	int error = 0;
@@ -1039,8 +1044,8 @@ prelist_update(struct nd_prefix *new, struct nd_defrouter *dr, struct mbuf *m)
 	 * form an address.  Note that even a manually configured address
 	 * should reject autoconfiguration of a new address.
 	 */
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-	{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
 		struct in6_ifaddr *ifa6;
 		int ifa_plen;
 		u_int32_t storedlifetime;
@@ -1428,11 +1433,14 @@ nd6_prefix_onlink(struct nd_prefix *pr)
 						      IN6_IFF_NOTREADY|
 						      IN6_IFF_ANYCAST);
 	if (ifa == NULL) {
+		struct ifaddr_container *ifac;
+
 		/* XXX: freebsd does not have ifa_ifwithaf */
-		TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-		{
-			if (ifa->ifa_addr->sa_family == AF_INET6)
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			if (ifac->ifa->ifa_addr->sa_family == AF_INET6) {
+				ifa = ifac->ifa;
 				break;
+			}
 		}
 		/* should we care about ia6_flags? */
 	}

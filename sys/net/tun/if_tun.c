@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.33 2008/01/06 01:51:55 swildner Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.34 2008/03/07 11:34:20 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -196,7 +196,7 @@ static int
 tuninit(struct ifnet *ifp)
 {
 	struct tun_softc *tp = ifp->if_softc;
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	int error = 0;
 
 	TUNDEBUG(ifp, "tuninit\n");
@@ -204,12 +204,13 @@ tuninit(struct ifnet *ifp)
 	ifp->if_flags |= IFF_UP | IFF_RUNNING;
 	getmicrotime(&ifp->if_lastchange);
 
-	for (ifa = TAILQ_FIRST(&ifp->if_addrhead); ifa; 
-	     ifa = TAILQ_NEXT(ifa, ifa_link)) {
-		if (ifa->ifa_addr == NULL)
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
+		if (ifa->ifa_addr == NULL) {
 			error = EFAULT;
 			/* XXX: Should maybe return straight off? */
-		else {
+		} else {
 #ifdef INET
 			if (ifa->ifa_addr->sa_family == AF_INET) {
 			    struct sockaddr_in *si;

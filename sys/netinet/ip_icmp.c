@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.27 2007/12/19 12:13:17 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.28 2008/03/07 11:34:20 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -611,7 +611,6 @@ static void
 icmp_reflect(struct mbuf *m)
 {
 	struct ip *ip = mtod(m, struct ip *);
-	struct ifaddr *ifa;
 	struct in_ifaddr *ia;
 	struct in_addr t;
 	struct mbuf *opts = 0;
@@ -640,7 +639,12 @@ icmp_reflect(struct mbuf *m)
 			goto match;
 	if (m->m_pkthdr.rcvif != NULL &&
 	    m->m_pkthdr.rcvif->if_flags & IFF_BROADCAST) {
-		TAILQ_FOREACH(ifa, &m->m_pkthdr.rcvif->if_addrhead, ifa_link) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &m->m_pkthdr.rcvif->if_addrheads[mycpuid],
+			      ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr->sa_family != AF_INET)
 				continue;
 			ia = ifatoia(ifa);

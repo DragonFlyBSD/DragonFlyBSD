@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.9 2008/01/05 14:02:38 swildner Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.10 2008/03/07 11:34:20 sephe Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -531,13 +531,15 @@ pfi_table_update(struct pfr_ktable *kt, struct pfi_kif *kif, int net, int flags)
 void
 pfi_instance_add(struct ifnet *ifp, int net, int flags)
 {
-	struct ifaddr	*ia;
+	struct ifaddr_container *ifac;
 	int		 got4 = 0, got6 = 0;
 	int		 net2, af;
 
 	if (ifp == NULL)
 		return;
-	TAILQ_FOREACH(ia, &ifp->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ia = ifac->ifa;
+
 		if (ia->ifa_addr == NULL)
 			continue;
 		af = ia->ifa_addr->sa_family;

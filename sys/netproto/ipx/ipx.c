@@ -34,7 +34,7 @@
  *	@(#)ipx.c
  *
  * $FreeBSD: src/sys/netipx/ipx.c,v 1.17.2.3 2003/04/04 09:35:43 tjr Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.14 2008/01/06 16:55:52 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.15 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -127,9 +127,7 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 	case SIOCSIFADDR:
 	case SIOCSIFDSTADDR:
 		if (ia == NULL) {
-			oia = (struct ipx_ifaddr *)
-				kmalloc(sizeof(*ia), M_IFADDR,
-				M_WAITOK | M_ZERO);
+			oia = ifa_create(sizeof(*ia), M_WAITOK);
 			if ((ia = ipx_ifaddr) != NULL) {
 				for ( ; ia->ia_next != NULL; ia = ia->ia_next)
 					;
@@ -138,7 +136,7 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 				ipx_ifaddr = oia;
 			ia = oia;
 			ifa = (struct ifaddr *)ia;
-			TAILQ_INSERT_TAIL(&ifp->if_addrhead, ifa, ifa_link);
+			ifa_iflink(ifa, ifp, 1);
 			ia->ia_ifp = ifp;
 			ifa->ifa_addr = (struct sockaddr *)&ia->ia_addr;
 
@@ -180,7 +178,7 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 	case SIOCDIFADDR:
 		ipx_ifscrub(ifp, ia);
 		ifa = (struct ifaddr *)ia;
-		TAILQ_REMOVE(&ifp->if_addrhead, ifa, ifa_link);
+		ifa_ifunlink(ifa, ifp);
 		oia = ia;
 		if (oia == (ia = ipx_ifaddr)) {
 			ipx_ifaddr = ia->ia_next;
@@ -193,7 +191,7 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 			else
 				kprintf("Didn't unlink ipxifadr from list\n");
 		}
-		IFAFREE((&oia->ia_ifa));
+		ifa_destroy(&oia->ia_ifa);
 		return (0);
 	
 	case SIOCAIFADDR:

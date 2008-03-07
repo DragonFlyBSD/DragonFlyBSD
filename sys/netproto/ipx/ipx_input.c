@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.17 2007/11/16 05:07:36 sephe Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.18 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -457,8 +457,8 @@ void
 ipx_watch_output(struct mbuf *m, struct ifnet *ifp)
 {
 	struct ipxpcb *ipxp;
-	struct ifaddr *ifa;
 	struct ipx_ifaddr *ia;
+
 	/*
 	 * Give any raw listeners a crack at the packet
 	 */
@@ -482,13 +482,19 @@ ipx_watch_output(struct mbuf *m, struct ifnet *ifp)
 				ipx->ipx_sna.x_host =
 				    ia->ia_addr.sipx_addr.x_host;
 
-			if (ifp != NULL && (ifp->if_flags & IFF_POINTOPOINT))
-			    TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+			if (ifp != NULL && (ifp->if_flags & IFF_POINTOPOINT)) {
+			    struct ifaddr_container *ifac;
+
+			    TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid],
+			    		  ifa_link) {
+				struct ifaddr *ifa = ifac->ifa;
+
 				if (ifa->ifa_addr->sa_family == AF_IPX) {
 				    ipx->ipx_sna = IA_SIPX(ifa)->sipx_addr;
 				    break;
 				}
 			    }
+			}
 			ipx->ipx_len = ntohl(m0->m_pkthdr.len);
 			ipx_input(m0, ipxp);
 		}

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.23 2008/01/06 16:55:50 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.24 2008/03/07 11:34:19 sephe Exp $
  */
 
 /*
@@ -1018,8 +1018,8 @@ srioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	if ((cmd != SIOCSIFFLAGS) && (cmd != SIOCSIFADDR)) {
 #if BUGGY > 2
 		if (bug_splats[sc->unit]++ < 2) {
-			kprintf("sr(%d).if_addrlist = %08x\n",
-			       sc->unit, ifp->if_addrlist);
+			kprintf("sr(%d).if_addrheads = %08x\n",
+			       sc->unit, ifp->if_addrheads);
 			kprintf("sr(%d).if_bpf = %08x\n",
 			       sc->unit, ifp->if_bpf);
 			kprintf("sr(%d).if_init = %08x\n",

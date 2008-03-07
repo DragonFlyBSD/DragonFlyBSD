@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.29 2006/12/26 11:01:07 swildner Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.30 2008/03/07 11:34:20 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -4860,6 +4860,7 @@ static void
 sppp_get_ip_addrs(struct sppp *sp, u_long *src, u_long *dst, u_long *srcmask)
 {
 	struct ifnet *ifp = &sp->pp_if;
+	struct ifaddr_container *ifac;
 	struct ifaddr *ifa;
 	struct sockaddr_in *si, *sm;
 	u_long ssrc, ddst;
@@ -4871,24 +4872,16 @@ sppp_get_ip_addrs(struct sppp *sp, u_long *src, u_long *dst, u_long *srcmask)
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
 	si = 0;
-#if defined(__DragonFly__)
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
-#elif defined(__NetBSD__) || defined (__OpenBSD__)
-	for (ifa = ifp->if_addrlist.tqh_first;
-	     ifa;
-	     ifa = ifa->ifa_list.tqe_next)
-#else
-	for (ifa = ifp->if_addrlist;
-	     ifa;
-	     ifa = ifa->ifa_next)
-#endif
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		ifa = ifac->ifa;
 		if (ifa->ifa_addr->sa_family == AF_INET) {
 			si = (struct sockaddr_in *)ifa->ifa_addr;
 			sm = (struct sockaddr_in *)ifa->ifa_netmask;
 			if (si)
 				break;
 		}
-	if (ifa) {
+	}
+	if (ifac != NULL) {
 		if (si && si->sin_addr.s_addr) {
 			ssrc = si->sin_addr.s_addr;
 			if (srcmask)
@@ -4911,6 +4904,7 @@ static void
 sppp_set_ip_addr(struct sppp *sp, u_long src)
 {
 	STDDCL;
+	struct ifaddr_container *ifac;
 	struct ifaddr *ifa;
 	struct sockaddr_in *si;
 	struct in_ifaddr *ia;
@@ -4920,28 +4914,16 @@ sppp_set_ip_addr(struct sppp *sp, u_long src)
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
 	si = 0;
-#if defined(__DragonFly__) 
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
-#elif defined(__NetBSD__) || defined (__OpenBSD__)
-	for (ifa = ifp->if_addrlist.tqh_first;
-	     ifa;
-	     ifa = ifa->ifa_list.tqe_next)
-#else
-	for (ifa = ifp->if_addrlist;
-	     ifa;
-	     ifa = ifa->ifa_next)
-#endif
-	{
-		if (ifa->ifa_addr->sa_family == AF_INET)
-		{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		ifa = ifac->ifa;
+		if (ifa->ifa_addr->sa_family == AF_INET) {
 			si = (struct sockaddr_in *)ifa->ifa_addr;
 			if (si)
 				break;
 		}
 	}
 
-	if (ifa && si)
-	{
+	if (ifac != NULL && si != NULL) {
 		int error;
 #if __NetBSD_Version__ >= 103080000
 		struct sockaddr_in new_sin = *si;
@@ -4988,6 +4970,7 @@ sppp_get_ip6_addrs(struct sppp *sp, struct in6_addr *src, struct in6_addr *dst,
 		   struct in6_addr *srcmask)
 {
 	struct ifnet *ifp = &sp->pp_if;
+	struct ifaddr_container *ifac;
 	struct ifaddr *ifa;
 	struct sockaddr_in6 *si, *sm;
 	struct in6_addr ssrc, ddst;
@@ -4999,25 +4982,17 @@ sppp_get_ip6_addrs(struct sppp *sp, struct in6_addr *src, struct in6_addr *dst,
 	 * Pick the first link-local AF_INET6 address from the list,
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
-#if defined(__DragonFly__)
 	si = 0;
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
-#elif defined(__NetBSD__) || defined (__OpenBSD__)
-	for (ifa = ifp->if_addrlist.tqh_first, si = 0;
-	     ifa;
-	     ifa = ifa->ifa_list.tqe_next)
-#else
-	for (ifa = ifp->if_addrlist, si = 0;
-	     ifa;
-	     ifa = ifa->ifa_next)
-#endif
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		ifa = ifac->ifa;
 		if (ifa->ifa_addr->sa_family == AF_INET6) {
 			si = (struct sockaddr_in6 *)ifa->ifa_addr;
 			sm = (struct sockaddr_in6 *)ifa->ifa_netmask;
 			if (si && IN6_IS_ADDR_LINKLOCAL(&si->sin6_addr))
 				break;
 		}
-	if (ifa) {
+	}
+	if (ifac != NULL) {
 		if (si && !IN6_IS_ADDR_UNSPECIFIED(&si->sin6_addr)) {
 			bcopy(&si->sin6_addr, &ssrc, sizeof(ssrc));
 			if (srcmask) {
@@ -5054,6 +5029,7 @@ static void
 sppp_set_ip6_addr(struct sppp *sp, const struct in6_addr *src)
 {
 	STDDCL;
+	struct ifaddr_container *ifac;
 	struct ifaddr *ifa;
 	struct sockaddr_in6 *sin6;
 
@@ -5063,33 +5039,22 @@ sppp_set_ip6_addr(struct sppp *sp, const struct in6_addr *src)
 	 */
 
 	sin6 = NULL;
-#if defined(__DragonFly__) 
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
-#elif defined(__NetBSD__) || defined (__OpenBSD__)
-	for (ifa = ifp->if_addrlist.tqh_first;
-	     ifa;
-	     ifa = ifa->ifa_list.tqe_next)
-#else
-	for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next)
-#endif
-	{
-		if (ifa->ifa_addr->sa_family == AF_INET6)
-		{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		ifa = ifac->ifa;
+		if (ifa->ifa_addr->sa_family == AF_INET6) {
 			sin6 = (struct sockaddr_in6 *)ifa->ifa_addr;
 			if (sin6 && IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
 				break;
 		}
 	}
 
-	if (ifa && sin6)
-	{
+	if (ifac != NULL && sin6 != NULL) {
 		int error;
 		struct sockaddr_in6 new_sin6 = *sin6;
 
 		bcopy(src, &new_sin6.sin6_addr, sizeof(new_sin6.sin6_addr));
 		error = in6_ifinit(ifp, ifatoia6(ifa), &new_sin6, 1);
-		if (debug && error)
-		{
+		if (debug && error) {
 			log(LOG_DEBUG, SPP_FMT "sppp_set_ip6_addr: in6_ifinit "
 			    " failed, error=%d\n", SPP_ARGS(ifp), error);
 		}

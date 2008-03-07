@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.36 2007/12/19 11:00:22 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.37 2008/03/07 11:34:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -166,7 +166,7 @@ netisr_init(void)
     lwkt_initport_putonly(&netisr_sync_port, netmsg_sync_putport);
 }
 
-SYSINIT(netisr, SI_SUB_PROTO_BEGIN, SI_ORDER_FIRST, netisr_init, NULL);
+SYSINIT(netisr, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, netisr_init, NULL);
 
 /*
  * Finish initializing the message port for a netmsg service.  This also

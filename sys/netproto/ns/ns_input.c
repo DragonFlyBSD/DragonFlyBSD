@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.20 2007/05/23 08:57:08 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.21 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -452,7 +452,6 @@ void
 ns_watch_output(struct mbuf *m, struct ifnet *ifp)
 {
 	struct nspcb *nsp;
-	struct ifaddr *ifa;
 	/*
 	 * Give any raw listeners a crack at the packet
 	 */
@@ -467,12 +466,19 @@ ns_watch_output(struct mbuf *m, struct ifnet *ifp)
 			idp = mtod(m0, struct idp *);
 			idp->idp_sna.x_net = ns_zeronet;
 			idp->idp_sna.x_host = ns_thishost;
-			if (ifp && (ifp->if_flags & IFF_POINTOPOINT))
-				TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
-				if (ifa->ifa_addr->sa_family==AF_NS) {
-				    idp->idp_sna = IA_SNS(ifa)->sns_addr;
-				    break;
+			if (ifp && (ifp->if_flags & IFF_POINTOPOINT)) {
+				struct ifaddr_container *ifac;
+
+				TAILQ_FOREACH(ifac,
+				&ifp->if_addrheads[mycpuid], ifa_link) {
+					struct ifaddr *ifa = ifac->ifa;
+
+					if (ifa->ifa_addr->sa_family==AF_NS) {
+						idp->idp_sna = IA_SNS(ifa)->sns_addr;
+						break;
+					}
 				}
+			}
 			idp->idp_len = ntohl(m0->m_pkthdr.len);
 			idp_input(m0, nsp);
 		}

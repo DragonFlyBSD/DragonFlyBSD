@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.27 2008/03/01 22:03:13 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.28 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -302,15 +302,17 @@ int
 in6_ifindex2scopeid(int idx)
 {
 	struct ifnet *ifp;
-	struct ifaddr *ifa;
 	struct sockaddr_in6 *sin6;
+	struct ifaddr_container *ifac;
 
 	if (idx < 0 || if_index < idx)
 		return -1;
 	ifp = ifindex2ifnet[idx];
 
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link)
 	{
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 		sin6 = (struct sockaddr_in6 *)ifa->ifa_addr;
@@ -903,8 +905,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		 * RA, it is called under splnet().  So, we should call malloc
 		 * with M_NOWAIT.
 		 */
-		ia = (struct in6_ifaddr *)
-			kmalloc(sizeof(*ia), M_IFADDR, M_NOWAIT | M_ZERO);
+		ia = ifa_create(sizeof(*ia), M_NOWAIT);
 		if (ia == NULL)
 			return (ENOBUFS);
 		/* Initialize the address and masks */
@@ -932,8 +933,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		} else
 			in6_ifaddr = ia;
 
-		TAILQ_INSERT_TAIL(&ifp->if_addrlist, &ia->ia_ifa,
-				  ifa_list);
+		ifa_iflink(&ia->ia_ifa, ifp, 1);
 	}
 
 	/* set prefix mask */
@@ -1216,7 +1216,7 @@ in6_unlink_ifa(struct in6_ifaddr *ia, struct ifnet *ifp)
 
 	crit_enter();
 
-	TAILQ_REMOVE(&ifp->if_addrlist, &ia->ia_ifa, ifa_list);
+	ifa_ifunlink(&ia->ia_ifa, ifp);
 
 	oia = ia;
 	if (oia == (ia = in6_ifaddr))
@@ -1261,7 +1261,7 @@ in6_unlink_ifa(struct in6_ifaddr *ia, struct ifnet *ifp)
 	 * release another refcnt for the link from in6_ifaddr.
 	 * Note that we should decrement the refcnt at least once for all *BSD.
 	 */
-	IFAFREE(&oia->ia_ifa);
+	ifa_destroy(&oia->ia_ifa);
 
 	crit_exit();
 }
@@ -1269,14 +1269,13 @@ in6_unlink_ifa(struct in6_ifaddr *ia, struct ifnet *ifp)
 void
 in6_purgeif(struct ifnet *ifp)
 {
-	struct ifaddr *ifa, *nifa;
+	struct ifaddr_container *ifac, *next;
 
-	for (ifa = TAILQ_FIRST(&ifp->if_addrlist); ifa != NULL; ifa = nifa)
-	{
-		nifa = TAILQ_NEXT(ifa, ifa_list);
-		if (ifa->ifa_addr->sa_family != AF_INET6)
+	TAILQ_FOREACH_MUTABLE(ifac, &ifp->if_addrheads[mycpuid],
+			      ifa_link, next) {
+		if (ifac->ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
-		in6_purgeaddr(ifa);
+		in6_purgeaddr(ifac->ifa);
 	}
 
 	in6_ifdetach(ifp);
@@ -1310,7 +1309,6 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 		  struct ifnet *ifp, struct thread *td)
 {
 	struct if_laddrreq *iflr = (struct if_laddrreq *)data;
-	struct ifaddr *ifa;
 	struct sockaddr *sa;
 
 	/* sanity checks */
@@ -1359,6 +1357,7 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 		int prefixlen;
 
 		if (iflr->flags & IFLR_PREFIX) {
+			struct ifaddr *ifa;
 			struct sockaddr_in6 *sin6;
 
 			/*
@@ -1420,6 +1419,7 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 	case SIOCGLIFADDR:
 	case SIOCDLIFADDR:
 	    {
+		struct ifaddr_container *ifac;
 		struct in6_ifaddr *ia;
 		struct in6_addr mask, candidate, match;
 		struct sockaddr_in6 *sin6;
@@ -1456,8 +1456,9 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 			}
 		}
 
-		TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-		{
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr->sa_family != AF_INET6)
 				continue;
 			if (!cmp)
@@ -1478,9 +1479,9 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 			if (IN6_ARE_ADDR_EQUAL(&candidate, &match))
 				break;
 		}
-		if (!ifa)
+		if (ifac == NULL)
 			return EADDRNOTAVAIL;
-		ia = ifa2ia6(ifa);
+		ia = ifa2ia6(ifac->ifa);
 
 		if (cmd == SIOCGLIFADDR) {
 			struct sockaddr_in6 *s6;
@@ -1551,23 +1552,22 @@ in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 	   int newhost)
 {
 	int	error = 0, plen, ifacount = 0;
-	struct ifaddr *ifa;
-
-	lwkt_serialize_enter(ifp->if_serializer);
+	struct ifaddr_container *ifac;
 
 	/*
 	 * Give the interface a chance to initialize
 	 * if this is its first address,
 	 * and to validate the address if necessary.
 	 */
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-	{
-		if (ifa->ifa_addr == NULL)
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		if (ifac->ifa->ifa_addr == NULL)
 			continue;	/* just for safety */
-		if (ifa->ifa_addr->sa_family != AF_INET6)
+		if (ifac->ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 		ifacount++;
 	}
+
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	ia->ia_addr = *sin6;
 
@@ -1736,10 +1736,11 @@ in6_delmulti(struct in6_multi *in6m)
 struct in6_ifaddr *
 in6ifa_ifpforlinklocal(struct ifnet *ifp, int ignoreflags)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-	{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr == NULL)
 			continue;	/* just for safety */
 		if (ifa->ifa_addr->sa_family != AF_INET6)
@@ -1751,8 +1752,10 @@ in6ifa_ifpforlinklocal(struct ifnet *ifp, int ignoreflags)
 			break;
 		}
 	}
-
-	return ((struct in6_ifaddr *)ifa);
+	if (ifac != NULL)
+		return ((struct in6_ifaddr *)(ifac->ifa));
+	else
+		return (NULL);
 }
 
 
@@ -1762,10 +1765,11 @@ in6ifa_ifpforlinklocal(struct ifnet *ifp, int ignoreflags)
 struct in6_ifaddr *
 in6ifa_ifpwithaddr(struct ifnet *ifp, struct in6_addr *addr)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-	{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr == NULL)
 			continue;	/* just for safety */
 		if (ifa->ifa_addr->sa_family != AF_INET6)
@@ -1773,8 +1777,10 @@ in6ifa_ifpwithaddr(struct ifnet *ifp, struct in6_addr *addr)
 		if (IN6_ARE_ADDR_EQUAL(addr, IFA_IN6(ifa)))
 			break;
 	}
-
-	return ((struct in6_ifaddr *)ifa);
+	if (ifac != NULL)
+		return ((struct in6_ifaddr *)(ifac->ifa));
+	else
+		return (NULL);
 }
 
 /*
@@ -1941,7 +1947,6 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst)
 {
 	int dst_scope =	in6_addrscope(dst), src_scope, best_scope = 0;
 	int blen = -1;
-	struct ifaddr *ifa;
 	struct ifnet *ifp;
 	struct in6_ifaddr *ifa_best = NULL;
 
@@ -1959,6 +1964,8 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst)
 	 */
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
 	{
+		struct ifaddr_container *ifac;
+
 		/*
 		 * We can never take an address that breaks the scope zone
 		 * of the destination.
@@ -1966,9 +1973,9 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst)
 		if (in6_addr2scopeid(ifp, dst) != in6_addr2scopeid(oifp, dst))
 			continue;
 
-		TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-		{
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 			int tlen = -1, dscopecmp, bscopecmp, matchcmp;
+			struct ifaddr *ifa = ifac->ifa;
 
 			if (ifa->ifa_addr->sa_family != AF_INET6)
 				continue;
@@ -2217,7 +2224,7 @@ struct in6_ifaddr *
 in6_ifawithifp(struct ifnet *ifp, struct in6_addr *dst)
 {
 	int dst_scope =	in6_addrscope(dst), blen = -1, tlen;
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	struct in6_ifaddr *besta = 0;
 	struct in6_ifaddr *dep[2];	/* last-resort: deprecated */
 
@@ -2229,8 +2236,9 @@ in6_ifawithifp(struct ifnet *ifp, struct in6_addr *dst)
 	 * If two or more, return one which matches the dst longest.
 	 * If none, return one of global addresses assigned other ifs.
 	 */
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-	{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 		if (((struct in6_ifaddr *)ifa)->ia6_flags & IN6_IFF_ANYCAST)
@@ -2264,8 +2272,9 @@ in6_ifawithifp(struct ifnet *ifp, struct in6_addr *dst)
 	if (besta)
 		return (besta);
 
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-	{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 		if (((struct in6_ifaddr *)ifa)->ia6_flags & IN6_IFF_ANYCAST)
@@ -2298,7 +2307,7 @@ in6_ifawithifp(struct ifnet *ifp, struct in6_addr *dst)
 void
 in6_if_up(struct ifnet *ifp)
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	struct in6_ifaddr *ia;
 	int dad_delay;		/* delay ticks before DAD output */
 
@@ -2308,8 +2317,9 @@ in6_if_up(struct ifnet *ifp)
 	in6_ifattach(ifp, NULL);
 
 	dad_delay = 0;
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list)
-	{
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 		ia = (struct in6_ifaddr *)ifa;

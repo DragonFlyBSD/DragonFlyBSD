@@ -32,7 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.14 2007/04/22 01:13:16 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.15 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -91,16 +91,17 @@ idp_input(struct mbuf *m, ...)
 	 */
 	idp_ns.sns_addr = idp->idp_sna;
 	if (ns_neteqnn(idp->idp_sna.x_net, ns_zeronet) && ifp) {
-		struct ifaddr *ifa;
+		struct ifaddr_container *ifac;
 
-		crit_enter();
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr->sa_family == AF_NS) {
 				idp_ns.sns_addr.x_net =
 					IA_SNS(ifa)->sns_addr.x_net;
 				break;
 			}
-		crit_exit();
+		}
 	}
 	nsp->nsp_rpt = idp->idp_pt;
 	if ( ! (nsp->nsp_flags & NSP_RAWIN) ) {

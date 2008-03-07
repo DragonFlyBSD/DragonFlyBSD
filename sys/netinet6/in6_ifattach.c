@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.21 2007/08/27 16:15:42 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.22 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -224,7 +224,7 @@ static int
 get_hw_ifid(struct ifnet *ifp,
 	    struct in6_addr *in6)	/* upper 64bits are preserved */
 {
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	struct sockaddr_dl *sdl;
 	u_int8_t *addr;
 	size_t addrlen;
@@ -232,7 +232,9 @@ get_hw_ifid(struct ifnet *ifp,
 	static u_int8_t allone[8] =
 		{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
-	TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_list) {
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != AF_LINK)
 			continue;
 		sdl = (struct sockaddr_dl *)ifa->ifa_addr;
@@ -772,7 +774,7 @@ void
 in6_ifdetach(struct ifnet *ifp)
 {
 	struct in6_ifaddr *ia, *oia;
-	struct ifaddr *ifa, *next;
+	struct ifaddr_container *ifac, *next;
 	struct rtentry *rt;
 	short rtflags;
 	struct sockaddr_in6 sin6;
@@ -786,15 +788,18 @@ in6_ifdetach(struct ifnet *ifp)
 	nd6_purge(ifp);
 
 	/* nuke any of IPv6 addresses we have */
-	TAILQ_FOREACH_MUTABLE(ifa, &ifp->if_addrlist, ifa_list, next)
-	{
+	TAILQ_FOREACH_MUTABLE(ifac, &ifp->if_addrheads[mycpuid], ifa_link, next) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 		in6_purgeaddr(ifa);
 	}
 
 	/* undo everything done by in6_ifattach(), just in case */
-	TAILQ_FOREACH_MUTABLE(ifa, &ifp->if_addrlist, ifa_list, next) {
+	TAILQ_FOREACH_MUTABLE(ifac, &ifp->if_addrheads[mycpuid], ifa_link, next) {
+		struct ifaddr *ifa = ifac->ifa;
+
 		if (ifa->ifa_addr->sa_family != AF_INET6
 		 || !IN6_IS_ADDR_LINKLOCAL(&satosin6(&ifa->ifa_addr)->sin6_addr)) {
 			continue;
@@ -815,8 +820,7 @@ in6_ifdetach(struct ifnet *ifp)
 		}
 
 		/* remove from the linked list */
-		TAILQ_REMOVE(&ifp->if_addrlist, (struct ifaddr *)ia, ifa_list);
-		IFAFREE(&ia->ia_ifa);
+		ifa_ifunlink((struct ifaddr *)ia, ifp);
 
 		/* also remove from the IPv6 address chain(itojun&jinmei) */
 		oia = ia;
@@ -834,7 +838,11 @@ in6_ifdetach(struct ifnet *ifp)
 			}
 		}
 
-		IFAFREE(&oia->ia_ifa);
+		crit_enter();	/* XXX MP not MP safe */
+		_IFAFREE(&oia->ia_ifa, 0);
+		crit_exit();
+
+		ifa_destroy(&ia->ia_ifa);
 	}
 
 	/* leave from all multicast groups joined */

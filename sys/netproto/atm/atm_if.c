@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.15 2006/12/20 18:14:43 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.16 2008/03/07 11:34:21 sephe Exp $
  */
 
 /*
@@ -808,11 +808,11 @@ atm_nif_detach(struct atm_nif *nip)
 
 		/* Remove interface address from queues */
 		ifa = &ia->ia_ifa;
-		TAILQ_REMOVE(&ifp->if_addrhead, ifa, ifa_link);
+		ifa_ifunlink(ifa, ifp);
 		TAILQ_REMOVE(&in_ifaddrhead, ia, ia_link);
 
 		/* Free interface address */
-		IFAFREE(ifa);
+		ifa_destroy(ifa);
 	}
 
 	/*

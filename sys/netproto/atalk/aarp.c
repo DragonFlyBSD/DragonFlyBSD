@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.21 2007/05/23 08:57:06 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.22 2008/03/07 11:34:21 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -290,7 +290,6 @@ static void
 at_aarpinput( struct arpcom *ac, struct mbuf *m)
 {
     struct ether_aarp	*ea;
-    struct ifaddr	*ifa;
     struct at_ifaddr	*aa = NULL;
     struct aarptab	*aat;
     struct ether_header	*eh;
@@ -324,12 +323,14 @@ at_aarpinput( struct arpcom *ac, struct mbuf *m)
 	bcopy(ea->aarp_spnet, &spa.s_net, sizeof spa.s_net);
 	bcopy(ea->aarp_tpnet, &tpa.s_net, sizeof tpa.s_net);
     } else {
+    	struct ifaddr_container *ifac;
+
 	/*
 	 * Since we don't know the net, we just look for the first
 	 * phase 1 address on the interface.
 	 */
-	TAILQ_FOREACH(ifa, &ac->ac_if.if_addrhead, ifa_link) {
-	    aa = (struct at_ifaddr *)ifa;
+	TAILQ_FOREACH(ifac, &ac->ac_if.if_addrheads[mycpuid], ifa_link) {
+	    aa = (struct at_ifaddr *)(ifac->ifa);
 	    if ( AA_SAT( aa )->sat_family == AF_APPLETALK &&
 		    ( aa->aa_flags & AFA_PHASE2 ) == 0 ) {
 		break;
@@ -517,7 +518,7 @@ aarpprobe(void *arg)
     struct mbuf		*m;
     struct ether_header	*eh;
     struct ether_aarp	*ea;
-    struct ifaddr	*ifa;
+    struct ifaddr_container *ifac;
     struct at_ifaddr	*aa = NULL;
     struct llc		*llc;
     struct sockaddr	sa;
@@ -529,8 +530,8 @@ aarpprobe(void *arg)
      * interface with the same address as we're looking for. If the
      * net is phase 2, generate an 802.2 and SNAP header.
      */
-    TAILQ_FOREACH(ifa, &ac->ac_if.if_addrhead, ifa_link) {
-    	aa = (struct at_ifaddr *)ifa;
+    TAILQ_FOREACH(ifac, &ac->ac_if.if_addrheads[mycpuid], ifa_link) {
+    	aa = (struct at_ifaddr *)(ifac->ifa);
 	if ( AA_SAT( aa )->sat_family == AF_APPLETALK &&
 		( aa->aa_flags & AFA_PROBING )) {
 	    break;

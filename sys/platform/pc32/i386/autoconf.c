@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.38 2007/06/17 23:50:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.39 2008/03/07 11:34:21 sephe Exp $
  */
 
 /*
@@ -420,7 +420,6 @@ pxe_setup_nfsdiskless(void)
 {
 	struct nfs_diskless	*nd = &nfs_diskless;
 	struct ifnet		*ifp;
-	struct ifaddr		*ifa;
 	struct sockaddr_dl	*sdl, ourdl;
 	struct sockaddr_in	myaddr, netmask;
 	char			*cp;
@@ -442,10 +441,13 @@ pxe_setup_nfsdiskless(void)
 		kprintf("PXE: no hardware address\n");
 		return;
 	}
-	ifa = NULL;
 	ifp = TAILQ_FIRST(&ifnet);
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if ((ifa->ifa_addr->sa_family == AF_LINK) &&
 			    (sdl = ((struct sockaddr_dl *)ifa->ifa_addr))) {
 				if ((sdl->sdl_type == ourdl.sdl_type) &&

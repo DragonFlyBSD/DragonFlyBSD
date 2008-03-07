@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.22 2008/01/05 14:02:39 swildner Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.23 2008/03/07 11:34:20 sephe Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -1092,7 +1092,6 @@ ng_fec_constructor(node_p *nodep)
 	ifp->if_addrlen = 0;			/* XXX */
 	ifp->if_hdrlen = 0;			/* XXX */
 	ifp->if_baudrate = 100000000;		/* XXX */
-	TAILQ_INIT(&ifp->if_addrhead);
 
 	/* Give this node the same name as the interface (if possible) */
 	bzero(ifname, sizeof(ifname));
