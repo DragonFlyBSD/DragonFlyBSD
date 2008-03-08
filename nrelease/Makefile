@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.76 2008/03/07 20:29:24 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.77 2008/03/08 22:00:03 swildner Exp $
 #
 
 #########################################################################
@@ -20,7 +20,7 @@ WITH_INSTALLER=
 # targes may be specified which set make variables which enhance
 # the build in various ways.
 #
-installer:
+gui installer:
 
 warning:
 	@echo "WARNING: The installer_* targets are now obsolete, please"
@@ -29,6 +29,9 @@ warning:
 	@echo "will continue in 10 seconds"
 	@sleep 10
 
+.if make(gui)
+WITH_GUI=
+.endif
 .if make(installer)
 WITH_INSTALLER=
 .endif
@@ -38,7 +41,6 @@ WITH_INSTALLER=
 #########################################################################
 
 ISODIR ?= /usr/release
-ISOFILE ?= ${ISODIR}/dfly.iso
 ISOROOT = ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
 KERNCONF ?= GENERIC VKERNEL
@@ -78,6 +80,16 @@ OLD_PKGSRC_PACKAGES?= cdrtools-2.01.01.27nb1 cdrecord-2.00.3nb2 \
 REQ_ROOTSKELS= ${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
+.if defined(WITH_GUI)
+ISOFILE?=		${ISODIR}/dfly-gui.iso
+PKGSRC_PACKAGES+=	modular-xorg-apps \
+			modular-xorg-drivers \
+			modular-xorg-fonts \
+			modular-xorg-libs \
+			fluxbox
+ROOTSKELS+=		${.CURDIR}/gui
+.endif
+
 .if defined(WITH_INSTALLER)
 # note: the old dfuibe_install and curses depend on the old gettext and
 # must be removed for the old gettext to be removed.  The new dfuibe install
@@ -90,6 +102,8 @@ PKGSRC_PACKAGES+=	gettext-lib-0.14.6.tgz gettext-tools-0.14.6nb1.tgz
 PKGSRC_PACKAGES+=	libaura-3.1.tgz libdfui-4.2.tgz libinstaller-5.1.tgz
 ROOTSKELS+=		${.CURDIR}/installer
 .endif
+
+ISOFILE ?= ${ISODIR}/dfly.iso
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
 # the additional '/nrelease' manually, as a safety measure.
@@ -234,6 +248,11 @@ customizeiso:
 	rmdir ${ISOROOT}/tmp/packages
 	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
 	chroot ${ISOROOT} ${PKGBIN_PKG_ADMIN} rebuild
+.if defined(WITH_GUI)
+.for FONT in 75dpi 100dpi misc Type1 TTF
+	chroot ${ISOROOT} /usr/pkg/bin/mkfontdir /usr/pkg/lib/X11/fonts/${FONT}
+.endfor
+.endif
 
 mklocatedb:
 	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
