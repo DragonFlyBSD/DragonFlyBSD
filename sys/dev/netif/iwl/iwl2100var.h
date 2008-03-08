@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/iwl/iwl2100var.h,v 1.1 2008/03/05 14:10:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwl/iwl2100var.h,v 1.2 2008/03/08 06:43:52 sephe Exp $
  */
 
 #ifndef _IWL2100VAR_H
@@ -300,6 +300,7 @@ struct iwl2100_softc {
 
 	struct callout		sc_restart_bmiss;
 	struct callout		sc_ibss;
+	struct callout		sc_reinit;
 
 	struct iwlmsg		sc_scanend_msg;
 	struct iwlmsg		sc_assoc_msg;
@@ -341,12 +342,15 @@ struct iwl2100_softc {
 #define IWL2100_F_RESTARTING	0x10
 #define IWL2100_F_IFSTART	0x20	/* if_start could run */
 #define IWL2100_F_ERROR		0x40
+#define IWL2100_F_ZERO_CMD	0x80
+#define IWL2100_F_DETACH	0x100	/* detaching */
 
 #define IWL2100_DBG_IBSS	0x01
 #define IWL2100_DBG_SCAN	0x02
 #define IWL2100_DBG_STATUS	0x04
 #define IWL2100_DBG_RESTART	0x08
 #define IWL2100_DBG_NOTE	0x10
+#define IWL2100_DBG_CMD		0x20
 
 #define IWL2100_PCIR_BAR	PCIR_BAR(0)
 #define IWL2100_DESC		"Intel PRO/Wireless LAN 2100"

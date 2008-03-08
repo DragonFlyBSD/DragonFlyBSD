@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/iwl/iwl2100.c,v 1.2 2008/03/06 11:51:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwl/iwl2100.c,v 1.3 2008/03/08 06:43:52 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -80,9 +80,9 @@ static int	iwl2100_media_change(struct ifnet *);
 static void	iwl2100_media_status(struct ifnet *, struct ifmediareq *);
 static void	iwl2100_stop(struct iwl2100_softc *);
 static void	iwl2100_restart(struct iwl2100_softc *);
+static void	iwl2100_reinit(struct iwl2100_softc *);
 
 static void	iwl2100_intr(void *);
-static void	iwl2100_error(struct iwl2100_softc *);
 static void	iwl2100_txeof(struct iwl2100_softc *);
 static void	iwl2100_rxeof(struct iwl2100_softc *);
 static void	iwl2100_rxeof_status(struct iwl2100_softc *, int);
@@ -98,8 +98,10 @@ static void	iwl2100_scanend_dispatch(struct netmsg *);
 static void	iwl2100_restart_dispatch(struct netmsg *);
 static void	iwl2100_bmiss_dispatch(struct netmsg *);
 
+static void	iwl2100_stop_callouts(struct iwl2100_softc *);
 static void	iwl2100_restart_bmiss(void *);
 static void	iwl2100_ibss_bssid(void *);
+static void	iwl2100_reinit_callout(void *);
 
 static int	iwl2100_dma_alloc(device_t);
 static void	iwl2100_dma_free(device_t);
@@ -358,6 +360,7 @@ iwl2100_attach(device_t dev)
 	 */
 	callout_init(&sc->sc_restart_bmiss);
 	callout_init(&sc->sc_ibss);
+	callout_init(&sc->sc_reinit);
 
 	/* Add sysctl node */
 	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
@@ -378,9 +381,12 @@ iwl2100_detach(device_t dev)
 		struct ifnet *ifp = &sc->sc_ic.ic_if;
 
 		lwkt_serialize_enter(ifp->if_serializer);
+
+		sc->sc_flags |= IWL2100_F_DETACH;
 		iwl2100_stop(sc);
 		bus_teardown_intr(dev, sc->sc_irq_res, sc->sc_irq_handle);
 		iwl_destroy_thread(&sc->iwlcom);
+
 		lwkt_serialize_exit(ifp->if_serializer);
 
 		iwl2100_free_firmware(sc);
@@ -411,6 +417,8 @@ iwl2100_stop(struct iwl2100_softc *sc)
 
 	ASSERT_SERIALIZED(sc->sc_ic.ic_if.if_serializer);
 
+	iwl2100_stop_callouts(sc);
+
 	iwlmsg_init(&msg, &sc->sc_reply_port, iwl2100_stop_dispatch, sc);
 	lwkt_domsg(&sc->sc_thread_port, &msg.iwlm_nmsg.nm_lmsg, 0);
 }
@@ -435,6 +443,8 @@ iwl2100_hw_stop(struct iwl2100_softc *sc)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 	KKASSERT(curthread == &sc->sc_thread);
+
+	callout_stop(&sc->sc_reinit);
 
 	/* Disable interrupts */
 	CSR_WRITE_4(sc, IWL2100_INTR_MASK, 0);
@@ -463,7 +473,8 @@ iwl2100_hw_stop(struct iwl2100_softc *sc)
 			  IWL2100_F_SCANNING |
 			  IWL2100_F_RESTARTING |
 			  IWL2100_F_IFSTART |
-			  IWL2100_F_ERROR);
+			  IWL2100_F_ERROR |
+			  IWL2100_F_ZERO_CMD);
 }
 
 static int
@@ -722,6 +733,8 @@ iwl2100_init(void *xsc)
 
 	ASSERT_SERIALIZED(sc->sc_ic.ic_if.if_serializer);
 
+	iwl2100_stop_callouts(sc);
+
 	iwlmsg_init(&msg, &sc->sc_reply_port, iwl2100_init_dispatch, sc);
 	lwkt_domsg(&sc->sc_thread_port, &msg.iwlm_nmsg.nm_lmsg, 0);
 }
@@ -733,9 +746,12 @@ iwl2100_init_dispatch(struct netmsg *nmsg)
 	struct iwl2100_softc *sc = msg->iwlm_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
-	int error, flags;
+	int error = 0, flags;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		goto back;
 
 	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
 
@@ -757,6 +773,14 @@ iwl2100_init_dispatch(struct netmsg *nmsg)
 	if (error)
 		goto back;
 
+	if (sc->sc_flags & IWL2100_F_ZERO_CMD) {
+		if_printf(ifp, "zero cmd, reinit 1s later\n");
+		iwl2100_hw_stop(sc);
+
+		callout_reset(&sc->sc_reinit, hz, iwl2100_reinit_callout, sc);
+		goto back;
+	}
+
 	if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 		if (ic->ic_roaming != IEEE80211_ROAMING_MANUAL)
 			ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
@@ -777,14 +801,25 @@ iwl2100_ioctl(struct ifnet *ifp, u_long cmd, caddr_t req, struct ucred *cr)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		return 0;
+
 	switch (cmd) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if ((ifp->if_flags & IFF_RUNNING) == 0)
 				iwl2100_init(sc);
 		} else {
-			if (ifp->if_flags & IFF_RUNNING)
+			if (ifp->if_flags & IFF_RUNNING) {
 				iwl2100_stop(sc);
+			} else {
+				/*
+				 * Stop callouts explicitly, since
+				 * if reinitialization is happening,
+				 * IFF_RUNNING will not be turned on.
+				 */
+				iwl2100_stop_callouts(sc);
+			}
 		}
 		break;
 	default:
@@ -810,6 +845,9 @@ iwl2100_start(struct ifnet *ifp)
 	int trans = 0;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		return;
 
 	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
@@ -911,6 +949,9 @@ iwl2100_watchdog(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		return;
+
 	if (sc->sc_tx_timer) {
 		if (--sc->sc_tx_timer == 0) {
 			if_printf(ifp, "watchdog timeout!\n");
@@ -966,6 +1007,14 @@ iwl2100_newstate_dispatch(struct netmsg *nmsg)
 	if (nstate == IEEE80211_S_INIT)
 		goto back;
 
+	if (sc->sc_flags & IWL2100_F_DETACH) {
+		/*
+		 * Except for INIT, we skip rest of the
+		 * state changes during detaching
+		 */
+		goto reply;
+	}
+
 	if (ic->ic_opmode == IEEE80211_M_STA) {
 		if (nstate == IEEE80211_S_AUTH)
 			error = iwl2100_auth(sc);
@@ -1006,6 +1055,7 @@ back:
 			}
 		}
 	}
+reply:
 	lwkt_replymsg(&nmsg->nm_lmsg, error);
 }
 
@@ -1072,9 +1122,16 @@ iwl2100_intr(void *xsc)
 	CSR_WRITE_4(sc, IWL2100_INTR_MASK, 0);
 
 	if (intr_status & IWL2100_INTR_EFATAL) {
+		uint32_t error_info;
+
 		if_printf(ifp, "intr fatal error\n");
 		CSR_WRITE_4(sc, IWL2100_INTR_STATUS, IWL2100_INTR_EFATAL);
-		iwl2100_error(sc);
+
+		error_info = IND_READ_4(sc, IWL2100_IND_ERROR_INFO);
+		IND_READ_4(sc, error_info & IWL2100_IND_ERRORADDR_MASK);
+
+		callout_stop(&sc->sc_reinit);
+		iwl2100_reinit(sc);
 
 		/* Leave interrupts disabled */
 		goto back;
@@ -2945,6 +3002,9 @@ iwl2100_rxeof_cmd(struct iwl2100_softc *sc, int i)
 	}
 
 	cmd = mtod(m, struct iwl2100_cmd *);
+	DPRINTF(sc, IWL2100_DBG_CMD, "cmd %u\n", cmd->c_cmd);
+	if (cmd->c_cmd == 0)
+		sc->sc_flags |= IWL2100_F_ZERO_CMD;
 	wakeup(sc);
 back:
 	iwl2100_rxdesc_setup(sc, i);
@@ -3016,10 +3076,14 @@ iwl2100_scanend_dispatch(struct netmsg *nmsg)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		goto reply;
+
 	if (ifp->if_flags & IFF_RUNNING) {
 		ieee80211_end_scan(ic);
 		sc->sc_flags &= ~IWL2100_F_SCANNING;
 	}
+reply:
 	lwkt_replymsg(&nmsg->nm_lmsg, 0);
 }
 
@@ -3369,6 +3433,9 @@ iwl2100_restart_dispatch(struct netmsg *nmsg)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		goto reply;
+
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		goto reply;
 
@@ -3419,7 +3486,7 @@ reply:
 static void
 iwl2100_restart(struct iwl2100_softc *sc)
 {
-	if ((sc->sc_flags & IWL2100_F_RESTARTING) == 0) {
+	if ((sc->sc_flags & (IWL2100_F_RESTARTING | IWL2100_F_DETACH)) == 0) {
 		struct iwlmsg *msg = &sc->sc_restart_msg;
 		struct lwkt_msg *lmsg = &msg->iwlm_nmsg.nm_lmsg;
 
@@ -3442,6 +3509,9 @@ iwl2100_bmiss_dispatch(struct netmsg *nmsg)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		goto reply;
+
 	if (ifp->if_flags & IFF_RUNNING) {
 		/*
 		 * Fake a ic_bmiss_count to make sure that
@@ -3450,6 +3520,7 @@ iwl2100_bmiss_dispatch(struct netmsg *nmsg)
 		ic->ic_bmiss_count = ic->ic_bmiss_max;
 		ieee80211_beacon_miss(ic);
 	}
+reply:
 	lwkt_replymsg(&nmsg->nm_lmsg, 0);
 }
 
@@ -3460,6 +3531,9 @@ iwl2100_restart_bmiss(void *xsc)
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
 	lwkt_serialize_enter(ifp->if_serializer);
+
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		goto back;
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		goto back;
@@ -3481,6 +3555,9 @@ iwl2100_ibss_bssid(void *xsc)
 	struct ifnet *ifp = &ic->ic_if;
 
 	lwkt_serialize_enter(ifp->if_serializer);
+
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		goto back;
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		goto back;
@@ -3508,13 +3585,12 @@ back:
 }
 
 static void
-iwl2100_error(struct iwl2100_softc *sc)
+iwl2100_reinit(struct iwl2100_softc *sc)
 {
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	uint32_t error_info;
 
-	error_info = IND_READ_4(sc, IWL2100_IND_ERROR_INFO);
-	IND_READ_4(sc, error_info & IWL2100_IND_ERRORADDR_MASK);
+	callout_stop(&sc->sc_restart_bmiss);
+	callout_stop(&sc->sc_ibss);
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	ifp->if_timer = 0;
@@ -3522,15 +3598,17 @@ iwl2100_error(struct iwl2100_softc *sc)
 	sc->sc_flags &= ~IWL2100_F_INITED;
 	sc->sc_tx_timer = 0;
 
-	callout_stop(&sc->sc_restart_bmiss);
-	callout_stop(&sc->sc_ibss);
-
 	/* Mark error happened, and wake up the pending command */
 	sc->sc_flags |= IWL2100_F_ERROR;
 	wakeup(sc);
 
-	/* Schedule complete initialization, i.e. blow away current state */
-	iwlmsg_send(&sc->sc_reinit_msg, &sc->sc_thread_port);
+	if ((sc->sc_flags & IWL2100_F_DETACH) == 0) {
+		/*
+		 * Schedule complete initialization,
+		 * i.e. blow away current state
+		 */
+		iwlmsg_send(&sc->sc_reinit_msg, &sc->sc_thread_port);
+	}
 }
 
 static void
@@ -3538,15 +3616,33 @@ iwl2100_reinit_dispatch(struct netmsg *nmsg)
 {
 	struct iwlmsg *msg = (struct iwlmsg *)nmsg;
 	struct iwl2100_softc *sc = msg->iwlm_softc;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
-	ASSERT_SERIALIZED(sc->sc_ic.ic_if.if_serializer);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/*
 	 * NOTE: Reply ASAP, so reinit msg could be used if error intr
 	 * happened again during following iwl2100_init()
 	 */
 	lwkt_replymsg(&nmsg->nm_lmsg, 0);
-	iwl2100_init(sc);
+
+	if (sc->sc_flags & IWL2100_F_DETACH)
+		return;
+
+	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) == IFF_UP)
+		iwl2100_init(sc);
+}
+
+static void
+iwl2100_reinit_callout(void *xsc)
+{
+	struct iwl2100_softc *sc = xsc;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	if ((sc->sc_flags & IWL2100_F_DETACH) == 0)
+		iwl2100_reinit(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void
@@ -3554,4 +3650,12 @@ iwl2100_chan_change(struct iwl2100_softc *sc, const struct ieee80211_channel *c)
 {
 	sc->sc_tx_th.wt_chan_freq = sc->sc_rx_th.wr_chan_freq =
 		htole16(c->ic_freq);
+}
+
+static void
+iwl2100_stop_callouts(struct iwl2100_softc *sc)
+{
+	callout_stop(&sc->sc_restart_bmiss);
+	callout_stop(&sc->sc_ibss);
+	callout_stop(&sc->sc_reinit);
 }
