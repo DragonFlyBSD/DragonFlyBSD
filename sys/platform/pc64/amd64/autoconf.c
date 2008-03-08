@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/autoconf.c,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/autoconf.c,v 1.2 2008/03/08 07:50:49 sephe Exp $
  */
 
 /*
@@ -490,7 +490,11 @@ pxe_setup_nfsdiskless(void)
 	ifa = NULL;
 	ifp = TAILQ_FIRST(&ifnet);
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+		struct ifaddr_container *ifac;
+
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			ifa = ifac->ifa;
+
 			if ((ifa->ifa_addr->sa_family == AF_LINK) &&
 			    (sdl = ((struct sockaddr_dl *)ifa->ifa_addr))) {
 				if ((sdl->sdl_type == ourdl.sdl_type) &&

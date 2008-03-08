@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.61 2008/03/07 11:34:19 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.62 2008/03/08 07:50:49 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -416,12 +416,12 @@ if_detach(struct ifnet *ifp)
 
 		ifa = TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa;
 		KASSERT(ifa->ifa_addr->sa_family == AF_LINK,
-			("non-link ifaddr is left on if_addrhead"));
+			("non-link ifaddr is left on if_addrheads"));
 
 		ifa_ifunlink(ifa, ifp);
 		ifa_destroy(ifa);
 		KASSERT(TAILQ_EMPTY(&ifp->if_addrheads[mycpuid]),
-			("there are still ifaddrs left on if_addrhead"));
+			("there are still ifaddrs left on if_addrheads"));
 	}
 
 #ifdef INET

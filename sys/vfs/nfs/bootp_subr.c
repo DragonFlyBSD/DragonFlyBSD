@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.25 2008/03/07 11:34:21 sephe Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.26 2008/03/08 07:50:49 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -392,13 +392,16 @@ void
 bootpboot_p_iflist(void)
 {
 	struct ifnet *ifp;
-	struct ifaddr *ifa;
+	struct ifaddr_container *ifac;
 	
 	kprintf("Interface list:\n");
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
 			if (ifa->ifa_addr->sa_family == AF_INET)
 				bootpboot_p_if(ifp, ifa);
+		}
 	}
 }
 #endif /* defined(BOOTP_DEBUG) */
