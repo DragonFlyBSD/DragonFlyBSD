@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.26 2008/01/11 11:59:41 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.27 2008/03/08 07:59:19 sephe Exp $
  */
 
 /*
@@ -590,30 +590,6 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	crit_enter();
 
 	switch (cmd) {
-	case SIOCSIFADDR:
-		ifp->if_flags |= IFF_UP;
-
-		switch (ifa->ifa_addr->sa_family) {
-#ifdef INET
-		case AF_INET:
-			arp_ifinit(&ifv->ifv_if, ifa);
-			break;
-#endif
-		default:
-			break;
-		}
-		break;
-
-	case SIOCGIFADDR:
-		{
-			struct sockaddr *sa;
-
-			sa = (struct sockaddr *) &ifr->ifr_data;
-			bcopy(((struct arpcom *)ifp->if_softc)->ac_enaddr,
-			      (caddr_t) sa->sa_data, ETHER_ADDR_LEN);
-		}
-		break;
-
 	case SIOCGIFMEDIA:
 		if (ifv->ifv_p != NULL) {
 			lwkt_serialize_exit(ifp->if_serializer);
@@ -640,19 +616,6 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	case SIOCSIFMEDIA:
 		error = EINVAL;
-		break;
-
-	case SIOCSIFMTU:
-		/*
-		 * Set the interface MTU.
-		 * This is bogus. The underlying interface might support
-	 	 * jumbo frames.
-		 */
-		if (ifr->ifr_mtu > ETHERMTU) {
-			error = EINVAL;
-		} else {
-			ifp->if_mtu = ifr->ifr_mtu;
-		}
 		break;
 
 	case SIOCSETVLAN:
@@ -699,12 +662,15 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			error = EINVAL;
 		}
 		break;
+
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		error = vlan_setmulti(ifp);
 		break;
+
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, cmd, data);
+		break;
 	}
 
 	crit_exit();
