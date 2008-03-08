@@ -24,22 +24,26 @@
 # SUCH DAMAGE.
 # 
 # $FreeBSD: src/tools/tools/pciid/mk_pci_vendors.pl,v 1.5 2004/06/28 11:46:48 mux Exp $
-# $DragonFly: src/tools/tools/pciid/mk_pci_vendors.pl,v 1.1 2006/06/15 13:37:35 swildner Exp $
+# $DragonFly: src/tools/tools/pciid/mk_pci_vendors.pl,v 1.2 2008/03/08 20:17:38 swildner Exp $
 #
-# usage: mk_pci_vendors [-lq] [-p pcidevs.txt] [-v vendors.txt]
+# usage: mk_pci_vendors [-lq] [-p pcidevs.txt] [-v vendors.txt] [-x pci.ids]
 #
-# Generate src/share/misc/pci_vendors from the Hart and Boemler lists,
+# Generate src/share/misc/pci_vendors from the Hart, Boemler and Mares lists,
 # currently available at:
 #
 # Boemler:	http://www.pcidatabase.com/reports.php?type=tab-delimeted
 # Hart:		http://members.datafast.net.au/dft0802/downloads/pcidevs.txt
+# Mares:	http://pciids.sourceforge.net/pci.ids
 #
-# -l	Where an entry is found in both input lists, use the entry with
-#	the longest description.  The default is for the Boemler file to
-#	override the Hart file.
+# -l	Where an entry is found in the Boemler and the Hart lists, use the
+#	entry with the longest description.  The -l option doesn't affect
+#	the Mares list whose entries are only used if they are new.  The
+#	default is for the Boemler file to override the Hart file to
+#	override the Mares file.
 # -q	Do not print diagnostics.
 # -p	Specify the pathname of the Hart file. (Default ./pcidevs.txt)
 # -v	Specify the pathname of the Boemler file. (Default ./vendors.txt)
+# -x	Specify the pathname of the Mares file. (Default ./pci.ids)
 #
 use strict;
 use Getopt::Std;
@@ -47,6 +51,7 @@ use Getopt::Std;
 my $PROGNAME = 'mk_pci_vendors';
 my $VENDORS_FILE = 'vendors.txt';
 my $PCIDEVS_FILE = 'pcidevs.txt';
+my $PCIIDS_FILE = 'pci.ids';
 
 my $cur_vendor;
 my %opts;
@@ -64,9 +69,10 @@ my $W_PCIDEVS = 2;
 sub clean_descr($);
 sub vendors_parse($\$\$);
 sub pcidevs_parse($\$\$);
+sub pciids_parse($\$\$);
 
-if (not getopts('lp:qv:', \%opts) or @ARGV > 0) {
-	print STDERR "usage: $PROGNAME [-lq] [-p pcidevs.txt] [-v vendors.txt]\n";
+if (not getopts('lp:qv:x:', \%opts) or @ARGV > 0) {
+	print STDERR "usage: $PROGNAME [-lq] [-p pcidevs.txt] [-v vendors.txt] [-x pci.ids]\n";
 	exit 1;
 }
 
@@ -75,6 +81,9 @@ if (not defined($opts{p})) {
 }
 if (not defined($opts{v})) {
 	$opts{v} = $VENDORS_FILE;
+}
+if (not defined($opts{x})) {
+	$opts{x} = $PCIIDS_FILE;
 }
 foreach (('l', 'q')) {
 	if (not exists($opts{$_})) {
@@ -154,6 +163,24 @@ while ($line = <PCIDEVS>) {
 }
 close(PCIDEVS);
 
+open(PCIIDS, "< $opts{x}") or
+    die "$PROGNAME: $opts{x}: $!\n";
+while ($line = <PCIIDS>) {
+	chomp($line);
+	$rv = pciids_parse($line, $id, $descr);
+	if ($rv == $IS_VENDOR) {
+		if (not exists($vendors{$id})) {
+			$vendors{$id} = [$descr, {}];
+		}
+	$cur_vendor = $id;
+	} elsif ($rv == $IS_DEVICE) {
+		if (not exists(${$vendors{$cur_vendor}->[$V_DEVSL]}{$id})) {
+			${$vendors{$cur_vendor}->[$V_DEVSL]}{$id} = $descr;
+		}
+	}
+}
+close(PCIIDS);
+
 $optlused = $opts{l} ? "with" : "without";
 print <<HEADER_END;
 ; \$DragonFly\$
@@ -163,6 +190,7 @@ print <<HEADER_END;
 ;
 ;	http://www.pcidatabase.com/reports.php?type=tab-delimeted
 ;	http://members.datafast.net.au/dft0802/downloads/pcidevs.txt
+;	http://pciids.sourceforge.net/pci.ids
 ;
 ; Manual edits on this file will be lost!
 ;
@@ -229,6 +257,34 @@ sub pcidevs_parse($\$\$)
 	} elsif (not $opts{q} and
 	    $line !~ /^\s*$/ and $line !~ /^[;ORSX]/) {
 		print STDERR "$PROGNAME: ignored Hart: $line\n";
+	}
+
+	return 0;
+}
+
+# Parse a line from the Mares file and place the ID and description
+# in the scalars referenced by $id_ref and $descr_ref.
+#
+# On success, returns $IS_VENDOR if the line represents a vendor entity
+# or $IS_DEVICE if the line represents a device entity.
+#
+# Returns 0 on failure.
+#
+sub pciids_parse($\$\$)
+{
+	my ($line, $id_ref, $descr_ref) = @_;
+	my $descr;
+
+	if ($line =~ /^([A-Fa-f0-9]{4})  (.+?)$/) {
+		($$id_ref, $$descr_ref) = (uc($1), clean_descr($2));
+		return $IS_VENDOR;
+	} elsif ($line =~ /^\t([A-Fa-f0-9]{4})  (.+?)$/) {
+		($$id_ref, $$descr_ref) = (uc($1), clean_descr($2));
+		return $IS_DEVICE;
+	} elsif (not $opts{q} and
+	    $line !~ /^\s*$/ and $line !~ /^#/) {
+		chomp($line);
+		print STDERR "$PROGNAME: ignored Mares: $line\n";
 	}
 
 	return 0;
