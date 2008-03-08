@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.30 2008/03/07 11:34:20 sephe Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.31 2008/03/08 11:16:31 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -4905,7 +4905,7 @@ sppp_set_ip_addr(struct sppp *sp, u_long src)
 {
 	STDDCL;
 	struct ifaddr_container *ifac;
-	struct ifaddr *ifa;
+	struct ifaddr *ifa = NULL;
 	struct sockaddr_in *si;
 	struct in_ifaddr *ia;
 
