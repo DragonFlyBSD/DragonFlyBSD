@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cut.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/cut/cut.c,v 1.9.2.3 2001/07/30 09:59:16 dd Exp $
- * $DragonFly: src/usr.bin/cut/cut.c,v 1.4 2007/11/06 05:50:23 hsu Exp $
+ * $DragonFly: src/usr.bin/cut/cut.c,v 1.5 2008/03/08 23:22:12 swildner Exp $
  */
 
 #include <ctype.h>
@@ -55,11 +55,10 @@ int	fflag;
 int	sflag;
 int	wflag;
 
-void	c_cut (FILE *, const char *);
-void	f_cut (FILE *, const char *);
-void	get_list (char *);
-int	main (int, char **);
-static 	void usage (void);
+static void	c_cut(FILE *, const char *);
+static void	f_cut(FILE *, const char *);
+static void	get_list(char *);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -129,7 +128,7 @@ size_t autostart, autostop, maxval;
 
 char positions[_POSIX2_LINE_MAX + 1];
 
-void
+static void
 get_list(char *list)
 {
 	size_t setautostart, start, stop;
@@ -186,7 +185,7 @@ get_list(char *list)
 }
 
 /* ARGSUSED */
-void
+static void
 c_cut(FILE *fp, const char *fname)
 {
 	int ch, col;
@@ -215,7 +214,7 @@ c_cut(FILE *fp, const char *fname)
 	}
 }
 
-int
+static int
 is_delim(int ch)
 {
 	if (wflag) {
@@ -228,7 +227,7 @@ is_delim(int ch)
 	return 0;
 }
 
-void
+static void
 f_cut(FILE *fp, const char *fname __unused)
 {
 	int ch, field, isdelim;
