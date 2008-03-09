@@ -1,10 +1,9 @@
 # $FreeBSD: src/sys/modules/if_vlan/Makefile,v 1.1.2.1 2001/12/04 20:09:32 brooks Exp $
-# $DragonFly: src/sys/net/vlan/Makefile,v 1.4 2006/10/25 20:56:03 dillon Exp $
-
-.PATH: ${.CURDIR}/../../net
+# $DragonFly: src/sys/net/vlan/Makefile,v 1.5 2008/03/09 10:46:49 sephe Exp $
 
 KMOD=	if_vlan
-SRCS=	if_vlan.c opt_inet.h
+SRCS=	if_vlan.c
+SRCS+=	opt_inet.h
 SRCS+=	device_if.h bus_if.h
 CFLAGS+= -DNVLAN=0
 NOMAN=
