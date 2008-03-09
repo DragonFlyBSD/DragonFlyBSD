@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.77 2008/03/08 22:00:03 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.78 2008/03/09 21:09:25 swildner Exp $
 #
 
 #########################################################################
@@ -266,6 +266,7 @@ mkiso:
 		-R -J -V DragonFly -o ${ISOFILE} . )
 
 clean:
+	-umount ${ISOROOT}/tmp/packages
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
 	if [ -d ${NRLOBJDIR}/nrelease ]; then rm -rf ${NRLOBJDIR}/nrelease; fi
