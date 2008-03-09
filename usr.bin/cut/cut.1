@@ -34,7 +34,7 @@
 .\"
 .\"     @(#)cut.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/cut/cut.1,v 1.9.2.5 2003/05/26 12:35:35 hmp Exp $
-.\" $DragonFly: src/usr.bin/cut/cut.1,v 1.3 2007/11/06 05:50:23 hsu Exp $
+.\" $DragonFly: src/usr.bin/cut/cut.1,v 1.4 2008/03/09 16:06:08 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt CUT 1
@@ -118,7 +118,8 @@ Do not split multi-byte characters.
 Suppress lines with no field delimiter characters.
 Unless specified, lines with no delimiters are passed through unmodified.
 .It Fl w
-Use whitespace (spaces and tabs) as the delimiter.  Consecutive spaces and tabs count as one single field separator.
+Use whitespace (spaces and tabs) as the delimiter.
+Consecutive spaces and tabs count as one single field separator.
 .El
 .Pp
 The
