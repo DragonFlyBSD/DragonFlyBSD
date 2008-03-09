@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cut.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/cut/cut.c,v 1.9.2.3 2001/07/30 09:59:16 dd Exp $
- * $DragonFly: src/usr.bin/cut/cut.c,v 1.5 2008/03/08 23:22:12 swildner Exp $
+ * $DragonFly: src/usr.bin/cut/cut.c,v 1.6 2008/03/09 16:05:39 swildner Exp $
  */
 
 #include <ctype.h>
@@ -58,6 +58,7 @@ int	wflag;
 static void	c_cut(FILE *, const char *);
 static void	f_cut(FILE *, const char *);
 static void	get_list(char *);
+static int	is_delim(int);
 static void	usage(void);
 
 int
