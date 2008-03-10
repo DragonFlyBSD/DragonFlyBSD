@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.25 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.26 2008/03/10 08:39:53 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -998,7 +998,7 @@ issue_cx28975_cmd(struct sbsh_softc *sc, u_int8_t cmd,
 			u_int8_t *data, u_int8_t size)
 {
 	volatile struct cx28975_cmdarea  *p = sc->cmdp;
-	u_int8_t  *databuf = p->in_data;
+	volatile u_int8_t  *databuf = p->in_data;
 	int  i;
 
 	u_int8_t  cksum = 0;
