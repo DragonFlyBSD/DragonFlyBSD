@@ -27,21 +27,22 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan_ether.c,v 1.1 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan_ether.c,v 1.2 2008/03/10 11:44:57 sephe Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mbuf.h>
 #include <sys/serialize.h>
 
+#include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/ifq_var.h>
-#include <net/vlan/if_vlan_var.h>
 #include <net/netmsg.h>
 
-void	vlan_start_dispatch(struct netmsg *);
+#include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 void
 vlan_start_dispatch(struct netmsg *nmsg)
@@ -120,4 +121,26 @@ vlan_start_dispatch(struct netmsg *nmsg)
 	ifq_handoff(ifp, m, &pktattr);
 back:
 	lwkt_serialize_exit(ifp->if_serializer);
+}
+
+void
+vlan_ether_ptap(struct bpf_if *bp, struct mbuf *m, uint16_t vlantag)
+{
+	const struct ether_header *eh;
+	struct ether_vlan_header evh;
+
+	KASSERT(m->m_len >= ETHER_HDR_LEN,
+		("ether header is not contiguous!\n"));
+
+	eh = mtod(m, const struct ether_header *);
+	m_adj(m, ETHER_HDR_LEN);
+
+	bcopy(eh, &evh, 2 * ETHER_ADDR_LEN);
+	evh.evl_encap_proto = htons(ETHERTYPE_VLAN);
+	evh.evl_tag = htons(vlantag);
+	evh.evl_proto = eh->ether_type;
+	bpf_ptap(bp, m, &evh, ETHER_HDR_LEN + EVL_ENCAPLEN);
+
+	/* XXX assumes data was left intact */
+	M_PREPEND(m, ETHER_HDR_LEN, MB_WAIT);
 }

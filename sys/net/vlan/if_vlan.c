@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.28 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.29 2008/03/10 11:44:57 sephe Exp $
  */
 
 /*
@@ -81,13 +81,15 @@
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/if_clone.h>
-#include <net/vlan/if_vlan_var.h>
 #include <net/netmsg2.h>
 
 #ifdef INET
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #endif
+
+#include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 struct vlan_mc_entry {
 	struct ether_addr		mc_addr;
@@ -132,8 +134,6 @@ static	int vlan_config(struct ifvlan *ifv, struct ifnet *p);
 
 struct if_clone vlan_cloner = IF_CLONE_INITIALIZER("vlan", vlan_clone_create,
     vlan_clone_destroy, NVLAN, IF_MAXUNIT);
-
-void	vlan_start_dispatch(struct netmsg *);
 
 /*
  * Program our multicast filter. What we're actually doing is
@@ -344,7 +344,7 @@ vlan_start(struct ifnet *ifp)
 }
 
 static int
-vlan_input_tag( struct mbuf *m, uint16_t t)
+vlan_input_tag(struct mbuf *m, uint16_t t)
 {
 	struct bpf_if *bif;
 	struct ifvlan *ifv;
@@ -358,20 +358,8 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 	 * Fake up a header and send the packet to the physical interface's
 	 * bpf tap if active.
 	 */
-	if ((bif = rcvif->if_bpf) != NULL) {
-		struct ether_header *eh;
-		struct ether_vlan_header evh;
-
-		eh = mtod(m, struct ether_header *);
-		m_adj(m, ETHER_HDR_LEN);
-		bcopy(eh, &evh, 2*ETHER_ADDR_LEN);
-		evh.evl_encap_proto = htons(ETHERTYPE_VLAN);
-		evh.evl_tag = htons(t);
-		evh.evl_proto = eh->ether_type;
-		bpf_ptap(bif, m, &evh, ETHER_HDR_LEN + EVL_ENCAPLEN);
-		/* XXX assumes data was left intact */
-		M_PREPEND(m, ETHER_HDR_LEN, MB_WAIT); 
-	}
+	if ((bif = rcvif->if_bpf) != NULL)
+		vlan_ether_ptap(bif, m, t);
 
 	for (ifv = LIST_FIRST(&ifv_list); ifv != NULL;
 	    ifv = LIST_NEXT(ifv, ifv_list)) {
