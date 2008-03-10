@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.207 2008/03/09 09:56:02 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.208 2008/03/10 10:47:57 sephe Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -734,6 +734,7 @@ net/stf/if_stf.c		optional stf
 net/tun/if_tun.c		optional tun
 net/tap/if_tap.c		optional tap
 net/vlan/if_vlan.c		optional vlan
+net/vlan/if_vlan_ether.c	optional ether
 net/net_osdep.c		standard
 net/netisr.c		standard
 net/radix.c		standard

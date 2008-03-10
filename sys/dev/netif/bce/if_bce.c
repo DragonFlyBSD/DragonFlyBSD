@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.1 2007/05/26 08:50:49 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.2 2008/03/10 10:47:57 sephe Exp $
  */
 
 /*
@@ -4320,13 +4320,9 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	}
 
 	/* Transfer any VLAN tags to the bd. */
-	if ((m0->m_flags & (M_PROTO1 | M_PKTHDR)) == (M_PROTO1 | M_PKTHDR) &&
-	    m0->m_pkthdr.rcvif != NULL &&
-	    m0->m_pkthdr.rcvif->if_type == IFT_L2VLAN) {
-	    	struct ifvlan *ifv = m0->m_pkthdr.rcvif->if_softc;
-
+	if (m0->m_flags & M_VLANTAG) {
 		flags |= TX_BD_FLAGS_VLAN_TAG;
-		vlan_tag = ifv->ifv_tag;
+		vlan_tag = m0->m_pkthdr.ether_vlantag;
 	}
 
 	prod = sc->tx_prod;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.88 2007/12/02 07:41:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.89 2008/03/10 10:47:57 sephe Exp $
  *
  */
 
@@ -2568,17 +2568,11 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 {
 	struct bge_tx_bd *d = NULL;
 	uint16_t csum_flags = 0;
-	struct ifvlan *ifv = NULL;
 	struct bge_dmamap_arg ctx;
 	bus_dma_segment_t segs[BGE_NSEG_NEW];
 	bus_dmamap_t map;
 	int error, maxsegs, idx, i;
 	struct mbuf *m_head = *m_head0;
-
-	if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
-	    m_head->m_pkthdr.rcvif != NULL &&
-	    m_head->m_pkthdr.rcvif->if_type == IFT_L2VLAN)
-		ifv = m_head->m_pkthdr.rcvif->if_softc;
 
 	if (m_head->m_pkthdr.csum_flags) {
 		if (m_head->m_pkthdr.csum_flags & CSUM_IP)
@@ -2687,9 +2681,9 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 
 	/* Set vlan tag to the first segment of the packet. */
 	d = &sc->bge_ldata.bge_tx_ring[*txidx];
-	if (ifv != NULL) {
+	if (m_head->m_flags & M_VLANTAG) {
 		d->bge_flags |= BGE_TXBDFLAG_VLAN_TAG;
-		d->bge_vlan_tag = ifv->ifv_tag;
+		d->bge_vlan_tag = m_head->m_pkthdr.ether_vlantag;
 	} else {
 		d->bge_vlan_tag = 0;
 	}

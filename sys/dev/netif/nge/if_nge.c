@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.44 2008/01/05 14:02:37 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.45 2008/03/10 10:47:57 sephe Exp $
  */
 
 /*
@@ -1529,12 +1529,6 @@ nge_encap(struct nge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 	struct nge_desc *f = NULL;
 	struct mbuf *m;
 	int frag, cur, cnt = 0;
-	struct ifvlan *ifv = NULL;
-
-	if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
-	    m_head->m_pkthdr.rcvif != NULL &&
-	    m_head->m_pkthdr.rcvif->if_type == IFT_L2VLAN)
-		ifv = m_head->m_pkthdr.rcvif->if_softc;
 
 	/*
  	 * Start packing the mbufs in this chain into
@@ -1576,9 +1570,9 @@ nge_encap(struct nge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 			    NGE_TXEXTSTS_UDPCSUM;
 	}
 
-	if (ifv != NULL) {
+	if (m_head->m_flags & M_VLANTAG) {
 		sc->nge_ldata->nge_tx_list[cur].nge_extsts |=
-			(NGE_TXEXTSTS_VLANPKT|ifv->ifv_tag);
+			(NGE_TXEXTSTS_VLANPKT|m_head->m_pkthdr.ether_vlantag);
 	}
 
 	sc->nge_ldata->nge_tx_list[cur].nge_mbuf = m_head;

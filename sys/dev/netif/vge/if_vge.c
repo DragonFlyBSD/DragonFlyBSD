@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vge/if_vge.c,v 1.24 2006/02/14 12:44:56 glebius Exp $
- * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.5 2007/08/14 13:30:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.6 2008/03/10 10:47:57 sephe Exp $
  */
 
 /*
@@ -1639,15 +1639,10 @@ vge_encap(struct vge_softc *sc, struct mbuf *m_head, int idx)
 	/*
 	 * Set up hardware VLAN tagging.
 	 */
-	if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
-	    m_head->m_pkthdr.rcvif != NULL &&
-	    m_head->m_pkthdr.rcvif->if_type == IFT_L2VLAN) {
-		struct ifvlan *ifv = m_head->m_pkthdr.rcvif->if_softc;
-
-		if (ifv != NULL) {
-			sc->vge_ldata.vge_tx_list[idx].vge_ctl |=
-				htole32(htons(ifv->ifv_tag) | VGE_TDCTL_VTAG);
-		}
+	if (m_head->m_flags & M_VLANTAG) {
+		sc->vge_ldata.vge_tx_list[idx].vge_ctl |=
+			htole32(htons(m_head->m_pkthdr.ether_vlantag) |
+				VGE_TDCTL_VTAG);
 	}
 
 	sc->vge_ldata.vge_tx_list[idx].vge_sts |= htole32(VGE_TDSTS_OWN);

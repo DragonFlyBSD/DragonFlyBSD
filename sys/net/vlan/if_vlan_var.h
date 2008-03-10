@@ -27,33 +27,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan_var.h,v 1.5.2.3 2001/12/04 20:01:54 brooks Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan_var.h,v 1.3 2006/10/23 21:50:33 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan_var.h,v 1.4 2008/03/10 10:47:57 sephe Exp $
  */
 
 #ifndef _NET_IF_VLAN_VAR_H_
 #define	_NET_IF_VLAN_VAR_H_
-
-#ifdef _KERNEL
-struct vlan_mc_entry {
-	struct ether_addr		mc_addr;
-	SLIST_ENTRY(vlan_mc_entry)	mc_entries;
-};
-
-struct	ifvlan {
-	struct	arpcom ifv_ac;	/* make this an interface */
-	struct	ifnet *ifv_p;	/* parent inteface of this vlan */
-	struct	ifv_linkmib {
-		int	ifvm_parent;
-		u_int16_t ifvm_proto; /* encapsulation ethertype */
-		u_int16_t ifvm_tag; /* tag to apply on packets leaving if */
-	}	ifv_mib;
-	SLIST_HEAD(__vlan_mchead, vlan_mc_entry)	vlan_mc_listhead;
-	LIST_ENTRY(ifvlan) ifv_list;
-	struct resource *r_unit;	/* resource allocated for this unit */
-};
-#define	ifv_if	ifv_ac.ac_if
-#define	ifv_tag	ifv_mib.ifvm_tag
-#endif /* _KERNEL */
 
 struct	ether_vlan_header {
 	u_char	evl_dhost[ETHER_ADDR_LEN];

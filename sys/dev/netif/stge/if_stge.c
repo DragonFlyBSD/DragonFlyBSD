@@ -1,6 +1,6 @@
 /*	$NetBSD: if_stge.c,v 1.32 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/stge/if_stge.c,v 1.2 2006/08/12 01:21:36 yongari Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.2 2007/08/14 13:30:35 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.3 2008/03/10 10:47:57 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -1270,15 +1270,8 @@ stge_encap(struct stge_softc *sc, struct mbuf **m_head)
 	sc->sc_cdata.stge_tx_prod = (si + 1) % STGE_TX_RING_CNT;
 
 	/* Check if we have a VLAN tag to insert. */
-	if ((m->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
-	    m->m_pkthdr.rcvif != NULL &&
-	    m->m_pkthdr.rcvif->if_type == IFT_L2VLAN) {
-	    	struct ifvlan *ifv;
-
-		ifv = m->m_pkthdr.rcvif->if_softc;
-		if (ifv != NULL)
-			tfc |= TFD_VLANTagInsert | TFD_VID(ifv->ifv_tag);
-	}
+	if (m->m_flags & M_VLANTAG)
+		tfc |= TFD_VLANTagInsert | TFD_VID(m->m_pkthdr.ether_vlantag);
 	tfd->tfd_control = htole64(tfc);
 
 	/* Update Tx Queue. */

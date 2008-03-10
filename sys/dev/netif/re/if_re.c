@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.36 2007/08/14 13:30:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.37 2008/03/10 10:47:57 sephe Exp $
  */
 
 /*
@@ -1934,14 +1934,10 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag
 	 * transmission attempt.
 	 */
 
-	if ((m->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
-	    m->m_pkthdr.rcvif != NULL &&
-	    m->m_pkthdr.rcvif->if_type == IFT_L2VLAN) {
-	    	struct ifvlan *ifv;
-		ifv = m->m_pkthdr.rcvif->if_softc;
-		if (ifv != NULL)
-			sc->re_ldata.re_tx_list[*idx].re_vlanctl =
-			    htole32(htobe16(ifv->ifv_tag) | RE_TDESC_VLANCTL_TAG);
+	if (m->m_flags & M_VLANTAG) {
+		sc->re_ldata.re_tx_list[*idx].re_vlanctl =
+		    htole32(htobe16(m->m_pkthdr.ether_vlantag) |
+		    	    RE_TDESC_VLANCTL_TAG);
 	}
 
 	/* Transfer ownership of packet to the chip. */

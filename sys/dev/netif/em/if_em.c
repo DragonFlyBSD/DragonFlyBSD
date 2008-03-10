@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.63 2008/02/05 11:12:27 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.64 2008/03/10 10:47:57 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -1394,7 +1394,6 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 	uint32_t txd_upper = 0, txd_lower = 0, txd_used = 0, txd_saved = 0;
 	int i, j, error, last = 0;
 
-	struct ifvlan *ifv = NULL;
 	struct em_q q;
 	struct em_buffer *tx_buffer = NULL, *tx_buffer_first;
 	bus_dmamap_t map;
@@ -1442,12 +1441,6 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 		em_transmit_checksum_setup(adapter,  m_head,
 					   &txd_upper, &txd_lower);
 	}
-
-	/* Find out if we are in vlan mode */
-	if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
-	    m_head->m_pkthdr.rcvif != NULL &&
-	    m_head->m_pkthdr.rcvif->if_type == IFT_L2VLAN)
-		ifv = m_head->m_pkthdr.rcvif->if_softc;
 
 	i = adapter->next_avail_tx_desc;
 	if (adapter->pcix_82544)
@@ -1514,9 +1507,11 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 	else
 		adapter->num_tx_desc_avail -= q.nsegs;
 
-	if (ifv != NULL) {
+	/* Find out if we are in vlan mode */
+	if (m_head->m_flags & M_VLANTAG) {
 		/* Set the vlan id */
-		current_tx_desc->upper.fields.special = htole16(ifv->ifv_tag);
+		current_tx_desc->upper.fields.special =
+			htole16(m_head->m_pkthdr.ether_vlantag);
 
 		/* Tell hardware to add tag */
 		current_tx_desc->lower.data |= htole32(E1000_TXD_CMD_VLE);

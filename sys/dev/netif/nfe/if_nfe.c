@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.17 2007/09/10 14:08:28 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.18 2008/03/10 10:47:57 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -1081,14 +1081,8 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	}
 
 	/* setup h/w VLAN tagging */
-	if ((m0->m_flags & (M_PROTO1 | M_PKTHDR)) == (M_PROTO1 | M_PKTHDR) &&
-	    m0->m_pkthdr.rcvif != NULL &&
-	    m0->m_pkthdr.rcvif->if_type == IFT_L2VLAN) {
-		struct ifvlan *ifv = m0->m_pkthdr.rcvif->if_softc;
-
-		if (ifv != NULL)
-			vtag = NFE_TX_VTAG | htons(ifv->ifv_tag);
-	}
+	if (m0->m_flags & M_VLANTAG)
+		vtag = m0->m_pkthdr.ether_vlantag;
 
 	if (sc->arpcom.ac_if.if_capenable & IFCAP_TXCSUM) {
 		if (m0->m_pkthdr.csum_flags & CSUM_IP)

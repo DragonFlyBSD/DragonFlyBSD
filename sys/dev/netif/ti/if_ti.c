@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.48 2008/01/05 14:02:37 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.49 2008/03/10 10:47:57 sephe Exp $
  */
 
 /*
@@ -1817,14 +1817,13 @@ ti_encap(struct ti_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 {
 	struct ti_tx_desc *f = NULL;
 	struct mbuf *m;
-	struct ifvlan *ifv = NULL;
 	uint32_t cnt = 0, cur, frag;
-	uint16_t csum_flags = 0;
+	uint16_t csum_flags = 0, vlan_tag = 0, vlan_flag = 0;
 
-	if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
-	    m_head->m_pkthdr.rcvif != NULL &&
-	    m_head->m_pkthdr.rcvif->if_type == IFT_L2VLAN)
-		ifv = m_head->m_pkthdr.rcvif->if_softc;
+	if (m_head->m_flags & M_VLANTAG) {
+		vlan_tag = m_head->m_pkthdr.ether_vlantag;
+		vlan_flag = TI_BDFLAG_VLAN_TAG;
+	}
 
 	m = m_head;
 	cur = frag = *txidx;
@@ -1866,14 +1865,8 @@ ti_encap(struct ti_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 				break;
 			TI_HOSTADDR(f->ti_addr) = vtophys(mtod(m, vm_offset_t));
 			f->ti_len = m->m_len;
-			f->ti_flags = csum_flags;
-
-			if (ifv != NULL) {
-				f->ti_flags |= TI_BDFLAG_VLAN_TAG;
-				f->ti_vlan_tag = ifv->ifv_tag & 0xfff;
-			} else {
-				f->ti_vlan_tag = 0;
-			}
+			f->ti_flags = csum_flags | vlan_flag;
+			f->ti_vlan_tag = vlan_tag & 0xfff;
 
 			/*
 			 * Sanity check: avoid coming within 16 descriptors

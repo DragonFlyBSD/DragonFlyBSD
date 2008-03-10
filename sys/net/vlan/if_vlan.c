@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.27 2008/03/08 07:59:19 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.28 2008/03/10 10:47:57 sephe Exp $
  */
 
 /*
@@ -81,12 +81,33 @@
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/if_clone.h>
-#include "if_vlan_var.h"
+#include <net/vlan/if_vlan_var.h>
+#include <net/netmsg2.h>
 
 #ifdef INET
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #endif
+
+struct vlan_mc_entry {
+	struct ether_addr		mc_addr;
+	SLIST_ENTRY(vlan_mc_entry)	mc_entries;
+};
+
+struct	ifvlan {
+	struct	arpcom ifv_ac;	/* make this an interface */
+	struct	ifnet *ifv_p;	/* parent inteface of this vlan */
+	struct	ifv_linkmib {
+		int	ifvm_parent;
+		u_int16_t ifvm_proto; /* encapsulation ethertype */
+		u_int16_t ifvm_tag; /* tag to apply on packets leaving if */
+	}	ifv_mib;
+	SLIST_HEAD(__vlan_mchead, vlan_mc_entry)	vlan_mc_listhead;
+	LIST_ENTRY(ifvlan) ifv_list;
+	struct resource *r_unit;	/* resource allocated for this unit */
+};
+#define	ifv_if	ifv_ac.ac_if
+#define	ifv_tag	ifv_mib.ifvm_tag
 
 #define VLANNAME	"vlan"
 
@@ -111,6 +132,8 @@ static	int vlan_config(struct ifvlan *ifv, struct ifnet *p);
 
 struct if_clone vlan_cloner = IF_CLONE_INITIALIZER("vlan", vlan_clone_create,
     vlan_clone_destroy, NVLAN, IF_MAXUNIT);
+
+void	vlan_start_dispatch(struct netmsg *);
 
 /*
  * Program our multicast filter. What we're actually doing is
@@ -267,17 +290,18 @@ static void
 vlan_start(struct ifnet *ifp)
 {
 	struct ifvlan *ifv;
-	struct ifnet *p;
-	struct ether_vlan_header *evl;
+	struct ifnet *ifp_p;
 	struct mbuf *m;
-	int error;
-	struct altq_pktattr pktattr;
 
 	ifv = ifp->if_softc;
-	p = ifv->ifv_p;
+	ifp_p = ifv->ifv_p;
 
 	ifp->if_flags |= IFF_OACTIVE;
 	for (;;) {
+		struct netmsg_packet *nmp;
+		struct netmsg *nmsg;
+		struct lwkt_port *port;
+
 		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
@@ -287,90 +311,36 @@ vlan_start(struct ifnet *ifp)
 		 * Do not run parent's if_start() if the parent is not up,
 		 * or parent's driver will cause a system crash.
 		 */
-		if ((p->if_flags & (IFF_UP | IFF_RUNNING)) !=
-					(IFF_UP | IFF_RUNNING)) {
+		if ((ifp_p->if_flags & (IFF_UP | IFF_RUNNING)) !=
+		    (IFF_UP | IFF_RUNNING)) {
 			m_freem(m);
 			ifp->if_data.ifi_collisions++;
 			continue;
 		}
 
 		/*
-		 * If ALTQ is enabled on the parent interface, do
-		 * classification; the queueing discipline might
-		 * not require classification, but might require
-		 * the address family/header pointer in the pktattr.
+		 * We need some way to tell the interface where the packet
+		 * came from so that it knows how to find the VLAN tag to
+		 * use, so we set the ether_vlantag in the mbuf packet header
+		 * to our vlan tag.  We also set the M_VLANTAG flag in the
+		 * mbuf to let the parent driver know that the ether_vlantag
+		 * is really valid.
 		 */
-		if (ifq_is_enabled(&p->if_snd))
-			altq_etherclassify(&p->if_snd, m, &pktattr);
+		m->m_pkthdr.ether_vlantag = ifv->ifv_tag;
+		m->m_flags |= M_VLANTAG;
 
-		/*
-		 * If underlying interface can do VLAN tag insertion itself,
-		 * just pass the packet along. However, we need some way to
-		 * tell the interface where the packet came from so that it
-		 * knows how to find the VLAN tag to use, so we set the rcvif 
-		 * in the mbuf header to our ifnet.
-		 *
-		 * Note: we also set the M_PROTO1 flag in the mbuf to let
-		 * the parent driver know that the rcvif pointer is really
-		 * valid. We need to do this because sometimes mbufs will
-		 * be allocated by other parts of the system that contain
-		 * garbage in the rcvif pointer. Using the M_PROTO1 flag
-		 * lets the driver perform a proper sanity check and avoid
-		 * following potentially bogus rcvif pointers off into
-		 * never-never land.
-		 */
-		if (p->if_capenable & IFCAP_VLAN_HWTAGGING) {
-			m->m_pkthdr.rcvif = ifp;
-			m->m_flags |= M_PROTO1;
-		} else {
-			M_PREPEND(m, EVL_ENCAPLEN, MB_DONTWAIT);
-			if (m == NULL) {
-				kprintf("%s: M_PREPEND failed", ifp->if_xname);
-				ifp->if_ierrors++;
-				continue;
-			}
-			/* M_PREPEND takes care of m_len, m_pkthdr.len for us */
+		nmp = &m->m_hdr.mh_netmsg;
+		nmsg = &nmp->nm_netmsg;
 
-			m = m_pullup(m, ETHER_HDR_LEN + EVL_ENCAPLEN);
-			if (m == NULL) {
-				kprintf("%s: m_pullup failed", ifp->if_xname);
-				ifp->if_ierrors++;
-				continue;
-			}
+		netmsg_init(nmsg, &netisr_apanic_rport, 0, vlan_start_dispatch);
+		nmp->nm_packet = m;
+		nmsg->nm_lmsg.u.ms_resultp = ifp_p;
 
-			/*
-			 * Transform the Ethernet header into an Ethernet header
-			 * with 802.1Q encapsulation.
-			 */
-			bcopy(mtod(m, char *) + EVL_ENCAPLEN, mtod(m, char *),
-			      sizeof(struct ether_header));
-			evl = mtod(m, struct ether_vlan_header *);
-			evl->evl_proto = evl->evl_encap_proto;
-			evl->evl_encap_proto = htons(ETHERTYPE_VLAN);
-			evl->evl_tag = htons(ifv->ifv_tag);
-#ifdef DEBUG
-			kprintf("vlan_start: %*D\n", sizeof *evl,
-			    (unsigned char *)evl, ":");
-#endif
-		}
-
-		/*
-		 * Send it, precisely as ether_output() would have.
-		 * We are already running at splimp.
-		 */
-		lwkt_serialize_exit(ifp->if_serializer);
-		lwkt_serialize_enter(p->if_serializer);
-		error = ifq_handoff(p, m, &pktattr);
-		lwkt_serialize_exit(p->if_serializer);
-		lwkt_serialize_enter(ifp->if_serializer);
-		if (error)
-			ifp->if_oerrors++;
-		else
-			ifp->if_opackets++;
+		port = cpu_portfn(ifp_p->if_index % ncpus /* XXX */);
+		lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
+		ifp->if_opackets++;
 	}
 	ifp->if_flags &= ~IFF_OACTIVE;
-
-	return;
 }
 
 static int

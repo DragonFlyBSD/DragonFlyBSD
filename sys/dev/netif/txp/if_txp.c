@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.45 2008/01/06 16:55:50 swildner Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.46 2008/03/10 10:47:57 sephe Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -1192,7 +1192,6 @@ txp_start(struct ifnet *ifp)
 	struct mbuf *m, *m0;
 	struct txp_swdesc *sd;
 	u_int32_t firstprod, firstcnt, prod, cnt;
-	struct ifvlan		*ifv;
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
@@ -1229,11 +1228,10 @@ txp_start(struct ifnet *ifp)
 		if (++cnt >= (TX_ENTRIES - 4))
 			goto oactive;
 
-		if ((m->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
-		    m->m_pkthdr.rcvif != NULL) {
-			ifv = m->m_pkthdr.rcvif->if_softc;
+		if (m->m_flags & M_VLANTAG) {
 			txd->tx_pflags = TX_PFLAGS_VLAN |
-			    (htons(ifv->ifv_tag) << TX_PFLAGS_VLANTAG_S);
+			    (htons(m->m_pkthdr.ether_vlantag) <<
+			     TX_PFLAGS_VLANTAG_S);
 		}
 
 		if (m->m_pkthdr.csum_flags & CSUM_IP)
