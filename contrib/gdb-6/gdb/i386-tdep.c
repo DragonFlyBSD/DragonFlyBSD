@@ -979,6 +979,16 @@ i386_frame_cache (struct frame_info *next_frame, void **this_cache)
 	  /* This will be added back below.  */
 	  cache->saved_regs[I386_EIP_REGNUM] -= cache->base;
 	}
+      else if (cache->pc == 0)
+	{
+	  /* We're in a function without proper pc.  This
+	     happens if the binary was stripped and we couldn't
+	     find the beginning of the function.
+	     We'll just assume that it is a framed function.  */
+
+	  cache->saved_regs[I386_EBP_REGNUM] = 0;
+	  cache->sp_offset += 4;
+	}
       else
 	{
 	  frame_unwind_register (next_frame, I386_ESP_REGNUM, buf);
