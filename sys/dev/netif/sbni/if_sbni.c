@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.26 2007/09/23 04:09:55 yanyh Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.27 2008/03/10 08:36:30 sephe Exp $
  */
 
 /*
@@ -398,6 +398,7 @@ recv_frame(struct sbni_softc *sc)
 	u_int is_first, frame_ok;
 
 	crc = CRC32_INITIAL;
+	framelen = 0;
 	if (check_fhdr(sc, &framelen, &frameno, &ack, &is_first, &crc)) {
 		frame_ok = framelen > 4 ?
 		    upload_data(sc, framelen, frameno, is_first, crc) :
