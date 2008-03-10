@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vge/if_vge.c,v 1.24 2006/02/14 12:44:56 glebius Exp $
- * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.6 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.7 2008/03/10 12:59:52 sephe Exp $
  */
 
 /*
@@ -104,6 +104,7 @@
 #include <net/ifq_var.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <net/bpf.h>
 
@@ -1706,7 +1707,7 @@ vge_start(struct ifnet *ifp)
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
-		BPF_MTAP(ifp, m_head);
+		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
 	if (idx == sc->vge_ldata.vge_tx_prodidx)

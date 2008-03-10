@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.64 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.65 2008/03/10 12:59:51 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -119,6 +119,7 @@
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #ifdef INET
 #include <netinet/in.h>
@@ -834,7 +835,7 @@ em_start(struct ifnet *ifp)
 		ifq_dequeue(&ifp->if_snd, m_head);
 
 		/* Send a copy of the frame to the BPF listener */
-		BPF_MTAP(ifp, m_head);
+		ETHER_BPF_MTAP(ifp, m_head);
 
 		/* Set timeout in case hardware has problems transmitting. */
 		ifp->if_timer = EM_TX_TIMEOUT;

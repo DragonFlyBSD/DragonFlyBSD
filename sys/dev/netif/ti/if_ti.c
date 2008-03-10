@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.49 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.50 2008/03/10 12:59:52 sephe Exp $
  */
 
 /*
@@ -100,6 +100,7 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <net/bpf.h>
 
@@ -1948,7 +1949,7 @@ ti_start(struct ifnet *ifp)
 		ifq_dequeue(&ifp->if_snd, m_head);
 		need_trans = 1;
 
-		BPF_MTAP(ifp, m_head);
+		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
 	if (!need_trans)

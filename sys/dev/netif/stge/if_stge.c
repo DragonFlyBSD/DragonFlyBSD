@@ -1,6 +1,6 @@
 /*	$NetBSD: if_stge.c,v 1.32 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/stge/if_stge.c,v 1.2 2006/08/12 01:21:36 yongari Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.3 2008/03/10 10:47:57 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.4 2008/03/10 12:59:52 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -67,6 +67,7 @@
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
@@ -1334,7 +1335,7 @@ stge_start(struct ifnet *ifp)
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
-		BPF_MTAP(ifp, m_head);
+		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
 	if (enq > 0) {

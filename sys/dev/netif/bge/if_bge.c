@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.89 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.90 2008/03/10 12:59:51 sephe Exp $
  *
  */
 
@@ -96,6 +96,7 @@
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
@@ -2781,7 +2782,7 @@ bge_start(struct ifnet *ifp)
 		}
 		need_trans = 1;
 
-		BPF_MTAP(ifp, m_head);
+		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
 	if (!need_trans)

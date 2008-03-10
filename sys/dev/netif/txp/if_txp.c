@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.46 2008/03/10 10:47:57 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.47 2008/03/10 12:59:52 sephe Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -59,6 +59,7 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -1271,7 +1272,7 @@ txp_start(struct ifnet *ifp)
 		ifp->if_timer = 5;
 
 		ifq_dequeue(&ifp->if_snd, m);
-		BPF_MTAP(ifp, m);
+		ETHER_BPF_MTAP(ifp, m);
 		WRITE_REG(sc, r->r_reg, TXP_IDX2OFFSET(prod));
 	}
 

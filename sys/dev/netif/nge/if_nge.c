@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.45 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.46 2008/03/10 12:59:51 sephe Exp $
  */
 
 /*
@@ -110,6 +110,7 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <net/bpf.h>
 
@@ -1620,7 +1621,7 @@ nge_start(struct ifnet *ifp)
 		ifq_dequeue(&ifp->if_snd, m_head);
 		need_trans = 1;
 
-		BPF_MTAP(ifp, m_head);
+		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
 	if (!need_trans)

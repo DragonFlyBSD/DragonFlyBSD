@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.18 2008/03/10 10:47:57 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.19 2008/03/10 12:59:51 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -78,6 +78,7 @@
 #include <net/if_types.h>
 #include <net/if_var.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -1188,7 +1189,7 @@ nfe_start(struct ifnet *ifp)
 		if (m0 == NULL)
 			break;
 
-		BPF_MTAP(ifp, m0);
+		ETHER_BPF_MTAP(ifp, m0);
 
 		if (nfe_encap(sc, ring, m0) != 0) {
 			ifp->if_flags |= IFF_OACTIVE;

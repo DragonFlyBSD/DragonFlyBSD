@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.37 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.38 2008/03/10 12:59:51 sephe Exp $
  */
 
 /*
@@ -135,6 +135,7 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
@@ -2006,7 +2007,7 @@ re_start(struct ifnet *ifp)
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
-		BPF_MTAP(ifp, m_head2);
+		ETHER_BPF_MTAP(ifp, m_head2);
 	}
 
 	if (!need_trans) {

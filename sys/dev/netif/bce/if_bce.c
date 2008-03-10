@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.2 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.3 2008/03/10 12:59:51 sephe Exp $
  */
 
 /*
@@ -71,6 +71,7 @@
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
@@ -4515,7 +4516,7 @@ bce_start(struct ifnet *ifp)
 		count++;
 
 		/* Send a copy of the frame to any BPF listeners. */
-		BPF_MTAP(ifp, m_head);
+		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
 	if (count == 0) {

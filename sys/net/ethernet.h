@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.15 2007/10/13 10:50:34 sephe Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.16 2008/03/10 12:59:52 sephe Exp $
  *
  */
 
@@ -379,6 +379,25 @@ extern	int (*vlan_input_tag_p)(struct mbuf *m, uint16_t t);
 		m_freem(m);				\
         }						\
 	/* XXX: unlock */				\
+} while (0)
+
+/*
+ * The ETHER_BPF_MTAP macro should be used by drivers which support hardware
+ * offload for VLAN tag processing.  It will check the mbuf to see if it has
+ * M_VLANTAG set, and if it does, will pass the packet along to
+ * vlan_ether_ptap.  This function will re-insert VLAN tags for the duration
+ * of the tap, so they show up properly for network analyzers.
+ */
+#define ETHER_BPF_MTAP(_ifp, _m) do {					\
+	if ((_ifp)->if_bpf) {						\
+		M_ASSERTPKTHDR((_m));					\
+		if ((_m)->m_flags & M_VLANTAG) {			\
+			vlan_ether_ptap((_ifp)->if_bpf, (_m),		\
+					(_m)->m_pkthdr.ether_vlantag);	\
+		} else {						\
+			bpf_mtap((_ifp)->if_bpf, (_m));			\
+		}							\
+	}								\
 } while (0)
 
 struct altq_pktattr;
