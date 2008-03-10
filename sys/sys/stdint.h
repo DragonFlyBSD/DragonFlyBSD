@@ -1,7 +1,7 @@
 /*
  * This file is in the public domain.
  * $FreeBSD: src/sys/sys/inttypes.h,v 1.2 1999/08/28 00:51:47 peter Exp $
- * $DragonFly: src/sys/sys/stdint.h,v 1.3 2005/04/21 16:36:35 joerg Exp $
+ * $DragonFly: src/sys/sys/stdint.h,v 1.3.10.1 2008/03/10 13:30:36 hasso Exp $
  *
  * Note: since portions of these header files can be included with various
  * other combinations of defines, we cannot surround the whole header file
@@ -27,9 +27,7 @@
  * as 31 bit standard and all supported architectures have
  * sizeof(int) >= 4.
  */
-#ifndef __cplusplus
 typedef	int		__wchar_t;
-#endif
 typedef	int		__wint_t;
 typedef	int		__rune_t;
 typedef	void		*__wctrans_t;

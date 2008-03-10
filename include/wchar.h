@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/wchar.h,v 1.20 2004/05/08 21:57:05 kleink Exp $	*/
-/*	$DragonFly: src/include/wchar.h,v 1.10 2005/09/22 23:50:10 corecode Exp $ */
+/*	$DragonFly: src/include/wchar.h,v 1.10.10.1 2008/03/10 13:30:35 hasso Exp $ */
 
 /*-
  * Copyright (c)1999 Citrus Project,
@@ -76,7 +76,6 @@
 #define	NULL	0
 #endif
 
-#ifndef __cplusplus
 #ifndef _WCHAR_T_DECLARED
 #define	_WCHAR_T_DECLARED
 typedef	__wchar_t	wchar_t;
@@ -89,7 +88,6 @@ typedef	__wchar_t	wchar_t;
 #ifndef WCHAR_MAX
 #define	WCHAR_MAX	INT_MAX
 #endif
-#endif /* !__cplusplus */
 
 #ifndef _WINT_T_DECLARED
 #define	_WINT_T_DECLARED
