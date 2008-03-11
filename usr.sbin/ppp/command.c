@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/command.c,v 1.230.2.18 2003/04/05 10:48:08 ume Exp $
- * $DragonFly: src/usr.sbin/ppp/command.c,v 1.3 2007/05/17 08:19:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/ppp/command.c,v 1.3.4.1 2008/03/11 10:54:46 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -1107,7 +1107,11 @@ command_Expand_Interpret(char *buff, int nb, char *argv[MAXARGS], int offset)
 {
   char buff2[LINE_LEN-offset];
 
-  InterpretArg(buff, buff2);
+  if (InterpretArg(buff, buff2, sizeof buff2) == NULL) {
+    log_Printf(LogWARN, "Failed to expand command '%s': too long for the "
+               "destination buffer\n", buff);
+    return -1;
+  }
   strncpy(buff, buff2, LINE_LEN - offset - 1);
   buff[LINE_LEN - offset - 1] = '\0';
 
