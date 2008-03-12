@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/Makefile.inc,v 2.12 2005/10/20 10:57:52 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.6 2008/03/02 23:02:01 swildner Exp $
+# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.7 2008/03/12 18:25:12 swildner Exp $
 
 BINDIR?=	/usr/bin
 SHELL=		/bin/sh
@@ -134,7 +134,9 @@ revision=`sed -e 's/^0$$//' -e 's/^[1-9].*$$/.&/' $(GROFF_DIST)/REVISION`
 	@${ECHO} Making ${.TARGET} from ${.IMPSRC}
 	@sed -e "s|@BINDIR@|${BINDIR}|g" \
 	     -e "s;@FONTDIR@;$(fontdir);g" \
+	     -e "s|@GROFF_AWK_INTERPRETERS@|awk|g" \
 	     -e "s|@GROFF_BIN_PATH_SETUP@|GROFF_RUNTIME=\"\$${GROFF_BIN_PATH=${BINDIR}}:\"|g" \
+	     -e "s|@GROFF_GHOSTSCRIPT_INTERPRETERS@|gs|g" \
 	     -e "s|@SEP@|:|g" \
 	     -e "s|@VERSION@|$(version)$(revision)|" \
 	     -e "s|@g@|$(g)|g" \
