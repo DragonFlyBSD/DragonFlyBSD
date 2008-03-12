@@ -1,0 +1,7 @@
+Welcome to DragonFly!
+
+To start the installer, login as 'installer'.  To just get a shell prompt,
+login as 'root'.
+
+Once you are booting from your hard drive, you can get rid of this 
+annoying message by removing the file /etc/issue.

@@ -1,0 +1,18 @@
+--- src/lua/Makefile.orig	2003-04-08 19:07:23.000000000 -0700
++++ src/lua/Makefile	2005-02-16 19:59:19.000000000 -0800
+@@ -8,12 +8,12 @@
+ OBJS= lua.o
+ SRCS= lua.c
+ 
+-T= $(BIN)/lua
++T= $(BIN)/lua50
+ 
+ all:	$T
+ 
+-$T:	$(OBJS) $(LIB)/liblua.a $(LIB)/liblualib.a
+-	$(CC) -o $@ $(MYLDFLAGS) $(OBJS) -L$(LIB) -llua -llualib $(EXTRA_LIBS) $(DLLIB)
++$T:	$(OBJS) $(LIB)/liblua50.a $(LIB)/liblualib50.a
++	$(CC) -o $@ $(MYLDFLAGS) $(OBJS) -L$(LIB) -llua50 -llualib50 $(EXTRA_LIBS) $(DLLIB)
+ 
+ $(LIB)/liblua.a:
+ 	cd ..; $(MAKE)

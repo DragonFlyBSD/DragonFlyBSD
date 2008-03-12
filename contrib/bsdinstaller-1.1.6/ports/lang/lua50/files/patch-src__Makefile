@@ -1,0 +1,11 @@
+--- src/Makefile.orig	2005-02-16 19:56:55.000000000 -0800
++++ src/Makefile	2005-02-16 19:57:06.000000000 -0800
+@@ -67,7 +67,7 @@
+ 	lvm.h \
+ 	lzio.h
+ 
+-T= $(LIB)/liblua.a
++T= $(LIB)/liblua50.a
+ 
+ all:	$T
+ 

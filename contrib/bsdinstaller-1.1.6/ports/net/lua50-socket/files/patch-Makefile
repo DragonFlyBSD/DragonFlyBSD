@@ -1,0 +1,35 @@
+--- makefile.Linux.orig	2005-01-15 14:52:38.000000000 -0800
++++ makefile.Linux	2005-04-08 22:07:50.000000000 -0700
+@@ -3,7 +3,7 @@
+ 
+ COMPAT=compat-5.1r2
+ 
+-LUAC=luac
++LUAC=lua50c
+ BIN2C=bin2c
+ CC=gcc
+ OPT=-O2 $(INC) 
+@@ -28,7 +28,9 @@
+ 	mime.o \
+ 	$(COMPAT)/compat-5.1.o 
+ 
+-CFLAGS=-I../../include -I$(COMPAT) $(PROF) $(OPT) $(DBG) $(DEF) -pedantic -W -Wall 
++CFLAGS=-I../../include -I$(COMPAT) -I/usr/local/include/lua50 \
++	$(PROF) $(OPT) $(DBG) $(DEF) -pedantic -W -Wall 
++LDFLAGS=-L/usr/local/lib -llua50 -llualib50
+ 
+ LDYN=lsocket.so
+ 
+@@ -37,10 +39,10 @@
+ all: $(LDYN) $(MDYN)
+ 
+ $(LDYN): $(LOBJS)
+-	gcc -shared -o $(LDYN) $(LOBJS)
++	gcc -shared -o $(LDYN) $(LOBJS) $(LDFLAGS)
+ 
+ $(MDYN): $(MOBJS)
+-	gcc -shared -o $(MDYN) $(MOBJS)
++	gcc -shared -o $(MDYN) $(MOBJS) $(LDFLAGS)
+ 
+ auxiliar.o: auxiliar.c auxiliar.h
+ buffer.o: buffer.c buffer.h io.h timeout.h

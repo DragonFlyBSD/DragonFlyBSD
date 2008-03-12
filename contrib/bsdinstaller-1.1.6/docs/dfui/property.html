@@ -1,0 +1,150 @@
+<html>
+<head><title>DFUI: dfui_property</title></head>
+<body bgcolor="#ffffff">
+
+<h1>dfui_property</h1>
+
+<p><i>$Id: property.html,v 1.3 2005/02/15 21:56:23 cpressey Exp $</i></p>
+
+<p>A <code>dfui_property</code> gives some information about an object
+which may or may not be present.</p>
+
+<p>Properties may either be <i>weak</i>, meaning that frontends can ignore
+them and still be considered correct, or they may be <i>strong</i>, meaning
+that they carry with them a guarantee of behaviour, and any frontend which
+does not conform to that behaviour should be considered incorrect.  The vast
+majority of properties are weak.  Frontends are still encouraged to implement
+as many weak properties as apply to them, however, as they are used to help
+create a more pleasant and effective experience for the user.</p>
+
+<h4>Form Properties</h4>
+
+<table border=1>
+<tr><th>Hint Id</th><th>Description</th><th>Values</th></tr>
+<tr><td><code>role</code></td>
+    <td>Allows the frontend to display a more meaningful form.</td>
+    <td>
+        <table>
+	<tr><th>Value</th><th>Description</th><th>Assumptions</th></tr>
+	<tr><td><code>menu</code></td>
+	  <td>Form is a menu, where the user may select one of a number of choices.</td>
+	  <td>Form has zero fields; form has more than one action.</td></tr>
+	<tr><td><code>confirmation</code></td>
+	  <td>Form is a confirmation dialog box or similar, with a question and yes/no/etc choices.</td>
+	  <td>Form has zero fields; form has two or more actions.</td></tr>
+	<tr><td><code>alert</code></td>
+	  <td>Form is there to display important information.</td>
+	  <td>Form has zero fields.</td></tr>
+        </table>
+    </td></tr>
+<tr><td><code>special</code></td>
+    <td>Allows the frontend to display a special-purpose form for a particular occasion.
+              These are typically unique forms used in only one application, such as the installer.</td>
+    <td>
+        <table>
+	<tr><th>Value</th><th>Description</th><th>Assumptions</th></tr>
+	<tr><td><code>bsdinstaller_welcome</code></td>
+		<td>Welcome screen for the BSD Installer.</td>
+		<td>TBA</td></tr>
+        </table>
+    </td></tr>
+<tr><td><code>minimum_width</code></td>
+    <td>Suggests a minimum visual width of the form.</td>
+    <td>
+        Any integer.  The units of measurement are "em"'s, i.e.
+	the width of the widest character in the typeface used to render the form.
+    </td></tr>
+<tr><td><code>monospaced</code></td>
+    <td>Suggests that the textual content of the form should be monospaced
+	(i.e. each character should occupy the same width.)</td>
+    <td>
+        <code>true</code> or <code>false</code>, default <code>false</code>.
+    </td></tr>
+<tr><td><code>default_action</code></td>
+    <td>Specifies which action is the default (selected when the form is first displayed
+           and/or triggered by the 'obvious thing' on the user's part, such as pressing Enter,
+	depending on the interface.</td>
+    <td>
+        The id of an action on the form.
+    </td></tr>
+</table>
+
+<h4>Field Hints</h4>
+
+<table border=1>
+<tr><th>Hint Id</th><th>Description</th><th>Values</th></tr>
+<tr><td><code>editable</code></td>
+    <td>(<strong>STRONG</strong>) Determines whether the value(s) in this field may be edited by the user.</td>
+    <td>
+        <code>true</code> or <code>false</code>, default <code>true</code>.
+    </td></tr>
+<tr><td><code>obscured</code></td>
+    <td>(<strong>STRONG</strong>) Determines whether the user is allowed to observe the value(s) in this field.</td>
+    <td>
+        <code>true</code> or <code>false</code>, default <code>false</code>.
+        Typically <code>true</code> is used for password-entry fields.
+    </td></tr>
+<tr><td><code>control</code></td>
+    <td>Allows the frontend to use a more meaningful widget.</td>
+    <td>
+        <table>
+	<tr><th>Value</th><th>Description</th><th>Assumptions</th></tr>
+	<tr><td><code>checkbox</code></td>
+	  <td>Field may be either 'on' or 'off' (a.k.a. 'yes' or 'no', 'true' or 'false').</td>
+	  <td>'on' is represented by the text <tt>Y</tt>, 'off' is represented by <tt>N</tt></td></tr>
+        </table>
+    </td></tr>
+<tr><td><code>prominence</code></td>
+    <td>Indicates how prominent a particular field should be.</td>
+    <td>
+        <table>
+	<tr><th>Value</th><th>Description</th><th>Assumptions</th></tr>
+	<tr><td><code>minimal</code></td><td>Try to save space.  Typically means
+	that an effort should be taken to save screen real estate by having
+	the important contents of this field "drop down" or "pop up" when needed.  This
+	is particularly germane for fields with more than zero options, but that need not be
+	a strict assumption.</td><td>TBA</td></tr>
+	<tr><td><code>maximal</code></td><td>Try to draw attention to this field.</td><td>TBA</td></tr>
+	<tr><td><code>normal</code></td><td>No special prominence (default.)</td><td>TBA</td></tr>
+        </table>
+    </td></tr>
+<tr><td><code>regexp</code></td>
+    <td>Describes the pattern of characters that values of the field should match.</td>
+    <td>
+	A basic regular expression (define??)  Some examples might be <code>^\d+$</code> to match
+	a positive integer, and <code>^a.*z$</code> to match anything that starts with a and ends with z.
+    </td></tr>
+<tr><td><code>alignment</code></td>
+    <td>Indicates how data within the field should be aligned.</td>
+    <td>
+        <table>
+	<tr><th>Value</th><th>Description</th><th>Assumptions</th></tr>
+	<tr><td><code>left</code></td><td>Align to the left edge.</td><td>TBA</td></tr>
+	<tr><td><code>right</code></td><td>Align to the right edge.</td><td>TBA</td></tr>
+	<tr><td><code>center</code></td><td>Center the contents.</td><td>TBA</td></tr>
+        </table>
+    </td></tr>
+</table>
+
+<h4>Action Hints</h4>
+
+<table border=1>
+<tr><th>Hint Id</th><th>Description</th><th>Values</th></tr>
+<tr><td><code>visited</code></td>
+    <td>Indicates that this action leads to a form which has already been filled-out, or a path
+        of events which has already been taken.  Supplied purely as a navigation aid.</td>
+    <td>
+        <table>
+	<tr><th>Value</th><th>Description</th><th>Assumptions</th></tr>
+	<tr><td><code>true</code></td><td>Indicate to user that this action was already visited.</td><td>TBA</td></tr>
+        </table>
+    </td></tr>
+<tr><td><code>accelerator</code></td>
+    <td>Specifies a keystroke which will trigger this action under normal circumstances.</td>
+    <td>
+        Any letter between <code>a</code> and <code>z</code>.
+    </td></tr>
+</table>
+
+</body>
+</html>

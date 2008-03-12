@@ -1,0 +1,549 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2005-03-29 11:08+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#, c-format
+msgid ""
+"%d bottles of beer on the wall,\n"
+"%d bottles of beer,\n"
+"Take one down, pass it around,\n"
+"%d bottles of beer on the wall.\n"
+"\n"
+msgstr ""
+
+msgid "A non-editable field"
+msgstr ""
+
+msgid "Accept these values"
+msgstr ""
+
+msgid ""
+"Are you sure you wish to reset some settings or other to the factory "
+"defaults?"
+msgstr ""
+
+#, c-format
+msgid "Backend was aborted by DFUI_FE_ABORT message from frontend.\n"
+msgstr ""
+
+msgid "Beef"
+msgstr ""
+
+#, c-format
+msgid "Begin streaming progress bar.\n"
+msgstr ""
+
+#, c-format
+msgid "Begin typical progress bar.\n"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Cancel and return to previous form"
+msgstr ""
+
+#, c-format
+msgid "Cancel selected, no global settings changed.\n"
+msgstr ""
+
+msgid "Capacity"
+msgstr ""
+
+msgid "Change global properties of the frontend, from the backend"
+msgstr ""
+
+msgid "Chicken"
+msgstr ""
+
+msgid "Confirm Reset"
+msgstr ""
+
+msgid "Confirm Self-Injury"
+msgstr ""
+
+#, c-format
+msgid "Creating connection, transport = %d, rendezvous = %s.\n"
+msgstr ""
+
+#, c-format
+msgid "Creating global data.\n"
+msgstr ""
+
+msgid "DFUI Test Suite - Language Choice"
+msgstr ""
+
+msgid "DFUI Test Suite - Main Menu"
+msgstr ""
+
+#, c-format
+msgid "Disconnecting from frontend.\n"
+msgstr ""
+
+msgid "Display a form too large to be fully viewed"
+msgstr ""
+
+msgid "Display a form with more than one dataset"
+msgstr ""
+
+msgid "Display a form with variable number of datasets"
+msgstr ""
+
+msgid "Display a streaming progress bar"
+msgstr ""
+
+msgid "Display a typical alert dialog box"
+msgstr ""
+
+msgid "Display a typical confirmation dialog box"
+msgstr ""
+
+msgid "Display a typical form"
+msgstr ""
+
+msgid "Display a typical menu"
+msgstr ""
+
+msgid "Display a typical progress bar"
+msgstr ""
+
+#, c-format
+msgid "End streaming progress bar.\n"
+msgstr ""
+
+#, c-format
+msgid "End typical progress bar.\n"
+msgstr ""
+
+msgid "Enter the name of this system"
+msgstr ""
+
+msgid "Enter your mock password here"
+msgstr ""
+
+#, c-format
+msgid "Entering main menu loop.\n"
+msgstr ""
+
+msgid "Exit"
+msgstr ""
+
+#, c-format
+msgid "Exiting.\n"
+msgstr ""
+
+msgid "Extensible Form"
+msgstr ""
+
+#, c-format
+msgid "Global setting was cancelled (not supported or non-critical failure.)\n"
+msgstr ""
+
+#, c-format
+msgid "Global setting was set.\n"
+msgstr ""
+
+msgid "How many megabytes of data this slice will hold"
+msgstr ""
+
+#, c-format
+msgid "Invalid response from frontend. Aborting.\n"
+msgstr ""
+
+msgid "Keep current settings"
+msgstr ""
+
+#, c-format
+msgid "Language menu presented.\n"
+msgstr ""
+
+#, c-format
+msgid "Language menu section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Language menu section finished (%s).\n"
+msgstr ""
+
+msgid "Laptop"
+msgstr ""
+
+msgid "Leave this Test Suite"
+msgstr ""
+
+msgid "Logged in as"
+msgstr ""
+
+msgid "Machine Role"
+msgstr ""
+
+#, c-format
+msgid "Main menu loop finished, freeing global data.\n"
+msgstr ""
+
+#, c-format
+msgid "Main menu presented.\n"
+msgstr ""
+
+#, c-format
+msgid "Main menu section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Main menu section finished.\n"
+msgstr ""
+
+msgid "Make the smart choice"
+msgstr ""
+
+msgid "Mountpoint"
+msgstr ""
+
+msgid "Multi-Dataset Form"
+msgstr ""
+
+#, c-format
+msgid "Multi-dataset form section finished.\n"
+msgstr ""
+
+#, c-format
+msgid "Multi-dataset form was presented.\n"
+msgstr ""
+
+#, c-format
+msgid "Multi-dataset, %s form section entered.\n"
+msgstr ""
+
+msgid "Name Server?"
+msgstr ""
+
+msgid "No"
+msgstr ""
+
+msgid "No more beer"
+msgstr ""
+
+msgid "Not Yet Implemented"
+msgstr ""
+
+#, c-format
+msgid "Not yet implemented section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Not yet implemented section finished.\n"
+msgstr ""
+
+msgid ""
+"Note that each of these menu items is associated with an 'accelerator', or "
+"shortcut key.  Pressing that key should automatically select the associated "
+"item."
+msgstr ""
+
+msgid "OK"
+msgstr ""
+
+msgid "Pick one."
+msgstr ""
+
+msgid ""
+"Please enter the name and new value of the global setting of the frontend "
+"that you wish to change."
+msgstr ""
+
+#, c-format
+msgid "Present multi-dataset form.\n"
+msgstr ""
+
+#, c-format
+msgid "Present set-global form.\n"
+msgstr ""
+
+#, c-format
+msgid "Present typical form.\n"
+msgstr ""
+
+#, c-format
+msgid "Presenting language menu to frontend.\n"
+msgstr ""
+
+#, c-format
+msgid "Presenting main menu to frontend.\n"
+msgstr ""
+
+msgid "Proceed"
+msgstr ""
+
+msgid "Progress Bar"
+msgstr ""
+
+#, c-format
+msgid "Progress bar was cancelled!\n"
+msgstr ""
+
+msgid "Pull the trigger"
+msgstr ""
+
+msgid "Reset settings"
+msgstr ""
+
+#, c-format
+msgid "Response dataset #%d DID NOT INCLUDE capacity\n"
+msgstr ""
+
+#, c-format
+msgid "Response dataset #%d DID NOT INCLUDE mountpoint\n"
+msgstr ""
+
+#, c-format
+msgid "Response dataset #%d, capacity=`%s'\n"
+msgstr ""
+
+#, c-format
+msgid "Response dataset #%d, mountpoint=`%s'\n"
+msgstr ""
+
+msgid "Scrolling Form"
+msgstr ""
+
+#, c-format
+msgid "Scrolling form section entered (%d bytes.)\n"
+msgstr ""
+
+#, c-format
+msgid "Scrolling form section finished.\n"
+msgstr ""
+
+msgid "Select a general role for this machine to play"
+msgstr ""
+
+msgid "Server"
+msgstr ""
+
+msgid "Set Frontend Settings"
+msgstr ""
+
+msgid "Set-Global Form"
+msgstr ""
+
+#, c-format
+msgid "Set-global form section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Set-global form section finished.\n"
+msgstr ""
+
+#, c-format
+msgid "Set-global form was presented.\n"
+msgstr ""
+
+#, c-format
+msgid "Setting global setting '%s'='%s' in frontend.\n"
+msgstr ""
+
+msgid "Setting's Name"
+msgstr ""
+
+msgid "Setting's new Value"
+msgstr ""
+
+msgid "Sing Along Everybody!"
+msgstr ""
+
+msgid "Streaming Progress Bar"
+msgstr ""
+
+msgid "Streaming Progress Indicator"
+msgstr ""
+
+#, c-format
+msgid "Streaming Progress bar was cancelled!\n"
+msgstr ""
+
+#, c-format
+msgid "Streaming progress bar section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Streaming progress bar section finished.\n"
+msgstr ""
+
+msgid "System Name"
+msgstr ""
+
+#, c-format
+msgid "The action that selected was '%s'.\n"
+msgstr ""
+
+msgid "The feature you have chosen is not yet implemented."
+msgstr ""
+
+msgid ""
+"This backend is a test suite for the DFUI abstract user interface layer.  It "
+"exercises most of the features of the DFUI protocol. It also demonstrates "
+"how a backend program, containing only the application logic, can send an "
+"abstract representation of a form to the frontend, which can interpret it "
+"any way it wishes, and send a response back to the backend."
+msgstr ""
+
+msgid "This is a form with not just one set of data, but several."
+msgstr ""
+
+msgid ""
+"This is a streaming progress indicator.  You may cause it to be aborted "
+"(which should be acknowledged after a brief delay.)"
+msgstr ""
+
+msgid ""
+"This is a typical DFUI form.  One field has a hint that suggests that it can "
+"be rendered as a checkbox."
+msgstr ""
+
+msgid ""
+"This is a typical progress indicator.  You may cause it to be aborted (which "
+"should be acknowledged after a brief delay.)"
+msgstr ""
+
+#, c-format
+msgid "This is line #%d.\n"
+msgstr ""
+
+msgid "Tofu"
+msgstr ""
+
+msgid "Typical Alert"
+msgstr ""
+
+msgid "Typical Confirmation"
+msgstr ""
+
+msgid "Typical Form"
+msgstr ""
+
+msgid "Typical Menu"
+msgstr ""
+
+msgid "Typical Progress Indicator"
+msgstr ""
+
+#, c-format
+msgid "Typical alert section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical alert section finished.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical confirmation section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical confirmation section finished.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical form section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical form section finished.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical form was presented.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical menu section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical menu section finished; %s was selected.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical progress bar section entered.\n"
+msgstr ""
+
+#, c-format
+msgid "Typical progress bar section finished.\n"
+msgstr ""
+
+msgid "Update streaming progress bar."
+msgstr ""
+
+#, c-format
+msgid "Update streaming progress bar.\n"
+msgstr ""
+
+#, c-format
+msgid "Update typical progress bar.\n"
+msgstr ""
+
+#, c-format
+msgid "Usage: %s [-r rendezvous] [-t caps|npipe|tcp]\n"
+msgstr ""
+
+#, c-format
+msgid "User UID is not 0, leave `default' language.\n"
+msgstr ""
+
+#, c-format
+msgid "Waiting for connection from frontend.\n"
+msgstr ""
+
+msgid ""
+"Warning: Pistol is loaded! Are you SURE you wish to shoot yourself in the "
+"foot?"
+msgstr ""
+
+msgid "Where this filesystem will be logically located"
+msgstr ""
+
+msgid "Will this system be used as a DNS server?"
+msgstr ""
+
+msgid "Workstation"
+msgstr ""
+
+msgid "Yes"
+msgstr ""
+
+msgid "You can choose localisation from list."
+msgstr ""
+
+#, c-format
+msgid "is_name_server WAS NOT PRESENT IN RESPONSE.\n"
+msgstr ""
+
+#, c-format
+msgid "logged_in_as WAS NOT PRESENT IN RESPONSE.\n"
+msgstr ""
+
+#, c-format
+msgid "machine_role WAS NOT PRESENT IN RESPONSE.\n"
+msgstr ""
+
+#, c-format
+msgid "password WAS NOT PRESENT IN RESPONSE.\n"
+msgstr ""
+
+#, c-format
+msgid "system_name WAS NOT PRESENT IN RESPONSE.\n"
+msgstr ""

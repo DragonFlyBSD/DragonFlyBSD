@@ -1,0 +1,6 @@
+DFUI CGI frontend.  Allows a DFUI backend (such as a system
+installer) to communicate with the user via a web browser.
+
+*** NOTE *** : this port will install files into ${PREFIX}/www,
+probably /usr/local/www, overwriting any files you may already
+have there, such as /usr/local/www/index.html.

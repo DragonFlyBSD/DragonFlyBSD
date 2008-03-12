@@ -1,0 +1,574 @@
+# DFUI Test Suite - Russian language localization.
+# Copyright (C) 2004
+# This file is distributed under the same license as the DFUI Test Suite.
+# Denis Peplin <den@FreeBSD.org>, 2004.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: be_test 1.25\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2005-03-15 18:48+0300\n"
+"PO-Revision-Date: 2005-03-15 18:58+0300\n"
+"Last-Translator: Denis Peplin <den@FreeBSD.org>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=koi8-r\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#, c-format
+msgid ""
+"%d bottles of beer on the wall,\n"
+"%d bottles of beer,\n"
+"Take one down, pass it around,\n"
+"%d bottles of beer on the wall.\n"
+"\n"
+msgstr ""
+"Бутылок пива на стене: %d,\n"
+"бутылок пива: %d,\n"
+"Забрать одну, выпить,\n"
+"бутылок на стене: %d.\n"
+"\n"
+
+msgid "A non-editable field"
+msgstr "Не редактируемое поле"
+
+msgid "Accept these values"
+msgstr "Принять эти значения"
+
+msgid ""
+"Are you sure you wish to reset some settings or other to the factory "
+"defaults?"
+msgstr ""
+"Вы уверены что хотите сбросить некоторые настройки в значения по умолчанию?"
+
+#, c-format
+msgid "Backend was aborted by DFUI_FE_ABORT message from frontend.\n"
+msgstr "Программа завершена сообщением оболочки DFUI_FE_ABORT.\n"
+
+msgid "Beef"
+msgstr "Говядина"
+
+#, c-format
+msgid "Begin streaming progress bar.\n"
+msgstr "Начало расширенного индикатора выполнения.\n"
+
+#, c-format
+msgid "Begin typical progress bar.\n"
+msgstr "Начало стандартного индикатора выполнения.\n"
+
+msgid "Cancel"
+msgstr "Отменить"
+
+msgid "Cancel and return to previous form"
+msgstr "Выход и возврат к предыдущей форме"
+
+#, c-format
+msgid "Cancel selected, no global settings changed.\n"
+msgstr "Выбрана отмена, глобальные установки не изменены.\n"
+
+msgid "Capacity"
+msgstr "Объем"
+
+msgid "Change global properties of the frontend, from the backend"
+msgstr "Изменение глобальных настроек интерфейса из основной программы"
+
+msgid "Chicken"
+msgstr "Цыпленок"
+
+msgid "Confirm Reset"
+msgstr "Сброс подтверждения"
+
+msgid "Confirm Self-Injury"
+msgstr "Подтвердить самоповреждение"
+
+#, c-format
+msgid "Creating connection, transport = %d, rendezvous = %s.\n"
+msgstr "Создание соединения, transport = %d, rendezvous = %s.\n"
+
+#, c-format
+msgid "Creating global data.\n"
+msgstr "Создание глобальных данных.\n"
+
+msgid "DFUI Test Suite - Language Choice"
+msgstr "Тестовый пакет DFUI - выбор языка"
+
+msgid "DFUI Test Suite - Main Menu"
+msgstr "Тестовый пакет DFUI - главное меню"
+
+#, c-format
+msgid "Disconnecting from frontend.\n"
+msgstr "Отсоединение от интерфейса.\n"
+
+msgid "Display a form too large to be fully viewed"
+msgstr "Отображение формы, которая слишком велика для одновременного просмотра"
+
+msgid "Display a form with more than one dataset"
+msgstr "Отображение формы с более чем одним набором данных"
+
+msgid "Display a form with variable number of datasets"
+msgstr "Отображение формы с изменяемым набором данных"
+
+msgid "Display a streaming progress bar"
+msgstr "Отображение расширенного индикатора выполнения"
+
+msgid "Display a typical alert dialog box"
+msgstr "Отображение стандартного диалогового окна предупреждения"
+
+msgid "Display a typical confirmation dialog box"
+msgstr "Отображение стандартного окна диалога"
+
+msgid "Display a typical form"
+msgstr "Отображение стандартной формы"
+
+msgid "Display a typical menu"
+msgstr "Отобразить стандартное меню"
+
+msgid "Display a typical progress bar"
+msgstr "Отображение стандартного индикатора выполнения"
+
+#, c-format
+msgid "End streaming progress bar.\n"
+msgstr "Расширенный индикатор заполнен.\n"
+
+#, c-format
+msgid "End typical progress bar.\n"
+msgstr "Стандартный индикатор выполнения заполнен.\n"
+
+msgid "Enter the name of this system"
+msgstr "Введите здесь имя системы"
+
+msgid "Enter your mock password here"
+msgstr "Введите ваш пароль mock здесь"
+
+#, c-format
+msgid "Entering main menu loop.\n"
+msgstr "Вход в цикл главного меню.\n"
+
+msgid "Exit"
+msgstr "Выход"
+
+#, c-format
+msgid "Exiting.\n"
+msgstr "Выход.\n"
+
+msgid "Extensible Form"
+msgstr "Расширяемая форма"
+
+#, c-format
+msgid "Global setting was cancelled (not supported or non-critical failure.)\n"
+msgstr ""
+"Глобальная установка не была применена (не поддерживается или некритичная "
+"ошибка).\n"
+
+#, c-format
+msgid "Global setting was set.\n"
+msgstr "Глобальная установка применена.\n"
+
+msgid "How many megabytes of data this slice will hold"
+msgstr "Сколько мегабайт данных будет храниться на этом слайсе"
+
+#, c-format
+msgid "Invalid response from frontend. Aborting.\n"
+msgstr "Неправильный ответ от интерфейса. Аварийное завершение.\n"
+
+msgid "Keep current settings"
+msgstr "Оставить существующие настройки"
+
+#, c-format
+msgid "Language menu presented.\n"
+msgstr "Меню выбора языка выведено.\n"
+
+#, c-format
+msgid "Language menu section entered.\n"
+msgstr "Вход в меню выбора языка.\n"
+
+#, c-format
+msgid "Language menu section finished (%s).\n"
+msgstr "Меню выбора языка завершено (%s).\n"
+
+msgid "Laptop"
+msgstr "Лэптоп"
+
+msgid "Leave this Test Suite"
+msgstr "Выход из тестового пакета"
+
+msgid "Logged in as"
+msgstr "Вход как"
+
+msgid "Machine Role"
+msgstr "Функция машины"
+
+#, c-format
+msgid "Main menu loop finished, freeing global data.\n"
+msgstr "Цикл главного меню завершен, очистка глобальных данных.\n"
+
+#, c-format
+msgid "Main menu presented.\n"
+msgstr "Главное меню выведено.\n"
+
+#, c-format
+msgid "Main menu section entered.\n"
+msgstr "Вход в раздел главного меню.\n"
+
+#, c-format
+msgid "Main menu section finished.\n"
+msgstr "Раздел главного меню завершен.\n"
+
+msgid "Make the smart choice"
+msgstr "Сделать правильный выбор"
+
+msgid "Mountpoint"
+msgstr "Точка монтирования"
+
+msgid "Multi-Dataset Form"
+msgstr "Multi-Dataset форма"
+
+#, c-format
+msgid "Multi-dataset form section finished.\n"
+msgstr "Раздел multi-dataset формы завершен.\n"
+
+#, c-format
+msgid "Multi-dataset form was presented.\n"
+msgstr "Multi-dataset форма была выведена.\n"
+
+#, c-format
+msgid "Multi-dataset, %s form section entered.\n"
+msgstr "Вход в раздел multi-dataset, %s формы.\n"
+
+msgid "Name Server?"
+msgstr "Сервер имен?"
+
+msgid "No"
+msgstr "Нет"
+
+msgid "No more beer"
+msgstr "Нет больше пива"
+
+msgid "Not Yet Implemented"
+msgstr "Еще не реализован"
+
+#, c-format
+msgid "Not yet implemented section entered.\n"
+msgstr "Вход в еще не реализованный раздел.\n"
+
+#, c-format
+msgid "Not yet implemented section finished.\n"
+msgstr "Еще не реализованный раздел завершен.\n"
+
+msgid ""
+"Note that each of these menu items is associated with an 'accelerator', or "
+"shortcut key.  Pressing that key should automatically select the associated "
+"item."
+msgstr ""
+"Обратите внимание, что каждый из пунктов этого меню связан с "
+"'акселератором', или быстрой клавишей.  Нажатие этой клавиши должно "
+"автоматически выбрать соответствующий пункт."
+
+msgid "OK"
+msgstr "Подтвердить"
+
+msgid "Pick one."
+msgstr "Выберите что-нибудь одно."
+
+msgid ""
+"Please enter the name and new value of the global setting of the frontend "
+"that you wish to change."
+msgstr ""
+"Пожалуйста, введите имя и новое значение глобальной установки для "
+"интерфейса, которую вы хотите изменить."
+
+#, c-format
+msgid "Present multi-dataset form.\n"
+msgstr "Отображение multi-dataset формы.\n"
+
+#, c-format
+msgid "Present set-global form.\n"
+msgstr "Отображение формы глобальной установки.\n"
+
+#, c-format
+msgid "Present typical form.\n"
+msgstr "Отображение стандартной формы.\n"
+
+#, c-format
+msgid "Presenting language menu to frontend.\n"
+msgstr "Отображение меню выбора языка в интерфейс.\n"
+
+#, c-format
+msgid "Presenting main menu to frontend.\n"
+msgstr "Отображение главного меню в интерфейс.\n"
+
+msgid "Proceed"
+msgstr "Продолжить"
+
+msgid "Progress Bar"
+msgstr "Индикатор выполнения"
+
+#, c-format
+msgid "Progress bar was cancelled!\n"
+msgstr "Индикатор выполнения был завершен пользователем!\n"
+
+msgid "Pull the trigger"
+msgstr "Нажать на курок"
+
+msgid "Reset settings"
+msgstr "Сброс настроек"
+
+#, c-format
+msgid "Response dataset #%d DID NOT INCLUDE capacity\n"
+msgstr "Ответ dataset #%d НЕ ВКЛЮЧАЕТ capacity\n"
+
+#, c-format
+msgid "Response dataset #%d DID NOT INCLUDE mountpoint\n"
+msgstr "Ответ dataset #%d НЕ ВКЛЮЧАЕТ mountpoint\n"
+
+#, c-format
+msgid "Response dataset #%d, capacity=`%s'\n"
+msgstr "Ответ dataset #%d, capacity=`%s'\n"
+
+#, c-format
+msgid "Response dataset #%d, mountpoint=`%s'\n"
+msgstr "Ответ dataset #%d, mountpoint=`%s'\n"
+
+msgid "Scrolling Form"
+msgstr "Форма с прокруткой"
+
+#, c-format
+msgid "Scrolling form section entered (%d bytes.)\n"
+msgstr "Вход в раздел формы прокрутки (байт: %d).\n"
+
+#, c-format
+msgid "Scrolling form section finished.\n"
+msgstr "Раздел формы с прокруткой завершен.\n"
+
+msgid "Select a general role for this machine to play"
+msgstr "Выберите основную функцию, которую будет выполнять эта машина"
+
+msgid "Server"
+msgstr "Сервер"
+
+msgid "Set Frontend Settings"
+msgstr "Задание установок для интерфейса"
+
+msgid "Set-Global Form"
+msgstr "Форма глобальных установок"
+
+#, c-format
+msgid "Set-global form section entered.\n"
+msgstr "Вход в раздел формы глобальных установок.\n"
+
+#, c-format
+msgid "Set-global form section finished.\n"
+msgstr "Раздел формы глобальных установок завершен.\n"
+
+#, c-format
+msgid "Set-global form was presented.\n"
+msgstr "Форма глобальной установки выведена.\n"
+
+#, c-format
+msgid "Setting global setting '%s'='%s' in frontend.\n"
+msgstr "Применение глобальной установки '%s'='%s' в интерфейсе.\n"
+
+msgid "Setting's Name"
+msgstr "Установка имени"
+
+msgid "Setting's new Value"
+msgstr "Установка значения"
+
+msgid "Sing Along Everybody!"
+msgstr "Sing Along Everybody!"
+
+msgid "Streaming Progress Bar"
+msgstr "Расширенный индикатор выполнения"
+
+msgid "Streaming Progress Indicator"
+msgstr "Расширенный индикатор выполнения"
+
+#, c-format
+msgid "Streaming Progress bar was cancelled!\n"
+msgstr "Расширенный индикатор выполнения был завершен пользователем!\n"
+
+#, c-format
+msgid "Streaming progress bar section entered.\n"
+msgstr "Вход в раздел расширенного индикатора выполнения.\n"
+
+#, c-format
+msgid "Streaming progress bar section finished.\n"
+msgstr "Раздел расширенного индикатора выполнения завершен.\n"
+
+msgid "System Name"
+msgstr "Имя системы"
+
+#, c-format
+msgid "The action that selected was '%s'.\n"
+msgstr "Было выбрано действие '%s'.\n"
+
+msgid "The feature you have chosen is not yet implemented."
+msgstr "Функция, которую вы выбрали, еще не реализована."
+
+msgid ""
+"This backend is a test suite for the DFUI abstract user interface layer.  It "
+"exercises most of the features of the DFUI protocol. It also demonstrates "
+"how a backend program, containing only the application logic, can send an "
+"abstract representation of a form to the frontend, which can interpret it "
+"any way it wishes, and send a response back to the backend."
+msgstr ""
+"Эта программа реализует тест для уровня абстракции пользовательского "
+"интерфейса DFUI. Она использует большинство функций протокола DFUI.  Она "
+"также демонстрирует, как основная программа, содержащая только прикладную "
+"логику, может отправлять абстрактное представление формы интерфейсу, который "
+"может интерпретировать ее любым желаемым способом, и отправлять ответ "
+"обратно основной программе."
+
+msgid "This is a form with not just one set of data, but several."
+msgstr "Это форма не с одним набором данных, а с несколькими."
+
+msgid ""
+"This is a streaming progress indicator.  You may cause it to be aborted "
+"(which should be acknowledged after a brief delay.)"
+msgstr ""
+"Это расширенный индикатор выполнения.  Вы можете завершить его (завершение "
+"произойдет после небольшой задержки)."
+
+msgid ""
+"This is a typical DFUI form.  One field has a hint that suggests that it can "
+"be rendered as a checkbox."
+msgstr ""
+"Это стандартная форма DFUI.  К одному полю дана подсказка, что оно может "
+"быть отображено в качестве checkbox."
+
+msgid ""
+"This is a typical progress indicator.  You may cause it to be aborted (which "
+"should be acknowledged after a brief delay.)"
+msgstr ""
+"Это стандартный индикатор выполнения.  Вы можете завершить его (завершение "
+"должно произойти после небольшой задержки)."
+
+#, c-format
+msgid "This is line #%d.\n"
+msgstr "Это строка #%d.\n"
+
+msgid "Tofu"
+msgstr "Тофу"
+
+msgid "Typical Alert"
+msgstr "Стандартное предупреждение"
+
+msgid "Typical Confirmation"
+msgstr "Стандартное подтверждение"
+
+msgid "Typical Form"
+msgstr "Стандартная форма"
+
+msgid "Typical Menu"
+msgstr "Стандартное меню"
+
+msgid "Typical Progress Indicator"
+msgstr "Стандартный индикатор выполнения"
+
+#, c-format
+msgid "Typical alert section entered.\n"
+msgstr "Вход в раздел предупреждения.\n"
+
+#, c-format
+msgid "Typical alert section finished.\n"
+msgstr "Раздел стандартного предупреждения завершен.\n"
+
+#, c-format
+msgid "Typical confirmation section entered.\n"
+msgstr "Вход в раздел стандартного подтверждения.\n"
+
+#, c-format
+msgid "Typical confirmation section finished.\n"
+msgstr "Раздел стандартного подтверждения завершен.\n"
+
+#, c-format
+msgid "Typical form section entered.\n"
+msgstr "Вход в раздел стандартной формы.\n"
+
+#, c-format
+msgid "Typical form section finished.\n"
+msgstr "Раздел стандартной формы завершен.\n"
+
+#, c-format
+msgid "Typical form was presented.\n"
+msgstr "Стандартная форма выведена.\n"
+
+#, c-format
+msgid "Typical menu section entered.\n"
+msgstr "Вход в раздел стандартного меню.\n"
+
+#, c-format
+msgid "Typical menu section finished.\n"
+msgstr "Раздел стандартного меню завершен; выбрано %s.\n"
+
+#, c-format
+msgid "Typical progress bar section entered.\n"
+msgstr "Вход в раздел стандартного индикатора выполнения.\n"
+
+#, c-format
+msgid "Typical progress bar section finished.\n"
+msgstr "Раздел стандартного индикатора выполнения завершился.\n"
+
+msgid "Update streaming progress bar."
+msgstr "Обновление расширенного индикатора выполнения"
+
+#, c-format
+msgid "Update streaming progress bar.\n"
+msgstr "Обновление расширенного индикатора выполнения.\n"
+
+#, c-format
+msgid "Update typical progress bar.\n"
+msgstr "Обновление стандартного индикатора выполнения.\n"
+
+#, c-format
+msgid "Usage: %s [-r rendezvous] [-t caps|npipe|tcp]\n"
+msgstr "Использование: %s [-r rendezvous] [-t caps|npipe|tcp]\n"
+
+#, c-format
+msgid "User UID is not 0, leave `default' language.\n"
+msgstr "UID пользователя не 0, используется язык по умолчанию.\n"
+
+#, c-format
+msgid "Waiting for connection from frontend.\n"
+msgstr "Ожидание соединения от интерфейса.\n"
+
+msgid ""
+"Warning: Pistol is loaded! Are you SURE you wish to shoot yourself in the "
+"foot?"
+msgstr ""
+"Предупреждение: Патрон заряжен! Вы УВЕРЕНЫ, что хотите прострелить себе ногу?"
+
+msgid "Where this filesystem will be logically located"
+msgstr "Где эта файловая система будет логически расположена"
+
+msgid "Will this system be used as a DNS server?"
+msgstr "Будет ли эта система использоваться в качестве DNS сервера?"
+
+msgid "Workstation"
+msgstr "Рабочая станция"
+
+msgid "Yes"
+msgstr "Да"
+
+msgid "You can choose localisation from list."
+msgstr "Вы можете выбрать локализацию из списка."
+
+#, c-format
+msgid "is_name_server WAS NOT PRESENT IN RESPONSE.\n"
+msgstr "is_name_server НЕ БЫЛО В ОТВЕТЕ.\n"
+
+#, c-format
+msgid "logged_in_as WAS NOT PRESENT IN RESPONSE.\n"
+msgstr "logged_in_as НЕ БЫЛО В ОТВЕТЕ.\n"
+
+#, c-format
+msgid "machine_role WAS NOT PRESENT IN RESPONSE.\n"
+msgstr "machine_role НЕ БЫЛО В ОТВЕТЕ.\n"
+
+#, c-format
+msgid "password WAS NOT PRESENT IN RESPONSE.\n"
+msgstr "password НЕ БЫЛО В ОТВЕТЕ.\n"
+
+#, c-format
+msgid "system_name WAS NOT PRESENT IN RESPONSE.\n"
+msgstr "system_name НЕ БЫЛО В ОТВЕТЕ.\n"
