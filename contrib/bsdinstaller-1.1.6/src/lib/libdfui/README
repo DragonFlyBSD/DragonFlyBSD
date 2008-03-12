@@ -1,0 +1,56 @@
+libdfui v4.0 README
+===================
+
+$Id: README,v 1.3 2005/03/21 03:26:57 cpressey Exp $
+
+What is libdfui?
+----------------
+
+libdfui is a LIBrary for DragonFly User Interfaces.  It provides a highly
+abstract user interaction interface with which an application program
+(termed the backend) can communicate with a user via a concreate user
+interface terminal program (termed the frontend.)  The frontend and the
+backend can communicate over several kinds of transport layers (TCP,
+CAPS, and Named Pipes.)  The protocol is abstract enough so that the
+frontend can occupy nearly any medium (GUI, addressable text console,
+teletype, voice synthesis/recognition, etc) with little to no `fudging'
+of the semantics (i.e. the structure and nature of the information that
+the backend wishes to present and/or acquire.)
+
+What is the current state of the project?
+-----------------------------------------
+
+EXPERIMENTAL.  libdfui's application programming interface may change at
+any time.  If you use libdfui in a project, be prepared to chase API changes.
+libdfui 4.0 is not expected to be backwards-compatible with previous
+versions.  While many functions may be the same, some have changed.
+
+How do I build and install libdfui?
+-----------------------------------
+
+On a BSD-based system, go into the libdfui source directory and type:
+
+	make
+
+Once built, it can be installed by typing (as root):
+
+	make install
+
+Directions may differ for other systems.
+
+An alternative method is to build libdfui using the ports system and
+install it using the package system.
+
+How do I use libdfui from a program?
+------------------------------------
+
+libdfui requires libaura, but is not statically linked with it, so any
+consumers of libdfui will also need to link to libaura.
+
+You can give gcc the following sort of command line flags to tell it to
+link your program with libdfui:
+
+	gcc foo.c -o foo -L/usr/local/lib -laura -ldfui
+
+See the libdfui source code for the list of available functions and what
+they do.

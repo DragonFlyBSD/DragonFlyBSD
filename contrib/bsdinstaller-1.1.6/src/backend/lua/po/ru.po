@@ -1,0 +1,1221 @@
+# bsdinstaller - Russian language localization.
+# Copyright (C) 2004
+# This file is distributed under the same license as the bsdinstaller.
+# Denis Peplin <den@FreeBSD.org>, 2004.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2005-04-07 16:44+0400\n"
+"PO-Revision-Date: 2005-04-07 16:48+0400\n"
+"Last-Translator: Denis Peplin <den@FreeBSD.org>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=koi8-r\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#, c-format
+msgid "%d/%d packages were successfully installed!"
+msgstr "%d/%d пакетов было успешно установлено на диск!"
+
+#, c-format
+msgid "%d/%d packages were successfully removed!"
+msgstr "%d/%d пакетов было успешно удалено!"
+
+#, c-format
+msgid "%s is now installed"
+msgstr "%s установлена"
+
+#, c-format
+msgid "%s was not fully installed."
+msgstr "%s не была полностью установлена."
+
+#, c-format
+msgid "%s will be a plain dir in %s\n"
+msgstr "%s будет обычным каталогом в %s\n"
+
+#, c-format
+msgid "%s will be symlinked to %s\n"
+msgstr "%s будет символической ссылкой на %s\n"
+
+#, c-format
+msgid ""
+"'%s' is not a recognized partition type. Please use a numeric identifier if "
+"you wish to use an unlisted partition type."
+msgstr ""
+"'%s' не является известным типом раздела. Если вы хотите ввести не входящий "
+"в список тип раздела, используйте числовой идентификатор."
+
+#, c-format
+msgid ""
+"'Packet Mode' refers to using newer BIOS calls to boot from a partition of "
+"the disk.  It is generally not required unless:\n"
+"\n"
+"- your BIOS does not support legacy mode; or\n"
+"- your %s primary partition resides on a cylinder of the disk beyond "
+"cylinder 1024; or\n"
+"- you just can't get it to boot without it."
+msgstr ""
+"'Packet Mode' означает использование новых функций BIOS для загрузки с "
+"дискового раздела.  Обычно он не требуется, если только:\n"
+"\n"
+"- BIOS не поддерживает legacy режим; или\n"
+"- основной раздел %s находится на цилиндре диска с номером больше "
+"1024; или\n"
+"- вы просто не можете загрузиться без него."
+
+msgid ""
+"A failure occured while provisioning the NetBoot environment.  Please "
+"consult the log file for details."
+msgstr ""
+"При подготовке NetBoot произошли ошибки.  Обратитесь к лог файлам за "
+"детальной информацией."
+
+msgid "Accept and Add User"
+msgstr "Принять и добавить пользователя"
+
+msgid "Accept and Create"
+msgstr "Принять и создать"
+
+msgid "Accept and Install Bootblocks"
+msgstr "Подтвердить и установить загрузочный блок"
+
+msgid "Accept and Set Password"
+msgstr "Принять и установить пароль"
+
+msgid "Accept these Packages"
+msgstr "Принять эти пакеты"
+
+msgid "Action cancelled - no primary partitions were formatted."
+msgstr "Действие прервано - нет отформатированных основных разделов."
+
+msgid "Active?"
+msgstr "Активно?"
+
+msgid "Add User"
+msgstr "Добавить пользователя"
+
+msgid "An error occurred when setting the root password."
+msgstr "При установке пароля root произошла ошибка."
+
+msgid "An error occurred while attempting to set time and date."
+msgstr "При попытке установить время и дату произошла ошибка."
+
+msgid "Assign IP Address"
+msgstr "Присвоение IP адреса"
+
+msgid "Begin Installation"
+msgstr "Начало установки"
+
+msgid "Begin Installing Files"
+msgstr "Начало установки файлов"
+
+msgid "Block Size"
+msgstr "Размер блока"
+
+msgid "Calculating package dependencies."
+msgstr "Определение зависимостей пакетов."
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Capacity"
+msgstr "Емкость"
+
+msgid ""
+"Capacity must either end in 'M' for megabytes, 'G' for gigabytes, or be '*' "
+"to indicate 'use all remaining space.'"
+msgstr ""
+"Емкость может состоять из цифры и буквы 'M' для мегабайт, 'G' для гигабайт, "
+" а '*' означает 'использовать все оставшееся место'."
+
+msgid "Change Console Settings"
+msgstr "Изменение установок консоли"
+
+msgid "Choose Target System"
+msgstr "Выбор целевой системы"
+
+msgid "Choose one of the following things to configure."
+msgstr "Выберите один из следующих пунктов настройки."
+
+msgid "Configure"
+msgstr "Настройка"
+
+msgid "Configure Interface"
+msgstr "Настройка интерфейса"
+
+#, c-format
+msgid "Configure a %s OS that has already been installed"
+msgstr "Настройка установленной ОС %s"
+
+msgid "Configure a System on Disk"
+msgstr "Настройка системы на диске"
+
+msgid "Configure an Installed System"
+msgstr "Настройка установленной системы"
+
+msgid "Configure the Running System"
+msgstr "Настройка работающей системы"
+
+msgid "Configure the system that was just installed"
+msgstr "Настройка только что установленной системы"
+
+msgid "Configuring Interface:"
+msgstr "Настройка интерфейса:"
+
+#, c-format
+msgid ""
+"Congratulations, %s is now installed on your hard drive! You may now do one "
+"of three things: you can perform some initial configuration of this system, "
+"you can reboot to test out your new installation, or you can go back to the "
+"main menu and select other actions to perform."
+msgstr ""
+"Поздравляем, %s только что была установлена на жесткий диск! Теперь вы можете "
+"выбрать: выполнение первоначальной настройки системы, перезагрузку для "
+"тестирования новой установки, или возврат в главное меню для выполнения "
+"каких-либо других действий."
+
+msgid "Could not create the skeletal target system."
+msgstr "Не могу создать целевую (skeletal) файловую систему."
+
+msgid "Could not mount the skeletal target system."
+msgstr "Не могу смонтировать целевую (skeletal) файловую систему."
+
+msgid "Day"
+msgstr "День"
+
+msgid "Default Router"
+msgstr "Шлюз по умолчанию"
+
+msgid "Disk Drive"
+msgstr "Диск"
+
+msgid "Domain Name"
+msgstr "Имя домена"
+
+msgid "Edit Partitions"
+msgstr "Редактирование разделов"
+
+msgid "Enable NetBoot Installation Services"
+msgstr "Включение сервисов установки NetBoot"
+
+msgid "Enable NetBoot Installation Services?"
+msgstr "Включить сервисы установки NetBoot?"
+
+msgid "English"
+msgstr "Английский"
+
+msgid ""
+"Enter a comma-separated list of other groups that this user should belong to"
+msgstr "Введите разделенный запятыми список других групп пользователя"
+
+msgid "Enter the IP Address you would like to use"
+msgstr "Введите IP адрес, который будет использоваться"
+
+msgid "Enter the IP address of primary DNS Server"
+msgstr "Введите IP адрес первичного DNS сервера"
+
+msgid "Enter the IP address of the default router"
+msgstr "Введите IP адрес шлюза по умолчанию"
+
+msgid ""
+"Enter the current date and time of day to set this computer's internal "
+"timekeeping clock."
+msgstr ""
+"Введите текущие дату и время, чтобы установить внутренние часы "
+"компьютера."
+
+msgid "Enter the current day of month (e.g. `30')"
+msgstr "Введите день (например, `30')"
+
+msgid "Enter the current hour (e.g. `07')"
+msgstr "Введите час (например,  `07')"
+
+msgid "Enter the current minute (e.g. `59')"
+msgstr "Введите минуту (например, `59')"
+
+msgid "Enter the current month (e.g. `07')"
+msgstr "Введите месяц (например, `07')"
+
+msgid "Enter the current year (e.g. `2004')"
+msgstr "Введите год (например, `2004')"
+
+msgid "Enter the full path to the user's home directory, or leave blank"
+msgstr ""
+"Введите полный путь к домашнему каталогу пользователя или оставьте поле "
+"пустым"
+
+msgid "Enter the full path to the user's shell program"
+msgstr "Введите полный путь к оболочке пользователя"
+
+msgid "Enter the netmask of the IP address"
+msgstr "Введите сетевую маску для IP адреса"
+
+msgid "Enter the primary group for this account, or leave blank"
+msgstr "Введите основную группу этой учетной записи или оставьте поле пустым"
+
+msgid "Enter the real name (or GECOS field) of this user"
+msgstr "Введите полное имя (или поле GECOS) этого пользователя"
+
+msgid "Enter the root password you would like to use"
+msgstr "Введите пароль root"
+
+msgid "Enter the same password again to confirm"
+msgstr "Введите тот же пароль еще раз для подтверждения"
+
+msgid "Enter the user's password (will not be displayed)"
+msgstr "Введите пароль пользователя (не будет отображаться)"
+
+msgid "Enter the username the user will log in as"
+msgstr "Введите имя пользователя"
+
+msgid "Enter this account's numeric user id, or leave blank"
+msgstr ""
+"Введите числовой идентификатор этой учетной записи или оставьте поле пустым"
+
+msgid ""
+"Errors occurred while installing packages. Some packages may not have been "
+"successfully installed."
+msgstr ""
+"При установке пакетов возникли ошибки. Некоторые пакеты могли быть не "
+"установлены."
+
+msgid "Errors occurred; keyboard map was not successfully set."
+msgstr "Возникли ошибки; раскладка клавиатуры не была установлена."
+
+msgid "Errors occurred; screen map was not successfully set."
+msgstr "Возникли ошибки; параметры экрана не были установлены."
+
+msgid "Errors occurred; video font was not successfully set."
+msgstr "Возникли ошибки; видео шрифт не был установлен."
+
+#, c-format
+msgid ""
+"Everything is now ready to install the actual files which comprise the %s "
+"operating system on the selected partition of the selected disk.\n"
+"\n"
+"Note that this process will take quite a while to finish. You may wish to "
+"take a break now and come back to the computer in a short while."
+msgstr ""
+"Все готово к установке файлов %s на выбранный раздел выбранного диска.\n"
+"\n"
+"Этому процессу потребуется некоторое время. Вы можете сделать перерыв и "
+"вернуться к компьютеру через некоторое время."
+
+msgid "Failed to make sure that the partition is bootable."
+msgstr "Не удалось проверить, загружаем ли раздел."
+
+msgid "Format and Partition Disk"
+msgstr "Форматирование и разбиение диска на разделы"
+
+msgid "Frag Size"
+msgstr "Размер фрагмента"
+
+msgid "Full Name of Package"
+msgstr "Полное имя пакета"
+
+msgid "Group Memberships"
+msgstr "Принадлежность группам"
+
+msgid ""
+"Here you can add a user to an installed system.\n"
+"\n"
+"You can leave the Home Directory, User ID, and Login Group fields empty if "
+"you want these items to be automatically allocated by the system."
+msgstr ""
+"Здесь вы можете добавить пользователя в установленную систему.\n"
+"\n"
+"Вы можете оставить поля 'Домашний каталог', 'ID пользователя' и 'Группа' "
+"пустыми, если хотите, чтобы эти значения были автоматически выделены "
+"системой."
+
+msgid "Here you can set the super-user (root) password."
+msgstr "Здесь вы можете установить пароль суперпользователя (root)."
+
+msgid "Home Directory"
+msgstr "Домашний каталог"
+
+msgid "Hostname"
+msgstr "Имя хоста"
+
+msgid "Hour"
+msgstr "Час"
+
+msgid "IP Address"
+msgstr "IP адрес"
+
+#, c-format
+msgid "Install %s"
+msgstr "Установка %s"
+
+#, c-format
+msgid "Install %s on this computer system"
+msgstr "Установка %s на этот компьютер"
+
+msgid "Install Bootblock(s)"
+msgstr "Установка загрузочных блоков"
+
+msgid "Install Bootblock?"
+msgstr "Установить загрузочный блок?"
+
+msgid "Install Packages"
+msgstr "Установка пакетов"
+
+msgid "Install a bootblock on this disk"
+msgstr "Установка загрузочного блока на диск"
+
+msgid "Install these Packages"
+msgstr "Установка пакетов"
+
+msgid "Install?"
+msgstr "Установить?"
+
+#, c-format
+msgid ""
+"Interface\n"
+"\n"
+"%s\n"
+"\n"
+"failed to come up."
+msgstr ""
+"Интерфейс\n"
+"\n"
+"%s\n"
+"\n"
+"поднять не удалось."
+
+#, c-format
+msgid ""
+"Interface\n"
+"\n"
+"%s\n"
+"\n"
+"is now up, with IP address %s."
+msgstr ""
+"Интерфейс\n"
+"\n"
+"%s\n"
+"\n"
+"поднят, IP адрес %s."
+
+msgid ""
+"Is this machine's internal clock set to local time or UTC (Universal "
+"Coordinated Time, roughly the same as Greenwich Mean Time)?\n"
+"\n"
+"If you don't know, assume local time for now."
+msgstr ""
+"Установлены ли часы этого компьютера в локальное время, или в UTC "
+"(Universal Coordinated Time, примерно то же, что и Greenwich Mean Time)?\n"
+"\n"
+"Если вы не знаете, выберите локальное время."
+
+msgid "Local Time"
+msgstr "Локальное время"
+
+msgid "Local or UTC (Greenwich Mean Time) clock"
+msgstr "Локальные или UTC (Greenwich Mean Time) часы"
+
+msgid "Login Group"
+msgstr "Группа"
+
+msgid "Make this computer a boot server for other machines on the network"
+msgstr "Сделать этот компьютер загрузочным сервером для других компьютеров в сети"
+
+msgid "Minute"
+msgstr "Минута"
+
+msgid "Month"
+msgstr "Месяц"
+
+msgid "Mountpoint"
+msgstr "Точка монтирования"
+
+msgid ""
+"NetBoot Installation Services allow this machine to become an Installation "
+"Server that will allow other machines on this network to boot as PXE "
+"clients, and will start the Installation Environment on them.\n"
+"\n"
+"*NOTE!*  This will assign the IP Address of 10.1.0.1/24 to the selected "
+"interface.\n"
+"\n"
+"Would you like to provision this machine to serve up the Installation "
+"Environment to other machines?"
+msgstr ""
+"Сервисы установки NetBoot позволяют этому компьютеру стать сервером "
+"установки, что позволить другим компьютерам в этой сети загружаться "
+" в качестве PXE клиентов, и запускать на них среду установки.\n"
+"\n"
+"*ВНИМАНИЕ!*  Выбранному интерфейсу будет присвоен IP адрес 10.1.0.1/24.\n"
+"\n"
+"Хотите ли вы сделать этот компьютер провайдером среды установки для других "
+"компьютеров?"
+
+msgid "NetBoot installation services are now started."
+msgstr "NetBoot сервис установки был запущен."
+
+msgid "Netmask"
+msgstr "Сетевая маска"
+
+msgid "No thanks"
+msgstr "Нет, спасибо"
+
+#, c-format
+msgid ""
+"No valid partitions were found on this disk. You will have to create at "
+"least one in which to install %s."
+msgstr ""
+"На этом диске на было найдено ни одного подходящего раздела. Для установки "
+"%s потребуется создать хотя бы один раздел."
+
+msgid ""
+"Note: none of the swap subpartitions that you have selected are large enough "
+"to hold the contents of memory, and thus cannot be used to hold a crash dump "
+"(an image of the computers' memory at the time of failure.) Because this "
+"complicates troubleshooting, we recommend that you increase the size of one "
+"of your swap subpartitions.\n"
+"\n"
+"Proceed anyway?"
+msgstr ""
+"Внимание: нет ни одного достаточно большого раздела подкачки, чтобы сохранить "
+"содержимое памяти, и следовательно их нельзя использовать для сохранения "
+"крэш дампа (образа памяти во время сбоя). Поскольку это усложнит решение "
+"проблем, мы рекомендуем увеличить размер разделов подкачки.\n"
+"\n"
+"Продолжить несмотря на это?"
+
+#, c-format
+msgid ""
+"Note: the total capacity required for the requested subpartitions (%s) does "
+"not make full use of the capacity available in the partition (%s.)  %d "
+"sectors (%s) of space will go unused.\n"
+"\n"
+"You may wish to expand one or more subpartitions before proceeding.\n"
+"\n"
+"Proceed anyway?"
+msgstr ""
+"Внимание: общий размер, выделяемый под создаваемые подразделы (%s), меньше "
+"общего размера, доступного в разделе (%s). %d секторов (%s) "
+"не используются.\n"
+"\n"
+"Вы можете увеличить один или более подразделов перед установкой.\n"
+"\n"
+"Продолжить несмотря на это?"
+
+#, c-format
+msgid ""
+"Note: the total number of sectors needed for the requested partitions (%d) "
+"does not make full use of the number of sectors available on the disk (%d.)  "
+"There will be %d unused sectors (%s.)\n"
+"\n"
+"You may wish to expand one or more partitions before proceeding.\n"
+"\n"
+"Proceed anyway?"
+msgstr ""
+"Внимание: общее количество секторов, выделяемых под создаваемые разделы (%d), "
+"меньше общего количества секторов, доступных на диске (%d). %d секторов не "
+"используется (%s).\n"
+"\n"
+"Вы можете увеличить один или более разделов перед установкой.\n"
+"\n"
+"Продолжить несмотря на это?"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Omit Subpartition(s)"
+msgstr "Пропустить подраздел(ы)"
+
+#, c-format
+msgid ""
+"One or more subpartitions of one or more primary partitions of the selected "
+"disk are already in use (they are currently mounted on mountpoints in the "
+"filesystem.) You should either unmount them before proceeding, or select a "
+"different disk to install %s on."
+msgstr ""
+"Один или более подразделов на одном или более первичных разделов выбранного "
+"диска уже используются (они смонтированы на точки монтирования файловой "
+"системы). Вы должны или размонтировать их перед продолжением, или выбрать для "
+"другой диск для установки %s."
+
+#, c-format
+msgid ""
+"One or more subpartitions on the selected primary partition already in use "
+"(they are currently mounted in the filesystem.) You should either unmount "
+"them before proceeding, or select a different partition or disk on which to "
+"install %s."
+msgstr ""
+"Один или более подразделов на выбранном первичном разделе уже используются "
+"(они сейчас смонтированы в файловой системе). Вы должны или размонтировать их "
+"перед продолжением, или выбрать другой раздел диска для установки %s."
+
+msgid "Only one partition may have a capacity of '*'."
+msgstr "Только для одного раздела может быть указан объем '*'."
+
+msgid "Only one subpartition may have a capacity of '*'."
+msgstr "Только для одного подраздела может быть указан объем '*'."
+
+msgid "Other Group Memberships"
+msgstr "Другие группы"
+
+msgid "Packet mode?"
+msgstr "Пакетный режим?"
+
+msgid "Partition Type"
+msgstr "Тип раздела"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "Password (Again)"
+msgstr "Пароль (повтор)"
+
+msgid "Please choose which installed system you want to configure."
+msgstr "Выберите, какую установленную систему вы хотите настроить."
+
+msgid ""
+"Please enter numbers within acceptable ranges for year, month, day of month, "
+"hour, and minute."
+msgstr ""
+"Пожалуйста, введите числа, входящие в диапазоны года, месяца, дня месяца, "
+"часа и минуты."
+
+msgid "Please select the network interface you wish to configure."
+msgstr "Выберите, какой сетевой интерфейс вы хотите настроить."
+
+msgid "Please select your preferred language."
+msgstr "Выберите предпочитаемый язык."
+
+msgid "Primary DNS Server"
+msgstr "Первичный DNS сервер"
+
+#, c-format
+msgid "Primary partition #%d was formatted."
+msgstr "Основной раздел #%d был отформатирован."
+
+#, c-format
+msgid ""
+"Primary partition #%d was not correctly formatted, and may now be in an "
+"inconsistent state. We recommend re-formatting it before proceeding."
+msgstr ""
+"Основной раздел #%d не был корректно отформатирован, и может находиться в "
+"поврежденном состоянии. Рекомендуется переформатировать его перед "
+"дальнейшими действиями."
+
+msgid "Re-enter the user's password to confirm"
+msgstr "Введите пароль еще раз для подтверждения"
+
+msgid "Re-type Root Password"
+msgstr "Введите пароль root еще раз"
+
+msgid "Ready to Install"
+msgstr "Все готово к установке"
+
+msgid "Real Name"
+msgstr "Полное имя"
+
+msgid "Reboot"
+msgstr "Перезагрузка"
+
+msgid "Reboot this computer"
+msgstr "Перезагрузка компьютера"
+
+msgid "Remove Packages"
+msgstr "Удаление пакетов"
+
+msgid "Remove these Packages"
+msgstr "Удаление выбранных пакетов"
+
+msgid "Remove?"
+msgstr "Удалить?"
+
+#, c-format
+msgid "Return to %s"
+msgstr "Возврат в %s"
+
+msgid "Return to Configure Menu"
+msgstr "Возврат в меню настройки"
+
+msgid "Return to Create Subpartitions"
+msgstr "Возврат к созданию подразделов"
+
+msgid "Return to Main"
+msgstr "Возврат в начало"
+
+msgid "Return to Main Menu"
+msgstr "Возврат в главное меню"
+
+msgid "Return to Previous Menu"
+msgstr "Возврат в предыдущее меню"
+
+msgid "Return to Utilities Menu"
+msgstr "Возврат в меню утилит"
+
+msgid "Root Password"
+msgstr "Пароль root"
+
+msgid "Select All"
+msgstr "Выбрать все"
+
+msgid "Select Component to Configure"
+msgstr "Выбор компонента для настройки"
+
+msgid "Select Console Font"
+msgstr "Выбор консольного шрифта"
+
+msgid "Select Keyboard Map"
+msgstr "Выбор раскладки клавиатуры"
+
+msgid "Select Language"
+msgstr "Выбор языка"
+
+msgid "Select Network Interface"
+msgstr "Выбор сетевого интерфейса"
+
+msgid "Select None"
+msgstr "Не выбирать ничего"
+
+msgid "Select Packages"
+msgstr "Выбор пакетов"
+
+msgid "Select Screen Map"
+msgstr "Выбор карты экрана"
+
+msgid "Select Subpartitions"
+msgstr "Выбор подразделов"
+
+msgid "Select Time Zone"
+msgstr "Выбор временной зоны"
+
+msgid "Select a Disk"
+msgstr "Выбор диска"
+
+msgid "Select a Partition"
+msgstr "Выбор раздела"
+
+msgid "Select a Time Zone appropriate to your physical location."
+msgstr "Выберите временную зону, соответствующую вашему местонахождению"
+
+#, c-format
+msgid "Select a disk on which to install %s."
+msgstr "Выбор диска для установки %s."
+
+msgid "Select a disk."
+msgstr "Выбор диска."
+
+msgid "Select a font appropriate to your video monitor and language."
+msgstr "Выберите шрифт, соответствующий вашему монитору и языку."
+
+msgid "Select a keyboard map appropriate to your keyboard layout."
+msgstr "Выберите раскладку клавиатуры"
+
+msgid ""
+"Select a mapping for translating characters as they appear on your video "
+"console screen."
+msgstr "Выбор карты для трансляции символов на консоль."
+
+msgid "Select a partition."
+msgstr "Выбор раздела"
+
+#, c-format
+msgid ""
+"Select the disk on which the installation of %s that you wish to configure "
+"resides."
+msgstr ""
+"Выберите диск, где находится установка %s, которую вы хотите настроить."
+
+msgid ""
+"Select the disk on which the installation that you wish to upgrade resides."
+msgstr ""
+"Выберите диск, где находится установка %s, которую вы хотите обновить."
+
+msgid "Select the packages you wish to install from the LiveCD onto the HDD."
+msgstr "Выберите пакеты, которые вы хотите установить с LiveCD на HDD."
+
+msgid "Select the packages you wish to install."
+msgstr "Выберите пакеты, которые вы хотите установить."
+
+msgid "Select the packages you wish to remove from this system"
+msgstr "Выберите пакеты, которые вы хотите удалить из системы."
+
+msgid ""
+"Select the partitions (also known as `slices' in BSD tradition) you want to "
+"have on this disk.\n"
+"\n"
+"For Capacity, use 'M' to indicate megabytes, 'G' to indicate gigabytes, or a "
+"single '*' to indicate 'use the remaining space on the disk'."
+msgstr ""
+"Выберите разделы (в BSD также называемые 'слайсами'), которые вы хотите "
+"иметь на этом диске.\n"
+"\n"
+"Объем обозначается цифрой с 'M' для мегабайт, 'G' для гигабайт, а знак "
+"'*' означает 'использовать оставшееся пространство на диске'."
+
+#, c-format
+msgid ""
+"Select the primary partition of %s (also known as a `slice' in the BSD "
+"tradition) on which to install %s."
+msgstr ""
+"Выберите основной раздел %s (в BSD также называемый 'слайсом') "
+"для установки %s."
+
+#, c-format
+msgid ""
+"Select the primary partition of %s on which the installation of %s resides."
+msgstr ""
+"Выберите основной раздел %s, где установлена %s."
+
+#, c-format
+msgid ""
+"Select the primary partition of %s on which the installation that you wish "
+"to upgrade resides."
+msgstr ""
+"Выберите основной раздел %s, на котором находится установка, которую вы "
+"хотите обновить."
+
+msgid "Select this to use 'packet mode' to boot the disk"
+msgstr ""
+"Выберите этот пункт для использования 'пакетного режима' загрузки диска"
+
+msgid "Set Root Password"
+msgstr "Установите пароль root"
+
+msgid "Set Time and Date"
+msgstr "Установка времени и даты"
+
+msgid "Set Timezone"
+msgstr "Установка временной зоны"
+
+msgid "Set up NetBoot Server"
+msgstr "Настройка сервера NetBoot"
+
+msgid ""
+"Set up the subpartitions (also known as just `partitions' in BSD tradition) "
+"you want to have on this primary partition.\n"
+"\n"
+"For Capacity, use 'M' to indicate megabytes, 'G' to indicate gigabytes, or a "
+"single '*' to indicate 'use the remaining space on the primary partition'."
+msgstr ""
+"Установка подразделов (называемых просто `разделами' по традиции BSD), "
+"которые будут находиться на этом основном разделе.\n"
+"\n"
+"Для размера используйте 'M', чтобы обозначить мегабайты, 'G', чтобы "
+"обозначить гигабайты, или символ '*', чтобы использовать остаток места на "
+"основном разделе."
+
+#, c-format
+msgid "Setting password for user `%s'."
+msgstr "Установка пароля для пользователя `%s'."
+
+msgid "Shell"
+msgstr "Оболочка"
+
+msgid "Skip this Step"
+msgstr "Пропуск этого действия"
+
+msgid "Softupdates?"
+msgstr "Softupdates?"
+
+#, c-format
+msgid ""
+"Some situations in which you might not wish to use this installer are:\n"
+"\n"
+"- you want to install %s onto a logical/extended partition;\n"
+"- you want to install %s onto a ``dangerously dedicated'' disk; or\n"
+"- you want full and utter control over the install process."
+msgstr ""
+"В некоторых ситуациях вы не можете использовать эту программу:\n"
+"\n"
+"- установка %s в логический/расширенный раздел;\n"
+"- установка %s на ``dangerously dedicated'' диск; или\n"
+"- необходим тотальный контроль над процессом установки."
+
+#, c-format
+msgid ""
+"Some subpartitions on the selected primary partition are already activated "
+"as swap. Since there is no way to deactivate swap in %s once it is "
+"activated, in order to edit the subpartition layout of this primary "
+"partition, you must first reboot."
+msgstr ""
+"Некоторые подразделы на выбранном основном разделе уже были активированы для "
+"подкачки. Поскольку в %s нет способа деактивировать подкачку, для "
+"редактирования раскладки подразделов этого основного раздела необходимо "
+"сначала перегрузиться."
+
+#, c-format
+msgid ""
+"Subpartitions further divide a primary partition for use with %s.  Some "
+"reasons you may want a set of subpartitions are:\n"
+"\n"
+"- you want to restrict how much data can be written to certain parts of the "
+"primary partition, to quell denial-of-service attacks; and\n"
+"- you want to speed up access to data on the disk."
+msgstr ""
+"Подразделы это дальнейшее разделение основного раздела для использования с %"
+"s. Причины, по которым могут потребоваться подразделы:\n"
+"\n"
+"- вы хотите ограничить объем данных, которые могут быть записаны на "
+"определенные части основного раздела для остановки DoS атаки; и\n"
+"- вы хотите повысить скорость доступа к данным."
+
+msgid "Switch to Expert Mode"
+msgstr "Переключиться в экспертный режим"
+
+msgid "Switch to Normal Mode"
+msgstr "Переключиться в нормальный режим"
+
+msgid "Target system was not successfully upgraded."
+msgstr "Целевая система не была успешно обновлена."
+
+msgid "Target system was successfully upgraded!"
+msgstr "Целевая система была успешно обновлена!"
+
+#, c-format
+msgid "The Time Zone has been successfully set to %s."
+msgstr "Временная зона была успешно установлена в %s."
+
+msgid "The disk on which you wish to install a bootblock"
+msgstr "Диск, на который будет установлен загрузочный блок"
+
+#, c-format
+msgid ""
+"The following installed packages require one or more of the packages you "
+"selected, and will also be removed:\n"
+"\n"
+"%s\n"
+"Is this acceptable?"
+msgstr ""
+"Следующим пакетам требуется один или более выбранных пакетов, и они также "
+"будут удалены:\n"
+"\n"
+"%s\n"
+"Удалить их?"
+
+#, c-format
+msgid ""
+"Следующие пакеты требуются выбранным пакетам, и они также будут "
+"установлены:\n"
+"\n"
+"%s\n"
+"Установить их?"
+msgstr ""
+
+#, c-format
+msgid ""
+"The installer could not find any disks suitable for installation (IDE or "
+"SCSI) attached to this computer.  If you wish to install %s on an unorthodox "
+"storage device, you will have to exit to a LiveCD command prompt and install "
+"it manually, using the file /README as a guide."
+msgstr ""
+"Программа установки не может найти на этом компьютере диски, подходящие для "
+"установки (IDE или SCSI).  Если вы хотите установить %s на другое "
+"устройство, необходимо выйти в приглашение командной строки LiveCD и "
+"провести установку вручную, используя файл /README в качестве руководства."
+
+#, c-format
+msgid ""
+"The installer could not find any suitable disks attached to this computer.  "
+"If you wish to configure an installation of %s on an unorthodox storage "
+"device, you will have to exit to a LiveCD command prompt and configure it "
+"manually, using the file /README as a guide."
+msgstr ""
+"Программа установки не смогла найти ни одного подходящего диска на этом "
+"компьютере. Если вы хотите настроить установку %s на другом устройстве "
+"хранения, вам потребуется выйти в приглашение командной строки LiveCD "
+"и настроить это устройство вручную, используя файл /README в качестве "
+"руководства."
+
+msgid ""
+"The installer could not find any suitable disks attached to this computer.  "
+"If you wish to upgrade an installation located on an unorthodox storage "
+"device, you will have to exit to a LiveCD command prompt and configure it "
+"manually, using the file /README as a guide."
+msgstr ""
+"Программа установки не смогла найти ни одного подходящего диска на этом "
+"компьютере. Если вы хотите обновить установку на другом устройстве "
+"хранения, вам потребуется выйти в приглашение командной строки LiveCD "
+"и настроить это устройство вручную, используя файл /README в качестве "
+"руководства."
+
+msgid "The name of the login group contains illegal characters."
+msgstr "Имя группы содержит недопустимые символы."
+
+msgid "The passwords do not match."
+msgstr "Пароли не совпадают."
+
+msgid "The root password has been changed."
+msgstr "Пароль root был изменен."
+
+msgid "The selected shell does not exist on the system."
+msgstr "Выбранная оболочка не установлена в системе."
+
+msgid "The target system could not be successfully mounted."
+msgstr "Целевая файловая система не может быть смонтирована."
+
+msgid "The target system could not be successfully probed."
+msgstr "Целевая файловая система не может быть протестирована."
+
+msgid "The text specified in the Real Name field contains illegal characters."
+msgstr "Текст в поле 'Полное имя' содержит недопустимые символы."
+
+msgid "The time and date have successfully been set."
+msgstr "Время и дата были успешно установлены."
+
+msgid "The username contains illegal characters."
+msgstr "Имя пользователя содержит недопустимые символы."
+
+msgid "There are no packages installed on this system."
+msgstr "В системе нет установленных пакетов."
+
+msgid ""
+"There were errors. Some packages may not have been successfully removed."
+msgstr "Произошли ошибки. Некоторые пакеты могли быть не удалены."
+
+#, c-format
+msgid ""
+"This experimental application will install %s on one of the hard disk drives "
+"attached to this computer. It has been designed to make it easy to install %"
+"s in the typical case. If you have special requirements that are not "
+"addressed by this installer, or if you have problems using it, you are "
+"welcome to install %s manually. To do so select Exit to Live CD, login as "
+"root, and follow the instructions given in the file /README .\n"
+"\n"
+"NOTE! As with any installation process, YOU ARE STRONGLY ENCOURAGED TO BACK "
+"UP ANY IMPORTANT DATA ON THIS COMPUTER BEFORE PROCEEDING!"
+msgstr ""
+"Эта экспериментальная программа установит %s на один из подключенных к "
+"компьютеру жестких дисков. Она была разработана для упрощения типичной "
+"установки %s. Если вы предъявляете к установке особые требования, не "
+"удовлетворяемые этой программой, или у вас проблемы с ее использованием, "
+"установите  %s вручную. Для этого выйдите из Live CD, войдите под root, и "
+"следуйте инструкциям в файле /README .\n"
+"\n"
+"ВНИМАНИЕ! Как и с любым процессом установки, НАСТОЯТЕЛЬНО РЕКОМЕНДУЕТСЯ "
+"СДЕЛАТЬ РЕЗЕРВНУЮ КОПИЮ ВСЕХ ВАЖНЫХ ДАННЫХ ПЕРЕД НАЧАЛОМ УСТАНОВКИ!"
+
+msgid ""
+"This machine is about to be shut down. After the machine has reached its "
+"shutdown state, you may remove the CD from the CD-ROM drive tray and press "
+"Enter to reboot from the HDD."
+msgstr ""
+"Компьютер будет перезагружен. После завершения работы системы вы можете "
+"извлечь компакт-диск из привода и нажать Enter для загрузки с жесткого диска."
+
+msgid "UTC Time"
+msgstr "Время UTC"
+
+msgid "Upgrade a system with to the newest available version"
+msgstr "Обновление системы до последней доступной версии"
+
+msgid "Upgrade an Installed System"
+msgstr "Обновление установленной системы"
+
+msgid "User ID"
+msgstr "ID пользователя"
+
+#, c-format
+msgid "User `%s' was added."
+msgstr "Пользователь `%s' был добавлен"
+
+msgid "User was not successfully added."
+msgstr "Пользователь не был добавлен"
+
+msgid "Username"
+msgstr "Имя пользователя"
+
+#, c-format
+msgid ""
+"WARNING!  ALL data in primary partition #%d,\n"
+"\n"
+"%s\n"
+"\n"
+"on the disk\n"
+"\n"
+"%s\n"
+"\n"
+" will be IRREVOCABLY ERASED!\n"
+"\n"
+"Are you ABSOLUTELY SURE you wish to take this action?  This is your LAST "
+"CHANCE to cancel!"
+msgstr ""
+"ВНИМАНИЕ!  ВСЕ данные основного раздела #%d,\n"
+"\n"
+"%s\n"
+"\n"
+"на диске\n"
+"\n"
+"%s\n"
+"\n"
+" будут НЕВОССТАНОВИМО УДАЛЕНЫ!\n"
+"\n"
+"Вы АБСОЛЮТНО УВЕРЕНЫ, что хотите выполнить это действие?  Это ПОСЛЕДНИЙ ШАНС "
+"отменить действие!"
+
+#, c-format
+msgid ""
+"WARNING: The total number of sectors needed for the requested partitions (%"
+"d) exceeds the number of sectors available on the disk (%d) by %d sectors (%"
+"s.)\n"
+"\n"
+"This is an invalid configuration; we recommend shrinking the size of one or "
+"more partitions before proceeding.\n"
+"\n"
+"Proceed anyway?"
+msgstr ""
+"ВНИМАНИЕ: Общее количество секторов, необходимых для выбранных разделов (%"
+"d) превышает количество секторов, доступных на диске (%d) на %d секторов (%"
+"s.)\n"
+"\n"
+"Это неверная конфигурация; мы рекомендуем урезать размер одного или более "
+"разделов перед тем, как продолжить.\n"
+"\n"
+"Продолжить несмотря на это?"
+
+#, c-format
+msgid ""
+"WARNING: The total number of sectors needed for the requested subpartitions "
+"(%d) exceeds the number of sectors available in the partition (%d) by %d "
+"sectors (%s.)\n"
+"\n"
+"This is an invalid configuration; we recommend shrinking the size of one or "
+"more subpartitions before proceeding.\n"
+"\n"
+"Proceed anyway?"
+msgstr ""
+"WARNING: The total number of sectors needed for the requested subpartitions "
+"(%d) exceeds the number of sectors available in the partition (%d) by %d "
+"sectors (%s.)\n"
+"\n"
+"This is an invalid configuration; we recommend shrinking the size of one or "
+"more subpartitions before proceeding.\n"
+"\n"
+"Proceed anyway?"
+"ВНИМАНИЕ: Общее количество секторов, необходимых для выбранных подразделов "
+"(%d) превышает количество секторов, доступных в разделе (%d) на %d секторов "
+"(%s.)\n"
+"\n"
+"Это неверная конфигурация; мы рекомендуем урезать размер одного или более "
+"подразделов перед тем, как продолжить.\n"
+"\n"
+"Продолжить несмотря на это?"
+
+#, c-format
+msgid ""
+"WARNING: the %s subpartition should be at least %s in size or you will risk "
+"running out of space during the installation.\n"
+"\n"
+"Proceed anyway?"
+msgstr ""
+"ВНИМАНИЕ: подраздел %s должен иметь размер как минимум %s, или будет риск "
+"нехватки места при установке.\n"
+"\n"
+"Продолжить несмотря на это?"
+
+#, c-format
+msgid ""
+"WARNING: you should have a disk at least %dM in size, or you may encounter "
+"problems trying to install %s."
+msgstr ""
+"ПРЕДУПРЕЖДЕНИЕ: диск должен иметь размер как минимум %dM, или у вас могут "
+"возникнуть проблемы при установке %s."
+
+#, c-format
+msgid ""
+"WARNING: you should have a primary partition at least %dM in size, or you "
+"may encounter problems trying to install %s."
+msgstr ""
+"ПРЕДУПРЕЖДЕНИЕ: размер основного раздела должен быть не менее %dM, или при "
+"установке %s могут возникнуть проблемы."
+
+#, c-format
+msgid "Waiting for interface %s to come up."
+msgstr "Ожидание подъема интерфейса %s."
+
+msgid ""
+"Warning: already-mounted target system could not be correctly unmounted "
+"first."
+msgstr ""
+"Внимание: смонтированная файловая система не может быть корректно размонтирована."
+
+msgid "Warning: subpartitions were not correctly unmounted."
+msgstr "Предупреждение: подразделы не были правильно отмонтированы."
+
+msgid ""
+"Would you like to try dynamically configuring this interface? (This requires "
+"that you have a DHCP server operating on the network that this interface is "
+"attached to.)"
+msgstr ""
+"Хотите ли вы включить динамическое конфигурирование интерфейса? (Это требует "
+"наличия DHCP сервера в сети, к которой подключен этот сетевой интерфейс)."
+
+msgid "Year"
+msgstr "Год"
+
+#, c-format
+msgid ""
+"You have elected to not have the following subpartition(s):\n"
+"\n"
+"%s\n"
+"\n"
+"The ramifications of these subpartition(s) being missing will be:\n"
+"\n"
+"%s\n"
+"Is this really what you want to do?"
+msgstr ""
+"Вы отказались от создания следующих подразделов:\n"
+"\n"
+"%s\n"
+"\n"
+"Эти подразделы будут заменены так:\n"
+"\n"
+"%s\n"
+"Вы действительно подтверждаете это?"
+
+msgid ""
+"You have not yet configured your network settings. Would you like to do so "
+"now? (Having an operational network connection will enhance the ability of "
+"subsequent tasks, such as installing."
+msgstr ""
+"Вы еще не настроили сеть. Хотите ли вы сделать это сейчас? (Наличие работающего "
+"сетевого подключения добавит возможностей последующим задачам, таким как "
+"установка."
+
+msgid ""
+"You may now format and partition this disk if you desire.\n"
+"\n"
+"If this is a brand new disk, you should do this. If you would like to place "
+"multiple operating systems on this disk, you should create multiple "
+"partitions, one for each operating system.\n"
+"\n"
+"If this disk already has operating systems on it that you wish to keep, you "
+"should NOT do this, and should skip this step.\n"
+"\n"
+"Format and partition this disk?"
+msgstr ""
+"Теперь вы можете отформатировать и разбить на разделы диск.\n"
+"\n"
+"Если это новый диск, сделайте это. Если вы хотите поместить на этот диск "
+"несколько операционных систем, вам потребуется создать несколько разделов, "
+"по одному на каждую операционную систему.\n"
+"\n"
+"Если на диске уже находится операционная система, которую вы хотите сохранить, "
+"НЕ делайте этого и пропустите этот шаг.\n"
+"\n"
+"Отформатировать диск и разбить его на разделы?"
+
+#, c-format
+msgid ""
+"You may now wish to install bootblocks on one or more disks. If you already "
+"have a boot manager installed, you can skip this step (but you may have to "
+"configure your boot manager separately.)  If you installed %s on a disk "
+"other than your first disk, you will need to put the bootblock on at least "
+"your first disk and the %s disk."
+msgstr ""
+"Вы можете установить загрузочные блоки на один или несколько дисков. Если "
+"менеджер загрузки уже установлен, этот шаг можно пропустить (но менеджер "
+"загрузки необходимо настроить отдельно). Если %s устанавливается не на "
+"первый диск, загрузочный блок необходимо поместить хотя бы на первый диск и "
+"диск с %s."
+
+msgid "You must enter a username."
+msgstr "Необходимо ввести имя пользователя"

@@ -1,0 +1,4 @@
+This is a Lua 5.1.x compatibility shim for Lua 5.0.x.  It also
+includes a wrapper script, lua5, which sets the LUA_PATH and
+loads the compatibility layer automatically.
+

@@ -1,0 +1,3 @@
+DFUI Qt frontend.  Allows a DFUI backend (such as a system
+installer) to communicate with the user via a graphical
+user interface built with the Qt Toolkit, as seen in KDE.

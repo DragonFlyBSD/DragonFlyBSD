@@ -1,0 +1,18 @@
+--- src/luac/Makefile.orig	2003-10-21 04:54:08.000000000 -0700
++++ src/luac/Makefile	2005-02-16 19:59:00.000000000 -0800
+@@ -8,12 +8,12 @@
+ OBJS= luac.o print.o lopcodes.o
+ SRCS= luac.c print.c
+ 
+-T= $(BIN)/luac
++T= $(BIN)/luac50
+ 
+ all:	$T
+ 
+-$T:	$(OBJS) $(LIB)/liblua.a $(LIB)/liblualib.a
+-	$(CC) -o $@ $(MYLDFLAGS) $(OBJS) -L$(LIB) -llua -llualib $(EXTRA_LIBS) $(DLLIB)
++$T:	$(OBJS) $(LIB)/liblua50.a $(LIB)/liblualib50.a
++	$(CC) -o $@ $(MYLDFLAGS) $(OBJS) -L$(LIB) -llua50 -llualib50 $(EXTRA_LIBS) $(DLLIB)
+ 
+ # print.c needs opcode names from lopcodes.c
+ lopcodes.o:	../lopcodes.c ../lopcodes.h

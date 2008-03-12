@@ -1,0 +1,30 @@
+# $Id: build.conf.defaults,v 1.1 2005/02/21 22:18:55 cpressey Exp $
+
+# Defaults settings for the build scripts.
+# NOTE: There should be NO NEED to edit this file directly!
+# Instead, create a file build.conf with your own overrides.
+
+CVSUSER=${CVSUSER:-cpressey}			# user to `cvs update' as
+LOCALUSER=${LOCALUSER:-catseye}			# user who owns cvs tree
+CVSDIR=${CVSDIR:-/home/${LOCALUSER}/projects}	# local cvs checkout dir
+CVSSITE=${CVSSITE:-216.135.66.6}		# host to cvs from
+CVSROOT=${CVSROOT:-cvsroot}			# cvsroot dir, on host
+CVSMODULE=${CVSMODULE:-installer}		# cvs module name
+CVSUPDATE=${CVSUPDATE:-NO}			# invoke 'cvs update'?
+
+TMPDIR=${TMPDIR:-/tmp}				# dir for temp files
+SRCDIR=${SRCDIR:-/usr/src}			# system source dir
+PORTSDIR=${PORTSDIR:-/usr/ports}		# system ports dir
+DISTFILESDIR=${DISTFILESDIR:-${PORTSDIR}/distfiles} # distfiles dir
+PACKAGESDIR=${PACKAGESDIR:-${PORTSDIR}/packages/All} # pkgs dir
+
+REMOVEOLDPKGS=${REMOVEOLDPKGS:-YES}		# rm old pkgs when making new
+RELEASEBUILD=${RELEASEBUILD:-NO}		# NO = tack date on pkg vers
+ROOTSKEL=${ROOTSKEL:-/usr/src/nrelease/installer} # root skeleton to use
+EXTRA_ROOTSKELS=${EXTRA_ROOTSKELS:-}		# extra root skeletons
+
+INSTALL_DFUIFE_QT=${INSTALL_DFUIFE_QT:-NO}	# build & install Qt frontend
+INSTALL_DFUIBE_LUA=${INSTALL_DFUIBE_LUA:-NO}	# build & install Lua backend
+
+WITH_NLS=${WITH_NLS:-NO}			# build pkgs with i18n
+WITH_X11=${WITH_X11:-NO}			# build X11 support pkgs

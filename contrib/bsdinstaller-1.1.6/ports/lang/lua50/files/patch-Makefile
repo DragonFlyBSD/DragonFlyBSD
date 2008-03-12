@@ -1,0 +1,33 @@
+--- Makefile.orig	2004-03-11 17:50:55.000000000 -0800
++++ Makefile	2005-02-16 19:56:33.000000000 -0800
+@@ -30,17 +30,16 @@
+ 
+ # official installation
+ install: all strip
+-	mkdir -p $(INSTALL_BIN) $(INSTALL_INC) $(INSTALL_LIB) $(INSTALL_MAN)
++	mkdir -p $(INSTALL_BIN) $(INSTALL_INC) $(INSTALL_LIB)
+ 	$(INSTALL_EXEC) bin/* $(INSTALL_BIN)
+ 	$(INSTALL_DATA) include/*.h $(INSTALL_INC)
+ 	$(INSTALL_DATA) lib/*.a $(INSTALL_LIB)
+-	$(INSTALL_DATA) doc/*.1 $(INSTALL_MAN)
+ 
+ # shared libraries (for Linux)
+ so:
+-	ld -o lib/liblua.so.$V -shared src/*.o
+-	ld -o lib/liblualib.so.$V -shared src/lib/*.o
+-	cd lib; ln -fs liblua.so.$V liblua.so; ln -fs liblualib.so.$V liblualib.so
++	ld -o lib/liblua50.so.$V -shared src/*.o
++	ld -o lib/liblualib50.so.$V -shared src/lib/*.o
++	cd lib; ln -fs liblua50.so.$V liblua50.so; ln -fs liblualib50.so.$V liblualib50.so
+ 
+ # binaries using shared libraries
+ sobin:
+@@ -51,7 +50,7 @@
+ # install shared libraries
+ soinstall:
+ 	$(INSTALL_EXEC) lib/*.so.* $(INSTALL_LIB)
+-	cd $(INSTALL_LIB); ln -fs liblua.so.$V liblua.so; ln -fs liblualib.so.$V liblualib.so
++	cd $(INSTALL_LIB); ln -fs liblua50.so.$V liblua50.so; ln -fs liblualib50.so.$V liblualib50.so
+ 
+ # clean shared libraries
+ soclean:

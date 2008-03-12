@@ -1,0 +1,1300 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2005-03-29 11:08+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#, c-format
+msgid "%s was not fully installed."
+msgstr ""
+
+msgid "/home will be symlinked to /usr/home\n"
+msgstr ""
+
+msgid "/tmp will be symlinked to /var/tmp\n"
+msgstr ""
+
+msgid "/usr will be a plain dir in /\n"
+msgstr ""
+
+msgid "/var will be a plain dir in /\n"
+msgstr ""
+
+msgid "A capacity must be specified."
+msgstr ""
+
+msgid ""
+"A failure occured while provisioning the NetBoot environment.  Please check "
+"the logs."
+msgstr ""
+
+msgid "ATA Devices"
+msgstr ""
+
+msgid "Accept and Add"
+msgstr ""
+
+msgid "Accept and Create"
+msgstr ""
+
+msgid "Accept and Install"
+msgstr ""
+
+msgid "Accept and Install Bootblocks"
+msgstr ""
+
+msgid "Accept and Remove"
+msgstr ""
+
+msgid "Accept and Set Password"
+msgstr ""
+
+msgid "Action cancelled - no disks were formatted."
+msgstr ""
+
+msgid "Action cancelled - no primary partitions were formatted."
+msgstr ""
+
+msgid "Add a user"
+msgstr ""
+
+msgid "Add a user to the system"
+msgstr ""
+
+msgid "Add user"
+msgstr ""
+
+msgid "An error occurred when setting the root password."
+msgstr ""
+
+msgid "Assign IP Address"
+msgstr ""
+
+msgid "BIND Name Server"
+msgstr ""
+
+msgid "Begin Installation"
+msgstr ""
+
+msgid "Begin Installing Files"
+msgstr ""
+
+msgid "Block Sz"
+msgstr ""
+
+msgid "Boot sector successfully initialized."
+msgstr ""
+
+msgid "Bootblock Install Failed"
+msgstr ""
+
+msgid "Bootblocks were successfully installed!"
+msgstr ""
+
+msgid "CDBoot floppy successfully created!"
+msgstr ""
+
+msgid "CDBoot floppy was not successfully created."
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Cancel Memory Test"
+msgstr ""
+
+msgid "Capacity"
+msgstr ""
+
+msgid ""
+"Capacity must be either a '*' symbol to indicate 'use the rest of the "
+"primary partition', or it must be a series of decimal digits ending with a "
+"'M' (indicating megabytes) or a 'G' (indicating gigabytes.)"
+msgstr ""
+
+msgid "Chosen shell does not exist on the system."
+msgstr ""
+
+msgid "Configure Interface"
+msgstr ""
+
+#, c-format
+msgid "Configure a %s system once it has been installed on HDD"
+msgstr ""
+
+msgid "Configure an Installed System"
+msgstr ""
+
+msgid "Configure hostname and domain"
+msgstr ""
+
+msgid "Configure network interfaces"
+msgstr ""
+
+msgid "Configure the LiveCD Environment"
+msgstr ""
+
+msgid "Configure the hostname and domain for this system"
+msgstr ""
+
+#, c-format
+msgid "Configure this %s System"
+msgstr ""
+
+#, c-format
+msgid "Configure this %s system"
+msgstr ""
+
+msgid "Configure this System"
+msgstr ""
+
+msgid "Configure this System|Reboot|Return to Welcome Menu"
+msgstr ""
+
+msgid "Configuring Interface:"
+msgstr ""
+
+#, c-format
+msgid ""
+"Congratulations!\n"
+"\n"
+"%s has successfully been installed on this computer. You may now proceed to "
+"configure the installation. Alternately, you may wish to reboot the computer "
+"and boot into the installed system to confirm that it works."
+msgstr ""
+
+#, c-format
+msgid "Couldn't install package `%s'."
+msgstr ""
+
+#, c-format
+msgid "Couldn't read %s%setc/rc.conf."
+msgstr ""
+
+#, c-format
+msgid "Couldn't remove package `%s'."
+msgstr ""
+
+msgid "Create CDBoot Floppy"
+msgstr ""
+
+msgid "Create CDBoot Floppy|Return to Utilities Menu"
+msgstr ""
+
+msgid "Create Subpartitions"
+msgstr ""
+
+msgid "Create a CDBoot floppy"
+msgstr ""
+
+msgid "Create a floppy which boots into a dedicated memory-test"
+msgstr ""
+
+msgid "Create memtest86 Floppy"
+msgstr ""
+
+msgid "DHCP Failure"
+msgstr ""
+
+msgid ""
+"DHCP allows the interface to automatically obtain an IP address from a "
+"nearby DHCP server.\n"
+"\n"
+"Would you like to enable DHCP for this interface?"
+msgstr ""
+
+msgid "Default Router"
+msgstr ""
+
+msgid "Disk Drive"
+msgstr ""
+
+msgid "Disk Utilities"
+msgstr ""
+
+msgid "Disk Utilities Menu"
+msgstr ""
+
+msgid "Display ATA devices"
+msgstr ""
+
+msgid "Display ATA devices (atactl)"
+msgstr ""
+
+msgid "Display PCI devices"
+msgstr ""
+
+msgid "Display PCI devices (pciconf)"
+msgstr ""
+
+msgid "Display Plug'n'Play ISA devices"
+msgstr ""
+
+msgid "Display Plug'n'Play ISA devices (pnpinfo)"
+msgstr ""
+
+msgid "Display system startup messages"
+msgstr ""
+
+msgid "Display system startup messages (dmesg)"
+msgstr ""
+
+msgid "Domain"
+msgstr ""
+
+msgid "Enable NetBoot Installation Services|No thanks"
+msgstr ""
+
+msgid "Enable Netboot Installation Services?"
+msgstr ""
+
+msgid "Enable/Disable Services"
+msgstr ""
+
+msgid ""
+"Enter a comma-separated list of other groups that this user should belong to"
+msgstr ""
+
+msgid "Enter the Domain Name"
+msgstr ""
+
+msgid "Enter the Domain Name (e.g. `network.lan')"
+msgstr ""
+
+msgid "Enter the Hostname"
+msgstr ""
+
+msgid "Enter the Hostname (e.g. `machine')"
+msgstr ""
+
+msgid "Enter the IP Address you would like to use"
+msgstr ""
+
+msgid "Enter the IP address of primary DNS Server"
+msgstr ""
+
+msgid "Enter the IP address of the default router"
+msgstr ""
+
+msgid "Enter the amount of memory you would like to check:"
+msgstr ""
+
+msgid "Enter the current day of month (e.g. `30')"
+msgstr ""
+
+msgid "Enter the current hour (e.g. `07')"
+msgstr ""
+
+msgid "Enter the current minutes (e.g. `59')"
+msgstr ""
+
+msgid "Enter the current month (e.g. `07')"
+msgstr ""
+
+msgid "Enter the current time and date."
+msgstr ""
+
+msgid "Enter the current year (e.g. `2004')"
+msgstr ""
+
+msgid "Enter the full path to the user's home directory, or leave blank"
+msgstr ""
+
+msgid "Enter the full path to the user's shell program"
+msgstr ""
+
+msgid "Enter the netmask of the IP address"
+msgstr ""
+
+msgid "Enter the primary group for this account, or leave blank"
+msgstr ""
+
+msgid "Enter the real name (or GECOS field) of this user"
+msgstr ""
+
+msgid "Enter the root password again to confirm"
+msgstr ""
+
+msgid "Enter the root password you would like to use"
+msgstr ""
+
+msgid "Enter the user's password (will not be displayed)"
+msgstr ""
+
+msgid "Enter the username the user will log in as"
+msgstr ""
+
+msgid "Enter this account's numeric user id, or leave blank"
+msgstr ""
+
+msgid "Enter year"
+msgstr ""
+
+msgid "Error Log"
+msgstr ""
+
+msgid "Errors occurred while probing the system for its storage capabilities."
+msgstr ""
+
+#, c-format
+msgid ""
+"Everything is now ready to install the actual files which comprise the %s "
+"operating system on the selected partition of the selected disk.\n"
+"\n"
+"Note that this process will take quite a while to finish. You may wish to "
+"take a break now and come back to the computer in a short while."
+msgstr ""
+
+msgid "Exit Installer"
+msgstr ""
+
+msgid "Exit this program and return to the system"
+msgstr ""
+
+msgid "Exit this program to a login prompt with access to the LiveCD"
+msgstr ""
+
+msgid "Exit to Live CD"
+msgstr ""
+
+msgid "Filesystem table on installed system could not be read."
+msgstr ""
+
+msgid "Floppy successfully formatted!"
+msgstr ""
+
+msgid "Floppy was not successfully formatted."
+msgstr ""
+
+msgid "Format Floppy|Return to Utilities Menu"
+msgstr ""
+
+msgid "Format MSDOS Floppy"
+msgstr ""
+
+msgid "Format a hard disk drive"
+msgstr ""
+
+msgid "Format an MSDOS floppy"
+msgstr ""
+
+msgid "Format and check hard drives and floppy disks"
+msgstr ""
+
+msgid "Frag Sz"
+msgstr ""
+
+msgid "Group Memberships"
+msgstr ""
+
+msgid ""
+"Here you can add a user to an installed system.\n"
+"\n"
+"You can leave the Home Directory, User ID, and Login Group fields empty if "
+"you want these items to be automatically allocated by the system.\n"
+"\n"
+"Note: this user's password will appear in the install log. If this is a "
+"problem, please add the user manually after rebooting into the installed "
+"system instead."
+msgstr ""
+
+msgid ""
+"Here you can set the super-user (root) password.\n"
+"\n"
+"Note: root's new password will appear in the install log. If this is a "
+"problem, please set root's password manually after rebooting into the "
+"installed system instead."
+msgstr ""
+
+msgid "Home Directory"
+msgstr ""
+
+msgid "Hostname"
+msgstr ""
+
+msgid "How Much Disk?"
+msgstr ""
+
+msgid "IP Address"
+msgstr ""
+
+msgid "ISA PnP Devices"
+msgstr ""
+
+msgid "If it is set to local time, or you don't know, please choose NO here!"
+msgstr ""
+
+msgid ""
+"If you are having problems formatting a disk, it may be because of junk that "
+"has accumulated in the boot block and the partition table. A cure for this "
+"is to wipe out everything on the first few sectors of the disk.  However, "
+"this is a rather drastic action to take, so it is not recommended unless you "
+"are otherwise encountering problems."
+msgstr ""
+
+msgid ""
+"If you are having problems formatting a primary partition, it may be because "
+"of junk that has accumulated in the partition's `disklabel'. A cure for this "
+"is to wipe out everything on the first few sectors of the primary partition. "
+"However, this is a rather drastic action to take, so it is not recommended "
+"unless you are otherwise encountering problems."
+msgstr ""
+
+#, c-format
+msgid "Install %s"
+msgstr ""
+
+#, c-format
+msgid "Install %s on a HDD or HDD partition on this computer"
+msgstr ""
+
+msgid "Install Bootblock(s)"
+msgstr ""
+
+msgid "Install Bootblock?"
+msgstr ""
+
+msgid "Install OS"
+msgstr ""
+
+msgid "Install Packages"
+msgstr ""
+
+msgid "Install a bootblock on this disk"
+msgstr ""
+
+msgid "Install bootblocks on disks"
+msgstr ""
+
+msgid "Install extra software packages"
+msgstr ""
+
+msgid "Install third-party software packages from the LiveCD"
+msgstr ""
+
+msgid "Internal error - response from frontend should be a valid device name."
+msgstr ""
+
+msgid "Internal error - response from frontend should be a valid slice number."
+msgstr ""
+
+msgid "Internet Super-Server"
+msgstr ""
+
+msgid "Is this machine's CMOS clock set to UTC?\n"
+msgstr ""
+
+msgid "Keyboard map not successfully set."
+msgstr ""
+
+msgid "Live CD Diagnostics Menu"
+msgstr ""
+
+msgid "Live CD Environment Menu"
+msgstr ""
+
+msgid "Live CD Utilities"
+msgstr ""
+
+msgid "Live CD Utilities Menu"
+msgstr ""
+
+msgid "LiveCD Environment"
+msgstr ""
+
+msgid "Local or UTC (Greenwich Mean Time) clock"
+msgstr ""
+
+msgid "Login Group"
+msgstr ""
+
+msgid "MFS"
+msgstr ""
+
+msgid "Memory test"
+msgstr ""
+
+msgid "Memory test - Enter the size in values such as 400M, 1G."
+msgstr ""
+
+msgid "Memory test could not be run."
+msgstr ""
+
+msgid "Memory test size"
+msgstr ""
+
+msgid "Month"
+msgstr ""
+
+msgid ""
+"Mount point may not contain the following characters: blank space, "
+"backslash, or single, double, or back quotes."
+msgstr ""
+
+msgid "Mount point must be either 'swap', or it must start with a '/'."
+msgstr ""
+
+msgid "Mountpoint"
+msgstr ""
+
+msgid ""
+"NetBoot Installation Services allows this machine to become a Installation "
+"Server that will allow the clients to boot over the network via PXE and "
+"start the Installation Environment.\n"
+"\n"
+"*NOTE!*  This will assign the IP Address of 10.1.0.1/24 to the selected "
+"interface.\n"
+"\n"
+"Would you like to provision this machine to serve up the LiveCD/Installer?"
+msgstr ""
+
+msgid "NetBoot installation services are now started."
+msgstr ""
+
+msgid "Netmask"
+msgstr ""
+
+msgid "Network Time Protocol Daemon"
+msgstr ""
+
+msgid "OK"
+msgstr ""
+
+msgid "Omit Subpartition(s)|Return to Create Subpartitions"
+msgstr ""
+
+msgid ""
+"On these submenus you will find utilities to help you set up your Live CD "
+"environment, diagnose and analyse this system, and work with the devices "
+"attached to this computer."
+msgstr ""
+
+#, c-format
+msgid ""
+"On this menu you will find utilities to help you set up your Live CD "
+"environment.\n"
+"\n"
+"Note that these functions affect only the LiveCD environment you are "
+"currently using, and they will not affect any system that may be installed "
+"on this computer UNLESS you subsequently choose to install %s from this "
+"environment, in which case they will be copied to the newly installed system."
+msgstr ""
+
+msgid "Other Group Memberships"
+msgstr ""
+
+msgid "PCI Devices"
+msgstr ""
+
+msgid "Packages were not fully installed."
+msgstr ""
+
+msgid "Packages were not fully removed."
+msgstr ""
+
+msgid "Packages were successfully installed!"
+msgstr ""
+
+msgid "Packages were successfully removed."
+msgstr ""
+
+msgid "Packet Mode?"
+msgstr ""
+
+msgid "Password"
+msgstr ""
+
+msgid "Password (Again)"
+msgstr ""
+
+msgid ""
+"Please enter numbers within acceptable ranges for year, month, day of month, "
+"hour, and minute."
+msgstr ""
+
+msgid "Please enter this machine's hostname and domain name."
+msgstr ""
+
+msgid "Please insert the floppy to be formatted in unit 0 (``drive A:'')."
+msgstr ""
+
+msgid "Please select the language you wish you use."
+msgstr ""
+
+msgid "Please select which interface you would like to configure:"
+msgstr ""
+
+msgid "Please select which services you would like started at boot time."
+msgstr ""
+
+msgid "Please set up at least one subpartition."
+msgstr ""
+
+msgid "Primary DNS Server"
+msgstr ""
+
+#, c-format
+msgid "Primary partition #%d was formatted."
+msgstr ""
+
+#, c-format
+msgid ""
+"Primary partition #%d was not correctly formatted, and may now be in an "
+"inconsistent state. We recommend re-formatting it before proceeding."
+msgstr ""
+
+msgid "Probe and display detailed information about this system"
+msgstr ""
+
+msgid "Re-Initialize Bootblock|Cancel"
+msgstr ""
+
+msgid "Re-enter the user's password to confirm"
+msgstr ""
+
+msgid "Real Name"
+msgstr ""
+
+msgid "Really omit?"
+msgstr ""
+
+msgid "Reboot"
+msgstr ""
+
+msgid "Reboot this Computer"
+msgstr ""
+
+msgid "Reboot this computer (e.g. to boot into a newly installed system)"
+msgstr ""
+
+msgid "Reboot|Return to Select Disk"
+msgstr ""
+
+msgid "Reboot|Return to Select Primary Partition"
+msgstr ""
+
+msgid "Remove Packages"
+msgstr ""
+
+msgid "Remove software packages"
+msgstr ""
+
+msgid "Remove third-party software packages from the installed system"
+msgstr ""
+
+msgid "Return to Begin Installation"
+msgstr ""
+
+msgid "Return to Configure Menu"
+msgstr ""
+
+msgid "Return to Create Subpartitions"
+msgstr ""
+
+msgid "Return to Select Disk"
+msgstr ""
+
+msgid "Return to Select Primary Partition"
+msgstr ""
+
+msgid "Return to Utilities Menu"
+msgstr ""
+
+msgid "Return to Welcome Menu"
+msgstr ""
+
+msgid "Root password"
+msgstr ""
+
+msgid "Root password again"
+msgstr ""
+
+msgid "Run On-Line Memory Test"
+msgstr ""
+
+msgid "Running after installation custom routines..."
+msgstr ""
+
+msgid "Secure Shell Daemon"
+msgstr ""
+
+msgid "Select Console Font"
+msgstr ""
+
+msgid "Select Disk"
+msgstr ""
+
+msgid "Select Keyboard Map"
+msgstr ""
+
+msgid "Select Language"
+msgstr ""
+
+msgid "Select Primary Partition"
+msgstr ""
+
+msgid "Select Screen Map"
+msgstr ""
+
+msgid "Select Services"
+msgstr ""
+
+msgid "Select Time Zone"
+msgstr ""
+
+msgid "Select a Time Zone appropriate to your physical location."
+msgstr ""
+
+#, c-format
+msgid "Select a disk on which to install %s"
+msgstr ""
+
+msgid "Select a disk to format."
+msgstr ""
+
+msgid "Select a font appropriate to your video monitor and language."
+msgstr ""
+
+msgid "Select a keyboard map appropriate to your keyboard layout."
+msgstr ""
+
+msgid ""
+"Select a mapping for translating characters as they appear on your video "
+"console screen."
+msgstr ""
+
+#, c-format
+msgid ""
+"Select how much of this disk you want to use for %s.\n"
+"\n"
+"%s"
+msgstr ""
+
+#, c-format
+msgid ""
+"Select optional software packages that you want installed on this system.  "
+"This form lists only the software packages installed on the LiveCD; "
+"thousands more are available via the internet once %s is installed."
+msgstr ""
+
+msgid ""
+"Select the disk containing the installation that you would like to upgrade."
+msgstr ""
+
+msgid "Select the disk containing the installation."
+msgstr ""
+
+msgid "Select the disks on which you wish to install bootblocks."
+msgstr ""
+
+#, c-format
+msgid ""
+"Select the existing primary partition (also known as a `slice' in the BSD "
+"tradition) on which to install %s.\n"
+"\n"
+"Note that if you do not have any existing primary partitions on this disk, "
+"you must first create some. This installer does not currently have the "
+"ability to do this, so you will have to exit and run fdisk (in DOS or *BSD) "
+"or parted (in Linux) to do so."
+msgstr ""
+
+msgid ""
+"Select the installed software packages that you want removed from this "
+"system."
+msgstr ""
+
+msgid ""
+"Select the primary partition containing the installation you would like to "
+"upgrade."
+msgstr ""
+
+msgid "Select the primary partition containing the installation."
+msgstr ""
+
+msgid "Select this to use 'packet mode' to boot the disk"
+msgstr ""
+
+msgid "Select timezone"
+msgstr ""
+
+msgid "Set Hostname/Domain"
+msgstr ""
+
+msgid "Set Root Password"
+msgstr ""
+
+msgid "Set Time/Date"
+msgstr ""
+
+msgid "Set console font"
+msgstr ""
+
+msgid "Set date and time"
+msgstr ""
+
+msgid "Set how characters are translated before console display"
+msgstr ""
+
+msgid "Set how the characters on your video console look"
+msgstr ""
+
+msgid "Set keyboard map"
+msgstr ""
+
+msgid "Set root password"
+msgstr ""
+
+msgid "Set screen map"
+msgstr ""
+
+msgid "Set the Time Zone of your physical location"
+msgstr ""
+
+msgid "Set the Time and Date of your machine"
+msgstr ""
+
+msgid "Set the password that the root (superuser) account will use"
+msgstr ""
+
+msgid "Set up network interfaces (NICs, ethernet, TCP/IP, etc)"
+msgstr ""
+
+msgid ""
+"Set up the subpartitions (also known as just `partitions' in BSD tradition) "
+"you want to have on this primary partition.\n"
+"\n"
+"For Capacity, use 'M' to indicate megabytes, 'G' to indicate gigabytes, or a "
+"single '*' to indicate 'use the remaining space on the primary partition'."
+msgstr ""
+
+msgid "Set what kind of keyboard layout you have"
+msgstr ""
+
+msgid "Setting password..."
+msgstr ""
+
+msgid "Setup NetBoot Install Services"
+msgstr ""
+
+msgid "Setup NetBoot Installation Environment"
+msgstr ""
+
+msgid "Setup machine as remote installation server"
+msgstr ""
+
+msgid "Shell"
+msgstr ""
+
+msgid "Skip this Step"
+msgstr ""
+
+msgid "Softupdates"
+msgstr ""
+
+msgid "Some errors occurred. Boot sector was not successfully initialized."
+msgstr ""
+
+msgid "Some errors occurred. Start of disk was not successfully wiped."
+msgstr ""
+
+msgid ""
+"Some errors occurred. Start of primary partition was not successfully wiped."
+msgstr ""
+
+#, c-format
+msgid ""
+"Some situations in which you might not wish to use this installer are:\n"
+"\n"
+"- you want to install %s onto a logical/extended partition;\n"
+"- you want to install %s onto a ``dangerously dedicated'' disk; or\n"
+"- you want full and utter control over the install process."
+msgstr ""
+
+#, c-format
+msgid ""
+"Some subpartitions on the primary partition of this disk are already "
+"activated as swap. Since there is no way to deactivate swap in %s once it is "
+"activated, in order to edit the subpartition layout of this primary "
+"partition, you must first reboot."
+msgstr ""
+
+#, c-format
+msgid ""
+"Some subpartitions on the selected primary partition are already activated "
+"as swap. Since there is no way to deactivate swap in %s once it is "
+"activated, in order to edit the subpartition layout of this primary "
+"partition, you must first reboot."
+msgstr ""
+
+msgid "Start of disk was successfully wiped."
+msgstr ""
+
+msgid "Start of primary partition was successfully wiped."
+msgstr ""
+
+#, c-format
+msgid ""
+"Subpartitions further divide a primary partition for use with %s.  Some "
+"reasons you may want a set of subpartitions are:\n"
+"\n"
+"- you want to restrict how much data can be written to certain parts of the "
+"primary partition, to quell denial-of-service attacks; and\n"
+"- you want to speed up access to data on the disk."
+msgstr ""
+
+msgid "Swap already active"
+msgstr ""
+
+msgid "Switch to Expert Mode"
+msgstr ""
+
+msgid "Switch to Normal Mode"
+msgstr ""
+
+msgid "System Diagnostics"
+msgstr ""
+
+msgid "System Logging Daemon"
+msgstr ""
+
+msgid "System Startup Messages (dmesg)"
+msgstr ""
+
+msgid "Target system could not be mounted."
+msgstr ""
+
+msgid "Test the memory in the machine while running"
+msgstr ""
+
+#, c-format
+msgid ""
+"Thank you for choosing %s.\n"
+"\n"
+"For up-to-date news and information on %s, make sure to check out\n"
+"\n"
+"%s\n"
+"\n"
+"You can use this automated application to assist you in setting up this %s "
+"system."
+msgstr ""
+
+#, c-format
+msgid "The Time Zone has been set to %s."
+msgstr ""
+
+msgid "The date and time have been set."
+msgstr ""
+
+#, c-format
+msgid ""
+"The disk\n"
+"\n"
+"%s\n"
+"\n"
+"was formatted."
+msgstr ""
+
+#, c-format
+msgid ""
+"The disk\n"
+"\n"
+"%s\n"
+"\n"
+"was not correctly formatted, and may now be in an inconsistent state. We "
+"recommend re-formatting it before attempting to install %s on it."
+msgstr ""
+
+msgid "The disk on which you wish to install a bootblock"
+msgstr ""
+
+#, c-format
+msgid ""
+"The installer could not find any disks suitable for installation (IDE or "
+"SCSI) attached to this computer.  If you wish to install %s on an unorthodox "
+"storage device, you will have to exit to a LiveCD command prompt and install "
+"it manually, using the file /README as a guide."
+msgstr ""
+
+#, c-format
+msgid ""
+"The options on this menu allow you to configure a %s system after it has "
+"already been installed."
+msgstr ""
+
+msgid "The passwords do not match."
+msgstr ""
+
+msgid "The root password has been changed."
+msgstr ""
+
+msgid ""
+"The same mount point cannot be specified for two different subpartitions."
+msgstr ""
+
+#, c-format
+msgid ""
+"The sole primary partition of the disk\n"
+"\n"
+"%s\n"
+"\n"
+"was not correctly formatted, and may now be in an inconsistent state. We "
+"recommend re-formatting the disk before attempting to install %s on it."
+msgstr ""
+
+#, c-format
+msgid ""
+"The space allocated to all of your selected subpartitions (%dM) exceeds the "
+"total capacity of the selected primary partition (%dM). Remove some "
+"subpartitions or choose a smaller size for them and try again."
+msgstr ""
+
+msgid ""
+"The subpartitions you chose were not correctly created, and the primary "
+"partition may now be in an inconsistent state. We recommend re-formatting it "
+"before proceeding."
+msgstr ""
+
+msgid ""
+"The system has issued a cvsup command in the background.\n"
+"\n"
+"Please tail /tmp/cvsupdate.log if you wish to follow the progress."
+msgstr ""
+
+msgid "These functions can help you diagnose this system."
+msgstr ""
+
+msgid ""
+"These functions let you manipulate the storage devices attached to this "
+"computer."
+msgstr ""
+
+#, c-format
+msgid ""
+"This experimental application will install %s on one of the hard disk drives "
+"attached to this computer. It has been designed to make it easy to install %"
+"s in the typical case. If you have special requirements that are not "
+"addressed by this installer, or if you have problems using it, you are "
+"welcome to install %s manually. To do so select Exit to Live CD, login as "
+"root, and follow the instructions given in the file /README .\n"
+"\n"
+"NOTE! As with any installation process, YOU ARE STRONGLY ENCOURAGED TO BACK "
+"UP ANY IMPORTANT DATA ON THIS COMPUTER BEFORE PROCEEDING!"
+msgstr ""
+
+msgid ""
+"This machine is about to be shut down. After the machine has reached its "
+"shutdown state, you may remove the CD from the CD-ROM drive tray and press "
+"Enter to reboot from the HDD."
+msgstr ""
+
+msgid "Upgrade"
+msgstr ""
+
+#, c-format
+msgid "Upgrade a FreeBSD 4.X system to %s"
+msgstr ""
+
+#, c-format
+msgid "Usage: %s [-o rootdir] [-r rendezvous] [-t caps|npipe|tcp]\n"
+msgstr ""
+
+msgid "Use DHCP?"
+msgstr ""
+
+msgid "Use DHCP|Configure Manually"
+msgstr ""
+
+msgid "Use Entire Disk|Use Part of Disk|Return to Select Disk"
+msgstr ""
+
+msgid "User ID"
+msgstr ""
+
+#, c-format
+msgid "User `%s' was added."
+msgstr ""
+
+msgid "User was not successfully added."
+msgstr ""
+
+msgid "Username"
+msgstr ""
+
+msgid "Utilities"
+msgstr ""
+
+msgid "Utilities to work with and diagnose disks and other subsystems"
+msgstr ""
+
+msgid "Utilities to work with disks, diagnostics, and the LiveCD Environment"
+msgstr ""
+
+msgid "Video font not successfully set."
+msgstr ""
+
+#, c-format
+msgid ""
+"WARNING!  ALL data in ALL partitions on the disk\n"
+"\n"
+"%s\n"
+"\n"
+"will be IRREVOCABLY ERASED!\n"
+"\n"
+"Are you ABSOLUTELY SURE you wish to take this action?  This is your LAST "
+"CHANCE to cancel!"
+msgstr ""
+
+#, c-format
+msgid ""
+"WARNING!  ALL data in primary partition #%d,\n"
+"\n"
+"%s\n"
+"\n"
+"on the disk\n"
+"\n"
+"%s\n"
+"\n"
+" will be IRREVOCABLY ERASED!\n"
+"\n"
+"Are you ABSOLUTELY SURE you wish to take this action?  This is your LAST "
+"CHANCE to cancel!"
+msgstr ""
+
+#, c-format
+msgid ""
+"WARNING: the %s subpartition should be at least %dM in size or you will risk "
+"running out of space during the installation."
+msgstr ""
+
+#, c-format
+msgid ""
+"WARNING: you should have a disk at least %dM in size, or you may encounter "
+"problems trying to install %s."
+msgstr ""
+
+#, c-format
+msgid ""
+"WARNING: you should have a primary partition at least %dM in size, or you "
+"may encounter problems trying to install %s."
+msgstr ""
+
+msgid "Warning: Installed system was not properly unmounted."
+msgstr ""
+
+#, c-format
+msgid ""
+"Warning: bootblocks were not successfully installed on the disk `%s'. This "
+"may be because the disk is new and not yet formatted. If this is the case, "
+"it might help to re-initialize the boot sector, then try installing the "
+"bootblock again. Note that this should not affect the partition table of the "
+"disk."
+msgstr ""
+
+msgid ""
+"Warning: could not assign IP address or default gateway.\n"
+"\n"
+"Write the corresponding settings to rc.conf anyway?"
+msgstr ""
+
+#, c-format
+msgid ""
+"Warning: could not enable dhclient for %s.\n"
+"\n"
+"Write the corresponding settings to rc.conf anyway?"
+msgstr ""
+
+msgid "Warning: could not launch cvsup"
+msgstr ""
+
+msgid "Warning: subpartitions were not correctly unmounted."
+msgstr ""
+
+#, c-format
+msgid "Welcome to %s"
+msgstr ""
+
+#, c-format
+msgid ""
+"Welcome to the %s Live CD.\n"
+"\n"
+"%s is an efficient and elegant BSD Unix-derived operating system.  For more "
+"information, see %s\n"
+"\n"
+"From this CD, you can boot into %s ``live'' (without installing it) to "
+"evaluate it, to install it manually, or to troubleshoot problems with an "
+"existing installation, using either a command prompt or menu-driven "
+"utilities.\n"
+"\n"
+"Also, you can use this automated application to assist you in installing %s "
+"on this computer and configuring it once it is installed."
+msgstr ""
+
+msgid "Wipe out the start of a disk"
+msgstr ""
+
+msgid "Wipe out the start of a primary partition"
+msgstr ""
+
+msgid "Yes|No"
+msgstr ""
+
+msgid ""
+"You cannot have more than 16 subpartitions on a single primary partition.  "
+"Remove some and try again."
+msgstr ""
+
+msgid ""
+"You cannot have more than one subpartition with a '*' capacity (meaning 'use "
+"the remainder of the primary partition'.)"
+msgstr ""
+
+#, c-format
+msgid ""
+"You have elected to not have the following subpartition(s):\n"
+"\n"
+"%s\n"
+"\n"
+"The ramifications of these subpartition(s) being missing will be:\n"
+"\n"
+"%s\n"
+"Is this really what you want to do?"
+msgstr ""
+
+#, c-format
+msgid ""
+"You may now wish to install bootblocks on one or more disks. If you already "
+"have a boot manager installed, you can skip this step (but you may have to "
+"configure your boot manager separately.)  If you installed %s on a disk "
+"other than your first disk, you will need to put the bootblock on at least "
+"your first disk and the %s disk."
+msgstr ""
+
+msgid "You must enter a username."
+msgstr ""
+
+msgid "You must include a / (root) subpartition."
+msgstr ""
+
+msgid "directory name"
+msgstr ""
+
+msgid "ifconfig Failure"
+msgstr ""
+
+msgid "memtest86 floppy successfully created!"
+msgstr ""
+
+msgid "memtest86 floppy was not successfully created."
+msgstr ""

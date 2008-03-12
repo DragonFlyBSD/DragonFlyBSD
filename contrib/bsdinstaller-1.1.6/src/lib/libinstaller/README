@@ -1,0 +1,49 @@
+libinstaller v5.0 README
+========================
+
+$Id: README,v 1.5 2005/03/21 03:26:57 cpressey Exp $
+
+What is libinstaller?
+---------------------
+
+libinstaller is a library of support functions for the BSD Installer
+application, dfuibe_installer.
+
+What is the current state of the project?
+-----------------------------------------
+
+EXPERIMENTAL.  libinstaller's application programming interface may change at
+any time.  If you use libinstaller in a project, be prepared to chase API
+changes.  Both the API and the ABI of libinstaller 5.0 are not backwards-
+compatible with those of of previous versions.
+
+How do I build and install libinstaller?
+----------------------------------------
+
+On a BSD-based system, go into the libinstaller source directory and type:
+
+	make
+
+Once built, it can be installed by typing (as root):
+
+	make install
+
+Directions may differ for other systems.
+
+An alternative method is to build libinstaller using the ports system and
+install it using the package system.
+
+How do I use libinstaller from a program?
+-----------------------------------------
+
+libinstaller requires libdfui, which in turn requires libaura, but none
+of these are statically linked with it, so any consumers of libinstaller
+will also need to link to libaura and libdfui.
+
+You can give gcc the following sort of command line flags to tell it to
+link your program with libinstaller:
+
+	gcc foo.c -o foo -L/usr/local/lib -laura -ldfui -linstaller
+
+See the libinstaller source code for the list of available functions and
+what they do.

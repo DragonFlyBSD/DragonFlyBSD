@@ -1,0 +1,502 @@
+<html>
+<head><title>DragonFly Abstract User Interface (DFUI)</title></head>
+<body bgcolor="#ffffff">
+
+<h1>DragonFly Abstract User Interface (DFUI)</h1>
+
+<p><i>$Id: dfui.html,v 1.2 2004/07/17 01:50:34 cpressey Exp $</i></p>
+
+<h2>Introduction</h2>
+
+<p>This document describes a user interface (UI) abstraction which allows an
+application to communicate with a user through any number of kinds
+of concrete user interfaces, such as <code>curses</code>, GTK+, or a
+web browser.</p>
+
+<p>This abstraction should be suitable for presenting the DragonFly system
+installer to the user; however it need not and should not be limited to only the
+installer.  Many other tasks in DragonFly, such as system configuration and
+package installation, could and for the sake of consistency should use the
+same UI.</p>
+
+<h2>Abstraction</h2>
+
+<p>The DFUI abstraction isolates the semantics of user interation from
+the concrete details of it, similar to a <i>Model View Controller</i>
+abstraction.  Such a system is split into <i>frontend</i> and <i>backend</i>:
+
+<ul>
+<li>The backend contains the control logic and invokes the tool programs (such
+as <code>fdisk</code>.)</li>
+<li>The frontend constructs the concrete user interface (with widgets and such)
+and presents it to the user.</li>
+</ul></p>
+
+<p>The backend tells the frontend what kind of conversation to hold with the user;
+the frontend tells the backend the user's ultimate decisions.</p>
+
+<p>The backend talks to the frontend in terms of abstract user interface elements.
+It tells the frontend nothing about <em>how</em> the UI should
+be presented, only the bare essentials of what it must convey.  Likewise, the frontend
+talks to the backend in terms of data.  It keeps trivia about the user (like what language
+they are using) to itself.  In this way, we maintain component isolation: the
+backend is concerned only with the <i>semantics</i> of the user interaction, while
+the frontend is concerned only with its <i>implementation</i>.</p>
+
+<p>The frontend may be constructed in almost any manner.  It may be a
+<code>curses</code> program, or it may be a CGI.  This presents a unique barrier, namely that the
+frontend might be either a single, long-running process <em>or</em> a series of short-running
+processes.  This essentially requires a concurrently design where the frontend and backend
+exist in seperate processes that exchange messages using IPC.</p>
+
+<p>The contrast between the <code>curses</code> scenario and the CGI scenario
+is illustrated below.</p>
+
+<p>
+<table width="100%" cellpadding=4 border=1>
+<tr><td align="left" valign="top">
+<p><img src="session_curses.png"></p>
+</td><td align="right" valign="top">
+<p><img src="session_cgi.png"></p>
+</td></tr>
+</table>
+</p>
+
+<p>This abstraction gives us several benefits:
+
+<ul>
+<li>We're not tying the installer (and other tasks) to one specific user interface toolkit.
+<li>We're not even tying the installer (and other tasks) to one particular <i>kind</i> of UI.
+<li>The code for the installation process itself should be easier to manage
+because it won't be clouded with UI details.
+<li>The code for the UI itself should be easier to manage
+because it won't be clouded with installer details.
+<li>The frontend and backend don't have to be written in the same
+programming language (with some caveats; see below.)
+<li>We have the opportunity for the frontend and backend to work
+asymchronously (with some caveats; see below.)
+<li>We can use the same UI consistently for all tasks, rather than only in the installer.
+</ul></p>
+
+<h2>Data Types</h2>
+
+<p>Each of the messages sent between the frontend and the backend consists of
+one piece of data.  Before getting to the messages themselves, we'll examine the
+data types in use.</p>
+
+<h3>Id's</h3>
+
+<p>Many of the other data types each have an <i>id</i>.</p>
+
+<p>An id is a key which identifies the object to both the frontend and the
+backend.  It should be unique across all similar objects in the same container.
+(i.e. a form id should be unique across all forms in a session, a field id should
+be unique across all fields in a form, etc.)</p>
+
+<p>Id's are implemented as a short alphanumeric (plus underscores) strings
+such as <code>disk_select_menu</code>.</p>
+
+<h3>Info Blocks</h3>
+
+<p>Many of the other data types each have an <i>info block</i>.</p>
+
+<p>In contrast to the id, which the computer uses to tell objects apart, an
+info block is for the human operator's benefit.  Each info block contains:
+
+<ul>
+<li>the <i>name</i> of the object, which should be a short and
+descriptive title such as "Select Disk";</li>
+<li>the <i>short description</i> of the object, which should be one or
+two sentences describing the purpose of the object; and</li>
+<li>the <i>long description</i> of the object, which is analogous to
+a "help file" on the object which should describe its purpose and
+behaviour in a usefully verbose way.  The long description component
+of an info block need not contain the actual text of the long description;
+it should instead contain a reference to it in the form of a filename or URL.</li>
+</ul></p>
+
+<h3>Forms</h3>
+
+<p>The basic unit of interaction is a <i>form</i>.  While typically displayed as
+a familiar electronic version of a paper fill-out form, it is defined abstractly enough
+to not pose any obstacles should we need to deal with other media.  However,
+in this document we will give typical examples using a familiar GUI interpretation.</p>
+
+<p>Each form consists of:
+
+<ul>
+<li>a form id</li>
+<li>an info block</li>
+<li>a <i>multiplicity flag</i></li>
+<li>zero or more <i>fields</i></li>
+<li>one or more <i>actions</i></li>
+<li>zero or more <i>properties</i></li>
+<li>zero or more <i>datasets</i></li>
+</ul></p>
+
+<p>The multiplicity flag determines whether there is a single set of data displayed on the
+form (multiplicity = false), or multiple sets of data (multiplicity = true).
+The former resembles a 'dialog box' in a typical UI.
+The latter resembles a spreadsheet or database entry form, with zero or more 'rows'
+of a data, and facilities for the user to add, remove, etc rows.  Examples of these
+two different layout styles are shown below (note of course that these are only
+examples - the frontend may interpret them any reasonable way it likes.)</p>
+
+<p>
+<table width="100%" cellpadding=4 border=1>
+<tr><td align="left" valign="top">
+<p align="center">multiplicity = false</p>
+<p><img src="form_single.png"></p>
+</td><td align="right" valign="top">
+<p align="center">multiplicity = true</p>
+<p><img src="form_multiple.png"></p>
+</td></tr>
+</table>
+</p>
+
+<h3>Fields</h3>
+
+<p>Each field describes a piece of data that the user can view and possibly manipulate.
+In a typical GUI, fields are rendered as text boxes and similar widgets.
+Each field has:
+
+<ul>
+<li>a field id</li>
+<li>an info block</li>
+<li>zero or more <i>options</i></li>
+<li>zero or more <i>properties</i></li>
+</ul></p>
+
+<p>A form with zero fields has only actions, and might typically look like a menu
+or informative-only dialog box.</p>
+
+<h3>Actions</h3>
+
+<p>Each action describes an action that can be taken.
+In a typical GUI, actions are rendered as buttons that can be clicked.
+Each action consists of:
+
+<ul>
+<li>an action id</li>
+<li>an info block</li>
+<li>zero or more <i>properties</i></li>
+</ul></p>
+
+<h3>Datasets</h3>
+
+<p>Each dataset describes a set of data that is displayed or entered into a
+form.  In a form with more than zero fields, a multiplicity = false form has
+exactly one dataset, while a multiplicity = true form may have more than one.
+A form with zero fields must have zero datasets.</p>
+
+<p>Each dataset consists of a set of one celldata for each field of the form.</p>
+
+<h3>Celldatas</h3>
+
+<p>A celldata represents a value entered into a field on a form, either
+as a default value by the backend, or by the user's choice.</p>
+
+<p>Each celldata consists of:
+
+<ul>
+<li>the field id to which it applies</li>
+<li>the value</li>
+</ul></p>
+
+<p>The data type of all celldata values, as far as DFUI is concerned, is text.
+The backend may convert the text into a more semantically meaningful format,
+such as floating-point values, internally.</p>
+
+<h3>Options</h3>
+
+<p>Each field has zero or more options.  These are supplied values that the
+user may choose to place in the field.</p>
+
+<p>The semantics of options in combination with the editable flag are summarized here:
+
+<table border=1>
+<tr><th>Editable flag</th><th>Number of Options</th><th>Semantics</th></tr>
+<tr><td>true</td><td>zero</td><td>user may manually enter any value in field</td></tr>
+<tr><td>true</td><td>one or more</td><td>user may manually enter any value in field, or may select any option to fill field with ("combo box")</td></tr>
+<tr><td>false</td><td>zero</td><td>user may not enter data into field in any fashion</td></tr>
+<tr><td>false</td><td>one or more</td><td>user may not manually enter values into field, but may select an option to fill the field with ("list box")</td></tr>
+</table></p>
+
+<h3>Responses</h3>
+
+<p>Each response describes a user's decision.  Each response consists of:
+
+<ul>
+<li>a form id</li>
+<li>an action id</li>
+<li>zero or more datasets</li>
+</ul></p>
+
+<p>The form id indicates the form that this is a response to.</p>
+
+<p>The action id indicates the action that the user executed which caused
+this response.</p>
+
+<p>The datasets contain the user's choices.  When the form is
+multiplicity = false, there should be exactly one dataset; when the form
+is multiplicity = true, there should be one dataset per "row" of data that the
+user entered.  Either way, there should always be one celldata per field
+of the form in each dataset.</p>
+
+<h3>Progresses</h3>
+
+<p>A progress represents some task which takes a relatively long time to
+complete; in a typical GUI it would be implemented by a progress bar.
+Each progress consists of:
+
+<ul>
+<li>an info block</li>
+<li>an <i>amount</i></li>
+</ul></p>
+
+<p>The amount is an integer which ranges from 0 to 100, where 0 indicates
+no progress has been made, and 100 indicates that the task is finished.</p>
+
+<p>Progresses do not have responses, but they may be cancelled.</p>
+
+<h3>Properties</h3>
+
+<p>See <code><a href="property.html">dfui_property</a></code>.</p>
+
+<h2>Messages</h2>
+
+<p>The backend may send the following kinds of messages to the frontend:
+
+<ul>
+<li><code>present(<i>form</i>)</code></li>
+<li><code>prog_begin(<i>progress</i>)</code></li>
+<li><code>prog_update(<i>progress</i>)</code></li>
+<li><code>prog_end()</code></li>
+<li><code>stop()</code></li>
+</ul>
+</p>
+
+<p>The frontend may send the following kinds of replies to the backend:
+
+<ul>
+<li><code>submit(<i>response</i>)</code></li>
+<li><code>continue()</code></li>
+<li><code>cancel()</code></li>
+<li><code>abort()</code></li>
+</ul>
+</p>
+
+<p>These may, in theory, be asynchronous: the backend may, for example, send several
+<code>present</code> messages before receiving any <code>submit</code> replies,
+so long as there is some way to identify which <code>submit</code>s are associated with
+which <code>present</code>s (i.e. the form id).</p>
+
+<p>However, in practice, while some UI's support concurrently displaying multiple
+UI elements in a natural fashion (typified by "windows",) others do not.  So to begin,
+we will limit ourselves by enforcing
+a sychronous discipline: each message from the backend must be replied by a reply from
+the frontend before the next message from the backend is sent.</p>
+
+<h3>The <code>present</code> Message</h3>
+
+<p>The <code>present</code> message carries a form as a payload.  Upon
+receipt of this message, the frontend should display the form and let the user
+manipulate it.</p>
+
+<p>The frontend may then reply to a <code>present</code> message with:
+
+<ul>
+<li>a <code>submit</code> reply with the corresponding form id, which
+indicates that the user chose an action from the form; or</li>
+<li>an <code>abort</code> reply, which indicates something catastrophic happened
+and that the backend should halt everything.</li>
+</ul>
+</p>
+
+<h3>The <code>submit</code> Reply</h3>
+
+<p>The <code>submit</code> reply carries a response as a payload.  It should
+only occur after a <code>present</code> message.</p>
+
+<h3>The <code>prog_begin</code> Message</h3>
+
+<p>A <code>prog_begin</code> message carries a progress as a payload
+and indicates that a progress has begun.</p>
+
+<p>The frontend may reply to a <code>prog_begin</code> message with:
+
+<ul>
+<li>a <code>continue</code> reply, indicating all is well; or</li>
+<li>an <code>abort</code> reply, indicating the backend should halt.</li>
+</ul>
+</p>
+
+<h3>The <code>prog_update</code> Message</h3>
+
+<p>A <code>prog_update</code> message carries a progress as a payload
+and indicates that the state of progress has changed.</p>
+
+<p>The frontend may reply to a <code>prog_update</code> message with:
+
+<ul>
+<li>a <code>continue</code> reply, indicating all is well;</li>
+<li>a <code>cancel</code> reply, indicating that the user cancelled the
+progress; or</li>
+<li>an <code>abort</code> reply, indicating the backend should halt.</li>
+</ul>
+</p>
+
+<h3>The <code>prog_end</code> Message</h3>
+
+<p>A <code>prog_end</code> message indicates that a progress is finished.
+It has no payload.</p>
+
+<p>The frontend may reply to a <code>prog_end</code> message with:
+
+<ul>
+<li>a <code>continue</code> reply, indicating all is well; or</li>
+<li>an <code>abort</code> reply, indicating the backend should halt.</li>
+</ul>
+</p>
+
+<h3>The <code>stop</code> Message</h3>
+
+<p>The <code>stop</code> message has no payload; it simply tells the frontend
+that the backend has finished processing.  The frontend may exit, if it is a
+long-running process, or it may simply display a 'finished' page, if it is a
+short-running CGI process.</p>
+
+<h2>Pseudocode</h2>
+
+<table width=100% cellpadding=4 border=1>
+<tr>
+<td align="center">curses frontend</td>
+<td align="center">CGI frontend</td>
+</tr>
+<tr>
+<td><pre>
+    if backend is running
+        error "backend is already running"
+    start backend
+    while not done {
+        wait for a message from backend
+        if the message is 'stop'
+            done := TRUE
+        else if the message is 'present' {
+            display a form based on the message
+            let the user interact with the form
+            until the user selects an action
+            send 'submit' message to backend
+        }
+    }
+</pre></td>
+<td><pre>
+    if the request method was 'POST' {
+        create 'submit' message from POSTed data
+        send 'submit' message to backend
+    } else {
+        if backend is running
+            error "backend is already running"
+        start backend
+    }
+    wait for a message from backend
+    if the message is 'stop'
+        display 'done' page
+    else if the message is 'present'
+        display a form based on the message
+</pre></td>
+</tr></table>
+
+<h2>Library</h2>
+
+<p>Let us consider now a library, <code>libdfui</code>, which implements this abstraction:
+
+<ul>
+<li>A C program could use functions in this library directly.
+<li>A program in another high-level language, such as Python,
+could use the functions in this library with a C binding made
+(with, say, SWIG) for this purpose.
+<li>A shell script could use these functions via
+utility programs which parse their arguments and call
+these functions directly (or via a proxy daemon.)
+</ul></p>
+
+<h3>Backend</h3>
+
+<p>From the backend's point of view, the useful functions in this library are
+as follows.  Each function returns an error response (1 = success, 0 = failure.)</p>
+
+<ul>
+<li><code>dfui_be_start(struct dfui_connection *c)</code>
+<p>Connect to the frontend and return a handle to it in <code>c</code>.  XXX this function
+also needs to know what frontend to try to connect to and how somehow.</p>
+<li><code>dfui_be_present(struct dfui_connection *c, struct dfui_form *f, struct dfui_response *r)</code>
+<p>Ask the frontend on the other end of <code>c</code> to present the form <code>f</code>, wait
+for a submit reply, and return the response in <code>r</code></p>
+<li><code>dfui_be_prog_begin(struct dfui_connection *c, struct dfui_progress *p)</code>
+<p>Ask the frontend on the other end of <code>c</code> to start showing the progress <code>p</code>.</p>
+<li><code>dfui_be_prog_update(struct dfui_connection *c, struct dfui_progress *p)</code>
+<p>Ask the frontend on the other end of <code>c</code> to update the progress <code>p</code>.</p>
+<li><code>dfui_be_prog_end(struct dfui_connection *c)</code>
+<p>Ask the frontend on the other end of <code>c</code> to stop showing any progress.</p>
+<li><code>dfui_be_stop(struct dfui_connection *c)</code>
+<p>Tell the frontend on the other end of <code>c</code> to stop, and close the connection.</p>
+</ul>
+
+<p>Notably, there are also functions for constructing <code>struct dfui_form</code>s and its
+brethren, and for intrerpreting and freeing <code>struct dfui_response</code>s.</p>
+
+<h3>Frontend</h3>
+
+<p>From the frontend's point of view, the useful functions in this library are
+as follows. Like the backend, these all return failure/success values.</p>
+
+<ul>
+<li><code>dfui_fe_start(struct dfui_connection *c)</code>
+<p>Connect to the backend XXX somehow.</p>
+<li><code>dfui_fe_receive(struct dfui_connection *c, char *msgtype, void **payload)</code>
+<p>Wait for the backend to send a message, then return the message type in <code>*msgtype</code>
+and the message itself in <code>*payload</code>.  It is the frontend's reponsibility to cast the
+payload to the correct data type (based on <code>*msgtype</code>,) and to free it at some later
+time if it is not NULL.</p>
+<li><code>dfui_fe_submit(struct dfui_connection *c, struct dfui_response *r)</code>
+<p>Send a submit reply to the backend.</p>
+<li><code>dfui_fe_progress_continue(struct dfui_connection *c)</code>
+<p>Send a continue reply to the backend.</p>
+<li><code>dfui_fe_progress_cancel(struct dfui_connection *c)</code>
+<p>Send a cancel reply to the backend.</p>
+<li><code>dfui_fe_abort(struct dfui_connection *c)</code>
+<p>Send an abort reply to the backend.</p>
+<li><code>dfui_fe_stop(struct dfui_connection *c)</code>
+<p>Close the connection.</p>
+</ul>
+
+<p>Notably, there are also functions for intrerpreting <code>struct dfui_form</code>s et al,
+and for constructing and freeing <code>struct dfui_responses</code>s.</p>
+
+<h2>Implementation</h2>
+
+<p>The IPC used by libdfui, through which the frontend and backend exchange messages
+and replies, is a wrapper around the CAPS mechanism.  CAPS is the lightweight messaging
+abstraction Matt Dillon has introduced into DragonFly.</p>
+
+<p>CAPS was chosen for two reasons: it fulfils DFUI's needs as an IPC mechanism, and DFUI
+provides a good "real world" test for CAPS.</p>
+
+<p>The implementation of libdfui in CAPS is fairly straightforward, with one significant twist.</p>
+
+<p>Despite the backend sending 'requests' and the frontend sending 'replies', the backend is
+a CAPS service, while the frontend is a CAPS client.  This is necessary as the frontend could
+be a series of short-lived processes.  A CAPS service cannot receive a message in one
+process and reply to it in another.</p>
+
+<p>We implement this role reversal by having each message exchange, as described above,
+be implemented by two full CAPS message-reply exchange cycles internally.</p>
+
+<p>That is, for a backend to send a message to the frontend, the backend waits until it
+receives a generic 'client ready' message from the frontend, then sends it's request as a
+CAPS reply.  It then waits for another message from the frontend (the DFUI reply) and
+replies to that with a generic 'service ready' message.</p>
+
+</body>
+</html>

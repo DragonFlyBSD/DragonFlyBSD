@@ -1,0 +1,11 @@
+--- Makefile.orig	2005-02-20 13:10:18.000000000 -0800
++++ Makefile	2005-02-20 13:11:13.000000000 -0800
+@@ -5,7 +5,7 @@
+ TMP=/tmp
+ 
+ # change these to reflect your Lua installation
+-LUA=../lua-5.0.2
++LUA=/usr/local
+ LUAINC= $(LUA)/include
+ LUALIB= $(LUA)/lib
+ LUABIN= $(LUA)/bin

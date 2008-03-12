@@ -1,0 +1,12 @@
+bin/lua50
+bin/luac50
+include/lua50/lauxlib.h
+include/lua50/lua.h
+include/lua50/lualib.h
+lib/liblua50.a
+lib/liblua50.so
+lib/liblua50.so.5
+lib/liblualib50.a
+lib/liblualib50.so
+lib/liblualib50.so.5
+

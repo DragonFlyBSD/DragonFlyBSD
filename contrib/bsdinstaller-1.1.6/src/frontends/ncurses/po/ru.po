@@ -1,0 +1,39 @@
+# DFUI curses interface - Russian language localization.
+# Copyright (C) 2004
+# This file is distributed under the same license as the ncurses package.
+# Denis Peplin <den@FreeBSD.org>, 2004.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2005-03-15 20:05+0300\n"
+"PO-Revision-Date: 2005-03-15 20:15+0300\n"
+"Last-Translator: Denis Peplin <den@FreeBSD.org>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=koi8-r\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Connected"
+msgstr "Подключено"
+
+msgid "F10=Refresh Display"
+msgstr "F10=Обновить экран"
+
+msgid "F1=Help F10=Refresh Display"
+msgstr "F1=Помощь F10=Обновить экран"
+
+msgid "Help"
+msgstr "Помощь"
+
+msgid "OK"
+msgstr "OK"
+
+#, c-format
+msgid "Usage: %s [-b backdrop] [-r rendezvous] [-t caps|npipe|tcp]\n"
+msgstr "Использование: %s [-b backdrop] [-r rendezvous] [-t caps|npipe|tcp]\n"
+
+msgid "Waiting for backend..."
+msgstr "Ожидание основной программы..."

@@ -1,0 +1,41 @@
+--- Makefile.orig	2003-11-05 16:26:49.000000000 -0800
++++ Makefile	2005-04-03 14:22:32.000000000 -0700
+@@ -1,30 +1,33 @@
+ # makefile for POSIX library for Lua
+ 
+ # change these to reflect your Lua installation
+-LUA= /tmp/lhf/lua-5.0
++LUA= /usr/local
+ LUAINC= $(LUA)/include
+ LUALIB= $(LUA)/lib
+ LUABIN= $(LUA)/bin
+ 
+ # no need to change anything below here
+ CFLAGS= -fPIC $(INCS) $(WARN) -O2 $G
+-WARN= -pedantic -Wall
++WARN= -Wall
+ INCS= -I$(LUAINC)
+ 
+ MYNAME= posix
+ MYLIB= l$(MYNAME)
+ 
+-OBJS= $(MYLIB).o
++OBJS= $(MYLIB).o compat-5.1.o
+ 
+ T= $(MYLIB).so
+ 
+-all:	test
++all:	$T
+ 
+ test:	$T
+ 	$(LUABIN)/lua -l$(MYNAME) test.lua
+ 
+ $T:	$(OBJS)
+-	$(CC) -o $@ -shared $(OBJS)
++	$(CC) -o $@ -shared $(OBJS) -L$(LUALIB) -llua50 -llualib50
++
++compat-5.1.c: $(LUALIB)/lua/compat-5.1r2/compat-5.1.c
++	cp $(LUALIB)/lua/compat-5.1r2/compat-5.1.? .
+ 
+ $(OBJS): modemuncher.c
+ 
