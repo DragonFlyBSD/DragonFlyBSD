@@ -26,12 +26,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.54 2008/01/23 09:21:34 matthias Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.55 2008/03/13 22:10:20 swildner Exp $
  */
-
-#ifdef _KERNEL
-#include "opt_hw_wdog.h"
-#endif /* _KERNEL */
 
 #include <sys/param.h>
 #include <sys/bootmaj.h>
