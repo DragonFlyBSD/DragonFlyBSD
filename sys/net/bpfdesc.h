@@ -38,7 +38,7 @@
  *      @(#)bpfdesc.h	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/net/bpfdesc.h,v 1.14.2.2 2001/12/17 19:32:33 jdp Exp $
- * $DragonFly: src/sys/net/bpfdesc.h,v 1.5 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/net/bpfdesc.h,v 1.6 2008/03/14 09:52:10 matthias Exp $
  */
 
 #ifndef _NET_BPFDESC_H_
@@ -71,7 +71,8 @@ struct bpf_d {
 
 	struct bpf_if *	bd_bif;		/* interface descriptor */
 	u_long		bd_rtout;	/* Read timeout in 'ticks' */
-	struct bpf_insn *bd_filter;	/* filter code */
+	struct bpf_insn *bd_rfilter; 	/* read filter code */
+	struct bpf_insn *bd_wfilter;	/* write filter code */
 	u_long		bd_rcount;	/* number of packets received */
 	u_long		bd_dcount;	/* number of packets dropped */
 
@@ -92,6 +93,7 @@ struct bpf_d {
 	struct selinfo	bd_sel;		/* bsd select info */
 #endif
 	struct callout	bd_callout;	/* for BPF timeouts with select */
+	int		bd_locked;	/* true if descriptor is locked */
 };
 
 /* Values for bd_state */

@@ -39,7 +39,7 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
- * $DragonFly: src/sys/net/bpf.h,v 1.11 2006/05/20 16:48:51 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.h,v 1.12 2008/03/14 09:52:10 matthias Exp $
  */
 
 #ifndef _NET_BPF_H_
@@ -126,6 +126,8 @@ struct bpf_version {
 #define BIOCSSEESENT	_IOW('B',119, u_int)
 #define	BIOCSDLT	_IOW('B',120, u_int)
 #define	BIOCGDLTLIST	_IOWR('B',121, struct bpf_dltlist)
+#define	BIOCLOCK	_IO('B', 122)
+#define	BIOCSETWF	_IOW('B',123, struct bpf_program)
 
 /*
  * Structure prepended to each packet.
