@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.129 2007/12/12 23:49:19 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.130 2008/03/15 16:21:29 aggelos Exp $
  */
 
 #include "use_apm.h"
@@ -515,7 +515,13 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 	regs->tf_esp = (int)sfp;
 	regs->tf_eip = PS_STRINGS - *(p->p_sysent->sv_szsigcode);
-	regs->tf_eflags &= ~PSL_T;
+
+	/*
+	 * i386 abi specifies that the direction flag must be cleared
+	 * on function entry
+	 */
+	regs->tf_eflags &= ~(PSL_T|PSL_D);
+
 	regs->tf_cs = _ucodesel;
 	regs->tf_ds = _udatasel;
 	regs->tf_es = _udatasel;
