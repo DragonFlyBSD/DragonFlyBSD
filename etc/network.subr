@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/network.subr,v 1.163 2005/06/30 04:52:47 brooks Exp $
-# $DragonFly: src/etc/network.subr,v 1.6 2008/02/04 19:03:06 swildner Exp $
+# $DragonFly: src/etc/network.subr,v 1.7 2008/03/15 10:13:37 hasso Exp $
 #
 
 #
@@ -412,7 +412,16 @@ list_net_interfaces()
 	#
 	case ${network_interfaces} in
 	[Aa][Uu][Tt][Oo])
-		_tmplist="`ifconfig -l`"
+		_autolist="`ifconfig -l`"
+		_lo=
+		for _if in ${_autolist} ; do
+			if [ "$_if" = "lo0" ]; then
+				_lo="lo0"
+			else
+				_tmplist="${_tmplist} ${_if}"
+			fi
+		done
+		_tmplist="${_lo} ${_tmplist}"
 		;;
 	*)
 		_tmplist="${network_interfaces} ${cloned_interfaces}"
