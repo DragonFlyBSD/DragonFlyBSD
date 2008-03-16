@@ -30,9 +30,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/share/man/man7/committer.7,v 1.9 2007/12/23 15:31:29 swildner Exp $
+.\" $DragonFly: src/share/man/man7/committer.7,v 1.10 2008/03/16 11:10:48 swildner Exp $
 .\" 
-.Dd January 1, 2007
+.Dd March 16, 2008
 .Dt COMMITTER 7
 .Os
 .Sh NAME
@@ -165,6 +165,14 @@ cvs -d you@crater.dragonflybsd.org:/cvs add directory
 To commit to the repository, use:
 .Bd -literal -offset indent
 cvs -d you@crater.dragonflybsd.org:/cvs commit files_or_directories
+.Ed
+.Pp
+The recommended way for committing to a specific branch (to merge bug fixes,
+for example) is to
+.Nm cvs Cm checkout
+the branch in a different directory, modify there, and commit normally:
+.Bd -literal -offset indent
+cvs checkout -r DragonFly_RELEASE_1_12 src
 .Ed
 .Pp
 Do not set
