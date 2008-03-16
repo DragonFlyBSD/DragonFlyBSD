@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.71 2008/03/05 17:20:23 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.72 2008/03/16 17:29:51 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -24,6 +24,7 @@ MAN=	accept_filter.9 \
 	bus_release_resource.9 \
 	bus_set_resource.9 \
 	BUS_SETUP_INTR.9 \
+	bus_space.9 \
 	callout.9 \
 	cd.9 \
 	contigmalloc.9 \
@@ -224,6 +225,65 @@ MLINKS+=BUS_READ_IVAR.9 BUS_WRITE_IVAR.9
 MLINKS+=BUS_SETUP_INTR.9 bus_setup_intr.9 \
 	BUS_SETUP_INTR.9 BUS_TEARDOWN_INTR.9 \
 	BUS_SETUP_INTR.9 bus_teardown_intr.9
+MLINKS+=bus_space.9 bus_space_barrier.9 \
+	bus_space.9 bus_space_copy_region_1.9 \
+	bus_space.9 bus_space_copy_region_2.9 \
+	bus_space.9 bus_space_copy_region_4.9 \
+	bus_space.9 bus_space_copy_region_stream_1.9 \
+	bus_space.9 bus_space_copy_region_stream_2.9 \
+	bus_space.9 bus_space_copy_region_stream_4.9 \
+	bus_space.9 bus_space_free.9 \
+	bus_space.9 bus_space_map.9 \
+	bus_space.9 bus_space_read_1.9 \
+	bus_space.9 bus_space_read_2.9 \
+	bus_space.9 bus_space_read_4.9 \
+	bus_space.9 bus_space_read_multi_1.9 \
+	bus_space.9 bus_space_read_multi_2.9 \
+	bus_space.9 bus_space_read_multi_4.9 \
+	bus_space.9 bus_space_read_multi_stream_1.9 \
+	bus_space.9 bus_space_read_multi_stream_2.9 \
+	bus_space.9 bus_space_read_multi_stream_4.9 \
+	bus_space.9 bus_space_read_region_1.9 \
+	bus_space.9 bus_space_read_region_2.9 \
+	bus_space.9 bus_space_read_region_4.9 \
+	bus_space.9 bus_space_read_region_stream_1.9 \
+	bus_space.9 bus_space_read_region_stream_2.9 \
+	bus_space.9 bus_space_read_region_stream_4.9 \
+	bus_space.9 bus_space_read_stream_1.9 \
+	bus_space.9 bus_space_read_stream_2.9 \
+	bus_space.9 bus_space_read_stream_4.9 \
+	bus_space.9 bus_space_set_multi_1.9 \
+	bus_space.9 bus_space_set_multi_2.9 \
+	bus_space.9 bus_space_set_multi_4.9 \
+	bus_space.9 bus_space_set_multi_stream_1.9 \
+	bus_space.9 bus_space_set_multi_stream_2.9 \
+	bus_space.9 bus_space_set_multi_stream_4.9 \
+	bus_space.9 bus_space_set_region_1.9 \
+	bus_space.9 bus_space_set_region_2.9 \
+	bus_space.9 bus_space_set_region_4.9 \
+	bus_space.9 bus_space_set_region_stream_1.9 \
+	bus_space.9 bus_space_set_region_stream_2.9 \
+	bus_space.9 bus_space_set_region_stream_4.9 \
+	bus_space.9 bus_space_subregion.9 \
+	bus_space.9 bus_space_unmap.9 \
+	bus_space.9 bus_space_write_1.9 \
+	bus_space.9 bus_space_write_2.9 \
+	bus_space.9 bus_space_write_4.9 \
+	bus_space.9 bus_space_write_multi_1.9 \
+	bus_space.9 bus_space_write_multi_2.9 \
+	bus_space.9 bus_space_write_multi_4.9 \
+	bus_space.9 bus_space_write_multi_stream_1.9 \
+	bus_space.9 bus_space_write_multi_stream_2.9 \
+	bus_space.9 bus_space_write_multi_stream_4.9 \
+	bus_space.9 bus_space_write_region_1.9 \
+	bus_space.9 bus_space_write_region_2.9 \
+	bus_space.9 bus_space_write_region_4.9 \
+	bus_space.9 bus_space_write_region_stream_1.9 \
+	bus_space.9 bus_space_write_region_stream_2.9 \
+	bus_space.9 bus_space_write_region_stream_4.9 \
+	bus_space.9 bus_space_write_stream_1.9 \
+	bus_space.9 bus_space_write_stream_2.9 \
+	bus_space.9 bus_space_write_stream_4.9
 MLINKS+=callout.9 callout_active.9 \
 	callout.9 callout_deactivate.9 \
 	callout.9 callout_init.9 \
