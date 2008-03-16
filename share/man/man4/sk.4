@@ -29,7 +29,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/sk.4,v 1.8.2.6 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/sk.4,v 1.6 2007/05/17 08:19:01 swildner Exp $
+.\" $DragonFly: src/share/man/man4/sk.4,v 1.7 2008/03/16 15:50:22 hasso Exp $
 .\"
 .Dd November 2, 2006
 .Dt SK 4
@@ -98,8 +98,8 @@ The user can manually override
 the autoselected mode by adding media options to the
 .Pa /etc/rc.conf
 file.
-.It 1000baseTX
-Set 1000baseTX operation over twisted pair.
+.It 1000baseT
+Set 1000baseT operation over twisted pair.
 This is only available
 for SK-982x series adapters with 1000baseT ports.
 Both
@@ -129,11 +129,11 @@ Force half duplex operation.
 .Pp
 The
 .Nm
-driver also supports one special link option for 1000baseTX cards:
+driver also supports one special link option for 1000baseT cards:
 .Pp
 .Bl -tag -width xxxxxxxxxxxxxxxxxxxx
 .It link0
-With 1000baseTX cards, establishing a link between two ports requires
+With 1000baseT cards, establishing a link between two ports requires
 that one port be configured as a master and the other a slave.
 With autonegotiation,
 the master/slave settings will be chosen automatically.

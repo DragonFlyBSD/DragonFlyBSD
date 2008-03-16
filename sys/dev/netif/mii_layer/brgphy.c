@@ -32,11 +32,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.19 2007/06/19 14:59:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.20 2008/03/16 15:50:22 hasso Exp $
  */
 
 /*
- * Driver for the Broadcom BCR5400 1000baseTX PHY. Speed is always
+ * Driver for the Broadcom BCR5400 1000baseT PHY. Speed is always
  * 1000mbps; all we need to negotiate here is full or half duplex.
  */
 

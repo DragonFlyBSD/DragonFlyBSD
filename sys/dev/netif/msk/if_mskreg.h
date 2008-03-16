@@ -94,7 +94,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_mskreg.h,v 1.11 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_mskreg.h,v 1.1 2007/12/26 14:02:36 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_mskreg.h,v 1.2 2008/03/16 15:50:22 hasso Exp $ */
 
 /*
  * SysKonnect PCI vendor ID
@@ -1247,8 +1247,8 @@
 #define PHY_M_AN_100_T4		BIT_9	/* Not cap. 100Base-T4 (always 0) */
 #define PHY_M_AN_100_FD		BIT_8	/* Advertise 100Base-TX Full Duplex */
 #define PHY_M_AN_100_HD		BIT_7	/* Advertise 100Base-TX Half Duplex */
-#define PHY_M_AN_10_FD		BIT_6	/* Advertise 10Base-TX Full Duplex */
-#define PHY_M_AN_10_HD		BIT_5	/* Advertise 10Base-TX Half Duplex */
+#define PHY_M_AN_10_FD		BIT_6	/* Advertise 10Base-T Full Duplex */
+#define PHY_M_AN_10_HD		BIT_5	/* Advertise 10Base-T Half Duplex */
 #define PHY_M_AN_SEL_MSK	(0x1f<<4)	/* Bit  4.. 0: Selector Field Mask */
 
 /* special defines for FIBER (88E1011S only) */

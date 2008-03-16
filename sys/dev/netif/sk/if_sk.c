@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.54 2007/12/14 11:37:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.55 2008/03/16 15:50:22 hasso Exp $
  */
 
 /*
@@ -2326,7 +2326,7 @@ sk_init_xmac(struct sk_if_softc	*sc_if)
 
 	/*
 	 * Perform additional initialization for external PHYs,
-	 * namely for the 1000baseTX cards that use the XMAC's
+	 * namely for the 1000baseT cards that use the XMAC's
 	 * GMII mode.
 	 */
 	if (sc_if->sk_phytype == SK_PHYTYPE_BCOM) {

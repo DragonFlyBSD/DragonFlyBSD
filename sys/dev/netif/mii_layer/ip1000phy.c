@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ip1000phy.c,v 1.1 2006/07/25 00:16:09 yongari Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ip1000phy.c,v 1.2 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ip1000phy.c,v 1.3 2008/03/16 15:50:22 hasso Exp $
  */
 
 /*
@@ -145,10 +145,10 @@ ip1000phy_attach(device_t dev)
 	/* 1000baseT half-duplex, really supported? */
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
 	    IP1000PHY_BMCR_1000);
-	kprintf("1000baseTX, ");
+	kprintf("1000baseT, ");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, sc->mii_inst),
 	    IP1000PHY_BMCR_1000 | IP1000PHY_BMCR_FDX);
-	kprintf("1000baseTX-FDX, ");
+	kprintf("1000baseT-FDX, ");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
 	kprintf("auto\n");
 #undef ADD

@@ -30,7 +30,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/bge.4,v 1.1.2.4 2003/02/17 21:20:39 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/bge.4,v 1.8 2007/05/13 18:33:56 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bge.4,v 1.9 2008/03/16 15:50:22 hasso Exp $
 .\"
 .Dd March 4, 2007
 .Dt BGE 4
@@ -50,13 +50,13 @@ following:
 .Pp
 .Bl -bullet -compact
 .It
-3Com 3c996-T (10/100/1000baseTX)
+3Com 3c996-T (10/100/1000baseT)
 .It
-Dell PowerEdge 2550 integrated BCM5700 NIC (10/100/1000baseTX)
+Dell PowerEdge 2550 integrated BCM5700 NIC (10/100/1000baseT)
 .It
-Netgear GA302T (10/100/1000baseTX)
+Netgear GA302T (10/100/1000baseT)
 .It
-SysKonnect SK-9D21 (10/100/1000baseTX)
+SysKonnect SK-9D21 (10/100/1000baseT)
 .It
 SysKonnect SK-9D41 (1000baseSX)
 .El
@@ -121,8 +121,8 @@ option can also be used to select either
 or
 .Cm half-duplex
 modes.
-.It Cm 1000baseTX
-Set 1000baseTX operation over twisted pair.
+.It Cm 1000baseT
+Set 1000baseT operation over twisted pair.
 .Cm full-duplex
 and
 .Cm half-duplex
@@ -148,10 +148,10 @@ Force half duplex operation.
 .Pp
 The
 .Nm
-driver also supports one special link option for 1000baseTX cards:
+driver also supports one special link option for 1000baseT cards:
 .Bl -tag -width ".Cm link0"
 .It Cm link0
-With 1000baseTX cards, establishing a link between two ports requires
+With 1000baseT cards, establishing a link between two ports requires
 that one port be configured as a master and the other a slave.
 With autonegotiation,
 the master/slave settings will be chosen automatically.

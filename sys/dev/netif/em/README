@@ -1,4 +1,4 @@
-$DragonFly: src/sys/dev/netif/em/README,v 1.7 2006/12/23 10:39:16 sephe Exp $
+$DragonFly: src/sys/dev/netif/em/README,v 1.8 2008/03/16 15:50:22 hasso Exp $
 FreeBSD* Driver for the Intel(R) PRO/1000 Family of Adapters
 ============================================================
 
@@ -162,7 +162,7 @@ This driver supports the following media type options:
    100baseTX       -  Sets speed to 100 Mbps. Use the ifconfig mediaopt
                       option to select full-duplex mode.
 
-   1000baseTX      -  Sets speed to 1000 Mbps. In this case, the driver
+   1000baseT       -  Sets speed to 1000 Mbps. In this case, the driver
                       supports only full-duplex mode.
 
    1000baseSX      -  Sets speed to 1000 Mbps. In this case, the driver

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.18 2006/12/11 11:09:48 yongari Exp $ */
-/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.10 2007/08/07 11:44:41 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.11 2008/03/16 15:50:22 hasso Exp $ */
 /*	$OpenBSD: eephy.c,v 1.26 2006/06/08 00:27:12 brad Exp $	*/
 /*
  * Principal Author: Parag Patel
@@ -37,7 +37,7 @@
  */
 
 /*
- * Support added for the Marvell 88E1011 (Alaska) 1000/100/10baseTX and
+ * Support added for the Marvell 88E1011 (Alaska) 1000/100/10baseT and
  * 1000baseSX PHY.
  * Nathan Binkert <nate@openbsd.org>
  * Jung-uk Kim <jkim@niksun.com>
