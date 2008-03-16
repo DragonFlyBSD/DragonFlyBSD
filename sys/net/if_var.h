@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.45 2008/03/07 11:34:19 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.46 2008/03/16 15:30:20 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -180,8 +180,8 @@ struct ifnet {
 	char	if_xname[IFNAMSIZ];	/* external name (name + unit) */
 	const char *if_dname;		/* driver name */
 	int	if_dunit;		/* unit or IF_DUNIT_NONE */
-	void	*if_addrhead_pad;
-	struct	ifaddrhead *if_addrheads;	/* linked list of addresses per if */
+	void	*if_vlantrunks;		/* vlan trunks */
+	struct	ifaddrhead *if_addrheads; /* linked lists of addresses per if */
 	int	if_pcount;		/* number of promiscuous listeners */
 	struct	carp_if *if_carp;	/* carp interface structure */
 	struct	bpf_if *if_bpf;		/* packet filter structure */
