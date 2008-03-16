@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.29 2007/02/22 15:50:49 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.29.4.1 2008/03/16 11:24:21 aggelos Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -369,7 +369,13 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	regs->tf_esp = (int)fp;
 	regs->tf_eip = PS_STRINGS - *(p->p_sysent->sv_szsigcode) + 
 	    linux_sznonrtsigcode;
-	regs->tf_eflags &= ~(PSL_T | PSL_VM);
+
+	/*
+	 * i386 abi specifies that the direction flag must be cleared
+	 * on function entry
+	 */
+	regs->tf_eflags &= ~(PSL_T | PSL_VM | PSL_D);
+
 	regs->tf_cs = _ucodesel;
 	regs->tf_ds = _udatasel;
 	regs->tf_es = _udatasel;
@@ -503,7 +509,13 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 */
 	regs->tf_esp = (int)fp;
 	regs->tf_eip = PS_STRINGS - *(p->p_sysent->sv_szsigcode);
-	regs->tf_eflags &= ~(PSL_T | PSL_VM);
+
+	/*
+	 * i386 abi specifies that the direction flag must be cleared
+	 * on function entry
+	 */
+	regs->tf_eflags &= ~(PSL_T | PSL_VM | PSL_D);
+
 	regs->tf_cs = _ucodesel;
 	regs->tf_ds = _udatasel;
 	regs->tf_es = _udatasel;

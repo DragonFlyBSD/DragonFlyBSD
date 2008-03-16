@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.25 2008/02/03 15:10:26 nth Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.25.2.1 2008/03/16 11:24:21 aggelos Exp $
  */
 
 #include "use_ether.h"
@@ -325,7 +325,13 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 	regs->tf_esp = (int)sfp;
 	regs->tf_eip = PS_STRINGS - *(p->p_sysent->sv_szsigcode);
-	regs->tf_eflags &= ~PSL_T;
+
+	/*
+	 * i386 abi specifies that the direction flag must be cleared
+	 * on function entry
+	 */
+	regs->tf_eflags &= ~(PSL_T|PSL_D);
+
 	regs->tf_cs = _ucodesel;
 	regs->tf_ds = _udatasel;
 	regs->tf_es = _udatasel;
