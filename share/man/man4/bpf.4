@@ -21,9 +21,9 @@
 .\" distributed with 4.3BSD Unix.
 .\"
 .\" $FreeBSD: src/share/man/man4/bpf.4,v 1.21.2.11 2002/04/07 04:57:13 dd Exp $
-.\" $DragonFly: src/share/man/man4/bpf.4,v 1.6 2007/11/04 19:04:42 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bpf.4,v 1.7 2008/03/17 10:06:22 matthias Exp $
 .\"
-.Dd January 16, 1996
+.Dd March 14, 2008
 .Dt BPF 4
 .Os
 .Sh NAME
@@ -173,6 +173,58 @@ the
 .Li ifreq
 structure.
 All other fields are undefined.
+.It Dv BIOCLOCK
+This ioctl is designed to prevent the security issues associated
+with an open
+.Nm
+descriptor in unprivileged programs.
+Even with dropped privileges, an open
+.Nm
+descriptor can be abused by a rogue program to listen on any interface
+on the system, send packets on these interfaces if the descriptor was
+opened read-write and send signals to arbitrary processes using the
+signaling mechanism of
+.Nm .
+By allowing only
+.Dq known safe
+ioctls, the
+.Dv BIOCLOCK
+ioctl prevents this abuse.
+The allowable ioctls are
+.Dv BIOCGBLEN ,
+.Dv BIOCFLUSH ,
+.Dv BIOCGDLT ,
+.Dv BIOCGDLTLIST ,
+.Dv BIOCGETIF ,
+.Dv BIOCGRTIMEOUT ,
+.Dv BIOCGSTATS ,
+.Dv BIOCVERSION ,
+.Dv BIOCGRSIG ,
+.Dv BIOCGHDRCMPLT ,
+.Dv FIONREAD ,
+.Dv BIOCLOCK ,
+.Dv BIOCSRTIMEOUT ,
+.Dv BIOCIMMEDIATE
+and
+.Dv TIOCGPGRP .
+Use of any other ioctl is denied with error
+.Er EPERM .
+Once a descriptor is locked, it is not possible to unlock it.
+A process with root privileges is not affected by the lock.
+.Pp
+A privileged program can open a
+.Nm
+device, drop privileges, set the interface, filters and modes on the
+descriptor, and lock it.
+Once the descriptor is locked, the system is safe
+from further abuse through the descriptor.
+Locking a descriptor does not prevent writes.
+If the application does not need to send packets through
+.Nm bpf ,
+it can open the device read-only to prevent writing.
+If sending packets is necessary, a write-filter can be set before locking the
+descriptor to prevent arbitrary packets from being sent out.
+.Pp
 .It Dv BIOCSETIF
 .Pq Li "struct ifreq"
 Sets the hardware interface associated with the file.
@@ -184,6 +236,13 @@ field of the
 structure.
 Additionally, performs the actions of
 .Dv BIOCFLUSH .
+.Pp
+.It Dv BIOCSETWF
+.Pq Li "struct bpf_program *"
+Sets the write filter program used by the kernel to filter the packets
+written to the descriptor before the packets are sent out on the
+network.
+.Pp
 .It Dv BIOCSRTIMEOUT
 .It Dv BIOCGRTIMEOUT
 .Pq Li "struct timeval"
@@ -229,7 +288,7 @@ which must respond to messages in real time.
 The default for a new file is off.
 .It Dv BIOCSETF
 .Pq Li "struct bpf_program"
-Sets the filter program used by the kernel to discard uninteresting
+Sets the read filter program used by the kernel to discard uninteresting
 packets.  An array of instructions and its length is passed in using
 the following structure:
 .Bd -literal
