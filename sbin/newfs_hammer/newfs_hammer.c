@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.19 2008/02/20 00:55:50 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.20 2008/03/18 05:21:55 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -404,6 +404,8 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		format_blockmap(
 			&ondisk->vol0_blockmap[HAMMER_ZONE_SMALL_DATA_INDEX],
 			HAMMER_ZONE_SMALL_DATA);
+
+		format_undomap(ondisk);
 
 		ondisk->vol0_btree_root = format_root();
 		++ondisk->vol0_stat_inodes;	/* root inode */

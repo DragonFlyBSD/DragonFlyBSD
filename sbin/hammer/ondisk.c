@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.13 2008/02/23 03:01:06 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.14 2008/03/18 05:21:53 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -513,6 +513,52 @@ alloc_bigblock(struct volume_info *volume, hammer_off_t owner)
 	return(result_offset);
 }
 
+/*
+ * Format the undo-map for the root volume.
+ */
+void
+format_undomap(hammer_volume_ondisk_t ondisk)
+{
+	const int undo_zone = HAMMER_ZONE_UNDO_INDEX;
+	const hammer_off_t undo_limit = HAMMER_LARGEBLOCK_SIZE; /* XXX */
+	hammer_blockmap_t blockmap;
+	hammer_off_t scan;
+	struct hammer_blockmap_layer2 *layer2;
+	int n;
+	int limit_index;
+
+	blockmap = &ondisk->vol0_blockmap[undo_zone];
+	bzero(blockmap, sizeof(*blockmap));
+	blockmap->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
+	blockmap->first_offset = HAMMER_ZONE_ENCODE(undo_zone, 0);
+	blockmap->next_offset = blockmap->first_offset;
+	blockmap->alloc_offset = HAMMER_ZONE_ENCODE(undo_zone, undo_limit);
+	
+	blockmap->entry_crc = crc32(blockmap, sizeof(*blockmap));
+
+	layer2 = &ondisk->vol0_undo_array[0];
+	n = 0;
+	scan = blockmap->next_offset;
+	limit_index = undo_limit / HAMMER_LARGEBLOCK_SIZE;
+
+	assert(limit_index < HAMMER_UNDO_LAYER2);
+
+	for (n = 0; n < limit_index; ++n) {
+		layer2->u.phys_offset = alloc_bigblock(NULL, scan);
+		layer2->bytes_free = -1;	/* not used */
+		layer2->entry_crc = crc32(layer2, sizeof(*layer2));
+
+		scan += HAMMER_LARGEBLOCK_SIZE;
+		++layer2;
+	}
+	while (n < HAMMER_UNDO_LAYER2) {
+		layer2->u.phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
+		layer2->bytes_free = -1;
+		layer2->entry_crc = crc32(layer2, sizeof(*layer2));
+		++layer2;
+		++n;
+	}
+}
 
 /*
  * Format a new blockmap.  Set the owner to the base of the blockmap
@@ -524,6 +570,7 @@ format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_off)
 {
 	blockmap->phys_offset = alloc_bigblock(NULL, zone_off);
 	blockmap->alloc_offset = zone_off;
+	blockmap->first_offset = zone_off;
 	blockmap->next_offset = zone_off;
 	blockmap->entry_crc = crc32(blockmap, sizeof(*blockmap));
 }

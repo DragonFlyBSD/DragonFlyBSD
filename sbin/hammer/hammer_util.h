@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.11 2008/02/23 03:01:06 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.12 2008/03/18 05:21:53 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -119,6 +119,8 @@ hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
 				struct hammer_blockmap_layer1 *layer1,
 				struct hammer_blockmap_layer2 *layer2);
 void format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_off);
+void format_undomap(hammer_volume_ondisk_t ondisk);
+
 void *alloc_btree_element(hammer_off_t *offp);
 hammer_record_ondisk_t alloc_record_element(hammer_off_t *offp,
 				int32_t data_len, void **datap);

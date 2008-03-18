@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.7 2008/02/23 20:55:21 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.8 2008/03/18 05:21:53 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -63,5 +63,6 @@ void hammer_cmd_show(hammer_tid_t node_offset, int depth,
 void hammer_cmd_prune(char **av, int ac);
 void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);
+void hammer_cmd_reblock(char **av, int ac);
 
 
