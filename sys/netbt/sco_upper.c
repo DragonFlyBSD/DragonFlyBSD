@@ -1,6 +1,6 @@
+/* $DragonFly: src/sys/netbt/sco_upper.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: sco_upper.c,v 1.2 2007/10/01 16:39:30 krw Exp $ */
 /* $NetBSD: sco_upper.c,v 1.6 2007/03/30 20:47:03 plunky Exp $ */
-/* $DragonFly: src/sys/netbt/sco_upper.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.

@@ -1,6 +1,6 @@
+/* $DragonFly: src/sys/netbt/sco_socket.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: sco_socket.c,v 1.1 2007/06/01 02:46:12 uwe Exp $ */
 /* $NetBSD: sco_socket.c,v 1.9 2007/04/21 06:15:23 plunky Exp $ */
-/* $DragonFly: src/sys/netbt/sco_socket.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -109,8 +109,8 @@ sco_ctloutput(struct socket *so, struct sockopt *sopt)
 			m = NULL;
 			err = ENOPROTOOPT;
 		}
-/*		*opt = m;*/
-#warning Griffin - Theare is possible memory leeks...
+		/* *opt = m; */
+		/* XXX There are possible memory leaks (Griffin) */
 		err = sooptcopyout(sopt, mtod(m, void *), m->m_len);
 		break;
 

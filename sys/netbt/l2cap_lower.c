@@ -1,6 +1,6 @@
-/* $OpenBSD: l2cap_lower.c,v 1.1 2007/05/30 03:42:53 uwe Exp $ */
-/* $NetBSD: l2cap_lower.c,v 1.6 2007/04/21 06:15:23 plunky Exp $ */
-/* $DragonFly: src/sys/netbt/l2cap_lower.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/l2cap_lower.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $OpenBSD: src/sys/netbt/l2cap_lower.c,v 1.2 2008/02/24 21:34:48 uwe Exp $ */
+/* $NetBSD: l2cap_lower.c,v 1.7 2007/11/10 23:12:23 plunky Exp $ */
 
 /*-
  * Copyright (c) 2005 Iain Hibbert.
@@ -31,8 +31,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -121,7 +119,7 @@ l2cap_recv_frame(struct mbuf *m, struct hci_link *link)
 	hdr.dcid = letoh16(hdr.dcid);
 
 	DPRINTFN(5, "(%s) received packet (%d bytes)\n",
-		    link->hl_unit->hci_devname, hdr.length);
+		    device_get_nameunit(link->hl_unit->hci_dev), hdr.length);
 
 	if (hdr.length != m->m_pkthdr.len)
 		goto failed;
@@ -144,7 +142,8 @@ l2cap_recv_frame(struct mbuf *m, struct hci_link *link)
 	}
 
 	DPRINTF("(%s) dropping %d L2CAP data bytes for unknown CID #%d\n",
-		link->hl_unit->hci_devname, hdr.length, hdr.dcid);
+		device_get_nameunit(link->hl_unit->hci_dev), hdr.length,
+		hdr.dcid);
 
 failed:
 	m_freem(m);

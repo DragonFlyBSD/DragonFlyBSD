@@ -1,6 +1,6 @@
-/* $OpenBSD: l2cap_signal.c,v 1.2 2007/07/22 21:05:00 gwk Exp $ */
-/* $NetBSD: l2cap_signal.c,v 1.8 2007/05/16 18:34:49 plunky Exp $ */
-/* $DragonFly: src/sys/netbt/l2cap_signal.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/l2cap_signal.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $OpenBSD: src/sys/netbt/l2cap_signal.c,v 1.3 2008/02/24 21:34:48 uwe Exp $ */
+/* $NetBSD: l2cap_signal.c,v 1.9 2007/11/10 23:12:23 plunky Exp $ */
 
 /*-
  * Copyright (c) 2005 Iain Hibbert.
@@ -31,8 +31,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
 
 #include <stdarg.h>
 
@@ -87,7 +85,7 @@ l2cap_recv_signal(struct mbuf *m, struct hci_link *link)
 			goto reject;
 
 		DPRINTFN(2, "(%s) code %d, ident %d, len %d\n",
-			link->hl_unit->hci_devname,
+			device_get_nameunit(link->hl_unit->hci_dev),
 			cmd.code, cmd.ident, cmd.length);
 
 		switch (cmd.code) {
@@ -409,7 +407,7 @@ l2cap_recv_connect_rsp(struct mbuf *m, struct hci_link *link)
 }
 
 /*
- * Process Received Config Reqest.
+ * Process Received Config Request.
  */
 static void
 l2cap_recv_config_req(struct mbuf *m, struct hci_link *link)
@@ -526,18 +524,63 @@ l2cap_recv_config_req(struct mbuf *m, struct hci_link *link)
 			break;
 
 		case L2CAP_OPT_QOS:
+			if (rp.result == L2CAP_UNKNOWN_OPTION)
+				break;
+
+			if (opt.length != L2CAP_OPT_QOS_SIZE)
+				goto reject;
+
+			m_copydata(m, 0, L2CAP_OPT_QOS_SIZE, (caddr_t)&val);
+			if (val.qos.service_type == L2CAP_QOS_NO_TRAFFIC ||
+			    val.qos.service_type == L2CAP_QOS_BEST_EFFORT)
+				/*
+				 * In accordance with the spec, we choose to
+				 * ignore the fields an provide no response.
+				 */
+				break;
+
+			if (len + sizeof(opt) + L2CAP_OPT_QOS_SIZE > sizeof(buf))
+				goto reject;
+
+			if (val.qos.service_type != L2CAP_QOS_GUARANTEED) {
+				/*
+				 * Instead of sending an "unacceptable
+				 * parameters" response, treat this as an
+				 * unknown option and include the option
+				 * value in the response.
+				 */
+				rp.result = L2CAP_UNKNOWN_OPTION;
+			} else {
+				/*
+				 * According to the spec, we must return
+				 * specific values for wild card parameters.
+				 * I don't know what to return without lying,
+				 * so return "unacceptable parameters" and
+				 * specify the preferred service type as
+				 * "Best Effort".
+				 */
+				rp.result = L2CAP_UNACCEPTABLE_PARAMS;
+				val.qos.service_type = L2CAP_QOS_BEST_EFFORT;
+			}
+
+			memcpy(buf + len, &opt, sizeof(opt));
+			len += sizeof(opt);
+			memcpy(buf + len, &val, L2CAP_OPT_QOS_SIZE);
+			len += L2CAP_OPT_QOS_SIZE;
+			break;
+
 		default:
 			/* ignore hints */
 			if (opt.type & L2CAP_OPT_HINT_BIT)
 				break;
 
-			/* unknown options supercede all else */
+			/* unknown options supersede all else */
 			if (rp.result != L2CAP_UNKNOWN_OPTION) {
 				rp.result = L2CAP_UNKNOWN_OPTION;
 				len = sizeof(rp);
 			}
 
-			/* ignore if it don't fit */
+			/* ignore if it doesn't fit */
 			if (len + sizeof(opt) > sizeof(buf))
 				break;
 
@@ -906,7 +949,7 @@ l2cap_send_signal(struct hci_link *link, uint8_t code, uint8_t ident,
 
 	if (sizeof(l2cap_cmd_hdr_t) + length > link->hl_mtu)
 		kprintf("(%s) exceeding L2CAP Signal MTU for link!\n",
-			link->hl_unit->hci_devname);
+		    device_get_nameunit(link->hl_unit->hci_dev));
 #endif
 
 	m = m_gethdr(MB_DONTWAIT, MT_DATA);
@@ -942,7 +985,8 @@ l2cap_send_signal(struct hci_link *link, uint8_t code, uint8_t ident,
 	m->m_len = MIN(length, MHLEN);
 
 	DPRINTFN(2, "(%s) code %d, ident %d, len %d\n",
-		link->hl_unit->hci_devname, code, ident, length);
+		device_get_nameunit(link->hl_unit->hci_dev), code, ident,
+		length);
 
 	return hci_acl_send(m, link, NULL);
 }

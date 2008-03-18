@@ -1,6 +1,6 @@
+/* $DragonFly: src/sys/netbt/sco.h,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: sco.h,v 1.2 2007/06/01 02:46:12 uwe Exp $ */
 /* $NetBSD: sco.h,v 1.2 2006/07/26 10:20:56 tron Exp $ */
-/* $DragonFly: src/sys/netbt/sco.h,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.

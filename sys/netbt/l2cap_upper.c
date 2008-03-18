@@ -1,6 +1,6 @@
+/* $DragonFly: src/sys/netbt/l2cap_upper.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: l2cap_upper.c,v 1.2 2007/10/01 16:39:30 krw Exp $ */
 /* $NetBSD: l2cap_upper.c,v 1.8 2007/04/29 20:23:36 msaitoh Exp $ */
-/* $DragonFly: src/sys/netbt/l2cap_upper.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
 
 /*-
  * Copyright (c) 2005 Iain Hibbert.

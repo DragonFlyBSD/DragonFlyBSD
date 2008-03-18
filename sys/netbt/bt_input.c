@@ -1,5 +1,5 @@
+/* $DragonFly: src/sys/netbt/bt_input.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: bt_input.c,v 1.5 2007/06/24 20:55:27 uwe Exp $ */
-/* $DragonFly: src/sys/netbt/bt_input.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
 
 /*
  * Copyright (c) 2004 Alexander Yurchenko <grange@openbsd.org>

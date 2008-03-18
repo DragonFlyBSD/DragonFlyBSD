@@ -1,6 +1,6 @@
-/* $OpenBSD: hci_link.c,v 1.6 2007/09/17 01:33:33 krw Exp $ */
-/* $NetBSD: hci_link.c,v 1.11 2007/04/21 06:15:23 plunky Exp $ */
-/* $DragonFly: src/sys/netbt/hci_link.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/hci_link.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $OpenBSD: src/sys/netbt/hci_link.c,v 1.7 2008/02/24 21:34:48 uwe Exp $ */
+/* $NetBSD: hci_link.c,v 1.16 2007/11/10 23:12:22 plunky Exp $ */
 
 /*-
  * Copyright (c) 2005 Iain Hibbert.
@@ -31,8 +31,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -102,9 +100,9 @@ hci_acl_open(struct hci_unit *unit, bdaddr_t *bdaddr)
 
 		memo = hci_memo_find(unit, bdaddr);
 		if (memo != NULL) {
-			cp.page_scan_rep_mode = memo->response.page_scan_rep_mode;
-			cp.page_scan_mode = memo->response.page_scan_mode;
-			cp.clock_offset = htole16(memo->response.clock_offset);
+			cp.page_scan_rep_mode = memo->page_scan_rep_mode;
+			cp.page_scan_mode = memo->page_scan_mode;
+			cp.clock_offset = memo->clock_offset;
 		}
 
 		if (unit->hci_link_policy & HCI_LINK_POLICY_ENABLE_ROLE_SWITCH)
@@ -264,8 +262,9 @@ hci_acl_setmode(struct hci_link *link)
 	    && !(link->hl_flags & HCI_LINK_AUTH)) {
 		hci_auth_req_cp cp;
 
-		DPRINTF("requesting auth for handle #%d\n",
-			link->hl_handle);
+		DPRINTF("(%s) requesting auth for handle #%d\n",
+		    device_get_nameunit(link->hl_unit->hci_dev),
+		    link->hl_handle);
 
 		link->hl_state = HCI_LINK_WAIT_AUTH;
 		cp.con_handle = htole16(link->hl_handle);
@@ -281,8 +280,9 @@ hci_acl_setmode(struct hci_link *link)
 
 		/* XXX we should check features for encryption capability */
 
-		DPRINTF("requesting encryption for handle #%d\n",
-			link->hl_handle);
+		DPRINTF("(%s) requesting encryption for handle #%d\n",
+		    device_get_nameunit(link->hl_unit->hci_dev),
+		    link->hl_handle);
 
 		link->hl_state = HCI_LINK_WAIT_ENCRYPT;
 		cp.con_handle = htole16(link->hl_handle);
@@ -300,8 +300,9 @@ hci_acl_setmode(struct hci_link *link)
 		/* always change link key for SECURE requests */
 		link->hl_flags &= ~HCI_LINK_SECURE;
 
-		DPRINTF("changing link key for handle #%d\n",
-			link->hl_handle);
+		DPRINTF("(%s) changing link key for handle #%d\n",
+		    device_get_nameunit(link->hl_unit->hci_dev),
+		    link->hl_handle);
 
 		link->hl_state = HCI_LINK_WAIT_SECURE;
 		cp.con_handle = htole16(link->hl_handle);
@@ -327,11 +328,11 @@ hci_acl_linkmode(struct hci_link *link)
 	struct l2cap_channel *chan, *next;
 	int err, mode = 0;
 
-	DPRINTF("handle #%d, auth %s, encrypt %s, secure %s\n",
-		link->hl_handle,
-		(link->hl_flags & HCI_LINK_AUTH ? "on" : "off"),
-		(link->hl_flags & HCI_LINK_ENCRYPT ? "on" : "off"),
-		(link->hl_flags & HCI_LINK_SECURE ? "on" : "off"));
+	DPRINTF("(%s) handle #%d, auth %s, encrypt %s, secure %s\n",
+	    device_get_nameunit(link->hl_unit->hci_dev), link->hl_handle,
+	    (link->hl_flags & HCI_LINK_AUTH ? "on" : "off"),
+	    (link->hl_flags & HCI_LINK_ENCRYPT ? "on" : "off"),
+	    (link->hl_flags & HCI_LINK_SECURE ? "on" : "off"));
 
 	if (link->hl_flags & HCI_LINK_AUTH)
 		mode |= L2CAP_LM_AUTH;
@@ -431,13 +432,15 @@ hci_acl_recv(struct mbuf *m, struct hci_unit *unit)
 
 #ifdef DIAGNOSTIC
 	if (hdr.type != HCI_ACL_DATA_PKT) {
-		kprintf("%s: bad ACL packet type\n", unit->hci_devname);
+		kprintf("%s: bad ACL packet type\n",
+		    device_get_nameunit(unit->hci_dev));
 		goto bad;
 	}
 
 	if (m->m_pkthdr.len != letoh16(hdr.length)) {
 		kprintf("%s: bad ACL packet length (%d != %d)\n",
-			unit->hci_devname, m->m_pkthdr.len, letoh16(hdr.length));
+		    device_get_nameunit(unit->hci_dev), m->m_pkthdr.len,
+		    letoh16(hdr.length));
 		goto bad;
 	}
 #endif
@@ -452,7 +455,7 @@ hci_acl_recv(struct mbuf *m, struct hci_unit *unit)
 		hci_discon_cp cp;
 
 		DPRINTF("%s: dumping packet for unknown handle #%d\n",
-			unit->hci_devname, handle);
+		    device_get_nameunit(unit->hci_dev), handle);
 
 		/*
 		 * There is no way to find out what this connection handle is
@@ -470,11 +473,11 @@ hci_acl_recv(struct mbuf *m, struct hci_unit *unit)
 	case HCI_PACKET_START:
 		if (link->hl_rxp != NULL)
 			kprintf("%s: dropped incomplete ACL packet\n",
-				unit->hci_devname);
+			    device_get_nameunit(unit->hci_dev));
 
 		if (m->m_pkthdr.len < sizeof(l2cap_hdr_t)) {
 			kprintf("%s: short ACL packet\n",
-				unit->hci_devname);
+			    device_get_nameunit(unit->hci_dev));
 
 			goto bad;
 		}
@@ -486,7 +489,7 @@ hci_acl_recv(struct mbuf *m, struct hci_unit *unit)
 	case HCI_PACKET_FRAGMENT:
 		if (link->hl_rxp == NULL) {
 			kprintf("%s: unexpected packet fragment\n",
-				unit->hci_devname);
+			    device_get_nameunit(unit->hci_dev));
 
 			goto bad;
 		}
@@ -499,7 +502,7 @@ hci_acl_recv(struct mbuf *m, struct hci_unit *unit)
 
 	default:
 		kprintf("%s: unknown packet type\n",
-			unit->hci_devname);
+		    device_get_nameunit(unit->hci_dev));
 
 		goto bad;
 	}
@@ -559,7 +562,8 @@ hci_acl_send(struct mbuf *m, struct hci_link *link,
 	mlen = link->hl_unit->hci_max_acl_size;
 
 	DPRINTFN(5, "%s: handle #%d, plen = %d, max = %d\n",
-		link->hl_unit->hci_devname, link->hl_handle, plen, mlen);
+	    device_get_nameunit(link->hl_unit->hci_dev),
+	    link->hl_handle, plen, mlen);
 
 	while (plen > 0) {
 		if (plen > mlen) {
@@ -573,7 +577,8 @@ hci_acl_send(struct mbuf *m, struct hci_link *link,
 		if (num++ == 0)
 			m->m_flags |= M_PROTO1;	/* tag first fragment */
 
-		DPRINTFN(10, "chunk of %d (plen = %d) bytes\n", mlen, plen);
+		DPRINTFN(10, "(%s) chunk of %d (plen = %d) bytes\n",
+		    device_get_nameunit(link->hl_unit->hci_dev), mlen, plen);
 		IF_ENQUEUE(&pdu->lp_data, m);
 		m = n;
 		plen -= mlen;
@@ -707,15 +712,16 @@ hci_acl_complete(struct hci_link *link, int num)
 	struct l2cap_pdu *pdu;
 	struct l2cap_channel *chan;
 
-	DPRINTFN(5, "handle #%d (%d)\n", link->hl_handle, num);
+	DPRINTFN(5, "(%s) handle #%d (%d)\n",
+	    device_get_nameunit(link->hl_unit->hci_dev), link->hl_handle, num);
 
 	while (num > 0) {
 		pdu = TAILQ_FIRST(&link->hl_txq);
 		if (pdu == NULL) {
 			kprintf("%s: %d packets completed on handle #%x "
 				"but none pending!\n",
-				link->hl_unit->hci_devname, num,
-				link->hl_handle);
+				device_get_nameunit(link->hl_unit->hci_dev),
+				num, link->hl_handle);
 			return;
 		}
 
@@ -836,13 +842,15 @@ hci_sco_recv(struct mbuf *m, struct hci_unit *unit)
 
 #ifdef DIAGNOSTIC
 	if (hdr.type != HCI_SCO_DATA_PKT) {
-		kprintf("%s: bad SCO packet type\n", unit->hci_devname);
+		kprintf("%s: bad SCO packet type\n",
+		    device_get_nameunit(unit->hci_dev));
 		goto bad;
 	}
 
 	if (m->m_pkthdr.len != hdr.length) {
 		kprintf("%s: bad SCO packet length (%d != %d)\n",
-		    unit->hci_devname, m->m_pkthdr.len, hdr.length);
+		    device_get_nameunit(unit->hci_dev), m->m_pkthdr.len,
+		    hdr.length);
 		goto bad;
 	}
 #endif
@@ -853,7 +861,7 @@ hci_sco_recv(struct mbuf *m, struct hci_unit *unit)
 	link = hci_link_lookup_handle(unit, handle);
 	if (link == NULL || link->hl_type == HCI_LINK_ACL) {
 		DPRINTF("%s: dumping packet for unknown handle #%d\n",
-			unit->hci_devname, handle);
+		    device_get_nameunit(unit->hci_dev), handle);
 
 		goto bad;
 	}
@@ -912,6 +920,9 @@ hci_link_alloc(struct hci_unit *unit)
 	link->hl_mtu = L2CAP_MTU_DEFAULT;		/* L2CAP signal mtu */
 	link->hl_flush = L2CAP_FLUSH_TIMO_DEFAULT;	/* flush timeout */
 
+	/* init SCO portion */
+	/* &link->hl_data is already zero-initialized. */
+
 	/* attach to unit */
 	TAILQ_INSERT_HEAD(&unit->hci_links, link, hl_next);
 	crit_exit();	
@@ -927,9 +938,9 @@ hci_link_free(struct hci_link *link, int err)
 
 	KKASSERT(link != NULL);
 
-	DPRINTF("#%d, type = %d, state = %d, refcnt = %d\n",
-		link->hl_handle, link->hl_type,
-		link->hl_state, link->hl_refcnt);
+	DPRINTF("(%s) #%d, type = %d, state = %d, refcnt = %d\n",
+	    device_get_nameunit(link->hl_unit->hci_dev), link->hl_handle,
+	    link->hl_type, link->hl_state, link->hl_refcnt);
 
 	/* ACL reference count */
 	if (link->hl_refcnt > 0) {
@@ -986,6 +997,7 @@ hci_link_free(struct hci_link *link, int err)
 	crit_enter();	
 	IF_DRAIN(&link->hl_data);
 	crit_exit();
+
 	/*
 	 * Halt the timeout - if its already running we cannot free the
 	 * link structure but the timeout function will call us back in
@@ -995,6 +1007,18 @@ hci_link_free(struct hci_link *link, int err)
 	callout_stop(&link->hl_expire);
 	if (callout_active(&link->hl_expire))
 		return;
+
+	/*
+	 * If we made a note of clock offset, keep it in a memo
+	 * to facilitate reconnections to this device
+	 */
+	if (link->hl_clock != 0) {
+		struct hci_memo *memo;
+
+		memo = hci_memo_new(link->hl_unit, &link->hl_bdaddr);
+		if (memo != NULL)
+			memo->clock_offset = link->hl_clock;
+	}
 
 	crit_enter();
 	TAILQ_REMOVE(&link->hl_unit->hci_links, link, hl_next);

@@ -1,6 +1,6 @@
-/* $OpenBSD: rfcomm_socket.c,v 1.1 2007/06/01 02:46:12 uwe Exp $ */
-/* $NetBSD: rfcomm_socket.c,v 1.7 2007/04/21 06:15:23 plunky Exp $ */
-/* $DragonFly: src/sys/netbt/rfcomm_socket.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/rfcomm_socket.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $OpenBSD: src/sys/netbt/rfcomm_socket.c,v 1.2 2008/02/24 21:34:48 uwe Exp $ */
+/* $NetBSD: rfcomm_socket.c,v 1.8 2007/10/15 18:04:34 plunky Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -32,8 +32,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
 
 /* load symbolic names */
 #ifdef BLUETOOTH_DEBUG
@@ -293,18 +291,20 @@ rfcomm_sattach (struct socket *so, int proto,
 	 * Since we have nothing to add, we attach the DLC
 	 * structure directly to our PCB pointer.
 	 */
+	err = soreserve(so, rfcomm_sendspace, rfcomm_recvspace, NULL);
+	if (err)
+		return err;
+
 	err = rfcomm_attach((struct rfcomm_dlc **)&so->so_pcb,
 	    &rfcomm_proto, so);
 	if (err)
 		return err;
 
-	err = soreserve(so, rfcomm_sendspace, rfcomm_recvspace,NULL);
-	if (err)
-		return err;
-
 	err = rfcomm_rcvd(so->so_pcb, sbspace(&so->so_rcv));
-	if (err)
+	if (err) {
+		rfcomm_detach((struct rfcomm_dlc **)&so->so_pcb);
 		return err;
+	}
 
 	return 0;
 }

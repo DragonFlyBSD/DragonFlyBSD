@@ -1,6 +1,6 @@
-/* $OpenBSD: hci_ioctl.c,v 1.1 2007/06/01 02:46:11 uwe Exp $ */
-/* $NetBSD: hci_ioctl.c,v 1.5 2007/01/04 19:07:03 elad Exp $ */
-/* $DragonFly: src/sys/netbt/hci_ioctl.c,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/hci_ioctl.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $OpenBSD: src/sys/netbt/hci_ioctl.c,v 1.2 2008/02/24 21:34:48 uwe Exp $ */
+/* $NetBSD: hci_ioctl.c,v 1.7 2007/11/28 20:16:12 plunky Exp $ */
 
 /*-
  * Copyright (c) 2005 Iain Hibbert.
@@ -64,7 +64,7 @@ hci_dump(void)
 	TAILQ_FOREACH(unit, &hci_unit_list, hci_next) {
 		kprintf("UNIT %s: flags 0x%4.4x, "
 			"num_cmd=%d, num_acl=%d, num_sco=%d\n",
-			unit->hci_devname, unit->hci_flags,
+			device_get_nameunit(unit->hci_dev), unit->hci_flags,
 			unit->hci_num_cmd_pkts,
 			unit->hci_num_acl_pkts,
 			unit->hci_num_sco_pkts);
@@ -177,8 +177,8 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 	case SIOCZBTSTATS:
 	case SIOCSBTSCOMTU:
 		TAILQ_FOREACH(unit, &hci_unit_list, hci_next) {
-			if (strncmp(unit->hci_devname, btr->btr_name,
-			    HCI_DEVNAME_SIZE) == 0)
+			if (strncmp(device_get_nameunit(unit->hci_dev),
+			    btr->btr_name, HCI_DEVNAME_SIZE) == 0)
 				break;
 		}
 
@@ -207,7 +207,8 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 	case SIOCGBTINFO:	/* get unit info */
 	case SIOCGBTINFOA:	/* get info by address */
 		memset(btr, 0, sizeof(struct btreq));
-		strlcpy(btr->btr_name, unit->hci_devname, HCI_DEVNAME_SIZE);
+		strlcpy(btr->btr_name, device_get_nameunit(unit->hci_dev),
+		    HCI_DEVNAME_SIZE);
 		bdaddr_copy(&btr->btr_bdaddr, &unit->hci_bdaddr);
 
 		btr->btr_flags = unit->hci_flags;
@@ -233,9 +234,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 			unit->hci_flags &= ~BTF_UP;
 		}
 
-		crit_enter();
 		unit->hci_flags |= (btr->btr_flags & BTF_INIT);
-		crit_exit();
 
 		if ((unit->hci_flags & BTF_UP) == 0
 		    && (btr->btr_flags & BTF_UP)) {
@@ -243,9 +242,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 			if (err)
 				break;
 
-			crit_enter();
 			unit->hci_flags |= BTF_UP;
-			crit_exit();
 		}
 
 		btr->btr_flags = unit->hci_flags;
@@ -272,10 +269,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		break;
 
 	case SIOCGBTSTATS:	/* get unit statistics */
-		crit_enter();
-		memcpy(&btr->btr_stats, &unit->hci_stats,
-			sizeof(struct bt_stats));
-		crit_exit();
+		(*unit->hci_if->get_stats)(unit->hci_dev, &btr->btr_stats, 0);
 		break;
 
 	case SIOCZBTSTATS:	/* get & reset unit statistics */
@@ -283,12 +277,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		if (err)
 			break;
 
-		crit_enter();
-		memcpy(&btr->btr_stats, &unit->hci_stats,
-			sizeof(struct bt_stats));
-		memset(&unit->hci_stats, 0, sizeof(struct bt_stats));
-		crit_exit();
-
+		(*unit->hci_if->get_stats)(unit->hci_dev, &btr->btr_stats, 1);
 		break;
 
 	case SIOCSBTSCOMTU:	/* set sco_mtu value for unit */

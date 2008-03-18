@@ -1,6 +1,6 @@
-/* $OpenBSD: l2cap.h,v 1.4 2007/06/01 02:46:11 uwe Exp $ */
-/* $NetBSD: l2cap.h,v 1.5 2007/04/21 06:15:23 plunky Exp $ */
-/* $DragonFly: src/sys/netbt/l2cap.h,v 1.1 2007/12/30 20:02:56 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/l2cap.h,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $OpenBSD: src/sys/netbt/l2cap.h,v 1.5 2008/02/24 21:34:48 uwe Exp $ */
+/* $NetBSD: l2cap.h,v 1.6 2007/11/03 17:20:17 plunky Exp $ */
 
 /*-
  * Copyright (c) 2005 Iain Hibbert.
@@ -56,6 +56,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $Id: l2cap.h,v 1.6 2007/11/03 17:20:17 plunky Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/include/l2cap.h,v 1.4 2005/08/31 18:13:23 emax Exp $
  */
 
