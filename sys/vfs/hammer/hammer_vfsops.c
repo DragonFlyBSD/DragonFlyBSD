@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.21 2008/02/23 03:01:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.22 2008/03/18 05:19:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -191,6 +191,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 				hmp->zone_limits[i] =
 				    HAMMER_ZONE_ENCODE(i, hammer_zone_limit);
 			}
+			hammer_init_holes(hmp, &hmp->holes[i]);
 		}
 	}
 	hmp->hflags = info.hflags;
@@ -340,6 +341,7 @@ static void
 hammer_free_hmp(struct mount *mp)
 {
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	int i;
 
 #if 0
 	/*
@@ -368,6 +370,10 @@ hammer_free_hmp(struct mount *mp)
 	hmp->mp = NULL;
 	kfree(hmp->zbuf, M_HAMMER);
 	lockuninit(&hmp->blockmap_lock);
+
+	for (i = 0; i < HAMMER_MAX_ZONES; ++i)
+		hammer_free_holes(hmp, &hmp->holes[i]);
+
 	kfree(hmp, M_HAMMER);
 }
 

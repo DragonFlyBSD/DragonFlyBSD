@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.4 2008/02/08 08:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.5 2008/03/18 05:19:16 dillon Exp $
  */
 
 #include "hammer.h"
@@ -59,6 +59,9 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	case HAMMERIOC_GETHISTORY:
 		error = hammer_ioc_gethistory(ip,
 					(struct hammer_ioc_history *)data);
+		break;
+	case HAMMERIOC_REBLOCK:
+		error = hammer_reblock(ip, (struct hammer_ioc_reblock *)data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -297,7 +300,8 @@ realign_prune(struct hammer_ioc_prune *prune,
 				hammer_modify_buffer(cursor->record_buffer,
 						     NULL, 0);
 				cursor->record->base.base.create_tid = tid;
-				hammer_modify_node(cursor->node);
+				hammer_modify_node(cursor->node, elm,
+						   sizeof(*elm));
 				elm->leaf.base.create_tid = tid;
 			}
 		}
@@ -312,7 +316,7 @@ realign_prune(struct hammer_ioc_prune *prune,
 	if (error == 0 && realign_del >= 0) {
 		mod = prune->elms[realign_del].mod_tid;
 		delta = elm->leaf.base.delete_tid % mod;
-		hammer_modify_node(cursor->node);
+		hammer_modify_node(cursor->node, elm, sizeof(*elm));
 		if (delta) {
 			error = hammer_btree_extract(cursor,
 						     HAMMER_CURSOR_GET_RECORD);

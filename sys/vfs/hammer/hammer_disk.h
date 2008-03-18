@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.25 2008/02/23 03:01:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.26 2008/03/18 05:19:16 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -113,8 +113,9 @@ typedef u_int64_t hammer_off_t;
  * zone 0 (z,v,o):	reserved (for sanity)
  * zone 1 (z,v,o):	raw volume relative (offset 0 is the volume header)
  * zone 2 (z,v,o):	raw buffer relative (offset 0 is the first buffer)
- * zone 3 (z,o):	undo fifo	- blockmap backed
- * zone 4 (z,v,o):	freemap		- freemap-backed self-mapping
+ * zone 3 (z,o):	undo fifo	- fixed layer2 array in root vol hdr
+ * zone 4 (z,v,o):	freemap		- freemap-backed self-mapping special
+ *					  cased layering.
  *
  * zone 8 (z,o):	B-Tree		- blkmap-backed
  * zone 9 (z,o):	Record		- blkmap-backed
@@ -209,9 +210,13 @@ typedef u_int64_t hammer_off_t;
 
 /*
  * Every blockmap has this root structure in the root volume header.
+ *
+ * NOTE: zone 3 (the undo FIFO) does not use phys_offset.  first and next
+ * offsets represent the FIFO.
  */
 struct hammer_blockmap {
 	hammer_off_t	phys_offset;    /* zone-2 physical offset */
+	hammer_off_t	first_offset;	/* zone-X logical offset (zone 3) */
 	hammer_off_t	next_offset;	/* zone-X logical offset */
 	hammer_off_t	alloc_offset;	/* zone-X logical offset */
 	u_int32_t	entry_crc;
@@ -285,6 +290,15 @@ struct hammer_blockmap_layer2 {
 	HAMMER_LARGEBLOCK_SIZE64 * sizeof(struct hammer_blockmap_layer2))
 
 /*
+ * HAMMER UNDO parameters.  The UNDO fifo is mapped directly in the volume
+ * header with an array of layer2 structures.  A maximum of (64x8MB) = 512MB
+ * may be reserved.  The size of the undo fifo is usually set a newfs time
+ * but can be adjusted if the filesystem is taken offline.
+ */
+
+#define HAMMER_UNDO_LAYER2	64	/* max layer2 undo mapping entries */
+
+/*
  * All on-disk HAMMER structures which make up elements of the FIFO contain
  * a hammer_fifo_head and hammer_fifo_tail structure.  This structure
  * contains all the information required to validate the fifo element
@@ -316,8 +330,7 @@ struct hammer_fifo_head {
 	u_int16_t hdr_type;
 	u_int32_t hdr_size;	/* aligned size of the whole mess */
 	u_int32_t hdr_crc;
-	u_int32_t hdr_reserved02;
-	hammer_tid_t hdr_seq;	/* related sequence number */
+	u_int32_t hdr_seq;
 };
 
 struct hammer_fifo_tail {
@@ -345,15 +358,21 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
 #define HAMMER_TAIL_SIGNATURE	0xC74FU
 
 /*
- * Misc FIFO structures (except for the B-Tree node and hammer record)
+ * Misc FIFO structures.
  */
 struct hammer_fifo_undo {
 	struct hammer_fifo_head	head;
-	hammer_off_t		undo_offset;
+	hammer_off_t		undo_offset;	/* zone-1 offset */
+	int32_t			undo_data_bytes;
+	int32_t			undo_reserved01;
 	/* followed by data */
 };
 
 typedef struct hammer_fifo_undo *hammer_fifo_undo_t;
+
+struct hammer_fifo_buf_commit {
+	hammer_off_t		undo_offset;
+};
 
 /*
  * Volume header types
@@ -442,12 +461,18 @@ struct hammer_volume_ondisk {
 	int64_t vol0_stat_records;	/* total records in filesystem */
 	hammer_off_t vol0_btree_root;	/* B-Tree root */
 	hammer_tid_t vol0_next_tid;	/* highest synchronized TID */
-	hammer_tid_t vol0_next_seq;	/* next SEQ no for undo */
+	u_int32_t vol0_next_seq;	/* next SEQ no for undo */
+	u_int32_t vol0_reserved01;
 
 	/*
 	 * Blockmaps for zones.  Not all zones use a blockmap.
 	 */
 	struct hammer_blockmap	vol0_blockmap[HAMMER_MAX_ZONES];
+
+	/*
+	 * Layer-2 array for undo fifo
+	 */
+	struct hammer_blockmap_layer2 vol0_undo_array[HAMMER_UNDO_LAYER2];
 
 };
 
@@ -503,11 +528,12 @@ struct hammer_base_record {
 #define HAMMER_RECTYPE_INODE		1	/* inode in obj_id space */
 #define HAMMER_RECTYPE_PSEUDO_INODE	2	/* pseudo filesysem */
 #define HAMMER_RECTYPE_CLUSTER		3	/* inter-cluster reference */
-#define HAMMER_RECTYPE_DATA		0x10
-#define HAMMER_RECTYPE_DIRENTRY		0x11
-#define HAMMER_RECTYPE_DB		0x12
-#define HAMMER_RECTYPE_EXT		0x13	/* ext attributes */
-#define HAMMER_RECTYPE_FIX		0x14	/* fixed attribute */
+#define HAMMER_RECTYPE_DATA		0x0010
+#define HAMMER_RECTYPE_DIRENTRY		0x0011
+#define HAMMER_RECTYPE_DB		0x0012
+#define HAMMER_RECTYPE_EXT		0x0013	/* ext attributes */
+#define HAMMER_RECTYPE_FIX		0x0014	/* fixed attribute */
+#define HAMMER_RECTYPE_MOVED		0x8000	/* special recovery flag */
 
 #define HAMMER_FIXKEY_SYMLINK		1
 

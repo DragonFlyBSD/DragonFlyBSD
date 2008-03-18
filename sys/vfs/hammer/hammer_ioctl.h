@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.3 2008/02/06 08:59:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.4 2008/03/18 05:19:16 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -121,7 +121,32 @@ struct hammer_ioc_history {
 #define HAMMER_IOC_HISTORY_EOF		0x0008	/* no more keys */
 #define HAMMER_IOC_HISTORY_UNSYNCED	0x0010	/* unsynced info in inode */
 
+/*
+ * Reblock request
+ */
+struct hammer_ioc_reblock {
+	int64_t		beg_obj_id;
+	int64_t		cur_obj_id;		/* Stopped at (interrupt) */
+	int64_t		end_obj_id;
+	int32_t		free_level;		/* 0 for maximum compaction */
+	int32_t		unused01;
+
+	int64_t		btree_count;		/* B-Tree nodes checked */
+	int64_t		record_count;		/* Records checked */
+	int64_t		data_count;		/* Data segments checked */
+	int64_t		data_byte_count;	/* Data bytes checked */
+
+	int64_t		btree_moves;		/* B-Tree nodes moved */
+	int64_t		record_moves;		/* Records moved */
+	int64_t		data_moves;		/* Data segments moved */
+	int64_t		data_byte_moves;	/* Data bytes moved */
+
+	int		flags;
+	int		unused03;
+};
+
 #define HAMMERIOC_PRUNE		_IOWR('h',1,struct hammer_ioc_prune)
 #define HAMMERIOC_GETHISTORY	_IOWR('h',2,struct hammer_ioc_history)
+#define HAMMERIOC_REBLOCK	_IOWR('h',3,struct hammer_ioc_reblock)
 
 #endif

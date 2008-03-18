@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.39 2008/02/23 03:01:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.40 2008/03/18 05:19:15 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -370,7 +370,29 @@ union hammer_io_structure {
 
 typedef union hammer_io_structure *hammer_io_structure_t;
 
-#define HAMFS_CLUSTER_DIRTY	0x0001
+/*
+ * Allocation holes are recorded for a short period of time in an attempt
+ * to use up the space.
+ */
+
+#define HAMMER_MAX_HOLES	8
+
+struct hammer_hole;
+
+struct hammer_holes {
+	TAILQ_HEAD(, hammer_hole) list;
+	int	count;
+};
+
+typedef struct hammer_holes *hammer_holes_t;
+
+struct hammer_hole {
+	TAILQ_ENTRY(hammer_hole) entry;
+	hammer_off_t	offset;
+	int		bytes;
+};
+
+typedef struct hammer_hole *hammer_hole_t;
 
 #include "hammer_cursor.h"
 
@@ -398,6 +420,7 @@ struct hammer_mount {
 	hammer_off_t zone_limits[HAMMER_MAX_ZONES];
 	struct netexport export;
 	struct lock blockmap_lock;
+	struct hammer_holes holes[HAMMER_MAX_ZONES];
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
@@ -552,11 +575,15 @@ void hammer_dup_buffer(struct hammer_buffer **bufferp,
 			struct hammer_buffer *buffer);
 hammer_node_t hammer_alloc_btree(hammer_mount_t hmp, int *errorp);
 void *hammer_alloc_record(hammer_mount_t hmp,
-			hammer_off_t *rec_offp, u_int8_t rec_type,
+			hammer_off_t *rec_offp, u_int16_t rec_type,
 			struct hammer_buffer **rec_bufferp,
 			int32_t data_len, void **datap,
 			struct hammer_buffer **data_bufferp, int *errorp);
-int hammer_generate_undo(hammer_mount_t hmp, hammer_off_t undo_offset,
+void *hammer_alloc_data(hammer_mount_t hmp, int32_t data_len,
+			hammer_off_t *data_offsetp,
+			struct hammer_buffer **data_bufferp, int *errorp);
+
+int hammer_generate_undo(hammer_mount_t hmp, hammer_off_t zone1_offset,
 			void *base, int len);
 
 void hammer_put_volume(struct hammer_volume *volume, int flush);
@@ -569,7 +596,11 @@ void hammer_freemap_free(hammer_mount_t hmp, hammer_off_t phys_offset,
 hammer_off_t hammer_blockmap_alloc(hammer_mount_t hmp, int zone,
 			int bytes, int *errorp);
 void hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes);
+int hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t bmap_off,
+			int *curp, int *errorp);
 hammer_off_t hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
+			int *errorp);
+hammer_off_t hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *errorp);
 
 void hammer_start_transaction(struct hammer_transaction *trans,
@@ -619,11 +650,39 @@ void hammer_io_waitdep(struct hammer_io *io);
 void hammer_modify_volume(hammer_volume_t volume, void *base, int len);
 void hammer_modify_buffer(hammer_buffer_t buffer, void *base, int len);
 
+int hammer_reblock(hammer_inode_t ip, struct hammer_ioc_reblock *reblock);
+
+void hammer_init_holes(hammer_mount_t hmp, hammer_holes_t holes);
+void hammer_free_holes(hammer_mount_t hmp, hammer_holes_t holes);
+
 #endif
 
 static __inline void
-hammer_modify_node(struct hammer_node *node)
+hammer_modify_node_noundo(struct hammer_node *node)
+{
+	hammer_modify_buffer(node->buffer, NULL, 0);
+}
+
+static __inline void
+hammer_modify_node_all(struct hammer_node *node)
 {
 	hammer_modify_buffer(node->buffer, node->ondisk, sizeof(*node->ondisk));
+}
+
+static __inline void
+hammer_modify_node(struct hammer_node *node, void *base, int len)
+{
+	KKASSERT((char *)base >= (char *)node->ondisk &&
+		 (char *)base + len <=
+		    (char *)node->ondisk + sizeof(*node->ondisk));
+	hammer_modify_buffer(node->buffer, base, len);
+}
+
+static __inline void
+hammer_modify_record(struct hammer_buffer *buffer, void *base, int len)
+{
+	KKASSERT((char *)base >= (char *)buffer->ondisk &&
+		 (char *)base + len <= (char *)buffer->ondisk + HAMMER_BUFSIZE);
+	hammer_modify_buffer(buffer, base, len);
 }
 

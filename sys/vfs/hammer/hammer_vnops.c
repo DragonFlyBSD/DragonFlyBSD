@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.34 2008/02/24 19:48:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.35 2008/03/18 05:19:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -556,8 +556,8 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	hammer_to_timespec(ip->ino_data.ctime, &vap->va_ctime);
 	vap->va_flags = ip->ino_data.uflags;
 	vap->va_gen = 1;	/* hammer inums are unique for all time */
-	vap->va_blocksize = 32768; /* XXX - extract from root volume */
-	vap->va_bytes = ip->ino_rec.ino_size;
+	vap->va_blocksize = HAMMER_BUFSIZE;
+	vap->va_bytes = (ip->ino_rec.ino_size + 63) & ~63;
 	vap->va_type = hammer_get_vnode_type(ip->ino_rec.base.base.obj_type);
 	vap->va_filerev = 0; 	/* XXX */
 	/* mtime uniquely identifies any adjustments made to the file */

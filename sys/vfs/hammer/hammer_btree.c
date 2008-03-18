@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.31 2008/02/24 23:40:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.32 2008/03/18 05:19:15 dillon Exp $
  */
 
 /*
@@ -662,7 +662,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 	 * Remember that the right-hand boundary is not included in the
 	 * count.
 	 */
-	hammer_modify_node(cursor->node);
+	hammer_modify_node_all(cursor->node);
 	node = cursor->node->ondisk;
 	i = cursor->index;
 	KKASSERT(elm->base.btype != 0);
@@ -730,7 +730,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 
 	KKASSERT(ondisk->type == HAMMER_BTREE_TYPE_LEAF);
 	KKASSERT(i >= 0 && i < ondisk->count);
-	hammer_modify_node(node);
+	hammer_modify_node_all(node);
 	if (i + 1 != ondisk->count) {
 		bcopy(&ondisk->elms[i+1], &ondisk->elms[i],
 		      (ondisk->count - i - 1) * sizeof(ondisk->elms[0]));
@@ -973,7 +973,8 @@ re_search:
 			 */
 			if ((error = hammer_cursor_upgrade(cursor)) != 0)
 				return(error);
-			hammer_modify_node(cursor->node);
+			hammer_modify_node(cursor->node, &node->elms[0],
+					   sizeof(node->elms[0]));
 			save = node->elms[0].base.btype;
 			node->elms[0].base = *cursor->left_bound;
 			node->elms[0].base.btype = save;
@@ -1003,7 +1004,8 @@ re_search:
 			if ((error = hammer_cursor_upgrade(cursor)) != 0)
 				return(error);
 			elm = &node->elms[i];
-			hammer_modify_node(cursor->node);
+			hammer_modify_node(cursor->node, &elm->base,
+					   sizeof(elm->base));
 			elm->base = *cursor->right_bound;
 			--i;
 		} else {
@@ -1273,7 +1275,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		if (parent == NULL)
 			goto done;
 		hammer_lock_ex(&parent->lock);
-		hammer_modify_node(parent);
+		hammer_modify_node_noundo(parent);
 		ondisk = parent->ondisk;
 		ondisk->count = 1;
 		ondisk->parent = 0;
@@ -1321,8 +1323,8 @@ btree_split_internal(hammer_cursor_t cursor)
 	 *
 	 * elm is the new separator.
 	 */
-	hammer_modify_node(new_node);
-	hammer_modify_node(node);
+	hammer_modify_node_noundo(new_node);
+	hammer_modify_node_all(node);
 	ondisk = node->ondisk;
 	elm = &ondisk->elms[split];
 	bcopy(elm, &new_node->ondisk->elms[0],
@@ -1347,7 +1349,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 *
 	 * Remember that base.count does not include the right-hand boundary.
 	 */
-	hammer_modify_node(parent);
+	hammer_modify_node_all(parent);
 	ondisk = parent->ondisk;
 	KKASSERT(ondisk->count != HAMMER_BTREE_INT_ELMS);
 	parent_elm = &ondisk->elms[parent_index+1];
@@ -1489,7 +1491,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 		if (parent == NULL)
 			goto done;
 		hammer_lock_ex(&parent->lock);
-		hammer_modify_node(parent);
+		hammer_modify_node_noundo(parent);
 		ondisk = parent->ondisk;
 		ondisk->count = 1;
 		ondisk->parent = 0;
@@ -1534,8 +1536,8 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * Create the new node.  P (elm) become the left-hand boundary in the
 	 * new node.  Copy the right-hand boundary as well.
 	 */
-	hammer_modify_node(leaf);
-	hammer_modify_node(new_leaf);
+	hammer_modify_node_all(leaf);
+	hammer_modify_node_noundo(new_leaf);
 	ondisk = leaf->ondisk;
 	elm = &ondisk->elms[split];
 	bcopy(elm, &new_leaf->ondisk->elms[0], (ondisk->count - split) * esize);
@@ -1560,7 +1562,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * Remember that base.count does not include the right-hand boundary.
 	 * We are copying parent_index+1 to parent_index+2, not +0 to +1.
 	 */
-	hammer_modify_node(parent);
+	hammer_modify_node_all(parent);
 	ondisk = parent->ondisk;
 	KKASSERT(ondisk->count != HAMMER_BTREE_INT_ELMS);
 	parent_elm = &ondisk->elms[parent_index+1];
@@ -1841,7 +1843,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 		if (cursor->node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
 			kprintf("hammer_btree_correct_lhb-I @%016llx[%d]\n",
 				cursor->node->node_offset, cursor->index);
-			hammer_modify_node(cursor->node);
+			hammer_modify_node(cursor->node, elm, sizeof(*elm));
 			elm->create_tid = tid;
 		} else {
 			panic("hammer_btree_correct_lhb(): Bad element type");
@@ -1890,7 +1892,7 @@ btree_remove(hammer_cursor_t cursor)
 	 * an empty leaf node.  Internal nodes cannot be empty.
 	 */
 	if (node->ondisk->parent == 0) {
-		hammer_modify_node(node);
+		hammer_modify_node_all(node);
 		ondisk = node->ondisk;
 		ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 		ondisk->count = 0;
@@ -1904,7 +1906,7 @@ btree_remove(hammer_cursor_t cursor)
 	 * reused while other references to it exist.
 	 */
 	parent = cursor->parent;
-	hammer_modify_node(parent);
+	hammer_modify_node_all(parent);
 	ondisk = parent->ondisk;
 	KKASSERT(ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
 	elm = &ondisk->elms[cursor->parent_index];
@@ -2016,7 +2018,8 @@ btree_set_parent(hammer_node_t node, hammer_btree_elm_t elm)
 		child = hammer_get_node(node->hmp,
 					elm->internal.subtree_offset, &error);
 		if (error == 0) {
-			hammer_modify_node(child);
+			hammer_modify_node(child, &child->ondisk->parent,
+					   sizeof(child->ondisk->parent));
 			child->ondisk->parent = node->node_offset;
 			hammer_rel_node(child);
 		}

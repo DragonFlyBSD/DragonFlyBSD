@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.8 2008/02/08 08:31:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.9 2008/03/18 05:19:16 dillon Exp $
  */
 
 #include "hammer.h"
@@ -133,7 +133,7 @@ hammer_recover(hammer_cluster_t cluster)
 
 		croot = hammer_alloc_btree(cluster, &error);
 		if (error == 0) {
-			hammer_modify_node(croot);
+			hammer_modify_node_noundo(croot);
 			bzero(croot->ondisk, sizeof(*croot->ondisk));
 			croot->ondisk->count = 0;
 			croot->ondisk->type = HAMMER_BTREE_TYPE_LEAF;
