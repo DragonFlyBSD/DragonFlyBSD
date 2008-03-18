@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.1 2008/03/18 05:19:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.2 2008/03/18 20:20:26 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -241,8 +241,6 @@ hammer_reblock_data(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 
 	hammer_blockmap_free(hmp, elm->leaf.data_offset, elm->leaf.data_len);
 
-	kprintf("REBLOCK DATA %016llx -> %016llx\n",
-		elm->leaf.data_offset, ndata_offset);
 	cursor->record->base.data_off = ndata_offset;
 	elm->leaf.data_offset = ndata_offset;
 
@@ -263,8 +261,11 @@ hammer_reblock_record(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 {
 	struct hammer_buffer *rec_buffer = NULL;
 	hammer_off_t nrec_offset;
+	hammer_off_t ndata_offset;
+	hammer_record_ondisk_t orec;
 	hammer_record_ondisk_t nrec;
 	int error;
+	int inline_data;
 
 	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_RECORD);
 	if (error)
@@ -276,21 +277,39 @@ hammer_reblock_record(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 		goto done;
 
 	/*
-	 * Move the record
+	 * Move the record.  Check for an inline data reference and move that
+	 * too if necessary.
 	 */
-	bcopy(cursor->record, nrec, sizeof(*nrec));
+	orec = cursor->record;
+	bcopy(orec, nrec, sizeof(*nrec));
 
-	hammer_modify_node(cursor->node,
-		&elm->leaf.rec_offset, sizeof(hammer_off_t));
+	if ((orec->base.data_off & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RECORD) {
+		ndata_offset = orec->base.data_off - elm->leaf.rec_offset;
+		KKASSERT(ndata_offset < sizeof(*nrec));
+		ndata_offset += nrec_offset;
+		inline_data = 1;
+	} else {
+		ndata_offset = 0;
+		inline_data = 0;
+	}
+
 	hammer_modify_record(cursor->record_buffer,
-		&cursor->record->base.base.rec_type,
-		sizeof(cursor->record->base.base.rec_type));
+		&orec->base.base.rec_type, sizeof(orec->base.base.rec_type));
+	orec->base.base.rec_type |= HAMMER_RECTYPE_MOVED;
 
 	hammer_blockmap_free(hmp, elm->leaf.rec_offset, sizeof(*nrec));
 
 	kprintf("REBLOCK RECD %016llx -> %016llx\n",
 		elm->leaf.rec_offset, nrec_offset);
+
+	hammer_modify_node(cursor->node,
+		&elm->leaf.rec_offset, sizeof(hammer_off_t));
 	elm->leaf.rec_offset = nrec_offset;
+	if (inline_data) {
+		hammer_modify_node(cursor->node,
+			&elm->leaf.data_offset, sizeof(hammer_off_t));
+		elm->leaf.data_offset = ndata_offset;
+	}
 
 done:
 	if (rec_buffer)
