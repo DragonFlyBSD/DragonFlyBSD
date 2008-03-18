@@ -21,7 +21,7 @@
 .\" distributed with 4.3BSD Unix.
 .\"
 .\" $FreeBSD: src/share/man/man4/bpf.4,v 1.21.2.11 2002/04/07 04:57:13 dd Exp $
-.\" $DragonFly: src/share/man/man4/bpf.4,v 1.7 2008/03/17 10:06:22 matthias Exp $
+.\" $DragonFly: src/share/man/man4/bpf.4,v 1.8 2008/03/18 12:28:53 swildner Exp $
 .\"
 .Dd March 14, 2008
 .Dt BPF 4
@@ -220,7 +220,7 @@ Once the descriptor is locked, the system is safe
 from further abuse through the descriptor.
 Locking a descriptor does not prevent writes.
 If the application does not need to send packets through
-.Nm bpf ,
+.Nm ,
 it can open the device read-only to prevent writing.
 If sending packets is necessary, a write-filter can be set before locking the
 descriptor to prevent arbitrary packets from being sent out.
