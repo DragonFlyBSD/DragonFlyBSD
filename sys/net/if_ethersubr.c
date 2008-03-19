@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.52 2007/11/27 11:06:31 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.53 2008/03/19 13:20:48 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -118,6 +118,8 @@ int	(*vlan_input_tag_p)(struct mbuf *m, uint16_t t);
 
 static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 			struct rtentry *);
+static void ether_restore_header(struct mbuf **, const struct ether_header *,
+				 const struct ether_header *);
 
 /*
  * if_bridge support
@@ -143,10 +145,18 @@ static boolean_t ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
 				boolean_t shared);
 
 static int ether_ipfw;
+static u_int ether_restore_hdr;
+static u_int ether_prepend_hdr;
+
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
 SYSCTL_INT(_net_link_ether, OID_AUTO, ipfw, CTLFLAG_RW,
 	   &ether_ipfw, 0, "Pass ether pkts through firewall");
+SYSCTL_UINT(_net_link_ether, OID_AUTO, restore_hdr, CTLFLAG_RW,
+	    &ether_restore_hdr, 0, "# of ether header restoration");
+SYSCTL_UINT(_net_link_ether, OID_AUTO, prepend_hdr, CTLFLAG_RW,
+	    &ether_prepend_hdr, 0,
+	    "# of ether header restoration which prepends mbuf");
 
 /*
  * Ethernet output routine.
@@ -416,20 +426,12 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 			} else
 				return 0;	/* consumed e.g. in a pipe */
 		}
-		eh = mtod(m, struct ether_header *);
+
 		/* packet was ok, restore the ethernet header */
-		if ((void *)(eh + 1) == (void *)m->m_data) {
-			m->m_data -= ETHER_HDR_LEN ;
-			m->m_len += ETHER_HDR_LEN ;
-			m->m_pkthdr.len += ETHER_HDR_LEN ;
-		} else {
-			M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
-			if (m == NULL) /* nope... */ {
-				crit_exit();
-				return ENOBUFS;
-			}
-			bcopy(&save_eh, mtod(m, struct ether_header *),
-			      ETHER_HDR_LEN);
+		ether_restore_header(&m, eh, &save_eh);
+		if (m == NULL) {
+			crit_exit();
+			return ENOBUFS;
 		}
 	}
 	crit_exit();
@@ -506,21 +508,11 @@ ether_ipfw_chk(
 			m = *m0 ;	/* pass the original to dummynet */
 			*m0 = NULL ;	/* and nothing back to the caller */
 		}
-		/*
-		 * Prepend the header, optimize for the common case of
-		 * eh pointing into the mbuf.
-		 */
-		if ((const void *)(eh + 1) == (void *)m->m_data) {
-			m->m_data -= ETHER_HDR_LEN ;
-			m->m_len += ETHER_HDR_LEN ;
-			m->m_pkthdr.len += ETHER_HDR_LEN ;
-		} else {
-			M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
-			if (m == NULL)
-				return FALSE;
-			bcopy(&save_eh, mtod(m, struct ether_header *),
-			      ETHER_HDR_LEN);
-		}
+
+		ether_restore_header(&m, eh, &save_eh);
+		if (m == NULL)
+			return FALSE;
+
 		ip_fw_dn_io_ptr(m, (i & 0xffff),
 			dst ? DN_TO_ETH_OUT: DN_TO_ETH_DEMUX, &args);
 		return FALSE;
@@ -1195,4 +1187,32 @@ bad:
 	pktattr->pattr_class = NULL;
 	pktattr->pattr_hdr = NULL;
 	pktattr->pattr_af = AF_UNSPEC;
+}
+
+static void
+ether_restore_header(struct mbuf **m0, const struct ether_header *eh,
+		     const struct ether_header *save_eh)
+{
+	struct mbuf *m = *m0;
+
+	ether_restore_hdr++;
+
+	/*
+	 * Prepend the header, optimize for the common case of
+	 * eh pointing into the mbuf.
+	 */
+	if ((const void *)(eh + 1) == (void *)m->m_data) {
+		m->m_data -= ETHER_HDR_LEN;
+		m->m_len += ETHER_HDR_LEN;
+		m->m_pkthdr.len += ETHER_HDR_LEN;
+	} else {
+		ether_prepend_hdr++;
+
+		M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
+		if (m != NULL) {
+			bcopy(&save_eh, mtod(m, struct ether_header *),
+			      ETHER_HDR_LEN);
+		}
+	}
+	*m0 = m;
 }
