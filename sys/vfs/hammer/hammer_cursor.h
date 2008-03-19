@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.13 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.14 2008/03/19 20:18:17 dillon Exp $
  */
 
 /*
@@ -52,6 +52,7 @@ struct hammer_cursor {
 	 * Parent B-Tree node, current B-Tree node, and related element
 	 * indices.
 	 */
+	hammer_transaction_t trans;
 	hammer_node_t parent;
 	int parent_index;
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.20 2008/03/18 05:21:55 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.21 2008/03/19 20:18:16 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -383,7 +383,6 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	 */
 	if (vol->vol_no == RootVolNo) {
 		ondisk->vol0_next_tid = createtid();
-		ondisk->vol0_next_seq = 1;
 
 		format_freemap(vol,
 			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);

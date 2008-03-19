@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.30 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.31 2008/03/19 20:18:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -177,9 +177,10 @@ hammer_get_vnode(struct hammer_inode *ip, int lktype, struct vnode **vpp)
  * certain flags are inherited.
  */
 struct hammer_inode *
-hammer_get_inode(struct hammer_mount *hmp, struct hammer_node **cache,
+hammer_get_inode(hammer_transaction_t trans, struct hammer_node **cache,
 		 u_int64_t obj_id, hammer_tid_t asof, int flags, int *errorp)
 {
+	hammer_mount_t hmp = trans->hmp;
 	struct hammer_inode_info iinfo;
 	struct hammer_cursor cursor;
 	struct hammer_inode *ip;
@@ -212,7 +213,7 @@ loop:
 	 * Locate the on-disk inode.
 	 */
 retry:
-	hammer_init_cursor_hmp(&cursor, cache, hmp);
+	hammer_init_cursor(trans, &cursor, cache);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = 0;
 	cursor.key_beg.create_tid = 0;
@@ -361,7 +362,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
  * Called by hammer_sync_inode().
  */
 static int
-hammer_update_inode(hammer_inode_t ip)
+hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip)
 {
 	struct hammer_cursor cursor;
 	hammer_record_t record;
@@ -385,7 +386,7 @@ retry:
 
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
-		hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+		hammer_init_cursor(trans, &cursor, &ip->cache[0]);
 		cursor.key_beg.obj_id = ip->obj_id;
 		cursor.key_beg.key = 0;
 		cursor.key_beg.create_tid = 0;
@@ -422,7 +423,7 @@ retry:
 		record->rec.inode.base.base.create_tid = last_tid;
 		record->rec.inode.base.data_len = sizeof(ip->ino_data);
 		record->data = (void *)&ip->ino_data;
-		error = hammer_ip_sync_record(record);
+		error = hammer_ip_sync_record(trans, record);
 		record->flags |= HAMMER_RECF_DELETED;
 		hammer_rel_mem_record(record);
 		if (error == 0) {
@@ -431,7 +432,8 @@ retry:
 				       HAMMER_INODE_DELONDISK |
 				       HAMMER_INODE_ITIMES);
 			if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
-				hammer_modify_volume(ip->hmp->rootvol, NULL, 0);
+				hammer_modify_volume(trans, ip->hmp->rootvol,
+						     NULL, 0);
 				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 				ip->flags |= HAMMER_INODE_ONDISK;
 			}
@@ -451,7 +453,7 @@ retry:
  * record is updated in-place on the disk.
  */
 static int
-hammer_update_itimes(hammer_inode_t ip)
+hammer_update_itimes(hammer_transaction_t trans, hammer_inode_t ip)
 {
 	struct hammer_cursor cursor;
 	struct hammer_inode_record *rec;
@@ -461,7 +463,7 @@ retry:
 	error = 0;
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
-		hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+		hammer_init_cursor(trans, &cursor, &ip->cache[0]);
 		cursor.key_beg.obj_id = ip->obj_id;
 		cursor.key_beg.key = 0;
 		cursor.key_beg.create_tid = 0;
@@ -474,7 +476,8 @@ retry:
 		error = hammer_btree_lookup(&cursor);
 		if (error == 0) {
 			rec = &cursor.record->inode;
-			hammer_modify_buffer(cursor.record_buffer, NULL, 0);
+			hammer_modify_buffer(cursor.trans, cursor.record_buffer,
+					     NULL, 0);
 			rec->ino_atime = ip->ino_rec.ino_atime;
 			rec->ino_mtime = ip->ino_rec.ino_mtime;
 			ip->flags &= ~HAMMER_INODE_ITIMES;
@@ -588,12 +591,13 @@ hammer_modify_inode(struct hammer_transaction *trans,
  * the transaction id they were modified under.
  */
 static int
-hammer_sync_inode_callback(hammer_record_t rec, void *data __unused)
+hammer_sync_inode_callback(hammer_record_t rec, void *data)
 {
+	hammer_transaction_t trans = data;
 	int error;
 
 	hammer_ref(&rec->lock);
-	error = hammer_ip_sync_record(rec);
+	error = hammer_ip_sync_record(trans, rec);
 	hammer_rel_mem_record(rec);
 
 	if (error) {
@@ -651,7 +655,7 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 		KKASSERT(RB_EMPTY(&ip->rec_tree));
 		ip->ino_rec.base.base.delete_tid = trans.tid;
 		hammer_modify_inode(&trans, ip, HAMMER_INODE_DELETED);
-		hammer_modify_volume(ip->hmp->rootvol, NULL, 0);
+		hammer_modify_volume(&trans, ip->hmp->rootvol, NULL, 0);
 		--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 	}
 
@@ -672,7 +676,7 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	 */
 	for (;;) {
 		error = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
-				hammer_sync_inode_callback, NULL);
+				hammer_sync_inode_callback, &trans);
 		KKASSERT(error <= 0);
 		if (error < 0)
 			error = -error;
@@ -731,11 +735,11 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	if ((ip->flags & (HAMMER_INODE_RDIRTY | HAMMER_INODE_DDIRTY |
 			 HAMMER_INODE_ITIMES | HAMMER_INODE_DELETED)) ==
 	    HAMMER_INODE_ITIMES) {
-		error = hammer_update_itimes(ip);
+		error = hammer_update_itimes(&trans, ip);
 	} else
 	if (ip->flags & (HAMMER_INODE_RDIRTY | HAMMER_INODE_DDIRTY |
 			 HAMMER_INODE_ITIMES | HAMMER_INODE_DELETED)) {
-		error = hammer_update_inode(ip);
+		error = hammer_update_inode(&trans, ip);
 	}
 	hammer_commit_transaction(&trans);
 	hammer_unlock(&ip->lock);

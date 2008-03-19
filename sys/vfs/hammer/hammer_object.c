@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.35 2008/03/18 05:19:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.36 2008/03/19 20:18:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -464,7 +464,7 @@ hammer_ip_sync_data(hammer_transaction_t trans, hammer_inode_t ip,
 
 	KKASSERT((offset & HAMMER_BUFMASK) == 0);
 retry:
-	error = hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[0]);
 	if (error)
 		return(error);
 	cursor.key_beg.obj_id = ip->obj_id;
@@ -495,7 +495,7 @@ retry:
 	 * Allocate record and data space.  HAMMER_RECTYPE_DATA records
 	 * can cross buffer boundaries so we may have to split our bcopy.
 	 */
-	rec = hammer_alloc_record(ip->hmp, &rec_offset, HAMMER_RECTYPE_DATA,
+	rec = hammer_alloc_record(trans, &rec_offset, HAMMER_RECTYPE_DATA,
 				  &cursor.record_buffer,
 				  bytes, &bdata,
 				  &cursor.data_buffer, &error);
@@ -539,7 +539,7 @@ retry:
 	if (error == 0)
 		goto done;
 
-	hammer_blockmap_free(ip->hmp, rec_offset, HAMMER_RECORD_SIZE);
+	hammer_blockmap_free(trans, rec_offset, HAMMER_RECORD_SIZE);
 done:
 	hammer_done_cursor(&cursor);
 	if (error == EDEADLK)
@@ -553,17 +553,15 @@ done:
  * writing a record out to the disk.
  */
 int
-hammer_ip_sync_record(hammer_record_t record)
+hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t record)
 {
 	struct hammer_cursor cursor;
 	hammer_record_ondisk_t rec;
-	hammer_mount_t hmp;
 	union hammer_btree_elm elm;
 	hammer_off_t rec_offset;
 	void *bdata;
 	int error;
 
-	hmp = record->ip->hmp;
 retry:
 	/*
 	 * If the record has been deleted or is being synchronized, stop.
@@ -591,7 +589,7 @@ retry:
 	/*
 	 * Get a cursor
 	 */
-	error = hammer_init_cursor_hmp(&cursor, &record->ip->cache[0], hmp);
+	error = hammer_init_cursor(trans, &cursor, &record->ip->cache[0]);
 	if (error)
 		return(error);
 	cursor.key_beg = record->rec.base.base;
@@ -614,10 +612,10 @@ retry:
 			error = EIO;
 			break;
 		}
-		if (++hmp->namekey_iterator == 0)
-			++hmp->namekey_iterator;
+		if (++trans->hmp->namekey_iterator == 0)
+			++trans->hmp->namekey_iterator;
 		record->rec.base.base.key &= ~(0xFFFFFFFFLL);
-		record->rec.base.base.key |= hmp->namekey_iterator;
+		record->rec.base.base.key |= trans->hmp->namekey_iterator;
 		cursor.key_beg.key = record->rec.base.base.key;
 	}
 	if (error != ENOENT)
@@ -647,7 +645,7 @@ retry:
 	 * Support zero-fill records (data == NULL and data_len != 0)
 	 */
 	if (record->data == NULL) {
-		rec = hammer_alloc_record(hmp, &rec_offset,
+		rec = hammer_alloc_record(trans, &rec_offset,
 					  record->rec.base.base.rec_type,
 					  &cursor.record_buffer,
 					  0, &bdata,
@@ -655,7 +653,7 @@ retry:
 		if (hammer_debug_general & 0x1000)
 			kprintf("NULL RECORD DATA\n");
 	} else if (record->flags & HAMMER_RECF_INBAND) {
-		rec = hammer_alloc_record(hmp, &rec_offset,
+		rec = hammer_alloc_record(trans, &rec_offset,
 					  record->rec.base.base.rec_type,
 					  &cursor.record_buffer,
 					  record->rec.base.data_len, &bdata,
@@ -663,7 +661,7 @@ retry:
 		if (hammer_debug_general & 0x1000)
 			kprintf("INBAND RECORD DATA %016llx DATA %016llx LEN=%d\n", rec_offset, rec->base.data_off, record->rec.base.data_len);
 	} else {
-		rec = hammer_alloc_record(hmp, &rec_offset,
+		rec = hammer_alloc_record(trans, &rec_offset,
 					  record->rec.base.base.rec_type,
 					  &cursor.record_buffer,
 					  record->rec.base.data_len, &bdata,
@@ -711,7 +709,7 @@ retry:
 	/*
 	 * Try to unwind the allocation
 	 */
-	hammer_blockmap_free(hmp, rec_offset, HAMMER_RECORD_SIZE);
+	hammer_blockmap_free(trans, rec_offset, HAMMER_RECORD_SIZE);
 done:
 	record->flags &= ~HAMMER_RECF_SYNCING;
 	hammer_done_cursor(&cursor);
@@ -1086,7 +1084,7 @@ hammer_ip_delete_range(hammer_transaction_t trans, hammer_inode_t ip,
 	int64_t off;
 
 retry:
-	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+	hammer_init_cursor(trans, &cursor, &ip->cache[0]);
 
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
@@ -1208,7 +1206,7 @@ hammer_ip_delete_range_all(hammer_transaction_t trans, hammer_inode_t ip)
 	int error;
 
 retry:
-	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+	hammer_init_cursor(trans, &cursor, &ip->cache[0]);
 
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
@@ -1293,9 +1291,10 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 		error = hammer_cursor_upgrade(cursor);
 		if (error == 0) {
 			elm = &cursor->node->ondisk->elms[cursor->index];
-			hammer_modify_node(cursor->node, elm, sizeof(*elm));
+			hammer_modify_node(cursor->trans, cursor->node,
+					   elm, sizeof(*elm));
 			elm->leaf.base.delete_tid = tid;
-			hammer_modify_buffer(cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
+			hammer_modify_buffer(cursor->trans, cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
 			cursor->record->base.base.delete_tid = tid;
 		}
 	}
@@ -1348,14 +1347,14 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes)
 		}
 	}
 	if (error == 0) {
-		hammer_blockmap_free(cursor->node->hmp, rec_offset,
+		hammer_blockmap_free(cursor->trans, rec_offset,
 				     sizeof(union hammer_record_ondisk));
 	}
 	if (error == 0) {
 		switch(data_offset & HAMMER_OFF_ZONE_MASK) {
 		case HAMMER_ZONE_LARGE_DATA:
 		case HAMMER_ZONE_SMALL_DATA:
-			hammer_blockmap_free(cursor->node->hmp,
+			hammer_blockmap_free(cursor->trans,
 					     data_offset, data_len);
 			break;
 		default:
@@ -1382,7 +1381,7 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	struct hammer_cursor cursor;
 	int error;
 
-	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+	hammer_init_cursor(trans, &cursor, &ip->cache[0]);
 
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;

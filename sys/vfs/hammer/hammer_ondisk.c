@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.33 2008/03/18 05:19:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.34 2008/03/19 20:18:17 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -604,7 +604,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 		error = 0;
 	}
 	if (error == 0 && isnew) {
-		hammer_modify_buffer(buffer, NULL, 0);
+		hammer_modify_buffer(NULL, buffer, NULL, 0);
 		/* additional initialization goes here */
 	}
 	buffer->io.loading = 0;
@@ -938,30 +938,30 @@ hammer_rel_node(hammer_node_t node)
 	buffer = node->buffer;
 	node->ondisk = NULL;
 
-	if ((node->flags & (HAMMER_NODE_DELETED|HAMMER_NODE_FLUSH)) == 0) {
+	if ((node->flags & HAMMER_NODE_FLUSH) == 0) {
 		hammer_unref(&node->lock);
 		hammer_rel_buffer(buffer, 0);
 		return;
 	}
 
 	/*
-	 * Destroy the node if it has been marked for deletion.  We mark
-	 * it as being free.  Note that the disk space is physically
-	 * freed when the fifo cycles back through the node.
-	 */
-	if (node->flags & HAMMER_NODE_DELETED) {
-		hammer_blockmap_free(node->hmp, node->node_offset,
-				     sizeof(*node->ondisk));
-	}
-
-	/*
-	 * Destroy the node.  Record pertainant data because the node
-	 * becomes stale the instant we flush it.
+	 * Destroy the node.
 	 */
 	hammer_unref(&node->lock);
 	hammer_flush_node(node);
 	/* node is stale */
 	hammer_rel_buffer(buffer, 0);
+}
+
+/*
+ *
+ *
+ */
+void
+hammer_delete_node(hammer_transaction_t trans, hammer_node_t node)
+{
+	node->flags |= HAMMER_NODE_DELETED;
+	hammer_blockmap_free(trans, node->node_offset, sizeof(*node->ondisk));
 }
 
 /*
@@ -1077,18 +1077,18 @@ hammer_flush_buffer_nodes(hammer_buffer_t buffer)
  * Allocate a B-Tree node.
  */
 hammer_node_t
-hammer_alloc_btree(hammer_mount_t hmp, int *errorp)
+hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
 {
 	hammer_buffer_t buffer = NULL;
 	hammer_node_t node = NULL;
 	hammer_off_t node_offset;
 
-	node_offset = hammer_blockmap_alloc(hmp, HAMMER_ZONE_BTREE_INDEX,
+	node_offset = hammer_blockmap_alloc(trans, HAMMER_ZONE_BTREE_INDEX,
 					    sizeof(struct hammer_node_ondisk),
 					    errorp);
 	if (*errorp == 0) {
-		node = hammer_get_node(hmp, node_offset, errorp);
-		hammer_modify_node_noundo(node);
+		node = hammer_get_node(trans->hmp, node_offset, errorp);
+		hammer_modify_node_noundo(trans, node);
 		bzero(node->ondisk, sizeof(*node->ondisk));
 	}
 	if (buffer)
@@ -1104,7 +1104,7 @@ hammer_alloc_btree(hammer_mount_t hmp, int *errorp)
  * for zero-fill (caller modifies data_len afterwords).
  */
 void *
-hammer_alloc_record(hammer_mount_t hmp, 
+hammer_alloc_record(hammer_transaction_t trans, 
 		    hammer_off_t *rec_offp, u_int16_t rec_type, 
 		    struct hammer_buffer **rec_bufferp,
 		    int32_t data_len, void **datap,
@@ -1121,7 +1121,7 @@ hammer_alloc_record(hammer_mount_t hmp,
 	/*
 	 * Allocate the record
 	 */
-	rec_offset = hammer_blockmap_alloc(hmp, HAMMER_ZONE_RECORD_INDEX,
+	rec_offset = hammer_blockmap_alloc(trans, HAMMER_ZONE_RECORD_INDEX,
 					   HAMMER_RECORD_SIZE, errorp);
 	if (*errorp)
 		return(NULL);
@@ -1150,11 +1150,11 @@ hammer_alloc_record(hammer_mount_t hmp,
 			KKASSERT(reclen + data_len <= HAMMER_RECORD_SIZE);
 			data_offset = rec_offset + reclen;
 		} else if (data_len < HAMMER_BUFSIZE) {
-			data_offset = hammer_blockmap_alloc(hmp,
+			data_offset = hammer_blockmap_alloc(trans,
 						HAMMER_ZONE_SMALL_DATA_INDEX,
 						data_len, errorp);
 		} else {
-			data_offset = hammer_blockmap_alloc(hmp,
+			data_offset = hammer_blockmap_alloc(trans,
 						HAMMER_ZONE_LARGE_DATA_INDEX,
 						data_len, errorp);
 		}
@@ -1162,7 +1162,7 @@ hammer_alloc_record(hammer_mount_t hmp,
 		data_offset = 0;
 	}
 	if (*errorp) {
-		hammer_blockmap_free(hmp, rec_offset, HAMMER_RECORD_SIZE);
+		hammer_blockmap_free(trans, rec_offset, HAMMER_RECORD_SIZE);
 		return(NULL);
 	}
 
@@ -1170,8 +1170,8 @@ hammer_alloc_record(hammer_mount_t hmp,
 	 * Basic return values.
 	 */
 	*rec_offp = rec_offset;
-	rec = hammer_bread(hmp, rec_offset, errorp, rec_bufferp);
-	hammer_modify_buffer(*rec_bufferp, NULL, 0);
+	rec = hammer_bread(trans->hmp, rec_offset, errorp, rec_bufferp);
+	hammer_modify_buffer(trans, *rec_bufferp, NULL, 0);
 	bzero(rec, sizeof(*rec));
 	KKASSERT(*errorp == 0);
 	rec->base.data_off = data_offset;
@@ -1179,10 +1179,10 @@ hammer_alloc_record(hammer_mount_t hmp,
 
 	if (data_bufferp) {
 		if (data_len) {
-			*datap = hammer_bread(hmp, data_offset, errorp,
+			*datap = hammer_bread(trans->hmp, data_offset, errorp,
 					      data_bufferp);
 			KKASSERT(*errorp == 0);
-			hammer_modify_buffer(*data_bufferp, NULL, 0);
+			hammer_modify_buffer(trans, *data_bufferp, NULL, 0);
 		} else {
 			*datap = NULL;
 		}
@@ -1201,7 +1201,7 @@ hammer_alloc_record(hammer_mount_t hmp,
 }
 
 void *
-hammer_alloc_data(hammer_mount_t hmp, int32_t data_len, 
+hammer_alloc_data(hammer_transaction_t trans, int32_t data_len, 
 		  hammer_off_t *data_offsetp,
 		  struct hammer_buffer **data_bufferp, int *errorp)
 {
@@ -1212,11 +1212,11 @@ hammer_alloc_data(hammer_mount_t hmp, int32_t data_len,
 	 */
 	if (data_len) {
 		if (data_len < HAMMER_BUFSIZE) {
-			*data_offsetp = hammer_blockmap_alloc(hmp,
+			*data_offsetp = hammer_blockmap_alloc(trans,
 						HAMMER_ZONE_SMALL_DATA_INDEX,
 						data_len, errorp);
 		} else {
-			*data_offsetp = hammer_blockmap_alloc(hmp,
+			*data_offsetp = hammer_blockmap_alloc(trans,
 						HAMMER_ZONE_LARGE_DATA_INDEX,
 						data_len, errorp);
 		}
@@ -1225,10 +1225,10 @@ hammer_alloc_data(hammer_mount_t hmp, int32_t data_len,
 	}
 	if (*errorp == 0 && data_bufferp) {
 		if (data_len) {
-			data = hammer_bread(hmp, *data_offsetp, errorp,
+			data = hammer_bread(trans->hmp, *data_offsetp, errorp,
 					    data_bufferp);
 			KKASSERT(*errorp == 0);
-			hammer_modify_buffer(*data_bufferp, NULL, 0);
+			hammer_modify_buffer(trans, *data_bufferp, NULL, 0);
 		} else {
 			data = NULL;
 		}

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.18 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.19 2008/03/19 20:18:17 dillon Exp $
  */
 
 /*
@@ -46,8 +46,8 @@ static int hammer_load_cursor_parent(hammer_cursor_t cursor);
  * is not available initialize a fresh cursor at the root of the filesystem.
  */
 int
-hammer_init_cursor_hmp(hammer_cursor_t cursor, struct hammer_node **cache,
-		       hammer_mount_t hmp)
+hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
+		   struct hammer_node **cache)
 {
 	hammer_volume_t volume;
 	hammer_node_t node;
@@ -55,11 +55,13 @@ hammer_init_cursor_hmp(hammer_cursor_t cursor, struct hammer_node **cache,
 
 	bzero(cursor, sizeof(*cursor));
 
+	cursor->trans = trans;
+
 	/*
 	 * Step 1 - acquire a locked node from the cache if possible
 	 */
 	if (cache && *cache) {
-		node = hammer_ref_node_safe(hmp, cache, &error);
+		node = hammer_ref_node_safe(trans->hmp, cache, &error);
 		if (error == 0) {
 			hammer_lock_sh(&node->lock);
 			if (node->flags & HAMMER_NODE_DELETED) {
@@ -77,11 +79,11 @@ hammer_init_cursor_hmp(hammer_cursor_t cursor, struct hammer_node **cache,
 	 * the one from the root of the filesystem.
 	 */
 	while (node == NULL) {
-		volume = hammer_get_root_volume(hmp, &error);
+		volume = hammer_get_root_volume(trans->hmp, &error);
 		if (error)
 			break;
-		node = hammer_get_node(hmp, volume->ondisk->vol0_btree_root,
-				       &error);
+		node = hammer_get_node(trans->hmp,
+				       volume->ondisk->vol0_btree_root, &error);
 		hammer_rel_volume(volume, 0);
 		if (error)
 			break;
@@ -146,6 +148,7 @@ hammer_done_cursor(hammer_cursor_t cursor)
 	cursor->record = NULL;
 	cursor->left_bound = NULL;
 	cursor->right_bound = NULL;
+	cursor->trans = NULL;
 }
 
 /*
@@ -239,12 +242,11 @@ hammer_load_cursor_parent(hammer_cursor_t cursor)
 	int error;
 	int i;
 
-	hmp = cursor->node->hmp;
+	hmp = cursor->trans->hmp;
 
 	if (cursor->node->ondisk->parent) {
 		node = cursor->node;
-		parent = hammer_get_node(node->hmp,
-					 node->ondisk->parent, &error);
+		parent = hammer_get_node(hmp, node->ondisk->parent, &error);
 		if (error)
 			return(error);
 		elm = NULL;
@@ -352,8 +354,8 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		KKASSERT(elm->internal.subtree_offset != 0);
 		cursor->left_bound = &elm[0].internal.base;
 		cursor->right_bound = &elm[1].internal.base;
-		node = hammer_get_node(node->hmp, elm->internal.subtree_offset,
-				       &error);
+		node = hammer_get_node(cursor->trans->hmp,
+				       elm->internal.subtree_offset, &error);
 		if (error == 0) {
 			KASSERT(elm->base.btype == node->ondisk->type, ("BTYPE MISMATCH %c %c NODE %p\n", elm->base.btype, node->ondisk->type, node));
 			if (node->ondisk->parent != cursor->parent->node_offset)

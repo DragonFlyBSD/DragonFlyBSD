@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.35 2008/03/18 05:19:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.36 2008/03/19 20:18:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -590,6 +590,7 @@ static
 int
 hammer_vop_nresolve(struct vop_nresolve_args *ap)
 {
+	struct hammer_transaction trans;
 	struct namecache *ncp;
 	hammer_inode_t dip;
 	hammer_inode_t ip;
@@ -615,6 +616,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	nlen = ncp->nc_nlen;
 	flags = dip->flags;
 
+	hammer_simple_transaction(&trans, dip->hmp);
+
 	for (i = 0; i < nlen; ++i) {
 		if (ncp->nc_name[i] == '@' && ncp->nc_name[i+1] == '@') {
 			asof = hammer_str_to_tid(ncp->nc_name + i + 2);
@@ -629,7 +632,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 * dip.
 	 */
 	if (nlen == 0) {
-		ip = hammer_get_inode(dip->hmp, &dip->cache[1], dip->obj_id,
+		ip = hammer_get_inode(&trans, &dip->cache[1], dip->obj_id,
 				      asof, flags, &error);
 		if (error == 0) {
 			error = hammer_get_vnode(ip, LK_EXCLUSIVE, &vp);
@@ -642,7 +645,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 			cache_setvp(ap->a_nch, vp);
 			vrele(vp);
 		}
-		return(error);
+		goto done;
 	}
 
 	/*
@@ -654,7 +657,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 */
 	namekey = hammer_directory_namekey(ncp->nc_name, nlen);
 
-	error = hammer_init_cursor_hmp(&cursor, &dip->cache[0], dip->hmp);
+	error = hammer_init_cursor(&trans, &cursor, &dip->cache[0]);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -694,7 +697,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	}
 	hammer_done_cursor(&cursor);
 	if (error == 0) {
-		ip = hammer_get_inode(dip->hmp, &dip->cache[1],
+		ip = hammer_get_inode(&trans, &dip->cache[1],
 				      obj_id, asof, flags, &error);
 		if (error == 0) {
 			error = hammer_get_vnode(ip, LK_EXCLUSIVE, &vp);
@@ -710,6 +713,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	} else if (error == ENOENT) {
 		cache_setvp(ap->a_nch, NULL);
 	}
+done:
+	hammer_commit_transaction(&trans);
 	return (error);
 }
 
@@ -733,6 +738,7 @@ static
 int
 hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
+	struct hammer_transaction trans;
 	struct hammer_inode *dip;
 	struct hammer_inode *ip;
 	int64_t parent_obj_id;
@@ -757,14 +763,17 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 		}
 	}
 
-	ip = hammer_get_inode(dip->hmp, &dip->cache[1], parent_obj_id,
+	hammer_simple_transaction(&trans, dip->hmp);
+
+	ip = hammer_get_inode(&trans, &dip->cache[1], parent_obj_id,
 			      asof, dip->flags, &error);
-	if (ip == NULL) {
+	if (ip) {
+		error = hammer_get_vnode(ip, LK_EXCLUSIVE, ap->a_vpp);
+		hammer_rel_inode(ip, 0);
+	} else {
 		*ap->a_vpp = NULL;
-		return(error);
 	}
-	error = hammer_get_vnode(ip, LK_EXCLUSIVE, ap->a_vpp);
-	hammer_rel_inode(ip, 0);
+	hammer_commit_transaction(&trans);
 	return (error);
 }
 
@@ -985,6 +994,7 @@ static
 int
 hammer_vop_readdir(struct vop_readdir_args *ap)
 {
+	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
 	struct hammer_inode *ip;
 	struct uio *uio;
@@ -1012,6 +1022,8 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 		cookies = NULL;
 		cookie_index = 0;
 	}
+
+	hammer_simple_transaction(&trans, ip->hmp);
 
 	/*
 	 * Handle artificial entries
@@ -1051,7 +1063,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	 * Key range (begin and end inclusive) to scan.  Directory keys
 	 * directly translate to a 64 bit 'seek' position.
 	 */
-	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+	hammer_init_cursor(&trans, &cursor, &ip->cache[0]);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
@@ -1095,6 +1107,8 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	hammer_done_cursor(&cursor);
 
 done:
+	hammer_commit_transaction(&trans);
+
 	if (ap->a_eofflag)
 		*ap->a_eofflag = (error == ENOENT);
 	uio->uio_offset = saveoff;
@@ -1124,12 +1138,16 @@ static
 int
 hammer_vop_readlink(struct vop_readlink_args *ap)
 {
+	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
 	struct hammer_inode *ip;
 	int error;
 
 	ip = VTOI(ap->a_vp);
-	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+
+	hammer_simple_transaction(&trans, ip->hmp);
+
+	hammer_init_cursor(&trans, &cursor, &ip->cache[0]);
 
 	/*
 	 * Key range (begin and end inclusive) to scan.  Directory keys
@@ -1154,6 +1172,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 		}
 	}
 	hammer_done_cursor(&cursor);
+	hammer_commit_transaction(&trans);
 	return(error);
 }
 
@@ -1231,7 +1250,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	 */
 	namekey = hammer_directory_namekey(fncp->nc_name, fncp->nc_nlen);
 retry:
-	hammer_init_cursor_hmp(&cursor, &fdip->cache[0], fdip->hmp);
+	hammer_init_cursor(&trans, &cursor, &fdip->cache[0]);
         cursor.key_beg.obj_id = fdip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -1631,7 +1650,8 @@ static
 int
 hammer_vop_strategy_read(struct vop_strategy_args *ap)
 {
-	struct hammer_inode *ip = ap->a_vp->v_data;
+	struct hammer_transaction trans;
+	struct hammer_inode *ip;
 	struct hammer_cursor cursor;
 	hammer_record_ondisk_t rec;
 	hammer_base_elm_t base;
@@ -1647,8 +1667,10 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
+	ip = ap->a_vp->v_data;
 
-	hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+	hammer_simple_transaction(&trans, ip->hmp);
+	hammer_init_cursor(&trans, &cursor, &ip->cache[0]);
 
 	/*
 	 * Key range (begin and end inclusive) to scan.  Note that the key's
@@ -1724,6 +1746,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		error = hammer_ip_next(&cursor);
 	}
 	hammer_done_cursor(&cursor);
+	hammer_commit_transaction(&trans);
 
 	/*
 	 * There may have been a gap after the last record
@@ -1858,7 +1881,7 @@ hammer_dounlink(struct nchandle *nch, struct vnode *dvp, struct ucred *cred,
 
 	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
 retry:
-	hammer_init_cursor_hmp(&cursor, &dip->cache[0], dip->hmp);
+	hammer_init_cursor(&trans, &cursor, &dip->cache[0]);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -1899,7 +1922,7 @@ retry:
 	 * If the target is a directory, it must be empty.
 	 */
 	if (error == 0) {
-		ip = hammer_get_inode(dip->hmp, &dip->cache[1],
+		ip = hammer_get_inode(&trans, &dip->cache[1],
 				      rec->entry.obj_id,
 				      dip->hmp->asof, 0, &error);
 		if (error == ENOENT) {

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.26 2008/03/18 05:19:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.27 2008/03/19 20:18:17 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -299,28 +299,29 @@ struct hammer_blockmap_layer2 {
 #define HAMMER_UNDO_LAYER2	64	/* max layer2 undo mapping entries */
 
 /*
- * All on-disk HAMMER structures which make up elements of the FIFO contain
- * a hammer_fifo_head and hammer_fifo_tail structure.  This structure
+ * All on-disk HAMMER structures which make up elements of the UNDO FIFO
+ * contain a hammer_fifo_head and hammer_fifo_tail structure.  This structure
  * contains all the information required to validate the fifo element
  * and to scan the fifo in either direction.  The head is typically embedded
  * in higher level hammer on-disk structures while the tail is typically
  * out-of-band.  hdr_size is the size of the whole mess, including the tail.
  *
- * Nearly all such structures are guaranteed to not cross a 16K filesystem
- * buffer boundary.  The one exception is a record, whos related data may
- * cross a buffer boundary.
- *
- * HAMMER guarantees alignment with a fifo head structure at 16MB intervals
- * (i.e. the base of the buffer will not be in the middle of a data record).
- * This is used to allow the recovery code to re-sync after hitting corrupted
- * data.
+ * All undo structures are guaranteed to not cross a 16K filesystem
+ * buffer boundary.  Most undo structures are fairly small.  Data spaces
+ * are not immediately reused by HAMMER so file data is not usually recorded
+ * as part of an UNDO.
  *
  * PAD elements are allowed to take up only 8 bytes of space as a special
  * case, containing only hdr_signature, hdr_type, and hdr_size fields,
  * and with the tail overloaded onto the head structure for 8 bytes total.
+ *
+ * Every undo record has a sequence number.  This number is unrelated to
+ * transaction ids and instead collects the undo transactions associated
+ * with a single atomic operation.  A larger transactional operation, such
+ * as a remove(), may consist of several smaller atomic operations
+ * representing raw meta-data operations.
  */
-#define HAMMER_HEAD_ONDISK_SIZE		24
-#define HAMMER_HEAD_RECOVERY_ALIGNMENT  (16 * 1024 * 1024)
+#define HAMMER_HEAD_ONDISK_SIZE		32
 #define HAMMER_HEAD_ALIGN		8
 #define HAMMER_HEAD_ALIGN_MASK		(HAMMER_HEAD_ALIGN - 1)
 #define HAMMER_TAIL_ONDISK_SIZE		8
@@ -331,6 +332,7 @@ struct hammer_fifo_head {
 	u_int32_t hdr_size;	/* aligned size of the whole mess */
 	u_int32_t hdr_crc;
 	u_int32_t hdr_seq;
+	u_int64_t hdr_tid;	/* related TID */
 };
 
 struct hammer_fifo_tail {
@@ -356,6 +358,10 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
 
 #define HAMMER_HEAD_SIGNATURE	0xC84EU
 #define HAMMER_TAIL_SIGNATURE	0xC74FU
+
+#define HAMMER_HEAD_SEQ_BEG	0x80000000U
+#define HAMMER_HEAD_SEQ_END	0x40000000U
+#define HAMMER_HEAD_SEQ_MASK	0x3FFFFFFFU
 
 /*
  * Misc FIFO structures.
@@ -461,7 +467,7 @@ struct hammer_volume_ondisk {
 	int64_t vol0_stat_records;	/* total records in filesystem */
 	hammer_off_t vol0_btree_root;	/* B-Tree root */
 	hammer_tid_t vol0_next_tid;	/* highest synchronized TID */
-	u_int32_t vol0_next_seq;	/* next SEQ no for undo */
+	u_int32_t vol0_reserved00;
 	u_int32_t vol0_reserved01;
 
 	/*

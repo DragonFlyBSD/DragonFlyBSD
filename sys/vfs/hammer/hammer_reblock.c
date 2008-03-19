@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.2 2008/03/18 20:20:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.3 2008/03/19 20:18:17 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -45,22 +45,19 @@
 
 #include "hammer.h"
 
-static int hammer_reblock_helper(hammer_mount_t hmp,
-				 struct hammer_ioc_reblock *reblock,
+static int hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 				 hammer_cursor_t cursor,
 				 hammer_btree_elm_t elm);
-static int hammer_reblock_data(hammer_mount_t hmp,
-				struct hammer_ioc_reblock *reblock,
+static int hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 				hammer_cursor_t cursor, hammer_btree_elm_t elm);
-static int hammer_reblock_record(hammer_mount_t hmp,
-				struct hammer_ioc_reblock *reblock,
+static int hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 				hammer_cursor_t cursor, hammer_btree_elm_t elm);
-static int hammer_reblock_node(hammer_mount_t hmp,
-				struct hammer_ioc_reblock *reblock,
+static int hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 				hammer_cursor_t cursor, hammer_btree_elm_t elm);
 
 int
-hammer_reblock(hammer_inode_t ip, struct hammer_ioc_reblock *reblock)
+hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
+	       struct hammer_ioc_reblock *reblock)
 {
 	struct hammer_cursor cursor;
 	hammer_btree_elm_t elm;
@@ -72,7 +69,7 @@ hammer_reblock(hammer_inode_t ip, struct hammer_ioc_reblock *reblock)
 		return(EINVAL);
 
 retry:
-	error = hammer_init_cursor_hmp(&cursor, NULL, ip->hmp);
+	error = hammer_init_cursor(trans, &cursor, NULL);
 	if (error) {
 		hammer_done_cursor(&cursor);
 		return(error);
@@ -98,7 +95,7 @@ retry:
 		elm = &cursor.node->ondisk->elms[cursor.index];
 		reblock->cur_obj_id = elm->base.obj_id;
 
-		error = hammer_reblock_helper(ip->hmp, reblock, &cursor, elm);
+		error = hammer_reblock_helper(reblock, &cursor, elm);
 		if (error == 0) {
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			error = hammer_btree_iterate(&cursor);
@@ -118,7 +115,7 @@ retry:
  * XXX We have no visibility into internal B-Tree nodes at the moment.
  */
 static int
-hammer_reblock_helper(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
+hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		      hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
 	hammer_off_t tmp_offset;
@@ -141,12 +138,13 @@ hammer_reblock_helper(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 	     zone == HAMMER_ZONE_LARGE_DATA_INDEX) && error == 0) {
 		++reblock->data_count;
 		reblock->data_byte_count += elm->leaf.data_len;
-		bytes = hammer_blockmap_getfree(hmp, tmp_offset, &cur, &error);
+		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
+						&cur, &error);
 		if (error == 0 && cur == 0 && bytes > reblock->free_level) {
 			kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
-				error = hammer_reblock_data(hmp, reblock,
+				error = hammer_reblock_data(reblock,
 							    cursor, elm);
 			}
 			if (error == 0) {
@@ -163,12 +161,13 @@ hammer_reblock_helper(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 	zone = HAMMER_ZONE_DECODE(tmp_offset);
 	if (zone == HAMMER_ZONE_RECORD_INDEX && error == 0) {
 		++reblock->record_count;
-		bytes = hammer_blockmap_getfree(hmp, tmp_offset, &cur, &error);
+		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
+						&cur, &error);
 		if (error == 0 && cur == 0 && bytes > reblock->free_level) {
 			kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
-				error = hammer_reblock_record(hmp, reblock,
+				error = hammer_reblock_record(reblock,
 							      cursor, elm);
 			}
 			if (error == 0) {
@@ -186,7 +185,8 @@ hammer_reblock_helper(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 	if (zone == HAMMER_ZONE_BTREE_INDEX && error == 0 &&
 	    cursor->index == 0) {
 		++reblock->btree_count;
-		bytes = hammer_blockmap_getfree(hmp, tmp_offset, &cur, &error);
+		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
+						&cur, &error);
 		if (error == 0 && cur == 0 && bytes > reblock->free_level) {
 			kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
@@ -195,7 +195,7 @@ hammer_reblock_helper(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 					elm = &cursor->parent->ondisk->elms[cursor->parent_index];
 				else
 					elm = NULL;
-				error = hammer_reblock_node(hmp, reblock,
+				error = hammer_reblock_node(reblock,
 							    cursor, elm);
 			}
 			if (error == 0) {
@@ -213,7 +213,7 @@ hammer_reblock_helper(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
  * to the data must be adjusted.
  */
 static int
-hammer_reblock_data(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
+hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 		    hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
 	struct hammer_buffer *data_buffer = NULL;
@@ -225,8 +225,8 @@ hammer_reblock_data(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 					     HAMMER_CURSOR_GET_RECORD);
 	if (error)
 		return (error);
-	ndata = hammer_alloc_data(hmp, elm->leaf.data_len, &ndata_offset,
-				  &data_buffer, &error);
+	ndata = hammer_alloc_data(cursor->trans, elm->leaf.data_len,
+				  &ndata_offset, &data_buffer, &error);
 	if (error)
 		goto done;
 
@@ -234,12 +234,14 @@ hammer_reblock_data(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 	 * Move the data
 	 */
 	bcopy(cursor->data, ndata, elm->leaf.data_len);
-	hammer_modify_node(cursor->node,
-		&elm->leaf.data_offset, sizeof(hammer_off_t));
-	hammer_modify_record(cursor->record_buffer,
-		&cursor->record->base.data_off, sizeof(hammer_off_t));
+	hammer_modify_node(cursor->trans, cursor->node,
+			   &elm->leaf.data_offset, sizeof(hammer_off_t));
+	hammer_modify_record(cursor->trans, cursor->record_buffer,
+			     &cursor->record->base.data_off,
+			     sizeof(hammer_off_t));
 
-	hammer_blockmap_free(hmp, elm->leaf.data_offset, elm->leaf.data_len);
+	hammer_blockmap_free(cursor->trans,
+			     elm->leaf.data_offset, elm->leaf.data_len);
 
 	cursor->record->base.data_off = ndata_offset;
 	elm->leaf.data_offset = ndata_offset;
@@ -256,7 +258,7 @@ done:
  * does not see two versions of the same record.
  */
 static int
-hammer_reblock_record(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
+hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 		      hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
 	struct hammer_buffer *rec_buffer = NULL;
@@ -271,8 +273,9 @@ hammer_reblock_record(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 	if (error)
 		return (error);
 
-	nrec = hammer_alloc_record(hmp, &nrec_offset, elm->leaf.base.rec_type,
-				  &rec_buffer, 0, NULL, NULL, &error);
+	nrec = hammer_alloc_record(cursor->trans, &nrec_offset,
+				   elm->leaf.base.rec_type, &rec_buffer,
+				   0, NULL, NULL, &error);
 	if (error)
 		goto done;
 
@@ -293,21 +296,23 @@ hammer_reblock_record(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 		inline_data = 0;
 	}
 
-	hammer_modify_record(cursor->record_buffer,
-		&orec->base.base.rec_type, sizeof(orec->base.base.rec_type));
+	hammer_modify_record(cursor->trans, cursor->record_buffer,
+			     &orec->base.base.rec_type,
+			     sizeof(orec->base.base.rec_type));
 	orec->base.base.rec_type |= HAMMER_RECTYPE_MOVED;
 
-	hammer_blockmap_free(hmp, elm->leaf.rec_offset, sizeof(*nrec));
+	hammer_blockmap_free(cursor->trans,
+			     elm->leaf.rec_offset, sizeof(*nrec));
 
 	kprintf("REBLOCK RECD %016llx -> %016llx\n",
 		elm->leaf.rec_offset, nrec_offset);
 
-	hammer_modify_node(cursor->node,
-		&elm->leaf.rec_offset, sizeof(hammer_off_t));
+	hammer_modify_node(cursor->trans, cursor->node,
+			   &elm->leaf.rec_offset, sizeof(hammer_off_t));
 	elm->leaf.rec_offset = nrec_offset;
 	if (inline_data) {
-		hammer_modify_node(cursor->node,
-			&elm->leaf.data_offset, sizeof(hammer_off_t));
+		hammer_modify_node(cursor->trans, cursor->node,
+				 &elm->leaf.data_offset, sizeof(hammer_off_t));
 		elm->leaf.data_offset = ndata_offset;
 	}
 
@@ -325,7 +330,7 @@ done:
  * XXX reblock internal nodes too.
  */
 static int
-hammer_reblock_node(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
+hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 		    hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
 	hammer_node_t onode;
@@ -333,7 +338,7 @@ hammer_reblock_node(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 	int error;
 
 	onode = cursor->node;
-	nnode = hammer_alloc_btree(hmp, &error);
+	nnode = hammer_alloc_btree(cursor->trans, &error);
 	hammer_lock_ex(&nnode->lock);
 
 	if (nnode == NULL)
@@ -348,7 +353,7 @@ hammer_reblock_node(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 		/*
 		 * We are not the root of the B-Tree 
 		 */
-		hammer_modify_node(cursor->parent,
+		hammer_modify_node(cursor->trans, cursor->parent,
 				   &elm->internal.subtree_offset,
 				   sizeof(elm->internal.subtree_offset));
 		elm->internal.subtree_offset = nnode->node_offset;
@@ -358,16 +363,17 @@ hammer_reblock_node(hammer_mount_t hmp, struct hammer_ioc_reblock *reblock,
 		 */
                 hammer_volume_t volume;
                         
-                volume = hammer_get_root_volume(hmp, &error);
+                volume = hammer_get_root_volume(cursor->trans->hmp, &error);
                 KKASSERT(error == 0);
 
-                hammer_modify_volume(volume, &volume->ondisk->vol0_btree_root,
+                hammer_modify_volume(cursor->trans, volume,
+				     &volume->ondisk->vol0_btree_root,
                                      sizeof(hammer_off_t));
                 volume->ondisk->vol0_btree_root = nnode->node_offset;
                 hammer_rel_volume(volume, 0);
         }
 
-	onode->flags |= HAMMER_NODE_DELETED;
+	hammer_delete_node(cursor->trans, onode);
 
 	kprintf("REBLOCK NODE %016llx -> %016llx\n",
 		onode->node_offset, nnode->node_offset);

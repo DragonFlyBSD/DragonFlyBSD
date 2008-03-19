@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.10 2008/03/18 05:21:53 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.11 2008/03/19 20:18:15 dillon Exp $
  */
 
 #include "hammer.h"
@@ -248,9 +248,9 @@ usage(int exit_code)
 		"hammer stamp <time>\n"
 		"hammer prune <filesystem> [using <configfile>]\n"
 		"hammer prune <filesystem> from <modulo_time> to <modulo_time> every <modulo_time>\n"
-		"hammer reblock <filesystem> [compact%] (default 90%)\n"
+		"hammer reblock <filesystem> [compact%%] (default 90%%)\n"
 		"hammer history[@offset[,len]] <file-1>...<file-N>\n"
-		"hammer -f blkdevs [-r] show [vol_no[:clu_no]]\n"
+		"hammer -f blkdevs [-r] show\n"
 		"hammer -f blkdevs blockmap\n"
 	);
 	fprintf(stderr, "time: +n[s/m/h/D/M/Y]\n"

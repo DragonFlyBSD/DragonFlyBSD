@@ -31,42 +31,47 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.5 2008/03/18 05:19:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.6 2008/03/19 20:18:17 dillon Exp $
  */
 
 #include "hammer.h"
 
-static int hammer_ioc_prune(hammer_inode_t ip,
+static int hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_prune *prune);
-static int hammer_ioc_gethistory(hammer_inode_t ip,
+static int hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_history *hist);
 
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	     struct ucred *cred)
 {
+	struct hammer_transaction trans;
 	int error;
 
 	error = suser_cred(cred, PRISON_ROOT);
 
+	hammer_start_transaction(&trans, ip->hmp);
+
 	switch(com) {
 	case HAMMERIOC_PRUNE:
 		if (error == 0) {
-			error = hammer_ioc_prune(ip,
+			error = hammer_ioc_prune(&trans, ip,
 					(struct hammer_ioc_prune *)data);
 		}
 		break;
 	case HAMMERIOC_GETHISTORY:
-		error = hammer_ioc_gethistory(ip,
+		error = hammer_ioc_gethistory(&trans, ip,
 					(struct hammer_ioc_history *)data);
 		break;
 	case HAMMERIOC_REBLOCK:
-		error = hammer_reblock(ip, (struct hammer_ioc_reblock *)data);
+		error = hammer_ioc_reblock(&trans, ip,
+					(struct hammer_ioc_reblock *)data);
 		break;
 	default:
 		error = EOPNOTSUPP;
 		break;
 	}
+	hammer_commit_transaction(&trans);
 	return (error);
 }
 
@@ -84,7 +89,8 @@ static int realign_prune(struct hammer_ioc_prune *prune, hammer_cursor_t cursor,
 			int realign_cre, int realign_del);
 
 static int
-hammer_ioc_prune(hammer_inode_t ip, struct hammer_ioc_prune *prune)
+hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
+		 struct hammer_ioc_prune *prune)
 {
 	struct hammer_cursor cursor;
 	hammer_btree_elm_t elm;
@@ -101,7 +107,7 @@ hammer_ioc_prune(hammer_inode_t ip, struct hammer_ioc_prune *prune)
 		return(EINVAL);
 
 retry:
-	error = hammer_init_cursor_hmp(&cursor, NULL, ip->hmp);
+	error = hammer_init_cursor(trans, &cursor, NULL);
 	if (error) {
 		hammer_done_cursor(&cursor);
 		return(error);
@@ -297,11 +303,12 @@ realign_prune(struct hammer_ioc_prune *prune,
 				error = hammer_cursor_upgrade(cursor);
 			}
 			if (error == 0) {
-				hammer_modify_buffer(cursor->record_buffer,
+				hammer_modify_buffer(cursor->trans,
+						     cursor->record_buffer,
 						     NULL, 0);
 				cursor->record->base.base.create_tid = tid;
-				hammer_modify_node(cursor->node, elm,
-						   sizeof(*elm));
+				hammer_modify_node(cursor->trans, cursor->node,
+						   elm, sizeof(*elm));
 				elm->leaf.base.create_tid = tid;
 			}
 		}
@@ -316,7 +323,8 @@ realign_prune(struct hammer_ioc_prune *prune,
 	if (error == 0 && realign_del >= 0) {
 		mod = prune->elms[realign_del].mod_tid;
 		delta = elm->leaf.base.delete_tid % mod;
-		hammer_modify_node(cursor->node, elm, sizeof(*elm));
+		hammer_modify_node(cursor->trans, cursor->node,
+				   elm, sizeof(*elm));
 		if (delta) {
 			error = hammer_btree_extract(cursor,
 						     HAMMER_CURSOR_GET_RECORD);
@@ -324,7 +332,7 @@ realign_prune(struct hammer_ioc_prune *prune,
 				elm->leaf.base.delete_tid =
 						elm->leaf.base.delete_tid -
 						delta + mod;
-				hammer_modify_buffer(cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
+				hammer_modify_buffer(cursor->trans, cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
 				cursor->record->base.base.delete_tid =
 						elm->leaf.base.delete_tid;
 			}
@@ -342,7 +350,8 @@ static void add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 
 static
 int
-hammer_ioc_gethistory(hammer_inode_t ip, struct hammer_ioc_history *hist)
+hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
+		      struct hammer_ioc_history *hist)
 {
 	struct hammer_cursor cursor;
 	hammer_btree_elm_t elm;
@@ -373,7 +382,7 @@ hammer_ioc_gethistory(hammer_inode_t ip, struct hammer_ioc_history *hist)
 	 * (create_tid of 0) at the moment.  A create_tid of 0 has
 	 * a special meaning and cannot be specified in the cursor.
 	 */
-	error = hammer_init_cursor_hmp(&cursor, &ip->cache[0], ip->hmp);
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[0]);
 	if (error) {
 		hammer_done_cursor(&cursor);
 		return(error);

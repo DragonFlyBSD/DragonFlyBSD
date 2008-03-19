@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.22 2008/03/18 05:19:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.23 2008/03/19 20:18:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -384,22 +384,26 @@ hammer_free_hmp(struct mount *mp)
 int
 hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
+	struct hammer_transaction trans;
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 	struct hammer_inode *ip;
 	int error;
 
+	hammer_simple_transaction(&trans, hmp);
+
 	/*
-	 * Get/allocate the hammer_inode structure.  The structure must be
-	 * unlocked while we manipulate the related vnode to avoid a
-	 * deadlock.
+	 * Lookup the requested HAMMER inode.  The structure must be
+	 * left unlocked while we manipulate the related vnode to avoid
+	 * a deadlock.
 	 */
-	ip = hammer_get_inode(hmp, NULL, ino, hmp->asof, 0, &error);
+	ip = hammer_get_inode(&trans, NULL, ino, hmp->asof, 0, &error);
 	if (ip == NULL) {
 		*vpp = NULL;
 		return(error);
 	}
 	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
 	hammer_rel_inode(ip, 0);
+	hammer_commit_transaction(&trans);
 	return (error);
 }
 
@@ -485,7 +489,7 @@ hammer_vfs_vptofh(struct vnode *vp, struct fid *fhp)
 static int
 hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 {
-	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	struct hammer_transaction trans;
 	struct hammer_inode *ip;
 	struct hammer_inode_info info;
 	int error;
@@ -493,18 +497,22 @@ hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 	bcopy(fhp->fid_data + 0, &info.obj_id, sizeof(info.obj_id));
 	bcopy(fhp->fid_data + 8, &info.obj_asof, sizeof(info.obj_asof));
 
+	hammer_simple_transaction(&trans, (void *)mp->mnt_data);
+
 	/*
 	 * Get/allocate the hammer_inode structure.  The structure must be
 	 * unlocked while we manipulate the related vnode to avoid a
 	 * deadlock.
 	 */
-	ip = hammer_get_inode(hmp, NULL, info.obj_id, info.obj_asof, 0, &error);
+	ip = hammer_get_inode(&trans, NULL, info.obj_id, info.obj_asof,
+			      0, &error);
 	if (ip == NULL) {
 		*vpp = NULL;
 		return(error);
 	}
 	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
 	hammer_rel_inode(ip, 0);
+	hammer_commit_transaction(&trans);
 	return (error);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.21 2008/02/10 18:58:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.22 2008/03/19 20:18:17 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -376,14 +376,15 @@ hammer_io_modify(hammer_io_t io, struct hammer_io_list *list)
 }
 
 void
-hammer_modify_volume(hammer_volume_t volume, void *base, int len)
+hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
+		     void *base, int len)
 {
 	hammer_io_modify(&volume->io, NULL);
 
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)volume->ondisk;
 		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
-		hammer_generate_undo(volume->hmp,
+		hammer_generate_undo(trans,
 			 HAMMER_ENCODE_RAW_VOLUME(volume->vol_no, rel_offset),
 			 base, len);
 	}
@@ -395,13 +396,14 @@ hammer_modify_volume(hammer_volume_t volume, void *base, int len)
  * buffer so get that I/O going now.
  */
 void
-hammer_modify_buffer(hammer_buffer_t buffer, void *base, int len)
+hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,
+		     void *base, int len)
 {
 	hammer_io_modify(&buffer->io, NULL);
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)buffer->ondisk;
 		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
-		hammer_generate_undo(buffer->volume->hmp,
+		hammer_generate_undo(trans,
 				     buffer->zone2_offset + rel_offset,
 				     base, len);
 	}

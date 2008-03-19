@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.6 2008/03/18 05:19:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.7 2008/03/19 20:18:17 dillon Exp $
  */
 
 /*
@@ -48,7 +48,8 @@ static void hammer_add_hole(hammer_mount_t hmp, hammer_holes_t holes,
  * Allocate bytes from a zone
  */
 hammer_off_t
-hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
+hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
+		      int bytes, int *errorp)
 {
 	hammer_volume_t root_volume;
 	hammer_blockmap_t rootmap;
@@ -67,7 +68,7 @@ hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
 	int used_hole;
 
 	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
-	root_volume = hammer_get_root_volume(hmp, errorp);
+	root_volume = hammer_get_root_volume(trans->hmp, errorp);
 	if (*errorp)
 		return(0);
 	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
@@ -86,12 +87,13 @@ hammer_blockmap_alloc(hammer_mount_t hmp, int zone, int bytes, int *errorp)
 	bytes = (bytes + 7) & ~7;
 	KKASSERT(bytes > 0 && bytes <= HAMMER_BUFSIZE);
 
-	lockmgr(&hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
+	lockmgr(&trans->hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
 
 	/*
 	 * Try to use a known-free hole, otherwise append.
 	 */
-	next_offset = hammer_find_hole(hmp, &hmp->holes[zone], bytes);
+	next_offset = hammer_find_hole(trans->hmp, &trans->hmp->holes[zone],
+				       bytes);
 	if (next_offset == 0) {
 		next_offset = rootmap->next_offset;
 		used_hole = 0;
@@ -107,7 +109,7 @@ again:
 	if ((next_offset ^ tmp_offset) & ~HAMMER_BUFMASK64) {
 		skip_amount = HAMMER_BUFSIZE - 
 			      ((int)next_offset & HAMMER_BUFMASK);
-		hammer_add_hole(hmp, &hmp->holes[zone],
+		hammer_add_hole(trans->hmp, &trans->hmp->holes[zone],
 				next_offset, skip_amount);
 		next_offset = tmp_offset & ~HAMMER_BUFMASK64;
 	}
@@ -118,7 +120,7 @@ again:
 	 */
 	layer1_offset = rootmap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(next_offset);
-	layer1 = hammer_bread(hmp, layer1_offset, errorp, &buffer1);
+	layer1 = hammer_bread(trans->hmp, layer1_offset, errorp, &buffer1);
 	KKASSERT(*errorp == 0);
 	KKASSERT(next_offset <= rootmap->alloc_offset);
 
@@ -132,10 +134,10 @@ again:
 	    layer1->phys_offset == HAMMER_BLOCKMAP_FREE)
 	) {
 		KKASSERT((next_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0);
-		hammer_modify_buffer(buffer1, layer1, sizeof(*layer1));
+		hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
 		bzero(layer1, sizeof(*layer1));
-		layer1->phys_offset = hammer_freemap_alloc(hmp, next_offset,
-							   errorp);
+		layer1->phys_offset =
+			hammer_freemap_alloc(trans, next_offset, errorp);
 		layer1->blocks_free = HAMMER_BLOCKMAP_RADIX2;
 		KKASSERT(*errorp == 0);
 	}
@@ -150,7 +152,7 @@ again:
 		kprintf("blockmap skip1 %016llx\n", next_offset);
 		next_offset = (next_offset + HAMMER_BLOCKMAP_LAYER2_MASK) &
 			      ~HAMMER_BLOCKMAP_LAYER2_MASK;
-		if (next_offset >= hmp->zone_limits[zone]) {
+		if (next_offset >= trans->hmp->zone_limits[zone]) {
 			kprintf("blockmap wrap1\n");
 			next_offset = HAMMER_ZONE_ENCODE(zone, 0);
 			if (++loops == 2) {	/* XXX poor-man's */
@@ -167,7 +169,7 @@ again:
 	 */
 	layer2_offset = layer1->phys_offset +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(next_offset);
-	layer2 = hammer_bread(hmp, layer2_offset, errorp, &buffer2);
+	layer2 = hammer_bread(trans->hmp, layer2_offset, errorp, &buffer2);
 	KKASSERT(*errorp == 0);
 
 	if ((next_offset & HAMMER_LARGEBLOCK_MASK64) == 0) {
@@ -181,13 +183,16 @@ again:
 			 * uninitialized space or if the block was previously
 			 * freed.
 			 */
-			hammer_modify_buffer(buffer1, layer1, sizeof(*layer1));
+			hammer_modify_buffer(trans, buffer1,
+					     layer1, sizeof(*layer1));
 			KKASSERT(layer1->blocks_free);
 			--layer1->blocks_free;
-			hammer_modify_buffer(buffer2, layer2, sizeof(*layer2));
+			hammer_modify_buffer(trans, buffer2,
+					     layer2, sizeof(*layer2));
 			bzero(layer2, sizeof(*layer2));
 			layer2->u.phys_offset =
-				hammer_freemap_alloc(hmp, next_offset, errorp);
+				hammer_freemap_alloc(trans, next_offset,
+						     errorp);
 			layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
 			KKASSERT(*errorp == 0);
 		} else if (layer2->bytes_free != HAMMER_LARGEBLOCK_SIZE) {
@@ -198,7 +203,7 @@ again:
 			kprintf("blockmap skip2 %016llx %d\n",
 				next_offset, layer2->bytes_free);
 			next_offset += HAMMER_LARGEBLOCK_SIZE;
-			if (next_offset >= hmp->zone_limits[zone]) {
+			if (next_offset >= trans->hmp->zone_limits[zone]) {
 				next_offset = HAMMER_ZONE_ENCODE(zone, 0);
 				kprintf("blockmap wrap2\n");
 				if (++loops == 2) {	/* XXX poor-man's */
@@ -216,7 +221,7 @@ again:
 		KKASSERT(layer2->u.phys_offset != HAMMER_BLOCKMAP_FREE);
 	}
 
-	hammer_modify_buffer(buffer2, layer2, sizeof(*layer2));
+	hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));
 	layer2->bytes_free -= bytes;
 	KKASSERT(layer2->bytes_free >= 0);
 
@@ -227,7 +232,7 @@ again:
 	if ((next_offset & HAMMER_BUFMASK) == 0) {
 		bigblock_offset = layer2->u.phys_offset +
 				  (next_offset & HAMMER_LARGEBLOCK_MASK64);
-		hammer_bnew(hmp, bigblock_offset, errorp, &buffer3);
+		hammer_bnew(trans->hmp, bigblock_offset, errorp, &buffer3);
 	}
 
 	/*
@@ -236,7 +241,8 @@ again:
 	 * be big-block aligned.
 	 */
 	if (used_hole == 0) {
-		hammer_modify_volume(root_volume, rootmap, sizeof(*rootmap));
+		hammer_modify_volume(trans, root_volume,
+				     rootmap, sizeof(*rootmap));
 		rootmap->next_offset = next_offset + bytes;
 		if (rootmap->alloc_offset < rootmap->next_offset) {
 			rootmap->alloc_offset =
@@ -252,7 +258,7 @@ done:
 	if (buffer3)
 		hammer_rel_buffer(buffer3, 0);
 	hammer_rel_volume(root_volume, 0);
-	lockmgr(&hmp->blockmap_lock, LK_RELEASE);
+	lockmgr(&trans->hmp->blockmap_lock, LK_RELEASE);
 	return(next_offset);
 }
 
@@ -260,7 +266,8 @@ done:
  * Free (offset,bytes) in a zone
  */
 void
-hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
+hammer_blockmap_free(hammer_transaction_t trans,
+		     hammer_off_t bmap_off, int bytes)
 {
 	hammer_volume_t root_volume;
 	hammer_blockmap_t rootmap;
@@ -277,11 +284,11 @@ hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
 	KKASSERT(bytes <= HAMMER_BUFSIZE);
 	zone = HAMMER_ZONE_DECODE(bmap_off);
 	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
-	root_volume = hammer_get_root_volume(hmp, &error);
+	root_volume = hammer_get_root_volume(trans->hmp, &error);
 	if (error)
 		return;
 
-	lockmgr(&hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
+	lockmgr(&trans->hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
 
 	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
 	KKASSERT(rootmap->phys_offset != 0);
@@ -302,7 +309,7 @@ hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
 	 */
 	layer1_offset = rootmap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(bmap_off);
-	layer1 = hammer_bread(hmp, layer1_offset, &error, &buffer1);
+	layer1 = hammer_bread(trans->hmp, layer1_offset, &error, &buffer1);
 	KKASSERT(error == 0);
 	KKASSERT(layer1->phys_offset);
 
@@ -311,11 +318,11 @@ hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
 	 */
 	layer2_offset = layer1->phys_offset +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(bmap_off);
-	layer2 = hammer_bread(hmp, layer2_offset, &error, &buffer2);
+	layer2 = hammer_bread(trans->hmp, layer2_offset, &error, &buffer2);
 
 	KKASSERT(error == 0);
 	KKASSERT(layer2->u.phys_offset);
-	hammer_modify_buffer(buffer2, layer2, sizeof(*layer2));
+	hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));
 	layer2->bytes_free += bytes;
 	KKASSERT(layer2->bytes_free <= HAMMER_LARGEBLOCK_SIZE);
 
@@ -327,11 +334,12 @@ hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
 	if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
 		if ((rootmap->next_offset ^ bmap_off) &
 		    ~HAMMER_LARGEBLOCK_MASK64) {
-			hammer_freemap_free(hmp, layer2->u.phys_offset,
+			hammer_freemap_free(trans, layer2->u.phys_offset,
 					    bmap_off, &error);
 			layer2->u.phys_offset = HAMMER_BLOCKMAP_FREE;
 
-			hammer_modify_buffer(buffer1, layer1, sizeof(*layer1));
+			hammer_modify_buffer(trans, buffer1,
+					     layer1, sizeof(*layer1));
 			++layer1->blocks_free;
 #if 0
 			/* 
@@ -340,20 +348,20 @@ hammer_blockmap_free(hammer_mount_t hmp, hammer_off_t bmap_off, int bytes)
 			 */
 			if (layer1->blocks_free == HAMMER_BLOCKMAP_RADIX2) {
 				hammer_freemap_free(
-					hmp, layer1->phys_offset,
+					trans, layer1->phys_offset,
 					bmap_off & ~HAMMER_BLOCKMAP_LAYER2_MASK,
 					&error);
 				layer1->phys_offset = HAMMER_BLOCKMAP_FREE;
 			}
 #endif
 		} else {
-			hammer_modify_volume(root_volume, rootmap,
-					     sizeof(*rootmap));
+			hammer_modify_volume(trans, root_volume,
+					     rootmap, sizeof(*rootmap));
 			rootmap->next_offset &= ~HAMMER_LARGEBLOCK_MASK64;
 		}
 	}
 done:
-	lockmgr(&hmp->blockmap_lock, LK_RELEASE);
+	lockmgr(&trans->hmp->blockmap_lock, LK_RELEASE);
 
 	if (buffer1)
 		hammer_rel_buffer(buffer1, 0);

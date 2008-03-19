@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.9 2008/02/08 08:31:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.10 2008/03/19 20:18:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -46,6 +46,18 @@ hammer_start_transaction(struct hammer_transaction *trans,
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
 	trans->tid = hammer_alloc_tid(trans);
+}
+
+void
+hammer_simple_transaction(struct hammer_transaction *trans,
+			  struct hammer_mount *hmp)
+{
+	int error;
+
+	trans->hmp = hmp;
+	trans->rootvol = hammer_get_root_volume(hmp, &error);
+	trans->tid = 0;
+	KKASSERT(error == 0);
 }
 
 void
@@ -86,7 +98,7 @@ hammer_alloc_tid(hammer_transaction_t trans)
 
 	getnanotime(&ts);
 	tid = ts.tv_sec * 1000000000LL + ts.tv_nsec;
-	hammer_modify_volume(trans->rootvol, NULL, 0);
+	hammer_modify_volume(trans, trans->rootvol, NULL, 0);
 	ondisk = trans->rootvol->ondisk;
 	if (tid < ondisk->vol0_next_tid)
 		tid = ondisk->vol0_next_tid;

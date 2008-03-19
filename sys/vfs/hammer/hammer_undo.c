@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.1 2008/03/18 05:19:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.2 2008/03/19 20:18:17 dillon Exp $
  */
 
 /*
@@ -74,7 +74,7 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
  * offset.
  */
 int
-hammer_generate_undo(hammer_mount_t hmp, hammer_off_t zone1_off,
+hammer_generate_undo(hammer_transaction_t trans, hammer_off_t zone1_off,
 		     void *base, int len)
 {
 	hammer_volume_t root_volume;
@@ -93,12 +93,14 @@ hammer_generate_undo(hammer_mount_t hmp, hammer_off_t zone1_off,
 	bytes = ((len + 7) & ~7) + sizeof(struct hammer_fifo_undo) +
 		sizeof(struct hammer_fifo_tail);
 
-	root_volume = hammer_get_root_volume(hmp, &error);
+	root_volume = hammer_get_root_volume(trans->hmp, &error);
 	if (error)
 		return(error);
 	ondisk = root_volume->ondisk;
 	undomap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
-	hammer_modify_volume(root_volume, NULL, 0); /* no undo recursion */
+
+	/* no undo recursion */
+	hammer_modify_volume(NULL, root_volume, NULL, 0);
 
 	/*
 	 * Allocate space in the FIFO
@@ -120,7 +122,7 @@ again:
 	result_offset = layer2->u.phys_offset +
 			(next_offset & HAMMER_LARGEBLOCK_MASK64);
 
-	undo = hammer_bread(hmp, result_offset, &error, &buffer);
+	undo = hammer_bread(trans->hmp, result_offset, &error, &buffer);
 
 	/*
 	 * We raced another thread, try again.
@@ -128,7 +130,7 @@ again:
 	if (undomap->next_offset != next_offset)
 		goto again;
 
-	hammer_modify_buffer(buffer, NULL, 0);
+	hammer_modify_buffer(NULL, buffer, NULL, 0);
 
 	/*
 	 * The FIFO entry would cross a buffer boundary, PAD to the end
