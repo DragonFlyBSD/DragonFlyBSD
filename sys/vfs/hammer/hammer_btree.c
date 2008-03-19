@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.33 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.34 2008/03/19 20:49:46 dillon Exp $
  */
 
 /*
@@ -2202,11 +2202,13 @@ hammer_btree_chkts(hammer_tid_t asof, hammer_base_elm_t base)
  * one unit apart, the separator will match key2.  key1 is on the left-hand
  * side and key2 is on the right-hand side.
  *
- * The separator itself must be <= key2.  We must be careful because key1
- * and key2 may be different, but the separator may end up matching key2.
+ * key2 must be >= the separator.  It is ok for the separator to match key2.
  *
- * create_tid has to be special cased because a value of 0 represents
- * infinity.
+ * NOTE: Even if key1 does not match key2, the separator may wind up matching
+ * key2.
+ *
+ * NOTE: It might be beneficial to just scrap this whole mess and just
+ * set the separator to key2.
  */
 #define MAKE_SEPARATOR(key1, key2, dest, field)	\
 	dest->field = key1->field + ((key2->field - key1->field + 1) >> 1);
@@ -2216,26 +2218,26 @@ hammer_make_separator(hammer_base_elm_t key1, hammer_base_elm_t key2,
 		      hammer_base_elm_t dest)
 {
 	bzero(dest, sizeof(*dest));
-	MAKE_SEPARATOR(key1, key2, dest, obj_id);
-	MAKE_SEPARATOR(key1, key2, dest, rec_type);
-	MAKE_SEPARATOR(key1, key2, dest, key);
 
-	if (dest->obj_id == key2->obj_id &&
-	    dest->rec_type == key2->rec_type &&
-	    dest->key == key2->key) {
-		if (key1->create_tid == 0) {
+	dest->rec_type = key2->rec_type;
+	dest->key = key2->key;
+	dest->create_tid = key2->create_tid;
+
+	MAKE_SEPARATOR(key1, key2, dest, obj_id);
+	if (key1->obj_id == key2->obj_id) {
+		MAKE_SEPARATOR(key1, key2, dest, rec_type);
+		if (key1->rec_type == key2->rec_type) {
+			MAKE_SEPARATOR(key1, key2, dest, key);
 			/*
-			 * Oops, a create_tid of 0 means 'infinity', so
-			 * if everything matches this just isn't legal.
+			 * Don't bother creating a separator for create_tid,
+			 * which also conveniently avoids having to handle
+			 * the create_tid == 0 (infinity) case.  Just leave
+			 * create_tid set to key2.
+			 *
+			 * Worst case, dest matches key2 exactly, which is
+			 * acceptable.
 			 */
-			panic("key1->create_tid of 0 is impossible here");
-		} else if (key2->create_tid == 0) {
-			dest->create_tid = key1->create_tid + 1;
-		} else {
-			MAKE_SEPARATOR(key1, key2, dest, create_tid);
 		}
-	} else {
-		dest->create_tid = 0;
 	}
 }
 
