@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.53 2008/03/19 13:20:48 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.54 2008/03/19 14:46:03 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -105,8 +105,7 @@ extern u_char	aarp_org_code[3];
 #endif /* NETATALK */
 
 /* netgraph node hooks for ng_ether(4) */
-void	(*ng_ether_input_p)(struct ifnet *ifp,
-		struct mbuf **mp, const struct ether_header *eh);
+void	(*ng_ether_input_p)(struct ifnet *ifp, struct mbuf **mp);
 void	(*ng_ether_input_orphan_p)(struct ifnet *ifp,
 		struct mbuf *m, const struct ether_header *eh);
 int	(*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
@@ -617,19 +616,18 @@ ether_input(struct ifnet *ifp, struct mbuf *m)
 		}
 	}
 
-	/* XXX old crufty stuff, needs to be removed */
-	m_adj(m, sizeof(struct ether_header));
-	/* XXX */
-	/* m->m_pkthdr.len = m->m_len; */
-
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_input_p != NULL) {
-		lwkt_serialize_exit(ifp->if_serializer);
-		(*ng_ether_input_p)(ifp, &m, eh);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ng_ether_input_p(ifp, &m);
 		if (m == NULL)
 			return;
+
+		/* 'm' may be changed by ng_ether_input_p() */
+		eh = mtod(m, struct ether_header *);
 	}
+
+	/* XXX old crufty stuff, needs to be removed */
+	m_adj(m, sizeof(struct ether_header));
 
 	/* Continue with upper layer processing */
 	ether_demux(ifp, eh, m);

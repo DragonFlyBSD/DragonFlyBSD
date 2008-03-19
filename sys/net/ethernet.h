@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.16 2008/03/10 12:59:52 sephe Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.17 2008/03/19 14:46:03 sephe Exp $
  *
  */
 
@@ -359,8 +359,7 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 struct ifnet;
 struct mbuf;
 
-extern	void (*ng_ether_input_p)(struct ifnet *ifp,
-		struct mbuf **mp, const struct ether_header *eh);
+extern	void (*ng_ether_input_p)(struct ifnet *ifp, struct mbuf **mp);
 extern	void (*ng_ether_input_orphan_p)(struct ifnet *ifp,
 		struct mbuf *m, const struct ether_header *eh);
 extern	int  (*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);

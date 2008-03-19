@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.13 2008/01/05 14:02:39 swildner Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.14 2008/03/19 14:46:03 sephe Exp $
  */
 
 /*
@@ -82,8 +82,7 @@ struct private {
 typedef struct private *priv_p;
 
 /* Functional hooks called from if_ethersubr.c */
-static void	ng_ether_input(struct ifnet *ifp,
-		    struct mbuf **mp, const struct ether_header *eh);
+static void	ng_ether_input(struct ifnet *ifp, struct mbuf **mp);
 static void	ng_ether_input_orphan(struct ifnet *ifp,
 		    struct mbuf *m, const struct ether_header *eh);
 static int	ng_ether_output(struct ifnet *ifp, struct mbuf **mp);
@@ -206,11 +205,10 @@ NETGRAPH_INIT(ether, &ng_ether_typestruct);
  * Handle a packet that has come in on an interface. We get to
  * look at it here before any upper layer protocols do.
  *
- * NOTE: this function will get called at splimp()
+ * NOTE: this function will get called with ifp's serializer being held
  */
 static void
-ng_ether_input(struct ifnet *ifp,
-	struct mbuf **mp, const struct ether_header *eh)
+ng_ether_input(struct ifnet *ifp, struct mbuf **mp)
 {
 	const node_p node = IFP2NG(ifp);
 	const priv_p priv = node->private;
@@ -218,7 +216,7 @@ ng_ether_input(struct ifnet *ifp,
 	/* If "lower" hook not connected, let packet continue */
 	if (priv->lower == NULL || priv->lowerOrphan)
 		return;
-	ng_ether_input2(node, mp, eh);
+	ng_ether_input2(node, mp, NULL);
 }
 
 /*
@@ -259,7 +257,7 @@ ng_ether_input2(node_p node, struct mbuf **mp, const struct ether_header *eh)
 	int error;
 
 	/* Glue Ethernet header back on */
-	if ((error = ng_ether_glueback_header(mp, eh)) != 0)
+	if (eh != NULL && (error = ng_ether_glueback_header(mp, eh)) != 0)
 		return;
 
 	/* Send out lower/orphan hook */

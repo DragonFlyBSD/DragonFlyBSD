@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.23 2008/03/07 11:34:20 sephe Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.24 2008/03/19 14:46:03 sephe Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -170,8 +170,7 @@ struct ng_fec_private {
 typedef struct ng_fec_private *priv_p;
 
 /* Interface methods */
-static void	ng_fec_input(struct ifnet *, struct mbuf **,
-			const struct ether_header *);
+static void	ng_fec_input(struct ifnet *, struct mbuf **);
 static void	ng_fec_start(struct ifnet *ifp);
 static int	ng_fec_choose_port(struct ng_fec_bundle *b,
 			struct mbuf *m, struct ifnet **ifp);
@@ -722,8 +721,7 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
  * coming from us.
  */
 static void 
-ng_fec_input(struct ifnet *ifp, struct mbuf **m0,
-		const struct ether_header *eh)
+ng_fec_input(struct ifnet *ifp, struct mbuf **m0)
 {
 	struct ng_node		*node;
 	struct ng_fec_private	*priv;
@@ -733,7 +731,7 @@ ng_fec_input(struct ifnet *ifp, struct mbuf **m0,
 	struct ng_fec_portlist	*p;
 
 	/* Sanity check */
-	if (ifp == NULL || m0 == NULL || eh == NULL)
+	if (ifp == NULL || m0 == NULL)
 		return;
 
 	node = IFP2NG(ifp);
@@ -759,10 +757,10 @@ ng_fec_input(struct ifnet *ifp, struct mbuf **m0,
 	/* Pretend this is our frame. */
 	m->m_pkthdr.rcvif = bifp;
 	bifp->if_ipackets++;
-	bifp->if_ibytes += m->m_pkthdr.len + sizeof(struct ether_header);
+	bifp->if_ibytes += m->m_pkthdr.len;
 
 	if (bifp->if_bpf)
-		bpf_ptap(bifp->if_bpf, m, eh, ETHER_HDR_LEN);
+		bpf_mtap(bifp->if_bpf, m);
 }
 
 /*
