@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.54 2008/03/19 14:46:03 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.55 2008/03/20 10:42:15 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1208,7 +1208,7 @@ ether_restore_header(struct mbuf **m0, const struct ether_header *eh,
 
 		M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
 		if (m != NULL) {
-			bcopy(&save_eh, mtod(m, struct ether_header *),
+			bcopy(save_eh, mtod(m, struct ether_header *),
 			      ETHER_HDR_LEN);
 		}
 	}
