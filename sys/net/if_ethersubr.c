@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.56 2008/03/20 12:55:32 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.57 2008/03/20 14:08:45 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -140,8 +140,7 @@ const uint8_t etherbroadcastaddr[ETHER_ADDR_LEN] = {
 
 static boolean_t ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
 				struct ip_fw **rule,
-				const struct ether_header *eh,
-				boolean_t shared);
+				const struct ether_header *eh);
 
 static int ether_ipfw;
 static u_int ether_restore_hdr;
@@ -417,7 +416,7 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 		eh = mtod(m, struct ether_header *);
 		save_eh = *eh;
 		m_adj(m, ETHER_HDR_LEN);
-		if (!ether_ipfw_chk(&m, ifp, &rule, eh, FALSE)) {
+		if (!ether_ipfw_chk(&m, ifp, &rule, eh)) {
 			crit_exit();
 			if (m != NULL) {
 				m_freem(m);
@@ -449,12 +448,8 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
  * ether_output_frame().
  */
 static boolean_t
-ether_ipfw_chk(
-	struct mbuf **m0,
-	struct ifnet *dst,
-	struct ip_fw **rule,
-	const struct ether_header *eh,
-	boolean_t shared)
+ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
+	       const struct ether_header *eh)
 {
 	struct ether_header save_eh = *eh;	/* might be a ptr in m */
 	struct ip_fw_args args;
@@ -465,11 +460,10 @@ ether_ipfw_chk(
 		return TRUE; /* dummynet packet, already partially processed */
 
 	/*
-	 * I need some amount of data to be contiguous, and in case others
-	 * need the packet (shared==TRUE), it also better be in the first mbuf.
+	 * I need some amount of data to be contiguous.
 	 */
 	i = min((*m0)->m_pkthdr.len, max_protohdr);
-	if (shared || (*m0)->m_len < i) {
+	if ((*m0)->m_len < i) {
 		*m0 = m_pullup(*m0, i);
 		if (*m0 == NULL)
 			return FALSE;
@@ -495,18 +489,11 @@ ether_ipfw_chk(
 	if (i & IP_FW_PORT_DYNT_FLAG) {
 		/*
 		 * Pass the pkt to dummynet, which consumes it.
-		 * If shared, make a copy and keep the original.
 		 */
-		struct mbuf *m ;
+		struct mbuf *m;
 
-		if (shared) {
-			m = m_copypacket(*m0, MB_DONTWAIT);
-			if (m == NULL)
-				return FALSE;
-		} else {
-			m = *m0 ;	/* pass the original to dummynet */
-			*m0 = NULL ;	/* and nothing back to the caller */
-		}
+		m = *m0;	/* pass the original to dummynet */
+		*m0 = NULL;	/* and nothing back to the caller */
 
 		ether_restore_header(&m, eh, &save_eh);
 		if (m == NULL)
@@ -697,7 +684,7 @@ ether_demux(struct ifnet *ifp, struct mbuf *m)
 
 post_stats:
 	if (IPFW_LOADED && ether_ipfw != 0) {
-		if (!ether_ipfw_chk(&m, NULL, &rule, eh, FALSE)) {
+		if (!ether_ipfw_chk(&m, NULL, &rule, eh)) {
 			m_freem(m);
 			return;
 		}
