@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.86 2007/08/30 20:41:00 pavalos Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.87 2008/03/20 03:59:10 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -734,6 +734,16 @@ loop:
 
 		nfound++;
 		if (p->p_stat == SZOMB) {
+			/*
+			 * We may go into SZOMB with threads still present.
+			 * We must wait for them to exit before we can reap
+			 * the master thread, otherwise we may race reaping
+			 * non-master threads.
+			 */
+			while (p->p_nthreads > 0) {
+				tsleep(&p->p_nthreads, 0, "lwpzomb", hz);
+			}
+
 			/*
 			 * Reap any LWPs left in p->p_lwps.  This is usually
 			 * just the last LWP.  This must be done before
