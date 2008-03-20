@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.13 2006/10/25 20:55:51 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.14 2008/03/20 21:25:30 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -106,7 +106,6 @@ static int
 isavga_probe(device_t dev)
 {
 	video_adapter_t adp;
-	device_t bus;
 	int error;
 
 	/* No pnp support */
@@ -116,7 +115,6 @@ isavga_probe(device_t dev)
 	device_set_desc(dev, "Generic ISA VGA");
 	error = vga_probe_unit(device_get_unit(dev), &adp, device_get_flags(dev));
 	if (error == 0) {
-		bus = device_get_parent(dev);
 		bus_set_resource(dev, SYS_RES_IOPORT, 0,
 				 adp.va_io_base, adp.va_io_size);
 		bus_set_resource(dev, SYS_RES_MEMORY, 0,
@@ -135,8 +133,6 @@ static int
 isavga_attach(device_t dev)
 {
 	vga_softc_t *sc;
-	struct resource *port;
-	struct resource *mem;
 	int unit;
 	int rid;
 	int error;
@@ -145,11 +141,11 @@ isavga_attach(device_t dev)
 	sc = device_get_softc(dev);
 
 	rid = 0;
-	port = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
-				  0, ~0, 0, RF_ACTIVE | RF_SHAREABLE);
+	bus_alloc_resource(dev, SYS_RES_IOPORT, &rid,
+			   0, ~0, 0, RF_ACTIVE | RF_SHAREABLE);
 	rid = 0;
-	mem = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
-				 0, ~0, 0, RF_ACTIVE | RF_SHAREABLE);
+	bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
+			   0, ~0, 0, RF_ACTIVE | RF_SHAREABLE);
 
 	error = vga_attach_unit(unit, sc, device_get_flags(dev));
 	if (error)
