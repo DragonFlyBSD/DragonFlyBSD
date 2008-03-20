@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.32 2007/03/20 00:54:26 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.33 2008/03/20 06:02:50 dillon Exp $
  */
 
 /*
@@ -395,8 +395,11 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 	 * Initiate I/O.  Bump the vm_page_t->busy counter and
 	 * mark the pages read-only.
 	 *
-	 * We do not have to fixup the clean/dirty bits here... we can
-	 * allow the pager to do it after the I/O completes.
+	 * We must make the pages read-only.  This will also force the
+	 * modified bit in the related pmaps to be cleared.  The pager
+	 * cannot clear the bit for us since the I/O completion code
+	 * typically runs from an interrupt.  The act of making the page
+	 * read-only handles the case for us.
 	 */
 
 	for (i = 0; i < count; i++) {

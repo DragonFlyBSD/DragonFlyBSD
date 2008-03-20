@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.27 2008/01/05 14:02:41 swildner Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.28 2008/03/20 06:02:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1699,10 +1699,6 @@ swp_pager_async_iodone(struct bio *bio)
 			}
 		} else if (bp->b_cmd == BUF_CMD_READ) {
 			/*
-			 * For read success, clear dirty bits.  Nobody should
-			 * have this page mapped but don't take any chances,
-			 * make sure the pmap modify bits are also cleared.
-			 *
 			 * NOTE: for reads, m->dirty will probably be 
 			 * overridden by the original caller of getpages so
 			 * we cannot set them in order to free the underlying
@@ -1722,7 +1718,12 @@ swp_pager_async_iodone(struct bio *bio)
 			 * valid bits here, it is up to the caller.
 			 */
 
-			pmap_clear_modify(m);
+			/* 
+			 * NOTE: can't call pmap_clear_modify(m) from an
+			 * interrupt thread, the pmap code may have to map
+			 * non-kernel pmaps and currently asserts the case.
+			 */
+			/*pmap_clear_modify(m);*/
 			m->valid = VM_PAGE_BITS_ALL;
 			vm_page_undirty(m);
 			vm_page_flag_clear(m, PG_ZERO);
@@ -1749,7 +1750,12 @@ swp_pager_async_iodone(struct bio *bio)
 			 * status, then finish the I/O ( which decrements the 
 			 * busy count and possibly wakes waiter's up ).
 			 */
-			pmap_clear_modify(m);
+			/* 
+			 * NOTE: can't call pmap_clear_modify(m) from an
+			 * interrupt thread, the pmap code may have to map
+			 * non-kernel pmaps and currently asserts the case.
+			 */
+			/*pmap_clear_modify(m);*/
 			vm_page_undirty(m);
 			vm_page_io_finish(m);
 			if (!vm_page_count_severe() || !vm_page_try_to_cache(m))
