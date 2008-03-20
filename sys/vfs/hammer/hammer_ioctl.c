@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.6 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.7 2008/03/20 06:08:40 dillon Exp $
  */
 
 #include "hammer.h"
@@ -134,6 +134,9 @@ retry:
 		prune->cur_obj_id = elm->base.obj_id;
 		prune->cur_key = elm->base.key;
 
+		if (prune->stat_oldest_tid > elm->leaf.base.create_tid)
+			prune->stat_oldest_tid = elm->leaf.base.create_tid;
+
 		if (check_prune(prune, elm, &realign_cre, &realign_del) == 0) {
 			if (hammer_debug_general & 0x0200) {
 				kprintf("check %016llx %016llx: DELETE\n",
@@ -173,6 +176,7 @@ retry:
 					elm->base.obj_id, elm->base.key);
 			}
 		}
+		error = hammer_signal_check(trans->hmp);
 		if (error == 0)
 			error = hammer_btree_iterate_reverse(&cursor);
 	}

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.31 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.32 2008/03/20 06:08:40 dillon Exp $
  */
 
 #include "hammer.h"
@@ -239,6 +239,7 @@ retry:
 	if (*errorp == 0) {
 		ip->ino_rec = cursor.record->inode;
 		ip->ino_data = cursor.data->inode;
+		ip->sync_tid = ip->ino_rec.base.base.create_tid;
 		hammer_cache_node(cursor.node, &ip->cache[0]);
 		if (cache)
 			hammer_cache_node(cursor.node, cache);
@@ -367,7 +368,6 @@ hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	struct hammer_cursor cursor;
 	hammer_record_t record;
 	int error;
-	hammer_tid_t last_tid;
 
 	/*
 	 * Locate the record on-disk and mark it as deleted.  Both the B-Tree
@@ -380,7 +380,6 @@ hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	 * XXX Update the inode record and data in-place if the retention
 	 * policy allows it.
 	 */
-	last_tid = ip->last_tid;
 retry:
 	error = 0;
 
@@ -399,7 +398,7 @@ retry:
 		error = hammer_btree_lookup(&cursor);
 
 		if (error == 0) {
-			error = hammer_ip_delete_record(&cursor, last_tid);
+			error = hammer_ip_delete_record(&cursor, trans->tid);
 			if (error == 0)
 				ip->flags |= HAMMER_INODE_DELONDISK;
 			hammer_cache_node(cursor.node, &ip->cache[0]);
@@ -420,7 +419,7 @@ retry:
 	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED) == 0) { 
 		record = hammer_alloc_mem_record(ip);
 		record->rec.inode = ip->ino_rec;
-		record->rec.inode.base.base.create_tid = last_tid;
+		record->rec.inode.base.base.create_tid = trans->tid;
 		record->rec.inode.base.data_len = sizeof(ip->ino_data);
 		record->data = (void *)&ip->ino_data;
 		error = hammer_ip_sync_record(trans, record);
@@ -443,6 +442,7 @@ retry:
 			 * we have written it out to disk.
 			 */
 			ip->flags &= ~HAMMER_INODE_TIDLOCKED;
+			ip->sync_tid = trans->tid;
 		}
 	}
 	return(error);
@@ -626,9 +626,10 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	hammer_lock_ex(&ip->lock);
 
 	/*
-	 * Use the transaction id of the last operation to sync.
+	 * Use the transaction id of the last operation to sync.  But we
+	 * can't reuse a previous sync TID.
 	 */
-	if (ip->last_tid)
+	if (ip->last_tid && ip->last_tid != ip->sync_tid)
 		hammer_start_transaction_tid(&trans, ip->hmp, ip->last_tid);
 	else
 		hammer_start_transaction(&trans, ip->hmp);

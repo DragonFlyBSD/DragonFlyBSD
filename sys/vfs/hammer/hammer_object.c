@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.36 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.37 2008/03/20 06:08:40 dillon Exp $
  */
 
 #include "hammer.h"
@@ -399,6 +399,11 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 	 *
 	 * We have to terminate the cursor before syncing the inode to
 	 * avoid deadlocking against ourselves.
+	 *
+	 * XXX we can't sync the inode here because the encompassing
+	 * transaction might be a rename and might update the inode
+	 * again with a new link.  That would force the delete_tid to be
+	 * the same as the create_tid and cause a panic.
 	 */
 	if (error == 0) {
 		--ip->ino_rec.ino_nlinks;
@@ -406,7 +411,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		if (ip->ino_rec.ino_nlinks == 0 &&
 		    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
 			hammer_done_cursor(cursor);
-			hammer_sync_inode(ip, MNT_NOWAIT, 1);
+			/*hammer_sync_inode(ip, MNT_NOWAIT, 1);*/
 		}
 
 	}
@@ -879,6 +884,8 @@ hammer_ip_first(hammer_cursor_t cursor, struct hammer_inode *ip)
 		error = hammer_btree_lookup(cursor);
 		if (error == ENOENT || error == EDEADLK) {
 			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+			if (hammer_debug_general & 0x2000)
+				kprintf("error %d node %p %016llx index %d\n", error, cursor->node, cursor->node->node_offset, cursor->index);
 			error = hammer_btree_iterate(cursor);
 		}
 		if (error && error != ENOENT) 
@@ -1294,6 +1301,13 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 			hammer_modify_node(cursor->trans, cursor->node,
 					   elm, sizeof(*elm));
 			elm->leaf.base.delete_tid = tid;
+
+			/*
+			 * An on-disk record cannot have the same delete_tid
+			 * as its create_tid.  In a chain of record updates
+			 * this could result in a duplicate record.
+			 */
+			KKASSERT(elm->leaf.base.delete_tid != elm->leaf.base.create_tid);
 			hammer_modify_buffer(cursor->trans, cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
 			cursor->record->base.base.delete_tid = tid;
 		}

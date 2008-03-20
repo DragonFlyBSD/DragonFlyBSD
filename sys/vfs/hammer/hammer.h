@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.41 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.42 2008/03/20 06:08:40 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -56,6 +56,7 @@
 #include <sys/globaldata.h>
 
 #include <sys/buf2.h>
+#include <sys/signal2.h>
 #include "hammer_disk.h"
 #include "hammer_mount.h"
 #include "hammer_ioctl.h"
@@ -162,6 +163,7 @@ struct hammer_inode {
 	u_int64_t	obj_id;		/* (key) object identifier */
 	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
 	hammer_tid_t	last_tid;	/* last modified tid (for fsync) */
+	hammer_tid_t	sync_tid;	/* last inode tid synced to disk */
 	struct hammer_mount *hmp;
 	int		flags;
 	struct vnode	*vp;
@@ -413,6 +415,7 @@ struct hammer_mount {
 	int	ronly;
 	int	nvolumes;
 	int	volume_iterator;
+	u_int	check_interrupt;
 	uuid_t	fsid;
 	udev_t	fsid_udev;
 	hammer_tid_t asof;
@@ -661,6 +664,7 @@ int hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 
 void hammer_init_holes(hammer_mount_t hmp, hammer_holes_t holes);
 void hammer_free_holes(hammer_mount_t hmp, hammer_holes_t holes);
+int hammer_signal_check(hammer_mount_t hmp);
 
 #endif
 

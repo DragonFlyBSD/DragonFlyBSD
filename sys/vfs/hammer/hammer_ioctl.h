@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.4 2008/03/18 05:19:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.5 2008/03/20 06:08:40 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -70,7 +70,8 @@ struct hammer_ioc_prune {
 	int64_t		stat_dirrecords; /* number of dir records pruned */
 	int64_t		stat_bytes;	 /* number of data bytes pruned */
 	int64_t		stat_realignments; /* number of raw records realigned */
-	int64_t		reserved02[7];
+	hammer_tid_t	stat_oldest_tid; /* oldest create_tid encountered */
+	int64_t		reserved02[6];
 	struct hammer_ioc_prune_elm elms[HAMMER_MAX_PRUNE_ELMS];
 };
 
