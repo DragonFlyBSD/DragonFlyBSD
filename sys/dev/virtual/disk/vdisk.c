@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.7 2007/07/02 17:15:10 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.8 2008/03/20 02:14:56 dillon Exp $
  */
 
 /*
@@ -47,6 +47,7 @@
 #include <sys/buf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
+#include <machine/cothread.h>
 #include <machine/md_var.h>
 
 #include <sys/buf2.h>
@@ -58,8 +59,9 @@ struct vkd_softc {
 	struct bio_queue_head bio_queue;
 	struct devstat stats;
 	struct disk disk;
-	struct spinlock spin;
-	thread_t iotd;		/* dedicated io thread */
+	cothread_t	cotd;
+	TAILQ_HEAD(, bio) cotd_queue;
+	TAILQ_HEAD(, bio) cotd_done;
 	cdev_t dev;
 	int unit;
 	int fd;
@@ -67,7 +69,8 @@ struct vkd_softc {
 
 #define CDEV_MAJOR	97
 
-static void vkd_io_thread(void *arg);
+static void vkd_io_thread(cothread_t cotd);
+static void vkd_io_intr(cothread_t cotd);
 static void vkd_doio(struct vkd_softc *sc, struct bio *bio);
 
 static d_strategy_t	vkdstrategy;
@@ -102,7 +105,6 @@ vkdinit(void *dummy __unused)
 		sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 		sc->unit = dsk->unit;
 		sc->fd = dsk->fd;
-		spin_init(&sc->spin);
 		bioq_init(&sc->bio_queue);
 		devstat_add_entry(&sc->stats, "vkd", sc->unit, DEV_BSIZE,
 				  DEVSTAT_NO_ORDERED_TAGS,
@@ -111,12 +113,11 @@ vkdinit(void *dummy __unused)
 		sc->dev = disk_create(sc->unit, &sc->disk, &vkd_ops);
 		sc->dev->si_drv1 = sc;
 		sc->dev->si_iosize_max = 256 * 1024;
-		if (ncpus > 2) {
-			int xcpu = ncpus - 1;
-			lwkt_create(vkd_io_thread, sc, &sc->iotd, NULL, 
-				    0, xcpu, "vkd%d-io", sc->unit);
-			usched_mastermask &= ~(1 << xcpu);
-		}
+
+		TAILQ_INIT(&sc->cotd_queue);
+		TAILQ_INIT(&sc->cotd_done);
+		sc->cotd = cothread_create(vkd_io_thread, vkd_io_intr, sc, 
+					   "vkd");
 	}
 }
 
@@ -158,52 +159,66 @@ vkdstrategy(struct dev_strategy_args *ap)
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
 
-	if (sc->iotd) {
-		spin_lock_wr(&sc->spin);
-		bioqdisksort(&sc->bio_queue, bio);
-		spin_unlock_wr(&sc->spin);
-		wakeup(sc->iotd);
-	} else {
-		bioqdisksort(&sc->bio_queue, bio);
-		while ((bio = bioq_first(&sc->bio_queue)) != NULL) {
-			bioq_remove(&sc->bio_queue, bio);
-			vkd_doio(sc, bio);
-			biodone(bio);
-		}
-	}
+	devstat_start_transaction(&sc->stats);
+	cothread_lock(sc->cotd);
+	TAILQ_INSERT_TAIL(&sc->cotd_queue, bio, bio_act);
+	cothread_signal(sc->cotd);
+	cothread_unlock(sc->cotd);
+
 	return(0);
 }
 
 static
 void
-vkd_io_thread(void *arg)
+vkd_io_intr(cothread_t cotd)
+{
+	struct vkd_softc *sc;
+	struct bio *bio;
+
+	sc = cotd->arg;
+
+	cothread_lock(cotd);
+	while (!TAILQ_EMPTY(&sc->cotd_done)) {
+		bio = TAILQ_FIRST(&sc->cotd_done);
+		TAILQ_REMOVE(&sc->cotd_done, bio, bio_act);
+		devstat_end_transaction_buf(&sc->stats, bio->bio_buf);
+		biodone(bio);
+	}
+	cothread_unlock(sc->cotd);
+}
+
+/*
+ * WARNING!  This runs as a cothread and has no access to mycpu nor can it
+ * make vkernel-specific calls other then cothread_*() calls.
+ */
+static
+void
+vkd_io_thread(cothread_t cotd)
 {
 	struct bio *bio;
-	struct vkd_softc *sc;
-	int count = 0;
+	struct vkd_softc *sc = cotd->arg;
+	int count;
 
-	rel_mplock();
-	sc = arg;
-
-	kprintf("vkd%d I/O helper on cpu %d\n", sc->unit, mycpu->gd_cpuid);
-
-	spin_lock_wr(&sc->spin);
+	cothread_lock(cotd);
 	for (;;) {
-		while ((bio = bioq_first(&sc->bio_queue)) != NULL) {
-			bioq_remove(&sc->bio_queue, bio);
-			spin_unlock_wr(&sc->spin);
+		cothread_wait(cotd);	/* interlocks cothread lock */
+		count = 0;
+		while ((bio = TAILQ_FIRST(&sc->cotd_queue)) != NULL) {
+			TAILQ_REMOVE(&sc->cotd_queue, bio, bio_act);
+			cothread_unlock(cotd);
 			vkd_doio(sc, bio);
-			get_mplock();
-			biodone(bio);
-			rel_mplock();
-			if ((++count & 3) == 0)
-				lwkt_switch();
-			spin_lock_wr(&sc->spin);
+			cothread_lock(cotd);
+			TAILQ_INSERT_TAIL(&sc->cotd_done, bio, bio_act);
+			if (++count == 8) {
+				cothread_intr(cotd);
+				count = 0;
+			}
 		}
-		msleep(sc->iotd, &sc->spin, 0, "bioq", 0);
+		if (count)
+			cothread_intr(cotd);
 	}
-	/* not reached */
-	spin_unlock_wr(&sc->spin);
+	/* NOT REACHED */
+	cothread_unlock(cotd);
 }
 
 static
@@ -212,8 +227,6 @@ vkd_doio(struct vkd_softc *sc, struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
 	int n;
-
-	devstat_start_transaction(&sc->stats);
 
 	switch(bp->b_cmd) {
 	case BUF_CMD_READ:
@@ -233,6 +246,5 @@ vkd_doio(struct vkd_softc *sc, struct bio *bio)
 	}
 		
 	bp->b_resid = bp->b_bcount - n;
-	devstat_end_transaction_buf(&sc->stats, bp);
 }
 

@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.9 2007/11/26 03:57:58 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.10 2008/03/20 02:14:53 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -87,6 +87,20 @@ ipisig(int nada, siginfo_t *info, void *ctxp)
 
 #endif
 
+#if 0
+
+/*
+ * SIGIO is used by cothreads to signal back into the virtual kernel.
+ */
+static
+void
+iosig(int nada, siginfo_t *info, void *ctxp)
+{
+	signalintr(4);
+}
+
+#endif
+
 void
 init_exceptions(void)
 {
@@ -107,6 +121,10 @@ init_exceptions(void)
 #ifdef SMP
 	sa.sa_sigaction = ipisig;
 	sigaction(SIGUSR1, &sa, NULL);
+#endif
+#if 0
+	sa.sa_sigaction = iosig;
+	sigaction(SIGIO, &sa, NULL);
 #endif
 }
 

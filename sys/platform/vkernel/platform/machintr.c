@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.15 2007/08/15 03:10:50 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.16 2008/03/20 02:14:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -176,6 +176,19 @@ cpu_disable_intr(void)
 
 void
 cpu_enable_intr(void)
+{
+	sigsetmask(0);
+}
+
+void
+cpu_mask_all_signals(void)
+{
+	sigblock(sigmask(SIGALRM)|sigmask(SIGIO)|sigmask(SIGQUIT)|
+		 sigmask(SIGUSR1));
+}
+
+void
+cpu_unmask_all_signals(void)
 {
 	sigsetmask(0);
 }
