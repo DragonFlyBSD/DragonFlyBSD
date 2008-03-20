@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.11 2008/03/19 20:18:15 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.12 2008/03/20 04:03:03 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,6 +42,7 @@ static void usage(int exit_code);
 
 int RecurseOpt;
 int VerboseOpt;
+const char *LinkPath;
 
 int
 main(int ac, char **av)
@@ -51,7 +52,7 @@ main(int ac, char **av)
 	u_int32_t status;
 	char *blkdevs = NULL;
 
-	while ((ch = getopt(ac, av, "hf:rv")) != -1) {
+	while ((ch = getopt(ac, av, "hf:rs:v")) != -1) {
 		switch(ch) {
 		case 'h':
 			usage(0);
@@ -61,6 +62,9 @@ main(int ac, char **av)
 			break;
 		case 'f':
 			blkdevs = optarg;
+			break;
+		case 's':
+			LinkPath = optarg;
 			break;
 		case 'v':
 			++VerboseOpt;
@@ -246,8 +250,10 @@ usage(int exit_code)
 		"hammer -h\n"
 		"hammer now\n"
 		"hammer stamp <time>\n"
-		"hammer prune <filesystem> [using <configfile>]\n"
-		"hammer prune <filesystem> from <modulo_time> to <modulo_time> every <modulo_time>\n"
+		"hammer [-s linkpath] prune <filesystem> [using <configfile>]\n"
+		"hammer [-s linkpath] prune <filesystem> from <modulo_time> to "
+				"<modulo_time> every <modulo_time>\n"
+		"hammer prune <filesystem> everything\n"
 		"hammer reblock <filesystem> [compact%%] (default 90%%)\n"
 		"hammer history[@offset[,len]] <file-1>...<file-N>\n"
 		"hammer -f blkdevs [-r] show\n"

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.8 2008/03/18 05:21:53 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.9 2008/03/20 04:03:03 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -51,12 +51,14 @@
 #include <assert.h>
 #include <err.h>
 #include <ctype.h>
+#include <dirent.h>
 
 #include "hammer_util.h"
 #include <vfs/hammer/hammer_ioctl.h>
 
 extern int RecurseOpt;
 extern int VerboseOpt;
+extern const char *LinkPath;
 
 void hammer_cmd_show(hammer_tid_t node_offset, int depth,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound);

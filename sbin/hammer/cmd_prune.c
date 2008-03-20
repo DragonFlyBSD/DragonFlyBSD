@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.3 2008/02/06 09:00:28 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.4 2008/03/20 04:03:03 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,6 +42,10 @@ static void hammer_prune_load_file(hammer_tid_t now_tid,
 static int hammer_prune_parse_line(hammer_tid_t now_tid,
 			struct hammer_ioc_prune *prune,
 			const char *filesystem, char **av, int ac);
+static void hammer_prune_create_links(const char *filesystem,
+			struct hammer_ioc_prune *prune);
+static void hammer_prune_make_softlink(const char *filesystem,
+			hammer_tid_t tid);
 static int parse_modulo_time(const char *str, u_int64_t *delta);
 static char *tid_to_stamp_str(hammer_tid_t tid);
 static void prune_usage(int code);
@@ -64,6 +68,7 @@ hammer_cmd_prune(char **av, int ac)
 	prune.end_obj_id = HAMMER_MAX_OBJID;
 	prune.cur_obj_id = prune.end_obj_id;	/* reverse scan */
 	prune.cur_key = HAMMER_MAX_KEY;
+	prune.stat_oldest_tid = HAMMER_MAX_TID;
 
 	if (ac == 0)
 		prune_usage(1);
@@ -93,6 +98,8 @@ hammer_cmd_prune(char **av, int ac)
 	else
 		printf("Prune %s succeeded\n", filesystem);
 	close(fd);
+	if (LinkPath)
+		hammer_prune_create_links(filesystem, &prune);
 	printf("Pruned %lld records (%lld directory entries) and %lld bytes\n",
 		prune.stat_rawrecords,
 		prune.stat_dirrecords,
@@ -242,6 +249,79 @@ hammer_prune_parse_line(hammer_tid_t now_tid, struct hammer_ioc_prune *prune,
 	free(from_stamp_str);
 	free(to_stamp_str);
 	return(0);
+}
+
+/*
+ * Create softlinks in the form $linkpath/snap_ddmmmyyyy[_hhmmss]
+ */
+static void
+hammer_prune_create_links(const char *filesystem,
+			  struct hammer_ioc_prune *prune)
+{
+	struct hammer_ioc_prune_elm *elm;
+	hammer_tid_t tid;
+	struct dirent *den;
+	char *path;
+	DIR *dir;
+
+	if ((dir = opendir(LinkPath)) == NULL) {
+		fprintf(stderr, "Unable to access linkpath %s\n", LinkPath);
+		return;
+	}
+	while ((den = readdir(dir)) != NULL) {
+		if (strncmp(den->d_name, "snap-", 5) == 0) {
+			asprintf(&path, "%s/%s", LinkPath, den->d_name);
+			remove(path);
+			free(path);
+		}
+	}
+	closedir(dir);
+
+	for (elm = &prune->elms[0]; elm < &prune->elms[prune->nelms]; ++elm) {
+		for (tid = elm->beg_tid;
+		     tid < elm->end_tid;
+		     tid += elm->mod_tid) {
+			if (tid < prune->stat_oldest_tid)
+				continue;
+			hammer_prune_make_softlink(filesystem, tid);
+		}
+	}
+}
+
+static void
+hammer_prune_make_softlink(const char *filesystem, hammer_tid_t tid)
+{
+	struct tm *tp;
+	char *path;
+	char *target;
+	char buf[64];
+	time_t t;
+
+	t = (time_t)(tid / 1000000000);
+	tp = localtime(&t);
+
+	/*
+	 * Construct the contents of the softlink.
+	 */
+	asprintf(&target, "%s/@@0x%016llx", filesystem, tid);
+
+	/*
+	 * Construct the name of the snap-shot softlink
+	 */
+	if (tid % (1000000000ULL * 60 * 60 * 24) == 0) {
+		strftime(buf, sizeof(buf), "snap-%d%b%Y", tp);
+	} else if (tid % (1000000000ULL * 60 * 60) == 0) {
+		strftime(buf, sizeof(buf), "snap-%d%b%Y_%H", tp);
+	} else if (tid % (1000000000ULL * 60) == 0) {
+		strftime(buf, sizeof(buf), "snap-%d%b%Y_%H%M", tp);
+	} else {
+		strftime(buf, sizeof(buf), "snap-%d%b%Y_%H%M%S", tp);
+	}
+
+	asprintf(&path, "%s/%s", LinkPath, buf);
+	symlink(target, path);
+	free(path);
+	free(target);
 }
 
 static
