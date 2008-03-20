@@ -1,8 +1,10 @@
 Original source can be obtained from:
-http://www.bzip.org/1.0.4/bzip2-1.0.4.tar.gz
-MD5 (bzip2-1.0.4.tar.gz) = fc310b254f6ba5fbb5da018f04533688
+http://www.bzip.org/
 
 The file README.DELETED contains a list of deleted files.
+
+cvs hint:
+cvs import src/contrib/bzip2-1.0 BZIP v1_0_?
 
 This is used by:
 lib/libbz2/
