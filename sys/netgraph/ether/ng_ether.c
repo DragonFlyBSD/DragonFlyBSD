@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.14 2008/03/19 14:46:03 sephe Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.15 2008/03/20 12:55:32 sephe Exp $
  */
 
 /*
@@ -622,27 +622,24 @@ static int
 ng_ether_rcv_upper(node_p node, struct mbuf *m, meta_p meta)
 {
 	const priv_p priv = node->private;
-	struct ether_header *eh;
 
 	/* Discard meta info */
 	NG_FREE_META(meta);
 
 	/* Check length and pull off header */
-	if (m->m_pkthdr.len < sizeof(*eh)) {
+	if (m->m_pkthdr.len < ETHER_HDR_LEN) {
 		m_freem(m);
 		return (EINVAL);
 	}
-	if (m->m_len < sizeof(*eh) && (m = m_pullup(m, sizeof(*eh))) == NULL)
+	if (m->m_len < ETHER_HDR_LEN &&
+	    (m = m_pullup(m, ETHER_HDR_LEN)) == NULL)
 		return (ENOBUFS);
-	eh = mtod(m, struct ether_header *);
-	m->m_data += sizeof(*eh);
-	m->m_len -= sizeof(*eh);
-	m->m_pkthdr.len -= sizeof(*eh);
+
 	m->m_pkthdr.rcvif = priv->ifp;
 
 	/* Route packet back in */
 	lwkt_serialize_enter(priv->ifp->if_serializer);
-	ether_demux(priv->ifp, eh, m);
+	ether_demux(priv->ifp, m);
 	lwkt_serialize_exit(priv->ifp->if_serializer);
 	return (0);
 }

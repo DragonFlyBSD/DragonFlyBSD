@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.4 2007/11/18 13:00:28 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.5 2008/03/20 12:55:32 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -379,7 +379,6 @@ ip_dn_ether_demux(struct netmsg *nmsg)
 	struct mbuf *m;
 	struct m_tag *mtag;
 	struct dn_pkt *pkt;
-	struct ether_header *eh;
 	ip_dn_unref_priv_t unref_priv;
 	void *priv;
 
@@ -406,18 +405,15 @@ ip_dn_ether_demux(struct netmsg *nmsg)
 	priv = pkt->dn_priv;
 	unref_priv = pkt->dn_unref_priv;
 
+	/*
+	 * Make sure that ether header is contiguous
+	 */
 	if (m->m_len < ETHER_HDR_LEN &&
 	    (m = m_pullup(m, ETHER_HDR_LEN)) == NULL) {
 		kprintf("%s: pullup fail, dropping pkt\n", __func__);
 		goto back;
 	}
-
-	/*
-	 * Same as ether_input, make eh be a pointer into the mbuf
-	 */
-	eh = mtod(m, struct ether_header *);
-	m_adj(m, ETHER_HDR_LEN);
-	ether_demux(NULL, eh, m);
+	ether_demux(NULL, m);
 back:
 	if (unref_priv)
 		unref_priv(priv);
