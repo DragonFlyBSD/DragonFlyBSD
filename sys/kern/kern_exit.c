@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.87 2008/03/20 03:59:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.88 2008/03/21 19:42:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -232,13 +232,18 @@ killlwps(struct lwp *lp)
 	struct lwp *tlp;
 
 	/*
-	 * Kill the remaining LWPs, interlock with LWP_WEXIT.
+	 * Kill the remaining LWPs.  We must send the signal before setting
+	 * LWP_WEXIT.  The setting of WEXIT is optional but helps reduce
+	 * races.  tlp must be held across the call as it might block and
+	 * allow the target lwp to rip itself out from under our loop.
 	 */
 	FOREACH_LWP_IN_PROC(tlp, p) {
+		LWPHOLD(tlp);
 		if ((tlp->lwp_flag & LWP_WEXIT) == 0) {
 			lwpsignal(p, tlp, SIGKILL);
 			tlp->lwp_flag |= LWP_WEXIT;
 		}
+		LWPRELE(tlp);
 	}
 
 	/*
