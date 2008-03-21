@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.26 2007/08/15 03:15:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.27 2008/03/21 00:40:33 swildner Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -543,52 +543,6 @@ get_ptbase2(struct pmap *pmap, vm_offset_t va)
 	*gd->gd_PT2pde = pmap->pm_pdirpte;
 	madvise(gd->gd_PT2map, SEG_SIZE, MADV_INVAL);
 	return(gd->gd_PT2map + (va >> PAGE_SHIFT));
-}
-
-/*
- * When removing a page directory the related VA range in the self-mapping
- * of the page table must be invalidated.
- */
-static void
-inval_ptbase_pagedir(pmap_t pmap, vm_pindex_t pindex)
-{
-	struct mdglobaldata *gd = mdcpu;
-	vm_offset_t va;
-
-	if (pmap == &kernel_pmap) {
-		va = (vm_offset_t)KernelPTA + (pindex << PAGE_SHIFT);
-		madvise((void *)va, PAGE_SIZE, MADV_INVAL);
-	} else {
-		/*
-		 * XXX this should not strictly be needed because the page
-		 * dir should alread be invalidated.  test and remove
-		 */
-		va = (vm_offset_t)pindex << PAGE_SHIFT;
-		vmspace_mcontrol(pmap, (void *)va, SEG_SIZE, MADV_INVAL, 0);
-	}
-
-	/*
-	 * Do a selective invalidation if we have a valid cache of this
-	 * page table.
-	 */
-	if (pmap->pm_cpucachemask & gd->mi.gd_cpumask) {
-		if (pmap->pm_pdir == gd->gd_PT1pdir) {
-			va = (vm_offset_t)gd->gd_PT1map +
-				(pindex << PAGE_SHIFT);
-			madvise((void *)va, PAGE_SIZE, MADV_INVAL);
-		}
-		if (pmap->pm_pdir == gd->gd_PT2pdir) {
-			va = (vm_offset_t)gd->gd_PT2map +
-				(pindex << PAGE_SHIFT);
-			madvise((void *)va, PAGE_SIZE, MADV_INVAL);
-		}
-	}
-
-	/*
-	 * Invalidate any other cpu's cache mappings of this page table,
-	 * leaving only ours.
-	 */
-	atomic_clear_int(&pmap->pm_cpucachemask, gd->gd_other_cpus);
 }
 
 /*
