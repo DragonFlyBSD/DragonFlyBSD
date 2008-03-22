@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.18 2006/09/21 04:09:28 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.19 2008/03/22 18:09:16 dillon Exp $
  */
 
 /*-
@@ -98,6 +98,7 @@ int AddList(List *list, const char *name, int n);
 static struct hlink *hltlookup(struct stat *);
 static struct hlink *hltadd(struct stat *, const char *);
 static char *checkHLPath(struct stat *st, const char *spath, const char *dpath);
+static int validate_check(const char *spath, const char *dpath);
 static int shash(const char *s);
 static void hltdelete(struct hlink *);
 int YesNo(const char *path);
@@ -119,6 +120,7 @@ int SummaryOpt;
 int SlaveOpt;
 int EnableDirectoryRetries;
 int DstBaseLen;
+int ValidateOpt;
 char IOBuf1[65536];
 char IOBuf2[65536];
 const char *UseCpFile;
@@ -129,9 +131,11 @@ const char *FSMIDCacheFile;
 int64_t CountSourceBytes;
 int64_t CountSourceItems;
 int64_t CountCopiedItems;
-int64_t CountReadBytes;
+int64_t CountSourceReadBytes;
+int64_t CountTargetReadBytes;
 int64_t CountWriteBytes;
 int64_t CountRemovedItems;
+int64_t CountLinkedItems;
 
 struct HostConf SrcHost;
 struct HostConf DstHost;
@@ -177,6 +181,9 @@ main(int ac, char **av)
 	    }
 	    if (*ptr >= '0' && *ptr <= '9')
 		VerboseOpt = strtol(ptr, NULL, 0);
+	    break;
+	case 'V':
+	    ValidateOpt = v;
 	    break;
 	case 'I':
 	    SummaryOpt = v;
@@ -298,28 +305,35 @@ main(int ac, char **av)
 	struct timeval end;
 
 	gettimeofday(&end, NULL);
+#if 0
+	/* don't count stat's in our byte statistics */
 	CountSourceBytes += sizeof(struct stat) * CountSourceItems;
-	CountReadBytes += sizeof(struct stat) * CountSourceItems;
+	CountSourceReadBytes += sizeof(struct stat) * CountSourceItems;
 	CountWriteBytes +=  sizeof(struct stat) * CountCopiedItems;
 	CountWriteBytes +=  sizeof(struct stat) * CountRemovedItems;
+#endif
 
 	duration = end.tv_sec - start.tv_sec;
 	duration *= 1000000;
 	duration += end.tv_usec - start.tv_usec;
 	if (duration == 0) duration = 1;
 	logstd("cpdup completed successfully\n");
-	logstd("%lld bytes source %lld bytes read %lld bytes written (%.1fX speedup)\n",
+	logstd("%lld bytes source, %lld src bytes read, %lld tgt bytes read\n"
+	       "%lld bytes written (%.1fX speedup)\n",
 	    (long long)CountSourceBytes,
-	    (long long)CountReadBytes,
+	    (long long)CountSourceReadBytes,
+	    (long long)CountTargetReadBytes,
 	    (long long)CountWriteBytes,
-	    ((double)CountSourceBytes * 2.0) / ((double)(CountReadBytes + CountWriteBytes)));
- 	logstd("%lld source items %lld items copied %lld things deleted\n",
+	    ((double)CountSourceBytes * 2.0) / ((double)(CountSourceReadBytes + CountTargetReadBytes + CountWriteBytes)));
+ 	logstd("%lld source items, %lld items copied, %lld items linked, "
+	       "%lld things deleted\n",
 	    (long long)CountSourceItems,
 	    (long long)CountCopiedItems,
+	    (long long)CountLinkedItems,
 	    (long long)CountRemovedItems);
 	logstd("%.1f seconds %5d Kbytes/sec synced %5d Kbytes/sec scanned\n",
 	    (float)duration / (float)1000000,
-	    (long)((long)1000000 * (CountReadBytes + CountWriteBytes) / duration  / 1024.0),
+	    (long)((long)1000000 * (CountSourceReadBytes + CountTargetReadBytes + CountWriteBytes) / duration  / 1024.0),
 	    (long)((long)1000000 * CountSourceBytes / duration / 1024.0));
     }
     exit((i == 0) ? 0 : 1);
@@ -395,9 +409,7 @@ checkHLPath(struct stat *st1, const char *spath, const char *dpath)
 {
     struct stat sthl;
     char *hpath;
-    int fd1;
-    int fd2;
-    int good;
+    int error;
 
     asprintf(&hpath, "%s%s", UseHLPath, dpath + DstBaseLen);
 
@@ -415,35 +427,55 @@ checkHLPath(struct stat *st1, const char *spath, const char *dpath)
     }
 
     /*
-     * If ForceOpt is set we have to compare the files
+     * If ForceOpt or ValidateOpt is set we have to compare the files
      */
-    if (ForceOpt) {
-	fd1 = hc_open(&SrcHost, spath, O_RDONLY, 0);
-	fd2 = hc_open(&DstHost, hpath, O_RDONLY, 0);
-	good = 0;
-
-	if (fd1 >= 0 && fd2 >= 0) {
-	    int n;
-
-	    while ((n = hc_read(&SrcHost, fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
-		if (hc_read(&DstHost, fd2, IOBuf2, sizeof(IOBuf2)) != n)
-		    break;
-		if (bcmp(IOBuf1, IOBuf2, n) != 0)
-		    break;
-	    }
-	    if (n == 0)
-		good = 1;
-	}
-	if (fd1 >= 0)
-	    hc_close(&SrcHost, fd1);
-	if (fd2 >= 0)
-	    hc_close(&DstHost, fd2);
-	if (good == 0) {
+    if (ForceOpt || ValidateOpt) {
+	error = validate_check(spath, hpath);
+	if (error) {
 	    free(hpath);
 	    hpath = NULL;
 	}
     }
     return(hpath);
+}
+
+/*
+ * Return 0 if the contents of the file <spath> matches the contents of
+ * the file <dpath>.
+ */
+static int
+validate_check(const char *spath, const char *dpath)
+{
+    int error;
+    int fd1;
+    int fd2;
+
+    fd1 = hc_open(&SrcHost, spath, O_RDONLY, 0);
+    fd2 = hc_open(&DstHost, dpath, O_RDONLY, 0);
+    error = -1;
+
+    if (fd1 >= 0 && fd2 >= 0) {
+	int n;
+	int x;
+
+	while ((n = hc_read(&SrcHost, fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
+	    CountSourceReadBytes += n;
+	    x = hc_read(&DstHost, fd2, IOBuf2, sizeof(IOBuf2));
+	    if (x > 0)
+		    CountTargetReadBytes += x;
+	    if (x != n)
+		break;
+	    if (bcmp(IOBuf1, IOBuf2, n) != 0)
+		break;
+	}
+	if (n == 0)
+	    error = 0;
+    }
+    if (fd1 >= 0)
+	hc_close(&SrcHost, fd1);
+    if (fd2 >= 0)
+	hc_close(&DstHost, fd2);
+    return (error);
 }
 
 int
@@ -469,9 +501,7 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	st2Valid = 1;
 
     if (S_ISREG(st1.st_mode)) {
-	size = st1.st_blocks * 512;
-	if (st1.st_size % 512) 
-	    size += st1.st_size % 512 - 512;
+	size = st1.st_size;
     }
 
     /*
@@ -584,11 +614,15 @@ relink:
 		st1.st_gid == st2.st_gid &&
 		st1.st_mtime == st2.st_mtime
 #ifndef NOMD5
-		&& (UseMD5Opt == 0 || (mres = md5_check(spath, dpath)) == 0)
+		&& (UseMD5Opt == 0 || !S_ISREG(st1.st_mode) ||
+		    (mres = md5_check(spath, dpath)) == 0)
 #endif
 #ifdef _ST_FSMID_PRESENT_
-		&& (UseFSMIDOpt == 0 || (fres = fsmid_check(st1.st_fsmid, dpath)) == 0)
+		&& (UseFSMIDOpt == 0 ||
+		    (fres = fsmid_check(st1.st_fsmid, dpath)) == 0)
 #endif
+		&& (ValidateOpt == 0 || !S_ISREG(st1.st_mode) ||
+		    validate_check(spath, dpath) == 0)
 	    ) {
                 if (hln)
                     hln->dino = st2.st_ino;
@@ -600,6 +634,8 @@ relink:
 #endif
 		    if (UseFSMIDOpt)
 			logstd("%-32s fsmid-nochange\n", (dpath ? dpath : spath));
+		    else if (ValidateOpt)
+			logstd("%-32s nochange (contents validated)\n", (dpath ? dpath : spath));
 		    else
 			logstd("%-32s nochange\n", (dpath ? dpath : spath));
 		}
@@ -701,7 +737,7 @@ relink:
 		if ((fi = fopen(fpath, "r")) != NULL) {
 		    while (fgets(buf, sizeof(buf), fi) != NULL) {
 			int l = strlen(buf);
-			CountReadBytes += l;
+			CountSourceReadBytes += l;
 			if (l && buf[l-1] == '\n')
 			    buf[--l] = 0;
 			if (buf[0] && buf[0] != '#')
@@ -866,6 +902,7 @@ relink:
 		if (st2Valid)
 			hc_remove(&DstHost, dpath);
 		if (hc_link(&DstHost, hpath, dpath) == 0) {
+			++CountLinkedItems;
 			if (VerboseOpt) {
 			    logstd("%-32s hardlinked(-H)\n",
 				   (dpath ? dpath : spath));
@@ -930,7 +967,7 @@ relink:
 			    hc_chflags(&DstHost, dpath, st1.st_flags);
 #endif
 		    }
-		    CountReadBytes += size;
+		    CountSourceReadBytes += size;
 		    CountWriteBytes += size;
 		    CountSourceBytes += size;
 		    CountSourceItems++;
@@ -1009,8 +1046,9 @@ skip_copy:
 		    logstd("%-32s nochange\n", (dpath ? dpath : spath));
 	    }
 	    CountSourceBytes += n1;
-	    CountReadBytes += n1;
-	    if (n2 > 0) CountReadBytes += n2;
+	    CountSourceReadBytes += n1;
+	    if (n2 > 0) 
+		CountTargetReadBytes += n2;
 	    CountSourceItems++;
 	} else {
 	    r = 1;
@@ -1335,6 +1373,8 @@ xlink(const char *src, const char *dst, u_long flags)
 	errno = e;
 #endif
     }
+    if (r == 0)
+	    ++CountLinkedItems;
     return(r);
 }
 

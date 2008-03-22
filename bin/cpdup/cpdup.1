@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.25 2007/12/23 15:31:28 swildner Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.26 2008/03/22 18:09:16 dillon Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os
@@ -30,6 +30,7 @@
 .Fl M
 .Ar file
 .Oc
+.Op Fl V
 .Op Fl S
 .Op Fl k
 .Oo
@@ -121,8 +122,8 @@ to the target instead of copying the source to the target if the file found
 via
 .Ar path
 is identical to the source.
-Note that a remote host specification should not be used in this option,
-but the path will be relative to the target machine.
+Note that a remote host specification should not be used for this option's
+path, but the path will be relative to the target machine.
 .Pp
 This allows one to use
 .Nm
@@ -145,10 +146,25 @@ WARNING: If this option is used
 .Nm
 must record the paths for all files it encounters while it operates
 and it is possible that you may run the process out of memory.
+.Pp
+The file found vi the hardlink path will be byte-by-byte compared with the
+source if the
+.Fl V
+or
+.Fl f
+option is also used, otherwise only the stat info is checked to determine
+whether it matches the source.
 .It Fl M Ar file
 Works the same as
 .Fl m
 but allows you to specify the name of the MD5 checkfile.
+.It Fl V
+This forces the contents of regular files to be verified, even if the
+files appear to the be the same.  Whereas the
+.Fl f
+(force) option forces a copy regardless, this option will avoid rewriting
+the target if everything matches and the contents are verified to be the
+same.
 .It Fl S
 This places
 .Nm

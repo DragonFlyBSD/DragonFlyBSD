@@ -1,7 +1,7 @@
 /*
  * CPDUP.H
  *
- * $DragonFly: src/bin/cpdup/cpdup.h,v 1.5 2006/08/18 01:13:51 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.h,v 1.6 2008/03/22 18:09:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,8 @@ extern int SummaryOpt;
 extern int64_t CountSourceBytes;
 extern int64_t CountSourceItems;
 extern int64_t CountCopiedItems;
-extern int64_t CountReadBytes;
+extern int64_t CountSourceReadBytes;
+extern int64_t CountTargetReadBytes;
 extern int64_t CountWriteBytes;
 extern int64_t CountRemovedItems;
 

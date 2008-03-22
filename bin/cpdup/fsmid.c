@@ -4,7 +4,7 @@
  * (c) Copyright 1997-1999,2006 by Matthew Dillon.  Permission to
  *     use and distribute based on the FreeBSD copyright.
  *
- * $DragonFly: src/bin/cpdup/fsmid.c,v 1.1 2006/04/25 21:30:45 dillon Exp $
+ * $DragonFly: src/bin/cpdup/fsmid.c,v 1.2 2008/03/22 18:09:16 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -122,7 +122,7 @@ fsmid_cache(const char *dpath, int ddirlen)
 	     * extracting fid_Name - name may contain embedded control 
 	     * characters.
 	     */
-	    CountReadBytes += nlen+1;
+	    CountSourceReadBytes += nlen+1;
 	    node->fid_Name = fextract(fi, nlen, &c, EOF);
 	    if (c != '\n') {
 		fprintf(stderr, "Error parsing FSMID Cache: %s (%c)\n", FSMIDDCache, c);
