@@ -93,7 +93,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_msk.c,v 1.26 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.1 2007/12/26 14:02:36 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.2 2008/03/22 07:07:34 sephe Exp $ */
 
 /*
  * Device driver for the Marvell Yukon II Ethernet controller.
@@ -210,12 +210,17 @@ static int	mskc_resume(device_t);
 static void	mskc_intr(void *);
 
 static void	mskc_reset(struct msk_softc *);
+static void	mskc_set_imtimer(struct msk_softc *);
 static void	mskc_intr_hwerr(struct msk_softc *);
 static int	mskc_handle_events(struct msk_softc *);
 static void	mskc_phy_power(struct msk_softc *, int);
 static int	mskc_setup_rambuffer(struct msk_softc *);
 static int	mskc_status_dma_alloc(struct msk_softc *);
 static void	mskc_status_dma_free(struct msk_softc *);
+static int	mskc_sysctl_proc_limit(SYSCTL_HANDLER_ARGS);
+static int	mskc_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
+
+static int	sysctl_int_range(SYSCTL_HANDLER_ARGS, int, int);
 
 static int	msk_probe(device_t);
 static int	msk_attach(device_t);
@@ -273,11 +278,6 @@ static void	msk_setmulti(struct msk_if_softc *);
 static void	msk_setvlan(struct msk_if_softc *, struct ifnet *);
 static void	msk_setpromisc(struct msk_if_softc *);
 
-#ifdef notyet
-static int sysctl_int_range(SYSCTL_HANDLER_ARGS, int, int);
-static int sysctl_hw_msk_proc_limit(SYSCTL_HANDLER_ARGS);
-#endif
-
 static int	msk_dmamem_create(device_t, bus_size_t, bus_dma_tag_t *,
 				  void **, bus_addr_t *, bus_dmamap_t *);
 static void	msk_dmamem_destroy(bus_dma_tag_t, void *, bus_dmamap_t);
@@ -327,6 +327,12 @@ DECLARE_DUMMY_MODULE(if_msk);
 DRIVER_MODULE(if_msk, pci, mskc_driver, mskc_devclass, 0, 0);
 DRIVER_MODULE(if_msk, mskc, msk_driver, msk_devclass, 0, 0);
 DRIVER_MODULE(miibus, msk, miibus_driver, miibus_devclass, 0, 0);
+
+static int	mskc_intr_rate = 0;
+static int	mskc_process_limit = MSK_PROC_DEFAULT;
+
+TUNABLE_INT("hw.mskc.intr_rate", &mskc_intr_rate);
+TUNABLE_INT("hw.mskc.process_limit", &mskc_process_limit);
 
 static int
 msk_miibus_readreg(device_t dev, int phy, int reg)
@@ -1440,6 +1446,12 @@ mskc_attach(device_t dev)
 	sc->msk_dev = dev;
 	lwkt_serialize_init(&sc->msk_serializer);
 
+	/*
+	 * Initailize sysctl variables
+	 */
+	sc->msk_process_limit = mskc_process_limit;
+	sc->msk_intr_rate = mskc_intr_rate;
+
 #ifndef BURN_BRIDGES
 	/*
 	 * Handle power management nonsense.
@@ -1527,28 +1539,31 @@ mskc_attach(device_t dev)
 		goto fail;
 	}
 
-#if 0
-	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
-	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
-	    OID_AUTO, "process_limit", CTLTYPE_INT | CTLFLAG_RW,
-	    &sc->msk_process_limit, 0, sysctl_hw_msk_proc_limit, "I",
-	    "max number of Rx events to process");
-#endif
-
-	sc->msk_process_limit = MSK_PROC_DEFAULT;
-
-#if 0
-	error = resource_int_value(device_get_name(dev), device_get_unit(dev),
-	    "process_limit", &sc->msk_process_limit);
-	if (error == 0) {
-		if (sc->msk_process_limit < MSK_PROC_MIN ||
-		    sc->msk_process_limit > MSK_PROC_MAX) {
-			device_printf(dev, "process_limit value out of range; "
-			    "using default: %d\n", MSK_PROC_DEFAULT);
-			sc->msk_process_limit = MSK_PROC_DEFAULT;
-		}
+	/*
+	 * Create sysctl tree
+	 */
+	sysctl_ctx_init(&sc->msk_sysctl_ctx);
+	sc->msk_sysctl_tree = SYSCTL_ADD_NODE(&sc->msk_sysctl_ctx,
+					      SYSCTL_STATIC_CHILDREN(_hw),
+					      OID_AUTO,
+					      device_get_nameunit(dev),
+					      CTLFLAG_RD, 0, "");
+	if (sc->msk_sysctl_tree == NULL) {
+		device_printf(dev, "can't add sysctl node\n");
+		error = ENXIO;
+		goto fail;
 	}
-#endif
+
+	SYSCTL_ADD_PROC(&sc->msk_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->msk_sysctl_tree),
+			OID_AUTO, "process_limit", CTLTYPE_INT | CTLFLAG_RW,
+			&sc->msk_process_limit, 0, mskc_sysctl_proc_limit,
+			"I", "max number of Rx events to process");
+	SYSCTL_ADD_PROC(&sc->msk_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->msk_sysctl_tree),
+			OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, mskc_sysctl_intr_rate,
+			"I", "max number of interrupt per second");
 
 	/* Soft reset. */
 	CSR_WRITE_2(sc, B0_CTST, CS_RST_SET);
@@ -1730,6 +1745,9 @@ mskc_detach(device_t dev)
 		bus_release_resource(dev, sc->msk_res_type, sc->msk_res_rid,
 				     sc->msk_res);
 	}
+
+	if (sc->msk_sysctl_tree != NULL)
+		sysctl_ctx_free(&sc->msk_sysctl_ctx);
 
 	return (0);
 }
@@ -3540,6 +3558,8 @@ msk_init(void *xsc)
 	sc_if->msk_link = 0;
 	mii_mediachg(mii);
 
+	mskc_set_imtimer(sc);
+
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
@@ -3773,8 +3793,6 @@ msk_stop(struct msk_if_softc *sc_if)
 	sc_if->msk_link = 0;
 }
 
-#ifdef notyet
-
 static int
 sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high)
 {
@@ -3794,14 +3812,47 @@ sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high)
 }
 
 static int
-sysctl_hw_msk_proc_limit(SYSCTL_HANDLER_ARGS)
+mskc_sysctl_proc_limit(SYSCTL_HANDLER_ARGS)
 {
-
-	return (sysctl_int_range(oidp, arg1, arg2, req, MSK_PROC_MIN,
-	    MSK_PROC_MAX));
+	return sysctl_int_range(oidp, arg1, arg2, req,
+				MSK_PROC_MIN, MSK_PROC_MAX);
 }
 
-#endif
+static int
+mskc_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
+{
+	struct msk_softc *sc = arg1;
+	struct lwkt_serialize *serializer = &sc->msk_serializer;
+	int error = 0, v;
+
+	lwkt_serialize_enter(serializer);
+
+	v = sc->msk_intr_rate;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+	if (v < 0) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (sc->msk_intr_rate != v) {
+		int flag = 0, i;
+
+		sc->msk_intr_rate = v;
+		for (i = 0; i < 2; ++i) {
+			if (sc->msk_if[i] != NULL) {
+				flag |= sc->msk_if[i]->
+					arpcom.ac_if.if_flags & IFF_RUNNING;
+			}
+		}
+		if (flag)
+			mskc_set_imtimer(sc);
+	}
+back:
+	lwkt_serialize_exit(serializer);
+	return error;
+}
 
 static int
 msk_dmamem_create(device_t dev, bus_size_t size, bus_dma_tag_t *dtag,
@@ -3855,5 +3906,24 @@ msk_dmamem_destroy(bus_dma_tag_t dtag, void *addr, bus_dmamap_t dmap)
 		bus_dmamap_unload(dtag, dmap);
 		bus_dmamem_free(dtag, addr, dmap);
 		bus_dma_tag_destroy(dtag);
+	}
+}
+
+static void
+mskc_set_imtimer(struct msk_softc *sc)
+{
+	if (sc->msk_intr_rate > 0) {
+		/*
+		 * XXX myk(4) seems to use 125MHz for EC/FE/XL
+		 *     and 78.125MHz for rest of chip types
+		 */
+		CSR_WRITE_4(sc, B2_IRQM_INI,
+			    MSK_USECS(sc, 1000000 / sc->msk_intr_rate));
+		CSR_WRITE_4(sc, B2_IRQM_MSK, sc->msk_intrmask);
+		CSR_WRITE_4(sc, B2_IRQM_CTRL, TIM_START);
+		kprintf("%s start imtimer\n", __func__);
+	} else {
+		CSR_WRITE_4(sc, B2_IRQM_CTRL, TIM_STOP);
+		kprintf("%s stop imtimer\n", __func__);
 	}
 }

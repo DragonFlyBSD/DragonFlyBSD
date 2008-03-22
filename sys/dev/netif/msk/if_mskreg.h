@@ -94,7 +94,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_mskreg.h,v 1.11 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_mskreg.h,v 1.2 2008/03/16 15:50:22 hasso Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_mskreg.h,v 1.3 2008/03/22 07:07:34 sephe Exp $ */
 
 /*
  * SysKonnect PCI vendor ID
@@ -2159,7 +2159,7 @@ struct msk_stat_desc {
 #define BMU_UDP_CHECK	(0x57<<16)	/* Descr with UDP ext (YUKON only) */
 #define BMU_BBC		0xffff	/* Bit 15.. 0:	Buffer Byte Counter */
 
-#define MSK_TX_RING_CNT		256
+#define MSK_TX_RING_CNT		512
 #define MSK_RX_RING_CNT		256
 #define MSK_JUMBO_RX_RING_CNT	MSK_RX_RING_CNT
 #define	MSK_STAT_RING_CNT	((1 + 3) * (MSK_TX_RING_CNT + MSK_RX_RING_CNT))
@@ -2331,9 +2331,17 @@ struct msk_softc {
 	bus_dmamap_t		msk_stat_map;
 	struct msk_stat_desc	*msk_stat_ring;
 	bus_addr_t		msk_stat_ring_paddr;
-	int			msk_process_limit;
 	int			msk_stat_cons;
 	struct lwkt_serialize	msk_serializer;
+
+	struct sysctl_ctx_list	msk_sysctl_ctx;
+	struct sysctl_oid	*msk_sysctl_tree;
+
+	/*
+	 * Sysctl variables
+	 */
+	int			msk_process_limit;
+	int			msk_intr_rate;
 };
 
 #define	MSK_USECS(sc, us)	((sc)->msk_clock * (us))
