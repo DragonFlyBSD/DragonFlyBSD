@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.34 2008/03/19 20:49:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.35 2008/03/22 02:06:55 dillon Exp $
  */
 
 /*
@@ -153,6 +153,15 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		 * up our scan.
 		 */
 		if (cursor->index == node->count) {
+			if (hammer_debug_btree) {
+				kprintf("BRACKETU %016llx[%d] -> %016llx[%d] (td=%p)\n",
+					cursor->node->node_offset,
+					cursor->index,
+					(cursor->parent ? cursor->parent->node_offset : -1),
+					cursor->parent_index,
+					curthread);
+			}
+			KKASSERT(cursor->parent == NULL || cursor->parent->ondisk->elms[cursor->parent_index].internal.subtree_offset == cursor->node->node_offset);
 			error = hammer_cursor_up(cursor);
 			if (error)
 				break;
@@ -174,13 +183,14 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			r = hammer_btree_cmp(&cursor->key_end, &elm[0].base);
 			s = hammer_btree_cmp(&cursor->key_beg, &elm[1].base);
 			if (hammer_debug_btree) {
-				kprintf("BRACKETL %016llx[%d] %016llx %02x %016llx %d\n",
+				kprintf("BRACKETL %016llx[%d] %016llx %02x %016llx %d (td=%p)\n",
 					cursor->node->node_offset,
 					cursor->index,
 					elm[0].internal.base.obj_id,
 					elm[0].internal.base.rec_type,
 					elm[0].internal.base.key,
-					r
+					r,
+					curthread
 				);
 				kprintf("BRACKETR %016llx[%d] %016llx %02x %016llx %d\n",
 					cursor->node->node_offset,
@@ -209,6 +219,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			 * deadlocks, but it is ok if we can't.
 			 */
 			if (elm->internal.subtree_offset == 0) {
+				kprintf("REMOVE DELETED ELEMENT\n");
 				btree_remove_deleted_element(cursor);
 				/* note: elm also invalid */
 			} else if (elm->internal.subtree_offset != 0) {
@@ -828,14 +839,27 @@ btree_search(hammer_cursor_t cursor, int flags)
 	flags |= cursor->flags;
 
 	if (hammer_debug_btree) {
-		kprintf("SEARCH   %016llx[%d] %016llx %02x key=%016llx cre=%016llx\n",
+		kprintf("SEARCH   %016llx[%d] %016llx %02x key=%016llx cre=%016llx (td = %p)\n",
 			cursor->node->node_offset, 
 			cursor->index,
 			cursor->key_beg.obj_id,
 			cursor->key_beg.rec_type,
 			cursor->key_beg.key,
-			cursor->key_beg.create_tid
+			cursor->key_beg.create_tid, 
+			curthread
 		);
+		if (cursor->parent)
+		    kprintf("SEARCHP %016llx[%d] (%016llx/%016llx %016llx/%016llx) (%p/%p %p/%p)\n",
+			cursor->parent->node_offset, cursor->parent_index,
+			cursor->left_bound->obj_id,
+			cursor->parent->ondisk->elms[cursor->parent_index].internal.base.obj_id,
+			cursor->right_bound->obj_id,
+			cursor->parent->ondisk->elms[cursor->parent_index+1].internal.base.obj_id,
+			cursor->left_bound,
+			&cursor->parent->ondisk->elms[cursor->parent_index],
+			cursor->right_bound,
+			&cursor->parent->ondisk->elms[cursor->parent_index+1]
+		    );
 	}
 
 	/*
@@ -2098,6 +2122,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 					hammer_ref_node(cursor->deadlk_node);
 				}
 				error = EDEADLK;
+				hammer_rel_node(child);
 			} else {
 				item = kmalloc(sizeof(*item),
 						M_HAMMER, M_WAITOK);

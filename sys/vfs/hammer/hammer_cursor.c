@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.19 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.20 2008/03/22 02:06:55 dillon Exp $
  */
 
 /*
@@ -102,6 +102,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	if (error == 0)
 		error = hammer_load_cursor_parent(cursor);
 	KKASSERT(error == 0);
+	/* if (error) hammer_done_cursor(cursor); */
 	return(error);
 }
 
@@ -213,7 +214,6 @@ hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node, int index)
 		hammer_unlock(&cursor->node->lock);
 		hammer_rel_node(cursor->node);
 		cursor->node = node;
-		cursor->index = index;
 		hammer_ref_node(node);
 		hammer_lock_sh(&node->lock);
 
@@ -225,6 +225,7 @@ hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node, int index)
 		}
 		error = hammer_load_cursor_parent(cursor);
 	}
+	cursor->index = index;
 	return (error);
 }
 
@@ -249,6 +250,7 @@ hammer_load_cursor_parent(hammer_cursor_t cursor)
 		parent = hammer_get_node(hmp, node->ondisk->parent, &error);
 		if (error)
 			return(error);
+		hammer_lock_sh(&parent->lock);
 		elm = NULL;
 		for (i = 0; i < parent->ondisk->count; ++i) {
 			elm = &parent->ondisk->elms[i];
@@ -257,15 +259,15 @@ hammer_load_cursor_parent(hammer_cursor_t cursor)
 				break;
 			}
 		}
-		if (i == parent->ondisk->count)
+		if (i == parent->ondisk->count) {
+			hammer_unlock(&parent->lock);
 			panic("Bad B-Tree link: parent %p node %p\n", parent, node);
+		}
 		KKASSERT(i != parent->ondisk->count);
 		cursor->parent = parent;
 		cursor->parent_index = i;
 		cursor->left_bound = &elm[0].internal.base;
 		cursor->right_bound = &elm[1].internal.base;
-
-		hammer_lock_sh(&parent->lock);
 		return(error);
 	} else {
 		cursor->parent = NULL;
