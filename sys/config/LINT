@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.151 2008/03/09 09:56:02 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.152 2008/03/22 09:45:44 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1425,7 +1425,6 @@ device		wlan_ratectl_sample # 802.11 Sample TX rate control algorithm
 options 	WLCACHE		# enables the signal-strength cache
 options 	WLDEBUG		# enables verbose debugging output
 device		an		# Aironet Communications 4500/4800
-device		ipw		# Intel PRO/Wireless 2100
 device		iwl		# Intel PRO/Wireless 2100
 device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
 device		wi		# WaveLAN/IEEE, PRISM-II, Spectrum24 802.11DS
