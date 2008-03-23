@@ -93,7 +93,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_msk.c,v 1.26 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.2 2008/03/22 07:07:34 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.3 2008/03/23 09:48:20 sephe Exp $ */
 
 /*
  * Device driver for the Marvell Yukon II Ethernet controller.
@@ -3921,9 +3921,7 @@ mskc_set_imtimer(struct msk_softc *sc)
 			    MSK_USECS(sc, 1000000 / sc->msk_intr_rate));
 		CSR_WRITE_4(sc, B2_IRQM_MSK, sc->msk_intrmask);
 		CSR_WRITE_4(sc, B2_IRQM_CTRL, TIM_START);
-		kprintf("%s start imtimer\n", __func__);
 	} else {
 		CSR_WRITE_4(sc, B2_IRQM_CTRL, TIM_STOP);
-		kprintf("%s stop imtimer\n", __func__);
 	}
 }
