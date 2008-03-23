@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.37 2008/03/20 06:08:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.38 2008/03/23 04:43:26 dillon Exp $
  */
 
 #include "hammer.h"
@@ -124,6 +124,24 @@ hammer_rec_scan_cmp(hammer_record_t rec, void *data)
 	return(0);
 }
 
+/*
+ * This compare function is used when simply looking up key_beg.
+ */
+static
+int
+hammer_rec_find_cmp(hammer_record_t rec, void *data)
+{
+	hammer_cursor_t cursor = data;
+	int r;
+
+	r = hammer_rec_compare(&cursor->key_beg, rec);
+	if (r > 1)
+		return(-1);
+	if (r < -1)
+		return(1);
+	return(0);
+}
+
 RB_GENERATE(hammer_rec_rb_tree, hammer_record, rb_node, hammer_rec_rb_compare);
 RB_GENERATE_XLOOKUP(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
 		    hammer_rec_compare, hammer_base_elm_t);
@@ -184,46 +202,11 @@ hammer_rel_mem_record(struct hammer_record *record)
 }
 
 /*
- * Lookup an in-memory record given the key specified in the cursor.  Works
- * just like hammer_btree_lookup() but operates on an inode's in-memory
- * record list.
+ * This callback is used as part of the RB_SCAN function for in-memory
+ * records.  We terminate it (return -1) as soon as we get a match.
  *
- * The lookup must fail if the record is marked for deferred deletion.
- */
-static
-int
-hammer_mem_lookup(hammer_cursor_t cursor, hammer_inode_t ip)
-{
-	int error;
-
-	if (cursor->iprec) {
-		hammer_rel_mem_record(cursor->iprec);
-		cursor->iprec = NULL;
-	}
-	if (cursor->ip) {
-		hammer_rec_rb_tree_scan_info_done(&cursor->scan,
-						  &cursor->ip->rec_tree);
-	}
-	cursor->ip = ip;
-	hammer_rec_rb_tree_scan_info_link(&cursor->scan, &ip->rec_tree);
-	cursor->scan.node = NULL;
-	cursor->iprec = hammer_rec_rb_tree_RB_LOOKUP_INFO(
-				&ip->rec_tree, &cursor->key_beg);
-	if (cursor->iprec == NULL) {
-		error = ENOENT;
-	} else {
-		hammer_ref(&cursor->iprec->lock);
-		error = 0;
-	}
-	return(error);
-}
-
-/*
- * hammer_mem_first() - locate the first in-memory record matching the
- * cursor.
- *
- * The RB_SCAN function we use is designed as a callback.  We terminate it
- * (return -1) as soon as we get a match.
+ * The primary compare code does not account for ASOF lookups.  This
+ * code handles that case as well as a few others.
  */
 static
 int
@@ -282,6 +265,46 @@ hammer_rec_scan_callback(hammer_record_t rec, void *data)
 	return(-1);
 }
 
+
+/*
+ * Lookup an in-memory record given the key specified in the cursor.  Works
+ * just like hammer_btree_lookup() but operates on an inode's in-memory
+ * record list.
+ *
+ * The lookup must fail if the record is marked for deferred deletion.
+ */
+static
+int
+hammer_mem_lookup(hammer_cursor_t cursor, hammer_inode_t ip)
+{
+	int error;
+
+	if (cursor->iprec) {
+		hammer_rel_mem_record(cursor->iprec);
+		cursor->iprec = NULL;
+	}
+	if (cursor->ip) {
+		hammer_rec_rb_tree_scan_info_done(&cursor->scan,
+						  &cursor->ip->rec_tree);
+	}
+	cursor->ip = ip;
+	hammer_rec_rb_tree_scan_info_link(&cursor->scan, &ip->rec_tree);
+
+	cursor->scan.node = NULL;
+	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_find_cmp,
+				   hammer_rec_scan_callback, cursor);
+
+	if (cursor->iprec == NULL)
+		error = ENOENT;
+	else
+		error = 0;
+	return(error);
+}
+
+/*
+ * hammer_mem_first() - locate the first in-memory record matching the
+ * cursor within the bounds of the key range.
+ */
 static
 int
 hammer_mem_first(hammer_cursor_t cursor, hammer_inode_t ip)
