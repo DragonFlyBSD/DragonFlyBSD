@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.5 (Berkeley) 3/31/94
 # $FreeBSD: src/sbin/Makefile,v 1.77.2.9 2002/08/08 09:03:46 ru Exp $
-# $DragonFly: src/sbin/Makefile,v 1.17 2007/06/19 02:53:53 dillon Exp $
+# $DragonFly: src/sbin/Makefile,v 1.18 2008/03/23 00:07:46 dillon Exp $
 #
 # XXX MISSING:		icheck ncheck
 
@@ -27,6 +27,7 @@ SUBDIR=	adjkerntz \
 	fsirand \
 	growfs \
 	gpt \
+	hammer \
 	ifconfig \
 	init \
 	ip6fw \
@@ -43,6 +44,7 @@ SUBDIR=	adjkerntz \
 	mount \
 	mount_cd9660 \
 	mount_ext2fs \
+	mount_hammer \
 	mount_msdos \
 	mount_nfs \
 	mount_ntfs \
@@ -57,6 +59,7 @@ SUBDIR=	adjkerntz \
 	newbtconf \
 	newfs \
 	newfs_msdos \
+	newfs_hammer \
 	nfsd \
 	nfsiod \
 	nologin \
