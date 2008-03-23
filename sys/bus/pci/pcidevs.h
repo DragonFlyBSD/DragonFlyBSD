@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.31 2008/02/28 18:15:31 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.32 2008/03/23 09:40:07 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -1155,6 +1155,7 @@
 #define	PCI_PRODUCT_BROADCOM_BCM4309	0x4324		/* BCM4309 802.11a/b/g Wireless Lan */
 #define	PCI_PRODUCT_BROADCOM_BCM4306_3	0x4325		/* BCM4306 802.11b/g Wireless Lan */
 #define	PCI_PRODUCT_BROADCOM_BCM4401	0x4401		/* BCM4401 10/100 Ethernet */
+#define	PCI_PRODUCT_BROADCOM_BCM4402	0x4402		/* BCM4402 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_5801	0x5801		/* 5801 Security processor */
 #define	PCI_PRODUCT_BROADCOM_5802	0x5802		/* 5802 Security processor */
 #define	PCI_PRODUCT_BROADCOM_5805	0x5805		/* 5805 Security processor */
