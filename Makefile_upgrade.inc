@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.17 2008/03/22 09:55:41 sephe Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.18 2008/03/23 19:46:48 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -565,3 +565,6 @@ TO_REMOVE+=/usr/share/groff_font/devlj4/text.map
 TO_REMOVE+=/modules/if_ipw.ko
 TO_REMOVE+=/usr/share/man/cat4/ipw.4.gz
 TO_REMOVE+=/usr/share/man/man4/ipw.4.gz
+TO_REMOVE+=/usr/sbin/ipwcontrol
+TO_REMOVE+=/usr/share/man/cat8/ipwcontrol.8.gz
+TO_REMOVE+=/usr/share/man/man8/ipwcontrol.8.gz
