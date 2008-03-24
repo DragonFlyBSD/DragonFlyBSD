@@ -24,7 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/boot0cfg/boot0cfg.c,v 1.7.2.4 2002/03/16 01:06:51 mikeh Exp $
- * $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.c,v 1.5 2007/05/20 23:21:37 dillon Exp $
+ * $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.c,v 1.6 2008/03/24 23:04:19 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -218,9 +218,9 @@ read_mbr(const char *disk, u_int8_t **mbr, int check_version)
     ssize_t n;
 
     if ((fd = open(disk, O_RDONLY)) == -1)
-        err(1, "%s", disk);
+        err(1, "open %s", disk);
     if ((n = read(fd, buf, MBRSIZE)) == -1)
-        err(1, "%s", disk);
+        err(1, "read %s", disk);
     if (n != MBRSIZE)
         errx(1, "%s: short read", disk);
     if (cv2(buf + OFF_MAGIC) != 0xaa55)
@@ -254,12 +254,18 @@ write_mbr(const char *fname, int flags, u_int8_t *mbr, int mbr_size)
 {
     int fd;
     ssize_t n;
-    
-    if ((fd = open(fname, O_WRONLY | flags, 0666)) == -1 ||
-	(n = write(fd, mbr, mbr_size)) == -1 || close(fd))
+
+    fd = open(fname, O_WRONLY | flags, 0666);
+    if (fd != -1) {
+	n = write(fd, mbr, mbr_size);
+	close(fd);
+	if (n != mbr_size)
+	    errx(1, "%s: short write", fname);
+	return;
+    }
+    if (flags != 0)
 	err(1, "%s", fname);
-    if (n != mbr_size)
-	errx(1, "%s: short write", fname);
+    err(1, "write_mbr: %s", fname);
 }
 
 /*
@@ -350,7 +356,7 @@ boot0bs(const u_int8_t *bs)
     if (count >= 2)
 	return 1;
     return 0;
-};
+}
 
 /*
  * Adjust "and" and "or" masks for a -o option argument.

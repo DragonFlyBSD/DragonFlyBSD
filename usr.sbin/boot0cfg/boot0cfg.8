@@ -23,9 +23,9 @@
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/boot0cfg/boot0cfg.8,v 1.5.2.6 2003/03/12 22:08:13 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.8,v 1.3 2004/03/11 12:28:58 hmp Exp $
+.\" $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.8,v 1.4 2008/03/24 23:04:19 swildner Exp $
 .\"
-.Dd February 21, 1999
+.Dd March 23, 2008
 .Dt BOOT0CFG 8
 .Os
 .Sh NAME
@@ -79,8 +79,6 @@ Install the
 boot manager.
 This option causes MBR code to be replaced, without
 affecting the embedded slice table.
-.It Fl v
-Verbose: display information about the slices defined, etc.
 .It Fl b Ar boot0
 Specify which
 .Sq boot0
@@ -110,7 +108,7 @@ specified (with
 prepended as necessary):
 .Bl -tag -width indent
 .It packet
-Use the disk packet (BIOS Int 0x13 extensions) interface, as
+Use the disk packet (BIOS INT 0x13 extensions) interface,
 as opposed to the legacy (CHS) interface, when doing disk I/O.
 This allows booting above cylinder 1023, but requires specific
 BIOS support.
@@ -135,13 +133,12 @@ Set the default boot selection to
 .Ar slice .
 Values between 1 and 4 refer to slices; a value of 5 refers to the
 option of booting from a second disk.
-This would normally be used in conjunction with the
-.Sq noupdate
-option.
 .It Fl t Ar ticks
 Set the timeout value to
 .Ar ticks .
 (There are approximately 18.2 ticks per second.)
+.It Fl v
+Verbose: display information about the slices defined, etc.
 .El
 .Sh FILES
 .Bl -tag -width /boot/boot0 -compact
@@ -150,15 +147,22 @@ The default
 .Sq boot0
 image
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
-The following is an example of a typical usage
-of the
-.Nm
-utility to affect the next boot:
+To boot slice 2 on the next boot:
 .Pp
 .Dl "boot0cfg -s 2 ad0"
-.Sh DIAGNOSTICS
-.Ex -std
+.Pp
+To enable just slices 1 and 2 in the menu:
+.Pp
+.Dl "boot0cfg -m 0x3 ad0"
+.Pp
+To go back to non-interactive booting, use
+.Xr fdisk 8
+to install the default MBR:
+.Pp
+.Dl "fdisk -B ad0"
 .Sh SEE ALSO
 .Xr boot 8 ,
 .Xr fdisk 8
