@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.196 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.12 2008/01/01 12:16:40 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.13 2008/03/24 06:41:56 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -75,7 +75,6 @@ static void ata_ahci_reset(device_t dev);
 static void ata_ahci_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ata_ahci_dmainit(device_t dev);
 static int ata_ahci_setup_fis(struct ata_ahci_cmd_tab *ctp, struct ata_request *request);
-static int ata_genahci_chipinit(device_t dev);
 static int ata_acard_chipinit(device_t dev);
 static int ata_acard_allocate(device_t dev);
 static int ata_acard_status(device_t dev);
@@ -199,8 +198,11 @@ int
 ata_generic_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
+    char buffer[64];
 
-    device_set_desc(dev, "GENERIC ATA controller");
+    ksnprintf(buffer, sizeof(buffer),
+	      "%s ATA controller", ata_pcivendor2str(dev));
+    device_set_desc_copy(dev, buffer);
     ctlr->chipinit = ata_generic_chipinit;
     return 0;
 }
@@ -453,16 +455,44 @@ ata_request2fis_h2d(struct ata_request *request, u_int8_t *fis)
 /*
  * AHCI v1.x compliant SATA chipset support functions
  */
-static int
+int
+ata_ahci_ident(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+    static struct ata_chip_id id = {0, 0, 0, 0x00, ATA_SA300, "AHCI"};
+    char buffer[64];
+
+    if (pci_read_config(dev, PCIR_PROGIF, 1) != PCIP_STORAGE_SATA_AHCI_1_0)
+	return ENXIO;
+
+    if (bootverbose)
+	ksnprintf(buffer, sizeof(buffer), "%s (ID=%08x) AHCI controller",
+		  ata_pcivendor2str(dev), pci_get_devid(dev));
+    else
+	ksnprintf(buffer, sizeof(buffer), "%s AHCI controller",
+		  ata_pcivendor2str(dev));
+    device_set_desc_copy(dev, buffer);
+    ctlr->chip = &id;
+    ctlr->chipinit = ata_ahci_chipinit;
+    return 0;
+}
+
+
+/*
+ * AHCI v1.x compliant SATA chipset support functions
+ */
+int
 ata_ahci_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     u_int32_t version;
     int unit;
 
+    /* enable AHCI mode */
+    ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC, ATA_AHCI_GHC_AE);
+
     /* reset AHCI controller */
-    ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC,
-	     ATA_INL(ctlr->r_res2, ATA_AHCI_GHC) | ATA_AHCI_GHC_HR);
+    ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC, ATA_AHCI_GHC_HR);
     DELAY(1000000);
     if (ATA_INL(ctlr->r_res2, ATA_AHCI_GHC) & ATA_AHCI_GHC_HR) {
 	bus_release_resource(dev, ctlr->r_type2, ctlr->r_rid2, ctlr->r_res2);
@@ -470,9 +500,8 @@ ata_ahci_chipinit(device_t dev)
 	return ENXIO;
     }
 
-    /* enable AHCI mode */
-    ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC,
-	     ATA_INL(ctlr->r_res2, ATA_AHCI_GHC) | ATA_AHCI_GHC_AE);
+    /* reenable AHCI mode */
+    ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC, ATA_AHCI_GHC_AE);
 
     /* get the number of HW channels */
     ctlr->channels =
@@ -858,45 +887,6 @@ ata_ahci_setup_fis(struct ata_ahci_cmd_tab *ctp, struct ata_request *request)
 	bcopy(request->u.atapi.ccb, ctp->acmd, 16);
     }
     return ata_request2fis_h2d(request, &ctp->cfis[0]);
-}
-
-/*
- * Generic AHCI part support functions.
- */
-int
-ata_genahci_ident(device_t dev)
-{
-    struct ata_pci_controller *ctlr = device_get_softc(dev);
-    static struct ata_chip_id id = {0, 0, 0, 0x00, ATA_SA300, "AHCI"};
-    char buffer[64];
-
-    if(!(pci_read_config(dev, PCIR_PROGIF, 1) == PCIP_STORAGE_SATA_AHCI)) {
-	return ENXIO;
-    }
-
-    ksprintf(buffer, "GENERIC %s %s controller", id.text, ata_mode2str(id.max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = &id;
-    ctlr->chipinit = ata_genahci_chipinit;
-    return 0;
-}
-
-static int
-ata_genahci_chipinit(device_t dev)
-{
-    struct ata_pci_controller *ctlr = device_get_softc(dev);
-
-    if (ata_setup_interrupt(dev))
-	return ENXIO;
-
-    /* Check if the chip has PCI BAR 5 as memory resource. */
-    ctlr->r_type2 = SYS_RES_MEMORY;
-    ctlr->r_rid2 = PCIR_BAR(5);	/* 0x24 */
-    if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
-					       &ctlr->r_rid2, RF_ACTIVE))) {
-	return ata_ahci_chipinit(dev);
-    } else
-	return ENXIO;
 }
 
 /*
@@ -1405,7 +1395,7 @@ ata_ati_chipinit(device_t dev)
     if (ctlr->chip->cfg1 & ATIAHCI) {
 	/* Check if the chip is configured as an AHCI part. */
 	if ((pci_get_subclass(dev) == PCIS_STORAGE_SATA) &&
-	    (pci_read_config(dev, PCIR_PROGIF, 1) == PCIP_STORAGE_SATA_AHCI)) {
+	    (pci_read_config(dev, PCIR_PROGIF, 1) == PCIP_STORAGE_SATA_AHCI_1_0)) {
 	    /* Check if the chip has PCI BAR 5 as memory resource. */
 	    ctlr->r_type2 = SYS_RES_MEMORY;
 	    ctlr->r_rid2 = PCIR_BAR(5);	/* 0x24 */
@@ -3025,6 +3015,9 @@ ata_marvell_edma_dmainit(device_t dev)
 
 	if (ATA_INL(ctlr->r_res1, 0x00d00) & 0x00000004)
 	    ch->dma->max_address = BUS_SPACE_MAXADDR;
+
+	/* chip does not reliably do 64K DMA transfers */
+	ch->dma->max_iosize = 126 * DEV_BSIZE;
     }
 }
 
@@ -4385,6 +4378,11 @@ ata_serverworks_allocate(device_t dev)
 
     ch->flags |= ATA_NO_SLAVE;
     ata_pci_hw(dev);
+
+    /* chip does not reliably do 64K DMA transfers */
+    if (ch->dma)
+	ch->dma->max_iosize = 126 * DEV_BSIZE;
+
     return 0;
 }
 
@@ -5379,6 +5377,7 @@ ata_via_ident(device_t dev)
      { ATA_VIA6420,   0x00, 7,      0x00,    ATA_SA150, "6420" },
      { ATA_VIA6421,   0x00, 6,      VIABAR,  ATA_SA150, "6421" },
      { ATA_VIA8237A,  0x00, 7,      0x00,    ATA_SA150, "8237A" },
+     { ATA_VIA8237S,  0x00, 7,      0x00,    ATA_SA150, "8237S" },
      { ATA_VIA8251,   0x00, 0,      VIAAHCI, ATA_SA300, "8251" },
      { 0, 0, 0, 0, 0, 0 }};
     char buffer[64];
@@ -5496,7 +5495,7 @@ ata_via_allocate(device_t dev)
 	    ch->r_io[i].offset = (i - ATA_BMCMD_PORT)+(ch->unit * ATA_BMIOSIZE);
 	}
 	ata_pci_hw(dev);
-	if (ch->unit > 1)
+	if (ch->unit >= 2)
 	    return 0;
     }
     else {
@@ -5556,7 +5555,7 @@ ata_via_setmode(device_t dev, int mode)
 	    pci_write_config(gparent, 0xab, pio_timings[ata_mode2idx(mode)], 1);
 	    if (mode >= ATA_UDMA0)
 		pci_write_config(gparent, 0xb3,
-	    dma_timings[mode & ATA_MODE_MASK], 1);
+				 dma_timings[mode & ATA_MODE_MASK], 1);
 	    atadev->mode = mode;
 	}
     }

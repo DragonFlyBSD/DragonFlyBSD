@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.199 2006/09/14 19:12:29 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.6 2007/06/05 18:30:40 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.7 2008/03/24 06:41:56 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -83,7 +83,8 @@ ad_probe(device_t dev)
 
     if (!(atadev->param.config & ATA_PROTO_ATAPI) ||
 	(atadev->param.config == ATA_CFA_MAGIC1) ||
-	(atadev->param.config == ATA_CFA_MAGIC2))
+	(atadev->param.config == ATA_CFA_MAGIC2) ||
+	(atadev->param.config == ATA_CFA_MAGIC3))
 	return 0;
     else
 	return ENXIO;
@@ -486,6 +487,8 @@ ad_describe(device_t dev)
     else {
 	if (!strncmp(atadev->param.model, "ST", 2))
 	    strcpy(vendor, "Seagate ");
+	else if (!strncmp(atadev->param.model, "HDS", 3))
+	    strcpy(vendor, "Hitachi ");
 	else
 	    strcpy(vendor, "");
 	strncpy(product, atadev->param.model, 40);

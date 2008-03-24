@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.189 2006/06/28 15:04:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.10 2008/01/18 13:53:46 matthias Exp $
+ * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.196 2007/11/19 21:11:26 sos Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.11 2008/03/24 06:41:56 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -206,12 +206,9 @@ acd_reinit(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
-    struct acd_softc *cdp = device_get_ivars(dev);
 
     if (((atadev->unit == ATA_MASTER) && !(ch->devices & ATA_ATAPI_MASTER)) ||
 	((atadev->unit == ATA_SLAVE) && !(ch->devices & ATA_ATAPI_SLAVE))) {
-	device_set_ivars(dev, NULL);
-	kfree(cdp, M_ACD);
 	return 1;   
     }
     ATA_SETMODE(device_get_parent(dev), dev);

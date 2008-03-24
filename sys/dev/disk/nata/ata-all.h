@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.123 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.8 2007/07/23 19:26:09 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.9 2008/03/24 06:41:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -310,6 +310,7 @@ struct ata_ahci_cmd_list {
 #define ATA_DEV(device)                 ((device == ATA_MASTER) ? 0 : 1)
 #define ATA_CFA_MAGIC1                  0x844A
 #define ATA_CFA_MAGIC2                  0x848A
+#define ATA_CFA_MAGIC3                  0x8400
 #define ATAPI_MAGIC_LSB                 0x14
 #define ATAPI_MAGIC_MSB                 0xeb
 #define ATAPI_P_READ                    (ATA_S_DRQ | ATA_I_IN)

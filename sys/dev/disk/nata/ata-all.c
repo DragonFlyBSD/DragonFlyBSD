@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.279 2007/02/23 16:25:08 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.13 2007/10/29 12:56:45 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.14 2008/03/24 06:41:56 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -743,7 +743,7 @@ ata_modify_if_48bit(struct ata_request *request)
 
     atadev->flags &= ~ATA_D_48BIT_ACTIVE;
 
-    if ((request->u.ata.lba >= ATA_MAX_28BIT_LBA ||
+    if ((request->u.ata.lba + request->u.ata.count >= ATA_MAX_28BIT_LBA ||
 	 request->u.ata.count > 256) &&
 	atadev->param.support.command2 & ATA_SUPPORT_ADDRESS48) {
 

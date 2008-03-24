@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.h,v 1.76 2007/03/09 22:23:39 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.7 2008/01/01 12:16:40 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.8 2008/03/24 06:41:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -364,6 +364,7 @@ struct ata_connect_task {
 #define ATA_VIA8235             0x31771106
 #define ATA_VIA8237             0x32271106
 #define ATA_VIA8237A		0x05911106
+#define ATA_VIA8237S		0x53371106
 #define ATA_VIA8251             0x33491106
 #define ATA_VIA8361             0x31121106
 #define ATA_VIA8363             0x03051106
@@ -455,10 +456,11 @@ int ata_pci_allocate(device_t dev);
 void ata_pci_hw(device_t dev);
 int ata_pci_status(device_t dev);
 void ata_pci_dmainit(device_t);
+char *ata_pcivendor2str(device_t dev);
 
 /* global prototypes ata-chipset.c */
 int ata_generic_ident(device_t);
-int ata_genahci_ident(device_t);
+int ata_ahci_ident(device_t);
 int ata_acard_ident(device_t);
 int ata_ali_ident(device_t);
 int ata_amd_ident(device_t);

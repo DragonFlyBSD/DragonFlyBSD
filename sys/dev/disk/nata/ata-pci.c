@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.121 2007/02/23 12:18:33 piso Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.8 2007/12/09 22:32:16 tgen Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.c,v 1.9 2008/03/24 06:41:56 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -73,8 +73,8 @@ ata_legacy(device_t dev)
 	    (!pci_read_config(dev, PCIR_BAR(0), 4) &&
 	     !pci_read_config(dev, PCIR_BAR(1), 4) &&
 	     !pci_read_config(dev, PCIR_BAR(2), 4) &&
-	     !pci_read_config(dev, PCIR_BAR(3), 4)));
-
+	     !pci_read_config(dev, PCIR_BAR(3), 4) &&
+	     !pci_read_config(dev, PCIR_BAR(5), 4)));
 }
 
 int
@@ -83,6 +83,13 @@ ata_pci_probe(device_t dev)
     if (pci_get_class(dev) != PCIC_STORAGE)
 	return ENXIO;
 
+    /* if this is an AHCI chipset grab it */
+    if (pci_get_subclass(dev) == PCIS_STORAGE_SATA) {
+	if (!ata_ahci_ident(dev))
+	    return ATA_PROBE_OK;
+    }
+
+    /* run through the vendor specific drivers */
     switch (pci_get_vendor(dev)) {
     case ATA_ACARD_ID: 
 	if (!ata_acard_ident(dev))
@@ -179,27 +186,9 @@ ata_pci_probe(device_t dev)
     }
 
     /* unknown chipset, try generic AHCI or DMA if it seems possible */
-    if (pci_get_class(dev) == PCIC_STORAGE) {
-	if (pci_get_subclass(dev) == PCIS_STORAGE_SATA) {
-	    if (!ata_genahci_ident(dev))
-		return ATA_PROBE_OK;
-	} else if (pci_get_subclass(dev) == PCIS_STORAGE_IDE) {
-	    uint16_t vendor, device, subvendor, subdevice;
-	    const struct none_atapci *e;
-
-	    vendor = pci_get_vendor(dev);
-	    device = pci_get_device(dev);
-	    subvendor = pci_get_subvendor(dev);
-	    subdevice = pci_get_subdevice(dev);
-	    for (e = none_atapci_table; e->vendor != 0xffff; ++e) {
-		if (e->vendor == vendor && e->device == device &&
-		    e->subvendor == subvendor && e->subdevice == subdevice)
-		    return ENXIO;
-	    }
-
-	    if (!ata_generic_ident(dev))
-		return ATA_PROBE_OK;
-	}
+    if (pci_get_subclass(dev) == PCIS_STORAGE_IDE) {
+	if (!ata_generic_ident(dev))
+	    return ATA_PROBE_OK;
     }
     return ENXIO;
 }
@@ -537,6 +526,35 @@ ata_pci_dmainit(device_t dev)
 	ch->dma->start = ata_pci_dmastart;
 	ch->dma->stop = ata_pci_dmastop;
 	ch->dma->reset = ata_pci_dmareset;
+    }
+}
+
+char *
+ata_pcivendor2str(device_t dev)
+{
+    switch (pci_get_vendor(dev)) {
+    case ATA_ACARD_ID:		return "Acard";
+    case ATA_ACER_LABS_ID:	return "AcerLabs";
+    case ATA_AMD_ID:		return "AMD";
+    case ATA_ATI_ID:		return "ATI";
+    case ATA_CYRIX_ID:		return "Cyrix";
+    case ATA_CYPRESS_ID:	return "Cypress";
+    case ATA_HIGHPOINT_ID:	return "HighPoint";
+    case ATA_INTEL_ID:		return "Intel";
+    case ATA_ITE_ID:		return "ITE";
+    case ATA_JMICRON_ID:	return "JMicron";
+    case ATA_MARVELL_ID:	return "Marvell";
+    case ATA_NATIONAL_ID:	return "National";
+    case ATA_NETCELL_ID:	return "Netcell";
+    case ATA_NVIDIA_ID:		return "nVidia";
+    case ATA_PROMISE_ID:	return "Promise";
+    case ATA_SERVERWORKS_ID:	return "ServerWorks";
+    case ATA_SILICON_IMAGE_ID:	return "SiI";
+    case ATA_SIS_ID:		return "SiS";
+    case ATA_VIA_ID:		return "VIA";
+    case ATA_CENATEK_ID:	return "Cenatek";
+    case ATA_MICRON_ID:		return "Micron";
+    default:			return "Generic";
     }
 }
 
