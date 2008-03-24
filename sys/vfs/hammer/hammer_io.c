@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.22 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.23 2008/03/24 23:50:23 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -62,7 +62,6 @@ void
 hammer_io_init(hammer_io_t io, enum hammer_io_type type)
 {
 	io->type = type;
-	TAILQ_INIT(&io->deplist);
 }
 
 /*
@@ -80,7 +79,7 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 {
 	struct buf *bp = iou->io.bp;
 
-	KKASSERT(TAILQ_EMPTY(&iou->io.deplist) && iou->io.modified == 0);
+	KKASSERT(iou->io.modified == 0);
 	buf_dep_init(bp);
 	iou->io.bp = NULL;
 	bp->b_flags &= ~B_LOCKED;
@@ -122,15 +121,6 @@ hammer_io_wait(hammer_io_t io)
 				break;
 		}
 		crit_exit();
-	}
-}
-
-void
-hammer_io_waitdep(hammer_io_t io)
-{
-	while (TAILQ_FIRST(&io->deplist)) {
-		kprintf("waitdep %p\n", io);
-		tsleep(io, 0, "hmrdep", hz);
 	}
 }
 
@@ -209,7 +199,7 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
  * are still other references.
  */
 void
-hammer_io_release(struct hammer_io *io, int flush)
+hammer_io_release(struct hammer_io *io)
 {
 	struct buf *bp;
 
@@ -220,7 +210,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 	/*
 	 * If flush is 2 wait for dependancies
 	 */
-	while (flush == 2 && TAILQ_FIRST(&io->deplist)) {
+	while (io->waitdep && TAILQ_FIRST(&io->deplist)) {
 		hammer_io_wait(TAILQ_FIRST(&io->deplist));
 	}
 #endif
@@ -231,13 +221,13 @@ hammer_io_release(struct hammer_io *io, int flush)
 	 *
 	 * The flush will fail if any dependancies are present.
 	 */
-	if (io->modified && (flush || bp->b_flags & B_LOCKED))
+	if (io->modified && (io->flush || (bp->b_flags & B_LOCKED)))
 		hammer_io_flush(io);
 
 	/*
 	 * If flush is 2 we wait for the IO to complete.
 	 */
-	if (flush == 2 && io->running) {
+	if (io->waitdep && io->running) {
 		hammer_io_wait(io);
 	}
 
@@ -245,8 +235,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 	 * Actively or passively release the buffer.  Modified IOs with
 	 * dependancies cannot be released.
 	 */
-	if (flush && io->modified == 0 && io->running == 0) {
-		KKASSERT(TAILQ_EMPTY(&io->deplist));
+	if (io->flush && io->modified == 0 && io->running == 0) {
 		if (io->released) {
 			regetblk(bp);
 			BUF_KERNPROC(bp);
@@ -254,7 +243,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 		}
 		hammer_io_disassociate((hammer_io_structure_t)io, 1);
 	} else if (io->modified) {
-		if (io->released == 0 && TAILQ_EMPTY(&io->deplist)) {
+		if (io->released == 0) {
 			io->released = 1;
 			bdwrite(bp);
 		}
@@ -278,10 +267,10 @@ hammer_io_flush(struct hammer_io *io)
 	/*
 	 * Can't flush if the IO isn't modified or if it has dependancies.
 	 */
-	if (io->modified == 0)
+	if (io->modified == 0) {
+		io->flush = 0;
 		return;
-	if (TAILQ_FIRST(&io->deplist))
-		return;
+	}
 
 	KKASSERT(io->bp);
 
@@ -304,6 +293,7 @@ hammer_io_flush(struct hammer_io *io)
 	 * ondisk while we are blocked blocks waiting for us.
 	 */
 	io->modified = 0;	/* force interlock */
+	io->flush = 0;
 	bp = io->bp;
 
 	if (io->released) {
@@ -331,24 +321,17 @@ hammer_io_flush(struct hammer_io *io)
 /*
  * Mark a HAMMER structure as undergoing modification.  Return 1 when applying
  * a non-NULL ordering dependancy for the first time, 0 otherwise.
- *
- * list can be NULL, indicating that a structural modification is being made
- * without creating an ordering dependancy.
  */
 static __inline
-int
-hammer_io_modify(hammer_io_t io, struct hammer_io_list *list)
+void
+hammer_io_modify(hammer_io_t io)
 {
-	int r;
-
 	/*
 	 * Shortcut if nothing to do.
 	 */
 	KKASSERT(io->lock.refs != 0 && io->bp != NULL);
-	if (io->modified && io->released == 0 &&
-	    (io->entry_list || list == NULL)) {
-		return(0);
-	}
+	if (io->modified && io->released == 0)
+		return;
 
 	hammer_lock_ex(&io->lock);
 	io->modified = 1;
@@ -358,28 +341,14 @@ hammer_io_modify(hammer_io_t io, struct hammer_io_list *list)
 		io->released = 0;
 		KKASSERT(io->modified != 0);
 	}
-	if (io->entry_list == NULL) {
-		io->entry_list = list;
-		if (list) {
-			TAILQ_INSERT_TAIL(list, io, entry);
-			r = 1;
-		} else {
-			r = 0;
-		}
-	} else {
-		/* only one dependancy is allowed */
-		KKASSERT(list == NULL || io->entry_list == list);
-		r = 0;
-	}
 	hammer_unlock(&io->lock);
-	return(r);
 }
 
 void
 hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 		     void *base, int len)
 {
-	hammer_io_modify(&volume->io, NULL);
+	hammer_io_modify(&volume->io);
 
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)volume->ondisk;
@@ -399,7 +368,7 @@ void
 hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,
 		     void *base, int len)
 {
-	hammer_io_modify(&buffer->io, NULL);
+	hammer_io_modify(&buffer->io);
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)buffer->ondisk;
 		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
@@ -468,18 +437,13 @@ hammer_io_complete(struct buf *bp)
 
 	KKASSERT(iou->io.released == 1);
 
+	/* XXX DEP REMOVE */
+
 	/*
-	 * If this was a write and the modified bit is still clear we can
-	 * remove ourselves from the dependancy list.
-	 *
 	 * If no lock references remain and we can acquire the IO lock and
 	 * someone at some point wanted us to flush (B_LOCKED test), then
 	 * try to dispose of the IO.
 	 */
-	if (iou->io.modified == 0 && iou->io.entry_list) {
-		TAILQ_REMOVE(iou->io.entry_list, &iou->io, entry);
-		iou->io.entry_list = NULL;
-	}
 	iou->io.running = 0;
 	if (iou->io.waiting) {
 		iou->io.waiting = 0;
@@ -580,8 +544,6 @@ static int
 hammer_io_checkwrite(struct buf *bp)
 {
 	union hammer_io_structure *iou = (void *)LIST_FIRST(&bp->b_dep);
-
-	KKASSERT(TAILQ_EMPTY(&iou->io.deplist));
 
 	/*
 	 * We are called from the kernel on delayed-write buffers, and

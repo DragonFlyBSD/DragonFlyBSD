@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.42 2008/03/20 06:08:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.43 2008/03/24 23:50:23 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -261,7 +261,7 @@ struct worklist {
 	LIST_ENTRY(worklist) node;
 };
 
-TAILQ_HEAD(hammer_io_list, hammer_io);
+/*TAILQ_HEAD(hammer_dep_list, hammer_dep);*/
 
 struct hammer_io {
 	struct worklist worklist;
@@ -269,15 +269,14 @@ struct hammer_io {
 	enum hammer_io_type type;
 	struct buf	*bp;
 	int64_t		offset;
-	TAILQ_ENTRY(hammer_io) entry;	/* based on modified flag */
-	struct hammer_io_list  *entry_list;
-	struct hammer_io_list  deplist;
+	int		loading;	/* loading/unloading interlock */
 	u_int		modified : 1;	/* bp's data was modified */
 	u_int		released : 1;	/* bp released (w/ B_LOCKED set) */
 	u_int		running : 1;	/* bp write IO in progress */
 	u_int		waiting : 1;	/* someone is waiting on us */
-	u_int		loading : 1;	/* ondisk is loading */
 	u_int		validated : 1;	/* ondisk has been validated */
+	u_int		flush : 1;	/* flush on last release */
+	u_int		waitdep : 1;	/* flush waits for dependancies */
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -552,6 +551,7 @@ hammer_volume_t	hammer_get_volume(hammer_mount_t hmp,
 			int32_t vol_no, int *errorp);
 hammer_buffer_t	hammer_get_buffer(hammer_mount_t hmp,
 			hammer_off_t buf_offset, int isnew, int *errorp);
+void	hammer_uncache_buffer(struct hammer_mount *hmp, hammer_off_t off);
 
 int		hammer_ref_volume(hammer_volume_t volume);
 int		hammer_ref_buffer(hammer_buffer_t buffer);
@@ -648,7 +648,7 @@ int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 void hammer_io_init(hammer_io_t io, enum hammer_io_type type);
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io);
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
-void hammer_io_release(struct hammer_io *io, int flush);
+void hammer_io_release(struct hammer_io *io);
 void hammer_io_flush(struct hammer_io *io);
 int hammer_io_checkflush(hammer_io_t io);
 void hammer_io_clear_modify(struct hammer_io *io);

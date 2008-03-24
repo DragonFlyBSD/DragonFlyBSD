@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.4 2008/03/20 06:08:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.5 2008/03/24 23:50:23 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -306,8 +306,10 @@ hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 	hammer_blockmap_free(cursor->trans,
 			     elm->leaf.rec_offset, sizeof(*nrec));
 
-	kprintf("REBLOCK RECD %016llx -> %016llx\n",
-		elm->leaf.rec_offset, nrec_offset);
+	if (hammer_debug_general & 0x4000) {
+		kprintf("REBLOCK RECD %016llx -> %016llx\n",
+			elm->leaf.rec_offset, nrec_offset);
+	}
 
 	hammer_modify_node(cursor->trans, cursor->node,
 			   &elm->leaf.rec_offset, sizeof(hammer_off_t));
@@ -377,8 +379,10 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 
 	hammer_delete_node(cursor->trans, onode);
 
-	kprintf("REBLOCK NODE %016llx -> %016llx\n",
-		onode->node_offset, nnode->node_offset);
+	if (hammer_debug_general & 0x4000) {
+		kprintf("REBLOCK NODE %016llx -> %016llx\n",
+			onode->node_offset, nnode->node_offset);
+	}
 
 	cursor->node = nnode;
 	hammer_rel_node(onode);

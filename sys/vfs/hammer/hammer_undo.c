@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.2 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.3 2008/03/24 23:50:23 dillon Exp $
  */
 
 /*
@@ -93,9 +93,7 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_off_t zone1_off,
 	bytes = ((len + 7) & ~7) + sizeof(struct hammer_fifo_undo) +
 		sizeof(struct hammer_fifo_tail);
 
-	root_volume = hammer_get_root_volume(trans->hmp, &error);
-	if (error)
-		return(error);
+	root_volume = trans->rootvol;
 	ondisk = root_volume->ondisk;
 	undomap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
@@ -171,7 +169,6 @@ again:
 
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
-	hammer_rel_volume(root_volume, 0);
 	return(error);
 }
 

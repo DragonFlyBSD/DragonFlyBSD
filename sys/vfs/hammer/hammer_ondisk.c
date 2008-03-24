@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.34 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.35 2008/03/24 23:50:23 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -291,12 +291,13 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 */
 	RB_SCAN(hammer_buf_rb_tree, &volume->rb_bufs_root, NULL,
 			hammer_unload_buffer, NULL);
-	hammer_io_waitdep(&volume->io);
 
 	/*
 	 * Release our buffer and flush anything left in the buffer cache.
 	 */
-	hammer_io_release(&volume->io, 2);
+	volume->io.flush = 1;
+	volume->io.waitdep = 1;
+	hammer_io_release(&volume->io);
 
 	/*
 	 * There should be no references on the volume, no clusters, and
@@ -430,27 +431,22 @@ hammer_get_root_volume(struct hammer_mount *hmp, int *errorp)
 static int
 hammer_load_volume(hammer_volume_t volume)
 {
-	struct hammer_volume_ondisk *ondisk;
 	int error;
 
 	hammer_lock_ex(&volume->io.lock);
 	KKASSERT(volume->io.loading == 0);
-	volume->io.loading = 1;
+	++volume->io.loading;
 
 	if (volume->ondisk == NULL) {
 		error = hammer_io_read(volume->devvp, &volume->io);
-		if (error) {
-			volume->io.loading = 0;
-			hammer_unlock(&volume->io.lock);
-			return (error);
-		}
-		volume->ondisk = ondisk = (void *)volume->io.bp->b_data;
+		if (error == 0)
+			volume->ondisk = (void *)volume->io.bp->b_data;
 	} else {
 		error = 0;
 	}
-	volume->io.loading = 0;
+	--volume->io.loading;
 	hammer_unlock(&volume->io.lock);
-	return(0);
+	return(error);
 }
 
 /*
@@ -464,17 +460,21 @@ hammer_load_volume(hammer_volume_t volume)
 void
 hammer_rel_volume(hammer_volume_t volume, int flush)
 {
+	if (flush)
+		volume->io.flush = 1;
+	crit_enter();
 	if (volume->io.lock.refs == 1) {
+		++volume->io.loading;
 		hammer_lock_ex(&volume->io.lock);
 		if (volume->io.lock.refs == 1) {
 			volume->ondisk = NULL;
-			hammer_io_release(&volume->io, flush);
-		} else if (flush) {
-			hammer_io_flush(&volume->io);
+			hammer_io_release(&volume->io);
 		}
+		--volume->io.loading;
 		hammer_unlock(&volume->io.lock);
 	}
 	hammer_unref(&volume->io.lock);
+	crit_exit();
 }
 
 /************************************************************************
@@ -575,16 +575,14 @@ static int
 hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 {
 	hammer_volume_t volume;
-	void *ondisk;
 	int error;
 
 	/*
 	 * Load the buffer's on-disk info
 	 */
 	volume = buffer->volume;
+	++buffer->io.loading;
 	hammer_lock_ex(&buffer->io.lock);
-	KKASSERT(buffer->io.loading == 0);
-	buffer->io.loading = 1;
 
 	if (buffer->ondisk == NULL) {
 		if (isnew) {
@@ -592,12 +590,8 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 		} else {
 			error = hammer_io_read(volume->devvp, &buffer->io);
 		}
-		if (error) {
-			buffer->io.loading = 0;
-			hammer_unlock(&buffer->io.lock);
-			return (error);
-		}
-		buffer->ondisk = ondisk = (void *)buffer->io.bp->b_data;
+		if (error == 0)
+			buffer->ondisk = (void *)buffer->io.bp->b_data;
 	} else if (isnew) {
 		error = hammer_io_new(volume->devvp, &buffer->io);
 	} else {
@@ -607,7 +601,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 		hammer_modify_buffer(NULL, buffer, NULL, 0);
 		/* additional initialization goes here */
 	}
-	buffer->io.loading = 0;
+	--buffer->io.loading;
 	hammer_unlock(&buffer->io.lock);
 	return (error);
 }
@@ -663,31 +657,67 @@ void
 hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 {
 	hammer_volume_t volume;
+	int freeme = 0;
 
+	if (flush)
+		buffer->io.flush = 1;
+	crit_enter();
 	if (buffer->io.lock.refs == 1) {
+		++buffer->io.loading;	/* force interlock check */
 		hammer_lock_ex(&buffer->io.lock);
 		if (buffer->io.lock.refs == 1) {
-			hammer_io_release(&buffer->io, flush);
+			hammer_io_release(&buffer->io);
+			hammer_flush_buffer_nodes(buffer);
+			KKASSERT(TAILQ_EMPTY(&buffer->clist));
 
 			if (buffer->io.bp == NULL &&
 			    buffer->io.lock.refs == 1) {
-				hammer_flush_buffer_nodes(buffer);
-				KKASSERT(TAILQ_EMPTY(&buffer->clist));
+				/*
+				 * Final cleanup
+				 */
 				volume = buffer->volume;
 				RB_REMOVE(hammer_buf_rb_tree,
 					  &volume->rb_bufs_root, buffer);
 				buffer->volume = NULL; /* sanity */
-				--hammer_count_buffers;
-				kfree(buffer, M_HAMMER);
 				hammer_rel_volume(volume, 0);
-				return;
+				freeme = 1;
 			}
-		} else if (flush) {
-			hammer_io_flush(&buffer->io);
 		}
+		--buffer->io.loading;
 		hammer_unlock(&buffer->io.lock);
 	}
 	hammer_unref(&buffer->io.lock);
+	crit_exit();
+	if (freeme) {
+		--hammer_count_buffers;
+		kfree(buffer, M_HAMMER);
+	}
+}
+
+/*
+ * Remove the zoneX translation cache for a buffer given its zone-2 offset.
+ */
+void
+hammer_uncache_buffer(hammer_mount_t hmp, hammer_off_t buf_offset)
+{
+	hammer_volume_t volume;
+	hammer_buffer_t buffer;
+	int vol_no;
+	int error;
+
+	buf_offset &= ~HAMMER_BUFMASK64;
+	KKASSERT((buf_offset & HAMMER_ZONE_RAW_BUFFER) ==
+		 HAMMER_ZONE_RAW_BUFFER);
+	vol_no = HAMMER_VOL_DECODE(buf_offset);
+	volume = hammer_get_volume(hmp, vol_no, &error);
+	KKASSERT(volume != 0);
+	KKASSERT(buf_offset < volume->maxbuf_off);
+
+	buffer = RB_LOOKUP(hammer_buf_rb_tree, &volume->rb_bufs_root,
+			   buf_offset);
+	if (buffer)
+		buffer->zoneX_offset = 0;
+	hammer_rel_volume(volume, 0);
 }
 
 /*
