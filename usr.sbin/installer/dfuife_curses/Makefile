@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/usr.sbin/installer/dfuife_curses/Makefile,v 1.1 2008/03/12 01:34:49 dave Exp $
+# $DragonFly: src/usr.sbin/installer/dfuife_curses/Makefile,v 1.2 2008/03/25 22:55:38 dave Exp $
 
 BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
 BSDINS_SRC=${BSDINS_DIR}/src
@@ -17,7 +17,7 @@ SRCS=	curses_bar.c curses_form.c curses_util.c curses_widget.c curses_xlat.c mai
 BINOWN=	root
 BINGRP=	wheel
 
-CFLAGS+= -I${BSDINS_SRC}/frontends/ncurses -I.
+CFLAGS+= -I${BSDINS_SRC}/frontends/ncurses -I. -g
 
 DPADD+= ${LIBPANEL} ${LIBNCURSES}
 LDADD+= -lpanel -lncurses
@@ -35,6 +35,8 @@ dfui.h:
 installer.h:
 	${LN} -sf ${BSDINS_SRC}/lib/libinstaller installer
 	/usr/bin/touch installer.h
+
+CLEANFILES+=	aura.h aura dfui.h dfui installer.h installer
 
 .if exists(${.OBJDIR}/../libaura)
 LIBAURADIR:=      ${.OBJDIR}/../libaura

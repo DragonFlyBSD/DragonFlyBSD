@@ -1,0 +1,13 @@
+$DragonFly: src/usr.sbin/installer/dfuibe_installer/Attic/flow.c.patch,v 1.1 2008/03/25 22:55:38 dave Exp $
+
+--- flow.c.orig	Mon Mar 24 12:14:11 2008
++++ flow.c	Mon Mar 24 12:14:47 2008
+@@ -179,7 +179,7 @@
+ 	    _("Welcome to %s"), OPERATING_SYSTEM_NAME);
+ 
+ 	snprintf(msg_buf[1], sizeof(msg_buf[1]),
+-	    _("Welcome to the %s Live CD."
++	    _("Welcome to the %s Live CD (using local installer)."
+ 	    "\n\n" 
+ 	    "%s is an efficient and elegant BSD "
+ 	    "Unix-derived operating system.  For more information, see %s"

@@ -2,7 +2,17 @@
 
 # installer - start installer frontend and backend as per pfi config.
 # $Id: installer,v 1.20 2005/04/13 03:32:16 cpressey Exp $
-# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.10 2005/12/10 14:47:05 joerg Exp $
+# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.11 2008/03/25 22:55:38 dave Exp $
+
+### CONFIG ###
+# Pick up the correct installer target, use local first if we have it
+if [ -f /usr/sbin/dfuife_curses ]; then
+    FRONTEND=/usr/sbin/dfuife_curses
+    FRED=/usr/share/installer/fred.txt
+else
+    FRONTEND=/usr/pkg/sbin/dfuife_curses
+    FRED=/usr/pkg/share/dfuife_curses/fred.txt
+fi
 
 ### SUBS ###
 
@@ -72,10 +82,10 @@ installer_start()
 		background_backend $RENDEZVOUS $pfi_dfui_transport &
 		sleep 1
 		ESCDELAY=$pfi_curses_escdelay \
-		    /usr/pkg/sbin/dfuife_curses \
+		    ${FRONTEND} \
 			-r $RENDEZVOUS \
 			-t $pfi_dfui_transport \
-			-b /usr/pkg/share/dfuife_curses/fred.txt \
+			-b /usr/share/dfuife_curses/fred.txt \
 		    2>/dev/null
 		pfi_frontend=none
 	fi
@@ -95,10 +105,10 @@ installer_start()
 			# Frontend is already running.
 		else
 			ESCDELAY=$pfi_curses_escdelay \
-			    /usr/pkg/sbin/dfuife_curses \
+			    $FRONTEND \
 				-r $RENDEZVOUS \
 				-t $pfi_dfui_transport \
-				-b /usr/pkg/share/dfuife_curses/fred.txt \
+				-b $FRED \
 			    2>/dev/ttyv0 </dev/ttyv1 >/dev/ttyv1 &
 		fi
 		rm -f /tmp/ps.txt

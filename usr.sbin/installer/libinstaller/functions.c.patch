@@ -1,0 +1,13 @@
+$DragonFly: src/usr.sbin/installer/libinstaller/Attic/functions.c.patch,v 1.1 2008/03/25 22:55:38 dave Exp $
+
+--- functions.c.orig	2008-03-23 20:22:52 -0700
++++ functions.c	2008-03-23 20:23:09 -0700
+@@ -113,7 +113,7 @@
+ 	a->temp_files = aura_dict_new(23, AURA_DICT_HASH);
+ 	a->cmd_names = config_vars_new();
+ 	if (!config_vars_read(a, a->cmd_names, CONFIG_TYPE_SH,
+-	    "usr/local/share/dfuibe_installer/cmdnames.conf")) {
++	    "usr/share/installer/cmdnames.conf")) {
+ 		i_log(a, "! ERROR: Couldn't read cmdnames config file");
+ 		i_fn_args_free(a);
+ 		return(NULL);

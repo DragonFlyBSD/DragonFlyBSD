@@ -1,0 +1,84 @@
+$DragonFly: src/usr.sbin/installer/dfuibe_installer/Attic/fn_install.c.patch,v 1.1 2008/03/25 22:55:38 dave Exp $
+
+--- fn_install.c.orig	Sun Feb  6 22:46:20 2005
++++ fn_install.c	Tue Apr 18 12:43:48 2006
+@@ -34,7 +34,7 @@
+ /*
+  * fn_install.c
+  * Installer Function : Install OS Files.
+- * $Id: fn_install.c,v 1.71 2005/02/07 06:46:20 cpressey Exp $
++ * $Id: fn_install.c,v 1.74 2006/04/18 19:43:48 joerg Exp $
+  */
+ 
+ #include <libgen.h>
+@@ -212,7 +231,7 @@
+ 	 */
+ 
+ 	for (i = 0; cp_src[i] != NULL && cp_src[i][0] != '\0'; i++) {
+-		char *src, *dest, *dn;
++		char *src, *dest, *dn, *tmp_dest;
+ 
+ 		dest = cp_src[i];
+ 
+@@ -229,14 +248,15 @@
+ 		/*
+ 		 * Create intermediate directories, if needed.
+ 		 */
+-		dn = dirname(dest);
++		tmp_dest = aura_strdup(dest);
++		dn = dirname(tmp_dest);
+ 		if (is_dir("%s%s", a->os_root, &dn[1]) &&
+ 		    !is_dir("%smnt%s", a->os_root, dn)) {
+ 			command_add(cmds, "%s%s -p %smnt%s",
+ 			    a->os_root, cmd_name(a, "MKDIR"),
+ 			    a->os_root, dn);
+ 		}
+-		aura_free(dn, "directory name");
++		aura_free(tmp_dest, "directory name");
+ 
+ 		/*
+ 		 * If a directory by the same name but with the suffix
+@@ -260,7 +280,6 @@
+ 			    a->os_root, src,
+ 			    a->os_root, dest);
+ 			command_set_log_mode(cmd, COMMAND_LOG_QUIET);
+-			aura_free(src, "source directory name");
+ 		}
+ 	}
+ 
+@@ -388,7 +407,7 @@
+ 	 * This allows the resulting file tree to be customized.
+ 	 */
+ 	for (i = 0; cp_src[i] != NULL && cp_src[i][0] != '\0'; i++) {
+-		char *src, *dest, *dn;
++		char *src, *dest, *dn, *tmp_dest;
+ 
+ 		src = cp_src[i];
+ 		dest = cp_src[i];
+@@ -397,14 +416,15 @@
+ 		 * Get the directory that the desired thing to
+ 		 * copy resides in.
+ 		 */
+-		dn = dirname(dest);
++		tmp_dest = aura_strdup(dest);
++		dn = dirname(tmp_dest);
+ 
+ 		/*
+ 		 * If this dir doesn't exist in PRISTINE_DIR
+ 		 * on the install media, just skip it.
+ 		 */
+ 		if (!is_dir("%s%s%s", a->os_root, PRISTINE_DIR, dn)) {
+-			aura_free(dn, _("directory name"));
++			aura_free(tmp_dest, _("directory name"));
+ 			continue;
+ 		}
+ 
+@@ -416,7 +436,7 @@
+ 			    a->os_root, cmd_name(a, "MKDIR"),
+ 			    a->os_root, dn);
+ 		}
+-		aura_free(dn, "directory name");
++		aura_free(tmp_dest, "directory name");
+ 
+ 		/*
+ 		 * Cpdup the chosen file or directory onto the HDD.

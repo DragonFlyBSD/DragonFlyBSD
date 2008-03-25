@@ -1,10 +1,12 @@
-# $DragonFly: src/usr.sbin/installer/libdfui/Makefile,v 1.1 2008/03/12 01:34:49 dave Exp $
+# $DragonFly: src/usr.sbin/installer/libdfui/Makefile,v 1.2 2008/03/25 22:55:38 dave Exp $
 
 BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
 BSDINS_SRC=${BSDINS_DIR}/src
-.PATH:	${BSDINS_SRC}/lib/libdfui
 
-CFLAGS+=-I${BSDINS_SRC}/lib/libdfui -I.
+CONTRIBDIR=${BSDINS_SRC}/lib/libdfui
+.PATH:	${CONTRIBDIR}
+
+CFLAGS+=-I${CONTRIBDIR} -I. -g
 
 LIB=    dfui
 
@@ -17,6 +19,7 @@ aura.h:
 	${LN} -sf ${BSDINS_SRC}/lib/libaura aura
 	/usr/bin/touch aura.h
 
+CLEANFILES+=	aura.h aura
 INTERNALLIB=            true
 
 .include <bsd.lib.mk>

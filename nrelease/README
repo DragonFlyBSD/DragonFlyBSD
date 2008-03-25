@@ -1,4 +1,4 @@
-$DragonFly: src/nrelease/Attic/README,v 1.3 2007/05/13 22:25:41 swildner Exp $
+$DragonFly: src/nrelease/Attic/README,v 1.4 2008/03/25 22:55:38 dave Exp $
 
 The DragonFly framework for building ISO image (nrelease)
 =========================================================
@@ -20,7 +20,8 @@ PKGSRC_DB		db location used by the bootstrap kit
 PKGSRC_PREFIX		localbase used by the bootstrap kit
 PKGSRC_RSYNC_SRC	where to fetch packages from during make fetch
 
-WITH_INSTALLER		if defined, the BSD installer is added to the target
+WITH_INSTALLER		if defined, the BSD installer is added to the target from pkgsrc
+WITH_LOCAL_INSTALLER	if defined, the BSD installer is added to the target from /usr/src
 
 The default values match the packages from packages.stura.uni-rostock.de.
 

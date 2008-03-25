@@ -1,10 +1,11 @@
-# $DragonFly: src/usr.sbin/installer/libaura/Makefile,v 1.1 2008/03/12 01:34:49 dave Exp $
+# $DragonFly: src/usr.sbin/installer/libaura/Makefile,v 1.2 2008/03/25 22:55:38 dave Exp $
 
 BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
 BSDINS_SRC=${BSDINS_DIR}/src
-.PATH:	${BSDINS_SRC}/lib/libaura
+CONTRIBDIR= ${BSDINS_SRC}/lib/libaura
+.PATH:	${CONTRIBDIR}
 
-CFLAGS+=-I${BSDINS_SRC}/lib/libaura
+CFLAGS+=-I${CONTRIBDIR} -g
 
 LIB=    aura
 
