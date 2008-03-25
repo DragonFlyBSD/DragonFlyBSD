@@ -31,28 +31,32 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.12 2008/03/20 04:03:03 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.13 2008/03/25 03:57:58 dillon Exp $
  */
 
 #include "hammer.h"
+#include <math.h>
 
 static void hammer_parsetime(u_int64_t *tidp, const char *timestr);
+static void hammer_waitsync(int dosleep);
 static void hammer_parsedevs(const char *blkdevs);
 static void usage(int exit_code);
 
 int RecurseOpt;
 int VerboseOpt;
+int NoSyncOpt;
 const char *LinkPath;
 
 int
 main(int ac, char **av)
 {
+	struct timeval tv;
 	u_int64_t tid;
 	int ch;
 	u_int32_t status;
 	char *blkdevs = NULL;
 
-	while ((ch = getopt(ac, av, "hf:rs:v")) != -1) {
+	while ((ch = getopt(ac, av, "hf:rs:vx")) != -1) {
 		switch(ch) {
 		case 'h':
 			usage(0);
@@ -69,6 +73,9 @@ main(int ac, char **av)
 		case 'v':
 			++VerboseOpt;
 			break;
+		case 'x':
+			++NoSyncOpt;
+			break;
 		default:
 			usage(1);
 			/* not reached */
@@ -82,8 +89,17 @@ main(int ac, char **av)
 	}
 
 	if (strcmp(av[0], "now") == 0) {
-		hammer_parsetime(&tid, "0s");
+		hammer_waitsync(1);
+		tid = (hammer_tid_t)time(NULL) * 1000000000LLU;
 		printf("0x%08x\n", (int)(tid / 1000000000LL));
+		exit(0);
+	}
+	if (strcmp(av[0], "now64") == 0) {
+		hammer_waitsync(0);
+		gettimeofday(&tv, NULL);
+		tid = (hammer_tid_t)tv.tv_sec * 1000000000LLU +
+			tv.tv_usec * 1000LLU;
+		printf("0x%016llx\n", tid);
 		exit(0);
 	}
 	if (strcmp(av[0], "stamp") == 0) {
@@ -91,6 +107,13 @@ main(int ac, char **av)
 			usage(1);
 		hammer_parsetime(&tid, av[1]);
 		printf("0x%08x\n", (int)(tid / 1000000000LL));
+		exit(0);
+	}
+	if (strcmp(av[0], "stamp64") == 0) {
+		if (av[1] == NULL)
+			usage(1);
+		hammer_parsetime(&tid, av[1]);
+		printf("0x%016llx\n", tid);
 		exit(0);
 	}
 	if (strcmp(av[0], "namekey") == 0) {
@@ -164,13 +187,12 @@ static
 void
 hammer_parsetime(u_int64_t *tidp, const char *timestr)
 {
+	struct timeval tv;
 	struct tm tm;
-	time_t t;
 	int32_t n;
 	char c;
-	double seconds = 0;
 
-	t = time(NULL);
+	gettimeofday(&tv, NULL);
 
 	if (*timestr == 0)
 		usage(1);
@@ -196,13 +218,15 @@ hammer_parsetime(u_int64_t *tidp, const char *timestr)
 			n *= 60;
 			/* fall through */
 		case 's':
-			t -= n;
+			tv.tv_sec -= n;
 			break;
 		default:
 			usage(1);
 		}
 	} else {
-		localtime_r(&t, &tm);
+		double seconds = 0;
+
+		localtime_r(&tv.tv_sec, &tm);
 		seconds = (double)tm.tm_sec;
 		tm.tm_year += 1900;
 		tm.tm_mon += 1;
@@ -216,10 +240,34 @@ hammer_parsetime(u_int64_t *tidp, const char *timestr)
 			tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
 		else
 			tm.tm_sec = (int)seconds;
-		t = mktime(&tm);
+		tv.tv_sec = mktime(&tm);
+		tv.tv_usec = (int)((seconds - floor(seconds)) * 1000000.0);
 	}
-	*tidp = (u_int64_t)t * 1000000000 + 
-		(seconds - (int)seconds) * 1000000000;
+	*tidp = (u_int64_t)tv.tv_sec * 1000000000LLU + 
+		tv.tv_usec * 1000LLU;
+}
+
+/*
+ * If the TID is within 60 seconds of the current time we sync().  If
+ * dosleep is non-zero and the TID is within 1 second of the current time
+ * we wait for the second-hand to turn over.
+ *
+ * The NoSyncOpt prevents both the sync() call and any sleeps from occuring.
+ */
+static
+void
+hammer_waitsync(int dosleep)
+{
+	time_t t1, t2;
+
+	if (NoSyncOpt == 0) {
+		sync();
+		t1 = t2 = time(NULL);
+		while (dosleep && t1 == t2) {
+			usleep(100000);
+			t2 = time(NULL);
+		}
+	}
 }
 
 static
@@ -248,8 +296,8 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer now\n"
-		"hammer stamp <time>\n"
+		"hammer [-x] now[64]\n"
+		"hammer stamp[64] <time>\n"
 		"hammer [-s linkpath] prune <filesystem> [using <configfile>]\n"
 		"hammer [-s linkpath] prune <filesystem> from <modulo_time> to "
 				"<modulo_time> every <modulo_time>\n"

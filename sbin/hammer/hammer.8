@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.8 2008/03/20 04:03:03 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.9 2008/03/25 03:57:58 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -39,7 +39,7 @@
 .Nd HAMMER file system utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl hr
+.Op Fl hrx
 .Op Fl f Ar blkdev[:blkdev]*
 .Op Fl s Ar linkpath
 .Ar command
@@ -63,6 +63,10 @@ When pruning a filesystem you can instruct HAMMER to create softlinks
 to available snapshots.
 .It Fl v
 Increase verboseness.  May be specified multiple times.
+.It Fl x
+Do not call sync() when running commands which sync() by default.
+Timestamp commands such as 'hammer now' sync() by default.  This also
+disables any sleeps the timestamp commands would otherwise perform.
 .El
 .Pp
 The commands are as follows:
@@ -70,14 +74,31 @@ The commands are as follows:
 .It Ar now
 Generate a timestamp suitable for use in the @@ filename extension,
 representing right now.
+Unless
+.Fl x
+is specified, this command will automatically sync() and
+wait for the seconds hand to turn over (sleep for up to one second) prior
+to generating a seconds-denominated timestamp.
+.It Ar now64
+Generate a full 64 bit timestamp.
+Unless
+.Fl x
+is specified, this command will automatically sync(), but not sleep,
+prior to generating the timestamp.
 .It Ar stamp
 Generate a timestamp suitable for use in the @@ filename extension.
+This command does not sync() or sleep and care should be taken if
+generating timestamps for data which may not yet be synced to disk.
 A time specification of
 .Pf yyyymmdd Oo :hhmmss Oc Ns Op .fractional
 specifies an exact as-of timestamp in local (not UTC) time.
 Set the TZ environment variable prior to running
 .Nm
 if you wish to specify the time by some other means.
+.It Ar stamp64
+Same as the
+.Ar stamp
+command but generates a 64 bit timestamp.
 .It Ar history Ar path 
 Show the modification history for a HAMMER file's inode and data.
 .It Ar show Op vol_no[:clu_no]
