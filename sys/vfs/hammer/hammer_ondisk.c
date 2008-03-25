@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.35 2008/03/24 23:50:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.36 2008/03/25 06:43:44 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -433,9 +433,8 @@ hammer_load_volume(hammer_volume_t volume)
 {
 	int error;
 
-	hammer_lock_ex(&volume->io.lock);
-	KKASSERT(volume->io.loading == 0);
 	++volume->io.loading;
+	hammer_lock_ex(&volume->io.lock);
 
 	if (volume->ondisk == NULL) {
 		error = hammer_io_read(volume->devvp, &volume->io);
@@ -844,7 +843,10 @@ again:
 		}
 	}
 	hammer_ref(&node->lock);
-	*errorp = hammer_load_node(node);
+	if (node->ondisk)
+		*errorp = 0;
+	else
+		*errorp = hammer_load_node(node);
 	if (*errorp) {
 		hammer_rel_node(node);
 		node = NULL;
@@ -855,16 +857,11 @@ again:
 /*
  * Reference an already-referenced node.
  */
-int
+void
 hammer_ref_node(hammer_node_t node)
 {
-	int error;
-
-	KKASSERT(node->lock.refs > 0);
+	KKASSERT(node->lock.refs > 0 && node->ondisk != NULL);
 	hammer_ref(&node->lock);
-	if ((error = hammer_load_node(node)) != 0)
-		hammer_rel_node(node);
-	return(error);
 }
 
 /*
@@ -876,9 +873,8 @@ hammer_load_node(hammer_node_t node)
 	hammer_buffer_t buffer;
 	int error;
 
-	if (node->ondisk)
-		return(0);
 	error = 0;
+	++node->loading;
 	hammer_lock_ex(&node->lock);
 	if (node->ondisk == NULL) {
 		/*
@@ -886,9 +882,18 @@ hammer_load_node(hammer_node_t node)
 		 * node->buffer determines whether the node is on
 		 * the buffer's clist and node->ondisk determines
 		 * whether the buffer is referenced.
+		 *
+		 * We could be racing a buffer release, in which case
+		 * node->buffer may become NULL while we are blocked
+		 * referencing the buffer.
 		 */
 		if ((buffer = node->buffer) != NULL) {
 			error = hammer_ref_buffer(buffer);
+			if (error == 0 && node->buffer == NULL) {
+				TAILQ_INSERT_TAIL(&buffer->clist,
+						  node, entry);
+				node->buffer = buffer;
+			}
 		} else {
 			buffer = hammer_get_buffer(node->hmp,
 						   node->node_offset, 0,
@@ -905,6 +910,7 @@ hammer_load_node(hammer_node_t node)
 			       (node->node_offset & HAMMER_BUFMASK));
 		}
 	}
+	--node->loading;
 	hammer_unlock(&node->lock);
 	return (error);
 }
@@ -918,10 +924,13 @@ hammer_ref_node_safe(struct hammer_mount *hmp, struct hammer_node **cache,
 {
 	hammer_node_t node;
 
-	if ((node = *cache) != NULL)
+	node = *cache;
+	if (node != NULL) {
 		hammer_ref(&node->lock);
-	if (node) {
-		*errorp = hammer_load_node(node);
+		if (node->ondisk)
+			*errorp = 0;
+		else
+			*errorp = hammer_load_node(node);
 		if (*errorp) {
 			hammer_rel_node(node);
 			node = NULL;
@@ -1083,7 +1092,9 @@ hammer_flush_node(hammer_node_t node)
 /*
  * Flush passively cached B-Tree nodes associated with this buffer.
  * This is only called when the buffer is about to be destroyed, so
- * none of the nodes should have any references.
+ * none of the nodes should have any references.  The buffer is locked.
+ *
+ * We may be interlocked with the buffer.
  */
 void
 hammer_flush_buffer_nodes(hammer_buffer_t buffer)
@@ -1091,10 +1102,20 @@ hammer_flush_buffer_nodes(hammer_buffer_t buffer)
 	hammer_node_t node;
 
 	while ((node = TAILQ_FIRST(&buffer->clist)) != NULL) {
-		KKASSERT(node->lock.refs == 0 && node->ondisk == NULL);
-		hammer_ref(&node->lock);
-		node->flags |= HAMMER_NODE_FLUSH;
-		hammer_rel_node(node);
+		KKASSERT(node->ondisk == NULL);
+
+		if (node->lock.refs == 0) {
+			hammer_ref(&node->lock);
+			node->flags |= HAMMER_NODE_FLUSH;
+			hammer_rel_node(node);
+		} else {
+			KKASSERT(node->loading != 0);
+			KKASSERT(node->buffer != NULL);
+			buffer = node->buffer;
+			node->buffer = NULL;
+			TAILQ_REMOVE(&buffer->clist, node, entry);
+			/* buffer is unreferenced because ondisk is NULL */
+		}
 	}
 }
 

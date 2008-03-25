@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.43 2008/03/24 23:50:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.44 2008/03/25 06:43:44 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -341,6 +341,7 @@ struct hammer_node {
 	struct hammer_node	**cache1;	/* passive cache(s) */
 	struct hammer_node	**cache2;
 	int			flags;
+	int			loading;	/* load interlock */
 };
 
 #define HAMMER_NODE_DELETED	0x0001
@@ -564,7 +565,7 @@ int		hammer_vfs_export(struct mount *mp, int op,
 			const struct export_args *export);
 hammer_node_t	hammer_get_node(hammer_mount_t hmp,
 			hammer_off_t node_offset, int *errorp);
-int		hammer_ref_node(hammer_node_t node);
+void		hammer_ref_node(hammer_node_t node);
 hammer_node_t	hammer_ref_node_safe(struct hammer_mount *hmp,
 			struct hammer_node **cache, int *errorp);
 void		hammer_rel_node(hammer_node_t node);
