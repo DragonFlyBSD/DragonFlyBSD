@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/tools/tools/netrate/pktgenctl/pktgenctl.c,v 1.1 2008/03/26 13:53:14 sephe Exp $
+ * $DragonFly: src/tools/tools/netrate/pktgenctl/pktgenctl.c,v 1.2 2008/03/26 15:05:33 sephe Exp $
  */
 
 #include <sys/types.h>
@@ -144,9 +144,6 @@ main(int argc, char *argv[])
 				errx(1, "-e: invalid ethernet address");
 			bcopy(LLADDR(&sdl), sa->sa_data, ETHER_ADDR_LEN);
 			arg_mask |= EADDR_MASK;
-			for (n = 0; n < ETHER_ADDR_LEN; ++n)
-				fprintf(stderr, "%02x ", (u_char)sa->sa_data[n]);
-			fprintf(stderr, "\n");
 			break;
 
 		case 'i':
