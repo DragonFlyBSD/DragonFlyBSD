@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.5 2008/03/24 23:50:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.6 2008/03/26 04:32:54 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -143,7 +143,8 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
 		if (error == 0 && cur == 0 && bytes > reblock->free_level) {
-			kprintf("%6d ", bytes);
+			if (hammer_debug_general & 0x4000)
+				kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
 				error = hammer_reblock_data(reblock,
@@ -166,7 +167,8 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
 		if (error == 0 && cur == 0 && bytes > reblock->free_level) {
-			kprintf("%6d ", bytes);
+			if (hammer_debug_general & 0x4000)
+				kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
 				error = hammer_reblock_record(reblock,
@@ -190,7 +192,8 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
 		if (error == 0 && cur == 0 && bytes > reblock->free_level) {
-			kprintf("%6d ", bytes);
+			if (hammer_debug_general & 0x4000)
+				kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
 				if (cursor->parent)
@@ -318,6 +321,7 @@ hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 		hammer_modify_node(cursor->trans, cursor->node,
 				 &elm->leaf.data_offset, sizeof(hammer_off_t));
 		elm->leaf.data_offset = ndata_offset;
+		nrec->base.data_off = ndata_offset;
 	}
 
 done:
