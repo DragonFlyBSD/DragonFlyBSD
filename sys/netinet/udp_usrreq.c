@@ -65,7 +65,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.42 2007/04/22 01:13:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.43 2008/03/26 14:44:59 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -671,7 +671,7 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	struct udpiphdr *ui;
 	int len = m->m_pkthdr.len;
 	struct sockaddr_in *sin;	/* really is initialized before use */
-	int error = 0;
+	int error = 0, lport_any = 0;
 
 	if (len + sizeof(struct udpiphdr) > IP_MAXPACKET) {
 		error = EMSGSIZE;
@@ -683,6 +683,7 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 		if (error)
 			goto release;
 		in_pcbinswildcardhash(inp);
+		lport_any = 1;
 	}
 
 	if (dstaddr != NULL) {		/* destination address specified */
@@ -782,6 +783,22 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	    (inp->inp_socket->so_options & (SO_DONTROUTE | SO_BROADCAST)),
 	    inp->inp_moptions, inp);
 
+	/*
+	 * If this is the first data gram sent on an unbound and unconnected
+	 * UDP socket, lport will be changed in this function.  If target
+	 * CPU after this lport changing is no longer the current CPU, then
+	 * free the route entry allocated on the current CPU.
+	 */
+	if (lport_any) {
+		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_laddr.s_addr,
+				inp->inp_fport, inp->inp_lport) != mycpuid) {
+			struct route *ro = &inp->inp_route;
+
+			if (ro->ro_rt != NULL)
+				RTFREE(ro->ro_rt);
+			bzero(ro, sizeof(*ro));
+		}
+	}
 	return (error);
 
 release:
@@ -890,9 +907,24 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		error = in_pcbconnect(inp, nam, td);
 	}
 	crit_exit();
-	if (error == 0)
+	if (error == 0) {
 		soisconnected(so);
-	else if (error == EAFNOSUPPORT) {	/* connection dissolved */
+
+		/*
+		 * This function is always called on CPU0, so we need to make
+		 * sure that target CPU is same as CPU0, if it is not, then
+		 * we will have to free the route entry allocated on the
+		 * current CPU (i.e. CPU0).
+		 */
+		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_laddr.s_addr,
+				inp->inp_fport, inp->inp_lport) != mycpuid) {
+			struct route *ro = &inp->inp_route;
+
+			if (ro->ro_rt != NULL)
+				RTFREE(ro->ro_rt);
+			bzero(ro, sizeof(*ro));
+		}
+	} else if (error == EAFNOSUPPORT) {	/* connection dissolved */
 		/*
 		 * Follow traditional BSD behavior and retain
 		 * the local port binding.  But, fix the old misbehavior
@@ -923,6 +955,7 @@ static int
 udp_disconnect(struct socket *so)
 {
 	struct inpcb *inp;
+	in_addr_t laddr;
 
 	inp = so->so_pcb;
 	if (inp == NULL)
@@ -934,6 +967,25 @@ udp_disconnect(struct socket *so)
 	in_pcbdisconnect(inp);
 	crit_exit();
 	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
+
+	/* See the comment in udp_connect() */
+	if (!(inp->inp_flags & INP_WASBOUND_NOTANY))
+		laddr = INADDR_ANY;
+	else
+		laddr = inp->inp_laddr.s_addr;
+
+	/*
+	 * If target CPU is to be changed, free the route entry
+	 * which was allocated on the current CPU.
+	 */
+	if (udp_addrcpu(inp->inp_faddr.s_addr, laddr,
+			inp->inp_fport, inp->inp_lport) != mycpuid) {
+		struct route *ro = &inp->inp_route;
+
+		if (ro->ro_rt != NULL)
+			RTFREE(ro->ro_rt);
+		bzero(ro, sizeof(*ro));
+	}
 	return 0;
 }
 

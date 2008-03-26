@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.37 2007/12/19 11:00:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.38 2008/03/26 14:44:59 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -319,11 +319,11 @@ udp_soport(struct socket *so, struct sockaddr *nam __unused,
 
 	/*
 	 * The following processing all take place on Protocol Thread 0:
-	 *   bind() and connect()
+	 *   bind()
 	 *   attach() has a null socket parameter
 	 *   Fast and slow timeouts pass in null socket parameter
 	 */
-	if (req == PRU_CONNECT || req == PRU_BIND || so == NULL)
+	if (req == PRU_BIND || so == NULL)
 		return (&udp_thread[0].td_msgport);
 
 	inp = so->so_pcb;

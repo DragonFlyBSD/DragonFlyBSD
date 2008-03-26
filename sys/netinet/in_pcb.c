@@ -65,7 +65,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.44 2007/12/19 11:10:42 sephe Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.45 2008/03/26 14:44:59 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -441,7 +441,7 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 	struct ucred *cred = NULL;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 	struct sockaddr *jsin;
-	int jailed = 0;
+	int jailed = 0, alloc_route = 0;
 
 	if (nam->sa_len != sizeof *sin)
 		return (EINVAL);
@@ -498,6 +498,7 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 			((struct sockaddr_in *) &ro->ro_dst)->sin_addr =
 				sin->sin_addr;
 			rtalloc(ro);
+			alloc_route = 1;
 		}
 		/*
 		 * If we found a route, use the address
@@ -536,7 +537,7 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 				ia = NULL;
 
 			if (!jailed && ia == NULL)
-				return (EADDRNOTAVAIL);
+				goto fail;
 		}
 		/*
 		 * If the destination address is multicast and an outgoing
@@ -555,7 +556,7 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 					if (ia->ia_ifp == ifp)
 						break;
 				if (ia == NULL)
-					return (EADDRNOTAVAIL);
+					goto fail;
 			}
 		}
 		/*
@@ -564,16 +565,26 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 		 */
 		if (ia == NULL && jailed) {
 			if ((jsin = prison_get_nonlocal(cred->cr_prison, AF_INET, NULL)) != NULL ||
-			    (jsin = prison_get_local(cred->cr_prison, AF_INET, NULL)) != NULL)
+			    (jsin = prison_get_local(cred->cr_prison, AF_INET, NULL)) != NULL) {
 				*plocal_sin = satosin(jsin);
-			else
+			} else {
 				/* IPv6 only Jail */
-				return (EADDRNOTAVAIL);
+				goto fail;
+			}
 		} else {
 			*plocal_sin = &ia->ia_addr;
 		}
 	}
 	return (0);
+fail:
+	if (alloc_route) {
+		struct route *ro = &inp->inp_route;
+
+		if (ro->ro_rt != NULL)
+			RTFREE(ro->ro_rt);
+		bzero(ro, sizeof(*ro));
+	}
+	return (EADDRNOTAVAIL);
 }
 
 /*
