@@ -1,7 +1,8 @@
-# $DragonFly: src/tools/tools/netrate/pktgenctl/Makefile,v 1.1 2008/03/26 13:53:14 sephe Exp $
+# $DragonFly: src/tools/tools/netrate/pktgenctl/Makefile,v 1.2 2008/03/27 11:42:11 sephe Exp $
 
 WARNS=	6
 PROG=	pktgenctl
+BINDIR=	/usr/sbin
 NOMAN=
 
 CFLAGS+= -I${.CURDIR}/..
