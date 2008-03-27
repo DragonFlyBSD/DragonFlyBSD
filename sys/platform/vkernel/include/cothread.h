@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/include/cothread.h,v 1.1 2008/03/20 02:14:54 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/cothread.h,v 1.2 2008/03/27 04:28:07 dillon Exp $
  */
 
 #ifndef _MACHINE_COTHREAD_H_
@@ -43,7 +43,8 @@ struct cothread {
 	pthread_t	pthr;
 	pthread_t	pintr;
 	void		*arg;
-	void		(*intr)(struct cothread *);
+	void		(*thr_func)(struct cothread *);
+	void		(*thr_intr)(struct cothread *);
 	pthread_mutex_t	mutex;
 	pthread_cond_t	cond;
 };

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/platform/cothread.c,v 1.1 2008/03/20 02:14:55 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/cothread.c,v 1.2 2008/03/27 04:28:09 dillon Exp $
  */
 /*
  * Provides the vkernel with an asynchronous I/O mechanism using pthreads
@@ -66,6 +66,8 @@
 #include <signal.h>
 #include <stdio.h>
 
+static void cothread_thread(void *arg);
+
 /*
  * Create a co-processor thread for a virtual kernel.  This thread operates
  * outside of the virtual kernel cpu abstraction and may only make direct
@@ -79,7 +81,8 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 	cothread_t cotd;
 
 	cotd = kmalloc(sizeof(*cotd), M_DEVBUF, M_WAITOK|M_ZERO);
-	cotd->intr = thr_intr;
+	cotd->thr_intr = thr_intr;
+	cotd->thr_func = thr_func;
 	cotd->arg = arg;
 	pthread_mutex_init(&cotd->mutex, NULL);
 	pthread_cond_init(&cotd->cond, NULL);
@@ -92,10 +95,20 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 	 * The vkernel's cpu_disable_intr() masks signals.  We don't want
 	 * our coprocessor thread taking any unix signals :-)
 	 */
-	cpu_mask_all_signals();
-	pthread_create(&cotd->pthr, NULL, (void *)thr_func, cotd);
-	cpu_unmask_all_signals();
+	pthread_create(&cotd->pthr, NULL, (void *)cothread_thread, cotd);
 	return(cotd);
+}
+
+static void
+cothread_thread(void *arg)
+{
+	cothread_t cotd = arg;
+	int dummy = 0;
+
+	cpu_mask_all_signals();
+	/* %fs (aka mycpu) is illegal in cothreads */
+	tls_set_fs(&dummy, sizeof(dummy));
+	cotd->thr_func(cotd);
 }
 
 /*
