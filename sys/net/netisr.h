@@ -65,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.29 2007/12/30 20:02:56 hasso Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.30 2008/03/29 03:37:15 sephe Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -227,6 +227,7 @@ void		netisr_register(int, lwkt_portfn_t, netisr_fn_t);
 int		netisr_unregister(int);
 void		netmsg_service_port_init(lwkt_port_t);
 void		netmsg_service_loop(void *arg);
+void		netmsg_service_loop_mpsafe(void *arg);
 void		netmsg_service_sync(void);
 void		schednetisr(int);
 
