@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.43 2007/11/16 05:07:36 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.44 2008/03/29 05:27:07 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -92,6 +92,7 @@
 
 #define MIN_POLL_BURST_MAX	10
 #define MAX_POLL_BURST_MAX	1000
+#define POLL_BURST_MAX		150	/* good for 100Mbit net and HZ=1000 */
 
 #ifndef DEVICE_POLLING_FREQ_MAX
 #define DEVICE_POLLING_FREQ_MAX		30000
@@ -159,6 +160,9 @@ TUNABLE_INT("kern.polling.enable", &polling_enabled);
 static int	pollhz = DEVICE_POLLING_FREQ_DEFAULT;
 TUNABLE_INT("kern.polling.pollhz", &pollhz);
 
+static int	poll_burst_max = POLL_BURST_MAX;
+TUNABLE_INT("kern.polling.burst_max", &poll_burst_max);
+
 /* Netisr handlers */
 static void	netisr_poll(struct netmsg *);
 static void	netisr_pollmore(struct netmsg *);
@@ -215,12 +219,17 @@ init_device_poll_pcpu(int cpuid)
 	if (((1 << cpuid) & poll_cpumask0) == 0)
 		return;
 
+	if (poll_burst_max < MIN_POLL_BURST_MAX)
+		poll_burst_max = MIN_POLL_BURST_MAX;
+	else if (poll_burst_max > MAX_POLL_BURST_MAX)
+		poll_burst_max = MAX_POLL_BURST_MAX;
+
 	poll_cpumask |= (1 << cpuid);
 
 	pctx = kmalloc(sizeof(*pctx), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	pctx->poll_each_burst = 5;
-	pctx->poll_burst_max = 150; /* good for 100Mbit net and HZ=1000 */
+	pctx->poll_burst_max = poll_burst_max;
 	pctx->user_frac = 50;
 	pctx->reg_frac = 20;
 	pctx->polling_enabled = polling_enabled;
