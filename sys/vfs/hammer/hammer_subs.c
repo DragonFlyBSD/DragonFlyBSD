@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.13 2008/02/04 08:33:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.14 2008/03/29 20:12:54 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -109,7 +109,8 @@ hammer_lock_sh(struct hammer_lock *lock)
  * return EDEADLK If there is more then one shared holder.
  *
  * No error occurs and no action is taken if the lock is already exclusively
- * held by the caller.
+ * held by the caller.  If the lock is not held at all or held exclusively
+ * by someone else, this function will panic.
  */
 int
 hammer_lock_upgrade(struct hammer_lock *lock)
@@ -118,14 +119,19 @@ hammer_lock_upgrade(struct hammer_lock *lock)
 
 	crit_enter();
 	if (lock->lockcount > 0) {
-		KKASSERT(lock->locktd == curthread);
+		if (lock->locktd != curthread)
+			panic("hammer_lock_upgrade: illegal lock state");
 		error = 0;
 	} else if (lock->lockcount == -1) {
 		lock->lockcount = 1;
 		lock->locktd = curthread;
 		error = 0;
-	} else {
+	} else if (lock->lockcount != 0) {
 		error = EDEADLK;
+	} else {
+		panic("hammer_lock_upgrade: lock is not held");
+		/* NOT REACHED */
+		error = 0;
 	}
 	crit_exit();
 	return(error);
@@ -137,7 +143,7 @@ hammer_lock_upgrade(struct hammer_lock *lock)
 void
 hammer_lock_downgrade(struct hammer_lock *lock)
 {
-	KKASSERT(lock->lockcount == 1);
+	KKASSERT(lock->lockcount == 1 && lock->locktd == curthread);
 	crit_enter();
 	lock->lockcount = -1;
 	lock->locktd = NULL;

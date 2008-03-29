@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.20 2008/03/22 02:06:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.21 2008/03/29 20:12:54 dillon Exp $
  */
 
 /*
@@ -156,6 +156,9 @@ hammer_done_cursor(hammer_cursor_t cursor)
  * Upgrade cursor->node and cursor->parent to exclusive locks.  This
  * function can return EDEADLK.
  *
+ * The lock must already be either held shared or already held exclusively
+ * by us.
+ *
  * If we fail to upgrade the lock and cursor->deadlk_node is NULL, 
  * we add another reference to the node that failed and set
  * cursor->deadlk_node so hammer_done_cursor() can block on it.
@@ -165,23 +168,16 @@ hammer_cursor_upgrade(hammer_cursor_t cursor)
 {
 	int error;
 
-	if (hammer_lock_held(&cursor->node->lock) < 0) {
-		error = hammer_lock_upgrade(&cursor->node->lock);
-		if (error && cursor->deadlk_node == NULL) {
-			cursor->deadlk_node = cursor->node;
-			hammer_ref_node(cursor->deadlk_node);
-		}
-	} else {
-		error = 0;
-	}
-	if (cursor->parent && hammer_lock_held(&cursor->parent->lock) < 0) {
+	error = hammer_lock_upgrade(&cursor->node->lock);
+	if (error && cursor->deadlk_node == NULL) {
+		cursor->deadlk_node = cursor->node;
+		hammer_ref_node(cursor->deadlk_node);
+	} else if (error == 0 && cursor->parent) {
 		error = hammer_lock_upgrade(&cursor->parent->lock);
 		if (error && cursor->deadlk_node == NULL) {
 			cursor->deadlk_node = cursor->parent;
 			hammer_ref_node(cursor->deadlk_node);
 		}
-	} else {
-		error = 0;
 	}
 	return(error);
 }
@@ -193,10 +189,12 @@ hammer_cursor_upgrade(hammer_cursor_t cursor)
 void
 hammer_cursor_downgrade(hammer_cursor_t cursor)
 {
-	if (hammer_lock_held(&cursor->node->lock) > 0)
+	if (hammer_lock_excl_owned(&cursor->node->lock, curthread))
 		hammer_lock_downgrade(&cursor->node->lock);
-	if (cursor->parent && hammer_lock_held(&cursor->parent->lock) > 0)
+	if (cursor->parent &&
+	    hammer_lock_excl_owned(&cursor->parent->lock, curthread)) {
 		hammer_lock_downgrade(&cursor->parent->lock);
+	}
 }
 
 /*

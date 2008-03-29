@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.38 2008/03/23 04:43:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.39 2008/03/29 20:12:54 dillon Exp $
  */
 
 #include "hammer.h"
@@ -284,11 +284,14 @@ hammer_mem_lookup(hammer_cursor_t cursor, hammer_inode_t ip)
 		cursor->iprec = NULL;
 	}
 	if (cursor->ip) {
+		KKASSERT(cursor->ip->cursor_ip_refs > 0);
+		--cursor->ip->cursor_ip_refs;
 		hammer_rec_rb_tree_scan_info_done(&cursor->scan,
 						  &cursor->ip->rec_tree);
 	}
 	cursor->ip = ip;
 	hammer_rec_rb_tree_scan_info_link(&cursor->scan, &ip->rec_tree);
+	++ip->cursor_ip_refs;
 
 	cursor->scan.node = NULL;
 	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_find_cmp,
@@ -314,11 +317,14 @@ hammer_mem_first(hammer_cursor_t cursor, hammer_inode_t ip)
 		cursor->iprec = NULL;
 	}
 	if (cursor->ip) {
+		KKASSERT(cursor->ip->cursor_ip_refs > 0);
+		--cursor->ip->cursor_ip_refs;
 		hammer_rec_rb_tree_scan_info_done(&cursor->scan,
 						  &cursor->ip->rec_tree);
 	}
 	cursor->ip = ip;
 	hammer_rec_rb_tree_scan_info_link(&cursor->scan, &ip->rec_tree);
+	++ip->cursor_ip_refs;
 
 	cursor->scan.node = NULL;
 	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_scan_cmp,
@@ -339,6 +345,8 @@ void
 hammer_mem_done(hammer_cursor_t cursor)
 {
 	if (cursor->ip) {
+		KKASSERT(cursor->ip->cursor_ip_refs > 0);
+		--cursor->ip->cursor_ip_refs;
 		hammer_rec_rb_tree_scan_info_done(&cursor->scan,
 						  &cursor->ip->rec_tree);
 		cursor->ip = NULL;

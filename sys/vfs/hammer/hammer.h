@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.44 2008/03/25 06:43:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.45 2008/03/29 20:12:54 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -117,15 +117,14 @@ hammer_islastref(struct hammer_lock *lock)
 }
 
 /*
- * This inline is specifically optimized for the case where the caller
- * owns the lock, but wants to know what kind of lock he owns.  A
- * negative value indicates a shared lock, a positive value indicates
- * an exclusive lock.
+ * Return if we specifically own the lock exclusively.
  */
 static __inline int
-hammer_lock_held(struct hammer_lock *lock)
+hammer_lock_excl_owned(struct hammer_lock *lock, thread_t td)
 {
-	return(lock->lockcount);
+	if (lock->lockcount > 0 && lock->locktd == td)
+		return(1);
+	return(0);
 }
 
 /*
@@ -166,6 +165,7 @@ struct hammer_inode {
 	hammer_tid_t	sync_tid;	/* last inode tid synced to disk */
 	struct hammer_mount *hmp;
 	int		flags;
+	int		cursor_ip_refs;	/* sanity */
 	struct vnode	*vp;
 	struct lockf	advlock;
 	struct hammer_lock lock;
