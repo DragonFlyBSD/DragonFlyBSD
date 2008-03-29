@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.38 2008/03/29 03:37:15 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.39 2008/03/29 04:45:47 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -74,6 +74,9 @@ lwkt_port netisr_apanic_rport;
 lwkt_port netisr_sync_port;
 
 static int (*netmsg_fwd_port_fn)(lwkt_port_t, lwkt_msg_t);
+
+static int netisr_mpsafe_thread = 0;
+TUNABLE_INT("netisr.mpsafe_thread", &netisr_mpsafe_thread);
 
 /*
  * netisr_afree_rport replymsg function, only used to handle async
@@ -144,8 +147,10 @@ netisr_init(void)
      * Create default per-cpu threads for generic protocol handling.
      */
     for (i = 0; i < ncpus; ++i) {
-	lwkt_create(netmsg_service_loop, NULL, NULL, &netisr_cpu[i], 0, i,
-		    "netisr_cpu %d", i);
+	lwkt_create(netisr_mpsafe_thread ?
+		    netmsg_service_loop_mpsafe : netmsg_service_loop,
+		    NULL, NULL, &netisr_cpu[i],
+		    0, i, "netisr_cpu %d", i);
 	netmsg_service_port_init(&netisr_cpu[i].td_msgport);
     }
 

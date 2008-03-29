@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.38 2008/03/26 14:44:59 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.39 2008/03/29 04:45:47 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -63,6 +63,9 @@ extern struct thread netisr_cpu[];
 
 static struct thread tcp_thread[MAXCPU];
 static struct thread udp_thread[MAXCPU];
+
+static int	udp_mpsafe_thread = 0;
+TUNABLE_INT("net.inet.udp.mpsafe_thread", &udp_mpsafe_thread);
 
 static __inline int
 INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
@@ -385,8 +388,10 @@ udp_thread_init(void)
 	int cpu;
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
-		lwkt_create(netmsg_service_loop, NULL, NULL,
-			&udp_thread[cpu], 0, cpu, "udp_thread %d", cpu);
+		lwkt_create(udp_mpsafe_thread ?
+			    netmsg_service_loop_mpsafe : netmsg_service_loop,
+			    NULL, NULL, &udp_thread[cpu], 0, cpu,
+			    "udp_thread %d", cpu);
 		netmsg_service_port_init(&udp_thread[cpu].td_msgport);
 	}
 }
