@@ -1,6 +1,6 @@
 /*
- * $FreeBSD: src/sys/boot/ficl/unix.c,v 1.1 2001/04/29 02:36:34 dcs Exp $
- * $DragonFly: src/sys/boot/ficl/unix.c,v 1.1 2003/11/10 06:08:33 dillon Exp $
+ * $FreeBSD: src/sys/boot/ficl/unix.c,v 1.2 2007/03/23 22:26:01 jkim Exp $
+ * $DragonFly: src/sys/boot/ficl/unix.c,v 1.2 2008/03/29 23:31:07 swildner Exp $
  */
 
 #include <string.h>
@@ -11,9 +11,9 @@
 
 
 unsigned long ficlNtohl(unsigned long number)
-	{
-	return ntohl(number);
-	}
+{
+    return ntohl(number);
+}
 
 
 

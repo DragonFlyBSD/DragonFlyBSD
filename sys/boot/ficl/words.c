@@ -42,8 +42,8 @@
 */
 
 /*
- * $FreeBSD: src/sys/boot/ficl/words.c,v 1.39 2002/12/30 21:18:06 schweikh Exp $
- * $DragonFly: src/sys/boot/ficl/words.c,v 1.3 2003/11/10 06:08:33 dillon Exp $
+ * $FreeBSD: src/sys/boot/ficl/words.c,v 1.40 2007/03/23 22:26:01 jkim Exp $
+ * $DragonFly: src/sys/boot/ficl/words.c,v 1.4 2008/03/29 23:31:07 swildner Exp $
  */
 
 #ifdef TESTMAIN
@@ -73,6 +73,10 @@ static char leaveTag[] = "leave";
 
 static char destTag[]  = "target";
 static char origTag[]  = "origin";
+
+static char caseTag[]  = "case";
+static char ofTag[]  = "of";
+static char fallthroughTag[]  = "fallthrough";
 
 #if FICL_WANT_LOCALS
 static void doLocalIm(FICL_VM *pVM);
@@ -1223,34 +1227,26 @@ static void cStore(FICL_VM *pVM)
 
 
 /**************************************************************************
-                        i f C o I m
-** IMMEDIATE
-** Compiles code for a conditional branch into the dictionary
-** and pushes the branch patch address on the stack for later
-** patching by ELSE or THEN/ENDIF. 
+                        b r a n c h P a r e n
+** 
+** Runtime for "(branch)" -- expects a literal offset in the next
+** compilation address, and branches to that location.
 **************************************************************************/
 
-static void ifCoIm(FICL_VM *pVM)
+static void branchParen(FICL_VM *pVM)
 {
-    FICL_DICT *dp = vmGetDict(pVM);
-
-    assert(pVM->pSys->pIfParen);
-
-    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pIfParen));
-    markBranch(dp, pVM, origTag);
-    dictAppendUNS(dp, 1);
+    vmBranchRelative(pVM, (uintptr_t)*(pVM->ip));
     return;
 }
 
 
 /**************************************************************************
-                        i f P a r e n
-** Runtime code to do "if" or "until": pop a flag from the stack,
-** fall through if true, branch if false. Probably ought to be 
-** called (not?branch) since it does "branch if false".
+                        b r a n c h 0
+** Runtime code for "(branch0)"; pop a flag from the stack,
+** branch if 0. fall through otherwise.  The heart of "if" and "until".
 **************************************************************************/
 
-static void ifParen(FICL_VM *pVM)
+static void branch0(FICL_VM *pVM)
 {
     FICL_UNS flag;
     
@@ -1273,9 +1269,31 @@ static void ifParen(FICL_VM *pVM)
 
 
 /**************************************************************************
+                        i f C o I m
+** IMMEDIATE COMPILE-ONLY
+** Compiles code for a conditional branch into the dictionary
+** and pushes the branch patch address on the stack for later
+** patching by ELSE or THEN/ENDIF. 
+**************************************************************************/
+
+static void ifCoIm(FICL_VM *pVM)
+{
+    FICL_DICT *dp = vmGetDict(pVM);
+
+    assert(pVM->pSys->pBranch0);
+
+    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pBranch0));
+    markBranch(dp, pVM, origTag);
+    dictAppendUNS(dp, 1);
+    return;
+}
+
+
+/**************************************************************************
                         e l s e C o I m
 ** 
-** IMMEDIATE -- compiles an "else"...
+** IMMEDIATE COMPILE-ONLY
+** compiles an "else"...
 ** 1) Compile a branch and a patch address; the address gets patched
 **    by "endif" to point past the "else" code.
 ** 2) Pop the the "if" patch address
@@ -1306,22 +1324,8 @@ static void elseCoIm(FICL_VM *pVM)
 
 
 /**************************************************************************
-                        b r a n c h P a r e n
-** 
-** Runtime for "(branch)" -- expects a literal offset in the next
-** compilation address, and branches to that location.
-**************************************************************************/
-
-static void branchParen(FICL_VM *pVM)
-{
-    vmBranchRelative(pVM, (uintptr_t)*(pVM->ip));
-    return;
-}
-
-
-/**************************************************************************
                         e n d i f C o I m
-** 
+** IMMEDIATE COMPILE-ONLY
 **************************************************************************/
 
 static void endifCoIm(FICL_VM *pVM)
@@ -1331,6 +1335,234 @@ static void endifCoIm(FICL_VM *pVM)
     return;
 }
 
+
+/**************************************************************************
+                        c a s e C o I m
+** IMMEDIATE COMPILE-ONLY
+**
+**
+** At compile-time, a CASE-SYS (see DPANS94 6.2.0873) looks like this:
+**			i*addr i caseTag
+** and an OF-SYS (see DPANS94 6.2.1950) looks like this:
+**			i*addr i caseTag addr ofTag
+** The integer under caseTag is the count of fixup addresses that branch
+** to ENDCASE.
+**************************************************************************/
+
+static void caseCoIm(FICL_VM *pVM)
+{
+#if FICL_ROBUST > 1
+    vmCheckStack(pVM, 0, 2);
+#endif
+
+	PUSHUNS(0);
+	markControlTag(pVM, caseTag);
+    return;
+}
+
+
+/**************************************************************************
+                        e n d c a s eC o I m
+** IMMEDIATE COMPILE-ONLY
+**************************************************************************/
+
+static void endcaseCoIm(FICL_VM *pVM)
+{
+	FICL_UNS fixupCount;
+    FICL_DICT *dp;
+    CELL *patchAddr;
+    FICL_INT offset;
+
+    assert(pVM->pSys->pDrop);
+
+	/*
+	** if the last OF ended with FALLTHROUGH,
+	** just add the FALLTHROUGH fixup to the
+	** ENDOF fixups
+	*/
+	if (stackGetTop(pVM->pStack).p == fallthroughTag)
+	{
+		matchControlTag(pVM, fallthroughTag);
+		patchAddr = POPPTR();
+	    matchControlTag(pVM, caseTag);
+		fixupCount = POPUNS();
+		PUSHPTR(patchAddr);
+		PUSHUNS(fixupCount + 1);
+		markControlTag(pVM, caseTag);
+	}
+
+    matchControlTag(pVM, caseTag);
+
+#if FICL_ROBUST > 1
+    vmCheckStack(pVM, 1, 0);
+#endif
+	fixupCount = POPUNS();
+#if FICL_ROBUST > 1
+    vmCheckStack(pVM, fixupCount, 0);
+#endif
+
+    dp = vmGetDict(pVM);
+
+    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pDrop));
+
+	while (fixupCount--)
+	{
+		patchAddr = (CELL *)stackPopPtr(pVM->pStack);
+		offset = dp->here - patchAddr;
+		*patchAddr = LVALUEtoCELL(offset);
+	}
+    return;
+}
+
+
+static void ofParen(FICL_VM *pVM)
+{
+	FICL_UNS a, b;
+
+#if FICL_ROBUST > 1
+    vmCheckStack(pVM, 2, 1);
+#endif
+
+	a = POPUNS();
+	b = stackGetTop(pVM->pStack).u;
+
+    if (a == b)
+    {                           /* fall through */
+		stackDrop(pVM->pStack, 1);
+        vmBranchRelative(pVM, 1);
+    }
+    else 
+    {                           /* take branch to next of or endswitch */
+        vmBranchRelative(pVM, *(int *)(pVM->ip));
+    }
+
+    return;
+}
+
+
+/**************************************************************************
+                        o f C o I m
+** IMMEDIATE COMPILE-ONLY
+**************************************************************************/
+
+static void ofCoIm(FICL_VM *pVM)
+{
+    FICL_DICT *dp = vmGetDict(pVM);
+	CELL *fallthroughFixup = NULL;
+
+    assert(pVM->pSys->pBranch0);
+
+#if FICL_ROBUST > 1
+    vmCheckStack(pVM, 1, 3);
+#endif
+
+	if (stackGetTop(pVM->pStack).p == fallthroughTag)
+	{
+		matchControlTag(pVM, fallthroughTag);
+		fallthroughFixup = POPPTR();
+	}
+
+	matchControlTag(pVM, caseTag);
+
+	markControlTag(pVM, caseTag);
+
+    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pOfParen));
+    markBranch(dp, pVM, ofTag);
+    dictAppendUNS(dp, 2);
+
+	if (fallthroughFixup != NULL)
+	{
+		FICL_INT offset = dp->here - fallthroughFixup;
+		*fallthroughFixup = LVALUEtoCELL(offset);
+	}
+
+    return;
+}
+
+
+/**************************************************************************
+                    e n d o f C o I m
+** IMMEDIATE COMPILE-ONLY
+**************************************************************************/
+
+static void endofCoIm(FICL_VM *pVM)
+{
+    CELL *patchAddr;
+    FICL_UNS fixupCount;
+    FICL_INT offset;
+    FICL_DICT *dp = vmGetDict(pVM);
+
+#if FICL_ROBUST > 1
+    vmCheckStack(pVM, 4, 3);
+#endif
+
+    assert(pVM->pSys->pBranchParen);
+
+	/* ensure we're in an OF, */
+    matchControlTag(pVM, ofTag);
+	/* grab the address of the branch location after the OF */
+    patchAddr = (CELL *)stackPopPtr(pVM->pStack);
+	/* ensure we're also in a "case" */
+    matchControlTag(pVM, caseTag);
+	/* grab the current number of ENDOF fixups */
+	fixupCount = POPUNS();
+
+    /* compile branch runtime */
+    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pBranchParen));
+
+	/* push a new ENDOF fixup, the updated count of ENDOF fixups, and the caseTag */
+    PUSHPTR(dp->here);
+    PUSHUNS(fixupCount + 1);
+	markControlTag(pVM, caseTag);
+
+	/* reserve space for the ENDOF fixup */
+    dictAppendUNS(dp, 2);
+
+	/* and patch the original OF */
+    offset = dp->here - patchAddr;
+    *patchAddr = LVALUEtoCELL(offset);
+}
+
+
+/**************************************************************************
+                    f a l l t h r o u g h C o I m
+** IMMEDIATE COMPILE-ONLY
+**************************************************************************/
+
+static void fallthroughCoIm(FICL_VM *pVM)
+{
+    CELL *patchAddr;
+    FICL_INT offset;
+    FICL_DICT *dp = vmGetDict(pVM);
+
+#if FICL_ROBUST > 1
+    vmCheckStack(pVM, 4, 3);
+#endif
+
+	/* ensure we're in an OF, */
+    matchControlTag(pVM, ofTag);
+	/* grab the address of the branch location after the OF */
+    patchAddr = (CELL *)stackPopPtr(pVM->pStack);
+	/* ensure we're also in a "case" */
+    matchControlTag(pVM, caseTag);
+
+	/* okay, here we go.  put the case tag back. */
+	markControlTag(pVM, caseTag);
+
+    /* compile branch runtime */
+    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pBranchParen));
+
+	/* push a new FALLTHROUGH fixup and the fallthroughTag */
+    PUSHPTR(dp->here);
+	markControlTag(pVM, fallthroughTag);
+
+	/* reserve space for the FALLTHROUGH fixup */
+    dictAppendUNS(dp, 2);
+
+	/* and patch the original OF */
+    offset = dp->here - patchAddr;
+    *patchAddr = LVALUEtoCELL(offset);
+}
 
 /**************************************************************************
                         h a s h
@@ -2993,9 +3225,9 @@ static void untilCoIm(FICL_VM *pVM)
 {
     FICL_DICT *dp = vmGetDict(pVM);
 
-    assert(pVM->pSys->pIfParen);
+    assert(pVM->pSys->pBranch0);
 
-    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pIfParen));
+    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pBranch0));
     resolveBackBranch(dp, pVM, destTag);
     return;
 }
@@ -3004,9 +3236,9 @@ static void whileCoIm(FICL_VM *pVM)
 {
     FICL_DICT *dp = vmGetDict(pVM);
 
-    assert(pVM->pSys->pIfParen);
+    assert(pVM->pSys->pBranch0);
 
-    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pIfParen));
+    dictAppendCell(dp, LVALUEtoCELL(pVM->pSys->pBranch0));
     markBranch(dp, pVM, origTag);
     twoSwap(pVM);
     dictAppendUNS(dp, 1);
@@ -4557,9 +4789,10 @@ WORDKIND ficlWordClassify(FICL_WORD *pFW)
         {CREATE,     createParen},
         {DO,             doParen},
         {DOES,            doDoes},
-        {IF,             ifParen},
+        {IF,             branch0},
         {LITERAL,   literalParen},
         {LOOP,         loopParen},
+        {OF,             ofParen},
         {PLOOP,    plusLoopParen},
         {QDO,           qDoParen},
         {CSTRINGLIT,  cstringLit},
@@ -4583,6 +4816,28 @@ WORDKIND ficlWordClassify(FICL_WORD *pFW)
 
     return PRIMITIVE;
 }
+
+
+#ifdef TESTMAIN
+/**************************************************************************
+**                     r a n d o m
+** FICL-specific
+**************************************************************************/
+static void ficlRandom(FICL_VM *pVM)
+{
+    PUSHINT(rand());
+}
+
+
+/**************************************************************************
+**                     s e e d - r a n d o m
+** FICL-specific
+**************************************************************************/
+static void ficlSeedRandom(FICL_VM *pVM)
+{
+    srand(POPINT());
+}
+#endif
 
 
 /**************************************************************************
@@ -4654,6 +4909,7 @@ void ficlCompileCore(FICL_SYSTEM *pSys)
     dictAppendWord(dp, "c!",        cStore,         FW_DEFAULT);
     dictAppendWord(dp, "c,",        cComma,         FW_DEFAULT);
     dictAppendWord(dp, "c@",        cFetch,         FW_DEFAULT);
+    dictAppendWord(dp, "case",      caseCoIm,       FW_COMPIMMED);
     dictAppendWord(dp, "cell+",     cellPlus,       FW_DEFAULT);
     dictAppendWord(dp, "cells",     cells,          FW_DEFAULT);
     dictAppendWord(dp, "char",      ficlChar,       FW_DEFAULT);
@@ -4667,14 +4923,18 @@ void ficlCompileCore(FICL_SYSTEM *pSys)
     dictAppendWord(dp, "depth",     depth,          FW_DEFAULT);
     dictAppendWord(dp, "do",        doCoIm,         FW_COMPIMMED);
     dictAppendWord(dp, "does>",     doesCoIm,       FW_COMPIMMED);
+    pSys->pDrop =
     dictAppendWord(dp, "drop",      drop,           FW_DEFAULT);
     dictAppendWord(dp, "dup",       dup,            FW_DEFAULT);
     dictAppendWord(dp, "else",      elseCoIm,       FW_COMPIMMED);
     dictAppendWord(dp, "emit",      emit,           FW_DEFAULT);
+    dictAppendWord(dp, "endcase",   endcaseCoIm,    FW_COMPIMMED);
+    dictAppendWord(dp, "endof",     endofCoIm,      FW_COMPIMMED);
     dictAppendWord(dp, "environment?", environmentQ,FW_DEFAULT);
     dictAppendWord(dp, "evaluate",  evaluate,       FW_DEFAULT);
     dictAppendWord(dp, "execute",   execute,        FW_DEFAULT);
     dictAppendWord(dp, "exit",      exitCoIm,       FW_COMPIMMED);
+    dictAppendWord(dp, "fallthrough",fallthroughCoIm,FW_COMPIMMED);
     dictAppendWord(dp, "fill",      fill,           FW_DEFAULT);
     dictAppendWord(dp, "find",      cFind,          FW_DEFAULT);
     dictAppendWord(dp, "fm/mod",    fmSlashMod,     FW_DEFAULT);
@@ -4696,6 +4956,7 @@ void ficlCompileCore(FICL_SYSTEM *pSys)
     dictAppendWord(dp, "mod",       ficlMod,        FW_DEFAULT);
     dictAppendWord(dp, "move",      move,           FW_DEFAULT);
     dictAppendWord(dp, "negate",    negate,         FW_DEFAULT);
+    dictAppendWord(dp, "of",        ofCoIm,         FW_COMPIMMED);
     dictAppendWord(dp, "or",        bitwiseOr,      FW_DEFAULT);
     dictAppendWord(dp, "over",      over,           FW_DEFAULT);
     dictAppendWord(dp, "postpone",  postponeCoIm,   FW_COMPIMMED);
@@ -4744,7 +5005,6 @@ void ficlCompileCore(FICL_SYSTEM *pSys)
     dictAppendWord(dp, "?do",       qDoCoIm,        FW_COMPIMMED);
     dictAppendWord(dp, "again",     againCoIm,      FW_COMPIMMED);
     dictAppendWord(dp, "c\"",       cstringQuoteIm, FW_IMMEDIATE);
-    /* case of endof endcase */
     dictAppendWord(dp, "hex",       hex,            FW_DEFAULT);
     dictAppendWord(dp, "pad",       pad,            FW_DEFAULT);
     dictAppendWord(dp, "parse",     parse,          FW_DEFAULT);
@@ -4891,6 +5151,10 @@ void ficlCompileCore(FICL_SYSTEM *pSys)
     dictAppendWord(dp, "(user)",    userParen,      FW_DEFAULT);
     dictAppendWord(dp, "user",      userVariable,   FW_DEFAULT);
 #endif
+#ifdef TESTMAIN
+    dictAppendWord(dp, "random",    ficlRandom,     FW_DEFAULT);
+    dictAppendWord(dp, "seed-random",ficlSeedRandom,FW_DEFAULT);
+#endif
 
     /*
     ** internal support words
@@ -4908,8 +5172,8 @@ void ficlCompileCore(FICL_SYSTEM *pSys)
     dictAppendWord(dp, "(.\")",     stringLit,      FW_COMPILE);
     pSys->pCStringLit =
     dictAppendWord(dp, "(c\")",     cstringLit,     FW_COMPILE);
-    pSys->pIfParen =
-    dictAppendWord(dp, "(if)",      ifParen,        FW_COMPILE);
+    pSys->pBranch0 =
+    dictAppendWord(dp, "(branch0)",      branch0,        FW_COMPILE);
     pSys->pBranchParen =
     dictAppendWord(dp, "(branch)",  branchParen,    FW_COMPILE);
     pSys->pDoParen =
@@ -4925,6 +5189,8 @@ void ficlCompileCore(FICL_SYSTEM *pSys)
     pSys->pInterpret =
     dictAppendWord(dp, "interpret", interpret,      FW_DEFAULT);
     dictAppendWord(dp, "lookup",    lookup,         FW_DEFAULT);
+    pSys->pOfParen =
+    dictAppendWord(dp, "(of)",      ofParen,        FW_DEFAULT);
     dictAppendWord(dp, "(variable)",variableParen,  FW_COMPILE);
     dictAppendWord(dp, "(constant)",constantParen,  FW_COMPILE);
     dictAppendWord(dp, "(parse-step)", 

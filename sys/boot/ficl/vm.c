@@ -48,8 +48,8 @@
 */
 
 /*
- * $FreeBSD: src/sys/boot/ficl/vm.c,v 1.9 2002/04/09 17:45:11 dcs Exp $
- * $DragonFly: src/sys/boot/ficl/vm.c,v 1.6 2006/12/18 23:12:31 dillon Exp $
+ * $FreeBSD: src/sys/boot/ficl/vm.c,v 1.10 2007/03/23 22:26:01 jkim Exp $
+ * $DragonFly: src/sys/boot/ficl/vm.c,v 1.7 2008/03/29 23:31:07 swildner Exp $
  */
 
 #ifdef TESTMAIN
@@ -319,14 +319,28 @@ STRINGINFO vmGetWord0(FICL_VM *pVM)
     char *pEnd      = vmGetInBufEnd(pVM);
     STRINGINFO si;
     FICL_UNS count = 0;
-    char ch;
+    char ch = 0;
 
     pSrc = skipSpace(pSrc, pEnd);
     SI_SETPTR(si, pSrc);
 
+/*
     for (ch = *pSrc; (pEnd != pSrc) && !isspace(ch); ch = *++pSrc)
     {
         count++;
+    }
+*/
+
+    /* Changed to make Purify happier.  --lch */
+    for (;;)
+    {
+        if (pEnd == pSrc)
+            break;
+        ch = *pSrc;
+        if (isspace(ch))
+            break;
+        count++;
+        pSrc++;
     }
 
     SI_SETLEN(si, count);

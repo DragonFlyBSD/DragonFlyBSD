@@ -55,9 +55,10 @@
 */
 
 /*
- * $FreeBSD: src/sys/boot/ficl/tools.c,v 1.2 2002/04/09 17:45:11 dcs Exp $
- * $DragonFly: src/sys/boot/ficl/tools.c,v 1.1 2003/11/10 06:08:33 dillon Exp $
+ * $FreeBSD: src/sys/boot/ficl/tools.c,v 1.3 2007/03/23 22:26:01 jkim Exp $
+ * $DragonFly: src/sys/boot/ficl/tools.c,v 1.2 2008/03/29 23:31:07 swildner Exp $
  */
+
 #ifdef TESTMAIN
 #include <stdlib.h>
 #include <stdio.h>          /* sprintf */
@@ -246,10 +247,17 @@ static void seeColon(FICL_VM *pVM, CELL *pc)
                 break;                                                           
             case BRANCH:
                 c = *++pc;
-                if (c.i > 0)
+                if (c.i == 0)
+                    sprintf(cp, "repeat (branch %d)",     pc+c.i-param0);
+                else if (c.i == 1)
                     sprintf(cp, "else (branch %d)",       pc+c.i-param0);
                 else
-                    sprintf(cp, "repeat (branch %d)",     pc+c.i-param0);
+                    sprintf(cp, "endof (branch %d)",       pc+c.i-param0);
+                break;
+
+            case OF:
+                c = *++pc;
+                sprintf(cp, "of (branch %d)",       pc+c.i-param0);
                 break;
 
             case QDO:

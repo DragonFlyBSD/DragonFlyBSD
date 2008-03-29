@@ -14,11 +14,13 @@
 \
 \ revised 2 June 2000 - { | a -- } now works correctly
 \
-\ $FreeBSD: src/sys/boot/ficl/softwords/jhlocal.fr,v 1.4 2001/04/29 02:36:36 dcs Exp $
-\ $DragonFly: src/sys/boot/ficl/softwords/jhlocal.fr,v 1.3 2003/11/10 06:08:34 dillon Exp $
+\ $FreeBSD: src/sys/boot/ficl/softwords/jhlocal.fr,v 1.5 2007/03/23 22:26:01 jkim Exp $
+\ $DragonFly: src/sys/boot/ficl/softwords/jhlocal.fr,v 1.4 2008/03/29 23:31:07 swildner Exp $
 
 hide
+
 0 constant zero
+
 
 : ?--   ( c-addr u -- c-addr u flag )
     2dup s" --" compare 0= ;
@@ -75,23 +77,24 @@ set-current
             parse-word
             ?delim dup to locstate
         0= while
-		    ?2loc if 
-			    postpone zero postpone zero  (2local)
-			else
-                postpone zero  (local)
-		    endif
+            ?2loc if
+                postpone zero postpone zero (2local)
+            else
+                postpone zero (local)
+            endif
         repeat
     endif
 
     0 0 (local)
 
     \ toss words until }
+    \ (explicitly allow | and -- in the comment)
     locstate 2 = if
         begin
             parse-word
-            ?delim dup to locstate
-        0= while
-            2drop
+            ?delim dup  to locstate
+        3 < while
+            locstate 0=  if 2drop endif
         repeat
     endif
 

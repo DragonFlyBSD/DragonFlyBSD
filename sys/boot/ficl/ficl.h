@@ -42,8 +42,8 @@
 */
 
 /*
- * $FreeBSD: src/sys/boot/ficl/ficl.h,v 1.20 2002/04/09 17:45:11 dcs Exp $
- * $DragonFly: src/sys/boot/ficl/ficl.h,v 1.3 2003/11/10 06:08:33 dillon Exp $
+ * $FreeBSD: src/sys/boot/ficl/ficl.h,v 1.22 2007/03/23 22:26:01 jkim Exp $
+ * $DragonFly: src/sys/boot/ficl/ficl.h,v 1.4 2008/03/29 23:31:07 swildner Exp $
  */
 
 #if !defined (__FICL_H__)
@@ -240,9 +240,9 @@ typedef struct ficl_system_info FICL_SYSTEM_INFO;
 /* 
 ** the Good Stuff starts here...
 */
-#define FICL_VER        "3.02"
+#define FICL_VER        "3.03"
 #define FICL_VER_MAJOR  3
-#define FICL_VER_MINOR  2
+#define FICL_VER_MINOR  3
 #if !defined (FICL_PROMPT)
 #define FICL_PROMPT "ok> "
 #endif
@@ -860,7 +860,7 @@ struct ficl_system
 	FICL_WORD *pDoesParen;
 	FICL_WORD *pExitInner;
 	FICL_WORD *pExitParen;
-	FICL_WORD *pIfParen;
+	FICL_WORD *pBranch0;
 	FICL_WORD *pInterpret;
 	FICL_WORD *pLitParen;
 	FICL_WORD *pTwoLitParen;
@@ -868,7 +868,9 @@ struct ficl_system
 	FICL_WORD *pPLoopParen;
 	FICL_WORD *pQDoParen;
 	FICL_WORD *pSemiParen;
+	FICL_WORD *pOfParen;
 	FICL_WORD *pStore;
+	FICL_WORD *pDrop;
 	FICL_WORD *pCStringLit;
 	FICL_WORD *pStringLit;
 
@@ -1089,6 +1091,7 @@ typedef enum
     IF,
     LITERAL,
     LOOP,
+    OF,
     PLOOP,
     PRIMITIVE,
     QDO,
@@ -1117,7 +1120,6 @@ extern void ficlOutb(FICL_VM *pVM);
 extern void ficlInb(FICL_VM *pVM);
 #endif
 
-#if !defined(TESTMAIN)
 extern void ficlSetenv(FICL_VM *pVM);
 extern void ficlSetenvq(FICL_VM *pVM);
 extern void ficlGetenv(FICL_VM *pVM);
@@ -1125,9 +1127,10 @@ extern void ficlUnsetenv(FICL_VM *pVM);
 extern void ficlCopyin(FICL_VM *pVM);
 extern void ficlCopyout(FICL_VM *pVM);
 extern void ficlFindfile(FICL_VM *pVM);
+extern void ficlCcall(FICL_VM *pVM);
+#if !defined(TESTMAIN)
 extern void ficlPnpdevices(FICL_VM *pVM);
 extern void ficlPnphandlers(FICL_VM *pVM);
-extern void ficlCcall(FICL_VM *pVM);
 #endif
 
 /*

@@ -42,8 +42,8 @@
 */
 
 /*
- * $FreeBSD: src/sys/boot/ficl/float.c,v 1.1 2002/04/09 17:45:11 dcs Exp $
- * $DragonFly: src/sys/boot/ficl/float.c,v 1.1 2003/11/10 06:08:33 dillon Exp $
+/* $FreeBSD: src/sys/boot/ficl/float.c,v 1.2 2007/03/23 22:26:01 jkim Exp $
+ * $DragonFly: src/sys/boot/ficl/float.c,v 1.2 2008/03/29 23:31:07 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -980,6 +980,8 @@ int ficlParseFloatNumber( FICL_VM *pVM, STRINGINFO si )
     }
 
     PUSHFLOAT(accum);
+    if (pVM->state == COMPILE)
+        fliteralIm(pVM);
 
     return(1);
 }
