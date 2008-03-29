@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.62 2008/03/08 07:50:49 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.63 2008/03/29 03:38:53 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -2008,7 +2008,7 @@ ifaddrinit(void *dummy __unused)
 	for (i = 0; i < ncpus; ++i) {
 		struct thread *thr = &ifaddr_threads[i];
 
-		lwkt_create(netmsg_service_loop, NULL, NULL, thr, 0, i,
+		lwkt_create(netmsg_service_loop_mpsafe, NULL, NULL, thr, 0, i,
 			    "ifaddr %d", i);
 		netmsg_service_port_init(&thr->td_msgport);
 	}
