@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/tools/tools/netrate/pktgenctl/pktgenctl.c,v 1.2 2008/03/26 15:05:33 sephe Exp $
+ * $DragonFly: src/tools/tools/netrate/pktgenctl/pktgenctl.c,v 1.3 2008/03/29 11:45:46 sephe Exp $
  */
 
 #include <sys/types.h>
@@ -75,11 +75,25 @@
 static void
 usage(void)
 {
-	fprintf(stderr, "pktgenctl -d dst_inaddr -s src_inaddr "
+	fprintf(stderr, "pktgenctl -d dst_inaddr[,ndst] -s src_inaddr[,nsrc] "
 			"-e (gw_eaddr|dst_eaddr) -i iface "
-			"[-p src_port] [-P dst_port] "
+			"[-p src_port[,nsport]] [-P dst_port[,ndport]] "
 			"[-m data_len] [-c cpuid] [-l duration] [-y yield]\n");
 	exit(1);
+}
+
+static int
+get_range(char *str)
+{
+	char *ptr;
+
+	ptr = strstr(str, ",");
+	if (ptr == NULL) {
+		return 0;
+	} else {
+		*ptr = '\0';
+		return atoi(ptr + 1);
+	}
 }
 
 int
@@ -114,6 +128,7 @@ main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "d:s:e:i:p:P:m:c:l:y:")) != -1) {
 		switch (c) {
 		case 'd':
+			conf.pc_ndaddr = get_range(optarg);
 			n = inet_pton(AF_INET, optarg,
 				      &dst_sin->sin_addr.s_addr);
 			if (n == 0)
@@ -124,6 +139,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 's':
+			conf.pc_nsaddr = get_range(optarg);
 			n = inet_pton(AF_INET, optarg,
 				      &src_sin->sin_addr.s_addr);
 			if (n == 0)
@@ -152,11 +168,13 @@ main(int argc, char *argv[])
 			break;
 
 		case 'p':
+			conf.pc_nsport = get_range(optarg);
 			src_sin->sin_port = htons(atoi(optarg));
 			arg_mask |= SPORT_MASK;
 			break;
 
 		case 'P':
+			conf.pc_ndport = get_range(optarg);
 			dst_sin->sin_port = htons(atoi(optarg));
 			arg_mask |= DPORT_MASK;
 			break;

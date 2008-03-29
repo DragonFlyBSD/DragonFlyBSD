@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.c,v 1.1 2008/03/26 13:53:14 sephe Exp $
+ * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.c,v 1.2 2008/03/29 11:45:46 sephe Exp $
  */
 
 #define _IP_VHL
@@ -71,12 +71,22 @@ struct pktgen {
 	struct callout		pktg_stop;
 	int			pktg_duration;
 	int			pktg_cpuid;
+	void			(*pktg_thread)(void *);
 
 	int			pktg_datalen;
 	int			pktg_yield;
 	struct ifnet		*pktg_ifp;
-	struct sockaddr_in	pktg_src;
-	struct sockaddr_in	pktg_dst;
+
+	in_addr_t		pktg_saddr;	/* host byte order */
+	in_addr_t		pktg_daddr;	/* host byte order */
+	u_short			pktg_sport;	/* host byte order */
+	u_short			pktg_dport;	/* host byte order */
+
+	int			pktg_nsaddr;
+	int			pktg_ndaddr;
+	int			pktg_nsport;
+	int			pktg_ndport;
+
 	uint8_t			pktg_dst_lladdr[ETHER_ADDR_LEN];
 };
 
@@ -89,7 +99,8 @@ static int		pktgen_config(struct pktgen *,
 				      const struct pktgen_conf *);
 static int		pktgen_start(struct pktgen *, int);
 static void		pktgen_stop_cb(void *);
-static void		pktgen_thread(void *);
+static void		pktgen_udp_thread(void *);
+static void		pktgen_udp_thread1(void *);
 
 static d_open_t		pktgen_open;
 static d_close_t	pktgen_close;
@@ -218,7 +229,7 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 	const struct sockaddr_in *sin;
 	const struct sockaddr *sa;
 	struct ifnet *ifp;
-	int yield;
+	int yield, nsaddr, ndaddr, nsport, ndport, thread1;
 
 	if (pktg->pktg_flags & PKTG_F_RUNNING)
 		return EBUSY;
@@ -233,6 +244,26 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 	yield = conf->pc_yield;
 	if (yield <= 0)
 		yield = PKTGEN_YIELD_DEFAULT;
+
+	if (conf->pc_nsaddr <= 0 && conf->pc_ndaddr <= 0 &&
+	    conf->pc_nsport <= 0 && conf->pc_ndport <= 0)
+		thread1 = 0;
+	else
+		thread1 = 1;
+
+	nsaddr = conf->pc_nsaddr;
+	if (nsaddr <= 0)
+		nsaddr = 1;
+	ndaddr = conf->pc_ndaddr;
+	if (ndaddr <= 0)
+		ndaddr = 1;
+
+	nsport = conf->pc_nsport;
+	if (nsport <= 0)
+		nsport = 1;
+	ndport = conf->pc_ndport;
+	if (ndport <= 0)
+		ndport = 1;
 
 	ifp = ifunit(conf->pc_ifname);
 	if (ifp == NULL)
@@ -270,8 +301,18 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 	pktg->pktg_datalen = conf->pc_datalen;
 	pktg->pktg_yield = yield;
 	bcopy(sa->sa_data, pktg->pktg_dst_lladdr, ETHER_ADDR_LEN);
-	bcopy(&conf->pc_src, &pktg->pktg_src, sizeof(pktg->pktg_src));
-	bcopy(&conf->pc_dst, &pktg->pktg_dst, sizeof(pktg->pktg_dst));
+
+	pktg->pktg_saddr = ntohl(conf->pc_src.sin_addr.s_addr);
+	pktg->pktg_daddr = ntohl(conf->pc_dst.sin_addr.s_addr);
+	pktg->pktg_nsaddr = nsaddr;
+	pktg->pktg_ndaddr = ndaddr;
+
+	pktg->pktg_sport = ntohs(conf->pc_src.sin_port);
+	pktg->pktg_dport = ntohs(conf->pc_dst.sin_port);
+	pktg->pktg_nsport = nsport;
+	pktg->pktg_ndport = ndport;
+
+	pktg->pktg_thread = thread1 ? pktgen_udp_thread1 : pktgen_udp_thread;
 
 	return 0;
 }
@@ -286,7 +327,7 @@ pktgen_start(struct pktgen *pktg, int m)
 
 	pktg->pktg_flags |= PKTG_F_RUNNING;
 
-	lwkt_create(pktgen_thread, pktg, NULL, NULL, 0,
+	lwkt_create(pktg->pktg_thread, pktg, NULL, NULL, 0,
 		    pktg->pktg_cpuid, "pktgen %d", m);
 	return 0;
 }
@@ -300,7 +341,7 @@ pktgen_stop_cb(void *arg)
 }
 
 static void
-pktgen_thread(void *arg)
+pktgen_udp_thread1(void *arg)
 {
 	struct pktgen *pktg = arg;
 	struct ifnet *ifp = pktg->pktg_ifp;
@@ -311,8 +352,134 @@ pktgen_thread(void *arg)
 	u_short ulen, psum;
 	int len, ip_len;
 	int sw_csum, csum_flags;
+	int loop, r, error;
+	uint64_t err_cnt, cnt;
+	in_addr_t saddr, daddr;
+	u_short sport, dport;
+	struct timeval start, end;
+
+	rel_mplock();	/* Don't need MP lock */
+
+	callout_reset(&pktg->pktg_stop, pktg->pktg_duration * hz,
+		      pktgen_stop_cb, pktg);
+
+	cnt = err_cnt = 0;
+	r = loop = 0;
+
+	ip_len = pktg->pktg_datalen + sizeof(*ui);
+	len = ip_len + ETHER_HDR_LEN;
+
+	psum = htons((u_short)pktg->pktg_datalen + sizeof(struct udphdr)
+		     + IPPROTO_UDP);
+	ulen = htons(pktg->pktg_datalen + sizeof(struct udphdr));
+
+	sw_csum = (CSUM_UDP | CSUM_IP) & ~ifp->if_hwassist;
+	csum_flags = (CSUM_UDP | CSUM_IP) & ifp->if_hwassist;
+
+	saddr = pktg->pktg_saddr;
+	daddr = pktg->pktg_daddr;
+	sport = pktg->pktg_sport;
+	dport = pktg->pktg_dport;
+
+	microtime(&start);
+	while ((pktg->pktg_flags & PKTG_F_STOP) == 0) {
+		m = m_getl(len, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
+		m->m_len = m->m_pkthdr.len = len;
+
+		m_adj(m, ETHER_HDR_LEN);
+
+		ui = mtod(m, struct udpiphdr *);
+		ui->ui_pr = IPPROTO_UDP;
+		ui->ui_src.s_addr = htonl(saddr);
+		ui->ui_dst.s_addr = htonl(daddr);
+		ui->ui_sport = htons(sport);
+		ui->ui_dport = htons(dport);
+		ui->ui_ulen = ulen;
+		ui->ui_sum = in_pseudo(ui->ui_src.s_addr,
+				       ui->ui_dst.s_addr, psum);
+		m->m_pkthdr.csum_flags = (CSUM_IP | CSUM_UDP);
+		m->m_pkthdr.csum_data = offsetof(struct udphdr, uh_sum);
+
+		ip = (struct ip *)ui;
+		ip->ip_len = ip_len;
+		ip->ip_ttl = 64;	/* XXX */
+		ip->ip_tos = 0;		/* XXX */
+		ip->ip_vhl = IP_VHL_BORING;
+		ip->ip_off = 0;
+		ip->ip_id = ip_newid();
+
+		if (sw_csum & CSUM_DELAY_DATA)
+			in_delayed_cksum(m);
+		m->m_pkthdr.csum_flags = csum_flags;
+
+		ip->ip_len = htons(ip->ip_len);
+		ip->ip_sum = 0;
+		if (sw_csum & CSUM_DELAY_IP)
+			ip->ip_sum = in_cksum_hdr(ip);
+
+		M_PREPEND(m, ETHER_HDR_LEN, MB_WAIT);
+		eh = mtod(m, struct ether_header *);
+		bcopy(pktg->pktg_dst_lladdr, eh->ether_dhost, ETHER_ADDR_LEN);
+		bcopy(IF_LLADDR(ifp), eh->ether_shost, ETHER_ADDR_LEN);
+		eh->ether_type = htons(ETHERTYPE_IP);
+
+		lwkt_serialize_enter(ifp->if_serializer);
+		error = ifq_handoff(ifp, m, NULL);
+		lwkt_serialize_exit(ifp->if_serializer);
+
+		loop++;
+		if (error) {
+			err_cnt++;
+			loop = 0;
+			lwkt_yield();
+		} else {
+			cnt++;
+			if (loop == pktg->pktg_yield) {
+				loop = 0;
+				lwkt_yield();
+			}
+
+			r++;
+			saddr = pktg->pktg_saddr + (r % pktg->pktg_nsaddr);
+			daddr = pktg->pktg_daddr + (r % pktg->pktg_ndaddr);
+			sport = pktg->pktg_sport + (r % pktg->pktg_nsport);
+			dport = pktg->pktg_dport + (r % pktg->pktg_ndport);
+		}
+	}
+	microtime(&end);
+
+	timevalsub(&end, &start);
+	kprintf("cnt %llu, err %llu, time %ld.%ld\n", cnt, err_cnt,
+		end.tv_sec, end.tv_usec);
+
+	pktg->pktg_flags &= ~(PKTG_F_STOP | PKTG_F_CONFIG | PKTG_F_RUNNING);
+
+	KKASSERT(pktg->pktg_refcnt > 0);
+	if (--pktg->pktg_refcnt == 0)
+		kfree(pktg, M_PKTGEN);	/* XXX */
+
+	KKASSERT(pktgen_refcnt > 0);
+	pktgen_refcnt--;
+
+	lwkt_exit();
+}
+
+static void
+pktgen_udp_thread(void *arg)
+{
+	struct pktgen *pktg = arg;
+	struct ifnet *ifp = pktg->pktg_ifp;
+	struct ip *ip;
+	struct udpiphdr *ui;
+	struct ether_header *eh;
+	struct mbuf *m;
+	u_short ulen, sum;
+	int len, ip_len;
+	int sw_csum, csum_flags;
 	int loop, error;
 	uint64_t err_cnt, cnt;
+	in_addr_t saddr, daddr;
+	u_short sport, dport;
 	struct timeval start, end;
 
 	rel_mplock();	/* Don't need MP lock */
@@ -326,8 +493,14 @@ pktgen_thread(void *arg)
 	ip_len = pktg->pktg_datalen + sizeof(*ui);
 	len = ip_len + ETHER_HDR_LEN;
 
-	psum = htons((u_short)pktg->pktg_datalen + sizeof(struct udphdr)
-		     + IPPROTO_UDP);
+	saddr = htonl(pktg->pktg_saddr);
+	daddr = htonl(pktg->pktg_daddr);
+	sport = htons(pktg->pktg_sport);
+	dport = htons(pktg->pktg_dport);
+
+	sum = in_pseudo(saddr, daddr,
+		htons((u_short)pktg->pktg_datalen + sizeof(struct udphdr)
+		+ IPPROTO_UDP));
 	ulen = htons(pktg->pktg_datalen + sizeof(struct udphdr));
 
 	sw_csum = (CSUM_UDP | CSUM_IP) & ~ifp->if_hwassist;
@@ -342,13 +515,12 @@ pktgen_thread(void *arg)
 
 		ui = mtod(m, struct udpiphdr *);
 		ui->ui_pr = IPPROTO_UDP;
-		ui->ui_dst = pktg->pktg_dst.sin_addr;
-		ui->ui_dport = pktg->pktg_dst.sin_port;
-		ui->ui_src = pktg->pktg_src.sin_addr;
-		ui->ui_sport = pktg->pktg_src.sin_port;
+		ui->ui_src.s_addr = saddr;
+		ui->ui_dst.s_addr = daddr;
+		ui->ui_sport = sport;
+		ui->ui_dport = dport;
 		ui->ui_ulen = ulen;
-		ui->ui_sum = in_pseudo(ui->ui_src.s_addr,
-				       ui->ui_dst.s_addr, psum);
+		ui->ui_sum = sum;
 		m->m_pkthdr.csum_flags = (CSUM_IP | CSUM_UDP);
 		m->m_pkthdr.csum_data = offsetof(struct udphdr, uh_sum);
 

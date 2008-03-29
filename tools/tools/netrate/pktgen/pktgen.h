@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.h,v 1.1 2008/03/26 13:53:14 sephe Exp $
+ * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.h,v 1.2 2008/03/29 11:45:46 sephe Exp $
  */
 
 #ifndef _NET_PKTGEN_H
@@ -49,6 +49,10 @@ struct pktgen_conf {
 
 	struct sockaddr_in	pc_src;
 	struct sockaddr_in	pc_dst;
+	int			pc_nsaddr;
+	int			pc_nsport;
+	int			pc_ndaddr;
+	int			pc_ndport;
 };
 
 #define PKTGENSTART	_IO('G', 19)
