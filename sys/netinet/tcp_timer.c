@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.16 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.17 2008/03/30 20:39:01 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -155,7 +155,7 @@ SYSCTL_PROC(_net_inet_tcp, OID_AUTO, rexmit_slop, CTLTYPE_INT|CTLFLAG_RW,
     &tcp_rexmit_slop, 0, sysctl_msec_to_ticks, "I",
     "Retransmission Timer Slop");
 
-static int	always_keepalive = 0;
+static int	always_keepalive = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, always_keepalive, CTLFLAG_RW,
     &always_keepalive , 0, "Assume SO_KEEPALIVE on all TCP connections");
 
