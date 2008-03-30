@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.51 2008/02/27 15:20:17 tgen Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.52 2008/03/30 14:40:13 hasso Exp $
  *
  */
 
@@ -529,13 +529,7 @@ report_stray_interrupt(int intr, struct intr_info *info)
 		info->i_errorticks = ticks;
 		kprintf("sched_ithd: stray interrupt %d on cpu %d\n",
 			intr, mycpuid);
-	} else if (info->i_straycount < 100) {
-		if (info->i_errorticks == ticks)
-			return;
-		info->i_errorticks = ticks;
-		kprintf("sched_ithd: %ld stray interrupts %d on cpu %d\n",
-			info->i_straycount, intr, mycpuid);
-	} else if (info->i_straycount == 100) {
+	} else if (info->i_straycount == 10) {
 		kprintf("sched_ithd: %ld stray interrupts %d on cpu %d - "
 			"there will be no further reports\n",
 			info->i_straycount, intr, mycpuid);
