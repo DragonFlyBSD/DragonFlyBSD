@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.10 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.11 2008/03/30 10:15:46 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -63,13 +63,14 @@
 #define	IPFLOW_TIMER		(5 * PR_SLOWHZ)
 #define IPFLOW_HASHBITS		6	/* should not be a multiple of 8 */
 #define	IPFLOW_HASHSIZE		(1 << IPFLOW_HASHBITS)
-static LIST_HEAD(ipflowhead, ipflow) ipflows[IPFLOW_HASHSIZE];
-static int ipflow_inuse;
 #define	IPFLOW_MAX		256
 
-static int ipflow_active = 0;
+static LIST_HEAD(ipflowhead, ipflow) ipflows[IPFLOW_HASHSIZE];
+static int	ipflow_inuse;
+static int	ipflow_active = 0;
+
 SYSCTL_INT(_net_inet_ip, IPCTL_FASTFORWARDING, fastforwarding, CTLFLAG_RW,
-    &ipflow_active, 0, "Enable flow-based IP forwarding");
+	   &ipflow_active, 0, "Enable flow-based IP forwarding");
 
 static MALLOC_DEFINE(M_IPFLOW, "ip_flow", "IP flow");
 
@@ -110,6 +111,7 @@ ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
 	struct ipflow *ipf;
 	struct rtentry *rt;
 	struct sockaddr *dst;
+	struct ifnet *ifp;
 	int error;
 
 	/*
@@ -117,6 +119,7 @@ ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
 	 */
 	if (!ipforwarding || !ipflow_active || m->m_len < sizeof(struct ip))
 		return 0;
+
 	/*
 	 * IP header with no option and valid version and length
 	 */
@@ -124,23 +127,27 @@ ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
 	if (ip->ip_v != IPVERSION || ip->ip_hl != (sizeof(struct ip) >> 2) ||
 	    ntohs(ip->ip_len) > m->m_pkthdr.len)
 		return 0;
+
 	/*
 	 * Find a flow.
 	 */
-	if ((ipf = ipflow_lookup(ip)) == NULL)
+	ipf = ipflow_lookup(ip);
+	if (ipf == NULL)
 		return 0;
 
 	/*
 	 * Route and interface still up?
 	 */
 	rt = ipf->ipf_ro.ro_rt;
-	if ((rt->rt_flags & RTF_UP) == 0 || (rt->rt_ifp->if_flags & IFF_UP) == 0)
+	if ((rt->rt_flags & RTF_UP) == 0 ||
+	    (rt->rt_ifp->if_flags & IFF_UP) == 0)
 		return 0;
+	ifp = rt->rt_ifp;
 
 	/*
 	 * Packet size OK?  TTL?
 	 */
-	if (m->m_pkthdr.len > rt->rt_ifp->if_mtu || ip->ip_ttl <= IPTTLDEC)
+	if (m->m_pkthdr.len > ifp->if_mtu || ip->ip_ttl <= IPTTLDEC)
 		return 0;
 
 	/*
@@ -163,16 +170,20 @@ ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
 		dst = rt->rt_gateway;
 	else
 		dst = &ipf->ipf_ro.ro_dst;
+
 	if (serializer)
 		lwkt_serialize_exit(serializer);
-	lwkt_serialize_enter(rt->rt_ifp->if_serializer);
-	if ((error = (*rt->rt_ifp->if_output)(rt->rt_ifp, m, dst, rt)) != 0) {
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = ifp->if_output(ifp, m, dst, rt);
+	if (error) {
 		if (error == ENOBUFS)
 			ipf->ipf_dropped++;
 		else
 			ipf->ipf_errors++;
 	}
-	lwkt_serialize_exit(rt->rt_ifp->if_serializer);
+	lwkt_serialize_exit(ifp->if_serializer);
+
 	if (serializer)
 		lwkt_serialize_enter(serializer);
 	return 1;
@@ -198,6 +209,7 @@ ipflow_free(struct ipflow *ipf)
 	crit_enter();
 	LIST_REMOVE(ipf, ipf_next);
 	crit_exit();
+
 	ipflow_addstats(ipf);
 	RTFREE(ipf->ipf_ro.ro_rt);
 	ipflow_inuse--;
@@ -241,6 +253,7 @@ done:
 	crit_enter();
 	LIST_REMOVE(ipf, ipf_next);
 	crit_exit();
+
 	ipflow_addstats(ipf);
 	RTFREE(ipf->ipf_ro.ro_rt);
 	return ipf;
@@ -282,6 +295,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	 */
 	if (!ipflow_active || ip->ip_p == IPPROTO_ICMP)
 		return;
+
 	/*
 	 * See if an existing flow struct exists.  If so remove it from it's
 	 * list and free the old route.  If not, try to malloc a new one
@@ -292,17 +306,18 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 		if (ipflow_inuse == IPFLOW_MAX) {
 			ipf = ipflow_reap();
 		} else {
-			ipf = kmalloc(sizeof *ipf, M_IPFLOW,
-				     M_INTWAIT | M_NULLOK);
+			ipf = kmalloc(sizeof(*ipf), M_IPFLOW,
+				      M_INTWAIT | M_NULLOK);
 			if (ipf == NULL)
 				return;
 			ipflow_inuse++;
 		}
-		bzero(ipf, sizeof *ipf);
+		bzero(ipf, sizeof(*ipf));
 	} else {
 		crit_enter();
 		LIST_REMOVE(ipf, ipf_next);
 		crit_exit();
+
 		ipflow_addstats(ipf);
 		RTFREE(ipf->ipf_ro.ro_rt);
 		ipf->ipf_uses = ipf->ipf_last_uses = 0;
@@ -318,6 +333,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	ipf->ipf_src = ip->ip_src;
 	ipf->ipf_tos = ip->ip_tos;
 	ipf->ipf_timer = IPFLOW_TIMER;
+
 	/*
 	 * Insert into the approriate bucket of the flow table.
 	 */
