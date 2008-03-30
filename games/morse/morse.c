@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)morse.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/morse/morse.c,v 1.12.2.2 2002/03/12 17:45:15 phantom Exp $
- * $DragonFly: src/games/morse/morse.c,v 1.6 2007/04/22 23:03:48 corecode Exp $
+ * $DragonFly: src/games/morse/morse.c,v 1.7 2008/03/30 16:45:04 corecode Exp $
  */
 
 /*
@@ -523,6 +523,10 @@ play(const char *s, int prosign)
 	duration = CHAR_SPACE - 1;  /* we already waited 1 after the last symbol */
 	while (duration-- > 0)
 		write(spkr, tone_silence.data, tone_silence.len);
+
+	/* Sync out the audio data with other output */
+	if (!oflag)
+		ioctl(spkr, SNDCTL_DSP_SYNC, NULL);
 }
 
 void
