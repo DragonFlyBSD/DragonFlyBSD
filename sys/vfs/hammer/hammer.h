@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.45 2008/03/29 20:12:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.46 2008/03/30 21:33:42 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -443,6 +443,7 @@ extern struct vop_ops hammer_fifo_vops;
 extern struct bio_ops hammer_bioops;
 
 extern int hammer_debug_general;
+extern int hammer_debug_locks;
 extern int hammer_debug_btree;
 extern int hammer_debug_tid;
 extern int hammer_debug_recover;
@@ -453,6 +454,7 @@ extern int hammer_count_record_datas;
 extern int hammer_count_volumes;
 extern int hammer_count_buffers;
 extern int hammer_count_nodes;
+extern int64_t hammer_contention_count;
 
 int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
