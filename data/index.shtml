@@ -1,18 +1,18 @@
 <!--#set var="title" value="Welcome to DragonFlyBSD.org" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/index.shtml,v 1.7 2008/02/26 18:52:44 dillon Exp $ -->
+<!-- $DragonFly: site/data/index.shtml,v 1.8 2008/03/31 02:26:04 justin Exp $ -->
 
-	<h1>Ongoing DragonFly News</h1>
-	<p>
-    The <a href="http://www.shiningsilence.com/dbsdlog/">DragonFly Digest</a>
-    has up to date information on recent events and changes.
-    </p>
+<h1>Ongoing DragonFly News</h1>
+<p>
+Check the 
+<a href="http://www.shiningsilence.com/dbsdlog/">DragonFly Digest</a> and the 
+<a href="http://wiki.dragonflybsd.org/">DragonFlyBSD Wiki</a> for current events.
+</p>
 
-	<p>
-    The <a href="http://wiki.dragonflybsd.org/">DragonFlyBSD Wiki</a>
-	was started by Devon H. O'Dell and Sascha Wildner for things related
-	to DragonFly.
-    </p>
+<p>
+DragonFly is participating in Google's Summer of Code.  
+For more information, check the <a href="http://wiki.dragonflybsd.org/index.cgi/GoogleSoC2008">SoC page on our wiki</a>.
+</p>
 
     <h1>DragonFly-1.12.0 RELEASED!</h1>
 	<h1>26 February 2008</h1>
