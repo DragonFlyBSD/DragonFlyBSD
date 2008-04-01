@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.79 2008/03/25 22:55:38 dave Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.80 2008/04/01 20:55:06 swildner Exp $
 #
 
 #########################################################################
@@ -43,7 +43,7 @@ WITH_LOCAL_INSTALLER=
 #########################################################################
 
 ISODIR ?= /usr/release
-ISOROOT = ${ISODIR}/root
+ISOROOT ?= ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
 KERNCONF ?= GENERIC VKERNEL
 
