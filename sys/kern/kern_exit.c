@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.88 2008/03/21 19:42:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.89 2008/04/01 18:06:34 nth Exp $
  */
 
 #include "opt_compat.h"
@@ -834,7 +834,7 @@ loop:
 			}
 
 			vm_waitproc(p);
-			zfree(proc_zone, p);
+			kfree(p, M_PROC);
 			nprocs--;
 			return (0);
 		}

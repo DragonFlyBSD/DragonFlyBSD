@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.115 2007/12/06 22:15:06 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.116 2008/04/01 18:06:34 nth Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -396,6 +396,7 @@ struct	proc {
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_SESSION);
+MALLOC_DECLARE(M_PROC);
 MALLOC_DECLARE(M_SUBPROC);
 MALLOC_DECLARE(M_PARGS);
 #endif
