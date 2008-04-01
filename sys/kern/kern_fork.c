@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.72 2008/04/01 18:06:34 nth Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.73 2008/04/01 20:20:29 nth Exp $
  */
 
 #include "opt_ktrace.h"
@@ -332,8 +332,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	}
 
 	/* Allocate new proc. */
-	p2 = kmalloc(sizeof(struct proc), M_PROC, M_WAITOK);
-	bzero(p2, sizeof(*p2));
+	p2 = kmalloc(sizeof(struct proc), M_PROC, M_WAITOK|M_ZERO);
 
 	/*
 	 * Setup linkage for kernel based threading XXX lwp
