@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/common.c,v 1.50 2005/02/16 12:46:46 des Exp $
- * $DragonFly: src/lib/libfetch/common.c,v 1.4 2007/08/05 21:48:12 swildner Exp $
+ * $DragonFly: src/lib/libfetch/common.c,v 1.5 2008/04/02 14:46:37 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -653,7 +653,7 @@ _fetch_read_word(FILE *f)
 {
 	static char word[1024];
 
-	if (fscanf(f, " %1024s ", word) != 1)
+	if (fscanf(f, " %1023s ", word) != 1)
 		return (NULL);
 	return (word);
 }
