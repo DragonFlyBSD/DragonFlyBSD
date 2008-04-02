@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.c,v 1.3 2008/04/02 13:27:24 sephe Exp $
+ * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.c,v 1.4 2008/04/02 14:18:55 sephe Exp $
  */
 
 #define _IP_VHL
@@ -68,6 +68,11 @@ struct pktgen {
 	uint32_t		pktg_flags;	/* PKTG_F_ */
 	int			pktg_refcnt;
 
+	uint64_t		pktg_tx_cnt;
+	uint64_t		pktg_err_cnt;
+	struct timeval		pktg_start;
+	struct timeval		pktg_end;
+
 	struct callout		pktg_stop;
 	int			pktg_duration;
 	int			pktg_cpuid;
@@ -98,6 +103,7 @@ static int 		pktgen_modevent(module_t, int, void *);
 static int		pktgen_config(struct pktgen *,
 				      const struct pktgen_conf *);
 static int		pktgen_start(struct pktgen *, int);
+static void		pktgen_thread_exit(struct pktgen *, uint64_t, uint64_t);
 static void		pktgen_stop_cb(void *);
 static void		pktgen_udp_thread(void *);
 static void		pktgen_udp_thread1(void *);
@@ -356,7 +362,6 @@ pktgen_udp_thread1(void *arg)
 	uint64_t err_cnt, cnt;
 	in_addr_t saddr, daddr;
 	u_short sport, dport;
-	struct timeval start, end;
 
 	rel_mplock();	/* Don't need MP lock */
 
@@ -381,7 +386,7 @@ pktgen_udp_thread1(void *arg)
 	sport = pktg->pktg_sport;
 	dport = pktg->pktg_dport;
 
-	microtime(&start);
+	microtime(&pktg->pktg_start);
 	while ((pktg->pktg_flags & PKTG_F_STOP) == 0) {
 		m = m_getl(len, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
 		m->m_len = m->m_pkthdr.len = len;
@@ -446,22 +451,9 @@ pktgen_udp_thread1(void *arg)
 			dport = pktg->pktg_dport + (r % pktg->pktg_ndport);
 		}
 	}
-	microtime(&end);
+	microtime(&pktg->pktg_end);
 
-	timevalsub(&end, &start);
-	kprintf("cnt %llu, err %llu, time %ld.%ld\n", cnt, err_cnt,
-		end.tv_sec, end.tv_usec);
-
-	pktg->pktg_flags &= ~(PKTG_F_STOP | PKTG_F_CONFIG | PKTG_F_RUNNING);
-
-	KKASSERT(pktg->pktg_refcnt > 0);
-	if (--pktg->pktg_refcnt == 0)
-		kfree(pktg, M_PKTGEN);	/* XXX */
-
-	KKASSERT(pktgen_refcnt > 0);
-	pktgen_refcnt--;
-
-	lwkt_exit();
+	pktgen_thread_exit(pktg, cnt, err_cnt);
 }
 
 static void
@@ -480,7 +472,6 @@ pktgen_udp_thread(void *arg)
 	uint64_t err_cnt, cnt;
 	in_addr_t saddr, daddr;
 	u_short sport, dport;
-	struct timeval start, end;
 
 	rel_mplock();	/* Don't need MP lock */
 
@@ -506,7 +497,7 @@ pktgen_udp_thread(void *arg)
 	sw_csum = (CSUM_UDP | CSUM_IP) & ~ifp->if_hwassist;
 	csum_flags = (CSUM_UDP | CSUM_IP) & ifp->if_hwassist;
 
-	microtime(&start);
+	microtime(&pktg->pktg_start);
 	while ((pktg->pktg_flags & PKTG_F_STOP) == 0) {
 		m = m_getl(len, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
 		m->m_len = m->m_pkthdr.len = len;
@@ -564,11 +555,23 @@ pktgen_udp_thread(void *arg)
 			}
 		}
 	}
-	microtime(&end);
+	microtime(&pktg->pktg_end);
 
-	timevalsub(&end, &start);
-	kprintf("cnt %llu, err %llu, time %ld.%06ld\n", cnt, err_cnt,
-		end.tv_sec, end.tv_usec);
+	pktgen_thread_exit(pktg, cnt, err_cnt);
+}
+
+static void
+pktgen_thread_exit(struct pktgen *pktg, uint64_t tx_cnt, uint64_t err_cnt)
+{
+	struct timeval end;
+
+	pktg->pktg_tx_cnt = tx_cnt;
+	pktg->pktg_err_cnt = err_cnt;
+
+	end = pktg->pktg_end;
+	timevalsub(&end, &pktg->pktg_start);
+	kprintf("cnt %llu, err %llu, time %ld.%06ld\n",
+		pktg->pktg_tx_cnt, pktg->pktg_err_cnt, end.tv_sec, end.tv_usec);
 
 	pktg->pktg_flags &= ~(PKTG_F_STOP | PKTG_F_CONFIG | PKTG_F_RUNNING);
 
