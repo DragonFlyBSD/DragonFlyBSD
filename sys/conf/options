@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.78 2008/02/19 21:24:36 thomas Exp $
+# $DragonFly: src/sys/conf/options,v 1.79 2008/04/02 13:11:48 sephe Exp $
 #
 #        On the handling of kernel options
 #
@@ -558,3 +558,6 @@ SCTP_MAP_LOGGING	opt_sctp.h
 # syslink kernel support
 #
 SYSLINK			opt_syslink.h
+
+# serializer profiling support
+PROFILE_SERIALIZER	opt_serializer.h

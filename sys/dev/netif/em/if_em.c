@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.66 2008/04/02 11:48:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.67 2008/04/02 13:11:48 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -95,6 +95,7 @@
 
 #include "opt_polling.h"
 #include "opt_inet.h"
+#include "opt_serializer.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -2156,6 +2157,17 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_capenable = ifp->if_capabilities;
 
 	ether_ifattach(ifp, adapter->hw.mac_addr, NULL);
+
+#ifdef PROFILE_SERIALIZER
+	SYSCTL_ADD_UINT(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO,
+			"serializer_sleep", CTLFLAG_RW,
+			&ifp->if_serializer->sleep_cnt, 0, NULL);
+	SYSCTL_ADD_UINT(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO,
+			"serializer_tryfail", CTLFLAG_RW,
+			&ifp->if_serializer->tryfail_cnt, 0, NULL);
+#endif
 
 	/*
 	 * Tell the upper layer(s) we support long frames.

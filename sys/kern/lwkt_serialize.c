@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.9 2005/12/01 18:34:09 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.10 2008/04/02 13:11:48 sephe Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -43,6 +43,8 @@
  * the serializer facility itself.  Second, an integrated interrupt handler 
  * disablement facility.
  */
+
+#include "opt_serializer.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -67,6 +69,10 @@ lwkt_serialize_init(lwkt_serialize_t s)
     atomic_intr_init(&s->interlock);
 #ifdef INVARIANTS
     s->last_td = (void *)-4;
+#endif
+#ifdef PROFILE_SERIALIZER
+    s->sleep_cnt = 0;
+    s->tryfail_cnt = 0;
 #endif
 }
 
@@ -99,6 +105,9 @@ lwkt_serialize_try(lwkt_serialize_t s)
 #endif
 	return(1);
     }
+#ifdef PROFILE_SERIALIZER
+    s->tryfail_cnt++;
+#endif
     return (0);
 }
 
@@ -177,6 +186,9 @@ lwkt_serialize_handler_try(lwkt_serialize_t s, void (*func)(void *, void *),
 	    return(0);
 	}
     }
+#ifdef PROFILE_SERIALIZER
+    s->tryfail_cnt++;
+#endif
     return(1);
 }
 
@@ -195,8 +207,12 @@ lwkt_serialize_sleep(void *info)
     lwkt_serialize_t s = info;
     crit_enter();
     tsleep_interlock(s);
-    if (atomic_intr_cond_test(&s->interlock) != 0)
+    if (atomic_intr_cond_test(&s->interlock) != 0) {
+#ifdef PROFILE_SERIALIZER
+	    s->sleep_cnt++;
+#endif
 	    tsleep(s, 0, "slize", 0);
+    }
     crit_exit();
 }
 
