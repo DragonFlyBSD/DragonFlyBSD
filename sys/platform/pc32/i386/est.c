@@ -85,7 +85,7 @@
  *   ACPI objects: _PCT is MSR location, _PSS is freq/voltage, _PPC is caps.
  *
  * $NetBSD: est.c,v 1.25 2006/06/18 16:39:56 nonaka Exp $
- * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.9 2007/08/24 16:08:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.10 2008/04/02 21:25:30 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -432,7 +432,7 @@ static const struct fq_info pentium_m_n770_2[] = {
 };
 
 /* Intel Pentium Core Duo T2300 */
-static const struct fq_info pentium_core_duo[] = {
+static const struct fq_info pentium_core_duo_t2300[] = {
 	{ 1666, 1404 },
 	{ 1500, 1404 },
 	{ 1333, 1404 },
@@ -441,6 +441,13 @@ static const struct fq_info pentium_core_duo[] = {
 	{  667, 1004 },
 	{  333, 1004 },
 	{  167, 1004 },
+};
+
+static const struct fq_info pentium_core2_duo_t7500[] = {
+	{ 2200, 1420 },
+	{ 1600, 1212 },
+	{ 1200, 1068 }, 
+	{  800,  988 },
 };
 
 struct fqlist {
@@ -505,7 +512,13 @@ static const struct fqlist pentium_m_dothan[] = {
 static const struct fqlist pentium_yonah[] = {
 
 	/* 666 MHz FSB CPUs */
-        ENTRY("1.66", 0x06e8, pentium_core_duo, 5 ),
+        ENTRY("1.66", 0x06e8, pentium_core_duo_t2300, 5 ),
+};
+
+static const struct fqlist pentium_merom[] = {
+
+	/* 800 MHz FSB CPUs */
+        ENTRY("2.20", 0x06fa, pentium_core2_duo_t7500, 6 ),
 };
 
 #undef ENTRY
@@ -532,6 +545,11 @@ static const struct est_cpu est_cpus[] = {
 		"Genuine Intel(R) CPU           T2300  @ ", "GHz",
 		(sizeof(pentium_yonah) / sizeof(pentium_yonah[0])),
 		pentium_yonah
+	},
+	{
+		"Intel(R) Core(TM)2 Duo CPU     T7500  @ ", "GHz",
+		(sizeof(pentium_merom) / sizeof(pentium_merom[0])),
+		pentium_merom
 	},
 };
 
