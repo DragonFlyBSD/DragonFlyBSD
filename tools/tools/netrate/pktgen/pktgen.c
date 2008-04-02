@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.c,v 1.2 2008/03/29 11:45:46 sephe Exp $
+ * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.c,v 1.3 2008/04/02 13:27:24 sephe Exp $
  */
 
 #define _IP_VHL
@@ -567,7 +567,7 @@ pktgen_udp_thread(void *arg)
 	microtime(&end);
 
 	timevalsub(&end, &start);
-	kprintf("cnt %llu, err %llu, time %ld.%ld\n", cnt, err_cnt,
+	kprintf("cnt %llu, err %llu, time %ld.%06ld\n", cnt, err_cnt,
 		end.tv_sec, end.tv_usec);
 
 	pktg->pktg_flags &= ~(PKTG_F_STOP | PKTG_F_CONFIG | PKTG_F_RUNNING);
