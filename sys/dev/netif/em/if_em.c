@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.65 2008/03/10 12:59:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.66 2008/04/02 11:48:30 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -568,9 +568,11 @@ em_attach(device_t dev)
 		adapter->num_rx_desc = em_rxd;
 	}
 
-	SYSCTL_ADD_INT(NULL, SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO, "rxd",
+	SYSCTL_ADD_INT(&adapter->sysctl_ctx,
+		       SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO, "rxd",
 		       CTLFLAG_RD, &adapter->num_rx_desc, 0, NULL);
-	SYSCTL_ADD_INT(NULL, SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO, "txd",
+	SYSCTL_ADD_INT(&adapter->sysctl_ctx,
+		       SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO, "txd",
 		       CTLFLAG_RD, &adapter->num_tx_desc, 0, NULL);
 
 	adapter->hw.autoneg = DO_AUTO_NEG;
