@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.17 2007/07/30 21:40:31 dillon Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.18 2008/04/02 14:16:15 sephe Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -232,8 +232,8 @@ time_t	get_approximate_time_t(void);
 void	set_timeofday(struct timespec *ts);
 void	kern_adjtime(int64_t, int64_t *);
 void	kern_reladjtime(int64_t);
-void	timevaladd (struct timeval *, struct timeval *);
-void	timevalsub (struct timeval *, struct timeval *);
+void	timevaladd (struct timeval *, const struct timeval *);
+void	timevalsub (struct timeval *, const struct timeval *);
 int	tvtohz_high (struct timeval *);
 int	tvtohz_low (struct timeval *);
 

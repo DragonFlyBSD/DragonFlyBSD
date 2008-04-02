@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.39 2007/02/03 17:05:58 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.40 2008/04/02 14:16:16 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -789,7 +789,7 @@ expire:
  * Caveat emptor.
  */
 void
-timevaladd(struct timeval *t1, struct timeval *t2)
+timevaladd(struct timeval *t1, const struct timeval *t2)
 {
 
 	t1->tv_sec += t2->tv_sec;
@@ -798,7 +798,7 @@ timevaladd(struct timeval *t1, struct timeval *t2)
 }
 
 void
-timevalsub(struct timeval *t1, struct timeval *t2)
+timevalsub(struct timeval *t1, const struct timeval *t2)
 {
 
 	t1->tv_sec -= t2->tv_sec;
