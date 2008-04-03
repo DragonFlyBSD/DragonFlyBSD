@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.12 2008/04/03 13:43:29 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.13 2008/04/03 16:02:32 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -314,7 +314,11 @@ ipflow_timo_ipi(void *arg __unused)
 void
 ipflow_slowtimo(void)
 {
+#ifdef SMP
 	lwkt_send_ipiq_mask(smp_active_mask, ipflow_timo_ipi, NULL);
+#else
+	ipflow_timo_ipi(NULL);
+#endif
 }
 
 static void
