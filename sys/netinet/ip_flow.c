@@ -34,27 +34,26 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.11 2008/03/30 10:15:46 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.12 2008/04/03 13:43:29 sephe Exp $
  */
 
 #include <sys/param.h>
-#include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/globaldata.h>
-#include <sys/thread.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
-#include <sys/kernel.h>
-
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
+#include <machine/smp.h>
+
 #include <net/if.h>
 #include <net/route.h>
+#include <net/netisr.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
-#include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
@@ -65,10 +64,18 @@
 #define	IPFLOW_HASHSIZE		(1 << IPFLOW_HASHBITS)
 #define	IPFLOW_MAX		256
 
-static LIST_HEAD(ipflowhead, ipflow) ipflows[IPFLOW_HASHSIZE];
-static int	ipflow_inuse;
-static int	ipflow_active = 0;
+#define IPFLOW_RTENTRY_ISDOWN(rt) \
+	(((rt)->rt_flags & RTF_UP) == 0 || ((rt)->rt_ifp->if_flags & IFF_UP) == 0)
 
+#define ipflow_inuse		ipflow_inuse_pcpu[mycpuid]
+#define ipflows			ipflows_pcpu[mycpuid]
+
+static LIST_HEAD(ipflowhead, ipflow) ipflows_pcpu[MAXCPU][IPFLOW_HASHSIZE];
+static int		ipflow_inuse_pcpu[MAXCPU];
+static struct netmsg	ipflow_timo_netmsgs[MAXCPU];
+static int		ipflow_active = 0;
+
+SYSCTL_NODE(_net_inet_ip, OID_AUTO, ipflow, CTLFLAG_RW, 0, "ip flow");
 SYSCTL_INT(_net_inet_ip, IPCTL_FASTFORWARDING, fastforwarding, CTLFLAG_RW,
 	   &ipflow_active, 0, "Enable flow-based IP forwarding");
 
@@ -93,6 +100,7 @@ ipflow_lookup(const struct ip *ip)
 
 	hash = ipflow_hash(ip->ip_dst, ip->ip_src, ip->ip_tos);
 
+	crit_enter();
 	ipf = LIST_FIRST(&ipflows[hash]);
 	while (ipf != NULL) {
 		if (ip->ip_dst.s_addr == ipf->ipf_dst.s_addr &&
@@ -101,6 +109,8 @@ ipflow_lookup(const struct ip *ip)
 			break;
 		ipf = LIST_NEXT(ipf, ipf_next);
 	}
+	crit_exit();
+
 	return ipf;
 }
 
@@ -139,8 +149,7 @@ ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
 	 * Route and interface still up?
 	 */
 	rt = ipf->ipf_ro.ro_rt;
-	if ((rt->rt_flags & RTF_UP) == 0 ||
-	    (rt->rt_ifp->if_flags & IFF_UP) == 0)
+	if (IPFLOW_RTENTRY_ISDOWN(rt))
 		return 0;
 	ifp = rt->rt_ifp;
 
@@ -208,11 +217,13 @@ ipflow_free(struct ipflow *ipf)
 	 */
 	crit_enter();
 	LIST_REMOVE(ipf, ipf_next);
+
+	KKASSERT(ipflow_inuse > 0);
+	ipflow_inuse--;
 	crit_exit();
 
 	ipflow_addstats(ipf);
 	RTFREE(ipf->ipf_ro.ro_rt);
-	ipflow_inuse--;
 	kfree(ipf, M_IPFLOW);
 }
 
@@ -222,6 +233,7 @@ ipflow_reap(void)
 	struct ipflow *ipf, *maybe_ipf = NULL;
 	int idx;
 
+	crit_enter();
 	for (idx = 0; idx < IPFLOW_HASHSIZE; idx++) {
 		ipf = LIST_FIRST(&ipflows[idx]);
 		while (ipf != NULL) {
@@ -231,6 +243,7 @@ ipflow_reap(void)
 			 */
 			if ((ipf->ipf_ro.ro_rt->rt_flags & RTF_UP) == 0)
 				goto done;
+
 			/*
 			 * choose the one that's been least recently used
 			 * or has had the least uses in the last 1.5
@@ -250,7 +263,6 @@ done:
 	/*
 	 * Remove the entry from the flow table.
 	 */
-	crit_enter();
 	LIST_REMOVE(ipf, ipf_next);
 	crit_exit();
 
@@ -259,16 +271,20 @@ done:
 	return ipf;
 }
 
-void
-ipflow_slowtimo(void)
+static void
+ipflow_timo_dispatch(struct netmsg *nmsg)
 {
 	struct ipflow *ipf;
 	int idx;
+
+	crit_enter();
+	lwkt_replymsg(&nmsg->nm_lmsg, 0);	/* reply ASAP */
 
 	for (idx = 0; idx < IPFLOW_HASHSIZE; idx++) {
 		ipf = LIST_FIRST(&ipflows[idx]);
 		while (ipf != NULL) {
 			struct ipflow *next_ipf = LIST_NEXT(ipf, ipf_next);
+
 			if (--ipf->ipf_timer == 0) {
 				ipflow_free(ipf);
 			} else {
@@ -281,20 +297,32 @@ ipflow_slowtimo(void)
 			ipf = next_ipf;
 		}
 	}
+	crit_exit();
+}
+
+static void
+ipflow_timo_ipi(void *arg __unused)
+{
+	struct lwkt_msg *msg = &ipflow_timo_netmsgs[mycpuid].nm_lmsg;
+
+	crit_enter();
+	if (msg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg(cpu_portfn(mycpuid), msg);
+	crit_exit();
 }
 
 void
-ipflow_create(const struct route *ro, struct mbuf *m)
+ipflow_slowtimo(void)
+{
+	lwkt_send_ipiq_mask(smp_active_mask, ipflow_timo_ipi, NULL);
+}
+
+static void
+ipflow_create_oncpu(const struct route *ro, struct mbuf *m)
 {
 	const struct ip *const ip = mtod(m, struct ip *);
 	struct ipflow *ipf;
 	unsigned hash;
-
-	/*
-	 * Don't create cache entries for ICMP messages.
-	 */
-	if (!ipflow_active || ip->ip_p == IPPROTO_ICMP)
-		return;
 
 	/*
 	 * See if an existing flow struct exists.  If so remove it from it's
@@ -313,7 +341,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 			ipflow_inuse++;
 		}
 		bzero(ipf, sizeof(*ipf));
-	} else {
+	} else if (IPFLOW_RTENTRY_ISDOWN(ipf->ipf_ro.ro_rt)) {
 		crit_enter();
 		LIST_REMOVE(ipf, ipf_next);
 		crit_exit();
@@ -322,6 +350,14 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 		RTFREE(ipf->ipf_ro.ro_rt);
 		ipf->ipf_uses = ipf->ipf_last_uses = 0;
 		ipf->ipf_errors = ipf->ipf_dropped = 0;
+	} else {
+		/*
+		 * The route entry cached in ipf is still up,
+		 * this could happen while the ipf installation
+		 * is in transition state.
+		 * XXX should not happen on UP box
+		 */
+		return;
 	}
 
 	/*
@@ -342,3 +378,97 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	LIST_INSERT_HEAD(&ipflows[hash], ipf, ipf_next);
 	crit_exit();
 }
+
+#ifdef SMP
+
+static void
+ipflow_create_dispatch(struct netmsg *nmsg)
+{
+	struct netmsg_packet *nmp = (struct netmsg_packet *)nmsg;
+	struct sockaddr_in *sin;
+	struct route ro;
+	int nextcpu;
+
+	bzero(&ro, sizeof(ro));
+	sin = (struct sockaddr_in *)&ro.ro_dst;
+	sin->sin_family = AF_INET;
+	sin->sin_len = sizeof(struct sockaddr_in);
+	sin->sin_addr.s_addr = (in_addr_t)nmsg->nm_lmsg.u.ms_result32;
+
+	rtalloc_ign(&ro, RTF_PRCLONING);
+	if (ro.ro_rt != NULL) {
+		ipflow_create_oncpu(&ro, nmp->nm_packet);
+		RTFREE(ro.ro_rt);
+	}
+
+	nextcpu = mycpuid + 1;
+	if (nextcpu < ncpus)
+		lwkt_forwardmsg(cpu_portfn(nextcpu), &nmsg->nm_lmsg);
+	else
+		m_freem(nmp->nm_packet);
+}
+
+#endif	/* SMP */
+
+void
+ipflow_create(const struct route *ro, struct mbuf *m)
+{
+	const struct ip *const ip = mtod(m, struct ip *);
+#ifdef SMP
+	struct netmsg_packet *nmp;
+	struct netmsg *nmsg;
+	int nextcpu;
+#endif
+
+	/*
+	 * Don't create cache entries for ICMP messages.
+	 */
+	if (!ipflow_active || ip->ip_p == IPPROTO_ICMP) {
+		m_freem(m);
+		return;
+	}
+
+#ifdef SMP
+	nmp = &m->m_hdr.mh_netmsg;
+	nmsg = &nmp->nm_netmsg;
+
+	netmsg_init(nmsg, &netisr_apanic_rport, 0, ipflow_create_dispatch);
+	nmp->nm_packet = m;
+	nmsg->nm_lmsg.u.ms_result32 =
+		((const struct sockaddr_in *)&ro->ro_dst)->sin_addr.s_addr;
+
+	if (mycpuid == 0) {
+		ipflow_create_oncpu(ro, m);
+		nextcpu = 1;
+	} else {
+		nextcpu = 0;
+	}
+	if (nextcpu < ncpus)
+		lwkt_sendmsg(cpu_portfn(nextcpu), &nmsg->nm_lmsg);
+	else
+		m_freem(m);
+#else
+	ipflow_create_oncpu(ro, m);
+	m_freem(m);
+#endif
+}
+
+static void
+ipflow_init(void)
+{
+	char oid_name[32];
+	int i;
+
+	for (i = 0; i < ncpus; ++i) {
+		netmsg_init(&ipflow_timo_netmsgs[i], &netisr_adone_rport, 0,
+			    ipflow_timo_dispatch);
+
+		ksnprintf(oid_name, sizeof(oid_name), "inuse%d", i);
+
+		SYSCTL_ADD_INT(NULL,
+		SYSCTL_STATIC_CHILDREN(_net_inet_ip_ipflow),
+		OID_AUTO, oid_name, CTLFLAG_RD, &ipflow_inuse_pcpu[i], 0,
+		"# of ip flow being used");
+	}
+}
+SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, ipflow_init, 0);
