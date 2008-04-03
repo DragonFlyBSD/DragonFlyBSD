@@ -1,11 +1,11 @@
 <!--#set var="title" value="DragonFly - January 2008 Release 1.12.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.2 2008/02/26 20:04:26 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.3 2008/04/03 17:34:32 dillon Exp $ -->
 
 <h1>Obtaining DragonFly 1.12.x for your system</h1>
 
-<h2>1.12.0 ISO Images for CDs</h2>
+<h2>1.12.1 ISO Images for CDs</h2>
 
 <p>
 DragonFly CDs are 'live', which means that the CD will boot your system 
@@ -36,6 +36,8 @@ See the 'Download Site' list below for a list of download locations.
 <b>The MD5 for the release is:
 <br/>MD5 (dfly-1.12.0_REL.iso) = 21cfcbcfeaeab5b3254f30de382f8f2b
 <br/>MD5 (dfly-1.12.0_REL.iso.gz) = 5b16c1c88fbdd43a7bbfe2ff78ce7388
+<br/>MD5 (dfly-1.12.1_REL.iso) = e4c063b7cc48eaf9c8cfc62e10b6aa8a
+<br/>MD5 (dfly-1.12.1_REL.iso.gz) = 0476ea6d2819110535d689c46fe5e0eb
 
 </b><br /> </p>
 
@@ -60,6 +62,12 @@ See the 'Download Site' list below for a list of download locations.
 <TH></TH>
 </TR>
 <TR>
+<TD>1.12.1</TD>
+<TD>08-Mar-2008</TD>
+<TD>RELEASE CD</TD>
+<TD><A HREF="errata1_12.shtml">Errata</A></TD>
+</TR>
+<TR>
 <TD>1.12.0</TD>
 <TD>26-Feb-2008</TD>
 <TD>RELEASE CD</TD>
@@ -81,56 +89,56 @@ See the 'Download Site' list below for a list of download locations.
 
 <!--
 <TR><TD>Fortunaty.net</TD>
-<TD>1.12.0_REL image</TD>
-<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.12.0_REL.iso.gz">HTTP</A></TD></TR>
+<TD>1.12.1_REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A></TD></TR>
 -->
 
 <TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>1.12.0_REL image</TD>
+<TD>1.12.1_REL image</TD>
 <TD>
-    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.12.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.12.0_REL.iso.gz">FTP</A>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
 </TD>
 </TR>
 
 <!--
 <TR><TD>BGP4.net (USA)</TD>
-<TD>1.12.0_REL image</TD>
+<TD>1.12.1_REL image</TD>
 <TD>
-    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.12.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.12.0_REL.iso.gz">FTP</A>
+    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
 </TD></TR>
 -->
 
 <TR><TD>TheShell.com</TD>
-<TD>1.12.0_REL image</TD>
+<TD>1.12.1_REL image</TD>
 <TD>
-    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.12.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.12.0_REL.iso.gz">FTP</A>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
 </TD></TR>
 
 <TR><TD>high5.net (Amsterdam)</TD>
-<TD>1.12.0_REL image</TD>
+<TD>1.12.1_REL image</TD>
 <TD>
-    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.12.0_REL.iso.gz">HTTP</A>
+    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A>
 </TD></TR>
 
 <TR><TD>dragonflybsd.kiev.ua (Ukraine)</TD>
-<TD>1.12.0_REL image</TD>
+<TD>1.12.1_REL image</TD>
 <TD>
-    <A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/iso-images/dfly-1.12.0_REL.iso.gz">FTP</A>
+    <A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
 </TD></TR>
 
 
 
 <TR><TD>Dragonflybsd.org (USA)</TD>
-<TD>1.12.0_REL image</TD>
-<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.12.0_REL.iso.gz">FTP</A>
+<TD>1.12.1_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
 (<I>try to find another site first</I>)</TD></TR>
 
 </TABLE>
 
-<h1>Release Notes for DragonFly 1.12.0</h1>
+<h1>Release Notes for DragonFly 1.12.x</h1>
 
 <p>
 1.12 is our seventh major DragonFly release.  DragonFly's policy is to
@@ -154,14 +162,10 @@ only commit bug fixes to release branches.
 <ul>
     <li>Support for the 386 CPU was abandoned.
     <li>Added the Hardware sensors framework.  Ported from OpenBSD via
-	FreeBSD Google SoC port.
+	FreeBSD Google SoC port.  This framework retrieves motherboard
+	information such as fan speed, temperature, and voltage via
+	sysctl.
     <li>Major work on ipfw2, switch ipfw from ipfw1 to ipfw2.
-    <li>ARCnet, FDDI and Token Ring support was removed.
-    <li>The fla driver was removed.  It's known to be buggy, supports
-	very limited set of obsolete devices with limited set of firmware
-	versions, is removed from FreeBSD more than 3 years ago and is
-	not supported any more more than 4 years.
-    <li>Remove nv driver, it is replaced by nfe.
     <li>Sync the ACPI code with recent changes from FreeBSD.
     <li>Syscall and trap entry code run MPSAFE by default now (most
 	syscalls still get the MP lock when they hit the I/O path, though).
@@ -187,26 +191,31 @@ only commit bug fixes to release branches.
 	its 64 bit offset range).
     <li>Add pselect() syscall.
     <li>Fix an objcache bug, improving objcache performance.
+    <li>Numerous security related sysctls have been moved to a new
+	sysctl category called 'security'.
 </ul>
 <h3>Hardware changes</h3>
 <ul>
-    <li>Import msk from FreeBSD which supports the Marvell Yukon II
-	based NICs (both GE and FE).
-    <li>Add uticom driver for Texas Instruments TUSB3410 USB to serial chips.
     <li>Add SATA ATAPI support for AHCI controllers.
-    <li>Add et which supports Agere ET1310 based Ethernet chips (PCIe only).
     <li>Update the agp code to the latest one from FreeBSD HEAD.  This
 	brings in a lot of newer hardware support.
-    <li>Add uchcom from NetBSD.  A driver for WinChipHead CH341/CH340 chips.
     <li>Add several drivers for sensorsd: coretemp driver for Intel Core
 	on-die digital thermal sensor from FreeBSD and lm and it drivers
 	for hardware sensors used in many motherboards.
+    <li>Major sound system update.  Added drivers, IDs, and fixes from FreeBSD.
+    <li>AGP support greatly improved, changes primarily taken from FreeBSD.
+    <li>Sync the bktr driver with FreeBSD.
+</ul>
+<h3>Hardware changes (Networking)</h3>
+<ul>
     <li>Add experimental bluetooth stack.
     <li>Add many new network adapter IDs.
     <li>Many network drivers updated & improved.
+    <li>Import msk from FreeBSD which supports the Marvell Yukon II
+	based NICs (both GE and FE).
+    <li>Add et which supports Agere ET1310 based Ethernet chips (PCIe only).
+    <li>Add support for newer devices used with ICH9 chipset motherboards.
     <li>802.11 support greatly improved.
-    <li>Major sound system update.  Added drivers, IDs, and fixes from FreeBSD.
-    <li>AGP support greatly improved, changes primarily taken from FreeBSD.
 </ul>
 <h3>Hardware changes (USB)</h3>
 <ul>
@@ -218,6 +227,12 @@ only commit bug fixes to release branches.
 	significant aic7xxx work.
     <li>Improved reliability for high speed USB modems
     <li>Improved operation for USB based CD/DVD writers.
+    <li>Improved operation of USB based serial devices.
+    <li>Add moscom from OpenBSD, supporting MosChip based serial adapters.
+    <li>Add uark from OpenBSD, supporting Arkmicro tech serial adapters.
+    <li>Add uchcom from NetBSD.  A driver for WinChipHead CH341/CH340 chips.
+    <li>Add uslcom from OpenBSD, supporting Silicon Laboratories serial USB.
+    <li>Add uticom driver for Texas Instruments TUSB3410 USB to serial chips.
 </ul>
 <h3>Userland changes</h3>
 <ul>
@@ -231,10 +246,12 @@ only commit bug fixes to release branches.
     <li>Add pkg_radd.  pkg_radd acts as a wrapper for pkg_add and install
 	binary pkgsrc packages.
     <li>Add a pkg_search script to simplify pkgsrc searches.
-    <li>Add getent from FreeBSD which retrieves and displays entries from
+    <li>Add getent() from FreeBSD which retrieves and displays entries from
 	the administrative database like passwd.
     <li>Add pam_nologin from FreeBSD.
-    <li>Add bluetooth libraries and btconfig to configure Bluetooth devices.
+    <li>Add bluetooth libraries and various Bluetooth tools to configure
+	and manipulate Bluetooth devices.  btconfig, bthcid, btpin, sdpd,
+	sdpquery, and rfcomm_sppd.  Mostly from NetBSD.
     <li>Fix minor bugs in hog partition ('*') specifications in disklabel.
     <li>Add /usr/Makefile containing easy-to-use targets for users to
 	install and maintain DragonFly source and pkgsrc subtrees.
@@ -242,10 +259,26 @@ only commit bug fixes to release branches.
     <li>Many documentation updates.
     <li>DPMS support added to the vesa console module.
     <li>Allow VESA mode numbers > 512.
-    <li>xntpd removed.  dntpd is now our official client-side ntpd.
     <li>Add lldiv_t, lldiv(), llabs(), imaxdiv() to libc.
     <li>Update the 'at' command.
     <li>Switch from libreadline to libedit.
+    <li>vnconfig enhanced.
+    <li>kdump enchanced to output more human readable information by default,
+	from FreeBSD.
+</ul>
+<h3>Removals</h3>
+<ul>
+    <li>ARCnet, FDDI and Token Ring support was removed.
+    <li>The fla driver was removed.  It's known to be buggy, supports
+	very limited set of obsolete devices with limited set of firmware
+	versions, is removed from FreeBSD more than 3 years ago and is
+	not supported any more more than 4 years.
+    <li>Remove nv driver, it is replaced by nfe.
+    <li>xntpd removed.  dntpd is now our official client-side ntpd.
+    <li>acxcontrol removed.  Firmware files have been automated (see man acx).
+    <li>The ray driver was removed.  raycontrol removed.  
+    <li>wicontrol was removed.  ifconfig has taken over most of its
+	functionality.
 </ul>
 <h3>Contributed Software</h3>
 <ul>
@@ -256,7 +289,6 @@ only commit bug fixes to release branches.
     <li>OpenSSH was updated to version 4.7p1
     <li>sendmail was updated to version 8.14.2
     <li>tcpdump was updated to version 3.9.8
-    <li>openssh was updated to 4.7p1
     <li>tcsh was updated to 6.15.00
     <li>zoneinfo database was synced with tzdata2007k (merged to DragonFly 1.10)
     <li>bind was updated to 9.3.4-P1
