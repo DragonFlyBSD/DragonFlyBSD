@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.10 2008/04/02 13:11:48 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.11 2008/04/03 12:55:15 sephe Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -73,6 +73,8 @@ lwkt_serialize_init(lwkt_serialize_t s)
 #ifdef PROFILE_SERIALIZER
     s->sleep_cnt = 0;
     s->tryfail_cnt = 0;
+    s->enter_cnt = 0;
+    s->try_cnt = 0;
 #endif
 }
 
@@ -86,6 +88,9 @@ lwkt_serialize_enter(lwkt_serialize_t s)
 #ifdef INVARIANTS
     s->last_td = curthread;
 #endif
+#ifdef PROFILE_SERIALIZER
+    s->enter_cnt++;
+#endif
 }
 
 /*
@@ -98,6 +103,9 @@ lwkt_serialize_try(lwkt_serialize_t s)
 
 #ifdef INVARIANTS
     KKASSERT(s->last_td != curthread);
+#endif
+#ifdef PROFILE_SERIALIZER
+    s->try_cnt++;
 #endif
     if ((error = atomic_intr_cond_try(&s->interlock)) == 0) {
 #ifdef INVARIANTS
@@ -150,6 +158,9 @@ lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *, void *),
 #ifdef INVARIANTS
 	s->last_td = curthread;
 #endif
+#ifdef PROFILE_SERIALIZER
+	s->enter_cnt++;
+#endif
 	if (atomic_intr_handler_is_enabled(&s->interlock) == 0)
 	    func(arg, frame);
 #ifdef INVARIANTS
@@ -173,6 +184,9 @@ lwkt_serialize_handler_try(lwkt_serialize_t s, void (*func)(void *, void *),
      * enabled.
      */
     if (atomic_intr_handler_is_enabled(&s->interlock) == 0) {
+#ifdef PROFILE_SERIALIZER
+	s->try_cnt++;
+#endif
 	if (atomic_intr_cond_try(&s->interlock) == 0) {
 #ifdef INVARIANTS
 	    s->last_td = curthread;
@@ -221,4 +235,3 @@ lwkt_serialize_wakeup(void *info)
 {
     wakeup(info);
 }
-

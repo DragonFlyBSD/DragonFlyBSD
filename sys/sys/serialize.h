@@ -8,7 +8,7 @@
  * required.  Unlike tokens this serialization is not safe from deadlocks
  * nor is it recursive, and care must be taken when using it. 
  *
- * $DragonFly: src/sys/sys/serialize.h,v 1.6 2008/04/02 13:11:48 sephe Exp $
+ * $DragonFly: src/sys/sys/serialize.h,v 1.7 2008/04/03 12:55:15 sephe Exp $
  */
 
 #ifndef _SYS_SERIALIZE_H_
@@ -25,6 +25,8 @@ struct lwkt_serialize {
     struct thread	*last_td;
     unsigned int	sleep_cnt;
     unsigned int	tryfail_cnt;
+    unsigned int	enter_cnt;
+    unsigned int	try_cnt;
 };
 
 /*

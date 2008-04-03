@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.67 2008/04/02 13:11:48 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.68 2008/04/03 12:55:15 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -2167,6 +2167,14 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 			SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO,
 			"serializer_tryfail", CTLFLAG_RW,
 			&ifp->if_serializer->tryfail_cnt, 0, NULL);
+	SYSCTL_ADD_UINT(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO,
+			"serializer_enter", CTLFLAG_RW,
+			&ifp->if_serializer->enter_cnt, 0, NULL);
+	SYSCTL_ADD_UINT(&adapter->sysctl_ctx,
+			SYSCTL_CHILDREN(adapter->sysctl_tree), OID_AUTO,
+			"serializer_try", CTLFLAG_RW,
+			&ifp->if_serializer->try_cnt, 0, NULL);
 #endif
 
 	/*
