@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - January 2008 Release 1.12.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.3 2008/04/03 17:34:32 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.4 2008/04/04 09:43:12 matthias Exp $ -->
 
 <h1>Obtaining DragonFly 1.12.x for your system</h1>
 
@@ -220,7 +220,6 @@ only commit bug fixes to release branches.
 <h3>Hardware changes (USB)</h3>
 <ul>
     <li>Add many new USB device IDs.
-    <li>Ported uftdi.
     <li>USB device attachment sped up considerably.
     <li>Geode companion support added to OHCI probe code.
     <li>ISA attachment for Adaptec 284X controllers and other
@@ -255,7 +254,7 @@ only commit bug fixes to release branches.
     <li>Fix minor bugs in hog partition ('*') specifications in disklabel.
     <li>Add /usr/Makefile containing easy-to-use targets for users to
 	install and maintain DragonFly source and pkgsrc subtrees.
-    <li>traceroute can now handle MPLS reporting.
+    <li>traceroute can now handle MPLS extensions for ICMP.
     <li>Many documentation updates.
     <li>DPMS support added to the vesa console module.
     <li>Allow VESA mode numbers > 512.
@@ -274,7 +273,7 @@ only commit bug fixes to release branches.
 	versions, is removed from FreeBSD more than 3 years ago and is
 	not supported any more more than 4 years.
     <li>Remove nv driver, it is replaced by nfe.
-    <li>xntpd removed.  dntpd is now our official client-side ntpd.
+    <li>openntpd removed.  dntpd is now our official client-side ntpd.
     <li>acxcontrol removed.  Firmware files have been automated (see man acx).
     <li>The ray driver was removed.  raycontrol removed.  
     <li>wicontrol was removed.  ifconfig has taken over most of its
@@ -295,7 +294,7 @@ only commit bug fixes to release branches.
     <li>diffutils was updated to 2.8.7
     <li>sync libfetch with FreeBSD
     <li>wpa_supplicant and hostapd were updated to version 0.5.8 (for 802.11)
-    <li>gcc was updated to 4.1.x
+    <li>gcc was updated to 4.1.2
     <li>gdb was updated to 6.7.1
     <li>file was updated to 4.23
     <li>libevent was updated to 1.3e
