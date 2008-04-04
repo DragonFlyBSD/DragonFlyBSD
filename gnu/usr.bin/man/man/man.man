@@ -13,9 +13,9 @@
 .\" Austin, Texas  78712
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/man/man/man.man,v 1.10.2.8 2002/06/25 00:02:55 eric Exp $
-.\" $DragonFly: src/gnu/usr.bin/man/man/man.man,v 1.5 2008/04/04 19:09:50 swildner Exp $
+.\" $DragonFly: src/gnu/usr.bin/man/man/man.man,v 1.6 2008/04/04 19:25:46 swildner Exp $
 .\"
-.Dd January 5, 1991
+.Dd April 4, 2008
 .Dt MAN 1
 .Os
 .Sh NAME
@@ -53,6 +53,12 @@ If enabled by the system administrator, formatted man pages will also
 be compressed with the
 .Nm %compress%
 command to save space.
+If
+.Ar name
+contains a
+.Sq / ,
+.Nm
+treats it as a file name.
 .Pp
 The options are as follows:
 .Bl -tag -width Fl

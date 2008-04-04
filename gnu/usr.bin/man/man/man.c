@@ -14,7 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/man/man.c,v 1.37.2.10 2003/02/14 15:38:51 ru Exp $
- * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.7 2007/08/26 19:42:26 swildner Exp $
+ * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.8 2008/04/04 19:25:46 swildner Exp $
  */
 
 #define MAN_MAIN
@@ -1617,7 +1617,17 @@ man (name)
   found = 0;
 
   fflush (stdout);
-  if (shortsec != NULL)
+  if (strchr(name, '/'))  /* Treat name as file name if it's a path */
+    {
+      struct stat st;
+
+      if (debug)
+	fprintf(stderr, "Trying as file name\n");
+
+      if (stat(name, &st) == 0)
+	found += format_and_display(dirname(name), name, NULL);
+    }
+  else if (shortsec != NULL)
     {
       for (mp = manpathlist; *mp != NULL; mp++)
 	{
@@ -1720,18 +1730,6 @@ man (name)
 	    }
 	}
     }
-
-  /* Treat name as file name as a last resort */
-  if (!found && shortsec == NULL) {
-    struct stat st;
-
-    if (debug)
-      fprintf(stderr, "Trying as file name\n");
-
-    if (stat(name, &st) == 0) {
-      found += format_and_display(dirname(name), name, NULL);
-    }
-  }
   return found;
 }
 
