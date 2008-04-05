@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.27 2008/03/07 11:34:21 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.28 2008/04/05 07:40:28 sephe Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -1953,14 +1953,15 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 	return (0);
 
 sendpkt:
-	lwkt_serialize_enter(ifp->if_serializer);
 	if (ifp->if_flags & IFF_LOOPBACK) {
-		error = (*ifp->if_output)(origifp, m, (struct sockaddr *)dst,
-					  rt);
+		lwkt_serialize_enter(origifp->if_serializer);
+		error = ifp->if_output(origifp, m, (struct sockaddr *)dst, rt);
+		lwkt_serialize_exit(origifp->if_serializer);
 	} else {
-		error = (*ifp->if_output)(ifp, m, (struct sockaddr *)dst, rt);
+		lwkt_serialize_enter(ifp->if_serializer);
+		error = ifp->if_output(ifp, m, (struct sockaddr *)dst, rt);
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 	return (error);
 
 bad:
