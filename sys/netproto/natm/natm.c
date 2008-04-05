@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.27 2007/05/23 08:57:08 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.28 2008/04/05 05:30:29 sephe Exp $ */
 
 /*
  *
@@ -320,7 +320,9 @@ natm_usr_send(struct socket *so, int flags, struct mbuf *m,
     ATM_PH_SETVCI(aph, npcb->npcb_vci);
     ATM_PH_FLAGS(aph) = (proto == PROTO_NATMAAL5) ? ATM_PH_AAL5 : 0;
 
+    lwkt_serialize_enter(npcb->npcb_ifp->if_serializer);
     error = atm_output(npcb->npcb_ifp, m, NULL, NULL);
+    lwkt_serialize_exit(npcb->npcb_ifp->if_serializer);
 
  out:
     crit_exit();
@@ -630,7 +632,9 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
       ATM_PH_SETVCI(aph, npcb->npcb_vci);
       ATM_PH_FLAGS(aph) = (proto == PROTO_NATMAAL5) ? ATM_PH_AAL5 : 0;
 
+      lwkt_serialize_enter(npcb->npcb_ifp->if_serializer);
       error = atm_output(npcb->npcb_ifp, m, NULL, NULL);
+      lwkt_serialize_exit(npcb->npcb_ifp->if_serializer);
 
       break;
 
