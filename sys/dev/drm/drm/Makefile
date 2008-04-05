@@ -1,10 +1,27 @@
-# $DragonFly: src/sys/dev/drm/r128/Makefile,v 1.3 2008/04/05 18:12:30 hasso Exp $
+# $DragonFly: src/sys/dev/drm/drm/Makefile,v 1.1 2008/04/05 18:12:29 hasso Exp $
 
 .PATH:	${.CURDIR}/..
-KMOD	= r128
-KMODDEPS= drm
+KMOD	= drm
 NO_MAN	= YES
-SRCS    = r128_cce.c r128_drv.c r128_state.c r128_irq.c
+SRCS    = \
+	ati_pcigart.c \
+	drm_agpsupport.c \
+	drm_auth.c \
+	drm_bufs.c \
+	drm_context.c \
+	drm_dma.c \
+	drm_drawable.c \
+	drm_drv.c \
+	drm_fops.c \
+	drm_ioctl.c \
+	drm_irq.c \
+	drm_lock.c \
+	drm_memory.c \
+	drm_pci.c \
+	drm_scatter.c \
+	drm_sysctl.c \
+	drm_vm.c
+
 SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h
 CFLAGS += ${DEBUG_FLAGS} -I. -I..
 

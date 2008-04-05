@@ -1,5 +1,11 @@
-/* sarea.h -- SAREA definitions -*- linux-c -*-
+/**
+ * \file drm_sarea.h
+ * \brief SAREA definitions
  *
+ * \author Michel Dï¿½zer <michel@daenzer.net>
+ */
+
+/*
  * Copyright 2002 Tungsten Graphics, Inc., Cedar Park, Texas.
  * All Rights Reserved.
  *
@@ -22,39 +28,59 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  *
- * Authors:
- *    Michel Dänzer <michel@daenzer.net>
- *
- * $FreeBSD: src/sys/dev/drm/drm_sarea.h,v 1.1.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/drm_sarea.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/drm_sarea.h,v 1.3 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef _DRM_SAREA_H_
 #define _DRM_SAREA_H_
 
-#define SAREA_MAX_DRAWABLES 		256
+#include "drm.h"
 
-typedef struct _drm_sarea_drawable_t {
-    unsigned int	stamp;
-    unsigned int	flags;
-} drm_sarea_drawable_t;
+/* SAREA area needs to be at least a page */
+#if defined(__alpha__)
+#define SAREA_MAX                       0x2000
+#elif defined(__ia64__)
+#define SAREA_MAX                       0x10000	/* 64kB */
+#else
+/* Intel 830M driver needs at least 8k SAREA */
+#define SAREA_MAX                       0x2000UL
+#endif
 
-typedef struct _dri_sarea_frame_t {
-    unsigned int        x;
-    unsigned int        y;
-    unsigned int        width;
-    unsigned int        height;
-    unsigned int        fullscreen;
-} drm_sarea_frame_t;
+/** Maximum number of drawables in the SAREA */
+#define SAREA_MAX_DRAWABLES		256
 
-typedef struct _drm_sarea_t {
-    /* first thing is always the drm locking structure */
-    drm_hw_lock_t		lock;
-		/* NOT_DONE: Use readers/writer lock for drawable_lock */
-    drm_hw_lock_t		drawable_lock;
-    drm_sarea_drawable_t	drawableTable[SAREA_MAX_DRAWABLES];
-    drm_sarea_frame_t		frame;
-    drm_context_t		dummy_context;
-} drm_sarea_t;
+#define SAREA_DRAWABLE_CLAIMED_ENTRY    0x80000000
 
-#endif	/* _DRM_SAREA_H_ */
+/** SAREA drawable */
+struct drm_sarea_drawable {
+	unsigned int stamp;
+	unsigned int flags;
+};
+
+/** SAREA frame */
+struct drm_sarea_frame {
+	unsigned int x;
+	unsigned int y;
+	unsigned int width;
+	unsigned int height;
+	unsigned int fullscreen;
+};
+
+/** SAREA */
+struct drm_sarea {
+    /** first thing is always the DRM locking structure */
+	struct drm_hw_lock lock;
+    /** \todo Use readers/writer lock for drm_sarea::drawable_lock */
+	struct drm_hw_lock drawable_lock;
+	struct drm_sarea_drawable drawableTable[SAREA_MAX_DRAWABLES];	/**< drawables */
+	struct drm_sarea_frame frame;	/**< frame */
+	drm_context_t dummy_context;
+};
+
+#ifndef __KERNEL__
+typedef struct drm_sarea_drawable drm_sarea_drawable_t;
+typedef struct drm_sarea_frame drm_sarea_frame_t;
+typedef struct drm_sarea drm_sarea_t;
+#endif
+
+#endif				/* _DRM_SAREA_H_ */

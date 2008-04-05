@@ -1,6 +1,6 @@
-# $FreeBSD: src/sys/modules/drm/Makefile,v 1.2.2.1 2003/04/26 07:31:06 anholt Exp $
-# $DragonFly: src/sys/dev/drm/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
+# $DragonFly: src/sys/dev/drm/Makefile,v 1.3 2008/04/05 18:12:28 hasso Exp $
 
-SUBDIR = mga r128 radeon tdfx
+SUBDIR = drm mach64 mga r128 radeon savage sis tdfx i915
 
-.include <bsd.subdir.mk>
+.include <bsd.obj.mk>
+

@@ -1,11 +1,24 @@
-# $FreeBSD: src/sys/modules/drm/mga/Makefile,v 1.4.2.1 2003/04/26 07:31:06 anholt Exp $
-# $DragonFly: src/sys/dev/drm/mga/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
+# $DragonFly: src/sys/dev/drm/mga/Makefile,v 1.3 2008/04/05 18:12:29 hasso Exp $
 
-.PATH:	${.CURDIR}/../../../dev/drm
-KMOD	= mga
-NOMAN	= YES
-SRCS	= mga_drv.c mga_state.c mga_warp.c mga_dma.c \
-	mga_irq.c
-SRCS	+=device_if.h bus_if.h pci_if.h opt_drm.h
+.PATH:	${.CURDIR}/..
+KMOD= 	mga
+KMODDEPS= drm
+NO_MAN=	YES
+SRCS=		mga_drv.c mga_state.c mga_warp.c mga_dma.c mga_irq.c
+SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h
+CFLAGS+=	${DEBUG_FLAGS} -I. -I..
+
+.if defined(DRM_DEBUG)
+DRM_DEBUG_OPT= "\#define DRM_DEBUG 1"
+.endif
+
+.if !defined(DRM_NOLINUX)
+DRM_LINUX_OPT= "\#define DRM_LINUX 1"
+.endif
+
+opt_drm.h:
+	touch opt_drm.h
+	echo $(DRM_DEBUG_OPT) >> opt_drm.h
+	echo $(DRM_LINUX_OPT) >> opt_drm.h
 
 .include <bsd.kmod.mk>

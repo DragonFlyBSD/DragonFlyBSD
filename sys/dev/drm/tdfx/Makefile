@@ -1,10 +1,24 @@
-# $FreeBSD: src/sys/modules/drm/tdfx/Makefile,v 1.2.4.1 2003/04/26 07:31:06 anholt Exp $
-# $DragonFly: src/sys/dev/drm/tdfx/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
+# $DragonFly: src/sys/dev/drm/tdfx/Makefile,v 1.3 2008/04/05 18:12:30 hasso Exp $
 
-.PATH:	${.CURDIR}/../../../dev/drm
-KMOD	= tdfx
-NOMAN	= YES
-SRCS	= tdfx_drv.c
-SRCS	+=device_if.h bus_if.h pci_if.h opt_drm.h
+.PATH:	${.CURDIR}/..
+KMOD=	tdfx
+KMODDEPS= drm
+NO_MAN=	YES
+SRCS=	tdfx_drv.c
+SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h
+CFLAGS+=	${DEBUG_FLAGS} -I. -I.. 
+
+.if defined(DRM_DEBUG)
+DRM_DEBUG_OPT= "\#define DRM_DEBUG 1"
+.endif
+
+.if !defined(DRM_NOLINUX)
+DRM_LINUX_OPT= "\#define DRM_LINUX 1"
+.endif
+
+opt_drm.h:
+	touch opt_drm.h
+	echo $(DRM_DEBUG_OPT) >> opt_drm.h
+	echo $(DRM_LINUX_OPT) >> opt_drm.h
 
 .include <bsd.kmod.mk>

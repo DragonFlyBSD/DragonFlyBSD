@@ -1,12 +1,12 @@
-# $DragonFly: src/sys/dev/drm/r128/Makefile,v 1.3 2008/04/05 18:12:30 hasso Exp $
+# $DragonFly: src/sys/dev/drm/sis/Makefile,v 1.1 2008/04/05 18:12:30 hasso Exp $
 
 .PATH:	${.CURDIR}/..
-KMOD	= r128
+KMOD= 	sis
 KMODDEPS= drm
-NO_MAN	= YES
-SRCS    = r128_cce.c r128_drv.c r128_state.c r128_irq.c
-SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h
-CFLAGS += ${DEBUG_FLAGS} -I. -I..
+NO_MAN=	YES
+SRCS=	sis_drv.c sis_ds.c sis_mm.c
+SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h
+CFLAGS+=	${DEBUG_FLAGS} -I. -I..
 
 .if defined(DRM_DEBUG)
 DRM_DEBUG_OPT= "\#define DRM_DEBUG 1"

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.153 2008/04/02 13:11:48 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.154 2008/04/05 18:12:28 hasso Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2642,18 +2642,28 @@ device		acpi		# basic ACPI support
 device		pmtimer		# adjust the system clock after resume
 
 # DRM options:
-# mgadrm:    AGP Matrox G200, G400, G450, G550
-# tdfxdrm:   3dfx Voodoo 3/4/5 and Banshee
-# r128drm:   ATI Rage 128
-# radeondrm: ATI Radeon up to 9000/9100
-# DRM_DEBUG: include debug printfs, very slow
+# drm:		General DRM code
+# i915drm:	Intel i830, i845, i915, i945, i965, G33/35
+# mach64drm:	ATI Mach64 cards - Rage and 3D Rage series
+# mgadrm:	AGP Matrox G200, G400, G450, G550
+# r128drm:	ATI Rage 128 cards
+# radeondrm:	ATI Radeon cards
+# savagedrm:	Savage cards
+# sisdrm:	Sis cards
+# tdfxdrm:	3dfx Voodoo 3/4/5 and Banshee
 #
-# mga requires AGP in the kernel, and it is recommended
-# for AGP r128 and radeon cards.
+# DRM_DEBUG:	include debug printfs, very slow
+#
+# DRM requires AGP in the kernel.
 
+device		drm
+device		"i915drm"
+device		"mach64drm"
 device		mgadrm
 device		"r128drm"
 device		radeondrm
+device		savagedrm
+device		sisdrm
 device		tdfxdrm
 
 options 	DRM_DEBUG
