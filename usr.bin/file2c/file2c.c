@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/usr.bin/file2c/file2c.c,v 1.11 2007/10/30 17:49:00 ru Exp $
- * $DragonFly: src/usr.bin/file2c/file2c.c,v 1.3 2008/04/05 08:50:41 swildner Exp $
+ * $DragonFly: src/usr.bin/file2c/file2c.c,v 1.4 2008/04/05 09:12:45 swildner Exp $
  *
  */
 
@@ -38,7 +38,7 @@ main(int argc, char *argv[])
 		case 'n':	/* Max. number of bytes per line. */
 			maxcount = strtol(optarg, NULL, 10);
 			break;
-		case 's':	/* Be more style(9) comliant. */
+		case 's':	/* Be more style(9) compliant. */
 			pretty = 1;
 			break;
 		case 'x':	/* Print hexadecimal numbers. */
