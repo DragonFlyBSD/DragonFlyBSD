@@ -1,46 +1,93 @@
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
- * <phk@login.dknet.dk> wrote this file.  As long as you retain this notice you
+ * <phk@FreeBSD.org> wrote this file.  As long as you retain this notice you
  * can do whatever you want with this stuff. If we meet some day, and you think
  * this stuff is worth it, you can buy me a beer in return.   Poul-Henning Kamp
  * ----------------------------------------------------------------------------
  *
- * $FreeBSD: src/usr.bin/file2c/file2c.c,v 1.5 1999/08/28 01:01:10 peter Exp $
- * $DragonFly: src/usr.bin/file2c/file2c.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $FreeBSD: src/usr.bin/file2c/file2c.c,v 1.11 2007/10/30 17:49:00 ru Exp $
+ * $DragonFly: src/usr.bin/file2c/file2c.c,v 1.3 2008/04/05 08:50:41 swildner Exp $
  *
  */
 
+#include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+static void
+usage(void)
+{
+
+	fprintf(stderr, "usage: %s [-sx] [-n count] [prefix [suffix]]\n",
+	    getprogname());
+	exit(1);
+}
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
-    int i,j,k;
+	int c, count, linepos, maxcount, pretty, radix;
 
-    if (argc > 1)
-        printf("%s\n",argv[1]);
-    k = 0;
-    j = 0;
-    while((i = getchar()) != EOF) {
-	if(k++) {
-	    putchar(',');
-	    j++;
+	maxcount = 0;
+	pretty = 0;
+	radix = 10;
+	while ((c = getopt(argc, argv, "n:sx")) != -1) {
+		switch (c) {
+		case 'n':	/* Max. number of bytes per line. */
+			maxcount = strtol(optarg, NULL, 10);
+			break;
+		case 's':	/* Be more style(9) comliant. */
+			pretty = 1;
+			break;
+		case 'x':	/* Print hexadecimal numbers. */
+			radix = 16;
+			break;
+		case '?':
+		default:
+			usage();
+		}
 	}
-	if (j > 70) {
-	    putchar('\n');
-	    j = 0;
+	argc -= optind;
+	argv += optind;
+
+	if (argc > 0)
+		printf("%s\n", argv[0]);
+	count = linepos = 0;
+	while((c = getchar()) != EOF) {
+		if (count) {
+			putchar(',');
+			linepos++;
+		}
+		if ((maxcount == 0 && linepos > 70) ||
+		    (maxcount > 0 && count >= maxcount)) {
+			putchar('\n');
+			count = linepos = 0;
+		}
+		if (pretty) {
+			if (count) {
+				putchar(' ');
+				linepos++;
+			} else {
+				putchar('\t');
+				linepos += 8;
+			}
+		}
+		switch (radix) {
+		case 10:
+			linepos += printf("%d", c);
+			break;
+		case 16:
+			linepos += printf("0x%02x", c);
+			break;
+		default:
+			abort();
+		}
+		count++;
 	}
-	printf("%d",i);
-	if (i > 99)
-	    j += 3;
-	else if (i > 9)
-	    j += 2;
-	else
-	    j++;
-    }
-    putchar('\n');
-    if (argc > 2)
-        printf("%s\n",argv[2]);
-    return 0;
+	putchar('\n');
+	if (argc > 1)
+		printf("%s\n", argv[1]);
+	return (0);
 }
