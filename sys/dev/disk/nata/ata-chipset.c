@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.196 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.13 2008/03/24 06:41:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.14 2008/04/05 20:13:04 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -487,6 +487,21 @@ ata_ahci_chipinit(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     u_int32_t version;
     int unit;
+
+    /* if we have a memory BAR(5) we are likely on an AHCI part */
+    ctlr->r_type2 = SYS_RES_MEMORY;
+    ctlr->r_rid2 = PCIR_BAR(5);
+    if (!(ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
+						&ctlr->r_rid2, RF_ACTIVE)))
+	return ENXIO;
+
+    /* setup interrupt delivery if not done allready by a vendor driver */
+    if (!ctlr->r_irq) {
+	if (ata_setup_interrupt(dev))
+	    return ENXIO;
+    }
+    else
+	device_printf(dev, "AHCI called from vendor specific driver\n");
 
     /* enable AHCI mode */
     ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC, ATA_AHCI_GHC_AE);
@@ -1099,12 +1114,10 @@ ata_ali_chipinit(device_t dev)
 	ctlr->allocate = ata_ali_sata_allocate;
 	ctlr->setmode = ata_sata_setmode;
 
-	/* if we have a memory resource we can likely do AHCI */
-	ctlr->r_type2 = SYS_RES_MEMORY;
-	ctlr->r_rid2 = PCIR_BAR(5);
-	if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
-						   &ctlr->r_rid2, RF_ACTIVE)))
-	    return ata_ahci_chipinit(dev);
+	/* AHCI mode is correctly supported only on the ALi 5288. */
+	if ((ctlr->chip->chipid == ATA_ALI_5288) &&
+	    (ata_ahci_chipinit(dev) != ENXIO))
+		return 0;
 
 	/* enable PCI interrupt */
 	pci_write_config(dev, PCIR_COMMAND,
@@ -1396,14 +1409,8 @@ ata_ati_chipinit(device_t dev)
 	/* Check if the chip is configured as an AHCI part. */
 	if ((pci_get_subclass(dev) == PCIS_STORAGE_SATA) &&
 	    (pci_read_config(dev, PCIR_PROGIF, 1) == PCIP_STORAGE_SATA_AHCI_1_0)) {
-	    /* Check if the chip has PCI BAR 5 as memory resource. */
-	    ctlr->r_type2 = SYS_RES_MEMORY;
-	    ctlr->r_rid2 = PCIR_BAR(5);	/* 0x24 */
-	    if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
-						       &ctlr->r_rid2,
-						       RF_ACTIVE))) {
-		return ata_ahci_chipinit(dev);
-	    }
+	    if (ata_ahci_chipinit(dev) != ENXIO)
+		return 0;
 	}
     }
 
@@ -1894,14 +1901,10 @@ ata_intel_chipinit(device_t dev)
 	 * and AHCI or RAID mode enabled in BIOS we go for AHCI mode
 	 */ 
 	if ((ctlr->chip->cfg1 == AHCI) &&
-	    (pci_read_config(dev, 0x90, 1) & 0xc0)) {
-	    ctlr->r_type2 = SYS_RES_MEMORY;
-	    ctlr->r_rid2 = PCIR_BAR(5);
-	    if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
-						       &ctlr->r_rid2,
-						       RF_ACTIVE)))
-		return ata_ahci_chipinit(dev);
-	}
+	    (pci_read_config(dev, 0x90, 1) & 0xc0) &&
+	    (ata_ahci_chipinit(dev) != ENXIO))
+	    return 0;
+
 	ctlr->setmode = ata_sata_setmode;
 
 	/* enable PCI interrupt */
@@ -2447,12 +2450,9 @@ ata_jmicron_chipinit(device_t dev)
 
     /* do we have multiple PCI functions ? */
     if (pci_read_config(dev, 0xdf, 1) & 0x40) {
-	/* if we have a memory BAR(5) we are on the AHCI part */
-	ctlr->r_type2 = SYS_RES_MEMORY;
-	ctlr->r_rid2 = PCIR_BAR(5);
-	if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
-						   &ctlr->r_rid2, RF_ACTIVE)))
-	    return ata_ahci_chipinit(dev);
+	/* are we on the AHCI part ? */
+	if (ata_ahci_chipinit(dev) != ENXIO)
+	    return 0;
 
 	/* otherwise we are on the PATA part */
 	ctlr->allocate = ata_pci_allocate;
@@ -2466,13 +2466,8 @@ ata_jmicron_chipinit(device_t dev)
 	pci_write_config(dev, 0x40, 0x80c0a131, 4);
 	pci_write_config(dev, 0x80, 0x01200000, 4);
 
-	ctlr->r_type2 = SYS_RES_MEMORY;
-	ctlr->r_rid2 = PCIR_BAR(5);
-	if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
-						   &ctlr->r_rid2, RF_ACTIVE))) {
-	    if ((error = ata_ahci_chipinit(dev)))
-		return error;
-	}
+	if ((error = ata_ahci_chipinit(dev)))
+	    return error;
 
 	ctlr->allocate = ata_jmicron_allocate;
 	ctlr->reset = ata_jmicron_reset;
@@ -5408,15 +5403,10 @@ ata_via_chipinit(device_t dev)
 	return ENXIO;
     
     if (ctlr->chip->max_dma >= ATA_SA150) {
-	if (ctlr->chip->cfg2 == VIAAHCI) {
-	    ctlr->r_type2 = SYS_RES_MEMORY;
-	    ctlr->r_rid2 = PCIR_BAR(5);
-	    if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
-						       &ctlr->r_rid2,
-						       RF_ACTIVE))) {
-		 return ata_ahci_chipinit(dev);
-	    } 
-	}
+	/* do we have AHCI capability ? */
+	if ((ctlr->chip->cfg2 == VIAAHCI) && ata_ahci_chipinit(dev) != ENXIO)
+	    return 0;
+
 	ctlr->r_type2 = SYS_RES_IOPORT;
 	ctlr->r_rid2 = PCIR_BAR(5);
 	if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
