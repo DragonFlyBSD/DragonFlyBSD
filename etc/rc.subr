@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.14 2008/02/17 19:51:53 swildner Exp $
+# $DragonFly: src/etc/rc.subr,v 1.15 2008/04/05 08:07:11 matthias Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -593,9 +593,9 @@ run_rc_command()
 		;;
 	esac
 
-	eval _overide_command=\$${name}_program
-	if [ -n "$_overide_command" ]; then
-		command=$_overide_command
+	eval _override_command=\$${name}_program
+	if [ -n "$_override_command" ]; then
+		command=$_override_command
 	fi
 
 	_keywords="start stop restart rcvar $extra_commands"
