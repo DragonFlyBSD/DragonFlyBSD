@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.22 2008/03/07 11:34:21 sephe Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.23 2008/04/05 07:57:22 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -190,10 +190,8 @@ aarpwhohas(struct arpcom *ac, struct sockaddr_at *sat)
 
     sa.sa_len = sizeof( struct sockaddr );
     sa.sa_family = AF_UNSPEC;
-    lwkt_serialize_enter(ac->ac_if.if_serializer);
     (*ac->ac_if.if_output)(&ac->ac_if,
 	m, &sa, NULL); 	/* XXX NULL should be routing information */
-    lwkt_serialize_exit(ac->ac_if.if_serializer);
 }
 
 int
