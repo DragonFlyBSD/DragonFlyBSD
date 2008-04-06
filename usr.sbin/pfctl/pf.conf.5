@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.conf.5,v 1.291 2004/02/04 19:38:30 jmc Exp $
-.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.11 2008/04/06 19:29:23 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.12 2008/04/06 21:12:40 dillon Exp $
 .\"
 .\" Copyright (c) 2002, Daniel Hartmeier
 .\" All rights reserved.
@@ -1597,6 +1597,15 @@ by specifying the
 operator before the
 .Ar tagged
 keyword.
+.It Ar probability <number>
+A probability attribute can be attached to a rule, with a value set between
+0 and 1, bounds not included.
+In that case, the rule will be honoured using the given probability value
+only.
+For example, the following rule will drop 20% of incoming ICMP packets:
+.Bd -literal -offset indent
+block in proto icmp probability 20%
+.Ed
 .El
 .Sh ROUTING
 If a packet matches a rule with a route option set, the packet filter will
@@ -2551,7 +2560,8 @@ filteropt      = user | group | flags | icmp-type | icmp6-type | tos |
                  "max-mss" number | "random-id" | "reassemble tcp" |
                  fragmentation | "allow-opts" |
                  "label" string | "tag" string | [ ! ] "tagged" string
-                 "queue" ( string | "(" string [ [ "," ] string ] ")" )
+                 "queue" ( string | "(" string [ [ "," ] string ] ")" ) |
+		 "probability" number"%"
 
 nat-rule       = [ "no" ] "nat" [ "pass" ] [ "on" ifspec ] [ af ]
                  [ protospec ] hosts [ "tag" string ]

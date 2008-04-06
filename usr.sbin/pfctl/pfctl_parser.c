@@ -1,5 +1,5 @@
 /*	$OpenBSD: pfctl_parser.c,v 1.194.2.1 2004/05/05 04:00:50 brad Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_parser.c,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pfctl_parser.c,v 1.2 2008/04/06 21:12:40 dillon Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -781,6 +781,21 @@ print_rule(struct pf_rule *r, int verbose)
 		printf(" modulate state");
 	else if (r->keep_state == PF_STATE_SYNPROXY)
 		printf(" synproxy state");
+	if (r->prob) {
+		char	buf[20];
+
+		snprintf(buf, sizeof(buf), "%f", r->prob*100.0/(UINT_MAX+1.0));
+		for (i = strlen(buf)-1; i > 0; i--) {
+			if (buf[i] == '0')
+				buf[i] = '\0';
+			else {
+				if (buf[i] == '.')
+					buf[i] = '\0';
+				break;
+			}
+		}
+		printf(" probability %s%%", buf);
+	}
 	opts = 0;
 	if (r->max_states || r->max_src_nodes || r->max_src_states)
 		opts = 1;
