@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.20 2008/01/20 03:40:35 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.21 2008/04/06 19:03:18 pavalos Exp $
  */
 
 #include <sys/buf.h>
@@ -279,7 +279,7 @@ extern struct aac_interface	aac_rkt_interface;
 
 /* Define the OS version specific locks */
 typedef struct lock aac_lock_t;
-#define AAC_LOCK_INIT(l, s)	lockinit(l, s, 0, LK_EXCLUSIVE|LK_CANRECURSE)
+#define AAC_LOCK_INIT(l, s)	lockinit(l, s, 0, LK_CANRECURSE)
 #define AAC_LOCK_ACQUIRE(l)	lockmgr(l, LK_EXCLUSIVE)
 #define AAC_LOCK_RELEASE(l)	lockmgr(l, LK_RELEASE)
 

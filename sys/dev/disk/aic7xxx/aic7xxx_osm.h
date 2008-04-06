@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#18 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.30 2005/12/05 11:58:32 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.14 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.15 2008/04/06 19:03:18 pavalos Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
@@ -188,7 +188,7 @@ static __inline void ahc_unlock(struct ahc_softc *);
 static __inline void
 ahc_lockinit(struct ahc_softc *ahc)
 {
-	lockinit(&ahc->platform_data->lock, "ahc_lock", 0, LK_EXCLUSIVE|LK_CANRECURSE);
+	lockinit(&ahc->platform_data->lock, "ahc_lock", 0, LK_CANRECURSE);
 }
 
 static __inline void
