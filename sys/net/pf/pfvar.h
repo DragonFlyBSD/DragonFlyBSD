@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pfvar.h,v 1.8 2004/08/12 13:59:44 mlaier Exp $	*/
 /*	$OpenBSD: pfvar.h,v 1.187 2004/03/22 04:54:18 mcbride Exp $ */
 /* add	$OpenBSD: pfvar.h,v 1.194 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.5 2008/01/21 21:16:59 nth Exp $ */
+/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.6 2008/04/06 18:58:16 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -1037,6 +1037,20 @@ struct hfsc_opts {
 	int		flags;
 };
 
+/*
+ * XXX this needs some work
+ */
+struct fairq_opts {
+	u_int		nbuckets;	/* hash buckets */
+	u_int		hogs_m1;	/* hog detection bandwidth */
+	int		flags;
+
+	/* link-sharing service curve */
+	u_int		lssc_m1;
+	u_int		lssc_d;
+	u_int		lssc_m2;
+};
+
 struct pf_altq {
 	char			 ifname[IFNAMSIZ];
 
@@ -1060,6 +1074,7 @@ struct pf_altq {
 		struct cbq_opts		 cbq_opts;
 		struct priq_opts	 priq_opts;
 		struct hfsc_opts	 hfsc_opts;
+		struct fairq_opts	 fairq_opts;
 	} pq_u;
 
 	u_int32_t		 qid;		/* return value */

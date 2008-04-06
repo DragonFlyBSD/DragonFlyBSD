@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.9 2006/12/22 23:44:55 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.10 2008/04/06 18:58:15 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -360,6 +360,11 @@ altq_pfattach(struct pf_altq *a)
 		error = hfsc_pfattach(a);
 		break;
 #endif
+#ifdef ALTQ_FAIRQ
+	case ALTQT_FAIRQ:
+		error = fairq_pfattach(a);
+		break;
+#endif
 	default:
 		error = ENXIO;
 	}
@@ -444,6 +449,11 @@ altq_add(struct pf_altq *a)
 		error = hfsc_add_altq(a);
 		break;
 #endif
+#ifdef ALTQ_FAIRQ
+	case ALTQT_FAIRQ:
+		error = fairq_add_altq(a);
+		break;
+#endif
 	default:
 		error = ENXIO;
 	}
@@ -478,6 +488,11 @@ altq_remove(struct pf_altq *a)
 		error = hfsc_remove_altq(a);
 		break;
 #endif
+#ifdef ALTQ_FAIRQ
+	case ALTQT_FAIRQ:
+		error = fairq_remove_altq(a);
+		break;
+#endif
 	default:
 		error = ENXIO;
 	}
@@ -507,6 +522,11 @@ altq_add_queue(struct pf_altq *a)
 #ifdef ALTQ_HFSC
 	case ALTQT_HFSC:
 		error = hfsc_add_queue(a);
+		break;
+#endif
+#ifdef ALTQ_FAIRQ
+	case ALTQT_FAIRQ:
+		error = fairq_add_queue(a);
 		break;
 #endif
 	default:
@@ -540,6 +560,11 @@ altq_remove_queue(struct pf_altq *a)
 		error = hfsc_remove_queue(a);
 		break;
 #endif
+#ifdef ALTQ_FAIRQ
+	case ALTQT_FAIRQ:
+		error = fairq_remove_queue(a);
+		break;
+#endif
 	default:
 		error = ENXIO;
 	}
@@ -569,6 +594,11 @@ altq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 #ifdef ALTQ_HFSC
 	case ALTQT_HFSC:
 		error = hfsc_getqstats(a, ubuf, nbytes);
+		break;
+#endif
+#ifdef ALTQ_FAIRQ
+	case ALTQT_FAIRQ:
+		error = fairq_getqstats(a, ubuf, nbytes);
 		break;
 #endif
 	default:

@@ -1,5 +1,5 @@
 /*	$KAME: altq.h,v 1.10 2003/07/10 12:07:47 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq.h,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq.h,v 1.2 2008/04/06 18:58:15 dillon Exp $ */
 
 /*
  * Copyright (C) 1998-2003
@@ -36,7 +36,8 @@
 #define	ALTQT_RIO		3	/* rio */
 #define	ALTQT_HFSC		4	/* hfsc */
 #define	ALTQT_PRIQ		5	/* priority queue */
-#define	ALTQT_MAX		6	/* should be max discipline type + 1 */
+#define	ALTQT_FAIRQ		6	/* fair queue (requires keep state) */
+#define	ALTQT_MAX		7	/* should be max discipline type + 1 */
 
 /* simple token packet meter profile */
 struct	tb_profile {

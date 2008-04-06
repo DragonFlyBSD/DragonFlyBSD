@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.79 2008/04/02 13:11:48 sephe Exp $
+# $DragonFly: src/sys/conf/options,v 1.80 2008/04/06 18:58:12 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -259,6 +259,7 @@ ALTQ_RED		opt_altq.h
 ALTQ_RIO		opt_altq.h
 ALTQ_HFSC		opt_altq.h
 ALTQ_PRIQ		opt_altq.h
+ALTQ_FAIRQ		opt_altq.h
 ALTQ_NOPCC		opt_altq.h
 ALTQ_DEBUG		opt_altq.h
 

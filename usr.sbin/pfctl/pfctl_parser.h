@@ -1,5 +1,5 @@
 /*	$OpenBSD: pfctl_parser.h,v 1.74 2004/02/10 22:26:56 dhartmei Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_parser.h,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pfctl_parser.h,v 1.2 2008/04/06 18:58:14 dillon Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -126,12 +126,27 @@ struct node_hfsc_opts {
 	int			flags;
 };
 
+struct node_fairq_sc {
+	struct node_queue_bw	m1;	/* slope of 1st segment; bps */
+	u_int			d;	/* x-projection of m1; msec */
+	struct node_queue_bw	m2;	/* slope of 2nd segment; bps */
+	u_int8_t		used;
+};
+
+struct node_fairq_opts {
+	struct node_fairq_sc	linkshare;
+	struct node_queue_bw	hogs_bw;
+	u_int			nbuckets;
+	int			flags;
+};
+
 struct node_queue_opt {
 	int			 qtype;
 	union {
 		struct cbq_opts		cbq_opts;
 		struct priq_opts	priq_opts;
 		struct node_hfsc_opts	hfsc_opts;
+		struct node_fairq_opts	fairq_opts;
 	}			 data;
 };
 

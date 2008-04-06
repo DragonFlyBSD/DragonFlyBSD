@@ -1,5 +1,5 @@
 /*	$OpenBSD: pfctl_qstats.c,v 1.29 2004/03/15 15:25:44 dhartmei Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_qstats.c,v 1.2 2005/02/11 22:31:45 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pfctl_qstats.c,v 1.3 2008/04/06 18:58:14 dillon Exp $ */
 
 /*
  * Copyright (c) Henning Brauer <henning@openbsd.org>
@@ -36,6 +36,7 @@
 #include <net/altq/altq_cbq.h>
 #include <net/altq/altq_priq.h>
 #include <net/altq/altq_hfsc.h>
+#include <net/altq/altq_fairq.h>
 
 #include "pfctl.h"
 #include "pfctl_parser.h"
@@ -44,6 +45,7 @@ union class_stats {
 	class_stats_t		cbq_stats;
 	struct priq_classstats	priq_stats;
 	struct hfsc_classstats	hfsc_stats;
+	struct fairq_classstats	fairq_stats;
 };
 
 #define AVGN_MAX	8
@@ -75,6 +77,7 @@ void			 pfctl_print_altq_node(int, const struct pf_altq_node *,
 void			 print_cbqstats(struct queue_stats);
 void			 print_priqstats(struct queue_stats);
 void			 print_hfscstats(struct queue_stats);
+void			 print_fairqstats(struct queue_stats);
 void			 pfctl_free_altq_node(struct pf_altq_node *);
 void			 pfctl_print_altq_nodestat(int,
 			    const struct pf_altq_node *);
@@ -283,6 +286,9 @@ pfctl_print_altq_nodestat(int dev __unused, const struct pf_altq_node *a)
 	case ALTQT_HFSC:
 		print_hfscstats(a->qstats);
 		break;
+	case ALTQT_FAIRQ:
+		print_fairqstats(a->qstats);
+		break;
 	}
 }
 
@@ -348,6 +354,27 @@ print_hfscstats(struct queue_stats cur)
 }
 
 void
+print_fairqstats(struct queue_stats cur)
+{
+	printf("  [ pkts: %10llu  bytes: %10llu  "
+	    "dropped pkts: %6llu bytes: %6llu ]\n",
+	    (unsigned long long)cur.data.fairq_stats.xmit_cnt.packets,
+	    (unsigned long long)cur.data.fairq_stats.xmit_cnt.bytes,
+	    (unsigned long long)cur.data.fairq_stats.drop_cnt.packets,
+	    (unsigned long long)cur.data.fairq_stats.drop_cnt.bytes);
+	printf("  [ qlength: %3d/%3d ]\n",
+	    cur.data.fairq_stats.qlength, cur.data.fairq_stats.qlimit);
+
+	if (cur.avgn < 2)
+		return;
+
+	printf("  [ measured: %7.1f packets/s, %s/s ]\n",
+	    cur.avg_packets / STAT_INTERVAL,
+	    rate2str((8 * cur.avg_bytes) / STAT_INTERVAL));
+}
+
+
+void
 pfctl_free_altq_node(struct pf_altq_node *node)
 {
 	while (node != NULL) {
@@ -386,6 +413,10 @@ update_avg(struct pf_altq_node *a)
 	case ALTQT_HFSC:
 		b = qs->data.hfsc_stats.xmit_cnt.bytes;
 		p = qs->data.hfsc_stats.xmit_cnt.packets;
+		break;
+	case ALTQT_FAIRQ:
+		b = qs->data.fairq_stats.xmit_cnt.bytes;
+		p = qs->data.fairq_stats.xmit_cnt.packets;
 		break;
 	default:
 		b = 0;

@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.14 2007/05/23 08:57:10 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.15 2008/04/06 18:58:16 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -320,6 +320,18 @@ pf_src_compare(struct pf_src_node *a, struct pf_src_node *b)
 #endif /* INET6 */
 	}
 	return (0);
+}
+
+static
+int
+pf_state_hash(struct pf_state *s)
+{
+	int hv = (intptr_t)s / sizeof(*s);
+
+	hv ^= crc32(&s->lan, sizeof(s->lan));
+	hv ^= crc32(&s->gwy, sizeof(s->gwy));
+	hv ^= crc32(&s->ext, sizeof(s->ext));
+	return(hv);
 }
 
 static int
@@ -5461,6 +5473,10 @@ done:
 			m->m_pkthdr.altq_qid = r->pqid;
 		else
 			m->m_pkthdr.altq_qid = r->qid;
+		if (s) {
+			m->m_pkthdr.fw_flags |= ALTQ_MBUF_STATE_HASHED;
+			m->m_pkthdr.altq_state_hash = pf_state_hash(s);
+		}
 		m->m_pkthdr.ecn_af = AF_INET;
 		m->m_pkthdr.header = h;
 	}
@@ -5771,6 +5787,10 @@ done:
 			m->m_pkthdr.altq_qid = r->pqid;
 		else
 			m->m_pkthdr.altq_qid = r->qid;
+		if (s) {
+			m->m_pkthdr.fw_flags |= ALTQ_MBUF_STATE_HASHED;
+			m->m_pkthdr.altq_state_hash = pf_state_hash(s);
+		}
 		m->m_pkthdr.ecn_af = AF_INET6;
 		m->m_pkthdr.header = h;
 	}

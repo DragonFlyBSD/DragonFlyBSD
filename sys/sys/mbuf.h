@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.46 2008/03/10 10:47:57 sephe Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.47 2008/04/06 18:58:10 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -129,6 +129,7 @@ struct pkthdr {
 	/* variables for ALTQ processing */
 	uint8_t	ecn_af;			/* address family for ECN */
 	uint32_t altq_qid;		/* queue id */
+	uint32_t altq_state_hash;	/* identifies 'connections' */
 
 	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
 	uint16_t pad;			/* explicit padding */
@@ -246,6 +247,7 @@ struct mbuf {
 #define	PF_MBUF_GENERATED	FW_MBUF_GENERATED
 #define	IPFW_MBUF_GENERATED	FW_MBUF_GENERATED
 #define DUMMYNET_MBUF_TAGGED	0x00000080
+#define ALTQ_MBUF_STATE_HASHED	0x00000100
 
 /*
  * mbuf types.
