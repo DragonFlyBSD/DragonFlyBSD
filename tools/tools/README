@@ -1,5 +1,5 @@
 # $FreeBSD: src/tools/tools/README,v 1.18.2.2 2003/02/24 22:52:36 sam Exp $
-# $DragonFly: src/tools/tools/README,v 1.10 2008/01/13 19:05:27 matthias Exp $
+# $DragonFly: src/tools/tools/README,v 1.11 2008/04/06 03:23:49 sephe Exp $
 
 This directory is for tools.
 
@@ -31,3 +31,4 @@ upgrade         Scripts used for upgrading an installed system.
 vop_table	Generates a HTML document that shows all the VOP's in
 		the kernel.
 wlandebug	Manipulate netproto/802_11 debug flags symbolically.
+netrate		Generate network packets.
