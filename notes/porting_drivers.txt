@@ -1,4 +1,4 @@
-$DragonFly: doc/notes/porting_drivers.txt,v 1.3 2007/12/29 18:35:59 swildner Exp $
+$DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp $
 
 		    PORTING FREEBSD DRIVERS TO DRAGONFLY
 
@@ -57,7 +57,7 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.3 2007/12/29 18:35:59 swildner Exp
   and change the initialization from something like
 	mtx_init(&my_mtx, "mymtx", "whatever", MTX_DEF);
   to
-	lockinit(&my_lock, "mylock", 0, LK_EXCLUSIVE|LK_CANRECURSE);
+	lockinit(&my_lock, "mylock", 0, LK_CANRECURSE);
 
   Destroying it is trivial,
 	mtx_destroy(&my_mtx);
@@ -125,6 +125,6 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.3 2007/12/29 18:35:59 swildner Exp
 
   bus_setup_intr() - replace INTR_TYPE_* flags with 0.  There is an extra
   argument for an interrupt interlock using the sys/serializer.h interface.
-  This can either be left NULL or you can convert the genera spinlock(s) for
+  This can either be left NULL or you can convert the spinlock(s) for
   the driver into serializer locks and integrate the interrupt service
   routine with a serializer.
