@@ -1,4 +1,4 @@
-/* $DragonFly: src/secure/lib/libssh/config.h,v 1.10 2007/09/08 05:01:18 pavalos Exp $ */
+/* $DragonFly: src/secure/lib/libssh/config.h,v 1.11 2008/04/07 01:20:18 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -8,6 +8,9 @@
 
 /* Define if your AIX loginfailed() function takes 4 arguments (AIX >= 5.2) */
 /* #undef AIX_LOGINFAILED_4ARG */
+
+/* System only supports IPv4 audit records */
+/* #undef AU_IPv4 */
 
 /* Define if your resolver libs need this for getrrsetbyname */
 /* #undef BIND_8_COMPAT */
@@ -20,6 +23,9 @@
 
 /* getgroups(0,NULL) will return -1 */
 /* #undef BROKEN_GETGROUPS */
+
+/* FreeBSD glob does not do what we need */
+#define BROKEN_GLOB 1
 
 /* Define if you system's inet_ntoa is busted (e.g. Irix gcc issue) */
 /* #undef BROKEN_INET_NTOA */
@@ -54,6 +60,9 @@
 
 /* LynxOS has broken setvbuf() implementation */
 /* #undef BROKEN_SETVBUF */
+
+/* QNX shadow support is broken */
+/* #undef BROKEN_SHADOW_EXPIRE */
 
 /* Define if your snprintf is busted */
 /* #undef BROKEN_SNPRINTF */
@@ -162,6 +171,9 @@
 
 /* OpenBSD's gcc has sentinel */
 /* #undef HAVE_ATTRIBUTE__SENTINEL__ */
+
+/* Define to 1 if you have the `aug_get_machine' function. */
+/* #undef HAVE_AUG_GET_MACHINE */
 
 /* Define to 1 if you have the `b64_ntop' function. */
 /* #undef HAVE_B64_NTOP */
@@ -346,6 +358,9 @@
 /* Define to 1 if you have the `getgrouplist' function. */
 #define HAVE_GETGROUPLIST 1
 
+/* Define to 1 if you have the `getgrset' function. */
+/* #undef HAVE_GETGRSET */
+
 /* Define to 1 if you have the `getluid' function. */
 /* #undef HAVE_GETLUID */
 
@@ -495,6 +510,9 @@
 
 /* Define to 1 if you have the <libgen.h> header file. */
 #define HAVE_LIBGEN_H 1
+
+/* Define if system has libiaf that supports set_id */
+/* #undef HAVE_LIBIAF */
 
 /* Define to 1 if you have the `nsl' library (-lnsl). */
 /* #undef HAVE_LIBNSL */
@@ -901,6 +919,9 @@
 
 /* Define if your system defines sys_nerr */
 #define HAVE_SYS_NERR 1
+
+/* Define to 1 if you have the <sys/poll.h> header file. */
+#define HAVE_SYS_POLL_H 1
 
 /* Define to 1 if you have the <sys/prctl.h> header file. */
 /* #undef HAVE_SYS_PRCTL_H */

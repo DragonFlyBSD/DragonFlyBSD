@@ -1,4 +1,5 @@
 #	$OpenBSD: sshd_config,v 1.77 2008/02/08 23:24:07 djm Exp $
+#	$DragonFly: src/crypto/openssh-5/sshd_config,v 1.2 2008/04/07 01:20:17 pavalos Exp $
 
 # This is the sshd server system-wide configuration file.  See
 # sshd_config(5) for more information.
@@ -9,6 +10,11 @@
 # OpenSSH is to specify options with their default value where
 # possible, but leave them commented.  Uncommented options change a
 # default value.
+
+# Note that some of DragonFly's defaults differ from OpenBSD's, and
+# DragonFly has a few additional options.
+
+#VersionAddendum DragonFly-20080406
 
 #Port 22
 #AddressFamily any
@@ -23,7 +29,6 @@ Protocol 2
 # HostKey for protocol version 1
 #HostKey /etc/ssh/ssh_host_key
 # HostKeys for protocol version 2
-#HostKey /etc/ssh/ssh_host_rsa_key
 #HostKey /etc/ssh/ssh_host_dsa_key
 
 # Lifetime and size of ephemeral version 1 server key
@@ -38,7 +43,7 @@ Protocol 2
 # Authentication:
 
 #LoginGraceTime 2m
-#PermitRootLogin yes
+#PermitRootLogin no
 #StrictModes yes
 #MaxAuthTries 6
 
@@ -60,7 +65,7 @@ Protocol 2
 #PasswordAuthentication yes
 #PermitEmptyPasswords no
 
-# Change to no to disable s/key passwords
+# Change to no to disable OPIE and PAM authentication
 #ChallengeResponseAuthentication yes
 
 # Kerberos options
@@ -86,7 +91,7 @@ Protocol 2
 
 #AllowTcpForwarding yes
 #GatewayPorts no
-#X11Forwarding no
+#X11Forwarding yes
 #X11DisplayOffset 10
 #X11UseLocalhost yes
 #PrintMotd yes
@@ -103,6 +108,8 @@ Protocol 2
 #MaxStartups 10
 #PermitTunnel no
 #ChrootDirectory none
+
+#XAuthLocation /usr/pkg/bin/xauth
 
 # no default banner path
 #Banner none

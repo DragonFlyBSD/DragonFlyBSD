@@ -42,6 +42,7 @@
 #include "buffer.h"
 #include "kex.h"
 #include "mac.h"
+#include "uidswap.h"
 
 /* Format of the configuration file:
 
@@ -128,6 +129,7 @@ typedef enum {
 	oEnableSSHKeysign, oRekeyLimit, oVerifyHostKeyDNS, oConnectTimeout,
 	oAddressFamily, oGssAuthentication, oGssDelegateCreds,
 	oServerAliveInterval, oServerAliveCountMax, oIdentitiesOnly,
+	oVersionAddendum,
 	oSendEnv, oControlPath, oControlMaster, oHashKnownHosts,
 	oTunnel, oTunnelDevice, oLocalCommand, oPermitLocalCommand,
 	oDeprecated, oUnsupported
@@ -218,6 +220,7 @@ static struct {
 	{ "addressfamily", oAddressFamily },
 	{ "serveraliveinterval", oServerAliveInterval },
 	{ "serveralivecountmax", oServerAliveCountMax },
+	{ "versionaddendum", oVersionAddendum },
 	{ "sendenv", oSendEnv },
 	{ "controlpath", oControlPath },
 	{ "controlmaster", oControlMaster },
@@ -825,6 +828,13 @@ parse_int:
 		intptr = &options->server_alive_count_max;
 		goto parse_int;
 
+	case oVersionAddendum:
+		ssh_version_set_addendum(strtok(s, "\n"));
+		do {
+			arg = strdelim(&s);
+		} while (arg != NULL && *arg != '\0');
+		break;
+
 	case oSendEnv:
 		while ((arg = strdelim(&s)) != NULL && *arg != '\0') {
 			if (strchr(arg, '=') != NULL)
@@ -1112,7 +1122,7 @@ fill_default_options(Options * options)
 	if (options->batch_mode == -1)
 		options->batch_mode = 0;
 	if (options->check_host_ip == -1)
-		options->check_host_ip = 1;
+		options->check_host_ip = 0;
 	if (options->strict_host_key_checking == -1)
 		options->strict_host_key_checking = 2;	/* 2 is default */
 	if (options->compression == -1)

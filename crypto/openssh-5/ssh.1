@@ -695,7 +695,7 @@ Host-based authentication works as follows:
 If the machine the user logs in from is listed in
 .Pa /etc/hosts.equiv
 or
-.Pa /etc/shosts.equiv
+.Pa /etc/ssh/shosts.equiv
 on the remote machine, and the user names are
 the same on both sides, or if the files
 .Pa ~/.rhosts
@@ -983,6 +983,7 @@ The user should not manually set
 .Ev DISPLAY .
 Forwarding of X11 connections can be
 configured on the command line or in configuration files.
+Take note that X11 forwarding can represent a security hazard.
 .Pp
 The
 .Ev DISPLAY
@@ -1312,7 +1313,7 @@ manual page for more information.
 This file is for host-based authentication (see above).
 It should only be writable by root.
 .Pp
-.It /etc/shosts.equiv
+.It /etc/ssh/shosts.equiv
 This file is used in exactly the same way as
 .Pa hosts.equiv ,
 but allows host-based authentication without permitting login with

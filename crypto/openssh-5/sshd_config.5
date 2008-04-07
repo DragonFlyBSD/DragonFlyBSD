@@ -168,9 +168,16 @@ This option is only available for protocol version 2.
 By default, no banner is displayed.
 .It Cm ChallengeResponseAuthentication
 Specifies whether challenge-response authentication is allowed.
-All authentication styles from
-.Xr login.conf 5
-are supported.
+Specifically, in
+.Dx ,
+this controls the use of PAM (see
+.Xr pam 3 )
+for authentication.
+Note that this affects the effectiveness of the
+.Cm PasswordAuthentication
+and
+.Cm PermitRootLogin
+variables.
 The default is
 .Dq yes .
 .It Cm ChrootDirectory
@@ -403,8 +410,6 @@ used by SSH.
 The default is
 .Pa /etc/ssh/ssh_host_key
 for protocol version 1, and
-.Pa /etc/ssh/ssh_host_rsa_key
-and
 .Pa /etc/ssh/ssh_host_dsa_key
 for protocol version 2.
 Note that
@@ -429,7 +434,7 @@ or
 .Pp
 .Pa /etc/hosts.equiv
 and
-.Pa /etc/shosts.equiv
+.Pa /etc/ssh/shosts.equiv 
 are still used.
 The default is
 .Dq yes .
@@ -611,6 +616,20 @@ are refused if the number of unauthenticated connections reaches
 Specifies whether password authentication is allowed.
 The default is
 .Dq yes .
+Note that if
+.Cm ChallengeResponseAuthentication
+is
+.Dq yes ,
+.Cm UsePAM
+is
+.Dq yes ,
+and the PAM authentication policy for
+.Nm sshd
+includes
+.Xr pam_unix 8 ,
+password authentication will be allowed through the challenge-response
+mechanism regardless of the value of
+.Cm PasswordAuthentication .
 .It Cm PermitEmptyPasswords
 When password authentication is allowed, it specifies whether the
 server allows login to accounts with empty password strings.
@@ -653,7 +672,14 @@ The argument must be
 or
 .Dq no .
 The default is
-.Dq yes .
+.Dq no .
+Note that if
+.Cm ChallengeResponseAuthentication
+is
+.Dq yes ,
+the root user may be allowed in with its password even if
+.Cm PermitRootLogin is set to
+.Dq without-password .
 .Pp
 If this option is set to
 .Dq without-password ,
@@ -746,7 +772,7 @@ and
 .Sq 2 .
 Multiple versions must be comma-separated.
 The default is
-.Dq 2,1 .
+.Dq 2 .
 Note that the order of the protocol list does not indicate preference,
 because the client selects among multiple protocol versions offered
 by the server.
@@ -760,7 +786,9 @@ The default is
 .Dq yes .
 Note that this option applies to protocol version 2 only.
 .It Cm RhostsRSAAuthentication
-Specifies whether rhosts or /etc/hosts.equiv authentication together
+Specifies whether rhosts or
+.Pa /etc/hosts.equiv
+authentication together
 with successful RSA host authentication is allowed.
 The default is
 .Dq no .
@@ -893,6 +921,11 @@ The goal of privilege separation is to prevent privilege
 escalation by containing any corruption within the unprivileged processes.
 The default is
 .Dq yes .
+.It Cm VersionAddendum
+Specifies a string to append to the regular version string to identify
+OS- or site-specific modifications.
+The default is
+.Dq DragonFly-20080406 .
 .It Cm X11DisplayOffset
 Specifies the first display number available for
 .Xr sshd 8 Ns 's
@@ -906,7 +939,7 @@ The argument must be
 or
 .Dq no .
 The default is
-.Dq no .
+.Dq yes .
 .Pp
 When X11 forwarding is enabled, there may be additional exposure to
 the server and to client displays if the

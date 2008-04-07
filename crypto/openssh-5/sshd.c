@@ -82,6 +82,7 @@
 #include <prot.h>
 #endif
 
+#include <resolv.h>
 #include "xmalloc.h"
 #include "ssh.h"
 #include "ssh1.h"
@@ -1654,6 +1655,15 @@ main(int ac, char **av)
 
 	/* This is the child processing a new connection. */
 	setproctitle("%s", "[accepted]");
+
+       /*
+        * Initialize the resolver.  This may not happen automatically
+        * before privsep chroot().
+        */
+       if ((_res.options & RES_INIT) == 0) {
+               debug("res_init()");
+               res_init();
+       }
 
 	/*
 	 * Create a new session and process group since the 4.4BSD

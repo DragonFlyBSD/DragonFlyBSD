@@ -1,13 +1,13 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.13 2006/09/28 18:42:50 corecode Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.14 2008/04/07 01:20:18 pavalos Exp $
 #
 
 PROG=	sshd
 SRCS=	sshd.c auth-rhosts.c auth-pam.c auth-passwd.c auth-rsa.c \
 	auth-rh-rsa.c sshpty.c sshlogin.c servconf.c serverloop.c uidswap.c \
-	auth.c auth1.c auth2.c auth-options.c session.c \
+	auth.c auth1.c auth2.c auth-options.c session.c packet.c \
 	auth-chall.c auth2-chall.c groupaccess.c auth-skey.c \
-	auth-bsdauth.c auth2-hostbased.c \
+	auth-bsdauth.c auth2-hostbased.c sftp-server.c sftp-common.c \
 	auth2-kbdint.c auth2-none.c auth2-passwd.c auth2-pubkey.c \
 	monitor_mm.c monitor.c monitor_wrap.c monitor_fdpass.c \
 	kexdhs.c kexgexs.c misc.c dh.c kex.c channels.c platform.c
@@ -23,12 +23,6 @@ CFLAGS+=-DCUSTOM_SYS_AUTH_PASSWD
 # Flags for PAM
 CFLAGS+=-DUSE_PAM -DHAVE_SECURITY_PAM_APPL_H \
 	-DHAVE_PAM_GETENVLIST -DHAVE_PAM_PUTENV
-
-SRCS+=	auth-skey.c.patch auth.h.patch auth2.c.patch \
-	loginrec.c.patch monitor.c.patch \
-	myproposal.h.patch servconf.c.patch session.c.patch sshd.c.patch 
-
-SRCS+=	sshd.8.no_obj.patch sshd_config.5.no_obj.patch
 
 .if defined(WANT_KERBEROS)
 DISTRIBUTION=krb5

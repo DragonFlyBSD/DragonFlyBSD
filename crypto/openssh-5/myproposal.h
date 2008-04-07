@@ -40,7 +40,7 @@
 	"diffie-hellman-group1-sha1"
 #endif
 
-#define	KEX_DEFAULT_PK_ALG	"ssh-rsa,ssh-dss"
+#define KEX_DEFAULT_PK_ALG	"ssh-dss,ssh-rsa"
 #define	KEX_DEFAULT_ENCRYPT \
 	"aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc," \
 	"arcfour128,arcfour256,arcfour," \

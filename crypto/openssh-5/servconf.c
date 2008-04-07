@@ -134,15 +134,13 @@ fill_default_server_options(ServerOptions *options)
 
 	/* Standard Options */
 	if (options->protocol == SSH_PROTO_UNKNOWN)
-		options->protocol = SSH_PROTO_1|SSH_PROTO_2;
+		options->protocol = SSH_PROTO_2;
 	if (options->num_host_key_files == 0) {
 		/* fill default hostkeys for protocols */
 		if (options->protocol & SSH_PROTO_1)
 			options->host_key_files[options->num_host_key_files++] =
 			    _PATH_HOST_KEY_FILE;
 		if (options->protocol & SSH_PROTO_2) {
-			options->host_key_files[options->num_host_key_files++] =
-			    _PATH_HOST_RSA_KEY_FILE;
 			options->host_key_files[options->num_host_key_files++] =
 			    _PATH_HOST_DSA_KEY_FILE;
 		}
@@ -160,7 +158,7 @@ fill_default_server_options(ServerOptions *options)
 	if (options->key_regeneration_time == -1)
 		options->key_regeneration_time = 3600;
 	if (options->permit_root_login == PERMIT_NOT_SET)
-		options->permit_root_login = PERMIT_YES;
+		options->permit_root_login = PERMIT_NO;
 	if (options->ignore_rhosts == -1)
 		options->ignore_rhosts = 1;
 	if (options->ignore_user_known_hosts == -1)
@@ -170,7 +168,7 @@ fill_default_server_options(ServerOptions *options)
 	if (options->print_lastlog == -1)
 		options->print_lastlog = 1;
 	if (options->x11_forwarding == -1)
-		options->x11_forwarding = 0;
+		options->x11_forwarding = 1;
 	if (options->x11_display_offset == -1)
 		options->x11_display_offset = 10;
 	if (options->x11_use_localhost == -1)
@@ -294,6 +292,7 @@ typedef enum {
 	sGssAuthentication, sGssCleanupCreds, sAcceptEnv, sPermitTunnel,
 	sMatch, sPermitOpen, sForceCommand, sChrootDirectory,
 	sUsePrivilegeSeparation,
+	sVersionAddendum,
 	sDeprecated, sUnsupported
 } ServerOpCodes;
 
@@ -399,6 +398,7 @@ static struct {
 	{ "authorizedkeysfile", sAuthorizedKeysFile, SSHCFG_GLOBAL },
 	{ "authorizedkeysfile2", sAuthorizedKeysFile2, SSHCFG_GLOBAL },
 	{ "useprivilegeseparation", sUsePrivilegeSeparation, SSHCFG_GLOBAL },
+	{ "versionaddendum", sVersionAddendum , SSHCFG_GLOBAL },
 	{ "acceptenv", sAcceptEnv, SSHCFG_GLOBAL },
 	{ "permittunnel", sPermitTunnel, SSHCFG_GLOBAL },
  	{ "match", sMatch, SSHCFG_ALL },
@@ -1267,6 +1267,13 @@ parse_flag:
 			    filename, linenum);
 		if (*activep && *charptr == NULL)
 			*charptr = xstrdup(arg);
+		break;
+
+	case sVersionAddendum:
+                ssh_version_set_addendum(strtok(cp, "\n"));
+                do {
+                        arg = strdelim(&cp);
+                } while (arg != NULL && *arg != '\0');
 		break;
 
 	case sDeprecated:

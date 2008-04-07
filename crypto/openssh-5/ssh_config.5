@@ -163,7 +163,7 @@ If the option is set to
 .Dq no ,
 the check will not be executed.
 The default is
-.Dq yes .
+.Dq no .
 .It Cm Cipher
 Specifies the cipher to use for encrypting the session
 in protocol version 1.
@@ -1044,6 +1044,11 @@ See also
 .Sx VERIFYING HOST KEYS
 in
 .Xr ssh 1 .
+.It Cm VersionAddendum
+Specifies a string to append to the regular version string to identify
+OS- or site-specific modifications.
+The default is
+.Dq DragonFly-20080406 .
 .It Cm XAuthLocation
 Specifies the full pathname of the
 .Xr xauth 1

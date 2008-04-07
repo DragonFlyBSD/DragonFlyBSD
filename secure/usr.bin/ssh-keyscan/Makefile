@@ -1,9 +1,9 @@
 # $FreeBSD: src/secure/usr.bin/ssh-keyscan/Makefile,v 1.1.2.3 2002/07/03 22:20:32 des Exp $
-# $DragonFly: src/secure/usr.bin/ssh-keyscan/Makefile,v 1.3 2004/07/31 19:03:02 geekgod Exp $
+# $DragonFly: src/secure/usr.bin/ssh-keyscan/Makefile,v 1.4 2008/04/07 01:20:18 pavalos Exp $
 
 PROG=	ssh-keyscan
 
-SRCS=	ssh-keyscan.c ${.CURDIR}/../../usr.sbin/sshd/myproposal.h.patch
+SRCS=	ssh-keyscan.c misc.c
 
 DPADD+=	${LIBZ}
 LDADD+=	-lz
