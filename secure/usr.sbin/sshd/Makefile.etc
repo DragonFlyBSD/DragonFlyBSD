@@ -1,7 +1,5 @@
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile.etc,v 1.1 2005/07/07 12:43:36 corecode Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile.etc,v 1.2 2008/04/08 12:12:53 swildner Exp $
 #
-
-SRCS=		sshd_config.no_obj.patch
 
 FILES=		sshd_config
 FILESDIR=	/etc/ssh
