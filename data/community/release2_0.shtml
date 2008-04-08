@@ -1,0 +1,183 @@
+<!--#set var="title" value="DragonFly - xxx 2008 Release 2.0.x Download" -->
+<!--#include virtual="/includes/header.shtml" -->
+
+<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.1 2008/04/08 13:18:57 matthias Exp $ -->
+
+<h1>Obtaining DragonFly 2.0.x for your system</h1>
+
+<h2>2.0 ISO Images for CDs</h2>
+
+<p>
+DragonFly CDs are 'live', which means that the CD will boot your system 
+and let you log in as root (no password).  You can use this feature to
+check for hardware compatibility and play with DragonFly a little before
+actually installing it on your hard drive. 
+</p>
+<p>
+The CD includes an installer that can be run at the console, or
+(experimentally) via a web browser.  Make sure you read the
+<a href="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README">README</a>
+file for more information.   To activate the installer, boot the CD and
+login as 'installer'.
+</p>
+<p>
+The installer has a Netboot server option.  You can
+boot the CD on one machine, enable the feature via the installer, and
+then PXEBoot other systems and do a network based install.  System
+operators should be aware that running the netboot server hardwires
+a 10.1.0.X network and runs a DHCP server which might interfere with
+other DHCP servers on your LAN.
+</p>
+<p>
+See the 'Download Site' list below for a list of download locations. 
+</p>
+
+<p>
+<b>The MD5 for the release is:
+
+</b><br /> </p>
+
+<h2>2.0.x Release Errata</h2>
+<p>
+    DragonFly releases are meant to be stable, dependable entities.  We
+    backport compatible bug fixes from current development into release
+    branches but we do not generally backport new features. 
+    The release CD is always a '.0', e.g. 2.0.   The most common way to
+    track a release is to use cvsup to track the release sources and then
+    build and install a new world and kernel to keep your system updated.
+</p>
+<p>
+    <B>We do not always get every last little fix into a release.  Please
+    be sure to read the errata page for the release CD!</B>
+</p>
+<TABLE BORDER="1">
+<TR>
+<TH>Version</TH>
+<TH>Date</TH>
+<TH>Comments</TH>
+<TH></TH>
+</TR>
+<TR>
+<TD>2.0.0</TD>
+<TD>xx-xx-2008</TD>
+<TD>RELEASE CD</TD>
+<TD><A HREF="errata2_0.shtml">Errata</A></TD>
+</TR>
+</TABLE>
+
+<p>
+</p>
+
+<h2>2.0.x Release Sites</h2>
+
+<TABLE BORDER="1">
+<TR>
+<TH>Organization</TH>
+<TH>Mirrored Data</TH>
+<TH>Access methods</TH>
+</TR>
+
+<!--
+<TR><TD>Fortunaty.net</TD>
+<TD>2.0_REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">HTTP</A></TD></TR>
+-->
+
+<TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
+<TD>2.0.0_REL image</TD>
+<TD>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
+</TD>
+</TR>
+
+<!--
+<TR><TD>BGP4.net (USA)</TD>
+<TD>2.0.0_REL image</TD>
+<TD>
+    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
+</TD></TR>
+-->
+
+<TR><TD>TheShell.com</TD>
+<TD>2.0.0_REL image</TD>
+<TD>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
+</TD></TR>
+
+<TR><TD>high5.net (Amsterdam)</TD>
+<TD>2.0.0_REL image</TD>
+<TD>
+    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">HTTP</A>
+</TD></TR>
+
+<TR><TD>dragonflybsd.kiev.ua (Ukraine)</TD>
+<TD>2.0.0_REL image</TD>
+<TD>
+    <A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
+</TD></TR>
+
+<TR><TD>University of Marburg (Germany)</TD>
+<TD>2.0.0_REL image</TD>
+<TD>
+    <A HREF="ftp://ftp.mathematik.uni-marburg.de/pub/mirror/dragonfly/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
+</TD></TR>
+
+
+<TR><TD>Dragonflybsd.org (USA)</TD>
+<TD>2.0.0_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
+(<I>try to find another site first</I>)</TD></TR>
+
+</TABLE>
+
+<h1>Release Notes for DragonFly 2.0.x</h1>
+
+<p>
+2.0 is our eighth major DragonFly release.  DragonFly's policy is to
+only commit bug fixes to release branches.
+</p>
+<p>
+</p>
+<p>
+</p>
+<p>
+</p>
+<p>
+</p>
+<p>
+</p>
+<p>
+</p>
+
+<h1>DragonFly 2.0 Release Notes</h1>
+<h3>Kernel changes</h3>
+<ul>
+</ul>
+<h3>Hardware changes</h3>
+<ul>
+</ul>
+<h3>Hardware changes (Networking)</h3>
+<ul>
+</ul>
+<h3>Hardware changes (USB)</h3>
+<ul>
+</ul>
+<h3>Userland changes</h3>
+<ul>
+</ul>
+<h3>Removals</h3>
+<ul>
+</ul>
+<h3>Contributed Software</h3>
+<ul>
+    <li>bzip was updated to version 1.0.5
+    <li>OpenSSH was updated to version 5.0
+</ul>
+<h3>Sub-project progress report</h3>
+<ul>
+</ul>
+
+<!--#include virtual="/includes/footer.shtml" -->
