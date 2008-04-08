@@ -14,10 +14,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,6 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)defs.h	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/sed/defs.h,v 1.7 2008/02/09 09:12:02 dwmalone Exp $
+ * $DragonFly: src/usr.bin/sed/defs.h,v 1.2 2008/04/08 13:23:38 swildner Exp $
  */
 
 /*
@@ -63,14 +61,28 @@ struct s_addr {
 struct s_subst {
 	int n;					/* Occurrence to subst. */
 	int p;					/* True if p flag */
+	int icase;				/* True if I flag */
 	char *wfile;				/* NULL if no wfile */
 	int wfd;				/* Cached file descriptor */
 	regex_t *re;				/* Regular expression */
-	int maxbref;				/* Largest backreference. */
+	unsigned int maxbref;			/* Largest backreference. */
 	u_long linenum;				/* Line number. */
 	char *new;				/* Replacement text */
 };
 
+/*
+ * Translate command.
+ */
+struct s_tr {
+	unsigned char bytetab[256];
+	struct trmulti {
+		size_t fromlen;
+		char from[MB_LEN_MAX];
+		size_t tolen;
+		char to[MB_LEN_MAX];
+	} *multis;
+	int nmultis;
+};
 
 /*
  * An internally compiled command.
@@ -84,7 +96,7 @@ struct s_command {
 	union {
 		struct s_command *c;		/* Command(s) for b t { */
 		struct s_subst *s;		/* Substitute command */
-		u_char *y;			/* Replace command array */
+		struct s_tr *y;			/* Replace command array */
 		int fd;				/* File descriptor for w */
 	} u;
 	char code;				/* Command code */

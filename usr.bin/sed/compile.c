@@ -14,10 +14,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)compile.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/sed/compile.c,v 1.13.2.8 2002/08/17 05:47:06 tjr Exp $
- * $DragonFly: src/usr.bin/sed/compile.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
+ * $FreeBSD: src/usr.bin/sed/compile.c,v 1.31 2008/02/09 09:12:02 dwmalone Exp $
+ * $DragonFly: src/usr.bin/sed/compile.c,v 1.4 2008/04/08 13:23:38 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -44,12 +40,14 @@
 
 #include <ctype.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 
 #include "defs.h"
 #include "extern.h"
@@ -67,10 +65,10 @@ static char	 *compile_addr(char *, struct s_addr *);
 static char	 *compile_ccl(char **, char *);
 static char	 *compile_delimited(char *, char *);
 static char	 *compile_flags(char *, struct s_subst *);
-static char	 *compile_re(char *, regex_t **);
+static regex_t	 *compile_re(char *, int);
 static char	 *compile_subst(char *, struct s_subst *);
 static char	 *compile_text(void);
-static char	 *compile_tr(char *, char **);
+static char	 *compile_tr(char *, struct s_tr **);
 static struct s_command
 		**compile_stream(struct s_command **);
 static char	 *duptoeol(char *, const char *);
@@ -156,6 +154,7 @@ compile_stream(struct s_command **link)
 	static char lbuf[_POSIX2_LINE_MAX + 1];	/* To save stack */
 	struct s_command *cmd, *cmd2, *stack;
 	struct s_format *fp;
+	char re[_POSIX2_LINE_MAX + 1];
 	int naddr;				/* Number of addresses */
 
 	stack = 0;
@@ -168,14 +167,14 @@ compile_stream(struct s_command **link)
 		}
 
 semicolon:	EATSPACE();
- 		if (p) {
- 			if (*p == '#' || *p == '\0')
- 				continue;
- 			else if (*p == ';') {
- 				p++;
- 				goto semicolon;
- 			}
- 		}
+		if (p) {
+			if (*p == '#' || *p == '\0')
+				continue;
+			else if (*p == ';') {
+				p++;
+				goto semicolon;
+			}
+		}
 		if ((*link = cmd = malloc(sizeof(struct s_command))) == NULL)
 			err(1, "malloc");
 		link = &cmd->next;
@@ -281,7 +280,7 @@ nonsel:		/* Now parse the command */
 			cmd->t = duptoeol(p, "w command");
 			if (aflag)
 				cmd->u.fd = -1;
-			else if ((cmd->u.fd = open(p, 
+			else if ((cmd->u.fd = open(p,
 			    O_WRONLY|O_APPEND|O_CREAT|O_TRUNC,
 			    DEFFILEMODE)) == -1)
 				err(1, "%s", p);
@@ -314,17 +313,21 @@ nonsel:		/* Now parse the command */
 			p++;
 			if (*p == '\0' || *p == '\\')
 				errx(1,
-"%lu: %s: substitute pattern can not be delimited by newline or backslash", 
+"%lu: %s: substitute pattern can not be delimited by newline or backslash",
 					linenum, fname);
-			if ((cmd->u.s = malloc(sizeof(struct s_subst))) == NULL)
+			if ((cmd->u.s = calloc(1, sizeof(struct s_subst))) == NULL)
 				err(1, "malloc");
-			p = compile_re(p, &cmd->u.s->re);
+			p = compile_delimited(p, re);
 			if (p == NULL)
 				errx(1,
 				"%lu: %s: unterminated substitute pattern", linenum, fname);
 			--p;
 			p = compile_subst(p, cmd->u.s);
 			p = compile_flags(p, cmd->u.s);
+			if (*re == '\0')
+				cmd->u.s->re = NULL;
+			else
+				cmd->u.s->re = compile_re(re, cmd->u.s->icase);
 			EATSPACE();
 			if (*p == ';') {
 				p++;
@@ -334,7 +337,7 @@ nonsel:		/* Now parse the command */
 			break;
 		case TR:			/* y */
 			p++;
-			p = compile_tr(p, (char **)&cmd->u.y);
+			p = compile_tr(p, &cmd->u.y);
 			EATSPACE();
 			if (*p == ';') {
 				p++;
@@ -421,33 +424,28 @@ compile_ccl(char **sp, char *t)
 }
 
 /*
- * Get a regular expression.  P points to the delimiter of the regular
- * expression; repp points to the address of a regexp pointer.  Newline
- * and delimiter escapes are processed; other escapes are ignored.
- * Returns a pointer to the first character after the final delimiter
- * or NULL in the case of a non terminated regular expression.  The regexp
- * pointer is set to the compiled regular expression.
+ * Compiles the regular expression in RE and returns a pointer to the compiled
+ * regular expression.
  * Cflags are passed to regcomp.
  */
-static char *
-compile_re(char *p, regex_t **repp)
+static regex_t *
+compile_re(char *re, int case_insensitive)
 {
-	int eval;
-	char re[_POSIX2_LINE_MAX + 1];
+	regex_t *rep;
+	int eval, flags;
 
-	p = compile_delimited(p, re);
-	if (p && strlen(re) == 0) {
-		*repp = NULL;
-		return (p);
-	}
-	if ((*repp = malloc(sizeof(regex_t))) == NULL)
+
+	flags = rflags;
+	if (case_insensitive)
+		flags |= REG_ICASE;
+	if ((rep = malloc(sizeof(regex_t))) == NULL)
 		err(1, "malloc");
-	if (p && (eval = regcomp(*repp, re, rflags)) != 0)
+	if ((eval = regcomp(rep, re, flags)) != 0)
 		errx(1, "%lu: %s: RE error: %s",
-				linenum, fname, strregerror(eval, *repp));
-	if (maxnsub < (*repp)->re_nsub)
-		maxnsub = (*repp)->re_nsub;
-	return (p);
+				linenum, fname, strregerror(eval, rep));
+	if (maxnsub < rep->re_nsub)
+		maxnsub = rep->re_nsub;
+	return (rep);
 }
 
 /*
@@ -546,12 +544,14 @@ static char *
 compile_flags(char *p, struct s_subst *s)
 {
 	int gn;			/* True if we have seen g or n */
+	unsigned long nval;
 	char wfile[_POSIX2_LINE_MAX + 1], *q;
 
 	s->n = 1;				/* Default */
 	s->p = 0;
 	s->wfile = NULL;
 	s->wfd = -1;
+	s->icase = 0;
 	for (gn = 0;;) {
 		EATSPACE();			/* EXTENSION */
 		switch (*p) {
@@ -569,6 +569,9 @@ compile_flags(char *p, struct s_subst *s)
 		case 'p':
 			s->p = 1;
 			break;
+		case 'I':
+			s->icase = 1;
+			break;
 		case '1': case '2': case '3':
 		case '4': case '5': case '6':
 		case '7': case '8': case '9':
@@ -576,8 +579,13 @@ compile_flags(char *p, struct s_subst *s)
 				errx(1,
 "%lu: %s: more than one number or 'g' in substitute flags", linenum, fname);
 			gn = 1;
-			/* XXX Check for overflow */
-			s->n = (int)strtol(p, &p, 10);
+			errno = 0;
+			nval = strtol(p, &p, 10);
+			if (errno == ERANGE || nval > INT_MAX)
+				errx(1,
+"%lu: %s: overflow in the 'N' substitute flag", linenum, fname);
+			s->n = nval;
+			p--;
 			break;
 		case 'w':
 			p++;
@@ -616,12 +624,20 @@ compile_flags(char *p, struct s_subst *s)
  * Compile a translation set of strings into a lookup table.
  */
 static char *
-compile_tr(char *p, char **transtab)
+compile_tr(char *p, struct s_tr **py)
 {
+	struct s_tr *y;
 	int i;
-	char *lt, *op, *np;
+	const char *op, *np;
 	char old[_POSIX2_LINE_MAX + 1];
 	char new[_POSIX2_LINE_MAX + 1];
+	size_t oclen, oldlen, nclen, newlen;
+	mbstate_t mbs1, mbs2;
+
+	if ((*py = y = malloc(sizeof(*y))) == NULL)
+		err(1, NULL);
+	y->multis = NULL;
+	y->nmultis = 0;
 
 	if (*p == '\0' || *p == '\\')
 		errx(1,
@@ -631,22 +647,68 @@ compile_tr(char *p, char **transtab)
 	if (p == NULL)
 		errx(1, "%lu: %s: unterminated transform source string",
 				linenum, fname);
-	p = compile_delimited(--p, new);
+	p = compile_delimited(p - 1, new);
 	if (p == NULL)
 		errx(1, "%lu: %s: unterminated transform target string",
 				linenum, fname);
 	EATSPACE();
-	if (strlen(new) != strlen(old))
+	op = old;
+	oldlen = mbsrtowcs(NULL, &op, 0, NULL);
+	if (oldlen == (size_t)-1)
+		err(1, NULL);
+	np = new;
+	newlen = mbsrtowcs(NULL, &np, 0, NULL);
+	if (newlen == (size_t)-1)
+		err(1, NULL);
+	if (newlen != oldlen)
 		errx(1, "%lu: %s: transform strings are not the same length",
 				linenum, fname);
-	/* We assume characters are 8 bits */
-	if ((lt = malloc(UCHAR_MAX)) == NULL)
-		err(1, "malloc");
-	for (i = 0; i <= UCHAR_MAX; i++)
-		lt[i] = (char)i;
-	for (op = old, np = new; *op; op++, np++)
-		lt[(u_char)*op] = *np;
-	*transtab = lt;
+	if (MB_CUR_MAX == 1) {
+		/*
+		 * The single-byte encoding case is easy: generate a
+		 * lookup table.
+		 */
+		for (i = 0; i <= UCHAR_MAX; i++)
+			y->bytetab[i] = (char)i;
+		for (; *op; op++, np++)
+			y->bytetab[(u_char)*op] = *np;
+	} else {
+		/*
+		 * Multi-byte encoding case: generate a lookup table as
+		 * above, but only for single-byte characters. The first
+		 * bytes of multi-byte characters have their lookup table
+		 * entries set to 0, which causes do_tr() to search through
+		 * an auxiliary vector of multi-byte mappings.
+		 */
+		memset(&mbs1, 0, sizeof(mbs1));
+		memset(&mbs2, 0, sizeof(mbs2));
+		for (i = 0; i <= UCHAR_MAX; i++)
+			y->bytetab[i] = (btowc(i) != WEOF) ? i : 0;
+		while (*op != '\0') {
+			oclen = mbrlen(op, MB_LEN_MAX, &mbs1);
+			if (oclen == (size_t)-1 || oclen == (size_t)-2)
+				errc(1, EILSEQ, NULL);
+			nclen = mbrlen(np, MB_LEN_MAX, &mbs2);
+			if (nclen == (size_t)-1 || nclen == (size_t)-2)
+				errc(1, EILSEQ, NULL);
+			if (oclen == 1 && nclen == 1)
+				y->bytetab[(u_char)*op] = *np;
+			else {
+				y->bytetab[(u_char)*op] = 0;
+				y->multis = realloc(y->multis,
+				    (y->nmultis + 1) * sizeof(*y->multis));
+				if (y->multis == NULL)
+					err(1, NULL);
+				i = y->nmultis++;
+				y->multis[i].fromlen = oclen;
+				memcpy(y->multis[i].from, op, oclen);
+				y->multis[i].tolen = nclen;
+				memcpy(y->multis[i].to, np, nclen);
+			}
+			op += oclen;
+			np += nclen;
+		}
+	}
 	return (p);
 }
 
@@ -697,16 +759,28 @@ compile_text(void)
 static char *
 compile_addr(char *p, struct s_addr *a)
 {
-	char *end;
+	char *end, re[_POSIX2_LINE_MAX + 1];
+	int icase;
+
+	icase = 0;
 
 	switch (*p) {
 	case '\\':				/* Context address */
 		++p;
 		/* FALLTHROUGH */
 	case '/':				/* Context address */
-		p = compile_re(p, &a->u.r);
+		p = compile_delimited(p, re);
 		if (p == NULL)
 			errx(1, "%lu: %s: unterminated regular expression", linenum, fname);
+		/* Check for case insensitive regexp flag */
+		if (*p == 'I') {
+			icase = 1;
+			p++;
+		}
+		if (*re == '\0')
+			a->u.r = NULL;
+		else
+			a->u.r = compile_re(re, icase);
 		a->type = AT_RE;
 		return (p);
 

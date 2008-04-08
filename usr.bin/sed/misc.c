@@ -14,10 +14,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,13 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/sed/misc.c,v 1.3.2.2 2002/07/17 09:35:56 tjr Exp $
- * $DragonFly: src/usr.bin/sed/misc.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
+ * $FreeBSD: src/usr.bin/sed/misc.c,v 1.9 2004/07/14 10:06:22 tjr Exp $
+ * $DragonFly: src/usr.bin/sed/misc.c,v 1.4 2008/04/08 13:23:38 swildner Exp $
  */
 
 #include <sys/types.h>
 
 #include <err.h>
+#include <limits.h>
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +48,7 @@
 #include "extern.h"
 
 /*
- * Return a string for a regular expression error passed.  This is a overkill,
+ * Return a string for a regular expression error passed.  This is overkill,
  * because of the silly semantics of regerror (we can never know the size of
  * the buffer).
  */
