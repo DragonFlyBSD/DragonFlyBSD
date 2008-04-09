@@ -36,11 +36,13 @@
  * SUCH DAMAGE.
  *
  *	@(#)time.h	8.3 (Berkeley) 1/21/94
- * $DragonFly: src/include/time.h,v 1.5 2005/01/27 01:50:01 joerg Exp $
+ * $DragonFly: src/include/time.h,v 1.6 2008/04/09 07:05:54 hasso Exp $
  */
 
 #ifndef _TIME_H_
 #define	_TIME_H_
+
+#include <sys/cdefs.h>
 
 #ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
@@ -48,10 +50,10 @@
 #include <machine/uvparam.h>
 #include <sys/_posix.h>
 
-#ifndef _ANSI_SOURCE
+#if __POSIX_VISIBLE > 0 && __POSIX_VISIBLE < 200112 || __BSD_VISIBLE
 /*
  * Frequency of the clock ticks reported by times().  Deprecated - use
- * sysconf(_SC_CLK_TCK) instead.
+ * sysconf(_SC_CLK_TCK) instead.  (Removed in 1003.1-2001.)
  */
 #define	CLK_TCK		_BSD_CLK_TCK_
 #endif
@@ -73,21 +75,18 @@ typedef	__clock_t	clock_t;
 typedef	__time_t	time_t;
 #endif
 
-/* XXX I'm not sure if _ANSI_SOURCE is playing properly
- *     with the setups in _posix.h:
- */
-#if !defined(_ANSI_SOURCE) && defined(_P1003_1B_VISIBLE_HISTORICALLY)
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#endif
+
+#if __POSIX_VISIBLE >= 199309
 /*
  * New in POSIX 1003.1b-1993.
  */
 #ifndef _CLOCKID_T_DECLARED
 #define _CLOCKID_T_DECLARED
 typedef	__clockid_t	clockid_t;
-#endif
-
-#ifndef _SIZE_T_DECLARED
-#define _SIZE_T_DECLARED
-typedef	__size_t	size_t;
 #endif
 
 #ifndef _TIMER_T_DECLARED
@@ -102,7 +101,24 @@ struct timespec {
 	long	tv_nsec;	/* and nanoseconds */
 };
 #endif
-#endif /* Neither ANSI nor POSIX */
+#endif /* __POSIX_VISIBLE >= 199309 */
+
+/* These macros are also in sys/time.h. */
+#if !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 200112
+#define CLOCK_REALTIME  0
+#ifdef __BSD_VISIBLE
+#define CLOCK_VIRTUAL	1
+#define CLOCK_PROF	2
+#endif
+#define CLOCK_MONOTONIC	4
+#endif /* !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 200112 */
+
+#if !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 200112
+#if __BSD_VISIBLE
+#define TIMER_RELTIME	0x0	/* relative timer */
+#endif
+#define TIMER_ABSTIME	0x1	/* absolute timer */
+#endif
 
 struct tm {
 	int	tm_sec;		/* seconds after the minute [0-60] */
@@ -118,9 +134,7 @@ struct tm {
 	char	*tm_zone;	/* timezone abbreviation */
 };
 
-#include <sys/cdefs.h>
-
-#ifndef	_ANSI_SOURCE
+#if __POSIX_VISIBLE
 extern char *tzname[];
 #endif
 
@@ -135,29 +149,35 @@ time_t mktime (struct tm *);
 size_t strftime (char *, size_t, const char *, const struct tm *);
 time_t time (time_t *);
 
-#ifndef _ANSI_SOURCE
+#if __POSIX_VISIBLE
 void tzset (void);
-#endif /* not ANSI */
+#endif
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
+#if __POSIX_VISIBLE >= 199506
 char *asctime_r (const struct tm *, char *);
 char *ctime_r (const time_t *, char *);
 struct tm *gmtime_r (const time_t *, struct tm *);
 struct tm *localtime_r (const time_t *, struct tm *);
-char *strptime (const char *, const char *, struct tm *);
-char *timezone (int, int);
-void tzsetwall (void);
-time_t timelocal (struct tm * const);
-time_t timegm (struct tm * const);
-#endif /* neither ANSI nor POSIX */
+#endif
 
-#if !defined(_ANSI_SOURCE) && defined(_P1003_1B_VISIBLE_HISTORICALLY)
+#if __POSIX_VISIBLE >= 199309
 /* Introduced in POSIX 1003.1b-1993, not part of 1003.1-1990. */
 int clock_getres (clockid_t, struct timespec *);
 int clock_gettime (clockid_t, struct timespec *);
 int clock_settime (clockid_t, const struct timespec *);
 int nanosleep (const struct timespec *, struct timespec *);
-#endif /* neither ANSI nor POSIX */
+#endif /* __POSIX_VISIBLE >= 199309 */
+
+#if __XSI_VISIBLE
+char *strptime (const char *, const char *, struct tm *);
+#endif
+
+#if __BSD_VISIBLE
+char *timezone (int, int);
+void tzsetwall (void);
+time_t timelocal (struct tm * const);
+time_t timegm (struct tm * const);
+#endif /* __BSD_VISIBLE */
 __END_DECLS
 
 #endif /* !_TIME_H_ */
