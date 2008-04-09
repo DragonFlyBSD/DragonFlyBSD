@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.72 2008/03/16 17:29:51 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.73 2008/04/09 21:41:58 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -582,8 +582,7 @@ MLINKS+=taskqueue.9 TASK_INIT.9 \
 	taskqueue.9 taskqueue_free.9 \
 	taskqueue.9 taskqueue_run.9
 MLINKS+=time.9 boottime.9 \
-	time.9 mono_time.9 \
-	time.9 runtime.9
+	time.9 time_second.9
 MLINKS+=tvtohz.9 tvtohz_high.9 \
 	tvtohz.9 tvtohz_low.9
 MLINKS+=uio.9 uiomove.9
