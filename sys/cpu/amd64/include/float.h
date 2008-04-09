@@ -32,7 +32,7 @@
  *
  *	from: @(#)float.h	7.1 (Berkeley) 5/8/90
  * $FreeBSD: src/sys/amd64/include/float.h,v 1.10 2003/02/08 20:37:54 mike Exp $
- * $DragonFly: src/sys/cpu/amd64/include/float.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/float.h,v 1.2 2008/04/09 06:44:37 hasso Exp $
  */
 
 #ifndef _CPU_FLOAT_H_
@@ -40,8 +40,10 @@
 
 #define FLT_RADIX	2		/* b */
 #define FLT_ROUNDS	1		/* FP addition rounds to nearest */
-#define	FLT_EVAL_METHOD	(-1)		/* i387 semantics are...interesting */
+#if __ISO_C_VISIBLE >= 1999
+#define	FLT_EVAL_METHOD	0		/* no promotions */
 #define	DECIMAL_DIG	21		/* max precision in decimal digits */
+#endif
 
 #define FLT_MANT_DIG	24		/* p */
 #define FLT_EPSILON	1.19209290E-07F	/* b**(1-p) */
