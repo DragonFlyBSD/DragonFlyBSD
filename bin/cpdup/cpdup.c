@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.19 2008/03/22 18:09:16 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.20 2008/04/10 22:09:08 dillon Exp $
  */
 
 /*-
@@ -59,7 +59,7 @@
 #include "hclink.h"
 #include "hcproto.h"
 
-#define HSIZE	16384
+#define HSIZE	8192
 #define HMASK	(HSIZE-1)
 #define HLSIZE	8192
 #define HLMASK	(HLSIZE - 1)
@@ -89,6 +89,19 @@ struct hlink {
     char name[0];
 };
 
+typedef struct copy_info {
+	char *spath;
+	char *dpath;
+	dev_t sdevNo;
+	dev_t ddevNo;
+#ifdef USE_PTHREADS
+	struct copy_info *parent;
+	pthread_cond_t cond;
+	int children;
+	int r;
+#endif
+} *copy_info_t;
+
 struct hlink *hltable[HLSIZE];
 
 void RemoveRecur(const char *dpath, dev_t devNo);
@@ -105,7 +118,7 @@ int YesNo(const char *path);
 static int xrename(const char *src, const char *dst, u_long flags);
 static int xlink(const char *src, const char *dst, u_long flags);
 int WildCmp(const char *s1, const char *s2);
-int DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo);
+static int DoCopy(copy_info_t info);
 
 int AskConfirmation = 1;
 int SafetyOpt = 1;
@@ -121,6 +134,8 @@ int SlaveOpt;
 int EnableDirectoryRetries;
 int DstBaseLen;
 int ValidateOpt;
+int CurParallel;
+int MaxParallel = -1;
 char IOBuf1[65536];
 char IOBuf2[65536];
 const char *UseCpFile;
@@ -140,6 +155,10 @@ int64_t CountLinkedItems;
 struct HostConf SrcHost;
 struct HostConf DstHost;
 
+#if USE_PTHREADS
+pthread_mutex_t MasterMutex;
+#endif
+
 int
 main(int ac, char **av)
 {
@@ -148,8 +167,16 @@ main(int ac, char **av)
     char *dst = NULL;
     char *ptr;
     struct timeval start;
+    struct copy_info info;
 
     signal(SIGPIPE, SIG_IGN);
+
+#if USE_PTHREADS
+    pthread_mutex_init(&SrcHost.read_mutex, NULL);
+    pthread_mutex_init(&DstHost.read_mutex, NULL);
+    pthread_mutex_init(&MasterMutex, NULL);
+    pthread_mutex_lock(&MasterMutex);
+#endif
 
     gettimeofday(&start, NULL);
     for (i = 1; i < ac; ++i) {
@@ -182,6 +209,10 @@ main(int ac, char **av)
 	    if (*ptr >= '0' && *ptr <= '9')
 		VerboseOpt = strtol(ptr, NULL, 0);
 	    break;
+	case 'l':
+	    setlinebuf(stdout);
+	    setlinebuf(stderr);
+	    break;
 	case 'V':
 	    ValidateOpt = v;
 	    break;
@@ -211,6 +242,9 @@ main(int ac, char **av)
 	    break;
 	case 'j':
 	    DeviceOpt = v;
+	    break;
+	case 'p':
+	    MaxParallel = v;
 	    break;
 	case 's':
 	    SafetyOpt = v;
@@ -289,12 +323,28 @@ main(int ac, char **av)
 	fatal(NULL);
 	/* not reached */
     }
+#if USE_PTHREADS
+    info.r = 0;
+    info.children = 0;
+    pthread_cond_init(&info.cond, NULL);
+#endif
     if (dst) {
 	DstBaseLen = strlen(dst);
-	i = DoCopy(src, dst, (dev_t)-1, (dev_t)-1);
+	info.spath = src;
+	info.dpath = dst;
+	info.sdevNo = (dev_t)-1;
+	info.ddevNo = (dev_t)-1;
+	i = DoCopy(&info);
     } else {
-	i = DoCopy(src, NULL, (dev_t)-1, (dev_t)-1);
+	info.spath = src;
+	info.dpath = NULL;
+	info.sdevNo = (dev_t)-1;
+	info.ddevNo = (dev_t)-1;
+	i = DoCopy(&info);
     }
+#if USE_PTHREADS
+    pthread_cond_destroy(&info.cond);
+#endif
 #ifndef NOMD5
     md5_flush();
 #endif
@@ -477,24 +527,56 @@ validate_check(const char *spath, const char *dpath)
 	hc_close(&DstHost, fd2);
     return (error);
 }
+#if USE_PTHREADS
+
+static void *
+DoCopyThread(void *arg)
+{
+    copy_info_t cinfo = arg;
+    char *spath = cinfo->spath;
+    char *dpath = cinfo->dpath;
+ 
+    pthread_cond_init(&cinfo->cond, NULL);
+    pthread_mutex_lock(&MasterMutex);
+    cinfo->r += DoCopy(cinfo);
+    /* cinfo arguments invalid on return */
+    --cinfo->parent->children;
+    --CurParallel;
+    pthread_cond_signal(&cinfo->parent->cond);
+    pthread_mutex_unlock(&MasterMutex);
+    free(spath);
+    if (dpath)
+	free(dpath);
+    pthread_cond_destroy(&cinfo->cond);
+    free(cinfo);
+    return(NULL);
+}
+
+#endif
 
 int
-DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
+DoCopy(copy_info_t info)
 {
+    const char *spath = info->spath;
+    const char *dpath = info->dpath;
+    dev_t sdevNo = info->sdevNo;
+    dev_t ddevNo = info->ddevNo;
     struct stat st1;
     struct stat st2;
     int r, mres, fres, st2Valid;
     struct hlink *hln;
-    List list;
+    List *list = malloc(sizeof(List));
     u_int64_t size;
 
-    InitList(&list);
+    InitList(list);
     r = mres = fres = st2Valid = 0;
     size = 0;
     hln = NULL;
 
-    if (hc_lstat(&SrcHost, spath, &st1) != 0)
-	return(0);
+    if (hc_lstat(&SrcHost, spath, &st1) != 0) {
+	r = 0;
+	goto done;
+    }
     st2.st_mode = 0;	/* in case lstat fails */
     st2.st_flags = 0;	/* in case lstat fails */
     if (dpath && hc_lstat(&DstHost, dpath, &st2) == 0)
@@ -522,7 +604,8 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
                     if (hln->nlinked == st1.st_nlink)
                         hltdelete(hln);
 		    CountSourceItems++;
-                    return 0;
+		    r = 0;
+		    goto done;
                 } else {
 		    /*
 		     * hard link is not correct, attempt to unlink it
@@ -562,7 +645,8 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 		    }
 		    CountSourceItems++;
 		    CountCopiedItems++;
-                    return 0;
+		    r = 0;
+		    goto done;
 		}
             }
         } else {
@@ -604,7 +688,8 @@ relink:
 		    else
 			logstd("%-32s nochange\n", (dpath ? dpath : spath));
 		}
-		return(0);
+		r = 0;
+		goto done;
 	    }
 #endif
 	} else {
@@ -641,8 +726,8 @@ relink:
 		}
 		CountSourceBytes += size;
 		CountSourceItems++;
-
-		return(0);
+		r = 0;
+		goto done;
 	    }
 	}
     }
@@ -652,7 +737,8 @@ relink:
 		(dpath ? dpath : spath)
 	    );
 	    ++r;		/* XXX */
-	    return(0);	/* continue with the cpdup anyway */
+	    r = 0;
+	    goto done; 		/* continue with the cpdup anyway */
 	}
 	if (QuietOpt == 0 || AskConfirmation) {
 	    logstd("%-32s WARNING: non-directory source will blow away\n"
@@ -733,7 +819,7 @@ relink:
 		} else {
 		    fpath = mprintf("%s/%s", spath, UseCpFile);
 		}
-		AddList(&list, strrchr(fpath, '/') + 1, 1);
+		AddList(list, strrchr(fpath, '/') + 1, 1);
 		if ((fi = fopen(fpath, "r")) != NULL) {
 		    while (fgets(buf, sizeof(buf), fi) != NULL) {
 			int l = strlen(buf);
@@ -741,7 +827,7 @@ relink:
 			if (l && buf[l-1] == '\n')
 			    buf[--l] = 0;
 			if (buf[0] && buf[0] != '#')
-			    AddList(&list, buf, 1);
+			    AddList(list, buf, 1);
 		    }
 		    fclose(fi);
 		}
@@ -756,9 +842,9 @@ relink:
 	     * would otherwise overwrite the one we maintain on the target.
 	     */
 	    if (UseMD5Opt)
-		AddList(&list, MD5CacheFile, 1);
+		AddList(list, MD5CacheFile, 1);
 	    if (UseFSMIDOpt)
-		AddList(&list, FSMIDCacheFile, 1);
+		AddList(list, FSMIDCacheFile, 1);
 
 	    while (noLoop == 0 && (den = hc_readdir(&SrcHost, dir)) != NULL) {
 		/*
@@ -775,24 +861,53 @@ relink:
 		/*
 		 * ignore if on .cpignore list
 		 */
-		if (AddList(&list, den->d_name, 0) == 1) {
+		if (AddList(list, den->d_name, 0) == 1) {
 		    continue;
 		}
 		nspath = mprintf("%s/%s", spath, den->d_name);
 		if (dpath)
 		    ndpath = mprintf("%s/%s", dpath, den->d_name);
-		r += DoCopy(
-		    nspath,
-		    ndpath,
-		    sdevNo,
-		    ddevNo
-		);
-		free(nspath);
-		if (ndpath)
-		    free(ndpath);
+
+#if USE_PTHREADS
+		if (CurParallel < MaxParallel) {
+		    copy_info_t cinfo = malloc(sizeof(*cinfo));
+		    pthread_t dummy_thr = NULL;
+
+		    bzero(cinfo, sizeof(*cinfo));
+		    cinfo->spath = nspath;
+		    cinfo->dpath = ndpath;
+		    cinfo->sdevNo = sdevNo;
+		    cinfo->ddevNo = ddevNo;
+		    cinfo->parent = info;
+		    ++CurParallel;
+		    ++info->children;
+		    pthread_create(&dummy_thr, NULL, DoCopyThread, cinfo);
+		} else
+#endif
+		{
+		    info->spath = nspath;
+		    info->dpath = ndpath;
+		    info->sdevNo = sdevNo;
+		    info->ddevNo = ddevNo;
+		    r += DoCopy(info);
+		    free(nspath);
+		    if (ndpath)
+			free(ndpath);
+		}
 	    }
 
 	    hc_closedir(&SrcHost, dir);
+
+#if USE_PTHREADS
+	    /*
+	     * Wait for our children to finish
+	     */
+	    while (info->children) {
+		pthread_cond_wait(&info->cond, &MasterMutex);
+	    }
+	    r += info->r;
+	    info->r = 0;
+#endif
 
 	    /*
 	     * Remove files/directories from destination that do not appear
@@ -812,7 +927,7 @@ relink:
 		     * If object does not exist in source or .cpignore
 		     * then recursively remove it.
 		     */
-		    if (AddList(&list, den->d_name, 3) == 3) {
+		    if (AddList(list, den->d_name, 3) == 3) {
 			char *ndpath;
 
 			ndpath = mprintf("%s/%s", dpath, den->d_name);
@@ -1092,7 +1207,9 @@ skip_copy:
 	}
 	CountSourceItems++;
     }
-    ResetList(&list);
+done:
+    ResetList(list);
+    free(list);
     return (r);
 }
 

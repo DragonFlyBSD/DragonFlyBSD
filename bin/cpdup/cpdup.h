@@ -1,7 +1,7 @@
 /*
  * CPDUP.H
  *
- * $DragonFly: src/bin/cpdup/cpdup.h,v 1.6 2008/03/22 18:09:16 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.h,v 1.7 2008/04/10 22:09:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -24,6 +24,9 @@
 #include <assert.h>
 #ifndef NOMD5
 #include <md5.h>
+#endif
+#if USE_PTHREADS
+#include <pthread.h>
 #endif
 
 void logstd(const char *ctl, ...);
@@ -52,3 +55,6 @@ extern int64_t CountTargetReadBytes;
 extern int64_t CountWriteBytes;
 extern int64_t CountRemovedItems;
 
+#if USE_PTHREADS
+extern pthread_mutex_t MasterMutex;
+#endif

@@ -1,7 +1,7 @@
 /*
  * HCLINK.H
  *
- * $DragonFly: src/bin/cpdup/hclink.h,v 1.1 2006/08/13 20:51:40 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.h,v 1.2 2008/04/10 22:09:08 dillon Exp $
  */
 
 #ifndef _HCLINK_H_
@@ -14,23 +14,47 @@ struct HCHostDesc {
     void *data;
 };
 
+struct HostConf;
+
+typedef struct HCTransaction {
+    struct HCTransaction *next;
+    struct HostConf *hc;
+    u_int16_t	id;		/* assigned transaction id */
+    int		windex;		/* output buffer index */
+    enum { HCT_IDLE, HCT_SENT, HCT_REPLIED } state;
+#if USE_PTHREADS
+    pthread_t	tid;
+#endif
+    char	rbuf[65536];	/* input buffer */
+    char	wbuf[65536];	/* output buffer */
+} *hctransaction_t;
+
+#if USE_PTHREADS
+#define HCTHASH_SIZE	16
+#define HCTHASH_MASK	(HCTHASH_SIZE - 1)
+#endif
+
 struct HostConf {
-    char *host;		/* [user@]host */
-    int fdin;		/* pipe */
-    int fdout;		/* pipe */
-    int error;		/* permanent failure code */
-    pid_t pid;
-    int windex;		/* output buffer index */
+    char	*host;		/* [user@]host */
+    int		fdin;		/* pipe */
+    int		fdout;		/* pipe */
+    int		error;		/* permanent failure code */
+    pid_t	pid;
+    int		version;	/* cpdup protocol version */
     struct HCHostDesc *hostdescs;
-    char rbuf[65536];	/* output buffer */
-    char wbuf[65536];	/* output buffer */
+#if USE_PTHREADS
+    pthread_mutex_t read_mutex;
+    hctransaction_t hct_hash[HCTHASH_SIZE];
+#else
+    struct HCTransaction trans;
+#endif
 };
 
 struct HCHead {
     int32_t magic;		/* magic number / byte ordering */
     int32_t bytes;		/* size of packet */
     int16_t cmd;		/* command code */
-    int16_t id;			/* transaction id */
+    u_int16_t id;			/* transaction id */
     int32_t error;		/* error code (response) */
 };
 
@@ -56,7 +80,7 @@ struct HCLeaf {
 
 struct HCDesc {
     int16_t cmd;
-    int (*func)(struct HostConf *, struct HCHead *);
+    int (*func)(hctransaction_t, struct HCHead *);
 };
 
 /*
@@ -73,12 +97,12 @@ struct HCDesc {
 int hcc_connect(struct HostConf *hc);
 int hcc_slave(int fdin, int fdout, struct HCDesc *descs, int count);
 
-void hcc_start_command(struct HostConf *hc, int16_t cmd);
-struct HCHead *hcc_finish_command(struct HostConf *hc);
-void hcc_leaf_string(struct HostConf *hc, int16_t leafid, const char *str);
-void hcc_leaf_data(struct HostConf *hc, int16_t leafid, const void *ptr, int bytes);
-void hcc_leaf_int32(struct HostConf *hc, int16_t leafid, int32_t value);
-void hcc_leaf_int64(struct HostConf *hc, int16_t leafid, int64_t value);
+hctransaction_t hcc_start_command(struct HostConf *hc, int16_t cmd);
+struct HCHead *hcc_finish_command(hctransaction_t trans);
+void hcc_leaf_string(hctransaction_t trans, int16_t leafid, const char *str);
+void hcc_leaf_data(hctransaction_t trans, int16_t leafid, const void *ptr, int bytes);
+void hcc_leaf_int32(hctransaction_t trans, int16_t leafid, int32_t value);
+void hcc_leaf_int64(hctransaction_t trans, int16_t leafid, int64_t value);
 
 int hcc_alloc_descriptor(struct HostConf *hc, void *ptr, int type);
 void *hcc_get_descriptor(struct HostConf *hc, int desc, int type);

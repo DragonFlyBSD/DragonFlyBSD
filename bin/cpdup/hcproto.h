@@ -1,7 +1,7 @@
 /*
  * HCPROTO.H
  *
- * $DragonFly: src/bin/cpdup/hcproto.h,v 1.1 2006/08/13 20:51:40 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.h,v 1.2 2008/04/10 22:09:08 dillon Exp $
  */
 
 #ifndef _HCPROTO_H_
@@ -57,6 +57,7 @@
 #define LC_DATA		(0x0025|LCF_BINARY)
 #define LC_TYPE		(0x0026|LCF_INT32)
 #define LC_BLKSIZE	(0x0027|LCF_INT32)
+#define LC_VERSION	(0x0028|LCF_INT32)
 
 #define XO_NATIVEMASK	3		/* passed through directly */
 #define XO_CREAT	0x00010000

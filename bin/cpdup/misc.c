@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.10 2008/03/22 18:09:42 dillon Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.11 2008/04/10 22:09:08 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -96,6 +96,9 @@ fatal(const char *ctl, ...)
 	     "    -I          display performance summary\n"
 	     "    -f          force update even if files look the same\n"
 	     "    -i0         do NOT confirm when removing something\n"
+	     "    -l          force line-buffered stdout/stderr\n"
+	     "    -pN         N parallel transactions for for remote\n"
+	     "                source or destination\n"
 	     "    -s0         disable safeties - allow files to overwrite directories\n"
 	     "    -q          quiet operation\n"
 	     "    -o          do not remove any files, just overwrite/add\n"
@@ -114,7 +117,7 @@ fatal(const char *ctl, ...)
 #endif
 	     "    -x          use .cpignore as exclusion file\n"
 	     "    -X file     specify exclusion file\n"
-	     " Version 1.08 by Matt Dillon and Dima Ruban\n"
+	     " Version 1.09 by Matt Dillon and Dima Ruban\n"
 	);
 	exit(0);
     } else {
