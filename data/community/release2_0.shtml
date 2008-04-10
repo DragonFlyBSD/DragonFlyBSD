@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - xxx 2008 Release 2.0.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.1 2008/04/08 13:18:57 matthias Exp $ -->
+<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.2 2008/04/10 13:28:11 hasso Exp $ -->
 
 <h1>Obtaining DragonFly 2.0.x for your system</h1>
 
@@ -167,6 +167,7 @@ only commit bug fixes to release branches.
 </ul>
 <h3>Userland changes</h3>
 <ul>
+    <li>Citrus iconv was synced with NetBSD
 </ul>
 <h3>Removals</h3>
 <ul>
