@@ -1,8 +1,8 @@
-/*	$NetBSD: src/lib/libc/citrus/modules/citrus_big5.c,v 1.8 2003/08/07 16:42:38 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/modules/citrus_big5.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_big5.c,v 1.11 2006/11/22 23:38:27 tnozaki Exp $ */
+/* $DragonFly: src/lib/libc/citrus/modules/citrus_big5.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
- * Copyright (c)2002 Citrus Project,
+ * Copyright (c)2002, 2006 Citrus Project,
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,12 +59,14 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/queue.h>
 #include <sys/types.h>
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
 #include <locale.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,10 +74,13 @@
 
 #include "citrus_namespace.h"
 #include "citrus_types.h"
+#include "citrus_bcs.h"
 #include "citrus_module.h"
 #include "citrus_ctype.h"
 #include "citrus_stdenc.h"
 #include "citrus_big5.h"
+
+#include "citrus_prop.h"
 
 /* ----------------------------------------------------------------------
  * private stuffs used by templates
@@ -86,8 +91,16 @@ typedef struct {
 	int chlen;
 } _BIG5State;
 
+typedef struct _BIG5Exclude {
+	TAILQ_ENTRY(_BIG5Exclude) entry;
+	wint_t start, end;
+} _BIG5Exclude;
+
+typedef TAILQ_HEAD(_BIG5ExcludeList, _BIG5Exclude) _BIG5ExcludeList;
+
 typedef struct {
-	int dummy;
+	int cell[0x100];
+	_BIG5ExcludeList excludes;
 } _BIG5EncodingInfo;
 
 typedef struct {
@@ -144,20 +157,100 @@ _citrus_BIG5_unpack_state(_BIG5EncodingInfo * __restrict ei,
 }
 
 static __inline int
-_citrus_BIG5_check(u_int c)
+_citrus_BIG5_check(_BIG5EncodingInfo *ei, u_int c)
 {
-	c &= 0xff;
-	return ((c >= 0xa1 && c <= 0xfe) ? 2 : 1);
+	_DIAGASSERT(ei != NULL);
+
+	return (ei->cell[c & 0xFF] & 0x1) ? 2 : 1;
 }
 
 static __inline int
-_citrus_BIG5_check2(u_int c)
+_citrus_BIG5_check2(_BIG5EncodingInfo *ei, u_int c)
 {
-	c &= 0xff;
-	if ((c >= 0x40 && c <= 0x7f) || (c >= 0xa1 && c <= 0xfe))
-		return 1;
-	else
-		return 0;
+	_DIAGASSERT(ei != NULL);
+
+	return (ei->cell[c & 0xFF] & 0x2) ? 1 : 0;
+}
+
+static __inline int
+_citrus_BIG5_check_excludes(_BIG5EncodingInfo *ei, wint_t c)
+{
+	_BIG5Exclude *exclude;
+
+	_DIAGASSERT(ei != NULL);
+
+	TAILQ_FOREACH(exclude, &ei->excludes, entry) {
+		if (c >= exclude->start && c <= exclude->end)
+			return EILSEQ;
+	}
+	return 0;
+}
+
+static int
+_citrus_BIG5_fill_rowcol(void ** __restrict ctx, const char * __restrict s,
+	uint64_t start, uint64_t end)
+{
+	_BIG5EncodingInfo *ei;
+	int i;
+	uint64_t n;
+
+	_DIAGASSERT(ctx != NULL && *ctx != NULL);
+
+	if (start > 0xFF || end > 0xFF)
+		return EINVAL;
+	ei = (_BIG5EncodingInfo *)*ctx;
+	i = strcmp("row", s) ? 1 : 0;
+	i = 1 << i;
+	for (n = start; n <= end; ++n)
+		ei->cell[n & 0xFF] |= i;
+	return 0;
+}
+
+static int
+/*ARGSUSED*/
+_citrus_BIG5_fill_excludes(void ** __restrict ctx, const char * __restrict s,
+	uint64_t start, uint64_t end)
+{
+	_BIG5EncodingInfo *ei;
+	_BIG5Exclude *exclude;
+
+	_DIAGASSERT(ctx != NULL && *ctx != NULL);
+
+	if (start > 0xFFFF || end > 0xFFFF)
+		return EINVAL;
+	ei = (_BIG5EncodingInfo *)*ctx;
+	exclude = TAILQ_LAST(&ei->excludes, _BIG5ExcludeList);
+	if (exclude != NULL && (wint_t)start <= exclude->end)
+		return EINVAL;
+	exclude = (void *)malloc(sizeof(*exclude));
+	if (exclude == NULL)
+		return ENOMEM;
+	exclude->start = (wint_t)start;
+	exclude->end = (wint_t)end;
+	TAILQ_INSERT_TAIL(&ei->excludes, exclude, entry);
+
+	return 0;
+}
+
+static const _citrus_prop_hint_t root_hints[] = {
+    _CITRUS_PROP_HINT_NUM("row", &_citrus_BIG5_fill_rowcol),
+    _CITRUS_PROP_HINT_NUM("col", &_citrus_BIG5_fill_rowcol),
+    _CITRUS_PROP_HINT_NUM("excludes", &_citrus_BIG5_fill_excludes),
+    _CITRUS_PROP_HINT_END
+};
+
+static void
+/*ARGSUSED*/
+_citrus_BIG5_encoding_module_uninit(_BIG5EncodingInfo *ei)
+{
+	_BIG5Exclude *exclude;
+
+	_DIAGASSERT(ei != NULL);
+
+	while ((exclude = TAILQ_FIRST(&ei->excludes)) != NULL) {
+		TAILQ_REMOVE(&ei->excludes, exclude, entry);
+		free(exclude);
+	}
 }
 
 static int
@@ -165,17 +258,34 @@ static int
 _citrus_BIG5_encoding_module_init(_BIG5EncodingInfo * __restrict ei,
 				  const void * __restrict var, size_t lenvar)
 {
+	int err;
+	const char *s;
+
 	_DIAGASSERT(ei != NULL);
 
 	memset((void *)ei, 0, sizeof(*ei));
+	TAILQ_INIT(&ei->excludes);
 
-	return (0);
-}
+	if (lenvar > 0 && var != NULL) {
+		s = _bcs_skip_ws_len((const char *)var, &lenvar);
+		if (lenvar > 0 && *s != '\0') {
+			err = _citrus_prop_parse_variable(
+			    root_hints, (void *)ei, s, lenvar);
+			if (err == 0)
+				return 0;
 
-static void
-/*ARGSUSED*/
-_citrus_BIG5_encoding_module_uninit(_BIG5EncodingInfo *ei)
-{
+			_citrus_BIG5_encoding_module_uninit(ei);
+			memset((void *)ei, 0, sizeof(*ei));
+			TAILQ_INIT(&ei->excludes);
+		}
+	}
+
+	/* fallback Big5-1984, for backward compatibility. */
+	_citrus_BIG5_fill_rowcol((void **)&ei, "row", 0xA1, 0xFE);
+	_citrus_BIG5_fill_rowcol((void **)&ei, "col", 0x40, 0x7E);
+	_citrus_BIG5_fill_rowcol((void **)&ei, "col", 0xA1, 0xFE);
+
+	return 0;
 }
 
 static int
@@ -222,7 +332,7 @@ _citrus_BIG5_mbrtowc_priv(_BIG5EncodingInfo * __restrict ei,
 		goto ilseq;
 	}
 
-	c = _citrus_BIG5_check(psenc->ch[0] & 0xff);
+	c = _citrus_BIG5_check(ei, psenc->ch[0] & 0xff);
 	if (c == 0)
 		goto ilseq;
 	while (psenc->chlen < c) {
@@ -239,7 +349,7 @@ _citrus_BIG5_mbrtowc_priv(_BIG5EncodingInfo * __restrict ei,
 		wchar = psenc->ch[0] & 0xff;
 		break;
 	case 2:
-		if (!_citrus_BIG5_check2(psenc->ch[1] & 0xff))
+		if (!_citrus_BIG5_check2(ei, psenc->ch[1] & 0xff))
 			goto ilseq;
 		wchar = ((psenc->ch[0] & 0xff) << 8) | (psenc->ch[1] & 0xff);
 		break;
@@ -247,6 +357,9 @@ _citrus_BIG5_mbrtowc_priv(_BIG5EncodingInfo * __restrict ei,
 		/* illegal state */
 		goto ilseq;
 	}
+
+	if (_citrus_BIG5_check_excludes(ei, (wint_t)wchar) != 0)
+		goto ilseq;
 
 	*s = s0;
 	psenc->chlen = 0;
@@ -284,20 +397,21 @@ _citrus_BIG5_wcrtomb_priv(_BIG5EncodingInfo * __restrict ei,
 	_DIAGASSERT(s != NULL);
 
 	/* check invalid sequence */
-	if (wc & ~0xffff) {
+	if (wc & ~0xffff ||
+	    _citrus_BIG5_check_excludes(ei, (wint_t)wc) != 0) {
 		ret = EILSEQ;
 		goto err;
 	}
 
 	if (wc & 0x8000) {
-		if (_citrus_BIG5_check((wc >> 8) & 0xff) != 2 ||
-		    !_citrus_BIG5_check2(wc & 0xff)) {
+		if (_citrus_BIG5_check(ei, (wc >> 8) & 0xff) != 2 ||
+		    !_citrus_BIG5_check2(ei, wc & 0xff)) {
 			ret = EILSEQ;
 			goto err;
 		}
 		l = 2;
 	} else {
-		if (wc & ~0xff || !_citrus_BIG5_check(wc & 0xff)) {
+		if (wc & ~0xff || !_citrus_BIG5_check(ei, wc & 0xff)) {
 			ret = EILSEQ;
 			goto err;
 		}
@@ -334,12 +448,9 @@ _citrus_BIG5_stdenc_wctocs(_BIG5EncodingInfo * __restrict ei,
 
 	_DIAGASSERT(csid != NULL && idx != NULL);
 
-	if (wc<0x100)
-		*csid = 0;
-	else
-		*csid = 1;
+	*csid = (wc < 0x100) ? 0 : 1;
 	*idx = (_index_t)wc;
-		
+
 	return 0;
 }
 
@@ -349,28 +460,31 @@ _citrus_BIG5_stdenc_cstowc(_BIG5EncodingInfo * __restrict ei,
 			   wchar_t * __restrict wc,
 			   _csid_t csid, _index_t idx)
 {
-	u_int8_t h, l;
-
 	_DIAGASSERT(wc != NULL);
 
 	switch (csid) {
 	case 0:
-		if (idx>=0x80U)
-			return EILSEQ;
-		*wc = (wchar_t)idx;
-		break;
 	case 1:
-		if (idx>=0x10000U)
-			return EILSEQ;
-		h = idx >> 8;
-		l = idx;
-		if (h<0xA1 || h>0xF9 || l<0x40 || l>0xFE)
-			return EILSEQ;
 		*wc = (wchar_t)idx;
 		break;
 	default:
 		return EILSEQ;
 	}
+
+	return 0;
+}
+
+static __inline int
+/*ARGSUSED*/
+_citrus_BIG5_stdenc_get_state_desc_generic(_BIG5EncodingInfo * __restrict ei,
+					   _BIG5State * __restrict psenc,
+					   int * __restrict rstate)
+{
+
+	if (psenc->chlen == 0)
+		*rstate = _STDENC_SDGEN_INITIAL;
+	else
+		*rstate = _STDENC_SDGEN_INCOMPLETE_CHAR;
 
 	return 0;
 }

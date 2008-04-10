@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_stdenc_template.h,v 1.2 2003/06/26 12:09:57 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_stdenc_template.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_stdenc_template.h,v 1.4 2008/02/09 14:56:20 junyoung Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_stdenc_template.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -184,4 +184,24 @@ _FUNCNAME(stdenc_put_state_reset)(struct _citrus_stdenc * __restrict ce,
 	*nresult = 0;
 	return 0;
 #endif
+}
+
+static int
+_FUNCNAME(stdenc_get_state_desc)(struct _citrus_stdenc * __restrict ce,
+				 void * __restrict ps,
+				 int id,
+				 struct _citrus_stdenc_state_desc * __restrict d)
+{
+	int ret;
+
+	switch (id) {
+	case _STDENC_SDID_GENERIC:
+		ret = _FUNCNAME(stdenc_get_state_desc_generic)(
+			_CE_TO_EI(ce), _TO_STATE(ps), &d->u.generic.state);
+		break;
+	default:
+		ret = EOPNOTSUPP;
+	}
+
+	return ret;
 }

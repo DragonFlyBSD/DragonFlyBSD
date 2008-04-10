@@ -1,0 +1,6 @@
+# $NetBSD: KOI.alias,v 1.1 2006/04/08 14:15:48 tnozaki Exp $
+# $DragonFly: src/share/i18n/esdb/KOI/KOI.alias,v 1.1 2008/04/10 10:21:13 hasso Exp $
+
+7		koi-7 iso-ir-37 iso-5427 iso_5427
+8		koi-8 cp878
+8-E		ecma-cyrillic iso-ir-111

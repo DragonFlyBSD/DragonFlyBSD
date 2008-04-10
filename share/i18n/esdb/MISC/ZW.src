@@ -1,0 +1,9 @@
+# $NetBSD: ZW.src,v 1.1 2006/11/22 23:38:27 tnozaki Exp $
+# $DragonFly: src/share/i18n/esdb/MISC/ZW.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
+
+NAME		"ZW"
+ENCODING	"ZW"
+VARIABLE	""
+DEFCSID		"ISO646-US"		0
+DEFCSID		"GB2312"		1
+INVALID		0x3F # '?'

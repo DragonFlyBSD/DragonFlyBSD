@@ -1,5 +1,5 @@
-# $NetBSD: src/share/i18n/esdb/MISC/Makefile.inc,v 1.1 2003/06/27 08:40:57 tshiozak Exp $
-# $DragonFly: src/share/i18n/esdb/MISC/Makefile.inc,v 1.1 2005/03/10 16:20:15 joerg Exp $
+# $NetBSD: Makefile.inc,v 1.1 2003/06/27 08:40:57 tshiozak Exp $
+# $DragonFly: src/share/i18n/esdb/MISC/Makefile.inc,v 1.2 2008/04/10 10:21:13 hasso Exp $
 
 .PATH: ${.CURDIR}/MISC
 

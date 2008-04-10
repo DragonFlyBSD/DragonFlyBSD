@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_pivot_factory.c,v 1.4 2004/01/02 21:49:35 itojun Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_pivot_factory.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_pivot_factory.c,v 1.6 2008/02/09 14:56:20 junyoung Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_pivot_factory.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -108,6 +108,8 @@ convert_line(struct src_head *sh, const char *line, size_t len)
 	const char *p;
 	char key1[LINE_MAX], key2[LINE_MAX], data[LINE_MAX];
 	uint32_t val;
+
+	se = NULL; /* XXX gcc */
 
 	/* cut off trailing comment */
 	p = memchr(line, T_COMM, len);

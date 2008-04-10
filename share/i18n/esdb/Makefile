@@ -1,4 +1,4 @@
-# $DragonFly: src/share/i18n/esdb/Makefile,v 1.1 2005/03/10 16:19:55 joerg Exp $
+# $DragonFly: src/share/i18n/esdb/Makefile,v 1.2 2008/04/10 10:21:11 hasso Exp $
 
 NOMAN=
 
@@ -11,7 +11,8 @@ BINDIR?=	/usr/share/i18n/esdb
 .src.esdb:
 	mkesdb -o $@ $>
 
-subdir=	CP EUC EBCDIC ISO-2022 ISO-8859 ISO646 MISC UTF
+subdir=	APPLE AST BIG5 CP DEC EUC EBCDIC GB GEORGIAN ISO-2022 \
+	ISO-8859 ISO646 KAZAKH KOI MISC TCVN UTF
 
 .for i in ${subdir}
 .include "${.CURDIR}/$i/Makefile.inc"

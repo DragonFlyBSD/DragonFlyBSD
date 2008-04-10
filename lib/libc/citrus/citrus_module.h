@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_module.h,v 1.1 2002/03/17 22:14:20 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_module.h,v 1.2 2005/07/04 08:02:43 joerg Exp $ */
+/* $NetBSD: src/lib/libc/citrus/citrus_module.h,v 1.1 2002/03/17 22:14:20 tshiozak Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_module.h,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,

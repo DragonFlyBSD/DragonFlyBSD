@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_ctype_template.h,v 1.32 2005/03/05 17:31:03 tnozaki Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_ctype_template.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_ctype_template.h,v 1.35 2008/02/09 14:56:20 junyoung Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_ctype_template.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 
 /*-
@@ -204,20 +204,20 @@ _FUNCNAME(mbtowc_priv)(_ENCODING_INFO * __restrict ei,
 	_DIAGASSERT(psenc != NULL);
 
 	if (s == NULL) {
+		_FUNCNAME(init_state)(ei, psenc);
 		*nresult = _ENCODING_IS_STATE_DEPENDENT;
 		return (0);
 	}
 
 	state = *psenc;
 	err = _FUNCNAME(mbrtowc_priv)(ei, pwc, (const char **)&s, n, psenc, &nr);
+	if (nr == (size_t)-2)
+		err = EILSEQ;
 	if (err) {
-		*nresult = -1;
-		return (err);
-	}
-	if (nr == (size_t)-2) {
+		/* In error case, we should restore the state. */
 		*psenc = state;
 		*nresult = -1;
-		return (EILSEQ);
+		return (err);
 	}
 
 	*nresult = (int)nr;

@@ -1,5 +1,5 @@
-# $NetBSD: src/share/i18n/csmapper/EBCDIC/EBCDIC-CA-FR%UCS.src,v 1.2 2003/07/12 16:11:07 tshiozak Exp $
-# $DragonFly: src/share/i18n/csmapper/EBCDIC/EBCDIC-CA-FR%UCS.src,v 1.1 2005/03/10 16:19:18 joerg Exp $
+# $NetBSD: EBCDIC-CA-FR%UCS.src,v 1.2 2003/07/12 16:11:07 tshiozak Exp $
+# $DragonFly: src/share/i18n/csmapper/EBCDIC/EBCDIC-CA-FR%UCS.src,v 1.2 2008/04/10 10:21:06 hasso Exp $
 
 TYPE		ROWCOL
 NAME		"EBCDIC-CA-FR/UCS"

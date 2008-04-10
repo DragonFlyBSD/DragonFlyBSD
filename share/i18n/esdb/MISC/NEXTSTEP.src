@@ -1,0 +1,8 @@
+# $NetBSD: NEXTSTEP.src,v 1.1 2006/10/19 14:45:02 tnozaki Exp $
+# $DragonFly: src/share/i18n/esdb/MISC/NEXTSTEP.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
+
+NAME		"NEXTSTEP"
+ENCODING	"NONE"
+VARIABLE	"none"
+DEFCSID		"NEXTSTEP"		0
+INVALID		0x3F # '?'

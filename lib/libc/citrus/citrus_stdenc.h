@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_stdenc.h,v 1.3 2003/07/10 08:50:44 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_stdenc.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_stdenc.h,v 1.4 2005/10/29 18:02:04 tshiozak Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_stdenc.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -34,6 +34,21 @@
 struct _citrus_stdenc;
 struct _citrus_stdenc_ops;
 struct _citrus_stdenc_traits;
+
+#define _CITRUS_STDENC_SDID_GENERIC		0
+struct _citrus_stdenc_state_desc
+{
+	union {
+		struct {
+			int	state;
+#define _CITRUS_STDENC_SDGEN_UNKNOWN		0
+#define _CITRUS_STDENC_SDGEN_INITIAL		1
+#define _CITRUS_STDENC_SDGEN_STABLE		2
+#define _CITRUS_STDENC_SDGEN_INCOMPLETE_CHAR	3
+#define _CITRUS_STDENC_SDGEN_INCOMPLETE_SHIFT	4
+		} generic;
+	} u;
+};
 
 #include "citrus_stdenc_local.h"
 
@@ -114,6 +129,18 @@ _citrus_stdenc_get_mb_cur_max(struct _citrus_stdenc *ce)
 {
 	_DIAGASSERT(ce && ce->ce_traits);
 	return ce->ce_traits->et_mb_cur_max;
+}
+
+static __inline int
+_citrus_stdenc_get_state_desc(struct _citrus_stdenc * __restrict ce,
+			      void * __restrict ps,
+			      int id,
+			      struct _citrus_stdenc_state_desc * __restrict d)
+{
+
+	_DIAGASSERT(ce && ce->ce_ops && ce->ce_ops->eo_get_state_desc);
+
+	return (*ce->ce_ops->eo_get_state_desc)(ce, ps, id, d);
 }
 
 #endif

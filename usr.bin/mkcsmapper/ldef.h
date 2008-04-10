@@ -1,8 +1,8 @@
-/*	$NetBSD: src/usr.bin/mkcsmapper/ldef.h,v 1.1 2003/06/26 06:30:13 tshiozak Exp $	*/
-/*	$DragonFly: src/usr.bin/mkcsmapper/ldef.h,v 1.1 2005/03/11 20:17:11 joerg Exp $ */
+/*	$NetBSD: ldef.h,v 1.2 2006/09/09 14:35:17 tnozaki Exp $	*/
+/*	$DragonFly: src/usr.bin/mkcsmapper/ldef.h,v 1.2 2008/04/10 10:21:13 hasso Exp $ */
 
 /*-
- * Copyright (c)2003 Citrus Project,
+ * Copyright (c)2003, 2006 Citrus Project,
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,16 +28,9 @@
  */
 
 typedef struct {
-	uint32_t	row_begin;
-	uint32_t	row_end;
-	uint32_t	col_begin;
-	uint32_t	col_end;
-	int		col_bits;
-} zone_t;
-
-typedef struct {
 	uint32_t	begin;
 	uint32_t	end;
+	uint32_t	width;
 } linear_zone_t;
 
 extern int	line_number;

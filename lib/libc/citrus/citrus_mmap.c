@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_mmap.c,v 1.3 2005/01/19 00:52:37 mycroft Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_mmap.c,v 1.2 2005/11/12 22:21:13 swildner Exp $ */
+/* $NetBSD: src/lib/libc/citrus/citrus_mmap.c,v 1.3 2005/01/19 00:52:37 mycroft Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_mmap.c,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,

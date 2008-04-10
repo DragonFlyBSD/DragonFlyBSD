@@ -1,13 +1,29 @@
-# $NetBSD: src/share/i18n/csmapper/GB/Makefile.inc,v 1.3 2003/10/21 10:01:21 lukem Exp $
-# $DragonFly: src/share/i18n/csmapper/GB/Makefile.inc,v 1.1 2005/03/10 16:19:35 joerg Exp $
+# $NetBSD: Makefile.inc,v 1.7 2006/11/23 03:25:24 tnozaki Exp $
+# $DragonFly: src/share/i18n/csmapper/GB/Makefile.inc,v 1.2 2008/04/10 10:21:07 hasso Exp $
 
 .PATH: ${.CURDIR}/GB
 
 SRCS_mapper.dir+=	mapper.dir.GB
 SRCS_charset.pivot+=	charset.pivot.GB
 CLEANFILES+=		mapper.dir.GB charset.pivot.GB
-MAPS_GB=		GB2312%UCS.mps \
-			UCS%GB2312.mps
+MAPS_GB=		GB12345%UCS.mps \
+			GB18030%UCS@BMP.mps \
+			GB2312%UCS.mps \
+			GB2312EXT%UCS.mps \
+			GB2312UDA1%UCS.mps \
+			GB2312UDA2%UCS.mps \
+			GBKEXT%UCS.mps \
+			GBKUDA%UCS.mps \
+			ISO-IR-165EXT%UCS.mps \
+			UCS@BMP%GB18030.mps \
+			UCS%GB12345.mps \
+			UCS%GB2312.mps \
+			UCS%GB2312EXT.mps \
+			UCS%GB2312UDA1.mps \
+			UCS%GB2312UDA2.mps \
+			UCS%GBKEXT.mps \
+			UCS%GBKUDA.mps \
+			UCS%ISO-IR-165EXT.mps
 
 mapper.dir.GB: ${.CURDIR}/GB/mapper.dir.GB.src
 	${_MKTARGET_CREATE}

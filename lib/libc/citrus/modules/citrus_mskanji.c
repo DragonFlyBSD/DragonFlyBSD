@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/modules/citrus_mskanji.c,v 1.9 2005/02/10 19:03:51 tnozaki Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/modules/citrus_mskanji.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_mskanji.c,v 1.12 2007/03/05 16:57:06 tnozaki Exp $ */
+/* $DragonFly: src/lib/libc/citrus/modules/citrus_mskanji.c,v 1.2 2008/04/10 10:21:02 hasso Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -74,6 +74,7 @@
 
 #include "citrus_namespace.h"
 #include "citrus_types.h"
+#include "citrus_bcs.h"
 #include "citrus_module.h"
 #include "citrus_ctype.h"
 #include "citrus_stdenc.h"
@@ -90,7 +91,8 @@ typedef struct _MSKanjiState {
 } _MSKanjiState;
 
 typedef struct {
-	int dummy;
+	int mode;
+#define MODE_JIS2004	1
 } _MSKanjiEncodingInfo;
 
 typedef struct {
@@ -124,7 +126,7 @@ static int
 _mskanji1(int c)
 {
 
-	if ((c >= 0x81 && c <= 0x9f) || (c >= 0xe0 && c <= 0xef))
+	if ((c >= 0x81 && c <= 0x9f) || (c >= 0xe0 && c <= 0xfc))
 		return 1;
 	else
 		return 0;
@@ -145,7 +147,7 @@ static __inline void
 _citrus_MSKanji_init_state(_MSKanjiEncodingInfo * __restrict ei,
 			   _MSKanjiState * __restrict s)
 {
-	memset(s, 0, sizeof(*s));
+	s->chlen = 0;
 }
 
 static __inline void
@@ -321,6 +323,7 @@ _citrus_MSKanji_stdenc_wctocs(_MSKanjiEncodingInfo * __restrict ei,
 			      _index_t * __restrict idx, wchar_t wc)
 {
 	_index_t row, col;
+	int offset;
 
 	_DIAGASSERT(csid != NULL && idx != NULL);
 
@@ -332,8 +335,7 @@ _citrus_MSKanji_stdenc_wctocs(_MSKanjiEncodingInfo * __restrict ei,
 		/* KANA */
 		*csid = 1;
 		*idx = (_index_t)wc & 0x7F;
-	} else if ((0x8140 <= (_wc_t)wc && (_wc_t)wc <= 0x9FFC) ||
-		   (0xE040 <= (_wc_t)wc && (_wc_t)wc <= 0xFCFC)) {
+	} else {
 		/* Kanji (containing Gaiji zone) */
 		/*
 		 * 94^2 zone (contains a part of Gaiji (0xED40 - 0xEEFC)):
@@ -351,13 +353,43 @@ _citrus_MSKanji_stdenc_wctocs(_MSKanjiEncodingInfo * __restrict ei,
 		 *
 		 * extended Gaiji zone:
 		 * 0xF040 - 0xFCFC
+		 *
+		 * JIS X0213-plane2:
+		 * 0xF040 - 0xF09E -> 0x2121 - 0x217E
+		 * 0xF140 - 0xF19E -> 0x2321 - 0x237E
+		 * ...
+		 * 0xF240 - 0xF29E -> 0x2521 - 0x257E
+		 *
+		 * 0xF09F - 0xF0FC -> 0x2821 - 0x287E
+		 * 0xF29F - 0xF2FC -> 0x2C21 - 0x2C7E
+		 * ...
+		 * 0xF44F - 0xF49E -> 0x2F21 - 0x2F7E
+		 *
+		 * 0xF49F - 0xF4FC -> 0x6E21 - 0x6E7E
+		 * ...
+		 * 0xFC9F - 0xFCFC -> 0x7E21 - 0x7E7E
 		 */
-		*csid = 2;
-		row = ((_wc_t)wc >> 8) - 0x81;
+		row = ((_wc_t)wc >> 8) & 0xFF;
+		col = (_wc_t)wc & 0xFF;
+		if (!_mskanji1(row) || !_mskanji2(col))
+			return EILSEQ;
+		if ((ei->mode & MODE_JIS2004) == 0 || row < 0xF0) {
+			*csid = 2;
+			offset = 0x81;
+		} else {
+			*csid = 3;
+			if ((_wc_t)wc <= 0xF49E) {
+				offset = (_wc_t)wc >= 0xF29F ||
+				  ((_wc_t)wc >= 0xF09F && (_wc_t)wc <= 0xF0FC)
+				    ? 0xED : 0xF0;
+			} else
+				offset = 0xCE;
+		}
+		row -= offset;
 		if (row >= 0x5F)
 			row -= 0x40;
 		row = row * 2 + 0x21;
-		col = (wc & 0xFF) - 0x1F;
+		col -= 0x1F;
 		if (col >= 0x61)
 			col -= 1;
 		if (col > 0x7E) {
@@ -365,8 +397,7 @@ _citrus_MSKanji_stdenc_wctocs(_MSKanjiEncodingInfo * __restrict ei,
 			col -= 0x5E;
 		}
 		*idx = ((_index_t)row << 8) | col;
-	} else
-		return EILSEQ;
+	}
 
 	return 0;
 }
@@ -378,6 +409,7 @@ _citrus_MSKanji_stdenc_cstowc(_MSKanjiEncodingInfo * __restrict ei,
 			      _csid_t csid, _index_t idx)
 {
 	u_int32_t row, col;
+	int offset;
 
 	_DIAGASSERT(wc != NULL);
 
@@ -394,28 +426,59 @@ _citrus_MSKanji_stdenc_cstowc(_MSKanjiEncodingInfo * __restrict ei,
 			return EILSEQ;
 		*wc = (wchar_t)idx + 0x80;
 		break;
+	case 3:
+		if ((ei->mode & MODE_JIS2004) == 0)
+			return EILSEQ;
+	/*FALLTHROUGH*/
 	case 2:
 		/* kanji */
 		row = (idx >> 8);
-		col = idx & 0x7F;
-		if (row<0x21 || row>0x97 || col<0x21 || col>0x7E)
+		if (row < 0x21)
+			return EILSEQ;
+		if (csid == 3) {
+			if (row <= 0x2F)
+				offset = (row == 0x22 || row >= 0x26)
+				    ? 0xED : 0xF0;
+			else if (row >= 0x4D && row <= 0x7E)
+				offset = 0xCE;
+			else
+				return EILSEQ;
+		} else {
+			if (row > 0x97)
+				return EILSEQ;
+			offset = (row < 0x5F) ? 0x81 : 0xC1;
+		}
+		col = idx & 0xFF;
+		if (col < 0x21 || col > 0x7E)
 			return EILSEQ;
 		row -= 0x21; col -= 0x21;
-		if ((row & 1)==0) {
+		if ((row & 1) == 0) {
 			col += 0x40;
-			if (col>=0x7F)
+			if (col >= 0x7F)
 				col += 1;
 		} else
 			col += 0x9F;
-		if (row<0x3E)
-			row = row/2 + 0x81;
-		else
-			row = row/2 + 0xc1;
+		row = row / 2 + offset;
 		*wc = ((wchar_t)row << 8) | col;
 		break;
 	default:
 		return EILSEQ;
 	}
+
+	return 0;
+}
+
+static __inline int
+/*ARGSUSED*/
+_citrus_MSKanji_stdenc_get_state_desc_generic(_MSKanjiEncodingInfo * __restrict ei,
+					      _MSKanjiState * __restrict psenc,
+					      int * __restrict rstate)
+{
+
+	if (psenc->chlen == 0)
+		*rstate = _STDENC_SDGEN_INITIAL;
+	else
+		*rstate = _STDENC_SDGEN_INCOMPLETE_CHAR;
 
 	return 0;
 }
@@ -426,9 +489,33 @@ _citrus_MSKanji_encoding_module_init(_MSKanjiEncodingInfo *  __restrict ei,
 				     const void * __restrict var,
 				     size_t lenvar)
 {
+	const char *p;
+
 	_DIAGASSERT(ei != NULL);
 
-	return (0);
+	p = var;
+#define MATCH(x, act)						\
+do {								\
+	if (lenvar >= (sizeof(#x)-1) &&				\
+	    _bcs_strncasecmp(p, #x, sizeof(#x)-1) == 0) {	\
+		act;						\
+		lenvar -= sizeof(#x)-1;				\
+		p += sizeof(#x)-1;				\
+	}							\
+} while (/*CONSTCOND*/0)
+	memset((void *)ei, 0, sizeof(*ei));
+	while (lenvar > 0) {
+		switch (_bcs_toupper(*p)) {
+		case 'J':
+			MATCH(JIS2004, ei->mode |= MODE_JIS2004);
+			break;
+		}
+		++p;
+		--lenvar;
+	}
+
+	return 0;
+
 }
 
 static void

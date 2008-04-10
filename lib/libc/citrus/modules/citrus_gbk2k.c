@@ -1,5 +1,5 @@
-/* $NetBSD: src/lib/libc/citrus/modules/citrus_gbk2k.c,v 1.4 2003/06/26 12:09:57 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_gbk2k.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_gbk2k.c,v 1.6 2006/02/15 19:50:27 tnozaki Exp $ */
+/* $DragonFly: src/lib/libc/citrus/modules/citrus_gbk2k.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -57,9 +57,8 @@ typedef struct _GBK2KState {
 } _GBK2KState;
 
 typedef struct {
-	int ei_mode;
+	int mb_cur_max;
 } _GBK2KEncodingInfo;
-#define _MODE_2BYTE	0x0001
 
 typedef struct {
 	_GBK2KEncodingInfo	ei;
@@ -83,7 +82,7 @@ typedef struct {
 #define _ENCODING_INFO			_GBK2KEncodingInfo
 #define _CTYPE_INFO			_GBK2KCTypeInfo
 #define _ENCODING_STATE			_GBK2KState
-#define _ENCODING_MB_CUR_MAX(_ei_)	4
+#define _ENCODING_MB_CUR_MAX(_ei_)	(_ei_)->mb_cur_max
 #define _ENCODING_IS_STATE_DEPENDENT	0
 #define _STATE_NEEDS_EXPLICIT_INIT(_ps_)	0
 
@@ -219,7 +218,7 @@ _citrus_GBK2K_mbrtowc_priv(_GBK2KEncodingInfo * __restrict ei,
 		case 2:
 			if (_mb_trailbyte (_PSENC))
 				goto convert;
-			if ((ei->ei_mode & _MODE_2BYTE) == 0 &&
+			if (ei->mb_cur_max == 4 &&
 			    _mb_surrogate (_PSENC))
 				continue;
 			goto ilseq;
@@ -302,7 +301,7 @@ _citrus_GBK2K_wcrtomb_priv(_GBK2KEncodingInfo * __restrict ei,
 		}
 		break;
 	case 4:
-		if ((ei->ei_mode & _MODE_2BYTE) != 0 ||
+		if (ei->mb_cur_max != 4 ||
 		    !_mb_leadbyte  (_PUSH_PSENC(wc >> 24)) ||
 		    !_mb_surrogate (_PUSH_PSENC(wc >> 16)) ||
 		    !_mb_leadbyte  (_PUSH_PSENC(wc >>  8)) ||
@@ -386,13 +385,28 @@ _citrus_GBK2K_stdenc_cstowc(_GBK2KEncodingInfo * __restrict ei,
 		break;
 	case 3:
 		/* GBKUCS : XXX */
-		if ((ei->ei_mode & _MODE_2BYTE) != 0)
+		if (ei->mb_cur_max != 4)
 			return EINVAL;
 		*wc = (wchar_t)idx;
 		break;
 	default:
 		return EILSEQ;
 	}
+
+	return 0;
+}
+
+static __inline int
+/*ARGSUSED*/
+_citrus_GBK2K_stdenc_get_state_desc_generic(_GBK2KEncodingInfo * __restrict ei,
+					    _GBK2KState * __restrict psenc,
+					    int * __restrict rstate)
+{
+
+	if (psenc->chlen == 0)
+		*rstate = _STDENC_SDGEN_INITIAL;
+	else
+		*rstate = _STDENC_SDGEN_INCOMPLETE_CHAR;
 
 	return 0;
 }
@@ -416,17 +430,18 @@ do {                                                            \
                 p += sizeof(#x)-1;                              \
         }                                                       \
 } while (/*CONSTCOND*/0)
+	memset((void *)ei, 0, sizeof(*ei));
+	ei->mb_cur_max = 4;
 	while (lenvar>0) {
 		switch (_bcs_tolower(*p)) {
 		case '2':
-			MATCH("2byte", ei->ei_mode |= _MODE_2BYTE);
+			MATCH("2byte", ei->mb_cur_max = 2);
 			break;
 		}
 		p++;
 		lenvar--;
 	}
 
-	memset((void *)ei, 0, sizeof(*ei));
 	return (0);
 }
 

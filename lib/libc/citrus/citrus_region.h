@@ -1,5 +1,5 @@
-/*	$NetBSD: citrus_region.h,v 1.6 2005/05/14 17:55:42 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_region.h,v 1.2 2005/07/04 10:11:57 joerg Exp $ */
+/* $NetBSD: citrus_region.h,v 1.7 2008/02/09 14:56:20 junyoung Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_region.h,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,

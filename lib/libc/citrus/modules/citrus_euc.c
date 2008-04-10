@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/modules/citrus_euc.c,v 1.8 2003/08/07 16:42:38 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/modules/citrus_euc.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_euc.c,v 1.11 2006/03/19 01:25:44 christos Exp $ */
+/* $DragonFly: src/lib/libc/citrus/modules/citrus_euc.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -261,6 +261,8 @@ _citrus_EUC_mbrtowc_priv(_EUCEncodingInfo *ei, wchar_t *pwc, const char **s,
 		len = c;
 		s1 = &psenc->ch[0];
 		break;
+	default:
+		goto encoding_error;
 	}
 	wchar = 0;
 	while (len-- > 0)
@@ -319,7 +321,7 @@ _citrus_EUC_wcrtomb_priv(_EUCEncodingInfo *ei, char *s, size_t n, wchar_t wc,
 		ret = E2BIG;
 		goto err;
 	}
-	m = (cs % 2) ? 0x80 : 0x00;
+	m = (cs) ? 0x80 : 0x00;
 	switch (cs) {
 	case 2:
 		*s++ = _SS2;
@@ -376,6 +378,21 @@ _citrus_EUC_stdenc_cstowc(_EUCEncodingInfo * __restrict ei,
 	*wc = (wchar_t)csid | (wchar_t)idx;
 
 	return (0);
+}
+
+static __inline int
+/*ARGSUSED*/
+_citrus_EUC_stdenc_get_state_desc_generic(_EUCEncodingInfo * __restrict ei,
+					  _EUCState * __restrict psenc,
+					  int * __restrict rstate)
+{
+
+	if (psenc->chlen == 0)
+		*rstate = _STDENC_SDGEN_INITIAL;
+	else
+		*rstate = _STDENC_SDGEN_INCOMPLETE_CHAR;
+
+	return 0;
 }
 
 static int

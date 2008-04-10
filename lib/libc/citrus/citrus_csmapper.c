@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_csmapper.c,v 1.5 2004/12/30 05:01:50 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_csmapper.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_csmapper.c,v 1.8 2008/02/09 14:56:20 junyoung Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_csmapper.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -139,8 +139,7 @@ find_best_pivot_pvdb(const char *src, const char *dst, char *pivot,
 		ret = open_subdb(&db3, db1, buf);
 		if (ret)
 			goto quit3;
-		ret = _db_lookup_by_s(db3, dst, &r2, NULL);
-		if (ret)
+		if (_db_lookup_by_s(db3, dst, &r2, NULL) != 0)
 			goto quit4;
 		/* r2: norm among pivot and dst */
 		ret = get32(&r2, &val32);
@@ -349,6 +348,8 @@ _citrus_csmapper_open(struct _citrus_csmapper * __restrict * __restrict rcsm,
 	char buf1[PATH_MAX], buf2[PATH_MAX], key[PATH_MAX], pivot[PATH_MAX];
 	const char *realsrc, *realdst;
 	unsigned long norm;
+
+	norm = 0;	/* XXX gcc */
 
 	ret = _citrus_mapper_create_area(&maparea, _PATH_CSMAPPER);
 	if (ret)

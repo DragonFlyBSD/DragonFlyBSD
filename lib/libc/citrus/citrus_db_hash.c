@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_db_hash.c,v 1.4 2004/01/02 21:49:35 itojun Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_db_hash.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_db_hash.c,v 1.5 2008/02/09 14:56:20 junyoung Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_db_hash.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 
 /*-

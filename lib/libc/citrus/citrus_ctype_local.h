@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_ctype_local.h,v 1.2 2003/03/05 20:18:15 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_ctype_local.h,v 1.2 2005/07/04 08:02:43 joerg Exp $ */
+/* $NetBSD: citrus_ctype_local.h,v 1.3 2008/02/09 14:56:20 junyoung Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_ctype_local.h,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
 
 
 /*-

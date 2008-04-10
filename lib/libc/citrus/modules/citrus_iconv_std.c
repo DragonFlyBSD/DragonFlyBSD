@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/modules/citrus_iconv_std.c,v 1.10 2005/02/11 06:21:21 simonb Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/modules/citrus_iconv_std.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: citrus_iconv_std.c,v 1.15 2006/11/13 19:08:19 tnozaki Exp $ */
+/* $DragonFly: src/lib/libc/citrus/modules/citrus_iconv_std.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -131,6 +131,20 @@ put_state_resetx(struct _citrus_iconv_std_encoding *se,
 	return _stdenc_put_state_reset(se->se_handle, s, n, se->se_ps, nresult);
 }
 
+static __inline int
+get_state_desc_gen(struct _citrus_iconv_std_encoding *se, int *rstate)
+{
+	int ret;
+	struct _stdenc_state_desc ssd;
+
+	ret = _stdenc_get_state_desc(se->se_handle, se->se_ps,
+				     _STDENC_SDID_GENERIC, &ssd);
+	if (!ret)
+		*rstate = ssd.u.generic.state;
+
+	return ret;
+}
+
 /*
  * init encoding context
  */
@@ -138,7 +152,7 @@ static int
 init_encoding(struct _citrus_iconv_std_encoding *se, struct _stdenc *cs,
 	      void *ps1, void *ps2)
 {
-	int ret;
+	int ret = -1;
 
 	se->se_handle = cs;
 	se->se_ps = ps1;
@@ -451,7 +465,7 @@ _citrus_iconv_std_iconv_convert(struct _citrus_iconv * __restrict cv,
 	struct _citrus_iconv_std_context *sc = cv->cv_closure;
 	_index_t idx;
 	_csid_t csid;
-	int ret;
+	int ret, state;
 	size_t szrin, szrout;
 	size_t inval;
 	const char *tmpin;
@@ -488,8 +502,12 @@ _citrus_iconv_std_iconv_convert(struct _citrus_iconv * __restrict cv,
 
 	/* normal case */
 	for (;;) {
-		if (*inbytes==0)
-			break;
+		if (*inbytes==0) {
+			ret = get_state_desc_gen(&sc->sc_src_encoding, &state);
+			if (state == _STDENC_SDGEN_INITIAL ||
+			    state == _STDENC_SDGEN_STABLE)
+				break;
+		}
 
 		/* save the encoding states for the error recovery */
 		save_encoding_state(&sc->sc_src_encoding);
@@ -505,6 +523,17 @@ _citrus_iconv_std_iconv_convert(struct _citrus_iconv * __restrict cv,
 
 		if (szrin == (size_t)-2) {
 			/* incompleted character */
+			ret = get_state_desc_gen(&sc->sc_src_encoding, &state);
+			if (ret) {
+				ret = EINVAL;
+				goto err;
+			}
+			switch (state) {
+			case _STDENC_SDGEN_INITIAL:
+			case _STDENC_SDGEN_STABLE:
+				/* fetch shift sequences only. */
+				goto next;
+			}
 			ret = EINVAL;
 			goto err;
 		}

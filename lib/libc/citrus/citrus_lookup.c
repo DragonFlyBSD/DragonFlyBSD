@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_lookup.c,v 1.3 2004/07/21 14:16:34 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_lookup.c,v 1.2 2005/03/16 06:13:24 joerg Exp $ */
+/* $NetBSD: citrus_lookup.c,v 1.5 2006/03/27 01:09:11 christos Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_lookup.c,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -321,6 +321,7 @@ _citrus_lookup_seq_close(struct _citrus_lookup *cl)
 {
 	free(cl->cl_key);
 	(*cl->cl_close)(cl);
+	free(cl);
 }
 
 char *

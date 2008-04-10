@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_none.c,v 1.12 2004/01/18 03:57:30 yamt Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_none.c,v 1.4 2005/07/04 08:02:43 joerg Exp $ */
+/* $NetBSD: citrus_none.c,v 1.17 2005/12/02 11:14:20 yamt Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_none.c,v 1.5 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -247,7 +247,7 @@ _citrus_NONE_ctype_mbtowc(void * __restrict cl __unused,
 		return (0);
 	}
 
-	*pwc = (wchar_t)*s;
+	*pwc = (wchar_t)(unsigned char)*s;
 	*nresult = *s == '\0' ? 0 : 1;
 
 	return (0);
@@ -513,4 +513,24 @@ _citrus_NONE_stdenc_put_state_reset(struct _citrus_stdenc * __restrict ce __unus
 	*nresult = 0;
 
 	return (0);
+}
+
+static int
+/*ARGSUSED*/
+_citrus_NONE_stdenc_get_state_desc(struct _stdenc * __restrict ce,
+				   void * __restrict ps,
+				   int id,
+				   struct _stdenc_state_desc * __restrict d)
+{
+	int ret = 0;
+
+	switch (id) {
+	case _STDENC_SDID_GENERIC:
+		d->u.generic.state = _STDENC_SDGEN_INITIAL;
+		break;
+	default:
+		ret = EOPNOTSUPP;
+	}
+
+	return ret;
 }

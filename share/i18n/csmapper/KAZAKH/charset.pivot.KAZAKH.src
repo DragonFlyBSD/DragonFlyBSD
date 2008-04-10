@@ -1,0 +1,7 @@
+# $NetBSD: charset.pivot.KAZAKH.src,v 1.1 2007/03/13 16:34:38 tnozaki Exp $
+# $DragonFly: src/share/i18n/csmapper/KAZAKH/charset.pivot.KAZAKH.src,v 1.1 2008/04/10 10:21:10 hasso Exp $
+
+KZ1048			UCS			1
+PTCP154			UCS			1
+UCS			KZ1048			1
+UCS			PTCP154			1

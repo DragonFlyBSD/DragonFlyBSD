@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/i18n_module/Makefile.inc,v 1.2 2005/07/28 19:43:55 joerg Exp $
+# $DragonFly: src/lib/i18n_module/Makefile.inc,v 1.3 2008/04/10 10:21:00 hasso Exp $
 
 NOPROFILE=	1
 .include "../Makefile.shlib"
@@ -17,4 +17,4 @@ CITRUSDIR=	${.CURDIR}/../../libc/citrus
 CFLAGS+=	-I${CITRUSDIR}
 CFLAGS+=	-DLOCALEMOD_MAJOR=${MODULE_SHLIB_MAJOR}
 
-.PATH: ${CITRUSDIR}/modules
+.PATH: ${CITRUSDIR} ${CITRUSDIR}/modules 

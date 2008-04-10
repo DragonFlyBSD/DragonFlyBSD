@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.52 2008/01/17 07:39:00 swildner Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.53 2008/04/10 10:21:00 hasso Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -261,11 +261,21 @@
         ..
         i18n
             csmapper
+                APPLE
+                ..
+                AST
+                ..
+                BIG5
+                ..
+                CNS
+                ..
                 CP
                 ..
                 EBCDIC
                 ..
                 GB
+                ..
+                GEORGIAN
                 ..
                 ISO-8859
                 ..
@@ -273,17 +283,35 @@
                 ..
                 JIS
                 ..
+                KAZAKH
+                ..
+                KOI
+                ..
                 KS
                 ..
                 MISC
                 ..
+                TCVN
+                ..
             ..
             esdb
+                APPLE
+                ..
+                AST
+                ..
+                BIG5
+                ..
                 CP
+                ..
+                DEC
                 ..
                 EBCDIC
                 ..
                 EUC
+                ..
+                GB
+                ..
+                GEORGIAN
                 ..
                 ISO-2022
                 ..
@@ -291,7 +319,13 @@
                 ..
                 ISO646
                 ..
+                KAZAKH
+                ..
+                KOI
+                ..
                 MISC
+                ..
+                TCVN
                 ..
                 UTF
                 ..

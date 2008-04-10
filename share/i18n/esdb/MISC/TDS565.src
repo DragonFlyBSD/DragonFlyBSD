@@ -1,0 +1,8 @@
+# $NetBSD: TDS565.src,v 1.1 2006/11/29 15:45:26 tnozaki Exp $
+# $DragonFly: src/share/i18n/esdb/MISC/TDS565.src,v 1.1 2008/04/10 10:21:13 hasso Exp $
+
+NAME		"TDS565"
+ENCODING	"NONE"
+VARIABLE	"none"
+DEFCSID		"TDS565"		0
+INVALID		0x3F # '?'

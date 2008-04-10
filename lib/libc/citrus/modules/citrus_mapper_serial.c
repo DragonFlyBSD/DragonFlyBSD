@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/modules/citrus_mapper_serial.c,v 1.2 2003/07/12 15:39:20 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/modules/citrus_mapper_serial.c,v 1.2 2005/07/04 08:52:56 joerg Exp $ */
+/* $NetBSD: src/lib/libc/citrus/modules/citrus_mapper_serial.c,v 1.2 2003/07/12 15:39:20 tshiozak Exp $ */
+/* $DragonFly: src/lib/libc/citrus/modules/citrus_mapper_serial.c,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,

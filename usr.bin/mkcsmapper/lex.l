@@ -1,5 +1,5 @@
-/*	$NetBSD: src/usr.bin/mkcsmapper/lex.l,v 1.3 2003/10/27 00:12:43 lukem Exp $	*/
-/*	$DragonFly: src/usr.bin/mkcsmapper/lex.l,v 1.2 2006/09/09 23:24:43 pavalos Exp $ */
+/*	$NetBSD: lex.l,v 1.4 2006/02/09 22:03:15 dogcow Exp $	*/
+/*	$DragonFly: src/usr.bin/mkcsmapper/lex.l,v 1.3 2008/04/10 10:21:13 hasso Exp $ */
 
 %{
 /*-
@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/endian.h>
+#include <machine/endian.h>
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>

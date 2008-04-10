@@ -1,6 +1,10 @@
-# $NetBSD: src/share/i18n/esdb/ISO-2022/ISO-2022.part,v 1.3 2005/02/10 18:33:00 tnozaki Exp $
-# $DragonFly: src/share/i18n/esdb/ISO-2022/ISO-2022.part,v 1.1 2005/03/10 16:20:15 joerg Exp $
+# $NetBSD: ISO-2022.part,v 1.7 2007/03/05 16:58:35 tnozaki Exp $
+# $DragonFly: src/share/i18n/esdb/ISO-2022/ISO-2022.part,v 1.2 2008/04/10 10:21:12 hasso Exp $
 
+CN
+CN-EXT
 JP
+JP-1
 JP-2
+JP-2004
 KR

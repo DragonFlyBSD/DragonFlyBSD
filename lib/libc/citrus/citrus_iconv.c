@@ -1,5 +1,5 @@
-/*	$NetBSD: src/lib/libc/citrus/citrus_iconv.c,v 1.6 2004/12/30 05:03:48 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_iconv.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/* $NetBSD: src/lib/libc/citrus/citrus_iconv.c,v 1.6 2004/12/30 05:03:48 christos Exp $ */
+/* $DragonFly: src/lib/libc/citrus/citrus_iconv.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 
 /*-
