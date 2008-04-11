@@ -3,8 +3,8 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.29 2008/04/11 07:31:05 dillon Exp $
-.Dd March 22, 2008
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.30 2008/04/11 18:27:44 swildner Exp $
+.Dd April 11, 2008
 .Dt CPDUP 1
 .Os
 .Sh NAME
@@ -20,7 +20,8 @@
 .Op Fl s0
 .Op Fl i0
 .Op Fl j0
-.Op Fl p<num>
+.Op Fl l
+.Op Fl p Ar number
 .Op Fl q
 .Op Fl o
 .Op Fl m
@@ -107,8 +108,10 @@ Do not request confirmation when removing something.
 Do not try to recreate CHR or BLK devices.
 .It Fl l
 Line buffer verbose output.
-.It Fl p<number>
-Use threaded transactions with up to the specified number of threads.
+.It Fl p Ar number
+Use threaded transactions with up to the specified
+.Ar number
+of threads.
 This typically improves operation when a remote host specification is
 given.
 .It Fl q
