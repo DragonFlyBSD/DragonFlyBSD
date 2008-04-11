@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.20 2008/04/09 21:41:58 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.21 2008/04/11 11:18:16 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -574,3 +574,17 @@ TO_REMOVE+=/usr/share/man/cat9/mono_time.9
 TO_REMOVE+=/usr/share/man/man9/mono_time.9
 TO_REMOVE+=/usr/share/man/cat9/runtime.9
 TO_REMOVE+=/usr/share/man/man9/runtime.9
+TO_REMOVE+=/usr/share/i18n/csmapper/CP/CP932EXT%UCS.mps
+TO_REMOVE+=/usr/share/i18n/csmapper/CP/UCS%CP932EXT.mps
+TO_REMOVE+=/usr/share/i18n/csmapper/KS/KSC5601%UCS.mps
+TO_REMOVE+=/usr/share/i18n/csmapper/KS/UCS%KSC5601.mps
+TO_REMOVE+=/usr/share/i18n/csmapper/MISC/Big5%UCS.mps
+TO_REMOVE+=/usr/share/i18n/csmapper/MISC/KOI8-R%UCS.mps
+TO_REMOVE+=/usr/share/i18n/csmapper/MISC/KOI8-U%UCS.mps
+TO_REMOVE+=/usr/share/i18n/csmapper/MISC/UCS%Big5.mps
+TO_REMOVE+=/usr/share/i18n/csmapper/MISC/UCS%KOI8-R.mps
+TO_REMOVE+=/usr/share/i18n/csmapper/MISC/UCS%KOI8-U.mps
+TO_REMOVE+=/usr/share/i18n/esdb/MISC/Big5.esdb
+TO_REMOVE+=/usr/share/i18n/esdb/MISC/GB18030.esdb
+TO_REMOVE+=/usr/share/i18n/esdb/MISC/KOI8-R.esdb
+TO_REMOVE+=/usr/share/i18n/esdb/MISC/KOI8-U.esdb
