@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.conf.5,v 1.291 2004/02/04 19:38:30 jmc Exp $
-.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.12 2008/04/06 21:12:40 dillon Exp $
+.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.13 2008/04/11 18:21:49 dillon Exp $
 .\"
 .\" Copyright (c) 2002, Daniel Hartmeier
 .\" All rights reserved.
@@ -415,6 +415,17 @@ For example:
 set optimization aggressive
 .Ed
 .Pp
+.It Ar set keep-policy keep_rule
+The
+.Ar keep-policy
+option sets the default state retention policy for all pass rules.
+Any keep/modulate/synproxy state directives in a pass rule will overriide
+the default.
+For example:
+.Bd -literal -offset indent
+set keep-policy keep state (pickups)
+.Ed
+.Pp
 .It Ar set block-policy
 The
 .Ar block-policy
@@ -718,6 +729,11 @@ In order for
 to function properly,
 .Ar keep state
 must be enabled on most of the rule sets that route packets to the queue.
+Any rules for which keep state is not enabled are added to the end of the
+queue.  If you do not wish keep state to do TCP sequence space checks use
+.Ar keep state ( no-pickups )
+or
+.Ar keep state ( hash-only ) .
 .Pp
 Packet selection operates as follows:
 The queues are scanned from highest priority to lowest priority.
@@ -1727,6 +1743,13 @@ Instead of passing all traffic to port 25, for instance, it is possible
 to pass only the initial packet, and then begin to keep state.
 Subsequent traffic will flow because the filter is aware of the connection.
 .Pp
+You can turn on stateful inspection on all pass rules by default using
+the
+.Ar set keep-policy
+directive.  Any pass rule may specify or override the stateful inspection
+default, including turning it off by specifying
+.Ar no state .
+.Pp
 If a packet matches a
 .Ar pass ... keep state
 rule, the filter creates a state for this connection and automatically
@@ -1807,7 +1830,15 @@ packets.
 This will cause
 .Xr pf 4
 to synchronize to existing connections, for instance
-if one flushes the state table.
+if one flushes the state table.  If you do this you must use the
+.Ar pickups
+option or
+.Ar keep state
+will blow up on TCP connections with window scaling turned on.  The
+.Ar pickups
+option tells keep state to skip sequence space checks on connections
+for which no window scaling information is known (meaning it didn't see
+the SYN from both directions).
 .Pp
 For UDP, which is stateless by nature,
 .Ar keep state
@@ -1966,7 +1997,35 @@ have state table entries.
 .It Ar max-src-states
 Limits the maximum number of simultaneous state entries that a single
 source address can create with this rule.
+.It Ar pickups
+Specify that mid-stream pickups are to be allowed.  The default
+is to NOT allow mid-stream pickups and implies flags S/SA for TCP
+connections.   If pickups are enabled, flags S/SA are not implied
+for TCP connections and state can be created for any packet.
+.Pp
+The implied flags parameters need not be specified in either case
+unless you explicitly wish to override them, which also allows
+you to roll-up several protocols into a single rule.
+.Pp
+Certain validations are disabled when mid-stream pickups occur.
+For example, the window scaling options are not known for
+TCP pickups and sequence space comparisons must be disabled.
+.Pp
+This does not effect state representing fully quantified
+connections (for which the SYN/SYN-ACK passed through the routing
+engine).  Those connections continue to be fully validated.
+.It Ar hash-only
+Specify that mid-stream pickups are to be allowed, but unconditionally
+disables sequence space checks even if full state is available.
+.It Ar no-pickups
+Specify that mid-stream pickups are not to be allowed.  This is the
+default and this keyword does not normally need to be specified.
+However, if you are concerned about rule set portability then 
+specifying this keyword will at least result in an error from pfctl
+if it doesn't understand the feature.   TCP flags of S/SA are implied
+and do not need to explicitly specified.
 .El
+.Pp
 For a list of all valid timeout names, see
 .Sx OPTIONS
 above.
@@ -2501,6 +2560,24 @@ pass in on $ext_if proto tcp from any to 157.161.48.183 port >= 49152 \e
 block in on $ext_if proto tcp from any os {"Windows 95", "Windows 98"} \e
       to any port smtp
 
+# Using the pickup options to keep/modulate/synproxy state
+#
+# no-pickups	(default) Do not allow connections to be picked up in the
+#		middle.  Implies flags S/SA (the 'no-pickups' option need
+#		not be specified, it is the default).
+#
+# pickups	Allow connections to be picked up in the middle, even if
+#		no window scaling information is known.  Such connections
+#		will disable sequence space checks.  Implies no flag
+#		restrictions.
+#		
+# hash-only	Do not fail packets on sequence space checks.  Implies no
+#		flag restrictions.
+
+pass in on $ext_if proto tcp ... keep state (no-pickups)
+pass in on $ext_if proto tcp ... keep state (pickups)
+pass in on $ext_if proto tcp ... keep state (hash-only)
+
 # Packet Tagging
 
 # three interfaces: $int_if, $ext_if, and $wifi_if (wireless). NAT is
@@ -2678,7 +2755,8 @@ state-opts     = state-opt [ [ "," ] state-opts ]
 state-opt      = ( "max" number | "no-sync" | timeout |
                  "source-track" [ ( "rule" | "global" ) ] |
 		 "max-src-nodes" number | "max-src-states" number |
-                 "if-bound" | "group-bound" | "floating" )
+                 "if-bound" | "group-bound" | "floating" |
+		 "pickups" | "no-pickups" | "hash-only" )
 
 fragmentation  = [ "fragment reassemble" | "fragment crop" |
                  "fragment drop-ovl" ]

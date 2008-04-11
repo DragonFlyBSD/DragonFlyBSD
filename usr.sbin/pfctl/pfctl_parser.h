@@ -1,5 +1,5 @@
 /*	$OpenBSD: pfctl_parser.h,v 1.74 2004/02/10 22:26:56 dhartmei Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_parser.h,v 1.2 2008/04/06 18:58:14 dillon Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pfctl_parser.h,v 1.3 2008/04/11 18:21:49 dillon Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -204,7 +204,7 @@ int	pfctl_set_hostid(struct pfctl *, u_int32_t);
 int	pfctl_set_debug(struct pfctl *, char *);
 
 int	parse_rules(FILE *, struct pfctl *);
-int	parse_flags(char *);
+int	parse_flags(const char *);
 int	pfctl_load_anchors(int, int, struct pfr_buffer *);
 
 void	print_pool(struct pf_pool *, u_int16_t, u_int16_t, sa_family_t, int);

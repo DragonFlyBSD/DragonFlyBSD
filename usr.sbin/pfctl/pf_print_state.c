@@ -1,5 +1,5 @@
 /*	$OpenBSD: pf_print_state.c,v 1.39 2004/02/10 17:48:08 henning Exp $	*/
-/*	$DragonFly: src/usr.sbin/pfctl/pf_print_state.c,v 1.2 2005/02/11 22:31:45 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pf_print_state.c,v 1.3 2008/04/11 18:21:49 dillon Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -286,8 +286,19 @@ print_state(struct pf_state *s, int opts)
 		printf("\n");
 	}
 	if (opts & PF_OPT_VERBOSE2) {
-		printf("   id: %016llx creatorid: %08x\n",
+		printf("   id: %016llx creatorid: %08x",
 		    be64toh(s->id), ntohl(s->creatorid));
+
+		printf(" synchronization: ");
+		if ((s->sync_flags & PFSTATE_GOT_SYN_MASK) ==
+		    PFSTATE_GOT_SYN_MASK) {
+			printf("good");
+		} else if (s->sync_flags & PFSTATE_GOT_SYN_MASK) {
+			printf("incomplete");
+		} else {
+			printf("indeterminate");
+		}
+		printf("\n");
 	}
 }
 

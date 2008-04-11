@@ -1,5 +1,5 @@
 /*	$OpenBSD: pfctl_parser.c,v 1.194.2.1 2004/05/05 04:00:50 brad Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_parser.c,v 1.2 2008/04/06 21:12:40 dillon Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pfctl_parser.c,v 1.3 2008/04/11 18:21:49 dillon Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -799,6 +799,8 @@ print_rule(struct pf_rule *r, int verbose)
 	opts = 0;
 	if (r->max_states || r->max_src_nodes || r->max_src_states)
 		opts = 1;
+	if (r->pickup_mode)
+		opts = 1;
 	if (r->rule_flag & PFRULE_NOSYNC)
 		opts = 1;
 	if (r->rule_flag & PFRULE_SRCTRACK)
@@ -810,7 +812,28 @@ print_rule(struct pf_rule *r, int verbose)
 			opts = 1;
 	if (opts) {
 		printf(" (");
+		switch(r->pickup_mode) {
+		case PF_PICKUPS_UNSPECIFIED:
+			break;
+		case PF_PICKUPS_DISABLED:
+			printf("no-pickups");
+			opts = 0;
+			break;
+		case PF_PICKUPS_HASHONLY:
+			printf("hash-only");
+			opts = 0;
+			break;
+		case PF_PICKUPS_ENABLED:
+			printf("pickups");
+			opts = 0;
+			break;
+		default:
+			printf("unknown-pickups-mode-%d", r->pickup_mode);
+			break;
+		}
 		if (r->max_states) {
+			if (!opts)
+				printf(", ");
 			printf("max %u", r->max_states);
 			opts = 0;
 		}
@@ -946,9 +969,9 @@ print_tabledef(const char *name, int flags, int addrs,
 }
 
 int
-parse_flags(char *s)
+parse_flags(const char *s)
 {
-	char		*p, *q;
+	const char	*p, *q;
 	u_int8_t	 f = 0;
 
 	for (p = s; *p; p++) {

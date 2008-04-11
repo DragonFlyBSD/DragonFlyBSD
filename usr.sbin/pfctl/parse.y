@@ -1,5 +1,5 @@
 /*	$OpenBSD: parse.y,v 1.449 2004/03/20 23:20:20 david Exp $	*/
-/*	$DragonFly: src/usr.sbin/pfctl/parse.y,v 1.4 2008/04/06 21:12:40 dillon Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/parse.y,v 1.5 2008/04/11 18:21:49 dillon Exp $ */
 
 /*
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
@@ -74,6 +74,8 @@ static u_int16_t	 returnicmp6default =
 static int		 blockpolicy = PFRULE_DROP;
 static int		 require_order = 1;
 static int		 default_statelock;
+static int		 default_keeppolicy_action;
+static struct node_state_opt *default_keeppolicy_options;
 
 enum {
 	PFCTL_STATE_NONE,
@@ -121,7 +123,8 @@ struct node_icmp {
 
 enum	{ PF_STATE_OPT_MAX, PF_STATE_OPT_NOSYNC, PF_STATE_OPT_SRCTRACK,
 	    PF_STATE_OPT_MAX_SRC_STATES, PF_STATE_OPT_MAX_SRC_NODES,
-	    PF_STATE_OPT_STATELOCK, PF_STATE_OPT_TIMEOUT };
+	    PF_STATE_OPT_STATELOCK, PF_STATE_OPT_TIMEOUT,
+	    PF_STATE_OPT_PICKUPS };
 
 enum	{ PF_SRCTRACK_NONE, PF_SRCTRACK, PF_SRCTRACK_GLOBAL, PF_SRCTRACK_RULE };
 
@@ -132,6 +135,7 @@ struct node_state_opt {
 		u_int32_t	 max_src_states;
 		u_int32_t	 max_src_nodes;
 		u_int8_t	 src_track;
+		u_int8_t	 pickup_mode;
 		u_int32_t	 statelock;
 		struct {
 			int		number;
@@ -410,8 +414,9 @@ extern char	*infile;
 %token	ALTQ CBQ PRIQ HFSC FAIRQ BANDWIDTH TBRSIZE LINKSHARE REALTIME UPPERLIMIT
 %token	QUEUE PRIORITY QLIMIT HOGS BUCKETS
 %token	LOAD
+%token  PICKUPS NOPICKUPS HASHONLY
 %token	STICKYADDRESS MAXSRCSTATES MAXSRCNODES SOURCETRACK GLOBAL RULE
-%token	TAGGED TAG IFBOUND GRBOUND FLOATING STATEPOLICY
+%token	TAGGED TAG IFBOUND GRBOUND FLOATING STATEPOLICY KEEPPOLICY
 %token	<v.string>		STRING
 %token	<v.i>			PORTBINARY
 %type	<v.interface>		interface if_list if_item_not if_item
@@ -567,6 +572,12 @@ option		: SET OPTIMIZATION STRING		{
 					break;
 				}
 			default_statelock = $3;
+		}
+		| SET KEEPPOLICY keep {
+			if (pf->opts & PF_OPT_VERBOSE)
+				printf("A default keeppolicy was set\n");
+			default_keeppolicy_action  = $3.action;
+			default_keeppolicy_options = $3.options;
 		}
 		| SET DEBUG STRING {
 			if (check_rulestate(PFCTL_STATE_OPTION)) {
@@ -1523,6 +1534,7 @@ pfrule		: action dir logquick interface route af proto fromto
 			struct node_proto	*proto;
 			int			 srctrack = 0;
 			int			 statelock = 0;
+			int			 dofree;
 
 			if (check_rulestate(PFCTL_STATE_FILTER))
 				YYERROR;
@@ -1598,8 +1610,19 @@ pfrule		: action dir logquick interface route af proto fromto
 			}
 
 			r.tos = $9.tos;
-			r.keep_state = $9.keep.action;
-			o = $9.keep.options;
+
+			if (filter_opts.marker & FOM_KEEP) {
+				r.keep_state = $9.keep.action;
+				o = $9.keep.options;
+				dofree = 1;
+			} else if (r.action == PF_PASS) {
+				r.keep_state = default_keeppolicy_action;
+				o = default_keeppolicy_options;
+				dofree = 0;
+			} else {
+				o = NULL;
+				dofree = 0;
+			}
 			while (o) {
 				struct node_state_opt	*p = o;
 
@@ -1681,10 +1704,39 @@ pfrule		: action dir logquick interface route af proto fromto
 					}
 					r.timeout[o->data.timeout.number] =
 					    o->data.timeout.seconds;
+					break;
+				case PF_STATE_OPT_PICKUPS:
+					r.pickup_mode = o->data.pickup_mode;
+					break;
 				}
 				o = o->next;
-				free(p);
+				if (dofree)
+					free(p);
 			}
+
+			/*
+			 * 'flags S/SA' by default on stateful rules if
+			 * the pickup mode is unspecified or disabled.
+			 *
+			 * If the pickup mode is enabled or hashonly we
+			 * want to create state regardless of the flags.
+			 */
+			if (!r.action && !r.flags && !r.flagset &&
+			    !$9.fragment && !($9.marker & FOM_FLAGS) &&
+			    r.keep_state) {
+				switch(r.pickup_mode) {
+				case PF_PICKUPS_UNSPECIFIED:
+				case PF_PICKUPS_DISABLED:
+					r.flags = parse_flags("S");
+					r.flagset = parse_flags("SA");
+					break;
+				case PF_PICKUPS_HASHONLY:
+				case PF_PICKUPS_ENABLED:
+					/* no flag restrictions */
+					break;
+				}
+			}
+
 			if (srctrack) {
 				if (srctrack == PF_SRCTRACK_GLOBAL &&
 				    r.max_src_nodes) {
@@ -2767,7 +2819,11 @@ statelock	: IFBOUND {
 		}
 		;
 
-keep		: KEEP STATE state_opt_spec	{
+keep		: NO STATE			{
+			$$.action = 0;
+			$$.options = NULL;
+		}
+		| KEEP STATE state_opt_spec	{
 			$$.action = PF_STATE_NORMAL;
 			$$.options = $3;
 		}
@@ -2825,6 +2881,33 @@ state_opt_item	: MAXIMUM number		{
 				err(1, "state_opt_item: calloc");
 			$$->type = PF_STATE_OPT_MAX_SRC_NODES;
 			$$->data.max_src_nodes = $2;
+			$$->next = NULL;
+			$$->tail = $$;
+		}
+		| PICKUPS 				{
+			$$ = calloc(1, sizeof(struct node_state_opt));
+			if ($$ == NULL)
+				err(1, "state_opt_item: calloc");
+			$$->type = PF_STATE_OPT_PICKUPS;
+			$$->data.pickup_mode = PF_PICKUPS_ENABLED;
+			$$->next = NULL;
+			$$->tail = $$;
+		}
+		| NOPICKUPS 				{
+			$$ = calloc(1, sizeof(struct node_state_opt));
+			if ($$ == NULL)
+				err(1, "state_opt_item: calloc");
+			$$->type = PF_STATE_OPT_PICKUPS;
+			$$->data.pickup_mode = PF_PICKUPS_DISABLED;
+			$$->next = NULL;
+			$$->tail = $$;
+		}
+		| HASHONLY 				{
+			$$ = calloc(1, sizeof(struct node_state_opt));
+			if ($$ == NULL)
+				err(1, "state_opt_item: calloc");
+			$$->type = PF_STATE_OPT_PICKUPS;
+			$$->data.pickup_mode = PF_PICKUPS_HASHONLY;
 			$$->next = NULL;
 			$$->tail = $$;
 		}
@@ -4425,6 +4508,7 @@ lookup(char *s)
 		{ "global",		GLOBAL},
 		{ "group",		GROUP},
 		{ "group-bound",	GRBOUND},
+		{ "hash-only",		HASHONLY},
 		{ "hfsc",		HFSC},
 		{ "hogs",		HOGS},
 		{ "hostid",		HOSTID},
@@ -4435,6 +4519,7 @@ lookup(char *s)
 		{ "inet",		INET},
 		{ "inet6",		INET6},
 		{ "keep",		KEEP},
+		{ "keep-policy",	KEEPPOLICY},
 		{ "label",		LABEL},
 		{ "limit",		LIMIT},
 		{ "linkshare",		LINKSHARE},
@@ -4452,6 +4537,7 @@ lookup(char *s)
 		{ "nat-anchor",		NATANCHOR},
 		{ "no",			NO},
 		{ "no-df",		NODF},
+		{ "no-pickups",		NOPICKUPS},
 		{ "no-route",		NOROUTE},
 		{ "no-sync",		NOSYNC},
 		{ "on",			ON},
@@ -4459,6 +4545,7 @@ lookup(char *s)
 		{ "os",			OS},
 		{ "out",		OUT},
 		{ "pass",		PASS},
+		{ "pickups",		PICKUPS},
 		{ "port",		PORT},
 		{ "priority",		PRIORITY},
 		{ "priq",		PRIQ},

@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.17 2008/04/07 00:43:44 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.18 2008/04/11 18:21:48 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -322,15 +322,16 @@ pf_src_compare(struct pf_src_node *a, struct pf_src_node *b)
 	return (0);
 }
 
-static
-int
+u_int32_t
 pf_state_hash(struct pf_state *s)
 {
-	int hv = (intptr_t)s / sizeof(*s);
+	u_int32_t hv = (intptr_t)s / sizeof(*s);
 
 	hv ^= crc32(&s->lan, sizeof(s->lan));
 	hv ^= crc32(&s->gwy, sizeof(s->gwy));
 	hv ^= crc32(&s->ext, sizeof(s->ext));
+	if (hv == 0)	/* disallow 0 */
+		hv = 1;
 	return(hv);
 }
 
@@ -2724,8 +2725,11 @@ cleanup:
 			}
 		}
 
+		s->hash = pf_state_hash(s);
 		s->src.seqlo = ntohl(th->th_seq);
 		s->src.seqhi = s->src.seqlo + len + 1;
+		s->pickup_mode = r->pickup_mode;
+
 		if ((th->th_flags & (TH_SYN|TH_ACK)) == TH_SYN &&
 		    r->keep_state == PF_STATE_MODULATE) {
 			/* Generate sequence number modulator */
@@ -2736,11 +2740,30 @@ cleanup:
 			rewrite = 1;
 		} else
 			s->src.seqdiff = 0;
-		s->src.max_win = MAX(ntohs(th->th_win), 1);
+
+		/*
+		 * WARNING!  NetBSD patched this to not scale max_win up
+		 * on the initial SYN, but they failed to correct the code
+		 * in pf_test_state_tcp() that 'undid' the scaling, and they
+		 * failed to remove the scale factor on successful window
+		 * scale negotiation (and doing so would be difficult in the
+		 * face of retransmission, without adding more flags to the
+		 * state structure).
+		 * 
+		 * After discussions with Daniel Hartmeier and Max Laier
+		 * I've decided not to apply the NetBSD patch.
+		 * 
+		 * The worst that happens is that the undo code on window
+		 * scale negotiation failures will produce a larger
+		 * max_win then actual.
+		 */
 		if (th->th_flags & TH_SYN) {
 			s->src.seqhi++;
 			s->src.wscale = pf_get_wscale(m, off, th->th_off, af);
-		} else if (s->src.wscale & PF_WSCALE_MASK) {
+			s->sync_flags |= PFSTATE_GOT_SYN1;
+		}
+		s->src.max_win = MAX(ntohs(th->th_win), 1);
+		if (s->src.wscale & PF_WSCALE_MASK) {
 			/* Remove scale factor from initial window */
 			u_int win = s->src.max_win;
 			win += 1 << (s->src.wscale & PF_WSCALE_MASK);
@@ -3053,6 +3076,7 @@ cleanup:
 				s->gwy.port = s->lan.port;
 			}
 		}
+		s->hash = pf_state_hash(s);
 		s->src.state = PFUDPS_SINGLE;
 		s->dst.state = PFUDPS_NO_TRAFFIC;
 		s->creation = time_second;
@@ -3328,6 +3352,7 @@ cleanup:
 				PF_ACPY(&s->gwy.addr, &s->lan.addr, af);
 			s->gwy.port = icmpid;
 		}
+		s->hash = pf_state_hash(s);
 		s->creation = time_second;
 		s->expire = time_second;
 		s->timeout = PFTM_ICMP_FIRST_PACKET;
@@ -3582,6 +3607,7 @@ cleanup:
 			else
 				PF_ACPY(&s->gwy.addr, &s->lan.addr, af);
 		}
+		s->hash = pf_state_hash(s);
 		s->src.state = PFOTHERS_SINGLE;
 		s->dst.state = PFOTHERS_NO_TRAFFIC;
 		s->creation = time_second;
@@ -3638,9 +3664,17 @@ pf_test_fragment(struct pf_rule **rm, int direction, struct pfi_kif *kif,
 			r = r->skip[PF_SKIP_DST_ADDR].ptr;
 		else if (r->tos && !(r->tos & pd->tos))
 			r = TAILQ_NEXT(r, entries);
-		else if (r->src.port_op || r->dst.port_op ||
-		    r->flagset || r->type || r->code ||
-		    r->os_fingerprint != PF_OSFP_ANY)
+		else if (r->os_fingerprint != PF_OSFP_ANY)
+			r = TAILQ_NEXT(r, entries);
+		else if (pd->proto == IPPROTO_UDP &&
+		    (r->src.port_op || r->dst.port_op))
+			r = TAILQ_NEXT(r, entries);
+		else if (pd->proto == IPPROTO_TCP &&
+		    (r->src.port_op || r->dst.port_op || r->flagset))
+			r = TAILQ_NEXT(r, entries);
+		else if ((pd->proto == IPPROTO_ICMP ||
+		    pd->proto == IPPROTO_ICMPV6) &&
+		    (r->type || r->code))
 			r = TAILQ_NEXT(r, entries);
 		else if (r->prob && r->prob <= karc4random())
 			r = TAILQ_NEXT(r, entries);
@@ -3804,8 +3838,10 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 
 	seq = ntohl(th->th_seq);
 	if (src->seqlo == 0) {
-		/* First packet from this end. Set its state */
-
+		/*
+		 * First packet from this end.  The other end has already set
+		 * the seqlo field.  Set its state.
+		 */
 		if ((pd->flags & PFDESC_TCP_NORM || dst->scrub) &&
 		    src->scrub == NULL) {
 			if (pf_normalize_tcp_init(m, off, pd, th, src, dst)) {
@@ -3830,6 +3866,7 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 		end = seq + pd->p_len;
 		if (th->th_flags & TH_SYN) {
 			end++;
+			(*state)->sync_flags |= PFSTATE_GOT_SYN2;
 			if (dst->wscale & PF_WSCALE_FLAG) {
 				src->wscale = pf_get_wscale(m, off, th->th_off,
 				    pd->af);
@@ -3841,7 +3878,14 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 					    >> sws;
 					dws = dst->wscale & PF_WSCALE_MASK;
 				} else {
-					/* fixup other window */
+					/*
+					 * Fixup other window.  Undo the
+					 * normalization that was done on
+					 * the initial SYN.  This can result
+					 * in max_win being larger then
+					 * actual but we don't really have
+					 * much of a choice.
+					 */
 					dst->max_win <<= dst->wscale &
 					    PF_WSCALE_MASK;
 					/* in case of a retrans SYN|ACK */
@@ -3906,6 +3950,7 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 	ackskew = dst->seqlo - ack;
 
 #define MAXACKWINDOW (0xffff + 1500)	/* 1500 is an arbitrary fudge factor */
+
 	if (SEQ_GEQ(src->seqhi, end) &&
 	    /* Last octet inside other's window space */
 	    SEQ_GEQ(seq, src->seqlo - (dst->max_win << dws)) &&
@@ -4022,7 +4067,25 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 
 		/* Fall through to PASS packet */
 
-	} else {
+	} else if ((*state)->pickup_mode == PF_PICKUPS_HASHONLY ||
+		    ((*state)->pickup_mode == PF_PICKUPS_ENABLED &&
+		     ((*state)->sync_flags & PFSTATE_GOT_SYN_MASK) !=
+		      PFSTATE_GOT_SYN_MASK)) {
+		/*
+		 * If pickup mode is hash only, do not fail on sequence checks.
+		 *
+		 * If pickup mode is enabled and we did not see the SYN in
+		 * both direction, do not fail on sequence checks because
+		 * we do not have complete information on window scale.
+		 *
+		 * Adjust expiration and fall through to PASS packet.
+		 * XXX Add a FIN check to reduce timeout?
+		 */
+		(*state)->expire = time_second;
+	} else  {
+		/*
+		 * Failure processing
+		 */
 		if ((*state)->dst.state == TCPS_SYN_SENT &&
 		    (*state)->src.state == TCPS_SYN_SENT) {
 			/* Send RST for state mismatches during handshake */
@@ -5483,8 +5546,9 @@ done:
 		else
 			m->m_pkthdr.altq_qid = r->qid;
 		if (s) {
+			KKASSERT(s->hash != 0);
 			m->m_pkthdr.fw_flags |= ALTQ_MBUF_STATE_HASHED;
-			m->m_pkthdr.altq_state_hash = pf_state_hash(s);
+			m->m_pkthdr.altq_state_hash = s->hash;
 		}
 		m->m_pkthdr.ecn_af = AF_INET;
 		m->m_pkthdr.header = h;
@@ -5797,8 +5861,9 @@ done:
 		else
 			m->m_pkthdr.altq_qid = r->qid;
 		if (s) {
+			KKASSERT(s->hash != 0);
 			m->m_pkthdr.fw_flags |= ALTQ_MBUF_STATE_HASHED;
-			m->m_pkthdr.altq_state_hash = pf_state_hash(s);
+			m->m_pkthdr.altq_state_hash = s->hash;
 		}
 		m->m_pkthdr.ecn_af = AF_INET6;
 		m->m_pkthdr.header = h;

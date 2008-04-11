@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pfvar.h,v 1.8 2004/08/12 13:59:44 mlaier Exp $	*/
 /*	$OpenBSD: pfvar.h,v 1.187 2004/03/22 04:54:18 mcbride Exp $ */
 /* add	$OpenBSD: pfvar.h,v 1.194 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.7 2008/04/06 21:12:42 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.8 2008/04/11 18:21:48 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -585,6 +585,12 @@ struct pf_rule {
 	u_int8_t		 rt;
 	u_int8_t		 return_ttl;
 	u_int8_t		 tos;
+#define PF_PICKUPS_UNSPECIFIED	0
+#define PF_PICKUPS_DISABLED	1
+#define PF_PICKUPS_HASHONLY	2
+#define PF_PICKUPS_ENABLED	3
+	u_int8_t		 pickup_mode;
+	u_int8_t		 unused01;	/* available for use */
 };
 
 /* rule flags */
@@ -678,6 +684,7 @@ struct pf_state {
 	struct pfi_kif	*rt_kif;
 	struct pf_src_node	*src_node;
 	struct pf_src_node	*nat_src_node;
+	u_int32_t	 hash;
 	u_int32_t	 creation;
 	u_int32_t	 expire;
 	u_int32_t	 pfsync_time;
@@ -693,8 +700,13 @@ struct pf_state {
 	u_int8_t	 sync_flags;
 #define	PFSTATE_NOSYNC	 0x01
 #define	PFSTATE_FROMSYNC 0x02
+#define PFSTATE_GOT_SYN1 0x04	/* got SYN in one direction */
+#define PFSTATE_GOT_SYN2 0x08	/* got SYN in the other direction */
+	u_int8_t	 pickup_mode;
 	u_int8_t	 pad;
 };
+
+#define PFSTATE_GOT_SYN_MASK	(PFSTATE_GOT_SYN1|PFSTATE_GOT_SYN2)
 
 TAILQ_HEAD(pf_rulequeue, pf_rule);
 
@@ -1398,6 +1410,7 @@ extern int			 pf_insert_src_node(struct pf_src_node **,
 				    struct pf_rule *, struct pf_addr *,
 				    sa_family_t);
 void				 pf_src_tree_remove_state(struct pf_state *);
+u_int32_t			 pf_state_hash(struct pf_state *s);
 extern struct pf_state		*pf_find_state_byid(struct pf_state *);
 extern struct pf_state		*pf_find_state_all(struct pf_state *key,
 				    u_int8_t tree, int *more);

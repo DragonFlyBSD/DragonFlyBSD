@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pfsync.c,v 1.11 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: if_pfsync.c,v 1.26 2004/03/28 18:14:20 mcbride Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.6 2006/12/22 23:44:57 swildner Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.7 2008/04/11 18:21:48 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -225,6 +225,7 @@ pfsync_insert_net_state(struct pfsync_state *sp)
 	pf_state_peer_ntoh(&sp->dst, &st->dst);
 
 	bcopy(&sp->rt_addr, &st->rt_addr, sizeof(st->rt_addr));
+	st->hash = pf_state_hash(st);
 	st->creation = ntohl(sp->creation) + time_second;
 	st->expire = ntohl(sp->expire) + time_second;
 
@@ -932,6 +933,7 @@ pfsync_pack_state(u_int8_t action, struct pf_state *st, int compress)
 
 		bcopy(&st->rt_addr, &sp->rt_addr, sizeof(sp->rt_addr));
 
+		sp->hash = pf_state_hash(sp);
 		sp->creation = htonl(secs - st->creation);
 		sp->packets[0] = htonl(st->packets[0]);
 		sp->packets[1] = htonl(st->packets[1]);

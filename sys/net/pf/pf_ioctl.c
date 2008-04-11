@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.13 2008/01/05 14:02:38 swildner Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.14 2008/04/11 18:21:48 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -1494,6 +1494,7 @@ pfioctl(struct dev_ioctl_args *ap)
 		state->pfsync_time = 0;
 		state->packets[0] = state->packets[1] = 0;
 		state->bytes[0] = state->bytes[1] = 0;
+		state->hash = pf_state_hash(state);
 
 		if (pf_insert_state(kif, state)) {
 			pfi_maybe_destroy(kif);
