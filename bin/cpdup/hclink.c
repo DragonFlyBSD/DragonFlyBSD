@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hclink.c,v 1.6 2008/04/11 07:31:05 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.c,v 1.7 2008/04/11 17:18:21 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -227,6 +227,7 @@ hcc_read_command(hctransaction_t trans, int anypkt)
 #endif
 	fill->state = HCT_REPLIED;
     }
+    trans->state = HCT_DONE;
 #if USE_PTHREADS
     pthread_mutex_unlock(&hc->read_mutex);
     pthread_mutex_lock(&MasterMutex);

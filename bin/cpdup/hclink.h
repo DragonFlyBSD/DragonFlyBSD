@@ -1,7 +1,7 @@
 /*
  * HCLINK.H
  *
- * $DragonFly: src/bin/cpdup/hclink.h,v 1.3 2008/04/11 07:31:05 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.h,v 1.4 2008/04/11 17:18:21 dillon Exp $
  */
 
 #ifndef _HCLINK_H_
@@ -21,7 +21,7 @@ typedef struct HCTransaction {
     struct HostConf *hc;
     u_int16_t	id;		/* assigned transaction id */
     int		windex;		/* output buffer index */
-    enum { HCT_IDLE, HCT_SENT, HCT_REPLIED } state;
+    enum { HCT_IDLE, HCT_SENT, HCT_REPLIED, HCT_DONE } state;
 #if USE_PTHREADS
     pthread_t	tid;
 #endif
