@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hcproto.c,v 1.2 2008/04/10 22:09:08 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.c,v 1.3 2008/04/11 07:31:05 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -660,6 +660,22 @@ rc_close(hctransaction_t trans, struct HCHead *head)
     return(close(fd));
 }
 
+static int
+getiolimit(void)
+{
+#if USE_PTHREADS
+    if (CurParallel < 2)
+	return(32768);
+    if (CurParallel < 4)
+	return(16384);
+    if (CurParallel < 8)
+	return(8192);
+    return(4096);
+#else
+    return(32768);
+#endif
+}
+
 /*
  * READ
  */
@@ -679,7 +695,8 @@ hc_read(struct HostConf *hc, int fd, void *buf, size_t bytes)
     if (fdp) {
 	r = 0;
 	while (bytes) {
-	    int n = (bytes > 32768) ? 32768 : bytes;
+	    size_t limit = getiolimit();
+	    int n = (bytes > limit) ? limit : bytes;
 	    int x = 0;
 
 	    trans = hcc_start_command(hc, HC_READ);
@@ -762,7 +779,8 @@ hc_write(struct HostConf *hc, int fd, const void *buf, size_t bytes)
     if (fdp) {
 	r = 0;
 	while (bytes) {
-	    int n = (bytes > 32768) ? 32768 : bytes;
+	    size_t limit = getiolimit();
+	    int n = (bytes > limit) ? limit : bytes;
 	    int x = 0;
 
 	    trans = hcc_start_command(hc, HC_WRITE);

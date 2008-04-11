@@ -1,7 +1,7 @@
 /*
  * CPDUP.H
  *
- * $DragonFly: src/bin/cpdup/cpdup.h,v 1.7 2008/04/10 22:09:08 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.h,v 1.8 2008/04/11 07:31:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,6 +46,8 @@ extern const char *MD5CacheFile;
 extern const char *FSMIDCacheFile;
 
 extern int SummaryOpt;
+extern int CompressOpt;
+extern int CurParallel;
 
 extern int64_t CountSourceBytes;
 extern int64_t CountSourceItems;

@@ -1,7 +1,7 @@
 /*
  * HCLINK.H
  *
- * $DragonFly: src/bin/cpdup/hclink.h,v 1.2 2008/04/10 22:09:08 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.h,v 1.3 2008/04/11 07:31:05 dillon Exp $
  */
 
 #ifndef _HCLINK_H_

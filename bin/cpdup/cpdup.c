@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.20 2008/04/10 22:09:08 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.21 2008/04/11 07:31:05 dillon Exp $
  */
 
 /*-
@@ -114,6 +114,7 @@ static char *checkHLPath(struct stat *st, const char *spath, const char *dpath);
 static int validate_check(const char *spath, const char *dpath);
 static int shash(const char *s);
 static void hltdelete(struct hlink *);
+static void hltsetdino(struct hlink *, ino_t);
 int YesNo(const char *path);
 static int xrename(const char *src, const char *dst, u_long flags);
 static int xlink(const char *src, const char *dst, u_long flags);
@@ -130,6 +131,7 @@ int NoRemoveOpt;
 int UseMD5Opt;
 int UseFSMIDOpt;
 int SummaryOpt;
+int CompressOpt;
 int SlaveOpt;
 int EnableDirectoryRetries;
 int DstBaseLen;
@@ -200,6 +202,9 @@ main(int ac, char **av)
 	    v = strtol(ptr, NULL, 0);
 
 	switch(ptr[-1]) {
+	case 'C':
+	    CompressOpt = 1;
+	    break;
 	case 'v':
 	    VerboseOpt = 1;
 	    while (*ptr == 'v') {
@@ -392,14 +397,33 @@ main(int ac, char **av)
 static struct hlink *
 hltlookup(struct stat *stp)
 {
+    struct timespec ts = { 0, 100000 };
     struct hlink *hl;
     int n;
 
     n = stp->st_ino & HLMASK;
 
-    for (hl = hltable[n]; hl; hl = hl->next)
-        if (hl->ino == stp->st_ino)
-              return hl;
+#if USE_PTHREADS
+again:
+#endif
+    for (hl = hltable[n]; hl; hl = hl->next) {
+        if (hl->ino == stp->st_ino) {
+#if USE_PTHREADS
+	    /*
+	     * If the hl entry is still in the process of being created
+	     * by another thread we have to wait until it has either been
+	     * deleted or completed.
+	     */
+	    if (hl->dino == (ino_t)-1) {
+		pthread_mutex_unlock(&MasterMutex);
+		nanosleep(&ts, NULL);
+		pthread_mutex_lock(&MasterMutex);
+		goto again;
+	    }
+#endif
+	    return hl;
+	}
+    }
 
     return NULL;
 }
@@ -419,7 +443,7 @@ hltadd(struct stat *stp, const char *path)
 
     /* initialize and link the new element into the table */
     new->ino = stp->st_ino;
-    new->dino = 0;
+    new->dino = (ino_t)-1;
     bcopy(path, new->name, plen + 1);
     new->nlinked = 1;
     new->prev = NULL;
@@ -430,6 +454,12 @@ hltadd(struct stat *stp, const char *path)
     hltable[n] = new;
 
     return new;
+}
+
+static void
+hltsetdino(struct hlink *hl, ino_t inum)
+{
+    hl->dino = inum;
 }
 
 static void
@@ -445,7 +475,6 @@ hltdelete(struct hlink *hl)
 
         hltable[hl->ino & HLMASK] = hl->next;
     }
-
     free(hl);
 }
 
@@ -710,7 +739,7 @@ relink:
 		    validate_check(spath, dpath) == 0)
 	    ) {
                 if (hln)
-                    hln->dino = st2.st_ino;
+		    hltsetdino(hln, st2.st_ino);
 		if (VerboseOpt >= 3) {
 #ifndef NOMD5
 		    if (UseMD5Opt)
@@ -1113,10 +1142,12 @@ skip_copy:
 	free(path);
 
         if (hln) {
-            if (!r && hc_stat(&DstHost, dpath, &st2) == 0)
-                hln->dino = st2.st_ino;
-            else
+            if (!r && hc_stat(&DstHost, dpath, &st2) == 0) {
+		hltsetdino(hln, st2.st_ino);
+	    } else {
                 hltdelete(hln);
+		hln = NULL;
+	    }
         }
     } else if (S_ISLNK(st1.st_mode)) {
 	char link1[1024];
@@ -1208,6 +1239,8 @@ skip_copy:
 	CountSourceItems++;
     }
 done:
+    if (hln && hln->dino == (ino_t)-1)
+	hltdelete(hln);
     ResetList(list);
     free(list);
     return (r);

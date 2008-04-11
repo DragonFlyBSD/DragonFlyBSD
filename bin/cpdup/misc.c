@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.11 2008/04/10 22:09:08 dillon Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.12 2008/04/11 07:31:05 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -91,7 +91,8 @@ fatal(const char *ctl, ...)
 
     if (ctl == NULL) {
 	puts("cpdup [<options>] src [dest]");
-	puts("    -v[vv]      verbose level (-vv is typical)\n"
+	puts("    -C          request compressed ssh link if remote operation\n"
+	     "    -v[vv]      verbose level (-vv is typical)\n"
 	     "    -u          use unbuffered output for -v[vv]\n"
 	     "    -I          display performance summary\n"
 	     "    -f          force update even if files look the same\n"

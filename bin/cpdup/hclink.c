@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hclink.c,v 1.5 2008/04/10 22:09:08 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.c,v 1.6 2008/04/11 07:31:05 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -18,6 +18,7 @@ hcc_connect(struct HostConf *hc)
 {
     int fdin[2];
     int fdout[2];
+    const char *av[16];
 
     if (hc == NULL || hc->host == NULL)
 	return(0);
@@ -33,13 +34,26 @@ hcc_connect(struct HostConf *hc)
 	/*
 	 * Child process
 	 */
+	int n;
+
 	dup2(fdin[1], 1);
 	close(fdin[0]);
 	close(fdin[1]);
 	dup2(fdout[0], 0);
 	close(fdout[0]);
 	close(fdout[1]);
-	execl("/usr/bin/ssh", "ssh", "-T", hc->host, "cpdup", "-S", (char *) NULL);
+
+	n = 0;
+	av[n++] = "ssh";
+	if (CompressOpt)
+	    av[n++] = "-C";
+	av[n++] = "-T";
+	av[n++] = hc->host;
+	av[n++] = "cpdup";
+	av[n++] = "-S";
+	av[n++] = NULL;
+
+	execv("/usr/bin/ssh", (void *)av);
 	_exit(1);
     } else if (hc->pid < 0) {
 	return(-1);
@@ -214,14 +228,14 @@ hcc_read_command(hctransaction_t trans, int anypkt)
 	fill->state = HCT_REPLIED;
     }
 #if USE_PTHREADS
-    pthread_mutex_lock(&MasterMutex);
     pthread_mutex_unlock(&hc->read_mutex);
+    pthread_mutex_lock(&MasterMutex);
 #endif
     return((void *)trans->rbuf);
 fail:
 #if USE_PTHREADS
-    pthread_mutex_lock(&MasterMutex);
     pthread_mutex_unlock(&hc->read_mutex);
+    pthread_mutex_lock(&MasterMutex);
 #endif
     return(NULL);
 }

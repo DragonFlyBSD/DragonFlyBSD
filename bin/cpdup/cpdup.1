@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.28 2008/04/10 22:09:08 dillon Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.29 2008/04/11 07:31:05 dillon Exp $
 .Dd March 22, 2008
 .Dt CPDUP 1
 .Os
@@ -12,6 +12,7 @@
 .Nd mirror filesystems
 .Sh SYNOPSIS
 .Nm
+.Op Fl C
 .Op Fl v[vv..]
 .Op Fl u
 .Op Fl I
@@ -64,6 +65,10 @@ refuses to replace a destination directory with a file.
 .Pp
 The following options are available:
 .Bl -tag -width flag
+.It Fl C
+If the source or target is a remote host request the the
+.Xr ssh 1
+session be compressed.
 .It Fl v[vv]
 Set verboseness.  By default
 .Nm
