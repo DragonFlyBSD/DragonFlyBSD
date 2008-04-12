@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pfsync.c,v 1.11 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: if_pfsync.c,v 1.26 2004/03/28 18:14:20 mcbride Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.7 2008/04/11 18:21:48 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.8 2008/04/12 17:39:41 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -933,7 +933,6 @@ pfsync_pack_state(u_int8_t action, struct pf_state *st, int compress)
 
 		bcopy(&st->rt_addr, &sp->rt_addr, sizeof(sp->rt_addr));
 
-		sp->hash = pf_state_hash(sp);
 		sp->creation = htonl(secs - st->creation);
 		sp->packets[0] = htonl(st->packets[0]);
 		sp->packets[1] = htonl(st->packets[1]);
