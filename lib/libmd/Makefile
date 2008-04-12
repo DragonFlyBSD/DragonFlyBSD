@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libmd/Makefile,v 1.34.2.2 2002/07/17 15:16:38 ru Exp $
-# $DragonFly: src/lib/libmd/Makefile,v 1.4 2006/04/29 22:19:26 dillon Exp $
+# $DragonFly: src/lib/libmd/Makefile,v 1.5 2008/04/12 08:38:40 swildner Exp $
 
 LIB=	md
 SRCS=	md2c.c md4c.c md5c.c md2hl.c md4hl.c md5hl.c \
@@ -9,11 +9,11 @@ SRCS=	md2c.c md4c.c md5c.c md2hl.c md4hl.c md5hl.c \
 INCS=	md2.h md4.h md5.h ripemd.h sha.h sha256.h
 
 MAN+=	md2.3 md4.3 md5.3 ripemd.3 sha.3 sha256.3
-MLINKS+=md2.3 MD2Init.3 md2.3 MD2Update.3 md2.3 MD2Final.3
+MLINKS+=md2.3 MD2Init.3 md2.3 MD2Update.3 md2.3 MD2Pad.3 md2.3 MD2Final.3
 MLINKS+=md2.3 MD2End.3  md2.3 MD2File.3   md2.3 MD2Data.3
-MLINKS+=md4.3 MD4Init.3 md4.3 MD4Update.3 md4.3 MD4Final.3
+MLINKS+=md4.3 MD4Init.3 md4.3 MD4Update.3 md4.3 MD4Pad.3 md4.3 MD4Final.3
 MLINKS+=md4.3 MD4End.3  md4.3 MD4File.3   md4.3 MD4Data.3
-MLINKS+=md5.3 MD5Init.3 md5.3 MD5Update.3 md5.3 MD5Final.3
+MLINKS+=md5.3 MD5Init.3 md5.3 MD5Update.3 md5.3 MD5Pad.3 md5.3 MD5Final.3
 MLINKS+=md5.3 MD5End.3  md5.3 MD5File.3   md5.3 MD5Data.3
 MLINKS+=ripemd.3 RIPEMD160_Init.3  ripemd.3 RIPEMD160_Update.3
 MLINKS+=ripemd.3 RIPEMD160_Final.3 ripemd.3 RIPEMD160_Data.3
