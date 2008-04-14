@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.109 2008/01/10 22:30:27 nth Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.110 2008/04/14 12:01:51 dillon Exp $
  */
 
 /*
@@ -1301,7 +1301,7 @@ syscall2(struct trapframe *frame)
 			if (KTRPOINT(td, KTR_SYSCALL)) {
 				MAKEMPSAFE(have_mplock);
 				
-				ktrsyscall(p, code, narg,
+				ktrsyscall(lp, code, narg,
 					(void *)(&args.nosys.sysmsg + 1));
 			}
 #endif
@@ -1312,7 +1312,7 @@ syscall2(struct trapframe *frame)
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
 		MAKEMPSAFE(have_mplock);
-		ktrsyscall(p, code, narg, (void *)(&args.nosys.sysmsg + 1));
+		ktrsyscall(lp, code, narg, (void *)(&args.nosys.sysmsg + 1));
 	}
 #endif
 
@@ -1401,7 +1401,7 @@ bad:
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
 		MAKEMPSAFE(have_mplock);
-		ktrsysret(p, code, error, args.sysmsg_result);
+		ktrsysret(lp, code, error, args.sysmsg_result);
 	}
 #endif
 
@@ -1464,7 +1464,7 @@ generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 	userret(lp, frame, 0);
 #ifdef KTRACE
 	if (KTRPOINT(lp->lwp_thread, KTR_SYSRET))
-		ktrsysret(p, SYS_fork, 0, 0);
+		ktrsysret(lp, SYS_fork, 0, 0);
 #endif
 	p->p_flag |= P_PASSIVE_ACQ;
 	userexit(lp);
