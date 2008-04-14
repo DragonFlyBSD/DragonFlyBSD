@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/crit_enter.9,v 1.4 2008/02/19 12:34:55 nant Exp $
+.\" $DragonFly: src/share/man/man9/crit_enter.9,v 1.5 2008/04/14 08:17:09 swildner Exp $
 .\"
 .Dd February 18, 2008
 .Dt CRIT_ENTER 9
@@ -81,7 +81,7 @@ and
 may be used to reduce the amount of generated code.
 .Pp
 Critical sections are per-CPU entities.
-They are typicaly used to interlock operations local to the CPU.
+They are typically used to interlock operations local to the CPU.
 A critical section on one CPU will not prevent an interrupt or IPI from
 occurring on some other CPU.
 If cross-CPU interlocks are required the more heavy weight

@@ -1,5 +1,5 @@
 .\" $NetBSD: bluetooth.4,v 1.9 2007/11/28 20:16:12 plunky Exp $
-.\" $DragonFly: src/share/man/man4/bluetooth.4,v 1.3 2008/03/01 17:54:16 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bluetooth.4,v 1.4 2008/04/14 08:17:09 swildner Exp $
 .\"
 .\" Copyright (c) 2006 Itronix Inc.
 .\" All rights reserved.
@@ -94,7 +94,7 @@ and should be set to zero.
 HCI socket options:
 .Bl -tag -width XX
 .It Dv SO_HCI_EVT_FILTER Op Ar struct hci_filter
-This filter controls which events will be recieved at the socket. See
+This filter controls which events will be received at the socket. See
 .In netbt/hci.h
 for available events. By default, Command_Complete and Command_Status
 events only are enabled.
@@ -119,7 +119,7 @@ If set, this is the time in seconds after which unused ACL data connections
 will be expired. If zero, connections will not be closed.
 .It Va net.bluetooth.hci.memo_expiry
 Time, in seconds, that the system will keep records of Bluetooth devices
-in the vicinity after an Inquiry Response packet has been recieved. This
+in the vicinity after an Inquiry Response packet has been received. This
 information is used for routing purposes.
 .It Va net.bluetooth.hci.eventq_max
 The maximum number of packets on the low level Event queue.
@@ -134,7 +134,7 @@ devices and make use of the
 .Ar bt_psm
 field in the
 .Ar sockaddr_bt
-structure to select the Protocol/Sevice Multiplexer to specify when making
+structure to select the Protocol/Service Multiplexer to specify when making
 connections.
 .Pp
 L2CAP socket options:
