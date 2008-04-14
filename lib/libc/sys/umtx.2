@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.11 2007/07/23 23:04:21 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.12 2008/04/14 20:17:41 dillon Exp $
 .\"
 .Dd February 21, 2005
 .Dt UMTX 2
@@ -62,9 +62,12 @@ going to sleep simultaneously with another releasing the mutex, this condition
 is caught when the second userland thread calls
 .Fn umtx_wakeup
 after releasing the contended mutex.
+.Pp
 The
 .Fa timeout
-is limited to the range 0-1000000 microseconds.
+is not specific limitation other then what fits in the signed integer.
+A negative timeout will return
+.Er EINVAL .
 .Pp
 The
 .Fn umtx_wakeup
@@ -92,6 +95,11 @@ userland implementation of the mutex.
 .Fn umtx_sleep
 does not restart in case of a signal, even if the signal specifies
 that system calls should restart.
+.Pp
+Various operating system events can cause
+.Fn umtx_sleep
+to return prematurely, with the contents of the mutex unchanged relative
+to the compare value.  Callers must be able to deal with such returns.
 .Sh RETURN VALUES
 .Fn umtx_sleep
 will return 0 if it successfully slept and was then woken up.  Otherwise
@@ -196,7 +204,7 @@ The contents of
 .Fa *ptr
 did not match
 .Fa value
-.It Bq Er ETIMEDOUT
+.It Bq Er EWOULDBLOCK
 The specified timeout occurred.
 .It Bq Er EINTR
 The
