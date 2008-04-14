@@ -1,7 +1,7 @@
 /*
  * HCLINK.H
  *
- * $DragonFly: src/bin/cpdup/hclink.h,v 1.4 2008/04/11 17:18:21 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.h,v 1.5 2008/04/14 05:40:51 dillon Exp $
  */
 
 #ifndef _HCLINK_H_
@@ -112,6 +112,7 @@ struct HCLeaf *hcc_firstitem(struct HCHead *head);
 struct HCLeaf *hcc_nextitem(struct HCHead *head, struct HCLeaf *item);
 
 void hcc_debug_dump(struct HCHead *head);
+void hcc_free_trans(struct HostConf *hc);
 
 #endif
 

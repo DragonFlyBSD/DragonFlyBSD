@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.12 2008/04/11 07:31:05 dillon Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.13 2008/04/14 05:40:51 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -83,6 +83,68 @@ fextract(FILE *fi, int n, int *pc, int skip)
     s[i] = 0;
     return(s);
 }
+
+#ifdef DEBUG_MALLOC
+
+#undef malloc
+#undef free
+
+struct malloc_info {
+	struct malloc_info *next;
+	struct malloc_info *prev;
+	const char *file;
+	int magic;
+	int line;
+};
+
+struct malloc_info DummyInfo = { &DummyInfo, &DummyInfo, NULL, 0, 0 };
+struct malloc_info *InfoList = &DummyInfo;
+
+void *
+debug_malloc(size_t bytes, const char *file, int line)
+{
+	struct malloc_info *info = malloc(sizeof(*info) + bytes);
+
+	info->magic = 0x5513A4C2;
+	info->file = file;
+	info->line = line;
+
+	info->next = InfoList;
+	info->prev = InfoList->prev;
+	info->next->prev = info;
+	info->prev->next = info;
+	return(info + 1);
+}
+
+void
+debug_free(void *ptr)
+{
+	struct malloc_info *info = (struct malloc_info *)ptr - 1;
+	struct malloc_info *scan;
+	static int report;
+
+	for (scan = DummyInfo.next; scan != &DummyInfo; scan = scan->next) {
+		if (info == scan) {
+			assert(info->magic == 0x5513A4C2);
+			info->magic = 0;
+			info->next->prev = info->prev;
+			info->prev->next = info->next;
+			free(info);
+			break;
+		}
+	}
+	if (scan == &DummyInfo)
+		free(ptr);
+
+	if ((++report & 65535) == 0) {
+		printf("--- report\n");
+		for (scan = DummyInfo.next; scan != &DummyInfo; scan = scan->next) {
+			printf("%-15s %d\n", scan->file, scan->line);
+		}
+	}
+}
+
+#endif
 
 void
 fatal(const char *ctl, ...)

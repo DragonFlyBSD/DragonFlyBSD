@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.22 2008/04/11 08:44:07 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.23 2008/04/14 05:40:51 dillon Exp $
  */
 
 /*-
@@ -63,6 +63,12 @@
 #define HMASK	(HSIZE-1)
 #define HLSIZE	8192
 #define HLMASK	(HLSIZE - 1)
+
+#define MAXDEPTH	32	/* max copy depth for thread */
+#define GETBUFSIZE	8192
+#define GETPATHSIZE	2048
+#define GETLINKSIZE	1024
+#define GETIOSIZE	65536
 
 #ifndef _ST_FLAGS_PRESENT_
 #define st_flags	st_mode
@@ -83,6 +89,7 @@ typedef struct List {
 struct hlink {
     ino_t ino;
     ino_t dino;
+    int	refs;
     struct hlink *next;
     struct hlink *prev;
     nlink_t nlinked;
@@ -119,7 +126,7 @@ int YesNo(const char *path);
 static int xrename(const char *src, const char *dst, u_long flags);
 static int xlink(const char *src, const char *dst, u_long flags);
 int WildCmp(const char *s1, const char *s2);
-static int DoCopy(copy_info_t info);
+static int DoCopy(copy_info_t info, int depth);
 
 int AskConfirmation = 1;
 int SafetyOpt = 1;
@@ -138,8 +145,7 @@ int DstBaseLen;
 int ValidateOpt;
 int CurParallel;
 int MaxParallel = -1;
-char IOBuf1[65536];
-char IOBuf2[65536];
+int HardLinkCount;
 const char *UseCpFile;
 const char *UseHLPath;
 const char *MD5CacheFile;
@@ -339,13 +345,13 @@ main(int ac, char **av)
 	info.dpath = dst;
 	info.sdevNo = (dev_t)-1;
 	info.ddevNo = (dev_t)-1;
-	i = DoCopy(&info);
+	i = DoCopy(&info, -1);
     } else {
 	info.spath = src;
 	info.dpath = NULL;
 	info.sdevNo = (dev_t)-1;
 	info.ddevNo = (dev_t)-1;
-	i = DoCopy(&info);
+	i = DoCopy(&info, -1);
     }
 #if USE_PTHREADS
     pthread_cond_destroy(&info.cond);
@@ -414,13 +420,14 @@ again:
 	     * by another thread we have to wait until it has either been
 	     * deleted or completed.
 	     */
-	    if (hl->dino == (ino_t)-1) {
+	    if (hl->refs) {
 		pthread_mutex_unlock(&MasterMutex);
 		nanosleep(&ts, NULL);
 		pthread_mutex_lock(&MasterMutex);
 		goto again;
 	    }
 #endif
+	    ++hl->refs;
 	    return hl;
 	}
     }
@@ -440,10 +447,12 @@ hltadd(struct stat *stp, const char *path)
         fprintf(stderr, "out of memory\n");
         exit(EXIT_FAILURE);
     }
+    ++HardLinkCount;
 
     /* initialize and link the new element into the table */
     new->ino = stp->st_ino;
     new->dino = (ino_t)-1;
+    new->refs = 1;
     bcopy(path, new->name, plen + 1);
     new->nlinked = 1;
     new->prev = NULL;
@@ -465,6 +474,8 @@ hltsetdino(struct hlink *hl, ino_t inum)
 static void
 hltdelete(struct hlink *hl)
 {
+    assert(hl->refs == 1);
+    --hl->refs;
     if (hl->prev) {
         if (hl->next)
             hl->next->prev = hl->prev;
@@ -475,7 +486,15 @@ hltdelete(struct hlink *hl)
 
         hltable[hl->ino & HLMASK] = hl->next;
     }
+    --HardLinkCount;
     free(hl);
+}
+
+static void
+hltrels(struct hlink *hl)
+{
+    assert(hl->refs == 1);
+    --hl->refs;
 }
 
 /*
@@ -536,17 +555,21 @@ validate_check(const char *spath, const char *dpath)
     if (fd1 >= 0 && fd2 >= 0) {
 	int n;
 	int x;
+	char *iobuf1 = malloc(GETIOSIZE);
+	char *iobuf2 = malloc(GETIOSIZE);
 
-	while ((n = hc_read(&SrcHost, fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
+	while ((n = hc_read(&SrcHost, fd1, iobuf1, GETIOSIZE)) > 0) {
 	    CountSourceReadBytes += n;
-	    x = hc_read(&DstHost, fd2, IOBuf2, sizeof(IOBuf2));
+	    x = hc_read(&DstHost, fd2, iobuf2, GETIOSIZE);
 	    if (x > 0)
 		    CountTargetReadBytes += x;
 	    if (x != n)
 		break;
-	    if (bcmp(IOBuf1, IOBuf2, n) != 0)
+	    if (bcmp(iobuf1, iobuf2, n) != 0)
 		break;
 	}
+	free(iobuf1);
+	free(iobuf2);
 	if (n == 0)
 	    error = 0;
     }
@@ -570,7 +593,7 @@ DoCopyThread(void *arg)
     assert(r == 0);
     pthread_cond_init(&cinfo->cond, NULL);
     pthread_mutex_lock(&MasterMutex);
-    cinfo->r += DoCopy(cinfo);
+    cinfo->r += DoCopy(cinfo, 0);
     /* cinfo arguments invalid on return */
     --cinfo->parent->children;
     --CurParallel;
@@ -581,13 +604,15 @@ DoCopyThread(void *arg)
 	free(dpath);
     pthread_cond_destroy(&cinfo->cond);
     free(cinfo);
+    hcc_free_trans(&SrcHost);
+    hcc_free_trans(&DstHost);
     return(NULL);
 }
 
 #endif
 
 int
-DoCopy(copy_info_t info)
+DoCopy(copy_info_t info, int depth)
 {
     const char *spath = info->spath;
     const char *dpath = info->dpath;
@@ -633,8 +658,10 @@ DoCopy(copy_info_t info)
 		     */
 		    if (VerboseOpt >= 3)
 			logstd("%-32s nochange\n", (dpath) ? dpath : spath);
-                    if (hln->nlinked == st1.st_nlink)
+                    if (hln->nlinked == st1.st_nlink) {
                         hltdelete(hln);
+			hln = NULL;
+		    }
 		    CountSourceItems++;
 		    r = 0;
 		    goto done;
@@ -646,7 +673,9 @@ DoCopy(copy_info_t info)
 			logerr("%-32s hardlink: unable to unlink: %s\n", 
 			    ((dpath) ? dpath : spath), strerror(errno));
                         hltdelete(hln);
-			return (r + 1);
+			hln = NULL;
+			++r;
+			goto done;
 		    }
                 }
             }
@@ -843,7 +872,7 @@ relink:
 
 	    if (UseCpFile) {
 		FILE *fi;
-		char buf[8192];
+		char *buf = malloc(GETBUFSIZE);
 		char *fpath;
 
 		if (UseCpFile[0] == '/') {
@@ -853,7 +882,7 @@ relink:
 		}
 		AddList(list, strrchr(fpath, '/') + 1, 1);
 		if ((fi = fopen(fpath, "r")) != NULL) {
-		    while (fgets(buf, sizeof(buf), fi) != NULL) {
+		    while (fgets(buf, GETBUFSIZE, fi) != NULL) {
 			int l = strlen(buf);
 			CountSourceReadBytes += l;
 			if (l && buf[l-1] == '\n')
@@ -864,6 +893,7 @@ relink:
 		    fclose(fi);
 		}
 		free(fpath);
+		free(buf);
 	    }
 
 	    /*
@@ -901,7 +931,7 @@ relink:
 		    ndpath = mprintf("%s/%s", dpath, den->d_name);
 
 #if USE_PTHREADS
-		if (CurParallel < MaxParallel) {
+		if (CurParallel < MaxParallel || depth > MAXDEPTH) {
 		    copy_info_t cinfo = malloc(sizeof(*cinfo));
 		    pthread_t dummy_thr = NULL;
 
@@ -921,10 +951,15 @@ relink:
 		    info->dpath = ndpath;
 		    info->sdevNo = sdevNo;
 		    info->ddevNo = ddevNo;
-		    r += DoCopy(info);
+		    if (depth < 0)
+			r += DoCopy(info, depth);
+		    else
+			r += DoCopy(info, depth + 1);
 		    free(nspath);
 		    if (ndpath)
 			free(ndpath);
+		    info->spath = NULL;
+		    info->dpath = NULL;
 		}
 	    }
 
@@ -1023,7 +1058,7 @@ relink:
 	int fd1;
 	int fd2;
 
-	path = mprintf("%s.tmp", dpath);
+	path = mprintf("%s.tmp%d", dpath, (int)getpid());
 
 	/*
 	 * Handle check failure message.
@@ -1078,15 +1113,16 @@ relink:
 	    }
 	    if (fd2 >= 0) {
 		const char *op;
+		char *iobuf1 = malloc(GETIOSIZE);
 		int n;
 
 		/*
 		 * Matt: What about holes?
 		 */
 		op = "read";
-		while ((n = hc_read(&SrcHost, fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
+		while ((n = hc_read(&SrcHost, fd1, iobuf1, GETIOSIZE)) > 0) {
 		    op = "write";
-		    if (hc_write(&DstHost, fd2, IOBuf1, n) != n)
+		    if (hc_write(&DstHost, fd2, iobuf1, n) != n)
 			break;
 		    op = "read";
 		}
@@ -1126,6 +1162,7 @@ relink:
 		    hc_remove(&DstHost, path);
 		    ++r;
 		}
+		free(iobuf1);
 	    } else {
 		logerr("%-32s create (uid %d, euid %d) failed: %s\n",
 		    (dpath ? dpath : spath), getuid(), geteuid(),
@@ -1153,15 +1190,15 @@ skip_copy:
 	    }
         }
     } else if (S_ISLNK(st1.st_mode)) {
-	char link1[1024];
-	char link2[1024];
-	char path[2048];
+	char *link1 = malloc(GETLINKSIZE);
+	char *link2 = malloc(GETLINKSIZE);
+	char *path = malloc(GETPATHSIZE);
 	int n1;
 	int n2;
 
-	snprintf(path, sizeof(path), "%s.tmp", dpath);
-	n1 = hc_readlink(&SrcHost, spath, link1, sizeof(link1) - 1);
-	n2 = hc_readlink(&DstHost, dpath, link2, sizeof(link2) - 1);
+	snprintf(path, GETPATHSIZE, "%s.tmp%d", dpath, (int)getpid());
+	n1 = hc_readlink(&SrcHost, spath, link1, GETLINKSIZE - 1);
+	n2 = hc_readlink(&DstHost, dpath, link2, GETLINKSIZE - 1);
 	if (n1 >= 0) {
 	    if (ForceOpt || n1 != n2 || bcmp(link1, link2, n1) != 0) {
 		hc_umask(&DstHost, ~st1.st_mode);
@@ -1203,8 +1240,11 @@ skip_copy:
 	    r = 1;
 	    logerr("%-32s softlink-failed\n", (dpath ? dpath : spath));
 	}
+	free(link1);
+	free(link2);
+	free(path);
     } else if ((S_ISCHR(st1.st_mode) || S_ISBLK(st1.st_mode)) && DeviceOpt) {
-	char path[2048];
+	char *path = malloc(GETPATHSIZE);
 
 	if (ForceOpt ||
 	    st2Valid == 0 || 
@@ -1213,10 +1253,10 @@ skip_copy:
 	    st1.st_uid != st2.st_uid ||
 	    st1.st_gid != st2.st_gid
 	) {
-	    snprintf(path, sizeof(path), "%s.tmp", dpath);
+	    snprintf(path, GETPATHSIZE, "%s.tmp%d", dpath, (int)getpid());
 
 	    hc_remove(&DstHost, path);
-	    if (mknod(path, st1.st_mode, st1.st_rdev) == 0) {
+	    if (hc_mknod(&DstHost, path, st1.st_mode, st1.st_rdev) == 0) {
 		hc_chmod(&DstHost, path, st1.st_mode);
 		hc_chown(&DstHost, path, st1.st_uid, st1.st_gid);
 		hc_remove(&DstHost, dpath);
@@ -1239,11 +1279,18 @@ skip_copy:
 	    if (VerboseOpt >= 3)
 		logstd("%-32s nochange\n", (dpath ? dpath : spath));
 	}
+	free(path);
 	CountSourceItems++;
     }
 done:
-    if (hln && hln->dino == (ino_t)-1)
-	hltdelete(hln);
+    if (hln) {
+	if (hln->dino == (ino_t)-1) {
+	    hltdelete(hln);
+	    /*hln = NULL; unneeded */
+	} else {
+	    hltrels(hln);
+	}
+    }
     ResetList(list);
     free(list);
     return (r);

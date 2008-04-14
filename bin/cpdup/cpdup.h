@@ -1,7 +1,7 @@
 /*
  * CPDUP.H
  *
- * $DragonFly: src/bin/cpdup/cpdup.h,v 1.8 2008/04/11 07:31:05 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.h,v 1.9 2008/04/14 05:40:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,4 +59,12 @@ extern int64_t CountRemovedItems;
 
 #if USE_PTHREADS
 extern pthread_mutex_t MasterMutex;
+#endif
+
+#ifdef DEBUG_MALLOC
+void *debug_malloc(size_t bytes, const char *file, int line);
+void debug_free(void *ptr);
+
+#define malloc(bytes)	debug_malloc(bytes, __FILE__, __LINE__)
+#define free(ptr)	debug_free(ptr)
 #endif

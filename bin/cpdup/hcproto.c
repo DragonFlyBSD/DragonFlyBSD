@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hcproto.c,v 1.3 2008/04/11 07:31:05 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.c,v 1.4 2008/04/14 05:40:51 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -29,6 +29,7 @@ static int rc_rmdir(hctransaction_t trans, struct HCHead *);
 static int rc_chown(hctransaction_t trans, struct HCHead *);
 static int rc_lchown(hctransaction_t trans, struct HCHead *);
 static int rc_chmod(hctransaction_t trans, struct HCHead *);
+static int rc_mknod(hctransaction_t trans, struct HCHead *);
 static int rc_link(hctransaction_t trans, struct HCHead *);
 #ifdef _ST_FLAGS_PRESENT_
 static int rc_chflags(hctransaction_t trans, struct HCHead *);
@@ -56,6 +57,7 @@ struct HCDesc HCDispatchTable[] = {
     { HC_CHOWN,		rc_chown },
     { HC_LCHOWN,	rc_lchown },
     { HC_CHMOD,		rc_chmod },
+    { HC_MKNOD,		rc_mknod },
     { HC_LINK,		rc_link },
 #ifdef _ST_FLAGS_PRESENT_
     { HC_CHFLAGS,	rc_chflags },
@@ -492,6 +494,8 @@ rc_closedir(hctransaction_t trans, struct HCHead *head)
 	switch(item->leafid) {
 	case LC_DESCRIPTOR:
 	    dir = hcc_get_descriptor(trans->hc, HCC_INT32(item), HC_DESC_DIR);
+	    if (dir != NULL)
+		    hcc_set_descriptor(trans->hc, HCC_INT32(item), NULL, HC_DESC_DIR);
 	    break;
 	}
     }
@@ -1105,6 +1109,55 @@ rc_chmod(hctransaction_t trans __unused, struct HCHead *head)
     if (path == NULL)
 	return(-1);
     return(chmod(path, mode));
+}
+
+/*
+ * MKNOD
+ */
+int
+hc_mknod(struct HostConf *hc, const char *path, mode_t mode, dev_t rdev)
+{
+    hctransaction_t trans;
+    struct HCHead *head;
+
+    if (hc == NULL || hc->host == NULL)
+	return(mknod(path, mode, rdev));
+
+    trans = hcc_start_command(hc, HC_MKNOD);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    hcc_leaf_int32(trans, LC_MODE, mode);
+    hcc_leaf_int32(trans, LC_RDEV, rdev);
+    if ((head = hcc_finish_command(trans)) == NULL)
+	return(-1);
+    if (head->error)
+	return(-1);
+    return(0);
+}
+
+static int
+rc_mknod(hctransaction_t trans __unused, struct HCHead *head)
+{
+    struct HCLeaf *item;
+    const char *path = NULL;
+    mode_t mode = 0666;
+    dev_t rdev = 0;
+
+    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+	switch(item->leafid) {
+	case LC_PATH1:
+	    path = HCC_STRING(item);
+	    break;
+	case LC_MODE:
+	    mode = HCC_INT32(item);
+	    break;
+	case LC_RDEV:
+	    rdev = HCC_INT32(item);
+	    break;
+	}
+    }
+    if (path == NULL)
+	return(-1);
+    return(mknod(path, mode, rdev));
 }
 
 /*

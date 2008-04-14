@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hclink.c,v 1.7 2008/04/11 17:18:21 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.c,v 1.8 2008/04/14 05:40:51 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -278,6 +278,26 @@ hcc_get_trans(struct HostConf *hc)
     return(trans);
 }
 
+void
+hcc_free_trans(struct HostConf *hc)
+{
+    hctransaction_t trans;
+    hctransaction_t *transp;
+    pthread_t tid = pthread_self();
+    int i;
+
+    i = ((intptr_t)tid >> 7) & HCTHASH_MASK;
+
+    for (transp = &hc->hct_hash[i]; *transp; transp = &trans->next) {
+	trans = *transp;
+	if (trans->tid == tid) {
+		*transp = trans->next;
+		free(trans);
+		break;
+	}
+    }
+}
+
 #else
 
 static
@@ -285,6 +305,13 @@ hctransaction_t
 hcc_get_trans(struct HostConf *hc)
 {
     return(&hc->trans);
+}
+
+static
+void
+hcc_free_trans(struct HostConf *hc)
+{
+    /* nop */
 }
 
 #endif
