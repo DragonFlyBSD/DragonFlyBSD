@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.31 2007/06/08 02:00:47 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.32 2008/04/14 19:43:02 dillon Exp $
  */
 
 /*
@@ -1605,11 +1605,14 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 
 	/*
 	 * limit is our clean_only flag.  If set and the page is dirty, do
+	 * not free it.  If set and the page is being held by someone, do
 	 * not free it.
 	 */
 	if (info->limit && p->valid) {
 		vm_page_test_dirty(p);
 		if (p->valid & p->dirty)
+			return(0);
+		if (p->hold_count)
 			return(0);
 	}
 
