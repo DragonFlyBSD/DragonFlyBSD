@@ -32,7 +32,7 @@
  *
  *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/sys/queue.h,v 1.32.2.7 2002/04/17 14:21:02 des Exp $
- * $DragonFly: src/sys/sys/queue.h,v 1.8 2007/01/08 12:15:27 swildner Exp $
+ * $DragonFly: src/sys/sys/queue.h,v 1.9 2008/04/14 19:44:18 dillon Exp $
  */
 
 #ifndef _SYS_QUEUE_H_
@@ -303,7 +303,7 @@ struct {								\
 
 #define	LIST_FOREACH_MUTABLE(var, head, field, nvar)			\
 	for ((var) = LIST_FIRST((head));				\
-	     (var) && ((nvar) = LIST_NEXT((var), field), (var));	\
+	     (var) && ((nvar) = LIST_NEXT((var), field), 1);		\
 	     (var) = (nvar))
 
 #define	LIST_INIT(head) do {						\
