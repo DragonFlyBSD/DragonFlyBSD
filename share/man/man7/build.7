@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.15 2008/03/03 20:24:51 swildner Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.16 2008/04/14 22:18:14 swildner Exp $
 .\"
 .Dd February 5, 2008
 .Dt BUILD 7
@@ -188,12 +188,10 @@ make upgrade
 .Ed
 .Pp
 After running these commands a system reboot is required,
-otherwise many programs which have been rebuilt
-(such as
-.Nm ps ,
-.Nm top ,
-etc)
-may not work with the old kernel which is still running.
+otherwise many programs which have been rebuilt (such as
+.Xr ps 1 ,
+.Xr top 1 ,
+etc.) may not work with the old kernel which is still running.
 .Sh CAVEATS
 The build and install order in the
 .Sx EXAMPLES
