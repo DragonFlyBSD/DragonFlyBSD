@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.17 2007/06/26 23:30:05 josepht Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.18 2008/04/14 20:12:41 dillon Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -170,7 +170,7 @@ struct pthread_cond {
 	volatile umtx_t	c_lock;
 	volatile umtx_t	c_seqno;
 	volatile int	c_waiters;
-	volatile int	c_wakeups;
+	volatile int	c_broadcast;
 	int		c_pshared;
 	int		c_clockid;
 };

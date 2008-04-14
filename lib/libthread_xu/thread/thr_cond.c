@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.10 2006/04/06 23:50:13 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.11 2008/04/14 20:12:41 dillon Exp $
  */
 
 #include "namespace.h"
@@ -66,7 +66,7 @@ cond_init(pthread_cond_t *cond, const pthread_condattr_t *cond_attr)
 		_thr_umtx_init(&pcond->c_lock);
 		pcond->c_seqno = 0;
 		pcond->c_waiters = 0;
-		pcond->c_wakeups = 0;
+		pcond->c_broadcast = 0;
 		if (cond_attr == NULL || *cond_attr == NULL) {
 			pcond->c_pshared = 0;
 			pcond->c_clockid = CLOCK_REALTIME;
@@ -116,7 +116,7 @@ _pthread_cond_destroy(pthread_cond_t *cond)
 	else {
 		/* Lock the condition variable structure: */
 		THR_LOCK_ACQUIRE(curthread, &(*cond)->c_lock);
-		if ((*cond)->c_waiters + (*cond)->c_wakeups != 0) {
+		if ((*cond)->c_waiters != 0) {
 			THR_LOCK_RELEASE(curthread, &(*cond)->c_lock);
 			return (EBUSY);
 		}
@@ -161,14 +161,12 @@ cond_cancel_handler(void *arg)
 
 	cv = *(info->cond);
 	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
-	if (cv->c_seqno != info->seqno && cv->c_wakeups != 0) {
-		if (cv->c_waiters > 0) {
-			cv->c_seqno++;
-			_thr_umtx_wake(&cv->c_seqno, 1);
-		} else
-			cv->c_wakeups--;
-	} else {
-		cv->c_waiters--;
+	if (--cv->c_waiters == 0)
+		cv->c_broadcast = 0;
+	if (cv->c_seqno != info->seqno) {
+		_thr_umtx_wake(&cv->c_seqno, 1);
+		/* cv->c_seqno++; XXX why was this here? */
+		_thr_umtx_wake(&cv->c_seqno, 1);
 	}
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
 
@@ -196,19 +194,28 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		return (ret);
 
 	cv = *cond;
+/*	fprintf(stderr, "waiton1 %p\n", cv);*/
 	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
+	oldseq = cv->c_seqno;
+/*	fprintf(stderr, "waiton2 %p %d\n", cv, oldseq);*/
 	ret = _mutex_cv_unlock(mutex, &info.count);
 	if (ret) {
+		assert(0);
 		THR_LOCK_RELEASE(curthread, &cv->c_lock);
 		return (ret);
 	}
-	oldseq = seq = cv->c_seqno;
+	seq = cv->c_seqno;
 	info.mutex = mutex;
 	info.cond  = cond;
 	info.seqno = oldseq;
 
-	cv->c_waiters++;
-	do {
+	++cv->c_waiters;
+
+	/*
+	 * loop if we have never been told to wake up
+	 * or we lost a race.
+	 */
+	while (seq == oldseq /* || cv->c_wakeups == 0*/) {
 		THR_LOCK_RELEASE(curthread, &cv->c_lock);
 
 		if (abstime != NULL) {
@@ -234,19 +241,11 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		seq = cv->c_seqno;
 		if (abstime != NULL && ret == ETIMEDOUT)
 			break;
-
-		/*
-		 * loop if we have never been told to wake up
-		 * or we lost a race.
-		 */
-	} while (seq == oldseq || cv->c_wakeups == 0);
-	
-	if (seq != oldseq && cv->c_wakeups != 0) {
-		cv->c_wakeups--;
-		ret = 0;
-	} else {
-		cv->c_waiters--;
 	}
+	if (--cv->c_waiters == 0)
+		cv->c_broadcast = 0;
+	if (seq != oldseq)
+		ret = 0;
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
 	_mutex_cv_lock(mutex, info.count);
 	return (ret);
@@ -304,20 +303,18 @@ cond_signal_common(pthread_cond_t *cond, int broadcast)
 		return (ret);
 
 	cv = *cond;
+/*	fprintf(stderr, "signal %p\n", cv);*/
 	/* Lock the condition variable structure. */
 	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
+	cv->c_seqno++;
+	if (cv->c_broadcast == 0)
+		cv->c_broadcast = broadcast;
+
 	if (cv->c_waiters) {
-		if (!broadcast) {
-			cv->c_wakeups++;
-			cv->c_waiters--;
-			cv->c_seqno++;
-			_thr_umtx_wake(&cv->c_seqno, 1);
-		} else {
-			cv->c_wakeups += cv->c_waiters;
-			cv->c_waiters = 0;
-			cv->c_seqno++;
+		if (cv->c_broadcast)
 			_thr_umtx_wake(&cv->c_seqno, INT_MAX);
-		}
+		else
+			_thr_umtx_wake(&cv->c_seqno, 1);
 	}
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
 	return (ret);
