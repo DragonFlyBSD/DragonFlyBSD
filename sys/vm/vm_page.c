@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.36 2007/12/06 22:25:49 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.37 2008/04/14 20:00:29 dillon Exp $
  */
 
 /*
@@ -1593,6 +1593,24 @@ vm_page_test_dirty(vm_page_t m)
 {
 	if ((m->dirty != VM_PAGE_BITS_ALL) && pmap_is_modified(m)) {
 		vm_page_dirty(m);
+	}
+}
+
+/*
+ * Issue an event on a VM page.  Corresponding action structures are
+ * removed from the page's list and called.
+ */
+void
+vm_page_event_internal(vm_page_t m, vm_page_event_t event)
+{
+	struct vm_page_action *scan, *next;
+
+	LIST_FOREACH_MUTABLE(scan, &m->action_list, entry, next) {
+		if (scan->event == event) {
+			scan->event = VMEVENT_NONE;
+			LIST_REMOVE(scan, entry);
+			scan->func(m, scan);
+		}
 	}
 }
 

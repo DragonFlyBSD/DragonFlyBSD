@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_umtx.c,v 1.7 2007/07/02 01:30:07 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_umtx.c,v 1.8 2008/04/14 20:00:28 dillon Exp $
  */
 
 /*
@@ -63,16 +63,18 @@
 #include <vm/vm_page.h>
 #include <vm/vm_kern.h>
 
+#include <vm/vm_page2.h>
+
+static void umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action);
+
 /*
  * If the contents of the userland-supplied pointer matches the specified
  * value enter an interruptable sleep for up to <timeout> microseconds.
  * If the contents does not match then return immediately.
  *
- * The specified timeout may not exceed 1 second.
- *
- * Returns 0 if we slept and were woken up, -1 and ETIMEDOUT if we slept
- * and timed out, and EBUSY if the contents of the pointer did not match
- * the specified value.  A timeout of 0 indicates an unlimited sleep.
+ * Returns 0 if we slept and were woken up, -1 and EWOULDBLOCK if we slept
+ * and timed out, and EBUSY if the contents of the pointer already does
+ * not match the specified value.  A timeout of 0 indicates an unlimited sleep.
  * EINTR is returned if the call was interrupted by a signal (even if
  * the signal specifies that the system call should restart).
  *
@@ -83,8 +85,12 @@
  * safely race against changes in *ptr as long as we are properly interlocked
  * against the umtx_wakeup() call.
  *
- * The VM page associated with the mutex is held to prevent reuse in order
- * to guarentee that the physical address remains consistent.
+ * The VM page associated with the mutex is held in an attempt to keep
+ * the mutex's physical address consistent, allowing umtx_sleep() and
+ * umtx_wakeup() to use the physical address as their rendezvous.  BUT
+ * situations can arise where the physical address may change, particularly
+ * if a threaded program fork()'s and the mutex's memory becomes
+ * copy-on-write.  We register an event on the VM page to catch COWs.
  *
  * umtx_sleep { const int *ptr, int value, int timeout }
  */
@@ -93,26 +99,49 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 {
     int error = EBUSY;
     struct sf_buf *sf;
+    struct vm_page_action action;
     vm_page_t m;
     void *waddr;
     int offset;
     int timeout;
 
-    if ((unsigned int)uap->timeout > 1000000)
+    if (uap->timeout < 0)
 	return (EINVAL);
     if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
 	return (EFAULT);
-    m = vm_fault_page_quick((vm_offset_t)uap->ptr, VM_PROT_READ, &error);
+
+    /*
+     * When faulting in the page, force any COW pages to be resolved.
+     * Otherwise the physical page we sleep on my not match the page
+     * being woken up.
+     */
+    m = vm_fault_page_quick((vm_offset_t)uap->ptr, VM_PROT_READ|VM_PROT_WRITE, &error);
     if (m == NULL)
 	return (EFAULT);
     sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
     offset = (vm_offset_t)uap->ptr & PAGE_MASK;
 
+    /*
+     * The critical section is required to interlock the tsleep against
+     * a wakeup from another cpu.  The lfence forces synchronization.
+     */
     if (*(int *)(sf_buf_kva(sf) + offset) == uap->value) {
-	if ((timeout = uap->timeout) != 0)
-	    timeout = (timeout * hz + 999999) / 1000000;
+	if ((timeout = uap->timeout) != 0) {
+	    timeout = (timeout / 1000000) * hz +
+		      ((timeout % 1000000) * hz + 999999) / 1000000;
+	}
 	waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
-	error = tsleep(waddr, PCATCH|PDOMAIN_UMTX, "umtxsl", timeout);
+	crit_enter();
+	tsleep_interlock(waddr);
+	if (*(int *)(sf_buf_kva(sf) + offset) == uap->value) {
+	    vm_page_init_action(&action, umtx_sleep_page_action_cow, waddr);
+	    vm_page_register_action(m, &action, VMEVENT_COW);
+	    error = tsleep(waddr, PCATCH|PDOMAIN_UMTX, "umtxsl", timeout);
+	    vm_page_unregister_action(m, &action);
+	} else {
+	    error = EBUSY;
+	}
+	crit_exit();
 	/* Always break out in case of signal, even if restartable */
 	if (error == ERESTART)
 		error = EINTR;
@@ -123,6 +152,17 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     sf_buf_free(sf);
     vm_page_unhold(m);
     return(error);
+}
+
+/*
+ * If this page is being copied it may no longer represent the page
+ * underlying our virtual address.  Wake up any umtx_sleep()'s
+ * that were waiting on its physical address to force them to retry.
+ */
+static void
+umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action)
+{
+    wakeup_domain(action->data, PDOMAIN_UMTX);
 }
 
 /*
