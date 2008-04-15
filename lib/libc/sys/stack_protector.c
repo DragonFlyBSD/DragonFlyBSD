@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $OpenBSD: stack_protector.c,v 1.3 2002/12/10 08:53:42 etoh Exp $
- * $DragonFly: src/lib/libc/sys/stack_protector.c,v 1.3 2005/11/19 15:19:03 joerg Exp $
+ * $DragonFly: src/lib/libc/sys/stack_protector.c,v 1.3.10.1 2008/04/15 23:48:51 hasso Exp $
  */
 
 #include "namespace.h"
@@ -37,10 +37,17 @@
 #include <unistd.h>
 #include "un-namespace.h"
 
-void __stack_smash_handler(char func[], int damaged);
 static void __guard_setup(void) __attribute__ ((constructor));
+static void __fail(const char *);
+void __stack_chk_fail(void);
+void __chk_fail(void);
+void __stack_chk_fail_local(void);
 
-long __guard[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+long __stack_chk_guard[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+
+/* For compatibility with propolice used by gcc34. */
+void __stack_smash_handler(char func[], int damaged);
+extern __typeof(__stack_chk_guard) __guard __attribute__ ((alias ("__stack_chk_guard")));
 
 static void
 __guard_setup(void)
@@ -48,12 +55,12 @@ __guard_setup(void)
     int fd;
     ssize_t size;
 
-    if (__guard[0] != 0)
+    if (__stack_chk_guard[0] != 0)
 	return;
     if ((fd = _open ("/dev/urandom", 0)) >= 0) {
-	size = _read (fd, (char*)&__guard, sizeof(__guard));
+	size = _read (fd, (char*)&__stack_chk_guard, sizeof(__stack_chk_guard));
 	_close (fd);
-	if (size == sizeof(__guard))
+	if (size == sizeof(__stack_chk_guard))
 	    return;
     }
 
@@ -61,20 +68,25 @@ __guard_setup(void)
      * If a random generator can't be used, the protector switches the
      * guard to the "terminator canary"
      */
-    ((char*)__guard)[0] = 0;
-    ((char*)__guard)[1] = 0;
-    ((char*)__guard)[2] = '\n';
-    ((char*)__guard)[3] = 255;
+    ((char*)__stack_chk_guard)[0] = 0;
+    ((char*)__stack_chk_guard)[1] = 0;
+    ((char*)__stack_chk_guard)[2] = '\n';
+    ((char*)__stack_chk_guard)[3] = 255;
 }
 
-void
-__stack_smash_handler(char func[], int damaged  __unused)
+static void
+__fail(const char *msg)
 {
-    static const char message[] = "stack overflow in function %s";
     struct sigaction sa;
+    sigset_t mask;
 
-    /* this may fail on a chroot jail, though luck */
-    syslog(LOG_CRIT, message, func);
+    /* Immediately block all signal handlers from running code */
+    sigfillset(&mask);
+    sigdelset(&mask, SIGABRT);
+    sigprocmask(SIG_BLOCK, &mask, NULL);
+
+    /* This may fail on a chroot jail... */
+    syslog(LOG_CRIT, msg);
 
     bzero(&sa, sizeof(struct sigaction));
     sigemptyset(&sa.sa_mask);
@@ -85,4 +97,31 @@ __stack_smash_handler(char func[], int damaged  __unused)
     kill(getpid(), SIGABRT);
 
     _exit(127);
+}
+
+void
+__stack_smash_handler(char func[], int damaged  __unused)
+{
+    static char buf[128];
+
+    vsnprintf(buf, sizeof(buf), "stack overflow in function %s", func);
+    __fail(buf);
+}
+
+void
+__stack_chk_fail(void)
+{
+    __fail("stack overflow detected; terminated");
+}
+
+void
+__chk_fail(void)
+{
+    __fail("buffer overflow detected; terminated");
+}
+
+void
+__stack_chk_fail_local(void)
+{
+    __stack_chk_fail();
 }
