@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.conf.5,v 1.291 2004/02/04 19:38:30 jmc Exp $
-.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.13 2008/04/11 18:21:49 dillon Exp $
+.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.14 2008/04/15 23:00:52 swildner Exp $
 .\"
 .\" Copyright (c) 2002, Daniel Hartmeier
 .\" All rights reserved.
@@ -347,10 +347,10 @@ set loginterface none
 .Ed
 .Pp
 .It Ar set limit
-Sets hard limits on the memory pools used by the packet filter.
+Sets hard limits on the memory zones used by the packet filter.
 See
-.Xr pool 9
-for an explanation of memory pools.
+.Xr zone 9
+for an explanation of memory zones.
 .Pp
 For example,
 .Bd -literal -offset indent
@@ -2020,7 +2020,7 @@ disables sequence space checks even if full state is available.
 .It Ar no-pickups
 Specify that mid-stream pickups are not to be allowed.  This is the
 default and this keyword does not normally need to be specified.
-However, if you are concerned about rule set portability then 
+However, if you are concerned about rule set portability then
 specifying this keyword will at least result in an error from pfctl
 if it doesn't understand the feature.   TCP flags of S/SA are implied
 and do not need to explicitly specified.
@@ -2570,7 +2570,7 @@ block in on $ext_if proto tcp from any os {"Windows 95", "Windows 98"} \e
 #		no window scaling information is known.  Such connections
 #		will disable sequence space checks.  Implies no flag
 #		restrictions.
-#		
+#
 # hash-only	Do not fail packets on sequence space checks.  Implies no
 #		flag restrictions.
 
