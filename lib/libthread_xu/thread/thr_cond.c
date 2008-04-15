@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.11 2008/04/14 20:12:41 dillon Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.12 2008/04/15 01:45:22 dillon Exp $
  */
 
 #include "namespace.h"
@@ -200,7 +200,6 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 /*	fprintf(stderr, "waiton2 %p %d\n", cv, oldseq);*/
 	ret = _mutex_cv_unlock(mutex, &info.count);
 	if (ret) {
-		assert(0);
 		THR_LOCK_RELEASE(curthread, &cv->c_lock);
 		return (ret);
 	}
