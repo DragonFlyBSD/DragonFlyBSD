@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.73 2008/04/09 21:41:58 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.74 2008/04/15 21:00:56 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -130,6 +130,7 @@ MAN=	accept_filter.9 \
 	tvtohz.9 \
 	uio.9 \
 	usbdi.9 \
+	vflush.9 \
 	VFS.9 \
 	VFS_CHECKEXP.9 \
 	VFS_FHTOVP.9 \
