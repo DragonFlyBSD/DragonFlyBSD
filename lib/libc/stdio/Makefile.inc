@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 4/17/94
 # $FreeBSD: src/lib/libc/stdio/Makefile.inc,v 1.19.2.1 2001/04/25 10:04:11 ru Exp $
-# $DragonFly: src/lib/libc/stdio/Makefile.inc,v 1.5 2005/08/05 23:43:19 swildner Exp $
+# $DragonFly: src/lib/libc/stdio/Makefile.inc,v 1.6 2008/04/15 01:16:14 dillon Exp $
 
 # stdio sources
 .PATH: ${.CURDIR}/../libc/stdio
@@ -15,6 +15,7 @@ SRCS+=	__fpending.c _flock_stub.c \
 	getwc.c getwchar.c makebuf.c mktemp.c perror.c printf.c putc.c \
 	putchar.c puts.c putw.c putwc.c putwchar.c refill.c remove.c rewind.c \
 	rget.c scanf.c setbuf.c setbuffer.c setvbuf.c snprintf.c sprintf.c \
+	sreadahead.c \
 	sscanf.c stdio.c swprintf.c swscanf.c tempnam.c tmpfile.c tmpnam.c \
 	ungetc.c ungetwc.c vasprintf.c vfprintf.c vfscanf.c vfwprintf.c \
 	vfwscanf.c vprintf.c vscanf.c vsnprintf.c vsprintf.c vsscanf.c \
