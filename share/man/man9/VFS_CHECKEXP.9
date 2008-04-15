@@ -23,7 +23,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/VFS_CHECKEXP.9,v 1.2.2.4 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/VFS_CHECKEXP.9,v 1.3 2003/07/27 05:36:06 hmp Exp $
+.\" $DragonFly: src/share/man/man9/VFS_CHECKEXP.9,v 1.4 2008/04/15 16:26:02 swildner Exp $
 .\"
 .Dd September 10, 1999
 .Os
@@ -61,7 +61,7 @@ It is generally called before
 to validate that a client has access to the filesystem.
 .Pp
 The filesystem should call
-.Xr vfs_export_lookup 9
+.Fn vfs_export_lookup
 with the address of an appropriate
 .Vt netexport
 structure and the address of the client,
@@ -70,7 +70,7 @@ to verify that the client can access this filesystem.
 .Sh RETURN VALUES
 The export flags and anonymous credentials specific to the client (returned
 by
-.Xr vfs_export_lookup 9 )
+.Fn vfs_export_lookup )
 will be returned in
 .Fa *exflagsp
 and
