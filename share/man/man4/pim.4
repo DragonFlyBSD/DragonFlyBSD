@@ -23,10 +23,10 @@
 .\" FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 .\" DEALINGS IN THE SOFTWARE.
 .\"
-.\" $FreeBSD: /repoman/r/ncvs/src/share/man/man4/pim.4,v 1.1 2003/10/17 15:12:01 bmah Exp $
-.\" $DragonFly: src/share/man/man4/pim.4,v 1.4 2007/11/24 18:47:07 swildner Exp $
+.\" $FreeBSD: src/share/man/man4/pim.4,v 1.2 2004/07/09 09:22:36 ru Exp $
+.\" $DragonFly: src/share/man/man4/pim.4,v 1.5 2008/04/15 23:51:00 swildner Exp $
 .\"
-.Dd September 4, 2003
+.Dd April 16, 2008
 .Dt PIM 4
 .Os
 .\"
@@ -92,13 +92,11 @@ one of the following socket options should be used to enable or disable
 PIM processing in the kernel.
 Note that those options require certain privilege
 (i.e., root privilege):
-.Pp
 .Bd -literal
 /* IPv4 */
 int v = 1;        /* 1 to enable, or 0 to disable */
 setsockopt(mrouter_s4, IPPROTO_IP, MRT_PIM, (void *)&v, sizeof(v));
 .Ed
-.Pp
 .Bd -literal
 /* IPv6 */
 int v = 1;        /* 1 to enable, or 0 to disable */
@@ -141,7 +139,7 @@ opening first a
 (see
 .Xr socket 2 ) ,
 with protocol value of
-.Dq IPPROTO_PIM :
+.Dv IPPROTO_PIM :
 .Bd -literal
 /* IPv4 */
 int pim_s4;
@@ -174,12 +172,8 @@ packets:
 .Xr multicast 4
 .\"
 .Sh STANDARDS
-.\" XXX the PIM-SM number must be updated after RFC 2362 is
-.\" replaced by a new RFC by the end of year 2003 or so.
-The PIM-SM protocol is specified in RFC 2362 (to be replaced by
-.Xr draft-ietf-pim-sm-v2-new-* ) .
-The PIM-DM protocol is specified in
-.Xr draft-ietf-pim-dm-new-v2-* ) .
+The PIM-SM protocol is specified in RFC 4601.
+The PIM-DM protocol is specified in RFC 3973.
 .\"
 .Sh AUTHORS
 .An -nosplit
