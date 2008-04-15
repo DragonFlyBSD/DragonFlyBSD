@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/rc.d/hostapd,v 1.1 2006/02/03 01:35:36 flz Exp $
-# $DragonFly: src/etc/rc.d/hostapd,v 1.1 2007/07/04 16:28:45 swildner Exp $
+# $FreeBSD: src/etc/rc.d/hostapd,v 1.2 2007/11/14 21:19:15 brix Exp $
+# $DragonFly: src/etc/rc.d/hostapd,v 1.2 2008/04/15 18:11:00 swildner Exp $
 #
 
 # PROVIDE: hostapd
@@ -15,9 +15,11 @@ command="/usr/sbin/${name}"
 rcvar=`set_rcvar`
 
 conf_file="/etc/${name}.conf"
+pidfile="/var/run/${name}.pid"
 
-command_args="-B ${conf_file}"
+command_args="-P ${pidfile} -B ${conf_file}"
 required_files="${conf_file}"
+extra_commands="reload"
 
 load_rc_config ${name}
 run_rc_command "$1"
