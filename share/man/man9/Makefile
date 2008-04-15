@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.74 2008/04/15 21:00:56 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.75 2008/04/15 22:02:59 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -62,6 +62,7 @@ MAN=	accept_filter.9 \
 	device_probe_and_attach.9 \
 	device_quiet.9 \
 	device_set_desc.9 \
+	device_set_driver.9 \
 	device_set_flags.9 \
 	DEVICE_SHUTDOWN.9 \
 	DEV_MODULE.9 \
