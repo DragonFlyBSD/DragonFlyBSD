@@ -35,7 +35,7 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
- * $DragonFly: src/include/stdio.h,v 1.12 2007/04/17 22:25:45 corecode Exp $
+ * $DragonFly: src/include/stdio.h,v 1.12.4.1 2008/04/16 23:29:11 dillon Exp $
  */
 
 #ifndef	_STDIO_H_
@@ -324,6 +324,7 @@ int	__srget(FILE *);
 int	__vfscanf(FILE *, const char *, __va_list);
 int	__svfscanf(FILE *, const char *, __va_list);
 int	__swbuf(int, FILE *);
+size_t	__sreadahead(FILE *);
 __END_DECLS
 
 /*
