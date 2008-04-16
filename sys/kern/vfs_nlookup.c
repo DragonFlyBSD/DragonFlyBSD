@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.22 2007/05/09 05:12:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.22.4.1 2008/04/16 17:58:28 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -292,7 +292,7 @@ nlookup(struct nlookupdata *nd)
 
 #ifdef KTRACE
     if (KTRPOINT(nd->nl_td, KTR_NAMEI))
-	ktrnamei(nd->nl_td->td_proc, nd->nl_path);
+	ktrnamei(nd->nl_td->td_lwp, nd->nl_path);
 #endif
     bzero(&nlc, sizeof(nlc));
 

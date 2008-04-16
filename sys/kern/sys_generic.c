@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.47 2008/01/10 22:30:27 nth Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.47.2.1 2008/04/16 17:58:28 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -253,7 +253,6 @@ static int
 dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	int error;
 	int len;
 #ifdef KTRACE
@@ -286,7 +285,7 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
 			get_mplock();
-			ktrgenio(p, fd, UIO_READ, &ktruio, error);
+			ktrgenio(td->td_lwp, fd, UIO_READ, &ktruio, error);
 			rel_mplock();
 		}
 		FREE(ktriov, M_TEMP);
@@ -466,7 +465,6 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 {	
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
-	struct proc *p = td->td_proc;
 	int error;
 	int len;
 #ifdef KTRACE
@@ -497,7 +495,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 		/* Socket layer is responsible for issuing SIGPIPE. */
 		if (error == EPIPE) {
 			get_mplock();
-			lwpsignal(p, lp, SIGPIPE);
+			lwpsignal(lp->lwp_proc, lp, SIGPIPE);
 			rel_mplock();
 		}
 	}
@@ -507,7 +505,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
 			get_mplock();
-			ktrgenio(p, fd, UIO_WRITE, &ktruio, error);
+			ktrgenio(lp, fd, UIO_WRITE, &ktruio, error);
 			rel_mplock();
 		}
 		FREE(ktriov, M_TEMP);

@@ -32,7 +32,7 @@
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/ktrace.h,v 1.19.2.3 2001/01/06 09:58:23 alfred Exp $
- * $DragonFly: src/sys/sys/ktrace.h,v 1.9 2007/05/07 15:43:29 dillon Exp $
+ * $DragonFly: src/sys/sys/ktrace.h,v 1.9.4.1 2008/04/16 17:58:31 dillon Exp $
  */
 
 #ifndef _SYS_KTRACE_H_
@@ -93,7 +93,10 @@ struct ktr_header {
  * Test for kernel trace point (MP SAFE)
  */
 #define KTRPOINT(td, type)	\
-	((td->td_proc) && (((td)->td_proc->p_traceflag & ((1<<(type))|KTRFAC_ACTIVE)) == (1<<(type))))
+	((td)->td_proc && ((td)->td_proc->p_traceflag & (1<<(type))) && \
+	(((td)->td_proc->p_traceflag | (td)->td_lwp->lwp_traceflag) & \
+	  KTRFAC_ACTIVE) == 0)
+
 
 /*
  * ktrace record types
@@ -186,12 +189,12 @@ struct ktr_csw {
 #define KTRFAC_ACTIVE	0x20000000	/* ktrace logging in progress, ignore */
 
 #ifdef	_KERNEL
-void	ktrnamei (struct proc *,char *);
-void	ktrcsw (struct proc *,int,int);
-void	ktrpsig (struct proc *, int, sig_t, sigset_t *, int);
-void	ktrgenio (struct proc *, int, enum uio_rw, struct uio *, int);
-void	ktrsyscall (struct proc *, int, int narg, register_t args[]);
-void	ktrsysret (struct proc *, int, int, register_t);
+void	ktrnamei (struct lwp *,char *);
+void	ktrcsw (struct lwp *,int,int);
+void	ktrpsig (struct lwp *, int, sig_t, sigset_t *, int);
+void	ktrgenio (struct lwp *, int, enum uio_rw, struct uio *, int);
+void	ktrsyscall (struct lwp *, int, int narg, register_t args[]);
+void	ktrsysret (struct lwp *, int, int, register_t);
 void	ktrdestroy (struct ktrace_node **);
 struct ktrace_node *ktrinherit (struct ktrace_node *);
 
