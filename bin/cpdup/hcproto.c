@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hcproto.c,v 1.4 2008/04/14 05:40:51 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.c,v 1.5 2008/04/16 17:30:56 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -126,6 +126,11 @@ hc_hello(struct HostConf *hc)
 	    hc->version = HCC_INT32(item);
 	    break;
 	}
+    }
+    if (hc->version < 2) {
+	fprintf(stderr, "Remote cpdup at %s has an incompatible version\n",
+		hc->host);
+	error = -1;
     }
     if (error < 0)
 	fprintf(stderr, "Handshake failed with %s\n", hc->host);
