@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.44 2007/08/28 01:09:07 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.44.2.1 2008/04/16 18:05:09 dillon Exp $
  */
 
 /*
@@ -1348,6 +1348,7 @@ readrest:
 				 * Oh, well, lets copy it.
 				 */
 				vm_page_copy(fs->m, fs->first_m);
+				vm_page_event(fs->m, VMEVENT_COW);
 			}
 
 			if (fs->m) {
@@ -1650,6 +1651,7 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 			panic("vm_fault_copy_wired: page missing");
 
 		vm_page_copy(src_m, dst_m);
+		vm_page_event(src_m, VMEVENT_COW);
 
 		/*
 		 * Enter it in the pmap...

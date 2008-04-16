@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.26 2007/07/02 15:57:48 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.26.4.1 2008/04/16 18:05:09 dillon Exp $
  */
 
 /*
@@ -102,6 +102,18 @@
 #endif
 
 #endif
+
+typedef enum vm_page_event { VMEVENT_NONE, VMEVENT_COW } vm_page_event_t;
+
+struct vm_page_action {
+	LIST_ENTRY(vm_page_action) entry;
+	vm_page_event_t		event;
+	void			(*func)(struct vm_page *,
+					struct vm_page_action *);
+	void			*data;
+};
+
+typedef struct vm_page_action *vm_page_action_t;
 
 /*
  *	Management of resident (logical) pages.
@@ -153,10 +165,10 @@ struct vm_page {
 	u_short	queue;			/* page queue index */
 	u_short	flags;			/* see below */
 	u_short	pc;			/* page color */
-	u_short wire_count;		/* wired down maps refs (P) */
-	int 	hold_count;		/* page hold count */
 	u_char	act_count;		/* page usage count */
 	u_char	busy;			/* page busy count */
+	u_int	wire_count;		/* wired down maps refs (P) */
+	int 	hold_count;		/* page hold count */
 
 	/*
 	 * NOTE that these must support one bit per DEV_BSIZE in a page!!!
@@ -170,6 +182,7 @@ struct vm_page {
 	u_short	dirty;			/* map of dirty DEV_BSIZE chunks */
 #endif
 	struct msf_buf *msf_hint; 	/* first page of an msfbuf map */
+	LIST_HEAD(,vm_page_action) action_list;
 };
 
 #ifndef __VM_PAGE_T_DEFINED__
@@ -480,6 +493,7 @@ void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
 vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t, int);
 void vm_contig_pg_free(int, u_long);
+void vm_page_event_internal(vm_page_t, vm_page_event_t);
 
 /*
  * Holding a page keeps it from being reused.  Other parts of the system
