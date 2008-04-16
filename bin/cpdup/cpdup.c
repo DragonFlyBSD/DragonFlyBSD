@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.24 2008/04/16 17:30:56 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.25 2008/04/16 17:38:19 dillon Exp $
  */
 
 /*-
@@ -312,10 +312,8 @@ main(int ac, char **av)
 	    fprintf(stderr, "The MD5 options are not currently supported for remote sources\n");
 	    exit(1);
 	}
-	if (hc_connect(&SrcHost) < 0) {
-	    fprintf(stderr, "Unable to connect to %s\n", SrcHost.host);
+	if (hc_connect(&SrcHost) < 0)
 	    exit(1);
-	}
     }
     if (dst && (ptr = strchr(dst, ':')) != NULL) {
 	asprintf(&DstHost.host, "%*.*s", ptr - dst, ptr - dst, dst);
@@ -325,7 +323,7 @@ main(int ac, char **av)
 	    exit(1);
 	}
 	if (hc_connect(&DstHost) < 0)
-	    fprintf(stderr, "Unable to connect to %s\n", DstHost.host);
+	    exit(1);
     }
 
     /*

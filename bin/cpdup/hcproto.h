@@ -1,11 +1,14 @@
 /*
  * HCPROTO.H
  *
- * $DragonFly: src/bin/cpdup/hcproto.h,v 1.3 2008/04/14 05:40:51 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.h,v 1.4 2008/04/16 17:38:19 dillon Exp $
  */
 
 #ifndef _HCPROTO_H_
 #define _HCPROTO_H_
+
+#define HCPROTO_VERSION		2
+#define HCPROTO_VERSION_COMPAT	2
 
 #define HC_HELLO	0x0001
 

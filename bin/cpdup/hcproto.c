@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hcproto.c,v 1.5 2008/04/16 17:30:56 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.c,v 1.6 2008/04/16 17:38:19 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -72,8 +72,10 @@ struct HCDesc HCDispatchTable[] = {
 int
 hc_connect(struct HostConf *hc)
 {
-    if (hcc_connect(hc) < 0)
+    if (hcc_connect(hc) < 0) {
+	fprintf(stderr, "Unable to connect to %s\n", hc->host);
 	return(-1);
+    }
     return(hc_hello(hc));
 }
 
@@ -105,9 +107,12 @@ hc_hello(struct HostConf *hc)
 
     trans = hcc_start_command(hc, HC_HELLO);
     hcc_leaf_string(trans, LC_HELLOSTR, hostbuf);
-    hcc_leaf_int32(trans, LC_VERSION, 1);
-    if ((head = hcc_finish_command(trans)) == NULL)
+    hcc_leaf_int32(trans, LC_VERSION, HCPROTO_VERSION);
+    if ((head = hcc_finish_command(trans)) == NULL) {
+	fprintf(stderr, "Connected to %s but remote failed to complete hello\n",
+		hc->host);
 	return(-1);
+    }
 
     if (head->error) {
 	fprintf(stderr, "Connected to %s but remote returned error %d\n",
@@ -127,7 +132,7 @@ hc_hello(struct HostConf *hc)
 	    break;
 	}
     }
-    if (hc->version < 2) {
+    if (hc->version < HCPROTO_VERSION_COMPAT) {
 	fprintf(stderr, "Remote cpdup at %s has an incompatible version\n",
 		hc->host);
 	error = -1;
@@ -149,7 +154,7 @@ rc_hello(hctransaction_t trans, struct HCHead *head __unused)
 	hostbuf[0] = '?';
 
     hcc_leaf_string(trans, LC_HELLOSTR, hostbuf);
-    hcc_leaf_int32(trans, LC_VERSION, 1);
+    hcc_leaf_int32(trans, LC_VERSION, HCPROTO_VERSION);
     return(0);
 }
 
