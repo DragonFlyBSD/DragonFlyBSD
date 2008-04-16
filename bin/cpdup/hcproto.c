@@ -3,50 +3,42 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hcproto.c,v 1.1 2006/08/13 20:51:40 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.c,v 1.1.6.1 2008/04/16 17:45:18 dillon Exp $
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <errno.h>
-
+#include "cpdup.h"
 #include "hclink.h"
 #include "hcproto.h"
 
 static int hc_decode_stat(struct stat *, struct HCHead *);
-static int rc_encode_stat(struct HostConf *, struct stat *);
+static int rc_encode_stat(hctransaction_t trans, struct stat *);
 
-static int rc_hello(struct HostConf *, struct HCHead *);
-static int rc_stat(struct HostConf *, struct HCHead *);
-static int rc_lstat(struct HostConf *, struct HCHead *);
-static int rc_opendir(struct HostConf *, struct HCHead *);
-static int rc_readdir(struct HostConf *, struct HCHead *);
-static int rc_closedir(struct HostConf *, struct HCHead *);
-static int rc_open(struct HostConf *, struct HCHead *);
-static int rc_close(struct HostConf *, struct HCHead *);
-static int rc_read(struct HostConf *, struct HCHead *);
-static int rc_write(struct HostConf *, struct HCHead *);
-static int rc_remove(struct HostConf *, struct HCHead *);
-static int rc_mkdir(struct HostConf *, struct HCHead *);
-static int rc_rmdir(struct HostConf *, struct HCHead *);
-static int rc_chown(struct HostConf *, struct HCHead *);
-static int rc_lchown(struct HostConf *, struct HCHead *);
-static int rc_chmod(struct HostConf *, struct HCHead *);
-static int rc_link(struct HostConf *, struct HCHead *);
+static int rc_hello(hctransaction_t trans, struct HCHead *);
+static int rc_stat(hctransaction_t trans, struct HCHead *);
+static int rc_lstat(hctransaction_t trans, struct HCHead *);
+static int rc_opendir(hctransaction_t trans, struct HCHead *);
+static int rc_readdir(hctransaction_t trans, struct HCHead *);
+static int rc_closedir(hctransaction_t trans, struct HCHead *);
+static int rc_open(hctransaction_t trans, struct HCHead *);
+static int rc_close(hctransaction_t trans, struct HCHead *);
+static int rc_read(hctransaction_t trans, struct HCHead *);
+static int rc_write(hctransaction_t trans, struct HCHead *);
+static int rc_remove(hctransaction_t trans, struct HCHead *);
+static int rc_mkdir(hctransaction_t trans, struct HCHead *);
+static int rc_rmdir(hctransaction_t trans, struct HCHead *);
+static int rc_chown(hctransaction_t trans, struct HCHead *);
+static int rc_lchown(hctransaction_t trans, struct HCHead *);
+static int rc_chmod(hctransaction_t trans, struct HCHead *);
+static int rc_mknod(hctransaction_t trans, struct HCHead *);
+static int rc_link(hctransaction_t trans, struct HCHead *);
 #ifdef _ST_FLAGS_PRESENT_
-static int rc_chflags(struct HostConf *, struct HCHead *);
+static int rc_chflags(hctransaction_t trans, struct HCHead *);
 #endif
-static int rc_readlink(struct HostConf *, struct HCHead *);
-static int rc_umask(struct HostConf *, struct HCHead *);
-static int rc_symlink(struct HostConf *, struct HCHead *);
-static int rc_rename(struct HostConf *, struct HCHead *);
-static int rc_utimes(struct HostConf *, struct HCHead *);
+static int rc_readlink(hctransaction_t trans, struct HCHead *);
+static int rc_umask(hctransaction_t trans, struct HCHead *);
+static int rc_symlink(hctransaction_t trans, struct HCHead *);
+static int rc_rename(hctransaction_t trans, struct HCHead *);
+static int rc_utimes(hctransaction_t trans, struct HCHead *);
 
 struct HCDesc HCDispatchTable[] = {
     { HC_HELLO,		rc_hello },
@@ -65,6 +57,7 @@ struct HCDesc HCDispatchTable[] = {
     { HC_CHOWN,		rc_chown },
     { HC_LCHOWN,	rc_lchown },
     { HC_CHMOD,		rc_chmod },
+    { HC_MKNOD,		rc_mknod },
     { HC_LINK,		rc_link },
 #ifdef _ST_FLAGS_PRESENT_
     { HC_CHFLAGS,	rc_chflags },
@@ -79,8 +72,10 @@ struct HCDesc HCDispatchTable[] = {
 int
 hc_connect(struct HostConf *hc)
 {
-    if (hcc_connect(hc) < 0)
+    if (hcc_connect(hc) < 0) {
+	fprintf(stderr, "Unable to connect to %s\n", hc->host);
 	return(-1);
+    }
     return(hc_hello(hc));
 }
 
@@ -100,6 +95,7 @@ hc_hello(struct HostConf *hc)
 {
     struct HCHead *head;
     struct HCLeaf *item;
+    hctransaction_t trans;
     char hostbuf[256];
     int error;
 
@@ -109,10 +105,14 @@ hc_hello(struct HostConf *hc)
     if (hostbuf[0] == 0)
 	hostbuf[0] = '?';
 
-    hcc_start_command(hc, HC_HELLO);
-    hcc_leaf_string(hc, LC_HELLOSTR, hostbuf);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_HELLO);
+    hcc_leaf_string(trans, LC_HELLOSTR, hostbuf);
+    hcc_leaf_int32(trans, LC_VERSION, HCPROTO_VERSION);
+    if ((head = hcc_finish_command(trans)) == NULL) {
+	fprintf(stderr, "Connected to %s but remote failed to complete hello\n",
+		hc->host);
 	return(-1);
+    }
 
     if (head->error) {
 	fprintf(stderr, "Connected to %s but remote returned error %d\n",
@@ -126,7 +126,16 @@ hc_hello(struct HostConf *hc)
 	case LC_HELLOSTR:
 	    fprintf(stderr, "Handshaked with %s\n", HCC_STRING(item));
 	    error = 0;
+	    break;
+	case LC_VERSION:
+	    hc->version = HCC_INT32(item);
+	    break;
 	}
+    }
+    if (hc->version < HCPROTO_VERSION_COMPAT) {
+	fprintf(stderr, "Remote cpdup at %s has an incompatible version\n",
+		hc->host);
+	error = -1;
     }
     if (error < 0)
 	fprintf(stderr, "Handshake failed with %s\n", hc->host);
@@ -134,7 +143,7 @@ hc_hello(struct HostConf *hc)
 }
 
 static int
-rc_hello(struct HostConf *hc, struct HCHead *head __unused)
+rc_hello(hctransaction_t trans, struct HCHead *head __unused)
 {
     char hostbuf[256];
 
@@ -144,7 +153,8 @@ rc_hello(struct HostConf *hc, struct HCHead *head __unused)
     if (hostbuf[0] == 0)
 	hostbuf[0] = '?';
 
-    hcc_leaf_string(hc, LC_HELLOSTR, hostbuf);
+    hcc_leaf_string(trans, LC_HELLOSTR, hostbuf);
+    hcc_leaf_int32(trans, LC_VERSION, HCPROTO_VERSION);
     return(0);
 }
 
@@ -155,13 +165,14 @@ int
 hc_stat(struct HostConf *hc, const char *path, struct stat *st)
 {
     struct HCHead *head;
+    hctransaction_t trans;
 
     if (hc == NULL || hc->host == NULL)
 	return(stat(path, st));
 
-    hcc_start_command(hc, HC_STAT);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_STAT);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -172,13 +183,14 @@ int
 hc_lstat(struct HostConf *hc, const char *path, struct stat *st)
 {
     struct HCHead *head;
+    hctransaction_t trans;
 
     if (hc == NULL || hc->host == NULL)
 	return(lstat(path, st));
 
-    hcc_start_command(hc, HC_LSTAT);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_LSTAT);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -248,7 +260,7 @@ hc_decode_stat(struct stat *st, struct HCHead *head)
 }
 
 static int
-rc_stat(struct HostConf *hc, struct HCHead *head)
+rc_stat(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     struct stat st;
@@ -265,11 +277,11 @@ rc_stat(struct HostConf *hc, struct HCHead *head)
 	return(-2);
     if (stat(path, &st) < 0)
 	return(-1);
-    return (rc_encode_stat(hc, &st));
+    return (rc_encode_stat(trans, &st));
 }
 
 static int
-rc_lstat(struct HostConf *hc, struct HCHead *head)
+rc_lstat(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     struct stat st;
@@ -286,30 +298,30 @@ rc_lstat(struct HostConf *hc, struct HCHead *head)
 	return(-2);
     if (lstat(path, &st) < 0)
 	return(-1);
-    return (rc_encode_stat(hc, &st));
+    return (rc_encode_stat(trans, &st));
 }
 
 static int
-rc_encode_stat(struct HostConf *hc, struct stat *st)
+rc_encode_stat(hctransaction_t trans, struct stat *st)
 {
-    hcc_leaf_int32(hc, LC_DEV, st->st_dev);
-    hcc_leaf_int64(hc, LC_INO, st->st_ino);
-    hcc_leaf_int32(hc, LC_MODE, st->st_mode);
-    hcc_leaf_int32(hc, LC_NLINK, st->st_nlink);
-    hcc_leaf_int32(hc, LC_UID, st->st_uid);
-    hcc_leaf_int32(hc, LC_GID, st->st_gid);
-    hcc_leaf_int32(hc, LC_RDEV, st->st_rdev);
-    hcc_leaf_int64(hc, LC_ATIME, st->st_atime);
-    hcc_leaf_int64(hc, LC_MTIME, st->st_mtime);
-    hcc_leaf_int64(hc, LC_CTIME, st->st_ctime);
-    hcc_leaf_int64(hc, LC_FILESIZE, st->st_size);
-    hcc_leaf_int64(hc, LC_FILEBLKS, st->st_blocks);
-    hcc_leaf_int32(hc, LC_BLKSIZE, st->st_blksize);
+    hcc_leaf_int32(trans, LC_DEV, st->st_dev);
+    hcc_leaf_int64(trans, LC_INO, st->st_ino);
+    hcc_leaf_int32(trans, LC_MODE, st->st_mode);
+    hcc_leaf_int32(trans, LC_NLINK, st->st_nlink);
+    hcc_leaf_int32(trans, LC_UID, st->st_uid);
+    hcc_leaf_int32(trans, LC_GID, st->st_gid);
+    hcc_leaf_int32(trans, LC_RDEV, st->st_rdev);
+    hcc_leaf_int64(trans, LC_ATIME, st->st_atime);
+    hcc_leaf_int64(trans, LC_MTIME, st->st_mtime);
+    hcc_leaf_int64(trans, LC_CTIME, st->st_ctime);
+    hcc_leaf_int64(trans, LC_FILESIZE, st->st_size);
+    hcc_leaf_int64(trans, LC_FILEBLKS, st->st_blocks);
+    hcc_leaf_int32(trans, LC_BLKSIZE, st->st_blksize);
 #ifdef _ST_FSMID_PRESENT_
-    hcc_leaf_int64(hc, LC_FSMID, st->st_fsmid);
+    hcc_leaf_int64(trans, LC_FSMID, st->st_fsmid);
 #endif
 #ifdef _ST_FLAGS_PRESENT_
-    hcc_leaf_int64(hc, LC_FILEFLAGS, st->st_flags);
+    hcc_leaf_int64(trans, LC_FILEFLAGS, st->st_flags);
 #endif
     return(0);
 }
@@ -320,6 +332,7 @@ rc_encode_stat(struct HostConf *hc, struct stat *st)
 DIR *
 hc_opendir(struct HostConf *hc, const char *path)
 {
+    hctransaction_t trans;
     struct HCHead *head;
     struct HCLeaf *item;
     struct dirent *den;
@@ -328,9 +341,9 @@ hc_opendir(struct HostConf *hc, const char *path)
     if (hc == NULL || hc->host == NULL)
 	return(opendir(path));
 
-    hcc_start_command(hc, HC_OPENDIR);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_OPENDIR);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(NULL);
     if (head->error)
 	return(NULL);
@@ -353,7 +366,7 @@ hc_opendir(struct HostConf *hc, const char *path)
 }
 
 static int
-rc_opendir(struct HostConf *hc, struct HCHead *head)
+rc_opendir(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -372,8 +385,8 @@ rc_opendir(struct HostConf *hc, struct HCHead *head)
     if ((dir = opendir(path)) == NULL) {
 	head->error = errno;
     } else {
-	desc = hcc_alloc_descriptor(hc, dir, HC_DESC_DIR);
-	hcc_leaf_int32(hc, LC_DESCRIPTOR, desc);
+	desc = hcc_alloc_descriptor(trans->hc, dir, HC_DESC_DIR);
+	hcc_leaf_int32(trans, LC_DESCRIPTOR, desc);
     }
     return(0);
 }
@@ -384,6 +397,7 @@ rc_opendir(struct HostConf *hc, struct HCHead *head)
 struct dirent *
 hc_readdir(struct HostConf *hc, DIR *dir)
 {
+    hctransaction_t trans;
     struct HCHead *head;
     struct HCLeaf *item;
     struct dirent *den;
@@ -391,9 +405,9 @@ hc_readdir(struct HostConf *hc, DIR *dir)
     if (hc == NULL || hc->host == NULL)
 	return(readdir(dir));
 
-    hcc_start_command(hc, HC_READDIR);
-    hcc_leaf_int32(hc, LC_DESCRIPTOR, (int)dir);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_READDIR);
+    hcc_leaf_int32(trans, LC_DESCRIPTOR, (int)dir);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(NULL);
     if (head->error)
 	return(NULL);	/* XXX errno */
@@ -425,7 +439,7 @@ hc_readdir(struct HostConf *hc, DIR *dir)
 }
 
 static int
-rc_readdir(struct HostConf *hc, struct HCHead *head)
+rc_readdir(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     struct dirent *den;
@@ -434,16 +448,16 @@ rc_readdir(struct HostConf *hc, struct HCHead *head)
     for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
 	switch(item->leafid) {
 	case LC_DESCRIPTOR:
-	    dir = hcc_get_descriptor(hc, HCC_INT32(item), HC_DESC_DIR);
+	    dir = hcc_get_descriptor(trans->hc, HCC_INT32(item), HC_DESC_DIR);
 	    break;
 	}
     }
     if (dir == NULL)
 	return(-2);
     if ((den = readdir(dir)) != NULL) {
-	hcc_leaf_string(hc, LC_PATH1, den->d_name);
-	hcc_leaf_int64(hc, LC_INO, den->d_fileno);
-	hcc_leaf_int32(hc, LC_TYPE, den->d_type);
+	hcc_leaf_string(trans, LC_PATH1, den->d_name);
+	hcc_leaf_int64(trans, LC_INO, den->d_fileno);
+	hcc_leaf_int32(trans, LC_TYPE, den->d_type);
     }
     return(0);
 }
@@ -456,6 +470,7 @@ rc_readdir(struct HostConf *hc, struct HCHead *head)
 int
 hc_closedir(struct HostConf *hc, DIR *dir)
 {
+    hctransaction_t trans;
     struct HCHead *head;
     struct dirent *den;
 
@@ -466,9 +481,9 @@ hc_closedir(struct HostConf *hc, DIR *dir)
 	free(den);
 	hcc_set_descriptor(hc, (int)dir, NULL, HC_DESC_DIR);
 
-	hcc_start_command(hc, HC_CLOSEDIR);
-	hcc_leaf_int32(hc, LC_DESCRIPTOR, (int)dir);
-	if ((head = hcc_finish_command(hc)) == NULL)
+	trans = hcc_start_command(hc, HC_CLOSEDIR);
+	hcc_leaf_int32(trans, LC_DESCRIPTOR, (int)dir);
+	if ((head = hcc_finish_command(trans)) == NULL)
 	    return(-1);
 	if (head->error)
 	    return(-1);		/* XXX errno */
@@ -480,7 +495,7 @@ hc_closedir(struct HostConf *hc, DIR *dir)
 }
 
 static int
-rc_closedir(struct HostConf *hc, struct HCHead *head)
+rc_closedir(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     DIR *dir = NULL;
@@ -488,7 +503,9 @@ rc_closedir(struct HostConf *hc, struct HCHead *head)
     for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
 	switch(item->leafid) {
 	case LC_DESCRIPTOR:
-	    dir = hcc_get_descriptor(hc, HCC_INT32(item), HC_DESC_DIR);
+	    dir = hcc_get_descriptor(trans->hc, HCC_INT32(item), HC_DESC_DIR);
+	    if (dir != NULL)
+		    hcc_set_descriptor(trans->hc, HCC_INT32(item), NULL, HC_DESC_DIR);
 	    break;
 	}
     }
@@ -503,6 +520,7 @@ rc_closedir(struct HostConf *hc, struct HCHead *head)
 int
 hc_open(struct HostConf *hc, const char *path, int flags, mode_t mode)
 {
+    hctransaction_t trans;
     struct HCHead *head;
     struct HCLeaf *item;
     int *fdp;
@@ -524,12 +542,12 @@ hc_open(struct HostConf *hc, const char *path, int flags, mode_t mode)
     if (flags & O_TRUNC)
 	nflags |= XO_TRUNC;
 
-    hcc_start_command(hc, HC_OPEN);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    hcc_leaf_int32(hc, LC_OFLAGS, nflags);
-    hcc_leaf_int32(hc, LC_MODE, mode);
+    trans = hcc_start_command(hc, HC_OPEN);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    hcc_leaf_int32(trans, LC_OFLAGS, nflags);
+    hcc_leaf_int32(trans, LC_MODE, mode);
 
-    if ((head = hcc_finish_command(hc)) == NULL)
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -552,7 +570,7 @@ hc_open(struct HostConf *hc, const char *path, int flags, mode_t mode)
 }
 
 static int
-rc_open(struct HostConf *hc, struct HCHead *head)
+rc_open(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -596,8 +614,8 @@ rc_open(struct HostConf *hc, struct HCHead *head)
     }
     fdp = malloc(sizeof(int));
     *fdp = fd;
-    desc = hcc_alloc_descriptor(hc, fdp, HC_DESC_FD);
-    hcc_leaf_int32(hc, LC_DESCRIPTOR, desc);
+    desc = hcc_alloc_descriptor(trans->hc, fdp, HC_DESC_FD);
+    hcc_leaf_int32(trans, LC_DESCRIPTOR, desc);
     return(0);
 }
 
@@ -607,6 +625,7 @@ rc_open(struct HostConf *hc, struct HCHead *head)
 int
 hc_close(struct HostConf *hc, int fd)
 {
+    hctransaction_t trans;
     struct HCHead *head;
     int *fdp;
 
@@ -618,9 +637,9 @@ hc_close(struct HostConf *hc, int fd)
 	free(fdp);
 	hcc_set_descriptor(hc, fd, NULL, HC_DESC_FD);
 
-	hcc_start_command(hc, HC_CLOSE);
-	hcc_leaf_int32(hc, LC_DESCRIPTOR, fd);
-	if ((head = hcc_finish_command(hc)) == NULL)
+	trans = hcc_start_command(hc, HC_CLOSE);
+	hcc_leaf_int32(trans, LC_DESCRIPTOR, fd);
+	if ((head = hcc_finish_command(trans)) == NULL)
 	    return(-1);
 	if (head->error)
 	    return(-1);
@@ -631,7 +650,7 @@ hc_close(struct HostConf *hc, int fd)
 }
 
 static int
-rc_close(struct HostConf *hc, struct HCHead *head)
+rc_close(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     int *fdp = NULL;
@@ -647,12 +666,28 @@ rc_close(struct HostConf *hc, struct HCHead *head)
     }
     if (desc < 0)
 	return(-2);
-    if ((fdp = hcc_get_descriptor(hc, desc, HC_DESC_FD)) == NULL)
+    if ((fdp = hcc_get_descriptor(trans->hc, desc, HC_DESC_FD)) == NULL)
 	return(-2);
     fd = *fdp;
     free(fdp);
-    hcc_set_descriptor(hc, desc, NULL, HC_DESC_FD);
+    hcc_set_descriptor(trans->hc, desc, NULL, HC_DESC_FD);
     return(close(fd));
+}
+
+static int
+getiolimit(void)
+{
+#if USE_PTHREADS
+    if (CurParallel < 2)
+	return(32768);
+    if (CurParallel < 4)
+	return(16384);
+    if (CurParallel < 8)
+	return(8192);
+    return(4096);
+#else
+    return(32768);
+#endif
 }
 
 /*
@@ -661,6 +696,7 @@ rc_close(struct HostConf *hc, struct HCHead *head)
 ssize_t
 hc_read(struct HostConf *hc, int fd, void *buf, size_t bytes)
 {
+    hctransaction_t trans;
     struct HCHead *head;
     struct HCLeaf *item;
     int *fdp;
@@ -673,13 +709,14 @@ hc_read(struct HostConf *hc, int fd, void *buf, size_t bytes)
     if (fdp) {
 	r = 0;
 	while (bytes) {
-	    int n = (bytes > 32768) ? 32768 : bytes;
+	    size_t limit = getiolimit();
+	    int n = (bytes > limit) ? limit : bytes;
 	    int x = 0;
 
-	    hcc_start_command(hc, HC_READ);
-	    hcc_leaf_int32(hc, LC_DESCRIPTOR, fd);
-	    hcc_leaf_int32(hc, LC_BYTES, n);
-	    if ((head = hcc_finish_command(hc)) == NULL)
+	    trans = hcc_start_command(hc, HC_READ);
+	    hcc_leaf_int32(trans, LC_DESCRIPTOR, fd);
+	    hcc_leaf_int32(trans, LC_BYTES, n);
+	    if ((head = hcc_finish_command(trans)) == NULL)
 		return(-1);
 	    if (head->error)
 		return(-1);
@@ -706,7 +743,7 @@ hc_read(struct HostConf *hc, int fd, void *buf, size_t bytes)
 }
 
 static int
-rc_read(struct HostConf *hc, struct HCHead *head)
+rc_read(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     int *fdp = NULL;
@@ -717,7 +754,7 @@ rc_read(struct HostConf *hc, struct HCHead *head)
     for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
 	switch(item->leafid) {
 	case LC_DESCRIPTOR:
-	    fdp = hcc_get_descriptor(hc, HCC_INT32(item), HC_DESC_FD);
+	    fdp = hcc_get_descriptor(trans->hc, HCC_INT32(item), HC_DESC_FD);
 	    break;
 	case LC_BYTES:
 	    bytes = HCC_INT32(item);
@@ -733,7 +770,7 @@ rc_read(struct HostConf *hc, struct HCHead *head)
 	head->error = errno;
 	return(0);
     }
-    hcc_leaf_data(hc, LC_DATA, buf, n);
+    hcc_leaf_data(trans, LC_DATA, buf, n);
     return(0);
 }
 
@@ -743,6 +780,7 @@ rc_read(struct HostConf *hc, struct HCHead *head)
 ssize_t
 hc_write(struct HostConf *hc, int fd, const void *buf, size_t bytes)
 {
+    hctransaction_t trans;
     struct HCHead *head;
     struct HCLeaf *item;
     int *fdp;
@@ -755,13 +793,14 @@ hc_write(struct HostConf *hc, int fd, const void *buf, size_t bytes)
     if (fdp) {
 	r = 0;
 	while (bytes) {
-	    int n = (bytes > 32768) ? 32768 : bytes;
+	    size_t limit = getiolimit();
+	    int n = (bytes > limit) ? limit : bytes;
 	    int x = 0;
 
-	    hcc_start_command(hc, HC_WRITE);
-	    hcc_leaf_int32(hc, LC_DESCRIPTOR, fd);
-	    hcc_leaf_data(hc, LC_DATA, buf, n);
-	    if ((head = hcc_finish_command(hc)) == NULL)
+	    trans = hcc_start_command(hc, HC_WRITE);
+	    hcc_leaf_int32(trans, LC_DESCRIPTOR, fd);
+	    hcc_leaf_data(trans, LC_DATA, buf, n);
+	    if ((head = hcc_finish_command(trans)) == NULL)
 		return(-1);
 	    if (head->error)
 		return(-1);
@@ -787,7 +826,7 @@ hc_write(struct HostConf *hc, int fd, const void *buf, size_t bytes)
 }
 
 static int
-rc_write(struct HostConf *hc, struct HCHead *head)
+rc_write(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     int *fdp = NULL;
@@ -797,7 +836,7 @@ rc_write(struct HostConf *hc, struct HCHead *head)
     for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
 	switch(item->leafid) {
 	case LC_DESCRIPTOR:
-	    fdp = hcc_get_descriptor(hc, HCC_INT32(item), HC_DESC_FD);
+	    fdp = hcc_get_descriptor(trans->hc, HCC_INT32(item), HC_DESC_FD);
 	    break;
 	case LC_DATA:
 	    buf = HCC_BINARYDATA(item);
@@ -813,7 +852,7 @@ rc_write(struct HostConf *hc, struct HCHead *head)
     if (n < 0) {
 	head->error = errno;
     } else {
-	hcc_leaf_int32(hc, LC_BYTES, n);
+	hcc_leaf_int32(trans, LC_BYTES, n);
     }
     return(0);
 }
@@ -824,14 +863,15 @@ rc_write(struct HostConf *hc, struct HCHead *head)
 int
 hc_remove(struct HostConf *hc, const char *path)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
 	return(remove(path));
 
-    hcc_start_command(hc, HC_REMOVE);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_REMOVE);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -839,7 +879,7 @@ hc_remove(struct HostConf *hc, const char *path)
 }
 
 static int
-rc_remove(struct HostConf *hc __unused, struct HCHead *head)
+rc_remove(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -862,15 +902,16 @@ rc_remove(struct HostConf *hc __unused, struct HCHead *head)
 int
 hc_mkdir(struct HostConf *hc __unused, const char *path, mode_t mode)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
 	return(mkdir(path, mode));
 
-    hcc_start_command(hc, HC_MKDIR);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    hcc_leaf_int32(hc, LC_MODE, mode);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_MKDIR);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    hcc_leaf_int32(trans, LC_MODE, mode);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -878,7 +919,7 @@ hc_mkdir(struct HostConf *hc __unused, const char *path, mode_t mode)
 }
 
 static int
-rc_mkdir(struct HostConf *hc __unused, struct HCHead *head)
+rc_mkdir(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -905,14 +946,15 @@ rc_mkdir(struct HostConf *hc __unused, struct HCHead *head)
 int
 hc_rmdir(struct HostConf *hc, const char *path)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
 	return(rmdir(path));
 
-    hcc_start_command(hc, HC_RMDIR);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_RMDIR);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -920,7 +962,7 @@ hc_rmdir(struct HostConf *hc, const char *path)
 }
 
 static int
-rc_rmdir(struct HostConf *hc __unused, struct HCHead *head)
+rc_rmdir(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -943,16 +985,17 @@ rc_rmdir(struct HostConf *hc __unused, struct HCHead *head)
 int
 hc_chown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
 	return(chown(path, owner, group));
 
-    hcc_start_command(hc, HC_CHOWN);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    hcc_leaf_int32(hc, LC_UID, owner);
-    hcc_leaf_int32(hc, LC_GID, group);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_CHOWN);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    hcc_leaf_int32(trans, LC_UID, owner);
+    hcc_leaf_int32(trans, LC_GID, group);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -960,7 +1003,7 @@ hc_chown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
 }
 
 static int
-rc_chown(struct HostConf *hc __unused, struct HCHead *head)
+rc_chown(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -991,16 +1034,17 @@ rc_chown(struct HostConf *hc __unused, struct HCHead *head)
 int
 hc_lchown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
 	return(lchown(path, owner, group));
 
-    hcc_start_command(hc, HC_LCHOWN);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    hcc_leaf_int32(hc, LC_UID, owner);
-    hcc_leaf_int32(hc, LC_GID, group);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_LCHOWN);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    hcc_leaf_int32(trans, LC_UID, owner);
+    hcc_leaf_int32(trans, LC_GID, group);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -1008,7 +1052,7 @@ hc_lchown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
 }
 
 static int
-rc_lchown(struct HostConf *hc __unused, struct HCHead *head)
+rc_lchown(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -1039,15 +1083,16 @@ rc_lchown(struct HostConf *hc __unused, struct HCHead *head)
 int
 hc_chmod(struct HostConf *hc, const char *path, mode_t mode)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
 	return(chmod(path, mode));
 
-    hcc_start_command(hc, HC_CHMOD);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    hcc_leaf_int32(hc, LC_MODE, mode);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_CHMOD);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    hcc_leaf_int32(trans, LC_MODE, mode);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -1055,7 +1100,7 @@ hc_chmod(struct HostConf *hc, const char *path, mode_t mode)
 }
 
 static int
-rc_chmod(struct HostConf *hc __unused, struct HCHead *head)
+rc_chmod(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -1077,20 +1122,22 @@ rc_chmod(struct HostConf *hc __unused, struct HCHead *head)
 }
 
 /*
- * LINK
+ * MKNOD
  */
 int
-hc_link(struct HostConf *hc, const char *name1, const char *name2)
+hc_mknod(struct HostConf *hc, const char *path, mode_t mode, dev_t rdev)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
-	return(link(name1, name2));
+	return(mknod(path, mode, rdev));
 
-    hcc_start_command(hc, HC_LINK);
-    hcc_leaf_string(hc, LC_PATH1, name1);
-    hcc_leaf_string(hc, LC_PATH2, name2);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_MKNOD);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    hcc_leaf_int32(trans, LC_MODE, mode);
+    hcc_leaf_int32(trans, LC_RDEV, rdev);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -1098,7 +1145,55 @@ hc_link(struct HostConf *hc, const char *name1, const char *name2)
 }
 
 static int
-rc_link(struct HostConf *hc __unused, struct HCHead *head)
+rc_mknod(hctransaction_t trans __unused, struct HCHead *head)
+{
+    struct HCLeaf *item;
+    const char *path = NULL;
+    mode_t mode = 0666;
+    dev_t rdev = 0;
+
+    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+	switch(item->leafid) {
+	case LC_PATH1:
+	    path = HCC_STRING(item);
+	    break;
+	case LC_MODE:
+	    mode = HCC_INT32(item);
+	    break;
+	case LC_RDEV:
+	    rdev = HCC_INT32(item);
+	    break;
+	}
+    }
+    if (path == NULL)
+	return(-1);
+    return(mknod(path, mode, rdev));
+}
+
+/*
+ * LINK
+ */
+int
+hc_link(struct HostConf *hc, const char *name1, const char *name2)
+{
+    hctransaction_t trans;
+    struct HCHead *head;
+
+    if (hc == NULL || hc->host == NULL)
+	return(link(name1, name2));
+
+    trans = hcc_start_command(hc, HC_LINK);
+    hcc_leaf_string(trans, LC_PATH1, name1);
+    hcc_leaf_string(trans, LC_PATH2, name2);
+    if ((head = hcc_finish_command(trans)) == NULL)
+	return(-1);
+    if (head->error)
+	return(-1);
+    return(0);
+}
+
+static int
+rc_link(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *name1 = NULL;
@@ -1126,15 +1221,16 @@ rc_link(struct HostConf *hc __unused, struct HCHead *head)
 int
 hc_chflags(struct HostConf *hc, const char *path, u_long flags)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
 	return(chflags(path, flags));
 
-    hcc_start_command(hc, HC_CHFLAGS);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    hcc_leaf_int64(hc, LC_FILEFLAGS, flags);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_CHFLAGS);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    hcc_leaf_int64(trans, LC_FILEFLAGS, flags);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -1142,7 +1238,7 @@ hc_chflags(struct HostConf *hc, const char *path, u_long flags)
 }
 
 static int
-rc_chflags(struct HostConf *hc __unused, struct HCHead *head)
+rc_chflags(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -1171,6 +1267,7 @@ rc_chflags(struct HostConf *hc __unused, struct HCHead *head)
 int
 hc_readlink(struct HostConf *hc, const char *path, char *buf, int bufsiz)
 {
+    hctransaction_t trans;
     struct HCHead *head;
     struct HCLeaf *item;
     int r;
@@ -1178,9 +1275,9 @@ hc_readlink(struct HostConf *hc, const char *path, char *buf, int bufsiz)
     if (hc == NULL || hc->host == NULL)
 	return(readlink(path, buf, bufsiz));
 
-    hcc_start_command(hc, HC_READLINK);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_READLINK);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -1202,7 +1299,7 @@ hc_readlink(struct HostConf *hc, const char *path, char *buf, int bufsiz)
 }
 
 static int
-rc_readlink(struct HostConf *hc, struct HCHead *head)
+rc_readlink(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -1221,7 +1318,7 @@ rc_readlink(struct HostConf *hc, struct HCHead *head)
     r = readlink(path, buf, sizeof(buf));
     if (r < 0)
 	return(-1);
-    hcc_leaf_data(hc, LC_DATA, buf, r);
+    hcc_leaf_data(trans, LC_DATA, buf, r);
     return(0);
 }
 
@@ -1231,15 +1328,16 @@ rc_readlink(struct HostConf *hc, struct HCHead *head)
 mode_t
 hc_umask(struct HostConf *hc, mode_t numask)
 {
+    hctransaction_t trans;
     struct HCHead *head;
     struct HCLeaf *item;
 
     if (hc == NULL || hc->host == NULL)
 	return(umask(numask));
 
-    hcc_start_command(hc, HC_UMASK);
-    hcc_leaf_int32(hc, LC_MODE, numask);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_UMASK);
+    hcc_leaf_int32(trans, LC_MODE, numask);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return((mode_t)-1);
     if (head->error)
 	return((mode_t)-1);
@@ -1256,7 +1354,7 @@ hc_umask(struct HostConf *hc, mode_t numask)
 }
 
 static int
-rc_umask(struct HostConf *hc, struct HCHead *head)
+rc_umask(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     mode_t numask = ~0666;
@@ -1269,7 +1367,7 @@ rc_umask(struct HostConf *hc, struct HCHead *head)
 	}
     }
     numask = umask(numask);
-    hcc_leaf_int32(hc, LC_MODE, numask);
+    hcc_leaf_int32(trans, LC_MODE, numask);
     return(0);
 }
 
@@ -1279,15 +1377,16 @@ rc_umask(struct HostConf *hc, struct HCHead *head)
 int
 hc_symlink(struct HostConf *hc, const char *name1, const char *name2)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
 	return(symlink(name1, name2));
 
-    hcc_start_command(hc, HC_SYMLINK);
-    hcc_leaf_string(hc, LC_PATH1, name1);
-    hcc_leaf_string(hc, LC_PATH2, name2);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_SYMLINK);
+    hcc_leaf_string(trans, LC_PATH1, name1);
+    hcc_leaf_string(trans, LC_PATH2, name2);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -1295,7 +1394,7 @@ hc_symlink(struct HostConf *hc, const char *name1, const char *name2)
 }
 
 static int
-rc_symlink(struct HostConf *hc __unused, struct HCHead *head)
+rc_symlink(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *name1 = NULL;
@@ -1322,15 +1421,16 @@ rc_symlink(struct HostConf *hc __unused, struct HCHead *head)
 int
 hc_rename(struct HostConf *hc, const char *name1, const char *name2)
 {
+    hctransaction_t trans;
     struct HCHead *head;
   
     if (hc == NULL || hc->host == NULL)
 	return(rename(name1, name2));
 
-    hcc_start_command(hc, HC_RENAME);
-    hcc_leaf_string(hc, LC_PATH1, name1);
-    hcc_leaf_string(hc, LC_PATH2, name2);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_RENAME);
+    hcc_leaf_string(trans, LC_PATH1, name1);
+    hcc_leaf_string(trans, LC_PATH2, name2);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -1338,7 +1438,7 @@ hc_rename(struct HostConf *hc, const char *name1, const char *name2)
 }
 
 static int
-rc_rename(struct HostConf *hc __unused, struct HCHead *head)
+rc_rename(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *name1 = NULL;
@@ -1365,16 +1465,17 @@ rc_rename(struct HostConf *hc __unused, struct HCHead *head)
 int
 hc_utimes(struct HostConf *hc, const char *path, const struct timeval *times)
 {
+    hctransaction_t trans;
     struct HCHead *head;
 
     if (hc == NULL || hc->host == NULL)
 	return(utimes(path, times));
 
-    hcc_start_command(hc, HC_UTIMES);
-    hcc_leaf_string(hc, LC_PATH1, path);
-    hcc_leaf_int64(hc, LC_ATIME, times[0].tv_sec);
-    hcc_leaf_int64(hc, LC_MTIME, times[1].tv_sec);
-    if ((head = hcc_finish_command(hc)) == NULL)
+    trans = hcc_start_command(hc, HC_UTIMES);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    hcc_leaf_int64(trans, LC_ATIME, times[0].tv_sec);
+    hcc_leaf_int64(trans, LC_MTIME, times[1].tv_sec);
+    if ((head = hcc_finish_command(trans)) == NULL)
 	return(-1);
     if (head->error)
 	return(-1);
@@ -1382,7 +1483,7 @@ hc_utimes(struct HostConf *hc, const char *path, const struct timeval *times)
 }
 
 static int
-rc_utimes(struct HostConf *hc __unused, struct HCHead *head)
+rc_utimes(hctransaction_t trans __unused, struct HCHead *head)
 {
     struct HCLeaf *item;
     struct timeval times[2];

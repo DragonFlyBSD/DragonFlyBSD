@@ -1,11 +1,14 @@
 /*
  * HCPROTO.H
  *
- * $DragonFly: src/bin/cpdup/hcproto.h,v 1.1 2006/08/13 20:51:40 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.h,v 1.1.6.1 2008/04/16 17:45:18 dillon Exp $
  */
 
 #ifndef _HCPROTO_H_
 #define _HCPROTO_H_
+
+#define HCPROTO_VERSION		2
+#define HCPROTO_VERSION_COMPAT	2
 
 #define HC_HELLO	0x0001
 
@@ -31,6 +34,7 @@
 #define HC_SYMLINK	0x0023
 #define HC_RENAME	0x0024
 #define HC_UTIMES	0x0025
+#define HC_MKNOD	0x0026
 
 #define LC_HELLOSTR	(0x0001|LCF_STRING)
 #define LC_PATH1	(0x0010|LCF_STRING)
@@ -57,6 +61,7 @@
 #define LC_DATA		(0x0025|LCF_BINARY)
 #define LC_TYPE		(0x0026|LCF_INT32)
 #define LC_BLKSIZE	(0x0027|LCF_INT32)
+#define LC_VERSION	(0x0028|LCF_INT32)
 
 #define XO_NATIVEMASK	3		/* passed through directly */
 #define XO_CREAT	0x00010000
@@ -85,6 +90,7 @@ int hc_rmdir(struct HostConf *hc, const char *path);
 int hc_chown(struct HostConf *hc, const char *path, uid_t owner, gid_t group);
 int hc_lchown(struct HostConf *hc, const char *path, uid_t owner, gid_t group);
 int hc_chmod(struct HostConf *hc, const char *path, mode_t mode);
+int hc_mknod(struct HostConf *hc, const char *path, mode_t mode, dev_t rdev);
 int hc_link(struct HostConf *hc, const char *name1, const char *name2);
 int hc_chflags(struct HostConf *hc, const char *path, u_long flags);
 int hc_readlink(struct HostConf *hc, const char *path, char *buf, int bufsiz);

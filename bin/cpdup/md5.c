@@ -5,7 +5,7 @@
  *     use and distribute based on the FreeBSD copyright.  Supplied as-is,
  *     USE WITH EXTREME CAUTION.
  *
- * $DragonFly: src/bin/cpdup/md5.c,v 1.1 2006/04/25 21:30:45 dillon Exp $
+ * $DragonFly: src/bin/cpdup/md5.c,v 1.1.8.1 2008/04/16 17:45:18 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -19,7 +19,7 @@ typedef struct MD5Node {
 
 static MD5Node *md5_lookup(const char *sfile);
 static void md5_cache(const char *spath, int sdirlen);
-static char *doMD5File(const char *filename, char *buf);
+static char *doMD5File(const char *filename, char *buf, int is_target);
 
 static char *MD5SCache;		/* cache source directory name */
 static MD5Node *MD5Base;
@@ -126,7 +126,7 @@ md5_cache(const char *spath, int sdirlen)
 	     * extracting md_Name - name may contain embedded control 
 	     * characters.
 	     */
-	    CountReadBytes += nlen+1;
+	    CountSourceReadBytes += nlen+1;
 	    node->md_Name = fextract(fi, nlen, &c, EOF);
 	    if (c != '\n') {
 		fprintf(stderr, "Error parsing MD5 Cache: %s (%c)\n", MD5SCache, c);
@@ -205,7 +205,7 @@ md5_check(const char *spath, const char *dpath)
      */
 
     if (dpath == NULL) {
-	char *scode = doMD5File(spath, NULL);
+	char *scode = doMD5File(spath, NULL, 0);
 
 	r = 0;
 	if (node->md_Code == NULL) {
@@ -228,16 +228,16 @@ md5_check(const char *spath, const char *dpath)
      */
 
     if (node->md_Code == NULL) {
-	node->md_Code = doMD5File(spath, NULL);
+	node->md_Code = doMD5File(spath, NULL, 0);
 	MD5SCacheDirty = 1;
     }
 
-    dcode = doMD5File(dpath, NULL);
+    dcode = doMD5File(dpath, NULL, 1);
     if (dcode) {
 	if (strcmp(node->md_Code, dcode) == 0) {
 	    r = 0;
 	} else {
-	    char *scode = doMD5File(spath, NULL);
+	    char *scode = doMD5File(spath, NULL, 0);
 
 	    if (strcmp(node->md_Code, scode) == 0) {
 		    free(scode);
@@ -255,15 +255,16 @@ md5_check(const char *spath, const char *dpath)
 }
 
 char *
-doMD5File(const char *filename, char *buf)
+doMD5File(const char *filename, char *buf, int is_target)
 {
     if (SummaryOpt) {
 	struct stat st;
 	if (stat(filename, &st) == 0) {
-	    u_int64_t size = st.st_blocks * 512;
-	    if (st.st_size % 512) 
-		size += st.st_size % 512 - 512;
-	    CountReadBytes += size;
+	    u_int64_t size = st.st_size;
+	    if (is_target)
+		    CountTargetReadBytes += size;
+	    else
+		    CountSourceReadBytes += size;
 	}
     }
     return MD5File(filename, buf);

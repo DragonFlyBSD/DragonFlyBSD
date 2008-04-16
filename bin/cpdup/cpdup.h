@@ -1,7 +1,7 @@
 /*
  * CPDUP.H
  *
- * $DragonFly: src/bin/cpdup/cpdup.h,v 1.5 2006/08/18 01:13:51 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.h,v 1.5.6.1 2008/04/16 17:45:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -25,6 +25,9 @@
 #ifndef NOMD5
 #include <md5.h>
 #endif
+#if USE_PTHREADS
+#include <pthread.h>
+#endif
 
 void logstd(const char *ctl, ...);
 void logerr(const char *ctl, ...);
@@ -43,11 +46,25 @@ extern const char *MD5CacheFile;
 extern const char *FSMIDCacheFile;
 
 extern int SummaryOpt;
+extern int CompressOpt;
+extern int CurParallel;
 
 extern int64_t CountSourceBytes;
 extern int64_t CountSourceItems;
 extern int64_t CountCopiedItems;
-extern int64_t CountReadBytes;
+extern int64_t CountSourceReadBytes;
+extern int64_t CountTargetReadBytes;
 extern int64_t CountWriteBytes;
 extern int64_t CountRemovedItems;
 
+#if USE_PTHREADS
+extern pthread_mutex_t MasterMutex;
+#endif
+
+#ifdef DEBUG_MALLOC
+void *debug_malloc(size_t bytes, const char *file, int line);
+void debug_free(void *ptr);
+
+#define malloc(bytes)	debug_malloc(bytes, __FILE__, __LINE__)
+#define free(ptr)	debug_free(ptr)
+#endif
