@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.c,v 1.3 2006/04/04 14:04:39 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.c,v 1.3.8.1 2008/04/16 18:07:48 dillon Exp $
  */
 
 #include <assert.h>
@@ -119,7 +119,7 @@ __thr_umtx_timedlock(volatile umtx_t *mtx, const struct timespec *timeout)
 
 int
 _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
-	int clockid)
+	       int clockid)
 {
     struct timespec ts, ts2, ts3;
     int timo, ret = 0;
@@ -128,9 +128,20 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 	return (0);
 
     if (timeout == NULL) {
-	if (umtx_sleep(mtx, exp, 0) < 0) {
-	    if (errno == EINTR)
+	while (umtx_sleep(mtx, exp, 10000000) < 0) {
+	    if (errno == EBUSY) 
+		break;
+	    if (errno == EINTR) {
 		ret = EINTR;
+		break;
+	    }
+	    if (errno == ETIMEDOUT || errno == EWOULDBLOCK) {
+		if (*mtx != exp) {
+		    fprintf(stderr, "thr_umtx_wait: FAULT VALUE CHANGE %d -> %d oncond %p\n", exp, *mtx, mtx);
+		}
+	    }
+	    if (*mtx != exp)
+		return(0);
 	}
 	return (ret);
     }

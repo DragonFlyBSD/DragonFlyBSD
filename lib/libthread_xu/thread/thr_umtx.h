@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.h,v 1.4 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.h,v 1.4.8.1 2008/04/16 18:07:48 dillon Exp $
  */
 
 #ifndef _THR_DFLY_UMTX_H_
@@ -81,7 +81,7 @@ _thr_umtx_unlock(volatile umtx_t *mtx, int id __unused)
 }
 
 int _thr_umtx_wait(volatile umtx_t *mtx, umtx_t exp,
-    const struct timespec *timeout, int clockid);
+		   const struct timespec *timeout, int clockid);
 void _thr_umtx_wake(volatile umtx_t *mtx, int count);
 
 #endif
