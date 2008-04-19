@@ -1,4 +1,5 @@
 # Subversion control for DragonFly 1.12.X-RELEASE
-# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_12,v 1.1.2.2 2008/03/06 21:40:19 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_12,v 1.1.2.3 2008/04/19 16:34:34 dillon Exp $
 0	-
 1	sendmail-fix
+2	wide symbol support, gdb fixes, security (ppp, ssh), ABI cld, pppoe, gnu-m4, gcc stack protector, libthread_xu
