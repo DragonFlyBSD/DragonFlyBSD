@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)grp.h	8.2 (Berkeley) 1/21/94
- * $DragonFly: src/include/grp.h,v 1.4 2004/10/31 21:37:12 liamfoy Exp $
+ * $DragonFly: src/include/grp.h,v 1.5 2008/04/19 10:08:05 swildner Exp $
  */
 
 #ifndef _GRP_H_
@@ -64,7 +64,6 @@ struct group *getgrnam (const char *);
 struct group *getgrent (void);
 int setgrent (void);
 void endgrent (void);
-void setgrfile (const char *);
 int setgroupent (int);
 #endif
 __END_DECLS

@@ -31,9 +31,9 @@
 .\"
 .\"     From: @(#)getgrent.3	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/getgrent.3,v 1.12.2.4 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/getgrent.3,v 1.4 2006/05/26 19:39:36 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/getgrent.3,v 1.5 2008/04/19 10:08:05 swildner Exp $
 .\"
-.Dd September 29, 1994
+.Dd April 19, 2008
 .Dt GETGRENT 3
 .Os
 .Sh NAME
@@ -41,7 +41,6 @@
 .Nm getgrnam ,
 .Nm getgrgid ,
 .Nm setgroupent ,
-.\" .Nm setgrfile ,
 .Nm setgrent ,
 .Nm endgrent
 .Nd group database operations
@@ -58,8 +57,6 @@
 .Fn getgrgid "gid_t gid"
 .Ft int
 .Fn setgroupent "int stayopen"
-.\" .Ft void
-.\" .Fn setgrfile "const char *name"
 .Ft int
 .Fn setgrent void
 .Ft void
@@ -159,11 +156,9 @@ and
 .Fn setgrent
 return the value 1 if successful, otherwise the value
 0 is returned.
-The functions
+The
 .Fn endgrent
-and
-.Fn setgrfile
-have no return value.
+function has no return value.
 .Sh FILES
 .Bl -tag -width /etc/group -compact
 .It Pa /etc/group
