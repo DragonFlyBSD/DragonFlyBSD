@@ -1201,8 +1201,9 @@ do_rc_files(Session *s, const char *shell)
 	do_xauth =
 	    s->display != NULL && s->auth_proto != NULL && s->auth_data != NULL;
 
-	/* ignore _PATH_SSH_USER_RC for subsystems */
-	if (!s->is_subsystem && (stat(_PATH_SSH_USER_RC, &st) >= 0)) {
+	/* ignore _PATH_SSH_USER_RC for subsystems and admin forced commands */
+	if (!s->is_subsystem && options.adm_forced_command == NULL &&
+	    (stat(_PATH_SSH_USER_RC, &st) >= 0)) {
 		snprintf(cmd, sizeof cmd, "%s -c '%s %s'",
 		    shell, _PATH_BSHELL, _PATH_SSH_USER_RC);
 		if (debug_flag)
