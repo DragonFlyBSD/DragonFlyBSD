@@ -10,7 +10,7 @@
  * callout.c,v 3.8.4.8 1998/01/06 01:58:45 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/callout.c,v 1.12 1999/08/28 01:17:03 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.5 2005/12/05 00:58:50 swildner Exp $
+ * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.6 2008/04/20 19:26:53 swildner Exp $
  */
 
 #include "defs.h"
@@ -112,7 +112,7 @@ timer_setTimer(int delay, cfunc_t action, void *data)
     /* create a node */	
     node = (struct timeout_q *)malloc(sizeof(struct timeout_q));
     if (node == 0) {
-	log(LOG_WARNING, 0, "Malloc Failed in timer_settimer\n");
+	log(LOG_WARNING, 0, "Malloc Failed in timer_setTimer\n");
 	return -1;
     }
     node->func = action; 
