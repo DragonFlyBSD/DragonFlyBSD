@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/camcontrol/camcontrol.c,v 1.21.2.13 2003/01/08 17:55:02 njl Exp $
- * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.12 2008/03/07 08:44:24 pavalos Exp $
+ * $DragonFly: src/sbin/camcontrol/camcontrol.c,v 1.13 2008/04/20 13:44:24 swildner Exp $
  */
 
 #include <sys/ioctl.h>
@@ -3739,7 +3739,7 @@ usage(int verbose)
 "defects arguments:\n"
 "-f format         specify defect list format (block, bfi or phys)\n"
 "-G                get the grown defect list\n"
-"-P                get the permanant defect list\n"
+"-P                get the permanent defect list\n"
 "inquiry arguments:\n"
 "-D                get the standard inquiry data\n"
 "-S                get the serial number\n"

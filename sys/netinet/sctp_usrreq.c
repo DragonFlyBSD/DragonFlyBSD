@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.13 2008/03/07 11:34:20 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.14 2008/04/20 13:44:25 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -2320,7 +2320,7 @@ sctp_optsget(struct socket *so,
 			SCTP_INP_RLOCK(inp);
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_USRREQ1) {
-				kprintf("In EP levle info\n");
+				kprintf("In EP level info\n");
 			}
 #endif /* SCTP_DEBUG */
 			paddrp->spp_pathmaxrxt = inp->sctp_ep.def_net_failure;

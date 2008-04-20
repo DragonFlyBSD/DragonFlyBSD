@@ -45,7 +45,7 @@
  *
  * @(#)parseconf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rbootd/parseconf.c,v 1.9.2.1 2001/03/05 11:17:52 kris Exp $
- * $DragonFly: src/libexec/rbootd/parseconf.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/rbootd/parseconf.c,v 1.3 2008/04/20 13:44:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -141,7 +141,7 @@ ParseConfig()
 		 */
 		if ((addr = ParseAddr(bcp)) == NULL) {
 			syslog(LOG_ERR,
-			       "ParseConfig: line %d: cant parse <%s>",
+			       "ParseConfig: line %d: can't parse <%s>",
 			       linecnt, bcp);
 			continue;
 		}

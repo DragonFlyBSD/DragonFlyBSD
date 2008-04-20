@@ -1,5 +1,5 @@
 /* $NetBSD: btconfig.c,v 1.6 2007/09/07 18:40:01 plunky Exp $ */
-/* $DragonFly: src/usr.sbin/btconfig/btconfig.c,v 1.1 2008/01/04 09:54:22 hasso Exp $ */
+/* $DragonFly: src/usr.sbin/btconfig/btconfig.c,v 1.2 2008/04/20 13:44:26 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -726,7 +726,7 @@ print_stats(void)
 			err(EXIT_FAILURE, "SIOCZBTSTATS");
 	}
 
-	printf( "\tTotal bytes sent %d, recieved %d\n"
+	printf( "\tTotal bytes sent %d, received %d\n"
 		"\tCommands sent %d, Events received %d\n"
 		"\tACL data packets sent %d, received %d\n"
 		"\tSCO data packets sent %d, received %d\n"

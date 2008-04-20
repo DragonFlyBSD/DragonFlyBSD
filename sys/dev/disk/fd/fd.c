@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.41 2007/10/23 03:04:49 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.42 2008/04/20 13:44:25 swildner Exp $
  *
  */
 
@@ -780,7 +780,7 @@ fdc_attach(device_t dev)
 
 	error = fdc_alloc_resources(fdc);
 	if (error) {
-		device_printf(dev, "cannot re-aquire resources\n");
+		device_printf(dev, "cannot reacquire resources\n");
 		return error;
 	}
 	error = BUS_SETUP_INTR(device_get_parent(dev), dev, fdc->res_irq,

@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.13 2008/03/07 11:34:20 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.14 2008/04/20 13:44:25 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -783,7 +783,7 @@ sctp_choose_v4_boundspecific_stcb(struct sctp_inpcb *inp,
 		 */
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("Have a STCB - no asconf allowed, not bound all have a postive list\n");
+			kprintf("Have a STCB - no asconf allowed, not bound all have a positive list\n");
 		}
 #endif
 		/* First look at all addresses for one that is on
@@ -971,7 +971,7 @@ sctp_choose_v4_boundall(struct sctp_inpcb *inp,
 	num_prefered = sctp_count_v4_num_prefered_boundall (ifn, stcb, non_asoc_addr_ok, loopscope, ipv4_scope, &sin_loop, &sin_local);
 #ifdef SCTP_DEBUG
 	if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-		kprintf("Found %d prefered source addresses\n", num_prefered);
+		kprintf("Found %d preferred source addresses\n", num_prefered);
 	}
 #endif
 	if (num_prefered == 0) {
@@ -1042,7 +1042,7 @@ sctp_choose_v4_boundall(struct sctp_inpcb *inp,
 								    loopscope, ipv4_scope, &sin_loop, &sin_local);
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("Found ifn:%x %d prefered source addresses\n", (u_int)ifn, num_prefered);
+			kprintf("Found ifn:%x %d preferred source addresses\n", (u_int)ifn, num_prefered);
 		}
 #endif
 		if (num_prefered == 0) {
@@ -1444,7 +1444,7 @@ sctp_choose_v6_boundspecific_stcb(struct sctp_inpcb *inp,
 	} else {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
-			kprintf("Have a STCB - no asconf allowed, not bound all have a postive list\n");
+			kprintf("Have a STCB - no asconf allowed, not bound all have a positive list\n");
 		}
 #endif
 		/* First try for interface output match */

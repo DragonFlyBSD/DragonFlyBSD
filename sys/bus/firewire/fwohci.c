@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.16 2008/01/06 16:55:49 swildner Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.17 2008/04/20 13:44:25 swildner Exp $
  */
 
 #define ATRQ_CH 0
@@ -2183,7 +2183,7 @@ fwohci_rbuf_update(struct fwohci_softc *sc, int dmach)
 				ir->bnpacket, BUS_DMASYNC_POSTREAD);
 		} else {
 			/* XXX */
-			kprintf("fwohci_rbuf_update: this shouldn't happend\n");
+			kprintf("fwohci_rbuf_update: this shouldn't happen\n");
 		}
 
 		STAILQ_REMOVE_HEAD(&ir->stdma, link);

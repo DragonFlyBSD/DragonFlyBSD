@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.29 2007/05/23 08:57:05 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.30 2008/04/20 13:44:25 swildner Exp $
  */
 
 #include "opt_param.h"
@@ -563,7 +563,7 @@ SYSCTL_INT(_kern, KERN_DUMMY, dummy, CTLFLAG_RW, &dummy, 0, "");
 SYSCTL_OID(_kern_ipc, KIPC_MAXSOCKBUF, maxsockbuf, CTLTYPE_INT|CTLFLAG_RW, 
     &sb_max, 0, sysctl_handle_sb_max, "I", "Maximum socket buffer size");
 SYSCTL_INT(_kern_ipc, OID_AUTO, maxsockets, CTLFLAG_RD, 
-    &maxsockets, 0, "Maximum number of sockets avaliable");
+    &maxsockets, 0, "Maximum number of sockets available");
 SYSCTL_INT(_kern_ipc, KIPC_SOCKBUF_WASTE, sockbuf_waste_factor, CTLFLAG_RW,
     &sb_efficiency, 0, "");
 

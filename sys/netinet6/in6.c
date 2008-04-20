@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.28 2008/03/07 11:34:21 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.29 2008/04/20 13:44:26 swildner Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -667,7 +667,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 			if ((error = nd6_prelist_add(&pr0, NULL, &pr)) != 0)
 				return (error);
 			if (pr == NULL) {
-				log(LOG_ERR, "nd6_prelist_add succedded but "
+				log(LOG_ERR, "nd6_prelist_add succeeded but "
 				    "no prefix\n");
 				return (EINVAL); /* XXX panic here? */
 			}

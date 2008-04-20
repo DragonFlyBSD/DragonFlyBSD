@@ -32,7 +32,7 @@
  *
  * @(#)com5.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com5.c,v 1.9.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com5.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
+ * $DragonFly: src/games/battlestar/com5.c,v 1.4 2008/04/20 13:44:24 swildner Exp $
  */
 
 #include "externs.h"
@@ -54,7 +54,7 @@ kiss(void)
 					puts("She is coming around; she didn't fight it as much.");
 					break;
 				case 2:
-					puts("She's begining to like it.");
+					puts("She's beginning to like it.");
 					break;
 				default:
 					puts("She's gone limp.");

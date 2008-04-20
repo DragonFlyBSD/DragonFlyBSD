@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kgmon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/kgmon/kgmon.c,v 1.9 1999/08/28 01:16:42 peter Exp $
- * $DragonFly: src/usr.sbin/kgmon/kgmon.c,v 1.6 2004/12/22 01:28:39 joerg Exp $
+ * $DragonFly: src/usr.sbin/kgmon/kgmon.c,v 1.7 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -225,13 +225,13 @@ kern_readonly(int mode)
 	if (pflag && (mode == GMON_PROF_HIRES || mode == GMON_PROF_ON))
 		fprintf(stderr, "data may be inconsistent\n");
 	if (rflag)
-		fprintf(stderr, "-r supressed\n");
+		fprintf(stderr, "-r suppressed\n");
 	if (Bflag)
-		fprintf(stderr, "-B supressed\n");
+		fprintf(stderr, "-B suppressed\n");
 	if (bflag)
-		fprintf(stderr, "-b supressed\n");
+		fprintf(stderr, "-b suppressed\n");
 	if (hflag)
-		fprintf(stderr, "-h supressed\n");
+		fprintf(stderr, "-h suppressed\n");
 	rflag = Bflag = bflag = hflag = 0;
 }
 

@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/net.c,v 1.5 2008/03/04 11:36:09 matthias Exp $
+ * $DragonFly: src/libexec/dma/net.c,v 1.6 2008/04/20 13:44:24 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -291,7 +291,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	if ((config->features & SECURETRANS) != 0) {
 		error = smtp_init_crypto(it, fd, config->features);
 		if (error >= 0)
-			syslog(LOG_INFO, "%s: SSL initialization sucessful",
+			syslog(LOG_INFO, "%s: SSL initialization successful",
 				it->queueid);
 		else
 			goto out;

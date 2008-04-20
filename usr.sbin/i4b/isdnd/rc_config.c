@@ -28,7 +28,7 @@
  *	-----------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.6.2.3 2002/04/24 18:50:07 joerg Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.4 2007/05/13 22:25:42 swildner Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.5 2008/04/20 13:44:26 swildner Exp $
  *
  *      last edit-date: [Fri Jul 20 19:16:27 2001]
  *
@@ -1594,10 +1594,10 @@ print_config(void)
 				switch(cep->remote_numbers_handling)
 				{
 					case RNH_NEXT:
-						fprintf(PFILE, "next\t\t# use next number after last successfull for new dial\n");
+						fprintf(PFILE, "next\t\t# use next number after last successful for new dial\n");
 						break;
 					case RNH_LAST:
-						fprintf(PFILE, "last\t\t# use last successfull number for new dial\n");
+						fprintf(PFILE, "last\t\t# use last successful number for new dial\n");
 						break;
 					case RNH_FIRST:
 						fprintf(PFILE, "first\t\t# always start with first number for new dial\n");

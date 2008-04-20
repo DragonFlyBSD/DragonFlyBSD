@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mptable/mptable.c,v 1.12.2.3 2000/12/11 01:03:34 obrien Exp $
- * $DragonFly: src/usr.sbin/mptable/mptable.c,v 1.3 2005/04/05 09:04:49 joerg Exp $
+ * $DragonFly: src/usr.sbin/mptable/mptable.c,v 1.4 2008/04/20 13:44:26 swildner Exp $
  */
 
 /*
@@ -149,7 +149,7 @@ tableEntry basetableEntryTypes[] =
 tableEntry extendedtableEntryTypes[] =
 {
     { 128, 20, "System Address Space" },
-    { 129,  8, "Bus Heirarchy" },
+    { 129,  8, "Bus Hierarchy" },
     { 130,  8, "Compatibility Bus Address" }
 };
 

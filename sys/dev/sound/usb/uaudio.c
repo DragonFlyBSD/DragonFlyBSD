@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.91 2004/11/05 17:46:14 kent Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.14.2.2 2006/04/04 17:34:10 ariff Exp $ */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.19 2008/01/05 14:02:38 swildner Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.20 2008/04/20 13:44:25 swildner Exp $: */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -2611,7 +2611,7 @@ uaudio_query_formats(device_t dev, int reqdir, unsigned maxfmt, struct pcmchan_c
 		iscontinuous = asf1d->bSamFreqType == UA_SAMP_CONTNUOUS;
 
 		if (iscontinuous)
-			ksnprintf(freq_descr, sizeof(freq_descr), "continous min %d max %d", UA_SAMP_LO(asf1d), UA_SAMP_HI(asf1d));
+			ksnprintf(freq_descr, sizeof(freq_descr), "continuous min %d max %d", UA_SAMP_LO(asf1d), UA_SAMP_HI(asf1d));
 		else
 			ksnprintf(freq_descr, sizeof(freq_descr), "fixed frequency (%d listed formats)", asf1d->bSamFreqType);
 

@@ -32,7 +32,7 @@
  *
  * @(#)events.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/events.c,v 1.4 1999/11/30 03:49:47 billf Exp $
- * $DragonFly: src/games/trek/events.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
+ * $DragonFly: src/games/trek/events.c,v 1.4 2008/04/20 13:44:24 swildner Exp $
  */
 
 # include	"getpar.h"
@@ -224,7 +224,7 @@ events(int t_warp)
 			/* report it if we can */
 			if (!damaged(SSRADIO))
 			{
-				printf("\nUhura:  Captain, we have recieved a distress signal\n");
+				printf("\nUhura:  Captain, we have received a distress signal\n");
 				printf("  from the starbase in quadrant %d,%d.\n",
 					ix, iy);
 				restcancel++;

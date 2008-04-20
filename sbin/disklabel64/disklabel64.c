@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.4 2007/12/16 20:17:54 thomas Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.5 2008/04/20 13:44:25 swildner Exp $
  */
 /*
  * Copyright (c) 1987, 1993
@@ -71,7 +71,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.4 2007/12/16 20:17:54 thomas Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.5 2008/04/20 13:44:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -405,7 +405,7 @@ writelabel(int f, struct disklabel64 *lp)
 	lpcrcsize = lpsize - offsetof(struct disklabel64, d_magic);
 
 	if (disable_write) {
-		Warning("write to disk label supressed - label was as follows:");
+		Warning("write to disk label suppressed - label was as follows:");
 		display(stdout, lp);
 		return (0);
 	} else {

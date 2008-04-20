@@ -1,6 +1,6 @@
 /*	$NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.154.2.4 2006/06/26 00:31:25 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.24 2008/01/12 12:30:22 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.25 2008/04/20 13:44:25 swildner Exp $	*/
 
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -3272,7 +3272,7 @@ ohci_device_isoc_enter(usbd_xfer_handle xfer)
 		if (sitd == NULL) {
 			sitd = ohci_alloc_sitd(sc);
 			if (sitd == NULL)
-				panic("cant alloc isoc");
+				panic("can't alloc isoc");
 			opipe->tail.itd = sitd;
 			tdphys = sitd->physaddr;
 			sed->ed.ed_flags |= htole32(OHCI_ED_SKIP); /* Stop*/

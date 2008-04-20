@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.21 2007/04/30 16:45:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.22 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -692,7 +692,7 @@ acquire_apic_timer(void)
 	return 0;
 #else
 	/** XXX FIXME: make this really do something */
-	panic("APIC timer in use when attempting to aquire");
+	panic("APIC timer in use when attempting to acquire");
 #endif
 }
 

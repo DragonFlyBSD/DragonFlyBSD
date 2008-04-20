@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.3 2008/03/18 13:41:42 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.4 2008/04/20 13:44:25 swildner Exp $ */
 /* $OpenBSD: bt_proto.c,v 1.4 2007/06/24 20:55:27 uwe Exp $ */
 
 /*
@@ -200,7 +200,7 @@ SYSCTL_INT(_net_bluetooth_hci, OID_AUTO, scorxq_max, CTLFLAG_RW,
 
 /* L2CAP sysctls */
 SYSCTL_NODE(_net_bluetooth, OID_AUTO, l2cap, CTLFLAG_RD, 0,
-    "Logical Link Control & Adaption Protocol");
+    "Logical Link Control & Adaptation Protocol");
 SYSCTL_INT(_net_bluetooth_l2cap, OID_AUTO, sendspace, CTLFLAG_RW,
     &l2cap_sendspace, 0, "Socket Send Buffer Size");
 SYSCTL_INT(_net_bluetooth_l2cap, OID_AUTO, recvspace, CTLFLAG_RW,

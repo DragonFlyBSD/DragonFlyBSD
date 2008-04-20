@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.do_wear.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.do_wear.c,v 1.3 1999/11/16 02:57:03 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.do_wear.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
+/* $DragonFly: src/games/hack/hack.do_wear.c,v 1.6 2008/04/20 13:44:24 swildner Exp $ */
 
 #include "hack.h"
 extern char quitchars[];
@@ -258,7 +258,7 @@ long mask;
 	mask = obj->owornmask & W_RING;
 	setworn((struct obj *) 0, obj->owornmask);
 	if(!(u.uprops[PROP(obj->otyp)].p_flgs & mask))
-		impossible("Strange... I didnt know you had that ring.");
+		impossible("Strange... I didn't know you had that ring.");
 	u.uprops[PROP(obj->otyp)].p_flgs &= ~mask;
 	switch(obj->otyp) {
 	case RIN_FIRE_RESISTANCE:

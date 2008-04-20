@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.38 2008/03/10 12:59:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.39 2008/04/20 13:44:25 swildner Exp $
  */
 
 /*
@@ -994,7 +994,7 @@ re_allocmem(device_t dev, struct re_softc *sc)
 	     RE_TX_LIST_SZ, re_dma_map_addr,
 	     &sc->re_ldata.re_tx_list_addr, BUS_DMA_NOWAIT);
 	if (error) {
-		device_printf(dev, "could not get addres of TX ring\n");
+		device_printf(dev, "could not get address of TX ring\n");
 		return(error);
 	}
 

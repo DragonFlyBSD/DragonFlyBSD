@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.12 2006/07/10 00:46:27 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.17 2008/03/04 13:48:40 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.18 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -454,7 +454,7 @@ ieee80211_reset_bss(struct ieee80211com *ic)
 	ieee80211_node_table_reset(&ic->ic_sta);
 
 	ni = ieee80211_alloc_node(&ic->ic_scan, ic->ic_myaddr);
-	KASSERT(ni != NULL, ("unable to setup inital BSS node"));
+	KASSERT(ni != NULL, ("unable to setup initial BSS node"));
 	obss = ic->ic_bss;
 	ic->ic_bss = ieee80211_ref_node(ni);
 	if (obss != NULL) {

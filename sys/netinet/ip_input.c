@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.78 2008/04/03 13:43:29 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.79 2008/04/20 13:44:25 swildner Exp $
  */
 
 #define	_IP_VHL
@@ -159,7 +159,7 @@ SYSCTL_INT(_net_inet_ip, IPCTL_ACCEPTSOURCEROUTE, accept_sourceroute,
 static int ip_keepfaith = 0;
 SYSCTL_INT(_net_inet_ip, IPCTL_KEEPFAITH, keepfaith, CTLFLAG_RW,
     &ip_keepfaith, 0,
-    "Enable packet capture for FAITH IPv4->IPv6 translater daemon");
+    "Enable packet capture for FAITH IPv4->IPv6 translator daemon");
 
 static int nipq = 0;	/* total # of reass queues */
 static int maxnipq;

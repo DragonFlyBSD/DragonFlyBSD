@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.12 2007/05/13 18:33:58 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.13 2008/04/20 13:44:25 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -1503,7 +1503,7 @@ sctp_process_cookie_new(struct mbuf *m, int iphlen, int offset,
 			u_int8_t *pp;
 			pp = (u_int8_t *)initack_cp;
 			kprintf("process_cookie_new: could not find INIT-ACK chunk!\n");
-			kprintf("Found bytes %x %x %x %x at postion %d\n",
+			kprintf("Found bytes %x %x %x %x at position %d\n",
 			    (u_int)pp[0], (u_int)pp[1], (u_int)pp[2],
 			    (u_int)pp[3], initack_offset);
 		}

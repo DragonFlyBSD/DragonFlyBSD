@@ -32,7 +32,7 @@
  *
  * @(#)com1.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com1.c,v 1.7.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com1.c,v 1.4 2006/08/08 16:47:20 pavalos Exp $
+ * $DragonFly: src/games/battlestar/com1.c,v 1.5 2008/04/20 13:44:24 swildner Exp $
  */
 
 #include "externs.h"
@@ -126,7 +126,7 @@ news(void)
 				puts("The dying sun sinks into the ocean, leaving a blood stained sunset.");
 				puts("The sky slowly fades from orange to violet to black.  A few stars");
 				puts("flicker on, and it is night.");
-				puts("The world seems completly different at night.");
+				puts("The world seems completely different at night.");
 			}
 		}
 		rythmn = gtime - gtime % CYCLE;

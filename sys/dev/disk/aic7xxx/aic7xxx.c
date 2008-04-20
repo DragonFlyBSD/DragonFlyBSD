@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.111 2007/04/19 18:53:52 scottl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.27 2008/02/09 18:13:13 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.28 2008/04/20 13:44:25 swildner Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -921,7 +921,7 @@ ahc_handle_seqint(struct ahc_softc *ahc, u_int intstat)
 		       scbptr, ahc_inb(ahc, ARG_1),
 		       ahc->scb_data->hscbs[scbptr].tag);
 		ahc_dump_card_state(ahc);
-		panic("for saftey");
+		panic("for safety");
 		break;
 	}
 	case OUT_OF_RANGE:

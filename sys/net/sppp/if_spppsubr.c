@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.32 2008/04/05 05:57:07 sephe Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.33 2008/04/20 13:44:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -4313,7 +4313,7 @@ sppp_chap_tlu(struct sppp *sp)
 		if ((sp->hisauth.flags & AUTHFLAG_NORECHALLENGE) == 0)
 			log(-1, "next re-challenge in %d seconds\n", i);
 		else
-			log(-1, "re-challenging supressed\n");
+			log(-1, "re-challenging suppressed\n");
 	}
 
 	crit_enter();

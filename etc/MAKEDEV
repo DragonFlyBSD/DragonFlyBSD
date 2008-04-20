@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.39 2008/02/17 19:51:53 swildner Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.40 2008/04/20 13:44:24 swildner Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -113,7 +113,7 @@
 #	pt*	Processor Type (HP scanner, as one example)
 #	pass*	CAM Passthrough device
 #	ses*	SES (SCSI Environmental Services) and
-#		SAF-TE (Scsi Accessable Fault-Tolerant Enclosures) device
+#		SAF-TE (SCSI Accessible Fault-Tolerant Enclosures) device
 #
 # PC-CARD (previously called PCMCIA) support
 #	card*	PC-CARD slots

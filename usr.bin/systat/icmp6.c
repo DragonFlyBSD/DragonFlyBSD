@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c     8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/icmp6.c,v 1.3 2006/04/30 04:47:23 bde Exp $
- * $DragonFly: src/usr.bin/systat/icmp6.c,v 1.1 2007/05/31 11:38:36 hasso Exp $
+ * $DragonFly: src/usr.bin/systat/icmp6.c,v 1.2 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -120,7 +120,7 @@ labelicmp6(void)
 	B(13, "time-to-live exceeded");
 	B(14, "parameter problem");
 	B(15, "neighbor solicitation");
-	B(16, "neighbor advertisment");
+	B(16, "neighbor advertisement");
 	L(17, "router advertisement");	R(17, "router solicitation");
 #undef L
 #undef R

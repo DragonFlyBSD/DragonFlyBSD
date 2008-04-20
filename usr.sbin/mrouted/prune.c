@@ -10,7 +10,7 @@
  * prune.c,v 3.8.4.59 1998/03/01 02:06:32 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/prune.c,v 1.17.2.1 2000/10/29 03:59:57 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/prune.c,v 1.5 2005/12/05 00:58:50 swildner Exp $
+ * $DragonFly: src/usr.sbin/mrouted/prune.c,v 1.6 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include "defs.h"
@@ -2272,7 +2272,7 @@ accept_mtrace(u_int32 src, u_int32 dst, u_int32 group, char *data,
     }
     else {
 	log(LOG_WARNING, 0, "%s from %s to %s",
-	    "Non decipherable traceroute request recieved",
+	    "Non decipherable traceroute request received",
 	    inet_fmt(src, s1), inet_fmt(dst, s2));
 	return;
     }

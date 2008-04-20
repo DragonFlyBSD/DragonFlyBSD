@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_set.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.6 2006/10/16 00:15:35 pavalos Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.7 2008/04/20 13:44:24 swildner Exp $
  */
 
 /*
@@ -316,7 +316,7 @@ set_macaddr(int argc, char **argv, __unused const struct cmd *cmdp)
 			perror("Internal error");
 			break;
 		case EADDRINUSE:
-			fprintf(stderr, "Interface must be detached to set MAC addres\n");
+			fprintf(stderr, "Interface must be detached to set MAC address\n");
 			break;
 		case EINVAL:
 			fprintf(stderr, "Invalid parameter\n");
