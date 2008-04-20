@@ -1,6 +1,6 @@
 .\"	$KAME: inet6_option_space.3,v 1.11 2005/01/05 03:00:44 itojun Exp $
 .\"	$FreeBSD: src/lib/libc/net/inet6_option_space.3,v 1.16 2005/01/23 16:02:48 gnn Exp $
-.\"	$DragonFly: src/lib/libc/net/inet6_option_space.3,v 1.7 2007/11/23 23:16:36 swildner Exp $
+.\"	$DragonFly: src/lib/libc/net/inet6_option_space.3,v 1.8 2008/04/20 22:24:53 swildner Exp $
 .\"
 .\" Copyright (C) 2004 WIDE Project.
 .\" All rights reserved.
@@ -157,7 +157,8 @@ This function appends a Hop-by-Hop option or a Destination option into
 an ancillary data object previously initialized by a call to
 .Fn inet6_option_init .
 The
-.Fn inet6_option_append function returns
+.Fn inet6_option_append
+function returns
 .Li 0
 if it succeeds or
 .Li -1

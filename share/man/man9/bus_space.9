@@ -57,7 +57,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/bus_space.9,v 1.5 2008/03/07 17:02:34 rwatson Exp $
-.\" $DragonFly: src/share/man/man9/bus_space.9,v 1.1 2008/03/16 17:29:51 swildner Exp $
+.\" $DragonFly: src/share/man/man9/bus_space.9,v 1.2 2008/04/20 22:24:53 swildner Exp $
 .\"
 .Dd March 16, 2008
 .Dt BUS_SPACE 9
@@ -1250,7 +1250,8 @@ functions may be executed in any order.
 They may also be executed out
 of order with respect to other pending read and write operations unless
 order is enforced by use of the
-.Fn bus_space_barrier function .
+.Fn bus_space_barrier
+function .
 There is no way to insert barriers between reads or writes of
 individual bus space locations executed by the
 .Fn bus_space_copy_region_N
