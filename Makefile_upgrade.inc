@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.21 2008/04/11 11:18:16 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.22 2008/04/20 19:21:42 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -588,3 +588,5 @@ TO_REMOVE+=/usr/share/i18n/esdb/MISC/Big5.esdb
 TO_REMOVE+=/usr/share/i18n/esdb/MISC/GB18030.esdb
 TO_REMOVE+=/usr/share/i18n/esdb/MISC/KOI8-R.esdb
 TO_REMOVE+=/usr/share/i18n/esdb/MISC/KOI8-U.esdb
+TO_REMOVE+=/usr/share/man/cat3/_rand48.3.gz
+TO_REMOVE+=/usr/share/man/man3/_rand48.3.gz
