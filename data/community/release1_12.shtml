@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - January 2008 Release 1.12.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.5 2008/04/20 19:39:39 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.6 2008/04/20 19:50:04 dillon Exp $ -->
 
 <h1>Obtaining DragonFly 1.12.x for your system</h1>
 
@@ -145,6 +145,20 @@ See the 'Download Site' list below for a list of download locations.
 (<I>try to find another site first</I>)</TD></TR>
 
 </TABLE>
+
+<h2>Package Source Patches</h2>
+<p>
+Currently there is a known issue that effects building numerous
+pkgsrc utilities from sources.  For example, Firefox.  If you are building
+packages from source you will have to apply this patch to your pkgsrc
+source tree.
+</p>
+<p>
+<A HREF="http://apollo.backplane.com/DFlyMisc/pkgsrc-devel-m4.patch">
+http://apollo.backplane.com/DFlyMisc/pkgsrc-devel-m4.patch</A>
+</p>
+MD5 (pkgsrc-devel-m4.patch) = 5c02bdf412cc0b546672b1cbd4e57528
+
 
 <h1>Release Notes for DragonFly 1.12.x</h1>
 
