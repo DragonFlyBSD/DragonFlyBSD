@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)syslog.conf.5	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/usr.sbin/syslogd/syslog.conf.5,v 1.35 2004/07/03 18:35:53 ru Exp $
-.\" $DragonFly: src/usr.sbin/syslogd/syslog.conf.5,v 1.9 2007/07/30 22:11:34 swildner Exp $
+.\" $DragonFly: src/usr.sbin/syslogd/syslog.conf.5,v 1.10 2008/04/20 21:14:39 swildner Exp $
 .\"
 .Dd June 9, 1993
 .Dt SYSLOG.CONF 5
@@ -321,7 +321,7 @@ A pathname (beginning with a leading slash).
 Selected messages are appended to the file.
 .Pp
 To ensure that kernel messages are written to disk promptly,
-.Nm
+.Xr syslogd 8
 calls
 .Xr fsync 2
 after writing messages from the kernel.
