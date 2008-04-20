@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - January 2008 Release 1.12.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.6 2008/04/20 19:50:04 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.7 2008/04/20 22:01:08 hasso Exp $ -->
 
 <h1>Obtaining DragonFly 1.12.x for your system</h1>
 
@@ -184,7 +184,7 @@ only commit bug fixes to release branches.
     <li>Fix wide symbols (wstring, wint_t etc) support in gcc41 (libstdc++).
     <li>Fix incomplete stack traces in gdb(1).
     <li>Fix buffer overflow in ppp(8) command prompt parsing (OpenBSD errata 
-	2008-009). (SECURITY)
+	2008-009, CVE-2008-1215).
     <li>Make sure the direction flag is clear when running a signal handler as 
 	specified by i386/amd64 abi.
     <li>Make the value of PTT_RELAY_SID match the RFC to fix problems with 
@@ -194,6 +194,9 @@ only commit bug fixes to release branches.
     <li>Fix issues in libthread_xu, solving problems with KDE and Firefox.
     <li>Fix for CVE-2008-1657.  Fix a server side SSH attack that allowed
 	users to bypass the sshd_config ForceCommand directive.
+    <li>Fix for CVE-2008-1483.  Fix a vulnerability which allowed local users
+	to hijack forwarded X connections.
+    <li>Update bzip2 to 1.0.5, fixes CVE-2008-1372.
 </ul>
 
 <h1>Release Notes for DragonFly 1.12.1</h1>

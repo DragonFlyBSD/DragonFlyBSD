@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - August 2007 Release 1.12.x Errata Page" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/community/errata1_12.shtml,v 1.4 2008/04/20 19:39:39 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/errata1_12.shtml,v 1.5 2008/04/20 22:01:08 hasso Exp $ -->
 
 <h1>Errata Page for DragonFly 1.12.x</h1>
 
@@ -31,8 +31,8 @@ cvsup.
     GDB produced incomplete stack traces.  Fixed in 1.12.2.
     </p>
     <p>
-    Buffer overflow in ppp(8) command prompt parsing (OpenBSD errata 2008-009).
-    (SECURITY).  Fixed in 1.12.2.
+    Buffer overflow in ppp(8) command prompt parsing (OpenBSD errata 2008-009,
+    CVE-2008-1215).  Fixed in 1.12.2.
     </p>
     <p>
     The direction flag is not cleared by the signal handler, required by GCC
@@ -52,7 +52,17 @@ cvsup.
     </p>
     <p>
     OpenSSH was found to have a vulnerability that allowed users to 
-    bypass the sshd_config ForceCommand directive.  Fixed in 1.12.2.
+    bypass the sshd_config ForceCommand directive (CVE-2008-1657).  Fixed in
+    1.12.2.
+    </p>
+    <p>
+    Vulnerability was found in OpenSSH which allowed local users to hijack
+    forwarded X connections (CVE-2008-1483).  Fixed in 1.12.2.
+    </p>
+    <p>
+    Vunerability was found in bzip2 which allowed user-assisted remote
+    attackers to cause a denial of service (crash) via a crafted file
+    (CVE-2008-1372).  Fixed in 1.12.2.
     </p>
 </ul>
 
