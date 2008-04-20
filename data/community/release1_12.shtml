@@ -1,11 +1,11 @@
 <!--#set var="title" value="DragonFly - January 2008 Release 1.12.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.4 2008/04/04 09:43:12 matthias Exp $ -->
+<!-- $DragonFly: site/data/community/release1_12.shtml,v 1.5 2008/04/20 19:39:39 dillon Exp $ -->
 
 <h1>Obtaining DragonFly 1.12.x for your system</h1>
 
-<h2>1.12.1 ISO Images for CDs</h2>
+<h2>1.12.2 ISO Images for CDs</h2>
 
 <p>
 DragonFly CDs are 'live', which means that the CD will boot your system 
@@ -38,6 +38,8 @@ See the 'Download Site' list below for a list of download locations.
 <br/>MD5 (dfly-1.12.0_REL.iso.gz) = 5b16c1c88fbdd43a7bbfe2ff78ce7388
 <br/>MD5 (dfly-1.12.1_REL.iso) = e4c063b7cc48eaf9c8cfc62e10b6aa8a
 <br/>MD5 (dfly-1.12.1_REL.iso.gz) = 0476ea6d2819110535d689c46fe5e0eb
+<br/>MD5 (dfly-1.12.2_REL.iso) = 4b190d80f12bfc6f3461d104e7d39078
+<br/>MD5 (dfly-1.12.2_REL.iso.gz) = 866252789fda7908ff46645109715db8
 
 </b><br /> </p>
 
@@ -60,6 +62,12 @@ See the 'Download Site' list below for a list of download locations.
 <TH>Date</TH>
 <TH>Comments</TH>
 <TH></TH>
+</TR>
+<TR>
+<TD>1.12.2</TD>
+<TD>20-Apr-2008</TD>
+<TD>RELEASE CD</TD>
+<TD><A HREF="errata1_12.shtml">Errata</A></TD>
 </TR>
 <TR>
 <TD>1.12.1</TD>
@@ -89,51 +97,51 @@ See the 'Download Site' list below for a list of download locations.
 
 <!--
 <TR><TD>Fortunaty.net</TD>
-<TD>1.12.1_REL image</TD>
-<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A></TD></TR>
+<TD>1.12.2_REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.12.2_REL.iso.gz">HTTP</A></TD></TR>
 -->
 
 <TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>1.12.1_REL image</TD>
+<TD>1.12.2_REL image</TD>
 <TD>
-    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.12.2_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.12.2_REL.iso.gz">FTP</A>
 </TD>
 </TR>
 
 <!--
 <TR><TD>BGP4.net (USA)</TD>
-<TD>1.12.1_REL image</TD>
+<TD>1.12.2_REL image</TD>
 <TD>
-    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
+    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.12.2_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.12.2_REL.iso.gz">FTP</A>
 </TD></TR>
 -->
 
 <TR><TD>TheShell.com</TD>
-<TD>1.12.1_REL image</TD>
+<TD>1.12.2_REL image</TD>
 <TD>
-    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.12.2_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.12.2_REL.iso.gz">FTP</A>
 </TD></TR>
 
 <TR><TD>high5.net (Amsterdam)</TD>
-<TD>1.12.1_REL image</TD>
+<TD>1.12.2_REL image</TD>
 <TD>
-    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.12.1_REL.iso.gz">HTTP</A>
+    <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-1.12.2_REL.iso.gz">HTTP</A>
 </TD></TR>
 
 <TR><TD>dragonflybsd.kiev.ua (Ukraine)</TD>
-<TD>1.12.1_REL image</TD>
+<TD>1.12.2_REL image</TD>
 <TD>
-    <A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
+    <A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/iso-images/dfly-1.12.2_REL.iso.gz">FTP</A>
 </TD></TR>
 
 
 
 <TR><TD>Dragonflybsd.org (USA)</TD>
-<TD>1.12.1_REL image</TD>
-<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.12.1_REL.iso.gz">FTP</A>
+<TD>1.12.2_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.12.2_REL.iso.gz">FTP</A>
 (<I>try to find another site first</I>)</TD></TR>
 
 </TABLE>
@@ -157,7 +165,31 @@ only commit bug fixes to release branches.
 <p>
 </p>
 
-<h1>DragonFly 1.12 Release Notes</h1>
+<h1>Release Notes for DragonFly 1.12.2</h1>
+<ul>
+    <li>Fix wide symbols (wstring, wint_t etc) support in gcc41 (libstdc++).
+    <li>Fix incomplete stack traces in gdb(1).
+    <li>Fix buffer overflow in ppp(8) command prompt parsing (OpenBSD errata 
+	2008-009). (SECURITY)
+    <li>Make sure the direction flag is clear when running a signal handler as 
+	specified by i386/amd64 abi.
+    <li>Make the value of PTT_RELAY_SID match the RFC to fix problems with 
+	relayed PPPoE (ng_pppoe(4)).
+    <li>Add __sreadahead() to fix problems with GNU m4.
+    <li>Add libc support for gcc41 stack protector.
+    <li>Fix issues in libthread_xu, solving problems with KDE and Firefox.
+    <li>Fix for CVE-2008-1657.  Fix a server side SSH attack that allowed
+	users to bypass the sshd_config ForceCommand directive.
+</ul>
+
+<h1>Release Notes for DragonFly 1.12.1</h1>
+<ul>
+    <li>Fixed a serious vendor bug in sendmail that caused it to
+	crash on connect.
+</ul>
+
+
+<h1>DragonFly 1.12.0 Release Notes</h1>
 <h3>Kernel changes</h3>
 <ul>
     <li>Support for the 386 CPU was abandoned.

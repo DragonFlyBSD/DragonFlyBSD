@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - August 2007 Release 1.12.x Errata Page" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/community/errata1_12.shtml,v 1.3 2008/04/03 17:34:32 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/errata1_12.shtml,v 1.4 2008/04/20 19:39:39 dillon Exp $ -->
 
 <h1>Errata Page for DragonFly 1.12.x</h1>
 
@@ -14,23 +14,60 @@ sources.  See the <A HREF="download.cgi">download</A> page for information on tr
 cvsup.
 </p>
 
-<h2>1.12.1 Errata</h2>
-<h3>System included utilities</h3>
+<h2>1.12.2 Errata</h2>
 <ul>
     <p>
-    A vendor bug in sendmail that was thought to have been fixed still
-    had issues.  A new sub-version had to be rolled with the corrected
-    sendmail.
+    No new errata.
+    </p>
+</ul>
+
+<h2>1.12.1 Errata (these also apply to 1.12.0)</h2>
+<ul>
+    <p>
+    Wide symbols (wstring, wint_t etc) support in gcc41 (libstdc++) was broken.
+    Fixed in 1.12.2.
+    </p>
+    <p>
+    GDB produced incomplete stack traces.  Fixed in 1.12.2.
+    </p>
+    <p>
+    Buffer overflow in ppp(8) command prompt parsing (OpenBSD errata 2008-009).
+    (SECURITY).  Fixed in 1.12.2.
+    </p>
+    <p>
+    The direction flag is not cleared by the signal handler, required by GCC
+    4.x as specified by i386/amd64 abi.  Fixed in 1.12.2.
+    </p>
+    <p>
+    Relayed PPPoE (ng_pppoe(4)) has issues.  Fixed in 1.12.2.
+    </p>
+    <p>
+    Missing needed libc suppot for GCC 4.x's stack protector.  Fixed in 1.12.2.
+    </p>
+    <p>
+    libthread_xu has fairly serious issues with Firefox and KDE. 
+    Fixed in 1.12.2.
+    Note that libthread_xu is not the default threading library for the 1.12.x
+    release.
+    </p>
+    <p>
+    OpenSSH was found to have a vulnerability that allowed users to 
+    bypass the sshd_config ForceCommand directive.  Fixed in 1.12.2.
+    </p>
 </ul>
 
 <h2>1.12.0 Errata</h2>
-<h3>CD installation issues</h3>
 <ul>
     <p>
     The CD installer considers the CD itself a hard disk and gives you
     the option of partitioning it, installing to it, putting bootblocks
     on it, etc.  This obviously won't work and it is a minor annoyance.
     Simply uncheck the related boxes during the installation process.
+    <i>This bug will not be fixed in the 1.12.x release cycle</i>.
+    </p>
+    <p>
+    The release CD contained a vendor sendmail bug which was fixed
+    in 1.12.1.
     </p>
 </ul>
 
