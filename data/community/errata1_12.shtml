@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - August 2007 Release 1.12.x Errata Page" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/community/errata1_12.shtml,v 1.5 2008/04/20 22:01:08 hasso Exp $ -->
+<!-- $DragonFly: site/data/community/errata1_12.shtml,v 1.6 2008/04/21 14:44:12 dillon Exp $ -->
 
 <h1>Errata Page for DragonFly 1.12.x</h1>
 
@@ -46,9 +46,9 @@ cvsup.
     </p>
     <p>
     libthread_xu has fairly serious issues with Firefox and KDE. 
-    Fixed in 1.12.2.
-    Note that libthread_xu is not the default threading library for the 1.12.x
-    release.
+    Fixed in 1.12.2.   Note that libthread_xu is the default threading
+    library for 1.12.x so this has a fairly large beneficial impact on
+    1.12.x systems.
     </p>
     <p>
     OpenSSH was found to have a vulnerability that allowed users to 
