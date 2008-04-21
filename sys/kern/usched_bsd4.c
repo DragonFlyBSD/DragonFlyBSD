@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.22 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.23 2008/04/21 15:24:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -96,6 +96,7 @@ static void bsd4_recalculate_estcpu(struct lwp *lp);
 static void bsd4_resetpriority(struct lwp *lp);
 static void bsd4_forking(struct lwp *plp, struct lwp *lp);
 static void bsd4_exiting(struct lwp *plp, struct lwp *lp);
+static void bsd4_yield(struct lwp *lp);
 
 #ifdef SMP
 static void need_user_resched_remote(void *dummy);
@@ -117,7 +118,8 @@ struct usched usched_bsd4 = {
 	bsd4_resetpriority,
 	bsd4_forking,
 	bsd4_exiting,
-	NULL			/* setcpumask not supported */
+	NULL,			/* setcpumask not supported */
+	bsd4_yield
 };
 
 struct usched_bsd4_pcpu {
@@ -803,6 +805,24 @@ bsd4_resetpriority(struct lwp *lp)
 		}
 	}
 	crit_exit();
+}
+
+static
+void
+bsd4_yield(struct lwp *lp) 
+{
+#if 0
+	/* FUTURE (or something similar) */
+	switch(lp->lwp_rqtype) {
+	case RTP_PRIO_NORMAL:
+		lp->lwp_estcpu = ESTCPULIM(lp->lwp_estcpu + ESTCPUINCR);
+		kprintf("Y");
+		break;
+	default:
+		break;
+	}
+#endif
+        need_user_resched();
 }
 
 /*

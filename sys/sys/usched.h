@@ -3,7 +3,7 @@
  *
  *	Userland scheduler API
  * 
- * $DragonFly: src/sys/sys/usched.h,v 1.14 2007/07/10 18:35:38 josepht Exp $
+ * $DragonFly: src/sys/sys/usched.h,v 1.15 2008/04/21 15:24:47 dillon Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -42,6 +42,7 @@ struct usched {
     void (*heuristic_forking)(struct lwp *, struct lwp *);
     void (*heuristic_exiting)(struct lwp *, struct lwp *);
     void (*setcpumask)(struct usched *, cpumask_t);
+    void (*yield)(struct lwp *);
 };
 
 union usched_data {

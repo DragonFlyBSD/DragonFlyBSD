@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/usched_dummy.c,v 1.8 2007/04/30 07:18:54 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_dummy.c,v 1.9 2008/04/21 15:24:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,6 +71,7 @@ static void dummy_recalculate_estcpu(struct lwp *lp);
 static void dummy_resetpriority(struct lwp *lp);
 static void dummy_forking(struct lwp *plp, struct lwp *lp);
 static void dummy_exiting(struct lwp *plp, struct lwp *lp);
+static void dummy_yield(struct lwp *lp);
 
 struct usched usched_dummy = {
 	{ NULL },
@@ -85,7 +86,8 @@ struct usched usched_dummy = {
 	dummy_resetpriority,
 	dummy_forking,
 	dummy_exiting,
-	NULL			/* setcpumask not supported */
+	NULL,			/* setcpumask not supported */
+	dummy_yield
 };
 
 struct usched_dummy_pcpu {
@@ -359,6 +361,13 @@ static
 void 
 dummy_recalculate_estcpu(struct lwp *lp)
 {
+}
+
+static
+void
+dummy_yield(struct lwp *lp)
+{
+	need_user_resched();
 }
 
 /*

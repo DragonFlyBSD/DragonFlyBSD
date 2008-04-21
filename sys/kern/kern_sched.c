@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/ksched.c,v 1.7.2.1 2000/05/16 06:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/kern_sched.c,v 1.9 2007/06/26 19:31:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sched.c,v 1.10 2008/04/21 15:24:46 dillon Exp $
  */
 
 /* ksched: Soft real time scheduling based on "rtprio".
@@ -208,7 +208,11 @@ int ksched_getscheduler(register_t *ret, struct ksched *ksched, struct lwp *lp)
  */
 int ksched_yield(register_t *ret, struct ksched *ksched)
 {
-	need_user_resched();
+	struct lwp *lp;
+
+	if ((lp = curthread->td_lwp) != NULL) {
+		lp->lwp_proc->p_usched->yield(lp);
+	}
 	return 0;
 }
 
