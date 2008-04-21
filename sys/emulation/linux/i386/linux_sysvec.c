@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.30 2008/03/15 16:21:30 aggelos Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.31 2008/04/21 15:47:53 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -359,7 +359,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		 * Process has trashed its stack; give it an illegal
 		 * instruction to halt it in its tracks.
 		 */
-		sigexit(p, SIGILL);
+		sigexit(lp, SIGILL);
 		/* NOTREACHED */
 	}
 
@@ -500,7 +500,7 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		 * Process has trashed its stack; give it an illegal
 		 * instruction to halt it in its tracks.
 		 */
-		sigexit(p, SIGILL);
+		sigexit(lp, SIGILL);
 		/* NOTREACHED */
 	}
 

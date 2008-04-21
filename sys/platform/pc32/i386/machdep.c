@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.130 2008/03/15 16:21:29 aggelos Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.131 2008/04/21 15:47:55 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -510,7 +510,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		 * Something is wrong with the stack pointer.
 		 * ...Kill the process.
 		 */
-		sigexit(p, SIGILL);
+		sigexit(lp, SIGILL);
 	}
 
 	regs->tf_esp = (int)sfp;

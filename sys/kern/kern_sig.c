@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.88 2008/04/14 12:01:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.89 2008/04/21 15:47:54 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1477,7 +1477,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		lwp_delsig(lp, sig);	/* take the signal! */
 
 		if (sig == SIGKILL)
-			sigexit(p, sig);
+			sigexit(lp, sig);
 	}
 	return (error);
 }
@@ -1791,7 +1791,7 @@ postsig(int sig)
 		 * Default action, where the default is to kill
 		 * the process.  (Other cases were ignored above.)
 		 */
-		sigexit(p, sig);
+		sigexit(lp, sig);
 		/* NOTREACHED */
 	} else {
 		/*
@@ -1886,9 +1886,9 @@ killproc(struct proc *p, char *why)
  * does not return.
  */
 void
-sigexit(struct proc *p, int sig)
+sigexit(struct lwp *lp, int sig)
 {
-	struct lwp *lp = FIRST_LWP_IN_PROC(p);	/* XXX lwp */
+	struct proc *p = lp->lwp_proc;
 
 	p->p_acflag |= AXSIG;
 	if (sigprop(sig) & SA_CORE) {
