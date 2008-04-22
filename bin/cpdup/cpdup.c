@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.25 2008/04/16 17:38:19 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.26 2008/04/22 19:45:05 dillon Exp $
  */
 
 /*-
@@ -334,9 +334,10 @@ main(int ac, char **av)
 	fatal(NULL);
 	/* not reached */
     }
-#if USE_PTHREADS
+    bzero(&info, sizeof(info));
     info.r = 0;
     info.children = 0;
+#if USE_PTHREADS
     pthread_cond_init(&info.cond, NULL);
 #endif
     if (dst) {
@@ -598,7 +599,6 @@ DoCopyThread(void *arg)
     --cinfo->parent->children;
     --CurParallel;
     pthread_cond_signal(&cinfo->parent->cond);
-    pthread_mutex_unlock(&MasterMutex);
     free(spath);
     if (dpath)
 	free(dpath);
@@ -606,6 +606,7 @@ DoCopyThread(void *arg)
     free(cinfo);
     hcc_free_trans(&SrcHost);
     hcc_free_trans(&DstHost);
+    pthread_mutex_unlock(&MasterMutex);
     return(NULL);
 }
 
