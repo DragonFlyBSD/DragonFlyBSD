@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/rewinddir.c,v 1.2.8.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/rewinddir.c,v 1.4 2005/04/26 08:48:19 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/rewinddir.c,v 1.5 2008/04/22 21:29:42 dillon Exp $
  *
  * @(#)rewinddir.c	8.1 (Berkeley) 6/8/93
  */
@@ -42,5 +42,6 @@ void
 rewinddir(DIR *dirp)
 {
 	_seekdir(dirp, dirp->dd_rewind);
+	_reclaim_telldir(dirp);
 	dirp->dd_rewind = telldir(dirp);
 }

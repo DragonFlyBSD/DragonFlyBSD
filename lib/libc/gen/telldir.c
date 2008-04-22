@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/telldir.c,v 1.4.12.1 2001/03/05 09:39:59 obrien Exp $
- * $DragonFly: src/lib/libc/gen/telldir.c,v 1.5 2007/11/21 05:48:31 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/telldir.c,v 1.6 2008/04/22 21:29:42 dillon Exp $
  *
  * @(#)telldir.c	8.1 (Berkeley) 6/4/93
  */
@@ -45,13 +45,6 @@
 #include "un-namespace.h"
 
 #include "libc_private.h"
-
-/*
- * The option SINGLEUSE may be defined to say that a telldir
- * cookie may be used only once before it is freed. This option
- * is used to avoid having memory usage grow without bound.
- */
-#define SINGLEUSE
 
 /*
  * One of these structures is malloced to describe the current directory
@@ -72,6 +65,7 @@ struct ddloc {
 
 static long	dd_loccnt;	/* Index of entry for sequential readdir's */
 static struct	ddloc *dd_hash[NDIRHASH];   /* Hash list heads for ddlocs */
+static pthread_mutex_t dd_hash_lock;
 
 /*
  * return a pointer into a directory
@@ -79,22 +73,44 @@ static struct	ddloc *dd_hash[NDIRHASH];   /* Hash list heads for ddlocs */
 long
 telldir(const DIR *dirp)
 {
-	int index;
+	long index;
 	struct ddloc *lp;
 
-	if ((lp = (struct ddloc *)malloc(sizeof(struct ddloc))) == NULL)
-		return (-1);
-	if (__isthreaded)
+	if (__isthreaded) {
 		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
+		_pthread_mutex_lock(&dd_hash_lock);
+	}
+
+	/*
+	 * Reduce memory use by reusing a ddloc that might already exist
+	 * for this position.
+	 */
+	for (lp = dd_hash[LOCHASH(dirp->dd_lastseek)]; lp; lp = lp->loc_next) {
+		if (lp->loc_dirp == dirp && lp->loc_seek == dirp->dd_seek &&
+		    lp->loc_loc == dirp->dd_loc) {
+			index = lp->loc_index;
+			goto done;
+		}
+	}
+
+	if ((lp = (struct ddloc *)malloc(sizeof(struct ddloc))) == NULL) {
+		index = -1;
+		goto done;
+	}
 	index = dd_loccnt++;
 	lp->loc_index = index;
 	lp->loc_seek = dirp->dd_seek;
 	lp->loc_loc = dirp->dd_loc;
 	lp->loc_dirp = dirp;
+
 	lp->loc_next = dd_hash[LOCHASH(index)];
 	dd_hash[LOCHASH(index)] = lp;
-	if (__isthreaded)
+
+done:
+	if (__isthreaded) {
+		_pthread_mutex_unlock(&dd_hash_lock);
 		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
+	}
 	return (index);
 }
 
@@ -109,31 +125,33 @@ _seekdir(DIR *dirp, long loc)
 	struct ddloc **prevlp;
 	struct dirent *dp;
 
-	prevlp = &dd_hash[LOCHASH(loc)];
-	lp = *prevlp;
-	while (lp != NULL) {
+        if (__isthreaded)
+		_pthread_mutex_lock(&dd_hash_lock);
+	for (lp = dd_hash[LOCHASH(loc)]; lp; lp = lp->loc_next) {
 		if (lp->loc_index == loc)
 			break;
-		prevlp = &lp->loc_next;
-		lp = lp->loc_next;
 	}
+        if (__isthreaded)
+		_pthread_mutex_unlock(&dd_hash_lock);
 	if (lp == NULL)
 		return;
 	if (lp->loc_loc == dirp->dd_loc && lp->loc_seek == dirp->dd_seek)
-		goto found;
+		return;
 	lseek(dirp->dd_fd, lp->loc_seek, SEEK_SET);
 	dirp->dd_seek = lp->loc_seek;
 	dirp->dd_loc = 0;
-	while (dirp->dd_loc < lp->loc_loc) {
+	dirp->dd_lastseek = loc;
+
+	/*
+	 * Scan the buffer until we find dd_loc.  If the directory
+	 * changed between the tell and seek it is possible to
+	 * load a new buffer or for dd_loc to not match directly.
+	 */
+	while (dirp->dd_loc < lp->loc_loc && dirp->dd_seek == lp->loc_seek) {
 		dp = _readdir_unlocked(dirp);
 		if (dp == NULL)
 			break;
 	}
-found:
-#ifdef SINGLEUSE
-	*prevlp = lp->loc_next;
-	free((caddr_t)lp);
-#endif
 }
 
 /*
@@ -146,6 +164,8 @@ _reclaim_telldir(DIR *dirp)
 	struct ddloc **prevlp;
 	int i;
 
+        if (__isthreaded)
+		_pthread_mutex_lock(&dd_hash_lock);
 	for (i = 0; i < NDIRHASH; i++) {
 		prevlp = &dd_hash[i];
 		lp = *prevlp;
@@ -160,4 +180,6 @@ _reclaim_telldir(DIR *dirp)
 			lp = lp->loc_next;
 		}
 	}
+        if (__isthreaded)
+		_pthread_mutex_unlock(&dd_hash_lock);
 }
