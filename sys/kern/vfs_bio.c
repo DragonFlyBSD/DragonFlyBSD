@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.98 2008/02/23 21:55:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.99 2008/04/22 18:46:51 dillon Exp $
  */
 
 /*
@@ -753,19 +753,7 @@ bwrite(struct buf *bp)
 		int rtval = biowait(bp);
 		brelse(bp);
 		return (rtval);
-	} else if ((oldflags & B_NOWDRAIN) == 0) {
-		/*
-		 * don't allow the async write to saturate the I/O
-		 * system.  Deadlocks can occur only if a device strategy
-		 * routine (like in VN) turns around and issues another
-		 * high-level write, in which case B_NOWDRAIN is expected
-		 * to be set.   Otherwise we will not deadlock here because
-		 * we are blocking waiting for I/O that is already in-progress
-		 * to complete.
-		 */
-		waitrunningbufspace();
 	}
-
 	return (0);
 }
 
@@ -968,7 +956,8 @@ bowrite(struct buf *bp)
 void
 bwillwrite(void)
 {
-	if (numdirtybuffers >= hidirtybuffers) {
+	if (numdirtybuffers >= hidirtybuffers / 2) {
+		bd_wakeup(1);
 		while (numdirtybuffers >= hidirtybuffers) {
 			bd_wakeup(1);
 			spin_lock_wr(&needsbuffer_spin);
@@ -979,7 +968,19 @@ bwillwrite(void)
 			}
 			spin_unlock_wr(&needsbuffer_spin);
 		}
+	} 
+#if 0
+	/* FUTURE - maybe */
+	else if (numdirtybuffershw > hidirtybuffers / 2) {
+		bd_wakeup(1);
+
+		while (numdirtybuffershw > hidirtybuffers) {
+			needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
+			tsleep(&needsbuffer, slpflags, "newbuf",
+			       slptimeo);
+		}
 	}
+#endif
 }
 
 /*
@@ -1349,7 +1350,7 @@ brelse(struct buf *bp)
 	 * Clean up temporary flags and unlock the buffer.
 	 */
 	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_AGE | B_RELBUF |
-			B_DIRECT | B_NOWDRAIN);
+			B_DIRECT);
 	BUF_UNLOCK(bp);
 	crit_exit();
 }
@@ -1802,7 +1803,6 @@ restart:
 		bp->b_bcount = 0;
 		bp->b_xio.xio_npages = 0;
 		bp->b_dirtyoff = bp->b_dirtyend = 0;
-		bp->b_tid = 0;
 		reinitbufbio(bp);
 		buf_dep_init(bp);
 		if (blkflags & GETBLK_BHEAVY)
@@ -2481,19 +2481,6 @@ loop:
 		 * directory vnode is not a special case.
 		 */
 		int bsize, maxsize;
-
-		/*
-		 * Don't let heavy weight buffers deadlock us.
-		 */
-		if ((blkflags & GETBLK_BHEAVY) &&
-		    numdirtybuffershw > hidirtybuffers) {
-			while (numdirtybuffershw > hidirtybuffers) {
-				needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
-				tsleep(&needsbuffer, slpflags, "newbuf",
-				       slptimeo);
-			}
-			goto loop;
-		}
 
 		if (vp->v_type == VBLK || vp->v_type == VCHR)
 			bsize = DEV_BSIZE;

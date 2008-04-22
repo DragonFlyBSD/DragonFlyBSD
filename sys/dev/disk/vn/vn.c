@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.36 2008/01/30 11:46:33 cat Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.37 2008/04/22 18:46:50 dillon Exp $
  */
 
 /*
@@ -393,7 +393,7 @@ vnstrategy(struct dev_strategy_args *ap)
 		if (bp->b_cmd == BUF_CMD_READ)
 			error = VOP_READ(vn->sc_vp, &auio, IO_DIRECT, vn->sc_cred);
 		else
-			error = VOP_WRITE(vn->sc_vp, &auio, IO_NOWDRAIN, vn->sc_cred);
+			error = VOP_WRITE(vn->sc_vp, &auio, IO_NOBWILL, vn->sc_cred);
 		vn_unlock(vn->sc_vp);
 		bp->b_resid = auio.uio_resid;
 		if (error) {

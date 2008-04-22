@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.42 2008/01/10 07:34:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.43 2008/04/22 18:46:53 dillon Exp $
  */
 
 
@@ -1039,12 +1039,6 @@ again:
 			}
 			vfs_bio_set_validclean(bp, on, n);
 		}
-		/*
-		 * If IO_NOWDRAIN then set B_NOWDRAIN (e.g. nfs-backed VN
-		 * filesystem).  XXX also use for loopback NFS mounts.
-		 */
-		if (ioflag & IO_NOWDRAIN)
-			bp->b_flags |= B_NOWDRAIN;
 
 		/*
 		 * If the lease is non-cachable or IO_SYNC do bwrite().

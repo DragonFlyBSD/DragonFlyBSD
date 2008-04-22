@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.43 2008/02/05 07:58:41 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.44 2008/04/22 18:46:52 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -173,7 +173,6 @@ struct buf {
 	struct	xio b_xio;  		/* data buffer page list management */
 	struct  bio_ops *b_ops;		/* bio_ops used w/ b_dep */
 	struct	workhead b_dep;		/* List of filesystem dependencies. */
-	u_int64_t b_tid;		/* Transaction id */
 };
 
 /*
@@ -242,11 +241,6 @@ struct buf {
  *			sticky until the buffer is released and typically
  *			only has an effect when B_RELBUF is also set.
  *
- *	B_NOWDRAIN	This flag should be set when a device (like VN)
- *			does a turn-around VOP_WRITE from its strategy
- *			routine.  This flag prevents bwrite() from blocking
- *			in wdrain, avoiding a deadlock situation.
- *
  *	B_LOCKED	The buffer will be released to the locked queue
  *			regardless of its current state.  Note that
  *			if B_DELWRI is set, no I/O occurs until the caller
@@ -285,10 +279,10 @@ struct buf {
 #define B_RAM		0x10000000	/* Read ahead mark (flag) */
 #define B_VMIO		0x20000000	/* VMIO flag */
 #define B_CLUSTER	0x40000000	/* pagein op, so swap() can count it */
-#define B_NOWDRAIN	0x80000000	/* Avoid wdrain deadlock */
+#define B_UNUSED80000000 0x80000000
 
 #define PRINT_BUF_FLAGS "\20"	\
-	"\40nowdrain\37cluster\36vmio\35ram\34ordered" \
+	"\40unused31\37cluster\36vmio\35ram\34ordered" \
 	"\33paging\32vndirty\31vnclean\30want\27relbuf\26dirty" \
 	"\25unused20\24raw\23unused18\22clusterok\21malloc\20nocache" \
 	"\17locked\16inval\15unused12\14error\13eintr\12unused9\11unused8" \
