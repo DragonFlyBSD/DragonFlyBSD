@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.3 2008/03/24 23:50:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.4 2008/04/22 19:00:15 dillon Exp $
  */
 
 /*
@@ -74,8 +74,8 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
  * offset.
  */
 int
-hammer_generate_undo(hammer_transaction_t trans, hammer_off_t zone1_off,
-		     void *base, int len)
+hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
+		     hammer_off_t zone1_off, void *base, int len)
 {
 	hammer_volume_t root_volume;
 	hammer_volume_ondisk_t ondisk;
@@ -160,10 +160,17 @@ again:
 	undo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
 	undo->head.hdr_type = HAMMER_HEAD_TYPE_PAD;
 	undo->head.hdr_size = bytes;
+	undo->head.reserved01 = 0;
+	undo->head.hdr_crc = 0;
 	undo->undo_offset = zone1_off;
 	undo->undo_data_bytes = len;
 	bcopy(base, undo + 1, len);
 	undo->head.hdr_crc = crc32(undo, bytes);
+
+	/*
+	 * Update the undo offset space in the IO XXX
+	 */
+
 
 	undomap->next_offset += bytes;
 

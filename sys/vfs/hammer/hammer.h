@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.46 2008/03/30 21:33:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.47 2008/04/22 19:00:14 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -82,6 +82,7 @@ typedef struct hammer_inode_info {
 struct hammer_transaction {
 	struct hammer_mount *hmp;
 	hammer_tid_t	tid;
+	hammer_seq_t	seq;
 	struct hammer_volume *rootvol;
 /*	TAILQ_HEAD(, hammer_io) recycle_list;*/
 };
@@ -159,12 +160,15 @@ TAILQ_HEAD(hammer_node_list, hammer_node);
 
 struct hammer_inode {
 	RB_ENTRY(hammer_inode) rb_node;
+	TAILQ_HEAD(, bio) bio_list;	/* BIOs to flush out */
+	TAILQ_ENTRY(hammer_inode) flush_entry;
 	u_int64_t	obj_id;		/* (key) object identifier */
 	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
 	hammer_tid_t	last_tid;	/* last modified tid (for fsync) */
 	hammer_tid_t	sync_tid;	/* last inode tid synced to disk */
 	struct hammer_mount *hmp;
 	int		flags;
+	int		error;		/* flush error */
 	int		cursor_ip_refs;	/* sanity */
 	struct vnode	*vp;
 	struct lockf	advlock;
@@ -182,7 +186,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
 #define HAMMER_INODE_RDIRTY	0x0002	/* in-memory ino_rec is dirty */
 #define HAMMER_INODE_ITIMES	0x0004	/* in-memory mtime/atime modified */
-#define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records present */
+#define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records/flsbufs present */
 #define HAMMER_INODE_ONDISK	0x0010	/* inode is on-disk (else not yet) */
 #define HAMMER_INODE_FLUSH	0x0020	/* flush on last ref */
 #define HAMMER_INODE_DELETED	0x0080	/* inode ready for deletion */
@@ -192,6 +196,8 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
 #define HAMMER_INODE_TIDLOCKED	0x2000	/* tid locked until inode synced */
+#define HAMMER_INODE_FLUSHQ	0x4000	/* On flush queue */
+#define HAMMER_INODE_FLUSHW	0x8000	/* Someone waiting for flush */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	  \
@@ -415,6 +421,10 @@ struct hammer_mount {
 	int	ronly;
 	int	nvolumes;
 	int	volume_iterator;
+	int	flusher_seq;
+	int	flusher_act;
+	int	flusher_exiting;
+	thread_t flusher_td;
 	u_int	check_interrupt;
 	uuid_t	fsid;
 	udev_t	fsid_udev;
@@ -424,6 +434,7 @@ struct hammer_mount {
 	struct netexport export;
 	struct lock blockmap_lock;
 	struct hammer_holes holes[HAMMER_MAX_ZONES];
+	TAILQ_HEAD(, hammer_inode) flush_list;
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
@@ -549,6 +560,8 @@ void	*hammer_bnew(struct hammer_mount *hmp, hammer_off_t off,
 			int *errorp, struct hammer_buffer **bufferp);
 
 hammer_volume_t hammer_get_root_volume(hammer_mount_t hmp, int *errorp);
+int	hammer_dowrite(hammer_transaction_t trans, hammer_inode_t ip,
+			struct bio *bio);
 
 hammer_volume_t	hammer_get_volume(hammer_mount_t hmp,
 			int32_t vol_no, int *errorp);
@@ -590,8 +603,8 @@ void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			hammer_off_t *data_offsetp,
 			struct hammer_buffer **data_bufferp, int *errorp);
 
-int hammer_generate_undo(hammer_transaction_t trans, hammer_off_t zone1_offset,
-			void *base, int len);
+int hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
+			hammer_off_t zone1_offset, void *base, int len);
 
 void hammer_put_volume(struct hammer_volume *volume, int flush);
 void hammer_put_buffer(struct hammer_buffer *buffer, int flush);
@@ -668,6 +681,11 @@ int hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 void hammer_init_holes(hammer_mount_t hmp, hammer_holes_t holes);
 void hammer_free_holes(hammer_mount_t hmp, hammer_holes_t holes);
 int hammer_signal_check(hammer_mount_t hmp);
+
+void hammer_flusher_create(hammer_mount_t hmp);
+void hammer_flusher_destroy(hammer_mount_t hmp);
+void hammer_flusher_sync(hammer_mount_t hmp);
+void hammer_flusher_async(hammer_mount_t hmp);
 
 #endif
 

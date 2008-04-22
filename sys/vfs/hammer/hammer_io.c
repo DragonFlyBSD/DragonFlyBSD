@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.23 2008/03/24 23:50:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.24 2008/04/22 19:00:15 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -353,7 +353,7 @@ hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)volume->ondisk;
 		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
-		hammer_generate_undo(trans,
+		hammer_generate_undo(trans, &volume->io,
 			 HAMMER_ENCODE_RAW_VOLUME(volume->vol_no, rel_offset),
 			 base, len);
 	}
@@ -372,7 +372,7 @@ hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)buffer->ondisk;
 		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
-		hammer_generate_undo(trans,
+		hammer_generate_undo(trans, &buffer->io,
 				     buffer->zone2_offset + rel_offset,
 				     base, len);
 	}

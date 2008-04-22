@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.33 2008/03/29 20:12:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.34 2008/04/22 19:00:15 dillon Exp $
  */
 
 #include "hammer.h"
@@ -208,6 +208,7 @@ loop:
 	if (hmp->ronly)
 		ip->flags |= HAMMER_INODE_RO;
 	RB_INIT(&ip->rec_tree);
+	TAILQ_INIT(&ip->bio_list);
 
 	/*
 	 * Locate the on-disk inode.
@@ -302,6 +303,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->last_tid = trans->tid;
 
 	RB_INIT(&ip->rec_tree);
+	TAILQ_INIT(&ip->bio_list);
 
 	ip->ino_rec.ino_atime = trans->tid;
 	ip->ino_rec.ino_mtime = trans->tid;
@@ -530,6 +532,7 @@ hammer_unload_inode(struct hammer_inode *ip, void *data)
 		kprintf("hammer_sync_inode failed error %d\n", error);
 	if (ip->lock.refs == 1) {
 		KKASSERT(RB_EMPTY(&ip->rec_tree));
+		KKASSERT(TAILQ_EMPTY(&ip->bio_list));
 		RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
 
 		hammer_uncache_node(&ip->cache[0]);
@@ -618,6 +621,7 @@ int
 hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 {
 	struct hammer_transaction trans;
+	struct bio *bio;
 	int error;
 
 	if ((ip->flags & HAMMER_INODE_MODMASK) == 0) {
@@ -662,14 +666,22 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 	}
 
 	/*
-	 * Sync the buffer cache.
+	 * Sync the buffer cache.  This will queue the BIOs
 	 */
 	if (ip->vp != NULL) {
-		error = vfsync(ip->vp, waitfor, 1, NULL, NULL);
+		error = vfsync(ip->vp, MNT_NOWAIT, 1, NULL, NULL);
 		if (RB_ROOT(&ip->vp->v_rbdirty_tree) == NULL)
 			ip->flags &= ~HAMMER_INODE_BUFS;
 	} else {
 		error = 0;
+	}
+
+	/*
+	 * Flush the queued BIOs
+	 */
+	while ((bio = TAILQ_FIRST(&ip->bio_list)) != NULL) {
+		TAILQ_REMOVE(&ip->bio_list, bio, bio_act);
+		hammer_dowrite(&trans, ip, bio);
 	}
 
 
@@ -684,7 +696,7 @@ hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete)
 			error = -error;
 		break;
 	}
-	if (RB_EMPTY(&ip->rec_tree))
+	if (RB_EMPTY(&ip->rec_tree) && TAILQ_EMPTY(&ip->bio_list))
 		ip->flags &= ~HAMMER_INODE_XDIRTY;
 
 	/*

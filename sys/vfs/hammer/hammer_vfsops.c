@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.24 2008/03/30 21:33:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.25 2008/04/22 19:00:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -186,6 +186,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_end.obj_type = 0;
 		lockinit(&hmp->blockmap_lock, "blkmap", 0, 0);
 
+		TAILQ_INIT(&hmp->flush_list);
+
 		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
 			hmp->zone_limits[i] =
 				HAMMER_ZONE_ENCODE(i, HAMMER_ZONE_LIMIT);
@@ -291,6 +293,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		crc32((char *)&rootvol->ondisk->vol_fsid + 8, 8);
 	hammer_rel_volume(rootvol, 0);
 
+	hammer_flusher_create(hmp);
+
 	/*
 	 * Locate the root directory using the root cluster's B-Tree as a
 	 * starting point.  The root directory uses an obj_id of 1.
@@ -358,6 +362,8 @@ hammer_free_hmp(struct mount *mp)
 		hmp->rootvp = NULL;
 	}
 #endif
+	hammer_flusher_sync(hmp);
+	hammer_flusher_destroy(hmp);
 
 	/*
 	 * Unload & flush inodes

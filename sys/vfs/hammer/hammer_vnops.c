@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.36 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.37 2008/04/22 19:00:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -171,11 +171,21 @@ int
 hammer_vop_fsync(struct vop_fsync_args *ap)
 {
 	hammer_inode_t ip;
-	int error;
 
 	ip = VTOI(ap->a_vp);
-	error = hammer_sync_inode(ip, ap->a_waitfor, 0);
-	return (error);
+	if ((ip->flags & HAMMER_INODE_FLUSHQ) == 0) {
+		++ip->lock.refs;
+		ip->flags |= HAMMER_INODE_FLUSHQ;
+		TAILQ_INSERT_TAIL(&ip->hmp->flush_list, ip, flush_entry);
+		hammer_flusher_async(ip->hmp);
+	}
+	if (ap->a_waitfor == MNT_WAIT) {
+		while (ip->flags & HAMMER_INODE_FLUSHQ) {
+			ip->flags |= HAMMER_INODE_FLUSHW;
+			tsleep(ip, 0, "hmrifl", 0);
+		}
+	}
+	return (ip->error);
 }
 
 /*
@@ -256,6 +266,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	int error;
 	int n;
 	int flags;
+	int count;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
@@ -288,8 +299,19 @@ hammer_vop_write(struct vop_write_args *ap)
 	/*
 	 * Access the data in HAMMER_BUFSIZE blocks via the buffer cache.
 	 */
+	count = 0;
 	while (uio->uio_resid > 0) {
 		int fixsize = 0;
+
+		/*
+		 * Do not allow huge writes to deadlock the buffer cache
+		 */
+		if ((++count & 15) == 0) {
+			vn_unlock(ap->a_vp);
+			if ((ap->a_ioflag & IO_NOBWILL) == 0)
+				bwillwrite();
+			vn_lock(ap->a_vp, LK_EXCLUSIVE|LK_RETRY);
+		}
 
 		offset = uio->uio_offset & HAMMER_BUFMASK;
 		n = HAMMER_BUFSIZE - offset;
@@ -366,33 +388,17 @@ hammer_vop_write(struct vop_write_args *ap)
 		flags |= HAMMER_INODE_ITIMES | HAMMER_INODE_BUFS;
 		hammer_modify_inode(&trans, ip, flags);
 
-#if 0
-		/*
-		 * The file write must be tagged with the same TID as the
-		 * inode, for consistency in case the inode changed size.
-		 * This guarantees the on-disk data records will have a
-		 * TID <= the inode TID representing the size change.
-		 *
-		 * If a prior write has not yet flushed, retain its TID.
-		 */
-		if (bp->b_tid == 0)
-			bp->b_tid = ip->last_tid;
-#endif
-		/*
-		 * For now we can't use ip->last_tid because we may wind
-		 * up trying to flush the same buffer with the same TID
-		 * (but different data) multiple times, which will cause
-		 * a panic.
-		 */
-		if (bp->b_tid == 0)
-			bp->b_tid = trans.tid;
-
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
 			bawrite(bp);
-		} else if ((ap->a_ioflag >> 16) > 1 &&
+#if 0
+		} else if ((ap->a_ioflag >> 16) == IO_SEQMAX &&
 			   (uio->uio_offset & HAMMER_BUFMASK) == 0) {
+			/*
+			 * XXX HAMMER can only fsync the whole inode,
+			 * doing it on every buffer would be a bad idea.
+			 */
 			/*
 			 * If seqcount indicates sequential operation and
 			 * we just finished filling a buffer, push it out
@@ -400,7 +406,8 @@ hammer_vop_write(struct vop_write_args *ap)
 			 * too full, which would trigger non-optimal
 			 * flushes.
 			 */
-			bawrite(bp);
+			bdwrite(bp);
+#endif
 		} else {
 			bdwrite(bp);
 		}
@@ -1418,8 +1425,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				if (error == 0) {
 					bzero(bp->b_data + offset,
 					      HAMMER_BUFSIZE - offset);
-					if (bp->b_tid == 0)
-						bp->b_tid = trans.tid;
 					bdwrite(bp);
 				} else {
 					brelse(bp);
@@ -1627,13 +1632,11 @@ hammer_vop_strategy(struct vop_strategy_args *ap)
 		error = hammer_vop_strategy_write(ap);
 		break;
 	default:
-		error = EINVAL;
+		bp->b_error = error = EINVAL;
+		bp->b_flags |= B_ERROR;
+		biodone(ap->a_bio);
 		break;
 	}
-	bp->b_error = error;
-	if (error)
-		bp->b_flags |= B_ERROR;
-	biodone(ap->a_bio);
 	return (error);
 }
 
@@ -1738,6 +1741,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		KKASSERT(n > 0);
 		if (n > bp->b_bufsize - boff)
 			n = bp->b_bufsize - boff;
+
 		bcopy((char *)cursor.data + roff,
 		      (char *)bp->b_data + boff, n);
 		boff += n;
@@ -1759,18 +1763,20 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		/* boff = bp->b_bufsize; */
 	}
 	bp->b_resid = 0;
+	bp->b_error = error;
+	if (error)
+		bp->b_flags |= B_ERROR;
+	biodone(ap->a_bio);
 	return(error);
 }
 
 /*
- * Write to a regular file.  Iterate the related records and mark for
- * deletion.  If existing edge records (left and right side) overlap our
- * write they have to be marked deleted and new records created, usually
- * referencing a portion of the original data.  Then add a record to
- * represent the buffer.
+ * Write to a regular file.   Because this is a strategy call the OS is
+ * trying to actually sync data to the media.   HAMMER can only flush
+ * the entire inode (so the TID remains properly synchronized).
  *
- * The support code in hammer_object.c should be used to deal with mixed
- * in-memory and on-disk records.
+ * Basically all we do here is place the bio on the inode's flush queue
+ * and activate the flusher.
  */
 static
 int
@@ -1780,30 +1786,57 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	hammer_inode_t ip;
 	struct bio *bio;
 	struct buf *bp;
-	int error;
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
 	ip = ap->a_vp->v_data;
 
-	if (ip->flags & HAMMER_INODE_RO)
-		return (EROFS);
+	if (ip->flags & HAMMER_INODE_RO) {
+		bp->b_error = EROFS;
+		bp->b_flags |= B_ERROR;
+		biodone(ap->a_bio);
+		return(EROFS);
+	}
+	BUF_KERNPROC(bp);
+	TAILQ_INSERT_TAIL(&ip->bio_list, bio, bio_act);
+	hammer_start_transaction(&trans, ip->hmp);	/* XXX */
+	hammer_modify_inode(&trans, ip, HAMMER_INODE_XDIRTY);
+	hammer_commit_transaction(&trans);
 
-	/*
-	 * Start a transaction using the TID stored with the bp.
-	 */
-	KKASSERT(bp->b_tid != 0);
-	hammer_start_transaction_tid(&trans, ip->hmp, bp->b_tid);
+	if ((ip->flags & HAMMER_INODE_FLUSHQ) == 0) {
+		++ip->lock.refs;
+		ip->flags |= HAMMER_INODE_FLUSHQ;
+		TAILQ_INSERT_TAIL(&ip->hmp->flush_list, ip, flush_entry);
+		hammer_flusher_async(ip->hmp);
+	}
+	return(0);
+}
+
+/*
+ * Back-end code which actually performs the write to the media.  This
+ * routine is typically called from the flusher.  The bio will be disposed
+ * of (biodone'd) by this routine.
+ *
+ * Iterate the related records and mark for deletion.  If existing edge
+ * records (left and right side) overlap our write they have to be marked
+ * deleted and new records created, usually referencing a portion of the
+ * original data.  Then add a record to represent the buffer.
+ */
+int
+hammer_dowrite(hammer_transaction_t trans, hammer_inode_t ip, struct bio *bio)
+{
+	struct buf *bp = bio->bio_buf;
+	int error;
 
 	/*
 	 * Delete any records overlapping our range.  This function will
 	 * (eventually) properly truncate partial overlaps.
 	 */
 	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
-		error = hammer_ip_delete_range(&trans, ip, bio->bio_offset,
+		error = hammer_ip_delete_range(trans, ip, bio->bio_offset,
 					       bio->bio_offset);
 	} else {
-		error = hammer_ip_delete_range(&trans, ip, bio->bio_offset,
+		error = hammer_ip_delete_range(trans, ip, bio->bio_offset,
 					       bio->bio_offset +
 						bp->b_bufsize - 1);
 	}
@@ -1827,22 +1860,18 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 			KKASSERT(limit_size >= 0);
 			limit_size = (limit_size + 63) & ~63;
 		}
-		error = hammer_ip_sync_data(&trans, ip, bio->bio_offset,
+		error = hammer_ip_sync_data(trans, ip, bio->bio_offset,
 					    bp->b_data, limit_size);
 	}
 
-	/*
-	 * If an error occured abort the transaction
-	 */
 	if (error) {
-		/* XXX undo deletion */
-		hammer_abort_transaction(&trans);
 		bp->b_resid = bp->b_bufsize;
+		bp->b_error = error;
+		bp->b_flags |= B_ERROR;
 	} else {
-		hammer_commit_transaction(&trans);
 		bp->b_resid = 0;
-		bp->b_tid = 0;
 	}
+	biodone(bio);
 	return(error);
 }
 

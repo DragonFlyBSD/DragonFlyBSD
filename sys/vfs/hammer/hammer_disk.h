@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.27 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.28 2008/04/22 19:00:15 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -94,6 +94,8 @@
  */
 typedef u_int64_t hammer_tid_t;
 typedef u_int64_t hammer_off_t;
+typedef u_int32_t hammer_seq_t;
+typedef u_int32_t hammer_crc_t;
 
 #define HAMMER_MIN_TID		0ULL			/* unsigned */
 #define HAMMER_MAX_TID		0xFFFFFFFFFFFFFFFFULL	/* unsigned */
@@ -219,7 +221,7 @@ struct hammer_blockmap {
 	hammer_off_t	first_offset;	/* zone-X logical offset (zone 3) */
 	hammer_off_t	next_offset;	/* zone-X logical offset */
 	hammer_off_t	alloc_offset;	/* zone-X logical offset */
-	u_int32_t	entry_crc;
+	hammer_crc_t	entry_crc;
 	u_int32_t	reserved01;
 };
 
@@ -242,13 +244,13 @@ typedef struct hammer_blockmap *hammer_blockmap_t;
 struct hammer_blockmap_layer1 {
 	hammer_off_t	blocks_free;	/* big-blocks free */
 	hammer_off_t	phys_offset;	/* UNAVAIL or zone-2 */
-	u_int32_t	layer1_crc;	/* crc of this entry */
-	u_int32_t	layer2_crc;	/* xor'd crc's of HAMMER_BLOCKSIZE */
+	hammer_crc_t	layer1_crc;	/* crc of this entry */
+	hammer_crc_t	layer2_crc;	/* xor'd crc's of HAMMER_BLOCKSIZE */
 	hammer_off_t	reserved01;
 };
 
 struct hammer_blockmap_layer2 {
-	u_int32_t	entry_crc;
+	hammer_crc_t	entry_crc;
 	u_int32_t	bytes_free;	/* bytes free within this bigblock */
 	union {
 		hammer_off_t	owner;		/* used by freemap */
@@ -330,9 +332,8 @@ struct hammer_fifo_head {
 	u_int16_t hdr_signature;
 	u_int16_t hdr_type;
 	u_int32_t hdr_size;	/* aligned size of the whole mess */
-	u_int32_t hdr_crc;
-	u_int32_t hdr_seq;
-	u_int64_t hdr_tid;	/* related TID */
+	u_int32_t reserved01;	/* (0) reserved for future use */
+	hammer_crc_t hdr_crc;
 };
 
 struct hammer_fifo_tail {
@@ -497,7 +498,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 
 struct hammer_base_record {
 	u_int32_t	signature;	/* record signature */
-	u_int32_t	data_crc;	/* data crc */
+	hammer_crc_t	data_crc;	/* data crc */
 	struct hammer_base_elm base;	/* 40 byte base element */
 	hammer_off_t	data_off;	/* in-band or out-of-band */
 	int32_t		data_len;	/* size of data in bytes */
