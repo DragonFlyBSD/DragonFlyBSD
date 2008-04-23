@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/subr_alist.c,v 1.3 2007/09/27 18:20:20 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_alist.c,v 1.4 2008/04/23 17:21:08 dillon Exp $
  */
 /*
  * This module has been adapted from the BLIST module, which was written
@@ -416,12 +416,23 @@ alst_meta_alloc(
 			 */
 			break;
 		}
+
+		/*
+		 * If the element is marked completely free (11), initialize
+		 * the recursion.
+		 */
 		if ((scan->bm_bitmap & mask) == mask) {
 			scan[i].bm_bitmap = (u_daddr_t)-1;
 			scan[i].bm_bighint = radix;
-		}
+		} 
 
-		if (count <= scan[i].bm_bighint) {
+		if ((scan->bm_bitmap & mask) == 0) {
+			/*
+			 * Object marked completely allocated, recursion
+			 * contains garbage.
+			 */
+			/* Skip it */
+		} else if (count <= scan[i].bm_bighint) {
 			/*
 			 * count fits in object
 			 */
@@ -440,13 +451,7 @@ alst_meta_alloc(
 				}
 				return(r);
 			}
-		} else if (count > radix) {
-			/*
-			 * count does not fit in object even if it were
-			 * completely free.
-			 */
-			break;
-		}
+		} 
 		blk += radix;
 		mask <<= 2;
 		pmask <<= 2;
@@ -554,6 +559,15 @@ alst_meta_free(
 			scan->bm_bitmap |= mask;
 			scan->bm_bighint = radix * ALIST_META_RADIX;/*XXX*/
 		} else {
+			/*
+			 * If we were previously marked all-allocated, fix-up
+			 * the next layer so we can recurse down into it.
+			 */
+			if ((scan->bm_bitmap & mask) == 0) {
+				scan[i].bm_bitmap = (u_daddr_t)0;
+				scan[i].bm_bighint = 0;
+			} 
+
 			/*
 			 * Recursion case
 			 */
