@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pccard/pccarddevs.h,v 1.4 2007/07/05 12:08:53 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pccard/pccarddevs.h,v 1.5 2008/04/23 08:45:05 hasso Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly
+ *	DragonFly: src/sys/bus/pccard/pccarddevs,v 1.5 2008/04/23 08:34:30 hasso Exp 
  */
 /* $FreeBSD: src/sys/dev/pccard/pccarddevs,v 1.112 2005/07/18 21:47:38 imp Exp $ */
 /* $NetBSD: pcmciadevs,v 1.186 2003/09/16 08:26:37 onoe Exp $ */
@@ -133,6 +133,7 @@
 #define	PCMCIA_VENDOR_FARALLON	0x0200	/* Farallon Communications */
 #define	PCMCIA_VENDOR_RELIA	0x0215	/* RELIA Technologies Corporation */
 #define	PCMCIA_VENDOR_TELECOMDEVICE	0x021b	/* Telecom Device */
+#define	PCMCIA_VENDOR_OMNIKEY	0x0223	/* OMNIKEY GmbH */
 #define	PCMCIA_VENDOR_NOKIA	0x023d	/* Nokia Communications */
 #define	PCMCIA_VENDOR_SAMSUNG	0x0250	/* Samsung */
 #define	PCMCIA_VENDOR_HWN	0x0261	/* Home Wireless Networks */
@@ -749,6 +750,11 @@
 #define	PCMCIA_CIS_OLICOM_OC2232	{ NULL, NULL, NULL, NULL }
 #define	PCMCIA_PRODUCT_OLICOM_OC2232	0x3222
 #define	PCMCIA_STR_OLICOM_OC2232	"GoCard Combo Eth/Modem 336"
+
+/* OMNIKEY Products */
+#define	PCMCIA_CIS_OMNIKEY_CM4040	{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_PRODUCT_OMNIKEY_CM4040	0x0200
+#define	PCMCIA_STR_OMNIKEY_CM4040	"OMNIKEY CardMan 4040"
 
 /* Ositech Products */
 #define	PCMCIA_CIS_OSITECH_JACK_144	{ NULL, NULL, NULL, NULL }
