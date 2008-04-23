@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.40 2008/04/20 13:44:24 swildner Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.41 2008/04/23 09:44:07 hasso Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -156,6 +156,7 @@
 #	agpgart	AGP interface
 #	nsmb*	SMB/CIFS protocol interface
 #	pf	PF packet filter
+#	cmx	Omnikey CardMan 4040 smartcard reader
 #
 ##############################################################################
 #
@@ -2225,6 +2226,13 @@ nsmb*)
 	mknod nsmb $unit c 144 $unit
 	;;
 
+#-----------------------------------------------------------------------------
+
+cmx*)
+	unit=`expr $i : 'cmx\(.*\)'`
+
+	mknod cmx $unit c 185 $unit
+	;;
 #-----------------------------------------------------------------------------
 
 local)
