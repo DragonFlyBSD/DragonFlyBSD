@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.26 2008/04/20 13:44:24 swildner Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.27 2008/04/23 21:59:22 thomas Exp $
  */
 
 #include <sys/param.h>
@@ -741,7 +741,7 @@ display(FILE *f, const struct disklabel32 *lp)
 			else
 				fprintf(f, "%8d", pp->p_fstype);
 
-			fprintf(f, "\t# %11.3fM", (double)pp->p_size / onemeg);
+			fprintf(f, "\t# %11.3fMB", (double)pp->p_size / onemeg);
 			fprintf(f, "\n");
 		}
 	}

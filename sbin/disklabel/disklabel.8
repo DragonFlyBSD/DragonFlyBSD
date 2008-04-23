@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.18 2007/08/11 01:47:04 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.19 2008/04/23 21:59:22 thomas Exp $
 .\"
 .Dd August 10, 2007
 .Dt DISKLABEL 8
@@ -554,8 +554,10 @@ Your mileage may vary.
 .Pa da0s1
 .Sh FILES
 .Bl -tag -width ".Pa /etc/disktab" -compact
-.It Pa /boot/boot
-Default boot image.
+.It Pa /boot/boot1
+Default stage1 boot image.
+.It Pa /boot/boot2
+Default stage2 boot image.
 .It Pa /etc/disktab
 Disk description file.
 .El
@@ -590,11 +592,12 @@ drivedata: 0
 
 16 partitions:
 #          size     offset    fstype
-  a:      81920          0    4.2BSD	#      40.000M
-  b:     160000      81920      swap	#      78.125M
-  c:    1173930          0    unused	#     573.208M
-  g:     320000     241920       ccd	#     156.250M
-  h:     612010     561920     vinum	#     298.833M
+  a:      81920          0    4.2BSD	#      40.000MB
+  b:     160000      81920      swap	#      78.125MB
+  c:    1173930          0    unused	#     573.208MB
+  f:     320000     241920    HAMMER	#     156.250MB
+  g:     300000     561920       ccd	#     146.484MB
+  h:     312010     861920     vinum	#     152.349MB
 .Ed
 .Pp
 Lines starting with a
@@ -698,6 +701,10 @@ For
 file systems, use type
 .Cm 4.2BSD .
 For
+.Tn HAMMER
+file systems, use type
+.Cm HAMMER .
+For
 .Xr ccd 4
 partitions, use type
 .Cm ccd .
@@ -719,8 +726,8 @@ The
 utility
 also knows about a number of other partition types,
 none of which are in current use.
-(See the definitions starting with
-.Dv FS_UNUSED
+(See
+.Dv fstypenames
 in
 .In sys/dtype.h
 for more details).
