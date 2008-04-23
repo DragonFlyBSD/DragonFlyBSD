@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - xxx 2008 Release 2.0.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.2 2008/04/10 13:28:11 hasso Exp $ -->
+<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.3 2008/04/23 09:04:10 hasso Exp $ -->
 
 <h1>Obtaining DragonFly 2.0.x for your system</h1>
 
@@ -158,6 +158,8 @@ only commit bug fixes to release branches.
 </ul>
 <h3>Hardware changes</h3>
 <ul>
+    <li>Add cmx(4) from FreeBSD, the driver for Omnikey CardMan 4040
+    smartcard readers.
 </ul>
 <h3>Hardware changes (Networking)</h3>
 <ul>
@@ -167,15 +169,15 @@ only commit bug fixes to release branches.
 </ul>
 <h3>Userland changes</h3>
 <ul>
-    <li>Citrus iconv was synced with NetBSD
+    <li>Citrus iconv was synced with NetBSD.
 </ul>
 <h3>Removals</h3>
 <ul>
 </ul>
 <h3>Contributed Software</h3>
 <ul>
-    <li>bzip was updated to version 1.0.5
-    <li>OpenSSH was updated to version 5.0
+    <li>bzip was updated to version 1.0.5.
+    <li>OpenSSH was updated to version 5.0.
 </ul>
 <h3>Sub-project progress report</h3>
 <ul>
