@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.15 2007/08/13 17:08:34 dillon Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.16 2008/04/23 22:09:07 thomas Exp $
  */
 
 #include <sys/types.h>
@@ -462,7 +462,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s%s",
-		"usage: fdisk [-BIaistu] [-b bootcode] [-1234] [disk]\n",
+		"usage: fdisk [-BCIaistu] [-b bootcode] [-p diskimage] [-1234] [disk]\n",
  		"       fdisk -f configfile [-itv] [disk]\n");
         exit(1);
 }
