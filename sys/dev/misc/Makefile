@@ -1,6 +1,6 @@
-# $DragonFly: src/sys/dev/misc/Makefile,v 1.4 2006/05/20 18:26:35 dillon Exp $
+# $DragonFly: src/sys/dev/misc/Makefile,v 1.5 2008/04/23 08:57:10 hasso Exp $
 #
 
-SUBDIR=dcons joy pcfclock nmdm syscons snp
+SUBDIR=cmx dcons joy pcfclock nmdm syscons snp
 
 .include <bsd.subdir.mk>

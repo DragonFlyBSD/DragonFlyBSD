@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.155 2008/04/06 18:58:13 dillon Exp $
+# $DragonFly: src/sys/config/LINT,v 1.156 2008/04/23 08:57:10 hasso Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2668,6 +2668,11 @@ device		tdfxdrm
 
 options 	DRM_DEBUG
 options 	DRM_LINUX
+
+#
+# Misc devices
+#
+device		cmx		# Omnikey CardMan 4040 smartcard reader
 
 #
 # Embedded system options:
