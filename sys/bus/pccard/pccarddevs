@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pccard/pccarddevs,v 1.4 2007/07/05 12:08:53 sephe Exp $
+$DragonFly: src/sys/bus/pccard/pccarddevs,v 1.5 2008/04/23 08:34:30 hasso Exp $
 /* $FreeBSD: src/sys/dev/pccard/pccarddevs,v 1.112 2005/07/18 21:47:38 imp Exp $ */
 /* $NetBSD: pcmciadevs,v 1.186 2003/09/16 08:26:37 onoe Exp $ */
 /* $OpenBSD: pcmciadevs,v 1.93 2002/06/21 08:31:10 henning Exp $ */
@@ -126,6 +126,7 @@ vendor BAY			0x01eb	Bay Networks
 vendor FARALLON			0x0200	Farallon Communications
 vendor RELIA			0x0215	RELIA Technologies Corporation
 vendor TELECOMDEVICE		0x021b	Telecom Device
+vendor OMNIKEY			0x0223	OMNIKEY GmbH
 vendor NOKIA			0x023d	Nokia Communications
 vendor SAMSUNG			0x0250	Samsung
 vendor HWN			0x0261	Home Wireless Networks
@@ -444,6 +445,9 @@ product OLICOM OC2220		0x0101 GoCard Ethernet
 product OLICOM TR		0x2132 GoCard Token Ring 16/4
 product OLICOM OC2231		0x3122 GoCard Combo Eth/Modem 288
 product OLICOM OC2232		0x3222 GoCard Combo Eth/Modem 336
+
+/* OMNIKEY Products */
+product	OMNIKEY CM4040		0x0200 OMNIKEY CardMan 4040
 
 /* Ositech Products */
 product OSITECH JACK_144	0x0001 Ositech Jack of ??? 14.4
