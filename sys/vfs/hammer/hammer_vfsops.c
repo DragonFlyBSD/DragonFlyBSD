@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.25 2008/04/22 19:00:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.26 2008/04/24 21:20:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -291,6 +291,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		crc32((char *)&rootvol->ondisk->vol_fsid + 0, 8);
 	mp->mnt_stat.f_fsid.val[1] =
 		crc32((char *)&rootvol->ondisk->vol_fsid + 8, 8);
+
+	hmp->next_tid = rootvol->ondisk->vol0_next_tid;
+	kprintf("on-disk next_tid %016llx\n", hmp->next_tid);
+
 	hammer_rel_volume(rootvol, 0);
 
 	hammer_flusher_create(hmp);
@@ -363,16 +367,27 @@ hammer_free_hmp(struct mount *mp)
 	}
 #endif
 	hammer_flusher_sync(hmp);
+	hammer_flusher_sync(hmp);
 	hammer_flusher_destroy(hmp);
 
+	KKASSERT(RB_EMPTY(&hmp->rb_inos_root));
+
+#if 0
 	/*
 	 * Unload & flush inodes
+	 *
+	 * XXX illegal to call this from here, it can only be done from
+	 * the flusher.
 	 */
 	RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
 		hammer_unload_inode, (void *)MNT_WAIT);
 
 	/*
 	 * Unload & flush volumes
+	 */
+#endif
+	/*
+	 * Unload the volumes
 	 */
 	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 		hammer_unload_volume, NULL);
@@ -415,7 +430,7 @@ hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	}
 	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
 	hammer_rel_inode(ip, 0);
-	hammer_commit_transaction(&trans);
+	hammer_done_transaction(&trans);
 	return (error);
 }
 
@@ -524,7 +539,7 @@ hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 	}
 	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
 	hammer_rel_inode(ip, 0);
-	hammer_commit_transaction(&trans);
+	hammer_done_transaction(&trans);
 	return (error);
 }
 

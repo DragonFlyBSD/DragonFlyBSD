@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,57 +31,68 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.11 2008/03/20 06:08:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.12 2008/04/24 21:20:33 dillon Exp $
  */
 
 #include "hammer.h"
 
+/*
+ * Start a standard transaction.
+ */
 void
 hammer_start_transaction(struct hammer_transaction *trans,
 			 struct hammer_mount *hmp)
 {
 	int error;
 
+	trans->type = HAMMER_TRANS_STD;
 	trans->hmp = hmp;
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
-	trans->tid = hammer_alloc_tid(trans);
+	trans->tid = 0;
+	trans->time = hammer_alloc_tid(trans);
 }
 
+/*
+ * Start a simple read-only transaction.  This will not stall.
+ */
 void
 hammer_simple_transaction(struct hammer_transaction *trans,
 			  struct hammer_mount *hmp)
 {
 	int error;
 
+	trans->type = HAMMER_TRANS_RO;
 	trans->hmp = hmp;
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
-	trans->tid = 0;
 	KKASSERT(error == 0);
+	trans->tid = 0;
+	trans->time = hammer_alloc_tid(trans);
 }
 
+/*
+ * Start a transaction using a particular TID.  Used by the sync code.
+ * This does not stall.
+ */
 void
-hammer_start_transaction_tid(struct hammer_transaction *trans,
-			     struct hammer_mount *hmp, hammer_tid_t tid)
+hammer_start_transaction_fls(struct hammer_transaction *trans,
+			     struct hammer_mount *hmp)
 {
 	int error;
 
+	trans->type = HAMMER_TRANS_FLS;
 	trans->hmp = hmp;
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
-	trans->tid = tid;
+	trans->tid = hammer_alloc_tid(trans);
+	trans->time = trans->tid;
 }
 
 void
-hammer_abort_transaction(struct hammer_transaction *trans)
+hammer_done_transaction(struct hammer_transaction *trans)
 {
 	hammer_rel_volume(trans->rootvol, 0);
-}
-
-void
-hammer_commit_transaction(struct hammer_transaction *trans)
-{
-	hammer_rel_volume(trans->rootvol, 0);
+	trans->rootvol = NULL;
 }
 
 /*
@@ -92,24 +103,29 @@ hammer_commit_transaction(struct hammer_transaction *trans)
 hammer_tid_t
 hammer_alloc_tid(hammer_transaction_t trans)
 {
-	hammer_volume_ondisk_t ondisk;
 	struct timespec ts;
 	hammer_tid_t tid;
 
 	getnanotime(&ts);
 	tid = ts.tv_sec * 1000000000LL + ts.tv_nsec;
+	if (tid < trans->hmp->next_tid)
+		tid = trans->hmp->next_tid;
+#if 0
 	hammer_modify_volume(trans, trans->rootvol, NULL, 0);
 	ondisk = trans->rootvol->ondisk;
 	if (tid < ondisk->vol0_next_tid)
 		tid = ondisk->vol0_next_tid;
+#endif
 	if (tid >= 0xFFFFFFFFFFFFFFF0ULL)
 		panic("hammer_start_transaction: Ran out of TIDs!");
 	if (hammer_debug_tid) {
 		kprintf("alloc_tid %016llx (0x%08x)\n",
 			tid, (int)(tid / 1000000000LL));
 	}
+#if 0
 	ondisk->vol0_next_tid = tid + 2;
-
+#endif
+	trans->hmp->next_tid = tid + 2;
 	return(tid);
 }
 

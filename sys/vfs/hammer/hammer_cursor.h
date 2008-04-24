@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.14 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.15 2008/04/24 21:20:33 dillon Exp $
  */
 
 /*
@@ -64,6 +64,7 @@ struct hammer_cursor {
 	 * this after releasing parent and node, before returning.
 	 */
 	hammer_node_t deadlk_node;
+	hammer_record_t deadlk_rec;
 
 	/*
 	 * Set along with HAMMER_CURSOR_CREATE_CHECK when doing an as-of
@@ -108,16 +109,15 @@ struct hammer_cursor {
 	 */
 	struct hammer_inode *ip;
 	struct hammer_record *iprec;
-	struct hammer_rec_rb_tree_scan_info scan;
 };
 
 typedef struct hammer_cursor *hammer_cursor_t;
 
 #define HAMMER_CURSOR_GET_RECORD	0x0001
 #define HAMMER_CURSOR_GET_DATA		0x0002
-#define HAMMER_CURSOR_UNUSED0004	0x0004	
+#define HAMMER_CURSOR_BACKEND		0x0004	/* cursor run by backend */
 #define HAMMER_CURSOR_INSERT		0x0008	/* adjust for insert */
-#define HAMMER_CURSOR_DELETE		0x0010	/* adjust for delete */
+#define HAMMER_CURSOR_DELETE_VISIBILITY	0x0010	/* special del-on-disk recs */
 #define HAMMER_CURSOR_END_INCLUSIVE	0x0020	/* key_end is inclusive */
 #define HAMMER_CURSOR_END_EXCLUSIVE	0x0040	/* key_end is exclusive (def) */
 #define HAMMER_CURSOR_UNUSED0080	0x0080

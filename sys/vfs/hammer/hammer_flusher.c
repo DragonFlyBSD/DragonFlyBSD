@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.1 2008/04/22 19:00:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.2 2008/04/24 21:20:33 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -112,17 +112,12 @@ hammer_flusher_flush(hammer_mount_t hmp)
 
 	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
 		TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
-		ip->flags &= ~HAMMER_INODE_FLUSHQ;
 
 		/*
 		 * We inherit the inode ref from the flush list
 		 */
-		ip->error = hammer_sync_inode(ip, MNT_WAIT, (ip->vp ? 0 : 1));
-		if (ip->flags & HAMMER_INODE_FLUSHW) {
-			ip->flags &= ~HAMMER_INODE_FLUSHW;
-			wakeup(ip);
-		}
-		hammer_rel_inode(ip, 0);
+		ip->error = hammer_sync_inode(ip, (ip->vp ? 0 : 1));
+		hammer_flush_inode_done(ip);
 	}
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.47 2008/04/22 19:00:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.48 2008/04/24 21:20:33 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -76,13 +76,20 @@ typedef struct hammer_inode_info {
 	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
 } *hammer_inode_info_t;
 
+typedef enum hammer_transaction_type {
+	HAMMER_TRANS_RO,
+	HAMMER_TRANS_STD,
+	HAMMER_TRANS_FLS
+} hammer_transaction_type_t;
+
 /*
  * HAMMER Transaction tracking
  */
 struct hammer_transaction {
+	hammer_transaction_type_t type;
 	struct hammer_mount *hmp;
 	hammer_tid_t	tid;
-	hammer_seq_t	seq;
+	hammer_tid_t	time;
 	struct hammer_volume *rootvol;
 /*	TAILQ_HEAD(, hammer_io) recycle_list;*/
 };
@@ -158,25 +165,43 @@ RB_PROTOTYPEX(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
 
 TAILQ_HEAD(hammer_node_list, hammer_node);
 
+typedef enum hammer_inode_state {
+	HAMMER_FST_IDLE,
+	HAMMER_FST_SETUP,
+	HAMMER_FST_FLUSH
+} hammer_inode_state_t;
+
 struct hammer_inode {
 	RB_ENTRY(hammer_inode) rb_node;
-	TAILQ_HEAD(, bio) bio_list;	/* BIOs to flush out */
+	hammer_inode_state_t flush_state;
 	TAILQ_ENTRY(hammer_inode) flush_entry;
-	u_int64_t	obj_id;		/* (key) object identifier */
-	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
-	hammer_tid_t	last_tid;	/* last modified tid (for fsync) */
-	hammer_tid_t	sync_tid;	/* last inode tid synced to disk */
-	struct hammer_mount *hmp;
-	int		flags;
-	int		error;		/* flush error */
-	int		cursor_ip_refs;	/* sanity */
-	struct vnode	*vp;
-	struct lockf	advlock;
-	struct hammer_lock lock;
-	struct hammer_inode_record ino_rec;
-	struct hammer_inode_data ino_data;
-	struct hammer_rec_rb_tree rec_tree;	/* red-black record tree */
+	u_int64_t		obj_id;		/* (key) object identifier */
+	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
+	struct hammer_mount 	*hmp;
+	int			flags;
+	int			error;		/* flush error */
+	int			cursor_ip_refs;	/* sanity */
+	struct vnode		*vp;
+	struct lockf		advlock;
+	struct hammer_lock	lock;		/* sync copy interlock */
+	TAILQ_HEAD(, bio)	bio_list;	/* BIOs to flush out */
+	TAILQ_HEAD(, bio)	bio_alt_list;	/* BIOs to flush out */
+	off_t			trunc_off;
+	struct hammer_inode_record ino_rec;	/* in-memory cache */
+	struct hammer_inode_data ino_data;	/* in-memory cache */
+	struct hammer_rec_rb_tree rec_tree;	/* in-memory cache */
 	struct hammer_node	*cache[2];	/* search initiate cache */
+
+	/*
+	 * When a demark is created to synchronize an inode to
+	 * disk, certain fields are copied so the front-end VOPs
+	 * can continue to run in parallel with the synchronization
+	 * occuring in the background.
+	 */
+	int		sync_flags;		/* to-sync flags cache */
+	off_t		sync_trunc_off;		/* to-sync truncation */
+	struct hammer_inode_record sync_ino_rec;/* to-sync cache */
+	struct hammer_inode_data sync_ino_data; /* to-sync cache */
 };
 
 typedef struct hammer_inode *hammer_inode_t;
@@ -195,13 +220,15 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_GONE	0x0400	/* delete flushed out */
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
-#define HAMMER_INODE_TIDLOCKED	0x2000	/* tid locked until inode synced */
-#define HAMMER_INODE_FLUSHQ	0x4000	/* On flush queue */
+#define HAMMER_INODE_REFLUSH	0x2000	/* pipelined flush during flush */
+#define HAMMER_INODE_UNUSED4000	0x4000
 #define HAMMER_INODE_FLUSHW	0x8000	/* Someone waiting for flush */
+
+#define HAMMER_INODE_TRUNCATED	0x00010000
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	  \
-				 HAMMER_INODE_ITIMES|HAMMER_INODE_DELETED)
+				 HAMMER_INODE_ITIMES|HAMMER_INODE_TRUNCATED)
 
 #define HAMMER_MAX_INODE_CURSORS	4
 
@@ -220,22 +247,23 @@ typedef struct hammer_inode *hammer_inode_t;
  */
 struct hammer_record {
 	RB_ENTRY(hammer_record)		rb_node;
+	hammer_inode_state_t		state;
 	struct hammer_lock		lock;
 	struct hammer_inode		*ip;
 	union hammer_record_ondisk	rec;
 	union hammer_data_ondisk	*data;
 	int				flags;
-	int				blocked;
 };
 
 typedef struct hammer_record *hammer_record_t;
 
 #define HAMMER_RECF_ALLOCDATA		0x0001
 #define HAMMER_RECF_ONRBTREE		0x0002
-#define HAMMER_RECF_DELETED		0x0004
+#define HAMMER_RECF_DELETED_FE		0x0004	/* deleted (frontend) */
 #define HAMMER_RECF_INBAND		0x0008
-#define HAMMER_RECF_SYNCING		0x0010
+#define HAMMER_RECF_DELETED_BE		0x0010	/* deleted (backend) */
 #define HAMMER_RECF_WANTED		0x0020
+#define HAMMER_RECF_DELETE_ONDISK	0x0040
 
 /*
  * In-memory structures representing on-disk structures.
@@ -429,6 +457,7 @@ struct hammer_mount {
 	uuid_t	fsid;
 	udev_t	fsid_udev;
 	hammer_tid_t asof;
+	hammer_off_t next_tid;
 	u_int32_t namekey_iterator;
 	hammer_off_t zone_limits[HAMMER_MAX_ZONES];
 	struct netexport export;
@@ -478,7 +507,6 @@ struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
 
-int	hammer_unload_inode(hammer_inode_t ip, void *data);
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused);
 int	hammer_install_volume(hammer_mount_t hmp, const char *volname);
@@ -498,7 +526,10 @@ int	hammer_sync_buffer(hammer_buffer_t buffer, void *data);
 
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip);
+void	hammer_flush_record_done(hammer_record_t record);
+void	hammer_wait_mem_record(hammer_record_t record);
 void	hammer_rel_mem_record(hammer_record_t record);
+
 
 int	hammer_cursor_up(hammer_cursor_t cursor);
 int	hammer_cursor_down(hammer_cursor_t cursor);
@@ -628,18 +659,21 @@ void hammer_start_transaction(struct hammer_transaction *trans,
 			      struct hammer_mount *hmp);
 void hammer_simple_transaction(struct hammer_transaction *trans,
 			      struct hammer_mount *hmp);
-void hammer_start_transaction_tid(struct hammer_transaction *trans,
-			          struct hammer_mount *hmp, hammer_tid_t tid);
-void hammer_commit_transaction(struct hammer_transaction *trans);
-void hammer_abort_transaction(struct hammer_transaction *trans);
+void hammer_start_transaction_fls(struct hammer_transaction *trans,
+			          struct hammer_mount *hmp);
+void hammer_done_transaction(struct hammer_transaction *trans);
 
 void hammer_modify_inode(struct hammer_transaction *trans,
 			hammer_inode_t ip, int flags);
+void hammer_flush_inode(hammer_inode_t ip, int forceit);
+void hammer_flush_inode_done(hammer_inode_t ip);
+void hammer_wait_inode(hammer_inode_t ip);
+
 int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
 			struct hammer_inode **ipp);
 void hammer_rel_inode(hammer_inode_t ip, int flush);
-int hammer_sync_inode(hammer_inode_t ip, int waitfor, int handle_delete);
+int hammer_sync_inode(hammer_inode_t ip, int handle_delete);
 
 int  hammer_ip_add_directory(struct hammer_transaction *trans,
 			hammer_inode_t dip, struct namecache *ncp,

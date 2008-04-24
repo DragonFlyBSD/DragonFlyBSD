@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.21 2008/03/29 20:12:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.22 2008/04/24 21:20:33 dillon Exp $
  */
 
 /*
@@ -143,6 +143,11 @@ hammer_done_cursor(hammer_cursor_t cursor)
 		hammer_unlock(&cursor->deadlk_node->lock);
 		hammer_rel_node(cursor->deadlk_node);
 		cursor->deadlk_node = NULL;
+	}
+	if (cursor->deadlk_rec) {
+		hammer_wait_mem_record(cursor->deadlk_rec);
+		hammer_rel_mem_record(cursor->deadlk_rec);
+		cursor->deadlk_rec = NULL;
 	}
 
 	cursor->data = NULL;

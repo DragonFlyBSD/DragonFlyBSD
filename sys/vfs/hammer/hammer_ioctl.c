@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.7 2008/03/20 06:08:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.8 2008/04/24 21:20:33 dillon Exp $
  */
 
 #include "hammer.h"
@@ -71,7 +71,7 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		error = EOPNOTSUPP;
 		break;
 	}
-	hammer_commit_transaction(&trans);
+	hammer_done_transaction(&trans);
 	return (error);
 }
 
