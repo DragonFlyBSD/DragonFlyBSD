@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.35 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.36 2008/04/24 22:05:13 dillon Exp $
  */
 
 #include "hammer.h"
@@ -758,6 +758,8 @@ hammer_wait_inode(hammer_inode_t ip)
 void
 hammer_flush_inode_done(hammer_inode_t ip)
 {
+	struct bio *bio;
+
 	KKASSERT(ip->flush_state == HAMMER_FST_FLUSH);
 
 	if (ip->sync_flags)
@@ -765,11 +767,9 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	ip->flags |= ip->sync_flags;
 	ip->flush_state = HAMMER_FST_IDLE;
 
-#if 0
 	/*
-	 * Reflush any BIOs that wound up in the alt list.
-	 *
-	 * struct bio *bio;
+	 * Reflush any BIOs that wound up in the alt list.  Our inode will
+	 * also wind up at the end of the flusher's list.
 	 */
 	while ((bio = TAILQ_FIRST(&ip->bio_alt_list)) != NULL) {
 		TAILQ_REMOVE(&ip->bio_alt_list, bio, bio_act);
@@ -777,7 +777,6 @@ hammer_flush_inode_done(hammer_inode_t ip)
 		ip->flags |= HAMMER_INODE_REFLUSH;
 		kprintf("rebio %p ip %p @%016llx,%d\n", bio, ip, bio->bio_offset, bio->bio_buf->b_bufsize);
 	}
-#endif
 
 	/*
 	 * If the frontend made more changes and requested another flush,
