@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.110 2008/04/14 12:01:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.111 2008/04/24 08:53:01 dillon Exp $
  */
 
 /*
@@ -251,8 +251,11 @@ recheck:
 	/*
 	 * If the jungle wants us dead, so be it.
 	 */
-	if (lp->lwp_flag & LWP_WEXIT)
+	if (lp->lwp_flag & LWP_WEXIT) {
+		get_mplock();
 		lwp_exit(0);
+		rel_mplock(); /* NOT REACHED */
+	}
 
 	/*
 	 * Block here if we are in a stopped state.
