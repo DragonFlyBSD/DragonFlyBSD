@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.4 2008/04/22 19:00:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.5 2008/04/25 21:49:49 dillon Exp $
  */
 
 /*
@@ -149,6 +149,7 @@ again:
 		undo->head.hdr_type = HAMMER_HEAD_TYPE_PAD;
 		undo->head.hdr_size = bytes;
 		undomap->next_offset += bytes;
+		hammer_modify_buffer_done(buffer);
 		goto again;
 	}
 	if (hammer_debug_general & 0x0080)
@@ -166,13 +167,14 @@ again:
 	undo->undo_data_bytes = len;
 	bcopy(base, undo + 1, len);
 	undo->head.hdr_crc = crc32(undo, bytes);
+	hammer_modify_buffer_done(buffer);
 
 	/*
 	 * Update the undo offset space in the IO XXX
 	 */
 
-
 	undomap->next_offset += bytes;
+	hammer_modify_volume_done(root_volume);
 
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);

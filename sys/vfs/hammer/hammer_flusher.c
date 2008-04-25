@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.2 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.3 2008/04/25 21:49:49 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -43,7 +43,10 @@
 #include "hammer.h"
 
 static void hammer_flusher_thread(void *arg);
+static void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 static void hammer_flusher_flush(hammer_mount_t hmp);
+static void hammer_flusher_finalize(hammer_mount_t hmp,
+		    hammer_volume_t root_volume, hammer_off_t start_offset);
 
 void
 hammer_flusher_sync(hammer_mount_t hmp)
@@ -88,8 +91,9 @@ hammer_flusher_thread(void *arg)
 
 	for (;;) {
 		seq = hmp->flusher_seq;
-		while (TAILQ_FIRST(&hmp->flush_list) != NULL)
-			hammer_flusher_flush(hmp);
+		hammer_flusher_clean_loose_ios(hmp);
+		hammer_flusher_flush(hmp);
+		hammer_flusher_clean_loose_ios(hmp);
 		hmp->flusher_act = seq;
 		wakeup(&hmp->flusher_act);
 		if (hmp->flusher_exiting)
@@ -102,13 +106,43 @@ hammer_flusher_thread(void *arg)
 	lwkt_exit();
 }
 
+static void
+hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
+{
+	hammer_buffer_t buffer;
+	hammer_io_t io;
+
+	/*
+	 * loose ends - buffers without bp's aren't tracked by the kernel
+	 * and can build up, so clean them out.  This can occur when an
+	 * IO completes on a buffer with no references left.
+	 */
+	while ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
+		KKASSERT(io->mod_list == &hmp->lose_list);
+		TAILQ_REMOVE(io->mod_list, io, mod_entry);
+		io->mod_list = NULL;
+		hammer_ref(&io->lock);
+		kprintf("DELETE LOOSE %p\n", io);
+		buffer = (void *)io;
+		hammer_rel_buffer(buffer, 0);
+	}
+}
+
 /*
  * Flush stuff
  */
 static void
 hammer_flusher_flush(hammer_mount_t hmp)
 {
+	hammer_volume_t root_volume;
+	hammer_blockmap_t rootmap;
 	hammer_inode_t ip;
+	hammer_off_t start_offset;
+	int error;
+
+	root_volume = hammer_get_root_volume(hmp, &error);
+	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	start_offset = rootmap->next_offset;
 
 	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
 		TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
@@ -118,170 +152,86 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		 */
 		ip->error = hammer_sync_inode(ip, (ip->vp ? 0 : 1));
 		hammer_flush_inode_done(ip);
+		if (hmp->locked_dirty_count > 64) {
+			hammer_flusher_finalize(hmp, root_volume, start_offset);
+			start_offset = rootmap->next_offset;
+		}
 	}
+	hammer_flusher_finalize(hmp, root_volume, start_offset);
+	hammer_rel_volume(root_volume, 0);
 }
 
-#if 0
-
-static __inline
-int
-undo_seq_cmp(hammer_mount_t hmp, hammer_off_t seq1, hammer_off_t seq2)
+/*
+ * To finalize the flush we finish flushing all undo and data buffers
+ * still present, then we update the volume header and flush it,
+ * then we flush out the mata-data (that can now be undone).
+ *
+ * Note that as long as the undo fifo's start and end points do not
+ * match, we always must at least update the volume header.
+ */
+static
+void
+hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
+			hammer_off_t start_offset)
 {
-	int delta;
-
-	delta = (int)(seq1 - seq2) & hmp->undo_mask;
-	if (delta == 0)
-		return(0);
-	if (delta > (hmp->undo_mask >> 1))
-		return(-1);
-	return(1);
-}
-
-static void
-hammer_flusher_flush(hammer_mount_t hmp)
-{
-	hammer_off_t undo_seq;
-	hammer_buffer_t buffer;
-	hammer_volume_t root_volume;
 	hammer_blockmap_t rootmap;
-	int count;
-	int error;
+	hammer_io_t io;
+
+	kprintf("FINALIZE %d\n", hmp->locked_dirty_count);
 
 	/*
-	 * The undo space is sequenced via the undo zone.
+	 * Flush undo bufs
 	 */
-	root_volume = hammer_get_root_volume(hmp, &error);
-	if (root_volume == NULL) {
-		panic("hammer: can't get root volume");
-		return;
+	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
+		KKASSERT(io->modify_refs == 0);
+		hammer_ref(&io->lock);
+		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		hammer_io_flush(io);
+		hammer_rel_buffer((hammer_buffer_t)io, 1);
 	}
 
 	/*
-	 * Flush pending undo buffers.  The kernel may also flush these
-	 * asynchronously.  This list may also contain pure data buffers
-	 * (which do not overwrite pre-existing data).
-	 *
-	 * The flush can occur simultaniously with new appends, only flush
-	 * through undo_seq.  If an I/O is already in progress the call to
-	 * hammer_ref_buffer() will wait for it to complete.
-	 *
-	 * Note that buffers undergoing I/O not initiated by us are not
-	 * removed from the list until the I/O is complete, so they are
-	 * still visible to us to block on.
+	 * Flush data bufs
 	 */
-
-	/*
-	 * Lock the meta-data buffers
-	 */
-	undo_seq = hmp->undo_zone.next_offset;
-	TAILQ_FOREACH(buffer, &hmp->undo_dep_list, undo_entry) {
-		KKASSERT(buffer->io.undo_type == HAMMER_UNDO_TYPE_DEP);
-		buffer->io.undo_type = HAMMER_UNDO_TYPE_DEP_LOCKED;
-		if (undo_seq_cmp(hmp, buffer->io.undo_off, undo_seq) >= 0)
-			break;
+	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
+		KKASSERT(io->modify_refs == 0);
+		hammer_ref(&io->lock);
+		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		hammer_io_flush(io);
+		hammer_rel_buffer((hammer_buffer_t)io, 1);
 	}
 
 	/*
-	 * Initiate I/O for the undo fifo buffers
+	 * XXX wait for I/O's to complete
 	 */
-	count = 0;
-	while ((buffer = TAILQ_FIRST(&hmp->undo_buf_list)) != NULL) {
-		if (undo_seq_cmp(hmp, buffer->io.undo_off, undo_seq) >= 0) {
-			break;
-		}
-		hammer_ref_buffer(buffer);
-
-		if (buffer != (void *)TAILQ_FIRST(&hmp->undo_buf_list)) {
-			hammer_rel_buffer(buffer, 0);
-		} else {
-			TAILQ_REMOVE(&hmp->undo_buf_list, buffer, undo_entry);
-			buffer->io.undo_type = HAMMER_UNDO_TYPE_NONE;
-			if (buffer->io.modified) {
-				buffer->io.decount = &count;
-				++count;
-			}
-			hammer_rel_buffer(buffer, 1);
-		}
-	}
 
 	/*
-	 * Wait for completion
+	 * Update the volume header
 	 */
-	crit_enter();
-	while (count)
-		tsleep(&count, 0, "hmrfwt", 0);
-	crit_exit();
-
-	/*
-	 * The root volume must be updated.  The previous push is now fully
-	 * synchronized.  { first_offset, next_offset } tell the mount code
-	 * what needs to be undone.
-	 */
-	hammer_modify_volume(NULL, root_volume, NULL, 0);
 	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
-	rootmap->first_offset = rootmap->next_offset;
-	rootmap->next_offset = undo_seq;
-	hammer_modify_volume_done(NULL, root_volume);
-
-	/*
-	 * cache the first_offset update.  the cached next_offset is the
-	 * current next_offset, not the undo_seq that we synchronized to disk.
-	 * XXX
-	 */
-	hmp->undo_zone.first_offset = rootmap->first_offset;
-
-	++count;
-	root_volume->io.decount = &count;
-	hammer_rel_volume(root_volume, 2);
-
-	/*
-	 * Wait for completion
-	 */
-	crit_enter();
-	while (count)
-		tsleep(&count, 0, "hmrfwt", 0);
-	crit_exit();
-
-	/*
-	 * Now we can safely push out buffers containing meta-data
-	 * modifications.  If we crash while doing this, the changes will
-	 * be undone on mount.
-	 */
-	while ((buffer = TAILQ_FIRST(&hmp->undo_dep_list)) != NULL) {
-		if (buffer->io.undo_type != HAMMER_UNDO_TYPE_DEP_LOCKED)
-			break;
-		hammer_ref_buffer(buffer);
-
-		if (buffer != TAILQ_FIRST(&hmp->undo_dep_list)) {
-			hammer_rel_buffer(buffer, 0);
-		} else {
-			TAILQ_REMOVE(&hmp->undo_dep_list, buffer, undo_entry);
-			if (buffer->io.modified) {
-				buffer->io.decount = &count;
-				++count;
-				hammer_rel_buffer(buffer, 2);
-			} else {
-				hammer_rel_buffer(buffer, 0);
-			}
-		}
+	if (rootmap->first_offset != start_offset) {
+		kprintf("FINALIZE: ACTIVE VOLUME STAGE 1\n");
+		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		rootmap->first_offset = start_offset;
+		hammer_modify_volume_done(root_volume);
+		hammer_io_flush(&root_volume->io);
+	} else {
+		kprintf("FINALIZE: ACTIVE VOLUME STAGE 2\n");
 	}
 
 	/*
-	 * Wait for completion
+	 * XXX wait for I/O to complete
 	 */
-	crit_enter();
-	while (count)
-		tsleep(&count, 0, "hmrfwt", 0);
-	crit_exit();
 
 	/*
-	 * The undo bit is only cleared if no new undo's were entered into
-	 * the cache, and first_offset == next_offset. 
+	 * Flush meta-data
 	 */
-	if (hmp->undo_zone.next_offset == undo_seq &&
-	    rootmap->first_offset == rootmap->next_offset) {
-		hmp->hflags &= ~HMNT_UDIRTY;
+	while ((io = TAILQ_FIRST(&hmp->meta_list)) != NULL) {
+		KKASSERT(io->modify_refs == 0);
+		hammer_ref(&io->lock);
+		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		hammer_io_flush(io);
+		hammer_rel_buffer((hammer_buffer_t)io, 1);
 	}
 }
 
-#endif

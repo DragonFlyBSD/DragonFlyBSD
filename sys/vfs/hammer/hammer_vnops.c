@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.38 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.39 2008/04/25 21:49:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2044,9 +2044,7 @@ retry:
 				      dip->hmp->asof, 0, &error);
 		if (error == ENOENT) {
 			kprintf("obj_id %016llx\n", rec->entry.obj_id);
-			Debugger("ENOENT unlinking object that should exist, cont to sync");
-			hammer_sync_hmp(dip->hmp, MNT_NOWAIT);
-			Debugger("ENOENT - sync done");
+			Debugger("ENOENT unlinking object that should exist");
 		}
 		if (error == 0 && ip->ino_rec.base.base.obj_type ==
 				  HAMMER_OBJTYPE_DIRECTORY) {

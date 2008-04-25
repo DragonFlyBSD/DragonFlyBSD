@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.37 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.38 2008/04/25 21:49:49 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -157,8 +157,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 	++hammer_count_volumes;
 	volume = kmalloc(sizeof(*volume), M_HAMMER, M_WAITOK|M_ZERO);
 	volume->vol_name = kstrdup(volname, M_HAMMER);
-	volume->hmp = hmp;
-	hammer_io_init(&volume->io, HAMMER_STRUCTURE_VOLUME);
+	hammer_io_init(&volume->io, hmp, HAMMER_STRUCTURE_VOLUME);
 	volume->io.offset = 0LL;
 
 	/*
@@ -271,7 +270,7 @@ late_failure:
 int
 hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 {
-	struct hammer_mount *hmp = volume->hmp;
+	struct hammer_mount *hmp = volume->io.hmp;
 	int ronly = ((hmp->mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
 
 	/*
@@ -490,11 +489,20 @@ hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 	hammer_buffer_t buffer;
 	hammer_volume_t volume;
 	hammer_off_t	zoneX_offset;
+	hammer_io_type_t iotype;
 	int vol_no;
 	int zone;
 
 	zoneX_offset = buf_offset;
 	zone = HAMMER_ZONE_DECODE(buf_offset);
+
+	if (zone == HAMMER_ZONE_LARGE_DATA_INDEX ||
+	    zone == HAMMER_ZONE_SMALL_DATA_INDEX) {
+		iotype = HAMMER_STRUCTURE_DATA_BUFFER;
+	} else {
+		iotype = HAMMER_STRUCTURE_META_BUFFER;
+	}
+
 	if (zone >= HAMMER_ZONE_BTREE_INDEX) {
 		buf_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
 		KKASSERT(*errorp == 0);
@@ -527,7 +535,8 @@ again:
 		buffer = kmalloc(sizeof(*buffer), M_HAMMER, M_WAITOK|M_ZERO);
 		buffer->zone2_offset = buf_offset;
 		buffer->volume = volume;
-		hammer_io_init(&buffer->io, HAMMER_STRUCTURE_BUFFER);
+
+		hammer_io_init(&buffer->io, hmp, iotype);
 		buffer->io.offset = volume->ondisk->vol_buf_beg +
 				    (buf_offset & HAMMER_OFF_SHORT_MASK);
 		TAILQ_INIT(&buffer->clist);
@@ -546,6 +555,19 @@ again:
 		hammer_ref(&volume->io.lock);
 	} else {
 		hammer_ref(&buffer->io.lock);
+
+		/*
+		 * The buffer is no longer loose if it has a ref.
+		 */
+		if (buffer->io.mod_list == &hmp->lose_list) {
+			TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
+				     mod_entry);
+			buffer->io.mod_list = NULL;
+		}
+		if (buffer->io.lock.refs == 1)
+			hammer_io_reinit(&buffer->io, iotype);
+		else
+			KKASSERT(buffer->io.type == iotype);
 	}
 
 	/*
@@ -596,10 +618,6 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	} else {
 		error = 0;
 	}
-	if (error == 0 && isnew) {
-		hammer_modify_buffer(NULL, buffer, NULL, 0);
-		/* additional initialization goes here */
-	}
 	--buffer->io.loading;
 	hammer_unlock(&buffer->io.lock);
 	return (error);
@@ -628,6 +646,15 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 	int error;
 
 	hammer_ref(&buffer->io.lock);
+
+	/*
+	 * No longer loose
+	 */
+	if (buffer->io.mod_list == &buffer->io.hmp->lose_list) {
+		TAILQ_REMOVE(buffer->io.mod_list, &buffer->io, mod_entry);
+		buffer->io.mod_list = NULL;
+	}
+
 	if (buffer->ondisk == NULL || buffer->io.loading) {
 		error = hammer_load_buffer(buffer, 0);
 		if (error) {
@@ -764,6 +791,9 @@ hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
  *
  * Any prior buffer in *bufferp will be released and replaced by the
  * requested buffer.
+ *
+ * This function marks the buffer dirty but does not increment its
+ * modify_refs count.
  */
 void *
 hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp, 
@@ -1141,6 +1171,7 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
 		node = hammer_get_node(trans->hmp, node_offset, errorp);
 		hammer_modify_node_noundo(trans, node);
 		bzero(node->ondisk, sizeof(*node->ondisk));
+		hammer_modify_node_done(node);
 	}
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
@@ -1153,6 +1184,10 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
  *
  * In-band data is indicated by data_bufferp == NULL.  Pass a data_len of 0
  * for zero-fill (caller modifies data_len afterwords).
+ *
+ * If the caller is responsible for calling hammer_modify_*() prior to making
+ * any additional modifications to either the returned record buffer or the
+ * returned data buffer.
  */
 void *
 hammer_alloc_record(hammer_transaction_t trans, 
@@ -1219,6 +1254,9 @@ hammer_alloc_record(hammer_transaction_t trans,
 
 	/*
 	 * Basic return values.
+	 *
+	 * Note that because this is a 'new' buffer, there is no need to
+	 * generate UNDO records for it.
 	 */
 	*rec_offp = rec_offset;
 	rec = hammer_bread(trans->hmp, rec_offset, errorp, rec_bufferp);
@@ -1227,13 +1265,13 @@ hammer_alloc_record(hammer_transaction_t trans,
 	KKASSERT(*errorp == 0);
 	rec->base.data_off = data_offset;
 	rec->base.data_len = data_len;
+	hammer_modify_buffer_done(*rec_bufferp);
 
 	if (data_bufferp) {
 		if (data_len) {
 			*datap = hammer_bread(trans->hmp, data_offset, errorp,
 					      data_bufferp);
 			KKASSERT(*errorp == 0);
-			hammer_modify_buffer(trans, *data_bufferp, NULL, 0);
 		} else {
 			*datap = NULL;
 		}
@@ -1251,6 +1289,16 @@ hammer_alloc_record(hammer_transaction_t trans,
 	return(rec);
 }
 
+/*
+ * Allocate data.  If the address of a data buffer is supplied then
+ * any prior non-NULL *data_bufferp will be released and *data_bufferp
+ * will be set to the related buffer.  The caller must release it when
+ * finally done.  The initial *data_bufferp should be set to NULL by
+ * the caller.
+ *
+ * The caller is responsible for making hammer_modify*() calls on the
+ * *data_bufferp.
+ */
 void *
 hammer_alloc_data(hammer_transaction_t trans, int32_t data_len, 
 		  hammer_off_t *data_offsetp,
@@ -1279,7 +1327,6 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			data = hammer_bread(trans->hmp, *data_offsetp, errorp,
 					    data_bufferp);
 			KKASSERT(*errorp == 0);
-			hammer_modify_buffer(trans, *data_bufferp, NULL, 0);
 		} else {
 			data = NULL;
 		}
@@ -1290,11 +1337,9 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 	return(data);
 }
 
-
 /*
- * Sync dirty buffers to the media
+ * Sync dirty buffers to the media and clean-up any loose ends.
  */
-
 static int hammer_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
@@ -1308,9 +1353,11 @@ hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 
 	vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_NOWAIT,
 		      hammer_sync_scan1, hammer_sync_scan2, &info);
+        if (waitfor == MNT_WAIT)
+                hammer_flusher_sync(hmp);
+        else
+                hammer_flusher_async(hmp);
 
-	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
-		hammer_sync_volume, &info);
 	return(info.error);
 }
 
@@ -1344,26 +1391,6 @@ hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	error = VOP_FSYNC(vp, info->waitfor);
 	if (error)
 		info->error = error;
-	return(0);
-}
-
-int
-hammer_sync_volume(hammer_volume_t volume, void *data)
-{
-	struct hammer_sync_info *info = data;
-
-	hammer_ref(&volume->io.lock);
-	RB_SCAN(hammer_buf_rb_tree, &volume->rb_bufs_root, NULL,
-		hammer_sync_buffer, info);
-	hammer_rel_volume(volume, 1);
-	return(0);
-}
-
-int
-hammer_sync_buffer(hammer_buffer_t buffer, void *data __unused)
-{
-	hammer_ref(&buffer->io.lock);
-	hammer_rel_buffer(buffer, 1);
 	return(0);
 }
 

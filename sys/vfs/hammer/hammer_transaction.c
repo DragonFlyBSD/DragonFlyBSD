@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.12 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.13 2008/04/25 21:49:49 dillon Exp $
  */
 
 #include "hammer.h"
@@ -124,6 +124,7 @@ hammer_alloc_tid(hammer_transaction_t trans)
 	}
 #if 0
 	ondisk->vol0_next_tid = tid + 2;
+	hammer_modify_volume_done(trans->rootvol);
 #endif
 	trans->hmp->next_tid = tid + 2;
 	return(tid);

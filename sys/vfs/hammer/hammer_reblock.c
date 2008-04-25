@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.6 2008/03/26 04:32:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.7 2008/04/25 21:49:49 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -238,18 +238,23 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	/*
 	 * Move the data
 	 */
+	hammer_modify_buffer(cursor->trans, data_buffer, NULL, 0);
 	bcopy(cursor->data, ndata, elm->leaf.data_len);
-	hammer_modify_node(cursor->trans, cursor->node,
-			   &elm->leaf.data_offset, sizeof(hammer_off_t));
-	hammer_modify_record(cursor->trans, cursor->record_buffer,
-			     &cursor->record->base.data_off,
-			     sizeof(hammer_off_t));
+	hammer_modify_buffer_done(data_buffer);
 
 	hammer_blockmap_free(cursor->trans,
 			     elm->leaf.data_offset, elm->leaf.data_len);
 
+	hammer_modify_record(cursor->trans, cursor->record_buffer,
+			     &cursor->record->base.data_off,
+			     sizeof(hammer_off_t));
 	cursor->record->base.data_off = ndata_offset;
+	hammer_modify_record_done(cursor->record_buffer);
+
+	hammer_modify_node(cursor->trans, cursor->node,
+			   &elm->leaf.data_offset, sizeof(hammer_off_t));
 	elm->leaf.data_offset = ndata_offset;
+	hammer_modify_node_done(cursor->node);
 
 done:
 	if (data_buffer)
@@ -289,6 +294,7 @@ hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 	 * too if necessary.
 	 */
 	orec = cursor->record;
+	hammer_modify_buffer(cursor->trans, rec_buffer, NULL, 0);
 	bcopy(orec, nrec, sizeof(*nrec));
 
 	if ((orec->base.data_off & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RECORD) {
@@ -305,6 +311,7 @@ hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 			     &orec->base.base.rec_type,
 			     sizeof(orec->base.base.rec_type));
 	orec->base.base.rec_type |= HAMMER_RECTYPE_MOVED;
+	hammer_modify_record_done(cursor->record_buffer);
 
 	hammer_blockmap_free(cursor->trans,
 			     elm->leaf.rec_offset, sizeof(*nrec));
@@ -317,12 +324,15 @@ hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 	hammer_modify_node(cursor->trans, cursor->node,
 			   &elm->leaf.rec_offset, sizeof(hammer_off_t));
 	elm->leaf.rec_offset = nrec_offset;
+	hammer_modify_node_done(cursor->node);
 	if (inline_data) {
 		hammer_modify_node(cursor->trans, cursor->node,
 				 &elm->leaf.data_offset, sizeof(hammer_off_t));
 		elm->leaf.data_offset = ndata_offset;
+		hammer_modify_node_done(cursor->node);
 		nrec->base.data_off = ndata_offset;
 	}
+	hammer_modify_buffer_done(rec_buffer);
 
 done:
 	if (rec_buffer)
@@ -365,6 +375,7 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 				   &elm->internal.subtree_offset,
 				   sizeof(elm->internal.subtree_offset));
 		elm->internal.subtree_offset = nnode->node_offset;
+		hammer_modify_node_done(cursor->parent);
 	} else {
 		/*
 		 * We are the root of the B-Tree
@@ -378,6 +389,7 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 				     &volume->ondisk->vol0_btree_root,
                                      sizeof(hammer_off_t));
                 volume->ondisk->vol0_btree_root = nnode->node_offset;
+                hammer_modify_volume_done(volume);
                 hammer_rel_volume(volume, 0);
         }
 

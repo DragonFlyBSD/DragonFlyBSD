@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.8 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.9 2008/04/25 21:49:49 dillon Exp $
  */
 
 #include "hammer.h"
@@ -311,9 +311,12 @@ realign_prune(struct hammer_ioc_prune *prune,
 						     cursor->record_buffer,
 						     NULL, 0);
 				cursor->record->base.base.create_tid = tid;
+				hammer_modify_buffer_done(cursor->record_buffer);
 				hammer_modify_node(cursor->trans, cursor->node,
-						   elm, sizeof(*elm));
+						   &elm->leaf.base.create_tid,
+						   sizeof(elm->leaf.base.create_tid));
 				elm->leaf.base.create_tid = tid;
+				hammer_modify_node_done(cursor->node);
 			}
 		}
 	}
@@ -327,18 +330,21 @@ realign_prune(struct hammer_ioc_prune *prune,
 	if (error == 0 && realign_del >= 0) {
 		mod = prune->elms[realign_del].mod_tid;
 		delta = elm->leaf.base.delete_tid % mod;
-		hammer_modify_node(cursor->trans, cursor->node,
-				   elm, sizeof(*elm));
 		if (delta) {
 			error = hammer_btree_extract(cursor,
 						     HAMMER_CURSOR_GET_RECORD);
 			if (error == 0) {
+				hammer_modify_node(cursor->trans, cursor->node,
+						   &elm->leaf.base.delete_tid,
+						   sizeof(elm->leaf.base.delete_tid));
 				elm->leaf.base.delete_tid =
 						elm->leaf.base.delete_tid -
 						delta + mod;
+				hammer_modify_node_done(cursor->node);
 				hammer_modify_buffer(cursor->trans, cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
 				cursor->record->base.base.delete_tid =
 						elm->leaf.base.delete_tid;
+				hammer_modify_buffer_done(cursor->record_buffer);
 			}
 		}
 	}

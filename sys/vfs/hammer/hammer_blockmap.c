@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.7 2008/03/19 20:18:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.8 2008/04/25 21:49:49 dillon Exp $
  */
 
 /*
@@ -139,6 +139,7 @@ again:
 		layer1->phys_offset =
 			hammer_freemap_alloc(trans, next_offset, errorp);
 		layer1->blocks_free = HAMMER_BLOCKMAP_RADIX2;
+		hammer_modify_buffer_done(buffer1);
 		KKASSERT(*errorp == 0);
 	}
 	KKASSERT(layer1->phys_offset);
@@ -187,6 +188,7 @@ again:
 					     layer1, sizeof(*layer1));
 			KKASSERT(layer1->blocks_free);
 			--layer1->blocks_free;
+			hammer_modify_buffer_done(buffer1);
 			hammer_modify_buffer(trans, buffer2,
 					     layer2, sizeof(*layer2));
 			bzero(layer2, sizeof(*layer2));
@@ -194,6 +196,7 @@ again:
 				hammer_freemap_alloc(trans, next_offset,
 						     errorp);
 			layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+			hammer_modify_buffer_done(buffer2);
 			KKASSERT(*errorp == 0);
 		} else if (layer2->bytes_free != HAMMER_LARGEBLOCK_SIZE) {
 			/*
@@ -223,6 +226,7 @@ again:
 
 	hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));
 	layer2->bytes_free -= bytes;
+	hammer_modify_buffer_done(buffer2);
 	KKASSERT(layer2->bytes_free >= 0);
 
 	/*
@@ -249,6 +253,7 @@ again:
 			    (rootmap->next_offset + HAMMER_LARGEBLOCK_MASK) &
 			    ~HAMMER_LARGEBLOCK_MASK64;
 		}
+		hammer_modify_volume_done(root_volume);
 	}
 done:
 	if (buffer1)
@@ -354,12 +359,24 @@ hammer_blockmap_free(hammer_transaction_t trans,
 				layer1->phys_offset = HAMMER_BLOCKMAP_FREE;
 			}
 #endif
+			hammer_modify_buffer_done(buffer1);
 		} else {
+			/*
+			 * Leave block intact and reset the iterator. 
+			 *
+			 * XXX can't do this yet because if we allow data 
+			 * allocations they could overwrite deleted data
+			 * that is still subject to an undo on reboot.
+			 */
+#if 0
 			hammer_modify_volume(trans, root_volume,
 					     rootmap, sizeof(*rootmap));
 			rootmap->next_offset &= ~HAMMER_LARGEBLOCK_MASK64;
+			hammer_modify_volume_done(root_volume);
+#endif
 		}
 	}
+	hammer_modify_buffer_done(buffer2);
 done:
 	lockmgr(&trans->hmp->blockmap_lock, LK_RELEASE);
 

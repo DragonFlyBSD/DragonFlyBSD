@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.5 2008/03/24 23:50:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.6 2008/04/25 21:49:49 dillon Exp $
  */
 
 /*
@@ -97,13 +97,16 @@ new_volume:
 						     layer2, sizeof(*layer2));
 				layer2->u.owner = owner &
 						~HAMMER_LARGEBLOCK_MASK64;
+				hammer_modify_buffer_done(buffer2);
 				hammer_modify_buffer(trans, buffer1,
 						     layer1, sizeof(*layer1));
 				--layer1->blocks_free;
+				hammer_modify_buffer_done(buffer1);
 				hammer_modify_volume(trans, trans->rootvol,
 				     &ondisk->vol0_stat_freebigblocks,
 				     sizeof(ondisk->vol0_stat_freebigblocks));
 				--ondisk->vol0_stat_freebigblocks;
+				hammer_modify_volume_done(trans->rootvol);
 				break;
 			}
 			if (layer1->blocks_free == 0 ||
@@ -126,6 +129,7 @@ new_volume:
 	hammer_modify_volume(trans, trans->rootvol,
 			     blockmap, sizeof(*blockmap));
 	blockmap->next_offset = result_offset + HAMMER_LARGEBLOCK_SIZE;
+	hammer_modify_volume_done(trans->rootvol);
 done:
 	if (buffer1)
 		hammer_rel_buffer(buffer1, 0);
@@ -169,13 +173,16 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 	KKASSERT(layer2->u.owner == (owner & ~HAMMER_LARGEBLOCK_MASK64));
 	hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
 	++layer1->blocks_free;
+	hammer_modify_buffer_done(buffer1);
 	hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));
 	layer2->u.owner = HAMMER_BLOCKMAP_FREE;
+	hammer_modify_buffer_done(buffer2);
 
 	hammer_modify_volume(trans, trans->rootvol,
 			     &ondisk->vol0_stat_freebigblocks,
 			     sizeof(ondisk->vol0_stat_freebigblocks));
 	++ondisk->vol0_stat_freebigblocks;
+	hammer_modify_volume_done(trans->rootvol);
 
 	if (buffer1)
 		hammer_rel_buffer(buffer1, 0);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.25 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.26 2008/04/25 21:49:49 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -52,16 +52,54 @@
 #include <sys/buf.h>
 #include <sys/buf2.h>
 
+static void hammer_io_modify(hammer_io_t io, int count);
 static void hammer_io_deallocate(struct buf *bp);
-static int hammer_io_checkwrite(struct buf *bp);
 
 /*
- * Initialize an already-zero'd hammer_io structure
+ * Initialize a new, already-zero'd hammer_io structure, or reinitialize
+ * an existing hammer_io structure which may have switched to another type.
  */
 void
-hammer_io_init(hammer_io_t io, enum hammer_io_type type)
+hammer_io_init(hammer_io_t io, hammer_mount_t hmp, enum hammer_io_type type)
 {
+	io->hmp = hmp;
 	io->type = type;
+}
+
+void
+hammer_io_reinit(hammer_io_t io, enum hammer_io_type type)
+{
+	hammer_mount_t hmp = io->hmp;
+
+	if (io->modified) {
+		KKASSERT(io->mod_list != NULL);
+		if (io->mod_list == &hmp->volu_list ||
+		    io->mod_list == &hmp->meta_list) {
+			--hmp->locked_dirty_count;
+		}
+		TAILQ_REMOVE(io->mod_list, io, mod_entry);
+		io->mod_list = NULL;
+	}
+	io->type = type;
+	if (io->modified) {
+		switch(io->type) {
+		case HAMMER_STRUCTURE_VOLUME:
+			io->mod_list = &hmp->volu_list;
+			++hmp->locked_dirty_count;
+			break;
+		case HAMMER_STRUCTURE_META_BUFFER:
+			io->mod_list = &hmp->meta_list;
+			++hmp->locked_dirty_count;
+			break;
+		case HAMMER_STRUCTURE_UNDO_BUFFER:
+			io->mod_list = &hmp->undo_list;
+			break;
+		case HAMMER_STRUCTURE_DATA_BUFFER:
+			io->mod_list = &hmp->data_list;
+			break;
+		}
+		TAILQ_INSERT_TAIL(io->mod_list, io, mod_entry);
+	}
 }
 
 /*
@@ -95,7 +133,9 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 	case HAMMER_STRUCTURE_VOLUME:
 		iou->volume.ondisk = NULL;
 		break;
-	case HAMMER_STRUCTURE_BUFFER:
+	case HAMMER_STRUCTURE_DATA_BUFFER:
+	case HAMMER_STRUCTURE_META_BUFFER:
+	case HAMMER_STRUCTURE_UNDO_BUFFER:
 		iou->buffer.ondisk = NULL;
 		break;
 	}
@@ -125,8 +165,8 @@ hammer_io_wait(hammer_io_t io)
 }
 
 /*
- * Load bp for a HAMMER structure.  The io is exclusively locked by the
- * caller.
+ * Load bp for a HAMMER structure.  The io must be exclusively locked by
+ * the caller.
  */
 int
 hammer_io_read(struct vnode *devvp, struct hammer_io *io)
@@ -142,10 +182,10 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io)
 			LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
 			BUF_KERNPROC(bp);
 		}
-		io->modified = 0;	/* no new modifications yet */
+		KKASSERT(io->modified == 0);
+		KKASSERT(io->running == 0);
+		KKASSERT(io->waiting == 0);
 		io->released = 0;	/* we hold an active lock on bp */
-		io->running = 0;
-		io->waiting = 0;
 	} else {
 		error = 0;
 	}
@@ -154,11 +194,14 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io)
 
 /*
  * Similar to hammer_io_read() but returns a zero'd out buffer instead.
- * vfs_bio_clrbuf() is kinda nasty, enforce serialization against background
- * I/O so we can call it.
+ * Must be called with the IO exclusively locked.
  *
- * The caller is responsible for calling hammer_modify_*() on the appropriate
- * HAMMER structure.
+ * vfs_bio_clrbuf() is kinda nasty, enforce serialization against background
+ * I/O by forcing the buffer to not be in a released state before calling
+ * it.
+ *
+ * This function will also mark the IO as modified but it will not
+ * increment the modify_refs count.
  */
 int
 hammer_io_new(struct vnode *devvp, struct hammer_io *io)
@@ -170,9 +213,8 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 		bp = io->bp;
 		bp->b_ops = &hammer_bioops;
 		LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
-		io->modified = 0;
 		io->released = 0;
-		io->running = 0;
+		KKASSERT(io->running == 0);
 		io->waiting = 0;
 		BUF_KERNPROC(bp);
 	} else {
@@ -182,6 +224,7 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 			io->released = 0;
 		}
 	}
+	hammer_io_modify(io, 0);
 	vfs_bio_clrbuf(bp);
 	return(0);
 }
@@ -190,13 +233,10 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
  * This routine is called on the last reference to a hammer structure.
  * The io is usually locked exclusively (but may not be during unmount).
  *
- * If flush is 1, or B_LOCKED was set indicating that the kernel
- * wanted to recycle the buffer, and there are no dependancies, this
- * function will issue an asynchronous write.
- *
- * If flush is 2 this function waits until all I/O has completed and
- * disassociates the bp from the IO before returning, unless there
- * are still other references.
+ * This routine is responsible for the disposition of the buffer cache
+ * buffer backing the IO.  Only pure-data and undo buffers can be handed
+ * back to the kernel.  Volume and meta-data buffers must be retained
+ * by HAMMER until explicitly flushed by the backend.
  */
 void
 hammer_io_release(struct hammer_io *io)
@@ -206,36 +246,47 @@ hammer_io_release(struct hammer_io *io)
 	if ((bp = io->bp) == NULL)
 		return;
 
-#if 0
 	/*
-	 * If flush is 2 wait for dependancies
-	 */
-	while (io->waitdep && TAILQ_FIRST(&io->deplist)) {
-		hammer_io_wait(TAILQ_FIRST(&io->deplist));
-	}
-#endif
-
-	/*
-	 * Try to flush a dirty IO to disk if asked to by the caller
-	 * or if the kernel tried to flush the buffer in the past.
+	 * Try to flush a dirty IO to disk if asked to by the
+	 * caller or if the kernel tried to flush the buffer in the past.
 	 *
-	 * The flush will fail if any dependancies are present.
+	 * Kernel-initiated flushes are only allowed for pure-data buffers.
+	 * meta-data and volume buffers can only be flushed explicitly
+	 * by HAMMER.
 	 */
-	if (io->modified && (io->flush || (bp->b_flags & B_LOCKED)))
-		hammer_io_flush(io);
+	if (io->modified) {
+		if (io->flush) {
+			hammer_io_flush(io);
+		} else if (bp->b_flags & B_LOCKED) {
+			switch(io->type) {
+			case HAMMER_STRUCTURE_DATA_BUFFER:
+			case HAMMER_STRUCTURE_UNDO_BUFFER:
+				hammer_io_flush(io);
+				break;
+			default:
+				break;
+			}
+		} /* else no explicit request to flush the buffer */
+	}
 
 	/*
-	 * If flush is 2 we wait for the IO to complete.
+	 * Wait for the IO to complete if asked to.
 	 */
 	if (io->waitdep && io->running) {
 		hammer_io_wait(io);
 	}
 
 	/*
-	 * Actively or passively release the buffer.  Modified IOs with
-	 * dependancies cannot be released.
+	 * Return control of the buffer to the kernel (with the provisio
+	 * that our bioops can override kernel decisions with regards to
+	 * the buffer).
 	 */
 	if (io->flush && io->modified == 0 && io->running == 0) {
+		/*
+		 * Always disassociate the bp if an explicit flush
+		 * was requested and the IO completed with no error
+		 * (so unmount can really clean up the structure).
+		 */
 		if (io->released) {
 			regetblk(bp);
 			BUF_KERNPROC(bp);
@@ -243,11 +294,29 @@ hammer_io_release(struct hammer_io *io)
 		}
 		hammer_io_disassociate((hammer_io_structure_t)io, 1);
 	} else if (io->modified) {
-		if (io->released == 0) {
-			io->released = 1;
-			bdwrite(bp);
+		/*
+		 * Only certain IO types can be released to the kernel.
+		 * volume and meta-data IO types must be explicitly flushed
+		 * by HAMMER.
+		 */
+		switch(io->type) {
+		case HAMMER_STRUCTURE_DATA_BUFFER:
+		case HAMMER_STRUCTURE_UNDO_BUFFER:
+			if (io->released == 0) {
+				io->released = 1;
+				bdwrite(bp);
+			}
+			break;
+		default:
+			break;
 		}
 	} else if (io->released == 0) {
+		/*
+		 * Clean buffers can be generally released to the kernel.
+		 * We leave the bp passively associated with the HAMMER
+		 * structure and use bioops to disconnect it later on
+		 * if the kernel wants to discard the buffer.
+		 */
 		io->released = 1;
 		bqrelse(bp);
 	}
@@ -265,7 +334,7 @@ hammer_io_flush(struct hammer_io *io)
 	struct buf *bp;
 
 	/*
-	 * Can't flush if the IO isn't modified or if it has dependancies.
+	 * Degenerate case - nothing to flush if nothing is dirty.
 	 */
 	if (io->modified == 0) {
 		io->flush = 0;
@@ -273,34 +342,45 @@ hammer_io_flush(struct hammer_io *io)
 	}
 
 	KKASSERT(io->bp);
+	KKASSERT(io->modify_refs == 0);
 
 	/*
-	 * XXX - umount syncs buffers without referencing them, check for 0
-	 * also.
-	 */
-	KKASSERT(io->lock.refs == 0 || io->lock.refs == 1);
-
-	/*
-	 * Reset modified to 0 here and re-check it after the IO completes.
+	 * Acquire exclusive access to the bp and then clear the modified
+	 * state of the buffer prior to issuing I/O to interlock any
+	 * modifications made while the I/O is in progress.  This shouldn't
+	 * happen anyway but losing data would be worse.  The modified bit
+	 * will be rechecked after the IO completes.
+	 *
 	 * This is only legal when lock.refs == 1 (otherwise we might clear
 	 * the modified bit while there are still users of the cluster
 	 * modifying the data).
 	 *
-	 * NOTE: We have no dependancies so we don't have to worry about
-	 * cluster-open's here.
-	 *
 	 * Do this before potentially blocking so any attempt to modify the
 	 * ondisk while we are blocked blocks waiting for us.
 	 */
-	io->modified = 0;	/* force interlock */
+	KKASSERT(io->mod_list != NULL);
+	if (io->mod_list == &io->hmp->volu_list ||
+	    io->mod_list == &io->hmp->meta_list) {
+		--io->hmp->locked_dirty_count;
+	}
+	TAILQ_REMOVE(io->mod_list, io, mod_entry);
+	io->mod_list = NULL;
+	io->modified = 0;
 	io->flush = 0;
 	bp = io->bp;
 
+	/*
+	 * Acquire ownership (released variable set for clarity)
+	 */
 	if (io->released) {
 		regetblk(bp);
 		/* BUF_KERNPROC(io->bp); */
 		io->released = 0;
 	}
+
+	/*
+	 * Transfer ownership to the kernel and initiate I/O.
+	 */
 	io->released = 1;
 	io->running = 1;
 	bawrite(bp);
@@ -319,22 +399,46 @@ hammer_io_flush(struct hammer_io *io)
  */
 
 /*
- * Mark a HAMMER structure as undergoing modification.  Return 1 when applying
- * a non-NULL ordering dependancy for the first time, 0 otherwise.
+ * Mark a HAMMER structure as undergoing modification.  Meta-data buffers
+ * are locked until the flusher can deal with them, pure data buffers
+ * can be written out.
  */
-static __inline
+static
 void
-hammer_io_modify(hammer_io_t io)
+hammer_io_modify(hammer_io_t io, int count)
 {
+	struct hammer_mount *hmp = io->hmp;
+
 	/*
 	 * Shortcut if nothing to do.
 	 */
 	KKASSERT(io->lock.refs != 0 && io->bp != NULL);
+	io->modify_refs += count;
 	if (io->modified && io->released == 0)
 		return;
 
 	hammer_lock_ex(&io->lock);
-	io->modified = 1;
+	if (io->modified == 0) {
+		KKASSERT(io->mod_list == NULL);
+		switch(io->type) {
+		case HAMMER_STRUCTURE_VOLUME:
+			io->mod_list = &hmp->volu_list;
+			++hmp->locked_dirty_count;
+			break;
+		case HAMMER_STRUCTURE_META_BUFFER:
+			io->mod_list = &hmp->meta_list;
+			++hmp->locked_dirty_count;
+			break;
+		case HAMMER_STRUCTURE_UNDO_BUFFER:
+			io->mod_list = &hmp->undo_list;
+			break;
+		case HAMMER_STRUCTURE_DATA_BUFFER:
+			io->mod_list = &hmp->data_list;
+			break;
+		}
+		TAILQ_INSERT_TAIL(io->mod_list, io, mod_entry);
+		io->modified = 1;
+	}
 	if (io->released) {
 		regetblk(io->bp);
 		BUF_KERNPROC(io->bp);
@@ -344,11 +448,19 @@ hammer_io_modify(hammer_io_t io)
 	hammer_unlock(&io->lock);
 }
 
+static __inline
+void
+hammer_io_modify_done(hammer_io_t io)
+{
+	KKASSERT(io->modify_refs > 0);
+	--io->modify_refs;
+}
+
 void
 hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 		     void *base, int len)
 {
-	hammer_io_modify(&volume->io);
+	hammer_io_modify(&volume->io, 1);
 
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)volume->ondisk;
@@ -368,7 +480,7 @@ void
 hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,
 		     void *base, int len)
 {
-	hammer_io_modify(&buffer->io);
+	hammer_io_modify(&buffer->io, 1);
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)buffer->ondisk;
 		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
@@ -376,6 +488,18 @@ hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,
 				     buffer->zone2_offset + rel_offset,
 				     base, len);
 	}
+}
+
+void
+hammer_modify_volume_done(hammer_volume_t volume)
+{
+	hammer_io_modify_done(&volume->io);
+}
+
+void
+hammer_modify_buffer_done(hammer_buffer_t buffer)
+{
+	hammer_io_modify_done(&buffer->io);
 }
 
 /*
@@ -391,6 +515,7 @@ hammer_io_clear_modify(struct hammer_io *io)
 	struct buf *bp;
 
 	io->modified = 0;
+	XXX mod_list/entry
 	if ((bp = io->bp) != NULL) {
 		if (io->released) {
 			regetblk(bp);
@@ -437,8 +562,6 @@ hammer_io_complete(struct buf *bp)
 
 	KKASSERT(iou->io.released == 1);
 
-	/* XXX DEP REMOVE */
-
 	/*
 	 * If no lock references remain and we can acquire the IO lock and
 	 * someone at some point wanted us to flush (B_LOCKED test), then
@@ -463,8 +586,9 @@ hammer_io_complete(struct buf *bp)
 
 /*
  * Callback from kernel when it wishes to deallocate a passively
- * associated structure.  This case can only occur with read-only
- * bp's.
+ * associated structure.  This mostly occurs with clean buffers
+ * but it may be possible for a holding structure to be marked dirty
+ * while its buffer is passively associated.
  *
  * If we cannot disassociate we set B_LOCKED to prevent the buffer
  * from getting reused.
@@ -472,9 +596,6 @@ hammer_io_complete(struct buf *bp)
  * WARNING: Because this can be called directly by getnewbuf we cannot
  * recurse into the tree.  If a bp cannot be immediately disassociated
  * our only recourse is to set B_LOCKED.
- *
- * WARNING: If the HAMMER structure is passively cached we have to
- * scrap it here.
  */
 static void
 hammer_io_deallocate(struct buf *bp)
@@ -483,21 +604,24 @@ hammer_io_deallocate(struct buf *bp)
 
 	KKASSERT((bp->b_flags & B_LOCKED) == 0 && iou->io.running == 0);
 	if (iou->io.lock.refs > 0 || iou->io.modified) {
+		/*
+		 * It is not legal to disassociate a modified buffer.  This
+		 * case really shouldn't ever occur.
+		 */
 		bp->b_flags |= B_LOCKED;
 	} else {
-		/* XXX interlock against ref or another disassociate */
-		/* XXX this can leave HAMMER structures lying around */
+		/*
+		 * Disassociate the BP.  If the io has no refs left we
+		 * have to add it to the loose list.
+		 */
 		hammer_io_disassociate(iou, 0);
-#if 0
-		switch(iou->io.type) {
-		case HAMMER_STRUCTURE_VOLUME:
-			hammer_rel_volume(&iou->volume, 1);
-			break;
-		case HAMMER_STRUCTURE_BUFFER:
-			hammer_rel_buffer(&iou->buffer, 1);
-			break;
+		if (iou->io.bp == NULL && 
+		    iou->io.type != HAMMER_STRUCTURE_VOLUME) {
+			kprintf("ADD LOOSE %p\n", &iou->io);
+			KKASSERT(iou->io.mod_list == NULL);
+			iou->io.mod_list = &iou->io.hmp->lose_list;
+			TAILQ_INSERT_TAIL(iou->io.mod_list, &iou->io, mod_entry);
 		}
-#endif
 	}
 }
 
@@ -529,10 +653,12 @@ hammer_io_movedeps(struct buf *bp1, struct buf *bp2)
  *
  * Writing is a different case.  We don't want the kernel to try to write
  * out a buffer that HAMMER may be modifying passively or which has a
- * dependancy.
+ * dependancy.  In addition, kernel-demanded writes can only proceed for
+ * certain types of buffers (i.e. UNDO and DATA types).  Other dirty
+ * buffer types can only be explicitly written by the flusher.
  *
- * This code enforces the following write ordering: buffers, then cluster
- * headers, then volume headers.
+ * checkwrite will only be called for bdwrite()n buffers.  If we return
+ * success the kernel is guaranteed to initiate the buffer write.
  */
 static int
 hammer_io_checkread(struct buf *bp)
@@ -543,22 +669,21 @@ hammer_io_checkread(struct buf *bp)
 static int
 hammer_io_checkwrite(struct buf *bp)
 {
-	union hammer_io_structure *iou = (void *)LIST_FIRST(&bp->b_dep);
+	hammer_io_t io = (void *)LIST_FIRST(&bp->b_dep);
 
 	/*
-	 * We are called from the kernel on delayed-write buffers, and
-	 * called from hammer_io_flush() on flush requests.  There should
-	 * be no dependancies in either case.
-	 *
-	 * In the case of delayed-writes, the introduction of a dependancy
-	 * will block until the bp can be reacquired, and the bp is then
-	 * simply not released until the dependancy can be satisfied.
-	 *
-	 * We can only clear the modified bit when entered from the kernel
-	 * if io.lock.refs == 0.
+	 * We can only clear the modified bit if the IO is not currently
+	 * undergoing modification.  Otherwise we may miss changes.
 	 */
-	if (iou->io.lock.refs == 0) {
-		iou->io.modified = 0;
+	if (io->modify_refs == 0 && io->modified) {
+		KKASSERT(io->mod_list != NULL);
+		if (io->mod_list == &io->hmp->volu_list ||
+		    io->mod_list == &io->hmp->meta_list) {
+			--io->hmp->locked_dirty_count;
+		}
+		TAILQ_REMOVE(io->mod_list, io, mod_entry);
+		io->mod_list = NULL;
+		io->modified = 0;
 	}
 	return(0);
 }

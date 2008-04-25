@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.41 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.42 2008/04/25 21:49:49 dillon Exp $
  */
 
 #include "hammer.h"
@@ -648,6 +648,7 @@ retry:
 	 * buffers as modified.  If we do it again we will generate
 	 * unnecessary undo elements.
 	 */
+	hammer_modify_buffer(trans, cursor.record_buffer, NULL, 0);
 	rec->base.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	rec->base.base.obj_id = ip->obj_id;
 	rec->base.base.key = offset + bytes;
@@ -655,9 +656,12 @@ retry:
 	rec->base.base.delete_tid = 0;
 	rec->base.base.rec_type = HAMMER_RECTYPE_DATA;
 	rec->base.data_crc = crc32(data, bytes);
+	hammer_modify_buffer_done(cursor.record_buffer);
 	KKASSERT(rec->base.data_len == bytes);
 
+	hammer_modify_buffer(trans, cursor.data_buffer, NULL, 0);
 	bcopy(data, bdata, bytes);
+	hammer_modify_buffer_done(cursor.data_buffer);
 
 	elm.leaf.base = rec->base.base;
 	elm.leaf.rec_offset = rec_offset;
@@ -797,6 +801,7 @@ retry:
 	/*
 	 * Fill in the remaining fields and insert our B-Tree node.
 	 */
+	hammer_modify_buffer(trans, cursor.record_buffer, NULL, 0);
 	rec->base.base = record->rec.base.base;
 	bcopy(&record->rec.base + 1, &rec->base + 1,
 	      HAMMER_RECORD_SIZE - sizeof(record->rec.base));
@@ -804,12 +809,18 @@ retry:
 	/*
 	 * Copy the data and deal with zero-fill support.
 	 */
-	if (record->data) {
+	if (record->data && (record->flags & HAMMER_RECF_INBAND)) {
 		rec->base.data_crc = crc32(record->data, rec->base.data_len);
 		bcopy(record->data, bdata, rec->base.data_len);
+	} else if (record->data) {
+		rec->base.data_crc = crc32(record->data, rec->base.data_len);
+		hammer_modify_buffer(trans, cursor.data_buffer, NULL, 0);
+		bcopy(record->data, bdata, rec->base.data_len);
+		hammer_modify_buffer_done(cursor.data_buffer);
 	} else {
 		rec->base.data_len = record->rec.base.data_len;
 	}
+	hammer_modify_buffer_done(cursor.record_buffer);
 
 	elm.leaf.base = record->rec.base.base;
 	elm.leaf.rec_offset = rec_offset;
@@ -1457,8 +1468,10 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 		if (error == 0) {
 			elm = &cursor->node->ondisk->elms[cursor->index];
 			hammer_modify_node(cursor->trans, cursor->node,
-					   elm, sizeof(*elm));
+					   &elm->leaf.base.delete_tid,
+					   sizeof(elm->leaf.base.delete_tid));
 			elm->leaf.base.delete_tid = tid;
+			hammer_modify_node_done(cursor->node);
 
 			/*
 			 * An on-disk record cannot have the same delete_tid
@@ -1468,6 +1481,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 			KKASSERT(elm->leaf.base.delete_tid != elm->leaf.base.create_tid);
 			hammer_modify_buffer(cursor->trans, cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
 			cursor->record->base.base.delete_tid = tid;
+			hammer_modify_buffer_done(cursor->record_buffer);
 		}
 	}
 

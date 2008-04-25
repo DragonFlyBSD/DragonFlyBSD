@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.26 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.27 2008/04/25 21:49:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -228,6 +228,12 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	RB_INIT(&hmp->rb_inos_root);
 	RB_INIT(&hmp->rb_nods_root);
 	hmp->ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
+
+	TAILQ_INIT(&hmp->volu_list);
+	TAILQ_INIT(&hmp->undo_list);
+	TAILQ_INIT(&hmp->data_list);
+	TAILQ_INIT(&hmp->meta_list);
+	TAILQ_INIT(&hmp->lose_list);
 
 	/*
 	 * Load volumes
@@ -486,10 +492,7 @@ static int
 hammer_vfs_sync(struct mount *mp, int waitfor)
 {
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
-	int error;
-
-	error = hammer_sync_hmp(hmp, waitfor);
-	return(error);
+	return(hammer_sync_hmp(hmp, waitfor));
 }
 
 /*

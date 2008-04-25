@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.36 2008/04/24 22:05:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.37 2008/04/25 21:49:49 dillon Exp $
  */
 
 #include "hammer.h"
@@ -463,9 +463,10 @@ retry:
 					    HAMMER_INODE_ITIMES);
 			ip->flags &= ~HAMMER_INODE_DELONDISK;
 			if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
-				hammer_modify_volume(trans, ip->hmp->rootvol,
+				hammer_modify_volume(trans, trans->rootvol,
 						     NULL, 0);
 				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+				hammer_modify_volume_done(trans->rootvol);
 				ip->flags |= HAMMER_INODE_ONDISK;
 			}
 		}
@@ -505,11 +506,16 @@ retry:
 			Debugger("hammer_update_itimes1");
 		}
 		if (error == 0) {
+			/*
+			 * Do not generate UNDO records for atime/mtime
+			 * updates.
+			 */
 			rec = &cursor.record->inode;
 			hammer_modify_buffer(cursor.trans, cursor.record_buffer,
 					     NULL, 0);
 			rec->ino_atime = ip->sync_ino_rec.ino_atime;
 			rec->ino_mtime = ip->sync_ino_rec.ino_mtime;
+			hammer_modify_buffer_done(cursor.record_buffer);
 			ip->sync_flags &= ~HAMMER_INODE_ITIMES;
 			/* XXX recalculate crc */
 			hammer_cache_node(cursor.node, &ip->cache[0]);
@@ -910,8 +916,9 @@ hammer_sync_inode(hammer_inode_t ip, int handle_delete)
 		 */
 		ip->flags |= HAMMER_NODE_DELETED;
 		hammer_modify_inode(&trans, ip, HAMMER_INODE_RDIRTY);
-		hammer_modify_volume(&trans, ip->hmp->rootvol, NULL, 0);
+		hammer_modify_volume(&trans, trans.rootvol, NULL, 0);
 		--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+		hammer_modify_volume_done(trans.rootvol);
 	} else if (ip->sync_flags & HAMMER_INODE_TRUNCATED) {
 		/*
 		 * Interlock trunc_off.  The VOP front-end may continue to

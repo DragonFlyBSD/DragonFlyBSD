@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.36 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.37 2008/04/25 21:49:49 dillon Exp $
  */
 
 /*
@@ -688,6 +688,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 	}
 	node->elms[i] = *elm;
 	++node->count;
+	hammer_modify_node_done(cursor->node);
 
 	/*
 	 * Debugging sanity checks.
@@ -750,6 +751,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 		      (ondisk->count - i - 1) * sizeof(ondisk->elms[0]));
 	}
 	--ondisk->count;
+	hammer_modify_node_done(node);
 
 	/*
 	 * Validate local parent
@@ -997,15 +999,20 @@ re_search:
 			 * Correct a left-hand boundary mismatch.
 			 *
 			 * We can only do this if we can upgrade the lock.
+			 *
+			 * WARNING: We can only do this if inserting, i.e.
+			 * we are running on the backend.
 			 */
 			if ((error = hammer_cursor_upgrade(cursor)) != 0)
 				return(error);
+			KKASSERT(cursor->flags & HAMMER_CURSOR_BACKEND);
 			hammer_modify_node(cursor->trans, cursor->node,
 					   &node->elms[0],
 					   sizeof(node->elms[0]));
 			save = node->elms[0].base.btype;
 			node->elms[0].base = *cursor->left_bound;
 			node->elms[0].base.btype = save;
+			hammer_modify_node_done(cursor->node);
 		} else if (i == node->count + 1) {
 			/*
 			 * If i == node->count + 1 the search terminated to
@@ -1028,13 +1035,18 @@ re_search:
 			 * adjustments to i).
 			 *
 			 * We can only do this if we can upgrade the lock.
+			 *
+			 * WARNING: We can only do this if inserting, i.e.
+			 * we are running on the backend.
 			 */
 			if ((error = hammer_cursor_upgrade(cursor)) != 0)
 				return(error);
 			elm = &node->elms[i];
+			KKASSERT(cursor->flags & HAMMER_CURSOR_BACKEND);
 			hammer_modify_node(cursor->trans, cursor->node,
 					   &elm->base, sizeof(elm->base));
 			elm->base = *cursor->right_bound;
+			hammer_modify_node_done(cursor->node);
 			--i;
 		} else {
 			/*
@@ -1311,6 +1323,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		ondisk->elms[0].base.btype = node->ondisk->type;
 		ondisk->elms[0].internal.subtree_offset = node->node_offset;
 		ondisk->elms[1].base = hmp->root_btree_end;
+		hammer_modify_node_done(parent);
 		/* ondisk->elms[1].base.btype - not used */
 		made_root = 1;
 		parent_index = 0;	/* index of current node in parent */
@@ -1386,6 +1399,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	parent_elm->internal.base.btype = new_node->ondisk->type;
 	parent_elm->internal.subtree_offset = new_node->node_offset;
 	++ondisk->count;
+	hammer_modify_node_done(parent);
 
 	/*
 	 * The children of new_node need their parent pointer set to new_node.
@@ -1399,6 +1413,7 @@ btree_split_internal(hammer_cursor_t cursor)
 			panic("btree_split_internal: btree-fixup problem");
 		}
 	}
+	hammer_modify_node_done(new_node);
 
 	/*
 	 * The filesystem's root B-Tree pointer may have to be updated.
@@ -1413,6 +1428,7 @@ btree_split_internal(hammer_cursor_t cursor)
 				     &volume->ondisk->vol0_btree_root,
 				     sizeof(hammer_off_t));
 		volume->ondisk->vol0_btree_root = parent->node_offset;
+		hammer_modify_volume_done(volume);
 		node->ondisk->parent = parent->node_offset;
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
@@ -1421,6 +1437,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		cursor->parent = parent;	/* lock'd and ref'd */
 		hammer_rel_volume(volume, 0);
 	}
+	hammer_modify_node_done(node);
 
 
 	/*
@@ -1539,6 +1556,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 		ondisk->elms[0].internal.subtree_offset = leaf->node_offset;
 		ondisk->elms[1].base = hmp->root_btree_end;
 		/* ondisk->elms[1].base.btype = not used */
+		hammer_modify_node_done(parent);
 		made_root = 1;
 		parent_index = 0;	/* insertion point in parent */
 	} else {
@@ -1583,6 +1601,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	new_leaf->ondisk->parent = parent->node_offset;
 	new_leaf->ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 	KKASSERT(ondisk->type == new_leaf->ondisk->type);
+	hammer_modify_node_done(new_leaf);
 
 	/*
 	 * Cleanup the original node.  Because this is a leaf node and
@@ -1613,6 +1632,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	parent_elm->internal.subtree_offset = new_leaf->node_offset;
 	mid_boundary = &parent_elm->base;
 	++ondisk->count;
+	hammer_modify_node_done(parent);
 
 	/*
 	 * The filesystem's root B-Tree pointer may have to be updated.
@@ -1627,6 +1647,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 				     &volume->ondisk->vol0_btree_root,
 				     sizeof(hammer_off_t));
 		volume->ondisk->vol0_btree_root = parent->node_offset;
+		hammer_modify_volume_done(volume);
 		leaf->ondisk->parent = parent->node_offset;
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
@@ -1635,6 +1656,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 		cursor->parent = parent;	/* lock'd and ref'd */
 		hammer_rel_volume(volume, 0);
 	}
+	hammer_modify_node_done(leaf);
 
 	/*
 	 * Ok, now adjust the cursor depending on which element the original
@@ -1888,6 +1910,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 			hammer_modify_node(cursor->trans, cursor->node,
 					   elm, sizeof(*elm));
 			elm->create_tid = tid;
+			hammer_modify_node_done(cursor->node);
 		} else {
 			panic("hammer_btree_correct_lhb(): Bad element type");
 		}
@@ -1939,6 +1962,7 @@ btree_remove(hammer_cursor_t cursor)
 		ondisk = node->ondisk;
 		ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 		ondisk->count = 0;
+		hammer_modify_node_done(node);
 		cursor->index = 0;
 		return(0);
 	}
@@ -1979,6 +2003,7 @@ btree_remove(hammer_cursor_t cursor)
 	if (error) {
 		kprintf("BTREE_REMOVE: Cannot lock parent, skipping\n");
 		Debugger("BTREE_REMOVE");
+		hammer_modify_node_done(parent);
 		return (0);
 	}
 
@@ -2002,6 +2027,7 @@ btree_remove(hammer_cursor_t cursor)
 	--ondisk->count;
 	if (ondisk->count == 0)
 		error = EAGAIN;
+	hammer_modify_node_done(parent);
 	return(error);
 }
 
@@ -2066,6 +2092,7 @@ btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
 					   &child->ondisk->parent,
 					   sizeof(child->ondisk->parent));
 			child->ondisk->parent = node->node_offset;
+			hammer_modify_node_done(child);
 			hammer_rel_node(child);
 		}
 		break;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.48 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.49 2008/04/25 21:49:49 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -91,7 +91,6 @@ struct hammer_transaction {
 	hammer_tid_t	tid;
 	hammer_tid_t	time;
 	struct hammer_volume *rootvol;
-/*	TAILQ_HEAD(, hammer_io) recycle_list;*/
 };
 
 typedef struct hammer_transaction *hammer_transaction_t;
@@ -284,9 +283,21 @@ RB_PROTOTYPE2(hammer_nod_rb_tree, hammer_node, rb_node,
 
 /*
  * IO management - embedded at the head of various in-memory structures
+ *
+ * VOLUME	- hammer_volume containing meta-data
+ * META_BUFFER	- hammer_buffer containing meta-data
+ * DATA_BUFFER	- hammer_buffer containing pure-data
+ *
+ * Dirty volume headers and dirty meta-data buffers are locked until the
+ * flusher can sequence them out.  Dirty pure-data buffers can be written.
+ * Clean buffers can be passively released.
  */
-enum hammer_io_type { HAMMER_STRUCTURE_VOLUME,
-		      HAMMER_STRUCTURE_BUFFER };
+typedef enum hammer_io_type {
+	HAMMER_STRUCTURE_VOLUME,
+	HAMMER_STRUCTURE_META_BUFFER,
+	HAMMER_STRUCTURE_UNDO_BUFFER,
+	HAMMER_STRUCTURE_DATA_BUFFER
+} hammer_io_type_t;
 
 union hammer_io_structure;
 struct hammer_io;
@@ -295,15 +306,21 @@ struct worklist {
 	LIST_ENTRY(worklist) node;
 };
 
-/*TAILQ_HEAD(hammer_dep_list, hammer_dep);*/
+TAILQ_HEAD(hammer_io_list, hammer_io);
+typedef struct hammer_io_list *hammer_io_list_t;
 
 struct hammer_io {
-	struct worklist worklist;
-	struct hammer_lock lock;
-	enum hammer_io_type type;
-	struct buf	*bp;
-	int64_t		offset;
-	int		loading;	/* loading/unloading interlock */
+	struct worklist		worklist;
+	struct hammer_lock	lock;
+	enum hammer_io_type	type;
+	struct hammer_mount	*hmp;
+	TAILQ_ENTRY(hammer_io)	mod_entry; /* list entry if modified */
+	hammer_io_list_t	mod_list;
+	struct buf		*bp;
+	int64_t			offset;
+	int			loading;   /* loading/unloading interlock */
+	int			modify_refs;
+
 	u_int		modified : 1;	/* bp's data was modified */
 	u_int		released : 1;	/* bp released (w/ B_LOCKED set) */
 	u_int		running : 1;	/* bp write IO in progress */
@@ -329,7 +346,6 @@ struct hammer_volume {
 	hammer_off_t maxbuf_off; /* Maximum buffer offset */
 	char	*vol_name;
 	struct vnode *devvp;
-	struct hammer_mount *hmp;
 	int	vol_flags;
 };
 
@@ -456,6 +472,12 @@ struct hammer_mount {
 	u_int	check_interrupt;
 	uuid_t	fsid;
 	udev_t	fsid_udev;
+	struct hammer_io_list volu_list;	/* dirty undo buffers */
+	struct hammer_io_list undo_list;	/* dirty undo buffers */
+	struct hammer_io_list data_list;	/* dirty data buffers */
+	struct hammer_io_list meta_list;	/* dirty meta bufs    */
+	struct hammer_io_list lose_list;	/* loose buffers      */
+	int	locked_dirty_count;		/* meta/volu count    */
 	hammer_tid_t asof;
 	hammer_off_t next_tid;
 	u_int32_t namekey_iterator;
@@ -521,8 +543,6 @@ int	hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes);
 int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
 			hammer_inode_t ip);
 int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
-int	hammer_sync_volume(hammer_volume_t volume, void *data);
-int	hammer_sync_buffer(hammer_buffer_t buffer, void *data);
 
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip);
@@ -695,7 +715,9 @@ int  hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t rec);
 int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);
 
-void hammer_io_init(hammer_io_t io, enum hammer_io_type type);
+void hammer_io_init(hammer_io_t io, hammer_mount_t hmp,
+			enum hammer_io_type type);
+void hammer_io_reinit(hammer_io_t io, enum hammer_io_type type);
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io);
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
 void hammer_io_release(struct hammer_io *io);
@@ -708,6 +730,8 @@ void hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 			void *base, int len);
 void hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,
 			void *base, int len);
+void hammer_modify_volume_done(hammer_volume_t volume);
+void hammer_modify_buffer_done(hammer_buffer_t buffer);
 
 int hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_reblock *reblock);
@@ -747,11 +771,23 @@ hammer_modify_node(hammer_transaction_t trans, hammer_node_t node,
 }
 
 static __inline void
+hammer_modify_node_done(hammer_node_t node)
+{
+	hammer_modify_buffer_done(node->buffer);
+}
+
+static __inline void
 hammer_modify_record(hammer_transaction_t trans, hammer_buffer_t buffer,
 		     void *base, int len)
 {
 	KKASSERT((char *)base >= (char *)buffer->ondisk &&
 		 (char *)base + len <= (char *)buffer->ondisk + HAMMER_BUFSIZE);
 	hammer_modify_buffer(trans, buffer, base, len);
+}
+
+static __inline void
+hammer_modify_record_done(hammer_buffer_t buffer)
+{
+	hammer_modify_buffer_done(buffer);
 }
 
