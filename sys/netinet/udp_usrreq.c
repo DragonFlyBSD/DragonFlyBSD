@@ -65,7 +65,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.43 2008/03/26 14:44:59 sephe Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.44 2008/04/26 14:08:52 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -911,10 +911,9 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		soisconnected(so);
 
 		/*
-		 * This function is always called on CPU0, so we need to make
-		 * sure that target CPU is same as CPU0, if it is not, then
-		 * we will have to free the route entry allocated on the
-		 * current CPU (i.e. CPU0).
+		 * Make sure that the new target CPU is same as current CPU,
+		 * if it is not, then we will have to free the route entry
+		 * allocated on the current CPU.
 		 */
 		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_laddr.s_addr,
 				inp->inp_fport, inp->inp_lport) != mycpuid) {
@@ -954,8 +953,8 @@ udp_detach(struct socket *so)
 static int
 udp_disconnect(struct socket *so)
 {
+	struct route *ro;
 	struct inpcb *inp;
-	in_addr_t laddr;
 
 	inp = so->so_pcb;
 	if (inp == NULL)
@@ -968,24 +967,11 @@ udp_disconnect(struct socket *so)
 	crit_exit();
 	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
 
-	/* See the comment in udp_connect() */
-	if (!(inp->inp_flags & INP_WASBOUND_NOTANY))
-		laddr = INADDR_ANY;
-	else
-		laddr = inp->inp_laddr.s_addr;
+	ro = &inp->inp_route;
+	if (ro->ro_rt != NULL)
+		RTFREE(ro->ro_rt);
+	bzero(ro, sizeof(*ro));
 
-	/*
-	 * If target CPU is to be changed, free the route entry
-	 * which was allocated on the current CPU.
-	 */
-	if (udp_addrcpu(inp->inp_faddr.s_addr, laddr,
-			inp->inp_fport, inp->inp_lport) != mycpuid) {
-		struct route *ro = &inp->inp_route;
-
-		if (ro->ro_rt != NULL)
-			RTFREE(ro->ro_rt);
-		bzero(ro, sizeof(*ro));
-	}
 	return 0;
 }
 
