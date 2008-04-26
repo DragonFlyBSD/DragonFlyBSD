@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.38 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.39 2008/04/26 02:54:00 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -496,13 +496,25 @@ hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 	zoneX_offset = buf_offset;
 	zone = HAMMER_ZONE_DECODE(buf_offset);
 
-	if (zone == HAMMER_ZONE_LARGE_DATA_INDEX ||
-	    zone == HAMMER_ZONE_SMALL_DATA_INDEX) {
+	/*
+	 * What is the buffer class?
+	 */
+	switch(zone) {
+	case HAMMER_ZONE_LARGE_DATA_INDEX:
+	case HAMMER_ZONE_SMALL_DATA_INDEX:
 		iotype = HAMMER_STRUCTURE_DATA_BUFFER;
-	} else {
+		break;
+	case HAMMER_ZONE_UNDO_INDEX:
+		iotype = HAMMER_STRUCTURE_UNDO_BUFFER;
+		break;
+	default:
 		iotype = HAMMER_STRUCTURE_META_BUFFER;
+		break;
 	}
 
+	/*
+	 * Handle blockmap offset translations
+	 */
 	if (zone >= HAMMER_ZONE_BTREE_INDEX) {
 		buf_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
 		KKASSERT(*errorp == 0);
@@ -510,6 +522,10 @@ hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 		buf_offset = hammer_undo_lookup(hmp, buf_offset, errorp);
 		KKASSERT(*errorp == 0);
 	}
+
+	/*
+	 * Locate the buffer given its zone-2 offset.
+	 */
 	buf_offset &= ~HAMMER_BUFMASK64;
 	KKASSERT((buf_offset & HAMMER_ZONE_RAW_BUFFER) ==
 		 HAMMER_ZONE_RAW_BUFFER);
@@ -715,6 +731,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 	hammer_unref(&buffer->io.lock);
 	crit_exit();
 	if (freeme) {
+		KKASSERT(buffer->io.mod_list == NULL);
 		--hammer_count_buffers;
 		kfree(buffer, M_HAMMER);
 	}

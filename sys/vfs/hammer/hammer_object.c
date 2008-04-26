@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.42 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.43 2008/04/26 02:54:00 dillon Exp $
  */
 
 #include "hammer.h"
@@ -723,10 +723,8 @@ retry:
 	 */
 	if (record->flags & HAMMER_RECF_DELETE_ONDISK) {
 		error = hammer_btree_lookup(&cursor);
-		kprintf("DELETE MEM ENTRY1 %d\n", error);
 		if (error == 0)
 			error = hammer_ip_delete_record(&cursor, trans->tid);
-		kprintf("DELETE MEM ENTRY2 %d\n", error);
 		if (error == 0)
 			record->flags |= HAMMER_RECF_DELETED_FE;
 		goto done;
@@ -1154,7 +1152,6 @@ next_memory:
 			if ((cursor->flags & HAMMER_CURSOR_DELETE_VISIBILITY) == 0) {
 				cursor->flags |= HAMMER_CURSOR_ATEDISK;
 				cursor->flags |= HAMMER_CURSOR_ATEMEM;
-				kprintf("SKIP MEM ENTRY\n");
 				goto next_btree;
 			}
 		}

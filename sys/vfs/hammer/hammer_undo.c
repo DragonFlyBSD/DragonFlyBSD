@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.5 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.6 2008/04/26 02:54:00 dillon Exp $
  */
 
 /*
@@ -71,11 +71,11 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 
 /*
  * Generate an UNDO record for the block of data at the specified zone1
- * offset.
+ * or zone2 offset.
  */
 int
 hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
-		     hammer_off_t zone1_off, void *base, int len)
+		     hammer_off_t zone_off, void *base, int len)
 {
 	hammer_volume_t root_volume;
 	hammer_volume_ondisk_t ondisk;
@@ -90,9 +90,6 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 	int error;
 	int bytes;
 
-	bytes = ((len + 7) & ~7) + sizeof(struct hammer_fifo_undo) +
-		sizeof(struct hammer_fifo_tail);
-
 	root_volume = trans->rootvol;
 	ondisk = root_volume->ondisk;
 	undomap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
@@ -100,10 +97,14 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 	/* no undo recursion */
 	hammer_modify_volume(NULL, root_volume, NULL, 0);
 
+again:
 	/*
 	 * Allocate space in the FIFO
 	 */
-again:
+	bytes = ((len + HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK) +
+		sizeof(struct hammer_fifo_undo) +
+		sizeof(struct hammer_fifo_tail);
+
 	next_offset = undomap->next_offset;
 
 	/*
@@ -159,13 +160,19 @@ again:
 	 * We're good, create the entry.
 	 */
 	undo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
-	undo->head.hdr_type = HAMMER_HEAD_TYPE_PAD;
+	undo->head.hdr_type = HAMMER_HEAD_TYPE_UNDO;
 	undo->head.hdr_size = bytes;
 	undo->head.reserved01 = 0;
 	undo->head.hdr_crc = 0;
-	undo->undo_offset = zone1_off;
+	undo->undo_offset = zone_off;
 	undo->undo_data_bytes = len;
 	bcopy(base, undo + 1, len);
+
+	tail = (void *)((char *)undo + bytes - sizeof(*tail));
+	tail->tail_signature = HAMMER_TAIL_SIGNATURE;
+	tail->tail_type = HAMMER_HEAD_TYPE_UNDO;
+	tail->tail_size = bytes;
+
 	undo->head.hdr_crc = crc32(undo, bytes);
 	hammer_modify_buffer_done(buffer);
 

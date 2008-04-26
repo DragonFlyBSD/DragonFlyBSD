@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.49 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.50 2008/04/26 02:54:00 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -230,6 +230,9 @@ typedef struct hammer_inode *hammer_inode_t;
 				 HAMMER_INODE_ITIMES|HAMMER_INODE_TRUNCATED)
 
 #define HAMMER_MAX_INODE_CURSORS	4
+
+#define HAMMER_FLUSH_SIGNAL	0x0001
+#define HAMMER_FLUSH_FORCE	0x0002
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  This
@@ -468,6 +471,7 @@ struct hammer_mount {
 	int	flusher_seq;
 	int	flusher_act;
 	int	flusher_exiting;
+	int	reclaim_count;
 	thread_t flusher_td;
 	u_int	check_interrupt;
 	uuid_t	fsid;
@@ -478,6 +482,7 @@ struct hammer_mount {
 	struct hammer_io_list meta_list;	/* dirty meta bufs    */
 	struct hammer_io_list lose_list;	/* loose buffers      */
 	int	locked_dirty_count;		/* meta/volu count    */
+	int	io_running_count;
 	hammer_tid_t asof;
 	hammer_off_t next_tid;
 	u_int32_t namekey_iterator;
@@ -685,7 +690,7 @@ void hammer_done_transaction(struct hammer_transaction *trans);
 
 void hammer_modify_inode(struct hammer_transaction *trans,
 			hammer_inode_t ip, int flags);
-void hammer_flush_inode(hammer_inode_t ip, int forceit);
+void hammer_flush_inode(hammer_inode_t ip, int flags);
 void hammer_flush_inode_done(hammer_inode_t ip);
 void hammer_wait_inode(hammer_inode_t ip);
 
@@ -744,6 +749,8 @@ void hammer_flusher_create(hammer_mount_t hmp);
 void hammer_flusher_destroy(hammer_mount_t hmp);
 void hammer_flusher_sync(hammer_mount_t hmp);
 void hammer_flusher_async(hammer_mount_t hmp);
+
+int hammer_recover(hammer_mount_t hmp, hammer_volume_t rootvol);
 
 #endif
 

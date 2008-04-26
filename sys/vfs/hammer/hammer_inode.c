@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.37 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.38 2008/04/26 02:54:00 dillon Exp $
  */
 
 #include "hammer.h"
@@ -422,7 +422,7 @@ retry:
 
 		if (error == 0) {
 			error = hammer_ip_delete_record(&cursor, trans->tid);
-			if (error) {
+			if (error && error != EDEADLK) {
 				kprintf("error %d\n", error);
 				Debugger("hammer_update_inode2");
 			}
@@ -470,6 +470,15 @@ retry:
 				ip->flags |= HAMMER_INODE_ONDISK;
 			}
 		}
+	}
+	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED)) { 
+		/*
+		 * Clean out any left-over flags if the inode has been
+		 * destroyed.
+		 */
+		ip->sync_flags &= ~(HAMMER_INODE_RDIRTY |
+				    HAMMER_INODE_DDIRTY |
+				    HAMMER_INODE_ITIMES);
 	}
 	return(error);
 }
@@ -537,28 +546,56 @@ retry:
 void
 hammer_rel_inode(struct hammer_inode *ip, int flush)
 {
-	if (ip->lock.refs == 1) {
+	/*
+	 * Handle disposition when dropping the last ref.
+	 */
+	while (ip->lock.refs == 1) {
 		if (curthread == ip->hmp->flusher_td) {
 			/*
-			 * We are the flusher, actually dispose of the inode.
-			 * The unload routine inherits our (last) reference.
+			 * We are the flusher, do any required flushes
+			 * before unloading the inode.
 			 */
+			int error = 0;
+
 			KKASSERT(ip->flush_state == HAMMER_FST_IDLE);
-			KKASSERT(ip->cursor_ip_refs == 0);
+			while (error == 0 &&
+			       (ip->flags & HAMMER_INODE_MODMASK)) {
+				hammer_ref(&ip->lock);
+				hammer_flush_inode_copysync(ip);
+				error = hammer_sync_inode(ip, 1);
+				hammer_flush_inode_done(ip);
+			}
+			if (error)
+				kprintf("hammer_sync_inode failed error %d\n",
+					error);
+			if (ip->lock.refs > 1)
+				continue;
 			hammer_unload_inode(ip, (void *)MNT_NOWAIT);
-		} else {
-			/*
-			 * flush_list inherits our last reference.
-			 *
-			 * Only the flusher can actually destroy the inode,
-			 * there had better still be a ref on it if we aren't
-			 * it.
-			 */
-			hammer_flush_inode(ip, 1);
-			KKASSERT(ip->lock.refs > 1);
-			hammer_unref(&ip->lock);
+			return;
 		}
-	} else if (flush && ip->flush_state == HAMMER_FST_IDLE &&
+		if ((ip->flags & HAMMER_INODE_MODMASK) == 0) {
+			hammer_unload_inode(ip, (void *)MNT_NOWAIT);
+			return;
+		}
+
+		/*
+		 * Hand the inode over to the flusher, which will
+		 * add another ref to it.
+		 */
+		if (++ip->hmp->reclaim_count > 256) {
+			ip->hmp->reclaim_count = 0;
+			hammer_flush_inode(ip, HAMMER_FLUSH_FORCE |
+						HAMMER_FLUSH_SIGNAL);
+		} else {
+			hammer_flush_inode(ip, HAMMER_FLUSH_FORCE);
+		}
+		/* retry */
+	}
+
+	/*
+	 * Inode still has multiple refs
+	 */
+	if (flush && ip->flush_state == HAMMER_FST_IDLE &&
 		   curthread != ip->hmp->flusher_td) {
 		/*
 		 * Flush requested, make the inode visible to the flusher.
@@ -589,32 +626,25 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 static int
 hammer_unload_inode(struct hammer_inode *ip, void *data)
 {
-	int error;
 
 	KASSERT(ip->lock.refs == 1,
 		("hammer_unload_inode: %d refs\n", ip->lock.refs));
 	KKASSERT(ip->vp == NULL);
+	KKASSERT(ip->flush_state == HAMMER_FST_IDLE);
+	KKASSERT(ip->cursor_ip_refs == 0);
+	KKASSERT((ip->flags & HAMMER_INODE_MODMASK) == 0);
 
-	do {
-		hammer_flush_inode_copysync(ip);
-		error = hammer_sync_inode(ip, 1);
-	} while (error == 0 && (ip->flags & HAMMER_INODE_MODMASK));
+	KKASSERT(RB_EMPTY(&ip->rec_tree));
+	KKASSERT(TAILQ_EMPTY(&ip->bio_list));
+	KKASSERT(TAILQ_EMPTY(&ip->bio_alt_list));
 
-	if (error)
-		kprintf("hammer_sync_inode failed error %d\n", error);
-	if (ip->lock.refs == 1) {
-		KKASSERT(RB_EMPTY(&ip->rec_tree));
-		KKASSERT(TAILQ_EMPTY(&ip->bio_list));
-		KKASSERT(TAILQ_EMPTY(&ip->bio_alt_list));
-		RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
+	RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
 
-		hammer_uncache_node(&ip->cache[0]);
-		hammer_uncache_node(&ip->cache[1]);
-		--hammer_count_inodes;
-		kfree(ip, M_HAMMER);
-	} else {
-		hammer_flush_inode_done(ip);
-	}
+	hammer_uncache_node(&ip->cache[0]);
+	hammer_uncache_node(&ip->cache[1]);
+	--hammer_count_inodes;
+	kfree(ip, M_HAMMER);
+
 	return(0);
 }
 
@@ -650,7 +680,7 @@ hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
  * troublesome because some dirty buffers may not have been queued yet.
  */
 void
-hammer_flush_inode(hammer_inode_t ip, int forceit)
+hammer_flush_inode(hammer_inode_t ip, int flags)
 {
 	if (ip->flush_state != HAMMER_FST_IDLE &&
 	    (ip->flags & HAMMER_INODE_MODMASK)) {
@@ -658,17 +688,20 @@ hammer_flush_inode(hammer_inode_t ip, int forceit)
 		return;
 	}
 	hammer_lock_ex(&ip->lock);
-	if (ip->flush_state == HAMMER_FST_IDLE &&
-	    ((ip->flags & HAMMER_INODE_MODMASK) || forceit)) {
-		hammer_ref(&ip->lock);
+	if (ip->flush_state == HAMMER_FST_IDLE) {
+		if ((ip->flags & HAMMER_INODE_MODMASK) ||
+		    (flags & HAMMER_FLUSH_FORCE)) {
+			hammer_ref(&ip->lock);
 
-		hammer_flush_inode_copysync(ip);
-		/*
-		 * Move the inode to the flush list and add a ref to it
-		 * representing it on the list.
-		 */
-		TAILQ_INSERT_TAIL(&ip->hmp->flush_list, ip, flush_entry);
-		hammer_flusher_async(ip->hmp);
+			hammer_flush_inode_copysync(ip);
+			/*
+			 * Move the inode to the flush list and add a ref to
+			 * it representing it on the list.
+			 */
+			TAILQ_INSERT_TAIL(&ip->hmp->flush_list, ip, flush_entry);
+			if (flags & HAMMER_FLUSH_SIGNAL)
+				hammer_flusher_async(ip->hmp);
+		}
 	}
 	hammer_unlock(&ip->lock);
 }
@@ -780,6 +813,7 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	while ((bio = TAILQ_FIRST(&ip->bio_alt_list)) != NULL) {
 		TAILQ_REMOVE(&ip->bio_alt_list, bio, bio_act);
 		TAILQ_INSERT_TAIL(&ip->bio_list, bio, bio_act);
+		ip->flags |= HAMMER_INODE_XDIRTY;
 		ip->flags |= HAMMER_INODE_REFLUSH;
 		kprintf("rebio %p ip %p @%016llx,%d\n", bio, ip, bio->bio_offset, bio->bio_buf->b_bufsize);
 	}
@@ -790,7 +824,6 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	 */
 	if (ip->flags & HAMMER_INODE_REFLUSH) {
 		ip->flags &= ~HAMMER_INODE_REFLUSH;
-		kprintf("reflush %p\n", ip);
 		hammer_flush_inode(ip, 0);
 	} else {
 		if (ip->flags & HAMMER_INODE_FLUSHW) {

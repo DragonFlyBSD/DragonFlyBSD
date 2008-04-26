@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.26 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.27 2008/04/26 02:54:00 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -383,6 +383,7 @@ hammer_io_flush(struct hammer_io *io)
 	 */
 	io->released = 1;
 	io->running = 1;
+	++io->hmp->io_running_count;
 	bawrite(bp);
 }
 
@@ -562,12 +563,18 @@ hammer_io_complete(struct buf *bp)
 
 	KKASSERT(iou->io.released == 1);
 
+	if (iou->io.running) {
+		if (--iou->io.hmp->io_running_count == 0)
+			wakeup(&iou->io.hmp->io_running_count);
+		KKASSERT(iou->io.hmp->io_running_count >= 0);
+		iou->io.running = 0;
+	}
+
 	/*
 	 * If no lock references remain and we can acquire the IO lock and
 	 * someone at some point wanted us to flush (B_LOCKED test), then
 	 * try to dispose of the IO.
 	 */
-	iou->io.running = 0;
 	if (iou->io.waiting) {
 		iou->io.waiting = 0;
 		wakeup(iou);
@@ -617,7 +624,6 @@ hammer_io_deallocate(struct buf *bp)
 		hammer_io_disassociate(iou, 0);
 		if (iou->io.bp == NULL && 
 		    iou->io.type != HAMMER_STRUCTURE_VOLUME) {
-			kprintf("ADD LOOSE %p\n", &iou->io);
 			KKASSERT(iou->io.mod_list == NULL);
 			iou->io.mod_list = &iou->io.hmp->lose_list;
 			TAILQ_INSERT_TAIL(iou->io.mod_list, &iou->io, mod_entry);
@@ -685,6 +691,13 @@ hammer_io_checkwrite(struct buf *bp)
 		io->mod_list = NULL;
 		io->modified = 0;
 	}
+
+	/*
+	 * The kernel is going to start the IO, set io->running.
+	 */
+	KKASSERT(io->running == 0);
+	io->running = 1;
+	++io->hmp->io_running_count;
 	return(0);
 }
 

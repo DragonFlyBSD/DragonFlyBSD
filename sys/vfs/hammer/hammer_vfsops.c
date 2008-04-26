@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.27 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.28 2008/04/26 02:54:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -289,7 +289,20 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	rootvol = hammer_get_root_volume(hmp, &error);
 	if (error)
+		goto failed;
+
+	/*
+	 * Perform any necessary UNDO operations
+	 */
+	error = hammer_recover(hmp, rootvol);
+	if (error) {
+		kprintf("Failed to recover HAMMER filesystem on mount\n");
 		goto done;
+	}
+
+	/*
+	 * Finish setup now that we have a good root volume
+	 */
 	ksnprintf(mp->mnt_stat.f_mntfromname,
 		  sizeof(mp->mnt_stat.f_mntfromname), "%s",
 		  rootvol->ondisk->vol_name);
@@ -300,8 +313,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	hmp->next_tid = rootvol->ondisk->vol0_next_tid;
 	kprintf("on-disk next_tid %016llx\n", hmp->next_tid);
-
-	hammer_rel_volume(rootvol, 0);
 
 	hammer_flusher_create(hmp);
 
@@ -319,6 +330,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	/*vn_unlock(hmp->rootvp);*/
 
 done:
+	hammer_rel_volume(rootvol, 0);
+failed:
 	/*
 	 * Cleanup and return.
 	 */

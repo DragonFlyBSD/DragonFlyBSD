@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.3 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.4 2008/04/26 02:54:00 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -53,17 +53,21 @@ hammer_flusher_sync(hammer_mount_t hmp)
 {
 	int seq;
 
-	seq = ++hmp->flusher_seq;
-	wakeup(&hmp->flusher_seq);
-	while ((int)(seq - hmp->flusher_act) > 0)
-		tsleep(&hmp->flusher_act, 0, "hmrfls", 0);
+	if (hmp->flusher_td) {
+		seq = ++hmp->flusher_seq;
+		wakeup(&hmp->flusher_seq);
+		while ((int)(seq - hmp->flusher_act) > 0)
+			tsleep(&hmp->flusher_act, 0, "hmrfls", 0);
+	}
 }
 
 void
 hammer_flusher_async(hammer_mount_t hmp)
 {
-	++hmp->flusher_seq;
-	wakeup(&hmp->flusher_seq);
+	if (hmp->flusher_td) {
+		++hmp->flusher_seq;
+		wakeup(&hmp->flusher_seq);
+	}
 }
 
 void
@@ -76,11 +80,13 @@ hammer_flusher_create(hammer_mount_t hmp)
 void
 hammer_flusher_destroy(hammer_mount_t hmp)
 {
-	hmp->flusher_exiting = 1;
-	++hmp->flusher_seq;
-	wakeup(&hmp->flusher_seq);
-	while (hmp->flusher_td)
-		tsleep(&hmp->flusher_exiting, 0, "hmrwex", 0);
+	if (hmp->flusher_td) {
+		hmp->flusher_exiting = 1;
+		++hmp->flusher_seq;
+		wakeup(&hmp->flusher_seq);
+		while (hmp->flusher_td)
+			tsleep(&hmp->flusher_exiting, 0, "hmrwex", 0);
+	}
 }
 
 static void
@@ -122,7 +128,6 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 		TAILQ_REMOVE(io->mod_list, io, mod_entry);
 		io->mod_list = NULL;
 		hammer_ref(&io->lock);
-		kprintf("DELETE LOOSE %p\n", io);
 		buffer = (void *)io;
 		hammer_rel_buffer(buffer, 0);
 	}
@@ -143,6 +148,9 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	root_volume = hammer_get_root_volume(hmp, &error);
 	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 	start_offset = rootmap->next_offset;
+
+	if (hammer_debug_general & 0x00010000)
+		kprintf("x");
 
 	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
 		TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
@@ -177,8 +185,6 @@ hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
 	hammer_blockmap_t rootmap;
 	hammer_io_t io;
 
-	kprintf("FINALIZE %d\n", hmp->locked_dirty_count);
-
 	/*
 	 * Flush undo bufs
 	 */
@@ -202,26 +208,34 @@ hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
 	}
 
 	/*
-	 * XXX wait for I/O's to complete
+	 * Wait for I/O to complete
 	 */
+	crit_enter();
+	while (hmp->io_running_count) {
+		kprintf("WAIT1 %d\n", hmp->io_running_count);
+		tsleep(&hmp->io_running_count, 0, "hmrfl1", 0);
+	}
+	crit_exit();
 
 	/*
 	 * Update the volume header
 	 */
 	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 	if (rootmap->first_offset != start_offset) {
-		kprintf("FINALIZE: ACTIVE VOLUME STAGE 1\n");
 		hammer_modify_volume(NULL, root_volume, NULL, 0);
 		rootmap->first_offset = start_offset;
 		hammer_modify_volume_done(root_volume);
 		hammer_io_flush(&root_volume->io);
-	} else {
-		kprintf("FINALIZE: ACTIVE VOLUME STAGE 2\n");
 	}
 
 	/*
-	 * XXX wait for I/O to complete
+	 * Wait for I/O to complete
 	 */
+	crit_enter();
+	while (hmp->io_running_count) {
+		tsleep(&hmp->io_running_count, 0, "hmrfl2", 0);
+	}
+	crit_exit();
 
 	/*
 	 * Flush meta-data

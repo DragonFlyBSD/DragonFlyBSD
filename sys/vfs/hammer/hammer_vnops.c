@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.39 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.40 2008/04/26 02:54:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -172,7 +172,7 @@ hammer_vop_fsync(struct vop_fsync_args *ap)
 {
 	hammer_inode_t ip = VTOI(ap->a_vp);
 
-	hammer_flush_inode(ip, 0);
+	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 	if (ap->a_waitfor == MNT_WAIT)
 		hammer_wait_inode(ip);
 	return (ip->error);
@@ -1896,7 +1896,8 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	else
 		TAILQ_INSERT_TAIL(&ip->bio_list, bio, bio_act);
 	hammer_modify_inode(NULL, ip, HAMMER_INODE_XDIRTY);
-	hammer_flush_inode(ip, 0);
+	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+	kprintf("a");
 	return(0);
 }
 
