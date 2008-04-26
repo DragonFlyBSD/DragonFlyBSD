@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.40 2008/04/21 15:23:22 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.41 2008/04/26 23:09:40 sephe Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -368,21 +368,15 @@ usb_add_task(usbd_device_handle dev, struct usb_task *task, int queue)
 
 	crit_enter();
 
-	/*
-	 * Wait if task is currently executing
-	 */
-	while (task->queue == -2)
-		tsleep(task, 0, "usbwttsk", hz);
-
 	taskq = &usb_taskq[queue];
 	if (task->queue == -1) {
 		DPRINTFN(2,("usb_add_task: task=%p\n", task));
 		TAILQ_INSERT_TAIL(&taskq->tasks, task, next);
 		task->queue = queue;
-		wakeup(&taskq->tasks);
 	} else {
 		DPRINTFN(3,("usb_add_task: task=%p on q\n", task));
 	}
+	wakeup(&taskq->tasks);
 
 	crit_exit();
 }
@@ -395,27 +389,18 @@ usb_do_task(usbd_device_handle dev, struct usb_task *task, int queue,
 
 	crit_enter();
 
-	/*
-	 * Wait if task is currently executing
-	 */
-	while (task->queue == -2)
-		tsleep(task, 0, "usbwttsk", hz);
-
 	taskq = &usb_taskq[queue];
 	if (task->queue == -1) {
 		DPRINTFN(2,("usb_add_task: task=%p\n", task));
 		TAILQ_INSERT_TAIL(&taskq->tasks, task, next);
 		task->queue = queue;
-		wakeup(&taskq->tasks);
 	} else {
 		DPRINTFN(3,("usb_add_task: task=%p on q\n", task));
 	}
+	wakeup(&taskq->tasks);
 
-	/*
-	 * Wait until task is completely finished
-	 */
-	while (task->queue != -1)
-		tsleep(task, 0, "usbwttsk", hz);
+	/* Wait until task is finished */
+	tsleep((&taskq->tasks + 1), 0, "usbdotsk", time_out);
 
 	crit_exit();
 }
@@ -424,16 +409,6 @@ void
 usb_rem_task(usbd_device_handle dev, struct usb_task *task)
 {
 	crit_enter();
-
-	/*
-	 * Wait if task is currently executing, we can't remove it now!
-	 */
-	while (task->queue == -2)
-		tsleep(task, 0, "usbwttsk", hz);
-
-	/*
-	 * Remove the task if it has not started executing yet.
-	 */
 	if (task->queue != -1) {
 		TAILQ_REMOVE(&usb_taskq[task->queue].tasks, task, next);
 		task->queue = -1;
@@ -500,30 +475,20 @@ usb_task_thread(void *arg)
 	DPRINTF(("usb_task_thread: start taskq %s\n", taskq->name));
 
 	while (usb_ndevs > 0) {
-		/*
-		 * Wait for work
-		 */
-		if ((task = TAILQ_FIRST(&taskq->tasks)) == NULL) {
+		task = TAILQ_FIRST(&taskq->tasks);
+		if (task == NULL) {
 			tsleep(&taskq->tasks, 0, "usbtsk", 0);
-			continue;
+			task = TAILQ_FIRST(&taskq->tasks);
 		}
-
-		/*
-		 * De-queue, mark as currently executing and run the
-		 * function.
-		 */
 		DPRINTFN(2,("usb_task_thread: woke up task=%p\n", task));
-		TAILQ_REMOVE(&taskq->tasks, task, next);
-		task->queue = -2;
-		crit_exit();
-		task->fun(task->arg);
-
-		/*
-		 * Mark as complete and wakeup anyone waiting.
-		 */
-		crit_enter();
-		task->queue = -1;
-		wakeup(task);
+		if (task != NULL) {
+			TAILQ_REMOVE(&taskq->tasks, task, next);
+			task->queue = -1;
+			crit_exit();
+			task->fun(task->arg);
+			crit_enter();
+			wakeup((&taskq->tasks + 1));
+		}
 	}
 
 	crit_exit();
