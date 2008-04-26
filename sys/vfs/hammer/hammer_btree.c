@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.38 2008/04/26 08:02:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.39 2008/04/26 19:08:14 dillon Exp $
  */
 
 /*
@@ -653,6 +653,9 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
  * The caller must call hammer_btree_lookup() with the HAMMER_CURSOR_INSERT
  * flag set and that call must return ENOENT before this function can be
  * called.
+ *
+ * The caller may depend on the cursor's exclusive lock after return to
+ * interlock frontend visibility (see HAMMER_RECF_CONVERT_DELETE_ONDISK).
  *
  * ENOSPC is returned if there is no room to insert a new record.
  */

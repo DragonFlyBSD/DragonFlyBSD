@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.51 2008/04/26 08:02:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.52 2008/04/26 19:08:14 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -275,13 +275,19 @@ struct hammer_record {
 
 typedef struct hammer_record *hammer_record_t;
 
+/*
+ * Record flags.  Note that FE can only be set by the frontend if the
+ * record has not been interlocked by the backend w/ BE.
+ */
 #define HAMMER_RECF_ALLOCDATA		0x0001
 #define HAMMER_RECF_ONRBTREE		0x0002
 #define HAMMER_RECF_DELETED_FE		0x0004	/* deleted (frontend) */
-#define HAMMER_RECF_INBAND		0x0008
-#define HAMMER_RECF_DELETED_BE		0x0010	/* deleted (backend) */
-#define HAMMER_RECF_WANTED		0x0020
-#define HAMMER_RECF_DELETE_ONDISK	0x0040
+#define HAMMER_RECF_DELETED_BE		0x0008	/* deleted (backend) */
+#define HAMMER_RECF_INBAND		0x0010
+#define HAMMER_RECF_INTERLOCK_BE	0x0020	/* backend interlock */
+#define HAMMER_RECF_WANTED		0x0040
+#define HAMMER_RECF_DELETE_ONDISK	0x0080
+#define HAMMER_RECF_CONVERT_DELETE_ONDISK 0x0100 /* special case */
 
 /*
  * In-memory structures representing on-disk structures.
@@ -567,11 +573,10 @@ int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
 
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip);
-void	hammer_flush_record_done(hammer_record_t record);
+void	hammer_flush_record_done(hammer_record_t record, int error);
 void	hammer_wait_mem_record(hammer_record_t record);
 void	hammer_rel_mem_record(hammer_record_t record);
-void	hammer_delete_mem_record(hammer_record_t record);
-
+void	hammer_cleardep_mem_record(struct hammer_record *record);
 
 int	hammer_cursor_up(hammer_cursor_t cursor);
 int	hammer_cursor_down(hammer_cursor_t cursor);

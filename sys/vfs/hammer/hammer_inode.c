@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.39 2008/04/26 08:02:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.40 2008/04/26 19:08:14 dillon Exp $
  */
 
 #include "hammer.h"
@@ -464,13 +464,23 @@ retry:
 		record->rec.inode.base.base.create_tid = trans->tid;
 		record->rec.inode.base.data_len = sizeof(ip->sync_ino_data);
 		record->data = (void *)&ip->sync_ino_data;
+		record->flags |= HAMMER_RECF_INTERLOCK_BE;
 		error = hammer_ip_sync_record(trans, record);
 		if (error) {
 			kprintf("error %d\n", error);
 			Debugger("hammer_update_inode3");
 		}
-		hammer_delete_mem_record(record);
+
+		/*
+		 * The record isn't managed by the inode's record tree,
+		 * destroy it whether we succeed or fail.
+		 */
+		record->flags &= ~HAMMER_RECF_INTERLOCK_BE;
+		record->flags |= HAMMER_RECF_DELETED_FE;
+		record->state = HAMMER_FST_IDLE;
+		KKASSERT(TAILQ_FIRST(&record->depend_list) == NULL);
 		hammer_rel_mem_record(record);
+
 		if (error == 0) {
 			ip->sync_flags &= ~(HAMMER_INODE_RDIRTY |
 					    HAMMER_INODE_DDIRTY |
@@ -785,7 +795,12 @@ hammer_flush_inode_copysync(hammer_inode_t ip)
 
 /*
  * Mark records for backend flush, accumulate a count of the number of
- * records which could not be marked.
+ * records which could not be marked.  Records marked for deletion
+ * by the frontend never make it to the media.  It is possible for
+ * a record queued to the backend to wind up with FE set after the
+ * fact, as long as BE has not yet been set.  The backend deals with
+ * this race by syncing the record as if FE had not been set, and
+ * then converting the record to a delete-on-disk record.
  */
 static int
 hammer_mark_record_callback(hammer_record_t rec, void *data)
@@ -875,21 +890,35 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	/*
 	 * Skip records that do not belong to the current flush.  Records
 	 * belonging to the flush will have been referenced for us.
-	 *
-	 * Skip records that were deleted by the backend itself.  Records
-	 * deleted by the frontend after their state has changed to FLUSH
-	 * are not considered to be deleted by the backend.
-	 *
-	 * XXX special delete-on-disk records can be deleted by the backend
-	 * prior to the sync due to a truncation operation.  This is kinda 
-	 * a hack to deal with it.
 	 */
 	if (record->state != HAMMER_FST_FLUSH)
 		return(0);
-	if (record->flags & HAMMER_RECF_DELETED_BE) {
-		hammer_flush_record_done(record);
+
+	/*
+	 * Interlock the record using the BE flag.  Once BE is set the
+	 * frontend cannot change the state of FE.
+	 *
+	 * NOTE: If FE is set prior to us setting BE we still sync the
+	 * record out, but the flush completion code converts it to 
+	 * a delete-on-disk record instead of destroying it.
+	 */
+	hammer_lock_ex(&record->lock);
+	if (record->flags & HAMMER_RECF_INTERLOCK_BE) {
+		hammer_unlock(&record->lock);
 		return(0);
 	}
+	record->flags |= HAMMER_RECF_INTERLOCK_BE;
+
+	/*
+	 * If DELETED_FE is set we may have already sent dependant pieces
+	 * to the disk and we must flush the record as if it hadn't been
+	 * deleted.  This creates a bit of a mess because we have to
+	 * have ip_sync_record convert the record to DELETE_ONDISK before
+	 * it inserts the B-Tree record.  Otherwise the media sync might
+	 * be visible to the frontend.
+	 */
+	if (record->flags & HAMMER_RECF_DELETED_FE)
+		record->flags |= HAMMER_RECF_CONVERT_DELETE_ONDISK;
 
 	/*
 	 * Assign the create_tid for new records.  Deletions already
@@ -907,7 +936,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 			Debugger("sync failed rec");
 		}
 	}
-	hammer_flush_record_done(record);
+	hammer_flush_record_done(record, error);
 	return(error);
 }
 
@@ -997,7 +1026,7 @@ hammer_sync_inode(hammer_inode_t ip, int handle_delete)
 			hammer_record_t rec;
 
 			RB_FOREACH(rec, hammer_rec_rb_tree, &ip->rec_tree) {
-				KKASSERT(rec->flags & HAMMER_RECF_DELETED_BE);
+				KKASSERT(rec->state == HAMMER_FST_FLUSH);
 			}
 		}
 
@@ -1110,12 +1139,13 @@ hammer_sync_inode(hammer_inode_t ip, int handle_delete)
 		ip->sync_flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
 				    HAMMER_INODE_XDIRTY|HAMMER_INODE_ITIMES);
 		while (RB_ROOT(&ip->rec_tree)) {
-			hammer_record_t rec = RB_ROOT(&ip->rec_tree);
-			hammer_ref(&rec->lock);
-			KKASSERT(rec->lock.refs == 1);
-			hammer_delete_mem_record(rec);
-			rec->flags |= HAMMER_RECF_DELETED_BE;
-			hammer_rel_mem_record(rec);
+			hammer_record_t record = RB_ROOT(&ip->rec_tree);
+			hammer_ref(&record->lock);
+			KKASSERT(record->lock.refs == 1);
+			record->flags |= HAMMER_RECF_DELETED_FE;
+			record->flags |= HAMMER_RECF_DELETED_BE;
+			hammer_cleardep_mem_record(record);
+			hammer_rel_mem_record(record);
 		}
 		break;
 	case HAMMER_INODE_ONDISK:

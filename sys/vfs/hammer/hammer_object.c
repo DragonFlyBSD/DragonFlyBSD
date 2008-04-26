@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.44 2008/04/26 08:02:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.45 2008/04/26 19:08:14 dillon Exp $
  */
 
 #include "hammer.h"
@@ -70,7 +70,7 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 		return(1);
 
 	/*
-	 * Never match against a deleted item.
+	 * Never match against an item deleted by the front-end.
 	 */
 	if (rec1->flags & HAMMER_RECF_DELETED_FE)
 		return(1);
@@ -184,16 +184,46 @@ hammer_wait_mem_record(hammer_record_t record)
 }
 
 /*
- * Called from the backend, hammer_inode.c, when a record has been
- * flushed to disk.
+ * Called from the backend, hammer_inode.c, after a record has been
+ * flushed to disk.  The record has been exclusively locked by the
+ * caller and interlocked with BE.
  *
- * The backend has likely marked this record for deletion as well.
+ * We clean up the state, unlock, and release the record (the record
+ * was referenced by the fact that it was in the HAMMER_FST_FLUSH state).
  */
 void
-hammer_flush_record_done(hammer_record_t record)
+hammer_flush_record_done(hammer_record_t record, int error)
 {
 	KKASSERT(record->state == HAMMER_FST_FLUSH);
+	KKASSERT(record->flags & HAMMER_RECF_INTERLOCK_BE);
+
+	if (error) {
+		/*
+		 * An error occured, the backend was unable to sync the
+		 * record to its media.  Leave the record intact.
+		 */
+	} else if (record->flags & HAMMER_RECF_CONVERT_DELETE_ONDISK) {
+		/*
+		 *
+		 */
+		if (record->flags & HAMMER_RECF_DELETED_BE) {
+			record->flags |= HAMMER_RECF_DELETED_FE;
+			hammer_cleardep_mem_record(record);
+		} else {
+			KKASSERT(record->flags & HAMMER_RECF_DELETE_ONDISK);
+		}
+	} else {
+		/*
+		 * Normal completion, record has been disposed of (by
+		 * having been synchronized to the media).
+		 */
+		record->flags |= HAMMER_RECF_DELETED_FE;
+		hammer_cleardep_mem_record(record);
+	}
 	record->state = HAMMER_FST_IDLE;
+	record->flags &= ~HAMMER_RECF_INTERLOCK_BE;
+	record->flags &= ~HAMMER_RECF_CONVERT_DELETE_ONDISK;
+	hammer_unlock(&record->lock);
 	if (record->flags & HAMMER_RECF_WANTED) {
 		record->flags &= ~HAMMER_RECF_WANTED;
 		wakeup(record);
@@ -202,19 +232,18 @@ hammer_flush_record_done(hammer_record_t record)
 }
 
 /*
- * Destroy a memory record.  The record is marked deleted and will
- * be freed when the last reference goes away.   Any dependancies are
- * also destroyed.
+ * Clear dependancies associated with a memory record.
  */
 void
-hammer_delete_mem_record(hammer_record_t record)
+hammer_cleardep_mem_record(struct hammer_record *record)
 {
 	hammer_depend_t depend;
 
-	record->flags |= HAMMER_RECF_DELETED_FE;
 	while ((depend = TAILQ_FIRST(&record->depend_list)) != NULL) {
-		TAILQ_REMOVE(&record->depend_list, depend, rec_entry);
-		TAILQ_REMOVE(&depend->ip->depend_list, depend, ip_entry);
+		TAILQ_REMOVE(&record->depend_list, depend,
+			     rec_entry);
+		TAILQ_REMOVE(&depend->ip->depend_list, depend,
+			     ip_entry);
 		--depend->ip->depend_count;
 		/* NOTE: inode is not flushed */
 		hammer_rel_inode(depend->ip, 0);
@@ -236,6 +265,9 @@ hammer_rel_mem_record(struct hammer_record *record)
 
 	if (record->flags & HAMMER_RECF_DELETED_FE) {
 		if (record->lock.refs == 0) {
+			KKASSERT(record->state == HAMMER_FST_IDLE);
+			KKASSERT(TAILQ_FIRST(&record->depend_list) == NULL);
+
 			if (record->flags & HAMMER_RECF_ONRBTREE) {
 				RB_REMOVE(hammer_rec_rb_tree,
 					  &record->ip->rec_tree,
@@ -253,14 +285,6 @@ hammer_rel_mem_record(struct hammer_record *record)
 			return;
 		}
 	}
-
-	/*
-	 * If someone wanted the record wake them up.
-	 */
-	if (record->flags & HAMMER_RECF_WANTED) {
-		record->flags &= ~HAMMER_RECF_WANTED;
-		wakeup(record);
-	}
 }
 
 /*
@@ -272,7 +296,7 @@ int
 hammer_ip_iterate_mem_good(hammer_cursor_t cursor, hammer_record_t rec)
 {
 	if (cursor->flags & HAMMER_CURSOR_BACKEND) {
-		if (rec->flags & HAMMER_RECF_DELETED_BE)
+		if (rec->flags & HAMMER_RECF_INTERLOCK_BE)
 			return(0);
 	} else {
 		if (rec->flags & HAMMER_RECF_DELETED_FE)
@@ -547,13 +571,14 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		 * only be called from the backend.
 		 */
 		record = cursor->iprec;
-		if (record->state == HAMMER_FST_FLUSH) {
+		if (record->flags & HAMMER_RECF_INTERLOCK_BE) {
 			KKASSERT(cursor->deadlk_rec == NULL);
 			hammer_ref(&record->lock);
 			cursor->deadlk_rec = record;
 			error = EDEADLK;
 		} else {
-			hammer_delete_mem_record(cursor->iprec);
+			record->flags |= HAMMER_RECF_DELETED_FE;
+			hammer_cleardep_mem_record(record);
 			error = 0;
 		}
 	} else {
@@ -756,10 +781,9 @@ done:
  *
  * Any inode dependancies will queue the inode to the backend.
  *
- * NOTE: The frontend can mark the record deleted while it is queued to
- * the backend.  The deletion applies to a frontend operation and the
- * record must be treated as NOT having been deleted on the backend, so
- * we ignore the flag.
+ * This routine can only be called by the backend and the record
+ * must have been interlocked with BE.  It will remain interlocked on
+ * return.  The caller is responsible for the record's disposition.
  */
 int
 hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t record)
@@ -773,7 +797,16 @@ hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t record)
 	int error;
 
 	KKASSERT(record->state == HAMMER_FST_FLUSH);
+	KKASSERT(record->flags & HAMMER_RECF_INTERLOCK_BE);
 
+	/*
+	 * XXX A record with a dependancy is typically a directory record.
+	 * The related inode must also be synchronized.  This code is not
+	 * currently synchronizing the inode atomically. XXX
+	 *
+	 * XXX Additional dependancies from the frontend might be added while
+	 * the backend is syncing the record?
+	 */
 	while ((depend = TAILQ_FIRST(&record->depend_list)) != NULL) {
 		TAILQ_REMOVE(&record->depend_list, depend, rec_entry);
 		TAILQ_REMOVE(&depend->ip->depend_list, depend, ip_entry);
@@ -794,6 +827,7 @@ retry:
 	if (error)
 		return(error);
 	cursor.key_beg = record->rec.base.base;
+	cursor.flags |= HAMMER_CURSOR_BACKEND;
 
 	/*
 	 * If we are deleting an exact match must be found on-disk.
@@ -802,8 +836,6 @@ retry:
 		error = hammer_btree_lookup(&cursor);
 		if (error == 0)
 			error = hammer_ip_delete_record(&cursor, trans->tid);
-		if (error == 0)
-			hammer_delete_mem_record(record);
 		goto done;
 	}
 
@@ -906,17 +938,25 @@ retry:
 	error = hammer_btree_insert(&cursor, &elm);
 
 	/*
-	 * Clean up on success, or fall through on error.
+	 * This occurs when the frontend creates a record and queues it to
+	 * the backend, then tries to delete the record.  The backend must
+	 * still sync the record to the media as if it were not deleted,
+	 * but must interlock with the frontend to ensure that the 
+	 * synchronized record is not visible to the frontend, which means
+	 * converted the 'deleted' record to a delete-on-disk record.
 	 */
-	if (error == 0) {
-		hammer_delete_mem_record(record);
-		goto done;
+	if (error == 0 && (record->flags & HAMMER_RECF_CONVERT_DELETE_ONDISK)) {
+                KKASSERT((record->flags & HAMMER_RECF_DELETE_ONDISK) == 0);
+                record->flags |= HAMMER_RECF_DELETE_ONDISK;
+                record->flags &= ~HAMMER_RECF_DELETED_FE;
 	}
 
 	/*
-	 * Try to unwind the allocation
+	 * If the error occured unwind the operation.
 	 */
-	hammer_blockmap_free(trans, rec_offset, HAMMER_RECORD_SIZE);
+	if (error)
+		hammer_blockmap_free(trans, rec_offset, HAMMER_RECORD_SIZE);
+
 done:
 	hammer_done_cursor(&cursor);
 	if (error == EDEADLK)
@@ -984,7 +1024,8 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 	 */
 	while (RB_INSERT(hammer_rec_rb_tree, &record->ip->rec_tree, record)) {
 		if (record->rec.base.base.rec_type != HAMMER_RECTYPE_DIRENTRY){
-			hammer_delete_mem_record(record);
+			record->flags |= HAMMER_RECF_DELETED_FE;
+			KKASSERT(TAILQ_FIRST(&record->depend_list) == NULL);
 			hammer_rel_mem_record(record);
 			return (EEXIST);
 		}
@@ -1516,12 +1557,21 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	int error;
 	int dodelete;
 
+	KKASSERT(cursor->flags & HAMMER_CURSOR_BACKEND);
+
 	/*
-	 * In-memory (unsynchronized) records can simply be freed.
+	 * In-memory (unsynchronized) records can simply be freed.  This
+	 * only occurs in range iterations since all other records are
+	 * individually synchronized.  Thus there should be no confusion with
+	 * the interlock.
+	 *
+	 * 
 	 */
 	if (cursor->record == &cursor->iprec->rec) {
-		hammer_delete_mem_record(cursor->iprec);
+		KKASSERT((cursor->iprec->flags & HAMMER_RECF_INTERLOCK_BE) ==0);
+		cursor->iprec->flags |= HAMMER_RECF_DELETED_FE;
 		cursor->iprec->flags |= HAMMER_RECF_DELETED_BE;
+		hammer_cleardep_mem_record(cursor->iprec);
 		return(0);
 	}
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.11 2008/04/26 08:02:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.12 2008/04/26 19:08:14 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,7 +40,9 @@ static int hammer_check_tail_signature(hammer_fifo_tail_t tail,
 			hammer_off_t end_off);
 static void hammer_recover_copy_undo(hammer_off_t undo_offset,
 			char *src, char *dst, int bytes);
+#if 0
 static void hammer_recover_debug_dump(int w, char *buf, int bytes);
+#endif
 static int hammer_recover_undo(hammer_mount_t hmp, hammer_fifo_undo_t undo,
 			int bytes);
 
@@ -317,6 +319,8 @@ hammer_recover_copy_undo(hammer_off_t undo_offset,
 	bcopy(src, dst, bytes);
 }
 
+#if 0
+
 static void
 hammer_recover_debug_dump(int w, char *buf, int bytes)
 {
@@ -330,3 +334,4 @@ hammer_recover_debug_dump(int w, char *buf, int bytes)
 	kprintf("\n");
 }
 
+#endif
