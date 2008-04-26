@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.43 2008/04/26 02:54:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.44 2008/04/26 08:02:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -68,6 +68,15 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 		return(-1);
 	if (rec1->rec.base.base.create_tid > rec2->rec.base.base.create_tid)
 		return(1);
+
+	/*
+	 * Never match against a deleted item.
+	 */
+	if (rec1->flags & HAMMER_RECF_DELETED_FE)
+		return(1);
+	if (rec2->flags & HAMMER_RECF_DELETED_FE)
+		return(-1);
+
         return(0);
 }
 
@@ -160,6 +169,7 @@ hammer_alloc_mem_record(hammer_inode_t ip)
 	record->state = HAMMER_FST_IDLE;
 	record->ip = ip;
 	record->rec.base.base.btype = HAMMER_BTREE_TYPE_RECORD;
+	TAILQ_INIT(&record->depend_list);
 	hammer_ref(&record->lock);
 	return (record);
 }
@@ -191,6 +201,28 @@ hammer_flush_record_done(hammer_record_t record)
 	hammer_rel_mem_record(record);
 }
 
+/*
+ * Destroy a memory record.  The record is marked deleted and will
+ * be freed when the last reference goes away.   Any dependancies are
+ * also destroyed.
+ */
+void
+hammer_delete_mem_record(hammer_record_t record)
+{
+	hammer_depend_t depend;
+
+	record->flags |= HAMMER_RECF_DELETED_FE;
+	while ((depend = TAILQ_FIRST(&record->depend_list)) != NULL) {
+		TAILQ_REMOVE(&record->depend_list, depend, rec_entry);
+		TAILQ_REMOVE(&depend->ip->depend_list, depend, ip_entry);
+		--depend->ip->depend_count;
+		/* NOTE: inode is not flushed */
+		hammer_rel_inode(depend->ip, 0);
+		hammer_unref(&record->lock);
+		KKASSERT(record->lock.refs > 0);
+		kfree(depend, M_HAMMER);
+	}
+}
 
 /*
  * Release a memory record.  Records marked for deletion are immediately
@@ -445,10 +477,12 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 		     struct hammer_inode *ip)
 {
 	hammer_record_t record;
+	hammer_depend_t depend;
 	int error;
 	int bytes;
 
 	record = hammer_alloc_mem_record(dip);
+	depend = kmalloc(sizeof(*depend), M_HAMMER, M_WAITOK|M_ZERO);
 
 	bytes = ncp->nc_nlen;	/* NOTE: terminating \0 is NOT included */
 	if (++trans->hmp->namekey_iterator == 0)
@@ -466,6 +500,19 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	++ip->ino_rec.ino_nlinks;
 	hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
 	/* NOTE: copies record->data */
+
+	/*
+	 * If the inode gets synced cause the directory entry
+	 * to be synced as well, or vise-versa.
+	 */
+	hammer_ref(&record->lock);	/* for depend entry */
+	hammer_ref(&ip->lock);		/* for depend entry */
+	depend->ip = ip;
+	depend->record = record;
+	TAILQ_INSERT_TAIL(&ip->depend_list, depend, ip_entry);
+	TAILQ_INSERT_TAIL(&record->depend_list, depend, rec_entry);
+	++ip->depend_count;
+
 	error = hammer_mem_add(trans, record);
 	return(error);
 }
@@ -486,6 +533,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		     struct hammer_inode *ip)
 {
 	hammer_record_t record;
+	hammer_depend_t depend;
 	int error;
 
 	if (cursor->record == &cursor->iprec->rec) {
@@ -505,7 +553,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 			cursor->deadlk_rec = record;
 			error = EDEADLK;
 		} else {
-			cursor->iprec->flags |= HAMMER_RECF_DELETED_FE;
+			hammer_delete_mem_record(cursor->iprec);
 			error = 0;
 		}
 	} else {
@@ -514,10 +562,24 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		 * the record's key.  This also causes lookups to skip the
 		 * record.
 		 */
+		depend = kmalloc(sizeof(*depend), M_HAMMER, M_WAITOK|M_ZERO);
+
 		record = hammer_alloc_mem_record(dip);
 		record->rec.entry.base.base = cursor->record->base.base;
 		hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
 		record->flags |= HAMMER_RECF_DELETE_ONDISK;
+
+		/*
+		 * If the inode gets synced cause the directory entry
+		 * to be synced as well, or vise-versa.
+		 */
+		hammer_ref(&ip->lock);		/* for depend entry */
+		hammer_ref(&record->lock);	/* for depend entry */
+		depend->ip = ip;
+		depend->record = record;
+		TAILQ_INSERT_TAIL(&ip->depend_list, depend, ip_entry);
+		TAILQ_INSERT_TAIL(&record->depend_list, depend, rec_entry);
+		++ip->depend_count;
 
 		error = hammer_mem_add(trans, record);
 	}
@@ -692,6 +754,8 @@ done:
  * Sync an in-memory record to the disk.  This is called by the backend.
  * This code is responsible for actually writing a record out to the disk.
  *
+ * Any inode dependancies will queue the inode to the backend.
+ *
  * NOTE: The frontend can mark the record deleted while it is queued to
  * the backend.  The deletion applies to a frontend operation and the
  * record must be treated as NOT having been deleted on the backend, so
@@ -703,11 +767,24 @@ hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t record)
 	struct hammer_cursor cursor;
 	hammer_record_ondisk_t rec;
 	union hammer_btree_elm elm;
+	hammer_depend_t depend;
 	hammer_off_t rec_offset;
 	void *bdata;
 	int error;
 
 	KKASSERT(record->state == HAMMER_FST_FLUSH);
+
+	while ((depend = TAILQ_FIRST(&record->depend_list)) != NULL) {
+		TAILQ_REMOVE(&record->depend_list, depend, rec_entry);
+		TAILQ_REMOVE(&depend->ip->depend_list, depend, ip_entry);
+		--depend->ip->depend_count;
+		kprintf("S");
+		hammer_flush_inode(depend->ip, 0);
+		hammer_rel_inode(depend->ip, 0);
+		hammer_unref(&record->lock);
+		KKASSERT(record->lock.refs > 0);
+		kfree(depend, M_HAMMER);
+	}
 
 retry:
 	/*
@@ -726,7 +803,7 @@ retry:
 		if (error == 0)
 			error = hammer_ip_delete_record(&cursor, trans->tid);
 		if (error == 0)
-			record->flags |= HAMMER_RECF_DELETED_FE;
+			hammer_delete_mem_record(record);
 		goto done;
 	}
 
@@ -832,7 +909,7 @@ retry:
 	 * Clean up on success, or fall through on error.
 	 */
 	if (error == 0) {
-		record->flags |= HAMMER_RECF_DELETED_FE;
+		hammer_delete_mem_record(record);
 		goto done;
 	}
 
@@ -907,7 +984,7 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 	 */
 	while (RB_INSERT(hammer_rec_rb_tree, &record->ip->rec_tree, record)) {
 		if (record->rec.base.base.rec_type != HAMMER_RECTYPE_DIRENTRY){
-			record->flags |= HAMMER_RECF_DELETED_FE;
+			hammer_delete_mem_record(record);
 			hammer_rel_mem_record(record);
 			return (EEXIST);
 		}
@@ -1099,12 +1176,10 @@ next_memory:
 			cursor->iprec = NULL;
 			rec = save ? hammer_rec_rb_tree_RB_NEXT(save) : NULL;
 			while (rec) {
-				if (hammer_ip_iterate_mem_good(cursor, rec)) {
-					if (hammer_rec_scan_cmp(rec, cursor) != 0)
-						break;
-					if (hammer_rec_scan_callback(rec, cursor) != 0)
-						break;
-				}
+				if (hammer_rec_scan_cmp(rec, cursor) != 0)
+					break;
+				if (hammer_rec_scan_callback(rec, cursor) != 0)
+					break;
 				rec = hammer_rec_rb_tree_RB_NEXT(rec);
 			}
 			if (save)
@@ -1445,8 +1520,8 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	 * In-memory (unsynchronized) records can simply be freed.
 	 */
 	if (cursor->record == &cursor->iprec->rec) {
-		cursor->iprec->flags |= HAMMER_RECF_DELETED_FE |
-					HAMMER_RECF_DELETED_BE;
+		hammer_delete_mem_record(cursor->iprec);
+		cursor->iprec->flags |= HAMMER_RECF_DELETED_BE;
 		return(0);
 	}
 

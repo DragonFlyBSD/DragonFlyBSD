@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.37 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.38 2008/04/26 08:02:17 dillon Exp $
  */
 
 /*
@@ -2027,7 +2027,7 @@ btree_remove(hammer_cursor_t cursor)
 	--ondisk->count;
 	if (ondisk->count == 0)
 		error = EAGAIN;
-	hammer_modify_node_done(parent);
+	hammer_modify_node_done(node);
 	return(error);
 }
 

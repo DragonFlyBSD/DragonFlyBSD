@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.50 2008/04/26 02:54:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.51 2008/04/26 08:02:17 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -135,6 +135,18 @@ hammer_lock_excl_owned(struct hammer_lock *lock, thread_t td)
 }
 
 /*
+ * inode->inode dependancy
+ */
+typedef struct hammer_depend {
+	TAILQ_ENTRY(hammer_depend) ip_entry;
+	TAILQ_ENTRY(hammer_depend) rec_entry;
+	struct hammer_inode *ip;
+	struct hammer_record *record;
+} *hammer_depend_t;
+
+TAILQ_HEAD(hammer_depend_list, hammer_depend);
+
+/*
  * Structure used to represent an inode in-memory.
  *
  * The record and data associated with an inode may be out of sync with
@@ -174,11 +186,13 @@ struct hammer_inode {
 	RB_ENTRY(hammer_inode) rb_node;
 	hammer_inode_state_t flush_state;
 	TAILQ_ENTRY(hammer_inode) flush_entry;
+	struct hammer_depend_list depend_list;
 	u_int64_t		obj_id;		/* (key) object identifier */
 	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
 	struct hammer_mount 	*hmp;
 	int			flags;
 	int			error;		/* flush error */
+	int			depend_count;
 	int			cursor_ip_refs;	/* sanity */
 	struct vnode		*vp;
 	struct lockf		advlock;
@@ -233,6 +247,7 @@ typedef struct hammer_inode *hammer_inode_t;
 
 #define HAMMER_FLUSH_SIGNAL	0x0001
 #define HAMMER_FLUSH_FORCE	0x0002
+#define HAMMER_FLUSH_RELEASE	0x0004
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  This
@@ -255,6 +270,7 @@ struct hammer_record {
 	union hammer_record_ondisk	rec;
 	union hammer_data_ondisk	*data;
 	int				flags;
+	struct hammer_depend_list	depend_list;
 };
 
 typedef struct hammer_record *hammer_record_t;
@@ -554,6 +570,7 @@ hammer_record_t
 void	hammer_flush_record_done(hammer_record_t record);
 void	hammer_wait_mem_record(hammer_record_t record);
 void	hammer_rel_mem_record(hammer_record_t record);
+void	hammer_delete_mem_record(hammer_record_t record);
 
 
 int	hammer_cursor_up(hammer_cursor_t cursor);

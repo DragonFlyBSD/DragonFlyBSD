@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.10 2008/04/26 02:54:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.11 2008/04/26 08:02:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -69,7 +69,8 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	if (rootmap->next_offset < rootmap->first_offset)
 		bytes = rootmap->alloc_offset - rootmap->first_offset +
 			rootmap->next_offset;
-	bytes = (rootmap->next_offset - rootmap->first_offset);
+	else
+		bytes = (rootmap->next_offset - rootmap->first_offset);
 	kprintf("HAMMER(%s) Start Recovery (%lld bytes of UNDO)\n",
 		root_volume->ondisk->vol_name, bytes);
 
@@ -88,18 +89,19 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 
 	while ((int64_t)bytes > 0) {
 		kprintf("scan_offset %016llx\n", scan_offset);
+		if (scan_offset == HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0)) {
+			scan_offset = rootmap->alloc_offset;
+			continue;
+		}
 		if (scan_offset - sizeof(*tail) <
 		    HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0)) {
 			kprintf("HAMMER(%s) UNDO record at %016llx FIFO "
 				"underflow\n",
 				root_volume->ondisk->vol_name,
 				scan_offset);
+			Debugger("FUBAR");
 			error = EIO;
 			break;
-		}
-		if (scan_offset == HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0)) {
-			scan_offset = rootmap->alloc_offset;
-			continue;
 		}
 		tail = hammer_bread(hmp, scan_offset - sizeof(*tail),
 				    &error, &buffer);
@@ -305,10 +307,13 @@ static void
 hammer_recover_copy_undo(hammer_off_t undo_offset, 
 			 char *src, char *dst, int bytes)
 {
+	kprintf("UNDO %016llx: %d\n", undo_offset, bytes);
+#if 0
 	kprintf("UNDO %016llx:", undo_offset);
 	hammer_recover_debug_dump(22, dst, bytes);
 	kprintf("%22s", "to:");
 	hammer_recover_debug_dump(22, src, bytes);
+#endif
 	bcopy(src, dst, bytes);
 }
 

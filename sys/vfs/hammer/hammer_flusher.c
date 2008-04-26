@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.4 2008/04/26 02:54:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.5 2008/04/26 08:02:17 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -45,6 +45,7 @@
 static void hammer_flusher_thread(void *arg);
 static void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 static void hammer_flusher_flush(hammer_mount_t hmp);
+static int hammer_must_finalize_undo(hammer_volume_t root_volume);
 static void hammer_flusher_finalize(hammer_mount_t hmp,
 		    hammer_volume_t root_volume, hammer_off_t start_offset);
 
@@ -160,13 +161,41 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		 */
 		ip->error = hammer_sync_inode(ip, (ip->vp ? 0 : 1));
 		hammer_flush_inode_done(ip);
-		if (hmp->locked_dirty_count > 64) {
+		if (hmp->locked_dirty_count > 64 ||
+		    hammer_must_finalize_undo(root_volume)) {
 			hammer_flusher_finalize(hmp, root_volume, start_offset);
 			start_offset = rootmap->next_offset;
 		}
 	}
 	hammer_flusher_finalize(hmp, root_volume, start_offset);
 	hammer_rel_volume(root_volume, 0);
+}
+
+/*
+ * If the UNDO area gets over half full we have to flush it.  We can't
+ * afford the UNDO area becoming completely full as that would break
+ * the crash recovery atomicy.
+ */
+static
+int
+hammer_must_finalize_undo(hammer_volume_t root_volume)
+{
+	hammer_blockmap_t rootmap;
+	int bytes;
+	int max_bytes;
+
+	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+
+	if (rootmap->first_offset <= rootmap->next_offset) {
+		bytes = (int)(rootmap->next_offset - rootmap->first_offset);
+	} else {
+		bytes = (int)(rootmap->alloc_offset - rootmap->first_offset +
+			      rootmap->next_offset);
+	}
+	max_bytes = (int)(rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK);
+	if (bytes > max_bytes / 2)
+		kprintf("*");
+	return (bytes > max_bytes / 2);
 }
 
 /*
