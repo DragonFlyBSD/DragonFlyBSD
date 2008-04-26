@@ -1,11 +1,13 @@
 /* $FreeBSD: src/tools/tools/crypto/cryptostats.c,v 1.1.2.1 2003/02/24 22:52:36 sam Exp $ */
-/* $DragonFly: src/tools/tools/crypto/cryptostats.c,v 1.2 2003/06/17 04:29:11 dillon Exp $ */
+/* $DragonFly: src/tools/tools/crypto/cryptostats.c,v 1.3 2008/04/26 09:19:10 swildner Exp $ */
 
 /*
  * Little program to dump the crypto statistics block and, optionally,
  * zero all the stats or just the timing stuff.
  */
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <sys/types.h>
 #include <sys/sysctl.h>

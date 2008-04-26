@@ -24,11 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/tools/tools/crypto/ubsecstats.c,v 1.3.4.1 2003/06/03 00:13:13 sam Exp $
- * $DragonFly: src/tools/tools/crypto/ubsecstats.c,v 1.2 2003/06/17 04:29:11 dillon Exp $
+ * $DragonFly: src/tools/tools/crypto/ubsecstats.c,v 1.3 2008/04/26 09:19:10 swildner Exp $
  */
 #include <stdio.h>
 #include <sys/types.h>
-#include "../../../sys/dev/ubsec/ubsecvar.h"
+#include "../../../sys/dev/crypto/ubsec/ubsecvar.h"
 
 /*
  * Little program to dump the statistics block for the ubsec driver.

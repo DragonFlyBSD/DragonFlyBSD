@@ -24,11 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/tools/tools/crypto/hifnstats.c,v 1.1.4.1 2003/06/03 00:13:13 sam Exp $
- * $DragonFly: src/tools/tools/crypto/hifnstats.c,v 1.2 2003/06/17 04:29:11 dillon Exp $
+ * $DragonFly: src/tools/tools/crypto/hifnstats.c,v 1.3 2008/04/26 09:19:10 swildner Exp $
  */
 #include <stdio.h>
 #include <sys/types.h>
-#include "../../../sys/dev/hifn/hifn7751var.h"
+#include "../../../sys/dev/crypto/hifn/hifn7751var.h"
 
 /*
  * Little program to dump the statistics block for the hifn driver.
@@ -41,7 +41,7 @@ main(int argc, char *argv[])
 
 	slen = sizeof (stats);
 	if (sysctlbyname("hw.hifn.stats", &stats, &slen, NULL, NULL) < 0)
-		err(1, "kern.hifn.stats");
+		err(1, "hw.hifn.stats");
 
 	printf("input %llu bytes %u packets\n",
 		stats.hst_ibytes, stats.hst_ipackets);
