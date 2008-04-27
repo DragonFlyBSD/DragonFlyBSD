@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.40 2008/04/27 14:18:16 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.41 2008/04/27 15:10:37 sephe Exp $
  */
 
 /*
@@ -171,6 +171,8 @@ static const struct re_type re_devs[] = {
 		"RealTek 8168/8111B PCIe Gigabit Ethernet" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168_SPIN3,
 		"RealTek 8168B/8111B PCIe Gigabit Ethernet" },
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168C,
+		"RealTek 8168C/8111C PCIe Gigabit Ethernet" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169,
 		"RealTek 8169 Gigabit Ethernet" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169S,
@@ -197,6 +199,7 @@ static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE,	"8168" },
 	{ RE_HWREV_8168_SPIN2,	RE_8169,	RE_F_PCIE,	"8168" },
 	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_F_PCIE,	"8168" },
+	{ RE_HWREV_8168C,	RE_8169,	RE_F_PCIE,	"8168C" },
 	{ RE_HWREV_8169,	RE_8169,	RE_F_HASMPC,	"8169" },
 	{ RE_HWREV_8169S,	RE_8169,	RE_F_HASMPC,	"8169S" },
 	{ RE_HWREV_8110S,	RE_8169,	RE_F_HASMPC,	"8110S" },
@@ -1222,9 +1225,10 @@ re_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = re_ioctl;
-	ifp->if_capabilities = IFCAP_VLAN_MTU;
 	ifp->if_start = re_start;
-	ifp->if_capabilities |= IFCAP_HWCSUM|IFCAP_VLAN_HWTAGGING;
+	ifp->if_capabilities = IFCAP_VLAN_MTU | IFCAP_VLAN_HWTAGGING;
+	if (hwrev != RE_HWREV_8168C)	/* XXX does not work yet */
+		ifp->if_capabilities |= IFCAP_HWCSUM;
 #ifdef DEVICE_POLLING
 	ifp->if_poll = re_poll;
 #endif
@@ -1242,7 +1246,10 @@ re_attach(device_t dev)
 	ifp->if_hwassist = 0;
 #else
 	ifp->if_capenable = ifp->if_capabilities;
-	ifp->if_hwassist = RE_CSUM_FEATURES;
+	if (ifp->if_capabilities & IFCAP_HWCSUM)
+		ifp->if_hwassist = RE_CSUM_FEATURES;
+	else
+		ifp->if_hwassist = 0;
 #endif	/* RE_DISABLE_HWCSUM */
 
 	/*
