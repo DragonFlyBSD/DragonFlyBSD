@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.39 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.40 2008/04/27 14:18:16 sephe Exp $
  */
 
 /*
@@ -855,6 +855,9 @@ re_probe(device_t dev)
 			return(0);
 		}
 	}
+
+	if (bootverbose)
+		kprintf("re: unknown hwrev %#x\n", hwrev);
 	return(ENXIO);
 }
 
