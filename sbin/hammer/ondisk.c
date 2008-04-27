@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.14 2008/03/18 05:21:53 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.15 2008/04/27 00:43:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -64,6 +64,7 @@ uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
 int64_t BootAreaSize;
 int64_t MemAreaSize;
+int64_t UndoBufferSize;
 int     UsingSuperClusters;
 int     NumVolumes;
 int	RootVolNo = -1;
@@ -520,12 +521,28 @@ void
 format_undomap(hammer_volume_ondisk_t ondisk)
 {
 	const int undo_zone = HAMMER_ZONE_UNDO_INDEX;
-	const hammer_off_t undo_limit = HAMMER_LARGEBLOCK_SIZE; /* XXX */
+	hammer_off_t undo_limit;
 	hammer_blockmap_t blockmap;
 	hammer_off_t scan;
 	struct hammer_blockmap_layer2 *layer2;
 	int n;
 	int limit_index;
+
+	/*
+	 * Size the undo buffer in multiples of HAMMER_LARGEBLOCK_SIZE,
+	 * up to HAMMER_UNDO_LAYER2 large blocks.  Size to approximately
+	 * 0.1% of the disk.
+	 */
+	undo_limit = UndoBufferSize;
+	if (undo_limit == 0)
+		undo_limit = (ondisk->vol_buf_end - ondisk->vol_buf_beg) / 1000;
+	undo_limit = (undo_limit + HAMMER_LARGEBLOCK_MASK64) &
+		     ~HAMMER_LARGEBLOCK_MASK64;
+	if (undo_limit < HAMMER_LARGEBLOCK_SIZE)
+		undo_limit = HAMMER_LARGEBLOCK_SIZE;
+	if (undo_limit > HAMMER_LARGEBLOCK_SIZE * HAMMER_UNDO_LAYER2)
+		undo_limit = HAMMER_LARGEBLOCK_SIZE * HAMMER_UNDO_LAYER2;
+	UndoBufferSize = undo_limit;
 
 	blockmap = &ondisk->vol0_blockmap[undo_zone];
 	bzero(blockmap, sizeof(*blockmap));

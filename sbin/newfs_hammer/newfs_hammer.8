@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.5 2008/02/19 21:02:08 thomas Exp $
+.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.6 2008/04/27 00:43:57 dillon Exp $
 .Dd September 10, 2007
 .Dt NEWFS_HAMMER 8
 .Os
@@ -40,7 +40,9 @@
 .Sh SYNOPSIS
 .Nm
 .Fl L Ar label
-.Op Fl U Ar uuid
+.Op Fl b Ar bootsize
+.Op Fl m Ar savesize
+.Op Fl u Ar undosize
 .Ar special ...
 .Sh DESCRIPTION
 The
@@ -61,9 +63,17 @@ The options are as follows:
 .It Fl L Ar label
 All HAMMER filesystems must be named and names should be unique on a
 per-machine basis.
-.It Fl U Ar uuid
-All HAMMER filesystems are assigned a globally unique UUID.
-If no UUID is specified one will be synthesized.
+.It Fl b Ar bootsize
+Specify a fixed area in which a boot related kernel and data can be stored.
+By default a boot area of approximately 4MB will be created.
+.It Fl m Ar savesize
+Specify a fixed area which HAMMER may use as a memory log.  This area is
+currently unused.
+.It Fl u Ar undosize
+Specify the size of the fixed UNDO FIFO.  By default 0.1% of the root
+volume's size is used, with a reasonable minimum and a reasonable cap.
+The UNDO FIFO is used to sequence meta-data out to the media for instant
+crash recovery.
 .El
 .\".Sh NOTES
 .Sh EXAMPLES

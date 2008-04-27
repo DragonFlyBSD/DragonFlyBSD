@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.21 2008/03/19 20:18:16 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.22 2008/04/27 00:43:57 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -74,7 +74,7 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "L:b:m:")) != -1) {
+	while ((ch = getopt(ac, av, "L:b:m:u:")) != -1) {
 		switch(ch) {
 		case 'L':
 			label = optarg;
@@ -88,6 +88,12 @@ main(int ac, char **av)
 			MemAreaSize = getsize(optarg,
 					 HAMMER_BUFSIZE,
 					 HAMMER_MEM_MAXBYTES, 2);
+			break;
+		case 'u':
+			UndoBufferSize = getsize(optarg,
+					 HAMMER_LARGEBLOCK_SIZE,
+					 HAMMER_LARGEBLOCK_SIZE *
+					 HAMMER_UNDO_LAYER2, 2);
 			break;
 		default:
 			usage();
@@ -145,13 +151,6 @@ main(int ac, char **av)
 		MemAreaSize = HAMMER_MEM_MINBYTES;
 	}
 
-	printf("---------------------------------------------\n");
-	printf("%d volume%s total size %s\n",
-		NumVolumes, (NumVolumes == 1 ? "" : "s"), sizetostr(total));
-	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
-	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
-	printf("\n");
-
 	/*
 	 * Format the volumes.  Format the root volume first so we can
 	 * bootstrap the freemap.
@@ -161,6 +160,14 @@ main(int ac, char **av)
 		if (i != RootVolNo)
 			format_volume(get_volume(i), NumVolumes, label);
 	}
+	printf("---------------------------------------------\n");
+	printf("%d volume%s total size %s\n",
+		NumVolumes, (NumVolumes == 1 ? "" : "s"), sizetostr(total));
+	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
+	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
+	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
+	printf("\n");
+
 	flush_all_volumes();
 	return(0);
 }
@@ -176,7 +183,8 @@ usage(void)
 /*
  * Convert the size in bytes to a human readable string.
  */
-static const char *
+static
+const char *
 sizetostr(off_t size)
 {
 	static char buf[32];

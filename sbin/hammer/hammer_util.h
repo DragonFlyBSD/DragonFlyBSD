@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.12 2008/03/18 05:21:53 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.13 2008/04/27 00:43:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -97,6 +97,7 @@ extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
 extern int64_t BootAreaSize;
 extern int64_t MemAreaSize;
+extern int64_t UndoBufferSize;
 extern int NumVolumes;
 extern int RootVolNo;
 extern struct volume_list VolList;
