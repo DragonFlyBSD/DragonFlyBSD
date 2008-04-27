@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.28 2008/04/26 02:54:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.29 2008/04/27 00:45:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,6 +59,8 @@ int hammer_count_record_datas;
 int hammer_count_volumes;
 int hammer_count_buffers;
 int hammer_count_nodes;
+int hammer_count_dirtybufs;		/* global */
+int hammer_limit_dirtybufs = 100;	/* per-mount */
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
 
@@ -75,6 +77,10 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover, CTLFLAG_RW,
 	   &hammer_debug_recover, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover_faults, CTLFLAG_RW,
 	   &hammer_debug_recover_faults, 0, "");
+
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufs, CTLFLAG_RW,
+	   &hammer_limit_dirtybufs, 0, "");
+
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_inodes, CTLFLAG_RD,
 	   &hammer_count_inodes, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_records, CTLFLAG_RD,
@@ -87,6 +93,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_buffers, CTLFLAG_RD,
 	   &hammer_count_buffers, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_nodes, CTLFLAG_RD,
 	   &hammer_count_nodes, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufs, CTLFLAG_RD,
+	   &hammer_count_dirtybufs, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, zone_limit, CTLFLAG_RW,
 	   &hammer_zone_limit, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, contention_count, CTLFLAG_RW,
@@ -185,6 +193,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_end.rec_type = 0xFFFFU;
 		hmp->root_btree_end.obj_type = 0;
 		lockinit(&hmp->blockmap_lock, "blkmap", 0, 0);
+
+		hmp->sync_lock.refs = 1;
 
 		TAILQ_INIT(&hmp->flush_list);
 

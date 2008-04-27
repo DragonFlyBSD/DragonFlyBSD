@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.9 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.10 2008/04/27 00:45:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -127,6 +127,7 @@ retry:
 	cursor.key_end.obj_type = 0;
 
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+	cursor.flags |= HAMMER_CURSOR_BACKEND;
 
 	error = hammer_btree_last(&cursor);
 	while (error == 0) {
@@ -145,11 +146,17 @@ retry:
 
 			/*
 			 * NOTE: This can return EDEADLK
+			 *
+			 * Acquiring the sync lock guarantees that the
+			 * operation will not cross a synchronization
+			 * boundary (see the flusher).
 			 */
 			isdir = (elm->base.rec_type == HAMMER_RECTYPE_DIRENTRY);
 
+			hammer_lock_ex(&trans->hmp->sync_lock);
 			error = hammer_delete_at_cursor(&cursor,
 							&prune->stat_bytes);
+			hammer_unlock(&trans->hmp->sync_lock);
 			if (error)
 				break;
 
@@ -158,8 +165,10 @@ retry:
 			else
 				++prune->stat_rawrecords;
 		} else if (realign_cre >= 0 || realign_del >= 0) {
+			hammer_lock_ex(&trans->hmp->sync_lock);
 			error = realign_prune(prune, &cursor,
 					      realign_cre, realign_del);
+			hammer_unlock(&trans->hmp->sync_lock);
 			if (error == 0) {
 				cursor.flags |= HAMMER_CURSOR_ATEDISK;
 				if (hammer_debug_general & 0x0200) {
@@ -176,6 +185,13 @@ retry:
 					elm->base.obj_id, elm->base.key);
 			}
 		}
+
+		/*
+		 * Bad hack for now, don't blow out the kernel's buffer
+		 * cache.
+		 */
+		if (trans->hmp->locked_dirty_count > hammer_limit_dirtybufs)
+			hammer_flusher_sync(trans->hmp);
 		error = hammer_signal_check(trans->hmp);
 		if (error == 0)
 			error = hammer_btree_iterate_reverse(&cursor);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.45 2008/04/26 19:08:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.46 2008/04/27 00:45:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -698,6 +698,7 @@ retry:
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
 	cursor.asof = trans->tid;
 	cursor.flags |= HAMMER_CURSOR_INSERT;
+	cursor.flags |= HAMMER_CURSOR_BACKEND;
 
 	/*
 	 * Issue a lookup to position the cursor.
@@ -812,6 +813,7 @@ hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t record)
 		TAILQ_REMOVE(&depend->ip->depend_list, depend, ip_entry);
 		--depend->ip->depend_count;
 		kprintf("S");
+		KKASSERT((depend->ip->flags & HAMMER_INODE_NEW) == 0);
 		hammer_flush_inode(depend->ip, 0);
 		hammer_rel_inode(depend->ip, 0);
 		hammer_unref(&record->lock);

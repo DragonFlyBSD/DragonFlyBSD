@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.7 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.8 2008/04/27 00:45:37 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -89,17 +89,31 @@ retry:
 	cursor.key_end.obj_type = 0;
 
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
+	cursor.flags |= HAMMER_CURSOR_BACKEND;
 
 	error = hammer_btree_first(&cursor);
 	while (error == 0) {
 		elm = &cursor.node->ondisk->elms[cursor.index];
 		reblock->cur_obj_id = elm->base.obj_id;
 
+		/*
+		 * Acquiring the sync_lock prevents the operation from
+		 * crossing a synchronization boundary.
+		 */
+		hammer_lock_ex(&trans->hmp->sync_lock);
 		error = hammer_reblock_helper(reblock, &cursor, elm);
+		hammer_unlock(&trans->hmp->sync_lock);
 		if (error == 0) {
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			error = hammer_btree_iterate(&cursor);
 		}
+
+		/*
+		 * Bad hack for now, don't blow out the kernel's buffer
+		 * cache.
+		 */
+		if (trans->hmp->locked_dirty_count > hammer_limit_dirtybufs)
+			hammer_flusher_sync(trans->hmp);
 		if (error == 0)
 			error = hammer_signal_check(trans->hmp);
 	}
@@ -114,7 +128,8 @@ retry:
 /*
  * Reblock the B-Tree (leaf) node, record, and/or data if necessary.
  *
- * XXX We have no visibility into internal B-Tree nodes at the moment.
+ * XXX We have no visibility into internal B-Tree nodes at the moment,
+ * only leaf nodes.
  */
 static int
 hammer_reblock_helper(struct hammer_ioc_reblock *reblock,

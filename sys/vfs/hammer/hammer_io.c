@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.27 2008/04/26 02:54:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.28 2008/04/27 00:45:37 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -76,6 +76,7 @@ hammer_io_reinit(hammer_io_t io, enum hammer_io_type type)
 		if (io->mod_list == &hmp->volu_list ||
 		    io->mod_list == &hmp->meta_list) {
 			--hmp->locked_dirty_count;
+			--hammer_count_dirtybufs;
 		}
 		TAILQ_REMOVE(io->mod_list, io, mod_entry);
 		io->mod_list = NULL;
@@ -86,10 +87,12 @@ hammer_io_reinit(hammer_io_t io, enum hammer_io_type type)
 		case HAMMER_STRUCTURE_VOLUME:
 			io->mod_list = &hmp->volu_list;
 			++hmp->locked_dirty_count;
+			++hammer_count_dirtybufs;
 			break;
 		case HAMMER_STRUCTURE_META_BUFFER:
 			io->mod_list = &hmp->meta_list;
 			++hmp->locked_dirty_count;
+			++hammer_count_dirtybufs;
 			break;
 		case HAMMER_STRUCTURE_UNDO_BUFFER:
 			io->mod_list = &hmp->undo_list;
@@ -362,6 +365,7 @@ hammer_io_flush(struct hammer_io *io)
 	if (io->mod_list == &io->hmp->volu_list ||
 	    io->mod_list == &io->hmp->meta_list) {
 		--io->hmp->locked_dirty_count;
+		--hammer_count_dirtybufs;
 	}
 	TAILQ_REMOVE(io->mod_list, io, mod_entry);
 	io->mod_list = NULL;
@@ -425,10 +429,12 @@ hammer_io_modify(hammer_io_t io, int count)
 		case HAMMER_STRUCTURE_VOLUME:
 			io->mod_list = &hmp->volu_list;
 			++hmp->locked_dirty_count;
+			++hammer_count_dirtybufs;
 			break;
 		case HAMMER_STRUCTURE_META_BUFFER:
 			io->mod_list = &hmp->meta_list;
 			++hmp->locked_dirty_count;
+			++hammer_count_dirtybufs;
 			break;
 		case HAMMER_STRUCTURE_UNDO_BUFFER:
 			io->mod_list = &hmp->undo_list;
@@ -686,6 +692,7 @@ hammer_io_checkwrite(struct buf *bp)
 		if (io->mod_list == &io->hmp->volu_list ||
 		    io->mod_list == &io->hmp->meta_list) {
 			--io->hmp->locked_dirty_count;
+			--hammer_count_dirtybufs;
 		}
 		TAILQ_REMOVE(io->mod_list, io, mod_entry);
 		io->mod_list = NULL;

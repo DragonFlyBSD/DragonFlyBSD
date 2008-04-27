@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.39 2008/04/26 02:54:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.40 2008/04/27 00:45:37 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -217,8 +217,6 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 				    ondisk->vol_buf_end - ondisk->vol_buf_beg);
 	RB_INIT(&volume->rb_bufs_root);
 
-	hmp->mp->mnt_stat.f_blocks += volume->nblocks;
-
 	if (RB_EMPTY(&hmp->rb_vols_root)) {
 		hmp->fsid = ondisk->vol_fsid;
 	} else if (bcmp(&hmp->fsid, &ondisk->vol_fsid, sizeof(uuid_t))) {
@@ -249,6 +247,8 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 			bp = NULL;
 		}
 		hmp->fsid_udev = dev2udev(vn_todev(volume->devvp));
+		hmp->mp->mnt_stat.f_blocks += ondisk->vol0_stat_bigblocks *
+			(HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
 	}
 late_failure:
 	if (bp)
@@ -272,12 +272,6 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 {
 	struct hammer_mount *hmp = volume->io.hmp;
 	int ronly = ((hmp->mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
-
-	/*
-	 * Sync clusters, sync volume
-	 */
-
-	hmp->mp->mnt_stat.f_blocks -= volume->nblocks;
 
 	/*
 	 * Clean up the root volume pointer, which is held unlocked in hmp.

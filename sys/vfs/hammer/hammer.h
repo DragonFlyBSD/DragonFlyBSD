@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.52 2008/04/26 19:08:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.53 2008/04/27 00:45:37 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -238,6 +238,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_FLUSHW	0x8000	/* Someone waiting for flush */
 
 #define HAMMER_INODE_TRUNCATED	0x00010000
+#define HAMMER_INODE_NEW	0x00020000
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	  \
@@ -510,6 +511,7 @@ struct hammer_mount {
 	u_int32_t namekey_iterator;
 	hammer_off_t zone_limits[HAMMER_MAX_ZONES];
 	struct netexport export;
+	struct hammer_lock sync_lock;
 	struct lock blockmap_lock;
 	struct hammer_holes holes[HAMMER_MAX_ZONES];
 	TAILQ_HEAD(, hammer_inode) flush_list;
@@ -543,6 +545,8 @@ extern int hammer_count_record_datas;
 extern int hammer_count_volumes;
 extern int hammer_count_buffers;
 extern int hammer_count_nodes;
+extern int hammer_count_dirtybufs;
+extern int hammer_limit_dirtybufs;
 extern int64_t hammer_contention_count;
 
 int	hammer_vop_inactive(struct vop_inactive_args *);
@@ -719,6 +723,8 @@ void hammer_wait_inode(hammer_inode_t ip);
 int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
 			struct hammer_inode **ipp);
+void  hammer_finalize_inode(hammer_transaction_t trans, hammer_inode_t ip,
+			int error);
 void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_sync_inode(hammer_inode_t ip, int handle_delete);
 

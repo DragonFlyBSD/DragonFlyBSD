@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.5 2008/04/26 08:02:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.6 2008/04/27 00:45:37 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -205,6 +205,12 @@ hammer_must_finalize_undo(hammer_volume_t root_volume)
  *
  * Note that as long as the undo fifo's start and end points do not
  * match, we always must at least update the volume header.
+ *
+ * The sync_lock is used by other threads to issue modifying operations
+ * to HAMMER media without crossing a synchronization boundary or messing
+ * up the media synchronization operation.  Specifically, the pruning
+ * the reblocking ioctls, and allowing the frontend strategy code to
+ * allocate media data space.
  */
 static
 void
@@ -213,6 +219,8 @@ hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
 {
 	hammer_blockmap_t rootmap;
 	hammer_io_t io;
+
+	hammer_lock_ex(&hmp->sync_lock);
 
 	/*
 	 * Flush undo bufs
@@ -241,7 +249,7 @@ hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
 	 */
 	crit_enter();
 	while (hmp->io_running_count) {
-		kprintf("WAIT1 %d\n", hmp->io_running_count);
+		kprintf("W[%d]", hmp->io_running_count);
 		tsleep(&hmp->io_running_count, 0, "hmrfl1", 0);
 	}
 	crit_exit();
@@ -276,5 +284,6 @@ hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
 		hammer_io_flush(io);
 		hammer_rel_buffer((hammer_buffer_t)io, 1);
 	}
+	hammer_unlock(&hmp->sync_lock);
 }
 

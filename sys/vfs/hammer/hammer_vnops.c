@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.40 2008/04/26 02:54:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.41 2008/04/27 00:45:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -484,13 +484,13 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 */
 
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
-	if (error)
-		kprintf("hammer_create_inode error %d\n", error);
 	if (error) {
+		kprintf("hammer_create_inode error %d\n", error);
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;
 		return (error);
 	}
+	hammer_lock_sh(&nip->lock);
 	hammer_lock_sh(&dip->lock);
 
 	/*
@@ -498,6 +498,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 * bump the inode's link count.
 	 */
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
+	hammer_finalize_inode(&trans, nip, error);
 	if (error)
 		kprintf("hammer_ip_add_directory error %d\n", error);
 	hammer_unlock(&dip->lock);
@@ -868,8 +869,10 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * Add the new filesystem object to the directory.  This will also
 	 * bump the inode's link count.
 	 */
+	hammer_lock_sh(&nip->lock);
 	hammer_lock_sh(&dip->lock);
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
+	hammer_finalize_inode(&trans, nip, error);
 	hammer_unlock(&dip->lock);
 	hammer_unlock(&nip->lock);
 	if (error)
@@ -935,8 +938,10 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	 * Add the new filesystem object to the directory.  This will also
 	 * bump the inode's link count.
 	 */
+	hammer_lock_sh(&nip->lock);
 	hammer_lock_sh(&dip->lock);
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
+	hammer_finalize_inode(&trans, nip, error);
 	hammer_unlock(&dip->lock);
 	hammer_unlock(&nip->lock);
 
@@ -1572,6 +1577,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 * Add the new filesystem object to the directory.  This will also
 	 * bump the inode's link count.
 	 */
+	hammer_lock_sh(&nip->lock);
 	hammer_lock_sh(&dip->lock);
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
 
@@ -1598,6 +1604,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 			hammer_modify_inode(&trans, nip, HAMMER_INODE_RDIRTY);
 		}
 	}
+	hammer_finalize_inode(&trans, nip, error);
 	hammer_unlock(&dip->lock);
 	hammer_unlock(&nip->lock);
 

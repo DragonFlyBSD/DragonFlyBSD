@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.40 2008/04/26 19:08:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.41 2008/04/27 00:45:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -303,8 +303,9 @@ retry:
 
 /*
  * Create a new filesystem object, returning the inode in *ipp.  The
- * returned inode will be referenced and shared-locked.  The caller
- * must unlock and release it when finished.
+ * returned inode will be referenced and also marked HAMMER_INODE_NEW,
+ * preventing it from being synchronized too early.  The caller must
+ * call hammer_finalize_inode() to make it available for media sync.
  *
  * The inode is created in-memory.
  */
@@ -327,6 +328,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->flush_state = HAMMER_FST_IDLE;
 	ip->flags = HAMMER_INODE_DDIRTY | HAMMER_INODE_RDIRTY |
 		    HAMMER_INODE_ITIMES;
+	ip->flags |= HAMMER_INODE_NEW;
 
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->bio_list);
@@ -381,13 +383,37 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		hammer_guid_to_uuid(&ip->ino_data.gid, vap->va_gid);
 
 	hammer_ref(&ip->lock);
-	hammer_lock_sh(&ip->lock);
 	if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
 		hammer_unref(&ip->lock);
 		panic("hammer_create_inode: duplicate obj_id %llx", ip->obj_id);
 	}
 	*ipp = ip;
 	return(0);
+}
+
+/*
+ * Finalize a newly created inode, allowing it to be synchronized to the
+ * media.  If an error occured make sure the inode has been cleaned up and
+ * will not be synchronized to the media.
+ */
+void
+hammer_finalize_inode(hammer_transaction_t trans, hammer_inode_t ip, int error)
+{
+	if (error) {
+		ip->flags &= ~HAMMER_INODE_MODMASK;
+
+		KASSERT(ip->lock.refs == 1,
+			("hammer_unload_inode: %d refs\n", ip->lock.refs));
+		KKASSERT(ip->vp == NULL);
+		KKASSERT(ip->flush_state == HAMMER_FST_IDLE);
+		KKASSERT(ip->cursor_ip_refs == 0);
+		KKASSERT((ip->flags & HAMMER_INODE_MODMASK) == 0);
+
+		KKASSERT(RB_EMPTY(&ip->rec_tree));
+		KKASSERT(TAILQ_EMPTY(&ip->bio_list));
+		KKASSERT(TAILQ_EMPTY(&ip->bio_alt_list));
+	}
+	ip->flags &= ~HAMMER_INODE_NEW;
 }
 
 /*
@@ -574,34 +600,6 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 	 * Handle disposition when dropping the last ref.
 	 */
 	while (ip->lock.refs == 1) {
-#if 0
-		/*
-		 * XXX this can create a deep stack recursion
-		 */
-		if (curthread == ip->hmp->flusher_td) {
-			/*
-			 * We are the flusher, do any required flushes
-			 * before unloading the inode.
-			 */
-			int error = 0;
-
-			KKASSERT(ip->flush_state == HAMMER_FST_IDLE);
-			while (error == 0 &&
-			       (ip->flags & HAMMER_INODE_MODMASK)) {
-				hammer_ref(&ip->lock);
-				hammer_flush_inode_copysync(ip);
-				error = hammer_sync_inode(ip, 1);
-				hammer_flush_inode_done(ip);
-			}
-			if (error)
-				kprintf("hammer_sync_inode failed error %d\n",
-					error);
-			if (ip->lock.refs > 1)
-				continue;
-			hammer_unload_inode(ip);
-			return;
-		}
-#endif
 		if ((ip->flags & HAMMER_INODE_MODMASK) == 0) {
 			hammer_unload_inode(ip);
 			return;
@@ -623,12 +621,15 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 
 	/*
 	 * The inode still has multiple refs, drop one ref.  If a flush was
-	 * requested make sure the flusher sees it.
+	 * requested make sure the flusher sees it.  New inodes which have
+	 * not been finalized cannot be flushed.
 	 */
-	if (flush && ip->flush_state == HAMMER_FST_IDLE)
+	if (flush && ip->flush_state == HAMMER_FST_IDLE && 
+	    (ip->flags & HAMMER_INODE_NEW) == 0) {
 		hammer_flush_inode(ip, HAMMER_FLUSH_RELEASE);
-	else
+	} else {
 		hammer_unref(&ip->lock);
+	}
 }
 
 /*
@@ -640,7 +641,6 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 static int
 hammer_unload_inode(struct hammer_inode *ip)
 {
-
 	KASSERT(ip->lock.refs == 1,
 		("hammer_unload_inode: %d refs\n", ip->lock.refs));
 	KKASSERT(ip->vp == NULL);
@@ -696,6 +696,7 @@ hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
 void
 hammer_flush_inode(hammer_inode_t ip, int flags)
 {
+	KKASSERT((ip->flags & HAMMER_INODE_NEW) == 0);
 	if (ip->flush_state != HAMMER_FST_IDLE &&
 	    (ip->flags & HAMMER_INODE_MODMASK)) {
 		ip->flags |= HAMMER_INODE_REFLUSH;
@@ -956,9 +957,6 @@ hammer_sync_inode(hammer_inode_t ip, int handle_delete)
 		return(0);
 	}
 
-
-	hammer_lock_ex(&ip->lock);
-
 	hammer_start_transaction_fls(&trans, ip->hmp);
 
 	/*
@@ -987,6 +985,7 @@ hammer_sync_inode(hammer_inode_t ip, int handle_delete)
 			hammer_sync_record_callback(record, &trans);
 		} else {
 			kprintf("J");
+			KKASSERT((record->ip->flags & HAMMER_INODE_NEW) == 0);
 			hammer_flush_inode(record->ip, 0);
 		}
 		hammer_unref(&ip->lock);
@@ -1195,7 +1194,6 @@ hammer_sync_inode(hammer_inode_t ip, int handle_delete)
 	 * Save the TID we used to sync the inode with to make sure we
 	 * do not improperly reuse it.
 	 */
-	hammer_unlock(&ip->lock);
 	hammer_done_transaction(&trans);
 	return(error);
 }
