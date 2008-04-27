@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.46 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.47 2008/04/27 21:07:15 dillon Exp $
  */
 
 #include "hammer.h"
@@ -204,7 +204,10 @@ hammer_flush_record_done(hammer_record_t record, int error)
 		 */
 	} else if (record->flags & HAMMER_RECF_CONVERT_DELETE_ONDISK) {
 		/*
-		 *
+		 * deleted-record to delete-on-disk conversion, occurs when
+		 * we sync a record to disk which is marked deleted by the
+		 * frontend, but not deleted from the point of view of the
+		 * backend.
 		 */
 		if (record->flags & HAMMER_RECF_DELETED_BE) {
 			record->flags |= HAMMER_RECF_DELETED_FE;
@@ -288,18 +291,23 @@ hammer_rel_mem_record(struct hammer_record *record)
 }
 
 /*
- * The deletion state of a record will appear different to the backend
- * then it does to the frontend.
+ * Record visibility depends on whether the record is being accessed by
+ * the backend or the frontend.
+ *
+ * Return non-zero if the record is visible, zero if it isn't or if it is
+ * deleted.
  */
 static __inline
 int
-hammer_ip_iterate_mem_good(hammer_cursor_t cursor, hammer_record_t rec)
+hammer_ip_iterate_mem_good(hammer_cursor_t cursor, hammer_record_t record)
 {
 	if (cursor->flags & HAMMER_CURSOR_BACKEND) {
-		if (rec->flags & HAMMER_RECF_INTERLOCK_BE)
+		if (record->flags & HAMMER_RECF_DELETED_BE)
+			return(0);
+		if ((record->flags & HAMMER_RECF_INTERLOCK_BE) == 0)
 			return(0);
 	} else {
-		if (rec->flags & HAMMER_RECF_DELETED_FE)
+		if (record->flags & HAMMER_RECF_DELETED_FE)
 			return(0);
 	}
 	return(1);

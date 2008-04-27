@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.41 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.42 2008/04/27 21:07:15 dillon Exp $
  */
 
 #include "hammer.h"
@@ -229,9 +229,9 @@ loop:
 	ip->obj_asof = iinfo.obj_asof;
 	ip->hmp = hmp;
 	ip->flags = flags & HAMMER_INODE_RO;
-	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	if (hmp->ronly)
 		ip->flags |= HAMMER_INODE_RO;
+	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->bio_list);
 	TAILQ_INIT(&ip->bio_alt_list);
@@ -330,6 +330,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		    HAMMER_INODE_ITIMES;
 	ip->flags |= HAMMER_INODE_NEW;
 
+	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->bio_list);
 	TAILQ_INIT(&ip->bio_alt_list);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.41 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.42 2008/04/27 21:07:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -330,13 +330,18 @@ hammer_vop_write(struct vop_write_args *ap)
 			}
 		} else if (offset == 0 && uio->uio_resid >= HAMMER_BUFSIZE) {
 			/*
-			 * entirely overwrite the buffer
+			 * Even though we are entirely overwriting the buffer
+			 * we may still have to zero it out to avoid a 
+			 * mmap/write visibility issue.
 			 */
 			bp = getblk(ap->a_vp, uio->uio_offset - offset,
 				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
-		} else if (offset == 0 && uio->uio_offset >= ip->ino_rec.ino_size) {
+			if ((bp->b_flags & B_CACHE) == 0)
+				vfs_bio_clrbuf(bp);
+		} else if (uio->uio_offset - offset >= ip->ino_rec.ino_size) {
 			/*
-			 * XXX
+			 * If the base offset of the buffer is beyond the
+			 * file EOF, we don't have to issue a read.
 			 */
 			bp = getblk(ap->a_vp, uio->uio_offset - offset,
 				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
@@ -1959,9 +1964,13 @@ hammer_dowrite(hammer_transaction_t trans, hammer_inode_t ip, struct bio *bio)
 			KKASSERT(limit_size >= 0);
 			limit_size = (limit_size + 63) & ~63;
 		}
+
 		error = hammer_ip_sync_data(trans, ip, bio->bio_offset,
 					    bp->b_data, limit_size);
+
 	}
+	if (error)
+		Debugger("hammer_dowrite: error");
 
 	if (error) {
 		bp->b_resid = bp->b_bufsize;
