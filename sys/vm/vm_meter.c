@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.14 2007/02/19 01:14:24 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.15 2008/04/28 18:04:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -178,16 +178,18 @@ do_vmtotal_callback(struct proc *p, void *data)
 	 * Note active objects.
 	 */
 	paging = 0;
-	for (map = &p->p_vmspace->vm_map, entry = map->header.next;
-	    entry != &map->header; entry = entry->next) {
-		if (entry->maptype != VM_MAPTYPE_NORMAL &&
-		    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
-			continue;
+	if (p->p_vmspace) {
+		for (map = &p->p_vmspace->vm_map, entry = map->header.next;
+		    entry != &map->header; entry = entry->next) {
+			if (entry->maptype != VM_MAPTYPE_NORMAL &&
+			    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
+				continue;
+			}
+			if (entry->object.vm_object == NULL)
+				continue;
+			vm_object_set_flag(entry->object.vm_object, OBJ_ACTIVE);
+			paging |= entry->object.vm_object->paging_in_progress;
 		}
-		if (entry->object.vm_object == NULL)
-			continue;
-		vm_object_set_flag(entry->object.vm_object, OBJ_ACTIVE);
-		paging |= entry->object.vm_object->paging_in_progress;
 	}
 	if (paging)
 		totalp->t_pw++;
