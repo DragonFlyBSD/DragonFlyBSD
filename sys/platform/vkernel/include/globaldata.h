@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/include/globaldata.h,v 1.7 2007/07/01 02:51:44 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/globaldata.h,v 1.8 2008/04/28 07:05:07 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -109,6 +109,9 @@ struct mdglobaldata {
 	vpte_t		*gd_PT2pde;
 	int		gd_PTflip;
 
+	vpte_t		*gd_PT3map;	/* used from preemptive interrupt */
+	vpte_t		*gd_PT3pdir;
+	vpte_t		*gd_PT3pde;
 };
 
 #define MDGLOBALDATA_BASEALLOC_SIZE	\
@@ -150,6 +153,7 @@ struct privatespace {
 	char		__filler1[PRIVATESPACE_SEGPAD];
 	vpte_t		PT1MAP[SEG_SIZE / sizeof(vpte_t)];
 	vpte_t		PT2MAP[SEG_SIZE / sizeof(vpte_t)];
+	vpte_t		PT3MAP[SEG_SIZE / sizeof(vpte_t)];
 };
 #define mdcpu  		((struct mdglobaldata *)_get_mycpu())
 

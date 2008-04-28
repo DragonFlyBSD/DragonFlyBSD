@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.10 2008/03/20 02:14:53 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/exception.c,v 1.11 2008/04/28 07:05:09 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -108,8 +108,9 @@ init_exceptions(void)
 
 	bzero(&sa, sizeof(sa));
 	sa.sa_sigaction = exc_segfault;
-	sa.sa_flags |= SA_SIGINFO;
+	sa.sa_flags |= SA_SIGINFO | SA_NODEFER;
 	sigemptyset(&sa.sa_mask);
+	sigaction(SIGBUS, &sa, NULL);
 	sigaction(SIGSEGV, &sa, NULL);
 	sigaction(SIGTRAP, &sa, NULL);
 	sigaction(SIGFPE, &sa, NULL);

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.82 2008/01/21 10:28:04 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.83 2008/04/28 07:05:06 dillon Exp $
  */
 
 /*
@@ -924,28 +924,36 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 	pmap_inval_flush(info);
 	while (vm_page_sleep_busy(m, FALSE, "pmuwpt"))
 		;
+	KASSERT(m->queue == PQ_NONE,
+		("_pmap_unwire_pte_hold: %p->queue != PQ_NONE", m));
 
-	if (m->hold_count == 0) {
+	if (m->hold_count == 1) {
 		/*
-		 * unmap the page table page
+		 * Unmap the page table page
 		 */
+		vm_page_busy(m);
 		pmap_inval_add(info, pmap, -1);
 		pmap->pm_pdir[m->pindex] = 0;
+
+		KKASSERT(pmap->pm_stats.resident_count > 0);
 		--pmap->pm_stats.resident_count;
 
 		if (pmap->pm_ptphint == m)
 			pmap->pm_ptphint = NULL;
 
 		/*
-		 * If the page is finally unwired, simply free it.
+		 * This was our last hold, the page had better be unwired
+		 * after we decrement wire_count.
+		 * 
+		 * FUTURE NOTE: shared page directory page could result in
+		 * multiple wire counts.
 		 */
+		vm_page_unhold(m);
 		--m->wire_count;
-		if (m->wire_count == 0) {
-			vm_page_flash(m);
-			vm_page_busy(m);
-			vm_page_free_zero(m);
-			--vmstats.v_wire_count;
-		}
+		KKASSERT(m->wire_count == 0);
+		--vmstats.v_wire_count;
+		vm_page_flash(m);
+		vm_page_free_zero(m);
 		return 1;
 	}
 	return 0;
@@ -954,11 +962,13 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 static PMAP_INLINE int
 pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 {
-	vm_page_unhold(m);
-	if (m->hold_count == 0)
-		return _pmap_unwire_pte_hold(pmap, m, info);
-	else
+	KKASSERT(m->hold_count > 0);
+	if (m->hold_count > 1) {
+		vm_page_unhold(m);
 		return 0;
+	} else {
+		return _pmap_unwire_pte_hold(pmap, m, info);
+	}
 }
 
 /*
@@ -1062,6 +1072,7 @@ pmap_pinit(struct pmap *pmap)
 	pmap->pm_ptphint = NULL;
 	TAILQ_INIT(&pmap->pm_pvlist);
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
+	pmap->pm_stats.resident_count = 1;
 }
 
 /*
@@ -1113,7 +1124,7 @@ pmap_pinit2(struct pmap *pmap)
 }
 
 /*
- * Attempt to release and free and vm_page in a pmap.  Returns 1 on success,
+ * Attempt to release and free a vm_page in a pmap.  Returns 1 on success,
  * 0 on failure (if the procedure had to sleep).
  *
  * When asked to remove the page directory page itself, we actually just
@@ -1138,7 +1149,8 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	 * Remove the page table page from the processes address space.
 	 */
 	pde[p->pindex] = 0;
-	pmap->pm_stats.resident_count--;
+	KKASSERT(pmap->pm_stats.resident_count > 0);
+	--pmap->pm_stats.resident_count;
 
 	if (p->hold_count)  {
 		panic("pmap_release: freeing held page table page");
@@ -1184,22 +1196,34 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 	KASSERT(m->queue == PQ_NONE,
 		("_pmap_allocpte: %p->queue != PQ_NONE", m));
 
+	/*
+	 * Increment the hold count for the page we will be returning to
+	 * the caller.
+	 */
+	m->hold_count++;
+
+	/*
+	 * It is possible that someone else got in and mapped by the page
+	 * directory page while we were blocked, if so just unbusy and
+	 * return the held page.
+	 */
+	if ((ptepa = pmap->pm_pdir[ptepindex]) != 0) {
+		KKASSERT((ptepa & PG_FRAME) == VM_PAGE_TO_PHYS(m));
+		vm_page_wakeup(m);
+		return(m);
+	}
+
 	if (m->wire_count == 0)
 		vmstats.v_wire_count++;
 	m->wire_count++;
 
-	/*
-	 * Increment the hold count for the page table page
-	 * (denoting a new mapping.)
-	 */
-	m->hold_count++;
 
 	/*
 	 * Map the pagetable page into the process address space, if
 	 * it isn't already there.
 	 */
 
-	pmap->pm_stats.resident_count++;
+	++pmap->pm_stats.resident_count;
 
 	ptepa = VM_PAGE_TO_PHYS(m);
 	pmap->pm_pdir[ptepindex] =
@@ -1584,7 +1608,8 @@ pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va,
 	 */
 	if (oldpte & PG_G)
 		cpu_invlpg((void *)va);
-	pmap->pm_stats.resident_count -= 1;
+	KKASSERT(pmap->pm_stats.resident_count > 0);
+	--pmap->pm_stats.resident_count;
 	if (oldpte & PG_MANAGED) {
 		m = PHYS_TO_VM_PAGE(oldpte);
 		if (oldpte & PG_M) {
@@ -1753,7 +1778,8 @@ pmap_remove_all(vm_page_t m)
 	pmap_inval_init(&info);
 	crit_enter();
 	while ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
-		pv->pv_pmap->pm_stats.resident_count--;
+		KKASSERT(pv->pv_pmap->pm_stats.resident_count > 0);
+		--pv->pv_pmap->pm_stats.resident_count;
 
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
 		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
@@ -2033,7 +2059,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	/*
 	 * Increment counters
 	 */
-	pmap->pm_stats.resident_count++;
+	++pmap->pm_stats.resident_count;
 	if (wired)
 		pmap->pm_stats.wired_count++;
 
@@ -2163,7 +2189,7 @@ retry:
 	/*
 	 * Increment counters
 	 */
-	pmap->pm_stats.resident_count++;
+	++pmap->pm_stats.resident_count;
 
 	pa = VM_PAGE_TO_PHYS(m);
 
@@ -2534,9 +2560,19 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 				 * We have to check after allocpte for the
 				 * pte still being around...  allocpte can
 				 * block.
+				 *
+				 * pmap_allocpte() can block.  If we lose
+				 * our page directory mappings we stop.
 				 */
 				dstmpte = pmap_allocpte(dst_pmap, addr);
-				if ((*dst_pte == 0) && (ptetemp = *src_pte)) {
+
+				if (src_frame != (((unsigned) PTDpde) & PG_FRAME) ||
+				    dst_frame != (((unsigned) APTDpde) & PG_FRAME)
+				) {
+					kprintf("WARNING: pmap_copy: detected and corrected race\n");
+					pmap_unwire_pte_hold(dst_pmap, dstmpte, &info);
+					goto failed;
+				} else if ((*dst_pte == 0) && (ptetemp = *src_pte)) {
 					/*
 					 * Clear the modified and
 					 * accessed (referenced) bits
@@ -2544,7 +2580,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 					 */
 					m = PHYS_TO_VM_PAGE(ptetemp);
 					*dst_pte = ptetemp & ~(PG_M | PG_A);
-					dst_pmap->pm_stats.resident_count++;
+					++dst_pmap->pm_stats.resident_count;
 					pmap_insert_entry(dst_pmap, addr,
 						dstmpte, m);
 	 			} else {
@@ -2558,6 +2594,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 			dst_pte++;
 		}
 	}
+failed:
 	crit_exit();
 	pmap_inval_flush(&info);
 }	
@@ -2802,7 +2839,8 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		KASSERT(m < &vm_page_array[vm_page_array_size],
 			("pmap_remove_pages: bad tpte %x", tpte));
 
-		pmap->pm_stats.resident_count--;
+		KKASSERT(pmap->pm_stats.resident_count > 0);
+		--pmap->pm_stats.resident_count;
 
 		/*
 		 * Update the vm_page_t clean and reference bits.
@@ -3300,8 +3338,9 @@ pads(pmap_t pm)
 
 	if (pm == &kernel_pmap)
 		return;
-	for (i = 0; i < 1024; i++)
-		if (pm->pm_pdir[i])
+	crit_enter();
+	for (i = 0; i < 1024; i++) {
+		if (pm->pm_pdir[i]) {
 			for (j = 0; j < 1024; j++) {
 				va = (i << PDRSHIFT) + (j << PAGE_SHIFT);
 				if (pm == &kernel_pmap && va < KERNBASE)
@@ -3312,6 +3351,9 @@ pads(pmap_t pm)
 				if (pmap_pte_v(ptep))
 					kprintf("%x:%x ", va, *(int *) ptep);
 			};
+		}
+	}
+	crit_exit();
 
 }
 
