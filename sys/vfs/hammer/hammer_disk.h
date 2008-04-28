@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.28 2008/04/22 19:00:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.29 2008/04/28 09:38:38 swildner Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -53,7 +53,7 @@
  * and mirrors to retain varying amounts of filesystem history by removing
  * any possibility of conflict through identifier reuse.
  *
- * A HAMMER filesystem may spam multiple volumes.
+ * A HAMMER filesystem may span multiple volumes.
  *
  * A HAMMER filesystem uses a 16K filesystem buffer size.  All filesystem
  * I/O is done in multiples of 16K.  Most buffer-sized headers such as those
