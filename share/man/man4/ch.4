@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/share/man/man4/ch.4,v 1.18.2.7 2001/08/17 13:08:37 ru Exp $
-.\" $DragonFly: src/share/man/man4/ch.4,v 1.10 2007/11/04 19:04:42 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ch.4,v 1.11 2008/04/28 21:16:17 swildner Exp $
 .\" Copyright (c) 1996
 .\"	Julian Elischer <julian@FreeBSD.org>.  All rights reserved.
 .\"
@@ -140,9 +140,9 @@ u_int ce_flags;	 /* misc. flags */
 .Ed
 In
 .Va ce_flags ,
-.Dv CM_INVERT1
+.Dv CE_INVERT1
 and/or
-.Dv CM_INVERT2
+.Dv CE_INVERT2
 may be set
 to flip the first or second medium during the exchange operation,
 respectively.
@@ -184,7 +184,7 @@ u_int cp_ndrives;  /* number of drives */
 .Pp
 This call can be used by applications to query the dimensions of
 the jukebox before using the
-.Dv CHIGSTATUS
+.Dv CHIOGSTATUS
 ioctl to query the jukebox' status.
 .It Dv CHIOIELEM
 Perform the
@@ -281,19 +281,19 @@ and should be used for diagnostic purposes only.
 The following flags are defined for the
 .Va ces_flags
 field:
-.Bl -tag -width CESTATUS_IMPEXP
-.It Dv CESTATUS_FULL
+.Bl -tag -width CES_STATUS_IMPEXP
+.It Dv CES_STATUS_FULL
 A medium is present.
-.It Dv CESTATUS_IMPEXP
+.It Dv CES_STATUS_IMPEXP
 The medium has been deposited by the operator (and not by a picker).
-.It Dv CESTATUS_EXCEPT
+.It Dv CES_STATUS_EXCEPT
 The element is in an exceptional state (e.g. invalid barcode label,
 barcode not yet scanned).
-.It Dv CESTATUS_ACCESS
+.It Dv CES_STATUS_ACCESS
 The element is accessible by the picker.
-.It Dv CESTATUS_EXENAB
+.It Dv CES_STATUS_EXENAB
 The element supports medium export.
-.It Dv CESTATUS_INENAB
+.It Dv CES_STATUS_INENAB
 The element supports medium import.
 .El
 .Pp
