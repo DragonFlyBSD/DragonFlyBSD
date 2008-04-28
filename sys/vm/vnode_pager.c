@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.40 2007/08/28 01:09:07 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.41 2008/04/28 21:16:27 dillon Exp $
  */
 
 /*
@@ -655,6 +655,12 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	 *
 	 * We do not under any circumstances truncate the valid bits, as
 	 * this will screw up bogus page replacement.
+	 *
+	 * The caller has already read-protected the pages.  The VFS must
+	 * use the buffer cache to wrap the pages.  The pages might not
+	 * be immediately flushed by the buffer cache but once under its
+	 * control the pages themselves can wind up being marked clean
+	 * and their covering buffer cache buffer can be marked dirty.
 	 */
 	if (maxsize + poffset > vp->v_filesize) {
 		if (vp->v_filesize > poffset) {

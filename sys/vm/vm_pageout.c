@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.33 2008/03/20 06:02:50 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.34 2008/04/28 21:16:27 dillon Exp $
  */
 
 /*
@@ -452,12 +452,21 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 		 * block all other accesses. Also, leave the paging in
 		 * progress indicator set so that we don't attempt an object
 		 * collapse.
+		 *
+		 * For any pages which have completed synchronously, 
+		 * deactivate the page if we are under a severe deficit.
+		 * Do not try to enter them into the cache, though, they
+		 * might still be read-heavy.
 		 */
 		if (pageout_status[i] != VM_PAGER_PEND) {
 			vm_object_pip_wakeup(object);
 			vm_page_io_finish(mt);
+			if (vm_page_count_severe())
+				vm_page_deactivate(mt);
+#if 0
 			if (!vm_page_count_severe() || !vm_page_try_to_cache(mt))
 				vm_page_protect(mt, VM_PROT_READ);
+#endif
 		}
 	}
 	return numpagedout;

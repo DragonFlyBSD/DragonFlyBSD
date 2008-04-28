@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.29 2008/04/28 07:07:02 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.30 2008/04/28 21:16:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1666,10 +1666,11 @@ swp_pager_async_iodone(struct bio *bio)
 				 * be overridden by the original caller of
 				 * getpages so don't play cute tricks here.
 				 *
-				 * XXX IT IS NOT LEGAL TO FREE THE PAGE HERE
-				 * AS THIS MESSES WITH object->memq, and it is
-				 * not legal to mess with object->memq from an
-				 * interrupt.
+				 * NOTE: We can't actually free the page from
+				 * here, because this is an interrupt.  It
+				 * is not legal to mess with object->memq
+				 * from an interrupt.  Deactivate the page
+				 * instead.
 				 */
 
 				m->valid = 0;
@@ -1679,10 +1680,12 @@ swp_pager_async_iodone(struct bio *bio)
 				 * bio_driver_info holds the requested page
 				 * index.
 				 */
-				if (i != (int)bio->bio_driver_info)
-					vm_page_free(m);
-				else
+				if (i != (int)bio->bio_driver_info) {
+					vm_page_deactivate(m);
+					vm_page_wakeup(m);
+				} else {
 					vm_page_flash(m);
+				}
 				/*
 				 * If i == bp->b_pager.pg_reqpage, do not wake 
 				 * the page up.  The caller needs to.
@@ -1746,13 +1749,26 @@ swp_pager_async_iodone(struct bio *bio)
 			}
 		} else {
 			/*
-			 * Mark the page clean, but note that the dirty
-			 * bit may have been set in any of the page's pmaps.
+			 * Mark the page clean but do not mess with the
+			 * pmap-layer's modified state.  That state should
+			 * also be clear since the caller protected the
+			 * page VM_PROT_READ, but allow the case.
+			 *
+			 * We are in an interrupt, avoid pmap operations.
+			 *
+			 * If we have a severe page deficit, deactivate the
+			 * page.  Do not try to cache it (which would also
+			 * involve a pmap op), because the page might still
+			 * be read-heavy.
 			 */
 			vm_page_undirty(m);
 			vm_page_io_finish(m);
+			if (vm_page_count_severe())
+				vm_page_deactivate(m);
+#if 0
 			if (!vm_page_count_severe() || !vm_page_try_to_cache(m))
 				vm_page_protect(m, VM_PROT_READ);
+#endif
 		}
 	}
 
