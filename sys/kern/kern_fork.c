@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.73 2008/04/01 20:20:29 nth Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.74 2008/04/28 07:07:01 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -202,8 +202,8 @@ sys_lwp_create(struct lwp_create_args *uap)
 	return (0);
 
 fail:
-	--p->p_nthreads;
 	lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
+	--p->p_nthreads;
 	/* lwp_dispose expects an exited lwp, and a held proc */
 	lp->lwp_flag |= LWP_WEXIT;
 	lp->lwp_thread->td_flags |= TDF_EXITING;
