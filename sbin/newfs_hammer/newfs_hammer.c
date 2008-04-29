@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.22 2008/04/27 00:43:57 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.23 2008/04/29 01:11:02 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -39,7 +39,8 @@
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(off_t size);
 static void check_volume(struct volume_info *vol);
-static void format_volume(struct volume_info *vol, int nvols,const char *label);
+static void format_volume(struct volume_info *vol, int nvols,const char *label,
+			off_t total_size);
 static hammer_off_t format_root(void);
 static void usage(void);
 
@@ -51,6 +52,7 @@ main(int ac, char **av)
 	u_int32_t status;
 	off_t total;
 	const char *label = NULL;
+	struct volume_info *vol;
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
@@ -117,8 +119,6 @@ main(int ac, char **av)
 
 	total = 0;
 	for (i = 0; i < NumVolumes; ++i) {
-		struct volume_info *vol;
-
 		vol = setup_volume(i, av[i], 1, O_RDWR);
 
 		/*
@@ -155,10 +155,10 @@ main(int ac, char **av)
 	 * Format the volumes.  Format the root volume first so we can
 	 * bootstrap the freemap.
 	 */
-	format_volume(get_volume(RootVolNo), NumVolumes, label);
+	format_volume(get_volume(RootVolNo), NumVolumes, label, total);
 	for (i = 0; i < NumVolumes; ++i) {
 		if (i != RootVolNo)
-			format_volume(get_volume(i), NumVolumes, label);
+			format_volume(get_volume(i), NumVolumes, label, total);
 	}
 	printf("---------------------------------------------\n");
 	printf("%d volume%s total size %s\n",
@@ -166,6 +166,9 @@ main(int ac, char **av)
 	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
 	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
 	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
+
+	vol = get_volume(RootVolNo);
+	printf("zone-limit:	     %s\n", sizetostr(vol->ondisk->vol0_zone_limit));
 	printf("\n");
 
 	flush_all_volumes();
@@ -341,7 +344,8 @@ check_volume(struct volume_info *vol)
  */
 static
 void
-format_volume(struct volume_info *vol, int nvols, const char *label)
+format_volume(struct volume_info *vol, int nvols, const char *label,
+	      off_t total_size)
 {
 	struct volume_info *root_vol;
 	struct hammer_volume_ondisk *ondisk;
@@ -390,7 +394,28 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	 * Format the root volume.
 	 */
 	if (vol->vol_no == RootVolNo) {
+		hammer_off_t zone_limit;
+
+		/*
+		 * Starting TID
+		 */
 		ondisk->vol0_next_tid = createtid();
+
+		/*
+		 * Set the default zone limit to 100x the size of the
+		 * filesystem.  We do not want to create a huge zone limit
+		 * for tiny filesystems because the blockmap could wind up
+		 * getting fragmented and eating a large chunk of the disk
+		 * space.
+		 */
+		zone_limit = (hammer_off_t)total_size * 100;
+		zone_limit = (zone_limit + HAMMER_BLOCKMAP_LAYER2_MASK) &
+			     ~HAMMER_BLOCKMAP_LAYER2_MASK;
+		if (zone_limit < (hammer_off_t)total_size ||
+		    zone_limit > HAMMER_ZONE_LIMIT) {
+			zone_limit = HAMMER_ZONE_LIMIT;
+		}
+		ondisk->vol0_zone_limit = zone_limit;
 
 		format_freemap(vol,
 			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);
