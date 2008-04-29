@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.7 2008/04/29 01:10:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.8 2008/04/29 04:43:08 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -107,6 +107,13 @@ hammer_flusher_thread(void *arg)
 		hammer_flusher_clean_loose_ios(hmp);
 		hmp->flusher_act = seq;
 		wakeup(&hmp->flusher_act);
+
+		/*
+		 * Loop if more got queued after our demark.
+		 */
+		if (TAILQ_NEXT(hmp->flusher_demark, flush_entry))
+			continue;
+
 		if (hmp->flusher_exiting)
 			break;
 		while (hmp->flusher_seq == hmp->flusher_act)
