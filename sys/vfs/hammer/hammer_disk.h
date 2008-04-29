@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.29 2008/04/28 09:38:38 swildner Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.30 2008/04/29 01:10:37 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -154,7 +154,7 @@ typedef u_int32_t hammer_crc_t;
  * to deal with by preventing an iterator overflow.
  */
 #define HAMMER_ZONE_LIMIT		\
-	(0x1000000000000000ULL - HAMMER_BLOCKMAP_LAYER2)
+	(0x1000000000000000ULL - HAMMER_BLOCKMAP_LAYER2 * 2)
 
 #define HAMMER_MAX_ZONES		16
 
@@ -468,11 +468,11 @@ struct hammer_volume_ondisk {
 	int64_t vol0_stat_records;	/* total records in filesystem */
 	hammer_off_t vol0_btree_root;	/* B-Tree root */
 	hammer_tid_t vol0_next_tid;	/* highest synchronized TID */
-	u_int32_t vol0_reserved00;
-	u_int32_t vol0_reserved01;
+	hammer_off_t vol0_zone_limit;	/* limit the zone size */
 
 	/*
-	 * Blockmaps for zones.  Not all zones use a blockmap.
+	 * Blockmaps for zones.  Not all zones use a blockmap.  Note that
+	 * the entire root blockmap is cached in the hammer_mount structure.
 	 */
 	struct hammer_blockmap	vol0_blockmap[HAMMER_MAX_ZONES];
 

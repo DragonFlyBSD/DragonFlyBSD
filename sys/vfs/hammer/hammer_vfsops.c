@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.29 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.30 2008/04/29 01:10:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -197,14 +197,19 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->sync_lock.refs = 1;
 
 		TAILQ_INIT(&hmp->flush_list);
+		TAILQ_INIT(&hmp->objid_cache_list);
 
+		/*
+		 * Set default zone limits.  This value can be reduced
+		 * further by the zone limit specified in the root volume.
+		 *
+		 * The sysctl can force a small zone limit for debugging
+		 * purposes.
+		 */
 		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
 			hmp->zone_limits[i] =
 				HAMMER_ZONE_ENCODE(i, HAMMER_ZONE_LIMIT);
-			/*
-			 * Sysctl override for debugging (force the zone
-			 * the cycle more quickly then every 2^60 bytes).
-			 */
+
 			if (hammer_zone_limit) {
 				hmp->zone_limits[i] =
 				    HAMMER_ZONE_ENCODE(i, hammer_zone_limit);
@@ -302,8 +307,12 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		goto failed;
 
 	/*
-	 * Perform any necessary UNDO operations
+	 * Perform any necessary UNDO operations.  The recover code does
+	 * call hammer_undo_lookup() so we have to pre-cache the blockmap,
+	 * and then re-copy it again after recovery is complete.
 	 */
+	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
+	      sizeof(hmp->blockmap));
 	error = hammer_recover(hmp, rootvol);
 	if (error) {
 		kprintf("Failed to recover HAMMER filesystem on mount\n");
@@ -321,8 +330,28 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	mp->mnt_stat.f_fsid.val[1] =
 		crc32((char *)&rootvol->ondisk->vol_fsid + 8, 8);
 
+	/*
+	 * Certain often-modified fields in the root volume are cached in
+	 * the hammer_mount structure so we do not have to generate lots
+	 * of little UNDO structures for them.
+	 */
 	hmp->next_tid = rootvol->ondisk->vol0_next_tid;
-	kprintf("on-disk next_tid %016llx\n", hmp->next_tid);
+	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
+	      sizeof(hmp->blockmap));
+
+	/*
+	 * Use the zone limit set by newfs_hammer, or the zone limit set by
+	 * sysctl (for debugging), whichever is smaller.
+	 */
+	if (rootvol->ondisk->vol0_zone_limit) {
+		hammer_off_t vol0_zone_limit;
+
+		vol0_zone_limit = rootvol->ondisk->vol0_zone_limit;
+		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
+			if (hmp->zone_limits[i] > vol0_zone_limit)
+				hmp->zone_limits[i] = vol0_zone_limit;
+		}
+	}
 
 	hammer_flusher_create(hmp);
 
@@ -424,6 +453,7 @@ hammer_free_hmp(struct mount *mp)
 	mp->mnt_data = NULL;
 	mp->mnt_flag &= ~MNT_LOCAL;
 	hmp->mp = NULL;
+	hammer_destroy_objid_cache(hmp);
 	kfree(hmp->zbuf, M_HAMMER);
 	lockuninit(&hmp->blockmap_lock);
 
@@ -511,11 +541,21 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	return(0);
 }
 
+/*
+ * Sync the filesystem.  Currently we have to run it twice, the second
+ * one will advance the undo start index to the end index, so if a crash
+ * occurs no undos will be run on mount.
+ */
 static int
 hammer_vfs_sync(struct mount *mp, int waitfor)
 {
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
-	return(hammer_sync_hmp(hmp, waitfor));
+	int error;
+
+	error = hammer_sync_hmp(hmp, waitfor);
+	if (error == 0)
+		error = hammer_sync_hmp(hmp, waitfor);
+	return (error);
 }
 
 /*

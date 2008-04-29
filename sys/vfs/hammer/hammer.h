@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.53 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.54 2008/04/29 01:10:37 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -147,6 +147,24 @@ typedef struct hammer_depend {
 TAILQ_HEAD(hammer_depend_list, hammer_depend);
 
 /*
+ * Cache object ids.  A fixed number of objid cache structures are
+ * created to reserve object id's for newly created files in multiples
+ * of 100,000, localized to a particular directory, and recycled as
+ * needed.  This allows parallel create operations in different
+ * directories to retain fairly localized object ids which in turn
+ * improves reblocking performance and layout.
+ */
+#define OBJID_CACHE_SIZE	128
+#define OBJID_CACHE_BULK	100000
+
+typedef struct hammer_objid_cache {
+	TAILQ_ENTRY(hammer_objid_cache) entry;
+	struct hammer_inode		*dip;
+	hammer_tid_t			next_tid;
+	int				count;
+} *hammer_objid_cache_t;
+
+/*
  * Structure used to represent an inode in-memory.
  *
  * The record and data associated with an inode may be out of sync with
@@ -190,6 +208,7 @@ struct hammer_inode {
 	u_int64_t		obj_id;		/* (key) object identifier */
 	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
 	struct hammer_mount 	*hmp;
+	hammer_objid_cache_t 	objid_cache;
 	int			flags;
 	int			error;		/* flush error */
 	int			depend_count;
@@ -506,6 +525,7 @@ struct hammer_mount {
 	struct hammer_io_list lose_list;	/* loose buffers      */
 	int	locked_dirty_count;		/* meta/volu count    */
 	int	io_running_count;
+	int	objid_cache_count;
 	hammer_tid_t asof;
 	hammer_off_t next_tid;
 	u_int32_t namekey_iterator;
@@ -513,8 +533,12 @@ struct hammer_mount {
 	struct netexport export;
 	struct hammer_lock sync_lock;
 	struct lock blockmap_lock;
+	hammer_inode_t	flusher_demark;
+	struct hammer_blockmap  blockmap[HAMMER_MAX_ZONES];
 	struct hammer_holes holes[HAMMER_MAX_ZONES];
 	TAILQ_HEAD(, hammer_inode) flush_list;
+	TAILQ_HEAD(, hammer_inode) flush_alt_list;
+	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
@@ -601,9 +625,11 @@ u_int32_t hammer_to_unix_xid(uuid_t *uuid);
 void hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 void	hammer_to_timespec(hammer_tid_t tid, struct timespec *ts);
 hammer_tid_t hammer_timespec_to_transid(struct timespec *ts);
-hammer_tid_t hammer_alloc_tid(hammer_transaction_t trans);
 hammer_tid_t hammer_now_tid(void);
 hammer_tid_t hammer_str_to_tid(const char *str);
+hammer_tid_t hammer_alloc_objid(hammer_transaction_t trans, hammer_inode_t dip);
+void hammer_clear_objid(hammer_inode_t dip);
+void hammer_destroy_objid_cache(hammer_mount_t hmp);
 
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);
 int hammer_get_dtype(u_int8_t obj_type);

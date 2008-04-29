@@ -31,10 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.13 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.14 2008/04/29 01:10:37 dillon Exp $
  */
 
 #include "hammer.h"
+
+static hammer_tid_t hammer_alloc_tid(hammer_transaction_t trans, int count);
+
 
 /*
  * Start a standard transaction.
@@ -50,7 +53,7 @@ hammer_start_transaction(struct hammer_transaction *trans,
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
 	trans->tid = 0;
-	trans->time = hammer_alloc_tid(trans);
+	trans->time = hammer_alloc_tid(trans, 1);
 }
 
 /*
@@ -67,7 +70,7 @@ hammer_simple_transaction(struct hammer_transaction *trans,
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
 	trans->tid = 0;
-	trans->time = hammer_alloc_tid(trans);
+	trans->time = hammer_alloc_tid(trans, 1);
 }
 
 /*
@@ -84,7 +87,7 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 	trans->hmp = hmp;
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
-	trans->tid = hammer_alloc_tid(trans);
+	trans->tid = hammer_alloc_tid(trans, 1);
 	trans->time = trans->tid;
 }
 
@@ -100,8 +103,8 @@ hammer_done_transaction(struct hammer_transaction *trans)
  * B-Tree code can make a separator that does not match either the
  * left or right hand sides.
  */
-hammer_tid_t
-hammer_alloc_tid(hammer_transaction_t trans)
+static hammer_tid_t
+hammer_alloc_tid(hammer_transaction_t trans, int count)
 {
 	struct timespec ts;
 	hammer_tid_t tid;
@@ -110,23 +113,82 @@ hammer_alloc_tid(hammer_transaction_t trans)
 	tid = ts.tv_sec * 1000000000LL + ts.tv_nsec;
 	if (tid < trans->hmp->next_tid)
 		tid = trans->hmp->next_tid;
-#if 0
-	hammer_modify_volume(trans, trans->rootvol, NULL, 0);
-	ondisk = trans->rootvol->ondisk;
-	if (tid < ondisk->vol0_next_tid)
-		tid = ondisk->vol0_next_tid;
-#endif
-	if (tid >= 0xFFFFFFFFFFFFFFF0ULL)
+	if (tid >= 0xFFFFFFFFFFFFF000ULL)
 		panic("hammer_start_transaction: Ran out of TIDs!");
+	trans->hmp->next_tid = tid + count * 2;
 	if (hammer_debug_tid) {
 		kprintf("alloc_tid %016llx (0x%08x)\n",
 			tid, (int)(tid / 1000000000LL));
 	}
-#if 0
-	ondisk->vol0_next_tid = tid + 2;
-	hammer_modify_volume_done(trans->rootvol);
-#endif
-	trans->hmp->next_tid = tid + 2;
 	return(tid);
+}
+
+/*
+ * Allocate an object id
+ */
+hammer_tid_t
+hammer_alloc_objid(hammer_transaction_t trans, hammer_inode_t dip)
+{
+	hammer_objid_cache_t ocp;
+	hammer_tid_t tid;
+
+	while ((ocp = dip->objid_cache) == NULL) {
+		if (trans->hmp->objid_cache_count < OBJID_CACHE_SIZE) {
+			ocp = kmalloc(sizeof(*ocp), M_HAMMER, M_WAITOK|M_ZERO);
+			ocp->next_tid = hammer_alloc_tid(trans,
+							 OBJID_CACHE_BULK);
+			ocp->count = OBJID_CACHE_BULK;
+			TAILQ_INSERT_HEAD(&trans->hmp->objid_cache_list, ocp,
+					  entry);
+			++trans->hmp->objid_cache_count;
+			/* may have blocked, recheck */
+			if (dip->objid_cache == NULL) {
+				dip->objid_cache = ocp;
+				ocp->dip = dip;
+			}
+		} else {
+			ocp = TAILQ_FIRST(&trans->hmp->objid_cache_list);
+			if (ocp->dip)
+				ocp->dip->objid_cache = NULL;
+			dip->objid_cache = ocp;
+			ocp->dip = dip;
+		}
+	}
+	TAILQ_REMOVE(&trans->hmp->objid_cache_list, ocp, entry);
+	tid = ocp->next_tid;
+	ocp->next_tid += 2;
+	if (--ocp->count == 0) {
+		dip->objid_cache = NULL;
+		--trans->hmp->objid_cache_count;
+		ocp->dip = NULL;
+		kfree(ocp, M_HAMMER);
+	} else {
+		TAILQ_INSERT_TAIL(&trans->hmp->objid_cache_list, ocp, entry);
+	}
+	return(tid);
+}
+
+void
+hammer_clear_objid(hammer_inode_t dip)
+{
+	hammer_objid_cache_t ocp;
+
+	if ((ocp = dip->objid_cache) != NULL) {
+		dip->objid_cache = NULL;
+		ocp->dip = NULL;
+		TAILQ_REMOVE(&dip->hmp->objid_cache_list, ocp, entry);
+		TAILQ_INSERT_HEAD(&dip->hmp->objid_cache_list, ocp, entry);
+	}
+}
+
+void
+hammer_destroy_objid_cache(hammer_mount_t hmp)
+{
+	hammer_objid_cache_t ocp;
+
+	while ((ocp = TAILQ_FIRST(&hmp->objid_cache_list)) != NULL) {
+		TAILQ_REMOVE(&hmp->objid_cache_list, ocp, entry);
+		kfree(ocp, M_HAMMER);
+	}
 }
 

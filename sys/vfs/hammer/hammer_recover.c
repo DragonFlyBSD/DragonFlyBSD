@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.12 2008/04/26 19:08:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.13 2008/04/29 01:10:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -48,6 +48,10 @@ static int hammer_recover_undo(hammer_mount_t hmp, hammer_fifo_undo_t undo,
 
 /*
  * Recover a filesystem on mount
+ *
+ * NOTE: No information from the root volume has been cached in the
+ * hammer_mount structure yet, so we need to access the root volume's
+ * buffer directly.
  */
 int
 hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
@@ -63,6 +67,9 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	/*
 	 * Examine the UNDO FIFO.  If it is empty the filesystem is clean
 	 * and no action need be taken.
+	 *
+	 * NOTE: hmp->blockmap has not been initialized yet so use the
+	 * root volume's ondisk buffer directly.
 	 */
 	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 	if (rootmap->first_offset == rootmap->next_offset)

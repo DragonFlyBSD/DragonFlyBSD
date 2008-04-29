@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.6 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.7 2008/04/29 01:10:37 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -45,7 +45,7 @@
 static void hammer_flusher_thread(void *arg);
 static void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 static void hammer_flusher_flush(hammer_mount_t hmp);
-static int hammer_must_finalize_undo(hammer_volume_t root_volume);
+static int hammer_must_finalize_undo(hammer_mount_t hmp);
 static void hammer_flusher_finalize(hammer_mount_t hmp,
 		    hammer_volume_t root_volume, hammer_off_t start_offset);
 
@@ -96,6 +96,10 @@ hammer_flusher_thread(void *arg)
 	hammer_mount_t hmp = arg;
 	int seq;
 
+	hmp->flusher_demark = kmalloc(sizeof(struct hammer_inode),
+				      M_HAMMER, M_WAITOK | M_ZERO);
+	TAILQ_INSERT_TAIL(&hmp->flush_list, hmp->flusher_demark, flush_entry);
+
 	for (;;) {
 		seq = hmp->flusher_seq;
 		hammer_flusher_clean_loose_ios(hmp);
@@ -106,8 +110,11 @@ hammer_flusher_thread(void *arg)
 		if (hmp->flusher_exiting)
 			break;
 		while (hmp->flusher_seq == hmp->flusher_act)
-			tsleep(&hmp->flusher_seq, 0, "hmrflt", 0);
+			tsleep(&hmp->flusher_seq, 0, "hmrwwa", 0);
 	}
+	TAILQ_REMOVE(&hmp->flush_list, hmp->flusher_demark, flush_entry);
+	kfree(hmp->flusher_demark, M_HAMMER);
+	hmp->flusher_demark = NULL;
 	hmp->flusher_td = NULL;
 	wakeup(&hmp->flusher_exiting);
 	lwkt_exit();
@@ -147,13 +154,16 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	int error;
 
 	root_volume = hammer_get_root_volume(hmp, &error);
-	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	start_offset = rootmap->next_offset;
 
 	if (hammer_debug_general & 0x00010000)
 		kprintf("x");
 
-	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
+	TAILQ_REMOVE(&hmp->flush_list, hmp->flusher_demark, flush_entry);
+	TAILQ_INSERT_TAIL(&hmp->flush_list, hmp->flusher_demark, flush_entry);
+
+	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != hmp->flusher_demark) {
 		TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
 
 		/*
@@ -162,7 +172,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		ip->error = hammer_sync_inode(ip, (ip->vp ? 0 : 1));
 		hammer_flush_inode_done(ip);
 		if (hmp->locked_dirty_count > 64 ||
-		    hammer_must_finalize_undo(root_volume)) {
+		    hammer_must_finalize_undo(hmp)) {
 			hammer_flusher_finalize(hmp, root_volume, start_offset);
 			start_offset = rootmap->next_offset;
 		}
@@ -178,13 +188,13 @@ hammer_flusher_flush(hammer_mount_t hmp)
  */
 static
 int
-hammer_must_finalize_undo(hammer_volume_t root_volume)
+hammer_must_finalize_undo(hammer_mount_t hmp)
 {
 	hammer_blockmap_t rootmap;
 	int bytes;
 	int max_bytes;
 
-	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	if (rootmap->first_offset <= rootmap->next_offset) {
 		bytes = (int)(rootmap->next_offset - rootmap->first_offset);
@@ -257,11 +267,25 @@ hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
 	/*
 	 * Update the volume header
 	 */
-	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	if (rootmap->first_offset != start_offset) {
 		hammer_modify_volume(NULL, root_volume, NULL, 0);
 		rootmap->first_offset = start_offset;
 		hammer_modify_volume_done(root_volume);
+	}
+	if (root_volume->ondisk->vol0_next_tid != hmp->next_tid) {
+		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		root_volume->ondisk->vol0_next_tid = hmp->next_tid;
+		hammer_modify_volume_done(root_volume);
+	}
+
+	/*
+	 * Sync our cached blockmap array with the one in the root
+	 * volume header.
+	 */
+	if (root_volume->io.modified) {
+		bcopy(hmp->blockmap, root_volume->ondisk->vol0_blockmap,
+		      sizeof(hmp->blockmap));
 		hammer_io_flush(&root_volume->io);
 	}
 

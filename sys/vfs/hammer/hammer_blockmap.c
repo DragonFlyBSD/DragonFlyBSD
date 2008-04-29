@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.8 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.9 2008/04/29 01:10:37 dillon Exp $
  */
 
 /*
@@ -71,7 +71,7 @@ hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 	root_volume = hammer_get_root_volume(trans->hmp, errorp);
 	if (*errorp)
 		return(0);
-	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
+	rootmap = &trans->hmp->blockmap[zone];
 	KKASSERT(rootmap->phys_offset != 0);
 	KKASSERT(HAMMER_ZONE_DECODE(rootmap->phys_offset) ==
 		 HAMMER_ZONE_RAW_BUFFER_INDEX);
@@ -245,8 +245,7 @@ again:
 	 * be big-block aligned.
 	 */
 	if (used_hole == 0) {
-		hammer_modify_volume(trans, root_volume,
-				     rootmap, sizeof(*rootmap));
+		hammer_modify_volume(trans, root_volume, NULL, 0);
 		rootmap->next_offset = next_offset + bytes;
 		if (rootmap->alloc_offset < rootmap->next_offset) {
 			rootmap->alloc_offset =
@@ -295,7 +294,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 
 	lockmgr(&trans->hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
 
-	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
+	rootmap = &trans->hmp->blockmap[zone];
 	KKASSERT(rootmap->phys_offset != 0);
 	KKASSERT(HAMMER_ZONE_DECODE(rootmap->phys_offset) ==
 		 HAMMER_ZONE_RAW_BUFFER_INDEX);
@@ -370,7 +369,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 			 */
 #if 0
 			hammer_modify_volume(trans, root_volume,
-					     rootmap, sizeof(*rootmap));
+					     NULL, 0);
 			rootmap->next_offset &= ~HAMMER_LARGEBLOCK_MASK64;
 			hammer_modify_volume_done(root_volume);
 #endif
@@ -412,7 +411,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t bmap_off,
 		*curp = 0;
 		return(0);
 	}
-	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
+	rootmap = &hmp->blockmap[zone];
 	KKASSERT(rootmap->phys_offset != 0);
 	KKASSERT(HAMMER_ZONE_DECODE(rootmap->phys_offset) ==
 		 HAMMER_ZONE_RAW_BUFFER_INDEX);
@@ -484,7 +483,7 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off, int *errorp)
 	root_volume = hammer_get_root_volume(hmp, errorp);
 	if (*errorp)
 		return(0);
-	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
+	rootmap = &hmp->blockmap[zone];
 	KKASSERT(rootmap->phys_offset != 0);
 	KKASSERT(HAMMER_ZONE_DECODE(rootmap->phys_offset) ==
 		 HAMMER_ZONE_RAW_BUFFER_INDEX);

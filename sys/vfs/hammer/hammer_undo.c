@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.6 2008/04/26 02:54:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.7 2008/04/29 01:10:37 dillon Exp $
  */
 
 /*
@@ -56,7 +56,7 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 	root_volume = hammer_get_root_volume(hmp, errorp);
 	if (*errorp)
 		return(0);
-	undomap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	undomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	KKASSERT(HAMMER_ZONE_DECODE(undomap->alloc_offset) == HAMMER_ZONE_UNDO_INDEX);
 	KKASSERT (zone3_off < undomap->alloc_offset);
 
@@ -92,7 +92,7 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 
 	root_volume = trans->rootvol;
 	ondisk = root_volume->ondisk;
-	undomap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	undomap = &trans->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	/* no undo recursion */
 	hammer_modify_volume(NULL, root_volume, NULL, 0);

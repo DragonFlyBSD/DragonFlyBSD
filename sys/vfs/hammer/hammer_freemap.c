@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.6 2008/04/25 21:49:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.7 2008/04/29 01:10:37 dillon Exp $
  */
 
 /*
@@ -65,7 +65,7 @@ hammer_freemap_alloc(hammer_transaction_t trans, hammer_off_t owner,
 	*errorp = 0;
 	ondisk = trans->rootvol->ondisk;
 
-	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	blockmap = &trans->hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	result_offset = blockmap->next_offset;
 	vol_no = HAMMER_VOL_DECODE(result_offset);
 	for (;;) { 
@@ -126,8 +126,7 @@ new_volume:
 		}
 	}
 	kprintf("hammer_freemap_alloc %016llx\n", result_offset);
-	hammer_modify_volume(trans, trans->rootvol,
-			     blockmap, sizeof(*blockmap));
+	hammer_modify_volume(trans, trans->rootvol, NULL, 0);
 	blockmap->next_offset = result_offset + HAMMER_LARGEBLOCK_SIZE;
 	hammer_modify_volume_done(trans->rootvol);
 done:
@@ -159,7 +158,7 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 	*errorp = 0;
 	ondisk = trans->rootvol->ondisk;
 
-	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	blockmap = &trans->hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	layer1_offset = blockmap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 	layer1 = hammer_bread(trans->hmp, layer1_offset, errorp, &buffer1);

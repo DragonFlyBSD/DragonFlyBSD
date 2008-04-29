@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.42 2008/04/27 21:07:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.43 2008/04/29 01:10:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -321,7 +321,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	hmp = trans->hmp;
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
-	ip->obj_id = hammer_alloc_tid(trans);
+	ip->obj_id = hammer_alloc_objid(trans, dip);
 	KKASSERT(ip->obj_id != 0);
 	ip->obj_asof = hmp->asof;
 	ip->hmp = hmp;
@@ -657,6 +657,8 @@ hammer_unload_inode(struct hammer_inode *ip)
 
 	hammer_uncache_node(&ip->cache[0]);
 	hammer_uncache_node(&ip->cache[1]);
+	if (ip->objid_cache)
+		hammer_clear_objid(ip);
 	--hammer_count_inodes;
 	kfree(ip, M_HAMMER);
 
@@ -870,6 +872,12 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	if (ip->flags & HAMMER_INODE_REFLUSH) {
 		ip->flags &= ~HAMMER_INODE_REFLUSH;
 		hammer_flush_inode(ip, 0);
+		if (ip->flush_state == HAMMER_FST_IDLE) {
+			if (ip->flags & HAMMER_INODE_FLUSHW) {
+				ip->flags &= ~HAMMER_INODE_FLUSHW;
+				wakeup(&ip->flags);
+			}
+		}
 	} else {
 		if (ip->flags & HAMMER_INODE_FLUSHW) {
 			ip->flags &= ~HAMMER_INODE_FLUSHW;
