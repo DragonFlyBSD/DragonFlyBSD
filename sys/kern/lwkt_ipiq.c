@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.23 2007/11/18 09:53:19 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.24 2008/04/29 14:26:09 sephe Exp $
  */
 
 /*
@@ -119,7 +119,7 @@ SYSCTL_INT(_lwkt, OID_AUTO, panic_ipiq_count, CTLFLAG_RW, &panic_ipiq_count, 0, 
 #endif
 
 #define IPIQ_STRING	"func=%p arg1=%p arg2=%d scpu=%d dcpu=%d"
-#define IPIQ_ARG_SIZE	(sizeof(void *) * 2 + sizeof(int) * 2)
+#define IPIQ_ARG_SIZE	(sizeof(void *) * 2 + sizeof(int) * 3)
 
 #if !defined(KTR_IPIQ)
 #define KTR_IPIQ	KTR_ALL
