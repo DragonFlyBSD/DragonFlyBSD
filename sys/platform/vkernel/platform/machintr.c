@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.16 2008/03/20 02:14:55 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/machintr.c,v 1.17 2008/04/30 16:59:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -184,7 +184,8 @@ void
 cpu_mask_all_signals(void)
 {
 	sigblock(sigmask(SIGALRM)|sigmask(SIGIO)|sigmask(SIGQUIT)|
-		 sigmask(SIGUSR1));
+		 sigmask(SIGUSR1)|sigmask(SIGTERM)|sigmask(SIGWINCH)|
+		 sigmask(SIGUSR2));
 }
 
 void
