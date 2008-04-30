@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.16 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.17 2008/04/30 17:28:16 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -190,6 +190,7 @@ struct dgm_softc {
 	u_char *vmem;			/* virtual memory address */
 	u_long pmem;			/* physical memory address */
 	int mem_seg;			/* internal memory segment */
+	u_long msize;
 	struct dgm_p *ports;		/* ptr to array of port descriptors */
 	struct tty *ttys;		/* ptr to array of TTY structures */
 	volatile struct global_data *mailbox;
@@ -565,6 +566,7 @@ dgmattach(device_t dev)
 
 	/* map memory */
 	mem = sc->vmem = pmap_mapdev(sc->pmem, msize);
+	sc->msize = msize;
 
 	DPRINT3(DB_INFO, "dgm%d: internal memory segment 0x%x\n", sc->unit,
 	    sc->mem_seg);
@@ -908,6 +910,11 @@ dgmdetach(device_t dev)
 
 	FREE(sc->ports, M_TTYS);
 	FREE(sc->ttys, M_TTYS);
+
+	if (sc->vmem) {
+		pmap_unmapdev(sc->vmem, sc->msize);
+		sc->vmem = NULL;
+	}
 
 	return (0);
 }

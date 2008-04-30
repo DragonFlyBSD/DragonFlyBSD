@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.h,v 1.14 2003/08/07 15:04:24 jhb Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.h,v 1.2 2006/09/10 01:26:36 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.h,v 1.3 2008/04/30 17:28:17 dillon Exp $
  */
 
 #define	W(p)				(*(u_int16_t *)(p))
@@ -170,6 +170,7 @@ struct digi_softc {
 	} res;
 
 	u_char *vmem;			/* virtual memory address */
+	u_long msize;
 	u_char *memcmd;
 	volatile u_char *memevent;
 	long pmem;			/* physical memory address */

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi_isa.c,v 1.12 2003/08/24 17:46:03 obrien Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi_isa.c,v 1.2 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi_isa.c,v 1.3 2008/04/30 17:28:17 dillon Exp $
  */
 
 /*-
@@ -363,6 +363,7 @@ digi_isa_attach(device_t dev)
 
 	/* map memory */
 	sc->vmem = pmap_mapdev(sc->pmem, msize);
+	sc->msize = msize;
 
 	DLOG(DIGIDB_INIT, (sc->dev, "internal memory segment 0x%x\n",
 	    sc->mem_seg));

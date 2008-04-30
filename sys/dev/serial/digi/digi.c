@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.10 2006/12/22 23:26:24 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.11 2008/04/30 17:28:17 dillon Exp $
  */
 
 /*-
@@ -52,6 +52,9 @@
 #include <sys/bus.h>
 #include <sys/bus.h>
 #include <sys/thread2.h>
+
+#include <vm/vm.h>
+#include <vm/pmap.h>
 
 #include <dev/serial/digi/digiio.h>
 #include <dev/serial/digi/digireg.h>
@@ -1912,6 +1915,10 @@ digi_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->res.iorid,
 		    sc->res.io);
 		sc->res.io = NULL;
+	}
+	if (sc->msize) {
+		pmap_unmapdev((vm_offset_t)sc->vmem, sc->msize);
+		sc->msize = 0;
 	}
 
 	return (0);
