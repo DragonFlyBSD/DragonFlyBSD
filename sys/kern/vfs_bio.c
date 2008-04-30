@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.99 2008/04/22 18:46:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.100 2008/04/30 04:11:44 dillon Exp $
  */
 
 /*
@@ -1234,6 +1234,7 @@ brelse(struct buf *bp)
 #endif
 			if (bp->b_bufsize)
 				allocbuf(bp, 0);
+			KKASSERT (LIST_FIRST(&bp->b_dep) == NULL);
 			if (bp->b_vp)
 				brelvp(bp);
 		}
@@ -1495,6 +1496,7 @@ vfs_vmio_release(struct buf *bp)
 	}
 	bp->b_xio.xio_npages = 0;
 	bp->b_flags &= ~B_VMIO;
+	KKASSERT (LIST_FIRST(&bp->b_dep) == NULL);
 	if (bp->b_vp)
 		brelvp(bp);
 }
