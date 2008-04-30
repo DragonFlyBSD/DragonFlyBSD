@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.157 2008/04/29 16:00:12 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.158 2008/04/30 09:15:08 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2745,14 +2745,15 @@ options 	XBONEHACK
 
 options	KTR
 #options KTR_GIANT_CONTENTION
-#options KTR_SPIN_CONTENTION
+#options KTR_IF_BGE
+#options KTR_IF_EM
 #options KTR_IPIQ
 #options KTR_MEMORY
+#options KTR_SERIALIZER
+#options KTR_SPIN_CONTENTION
+#options KTR_TESTLOG
 #options KTR_TOKENS
 #options KTR_USB_MEMORY
-#options KTR_IF_EM
-#options KTR_IF_BGE
-#options KTR_SERIALIZER
 options KTR_ALL
 options	KTR_ENTRIES=1024
 options	KTR_VERBOSE=1
