@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.111 2008/02/05 20:49:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.112 2008/04/30 17:34:11 dillon Exp $
  */
 
 /*
@@ -794,6 +794,15 @@ vfsync_bp(struct buf *bp, void *data)
 	 */
 	if (bp->b_flags & B_NEEDCOMMIT) {
 		BUF_UNLOCK(bp);
+		return(0);
+	}
+
+	/*
+	 * Ask bioops if it is ok to sync 
+	 */
+	if (LIST_FIRST(&bp->b_dep) != NULL && buf_checkwrite(bp)) {
+		bremfree(bp);
+		brelse(bp);
 		return(0);
 	}
 
