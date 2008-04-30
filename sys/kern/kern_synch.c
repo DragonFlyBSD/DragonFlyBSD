@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.89 2008/03/05 12:44:43 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.90 2008/04/30 04:19:57 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -764,9 +764,6 @@ _wakeup(void *ident, int domain)
 	globaldata_t gd;
 #ifdef SMP
 	cpumask_t mask;
-	cpumask_t tmask;
-	int startcpu;
-	int nextcpu;
 #endif
 	int id;
 
@@ -802,11 +799,6 @@ restart:
 	 * thread was found, or a normal wakeup was requested and we have
 	 * to continue checking cpus.
 	 *
-	 * The cpu that started the wakeup sequence is encoded in the domain.
-	 * We use this information to determine which cpus still need to be
-	 * checked, locate a candidate cpu, and chain the wakeup 
-	 * asynchronously with an IPI message. 
-	 *
 	 * It should be noted that this scheme is actually less expensive then
 	 * the old scheme when waking up multiple threads, since we send 
 	 * only one IPI message per target candidate which may then schedule
@@ -818,62 +810,10 @@ restart:
 	 * should be ok since we are passing idents in the IPI rather then
 	 * thread pointers.
 	 */
-	if ((domain & PWAKEUP_MYCPU) == 0 && 
-	    (mask = slpque_cpumasks[id]) != 0
-	) {
-		/*
-		 * Look for a cpu that might have work to do.  Mask out cpus
-		 * which have already been processed.
-		 *
-		 * 31xxxxxxxxxxxxxxxxxxxxxxxxxxxxx0
-		 *        ^        ^           ^
-		 *      start   currentcpu    start
-		 *      case2                 case1
-		 *        *        *           *
-		 * 11111111111111110000000000000111	case1
-		 * 00000000111111110000000000000000	case2
-		 *
-		 * case1:  We started at start_case1 and processed through
-		 *  	   to the current cpu.  We have to check any bits
-		 *	   after the current cpu, then check bits before 
-		 *         the starting cpu.
-		 *
-		 * case2:  We have already checked all the bits from
-		 *         start_case2 to the end, and from 0 to the current
-		 *         cpu.  We just have the bits from the current cpu
-		 *         to start_case2 left to check.
-		 */
-		startcpu = PWAKEUP_DECODE(domain);
-		if (gd->gd_cpuid >= startcpu) {
-			/*
-			 * CASE1
-			 */
-			tmask = mask & ~((gd->gd_cpumask << 1) - 1);
-			if (mask & tmask) {
-				nextcpu = bsfl(mask & tmask);
-				lwkt_send_ipiq2(globaldata_find(nextcpu), 
-						_wakeup, ident, domain);
-			} else {
-				tmask = (1 << startcpu) - 1;
-				if (mask & tmask) {
-					nextcpu = bsfl(mask & tmask);
-					lwkt_send_ipiq2(
-						    globaldata_find(nextcpu),
-						    _wakeup, ident, domain);
-				}
-			}
-		} else {
-			/*
-			 * CASE2
-			 */
-			tmask = ~((gd->gd_cpumask << 1) - 1) &
-				 ((1 << startcpu) - 1);
-			if (mask & tmask) {
-				nextcpu = bsfl(mask & tmask);
-				lwkt_send_ipiq2(globaldata_find(nextcpu), 
-						_wakeup, ident, domain);
-			}
-		}
+	if ((domain & PWAKEUP_MYCPU) == 0 &&
+	    (mask = slpque_cpumasks[id] & gd->gd_other_cpus) != 0) {
+		lwkt_send_ipiq2_mask(mask, _wakeup, ident,
+				     domain | PWAKEUP_MYCPU);
 	}
 #endif
 done:
