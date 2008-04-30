@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.23 2008/02/12 02:12:16 dillon Exp $
+# $DragonFly: src/Makefile,v 1.24 2008/04/30 23:05:33 corecode Exp $
 #
 # The user-driven targets are:
 #
@@ -85,9 +85,18 @@ BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}
 
 .ORDER: buildworld installworld
 .ORDER: buildworld distributeworld
-.ORDER: buildworld buildkernel nativekernel quickkernel
-.ORDER: buildkernel nativekernel quickkernel installkernel
-.ORDER: buildkernel nativekernel quickkernel reinstallkernel
+.ORDER: buildworld buildkernel
+.ORDER: buildworld nativekernel
+.ORDER: buildworld quickkernel
+.ORDER: buildkernel installkernel
+.ORDER: buildkernel reinstallkernel
+.ORDER: quickworld installworld
+.ORDER: quickworld distributeworld
+.ORDER: quickworld buildkernel
+.ORDER: quickworld nativekernel
+.ORDER: quickworld quickkernel
+.ORDER: quickkernel installkernel
+.ORDER: quickkernel reinstallkernel
 
 PATH=	/sbin:/bin:/usr/sbin:/usr/bin
 MAKE=	PATH=${PATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
