@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/bwi.4,v 1.7 2007/11/12 11:46:40 sephe Exp $
+.\" $DragonFly: src/share/man/man4/bwi.4,v 1.8 2008/05/01 12:34:06 sephe Exp $
 .\"
 .Dd September 16, 2007
 .Dt BWI 4
@@ -118,3 +118,5 @@ driver was written by
 The hardware specification was reverse engineered by the people at
 .Pa http://bcm-specs.sipsolutions.net .
 Thanks go also to johill and mb on the #bcm-specs channel.
+.Sh BUGS
+BCM4306 and BCM4309 chips do not work properly on channel 1, 2 and 3.
