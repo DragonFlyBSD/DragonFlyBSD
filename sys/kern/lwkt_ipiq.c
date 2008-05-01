@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.24 2008/04/29 14:26:09 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.25 2008/05/01 02:11:39 sephe Exp $
  */
 
 /*
@@ -132,6 +132,7 @@ KTR_INFO(KTR_IPIQ, ipiq, send_fail, 3, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, receive, 4, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, sync_start, 5, "cpumask=%08x", sizeof(cpumask_t));
 KTR_INFO(KTR_IPIQ, ipiq, sync_add, 6, "cpumask=%08x", sizeof(cpumask_t));
+KTR_INFO(KTR_IPIQ, ipiq, cpu_send, 7, IPIQ_STRING, IPIQ_ARG_SIZE);
 
 #define logipiq(name, func, arg1, arg2, sgd, dgd)	\
 	KTR_LOG(ipiq_ ## name, func, arg1, arg2, sgd->gd_cpuid, dgd->gd_cpuid)
@@ -196,8 +197,10 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
 	unsigned int eflags = read_eflags();
 
-	if (atomic_poll_acquire_int(&ip->ip_npoll) || ipiq_optimized == 0)
+	if (atomic_poll_acquire_int(&ip->ip_npoll) || ipiq_optimized == 0) {
+	    logipiq(cpu_send, func, arg1, arg2, gd, target);
 	    cpu_send_ipiq(target->gd_cpuid);
+	}
 	cpu_enable_intr();
 	++ipiq_fifofull;
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
@@ -222,11 +225,15 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
      * signal the target cpu that there is work pending.
      */
     if (atomic_poll_acquire_int(&ip->ip_npoll)) {
+	logipiq(cpu_send, func, arg1, arg2, gd, target);
 	cpu_send_ipiq(target->gd_cpuid);
     } else {
-	if (ipiq_optimized == 0)
+	if (ipiq_optimized == 0) {
+	    logipiq(cpu_send, func, arg1, arg2, gd, target);
 	    cpu_send_ipiq(target->gd_cpuid);
-	++ipiq_avoided;
+	} else {
+	    ++ipiq_avoided;
+	}
     }
     crit_exit();
     return(ip->ip_windex);
@@ -271,8 +278,10 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
 	unsigned int eflags = read_eflags();
 
-	if (atomic_poll_acquire_int(&ip->ip_npoll) || ipiq_optimized == 0)
+	if (atomic_poll_acquire_int(&ip->ip_npoll) || ipiq_optimized == 0) {
+	    logipiq(cpu_send, func, arg1, arg2, gd, target);
 	    cpu_send_ipiq(target->gd_cpuid);
+	}
 	cpu_enable_intr();
 	++ipiq_fifofull;
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
@@ -339,12 +348,15 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
      * This isn't a passive IPI, we still have to signal the target cpu.
      */
     if (atomic_poll_acquire_int(&ip->ip_npoll)) {
+	logipiq(cpu_send, func, arg1, arg2, gd, target);
 	cpu_send_ipiq(target->gd_cpuid);
     } else {
-	if (ipiq_optimized == 0)
+	if (ipiq_optimized == 0) {
+	    logipiq(cpu_send, func, arg1, arg2, gd, target);
 	    cpu_send_ipiq(target->gd_cpuid);
-	else
+	} else {
 	    ++ipiq_avoided;
+    	}
     }
     return(0);
 }
