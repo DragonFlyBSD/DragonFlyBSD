@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.13 2007/01/19 07:23:43 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.14 2008/05/01 09:24:42 swildner Exp $
  */
 
 #include <ctype.h>
@@ -53,13 +53,10 @@ struct kt {
 } key_words[] = {
 	{ "at",		AT },
 	{ "bus",	BUS },
-	{ "conflicts",	CONFLICTS },
 	{ "config",	CONFIG },
-	{ "controller",	CONTROLLER },
 	{ "cpu",	CPU },
 	{ "device",	DEVICE },
 	{ "disable",	DISABLE },
-	{ "disk",	DISK },
 	{ "drive",	DRIVE },
 	{ "drq",	DRQ },
 	{ "flags",	FLAGS },
@@ -77,7 +74,6 @@ struct kt {
 	{ "platform",	CONFIG_PLATFORM },
 	{ "port",	PORT },
 	{ "pseudo-device",PSEUDO_DEVICE },
-	{ "tape",	TAPE },
 	{ "target",	TARGET },
 	{ "unit",	UNIT },
 	{ 0, 0 },
@@ -109,8 +105,7 @@ ID	[A-Za-z_][-A-Za-z_0-9]*
 
 			if ((i = kw_lookup(yytext)) == -1)
 				REJECT;
-			if (i == CONTROLLER || i == DEVICE || i == DISK || i == TAPE ||
-			    i == PSEUDO_DEVICE || i == AT)
+			if (i == DEVICE || i == PSEUDO_DEVICE || i == AT)
 				BEGIN NONUM;
 			return(i);
 		}

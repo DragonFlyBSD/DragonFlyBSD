@@ -12,12 +12,9 @@
 %token	CONFIG_MACHINE
 %token	CONFIG_MACHINE_ARCH
 %token	CONFIG_PLATFORM
-%token	CONFLICTS
-%token	CONTROLLER
 %token	CPU
 %token	DEVICE
 %token	DISABLE
-%token	DISK
 %token	DRIVE
 %token	DRQ
 %token	EQUALS
@@ -34,7 +31,6 @@
 %token	PORT
 %token	PSEUDO_DEVICE
 %token	SEMICOLON
-%token	TAPE
 %token	TARGET
 %token	TTY
 %token	UNIT
@@ -85,7 +81,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.14 2007/01/19 07:23:43 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.15 2008/05/01 09:24:42 swildner Exp $
  */
 
 #include <ctype.h>
@@ -326,18 +322,6 @@ Dev:
 Device_spec:
 	DEVICE Dev_spec
 	      = { cur.d_type = DEVICE; } |
-	DISK Dev_spec
-	      = {
-		errx(1, "line %d: Obsolete keyword 'disk' found - use 'device'", yyline);
-		} |
-	TAPE Dev_spec
-	      = {
-		errx(1, "line %d: Obsolete keyword 'tape' found - use 'device'", yyline);
-		} |
-	CONTROLLER Dev_spec
-	      = {
-		errx(1, "line %d: Obsolete keyword 'controller' found - use 'device'", yyline);
-	        } |
 	PSEUDO_DEVICE Init_dev Dev
 	      = {
 		cur.d_name = $3;
@@ -415,11 +399,7 @@ Info:
 	FLAGS NUMBER
 	      = { cur.d_flags = $2; } |
 	DISABLE	
-	      = { cur.d_disabled = 1; } |
-	CONFLICTS
-	      = {
-		errx(1, "line %d: Obsolete keyword 'conflicts' found", yyline);
-		};
+	      = { cur.d_disabled = 1; }
 
 %%
 

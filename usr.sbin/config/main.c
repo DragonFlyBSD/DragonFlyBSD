@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.21 2007/01/19 07:23:43 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.22 2008/05/01 09:24:42 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -86,7 +86,7 @@ main(int argc, char *argv[])
 	char linksrc[64], linkdest[MAXPATHLEN];
 	static const char *emus[] = { "linux" };
 
-	while ((ch = getopt(argc, argv, "d:gprn")) != -1)
+	while ((ch = getopt(argc, argv, "d:gpr")) != -1)
 		switch (ch) {
 		case 'd':
 			if (*destdir == '\0')
@@ -99,11 +99,6 @@ main(int argc, char *argv[])
 			break;
 		case 'p':
 			profiling++;
-			break;
-		case 'n':
-			/* no_config_clobber is now true by default, no-op */
-			fprintf(stderr,
-				"*** Using obsolete config option '-n' ***\n");
 			break;
 		case 'r':
 			no_config_clobber = FALSE;
