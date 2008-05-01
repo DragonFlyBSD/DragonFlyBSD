@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.114 2008/02/13 14:45:28 matthias Exp $
+# $DragonFly: src/Makefile.inc1,v 1.115 2008/05/01 19:44:37 tgen Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -439,7 +439,7 @@ installcheck:
 #
 distributeworld installworld: installcheck
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
-	install -o root -g wheel -m 600 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
+	install -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
 
 #
 # reinstall
