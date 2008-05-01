@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
-.\" $DragonFly: src/share/man/man4/ktr.4,v 1.6 2008/04/30 09:15:08 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ktr.4,v 1.7 2008/05/01 02:03:28 sephe Exp $
 .\"
 .Dd April 30, 2008
 .Dt KTR 4
@@ -41,6 +41,7 @@
 .Cd options KTR_IF_EM
 .Cd options KTR_IPIQ
 .Cd options KTR_MEMORY
+.Cd options KTR_POLLING
 .Cd options KTR_SERIALIZER
 .Cd options KTR_SPIN_CONTENTION
 .\".Cd options KTR_TCP
@@ -88,6 +89,9 @@ IPI related data (IPI requests, CPU synchronization etc.)
 and
 .Xr kfree 9
 events
+.It Dv KTR_POLLING
+.Xr polling 4
+begins and ends
 .It Dv KTR_SERIALIZER
 .Xr serializer 9
 related events

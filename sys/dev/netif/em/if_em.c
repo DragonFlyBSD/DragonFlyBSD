@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.68 2008/04/03 12:55:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.69 2008/05/01 02:03:28 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -396,10 +396,6 @@ TUNABLE_INT("hw.em.smart_pwr_down", &em_smart_pwr_down);
 KTR_INFO_MASTER(if_em);
 KTR_INFO(KTR_IF_EM, if_em, intr_beg, 0, "intr begin", 0);
 KTR_INFO(KTR_IF_EM, if_em, intr_end, 1, "intr end", 0);
-#ifdef DEVICE_POLLING
-KTR_INFO(KTR_IF_EM, if_em, poll_beg, 2, "poll begin", 0);
-KTR_INFO(KTR_IF_EM, if_em, poll_end, 3, "poll end", 0);
-#endif
 KTR_INFO(KTR_IF_EM, if_em, pkt_receive, 4, "rx packet", 0);
 KTR_INFO(KTR_IF_EM, if_em, pkt_txqueue, 5, "tx packet", 0);
 KTR_INFO(KTR_IF_EM, if_em, pkt_txclean, 6, "tx clean", 0);
@@ -1156,8 +1152,6 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct adapter *adapter = ifp->if_softc;
 	uint32_t reg_icr;
 
-	logif(poll_beg);
-
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch(cmd) {
@@ -1188,7 +1182,6 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		}
 		break;
 	}
-	logif(poll_end);
 }
 
 #endif /* DEVICE_POLLING */

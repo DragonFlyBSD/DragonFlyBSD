@@ -25,13 +25,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.45 2008/04/30 09:30:59 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.46 2008/05/01 02:03:28 sephe Exp $
  */
 
 #include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
+#include <sys/ktr.h>
 #include <sys/socket.h>			/* needed by net/if.h		*/
 #include <sys/sysctl.h>
 
@@ -193,6 +194,18 @@ static void	poll_add_sysctl(struct sysctl_ctx_list *,
 static void	schedpoll_oncpu(struct pollctx *, struct netmsg *, netisr_fn_t);
 
 void		init_device_poll_pcpu(int);	/* per-cpu init routine */
+
+#define POLL_KTR_STRING		"ifp=%p"
+#define POLL_KTR_ARG_SIZE	(sizeof(void *))
+
+#ifndef KTR_POLLING
+#define KTR_POLLING	KTR_ALL
+#endif
+KTR_INFO_MASTER(poll);
+KTR_INFO(KTR_POLLING, poll, beg, 0, POLL_KTR_STRING, POLL_KTR_ARG_SIZE);
+KTR_INFO(KTR_POLLING, poll, end, 1, POLL_KTR_STRING, POLL_KTR_ARG_SIZE);
+
+#define logpoll(name, arg)	KTR_LOG(poll_ ## name, arg)
 
 static __inline void
 poll_reset_state(struct pollctx *pctx)
@@ -606,8 +619,13 @@ netisr_poll(struct netmsg *msg)
 			continue;
 
 		if ((ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING))
-		    == (IFF_UP|IFF_RUNNING|IFF_POLLING))
+		    == (IFF_UP|IFF_RUNNING|IFF_POLLING)) {
+			logpoll(beg, ifp);
+			crit_enter();
 			ifp->if_poll(ifp, arg, cycles);
+			crit_exit();
+			logpoll(end, ifp);
+		}
 
 		lwkt_serialize_exit(ifp->if_serializer);
 	}
