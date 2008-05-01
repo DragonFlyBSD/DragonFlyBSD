@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.25 2008/05/01 02:11:39 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.26 2008/05/01 09:37:48 sephe Exp $
  */
 
 /*
@@ -133,6 +133,7 @@ KTR_INFO(KTR_IPIQ, ipiq, receive, 4, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, sync_start, 5, "cpumask=%08x", sizeof(cpumask_t));
 KTR_INFO(KTR_IPIQ, ipiq, sync_add, 6, "cpumask=%08x", sizeof(cpumask_t));
 KTR_INFO(KTR_IPIQ, ipiq, cpu_send, 7, IPIQ_STRING, IPIQ_ARG_SIZE);
+KTR_INFO(KTR_IPIQ, ipiq, send_end, 8, IPIQ_STRING, IPIQ_ARG_SIZE);
 
 #define logipiq(name, func, arg1, arg2, sgd, dgd)	\
 	KTR_LOG(ipiq_ ## name, func, arg1, arg2, sgd->gd_cpuid, dgd->gd_cpuid)
@@ -178,6 +179,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 
     if (target == gd) {
 	func(arg1, arg2, NULL);
+	logipiq(send_end, func, arg1, arg2, gd, target);
 	return(0);
     } 
     crit_enter();
@@ -236,6 +238,8 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	}
     }
     crit_exit();
+
+    logipiq(send_end, func, arg1, arg2, gd, target);
     return(ip->ip_windex);
 }
 
@@ -307,6 +311,8 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
      * polls (typically on the next tick).
      */
     crit_exit();
+
+    logipiq(send_end, func, arg1, arg2, gd, target);
     return(ip->ip_windex);
 }
 
@@ -328,6 +334,7 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
     KKASSERT(curthread->td_pri >= TDPRI_CRIT);
     if (target == gd) {
 	func(arg1, arg2, NULL);
+	logipiq(send_end, func, arg1, arg2, gd, target);
 	return(0);
     } 
     ++ipiq_count;
@@ -358,6 +365,8 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
 	    ++ipiq_avoided;
     	}
     }
+
+    logipiq(send_end, func, arg1, arg2, gd, target);
     return(0);
 }
 
