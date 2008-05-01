@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)getprotoent.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/net/getprotoent.3,v 1.4.2.4 2001/12/14 18:33:55 ru Exp $
-.\" $DragonFly: src/lib/libc/net/getprotoent.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
+.\" $DragonFly: src/lib/libc/net/getprotoent.3,v 1.3 2008/05/01 21:51:43 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETPROTOENT 3
@@ -70,7 +70,6 @@ containing the broken-out
 fields of a line in the network protocol data base,
 .Pa /etc/protocols .
 .Bd -literal -offset indent
-.Pp
 struct	protoent {
 	char	*p_name;	/* official name of protocol */
 	char	**p_aliases;	/* alias list */
