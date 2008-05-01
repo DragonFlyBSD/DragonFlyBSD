@@ -32,7 +32,7 @@
 .\"	@(#)mount_nfs.8	8.3 (Berkeley) 3/29/95
 .\"
 .\" $FreeBSD: src/sbin/mount_nfs/mount_nfs.8,v 1.18.2.10 2003/05/13 14:45:40 trhodes Exp $
-.\" $DragonFly: src/sbin/mount_nfs/mount_nfs.8,v 1.5 2006/03/27 16:18:13 dillon Exp $
+.\" $DragonFly: src/sbin/mount_nfs/mount_nfs.8,v 1.6 2008/05/01 23:36:43 swildner Exp $
 .\""
 .Dd March 29, 1995
 .Dt MOUNT_NFS 8
@@ -235,12 +235,12 @@ calculate the timeout is based on the age of the file.  The older the file,
 the longer the cache is considered valid, subject to the limits above.
 .El
 .Pp
-.Bl -tag -width "dumbtimerXX"
-\fBHistoric \&-o options\fR
+.Sy Historic Fl o Sy Options
 .Pp
 Use of these options is deprecated, they are only mentioned here for
 compatibility with historic versions of
 .Nm .
+.Bl -tag -width "dumbtimerXX"
 .It bg
 Same as
 .Fl b .

@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl_add_oid.9,v 1.3.2.10 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/sysctl_add_oid.9,v 1.7 2007/04/07 19:29:52 swildner Exp $
+.\" $DragonFly: src/share/man/man9/sysctl_add_oid.9,v 1.8 2008/05/01 23:36:43 swildner Exp $
 .\"
 .Dd June 22, 2006
 .Dt SYSCTL_ADD_OID 9
@@ -411,8 +411,9 @@ and to delete them later in orderly fashion.
 .Pp
 There is a set of macros defined
 that helps to create oids of given type.
-.Bl -tag -width SYSCTL_ADD_STRINGXX
+.Pp
 They are as follows:
+.Bl -tag -width SYSCTL_ADD_STRINGXX
 .It Fn SYSCTL_ADD_OID
 creates a raw oid.
 This macro is functionally equivalent to the

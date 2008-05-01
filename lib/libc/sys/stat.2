@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)stat.2	8.4 (Berkeley) 5/1/95
 .\" $FreeBSD: src/lib/libc/sys/stat.2,v 1.16.2.7 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/stat.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/stat.2,v 1.5 2008/05/01 23:36:43 swildner Exp $
 .\"
 .Dd May 1, 1995
 .Dt STAT 2
@@ -239,9 +239,9 @@ points to an invalid address.
 An I/O error occurred while reading from or writing to the file system.
 .El
 .Pp
-.Bl -tag -width Er
 .Fn Fstat
 will fail if:
+.Bl -tag -width Er
 .It Bq Er EBADF
 .Fa fd
 is not a valid open file descriptor.

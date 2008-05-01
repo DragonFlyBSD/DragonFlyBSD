@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)getpriority.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/getpriority.2,v 1.4.2.5 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getpriority.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/getpriority.2,v 1.3 2008/05/01 23:36:43 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETPRIORITY 2
@@ -123,10 +123,10 @@ or
 .Dv PRIO_USER .
 .El
 .Pp
-.Bl -tag -width Er
 In addition to the errors indicated above,
 .Fn setpriority
 will fail if:
+.Bl -tag -width Er
 .It Bq Er EPERM
 A process was located, but neither its effective nor real user
 ID matched the effective user ID of the caller.

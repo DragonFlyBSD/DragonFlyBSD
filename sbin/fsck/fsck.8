@@ -32,7 +32,7 @@
 .\"
 .\"	@(#)fsck.8	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/sbin/fsck/fsck.8,v 1.14.2.3 2001/01/23 23:11:07 iedowse Exp $
-.\" $DragonFly: src/sbin/fsck/fsck.8,v 1.6 2007/04/21 15:34:26 swildner Exp $
+.\" $DragonFly: src/sbin/fsck/fsck.8,v 1.7 2008/05/01 23:36:43 swildner Exp $
 .\"
 .Dd April 20, 2007
 .Dt FSCK 8
@@ -184,8 +184,9 @@ an alternate super block.
 .It Fl c
 Convert the filesystem to the specified level.
 Note that the level of a filesystem can only be raised.
-.Bl -tag -width indent
+.Pp
 There are currently four levels defined:
+.Bl -tag -width indent
 .It 0
 The filesystem is in the old (static table) format.
 .It 1
@@ -258,8 +259,8 @@ then a default list of filesystems is read from
 the file
 .Pa /etc/fstab .
 .Pp
-.Bl -enum -compact
 Inconsistencies checked are as follows:
+.Bl -enum -compact
 .It
 Blocks claimed by more than one inode or the free map.
 .It

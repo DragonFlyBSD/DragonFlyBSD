@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/pt.4,v 1.8.2.3 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/pt.4,v 1.4 2007/03/15 21:26:05 swildner Exp $
+.\" $DragonFly: src/share/man/man4/pt.4,v 1.5 2008/05/01 23:36:43 swildner Exp $
 .\"
 .Dd March 2, 1995
 .Dt PT 4
@@ -59,14 +59,13 @@ and the
 .Xr ioctl 2
 calls described below.
 .Sh IOCTLS
-.Bl -tag -width 012345678901234
 The following
 .Xr ioctl 2
 calls are supported by the
 .Nm
 driver.  They are defined in the header file
 .In sys/ptio.h .
-.Pp
+.Bl -tag -width 012345678901234
 .It Dv PTIOCGETTIMEOUT
 This ioctl allows userland applications to fetch the current
 .Nm
