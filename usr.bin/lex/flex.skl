@@ -3,7 +3,7 @@
 /* Scanner skeleton version:
  * $Header: /home/daffy/u0/vern/flex/RCS/flex.skl,v 2.91 96/09/10 16:58:48 vern Exp $
  * $FreeBSD: src/usr.bin/lex/flex.skl,v 1.4 1999/10/27 07:56:44 obrien Exp $
- * $DragonFly: src/usr.bin/lex/flex.skl,v 1.6 2006/06/11 12:57:31 joerg Exp $
+ * $DragonFly: src/usr.bin/lex/flex.skl,v 1.7 2008/05/01 20:01:24 swildner Exp $
  */
 
 #define FLEX_SCANNER
@@ -251,7 +251,11 @@ YY_BUFFER_STATE yy_scan_bytes YY_PROTO(( yyconst char *bytes, int len ));
 %*
 
 static void *yy_flex_alloc YY_PROTO(( yy_size_t ));
-static void *yy_flex_realloc YY_PROTO(( void *, yy_size_t ));
+static void *yy_flex_realloc YY_PROTO(( void *, yy_size_t ))
+#ifdef __GNUC__
+	__attribute__((__unused__))
+#endif
+;
 static void yy_flex_free YY_PROTO(( void * ));
 
 #define yy_new_buffer yy_create_buffer
