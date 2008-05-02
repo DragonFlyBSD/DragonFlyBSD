@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.42 2008/04/27 21:07:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.43 2008/05/02 01:00:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -503,7 +503,6 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 * bump the inode's link count.
 	 */
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
-	hammer_finalize_inode(&trans, nip, error);
 	if (error)
 		kprintf("hammer_ip_add_directory error %d\n", error);
 	hammer_unlock(&dip->lock);
@@ -877,7 +876,6 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	hammer_lock_sh(&nip->lock);
 	hammer_lock_sh(&dip->lock);
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
-	hammer_finalize_inode(&trans, nip, error);
 	hammer_unlock(&dip->lock);
 	hammer_unlock(&nip->lock);
 	if (error)
@@ -946,7 +944,6 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	hammer_lock_sh(&nip->lock);
 	hammer_lock_sh(&dip->lock);
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
-	hammer_finalize_inode(&trans, nip, error);
 	hammer_unlock(&dip->lock);
 	hammer_unlock(&nip->lock);
 
@@ -1584,7 +1581,6 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 */
 	hammer_lock_sh(&nip->lock);
 	hammer_lock_sh(&dip->lock);
-	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
 
 	/*
 	 * Add a record representing the symlink.  symlink stores the link
@@ -1609,7 +1605,8 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 			hammer_modify_inode(&trans, nip, HAMMER_INODE_RDIRTY);
 		}
 	}
-	hammer_finalize_inode(&trans, nip, error);
+	if (error == 0)
+		error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
 	hammer_unlock(&dip->lock);
 	hammer_unlock(&nip->lock);
 
@@ -1903,13 +1900,13 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	 * records in the database.
 	 */
 	BUF_KERNPROC(bp);
-	if (ip->flush_state == HAMMER_FST_FLUSH)
+	if (ip->flags & HAMMER_INODE_WRITE_ALT)
 		TAILQ_INSERT_TAIL(&ip->bio_alt_list, bio, bio_act);
 	else
 		TAILQ_INSERT_TAIL(&ip->bio_list, bio, bio_act);
-	hammer_modify_inode(NULL, ip, HAMMER_INODE_XDIRTY);
-	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-	kprintf("a");
+	++hammer_bio_count;
+	hammer_modify_inode(NULL, ip, HAMMER_INODE_BUFS);
+	hammer_flush_inode(ip, HAMMER_FLUSH_FORCE|HAMMER_FLUSH_SIGNAL);
 	return(0);
 }
 
@@ -1980,6 +1977,7 @@ hammer_dowrite(hammer_transaction_t trans, hammer_inode_t ip, struct bio *bio)
 		bp->b_resid = 0;
 	}
 	biodone(bio);
+	--hammer_bio_count;
 	return(error);
 }
 
@@ -2063,13 +2061,26 @@ retry:
 			kprintf("obj_id %016llx\n", rec->entry.obj_id);
 			Debugger("ENOENT unlinking object that should exist");
 		}
+
+		/*
+		 * If we are trying to remove a directory the directory must
+		 * be empty.
+		 *
+		 * WARNING: hammer_ip_check_directory_empty() may have to
+		 * terminate the cursor to avoid a deadlock.  It is ok to
+		 * call hammer_done_cursor() twice.
+		 */
 		if (error == 0 && ip->ino_rec.base.base.obj_type ==
 				  HAMMER_OBJTYPE_DIRECTORY) {
-			error = hammer_ip_check_directory_empty(trans, ip);
+			error = hammer_ip_check_directory_empty(trans, &cursor,
+								ip);
 		}
+
 		/*
+		 * Delete the directory entry.
+		 *
 		 * WARNING: hammer_ip_del_directory() may have to terminate
-		 * the cursor to avoid a lock recursion.  It's ok to call
+		 * the cursor to avoid a deadlock.  It is ok to call
 		 * hammer_done_cursor() twice.
 		 */
 		if (error == 0) {

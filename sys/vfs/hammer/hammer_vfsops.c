@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.30 2008/04/29 01:10:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.31 2008/05/02 01:00:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,6 +61,7 @@ int hammer_count_buffers;
 int hammer_count_nodes;
 int hammer_count_dirtybufs;		/* global */
 int hammer_limit_dirtybufs = 100;	/* per-mount */
+int hammer_bio_count;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
 

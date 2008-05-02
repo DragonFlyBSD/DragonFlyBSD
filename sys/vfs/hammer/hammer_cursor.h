@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.15 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.16 2008/05/02 01:00:42 dillon Exp $
  */
 
 /*
@@ -120,7 +120,6 @@ typedef struct hammer_cursor *hammer_cursor_t;
 #define HAMMER_CURSOR_DELETE_VISIBILITY	0x0010	/* special del-on-disk recs */
 #define HAMMER_CURSOR_END_INCLUSIVE	0x0020	/* key_end is inclusive */
 #define HAMMER_CURSOR_END_EXCLUSIVE	0x0040	/* key_end is exclusive (def) */
-#define HAMMER_CURSOR_UNUSED0080	0x0080
 
 #define HAMMER_CURSOR_ATEDISK		0x0100
 #define HAMMER_CURSOR_ATEMEM		0x0200

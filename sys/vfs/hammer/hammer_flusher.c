@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.8 2008/04/29 04:43:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.9 2008/05/02 01:00:42 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -55,10 +55,13 @@ hammer_flusher_sync(hammer_mount_t hmp)
 	int seq;
 
 	if (hmp->flusher_td) {
-		seq = ++hmp->flusher_seq;
-		wakeup(&hmp->flusher_seq);
-		while ((int)(seq - hmp->flusher_act) > 0)
-			tsleep(&hmp->flusher_act, 0, "hmrfls", 0);
+		seq = hmp->flusher_next;
+		if (hmp->flusher_signal == 0) {
+			hmp->flusher_signal = 1;
+			wakeup(&hmp->flusher_signal);
+		}
+		while ((int)(seq - hmp->flusher_done) > 0)
+			tsleep(&hmp->flusher_done, 0, "hmrfls", 0);
 	}
 }
 
@@ -66,14 +69,20 @@ void
 hammer_flusher_async(hammer_mount_t hmp)
 {
 	if (hmp->flusher_td) {
-		++hmp->flusher_seq;
-		wakeup(&hmp->flusher_seq);
+		if (hmp->flusher_signal == 0) {
+			hmp->flusher_signal = 1;
+			wakeup(&hmp->flusher_signal);
+		}
 	}
 }
 
 void
 hammer_flusher_create(hammer_mount_t hmp)
 {
+	hmp->flusher_signal = 0;
+	hmp->flusher_act = 0;
+	hmp->flusher_done = 0;
+	hmp->flusher_next = 1;
 	lwkt_create(hammer_flusher_thread, hmp, &hmp->flusher_td, NULL,
 		    0, -1, "hammer");
 }
@@ -83,10 +92,11 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 {
 	if (hmp->flusher_td) {
 		hmp->flusher_exiting = 1;
-		++hmp->flusher_seq;
-		wakeup(&hmp->flusher_seq);
-		while (hmp->flusher_td)
+		while (hmp->flusher_td) {
+			hmp->flusher_signal = 1;
+			wakeup(&hmp->flusher_signal);
 			tsleep(&hmp->flusher_exiting, 0, "hmrwex", 0);
+		}
 	}
 }
 
@@ -94,34 +104,31 @@ static void
 hammer_flusher_thread(void *arg)
 {
 	hammer_mount_t hmp = arg;
-	int seq;
-
-	hmp->flusher_demark = kmalloc(sizeof(struct hammer_inode),
-				      M_HAMMER, M_WAITOK | M_ZERO);
-	TAILQ_INSERT_TAIL(&hmp->flush_list, hmp->flusher_demark, flush_entry);
 
 	for (;;) {
-		seq = hmp->flusher_seq;
+		hmp->flusher_act = hmp->flusher_next;
+		++hmp->flusher_next;
+		kprintf("F");
 		hammer_flusher_clean_loose_ios(hmp);
 		hammer_flusher_flush(hmp);
 		hammer_flusher_clean_loose_ios(hmp);
-		hmp->flusher_act = seq;
-		wakeup(&hmp->flusher_act);
+		hmp->flusher_done = hmp->flusher_act;
+
+		wakeup(&hmp->flusher_done);
 
 		/*
-		 * Loop if more got queued after our demark.
+		 * Wait for activity.
 		 */
-		if (TAILQ_NEXT(hmp->flusher_demark, flush_entry))
-			continue;
-
-		if (hmp->flusher_exiting)
+		if (hmp->flusher_exiting && TAILQ_EMPTY(&hmp->flush_list))
 			break;
-		while (hmp->flusher_seq == hmp->flusher_act)
-			tsleep(&hmp->flusher_seq, 0, "hmrwwa", 0);
+		kprintf("E");
+
+		while (hmp->flusher_signal == 0 &&
+		       TAILQ_EMPTY(&hmp->flush_list)) {
+			tsleep(&hmp->flusher_signal, 0, "hmrwwa", 0);
+		}
+		hmp->flusher_signal = 0;
 	}
-	TAILQ_REMOVE(&hmp->flush_list, hmp->flusher_demark, flush_entry);
-	kfree(hmp->flusher_demark, M_HAMMER);
-	hmp->flusher_demark = NULL;
 	hmp->flusher_td = NULL;
 	wakeup(&hmp->flusher_exiting);
 	lwkt_exit();
@@ -164,22 +171,27 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	start_offset = rootmap->next_offset;
 
-	if (hammer_debug_general & 0x00010000)
-		kprintf("x");
-
-	TAILQ_REMOVE(&hmp->flush_list, hmp->flusher_demark, flush_entry);
-	TAILQ_INSERT_TAIL(&hmp->flush_list, hmp->flusher_demark, flush_entry);
-
-	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != hmp->flusher_demark) {
-		TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
+	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
+		/*
+		 * Stop when we hit a different flush group
+		 */
+		if (ip->flush_group != hmp->flusher_act)
+			break;
 
 		/*
-		 * We inherit the inode ref from the flush list
+		 * Remove the inode from the flush list and inherit
+		 * its reference, sync, and clean-up.
 		 */
-		ip->error = hammer_sync_inode(ip, (ip->vp ? 0 : 1));
+		TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
+		kprintf("s");
+		ip->error = hammer_sync_inode(ip);
 		hammer_flush_inode_done(ip);
-		if (hmp->locked_dirty_count > 64 ||
-		    hammer_must_finalize_undo(hmp)) {
+
+		/*
+		 * XXX this breaks atomicy
+		 */
+		if (hammer_must_finalize_undo(hmp)) {
+			Debugger("Too many undos!!");
 			hammer_flusher_finalize(hmp, root_volume, start_offset);
 			start_offset = rootmap->next_offset;
 		}
@@ -197,22 +209,12 @@ static
 int
 hammer_must_finalize_undo(hammer_mount_t hmp)
 {
-	hammer_blockmap_t rootmap;
-	int bytes;
-	int max_bytes;
-
-	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-
-	if (rootmap->first_offset <= rootmap->next_offset) {
-		bytes = (int)(rootmap->next_offset - rootmap->first_offset);
-	} else {
-		bytes = (int)(rootmap->alloc_offset - rootmap->first_offset +
-			      rootmap->next_offset);
-	}
-	max_bytes = (int)(rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK);
-	if (bytes > max_bytes / 2)
+	if (hammer_undo_space(hmp) < hammer_undo_max(hmp) / 2) {
 		kprintf("*");
-	return (bytes > max_bytes / 2);
+		return(1);
+	} else {
+		return(0);
+	}
 }
 
 /*

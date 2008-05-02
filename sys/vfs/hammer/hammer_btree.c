@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.39 2008/04/26 19:08:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.40 2008/05/02 01:00:42 dillon Exp $
  */
 
 /*
@@ -655,7 +655,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
  * called.
  *
  * The caller may depend on the cursor's exclusive lock after return to
- * interlock frontend visibility (see HAMMER_RECF_CONVERT_DELETE_ONDISK).
+ * interlock frontend visibility (see HAMMER_RECF_CONVERT_DELETE).
  *
  * ENOSPC is returned if there is no room to insert a new record.
  */

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.7 2008/04/29 01:10:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.8 2008/05/02 01:00:42 dillon Exp $
  */
 
 /*
@@ -97,6 +97,8 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 	/* no undo recursion */
 	hammer_modify_volume(NULL, root_volume, NULL, 0);
 
+	kprintf("u");
+
 again:
 	/*
 	 * Allocate space in the FIFO
@@ -104,6 +106,8 @@ again:
 	bytes = ((len + HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK) +
 		sizeof(struct hammer_fifo_undo) +
 		sizeof(struct hammer_fifo_tail);
+	if (hammer_undo_space(trans->hmp) < bytes + HAMMER_BUFSIZE*2)
+		panic("hammer: insufficient undo FIFO space!");
 
 	next_offset = undomap->next_offset;
 
@@ -186,5 +190,36 @@ again:
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
 	return(error);
+}
+
+int64_t
+hammer_undo_space(hammer_mount_t hmp)
+{
+	hammer_blockmap_t rootmap;
+	int64_t bytes;
+	int64_t max_bytes;
+
+	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+
+	if (rootmap->first_offset <= rootmap->next_offset) {
+		bytes = (int)(rootmap->next_offset - rootmap->first_offset);
+	} else {
+		bytes = (int)(rootmap->alloc_offset - rootmap->first_offset +
+			      rootmap->next_offset);
+	}
+	max_bytes = (int)(rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK);
+	return(max_bytes - bytes);
+}
+
+int64_t
+hammer_undo_max(hammer_mount_t hmp)
+{
+	hammer_blockmap_t rootmap;
+	int64_t max_bytes;
+
+	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+	max_bytes = (int)(rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK);
+
+	return(max_bytes);
 }
 
