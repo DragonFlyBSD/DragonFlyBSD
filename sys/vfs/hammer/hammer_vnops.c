@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.43 2008/05/02 01:00:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.44 2008/05/02 06:51:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1927,6 +1927,15 @@ hammer_dowrite(hammer_transaction_t trans, hammer_inode_t ip, struct bio *bio)
 	int error;
 
 	KKASSERT(ip->flush_state == HAMMER_FST_FLUSH);
+
+	/*
+	 * If the inode is going or gone, just throw away any frontend
+	 * buffers.
+	 */
+	if (ip->flags & HAMMER_INODE_DELETED) {
+		bp->b_resid = 0;
+		biodone(bio);
+	}
 
 	/*
 	 * Delete any records overlapping our range.  This function will

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.55 2008/05/02 01:00:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.56 2008/05/02 06:51:57 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -239,10 +239,10 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records */
 #define HAMMER_INODE_ONDISK	0x0010	/* inode is on-disk (else not yet) */
 #define HAMMER_INODE_FLUSH	0x0020	/* flush on last ref */
-#define HAMMER_INODE_DELETED	0x0080	/* inode ready for deletion */
+#define HAMMER_INODE_DELETED	0x0080	/* inode delete (backend) */
 #define HAMMER_INODE_DELONDISK	0x0100	/* delete synchronized to disk */
 #define HAMMER_INODE_RO		0x0200	/* read-only (because of as-of) */
-#define HAMMER_INODE_GONE	0x0400	/* delete flushed out */
+#define HAMMER_INODE_UNUSED0400	0x0400
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
 #define HAMMER_INODE_REFLUSH	0x2000	/* pipelined flush during flush */
@@ -250,7 +250,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_FLUSHW	0x8000	/* Someone waiting for flush */
 
 #define HAMMER_INODE_TRUNCATED	0x00010000
-#define HAMMER_INODE_DELETING	0x00020000 /* Destroy the inode on-disk */
+#define HAMMER_INODE_DELETING	0x00020000 /* inode delete request (frontend)*/
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	  \
@@ -775,7 +775,7 @@ int  hammer_ip_add_record(struct hammer_transaction *trans,
 int  hammer_ip_delete_range(struct hammer_transaction *trans,
 			hammer_inode_t ip, int64_t ran_beg, int64_t ran_end);
 int  hammer_ip_delete_range_all(struct hammer_transaction *trans,
-			hammer_inode_t ip);
+			hammer_inode_t ip, int *countp);
 int  hammer_ip_sync_data(struct hammer_transaction *trans,
 			hammer_inode_t ip, int64_t offset,
 			void *data, int bytes);

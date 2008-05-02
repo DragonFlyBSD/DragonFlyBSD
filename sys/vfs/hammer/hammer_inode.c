@@ -31,10 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.45 2008/05/02 01:00:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.46 2008/05/02 06:51:57 dillon Exp $
  */
 
 #include "hammer.h"
+#include <vm/vm_extern.h>
 #include <sys/buf.h>
 #include <sys/buf2.h>
 
@@ -384,20 +385,16 @@ hammer_update_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	hammer_record_t record;
 	int error;
 
-	/*
-	 * Locate the record on-disk and mark it as deleted.  Both the B-Tree
-	 * node and the record must be marked deleted.  The record may or
-	 * may not be physically deleted, depending on the retention policy.
-	 *
-	 * If the inode has already been deleted on-disk we have nothing
-	 * to do.
-	 *
-	 * XXX Update the inode record and data in-place if the retention
-	 * policy allows it.
-	 */
 retry:
 	error = 0;
 
+	/*
+	 * If the inode has a presence on-disk then locate it and mark
+	 * it deleted, setting DELONDISK.
+	 *
+	 * The record may or may not be physically deleted, depending on
+	 * the retention policy.
+	 */
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
 		hammer_init_cursor(trans, &cursor, &ip->cache[0]);
@@ -425,7 +422,6 @@ retry:
 			}
 			if (error == 0) {
 				ip->flags |= HAMMER_INODE_DELONDISK;
-				ip->sync_flags &= ~HAMMER_INODE_DELETING;
 			}
 			hammer_cache_node(cursor.node, &ip->cache[0]);
 		}
@@ -435,14 +431,17 @@ retry:
 	}
 
 	/*
-	 * Write out a new record if the in-memory inode is not marked
-	 * as having been deleted.  Update our inode statistics if this
-	 * is the first application of the inode on-disk.
+	 * Ok, write out the initial record or a new record (after deleting
+	 * the old one), unless the DELETED flag is set.  This routine will
+	 * clear DELONDISK if it writes out a record.
 	 *
-	 * If the inode has been deleted permanently, HAMMER_INODE_DELONDISK
-	 * will remain set and prevent further updates.
+	 * Update our inode statistics if this is the first application of
+	 * the inode on-disk.
 	 */
-	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED) == 0) { 
+	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED) == 0) {
+		/*
+		 * Generate a record and write it to the media
+		 */
 		record = hammer_alloc_mem_record(ip);
 		record->flush_state = HAMMER_FST_FLUSH;
 		record->rec.inode = ip->sync_ino_rec;
@@ -465,6 +464,9 @@ retry:
 		record->flush_state = HAMMER_FST_IDLE;
 		hammer_rel_mem_record(record);
 
+		/*
+		 * Finish up.
+		 */
 		if (error == 0) {
 			ip->sync_flags &= ~(HAMMER_INODE_RDIRTY |
 					    HAMMER_INODE_DDIRTY |
@@ -483,11 +485,12 @@ retry:
 			}
 		}
 	}
+
+	/*
+	 * If the inode has been destroyed, clean out any left-over flags
+	 * that may have been set by the frontend.
+	 */
 	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED)) { 
-		/*
-		 * Clean out any left-over flags if the inode has been
-		 * destroyed.
-		 */
 		ip->sync_flags &= ~(HAMMER_INODE_RDIRTY |
 				    HAMMER_INODE_DDIRTY |
 				    HAMMER_INODE_ITIMES);
@@ -825,7 +828,7 @@ hammer_setup_parent_inodes(hammer_record_t record)
 
 #if 0
 	if (record->type == HAMMER_MEM_RECORD_DEL &&
-	    (record->target_ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELONDISK)) == 0) {
+	    (record->target_ip->flags & (HAMMER_INODE_DELETED|HAMMER_INODE_DELONDISK)) == 0) {
 		/*
 		 * Regardless of flushing state we cannot sync this path if the
 		 * record represents a delete-on-disk but the target inode
@@ -935,13 +938,11 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	 * inode is destroyed.
 	 */
 	ip->sync_flags = (ip->flags & HAMMER_INODE_MODMASK);
-	ip->sync_flags &= ~HAMMER_INODE_DELETING;
 	ip->sync_trunc_off = ip->trunc_off;
 	ip->sync_ino_rec = ip->ino_rec;
 	ip->sync_ino_data = ip->ino_data;
 	ip->flags &= ~HAMMER_INODE_MODMASK |
-		     HAMMER_INODE_TRUNCATED | HAMMER_INODE_BUFS |
-		     HAMMER_INODE_DELETING;
+		     HAMMER_INODE_TRUNCATED | HAMMER_INODE_BUFS;
 
 	/*
 	 * Fix up the dirty buffer status.
@@ -1299,18 +1300,16 @@ hammer_sync_inode(hammer_inode_t ip)
 	}
 
 	/*
-	 * If the inode has been unlinked and no longer has a vnode
-	 * ref, destroy its data.
+	 * If there is a trunction queued destroy any data past the (aligned)
+	 * truncation point.  Userland will have dealt with the buffer
+	 * containing the truncation point for us.
 	 *
-	 * Otherwise if there is a trunction queued destroy any data past
-	 * the (aligned) truncation point.  Userland will have dealt with
-	 * the buffer containing the truncation point for us.
+	 * We don't flush pending frontend data buffers until after we've
+	 * dealth with the truncation.
+	 *
+	 * Don't bother if the inode is or has been deleted.
 	 */
-	if (ip->sync_ino_rec.ino_nlinks == 0 && ip->vp == NULL) {
-		error = hammer_ip_delete_range_all(&trans, ip);
-		if (error)
-			Debugger("hammer_ip_delete_range_all errored");
-	} else if (ip->sync_flags & HAMMER_INODE_TRUNCATED) {
+	if (ip->sync_flags & HAMMER_INODE_TRUNCATED) {
 		/*
 		 * Interlock trunc_off.  The VOP front-end may continue to
 		 * make adjustments to it while we are blocked.
@@ -1346,6 +1345,10 @@ hammer_sync_inode(hammer_inode_t ip)
 	/*
 	 * Now sync related records.  These will typically be directory
 	 * entries or delete-on-disk records.
+	 *
+	 * Not all records will be flushed, but clear XDIRTY anyway.  We
+	 * will set it again in the frontend hammer_flush_inode_done() 
+	 * if records remain.
 	 */
 	if (error == 0) {
 		tmp_error = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
@@ -1354,89 +1357,59 @@ hammer_sync_inode(hammer_inode_t ip)
 			tmp_error = -error;
 		if (tmp_error)
 			error = tmp_error;
+		if (error == 0)
+			ip->sync_flags &= ~HAMMER_INODE_XDIRTY;
 	}
 
 	/*
-	 * Sync inode deletions, with certain restrictions.
-	 *
-	 * - Nlinks must be 0 for both the frontend and the backend.
-	 * - All related directory entries and our own records must
-	 *   be synchronized.
-	 *
-	 * In the latter case a directory containing numerous directory
-	 * entries may not be able to sync those entries due to topological
-	 * recursion.  If this is the case those records would not have
-	 * been marked for flush action and ip->rec_tree will not be empty.
+	 * If we are deleting the inode the frontend had better not have
+	 * any active references on elements making up the inode.
 	 */
-	if (ip->sync_ino_rec.ino_nlinks == 0 && 
-	    ip->ino_rec.ino_nlinks == 0 &&
-	    TAILQ_FIRST(&ip->target_list) == NULL &&
-	    RB_ROOT(&ip->rec_tree) == NULL &&
-	    (ip->flags & HAMMER_INODE_GONE) == 0) {
-		/*
-		 * Handle the case where the inode has been completely deleted
-		 * and is no longer referenceable from the filesystem
-		 * namespace.
-		 *
-		 * NOTE: We do not set the RDIRTY flag when updating the
-		 * delete_tid, setting HAMMER_INODE_DELETED takes care of it.
-		 */
+	if (error == 0 && ip->sync_ino_rec.ino_nlinks == 0 &&
+		RB_EMPTY(&ip->rec_tree)  &&
+	    (ip->sync_flags & HAMMER_INODE_DELETING) &&
+	    (ip->flags & HAMMER_INODE_DELETED) == 0) {
+		int count1 = 0;
+
 		kprintf("Y");
+		ip->flags |= HAMMER_INODE_DELETED;
+		error = hammer_ip_delete_range_all(&trans, ip, &count1);
+		if (error == 0) {
+			ip->sync_flags &= ~HAMMER_INODE_DELETING;
+			ip->sync_flags &= ~HAMMER_INODE_TRUNCATED;
+			KKASSERT(RB_EMPTY(&ip->rec_tree));
 
-		ip->flags |= HAMMER_INODE_GONE | HAMMER_INODE_DELETED;
-		ip->flags &= ~HAMMER_INODE_TRUNCATED;
-		ip->sync_flags &= ~HAMMER_INODE_TRUNCATED;
-		if (ip->vp)
-			vtruncbuf(ip->vp, 0, HAMMER_BUFSIZE);
+			/*
+			 * Set delete_tid in both the frontend and backend
+			 * copy of the inode record.  The DELETED flag handles
+			 * this, do not set RDIRTY.
+			 */
+			ip->ino_rec.base.base.delete_tid = trans.tid;
+			ip->sync_ino_rec.base.base.delete_tid = trans.tid;
 
-		/*
-		 * Set delete_tid in both the frontend and backend
-		 * copy of the inode record.
-		 */
-		ip->ino_rec.base.base.delete_tid = trans.tid;
-		ip->sync_ino_rec.base.base.delete_tid = trans.tid;
-
-		/*
-		 * Indicate that the inode has/is-being deleted.
-		 */
-		ip->flags |= HAMMER_NODE_DELETED;
-		hammer_modify_inode(&trans, ip, HAMMER_INODE_RDIRTY);
-		hammer_modify_volume(&trans, trans.rootvol, NULL, 0);
-		--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
-		hammer_modify_volume_done(trans.rootvol);
+			/*
+			 * Adjust the inode count in the volume header
+			 */
+			hammer_modify_volume(&trans, trans.rootvol, NULL, 0);
+			--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+			hammer_modify_volume_done(trans.rootvol);
+		} else {
+			ip->flags &= ~HAMMER_INODE_DELETED;
+			Debugger("hammer_ip_delete_range_all errored");
+		}
 	}
 
 	/*
-	 * Flush any queued BIOs.
+	 * Flush any queued BIOs.  These will just biodone() the IO's if
+	 * the inode has been deleted.
 	 */
 	while ((bio = TAILQ_FIRST(&ip->bio_list)) != NULL) {
-		KKASSERT((ip->flags & HAMMER_INODE_DELETED) == 0);
 		TAILQ_REMOVE(&ip->bio_list, bio, bio_act);
-#if 0
-		kprintf("dowrite %016llx ip %p bio %p @ %016llx\n", trans.tid, ip, bio, bio->bio_offset);
-#endif
 		tmp_error = hammer_dowrite(&trans, ip, bio);
 		if (tmp_error)
 			error = tmp_error;
 	}
 	ip->sync_flags &= ~HAMMER_INODE_BUFS;
-
-	/*
-	 * We better have nothing left if the inode has been deleted.  If it
-	 * hasn't the frontend may have queued more stuff, which would be ok.
-	 */
-	KKASSERT((ip->flags & HAMMER_INODE_DELETED) == 0 || 
-		 RB_ROOT(&ip->rec_tree) == NULL);
-
-	/*
-	 * XDIRTY represents rec_tree and bio_list.  However, rec_tree may
-	 * contain new front-end records so short of scanning it we can't
-	 * just test whether it is empty or not. 
-	 *
-	 * If no error occured assume we succeeded.
-	 */
-	if (error == 0)
-		ip->sync_flags &= ~HAMMER_INODE_XDIRTY;
 
 	if (error)
 		Debugger("RB_SCAN errored");
@@ -1450,15 +1423,23 @@ hammer_sync_inode(hammer_inode_t ip)
 		/*
 		 * If deleted and on-disk, don't set any additional flags.
 		 * the delete flag takes care of things.
+		 *
+		 * Clear flags which may have been set by the frontend.
 		 */
+		ip->sync_flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
+				    HAMMER_INODE_XDIRTY|HAMMER_INODE_ITIMES|
+				    HAMMER_INODE_DELETING);
 		break;
 	case HAMMER_INODE_DELETED:
 		/*
 		 * Take care of the case where a deleted inode was never
 		 * flushed to the disk in the first place.
+		 *
+		 * Clear flags which may have been set by the frontend.
 		 */
 		ip->sync_flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
-				    HAMMER_INODE_XDIRTY|HAMMER_INODE_ITIMES);
+				    HAMMER_INODE_XDIRTY|HAMMER_INODE_ITIMES|
+				    HAMMER_INODE_DELETING);
 		while (RB_ROOT(&ip->rec_tree)) {
 			hammer_record_t record = RB_ROOT(&ip->rec_tree);
 			hammer_ref(&record->lock);
@@ -1532,14 +1513,17 @@ hammer_inode_unloadable_check(hammer_inode_t ip)
 {
 	/*
 	 * If the inode is on-media and the link count is 0 we MUST delete
-	 * it on-media.
+	 * it on-media.  DELETING is a mod flag, DELETED is a state flag.
 	 */
 	if (ip->ino_rec.ino_nlinks == 0 &&
-	    (ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
-	    HAMMER_INODE_ONDISK) {
+	    (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
+		if (ip->vp) {
+			vtruncbuf(ip->vp, 0, HAMMER_BUFSIZE);
+			vnode_pager_setsize(ip->vp, 0);
+		}
 		ip->flags |= HAMMER_INODE_DELETING;
-	} else {
-		ip->flags &= ~HAMMER_INODE_DELETING;
+		ip->flags |= HAMMER_INODE_TRUNCATED;
+		ip->trunc_off = 0;
 	}
 
 	/*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.8 2008/05/02 01:00:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.9 2008/05/02 06:51:57 dillon Exp $
  */
 
 /*
@@ -96,8 +96,6 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 
 	/* no undo recursion */
 	hammer_modify_volume(NULL, root_volume, NULL, 0);
-
-	kprintf("u");
 
 again:
 	/*

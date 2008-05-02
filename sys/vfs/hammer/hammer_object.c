@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.48 2008/05/02 01:00:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.49 2008/05/02 06:51:57 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1490,7 +1490,8 @@ retry:
  * of or nlinks would get upset).
  */
 int
-hammer_ip_delete_range_all(hammer_transaction_t trans, hammer_inode_t ip)
+hammer_ip_delete_range_all(hammer_transaction_t trans, hammer_inode_t ip,
+			   int *countp)
 {
 	struct hammer_cursor cursor;
 	hammer_record_ondisk_t rec;
@@ -1538,8 +1539,10 @@ retry:
 		 * Directory entries (and delete-on-disk directory entries)
 		 * must be synced and cannot be deleted.
 		 */
-		if (rec->base.base.rec_type != HAMMER_RECTYPE_DIRENTRY)
+		if (rec->base.base.rec_type != HAMMER_RECTYPE_DIRENTRY) {
 			error = hammer_ip_delete_record(&cursor, trans->tid);
+			++*countp;
+		}
 		if (error)
 			break;
 		error = hammer_ip_next(&cursor);
