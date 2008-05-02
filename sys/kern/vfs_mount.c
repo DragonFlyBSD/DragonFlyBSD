@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.31 2008/02/10 13:45:21 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.32 2008/05/02 00:19:52 corecode Exp $
  */
 
 /*
@@ -991,7 +991,8 @@ next:
 		 * now and then.
 		 */
 		if (++count == 10000) {
-			lwkt_yield();
+			/* We really want to yield a bit, so we simply sleep a tick */
+			tsleep(mp, 0, "vnodescn", 1);
 			count = 0;
 		}
 
