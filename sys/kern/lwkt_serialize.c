@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.13 2008/05/02 10:57:33 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.14 2008/05/02 11:17:19 sephe Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -70,12 +70,14 @@
 
 KTR_INFO_MASTER(slz);
 KTR_INFO(KTR_SERIALIZER, slz, enter, 0, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, sleep, 1, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, exit, 2, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, wakeup, 3, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, try, 4, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, tryfail, 5, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
-KTR_INFO(KTR_SERIALIZER, slz, tryok, 6, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, sleep_beg, 1, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, sleep_end, 2, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, exit, 3, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, wakeup_beg, 4, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, wakeup_end, 5, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, try, 6, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, tryfail, 7, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+KTR_INFO(KTR_SERIALIZER, slz, tryok, 8, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
 
 #define logslz(name, slz)	KTR_LOG(slz_ ## name, slz)
 
@@ -147,8 +149,8 @@ lwkt_serialize_exit(lwkt_serialize_t s)
     KKASSERT(s->last_td == curthread);
     s->last_td = (void *)-2;
 #endif
-    logslz(exit, s);
     atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
+    logslz(exit, s);
 }
 
 /*
@@ -190,8 +192,8 @@ lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *, void *),
 	KKASSERT(s->last_td == curthread);
 	s->last_td = (void *)-2;
 #endif
-	logslz(exit, s);
 	atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
+	logslz(exit, s);
     }
 }
 
@@ -222,8 +224,8 @@ lwkt_serialize_handler_try(lwkt_serialize_t s, void (*func)(void *, void *),
 	    KKASSERT(s->last_td == curthread);
 	    s->last_td = (void *)-2;
 #endif
-	    logslz(exit, s);
 	    atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
+	    logslz(exit, s);
 	    return(0);
 	}
     }
@@ -253,8 +255,9 @@ lwkt_serialize_sleep(void *info)
 #ifdef PROFILE_SERIALIZER
 	s->sleep_cnt++;
 #endif
-	logslz(sleep, s);
+	logslz(sleep_beg, s);
 	tsleep(s, 0, "slize", 0);
+	logslz(sleep_end, s);
     }
     crit_exit();
 }
@@ -262,6 +265,7 @@ lwkt_serialize_sleep(void *info)
 static void
 lwkt_serialize_wakeup(void *info)
 {
-    logslz(wakeup, info);
+    logslz(wakeup_beg, info);
     wakeup(info);
+    logslz(wakeup_end, info);
 }
