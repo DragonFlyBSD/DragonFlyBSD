@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/kernconf.5,v 1.5 2008/02/20 12:29:07 swildner Exp $
+.\" $DragonFly: src/share/man/man5/kernconf.5,v 1.6 2008/05/02 10:46:33 swildner Exp $
 .\"
 .Dd September 13, 2007
 .Os
@@ -60,7 +60,8 @@ See
 for information on how to configure and build kernels.
 .Sh KEYWORDS
 The following keywords are recognized in a configuration file:
-.Bl -ohang
+.Pp
+.Bl -tag -width indent -compact
 .It Sy cpu Xo
 .Ar name
 .Xc
@@ -75,16 +76,19 @@ and
 .Sy I686_CPU
 .Tn ( Pentium Pro ) .
 More than one CPU type specification can appear in a configuration file.
+.Pp
 .It Sy device Xo
 .Ar name
 .Xc
 Configures support for device
 .Ar name .
+.Pp
 .It Sy ident Xo
 .Ar string
 .Xc
 Sets the kernel identification string to
 .Ar string .
+.Pp
 .It Sy machine Xo
 .Ar name
 .Xc
@@ -92,6 +96,7 @@ The system is to run on the machine type
 .Ar name .
 This is a legacy keyword and must be set to
 .Sy i386 .
+.Pp
 .It Sy machine_arch Xo
 .Ar name
 .Xc
@@ -99,6 +104,7 @@ The system is to run on the machine architecture
 .Ar name .
 The only legal architecture is
 .Sy i386 .
+.Pp
 .It Sy makeoptions Xo
 .Ar name=value
 .Xc
@@ -109,12 +115,14 @@ macro
 with the value
 .Ar value
 in the kernel Makefile.
+.Pp
 .It Sy maxusers Xo
 .Ar integer
 .Xc
 Set the
 .Va maxusers
 variable in the kernel.
+.Pp
 .It Sy options Xo
 .Ar name Ns Bq Ar =value
 .Xc
@@ -128,6 +136,7 @@ of that language apply.
 .\"For more information see the
 .\".Sx OPTIONS
 .\"section.
+.Pp
 .It Sy platform Xo
 .Ar name
 .Xc
@@ -140,6 +149,7 @@ and
 meaning either a 32 bit
 .Tn Intel
 architecture or a virtual kernel.
+.Pp
 .It Sy pseudo-device Xo
 .Ar name
 .Op Ar N
