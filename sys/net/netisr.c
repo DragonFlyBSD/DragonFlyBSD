@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.39 2008/03/29 04:45:47 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.40 2008/05/02 07:40:32 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -292,6 +292,7 @@ netisr_queue(int num, struct mbuf *m)
     ni = &netisrs[num];
     if (ni->ni_handler == NULL) {
 	kprintf("netisr_queue: unregistered isr %d\n", num);
+	m_freem(m);
 	return (EIO);
     }
 
@@ -402,3 +403,35 @@ schednetisr(int num)
 #endif
 }
 
+lwkt_port_t
+netisr_mport(int num, struct mbuf **m0)
+{
+    struct netisr *ni;
+    struct netmsg_packet *pmsg;
+    lwkt_port_t port;
+    struct mbuf *m = *m0;
+
+    *m0 = NULL;
+
+    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+	("netisr_queue: bad isr %d", num));
+
+    ni = &netisrs[num];
+    if (ni->ni_handler == NULL) {
+	kprintf("netisr_queue: unregistered isr %d\n", num);
+	m_freem(m);
+	return NULL;
+    }
+
+    if ((port = ni->ni_mport(&m)) == NULL)
+	return NULL;
+
+    pmsg = &m->m_hdr.mh_netmsg;
+
+    netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0, ni->ni_handler);
+    pmsg->nm_packet = m;
+    pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
+
+    *m0 = m;
+    return port;
+}

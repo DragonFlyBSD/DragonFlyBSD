@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.47 2008/04/06 18:58:10 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.48 2008/05/02 07:40:32 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -260,6 +260,11 @@ struct mbuf {
 #define	MT_CONTROL	5	/* extra-data protocol message */
 #define	MT_OOBDATA	6	/* expedited data  */
 #define	MT_NTYPES	7	/* number of mbuf types for mbtypes[] */
+
+struct mbuf_chain {
+	struct mbuf	*mc_head;
+	struct mbuf	*mc_tail;
+};
 
 /*
  * General mbuf allocator statistics structure.

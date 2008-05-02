@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.48 2008/03/20 12:55:32 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.49 2008/05/02 07:40:32 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -76,6 +76,7 @@
  * Forward structure declarations for function prototypes [sic].
  */
 struct	mbuf;
+struct	mbuf_chain;
 struct	proc;
 struct	rtentry;
 struct	rt_addrinfo;
@@ -490,6 +491,10 @@ void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int,
 			struct lwkt_serialize *);
 void	ether_ifdetach(struct ifnet *);
 void	ether_input(struct ifnet *, struct mbuf *);
+void	ether_input_chain(struct ifnet *, struct mbuf *, struct mbuf_chain *);
+#ifdef ETHER_INPUT_CHAIN
+void	ether_input_dispatch(struct mbuf_chain *);
+#endif
 void	ether_demux(struct ifnet *, struct mbuf *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, int, caddr_t);

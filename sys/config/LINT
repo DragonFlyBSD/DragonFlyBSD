@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.159 2008/05/01 02:03:28 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.160 2008/05/02 07:40:32 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2787,3 +2787,6 @@ options		SCTP_MAP_LOGGING
 
 # Serializer profiling
 options		PROFILE_SERIALIZER
+
+# Chain ethernet inputs
+options		ETHER_INPUT_CHAIN

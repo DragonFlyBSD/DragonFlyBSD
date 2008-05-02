@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.57 2008/03/20 14:08:45 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.58 2008/05/02 07:40:32 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -41,15 +41,20 @@
 #include "opt_ipx.h"
 #include "opt_netgraph.h"
 #include "opt_carp.h"
+#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/globaldata.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/msgport.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
+#include <sys/thread.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/netisr.h>
@@ -119,6 +124,8 @@ static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 			struct rtentry *);
 static void ether_restore_header(struct mbuf **, const struct ether_header *,
 				 const struct ether_header *);
+static void ether_demux_chain(struct ifnet *, struct mbuf *,
+			      struct mbuf_chain *);
 
 /*
  * if_bridge support
@@ -530,7 +537,7 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
  * upper layers with ether_demux().
  */
 void
-ether_input(struct ifnet *ifp, struct mbuf *m)
+ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 {
 	struct ether_header *eh;
 
@@ -614,14 +621,20 @@ ether_input(struct ifnet *ifp, struct mbuf *m)
 	}
 
 	/* Continue with upper layer processing */
-	ether_demux(ifp, m);
+	ether_demux_chain(ifp, m, chain);
+}
+
+void
+ether_input(struct ifnet *ifp, struct mbuf *m)
+{
+	ether_input_chain(ifp, m, NULL);
 }
 
 /*
  * Upper layer processing for a received Ethernet packet.
  */
-void
-ether_demux(struct ifnet *ifp, struct mbuf *m)
+static void
+ether_demux_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 {
 	struct ether_header save_eh, *eh;
 	int isr;
@@ -799,7 +812,37 @@ dropanyway:
 			m_freem(m);
 		return;
 	}
-	netisr_dispatch(isr, m);
+
+#ifdef ETHER_INPUT_CHAIN
+	if (chain != NULL) {
+		struct mbuf_chain *c;
+		lwkt_port_t port;
+		int cpuid;
+
+		port = netisr_mport(isr, &m);
+		if (port == NULL)
+			return;
+
+		m->m_pkthdr.header = port; /* XXX */
+		cpuid = port->mpu_td->td_gd->gd_cpuid;
+
+		c = &chain[cpuid];
+		if (c->mc_head == NULL) {
+			c->mc_head = c->mc_tail = m;
+		} else {
+			c->mc_tail->m_nextpkt = m;
+			c->mc_tail = m;
+		}
+		m->m_nextpkt = NULL;
+	} else
+#endif	/* ETHER_INPUT_CHAIN */
+		netisr_dispatch(isr, m);
+}
+
+void
+ether_demux(struct ifnet *ifp, struct mbuf *m)
+{
+	ether_demux_chain(ifp, m, NULL);
 }
 
 /*
@@ -1207,3 +1250,45 @@ ether_restore_header(struct mbuf **m0, const struct ether_header *eh,
 	}
 	*m0 = m;
 }
+
+#ifdef ETHER_INPUT_CHAIN
+
+static void
+ether_input_ipifunc(void *arg)
+{
+	struct mbuf *m, *next;
+	lwkt_port_t port;
+
+	m = arg;
+	do {
+		next = m->m_nextpkt;
+		m->m_nextpkt = NULL;
+
+		port = m->m_pkthdr.header;
+		m->m_pkthdr.header = NULL;
+
+		lwkt_sendmsg(port,
+		&m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
+
+		m = next;
+	} while (m != NULL);
+}
+
+void
+ether_input_dispatch(struct mbuf_chain *chain)
+{
+#ifdef SMP
+	int i;
+
+	for (i = 0; i < ncpus; ++i) {
+		if (chain[i].mc_head != NULL) {
+			lwkt_send_ipiq(globaldata_find(i),
+			ether_input_ipifunc, chain[i].mc_head);
+		}
+	}
+#else
+	ether_input_ipifunc(chain->mc_head);
+#endif
+}
+
+#endif	/* ETHER_INPUT_CHAIN */
