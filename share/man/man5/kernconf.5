@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/kernconf.5,v 1.6 2008/05/02 10:46:33 swildner Exp $
+.\" $DragonFly: src/share/man/man5/kernconf.5,v 1.7 2008/05/02 22:10:58 swildner Exp $
 .\"
-.Dd September 13, 2007
+.Dd May 2, 2008
 .Os
 .Dt KERNCONF 5
 .Sh NAME
@@ -50,14 +50,26 @@
 .Cd pseudo-device ...
 .Sh DESCRIPTION
 This manual page describes the structure of the kernel configuration file.
+It is processed by
+.Xr config 8
+to create a build environment where a kernel may be built using
+.Xr make 1 .
+See
+.Xr build 7
+for information on how to build kernels.
+.Pp
+Each line starts with a keyword at the beginning of the line and is
+followed by additional parameters.
+Long input lines may be broken into shorter lines by starting the
+second and subsequent lines with a white space character.
+Numbers are specified using
+.Tn C Ns -style
+syntax.
 Blank lines are ignored.
 The
 .Sq #
 character is interpreted as a comment and is ignored along with everything
 that follows it on the same line.
-See
-.Xr config 8
-for information on how to configure and build kernels.
 .Sh KEYWORDS
 The following keywords are recognized in a configuration file:
 .Pp
@@ -79,9 +91,36 @@ More than one CPU type specification can appear in a configuration file.
 .Pp
 .It Sy device Xo
 .Ar name
+.Op Ar at bus
+.Op Ar port num
+.Op Ar irq num
+.Op Ar drq num
+.Op Ar iomem num
+.Op Ar iosiz num
+.Op Ar flags num
 .Xc
 Configures support for device
 .Ar name .
+Additional parameters may be passed to specify I/O configuration
+settings (most often for
+.Xr isa 4
+devices):
+.Bl -tag -width ".Ar iomem"
+.It Ar at
+specifies a bus to which the device is attached.
+.It Ar port
+specifies the start address of I/O ports to be used by the device.
+.It Ar irq
+specifies the number of ports used by the device.
+.It Ar drq
+is the interrupt line number to be used.
+.It Ar iomem
+specifies the physical memory address used by the device.
+.It Ar iosiz
+specifies the physical memory size used by the device.
+.It Ar flags
+sets various flag bits for the device.
+.El
 .Pp
 .It Sy ident Xo
 .Ar string
