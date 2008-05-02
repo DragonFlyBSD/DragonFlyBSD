@@ -23,7 +23,7 @@
 .\"SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/share/man/man5/elf.5,v 1.6.2.8 2001/12/17 11:30:13 ru Exp $
-.\"	$DragonFly: src/share/man/man5/elf.5,v 1.10 2008/05/01 22:06:06 swildner Exp $
+.\"	$DragonFly: src/share/man/man5/elf.5,v 1.11 2008/05/02 02:05:06 swildner Exp $
 .\"
 .Dd February 9, 2008
 .Dt ELF 5
@@ -137,7 +137,6 @@ typedef struct {
         Elf32_Half      e_shstrndx;
 } Elf32_Ehdr;
 .Ed
-.Pp
 .Bd -literal -offset indent
 typedef struct {
 	unsigned char   e_ident[EI_NIDENT];
@@ -457,7 +456,6 @@ and
 members.
 As with the Elf executable header, the program header
 also has different versions depending on the architecture:
-.Pp
 .Bd -literal -offset indent
 typedef struct {
         Elf32_Word      p_type;
@@ -470,7 +468,6 @@ typedef struct {
         Elf32_Size      p_align;
 } Elf32_Phdr;
 .Ed
-.Pp
 .Bd -literal -offset indent
 typedef struct {
         Elf64_Half      p_type;
@@ -685,7 +682,6 @@ typedef struct {
 	Elf32_Size      sh_entsize;
 } Elf32_Shdr;
 .Ed
-.Pp
 .Bd -literal -offset indent
 typedef struct {
 	Elf64_Half      sh_name;
@@ -1110,7 +1106,6 @@ An object file's symbol table holds information needed to locate and
 relocate a program's symbolic definitions and references.
 A symbol table
 index is a subscript into this array.
-.Pp
 .Bd -literal -offset indent
 typedef struct {
 	Elf32_Word      st_name;
@@ -1121,7 +1116,6 @@ typedef struct {
 	Elf32_Half      st_shndx;
 } Elf32_Sym;
 .Ed
-.Pp
 .Bd -literal -offset indent
 typedef struct {
 	Elf64_Half      st_name;
@@ -1255,7 +1249,6 @@ program image.
 Relocation entries are these data.
 .Pp
 Relocation structures that do not need an addend:
-.Pp
 .Bd -literal -offset indent
 typedef struct {
 	Elf32_Addr      r_offset;
@@ -1270,7 +1263,6 @@ typedef struct {
 .Ed
 .Pp
 Relocation structures that need an addend:
-.Pp
 .Bd -literal -offset indent
 typedef struct {
 	Elf32_Addr      r_offset;

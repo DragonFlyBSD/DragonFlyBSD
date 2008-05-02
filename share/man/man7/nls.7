@@ -34,7 +34,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/nls.7,v 1.6 2008/01/26 15:14:41 swildner Exp $
+.\" $DragonFly: src/share/man/man7/nls.7,v 1.7 2008/05/02 02:05:06 swildner Exp $
 .\"
 .Dd May 17, 2003
 .Dt NLS 7
@@ -140,7 +140,6 @@ and
 environment variables also determine the current locale.
 .Pp
 The values of these environment variables contains a string format as:
-.Pp
 .Bd -literal
 	language[_territory][.codeset][@modifier]
 .Ed
@@ -303,7 +302,6 @@ The short form of da_DK is sufficient to indicate this locale.
 .Pp
 The environment variable settings are queried by their priority level
 in the following manner:
-.Pp
 .Bl -bullet
 .It
 If the

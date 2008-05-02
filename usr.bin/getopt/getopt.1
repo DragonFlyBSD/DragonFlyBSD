@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/usr.bin/getopt/getopt.1,v 1.10.2.5 2002/12/29 16:35:39 schweikh Exp $
-.\" $DragonFly: src/usr.bin/getopt/getopt.1,v 1.4 2006/03/27 07:36:39 swildner Exp $
+.\" $DragonFly: src/usr.bin/getopt/getopt.1,v 1.5 2008/05/02 02:05:07 swildner Exp $
 .\"
 .Dd April 3, 1999
 .Dt GETOPT 1
@@ -45,7 +45,6 @@ and
 and the option
 .Fl o ,
 which requires an argument.
-.Pp
 .Bd -literal -offset indent
 args=\`getopt abo: $*\`
 # you should not use \`getopt abo: "$@"\` since that would parse
@@ -78,7 +77,6 @@ echo oarg is "'"$oarg"'"
 .Ed
 .Pp
 This code will accept any of the following as equivalent:
-.Pp
 .Bd -literal -offset indent
 cmd \-aoarg file file
 cmd \-a \-o arg file file

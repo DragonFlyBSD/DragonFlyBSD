@@ -24,7 +24,7 @@
 .\" DEALINGS IN THE SOFTWARE.
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man4/multicast.4,v 1.1 2003/10/17 15:12:01 bmah Exp $
-.\" $DragonFly: src/share/man/man4/multicast.4,v 1.6 2007/11/24 18:47:07 swildner Exp $
+.\" $DragonFly: src/share/man/man4/multicast.4,v 1.7 2008/05/02 02:05:05 swildner Exp $
 .\"
 .Dd September 4, 2003
 .Dt MULTICAST 4
@@ -94,13 +94,11 @@ That socket would be used
 to control the multicast forwarding in the kernel.
 Note that most operations below require certain privilege
 (i.e., root privilege):
-.Pp
 .Bd -literal
 /* IPv4 */
 int mrouter_s4;
 mrouter_s4 = socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 .Ed
-.Pp
 .Bd -literal
 int mrouter_s6;
 mrouter_s6 = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
@@ -126,7 +124,6 @@ or disable multicast forwarding in the kernel:
 int v = 1;        /* 1 to enable, or 0 to disable */
 setsockopt(mrouter_s4, IPPROTO_IP, MRT_INIT, (void *)&v, sizeof(v));
 .Ed
-.Pp
 .Bd -literal
 /* IPv6 */
 int v = 1;        /* 1 to enable, or 0 to disable */
@@ -190,7 +187,6 @@ contains the local IP address of the corresponding local interface.
 The
 .Dq vif_remote_address
 contains the remote IP address in case of DVMRP multicast tunnels.
-.Pp
 .Bd -literal
 /* IPv6 */
 struct mif6ctl mc;
@@ -223,7 +219,6 @@ vifi_t vifi = vif_index;
 setsockopt(mrouter_s4, IPPROTO_IP, MRT_DEL_VIF, (void *)&vifi,
            sizeof(vifi));
 .Ed
-.Pp
 .Bd -literal
 /* IPv6 */
 mifi_t mifi = mif_index;
@@ -299,7 +294,6 @@ for (i = 0; i < maxvifs; i++)
 setsockopt(mrouter_s4, IPPROTO_IP, MRT_ADD_MFC,
            (void *)&mc, sizeof(mc));
 .Ed
-.Pp
 .Bd -literal
 /* IPv6 */
 struct mf6cctl mc;
@@ -343,7 +337,6 @@ memcpy(&mc.mfcc_mcastgrp, &group_addr, sizeof(mc.mfcc_mcastgrp));
 setsockopt(mrouter_s4, IPPROTO_IP, MRT_DEL_MFC,
            (void *)&mc, sizeof(mc));
 .Ed
-.Pp
 .Bd -literal
 /* IPv6 */
 struct mf6cctl mc;
@@ -365,7 +358,6 @@ memcpy(&sgreq.src, &source_addr, sizeof(sgreq.src));
 memcpy(&sgreq.grp, &group_addr, sizeof(sgreq.grp));
 ioctl(mrouter_s4, SIOCGETSGCNT, &sgreq);
 .Ed
-.Pp
 .Bd -literal
 /* IPv6 */
 struct sioc_sg_req6 sgreq;
@@ -385,7 +377,6 @@ memset(&vreq, 0, sizeof(vreq));
 vreq.vifi = vif_index;
 ioctl(mrouter_s4, SIOCGETVIFCNT, &vreq);
 .Ed
-.Pp
 .Bd -literal
 /* IPv6 */
 struct sioc_mif_req6 mreq;

@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/kqueue.2,v 1.1.2.16 2002/07/02 21:05:08 mp Exp $
-.\" $DragonFly: src/lib/libc/sys/kqueue.2,v 1.6 2007/09/07 08:14:57 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/kqueue.2,v 1.7 2008/05/02 02:05:04 swildner Exp $
 .\"
 .Dd April 14, 2000
 .Dt KQUEUE 2
@@ -211,7 +211,6 @@ Takes a descriptor as the identifier, and returns whenever
 there is data available to read.
 The behavior of the filter is slightly different depending
 on the descriptor type.
-.Pp
 .Bl -tag -width 2n
 .It Sockets
 Sockets which have previously been passed to

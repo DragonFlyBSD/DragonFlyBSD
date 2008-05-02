@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/pw/pw.8,v 1.19.2.12 2003/05/08 15:01:44 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/pw/pw.8,v 1.4 2007/07/30 22:11:34 swildner Exp $
+.\" $DragonFly: src/usr.sbin/pw/pw.8,v 1.5 2008/05/02 02:05:08 swildner Exp $
 .\"
 .Dd December 9, 1996
 .Dt PW 8
@@ -242,7 +242,6 @@ id as an alternative to using the
 options.
 .Pp
 The following flags are common to most or all modes of operation:
-.Pp
 .Bl -tag -width "-G grouplist"
 .It Fl V Ar etcdir
 This flag sets an alternate location for the password, group and configuration files,
@@ -316,7 +315,6 @@ The following options apply to the
 and
 .Ar usermod
 commands:
-.Pp
 .Bl -tag -width "-G grouplist"
 .It Fl n Ar name
 Specify the user/account name.
@@ -350,7 +348,6 @@ or
 .Fl u
 options.
 .El
-.Pp
 .Bl -tag -width "-G grouplist"
 .It Fl c Ar comment
 This field sets the contents of the passwd GECOS field, which normally contains up
@@ -768,7 +765,6 @@ There is rarely any need to duplicate a group id.
 The
 .Ar groupmod
 command adds one additional option:
-.Pp
 .Bl -tag -width "-m newmembers"
 .It Fl l Ar name
 This option allows changing of an existing group name to

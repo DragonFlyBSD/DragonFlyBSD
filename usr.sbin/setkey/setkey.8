@@ -1,6 +1,6 @@
 .\"	$KAME: setkey.8,v 1.49 2001/05/18 05:49:51 sakane Exp $
 .\"	$FreeBSD: src/usr.sbin/setkey/setkey.8,v 1.4.2.15 2003/03/12 22:08:15 trhodes Exp $
-.\"	$DragonFly: src/usr.sbin/setkey/setkey.8,v 1.5 2006/03/26 22:56:58 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/setkey/setkey.8,v 1.6 2008/05/02 02:05:08 swildner Exp $
 .\"
 .\" Copyright (C) 1995, 1996, 1997, 1998, and 1999 WIDE Project.
 .\" All rights reserved.
@@ -530,7 +530,6 @@ in
 of
 .Ar protocol
 parameter:
-.Pp
 .Bd -literal -offset indent
 algorithm	keylen (bits)	comment
 hmac-md5	128		ah: rfc2403
@@ -557,7 +556,6 @@ in
 of
 .Ar protocol
 parameter:
-.Pp
 .Bd -literal -offset indent
 algorithm	keylen (bits)	comment
 des-cbc		64		esp-old: rfc1829, esp: rfc2405
@@ -577,7 +575,6 @@ in
 of
 .Ar protocol
 parameter:
-.Pp
 .Bd -literal -offset indent
 algorithm	comment
 deflate		rfc2394

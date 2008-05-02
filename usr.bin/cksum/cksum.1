@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)cksum.1	8.2 (Berkeley) 4/28/95
 .\" $FreeBSD: src/usr.bin/cksum/cksum.1,v 1.10.2.7 2001/08/16 13:16:43 ru Exp $
-.\" $DragonFly: src/usr.bin/cksum/cksum.1,v 1.3 2006/02/28 02:25:11 swildner Exp $
+.\" $DragonFly: src/usr.bin/cksum/cksum.1,v 1.4 2008/05/02 02:05:07 swildner Exp $
 .\"
 .Dd April 28, 1995
 .Dt CKSUM 1
@@ -123,7 +123,6 @@ in the networking standard
 The
 .Tn CRC
 checksum encoding is defined by the generating polynomial:
-.Pp
 .Bd -unfilled -offset indent
 G(x) = x^32 + x^26 + x^23 + x^22 + x^16 + x^12 +
      x^11 + x^10 + x^8 + x^7 + x^5 + x^4 + x^2 + x + 1

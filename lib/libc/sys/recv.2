@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)recv.2	8.3 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/recv.2,v 1.8.2.8 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/recv.2,v 1.6 2007/06/30 19:03:52 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/recv.2,v 1.7 2008/05/02 02:05:04 swildner Exp $
 .\"
 .Dd February 21, 1994
 .Dt RECV 2
@@ -148,7 +148,6 @@ call uses a
 structure to minimize the number of directly supplied parameters.
 This structure has the following form, as defined in
 .In sys/socket.h :
-.Pp
 .Bd -literal
 struct msghdr {
 	caddr_t	msg_name;	/* optional address */
@@ -219,7 +218,6 @@ should be a structure of type
 which is defined in
 .In sys/socket.h
 as follows:
-.Pp
 .Bd -literal
 struct cmsgcred {
 	pid_t	cmcred_pid;		/* PID of sending process */

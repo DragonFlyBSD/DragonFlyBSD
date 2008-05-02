@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/ccdconfig/ccdconfig.8,v 1.9.2.10 2003/01/26 03:38:39 keramida Exp $
-.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.6 2007/08/10 18:28:27 swildner Exp $
+.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.7 2008/05/02 02:05:05 swildner Exp $
 .\"
 .Dd July 17, 1995
 .Dt CCDCONFIG 8
@@ -175,7 +175,6 @@ The second example is an example of a complex stripe/mirror combination.
 It reads as a two disk stripe of da2s0e and da3s0e which is mirrored
 to a two disk stripe of da4s0e and da5s0e.  The last example is a simple
 mirror.  /dev/da2s0e is mirrored with /dev/da4s0e and assigned to ccd0.
-.Pp
 .Bd -literal
 # ccdconfig ccd0 64 none /dev/da2s0e /dev/da3s0e /dev/da4s0e /dev/da5s0e
 # ccdconfig ccd0 128 CCDF_MIRROR /dev/da2s0e /dev/da3s0e /dev/da4s0e /dev/da5s0e
@@ -194,7 +193,6 @@ to or from a ccd partition it is usually a good idea to construct the
 partition such that it does not overlap the label area.  For example, if
 you have A ccd disk with 10000 sectors you might create a 'd' partition
 with offset 16 and size 9984.
-.Pp
 .Bd -literal
 # disklabel -r -w ccd0s0 auto
 # disklabel -e ccd0s0

@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/aio_read.2,v 1.6.2.5 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/aio_read.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/aio_read.2,v 1.3 2008/05/02 02:05:04 swildner Exp $
 .\"
 .Dd November 17, 1998
 .Dt AIO_READ 2
@@ -135,7 +135,6 @@ function must be called, and will return -1, and
 must be called to determine the actual value that would have been
 returned in
 .Va errno .
-.Pp
 .Bl -tag -width Er
 .It Bq Er EBADF
 .Fa iocb->aio_fildes

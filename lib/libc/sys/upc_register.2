@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.9 2007/11/23 23:03:57 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.10 2008/05/02 02:05:04 swildner Exp $
 .\"
 .Dd November 20, 2003
 .Dt UPC_REGISTER 2
@@ -126,7 +126,6 @@ for upcalls.
 .Pp
 .Ft int
 .Fn upc_control "UPC_CONTROL_DISPATCH" "upcid" "(int)priority"
-.Pp
 .Bd -literal -offset indent
 Dispatch a particular upcall.
 The value
@@ -154,7 +153,6 @@ a shared structure, queue, etc.
 .Pp
 .Ft int
 .Fn upc_control "UPC_CONTROL_NEXT" "-1" "stack_pointer"
-.Pp
 .Bd -literal -offset indent
 Do interlocking and stack munging to process additional upcalls.
 This
@@ -171,7 +169,6 @@ context routine.
 .Pp
 .Ft int
 .Fn upc_control "UPC_CONTROL_DELETE" "upcid" "NULL"
-.Pp
 .Bd -literal -offset indent
 Delete the specified
 .Fa upcid
@@ -190,7 +187,6 @@ not effected.
 .Pp
 .Ft int
 .Fn upc_control "UPC_CONTROL_POLLANDCLEAR" "upcid" "(int)priority"
-.Pp
 .Bd -literal -offset indent
 Poll or poll-and-clear the pending status for a particular upcall.
 The value

@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.15 2007/12/08 04:47:31 sephe Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.16 2008/05/02 02:05:05 swildner Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -73,7 +73,6 @@ firewall and the
 .Xr dummynet 4
 traffic shaper in
 .Dx .
-.Pp
 .Bd -ragged -offset XXXX
 .Em NOTE:
 this manual page documents the newer version of
@@ -1322,7 +1321,6 @@ Finally, the following parameters can be configured for both
 pipes and queues:
 .Pp
 .Bl -tag -width XXXX -compact
-.Pp
 .It Cm buckets Ar hash-table-size
 Specifies the size of the hash table used for storing the
 various queues.

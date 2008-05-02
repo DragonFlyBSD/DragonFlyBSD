@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
-.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.9 2007/10/26 08:22:00 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.10 2008/05/02 02:05:03 swildner Exp $
 .\"
 .Dd January 23, 2001
 .Dt SYSCTL 3
@@ -185,7 +185,6 @@ The top level names are defined with a CTL_ prefix in
 and are as follows.
 The next and subsequent levels down are found in the include files
 listed here, and described in separate sections below.
-.Pp
 .Bl -column CTLXMACHDEPXXX "Next level namesXXXXXX" -offset indent
 .It Sy "Name	Next level names	Description"
 .It "CTL\_DEBUG	sys/sysctl.h	Debugging"
@@ -287,7 +286,6 @@ privilege may change the value.
 .\".It "HW\_DISKSTATS	integer	no"
 .It "HW_SENSORS	node	not applicable"
 .El
-.Pp
 .Bl -tag -width 6n
 .It Li HW_MACHINE
 The machine class.
@@ -381,7 +379,6 @@ information.
 .It "KERN\_VERSION	string	no"
 .It "KERN\_VNODE	struct vnode	no"
 .El
-.Pp
 .Bl -tag -width 6n
 .It Li KERN_ARGMAX
 The maximum bytes of argument to
@@ -549,7 +546,6 @@ privilege may change the value.
 .It "PF\_INET	IPv4 values	yes"
 .It "PF\_INET6	IPv6 values	yes"
 .El
-.Pp
 .Bl -tag -width 6n
 .It Li PF_ROUTE
 Return the entire routing table or a subset of it.
@@ -649,7 +645,6 @@ privilege may change the value.
 .It "USER\_TZNAME\_MAX	integer	no"
 .El
 .Bl -tag -width 6n
-.Pp
 .It Li USER_BC_BASE_MAX
 The maximum ibase/obase values in the
 .Xr bc 1
@@ -739,7 +734,6 @@ privilege may change the value.
 .It "VM\_V\_INACTIVE\_TARGET	integer	yes"
 .It "VM\_V\_PAGEOUT\_FREE\_MIN	integer	yes"
 .El
-.Pp
 .Bl -tag -width 6n
 .It Li VM_LOADAVG
 Return the load average history.

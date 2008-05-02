@@ -26,7 +26,7 @@ changecom(,)dnl
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
-.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.11 2008/02/10 22:53:22 swildner Exp $
+.\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.12 2008/05/02 02:05:08 swildner Exp $
 .\"
 .Dd September 20, 1995
 .Dt PPP 8
@@ -1078,7 +1078,6 @@ are specified, the total number of attempts is still 4 (it does not
 attempt each number 4 times).
 .Pp
 Alternatively,
-.Pp
 .Bd -literal -offset indent
 set redial 10+10-5.3 20
 .Ed
@@ -2517,7 +2516,6 @@ will show the same information at the
 link level.
 .Pp
 Armed with this information, the following configuration might be used:
-.Pp
 .Bd -literal -offset indent
 mp:
  set timeout 0
@@ -2541,13 +2539,11 @@ Usually, the link will be configured first, then cloned.
 If you wish all links
 to be up all the time, you can add the following line to the end of your
 configuration.
-.Pp
 .Bd -literal -offset indent
   link 1,2,3 set mode ddial
 .Ed
 .Pp
 If you want the links to dial on demand, this command could be used:
-.Pp
 .Bd -literal -offset indent
   link * set mode auto
 .Ed
@@ -2557,7 +2553,6 @@ Links may be tied to specific names by removing the
 line above, and specifying the following after the
 .Dq clone
 command:
-.Pp
 .Bd -literal -offset indent
  link 1 set device /dev/cuaa0
  link 2 set device /dev/cuaa1
@@ -4238,7 +4233,6 @@ as an option.
 The
 .Ar option Ns No s
 are as follows (in this order of preference):
-.Pp
 .Bl -tag -width Ds
 .It auth
 The callee is expected to decide the callback number based on

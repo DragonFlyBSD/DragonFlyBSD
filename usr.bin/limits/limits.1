@@ -18,7 +18,7 @@
 .\"    conditions are met.
 .\"
 .\" $FreeBSD: src/usr.bin/limits/limits.1,v 1.14.2.10 2003/02/25 20:31:18 trhodes Exp $
-.\" $DragonFly: src/usr.bin/limits/limits.1,v 1.4 2004/04/22 17:08:07 dillon Exp $
+.\" $DragonFly: src/usr.bin/limits/limits.1,v 1.5 2008/05/02 02:05:07 swildner Exp $
 .\"
 .Dd January 15, 1996
 .Dt LIMITS 1
@@ -61,7 +61,6 @@ and run a program with the selected resources.
 Three uses of the
 .Nm
 command are possible:
-.Pp
 .Bl -tag -width indent
 .It Xo
 .Nm
@@ -137,7 +136,6 @@ to be evaluated and set by the current shell.
 The value of
 .Ar limitflags
 specified in the above contains one or more of the following options:
-.Pp
 .Bl -tag -width "-d [limit]"
 .It Fl C Ar class
 Use current resource values, modified by the resource entries applicable

@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/camcontrol/camcontrol.8,v 1.19.2.12 2003/01/08 17:55:02 njl Exp $
-.\" $DragonFly: src/sbin/camcontrol/camcontrol.8,v 1.9 2008/03/07 08:44:24 pavalos Exp $
+.\" $DragonFly: src/sbin/camcontrol/camcontrol.8,v 1.10 2008/05/02 02:05:05 swildner Exp $
 .\"
 .Dd September 14, 1998
 .Dt CAMCONTROL 8
@@ -668,7 +668,6 @@ subcommand takes several arguments that modify its default behavior.  The
 and
 .Fl y
 arguments can be useful for scripts.
-.Pp
 .Bl -tag -width 6n
 .It Fl q
 Be quiet, don't print any status messages.  This option will not disable
@@ -742,7 +741,6 @@ utility will report whether the disk is ready, but will not display sense
 information if the command fails since the
 .Fl v
 switch was not specified.
-.Pp
 .Bd -literal -offset indent
 camcontrol tur da1 -E -C 4 -t 50 -v
 .Ed
@@ -764,7 +762,6 @@ camcontrol cmd -n cd -u 1 -v -c "3C 00 00 00 00 00 00 00 0e 00" \e
 Issue a READ BUFFER command (0x3C) to cd1.  Display the buffer size of cd1,
 and display the first 10 bytes from the cache on cd1.  Display SCSI sense
 information if the command fails.
-.Pp
 .Bd -literal -offset indent
 camcontrol cmd -n cd -u 1 -v -c "3B 00 00 00 00 00 00 00 0e 00" \e
 	-o 14 "00 00 00 00 1 2 3 4 5 6 v v v v" 7 8 9 8
@@ -774,7 +771,6 @@ Issue a WRITE BUFFER (0x3B) command to cd1.  Write out 10 bytes of data,
 not including the (reserved) 4 byte header.  Print out sense information if
 the command fails.  Be very careful with this command, improper use may
 cause data corruption.
-.Pp
 .Bd -literal -offset indent
 camcontrol modepage da3 -m 1 -e -P 3
 .Ed
@@ -800,13 +796,11 @@ changed.
 .Dl camcontrol tags da5 -N 24
 .Pp
 Set the number of concurrent transactions for da5 to 24.
-.Pp
 .Bd -literal -offset indent
 camcontrol negotiate -n da -u 4 -T disable
 .Ed
 .Pp
 Disable tagged queueing for da4.
-.Pp
 .Bd -literal -offset indent
 camcontrol negotiate -n da -u 3 -R 20.000 -O 15 -a
 .Ed

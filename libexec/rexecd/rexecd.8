@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)rexecd.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/libexec/rexecd/rexecd.8,v 1.9.2.4 2001/08/16 10:44:16 ru Exp $
-.\" $DragonFly: src/libexec/rexecd/rexecd.8,v 1.4 2006/04/08 08:17:07 swildner Exp $
+.\" $DragonFly: src/libexec/rexecd/rexecd.8,v 1.5 2008/05/02 02:05:05 swildner Exp $
 .\"
 .Dd September 23, 1994
 .Dt REXECD 8
@@ -120,7 +120,6 @@ after which any network connections are closed.
 An error is indicated by a leading byte with a value of
 1 (0 is returned in step 7 above upon successful completion
 of all the steps prior to the command execution).
-.Pp
 .Bl -tag -width Ds
 .It Sy username too long
 The name is

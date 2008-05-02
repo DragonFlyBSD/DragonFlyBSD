@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/joy.4,v 1.12.4.10 2002/07/22 14:21:51 ru Exp $
-.\" $DragonFly: src/share/man/man4/joy.4,v 1.5 2007/11/04 19:04:42 swildner Exp $
+.\" $DragonFly: src/share/man/man4/joy.4,v 1.6 2008/05/02 02:05:05 swildner Exp $
 .\"
 .Dd January 23, 1995
 .Dt JOY 4
@@ -25,7 +25,6 @@ This device may be opened by only one process at a time.
 The joystick status is read from a structure via a read()
 call.
 The structure is defined in the header file as follows:
-.Pp
 .Bd -literal -offset indent
 	struct joystick {
 		int x;         /* x position */

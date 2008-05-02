@@ -1,7 +1,7 @@
 .\"COPYRIGHT 1989 by The Board of Trustees of Leland Stanford Junior University.
 .\"
 .\" $FreeBSD: src/usr.sbin/mrouted/mrouted.8,v 1.16.2.8 2003/03/11 22:31:29 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/mrouted/mrouted.8,v 1.5 2007/11/23 23:16:37 swildner Exp $
+.\" $DragonFly: src/usr.sbin/mrouted/mrouted.8,v 1.6 2008/05/02 02:05:08 swildner Exp $
 .\"
 .Dd May 8, 1995
 .Dt MROUTED 8
@@ -400,7 +400,6 @@ direct tunnels (i.e. eliminate the middle man).
 .Sh "EXAMPLE CONFIGURATION"
 This is an example configuration for a mythical multicast router at a big
 school.
-.Pp
 .Bd -literal
 #
 # mrouted.conf example
@@ -475,7 +474,6 @@ upon startup.
 .El
 .Sh EXAMPLES
 The routing tables look like this:
-.Pp
 .Bd -literal
 Virtual Interface Table
  Vif  Local-Address                    Metric  Thresh  Flags
@@ -541,7 +539,6 @@ are created and deleted by
 .Nm .
 .Pp
 The cache tables look like this:
-.Pp
 .Bd -literal
 Multicast Routing Cache Table (147 entries)
  Origin             Mcast-group     CTmr  Age Ptmr IVif Forwvifs

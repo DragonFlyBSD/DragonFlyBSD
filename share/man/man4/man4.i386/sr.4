@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/sr.4,v 1.15.2.4 2001/08/17 13:08:46 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.7 2006/11/14 22:27:49 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.8 2008/05/02 02:05:06 swildner Exp $
 .\"
 .Dd July 4, 1996
 .Dt SR 4 i386
@@ -68,7 +68,6 @@ The
 field is optional.
 If it isn't specified, the driver will
 assume the following:
-.Pp
 .Bl -hang -offset indent
 .It "The card has 2 ports."
 .It "The clock for the serial ports is external and the transmitter uses"
@@ -79,7 +78,6 @@ The
 .Em flags
 are a bit field and can be used to force a different
 behaviour than the default.
-.Pp
 .Bl -hang -offset indent
 .It Em 0x01
 The card has only one port.

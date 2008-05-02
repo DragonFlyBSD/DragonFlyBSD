@@ -30,7 +30,7 @@
 .\" All rights reserved.
 .\"
 .\" $FreeBSD: src/usr.sbin/mrouted/mtrace.8,v 1.12.2.6 2003/03/11 22:31:29 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/mrouted/mtrace.8,v 1.3 2006/02/17 19:40:18 swildner Exp $
+.\" $DragonFly: src/usr.sbin/mrouted/mtrace.8,v 1.4 2008/05/02 02:05:08 swildner Exp $
 .\"
 .Dd May 8, 1995
 .Dt MTRACE 8
@@ -360,7 +360,6 @@ the interval from when the query is issued until the response is
 received, both derived from the local system clock, and the total
 ttl required for a packet to travel along this path.  A sample use and
 output might be:
-.Pp
 .Bd -literal
 oak.isi.edu 80# mtrace -l caraway.lcs.mit.edu 224.2.0.3
 Mtrace from 18.26.0.170 to 128.9.160.100 via group 224.2.0.3
@@ -425,7 +424,6 @@ seconds in the example below.  The second section of the output is
 omitted if the
 .Fl s
 option is set or if no multicast group is specified.
-.Pp
 .Bd -literal
 Waiting to accumulate statistics... Results after 101 seconds:
 
@@ -495,7 +493,6 @@ switched to hop-by-hop mode.  The
 .Dq Output pruned
 error code
 indicates that traffic for group 224.2.143.24 would not be forwarded.
-.Pp
 .Bd -literal
 oak.isi.edu 108# mtrace -g 140.173.48.2 204.62.246.73 \\
                            butter.lcs.mit.edu 224.2.143.24

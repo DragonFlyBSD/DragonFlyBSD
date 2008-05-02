@@ -34,7 +34,7 @@
 .\"          Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/netgraph.4,v 1.39.2.1 2001/12/21 09:00:50 ru Exp $
-.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.12 2007/11/23 23:16:37 swildner Exp $
+.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.13 2008/05/02 02:05:05 swildner Exp $
 .\" $Whistle: netgraph.4,v 1.7 1999/01/28 23:54:52 julian Exp $
 .\"
 .Dd January 19, 1999
@@ -411,7 +411,6 @@ Here are some examples of valid netgraph addresses:
 Consider the following set of nodes might be created for a site with
 a single physical frame relay line having two active logical DLCI channels,
 with RFC 1490 frames on DLCI 16 and PPP frames over DLCI 20:
-.Pp
 .Bd -literal
 [type SYNC ]                  [type FRAME]                 [type RFC1490]
 [ "Frame1" ](uplink)<-->(data)[<un-named>](dlci16)<-->(mux)[<un-named>  ]
@@ -449,7 +448,6 @@ and then forwards the unwrapped frame to either C or D.
 .Pp
 A similar graph might be used to represent multi-link PPP running
 over an ISDN line:
-.Pp
 .Bd -literal
 [ type BRI ](B1)<--->(link1)[ type MPP  ]
 [  "ISDN1" ](B2)<--->(link2)[ (no name) ]

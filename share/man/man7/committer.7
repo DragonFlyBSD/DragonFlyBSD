@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/share/man/man7/committer.7,v 1.10 2008/03/16 11:10:48 swildner Exp $
+.\" $DragonFly: src/share/man/man7/committer.7,v 1.11 2008/05/02 02:05:06 swildner Exp $
 .\" 
 .Dd March 16, 2008
 .Dt COMMITTER 7
@@ -137,7 +137,6 @@ There is a directory called
 To test your commit
 access, try making a modification and committing a file in this
 directory.
-.Pp
 .Bd -literal -offset indent
 cd /usr/src/test/test
 (edit something)
@@ -156,7 +155,6 @@ stored in the checkout source's
 subdirectory and then
 synchronized to the repository when you
 .Nm cvs Cm commit .
-.Pp
 .Bd -literal -offset indent
 cvs add filename
 cvs -d you@crater.dragonflybsd.org:/cvs add directory
