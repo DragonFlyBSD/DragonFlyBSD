@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.48 2008/05/03 07:59:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.49 2008/05/03 20:21:20 dillon Exp $
  */
 
 #include "hammer.h"
@@ -68,7 +68,7 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 	 * fairly clean, try to recycle it immediately.  This can deadlock
 	 * in vfsync() if we aren't careful.
 	 */
-	hammer_inode_unloadable_check(ip);
+	hammer_inode_unloadable_check(ip, 0);
 	if (ip->flags & HAMMER_INODE_MODMASK)
 		hammer_flush_inode(ip, 0);
 	else if (ip->ino_rec.ino_nlinks == 0)
@@ -107,7 +107,7 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
  * Called from the frontend.
  */
 int
-hammer_get_vnode(struct hammer_inode *ip, int lktype, struct vnode **vpp)
+hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 {
 	struct vnode *vp;
 	int error = 0;
@@ -412,6 +412,8 @@ retry:
 		cursor->flags |= HAMMER_CURSOR_BACKEND;
 
 		error = hammer_btree_lookup(cursor);
+		if (hammer_debug_inode)
+			kprintf("IPDEL %p %08x %d", ip, ip->flags, error);
 		if (error) {
 			kprintf("error %d\n", error);
 			Debugger("hammer_update_inode");
@@ -419,6 +421,8 @@ retry:
 
 		if (error == 0) {
 			error = hammer_ip_delete_record(cursor, trans->tid);
+			if (hammer_debug_inode)
+				kprintf(" error %d\n", error);
 			if (error && error != EDEADLK) {
 				kprintf("error %d\n", error);
 				Debugger("hammer_update_inode2");
@@ -426,12 +430,15 @@ retry:
 			if (error == 0) {
 				ip->flags |= HAMMER_INODE_DELONDISK;
 			}
-			hammer_cache_node(cursor->node, &ip->cache[0]);
+			if (cursor->node)
+				hammer_cache_node(cursor->node, &ip->cache[0]);
 		}
 		if (error == EDEADLK) {
 			hammer_done_cursor(cursor);
 			error = hammer_init_cursor(trans, cursor,
 						   &ip->cache[0], ip);
+			if (hammer_debug_inode)
+				kprintf("IPDED %p %d\n", ip, error);
 			if (error == 0)
 				goto retry;
 		}
@@ -450,6 +457,7 @@ retry:
 		 * Generate a record and write it to the media
 		 */
 		record = hammer_alloc_mem_record(ip);
+		record->type = HAMMER_MEM_RECORD_GENERAL;
 		record->flush_state = HAMMER_FST_FLUSH;
 		record->rec.inode = ip->sync_ino_rec;
 		record->rec.inode.base.base.create_tid = trans->tid;
@@ -458,11 +466,16 @@ retry:
 		record->flags |= HAMMER_RECF_INTERLOCK_BE;
 		for (;;) {
 			error = hammer_ip_sync_record_cursor(cursor, record);
+			if (hammer_debug_inode)
+				kprintf("GENREC %p rec %08x %d\n",	
+					ip, record->flags, error);
 			if (error != EDEADLK)
 				break;
 			hammer_done_cursor(cursor);
 			error = hammer_init_cursor(trans, cursor,
 						   &ip->cache[0], ip);
+			if (hammer_debug_inode)
+				kprintf("GENREC reinit %d\n", error);
 			if (error)
 				break;
 		}
@@ -484,6 +497,8 @@ retry:
 		 * Finish up.
 		 */
 		if (error == 0) {
+			if (hammer_debug_inode)
+				kprintf("CLEANDELOND %p %08x\n", ip, ip->flags);
 			ip->sync_flags &= ~(HAMMER_INODE_RDIRTY |
 					    HAMMER_INODE_DDIRTY |
 					    HAMMER_INODE_ITIMES);
@@ -493,11 +508,14 @@ retry:
 			 * Root volume count of inodes
 			 */
 			if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
-				hammer_modify_volume(trans, trans->rootvol,
-						     NULL, 0);
+				hammer_modify_volume_field(trans,
+							   trans->rootvol,
+							   vol0_stat_inodes);
 				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 				hammer_modify_volume_done(trans->rootvol);
 				ip->flags |= HAMMER_INODE_ONDISK;
+				if (hammer_debug_inode)
+					kprintf("NOWONDISK %p\n", ip);
 			}
 		}
 	}
@@ -592,7 +610,8 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 			 * Determine whether on-disk action is needed for
 			 * the inode's final disposition.
 			 */
-			hammer_inode_unloadable_check(ip);
+			KKASSERT(ip->vp == NULL);
+			hammer_inode_unloadable_check(ip, 0);
 			if (ip->flags & HAMMER_INODE_MODMASK) {
 				hammer_flush_inode(ip, 0);
 			} else if (ip->lock.refs == 1) {
@@ -794,10 +813,10 @@ hammer_setup_parent_inodes(hammer_record_t record)
 	/*
 	 * If the record is already flushing, is it in our flush group?
 	 *
-	 * If it is in our flush group but it is a delete-on-disk, it
-	 * does not improve our connectivity (return 0), and if the
-	 * target inode is not trying to destroy itself we can't allow
-	 * the operation yet anyway (the second return -1).
+	 * If it is in our flush group but it is a general record or a 
+	 * delete-on-disk, it does not improve our connectivity (return 0),
+	 * and if the target inode is not trying to destroy itself we can't
+	 * allow the operation yet anyway (the second return -1).
 	 */
 	if (record->flush_state == HAMMER_FST_FLUSH) {
 		if (record->flush_group != hmp->flusher_next) {
@@ -806,6 +825,7 @@ hammer_setup_parent_inodes(hammer_record_t record)
 		}
 		if (record->type == HAMMER_MEM_RECORD_ADD)
 			return(1);
+		/* GENERAL or DEL */
 		return(0);
 	}
 
@@ -872,8 +892,8 @@ hammer_setup_parent_inodes(hammer_record_t record)
 			return(1);
 
 		/*
-		 * The record is a delete-n-disk.  It does not contribute
-		 * to our visibility.  We can still flush it.
+		 * A general or delete-on-disk record does not contribute
+		 * to our visibility.  We can still flush it, however.
 		 */
 		return(0);
 	} else {
@@ -907,6 +927,15 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	++ip->hmp->flusher_lock;
 
 	/*
+	 * We need to be able to vfsync/truncate from the backend.
+	 */
+	KKASSERT((ip->flags & HAMMER_INODE_VHELD) == 0);
+	if (ip->vp && (ip->vp->v_flag & VINACTIVE) == 0) {
+		ip->flags |= HAMMER_INODE_VHELD;
+		vref(ip->vp);
+	}
+
+	/*
 	 * Figure out how many in-memory records we can actually flush
 	 * (not including inode meta-data, buffers, etc).
 	 */
@@ -927,6 +956,10 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 		if ((ip->flags & HAMMER_INODE_MODMASK_NOXDIRTY) == 0) {
 			ip->flags |= HAMMER_INODE_REFLUSH;
 			ip->flush_state = HAMMER_FST_SETUP;
+			if (ip->flags & HAMMER_INODE_VHELD) {
+				ip->flags &= ~HAMMER_INODE_VHELD;
+				vrele(ip->vp);
+			}
 			if (flags & HAMMER_FLUSH_SIGNAL) {
 				ip->flags |= HAMMER_INODE_RESIGNAL;
 				hammer_flusher_async(ip->hmp);
@@ -936,29 +969,6 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 			return;
 		}
 	}
-
-#if 0
-	/*
-	 * XXX - don't sync the buffer cache on the frontend, the backend
-	 * will do it and we do not want to prematurely activate the backend.
-	 *
-	 * Sync the buffer cache if the caller wants to flush now, otherwise
-	 * don't (any write bios will wake up the flusher).
-	 */
-	if ((flags & HAMMER_FLUSH_RECURSION) == 0 &&
-	    (flags & HAMMER_FLUSH_SIGNAL)) {
-		if (ip->vp != NULL)
-			error = vfsync(ip->vp, MNT_NOWAIT, 1, NULL, NULL);
-		else
-			error = 0;
-	}
-
-	/*
-	 * Any further strategy calls will go into the inode's alternative
-	 * bioq.
-	 */
-	ip->flags |= HAMMER_INODE_WRITE_ALT;
-#endif
 
 	/*
 	 * Snapshot the state of the inode for the backend flusher.
@@ -1071,10 +1081,11 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 			r = 1;
 		} else {
 			/*
-			 * XXX this needs help.  We have a delete-on-disk
-			 * which could disconnect the target.  If the target
-			 * has its own dependancies they really need to
-			 * be flushed.
+			 * General or delete-on-disk record.
+			 *
+			 * XXX this needs help.  If a delete-on-disk we could
+			 * disconnect the target.  If the target has its own
+			 * dependancies they really need to be flushed.
 			 *
 			 * XXX
 			 */
@@ -1104,7 +1115,7 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 void
 hammer_wait_inode(hammer_inode_t ip)
 {
-	while (ip->flush_state == HAMMER_FST_FLUSH) {
+	while (ip->flush_state != HAMMER_FST_IDLE) {
 		ip->flags |= HAMMER_INODE_FLUSHW;
 		tsleep(&ip->flags, 0, "hmrwin", 0);
 	}
@@ -1185,6 +1196,14 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	}
 
 	/*
+	 * Clean up the vnode ref
+	 */
+	if (ip->flags & HAMMER_INODE_VHELD) {
+		ip->flags &= ~HAMMER_INODE_VHELD;
+		vrele(ip->vp);
+	}
+
+	/*
 	 * If the frontend made more changes and requested another flush,
 	 * then try to get it running.
 	 */
@@ -1258,8 +1277,12 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	 * be visible to the frontend.
 	 */
 	if (record->flags & HAMMER_RECF_DELETED_FE) {
-		KKASSERT(record->type == HAMMER_MEM_RECORD_ADD);
-		record->flags |= HAMMER_RECF_CONVERT_DELETE;
+		if (record->type == HAMMER_MEM_RECORD_ADD) {
+			record->flags |= HAMMER_RECF_CONVERT_DELETE;
+		} else {
+			KKASSERT(record->type != HAMMER_MEM_RECORD_DEL);
+			return(0);
+		}
 	}
 
 	/*
@@ -1339,6 +1362,8 @@ hammer_sync_inode(hammer_inode_t ip)
 			case HAMMER_MEM_RECORD_DEL:
 				++nlinks;
 				break;
+			default:
+				break;
 			}
 		}
 	}
@@ -1353,10 +1378,10 @@ hammer_sync_inode(hammer_inode_t ip)
 	}
 
 	/*
-	 * Queue up any pending dirty buffers then set a flag to cause
-	 * any further BIOs to go to the alternative queue.
+	 * Queue up as many dirty buffers as we can then set a flag to
+	 * cause any further BIOs to go to the alternative queue.
 	 */
-	if (ip->vp)
+	if (ip->flags & HAMMER_INODE_VHELD)
 		error = vfsync(ip->vp, MNT_NOWAIT, 1, NULL, NULL);
 	ip->flags |= HAMMER_INODE_WRITE_ALT;
 
@@ -1471,7 +1496,8 @@ hammer_sync_inode(hammer_inode_t ip)
 			/*
 			 * Adjust the inode count in the volume header
 			 */
-			hammer_modify_volume(&trans, trans.rootvol, NULL, 0);
+			hammer_modify_volume_field(&trans, trans.rootvol,
+						   vol0_stat_inodes);
 			--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 			hammer_modify_volume_done(trans.rootvol);
 		} else {
@@ -1591,21 +1617,31 @@ done:
  * it, which may mean destroying it on-media too.
  */
 void
-hammer_inode_unloadable_check(hammer_inode_t ip)
+hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 {
+	struct vnode *vp;
+
 	/*
 	 * If the inode is on-media and the link count is 0 we MUST delete
 	 * it on-media.  DELETING is a mod flag, DELETED is a state flag.
 	 */
 	if (ip->ino_rec.ino_nlinks == 0 &&
 	    (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
+		ip->flags |= HAMMER_INODE_DELETING;
+		ip->flags |= HAMMER_INODE_TRUNCATED;
+		ip->trunc_off = 0;
+		vp = NULL;
+		if (getvp) {
+			if (hammer_get_vnode(ip, &vp) != 0)
+				return;
+		}
 		if (ip->vp) {
 			vtruncbuf(ip->vp, 0, HAMMER_BUFSIZE);
 			vnode_pager_setsize(ip->vp, 0);
 		}
-		ip->flags |= HAMMER_INODE_DELETING;
-		ip->flags |= HAMMER_INODE_TRUNCATED;
-		ip->trunc_off = 0;
+		if (getvp) {
+			vput(vp);
+		}
 	}
 }
 

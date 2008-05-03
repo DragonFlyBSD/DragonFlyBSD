@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.58 2008/05/03 07:59:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.59 2008/05/03 20:21:20 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -242,7 +242,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DELETED	0x0080	/* inode delete (backend) */
 #define HAMMER_INODE_DELONDISK	0x0100	/* delete synchronized to disk */
 #define HAMMER_INODE_RO		0x0200	/* read-only (because of as-of) */
-#define HAMMER_INODE_UNUSED0400	0x0400
+#define HAMMER_INODE_VHELD	0x0400	/* vnode held on sync */
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
 #define HAMMER_INODE_REFLUSH	0x2000	/* pipelined flush during flush */
@@ -284,6 +284,7 @@ typedef struct hammer_inode *hammer_inode_t;
  * same time.
  */
 typedef enum hammer_record_type {
+	HAMMER_MEM_RECORD_GENERAL,	/* misc record */
 	HAMMER_MEM_RECORD_ADD,		/* positive memory cache record */
 	HAMMER_MEM_RECORD_DEL		/* negative delete-on-disk record */
 } hammer_record_type_t;
@@ -323,9 +324,11 @@ typedef struct hammer_record *hammer_record_t;
 struct hammer_volume;
 struct hammer_buffer;
 struct hammer_node;
+struct hammer_undo;
 RB_HEAD(hammer_vol_rb_tree, hammer_volume);
 RB_HEAD(hammer_buf_rb_tree, hammer_buffer);
 RB_HEAD(hammer_nod_rb_tree, hammer_node);
+RB_HEAD(hammer_und_rb_tree, hammer_undo);
 
 RB_PROTOTYPE2(hammer_vol_rb_tree, hammer_volume, rb_node,
 	      hammer_vol_rb_compare, int32_t);
@@ -333,6 +336,8 @@ RB_PROTOTYPE2(hammer_buf_rb_tree, hammer_buffer, rb_node,
 	      hammer_buf_rb_compare, hammer_off_t);
 RB_PROTOTYPE2(hammer_nod_rb_tree, hammer_node, rb_node,
 	      hammer_nod_rb_compare, hammer_off_t);
+RB_PROTOTYPE2(hammer_und_rb_tree, hammer_undo, rb_node,
+	      hammer_und_rb_compare, hammer_off_t);
 
 /*
  * IO management - embedded at the head of various in-memory structures
@@ -502,6 +507,20 @@ typedef struct hammer_hole *hammer_hole_t;
 #include "hammer_cursor.h"
 
 /*
+ * Undo history tracking
+ */
+#define HAMMER_MAX_UNDOS	256
+
+struct hammer_undo {
+	RB_ENTRY(hammer_undo)	rb_node;
+	TAILQ_ENTRY(hammer_undo) lru_entry;
+	hammer_off_t		offset;
+	int			bytes;
+};
+
+typedef struct hammer_undo *hammer_undo_t;
+
+/*
  * Internal hammer mount data structure
  */
 struct hammer_mount {
@@ -510,6 +529,7 @@ struct hammer_mount {
 	struct hammer_ino_rb_tree rb_inos_root;
 	struct hammer_vol_rb_tree rb_vols_root;
 	struct hammer_nod_rb_tree rb_nods_root;
+	struct hammer_und_rb_tree rb_undo_root;
 	struct hammer_volume *rootvol;
 	struct hammer_base_elm root_btree_beg;
 	struct hammer_base_elm root_btree_end;
@@ -545,7 +565,10 @@ struct hammer_mount {
 	struct hammer_lock sync_lock;
 	struct lock blockmap_lock;
 	struct hammer_blockmap  blockmap[HAMMER_MAX_ZONES];
-	struct hammer_holes holes[HAMMER_MAX_ZONES];
+	struct hammer_holes	holes[HAMMER_MAX_ZONES];
+	struct hammer_undo	undos[HAMMER_MAX_UNDOS];
+	int			undo_alloc;
+	TAILQ_HEAD(, hammer_undo)  undo_lru_list;
 	TAILQ_HEAD(, hammer_inode) flush_list;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 };
@@ -567,6 +590,7 @@ extern struct vop_ops hammer_fifo_vops;
 extern struct bio_ops hammer_bioops;
 
 extern int hammer_debug_general;
+extern int hammer_debug_inode;
 extern int hammer_debug_locks;
 extern int hammer_debug_btree;
 extern int hammer_debug_tid;
@@ -585,8 +609,7 @@ extern int64_t hammer_contention_count;
 
 int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
-int	hammer_get_vnode(struct hammer_inode *ip, int lktype,
-			struct vnode **vpp);
+int	hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp);
 struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
 			struct hammer_node **cache,
 			u_int64_t obj_id, hammer_tid_t asof, int flags,
@@ -640,6 +663,9 @@ hammer_tid_t hammer_alloc_objid(hammer_transaction_t trans, hammer_inode_t dip);
 void hammer_clear_objid(hammer_inode_t dip);
 void hammer_destroy_objid_cache(hammer_mount_t hmp);
 
+int hammer_enter_undo_history(hammer_mount_t hmp, hammer_off_t offset,
+			      int bytes);
+void hammer_clear_undo_history(hammer_mount_t hmp);
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);
 int hammer_get_dtype(u_int8_t obj_type);
 u_int8_t hammer_get_obj_type(enum vtype vtype);
@@ -765,7 +791,7 @@ int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_sync_inode(hammer_inode_t ip);
 void hammer_test_inode(hammer_inode_t ip);
-void hammer_inode_unloadable_check(hammer_inode_t ip);
+void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
 
 int  hammer_ip_add_directory(struct hammer_transaction *trans,
 			hammer_inode_t dip, struct namecache *ncp,
@@ -864,4 +890,9 @@ hammer_modify_record_done(hammer_buffer_t buffer)
 {
 	hammer_modify_buffer_done(buffer);
 }
+
+#define hammer_modify_volume_field(trans, vol, field)		\
+	hammer_modify_volume(trans, vol, &(vol)->ondisk->field,	\
+			     sizeof((vol)->ondisk->field))
+
 

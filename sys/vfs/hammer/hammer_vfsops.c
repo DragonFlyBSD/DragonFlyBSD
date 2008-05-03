@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.31 2008/05/02 01:00:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.32 2008/05/03 20:21:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,7 @@
 #include "hammer.h"
 
 int hammer_debug_general;
+int hammer_debug_inode;
 int hammer_debug_locks;
 int hammer_debug_btree;
 int hammer_debug_tid;
@@ -68,6 +69,8 @@ int64_t hammer_zone_limit;
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
 	   &hammer_debug_general, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_inode, CTLFLAG_RW,
+	   &hammer_debug_inode, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_locks, CTLFLAG_RW,
 	   &hammer_debug_locks, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_btree, CTLFLAG_RW,
@@ -199,6 +202,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 		TAILQ_INIT(&hmp->flush_list);
 		TAILQ_INIT(&hmp->objid_cache_list);
+		TAILQ_INIT(&hmp->undo_lru_list);
 
 		/*
 		 * Set default zone limits.  This value can be reduced
@@ -243,6 +247,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	RB_INIT(&hmp->rb_vols_root);
 	RB_INIT(&hmp->rb_inos_root);
 	RB_INIT(&hmp->rb_nods_root);
+	RB_INIT(&hmp->rb_undo_root);
 	hmp->ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 
 	TAILQ_INIT(&hmp->volu_list);
@@ -488,7 +493,7 @@ hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 		*vpp = NULL;
 		return(error);
 	}
-	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
+	error = hammer_get_vnode(ip, vpp);
 	hammer_rel_inode(ip, 0);
 	hammer_done_transaction(&trans);
 	return (error);
@@ -604,7 +609,7 @@ hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 		*vpp = NULL;
 		return(error);
 	}
-	error = hammer_get_vnode(ip, LK_EXCLUSIVE, vpp);
+	error = hammer_get_vnode(ip, vpp);
 	hammer_rel_inode(ip, 0);
 	hammer_done_transaction(&trans);
 	return (error);

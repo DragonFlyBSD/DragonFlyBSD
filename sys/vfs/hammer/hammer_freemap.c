@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.8 2008/05/03 05:28:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.9 2008/05/03 20:21:20 dillon Exp $
  */
 
 /*
@@ -102,9 +102,9 @@ new_volume:
 						     layer1, sizeof(*layer1));
 				--layer1->blocks_free;
 				hammer_modify_buffer_done(buffer1);
-				hammer_modify_volume(trans, trans->rootvol,
-				     &ondisk->vol0_stat_freebigblocks,
-				     sizeof(ondisk->vol0_stat_freebigblocks));
+				hammer_modify_volume_field(trans,
+						     trans->rootvol,
+						     vol0_stat_freebigblocks);
 				--ondisk->vol0_stat_freebigblocks;
 				hammer_modify_volume_done(trans->rootvol);
 				break;
@@ -174,9 +174,8 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 	layer2->u.owner = HAMMER_BLOCKMAP_FREE;
 	hammer_modify_buffer_done(buffer2);
 
-	hammer_modify_volume(trans, trans->rootvol,
-			     &ondisk->vol0_stat_freebigblocks,
-			     sizeof(ondisk->vol0_stat_freebigblocks));
+	hammer_modify_volume_field(trans, trans->rootvol,
+				   vol0_stat_freebigblocks);
 	++ondisk->vol0_stat_freebigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 

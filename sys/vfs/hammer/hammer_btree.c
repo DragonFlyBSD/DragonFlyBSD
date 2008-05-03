@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.40 2008/05/02 01:00:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.41 2008/05/03 20:21:20 dillon Exp $
  */
 
 /*
@@ -1427,9 +1427,8 @@ btree_split_internal(hammer_cursor_t cursor)
 		volume = hammer_get_root_volume(hmp, &error);
 		KKASSERT(error == 0);
 
-		hammer_modify_volume(cursor->trans, volume,
-				     &volume->ondisk->vol0_btree_root,
-				     sizeof(hammer_off_t));
+		hammer_modify_volume_field(cursor->trans, volume,
+					   vol0_btree_root);
 		volume->ondisk->vol0_btree_root = parent->node_offset;
 		hammer_modify_volume_done(volume);
 		node->ondisk->parent = parent->node_offset;
@@ -1646,9 +1645,8 @@ btree_split_leaf(hammer_cursor_t cursor)
 		volume = hammer_get_root_volume(hmp, &error);
 		KKASSERT(error == 0);
 
-		hammer_modify_volume(cursor->trans, volume,
-				     &volume->ondisk->vol0_btree_root,
-				     sizeof(hammer_off_t));
+		hammer_modify_volume_field(cursor->trans, volume,
+					   vol0_btree_root);
 		volume->ondisk->vol0_btree_root = parent->node_offset;
 		hammer_modify_volume_done(volume);
 		leaf->ondisk->parent = parent->node_offset;

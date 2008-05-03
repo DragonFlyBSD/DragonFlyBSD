@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.9 2008/05/02 06:51:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.10 2008/05/03 20:21:20 dillon Exp $
  */
 
 /*
@@ -39,6 +39,11 @@
  */
 
 #include "hammer.h"
+
+static int hammer_und_rb_compare(hammer_undo_t node1, hammer_undo_t node2);
+
+RB_GENERATE2(hammer_und_rb_tree, hammer_undo, rb_node,
+             hammer_und_rb_compare, hammer_off_t, offset);
 
 /*
  * Convert a zone-3 undo offset into a zone-2 buffer offset.
@@ -72,6 +77,10 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 /*
  * Generate an UNDO record for the block of data at the specified zone1
  * or zone2 offset.
+ *
+ * The recovery code will execute UNDOs in reverse order, allowing overlaps.
+ * All the UNDOs are executed together so if we already laid one down we
+ * do not have to lay another one down for the same range.
  */
 int
 hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
@@ -89,6 +98,14 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 	int i;
 	int error;
 	int bytes;
+
+	/*
+	 * Enter the offset into our undo history.  If there is an existing
+	 * undo we do not have to generate a new one.
+	 */
+	if (hammer_enter_undo_history(trans->hmp, zone_off, len) == EALREADY) {
+		return(0);
+	}
 
 	root_volume = trans->rootvol;
 	ondisk = root_volume->ondisk;
@@ -190,6 +207,58 @@ again:
 	return(error);
 }
 
+/*
+ * UNDO HISTORY API
+ *
+ * It is not necessary to layout an undo record for the same address space
+ * multiple times.  Maintain a cache of recent undo's.
+ */
+
+/*
+ * Enter an undo into the history.  Return EALREADY if the request completely
+ * covers a previous request.
+ */
+int
+hammer_enter_undo_history(hammer_mount_t hmp, hammer_off_t offset, int bytes)
+{
+	hammer_undo_t node;
+	hammer_undo_t onode;
+
+	node = RB_LOOKUP(hammer_und_rb_tree, &hmp->rb_undo_root, offset);
+	if (node) {
+		TAILQ_REMOVE(&hmp->undo_lru_list, node, lru_entry);
+		TAILQ_INSERT_TAIL(&hmp->undo_lru_list, node, lru_entry);
+		if (bytes <= node->bytes)
+			return(EALREADY);
+		node->bytes = bytes;
+		return(0);
+	}
+	if (hmp->undo_alloc != HAMMER_MAX_UNDOS) {
+		node = &hmp->undos[hmp->undo_alloc++];
+	} else {
+		node = TAILQ_FIRST(&hmp->undo_lru_list);
+		TAILQ_REMOVE(&hmp->undo_lru_list, node, lru_entry);
+		RB_REMOVE(hammer_und_rb_tree, &hmp->rb_undo_root, node);
+	}
+	node->offset = offset;
+	node->bytes = bytes;
+	TAILQ_INSERT_TAIL(&hmp->undo_lru_list, node, lru_entry);
+	onode = RB_INSERT(hammer_und_rb_tree, &hmp->rb_undo_root, node);
+	KKASSERT(onode == NULL);
+	return(0);
+}
+
+void
+hammer_clear_undo_history(hammer_mount_t hmp)
+{
+	RB_INIT(&hmp->rb_undo_root);
+	TAILQ_INIT(&hmp->undo_lru_list);
+	hmp->undo_alloc = 0;
+}
+
+/*
+ * Misc helper routines.  Return available space and total space.
+ */
 int64_t
 hammer_undo_space(hammer_mount_t hmp)
 {
@@ -219,5 +288,15 @@ hammer_undo_max(hammer_mount_t hmp)
 	max_bytes = (int)(rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK);
 
 	return(max_bytes);
+}
+
+static int
+hammer_und_rb_compare(hammer_undo_t node1, hammer_undo_t node2)
+{
+        if (node1->offset < node2->offset)
+                return(-1);
+        if (node1->offset > node2->offset)
+                return(1);
+        return(0);
 }
 

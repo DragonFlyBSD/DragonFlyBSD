@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.52 2008/05/03 07:59:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.53 2008/05/03 20:21:20 dillon Exp $
  */
 
 #include "hammer.h"
@@ -601,7 +601,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		if (ip->ino_rec.ino_nlinks == 0 &&
 		    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
 			hammer_done_cursor(cursor);
-			hammer_inode_unloadable_check(ip);
+			hammer_inode_unloadable_check(ip, 1);
 			hammer_flush_inode(ip, 0);
 		}
 
@@ -832,6 +832,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 
 	for (;;) {
 		error = hammer_btree_lookup(cursor);
+		if (hammer_debug_inode)
+			kprintf("DOINSERT LOOKUP %d\n", error);
 		if (error)
 			break;
 		if (record->rec.base.base.rec_type != HAMMER_RECTYPE_DIRENTRY) {
@@ -889,6 +891,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	/*
 	 * Fill in the remaining fields and insert our B-Tree node.
 	 */
+	if (hammer_debug_inode)
+		kprintf("COPYREC %p\n", rec);
 	hammer_modify_buffer(trans, cursor->record_buffer, NULL, 0);
 	rec->base.base = record->rec.base.base;
 	bcopy(&record->rec.base + 1, &rec->base + 1,
@@ -917,6 +921,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	elm.leaf.data_crc = rec->base.data_crc;
 
 	error = hammer_btree_insert(cursor, &elm);
+	if (hammer_debug_inode)
+		kprintf("BTREE INSERT error %d @ %016llx:%d\n", error, cursor->node->node_offset, cursor->index);
 
 	/*
 	 * This occurs when the frontend creates a record and queues it to

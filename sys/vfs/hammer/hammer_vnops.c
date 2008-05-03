@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.45 2008/05/03 05:28:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.46 2008/05/03 20:21:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -173,6 +173,7 @@ hammer_vop_fsync(struct vop_fsync_args *ap)
 	hammer_inode_t ip = VTOI(ap->a_vp);
 
 	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+	vfsync(ap->a_vp, ap->a_waitfor, 1, NULL, NULL);
 	if (ap->a_waitfor == MNT_WAIT)
 		hammer_wait_inode(ip);
 	return (ip->error);
@@ -510,7 +511,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;
 	} else {
-		error = hammer_get_vnode(nip, LK_EXCLUSIVE, ap->a_vpp);
+		error = hammer_get_vnode(nip, ap->a_vpp);
 		hammer_done_transaction(&trans);
 		hammer_rel_inode(nip, 0);
 		if (error == 0) {
@@ -634,7 +635,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		ip = hammer_get_inode(&trans, &dip->cache[1], dip->obj_id,
 				      asof, flags, &error);
 		if (error == 0) {
-			error = hammer_get_vnode(ip, LK_EXCLUSIVE, &vp);
+			error = hammer_get_vnode(ip, &vp);
 			hammer_rel_inode(ip, 0);
 		} else {
 			vp = NULL;
@@ -699,7 +700,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		ip = hammer_get_inode(&trans, &dip->cache[1],
 				      obj_id, asof, flags, &error);
 		if (error == 0) {
-			error = hammer_get_vnode(ip, LK_EXCLUSIVE, &vp);
+			error = hammer_get_vnode(ip, &vp);
 			hammer_rel_inode(ip, 0);
 		} else {
 			kprintf("nresolve: lookup %s failed dip %p (%016llx) on"
@@ -772,7 +773,7 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	ip = hammer_get_inode(&trans, &dip->cache[1], parent_obj_id,
 			      asof, dip->flags, &error);
 	if (ip) {
-		error = hammer_get_vnode(ip, LK_EXCLUSIVE, ap->a_vpp);
+		error = hammer_get_vnode(ip, ap->a_vpp);
 		hammer_rel_inode(ip, 0);
 	} else {
 		*ap->a_vpp = NULL;
@@ -879,7 +880,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 		hammer_rel_inode(nip, 0);
 		*ap->a_vpp = NULL;
 	} else {
-		error = hammer_get_vnode(nip, LK_EXCLUSIVE, ap->a_vpp);
+		error = hammer_get_vnode(nip, ap->a_vpp);
 		hammer_rel_inode(nip, 0);
 		if (error == 0) {
 			cache_setunresolved(ap->a_nch);
@@ -941,7 +942,7 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 		hammer_rel_inode(nip, 0);
 		*ap->a_vpp = NULL;
 	} else {
-		error = hammer_get_vnode(nip, LK_EXCLUSIVE, ap->a_vpp);
+		error = hammer_get_vnode(nip, ap->a_vpp);
 		hammer_rel_inode(nip, 0);
 		if (error == 0) {
 			cache_setunresolved(ap->a_nch);
@@ -1541,6 +1542,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 */
 	if (error == 0) {
 		record = hammer_alloc_mem_record(nip);
+		record->type = HAMMER_MEM_RECORD_GENERAL;
 		bytes = strlen(ap->a_target);
 
 		record->rec.base.base.key = HAMMER_FIXKEY_SYMLINK;
@@ -1568,7 +1570,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 		hammer_rel_inode(nip, 0);
 		*ap->a_vpp = NULL;
 	} else {
-		error = hammer_get_vnode(nip, LK_EXCLUSIVE, ap->a_vpp);
+		error = hammer_get_vnode(nip, ap->a_vpp);
 		hammer_rel_inode(nip, 0);
 		if (error == 0) {
 			cache_setunresolved(ap->a_nch);

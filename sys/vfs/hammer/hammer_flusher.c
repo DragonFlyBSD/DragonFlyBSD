@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.10 2008/05/03 05:28:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.11 2008/05/03 20:21:20 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -46,8 +46,8 @@ static void hammer_flusher_thread(void *arg);
 static void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 static void hammer_flusher_flush(hammer_mount_t hmp);
 static int hammer_must_finalize_undo(hammer_mount_t hmp);
-static void hammer_flusher_finalize(hammer_mount_t hmp,
-		    hammer_volume_t root_volume, hammer_off_t start_offset);
+static void hammer_flusher_finalize(hammer_transaction_t trans,
+		    hammer_off_t start_offset);
 
 void
 hammer_flusher_sync(hammer_mount_t hmp)
@@ -163,13 +163,12 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 static void
 hammer_flusher_flush(hammer_mount_t hmp)
 {
-	hammer_volume_t root_volume;
+	struct hammer_transaction trans;
 	hammer_blockmap_t rootmap;
 	hammer_inode_t ip;
 	hammer_off_t start_offset;
-	int error;
 
-	root_volume = hammer_get_root_volume(hmp, &error);
+	hammer_start_transaction_fls(&trans, hmp);
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	start_offset = rootmap->next_offset;
 
@@ -193,12 +192,12 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		 */
 		if (hammer_must_finalize_undo(hmp)) {
 			Debugger("Too many undos!!");
-			hammer_flusher_finalize(hmp, root_volume, start_offset);
+			hammer_flusher_finalize(&trans, start_offset);
 			start_offset = rootmap->next_offset;
 		}
 	}
-	hammer_flusher_finalize(hmp, root_volume, start_offset);
-	hammer_rel_volume(root_volume, 0);
+	hammer_flusher_finalize(&trans, start_offset);
+	hammer_done_transaction(&trans);
 }
 
 /*
@@ -234,17 +233,37 @@ hammer_must_finalize_undo(hammer_mount_t hmp)
  */
 static
 void
-hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
-			hammer_off_t start_offset)
+hammer_flusher_finalize(hammer_transaction_t trans, hammer_off_t start_offset)
 {
+	hammer_mount_t hmp = trans->hmp;
+	hammer_volume_t root_volume = trans->rootvol;
 	hammer_blockmap_t rootmap;
 	hammer_io_t io;
 
 	hammer_lock_ex(&hmp->sync_lock);
 
 	/*
+	 * Sync the blockmap to the root volume ondisk buffer and generate
+	 * the appropriate undo record.  We have to generate the UNDO even
+	 * though we flush the volume header along with the UNDO fifo update
+	 * because the meta-data (including the volume header) is flushed
+	 * after the fifo update, not before.
+	 */
+	if (root_volume->io.modified) {
+		hammer_modify_volume(trans, root_volume,
+				    &root_volume->ondisk->vol0_blockmap,
+				    sizeof(root_volume->ondisk->vol0_blockmap));
+		bcopy(hmp->blockmap, root_volume->ondisk->vol0_blockmap,
+		      sizeof(root_volume->ondisk->vol0_blockmap));
+		hammer_modify_volume_done(root_volume);
+	}
+
+	/*
 	 * Flush undo bufs
 	 */
+
+	hammer_clear_undo_history(hmp);
+
 	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
 		KKASSERT(io->modify_refs == 0);
 		hammer_ref(&io->lock);
@@ -275,7 +294,11 @@ hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
 	crit_exit();
 
 	/*
-	 * Update the volume header
+	 * Move the undo FIFO's markers and flush the root volume header.
+	 *
+	 * If a crash occurs while the root volume header is being written
+	 * we just have to hope that the undo range has been updated.  It
+	 * should be done in one I/O but XXX this won't be perfect.
 	 */
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	if (rootmap->first_offset != start_offset) {
@@ -288,16 +311,8 @@ hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
 		root_volume->ondisk->vol0_next_tid = hmp->next_tid;
 		hammer_modify_volume_done(root_volume);
 	}
-
-	/*
-	 * Sync our cached blockmap array with the one in the root
-	 * volume header.
-	 */
-	if (root_volume->io.modified) {
-		bcopy(hmp->blockmap, root_volume->ondisk->vol0_blockmap,
-		      sizeof(hmp->blockmap));
+	if (root_volume->io.modified)
 		hammer_io_flush(&root_volume->io);
-	}
 
 	/*
 	 * Wait for I/O to complete
@@ -309,7 +324,8 @@ hammer_flusher_finalize(hammer_mount_t hmp, hammer_volume_t root_volume,
 	crit_exit();
 
 	/*
-	 * Flush meta-data
+	 * Flush meta-data.  The meta-data will be undone if we crash
+	 * so we can safely flush it asynchronously.
 	 */
 	while ((io = TAILQ_FIRST(&hmp->meta_list)) != NULL) {
 		KKASSERT(io->modify_refs == 0);
