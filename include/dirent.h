@@ -32,7 +32,7 @@
  *
  *	@(#)dirent.h	8.2 (Berkeley) 7/28/94
  * $FreeBSD: src/include/dirent.h,v 1.7 1999/12/29 05:01:20 peter Exp $
- * $DragonFly: src/include/dirent.h,v 1.8 2008/04/22 21:29:41 dillon Exp $
+ * $DragonFly: src/include/dirent.h,v 1.9 2008/05/03 22:07:36 dillon Exp $
  */
 
 #ifndef _DIRENT_H_
@@ -92,7 +92,7 @@ int closedir (DIR *);
 #ifndef _POSIX_SOURCE
 DIR *__opendir2 (const char *, int);
 long telldir (const DIR *);
-struct dirent *_readdir_unlocked(DIR *);
+struct dirent *_readdir_unlocked(DIR *, int);
 void seekdir(DIR *, long);
 void _reclaim_telldir(DIR *);
 void _seekdir (DIR *, long);

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/telldir.c,v 1.4.12.1 2001/03/05 09:39:59 obrien Exp $
- * $DragonFly: src/lib/libc/gen/telldir.c,v 1.6 2008/04/22 21:29:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/telldir.c,v 1.7 2008/05/03 22:07:37 dillon Exp $
  *
  * @(#)telldir.c	8.1 (Berkeley) 6/4/93
  */
@@ -128,7 +128,7 @@ _seekdir(DIR *dirp, long loc)
         if (__isthreaded)
 		_pthread_mutex_lock(&dd_hash_lock);
 	for (lp = dd_hash[LOCHASH(loc)]; lp; lp = lp->loc_next) {
-		if (lp->loc_index == loc)
+		if (lp->loc_dirp == dirp && lp->loc_index == loc)
 			break;
 	}
         if (__isthreaded)
@@ -148,7 +148,7 @@ _seekdir(DIR *dirp, long loc)
 	 * load a new buffer or for dd_loc to not match directly.
 	 */
 	while (dirp->dd_loc < lp->loc_loc && dirp->dd_seek == lp->loc_seek) {
-		dp = _readdir_unlocked(dirp);
+		dp = _readdir_unlocked(dirp, 0);
 		if (dp == NULL)
 			break;
 	}

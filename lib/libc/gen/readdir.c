@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/readdir.c,v 1.5.2.4 2002/02/26 22:53:57 alfred Exp $
- * $DragonFly: src/lib/libc/gen/readdir.c,v 1.9 2007/11/21 05:48:31 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/readdir.c,v 1.10 2008/05/03 22:07:37 dillon Exp $
  *
  * @(#)readdir.c	8.3 (Berkeley) 9/29/94
  */
@@ -51,7 +51,7 @@
  * get next entry in a directory.
  */
 struct dirent *
-_readdir_unlocked(DIR *dirp)
+_readdir_unlocked(DIR *dirp, int skipdeleted)
 {
 	struct dirent *dp;
 	long dummy;
@@ -73,10 +73,13 @@ _readdir_unlocked(DIR *dirp)
 		if (_DIRENT_DIRSIZ(dp) > dirp->dd_len + 1 - dirp->dd_loc)
 			return (NULL);
 		dirp->dd_loc += _DIRENT_DIRSIZ(dp);
-		if (dp->d_ino == 0)
-			continue;
-		if (dp->d_type == DT_WHT && (dirp->dd_flags & DTF_HIDEW))
-			continue;
+
+		if (skipdeleted) {
+			if (dp->d_ino == 0)
+				continue;
+			if (dp->d_type == DT_WHT && (dirp->dd_flags & DTF_HIDEW))
+				continue;
+		}
 		return (dp);
 	}
 }
@@ -88,7 +91,7 @@ readdir(DIR *dirp)
 
 	if (__isthreaded)
 		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
-	dp = _readdir_unlocked(dirp);
+	dp = _readdir_unlocked(dirp, 1);
 	if (__isthreaded)
 		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
 
@@ -105,7 +108,7 @@ readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result)
 	errno = 0;
 	if (__isthreaded)
 		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
-	if ((dp = _readdir_unlocked(dirp)) != NULL)
+	if ((dp = _readdir_unlocked(dirp, 1)) != NULL)
 		memcpy(entry, dp, _DIRENT_MINSIZ(dp));
 	if (__isthreaded)
 		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
