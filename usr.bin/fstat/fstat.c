@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.25 2007/05/09 04:33:51 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.26 2008/05/03 04:13:12 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -492,7 +492,7 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag)
 			if (!isofs_filestat(&vn, &fst))
 				badtype = "error";
 			break;
-			
+
 		default: {
 			static char unknown[10];
 			sprintf(unknown, "?(%x)", vn.v_tag);
@@ -519,7 +519,10 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag)
 	}
 	PREFIX(i);
 	if (badtype) {
-		(void)printf(" -         -  %10s    -\n", badtype);
+		(void)printf(" %-*s  %10s    -\n", 
+			     wflg_mnt,
+			     getmnton(vn.v_mount, &vn.v_namecache, ncr),
+			     badtype);
 		return;
 	}
 	if (nflg)
@@ -619,6 +622,8 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 		break;
 	case VFIFO:
 		mode |= S_IFIFO;
+		break;
+	case VDATABASE:
 		break;
 	case VNON:
 	case VBAD:
