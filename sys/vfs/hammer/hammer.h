@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.56 2008/05/02 06:51:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.57 2008/05/03 05:28:55 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -251,6 +251,7 @@ typedef struct hammer_inode *hammer_inode_t;
 
 #define HAMMER_INODE_TRUNCATED	0x00010000
 #define HAMMER_INODE_DELETING	0x00020000 /* inode delete request (frontend)*/
+#define HAMMER_INODE_RESIGNAL	0x00040000 /* re-signal on re-flush */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	  \
@@ -263,8 +264,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_MAX_INODE_CURSORS	4
 
 #define HAMMER_FLUSH_SIGNAL	0x0001
-#define HAMMER_FLUSH_FORCE	0x0002
-#define HAMMER_FLUSH_RECURSION	0x0004
+#define HAMMER_FLUSH_RECURSION	0x0002
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  These
@@ -522,6 +522,7 @@ struct hammer_mount {
 	int	flusher_act;	/* currently active flush group */
 	int	flusher_done;	/* set to act when complete */
 	int	flusher_next;	/* next flush group */
+	int	flusher_lock;	/* lock sequencing of the next flush */
 	int	flusher_exiting;
 	int	reclaim_count;
 	thread_t flusher_td;
@@ -598,7 +599,7 @@ int	hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused);
 int	hammer_install_volume(hammer_mount_t hmp, const char *volname);
 
 int	hammer_ip_lookup(hammer_cursor_t cursor, hammer_inode_t ip);
-int	hammer_ip_first(hammer_cursor_t cursor, hammer_inode_t ip);
+int	hammer_ip_first(hammer_cursor_t cursor);
 int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_record_and_data(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
@@ -645,8 +646,9 @@ u_int8_t hammer_get_obj_type(enum vtype vtype);
 int64_t hammer_directory_namekey(void *name, int len);
 
 int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
-			   struct hammer_node **cache);
-
+			   struct hammer_node **cache, hammer_inode_t ip);
+int	hammer_reinit_cursor(hammer_cursor_t cursor);
+void	hammer_normalize_cursor(hammer_cursor_t cursor);
 void	hammer_done_cursor(hammer_cursor_t cursor);
 void	hammer_mem_done(hammer_cursor_t cursor);
 
@@ -676,7 +678,7 @@ void	*hammer_bnew(struct hammer_mount *hmp, hammer_off_t off,
 			int *errorp, struct hammer_buffer **bufferp);
 
 hammer_volume_t hammer_get_root_volume(hammer_mount_t hmp, int *errorp);
-int	hammer_dowrite(hammer_transaction_t trans, hammer_inode_t ip,
+int	hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip,
 			struct bio *bio);
 
 hammer_volume_t	hammer_get_volume(hammer_mount_t hmp,
@@ -772,14 +774,14 @@ int  hammer_ip_del_directory(struct hammer_transaction *trans,
 			hammer_inode_t ip);
 int  hammer_ip_add_record(struct hammer_transaction *trans,
 			hammer_record_t record);
-int  hammer_ip_delete_range(struct hammer_transaction *trans,
-			hammer_inode_t ip, int64_t ran_beg, int64_t ran_end);
-int  hammer_ip_delete_range_all(struct hammer_transaction *trans,
-			hammer_inode_t ip, int *countp);
-int  hammer_ip_sync_data(struct hammer_transaction *trans,
-			hammer_inode_t ip, int64_t offset,
-			void *data, int bytes);
+int  hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
+			int64_t ran_beg, int64_t ran_end);
+int  hammer_ip_delete_range_all(hammer_cursor_t cursor, hammer_inode_t ip,
+			int *countp);
+int  hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
+			int64_t offset, void *data, int bytes);
 int  hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t rec);
+int  hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t rec);
 
 int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.22 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.23 2008/05/03 05:28:55 dillon Exp $
  */
 
 /*
@@ -47,7 +47,7 @@ static int hammer_load_cursor_parent(hammer_cursor_t cursor);
  */
 int
 hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
-		   struct hammer_node **cache)
+		   struct hammer_node **cache, hammer_inode_t ip)
 {
 	hammer_volume_t volume;
 	hammer_node_t node;
@@ -56,6 +56,18 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	bzero(cursor, sizeof(*cursor));
 
 	cursor->trans = trans;
+
+	/*
+	 * If the cursor operation is on behalf of an inode, lock
+	 * the inode.
+	 */
+	if ((cursor->ip = ip) != NULL) {
+		++ip->cursor_ip_refs;
+		if (trans->type == HAMMER_TRANS_FLS)
+			hammer_lock_ex(&ip->lock);
+		else
+			hammer_lock_sh(&ip->lock);
+	}
 
 	/*
 	 * Step 1 - acquire a locked node from the cache if possible
@@ -106,6 +118,38 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	return(error);
 }
 
+#if 0
+int
+hammer_reinit_cursor(hammer_cursor_t cursor)
+{
+	hammer_transaction_t trans;
+	hammer_inode_t ip;
+	struct hammer_node **cache;
+
+	trans = cursor->trans;
+	ip = cursor->ip;
+	hammer_done_cursor(cursor);
+	cache = ip ? &ip->cache[0] : NULL;
+	error = hammer_init_cursor(trans, cursor, cache, ip);
+	return (error);
+}
+
+#endif
+
+/*
+ * Normalize a cursor.  Sometimes cursors can be left in a state
+ * where node is NULL.  If the cursor is in this state, cursor up.
+ */
+void
+hammer_normalize_cursor(hammer_cursor_t cursor)
+{
+	if (cursor->node == NULL) {
+		KKASSERT(cursor->parent != NULL);
+		hammer_cursor_up(cursor);
+	}
+}
+
+
 /*
  * We are finished with a cursor.  We NULL out various fields as sanity
  * check, in case the structure is inappropriately used afterwords.
@@ -113,6 +157,8 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 void
 hammer_done_cursor(hammer_cursor_t cursor)
 {
+	hammer_inode_t ip;
+
 	if (cursor->parent) {
 		hammer_unlock(&cursor->parent->lock);
 		hammer_rel_node(cursor->parent);
@@ -131,8 +177,14 @@ hammer_done_cursor(hammer_cursor_t cursor)
                 hammer_rel_buffer(cursor->record_buffer, 0);
                 cursor->record_buffer = NULL;
         }
-	if (cursor->ip)
+	if ((ip = cursor->ip) != NULL) {
 		hammer_mem_done(cursor);
+                KKASSERT(ip->cursor_ip_refs > 0);
+                --ip->cursor_ip_refs;
+		hammer_unlock(&ip->lock);
+                cursor->ip = NULL;
+        }
+
 
 	/*
 	 * If we deadlocked this node will be referenced.  Do a quick
@@ -297,8 +349,14 @@ hammer_cursor_up(hammer_cursor_t cursor)
 	hammer_cursor_downgrade(cursor);
 
 	/*
-	 * Set the node to its parent.  If the parent is NULL we are at
-	 * the root of the filesystem and return ENOENT.
+	 * If the parent is NULL we are at the root of the B-Tree and
+	 * return ENOENT.
+	 */
+	if (cursor->parent == NULL)
+		return (ENOENT);
+
+	/*
+	 * Set the node to its parent. 
 	 */
 	hammer_unlock(&cursor->node->lock);
 	hammer_rel_node(cursor->node);
@@ -307,11 +365,7 @@ hammer_cursor_up(hammer_cursor_t cursor)
 	cursor->parent = NULL;
 	cursor->parent_index = 0;
 
-	if (cursor->node == NULL) {
-		error = ENOENT;
-	} else {
-		error = hammer_load_cursor_parent(cursor);
-	}
+	error = hammer_load_cursor_parent(cursor);
 	return(error);
 }
 

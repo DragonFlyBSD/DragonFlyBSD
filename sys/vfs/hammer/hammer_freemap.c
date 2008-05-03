@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.7 2008/04/29 01:10:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.8 2008/05/03 05:28:55 dillon Exp $
  */
 
 /*
@@ -125,7 +125,6 @@ new_volume:
 			}
 		}
 	}
-	kprintf("hammer_freemap_alloc %016llx\n", result_offset);
 	hammer_modify_volume(trans, trans->rootvol, NULL, 0);
 	blockmap->next_offset = result_offset + HAMMER_LARGEBLOCK_SIZE;
 	hammer_modify_volume_done(trans->rootvol);
@@ -151,8 +150,6 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 	struct hammer_blockmap_layer2 *layer2;
 
 	KKASSERT((phys_offset & HAMMER_LARGEBLOCK_MASK64) == 0);
-
-	kprintf("hammer_freemap_free %016llx\n", phys_offset);
 
 	hammer_uncache_buffer(trans->hmp, phys_offset);
 	*errorp = 0;

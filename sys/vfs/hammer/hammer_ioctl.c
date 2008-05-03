@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.10 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.11 2008/05/03 05:28:55 dillon Exp $
  */
 
 #include "hammer.h"
@@ -107,7 +107,7 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 		return(EINVAL);
 
 retry:
-	error = hammer_init_cursor(trans, &cursor, NULL);
+	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 	if (error) {
 		hammer_done_cursor(&cursor);
 		return(error);
@@ -408,7 +408,7 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 	 * (create_tid of 0) at the moment.  A create_tid of 0 has
 	 * a special meaning and cannot be specified in the cursor.
 	 */
-	error = hammer_init_cursor(trans, &cursor, &ip->cache[0]);
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[0], NULL);
 	if (error) {
 		hammer_done_cursor(&cursor);
 		return(error);

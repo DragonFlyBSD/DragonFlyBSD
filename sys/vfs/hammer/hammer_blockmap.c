@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.9 2008/04/29 01:10:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.10 2008/05/03 05:28:55 dillon Exp $
  */
 
 /*
@@ -219,9 +219,15 @@ again:
 		}
 	} else {
 		/*
-		 * We are appending within a bigblock.
+		 * We are appending within a bigblock.  It is possible that
+		 * the blockmap has been marked completely free via a prior
+		 * pruning operation.  We no longer reset the append index
+		 * for that case because it compromises the UNDO by allowing
+		 * data overwrites.
 		 */
+		/*
 		KKASSERT(layer2->u.phys_offset != HAMMER_BLOCKMAP_FREE);
+		*/
 	}
 
 	hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));

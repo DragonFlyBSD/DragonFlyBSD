@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.8 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.9 2008/05/03 05:28:55 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -69,7 +69,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 		return(EINVAL);
 
 retry:
-	error = hammer_init_cursor(trans, &cursor, NULL);
+	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 	if (error) {
 		hammer_done_cursor(&cursor);
 		return(error);

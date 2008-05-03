@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.16 2008/05/02 01:00:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.17 2008/05/03 05:28:55 dillon Exp $
  */
 
 /*
@@ -53,14 +53,14 @@ struct hammer_cursor {
 	 * indices.
 	 */
 	hammer_transaction_t trans;
-	hammer_node_t parent;
-	int parent_index;
+	hammer_node_t	parent;
+	int		parent_index;
 
-	hammer_node_t node;
-	int index;
+	hammer_node_t	node;
+	int		index;
 
 	/*
-	 * Set of a deadlock occurs.  hammer_done_cursor() will block on
+	 * Set if a deadlock occurs.  hammer_done_cursor() will block on
 	 * this after releasing parent and node, before returning.
 	 */
 	hammer_node_t deadlk_node;
@@ -129,4 +129,9 @@ typedef struct hammer_cursor *hammer_cursor_t;
 #define HAMMER_CURSOR_DATAEXTOK		0x2000	/* allow data extension */
 #define HAMMER_CURSOR_ASOF		0x4000	/* as-of lookup */
 #define HAMMER_CURSOR_CREATE_CHECK	0x8000	/* as-of lookup */
+
+/*
+ * Flags we can clear when reusing a cursor (we can clear all of them)
+ */
+#define HAMMER_CURSOR_INITMASK		(~0)
 

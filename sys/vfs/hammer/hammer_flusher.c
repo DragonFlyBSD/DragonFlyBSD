@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.9 2008/05/02 01:00:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.10 2008/05/03 05:28:55 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -106,6 +106,8 @@ hammer_flusher_thread(void *arg)
 	hammer_mount_t hmp = arg;
 
 	for (;;) {
+		while (hmp->flusher_lock)
+			tsleep(&hmp->flusher_lock, 0, "hmrhld", 0);
 		hmp->flusher_act = hmp->flusher_next;
 		++hmp->flusher_next;
 		kprintf("F");
@@ -183,7 +185,6 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		 * its reference, sync, and clean-up.
 		 */
 		TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
-		kprintf("s");
 		ip->error = hammer_sync_inode(ip);
 		hammer_flush_inode_done(ip);
 

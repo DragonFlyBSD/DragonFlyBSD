@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.44 2008/05/02 06:51:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.45 2008/05/03 05:28:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -372,7 +372,6 @@ hammer_vop_write(struct vop_write_args *ap)
 			break;
 		}
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
-		hammer_lock_sh(&ip->lock);
 		if (ip->ino_rec.ino_size < uio->uio_offset) {
 			ip->ino_rec.ino_size = uio->uio_offset;
 			flags = HAMMER_INODE_RDIRTY;
@@ -383,7 +382,6 @@ hammer_vop_write(struct vop_write_args *ap)
 		ip->ino_rec.ino_mtime = trans.time;
 		flags |= HAMMER_INODE_ITIMES | HAMMER_INODE_BUFS;
 		hammer_modify_inode(&trans, ip, flags);
-		hammer_unlock(&ip->lock);
 
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
@@ -495,8 +493,6 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 		*ap->a_vpp = NULL;
 		return (error);
 	}
-	hammer_lock_sh(&nip->lock);
-	hammer_lock_sh(&dip->lock);
 
 	/*
 	 * Add the new filesystem object to the directory.  This will also
@@ -505,8 +501,6 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
 	if (error)
 		kprintf("hammer_ip_add_directory error %d\n", error);
-	hammer_unlock(&dip->lock);
-	hammer_unlock(&nip->lock);
 
 	/*
 	 * Finish up.
@@ -662,7 +656,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 */
 	namekey = hammer_directory_namekey(ncp->nc_name, nlen);
 
-	error = hammer_init_cursor(&trans, &cursor, &dip->cache[0]);
+	error = hammer_init_cursor(&trans, &cursor, &dip->cache[0], dip);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -682,23 +676,23 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 * The hammer_ip_*() functions merge in-memory records with on-disk
 	 * records for the purposes of the search.
 	 */
-	if (error == 0)
-		error = hammer_ip_first(&cursor, dip);
-
-	rec = NULL;
 	obj_id = 0;
 
-	while (error == 0) {
-		error = hammer_ip_resolve_data(&cursor);
-		if (error)
-			break;
-		rec = cursor.record;
-		if (nlen == rec->entry.base.data_len &&
-		    bcmp(ncp->nc_name, cursor.data, nlen) == 0) {
-			obj_id = rec->entry.obj_id;
-			break;
+	if (error == 0) {
+		rec = NULL;
+		error = hammer_ip_first(&cursor);
+		while (error == 0) {
+			error = hammer_ip_resolve_data(&cursor);
+			if (error)
+				break;
+			rec = cursor.record;
+			if (nlen == rec->entry.base.data_len &&
+			    bcmp(ncp->nc_name, cursor.data, nlen) == 0) {
+				obj_id = rec->entry.obj_id;
+				break;
+			}
+			error = hammer_ip_next(&cursor);
 		}
-		error = hammer_ip_next(&cursor);
 	}
 	hammer_done_cursor(&cursor);
 	if (error == 0) {
@@ -708,6 +702,11 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 			error = hammer_get_vnode(ip, LK_EXCLUSIVE, &vp);
 			hammer_rel_inode(ip, 0);
 		} else {
+			kprintf("nresolve: lookup %s failed dip %p (%016llx) on"
+				" inode %016llx error %d\n",
+				ncp->nc_name,
+				dip, dip->obj_id, obj_id, error);
+			Debugger("x");
 			vp = NULL;
 		}
 		if (error == 0) {
@@ -814,11 +813,7 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 	 * dip nor ip are referenced or locked, but their vnodes are
 	 * referenced.  This function will bump the inode's link count.
 	 */
-	hammer_lock_sh(&ip->lock);
-	hammer_lock_sh(&dip->lock);
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, ip);
-	hammer_unlock(&dip->lock);
-	hammer_unlock(&ip->lock);
 
 	/*
 	 * Finish up.
@@ -873,11 +868,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * Add the new filesystem object to the directory.  This will also
 	 * bump the inode's link count.
 	 */
-	hammer_lock_sh(&nip->lock);
-	hammer_lock_sh(&dip->lock);
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
-	hammer_unlock(&dip->lock);
-	hammer_unlock(&nip->lock);
 	if (error)
 		kprintf("hammer_mkdir (add) error %d\n", error);
 
@@ -941,11 +932,7 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	 * Add the new filesystem object to the directory.  This will also
 	 * bump the inode's link count.
 	 */
-	hammer_lock_sh(&nip->lock);
-	hammer_lock_sh(&dip->lock);
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
-	hammer_unlock(&dip->lock);
-	hammer_unlock(&nip->lock);
 
 	/*
 	 * Finish up.
@@ -1074,7 +1061,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	 * Key range (begin and end inclusive) to scan.  Directory keys
 	 * directly translate to a 64 bit 'seek' position.
 	 */
-	hammer_init_cursor(&trans, &cursor, &ip->cache[0]);
+	hammer_init_cursor(&trans, &cursor, &ip->cache[0], ip);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
@@ -1087,7 +1074,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	cursor.asof = ip->obj_asof;
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 
-	error = hammer_ip_first(&cursor, ip);
+	error = hammer_ip_first(&cursor);
 
 	while (error == 0) {
 		error = hammer_ip_resolve_record_and_data(&cursor);
@@ -1158,7 +1145,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 
 	hammer_simple_transaction(&trans, ip->hmp);
 
-	hammer_init_cursor(&trans, &cursor, &ip->cache[0]);
+	hammer_init_cursor(&trans, &cursor, &ip->cache[0], ip);
 
 	/*
 	 * Key range (begin and end inclusive) to scan.  Directory keys
@@ -1238,15 +1225,6 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 
 	hammer_start_transaction(&trans, fdip->hmp);
 
-	hammer_lock_sh(&ip->lock);
-	if (fdip->obj_id < tdip->obj_id) {
-		hammer_lock_sh(&fdip->lock);
-		hammer_lock_sh(&tdip->lock);
-	} else {
-		hammer_lock_sh(&tdip->lock);
-		hammer_lock_sh(&fdip->lock);
-	}
-
 	/*
 	 * Remove tncp from the target directory and then link ip as
 	 * tncp. XXX pass trans to dounlink
@@ -1276,7 +1254,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	 */
 	namekey = hammer_directory_namekey(fncp->nc_name, fncp->nc_nlen);
 retry:
-	hammer_init_cursor(&trans, &cursor, &fdip->cache[0]);
+	hammer_init_cursor(&trans, &cursor, &fdip->cache[0], fdip);
         cursor.key_beg.obj_id = fdip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -1296,7 +1274,7 @@ retry:
 	 * The hammer_ip_*() functions merge in-memory records with on-disk
 	 * records for the purposes of the search.
 	 */
-	error = hammer_ip_first(&cursor, fdip);
+	error = hammer_ip_first(&cursor);
 	while (error == 0) {
 		if (hammer_ip_resolve_data(&cursor) != 0)
 			break;
@@ -1323,18 +1301,7 @@ retry:
 	 * of crash recovery.
 	 */
 	if (error == EDEADLK) {
-		hammer_unlock(&ip->lock);
-		hammer_unlock(&fdip->lock);
-		hammer_unlock(&tdip->lock);
 		hammer_done_cursor(&cursor);
-		hammer_lock_sh(&ip->lock);
-		if (fdip->obj_id < tdip->obj_id) {
-			hammer_lock_sh(&fdip->lock);
-			hammer_lock_sh(&tdip->lock);
-		} else {
-			hammer_lock_sh(&tdip->lock);
-			hammer_lock_sh(&fdip->lock);
-		}
 		goto retry;
 	}
 
@@ -1346,9 +1313,6 @@ retry:
 		cache_rename(ap->a_fnch, ap->a_tnch);
 
 failed:
-	hammer_unlock(&ip->lock);
-	hammer_unlock(&fdip->lock);
-	hammer_unlock(&tdip->lock);
 	hammer_done_transaction(&trans);
 	return (error);
 }
@@ -1397,7 +1361,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		return (EROFS);
 
 	hammer_start_transaction(&trans, ip->hmp);
-	hammer_lock_sh(&ip->lock);
 	error = 0;
 
 	if (vap->va_flags != VNOVAL) {
@@ -1445,7 +1408,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			 * if we do not release the lock.  Probably not a
 			 * big deal here.
 			 */
-			hammer_unlock(&ip->lock);
 			if (vap->va_size < ip->ino_rec.ino_size) {
 				vtruncbuf(ap->a_vp, vap->va_size,
 					  HAMMER_BUFSIZE);
@@ -1454,7 +1416,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				vnode_pager_setsize(ap->a_vp, vap->va_size);
 				truncating = 0;
 			}
-			hammer_lock_sh(&ip->lock);
 			ip->ino_rec.ino_size = vap->va_size;
 			modflags |= HAMMER_INODE_RDIRTY;
 			aligned_size = (vap->va_size + HAMMER_BUFMASK) &
@@ -1530,7 +1491,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 done:
 	if (error == 0)
 		hammer_modify_inode(&trans, ip, modflags);
-	hammer_unlock(&ip->lock);
 	hammer_done_transaction(&trans);
 	return (error);
 }
@@ -1576,13 +1536,6 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	}
 
 	/*
-	 * Add the new filesystem object to the directory.  This will also
-	 * bump the inode's link count.
-	 */
-	hammer_lock_sh(&nip->lock);
-	hammer_lock_sh(&dip->lock);
-
-	/*
 	 * Add a record representing the symlink.  symlink stores the link
 	 * as pure data, not a string, and is no \0 terminated.
 	 */
@@ -1607,8 +1560,6 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	}
 	if (error == 0)
 		error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
-	hammer_unlock(&dip->lock);
-	hammer_unlock(&nip->lock);
 
 	/*
 	 * Finish up.
@@ -1750,7 +1701,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	ip = ap->a_vp->v_data;
 
 	hammer_simple_transaction(&trans, ip->hmp);
-	hammer_init_cursor(&trans, &cursor, &ip->cache[0]);
+	hammer_init_cursor(&trans, &cursor, &ip->cache[0], ip);
 
 	/*
 	 * Key range (begin and end inclusive) to scan.  Note that the key's
@@ -1786,7 +1737,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	}
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
-	error = hammer_ip_first(&cursor, ip);
+	error = hammer_ip_first(&cursor);
 	boff = 0;
 
 	while (error == 0) {
@@ -1906,7 +1857,20 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 		TAILQ_INSERT_TAIL(&ip->bio_list, bio, bio_act);
 	++hammer_bio_count;
 	hammer_modify_inode(NULL, ip, HAMMER_INODE_BUFS);
-	hammer_flush_inode(ip, HAMMER_FLUSH_FORCE|HAMMER_FLUSH_SIGNAL);
+
+	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+#if 0
+	/*
+	 * XXX 
+	 *
+	 * If the write was not part of an integrated flush operation then
+	 * signal a flush.
+	 */
+	if (ip->flush_state != HAMMER_FST_FLUSH ||
+	    (ip->flags & HAMMER_INODE_WRITE_ALT)) {
+		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+	}
+#endif
 	return(0);
 }
 
@@ -1921,7 +1885,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
  * original data.  Then add a record to represent the buffer.
  */
 int
-hammer_dowrite(hammer_transaction_t trans, hammer_inode_t ip, struct bio *bio)
+hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip, struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
 	int error;
@@ -1942,10 +1906,10 @@ hammer_dowrite(hammer_transaction_t trans, hammer_inode_t ip, struct bio *bio)
 	 * (eventually) properly truncate partial overlaps.
 	 */
 	if (ip->sync_ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
-		error = hammer_ip_delete_range(trans, ip, bio->bio_offset,
+		error = hammer_ip_delete_range(cursor, ip, bio->bio_offset,
 					       bio->bio_offset);
 	} else {
-		error = hammer_ip_delete_range(trans, ip, bio->bio_offset,
+		error = hammer_ip_delete_range(cursor, ip, bio->bio_offset,
 					       bio->bio_offset +
 						bp->b_bufsize - 1);
 	}
@@ -1970,10 +1934,10 @@ hammer_dowrite(hammer_transaction_t trans, hammer_inode_t ip, struct bio *bio)
 			KKASSERT(limit_size >= 0);
 			limit_size = (limit_size + 63) & ~63;
 		}
-
-		error = hammer_ip_sync_data(trans, ip, bio->bio_offset,
-					    bp->b_data, limit_size);
-
+		if (limit_size) {
+			error = hammer_ip_sync_data(cursor, ip, bio->bio_offset,
+						    bp->b_data, limit_size);
+		}
 	}
 	if (error)
 		Debugger("hammer_dowrite: error");
@@ -2022,7 +1986,7 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 
 	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
 retry:
-	hammer_init_cursor(trans, &cursor, &dip->cache[0]);
+	hammer_init_cursor(trans, &cursor, &dip->cache[0], dip);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -2044,7 +2008,9 @@ retry:
 	 * The hammer_ip_*() functions merge in-memory records with on-disk
 	 * records for the purposes of the search.
 	 */
-	error = hammer_ip_first(&cursor, dip);
+	rec = NULL;
+	error = hammer_ip_first(&cursor);
+
 	while (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error)
@@ -2093,12 +2059,8 @@ retry:
 		 * hammer_done_cursor() twice.
 		 */
 		if (error == 0) {
-			hammer_lock_sh(&ip->lock);
-			hammer_lock_sh(&dip->lock);
 			error = hammer_ip_del_directory(trans, &cursor,
 							dip, ip);
-			hammer_unlock(&dip->lock);
-			hammer_unlock(&ip->lock);
 		}
 		if (error == 0) {
 			cache_setunresolved(nch);
