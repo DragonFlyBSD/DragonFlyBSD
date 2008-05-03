@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.13 2008/04/29 01:10:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.14 2008/05/03 07:59:06 dillon Exp $
  */
 
 #include "hammer.h"
@@ -97,7 +97,8 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	}
 
 	while ((int64_t)bytes > 0) {
-		kprintf("scan_offset %016llx\n", scan_offset);
+		if (hammer_debug_general & 0x0080)
+			kprintf("scan_offset %016llx\n", scan_offset);
 		if (scan_offset == HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0)) {
 			scan_offset = rootmap->alloc_offset;
 			continue;
@@ -316,7 +317,9 @@ static void
 hammer_recover_copy_undo(hammer_off_t undo_offset, 
 			 char *src, char *dst, int bytes)
 {
-	kprintf("UNDO %016llx: %d\n", undo_offset, bytes);
+	kprintf("U");
+	if (hammer_debug_general & 0x0080)
+		kprintf("NDO %016llx: %d\n", undo_offset, bytes);
 #if 0
 	kprintf("UNDO %016llx:", undo_offset);
 	hammer_recover_debug_dump(22, dst, bytes);

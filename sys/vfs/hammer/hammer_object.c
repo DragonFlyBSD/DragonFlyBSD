@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.51 2008/05/03 05:28:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.52 2008/05/03 07:59:06 dillon Exp $
  */
 
 #include "hammer.h"
@@ -584,16 +584,16 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 
 	/*
 	 * One less link.  The file may still be open in the OS even after
-	 * all links have gone away so we only try to sync if the OS has
-	 * no references and nlinks falls to 0.
+	 * all links have gone away.
 	 *
 	 * We have to terminate the cursor before syncing the inode to
-	 * avoid deadlocking against ourselves.
+	 * avoid deadlocking against ourselves.  XXX this may no longer
+	 * be true.
 	 *
-	 * XXX we can't sync the inode here because the encompassing
-	 * transaction might be a rename and might update the inode
-	 * again with a new link.  That would force the delete_tid to be
-	 * the same as the create_tid and cause a panic.
+	 * If nlinks drops to zero and the vnode is inactive (or there is
+	 * no vnode), call hammer_inode_unloadable_check() to zonk the
+	 * inode.  If we don't do this here the inode will not be destroyed
+	 * on-media until we unmount.
 	 */
 	if (error == 0) {
 		--ip->ino_rec.ino_nlinks;
@@ -601,6 +601,8 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		if (ip->ino_rec.ino_nlinks == 0 &&
 		    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
 			hammer_done_cursor(cursor);
+			hammer_inode_unloadable_check(ip);
+			hammer_flush_inode(ip, 0);
 		}
 
 	}
@@ -1715,19 +1717,6 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans,
 {
 	struct hammer_cursor cursor;
 	int error;
-
-#if 0
-	/*
-	 * Check flush connectivity
-	 */
-	if (ip->flush_state != HAMMER_FST_IDLE) {
-		kprintf("FWAIT\n");
-		hammer_done_cursor(parent_cursor);
-		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		hammer_wait_inode(ip);
-		return (EDEADLK);
-	}
-#endif
 
 	/*
 	 * Check directory empty

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.47 2008/05/03 05:28:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.48 2008/05/03 07:59:06 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,7 +42,6 @@
 static int hammer_unload_inode(struct hammer_inode *ip);
 static void hammer_flush_inode_core(hammer_inode_t ip, int flags);
 static int hammer_setup_child_callback(hammer_record_t rec, void *data);
-static void hammer_inode_unloadable_check(hammer_inode_t ip);
 static int hammer_setup_parent_inodes(hammer_record_t record);
 
 /*
@@ -1591,7 +1590,7 @@ done:
  * At this point if the inode's nlinks count is zero we want to destroy
  * it, which may mean destroying it on-media too.
  */
-static void
+void
 hammer_inode_unloadable_check(hammer_inode_t ip)
 {
 	/*
@@ -1610,13 +1609,22 @@ hammer_inode_unloadable_check(hammer_inode_t ip)
 	}
 }
 
+/*
+ * Re-test an inode when a dependancy had gone away to see if we
+ * can chain flush it.
+ */
 void
 hammer_test_inode(hammer_inode_t ip)
 {
 	if (ip->flags & HAMMER_INODE_REFLUSH) {
 		ip->flags &= ~HAMMER_INODE_REFLUSH;
 		hammer_ref(&ip->lock);
-		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		if (ip->flags & HAMMER_INODE_RESIGNAL) {
+			ip->flags &= ~HAMMER_INODE_RESIGNAL;
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		} else {
+			hammer_flush_inode(ip, 0);
+		}
 		hammer_rel_inode(ip, 0);
 	}
 }
