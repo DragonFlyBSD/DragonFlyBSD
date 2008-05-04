@@ -31,15 +31,15 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.7 2008/02/17 19:35:24 matthias Exp $
+# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.8 2008/05/04 17:07:49 swildner Exp $
 
 UNAME=`uname -s`
 VERSION=`uname -r | cut -d '.' -f 1,2`
 NO_INDEX=0
 PORTSDIR=/usr/pkgsrc
 PKGSUM=${PORTSDIR}/pkg_summary
-PKGSRCBOX1=http://pkgbox.dragonflybsd.org/packages/${UNAME}-${VERSION}/i386/
-PKGSRCBOX2=http://pkgbox.dragonflybsd.org/packages/DragonFly-1.10.1/i386/
+PKGSRCBOX1=http://pkgbox.dragonflybsd.org/packages/${UNAME}-${VERSION}/stable/i386/
+PKGSRCBOX2=http://pkgbox.dragonflybsd.org/packages/DragonFly-1.10.1/stable/i386/
 INDEXFILE=INDEX
 
 if [ ! -f ${PKGSUM} -a ! -e ${PORTSDIR}/${INDEXFILE} ]; then
