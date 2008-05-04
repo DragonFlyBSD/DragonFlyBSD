@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.23 2008/05/04 03:44:07 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.24 2008/05/04 04:17:11 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -450,10 +450,10 @@ TO_REMOVE+=/usr/share/man/man3/slice_type_name.3.gz
 TO_REMOVE+=/usr/share/man/cat3/slice_type_name.3.gz
 TO_REMOVE+=/dev/mcd*
 TO_REMOVE+=/dev/scd*
-TO_REMOVE+=/usr/share/man/i386/man4/mcd.4.gz
-TO_REMOVE+=/usr/share/man/i386/cat4/mcd.4.gz
-TO_REMOVE+=/usr/share/man/i386/man4/scd.4.gz
-TO_REMOVE+=/usr/share/man/i386/cat4/scd.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/mcd.4.gz
+TO_REMOVE+=/usr/share/man/cat4/i386/mcd.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/scd.4.gz
+TO_REMOVE+=/usr/share/man/cat4/i386/scd.4.gz
 TO_REMOVE+=/etc/rc.d/archdep
 TO_REMOVE+=/usr/share/man/man4/sata.4.gz
 TO_REMOVE+=/usr/share/man/cat4/sata.4.gz
@@ -573,10 +573,10 @@ TO_REMOVE+=/usr/share/man/cat8/ipwcontrol.8.gz
 TO_REMOVE+=/usr/share/man/man8/ipwcontrol.8.gz
 TO_REMOVE+=/usr/share/zoneinfo/Asia/Calcutta
 TO_REMOVE+=/usr/share/zoneinfo/Asia/Saigon
-TO_REMOVE+=/usr/share/man/cat9/mono_time.9
-TO_REMOVE+=/usr/share/man/man9/mono_time.9
-TO_REMOVE+=/usr/share/man/cat9/runtime.9
-TO_REMOVE+=/usr/share/man/man9/runtime.9
+TO_REMOVE+=/usr/share/man/cat9/mono_time.9.gz
+TO_REMOVE+=/usr/share/man/man9/mono_time.9.gz
+TO_REMOVE+=/usr/share/man/cat9/runtime.9.gz
+TO_REMOVE+=/usr/share/man/man9/runtime.9.gz
 TO_REMOVE+=/usr/share/i18n/csmapper/CP/CP932EXT%UCS.mps
 TO_REMOVE+=/usr/share/i18n/csmapper/CP/UCS%CP932EXT.mps
 TO_REMOVE+=/usr/share/i18n/csmapper/KS/KSC5601%UCS.mps
@@ -607,3 +607,13 @@ TO_REMOVE+=/usr/share/man/cat9/ieee80211_node_lateattach.9.gz
 TO_REMOVE+=/usr/share/man/man9/ieee80211_node_lateattach.9.gz
 TO_REMOVE+=/usr/share/man/cat9/ieee80211_wep_crypt.9.gz
 TO_REMOVE+=/usr/share/man/man9/ieee80211_wep_crypt.9.gz
+TO_REMOVE+=/usr/share/man/cat3/el_data_get.3.gz
+TO_REMOVE+=/usr/share/man/man3/el_data_get.3.gz
+TO_REMOVE+=/usr/share/man/cat3/el_data_set.3.gz
+TO_REMOVE+=/usr/share/man/man3/el_data_set.3.gz
+TO_REMOVE+=/usr/share/man/cat3/pam_fail_delay.3.gz
+TO_REMOVE+=/usr/share/man/man3/pam_fail_delay.3.gz
+TO_REMOVE+=/usr/share/man/cat5/pam.d.5.gz
+TO_REMOVE+=/usr/share/man/man5/pam.d.5.gz
+TO_REMOVE+=/usr/share/man/cat8/pam.8.gz
+TO_REMOVE+=/usr/share/man/man8/pam.8.gz
