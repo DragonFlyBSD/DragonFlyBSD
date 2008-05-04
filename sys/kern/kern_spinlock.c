@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.11 2007/07/02 16:51:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.12 2008/05/04 04:48:47 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,7 @@
 #include <ddb/ddb.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
+#include <machine/specialreg.h>
 #include <machine/clock.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
@@ -65,18 +66,32 @@
 KTR_INFO_MASTER(spin);
 KTR_INFO(KTR_SPIN_CONTENTION, spin, beg, 0, SPIN_STRING, SPIN_ARG_SIZE);
 KTR_INFO(KTR_SPIN_CONTENTION, spin, end, 1, SPIN_STRING, SPIN_ARG_SIZE);
+KTR_INFO(KTR_SPIN_CONTENTION, spin, backoff, 2,
+	 "spin=%p bo1=%d thr=%p bo=%d",
+	 ((2 * sizeof(void *)) + (2 * sizeof(int))));
+KTR_INFO(KTR_SPIN_CONTENTION, spin, bofail, 3, SPIN_STRING, SPIN_ARG_SIZE);
 
 #define logspin(name, mtx, type)			\
 	KTR_LOG(spin_ ## name, mtx, type)
+
+#define logspin_backoff(mtx, bo1, thr, bo)		\
+	KTR_LOG(spin_backoff, mtx, bo1, thr, bo)
 
 #ifdef INVARIANTS
 static int spin_lock_test_mode;
 #endif
 
 static int64_t spinlocks_contested1;
-SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested1, CTLFLAG_RD, &spinlocks_contested1, 0, "");
+SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested1, CTLFLAG_RD,
+	    &spinlocks_contested1, 0, "");
+
 static int64_t spinlocks_contested2;
-SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested2, CTLFLAG_RD, &spinlocks_contested2, 0, "");
+SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested2, CTLFLAG_RD,
+	    &spinlocks_contested2, 0, "");
+
+static int spinlocks_backoff_limit = BACKOFF_LIMIT;
+SYSCTL_INT(_debug, OID_AUTO, spinlocks_bolim, CTLFLAG_RW,
+	   &spinlocks_backoff_limit, 0, "");
 
 struct exponential_backoff {
 	int backoff;
@@ -246,17 +261,31 @@ int
 exponential_backoff(struct exponential_backoff *bo)
 {
 	sysclock_t count;
-	int i;
+	int backoff;
+
+#ifdef _RDTSC_SUPPORTED_
+	if (cpu_feature & CPUID_TSC) {
+		backoff =
+		((u_long)rdtsc() ^ (((u_long)curthread) >> 5)) % bo->backoff
+		+ BACKOFF_INITIAL;
+	} else
+#endif
+		backoff = bo->backoff;
+	logspin_backoff(bo->mtx, bo->backoff, curthread, backoff);
 
 	/*
 	 * Quick backoff
 	 */
-	for (i = 0; i < bo->backoff; ++i)
+	for (; backoff; --backoff)
 		cpu_nop();
-	if (bo->backoff < BACKOFF_LIMIT) {
+	if (bo->backoff < spinlocks_backoff_limit) {
 		bo->backoff <<= 1;
 		return (FALSE);
+	} else {
+		bo->backoff = BACKOFF_INITIAL;
 	}
+
+	logspin(bofail, bo->mtx, 'u');
 
 	/*
 	 * Indefinite
