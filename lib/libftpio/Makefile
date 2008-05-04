@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libftpio/Makefile,v 1.9.2.2 2001/04/25 10:04:30 ru Exp $
-# $DragonFly: src/lib/libftpio/Makefile,v 1.5 2005/08/05 23:43:19 swildner Exp $
+# $DragonFly: src/lib/libftpio/Makefile,v 1.6 2008/05/04 00:55:01 swildner Exp $
 
 LIB=		ftpio
 SHLIB_MAJOR=	7
@@ -9,9 +9,11 @@ INCS=		ftpio.h
 CFLAGS+=	-I${.CURDIR} -Wall
 CFLAGS+=	-DINET6
 MAN=		ftpio.3
-MLINKS=		ftpio.3 ftpBinary.3
+MLINKS+=	ftpio.3 ftpAscii.3
+MLINKS+=	ftpio.3 ftpBinary.3
 MLINKS+=	ftpio.3 ftpChdir.3
 MLINKS+=	ftpio.3 ftpErrno.3
+MLINKS+=	ftpio.3 ftpErrString.3
 MLINKS+=	ftpio.3 ftpGet.3
 MLINKS+=	ftpio.3 ftpGetModtime.3
 MLINKS+=	ftpio.3 ftpGetSize.3
