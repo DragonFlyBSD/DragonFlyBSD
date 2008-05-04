@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.11 2008/04/14 08:17:09 swildner Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.12 2008/05/04 19:18:17 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -42,6 +42,7 @@
 .Op Fl hrx
 .Op Fl f Ar blkdev[:blkdev]*
 .Op Fl s Ar linkpath
+.Op Fl t Ar timeout
 .Ar command
 .Ar ...
 .Sh DESCRIPTION
@@ -61,6 +62,10 @@ Specify the volumes making up a HAMMER filesystem.
 .It Fl s Ar linkpath
 When pruning a filesystem you can instruct HAMMER to create softlinks
 to available snapshots.
+.It Fl t Ar timeout
+When pruning and reblocking you can tell the utility to stop after a
+certain period of time.
+This option is typically used to limit the time spent reblocking.
 .It Fl v
 Increase verboseness.  May be specified multiple times.
 .It Fl x

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.6 2008/02/23 03:01:06 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.7 2008/05/04 19:18:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -39,16 +39,19 @@
 #define FLAG_TOOFARLEFT		0x0001
 #define FLAG_TOOFARRIGHT	0x0002
 #define FLAG_BADTYPE		0x0004
+#define FLAG_BADCHILDPARENT	0x0008
 
 static void print_btree_node(hammer_off_t node_offset, int depth, int spike,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 			int flags, const char *label);
-static int print_elm_flags(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
-			u_int8_t btype, hammer_base_elm_t left_bound,
+static int print_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
+			hammer_btree_elm_t elm, u_int8_t btype,
+			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static void print_bigblock_fill(hammer_off_t offset);
+static void print_record(hammer_btree_elm_t elm);
 
 void
 hammer_cmd_show(hammer_off_t node_offset, int depth,
@@ -93,13 +96,15 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 
 		for (i = 0; i < node->count; ++i) {
 			elm = &node->elms[i];
-			flags = print_elm_flags(node, elm, elm->base.btype,
+			flags = print_elm_flags(node, node_offset,
+						elm, elm->base.btype,
 						left_bound, right_bound);
 			print_btree_elm(elm, i, node->type, flags, "ELM");
 		}
 		if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 			elm = &node->elms[i];
-			flags = print_elm_flags(node, elm, 'I',
+			flags = print_elm_flags(node, node_offset,
+						elm, 'I',
 						left_bound, right_bound);
 			print_btree_elm(elm, i, node->type, flags, "RBN");
 		}
@@ -138,6 +143,8 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 		flagstr[3] = 'R';
 	if (flags & FLAG_BADTYPE)
 		flagstr[4] = 'T';
+	if (flags & FLAG_BADCHILDPARENT)
+		flagstr[4] = 'C';
 
 	printf("%s\t%s %2d %c ",
 	       flagstr, label, i,
@@ -147,7 +154,8 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	       elm->base.key,
 	       elm->base.rec_type,
 	       elm->base.obj_type);
-	printf("\t         tids %016llx:%016llx ",
+	printf("\t       %c tids %016llx:%016llx ",
+		(elm->base.delete_tid ? 'd' : ' '),
 	       elm->base.create_tid,
 	       elm->base.delete_tid);
 
@@ -168,6 +176,8 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 				printf(", ");
 				print_bigblock_fill(elm->leaf.data_offset);
 			}
+			if (VerboseOpt > 1)
+				print_record(elm);
 			break;
 		}
 		break;
@@ -179,14 +189,25 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 
 static
 int
-print_elm_flags(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
-		u_int8_t btype,
+print_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
+		hammer_btree_elm_t elm, u_int8_t btype,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	int flags = 0;
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
+		if (elm->internal.subtree_offset) {
+			struct buffer_info *buffer = NULL;
+			hammer_node_ondisk_t subnode;
+
+			subnode = get_node(elm->internal.subtree_offset,
+					   &buffer);
+			if (subnode->parent != node_offset)
+				flags |= FLAG_BADCHILDPARENT;
+			rel_buffer(buffer);
+		}
+
 		switch(btype) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
 			if (left_bound == NULL || right_bound == NULL)
@@ -248,5 +269,62 @@ print_bigblock_fill(hammer_off_t offset)
 		(offset & ~HAMMER_OFF_ZONE_MASK) / HAMMER_LARGEBLOCK_SIZE,
 		fill
 	);
+}
+
+static
+void
+print_record(hammer_btree_elm_t elm)
+{
+	struct buffer_info *rec_buffer;
+	struct buffer_info *data_buffer;
+	hammer_record_ondisk_t rec;
+	hammer_off_t rec_offset;
+	hammer_off_t data_offset;
+	int32_t data_len;
+	char *data;
+
+	rec_offset = elm->leaf.rec_offset;
+	data_offset = elm->leaf.data_offset;
+	data_len = elm->leaf.data_len;
+	rec_buffer = NULL;
+	data_buffer = NULL;
+
+	rec = get_buffer_data(rec_offset, &rec_buffer, 0);
+	if (data_offset)
+		data = get_buffer_data(data_offset, &data_buffer, 0);
+	else
+		data = NULL;
+
+	printf("\n%17s", "");
+	if (rec == NULL) {
+		printf("record FAILED\n");
+		return;
+	}
+	switch(rec->base.base.rec_type) {
+	case HAMMER_RECTYPE_INODE:
+		printf("size=%lld nlinks=%lld",
+		       rec->inode.ino_size, rec->inode.ino_nlinks);
+		break;
+	case HAMMER_RECTYPE_DIRENTRY:
+		printf("dir-entry ino=%016llx name=\"%*.*s\"",
+		       rec->entry.obj_id,
+		       data_len, data_len, data);
+		break;
+	case HAMMER_RECTYPE_FIX:
+		switch(rec->base.base.key) {
+		case HAMMER_FIXKEY_SYMLINK:
+			printf("symlink=\"%*.*s\"", data_len, data_len, data);
+			break;
+		default:
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+	if (rec_buffer)
+		rel_buffer(rec_buffer);
+	if (data_buffer)
+		rel_buffer(data_buffer);
 }
 

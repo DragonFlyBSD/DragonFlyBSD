@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.1 2008/03/18 05:21:53 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.2 2008/05/04 19:18:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -73,10 +73,16 @@ hammer_cmd_reblock(char **av, int ac)
 	fd = open(filesystem, O_RDONLY);
 	if (fd < 0)
 		err(1, "Unable to open %s", filesystem);
-	if (ioctl(fd, HAMMERIOC_REBLOCK, &reblock) < 0)
-		printf("Reblock %s failed: %s\n", filesystem, strerror(errno));
-	else
+	if (ioctl(fd, HAMMERIOC_REBLOCK, &reblock) < 0) {
+		if (errno == EINTR) {
+			printf("Reblock %s interrupted by timer\n", filesystem);
+		} else {
+			printf("Reblock %s failed: %s\n",
+			       filesystem, strerror(errno));
+		}
+	} else {
 		printf("Reblock %s succeeded\n", filesystem);
+	}
 	close(fd);
 	printf("Reblocked:\n"
 	       "    %lld/%lld btree nodes\n"

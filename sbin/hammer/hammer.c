@@ -31,15 +31,17 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.13 2008/03/25 03:57:58 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.14 2008/05/04 19:18:17 dillon Exp $
  */
 
 #include "hammer.h"
+#include <signal.h>
 #include <math.h>
 
 static void hammer_parsetime(u_int64_t *tidp, const char *timestr);
 static void hammer_waitsync(int dosleep);
 static void hammer_parsedevs(const char *blkdevs);
+static void sigalrm(int signo);
 static void usage(int exit_code);
 
 int RecurseOpt;
@@ -53,10 +55,11 @@ main(int ac, char **av)
 	struct timeval tv;
 	u_int64_t tid;
 	int ch;
+	int timeout = 0;
 	u_int32_t status;
 	char *blkdevs = NULL;
 
-	while ((ch = getopt(ac, av, "hf:rs:vx")) != -1) {
+	while ((ch = getopt(ac, av, "hf:rs:t:vx")) != -1) {
 		switch(ch) {
 		case 'h':
 			usage(0);
@@ -69,6 +72,9 @@ main(int ac, char **av)
 			break;
 		case 's':
 			LinkPath = optarg;
+			break;
+		case 't':
+			timeout = strtol(optarg, NULL, 0);
 			break;
 		case 'v':
 			++VerboseOpt;
@@ -86,6 +92,11 @@ main(int ac, char **av)
 	if (ac < 1) {
 		usage(1);
 		/* not reached */
+	}
+
+	if (timeout > 0) {
+		signal(SIGALRM, sigalrm);
+		alarm(timeout);
 	}
 
 	if (strcmp(av[0], "now") == 0) {
@@ -288,6 +299,13 @@ hammer_parsedevs(const char *blkdevs)
 			*copy++ = 0;
 		setup_volume(-1, volname, 0, O_RDONLY);
 	}
+}
+
+static
+void
+sigalrm(int signo __unused)
+{
+	/* do nothing (interrupts HAMMER ioctl) */
 }
 
 static

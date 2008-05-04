@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.4 2008/03/20 04:03:03 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.5 2008/05/04 19:18:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -93,10 +93,16 @@ hammer_cmd_prune(char **av, int ac)
 	fd = open(filesystem, O_RDONLY);
 	if (fd < 0)
 		err(1, "Unable to open %s", filesystem);
-	if (ioctl(fd, HAMMERIOC_PRUNE, &prune) < 0)
-		printf("Prune %s failed: %s\n", filesystem, strerror(errno));
-	else
+	if (ioctl(fd, HAMMERIOC_PRUNE, &prune) < 0) {
+		if (errno == EINTR) {
+			printf("Prune %s interrupted by timer\n", filesystem);
+		} else {
+			printf("Prune %s failed: %s\n",
+			       filesystem, strerror(errno));
+		}
+	} else {
 		printf("Prune %s succeeded\n", filesystem);
+	}
 	close(fd);
 	if (LinkPath)
 		hammer_prune_create_links(filesystem, &prune);
@@ -311,7 +317,7 @@ hammer_prune_make_softlink(const char *filesystem, hammer_tid_t tid)
 	if (tid % (1000000000ULL * 60 * 60 * 24) == 0) {
 		strftime(buf, sizeof(buf), "snap-%d%b%Y", tp);
 	} else if (tid % (1000000000ULL * 60 * 60) == 0) {
-		strftime(buf, sizeof(buf), "snap-%d%b%Y_%H", tp);
+		strftime(buf, sizeof(buf), "snap-%d%b%Y_%H%M", tp);
 	} else if (tid % (1000000000ULL * 60) == 0) {
 		strftime(buf, sizeof(buf), "snap-%d%b%Y_%H%M", tp);
 	} else {
