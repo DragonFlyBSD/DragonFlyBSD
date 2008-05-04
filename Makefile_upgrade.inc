@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.22 2008/04/20 19:21:42 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.23 2008/05/04 03:44:07 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -333,6 +333,7 @@ TO_REMOVE+=/usr/share/man/man8/sysinstall.8.gz
 TO_REMOVE+=/usr/share/man/cat8/sysinstall.8.gz
 TO_REMOVE+=/usr/share/man/man8/cvsbug.8.gz
 TO_REMOVE+=/usr/share/man/cat8/cvsbug.8.gz
+TO_REMOVE+=/usr/share/man/man8/diskpart.8.gz
 TO_REMOVE+=/usr/share/man/cat8/diskpart.8.gz
 TO_REMOVE+=/usr/share/zoneinfo/Africa/Timbuktu
 TO_REMOVE+=/usr/share/zoneinfo/America/Argentina/ComodRivadavia
@@ -449,10 +450,10 @@ TO_REMOVE+=/usr/share/man/man3/slice_type_name.3.gz
 TO_REMOVE+=/usr/share/man/cat3/slice_type_name.3.gz
 TO_REMOVE+=/dev/mcd*
 TO_REMOVE+=/dev/scd*
-TO_REMOVE+=/usr/share/man/man4/mcd.4.gz
-TO_REMOVE+=/usr/share/man/cat4/mcd.4.gz
-TO_REMOVE+=/usr/share/man/man4/scd.4.gz
-TO_REMOVE+=/usr/share/man/cat4/scd.4.gz
+TO_REMOVE+=/usr/share/man/i386/man4/mcd.4.gz
+TO_REMOVE+=/usr/share/man/i386/cat4/mcd.4.gz
+TO_REMOVE+=/usr/share/man/i386/man4/scd.4.gz
+TO_REMOVE+=/usr/share/man/i386/cat4/scd.4.gz
 TO_REMOVE+=/etc/rc.d/archdep
 TO_REMOVE+=/usr/share/man/man4/sata.4.gz
 TO_REMOVE+=/usr/share/man/cat4/sata.4.gz
@@ -476,6 +477,8 @@ TO_REMOVE+=/usr/share/man/cat4/i386/oltr.4.gz
 TO_REMOVE+=/usr/share/man/cat4/fea.4.gz
 TO_REMOVE+=/usr/share/man/man4/fea.4.gz
 TO_REMOVE+=/usr/share/man/cat4/fpa.4.gz
+TO_REMOVE+=/usr/share/man/man4/fpa.4.gz
+TO_REMOVE+=/usr/share/man/cat4/fla.4.gz
 TO_REMOVE+=/usr/share/man/man4/fla.4.gz
 TO_REMOVE+=/usr/share/man/man4/nv.4.gz
 TO_REMOVE+=/usr/share/man/cat4/nv.4.gz
@@ -491,8 +494,8 @@ TO_REMOVE+=/usr/share/openssl/man/man7/Modes_of_DES.7.gz
 TO_REMOVE+=/usr/share/openssl/man/cat7/Modes_of_DES.7.gz
 TO_REMOVE+=/usr/include/bus/usb/usbdevs.h
 TO_REMOVE+=/usr/include/bus/usb/usbdevs_data.h
-TO_REMOVE+=/usr/share/man/man9/callout_handle_init.9
-TO_REMOVE+=/usr/share/man/cat9/callout_handle_init.9
+TO_REMOVE+=/usr/share/man/man9/callout_handle_init.9.gz
+TO_REMOVE+=/usr/share/man/cat9/callout_handle_init.9.gz
 TO_REMOVE+=/usr/include/net/intrq.h
 TO_REMOVE+=/usr/share/games/fortune/freebsd-tips
 TO_REMOVE+=/usr/share/games/fortune/freebsd-tips.dat
@@ -590,3 +593,17 @@ TO_REMOVE+=/usr/share/i18n/esdb/MISC/KOI8-R.esdb
 TO_REMOVE+=/usr/share/i18n/esdb/MISC/KOI8-U.esdb
 TO_REMOVE+=/usr/share/man/cat3/_rand48.3.gz
 TO_REMOVE+=/usr/share/man/man3/_rand48.3.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_alloc_node.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_alloc_node.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_dup_bss.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_dup_bss.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_free_allnodes.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_free_allnodes.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_node_attach.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_node_attach.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_node_detach.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_node_detach.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_node_lateattach.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_node_lateattach.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_wep_crypt.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_wep_crypt.9.gz
