@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.10 2008/05/03 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.11 2008/05/04 09:06:45 dillon Exp $
  */
 
 /*
@@ -90,12 +90,9 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t undomap;
 	hammer_buffer_t buffer = NULL;
-	struct hammer_blockmap_layer2 *layer2;
 	hammer_fifo_undo_t undo;
 	hammer_fifo_tail_t tail;
 	hammer_off_t next_offset;
-	hammer_off_t result_offset;
-	int i;
 	int error;
 	int bytes;
 
@@ -103,9 +100,8 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 	 * Enter the offset into our undo history.  If there is an existing
 	 * undo we do not have to generate a new one.
 	 */
-	if (hammer_enter_undo_history(trans->hmp, zone_off, len) == EALREADY) {
+	if (hammer_enter_undo_history(trans->hmp, zone_off, len) == EALREADY)
 		return(0);
-	}
 
 	root_volume = trans->rootvol;
 	ondisk = root_volume->ondisk;
@@ -135,12 +131,7 @@ again:
 		kprintf("undo zone's next_offset wrapped\n");
 	}
 
-	i = (next_offset & HAMMER_OFF_SHORT_MASK) / HAMMER_LARGEBLOCK_SIZE;
-	layer2 = &root_volume->ondisk->vol0_undo_array[i];
-	result_offset = layer2->u.phys_offset +
-			(next_offset & HAMMER_LARGEBLOCK_MASK64);
-
-	undo = hammer_bread(trans->hmp, result_offset, &error, &buffer);
+	undo = hammer_bread(trans->hmp, next_offset, &error, &buffer);
 
 	/*
 	 * We raced another thread, try again.
@@ -150,6 +141,9 @@ again:
 
 	hammer_modify_buffer(NULL, buffer, NULL, 0);
 
+	/* XXX eventually goto again again, but for now catch it */
+	KKASSERT(undomap->next_offset == next_offset);
+
 	/*
 	 * The FIFO entry would cross a buffer boundary, PAD to the end
 	 * of the buffer and try again.  Due to our data alignment, the
@@ -157,7 +151,7 @@ again:
 	 * populate the first 8 bytes of hammer_fifo_head and the tail may
 	 * be at the same offset as the head.
 	 */
-	if ((result_offset ^ (result_offset + bytes)) & ~HAMMER_BUFMASK64) {
+	if ((next_offset ^ (next_offset + bytes)) & ~HAMMER_BUFMASK64) {
 		bytes = HAMMER_BUFSIZE - ((int)next_offset & HAMMER_BUFMASK);
 		tail = (void *)((char *)undo + bytes - sizeof(*tail));
 		if ((void *)undo != (void *)tail) {
@@ -173,7 +167,7 @@ again:
 		goto again;
 	}
 	if (hammer_debug_general & 0x0080)
-		kprintf("undo %016llx %d %d\n", result_offset, bytes, len);
+		kprintf("undo %016llx %d %d\n", next_offset, bytes, len);
 
 	/*
 	 * We're good, create the entry.
@@ -193,13 +187,9 @@ again:
 	tail->tail_size = bytes;
 
 	undo->head.hdr_crc = crc32(undo, bytes);
-	hammer_modify_buffer_done(buffer);
-
-	/*
-	 * Update the undo offset space in the IO XXX
-	 */
-
 	undomap->next_offset += bytes;
+
+	hammer_modify_buffer_done(buffer);
 	hammer_modify_volume_done(root_volume);
 
 	if (buffer)
@@ -260,22 +250,34 @@ hammer_clear_undo_history(hammer_mount_t hmp)
  * Misc helper routines.  Return available space and total space.
  */
 int64_t
-hammer_undo_space(hammer_mount_t hmp)
+hammer_undo_used(hammer_mount_t hmp)
 {
 	hammer_blockmap_t rootmap;
-	int64_t bytes;
 	int64_t max_bytes;
+	int64_t bytes;
 
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	if (rootmap->first_offset <= rootmap->next_offset) {
-		bytes = (int)(rootmap->next_offset - rootmap->first_offset);
+		bytes = rootmap->next_offset - rootmap->first_offset;
 	} else {
-		bytes = (int)(rootmap->alloc_offset - rootmap->first_offset +
-			      rootmap->next_offset);
+		bytes = rootmap->alloc_offset - rootmap->first_offset +
+		        (rootmap->next_offset & HAMMER_OFF_LONG_MASK);
 	}
-	max_bytes = (int)(rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK);
-	return(max_bytes - bytes);
+	max_bytes = rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK;
+	KKASSERT(bytes <= max_bytes);
+	return(bytes);
+}
+
+int64_t
+hammer_undo_space(hammer_mount_t hmp)
+{
+	hammer_blockmap_t rootmap;
+	int64_t max_bytes;
+
+	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+	max_bytes = rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK;
+	return(max_bytes - hammer_undo_used(hmp));
 }
 
 int64_t
@@ -285,7 +287,7 @@ hammer_undo_max(hammer_mount_t hmp)
 	int64_t max_bytes;
 
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-	max_bytes = (int)(rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK);
+	max_bytes = rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK;
 
 	return(max_bytes);
 }

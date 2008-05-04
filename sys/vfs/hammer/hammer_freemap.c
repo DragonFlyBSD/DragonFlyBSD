@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.9 2008/05/03 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.10 2008/05/04 09:06:45 dillon Exp $
  */
 
 /*
@@ -64,6 +64,8 @@ hammer_freemap_alloc(hammer_transaction_t trans, hammer_off_t owner,
 
 	*errorp = 0;
 	ondisk = trans->rootvol->ondisk;
+
+	hammer_lock_ex(&trans->hmp->free_lock);
 
 	blockmap = &trans->hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	result_offset = blockmap->next_offset;
@@ -129,6 +131,7 @@ new_volume:
 	blockmap->next_offset = result_offset + HAMMER_LARGEBLOCK_SIZE;
 	hammer_modify_volume_done(trans->rootvol);
 done:
+	hammer_unlock(&trans->hmp->free_lock);
 	if (buffer1)
 		hammer_rel_buffer(buffer1, 0);
 	if (buffer2)

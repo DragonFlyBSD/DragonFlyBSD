@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.32 2008/05/03 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.33 2008/05/04 09:06:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -199,6 +199,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		lockinit(&hmp->blockmap_lock, "blkmap", 0, 0);
 
 		hmp->sync_lock.refs = 1;
+		hmp->free_lock.refs = 1;
 
 		TAILQ_INIT(&hmp->flush_list);
 		TAILQ_INIT(&hmp->objid_cache_list);
@@ -316,9 +317,12 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * Perform any necessary UNDO operations.  The recover code does
 	 * call hammer_undo_lookup() so we have to pre-cache the blockmap,
 	 * and then re-copy it again after recovery is complete.
+	 *
+	 * The recover code will load hmp->flusher_undo_start.
 	 */
 	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
 	      sizeof(hmp->blockmap));
+
 	error = hammer_recover(hmp, rootvol);
 	if (error) {
 		kprintf("Failed to recover HAMMER filesystem on mount\n");
@@ -340,6 +344,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * Certain often-modified fields in the root volume are cached in
 	 * the hammer_mount structure so we do not have to generate lots
 	 * of little UNDO structures for them.
+	 *
+	 * Recopy after recovery.
 	 */
 	hmp->next_tid = rootvol->ondisk->vol0_next_tid;
 	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,

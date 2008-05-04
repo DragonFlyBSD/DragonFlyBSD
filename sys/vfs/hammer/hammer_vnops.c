@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.46 2008/05/03 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.47 2008/05/04 09:06:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -703,11 +703,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 			error = hammer_get_vnode(ip, &vp);
 			hammer_rel_inode(ip, 0);
 		} else {
-			kprintf("nresolve: lookup %s failed dip %p (%016llx) on"
-				" inode %016llx error %d\n",
-				ncp->nc_name,
-				dip, dip->obj_id, obj_id, error);
-			Debugger("x");
 			vp = NULL;
 		}
 		if (error == 0) {

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.41 2008/05/03 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.42 2008/05/04 09:06:45 dillon Exp $
  */
 
 /*
@@ -1009,9 +1009,8 @@ re_search:
 			if ((error = hammer_cursor_upgrade(cursor)) != 0)
 				return(error);
 			KKASSERT(cursor->flags & HAMMER_CURSOR_BACKEND);
-			hammer_modify_node(cursor->trans, cursor->node,
-					   &node->elms[0],
-					   sizeof(node->elms[0]));
+			hammer_modify_node_field(cursor->trans, cursor->node,
+						 elms[0]);
 			save = node->elms[0].base.btype;
 			node->elms[0].base = *cursor->left_bound;
 			node->elms[0].base.btype = save;
@@ -2089,9 +2088,7 @@ btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
 		child = hammer_get_node(node->hmp,
 					elm->internal.subtree_offset, &error);
 		if (error == 0) {
-			hammer_modify_node(trans, child,
-					   &child->ondisk->parent,
-					   sizeof(child->ondisk->parent));
+			hammer_modify_node_field(trans, child, parent);
 			child->ondisk->parent = node->node_offset;
 			hammer_modify_node_done(child);
 			hammer_rel_node(child);

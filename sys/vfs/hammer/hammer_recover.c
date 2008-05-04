@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.14 2008/05/03 07:59:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.15 2008/05/04 09:06:45 dillon Exp $
  */
 
 #include "hammer.h"
@@ -72,16 +72,23 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	 * root volume's ondisk buffer directly.
 	 */
 	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	hmp->flusher_undo_start = rootmap->next_offset;
+
 	if (rootmap->first_offset == rootmap->next_offset)
 		return(0);
 
-	if (rootmap->next_offset < rootmap->first_offset)
+	if (rootmap->next_offset >= rootmap->first_offset) {
+		bytes = rootmap->next_offset - rootmap->first_offset;
+	} else {
 		bytes = rootmap->alloc_offset - rootmap->first_offset +
-			rootmap->next_offset;
-	else
-		bytes = (rootmap->next_offset - rootmap->first_offset);
+			(rootmap->next_offset & HAMMER_OFF_LONG_MASK);
+	}
 	kprintf("HAMMER(%s) Start Recovery (%lld bytes of UNDO)\n",
 		root_volume->ondisk->vol_name, bytes);
+	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
+		kprintf("Undo size is absurd, unable to mount\n");
+		return(EIO);
+	}
 
 	/*
 	 * Scan the UNDOs backwards.
@@ -93,7 +100,7 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 			root_volume->ondisk->vol_name,
 			scan_offset);
 		error = EIO;
-		goto failed;
+		goto done;
 	}
 
 	while ((int64_t)bytes > 0) {
@@ -109,7 +116,6 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 				"underflow\n",
 				root_volume->ondisk->vol_name,
 				scan_offset);
-			Debugger("FUBAR");
 			error = EIO;
 			break;
 		}
@@ -145,7 +151,11 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 		scan_offset -= tail->tail_size;
 		bytes -= tail->tail_size;
 	}
-failed:
+done:
+	/*
+	 * Reload flusher_undo_start to kick off the UNDO sequencing.
+	 */
+	hmp->flusher_undo_start = rootmap->next_offset;
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
 	return (error);

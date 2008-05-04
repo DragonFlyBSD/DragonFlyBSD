@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.49 2008/05/03 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.50 2008/05/04 09:06:45 dillon Exp $
  */
 
 #include "hammer.h"
@@ -281,6 +281,9 @@ retry:
 		}
 		ip->flags |= HAMMER_INODE_ONDISK;
 	} else {
+		kprintf("hammer_get_inode: failed ip %p cursor %p error %d\n",
+			ip, &cursor, *errorp);
+		/*Debugger("x");*/
 		--hammer_count_inodes;
 		kfree(ip, M_HAMMER);
 		ip = NULL;

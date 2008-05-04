@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.59 2008/05/03 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.60 2008/05/04 09:06:45 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -544,6 +544,7 @@ struct hammer_mount {
 	int	flusher_next;	/* next flush group */
 	int	flusher_lock;	/* lock sequencing of the next flush */
 	int	flusher_exiting;
+	hammer_off_t flusher_undo_start; /* UNDO window for flushes */
 	int	reclaim_count;
 	thread_t flusher_td;
 	u_int	check_interrupt;
@@ -563,6 +564,7 @@ struct hammer_mount {
 	hammer_off_t zone_limits[HAMMER_MAX_ZONES];
 	struct netexport export;
 	struct hammer_lock sync_lock;
+	struct hammer_lock free_lock;
 	struct lock blockmap_lock;
 	struct hammer_blockmap  blockmap[HAMMER_MAX_ZONES];
 	struct hammer_holes	holes[HAMMER_MAX_ZONES];
@@ -767,6 +769,7 @@ hammer_off_t hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *errorp);
 hammer_off_t hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *errorp);
+int64_t hammer_undo_used(hammer_mount_t hmp);
 int64_t hammer_undo_space(hammer_mount_t hmp);
 int64_t hammer_undo_max(hammer_mount_t hmp);
 
@@ -894,5 +897,9 @@ hammer_modify_record_done(hammer_buffer_t buffer)
 #define hammer_modify_volume_field(trans, vol, field)		\
 	hammer_modify_volume(trans, vol, &(vol)->ondisk->field,	\
 			     sizeof((vol)->ondisk->field))
+
+#define hammer_modify_node_field(trans, node, field)		\
+	hammer_modify_node(trans, node, &(node)->ondisk->field,	\
+			     sizeof((node)->ondisk->field))
 
 

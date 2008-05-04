@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.28 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.29 2008/05/04 09:06:45 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -682,6 +682,9 @@ static int
 hammer_io_checkwrite(struct buf *bp)
 {
 	hammer_io_t io = (void *)LIST_FIRST(&bp->b_dep);
+
+	KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME &&
+		 io->type != HAMMER_STRUCTURE_META_BUFFER);
 
 	/*
 	 * We can only clear the modified bit if the IO is not currently
