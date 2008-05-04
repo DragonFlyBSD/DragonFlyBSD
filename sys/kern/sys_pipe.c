@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.44 2006/12/28 21:24:01 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.45 2008/05/04 08:42:03 dillon Exp $
  */
 
 /*
@@ -157,7 +157,11 @@ static int pipe_maxcache = PIPEQ_MAX_CACHE;
 static int pipe_nbig;
 static int pipe_bcache_alloc;
 static int pipe_bkmem_alloc;
-static int pipe_dwrite_enable = 1;	/* 0:copy, 1:kmem/sfbuf 2:force */
+/*
+ * There's a bug in the sfbuf-based direct write code, not yet located.
+ * Disable it for now.
+ */
+static int pipe_dwrite_enable = 0;	/* 0:copy, 1:kmem/sfbuf 2:force */
 static int pipe_dwrite_sfbuf = 1;	/* 0:kmem_map 1:sfbufs 2:sfbufs_dmap */
 					/* 3:sfbuf_dmap w/ forced invlpg */
 
