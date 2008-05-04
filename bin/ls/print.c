@@ -31,7 +31,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.73 2004/06/08 09:27:42 das Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.18 2007/05/21 01:40:01 dillon Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.19 2008/05/04 02:28:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -144,7 +144,7 @@ printlong(const DISPLAY *dp)
 			continue;
 		sp = p->fts_statp;
 		if (f_inode)
-			printf("%*lu ", dp->s_inode, (u_long)sp->st_ino);
+			printf("%*llu ", dp->s_inode, (unsigned long long)sp->st_ino);
 		if (f_size)
 			printf("%*lld ",
 			    dp->s_block, howmany(sp->st_blocks, blocksize));
