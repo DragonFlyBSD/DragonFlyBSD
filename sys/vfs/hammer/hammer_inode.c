@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.50 2008/05/04 09:06:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.51 2008/05/04 19:57:42 dillon Exp $
  */
 
 #include "hammer.h"
@@ -281,8 +281,8 @@ retry:
 		}
 		ip->flags |= HAMMER_INODE_ONDISK;
 	} else {
-		kprintf("hammer_get_inode: failed ip %p cursor %p error %d\n",
-			ip, &cursor, *errorp);
+		kprintf("hammer_get_inode: failed ip %p obj_id %016llx cursor %p error %d\n",
+			ip, ip->obj_id, &cursor, *errorp);
 		/*Debugger("x");*/
 		--hammer_count_inodes;
 		kfree(ip, M_HAMMER);
@@ -1346,7 +1346,8 @@ hammer_sync_inode(hammer_inode_t ip)
 	 * purposes of synchronization to disk.
 	 *
 	 * Records which are in our flush group can be unlinked from our
-	 * inode now, allowing the inode to be physically deleted.
+	 * inode now, potentially allowing the inode to be physically
+	 * deleted.
 	 */
 	nlinks = ip->ino_rec.ino_nlinks;
 	next = TAILQ_FIRST(&ip->target_list);
@@ -1354,10 +1355,29 @@ hammer_sync_inode(hammer_inode_t ip)
 		next = TAILQ_NEXT(depend, target_entry);
 		if (depend->flush_state == HAMMER_FST_FLUSH &&
 		    depend->flush_group == ip->hmp->flusher_act) {
-			TAILQ_REMOVE(&ip->target_list, depend, target_entry);
-			depend->target_ip = NULL;
-			/* no need to signal target_ip, it is us */
+			/*
+			 * If this is an ADD that was deleted by the frontend
+			 * the frontend nlinks count will have already been
+			 * decremented, but the backend is going to sync its
+			 * directory entry and must account for it.  The
+			 * record will be converted to a delete-on-disk when
+			 * it gets synced.
+			 *
+			 * If the ADD was not deleted by the frontend we
+			 * can remove the dependancy from our target_list.
+			 */
+			if (depend->flags & HAMMER_RECF_DELETED_FE) {
+				++nlinks;
+			} else {
+				TAILQ_REMOVE(&ip->target_list, depend,
+					     target_entry);
+				depend->target_ip = NULL;
+			}
 		} else if ((depend->flags & HAMMER_RECF_DELETED_FE) == 0) {
+			/*
+			 * Not part of our flush group
+			 */
+			KKASSERT((depend->flags & HAMMER_RECF_DELETED_BE) == 0);
 			switch(depend->type) {
 			case HAMMER_MEM_RECORD_ADD:
 				--nlinks;
@@ -1625,8 +1645,12 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 	struct vnode *vp;
 
 	/*
-	 * If the inode is on-media and the link count is 0 we MUST delete
-	 * it on-media.  DELETING is a mod flag, DELETED is a state flag.
+	 * Set the DELETING flag when the link count drops to 0 and the
+	 * OS no longer has any opens on the inode.
+	 *
+	 * The backend will clear DELETING (a mod flag) and set DELETED
+	 * (a state flag) when it is actually able to perform the
+	 * operation.
 	 */
 	if (ip->ino_rec.ino_nlinks == 0 &&
 	    (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {

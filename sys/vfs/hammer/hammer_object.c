@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.53 2008/05/03 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.54 2008/05/04 19:57:42 dillon Exp $
  */
 
 #include "hammer.h"
@@ -215,10 +215,13 @@ hammer_flush_record_done(hammer_record_t record, int error)
 		}
 		record->flush_state = HAMMER_FST_IDLE;
 	} else {
-		if (record->target_ip)
+		if (record->target_ip) {
 			record->flush_state = HAMMER_FST_SETUP;
-		else
+			hammer_test_inode(record->ip);
+			hammer_test_inode(record->target_ip);
+		} else {
 			record->flush_state = HAMMER_FST_IDLE;
+		}
 	}
 	record->flags &= ~HAMMER_RECF_INTERLOCK_BE;
 	if (record->flags & HAMMER_RECF_WANTED) {
@@ -756,6 +759,7 @@ done:
 	return(error);
 }
 
+#if 0
 /*
  * Sync an in-memory record to the disk.  This is called by the backend.
  * This code is responsible for actually writing a record out to the disk.
@@ -785,6 +789,8 @@ hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t record)
 	} while (error == EDEADLK);
 	return (error);
 }
+
+#endif
 
 int
 hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
@@ -940,11 +946,9 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			KKASSERT(record->type == HAMMER_MEM_RECORD_ADD);
 			record->flags &= ~HAMMER_RECF_DELETED_FE;
 			record->type = HAMMER_MEM_RECORD_DEL;
-			if (record->flush_state == HAMMER_FST_SETUP) {
-				hammer_test_inode(record->ip);
-				hammer_test_inode(record->target_ip);
-			}
+			KKASSERT(record->flush_state == HAMMER_FST_FLUSH);
 			record->flags &= ~HAMMER_RECF_CONVERT_DELETE;
+			/* hammer_flush_record_done takes care of the rest */
 		} else {
 			record->flags |= HAMMER_RECF_DELETED_FE;
 			record->flags |= HAMMER_RECF_DELETED_BE;

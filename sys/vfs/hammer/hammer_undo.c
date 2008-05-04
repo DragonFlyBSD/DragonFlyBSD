@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.11 2008/05/04 09:06:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.12 2008/05/04 19:57:42 dillon Exp $
  */
 
 /*
@@ -132,17 +132,15 @@ again:
 	}
 
 	undo = hammer_bread(trans->hmp, next_offset, &error, &buffer);
+	hammer_modify_buffer(NULL, buffer, NULL, 0);
 
 	/*
 	 * We raced another thread, try again.
 	 */
-	if (undomap->next_offset != next_offset)
+	if (undomap->next_offset != next_offset) {
+		hammer_modify_buffer_done(buffer);
 		goto again;
-
-	hammer_modify_buffer(NULL, buffer, NULL, 0);
-
-	/* XXX eventually goto again again, but for now catch it */
-	KKASSERT(undomap->next_offset == next_offset);
+	}
 
 	/*
 	 * The FIFO entry would cross a buffer boundary, PAD to the end
