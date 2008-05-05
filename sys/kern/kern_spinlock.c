@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.12 2008/05/04 04:48:47 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.13 2008/05/05 11:07:48 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -266,8 +266,8 @@ exponential_backoff(struct exponential_backoff *bo)
 #ifdef _RDTSC_SUPPORTED_
 	if (cpu_feature & CPUID_TSC) {
 		backoff =
-		((u_long)rdtsc() ^ (((u_long)curthread) >> 5)) % bo->backoff
-		+ BACKOFF_INITIAL;
+		(((u_long)rdtsc() ^ (((u_long)curthread) >> 5)) &
+		 (bo->backoff - 1)) + BACKOFF_INITIAL;
 	} else
 #endif
 		backoff = bo->backoff;
