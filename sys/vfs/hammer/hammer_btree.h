@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.12 2008/02/10 09:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.13 2008/05/05 20:34:47 dillon Exp $
  */
 
 /*
@@ -132,10 +132,10 @@ struct hammer_btree_internal_elm {
  */
 struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
-	hammer_off_t rec_offset;
-	hammer_off_t data_offset;
-	int32_t data_len;
-	u_int32_t data_crc;
+	hammer_off_t	rec_offset;
+	hammer_off_t	data_offset;
+	int32_t		data_len;
+	hammer_crc_t	data_crc;
 };
 
 /*
@@ -187,8 +187,8 @@ struct hammer_node_ondisk {
 	/*
 	 * B-Tree node header (64 bytes)
 	 */
+	hammer_crc_t	crc;		/* MUST BE FIRST FIELD OF STRUCTURE */
 	u_int32_t	signature;
-	u_int32_t	crc;
 	hammer_off_t	parent;		/* 0 if at root of cluster */
 	int32_t		count;
 	u_int8_t	type;
@@ -209,6 +209,11 @@ struct hammer_node_ondisk {
 	 */
 	union hammer_btree_elm elms[HAMMER_BTREE_LEAF_ELMS];
 };
+
+#define HAMMER_BTREE_SIGNATURE_GOOD		0xB3A49586
+#define HAMMER_BTREE_SIGNATURE_DESTROYED	0x4A3B2C1D
+#define HAMMER_BTREE_CRCSIZE	\
+	(sizeof(struct hammer_node_ondisk) - sizeof(hammer_crc_t))
 
 typedef struct hammer_node_ondisk *hammer_node_ondisk_t;
 

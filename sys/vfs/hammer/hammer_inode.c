@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.51 2008/05/04 19:57:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.52 2008/05/05 20:34:47 dillon Exp $
  */
 
 #include "hammer.h"
@@ -281,9 +281,16 @@ retry:
 		}
 		ip->flags |= HAMMER_INODE_ONDISK;
 	} else {
-		kprintf("hammer_get_inode: failed ip %p obj_id %016llx cursor %p error %d\n",
-			ip, ip->obj_id, &cursor, *errorp);
-		/*Debugger("x");*/
+		/*
+		 * Do not panic on read-only accesses which fail, particularly
+		 * historical accesses where the snapshot might not have
+		 * complete connectivity.
+		 */
+		if ((flags & HAMMER_INODE_RO) == 0) {
+			kprintf("hammer_get_inode: failed ip %p obj_id %016llx cursor %p error %d\n",
+				ip, ip->obj_id, &cursor, *errorp);
+				Debugger("x");
+		}
 		--hammer_count_inodes;
 		kfree(ip, M_HAMMER);
 		ip = NULL;
@@ -465,6 +472,7 @@ retry:
 		record->rec.inode = ip->sync_ino_rec;
 		record->rec.inode.base.base.create_tid = trans->tid;
 		record->rec.inode.base.data_len = sizeof(ip->sync_ino_data);
+		record->rec.base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
 		record->data = (void *)&ip->sync_ino_data;
 		record->flags |= HAMMER_RECF_INTERLOCK_BE;
 		for (;;) {
@@ -573,11 +581,13 @@ retry:
 			 * updates.
 			 */
 			rec = &cursor->record->inode;
-			hammer_modify_buffer(trans, cursor->record_buffer,
-					     NULL, 0);
+			hammer_modify_record_noundo(trans,
+						    cursor->record_buffer,
+						    cursor->record);
 			rec->ino_atime = ip->sync_ino_rec.ino_atime;
 			rec->ino_mtime = ip->sync_ino_rec.ino_mtime;
-			hammer_modify_buffer_done(cursor->record_buffer);
+			hammer_modify_record_done(cursor->record_buffer,
+						  cursor->record);
 			ip->sync_flags &= ~HAMMER_INODE_ITIMES;
 			/* XXX recalculate crc */
 			hammer_cache_node(cursor->node, &ip->cache[0]);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.40 2008/04/27 00:45:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.41 2008/05/05 20:34:48 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -48,7 +48,7 @@
 static void hammer_free_volume(hammer_volume_t volume);
 static int hammer_load_volume(hammer_volume_t volume);
 static int hammer_load_buffer(hammer_buffer_t buffer, int isnew);
-static int hammer_load_node(hammer_node_t node);
+static int hammer_load_node(hammer_node_t node, int isnew);
 
 /*
  * Red-Black tree support for various structures
@@ -861,7 +861,8 @@ hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
  * additional references, if necessary.
  */
 hammer_node_t
-hammer_get_node(hammer_mount_t hmp, hammer_off_t node_offset, int *errorp)
+hammer_get_node(hammer_mount_t hmp, hammer_off_t node_offset,
+		int isnew, int *errorp)
 {
 	hammer_node_t node;
 
@@ -887,7 +888,7 @@ again:
 	if (node->ondisk)
 		*errorp = 0;
 	else
-		*errorp = hammer_load_node(node);
+		*errorp = hammer_load_node(node, isnew);
 	if (*errorp) {
 		hammer_rel_node(node);
 		node = NULL;
@@ -909,7 +910,7 @@ hammer_ref_node(hammer_node_t node)
  * Load a node's on-disk data reference.
  */
 static int
-hammer_load_node(hammer_node_t node)
+hammer_load_node(hammer_node_t node, int isnew)
 {
 	hammer_buffer_t buffer;
 	int error;
@@ -949,6 +950,10 @@ hammer_load_node(hammer_node_t node)
 		if (error == 0) {
 			node->ondisk = (void *)((char *)buffer->ondisk +
 			       (node->node_offset & HAMMER_BUFMASK));
+			if (isnew == 0 &&
+			    hammer_crc_test_btree(node->ondisk) == 0) {
+				Debugger("CRC FAILED: B-TREE NODE");
+			}
 		}
 	}
 	--node->loading;
@@ -971,7 +976,7 @@ hammer_ref_node_safe(struct hammer_mount *hmp, struct hammer_node **cache,
 		if (node->ondisk)
 			*errorp = 0;
 		else
-			*errorp = hammer_load_node(node);
+			*errorp = hammer_load_node(node, 0);
 		if (*errorp) {
 			hammer_rel_node(node);
 			node = NULL;
@@ -1179,7 +1184,7 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
 					    sizeof(struct hammer_node_ondisk),
 					    errorp);
 	if (*errorp == 0) {
-		node = hammer_get_node(trans->hmp, node_offset, errorp);
+		node = hammer_get_node(trans->hmp, node_offset, 1, errorp);
 		hammer_modify_node_noundo(trans, node);
 		bzero(node->ondisk, sizeof(*node->ondisk));
 		hammer_modify_node_done(node);
@@ -1205,6 +1210,7 @@ hammer_alloc_record(hammer_transaction_t trans,
 		    hammer_off_t *rec_offp, u_int16_t rec_type, 
 		    struct hammer_buffer **rec_bufferp,
 		    int32_t data_len, void **datap,
+		    hammer_off_t *data_offp,
 		    struct hammer_buffer **data_bufferp, int *errorp)
 {
 	hammer_record_ondisk_t rec;
@@ -1222,6 +1228,8 @@ hammer_alloc_record(hammer_transaction_t trans,
 					   HAMMER_RECORD_SIZE, errorp);
 	if (*errorp)
 		return(NULL);
+	if (data_offp)
+		*data_offp = 0;
 
 	/*
 	 * Allocate data
@@ -1250,10 +1258,12 @@ hammer_alloc_record(hammer_transaction_t trans,
 			data_offset = hammer_blockmap_alloc(trans,
 						HAMMER_ZONE_SMALL_DATA_INDEX,
 						data_len, errorp);
+			*data_offp = data_offset;
 		} else {
 			data_offset = hammer_blockmap_alloc(trans,
 						HAMMER_ZONE_LARGE_DATA_INDEX,
 						data_len, errorp);
+			*data_offp = data_offset;
 		}
 	} else {
 		data_offset = 0;

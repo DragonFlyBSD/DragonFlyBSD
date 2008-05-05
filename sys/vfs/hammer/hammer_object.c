@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.54 2008/05/04 19:57:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.55 2008/05/05 20:34:48 dillon Exp $
  */
 
 #include "hammer.h"
@@ -485,6 +485,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 		++trans->hmp->namekey_iterator;
 
 	record->type = HAMMER_MEM_RECORD_ADD;
+	record->rec.entry.base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
 	record->rec.entry.base.base.obj_id = dip->obj_id;
 	record->rec.entry.base.base.key =
 		hammer_directory_namekey(ncp->nc_name, bytes);
@@ -565,6 +566,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		 */
 		record = hammer_alloc_mem_record(dip);
 		record->type = HAMMER_MEM_RECORD_DEL;
+		record->rec.entry.base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
 		record->rec.entry.base.base = cursor->record->base.base;
 		hammer_modify_inode(trans, ip, HAMMER_INODE_RDIRTY);
 
@@ -660,7 +662,7 @@ hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 	hammer_transaction_t trans = cursor->trans;
 	hammer_record_ondisk_t rec;
 	union hammer_btree_elm elm;
-	hammer_off_t rec_offset;
+	hammer_off_t rec_offset, data_offset;
 	void *bdata;
 	int error;
 
@@ -703,7 +705,7 @@ retry:
 	rec = hammer_alloc_record(trans, &rec_offset, HAMMER_RECTYPE_DATA,
 				  &cursor->record_buffer,
 				  bytes, &bdata,
-				  &cursor->data_buffer, &error);
+				  &data_offset, &cursor->data_buffer, &error);
 	if (rec == NULL)
 		goto done;
 	if (hammer_debug_general & 0x1000)
@@ -724,6 +726,9 @@ retry:
 	rec->base.base.delete_tid = 0;
 	rec->base.base.rec_type = HAMMER_RECTYPE_DATA;
 	rec->base.data_crc = crc32(data, bytes);
+	rec->base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
+	rec->base.rec_crc = crc32(&rec->base.data_crc,
+				  HAMMER_RECORD_CRCSIZE);
 	hammer_modify_buffer_done(cursor->record_buffer);
 	KKASSERT(rec->base.data_len == bytes);
 
@@ -748,7 +753,12 @@ retry:
 	if (error == 0)
 		goto done;
 
+	hammer_modify_buffer(trans, cursor->record_buffer, NULL, 0);
+	rec->base.signature = HAMMER_RECORD_SIGNATURE_DESTROYED;
+	hammer_modify_buffer_done(cursor->record_buffer);
+
 	hammer_blockmap_free(trans, rec_offset, HAMMER_RECORD_SIZE);
+	hammer_blockmap_free(trans, data_offset, bytes);
 done:
 	if (error == EDEADLK) {
 		hammer_done_cursor(cursor);
@@ -799,11 +809,13 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	hammer_record_ondisk_t rec;
 	union hammer_btree_elm elm;
 	hammer_off_t rec_offset;
+	hammer_off_t data_offset;
 	void *bdata;
 	int error;
 
 	KKASSERT(record->flush_state == HAMMER_FST_FLUSH);
 	KKASSERT(record->flags & HAMMER_RECF_INTERLOCK_BE);
+	KKASSERT(record->rec.base.signature == HAMMER_RECORD_SIGNATURE_GOOD);
 
 	hammer_normalize_cursor(cursor);
 	cursor->key_beg = record->rec.base.base;
@@ -870,7 +882,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 					  record->rec.base.base.rec_type,
 					  &cursor->record_buffer,
 					  0, &bdata,
-					  NULL, &error);
+					  NULL, NULL, &error);
 		if (hammer_debug_general & 0x1000)
 			kprintf("NULL RECORD DATA\n");
 	} else if (record->flags & HAMMER_RECF_INBAND) {
@@ -878,7 +890,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 					  record->rec.base.base.rec_type,
 					  &cursor->record_buffer,
 					  record->rec.base.data_len, &bdata,
-					  NULL, &error);
+					  NULL, NULL, &error);
 		if (hammer_debug_general & 0x1000)
 			kprintf("INBAND RECORD DATA %016llx DATA %016llx LEN=%d\n", rec_offset, rec->base.data_off, record->rec.base.data_len);
 	} else {
@@ -886,6 +898,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 					  record->rec.base.base.rec_type,
 					  &cursor->record_buffer,
 					  record->rec.base.data_len, &bdata,
+					  &data_offset,
 					  &cursor->data_buffer, &error);
 		if (hammer_debug_general & 0x1000)
 			kprintf("OOB RECORD DATA REC %016llx DATA %016llx LEN=%d\n", rec_offset, rec->base.data_off, record->rec.base.data_len);
@@ -918,6 +931,9 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	} else {
 		rec->base.data_len = record->rec.base.data_len;
 	}
+	rec->base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
+	rec->base.rec_crc = crc32(&rec->base.data_crc,
+				  HAMMER_RECORD_CRCSIZE);
 	hammer_modify_buffer_done(cursor->record_buffer);
 
 	elm.leaf.base = record->rec.base.base;
@@ -954,8 +970,14 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			record->flags |= HAMMER_RECF_DELETED_BE;
 		}
 	} else {
+		hammer_modify_buffer(trans, cursor->record_buffer, NULL, 0);
+		rec->base.signature = HAMMER_RECORD_SIGNATURE_DESTROYED;
+		hammer_modify_buffer_done(cursor->record_buffer);
 		hammer_blockmap_free(trans, rec_offset, HAMMER_RECORD_SIZE);
-		/* XXX free data buffer? */
+		if (record->data && (record->flags & HAMMER_RECF_INBAND) == 0) {
+			hammer_blockmap_free(trans, data_offset,
+					     record->rec.base.data_len);
+		}
 	}
 
 done:
@@ -982,6 +1004,8 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 	int bytes;
 	int reclen;
 		
+	KKASSERT(record->rec.base.signature == HAMMER_RECORD_SIGNATURE_GOOD);
+
 	/*
 	 * Make a private copy of record->data
 	 */
@@ -1617,7 +1641,15 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	elm = NULL;
 	hmp = cursor->node->hmp;
 
-	dodelete = 0;
+	/*
+	 * If we were mounted with the nohistory option, we physically
+	 * delete the record.
+	 */
+	if (hmp->hflags & HMNT_NOHISTORY)
+		dodelete = 1;
+	else
+		dodelete = 0;
+
 	if (error == 0) {
 		error = hammer_cursor_upgrade(cursor);
 		if (error == 0) {
@@ -1634,18 +1666,17 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 			 * this could result in a duplicate record.
 			 */
 			KKASSERT(elm->leaf.base.delete_tid != elm->leaf.base.create_tid);
-			hammer_modify_buffer(cursor->trans, cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
+
+			hammer_modify_record_field(cursor->trans, cursor->record_buffer, cursor->record, base.base.delete_tid, dodelete);
 			cursor->record->base.base.delete_tid = tid;
-			hammer_modify_buffer_done(cursor->record_buffer);
+			if (dodelete) {
+				cursor->record->base.signature =
+					    HAMMER_RECORD_SIGNATURE_DESTROYED;
+			}
+			hammer_modify_record_done(cursor->record_buffer,
+						  cursor->record);
 		}
 	}
-
-	/*
-	 * If we were mounted with the nohistory option, we physically
-	 * delete the record.
-	 */
-	if (hmp->hflags & HMNT_NOHISTORY)
-		dodelete = 1;
 
 	if (error == 0 && dodelete) {
 		error = hammer_delete_at_cursor(cursor, NULL);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.12 2008/05/04 09:06:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.13 2008/05/05 20:34:47 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -247,6 +247,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 	const int bmsize = sizeof(root_volume->ondisk->vol0_blockmap);
 	hammer_io_t io;
 	int count;
+	int i;
 
 	hammer_lock_ex(&hmp->sync_lock);
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
@@ -266,6 +267,8 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		hammer_modify_volume(trans, root_volume,
 			    &root_volume->ondisk->vol0_blockmap,
 			    bmsize);
+		for (i = 0; i < HAMMER_MAX_ZONES; ++i)
+			hammer_crc_set_blockmap(&hmp->blockmap[i]);
 		bcopy(hmp->blockmap, root_volume->ondisk->vol0_blockmap,
 		      bmsize);
 		hammer_modify_volume_done(root_volume);
@@ -328,6 +331,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		hammer_modify_volume(NULL, root_volume, NULL, 0);
 		rootmap->first_offset = hmp->flusher_undo_start;
 		root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX].first_offset = rootmap->first_offset;
+		hammer_crc_set_blockmap(&root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX]);
 		hammer_modify_volume_done(root_volume);
 	}
 	trans->hmp->flusher_undo_start = rootmap->next_offset;
@@ -339,8 +343,10 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 	 * we just have to hope that the undo range has been updated.  It
 	 * should be done in one I/O but XXX this won't be perfect.
 	 */
-	if (root_volume->io.modified)
+	if (root_volume->io.modified) {
+		hammer_crc_set_volume(root_volume->ondisk);
 		hammer_io_flush(&root_volume->io);
+	}
 
 	/*
 	 * Wait for I/O to complete

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.11 2008/05/03 05:28:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.12 2008/05/05 20:34:47 dillon Exp $
  */
 
 #include "hammer.h"
@@ -103,7 +103,7 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 		return(EINVAL);
 	if (prune->beg_obj_id >= prune->end_obj_id)
 		return(EINVAL);
-	if ((prune->flags & HAMMER_IOC_PRUNE_ALL) && prune->nelms)
+	if ((prune->head.flags & HAMMER_IOC_PRUNE_ALL) && prune->nelms)
 		return(EINVAL);
 
 retry:
@@ -119,8 +119,8 @@ retry:
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
-	cursor.key_end.obj_id = prune->cur_obj_id;
-	cursor.key_end.key = prune->cur_key;
+	cursor.key_end.obj_id = prune->end_obj_id;
+	cursor.key_end.key = HAMMER_MAX_KEY;
 	cursor.key_end.create_tid = HAMMER_MAX_TID - 1;
 	cursor.key_end.delete_tid = 0;
 	cursor.key_end.rec_type = HAMMER_MAX_RECTYPE;
@@ -128,6 +128,9 @@ retry:
 
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 	cursor.flags |= HAMMER_CURSOR_BACKEND;
+
+	prune->cur_obj_id = cursor.key_end.obj_id;
+	prune->cur_key = cursor.key_end.key;
 
 	error = hammer_btree_last(&cursor);
 	while (error == 0) {
@@ -201,6 +204,10 @@ retry:
 	hammer_done_cursor(&cursor);
 	if (error == EDEADLK)
 		goto retry;
+	if (error == EINTR) {
+		prune->head.flags |= HAMMER_IOC_HEAD_INTR;
+		error = 0;
+	}
 	return(error);
 }
 
@@ -221,7 +228,7 @@ check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
 	 * If pruning everything remove all records with a non-zero
 	 * delete_tid.
 	 */
-	if (prune->flags & HAMMER_IOC_PRUNE_ALL) {
+	if (prune->head.flags & HAMMER_IOC_PRUNE_ALL) {
 		if (elm->base.delete_tid != 0)
 			return(0);
 		return(-1);
@@ -323,14 +330,17 @@ realign_prune(struct hammer_ioc_prune *prune,
 				error = hammer_cursor_upgrade(cursor);
 			}
 			if (error == 0) {
-				hammer_modify_buffer(cursor->trans,
-						     cursor->record_buffer,
-						     NULL, 0);
+				hammer_modify_record_field(cursor->trans,
+					    cursor->record_buffer,
+					    cursor->record,
+					    base.base.create_tid, 0);
 				cursor->record->base.base.create_tid = tid;
-				hammer_modify_buffer_done(cursor->record_buffer);
+				hammer_modify_record_done(
+					    cursor->record_buffer,
+					    cursor->record);
 				hammer_modify_node(cursor->trans, cursor->node,
-						   &elm->leaf.base.create_tid,
-						   sizeof(elm->leaf.base.create_tid));
+					    &elm->leaf.base.create_tid,
+					    sizeof(elm->leaf.base.create_tid));
 				elm->leaf.base.create_tid = tid;
 				hammer_modify_node_done(cursor->node);
 			}
@@ -351,16 +361,20 @@ realign_prune(struct hammer_ioc_prune *prune,
 						     HAMMER_CURSOR_GET_RECORD);
 			if (error == 0) {
 				hammer_modify_node(cursor->trans, cursor->node,
-						   &elm->leaf.base.delete_tid,
-						   sizeof(elm->leaf.base.delete_tid));
+					    &elm->leaf.base.delete_tid,
+					    sizeof(elm->leaf.base.delete_tid));
 				elm->leaf.base.delete_tid =
-						elm->leaf.base.delete_tid -
-						delta + mod;
+					    elm->leaf.base.delete_tid -
+					    delta + mod;
 				hammer_modify_node_done(cursor->node);
-				hammer_modify_buffer(cursor->trans, cursor->record_buffer, &cursor->record->base.base.delete_tid, sizeof(hammer_tid_t));
+				hammer_modify_record_field(cursor->trans,
+					    cursor->record_buffer,
+					    cursor->record,
+					    base.base.delete_tid, 0);
 				cursor->record->base.base.delete_tid =
-						elm->leaf.base.delete_tid;
-				hammer_modify_buffer_done(cursor->record_buffer);
+					    elm->leaf.base.delete_tid;
+				hammer_modify_record_done(cursor->record_buffer,
+					    cursor->record);
 			}
 		}
 	}
@@ -388,7 +402,7 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	if (hist->beg_tid > hist->end_tid)
 		return(EINVAL);
-	if (hist->flags & HAMMER_IOC_HISTORY_ATKEY) {
+	if (hist->head.flags & HAMMER_IOC_HISTORY_ATKEY) {
 		if (hist->key > hist->nxt_key)
 			return(EINVAL);
 	}
@@ -396,12 +410,12 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 	hist->obj_id = ip->obj_id;
 	hist->count = 0;
 	hist->nxt_tid = hist->end_tid;
-	hist->flags &= ~HAMMER_IOC_HISTORY_NEXT_TID;
-	hist->flags &= ~HAMMER_IOC_HISTORY_NEXT_KEY;
-	hist->flags &= ~HAMMER_IOC_HISTORY_EOF;
-	hist->flags &= ~HAMMER_IOC_HISTORY_UNSYNCED;
+	hist->head.flags &= ~HAMMER_IOC_HISTORY_NEXT_TID;
+	hist->head.flags &= ~HAMMER_IOC_HISTORY_NEXT_KEY;
+	hist->head.flags &= ~HAMMER_IOC_HISTORY_EOF;
+	hist->head.flags &= ~HAMMER_IOC_HISTORY_UNSYNCED;
 	if ((ip->flags & HAMMER_INODE_MODMASK) & ~HAMMER_INODE_ITIMES)
-		hist->flags |= HAMMER_IOC_HISTORY_UNSYNCED;
+		hist->head.flags |= HAMMER_IOC_HISTORY_UNSYNCED;
 
 	/*
 	 * Setup the cursor.  We can't handle undeletable records
@@ -428,7 +442,7 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 
 	cursor.flags |= HAMMER_CURSOR_END_EXCLUSIVE;
 
-	if (hist->flags & HAMMER_IOC_HISTORY_ATKEY) {
+	if (hist->head.flags & HAMMER_IOC_HISTORY_ATKEY) {
 		/*
 		 * key-range within the file.  For a regular file the
 		 * on-disk key represents BASE+LEN, not BASE, so the
@@ -469,15 +483,15 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		elm = &cursor.node->ondisk->elms[cursor.index];
 
 		add_history(ip, hist, elm);
-		if (hist->flags & (HAMMER_IOC_HISTORY_NEXT_TID |
-				  HAMMER_IOC_HISTORY_NEXT_KEY |
-				  HAMMER_IOC_HISTORY_EOF)) {
+		if (hist->head.flags & (HAMMER_IOC_HISTORY_NEXT_TID |
+				        HAMMER_IOC_HISTORY_NEXT_KEY |
+				        HAMMER_IOC_HISTORY_EOF)) {
 			break;
 		}
 		error = hammer_btree_iterate(&cursor);
 	}
 	if (error == ENOENT) {
-		hist->flags |= HAMMER_IOC_HISTORY_EOF;
+		hist->head.flags |= HAMMER_IOC_HISTORY_EOF;
 		error = 0;
 	}
 	hammer_done_cursor(&cursor);
@@ -495,7 +509,7 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 {
 	if (elm->base.btype != HAMMER_BTREE_TYPE_RECORD)
 		return;
-	if ((hist->flags & HAMMER_IOC_HISTORY_ATKEY) &&
+	if ((hist->head.flags & HAMMER_IOC_HISTORY_ATKEY) &&
 	    ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_REGFILE) {
 		/*
 		 * Adjust nxt_key
@@ -513,7 +527,7 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 		 */
 		if (elm->leaf.base.key >= MAXPHYS &&
 		    elm->leaf.base.key - MAXPHYS > hist->key) {
-			hist->flags |= HAMMER_IOC_HISTORY_NEXT_KEY;
+			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_KEY;
 		}
 
 		/*
@@ -522,7 +536,7 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 		if (elm->leaf.base.key - elm->leaf.data_len > hist->key)
 			return;
 
-	} else if (hist->flags & HAMMER_IOC_HISTORY_ATKEY) {
+	} else if (hist->head.flags & HAMMER_IOC_HISTORY_ATKEY) {
 		/*
 		 * Adjust nxt_key
 		 */
@@ -535,7 +549,7 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 		 * Record is beyond the requested key.
 		 */
 		if (elm->leaf.base.key > hist->key)
-			hist->flags |= HAMMER_IOC_HISTORY_NEXT_KEY;
+			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_KEY;
 	}
 
 	/*
@@ -547,7 +561,7 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 	    elm->leaf.base.create_tid < hist->end_tid) {
 		if (hist->count == HAMMER_MAX_HISTORY_ELMS) {
 			hist->nxt_tid = elm->leaf.base.create_tid;
-			hist->flags |= HAMMER_IOC_HISTORY_NEXT_TID;
+			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_TID;
 			return;
 		}
 		hist->tid_ary[hist->count++] = elm->leaf.base.create_tid;
@@ -567,7 +581,7 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 	    elm->leaf.base.delete_tid < hist->end_tid) {
 		if (hist->count == HAMMER_MAX_HISTORY_ELMS) {
 			hist->nxt_tid = elm->leaf.base.delete_tid;
-			hist->flags |= HAMMER_IOC_HISTORY_NEXT_TID;
+			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_TID;
 			return;
 		}
 		hist->tid_ary[hist->count++] = elm->leaf.base.delete_tid;

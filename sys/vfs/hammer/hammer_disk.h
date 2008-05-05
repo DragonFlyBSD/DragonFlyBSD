@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.30 2008/04/29 01:10:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.31 2008/05/05 20:34:47 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -221,11 +221,14 @@ struct hammer_blockmap {
 	hammer_off_t	first_offset;	/* zone-X logical offset (zone 3) */
 	hammer_off_t	next_offset;	/* zone-X logical offset */
 	hammer_off_t	alloc_offset;	/* zone-X logical offset */
-	hammer_crc_t	entry_crc;
 	u_int32_t	reserved01;
+	hammer_crc_t	entry_crc;
 };
 
 typedef struct hammer_blockmap *hammer_blockmap_t;
+
+#define HAMMER_BLOCKMAP_CRCSIZE	\
+	offsetof(struct hammer_blockmap, entry_crc)
 
 /*
  * The blockmap is a 2-layer entity made up of big-blocks.  The first layer
@@ -244,19 +247,26 @@ typedef struct hammer_blockmap *hammer_blockmap_t;
 struct hammer_blockmap_layer1 {
 	hammer_off_t	blocks_free;	/* big-blocks free */
 	hammer_off_t	phys_offset;	/* UNAVAIL or zone-2 */
-	hammer_crc_t	layer1_crc;	/* crc of this entry */
-	hammer_crc_t	layer2_crc;	/* xor'd crc's of HAMMER_BLOCKSIZE */
 	hammer_off_t	reserved01;
+	hammer_crc_t	layer2_crc;	/* xor'd crc's of HAMMER_BLOCKSIZE */
+					/* (not yet used) */
+	hammer_crc_t	layer1_crc;	/* MUST BE LAST FIELD OF STRUCTURE*/
 };
 
+#define HAMMER_LAYER1_CRCSIZE	\
+	offsetof(struct hammer_blockmap_layer1, layer1_crc)
+
 struct hammer_blockmap_layer2 {
-	hammer_crc_t	entry_crc;
-	u_int32_t	bytes_free;	/* bytes free within this bigblock */
 	union {
 		hammer_off_t	owner;		/* used by freemap */
 		hammer_off_t	phys_offset;	/* used by blockmap */
 	} u;
+	u_int32_t	bytes_free;	/* bytes free within this bigblock */
+	hammer_crc_t	entry_crc;
 };
+
+#define HAMMER_LAYER2_CRCSIZE	\
+	offsetof(struct hammer_blockmap_layer2, entry_crc)
 
 #define HAMMER_BLOCKMAP_FREE	0ULL
 #define HAMMER_BLOCKMAP_UNAVAIL	((hammer_off_t)-1LL)
@@ -333,8 +343,10 @@ struct hammer_fifo_head {
 	u_int16_t hdr_type;
 	u_int32_t hdr_size;	/* aligned size of the whole mess */
 	u_int32_t reserved01;	/* (0) reserved for future use */
-	hammer_crc_t hdr_crc;
+	hammer_crc_t hdr_crc;	/* XOR crc up to field w/ crc after field */
 };
+
+#define HAMMER_FIFO_HEAD_CRCOFF	offsetof(struct hammer_fifo_head, hdr_crc)
 
 struct hammer_fifo_tail {
 	u_int16_t tail_signature;
@@ -443,7 +455,7 @@ struct hammer_volume_ondisk {
 	int32_t vol_count;	/* number of volumes making up FS */
 
 	u_int32_t vol_version;	/* version control information */
-	u_int32_t vol_reserved01;
+	hammer_crc_t vol_crc;	/* header crc */
 	u_int32_t vol_flags;	/* volume flags */
 	u_int32_t vol_rootvol;	/* which volume is the root volume? */
 
@@ -488,6 +500,12 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_VOLF_VALID		0x0001	/* valid entry */
 #define HAMMER_VOLF_OPEN		0x0002	/* volume is open */
 
+#define HAMMER_VOL_CRCSIZE1	\
+	offsetof(struct hammer_volume_ondisk, vol_crc)
+#define HAMMER_VOL_CRCSIZE2	\
+	(sizeof(struct hammer_volume_ondisk) - HAMMER_VOL_CRCSIZE1 -	\
+	 sizeof(hammer_crc_t))
+
 /*
  * All HAMMER records have a common 64-byte base and a 32 byte extension,
  * plus a possible data reference.  The data reference can be in-band or
@@ -497,13 +515,18 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_RECORD_SIZE		(64+32)
 
 struct hammer_base_record {
-	u_int32_t	signature;	/* record signature */
+	hammer_crc_t	rec_crc;	/* record crc (full 64-4 bytes) */
+					/* MUST BE FIRST FIELD OF STRUCTURE */
 	hammer_crc_t	data_crc;	/* data crc */
+					/* MUST BE SECOND FIELD OF STRUCTURE */
 	struct hammer_base_elm base;	/* 40 byte base element */
 	hammer_off_t	data_off;	/* in-band or out-of-band */
 	int32_t		data_len;	/* size of data in bytes */
-	u_int32_t	reserved02;
+	u_int32_t	signature;	/* record signature */
 };
+
+#define HAMMER_RECORD_SIGNATURE_GOOD		0xA7B6C5D4
+#define HAMMER_RECORD_SIGNATURE_DESTROYED	0xF8071625
 
 /*
  * Record types are fairly straightforward.  The B-Tree includes the record
@@ -647,6 +670,8 @@ union hammer_record_ondisk {
 };
 
 typedef union hammer_record_ondisk *hammer_record_ondisk_t;
+
+#define HAMMER_RECORD_CRCSIZE	(HAMMER_RECORD_SIZE - sizeof(hammer_crc_t))
 
 /*
  * HAMMER UNIX Attribute data

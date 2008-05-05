@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.23 2008/05/03 05:28:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.24 2008/05/05 20:34:47 dillon Exp $
  */
 
 /*
@@ -95,7 +95,8 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 		if (error)
 			break;
 		node = hammer_get_node(trans->hmp,
-				       volume->ondisk->vol0_btree_root, &error);
+				       volume->ondisk->vol0_btree_root,
+				       0, &error);
 		hammer_rel_volume(volume, 0);
 		if (error)
 			break;
@@ -302,7 +303,7 @@ hammer_load_cursor_parent(hammer_cursor_t cursor)
 
 	if (cursor->node->ondisk->parent) {
 		node = cursor->node;
-		parent = hammer_get_node(hmp, node->ondisk->parent, &error);
+		parent = hammer_get_node(hmp, node->ondisk->parent, 0, &error);
 		if (error)
 			return(error);
 		hammer_lock_sh(&parent->lock);
@@ -414,7 +415,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		cursor->left_bound = &elm[0].internal.base;
 		cursor->right_bound = &elm[1].internal.base;
 		node = hammer_get_node(cursor->trans->hmp,
-				       elm->internal.subtree_offset, &error);
+				       elm->internal.subtree_offset, 0, &error);
 		if (error == 0) {
 			KASSERT(elm->base.btype == node->ondisk->type, ("BTYPE MISMATCH %c %c NODE %p\n", elm->base.btype, node->ondisk->type, node));
 			if (node->ondisk->parent != cursor->parent->node_offset)

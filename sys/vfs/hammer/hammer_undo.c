@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.12 2008/05/04 19:57:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.13 2008/05/05 20:34:48 dillon Exp $
  */
 
 /*
@@ -160,6 +160,7 @@ again:
 		undo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
 		undo->head.hdr_type = HAMMER_HEAD_TYPE_PAD;
 		undo->head.hdr_size = bytes;
+		/* NO CRC */
 		undomap->next_offset += bytes;
 		hammer_modify_buffer_done(buffer);
 		goto again;
@@ -184,7 +185,9 @@ again:
 	tail->tail_type = HAMMER_HEAD_TYPE_UNDO;
 	tail->tail_size = bytes;
 
-	undo->head.hdr_crc = crc32(undo, bytes);
+	KKASSERT(bytes >= sizeof(undo->head));
+	undo->head.hdr_crc = crc32(undo, HAMMER_FIFO_HEAD_CRCOFF) ^
+			     crc32(&undo->head + 1, bytes - sizeof(undo->head));
 	undomap->next_offset += bytes;
 
 	hammer_modify_buffer_done(buffer);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.42 2008/05/04 09:06:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.43 2008/05/05 20:34:47 dillon Exp $
  */
 
 /*
@@ -583,6 +583,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	hammer_btree_elm_t elm;
 	hammer_off_t rec_off;
 	hammer_off_t data_off;
+	int32_t data_len;
 	int error;
 
 	/*
@@ -608,6 +609,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
 		flags &= ~HAMMER_CURSOR_GET_DATA;
 	data_off = elm->leaf.data_offset;
+	data_len = elm->leaf.data_len;
 	if (data_off == 0)
 		flags &= ~HAMMER_CURSOR_GET_DATA;
 	rec_off = elm->leaf.rec_offset;
@@ -621,6 +623,9 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	     ((rec_off ^ data_off) & ~HAMMER_BUFMASK64) == 0)) {
 		cursor->record = hammer_bread(hmp, rec_off, &error,
 					      &cursor->record_buffer);
+		if (hammer_crc_test_record(cursor->record) == 0) {
+			Debugger("CRC FAILED: RECORD");
+		}
 	} else {
 		rec_off = 0;
 		error = 0;
@@ -639,6 +644,11 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 			cursor->data = (void *)
 				((char *)cursor->record_buffer->ondisk +
 				((int32_t)data_off & HAMMER_BUFMASK));
+		}
+		KKASSERT(data_len >= 0 && data_len <= HAMMER_BUFSIZE);
+		if (data_len && 
+		    crc32(cursor->data, data_len) != elm->leaf.data_crc) {
+			Debugger("CRC FAILED: DATA");
 		}
 	}
 	return(error);
@@ -1908,7 +1918,8 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 			kprintf("hammer_btree_correct_lhb-I @%016llx[%d]\n",
 				cursor->node->node_offset, cursor->index);
 			hammer_modify_node(cursor->trans, cursor->node,
-					   elm, sizeof(*elm));
+					   &elm->create_tid,
+					   sizeof(elm->create_tid));
 			elm->create_tid = tid;
 			hammer_modify_node_done(cursor->node);
 		} else {
@@ -2085,8 +2096,8 @@ btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
 	switch(elm->base.btype) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
 	case HAMMER_BTREE_TYPE_LEAF:
-		child = hammer_get_node(node->hmp,
-					elm->internal.subtree_offset, &error);
+		child = hammer_get_node(node->hmp, elm->internal.subtree_offset,
+					0, &error);
 		if (error == 0) {
 			hammer_modify_node_field(trans, child, parent);
 			child->ondisk->parent = node->node_offset;
@@ -2134,7 +2145,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 		case HAMMER_BTREE_TYPE_LEAF:
 			child = hammer_get_node(node->hmp,
 						elm->internal.subtree_offset,
-						&error);
+						0, &error);
 			break;
 		default:
 			child = NULL;

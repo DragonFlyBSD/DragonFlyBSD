@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.60 2008/05/04 09:06:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.61 2008/05/05 20:34:47 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -251,6 +251,7 @@ typedef struct hammer_inode *hammer_inode_t;
 
 #define HAMMER_INODE_TRUNCATED	0x00010000
 #define HAMMER_INODE_DELETING	0x00020000 /* inode delete request (frontend)*/
+#define HAMMER_INODE_RESIGNAL	0x00040000 /* re-signal on re-flush */
 #define HAMMER_INODE_RESIGNAL	0x00040000 /* re-signal on re-flush */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_RDIRTY| \
@@ -724,8 +725,8 @@ void		hammer_rel_buffer(hammer_buffer_t buffer, int flush);
 
 int		hammer_vfs_export(struct mount *mp, int op,
 			const struct export_args *export);
-hammer_node_t	hammer_get_node(hammer_mount_t hmp,
-			hammer_off_t node_offset, int *errorp);
+hammer_node_t	hammer_get_node(hammer_mount_t hmp, hammer_off_t node_offset,
+			int isnew, int *errorp);
 void		hammer_ref_node(hammer_node_t node);
 hammer_node_t	hammer_ref_node_safe(struct hammer_mount *hmp,
 			struct hammer_node **cache, int *errorp);
@@ -744,6 +745,7 @@ void *hammer_alloc_record(hammer_transaction_t trans,
 			hammer_off_t *rec_offp, u_int16_t rec_type,
 			struct hammer_buffer **rec_bufferp,
 			int32_t data_len, void **datap,
+			hammer_off_t *data_offp,
 			struct hammer_buffer **data_bufferp, int *errorp);
 void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			hammer_off_t *data_offsetp,
@@ -848,6 +850,14 @@ void hammer_flusher_async(hammer_mount_t hmp);
 
 int hammer_recover(hammer_mount_t hmp, hammer_volume_t rootvol);
 
+void hammer_crc_set_blockmap(hammer_blockmap_t blockmap);
+void hammer_crc_set_volume(hammer_volume_ondisk_t ondisk);
+
+int hammer_crc_test_blockmap(hammer_blockmap_t blockmap);
+int hammer_crc_test_volume(hammer_volume_ondisk_t ondisk);
+int hammer_crc_test_record(hammer_record_ondisk_t ondisk);
+int hammer_crc_test_btree(hammer_node_ondisk_t ondisk);
+
 #endif
 
 static __inline void
@@ -867,30 +877,73 @@ static __inline void
 hammer_modify_node(hammer_transaction_t trans, hammer_node_t node,
 		   void *base, int len)
 {
+	hammer_crc_t *crcptr;
+
 	KKASSERT((char *)base >= (char *)node->ondisk &&
 		 (char *)base + len <=
 		    (char *)node->ondisk + sizeof(*node->ondisk));
 	hammer_modify_buffer(trans, node->buffer, base, len);
+	crcptr = &node->ondisk->crc;
+	hammer_modify_buffer(trans, node->buffer, crcptr, sizeof(hammer_crc_t));
+	--node->buffer->io.modify_refs;	/* only want one ref */
 }
 
 static __inline void
 hammer_modify_node_done(hammer_node_t node)
 {
+	node->ondisk->crc = crc32(&node->ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
 	hammer_modify_buffer_done(node->buffer);
 }
 
 static __inline void
-hammer_modify_record(hammer_transaction_t trans, hammer_buffer_t buffer,
-		     void *base, int len)
+hammer_modify_record_noundo(hammer_transaction_t trans, hammer_buffer_t buffer,
+			    hammer_record_ondisk_t rec __unused)
 {
-	KKASSERT((char *)base >= (char *)buffer->ondisk &&
-		 (char *)base + len <= (char *)buffer->ondisk + HAMMER_BUFSIZE);
-	hammer_modify_buffer(trans, buffer, base, len);
+	hammer_modify_buffer(trans, buffer, NULL, 0);
 }
 
 static __inline void
-hammer_modify_record_done(hammer_buffer_t buffer)
+hammer_modify_record_all(hammer_transaction_t trans, hammer_buffer_t buffer,
+			 hammer_record_ondisk_t rec)
 {
+	KKASSERT((char *)rec >= (char *)buffer->ondisk &&
+		 (char *)(rec + 1) <= (char *)buffer->ondisk + HAMMER_BUFSIZE);
+	hammer_modify_buffer(trans, buffer, rec, sizeof(*rec));
+}
+
+static __inline void
+hammer_modify_record(hammer_transaction_t trans, hammer_buffer_t buffer,
+		     hammer_record_ondisk_t rec, void *base, int len,
+		     int dodelete)
+{
+	KKASSERT((char *)base >= (char *)buffer->ondisk &&
+		 (char *)base + len <= (char *)buffer->ondisk + HAMMER_BUFSIZE);
+	KKASSERT((char *)rec >= (char *)buffer->ondisk &&
+		 (char *)(rec + 1) <= (char *)buffer->ondisk + HAMMER_BUFSIZE);
+
+	/*
+	 * Due to undo overheads it is more efficient to just undo the whole
+	 * record.
+	 */
+	hammer_modify_buffer(trans, buffer, rec, sizeof(*rec));
+#if 0
+	hammer_modify_buffer(trans, buffer, base, len);
+	hammer_modify_buffer(trans, buffer, &rec->base.rec_crc,
+				     sizeof(rec->base.rec_crc));
+	--node->buffer->io.modify_refs;	/* only want one ref */
+	if (dodelete) {
+		hammer_modify_buffer(trans, buffer, &rec->base.signature,
+				     sizeof(rec->base.signature));
+		--node->buffer->io.modify_refs;	/* only want one ref */
+	}
+#endif
+}
+
+static __inline void
+hammer_modify_record_done(hammer_buffer_t buffer, hammer_record_ondisk_t rec)
+{
+	rec->base.rec_crc = crc32(&rec->base.rec_crc + 1,
+				  HAMMER_RECORD_CRCSIZE);
 	hammer_modify_buffer_done(buffer);
 }
 
@@ -902,4 +955,7 @@ hammer_modify_record_done(hammer_buffer_t buffer)
 	hammer_modify_node(trans, node, &(node)->ondisk->field,	\
 			     sizeof((node)->ondisk->field))
 
+#define hammer_modify_record_field(trans, buffer, rec, field, dodelete) \
+	hammer_modify_record(trans, buffer, rec, &(rec)->field,		\
+	sizeof((rec)->field), dodelete)
 

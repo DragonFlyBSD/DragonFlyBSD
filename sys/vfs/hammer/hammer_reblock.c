@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.10 2008/05/03 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.11 2008/05/05 20:34:48 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -122,6 +122,10 @@ retry:
 	hammer_done_cursor(&cursor);
 	if (error == EDEADLK)
 		goto retry;
+	if (error == EINTR) {
+		reblock->head.flags |= HAMMER_IOC_HEAD_INTR;
+		error = 0;
+	}
 	return(error);
 }
 
@@ -260,11 +264,10 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	hammer_blockmap_free(cursor->trans,
 			     elm->leaf.data_offset, elm->leaf.data_len);
 
-	hammer_modify_record(cursor->trans, cursor->record_buffer,
-			     &cursor->record->base.data_off,
-			     sizeof(hammer_off_t));
+	hammer_modify_record_field(cursor->trans, cursor->record_buffer,
+				   cursor->record, base.data_off, 0);
 	cursor->record->base.data_off = ndata_offset;
-	hammer_modify_record_done(cursor->record_buffer);
+	hammer_modify_record_done(cursor->record_buffer, cursor->record);
 
 	hammer_modify_node(cursor->trans, cursor->node,
 			   &elm->leaf.data_offset, sizeof(hammer_off_t));
@@ -300,7 +303,7 @@ hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 
 	nrec = hammer_alloc_record(cursor->trans, &nrec_offset,
 				   elm->leaf.base.rec_type, &rec_buffer,
-				   0, NULL, NULL, &error);
+				   0, NULL, NULL, NULL, &error);
 	if (error)
 		goto done;
 
@@ -321,12 +324,11 @@ hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 		ndata_offset = 0;
 		inline_data = 0;
 	}
-
-	hammer_modify_record(cursor->trans, cursor->record_buffer,
-			     &orec->base.base.rec_type,
-			     sizeof(orec->base.base.rec_type));
+	hammer_modify_record_field(cursor->trans, cursor->record_buffer,
+				   orec, base.base.rec_type, 1);
 	orec->base.base.rec_type |= HAMMER_RECTYPE_MOVED;
-	hammer_modify_record_done(cursor->record_buffer);
+	orec->base.signature = HAMMER_RECORD_SIGNATURE_DESTROYED;
+	hammer_modify_record_done(cursor->record_buffer, orec);
 
 	hammer_blockmap_free(cursor->trans,
 			     elm->leaf.rec_offset, sizeof(*nrec));

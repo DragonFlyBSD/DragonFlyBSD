@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.16 2008/04/24 21:20:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.17 2008/05/05 20:34:48 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -352,5 +352,56 @@ hammer_str_to_tid(const char *str)
 	else
 		tid = strtouq(str, NULL, 0) * 1000000000LL;	/* time_t */
 	return(tid);
+}
+
+void
+hammer_crc_set_blockmap(hammer_blockmap_t blockmap)
+{
+	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
+}
+
+void
+hammer_crc_set_volume(hammer_volume_ondisk_t ondisk)
+{
+	ondisk->vol_crc = crc32(ondisk, HAMMER_VOL_CRCSIZE1) ^
+			  crc32(&ondisk->vol_crc + 1, HAMMER_VOL_CRCSIZE2);
+}
+
+int
+hammer_crc_test_blockmap(hammer_blockmap_t blockmap)
+{
+	hammer_crc_t crc;
+
+	crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
+	return (blockmap->entry_crc == crc);
+}
+
+int
+hammer_crc_test_volume(hammer_volume_ondisk_t ondisk)
+{
+	hammer_crc_t crc;
+
+	crc = crc32(ondisk, HAMMER_VOL_CRCSIZE1) ^
+	      crc32(&ondisk->vol_crc + 1, HAMMER_VOL_CRCSIZE2);
+	return (ondisk->vol_crc == crc);
+}
+
+int
+hammer_crc_test_record(hammer_record_ondisk_t ondisk)
+{
+	hammer_crc_t crc;
+
+	crc = crc32(&ondisk->base.rec_crc + 1, HAMMER_RECORD_CRCSIZE);
+	return (ondisk->base.rec_crc == crc &&
+		ondisk->base.signature == HAMMER_RECORD_SIGNATURE_GOOD);
+}
+
+int
+hammer_crc_test_btree(hammer_node_ondisk_t ondisk)
+{
+	hammer_crc_t crc;
+
+	crc = crc32(&ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
+	return (ondisk->crc == crc);
 }
 

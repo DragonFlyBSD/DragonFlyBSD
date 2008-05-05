@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.5 2008/03/20 06:08:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.6 2008/05/05 20:34:47 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -43,6 +43,19 @@
 #include <sys/types.h>
 #include <sys/ioccom.h>
 #include "hammer_disk.h"
+
+/*
+ * Common HAMMER ioctl header
+ *
+ * Global flags are stored in the upper 16 bits
+ */
+struct hammer_ioc_head {
+	int32_t		flags;
+	int32_t		reserved01;
+	int32_t		reserved02[4];
+};
+
+#define HAMMER_IOC_HEAD_INTR	0x00010000
 
 /*
  * HAMMERIOC_PRUNE
@@ -59,11 +72,12 @@ struct hammer_ioc_prune_elm {
 #define HAMMER_MAX_PRUNE_ELMS	64
 
 struct hammer_ioc_prune {
+	struct hammer_ioc_head head;
 	int		nelms;
-	int		flags;
+	int		reserved01;
 	int64_t		beg_obj_id;
-	int64_t		cur_obj_id;	/* initialize to end_obj_id */
-	int64_t		cur_key;	/* initialize to HAMMER_MAX_KEY */
+	int64_t		cur_obj_id;
+	int64_t		cur_key;
 	int64_t		end_obj_id;	 /* (range-exclusive) */
 	int64_t		stat_scanrecords;/* number of records scanned */
 	int64_t		stat_rawrecords; /* number of raw records pruned */
@@ -105,6 +119,7 @@ struct hammer_ioc_prune {
 #define HAMMER_MAX_HISTORY_ELMS	64
 
 struct hammer_ioc_history {
+	struct hammer_ioc_head head;
 	int64_t		obj_id;
 	hammer_tid_t	beg_tid;
 	hammer_tid_t	nxt_tid;
@@ -112,7 +127,7 @@ struct hammer_ioc_history {
 	int64_t		key;
 	int64_t		nxt_key;
 	int		count;
-	int		flags;
+	int		reserve01;
 	hammer_tid_t	tid_ary[HAMMER_MAX_HISTORY_ELMS];
 };
 
@@ -126,6 +141,7 @@ struct hammer_ioc_history {
  * Reblock request
  */
 struct hammer_ioc_reblock {
+	struct hammer_ioc_head head;
 	int64_t		beg_obj_id;
 	int64_t		cur_obj_id;		/* Stopped at (interrupt) */
 	int64_t		end_obj_id;
@@ -142,8 +158,8 @@ struct hammer_ioc_reblock {
 	int64_t		data_moves;		/* Data segments moved */
 	int64_t		data_byte_moves;	/* Data bytes moved */
 
-	int		flags;
-	int		unused03;
+	int32_t		unused02;
+	int32_t		unused03;
 };
 
 #define HAMMERIOC_PRUNE		_IOWR('h',1,struct hammer_ioc_prune)

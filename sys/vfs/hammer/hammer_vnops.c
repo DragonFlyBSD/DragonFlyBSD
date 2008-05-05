@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.47 2008/05/04 09:06:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.48 2008/05/05 20:34:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1543,6 +1543,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 		record->rec.base.base.key = HAMMER_FIXKEY_SYMLINK;
 		record->rec.base.base.rec_type = HAMMER_RECTYPE_FIX;
 		record->rec.base.data_len = bytes;
+		record->rec.base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
 		record->data = (void *)ap->a_target;
 		/* will be reallocated by routine below */
 		error = hammer_ip_add_record(&trans, record);
