@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.54 2007/11/02 19:52:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.55 2008/05/05 22:09:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -666,7 +666,7 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	KASSERT(uio->uio_td == curthread,
 		("uio_td %p is not p %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
-	if (vp->v_type == VREG)
+	if (vp->v_type == VREG || vp->v_type == VDATABASE)
 		bwillwrite();
 	vp = (struct vnode *)fp->f_data;	/* XXX needed? */
 

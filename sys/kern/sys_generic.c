@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.48 2008/04/14 12:01:50 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.49 2008/05/05 22:09:44 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -485,8 +485,6 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 	}
 #endif
 	len = auio->uio_resid;
-	if (fp->f_type == DTYPE_VNODE)
-		bwillwrite();
 	error = fo_write(fp, auio, fp->f_cred, flags);
 	if (error) {
 		if (auio->uio_resid != len && (error == ERESTART ||
