@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.7 2008/05/04 19:18:17 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.8 2008/05/05 20:34:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -280,6 +280,7 @@ print_record(hammer_btree_elm_t elm)
 	hammer_record_ondisk_t rec;
 	hammer_off_t rec_offset;
 	hammer_off_t data_offset;
+	hammer_crc_t crc;
 	int32_t data_len;
 	char *data;
 
@@ -295,17 +296,18 @@ print_record(hammer_btree_elm_t elm)
 	else
 		data = NULL;
 
-	printf("\n%17s", "");
 	if (rec == NULL) {
 		printf("record FAILED\n");
 		return;
 	}
 	switch(rec->base.base.rec_type) {
 	case HAMMER_RECTYPE_INODE:
+		printf("\n%17s", "");
 		printf("size=%lld nlinks=%lld",
 		       rec->inode.ino_size, rec->inode.ino_nlinks);
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
+		printf("\n%17s", "");
 		printf("dir-entry ino=%016llx name=\"%*.*s\"",
 		       rec->entry.obj_id,
 		       data_len, data_len, data);
@@ -313,6 +315,7 @@ print_record(hammer_btree_elm_t elm)
 	case HAMMER_RECTYPE_FIX:
 		switch(rec->base.base.key) {
 		case HAMMER_FIXKEY_SYMLINK:
+			printf("\n%17s", "");
 			printf("symlink=\"%*.*s\"", data_len, data_len, data);
 			break;
 		default:
@@ -322,6 +325,16 @@ print_record(hammer_btree_elm_t elm)
 	default:
 		break;
 	}
+	if (rec->base.signature != HAMMER_RECORD_SIGNATURE_GOOD) {
+		printf("\n%17s", "");
+		printf("BAD SIGNATURE: %08x\n", rec->base.signature);
+	}
+	crc = crc32(&rec->base.rec_crc + 1, HAMMER_RECORD_CRCSIZE);
+	if (crc != rec->base.rec_crc) {
+		printf("\n%17s", "");
+		printf("BAD CRC: %08x v %08x\n", rec->base.rec_crc, crc);
+	}
+
 	if (rec_buffer)
 		rel_buffer(rec_buffer);
 	if (data_buffer)

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.2 2008/05/04 19:18:17 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.3 2008/05/05 20:34:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -52,7 +52,6 @@ hammer_cmd_reblock(char **av, int ac)
 	bzero(&reblock, sizeof(reblock));
 	reblock.beg_obj_id = HAMMER_MIN_OBJID;
 	reblock.end_obj_id = HAMMER_MAX_OBJID;
-	reblock.cur_obj_id = reblock.beg_obj_id;
 
 	if (ac == 0)
 		reblock_usage(1);
@@ -75,7 +74,8 @@ hammer_cmd_reblock(char **av, int ac)
 		err(1, "Unable to open %s", filesystem);
 	if (ioctl(fd, HAMMERIOC_REBLOCK, &reblock) < 0) {
 		if (errno == EINTR) {
-			printf("Reblock %s interrupted by timer\n", filesystem);
+			printf("Reblock %s interrupted by timer at %016llx\n",
+				filesystem, reblock.cur_obj_id);
 		} else {
 			printf("Reblock %s failed: %s\n",
 			       filesystem, strerror(errno));

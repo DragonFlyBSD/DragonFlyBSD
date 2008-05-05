@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_history.c,v 1.1 2008/02/04 08:34:22 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_history.c,v 1.2 2008/05/05 20:34:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -82,7 +82,7 @@ hammer_do_history(const char *path, off_t off, int len)
 	hist.end_tid = HAMMER_MAX_TID;
 
 	if (off >= 0) {
-		hist.flags |= HAMMER_IOC_HISTORY_ATKEY;
+		hist.head.flags |= HAMMER_IOC_HISTORY_ATKEY;
 		hist.key = off;
 		hist.nxt_key = off + 1;
 	}
@@ -93,7 +93,7 @@ hammer_do_history(const char *path, off_t off, int len)
 		close(fd);
 		return;
 	}
-	status = ((hist.flags & HAMMER_IOC_HISTORY_UNSYNCED) ?
+	status = ((hist.head.flags & HAMMER_IOC_HISTORY_UNSYNCED) ?
 		 "dirty" : "clean");
 	printf("%016llx %s {\n", hist.obj_id, status);
 	for (;;) {
@@ -136,11 +136,11 @@ hammer_do_history(const char *path, off_t off, int len)
 			printf("\n");
 			free(hist_path);
 		}
-		if (hist.flags & HAMMER_IOC_HISTORY_EOF)
+		if (hist.head.flags & HAMMER_IOC_HISTORY_EOF)
 			break;
-		if (hist.flags & HAMMER_IOC_HISTORY_NEXT_KEY)
+		if (hist.head.flags & HAMMER_IOC_HISTORY_NEXT_KEY)
 			break;
-		if ((hist.flags & HAMMER_IOC_HISTORY_NEXT_TID) == 0)
+		if ((hist.head.flags & HAMMER_IOC_HISTORY_NEXT_TID) == 0)
 			break;
 		hist.beg_tid = hist.nxt_tid;
 		if (ioctl(fd, HAMMERIOC_GETHISTORY, &hist) < 0) {

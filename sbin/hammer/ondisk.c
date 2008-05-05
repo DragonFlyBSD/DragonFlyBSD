@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.15 2008/04/27 00:43:55 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.16 2008/05/05 20:34:52 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -41,6 +41,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
+#include <stddef.h>
 #include <err.h>
 #include <fcntl.h>
 #include "hammer_util.h"
@@ -352,7 +353,7 @@ format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap)
 					 &buffer, isnew);
 		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
-		layer1->layer1_crc = crc32(layer1, sizeof(*layer1));
+		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 	}
 	rel_buffer(buffer);
 
@@ -361,7 +362,7 @@ format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap)
 	blockmap->alloc_offset = HAMMER_ENCODE_RAW_BUFFER(255, -1);
 	blockmap->next_offset = HAMMER_ENCODE_RAW_BUFFER(0, 0);
 	blockmap->reserved01 = 0;
-	blockmap->entry_crc = crc32(blockmap, sizeof(*blockmap));
+	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
 	root_vol->cache.modified = 1;
 }
 
@@ -385,6 +386,7 @@ initialize_freemap(struct volume_info *vol)
 	hammer_off_t phys_offset;
 	hammer_off_t aligned_vol_free_end;
 	int64_t count = 0;
+	int modified1 = 0;
 
 	root_vol = get_volume(RootVolNo);
 	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
@@ -409,6 +411,8 @@ initialize_freemap(struct volume_info *vol)
 			layer1->phys_offset = alloc_bigblock(vol, 0);
 			layer1->blocks_free = 0;
 			buffer1->cache.modified = 1;
+			layer1->layer1_crc = crc32(layer1,
+						   HAMMER_LAYER1_CRCSIZE);
 		}
 	}
 
@@ -418,6 +422,7 @@ initialize_freemap(struct volume_info *vol)
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_LARGEBLOCK_SIZE) {
+		modified1 = 0;
 		layer1_offset = layer1_base +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
@@ -438,17 +443,19 @@ initialize_freemap(struct volume_info *vol)
 			buffer1->cache.modified = 1;
 			layer2->u.owner = HAMMER_BLOCKMAP_FREE;
 			++count;
+			modified1 = 1;
 		} else {
 			layer2->u.owner = HAMMER_BLOCKMAP_UNAVAIL;
 		}
-		layer2->entry_crc = crc32(layer2, sizeof(*layer2));
+		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 		buffer2->cache.modified = 1;
 
 		/*
 		 * Finish-up layer 1
 		 */
-		if (((phys_offset + HAMMER_LARGEBLOCK_SIZE) & HAMMER_BLOCKMAP_LAYER2_MASK) == 0) {
-			layer1->layer1_crc = crc32(layer1, sizeof(*layer1));
+		if (modified1) {
+			layer1->layer1_crc = crc32(layer1,
+						   HAMMER_LAYER1_CRCSIZE);
 			buffer1->cache.modified = 1;
 		}
 	}
@@ -495,14 +502,14 @@ alloc_bigblock(struct volume_info *volume, hammer_off_t owner)
 		layer1 = get_buffer_data(layer_offset, &buffer, 0);
 		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 		--layer1->blocks_free;
-		layer1->layer1_crc = crc32(layer1, sizeof(*layer1));
+		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 		buffer->cache.modified = 1;
 		layer_offset = layer1->phys_offset +
 			       HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
 		layer2 = get_buffer_data(layer_offset, &buffer, 0);
 		assert(layer2->u.owner == HAMMER_BLOCKMAP_FREE);
 		layer2->u.owner = owner;
-		layer2->entry_crc = crc32(layer2, sizeof(*layer2));
+		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 		buffer->cache.modified = 1;
 
 		rel_buffer(buffer);
@@ -550,8 +557,7 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 	blockmap->first_offset = HAMMER_ZONE_ENCODE(undo_zone, 0);
 	blockmap->next_offset = blockmap->first_offset;
 	blockmap->alloc_offset = HAMMER_ZONE_ENCODE(undo_zone, undo_limit);
-	
-	blockmap->entry_crc = crc32(blockmap, sizeof(*blockmap));
+	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
 
 	layer2 = &ondisk->vol0_undo_array[0];
 	n = 0;
@@ -563,7 +569,7 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 	for (n = 0; n < limit_index; ++n) {
 		layer2->u.phys_offset = alloc_bigblock(NULL, scan);
 		layer2->bytes_free = -1;	/* not used */
-		layer2->entry_crc = crc32(layer2, sizeof(*layer2));
+		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 
 		scan += HAMMER_LARGEBLOCK_SIZE;
 		++layer2;
@@ -571,7 +577,7 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 	while (n < HAMMER_UNDO_LAYER2) {
 		layer2->u.phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
 		layer2->bytes_free = -1;
-		layer2->entry_crc = crc32(layer2, sizeof(*layer2));
+		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 		++layer2;
 		++n;
 	}
@@ -589,7 +595,7 @@ format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_off)
 	blockmap->alloc_offset = zone_off;
 	blockmap->first_offset = zone_off;
 	blockmap->next_offset = zone_off;
-	blockmap->entry_crc = crc32(blockmap, sizeof(*blockmap));
+	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
 }
 
 static
@@ -665,6 +671,10 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 
 	bigblock_offset = layer2->u.phys_offset + 
 			  (*result_offp & HAMMER_LARGEBLOCK_MASK);
+
+	layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
+
 	ptr = get_buffer_data(bigblock_offset, bufferp, 0);
 	(*bufferp)->cache.modified = 1;
 

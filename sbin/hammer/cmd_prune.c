@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.5 2008/05/04 19:18:17 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.6 2008/05/05 20:34:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -66,8 +66,8 @@ hammer_cmd_prune(char **av, int ac)
 	prune.nelms = 0;
 	prune.beg_obj_id = HAMMER_MIN_OBJID;
 	prune.end_obj_id = HAMMER_MAX_OBJID;
-	prune.cur_obj_id = prune.end_obj_id;	/* reverse scan */
-	prune.cur_key = HAMMER_MAX_KEY;
+	prune.cur_obj_id = prune.end_obj_id;	/* remove me */
+	prune.cur_key = HAMMER_MAX_KEY;		/* remove me */
 	prune.stat_oldest_tid = HAMMER_MAX_TID;
 
 	if (ac == 0)
@@ -81,7 +81,7 @@ hammer_cmd_prune(char **av, int ac)
 			prune_usage(1);
 		hammer_prune_load_file(now_tid, &prune, filesystem, av[2]);
 	} else if (strcmp(av[1], "everything") == 0) {
-		prune.flags |= HAMMER_IOC_PRUNE_ALL;
+		prune.head.flags |= HAMMER_IOC_PRUNE_ALL;
 		if (ac > 2)
 			prune_usage(1);
 	} else {
@@ -94,12 +94,11 @@ hammer_cmd_prune(char **av, int ac)
 	if (fd < 0)
 		err(1, "Unable to open %s", filesystem);
 	if (ioctl(fd, HAMMERIOC_PRUNE, &prune) < 0) {
-		if (errno == EINTR) {
-			printf("Prune %s interrupted by timer\n", filesystem);
-		} else {
-			printf("Prune %s failed: %s\n",
-			       filesystem, strerror(errno));
-		}
+		printf("Prune %s failed: %s\n",
+		       filesystem, strerror(errno));
+	} else if (prune.head.flags & HAMMER_IOC_HEAD_INTR) {
+		printf("Prune %s interrupted by timer at %016llx\n",
+		       filesystem, prune.cur_obj_id);
 	} else {
 		printf("Prune %s succeeded\n", filesystem);
 	}
@@ -381,6 +380,7 @@ prune_usage(int code)
 {
 	fprintf(stderr, "Bad prune directive, specify one of:\n"
 			"prune filesystem [using filename]\n"
-			"prune filesystem from <modulo_time> to <modulo_time> every <modulo_time>\n");
+			"prune filesystem from <modulo_time> to <modulo_time> every <modulo_time>\n"
+			"prune filesystem everything\n");
 	exit(code);
 }
