@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.29 2008/05/04 09:06:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.30 2008/05/06 00:21:08 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -348,6 +348,24 @@ hammer_io_flush(struct hammer_io *io)
 	KKASSERT(io->modify_refs == 0);
 
 	/*
+	 * Acquire ownership of the bp, particularly before we clear our
+	 * modified flag.
+	 *
+	 * We are going to bawrite() this bp.  Don't leave a window where
+	 * io->released is set, we actually own the bp rather then our
+	 * buffer.
+	 */
+	bp = io->bp;
+	if (io->released) {
+		regetblk(bp);
+		/* BUF_KERNPROC(io->bp); */
+		/* io->released = 0; */
+		KKASSERT(io->released);
+		KKASSERT(io->bp == bp);
+	}
+	io->released = 1;
+
+	/*
 	 * Acquire exclusive access to the bp and then clear the modified
 	 * state of the buffer prior to issuing I/O to interlock any
 	 * modifications made while the I/O is in progress.  This shouldn't
@@ -371,21 +389,10 @@ hammer_io_flush(struct hammer_io *io)
 	io->mod_list = NULL;
 	io->modified = 0;
 	io->flush = 0;
-	bp = io->bp;
-
-	/*
-	 * Acquire ownership (released variable set for clarity)
-	 */
-	if (io->released) {
-		regetblk(bp);
-		/* BUF_KERNPROC(io->bp); */
-		io->released = 0;
-	}
 
 	/*
 	 * Transfer ownership to the kernel and initiate I/O.
 	 */
-	io->released = 1;
 	io->running = 1;
 	++io->hmp->io_running_count;
 	bawrite(bp);
@@ -531,7 +538,7 @@ hammer_io_clear_modify(struct hammer_io *io)
 			io->released = 1;
 		}
 		if (io->modified == 0) {
-			kprintf("hammer_io_clear_modify: cleared %p\n", io);
+			hkprintf("hammer_io_clear_modify: cleared %p\n", io);
 			bundirty(bp);
 			bqrelse(bp);
 		} else {
@@ -683,8 +690,17 @@ hammer_io_checkwrite(struct buf *bp)
 {
 	hammer_io_t io = (void *)LIST_FIRST(&bp->b_dep);
 
-	KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME &&
-		 io->type != HAMMER_STRUCTURE_META_BUFFER);
+	/*
+	 * This shouldn't happen under normal operation.
+	 */
+	if (io->type == HAMMER_STRUCTURE_VOLUME ||
+	    io->type == HAMMER_STRUCTURE_META_BUFFER) {
+		if (!panicstr)
+			panic("hammer_io_checkwrite: illegal buffer");
+		hkprintf("x");
+		bp->b_flags |= B_LOCKED;
+		return(1);
+	}
 
 	/*
 	 * We can only clear the modified bit if the IO is not currently

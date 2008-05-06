@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.15 2008/05/04 09:06:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.16 2008/05/06 00:21:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -327,7 +327,7 @@ static void
 hammer_recover_copy_undo(hammer_off_t undo_offset, 
 			 char *src, char *dst, int bytes)
 {
-	kprintf("U");
+	hkprintf("U");
 	if (hammer_debug_general & 0x0080)
 		kprintf("NDO %016llx: %d\n", undo_offset, bytes);
 #if 0

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.52 2008/05/05 20:34:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.53 2008/05/06 00:21:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -289,7 +289,7 @@ retry:
 		if ((flags & HAMMER_INODE_RO) == 0) {
 			kprintf("hammer_get_inode: failed ip %p obj_id %016llx cursor %p error %d\n",
 				ip, ip->obj_id, &cursor, *errorp);
-				Debugger("x");
+			Debugger("x");
 		}
 		--hammer_count_inodes;
 		kfree(ip, M_HAMMER);
@@ -1510,7 +1510,7 @@ hammer_sync_inode(hammer_inode_t ip)
 	    (ip->flags & HAMMER_INODE_DELETED) == 0) {
 		int count1 = 0;
 
-		kprintf("Y");
+		hkprintf("Y");
 		ip->flags |= HAMMER_INODE_DELETED;
 		error = hammer_ip_delete_range_all(&cursor, ip, &count1);
 		if (error == 0) {

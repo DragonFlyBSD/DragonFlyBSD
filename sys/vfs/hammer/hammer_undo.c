@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.13 2008/05/05 20:34:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.14 2008/05/06 00:21:08 dillon Exp $
  */
 
 /*
@@ -128,7 +128,7 @@ again:
 	if (undomap->next_offset == undomap->alloc_offset) {
 		next_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
 		undomap->next_offset = next_offset;
-		kprintf("undo zone's next_offset wrapped\n");
+		hkprintf("undo zone's next_offset wrapped\n");
 	}
 
 	undo = hammer_bread(trans->hmp, next_offset, &error, &buffer);

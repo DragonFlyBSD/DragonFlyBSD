@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.33 2008/05/04 09:06:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.34 2008/05/06 00:21:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,7 @@
 #include "hammer.h"
 
 int hammer_debug_general;
+int hammer_debug_debug;
 int hammer_debug_inode;
 int hammer_debug_locks;
 int hammer_debug_btree;
@@ -69,6 +70,8 @@ int64_t hammer_zone_limit;
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
 	   &hammer_debug_general, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_debug, CTLFLAG_RW,
+	   &hammer_debug_debug, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_inode, CTLFLAG_RW,
 	   &hammer_debug_inode, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_locks, CTLFLAG_RW,
@@ -557,6 +560,9 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
  * Sync the filesystem.  Currently we have to run it twice, the second
  * one will advance the undo start index to the end index, so if a crash
  * occurs no undos will be run on mount.
+ *
+ * We do not sync the filesystem if we are called from a panic.  If we did
+ * we might end up blowing up a sync that was already in progress.
  */
 static int
 hammer_vfs_sync(struct mount *mp, int waitfor)
@@ -564,9 +570,14 @@ hammer_vfs_sync(struct mount *mp, int waitfor)
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 	int error;
 
-	error = hammer_sync_hmp(hmp, waitfor);
-	if (error == 0)
+	if (panicstr == NULL) {
 		error = hammer_sync_hmp(hmp, waitfor);
+		if (error == 0)
+			error = hammer_sync_hmp(hmp, waitfor);
+	} else {
+		error = EIO;
+		hkprintf("S");
+	}
 	return (error);
 }
 

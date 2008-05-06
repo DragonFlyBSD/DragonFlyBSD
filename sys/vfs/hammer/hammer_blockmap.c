@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.11 2008/05/05 20:34:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.12 2008/05/06 00:21:07 dillon Exp $
  */
 
 /*
@@ -162,11 +162,11 @@ again:
 	 */
 	if (layer1->blocks_free == 0 &&
 	    ((next_offset ^ rootmap->alloc_offset) & ~HAMMER_BLOCKMAP_LAYER2_MASK) != 0) {
-		kprintf("blockmap skip1 %016llx\n", next_offset);
+		hkprintf("blockmap skip1 %016llx\n", next_offset);
 		next_offset = (next_offset + HAMMER_BLOCKMAP_LAYER2_MASK) &
 			      ~HAMMER_BLOCKMAP_LAYER2_MASK;
 		if (next_offset >= trans->hmp->zone_limits[zone]) {
-			kprintf("blockmap wrap1\n");
+			hkprintf("blockmap wrap1\n");
 			next_offset = HAMMER_ZONE_ENCODE(zone, 0);
 			if (++loops == 2) {	/* XXX poor-man's */
 				next_offset = 0;
@@ -229,12 +229,12 @@ again:
 			 * We have encountered a block that is already
 			 * partially allocated.  We must skip this block.
 			 */
-			kprintf("blockmap skip2 %016llx %d\n",
+			hkprintf("blockmap skip2 %016llx %d\n",
 				next_offset, layer2->bytes_free);
 			next_offset += HAMMER_LARGEBLOCK_SIZE;
 			if (next_offset >= trans->hmp->zone_limits[zone]) {
 				next_offset = HAMMER_ZONE_ENCODE(zone, 0);
-				kprintf("blockmap wrap2\n");
+				hkprintf("blockmap wrap2\n");
 				if (++loops == 2) {	/* XXX poor-man's */
 					next_offset = 0;
 					*errorp = ENOSPC;

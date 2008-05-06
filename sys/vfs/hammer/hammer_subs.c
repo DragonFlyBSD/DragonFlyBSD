@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.17 2008/05/05 20:34:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.18 2008/05/06 00:21:08 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -403,5 +403,17 @@ hammer_crc_test_btree(hammer_node_ondisk_t ondisk)
 
 	crc = crc32(&ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
 	return (ondisk->crc == crc);
+}
+
+void
+hkprintf(const char *ctl, ...)
+{
+	__va_list va;
+
+	if (hammer_debug_debug) {
+		__va_start(va, ctl);
+		kvprintf(ctl, va);
+		__va_end(va);
+	}
 }
 

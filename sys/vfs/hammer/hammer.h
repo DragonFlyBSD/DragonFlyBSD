@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.61 2008/05/05 20:34:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.62 2008/05/06 00:21:07 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -593,6 +593,7 @@ extern struct vop_ops hammer_fifo_vops;
 extern struct bio_ops hammer_bioops;
 
 extern int hammer_debug_general;
+extern int hammer_debug_debug;
 extern int hammer_debug_inode;
 extern int hammer_debug_locks;
 extern int hammer_debug_btree;
@@ -857,6 +858,7 @@ int hammer_crc_test_blockmap(hammer_blockmap_t blockmap);
 int hammer_crc_test_volume(hammer_volume_ondisk_t ondisk);
 int hammer_crc_test_record(hammer_record_ondisk_t ondisk);
 int hammer_crc_test_btree(hammer_node_ondisk_t ondisk);
+void hkprintf(const char *ctl, ...);
 
 #endif
 
@@ -957,5 +959,5 @@ hammer_modify_record_done(hammer_buffer_t buffer, hammer_record_ondisk_t rec)
 
 #define hammer_modify_record_field(trans, buffer, rec, field, dodelete) \
 	hammer_modify_record(trans, buffer, rec, &(rec)->field,		\
-	sizeof((rec)->field), dodelete)
+			     sizeof((rec)->field), dodelete)
 

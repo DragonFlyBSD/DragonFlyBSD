@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.48 2008/05/05 20:34:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.49 2008/05/06 00:21:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -489,7 +489,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
 	if (error) {
-		kprintf("hammer_create_inode error %d\n", error);
+		hkprintf("hammer_create_inode error %d\n", error);
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;
 		return (error);
@@ -501,7 +501,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 */
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
 	if (error)
-		kprintf("hammer_ip_add_directory error %d\n", error);
+		hkprintf("hammer_ip_add_directory error %d\n", error);
 
 	/*
 	 * Finish up.
@@ -855,7 +855,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 */
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred, dip, &nip);
 	if (error) {
-		kprintf("hammer_mkdir error %d\n", error);
+		hkprintf("hammer_mkdir error %d\n", error);
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;
 		return (error);
@@ -866,7 +866,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 */
 	error = hammer_ip_add_directory(&trans, dip, nch->ncp, nip);
 	if (error)
-		kprintf("hammer_mkdir (add) error %d\n", error);
+		hkprintf("hammer_mkdir (add) error %d\n", error);
 
 	/*
 	 * Finish up.
@@ -1897,6 +1897,7 @@ hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip, struct bio *bio)
 	if (ip->flags & HAMMER_INODE_DELETED) {
 		bp->b_resid = 0;
 		biodone(bio);
+		--hammer_bio_count;
 	}
 
 	/*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.13 2008/05/05 20:34:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.14 2008/05/06 00:21:07 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -109,7 +109,7 @@ hammer_flusher_thread(void *arg)
 			tsleep(&hmp->flusher_lock, 0, "hmrhld", 0);
 		hmp->flusher_act = hmp->flusher_next;
 		++hmp->flusher_next;
-		kprintf("F");
+		hkprintf("F");
 		hammer_flusher_clean_loose_ios(hmp);
 		hammer_flusher_flush(hmp);
 		hammer_flusher_clean_loose_ios(hmp);
@@ -122,7 +122,7 @@ hammer_flusher_thread(void *arg)
 		 */
 		if (hmp->flusher_exiting && TAILQ_EMPTY(&hmp->flush_list))
 			break;
-		kprintf("E");
+		hkprintf("E");
 
 		/*
 		 * This is a hack until we can dispose of frontend buffer
@@ -216,7 +216,7 @@ int
 hammer_must_finalize_undo(hammer_mount_t hmp)
 {
 	if (hammer_undo_space(hmp) < hammer_undo_max(hmp) / 2) {
-		kprintf("*");
+		hkprintf("*");
 		return(1);
 	} else {
 		return(0);
@@ -289,7 +289,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		++count;
 	}
 	if (count)
-		kprintf("X%d", count);
+		hkprintf("X%d", count);
 
 	/*
 	 * Flush data bufs
@@ -304,7 +304,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		++count;
 	}
 	if (count)
-		kprintf("Y%d", count);
+		hkprintf("Y%d", count);
 
 	/*
 	 * Wait for I/O to complete
@@ -371,6 +371,6 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 	}
 	hammer_unlock(&hmp->sync_lock);
 	if (count)
-		kprintf("Z%d", count);
+		hkprintf("Z%d", count);
 }
 
