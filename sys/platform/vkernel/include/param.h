@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/sys/platform/vkernel/include/param.h,v 1.3 2007/09/04 22:07:54 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/param.h,v 1.4 2008/05/06 18:37:58 dillon Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_
@@ -20,13 +20,17 @@
 
 #endif
 
+#if 0
 /*
  * This is kinda silly but why not?  We use a 32 bit bitmask so 31 is
  * the most we can have.  We use the msb bit for other purposes in the
  * spinlock code so we can't have 32.
+ *
+ * XXX just use the cpu default (16) so buildworld binaries are compatible.
  */
 #ifndef SMP_MAXCPU
 #define SMP_MAXCPU	31
+#endif
 #endif
 
 /*
