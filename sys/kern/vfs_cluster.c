@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.33 2008/04/22 18:46:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.34 2008/05/06 00:13:54 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -937,7 +937,10 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		bp->b_cmd = BUF_CMD_WRITE;
 		vfs_busy_pages(vp, bp);
 		bp->b_runningbufspace = bp->b_bufsize;
-		runningbufspace += bp->b_runningbufspace;
+		if (bp->b_runningbufspace) {
+			runningbufspace += bp->b_runningbufspace;
+			++runningbufcount;
+		}
 		BUF_KERNPROC(bp);	/* B_ASYNC */
 		vn_strategy(vp, &bp->b_bio1);
 

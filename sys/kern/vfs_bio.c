@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.100 2008/04/30 04:11:44 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.101 2008/05/06 00:13:53 dillon Exp $
  */
 
 /*
@@ -108,7 +108,6 @@ static void buf_daemon_hw(void);
  * but the code is intricate enough already.
  */
 vm_page_t bogus_page;
-int runningbufspace;
 
 /*
  * These are all static, but make the ones we export globals so we do
@@ -119,6 +118,7 @@ int bufspace, maxbufspace,
 static int bufreusecnt, bufdefragcnt, buffreekvacnt;
 static int lorunningspace, hirunningspace, runningbufreq;
 int numdirtybuffers, numdirtybuffershw, lodirtybuffers, hidirtybuffers;
+int runningbufspace, runningbufcount;
 static int numfreebuffers, lofreebuffers, hifreebuffers;
 static int getnewbufcalls;
 static int getnewbufrestarts;
@@ -154,6 +154,8 @@ SYSCTL_INT(_vfs, OID_AUTO, numfreebuffers, CTLFLAG_RD, &numfreebuffers, 0,
 	"Number of free buffers on the buffer cache free list");
 SYSCTL_INT(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD, &runningbufspace, 0,
 	"I/O bytes currently in progress due to asynchronous writes");
+SYSCTL_INT(_vfs, OID_AUTO, runningbufcount, CTLFLAG_RD, &runningbufcount, 0,
+	"I/O buffers currently in progress due to asynchronous writes");
 SYSCTL_INT(_vfs, OID_AUTO, maxbufspace, CTLFLAG_RD, &maxbufspace, 0,
 	"Hard limit on maximum amount of memory usable for buffer space");
 SYSCTL_INT(_vfs, OID_AUTO, hibufspace, CTLFLAG_RD, &hibufspace, 0,
@@ -197,7 +199,8 @@ extern int vm_swap_size;
 static __inline void
 numdirtywakeup(void)
 {
-	if (numdirtybuffers <= (lodirtybuffers + hidirtybuffers) / 2) {
+	if (runningbufcount + numdirtybuffers <= 
+	    (lodirtybuffers + hidirtybuffers) / 2) {
 		if (needsbuffer & VFS_BIO_NEED_DIRTYFLUSH) {
 			spin_lock_wr(&needsbuffer_spin);
 			needsbuffer &= ~VFS_BIO_NEED_DIRTYFLUSH;
@@ -243,11 +246,13 @@ runningbufwakeup(struct buf *bp)
 {
 	if (bp->b_runningbufspace) {
 		runningbufspace -= bp->b_runningbufspace;
+		--runningbufcount;
 		bp->b_runningbufspace = 0;
 		if (runningbufreq && runningbufspace <= lorunningspace) {
 			runningbufreq = 0;
 			wakeup(&runningbufreq);
 		}
+		numdirtywakeup();
 	}
 }
 
@@ -339,13 +344,15 @@ static __inline__
 void
 bd_wakeup(int dirtybuflevel)
 {
-	if (bd_request == 0 && numdirtybuffers >= dirtybuflevel) {
+	if (bd_request == 0 && numdirtybuffers && 
+	    runningbufcount + numdirtybuffers >= dirtybuflevel) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request = 1;
 		spin_unlock_wr(&needsbuffer_spin);
 		wakeup(&bd_request);
 	}
-	if (bd_request_hw == 0 && numdirtybuffershw >= dirtybuflevel) {
+	if (bd_request_hw == 0 && numdirtybuffershw &&
+	    numdirtybuffershw >= dirtybuflevel) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request_hw = 1;
 		spin_unlock_wr(&needsbuffer_spin);
@@ -742,7 +749,10 @@ bwrite(struct buf *bp)
 	 * valid for vnode-backed buffers.
 	 */
 	bp->b_runningbufspace = bp->b_bufsize;
-	runningbufspace += bp->b_runningbufspace;
+	if (bp->b_runningbufspace) {
+		runningbufspace += bp->b_runningbufspace;
+		++runningbufcount;
+	}
 
 	crit_exit();
 	if (oldflags & B_ASYNC)
@@ -956,12 +966,13 @@ bowrite(struct buf *bp)
 void
 bwillwrite(void)
 {
-	if (numdirtybuffers >= hidirtybuffers / 2) {
+	if (runningbufcount + numdirtybuffers >= hidirtybuffers / 2) {
 		bd_wakeup(1);
-		while (numdirtybuffers >= hidirtybuffers) {
+		while (runningbufcount + numdirtybuffers >= hidirtybuffers) {
 			bd_wakeup(1);
 			spin_lock_wr(&needsbuffer_spin);
-			if (numdirtybuffers >= hidirtybuffers) {
+			if (runningbufcount + numdirtybuffers >= 
+			    hidirtybuffers) {
 				needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
 				msleep(&needsbuffer, &needsbuffer_spin, 0,
 				       "flswai", 0);
@@ -971,10 +982,10 @@ bwillwrite(void)
 	} 
 #if 0
 	/* FUTURE - maybe */
-	else if (numdirtybuffershw > hidirtybuffers / 2) {
+	else if (runningbufcount + numdirtybuffershw > hidirtybuffers / 2) {
 		bd_wakeup(1);
 
-		while (numdirtybuffershw > hidirtybuffers) {
+		while (runningbufcount + numdirtybuffershw > hidirtybuffers) {
 			needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
 			tsleep(&needsbuffer, slpflags, "newbuf",
 			       slptimeo);
@@ -991,7 +1002,7 @@ bwillwrite(void)
 int
 buf_dirty_count_severe(void)
 {
-	return(numdirtybuffers >= hidirtybuffers);
+	return(runningbufcount + numdirtybuffers >= hidirtybuffers);
 }
 
 /*
@@ -1981,6 +1992,9 @@ buf_daemon(void)
 			waitrunningbufspace();
 			numdirtywakeup();
 		}
+		if (runningbufcount + numdirtybuffers > lodirtybuffers) {
+			waitrunningbufspace();
+		}
 		numdirtywakeup();
 
 		/*
@@ -1993,7 +2007,7 @@ buf_daemon(void)
 		 * find any flushable buffers, we sleep half a second. 
 		 * Otherwise we loop immediately.
 		 */
-		if (numdirtybuffers <= lodirtybuffers) {
+		if (runningbufcount + numdirtybuffers <= lodirtybuffers) {
 			/*
 			 * We reached our low water mark, reset the
 			 * request and sleep until we are needed again.
@@ -2044,6 +2058,9 @@ buf_daemon_hw(void)
 			waitrunningbufspace();
 			numdirtywakeup();
 		}
+		if (runningbufcount + numdirtybuffershw > lodirtybuffers) {
+			waitrunningbufspace();
+		}
 
 		/*
 		 * Only clear bd_request if we have reached our low water
@@ -2055,7 +2072,7 @@ buf_daemon_hw(void)
 		 * find any flushable buffers, we sleep half a second. 
 		 * Otherwise we loop immediately.
 		 */
-		if (numdirtybuffershw <= lodirtybuffers) {
+		if (runningbufcount + numdirtybuffershw <= lodirtybuffers) {
 			/*
 			 * We reached our low water mark, reset the
 			 * request and sleep until we are needed again.

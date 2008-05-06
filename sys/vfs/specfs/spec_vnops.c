@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.57 2007/11/06 03:50:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.58 2008/05/06 00:14:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -854,7 +854,10 @@ spec_getpages(struct vop_getpages_args *ap)
 	bp->b_bcount = size;
 	bp->b_resid = 0;
 	bp->b_runningbufspace = size;
-	runningbufspace += bp->b_runningbufspace;
+	if (size) {
+		runningbufspace += bp->b_runningbufspace;
+		++runningbufcount;
+	}
 
 	bp->b_bio1.bio_offset = offset;
 	bp->b_bio1.bio_done = spec_getpages_iodone;

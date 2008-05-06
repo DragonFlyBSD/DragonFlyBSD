@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.44 2008/04/22 18:46:52 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.45 2008/05/06 00:14:11 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -285,7 +285,7 @@ struct buf {
 	"\40unused31\37cluster\36vmio\35ram\34ordered" \
 	"\33paging\32vndirty\31vnclean\30want\27relbuf\26dirty" \
 	"\25unused20\24raw\23unused18\22clusterok\21malloc\20nocache" \
-	"\17locked\16inval\15unused12\14error\13eintr\12unused9\11unused8" \
+	"\17locked\16inval\15unused12\14error\13eintr\12unused9\11bnoclip" \
 	"\10delwri\7hashed\6cache\5deferred\4direct\3async\2needcommit\1age"
 
 #define	NOOFFSET	(-1LL)		/* No buffer offset calculated yet */
@@ -339,6 +339,7 @@ extern int	nbuf;			/* The number of buffer headers */
 extern int	maxswzone;		/* Max KVA for swap structures */
 extern int	maxbcache;		/* Max KVA for buffer cache */
 extern int	runningbufspace;
+extern int	runningbufcount;
 extern int      buf_maxio;              /* nominal maximum I/O for buffer */
 extern struct buf *buf;			/* The buffer headers. */
 extern char	*buffers;		/* The buffer contents. */
