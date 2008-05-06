@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.19 2007/11/07 17:42:50 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.20 2008/05/06 10:05:02 sephe Exp $
  */
 
 #include "opt_cpu.h"
@@ -1141,16 +1141,16 @@ print_AMD_features(void)
 		"\022PGE36"	/* 36 bit address space support */
 		"\023RSVD"	/* Reserved, unknown */
 		"\024MP"	/* Multiprocessor Capable */
-		"\025<b20>"
+		"\025NX"	/* No-execute page protection */
 		"\026<b21>"
 		"\027AMIE"	/* AMD MMX Instruction Extensions */
 		"\030MMX"
 		"\031FXSAVE"	/* FXSAVE/FXRSTOR */
 		"\032<b25>"
 		"\033<b26>"
-		"\034<b27>"
+		"\034RDTSCP"	/* RDTSCP instruction */
 		"\035<b28>"
-		"\036<b29>"
+		"\036LM"	/* Long mode */
 		"\037DSP"	/* AMD 3DNow! Instruction Extensions */
 		"\0403DNow!"
 		);
