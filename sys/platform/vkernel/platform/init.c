@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.49 2008/02/11 22:50:12 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.50 2008/05/06 21:40:40 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -292,7 +292,7 @@ main(int ac, char **av)
 	setrealcpu();
 	init_kqueue();
 
-	supports_sse_size = sizeof(supports_sse_size);
+	supports_sse_size = sizeof(supports_sse);
 	sysctlbyname("hw.instruction_sse", &supports_sse, &supports_sse_size,
 		     NULL, 0);
 	init_fpu(supports_sse);
