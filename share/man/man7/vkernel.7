@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.37 2008/02/03 13:10:36 nth Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.38 2008/05/06 18:55:01 swildner Exp $
 .\"
-.Dd February 3, 2008
+.Dd May 6, 2008
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -180,7 +180,7 @@ and
 are allowed.
 .It Fl n Ar numcpus
 Specify the number of CPUs you wish to emulate.
-Up to 31 CPUs are supported.
+Up to 16 CPUs are supported.
 The virtual kernel must be built with
 .Cd options SMP
 to use this option and will default to 2 CPUs unless otherwise specified.
