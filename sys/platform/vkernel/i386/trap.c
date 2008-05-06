@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.31 2008/04/24 08:53:02 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.32 2008/05/06 18:43:02 dillon Exp $
  */
 
 /*
@@ -168,11 +168,11 @@ static int slow_release;
 SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 	&slow_release, 0, "Passive Release was nonoptimal");
 #ifdef SMP
-static int syscall_mpsafe = 0;
+static int syscall_mpsafe = 1;
 SYSCTL_INT(_kern, OID_AUTO, syscall_mpsafe, CTLFLAG_RW,
 	&syscall_mpsafe, 0, "Allow MPSAFE marked syscalls to run without BGL");
 TUNABLE_INT("kern.syscall_mpsafe", &syscall_mpsafe);
-static int trap_mpsafe = 0;
+static int trap_mpsafe = 1;
 SYSCTL_INT(_kern, OID_AUTO, trap_mpsafe, CTLFLAG_RW,
 	&trap_mpsafe, 0, "Allow traps to mostly run without the BGL");
 TUNABLE_INT("kern.trap_mpsafe", &trap_mpsafe);
