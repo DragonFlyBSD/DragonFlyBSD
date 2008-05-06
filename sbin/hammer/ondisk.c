@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.16 2008/05/05 20:34:52 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.17 2008/05/06 00:15:33 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -564,7 +564,7 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 	scan = blockmap->next_offset;
 	limit_index = undo_limit / HAMMER_LARGEBLOCK_SIZE;
 
-	assert(limit_index < HAMMER_UNDO_LAYER2);
+	assert(limit_index <= HAMMER_UNDO_LAYER2);
 
 	for (n = 0; n < limit_index; ++n) {
 		layer2->u.phys_offset = alloc_bigblock(NULL, scan);

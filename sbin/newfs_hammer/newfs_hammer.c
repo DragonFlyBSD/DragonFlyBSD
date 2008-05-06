@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.23 2008/04/29 01:11:02 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.24 2008/05/06 00:15:35 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -488,11 +488,15 @@ format_root(void)
 	rec->inode.ino_mtime  = rec->base.base.create_tid;
 	rec->inode.ino_size   = 0;
 	rec->inode.ino_nlinks = 1;
+	rec->base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
+	rec->base.rec_crc = crc32(&rec->base.rec_crc + 1,
+				HAMMER_RECORD_SIZE - sizeof(rec->base.rec_crc));
 
 	/*
 	 * Create the root of the B-Tree.  The root is a leaf node so we
 	 * do not have to worry about boundary elements.
 	 */
+	bnode->signature = HAMMER_BTREE_SIGNATURE_GOOD;
 	bnode->count = 1;
 	bnode->type = HAMMER_BTREE_TYPE_LEAF;
 
@@ -502,6 +506,10 @@ format_root(void)
 	elm->leaf.data_offset = rec->base.data_off;
 	elm->leaf.data_len = rec->base.data_len;
 	elm->leaf.data_crc = rec->base.data_crc;
+
+	bnode->crc = crc32(&bnode->crc + 1,
+			   sizeof(*bnode) - sizeof(bnode->crc));
+
 	return(btree_off);
 }
 
