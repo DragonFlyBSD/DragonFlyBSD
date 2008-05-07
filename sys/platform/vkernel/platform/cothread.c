@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/platform/cothread.c,v 1.2 2008/03/27 04:28:09 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/cothread.c,v 1.3 2008/05/07 17:19:47 dillon Exp $
  */
 /*
  * Provides the vkernel with an asynchronous I/O mechanism using pthreads
@@ -106,7 +106,10 @@ cothread_thread(void *arg)
 	int dummy = 0;
 
 	cpu_mask_all_signals();
-	/* %fs (aka mycpu) is illegal in cothreads */
+	/*
+	 * %fs (aka mycpu) is illegal in cothreads.   Note that %fs is used
+	 * by pthreads.
+	 */
 	tls_set_fs(&dummy, sizeof(dummy));
 	cotd->thr_func(cotd);
 }

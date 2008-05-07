@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.50 2008/05/06 21:40:40 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.51 2008/05/07 17:19:47 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -98,7 +98,7 @@ caddr_t ptvmmap;
 vpte_t	*KernelPTD;
 vpte_t	*KernelPTA;	/* Warning: Offset for direct VA translation */
 u_int cpu_feature;	/* XXX */
-u_int tsc_present;	/* XXX */
+int tsc_present;	/* XXX */
 int optcpus;		/* number of cpus - see mp_start() */
 int lwp_cpu_lock;	/* if/how to lock virtual CPUs to real CPUs */
 int real_ncpus;		/* number of real CPUs */
@@ -159,13 +159,17 @@ main(int ac, char **av)
 #endif
 	lwp_cpu_lock = LCL_NONE;
 
+	real_vkernel_enable = 0;
 	real_vkernel_enable_size = sizeof(real_vkernel_enable);
 	sysctlbyname("vm.vkernel_enable", &real_vkernel_enable, &real_vkernel_enable_size, NULL, 0);
 	
-	if (real_vkernel_enable == 0)
-		errx(1,"vm.vkernel_enable is %d, must be set to 1 to execute a vkernel!", real_vkernel_enable);
+	if (real_vkernel_enable == 0) {
+		errx(1, "vm.vkernel_enable is 0, must be set "
+			"to 1 to execute a vkernel!");
+	}
 
 	real_ncpus_size = sizeof(real_ncpus);
+	real_ncpus = 1;
 	sysctlbyname("hw.ncpu", &real_ncpus, &real_ncpus_size, NULL, 0);
 
 	while ((c = getopt(ac, av, "c:svl:m:n:r:e:i:p:I:U")) != -1) {
@@ -293,6 +297,7 @@ main(int ac, char **av)
 	init_kqueue();
 
 	supports_sse_size = sizeof(supports_sse);
+	supports_sse = 0;
 	sysctlbyname("hw.instruction_sse", &supports_sse, &supports_sse_size,
 		     NULL, 0);
 	init_fpu(supports_sse);
@@ -608,8 +613,8 @@ init_globaldata(void)
 	}
 
 	/*
-	 * Setup the %gs for cpu #0.  The mycpu macro works after this
-	 * point.
+	 * Setup the %fs for cpu #0.  The mycpu macro works after this
+	 * point.  Note that %gs is used by pthreads.
 	 */
 	tls_set_fs(&CPU_prvspace[0], sizeof(struct privatespace));
 }

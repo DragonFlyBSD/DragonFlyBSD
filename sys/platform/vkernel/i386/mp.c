@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.7 2007/08/15 03:10:49 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.8 2008/05/07 17:19:46 dillon Exp $
  */
 
 
@@ -362,8 +362,8 @@ init_secondary(void)
 	KKASSERT(ps->mdglobaldata.mi.gd_prvspace == ps);
 
 	/*
-	 * Setup the %gs for cpu #n.  The mycpu macro works after this
-	 * point.
+	 * Setup the %fs for cpu #n.  The mycpu macro works after this
+	 * point.  Note that %gs is used by pthreads.
 	 */
 	tls_set_fs(&CPU_prvspace[myid], sizeof(struct privatespace));
 
