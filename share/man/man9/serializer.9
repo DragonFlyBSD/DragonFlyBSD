@@ -29,14 +29,15 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/serializer.9,v 1.3 2008/03/05 17:20:23 swildner Exp $
+.\" $DragonFly: src/share/man/man9/serializer.9,v 1.4 2008/05/07 20:03:09 swildner Exp $
 .\"
-.Dd March 31, 2007
+.Dd May 7, 2008
 .Os
 .Dt SERIALIZER 9
 .Sh NAME
 .Nm lwkt_serialize_init ,
 .Nm lwkt_serialize_enter ,
+.Nm lwkt_serialize_adaptive_enter ,
 .Nm lwkt_serialize_try ,
 .Nm lwkt_serialize_exit ,
 .Nm lwkt_serialize_handler_enable ,
@@ -51,6 +52,8 @@
 .Fn lwkt_serialize_init "lwkt_serialize_t s"
 .Ft void
 .Fn lwkt_serialize_enter "lwkt_serialize_t s"
+.Ft void
+.Fn lwkt_serialize_adaptive_enter "lwkt_serialize_t s"
 .Ft int
 .Fn lwkt_serialize_try "lwkt_serialize_t s"
 .Ft void
@@ -103,6 +106,26 @@ respectively initialize, hold and release the serializer
 .Fn lwkt_serialize_try
 is a non-blocking version of
 .Fn lwkt_serialize_enter .
+.Pp
+.Fn lwkt_serialize_adaptive_enter
+is a special version of
+.Fn lwkt_serialize_enter
+which will try to spin a bit before the current thread is put to sleep
+if the serializer
+.Fa s
+is contended.
+By default,
+.Fn lwkt_serialize_adaptive_enter
+favors spinning over sleeping.
+This behavior can be changed by tuning the
+.Va debug.serialize_bolimit
+and
+.Va debug.serialize_boround
+.Xr sysctl 8
+variables.
+Note that
+.Fn lwkt_serialize_adaptive_enter
+is only available in SMP kernels.
 .Pp
 .Fn lwkt_serialize_handler_disable ,
 .Fn lwkt_serialize_handler_enable
