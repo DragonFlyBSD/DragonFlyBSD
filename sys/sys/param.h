@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.46 2008/02/12 02:43:17 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.47 2008/05/07 17:26:28 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -56,10 +56,11 @@
  * 190000 - base development version after 1.8 branch
  * 195000 - base development version after 1.10 branch
  * 197500 - base development version before 1.12 branch
- * 197600 - base development version after 1.12 branch
+ * 197600 - 1.12 branch
+ * 197700 - base development version after 1.12 branch
  */
 #undef __DragonFly_version
-#define __DragonFly_version 197500	/* Master, propagated to newvers */
+#define __DragonFly_version 197700	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 
