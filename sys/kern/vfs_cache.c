@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.88 2008/02/06 08:53:15 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.89 2008/05/08 01:41:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1125,6 +1125,46 @@ again:
 }
 
 /*
+ * Return a referenced vnode representing the parent directory of
+ * ncp.  Because the caller has locked the ncp it should not be possible for
+ * the parent to go away.
+ */
+struct vnode *
+cache_dvpref(struct namecache *ncp)
+{
+	struct vnode *dvp;
+#if 0
+	int error;
+#endif
+
+	if (ncp->nc_parent == NULL)
+		return(NULL);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(NULL);
+	KKASSERT((dvp->v_flag & VRECLAIMED) == 0);
+	vhold(dvp);
+	return(dvp);
+#if 0
+	if (vget(dvp, LK_SHARED) == 0) {
+		vn_unlock(dvp);
+		return(dvp);
+	} else {
+		panic("cache_dvpref: vget(%p) failed", dvp);
+		return(NULL);	/* NOT REACHED */
+	}
+#endif
+}
+
+void
+cache_dvprel(struct vnode *dvp)
+{
+	vdrop(dvp);
+#if 0
+	vrele(dvp);
+#endif
+}
+
+/*
  * Recursively set the FSMID update flag for namecache nodes leading
  * to root.  This will cause the next getattr or reclaim to increment the
  * fsmid and mark the inode for lazy updating.
@@ -2024,16 +2064,17 @@ restart:
 		_cache_get(par);
 		if (par == nch->mount->mnt_ncmountpt.ncp) {
 			cache_resolve_mp(nch->mount);
-		} else if ((dvp = par->nc_parent->nc_vp) == NULL) {
+		} else if ((dvp = cache_dvpref(par)) == NULL) {
 			kprintf("[diagnostic] cache_resolve: raced on %*.*s\n", par->nc_nlen, par->nc_nlen, par->nc_name);
 			_cache_put(par);
 			continue;
-		} else if (par->nc_flag & NCF_UNRESOLVED) {
-			/* vhold(dvp); - DVP can't go away */
-			nctmp.mount = mp;
-			nctmp.ncp = par;
-			par->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
-			/* vdrop(dvp); */
+		} else {
+			if (par->nc_flag & NCF_UNRESOLVED) {
+				nctmp.mount = mp;
+				nctmp.ncp = par;
+				par->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
+			}
+			cache_dvprel(dvp);
 		}
 		if ((error = par->nc_error) != 0) {
 			if (par->nc_error != EAGAIN) {
@@ -2058,12 +2099,14 @@ restart:
 	 * NOTE: in order to call VOP_NRESOLVE(), the parent of the passed
 	 * ncp must already be resolved.
 	 */
-	dvp = ncp->nc_parent->nc_vp;
-	/* vhold(dvp); - dvp can't go away */
-	nctmp.mount = mp;
-	nctmp.ncp = ncp;
-	ncp->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
-	/* vdrop(dvp); */
+	if ((dvp = cache_dvpref(ncp)) != NULL) {
+		nctmp.mount = mp;
+		nctmp.ncp = ncp;
+		ncp->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
+		cache_dvprel(dvp);
+	} else {
+		ncp->nc_error = EPERM;
+	}
 	if (ncp->nc_error == EAGAIN) {
 		kprintf("[diagnostic] cache_resolve: EAGAIN ncp %p %*.*s\n",
 			ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);

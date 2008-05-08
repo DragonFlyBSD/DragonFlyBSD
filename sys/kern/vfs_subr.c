@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.112 2008/04/30 17:34:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.113 2008/05/08 01:41:05 dillon Exp $
  */
 
 /*
@@ -1230,11 +1230,16 @@ vop_stdrevoke(struct vop_revoke_args *ap)
  * This is called when the object underlying a vnode is being destroyed,
  * such as in a remove().  Try to recycle the vnode immediately if the
  * only active reference is our reference.
+ *
+ * Directory vnodes in the namecache with children cannot be immediately
+ * recycled because numerous VOP_N*() ops require them to be stable.
  */
 int
 vrecycle(struct vnode *vp)
 {
 	if (vp->v_sysref.refcnt <= 1) {
+		if (cache_inval_vp_nonblock(vp))
+			return(0);
 		vgone_vxlocked(vp);
 		return (1);
 	}

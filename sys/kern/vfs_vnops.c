@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.55 2008/05/05 22:09:44 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.56 2008/05/08 01:41:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -177,9 +177,8 @@ again:
 		if (nd->nl_nch.ncp->nc_vp == NULL) {
 			if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 				return (error);
-			if ((dvp = nd->nl_nch.ncp->nc_parent->nc_vp) == NULL)
+			if ((dvp = cache_dvpref(nd->nl_nch.ncp)) == NULL)
 				return (EPERM);
-			/* vhold(dvp); - dvp can't go away */
 			VATTR_NULL(vap);
 			vap->va_type = VREG;
 			vap->va_mode = cmode;
@@ -187,7 +186,7 @@ again:
 				vap->va_vaflags |= VA_EXCLUSIVE;
 			error = VOP_NCREATE(&nd->nl_nch, dvp, &vp,
 					    nd->nl_cred, vap);
-			/* vdrop(dvp); */
+			cache_dvprel(dvp);
 			if (error)
 				return (error);
 			fmode &= ~O_TRUNC;
