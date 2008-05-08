@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.27 2007/01/01 22:51:17 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.28 2008/05/08 01:26:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -254,7 +254,7 @@ acct_process(struct proc *p)
 	 */
 	rlim.rlim_cur = RLIM_INFINITY;
 	rlim.rlim_max = RLIM_INFINITY;
-	plimit_modify(&p->p_limit, RLIMIT_FSIZE, &rlim);
+	plimit_modify(p, RLIMIT_FSIZE, &rlim);
 
 	/*
 	 * Write the accounting information to the file.

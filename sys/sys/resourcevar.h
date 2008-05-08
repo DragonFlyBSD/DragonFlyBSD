@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.15 2007/01/06 03:23:20 dillon Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.16 2008/05/08 01:26:01 dillon Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -69,10 +69,10 @@ struct uprof {			/* profile arguments */
 /*
  * Kernel shareable process resource limits.  Because this structure
  * is moderately large but changes infrequently, it is normally
- * shared copy-on-write after forks.  If a group of processes
- * ("threads") share modifications, the PL_SHAREMOD flag is set,
- * and a copy must be made for the child of a new fork that isn't
- * sharing modifications to the limits.
+ * shared copy-on-write after forks.
+ *
+ * Threaded programs force p_exclusive (set it to 2) to prevent the
+ * proc->p_limit pointer from changing out from under threaded access.
  */
 struct plimit {
 	struct	rlimit pl_rlimit[RLIM_NLIMITS];
@@ -118,10 +118,11 @@ void	uireplace (struct uidinfo **puip, struct uidinfo *nuip);
 void	uihashinit (void);
 
 void plimit_init0(struct plimit *);
-struct plimit *plimit_fork(struct plimit *);
+struct plimit *plimit_fork(struct proc *);
+void plimit_lwp_fork(struct proc *);
 int plimit_testcpulimit(struct plimit *, u_int64_t);
-void plimit_modify(struct plimit **, int, struct rlimit *);
-void plimit_free(struct plimit **);
+void plimit_modify(struct proc *, int, struct rlimit *);
+void plimit_free(struct proc *);
 
 #endif
 

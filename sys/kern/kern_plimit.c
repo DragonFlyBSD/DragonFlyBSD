@@ -66,7 +66,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_plimit.c,v 1.2 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_plimit.c,v 1.3 2008/05/08 01:26:00 dillon Exp $
  */
 
 #include <sys/resource.h>
@@ -84,8 +84,7 @@
 
 #include <sys/spinlock2.h>
 
-static struct plimit *plimit_copy(struct plimit *olimit);
-static void plimit_exclusive(struct plimit **limitp);
+static void plimit_copy(struct plimit *olimit, struct plimit *nlimit);
 
 /*
  * Initialize proc0's plimit structure.  All later plimit structures
@@ -116,114 +115,172 @@ plimit_init0(struct plimit *limit)
 
 /*
  * Return a plimit for use by a new forked process given the one
- * contained in the parent process.  p_exclusive will be set if
- * the parent process has more then one thread, requiring a copy.
- * Otherwise we can just inherit a reference.
+ * contained in the parent process.
  *
  * MPSAFE
  */
 struct plimit *
-plimit_fork(struct plimit *limit)
+plimit_fork(struct proc *p1)
 {
-	if (limit->p_exclusive) {
-		limit = plimit_copy(limit);
-	} else {
-		spin_lock_wr(&limit->p_spin);
-		++limit->p_refcnt;
-		spin_unlock_wr(&limit->p_spin);
+	struct plimit *olimit = p1->p_limit;
+	struct plimit *nlimit = NULL;
+	struct plimit *rlimit;
+
+	/*
+	 * If we are exclusive (but not threaded-exclusive), but have only
+	 * one reference, we can convert the structure to copy-on-write
+	 * again.
+	 *
+	 * If we were threaded but are no longer threaded we can do the same
+	 * thing.
+	 */
+	if (olimit->p_exclusive == 1) {
+		KKASSERT(olimit->p_refcnt == 1);
+		olimit->p_exclusive = 0;
+	} else if (olimit->p_exclusive == 2 && p1->p_nthreads == 1) {
+		KKASSERT(olimit->p_refcnt == 1);
+		olimit->p_exclusive = 0;
 	}
-	return(limit);
-}
 
-/*
- * This routine is called when the second LWP is created for a process.
- * The process's limit structure must be made exclusive and a copy is
- * made if necessary.
- *
- * If the refcnt is 1 only the LWPs associated with the caller's process
- * have access to the structure, and since all we do is set the exclusive
- * but we don't need a spinlock.
- *
- * MPSAFE
- */
-static
-void
-plimit_exclusive(struct plimit **limitp)
-{
-	struct plimit *olimit = *limitp;
-	struct plimit *nlimit;
-
-	if (olimit->p_refcnt == 1) {
-		olimit->p_exclusive = 1;
-	} else {
-		nlimit = plimit_copy(olimit);
-		nlimit->p_exclusive = 1;
-		*limitp = nlimit;
-		spin_lock_wr(&olimit->p_spin);
-		if (--olimit->p_refcnt == 0) {
-			spin_unlock_wr(&olimit->p_spin);
-			kfree(olimit, M_SUBPROC);
+	/*
+	 * Take a short-cut that requires limited spin locks.  If we aren't
+	 * exclusive we will not be threaded and we can just bump the ref
+	 * count.  If that is true and we also have only one ref then there
+	 * can be no other accessors.
+	 */
+	if (olimit->p_exclusive == 0) {
+		if (olimit->p_refcnt == 1) {
+			++olimit->p_refcnt;
 		} else {
+			spin_lock_wr(&olimit->p_spin);
+			++olimit->p_refcnt;
 			spin_unlock_wr(&olimit->p_spin);
 		}
+		return(olimit);
 	}
+
+	/*
+	 * Full-blown code-up.
+	 */
+	nlimit = NULL;
+	spin_lock_wr(&olimit->p_spin);
+
+	for (;;) {
+		if (olimit->p_exclusive == 0) {
+			++olimit->p_refcnt;
+			rlimit = olimit;
+			break;
+		}
+		if (nlimit) {
+			plimit_copy(olimit, nlimit);
+			rlimit = nlimit;
+			nlimit = NULL;
+			break;
+		}
+		spin_unlock_wr(&olimit->p_spin);
+		nlimit = kmalloc(sizeof(*nlimit), M_SUBPROC, M_WAITOK);
+		spin_lock_wr(&olimit->p_spin);
+	}
+	spin_unlock_wr(&olimit->p_spin);
+	if (nlimit)
+		kfree(nlimit, M_SUBPROC);
+	return(rlimit);
 }
 
 /*
- * Return a copy of the passed plimit.  The returned copy will have a refcnt
- * of 1 and p_exclusive will be cleared.
+ * This routine is called when a new LWP is created for a process.  We
+ * must force exclusivity (=2) so p->p_limit remains stable.
  *
- * MPSAFE
+ * LWPs share the same process structure so this does not bump refcnt.
  */
-static
-struct plimit *
-plimit_copy(struct plimit *olimit)
+void
+plimit_lwp_fork(struct proc *p)
 {
-	struct plimit *nlimit;
+	struct plimit *olimit;
 
-	nlimit = kmalloc(sizeof(struct plimit), M_SUBPROC, M_WAITOK);
-
-	spin_lock_rd(&olimit->p_spin);
-	*nlimit = *olimit;
-	spin_unlock_rd(&olimit->p_spin);
-
-	spin_init(&nlimit->p_spin);
-	nlimit->p_refcnt = 1;
-	nlimit->p_exclusive = 0;
-	return (nlimit);
+	for (;;) {
+		olimit = p->p_limit;
+		if (olimit->p_exclusive == 2) {
+			KKASSERT(olimit->p_refcnt == 1);
+			break;
+		}
+		if (olimit->p_refcnt == 1) {
+			olimit->p_exclusive = 2;
+			break;
+		}
+		plimit_modify(p, -1, NULL);
+	}
 }
 
 /*
  * This routine is called to fixup a proces's p_limit structure prior
- * to it being modified.  If index >= 0 the specified modified is also
+ * to it being modified.  If index >= 0 the specified modification is also
  * made.
  *
- * A limit structure is potentially shared only if the process has exactly
- * one LWP, otherwise it is guarenteed to be exclusive and no copy needs
- * to be made.  This means that we can safely replace *limitp in the copy
- * case.
+ * This routine must make the limit structure exclusive.  A later fork
+ * will convert it back to copy-on-write if possible.
  *
- * We call plimit_exclusive() to do all the hard work, but the result does
- * not actually have to be exclusive since the original was not, so just
- * clear p_exclusive afterwords.
+ * We can count on p->p_limit being stable since if we had created any
+ * threads it will have already been made exclusive (=2).
  *
  * MPSAFE
  */
 void
-plimit_modify(struct plimit **limitp, int index, struct rlimit *rlim)
+plimit_modify(struct proc *p, int index, struct rlimit *rlim)
 {
-	struct plimit *limit = *limitp;
+	struct plimit *olimit;
+	struct plimit *nlimit;
+	struct plimit *rlimit;
 
-	if (limit->p_exclusive == 0 && limit->p_refcnt > 1) {
-		plimit_exclusive(limitp);
-		limit = *limitp;
-		limit->p_exclusive = 0;
+	/*
+	 * Shortcut.  If we are not threaded we may be able to trivially
+	 * set the structure to exclusive access without needing to acquire
+	 * any spinlocks.   The p_limit structure will be stable.
+	 */
+	olimit = p->p_limit;
+	if (p->p_nthreads == 1) {
+		if (olimit->p_exclusive == 0 && olimit->p_refcnt == 1)
+			olimit->p_exclusive = 1;
+		if (olimit->p_exclusive) {
+			if (index >= 0)
+				p->p_limit->pl_rlimit[index] = *rlim;
+			return;
+		}
 	}
-	if (index >= 0) {
-		spin_lock_wr(&limit->p_spin);
-		limit->pl_rlimit[index] = *rlim;
-		spin_unlock_wr(&limit->p_spin);
+
+	/*
+	 * Full-blown code-up.  Make a copy if we aren't exclusive.  If
+	 * we have only one ref we can safely convert the structure to
+	 * exclusive without copying.
+	 */
+	nlimit = NULL;
+	spin_lock_wr(&olimit->p_spin);
+
+	for (;;) {
+		if (olimit->p_refcnt == 1) {
+			if (olimit->p_exclusive == 0)
+				olimit->p_exclusive = 1;
+			rlimit = olimit;
+			break;
+		}
+		KKASSERT(olimit->p_exclusive == 0);
+		if (nlimit) {
+			plimit_copy(olimit, nlimit);
+			nlimit->p_exclusive = 1;
+			p->p_limit = nlimit;
+			rlimit = nlimit;
+			nlimit = NULL;
+			break;
+		}
+		spin_unlock_wr(&olimit->p_spin);
+		nlimit = kmalloc(sizeof(*nlimit), M_SUBPROC, M_WAITOK);
+		spin_lock_wr(&olimit->p_spin);
 	}
+	if (index >= 0)
+		rlimit->pl_rlimit[index] = *rlim;
+	spin_unlock_wr(&olimit->p_spin);
+	if (nlimit)
+		kfree(nlimit, M_SUBPROC);
 }
 
 /*
@@ -232,19 +289,24 @@ plimit_modify(struct plimit **limitp, int index, struct rlimit *rlim)
  * MPSAFE
  */
 void
-plimit_free(struct plimit **limitp)
+plimit_free(struct proc *p)
 {
 	struct plimit *limit;
 
-	if ((limit = *limitp) != NULL) {
-		*limitp = NULL;
+	if ((limit = p->p_limit) != NULL) {
+		p->p_limit = NULL;
 
-		spin_lock_wr(&limit->p_spin);
-		if (--limit->p_refcnt == 0) {
-			spin_unlock_wr(&limit->p_spin);
+		if (limit->p_refcnt == 1) {
+			limit->p_refcnt = -999;
 			kfree(limit, M_SUBPROC);
 		} else {
-			spin_unlock_wr(&limit->p_spin);
+			spin_lock_wr(&limit->p_spin);
+			if (--limit->p_refcnt == 0) {
+				spin_unlock_wr(&limit->p_spin);
+				kfree(limit, M_SUBPROC);
+			} else {
+				spin_unlock_wr(&limit->p_spin);
+			}
 		}
 	}
 }
@@ -268,7 +330,7 @@ kern_setrlimit(u_int which, struct rlimit *limp)
 	/*
 	 * We will be modifying a resource, make a copy if necessary.
 	 */
-	plimit_modify(&p->p_limit, -1, NULL);
+	plimit_modify(p, -1, NULL);
 	limit = p->p_limit;
         alimp = &limit->pl_rlimit[which];
 
@@ -420,5 +482,23 @@ plimit_testcpulimit(struct plimit *limit, u_int64_t ttime)
 		spin_unlock_rd(&limit->p_spin);
 	}
 	return(mode);
+}
+
+/*
+ * Helper routine to copy olimit to nlimit and initialize nlimit for
+ * use.  nlimit's reference count will be set to 1 and its exclusive bit
+ * will be cleared.
+ *
+ * MPSAFE
+ */
+static
+void
+plimit_copy(struct plimit *olimit, struct plimit *nlimit)
+{
+	*nlimit = *olimit;
+
+	spin_init(&nlimit->p_spin);
+	nlimit->p_refcnt = 1;
+	nlimit->p_exclusive = 0;
 }
 

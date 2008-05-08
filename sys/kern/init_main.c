@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.84 2008/01/06 16:55:51 swildner Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.85 2008/05/08 01:26:00 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -66,6 +66,7 @@
 #include <sys/file2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/cpu.h>
 
@@ -159,6 +160,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, gd);
 	lwkt_set_comm(&thread0, "thread0");
 	RB_INIT(&proc0.p_lwp_tree);
+	spin_init(&proc0.p_spin);
 	proc0.p_lasttid = 0;	/* +1 = next TID */
 	lwp_rb_tree_RB_INSERT(&proc0.p_lwp_tree, &lwp0);
 	lwp0.lwp_thread = &thread0;

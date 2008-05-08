@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.74 2008/04/28 07:07:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.75 2008/05/08 01:26:00 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -68,6 +68,7 @@
 #include <sys/vmmeter.h>
 #include <sys/thread2.h>
 #include <sys/signal2.h>
+#include <sys/spinlock2.h>
 
 static MALLOC_DEFINE(M_ATFORK, "atfork", "atfork callback");
 
@@ -181,6 +182,7 @@ sys_lwp_create(struct lwp_create_args *uap)
 	if (error)
 		goto fail2;
 
+	plimit_lwp_fork(p);	/* force exclusive access */
 	lp = lwp_fork(curthread->td_lwp, p, RFPROC);
 	error = cpu_prepare_lwp(lp, &params);
 	if (params.tid1 != NULL &&
@@ -191,7 +193,7 @@ sys_lwp_create(struct lwp_create_args *uap)
 		goto fail;
 
 	/*
-	 * Now schedule the new lwp.
+	 * Now schedule the new lwp. 
 	 */
 	p->p_usched->resetpriority(lp);
 	crit_enter();
@@ -346,6 +348,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	}
 
 	RB_INIT(&p2->p_lwp_tree);
+	spin_init(&p2->p_spin);
 	p2->p_lasttid = -1;	/* first tid will be 0 */
 
 	/*
@@ -429,7 +432,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		}
 	}
 	p2->p_fdtol = fdtol;
-	p2->p_limit = plimit_fork(p1->p_limit);
+	p2->p_limit = plimit_fork(p1);
 
 	/*
 	 * Preserve some more flags in subprocess.  P_PROFIL has already

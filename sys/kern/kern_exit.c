@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.89 2008/04/01 18:06:34 nth Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.90 2008/05/08 01:26:00 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -529,7 +529,7 @@ exit1(int rv)
 	 *
 	 * Other substructures are freed from wait().
 	 */
-	plimit_free(&p->p_limit);
+	plimit_free(p);
 
 	/*
 	 * Release the current user process designation on the process so
