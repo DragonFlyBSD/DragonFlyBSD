@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.45 2008/05/04 08:42:03 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.46 2008/05/08 01:31:01 dillon Exp $
  */
 
 /*
@@ -154,6 +154,7 @@ MALLOC_DEFINE(M_PIPE, "pipe", "pipe structures");
 
 static int pipe_maxbig = LIMITBIGPIPES;
 static int pipe_maxcache = PIPEQ_MAX_CACHE;
+static int pipe_bigcount;
 static int pipe_nbig;
 static int pipe_bcache_alloc;
 static int pipe_bkmem_alloc;
@@ -168,6 +169,8 @@ static int pipe_dwrite_sfbuf = 1;	/* 0:kmem_map 1:sfbufs 2:sfbufs_dmap */
 SYSCTL_NODE(_kern, OID_AUTO, pipe, CTLFLAG_RW, 0, "Pipe operation");
 SYSCTL_INT(_kern_pipe, OID_AUTO, nbig,
         CTLFLAG_RD, &pipe_nbig, 0, "numer of big pipes allocated");
+SYSCTL_INT(_kern_pipe, OID_AUTO, bigcount,
+        CTLFLAG_RW, &pipe_bigcount, 0, "number of times pipe expanded");
 SYSCTL_INT(_kern_pipe, OID_AUTO, maxcache,
         CTLFLAG_RW, &pipe_maxcache, 0, "max pipes cached per-cpu");
 SYSCTL_INT(_kern_pipe, OID_AUTO, maxbig,
@@ -903,16 +906,24 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 * so.
 	 */
 	if ((uio->uio_resid > PIPE_SIZE) &&
-		(pipe_nbig < pipe_maxbig) &&
-		(wpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) == 0 &&
-		(wpipe->pipe_buffer.size <= PIPE_SIZE) &&
-		(wpipe->pipe_buffer.cnt == 0)) {
-
-		if ((error = pipelock(wpipe,1)) == 0) {
-			if (pipespace(wpipe, BIG_PIPE_SIZE) == 0)
+	    (pipe_nbig < pipe_maxbig) &&
+	    (wpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) == 0 &&
+	    (wpipe->pipe_buffer.size <= PIPE_SIZE) &&
+	    (wpipe->pipe_buffer.cnt == 0) &&
+	    (error = pipelock(wpipe, 1)) == 0) {
+		/* 
+		 * Recheck after lock.
+		 */
+		if ((pipe_nbig < pipe_maxbig) &&
+		    (wpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) == 0 &&
+		    (wpipe->pipe_buffer.size <= PIPE_SIZE) &&
+		    (wpipe->pipe_buffer.cnt == 0)) {
+			if (pipespace(wpipe, BIG_PIPE_SIZE) == 0) {
+				++pipe_bigcount;
 				pipe_nbig++;
-			pipeunlock(wpipe);
+			}
 		}
+		pipeunlock(wpipe);
 	}
 
 	/*
@@ -1294,9 +1305,10 @@ pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 static int
 pipe_close(struct file *fp)
 {
-	struct pipe *cpipe = (struct pipe *)fp->f_data;
+	struct pipe *cpipe;
 
 	get_mplock();
+	cpipe = (struct pipe *)fp->f_data;
 	fp->f_ops = &badfileops;
 	fp->f_data = NULL;
 	funsetown(cpipe->pipe_sigio);
