@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.37 2008/01/14 15:27:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.38 2008/05/08 01:21:06 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -47,6 +47,7 @@
 	pushl	%es ;							\
 	pushl	%fs ;							\
 	pushl	%gs ;							\
+	cld ;								\
 	mov	$KDSEL,%ax ;						\
 	mov	%ax,%ds ;						\
 	mov	%ax,%es ;						\

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.31 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.32 2008/05/08 01:21:04 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -715,6 +715,7 @@ IDTVEC(fpu)
 	pushl	%es
 	pushl	%fs
 	pushl	%gs
+	cld
 	mov	$KDSEL,%ax
 	mov	%ax,%ds
 	mov	%ax,%es
@@ -766,6 +767,7 @@ alltraps:
 	pushl	%es
 	pushl	%fs
 	pushl	%gs
+	cld
 	.globl	alltraps_with_regs_pushed
 alltraps_with_regs_pushed:
 	mov	$KDSEL,%ax
@@ -816,6 +818,7 @@ IDTVEC(syscall)
 	pushl	%es
 	pushl	%fs
 	pushl	%gs
+	cld
 	mov	$KDSEL,%ax		/* switch to kernel segments */
 	mov	%ax,%ds
 	mov	%ax,%es
@@ -858,6 +861,7 @@ IDTVEC(int0x80_syscall)
 	pushl	%es
 	pushl	%fs
 	pushl	%gs
+	cld
 	mov	$KDSEL,%ax		/* switch to kernel segments */
 	mov	%ax,%ds
 	mov	%ax,%es

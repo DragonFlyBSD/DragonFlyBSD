@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.31 2008/01/14 15:27:17 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.32 2008/05/08 01:21:02 dillon Exp $
  */
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
@@ -69,6 +69,7 @@
 	pushl	%es ;							\
 	pushl	%fs ;							\
 	pushl	%gs ;							\
+	cld ;								\
 	mov	$KDSEL,%ax ; 						\
 	mov	%ax,%ds ; 						\
 	mov	%ax,%es ; 						\

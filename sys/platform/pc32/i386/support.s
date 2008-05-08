@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.20 2007/11/07 17:42:50 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.21 2008/05/08 01:21:04 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -201,7 +201,7 @@ ENTRY(copyout)
 	ja	copyout_fault1
 
 	/*
-	 * Convert copyout to memcpy_vector(dest:%edi, src:%esi, conut:%ecx)
+	 * Convert copyout to memcpy_vector(dest:%edi, src:%esi, count:%ecx)
 	 */
 	movl	%ebx,%ecx
 	call	*memcpy_vector
