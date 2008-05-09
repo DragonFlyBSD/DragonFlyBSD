@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.75 2008/05/08 01:26:00 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.76 2008/05/09 06:38:19 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -505,10 +505,10 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 */
 	lwp_fork(lp1, p2, flags);
 
-	if (flags == (RFFDG | RFPROC)) {
+	if (flags == (RFFDG | RFPROC | RFPGLOCK)) {
 		mycpu->gd_cnt.v_forks++;
 		mycpu->gd_cnt.v_forkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
-	} else if (flags == (RFFDG | RFPROC | RFPPWAIT | RFMEM)) {
+	} else if (flags == (RFFDG | RFPROC | RFPPWAIT | RFMEM | RFPGLOCK)) {
 		mycpu->gd_cnt.v_vforks++;
 		mycpu->gd_cnt.v_vforkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
 	} else if (p1 == &proc0) {
