@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.11 2007/03/13 00:19:29 corecode Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.11.4.1 2008/05/09 12:26:04 hasso Exp $
  */
 
 #include "namespace.h"
@@ -151,14 +151,6 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	if (new_thread->attr.flags & PTHREAD_CREATE_DETACHED)
 		new_thread->tlflags |= TLFLAGS_DETACHED;
 
-	/*
-	 * Thread created by thr_create() inherits currrent thread
-	 * sigmask, however, before new thread setup itself correctly,
-	 * it can not handle signal, so we should masks all signals here.
-	 */
-	SIGFILLSET(sigmask);
-	__sys_sigprocmask(SIG_SETMASK, &sigmask, &oldsigmask);
-	new_thread->sigmask = oldsigmask;
 	/* Add the new thread. */
 	new_thread->refcount = 1;
 	_thr_link(curthread, new_thread);
@@ -177,6 +169,16 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	create_params.arg = new_thread;
 	create_params.stack = stack;
 	create_params.tid1 = &new_thread->tid;
+	/*
+	 * Thread created by thr_create() inherits currrent thread
+	 * sigmask, however, before new thread setup itself correctly,
+	 * it can not handle signal, so we should mask all signals here.
+	 * We do this at the very last moment, so that we don't run
+	 * into problems while we have all signals disabled.
+	 */
+	SIGFILLSET(sigmask);
+	__sys_sigprocmask(SIG_SETMASK, &sigmask, &oldsigmask);
+	new_thread->sigmask = oldsigmask;
 	ret = lwp_create(&create_params);
 	__sys_sigprocmask(SIG_SETMASK, &oldsigmask, NULL);
 	if (ret != 0) {
