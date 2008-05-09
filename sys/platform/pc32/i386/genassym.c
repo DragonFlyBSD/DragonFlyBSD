@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.57 2007/06/29 21:54:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.58 2008/05/09 06:35:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,6 +92,8 @@ ASSYM(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
 #endif
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TDF_RUNNING, TDF_RUNNING);
+ASSYM(TDF_USINGFP, TDF_USINGFP);
+ASSYM(TDF_KERNELFP, TDF_KERNELFP);
 #ifdef SMP
 ASSYM(MP_FREE_LOCK, MP_FREE_LOCK);
 #endif
