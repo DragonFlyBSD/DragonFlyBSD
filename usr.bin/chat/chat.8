@@ -1,7 +1,7 @@
 .\" -*- nroff -*-
 .\" manual page [] for chat 1.8
 .\" $FreeBSD: src/usr.bin/chat/chat.8,v 1.15.2.3 2003/02/24 22:37:41 trhodes Exp $
-.\" $DragonFly: src/usr.bin/chat/chat.8,v 1.6 2007/11/03 17:06:46 swildner Exp $
+.\" $DragonFly: src/usr.bin/chat/chat.8,v 1.7 2008/05/09 20:31:04 swildner Exp $
 .Dd September 27, 1996
 .Dt CHAT 8
 .Os
@@ -576,7 +576,8 @@ This indicates that the program as not properly executed.
 An error occurred during the execution of the program.
 This may be due
 to a read or write operation failing for some reason or chat receiving
-a signal such as SIGINT.
+a signal such as
+.Dv SIGINT .
 .It Li 3
 A timeout event occurred when there was an
 .Dq expect

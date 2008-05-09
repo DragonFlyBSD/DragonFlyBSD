@@ -27,7 +27,7 @@
 .\"
 .\"     @(#)apmd.8	1.1 (FreeBSD) 6/28/99
 .\" $FreeBSD: src/usr.sbin/apmd/apmd.8,v 1.7.2.7 2003/03/11 21:13:47 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/apmd/apmd.8,v 1.4 2008/05/02 02:05:07 swildner Exp $
+.\" $DragonFly: src/usr.sbin/apmd/apmd.8,v 1.5 2008/05/09 20:31:04 swildner Exp $
 .\"
 .Dd June 28, 1999
 .Dt APMD 8
@@ -89,7 +89,9 @@ monitored events.
 .Pp
 If the
 .Nm
-process receives a SIGHUP, it will reread its configuration file and
+process receives a
+.Dv SIGHUP ,
+it will reread its configuration file and
 notify the APM device driver of any changes to its configuration.
 .Pp
 The

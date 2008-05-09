@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)pstat.8	8.5 (Berkeley) 5/13/94
 .\" $FreeBSD: src/usr.sbin/pstat/pstat.8,v 1.19.2.10 2002/07/12 09:12:49 des Exp $
-.\" $DragonFly: src/usr.sbin/pstat/pstat.8,v 1.3 2006/02/17 19:40:21 swildner Exp $
+.\" $DragonFly: src/usr.sbin/pstat/pstat.8,v 1.4 2008/05/09 20:31:04 swildner Exp $
 .\"
 .Dd May 13, 1994
 .Dt PSTAT 8
@@ -182,7 +182,9 @@ output stopped (DSR flow control)
 .It K
 input stopped
 .It Y
-send SIGIO for input events
+send
+.Dv SIGIO
+for input events
 .It D
 state for lowercase
 .Ql \e

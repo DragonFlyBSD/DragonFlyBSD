@@ -1,7 +1,7 @@
 .\" Copyright (c) 1988, 1989, 1991 Carnegie Mellon University
 .\"
 .\" $FreeBSD: src/libexec/bootpd/bootpd.8,v 1.10.2.5 2001/07/22 12:07:21 dd Exp $
-.\" $DragonFly: src/libexec/bootpd/bootpd.8,v 1.5 2007/11/23 23:16:36 swildner Exp $
+.\" $DragonFly: src/libexec/bootpd/bootpd.8,v 1.6 2008/05/09 20:31:04 swildner Exp $
 .\"
 .Dd November 6, 1993
 .Dt BOOTPD 8
@@ -155,7 +155,8 @@ only).
 Specify the name of the file that
 .Nm
 will dump its internal database into when it receives a
-SIGUSR1 signal
+.Dv SIGUSR1
+signal
 .No ( Nm
 only). This option is only recognized if
 .Nm
@@ -196,8 +197,9 @@ that initializes the internal database of known clients and client
 options.  This internal database is reloaded
 from the configuration file when
 .Nm
-receives a hangup signal (SIGHUP) or when it discovers that the
-configuration file has changed.
+receives a hangup signal
+.Dv ( SIGHUP )
+or when it discovers that the configuration file has changed.
 .Pp
 When
 .Nm
@@ -214,8 +216,9 @@ If the client is unknown, the request is discarded
 .Pp
 If
 .Nm
-is compiled with the -DDEBUG option, receipt of a SIGUSR1 signal causes
-it to dump its internal database to the file
+is compiled with the -DDEBUG option, receipt of a
+.Dv SIGUSR1
+signal causes it to dump its internal database to the file
 .Pa /tmp/bootpd.dump
 or the dumpfile specified as a command line parameter.
 .Pp

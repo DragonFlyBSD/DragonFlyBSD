@@ -34,7 +34,7 @@
 .\"
 .\"     @(#)init.8	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/sbin/init/init.8,v 1.22.2.11 2003/05/03 22:19:20 keramida Exp $
-.\" $DragonFly: src/sbin/init/init.8,v 1.5 2007/07/14 21:48:15 swildner Exp $
+.\" $DragonFly: src/sbin/init/init.8,v 1.6 2008/05/09 20:31:04 swildner Exp $
 .\"
 .Dd April 18, 1994
 .Dt INIT 8
@@ -226,8 +226,9 @@ file.
 When a line is turned off in
 .Xr ttys 5 ,
 .Nm
-will send a SIGHUP signal to the controlling process
-for the session associated with the line.
+will send a
+.Dv SIGHUP
+signal to the controlling process for the session associated with the line.
 For any lines that were previously turned off in the
 .Xr ttys 5
 file and are now on,

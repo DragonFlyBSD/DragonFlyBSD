@@ -32,7 +32,7 @@
 .\"     @(#)slattach.8	6.4 (Berkeley) 3/16/91
 .\"
 .\" $FreeBSD: src/sbin/slattach/slattach.8,v 1.16.2.6 2003/02/23 21:17:43 trhodes Exp $
-.\" $DragonFly: src/sbin/slattach/slattach.8,v 1.3 2006/02/17 19:33:33 swildner Exp $
+.\" $DragonFly: src/sbin/slattach/slattach.8,v 1.4 2008/05/09 20:31:04 swildner Exp $
 .\"
 .Dd April 4, 1993
 .Dt SLATTACH 8
@@ -211,11 +211,13 @@ To kill
 .Nm
 use
 .Ql kill -INT
-(SIGINT) which causes it to close the tty and exit.
+.Dv ( SIGINT )
+which causes it to close the tty and exit.
 .Pp
 To force a redial, use
 .Ql kill -HUP
-(SIGHUP) which causes
+.Dv ( SIGHUP )
+which causes
 .Nm
 to think carrier was lost and thus invoke
 .Ql sh \-c Ar redial-command

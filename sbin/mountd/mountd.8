@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)mountd.8	8.4 (Berkeley) 4/28/95
 .\" $FreeBSD: src/sbin/mountd/mountd.8,v 1.16.2.2 2000/12/08 14:04:02 ru Exp $
-.\" $DragonFly: src/sbin/mountd/mountd.8,v 1.4 2007/11/23 23:16:36 swildner Exp $
+.\" $DragonFly: src/sbin/mountd/mountd.8,v 1.5 2008/05/09 20:31:04 swildner Exp $
 .\"
 .Dd April 28, 1995
 .Dt MOUNTD 8
@@ -107,7 +107,8 @@ a hangup signal should be sent to the
 .Nm
 daemon
 to get it to reload the export information.
-After sending the SIGHUP
+After sending the
+.Dv SIGHUP
 (kill \-s HUP `cat /var/run/mountd.pid`),
 check the syslog output to see if
 .Nm
