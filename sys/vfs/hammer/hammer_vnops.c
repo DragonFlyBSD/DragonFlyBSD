@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.50 2008/05/09 07:26:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.51 2008/05/09 22:17:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1898,6 +1898,7 @@ hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip, struct bio *bio)
 		bp->b_resid = 0;
 		biodone(bio);
 		--hammer_bio_count;
+		return(0);
 	}
 
 	/*
