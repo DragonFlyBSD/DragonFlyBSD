@@ -31,13 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.55 2008/05/05 20:34:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.56 2008/05/09 07:26:51 dillon Exp $
  */
 
 #include "hammer.h"
 
 static int hammer_mem_add(hammer_transaction_t trans, hammer_record_t record);
-static int hammer_mem_lookup(hammer_cursor_t cursor, hammer_inode_t ip);
+static int hammer_mem_lookup(hammer_cursor_t cursor);
 static int hammer_mem_first(hammer_cursor_t cursor);
 
 /*
@@ -379,32 +379,16 @@ hammer_rec_scan_callback(hammer_record_t rec, void *data)
  */
 static
 int
-hammer_mem_lookup(hammer_cursor_t cursor, hammer_inode_t ip)
+hammer_mem_lookup(hammer_cursor_t cursor)
 {
 	int error;
 
+	KKASSERT(cursor->ip);
 	if (cursor->iprec) {
 		hammer_rel_mem_record(cursor->iprec);
 		cursor->iprec = NULL;
 	}
-	if (cursor->ip) {
-		KKASSERT(cursor->ip->cursor_ip_refs > 0);
-		--cursor->ip->cursor_ip_refs;
-#if 0
-		hammer_rec_rb_tree_scan_info_done(&cursor->scan,
-						  &cursor->ip->rec_tree);
-#endif
-	}
-	cursor->ip = ip;
-#if 0
-	hammer_rec_rb_tree_scan_info_link(&cursor->scan, &ip->rec_tree);
-#endif
-	++ip->cursor_ip_refs;
-
-#if 0
-	cursor->scan.node = NULL;
-#endif
-	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_find_cmp,
+	hammer_rec_rb_tree_RB_SCAN(&cursor->ip->rec_tree, hammer_rec_find_cmp,
 				   hammer_rec_scan_callback, cursor);
 
 	if (cursor->iprec == NULL)
@@ -792,8 +776,11 @@ hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t record)
 	do {
 		error = hammer_init_cursor(trans, &cursor,
 					   &record->ip->cache[0], record->ip);
-		if (error)
+		if (error) {
+			KKASSERT(0);
+			hammer_done_cursor(&cursor);
 			return(error);
+		}
 		error = hammer_ip_sync_record_cursor(&cursor, record);
 		hammer_done_cursor(&cursor);
 	} while (error == EDEADLK);
@@ -1076,7 +1063,7 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
  * NOT be called to iterate results.
  */
 int
-hammer_ip_lookup(hammer_cursor_t cursor, struct hammer_inode *ip)
+hammer_ip_lookup(hammer_cursor_t cursor)
 {
 	int error;
 
@@ -1084,7 +1071,8 @@ hammer_ip_lookup(hammer_cursor_t cursor, struct hammer_inode *ip)
 	 * If the element is in-memory return it without searching the
 	 * on-disk B-Tree
 	 */
-	error = hammer_mem_lookup(cursor, ip);
+	KKASSERT(cursor->ip);
+	error = hammer_mem_lookup(cursor);
 	if (error == 0) {
 		cursor->record = &cursor->iprec->rec;
 		return(error);
@@ -1095,7 +1083,7 @@ hammer_ip_lookup(hammer_cursor_t cursor, struct hammer_inode *ip)
 	/*
 	 * If the inode has on-disk components search the on-disk B-Tree.
 	 */
-	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DONDISK)) == 0)
+	if ((cursor->ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DONDISK)) == 0)
 		return(error);
 	error = hammer_btree_lookup(cursor);
 	if (error == 0)

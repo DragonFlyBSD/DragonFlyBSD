@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.49 2008/05/06 00:21:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.50 2008/05/09 07:26:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1156,7 +1156,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	cursor.asof = ip->obj_asof;
 	cursor.flags |= HAMMER_CURSOR_ASOF;
 
-	error = hammer_ip_lookup(&cursor, ip);
+	error = hammer_ip_lookup(&cursor);
 	if (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error == 0) {

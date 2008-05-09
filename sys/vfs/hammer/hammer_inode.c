@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.53 2008/05/06 00:21:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.54 2008/05/09 07:26:51 dillon Exp $
  */
 
 #include "hammer.h"
@@ -673,6 +673,7 @@ hammer_unload_inode(struct hammer_inode *ip)
 	KKASSERT(ip->vp == NULL);
 	KKASSERT(ip->flush_state == HAMMER_FST_IDLE);
 	KKASSERT(ip->cursor_ip_refs == 0);
+	KKASSERT(ip->lock.lockcount == 0);
 	KKASSERT((ip->flags & HAMMER_INODE_MODMASK) == 0);
 
 	KKASSERT(RB_EMPTY(&ip->rec_tree));
