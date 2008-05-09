@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.47 2008/01/30 11:57:09 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.47.2.1 2008/05/09 15:38:31 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -871,7 +871,7 @@ npxdna(void)
 	 * used the FP unit.  This also occurs when a thread pushes a
 	 * signal handler and uses FP in the handler.
 	 */
-	if ((td->td_flags & TDF_USINGFP) == 0) {
+	if ((td->td_flags & (TDF_USINGFP | TDF_KERNELFP)) == 0) {
 		td->td_flags |= TDF_USINGFP;
 		npxinit(__INITIAL_NPXCW__);
 		didinit = 1;
@@ -1013,6 +1013,8 @@ npxpush(mcontext_t *mctx)
 {
 	thread_t td = curthread;
 
+	KKASSERT((td->td_flags & TDF_KERNELFP) == 0);
+
 	if (td->td_flags & TDF_USINGFP) {
 		if (mdcpu->gd_npxthread == td) {
 			/*
@@ -1045,6 +1047,8 @@ void
 npxpop(mcontext_t *mctx)
 {
 	thread_t td = curthread;
+
+	KKASSERT((td->td_flags & TDF_KERNELFP) == 0);
 
 	switch(mctx->mc_ownedfp) {
 	case _MC_FPOWNED_NONE:

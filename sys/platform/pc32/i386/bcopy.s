@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.9 2007/01/09 23:34:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.9.6.1 2008/05/09 15:38:29 dillon Exp $
  */
 /*
  * bcopy(source:%esi, target:%edi, count:%ecx)
@@ -312,6 +312,7 @@ ENTRY(asm_generic_bcopy)
 100: ;									\
 	leal	GD_SAVEFPU(%eax),%ecx ;					\
 	movl	%ecx,TD_SAVEFPU(%edx) ;					\
+	orl	$TDF_KERNELFP,TD_FLAGS(%edx) ;				\
 	clts ;								\
 	movl	%edx,GD_NPXTHREAD(%eax) ;	/* race(3) */		\
 	subl	$TDPRI_CRIT,TD_PRI(%edx) ;	/* crit_exit() */	\
@@ -350,6 +351,7 @@ ENTRY(asm_generic_bcopy)
 	movl	MYCPU,%ecx ;			\
 	movl	GD_CURTHREAD(%ecx),%edx ;	\
 	movl	$0,GD_NPXTHREAD(%ecx) ;		\
+	andl	$~TDF_KERNELFP,TD_FLAGS(%edx) ;	\
 	movl	%ebx,TD_SAVEFPU(%edx) ;		\
 	smsw	%ax ;				\
 	popl	%ebx ;				\
