@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/nlookup.h,v 1.5 2006/10/27 04:56:33 dillon Exp $
+ * $DragonFly: src/sys/sys/nlookup.h,v 1.6 2008/05/09 17:52:18 dillon Exp $
  */
 
 #ifndef _SYS_NLOOKUP_H_
@@ -80,6 +80,7 @@ struct nlookupdata {
 	char 		*nl_path;	/* path buffer */
 	struct thread	*nl_td;		/* thread requesting the nlookup */
 	struct ucred	*nl_cred;	/* credentials for nlookup */
+	struct vnode	*nl_dvp;	/* NLC_REFDVP */
 
 	int		nl_flags;	/* operations flags */
 	int		nl_loopcnt;	/* symlinks encountered */
@@ -104,6 +105,7 @@ struct nlookupdata {
 #define NLC_DELETE		0x00000100
 #define NLC_NFS_RDONLY		0x00010000	/* set by nfs_namei() only */
 #define NLC_NFS_NOSOFTLINKTRAV	0x00020000	/* do not traverse softlnks */
+#define NLC_REFDVP		0x00040000	/* set ref'd/unlocked nl_dvp */
 
 #ifdef _KERNEL
 

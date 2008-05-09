@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.56 2008/05/08 01:41:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.57 2008/05/09 17:52:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -127,7 +127,6 @@ int
 vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 {
 	struct vnode *vp;
-	struct vnode *dvp;
 	struct ucred *cred = nd->nl_cred;
 	struct vattr vat;
 	struct vattr *vap = &vat;
@@ -156,6 +155,7 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 		if ((fmode & O_EXCL) == 0 && (fmode & O_NOFOLLOW) == 0)
 			nd->nl_flags |= NLC_FOLLOW;
 		nd->nl_flags |= NLC_CREATE;
+		nd->nl_flags |= NLC_REFDVP;
 		bwillwrite();
 		error = nlookup(nd);
 	} else {
@@ -177,16 +177,13 @@ again:
 		if (nd->nl_nch.ncp->nc_vp == NULL) {
 			if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 				return (error);
-			if ((dvp = cache_dvpref(nd->nl_nch.ncp)) == NULL)
-				return (EPERM);
 			VATTR_NULL(vap);
 			vap->va_type = VREG;
 			vap->va_mode = cmode;
 			if (fmode & O_EXCL)
 				vap->va_vaflags |= VA_EXCLUSIVE;
-			error = VOP_NCREATE(&nd->nl_nch, dvp, &vp,
+			error = VOP_NCREATE(&nd->nl_nch, nd->nl_dvp, &vp,
 					    nd->nl_cred, vap);
-			cache_dvprel(dvp);
 			if (error)
 				return (error);
 			fmode &= ~O_TRUNC;

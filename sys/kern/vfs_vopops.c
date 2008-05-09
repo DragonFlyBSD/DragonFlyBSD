@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.37 2008/02/06 00:27:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.38 2008/05/09 17:52:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -923,8 +923,8 @@ vop_mountctl(struct vop_ops *ops, int op, struct file *fp,
 /*
  * NEW API FUNCTIONS
  *
- * nresolve takes a locked ncp and a cred and resolves the ncp into a 
- * positive or negative hit.
+ * nresolve takes a locked ncp, a referenced but unlocked dvp, and a cred,
+ * and resolves the ncp into a positive or negative hit.
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
@@ -947,8 +947,9 @@ vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
 }
 
 /*
- * nlookupdotdot takes an unlocked directory, dvp, and looks up "..", returning
- * a locked parent directory in *vpp.  If an error occurs *vpp will be NULL.
+ * nlookupdotdot takes an unlocked directory, referenced dvp, and looks
+ * up "..", returning a locked parent directory in *vpp.  If an error
+ * occurs *vpp will be NULL.
  */
 int
 vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
@@ -972,6 +973,8 @@ vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
  * ncreate takes a locked, resolved ncp that typically represents a negative
  * cache hit and creates the file or node specified by the ncp, cred, and
  * vattr.  If no error occurs a locked vnode is returned in *vpp.
+ *
+ * The dvp passed in is referenced but unlocked.
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
@@ -1002,6 +1005,8 @@ vop_ncreate(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  * cache hit and creates the directory specified by the ncp, cred, and
  * vattr.  If no error occurs a locked vnode is returned in *vpp.
  *
+ * The dvp passed in is referenced but unlocked.
+ *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
  */
@@ -1030,6 +1035,8 @@ vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  * nmknod takes a locked, resolved ncp that typically represents a negative
  * cache hit and creates the node specified by the ncp, cred, and
  * vattr.  If no error occurs a locked vnode is returned in *vpp.
+ *
+ * The dvp passed in is referenced but unlocked.
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
@@ -1061,6 +1068,8 @@ vop_nmknod(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  * existing vnode.  The passed vp must be locked and will remain locked
  * on return, as does the ncp, whether an error occurs or not.
  *
+ * The dvp passed in is referenced but unlocked.
+ *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
  */
@@ -1089,6 +1098,8 @@ vop_nlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  * cache hit and creates a symbolic link based on cred, vap, and target (the
  * contents of the link).  If no error occurs a locked vnode is returned in
  * *vpp.
+ *
+ * The dvp passed in is referenced but unlocked.
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
@@ -1120,6 +1131,8 @@ vop_nsymlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  * nwhiteout takes a locked, resolved ncp that can represent a positive or
  * negative hit and executes the whiteout function specified in flags.
  *
+ * The dvp passed in is referenced but unlocked.
+ *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
  */
@@ -1147,6 +1160,8 @@ vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  * nremove takes a locked, resolved ncp that generally represents a
  * positive hit and removes the file.
  *
+ * The dvp passed in is referenced but unlocked.
+ *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
  */
@@ -1172,6 +1187,8 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 /*
  * nrmdir takes a locked, resolved ncp that generally represents a
  * directory and removes the directory.
+ *
+ * The dvp passed in is referenced but unlocked.
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
@@ -1199,6 +1216,8 @@ vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  * nrename takes TWO locked, resolved ncp's and the cred of the caller
  * and renames the source ncp to the target ncp.  The target ncp may 
  * represent a positive or negative hit.
+ *
+ * The fdvp and tdvp passed in are referenced but unlocked.
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.  The source ncp is typically changed to

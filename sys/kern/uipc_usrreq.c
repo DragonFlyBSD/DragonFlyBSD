@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.38 2008/05/08 01:41:05 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.39 2008/05/09 17:52:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -609,7 +609,6 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 {
 	struct proc *p = td->td_proc;
 	struct sockaddr_un *soun = (struct sockaddr_un *)nam;
-	struct vnode *dvp;
 	struct vnode *vp;
 	struct vattr vattr;
 	int error, namelen;
@@ -623,21 +622,19 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 		return (EINVAL);
 	strncpy(buf, soun->sun_path, namelen);
 	buf[namelen] = 0;	/* null-terminate the string */
-	error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_LOCKVP|NLC_CREATE);
+	error = nlookup_init(&nd, buf, UIO_SYSSPACE,
+			     NLC_LOCKVP | NLC_CREATE | NLC_REFDVP);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0 && nd.nl_nch.ncp->nc_vp != NULL)
 		error = EADDRINUSE;
-	if (error == 0 && (dvp = cache_dvpref(nd.nl_nch.ncp)) == NULL)
-		error = EPERM;
 	if (error)
 		goto done;
 
 	VATTR_NULL(&vattr);
 	vattr.va_type = VSOCK;
 	vattr.va_mode = (ACCESSPERMS & ~p->p_fd->fd_cmask);
-	error = VOP_NCREATE(&nd.nl_nch, dvp, &vp, nd.nl_cred, &vattr);
-	cache_dvprel(dvp);
+	error = VOP_NCREATE(&nd.nl_nch, nd.nl_dvp, &vp, nd.nl_cred, &vattr);
 	if (error == 0) {
 		vp->v_socket = unp->unp_socket;
 		unp->unp_vnode = vp;

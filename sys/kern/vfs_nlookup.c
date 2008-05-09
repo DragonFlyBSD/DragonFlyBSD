@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.23 2008/04/14 12:01:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.24 2008/05/09 17:52:17 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -225,6 +225,10 @@ nlookup_done(struct nlookupdata *nd)
 	vn_close(nd->nl_open_vp, nd->nl_vp_fmode);
 	nd->nl_open_vp = NULL;
     }
+    if (nd->nl_dvp) {
+	vrele(nd->nl_dvp);
+	nd->nl_dvp = NULL;
+    }
     nd->nl_flags = 0;	/* clear remaining flags (just clear everything) */
 }
 
@@ -277,6 +281,10 @@ nlookup_simple(const char *str, enum uio_seg seg,
  * creation (VCREATE/VDELETE), and an error code of 0 will be returned for
  * a non-existant target.  Otherwise a non-existant target will cause
  * ENOENT to be returned.
+ *
+ * If NLC_REFDVP is set nd->nl_dvp will be set to the directory vnode
+ * of the returned entry.  The vnode will be referenced, but not locked,
+ * and will be released by nlookup_done() along with everything else.
  */
 int
 nlookup(struct nlookupdata *nd)
@@ -307,6 +315,10 @@ nlookup(struct nlookupdata *nd)
 	nd->nl_flags &= ~NLC_NCPISLOCKED;
 	cache_unlock(&nd->nl_nch);
     }
+    if (nd->nl_dvp ) {
+	vrele(nd->nl_dvp);
+	nd->nl_dvp = NULL;
+    }
     ptr = nd->nl_path;
 
     /*
@@ -327,10 +339,21 @@ nlookup(struct nlookupdata *nd)
 	    cache_copy(&nd->nl_rootnch, &nch);
 	    cache_drop(&nd->nl_nch);
 	    nd->nl_nch = nch;
+
+	    /*
+	     * Fast-track termination.  There is no parent directory of
+	     * the root in the same mount from the point of view of
+	     * the caller so return EPERM if NLC_REFDVP is specified.
+	     * e.g. 'rmdir /' is not allowed.
+	     */
 	    if (*ptr == 0) {
-		cache_lock(&nd->nl_nch);
-		nd->nl_flags |= NLC_NCPISLOCKED;
-		error = 0;
+		if (nd->nl_flags & NLC_REFDVP) {
+			error = EPERM;
+		} else {
+			cache_lock(&nd->nl_nch);
+			nd->nl_flags |= NLC_NCPISLOCKED;
+			error = 0;
+		}
 		break;
 	    }
 	    continue;
@@ -427,7 +450,7 @@ nlookup(struct nlookupdata *nd)
 	 *
 	 * Also handle invalid '.' or '..' components terminating a path
 	 * during removal.  The standard requires this and pax pretty
-	  *stupidly depends on it.
+	 * stupidly depends on it.
 	 */
 	for (xptr = ptr; *xptr == '/'; ++xptr)
 		;
@@ -573,7 +596,17 @@ nlookup(struct nlookupdata *nd)
 	 * Termination: no more elements.  If NLC_CREATE was set the
 	 * ncp may represent a negative hit (ncp->nc_error will be ENOENT),
 	 * but we still return an error code of 0.
+	 *
+	 * If NLC_REFDVP is set acquire a referenced parent dvp.
 	 */
+	if (nd->nl_flags & NLC_REFDVP) {
+		error = cache_vref(&nd->nl_nch, nd->nl_cred, &nd->nl_dvp);
+		if (error) {
+			kprintf("NLC_REFDVP: Cannot ref dvp of %p\n", nch.ncp);
+			cache_put(&nch);
+			break;
+		}
+	}
 	cache_drop(&nd->nl_nch);
 	nd->nl_nch = nch;
 	nd->nl_flags |= NLC_NCPISLOCKED;

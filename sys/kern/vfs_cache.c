@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.89 2008/05/08 01:41:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.90 2008/05/09 17:52:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -152,6 +152,7 @@ SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
 
 static int cache_resolve_mp(struct mount *mp);
+static struct vnode *cache_dvpref(struct namecache *ncp);
 static void _cache_rehash(struct namecache *ncp);
 static void _cache_lock(struct namecache *ncp);
 static void _cache_setunresolved(struct namecache *ncp);
@@ -1127,41 +1128,31 @@ again:
 /*
  * Return a referenced vnode representing the parent directory of
  * ncp.  Because the caller has locked the ncp it should not be possible for
- * the parent to go away.
+ * the parent ncp to go away.
+ *
+ * However, we might race against the parent dvp and not be able to
+ * reference it.  If we race, return NULL.
  */
-struct vnode *
+static struct vnode *
 cache_dvpref(struct namecache *ncp)
 {
+	struct namecache *par;
 	struct vnode *dvp;
-#if 0
-	int error;
-#endif
 
-	if (ncp->nc_parent == NULL)
-		return(NULL);
-	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
-		return(NULL);
-	KKASSERT((dvp->v_flag & VRECLAIMED) == 0);
-	vhold(dvp);
-	return(dvp);
-#if 0
-	if (vget(dvp, LK_SHARED) == 0) {
-		vn_unlock(dvp);
-		return(dvp);
-	} else {
-		panic("cache_dvpref: vget(%p) failed", dvp);
-		return(NULL);	/* NOT REACHED */
+	dvp = NULL;
+	if ((par = ncp->nc_parent) != NULL) {
+		if ((par->nc_flag & NCF_UNRESOLVED) == 0) {
+			if ((dvp = par->nc_vp) != NULL) {
+				if (vget(dvp, LK_SHARED) == 0) {
+					vn_unlock(dvp);
+					/* return referenced, unlocked dvp */
+				} else {
+					dvp = NULL;
+				}
+			}
+		}
 	}
-#endif
-}
-
-void
-cache_dvprel(struct vnode *dvp)
-{
-	vdrop(dvp);
-#if 0
-	vrele(dvp);
-#endif
+	return(dvp);
 }
 
 /*
@@ -2035,7 +2026,7 @@ restart:
 	 * not occur all that often, or if it does not have to go back too
 	 * many nodes to resolve the ncp.
 	 */
-	while (ncp->nc_parent->nc_vp == NULL) {
+	while ((dvp = cache_dvpref(ncp)) == NULL) {
 		/*
 		 * This case can occur if a process is CD'd into a
 		 * directory which is then rmdir'd.  If the parent is marked
@@ -2074,7 +2065,7 @@ restart:
 				nctmp.ncp = par;
 				par->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
 			}
-			cache_dvprel(dvp);
+			vrele(dvp);
 		}
 		if ((error = par->nc_error) != 0) {
 			if (par->nc_error != EAGAIN) {
@@ -2099,11 +2090,11 @@ restart:
 	 * NOTE: in order to call VOP_NRESOLVE(), the parent of the passed
 	 * ncp must already be resolved.
 	 */
-	if ((dvp = cache_dvpref(ncp)) != NULL) {
+	if (dvp) {
 		nctmp.mount = mp;
 		nctmp.ncp = ncp;
 		ncp->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
-		cache_dvprel(dvp);
+		vrele(dvp);
 	} else {
 		ncp->nc_error = EPERM;
 	}
