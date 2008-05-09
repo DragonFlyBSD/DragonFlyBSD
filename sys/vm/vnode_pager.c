@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.41 2008/04/28 21:16:27 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.42 2008/05/09 07:24:48 dillon Exp $
  */
 
 /*
@@ -292,7 +292,10 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 			vm_offset_t kva;
 			vm_page_t m;
 
-			m = vm_page_lookup(object, OFF_TO_IDX(nsize));
+			do {
+				m = vm_page_lookup(object, OFF_TO_IDX(nsize));
+			} while (m && vm_page_sleep_busy(m, TRUE, "vsetsz"));
+
 			if (m && m->valid) {
 				int base = (int)nsize & PAGE_MASK;
 				int size = PAGE_SIZE - base;
@@ -302,6 +305,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				 * Clear out partial-page garbage in case
 				 * the page has been mapped.
 				 */
+				vm_page_busy(m);
 				sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
 				kva = sf_buf_kva(sf);
 				bzero((caddr_t)kva + base, size);
@@ -337,6 +341,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				vm_page_set_validclean(m, base, size);
 				if (m->dirty != 0)
 					m->dirty = VM_PAGE_BITS_ALL;
+				vm_page_wakeup(m);
 			}
 		}
 	} else {

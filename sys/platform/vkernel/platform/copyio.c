@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.8 2007/07/02 16:52:25 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.9 2008/05/09 07:24:47 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -186,6 +186,7 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 		len -= n;
 		udaddr = (char *)udaddr + n;
 		kaddr = (const char *)kaddr + n;
+		vm_page_dirty(m);
 		vm_page_unhold(m);
 		sf_buf_free(sf);
 	}

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.32 2008/04/14 19:43:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.33 2008/05/09 07:24:48 dillon Exp $
  */
 
 /*
@@ -598,7 +598,7 @@ vm_object_page_clean_pass1(struct vm_page *p, void *data)
 	if ((info->limit & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC))
 		info->error = 1;
 	else
-		vm_page_protect(p, VM_PROT_READ);
+		vm_page_protect(p, VM_PROT_READ);	/* must not block */
 	return(0);
 }
 

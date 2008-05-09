@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.30 2008/04/28 21:16:27 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.31 2008/05/09 07:24:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1177,6 +1177,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		    mreq->object
 		);
 	}
+
 	/*
 	 * Calculate range to retrieve.  The pages have already been assigned
 	 * their swapblks.  We require a *contiguous* range that falls entirely
@@ -1187,7 +1188,6 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	 * The swp_*() calls must be made at splvm().  vm_page_free() does
 	 * not need to be, but it will go a little faster if it is.
 	 */
-
 	crit_enter();
 	blk = swp_pager_meta_ctl(mreq->object, mreq->pindex, 0);
 
@@ -1355,10 +1355,9 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
  *	those whos rtvals[] entry is not set to VM_PAGER_PEND on return.
  *	We need to unbusy the rest on I/O completion.
  */
-
 void
-swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
-    int *rtvals)
+swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
+		    boolean_t sync, int *rtvals)
 {
 	int i;
 	int n = 0;
@@ -1369,6 +1368,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		    m[0]->object
 		);
 	}
+
 	/*
 	 * Step 1
 	 *

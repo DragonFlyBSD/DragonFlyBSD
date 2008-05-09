@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.45 2008/04/14 20:00:29 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.46 2008/05/09 07:24:48 dillon Exp $
  */
 
 /*
@@ -131,8 +131,8 @@ static int vm_fault_ratelimit(struct vmspace *);
 static __inline void
 release_page(struct faultstate *fs)
 {
-	vm_page_wakeup(fs->m);
 	vm_page_deactivate(fs->m);
+	vm_page_wakeup(fs->m);
 	fs->m = NULL;
 }
 
@@ -378,7 +378,7 @@ RetryFault:
 	}
 
 	vm_page_flag_clear(fs.m, PG_ZERO);
-	vm_page_flag_set(fs.m, PG_MAPPED|PG_REFERENCED);
+	vm_page_flag_set(fs.m, PG_REFERENCED);
 
 	/*
 	 * If the page is not wired down, then put it where the pageout daemon
@@ -434,14 +434,18 @@ vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type, int *errorp)
  *
  * The returned page will be properly dirtied if VM_PROT_WRITE was specified,
  * and marked PG_REFERENCED as well.
+ *
+ * If the page cannot be faulted writable and VM_PROT_WRITE was specified, an
+ * error will be returned.
  */
 vm_page_t
 vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	      int fault_flags, int *errorp)
 {
-	int result;
 	vm_pindex_t first_pindex;
 	struct faultstate fs;
+	int result;
+	vm_prot_t orig_fault_type = fault_type;
 
 	mycpu->gd_cnt.v_vm_faults++;
 
@@ -555,6 +559,13 @@ RetryFault:
 		return(NULL);
 	}
 
+	if ((orig_fault_type & VM_PROT_WRITE) &&
+	    (fs.prot & VM_PROT_WRITE) == 0) {
+		*errorp = KERN_PROTECTION_FAILURE;
+		unlock_and_deallocate(&fs);
+		return(NULL);
+	}
+
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
 	 * will contain a busied page.
@@ -579,7 +590,7 @@ RetryFault:
 	 * now just do it unconditionally. XXX
 	 */
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
-	vm_page_flag_set(fs.m, PG_REFERENCED|PG_MAPPED);
+	vm_page_flag_set(fs.m, PG_REFERENCED);
 
 	/*
 	 * Unbusy the page by activating it.  It remains held and will not
@@ -606,7 +617,9 @@ RetryFault:
 }
 
 /*
- * Fault in the specified
+ * Fault in the specified (object,offset), dirty the returned page as
+ * needed.  If the requested fault_type cannot be done NULL and an
+ * error is returned.
  */
 vm_page_t
 vm_fault_object_page(vm_object_t object, vm_ooffset_t offset,
@@ -683,6 +696,12 @@ RetryFault:
 		goto RetryFault;
 	if (result != KERN_SUCCESS) {
 		*errorp = result;
+		return(NULL);
+	}
+
+	if ((fault_type & VM_PROT_WRITE) && (fs.prot & VM_PROT_WRITE) == 0) {
+		*errorp = KERN_PROTECTION_FAILURE;
+		unlock_and_deallocate(&fs);
 		return(NULL);
 	}
 
@@ -1087,8 +1106,10 @@ readrest:
 					if (mt->dirty == 0)
 						vm_page_test_dirty(mt);
 					if (mt->dirty) {
+						vm_page_busy(mt);
 						vm_page_protect(mt, VM_PROT_NONE);
 						vm_page_deactivate(mt);
+						vm_page_wakeup(mt);
 					} else {
 						vm_page_cache(mt);
 					}
@@ -1397,30 +1418,22 @@ readrest:
 	}
 
 	/*
-	 * Put this page into the physical map. We had to do the unlock above
-	 * because pmap_enter may cause other faults.   We don't put the page
-	 * back on the active queue until later so that the page-out daemon
-	 * won't find us (yet).
+	 * If the fault is a write, we know that this page is being
+	 * written NOW so dirty it explicitly to save on pmap_is_modified()
+	 * calls later.
+	 *
+	 * If this is a NOSYNC mmap we do not want to set PG_NOSYNC
+	 * if the page is already dirty to prevent data written with
+	 * the expectation of being synced from not being synced.
+	 * Likewise if this entry does not request NOSYNC then make
+	 * sure the page isn't marked NOSYNC.  Applications sharing
+	 * data should use the same flags to avoid ping ponging.
+	 *
+	 * Also tell the backing pager, if any, that it should remove
+	 * any swap backing since the page is now dirty.
 	 */
 	if (fs->prot & VM_PROT_WRITE) {
-		vm_page_flag_set(fs->m, PG_WRITEABLE);
 		vm_object_set_writeable_dirty(fs->m->object);
-
-		/*
-		 * If the fault is a write, we know that this page is being
-		 * written NOW so dirty it explicitly to save on 
-		 * pmap_is_modified() calls later.
-		 *
-		 * If this is a NOSYNC mmap we do not want to set PG_NOSYNC
-		 * if the page is already dirty to prevent data written with
-		 * the expectation of being synced from not being synced.
-		 * Likewise if this entry does not request NOSYNC then make
-		 * sure the page isn't marked NOSYNC.  Applications sharing
-		 * data should use the same flags to avoid ping ponging.
-		 *
-		 * Also tell the backing pager, if any, that it should remove
-		 * any swap backing since the page is now dirty.
-		 */
 		if (fs->entry->eflags & MAP_ENTRY_NOSYNC) {
 			if (fs->m->dirty == 0)
 				vm_page_flag_set(fs->m, PG_NOSYNC);
@@ -1659,7 +1672,6 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 
 		vm_page_flag_clear(dst_m, PG_ZERO);
 		pmap_enter(dst_map->pmap, vaddr, dst_m, prot, FALSE);
-		vm_page_flag_set(dst_m, PG_WRITEABLE|PG_MAPPED);
 
 		/*
 		 * Mark it no longer busy, and put it on the active list.
@@ -1709,8 +1721,8 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 	/*
 	 * if the requested page is not available, then give up now
 	 */
-
 	if (!vm_pager_has_page(object, pindex, &cbehind, &cahead)) {
+		*reqpage = 0;	/* not used by caller, fix compiler warn */
 		return 0;
 	}
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.111 2008/04/24 08:53:01 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.112 2008/05/09 07:24:46 dillon Exp $
  */
 
 /*
@@ -989,7 +989,8 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		PRELE(lp->lwp_proc);
 	} else {
 		/*
-		 * Don't have to worry about process locking or stacks in the kernel.
+		 * Don't have to worry about process locking or stacks
+		 * in the kernel.
 		 */
 		rv = vm_fault(map, va, ftype, VM_FAULT_NORMAL);
 	}

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.101 2008/05/06 00:13:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.102 2008/05/09 07:24:45 dillon Exp $
  */
 
 /*
@@ -146,6 +146,8 @@ SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
 /*
  * Sysctls determining current state of the buffer cache.
  */
+SYSCTL_INT(_vfs, OID_AUTO, nbuf, CTLFLAG_RD, &nbuf, 0,
+	"Total number of buffers in buffer cache");
 SYSCTL_INT(_vfs, OID_AUTO, numdirtybuffers, CTLFLAG_RD, &numdirtybuffers, 0,
 	"Pending number of dirty buffers (all)");
 SYSCTL_INT(_vfs, OID_AUTO, numdirtybuffershw, CTLFLAG_RD, &numdirtybuffershw, 0,
@@ -3318,14 +3320,21 @@ vfs_busy_pages(struct vnode *vp, struct buf *bp)
 			("vfs_busy_pages: no buffer offset"));
 		vfs_setdirty(bp);
 
+		/*
+		 * Loop until none of the pages are busy.
+		 */
 retry:
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m = bp->b_xio.xio_pages[i];
+
 			if (vm_page_sleep_busy(m, FALSE, "vbpage"))
 				goto retry;
 		}
 
-		bogus = 0;
+		/*
+		 * Setup for I/O, soft-busy the page right now because
+		 * the next loop may block.
+		 */
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m = bp->b_xio.xio_pages[i];
 
@@ -3334,6 +3343,16 @@ retry:
 				vm_object_pip_add(obj, 1);
 				vm_page_io_start(m);
 			}
+		}
+
+		/*
+		 * Adjust protections for I/O and do bogus-page mapping.
+		 * Assume that vm_page_protect() can block (it can block
+		 * if VM_PROT_NONE, don't take any chances regardless).
+		 */
+		bogus = 0;
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
+			vm_page_t m = bp->b_xio.xio_pages[i];
 
 			/*
 			 * When readying a vnode-backed buffer for a write
@@ -3350,12 +3369,14 @@ retry:
 			 * Bogus page replacement is, uh, bogus.  We need
 			 * to find a better way.
 			 */
-			vm_page_protect(m, VM_PROT_NONE);
 			if (bp->b_cmd == BUF_CMD_WRITE) {
+				vm_page_protect(m, VM_PROT_READ);
 				vfs_page_set_valid(bp, foff, i, m);
 			} else if (m->valid == VM_PAGE_BITS_ALL) {
 				bp->b_xio.xio_pages[i] = bogus_page;
 				bogus++;
+			} else {
+				vm_page_protect(m, VM_PROT_NONE);
 			}
 			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 		}

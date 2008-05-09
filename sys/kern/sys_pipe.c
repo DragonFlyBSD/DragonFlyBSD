@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.46 2008/05/08 01:31:01 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.47 2008/05/09 07:24:45 dillon Exp $
  */
 
 /*
@@ -464,7 +464,8 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			if (size > (u_int) uio->uio_resid)
 				size = (u_int) uio->uio_resid;
 
-			error = uiomove(&rpipe->pipe_buffer.buffer[rpipe->pipe_buffer.out],
+			error = uiomove(&rpipe->pipe_buffer.buffer
+					  [rpipe->pipe_buffer.out],
 					size, uio);
 			if (error)
 				break;
@@ -1052,7 +1053,8 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 				
 				/* Transfer first segment */
 
-				error = uiomove(&wpipe->pipe_buffer.buffer[wpipe->pipe_buffer.in], 
+				error = uiomove(&wpipe->pipe_buffer.buffer
+						  [wpipe->pipe_buffer.in], 
 						segsize, uio);
 				
 				if (error == 0 && segsize < size) {
@@ -1065,7 +1067,8 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 					    wpipe->pipe_buffer.size)
 						panic("Expected pipe buffer wraparound disappeared");
 						
-					error = uiomove(&wpipe->pipe_buffer.buffer[0],
+					error = uiomove(&wpipe->pipe_buffer.
+							  buffer[0],
 							size - segsize, uio);
 				}
 				if (error == 0) {

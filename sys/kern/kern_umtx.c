@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_umtx.c,v 1.8 2008/04/14 20:00:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_umtx.c,v 1.9 2008/05/09 07:24:45 dillon Exp $
  */
 
 /*
@@ -150,6 +150,7 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     }
 
     sf_buf_free(sf);
+    /*vm_page_dirty(m); we don't actually dirty the page */
     vm_page_unhold(m);
     return(error);
 }

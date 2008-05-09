@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.34 2008/04/28 21:16:27 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.35 2008/05/09 07:24:48 dillon Exp $
  */
 
 /*
@@ -392,19 +392,21 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 	int i;
 
 	/*
-	 * Initiate I/O.  Bump the vm_page_t->busy counter and
-	 * mark the pages read-only.
-	 *
+	 * Initiate I/O.  Bump the vm_page_t->busy counter.
+	 */
+	for (i = 0; i < count; i++) {
+		KASSERT(mc[i]->valid == VM_PAGE_BITS_ALL, ("vm_pageout_flush page %p index %d/%d: partially invalid page", mc[i], i, count));
+		vm_page_io_start(mc[i]);
+	}
+
+	/*
 	 * We must make the pages read-only.  This will also force the
 	 * modified bit in the related pmaps to be cleared.  The pager
 	 * cannot clear the bit for us since the I/O completion code
 	 * typically runs from an interrupt.  The act of making the page
 	 * read-only handles the case for us.
 	 */
-
 	for (i = 0; i < count; i++) {
-		KASSERT(mc[i]->valid == VM_PAGE_BITS_ALL, ("vm_pageout_flush page %p index %d/%d: partially invalid page", mc[i], i, count));
-		vm_page_io_start(mc[i]);
 		vm_page_protect(mc[i], VM_PROT_READ);
 	}
 
@@ -555,7 +557,9 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 		if ((p->flags & PG_REFERENCED) == 0) {
 			p->act_count -= min(p->act_count, ACT_DECLINE);
 			if (!info->limit && (vm_pageout_algorithm || (p->act_count == 0))) {
+				vm_page_busy(p);
 				vm_page_protect(p, VM_PROT_NONE);
+				vm_page_wakeup(p);
 				vm_page_deactivate(p);
 			} else {
 				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
@@ -570,7 +574,9 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
 		}
 	} else if (p->queue == PQ_INACTIVE) {
+		vm_page_busy(p);
 		vm_page_protect(p, VM_PROT_NONE);
+		vm_page_wakeup(p);
 	}
 	return(0);
 }
@@ -846,10 +852,8 @@ rescan0:
 		 * address space of a process running on another cpu.  A
 		 * user process (without holding the MP lock) running on
 		 * another cpu may be able to touch the page while we are
-		 * trying to remove it.  To prevent this from occuring we
-		 * must call pmap_remove_all() or otherwise make the page
-		 * read-only.  If the race occured pmap_remove_all() is
-		 * responsible for setting m->dirty.
+		 * trying to remove it.  vm_page_cache() will handle this
+		 * case for us.
 		 */
 		if (m->dirty == 0) {
 			vm_page_test_dirty(m);
@@ -1105,7 +1109,9 @@ rescan0:
 			    m->act_count < pass) {
 				page_shortage--;
 				if (m->object->ref_count == 0) {
+					vm_page_busy(m);
 					vm_page_protect(m, VM_PROT_NONE);
+					vm_page_wakeup(m);
 					if (m->dirty == 0)
 						vm_page_cache(m);
 					else
@@ -1145,6 +1151,8 @@ rescan0:
 			vm_page_deactivate(m);
 			continue;
 		}
+		KKASSERT((m->flags & PG_MAPPED) == 0);
+		KKASSERT(m->dirty == 0);
 		cache_rover = (cache_rover + PQ_PRIME2) & PQ_L2_MASK;
 		vm_pageout_page_free(m);
 		mycpu->gd_cnt.v_dfree++;
@@ -1325,7 +1333,9 @@ vm_pageout_page_stats(void)
 				 * operations would be higher than the value
 				 * of doing the operation.
 				 */
+				vm_page_busy(m);
 				vm_page_protect(m, VM_PROT_NONE);
+				vm_page_wakeup(m);
 				vm_page_deactivate(m);
 			} else {
 				m->act_count -= min(m->act_count, ACT_DECLINE);

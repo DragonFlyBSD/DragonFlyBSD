@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.51 2007/11/18 09:53:19 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.52 2008/05/09 07:24:45 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -1148,6 +1148,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    while (i != 0) {
 		i -= PAGE_SIZE;
 		m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
+		/* page should already be busy */
 		vm_page_free(m);
 	    }
 	    vm_map_delete(&kernel_map, addr, addr + size, &count);
@@ -1164,6 +1165,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
      *
      * Mark the map entry as non-pageable using a routine that allows us to
      * populate the underlying pages.
+     *
+     * The pages were busied by the allocations above.
      */
     vm_map_set_wired_quick(&kernel_map, addr, size, &count);
     crit_exit();
@@ -1176,13 +1179,15 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 
 	m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
 	m->valid = VM_PAGE_BITS_ALL;
+	/* page should already be busy */
 	vm_page_wire(m);
 	vm_page_wakeup(m);
 	pmap_enter(&kernel_pmap, addr + i, m, VM_PROT_ALL, 1);
 	if ((m->flags & PG_ZERO) == 0 && (flags & M_ZERO))
 	    bzero((char *)addr + i, PAGE_SIZE);
 	vm_page_flag_clear(m, PG_ZERO);
-	vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE | PG_REFERENCED);
+	KKASSERT(m->flags & (PG_WRITEABLE | PG_MAPPED));
+	vm_page_flag_set(m, PG_REFERENCED);
     }
     vm_map_unlock(&kernel_map);
     vm_map_entry_release(count);

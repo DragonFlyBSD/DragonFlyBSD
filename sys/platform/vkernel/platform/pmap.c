@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.28 2008/04/28 07:05:08 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.29 2008/05/09 07:24:47 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -1000,10 +1000,12 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m)
 		--m->wire_count;
 		KKASSERT(m->wire_count == 0);
 		--vmstats.v_wire_count;
+		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		vm_page_flash(m);
 		vm_page_free_zero(m);
 		return 1;
 	}
+	KKASSERT(m->hold_count > 1);
 	vm_page_unhold(m);
 	return 0;
 }
@@ -1346,9 +1348,9 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m, vm_offset_t va)
 	if (pv) {
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		m->md.pv_list_count--;
-		if (TAILQ_FIRST(&m->md.pv_list) == NULL)
-			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
+		if (TAILQ_EMPTY(&m->md.pv_list))
+			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		++pmap->pm_generation;
 		rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem);
 		free_pv_entry(pv);
@@ -1607,11 +1609,12 @@ pmap_remove_all(vm_page_t m)
 		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
 		++pv->pv_pmap->pm_generation;
 		m->md.pv_list_count--;
+		if (TAILQ_EMPTY(&m->md.pv_list))
+			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		pmap_unuse_pt(pv->pv_pmap, pv->pv_va, pv->pv_ptem);
 		free_pv_entry(pv);
 	}
-
-	vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+	KKASSERT((m->flags & (PG_MAPPED | PG_WRITEABLE)) == 0);
 	crit_exit();
 }
 
@@ -1813,6 +1816,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 				vm_page_dirty(om);
 			}
 			pa |= VPTE_MANAGED;
+			KKASSERT(m->flags & PG_MAPPED);
 		}
 		goto validate;
 	} 
@@ -1836,6 +1840,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
 		pmap_insert_entry(pmap, va, mpte, m);
 		pa |= VPTE_MANAGED;
+		vm_page_flag_set(m, PG_MAPPED);
 	}
 
 	/*
@@ -1853,7 +1858,8 @@ validate:
 
 	if (wired)
 		newpte |= VPTE_WIRED;
-	newpte |= VPTE_U;
+	if (pmap != &kernel_pmap)
+		newpte |= VPTE_U;
 
 	/*
 	 * If the mapping or permission bits are different from the
@@ -1866,26 +1872,23 @@ validate:
 	 */
 	if ((origpte & ~(VPTE_W|VPTE_M|VPTE_A)) != newpte) {
 		*pte = newpte | VPTE_A;
+		if (newpte & VPTE_W)
+			vm_page_flag_set(m, PG_WRITEABLE);
 	}
+	KKASSERT((newpte & VPTE_MANAGED) == 0 || m->flags & PG_MAPPED);
 }
 
 /*
- * This is a quick version of pmap_enter().  It is used only under the 
- * following conditions:
+ * This code works like pmap_enter() but assumes VM_PROT_READ and not-wired.
  *
- * (1) The pmap is not the kernel_pmap
- * (2) The page is not to be wired into the map
- * (3) The page is to mapped read-only in the pmap (initially that is)
- * (4) The calling procedure is responsible for flushing the TLB
- * (5) The page is always managed
- * (6) There is no prior mapping at the VA
+ * Currently this routine may only be used on user pmaps, not kernel_pmap.
  */
-
-static vm_page_t
-pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_page_t mpte)
+static void
+pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 {
 	vpte_t *pte;
 	vm_paddr_t pa;
+	vm_page_t mpte;
 	unsigned ptepindex;
 	vm_offset_t ptepa;
 
@@ -1894,17 +1897,14 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_page_t mpte)
 	KKASSERT(va >= VM_MIN_USER_ADDRESS && va < VM_MAX_USER_ADDRESS);
 
 	/*
-	 * Instantiate the page table page if required
-	 */
-
-	/*
-	 * Calculate pagetable page index
+	 * Calculate pagetable page (mpte), allocating it if necessary.
+	 *
+	 * A held page table page (mpte), or NULL, is passed onto the 
+	 * section following.
 	 */
 	ptepindex = va >> PDRSHIFT;
-	if (mpte && (mpte->pindex == ptepindex)) {
-		mpte->hold_count++;
-	} else {
-retry:
+
+	do {
 		/*
 		 * Get the page directory entry
 		 */
@@ -1924,13 +1924,12 @@ retry:
 				mpte = pmap_page_lookup( pmap->pm_pteobj, ptepindex);
 				pmap->pm_ptphint = mpte;
 			}
-			if (mpte == NULL)
-				goto retry;
-			mpte->hold_count++;
+			if (mpte)
+				mpte->hold_count++;
 		} else {
 			mpte = _pmap_allocpte(pmap, ptepindex);
 		}
-	}
+	} while (mpte == NULL);
 
 	/*
 	 * Ok, now that the page table page has been validated, get the pte.
@@ -1939,9 +1938,8 @@ retry:
 	 */
 	pte = pmap_pte(pmap, va);
 	if (*pte) {
-		if (mpte)
-			pmap_unwire_pte_hold(pmap, mpte);
-		return 0;
+		pmap_unwire_pte_hold(pmap, mpte);
+		return;
 	}
 
 	/*
@@ -1949,8 +1947,10 @@ retry:
 	 * raise IPL while manipulating pv_table since pmap_enter can be
 	 * called at interrupt time.
 	 */
-	if ((m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0)
+	if ((m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
 		pmap_insert_entry(pmap, va, mpte, m);
+		vm_page_flag_set(m, PG_MAPPED);
+	}
 
 	/*
 	 * Increment counters
@@ -1966,8 +1966,8 @@ retry:
 		*pte = (vpte_t)pa | VPTE_V | VPTE_U;
 	else
 		*pte = (vpte_t)pa | VPTE_V | VPTE_U | VPTE_MANAGED;
-
-	return mpte;
+	/*pmap_inval_add(&info, pmap, va); shouldn't be needed 0->valid */
+	/*pmap_inval_flush(&info); don't need for vkernel */
 }
 
 /*
@@ -2082,10 +2082,8 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 			vm_page_deactivate(p);
 		vm_page_busy(p);
 		rel_index = p->pindex - info->start_pindex;
-		info->mpte = pmap_enter_quick(info->pmap,
-					      info->addr + i386_ptob(rel_index),
-					      p, info->mpte);
-		vm_page_flag_set(p, PG_MAPPED);
+		pmap_enter_quick(info->pmap,
+				 info->addr + i386_ptob(rel_index), p);
 		vm_page_wakeup(p);
 	}
 	return(0);
@@ -2113,7 +2111,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 	vm_offset_t starta;
 	vm_offset_t addr;
 	vm_pindex_t pindex;
-	vm_page_t m, mpte;
+	vm_page_t m;
 	vm_object_t object;
 	struct lwp *lp;
 	int i;
@@ -2141,7 +2139,6 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 	 * page/object association, interrupts can free pages and remove 
 	 * them from their objects.
 	 */
-	mpte = NULL;
 	crit_enter();
 	for (i = 0; i < PAGEORDER_SIZE; i++) {
 		vm_object_t lobject;
@@ -2204,8 +2201,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 				vm_page_deactivate(m);
 			}
 			vm_page_busy(m);
-			mpte = pmap_enter_quick(pmap, addr, m, mpte);
-			vm_page_flag_set(m, PG_MAPPED);
+			pmap_enter_quick(pmap, addr, m);
 			vm_page_wakeup(m);
 		}
 	}
@@ -2266,6 +2262,15 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	vpte_t *dst_frame;
 	vm_page_t m;
 
+        /*
+         * XXX BUGGY.  Amoung other things srcmpte is assumed to remain
+         * valid through blocking calls, and that's just not going to
+         * be the case.
+         *
+         * FIXME!
+         */
+	return;
+
 	if (dst_addr != src_addr)
 		return;
 	if (dst_pmap->pm_pdir == NULL)
@@ -2317,9 +2322,10 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 		}
 
 		srcmpte = vm_page_lookup(src_pmap->pm_pteobj, ptepindex);
-		if ((srcmpte == NULL) ||
-			(srcmpte->hold_count == 0) || (srcmpte->flags & PG_BUSY))
+		if ((srcmpte == NULL) || (srcmpte->hold_count == 0) ||
+		    (srcmpte->flags & PG_BUSY)) {
 			continue;
+		}
 
 		if (pdnxt > end_addr)
 			pdnxt = end_addr;
@@ -2328,6 +2334,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 		dst_pte = dst_frame + ((addr - src_addr) >> PAGE_SHIFT);
 		while (addr < pdnxt) {
 			vpte_t ptetemp;
+
 			ptetemp = *src_pte;
 			/*
 			 * we only virtual copy managed pages
@@ -2345,7 +2352,8 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 				src_frame = get_ptbase1(src_pmap, src_addr);
 				dst_frame = get_ptbase2(dst_pmap, src_addr);
 
-				if ((*dst_pte == 0) && (ptetemp = *src_pte)) {
+				if ((*dst_pte == 0) && (ptetemp = *src_pte) &&
+				    (ptetemp & VPTE_MANAGED) != 0) {
 					/*
 					 * Clear the modified and accessed
 					 * (referenced) bits during the copy.
@@ -2360,6 +2368,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 					++dst_pmap->pm_stats.resident_count;
 					pmap_insert_entry(dst_pmap, addr,
 						dstmpte, m);
+					KKASSERT(m->flags & PG_MAPPED);
 	 			} else {
 					pmap_unwire_pte_hold(dst_pmap, dstmpte);
 				}
@@ -2612,9 +2621,8 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 
 		m->md.pv_list_count--;
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
-		if (TAILQ_FIRST(&m->md.pv_list) == NULL) {
+		if (TAILQ_FIRST(&m->md.pv_list) == NULL)
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-		}
 
 		pmap_unuse_pt(pmap, pv->pv_va, pv->pv_ptem);
 		free_pv_entry(pv);
@@ -2777,6 +2785,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 	if ((prot & VM_PROT_WRITE) == 0) {
 		if (prot & (VM_PROT_READ | VM_PROT_EXECUTE)) {
 			pmap_clearbit(m, VPTE_W);
+			vm_page_flag_clear(m, PG_WRITEABLE);
 		} else {
 			pmap_remove_all(m);
 		}

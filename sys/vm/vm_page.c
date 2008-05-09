@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.37 2008/04/14 20:00:29 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.38 2008/05/09 07:24:48 dillon Exp $
  */
 
 /*
@@ -374,7 +374,7 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	 * Since we are inserting a new and possibly dirty page,
 	 * update the object's OBJ_WRITEABLE and OBJ_MIGHTBEDIRTY flags.
 	 */
-	if (m->flags & PG_WRITEABLE)
+	if ((m->valid & m->dirty) || (m->flags & PG_WRITEABLE))
 		vm_object_set_writeable_dirty(object);
 }
 
@@ -929,6 +929,8 @@ vm_page_free_toq(vm_page_t m)
 	crit_enter();
 	mycpu->gd_cnt.v_tfree++;
 
+	KKASSERT((m->flags & PG_MAPPED) == 0);
+
 	if (m->busy || ((m->queue - m->pc) == PQ_FREE)) {
 		kprintf(
 		"vm_page_free: pindex(%lu), busy(%d), PG_BUSY(%d), hold(%d)\n",
@@ -1059,9 +1061,8 @@ vm_page_wire(vm_page_t m)
 		}
 		m->wire_count++;
 		KASSERT(m->wire_count != 0,
-		    ("vm_page_wire: wire_count overflow m=%p", m));
+			("vm_page_wire: wire_count overflow m=%p", m));
 	}
-	vm_page_flag_set(m, PG_MAPPED);
 	crit_exit();
 }
 
@@ -1235,8 +1236,10 @@ vm_page_cache(vm_page_t m)
 	/*
 	 * Already in the cache (and thus not mapped)
 	 */
-	if ((m->queue - m->pc) == PQ_CACHE)
+	if ((m->queue - m->pc) == PQ_CACHE) {
+		KKASSERT((m->flags & PG_MAPPED) == 0);
 		return;
+	}
 
 	/*
 	 * Caller is required to test m->dirty, but note that the act of
@@ -1250,11 +1253,17 @@ vm_page_cache(vm_page_t m)
 
 	/*
 	 * Remove all pmaps and indicate that the page is not
-	 * writeable or mapped.  Deal with the case where the page
-	 * may have become dirty via a race.
+	 * writeable or mapped.  Our vm_page_protect() call may
+	 * have blocked (especially w/ VM_PROT_NONE), so recheck
+	 * everything.
 	 */
+	vm_page_busy(m);
 	vm_page_protect(m, VM_PROT_NONE);
-	if (m->dirty) {
+	vm_page_wakeup(m);
+	if ((m->flags & (PG_BUSY|PG_UNMANAGED|PG_MAPPED)) || m->busy ||
+			m->wire_count || m->hold_count) {
+		/* do nothing */
+	} else if (m->dirty) {
 		vm_page_deactivate(m);
 	} else {
 		vm_page_unqueue_nowakeup(m);
@@ -1503,6 +1512,27 @@ void
 vm_page_clear_dirty(vm_page_t m, int base, int size)
 {
 	m->dirty &= ~vm_page_bits(base, size);
+}
+
+/*
+ * Make the page all-dirty.
+ *
+ * Also make sure the related object and vnode reflect the fact that the
+ * object may now contain a dirty page.
+ */
+void
+vm_page_dirty(vm_page_t m)
+{
+#ifdef INVARIANTS
+        int pqtype = m->queue - m->pc;
+#endif
+        KASSERT(pqtype != PQ_CACHE && pqtype != PQ_FREE,
+                ("vm_page_dirty: page in free/cache queue!"));
+	if (m->dirty != VM_PAGE_BITS_ALL) {
+		m->dirty = VM_PAGE_BITS_ALL;
+		if (m->object)
+			vm_object_set_writeable_dirty(m->object);
+	}
 }
 
 /*

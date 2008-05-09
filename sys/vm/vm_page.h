@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.27 2008/04/14 20:00:29 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.28 2008/05/09 07:24:48 dillon Exp $
  */
 
 /*
@@ -297,19 +297,30 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 /*
  * These are the flags defined for vm_page.
  *
- * Note: PG_UNMANAGED (used by OBJT_PHYS) indicates that the page is
- * 	 not under PV management but otherwise should be treated as a
- *	 normal page.  Pages not under PV management cannot be paged out
- *	 via the object/vm_page_t because there is no knowledge of their
- *	 pte mappings, nor can they be removed from their objects via 
- *	 the object, and such pages are also not on any PQ queue.
+ *  PG_UNMANAGED (used by OBJT_PHYS) indicates that the page is
+ *  not under PV management but otherwise should be treated as a
+ *  normal page.  Pages not under PV management cannot be paged out
+ *  via the object/vm_page_t because there is no knowledge of their
+ *  pte mappings, nor can they be removed from their objects via 
+ *  the object, and such pages are also not on any PQ queue.  The
+ *  PG_MAPPED and PG_WRITEABLE flags are not applicable.
+ *
+ *  PG_MAPPED only applies to managed pages, indicating whether the page
+ *  is mapped onto one or more pmaps.  A page might still be mapped to
+ *  special pmaps in an unmanaged fashion, for example when mapped into a
+ *  buffer cache buffer, without setting PG_MAPPED.
+ *
+ *  PG_WRITEABLE indicates that there may be a writeable managed pmap entry
+ *  somewhere, and that the page can be dirtied by hardware at any time
+ *  and may have to be tested for that.  The modified bit in unmanaged
+ *  mappings or in the special clean map is not tested.
  */
 #define	PG_BUSY		0x0001		/* page is in transit (O) */
 #define	PG_WANTED	0x0002		/* someone is waiting for page (O) */
 #define PG_WINATCFLS	0x0004		/* flush dirty page on inactive q */
 #define	PG_FICTITIOUS	0x0008		/* physical page doesn't exist (O) */
-#define	PG_WRITEABLE	0x0010		/* page is mapped writeable */
-#define PG_MAPPED	0x0020		/* page is mapped */
+#define	PG_WRITEABLE	0x0010		/* page is writeable */
+#define PG_MAPPED	0x0020		/* page is mapped (managed) */
 #define	PG_ZERO		0x0040		/* page is zeroed */
 #define PG_REFERENCED	0x0080		/* page has been referenced */
 #define PG_CLEANCHK	0x0100		/* page will be checked for cleaning */
@@ -494,6 +505,7 @@ void vm_page_free_toq(vm_page_t m);
 vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t, int);
 void vm_contig_pg_free(int, u_long);
 void vm_page_event_internal(vm_page_t, vm_page_event_t);
+void vm_page_dirty(vm_page_t m);
 
 /*
  * Holding a page keeps it from being reused.  Other parts of the system
@@ -529,6 +541,10 @@ vm_page_hold(vm_page_t mem)
  *
  * Since 'prot' is usually a constant, this inline usually winds up optimizing
  * out the primary conditional.
+ *
+ * WARNING: VM_PROT_NONE can block, but will loop until all mappings have
+ * been cleared.  Callers should be aware that other page related elements
+ * might have changed, however.
  */
 static __inline void
 vm_page_protect(vm_page_t mem, int prot)
@@ -536,11 +552,11 @@ vm_page_protect(vm_page_t mem, int prot)
 	if (prot == VM_PROT_NONE) {
 		if (mem->flags & (PG_WRITEABLE|PG_MAPPED)) {
 			pmap_page_protect(mem, VM_PROT_NONE);
-			vm_page_flag_clear(mem, PG_WRITEABLE|PG_MAPPED);
+			/* PG_WRITEABLE & PG_MAPPED cleared by call */
 		}
 	} else if ((prot == VM_PROT_READ) && (mem->flags & PG_WRITEABLE)) {
 		pmap_page_protect(mem, VM_PROT_READ);
-		vm_page_flag_clear(mem, PG_WRITEABLE);
+		/* PG_WRITEABLE cleared by call */
 	}
 }
 
@@ -564,6 +580,7 @@ vm_page_copy(vm_page_t src_m, vm_page_t dest_m)
 {
 	pmap_copy_page(VM_PAGE_TO_PHYS(src_m), VM_PAGE_TO_PHYS(dest_m));
 	dest_m->valid = VM_PAGE_BITS_ALL;
+	dest_m->dirty = VM_PAGE_BITS_ALL;
 }
 
 /*
@@ -623,22 +640,6 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 	}
 	return(FALSE);
 }
-
-/*
- * Make page all dirty
- */
-static __inline void
-_vm_page_dirty(vm_page_t m, const char *info)
-{
-#ifdef INVARIANTS
-	int pqtype = m->queue - m->pc;
-#endif
-	KASSERT(pqtype != PQ_CACHE && pqtype != PQ_FREE,
-		("vm_page_dirty: page in free/cache queue!"));
-	m->dirty = VM_PAGE_BITS_ALL;
-}
-
-#define vm_page_dirty(m)	_vm_page_dirty(m, __FUNCTION__)
 
 /*
  * Set page to not be dirty.  Note: does not clear pmap modify bits .

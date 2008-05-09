@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.15 2007/08/13 17:20:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.16 2008/05/09 07:24:45 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -142,9 +142,10 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
 
 	/*
 	 * If a failure occured clean out what we loaded and return EFAULT.
-	 * Return 0 on success.
+	 * Return 0 on success.  Do not dirty the pages.
 	 */
 	if (i < XIO_INTERNAL_PAGES && n) {
+	    xio->xio_flags &= ~XIOF_WRITE;
 	    xio_release(xio);
 	    xio->xio_error = EFAULT;
 	}
@@ -203,7 +204,8 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
 }
 
 /*
- * Initialize an XIO given an array of vm_page pointers.
+ * Initialize an XIO given an array of vm_page pointers.  The caller is
+ * responsible for any modified state changes for the pages.
  */
 int
 xio_init_pages(xio_t xio, struct vm_page **mbase, int npages, int xflags)
@@ -240,6 +242,8 @@ xio_release(xio_t xio)
     crit_enter();
     for (i = 0; i < xio->xio_npages; ++i) {
 	m = xio->xio_pages[i];
+	if (xio->xio_flags & XIOF_WRITE)
+		vm_page_dirty(m);
 	vm_page_unhold(m);
     }
     crit_exit();
