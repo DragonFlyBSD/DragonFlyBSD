@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.14 2006/04/13 11:53:39 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.15 2008/05/09 16:03:27 dillon Exp $
  */
 
 #include "namespace.h"
@@ -285,6 +285,8 @@ __pthread_mutex_trylock(pthread_mutex_t *m)
 	struct pthread *curthread = tls_get_curthread();
 	int ret;
 
+	if (__predict_false(m == NULL))
+		return(EINVAL);
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
 	 * initialization:
@@ -372,12 +374,14 @@ __pthread_mutex_lock(pthread_mutex_t *m)
 
 	_thr_check_init();
 
-	curthread = tls_get_curthread();
+	if (__predict_false(m == NULL))
+		return(EINVAL);
 
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
 	 * initialization:
 	 */
+	curthread = tls_get_curthread();
 	if (__predict_false(*m == NULL)) {
 		ret = init_static(curthread, m);
 		if (__predict_false(ret))
@@ -394,12 +398,14 @@ _pthread_mutex_lock(pthread_mutex_t *m)
 
 	_thr_check_init();
 
-	curthread = tls_get_curthread();
+	if (__predict_false(m == NULL))
+		return(EINVAL);
 
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
 	 * initialization marking it private (delete safe):
 	 */
+	curthread = tls_get_curthread();
 	if (__predict_false(*m == NULL)) {
 		ret = init_static_private(curthread, m);
 		if (__predict_false(ret))
@@ -417,12 +423,14 @@ __pthread_mutex_timedlock(pthread_mutex_t *m,
 
 	_thr_check_init();
 
-	curthread = tls_get_curthread();
+	if (__predict_false(m == NULL))
+		return(EINVAL);
 
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
 	 * initialization:
 	 */
+	curthread = tls_get_curthread();
 	if (__predict_false(*m == NULL)) {
 		ret = init_static(curthread, m);
 		if (__predict_false(ret))
@@ -439,6 +447,9 @@ _pthread_mutex_timedlock(pthread_mutex_t *m,
 	int	ret;
 
 	_thr_check_init();
+
+	if (__predict_false(m == NULL))
+		return(EINVAL);
 
 	curthread = tls_get_curthread();
 
@@ -457,6 +468,8 @@ _pthread_mutex_timedlock(pthread_mutex_t *m,
 int
 _pthread_mutex_unlock(pthread_mutex_t *m)
 {
+	if (__predict_false(m == NULL))
+		return(EINVAL);
 	return (mutex_unlock_common(m));
 }
 
@@ -556,7 +569,6 @@ mutex_unlock_common(pthread_mutex_t *mutex)
 
 	if (__predict_false((m = *mutex)== NULL))
 		return (EINVAL);
-
 	if (__predict_false(m->m_owner != curthread))
 		return (EPERM);
 
@@ -600,9 +612,10 @@ _mutex_cv_unlock(pthread_mutex_t *mutex, int *count)
 	struct pthread *curthread = tls_get_curthread();
 	struct pthread_mutex *m;
 
-	if (__predict_false((m = *mutex)== NULL))
+	if (__predict_false(mutex == NULL))
 		return (EINVAL);
-
+	if (__predict_false((m = *mutex) == NULL))
+		return (EINVAL);
 	if (__predict_false(m->m_owner != curthread))
 		return (EPERM);
 
