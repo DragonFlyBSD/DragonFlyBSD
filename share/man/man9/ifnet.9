@@ -27,8 +27,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/ifnet.9,v 1.9.2.10 2003/06/15 02:22:30 hmp Exp $
-.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.8 2007/11/23 23:03:57 swildner Exp $
-.Dd January 15, 1997
+.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.9 2008/05/09 22:38:35 swildner Exp $
+.Dd May 9, 2008
 .Os
 .Dt IFNET 9
 .Sh NAME
@@ -91,27 +91,23 @@
 .Fa "struct sockaddr *dst" "struct rtentry *rt"
 .Fc
 .Ft void
+.Fn \*(lp*if_input\*(rp "struct ifnet *ifp" "struct mbuf *m"
+.Ft void
 .Fn \*(lp*if_start\*(rp "struct ifnet *ifp"
 .Ft int
-.Fn \*(lp*if_done\*(rp "struct ifnet *ifp"
-.Ft int
-.Fn \*(lp*if_ioctl\*(rp "struct ifnet *ifp" "int cmd" "caddr_t data"
+.Fo \*(lp*if_ioctl\*(rp
+.Fa "struct ifnet *ifp" "u_long command" "caddr_t data" "struct ucred *cr"
+.Fc
 .Ft void
 .Fn \*(lp*if_watchdog\*(rp "struct ifnet *ifp"
-.Ft int
-.Fn \*(lp*if_poll_recv\*(rp "struct ifnet *ifp" "int *quotap"
-.Ft int
-.Fn \*(lp*if_poll_xmit\*(rp "struct ifnet *ifp" "int *quotap"
-.Ft void
-.Fn \*(lp*if_poll_inttrn\*(rp "struct ifnet *ifp"
-.Ft void
-.Fn \*(lp*if_poll_slowinput\*(rp "struct ifnet *ifp" "struct mbuf *m"
 .Ft void
 .Fn \*(lp*if_init\*(rp "void *if_softc"
 .Ft int
 .Fo \*(lp*if_resolvemulti\*(rp
 .Fa "struct ifnet *ifp" "struct sockaddr **retsa" "struct sockaddr *addr"
 .Fc
+.Ft void
+.Fn \*(lp*if_poll\*(rp "struct ifnet *ifp" "enum poll_cmd cmd" "int count"
 .Ss "struct ifaddr member function"
 .Ft void
 .Fo \*(lp*ifa_rtrequest\*(rp
