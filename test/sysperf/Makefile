@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.16 2006/09/10 01:26:41 dillon Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.17 2008/05/09 15:49:42 dillon Exp $
 #
 
 TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 \
@@ -11,7 +11,8 @@ TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 \
 	/tmp/mbw1 \
 	/tmp/upc1 \
 	/tmp/exec1 /tmp/exec2 \
-	/tmp/mem1 /tmp/mem2
+	/tmp/mem1 /tmp/mem2 \
+	/tmp/cld1
 
 .if defined(NO_OPTIMIZE)
 COPTFLAGS= -O
@@ -21,6 +22,9 @@ COPTFLAGS= -O2
 CFLAGS= ${COPTFLAGS} -g -I/usr/src/sys
 
 all:	$(TARGETS)
+
+/tmp/cld1: cld1.c blib.c
+	$(CC) $(CFLAGS) cld1.c blib.c -o /tmp/cld1
 
 /tmp/sc1: syscall1.c blib.c
 	$(CC) $(CFLAGS) syscall1.c blib.c -o /tmp/sc1
