@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.12 2008/05/05 20:34:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.13 2008/05/10 20:07:14 dillon Exp $
  */
 
 #include "hammer.h"
@@ -191,10 +191,13 @@ retry:
 
 		/*
 		 * Bad hack for now, don't blow out the kernel's buffer
-		 * cache.
+		 * cache.  NOTE: We still hold locks on the cursor, we
+		 * cannot call the flusher synchronously.
 		 */
-		if (trans->hmp->locked_dirty_count > hammer_limit_dirtybufs)
-			hammer_flusher_sync(trans->hmp);
+		if (trans->hmp->locked_dirty_count > hammer_limit_dirtybufs) {
+			hammer_flusher_async(trans->hmp);
+			tsleep(trans, 0, "hmrslo", hz / 10);
+		}
 		error = hammer_signal_check(trans->hmp);
 		if (error == 0)
 			error = hammer_btree_iterate_reverse(&cursor);
