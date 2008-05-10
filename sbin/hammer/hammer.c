@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.14 2008/05/04 19:18:17 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.15 2008/05/10 17:54:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -319,6 +319,7 @@ usage(int exit_code)
 		"hammer [-s linkpath] prune <filesystem> [using <configfile>]\n"
 		"hammer [-s linkpath] prune <filesystem> from <modulo_time> to "
 				"<modulo_time> every <modulo_time>\n"
+		"hammer prune <filesystem> from <modulo_time> everything\n"
 		"hammer prune <filesystem> everything\n"
 		"hammer reblock <filesystem> [compact%%] (default 90%%)\n"
 		"hammer history[@offset[,len]] <file-1>...<file-N>\n"

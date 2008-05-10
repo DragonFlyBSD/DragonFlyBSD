@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.6 2008/05/05 20:34:52 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.7 2008/05/10 17:54:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,6 +42,12 @@ static void hammer_prune_load_file(hammer_tid_t now_tid,
 static int hammer_prune_parse_line(hammer_tid_t now_tid,
 			struct hammer_ioc_prune *prune,
 			const char *filesystem, char **av, int ac);
+static int hammer_prune_parse_line_short(hammer_tid_t now_tid,
+			struct hammer_ioc_prune *prune,
+			const char *filesystem, char **av);
+static int hammer_prune_parse_line_long(hammer_tid_t now_tid,
+			struct hammer_ioc_prune *prune,
+			const char *filesystem, char **av);
 static void hammer_prune_create_links(const char *filesystem,
 			struct hammer_ioc_prune *prune);
 static void hammer_prune_make_softlink(const char *filesystem,
@@ -164,10 +170,81 @@ plural(int notplural)
  * Parse the following parameters:
  *
  * <filesystem> from <modulo_time> to <modulo_time> every <modulo_time>
+ * <filesystem> from <modulo_time> everything
  */
 static int
 hammer_prune_parse_line(hammer_tid_t now_tid, struct hammer_ioc_prune *prune,
 			const char *filesystem, char **av, int ac)
+{
+	int r;
+
+	switch(ac) {
+	case 4:
+		r = hammer_prune_parse_line_short(now_tid, prune,
+						  filesystem, av);
+		break;
+	case 7:
+		r = hammer_prune_parse_line_long(now_tid, prune,
+						 filesystem, av);
+		break;
+	default:
+		r = -1;
+		break;
+	}
+	return(r);
+}
+
+static int
+hammer_prune_parse_line_short(hammer_tid_t now_tid,
+			     struct hammer_ioc_prune *prune,
+			     const char *filesystem, char **av)
+{
+	struct hammer_ioc_prune_elm *elm;
+	u_int64_t from_time;
+	char *from_stamp_str;
+
+	if (strcmp(av[0], filesystem) != 0)
+		return(0);
+	if (strcmp(av[1], "from") != 0)
+		return(-1);
+	if (strcmp(av[3], "everything") != 0)
+		return(-1);
+	if (parse_modulo_time(av[2], &from_time) < 0)
+		return(-1);
+	if (from_time == 0) {
+		fprintf(stderr, "Bad from or to time specification.\n");
+		return(-1);
+	}
+	if (prune->nelms == HAMMER_MAX_PRUNE_ELMS) {
+		fprintf(stderr, "Too many prune specifications in file! "
+			"Max is %d\n", HAMMER_MAX_PRUNE_ELMS);
+		return(-1);
+	}
+
+	/*
+	 * Example:  from 1y everything
+	 */
+	elm = &prune->elms[prune->nelms++];
+	elm->beg_tid = 1;
+	elm->end_tid = now_tid - now_tid % from_time;
+	if (now_tid - elm->end_tid < from_time)
+		elm->end_tid -= from_time;
+	assert(elm->beg_tid < elm->end_tid);
+	elm->mod_tid = elm->end_tid - elm->beg_tid;
+
+	/*
+	 * Convert back to local time for pretty printing
+	 */
+	from_stamp_str = tid_to_stamp_str(elm->end_tid);
+	printf("Prune everything older then %s", from_stamp_str);
+	free(from_stamp_str);
+	return(0);
+}
+
+static int
+hammer_prune_parse_line_long(hammer_tid_t now_tid,
+			     struct hammer_ioc_prune *prune,
+			     const char *filesystem, char **av)
 {
 	struct hammer_ioc_prune_elm *elm;
 	u_int64_t from_time;
@@ -176,8 +253,6 @@ hammer_prune_parse_line(hammer_tid_t now_tid, struct hammer_ioc_prune *prune,
 	char *from_stamp_str;
 	char *to_stamp_str;
 
-	if (ac != 7)
-		return(-1);
 	if (strcmp(av[0], filesystem) != 0)
 		return(0);
 	if (strcmp(av[1], "from") != 0)
@@ -381,6 +456,7 @@ prune_usage(int code)
 	fprintf(stderr, "Bad prune directive, specify one of:\n"
 			"prune filesystem [using filename]\n"
 			"prune filesystem from <modulo_time> to <modulo_time> every <modulo_time>\n"
+			"prune filesystem from <modulo_time> everything\n"
 			"prune filesystem everything\n");
 	exit(code);
 }
