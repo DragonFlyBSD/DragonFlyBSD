@@ -31,7 +31,7 @@
 .\"
 .\"	From: @(#)sigaction.2	8.2 (Berkeley) 4/3/94
 .\" $FreeBSD: src/lib/libc/sys/sigaction.2,v 1.22.2.10 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.9 2007/09/08 20:50:50 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.10 2008/05/10 20:39:51 swildner Exp $
 .\"
 .Dd April 3, 1994
 .Dt SIGACTION 2
@@ -418,15 +418,15 @@ Realtime Interfaces:
 .Fn aio_error ,
 .Fn clock_gettime ,
 .Fn sigpause ,
-.Fn timer_getoverrun ,
+.\".Fn timer_getoverrun ,
 .Fn aio_return ,
 .Fn fdatasync ,
 .Fn sigqueue ,
-.Fn timer_gettime ,
+.\".Fn timer_gettime ,
 .Fn aio_suspend ,
 .Fn sem_post ,
-.Fn sigset ,
-.Fn timer_settime .
+.Fn sigset .
+.\".Fn timer_settime .
 .Pp
 All functions not in the above lists are considered to be unsafe
 with respect to signals.
