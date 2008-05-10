@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.11 2008/05/05 20:34:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.12 2008/05/10 19:52:38 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -110,10 +110,13 @@ retry:
 
 		/*
 		 * Bad hack for now, don't blow out the kernel's buffer
-		 * cache.
+		 * cache.  NOTE: We still hold locks on the cursor, we
+		 * cannot call the flusher synchronously.
 		 */
-		if (trans->hmp->locked_dirty_count > hammer_limit_dirtybufs)
-			hammer_flusher_sync(trans->hmp);
+		if (trans->hmp->locked_dirty_count > hammer_limit_dirtybufs) {
+			hammer_flusher_async(trans->hmp);
+			tsleep(trans, 0, "hmrslo", hz / 10);
+		}
 		if (error == 0)
 			error = hammer_signal_check(trans->hmp);
 	}
@@ -324,8 +327,7 @@ hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 		ndata_offset = 0;
 		inline_data = 0;
 	}
-	hammer_modify_record_field(cursor->trans, cursor->record_buffer,
-				   orec, base.base.rec_type, 1);
+	hammer_modify_record_all(cursor->trans, cursor->record_buffer, orec);
 	orec->base.base.rec_type |= HAMMER_RECTYPE_MOVED;
 	orec->base.signature = HAMMER_RECORD_SIGNATURE_DESTROYED;
 	hammer_modify_record_done(cursor->record_buffer, orec);
@@ -349,6 +351,7 @@ hammer_reblock_record(struct hammer_ioc_reblock *reblock,
 		hammer_modify_node_done(cursor->node);
 		nrec->base.data_off = ndata_offset;
 	}
+	nrec->base.rec_crc = crc32(&nrec->base.data_crc, HAMMER_RECORD_CRCSIZE);
 	hammer_modify_buffer_done(rec_buffer);
 
 done:
@@ -375,6 +378,8 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 	onode = cursor->node;
 	nnode = hammer_alloc_btree(cursor->trans, &error);
 	hammer_lock_ex(&nnode->lock);
+
+	hammer_modify_node_noundo(cursor->trans, nnode);
 
 	if (nnode == NULL)
 		return (error);
@@ -415,6 +420,7 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 		kprintf("REBLOCK NODE %016llx -> %016llx\n",
 			onode->node_offset, nnode->node_offset);
 	}
+	hammer_modify_node_done(nnode);
 
 	cursor->node = nnode;
 	hammer_rel_node(onode);
