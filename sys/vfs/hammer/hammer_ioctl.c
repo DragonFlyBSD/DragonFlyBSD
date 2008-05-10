@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.13 2008/05/10 20:07:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.14 2008/05/10 22:56:36 dillon Exp $
  */
 
 #include "hammer.h"
@@ -188,6 +188,7 @@ retry:
 					elm->base.obj_id, elm->base.key);
 			}
 		}
+		++prune->stat_scanrecords;
 
 		/*
 		 * Bad hack for now, don't blow out the kernel's buffer

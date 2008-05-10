@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.7 2008/05/10 17:54:59 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.8 2008/05/10 22:56:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -111,8 +111,10 @@ hammer_cmd_prune(char **av, int ac)
 	close(fd);
 	if (LinkPath)
 		hammer_prune_create_links(filesystem, &prune);
-	printf("Pruned %lld records (%lld directory entries) and %lld bytes\n",
+	printf("Pruned %lld/%lld records (%lld directory entries) "
+	       "and %lld bytes\n",
 		prune.stat_rawrecords,
+		prune.stat_scanrecords,
 		prune.stat_dirrecords,
 		prune.stat_bytes
 	);
