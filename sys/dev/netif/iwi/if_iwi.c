@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.8.2.6 2006/02/23 02:06:46 sam Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.19 2007/02/20 14:24:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.20 2008/05/10 07:11:28 sephe Exp $
  */
 
 /*-
@@ -417,7 +417,6 @@ iwi_attach(device_t dev)
 	    IEEE80211_C_MONITOR |	/* monitor mode supported */
 	    IEEE80211_C_TXPMGT |	/* tx power management */
 	    IEEE80211_C_SHPREAMBLE |	/* short preamble supported */
-	    IEEE80211_C_WEP |		/* WEP */
 	    IEEE80211_C_WPA |		/* 802.11i */
 	    IEEE80211_C_WME;		/* 802.11e */
 
