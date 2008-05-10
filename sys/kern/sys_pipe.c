@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.47 2008/05/09 07:24:45 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.48 2008/05/10 01:25:55 dillon Exp $
  */
 
 /*
@@ -951,18 +951,22 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 
 #ifndef PIPE_NODIRECT
 		/*
-		 * If the transfer is large, we can gain performance if
-		 * we do process-to-process copies directly.
-		 * If the write is non-blocking, we don't use the
-		 * direct write mechanism.
+		 * If direct process-to-process writes are enabled and
+		 * the buffer is large enough, and this is blocking IO,
+		 * then use the direct write feature.
+		 *
+		 * If the pipe was opened at a time when the direct write
+		 * feature was not enabled pipe_feature will be set to
+		 * PIPE_COPY and we do not use the feature.
 		 *
 		 * The direct write mechanism will detect the reader going
 		 * away on us.
 		 */
 		if ((uio->uio_iov->iov_len >= PIPE_MINDIRECT ||
-		    pipe_dwrite_enable > 1) &&
-		    nbio == 0 &&
-		    pipe_dwrite_enable) {
+		     pipe_dwrite_enable > 1) &&
+		    nbio == 0 && pipe_dwrite_enable &&
+		    wpipe->pipe_feature != PIPE_COPY
+		) {
 			error = pipe_direct_write( wpipe, uio);
 			if (error)
 				break;
