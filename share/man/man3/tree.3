@@ -1,6 +1,6 @@
 .\"	$NetBSD: tree.3,v 1.3 2004/04/14 11:05:19 pooka Exp $
 .\"	$OpenBSD: tree.3,v 1.9 2003/05/20 09:13:38 jmc Exp $
-.\" $DragonFly: src/share/man/man3/tree.3,v 1.1 2004/08/19 20:38:33 joerg Exp $
+.\" $DragonFly: src/share/man/man3/tree.3,v 1.2 2008/05/10 17:52:10 swildner Exp $
 .\"/*
 .\" * Copyright 2002 Niels Provos <provos@citi.umich.edu>
 .\" * All rights reserved.
@@ -429,7 +429,7 @@ free(head);
 Since
 .Va var
 is free'd, the
-.Fn FOREACH
+.Fn SPLAY_FOREACH
 macro refers to a pointer that may have been reallocated already.
 Proper code needs a second variable.
 .Bd -literal -offset indent
