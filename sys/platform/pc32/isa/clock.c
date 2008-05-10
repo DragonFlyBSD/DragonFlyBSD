@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.53 2007/06/04 17:22:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.54 2008/05/10 17:24:09 dillon Exp $
  */
 
 /*
@@ -115,7 +115,6 @@ int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
 int	statclock_disable = 1;	/* we don't use the statclock right now */
 int	tsc_present;
-u_int	tsc_freq;		/* XXX obsolete, convert users */
 int64_t	tsc_frequency;
 int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
@@ -585,11 +584,10 @@ calibrate_clocks(void)
 	 */
 	if (tsc_present) {
 		tsc_frequency = rdtsc() - old_tsc;
-		tsc_freq = (u_int)tsc_frequency;	/* XXX */
 	}
 
 	if (tsc_present)
-		kprintf("TSC clock: %u Hz, ", tsc_freq);
+		kprintf("TSC clock: %llu Hz, ", tsc_frequency);
 	kprintf("i8254 clock: %u Hz\n", tot_count);
 	return (tot_count);
 
@@ -767,16 +765,14 @@ startrtclock(void)
 			kprintf(
 		    "%d Hz differs from default of %d Hz by more than 1%%\n",
 			       freq, i8254_cputimer.freq);
-		tsc_freq = 0;
 		tsc_frequency = 0;
 	}
 
 #ifndef CLK_USE_TSC_CALIBRATION
-	if (tsc_freq != 0) {
+	if (tsc_frequency != 0) {
 		if (bootverbose)
 			kprintf(
 "CLK_USE_TSC_CALIBRATION not specified - using old calibration method\n");
-		tsc_freq = 0;
 		tsc_frequency = 0;
 	}
 #endif
@@ -790,10 +786,11 @@ startrtclock(void)
 
 		DELAY(1000000);
 		tsc_frequency = rdtsc() - old_tsc;
-		tsc_freq = (u_int)tsc_frequency;
 #ifdef CLK_USE_TSC_CALIBRATION
-		if (bootverbose)
-			kprintf("TSC clock: %u Hz (Method B)\n", tsc_freq);
+		if (bootverbose) {
+			kprintf("TSC clock: %llu Hz (Method B)\n",
+				tsc_frequency);
+		}
 #endif
 	}
 
@@ -1215,4 +1212,9 @@ SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &i8254_cputimer.freq, 0,
 	    "frequency");
 SYSCTL_PROC(_hw_i8254, OID_AUTO, timestamp, CTLTYPE_STRING|CTLFLAG_RD,
 	    0, 0, hw_i8254_timestamp, "A", "");
+
+SYSCTL_INT(_hw, OID_AUTO, tsc_present, CTLFLAG_RD,
+	    &tsc_present, 0, "TSC Available");
+SYSCTL_QUAD(_hw, OID_AUTO, tsc_frequency, CTLFLAG_RD,
+	    &tsc_frequency, 0, "TSC Frequency");
 

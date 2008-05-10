@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/perfmon.c,v 1.21 1999/09/25 18:24:04 phk Exp $
- * $DragonFly: src/sys/platform/pc32/i386/perfmon.c,v 1.10 2007/07/02 02:14:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/perfmon.c,v 1.11 2008/05/10 17:24:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -380,13 +380,13 @@ perfmon_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case PMIOTSTAMP:
-		if (!tsc_freq) {
+		if (tsc_frequency == 0) {
 			rv = ENOTTY;
 			break;
 		}
 		pmct = (struct pmc_tstamp *)param;
 		/* XXX interface loses precision. */
-		pmct->pmct_rate = tsc_freq / 1000000;
+		pmct->pmct_rate = (int)(tsc_frequency / 1000000);
 		pmct->pmct_value = rdtsc();
 		rv = 0;
 		break;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.15 2007/07/02 15:18:51 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.16 2008/05/10 17:24:12 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,6 +44,7 @@
 #include <sys/bus.h>
 #include <sys/time.h>
 #include <machine/cpu.h>
+#include <machine/clock.h>
 #include <machine/globaldata.h>
 #include <machine/md_var.h>
 
@@ -57,6 +58,10 @@ static void cputimer_intr(void *dummy, struct intrframe *frame);
 int disable_rtc_set;
 SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
 	   CTLFLAG_RW, &disable_rtc_set, 0, "");
+SYSCTL_INT(_hw, OID_AUTO, tsc_present, CTLFLAG_RD,
+            &tsc_present, 0, "TSC Available");
+SYSCTL_QUAD(_hw, OID_AUTO, tsc_frequency, CTLFLAG_RD,
+	    &tsc_frequency, 0, "TSC Frequency");
 
 int adjkerntz;
 int wall_cmos_clock = 0;

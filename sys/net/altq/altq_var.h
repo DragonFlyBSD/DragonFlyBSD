@@ -1,5 +1,5 @@
 /*	$KAME: altq_var.h,v 1.17 2004/04/20 05:09:08 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_var.h,v 1.3 2008/04/06 18:58:15 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_var.h,v 1.4 2008/05/10 17:24:06 dillon Exp $ */
 
 /*
  * Copyright (C) 1998-2003
@@ -51,7 +51,7 @@ MALLOC_DECLARE(M_ALTQ);
  * a 64bit high resolution time counter.
  */
 extern int	machclk_usepcc;
-extern uint32_t	machclk_freq;
+extern uint64_t	machclk_freq;
 extern uint32_t	machclk_per_tick;
 
 void		init_machclk(void);

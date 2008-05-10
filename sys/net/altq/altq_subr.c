@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.10 2008/04/06 18:58:15 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.11 2008/05/10 17:24:06 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -65,7 +65,7 @@
 
 /* machine dependent clock related includes */
 #if defined(__i386__)
-#include <machine/clock.h>		/* for tsc_freq */
+#include <machine/clock.h>		/* for tsc_frequency */
 #include <machine/md_var.h>		/* for cpu_feature */
 #include <machine/specialreg.h>		/* for CPUID_TSC */
 #endif /* __i386__ */
@@ -729,7 +729,7 @@ write_dsfield(struct mbuf *m, struct altq_pktattr *pktattr, uint8_t dsfield)
 #define	MACHCLK_SHIFT	8
 
 int machclk_usepcc;
-uint32_t machclk_freq = 0;
+uint64_t machclk_freq = 0;
 uint32_t machclk_per_tick = 0;
 
 void
@@ -751,10 +751,10 @@ init_machclk(void)
 
 	if (machclk_usepcc == 0) {
 		/* emulate 256MHz using microtime() */
-		machclk_freq = 1000000 << MACHCLK_SHIFT;
+		machclk_freq = 1000000LLU << MACHCLK_SHIFT;
 		machclk_per_tick = machclk_freq / hz;
 #ifdef ALTQ_DEBUG
-		kprintf("altq: emulate %uHz cpu clock\n", machclk_freq);
+		kprintf("altq: emulate %lluHz cpu clock\n", machclk_freq);
 #endif
 		return;
 	}
@@ -763,10 +763,9 @@ init_machclk(void)
 	 * if the clock frequency (of Pentium TSC or Alpha PCC) is
 	 * accessible, just use it.
 	 */
-#ifdef __i386__
-	machclk_freq = tsc_freq;
-#else
-#error "machclk_freq interface not implemented"
+#if _RDTSC_SUPPORTED
+	if (cpu_feature & CPUID_TSC)
+		machclk_freq = (uint64_t)tsc_frequency;
 #endif
 
 	/*
@@ -787,13 +786,13 @@ init_machclk(void)
 		diff = (uint64_t)(tv_end.tv_sec - tv_start.tv_sec) * 1000000
 		    + tv_end.tv_usec - tv_start.tv_usec;
 		if (diff != 0)
-			machclk_freq = (u_int)((end - start) * 1000000 / diff);
+			machclk_freq = (end - start) * 1000000 / diff;
 	}
 
 	machclk_per_tick = machclk_freq / hz;
 
 #ifdef ALTQ_DEBUG
-	kprintf("altq: CPU clock: %uHz\n", machclk_freq);
+	kprintf("altq: CPU clock: %lluHz\n", machclk_freq);
 #endif
 }
 
@@ -803,7 +802,7 @@ read_machclk(void)
 	uint64_t val;
 
 	if (machclk_usepcc) {
-#if defined(__i386__)
+#ifdef _RDTSC_SUPPORTED_
 		val = rdtsc();
 #else
 		panic("read_machclk");

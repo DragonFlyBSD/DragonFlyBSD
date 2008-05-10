@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/prof_machdep.c,v 1.14.2.1 2000/08/03 00:09:30 ps Exp $
- * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.8 2006/11/07 06:43:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.9 2008/05/10 17:24:09 dillon Exp $
  */
 
 #ifdef GUPROF
@@ -295,14 +295,14 @@ startguprof(struct gmonparam *gp)
 	if (cputime_clock == CPUTIME_CLOCK_UNINITIALIZED) {
 		cputime_clock = CPUTIME_CLOCK_I8254;
 #if (defined(I586_CPU) || defined(I686_CPU)) && !defined(SMP)
-		if (tsc_freq != 0)
+		if (tsc_frequency != 0)
 			cputime_clock = CPUTIME_CLOCK_TSC;
 #endif
 	}
 	gp->profrate = timer_freq << CPUTIME_CLOCK_I8254_SHIFT;
 #if (defined(I586_CPU) || defined(I686_CPU)) && !defined(SMP)
 	if (cputime_clock == CPUTIME_CLOCK_TSC)
-		gp->profrate = tsc_freq;
+		gp->profrate = (u_int)tsc_frequency;	/* XXX */
 #if defined(PERFMON) && defined(I586_PMC_GUPROF)
 	else if (cputime_clock == CPUTIME_CLOCK_I586_PMC) {
 		if (perfmon_avail() &&

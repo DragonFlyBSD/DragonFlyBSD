@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.51 2008/05/07 17:19:47 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.52 2008/05/10 17:24:12 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,6 +57,7 @@
 #include <machine/tls.h>
 #include <machine/md_var.h>
 #include <machine/vmparam.h>
+#include <cpu/specialreg.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -98,7 +99,8 @@ caddr_t ptvmmap;
 vpte_t	*KernelPTD;
 vpte_t	*KernelPTA;	/* Warning: Offset for direct VA translation */
 u_int cpu_feature;	/* XXX */
-int tsc_present;	/* XXX */
+int tsc_present;
+int64_t tsc_frequency;
 int optcpus;		/* number of cpus - see mp_start() */
 int lwp_cpu_lock;	/* if/how to lock virtual CPUs to real CPUs */
 int real_ncpus;		/* number of real CPUs */
@@ -134,7 +136,6 @@ main(int ac, char **av)
 	char *cdFile[VKDISK_MAX];
 	char *suffix;
 	char *endp;
-	size_t real_ncpus_size;
 	int netifFileNum = 0;
 	int diskFileNum = 0;
 	int cdFileNum = 0;
@@ -143,9 +144,8 @@ main(int ac, char **av)
 	int i;
 	int n;
 	int real_vkernel_enable;
-	size_t real_vkernel_enable_size;
 	int supports_sse;
-	int supports_sse_size;
+	size_t vsize;
 	
 	save_ac = ac;
 	save_av = av;
@@ -160,17 +160,17 @@ main(int ac, char **av)
 	lwp_cpu_lock = LCL_NONE;
 
 	real_vkernel_enable = 0;
-	real_vkernel_enable_size = sizeof(real_vkernel_enable);
-	sysctlbyname("vm.vkernel_enable", &real_vkernel_enable, &real_vkernel_enable_size, NULL, 0);
+	vsize = sizeof(real_vkernel_enable);
+	sysctlbyname("vm.vkernel_enable", &real_vkernel_enable, &vsize, NULL,0);
 	
 	if (real_vkernel_enable == 0) {
 		errx(1, "vm.vkernel_enable is 0, must be set "
 			"to 1 to execute a vkernel!");
 	}
 
-	real_ncpus_size = sizeof(real_ncpus);
 	real_ncpus = 1;
-	sysctlbyname("hw.ncpu", &real_ncpus, &real_ncpus_size, NULL, 0);
+	vsize = sizeof(real_ncpus);
+	sysctlbyname("hw.ncpu", &real_ncpus, &vsize, NULL, 0);
 
 	while ((c = getopt(ac, av, "c:svl:m:n:r:e:i:p:I:U")) != -1) {
 		switch(c) {
@@ -296,11 +296,25 @@ main(int ac, char **av)
 	setrealcpu();
 	init_kqueue();
 
-	supports_sse_size = sizeof(supports_sse);
+	/*
+	 * Check TSC
+	 */
+	vsize = sizeof(tsc_present);
+	sysctlbyname("hw.tsc_present", &tsc_present, &vsize, NULL, 0);
+	vsize = sizeof(tsc_frequency);
+	sysctlbyname("hw.tsc_frequency", &tsc_frequency, &vsize, NULL, 0);
+	if (tsc_present)
+		cpu_feature |= CPUID_TSC;
+
+	/*
+	 * Check SSE
+	 */
+	vsize = sizeof(supports_sse);
 	supports_sse = 0;
-	sysctlbyname("hw.instruction_sse", &supports_sse, &supports_sse_size,
-		     NULL, 0);
+	sysctlbyname("hw.instruction_sse", &supports_sse, &vsize, NULL, 0);
 	init_fpu(supports_sse);
+	if (supports_sse)
+		cpu_feature |= CPUID_SSE | CPUID_FXSR;
 
 	/*
 	 * We boot from the first installed disk.
