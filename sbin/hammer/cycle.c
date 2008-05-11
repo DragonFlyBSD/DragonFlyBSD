@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,44 +31,47 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.10 2008/05/11 20:44:44 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cycle.c,v 1.1 2008/05/11 20:44:44 dillon Exp $
  */
 
-#include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
-#include <sys/time.h>
+#include "hammer.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <err.h>
-#include <ctype.h>
-#include <dirent.h>
+int64_t
+hammer_get_cycle(int64_t default_obj_id)
+{
+	int64_t obj_id;
+	FILE *fp;
 
-#include "hammer_util.h"
-#include <vfs/hammer/hammer_ioctl.h>
+	if ((fp = fopen(CyclePath, "r")) != NULL) {
+		if (fscanf(fp, "%llx\n", &obj_id) != 1) {
+			obj_id = default_obj_id;
+			fprintf(stderr, "Warning: malformed obj_id in %s\n",
+				CyclePath);
+		}
+		fclose(fp);
+	} else {
+		obj_id = default_obj_id;
+	}
+	return(obj_id);
+}
 
-extern int RecurseOpt;
-extern int VerboseOpt;
-extern const char *LinkPath;
-extern const char *CyclePath;
+void
+hammer_set_cycle(int64_t obj_id)
+{
+	FILE *fp;
 
-void hammer_cmd_show(hammer_tid_t node_offset, int depth,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound);
-void hammer_cmd_prune(char **av, int ac);
-void hammer_cmd_history(const char *offset_str, char **av, int ac);
-void hammer_cmd_blockmap(void);
-void hammer_cmd_reblock(char **av, int ac);
+	if ((fp = fopen(CyclePath, "w")) != NULL) {
+		fprintf(fp, "%016llx\n", obj_id);
+		fclose(fp);
+	} else {
+		fprintf(stderr, "Warning: Unable to write to %s: %s\n",
+			CyclePath, strerror(errno));
+	}
+}
 
-int64_t hammer_get_cycle(int64_t default_obj_id);
-void hammer_set_cycle(int64_t obj_id);
-void hammer_reset_cycle(void);
+void
+hammer_reset_cycle(void)
+{
+	remove(CyclePath);
+}
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.3 2008/05/05 20:34:52 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.4 2008/05/11 20:44:44 dillon Exp $
  */
 
 #include "hammer.h"
@@ -50,7 +50,7 @@ hammer_cmd_reblock(char **av, int ac)
 	int perc;
 
 	bzero(&reblock, sizeof(reblock));
-	reblock.beg_obj_id = HAMMER_MIN_OBJID;
+	reblock.beg_obj_id = hammer_get_cycle(HAMMER_MIN_OBJID);
 	reblock.end_obj_id = HAMMER_MAX_OBJID;
 
 	if (ac == 0)
@@ -73,14 +73,15 @@ hammer_cmd_reblock(char **av, int ac)
 	if (fd < 0)
 		err(1, "Unable to open %s", filesystem);
 	if (ioctl(fd, HAMMERIOC_REBLOCK, &reblock) < 0) {
-		if (errno == EINTR) {
-			printf("Reblock %s interrupted by timer at %016llx\n",
-				filesystem, reblock.cur_obj_id);
-		} else {
-			printf("Reblock %s failed: %s\n",
-			       filesystem, strerror(errno));
-		}
+		printf("Reblock %s failed: %s\n", filesystem, strerror(errno));
+	} else if (reblock.head.flags & HAMMER_IOC_HEAD_INTR) {
+		printf("Reblock %s interrupted by timer at %016llx\n",
+			filesystem, reblock.cur_obj_id);
+		if (CyclePath)
+			hammer_set_cycle(reblock.cur_obj_id);
 	} else {
+		if (CyclePath)
+			hammer_reset_cycle();
 		printf("Reblock %s succeeded\n", filesystem);
 	}
 	close(fd);

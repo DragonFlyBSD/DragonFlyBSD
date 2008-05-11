@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.15 2008/05/10 17:54:59 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.16 2008/05/11 20:44:44 dillon Exp $
  */
 
 #include "hammer.h"
@@ -47,6 +47,7 @@ static void usage(int exit_code);
 int RecurseOpt;
 int VerboseOpt;
 int NoSyncOpt;
+const char *CyclePath;
 const char *LinkPath;
 
 int
@@ -59,8 +60,11 @@ main(int ac, char **av)
 	u_int32_t status;
 	char *blkdevs = NULL;
 
-	while ((ch = getopt(ac, av, "hf:rs:t:vx")) != -1) {
+	while ((ch = getopt(ac, av, "c:hf:rs:t:vx")) != -1) {
 		switch(ch) {
+		case 'c':
+			CyclePath = optarg;
+			break;
 		case 'h':
 			usage(0);
 			/* not reached */
@@ -315,9 +319,10 @@ usage(int exit_code)
 	fprintf(stderr, 
 		"hammer -h\n"
 		"hammer [-x] now[64]\n"
+		"hammer [-t timeout] [-c cyclefile] ....\n"
 		"hammer stamp[64] <time>\n"
-		"hammer [-s linkpath] prune <filesystem> [using <configfile>]\n"
-		"hammer [-s linkpath] prune <filesystem> from <modulo_time> to "
+		"hammer prune <filesystem> [using <configfile>]\n"
+		"hammer prune <filesystem> from <modulo_time> to "
 				"<modulo_time> every <modulo_time>\n"
 		"hammer prune <filesystem> from <modulo_time> everything\n"
 		"hammer prune <filesystem> everything\n"

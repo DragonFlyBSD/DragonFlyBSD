@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.13 2008/05/10 17:54:59 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.14 2008/05/11 20:44:44 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -40,6 +40,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl hrx
+.Op Fl c Ar cyclefile
 .Op Fl f Ar blkdev[:blkdev]*
 .Op Fl s Ar linkpath
 .Op Fl t Ar timeout
@@ -57,6 +58,13 @@ The options are as follows:
 Get help
 .It Fl r
 Specify recursion for those commands which support it.
+.It Fl c Ar cyclefile
+When pruning and reblocking you can instruction HAMMER to start at the
+object id stored in the specified file.  If the file does not exist
+HAMMER will start at the beginning.  If HAMMER is told to run for a
+specific period of time and is unable to complete the operation it will
+write out the current obj_id so the next run can pick up where it left
+off.  If HAMMER runs to completion it will delete the cyclefile..
 .It Fl f Ar blkdev[:blkdev]*
 Specify the volumes making up a HAMMER filesystem.
 .It Fl s Ar linkpath

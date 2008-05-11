@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.8 2008/05/10 22:56:37 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.9 2008/05/11 20:44:44 dillon Exp $
  */
 
 #include "hammer.h"
@@ -71,7 +71,8 @@ hammer_cmd_prune(char **av, int ac)
 	bzero(&prune, sizeof(prune));
 	prune.nelms = 0;
 	prune.beg_obj_id = HAMMER_MIN_OBJID;
-	prune.end_obj_id = HAMMER_MAX_OBJID;
+	prune.end_obj_id = hammer_get_cycle(HAMMER_MAX_OBJID);
+
 	prune.cur_obj_id = prune.end_obj_id;	/* remove me */
 	prune.cur_key = HAMMER_MAX_KEY;		/* remove me */
 	prune.stat_oldest_tid = HAMMER_MAX_TID;
@@ -105,7 +106,12 @@ hammer_cmd_prune(char **av, int ac)
 	} else if (prune.head.flags & HAMMER_IOC_HEAD_INTR) {
 		printf("Prune %s interrupted by timer at %016llx\n",
 		       filesystem, prune.cur_obj_id);
+		if (CyclePath)
+			hammer_set_cycle(prune.cur_obj_id);
+
 	} else {
+		if (CyclePath)
+			hammer_reset_cycle();
 		printf("Prune %s succeeded\n", filesystem);
 	}
 	close(fd);
