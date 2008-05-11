@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.14 2008/05/10 22:56:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.15 2008/05/11 21:45:44 dillon Exp $
  */
 
 #include "hammer.h"
@@ -167,6 +167,13 @@ retry:
 				++prune->stat_dirrecords;
 			else
 				++prune->stat_rawrecords;
+
+			/*
+			 * The current record might now be the one after
+			 * the one we deleted, set ATEDISK to force us
+			 * to skip it (since we are iterating backwards).
+			 */
+			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 		} else if (realign_cre >= 0 || realign_del >= 0) {
 			hammer_lock_ex(&trans->hmp->sync_lock);
 			error = realign_prune(prune, &cursor,
