@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.84 2008/05/09 07:24:46 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.85 2008/05/11 17:20:53 dillon Exp $
  */
 
 /*
@@ -2102,7 +2102,7 @@ validate:
 		if (newpte & PG_RW)
 			vm_page_flag_set(m, PG_WRITEABLE);
 	}
-	KKASSERT((newpte & VPTE_MANAGED) == 0 || m->flags & PG_MAPPED);
+	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
 	pmap_inval_flush(&info);
 }
 
