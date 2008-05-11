@@ -27,8 +27,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/ifnet.9,v 1.9.2.10 2003/06/15 02:22:30 hmp Exp $
-.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.9 2008/05/09 22:38:35 swildner Exp $
-.Dd May 9, 2008
+.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.10 2008/05/11 07:11:47 swildner Exp $
+.Dd May 10, 2008
 .Os
 .Dt IFNET 9
 .Sh NAME
@@ -70,8 +70,6 @@
 .Fn ifa_ifwithnet "struct sockaddr *addr"
 .Ft "struct ifaddr *"
 .Fn ifaof_ifpforaddr "struct sockaddr *addr" "struct ifnet *ifp"
-.Ft void
-.Fn ifafree "struct ifaddr *ifa"
 .Fn IFAFREE "struct ifaddr *ifa"
 .\"
 .Ss "Interface Multicast Address Functions"
@@ -116,7 +114,6 @@
 .\"
 .Ss "Global Variables"
 .Vt extern struct ifnethead ifnet ;
-.Vt extern struct ifaddr **ifnet_addrs ;
 .Vt extern int if_index ;
 .Vt extern int ifqmaxlen ;
 .Sh DATA STRUCTURES
@@ -236,6 +233,9 @@ Drivers may choose to set this to
 .Dv IF_DUNIT_NONE
 if a unit number is not associated with the device.
 (Initialized by driver.)
+.\" .It Va if_vlantrunks
+.\" .Pq Vt "void *"
+.\" ...
 .It Va if_addrhead
 .Pq Vt "struct ifaddrhead"
 The head of the
@@ -248,6 +248,10 @@ A count of promiscuous listeners on this interface, used to
 reference-count the
 .Dv IFF_PROMISC
 flag.
+.It Va if_carp
+.Pq Vt "struct carp_if *"
+Per-interface data for
+.Xr carp 4 .
 .It Va if_bpf
 .Pq Vt "struct bpf_if *"
 Opaque per-interface data for the packet filter,
@@ -271,20 +275,9 @@ is called, or zero if the timer is disabled.
 (Set by driver,
 decremented by generic watchdog code.)
 .It Va if_flags
-.Pq Vt short
+.Pq Vt int
 Flags describing operational parameters of this interface (see below).
 (Manipulated by both driver and generic code.)
-.\" .It Va if_ipending
-.\" Interrupt-pending bits for polled operation:
-.\" .Dv IFI_XMIT
-.\" (transmit complete interrupt)
-.\" and
-.\" .Dv IFI_RECV
-.\" (received packet ready interrupt).
-.\" See the
-.\" .Sx Polling
-.\" section, below.
-.\" (Manipulated by driver.)
 .It Va if_linkmib
 .Pq Vt "void *"
 A pointer to an interface-specific MIB structure exported by
@@ -301,18 +294,32 @@ More statistics and information; see
 below.
 (Initialized by driver, manipulated by both driver and generic
 code.)
+.\" .It Va if_poll_cpuid
+.\" .Pq Vt int
+.\" ...
 .It Va if_snd
-.Pq Vt "struct ifqueue"
-The output queue.
+.Pq Vt "struct ifaltq"
+The output queue including
+.Xr altq 4 .
 (Manipulated by driver.)
-.\".It Va if_poll_slowq
-.\".Pq Vt "struct ifqueue *"
-.\"A pointer to the input queue for devices which do not support polling
-.\"well.
-.\"See the
-.\".Sx Polling
-.\"section, below.
-.\"(Initialized by driver.)
+.\" .It Va if_broadcastaddr
+.\" .Pq Vt "const uint8_t"
+.\" ...
+.\" .It Va if_bridge
+.\" .Pq Vt "void *"
+.\" ...
+.\" .It Va if_afdata
+.\" .Pq Vt "void *"
+.\" ...
+.\" .It Va if_lladdr
+.\" .Pq Vt "struct ifaddr"
+.\" ...
+.\" .It Va if_serializer
+.\" .Pq Vt "struct lwkt_serialize"
+.\" ...
+.\" .It Va if_default_serializer
+.\" .Pq Vt "struct lwkt_serialize"
+.\" ...
 .El
 .Pp
 There are in addition a number of function pointers which the driver
@@ -337,10 +344,6 @@ flag is not set.
 .Dv IFF_OACTIVE
 does not literally mean that output is active, but rather that the
 device's internal output queue is full.)
-.It Fn if_done
-Not used.
-We are not even sure what it was ever for.
-The prototype is faked.
 .It Fn if_ioctl
 Process interface-related
 .Xr ioctl 2
@@ -360,12 +363,9 @@ Routine called by the generic code when the watchdog timer,
 .Va if_timer ,
 expires.
 Usually this will reset the interface.
-.\" .It Fn if_poll_recv
-.\" .It Fn if_poll_xmit
-.\" .It Fn if_poll_slowinput
-.\" .It Fn if_poll_intren
+.\".It Fn if_poll
 .\" See the
-.\" .Sx Polling
+.\" .Sx POLLING
 .\" section, below.
 .It Fn if_init
 Initialize and bring up the hardware,
@@ -446,6 +446,10 @@ multiple physical layers on some devices.)
 .It Dv IFF_MULTICAST
 .Aq S*
 This interface supports multicast.
+.It Dv IFF_POLLING
+The interface is in polling mode.
+.\" .It Dv IFF_MONITOR
+.\" ...
 .El
 .Pp
 The macro
@@ -484,7 +488,7 @@ support more than one; never implemented.
 .Pq Vt u_char
 Length of a link-layer address on this device, or zero if there are
 none.
-Used to initialized the address length field in
+Used to initialize the address length field in
 .Vt sockaddr_dl
 structures referring to this interface.
 .It Va ifi_hdrlen
@@ -518,6 +522,13 @@ link-layer overhead.
 .It Va ifi_metric
 .Pq Vt u_long
 A dimensionless metric interpreted by a user-mode routing process.
+.It Va ifi_link_state
+.Pq Vt u_long
+The link state of the interface, either
+.Dv LINK_STATE_UNKNOWN ,
+.Dv LINK_STATE_DOWN ,
+or
+.Dv LINK_STATE_UP .
 .It Va ifi_baudrate
 .Pq Vt u_long
 The line rate of the interface, in bits per second.
@@ -559,18 +570,6 @@ Number of packets dropped on input.
 Rarely implemented.
 .It Va ifi_noproto
 Number of packets received for unknown network-layer protocol.
-.\" .It Va ifi_recvtiming
-.\" Amount of time, in microseconds, spent to receive an average packet on
-.\" this interface.
-.\" See the
-.\" .Sx Polling
-.\" section, below.
-.\" .It Va ifi_xmittiming
-.\" Amount of time, in microseconds, spent to service a transmit-complete
-.\" interrupt on this interface.
-.\" See the
-.\" .Sx Polling
-.\" section, below.
 .It Va ifi_lastchange
 .Pq Vt "struct timeval"
 The time of the last administrative change to the interface (as required
@@ -661,22 +660,26 @@ is a macro for
 .Pq Vt "struct sockaddr *"
 The network mask for multi-access interfaces, and the confusion
 generator for point-to-point interfaces.
+.\" .It Va if_data
+.\" .Pq Vt "struct if_data"
+.\" ...
 .It Va ifa_ifp
 .Pq Vt "struct ifnet *"
 A link back to the interface structure.
-.It Va ifa_link
-.Pq Fn TAILQ_ENTRY ifaddr
-.Xr queue 3
-glue for list of addresses on each interface.
+.It Va ifa_containers
+.Pq Vt "struct ifaddr_container *"
+A pointer to an array of
+.Vt ifaddr_container
+structures which hold per-CPU data.
 .It Va ifa_rtrequest
 See below.
 .It Va ifa_flags
 .Pq Vt u_short
 Some of the flags which would be used for a route representing this
 address in the route table.
-.It Va ifa_refcnt
-.Pq Vt short
-The reference count.
+.\" .It Va ifa_cpumask
+.\" .Pq Vt cpumask_t
+.\" ...
 .It Va ifa_metric
 .Pq Vt int
 A metric associated with this interface address, for the use of some
@@ -687,10 +690,12 @@ References to
 .Vt ifaddr
 structures are gained manually, by incrementing the
 .Va ifa_refcnt
-member.
-References are released by calling either the
-.Fn ifafree
-function or the
+member of the according
+.Va ifa_containers
+structure (such as by calling the
+.Fn IFAREF
+macro).
+References are released by calling the
 .Fn IFAFREE
 macro.
 .Pp
