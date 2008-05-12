@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.55 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.56 2008/05/12 23:15:46 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1276,6 +1276,25 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	record->flags |= HAMMER_RECF_INTERLOCK_BE;
 
 	/*
+	 * If the whole inode is being deleting all on-disk records will
+	 * be deleted very soon, we can't sync anything to disk or its
+	 * create_tid will match its delete_tid (which is illegal), and assert.
+	 */
+	if (record->ip->sync_flags & HAMMER_INODE_DELETING) {
+		if (record->type == HAMMER_MEM_RECORD_GENERAL) {
+			record->flags |= HAMMER_RECF_DELETED_FE;
+			record->flags |= HAMMER_RECF_DELETED_BE;
+		} else {
+			/*
+			 * Ugh. If it's an add we have a problem. 
+			 */
+			KKASSERT(record->type != HAMMER_MEM_RECORD_ADD);
+		}
+		error = 0;
+		goto done;
+	}
+
+	/*
 	 * If DELETED_FE is set we may have already sent dependant pieces
 	 * to the disk and we must flush the record as if it hadn't been
 	 * deleted.  This creates a bit of a mess because we have to
@@ -1318,6 +1337,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 			Debugger("sync failed rec");
 		}
 	}
+done:
 	hammer_flush_record_done(record, error);
 	return(error);
 }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.57 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.58 2008/05/12 23:15:46 dillon Exp $
  */
 
 #include "hammer.h"
@@ -553,6 +553,8 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		 * the record's key.  This also causes lookups to skip the
 		 * record.
 		 */
+		KKASSERT(dip->flags &
+			 (HAMMER_INODE_ONDISK | HAMMER_INODE_DONDISK));
 		record = hammer_alloc_mem_record(dip, 0);
 		record->type = HAMMER_MEM_RECORD_DEL;
 		record->leaf.base = cursor->leaf->base;
@@ -784,6 +786,12 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	cursor->flags &= ~HAMMER_CURSOR_INITMASK;
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
 	cursor->flags &= ~HAMMER_CURSOR_INSERT;
+
+	/*
+	 * Records can wind up on-media before the inode itself is on-media.
+	 * Flag the case.
+	 */
+	record->ip->flags |= HAMMER_INODE_DONDISK;
 
 	/*
 	 * If we are deleting an exact match must be found on-disk.
@@ -1204,7 +1212,8 @@ next_memory:
 		 * to it it would have interlocked the cursor and we should
 		 * have seen the in-memory record marked DELETED_FE.
 		 */
-		if (cursor->iprec->type == HAMMER_MEM_RECORD_DEL) {
+		if (cursor->iprec->type == HAMMER_MEM_RECORD_DEL &&
+		    (cursor->flags & HAMMER_CURSOR_DELETE_VISIBILITY) == 0) {
 			panic("hammer_ip_next: del-on-disk with no b-tree entry");
 		}
 		break;
@@ -1238,7 +1247,6 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
 	int error;
 
 	if (cursor->iprec && cursor->leaf == &cursor->iprec->leaf) {
-		cursor->leaf = &cursor->iprec->leaf;
 		cursor->data = cursor->iprec->data;
 		error = 0;
 	} else {
@@ -1592,8 +1600,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes)
  * Returns 0 on success, ENOTEMPTY or EDEADLK (or other errors) on failure.
  */
 int
-hammer_ip_check_directory_empty(hammer_transaction_t trans,
-			hammer_cursor_t parent_cursor, hammer_inode_t ip)
+hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 {
 	struct hammer_cursor cursor;
 	int error;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.64 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.65 2008/05/12 23:15:46 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -632,7 +632,7 @@ int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid);
 int	hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes);
 int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
-			hammer_cursor_t parent_cursor, hammer_inode_t ip);
+			hammer_inode_t ip);
 int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
 
 hammer_record_t

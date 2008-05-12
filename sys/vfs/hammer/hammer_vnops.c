@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.52 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.53 2008/05/12 23:15:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -525,6 +525,11 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 
 /*
  * hammer_vop_getattr { vp, vap }
+ *
+ * Retrieve an inode's attribute information.  When accessing inodes
+ * historically we fake the atime field to ensure consistent results.
+ * The atime field is stored in the B-Tree element and allowed to be
+ * updated without cycling the element.
  */
 static
 int
@@ -552,7 +557,10 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
 	vap->va_size = ip->ino_data.size;
-	hammer_to_timespec(ip->ino_leaf.atime, &vap->va_atime);
+	if (ip->flags & HAMMER_INODE_RO)
+		hammer_to_timespec(ip->ino_data.mtime, &vap->va_atime);
+	else
+		hammer_to_timespec(ip->ino_leaf.atime, &vap->va_atime);
 	hammer_to_timespec(ip->ino_data.mtime, &vap->va_mtime);
 	hammer_to_timespec(ip->ino_data.ctime, &vap->va_ctime);
 	vap->va_flags = ip->ino_data.uflags;
@@ -1477,6 +1485,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		ip->ino_data.mtime =
 			hammer_timespec_to_transid(&vap->va_mtime);
 		modflags |= HAMMER_INODE_ITIMES;
+		modflags |= HAMMER_INODE_DDIRTY;	/* XXX mtime */
 	}
 	if (vap->va_mode != (mode_t)VNOVAL) {
 		if (ip->ino_data.mode != vap->va_mode) {
@@ -2043,8 +2052,7 @@ retry:
 		 */
 		if (error == 0 && ip->ino_data.obj_type ==
 				  HAMMER_OBJTYPE_DIRECTORY) {
-			error = hammer_ip_check_directory_empty(trans, &cursor,
-								ip);
+			error = hammer_ip_check_directory_empty(trans, ip);
 		}
 
 		/*
