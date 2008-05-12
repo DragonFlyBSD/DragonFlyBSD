@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.16 2008/04/14 22:18:14 swildner Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.17 2008/05/12 16:26:20 swildner Exp $
 .\"
-.Dd February 5, 2008
+.Dd May 12, 2008
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -148,7 +148,8 @@ output.
 If defined, warnings will not cause the build to halt, even if the
 makefile says otherwise.
 .It Ev DESTDIR
-The directory hierarchy where the resulting binaries will be
+An existing directory to be the root of
+the hierarchy where the resulting binaries will be
 installed (the default is
 .Pa / ) .
 .It Ev MAKEOBJDIRPREFIX
