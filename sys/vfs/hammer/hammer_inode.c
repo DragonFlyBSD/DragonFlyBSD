@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.54 2008/05/09 07:26:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.55 2008/05/12 21:17:18 dillon Exp $
  */
 
 #include "hammer.h"
@@ -71,7 +71,7 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 	hammer_inode_unloadable_check(ip, 0);
 	if (ip->flags & HAMMER_INODE_MODMASK)
 		hammer_flush_inode(ip, 0);
-	else if (ip->ino_rec.ino_nlinks == 0)
+	else if (ip->ino_data.nlinks == 0)
 		vrecycle(ap->a_vp);
 	return(0);
 }
@@ -127,10 +127,10 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			hammer_ref(&ip->lock);
 			vp = *vpp;
 			ip->vp = vp;
-			vp->v_type = hammer_get_vnode_type(
-					    ip->ino_rec.base.base.obj_type);
+			vp->v_type =
+				hammer_get_vnode_type(ip->ino_data.obj_type);
 
-			switch(ip->ino_rec.base.base.obj_type) {
+			switch(ip->ino_data.obj_type) {
 			case HAMMER_OBJTYPE_CDEV:
 			case HAMMER_OBJTYPE_BDEV:
 				vp->v_ops = &ip->hmp->mp->mnt_vn_spec_ops;
@@ -160,7 +160,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			/* make related vnode dirty if inode dirty? */
 			hammer_unlock(&ip->lock);
 			if (vp->v_type == VREG)
-				vinitvmio(vp, ip->ino_rec.ino_size);
+				vinitvmio(vp, ip->ino_data.size);
 			break;
 		}
 
@@ -237,7 +237,7 @@ retry:
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
 	cursor.key_beg.obj_type = 0;
 	cursor.asof = iinfo.obj_asof;
-	cursor.flags = HAMMER_CURSOR_GET_RECORD | HAMMER_CURSOR_GET_DATA |
+	cursor.flags = HAMMER_CURSOR_GET_LEAF | HAMMER_CURSOR_GET_DATA |
 		       HAMMER_CURSOR_ASOF;
 
 	*errorp = hammer_btree_lookup(&cursor);
@@ -253,7 +253,7 @@ retry:
 	 * and cache the B-Tree node to improve future operations.
 	 */
 	if (*errorp == 0) {
-		ip->ino_rec = cursor.record->inode;
+		ip->ino_leaf = cursor.node->ondisk->elms[cursor.index].leaf;
 		ip->ino_data = cursor.data->inode;
 		hammer_cache_node(cursor.node, &ip->cache[0]);
 		if (cache)
@@ -322,8 +322,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->obj_asof = hmp->asof;
 	ip->hmp = hmp;
 	ip->flush_state = HAMMER_FST_IDLE;
-	ip->flags = HAMMER_INODE_DDIRTY | HAMMER_INODE_RDIRTY |
-		    HAMMER_INODE_ITIMES;
+	ip->flags = HAMMER_INODE_DDIRTY | HAMMER_INODE_ITIMES;
 
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
@@ -331,25 +330,26 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	TAILQ_INIT(&ip->bio_alt_list);
 	TAILQ_INIT(&ip->target_list);
 
-	ip->ino_rec.ino_atime = trans->time;
-	ip->ino_rec.ino_mtime = trans->time;
-	ip->ino_rec.ino_size = 0;
-	ip->ino_rec.ino_nlinks = 0;
+	ip->ino_leaf.atime = trans->time;
+	ip->ino_data.mtime = trans->time;
+	ip->ino_data.size = 0;
+	ip->ino_data.nlinks = 0;
 	/* XXX */
-	ip->ino_rec.base.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	ip->ino_rec.base.base.obj_id = ip->obj_id;
-	ip->ino_rec.base.base.key = 0;
-	ip->ino_rec.base.base.create_tid = 0;
-	ip->ino_rec.base.base.delete_tid = 0;
-	ip->ino_rec.base.base.rec_type = HAMMER_RECTYPE_INODE;
-	ip->ino_rec.base.base.obj_type = hammer_get_obj_type(vap->va_type);
+	ip->ino_leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
+	ip->ino_leaf.base.obj_id = ip->obj_id;
+	ip->ino_leaf.base.key = 0;
+	ip->ino_leaf.base.create_tid = 0;
+	ip->ino_leaf.base.delete_tid = 0;
+	ip->ino_leaf.base.rec_type = HAMMER_RECTYPE_INODE;
+	ip->ino_leaf.base.obj_type = hammer_get_obj_type(vap->va_type);
 
+	ip->ino_data.obj_type = ip->ino_leaf.base.obj_type;
 	ip->ino_data.version = HAMMER_INODE_DATA_VERSION;
 	ip->ino_data.mode = vap->va_mode;
 	ip->ino_data.ctime = trans->time;
-	ip->ino_data.parent_obj_id = (dip) ? dip->ino_rec.base.base.obj_id : 0;
+	ip->ino_data.parent_obj_id = (dip) ? dip->ino_leaf.base.obj_id : 0;
 
-	switch(ip->ino_rec.base.base.obj_type) {
+	switch(ip->ino_leaf.base.obj_type) {
 	case HAMMER_OBJTYPE_CDEV:
 	case HAMMER_OBJTYPE_BDEV:
 		ip->ino_data.rmajor = vap->va_rmajor;
@@ -418,7 +418,7 @@ retry:
 		cursor->key_beg.obj_type = 0;
 		cursor->asof = ip->obj_asof;
 		cursor->flags &= ~HAMMER_CURSOR_INITMASK;
-		cursor->flags |= HAMMER_CURSOR_GET_RECORD | HAMMER_CURSOR_ASOF;
+		cursor->flags |= HAMMER_CURSOR_GET_LEAF | HAMMER_CURSOR_ASOF;
 		cursor->flags |= HAMMER_CURSOR_BACKEND;
 
 		error = hammer_btree_lookup(cursor);
@@ -466,13 +466,12 @@ retry:
 		/*
 		 * Generate a record and write it to the media
 		 */
-		record = hammer_alloc_mem_record(ip);
+		record = hammer_alloc_mem_record(ip, 0);
 		record->type = HAMMER_MEM_RECORD_GENERAL;
 		record->flush_state = HAMMER_FST_FLUSH;
-		record->rec.inode = ip->sync_ino_rec;
-		record->rec.inode.base.base.create_tid = trans->tid;
-		record->rec.inode.base.data_len = sizeof(ip->sync_ino_data);
-		record->rec.base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
+		record->leaf = ip->sync_ino_leaf;
+		record->leaf.base.create_tid = trans->tid;
+		record->leaf.data_len = sizeof(ip->sync_ino_data);
 		record->data = (void *)&ip->sync_ino_data;
 		record->flags |= HAMMER_RECF_INTERLOCK_BE;
 		for (;;) {
@@ -510,8 +509,7 @@ retry:
 		if (error == 0) {
 			if (hammer_debug_inode)
 				kprintf("CLEANDELOND %p %08x\n", ip, ip->flags);
-			ip->sync_flags &= ~(HAMMER_INODE_RDIRTY |
-					    HAMMER_INODE_DDIRTY |
+			ip->sync_flags &= ~(HAMMER_INODE_DDIRTY |
 					    HAMMER_INODE_ITIMES);
 			ip->flags &= ~HAMMER_INODE_DELONDISK;
 
@@ -536,8 +534,7 @@ retry:
 	 * that may have been set by the frontend.
 	 */
 	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED)) { 
-		ip->sync_flags &= ~(HAMMER_INODE_RDIRTY |
-				    HAMMER_INODE_DDIRTY |
+		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY |
 				    HAMMER_INODE_ITIMES);
 	}
 	return(error);
@@ -551,7 +548,7 @@ static int
 hammer_update_itimes(hammer_cursor_t cursor, hammer_inode_t ip)
 {
 	hammer_transaction_t trans = cursor->trans;
-	struct hammer_inode_record *rec;
+	struct hammer_btree_leaf_elm *leaf;
 	int error;
 
 retry:
@@ -567,7 +564,7 @@ retry:
 		cursor->key_beg.obj_type = 0;
 		cursor->asof = ip->obj_asof;
 		cursor->flags &= ~HAMMER_CURSOR_INITMASK;
-		cursor->flags |= HAMMER_CURSOR_GET_RECORD | HAMMER_CURSOR_ASOF;
+		cursor->flags |= HAMMER_CURSOR_GET_LEAF | HAMMER_CURSOR_ASOF;
 		cursor->flags |= HAMMER_CURSOR_BACKEND;
 
 		error = hammer_btree_lookup(cursor);
@@ -577,17 +574,14 @@ retry:
 		}
 		if (error == 0) {
 			/*
-			 * Do not generate UNDO records for atime/mtime
-			 * updates.
+			 * Do not generate UNDO records for atime updates.
 			 */
-			rec = &cursor->record->inode;
-			hammer_modify_record_noundo(trans,
-						    cursor->record_buffer,
-						    cursor->record);
-			rec->ino_atime = ip->sync_ino_rec.ino_atime;
-			rec->ino_mtime = ip->sync_ino_rec.ino_mtime;
-			hammer_modify_record_done(cursor->record_buffer,
-						  cursor->record);
+			leaf = cursor->leaf;
+			hammer_modify_node(trans, cursor->node,	
+					   &leaf->atime, sizeof(leaf->atime));
+			leaf->atime = ip->sync_ino_leaf.atime;
+			hammer_modify_node_done(cursor->node);
+			/*rec->ino_mtime = ip->sync_ino_rec.ino_mtime;*/
 			ip->sync_flags &= ~HAMMER_INODE_ITIMES;
 			/* XXX recalculate crc */
 			hammer_cache_node(cursor->node, &ip->cache[0]);
@@ -697,7 +691,6 @@ hammer_unload_inode(struct hammer_inode *ip)
  * A transaction has modified an inode, requiring updates as specified by
  * the passed flags.
  *
- * HAMMER_INODE_RDIRTY:	Inode record has been updated
  * HAMMER_INODE_DDIRTY: Inode data has been updated
  * HAMMER_INODE_XDIRTY: Dirty in-memory records
  * HAMMER_INODE_BUFS:   Dirty buffer cache buffers
@@ -708,9 +701,9 @@ void
 hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
 {
 	KKASSERT ((ip->flags & HAMMER_INODE_RO) == 0 ||
-		  (flags & (HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
-		   HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|
-		   HAMMER_INODE_DELETED|HAMMER_INODE_ITIMES)) == 0);
+		  (flags & (HAMMER_INODE_DDIRTY |
+			    HAMMER_INODE_XDIRTY | HAMMER_INODE_BUFS |
+			    HAMMER_INODE_DELETED | HAMMER_INODE_ITIMES)) == 0);
 
 	ip->flags |= flags;
 }
@@ -996,7 +989,7 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	 */
 	ip->sync_flags = (ip->flags & HAMMER_INODE_MODMASK);
 	ip->sync_trunc_off = ip->trunc_off;
-	ip->sync_ino_rec = ip->ino_rec;
+	ip->sync_ino_leaf = ip->ino_leaf;
 	ip->sync_ino_data = ip->ino_data;
 	ip->flags &= ~HAMMER_INODE_MODMASK | HAMMER_INODE_TRUNCATED;
 
@@ -1164,8 +1157,8 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	 * The backend may have adjusted nlinks, so if the adjusted nlinks
 	 * does not match the fronttend set the frontend's RDIRTY flag again.
 	 */
-	if (ip->ino_rec.ino_nlinks != ip->sync_ino_rec.ino_nlinks)
-		ip->flags |= HAMMER_INODE_RDIRTY;
+	if (ip->ino_data.nlinks != ip->sync_ino_data.nlinks)
+		ip->flags |= HAMMER_INODE_DDIRTY;
 
 	/*
 	 * Reflush any BIOs that wound up in the alt list.  Our inode will
@@ -1304,7 +1297,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	 * have the record's entire key properly set up.
 	 */
 	if (record->type != HAMMER_MEM_RECORD_DEL)
-		record->rec.inode.base.base.create_tid = trans->tid;
+		record->leaf.base.create_tid = trans->tid;
 	for (;;) {
 		error = hammer_ip_sync_record_cursor(cursor, record);
 		if (error != EDEADLK)
@@ -1360,7 +1353,7 @@ hammer_sync_inode(hammer_inode_t ip)
 	 * inode now, potentially allowing the inode to be physically
 	 * deleted.
 	 */
-	nlinks = ip->ino_rec.ino_nlinks;
+	nlinks = ip->ino_data.nlinks;
 	next = TAILQ_FIRST(&ip->target_list);
 	while ((depend = next) != NULL) {
 		next = TAILQ_NEXT(depend, target_entry);
@@ -1405,10 +1398,10 @@ hammer_sync_inode(hammer_inode_t ip)
 	/*
 	 * Set dirty if we had to modify the link count.
 	 */
-	if (ip->sync_ino_rec.ino_nlinks != nlinks) {
+	if (ip->sync_ino_data.nlinks != nlinks) {
 		KKASSERT((int64_t)nlinks >= 0);
-		ip->sync_ino_rec.ino_nlinks = nlinks;
-		ip->sync_flags |= HAMMER_INODE_RDIRTY;
+		ip->sync_ino_data.nlinks = nlinks;
+		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 	}
 
 	/*
@@ -1434,9 +1427,9 @@ hammer_sync_inode(hammer_inode_t ip)
 		ip->sync_trunc_off = ip->trunc_off;
 		ip->sync_flags |= HAMMER_INODE_TRUNCATED;
 	}
-	if (ip->sync_ino_rec.ino_size != ip->ino_rec.ino_size) {
-		ip->sync_ino_rec.ino_size = ip->ino_rec.ino_size;
-		ip->sync_flags |= HAMMER_INODE_RDIRTY;
+	if (ip->sync_ino_data.size != ip->ino_data.size) {
+		ip->sync_ino_data.size = ip->ino_data.size;
+		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 	}
 
 	/*
@@ -1505,7 +1498,7 @@ hammer_sync_inode(hammer_inode_t ip)
 	 * If we are deleting the inode the frontend had better not have
 	 * any active references on elements making up the inode.
 	 */
-	if (error == 0 && ip->sync_ino_rec.ino_nlinks == 0 &&
+	if (error == 0 && ip->sync_ino_data.nlinks == 0 &&
 		RB_EMPTY(&ip->rec_tree)  &&
 	    (ip->sync_flags & HAMMER_INODE_DELETING) &&
 	    (ip->flags & HAMMER_INODE_DELETED) == 0) {
@@ -1524,8 +1517,8 @@ hammer_sync_inode(hammer_inode_t ip)
 			 * copy of the inode record.  The DELETED flag handles
 			 * this, do not set RDIRTY.
 			 */
-			ip->ino_rec.base.base.delete_tid = trans.tid;
-			ip->sync_ino_rec.base.base.delete_tid = trans.tid;
+			ip->ino_leaf.base.delete_tid = trans.tid;
+			ip->sync_ino_leaf.base.delete_tid = trans.tid;
 
 			/*
 			 * Adjust the inode count in the volume header
@@ -1567,7 +1560,7 @@ hammer_sync_inode(hammer_inode_t ip)
 		 *
 		 * Clear flags which may have been set by the frontend.
 		 */
-		ip->sync_flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
+		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY|
 				    HAMMER_INODE_XDIRTY|HAMMER_INODE_ITIMES|
 				    HAMMER_INODE_DELETING);
 		break;
@@ -1578,7 +1571,7 @@ hammer_sync_inode(hammer_inode_t ip)
 		 *
 		 * Clear flags which may have been set by the frontend.
 		 */
-		ip->sync_flags &= ~(HAMMER_INODE_RDIRTY|HAMMER_INODE_DDIRTY|
+		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY|
 				    HAMMER_INODE_XDIRTY|HAMMER_INODE_ITIMES|
 				    HAMMER_INODE_DELETING);
 		while (RB_ROOT(&ip->rec_tree)) {
@@ -1604,9 +1597,9 @@ hammer_sync_inode(hammer_inode_t ip)
 		 * Set create_tid in both the frontend and backend
 		 * copy of the inode record.
 		 */
-		ip->ino_rec.base.base.create_tid = trans.tid;
-		ip->sync_ino_rec.base.base.create_tid = trans.tid;
-		ip->sync_flags |= HAMMER_INODE_RDIRTY | HAMMER_INODE_DDIRTY;
+		ip->ino_leaf.base.create_tid = trans.tid;
+		ip->sync_ino_leaf.base.create_tid = trans.tid;
+		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 		break;
 	}
 
@@ -1622,12 +1615,11 @@ hammer_sync_inode(hammer_inode_t ip)
 	if (ip->flags & HAMMER_INODE_DELETED) {
 		error = hammer_update_inode(&cursor, ip);
 	} else 
-	if ((ip->sync_flags & (HAMMER_INODE_RDIRTY | HAMMER_INODE_DDIRTY |
-			       HAMMER_INODE_ITIMES)) == HAMMER_INODE_ITIMES) {
+	if ((ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_ITIMES)) ==
+	    HAMMER_INODE_ITIMES) {
 		error = hammer_update_itimes(&cursor, ip);
 	} else
-	if (ip->sync_flags & (HAMMER_INODE_RDIRTY | HAMMER_INODE_DDIRTY |
-			      HAMMER_INODE_ITIMES)) {
+	if (ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_ITIMES)) {
 		error = hammer_update_inode(&cursor, ip);
 	}
 	if (error)
@@ -1663,7 +1655,7 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 	 * (a state flag) when it is actually able to perform the
 	 * operation.
 	 */
-	if (ip->ino_rec.ino_nlinks == 0 &&
+	if (ip->ino_data.nlinks == 0 &&
 	    (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
 		ip->flags |= HAMMER_INODE_DELETING;
 		ip->flags |= HAMMER_INODE_TRUNCATED;

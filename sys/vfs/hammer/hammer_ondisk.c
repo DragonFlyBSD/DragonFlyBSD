@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.41 2008/05/05 20:34:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.42 2008/05/12 21:17:18 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1039,8 +1039,7 @@ hammer_rel_node(hammer_node_t node)
 }
 
 /*
- *
- *
+ * Free space on-media associated with a B-Tree node.
  */
 void
 hammer_delete_node(hammer_transaction_t trans, hammer_node_t node)
@@ -1194,6 +1193,8 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
 	return(node);
 }
 
+#if 0
+
 /*
  * The returned buffers are already appropriately marked as being modified.
  * If the caller marks them again unnecessary undo records may be generated.
@@ -1309,6 +1310,8 @@ hammer_alloc_record(hammer_transaction_t trans,
 	KKASSERT(*errorp == 0);
 	return(rec);
 }
+
+#endif
 
 /*
  * Allocate data.  If the address of a data buffer is supplied then

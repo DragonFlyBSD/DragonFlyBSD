@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.24 2008/05/05 20:34:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.25 2008/05/12 21:17:18 dillon Exp $
  */
 
 /*
@@ -101,10 +101,21 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 		if (error)
 			break;
 		hammer_lock_sh(&node->lock);
+
+		/*
+		 * If someone got in before we could lock the node, retry.
+		 */
 		if (node->flags & HAMMER_NODE_DELETED) {
 			hammer_unlock(&node->lock);
 			hammer_rel_node(node);
 			node = NULL;
+			continue;
+		}
+		if (volume->ondisk->vol0_btree_root != node->node_offset) {
+			hammer_unlock(&node->lock);
+			hammer_rel_node(node);
+			node = NULL;
+			continue;
 		}
 	}
 
@@ -204,7 +215,7 @@ hammer_done_cursor(hammer_cursor_t cursor)
 	}
 
 	cursor->data = NULL;
-	cursor->record = NULL;
+	cursor->leaf = NULL;
 	cursor->left_bound = NULL;
 	cursor->right_bound = NULL;
 	cursor->trans = NULL;

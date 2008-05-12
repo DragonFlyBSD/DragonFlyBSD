@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.45 2008/05/12 05:13:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.46 2008/05/12 21:17:18 dillon Exp $
  */
 
 /*
@@ -584,7 +584,6 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	hammer_mount_t hmp;
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
-	hammer_off_t rec_off;
 	hammer_off_t data_off;
 	int32_t data_len;
 	int error;
@@ -609,45 +608,21 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	 * Only record types have data.
 	 */
 	KKASSERT(node->type == HAMMER_BTREE_TYPE_LEAF);
+	cursor->leaf = &elm->leaf;
 	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
 		flags &= ~HAMMER_CURSOR_GET_DATA;
 	data_off = elm->leaf.data_offset;
 	data_len = elm->leaf.data_len;
 	if (data_off == 0)
 		flags &= ~HAMMER_CURSOR_GET_DATA;
-	rec_off = elm->leaf.rec_offset;
 
-	/*
-	 * Extract the record if the record was requested or the data
-	 * resides in the record buf.
-	 */
-	if ((flags & HAMMER_CURSOR_GET_RECORD) ||
-	    ((flags & HAMMER_CURSOR_GET_DATA) &&
-	     ((rec_off ^ data_off) & ~HAMMER_BUFMASK64) == 0)) {
-		cursor->record = hammer_bread(hmp, rec_off, &error,
-					      &cursor->record_buffer);
-		if (hammer_crc_test_record(cursor->record) == 0) {
-			Debugger("CRC FAILED: RECORD");
-		}
-	} else {
-		rec_off = 0;
-		error = 0;
-	}
-	if ((flags & HAMMER_CURSOR_GET_DATA) && error == 0) {
-		if ((rec_off ^ data_off) & ~HAMMER_BUFMASK64) {
-			/*
-			 * Data and record are in different buffers.
-			 */
-			cursor->data = hammer_bread(hmp, data_off, &error,
+	error = 0;
+	if ((flags & HAMMER_CURSOR_GET_DATA)) {
+		/*
+		 * Data and record are in different buffers.
+		 */
+		cursor->data = hammer_bread(hmp, data_off, &error,
 						    &cursor->data_buffer);
-		} else {
-			/*
-			 * Data resides in same buffer as record.
-			 */
-			cursor->data = (void *)
-				((char *)cursor->record_buffer->ondisk +
-				((int32_t)data_off & HAMMER_BUFMASK));
-		}
 		KKASSERT(data_len >= 0 && data_len <= HAMMER_BUFSIZE);
 		if (data_len && 
 		    crc32(cursor->data, data_len) != elm->leaf.data_crc) {
@@ -673,7 +648,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
  * ENOSPC is returned if there is no room to insert a new record.
  */
 int
-hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
+hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 {
 	hammer_node_ondisk_t node;
 	int i;
@@ -702,20 +677,20 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_elm_t elm)
 		bcopy(&node->elms[i], &node->elms[i+1],
 		      (node->count - i) * sizeof(*elm));
 	}
-	node->elms[i] = *elm;
+	node->elms[i].leaf = *elm;
 	++node->count;
 	hammer_modify_node_done(cursor->node);
 
 	/*
 	 * Debugging sanity checks.
 	 */
-	KKASSERT(hammer_btree_cmp(cursor->left_bound, &elm->leaf.base) <= 0);
-	KKASSERT(hammer_btree_cmp(cursor->right_bound, &elm->leaf.base) > 0);
+	KKASSERT(hammer_btree_cmp(cursor->left_bound, &elm->base) <= 0);
+	KKASSERT(hammer_btree_cmp(cursor->right_bound, &elm->base) > 0);
 	if (i) {
-		KKASSERT(hammer_btree_cmp(&node->elms[i-1].leaf.base, &elm->leaf.base) < 0);
+		KKASSERT(hammer_btree_cmp(&node->elms[i-1].leaf.base, &elm->base) < 0);
 	}
 	if (i != node->count - 1)
-		KKASSERT(hammer_btree_cmp(&node->elms[i+1].leaf.base, &elm->leaf.base) > 0);
+		KKASSERT(hammer_btree_cmp(&node->elms[i+1].leaf.base, &elm->base) > 0);
 
 	return(0);
 }
@@ -1006,7 +981,8 @@ re_search:
 			/*
 			 * If we aren't inserting we can stop here.
 			 */
-			if ((flags & HAMMER_CURSOR_INSERT) == 0) {
+			if ((flags & (HAMMER_CURSOR_INSERT |
+				      HAMMER_CURSOR_PRUNING)) == 0) {
 				cursor->index = 0;
 				return(ENOENT);
 			}
@@ -1039,7 +1015,8 @@ re_search:
 			 * elms[i-2] prior to adjustments to 'i'.
 			 */
 			--i;
-			if ((flags & HAMMER_CURSOR_INSERT) == 0) {
+			if ((flags & (HAMMER_CURSOR_INSERT |
+				      HAMMER_CURSOR_PRUNING)) == 0) {
 				cursor->index = i;
 				return (ENOENT);
 			}
@@ -2385,7 +2362,7 @@ hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i)
 			elm->internal.subtree_offset);
 		break;
 	case HAMMER_BTREE_TYPE_RECORD:
-		kprintf("\trec_offset   = %016llx\n", elm->leaf.rec_offset);
+		kprintf("\tatime 	= %016llx\n", elm->leaf.atime);
 		kprintf("\tdata_offset  = %016llx\n", elm->leaf.data_offset);
 		kprintf("\tdata_len     = %08x\n", elm->leaf.data_len);
 		kprintf("\tdata_crc     = %08x\n", elm->leaf.data_crc);

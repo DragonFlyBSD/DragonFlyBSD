@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.18 2008/05/06 00:21:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.19 2008/05/12 21:17:18 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -384,16 +384,6 @@ hammer_crc_test_volume(hammer_volume_ondisk_t ondisk)
 	crc = crc32(ondisk, HAMMER_VOL_CRCSIZE1) ^
 	      crc32(&ondisk->vol_crc + 1, HAMMER_VOL_CRCSIZE2);
 	return (ondisk->vol_crc == crc);
-}
-
-int
-hammer_crc_test_record(hammer_record_ondisk_t ondisk)
-{
-	hammer_crc_t crc;
-
-	crc = crc32(&ondisk->base.rec_crc + 1, HAMMER_RECORD_CRCSIZE);
-	return (ondisk->base.rec_crc == crc &&
-		ondisk->base.signature == HAMMER_RECORD_SIGNATURE_GOOD);
 }
 
 int

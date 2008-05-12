@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.51 2008/05/09 22:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.52 2008/05/12 21:17:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -207,10 +207,10 @@ hammer_vop_read(struct vop_read_args *ap)
 	 * Access the data in HAMMER_BUFSIZE blocks via the buffer cache.
 	 */
 	uio = ap->a_uio;
-	while (uio->uio_resid > 0 && uio->uio_offset < ip->ino_rec.ino_size) {
+	while (uio->uio_resid > 0 && uio->uio_offset < ip->ino_data.size) {
 		offset = uio->uio_offset & HAMMER_BUFMASK;
 #if 0
-		error = cluster_read(ap->a_vp, ip->ino_rec.ino_size,
+		error = cluster_read(ap->a_vp, ip->ino_data.size,
 				     uio->uio_offset - offset, HAMMER_BUFSIZE,
 				     MAXBSIZE, seqcount, &bp);
 #endif
@@ -224,8 +224,8 @@ hammer_vop_read(struct vop_read_args *ap)
 		n = HAMMER_BUFSIZE - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
-		if (n > ip->ino_rec.ino_size - uio->uio_offset)
-			n = (int)(ip->ino_rec.ino_size - uio->uio_offset);
+		if (n > ip->ino_data.size - uio->uio_offset)
+			n = (int)(ip->ino_data.size - uio->uio_offset);
 		error = uiomove((char *)bp->b_data + offset, n, uio);
 		if (error) {
 			bqrelse(bp);
@@ -235,7 +235,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	}
 	if ((ip->flags & HAMMER_INODE_RO) == 0 &&
 	    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
-		ip->ino_rec.ino_atime = trans.time;
+		ip->ino_leaf.atime = trans.time;
 		hammer_modify_inode(&trans, ip, HAMMER_INODE_ITIMES);
 	}
 	hammer_done_transaction(&trans);
@@ -277,7 +277,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	 * Check append mode
 	 */
 	if (ap->a_ioflag & IO_APPEND)
-		uio->uio_offset = ip->ino_rec.ino_size;
+		uio->uio_offset = ip->ino_data.size;
 
 	/*
 	 * Check for illegal write offsets.  Valid range is 0...2^63-1
@@ -308,7 +308,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		n = HAMMER_BUFSIZE - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
-		if (uio->uio_offset + n > ip->ino_rec.ino_size) {
+		if (uio->uio_offset + n > ip->ino_data.size) {
 			vnode_pager_setsize(ap->a_vp, uio->uio_offset + n);
 			fixsize = 1;
 		}
@@ -339,7 +339,7 @@ hammer_vop_write(struct vop_write_args *ap)
 				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
 			if ((bp->b_flags & B_CACHE) == 0)
 				vfs_bio_clrbuf(bp);
-		} else if (uio->uio_offset - offset >= ip->ino_rec.ino_size) {
+		} else if (uio->uio_offset - offset >= ip->ino_data.size) {
 			/*
 			 * If the base offset of the buffer is beyond the
 			 * file EOF, we don't have to issue a read.
@@ -367,21 +367,22 @@ hammer_vop_write(struct vop_write_args *ap)
 		if (error) {
 			brelse(bp);
 			if (fixsize) {
-				vtruncbuf(ap->a_vp, ip->ino_rec.ino_size,
+				vtruncbuf(ap->a_vp, ip->ino_data.size,
 					  HAMMER_BUFSIZE);
 			}
 			break;
 		}
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
-		if (ip->ino_rec.ino_size < uio->uio_offset) {
-			ip->ino_rec.ino_size = uio->uio_offset;
-			flags = HAMMER_INODE_RDIRTY;
-			vnode_pager_setsize(ap->a_vp, ip->ino_rec.ino_size);
+		if (ip->ino_data.size < uio->uio_offset) {
+			ip->ino_data.size = uio->uio_offset;
+			flags = HAMMER_INODE_DDIRTY;
+			vnode_pager_setsize(ap->a_vp, ip->ino_data.size);
 		} else {
 			flags = 0;
 		}
-		ip->ino_rec.ino_mtime = trans.time;
+		ip->ino_data.mtime = trans.time;
 		flags |= HAMMER_INODE_ITIMES | HAMMER_INODE_BUFS;
+		flags |= HAMMER_INODE_DDIRTY;	/* XXX mtime */
 		hammer_modify_inode(&trans, ip, flags);
 
 		if (ap->a_ioflag & IO_SYNC) {
@@ -441,7 +442,7 @@ hammer_vop_advlock(struct vop_advlock_args *ap)
 {
 	struct hammer_inode *ip = VTOI(ap->a_vp);
 
-	return (lf_advlock(ap, &ip->advlock, ip->ino_rec.ino_size));
+	return (lf_advlock(ap, &ip->advlock, ip->ino_data.size));
 }
 
 /*
@@ -543,32 +544,32 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 #endif
 
 	vap->va_fsid = ip->hmp->fsid_udev;
-	vap->va_fileid = ip->ino_rec.base.base.obj_id;
+	vap->va_fileid = ip->ino_leaf.base.obj_id;
 	vap->va_mode = ip->ino_data.mode;
-	vap->va_nlink = ip->ino_rec.ino_nlinks;
+	vap->va_nlink = ip->ino_data.nlinks;
 	vap->va_uid = hammer_to_unix_xid(&ip->ino_data.uid);
 	vap->va_gid = hammer_to_unix_xid(&ip->ino_data.gid);
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
-	vap->va_size = ip->ino_rec.ino_size;
-	hammer_to_timespec(ip->ino_rec.ino_atime, &vap->va_atime);
-	hammer_to_timespec(ip->ino_rec.ino_mtime, &vap->va_mtime);
+	vap->va_size = ip->ino_data.size;
+	hammer_to_timespec(ip->ino_leaf.atime, &vap->va_atime);
+	hammer_to_timespec(ip->ino_data.mtime, &vap->va_mtime);
 	hammer_to_timespec(ip->ino_data.ctime, &vap->va_ctime);
 	vap->va_flags = ip->ino_data.uflags;
 	vap->va_gen = 1;	/* hammer inums are unique for all time */
 	vap->va_blocksize = HAMMER_BUFSIZE;
-	vap->va_bytes = (ip->ino_rec.ino_size + 63) & ~63;
-	vap->va_type = hammer_get_vnode_type(ip->ino_rec.base.base.obj_type);
+	vap->va_bytes = (ip->ino_data.size + 63) & ~63;
+	vap->va_type = hammer_get_vnode_type(ip->ino_data.obj_type);
 	vap->va_filerev = 0; 	/* XXX */
 	/* mtime uniquely identifies any adjustments made to the file */
-	vap->va_fsmid = ip->ino_rec.ino_mtime;
+	vap->va_fsmid = ip->ino_data.mtime;
 	vap->va_uid_uuid = ip->ino_data.uid;
 	vap->va_gid_uuid = ip->ino_data.gid;
 	vap->va_fsid_uuid = ip->hmp->fsid;
 	vap->va_vaflags = VA_UID_UUID_VALID | VA_GID_UUID_VALID |
 			  VA_FSID_UUID_VALID;
 
-	switch (ip->ino_rec.base.base.obj_type) {
+	switch (ip->ino_data.obj_type) {
 	case HAMMER_OBJTYPE_CDEV:
 	case HAMMER_OBJTYPE_BDEV:
 		vap->va_rmajor = ip->ino_data.rmajor;
@@ -596,7 +597,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	hammer_inode_t ip;
 	hammer_tid_t asof;
 	struct hammer_cursor cursor;
-	union hammer_record_ondisk *rec;
 	struct vnode *vp;
 	int64_t namekey;
 	int error;
@@ -680,16 +680,14 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	obj_id = 0;
 
 	if (error == 0) {
-		rec = NULL;
 		error = hammer_ip_first(&cursor);
 		while (error == 0) {
 			error = hammer_ip_resolve_data(&cursor);
 			if (error)
 				break;
-			rec = cursor.record;
-			if (nlen == rec->entry.base.data_len &&
-			    bcmp(ncp->nc_name, cursor.data, nlen) == 0) {
-				obj_id = rec->entry.obj_id;
+			if (nlen == cursor.leaf->data_len - HAMMER_ENTRY_NAME_OFF &&
+			    bcmp(ncp->nc_name, cursor.data->entry.name, nlen) == 0) {
+				obj_id = cursor.data->entry.obj_id;
 				break;
 			}
 			error = hammer_ip_next(&cursor);
@@ -992,7 +990,6 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	struct hammer_cursor cursor;
 	struct hammer_inode *ip;
 	struct uio *uio;
-	hammer_record_ondisk_t rec;
 	hammer_base_elm_t base;
 	int error;
 	int cookie_index;
@@ -1073,21 +1070,21 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	error = hammer_ip_first(&cursor);
 
 	while (error == 0) {
-		error = hammer_ip_resolve_record_and_data(&cursor);
+		error = hammer_ip_resolve_data(&cursor);
 		if (error)
 			break;
-		rec = cursor.record;
-		base = &rec->base.base;
+		base = &cursor.leaf->base;
 		saveoff = base->key;
+		KKASSERT(cursor.leaf->data_len > HAMMER_ENTRY_NAME_OFF);
 
 		if (base->obj_id != ip->obj_id)
 			panic("readdir: bad record at %p", cursor.node);
 
 		r = vop_write_dirent(
-			     &error, uio, rec->entry.obj_id,
-			     hammer_get_dtype(rec->entry.base.base.obj_type),
-			     rec->entry.base.data_len,
-			     (void *)cursor.data);
+			     &error, uio, cursor.data->entry.obj_id,
+			     hammer_get_dtype(cursor.leaf->base.obj_type),
+			     cursor.leaf->data_len - HAMMER_ENTRY_NAME_OFF ,
+			     (void *)cursor.data->entry.name);
 		if (r)
 			break;
 		++saveoff;
@@ -1160,8 +1157,11 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	if (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error == 0) {
-			error = uiomove((char *)cursor.data,
-					cursor.record->base.data_len,
+			KKASSERT(cursor.leaf->data_len >=
+				 HAMMER_SYMLINK_NAME_OFF);
+			error = uiomove(cursor.data->symlink.name,
+					cursor.leaf->data_len -
+						HAMMER_SYMLINK_NAME_OFF,
 					ap->a_uio);
 		}
 	}
@@ -1201,9 +1201,8 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	struct hammer_inode *tdip;
 	struct hammer_inode *ip;
 	struct hammer_cursor cursor;
-	union hammer_record_ondisk *rec;
 	int64_t namekey;
-	int error;
+	int nlen, error;
 
 	fdip = VTOI(ap->a_fdvp);
 	tdip = VTOI(ap->a_tdvp);
@@ -1274,9 +1273,10 @@ retry:
 	while (error == 0) {
 		if (hammer_ip_resolve_data(&cursor) != 0)
 			break;
-		rec = cursor.record;
-		if (fncp->nc_nlen == rec->entry.base.data_len &&
-		    bcmp(fncp->nc_name, cursor.data, fncp->nc_nlen) == 0) {
+		nlen = cursor.leaf->data_len - HAMMER_ENTRY_NAME_OFF;
+		KKASSERT(nlen > 0);
+		if (fncp->nc_nlen == nlen &&
+		    bcmp(fncp->nc_name, cursor.data->entry.name, nlen) == 0) {
 			break;
 		}
 		error = hammer_ip_next(&cursor);
@@ -1394,17 +1394,17 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			modflags |= HAMMER_INODE_DDIRTY;
 		}
 	}
-	while (vap->va_size != VNOVAL && ip->ino_rec.ino_size != vap->va_size) {
+	while (vap->va_size != VNOVAL && ip->ino_data.size != vap->va_size) {
 		switch(ap->a_vp->v_type) {
 		case VREG:
-			if (vap->va_size == ip->ino_rec.ino_size)
+			if (vap->va_size == ip->ino_data.size)
 				break;
 			/*
 			 * XXX break atomicy, we can deadlock the backend
 			 * if we do not release the lock.  Probably not a
 			 * big deal here.
 			 */
-			if (vap->va_size < ip->ino_rec.ino_size) {
+			if (vap->va_size < ip->ino_data.size) {
 				vtruncbuf(ap->a_vp, vap->va_size,
 					  HAMMER_BUFSIZE);
 				truncating = 1;
@@ -1412,8 +1412,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				vnode_pager_setsize(ap->a_vp, vap->va_size);
 				truncating = 0;
 			}
-			ip->ino_rec.ino_size = vap->va_size;
-			modflags |= HAMMER_INODE_RDIRTY;
+			ip->ino_data.size = vap->va_size;
+			modflags |= HAMMER_INODE_DDIRTY;
 			aligned_size = (vap->va_size + HAMMER_BUFMASK) &
 				       ~HAMMER_BUFMASK64;
 
@@ -1459,8 +1459,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			} else if (ip->trunc_off > vap->va_size) {
 				ip->trunc_off = vap->va_size;
 			}
-			ip->ino_rec.ino_size = vap->va_size;
-			modflags |= HAMMER_INODE_RDIRTY;
+			ip->ino_data.size = vap->va_size;
+			modflags |= HAMMER_INODE_DDIRTY;
 			break;
 		default:
 			error = EINVAL;
@@ -1469,12 +1469,12 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		break;
 	}
 	if (vap->va_atime.tv_sec != VNOVAL) {
-		ip->ino_rec.ino_atime =
+		ip->ino_leaf.atime =
 			hammer_timespec_to_transid(&vap->va_atime);
 		modflags |= HAMMER_INODE_ITIMES;
 	}
 	if (vap->va_mtime.tv_sec != VNOVAL) {
-		ip->ino_rec.ino_mtime =
+		ip->ino_data.mtime =
 			hammer_timespec_to_transid(&vap->va_mtime);
 		modflags |= HAMMER_INODE_ITIMES;
 	}
@@ -1536,24 +1536,23 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 * as pure data, not a string, and is no \0 terminated.
 	 */
 	if (error == 0) {
-		record = hammer_alloc_mem_record(nip);
-		record->type = HAMMER_MEM_RECORD_GENERAL;
 		bytes = strlen(ap->a_target);
+		record = hammer_alloc_mem_record(nip, bytes);
+		record->type = HAMMER_MEM_RECORD_GENERAL;
 
-		record->rec.base.base.key = HAMMER_FIXKEY_SYMLINK;
-		record->rec.base.base.rec_type = HAMMER_RECTYPE_FIX;
-		record->rec.base.data_len = bytes;
-		record->rec.base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
-		record->data = (void *)ap->a_target;
-		/* will be reallocated by routine below */
+		record->leaf.base.key = HAMMER_FIXKEY_SYMLINK;
+		record->leaf.base.rec_type = HAMMER_RECTYPE_FIX;
+		record->leaf.data_len = bytes;
+		KKASSERT(HAMMER_SYMLINK_NAME_OFF == 0);
+		bcopy(ap->a_target, record->data->symlink.name, bytes);
 		error = hammer_ip_add_record(&trans, record);
 
 		/*
 		 * Set the file size to the length of the link.
 		 */
 		if (error == 0) {
-			nip->ino_rec.ino_size = bytes;
-			hammer_modify_inode(&trans, nip, HAMMER_INODE_RDIRTY);
+			nip->ino_data.size = bytes;
+			hammer_modify_inode(&trans, nip, HAMMER_INODE_DDIRTY);
 		}
 	}
 	if (error == 0)
@@ -1682,7 +1681,6 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	struct hammer_transaction trans;
 	struct hammer_inode *ip;
 	struct hammer_cursor cursor;
-	hammer_record_ondisk_t rec;
 	hammer_base_elm_t base;
 	struct bio *bio;
 	struct buf *bp;
@@ -1715,9 +1713,9 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	cursor.flags |= HAMMER_CURSOR_ASOF | HAMMER_CURSOR_DATAEXTOK;
 
 	cursor.key_end = cursor.key_beg;
-	KKASSERT(ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_REGFILE);
+	KKASSERT(ip->ino_data.obj_type == HAMMER_OBJTYPE_REGFILE);
 #if 0
-	if (ip->ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
+	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
@@ -1742,10 +1740,9 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		error = hammer_ip_resolve_data(&cursor);
 		if (error)
 			break;
-		rec = cursor.record;
-		base = &rec->base.base;
+		base = &cursor.leaf->base;
 
-		rec_offset = base->key - rec->data.base.data_len;
+		rec_offset = base->key - cursor.leaf->data_len;
 
 		/*
 		 * Calculate the gap, if any, and zero-fill it.
@@ -1768,7 +1765,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 */
 		roff = -n;
 		rec_offset += roff;
-		n = rec->data.base.data_len - roff;
+		n = cursor.leaf->data_len - roff;
 		KKASSERT(n > 0);
 		if (n > bp->b_bufsize - boff)
 			n = bp->b_bufsize - boff;
@@ -1905,7 +1902,7 @@ hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip, struct bio *bio)
 	 * Delete any records overlapping our range.  This function will
 	 * (eventually) properly truncate partial overlaps.
 	 */
-	if (ip->sync_ino_rec.base.base.obj_type == HAMMER_OBJTYPE_DBFILE) {
+	if (ip->sync_ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
 		error = hammer_ip_delete_range(cursor, ip, bio->bio_offset,
 					       bio->bio_offset);
 	} else {
@@ -1925,11 +1922,11 @@ hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip, struct bio *bio)
 	if (error == 0) {
 		int limit_size;
 
-		if (ip->sync_ino_rec.ino_size - bio->bio_offset > 
+		if (ip->sync_ino_data.size - bio->bio_offset > 
 		    bp->b_bufsize) {
 			    limit_size = bp->b_bufsize;
 		} else {
-			limit_size = (int)(ip->sync_ino_rec.ino_size -
+			limit_size = (int)(ip->sync_ino_data.size -
 					   bio->bio_offset);
 			KKASSERT(limit_size >= 0);
 			limit_size = (limit_size + 63) & ~63;
@@ -1966,10 +1963,9 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 	struct namecache *ncp;
 	hammer_inode_t dip;
 	hammer_inode_t ip;
-	hammer_record_ondisk_t rec;
 	struct hammer_cursor cursor;
 	int64_t namekey;
-	int error;
+	int nlen, error;
 
 	/*
 	 * Calculate the namekey and setup the key range for the scan.  This
@@ -2008,16 +2004,16 @@ retry:
 	 * The hammer_ip_*() functions merge in-memory records with on-disk
 	 * records for the purposes of the search.
 	 */
-	rec = NULL;
 	error = hammer_ip_first(&cursor);
 
 	while (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error)
 			break;
-		rec = cursor.record;
-		if (ncp->nc_nlen == rec->entry.base.data_len &&
-		    bcmp(ncp->nc_name, cursor.data, ncp->nc_nlen) == 0) {
+		nlen = cursor.leaf->data_len - HAMMER_ENTRY_NAME_OFF;
+		KKASSERT(nlen > 0);
+		if (ncp->nc_nlen == nlen &&
+		    bcmp(ncp->nc_name, cursor.data->entry.name, nlen) == 0) {
 			break;
 		}
 		error = hammer_ip_next(&cursor);
@@ -2030,10 +2026,10 @@ retry:
 	 */
 	if (error == 0) {
 		ip = hammer_get_inode(trans, &dip->cache[1],
-				      rec->entry.obj_id,
+				      cursor.data->entry.obj_id,
 				      dip->hmp->asof, 0, &error);
 		if (error == ENOENT) {
-			kprintf("obj_id %016llx\n", rec->entry.obj_id);
+			kprintf("obj_id %016llx\n", cursor.data->entry.obj_id);
 			Debugger("ENOENT unlinking object that should exist");
 		}
 
@@ -2045,7 +2041,7 @@ retry:
 		 * terminate the cursor to avoid a deadlock.  It is ok to
 		 * call hammer_done_cursor() twice.
 		 */
-		if (error == 0 && ip->ino_rec.base.base.obj_type ==
+		if (error == 0 && ip->ino_data.obj_type ==
 				  HAMMER_OBJTYPE_DIRECTORY) {
 			error = hammer_ip_check_directory_empty(trans, &cursor,
 								ip);

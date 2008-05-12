@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.18 2008/05/12 05:13:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.19 2008/05/12 21:17:16 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -326,33 +326,25 @@ alloc_btree_element(hammer_off_t *offp)
 	return(node);
 }
 
-hammer_record_ondisk_t
-alloc_record_element(hammer_off_t *offp, int32_t data_len, void **datap)
+void *
+alloc_data_element(hammer_off_t *offp, int32_t data_len,
+		   struct buffer_info **data_bufferp)
 {
-	struct buffer_info *record_buffer = NULL;
-	struct buffer_info *data_buffer = NULL;
-	hammer_record_ondisk_t rec;
-
-	rec = alloc_blockmap(HAMMER_ZONE_RECORD_INDEX, sizeof(*rec),
-			     offp, &record_buffer);
-	bzero(rec, sizeof(*rec));
+	void *data;
 
 	if (data_len >= HAMMER_BUFSIZE) {
 		assert(data_len <= HAMMER_BUFSIZE); /* just one buffer */
-		*datap = alloc_blockmap(HAMMER_ZONE_LARGE_DATA_INDEX, data_len,
-					&rec->base.data_off, &data_buffer);
-		rec->base.data_len = data_len;
-		bzero(*datap, data_len);
+		data = alloc_blockmap(HAMMER_ZONE_LARGE_DATA_INDEX, data_len,
+				      offp, data_bufferp);
+		bzero(data, data_len);
 	} else if (data_len) {
-		*datap = alloc_blockmap(HAMMER_ZONE_SMALL_DATA_INDEX, data_len,
-					&rec->base.data_off, &data_buffer);
-		rec->base.data_len = data_len;
-		bzero(*datap, data_len);
+		data = alloc_blockmap(HAMMER_ZONE_SMALL_DATA_INDEX, data_len,
+				      offp, data_bufferp);
+		bzero(data, data_len);
 	} else {
-		*datap = NULL;
+		data = NULL;
 	}
-	/* XXX buf not released, ptr remains valid */
-	return(rec);
+	return (data);
 }
 
 /*

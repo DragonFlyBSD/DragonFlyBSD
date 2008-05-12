@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cycle.c,v 1.1 2008/05/11 20:44:44 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cycle.c,v 1.2 2008/05/12 21:17:16 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,7 +42,7 @@ hammer_get_cycle(int64_t default_obj_id)
 	int64_t obj_id;
 	FILE *fp;
 
-	if ((fp = fopen(CyclePath, "r")) != NULL) {
+	if (CyclePath && (fp = fopen(CyclePath, "r")) != NULL) {
 		if (fscanf(fp, "%llx\n", &obj_id) != 1) {
 			obj_id = default_obj_id;
 			fprintf(stderr, "Warning: malformed obj_id in %s\n",

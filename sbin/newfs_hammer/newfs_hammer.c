@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.24 2008/05/06 00:15:35 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.25 2008/05/12 21:17:17 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -59,7 +59,6 @@ main(int ac, char **av)
 	 * if it gets broken!
 	 */
 	assert(sizeof(struct hammer_volume_ondisk) <= HAMMER_BUFSIZE);
-	assert(sizeof(union hammer_record_ondisk) == HAMMER_RECORD_SIZE);
 	assert(sizeof(struct hammer_blockmap_layer1) == 32);
 	assert(sizeof(struct hammer_blockmap_layer2) == 16);
 
@@ -427,9 +426,11 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		format_blockmap(
 			&ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
 			HAMMER_ZONE_BTREE);
+#if 0
 		format_blockmap(
 			&ondisk->vol0_blockmap[HAMMER_ZONE_RECORD_INDEX],
 			HAMMER_ZONE_RECORD);
+#endif
 		format_blockmap(
 			&ondisk->vol0_blockmap[HAMMER_ZONE_LARGE_DATA_INDEX],
 			HAMMER_ZONE_LARGE_DATA);
@@ -459,38 +460,26 @@ hammer_off_t
 format_root(void)
 {
 	hammer_off_t btree_off;
-	hammer_off_t rec_off;
+	hammer_off_t data_off;
+	hammer_tid_t create_tid;
 	hammer_node_ondisk_t bnode;
-	hammer_record_ondisk_t rec;
 	struct hammer_inode_data *idata;
+	struct buffer_info *data_buffer = NULL;
 	hammer_btree_elm_t elm;
 
 	bnode = alloc_btree_element(&btree_off);
-	rec = alloc_record_element(&rec_off, sizeof(*idata), (void **)&idata);
+	idata = alloc_data_element(&data_off, sizeof(*idata), &data_buffer);
+	create_tid = createtid();
 
 	/*
 	 * Populate the inode data and inode record for the root directory.
 	 */
 	idata->version = HAMMER_INODE_DATA_VERSION;
 	idata->mode = 0755;
-
-	rec->base.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	rec->base.base.obj_id = HAMMER_OBJID_ROOT;
-	rec->base.base.key = 0;
-	rec->base.base.create_tid = createtid();
-	rec->base.base.delete_tid = 0;
-	rec->base.base.rec_type = HAMMER_RECTYPE_INODE;
-	rec->base.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
-	/* rec->base.data_offset - initialized by alloc_record_element */
-	/* rec->base.data_len 	 - initialized by alloc_record_element */
-	rec->base.data_crc = crc32(idata, sizeof(*idata));
-	rec->inode.ino_atime  = rec->base.base.create_tid;
-	rec->inode.ino_mtime  = rec->base.base.create_tid;
-	rec->inode.ino_size   = 0;
-	rec->inode.ino_nlinks = 1;
-	rec->base.signature = HAMMER_RECORD_SIGNATURE_GOOD;
-	rec->base.rec_crc = crc32(&rec->base.rec_crc + 1,
-				HAMMER_RECORD_SIZE - sizeof(rec->base.rec_crc));
+	idata->mtime = create_tid;
+	idata->obj_type = HAMMER_OBJTYPE_DIRECTORY;
+	idata->size = 0;
+	idata->nlinks = 1;
 
 	/*
 	 * Create the root of the B-Tree.  The root is a leaf node so we
@@ -501,14 +490,20 @@ format_root(void)
 	bnode->type = HAMMER_BTREE_TYPE_LEAF;
 
 	elm = &bnode->elms[0];
-	elm->base = rec->base.base;
-	elm->leaf.rec_offset = rec_off;
-	elm->leaf.data_offset = rec->base.data_off;
-	elm->leaf.data_len = rec->base.data_len;
-	elm->leaf.data_crc = rec->base.data_crc;
+	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
+	elm->leaf.base.obj_id = HAMMER_OBJID_ROOT;
+	elm->leaf.base.key = 0;
+	elm->leaf.base.create_tid = create_tid;
+	elm->leaf.base.delete_tid = 0;
+	elm->leaf.base.rec_type = HAMMER_RECTYPE_INODE;
+	elm->leaf.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
 
-	bnode->crc = crc32(&bnode->crc + 1,
-			   sizeof(*bnode) - sizeof(bnode->crc));
+	elm->leaf.atime = create_tid;
+	elm->leaf.data_offset = data_off;
+	elm->leaf.data_len = sizeof(*idata);
+	elm->leaf.data_crc = crc32(idata, sizeof(*idata));
+
+	bnode->crc = crc32(&bnode->crc + 1, HAMMER_BTREE_CRCSIZE);
 
 	return(btree_off);
 }

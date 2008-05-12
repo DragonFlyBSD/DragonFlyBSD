@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.13 2008/05/05 20:34:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.14 2008/05/12 21:17:18 dillon Exp $
  */
 
 /*
@@ -65,7 +65,7 @@
  * from any point in the tree without revisting nodes.  It is also possible
  * to terminate searches early and make minor adjustments to the boundaries
  * (within the confines of the parent's boundaries) on the fly.  This greatly
- * improves the efficiency of many operations, most especially record appends.
+ * improves the efficiency of many operations.
  *
  * HAMMER B-Trees are per-cluster.  The global multi-cluster B-Tree is
  * constructed by allowing internal nodes to link to the roots of other
@@ -132,18 +132,20 @@ struct hammer_btree_internal_elm {
  */
 struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
-	hammer_off_t	rec_offset;
+	hammer_off_t	atime;		/* access time */
 	hammer_off_t	data_offset;
 	int32_t		data_len;
 	hammer_crc_t	data_crc;
 };
 
+typedef struct hammer_btree_leaf_elm *hammer_btree_leaf_elm_t;
+
 /*
  * Rollup btree leaf element types - 64 byte structure
  */
 union hammer_btree_elm {
-	struct hammer_base_elm base;
-	struct hammer_btree_leaf_elm leaf;
+	struct hammer_base_elm		base;
+	struct hammer_btree_leaf_elm	leaf;
 	struct hammer_btree_internal_elm internal;
 };
 

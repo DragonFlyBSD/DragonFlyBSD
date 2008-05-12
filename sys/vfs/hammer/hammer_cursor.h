@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.17 2008/05/03 05:28:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.18 2008/05/12 21:17:18 dillon Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ struct hammer_cursor {
 	 */
 	struct hammer_buffer *record_buffer;	/* record (+ built-in data) */
 	struct hammer_buffer *data_buffer;	/* extended data */
-	union hammer_record_ondisk *record;
+	struct hammer_btree_leaf_elm *leaf;
 	union hammer_data_ondisk *data;
 
 	/*
@@ -113,7 +113,7 @@ struct hammer_cursor {
 
 typedef struct hammer_cursor *hammer_cursor_t;
 
-#define HAMMER_CURSOR_GET_RECORD	0x0001
+#define HAMMER_CURSOR_GET_LEAF		0x0001
 #define HAMMER_CURSOR_GET_DATA		0x0002
 #define HAMMER_CURSOR_BACKEND		0x0004	/* cursor run by backend */
 #define HAMMER_CURSOR_INSERT		0x0008	/* adjust for insert */
@@ -129,6 +129,8 @@ typedef struct hammer_cursor *hammer_cursor_t;
 #define HAMMER_CURSOR_DATAEXTOK		0x2000	/* allow data extension */
 #define HAMMER_CURSOR_ASOF		0x4000	/* as-of lookup */
 #define HAMMER_CURSOR_CREATE_CHECK	0x8000	/* as-of lookup */
+
+#define HAMMER_CURSOR_PRUNING		0x00010000
 
 /*
  * Flags we can clear when reusing a cursor (we can clear all of them)

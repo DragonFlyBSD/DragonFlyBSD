@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.31 2008/05/05 20:34:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.32 2008/05/12 21:17:18 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -507,28 +507,6 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 	 sizeof(hammer_crc_t))
 
 /*
- * All HAMMER records have a common 64-byte base and a 32 byte extension,
- * plus a possible data reference.  The data reference can be in-band or
- * out-of-band.
- */
-
-#define HAMMER_RECORD_SIZE		(64+32)
-
-struct hammer_base_record {
-	hammer_crc_t	rec_crc;	/* record crc (full 64-4 bytes) */
-					/* MUST BE FIRST FIELD OF STRUCTURE */
-	hammer_crc_t	data_crc;	/* data crc */
-					/* MUST BE SECOND FIELD OF STRUCTURE */
-	struct hammer_base_elm base;	/* 40 byte base element */
-	hammer_off_t	data_off;	/* in-band or out-of-band */
-	int32_t		data_len;	/* size of data in bytes */
-	u_int32_t	signature;	/* record signature */
-};
-
-#define HAMMER_RECORD_SIGNATURE_GOOD		0xA7B6C5D4
-#define HAMMER_RECORD_SIGNATURE_DESTROYED	0xF8071625
-
-/*
  * Record types are fairly straightforward.  The B-Tree includes the record
  * type in its index sort.
  *
@@ -538,17 +516,6 @@ struct hammer_base_record {
  * targets and even though they are built within a HAMMER filesystem they
  * get their own obj_id space (and thus can serve as a replication target)
  * and look like a mount point to the system.
- *
- * Inter-cluster records are special-cased in the B-Tree.  These records
- * are referenced from a B-Tree INTERNAL node, NOT A LEAF.  This means
- * that the element in the B-Tree node is actually a boundary element whos
- * base element fields, including rec_type, reflect the boundary, NOT
- * the inter-cluster record type.
- *
- * HAMMER_RECTYPE_CLUSTER - only set in the actual inter-cluster record,
- * not set in the left or right boundary elements around the inter-cluster
- * reference of an internal node in the B-Tree (because doing so would
- * interfere with the boundary tests).
  *
  * NOTE: hammer_ip_delete_range_all() deletes all record types greater
  * then HAMMER_RECTYPE_INODE.
@@ -578,61 +545,45 @@ struct hammer_base_record {
 #define HAMMER_OBJTYPE_PSEUDOFS		8	/* pseudo filesystem obj */
 
 /*
- * A HAMMER inode record.
+ * HAMMER inode attribute data
  *
- * This forms the basis for a filesystem object.  obj_id is the inode number,
- * key1 represents the pseudo filesystem id for security partitioning
- * (preventing cross-links and/or restricting a NFS export and specifying the
- * security policy), and key2 represents the data retention policy id.
+ * The data reference for a HAMMER inode points to this structure.  Any
+ * modifications to the contents of this structure will result in a
+ * replacement operation.
  *
- * Inode numbers are 64 bit quantities which uniquely identify a filesystem
- * object for the ENTIRE life of the filesystem, even after the object has
- * been deleted.  For all intents and purposes inode numbers are simply 
- * allocated by incrementing a sequence space.
+ * parent_obj_id is only valid for directories (which cannot be hard-linked),
+ * and specifies the parent directory obj_id.  This field will also be set
+ * for non-directory inodes as a recovery aid, but can wind up specifying
+ * stale information.  However, since object id's are not reused, the worse
+ * that happens is that the recovery code is unable to use it.
  *
- * There is an important distinction between the data stored in the inode
- * record and the record's data reference.  The record references a
- * hammer_inode_data structure but the filesystem object size and hard link
- * count is stored in the inode record itself.  This allows multiple inodes
- * to share the same hammer_inode_data structure.  This is possible because
- * any modifications will lay out new data.  The HAMMER implementation need
- * not use the data-sharing ability when laying down new records.
- *
- * A HAMMER inode is subject to the same historical storage requirements
- * as any other record.  In particular any change in filesystem or hard link
- * count will lay down a new inode record when the filesystem is synced to
- * disk.  This can lead to a lot of junk records which get cleaned up by
- * the data retention policy.
- *
- * The ino_atime and ino_mtime fields are a special case.  Modifications to
- * these fields do NOT lay down a new record by default, though the values
- * are effectively frozen for snapshots which access historical versions
- * of the inode record due to other operations.  This means that atime will
- * not necessarily be accurate in snapshots, backups, or mirrors.  mtime
- * will be accurate in backups and mirrors since it can be regenerated from
- * the mirroring stream.
- *
- * Because nlinks is historically retained the hardlink count will be
- * accurate when accessing a HAMMER filesystem snapshot.
+ * NOTE: atime is stored in the inode's B-Tree element and not in the inode
+ * data.  This allows the atime to be updated without having to lay down a
+ * new record.
  */
-struct hammer_inode_record {
-	struct hammer_base_record base;
-	u_int64_t ino_atime;	/* last access time (not historical) */
-	u_int64_t ino_mtime;	/* last modified time (not historical) */
-	u_int64_t ino_size;	/* filesystem object size */
-	u_int64_t ino_nlinks;	/* hard links */
+struct hammer_inode_data {
+	u_int16_t version;	/* inode data version */
+	u_int16_t mode;		/* basic unix permissions */
+	u_int32_t uflags;	/* chflags */
+	u_int32_t rmajor;	/* used by device nodes */
+	u_int32_t rminor;	/* used by device nodes */
+	u_int64_t ctime;
+	u_int64_t parent_obj_id;/* parent directory obj_id */
+	uuid_t	  uid;
+	uuid_t	  gid;
+
+	u_int8_t  obj_type;
+	u_int8_t  reserved01;
+	u_int16_t reserved02;
+	u_int32_t reserved03;
+	u_int64_t mtime;
+	u_int64_t size;		/* filesystem object size */
+	u_int64_t nlinks;	/* hard links */
+	char	reserved04[32];
 };
 
-/*
- * Data records specify the entire contents of a regular file object,
- * including attributes.  Small amounts of data can theoretically be
- * embedded in the record itself but the use of this ability verses using
- * an out-of-band data reference depends on the implementation.
- */
-struct hammer_data_record {
-	struct hammer_base_record base;
-	char	data[32];
-};
+#define HAMMER_INODE_DATA_VERSION	1
+#define HAMMER_OBJID_ROOT		1
 
 /*
  * A directory entry specifies the HAMMER filesystem object id, a copy of
@@ -652,68 +603,30 @@ struct hammer_data_record {
  * NOTE: den_name / the filename data reference is NOT terminated with \0.
  *
  */
-struct hammer_entry_record {
-	struct hammer_base_record base;
+struct hammer_entry_data {
 	u_int64_t obj_id;		/* object being referenced */
 	u_int64_t reserved01;
+	char	name[16];		/* name (extended) */
+};
+
+#define HAMMER_ENTRY_NAME_OFF	offsetof(struct hammer_entry_data, name[0])
+#define HAMMER_ENTRY_SIZE(nlen)	offsetof(struct hammer_entry_data, name[nlen])
+
+struct hammer_symlink_data {
 	char	name[16];
 };
 
-/*
- * Hammer rollup record
- */
-union hammer_record_ondisk {
-	struct hammer_base_record	base;
-	struct hammer_inode_record	inode;
-	struct hammer_data_record	data;
-	struct hammer_entry_record	entry;
-};
-
-typedef union hammer_record_ondisk *hammer_record_ondisk_t;
-
-#define HAMMER_RECORD_CRCSIZE	(HAMMER_RECORD_SIZE - sizeof(hammer_crc_t))
-
-/*
- * HAMMER UNIX Attribute data
- *
- * The data reference in a HAMMER inode record points to this structure.  Any
- * modifications to the contents of this structure will result in a record
- * replacement operation.
- *
- * short_data_off allows a small amount of data to be embedded in the
- * hammer_inode_data structure.  HAMMER typically uses this to represent
- * up to 64 bytes of data, or to hold symlinks.  Remember that allocations
- * are in powers of 2 so 64, 192, 448, or 960 bytes of embedded data is
- * support (64+64, 64+192, 64+448 64+960).
- *
- * parent_obj_id is only valid for directories (which cannot be hard-linked),
- * and specifies the parent directory obj_id.  This field will also be set
- * for non-directory inodes as a recovery aid, but can wind up specifying
- * stale information.  However, since object id's are not reused, the worse
- * that happens is that the recovery code is unable to use it.
- */
-struct hammer_inode_data {
-	u_int16_t version;	/* inode data version */
-	u_int16_t mode;		/* basic unix permissions */
-	u_int32_t uflags;	/* chflags */
-	u_int32_t rmajor;	/* used by device nodes */
-	u_int32_t rminor;	/* used by device nodes */
-	u_int64_t ctime;
-	u_int64_t parent_obj_id;/* parent directory obj_id */
-	uuid_t	uid;
-	uuid_t	gid;
-	/* XXX device, softlink extension */
-};
-
-#define HAMMER_INODE_DATA_VERSION	1
-
-#define HAMMER_OBJID_ROOT		1
+#define HAMMER_SYMLINK_NAME_OFF	offsetof(struct hammer_symlink_data, name[0])
 
 /*
  * Rollup various structures embedded as record data
  */
 union hammer_data_ondisk {
+	struct hammer_entry_data entry;
 	struct hammer_inode_data inode;
+	struct hammer_symlink_data symlink;
 };
+
+typedef union hammer_data_ondisk *hammer_data_ondisk_t;
 
 #endif
