@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.4 2008/05/11 20:44:44 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.5 2008/05/12 05:13:47 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,7 +42,7 @@ static void reblock_usage(int exit_code);
  * reblock <filesystem> [compaction_precentage] (default 90%)
  */
 void
-hammer_cmd_reblock(char **av, int ac)
+hammer_cmd_reblock(char **av, int ac, int flags)
 {
 	struct hammer_ioc_reblock reblock;
 	const char *filesystem;
@@ -52,6 +52,7 @@ hammer_cmd_reblock(char **av, int ac)
 	bzero(&reblock, sizeof(reblock));
 	reblock.beg_obj_id = hammer_get_cycle(HAMMER_MIN_OBJID);
 	reblock.end_obj_id = HAMMER_MAX_OBJID;
+	reblock.head.flags = flags & HAMMER_IOC_DO_FLAGS;
 
 	if (ac == 0)
 		reblock_usage(1);
@@ -63,10 +64,11 @@ hammer_cmd_reblock(char **av, int ac)
 		if (perc < 0 || perc > 100)
 			reblock_usage(1);
 	}
-	reblock.free_level = perc * (HAMMER_LARGEBLOCK_SIZE / 100);
+	reblock.free_level = (int)((int64_t)perc *
+				   HAMMER_LARGEBLOCK_SIZE / 100);
 	reblock.free_level = HAMMER_LARGEBLOCK_SIZE - reblock.free_level;
-	if (reblock.free_level < 128)
-		reblock.free_level = 128;
+	if (reblock.free_level < 0)
+		reblock.free_level = 0;
 	printf("reblock free level %d\n", reblock.free_level);
 
 	fd = open(filesystem, O_RDONLY);

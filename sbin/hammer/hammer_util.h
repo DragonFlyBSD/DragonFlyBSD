@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.13 2008/04/27 00:43:55 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.14 2008/05/12 05:13:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -61,6 +61,9 @@ struct cache_info {
 	int delete;	/* delete flag - delete on last ref */
 };
 
+#define HAMMER_BUFLISTS		64
+#define HAMMER_BUFLISTMASK	(HAMMER_BUFLISTS - 1)
+
 /*
  * These structures are used by newfs_hammer to track the filesystem
  * buffers it constructs while building the filesystem.  No attempt
@@ -81,7 +84,7 @@ struct volume_info {
 
 	struct hammer_volume_ondisk *ondisk;
 
-	TAILQ_HEAD(, buffer_info) buffer_list;
+	TAILQ_HEAD(, buffer_info) buffer_lists[HAMMER_BUFLISTS];
 };
 
 struct buffer_info {
@@ -98,6 +101,7 @@ extern uuid_t Hammer_FSId;
 extern int64_t BootAreaSize;
 extern int64_t MemAreaSize;
 extern int64_t UndoBufferSize;
+extern int DebugOpt;
 extern int NumVolumes;
 extern int RootVolNo;
 extern struct volume_list VolList;

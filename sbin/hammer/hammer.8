@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.14 2008/05/11 20:44:44 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.15 2008/05/12 05:13:47 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -72,8 +72,8 @@ When pruning a filesystem you can instruct HAMMER to create softlinks
 to available snapshots.
 .It Fl t Ar timeout
 When pruning and reblocking you can tell the utility to stop after a
-certain period of time.
-This option is typically used to limit the time spent reblocking.
+certain period of time.  This option is used along with the cycle file
+option to prune or reblock a portion of the filesystem incrementally.
 .It Fl v
 Increase verboseness.  May be specified multiple times.
 .It Fl x
@@ -112,6 +112,8 @@ if you wish to specify the time by some other means.
 Same as the
 .Ar stamp
 command but generates a 64 bit timestamp.
+.It Ar date
+Output a date equivalent given a transaction id or time stamp.
 .It Ar history Ar path
 Show the modification history for a HAMMER file's inode and data.
 .It Ar show Op vol_no[:clu_no]
@@ -172,6 +174,28 @@ from the filesystem.  The long keyword is designed to prevent accidental use.
 This option is not recommended.
 .Pp
 Example: "hammer prune /mnt from 1h to 1d every 30m"
+.Pp
+Note that pruning a filesystem does not necessarily immediately free space,
+though typically some space will be freed if a large number of records are
+pruned out.  The filesystem must be reblocked to completely recover all
+available space.
+.It Ar reblock Ar filesystem Op Ar fill_percentage
+.It Ar reblock-btree Ar filesystem Op Ar fill_percentage
+.It Ar reblock-data Ar filesystem Op Ar fill_percentage
+.It Ar reblock-recs Ar filesystem Op Ar fill_percentage
+Attempt to free space for reuse by reblocking a live HAMMER filesystem.
+Big blocks cannot be reused until they are completely free.  Scan the
+filesystem and move B-Tree nodes, records, and data from not-quite-full
+big blocks to new big blocks in an attempt to free up the not-quite-full
+big blocks.
+.Pp
+If unspecified a fill percentage of 90% is used.  B-Tree nodes, data,
+and records can be reblocked together or by separate invocations.
+.Pp
+A HAMMER filesystem can be defragmented by specifying a fill percentage
+of 100%.  Since this can potentially rewrite the entire contents of the
+disk it is best to do it incrementally from a cron job with a timeout.
+The filesystem would thus be defragmented over long period of time.
 .El
 .Sh EXAMPLES
 .Sh DIAGNOSTICS

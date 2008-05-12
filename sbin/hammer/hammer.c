@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.16 2008/05/11 20:44:44 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.17 2008/05/12 05:13:48 dillon Exp $
  */
 
 #include "hammer.h"
@@ -60,10 +60,13 @@ main(int ac, char **av)
 	u_int32_t status;
 	char *blkdevs = NULL;
 
-	while ((ch = getopt(ac, av, "c:hf:rs:t:vx")) != -1) {
+	while ((ch = getopt(ac, av, "c:dhf:rs:t:vx")) != -1) {
 		switch(ch) {
 		case 'c':
 			CyclePath = optarg;
+			break;
+		case 'd':
+			++DebugOpt;
 			break;
 		case 'h':
 			usage(0);
@@ -131,6 +134,18 @@ main(int ac, char **av)
 		printf("0x%016llx\n", tid);
 		exit(0);
 	}
+	if (strcmp(av[0], "date") == 0) {
+		time_t t;
+
+		if (av[1] == NULL)
+			usage(1);
+		tid = strtoull(av[1], NULL, 16);
+		if (tid >= 0x100000000LLU)
+			tid /= 1000000000LLU;
+		t = (time_t)tid;
+		printf("%s", ctime(&t));
+		exit(0);
+	}
 	if (strcmp(av[0], "namekey") == 0) {
 		int64_t key;
 
@@ -162,8 +177,17 @@ main(int ac, char **av)
 		hammer_cmd_history(av[0] + 7, av + 1, ac - 1);
 		exit(0);
 	}
-	if (strcmp(av[0], "reblock") == 0) {
-		hammer_cmd_reblock(av + 1, ac - 1);
+	if (strncmp(av[0], "reblock", 7) == 0) {
+		if (strcmp(av[0], "reblock") == 0)
+			hammer_cmd_reblock(av + 1, ac - 1, -1);
+		else if (strcmp(av[0], "reblock-btree") == 0)
+			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_BTREE);
+		else if (strcmp(av[0], "reblock-data") == 0)
+			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_DATA);
+		else if (strcmp(av[0], "reblock-recs") == 0)
+			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_RECS);
+		else
+			usage(1);
 		exit(0);
 	}
 

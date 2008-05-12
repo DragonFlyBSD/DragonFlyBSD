@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.9 2008/05/11 20:44:44 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.10 2008/05/12 05:13:47 dillon Exp $
  */
 
 #include "hammer.h"
@@ -73,8 +73,6 @@ hammer_cmd_prune(char **av, int ac)
 	prune.beg_obj_id = HAMMER_MIN_OBJID;
 	prune.end_obj_id = hammer_get_cycle(HAMMER_MAX_OBJID);
 
-	prune.cur_obj_id = prune.end_obj_id;	/* remove me */
-	prune.cur_key = HAMMER_MAX_KEY;		/* remove me */
 	prune.stat_oldest_tid = HAMMER_MAX_TID;
 
 	if (ac == 0)

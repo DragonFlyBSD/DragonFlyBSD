@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.17 2008/05/06 00:15:33 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.18 2008/05/12 05:13:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -60,6 +60,7 @@ static void readhammerbuf(struct volume_info *vol, void *data,
 static void writehammerbuf(struct volume_info *vol, const void *data,
 			int64_t offset);
 
+int DebugOpt;
 
 uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
@@ -71,6 +72,16 @@ int     NumVolumes;
 int	RootVolNo = -1;
 struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
 
+static __inline
+int
+buffer_hash(hammer_off_t buf_offset)
+{
+	int hi;
+
+	hi = (int)(buf_offset / HAMMER_BUFSIZE) & HAMMER_BUFLISTMASK;
+	return(hi);
+}
+
 /*
  * Lookup the requested information structure and related on-disk buffer.
  * Missing structures are created.
@@ -81,14 +92,15 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	struct volume_info *vol;
 	struct volume_info *scan;
 	struct hammer_volume_ondisk *ondisk;
-	int n;
+	int i, n;
 
 	/*
 	 * Allocate the volume structure
 	 */
 	vol = malloc(sizeof(*vol));
 	bzero(vol, sizeof(*vol));
-	TAILQ_INIT(&vol->buffer_list);
+	for (i = 0; i < HAMMER_BUFLISTS; ++i)
+		TAILQ_INIT(&vol->buffer_lists[i]);
 	vol->name = strdup(filename);
 	vol->fd = open(filename, oflags);
 	if (vol->fd < 0) {
@@ -181,9 +193,10 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	void *ondisk;
 	struct buffer_info *buf;
 	struct volume_info *volume;
+	hammer_off_t orig_offset = buf_offset;
 	int vol_no;
 	int zone;
-	int n;
+	int hi, n;
 
 	zone = HAMMER_ZONE_DECODE(buf_offset);
 	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX) {
@@ -194,18 +207,24 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	volume = get_volume(vol_no);
 	buf_offset &= ~HAMMER_BUFMASK64;
 
-	TAILQ_FOREACH(buf, &volume->buffer_list, entry) {
+	hi = buffer_hash(buf_offset);
+
+	TAILQ_FOREACH(buf, &volume->buffer_lists[hi], entry) {
 		if (buf->buf_offset == buf_offset)
 			break;
 	}
 	if (buf == NULL) {
 		buf = malloc(sizeof(*buf));
 		bzero(buf, sizeof(*buf));
+		if (DebugOpt) {
+			fprintf(stderr, "get_buffer %016llx %016llx\n",
+				orig_offset, buf_offset);
+		}
 		buf->buf_offset = buf_offset;
 		buf->buf_disk_offset = volume->ondisk->vol_buf_beg +
 					(buf_offset & HAMMER_OFF_SHORT_MASK);
 		buf->volume = volume;
-		TAILQ_INSERT_TAIL(&volume->buffer_list, buf, entry);
+		TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
 		++volume->cache.refs;
 		buf->cache.u.buffer = buf;
 		hammer_cache_add(&buf->cache, ISBUFFER);
@@ -236,14 +255,16 @@ void
 rel_buffer(struct buffer_info *buffer)
 {
 	struct volume_info *volume;
+	int hi;
 
 	assert(buffer->cache.refs > 0);
 	if (--buffer->cache.refs == 0) {
 		if (buffer->cache.delete) {
+			hi = buffer_hash(buffer->buf_offset);
 			volume = buffer->volume;
 			if (buffer->cache.modified)
 				flush_buffer(buffer);
-			TAILQ_REMOVE(&volume->buffer_list, buffer, entry);
+			TAILQ_REMOVE(&volume->buffer_lists[hi], buffer, entry);
 			hammer_cache_del(&buffer->cache);
 			free(buffer->ondisk);
 			free(buffer);
@@ -768,9 +789,12 @@ void
 flush_volume(struct volume_info *volume)
 {
 	struct buffer_info *buffer;
+	int i;
 
-	TAILQ_FOREACH(buffer, &volume->buffer_list, entry)
-		flush_buffer(buffer);
+	for (i = 0; i < HAMMER_BUFLISTS; ++i) {
+		TAILQ_FOREACH(buffer, &volume->buffer_lists[i], entry)
+			flush_buffer(buffer);
+	}
 	writehammerbuf(volume, volume->ondisk, 0);
 	volume->cache.modified = 0;
 }
