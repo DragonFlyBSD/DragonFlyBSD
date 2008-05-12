@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.44 2008/05/06 00:21:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.45 2008/05/12 05:13:11 dillon Exp $
  */
 
 /*
@@ -548,6 +548,9 @@ hammer_btree_first(hammer_cursor_t cursor)
 
 /*
  * Similarly but for an iteration in the reverse direction.
+ *
+ * Set ATEDISK when iterating backwards to skip the current entry,
+ * which after an ENOENT lookup will be pointing beyond our end point.
  */
 int
 hammer_btree_last(hammer_cursor_t cursor)
@@ -561,7 +564,7 @@ hammer_btree_last(hammer_cursor_t cursor)
 	cursor->key_beg = save;
 	if (error == ENOENT ||
 	    (cursor->flags & HAMMER_CURSOR_END_INCLUSIVE) == 0) {
-		cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+		cursor->flags |= HAMMER_CURSOR_ATEDISK;
 		error = hammer_btree_iterate_reverse(cursor);
 	}
 	cursor->flags |= HAMMER_CURSOR_ATEDISK;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.15 2008/05/11 21:45:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.16 2008/05/12 05:13:11 dillon Exp $
  */
 
 #include "hammer.h"
@@ -106,6 +106,9 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	if ((prune->head.flags & HAMMER_IOC_PRUNE_ALL) && prune->nelms)
 		return(EINVAL);
 
+	prune->cur_obj_id = cursor.key_end.obj_id;
+	prune->cur_key = HAMMER_MAX_KEY;
+
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 	if (error) {
@@ -119,8 +122,8 @@ retry:
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
-	cursor.key_end.obj_id = prune->end_obj_id;
-	cursor.key_end.key = HAMMER_MAX_KEY;
+	cursor.key_end.obj_id = prune->cur_obj_id;
+	cursor.key_end.key = prune->cur_key;
 	cursor.key_end.create_tid = HAMMER_MAX_TID - 1;
 	cursor.key_end.delete_tid = 0;
 	cursor.key_end.rec_type = HAMMER_MAX_RECTYPE;
@@ -128,9 +131,6 @@ retry:
 
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 	cursor.flags |= HAMMER_CURSOR_BACKEND;
-
-	prune->cur_obj_id = cursor.key_end.obj_id;
-	prune->cur_key = cursor.key_end.key;
 
 	error = hammer_btree_last(&cursor);
 	while (error == 0) {

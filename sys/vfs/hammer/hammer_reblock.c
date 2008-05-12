@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.12 2008/05/10 19:52:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.13 2008/05/12 05:13:11 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -67,6 +67,8 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 		return(EINVAL);
 	if (reblock->free_level < 0)
 		return(EINVAL);
+
+	reblock->cur_obj_id = reblock->beg_obj_id;
 
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
@@ -159,12 +161,13 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 	tmp_offset = elm->leaf.data_offset;
 	zone = HAMMER_ZONE_DECODE(tmp_offset);		/* can be 0 */
 	if ((zone == HAMMER_ZONE_SMALL_DATA_INDEX ||
-	     zone == HAMMER_ZONE_LARGE_DATA_INDEX) && error == 0) {
+	     zone == HAMMER_ZONE_LARGE_DATA_INDEX) &&
+	    error == 0 && (reblock->head.flags & HAMMER_IOC_DO_DATA)) {
 		++reblock->data_count;
 		reblock->data_byte_count += elm->leaf.data_len;
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
-		if (error == 0 && cur == 0 && bytes > reblock->free_level) {
+		if (error == 0 && cur == 0 && bytes >= reblock->free_level) {
 			if (hammer_debug_general & 0x4000)
 				kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
@@ -184,11 +187,12 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 	 */
 	tmp_offset = elm->leaf.rec_offset;
 	zone = HAMMER_ZONE_DECODE(tmp_offset);
-	if (zone == HAMMER_ZONE_RECORD_INDEX && error == 0) {
+	if (zone == HAMMER_ZONE_RECORD_INDEX &&
+	    error == 0 && (reblock->head.flags & HAMMER_IOC_DO_RECS)) {
 		++reblock->record_count;
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
-		if (error == 0 && cur == 0 && bytes > reblock->free_level) {
+		if (error == 0 && cur == 0 && bytes >= reblock->free_level) {
 			if (hammer_debug_general & 0x4000)
 				kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
@@ -208,12 +212,12 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 	 */
 	tmp_offset = cursor->node->node_offset;
 	zone = HAMMER_ZONE_DECODE(tmp_offset);
-	if (zone == HAMMER_ZONE_BTREE_INDEX && error == 0 &&
-	    cursor->index == 0) {
+	if (zone == HAMMER_ZONE_BTREE_INDEX && cursor->index == 0 &&
+	    error == 0 && (reblock->head.flags & HAMMER_IOC_DO_BTREE)) {
 		++reblock->btree_count;
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
-		if (error == 0 && cur == 0 && bytes > reblock->free_level) {
+		if (error == 0 && cur == 0 && bytes >= reblock->free_level) {
 			if (hammer_debug_general & 0x4000)
 				kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
