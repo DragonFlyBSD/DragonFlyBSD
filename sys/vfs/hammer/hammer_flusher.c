@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.14 2008/05/06 00:21:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.15 2008/05/13 20:46:55 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -203,6 +203,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		}
 	}
 	hammer_flusher_finalize(&trans);
+	hmp->flusher_tid = trans.tid;
 	hammer_done_transaction(&trans);
 }
 

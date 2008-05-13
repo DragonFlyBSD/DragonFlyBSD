@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.43 2008/05/13 05:04:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.44 2008/05/13 20:46:55 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1367,6 +1367,23 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
  */
 static int hammer_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
+
+int
+hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor)
+{
+	struct hammer_sync_info info;
+
+	info.error = 0;
+	info.waitfor = waitfor;
+	if (waitfor == MNT_WAIT) {
+		vmntvnodescan(hmp->mp, VMSC_GETVP,
+			      hammer_sync_scan1, hammer_sync_scan2, &info);
+	} else {
+		vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_NOWAIT,
+			      hammer_sync_scan1, hammer_sync_scan2, &info);
+	}
+	return(info.error);
+}
 
 int
 hammer_sync_hmp(hammer_mount_t hmp, int waitfor)

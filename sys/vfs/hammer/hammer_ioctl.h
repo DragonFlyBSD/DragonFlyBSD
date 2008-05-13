@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.7 2008/05/12 05:13:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.8 2008/05/13 20:46:55 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -168,8 +168,26 @@ struct hammer_ioc_reblock {
 	int32_t		unused03;
 };
 
+/*
+ * HAMMER_IOC_SYNCTID
+ */
+enum hammer_synctid_op {
+	HAMMER_SYNCTID_NONE,	/* no sync (TID will not be accurate) */
+	HAMMER_SYNCTID_ASYNC,	/* async (TID will not be accurate) */
+	HAMMER_SYNCTID_SYNC1,	/* single sync - might undo after crash */
+	HAMMER_SYNCTID_SYNC2	/* double sync - guarantee no undo */
+};
+
+struct hammer_ioc_synctid {
+	struct hammer_ioc_head	head;
+	enum hammer_synctid_op	op;
+	hammer_tid_t		tid;
+};
+
+
 #define HAMMERIOC_PRUNE		_IOWR('h',1,struct hammer_ioc_prune)
 #define HAMMERIOC_GETHISTORY	_IOWR('h',2,struct hammer_ioc_history)
 #define HAMMERIOC_REBLOCK	_IOWR('h',3,struct hammer_ioc_reblock)
+#define HAMMERIOC_SYNCTID	_IOWR('h',4,struct hammer_ioc_synctid)
 
 #endif

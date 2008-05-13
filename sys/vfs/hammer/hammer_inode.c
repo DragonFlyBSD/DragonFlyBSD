@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.58 2008/05/13 05:04:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.59 2008/05/13 20:46:55 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1562,10 +1562,13 @@ hammer_sync_inode(hammer_inode_t ip)
 			/*
 			 * Adjust the inode count in the volume header
 			 */
-			hammer_modify_volume_field(&trans, trans.rootvol,
-						   vol0_stat_inodes);
-			--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
-			hammer_modify_volume_done(trans.rootvol);
+			if (ip->flags & HAMMER_INODE_ONDISK) {
+				hammer_modify_volume_field(&trans,
+							   trans.rootvol,
+							   vol0_stat_inodes);
+				--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+				hammer_modify_volume_done(trans.rootvol);
+			}
 		} else {
 			ip->flags &= ~HAMMER_INODE_DELETED;
 			Debugger("hammer_ip_delete_range_all errored");

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.14 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.15 2008/05/13 20:46:55 dillon Exp $
  */
 
 /*
@@ -184,6 +184,7 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
 #define HAMMER_BTREE_TYPE_INTERNAL	((u_int8_t)'I')
 #define HAMMER_BTREE_TYPE_LEAF		((u_int8_t)'L')
 #define HAMMER_BTREE_TYPE_RECORD	((u_int8_t)'R')
+#define HAMMER_BTREE_TYPE_DELETED	((u_int8_t)'D')
 
 struct hammer_node_ondisk {
 	/*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.66 2008/05/13 00:15:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.67 2008/05/13 20:46:54 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -546,6 +546,7 @@ struct hammer_mount {
 	int	flusher_next;	/* next flush group */
 	int	flusher_lock;	/* lock sequencing of the next flush */
 	int	flusher_exiting;
+	hammer_tid_t flusher_tid; /* last flushed transaction id */
 	hammer_off_t flusher_undo_start; /* UNDO window for flushes */
 	int	reclaim_count;
 	thread_t flusher_td;
@@ -635,6 +636,8 @@ int	hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes);
 int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
 			hammer_inode_t ip);
 int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
+int	hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor);
+
 
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip, int data_len);
@@ -643,6 +646,7 @@ void	hammer_wait_mem_record(hammer_record_t record);
 void	hammer_rel_mem_record(hammer_record_t record);
 
 int	hammer_cursor_up(hammer_cursor_t cursor);
+int	hammer_cursor_up_locked(hammer_cursor_t cursor);
 int	hammer_cursor_down(hammer_cursor_t cursor);
 int	hammer_cursor_upgrade(hammer_cursor_t cursor);
 void	hammer_cursor_downgrade(hammer_cursor_t cursor);

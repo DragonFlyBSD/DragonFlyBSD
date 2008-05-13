@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.25 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.26 2008/05/13 20:46:55 dillon Exp $
  */
 
 /*
@@ -39,7 +39,7 @@
  */
 #include "hammer.h"
 
-static int hammer_load_cursor_parent(hammer_cursor_t cursor);
+static int hammer_load_cursor_parent(hammer_cursor_t cursor, int try_exclusive);
 
 /*
  * Initialize a fresh cursor using the B-Tree node cache.  If the cache
@@ -124,7 +124,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	 */
 	cursor->node = node;
 	if (error == 0)
-		error = hammer_load_cursor_parent(cursor);
+		error = hammer_load_cursor_parent(cursor, 0);
 	KKASSERT(error == 0);
 	/* if (error) hammer_done_cursor(cursor); */
 	return(error);
@@ -283,6 +283,7 @@ hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node, int index)
 		cursor->node = node;
 		hammer_ref_node(node);
 		hammer_lock_sh(&node->lock);
+		KKASSERT ((node->flags & HAMMER_NODE_DELETED) == 0);
 
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
@@ -290,7 +291,7 @@ hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node, int index)
 			cursor->parent = NULL;
 			cursor->parent_index = 0;
 		}
-		error = hammer_load_cursor_parent(cursor);
+		error = hammer_load_cursor_parent(cursor, 0);
 	}
 	cursor->index = index;
 	return (error);
@@ -301,7 +302,7 @@ hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node, int index)
  */
 static
 int
-hammer_load_cursor_parent(hammer_cursor_t cursor)
+hammer_load_cursor_parent(hammer_cursor_t cursor, int try_exclusive)
 {
 	hammer_mount_t hmp;
 	hammer_node_t parent;
@@ -317,7 +318,15 @@ hammer_load_cursor_parent(hammer_cursor_t cursor)
 		parent = hammer_get_node(hmp, node->ondisk->parent, 0, &error);
 		if (error)
 			return(error);
-		hammer_lock_sh(&parent->lock);
+		if (try_exclusive) {
+			if (hammer_lock_ex_try(&parent->lock)) {
+				hammer_rel_node(parent);
+				return(EDEADLK);
+			}
+		} else {
+			hammer_lock_sh(&parent->lock);
+		}
+		KKASSERT ((parent->flags & HAMMER_NODE_DELETED) == 0);
 		elm = NULL;
 		for (i = 0; i < parent->ondisk->count; ++i) {
 			elm = &parent->ondisk->elms[i];
@@ -349,9 +358,6 @@ hammer_load_cursor_parent(hammer_cursor_t cursor)
 /*
  * Cursor up to our parent node.  Return ENOENT if we are at the root of
  * the filesystem.
- *
- * If doing a nonblocking cursor-up and we are unable to acquire the lock,
- * the cursor remains unchanged.
  */
 int
 hammer_cursor_up(hammer_cursor_t cursor)
@@ -377,9 +383,53 @@ hammer_cursor_up(hammer_cursor_t cursor)
 	cursor->parent = NULL;
 	cursor->parent_index = 0;
 
-	error = hammer_load_cursor_parent(cursor);
+	error = hammer_load_cursor_parent(cursor, 0);
 	return(error);
 }
+
+/*
+ * Special cursor up given a locked cursor.  The orignal node is not
+ * unlocked and released and the cursor is not downgraded.  If we are
+ * unable to acquire and lock the parent, EDEADLK is returned.
+ */
+int
+hammer_cursor_up_locked(hammer_cursor_t cursor)
+{
+	hammer_node_t save;
+	int error;
+
+	/*
+	 * If the parent is NULL we are at the root of the B-Tree and
+	 * return ENOENT.
+	 */
+	if (cursor->parent == NULL)
+		return (ENOENT);
+
+	save = cursor->node;
+
+	/*
+	 * Set the node to its parent. 
+	 */
+	cursor->node = cursor->parent;
+	cursor->index = cursor->parent_index;
+	cursor->parent = NULL;
+	cursor->parent_index = 0;
+
+	/*
+	 * load the new parent, attempt to exclusively lock it.  Note that
+	 * we are still holding the old parent (now cursor->node) exclusively
+	 * locked.  This can return EDEADLK.
+	 */
+	error = hammer_load_cursor_parent(cursor, 1);
+	if (error) {
+		cursor->parent = cursor->node;
+		cursor->parent_index = cursor->index;
+		cursor->node = save;
+		cursor->index = 0;
+	}
+	return(error);
+}
+
 
 /*
  * Cursor down through the current node, which must be an internal node.
@@ -442,6 +492,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 	}
 	if (error == 0) {
 		hammer_lock_sh(&node->lock);
+		KKASSERT ((node->flags & HAMMER_NODE_DELETED) == 0);
 		cursor->node = node;
 		cursor->index = 0;
 	}

@@ -31,13 +31,15 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.17 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.18 2008/05/13 20:46:55 dillon Exp $
  */
 
 #include "hammer.h"
 
 static int hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_history *hist);
+static int hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
+				struct hammer_ioc_synctid *std);
 
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
@@ -64,6 +66,10 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	case HAMMERIOC_REBLOCK:
 		error = hammer_ioc_reblock(&trans, ip,
 					(struct hammer_ioc_reblock *)data);
+		break;
+	case HAMMERIOC_SYNCTID:
+		error = hammer_ioc_synctid(&trans, ip,
+					(struct hammer_ioc_synctid *)data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -278,5 +284,43 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 		}
 		hist->tid_ary[hist->count++] = elm->leaf.base.delete_tid;
 	}
+}
+
+/*
+ * Acquire synchronization TID
+ */
+static
+int
+hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
+		   struct hammer_ioc_synctid *std)
+{
+	hammer_mount_t hmp = ip->hmp;
+	int error = 0;
+
+	switch(std->op) {
+	case HAMMER_SYNCTID_NONE:
+		std->tid = hmp->flusher_tid;	/* inaccurate */
+		break;
+	case HAMMER_SYNCTID_ASYNC:
+		hammer_queue_inodes_flusher(hmp, MNT_NOWAIT);
+		std->tid = hmp->flusher_tid;	/* inaccurate */
+		hammer_flusher_async(hmp);
+		break;
+	case HAMMER_SYNCTID_SYNC1:
+		hammer_queue_inodes_flusher(hmp, MNT_WAIT);
+		hammer_flusher_sync(hmp);
+		std->tid = hmp->flusher_tid;
+		break;
+	case HAMMER_SYNCTID_SYNC2:
+		hammer_queue_inodes_flusher(hmp, MNT_WAIT);
+		hammer_flusher_sync(hmp);
+		std->tid = hmp->flusher_tid;
+		hammer_flusher_sync(hmp);
+		break;
+	default:
+		error = EOPNOTSUPP;
+		break;
+	}
+	return(error);
 }
 
