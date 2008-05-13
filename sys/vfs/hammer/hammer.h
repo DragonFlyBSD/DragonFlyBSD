@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.65 2008/05/12 23:15:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.66 2008/05/13 00:15:28 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -286,6 +286,7 @@ typedef struct hammer_inode *hammer_inode_t;
  */
 typedef enum hammer_record_type {
 	HAMMER_MEM_RECORD_GENERAL,	/* misc record */
+	HAMMER_MEM_RECORD_INODE,	/* inode record */
 	HAMMER_MEM_RECORD_ADD,		/* positive memory cache record */
 	HAMMER_MEM_RECORD_DEL		/* negative delete-on-disk record */
 } hammer_record_type_t;

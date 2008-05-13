@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.56 2008/05/12 23:15:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.57 2008/05/13 00:15:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -467,7 +467,7 @@ retry:
 		 * Generate a record and write it to the media
 		 */
 		record = hammer_alloc_mem_record(ip, 0);
-		record->type = HAMMER_MEM_RECORD_GENERAL;
+		record->type = HAMMER_MEM_RECORD_INODE;
 		record->flush_state = HAMMER_FST_FLUSH;
 		record->leaf = ip->sync_ino_leaf;
 		record->leaf.base.create_tid = trans->tid;
@@ -1277,21 +1277,34 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 
 	/*
 	 * If the whole inode is being deleting all on-disk records will
-	 * be deleted very soon, we can't sync anything to disk or its
-	 * create_tid will match its delete_tid (which is illegal), and assert.
+	 * be deleted very soon, we can't sync any new records to disk
+	 * because they will be deleted in the same transaction they were
+	 * created in (delete_tid == create_tid), which will assert.
+	 *
+	 * XXX There may be a case with RECORD_ADD with DELETED_FE set
+	 * that we currently panic on.
 	 */
 	if (record->ip->sync_flags & HAMMER_INODE_DELETING) {
-		if (record->type == HAMMER_MEM_RECORD_GENERAL) {
+		switch(record->type) {
+		case HAMMER_MEM_RECORD_GENERAL:
 			record->flags |= HAMMER_RECF_DELETED_FE;
 			record->flags |= HAMMER_RECF_DELETED_BE;
-		} else {
-			/*
-			 * Ugh. If it's an add we have a problem. 
+			error = 0;
+			goto done;
+		case HAMMER_MEM_RECORD_ADD:
+			panic("hammer_sync_record_callback: illegal add "
+			      "during inode deletion record %p", record);
+			break; /* NOT REACHED */
+		case HAMMER_MEM_RECORD_INODE:
+			panic("hammer_sync_record_callback: attempt to "
+			      "sync inode record %p?", record);
+			break; /* NOT REACHED */
+		case HAMMER_MEM_RECORD_DEL:
+			/* 
+			 * Follow through and issue the on-disk deletion
 			 */
-			KKASSERT(record->type != HAMMER_MEM_RECORD_ADD);
+			break;
 		}
-		error = 0;
-		goto done;
 	}
 
 	/*
@@ -1510,7 +1523,7 @@ hammer_sync_inode(hammer_inode_t ip)
 			tmp_error = -error;
 		if (tmp_error)
 			error = tmp_error;
-		if (error == 0)
+		if (RB_EMPTY(&ip->rec_tree))
 			ip->sync_flags &= ~HAMMER_INODE_XDIRTY;
 	}
 
