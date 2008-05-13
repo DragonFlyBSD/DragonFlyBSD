@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,45 +31,51 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.12 2008/05/13 20:49:34 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_synctid.c,v 1.1 2008/05/13 20:49:34 dillon Exp $
  */
 
-#include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
-#include <sys/time.h>
+#include "hammer.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <err.h>
-#include <ctype.h>
-#include <dirent.h>
+static void synctid_usage(int exit_code);
 
-#include "hammer_util.h"
-#include <vfs/hammer/hammer_ioctl.h>
+/*
+ * synctid <filesystem> [quick]
+ */
+void
+hammer_cmd_synctid(char **av, int ac)
+{
+	struct hammer_ioc_synctid synctid;
+	const char *filesystem;
+	int fd;
 
-extern int RecurseOpt;
-extern int VerboseOpt;
-extern const char *LinkPath;
-extern const char *CyclePath;
+	bzero(&synctid, sizeof(synctid));
+	synctid.op = HAMMER_SYNCTID_SYNC2;
 
-void hammer_cmd_show(hammer_tid_t node_offset, int depth,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound);
-void hammer_cmd_prune(char **av, int ac);
-void hammer_cmd_synctid(char **av, int ac);
-void hammer_cmd_history(const char *offset_str, char **av, int ac);
-void hammer_cmd_blockmap(void);
-void hammer_cmd_reblock(char **av, int ac, int flags);
+	if (ac == 0 || ac > 2)
+		synctid_usage(1);
+	filesystem = av[0];
+	if (ac == 2) {
+		if (strcmp(av[1], "quick") == 0)
+			synctid.op = HAMMER_SYNCTID_SYNC1;
+		else
+			synctid_usage(1);
+	}
+	fd = open(filesystem, O_RDONLY);
+	if (fd < 0)
+		err(1, "Unable to open %s", filesystem);
+	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0) {
+		fprintf(stderr, "Synctid %s failed: %s\n", filesystem, strerror(errno));
+	} else {
+		printf("0x%016llx\n", synctid.tid);
+	}
+	close(fd);
+}
 
-int64_t hammer_get_cycle(int64_t default_obj_id);
-void hammer_set_cycle(int64_t obj_id);
-void hammer_reset_cycle(void);
+static
+void
+synctid_usage(int exit_code)
+{
+	fprintf(stderr, "hammer synctid <filesystem> [quick]\n");
+	exit(exit_code);
+}
 

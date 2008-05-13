@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.17 2008/05/12 05:13:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.18 2008/05/13 20:49:34 dillon Exp $
  */
 
 #include "hammer.h"
@@ -39,7 +39,6 @@
 #include <math.h>
 
 static void hammer_parsetime(u_int64_t *tidp, const char *timestr);
-static void hammer_waitsync(int dosleep);
 static void hammer_parsedevs(const char *blkdevs);
 static void sigalrm(int signo);
 static void usage(int exit_code);
@@ -60,7 +59,7 @@ main(int ac, char **av)
 	u_int32_t status;
 	char *blkdevs = NULL;
 
-	while ((ch = getopt(ac, av, "c:dhf:rs:t:vx")) != -1) {
+	while ((ch = getopt(ac, av, "c:dhf:rs:t:v")) != -1) {
 		switch(ch) {
 		case 'c':
 			CyclePath = optarg;
@@ -86,9 +85,6 @@ main(int ac, char **av)
 		case 'v':
 			++VerboseOpt;
 			break;
-		case 'x':
-			++NoSyncOpt;
-			break;
 		default:
 			usage(1);
 			/* not reached */
@@ -107,17 +103,19 @@ main(int ac, char **av)
 	}
 
 	if (strcmp(av[0], "now") == 0) {
-		hammer_waitsync(1);
 		tid = (hammer_tid_t)time(NULL) * 1000000000LLU;
 		printf("0x%08x\n", (int)(tid / 1000000000LL));
 		exit(0);
 	}
 	if (strcmp(av[0], "now64") == 0) {
-		hammer_waitsync(0);
 		gettimeofday(&tv, NULL);
 		tid = (hammer_tid_t)tv.tv_sec * 1000000000LLU +
 			tv.tv_usec * 1000LLU;
 		printf("0x%016llx\n", tid);
+		exit(0);
+	}
+	if (strcmp(av[0], "synctid") == 0) {
+		hammer_cmd_synctid(av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "stamp") == 0) {
@@ -284,29 +282,6 @@ hammer_parsetime(u_int64_t *tidp, const char *timestr)
 	}
 	*tidp = (u_int64_t)tv.tv_sec * 1000000000LLU + 
 		tv.tv_usec * 1000LLU;
-}
-
-/*
- * If the TID is within 60 seconds of the current time we sync().  If
- * dosleep is non-zero and the TID is within 1 second of the current time
- * we wait for the second-hand to turn over.
- *
- * The NoSyncOpt prevents both the sync() call and any sleeps from occuring.
- */
-static
-void
-hammer_waitsync(int dosleep)
-{
-	time_t t1, t2;
-
-	if (NoSyncOpt == 0) {
-		sync();
-		t1 = t2 = time(NULL);
-		while (dosleep && t1 == t2) {
-			usleep(100000);
-			t2 = time(NULL);
-		}
-	}
 }
 
 static

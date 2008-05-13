@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.15 2008/05/12 05:13:47 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.16 2008/05/13 20:49:34 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -76,10 +76,6 @@ certain period of time.  This option is used along with the cycle file
 option to prune or reblock a portion of the filesystem incrementally.
 .It Fl v
 Increase verboseness.  May be specified multiple times.
-.It Fl x
-Do not call sync() when running commands which sync() by default.
-Timestamp commands such as 'hammer now' sync() by default.  This also
-disables any sleeps the timestamp commands would otherwise perform.
 .El
 .Pp
 The commands are as follows:
@@ -87,17 +83,16 @@ The commands are as follows:
 .It Ar now
 Generate a timestamp suitable for use in the @@ filename extension,
 representing right now.
-Unless
-.Fl x
-is specified, this command will automatically sync() and
-wait for the seconds hand to turn over (sleep for up to one second) prior
-to generating a seconds-denominated timestamp.
 .It Ar now64
 Generate a full 64 bit timestamp.
-Unless
-.Fl x
-is specified, this command will automatically sync(), but not sleep,
-prior to generating the timestamp.
+The
+.Ar now
+and
+.Ar now64
+directives do not generate a guaranteed transaction id.
+Please use the
+.Nm Ar synctid
+command to generate a guaranteed transaction id.
 .It Ar stamp
 Generate a timestamp suitable for use in the @@ filename extension.
 This command does not sync() or sleep and care should be taken if
@@ -112,6 +107,17 @@ if you wish to specify the time by some other means.
 Same as the
 .Ar stamp
 command but generates a 64 bit timestamp.
+.It Ar synctid Ar filesystem Op quick
+Generates a guaranteed, formal 64 bit transaction id representing the
+current state of the specified HAMMER filesystem.  The filesystem will
+be synced to the media.
+.Pp
+If the
+.Ar quick
+keyword is specified the filesystem will be soft-synced, meaning that a
+crash might still undo the state of the filesystem as of the transaction
+id returned but any new modifications will occur after the returned
+transaction id as expected.
 .It Ar date
 Output a date equivalent given a transaction id or time stamp.
 .It Ar history Ar path
