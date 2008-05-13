@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.33 2007/11/06 07:37:01 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.34 2008/05/13 08:35:12 hasso Exp $
  */
 
 /* 
@@ -250,6 +250,7 @@ ugen_attach(device_t self)
 	make_dev(&ugen_ops, UGENMINOR(device_get_unit(sc->sc_dev), 0),
 		UID_ROOT, GID_OPERATOR, 0644, "%s", device_get_nameunit(sc->sc_dev));
 
+	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev, sc->sc_dev);
 	return 0;
 }
 
@@ -294,8 +295,11 @@ ugen_make_devnodes(struct ugen_softc *sc)
 static void
 ugen_destroy_devnodes(struct ugen_softc *sc)
 {
-	int endptno;
+	int endptno, prev_sc_dying;
 	cdev_t dev;
+
+	prev_sc_dying = sc->sc_dying;
+	sc->sc_dying = 1;
 
 	/* destroy all devices for the other (existing) endpoints as well */
 	for (endptno = 1; endptno < USB_MAX_ENDPOINTS; endptno++) {
@@ -321,6 +325,7 @@ ugen_destroy_devnodes(struct ugen_softc *sc)
 			}
 		}
 	}
+	sc->sc_dying = prev_sc_dying;
 }
 
 static int
@@ -413,7 +418,7 @@ ugenopen(struct dev_open_args *ap)
  	DPRINTFN(5, ("ugenopen: flag=%d, mode=%d, unit=%d endpt=%d\n",
 		     ap->a_oflags, ap->a_devtype, unit, endpt));
 
-	if (sc == NULL || sc->sc_dying)
+	if (sc->sc_dying)
 		return (ENXIO);
 
 	if (sc->sc_is_open[endpt])
@@ -567,7 +572,7 @@ ugenclose(struct dev_close_args *ap)
 		if (!(ap->a_fflag & (dir == OUT ? FWRITE : FREAD)))
 			continue;
 		sce = &sc->sc_endpoints[endpt][dir];
-		if (sce == NULL || sce->pipeh == NULL)
+		if (sce->pipeh == NULL)
 			continue;
 		DPRINTFN(5, ("ugenclose: endpt=%d dir=%d sce=%p\n",
 			     endpt, dir, sce));
@@ -619,9 +624,7 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 	if (endpt == USB_CONTROL_ENDPOINT)
 		return (ENODEV);
 
-	if (sce == NULL)
-		return (EINVAL);
-
+#ifdef DIAGNOSTIC
 	if (sce->edesc == NULL) {
 		kprintf("ugenread: no edesc\n");
 		return (EIO);
@@ -630,6 +633,7 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		kprintf("ugenread: no pipe\n");
 		return (EIO);
 	}
+#endif
 
 	buf = getugenbuf(ugen_bufsize, &ugen_bbsize);
 
@@ -645,14 +649,18 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 			}
 			sce->state |= UGEN_ASLP;
 			DPRINTFN(5, ("ugenread: sleep on %p\n", sce));
-			error = tsleep(sce, PCATCH, "ugenri", 0);
+			error = tsleep(sce, PCATCH, "ugenri",
+			    (sce->timeout * hz + 999) / 1000);
+			sce->state &= ~UGEN_ASLP;
 			DPRINTFN(5, ("ugenread: woke, error=%d\n", error));
 			if (sc->sc_dying)
 				error = EIO;
-			if (error) {
-				sce->state &= ~UGEN_ASLP;
+			if (error == EAGAIN) {
+				error = 0;	/* timeout, return 0 bytes */
 				break;
 			}
+			if (error)
+				break;
 		}
 		crit_exit();
 
@@ -712,18 +720,22 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 			}
 			sce->state |= UGEN_ASLP;
 			DPRINTFN(5, ("ugenread: sleep on %p\n", sce));
-			error = tsleep(sce, PCATCH, "ugenri", 0);
+			error = tsleep(sce, PCATCH, "ugenri",
+			    (sce->timeout * hz + 999) / 1000);
+			sce->state &= ~UGEN_ASLP;
 			DPRINTFN(5, ("ugenread: woke, error=%d\n", error));
 			if (sc->sc_dying)
 				error = EIO;
-			if (error) {
-				sce->state &= ~UGEN_ASLP;
+			if (error == EAGAIN) {
+				error = 0;	/* timeout, return 0 bytes */
 				break;
 			}
+			if (error)
+				break;
 		}
 
 		while (sce->cur != sce->fill && uio->uio_resid > 0 && !error) {
-			if(sce->fill > sce->cur)
+			if (sce->fill > sce->cur)
 				n = min(sce->fill - sce->cur, uio->uio_resid);
 			else
 				n = min(sce->limit - sce->cur, uio->uio_resid);
@@ -761,6 +773,9 @@ ugenread(struct dev_read_args *ap)
 
 	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
 
+	if (sc->sc_dying)
+		return (EIO);
+
 	sc->sc_refcnt++;
 	error = ugen_do_read(sc, endpt, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
@@ -787,9 +802,7 @@ ugen_do_write(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 	if (endpt == USB_CONTROL_ENDPOINT)
 		return (ENODEV);
 
-	if (sce == NULL)
-		return (EINVAL);
-
+#ifdef DIAGNOSTIC
 	if (sce->edesc == NULL) {
 		kprintf("ugenwrite: no edesc\n");
 		return (EIO);
@@ -798,6 +811,7 @@ ugen_do_write(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		kprintf("ugenwrite: no pipe\n");
 		return (EIO);
 	}
+#endif
 
 	buf = getugenbuf(ugen_bufsize, &ugen_bbsize);
 
@@ -872,6 +886,9 @@ ugenwrite(struct dev_write_args *ap)
 
 	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
 
+	if (sc->sc_dying)
+		return (EIO);
+
 	sc->sc_refcnt++;
 	error = ugen_do_write(sc, endpt, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
@@ -895,6 +912,7 @@ ugen_detach(device_t self)
 			sce = &sc->sc_endpoints[i][dir];
 			if (sce && sce->pipeh)
 				usbd_abort_pipe(sce->pipeh);
+			selwakeup(&sce->rsel);
 		}
 	}
 	crit_enter();
@@ -911,6 +929,7 @@ ugen_detach(device_t self)
 	ugen_destroy_devnodes(sc);
 	dev_ops_remove(&ugen_ops, 
 		    UGENUNITMASK, UGENMINOR(device_get_unit(sc->sc_dev), 0));
+	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev, sc->sc_dev);
 	return (0);
 }
 
@@ -1146,8 +1165,6 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 		if (endpt == USB_CONTROL_ENDPOINT)
 			return (EINVAL);
 		sce = &sc->sc_endpoints[endpt][IN];
-		if (sce == NULL)
-			return (EINVAL);
 
 		if (sce->pipeh == NULL) {
 			kprintf("ugenioctl: USB_SET_SHORT_XFER, no pipe\n");
@@ -1161,8 +1178,8 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 		return (0);
 	case USB_SET_TIMEOUT:
 		sce = &sc->sc_endpoints[endpt][IN];
-		if (sce == NULL)
-			return (EINVAL);
+		sce->timeout = *(int *)addr;
+		sce = &sc->sc_endpoints[endpt][OUT];
 		sce->timeout = *(int *)addr;
 		return (0);
 	default:
@@ -1397,6 +1414,8 @@ ugenioctl(struct dev_ioctl_args *ap)
 	int error;
 
 	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
+	if (sc->sc_dying)
+		return (EIO);
 
 	sc->sc_refcnt++;
 	error = ugen_do_ioctl(sc, endpt, ap->a_cmd, ap->a_data, ap->a_fflag);
@@ -1410,44 +1429,61 @@ ugenpoll(struct dev_poll_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct ugen_softc *sc;
-	struct ugen_endpoint *sce;
+	struct ugen_endpoint *sce_in, *sce_out;
+	usb_endpoint_descriptor_t *edesc;
 	int revents = 0;
 
 	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
 
-	if (sc->sc_dying)
-		return (EIO);
-
-	/* XXX always IN */
-	sce = &sc->sc_endpoints[UGENENDPOINT(dev)][IN];
-	if (sce == NULL)
-		return (EINVAL);
-
-	if (!sce->edesc) {
-		kprintf("ugenpoll: no edesc\n");
-		return (EIO);
+	if (sc->sc_dying) {
+		return ((ap->a_events & (POLLIN | POLLOUT | POLLRDNORM |
+			POLLWRNORM)) | POLLHUP);
 	}
-	if (!sce->pipeh) {
-		kprintf("ugenpoll: no pipe\n");
-		return (EIO);
+
+	/* Do not allow to poll a control endpoint */
+	if (UGENENDPOINT(dev) == USB_CONTROL_ENDPOINT) {
+		return (ap->a_events & (POLLIN | POLLOUT | POLLRDNORM |
+			POLLWRNORM));
 	}
+
+	sce_in = &sc->sc_endpoints[UGENENDPOINT(dev)][IN];
+	sce_out = &sc->sc_endpoints[UGENENDPOINT(dev)][OUT];
+	edesc = (sce_in->edesc != NULL) ? sce_in->edesc : sce_out->edesc;
+	KASSERT(edesc != NULL, ("ugenpoll: NULL edesc"));
+
+	if (sce_in->edesc == NULL || sce_in->pipeh == NULL)
+		sce_in = NULL;
+	if (sce_out->edesc == NULL || sce_out->pipeh == NULL)
+		sce_out = NULL;
 
 	crit_enter();
-	switch (sce->edesc->bmAttributes & UE_XFERTYPE) {
+	switch (edesc->bmAttributes & UE_XFERTYPE) {
 	case UE_INTERRUPT:
-		if (ap->a_events & (POLLIN | POLLRDNORM)) {
-			if (sce->q.c_cc > 0)
+		if (sce_in != NULL && (ap->a_events & (POLLIN | POLLRDNORM))) {
+			if (sce_in->q.c_cc > 0)
 				revents |= ap->a_events & (POLLIN | POLLRDNORM);
 			else
-				selrecord(curthread, &sce->rsel);
+				selrecord(curthread, &sce_in->rsel);
+		}
+		if (sce_out != NULL && (ap->a_events & (POLLOUT | POLLWRNORM))) {
+			if (sce_out->q.c_cc > 0)
+				revents |= ap->a_events & (POLLOUT | POLLWRNORM);
+			else
+				selrecord(curthread, &sce_out->rsel);
 		}
 		break;
 	case UE_ISOCHRONOUS:
-		if (ap->a_events & (POLLIN | POLLRDNORM)) {
-			if (sce->cur != sce->fill)
+		if (sce_in != NULL && (ap->a_events & (POLLIN | POLLRDNORM))) {
+			if (sce_in->cur != sce_in->fill)
 				revents |= ap->a_events & (POLLIN | POLLRDNORM);
 			else
-				selrecord(curthread, &sce->rsel);
+				selrecord(curthread, &sce_in->rsel);
+		}
+		if (sce_out != NULL && (ap->a_events & (POLLOUT | POLLWRNORM))) {
+			if (sce_out->cur != sce_out->fill)
+				revents |= ap->a_events & (POLLOUT | POLLWRNORM);
+			else
+				selrecord(curthread, &sce_out->rsel);
 		}
 		break;
 	case UE_BULK:
