@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.9 2008/05/12 21:17:16 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.10 2008/05/13 04:58:10 dillon Exp $
  */
 
 #include "hammer.h"
@@ -291,9 +291,21 @@ print_record(hammer_btree_elm_t elm)
 		printf("\n%17s", "");
 		printf("size=%lld nlinks=%lld",
 		       data->inode.size, data->inode.nlinks);
+		if (VerboseOpt > 2) {
+			printf(" mode=%05o uflags=%08x\n",
+				data->inode.mode,
+				data->inode.uflags);
+			printf("%17s", "");
+			printf("ctime=%016llx pobjid=%016llx obj_type=%d\n",
+				data->inode.ctime, data->inode.parent_obj_id,
+				data->inode.obj_type);
+			printf("%17s", "");
+			printf("mtime=%016llx", data->inode.mtime);
+		}
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
 		printf("\n%17s", "");
+		data_len -= HAMMER_ENTRY_NAME_OFF;
 		printf("dir-entry ino=%016llx name=\"%*.*s\"",
 		       data->entry.obj_id,
 		       data_len, data_len, data->entry.name);
@@ -301,6 +313,7 @@ print_record(hammer_btree_elm_t elm)
 	case HAMMER_RECTYPE_FIX:
 		switch(elm->leaf.base.key) {
 		case HAMMER_FIXKEY_SYMLINK:
+			data_len -= HAMMER_SYMLINK_NAME_OFF;
 			printf("\n%17s", "");
 			printf("symlink=\"%*.*s\"", data_len, data_len,
 				data->symlink.name);
