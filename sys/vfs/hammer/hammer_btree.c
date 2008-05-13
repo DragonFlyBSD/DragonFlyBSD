@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.46 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.47 2008/05/13 05:04:39 dillon Exp $
  */
 
 /*
@@ -1927,7 +1927,8 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
  * On return the cursor may end up pointing at an internal node, suitable
  * for further iteration but not for an immediate insertion or deletion.
  *
- * cursor->node may be an internal node or a leaf node.
+ * cursor->node may be an internal node or a leaf node.  The cursor must be
+ * locked (node and parent).
  *
  * NOTE: If cursor->node has one element it is the parent trying to delete
  * that element, make sure cursor->index is properly adjusted on success.
@@ -1992,8 +1993,8 @@ btree_remove(hammer_cursor_t cursor)
 		error = hammer_cursor_upgrade(cursor);
 
 	if (error) {
-		kprintf("BTREE_REMOVE: Cannot lock parent, skipping\n");
-		Debugger("BTREE_REMOVE");
+		kprintf("Warning: BTREE_REMOVE: Defering parent removal "
+			"@ %016llx, skipping\n", cursor->parent->node_offset);
 		hammer_modify_node_done(parent);
 		return (0);
 	}

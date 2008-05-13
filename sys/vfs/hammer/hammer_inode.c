@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.57 2008/05/13 00:15:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.58 2008/05/13 05:04:39 dillon Exp $
  */
 
 #include "hammer.h"
@@ -67,12 +67,18 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 	 * If the inode no longer has visibility in the filesystem and is
 	 * fairly clean, try to recycle it immediately.  This can deadlock
 	 * in vfsync() if we aren't careful.
+	 * 
+	 * Do not queue the inode to the flusher if we still have visibility,
+	 * otherwise namespace calls such as chmod will unnecessarily generate
+	 * multiple inode updates.
 	 */
 	hammer_inode_unloadable_check(ip, 0);
-	if (ip->flags & HAMMER_INODE_MODMASK)
-		hammer_flush_inode(ip, 0);
-	else if (ip->ino_data.nlinks == 0)
-		vrecycle(ap->a_vp);
+	if (ip->ino_data.nlinks == 0) {
+		if (ip->flags & HAMMER_INODE_MODMASK)
+			hammer_flush_inode(ip, 0);
+		else
+			vrecycle(ap->a_vp);
+	}
 	return(0);
 }
 

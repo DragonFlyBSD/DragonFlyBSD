@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.42 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.43 2008/05/13 05:04:39 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1044,6 +1044,7 @@ hammer_rel_node(hammer_node_t node)
 void
 hammer_delete_node(hammer_transaction_t trans, hammer_node_t node)
 {
+	KKASSERT((node->flags & HAMMER_NODE_DELETED) == 0);
 	node->flags |= HAMMER_NODE_DELETED;
 	hammer_blockmap_free(trans, node->node_offset, sizeof(*node->ondisk));
 }
