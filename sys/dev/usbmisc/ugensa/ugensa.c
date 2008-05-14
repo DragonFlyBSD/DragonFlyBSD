@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.3 2008/02/21 09:00:19 hasso Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.4 2008/05/14 20:21:22 hasso Exp $ */
 /* $OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $ */
 
 /*
@@ -46,19 +46,52 @@ static int	ugensadebug = 1;
 #endif
 #define DPRINTF(x) DPRINTFN(0, x)
 
-#define UGENSABUFSZ	4096
+#define UGENSABUFSZ		4096
+#define UGENSA_INTR_INTERVAL	100	/* ms */
 
 struct ugensa_softc {
 	struct ucom_softc	 sc_ucom;
+
+	/* interrupt ep */
+	int			 sc_intr_number;
+	usbd_pipe_handle	 sc_intr_pipe;
+	u_char			*sc_intr_buf;
+	int			 sc_isize;
+
+	u_char			 sc_lsr;	/* Local status register */
+	u_char			 sc_msr;	/* Status register */
+};
+
+static device_probe_t ugensa_match;
+static device_attach_t ugensa_attach;
+static device_detach_t ugensa_detach;
+
+int ugensa_open(void *, int);
+void ugensa_close(void *, int);
+void ugensa_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
+void ugensa_get_status(void *, int, u_char *, u_char *);
+
+static device_method_t ugensa_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe, ugensa_match),
+	DEVMETHOD(device_attach, ugensa_attach),
+	DEVMETHOD(device_detach, ugensa_detach),
+	{ 0, 0 }
+};
+
+static driver_t ugensa_driver = { 
+	"ucom",
+	ugensa_methods,
+	sizeof (struct ugensa_softc)
 };
 
 struct ucom_callback ugensa_callback = {
+	ugensa_get_status,
 	NULL,
 	NULL,
 	NULL,
-	NULL,
-	NULL,
-	NULL,
+	ugensa_open,
+	ugensa_close,
 	NULL,
 	NULL
 };
@@ -119,24 +152,6 @@ static const struct usb_devno ugensa_devs[] = {
 	{ USB_DEVICE(0x413c, 0x8137) }, /* Dell Wireless 5520 */
 };
 
-static device_probe_t ugensa_match;
-static device_attach_t ugensa_attach;
-static device_detach_t ugensa_detach;
-
-static device_method_t ugensa_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe, ugensa_match),
-	DEVMETHOD(device_attach, ugensa_attach),
-	DEVMETHOD(device_detach, ugensa_detach),
-	{ 0, 0 }
-};
-
-static driver_t ugensa_driver = { 
-	"ucom",
-	ugensa_methods,
-	sizeof (struct ugensa_softc)
-};
-
 DRIVER_MODULE(ugensa, uhub, ugensa_driver, ucom_devclass, usbd_driver_load, 0);
 MODULE_DEPEND(ugensa, usb, 1, 1, 1);
 MODULE_DEPEND(ugensa, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
@@ -183,6 +198,10 @@ ugensa_attach(device_t self)
 		}
 
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
+		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_INTERRUPT) {
+			sc->sc_intr_number = ed->bEndpointAddress;
+			sc->sc_isize = UGETW(ed->wMaxPacketSize);
+		} else if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
 		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK)
 			ucom->sc_bulkin_no = ed->bEndpointAddress;
 		else if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_OUT &&
@@ -253,3 +272,93 @@ ugensa_activate(struct device *self, enum devact act)
 	return (rv);
 }
 #endif
+
+int
+ugensa_open(void *addr, int portno)
+{
+	struct ugensa_softc *sc = addr;
+	int err;
+
+	if (sc->sc_ucom.sc_dying)
+		return (ENXIO);
+
+	if (sc->sc_intr_number != -1 && sc->sc_intr_pipe == NULL) {
+		sc->sc_intr_buf = kmalloc(sc->sc_isize, M_USBDEV, M_WAITOK);
+		err = usbd_open_pipe_intr(sc->sc_ucom.sc_iface,
+		    sc->sc_intr_number, USBD_SHORT_XFER_OK, &sc->sc_intr_pipe,
+		    sc, sc->sc_intr_buf, sc->sc_isize, ugensa_intr,
+		    UGENSA_INTR_INTERVAL);
+		if (err) {
+			device_printf(sc->sc_ucom.sc_dev,
+			    "cannot open interrupt pipe (addr %d)\n",
+			    sc->sc_intr_number);
+			return (EIO);
+		}
+	}
+
+	return (0);
+}
+
+void
+ugensa_close(void *addr, int portno)
+{
+	struct ugensa_softc *sc = addr;
+	int err;
+
+	if (sc->sc_ucom.sc_dying)
+		return;
+
+	if (sc->sc_intr_pipe != NULL) {
+		err = usbd_abort_pipe(sc->sc_intr_pipe);
+       		if (err)
+			device_printf(sc->sc_ucom.sc_dev,
+			    "abort interrupt pipe failed: %s\n",
+			    usbd_errstr(err));
+		err = usbd_close_pipe(sc->sc_intr_pipe);
+		if (err)
+			device_printf(sc->sc_ucom.sc_dev,
+			    "close interrupt pipe failed: %s\n",
+			    usbd_errstr(err));
+		kfree(sc->sc_intr_buf, M_USBDEV);
+		sc->sc_intr_pipe = NULL;
+	}
+
+}
+
+void
+ugensa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
+{
+	struct ugensa_softc *sc = priv;
+	u_char *buf;
+
+	buf = sc->sc_intr_buf;
+	if (sc->sc_ucom.sc_dying)
+		return;
+
+	if (status != USBD_NORMAL_COMPLETION) {
+		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
+			return;
+
+		device_printf(sc->sc_ucom.sc_dev,
+		    "ugensa_intr: abnormal status: %s\n", usbd_errstr(status));
+		usbd_clear_endpoint_stall_async(sc->sc_intr_pipe);
+		return;
+	}
+
+	/* XXX */
+	sc->sc_lsr = buf[2];
+	sc->sc_msr = buf[3];
+
+	ucom_status_change(&sc->sc_ucom);
+}
+
+void
+ugensa_get_status(void *addr, int portno, u_char *lsr, u_char *msr)
+{
+	struct ugensa_softc *sc = addr;
+
+	if (lsr != NULL)
+		*lsr = sc->sc_lsr;
+	if (msr != NULL)
+		*msr = sc->sc_msr;
+}
