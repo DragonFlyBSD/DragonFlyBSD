@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
-.\" $DragonFly: src/share/man/man4/ktr.4,v 1.7 2008/05/01 02:03:28 sephe Exp $
+.\" $DragonFly: src/share/man/man4/ktr.4,v 1.8 2008/05/14 13:02:04 sephe Exp $
 .\"
 .Dd April 30, 2008
 .Dt KTR 4
@@ -39,6 +39,8 @@
 .Cd options KTR_GIANT_CONTENTION
 .Cd options KTR_IF_BGE
 .Cd options KTR_IF_EM
+.Cd options KTR_IF_START
+.Cd options KTR_IFQ
 .Cd options KTR_IPIQ
 .Cd options KTR_MEMORY
 .Cd options KTR_POLLING
@@ -82,6 +84,10 @@ interrupts and sent/received packets
 .It Dv KTR_IF_EM
 .Xr em 4
 interrupts, polling and sent/received packets
+.It Dv KTR_IFQ
+classic ifq dequeue/enqueue operation
+.It Dv KTR_IF_START
+running/avoiding/scheduling ifnet.if_start
 .It Dv KTR_IPIQ
 IPI related data (IPI requests, CPU synchronization etc.)
 .It Dv KTR_MEMORY
