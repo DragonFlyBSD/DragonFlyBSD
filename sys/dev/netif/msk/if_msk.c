@@ -93,7 +93,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_msk.c,v 1.26 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.3 2008/03/23 09:48:20 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.4 2008/05/14 11:59:20 sephe Exp $ */
 
 /*
  * Device driver for the Marvell Yukon II Ethernet controller.
@@ -106,6 +106,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/in_cksum.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/rman.h>
@@ -1440,7 +1441,7 @@ static int
 mskc_attach(device_t dev)
 {
 	struct msk_softc *sc;
-	int error, *port;
+	int error, *port, cpuid;
 
 	sc = device_get_softc(dev);
 	sc->msk_dev = dev;
@@ -1652,6 +1653,14 @@ mskc_attach(device_t dev)
 		device_printf(dev, "couldn't set up interrupt handler\n");
 		goto fail;
 	}
+
+	cpuid = ithread_cpuid(rman_get_start(sc->msk_irq));
+	KKASSERT(cpuid >= 0 && cpuid < ncpus);
+
+	if (sc->msk_if[0] != NULL)
+		sc->msk_if[0]->msk_ifp->if_cpuid = cpuid;
+	if (sc->msk_if[1] != NULL)
+		sc->msk_if[1]->msk_ifp->if_cpuid = cpuid;
 	return 0;
 fail:
 	mskc_detach(dev);
@@ -2631,8 +2640,12 @@ msk_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) !=
-	    IFF_RUNNING || sc_if->msk_link == 0)
+	if (!sc_if->msk_link) {
+		ifq_purge(&ifp->if_snd);
+		return;
+	}
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
 	for (enq = 0; !ifq_is_empty(&ifp->if_snd) &&
@@ -2704,7 +2717,7 @@ msk_watchdog(struct ifnet *ifp)
 			if_printf(ifp, "watchdog timeout (missed Tx interrupts) "
 			    "-- recovering\n");
 			if (!ifq_is_empty(&ifp->if_snd))
-				ifp->if_start(ifp);
+				if_devstart(ifp);
 			return;
 		}
 	}
@@ -2713,7 +2726,7 @@ msk_watchdog(struct ifnet *ifp)
 	ifp->if_oerrors++;
 	msk_init(sc_if);
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 static int
@@ -3330,10 +3343,10 @@ mskc_intr(void *xsc)
 
 	if (ifp0 != NULL && (ifp0->if_flags & IFF_RUNNING) != 0 &&
 	    !ifq_is_empty(&ifp0->if_snd))
-		ifp0->if_start(ifp0);
+		if_devstart(ifp0);
 	if (ifp1 != NULL && (ifp1->if_flags & IFF_RUNNING) != 0 &&
 	    !ifq_is_empty(&ifp1->if_snd))
-		ifp1->if_start(ifp1);
+		if_devstart(ifp1);
 }
 
 static void

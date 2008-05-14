@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.11 2008/05/10 17:24:06 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.12 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -74,6 +74,11 @@
  * internal function prototypes
  */
 static void	tbr_timeout(void *);
+static int	altq_enable_locked(struct ifaltq *);
+static int	altq_disable_locked(struct ifaltq *);
+static int	altq_detach_locked(struct ifaltq *);
+static int	tbr_set_locked(struct ifaltq *, struct tb_profile *);
+
 int (*altq_input)(struct mbuf *, int) = NULL;
 static int tbr_timer = 0;	/* token bucket regulator timer */
 static struct callout tbr_callout;
@@ -123,8 +128,8 @@ altq_attach(struct ifaltq *ifq, int type, void *discipline,
 	return 0;
 }
 
-int
-altq_detach(struct ifaltq *ifq)
+static int
+altq_detach_locked(struct ifaltq *ifq)
 {
 	if (!ifq_is_ready(ifq))
 		return ENXIO;
@@ -143,36 +148,65 @@ altq_detach(struct ifaltq *ifq)
 }
 
 int
-altq_enable(struct ifaltq *ifq)
+altq_detach(struct ifaltq *ifq)
+{
+	int error;
+
+	ALTQ_LOCK(ifq);
+	error = altq_detach_locked(ifq);
+	ALTQ_UNLOCK(ifq);
+	return error;
+}
+
+static int
+altq_enable_locked(struct ifaltq *ifq)
 {
 	if (!ifq_is_ready(ifq))
 		return ENXIO;
 	if (ifq_is_enabled(ifq))
 		return 0;
 
-	crit_enter();
-	ifq_purge(ifq);
+	ifq_purge_locked(ifq);
 	KKASSERT(ifq->ifq_len == 0);
+
 	ifq->altq_flags |= ALTQF_ENABLED;
 	if (ifq->altq_clfier != NULL)
 		ifq->altq_flags |= ALTQF_CLASSIFY;
-	crit_exit();
+	return 0;
+}
 
+int
+altq_enable(struct ifaltq *ifq)
+{
+	int error;
+
+	ALTQ_LOCK(ifq);
+	error = altq_enable_locked(ifq);
+	ALTQ_UNLOCK(ifq);
+	return error;
+}
+
+static int
+altq_disable_locked(struct ifaltq *ifq)
+{
+	if (!ifq_is_enabled(ifq))
+		return 0;
+
+	ifq_purge_locked(ifq);
+	KKASSERT(ifq->ifq_len == 0);
+	ifq->altq_flags &= ~(ALTQF_ENABLED|ALTQF_CLASSIFY);
 	return 0;
 }
 
 int
 altq_disable(struct ifaltq *ifq)
 {
-	if (!ifq_is_enabled(ifq))
-		return 0;
+	int error;
 
-	crit_enter();
-	ifq_purge(ifq);
-	KKASSERT(ifq->ifq_len == 0);
-	ifq->altq_flags &= ~(ALTQF_ENABLED|ALTQF_CLASSIFY);
-	crit_exit();
-	return 0;
+	ALTQ_LOCK(ifq);
+	error = altq_disable_locked(ifq);
+	ALTQ_UNLOCK(ifq);
+	return error;
 }
 
 /*
@@ -239,15 +273,15 @@ tbr_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
  * set a token bucket regulator.
  * if the specified rate is zero, the token bucket regulator is deleted.
  */
-int
-tbr_set(struct ifaltq *ifq, struct tb_profile *profile)
+static int
+tbr_set_locked(struct ifaltq *ifq, struct tb_profile *profile)
 {
 	struct tb_regulator *tbr, *otbr;
 
 	if (machclk_freq == 0)
 		init_machclk();
 	if (machclk_freq == 0) {
-		kprintf("tbr_set: no cpu clock available!\n");
+		kprintf("%s: no cpu clock available!\n", __func__);
 		return (ENXIO);
 	}
 
@@ -281,6 +315,17 @@ tbr_set(struct ifaltq *ifq, struct tb_profile *profile)
 		tbr_timer = 1;
 	}
 	return (0);
+}
+
+int
+tbr_set(struct ifaltq *ifq, struct tb_profile *profile)
+{
+	int error;
+
+	ALTQ_LOCK(ifq);
+	error = tbr_set_locked(ifq, profile);
+	ALTQ_UNLOCK(ifq);
+	return error;
 }
 
 /*
@@ -338,54 +383,64 @@ tbr_get(struct ifaltq *ifq, struct tb_profile *profile)
 int
 altq_pfattach(struct pf_altq *a)
 {
+	struct ifaltq *ifq;
 	struct ifnet *ifp;
-	struct tb_profile tb;
-	int error = 0;
+	int error;
+
+	if (a->scheduler == ALTQT_NONE)
+		return 0;
+
+	if (a->altq_disc == NULL)
+		return EINVAL;
+
+	ifp = ifunit(a->ifname);
+	if (ifp == NULL)
+		return EINVAL;
+	ifq = &ifp->if_snd;
+
+	ALTQ_LOCK(ifq);
 
 	switch (a->scheduler) {
-	case ALTQT_NONE:
-		break;
 #ifdef ALTQ_CBQ
 	case ALTQT_CBQ:
-		error = cbq_pfattach(a);
+		error = cbq_pfattach(a, ifq);
 		break;
 #endif
 #ifdef ALTQ_PRIQ
 	case ALTQT_PRIQ:
-		error = priq_pfattach(a);
+		error = priq_pfattach(a, ifq);
 		break;
 #endif
 #ifdef ALTQ_HFSC
 	case ALTQT_HFSC:
-		error = hfsc_pfattach(a);
+		error = hfsc_pfattach(a, ifq);
 		break;
 #endif
 #ifdef ALTQ_FAIRQ
 	case ALTQT_FAIRQ:
-		error = fairq_pfattach(a);
+		error = fairq_pfattach(a, ifq);
 		break;
 #endif
 	default:
 		error = ENXIO;
+		goto back;
 	}
-
-	ifp = ifunit(a->ifname);
 
 	/* if the state is running, enable altq */
-	if (error == 0 && pfaltq_running &&
-	    ifp != NULL && ifp->if_snd.altq_type != ALTQT_NONE &&
-	    !ifq_is_enabled(&ifp->if_snd))
-			error = altq_enable(&ifp->if_snd);
+	if (error == 0 && pfaltq_running && ifq->altq_type != ALTQT_NONE &&
+	    !ifq_is_enabled(ifq))
+		error = altq_enable_locked(ifq);
 
 	/* if altq is already enabled, reset set tokenbucket regulator */
-	if (error == 0 && ifp != NULL && ifq_is_enabled(&ifp->if_snd)) {
+	if (error == 0 && ifq_is_enabled(ifq)) {
+		struct tb_profile tb;
+
 		tb.rate = a->ifbandwidth;
 		tb.depth = a->tbrsize;
-		crit_enter();
-		error = tbr_set(&ifp->if_snd, &tb);
-		crit_exit();
+		error = tbr_set_locked(ifq, &tb);
 	}
-
+back:
+	ALTQ_UNLOCK(ifq);
 	return (error);
 }
 
@@ -398,22 +453,30 @@ int
 altq_pfdetach(struct pf_altq *a)
 {
 	struct ifnet *ifp;
+	struct ifaltq *ifq;
 	int error = 0;
 
-	if ((ifp = ifunit(a->ifname)) == NULL)
+	ifp = ifunit(a->ifname);
+	if (ifp == NULL)
 		return (EINVAL);
+	ifq = &ifp->if_snd;
 
 	/* if this discipline is no longer referenced, just return */
-	if (a->altq_disc == NULL || a->altq_disc != ifp->if_snd.altq_disc)
+	if (a->altq_disc == NULL)
 		return (0);
 
-	crit_enter();
-	if (ifq_is_enabled(&ifp->if_snd))
-		error = altq_disable(&ifp->if_snd);
-	if (error == 0)
-		error = altq_detach(&ifp->if_snd);
-	crit_exit();
+	ALTQ_LOCK(ifq);
 
+	if (a->altq_disc != ifq->altq_disc)
+		goto back;
+
+	if (ifq_is_enabled(ifq))
+		error = altq_disable_locked(ifq);
+	if (error == 0)
+		error = altq_detach_locked(ifq);
+
+back:
+	ALTQ_UNLOCK(ifq);
 	return (error);
 }
 

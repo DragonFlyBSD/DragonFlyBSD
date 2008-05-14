@@ -1,6 +1,6 @@
 /*	$NetBSD: lance.c,v 1.34 2005/12/24 20:27:30 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/lance.c,v 1.2 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.6 2006/12/29 15:26:14 corecode Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.7 2008/05/14 11:59:20 sephe Exp $	*/
 
 
 /*-
@@ -299,7 +299,7 @@ lance_init_locked(struct lance_softc *sc)
 		ifp->if_flags |= IFF_RUNNING;
 		ifp->if_flags &= ~IFF_OACTIVE;
 		ifp->if_timer = 0;
-		(*sc->sc_start_locked)(sc);
+		if_devstart(ifp);
 	} else
 		if_printf(ifp, "controller failed to initialize\n");
 

@@ -1,5 +1,5 @@
 /*	$KAME: altq_cbq.c,v 1.20 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.6 2006/12/22 23:44:55 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.7 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (c) Sun Microsystems, Inc. 1993-1998 All rights reserved.
@@ -201,18 +201,10 @@ get_class_stats(class_stats_t *statsp, struct rm_class *cl)
 }
 
 int
-cbq_pfattach(struct pf_altq *a)
+cbq_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	struct ifnet	*ifp;
-	int error;
-
-	if ((ifp = ifunit(a->ifname)) == NULL || a->altq_disc == NULL)
-		return (EINVAL);
-	crit_enter();
-	error = altq_attach(&ifp->if_snd, ALTQT_CBQ, a->altq_disc,
+	return altq_attach(ifq, ALTQT_CBQ, a->altq_disc,
 	    cbq_enqueue, cbq_dequeue, cbq_request, NULL, NULL);
-	crit_exit();
-	return (error);
 }
 
 int
@@ -261,19 +253,15 @@ cbq_remove_altq(struct pf_altq *a)
 	return (0);
 }
 
-int
-cbq_add_queue(struct pf_altq *a)
+static int
+cbq_add_queue_locked(struct pf_altq *a, cbq_state_t *cbqp)
 {
 	struct rm_class	*borrow, *parent;
-	cbq_state_t	*cbqp;
 	struct rm_class	*cl;
 	struct cbq_opts	*opts;
 	int		i;
 
-	if ((cbqp = a->altq_disc) == NULL)
-		return (EINVAL);
-	if (a->qid == 0)
-		return (EINVAL);
+	KKASSERT(a->qid != 0);
 
 	/*
 	 * find a free slot in the class table.  if the slot matching
@@ -372,14 +360,32 @@ cbq_add_queue(struct pf_altq *a)
 }
 
 int
-cbq_remove_queue(struct pf_altq *a)
+cbq_add_queue(struct pf_altq *a)
 {
-	struct rm_class	*cl;
-	cbq_state_t	*cbqp;
-	int		i;
+	cbq_state_t *cbqp;
+	struct ifaltq *ifq;
+	int error;
 
+	if (a->qid == 0)
+		return (EINVAL);
+
+	/* XXX not MP safe */
 	if ((cbqp = a->altq_disc) == NULL)
 		return (EINVAL);
+	ifq = cbqp->ifnp.ifq_;
+
+	ALTQ_LOCK(ifq);
+	error = cbq_add_queue_locked(a, cbqp);
+	ALTQ_UNLOCK(ifq);
+
+	return error;
+}
+
+static int
+cbq_remove_queue_locked(struct pf_altq *a, cbq_state_t *cbqp)
+{
+	struct rm_class	*cl;
+	int		i;
 
 	if ((cl = clh_to_clp(cbqp, a->qid)) == NULL)
 		return (EINVAL);
@@ -408,23 +414,51 @@ cbq_remove_queue(struct pf_altq *a)
 }
 
 int
+cbq_remove_queue(struct pf_altq *a)
+{
+	cbq_state_t *cbqp;
+	struct ifaltq *ifq;
+	int error;
+
+	/* XXX not MP safe */
+	if ((cbqp = a->altq_disc) == NULL)
+		return (EINVAL);
+	ifq = cbqp->ifnp.ifq_;
+
+	ALTQ_LOCK(ifq);
+	error = cbq_remove_queue_locked(a, cbqp);
+	ALTQ_UNLOCK(ifq);
+
+	return error;
+}
+
+int
 cbq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 {
 	cbq_state_t	*cbqp;
 	struct rm_class	*cl;
 	class_stats_t	 stats;
 	int		 error = 0;
-
-	if ((cbqp = altq_lookup(a->ifname, ALTQT_CBQ)) == NULL)
-		return (EBADF);
-
-	if ((cl = clh_to_clp(cbqp, a->qid)) == NULL)
-		return (EINVAL);
+	struct ifaltq 	*ifq;
 
 	if (*nbytes < sizeof(stats))
 		return (EINVAL);
 
+	/* XXX not MP safe */
+	if ((cbqp = altq_lookup(a->ifname, ALTQT_CBQ)) == NULL)
+		return (EBADF);
+	ifq = cbqp->ifnp.ifq_;
+
+	ALTQ_LOCK(ifq);
+
+	if ((cl = clh_to_clp(cbqp, a->qid)) == NULL) {
+		ALTQ_UNLOCK(ifq);
+		return (EINVAL);
+	}
+
 	get_class_stats(&stats, cl);
+
+	ALTQ_UNLOCK(ifq);
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);

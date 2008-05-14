@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/if_ural.c,v 1.10.2.8 2006/07/08 07:48:43 maxim Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.25 2008/01/15 09:01:13 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/ural/if_ural.c,v 1.26 2008/05/14 11:59:22 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -1369,8 +1369,10 @@ ural_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (sc->sc_stopped)
+	if (sc->sc_stopped) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	crit_enter();
 
@@ -1403,17 +1405,19 @@ ural_start(struct ifnet *ifp)
 		} else {
 			struct ether_header *eh;
 
-			if (ic->ic_state != IEEE80211_S_RUN)
+			if (ic->ic_state != IEEE80211_S_RUN) {
+				ifq_purge(&ifp->if_snd);
 				break;
-			m0 = ifq_poll(&ifp->if_snd);
-			if (m0 == NULL)
-				break;
+			}
+
 			if (sc->tx_queued >= RAL_TX_LIST_COUNT) {
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
 
-			ifq_dequeue(&ifp->if_snd, m0);
+			m0 = ifq_dequeue(&ifp->if_snd, NULL);
+			if (m0 == NULL)
+				break;
 
 			if (m0->m_len < sizeof (struct ether_header)) {
 				m0 = m_pullup(m0, sizeof (struct ether_header));

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.15 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.16 2008/05/14 11:59:18 sephe Exp $
  */
 
 /*
@@ -51,7 +51,7 @@
 #include <sys/systm.h>
 #include <sys/socket.h>
 #include <sys/kernel.h>
-
+#include <sys/interrupt.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -143,6 +143,7 @@ static int
 an_pccard_attach(device_t dev)
 {
 	struct an_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int flags = device_get_flags(dev);
 	int error;
 
@@ -167,6 +168,10 @@ an_pccard_attach(device_t dev)
 		ifmedia_removeall(&sc->an_ifmedia);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return 0;
 
 fail:

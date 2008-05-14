@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/altq/altq_fairq.c,v 1.1 2008/04/06 18:58:15 dillon Exp $
+ * $DragonFly: src/sys/net/altq/altq_fairq.c,v 1.2 2008/05/14 11:59:23 sephe Exp $
  */
 /*
  * Matt: I gutted altq_priq.c and used it as a skeleton on which to build
@@ -133,18 +133,10 @@ static void	get_class_stats(struct fairq_classstats *, struct fairq_class *);
 static struct fairq_class *clh_to_clp(struct fairq_if *, uint32_t);
 
 int
-fairq_pfattach(struct pf_altq *a)
+fairq_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	struct ifnet *ifp;
-	int error;
-
-	if ((ifp = ifunit(a->ifname)) == NULL || a->altq_disc == NULL)
-		return (EINVAL);
-	crit_enter();
-	error = altq_attach(&ifp->if_snd, ALTQT_FAIRQ, a->altq_disc,
+	return altq_attach(ifq, ALTQT_FAIRQ, a->altq_disc,
 	    fairq_enqueue, fairq_dequeue, fairq_request, NULL, NULL);
-	crit_exit();
-	return (error);
 }
 
 int
@@ -185,20 +177,14 @@ fairq_remove_altq(struct pf_altq *a)
 	return (0);
 }
 
-int
-fairq_add_queue(struct pf_altq *a)
+static int
+fairq_add_queue_locked(struct pf_altq *a, struct fairq_if *pif)
 {
-	struct fairq_if *pif;
 	struct fairq_class *cl;
 
-	if ((pif = a->altq_disc) == NULL)
-		return (EINVAL);
+	KKASSERT(a->priority < FAIRQ_MAXPRI);
+	KKASSERT(a->qid != 0);
 
-	/* check parameters */
-	if (a->priority >= FAIRQ_MAXPRI)
-		return (EINVAL);
-	if (a->qid == 0)
-		return (EINVAL);
 	if (pif->pif_classes[a->priority] != NULL)
 		return (EBUSY);
 	if (clh_to_clp(pif, a->qid) != NULL)
@@ -213,13 +199,34 @@ fairq_add_queue(struct pf_altq *a)
 }
 
 int
-fairq_remove_queue(struct pf_altq *a)
+fairq_add_queue(struct pf_altq *a)
 {
 	struct fairq_if *pif;
-	struct fairq_class *cl;
+	struct ifaltq *ifq;
+	int error;
 
+	/* check parameters */
+	if (a->priority >= FAIRQ_MAXPRI)
+		return (EINVAL);
+	if (a->qid == 0)
+		return (EINVAL);
+
+	/* XXX not MP safe */
 	if ((pif = a->altq_disc) == NULL)
 		return (EINVAL);
+	ifq = pif->pif_ifq;
+
+	ALTQ_LOCK(ifq);
+	error = fairq_add_queue_locked(a, pif);
+	ALTQ_UNLOCK(ifq);
+
+	return error;
+}
+
+static int
+fairq_remove_queue_locked(struct pf_altq *a, struct fairq_if *pif)
+{
+	struct fairq_class *cl;
 
 	if ((cl = clh_to_clp(pif, a->qid)) == NULL)
 		return (EINVAL);
@@ -228,23 +235,51 @@ fairq_remove_queue(struct pf_altq *a)
 }
 
 int
+fairq_remove_queue(struct pf_altq *a)
+{
+	struct fairq_if *pif;
+	struct ifaltq *ifq;
+	int error;
+
+	/* XXX not MP safe */
+	if ((pif = a->altq_disc) == NULL)
+		return (EINVAL);
+	ifq = pif->pif_ifq;
+
+	ALTQ_LOCK(ifq);
+	error = fairq_remove_queue_locked(a, pif);
+	ALTQ_UNLOCK(ifq);
+
+	return error;
+}
+
+int
 fairq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 {
 	struct fairq_if *pif;
 	struct fairq_class *cl;
 	struct fairq_classstats stats;
+	struct ifaltq *ifq;
 	int error = 0;
-
-	if ((pif = altq_lookup(a->ifname, ALTQT_FAIRQ)) == NULL)
-		return (EBADF);
-
-	if ((cl = clh_to_clp(pif, a->qid)) == NULL)
-		return (EINVAL);
 
 	if (*nbytes < sizeof(stats))
 		return (EINVAL);
 
+	/* XXX not MP safe */
+	if ((pif = altq_lookup(a->ifname, ALTQT_FAIRQ)) == NULL)
+		return (EBADF);
+	ifq = pif->pif_ifq;
+
+	ALTQ_LOCK(ifq);
+
+	if ((cl = clh_to_clp(pif, a->qid)) == NULL) {
+		ALTQ_UNLOCK(ifq);
+		return (EINVAL);
+	}
+
 	get_class_stats(&stats, cl);
+
+	ALTQ_UNLOCK(ifq);
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);

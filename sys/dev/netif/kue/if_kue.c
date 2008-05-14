@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.29 2008/01/06 16:55:50 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.30 2008/05/14 11:59:20 sephe Exp $
  */
 
 /*
@@ -746,7 +746,7 @@ kue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_opackets++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if_devstart(ifp);
 
 	KUE_UNLOCK(sc);
 
@@ -805,18 +805,18 @@ kue_start(struct ifnet *ifp)
 		return;
 	}
 
-	m_head = ifq_poll(&ifp->if_snd);
+	m_head = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m_head == NULL) {
 		KUE_UNLOCK(sc);
 		return;
 	}
 
 	if (kue_encap(sc, m_head, 0)) {
+		/* kue_encap() will free m_head, if we reach here */
 		ifp->if_flags |= IFF_OACTIVE;
 		KUE_UNLOCK(sc);
 		return;
 	}
-	ifq_dequeue(&ifp->if_snd, m_head);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame
@@ -989,8 +989,8 @@ kue_watchdog(struct ifnet *ifp)
 	usbd_get_xfer_status(c->kue_xfer, NULL, NULL, NULL, &stat);
 	kue_txeof(c->kue_xfer, c, stat);
 
-	if (ifq_is_empty(&ifp->if_snd))
-		kue_start(ifp);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
 	KUE_UNLOCK(sc);
 
 	return;

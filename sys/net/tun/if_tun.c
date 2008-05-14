@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.35 2008/04/05 06:28:35 sephe Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.36 2008/05/14 11:59:24 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -273,8 +273,8 @@ tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
  * MPSAFE
  */
 static int
-tunoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
-	  struct rtentry *rt)
+tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
+		     struct rtentry *rt)
 {
 	struct tun_softc *tp = ifp->if_softc;
 	int error;
@@ -364,6 +364,19 @@ tunoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		rel_mplock();
 	}
 	return (error);
+}
+
+static int
+tunoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
+	  struct rtentry *rt)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = tunoutput_serialized(ifp, m0, dst, rt);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 /*

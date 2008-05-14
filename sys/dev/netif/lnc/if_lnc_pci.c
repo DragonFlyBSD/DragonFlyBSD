@@ -1,6 +1,6 @@
 /*	$NetBSD: if_le_pci.c,v 1.43 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/if_le_pci.c,v 1.4 2006/06/05 15:14:14 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.11 2006/10/25 20:55:57 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.12 2008/05/14 11:59:20 sephe Exp $	*/
 
 
 /*-
@@ -79,6 +79,7 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/lock.h>
 #include <sys/module.h>
 #include <sys/resource.h>
@@ -442,6 +443,9 @@ le_pci_attach(device_t dev)
 		device_printf(dev, "cannot set up interrupt\n");
 		goto fail_am79900;
 	}
+
+	sc->ifp->if_cpuid = ithread_cpuid(rman_get_start(lesc->sc_ires));
+	KKASSERT(sc->ifp->if_cpuid >= 0 && sc->ifp->if_cpuid < ncpus);
 
 	return (0);
 

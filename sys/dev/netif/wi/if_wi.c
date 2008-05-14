@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.180.2.7 2005/10/05 13:16:29 avatar Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.40 2007/04/08 09:43:57 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.41 2008/05/14 11:59:22 sephe Exp $
  */
 
 /*
@@ -85,6 +85,7 @@
 #include <sys/serialize.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <machine/atomic.h>
 
@@ -500,6 +501,9 @@ wi_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	if (bootverbose)
 		ieee80211_announce(ic);
 
@@ -575,9 +579,8 @@ wi_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		}
 
 		if ((ifp->if_flags & IFF_OACTIVE) == 0 &&
-		    (sc->sc_flags & WI_FLAGS_OUTRANGE) == 0 && !ifq_is_empty(&ifp->if_snd)) {
-			wi_start(ifp);
-		}
+		    (sc->sc_flags & WI_FLAGS_OUTRANGE) == 0)
+			ifp->if_start(ifp);
 		break;
 	}
 }
@@ -609,14 +612,11 @@ wi_intr(void *arg)
 	if (status & WI_EV_INFO)
 		wi_info_intr(sc);
 	if ((ifp->if_flags & IFF_OACTIVE) == 0 &&
-	    (sc->sc_flags & WI_FLAGS_OUTRANGE) == 0 &&
-	    !ifq_is_empty(&ifp->if_snd))
-		wi_start(ifp);
+	    (sc->sc_flags & WI_FLAGS_OUTRANGE) == 0)
+		ifp->if_start(ifp);
 
 	/* Re-enable interrupts. */
 	CSR_WRITE_2(sc, WI_INT_EN, WI_INTRS);
-
-	return;
 }
 
 void
@@ -850,8 +850,11 @@ wi_start(struct ifnet *ifp)
 	struct wi_frame frmhdr;
 	int cur, fid, off, error;
 
-	if (sc->wi_gone || (sc->sc_flags & WI_FLAGS_OUTRANGE))
+	if (sc->wi_gone || (sc->sc_flags & WI_FLAGS_OUTRANGE)) {
+		ieee80211_drain_mgtq(&ic->ic_mgtq);
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	memset(&frmhdr, 0, sizeof(frmhdr));
 	cur = sc->sc_txnext;
@@ -882,17 +885,20 @@ wi_start(struct ifnet *ifp)
 		} else {
 			struct ether_header *eh;
 
-			if (ic->ic_state != IEEE80211_S_RUN)
+			if (ic->ic_state != IEEE80211_S_RUN) {
+				ifq_purge(&ifp->if_snd);
 				break;
-			m0 = ifq_poll(&ifp->if_snd);
-			if (m0 == NULL)
-				break;
+			}
+
 			if (sc->sc_txd[cur].d_len != 0) {
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
 
-			ifq_dequeue(&ifp->if_snd, m0);
+			m0 = ifq_dequeue(&ifp->if_snd, NULL);
+			if (m0 == NULL)
+				break;
+
 			if (m0->m_len < sizeof(struct ether_header)) {
 				m0 = m_pullup(m0, sizeof(struct ether_header));
 				if (m0 == NULL) {

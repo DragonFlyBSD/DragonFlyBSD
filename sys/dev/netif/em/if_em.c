@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.70 2008/05/02 07:40:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.71 2008/05/14 11:59:19 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -101,6 +101,7 @@
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/endian.h>
+#include <sys/interrupt.h>
 #include <sys/kernel.h>
 #include <sys/ktr.h>
 #include <sys/malloc.h>
@@ -469,12 +470,14 @@ static int
 em_attach(device_t dev)
 {
 	struct adapter *adapter;
+	struct ifnet *ifp;
 	int tsize, rsize;
 	int error = 0;
 
 	INIT_DEBUGOUT("em_attach: begin");
 
 	adapter = device_get_softc(dev);
+	ifp = &adapter->interface_data.ac_if;
 
 	callout_init(&adapter->timer);
 	callout_init(&adapter->tx_fifo_timer);
@@ -678,14 +681,15 @@ em_attach(device_t dev)
 
 	error = bus_setup_intr(dev, adapter->res_interrupt, INTR_NETSAFE,
 			   em_intr, adapter,
-			   &adapter->int_handler_tag,
-			   adapter->interface_data.ac_if.if_serializer);
+			   &adapter->int_handler_tag, ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "Error registering interrupt handler!\n");
-		ether_ifdetach(&adapter->interface_data.ac_if);
+		ether_ifdetach(ifp);
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(adapter->res_interrupt));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 	INIT_DEBUGOUT("em_attach: end");
 	return(0);
 
@@ -792,8 +796,7 @@ em_resume(device_t dev)
 	lwkt_serialize_enter(ifp->if_serializer);
 	ifp->if_flags &= ~IFF_RUNNING;
 	em_init(adapter);
-	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
-		em_start(ifp);
+	if_devstart(ifp);
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	return bus_generic_resume(dev);
@@ -819,20 +822,21 @@ em_start(struct ifnet *ifp)
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
-	if (!adapter->link_active)
+	if (!adapter->link_active) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 	while (!ifq_is_empty(&ifp->if_snd)) {
-		m_head = ifq_poll(&ifp->if_snd);
-
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
 		logif(pkt_txqueue);
 		if (em_encap(adapter, m_head)) {
 			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
-		ifq_dequeue(&ifp->if_snd, m_head);
 
 		/* Send a copy of the frame to the BPF listener */
 		ETHER_BPF_MTAP(ifp, m_head);
@@ -1179,7 +1183,7 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			em_txeof(adapter);
 
 			if (!ifq_is_empty(&ifp->if_snd))
-				em_start(ifp);
+				if_devstart(ifp);
 		}
 		break;
 	}
@@ -1246,7 +1250,8 @@ em_intr(void *arg)
 		adapter->rx_overruns++;
 
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
-		em_start(ifp);
+		if_devstart(ifp);
+
 	logif(intr_end);
 }
 

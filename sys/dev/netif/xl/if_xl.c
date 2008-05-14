@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.49 2007/08/14 13:30:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.50 2008/05/14 11:59:23 sephe Exp $
  */
 
 /*
@@ -112,6 +112,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -214,6 +215,7 @@ static void xl_txeoc		(struct xl_softc *);
 static void xl_intr		(void *);
 static void xl_start_body	(struct ifnet *, int);
 static void xl_start		(struct ifnet *);
+static void xl_start_poll	(struct ifnet *);
 static void xl_start_90xB	(struct ifnet *);
 static int xl_ioctl		(struct ifnet *, u_long, caddr_t,
 						struct ucred *);
@@ -1605,6 +1607,9 @@ done:
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->xl_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return 0;
 
 fail:
@@ -2334,8 +2339,12 @@ xl_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	switch (cmd) {
 	case POLL_REGISTER:
 		xl_enable_intrs(sc, 0);
+		if (sc->xl_type != XL_TYPE_905B)
+			ifp->if_start = xl_start_poll;
 		break;
 	case POLL_DEREGISTER:
+		if (sc->xl_type != XL_TYPE_905B)
+			ifp->if_start = xl_start;
 		xl_enable_intrs(sc, XL_INTRS);
 		break;
 	case POLL_ONLY:
@@ -2346,12 +2355,8 @@ xl_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		else
 			xl_txeof(sc);
 
-		if (!ifq_is_empty(&ifp->if_snd)) {
-			if (sc->xl_type == XL_TYPE_905B)
-				xl_start_90xB(ifp);
-			else
-				xl_start_body(ifp, 0);
-		}
+		if (!ifq_is_empty(&ifp->if_snd))
+			if_devstart(ifp);
 
 		if (cmd == POLL_AND_CHECK_STATUS) {
 			uint16_t status;
@@ -2437,9 +2442,7 @@ xl_intr(void *arg)
 	}
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 static void
@@ -2581,6 +2584,12 @@ static void
 xl_start(struct ifnet *ifp)
 {
 	xl_start_body(ifp, 1);
+}
+
+static void
+xl_start_poll(struct ifnet *ifp)
+{
+	xl_start_body(ifp, 0);
 }
 
 /*
@@ -2725,7 +2734,7 @@ xl_start_90xB(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	idx = sc->xl_cdata.xl_tx_prod;
@@ -3212,7 +3221,7 @@ xl_watchdog(struct ifnet *ifp)
 	xl_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if_devstart(ifp);
 }
 
 /*

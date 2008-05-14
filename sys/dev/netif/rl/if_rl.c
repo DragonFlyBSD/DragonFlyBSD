@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.36 2007/06/26 07:47:28 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.37 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -99,6 +99,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -937,6 +938,9 @@ rl_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->rl_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return(0);
 
 fail:
@@ -1245,7 +1249,7 @@ rl_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		rl_rxeof(sc);
 		rl_txeof(sc);
 		if (!ifq_is_empty(&ifp->if_snd))
-			rl_start(ifp);
+			if_devstart(ifp);
 
 		if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
 			uint16_t status;
@@ -1313,7 +1317,7 @@ rl_intr(void *arg)
 	}
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		rl_start(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -1365,12 +1369,13 @@ rl_encap(struct rl_softc *sc, struct mbuf *m_head)
 static void
 rl_start(struct ifnet *ifp)
 {
-	struct rl_softc *sc;
+	struct rl_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 
-	sc = ifp->if_softc;
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+		return;
 
-	while(RL_CUR_TXMBUF(sc) == NULL) {
+	while (RL_CUR_TXMBUF(sc) == NULL) {
 		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;

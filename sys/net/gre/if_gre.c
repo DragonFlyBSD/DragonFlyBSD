@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.20 2008/01/11 11:59:41 sephe Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.21 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -208,8 +208,8 @@ gre_clone_destroy(struct ifnet *ifp)
  * given by sc->g_proto. See also RFC 1701 and RFC 2004
  */
 static int
-gre_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	   struct rtentry *rt)
+gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+		      struct rtentry *rt)
 {
 	int error = 0;
 	struct gre_softc *sc = ifp->if_softc;
@@ -386,6 +386,19 @@ gre_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	if (error)
 		ifp->if_oerrors++;
 	return (error);
+}
+
+static int
+gre_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	   struct rtentry *rt)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = gre_output_serialized(ifp, m, dst, rt);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 static int

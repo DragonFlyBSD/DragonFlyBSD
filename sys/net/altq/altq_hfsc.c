@@ -1,5 +1,5 @@
 /*	$KAME: altq_hfsc.c,v 1.25 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.8 2006/12/22 23:44:55 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.9 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (c) 1997-1999 Carnegie Mellon University. All Rights Reserved.
@@ -139,18 +139,10 @@ static struct hfsc_class *clh_to_clp(struct hfsc_if *, uint32_t);
 #define	HT_INFINITY	0xffffffffffffffffLL	/* infinite time value */
 
 int
-hfsc_pfattach(struct pf_altq *a)
+hfsc_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	struct ifnet *ifp;
-	int error;
-
-	if ((ifp = ifunit(a->ifname)) == NULL || a->altq_disc == NULL)
-		return (EINVAL);
-	crit_enter();
-	error = altq_attach(&ifp->if_snd, ALTQT_HFSC, a->altq_disc,
+	return altq_attach(ifq, ALTQT_HFSC, a->altq_disc,
 	    hfsc_enqueue, hfsc_dequeue, hfsc_request, NULL, NULL);
-	crit_exit();
-	return (error);
 }
 
 int
@@ -195,25 +187,20 @@ hfsc_remove_altq(struct pf_altq *a)
 	return (0);
 }
 
-int
-hfsc_add_queue(struct pf_altq *a)
+static int
+hfsc_add_queue_locked(struct pf_altq *a, struct hfsc_if *hif)
 {
-	struct hfsc_if *hif;
 	struct hfsc_class *cl, *parent;
 	struct hfsc_opts *opts;
 	struct service_curve rtsc, lssc, ulsc;
 
-	if ((hif = a->altq_disc) == NULL)
-		return (EINVAL);
+	KKASSERT(a->qid != 0);
 
 	opts = &a->pq_u.hfsc_opts;
 
 	if (a->parent_qid == HFSC_NULLCLASS_HANDLE && hif->hif_rootclass == NULL)
 		parent = NULL;
 	else if ((parent = clh_to_clp(hif, a->parent_qid)) == NULL)
-		return (EINVAL);
-
-	if (a->qid == 0)
 		return (EINVAL);
 
 	if (clh_to_clp(hif, a->qid) != NULL)
@@ -238,13 +225,31 @@ hfsc_add_queue(struct pf_altq *a)
 }
 
 int
-hfsc_remove_queue(struct pf_altq *a)
+hfsc_add_queue(struct pf_altq *a)
 {
 	struct hfsc_if *hif;
-	struct hfsc_class *cl;
+	struct ifaltq *ifq;
+	int error;
 
+	if (a->qid == 0)
+		return (EINVAL);
+
+	/* XXX not MP safe */
 	if ((hif = a->altq_disc) == NULL)
 		return (EINVAL);
+	ifq = hif->hif_ifq;
+
+	ALTQ_LOCK(ifq);
+	error = hfsc_add_queue_locked(a, hif);
+	ALTQ_UNLOCK(ifq);
+
+	return error;
+}
+
+static int
+hfsc_remove_queue_locked(struct pf_altq *a, struct hfsc_if *hif)
+{
+	struct hfsc_class *cl;
 
 	if ((cl = clh_to_clp(hif, a->qid)) == NULL)
 		return (EINVAL);
@@ -253,23 +258,51 @@ hfsc_remove_queue(struct pf_altq *a)
 }
 
 int
+hfsc_remove_queue(struct pf_altq *a)
+{
+	struct hfsc_if *hif;
+	struct ifaltq *ifq;
+	int error;
+
+	/* XXX not MP safe */
+	if ((hif = a->altq_disc) == NULL)
+		return (EINVAL);
+	ifq = hif->hif_ifq;
+
+	ALTQ_LOCK(ifq);
+	error = hfsc_remove_queue_locked(a, hif);
+	ALTQ_UNLOCK(ifq);
+
+	return error;
+}
+
+int
 hfsc_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 {
 	struct hfsc_if *hif;
 	struct hfsc_class *cl;
 	struct hfsc_classstats stats;
+	struct ifaltq *ifq;
 	int error = 0;
-
-	if ((hif = altq_lookup(a->ifname, ALTQT_HFSC)) == NULL)
-		return (EBADF);
-
-	if ((cl = clh_to_clp(hif, a->qid)) == NULL)
-		return (EINVAL);
 
 	if (*nbytes < sizeof(stats))
 		return (EINVAL);
 
+	/* XXX not MP safe */
+	if ((hif = altq_lookup(a->ifname, ALTQT_HFSC)) == NULL)
+		return (EBADF);
+	ifq = hif->hif_ifq;
+
+	ALTQ_LOCK(ifq);
+
+	if ((cl = clh_to_clp(hif, a->qid)) == NULL) {
+		ALTQ_UNLOCK(ifq);
+		return (EINVAL);
+	}
+
 	get_class_stats(&stats, cl);
+
+	ALTQ_UNLOCK(ifq);
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);

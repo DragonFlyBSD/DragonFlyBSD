@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.38 2008/01/05 14:02:37 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.39 2008/05/14 11:59:22 sephe Exp $
  */
 
 /*
@@ -190,6 +190,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -1247,6 +1248,9 @@ tl_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->tl_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return(0);
 
 fail:
@@ -1665,9 +1669,7 @@ tl_intr(void *xsc)
 	}
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		tl_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 static 

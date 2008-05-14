@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.41 2007/05/17 08:19:02 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.42 2008/05/14 11:59:22 sephe Exp $
  */
 
 /*
@@ -51,6 +51,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -279,6 +280,9 @@ epic_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return(0);
 
@@ -681,7 +685,7 @@ epic_intr(void *arg)
 	if (status & (INTSTAT_TXC|INTSTAT_TCC|INTSTAT_TQE)) {
 	    epic_tx_done(sc);
 	    if (!ifq_is_empty(&sc->sc_if.if_snd))
-		    epic_ifstart(&sc->sc_if);
+		if_devstart(&sc->sc_if);
 	}
 
 	/* Check for rare errors */
@@ -783,7 +787,7 @@ epic_ifwatchdog(struct ifnet *ifp)
 
 	/* Start output */
 	if (!ifq_is_empty(&ifp->if_snd))
-		epic_ifstart(ifp);
+		if_devstart(ifp);
 }
 
 /*

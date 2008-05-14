@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.20 2007/08/14 15:32:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.21 2008/05/14 11:59:19 sephe Exp $
  */
 
 #include "opt_ed.h"
@@ -37,6 +37,7 @@
 #include <sys/conf.h>
 #include <sys/uio.h>
 #include <sys/module.h>
+#include <sys/interrupt.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -250,6 +251,7 @@ static int
 ed_pccard_attach(device_t dev)
 {
 	struct ed_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int error;
 	int i;
 	uint8_t sum;
@@ -283,11 +285,14 @@ ed_pccard_attach(device_t dev)
 
 	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
 			       edintr, sc, &sc->irq_handle,
-			       sc->arpcom.ac_if.if_serializer);
+			       ifp->if_serializer);
 	if (error) {
 		kprintf("setup intr failed %d \n", error);
 		ed_release_resources(dev);
 		return (error);
+	} else {
+		ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq_res));
+		KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 	}
 
 	return (error);

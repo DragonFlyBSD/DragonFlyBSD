@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.15 2007/04/22 01:13:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.16 2008/05/14 11:59:24 sephe Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -1446,10 +1446,8 @@ phyint_send(struct ip6_hdr *ip6, struct mif6 *mifp, struct mbuf *m)
 		 * We just call if_output instead of nd6_output here, since
 		 * we need no ND for a multicast forwarded packet...right?
 		 */
-		lwkt_serialize_enter(ifp->if_serializer);
-		error = (*ifp->if_output)(ifp, mb_copy,
+		error = ifp->if_output(ifp, mb_copy,
 		    (struct sockaddr *)&ro.ro_dst, NULL);
-		lwkt_serialize_exit(ifp->if_serializer);
 #ifdef MRT6DEBUG
 		if (mrt6debug & DEBUG_XMIT)
 			log(LOG_DEBUG, "phyint_send on mif %d err %d\n",

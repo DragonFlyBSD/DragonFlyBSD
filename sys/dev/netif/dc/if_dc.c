@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.55 2008/01/05 14:02:37 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.56 2008/05/14 11:59:19 sephe Exp $
  */
 
 /*
@@ -98,6 +98,7 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
@@ -2180,6 +2181,9 @@ dc_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->dc_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return(0);
 
 fail:
@@ -2763,7 +2767,7 @@ dc_tick(void *xsc)
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 			sc->dc_link++;
 			if (!ifq_is_empty(&ifp->if_snd))
-				dc_start(ifp);
+				if_devstart(ifp);
 		}
 	}
 
@@ -2848,14 +2852,14 @@ dc_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		dc_rxeof(sc);
 		dc_txeof(sc);
 		if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd))
-			dc_start(ifp);
+			if_devstart(ifp);
 		break;
 	case POLL_AND_CHECK_STATUS:
 		sc->rxcycles = count;
 		dc_rxeof(sc);
 		dc_txeof(sc);
 		if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd))
-			dc_start(ifp);
+			if_devstart(ifp);
 		status = CSR_READ_4(sc, DC_ISR);
 		status &= (DC_ISR_RX_WATDOGTIMEO|DC_ISR_RX_NOBUF|
 			DC_ISR_TX_NOBUF|DC_ISR_TX_IDLE|DC_ISR_TX_UNDERRUN|
@@ -2967,9 +2971,7 @@ dc_intr(void *arg)
 	CSR_WRITE_4(sc, DC_IMR, DC_INTRS);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		dc_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 /*
@@ -3045,14 +3047,15 @@ static void
 dc_start(struct ifnet *ifp)
 {
 	struct dc_softc	*sc;
-	struct mbuf *m_head;
-	struct mbuf *m_defragged;
+	struct mbuf *m_head, *m_defragged;
 	int idx, need_trans;
 
 	sc = ifp->if_softc;
 
-	if (!sc->dc_link)
+	if (!sc->dc_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	if (ifp->if_flags & IFF_OACTIVE)
 		return;
@@ -3062,13 +3065,12 @@ dc_start(struct ifnet *ifp)
 	need_trans = 0;
 	while(sc->dc_cdata.dc_tx_chain[idx] == NULL) {
 		m_defragged = NULL;
-		m_head = ifq_poll(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
-		if (sc->dc_flags & DC_TX_COALESCE &&
-		    (m_head->m_next != NULL ||
-			sc->dc_flags & DC_TX_ALIGN)){
+		if ((sc->dc_flags & DC_TX_COALESCE) &&
+		    (m_head->m_next != NULL || (sc->dc_flags & DC_TX_ALIGN))) {
 			/*
 			 * Check first if coalescing allows us to queue
 			 * the packet. We don't want to loose it if
@@ -3078,37 +3080,39 @@ dc_start(struct ifnet *ifp)
 			    idx != sc->dc_cdata.dc_tx_prod &&
 			    idx == (DC_TX_LIST_CNT - 1)) {
 				ifp->if_flags |= IFF_OACTIVE;
+				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
 			if ((DC_TX_LIST_CNT - sc->dc_cdata.dc_tx_cnt) < 5) {
 				ifp->if_flags |= IFF_OACTIVE;
+				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
 
 			/* only coalesce if have >1 mbufs */
-			m_defragged = m_defrag_nofree(m_head, MB_DONTWAIT);
+			m_defragged = m_defrag(m_head, MB_DONTWAIT);
 			if (m_defragged == NULL) {
 				ifp->if_flags |= IFF_OACTIVE;
+				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
+			m_head = m_defragged;
 		}
 
-		if (dc_encap(sc, (m_defragged ? m_defragged : m_head), &idx)) {
+		if (dc_encap(sc, m_head, &idx)) {
 			if (m_defragged) {
 				/*
 				 * Throw away the original packet if the
 				 * defragged packet could not be encapsulated,
 				 * as well as the defragged packet.
 				 */
-				ifq_dequeue(&ifp->if_snd, m_head);
 				m_freem(m_head);
-				m_freem(m_defragged);
+			} else {
+				ifq_prepend(&ifp->if_snd, m_head);
 			}
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-
-		ifq_dequeue(&ifp->if_snd, m_head);
 
 		need_trans = 1;
 
@@ -3116,14 +3120,7 @@ dc_start(struct ifnet *ifp)
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
-		BPF_MTAP(ifp, (m_defragged ? m_defragged : m_head));
-
-		/*
-		 * If we defragged the packet, m_head is not the one we
-		 * encapsulated so we can throw it away.
-		 */
-		if (m_defragged)
-			m_freem(m_head);
+		BPF_MTAP(ifp, m_head);
 
 		if (sc->dc_flags & DC_TX_ONE) {
 			ifp->if_flags |= IFF_OACTIVE;
@@ -3432,9 +3429,7 @@ dc_watchdog(struct ifnet *ifp)
 	dc_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		dc_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 /*
@@ -3488,11 +3483,8 @@ dc_stop(struct dc_softc *sc)
 			sc->dc_cdata.dc_tx_chain[i] = NULL;
 		}
 	}
-
 	bzero((char *)&sc->dc_ldata->dc_tx_list,
 		sizeof(sc->dc_ldata->dc_tx_list));
-
-	return;
 }
 
 /*

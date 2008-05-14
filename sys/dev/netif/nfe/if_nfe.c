@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.19 2008/03/10 12:59:51 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.20 2008/05/14 11:59:21 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -61,6 +61,7 @@
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/interrupt.h>
 #include <sys/proc.h>
 #include <sys/rman.h>
 #include <sys/serialize.h>
@@ -526,6 +527,9 @@ nfe_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return 0;
 fail:
@@ -1018,7 +1022,7 @@ skip:
 
 	if (data != NULL) {	/* at least one slot freed */
 		ifp->if_flags &= ~IFF_OACTIVE;
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 	}
 }
 
@@ -1178,10 +1182,7 @@ nfe_start(struct ifnet *ifp)
 	int count = 0;
 	struct mbuf *m0;
 
-	if (ifp->if_flags & IFF_OACTIVE)
-		return;
-
-	if (ifq_is_empty(&ifp->if_snd))
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	for (;;) {
@@ -1393,7 +1394,7 @@ nfe_init(void *xsc)
 	 * so we are not going to get an interrupt, jump-start any pending
 	 * output.
 	 */
-	ifp->if_start(ifp);
+	if_devstart(ifp);
 }
 
 static void

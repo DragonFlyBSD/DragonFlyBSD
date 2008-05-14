@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.20 2006/12/22 23:44:54 swildner Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.21 2008/05/14 11:59:23 sephe Exp $
  */
 
 /*
@@ -262,7 +262,9 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 		 */
 	        crit_enter();
 		error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
-		(*ifp->if_start)(ifp);
+		lwkt_serialize_enter(ifp->if_serializer);
+		ifp->if_start(ifp);
+		lwkt_serialize_exit(ifp->if_serializer);
 		crit_exit();
 		return (error);
 	}

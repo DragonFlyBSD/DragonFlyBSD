@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.15 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.15 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.16 2008/05/14 11:59:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -34,6 +34,8 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/interrupt.h>
+#include <sys/rman.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -130,11 +132,18 @@ ed_isa_attach(device_t dev)
 
 	error = ed_attach(dev);
 	if (error == 0) {
+		struct ifnet *ifp = &sc->arpcom.ac_if;
+
 		error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
 				       edintr, sc, &sc->irq_handle,
-				       sc->arpcom.ac_if.if_serializer);
-		if (error)
+				       ifp->if_serializer);
+		if (error) {
 			ed_isa_detach(dev);
+		} else {
+			ifp->if_cpuid =
+				ithread_cpuid(rman_get_start(sc->irq_res));
+			KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+		}
 	} else {
 		ed_release_resources(dev);
 	}

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.34 2007/05/13 18:33:57 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.35 2008/05/14 11:59:19 sephe Exp $
  */
 
 /*
@@ -1991,7 +1991,7 @@ ed_init(void *xsc)
 	/*
 	 * ...and attempt to start output
 	 */
-	ed_start(ifp);
+	if_devstart(ifp);
 
 #ifndef ED_NO_MIIBUS
 	callout_reset(&sc->ed_timer, hz, ed_tick, sc);
@@ -2068,6 +2068,7 @@ ed_start(struct ifnet *ifp)
 
 	if (sc->gone) {
 		kprintf("ed_start(%p) GONE\n",ifp);
+		ifq_purge(&ifp->if_snd);
 		return;
 	}
 outloop:
@@ -2580,7 +2581,7 @@ edintr(void *arg)
 		 * after handling the receiver to give the receiver priority.
 		 */
 		if ((ifp->if_flags & IFF_OACTIVE) == 0)
-			ed_start(ifp);
+			if_devstart(ifp);
 
 		/*
 		 * return NIC CR to standard state: page 0, remote DMA

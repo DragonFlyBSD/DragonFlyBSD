@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.21 2008/01/06 16:55:52 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.22 2008/05/14 11:59:23 sephe Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -292,8 +292,8 @@ i4biprattach(void *dummy)
  *	output a packet to the ISDN B-channel
  *---------------------------------------------------------------------------*/
 static int
-i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	 struct rtentry *rtp)
+i4biproutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+			struct rtentry *rtp)
 {
 	struct ipr_softc *sc;
 	int unit;
@@ -410,6 +410,19 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	crit_exit();
 
 	return (0);
+}
+
+static int
+i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	     struct rtentry *rtp)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = i4biproutput_serialized(ifp, m, dst, rtp);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 /*---------------------------------------------------------------------------*

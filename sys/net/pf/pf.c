@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.18 2008/04/11 18:21:48 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.19 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -5059,9 +5059,7 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 			}
 		}
 
-		lwkt_serialize_enter(ifp->if_serializer);
-		error = (*ifp->if_output)(ifp, m0, sintosa(dst), ro->ro_rt);
-		lwkt_serialize_exit(ifp->if_serializer);
+		error = ifp->if_output(ifp, m0, sintosa(dst), ro->ro_rt);
 		goto done;
 	}
 
@@ -5088,10 +5086,7 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 		m1 = m0->m_nextpkt;
 		m0->m_nextpkt = 0;
 		if (error == 0) {
-			lwkt_serialize_enter(ifp->if_serializer);
-			error = (*ifp->if_output)(ifp, m0, sintosa(dst),
-				    NULL);
-			lwkt_serialize_exit(ifp->if_serializer);
+			error = ifp->if_output(ifp, m0, sintosa(dst), NULL);
 		} else {
 			m_freem(m0);
 		}

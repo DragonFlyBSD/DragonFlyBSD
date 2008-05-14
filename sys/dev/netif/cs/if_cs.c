@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.28 2006/12/22 23:26:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.29 2008/05/14 11:59:19 sephe Exp $
  */
 
 /*
@@ -39,6 +39,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
@@ -684,6 +685,9 @@ cs_attach(device_t dev)
 		goto bad;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return 0;
 
 bad:
@@ -797,7 +801,7 @@ cs_init(void *xsc)
 	/*
 	 * Start sending process
 	 */
-	cs_start(ifp);
+	if_devstart(&sc->arpcom.ac_if);
 }
 
 /*
@@ -928,9 +932,8 @@ csintr(void *arg)
                 }
         }
 
-        if (!(ifp->if_flags & IFF_OACTIVE)) {
-                cs_start(ifp);
-        }
+        if (!(ifp->if_flags & IFF_OACTIVE))
+		if_devstart(ifp);
 }
 
 /*

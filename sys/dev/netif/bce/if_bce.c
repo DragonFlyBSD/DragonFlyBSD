@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.3 2008/03/10 12:59:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.4 2008/05/14 11:59:18 sephe Exp $
  */
 
 /*
@@ -50,6 +50,7 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
@@ -743,6 +744,9 @@ bce_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->bce_res_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	/* Print some important debugging info. */
 	DBRUN(BCE_INFO, bce_dump_driver_state(sc));
@@ -4471,8 +4475,12 @@ bce_start(struct ifnet *ifp)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* If there's no link or the transmit queue is empty then just exit. */
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING ||
-	    !sc->bce_link)
+	if (!sc->bce_link) {
+		ifq_purge(&ifp->if_snd);
+		return;
+	}
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
 	DBPRINT(sc, BCE_INFO_SEND,
@@ -4666,7 +4674,7 @@ bce_watchdog(struct ifnet *ifp)
 	ifp->if_oerrors++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 
@@ -4753,7 +4761,7 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 
 	/* Check for new frames to transmit. */
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 #endif	/* DEVICE_POLLING */
@@ -4896,7 +4904,7 @@ bce_intr(void *xsc)
 
 	/* Handle any frames that arrived while handling the interrupt. */
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 
@@ -5252,7 +5260,7 @@ bce_tick_serialized(struct bce_softc *sc)
 		sc->bce_link++;
 		/* Now that link is up, handle any outstanding TX traffic. */
 		if (!ifq_is_empty(&ifp->if_snd))
-			ifp->if_start(ifp);
+			if_devstart(ifp);
 	}
 }
 

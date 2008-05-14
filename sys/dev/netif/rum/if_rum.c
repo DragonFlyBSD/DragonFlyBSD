@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_rum.c,v 1.40 2006/09/18 16:20:20 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.27 2008/01/15 09:45:35 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/rum/if_rum.c,v 1.28 2008/05/14 11:59:21 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -1125,8 +1125,10 @@ rum_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (sc->sc_stopped)
+	if (sc->sc_stopped) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	crit_enter();
 
@@ -1158,17 +1160,19 @@ rum_start(struct ifnet *ifp)
 		} else {
 			struct ether_header *eh;
 
-			if (ic->ic_state != IEEE80211_S_RUN)
+			if (ic->ic_state != IEEE80211_S_RUN) {
+				ifq_purge(&ifp->if_snd);
 				break;
+			}
 
-			m0 = ifq_poll(&ifp->if_snd);
-			if (m0 == NULL)
-				break;
 			if (sc->tx_queued >= RT2573_TX_LIST_COUNT) {
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
-			ifq_dequeue(&ifp->if_snd, m0);
+
+			m0 = ifq_dequeue(&ifp->if_snd, NULL);
+			if (m0 == NULL)
+				break;
 
 			if (m0->m_len < sizeof(struct ether_header)) {
 				m0 = m_pullup(m0, sizeof(struct ether_header));

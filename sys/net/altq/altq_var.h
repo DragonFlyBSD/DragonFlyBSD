@@ -1,5 +1,5 @@
 /*	$KAME: altq_var.h,v 1.17 2004/04/20 05:09:08 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_var.h,v 1.4 2008/05/10 17:24:06 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_var.h,v 1.5 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (C) 1998-2003
@@ -79,28 +79,28 @@ int	altq_add_queue(struct pf_altq *);
 int	altq_remove_queue(struct pf_altq *);
 int	altq_getqstats(struct pf_altq *, void *, int *);
 
-int	cbq_pfattach(struct pf_altq *);
+int	cbq_pfattach(struct pf_altq *, struct ifaltq *);
 int	cbq_add_altq(struct pf_altq *);
 int	cbq_remove_altq(struct pf_altq *);
 int	cbq_add_queue(struct pf_altq *);
 int	cbq_remove_queue(struct pf_altq *);
 int	cbq_getqstats(struct pf_altq *, void *, int *);
 
-int	priq_pfattach(struct pf_altq *);
+int	priq_pfattach(struct pf_altq *, struct ifaltq *);
 int	priq_add_altq(struct pf_altq *);
 int	priq_remove_altq(struct pf_altq *);
 int	priq_add_queue(struct pf_altq *);
 int	priq_remove_queue(struct pf_altq *);
 int	priq_getqstats(struct pf_altq *, void *, int *);
 
-int	hfsc_pfattach(struct pf_altq *);
+int	hfsc_pfattach(struct pf_altq *, struct ifaltq *);
 int	hfsc_add_altq(struct pf_altq *);
 int	hfsc_remove_altq(struct pf_altq *);
 int	hfsc_add_queue(struct pf_altq *);
 int	hfsc_remove_queue(struct pf_altq *);
 int	hfsc_getqstats(struct pf_altq *, void *, int *);
 
-int	fairq_pfattach(struct pf_altq *);
+int	fairq_pfattach(struct pf_altq *, struct ifaltq *);
 int	fairq_add_altq(struct pf_altq *);
 int	fairq_remove_altq(struct pf_altq *);
 int	fairq_add_queue(struct pf_altq *);

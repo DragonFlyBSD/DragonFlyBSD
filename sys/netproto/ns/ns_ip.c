@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.14 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.15 2008/05/14 11:59:24 sephe Exp $
  */
 
 /*
@@ -104,6 +104,7 @@ nsipattach(void)
 	nsip_list = m;
 	ifp = &m->ifen_ifnet;
 
+	ifp->if_softc = m;
 	if_initname(ifp, "nsip", nsipif_units++);
 	ifp->if_name = "nsip";
 	ifp->if_mtu = LOMTU;
@@ -230,8 +231,9 @@ idpip_input(struct mbuf *m, ...)
 }
 
 /* ARGSUSED */
-int
-nsipoutput(struct ifnet_en *ifn, struct mbuf *m, struct sockaddr *dst)
+static int
+nsipoutput_serialized(struct ifnet_en *ifn, struct mbuf *m,
+		      struct sockaddr *dst)
 {
 
 	struct ip *ip;
@@ -291,6 +293,19 @@ nsipoutput(struct ifnet_en *ifn, struct mbuf *m, struct sockaddr *dst)
 bad:
 	m_freem(m);
 	return (ENETUNREACH);
+}
+
+int
+nsipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	   struct rtentry *rt __unused)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = nsipoutput_serialized(ifp->if_softc, m, dst);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 void

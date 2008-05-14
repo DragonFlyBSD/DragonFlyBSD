@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.30 2008/01/06 16:55:50 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.31 2008/05/14 11:59:20 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -413,7 +413,7 @@ fwe_output_callback(struct fw_xfer *xfer)
 
 	/* for queue full */
 	if (!ifq_is_empty(&ifp->if_snd))
-		fwe_start(ifp);
+		if_devstart(ifp);
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 

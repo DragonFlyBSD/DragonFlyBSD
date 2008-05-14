@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.46 2007/09/09 06:21:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.47 2008/05/14 11:59:22 sephe Exp $
  */
 
 /*
@@ -73,6 +73,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -791,12 +792,15 @@ vr_attach(device_t dev)
 	error = bus_setup_intr(dev, sc->vr_irq, INTR_NETSAFE,
 			       vr_intr, sc, &sc->vr_intrhand, 
 			       ifp->if_serializer);
-
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->vr_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return 0;
 
 fail:
@@ -1250,7 +1254,7 @@ vr_intr(void *arg)
 		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		vr_start(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -1317,7 +1321,7 @@ vr_start(struct ifnet *ifp)
 	struct vr_chain *tx_chain;
 	int cur_tx_idx, start_tx_idx, prev_tx_idx;
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	sc = ifp->if_softc;
@@ -1333,11 +1337,11 @@ vr_start(struct ifnet *ifp)
 		return;
 	}
 
-	while(tx_chain[cd->vr_tx_free_idx].vr_buf == NULL) {
+	while (tx_chain[cd->vr_tx_free_idx].vr_buf == NULL) {
 		struct mbuf *m_head;
 		struct vr_chain *cur_tx;
 
-		m_head = ifq_poll(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
@@ -1351,8 +1355,6 @@ vr_start(struct ifnet *ifp)
 			cur_tx_idx = prev_tx_idx;
 			break;
 		}
-
-		ifq_dequeue(&ifp->if_snd, m_head);
 
 		/* XXX */
 		if (cur_tx_idx != start_tx_idx)
@@ -1583,7 +1585,7 @@ vr_watchdog(struct ifnet *ifp)
 	vr_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		vr_start(ifp);
+		if_devstart(ifp);
 }
 
 /*

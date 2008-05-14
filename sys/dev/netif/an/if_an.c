@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.42 2007/04/07 11:01:06 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.43 2008/05/14 11:59:18 sephe Exp $
  */
 
 /*
@@ -1181,9 +1181,7 @@ an_intr(void *xsc)
 	CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), AN_INTRS(sc->mpi350));
 
 	if ((ifp->if_flags & IFF_UP) && !ifq_is_empty(&ifp->if_snd))
-		an_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 static int
@@ -2492,8 +2490,10 @@ an_start(struct ifnet *ifp)
 	if (ifp->if_flags & IFF_OACTIVE)
 		return;
 
-	if (!sc->an_associated)
+	if (!sc->an_associated) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	/* We can't send in monitor mode so toss any attempts. */
 	if (sc->an_monitor && (ifp->if_flags & IFF_PROMISC)) {
@@ -2699,12 +2699,11 @@ an_shutdown(device_t dev)
 void
 an_resume(device_t dev)
 {
-	struct an_softc		*sc;
-	struct ifnet		*ifp;
-	int			i;
+	struct an_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	an_reset(sc);
 	if (sc->mpi350)
@@ -2721,9 +2720,9 @@ an_resume(device_t dev)
 	}
 
 	if (ifp->if_flags & IFF_UP)
-		an_start(ifp);
+		if_devstart(ifp);
 
-	return;
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 #ifdef ANCACHE

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.50 2007/09/15 21:28:15 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.51 2008/05/14 11:59:20 sephe Exp $
  */
 
 /*
@@ -40,6 +40,7 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -689,6 +690,9 @@ fxp_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return (0);
 
 failmem:
@@ -1049,8 +1053,12 @@ fxp_start(struct ifnet *ifp)
 	 * of the command chain).
 	 */
 	if (sc->need_mcsetup) {
+		ifq_purge(&ifp->if_snd);
 		return;
 	}
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+		return;
 
 	txp = NULL;
 
@@ -1068,7 +1076,7 @@ fxp_start(struct ifnet *ifp)
 		 * Grab a packet to transmit. The packet is dequeued,
 		 * once we are sure that we have enough free descriptors.
 		 */
-		mb_head = ifq_poll(&ifp->if_snd);
+		mb_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (mb_head == NULL)
 			break;
 
@@ -1101,20 +1109,22 @@ tbdinit:
 			 * mbuf chain first. Bail out if we can't get the
 			 * new buffers.
 			 */
-			if (ntries > 0)
+			if (ntries > 0) {
+				ifq_prepend(&ifp->if_snd, mb_head);
+				ifp->if_flags |= IFF_OACTIVE;
 				break;
+			}
+
 			mn = m_dup(mb_head, MB_DONTWAIT);
-			if (mn == NULL)
+			if (mn == NULL) {
+				ifq_prepend(&ifp->if_snd, mb_head);
 				break;
-			 /* We can transmit the packet, dequeue it. */
-			ifq_dequeue(&ifp->if_snd, mb_head);
+			}
+
 			m_freem(mb_head);
 			mb_head = mn;
 			ntries = 1;
 			goto tbdinit;
-		} else {
-			/* Nothing to worry about, just dequeue. */
-			ifq_dequeue(&ifp->if_snd, mb_head);
 		}
 
 		txp->tbd_number = segment;
@@ -1155,6 +1165,9 @@ tbdinit:
 
 		BPF_MTAP(ifp, mb_head);
 	}
+
+	if (sc->tx_queued >= FXP_NTXCB - 1)
+		ifp->if_flags |= IFF_OACTIVE;
 
 	/*
 	 * We're finished. If we added to the list, issue a RESUME to get DMA
@@ -1269,7 +1282,9 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 	 */
 	if (statack & (FXP_SCB_STATACK_CXTNO | FXP_SCB_STATACK_CNA)) {
 		struct fxp_cb_tx *txp;
+		int old_queued;
 
+		old_queued = sc->tx_queued;
 		for (txp = sc->cbl_first; sc->tx_queued &&
 		    (txp->cb_status & FXP_CB_STATUS_C) != 0;
 		    txp = txp->next) {
@@ -1282,16 +1297,21 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 			}
 		}
 		sc->cbl_first = txp;
-		ifp->if_timer = 0;
+
+		ifp->if_timer = 0;	/* XXX only if tx_queued is 0 */
+		if (old_queued > sc->tx_queued)
+			ifp->if_flags &= ~IFF_OACTIVE;
+
 		if (sc->tx_queued == 0) {
 			if (sc->need_mcsetup)
 				fxp_mc_setup(sc);
 		}
+
 		/*
 		 * Try to start more packets transmitting.
 		 */
 		if (!ifq_is_empty(&ifp->if_snd))
-			(*ifp->if_start)(ifp);
+			if_devstart(ifp);
 	}
 
 	/*

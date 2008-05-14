@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.47 2008/03/10 12:59:52 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.48 2008/05/14 11:59:22 sephe Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -51,6 +51,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -319,6 +320,9 @@ txp_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return(0);
 
@@ -642,9 +646,7 @@ txp_intr(void *vsc)
 	/* unmask all interrupts */
 	WRITE_REG(sc, TXP_IMR, TXP_INT_A2H_3);
 
-	txp_start(&sc->sc_arpcom.ac_if);
-
-	return;
+	if_devstart(&sc->sc_arpcom.ac_if);
 }
 
 static void
@@ -722,12 +724,10 @@ txp_rx_reclaim(struct txp_softc *sc, struct txp_rx_ring *r)
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 
-		lwkt_serialize_enter(ifp->if_serializer);
 		if (rxd->rx_stat & RX_STAT_VLAN)
 			VLAN_INPUT_TAG(m, htons(rxd->rx_vlan >> 16));
 		else
 			ifp->if_input(ifp, m);
-		lwkt_serialize_exit(ifp->if_serializer);
 
 next:
 
@@ -1190,7 +1190,7 @@ txp_start(struct ifnet *ifp)
 	struct txp_tx_ring *r = &sc->sc_txhir;
 	struct txp_tx_desc *txd;
 	struct txp_frag_desc *fxd;
-	struct mbuf *m, *m0;
+	struct mbuf *m, *m0, *m_defragged;
 	struct txp_swdesc *sd;
 	u_int32_t firstprod, firstcnt, prod, cnt;
 
@@ -1201,21 +1201,48 @@ txp_start(struct ifnet *ifp)
 	cnt = r->r_cnt;
 
 	while (1) {
-		m = ifq_poll(&ifp->if_snd);
-		if (m == NULL)
-			break;
+		int frag;
 
 		firstprod = prod;
 		firstcnt = cnt;
 
-		sd = sc->sc_txd + prod;
-		sd->sd_mbuf = m;
-
 		if ((TX_ENTRIES - cnt) < 4)
 			goto oactive;
 
-		txd = r->r_desc + prod;
+		m_defragged = NULL;
+		m = ifq_dequeue(&ifp->if_snd, NULL);
+		if (m == NULL)
+			break;
+again:
+		frag = 1;	/* Extra desc */
+		for (m0 = m; m0 != NULL; m0 = m0->m_next)
+			++frag;
+		if ((cnt + frag) >= (TX_ENTRIES - 4)) {
+			if (m_defragged != NULL) {
+				/*
+				 * Even after defragmentation, there
+				 * are still too many fragments, so
+				 * drop this packet.
+				 */
+				m_freem(m);
+				goto oactive;
+			}
 
+			m_defragged = m_defrag(m, MB_DONTWAIT);
+			if (m_defragged == NULL) {
+				m_freem(m);
+				continue;
+			}
+			m = m_defragged;
+
+			/* Recount # of fragments */
+			goto again;
+		}
+
+		sd = sc->sc_txd + prod;
+		sd->sd_mbuf = m;
+
+		txd = r->r_desc + prod;
 		txd->tx_flags = TX_FLAGS_TYPE_DATA;
 		txd->tx_numdesc = 0;
 		txd->tx_addrlo = 0;
@@ -1226,8 +1253,8 @@ txp_start(struct ifnet *ifp)
 		if (++prod == TX_ENTRIES)
 			prod = 0;
 
-		if (++cnt >= (TX_ENTRIES - 4))
-			goto oactive;
+		++cnt;
+		KASSERT(cnt < (TX_ENTRIES - 4), ("too many frag\n"));
 
 		if (m->m_flags & M_VLANTAG) {
 			txd->tx_pflags = TX_PFLAGS_VLAN |
@@ -1249,8 +1276,9 @@ txp_start(struct ifnet *ifp)
 		for (m0 = m; m0 != NULL; m0 = m0->m_next) {
 			if (m0->m_len == 0)
 				continue;
-			if (++cnt >= (TX_ENTRIES - 4))
-				goto oactive;
+
+			++cnt;
+			KASSERT(cnt < (TX_ENTRIES - 4), ("too many frag\n"));
 
 			txd->tx_numdesc++;
 
@@ -1266,12 +1294,10 @@ txp_start(struct ifnet *ifp)
 				prod = 0;
 			} else
 				fxd++;
-
 		}
 
 		ifp->if_timer = 5;
 
-		ifq_dequeue(&ifp->if_snd, m);
 		ETHER_BPF_MTAP(ifp, m);
 		WRITE_REG(sc, r->r_reg, TXP_IDX2OFFSET(prod));
 	}

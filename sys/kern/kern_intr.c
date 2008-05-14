@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.52 2008/03/30 14:40:13 hasso Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.53 2008/05/14 11:59:23 sephe Exp $
  *
  */
 
@@ -949,6 +949,19 @@ emergency_intr_timer_callback(systimer_t info, struct intrframe *frame __unused)
 {
     if (emergency_intr_enable)
 	lwkt_schedule(info->data);
+}
+
+int
+ithread_cpuid(int intr)
+{
+	const struct intr_info *info;
+
+	KKASSERT(intr >= 0 && intr < MAX_INTS);
+	info = &intr_info_ary[intr];
+
+	if (info->i_state == ISTATE_NOTHREAD)
+		return -1;
+	return info->i_thread.td_gd->gd_cpuid;
 }
 
 /* 

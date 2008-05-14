@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.36 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.37 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -72,6 +72,7 @@
 #include <sys/thread2.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -1310,6 +1311,9 @@ sis_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sis_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 fail:
 	if (error)
 		sis_detach(dev);
@@ -1635,7 +1639,7 @@ sis_tick(void *xsc)
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)
 			sc->sis_link++;
 		if (!ifq_is_empty(&ifp->if_snd))
-			sis_start(ifp);
+			if_devstart(ifp);
 	}
 
 	callout_reset(&sc->sis_timer, hz, sis_tick, sc);
@@ -1670,7 +1674,7 @@ sis_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		sis_rxeof(sc);
 		sis_txeof(sc);
 		if (!ifq_is_empty(&ifp->if_snd))
-			sis_start(ifp);
+			if_devstart(ifp);
 
 		if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
 			uint32_t status;
@@ -1745,7 +1749,7 @@ sis_intr(void *arg)
 	CSR_WRITE_4(sc, SIS_IER, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		sis_start(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -1760,24 +1764,17 @@ sis_encap(struct sis_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 	int frag, cur, cnt = 0;
 
 	/*
-	 * If there's no way we can send any packets, return now.
-	 */
-	if (SIS_TX_LIST_CNT - sc->sis_cdata.sis_tx_cnt < 2)
-		return (ENOBUFS);
-
-	/*
  	 * Start packing the mbufs in this chain into
 	 * the fragment pointers. Stop when we run out
  	 * of fragments or hit the end of the mbuf chain.
 	 */
-	m = m_head;
 	cur = frag = *txidx;
 
 	for (m = m_head; m != NULL; m = m->m_next) {
 		if (m->m_len != 0) {
 			if ((SIS_TX_LIST_CNT -
 			    (sc->sis_cdata.sis_tx_cnt + cnt)) < 2)
-				return(ENOBUFS);
+				break;
 			f = &sc->sis_ldata.sis_tx_list[frag];
 			f->sis_ctl = SIS_CMDSTS_MORE | m->m_len;
 			bus_dmamap_create(sc->sis_tag, 0, &f->sis_map);
@@ -1793,9 +1790,8 @@ sis_encap(struct sis_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 			cnt++;
 		}
 	}
-
-	if (m != NULL)
-		return(ENOBUFS);
+	/* Caller should make sure that 'm_head' is not excessive fragmented */
+	KASSERT(m == NULL, ("too many fragments\n"));
 
 	sc->sis_ldata.sis_tx_list[cur].sis_mbuf = m_head;
 	sc->sis_ldata.sis_tx_list[cur].sis_ctl &= ~SIS_CMDSTS_MORE;
@@ -1817,31 +1813,69 @@ static void
 sis_start(struct ifnet *ifp)
 {
 	struct sis_softc *sc;
-	struct mbuf *m_head = NULL;
+	struct mbuf *m_head = NULL, *m_defragged;
 	uint32_t idx;
 	int need_trans;
 
 	sc = ifp->if_softc;
 
-	if (!sc->sis_link)
+	if (!sc->sis_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	idx = sc->sis_cdata.sis_tx_prod;
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	need_trans = 0;
-	while(sc->sis_ldata.sis_tx_list[idx].sis_mbuf == NULL) {
-		m_head = ifq_poll(&ifp->if_snd);
-		if (m_head == NULL)
-			break;
+	while (sc->sis_ldata.sis_tx_list[idx].sis_mbuf == NULL) {
+		struct mbuf *m;
+		int cnt;
 
-		if (sis_encap(sc, m_head, &idx)) {
+		/*
+		 * If there's no way we can send any packets, return now.
+		 */
+		if (SIS_TX_LIST_CNT - sc->sis_cdata.sis_tx_cnt < 2) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		ifq_dequeue(&ifp->if_snd, m_head);
+
+		m_defragged = NULL;
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		if (m_head == NULL)
+			break;
+
+again:
+		cnt = 0;
+		for (m = m_head; m != NULL; m = m->m_next)
+			++cnt;
+		if ((SIS_TX_LIST_CNT -
+		    (sc->sis_cdata.sis_tx_cnt + cnt)) < 2) {
+			if (m_defragged != NULL) {
+				/*
+				 * Even after defragmentation, there
+				 * are still too many fragments, so
+				 * drop this packet.
+				 */
+				m_freem(m_head);
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
+
+			m_defragged = m_defrag(m_head, MB_DONTWAIT);
+			if (m_defragged == NULL) {
+				m_freem(m_head);
+				continue;
+			}
+			m_head = m_defragged;
+
+			/* Recount # of fragments */
+			goto again;
+		}
+
+		sis_encap(sc, m_head, &idx);
 		need_trans = 1;
 
 		/*
@@ -2122,7 +2156,7 @@ sis_watchdog(struct ifnet *ifp)
 	sis_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		sis_start(ifp);
+		if_devstart(ifp);
 }
 
 /*

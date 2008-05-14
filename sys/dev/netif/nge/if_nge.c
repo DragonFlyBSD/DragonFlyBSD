@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.46 2008/03/10 12:59:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.47 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -96,6 +96,7 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/serialize.h>
 #include <sys/bus.h>
@@ -907,6 +908,9 @@ nge_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->nge_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return(0);
 fail:
 	nge_detach(dev);
@@ -1369,7 +1373,7 @@ nge_tick(void *xsc)
 				nge_miibus_statchg(sc->nge_miibus);
 				sc->nge_link++;
 				if (!ifq_is_empty(&ifp->if_snd))
-					nge_start(ifp);
+					if_devstart(ifp);
 			}
 		}
 	} else {
@@ -1385,7 +1389,7 @@ nge_tick(void *xsc)
 					kprintf("nge%d: gigabit link up\n",
 					    sc->nge_unit);
 				if (!ifq_is_empty(&ifp->if_snd))
-					nge_start(ifp);
+					if_devstart(ifp);
 			}
 		}
 	}
@@ -1422,7 +1426,7 @@ nge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		nge_rxeof(sc);
 		nge_txeof(sc);
 		if (!ifq_is_empty(&ifp->if_snd))
-			nge_start(ifp);
+			if_devstart(ifp);
 
 		if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
 			uint32_t status;
@@ -1511,7 +1515,7 @@ nge_intr(void *arg)
 	CSR_WRITE_4(sc, NGE_IER, 1);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		nge_start(ifp);
+		if_devstart(ifp);
 
 	/* Data LED off for TBI mode */
 
@@ -1536,14 +1540,13 @@ nge_encap(struct nge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 	 * the fragment pointers. Stop when we run out
  	 * of fragments or hit the end of the mbuf chain.
 	 */
-	m = m_head;
 	cur = frag = *txidx;
 
 	for (m = m_head; m != NULL; m = m->m_next) {
 		if (m->m_len != 0) {
 			if ((NGE_TX_LIST_CNT -
 			    (sc->nge_cdata.nge_tx_cnt + cnt)) < 2)
-				return(ENOBUFS);
+				break;
 			f = &sc->nge_ldata->nge_tx_list[frag];
 			f->nge_ctl = NGE_CMDSTS_MORE | m->m_len;
 			f->nge_ptr = vtophys(mtod(m, vm_offset_t));
@@ -1554,9 +1557,8 @@ nge_encap(struct nge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 			cnt++;
 		}
 	}
-
-	if (m != NULL)
-		return(ENOBUFS);
+	/* Caller should make sure that 'm_head' is not excessive fragmented */
+	KASSERT(m == NULL, ("too many fragments\n"));
 
 	sc->nge_ldata->nge_tx_list[*txidx].nge_extsts = 0;
 	if (m_head->m_pkthdr.csum_flags) {
@@ -1596,29 +1598,59 @@ static void
 nge_start(struct ifnet *ifp)
 {
 	struct nge_softc *sc = ifp->if_softc;
-	struct mbuf *m_head = NULL;
+	struct mbuf *m_head = NULL, *m_defragged;
 	uint32_t idx;
 	int need_trans;
 
-	if (!sc->nge_link)
+	if (!sc->nge_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	idx = sc->nge_cdata.nge_tx_prod;
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	need_trans = 0;
-	while(sc->nge_ldata->nge_tx_list[idx].nge_mbuf == NULL) {
-		m_head = ifq_poll(&ifp->if_snd);
+	while (sc->nge_ldata->nge_tx_list[idx].nge_mbuf == NULL) {
+		struct mbuf *m;
+		int cnt;
+
+		m_defragged = NULL;
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
-		if (nge_encap(sc, m_head, &idx)) {
-			ifp->if_flags |= IFF_OACTIVE;
-			break;
+again:
+		cnt = 0;
+		for (m = m_head; m != NULL; m = m->m_next)
+			++cnt;
+		if ((NGE_TX_LIST_CNT -
+		    (sc->nge_cdata.nge_tx_cnt + cnt)) < 2) {
+			if (m_defragged != NULL) {
+				/*
+				 * Even after defragmentation, there
+				 * are still too many fragments, so
+				 * drop this packet.
+				 */
+				m_freem(m_head);
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
+
+			m_defragged = m_defrag(m_head, MB_DONTWAIT);
+			if (m_defragged == NULL) {
+				m_freem(m_head);
+				continue;
+			}
+			m_head = m_defragged;
+
+			/* Recount # of fragments */
+			goto again;
 		}
-		ifq_dequeue(&ifp->if_snd, m_head);
+
+		nge_encap(sc, m_head, &idx);
 		need_trans = 1;
 
 		ETHER_BPF_MTAP(ifp, m_head);
@@ -2007,7 +2039,7 @@ nge_watchdog(struct ifnet *ifp)
 	nge_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		nge_start(ifp);
+		if_devstart(ifp);
 }
 
 /*

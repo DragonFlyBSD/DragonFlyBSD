@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.47 2006/12/22 23:26:19 swildner Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.48 2008/05/14 11:59:19 sephe Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -51,6 +51,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include "opt_inet.h"
 #include "opt_ipx.h"
@@ -58,7 +59,7 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/if_dl.h>
-
+#include <net/ifq_var.h>
 #include <net/bpf.h>
 
 #ifdef INET
@@ -3426,7 +3427,7 @@ tulip_intr_handler(tulip_softc_t *sc)
 	if (sc->tulip_flags & (TULIP_WANTTXSTART|TULIP_TXPROBE_ACTIVE|TULIP_DOINGSETUP|TULIP_PROMISC)) {
 	    tulip_tx_intr(sc);
 	    if ((sc->tulip_flags & TULIP_TXPROBE_ACTIVE) == 0)
-		tulip_ifstart(&sc->tulip_if);
+		if_devstart(&sc->tulip_if);
 	}
     }
     if (sc->tulip_flags & TULIP_NEEDRESET) {
@@ -3854,9 +3855,15 @@ tulip_ifstart(struct ifnet *ifp)
 
 	while (sc->tulip_if.if_snd.ifq_head != NULL) {
 	    struct mbuf *m;
+
+	    ALTQ_LOCK(&sc->tulip_if.if_snd);
 	    IF_DEQUEUE(&sc->tulip_if.if_snd, m);
+	    ALTQ_UNLOCK(&sc->tulip_if.if_snd);
+
 	    if ((m = tulip_txput(sc, m)) != NULL) {
+		ALTQ_LOCK(&sc->tulip_if.if_snd);
 		IF_PREPEND(&sc->tulip_if.if_snd, m);
+		ALTQ_UNLOCK(&sc->tulip_if.if_snd);
 		break;
 	    }
 	}
@@ -4191,6 +4198,10 @@ tulip_pci_attach(device_t dev)
 		kfree((caddr_t) sc->tulip_txdescs, M_DEVBUF);
 		return ENXIO;
 	    }
+
+	    sc->tulip_if.if_cpuid = ithread_cpuid(rman_get_start(res));
+	    KKASSERT(sc->tulip_if.if_cpuid >= 0 &&
+	    	     sc->tulip_if.if_cpuid < ncpus);
 	}
     }
     return 0;

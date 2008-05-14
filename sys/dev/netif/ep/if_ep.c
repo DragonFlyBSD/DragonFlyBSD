@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.26 2006/12/22 23:26:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.27 2008/05/14 11:59:19 sephe Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -405,7 +405,8 @@ ep_if_init(void *xsc)
      */
 
     GO_WINDOW(1);
-    ep_if_start(ifp);
+
+    if_devstart(ifp);
 
     crit_exit();
 }
@@ -422,6 +423,7 @@ ep_if_start(struct ifnet *ifp)
     int pad;
 
     if (sc->gone) {
+	ifq_purge(&ifp->if_snd);
 	return;
     }
 
@@ -434,7 +436,7 @@ ep_if_start(struct ifnet *ifp)
 
 startagain:
     /* Sneak a peek at the next packet */
-    m = ifq_poll(&ifp->if_snd);
+    m = ifq_dequeue(&ifp->if_snd, NULL);
     if (m == NULL) {
 	crit_exit();
 	return;
@@ -454,7 +456,6 @@ startagain:
     if (len + pad > ETHER_MAX_LEN) {
 	/* packet is obviously too large: toss it */
 	++ifp->if_oerrors;
-	ifq_dequeue(&ifp->if_snd, m);
 	m_freem(m);
 	goto readcheck;
     }
@@ -464,14 +465,13 @@ startagain:
 	/* make sure */
 	if (inw(BASE + EP_W1_FREE_TX) < len + pad + 4) {
 	    ifp->if_flags |= IFF_OACTIVE;
+	    ifq_prepend(&ifp->if_snd, top);
 	    crit_exit();
 	    return;
 	}
     } else {
 	outw(BASE + EP_COMMAND, SET_TX_AVAIL_THRESH | EP_THRESH_DISABLE);
     }
-
-    ifq_dequeue(&ifp->if_snd, m);
 
     outw(BASE + EP_W1_TX_PIO_WR_1, len); 
     outw(BASE + EP_W1_TX_PIO_WR_1, 0x0);	/* Second dword meaningless */
@@ -553,7 +553,7 @@ rescan:
 	    ifp->if_flags &= ~IFF_OACTIVE;
 	    GO_WINDOW(1);
 	    inw(BASE + EP_W1_FREE_TX);
-	    ep_if_start(ifp);
+	    if_devstart(ifp);
 	}
 	if (status & S_CARD_FAILURE) {
 	    ifp->if_timer = 0;
@@ -615,7 +615,7 @@ rescan:
 	    ifp->if_flags &= ~IFF_OACTIVE;
 	    GO_WINDOW(1);
 	    inw(BASE + EP_W1_FREE_TX);
-	    ep_if_start(ifp);
+	    if_devstart(ifp);
 	}			/* end TX_COMPLETE */
     }
 
@@ -881,7 +881,7 @@ ep_if_watchdog(struct ifnet *ifp)
     }
 
     ifp->if_flags &= ~IFF_OACTIVE;
-    ep_if_start(ifp);
+    if_devstart(ifp);
     ep_intr(ifp->if_softc);
 }
 

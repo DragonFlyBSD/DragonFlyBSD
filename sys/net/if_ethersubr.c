@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.58 2008/05/02 07:40:32 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.59 2008/05/14 11:59:23 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -181,8 +181,6 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct arpcom *ac = IFP2AC(ifp);
 	int error;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
-
 	if (ifp->if_flags & IFF_MONITOR)
 		gotoerr(ENETDOWN);
 	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING))
@@ -328,7 +326,9 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	if (ifp->if_bridge) {
 		KASSERT(bridge_output_p != NULL,
 			("%s: if_bridge not loaded!", __func__));
-		return ((*bridge_output_p)(ifp, m, NULL, NULL));
+		lwkt_serialize_enter(ifp->if_serializer);
+		error = bridge_output_p(ifp, m, NULL, NULL);
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
 
 	/*
@@ -403,8 +403,6 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	struct altq_pktattr pktattr;
 	struct m_tag *mtag;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
-
 	/* Extract info from dummynet tag */
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	if (mtag != NULL) {
@@ -445,7 +443,7 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	 * Queue message on interface, update output statistics if
 	 * successful, and start output if interface not yet active.
 	 */
-	error = ifq_handoff(ifp, m, &pktattr);
+	error = ifq_dispatch(ifp, m, &pktattr);
 	return (error);
 }
 

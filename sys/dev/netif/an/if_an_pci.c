@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.20 2006/10/25 20:55:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.21 2008/05/14 11:59:18 sephe Exp $
  */
 
 /*
@@ -66,7 +66,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
-
+#include <sys/interrupt.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -139,9 +139,11 @@ static int
 an_attach_pci(device_t dev)
 {
 	struct an_softc		*sc;
+	struct ifnet		*ifp;
 	int 			flags, error;
 
 	sc = device_get_softc(dev);
+	ifp = &sc->arpcom.ac_if;
 	flags = device_get_flags(dev);
 
 	error = an_alloc_port(dev, sc->port_rid, 1);
@@ -210,6 +212,9 @@ an_attach_pci(device_t dev)
 		ether_ifdetach(&sc->arpcom.ac_if);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return(0);
 

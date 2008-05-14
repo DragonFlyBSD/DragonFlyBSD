@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.29 2008/01/06 16:55:50 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.30 2008/05/14 11:59:21 sephe Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -38,6 +38,7 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <sys/bus.h>
@@ -539,7 +540,7 @@ my_autoneg_mii(struct my_softc * sc, int flag, int verbose)
 	if (sc->my_tx_pend) {
 		sc->my_autoneg = 0;
 		sc->my_tx_pend = 0;
-		my_start(ifp);
+		if_devstart(ifp);
 	}
 }
 
@@ -960,6 +961,9 @@ my_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->my_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return (0);
 
 fail:
@@ -1261,7 +1265,7 @@ my_intr(void *arg)
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, MY_IMR, MY_INTRS);
 	if (!ifq_is_empty(&ifp->if_snd))
-		my_start(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -1334,6 +1338,7 @@ my_start(struct ifnet * ifp)
 	crit_enter();
 
 	if (sc->my_autoneg) {
+		ifq_purge(&ifp->if_snd);
 		sc->my_tx_pend = 1;
 		crit_exit();
 		return;
@@ -1628,7 +1633,7 @@ my_watchdog(struct ifnet * ifp)
 	my_reset(sc);
 	my_init(sc);
 	if (!ifq_is_empty(&ifp->if_snd))
-		my_start(ifp);
+		if_devstart(ifp);
 	crit_exit();
 }
 

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.32 2008/03/23 09:44:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.33 2008/05/14 11:59:18 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
+#include <sys/interrupt.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
@@ -331,6 +332,7 @@ bfe_attach(device_t dev)
 	sc->bfe_dev = dev;
 	callout_init(&sc->bfe_stat_timer);
 
+#ifndef BURN_BRIDGES
 	/*
 	 * Handle power management nonsense.
 	 */
@@ -351,6 +353,7 @@ bfe_attach(device_t dev)
 		pci_write_config(dev, BFE_PCI_MEMLO, membase, 4);
 		pci_write_config(dev, BFE_PCI_INTLINE, irq, 4);
 	}
+#endif	/* !BURN_BRIDGE */
 
 	/*
 	 * Map control/status registers.
@@ -428,6 +431,9 @@ bfe_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->bfe_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 	return 0;
 fail:
 	bfe_detach(dev);
@@ -1194,7 +1200,7 @@ bfe_intr(void *xsc)
 
 	/* We have packets pending, fire them out */ 
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
-		bfe_start(ifp);
+		if_devstart(ifp);
 }
 
 static int
@@ -1301,8 +1307,10 @@ bfe_start(struct ifnet *ifp)
 	 * Not much point trying to send if the link is down
 	 * or we have nothing to send.
 	 */
-	if (!sc->bfe_link)
+	if (!sc->bfe_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	if (ifp->if_flags & IFF_OACTIVE)
 		return;

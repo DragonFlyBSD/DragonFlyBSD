@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.27 2008/01/06 16:55:50 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.28 2008/05/14 11:59:18 sephe Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -696,7 +696,8 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_opackets++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if_devstart(ifp);
+
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
@@ -717,7 +718,7 @@ axe_tick(void *xsc)
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		sc->axe_link++;
 		if (!ifq_is_empty(&ifp->if_snd))
-			axe_start(ifp);
+			if_devstart(ifp);
 	}
 	callout_reset(&sc->axe_stat_timer, hz, axe_tick, sc);
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -761,6 +762,7 @@ axe_start(struct ifnet *ifp)
 	struct mbuf *m_head = NULL;
 
 	if (!sc->axe_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
 	}
 
@@ -768,16 +770,15 @@ axe_start(struct ifnet *ifp)
 		return;
 	}
 
-	m_head = ifq_poll(&ifp->if_snd);
-	if (m_head == NULL) {
+	m_head = ifq_dequeue(&ifp->if_snd, NULL);
+	if (m_head == NULL)
 		return;
-	}
 
 	if (axe_encap(sc, m_head, 0)) {
+		/* axe_encap() will free m_head, if we reach here */
 		ifp->if_flags |= IFF_OACTIVE;
 		return;
 	}
-	ifq_dequeue(&ifp->if_snd, m_head);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame
@@ -953,7 +954,7 @@ axe_watchdog(struct ifnet *ifp)
 	axe_txeof(c->axe_xfer, c, stat);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		axe_start(ifp);
+		if_devstart(ifp);
 }
 
 /*

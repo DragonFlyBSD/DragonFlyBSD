@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.55 2008/03/16 15:50:22 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.56 2008/05/14 11:59:22 sephe Exp $
  */
 
 /*
@@ -91,6 +91,7 @@
 #include <sys/endian.h>
 #include <sys/in_cksum.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
@@ -1322,7 +1323,7 @@ skc_attach(device_t dev)
 	struct sk_softc *sc = device_get_softc(dev);
 	uint8_t skrs;
 	int *port;
-	int error;
+	int error, cpuid;
 
 	DPRINTFN(2, ("begin skc_attach\n"));
 
@@ -1513,6 +1514,15 @@ skc_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
+
+	cpuid = ithread_cpuid(rman_get_start(sc->sk_irq));
+	KKASSERT(cpuid >= 0 && cpuid < ncpus);
+
+	if (sc->sk_if[0] != NULL)
+		sc->sk_if[0]->arpcom.ac_if.if_cpuid = cpuid;
+	if (sc->sk_if[1] != NULL)
+		sc->sk_if[1]->arpcom.ac_if.if_cpuid = cpuid;
+
 	return 0;
 fail:
 	skc_detach(dev);
@@ -1704,8 +1714,16 @@ sk_start(struct ifnet *ifp)
 
 	DPRINTFN(2, ("sk_start\n"));
 
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
+		return;
+
 	while (sc_if->sk_cdata.sk_tx_mbuf[idx] == NULL) {
-		m_head = ifq_poll(&ifp->if_snd);
+		if ((SK_TX_RING_CNT - sc_if->sk_cdata.sk_tx_cnt) <= 2) {
+			ifp->if_flags |= IFF_OACTIVE;
+			break;
+		}
+
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
@@ -1716,13 +1734,11 @@ sk_start(struct ifnet *ifp)
 		 */
 		if (sk_encap(sc_if, m_head, &idx)) {
 			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
 
-		/* now we are committed to transmit the packet */
-		ifq_dequeue(&ifp->if_snd, m_head);
 		pkts++;
-
 		BPF_MTAP(ifp, m_head);
 	}
 	if (pkts == 0)
@@ -2296,9 +2312,9 @@ sk_intr(void *xsc)
 	CSR_WRITE_4(sc, SK_IMR, sc->sk_intrmask);
 
 	if (ifp0 != NULL && !ifq_is_empty(&ifp0->if_snd))
-		sk_start(ifp0);
+		if_devstart(ifp0);
 	if (ifp1 != NULL && !ifq_is_empty(&ifp1->if_snd))
-		sk_start(ifp1);
+		if_devstart(ifp1);
 }
 
 static void

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.30 2006/12/22 23:26:22 swildner Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.31 2008/05/14 11:59:22 sephe Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -205,6 +205,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -560,6 +561,9 @@ wlattach(device_t dev)
 	return error;
     }
 
+    ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->res_irq));
+    KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
     if (bootverbose)
 	wldump(sc);
     return 0;
@@ -803,7 +807,7 @@ wlinit(void *xsc)
 	sc->tbusy = 0;
 	callout_stop(&sc->watchdog_ch);
 		
-	wlstart(ifp);
+	if_devstart(ifp);
     } else {
 	if_printf(ifp, "init(): trouble resetting board.\n");
     }
@@ -1645,7 +1649,7 @@ wlintr(void *arg)
 	    sc->tbusy = 0;
 	    callout_stop(&sc->watchdog_ch);
 	    ifp->if_flags &= ~IFF_OACTIVE;
-	    wlstart(ifp);
+	    if_devstart(ifp);
 	}
     }
 }

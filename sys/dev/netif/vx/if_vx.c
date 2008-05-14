@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.28 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.29 2008/05/14 11:59:22 sephe Exp $
  *
  */
 
@@ -229,7 +229,7 @@ vxinit(void *xsc)
     ifp->if_flags &= ~IFF_OACTIVE;
 
     /* Attempt to start output, if any. */
-    vxstart(ifp);
+    if_devstart(ifp);
 }
 
 static void
@@ -394,14 +394,15 @@ vxstart(struct ifnet *ifp)
 
 startagain:
     /* Sneak a peek at the next packet */
-    m0 = ifq_poll(&ifp->if_snd);
+    m0 = ifq_dequeue(&ifp->if_snd, NULL);
     if (m0 == NULL)
 	return;
-    /* We need to use m->m_pkthdr.len, so require the header */
-     M_ASSERTPKTHDR(m0);
-     len = m0->m_pkthdr.len;
 
-     pad = (4 - len) & 3;
+    /* We need to use m->m_pkthdr.len, so require the header */
+    M_ASSERTPKTHDR(m0);
+    len = m0->m_pkthdr.len;
+
+    pad = (4 - len) & 3;
 
     /*
      * The 3c509 automatically pads short packets to minimum ethernet length,
@@ -411,7 +412,6 @@ startagain:
     if (len + pad > ETHER_MAX_LEN) {
 	/* packet is obviously too large: toss it */
 	++ifp->if_oerrors;
-	ifq_dequeue(&ifp->if_snd, m0);
 	m_freem(m0);
 	goto readcheck;
     }
@@ -422,11 +422,11 @@ startagain:
 	if (CSR_READ_2(sc, VX_W1_FREE_TX) < len + pad + 4) { /* make sure */
 	    ifp->if_flags |= IFF_OACTIVE;
 	    ifp->if_timer = 1;
+	    ifq_prepend(&ifp->if_snd, m0);
 	    return;
 	}
     }
     CSR_WRITE_2(sc, VX_COMMAND, SET_TX_AVAIL_THRESH | (8188 >> 2));
-    ifq_dequeue(&ifp->if_snd, m0);
 
     VX_BUSY_WAIT;
     CSR_WRITE_2(sc, VX_COMMAND, SET_TX_START_THRESH |
@@ -604,7 +604,7 @@ vxintr(void *voidsc)
 	if (status & S_TX_AVAIL) {
 	    ifp->if_timer = 0;
 	    ifp->if_flags &= ~IFF_OACTIVE;
-	    vxstart(ifp);
+	    if_devstart(ifp);
 	}
 	if (status & S_CARD_FAILURE) {
 	    if_printf(ifp, "adapter failure (%x)\n", status);
@@ -615,7 +615,7 @@ vxintr(void *voidsc)
 	if (status & S_TX_COMPLETE) {
 	    ifp->if_timer = 0;
 	    vxtxstat(sc);
-	    vxstart(ifp);
+	    if_devstart(ifp);
 	}
     }
     /* no more interrupts */
@@ -893,7 +893,7 @@ vxwatchdog(struct ifnet *ifp)
     if (ifp->if_flags & IFF_DEBUG)
 	if_printf(ifp, "device timeout\n");
     ifp->if_flags &= ~IFF_OACTIVE;
-    vxstart(ifp);
+    if_devstart(ifp);
     vxintr(sc);
 }
 

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.84 2008/05/02 07:40:32 sephe Exp $
+# $DragonFly: src/sys/conf/options,v 1.85 2008/05/14 11:59:18 sephe Exp $
 #
 #        On the handling of kernel options
 #
@@ -527,6 +527,8 @@ KTR_IF_EM			opt_ktr.h
 KTR_TESTLOG			opt_ktr.h
 KTR_SERIALIZER			opt_ktr.h
 KTR_POLLING			opt_ktr.h
+KTR_IFQ				opt_ktr.h
+KTR_IF_START			opt_ktr.h
 
 # bce driver
 BCE_DEBUG		opt_bce.h

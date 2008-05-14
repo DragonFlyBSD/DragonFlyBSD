@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.31 2006/12/22 23:44:57 swildner Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.32 2008/05/14 11:59:23 sephe Exp $
  */
 
 /*
@@ -439,8 +439,8 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
  * ordering gets trashed.  It can be done for all packets in slstart.
  */
 static int
-sloutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	 struct rtentry *rtp)
+sloutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+		    struct rtentry *rtp)
 {
 	struct sl_softc *sc = &sl_softc[ifp->if_dunit];
 	struct ip *ip;
@@ -498,6 +498,19 @@ sloutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		slstart(sc->sc_ttyp);
 	crit_exit();
 	return (0);
+}
+
+static int
+sloutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	 struct rtentry *rtp)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = sloutput_serialized(ifp, m, dst, rtp);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 /*

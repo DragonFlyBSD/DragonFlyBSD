@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_eisa.c,v 1.14 2000/01/29 14:50:31 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.15 2006/10/25 20:55:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.16 2008/05/14 11:59:22 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -103,11 +104,10 @@ vx_eisa_probe(device_t dev)
 static int
 vx_eisa_attach(device_t dev)
 {
-    struct vx_softc *sc;
+    struct vx_softc *sc = device_get_softc(dev);
+    struct ifnet *ifp = &sc->arpcom.ac_if;
     struct resource *eisa_io = NULL;
     int		    rid;
-
-    sc = device_get_softc(dev);
 
     /*
      * The addresses are sorted in increasing order
@@ -144,11 +144,15 @@ vx_eisa_attach(device_t dev)
 
     if (bus_setup_intr(dev, sc->vx_irq, INTR_NETSAFE, 
 		       vxintr, sc, &sc->vx_intrhand,
-		       sc->arpcom.ac_if.if_serializer)
+		       ifp->if_serializer)
     ) {
 	ether_ifdetach(&sc->arpcom.ac_if);
 	goto bad;
     }
+
+    ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->vx_irq));
+    KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
     return 0;
 
  bad:

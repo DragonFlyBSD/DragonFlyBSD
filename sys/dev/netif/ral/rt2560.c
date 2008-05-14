@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2560.c,v 1.3 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.35 2008/02/08 09:42:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2560.c,v 1.36 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -27,6 +27,7 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/module.h>
@@ -401,6 +402,9 @@ rt2560_attach(device_t dev, int id)
 		ieee80211_ifdetach(ic);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	if (bootverbose)
 		ieee80211_announce(ic);
@@ -1133,7 +1137,7 @@ rt2560_tx_intr(struct rt2560_softc *sc)
 		if ((sc->sc_flags &
 		     (RT2560_FLAG_DATA_OACT | RT2560_FLAG_PRIO_OACT)) == 0)
 			ifp->if_flags &= ~IFF_OACTIVE;
-		rt2560_start(ifp);
+		ifp->if_start(ifp);
 	}
 }
 
@@ -1206,7 +1210,7 @@ rt2560_prio_intr(struct rt2560_softc *sc)
 		if ((sc->sc_flags &
 		     (RT2560_FLAG_DATA_OACT | RT2560_FLAG_PRIO_OACT)) == 0)
 			ifp->if_flags &= ~IFF_OACTIVE;
-		rt2560_start(ifp);
+		ifp->if_start(ifp);
 	}
 }
 
@@ -1966,19 +1970,20 @@ rt2560_start(struct ifnet *ifp)
 
 			if (rt2560_tx_mgt(sc, m0, ni) != 0)
 				break;
-
 		} else {
-			if (ic->ic_state != IEEE80211_S_RUN)
+			if (ic->ic_state != IEEE80211_S_RUN) {
+				ifq_purge(&ifp->if_snd);
 				break;
-			m0 = ifq_poll(&ifp->if_snd);
-			if (m0 == NULL)
-				break;
+			}
+
 			if (sc->txq.queued >= RT2560_TX_RING_COUNT - 1) {
 				ifp->if_flags |= IFF_OACTIVE;
 				sc->sc_flags |= RT2560_FLAG_DATA_OACT;
 				break;
 			}
-			m0 = ifq_dequeue(&ifp->if_snd, m0);
+			m0 = ifq_dequeue(&ifp->if_snd, NULL);
+			if (m0 == NULL)
+				break;
 
 			if (m0->m_len < sizeof (struct ether_header) &&
 			    !(m0 = m_pullup(m0, sizeof (struct ether_header))))

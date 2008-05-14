@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.37 2008/01/06 16:55:50 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.38 2008/05/14 11:59:18 sephe Exp $
  */
 
 /*
@@ -962,7 +962,8 @@ aue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	usb_ether_input(m);
 	aue_rxstart(ifp);
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if_devstart(ifp);
+
 	AUE_UNLOCK(sc);
 	return;
 done:
@@ -1020,7 +1021,7 @@ aue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_opackets++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if_devstart(ifp);
 
 	AUE_UNLOCK(sc);
 
@@ -1051,7 +1052,7 @@ aue_tick(void *xsc)
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		sc->aue_link++;
 		if (!ifq_is_empty(&ifp->if_snd))
-			aue_start(ifp);
+			if_devstart(ifp);
 	}
 
 	callout_reset(&sc->aue_stat_timer, hz, aue_tick, sc);
@@ -1113,6 +1114,7 @@ aue_start(struct ifnet *ifp)
 	AUE_LOCK(sc);
 
 	if (!sc->aue_link) {
+		ifq_purge(&ifp->if_snd);
 		AUE_UNLOCK(sc);
 		return;
 	}
@@ -1122,18 +1124,18 @@ aue_start(struct ifnet *ifp)
 		return;
 	}
 
-	m_head = ifq_poll(&ifp->if_snd);
+	m_head = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m_head == NULL) {
 		AUE_UNLOCK(sc);
 		return;
 	}
 
 	if (aue_encap(sc, m_head, 0)) {
+		/* aue_encap() will free m_head, if we reach here */
 		ifp->if_flags |= IFF_OACTIVE;
 		AUE_UNLOCK(sc);
 		return;
 	}
-	ifq_dequeue(&ifp->if_snd, m_head);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame
@@ -1365,7 +1367,7 @@ aue_watchdog(struct ifnet *ifp)
 	aue_txeof(c->aue_xfer, c, stat);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		aue_start(ifp);
+		if_devstart(ifp);
 	AUE_UNLOCK(sc);
 	return;
 }

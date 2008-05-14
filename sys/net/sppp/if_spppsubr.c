@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.33 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.34 2008/05/14 11:59:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -741,8 +741,8 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
  * Enqueue transmit packet.
  */
 static int
-sppp_output(struct ifnet *ifp, struct mbuf *m,
-	    struct sockaddr *dst, struct rtentry *rt)
+sppp_output_serialized(struct ifnet *ifp, struct mbuf *m,
+		       struct sockaddr *dst, struct rtentry *rt)
 {
 	struct sppp *sp = (struct sppp*) ifp;
 	struct ppp_header *h;
@@ -995,6 +995,19 @@ sppp_output(struct ifnet *ifp, struct mbuf *m,
 
 	crit_exit();
 	return (0);
+}
+
+static int
+sppp_output(struct ifnet *ifp, struct mbuf *m,
+	    struct sockaddr *dst, struct rtentry *rt)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = sppp_output_serialized(ifp, m, dst, rt);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 void

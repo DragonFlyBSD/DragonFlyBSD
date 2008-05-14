@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.40 2008/01/05 14:02:37 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.41 2008/05/14 11:59:22 sephe Exp $
  */
 
 /*
@@ -96,6 +96,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -819,6 +820,9 @@ wb_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->wb_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return(0);
 
 fail:
@@ -1180,7 +1184,7 @@ wb_intr(void *arg)
 	CSR_WRITE_4(sc, WB_IMR, WB_INTRS);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		wb_start(ifp);
+		if_devstart(ifp);
 }
 
 static void
@@ -1566,7 +1570,7 @@ wb_watchdog(struct ifnet *ifp)
 	wb_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		wb_start(ifp);
+		if_devstart(ifp);
 }
 
 /*

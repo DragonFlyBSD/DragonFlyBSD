@@ -34,7 +34,7 @@
  *	@(#)ipx_outputfl.c
  *
  * $FreeBSD: src/sys/netipx/ipx_outputfl.c,v 1.14.2.1 2000/05/01 01:10:24 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.8 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.9 2008/05/14 11:59:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -128,10 +128,8 @@ gotif:
 		if (ipx_copy_output) {
 			ipx_watch_output(m0, ifp);
 		}
-		lwkt_serialize_enter(ifp->if_serializer);
-		error = (*ifp->if_output)(ifp, m0,
-					(struct sockaddr *)dst, ro->ro_rt);
-		lwkt_serialize_exit(ifp->if_serializer);
+		error = ifp->if_output(ifp, m0, (struct sockaddr *)dst,
+				       ro->ro_rt);
 		goto done;
 	} else {
 		ipxstat.ipxs_mtutoosmall++;
@@ -245,10 +243,8 @@ ipx_output_type20(struct mbuf *m)
 
 			m1 = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
 			if(m1) {
-				lwkt_serialize_enter(ifp->if_serializer);
-				error = (*ifp->if_output)(ifp, m1,
+				error = ifp->if_output(ifp, m1,
 					(struct sockaddr *)&dst, NULL);
-				lwkt_serialize_exit(ifp->if_serializer);
 				/* XXX ipxstat.ipxs_localout++; */
 			}
 skip_this: ;

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.41 2008/04/27 15:10:37 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.42 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -117,9 +117,9 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-/* #include <sys/module.h> */
 #include <sys/rman.h>
 #include <sys/serialize.h>
 #include <sys/socket.h>
@@ -1286,6 +1286,9 @@ re_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->re_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 fail:
 	if (error)
 		re_detach(dev);
@@ -1721,7 +1724,7 @@ re_tick_serialized(void *xsc)
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 			sc->re_link = 1;
 			if (!ifq_is_empty(&ifp->if_snd))
-				ifp->if_start(ifp);
+				if_devstart(ifp);
 		}
 	}
 
@@ -1750,7 +1753,7 @@ re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		re_txeof(sc);
 
 		if (!ifq_is_empty(&ifp->if_snd))
-			(*ifp->if_start)(ifp);
+			if_devstart(ifp);
 
 		if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
 			uint16_t       status;
@@ -1816,7 +1819,7 @@ re_intr(void *arg)
 	}
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if_devstart(ifp);
 }
 
 static int
@@ -1828,10 +1831,9 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag
 	bus_dmamap_t		map;
 	int			error;
 
-	*called_defrag = 0;
-	if (sc->re_ldata.re_tx_free <= 4)
-		return(EFBIG);
+	KASSERT(sc->re_ldata.re_tx_free > 4, ("not enough free TX desc\n"));
 
+	*called_defrag = 0;
 	m = *m_head;
 
 	/*
@@ -1977,16 +1979,27 @@ re_start(struct ifnet *ifp)
 	struct mbuf *m_head2;
 	int called_defrag, idx, need_trans;
 
-	if (!sc->re_link || (ifp->if_flags & IFF_OACTIVE))
+	if (!sc->re_link) {
+		ifq_purge(&ifp->if_snd);
+		return;
+	}
+
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	idx = sc->re_ldata.re_tx_prodidx;
 
 	need_trans = 0;
 	while (sc->re_ldata.re_tx_mbuf[idx] == NULL) {
-		m_head = ifq_poll(&ifp->if_snd);
+		if (sc->re_ldata.re_tx_free <= 4) {
+			ifp->if_flags |= IFF_OACTIVE;
+			break;
+		}
+
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
+
 		m_head2 = m_head;
 		if (re_encap(sc, &m_head2, &idx, &called_defrag)) {
 			/*
@@ -1994,10 +2007,8 @@ re_start(struct ifnet *ifp)
 			 * the returned m_head2 is garbage and we must dequeue
 			 * and throw away the original packet.
 			 */
-			if (called_defrag) {
-				ifq_dequeue(&ifp->if_snd, m_head);
+			if (called_defrag)
 				m_freem(m_head);
-			}
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
@@ -2008,7 +2019,6 @@ re_start(struct ifnet *ifp)
 		 * and the original must be thrown away.  Otherwise m_head2
 		 * *IS* the original.
 		 */
-		ifq_dequeue(&ifp->if_snd, m_head);
 		if (called_defrag)
 			m_freem(m_head);
 		need_trans = 1;
@@ -2322,7 +2332,7 @@ re_watchdog(struct ifnet *ifp)
 	re_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 /*

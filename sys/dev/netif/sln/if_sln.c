@@ -29,12 +29,13 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD-4.7: /usr/src/sys/pci/silan.c,v 1.0 2003/01/10 gaoyonghong $
- * $DragonFly: src/sys/dev/netif/sln/if_sln.c,v 1.1 2008/02/28 18:39:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sln/if_sln.c,v 1.2 2008/05/14 11:59:22 sephe Exp $
  */
 
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/resource.h>
@@ -264,6 +265,10 @@ sln_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sln_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return 0;
 fail:
 	return error;
@@ -733,8 +738,12 @@ sln_tx(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (!sc->connect ||
-	    (ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
+	if (!sc->connect) {
+		ifq_purge(&ifp->if_snd);
+		return;
+	}
+
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	while (SL_CUR_TXBUF(sc) == NULL) {	/* SL_CUR_TXBUF(x) = x->sln_bufdata.sln_tx_buf[x->sln_bufdata.cur_tx] */
@@ -1084,7 +1093,7 @@ sln_interrupt(void *arg)
 
 	/* Data in Tx buffer waiting for transimission */
 	if (!ifq_is_empty(&ifp->if_snd))
-		sln_tx(ifp);
+		if_devstart(ifp);
 back:
 	/* Re-enable interrupts. */
 	SLN_WRITE_4(sc, SL_INT_MASK, SL_INRTS);
@@ -1147,7 +1156,7 @@ sln_watchdog(struct ifnet *ifp)
 	sln_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		sln_tx(ifp);
+		if_devstart(ifp);
 }
 
 /* Stop all chip I/O */

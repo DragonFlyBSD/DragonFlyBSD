@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.15 2008/03/07 11:34:20 sephe Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.16 2008/05/14 11:59:24 sephe Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -409,8 +409,8 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
  */
 
 static int
-ng_iface_output(struct ifnet *ifp, struct mbuf *m,
-		struct sockaddr *dst, struct rtentry *rt0)
+ng_iface_output_serialized(struct ifnet *ifp, struct mbuf *m,
+			   struct sockaddr *dst, struct rtentry *rt0)
 {
 	const priv_p priv = (priv_p) ifp->if_softc;
 	const iffam_p iffam = get_iffam_from_af(dst->sa_family);
@@ -456,6 +456,19 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 		ifp->if_opackets++;
 	}
 	return (error);
+}
+
+static int
+ng_iface_output(struct ifnet *ifp, struct mbuf *m,
+		struct sockaddr *dst, struct rtentry *rt0)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = ng_iface_output_serialized(ifp, m, dst, rt0);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 /*

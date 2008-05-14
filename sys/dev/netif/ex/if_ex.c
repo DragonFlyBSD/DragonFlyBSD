@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.24 2006/12/22 23:26:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.25 2008/05/14 11:59:19 sephe Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -352,7 +352,8 @@ ex_init(void *xsc)
 	DELAY(2);
 	outb(iobase + CMD_REG, Rcv_Enable_CMD);
 
-	ex_start(ifp);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
 
 	DODEBUG(Start_End, kprintf("ex_init%d: finish\n", ifp->if_dunit););
 }
@@ -375,7 +376,7 @@ ex_start(struct ifnet *ifp)
 	 * more packets left, or the card cannot accept any more yet.
 	 */
 	while ((ifp->if_flags & IFF_OACTIVE) == 0) {
-		opkt = ifq_poll(&ifp->if_snd);
+		opkt = ifq_dequeue(&ifp->if_snd, NULL);
 		if (opkt == NULL)
 			break;
 
@@ -410,8 +411,6 @@ ex_start(struct ifnet *ifp)
 		DODEBUG(Sent_Pkts, kprintf("i=%d, avail=%d\n", i, avail););
 
 		if (avail >= len + XMT_HEADER_LEN) {
-			ifq_dequeue(&ifp->if_snd, opkt);
-
 #ifdef EX_PSA_INTR      
 			/*
 			 * Disable rx and tx interrupts, to avoid corruption
@@ -525,6 +524,7 @@ ex_start(struct ifnet *ifp)
 			m_freem(opkt);
 		} else {
 			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, opkt);
 			DODEBUG(Status, kprintf("OACTIVE start\n"););
 		}
 	}
@@ -596,7 +596,7 @@ ex_intr(void *arg)
 	 */
 
 	if (send_pkts && !ifq_is_empty(&ifp->if_snd))
-		ex_start(ifp);
+		if_devstart(ifp);
 
 #ifdef EXDEBUG
 	exintr_count--;
@@ -827,7 +827,7 @@ ex_watchdog(struct ifnet *ifp)
 
 	ifp->if_oerrors++;
 	ex_reset(sc);
-	ex_start(ifp);
+	if_devstart(ifp);
 
 	DODEBUG(Start_End, kprintf("ex_watchdog%d: finish\n", ifp->if_dunit););
 

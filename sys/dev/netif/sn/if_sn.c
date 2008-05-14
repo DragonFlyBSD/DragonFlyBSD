@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.27 2006/12/22 23:26:22 swildner Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.28 2008/05/14 11:59:22 sephe Exp $
  */
 
 /*
@@ -85,6 +85,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/errno.h>
 #include <sys/sockio.h>
 #include <sys/malloc.h>
@@ -235,6 +236,9 @@ sn_attach(device_t dev)
 		return error;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return 0;
 }
 
@@ -332,7 +336,7 @@ sninit(void *xsc)
 	/*
 	 * Attempt to push out any waiting packets.
 	 */
-	snstart(ifp);
+	if_devstart(ifp);
 }
 
 
@@ -350,12 +354,14 @@ snstart(struct ifnet *ifp)
 	u_char          packet_no;
 	int             time_out;
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
-	}
+
 	if (sc->pages_wanted != -1) {
+		/* XXX should never happen */
 		kprintf("%s: snstart() while memory allocation pending\n",
 		       ifp->if_xname);
+		ifp->if_flags |= IFF_OACTIVE;
 		return;
 	}
 startagain:
@@ -363,10 +369,10 @@ startagain:
 	/*
 	 * Sneak a peek at the next packet
 	 */
-	m = ifq_poll(&ifp->if_snd);
-	if (m == 0) {
+	m = ifq_dequeue(&ifp->if_snd, NULL);
+	if (m == NULL)
 		return;
-	}
+
 	/*
 	 * Compute the frame length and set pad to give an overall even
 	 * number of bytes.  Below we assume that the packet length is even.
@@ -383,8 +389,7 @@ startagain:
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
 		kprintf("%s: large packet discarded (A)\n", ifp->if_xname);
 		++sc->arpcom.ac_if.if_oerrors;
-		ifq_dequeue(&ifp->if_snd, m);
-		m_freem(m);
+		m_freem(top);
 		goto readcheck;
 	}
 #ifdef SW_PAD
@@ -443,6 +448,7 @@ startagain:
 		ifp->if_timer = 1;
 		ifp->if_flags |= IFF_OACTIVE;
 		sc->pages_wanted = numPages;
+		ifq_prepend(&ifp->if_snd, top);
 
 		return;
 	}
@@ -452,6 +458,7 @@ startagain:
 	packet_no = inb(BASE + ALLOC_RESULT_REG_B);
 	if (packet_no & ARR_FAILED) {
 		kprintf("%s: Memory allocation failed\n", ifp->if_xname);
+		ifq_prepend(&ifp->if_snd, top);
 		goto startagain;
 	}
 	/*
@@ -473,15 +480,9 @@ startagain:
 	outb(BASE + DATA_REG_B, (length + 6) >> 8);
 
 	/*
-	 * Get the packet from the kernel.  This will include the Ethernet
-	 * frame header, MAC Addresses etc.
-	 */
-	ifq_dequeue(&ifp->if_snd, m);
-
-	/*
 	 * Push out the data to the card.
 	 */
-	for (top = m; m != 0; m = m->m_next) {
+	for (m = top; m != NULL; m = m->m_next) {
 
 		/*
 		 * Push out words.
@@ -574,11 +575,13 @@ snresume(struct ifnet *ifp)
 	/*
 	 * Sneak a peek at the next packet
 	 */
-	m = ifq_poll(&ifp->if_snd);
+	m = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m == NULL) {
-		kprintf("%s: snresume() with nothing to send\n", ifp->if_xname);
+		kprintf("%s: snresume() with nothing to send\n",
+			ifp->if_xname);
 		return;
 	}
+
 	/*
 	 * Compute the frame length and set pad to give an overall even
 	 * number of bytes.  Below we assume that the packet length is even.
@@ -595,8 +598,7 @@ snresume(struct ifnet *ifp)
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
 		kprintf("%s: large packet discarded (B)\n", ifp->if_xname);
 		++ifp->if_oerrors;
-		ifq_dequeue(&ifp->if_snd, m);
-		m_freem(m);
+		m_freem(top);
 		return;
 	}
 #ifdef SW_PAD
@@ -631,6 +633,7 @@ snresume(struct ifnet *ifp)
 	if (packet_no & ARR_FAILED) {
 		kprintf("%s: Memory allocation failed.  Weird.\n", ifp->if_xname);
 		ifp->if_timer = 1;
+		ifq_prepend(&ifp->if_snd, top);
 		goto try_start;
 	}
 	/*
@@ -652,6 +655,7 @@ snresume(struct ifnet *ifp)
 			;
 		outw(BASE + MMU_CMD_REG_W, MMUCR_FREEPKT);
 
+		ifq_prepend(&ifp->if_snd, top);
 		return;
 	}
 	/*
@@ -668,15 +672,9 @@ snresume(struct ifnet *ifp)
 	outb(BASE + DATA_REG_B, (length + 6) >> 8);
 
 	/*
-	 * Get the packet from the kernel.  This will include the Ethernet
-	 * frame header, MAC Addresses etc.
-	 */
-	ifq_dequeue(&ifp->if_snd, m);
-
-	/*
 	 * Push out the data to the card.
 	 */
-	for (top = m; m != 0; m = m->m_next) {
+	for (m = top; m != NULL; m = m->m_next) {
 
 		/*
 		 * Push out words.
@@ -727,7 +725,7 @@ try_start:
 	 * Now pass control to snstart() to queue any additional packets
 	 */
 	ifp->if_flags &= ~IFF_OACTIVE;
-	snstart(ifp);
+	if_devstart(ifp);
 
 	/*
 	 * We've sent something, so we're active.  Set a watchdog in case the
@@ -891,7 +889,7 @@ sn_intr(void *arg)
 		 * Attempt to queue more transmits.
 		 */
 		sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
-		snstart(&sc->arpcom.ac_if);
+		if_devstart(&sc->arpcom.ac_if);
 	}
 	/*
 	 * Transmit underrun.  We use this opportunity to update transmit
@@ -929,7 +927,7 @@ sn_intr(void *arg)
 		 * Attempt to enqueue some more stuff.
 		 */
 		sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
-		snstart(&sc->arpcom.ac_if);
+		if_devstart(&sc->arpcom.ac_if);
 	}
 	/*
 	 * Some other error.  Try to fix it by resetting the adapter.

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/iwl/iwl2100.c,v 1.3 2008/03/08 06:43:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwl/iwl2100.c,v 1.4 2008/05/14 11:59:20 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -39,6 +39,7 @@
 #include <sys/endian.h>
 #include <sys/firmware.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/mbuf.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
@@ -312,6 +313,9 @@ iwl2100_attach(device_t dev)
 		ieee80211_ifdetach(ic);
 		return ENXIO;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	/*
 	 * Attach radio tap
@@ -846,14 +850,19 @@ iwl2100_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (sc->sc_flags & IWL2100_F_DETACH)
+	if (sc->sc_flags & IWL2100_F_DETACH) {
+		ieee80211_drain_mgtq(&ic->ic_mgtq);
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
-	if ((sc->sc_flags & IWL2100_F_IFSTART) == 0)
+	if ((sc->sc_flags & IWL2100_F_IFSTART) == 0) {
+		ifq_purge(&ifp->if_snd);
 		goto back;
+	}
 
 	while (tr->tr_used < IWL2100_TX_USED_MAX) {
 		struct ieee80211_frame *wh;
@@ -987,7 +996,9 @@ iwl2100_newstate_dispatch(struct netmsg *nmsg)
 	struct iwlmsg *msg = (struct iwlmsg *)nmsg;
 	struct iwl2100_softc *sc = msg->iwlm_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
+#ifdef INVARIANTS
 	struct ifnet *ifp = &ic->ic_if;
+#endif
 	enum ieee80211_state nstate, ostate;
 	int arg = msg->iwlm_arg, error = 0;
 
@@ -1738,7 +1749,9 @@ iwl2100_rxdesc_setup(struct iwl2100_softc *sc, int buf_idx)
 static int
 iwl2100_init_firmware(struct iwl2100_softc *sc)
 {
+#ifdef INVARIANTS
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
+#endif
 	uint32_t intr;
 	int i;
 
@@ -2496,7 +2509,7 @@ next:
 		}
 
 		ifp->if_flags &= ~IFF_OACTIVE;
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 	}
 }
 
@@ -2927,7 +2940,7 @@ iwl2100_rxeof_status(struct iwl2100_softc *sc, int i)
 				DPRINTF(sc, IWL2100_DBG_RESTART, "%s",
 					"restart done\n");
 				sc->sc_flags |= IWL2100_F_IFSTART;
-				ifp->if_start(ifp);
+				if_devstart(ifp);
 			} else {
 				KKASSERT(ic->ic_opmode == IEEE80211_M_IBSS);
 				callout_reset(&sc->sc_ibss, (100 * hz) / 1000,
@@ -3577,7 +3590,7 @@ iwl2100_ibss_bssid(void *xsc)
 			IEEE80211_ADDR_COPY(ic->ic_bss->ni_bssid, bssid);
 
 			sc->sc_flags |= IWL2100_F_IFSTART;
-			ifp->if_start(ifp);
+			if_devstart(ifp);
 		}
 	}
 back:

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.27 2008/03/10 08:36:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.28 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -278,7 +278,7 @@ sbni_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	/* attempt to start output */
-	sbni_start(ifp);
+	if_devstart(ifp);
 }
 
 

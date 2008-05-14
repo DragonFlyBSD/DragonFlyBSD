@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vge/if_vge.c,v 1.24 2006/02/14 12:44:56 glebius Exp $
- * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.7 2008/03/10 12:59:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.8 2008/05/14 11:59:22 sephe Exp $
  */
 
 /*
@@ -95,6 +95,7 @@
 #include <sys/proc.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -1033,6 +1034,9 @@ vge_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->vge_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return 0;
 fail:
 	vge_detach(dev);
@@ -1470,7 +1474,7 @@ vge_tick(struct vge_softc *sc)
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 			sc->vge_link = 1;
 			if (!ifq_is_empty(&ifp->if_snd))
-				ifp->if_start(ifp);
+				if_devstart(ifp);
 		}
 	}
 }
@@ -1496,7 +1500,7 @@ vge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		vge_txeof(sc);
 
 		if (!ifq_is_empty(&ifp->if_snd))
-			ifp->if_start(ifp);
+			if_devstart(ifp);
 
 		/* XXX copy & paste from vge_intr */
 		if (cmd == POLL_AND_CHECK_STATUS) {
@@ -1574,7 +1578,7 @@ vge_intr(void *arg)
 	CSR_WRITE_1(sc, VGE_CRS3, VGE_CR3_INT_GMSK);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 static int
@@ -1667,10 +1671,12 @@ vge_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (!sc->vge_link || (ifp->if_flags & IFF_OACTIVE))
+	if (!sc->vge_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
-	if (ifq_is_empty(&ifp->if_snd))
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	idx = sc->vge_ldata.vge_tx_prodidx;
@@ -1680,16 +1686,14 @@ vge_start(struct ifnet *ifp)
 		pidx = VGE_TX_DESC_CNT - 1;
 
 	while (sc->vge_ldata.vge_tx_mbuf[idx] == NULL) {
-		m_head = ifq_poll(&ifp->if_snd);
-		if (m_head == NULL)
-			break;
-
 		if (sc->vge_ldata.vge_tx_free <= 2) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
 
-		m_head = ifq_dequeue(&ifp->if_snd, m_head);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		if (m_head == NULL)
+			break;
 
 		if (vge_encap(sc, m_head, idx)) {
 			/* If vge_encap() failed, it will free m_head for us */

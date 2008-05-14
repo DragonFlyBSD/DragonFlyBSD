@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.26 2008/03/10 08:39:53 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.27 2008/05/14 11:59:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -273,6 +274,9 @@ sbsh_attach(device_t dev)
 		kprintf("sbsh%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return(0);
 

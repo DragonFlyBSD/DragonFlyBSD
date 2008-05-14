@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.39 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.34 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.35 2008/05/14 11:59:23 sephe Exp $
  */
 
 /*
@@ -110,6 +110,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
  
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -330,13 +331,16 @@ xe_attach (device_t dev)
 
   err = bus_setup_intr(dev, scp->irq_res, INTR_NETSAFE,
 		       xe_intr, scp, &scp->intrhand,
-		       scp->arpcom.ac_if.if_serializer);
+		       scp->ifp->if_serializer);
   if (err) {
     device_printf(dev, "Setup intr failed\n");
-    ether_ifdetach(&scp->arpcom.ac_if);
+    ether_ifdetach(scp->ifp);
     xe_deactivate(dev);
     return err;
   }
+
+  scp->ifp->if_cpuid = ithread_cpuid(rman_get_start(scp->irq_res));
+  KKASSERT(scp->ifp->if_cpuid >= 0 && scp->ifp->if_cpuid < ncpus);
 
   /* Done */
   return 0;
@@ -482,15 +486,15 @@ xe_start(struct ifnet *ifp) {
    * Loop while there are packets to be sent, and space to send them.
    */
   while (1) {
-    mbp = ifq_poll(&ifp->if_snd);	/* Suck a packet off the send queue */
-
+    /* Suck a packet off the send queue */
+    mbp = ifq_dequeue(&ifp->if_snd, NULL);
     if (mbp == NULL) {
       /*
-       * We are using the !OACTIVE flag to indicate to the outside world that
-       * we can accept an additional packet rather than that the transmitter
-       * is _actually_ active. Indeed, the transmitter may be active, but if
-       * we haven't filled all the buffers with data then we still want to
-       * accept more.
+       * We are using the !OACTIVE flag to indicate to the outside
+       * world that we can accept an additional packet rather than
+       * that the transmitter is _actually_ active. Indeed, the
+       * transmitter may be active, but if we haven't filled all
+       * the buffers with data then we still want to accept more.
        */
       ifp->if_flags &= ~IFF_OACTIVE;
       return;
@@ -498,13 +502,13 @@ xe_start(struct ifnet *ifp) {
 
     if (xe_pio_write_packet(scp, mbp) != 0) {
       ifp->if_flags |= IFF_OACTIVE;
+      ifq_prepend(&ifp->if_snd, mbp);
       return;
     }
 
-    ifq_dequeue(&ifp->if_snd, mbp);
     BPF_MTAP(ifp, mbp);
 
-    ifp->if_timer = 5;			/* In case we don't hear from the card again */
+    ifp->if_timer = 5; /* In case we don't hear from the card again */
     scp->tx_queued++;
 
     m_freem(mbp);
@@ -1175,7 +1179,7 @@ xe_setmedia_serialized(void *xscp)
   /* Restart output? */
   xe_enable_intr(scp);
   scp->ifp->if_flags &= ~IFF_OACTIVE;
-  xe_start(scp->ifp);
+  if_devstart(scp->ifp);
 }
 
 

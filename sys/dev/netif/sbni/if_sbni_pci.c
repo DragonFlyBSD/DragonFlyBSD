@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.6 2002/09/28 20:59:59 phk Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.14 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.15 2008/05/14 11:59:21 sephe Exp $
  */
 
  
@@ -34,6 +34,7 @@
 #include <sys/socket.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/module.h>
 #include <sys/rman.h>
 #include <sys/malloc.h>
@@ -139,12 +140,17 @@ sbni_pci_attach(device_t dev)
 		sbni_attach(sc->slave_sc, next_sbni_unit++, flags);
 
 	if (sc->irq_res) {
+		struct ifnet *ifp = &sc->arpcom.ac_if;
+
 		error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
-				       sbni_intr, sc, 
-				       &sc->irq_handle, 
-				       sc->arpcom.ac_if.if_serializer);
+				       sbni_intr, sc, &sc->irq_handle,
+				       ifp->if_serializer);
 		if (error) {
 			kprintf("sbni%d: bus_setup_intr\n", next_sbni_unit);
+		} else {
+			ifp->if_cpuid =
+				ithread_cpuid(rman_get_start(sc->irq_res));
+			KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 		}
 	} else {
 		kprintf("\nsbni%d: cannot claim irq!\n", next_sbni_unit);

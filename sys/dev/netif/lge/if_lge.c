@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.40 2008/01/05 14:02:37 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.41 2008/05/14 11:59:20 sephe Exp $
  */
 
 /*
@@ -80,6 +80,7 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/serialize.h>
 #include <sys/thread2.h>
@@ -557,6 +558,9 @@ lge_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->lge_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return(0);
 
 fail:
@@ -1008,7 +1012,7 @@ lge_tick_serialized(void *xsc)
 				kprintf("lge%d: gigabit link up\n",
 				    sc->lge_unit);
 			if (!ifq_is_empty(&ifp->if_snd))
-				(*ifp->if_start)(ifp);
+				if_devstart(ifp);
 		}
 	}
 
@@ -1059,7 +1063,7 @@ lge_intr(void *arg)
 	CSR_WRITE_4(sc, LGE_IMR, LGE_IMR_SETRST_CTL0|LGE_IMR_INTR_ENB);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -1085,6 +1089,9 @@ lge_encap(struct lge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 
 	for (m = m_head; m != NULL; m = m->m_next) {
 		if (m->m_len != 0) {
+			if (frag == LGE_FRAG_CNT)
+				break;
+
 			tot_len += m->m_len;
 			f = &cur_tx->lge_frags[frag];
 			f->lge_fraglen = m->m_len;
@@ -1093,9 +1100,8 @@ lge_encap(struct lge_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 			frag++;
 		}
 	}
-
-	if (m != NULL)
-		return(ENOBUFS);
+	/* Caller should make sure that 'm_head' is not excessive fragmented */
+	KASSERT(m == NULL, ("too many fragments\n"));
 
 	cur_tx->lge_mbuf = m_head;
 	cur_tx->lge_ctl = LGE_TXCTL_WANTINTR|LGE_FRAGCNT(frag)|tot_len;
@@ -1118,12 +1124,14 @@ static void
 lge_start(struct ifnet *ifp)
 {
 	struct lge_softc *sc = ifp->if_softc;
-	struct mbuf *m_head = NULL;
+	struct mbuf *m_head = NULL, *m_defragged;
 	uint32_t idx;
 	int need_timer;
 
-	if (!sc->lge_link)
+	if (!sc->lge_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	idx = sc->lge_cdata.lge_tx_prod;
 
@@ -1132,18 +1140,46 @@ lge_start(struct ifnet *ifp)
 
 	need_timer = 0;
 	while(sc->lge_ldata->lge_tx_list[idx].lge_mbuf == NULL) {
-		if (CSR_READ_1(sc, LGE_TXCMDFREE_8BIT) == 0)
-			break;
+		struct mbuf *m;
+		int frags;
 
-		m_head = ifq_poll(&ifp->if_snd);
-		if (m_head == NULL)
-			break;
-
-		if (lge_encap(sc, m_head, &idx)) {
+		if (CSR_READ_1(sc, LGE_TXCMDFREE_8BIT) == 0) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		ifq_dequeue(&ifp->if_snd, m_head);
+
+		m_defragged = NULL;
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		if (m_head == NULL)
+			break;
+
+again:
+		frags = 0;
+		for (m = m_head; m != NULL; m = m->m_next)
+			++frags;
+		if (frags > LGE_FRAG_CNT) {
+			if (m_defragged != NULL) {
+				/*
+				 * Even after defragmentation, there
+				 * are still too many fragments, so
+				 * drop this packet.
+				 */
+				m_freem(m_head);
+				continue;
+			}
+
+			m_defragged = m_defrag(m_head, MB_DONTWAIT);
+			if (m_defragged == NULL) {
+				m_freem(m_head);
+				continue;
+			}
+			m_head = m_defragged;
+
+			/* Recount # of fragments */
+			goto again;
+		}
+
+		lge_encap(sc, m_head, &idx);
 		need_timer = 1;
 
 		BPF_MTAP(ifp, m_head);
@@ -1392,7 +1428,7 @@ lge_watchdog(struct ifnet *ifp)
 	lge_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if_devstart(ifp);
 }
 
 /*

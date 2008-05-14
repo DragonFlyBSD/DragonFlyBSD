@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.18 2008/03/07 11:34:19 sephe Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.19 2008/05/14 11:59:23 sephe Exp $
  */
 
 /*
@@ -214,7 +214,10 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	/*
 	 * Dispatch message to the interface.
 	 */
-	return (ifq_handoff(ifp, m, &pktattr));
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = ifq_handoff(ifp, m, &pktattr);
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
 
 bad:
 	if (m != NULL)

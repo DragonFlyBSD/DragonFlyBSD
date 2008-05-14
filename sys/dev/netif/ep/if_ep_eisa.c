@@ -20,7 +20,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_eisa.c,v 1.18 2000/01/14 07:14:00 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.12 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.13 2008/05/14 11:59:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -30,6 +30,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/rman.h> 
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -178,6 +179,7 @@ static int
 ep_eisa_attach(device_t dev)
 {
 	struct ep_softc *	sc = device_get_softc(dev);
+	struct ifnet *		ifp = &sc->arpcom.ac_if;
 	struct resource *	eisa_io = NULL;
 	u_int32_t		eisa_iobase;
 	int			irq;
@@ -229,11 +231,14 @@ ep_eisa_attach(device_t dev)
 
 	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE,
 			       ep_intr, sc, &sc->ep_intrhand, 
-			       sc->arpcom.ac_if.if_serializer);
+			       ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
 		goto bad;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return (0);
 

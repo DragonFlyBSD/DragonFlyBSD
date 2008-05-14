@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.63 2008/03/29 03:38:53 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.64 2008/05/14 11:59:23 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -51,6 +51,7 @@
 #include <sys/socketops.h>
 #include <sys/protosw.h>
 #include <sys/kernel.h>
+#include <sys/ktr.h>
 #include <sys/sockio.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
@@ -69,6 +70,7 @@
 #include <net/radix.h>
 #include <net/route.h>
 #include <net/if_clone.h>
+#include <net/netisr.h>
 #include <net/netmsg2.h>
 
 #include <machine/stdarg.h>
@@ -95,15 +97,6 @@ struct netmsg_ifaddr {
 	struct ifnet	*ifp;
 	int		tail;
 };
-
-/*
- * Support for non-ALTQ interfaces.
- */
-static int	ifq_classic_enqueue(struct ifaltq *, struct mbuf *,
-				    struct altq_pktattr *);
-static struct mbuf *
-		ifq_classic_dequeue(struct ifaltq *, struct mbuf *, int);
-static int	ifq_classic_request(struct ifaltq *, int, void *);
 
 /*
  * System initialization
@@ -138,11 +131,66 @@ MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
 int			ifqmaxlen = IFQ_MAXLEN;
 struct ifnethead	ifnet = TAILQ_HEAD_INITIALIZER(ifnet);
 
+/* In ifq_dispatch(), try to do direct ifnet.if_start first */
+static int		ifq_dispatch_schedonly = 0;
+SYSCTL_INT(_net_link_generic, OID_AUTO, ifq_dispatch_schedonly, CTLFLAG_RW,
+           &ifq_dispatch_schedonly, 0, "");
+
+/* In ifq_dispatch(), schedule ifnet.if_start without checking ifnet.if_snd */
+static int		ifq_dispatch_schednochk = 0;
+SYSCTL_INT(_net_link_generic, OID_AUTO, ifq_dispatch_schednochk, CTLFLAG_RW,
+           &ifq_dispatch_schednochk, 0, "");
+
+/* In if_devstart(), try to do direct ifnet.if_start first */
+static int		if_devstart_schedonly = 0;
+SYSCTL_INT(_net_link_generic, OID_AUTO, if_devstart_schedonly, CTLFLAG_RW,
+           &if_devstart_schedonly, 0, "");
+
+/* In if_devstart(), schedule ifnet.if_start without checking ifnet.if_snd */
+static int		if_devstart_schednochk = 0;
+SYSCTL_INT(_net_link_generic, OID_AUTO, if_devstart_schednochk, CTLFLAG_RW,
+           &if_devstart_schednochk, 0, "");
+
+#ifdef SMP
+/* Schedule ifnet.if_start on the current CPU */
+static int		if_start_oncpu_sched = 0;
+SYSCTL_INT(_net_link_generic, OID_AUTO, if_start_oncpu_sched, CTLFLAG_RW,
+           &if_start_oncpu_sched, 0, "");
+#endif
+
 struct callout		if_slowtimo_timer;
 
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
 static struct thread	ifaddr_threads[MAXCPU];
+
+#define IFQ_KTR_STRING		"ifq=%p"
+#define IFQ_KTR_ARG_SIZE	(sizeof(void *))
+#ifndef KTR_IFQ
+#define KTR_IFQ			KTR_ALL
+#endif
+KTR_INFO_MASTER(ifq);
+KTR_INFO(KTR_IFQ, ifq, enqueue, 0, IFQ_KTR_STRING, IFQ_KTR_ARG_SIZE);
+KTR_INFO(KTR_IFQ, ifq, dequeue, 1, IFQ_KTR_STRING, IFQ_KTR_ARG_SIZE);
+#define logifq(name, arg)	KTR_LOG(ifq_ ## name, arg)
+
+#define IF_START_KTR_STRING	"ifp=%p"
+#define IF_START_KTR_ARG_SIZE	(sizeof(void *))
+#ifndef KTR_IF_START
+#define KTR_IF_START		KTR_ALL
+#endif
+KTR_INFO_MASTER(if_start);
+KTR_INFO(KTR_IF_START, if_start, run, 0,
+	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+KTR_INFO(KTR_IF_START, if_start, sched, 1,
+	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+KTR_INFO(KTR_IF_START, if_start, avoid, 2,
+	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+KTR_INFO(KTR_IF_START, if_start, contend_sched, 3,
+	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+KTR_INFO(KTR_IF_START, if_start, chase_sched, 4,
+	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+#define logifstart(name, arg)	KTR_LOG(if_start_ ## name, arg)
 
 /*
  * Network interface utility routines.
@@ -168,6 +216,192 @@ ifinit(void *dummy)
 	crit_exit();
 
 	if_slowtimo(0);
+}
+
+static int
+if_start_cpuid(struct ifnet *ifp)
+{
+	return ifp->if_cpuid;
+}
+
+#ifdef DEVICE_POLLING
+static int
+if_start_cpuid_poll(struct ifnet *ifp)
+{
+	int poll_cpuid = ifp->if_poll_cpuid;
+
+	if (poll_cpuid >= 0)
+		return poll_cpuid;
+	else
+		return ifp->if_cpuid;
+}
+#endif
+
+static void
+if_start_ipifunc(void *arg)
+{
+	struct ifnet *ifp = arg;
+	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].nm_lmsg;
+
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg(ifa_portfn(mycpuid), lmsg);
+	crit_exit();
+}
+
+/*
+ * Schedule ifnet.if_start on ifnet's CPU
+ */
+static void
+if_start_schedule(struct ifnet *ifp)
+{
+#ifdef SMP
+	int cpu;
+
+	if (if_start_oncpu_sched)
+		cpu = mycpuid;
+	else
+		cpu = ifp->if_start_cpuid(ifp);
+
+	if (cpu != mycpuid)
+		lwkt_send_ipiq(globaldata_find(cpu), if_start_ipifunc, ifp);
+	else
+#endif
+	if_start_ipifunc(ifp);
+}
+
+/*
+ * NOTE:
+ * This function will release ifnet.if_start interlock,
+ * if ifnet.if_start does not need to be scheduled
+ */
+static __inline int
+if_start_need_schedule(struct ifaltq *ifq, int running)
+{
+	if (!running || ifq_is_empty(ifq)
+#ifdef ALTQ
+	    || ifq->altq_tbr != NULL
+#endif
+	) {
+		ALTQ_LOCK(ifq);
+		/*
+		 * ifnet.if_start interlock is released, if:
+		 * 1) Hardware can not take any packets, due to
+		 *    o  interface is marked down
+		 *    o  hardware queue is full (IFF_OACTIVE)
+		 *    Under the second situation, hardware interrupt
+		 *    or polling(4) will call/schedule ifnet.if_start
+		 *    when hardware queue is ready
+		 * 2) There is not packet in the ifnet.if_snd.
+		 *    Further ifq_dispatch or ifq_handoff will call/
+		 *    schedule ifnet.if_start
+		 * 3) TBR is used and it does not allow further
+		 *    dequeueing.
+		 *    TBR callout will call ifnet.if_start
+		 */
+		if (!running || !ifq_data_ready(ifq)) {
+			ifq->altq_started = 0;
+			ALTQ_UNLOCK(ifq);
+			return 0;
+		}
+		ALTQ_UNLOCK(ifq);
+	}
+	return 1;
+}
+
+static void
+if_start_dispatch(struct netmsg *nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct ifnet *ifp = lmsg->u.ms_resultp;
+	struct ifaltq *ifq = &ifp->if_snd;
+	int running = 0;
+
+	crit_enter();
+	lwkt_replymsg(lmsg, 0);	/* reply ASAP */
+	crit_exit();
+
+#ifdef SMP
+	if (!if_start_oncpu_sched && mycpuid != ifp->if_start_cpuid(ifp)) {
+		/*
+		 * If the ifnet is still up, we need to
+		 * chase its CPU change.
+		 */
+		if (ifp->if_flags & IFF_UP) {
+			logifstart(chase_sched, ifp);
+			if_start_schedule(ifp);
+			return;
+		} else {
+			goto check;
+		}
+	}
+#endif
+
+	if (ifp->if_flags & IFF_UP) {
+		lwkt_serialize_enter(ifp->if_serializer); /* XXX try? */
+		if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+			logifstart(run, ifp);
+			ifp->if_start(ifp);
+			if ((ifp->if_flags &
+			(IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
+				running = 1;
+		}
+		lwkt_serialize_exit(ifp->if_serializer);
+	}
+check:
+	if (if_start_need_schedule(ifq, running)) {
+		crit_enter();
+		if (lmsg->ms_flags & MSGF_DONE)	{ /* XXX necessary? */
+			logifstart(sched, ifp);
+			lwkt_sendmsg(ifa_portfn(mycpuid), lmsg);
+		}
+		crit_exit();
+	}
+}
+
+/* Device driver ifnet.if_start helper function */
+void
+if_devstart(struct ifnet *ifp)
+{
+	struct ifaltq *ifq = &ifp->if_snd;
+	int running = 0;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	ALTQ_LOCK(ifq);
+	if (ifq->altq_started || !ifq_data_ready(ifq)) {
+		logifstart(avoid, ifp);
+		ALTQ_UNLOCK(ifq);
+		return;
+	}
+	ifq->altq_started = 1;
+	ALTQ_UNLOCK(ifq);
+
+	if (if_devstart_schedonly) {
+		/*
+		 * Always schedule ifnet.if_start on ifnet's CPU,
+		 * short circuit the rest of this function.
+		 */
+		logifstart(sched, ifp);
+		if_start_schedule(ifp);
+		return;
+	}
+
+	logifstart(run, ifp);
+	ifp->if_start(ifp);
+
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
+		running = 1;
+
+	if (if_devstart_schednochk || if_start_need_schedule(ifq, running)) {
+		/*
+		 * More data need to be transmitted, ifnet.if_start is
+		 * scheduled on ifnet's CPU, and we keep going.
+		 * NOTE: ifnet.if_start interlock is not released.
+		 */
+		logifstart(sched, ifp);
+		if_start_schedule(ifp);
+	}
 }
 
 /*
@@ -200,10 +434,23 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	}
 	ifp->if_serializer = serializer;
 
+	ifp->if_start_cpuid = if_start_cpuid;
+	ifp->if_cpuid = 0;
+
 #ifdef DEVICE_POLLING
 	/* Device is not in polling mode by default */
 	ifp->if_poll_cpuid = -1;
+	if (ifp->if_poll != NULL)
+		ifp->if_start_cpuid = if_start_cpuid_poll;
 #endif
+
+	ifp->if_start_nmsg = kmalloc(ncpus * sizeof(struct netmsg),
+				     M_IFADDR /* XXX */, M_WAITOK);
+	for (i = 0; i < ncpus; ++i) {
+		netmsg_init(&ifp->if_start_nmsg[i], &netisr_adone_rport, 0,
+			    if_start_dispatch);
+		ifp->if_start_nmsg[i].nm_lmsg.u.ms_resultp = ifp;
+	}
 
 	TAILQ_INSERT_TAIL(&ifnet, ifp, if_link);
 	ifp->if_index = ++if_index;
@@ -280,6 +527,9 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifq->altq_flags &= ALTQF_CANTCHANGE;
 	ifq->altq_tbr = NULL;
 	ifq->altq_ifp = ifp;
+	ifq->altq_started = 0;
+	ifq->altq_prepended = NULL;
+	ALTQ_LOCK_INIT(ifq);
 	ifq_set_classic(ifq);
 
 	if (!SLIST_EMPTY(&domains))
@@ -475,6 +725,7 @@ if_detach(struct ifnet *ifp)
 
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
 	kfree(ifp->if_addrheads, M_IFADDR);
+	kfree(ifp->if_start_nmsg, M_IFADDR);
 	crit_exit();
 }
 
@@ -1771,47 +2022,43 @@ ifq_set_classic(struct ifaltq *ifq)
 	ifq->altq_request = ifq_classic_request;
 }
 
-static int
+int
 ifq_classic_enqueue(struct ifaltq *ifq, struct mbuf *m,
 		    struct altq_pktattr *pa __unused)
 {
-	crit_enter();
+	logifq(enqueue, ifq);
 	if (IF_QFULL(ifq)) {
 		m_freem(m);
-		crit_exit();
 		return(ENOBUFS);
 	} else {
 		IF_ENQUEUE(ifq, m);
-		crit_exit();
 		return(0);
 	}	
 }
 
-static struct mbuf *
+struct mbuf *
 ifq_classic_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 {
 	struct mbuf *m;
 
-	crit_enter();
 	switch (op) {
 	case ALTDQ_POLL:
 		IF_POLL(ifq, m);
 		break;
 	case ALTDQ_REMOVE:
+		logifq(dequeue, ifq);
 		IF_DEQUEUE(ifq, m);
 		break;
 	default:
 		panic("unsupported ALTQ dequeue op: %d", op);
 	}
-	crit_exit();
 	KKASSERT(mpolled == NULL || mpolled == m);
 	return(m);
 }
 
-static int
+int
 ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 {
-	crit_enter();
 	switch (req) {
 	case ALTRQ_PURGE:
 		IF_DRAIN(ifq);
@@ -1819,8 +2066,90 @@ ifq_classic_request(struct ifaltq *ifq, int req, void *arg)
 	default:
 		panic("unsupported ALTQ request: %d", req);
 	}
-	crit_exit();
 	return(0);
+}
+
+int
+ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
+{
+	struct ifaltq *ifq = &ifp->if_snd;
+	int not_serialized, running = 0;
+	int error, start = 0;
+
+	ALTQ_LOCK(ifq);
+	error = ifq_enqueue_locked(ifq, m, pa);
+	if (error) {
+		ALTQ_UNLOCK(ifq);
+		return error;
+	}
+	if (!ifq->altq_started) {
+		/*
+		 * Hold the interlock of ifnet.if_start
+		 */
+		ifq->altq_started = 1;
+		start = 1;
+	}
+	ALTQ_UNLOCK(ifq);
+
+	ifp->if_obytes += m->m_pkthdr.len;
+	if (m->m_flags & M_MCAST)
+		ifp->if_omcasts++;
+
+	if (!start) {
+		logifstart(avoid, ifp);
+		return 0;
+	}
+
+	if (ifq_dispatch_schedonly) {
+		/*
+		 * Always schedule ifnet.if_start on ifnet's CPU,
+		 * short circuit the rest of this function.
+		 */
+		logifstart(sched, ifp);
+		if_start_schedule(ifp);
+		return 0;
+	}
+
+	/*
+	 * Try to do direct ifnet.if_start first, if there is
+	 * contention on ifnet's serializer, ifnet.if_start will
+	 * be scheduled on ifnet's CPU.
+	 */
+	not_serialized = !IS_SERIALIZED(ifp->if_serializer);
+	if (not_serialized) {
+		if (!lwkt_serialize_try(ifp->if_serializer)) {
+			/*
+			 * ifnet serializer contention happened,
+			 * ifnet.if_start is scheduled on ifnet's
+			 * CPU, and we keep going.
+			 */
+			logifstart(contend_sched, ifp);
+			if_start_schedule(ifp);
+			return 0;
+		}
+	}
+
+	if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+		logifstart(run, ifp);
+		ifp->if_start(ifp);
+		if ((ifp->if_flags &
+		(IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
+			running = 1;
+	}
+
+	if (not_serialized)
+		lwkt_serialize_exit(ifp->if_serializer);
+
+	if (ifq_dispatch_schednochk || if_start_need_schedule(ifq, running)) {
+		/*
+		 * More data need to be transmitted, ifnet.if_start is
+		 * scheduled on ifnet's CPU, and we keep going.
+		 * NOTE: ifnet.if_start interlock is not released.
+		 */
+		logifstart(sched, ifp);
+		if_start_schedule(ifp);
+	}
+	return 0;
 }
 
 void *

@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.16 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.17 2008/05/14 11:59:24 sephe Exp $
  */
 
 /*
@@ -222,8 +222,8 @@ ipxip_input(struct mbuf *m, ...)
 }
 
 static int
-ipxipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	    struct rtentry *rt)
+ipxipoutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+		       struct rtentry *rt)
 {
 	struct ifnet_en *ifn = (struct ifnet_en *)ifp;
 	struct ip *ip;
@@ -283,6 +283,19 @@ ipxipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	return (error);
 	m_freem(m);
 	return (ENETUNREACH);
+}
+
+static int
+ipxipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	    struct rtentry *rt)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = ipxipoutput_serialized(ifp, m, dst, rt);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 static void

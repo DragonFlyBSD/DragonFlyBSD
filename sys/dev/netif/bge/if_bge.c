@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.90 2008/03/10 12:59:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.91 2008/05/14 11:59:18 sephe Exp $
  *
  */
 
@@ -78,6 +78,7 @@
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/ktr.h>
+#include <sys/interrupt.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
@@ -1955,6 +1956,10 @@ bge_attach(device_t dev)
 		device_printf(dev, "couldn't set up irq\n");
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->bge_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return(0);
 fail:
 	bge_detach(dev);
@@ -2375,7 +2380,7 @@ bge_txeof(struct bge_softc *sc)
 		ifp->if_timer = 0;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 #ifdef DEVICE_POLLING
@@ -2727,7 +2732,7 @@ bge_start(struct ifnet *ifp)
 
 	need_trans = 0;
 	while (sc->bge_cdata.bge_tx_chain[prodidx] == NULL) {
-		m_head = ifq_poll(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
@@ -2744,11 +2749,12 @@ bge_start(struct ifnet *ifp)
 		 * chain at once.
 		 * (paranoia -- may not actually be needed)
 		 */
-		if (m_head->m_flags & M_FIRSTFRAG &&
-		    m_head->m_pkthdr.csum_flags & (CSUM_DELAY_DATA)) {
+		if ((m_head->m_flags & M_FIRSTFRAG) &&
+		    (m_head->m_pkthdr.csum_flags & CSUM_DELAY_DATA)) {
 			if ((BGE_TX_RING_CNT - sc->bge_txcnt) <
-			    m_head->m_pkthdr.csum_data + 16) {
+			    m_head->m_pkthdr.csum_data + BGE_NSEG_RSVD) {
 				ifp->if_flags |= IFF_OACTIVE;
+				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
 		}
@@ -2762,14 +2768,9 @@ bge_start(struct ifnet *ifp)
 		if ((BGE_TX_RING_CNT - sc->bge_txcnt) <
 		    (BGE_NSEG_RSVD + BGE_NSEG_SPARE)) {
 			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
-
-		/*
-		 * Dequeue the packet before encapsulation, since
-		 * bge_encap() may free the packet if error happens.
-		 */
-		ifq_dequeue(&ifp->if_snd, m_head);
 
 		/*
 		 * Pack the data into the transmit ring. If we
@@ -3093,7 +3094,7 @@ bge_watchdog(struct ifnet *ifp)
 	ifp->if_oerrors++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -3242,7 +3243,7 @@ bge_resume(device_t dev)
 		bge_init(sc);
 
 		if (!ifq_is_empty(&ifp->if_snd))
-			ifp->if_start(ifp);
+			if_devstart(ifp);
 	}
 
 	lwkt_serialize_exit(ifp->if_serializer);

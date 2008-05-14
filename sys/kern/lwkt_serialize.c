@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.15 2008/05/05 12:35:03 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.16 2008/05/14 11:59:23 sephe Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -95,12 +95,11 @@ KTR_INFO(KTR_SERIALIZER, slz, exit_beg, 11, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
 #define logslz_spinbo(slz, bo1, bo)	KTR_LOG(slz_spinbo, slz, bo1, bo)
 
 static void lwkt_serialize_sleep(void *info);
-#ifdef SMP
-static void lwkt_serialize_adaptive_sleep(void *bo);
-#endif
 static void lwkt_serialize_wakeup(void *info);
 
 #ifdef SMP
+static void lwkt_serialize_adaptive_sleep(void *bo);
+
 static int slz_backoff_limit = 128;
 SYSCTL_INT(_debug, OID_AUTO, serialize_bolimit, CTLFLAG_RW,
 	   &slz_backoff_limit, 0, "");
@@ -119,9 +118,8 @@ void
 lwkt_serialize_init(lwkt_serialize_t s)
 {
     atomic_intr_init(&s->interlock);
-#ifdef INVARIANTS
     s->last_td = (void *)-4;
-#endif
+
     s->sleep_cnt = 0;
     s->tryfail_cnt = 0;
     s->enter_cnt = 0;
@@ -129,7 +127,6 @@ lwkt_serialize_init(lwkt_serialize_t s)
 }
 
 #ifdef SMP
-
 void
 lwkt_serialize_adaptive_enter(lwkt_serialize_t s)
 {
@@ -139,34 +136,29 @@ lwkt_serialize_adaptive_enter(lwkt_serialize_t s)
     bo.round = 0;
     bo.s = s;
 
-#ifdef INVARIANTS
-    KKASSERT(s->last_td != curthread);
-#endif
+    ASSERT_NOT_SERIALIZED(s);
+
     logslz(enter_beg, s);
     atomic_intr_cond_enter(&s->interlock, lwkt_serialize_adaptive_sleep, &bo);
     logslz(enter_end, s);
-#ifdef INVARIANTS
+
     s->last_td = curthread;
-#endif
 #ifdef PROFILE_SERIALIZER
     s->enter_cnt++;
 #endif
 }
-
 #endif	/* SMP */
 
 void
 lwkt_serialize_enter(lwkt_serialize_t s)
 {
-#ifdef INVARIANTS
-    KKASSERT(s->last_td != curthread);
-#endif
+    ASSERT_NOT_SERIALIZED(s);
+
     logslz(enter_beg, s);
     atomic_intr_cond_enter(&s->interlock, lwkt_serialize_sleep, s);
     logslz(enter_end, s);
-#ifdef INVARIANTS
+
     s->last_td = curthread;
-#endif
 #ifdef PROFILE_SERIALIZER
     s->enter_cnt++;
 #endif
@@ -180,17 +172,14 @@ lwkt_serialize_try(lwkt_serialize_t s)
 {
     int error;
 
-#ifdef INVARIANTS
-    KKASSERT(s->last_td != curthread);
-#endif
+    ASSERT_NOT_SERIALIZED(s);
+
 #ifdef PROFILE_SERIALIZER
     s->try_cnt++;
 #endif
     logslz(try, s);
     if ((error = atomic_intr_cond_try(&s->interlock)) == 0) {
-#ifdef INVARIANTS
 	s->last_td = curthread;
-#endif
 	logslz(tryok, s);
 	return(1);
     }
@@ -204,10 +193,9 @@ lwkt_serialize_try(lwkt_serialize_t s)
 void
 lwkt_serialize_exit(lwkt_serialize_t s)
 {
-#ifdef INVARIANTS
-    KKASSERT(s->last_td == curthread);
+    ASSERT_SERIALIZED(s);
     s->last_td = (void *)-2;
-#endif
+
     logslz(exit_beg, s);
     atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
     logslz(exit_end, s);
@@ -241,18 +229,17 @@ lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *, void *),
 	logslz(enter_beg, s);
 	atomic_intr_cond_enter(&s->interlock, lwkt_serialize_sleep, s);
 	logslz(enter_end, s);
-#ifdef INVARIANTS
+
 	s->last_td = curthread;
-#endif
 #ifdef PROFILE_SERIALIZER
 	s->enter_cnt++;
 #endif
 	if (atomic_intr_handler_is_enabled(&s->interlock) == 0)
 	    func(arg, frame);
-#ifdef INVARIANTS
-	KKASSERT(s->last_td == curthread);
+
+	ASSERT_SERIALIZED(s);
 	s->last_td = (void *)-2;
-#endif
+
 	logslz(exit_beg, s);
 	atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
 	logslz(exit_end, s);
@@ -277,15 +264,14 @@ lwkt_serialize_handler_try(lwkt_serialize_t s, void (*func)(void *, void *),
 #endif
 	logslz(try, s);
 	if (atomic_intr_cond_try(&s->interlock) == 0) {
-#ifdef INVARIANTS
 	    s->last_td = curthread;
-#endif
 	    logslz(tryok, s);
+
 	    func(arg, frame);
-#ifdef INVARIANTS
-	    KKASSERT(s->last_td == curthread);
+
+	    ASSERT_SERIALIZED(s);
 	    s->last_td = (void *)-2;
-#endif
+
 	    logslz(exit_beg, s);
 	    atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
 	    logslz(exit_end, s);

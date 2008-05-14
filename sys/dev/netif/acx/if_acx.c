@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.26 2008/02/14 12:53:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.27 2008/05/14 11:59:18 sephe Exp $
  */
 
 /*
@@ -77,6 +77,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/firmware.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/rman.h>
@@ -531,6 +532,9 @@ acx_attach(device_t dev)
 		ieee80211_ifdetach(ic);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	if (bootverbose)
 		ieee80211_announce(ic);
@@ -1085,8 +1089,13 @@ acx_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((sc->sc_flags & ACX_FLAG_FW_LOADED) == 0 ||
-	    (ifp->if_flags & IFF_RUNNING) == 0 ||
+	if ((sc->sc_flags & ACX_FLAG_FW_LOADED) == 0) {
+		ifq_purge(&ifp->if_snd);
+		ieee80211_drain_mgtq(&ic->ic_mgtq);
+		return;
+	}
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0 ||
 	    (ifp->if_flags & IFF_OACTIVE))
 		return;
 
@@ -1130,8 +1139,10 @@ acx_start(struct ifnet *ifp)
 		} else if (!ifq_is_empty(&ifp->if_snd)) {
 			struct ether_header *eh;
 
-			if (ic->ic_state != IEEE80211_S_RUN)
+			if (ic->ic_state != IEEE80211_S_RUN) {
+				ifq_purge(&ifp->if_snd);
 				break;
+			}
 
 			m = ifq_dequeue(&ifp->if_snd, NULL);
 			if (m == NULL)
@@ -1345,7 +1356,7 @@ acx_txeof(struct acx_softc *sc)
 
 	if (bd->tx_used_count != ACX_TX_DESC_CNT) {
 		ifp->if_flags &= ~IFF_OACTIVE;
-		acx_start(ifp);
+		ifp->if_start(ifp);
 	}
 }
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.31 2007/11/06 07:37:00 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.32 2008/05/14 11:59:19 sephe Exp $
  */
 
 /*
@@ -739,7 +739,7 @@ cue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_opackets++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		(*ifp->if_start)(ifp);
+		if_devstart(ifp);
 
 	CUE_UNLOCK(sc);
 
@@ -826,18 +826,18 @@ cue_start(struct ifnet *ifp)
 		return;
 	}
 
-	m_head = ifq_poll(&ifp->if_snd);
+	m_head = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m_head == NULL) {
 		CUE_UNLOCK(sc);
 		return;
 	}
 
 	if (cue_encap(sc, m_head, 0)) {
+		/* cue_encap() will free m_head, if we reach here */
 		ifp->if_flags |= IFF_OACTIVE;
 		CUE_UNLOCK(sc);
 		return;
 	}
-	ifq_dequeue(&ifp->if_snd, m_head);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame
@@ -1018,7 +1018,7 @@ cue_watchdog(struct ifnet *ifp)
 	cue_txeof(c->cue_xfer, c, stat);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		cue_start(ifp);
+		if_devstart(ifp);
 	CUE_UNLOCK(sc);
 
 	return;

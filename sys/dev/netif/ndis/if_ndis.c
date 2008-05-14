@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.21 2007/08/14 13:30:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.22 2008/05/14 11:59:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1065,7 +1065,7 @@ ndis_starttask(void *arg)
 
 	ifp = arg;
 	if (!ifq_is_empty(&ifp->if_snd))
-		ndis_start(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -1099,16 +1099,16 @@ ndis_start(struct ifnet *ifp)
 	p0 = &sc->ndis_txarray[sc->ndis_txidx];
 
 	while(sc->ndis_txpending) {
-		m = ifq_poll(&ifp->if_snd);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 
 		sc->ndis_txarray[sc->ndis_txidx] = NULL;
 
 		if (ndis_mtop(m, &sc->ndis_txarray[sc->ndis_txidx])) {
+			m_freem(m);
 			return;
 		}
-		ifq_dequeue(&ifp->if_snd, m);
 
 		/*
 		 * Save pointer to original mbuf

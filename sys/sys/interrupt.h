@@ -57,7 +57,7 @@
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
  * $FreeBSD: src/sys/i386/include/ipl.h,v 1.17.2.3 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.18 2007/01/11 23:23:57 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.19 2008/05/14 11:59:24 sephe Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -124,6 +124,7 @@ void unregister_randintr(int intr);
 int next_registered_randintr(int intr);
 void sched_ithd(int intr);	/* procedure called from MD */
 void forward_fastint_remote(void *arg);		/* MD procedure (SMP) */
+int ithread_cpuid(int intr);
 
 extern char	eintrnames[];	/* end of intrnames[] */
 extern char	intrnames[];	/* string table containing device names */

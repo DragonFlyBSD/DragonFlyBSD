@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.13 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.14 2008/05/14 11:59:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/module.h>
+#include <sys/interrupt.h>
 #include <sys/bus.h>
 #include <sys/rman.h> 
 
@@ -302,6 +303,7 @@ static int
 ep_isa_attach(device_t dev)
 {
 	struct ep_softc *	sc = device_get_softc(dev);
+	struct ifnet *		ifp = &sc->arpcom.ac_if;
 	int			error = 0;
 
 	if ((error = ep_alloc(dev))) {
@@ -320,12 +322,14 @@ ep_isa_attach(device_t dev)
 	}
 
 	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE, ep_intr,
-			       sc, &sc->ep_intrhand, 
-			       sc->arpcom.ac_if.if_serializer);
+			       sc, &sc->ep_intrhand, ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
 		goto bad;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return (0);
 bad:

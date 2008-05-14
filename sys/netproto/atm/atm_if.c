@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.16 2008/03/07 11:34:21 sephe Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.17 2008/05/14 11:59:24 sephe Exp $
  */
 
 /*
@@ -942,9 +942,9 @@ atm_nif_setaddr(struct atm_nif *nip, struct ifaddr *ifa)
  *	errno	output failed - reason indicated
  *
  */
-int
-atm_ifoutput(struct ifnet *ifp, KBuffer *m, struct sockaddr *dst,
-	     struct rtentry *rt)
+static int
+atm_ifoutput_serialized(struct ifnet *ifp, KBuffer *m, struct sockaddr *dst,
+			struct rtentry *rt)
 {
 	u_short		fam = dst->sa_family;
 	int		(*func)(struct ifnet *, KBuffer *,
@@ -969,6 +969,18 @@ atm_ifoutput(struct ifnet *ifp, KBuffer *m, struct sockaddr *dst,
 	return ((*func)(ifp, m, dst));
 }
 
+int
+atm_ifoutput(struct ifnet *ifp, KBuffer *m, struct sockaddr *dst,
+	     struct rtentry *rt)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = atm_ifoutput_serialized(ifp, m, dst, rt);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
+}
 
 /*
  * Handle interface ioctl requests. 

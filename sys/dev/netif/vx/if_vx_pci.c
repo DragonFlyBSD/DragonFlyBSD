@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.21 2000/05/28 15:59:52 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.15 2006/12/22 23:26:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.16 2008/05/14 11:59:22 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -36,6 +36,7 @@
 #include <sys/socket.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -132,10 +133,9 @@ vx_pci_probe(device_t dev)
 static int 
 vx_pci_attach(device_t dev)
 {
-    struct vx_softc *sc;
+    struct vx_softc *sc = device_get_softc(dev);
+    struct ifnet *ifp = &sc->arpcom.ac_if;
     int rid;
-
-    sc = device_get_softc(dev);
 
     rid = PCIR_MAPS;
     sc->vx_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
@@ -174,11 +174,14 @@ vx_pci_attach(device_t dev)
 
     if (bus_setup_intr(dev, sc->vx_irq, INTR_NETSAFE,
 		       vxintr, sc, &sc->vx_intrhand, 
-		       sc->arpcom.ac_if.if_serializer)
+		       ifp->if_serializer)
     ) {
 	ether_ifdetach(&sc->arpcom.ac_if);
 	goto bad;
     }
+
+    ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->vx_irq));
+    KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
     return(0);
 

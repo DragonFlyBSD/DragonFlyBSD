@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.44 2008/03/14 09:52:10 matthias Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.45 2008/05/14 11:59:23 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -530,9 +530,7 @@ bpfwrite(struct dev_write_args *ap)
 		dst.sa_family = pseudo_AF_HDRCMPLT;
 
 	crit_enter();
-	lwkt_serialize_enter(ifp->if_serializer);
-	error = (*ifp->if_output)(ifp, m, &dst, (struct rtentry *)NULL);
-	lwkt_serialize_exit(ifp->if_serializer);
+	error = ifp->if_output(ifp, m, &dst, NULL);
 	crit_exit();
 	/*
 	 * The driver frees the mbuf.

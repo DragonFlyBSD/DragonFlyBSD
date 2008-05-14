@@ -24,12 +24,13 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_pccard.c,v 1.2.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.14 2007/08/14 15:32:32 sephe Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.15 2008/05/14 11:59:19 sephe Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -125,6 +126,7 @@ static int
 ex_pccard_attach(device_t dev)
 {
 	struct ex_softc *	sc = device_get_softc(dev);
+	struct ifnet *		ifp = &sc->arpcom.ac_if;
 	int			error = 0;
 	int			i;
 	uint8_t			sum;
@@ -161,11 +163,14 @@ ex_pccard_attach(device_t dev)
 
 	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE,
 				ex_intr, (void *)sc, &sc->ih, 
-				sc->arpcom.ac_if.if_serializer);
+				ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed!\n");
 		goto bad;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return(0);
 bad:

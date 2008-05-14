@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.31 2008/01/05 14:02:37 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.32 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -86,6 +86,7 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/serialize.h>
 #include <sys/bus.h>
@@ -786,6 +787,9 @@ sf_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sf_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return(0);
 
 fail:
@@ -1101,9 +1105,7 @@ sf_intr(void *arg)
 	csr_write_4(sc, SF_IMR, SF_INTRS);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		sf_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 static void
@@ -1217,9 +1219,7 @@ sf_encap(struct sf_softc *sc, struct sf_tx_bufdesc_type0 *c,
 	struct sf_frag		*f = NULL;
 	struct mbuf		*m;
 
-	m = m_head;
-
-	for (m = m_head, frag = 0; m != NULL; m = m->m_next) {
+	for (m = m_head; m != NULL; m = m->m_next) {
 		if (m->m_len != 0) {
 			if (frag == SF_MAXFRAGS)
 				break;
@@ -1231,35 +1231,8 @@ sf_encap(struct sf_softc *sc, struct sf_tx_bufdesc_type0 *c,
 			frag++;
 		}
 	}
-
-	if (m != NULL) {
-		struct mbuf		*m_new = NULL;
-
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
-		if (m_new == NULL) {
-			kprintf("sf%d: no memory for tx list", sc->sf_unit);
-			return(1);
-		}
-
-		if (m_head->m_pkthdr.len > MHLEN) {
-			MCLGET(m_new, MB_DONTWAIT);
-			if (!(m_new->m_flags & M_EXT)) {
-				m_freem(m_new);
-				kprintf("sf%d: no memory for tx list",
-				    sc->sf_unit);
-				return(1);
-			}
-		}
-		m_copydata(m_head, 0, m_head->m_pkthdr.len,
-		    mtod(m_new, caddr_t));
-		m_new->m_pkthdr.len = m_new->m_len = m_head->m_pkthdr.len;
-		m_freem(m_head);
-		m_head = m_new;
-		f = &c->sf_frags[0];
-		f->sf_fraglen = f->sf_pktlen = m_head->m_pkthdr.len;
-		f->sf_addr = vtophys(mtod(m_head, caddr_t));
-		frag = 1;
-	}
+	/* Caller should make sure that 'm_head' is not excessive fragmented */
+	KASSERT(m == NULL, ("too many fragments\n"));
 
 	c->sf_mbuf = m_head;
 	c->sf_id = SF_TX_BUFDESC_ID;
@@ -1276,15 +1249,17 @@ sf_start(struct ifnet *ifp)
 {
 	struct sf_softc		*sc;
 	struct sf_tx_bufdesc_type0 *cur_tx = NULL;
-	struct mbuf		*m_head = NULL;
-	int			i, txprod;
+	struct mbuf		*m_head = NULL, *m_defragged;
+	int			i, txprod, need_trans = 0;
 
 	sc = ifp->if_softc;
 
-	if (!sc->sf_link)
+	if (!sc->sf_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	txprod = csr_read_4(sc, SF_TXDQ_PRODIDX);
@@ -1297,35 +1272,65 @@ sf_start(struct ifnet *ifp)
 		i = SF_IDX_HI(txprod) >> 4;
 	}
 
-	while(sc->sf_ldata->sf_tx_dlist[i].sf_mbuf == NULL) {
-		if (sc->sf_tx_cnt >= (SF_TX_DLIST_CNT - 5)) {
+	while (sc->sf_ldata->sf_tx_dlist[i].sf_mbuf == NULL) {
+		struct mbuf *m;
+		int frag;
+
+		/*
+		 * Don't get the TX DMA queue get too full.
+		 */
+		if (sc->sf_tx_cnt > 64) {
 			ifp->if_flags |= IFF_OACTIVE;
-			cur_tx = NULL;
 			break;
 		}
-		m_head = ifq_poll(&ifp->if_snd);
+#ifdef foo
+		if (sc->sf_tx_cnt >= (SF_TX_DLIST_CNT - 5)) {
+			ifp->if_flags |= IFF_OACTIVE;
+			break;
+		}
+#endif
+
+		m_defragged = NULL;
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
-		cur_tx = &sc->sf_ldata->sf_tx_dlist[i];
-		if (sf_encap(sc, cur_tx, m_head)) {
-			ifp->if_flags |= IFF_OACTIVE;
-			cur_tx = NULL;
-			break;
+again:
+		frag = 0;
+		for (m = m_head; m != NULL; m = m->m_next)
+			++frag;
+		if (frag > SF_MAXFRAGS) {
+			if (m_defragged != NULL) {
+				/*
+				 * Even after defragmentation, there
+				 * are still too many fragments, so
+				 * drop this packet.
+				 */
+				m_freem(m_head);
+				continue;
+			}
+
+			m_defragged = m_defrag(m_head, MB_DONTWAIT);
+			if (m_defragged == NULL) {
+				m_freem(m_head);
+				continue;
+			}
+			m_head = m_defragged;
+
+			/* Recount # of fragments */
+			goto again;
 		}
-		ifq_dequeue(&ifp->if_snd, m_head);
+
+		cur_tx = &sc->sf_ldata->sf_tx_dlist[i];
+		sf_encap(sc, cur_tx, m_head);
 		BPF_MTAP(ifp, cur_tx->sf_mbuf);
 
 		SF_INC(i, SF_TX_DLIST_CNT);
 		sc->sf_tx_cnt++;
-		/*
-		 * Don't get the TX DMA queue get too full.
-		 */
-		if (sc->sf_tx_cnt > 64)
-			break;
+		need_trans = 1;
 	}
 
-	if (cur_tx == NULL)
+	if (!need_trans)
 		return;
 
 	/* Transmit */
@@ -1334,8 +1339,6 @@ sf_start(struct ifnet *ifp)
 	    ((i << 20) & 0xFFFF0000));
 
 	ifp->if_timer = 5;
-
-	return;
 }
 
 static void
@@ -1415,10 +1418,11 @@ sf_stats_update(void *xsc)
 	if (!sc->sf_link) {
 		mii_pollstat(mii);
 		if (mii->mii_media_status & IFM_ACTIVE &&
-		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)
+		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 			sc->sf_link++;
 			if (!ifq_is_empty(&ifp->if_snd))
-				sf_start(ifp);
+				if_devstart(ifp);
+		}
 	}
 
 	callout_reset(&sc->sf_stat_timer, hz, sf_stats_update, sc);
@@ -1441,9 +1445,7 @@ sf_watchdog(struct ifnet *ifp)
 	sf_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		sf_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 static void

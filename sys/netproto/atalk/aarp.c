@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.23 2008/04/05 07:57:22 sephe Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.24 2008/05/14 11:59:24 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -190,7 +190,7 @@ aarpwhohas(struct arpcom *ac, struct sockaddr_at *sat)
 
     sa.sa_len = sizeof( struct sockaddr );
     sa.sa_family = AF_UNSPEC;
-    (*ac->ac_if.if_output)(&ac->ac_if,
+    ac->ac_if.if_output(&ac->ac_if,
 	m, &sa, NULL); 	/* XXX NULL should be routing information */
 }
 
@@ -397,10 +397,8 @@ at_aarpinput( struct arpcom *ac, struct mbuf *m)
 	    sat.sat_len = sizeof(struct sockaddr_at);
 	    sat.sat_family = AF_APPLETALK;
 	    sat.sat_addr = spa;
-	    lwkt_serialize_enter(ac->ac_if.if_serializer);
-	    (*ac->ac_if.if_output)( &ac->ac_if, mhold,
+	    ac->ac_if.if_output(&ac->ac_if, mhold,
 		    (struct sockaddr *)&sat, NULL); /* XXX */
-	    lwkt_serialize_exit(ac->ac_if.if_serializer);
 	}
     } else if ((tpa.s_net == ma.s_net)
 	   && (tpa.s_node == ma.s_node)
@@ -456,9 +454,7 @@ at_aarpinput( struct arpcom *ac, struct mbuf *m)
 
     sa.sa_len = sizeof( struct sockaddr );
     sa.sa_family = AF_UNSPEC;
-    lwkt_serialize_enter(ac->ac_if.if_serializer);
-    (*ac->ac_if.if_output)( &ac->ac_if, m, &sa, NULL); /* XXX */
-    lwkt_serialize_exit(ac->ac_if.if_serializer);
+    ac->ac_if.if_output(&ac->ac_if, m, &sa, NULL); /* XXX */
     return;
 }
 
@@ -601,9 +597,7 @@ aarpprobe(void *arg)
 
     sa.sa_len = sizeof( struct sockaddr );
     sa.sa_family = AF_UNSPEC;
-    lwkt_serialize_enter(ac->ac_if.if_serializer);
-    (*ac->ac_if.if_output)(&ac->ac_if, m, &sa, NULL); /* XXX */
-    lwkt_serialize_exit(ac->ac_if.if_serializer);
+    ac->ac_if.if_output(&ac->ac_if, m, &sa, NULL); /* XXX */
     aa->aa_probcnt--;
 }
 

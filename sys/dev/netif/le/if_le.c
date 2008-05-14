@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.37 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.38 2008/05/14 11:59:20 sephe Exp $
  */
 
 /*
@@ -861,6 +861,8 @@ lemac_start(struct ifnet *ifp)
 	}
 
 	m = ifq_dequeue(&ifp->if_snd, NULL);
+	if (m == NULL)
+		break;
 	LE_OUTB(sc, LEMAC_REG_MPN, tx_pg);	/* Shift 2K window. */
 
 	/*
@@ -902,7 +904,7 @@ lemac_tne_intr(struct le_softc *sc)
 	    sc->le_if.if_collisions++;
     }
     sc->le_if.if_flags &= ~IFF_OACTIVE;
-    lemac_start(&sc->le_if);
+    if_devstart(&sc->le_if);
 }
 
 static void
@@ -1492,7 +1494,7 @@ lance_init(void *xsc)
 	sc->le_if.if_flags |= IFF_RUNNING;
 	LN_WRCSR(sc, LN_CSR0_START|LN_CSR0_INITDONE|LN_CSR0_ENABINTR);
 	/* lance_dumpcsrs(sc, "lance_init: up"); */
-	lance_start(&sc->le_if);
+	if_devstart(&sc->le_if);
     } else {
 	/* lance_dumpcsrs(sc, "lance_init: down"); */
 	sc->le_if.if_flags &= ~IFF_RUNNING;
@@ -1536,7 +1538,7 @@ lance_intr(struct le_softc *sc)
 
     if (oldcsr & LN_CSR0_TXINT) {
 	if (lance_tx_intr(sc))
-	    lance_start(&sc->le_if);
+	    if_devstart(&sc->le_if);
     }
 
     if (oldcsr == (LN_CSR0_PENDINTR|LN_CSR0_RXON|LN_CSR0_TXON))
@@ -1648,7 +1650,7 @@ lance_start(struct ifnet *ifp)
 	return;
 
     for (;;) {
-	m = ifq_poll(&ifp->if_snd);
+	m = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m == NULL)
 	    break;
 
@@ -1672,6 +1674,7 @@ lance_start(struct ifnet *ifp)
 	    /*
 	     * Try to see if we can free up anything off the transit ring.
 	     */
+	    ifq_prepend(&ifp->if_snd, m);
 	    if (lance_tx_intr(sc) > 0) {
 		LN_STAT(tx_drains[0]++);
 		continue;
@@ -1690,6 +1693,7 @@ lance_start(struct ifnet *ifp)
 	    slop += ri->ri_heapend - ri->ri_outptr;
 	    if (len + slop > ri->ri_outsize) {
 		LN_STAT(tx_nospc[1]++);
+		ifq_prepend(&ifp->if_snd, m);
 		break;
 	    }
 	    /*
@@ -1718,8 +1722,6 @@ lance_start(struct ifnet *ifp)
 	 */
 	if (m->m_pkthdr.len < len)
 	    LN_ZERO(sc, bp, len - m->m_pkthdr.len);
-
-	ifq_dequeue(&ifp->if_snd, m);
 
 	/*
 	 * Finally, copy out the descriptor and tell the

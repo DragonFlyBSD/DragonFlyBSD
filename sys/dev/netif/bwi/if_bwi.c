@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.20 2008/02/15 11:48:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.21 2008/05/14 11:59:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -39,6 +39,7 @@
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/rman.h>
@@ -814,6 +815,9 @@ bwi_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	if (bootverbose)
 		ieee80211_announce(ic);
 
@@ -1510,7 +1514,7 @@ back:
 	if (error)
 		bwi_stop(sc, 1);
 	else
-		bwi_start(ifp);
+		ifp->if_start(ifp);
 }
 
 static int
@@ -1601,8 +1605,10 @@ bwi_start(struct ifnet *ifp)
 		} else if (!ifq_is_empty(&ifp->if_snd)) {
 			struct ether_header *eh;
 
-			if (ic->ic_state != IEEE80211_S_RUN)
+			if (ic->ic_state != IEEE80211_S_RUN) {
+				ifq_purge(&ifp->if_snd);
 				break;
+			}
 
 			m = ifq_dequeue(&ifp->if_snd, NULL);
 			if (m == NULL)
@@ -2706,7 +2712,9 @@ static int
 bwi_set_chan(struct bwi_softc *sc, struct ieee80211_channel *c)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
+#ifdef INVARIANTS
 	struct ifnet *ifp = &ic->ic_if;
+#endif
 	struct bwi_mac *mac;
 	uint16_t flags;
 	u_int chan;

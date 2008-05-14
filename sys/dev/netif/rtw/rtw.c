@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.12 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.13 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -75,6 +75,7 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/rman.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
@@ -2954,17 +2955,20 @@ rtw_dequeue(struct ifnet *ifp, struct rtw_txsoft_blk **tsbp,
 	*mp = NULL;
 
 	if (sc->sc_ic.ic_state != IEEE80211_S_RUN) {
+		ifq_purge(&ifp->if_snd);
 		DPRINTF(sc, RTW_DEBUG_XMIT,
 			("%s: not running\n", ifp->if_xname));
 		return 0;
 	}
 
-	m0 = ifq_poll(&ifp->if_snd);
+	m0 = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m0 == NULL) {
 		DPRINTF(sc, RTW_DEBUG_XMIT,
 			("%s: no frame ready\n", ifp->if_xname));
 		return 0;
 	}
+	DPRINTF(sc, RTW_DEBUG_XMIT,
+		("%s: dequeue data frame\n", ifp->if_xname));
 
 	pri = ((m0->m_flags & M_PWR_SAV) != 0) ? RTW_TXPRIHI : RTW_TXPRIMD;
 
@@ -2972,13 +2976,10 @@ rtw_dequeue(struct ifnet *ifp, struct rtw_txsoft_blk **tsbp,
 		DPRINTF(sc, RTW_DEBUG_XMIT_RSRC,
 			("%s: no ring %d descriptor\n", ifp->if_xname, pri));
 		*if_flagsp |= IFF_OACTIVE;
+		ifq_prepend(&ifp->if_snd, m0);
 		sc->sc_if.if_timer = 1;
 		return 0;
 	}
-
-	ifq_dequeue(&ifp->if_snd, m0);
-	DPRINTF(sc, RTW_DEBUG_XMIT,
-		("%s: dequeue data frame\n", ifp->if_xname));
 
 	BPF_MTAP(ifp, m0);
 
@@ -3902,6 +3903,9 @@ rtw_attach(device_t dev)
 		ieee80211_ifdetach(ic);
 		goto err;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	device_printf(dev, "hardware version %c\n", sc->sc_hwverid);
 	if (bootverbose)

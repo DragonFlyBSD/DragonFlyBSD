@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.36 2008/01/05 14:02:37 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.37 2008/05/14 11:59:22 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -621,9 +622,7 @@ ste_intr(void *xsc)
 	CSR_WRITE_2(sc, STE_IMR, STE_INTRS);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ste_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 /*
@@ -805,7 +804,7 @@ ste_stats_update(void *xsc)
 			 */
 			ste_miibus_statchg(sc->ste_dev);
 			if (!ifq_is_empty(&ifp->if_snd))
-				ste_start(ifp);
+				if_devstart(ifp);
 		}
 	}
 
@@ -977,6 +976,9 @@ ste_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->ste_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return 0;
 
@@ -1415,10 +1417,12 @@ ste_start(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
-	if (!sc->ste_link)
+	if (!sc->ste_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	idx = sc->ste_cdata.ste_tx_prod;
@@ -1471,8 +1475,6 @@ ste_start(struct ifnet *ifp)
 		ifp->if_timer = 5;
 		sc->ste_cdata.ste_tx_prod = idx;
 	}
-
-	return;
 }
 
 static void
@@ -1492,9 +1494,7 @@ ste_watchdog(struct ifnet *ifp)
 	ste_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ste_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 static void

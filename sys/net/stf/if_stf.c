@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.21 2008/03/07 11:34:20 sephe Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.22 2008/05/14 11:59:24 sephe Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -303,8 +303,8 @@ stf_getsrcifa6(struct ifnet *ifp)
 }
 
 static int
-stf_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	   struct rtentry *rt)
+stf_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+		      struct rtentry *rt)
 {
 	struct stf_softc *sc;
 	struct sockaddr_in6 *dst6;
@@ -402,6 +402,19 @@ stf_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
 	return ip_output(m, NULL, &sc->sc_ro, 0, NULL, NULL);
+}
+
+static int
+stf_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	   struct rtentry *rt)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = stf_output_serialized(ifp, m, dst, rt);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 /*

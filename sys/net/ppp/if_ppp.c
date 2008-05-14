@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.37 2008/01/06 16:55:52 swildner Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.38 2008/05/14 11:59:23 sephe Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -704,9 +704,9 @@ pppsioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
  * Called at splnet as the if->if_output handler.
  * Called at splnet from pppwrite().
  */
-int
-pppoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
-	  struct rtentry *rtp)
+static int
+pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
+		     struct rtentry *rtp)
 {
     struct ppp_softc *sc = &ppp_softc[ifp->if_dunit];
     int protocol, address, control;
@@ -890,6 +890,19 @@ pppoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 bad:
     m_freem(m0);
     return (error);
+}
+
+int
+pppoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
+	  struct rtentry *rtp)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = pppoutput_serialized(ifp, m0, dst, rtp);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 /*

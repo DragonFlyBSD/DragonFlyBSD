@@ -22,7 +22,7 @@
  */
 
 /* $FreeBSD: src/sys/netatalk/ddp_output.c,v 1.13.6.1 2000/06/02 22:39:07 archie Exp $ */
-/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.9 2006/12/22 23:57:53 swildner Exp $ */
+/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.10 2008/05/14 11:59:24 sephe Exp $ */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -230,8 +230,6 @@ ddp_route( struct mbuf *m, struct route *ro)
     }
 
     /* XXX */
-    lwkt_serialize_enter(ifp->if_serializer);
-    error = (*ifp->if_output)( ifp, m, (struct sockaddr *)&gate, NULL);
-    lwkt_serialize_exit(ifp->if_serializer);
+    error = ifp->if_output(ifp, m, (struct sockaddr *)&gate, NULL);
     return (error);
 }

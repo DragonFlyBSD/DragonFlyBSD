@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.49 2008/05/02 07:40:32 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.50 2008/05/14 11:59:23 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -88,6 +88,7 @@ struct	lwkt_serialize;
 struct	ifaddr_container;
 struct	ifaddr;
 struct	lwkt_port;
+struct	netmsg;
 
 #include <sys/queue.h>		/* get TAILQ macros */
 
@@ -159,14 +160,15 @@ enum poll_cmd { POLL_ONLY, POLL_AND_CHECK_STATUS, POLL_DEREGISTER,
  *
  * MPSAFE NOTES: 
  *
- * ifnet and its related packet queues are protected by if_serializer.
- * Callers of if_output, if_ioctl, if_start, if_watchdog, if_init, 
+ * ifnet is protected by if_serializer.  ifnet.if_snd is protected by its
+ * own spinlock.  Callers of if_ioctl, if_start, if_watchdog, if_init,
  * if_resolvemulti, and if_poll hold if_serializer.  Device drivers usually
  * use the same serializer for their interrupt but this is not required.
- * However, the device driver must be holding if_serializer when it 
- * calls if_input.  Note that the serializer may be temporarily released
- * within if_input to avoid a deadlock (e.g. when fast-forwarding or
- * bridging packets between interfaces).
+ * Caller of if_output must not hold if_serializer; if_output should hold
+ * if_serializer based on its own needs.  However, the device driver must
+ * be holding if_serializer when it calls if_input.  Note that the serializer
+ * may be temporarily released within if_input to avoid a deadlock (e.g. when
+ * fast-forwarding or bridging packets between interfaces).
  *
  * If a device driver installs the same serializer for its interrupt
  * as for ifnet, then the driver only really needs to worry about further
@@ -212,6 +214,8 @@ struct ifnet {
 		(void *);
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
+	int	(*if_start_cpuid)	/* cpuid to run if_start */
+		(struct ifnet *);
 #ifdef DEVICE_POLLING
 	void	(*if_poll)		/* IFF_POLLING support */
 		(struct ifnet *, enum poll_cmd, int);
@@ -229,6 +233,8 @@ struct ifnet {
 	struct ifaddr	*if_lladdr;
 	struct lwkt_serialize *if_serializer;	/* serializer or MP lock */
 	struct lwkt_serialize if_default_serializer; /* if not supplied */
+	int	if_cpuid;
+	struct netmsg *if_start_nmsg; /* percpu messages to schedule if_start */
 };
 typedef void if_init_f_t (void *);
 
@@ -536,6 +542,7 @@ struct lwkt_port *ifa_portfn(int);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
+void	if_devstart(struct ifnet *ifp);
 
 #define IF_LLSOCKADDR(ifp)						\
     ((struct sockaddr_dl *)(ifp)->if_lladdr->ifa_addr)

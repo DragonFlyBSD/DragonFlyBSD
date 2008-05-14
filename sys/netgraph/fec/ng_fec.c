@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.24 2008/03/19 14:46:03 sephe Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.25 2008/05/14 11:59:24 sephe Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -772,8 +772,8 @@ ng_fec_input(struct ifnet *ifp, struct mbuf **m0)
  */
 
 static int
-ng_fec_output(struct ifnet *ifp, struct mbuf *m,
-		struct sockaddr *dst, struct rtentry *rt0)
+ng_fec_output_serialized(struct ifnet *ifp, struct mbuf *m,
+			 struct sockaddr *dst, struct rtentry *rt0)
 {
 	const priv_p priv = (priv_p) ifp->if_softc;
 	struct ng_fec_bundle *b;
@@ -831,6 +831,19 @@ ng_fec_output(struct ifnet *ifp, struct mbuf *m,
 		error = priv->if_error;
 
 	return(error);
+}
+
+static int
+ng_fec_output(struct ifnet *ifp, struct mbuf *m,
+	      struct sockaddr *dst, struct rtentry *rt0)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = ng_fec_output_serialized(ifp, m, dst, rt0);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }
 
 /*

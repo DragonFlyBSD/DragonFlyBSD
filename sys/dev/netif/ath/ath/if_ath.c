@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_ath.c,v 1.94.2.23 2006/07/10 01:15:24 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.8 2007/09/15 21:24:59 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.9 2008/05/14 11:59:18 sephe Exp $
  */
 
 /*
@@ -62,6 +62,7 @@
 #include <sys/serialize.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/interrupt.h>
  
 #include <net/if.h>
 #include <net/if_dl.h>
@@ -646,6 +647,9 @@ ath_attach(uint16_t devid, struct ath_softc *sc)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	if (bootverbose)
 		ieee80211_announce(ic);
 	ath_announce(sc);
@@ -748,7 +752,7 @@ ath_resume(struct ath_softc *sc)
 	if (ifp->if_flags & IFF_UP) {
 		ath_init(sc);
 		if (ifp->if_flags & IFF_RUNNING)
-			ath_start(ifp);
+			ifp->if_start(ifp);
 	}
 	if (sc->sc_softled) {
 		ath_hal_gpioCfgOutput(sc->sc_ah, sc->sc_ledpin);
@@ -1179,7 +1183,7 @@ ath_reset(struct ifnet *ifp)
 		ath_beacon_config(sc);	/* restart beacons */
 	ath_hal_intrset(ah, sc->sc_imask);
 
-	ath_start(ifp);			/* restart xmit */
+	ifp->if_start(ifp);	/* restart xmit */
 	return 0;
 }
 
@@ -1195,7 +1199,13 @@ ath_start(struct ifnet *ifp)
 	struct ieee80211_frame *wh;
 	struct ether_header *eh;
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0 || sc->sc_invalid)
+	if (sc->sc_invalid) {
+		ifq_purge(&ifp->if_snd);
+		ieee80211_drain_mgtq(&ic->ic_mgtq);
+		return;
+	}
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
 	for (;;) {
@@ -1228,6 +1238,7 @@ ath_start(struct ifnet *ifp)
 				    ieee80211_state_name[ic->ic_state]);
 				sc->sc_stats.ast_tx_discard++;
 				STAILQ_INSERT_TAIL(&sc->sc_txbuf, bf, bf_list);
+				ifq_purge(&ifp->if_snd);
 				break;
 			}
 			m = ifq_dequeue(&ifp->if_snd, NULL);
@@ -4043,7 +4054,7 @@ ath_tx_proc_q0(struct ath_softc *sc)
 	if (sc->sc_softled)
 		ath_led_event(sc, ATH_LED_TX);
 
-	ath_start(ifp);
+	ifp->if_start(ifp);
 }
 
 /*
@@ -4079,7 +4090,7 @@ ath_tx_proc_q0123(struct ath_softc *sc)
 	if (sc->sc_softled)
 		ath_led_event(sc, ATH_LED_TX);
 
-	ath_start(ifp);
+	ifp->if_start(ifp);
 }
 
 /*
@@ -4107,7 +4118,7 @@ ath_tx_proc(struct ath_softc *sc)
 	if (sc->sc_softled)
 		ath_led_event(sc, ATH_LED_TX);
 
-	ath_start(ifp);
+	ifp->if_start(ifp);
 }
 
 static void

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.160 2008/05/02 07:40:32 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.161 2008/05/14 11:59:18 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2747,6 +2747,8 @@ options	KTR
 #options KTR_GIANT_CONTENTION
 #options KTR_IF_BGE
 #options KTR_IF_EM
+#options KTR_IF_START
+#options KTR_IFQ
 #options KTR_IPIQ
 #options KTR_MEMORY
 #options KTR_SERIALIZER

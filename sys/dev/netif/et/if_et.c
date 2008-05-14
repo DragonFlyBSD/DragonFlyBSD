@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.8 2007/12/21 19:13:35 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.9 2008/05/14 11:59:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -39,6 +39,7 @@
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/rman.h>
@@ -378,6 +379,10 @@ et_attach(device_t dev)
 		device_printf(dev, "can't setup intr\n");
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq_res));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return 0;
 fail:
 	et_detach(dev);
@@ -1228,8 +1233,10 @@ et_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0)
+	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
@@ -1269,7 +1276,7 @@ et_watchdog(struct ifnet *ifp)
 	if_printf(ifp, "watchdog timed out\n");
 
 	ifp->if_init(ifp->if_softc);
-	ifp->if_start(ifp);
+	if_devstart(ifp);
 }
 
 static int
@@ -2141,7 +2148,7 @@ et_txeof(struct et_softc *sc)
 	if (tbd->tbd_used + ET_NSEG_SPARE <= ET_TX_NDESC)
 		ifp->if_flags &= ~IFF_OACTIVE;
 
-	ifp->if_start(ifp);
+	if_devstart(ifp);
 }
 
 static void
@@ -2159,7 +2166,7 @@ et_tick(void *xsc)
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		if_printf(ifp, "Link up, enable TX/RX\n");
 		if (et_enable_txrx(sc, 0) == 0)
-			ifp->if_start(ifp);
+			if_devstart(ifp);
 	}
 	callout_reset(&sc->sc_tick, hz, et_tick, sc);
 

@@ -18,7 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.34 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.14 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.15 2008/05/14 11:59:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
+#include <sys/interrupt.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -103,11 +104,18 @@ ed_pci_attach(device_t dev)
 
 	error = ed_attach(dev);
 	if (error == 0) {
+		struct ifnet *ifp = &sc->arpcom.ac_if;
+
 		error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
-				       edintr, sc, &sc->irq_handle, 
-				       sc->arpcom.ac_if.if_serializer);
-		if (error)
+				       edintr, sc, &sc->irq_handle,
+				       ifp->if_serializer);
+		if (error) {
 			ed_pci_detach(dev);
+		} else {
+			ifp->if_cpuid =
+				ithread_cpuid(rman_get_start(sc->irq_res));
+			KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+		}
 	} else {
                 ed_release_resources(dev);
 	}

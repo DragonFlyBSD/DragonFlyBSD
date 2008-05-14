@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.32 2006/12/22 23:26:21 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.33 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -62,6 +62,7 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/serialize.h>
 #include <sys/bus.h>
@@ -623,6 +624,9 @@ pcn_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->pcn_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	return (0);
 fail:
 	pcn_detach(dev);
@@ -890,7 +894,7 @@ pcn_tick(void *xsc)
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)
 			sc->pcn_link++;
 			if (!ifq_is_empty(&ifp->if_snd))
-				pcn_start(ifp);
+				if_devstart(ifp);
 	}
 	callout_reset(&sc->pcn_stat_timer, hz, pcn_tick, sc);
 
@@ -931,9 +935,7 @@ pcn_intr(void *arg)
 	}
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		pcn_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 /*
@@ -952,14 +954,13 @@ pcn_encap(struct pcn_softc *sc, struct mbuf *m_head, u_int32_t *txidx)
 	 * the fragment pointers. Stop when we run out
  	 * of fragments or hit the end of the mbuf chain.
 	 */
-	m = m_head;
 	cur = frag = *txidx;
 
 	for (m = m_head; m != NULL; m = m->m_next) {
 		if (m->m_len != 0) {
 			if ((PCN_TX_LIST_CNT -
 			    (sc->pcn_cdata.pcn_tx_cnt + cnt)) < 2)
-				return(ENOBUFS);
+				break;
 			f = &sc->pcn_ldata->pcn_tx_list[frag];
 			f->pcn_txctl = (~(m->m_len) + 1) & PCN_TXCTL_BUFSZ;
 			f->pcn_txctl |= PCN_TXCTL_MBO;
@@ -973,9 +974,8 @@ pcn_encap(struct pcn_softc *sc, struct mbuf *m_head, u_int32_t *txidx)
 			cnt++;
 		}
 	}
-
-	if (m != NULL)
-		return(ENOBUFS);
+	/* Caller should make sure that 'm_head' is not excessive fragmented */
+	KASSERT(m == NULL, ("too many fragments\n"));
 
 	sc->pcn_cdata.pcn_tx_chain[cur] = m_head;
 	sc->pcn_ldata->pcn_tx_list[cur].pcn_txctl |=
@@ -997,31 +997,61 @@ static void
 pcn_start(struct ifnet *ifp)
 {
 	struct pcn_softc	*sc;
-	struct mbuf		*m_head = NULL;
+	struct mbuf		*m_head = NULL, *m_defragged;
 	u_int32_t		idx;
 	int need_trans;
 
 	sc = ifp->if_softc;
 
-	if (!sc->pcn_link)
+	if (!sc->pcn_link) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	idx = sc->pcn_cdata.pcn_tx_prod;
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	need_trans = 0;
-	while(sc->pcn_cdata.pcn_tx_chain[idx] == NULL) {
-		m_head = ifq_poll(&ifp->if_snd);
+	while (sc->pcn_cdata.pcn_tx_chain[idx] == NULL) {
+		struct mbuf *m;
+		int cnt;
+
+		m_defragged = NULL;
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
-		if (pcn_encap(sc, m_head, &idx)) {
-			ifp->if_flags |= IFF_OACTIVE;
-			break;
+again:
+		cnt = 0;
+		for (m = m_head; m != NULL; m = m->m_next)
+			++cnt;
+		if ((PCN_TX_LIST_CNT -
+		    (sc->pcn_cdata.pcn_tx_cnt + cnt)) < 2) {
+			if (m_defragged != NULL) {
+				/*
+				 * Even after defragmentation, there
+				 * are still too many fragments, so
+				 * drop this packet.
+				 */
+				m_freem(m_head);
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
+
+			m_defragged = m_defrag(m_head, MB_DONTWAIT);
+			if (m_defragged == NULL) {
+				m_freem(m_head);
+				continue;
+			}
+			m_head = m_defragged;
+
+			/* Recount # of fragments */
+			goto again;
 		}
-		ifq_dequeue(&ifp->if_snd, m_head);
+
+		pcn_encap(sc, m_head, &idx);
 		need_trans = 1;
 
 		BPF_MTAP(ifp, m_head);
@@ -1281,9 +1311,7 @@ pcn_watchdog(struct ifnet *ifp)
 	pcn_init(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		pcn_start(ifp);
-
-	return;
+		if_devstart(ifp);
 }
 
 /*

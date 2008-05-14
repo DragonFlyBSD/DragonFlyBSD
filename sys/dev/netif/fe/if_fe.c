@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.28 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.29 2008/05/14 11:59:20 sephe Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -821,6 +821,8 @@ fe_attach (device_t dev)
 		return ENXIO;
 	}
 
+	sc->sc_if.if_cpuid = ithread_cpuid(rman_get_start(sc->irq_res));
+	KKASSERT(sc->sc_if.if_cpuid >= 0 && sc->sc_if.if_cpuid < ncpus);
   
   	/* Print additional info when attached.  */
  	device_printf(dev, "type %s%s\n", sc->typestr,
@@ -1108,7 +1110,7 @@ fe_init (void * xsc)
            the interface keeping it idle.  The upper layer will soon
            start the interface anyway, and there are no significant
            delay.  */
-	fe_start(&sc->sc_if);
+	if_devstart(&sc->sc_if);
 #endif
 }
 
@@ -1727,7 +1729,7 @@ fe_intr (void *arg)
 		 * interrupt when the transmission buffer is full.
 		 */
 		if ((sc->sc_if.if_flags & IFF_OACTIVE) == 0)
-			fe_start(&sc->sc_if);
+			if_devstart(&sc->sc_if);
 	}
 
 	kprintf("fe%d: too many loops\n", sc->sc_unit);

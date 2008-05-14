@@ -1,6 +1,6 @@
 /*	$NetBSD: if_stge.c,v 1.32 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/stge/if_stge.c,v 1.2 2006/08/12 01:21:36 yongari Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.4 2008/03/10 12:59:52 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.5 2008/05/14 11:59:22 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -49,6 +49,7 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/module.h>
@@ -806,6 +807,9 @@ stge_attach(device_t dev)
 		goto fail;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 fail:
 	if (error != 0)
 		stge_detach(dev);
@@ -1324,9 +1328,10 @@ stge_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (stge_encap(sc, &m_head)) {
-			if (m_head == NULL)
-				break;
-			ifp->if_flags |= IFF_OACTIVE;
+			if (m_head != NULL) {
+				m_freem(m_head);
+				ifp->if_flags |= IFF_OACTIVE;
+			}
 			break;
 		}
 
@@ -1568,7 +1573,7 @@ force_init:
 
 	/* Try to get more packets going. */
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 /*
@@ -1855,7 +1860,7 @@ stge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		}
 
 		if (!ifq_is_empty(&ifp->if_snd))
-			ifp->if_start(ifp);
+			if_devstart(ifp);
 	}
 }
 #endif	/* DEVICE_POLLING */

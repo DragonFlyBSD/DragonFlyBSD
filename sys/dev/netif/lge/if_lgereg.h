@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lgereg.h,v 1.2.2.1 2001/06/19 19:42:38 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.10 2006/08/01 18:05:02 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.11 2008/05/14 11:59:20 sephe Exp $
  */
 
 
@@ -400,10 +400,12 @@ struct lge_frag {
 	uint16_t		lge_rsvd1;
 };
 
+#define LGE_FRAG_CNT		10
+
 struct lge_tx_desc {
 	/* Hardware descriptor section */
 	uint32_t		lge_ctl;
-	struct lge_frag		lge_frags[10];
+	struct lge_frag		lge_frags[LGE_FRAG_CNT];
 	uint32_t		lge_rsvd0;
 	union {
 		struct mbuf		*lge_mbuf;

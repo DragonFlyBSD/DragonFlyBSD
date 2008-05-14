@@ -8,7 +8,7 @@
  * required.  Unlike tokens this serialization is not safe from deadlocks
  * nor is it recursive, and care must be taken when using it. 
  *
- * $DragonFly: src/sys/sys/serialize.h,v 1.8 2008/05/05 12:35:03 sephe Exp $
+ * $DragonFly: src/sys/sys/serialize.h,v 1.9 2008/05/14 11:59:24 sephe Exp $
  */
 
 #ifndef _SYS_SERIALIZE_H_
@@ -29,12 +29,9 @@ struct lwkt_serialize {
     unsigned int	try_cnt;
 };
 
-/*
- * Note that last_td is only maintained when INVARIANTS is turned on,
- * so this check is only useful as part of a [K]KASSERT.
- */
-#define ASSERT_SERIALIZED(ss)		KKASSERT((ss)->last_td == curthread)
-#define ASSERT_NOT_SERIALIZED(ss)	KKASSERT((ss)->last_td != curthread)
+#define IS_SERIALIZED(ss)		((ss)->last_td == curthread)
+#define ASSERT_SERIALIZED(ss)		KKASSERT(IS_SERIALIZED((ss)))
+#define ASSERT_NOT_SERIALIZED(ss)	KKASSERT(!IS_SERIALIZED((ss)))
 
 typedef struct lwkt_serialize *lwkt_serialize_t;
 
@@ -50,4 +47,4 @@ void lwkt_serialize_handler_enable(lwkt_serialize_t);
 void lwkt_serialize_handler_call(lwkt_serialize_t, void (*)(void *, void *), void *, void *);
 int lwkt_serialize_handler_try(lwkt_serialize_t, void (*)(void *, void *), void *, void *);
 
-#endif
+#endif	/* !_SYS_SERIALIZE_H_ */

@@ -1,5 +1,5 @@
 /*	$KAME: altq_priq.c,v 1.12 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.8 2006/12/22 23:44:55 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.9 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (C) 2000-2003
@@ -78,18 +78,10 @@ static void	get_class_stats(struct priq_classstats *, struct priq_class *);
 static struct priq_class *clh_to_clp(struct priq_if *, uint32_t);
 
 int
-priq_pfattach(struct pf_altq *a)
+priq_pfattach(struct pf_altq *a, struct ifaltq *ifq)
 {
-	struct ifnet *ifp;
-	int error;
-
-	if ((ifp = ifunit(a->ifname)) == NULL || a->altq_disc == NULL)
-		return (EINVAL);
-	crit_enter();
-	error = altq_attach(&ifp->if_snd, ALTQT_PRIQ, a->altq_disc,
+	return altq_attach(ifq, ALTQT_PRIQ, a->altq_disc,
 	    priq_enqueue, priq_dequeue, priq_request, NULL, NULL);
-	crit_exit();
-	return (error);
 }
 
 int
@@ -130,20 +122,14 @@ priq_remove_altq(struct pf_altq *a)
 	return (0);
 }
 
-int
-priq_add_queue(struct pf_altq *a)
+static int
+priq_add_queue_locked(struct pf_altq *a, struct priq_if *pif)
 {
-	struct priq_if *pif;
 	struct priq_class *cl;
 
-	if ((pif = a->altq_disc) == NULL)
-		return (EINVAL);
+	KKASSERT(a->priority < PRIQ_MAXPRI);
+	KKASSERT(a->qid != 0);
 
-	/* check parameters */
-	if (a->priority >= PRIQ_MAXPRI)
-		return (EINVAL);
-	if (a->qid == 0)
-		return (EINVAL);
 	if (pif->pif_classes[a->priority] != NULL)
 		return (EBUSY);
 	if (clh_to_clp(pif, a->qid) != NULL)
@@ -158,13 +144,34 @@ priq_add_queue(struct pf_altq *a)
 }
 
 int
-priq_remove_queue(struct pf_altq *a)
+priq_add_queue(struct pf_altq *a)
 {
 	struct priq_if *pif;
-	struct priq_class *cl;
+	struct ifaltq *ifq;
+	int error;
 
+	/* check parameters */
+	if (a->priority >= PRIQ_MAXPRI)
+		return (EINVAL);
+	if (a->qid == 0)
+		return (EINVAL);
+
+	/* XXX not MP safe */
 	if ((pif = a->altq_disc) == NULL)
 		return (EINVAL);
+	ifq = pif->pif_ifq;
+
+	ALTQ_LOCK(ifq);
+	error = priq_add_queue_locked(a, pif);
+	ALTQ_UNLOCK(ifq);
+
+	return error;
+}
+
+static int
+priq_remove_queue_locked(struct pf_altq *a, struct priq_if *pif)
+{
+	struct priq_class *cl;
 
 	if ((cl = clh_to_clp(pif, a->qid)) == NULL)
 		return (EINVAL);
@@ -173,23 +180,51 @@ priq_remove_queue(struct pf_altq *a)
 }
 
 int
+priq_remove_queue(struct pf_altq *a)
+{
+	struct priq_if *pif;
+	struct ifaltq *ifq;
+	int error;
+
+	/* XXX not MF safe */
+	if ((pif = a->altq_disc) == NULL)
+		return (EINVAL);
+	ifq = pif->pif_ifq;
+
+	ALTQ_LOCK(ifq);
+	error = priq_remove_queue_locked(a, pif);
+	ALTQ_UNLOCK(ifq);
+
+	return error;
+}
+
+int
 priq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 {
 	struct priq_if *pif;
 	struct priq_class *cl;
 	struct priq_classstats stats;
+	struct ifaltq *ifq;
 	int error = 0;
-
-	if ((pif = altq_lookup(a->ifname, ALTQT_PRIQ)) == NULL)
-		return (EBADF);
-
-	if ((cl = clh_to_clp(pif, a->qid)) == NULL)
-		return (EINVAL);
 
 	if (*nbytes < sizeof(stats))
 		return (EINVAL);
 
+	/* XXX not MP safe */
+	if ((pif = altq_lookup(a->ifname, ALTQT_PRIQ)) == NULL)
+		return (EBADF);
+	ifq = pif->pif_ifq;
+
+	ALTQ_LOCK(ifq);
+
+	if ((cl = clh_to_clp(pif, a->qid)) == NULL) {
+		ALTQ_UNLOCK(ifq);
+		return (EINVAL);
+	}
+
 	get_class_stats(&stats, cl);
+
+	ALTQ_UNLOCK(ifq);
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);

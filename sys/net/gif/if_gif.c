@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $
- * $DragonFly: src/sys/net/gif/if_gif.c,v 1.20 2008/01/11 11:59:41 sephe Exp $
+ * $DragonFly: src/sys/net/gif/if_gif.c,v 1.21 2008/05/14 11:59:23 sephe Exp $
  * $KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $
  */
 
@@ -290,9 +290,9 @@ gif_encapcheck(const struct mbuf *m, int off, int proto, void *arg)
  * Parameters:
  *	rt:	added in net2
  */
-int
-gif_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	   struct rtentry *rt)
+static int
+gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+		      struct rtentry *rt)
 {
 	struct gif_softc *sc = (struct gif_softc*)ifp;
 	int error = 0;
@@ -360,6 +360,18 @@ gif_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	called = 0;		/* reset recursion counter */
 	if (error)
 		ifp->if_oerrors++;
+	return error;
+}
+
+int
+gif_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	   struct rtentry *rt)
+{
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = gif_output_serialized(ifp, m, dst, rt);
+	lwkt_serialize_exit(ifp->if_serializer);
 	return error;
 }
 

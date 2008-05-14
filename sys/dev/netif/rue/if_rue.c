@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.12 2007/11/06 07:37:00 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.13 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -901,7 +901,7 @@ rue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		ifp->if_opackets++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 
 	RUE_UNLOCK(sc);
 }
@@ -930,7 +930,7 @@ rue_tick(void *xsc)
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		sc->rue_link++;
 		if (!ifq_is_empty(&ifp->if_snd))
-			rue_start(ifp);
+			if_devstart(ifp);
 	}
 
 	callout_reset(&sc->rue_stat_ch, hz, rue_tick, sc);
@@ -988,6 +988,7 @@ rue_start(struct ifnet *ifp)
 	RUE_LOCK(sc);
 
 	if (!sc->rue_link) {
+		ifq_purge(&ifp->if_snd);
 		RUE_UNLOCK(sc);
 		return;
 	}
@@ -997,18 +998,18 @@ rue_start(struct ifnet *ifp)
 		return;
 	}
 
-	m_head = ifq_poll(&ifp->if_snd);
+	m_head = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m_head == NULL) {
 		RUE_UNLOCK(sc);
 		return;
 	}
 
 	if (rue_encap(sc, m_head, 0)) {
+		/* rue_encap() will free m_head, if we reach here */
 		ifp->if_flags |= IFF_OACTIVE;
 		RUE_UNLOCK(sc);
 		return;
 	}
-	ifq_dequeue(&ifp->if_snd, m_head);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame
@@ -1252,7 +1253,7 @@ rue_watchdog(struct ifnet *ifp)
 	rue_txeof(c->rue_xfer, c, stat);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		rue_start(ifp);
+		if_devstart(ifp);
 
 	RUE_UNLOCK(sc);
 }

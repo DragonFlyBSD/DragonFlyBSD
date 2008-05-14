@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.32 2007/07/11 23:46:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.33 2008/05/14 11:59:20 sephe Exp $
  */
 
 /*
@@ -1010,7 +1010,7 @@ ietint(int unit, struct ie_softc *ie)
 	/* Wish I knew why this seems to be necessary... */
 	ie->xmit_cmds[0]->ie_xmit_status |= IE_STAT_COMPL;
 
-	iestart(&ie->arpcom.ac_if);
+	if_devstart(&ie->arpcom.ac_if);
 	return (0);		/* shouldn't be necessary */
 }
 

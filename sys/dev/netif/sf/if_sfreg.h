@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sfreg.h,v 1.6.2.1 2001/08/16 20:35:04 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sfreg.h,v 1.5 2006/08/01 18:08:24 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sfreg.h,v 1.6 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -829,7 +829,7 @@ struct sf_tx_bufdesc_type0 {
 	u_int8_t		sf_fragcnt;
 	u_int8_t		sf_rsvd2;
 	u_int16_t		sf_rsvd1;
-	struct sf_frag		sf_frags[14];
+	struct sf_frag		sf_frags[SF_MAXFRAGS];
 };
 
 /*

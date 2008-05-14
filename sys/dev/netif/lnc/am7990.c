@@ -1,6 +1,6 @@
 /*	$NetBSD: am7990.c,v 1.68 2005/12/11 12:21:25 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/am7990.c,v 1.3 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/am7990.c,v 1.4 2007/03/24 08:29:57 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/am7990.c,v 1.5 2008/05/14 11:59:20 sephe Exp $	*/
 
 /*-
  * Copyright (c) 1997, 1998 The NetBSD Foundation, Inc.
@@ -479,8 +479,7 @@ am7990_intr(void *arg)
 	(*sc->sc_wrcsr)(sc, LE_CSR0, LE_C0_INEA);
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		am7990_start_locked(sc);
-
+		if_devstart(ifp);
 }
 
 /*
@@ -505,7 +504,6 @@ am7990_start_locked(struct lance_softc *sc)
 
 	for (; sc->sc_no_td < sc->sc_ntbuf &&
 	    !ifq_is_empty(&ifp->if_snd);) {
-		m = ifq_poll(&ifp->if_snd);
 		rp = LE_TMDADDR(sc, bix);
 		(*sc->sc_copyfromdesc)(sc, &tmd, rp, sizeof(tmd));
 
@@ -516,8 +514,8 @@ am7990_start_locked(struct lance_softc *sc)
 			    sc->sc_no_td, sc->sc_last_td);
 		}
 
-		ifq_dequeue(&ifp->if_snd, m);
-		if (m == 0)
+		m = ifq_dequeue(&ifp->if_snd, NULL);
+		if (m == NULL)
 			break;
 
 		/*

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.29 2008/02/08 09:42:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.30 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -27,6 +27,7 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/module.h>
@@ -527,6 +528,9 @@ rt2661_attach(device_t dev, int id)
 		ieee80211_ifdetach(ic);
 		goto fail;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->sc_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	if (bootverbose)
 		ieee80211_announce(ic);
@@ -1194,7 +1198,7 @@ rt2661_tx_dma_intr(struct rt2661_softc *sc, struct rt2661_tx_ring *txq)
 
 		sc->sc_tx_timer = 0;
 		ifp->if_flags &= ~IFF_OACTIVE;
-		rt2661_start(ifp);
+		ifp->if_start(ifp);
 	}
 }
 
@@ -1925,8 +1929,10 @@ rt2661_start(struct ifnet *ifp)
 			if (rt2661_tx_mgt(sc, m0, ni) != 0)
 				break;
 		} else {
-			if (ic->ic_state != IEEE80211_S_RUN)
+			if (ic->ic_state != IEEE80211_S_RUN) {
+				ifq_purge(&ifp->if_snd);
 				break;
+			}
 
 			m0 = ifq_dequeue(&ifp->if_snd, NULL);
 			if (m0 == NULL)

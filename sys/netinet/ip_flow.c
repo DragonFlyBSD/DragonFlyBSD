@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.13 2008/04/03 16:02:32 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.14 2008/05/14 11:59:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -183,7 +183,6 @@ ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
 	if (serializer)
 		lwkt_serialize_exit(serializer);
 
-	lwkt_serialize_enter(ifp->if_serializer);
 	error = ifp->if_output(ifp, m, dst, rt);
 	if (error) {
 		if (error == ENOBUFS)
@@ -191,7 +190,6 @@ ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
 		else
 			ipf->ipf_errors++;
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	if (serializer)
 		lwkt_serialize_enter(serializer);

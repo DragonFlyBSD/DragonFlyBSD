@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.50 2008/03/10 12:59:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.51 2008/05/14 11:59:22 sephe Exp $
  */
 
 /*
@@ -91,6 +91,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
+#include <sys/interrupt.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -1571,8 +1572,11 @@ ti_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto fail;
 	}
-	return 0;
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->ti_irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
+	return 0;
 fail:
 	ti_detach(dev);
 	return(error);
@@ -1793,7 +1797,7 @@ ti_intr(void *xsc)
 	CSR_WRITE_4(sc, TI_MB_HOSTINTR, 0);
 
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
-		ti_start(ifp);
+		if_devstart(ifp);
 }
 
 static void
@@ -1916,7 +1920,7 @@ ti_start(struct ifnet *ifp)
 
 	need_trans = 0;
 	while(sc->ti_cdata.ti_tx_chain[prodidx] == NULL) {
-		m_head = ifq_poll(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
@@ -1933,6 +1937,7 @@ ti_start(struct ifnet *ifp)
 			if ((TI_TX_RING_CNT - sc->ti_txcnt) <
 			    m_head->m_pkthdr.csum_data + 16) {
 				ifp->if_flags |= IFF_OACTIVE;
+				ifq_prepend(&ifp->if_snd, m_head);
 				break;
 			}
 		}
@@ -1944,9 +1949,9 @@ ti_start(struct ifnet *ifp)
 		 */
 		if (ti_encap(sc, m_head, &prodidx)) {
 			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
-		ifq_dequeue(&ifp->if_snd, m_head);
 		need_trans = 1;
 
 		ETHER_BPF_MTAP(ifp, m_head);
@@ -2249,7 +2254,7 @@ ti_watchdog(struct ifnet *ifp)
 	ifp->if_oerrors++;
 
 	if (!ifq_is_empty(&ifp->if_snd))
-		ifp->if_start(ifp);
+		if_devstart(ifp);
 }
 
 /*

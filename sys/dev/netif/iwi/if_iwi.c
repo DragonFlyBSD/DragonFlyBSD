@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.8.2.6 2006/02/23 02:06:46 sam Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.20 2008/05/10 07:11:28 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.21 2008/05/14 11:59:20 sephe Exp $
  */
 
 /*-
@@ -43,6 +43,7 @@
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
+#include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
@@ -538,6 +539,9 @@ iwi_attach(device_t dev)
 		goto fail1;
 	}
 
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
+
 	if (bootverbose)
 		ieee80211_announce(ic);
 
@@ -958,7 +962,7 @@ iwi_resume(device_t dev)
 	if (ifp->if_flags & IFF_UP) {
 		ifp->if_init(ifp->if_softc);
 		if (ifp->if_flags & IFF_RUNNING)
-			ifp->if_start(ifp);
+			if_devstart(ifp);
 	}
 
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -1538,7 +1542,7 @@ iwi_tx_intr(struct iwi_softc *sc, struct iwi_tx_ring *txq)
 
 	sc->sc_tx_timer = 0;
 	ifp->if_flags &= ~IFF_OACTIVE;
-	iwi_start(ifp);
+	if_devstart(ifp);
 }
 
 static void
@@ -1839,12 +1843,11 @@ iwi_start(struct ifnet *ifp)
 	struct ieee80211_node *ni;
 	int ac;
 
-	if (ic->ic_state != IEEE80211_S_RUN)
+	ieee80211_drain_mgtq(&ic->ic_mgtq);
+	if (ic->ic_state != IEEE80211_S_RUN) {
+		ifq_purge(&ifp->if_snd);
 		return;
-
-	IF_POLL(&ic->ic_mgtq, m0);
-	if (m0 != NULL)
-		ieee80211_drain_mgtq(&ic->ic_mgtq);
+	}
 
 	for (;;) {
 		m0 = ifq_dequeue(&ifp->if_snd, NULL);

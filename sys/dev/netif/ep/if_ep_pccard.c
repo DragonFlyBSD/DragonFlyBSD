@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_pccard.c,v 1.12.2.2 2000/08/08 23:55:02 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.11 2006/10/25 20:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.12 2008/05/14 11:59:19 sephe Exp $
  */
 
 /*
@@ -42,6 +42,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/module.h>
+#include <sys/interrupt.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
  
@@ -156,6 +157,7 @@ static int
 ep_pccard_attach(device_t dev)
 {
 	struct ep_softc *	sc = device_get_softc(dev);
+	struct ifnet *		ifp = &sc->arpcom.ac_if;
 	int			error = 0;
 
 	if ((error = ep_alloc(dev))) {
@@ -215,6 +217,9 @@ ep_pccard_attach(device_t dev)
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
 		goto bad;
 	}
+
+	ifp->if_cpuid = ithread_cpuid(rman_get_start(sc->irq));
+	KKASSERT(ifp->if_cpuid >= 0 && ifp->if_cpuid < ncpus);
 
 	return (0);
 bad:
