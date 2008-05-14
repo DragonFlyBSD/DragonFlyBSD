@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/Makefile.langs,v 1.5 2005/05/24 06:29:33 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/Makefile.langs,v 1.6 2008/05/14 15:02:47 hasso Exp $
 
 .if !defined(NO_CXX)
 gencheck_defs=	cp/cp-tree.def
@@ -9,18 +9,12 @@ gencheck_defs+=	objc/objc-tree.def
 
 optionsfiles=	${OTOPDIR}/cc_prep/c.opt
 optionsfiles+=	${OTOPDIR}/cc_prep/common.opt
-.if !defined(NO_FORTRAN)
-optionsfiles+=	${GCCDIR}/gcc/f/lang.opt
-.endif
 
 options.c options.h: ${optionsfiles} ${STOPDIR}/Makefile.langs
 	/bin/sh ${GCCDIR}/gcc/opts.sh 'mv' options.c options.h ${optionsfiles}
 
 .if !defined(NO_CXX)
 LANG_SPECS_FILES=	cp/lang-specs.h
-.endif
-.if !defined(NO_FORTRAN)
-LANG_SPECS_FILES+=	f/lang-specs.h
 .endif
 .if !defined(NO_OBJC)
 LANG_SPECS_FILES+=	objc/lang-specs.h
@@ -75,11 +69,6 @@ GTFILES+=   $(srcdir)/cp/mangle.c $(srcdir)/cp/name-lookup.h $(srcdir)/cp/name-l
    $(srcdir)/cp/method.c $(srcdir)/c-common.c $(srcdir)/c-common.h $(srcdir)/c-pragma.c
 .endif
 
-.if !defined(NO_FORTRAN)
-GTFILES+=	$(srcdir)/f/com.c $(srcdir)/f/com.h $(srcdir)/f/ste.c $(srcdir)/f/where.h \
-   $(srcdir)/f/where.c $(srcdir)/f/lex.c
-.endif
-
 .if !defined(NO_OBJC)
 GTFILES+=	$(srcdir)/objc/objc-act.c $(srcdir)/objc/objc-act.h
 .endif
@@ -105,13 +94,6 @@ GTFILES_FILES_FILES+=	$(srcdir)/cp/mangle.c  $(srcdir)/cp/name-lookup.h  $(srcdi
    $(srcdir)/cp/semantics.c  $(srcdir)/cp/tree.c  $(srcdir)/cp/parser.c  $(srcdir)/cp/method.c \
    $(srcdir)/c-common.c  $(srcdir)/c-common.h  $(srcdir)/c-pragma.c
 GTFILES_LANG_DIR_NAMES+= cp
-.endif
-
-.if !defined(NO_FORTRAN)
-GTFILES_FILES_LANGS+=	f  f  f  f  f  f 
-GTFILES_FILES_FILES+=	$(srcdir)/f/com.c  $(srcdir)/f/com.h  $(srcdir)/f/ste.c  $(srcdir)/f/where.h \
-   $(srcdir)/f/where.c  $(srcdir)/f/lex.c
-GTFILES_LANG_DIR_NAMES+= f
 .endif
 
 .if !defined(NO_OBJC)

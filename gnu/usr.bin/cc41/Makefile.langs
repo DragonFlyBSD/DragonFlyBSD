@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc41/Makefile.langs,v 1.2 2007/02/17 02:24:20 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cc41/Makefile.langs,v 1.3 2008/05/14 15:02:48 hasso Exp $
 
 .if !defined(NO_CXX)
 gencheck_defs=	cp/cp-tree.def
@@ -10,16 +10,10 @@ gencheck_defs=	cp/cp-tree.def
 optionsfiles=	${GCCDIR}/gcc/c.opt
 optionsfiles+=	${GCCDIR}/gcc/common.opt
 optionsfiles+=	${GCCDIR}/gcc/config/${GCC_CPU}/${GCC_CPU}.opt
-#.if !defined(NO_FORTRAN)
-#optionsfiles+=	${GCCDIR}/gcc/f/lang.opt
-#.endif
 
 .if !defined(NO_CXX)
 LANG_SPECS_FILES=	cp/lang-specs.h
 .endif
-#.if !defined(NO_FORTRAN)
-#LANG_SPECS_FILES+=	f/lang-specs.h
-#.endif
 #.if !defined(NO_OBJC)
 #LANG_SPECS_FILES+=	objc/lang-specs.h
 #.endif
@@ -82,11 +76,6 @@ GTFILES_FILES_LANGS+=	${GTFILES_CPP:C/.*/cp/g}
 GTFILES_FILES_FILES+=	${GTFILES_CPP}
 GTFILES_LANG_DIR_NAMES+= cp
 .endif
-
-#.if !defined(NO_FORTRAN)
-#GTFILES+=	$(srcdir)/f/com.c $(srcdir)/f/com.h $(srcdir)/f/ste.c $(srcdir)/f/where.h \
-#   $(srcdir)/f/where.c $(srcdir)/f/lex.c
-#.endif
 
 #.if !defined(NO_OBJC)
 #GTFILES+=	$(srcdir)/objc/objc-act.c $(srcdir)/objc/objc-act.h

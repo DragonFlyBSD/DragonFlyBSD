@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.115 2008/05/01 19:44:37 tgen Exp $
+# $DragonFly: src/Makefile.inc1,v 1.116 2008/05/14 15:02:44 hasso Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -833,10 +833,6 @@ _gcc41_cross= gnu/usr.bin/cc41
 _gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
 _binutils= gnu/usr.bin/binutils217
 
-.if !defined(NO_FORTRAN)
-_fortran= gnu/usr.bin/cc34/f771
-.endif
-
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
     !defined(NO_CRYPT) && defined(WANT_KERBEROS)
 _libkrb5= kerberos5/tools kerberos5/lib/libroken kerberos5/lib/libvers \
@@ -844,7 +840,7 @@ _libkrb5= kerberos5/tools kerberos5/lib/libroken kerberos5/lib/libvers \
 .endif
 
 build-tools:
-.for _tool in ${_gcc34_tools} ${_gcc41_tools} ${_fortran} ${_libkrb5} ${_share}
+.for _tool in ${_gcc34_tools} ${_gcc41_tools} ${_libkrb5} ${_share}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \

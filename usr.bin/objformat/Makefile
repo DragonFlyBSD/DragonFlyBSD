@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/objformat/Makefile,v 1.15 1999/12/24 15:18:19 green Exp $
-# $DragonFly: src/usr.bin/objformat/Makefile,v 1.12 2007/08/27 16:50:57 pavalos Exp $
+# $DragonFly: src/usr.bin/objformat/Makefile,v 1.13 2008/05/14 15:02:48 hasso Exp $
 
 PROG=		objformat
 NOSHARED?=	YES
@@ -41,8 +41,6 @@ LINKS+=	${BINDIR}/objformat ${BINDIR}/cpp
 LINKS+=	${BINDIR}/objformat ${BINDIR}/c++
 LINKS+=	${BINDIR}/objformat ${BINDIR}/c++filt
 LINKS+=	${BINDIR}/objformat ${BINDIR}/cc
-LINKS+=	${BINDIR}/objformat ${BINDIR}/f77
-LINKS+=	${BINDIR}/objformat ${BINDIR}/g77
 LINKS+=	${BINDIR}/objformat ${BINDIR}/g++
 LINKS+=	${BINDIR}/objformat ${BINDIR}/gcc
 LINKS+=	${BINDIR}/objformat ${BINDIR}/gcov
