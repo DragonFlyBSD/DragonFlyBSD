@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.25 2008/05/14 15:02:44 hasso Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.26 2008/05/15 11:53:20 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -628,3 +628,10 @@ TO_REMOVE+=/usr/lib/gcc34/libfrtbegin.so.1
 TO_REMOVE+=/usr/lib/gcc34/libg2c.a
 TO_REMOVE+=/usr/lib/gcc34/libg2c.so
 TO_REMOVE+=/usr/lib/gcc34/libg2c.so.3
+TO_REMOVE+=/usr/lib/gcc34/profile/libfrtbegin.a
+TO_REMOVE+=/usr/lib/gcc34/profile/libg2c.a
+TO_REMOVE+=/usr/share/info/g77.info.gz
+TO_REMOVE+=/usr/share/man/cat1/f77.1.gz
+TO_REMOVE+=/usr/share/man/man1/f77.1.gz
+TO_REMOVE+=/usr/share/man/cat1/g77.1.gz
+TO_REMOVE+=/usr/share/man/man1/g77.1.gz
