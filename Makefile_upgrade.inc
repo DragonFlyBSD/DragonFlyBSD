@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.26 2008/05/15 11:53:20 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.27 2008/05/15 18:29:30 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -635,3 +635,17 @@ TO_REMOVE+=/usr/share/man/cat1/f77.1.gz
 TO_REMOVE+=/usr/share/man/man1/f77.1.gz
 TO_REMOVE+=/usr/share/man/cat1/g77.1.gz
 TO_REMOVE+=/usr/share/man/man1/g77.1.gz
+TO_REMOVE+=/usr/share/info/dc.info.gz
+TO_REMOVE+=/usr/share/info/gmp.info.gz
+TO_REMOVE+=/usr/share/info/bzip2.info.gz
+TO_REMOVE+=/usr/share/info/gasp.info.gz
+TO_REMOVE+=/usr/share/info/gperf.info.gz
+TO_REMOVE+=/usr/share/info/gxxint.info.gz
+TO_REMOVE+=/usr/share/info/iostream.info.gz
+TO_REMOVE+=/usr/share/info/ptx.info.gz
+TO_REMOVE+=/usr/share/info/send-pr.info.gz
+TO_REMOVE+=/usr/share/info/cpp40.info.gz
+TO_REMOVE+=/usr/share/info/cppinternals40.info.gz
+TO_REMOVE+=/usr/share/info/gcc40.info.gz
+TO_REMOVE+=/usr/share/info/gccint40.info.gz
+TO_REMOVE+=/usr/share/info/tar.info.gz

@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.211 2008/02/02 18:24:00 matthias Exp $
+# $DragonFly: src/etc/Makefile,v 1.212 2008/05/15 18:29:30 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -94,6 +94,12 @@ distribute:
 
 remove-obsolete-files:
 	@echo "===> Remove now obsolete files"
+	@for item in ${TO_REMOVE:M*.info.gz}; do \
+		if [ -e ${DESTDIR}$${item} ]; then \
+			install-info --delete ${DESTDIR}$${item} \
+			    /usr/share/info/dir; \
+		fi; \
+	done;
 	@for item in ${TO_REMOVE}; do \
 		if [ -e ${DESTDIR}$${item} ]; then \
 			echo "${DESTDIR}$${item}"; \
@@ -180,82 +186,12 @@ upgrade_etc:	preupgrade remove-obsolete-files
 .if exists(${DESTDIR}/usr/lib/gcc2)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
 .endif
-.if exists(${DESTDIR}/usr/share/info/dc.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/dc.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/dc.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/dc.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/gmp.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/gmp.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/gmp.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/gmp.info
-.endif
 .for lib in ${COMPAT_LIBS:M*.so.*}
 .if exists(${DESTDIR}/usr/lib/${lib})
 	chflags noschg ${DESTDIR}/usr/lib/${lib}
 	rm -f ${DESTDIR}/usr/lib/${lib}
 .endif
 .endfor
-.if exists(${DESTDIR}/usr/share/info/bzip2.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/bzip2.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/bzip2.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/bzip2.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/gasp.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/gasp.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/gasp.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/gasp.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/gperf.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/gperf.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/gperf.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/gperf.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/gxxint.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/gxxint.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/gxxint.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/gxxint.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/iostream.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/iostream.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/iostream.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/iostream.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/ptx.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/ptx.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/ptx.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/ptx.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/send-pr.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/send-pr.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/send-pr.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/send-pr.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/cpp40.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/cpp40.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/cpp40.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/cpp40.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/cppinternals40.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/cppinternals40.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/cppinternals40.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/cppinternals40.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/gcc40.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/gcc40.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/gcc40.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/gcc40.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/gccint40.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/gccint40.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/gccint40.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/gccint40.info
-.endif
-.if exists(${DESTDIR}/usr/share/info/tar.info.gz)
-	gzip -d ${DESTDIR}/usr/share/info/tar.info.gz
-	install-info --delete ${DESTDIR}/usr/share/info/tar.info ${DESTDIR}/usr/share/info/dir
-	rm -f ${DESTDIR}/usr/share/info/tar.info
-.endif
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
