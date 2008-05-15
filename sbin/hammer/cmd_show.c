@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.10 2008/05/13 04:58:10 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.11 2008/05/15 03:23:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -82,19 +82,30 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 	hammer_btree_elm_t elm;
 	int i;
 	int flags;
+	int maxcount;
+	char badc;
 
 	node = get_node(node_offset, &buffer);
 
+	if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) == node->crc)
+		badc = ' ';
+	else
+		badc = 'B';
+
 	if (spike == 0) {
-		printf("    NODE %016llx count=%d parent=%016llx "
+		printf("%c   NODE %016llx count=%d parent=%016llx "
 		       "type=%c depth=%d fill=",
+		       badc,
 		       node_offset, node->count, node->parent,
 		       (node->type ? node->type : '?'), depth);
 		if (VerboseOpt)
 			print_bigblock_fill(node_offset);
 		printf(" {\n");
 
-		for (i = 0; i < node->count; ++i) {
+		maxcount = (node->type == HAMMER_BTREE_TYPE_INTERNAL) ?
+			   HAMMER_BTREE_INT_ELMS : HAMMER_BTREE_LEAF_ELMS;
+
+		for (i = 0; i < node->count && i < maxcount; ++i) {
 			elm = &node->elms[i];
 			flags = print_elm_flags(node, node_offset,
 						elm, elm->base.btype,
