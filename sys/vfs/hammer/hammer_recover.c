@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.16 2008/05/06 00:21:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.17 2008/05/15 03:36:40 dillon Exp $
  */
 
 #include "hammer.h"
@@ -83,8 +83,11 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 		bytes = rootmap->alloc_offset - rootmap->first_offset +
 			(rootmap->next_offset & HAMMER_OFF_LONG_MASK);
 	}
-	kprintf("HAMMER(%s) Start Recovery (%lld bytes of UNDO)\n",
-		root_volume->ondisk->vol_name, bytes);
+	kprintf("HAMMER(%s) Start Recovery %016llx - %016llx "
+		"(%lld bytes of UNDO)\n",
+		root_volume->ondisk->vol_name,
+		rootmap->first_offset, rootmap->next_offset,
+		bytes);
 	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
 		kprintf("Undo size is absurd, unable to mount\n");
 		return(EIO);
@@ -211,6 +214,7 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_fifo_undo_t undo, int bytes)
 	int vol_no;
 	int max_bytes;
 	u_int32_t offset;
+	u_int32_t crc;
 
 	/*
 	 * Basic sanity checks
@@ -232,10 +236,22 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_fifo_undo_t undo, int bytes)
 
 	/*
 	 * Skip PAD records.  Note that PAD records also do not require
-	 * a tail.
+	 * a tail and may have a truncated structure.
 	 */
 	if (undo->head.hdr_type == HAMMER_HEAD_TYPE_PAD)
 		return(0);
+
+	/*
+	 * Check the CRC
+	 */
+	crc = crc32(undo, HAMMER_FIFO_HEAD_CRCOFF) ^
+	      crc32(&undo->head + 1, undo->head.hdr_size - sizeof(undo->head));
+	if (undo->head.hdr_crc != crc) {
+		kprintf("HAMMER: Undo record CRC failed %08x %08x\n",
+			undo->head.hdr_crc, crc);
+		return(EIO);
+	}
+
 
 	/*
 	 * Check the tail

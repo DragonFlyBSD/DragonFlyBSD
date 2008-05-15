@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.44 2008/05/13 20:46:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.45 2008/05/15 03:36:40 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -288,9 +288,8 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	/*
 	 * Release our buffer and flush anything left in the buffer cache.
 	 */
-	volume->io.flush = 1;
 	volume->io.waitdep = 1;
-	hammer_io_release(&volume->io);
+	hammer_io_release(&volume->io, 1);
 
 	/*
 	 * There should be no references on the volume, no clusters, and
@@ -452,15 +451,13 @@ hammer_load_volume(hammer_volume_t volume)
 void
 hammer_rel_volume(hammer_volume_t volume, int flush)
 {
-	if (flush)
-		volume->io.flush = 1;
 	crit_enter();
 	if (volume->io.lock.refs == 1) {
 		++volume->io.loading;
 		hammer_lock_ex(&volume->io.lock);
 		if (volume->io.lock.refs == 1) {
 			volume->ondisk = NULL;
-			hammer_io_release(&volume->io);
+			hammer_io_release(&volume->io, flush);
 		}
 		--volume->io.loading;
 		hammer_unlock(&volume->io.lock);
@@ -695,14 +692,12 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 	hammer_volume_t volume;
 	int freeme = 0;
 
-	if (flush)
-		buffer->io.flush = 1;
 	crit_enter();
 	if (buffer->io.lock.refs == 1) {
 		++buffer->io.loading;	/* force interlock check */
 		hammer_lock_ex(&buffer->io.lock);
 		if (buffer->io.lock.refs == 1) {
-			hammer_io_release(&buffer->io);
+			hammer_io_release(&buffer->io, flush);
 			hammer_flush_buffer_nodes(buffer);
 			KKASSERT(TAILQ_EMPTY(&buffer->clist));
 

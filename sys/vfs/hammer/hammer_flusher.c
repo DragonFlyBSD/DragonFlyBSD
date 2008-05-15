@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.15 2008/05/13 20:46:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.16 2008/05/15 03:36:40 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -286,7 +286,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
 		hammer_io_flush(io);
-		hammer_rel_buffer((hammer_buffer_t)io, 1);
+		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
 	}
 	if (count)
@@ -301,7 +301,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
 		hammer_io_flush(io);
-		hammer_rel_buffer((hammer_buffer_t)io, 1);
+		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
 	}
 	if (count)
@@ -325,6 +325,13 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		hammer_modify_volume_done(root_volume);
 	}
 
+	if (hammer_debug_recover_faults > 0) {
+		if (--hammer_debug_recover_faults == 0) {
+			Debugger("hammer_debug_recover_faults");
+		}
+	}
+
+
 	/*
 	 * Update the UNDO FIFO's first_offset.  Same deal.
 	 */
@@ -335,7 +342,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		hammer_crc_set_blockmap(&root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX]);
 		hammer_modify_volume_done(root_volume);
 	}
-	trans->hmp->flusher_undo_start = rootmap->next_offset;
+	hmp->flusher_undo_start = rootmap->next_offset;
 
 	/*
 	 * Flush the root volume header.
@@ -367,7 +374,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
 		hammer_io_flush(io);
-		hammer_rel_buffer((hammer_buffer_t)io, 1);
+		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
 	}
 	hammer_unlock(&hmp->sync_lock);

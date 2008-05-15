@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.14 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.15 2008/05/15 03:36:40 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -99,6 +99,8 @@ retry:
 		/*
 		 * Acquiring the sync_lock prevents the operation from
 		 * crossing a synchronization boundary.
+		 *
+		 * NOTE: cursor.node may have changed on return.
 		 */
 		hammer_lock_ex(&trans->hmp->sync_lock);
 		error = hammer_reblock_helper(reblock, &cursor, elm);
@@ -273,9 +275,6 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 
 	onode = cursor->node;
 	nnode = hammer_alloc_btree(cursor->trans, &error);
-	hammer_lock_ex(&nnode->lock);
-
-	hammer_modify_node_noundo(cursor->trans, nnode);
 
 	if (nnode == NULL)
 		return (error);
@@ -283,6 +282,8 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 	/*
 	 * Move the node
 	 */
+	hammer_lock_ex(&nnode->lock);
+	hammer_modify_node_noundo(cursor->trans, nnode);
 	bcopy(onode->ondisk, nnode->ondisk, sizeof(*nnode->ondisk));
 
 	if (elm) {
@@ -317,8 +318,9 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 			onode->node_offset, nnode->node_offset);
 	}
 	hammer_modify_node_done(nnode);
-
 	cursor->node = nnode;
+
+	hammer_unlock(&onode->lock);
 	hammer_rel_node(onode);
 
 	return (error);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.30 2008/05/06 00:21:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.31 2008/05/15 03:36:40 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -242,7 +242,7 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
  * by HAMMER until explicitly flushed by the backend.
  */
 void
-hammer_io_release(struct hammer_io *io)
+hammer_io_release(struct hammer_io *io, int flush)
 {
 	struct buf *bp;
 
@@ -258,7 +258,7 @@ hammer_io_release(struct hammer_io *io)
 	 * by HAMMER.
 	 */
 	if (io->modified) {
-		if (io->flush) {
+		if (flush) {
 			hammer_io_flush(io);
 		} else if (bp->b_flags & B_LOCKED) {
 			switch(io->type) {
@@ -284,7 +284,7 @@ hammer_io_release(struct hammer_io *io)
 	 * that our bioops can override kernel decisions with regards to
 	 * the buffer).
 	 */
-	if (io->flush && io->modified == 0 && io->running == 0) {
+	if (flush && io->modified == 0 && io->running == 0) {
 		/*
 		 * Always disassociate the bp if an explicit flush
 		 * was requested and the IO completed with no error
@@ -340,7 +340,6 @@ hammer_io_flush(struct hammer_io *io)
 	 * Degenerate case - nothing to flush if nothing is dirty.
 	 */
 	if (io->modified == 0) {
-		io->flush = 0;
 		return;
 	}
 
@@ -388,7 +387,6 @@ hammer_io_flush(struct hammer_io *io)
 	TAILQ_REMOVE(io->mod_list, io, mod_entry);
 	io->mod_list = NULL;
 	io->modified = 0;
-	io->flush = 0;
 
 	/*
 	 * Transfer ownership to the kernel and initiate I/O.
