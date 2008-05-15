@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/serializer.9,v 1.4 2008/05/07 20:03:09 swildner Exp $
+.\" $DragonFly: src/share/man/man9/serializer.9,v 1.5 2008/05/15 09:21:40 swildner Exp $
 .\"
-.Dd May 7, 2008
+.Dd May 15, 2008
 .Os
 .Dt SERIALIZER 9
 .Sh NAME
@@ -44,7 +44,9 @@
 .Nm lwkt_serialize_handler_disable ,
 .Nm lwkt_serialize_handler_call ,
 .Nm lwkt_serialize_handler_try ,
+.Nm IS_SERIALIZED
 .Nm ASSERT_SERIALIZED
+.Nm ASSERT_NOT_SERIALIZED
 .Nd generic low level serializer
 .Sh SYNOPSIS
 .In sys/serialize.h
@@ -76,7 +78,9 @@
 .Fa "void *arg"
 .Fa "void *frame"
 .Fc
+.Fn IS_SERIALIZED "s"
 .Fn ASSERT_SERIALIZED "s"
+.Fn ASSERT_NOT_SERIALIZED "s"
 .Sh DESCRIPTION
 The
 .Nm serializer
@@ -145,10 +149,17 @@ is a non-blocking version of
 .Fn lwkt_serialize_handler_call .
 .Pp
 The
-.Fn ASSERT_SERIALIZED
-macro asserts that the serializer
+.Fn IS_SERIALIZED
+macro tests if the serializer
 .Fa s
 is being held.
+Similarly, the
+.Fn ASSERT_SERIALIZED
+and
+.Fn ASSERT_NOT_SERIALIZED
+macros assert that the serializer
+.Fa s
+is being held/not held.
 .Sh RETURN VALUES
 The
 .Fn lwkt_serialize_try
