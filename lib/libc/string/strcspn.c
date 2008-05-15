@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/string/strcspn.c,v 1.4 2005/03/29 19:36:39 joerg Exp $
+ * $DragonFly: src/lib/libc/string/strcspn.c,v 1.5 2008/05/15 03:48:58 dillon Exp $
  */
 
 #include <assert.h>
@@ -46,7 +46,7 @@ size_t
 strcspn(const char *str, const char *chars)
 {
         const char *s;
-        bool charset[UCHAR_MAX];
+        bool charset[UCHAR_MAX + 1];
 
          _DIAGASSERT(str != NULL);
          _DIAGASSERT(chars != NULL);
