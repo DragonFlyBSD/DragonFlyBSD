@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.64 2008/05/14 11:59:23 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.65 2008/05/15 13:48:27 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -348,7 +348,9 @@ if_start_dispatch(struct netmsg *nmsg)
 		}
 		lwkt_serialize_exit(ifp->if_serializer);
 	}
+#ifdef SMP
 check:
+#endif
 	if (if_start_need_schedule(ifq, running)) {
 		crit_enter();
 		if (lmsg->ms_flags & MSGF_DONE)	{ /* XXX necessary? */
