@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.21 2008/05/10 17:24:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.22 2008/05/16 14:46:46 sephe Exp $
  */
 
 #include "opt_cpu.h"
@@ -608,17 +608,17 @@ printcpuinfo(void)
 #endif
 #if defined(I586_CPU)
 	case CPUCLASS_586:
-		kprintf("%d.%02d-MHz ",
-		       (int)((tsc_frequency + 4999) / 1000000),
-		       (int)((tsc_frequency + 4999) / 10000) % 100);
+		kprintf("%lld.%02lld-MHz ",
+		       (tsc_frequency + 4999LL) / 1000000LL,
+		       ((tsc_frequency + 4999LL) / 10000LL) % 100LL);
 		kprintf("586");
 		break;
 #endif
 #if defined(I686_CPU)
 	case CPUCLASS_686:
-		kprintf("%d.%02d-MHz ",
-		       ((int)(tsc_frequency + 4999) / 1000000),
-		       (int)((tsc_frequency + 4999) / 10000) % 100);
+		kprintf("%lld.%02lld-MHz ",
+		       (tsc_frequency + 4999LL) / 1000000LL,
+		       ((tsc_frequency + 4999LL) / 10000LL) % 100LL);
 		kprintf("686");
 		break;
 #endif
