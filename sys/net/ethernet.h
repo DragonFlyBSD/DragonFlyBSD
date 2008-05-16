@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.17 2008/03/19 14:46:03 sephe Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.18 2008/05/16 13:19:12 sephe Exp $
  *
  */
 
@@ -358,6 +358,7 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 
 struct ifnet;
 struct mbuf;
+struct mbuf_chain;
 
 extern	void (*ng_ether_input_p)(struct ifnet *ifp, struct mbuf **mp);
 extern	void (*ng_ether_input_orphan_p)(struct ifnet *ifp,
@@ -366,19 +367,7 @@ extern	int  (*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 extern	void (*ng_ether_attach_p)(struct ifnet *ifp);
 extern	void (*ng_ether_detach_p)(struct ifnet *ifp);
 
-extern	int (*vlan_input_p)(const struct ether_header *eh, struct mbuf *m);
-extern	int (*vlan_input_tag_p)(struct mbuf *m, uint16_t t);
-
-#define VLAN_INPUT_TAG(m, t) do {			\
-	/* XXX: lock */					\
-	if (vlan_input_tag_p != NULL)			\
-		(*vlan_input_tag_p)(m, t);		\
-	else {						\
-		(m)->m_pkthdr.rcvif->if_noproto++;	\
-		m_freem(m);				\
-        }						\
-	/* XXX: unlock */				\
-} while (0)
+extern	int (*vlan_input_p)(struct mbuf *m, struct mbuf_chain *chain);
 
 /*
  * The ETHER_BPF_MTAP macro should be used by drivers which support hardware

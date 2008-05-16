@@ -1,6 +1,6 @@
 /*	$NetBSD: if_stge.c,v 1.32 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/stge/if_stge.c,v 1.2 2006/08/12 01:21:36 yongari Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.5 2008/05/14 11:59:22 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.6 2008/05/16 13:19:12 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -1801,11 +1801,11 @@ stge_rxeof(struct stge_softc *sc, int count)
 			/* Check for VLAN tagged packets. */
 			if ((status & RFD_VLANDetected) != 0 &&
 			    (ifp->if_capenable & IFCAP_VLAN_HWTAGGING) != 0) {
-				VLAN_INPUT_TAG(m, RFD_TCI(status64));
-			} else {
-				/* Pass it on. */
-				ifp->if_input(ifp, m);
+				m->m_flags |= M_VLANTAG;
+				m->m_pkthdr.ether_vlantag = RFD_TCI(status64);
 			}
+			/* Pass it on. */
+			ifp->if_input(ifp, m);
 
 			STGE_RXCHAIN_RESET(sc);
 		}

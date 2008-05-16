@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.31 2008/03/18 14:12:45 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.32 2008/05/16 13:19:12 sephe Exp $
  */
 
 /*
@@ -40,19 +40,6 @@
  * ether_output() left on our output queue queue when it calls
  * if_start(), rewrite them for use by the real outgoing interface,
  * and ask it to send them.
- *
- *
- * XXX It's incorrect to assume that we must always kludge up
- * headers on the physical device's behalf: some devices support
- * VLAN tag insertion and extraction in firmware. For these cases,
- * one can change the behavior of the vlan interface by setting
- * the LINK0 flag on it (that is setting the vlan interface's LINK0
- * flag, _not_ the parent's LINK0 flag; we try to leave the parent
- * alone). If the interface has the LINK0 flag set, then it will
- * not modify the ethernet header on output, because the parent
- * can do that for itself. On input, the parent can call vlan_input_tag()
- * directly in order to supply us with an incoming mbuf and the vlan
- * tag value that goes with it.
  */
 
 #ifndef NVLAN
@@ -147,8 +134,7 @@ static void	vlan_init(void *);
 static void	vlan_start(struct ifnet *);
 static int	vlan_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
-static int	vlan_input(const struct ether_header *eh, struct mbuf *m);
-static int	vlan_input_tag(struct mbuf *m, uint16_t t);
+static int	vlan_input(struct mbuf *m, struct mbuf_chain *);
 
 static void	vlan_clrmulti(struct ifvlan *, struct ifnet *);
 static int	vlan_setmulti(struct ifvlan *, struct ifnet *);
@@ -265,7 +251,6 @@ vlan_modevent(module_t mod, int type, void *data)
 	case MOD_LOAD:
 		LIST_INIT(&ifv_list);
 		vlan_input_p = vlan_input;
-		vlan_input_tag_p = vlan_input_tag;
 		vlan_ifdetach_cookie =
 		EVENTHANDLER_REGISTER(ifnet_detach_event,
 				      vlan_ifdetach, NULL,
@@ -276,7 +261,6 @@ vlan_modevent(module_t mod, int type, void *data)
 	case MOD_UNLOAD:
 		if_clone_detach(&vlan_cloner);
 		vlan_input_p = NULL;
-		vlan_input_tag_p = NULL;
 		EVENTHANDLER_DEREGISTER(ifnet_detach_event,
 					vlan_ifdetach_cookie);
 		while (!LIST_EMPTY(&ifv_list))
@@ -457,93 +441,58 @@ vlan_start(struct ifnet *ifp)
 }
 
 static int
-vlan_input_tag(struct mbuf *m, uint16_t t)
+vlan_input(struct mbuf *m, struct mbuf_chain *chain)
 {
-	struct bpf_if *bif;
-	struct ifvlan *ifv;
+	struct ifvlan *ifv = NULL;
 	struct ifnet *rcvif;
+	struct vlan_trunk *vlantrunks;
+	struct vlan_entry *entry;
 
 	rcvif = m->m_pkthdr.rcvif;
-
 	ASSERT_SERIALIZED(rcvif->if_serializer);
+	KKASSERT(m->m_flags & M_VLANTAG);
 
-	/*
-	 * Fake up a header and send the packet to the physical interface's
-	 * bpf tap if active.
-	 */
-	if ((bif = rcvif->if_bpf) != NULL)
-		vlan_ether_ptap(bif, m, t);
-
-	for (ifv = LIST_FIRST(&ifv_list); ifv != NULL;
-	    ifv = LIST_NEXT(ifv, ifv_list)) {
-		if (rcvif == ifv->ifv_p && ifv->ifv_tag == t)
-			break;
-	}
-
-	if (ifv == NULL || (ifv->ifv_if.if_flags & IFF_UP) == 0) {
+	vlantrunks = rcvif->if_vlantrunks;
+	if (vlantrunks == NULL) {
+		rcvif->if_noproto++;
 		m_freem(m);
-		return -1;	/* So the parent can take note */
+		return -1;
 	}
+
+	crit_enter();
+	LIST_FOREACH(entry, &vlantrunks[mycpuid].vlan_list, ifv_link) {
+		if (entry->ifv->ifv_tag ==
+		    EVL_VLANOFTAG(m->m_pkthdr.ether_vlantag)) {
+			ifv = entry->ifv;
+			break;
+		}
+	}
+	crit_exit();
 
 	/*
-	 * Having found a valid vlan interface corresponding to
-	 * the given source interface and vlan tag, run the
-	 * the real packet through ether_input().
+	 * Packet is discarded if:
+	 * - no corresponding vlan(4) interface
+	 * - vlan(4) interface has not been completely set up yet,
+	 *   or is being destroyed (ifv->ifv_p != rcvif)
+	 * - vlan(4) interface is not brought up
 	 */
-	m->m_pkthdr.rcvif = &ifv->ifv_if;
-
-	ifv->ifv_if.if_ipackets++;
-	lwkt_serialize_exit(rcvif->if_serializer);
-	lwkt_serialize_enter(ifv->ifv_if.if_serializer);
-	ether_input(&ifv->ifv_if, m);
-	lwkt_serialize_exit(ifv->ifv_if.if_serializer);
-	lwkt_serialize_enter(rcvif->if_serializer);
-	return 0;
-}
-
-static int
-vlan_input(const struct ether_header *eh, struct mbuf *m)
-{
-	struct ifvlan *ifv;
-	struct ifnet *rcvif;
-	struct ether_header eh_copy;
-
-	rcvif = m->m_pkthdr.rcvif;
-	ASSERT_SERIALIZED(rcvif->if_serializer);
-
-	for (ifv = LIST_FIRST(&ifv_list); ifv != NULL;
-	    ifv = LIST_NEXT(ifv, ifv_list)) {
-		if (rcvif == ifv->ifv_p
-		    && (EVL_VLANOFTAG(ntohs(*mtod(m, u_int16_t *)))
-			== ifv->ifv_tag))
-			break;
-	}
-
-	if (ifv == NULL || (ifv->ifv_if.if_flags & IFF_UP) == 0) {
+	if (ifv == NULL || ifv->ifv_p != rcvif ||
+	    (ifv->ifv_if.if_flags & IFF_UP) == 0) {
 		rcvif->if_noproto++;
 		m_freem(m);
 		return -1;	/* so ether_input can take note */
 	}
 
 	/*
-	 * Having found a valid vlan interface corresponding to
-	 * the given source interface and vlan tag, remove the
-	 * remaining encapsulation (ether_vlan_header minus the ether_header
-	 * that had already been removed) and run the real packet
-	 * through ether_input() a second time (it had better be
-	 * reentrant!).
+	 * Clear M_VLANTAG, before the packet is handed to
+	 * vlan(4) interface
 	 */
-	eh_copy = *eh;
-	eh_copy.ether_type = mtod(m, u_int16_t *)[1];	/* evl_proto */
-	m->m_pkthdr.rcvif = &ifv->ifv_if;
-	m_adj(m, EVL_ENCAPLEN);
-	M_PREPEND(m, ETHER_HDR_LEN, MB_WAIT); 
-	*(struct ether_header *)mtod(m, void *) = eh_copy;
+	m->m_flags &= ~M_VLANTAG;
 
 	ifv->ifv_if.if_ipackets++;
 	lwkt_serialize_exit(rcvif->if_serializer);
 	lwkt_serialize_enter(ifv->ifv_if.if_serializer);
-	ether_input(&ifv->ifv_if, m);
+	ether_input_chain(&ifv->ifv_if, m, chain);
 	lwkt_serialize_exit(ifv->ifv_if.if_serializer);
 	lwkt_serialize_enter(rcvif->if_serializer);
 	return 0;

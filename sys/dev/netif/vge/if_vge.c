@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vge/if_vge.c,v 1.24 2006/02/14 12:44:56 glebius Exp $
- * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.8 2008/05/14 11:59:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.9 2008/05/16 13:19:12 sephe Exp $
  */
 
 /*
@@ -1386,10 +1386,12 @@ vge_rxeof(struct vge_softc *sc, int count)
 			}
 		}
 
-		if (rxstat & VGE_RDSTS_VTAG)
-			VLAN_INPUT_TAG(m, ntohs((rxctl & VGE_RDCTL_VLANID)));
-		else
-			ifp->if_input(ifp, m);
+		if (rxstat & VGE_RDSTS_VTAG) {
+			m->m_flags |= M_VLANTAG;
+			m->m_pkthdr.ether_vlantag =
+				ntohs((rxctl & VGE_RDCTL_VLANID));
+		}
+		ifp->if_input(ifp, m);
 
 		lim++;
 		if (lim == VGE_RX_DESC_CNT)

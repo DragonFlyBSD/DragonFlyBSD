@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan_var.h,v 1.5.2.3 2001/12/04 20:01:54 brooks Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan_ether.h,v 1.1 2008/03/10 11:44:57 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan_ether.h,v 1.2 2008/05/16 13:19:12 sephe Exp $
  */
 
 #ifndef _NET_IF_VLAN_ETHER_H_
@@ -41,6 +41,7 @@ struct mbuf;
 
 void	vlan_start_dispatch(struct netmsg *);
 void	vlan_ether_ptap(struct bpf_if *, struct mbuf *, uint16_t);
+void	vlan_ether_decap(struct mbuf **);
 
 #endif	/* _KERNEL */
 

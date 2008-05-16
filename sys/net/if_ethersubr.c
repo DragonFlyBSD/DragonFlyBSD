@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.59 2008/05/14 11:59:23 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.60 2008/05/16 13:19:12 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -65,6 +65,7 @@
 #include <net/ifq_var.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #if defined(INET) || defined(INET6)
 #include <netinet/in.h>
@@ -117,8 +118,7 @@ int	(*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 void	(*ng_ether_attach_p)(struct ifnet *ifp);
 void	(*ng_ether_detach_p)(struct ifnet *ifp);
 
-int	(*vlan_input_p)(const struct ether_header *eh, struct mbuf *m);
-int	(*vlan_input_tag_p)(struct mbuf *m, uint16_t t);
+int	(*vlan_input_p)(struct mbuf *, struct mbuf_chain *);
 
 static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 			struct rtentry *);
@@ -555,6 +555,17 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 	}
 	eh = mtod(m, struct ether_header *);
 
+	if (ntohs(eh->ether_type) == ETHERTYPE_VLAN &&
+	    (m->m_flags & M_VLANTAG) == 0) {
+		/*
+		 * Extract vlan tag if hardware does not do it for us
+		 */
+		vlan_ether_decap(&m);
+		if (m == NULL)
+			return;
+		eh = mtod(m, struct ether_header *);
+	}
+
 	m->m_pkthdr.rcvif = ifp;
 
 	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
@@ -566,7 +577,7 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		ifp->if_imcasts++;
 	}
 
-	BPF_MTAP(ifp, m);
+	ETHER_BPF_MTAP(ifp, m);
 
 	ifp->if_ibytes += m->m_pkthdr.len;
 
@@ -700,9 +711,30 @@ post_stats:
 			return;
 		}
 	}
-	eh = NULL; /* catch any further usage */
 
 	ether_type = ntohs(save_eh.ether_type);
+
+	if (m->m_flags & M_VLANTAG) {
+		if (ether_type == ETHERTYPE_VLAN) {
+			/*
+			 * To prevent possible dangerous recursion,
+			 * we don't do vlan-in-vlan
+			 */
+			m->m_pkthdr.rcvif->if_noproto++;
+			m_freem(m);
+		}
+
+		if (vlan_input_p != NULL) {
+			ether_restore_header(&m, eh, &save_eh);
+			if (m != NULL)
+				vlan_input_p(m, chain);
+		} else {
+			m->m_pkthdr.rcvif->if_noproto++;
+			m_freem(m);
+		}
+		return;
+	}
+	KKASSERT(ether_type != ETHERTYPE_VLAN);
 
 	switch (ether_type) {
 #ifdef INET
@@ -751,15 +783,6 @@ post_stats:
 		isr = NETISR_AARP;
 		break;
 #endif
-
-	case ETHERTYPE_VLAN:
-		if (vlan_input_p != NULL) {
-			(*vlan_input_p)(&save_eh, m);
-		} else {
-			m->m_pkthdr.rcvif->if_noproto++;
-			m_freem(m);
-		}
-		return;
 
 	default:
 #ifdef IPX

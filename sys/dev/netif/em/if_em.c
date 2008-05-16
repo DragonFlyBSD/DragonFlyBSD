@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.71 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.72 2008/05/16 13:19:11 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -3114,17 +3114,16 @@ em_rxeof(struct adapter *adapter, int count)
 				em_receive_checksum(adapter, current_desc,
 						    adapter->fmp);
 				if (current_desc->status & E1000_RXD_STAT_VP) {
-					VLAN_INPUT_TAG(adapter->fmp,
-						       (current_desc->special & 
-							E1000_RXD_SPC_VLAN_MASK));
-				} else {
-#ifdef ETHER_INPUT_CHAIN
-					ether_input_chain(ifp, adapter->fmp,
-							  chain);
-#else
-					ifp->if_input(ifp, adapter->fmp);
-#endif
+					adapter->fmp->m_flags |= M_VLANTAG;
+					adapter->fmp->m_pkthdr.ether_vlantag =
+						(current_desc->special &
+						 E1000_RXD_SPC_VLAN_MASK);
 				}
+#ifdef ETHER_INPUT_CHAIN
+				ether_input_chain(ifp, adapter->fmp, chain);
+#else
+				ifp->if_input(ifp, adapter->fmp);
+#endif
 				adapter->fmp = NULL;
 				adapter->lmp = NULL;
 			}

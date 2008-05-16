@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.51 2008/05/14 11:59:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.52 2008/05/16 13:19:12 sephe Exp $
  */
 
 /*
@@ -1702,14 +1702,11 @@ ti_rxeof(struct ti_softc *sc)
 			m->m_pkthdr.csum_data = cur_rx->ti_tcp_udp_cksum;
 		}
 
-		/*
-		 * If we received a packet with a vlan tag, pass it
-		 * to vlan_input() instead of ether_input().
-		 */
-		if (have_tag)
-			VLAN_INPUT_TAG(m, vlan_tag);
-		else
-			ifp->if_input(ifp, m);
+		if (have_tag) {
+			m->m_flags |= M_VLANTAG;
+			m->m_pkthdr.ether_vlantag = vlan_tag;
+		}
+		ifp->if_input(ifp, m);
 	}
 
 	/* Only necessary on the Tigon 1. */

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.42 2008/05/14 11:59:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.43 2008/05/16 13:19:12 sephe Exp $
  */
 
 /*
@@ -1612,11 +1612,11 @@ re_rxeof(struct re_softc *sc)
 		}
 
 		if (rxvlan & RE_RDESC_VLANCTL_TAG) {
-			VLAN_INPUT_TAG(m,
-			   be16toh((rxvlan & RE_RDESC_VLANCTL_DATA)));
-		} else {
-			ifp->if_input(ifp, m);
+			m->m_flags |= M_VLANTAG;
+			m->m_pkthdr.ether_vlantag =
+				be16toh((rxvlan & RE_RDESC_VLANCTL_DATA));
 		}
+		ifp->if_input(ifp, m);
 	}
 
 	/* Flush the RX DMA ring */

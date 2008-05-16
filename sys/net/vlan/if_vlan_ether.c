@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan_ether.c,v 1.2 2008/03/10 11:44:57 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan_ether.c,v 1.3 2008/05/16 13:19:12 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -143,4 +143,29 @@ vlan_ether_ptap(struct bpf_if *bp, struct mbuf *m, uint16_t vlantag)
 
 	/* XXX assumes data was left intact */
 	M_PREPEND(m, ETHER_HDR_LEN, MB_WAIT);
+}
+
+void
+vlan_ether_decap(struct mbuf **m0)
+{
+	struct mbuf *m = *m0;
+	struct ether_vlan_header *evh;
+
+	KKASSERT((m->m_flags & M_VLANTAG) == 0);
+
+	if (m->m_len < sizeof(*evh)) {
+		/* Error in the caller */
+		m_freem(m);
+		*m0 = NULL;
+		return;
+	}
+	evh = mtod(m, struct ether_vlan_header *);
+
+	m->m_pkthdr.ether_vlantag = ntohs(evh->evl_tag);
+	m->m_flags |= M_VLANTAG;
+
+	bcopy((uint8_t *)evh, (uint8_t *)evh + EVL_ENCAPLEN,
+	      2 * ETHER_ADDR_LEN);
+	m_adj(m, EVL_ENCAPLEN);
+	*m0 = m;
 }

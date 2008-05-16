@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.47 2008/05/14 11:59:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.48 2008/05/16 13:19:12 sephe Exp $
  */
 
 /*
@@ -1287,10 +1287,12 @@ nge_rxeof(struct nge_softc *sc)
 		 * If we received a packet with a vlan tag, pass it
 		 * to vlan_input() instead of ether_input().
 		 */
-		if (extsts & NGE_RXEXTSTS_VLANPKT)
-			VLAN_INPUT_TAG(m, extsts & NGE_RXEXTSTS_VTCI);
-		else
-			ifp->if_input(ifp, m);
+		if (extsts & NGE_RXEXTSTS_VLANPKT) {
+			m->m_flags |= M_VLANTAG;
+			m->m_pkthdr.ether_vlantag =
+				(extsts & NGE_RXEXTSTS_VTCI);
+		}
+		ifp->if_input(ifp, m);
 	}
 
 	sc->nge_cdata.nge_rx_prod = i;

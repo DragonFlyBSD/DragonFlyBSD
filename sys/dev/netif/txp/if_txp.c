@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.48 2008/05/14 11:59:22 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.49 2008/05/16 13:19:12 sephe Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -724,10 +724,11 @@ txp_rx_reclaim(struct txp_softc *sc, struct txp_rx_ring *r)
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 
-		if (rxd->rx_stat & RX_STAT_VLAN)
-			VLAN_INPUT_TAG(m, htons(rxd->rx_vlan >> 16));
-		else
-			ifp->if_input(ifp, m);
+		if (rxd->rx_stat & RX_STAT_VLAN) {
+			m->m_flags |= M_VLANTAG;
+			m->m_pkthdr.ether_vlantag = htons(rxd->rx_vlan >> 16);
+		}
+		ifp->if_input(ifp, m);
 
 next:
 

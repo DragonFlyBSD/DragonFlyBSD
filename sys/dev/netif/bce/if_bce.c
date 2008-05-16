@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.4 2008/05/14 11:59:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.5 2008/05/16 13:19:11 sephe Exp $
  */
 
 /*
@@ -3925,10 +3925,12 @@ bce_rx_int_next_rx:
 			DBPRINT(sc, BCE_VERBOSE_RECV,
 				"%s(): Passing received frame up.\n", __func__);
 
-			if (status & L2_FHDR_STATUS_L2_VLAN_TAG)
-				VLAN_INPUT_TAG(m, l2fhdr->l2_fhdr_vlan_tag);
-			else
-				ifp->if_input(ifp, m);
+			if (status & L2_FHDR_STATUS_L2_VLAN_TAG) {
+				m->m_flags |= M_VLANTAG;
+				m->m_pkthdr.ether_vlantag =
+					l2fhdr->l2_fhdr_vlan_tag;
+			}
+			ifp->if_input(ifp, m);
 
 			DBRUNIF(1, sc->rx_mbuf_alloc--);
 		}

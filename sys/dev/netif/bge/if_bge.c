@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.91 2008/05/14 11:59:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.92 2008/05/16 13:19:11 sephe Exp $
  *
  */
 
@@ -2303,11 +2303,11 @@ bge_rxeof(struct bge_softc *sc)
 		 * to vlan_input() instead of ether_input().
 		 */
 		if (have_tag) {
-			VLAN_INPUT_TAG(m, vlan_tag);
+			m->m_flags |= M_VLANTAG;
+			m->m_pkthdr.ether_vlantag = vlan_tag;
 			have_tag = vlan_tag = 0;
-		} else {
-			ifp->if_input(ifp, m);
 		}
+		ifp->if_input(ifp, m);
 	}
 
 	if (stdcnt > 0) {
