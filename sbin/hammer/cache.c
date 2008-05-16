@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cache.c,v 1.4 2008/02/08 08:30:56 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cache.c,v 1.5 2008/05/16 18:39:03 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -46,7 +46,7 @@
 #include "hammer_util.h"
 
 static int CacheUse;
-static int CacheMax = 8 * 1024 * 1024;
+static int CacheMax = 16 * 1024 * 1024;
 static int NCache;
 static TAILQ_HEAD(, cache_info) CacheList = TAILQ_HEAD_INITIALIZER(CacheList);
 
@@ -90,6 +90,7 @@ hammer_cache_flush(void)
 			}
 			cache->refs = 1;
 			cache->delete = 1;
+			--count;
 
 			switch(cache->type) {
 			case ISVOLUME:
