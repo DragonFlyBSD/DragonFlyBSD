@@ -40,6 +40,7 @@
 #include "servconf.h"
 #include "key.h"
 #include "hostfile.h"
+#include "authfile.h"
 #include "auth.h"
 #ifdef GSSAPI
 #include "ssh-gss.h"
@@ -221,6 +222,7 @@ auth_rsa_key_allowed(struct passwd *pw, BIGNUM *client_n, Key **rkey)
 		char *cp;
 		char *key_options;
 		int keybits;
+		char *fp;
 
 		/* Skip leading whitespace, empty and comment lines. */
 		for (cp = line; *cp == ' ' || *cp == '\t'; cp++)
@@ -264,6 +266,19 @@ auth_rsa_key_allowed(struct passwd *pw, BIGNUM *client_n, Key **rkey)
 			logit("Warning: %s, line %lu: keysize mismatch: "
 			    "actual %d vs. announced %d.",
 			    file, linenum, BN_num_bits(key->rsa->n), bits);
+
+		if (blacklisted_key(key)) {
+			fp = key_fingerprint(key, SSH_FP_MD5, SSH_FP_HEX);
+			if (options.permit_blacklisted_keys)
+				logit("Public key %s blacklisted (see "
+				    "ssh-vulnkey(1)); continuing anyway", fp);
+			else
+				logit("Public key %s blacklisted (see "
+				    "ssh-vulnkey(1))", fp);
+			xfree(fp);
+			if (!options.permit_blacklisted_keys)
+				continue;
+		}
 
 		/* We have found the desired key. */
 		/*

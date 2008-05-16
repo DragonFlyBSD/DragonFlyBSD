@@ -42,6 +42,7 @@
 #include "compat.h"
 #include "key.h"
 #include "hostfile.h"
+#include "authfile.h"
 #include "auth.h"
 #include "pathnames.h"
 #include "uidswap.h"
@@ -269,8 +270,22 @@ user_key_allowed2(struct passwd *pw, Key *key, char *file)
 int
 user_key_allowed(struct passwd *pw, Key *key)
 {
+	char *fp;
 	int success;
 	char *file;
+
+	if (blacklisted_key(key)) {
+		fp = key_fingerprint(key, SSH_FP_MD5, SSH_FP_HEX);
+		if (options.permit_blacklisted_keys)
+			logit("Public key %s blacklisted (see "
+			    "ssh-vulnkey(1)); continuing anyway", fp);
+		else
+			logit("Public key %s blacklisted (see "
+			    "ssh-vulnkey(1))", fp);
+		xfree(fp);
+		if (!options.permit_blacklisted_keys)
+			return 0;
+	}
 
 	file = authorized_keys_file(pw);
 	success = user_key_allowed2(pw, key, file);

@@ -1,5 +1,5 @@
 #	$OpenBSD: sshd_config,v 1.77 2008/02/08 23:24:07 djm Exp $
-#	$DragonFly: src/crypto/openssh-5/sshd_config,v 1.2 2008/04/07 01:20:17 pavalos Exp $
+#	$DragonFly: src/crypto/openssh-5/sshd_config,v 1.3 2008/05/16 10:48:44 corecode Exp $
 
 # This is the sshd server system-wide configuration file.  See
 # sshd_config(5) for more information.
@@ -49,6 +49,7 @@ Protocol 2
 
 #RSAAuthentication yes
 #PubkeyAuthentication yes
+#PermitBlacklistedKeys no
 #AuthorizedKeysFile	.ssh/authorized_keys
 
 # For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
