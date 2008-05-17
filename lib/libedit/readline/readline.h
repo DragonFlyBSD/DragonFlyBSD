@@ -13,9 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -29,8 +26,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $NetBSD: readline.h,v 1.21 2007/08/12 07:41:51 christos Exp $
- * $DragonFly: src/lib/libedit/readline/readline.h,v 1.3 2007/10/27 22:27:16 pavalos Exp $
+ * $NetBSD: readline.h,v 1.23 2008/04/29 06:53:01 martin Exp $
+ * $DragonFly: src/lib/libedit/readline/readline.h,v 1.4 2008/05/17 22:48:04 pavalos Exp $
  */
 #ifndef _READLINE_H_
 #define _READLINE_H_
@@ -186,6 +183,7 @@ char 		*rl_filename_completion_function (const char *, int);
 int		 _rl_abort_internal(void);
 int		 _rl_qsort_string_compare(char **, char **);
 char 	       **rl_completion_matches(const char *, rl_compentry_func_t *);
+void		 rl_forced_update_display(void);
 
 /*
  * The following are not implemented

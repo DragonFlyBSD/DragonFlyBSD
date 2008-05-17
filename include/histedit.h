@@ -1,5 +1,5 @@
-/* $DragonFly: src/include/histedit.h,v 1.6 2007/10/27 22:27:16 pavalos Exp $ */
-/*	$NetBSD: histedit.h,v 1.32 2007/06/10 20:20:28 christos Exp $	*/
+/* $DragonFly: src/include/histedit.h,v 1.7 2008/05/17 22:48:04 pavalos Exp $ */
+/*	$NetBSD: histedit.h,v 1.34 2008/04/05 23:53:26 christos Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -132,8 +132,9 @@ unsigned char	_el_fn_complete(EditLine *, int);
 #define	EL_UNBUFFERED	15	/* , int);			*/
 #define	EL_PREP_TERM    16      /* , int);                      */
 #define	EL_GETTC	17	/* , const char *, ..., NULL);	*/
-#define	EL_GETFP	18	/* , int, FILE **)		*/
-#define	EL_SETFP	19	/* , int, FILE *)		*/
+#define	EL_GETFP	18	/* , int, FILE **);		*/
+#define	EL_SETFP	19	/* , int, FILE *);		*/
+#define EL_REFRESH	20	/* , void);			*/
 
 #define	EL_BUILTIN_GETCFN	(NULL)
 

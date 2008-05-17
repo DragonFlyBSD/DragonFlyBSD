@@ -11,9 +11,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. Neither the name of The NetBSD Foundation nor the names of its
-.\"    contributors may be used to endorse or promote products derived
-.\"    from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -27,10 +24,10 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $NetBSD: editline.3,v 1.55 2007/01/12 16:31:13 christos Exp $
-.\" $DragonFly: src/lib/libedit/editline.3,v 1.4 2007/05/05 00:27:39 pavalos Exp $
+.\" $NetBSD: editline.3,v 1.57 2008/04/30 13:10:51 martin Exp $
+.\" $DragonFly: src/lib/libedit/editline.3,v 1.5 2008/05/17 22:48:04 pavalos Exp $
 .\"
-.Dd January 12, 2007
+.Dd April 5, 2008
 .Os
 .Dt EDITLINE 3
 .Sh NAME
@@ -221,6 +218,8 @@ are supported, along with the required argument list:
 Define prompt printing function as
 .Fa f ,
 which is to return a string that contains the prompt.
+.It Dv EL_REFRESH
+Re-display the current line on the next terminal line.
 .It Dv EL_RPROMPT , Fa "char *(*f)(EditLine *)"
 Define right side prompt printing function as
 .Fa f ,

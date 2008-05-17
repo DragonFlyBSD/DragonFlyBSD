@@ -13,9 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -29,8 +26,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $NetBSD: readline.c,v 1.72 2007/08/12 07:41:51 christos Exp $
- * $DragonFly: src/lib/libedit/readline.c,v 1.3 2007/10/27 22:27:16 pavalos Exp $
+ * $NetBSD: readline.c,v 1.75 2008/04/29 06:53:01 martin Exp $
+ * $DragonFly: src/lib/libedit/readline.c,v 1.4 2008/05/17 22:48:04 pavalos Exp $
  */
 
 #include "config.h"
@@ -1913,6 +1910,12 @@ rl_filename_completion_function (const char *text, int state)
 	return fn_filename_completion_function(text, state);
 }
 
+void
+rl_forced_update_display(void)
+{
+	el_set(e, EL_REFRESH);
+}
+
 int
 _rl_abort_internal(void)
 {
@@ -1965,4 +1968,3 @@ rl_bind_key_in_map(int key, Function *fun, Keymap k)
 {
 	return 0;
 }
-

@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * @(#)el.c     8.2 (Berkeley) 1/3/94
- * $NetBSD: el.c,v 1.44 2006/12/15 22:13:33 christos Exp $
- * $DragonFly: src/lib/libedit/el.c,v 1.6 2007/05/05 00:27:39 pavalos Exp $
+ * $NetBSD: el.c,v 1.45 2008/04/05 15:53:28 christos Exp $
+ * $DragonFly: src/lib/libedit/el.c,v 1.7 2008/05/17 22:48:04 pavalos Exp $
  */
 
 #include "config.h"
@@ -302,6 +302,12 @@ el_set(EditLine *el, int op, ...)
 		}
 		break;
 	}
+
+	case EL_REFRESH:
+		re_clear_display(el);
+		re_refresh(el);
+		term__flush();
+		break;
 
 	default:
 		rv = -1;

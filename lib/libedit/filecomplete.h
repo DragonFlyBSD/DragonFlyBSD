@@ -13,9 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -29,8 +26,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $NetBSD: filecomplete.h,v 1.5 2006/08/21 12:45:30 christos Exp $
- * $DragonFly: src/lib/libedit/filecomplete.h,v 1.2 2007/05/05 00:27:39 pavalos Exp $
+ * $NetBSD: filecomplete.h,v 1.6 2008/04/29 06:53:01 martin Exp $
+ * $DragonFly: src/lib/libedit/filecomplete.h,v 1.3 2008/05/17 22:48:04 pavalos Exp $
  */
 #ifndef _FILECOMPLETE_H_
 #define _FILECOMPLETE_H_
