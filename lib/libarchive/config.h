@@ -1,6 +1,12 @@
-/* $DragonFly: src/lib/libarchive/config.h,v 1.10 2007/09/24 02:43:45 pavalos Exp $ */
+/* $DragonFly: src/lib/libarchive/config.h,v 1.11 2008/05/17 21:51:47 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Version number of bsdcpio */
+/* #undef BSDCPIO_VERSION_STRING */
+
+/* Version number of bsdtar */
+/* #undef BSDTAR_VERSION_STRING */
 
 /* Define to 1 if you have the `acl_create_entry' function. */
 /* #undef HAVE_ACL_CREATE_ENTRY */
@@ -37,6 +43,9 @@
 
 /* Define to 1 if you have the `chflags' function. */
 #define HAVE_CHFLAGS 1
+
+/* Define to 1 if you have the `chown' function. */
+#define HAVE_CHOWN 1
 
 /* Define to 1 if you have the declaration of `INT64_MAX', and to 0 if you
    don't. */
@@ -128,6 +137,9 @@
 /* Define to 1 if you have the `futimes' function. */
 #define HAVE_FUTIMES 1
 
+/* Define to 1 if you have the `geteuid' function. */
+#define HAVE_GETEUID 1
+
 /* Define to 1 if you have the `getopt_long' function. */
 #define HAVE_GETOPT_LONG 1
 
@@ -216,6 +228,9 @@
 /* Define to 1 if you have the `mkfifo' function. */
 #define HAVE_MKFIFO 1
 
+/* Define to 1 if you have the `mknod' function. */
+#define HAVE_MKNOD 1
+
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 /* #undef HAVE_NDIR_H */
 
@@ -236,6 +251,9 @@
 
 /* Define to 1 if you have the `select' function. */
 #define HAVE_SELECT 1
+
+/* Define to 1 if you have the `setenv' function. */
+#define HAVE_SETENV 1
 
 /* Define to 1 if you have the `setlocale' function. */
 #define HAVE_SETLOCALE 1
@@ -321,6 +339,9 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
 
+/* Define to 1 if you have the <sys/utime.h> header file. */
+/* #undef HAVE_SYS_UTIME_H */
+
 /* Define to 1 if you have <sys/wait.h> that is POSIX.1 compatible. */
 #define HAVE_SYS_WAIT_H 1
 
@@ -330,11 +351,17 @@
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1
 
+/* Define to 1 if you have the `tzset' function. */
+#define HAVE_TZSET 1
+
 /* Define to 1 if the system has the type `uintmax_t'. */
 #define HAVE_UINTMAX_T 1
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
+
+/* Define to 1 if you have the `unsetenv' function. */
+#define HAVE_UNSETENV 1
 
 /* Define to 1 if the system has the type `unsigned long long'. */
 #define HAVE_UNSIGNED_LONG_LONG 1
@@ -371,6 +398,12 @@
 
 /* Define to 1 if you have the <zlib.h> header file. */
 #define HAVE_ZLIB_H 1
+
+/* Version number of libarchive as a single integer */
+/* #undef LIBARCHIVE_VERSION */
+
+/* Version number of libarchive */
+/* #undef LIBARCHIVE_VERSION_STRING */
 
 /* Define to 1 if `lstat' dereferences a symlink specified with a trailing
    slash. */
