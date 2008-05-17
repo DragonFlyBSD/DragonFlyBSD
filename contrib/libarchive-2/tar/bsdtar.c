@@ -24,7 +24,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.77 2007/09/09 00:07:18 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.79 2008/01/22 07:23:44 kientzle Exp $");
 
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
@@ -391,19 +391,9 @@ main(int argc, char **argv)
 		case 'L': /* BSD convention */
 			bsdtar->symlink_mode = 'L';
 			break;
-	        case 'l': /* SUSv2 and GNU conflict badly here */
-			if (getenv("POSIXLY_CORRECT") != NULL) {
-				/* User has asked for POSIX/SUS behavior. */
-				bsdtar->option_warn_links = 1;
-			} else {
-				fprintf(stderr,
-"Error: -l has different behaviors in different tar programs.\n");
-				fprintf(stderr,
-"  For the GNU behavior, use --one-file-system instead.\n");
-				fprintf(stderr,
-"  For the POSIX behavior, use --check-links instead.\n");
-				usage(bsdtar);
-			}
+	        case 'l': /* SUSv2 and GNU tar beginning with 1.16 */
+			/* GNU tar 1.13  used -l for --one-file-system */
+			bsdtar->option_warn_links = 1;
 			break;
 		case 'm': /* SUSv2 */
 			bsdtar->extract_flags &= ~ARCHIVE_EXTRACT_TIME;

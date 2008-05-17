@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_cpio.c,v 1.24 2007/05/29 01:00:19 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_cpio.c,v 1.26 2008/01/15 04:56:48 kientzle Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -321,10 +321,12 @@ static int
 is_hex(const char *p, size_t len)
 {
 	while (len-- > 0) {
-		if (*p < '0' || (*p > '9' && *p < 'a') || *p > 'f') {
+		if ((*p >= '0' && *p <= '9')
+		    || (*p >= 'a' && *p <= 'f')
+		    || (*p >= 'A' && *p <= 'F'))
+			++p;
+		else
 			return (0);
-		}
-	        ++p;
 	}
 	return (1);
 }

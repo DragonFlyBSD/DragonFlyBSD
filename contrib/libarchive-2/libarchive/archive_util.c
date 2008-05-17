@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_util.c,v 1.15 2007/07/06 15:36:38 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_util.c,v 1.16 2007/12/30 04:58:21 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
