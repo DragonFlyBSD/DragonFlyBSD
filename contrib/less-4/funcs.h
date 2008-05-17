@@ -30,6 +30,8 @@
 	public void backspace ();
 	public void putbs ();
 	public char WIN32getch ();
+	public void WIN32setcolors ();
+	public void WIN32textout ();
 	public void match_brac ();
 	public void ch_ungetchar ();
 	public void end_logfile ();
