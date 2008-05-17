@@ -32,7 +32,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read.c,v 1.35 2007/05/29 01:00:18 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read.c,v 1.37 2008/01/03 17:54:26 des Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -740,4 +740,15 @@ __archive_read_register_compression(struct archive_read *a,
 
 	__archive_errx(1, "Not enough slots for compression registration");
 	return (NULL); /* Never actually executed. */
+}
+
+/* used internally to simplify read-ahead */
+const void *
+__archive_read_ahead(struct archive_read *a, size_t len)
+{
+	const void *h;
+
+	if ((a->decompressor->read_ahead)(a, &h, len) < (ssize_t)len)
+		return (NULL);
+	return (h);
 }

@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_platform.h,v 1.27 2007/05/29 01:00:18 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive_platform.h,v 1.29 2008/02/19 06:06:13 kientzle Exp $
  */
 
 /*
@@ -36,7 +36,10 @@
 #ifndef ARCHIVE_PLATFORM_H_INCLUDED
 #define	ARCHIVE_PLATFORM_H_INCLUDED
 
-#if defined(PLATFORM_CONFIG_H)
+#ifdef _WIN32
+#include "config_windows.h"
+#include "archive_windows.h"
+#elif defined(PLATFORM_CONFIG_H)
 /* Use hand-built config.h in environments that need it. */
 #include PLATFORM_CONFIG_H
 #elif defined(HAVE_CONFIG_H)

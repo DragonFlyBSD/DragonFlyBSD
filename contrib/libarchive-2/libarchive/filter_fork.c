@@ -25,7 +25,7 @@
 
 #include "archive_platform.h"
 
-__FBSDID("$FreeBSD: src/lib/libarchive/filter_fork.c,v 1.1 2007/05/29 01:00:20 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/filter_fork.c,v 1.2 2007/12/30 04:58:22 kientzle Exp $");
 
 #if defined(HAVE_POLL)
 #  if defined(HAVE_POLL_H)

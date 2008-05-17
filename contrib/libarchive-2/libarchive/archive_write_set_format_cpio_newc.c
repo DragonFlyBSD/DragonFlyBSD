@@ -25,7 +25,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_cpio_newc.c,v 1.2 2007/10/12 04:11:31 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_cpio_newc.c,v 1.3 2008/01/23 05:43:25 kientzle Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -176,9 +176,15 @@ archive_write_newc_header(struct archive_write *a, struct archive_entry *entry)
 
 	cpio->entry_bytes_remaining = archive_entry_size(entry);
 	cpio->padding = 3 & (-cpio->entry_bytes_remaining);
+
 	/* Write the symlink now. */
-	if (p != NULL  &&  *p != '\0')
+	if (p != NULL  &&  *p != '\0') {
 		ret = (a->compressor.write)(a, p, strlen(p));
+		if (ret != ARCHIVE_OK)
+			return (ARCHIVE_FATAL);
+		pad = 0x3 & -strlen(p);
+		ret = (a->compressor.write)(a, "\0\0\0", pad);
+	}
 
 	return (ret);
 }
