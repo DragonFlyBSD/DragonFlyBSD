@@ -58,6 +58,7 @@ __RCSID("$NetBSD: fetch.c,v 1.185 2008/04/28 20:24:13 martin Exp $");
 #include <netdb.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <libutil.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

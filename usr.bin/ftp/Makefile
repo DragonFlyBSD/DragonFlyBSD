@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/ftp/Makefile,v 1.11.2.1 2000/05/16 04:25:19 cpiazza Exp $
-# $DragonFly: src/usr.bin/ftp/Makefile,v 1.4 2006/11/08 21:54:52 pavalos Exp $
+# $DragonFly: src/usr.bin/ftp/Makefile,v 1.5 2008/05/17 22:01:12 pavalos Exp $
 #	$NetBSD: Makefile,v 1.15 1997/10/18 15:31:20 lukem Exp $
 #	from: @(#)Makefile	8.2 (Berkeley) 4/3/94
 
@@ -14,9 +14,7 @@ PROG=	ftp
 SRCS=	cmds.c cmdtab.c complete.c domacro.c fetch.c ftp.c main.c \
 	progressbar.c ruserpass.c util.c
 
-SRCS+=	cmds.c.patch fetch.c.patch ftp_var.h.patch util.c.patch
-
-CFLAGS+=-DINET6 -I${.OBJDIR} -I- -I${CONTRIBDIR} -I${.CURDIR}/../../lib/libc/stdtime
+CFLAGS+=-DINET6 -I${.OBJDIR} -I${CONTRIBDIR} -I${.CURDIR}/../../lib/libc/stdtime
 LDADD+=	-ledit -ltermcap -lutil
 DPADD+=	${LIBEDIT} ${LIBTERMCAP} ${LIBUTIL}
 

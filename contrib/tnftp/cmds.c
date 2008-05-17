@@ -116,6 +116,7 @@ __RCSID("$NetBSD: cmds.c,v 1.125 2008/05/10 00:05:31 skd Exp $");
 #include <netdb.h>
 #include <paths.h>
 #include <stdio.h>
+#include <libutil.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
