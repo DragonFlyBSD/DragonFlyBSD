@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.116 2008/04/01 18:06:34 nth Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.117 2008/05/17 22:04:07 nth Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -474,7 +474,6 @@ struct proc *zpfind (pid_t);	/* Find zombie process by id. */
 struct vm_zone;
 struct globaldata;
 struct lwp_params;
-extern struct vm_zone *proc_zone;
 extern struct vm_zone *lwp_zone;
 
 int	enterpgrp (struct proc *p, pid_t pgid, int mksess);
