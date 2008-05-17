@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.27 2007/11/18 13:00:28 sephe Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.28 2008/05/17 18:20:32 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -41,6 +41,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/jail.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
@@ -506,11 +507,17 @@ rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
 	int error;
+	int flag;
+
+	flag = NULL_CRED_OKAY;
+
+	if( jailed(ai->p_ucred) && jail_allow_raw_sockets )
+		flag = flag | PRISON_ROOT;
 
 	inp = so->so_pcb;
 	if (inp)
 		panic("rip_attach");
-	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
+	if ((error = suser_cred(ai->p_ucred, flag)) != 0)
 		return error;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);

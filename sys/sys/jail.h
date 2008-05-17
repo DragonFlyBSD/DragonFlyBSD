@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.11 2007/02/01 10:33:26 corecode Exp $
+ * $DragonFly: src/sys/sys/jail.h,v 1.12 2008/05/17 18:20:31 dillon Exp $
  *
  */
 
@@ -107,6 +107,7 @@ extern int	jail_set_hostname_allowed;
 extern int	jail_socket_unixiproute_only;
 extern int	jail_sysvipc_allowed;
 extern int	jail_chflags_allowed;
+extern int	jail_allow_raw_sockets;
 
 void	prison_hold(struct prison *);
 void	prison_free(struct prison *);

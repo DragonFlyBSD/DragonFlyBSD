@@ -36,7 +36,7 @@
 
 /*
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.18 2007/02/16 23:41:02 victor Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.19 2008/05/17 18:20:33 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -86,6 +86,11 @@ int    jail_chflags_allowed = 0;
 SYSCTL_INT(_jail, OID_AUTO, chflags_allowed, CTLFLAG_RW,
     &jail_chflags_allowed, 0,
     "Process in jail can set chflags(1)");
+
+int    jail_allow_raw_sockets = 0;
+SYSCTL_INT(_jail, OID_AUTO, allow_raw_sockets, CTLFLAG_RW,
+    &jail_allow_raw_sockets, 0,
+    "Process in jail can create raw sockets");
 
 int	lastprid = 0;
 int	prisoncount = 0;
