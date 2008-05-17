@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.25 2007/04/22 01:13:14 dillon Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.26 2008/05/17 20:33:36 dillon Exp $
  */
 
 /*
@@ -73,6 +73,7 @@
 #include <sys/proc.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/jail.h>
 #include <sys/protosw.h>
 #include <sys/socketvar.h>
 #include <sys/errno.h>
@@ -545,11 +546,17 @@ rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
 	int error;
+	int flag;
+
+	if (jailed(ai->p_ucred) && jail_allow_raw_sockets)
+		flag = NULL_CRED_OKAY | PRISON_ROOT;
+	else
+		flag = NULL_CRED_OKAY;
 
 	inp = so->so_pcb;
 	if (inp)
 		panic("rip6_attach");
-	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
+	if ((error = suser_cred(ai->p_ucred, flag)) != 0)
 		return error;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);

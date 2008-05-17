@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.28 2008/05/17 18:20:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.29 2008/05/17 20:33:35 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -509,10 +509,10 @@ rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	int error;
 	int flag;
 
-	flag = NULL_CRED_OKAY;
-
-	if( jailed(ai->p_ucred) && jail_allow_raw_sockets )
-		flag = flag | PRISON_ROOT;
+	if (jailed(ai->p_ucred) && jail_allow_raw_sockets)
+		flag = NULL_CRED_OKAY | PRISON_ROOT;
+	else
+		flag = NULL_CRED_OKAY;
 
 	inp = so->so_pcb;
 	if (inp)
