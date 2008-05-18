@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.34 2008/05/06 00:13:54 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.35 2008/05/18 01:35:40 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -223,6 +223,10 @@ single_block_read:
 
 	/*
 	 * If we have been doing sequential I/O, then do some read-ahead.
+	 *
+	 * Only mess with buffers which we can immediately lock.  HAMMER
+	 * will do device-readahead irrespective of what the blocks
+	 * represent.
 	 */
 	rbp = NULL;
 	if (!error &&
@@ -234,6 +238,12 @@ single_block_read:
 		int ntoread;
 		int burstbytes;
 
+		if ((rbp = findblk(vp, loffset)) != NULL) {
+			if (BUF_LOCK(rbp, LK_EXCLUSIVE | LK_NOWAIT)) {
+				goto no_read_ahead;
+			}
+			BUF_UNLOCK(rbp);
+		}
 		rbp = getblk(vp, loffset, size, 0, 0);
 		if ((rbp->b_flags & B_CACHE)) {
 			bqrelse(rbp);
