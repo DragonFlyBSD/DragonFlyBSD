@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.9 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.10 2008/05/18 07:47:14 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -2132,6 +2132,7 @@ et_txeof(struct et_softc *sc)
 			bus_dmamap_unload(sc->sc_mbuf_dtag, tb->tb_dmap);
 			m_freem(tb->tb_mbuf);
 			tb->tb_mbuf = NULL;
+			ifp->if_opackets++;
 		}
 
 		if (++tbd->tbd_start_index == ET_TX_NDESC) {
