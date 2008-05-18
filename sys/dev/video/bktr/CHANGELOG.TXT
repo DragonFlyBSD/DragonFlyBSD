@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/CHANGELOG.TXT,v 1.22 2006/08/04 07:56:32 yar Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/CHANGELOG.TXT,v 1.5 2007/10/03 19:27:08 swildner Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/CHANGELOG.TXT,v 1.6 2008/05/18 03:02:53 pavalos Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -286,7 +286,7 @@
                     Fix row=0/columns=0 bug. From Randal Hopper<aa8vb@ipass.net>
                     Add option to block the reset of the MSP34xx audio chip by
                     adding options BKTR_NO_MSP_RESET to the kernel config file.
-                    This is usefull if you run another operating system
+                    This is useful if you run another operating system
                     first to initialise the audio chip, then do a soft reboot.
                     Added for Yuri Gindin <yuri@xpert.com>
 

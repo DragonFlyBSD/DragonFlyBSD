@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.h,v 1.6.2.1 2000/05/07 18:16:49 n_hibma Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.9 2007/11/28 22:11:02 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.10 2008/05/18 03:02:53 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_PERIPH_H
@@ -83,7 +83,7 @@ typedef enum {
 	CAM_PERIPH_BIO
 } cam_periph_type;
 
-/* Generically usefull offsets into the peripheral private area */
+/* Generically useful offsets into the peripheral private area */
 #define ppriv_ptr0 periph_priv.entries[0].ptr
 #define ppriv_ptr1 periph_priv.entries[1].ptr
 #define ppriv_field0 periph_priv.entries[0].field

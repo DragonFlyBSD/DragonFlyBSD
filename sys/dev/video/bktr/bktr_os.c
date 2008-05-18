@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.54 2007/02/23 12:18:34 piso Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.20 2007/11/13 19:43:32 swildner Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.21 2008/05/18 03:02:53 pavalos Exp $
  */
 
 /*
@@ -309,7 +309,7 @@ bktr_attach( device_t dev )
 
 #if defined( BKTR_SIS_VIA_MODE )
 	if (bootverbose) kprintf("Using SiS/VIA chipset compatibilty mode\n");
-        fun = fun | 4;	/* Enable SiS/VIA compatibility mode (usefull for
+        fun = fun | 4;	/* Enable SiS/VIA compatibility mode (useful for
                            OPTi chipset motherboards too */
 #endif
 	pci_write_config(dev, 0x40, fun, 2);

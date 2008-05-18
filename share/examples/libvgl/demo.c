@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/share/examples/libvgl/demo.c,v 1.4 1999/12/14 08:47:42 billf Exp $
- * $DragonFly: src/share/examples/libvgl/demo.c,v 1.3 2007/08/19 11:39:11 swildner Exp $
+ * $DragonFly: src/share/examples/libvgl/demo.c,v 1.4 2008/05/18 03:02:53 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -71,7 +71,7 @@ main(int argc, char **argv)
   VGLEllipse(VGLDisplay, 256, 0, 256, 256, 63);
   VGLEllipse(VGLDisplay, 0, 256, 256, 256, 0);
 
-  // some text is also usefull
+  // some text is also useful
   VGLBitmapString(VGLDisplay, 100,100,
     "This is text", 63, 0, 0, VGL_DIR_RIGHT);
   sleep(2);

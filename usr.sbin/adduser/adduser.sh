@@ -25,7 +25,7 @@
 #       Email: Mike Makonnen <mtm@FreeBSD.Org>
 #
 # $FreeBSD: src/usr.sbin/adduser/adduser.sh,v 1.31 2007/10/20 00:45:31 mtm Exp $
-# $DragonFly: src/usr.sbin/adduser/adduser.sh,v 1.2 2007/12/28 16:37:10 matthias Exp $
+# $DragonFly: src/usr.sbin/adduser/adduser.sh,v 1.3 2008/05/18 03:02:53 pavalos Exp $
 #
 
 # err msg
@@ -853,7 +853,7 @@ defaultgroups=
 defaultshell="${DEFAULTSHELL}"
 
 # Make sure the user running this program is root. This isn't a security
-# measure as much as it is a usefull method of reminding the user to
+# measure as much as it is a useful method of reminding the user to
 # 'su -' before he/she wastes time entering data that won't be saved.
 #
 procowner=${procowner:-`/usr/bin/id -u`}

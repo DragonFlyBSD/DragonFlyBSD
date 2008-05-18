@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.20 2008/03/01 22:03:13 swildner Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.21 2008/05/18 03:02:53 pavalos Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -4879,7 +4879,7 @@ static void ncr_getsync(ncb_p np, u_char sfac, u_char *fakp, u_char *scntl3p)
 	*/
 	fak = (kpc - 1) / div_10M[div] + 1;
 
-#if 0	/* You can #if 1 if you think this optimization is usefull */
+#if 0	/* You can #if 1 if you think this optimization is useful */
 
 	per = (fak * div_10M[div]) / clk;
 

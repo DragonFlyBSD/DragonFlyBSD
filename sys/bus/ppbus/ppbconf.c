@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbconf.c,v 1.17.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.11 2006/12/22 23:12:17 swildner Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.12 2008/05/18 03:02:53 pavalos Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -485,7 +485,7 @@ ppb_request_bus(device_t bus, device_t dev, int how)
 
 			/* restore the context of the device
 			 * The first time, ctx.valid is certainly false
-			 * then do not change anything. This is usefull for
+			 * then do not change anything. This is useful for
 			 * drivers that do not set there operating mode 
 			 * during attachement
 			 */

@@ -6,7 +6,7 @@
 # Date:	Fr  22 Mai 1998 14:18:40 CEST
 #
 # $FreeBSD: src/share/examples/isdn/contrib/convert.sh,v 1.1.2.1 2001/08/10 14:59:47 obrien Exp $
-# $DragonFly: src/share/examples/isdn/contrib/convert.sh,v 1.2 2003/06/17 04:36:57 dillon Exp $
+# $DragonFly: src/share/examples/isdn/contrib/convert.sh,v 1.3 2008/05/18 03:02:53 pavalos Exp $
 
 CAT=/bin/cat
 RM=/bin/rm
@@ -79,7 +79,7 @@ if [ $iF -eq 1 -a $oF -eq 1 -a $mF -eq 1 ]
 then
 	echo "... and sending it via email to $mailto ..."
 	$UUENCODE $outfilename.wav message.wav | $MAIL -s"new message $outfilename" $mailto && $RM $outfilename.wav
-	# only usefull when sending over the internet
+	# only useful when sending over the internet
 	#$GZIP -c $outfilename.wav | $UUENCODE message.zip | $MAIL -s"Nachricht vom ISDN Anrufbeantworter" $mailto && $RM $outfilename.wav
 fi
 

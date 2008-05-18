@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/comstats.h,v 1.5 1999/08/28 00:44:09 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/comstats.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/comstats.h,v 1.4 2008/05/18 03:02:53 pavalos Exp $
  */
 
 #ifndef	_COMSTATS_H_
@@ -83,7 +83,7 @@ typedef struct {
 
 
 /*
- *	Board stats structure. Returns usefull info about the board.
+ *	Board stats structure. Returns useful info about the board.
  */
 
 #define	COM_MAXPANELS	8
