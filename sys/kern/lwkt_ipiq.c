@@ -31,15 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.26 2008/05/01 09:37:48 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.27 2008/05/18 20:57:56 nth Exp $
  */
 
 /*
  * This module implements IPI message queueing and the MI portion of IPI
  * message processing.
  */
-
-#ifdef _KERNEL
 
 #include "opt_ddb.h"
 
@@ -71,26 +69,6 @@
 #include <machine/smp.h>
 #include <machine/atomic.h>
 
-#else
-
-#include <sys/stdint.h>
-#include <libcaps/thread.h>
-#include <sys/thread.h>
-#include <sys/msgport.h>
-#include <sys/errno.h>
-#include <libcaps/globaldata.h>
-#include <machine/cpufunc.h>
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <machine/lock.h>
-#include <machine/cpu.h>
-#include <machine/atomic.h>
-
-#endif
-
 #ifdef SMP
 static __int64_t ipiq_count;	/* total calls to lwkt_send_ipiq*() */
 static __int64_t ipiq_fifofull;	/* number of fifo full conditions detected */
@@ -103,8 +81,6 @@ static int	panic_ipiq_cpu = -1;
 static int	panic_ipiq_count = 100;
 #endif
 #endif
-
-#ifdef _KERNEL
 
 #ifdef SMP
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0, "");
@@ -141,7 +117,6 @@ KTR_INFO(KTR_IPIQ, ipiq, send_end, 8, IPIQ_STRING, IPIQ_ARG_SIZE);
 	KTR_LOG(ipiq_ ## name, arg)
 
 #endif	/* SMP */
-#endif	/* KERNEL */
 
 #ifdef SMP
 
@@ -488,7 +463,6 @@ again:
     }
 }
 
-#ifdef _KERNEL
 void
 lwkt_process_ipiq_frame(struct intrframe *frame)
 {
@@ -516,7 +490,6 @@ again:
 	}
     }
 }
-#endif
 
 static int
 lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip, 

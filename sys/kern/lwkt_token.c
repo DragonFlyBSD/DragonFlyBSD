@@ -31,10 +31,8 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.30 2008/03/01 06:21:28 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.31 2008/05/18 20:57:56 nth Exp $
  */
-
-#ifdef _KERNEL
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -65,25 +63,6 @@
 
 #include <machine/stdarg.h>
 #include <machine/smp.h>
-
-#else
-
-#include <sys/stdint.h>
-#include <libcaps/thread.h>
-#include <sys/thread.h>
-#include <sys/msgport.h>
-#include <sys/errno.h>
-#include <libcaps/globaldata.h>
-#include <machine/cpufunc.h>
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <machine/lock.h>
-#include <machine/cpu.h>
-
-#endif
 
 #ifndef LWKT_NUM_POOL_TOKENS
 #define LWKT_NUM_POOL_TOKENS	1024	/* power of 2 */
@@ -119,12 +98,8 @@ KTR_INFO(KTR_TOKENS, tokens, contention_stop, 7, UNCONTENDED_STRING, sizeof(void
 #define logtoken(name, ref)						\
 	KTR_LOG(tokens_ ## name, ref, ref->tr_tok, curthread)
 
-#ifdef _KERNEL
-
 #ifdef INVARIANTS
 SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
-#endif
-
 #endif
 
 /*

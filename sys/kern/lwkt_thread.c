@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.112 2008/03/01 06:21:28 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.113 2008/05/18 20:57:56 nth Exp $
  */
 
 /*
@@ -40,8 +40,6 @@
  * to use a critical section to avoid problems.  Foreign thread 
  * scheduling is queued via (async) IPIs.
  */
-
-#ifdef _KERNEL
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -73,26 +71,6 @@
 #include <machine/stdarg.h>
 #include <machine/smp.h>
 
-#else
-
-#include <sys/stdint.h>
-#include <libcaps/thread.h>
-#include <sys/thread.h>
-#include <sys/msgport.h>
-#include <sys/errno.h>
-#include <libcaps/globaldata.h>
-#include <machine/cpufunc.h>
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <machine/lock.h>
-#include <machine/atomic.h>
-#include <machine/cpu.h>
-
-#endif
-
 static int untimely_switch = 0;
 #ifdef	INVARIANTS
 static int panic_on_cscount = 0;
@@ -104,8 +82,6 @@ static __int64_t preempt_weird = 0;
 static __int64_t token_contention_count = 0;
 static __int64_t mplock_contention_count = 0;
 static int lwkt_use_spin_port;
-
-#ifdef _KERNEL
 
 /*
  * We can make all thread ports use the spin backend instead of the thread
@@ -127,13 +103,10 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count, CTLFLAG_RW,
 SYSCTL_QUAD(_lwkt, OID_AUTO, mplock_contention_count, CTLFLAG_RW,
 	&mplock_contention_count, 0, "spinning due to MPLOCK contention");
 #endif
-#endif
 
 /*
  * Kernel Trace
  */
-#ifdef _KERNEL
-
 #if !defined(KTR_GIANT_CONTENTION)
 #define KTR_GIANT_CONTENTION	KTR_ALL
 #endif
@@ -143,8 +116,6 @@ KTR_INFO(KTR_GIANT_CONTENTION, giant, beg, 0, "thread=%p", sizeof(void *));
 KTR_INFO(KTR_GIANT_CONTENTION, giant, end, 1, "thread=%p", sizeof(void *));
 
 #define loggiant(name)	KTR_LOG(giant_ ## name, curthread)
-
-#endif
 
 /*
  * These helper procedures handle the runq, they can only be called from
@@ -213,8 +184,6 @@ lwkt_deschedule_self(thread_t td)
     crit_exit_quick(td);
 }
 
-#ifdef _KERNEL
-
 /*
  * LWKTs operate on a per-cpu basis
  *
@@ -230,8 +199,6 @@ lwkt_gdinit(struct globaldata *gd)
     gd->gd_runqmask = 0;
     TAILQ_INIT(&gd->gd_tdallq);
 }
-
-#endif /* _KERNEL */
 
 /*
  * Create a new thread.  The thread must be associated with a process context
@@ -259,11 +226,7 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 	    flags |= td->td_flags & (TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
 	} else {
 	    crit_exit_gd(gd);
-#ifdef _KERNEL
 	    td = zalloc(thread_zone);
-#else
-	    td = malloc(sizeof(struct thread));
-#endif
 	    td->td_kstack = NULL;
 	    td->td_kstack_size = 0;
 	    flags |= TDF_ALLOCATED_THREAD;
@@ -271,20 +234,12 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
     }
     if ((stack = td->td_kstack) != NULL && td->td_kstack_size != stksize) {
 	if (flags & TDF_ALLOCATED_STACK) {
-#ifdef _KERNEL
 	    kmem_free(&kernel_map, (vm_offset_t)stack, td->td_kstack_size);
-#else
-	    libcaps_free_stack(stack, td->td_kstack_size);
-#endif
 	    stack = NULL;
 	}
     }
     if (stack == NULL) {
-#ifdef _KERNEL
 	stack = (void *)kmem_alloc(&kernel_map, stksize);
-#else
-	stack = libcaps_alloc_stack(stksize);
-#endif
 	flags |= TDF_ALLOCATED_STACK;
     }
     if (cpu < 0)
@@ -293,8 +248,6 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 	lwkt_init_thread(td, stack, stksize, flags, globaldata_find(cpu));
     return(td);
 }
-
-#ifdef _KERNEL
 
 /*
  * Initialize a preexisting thread structure.  This function is used by
@@ -367,8 +320,6 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
 #endif
 }
 
-#endif /* _KERNEL */
-
 void
 lwkt_set_comm(thread_t td, const char *ctl, ...)
 {
@@ -392,16 +343,12 @@ lwkt_rele(thread_t td)
     --td->td_refs;
 }
 
-#ifdef _KERNEL
-
 void
 lwkt_wait_free(thread_t td)
 {
     while (td->td_refs)
 	tsleep(td, 0, "tdreap", hz);
 }
-
-#endif
 
 void
 lwkt_free_thread(thread_t td)
@@ -421,21 +368,13 @@ lwkt_free_thread(thread_t td)
     } else {
 	crit_exit_gd(gd);
 	if (td->td_kstack && (td->td_flags & TDF_ALLOCATED_STACK)) {
-#ifdef _KERNEL
 	    kmem_free(&kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
-#else
-	    libcaps_free_stack(td->td_kstack, td->td_kstack_size);
-#endif
 	    /* gd invalid */
 	    td->td_kstack = NULL;
 	    td->td_kstack_size = 0;
 	}
 	if (td->td_flags & TDF_ALLOCATED_THREAD) {
-#ifdef _KERNEL
 	    zfree(thread_zone, td);
-#else
-	    free(td);
-#endif
 	}
     }
 }
@@ -1314,11 +1253,6 @@ lwkt_create(void (*func)(void *), void *arg,
 }
 
 /*
- * kthread_* is specific to the kernel and is not needed by userland.
- */
-#ifdef _KERNEL
-
-/*
  * Destroy an LWKT thread.   Warning!  This function is not called when
  * a process exits, cpu_proc_exit() directly calls cpu_thread_exit() and
  * uses a different reaping mechanism.
@@ -1349,8 +1283,6 @@ lwkt_remove_tdallq(thread_t td)
     KKASSERT(td->td_gd == mycpu);
     TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq);
 }
-
-#endif /* _KERNEL */
 
 void
 crit_panic(void)
@@ -1399,13 +1331,9 @@ lwkt_smp_stopped(void)
 void
 lwkt_mp_lock_contested(void)
 {
-#ifdef _KERNEL
     loggiant(beg);
-#endif
     lwkt_switch();
-#ifdef _KERNEL
     loggiant(end);
-#endif
 }
 
 #endif

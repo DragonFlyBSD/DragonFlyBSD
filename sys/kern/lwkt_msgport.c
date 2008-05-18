@@ -34,10 +34,8 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.45 2008/03/05 13:03:29 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.46 2008/05/18 20:57:56 nth Exp $
  */
-
-#ifdef _KERNEL
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -75,22 +73,6 @@
 
 #include <sys/malloc.h>
 MALLOC_DEFINE(M_LWKTMSG, "lwkt message", "lwkt message");
-
-#else
-
-#include <sys/stdint.h>
-#include <libcaps/thread.h>
-#include <sys/thread.h>
-#include <sys/msgport.h>
-#include <sys/errno.h>
-#include <libcaps/globaldata.h>
-#include <machine/cpufunc.h>
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
-#include <string.h>
-
-#endif /* _KERNEL */
-
 
 /************************************************************************
  *				MESSAGE FUNCTIONS			*
