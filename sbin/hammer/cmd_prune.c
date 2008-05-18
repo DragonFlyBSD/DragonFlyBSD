@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.10 2008/05/12 05:13:47 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.11 2008/05/18 01:49:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -70,8 +70,11 @@ hammer_cmd_prune(char **av, int ac)
 
 	bzero(&prune, sizeof(prune));
 	prune.nelms = 0;
+	prune.beg_localization = HAMMER_MIN_LOCALIZATION;
 	prune.beg_obj_id = HAMMER_MIN_OBJID;
-	prune.end_obj_id = hammer_get_cycle(HAMMER_MAX_OBJID);
+	prune.end_localization = HAMMER_MAX_LOCALIZATION;
+	prune.end_obj_id = HAMMER_MAX_OBJID;
+	hammer_get_cycle(&prune.end_obj_id, &prune.end_localization);
 
 	prune.stat_oldest_tid = HAMMER_MAX_TID;
 
@@ -102,10 +105,13 @@ hammer_cmd_prune(char **av, int ac)
 		printf("Prune %s failed: %s\n",
 		       filesystem, strerror(errno));
 	} else if (prune.head.flags & HAMMER_IOC_HEAD_INTR) {
-		printf("Prune %s interrupted by timer at %016llx\n",
-		       filesystem, prune.cur_obj_id);
-		if (CyclePath)
-			hammer_set_cycle(prune.cur_obj_id);
+		printf("Prune %s interrupted by timer at %016llx %04x\n",
+		       filesystem,
+		       prune.cur_obj_id, prune.cur_localization);
+		if (CyclePath) {
+			hammer_set_cycle(prune.cur_obj_id,
+					 prune.cur_localization);
+		}
 
 	} else {
 		if (CyclePath)

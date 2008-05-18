@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.12 2008/05/13 20:49:34 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.13 2008/05/18 01:49:41 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -69,7 +69,7 @@ void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);
 void hammer_cmd_reblock(char **av, int ac, int flags);
 
-int64_t hammer_get_cycle(int64_t default_obj_id);
-void hammer_set_cycle(int64_t obj_id);
+void hammer_get_cycle(int64_t *obj_idp, uint32_t *localizationp);
+void hammer_set_cycle(int64_t obj_id, uint32_t localization);
 void hammer_reset_cycle(void);
 

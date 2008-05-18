@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.11 2008/05/15 03:23:41 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.12 2008/05/18 01:49:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -160,9 +160,10 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	printf("%s\t%s %2d %c ",
 	       flagstr, label, i,
 	       (elm->base.btype ? elm->base.btype : '?'));
-	printf("obj=%016llx key=%016llx rt=%02x ot=%02x\n",
+	printf("obj=%016llx key=%016llx lo=%08x rt=%02x ot=%02x\n",
 	       elm->base.obj_id,
 	       elm->base.key,
+	       elm->base.localization,
 	       elm->base.rec_type,
 	       elm->base.obj_type);
 	printf("\t       %c tids %016llx:%016llx ",

@@ -31,37 +31,32 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cycle.c,v 1.2 2008/05/12 21:17:16 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cycle.c,v 1.3 2008/05/18 01:49:41 dillon Exp $
  */
 
 #include "hammer.h"
 
-int64_t
-hammer_get_cycle(int64_t default_obj_id)
+void
+hammer_get_cycle(int64_t *obj_idp, uint32_t *localizationp)
 {
-	int64_t obj_id;
 	FILE *fp;
 
 	if (CyclePath && (fp = fopen(CyclePath, "r")) != NULL) {
-		if (fscanf(fp, "%llx\n", &obj_id) != 1) {
-			obj_id = default_obj_id;
-			fprintf(stderr, "Warning: malformed obj_id in %s\n",
+		if (fscanf(fp, "%llx %x\n", obj_idp, localizationp) != 2) {
+			fprintf(stderr, "Warning: malformed cycle in %s\n",
 				CyclePath);
 		}
 		fclose(fp);
-	} else {
-		obj_id = default_obj_id;
 	}
-	return(obj_id);
 }
 
 void
-hammer_set_cycle(int64_t obj_id)
+hammer_set_cycle(int64_t obj_id, uint32_t localization)
 {
 	FILE *fp;
 
 	if ((fp = fopen(CyclePath, "w")) != NULL) {
-		fprintf(fp, "%016llx\n", obj_id);
+		fprintf(fp, "%016llx %08x\n", obj_id, localization);
 		fclose(fp);
 	} else {
 		fprintf(stderr, "Warning: Unable to write to %s: %s\n",

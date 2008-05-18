@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.5 2008/05/12 05:13:47 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.6 2008/05/18 01:49:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -50,9 +50,30 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	int perc;
 
 	bzero(&reblock, sizeof(reblock));
-	reblock.beg_obj_id = hammer_get_cycle(HAMMER_MIN_OBJID);
+
+	reblock.beg_localization = HAMMER_MIN_LOCALIZATION;
+	reblock.beg_obj_id = HAMMER_MIN_OBJID;
+	hammer_get_cycle(&reblock.beg_obj_id, &reblock.beg_localization);
+
+	reblock.end_localization = HAMMER_MAX_LOCALIZATION;
 	reblock.end_obj_id = HAMMER_MAX_OBJID;
+
 	reblock.head.flags = flags & HAMMER_IOC_DO_FLAGS;
+
+	/*
+	 * Restrict the localization domain if asked to do inodes or data,
+	 * but not both.
+	 */
+	switch(flags & (HAMMER_IOC_DO_INODES|HAMMER_IOC_DO_DATA)) {
+	case HAMMER_IOC_DO_INODES:
+		reblock.beg_localization = HAMMER_LOCALIZE_INODE;
+		reblock.end_localization = HAMMER_LOCALIZE_INODE;
+		break;
+	case HAMMER_IOC_DO_DATA:
+		reblock.beg_localization = HAMMER_LOCALIZE_MISC;
+		reblock.end_localization = HAMMER_LOCALIZE_MISC;
+		break;
+	}
 
 	if (ac == 0)
 		reblock_usage(1);
@@ -77,10 +98,13 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	if (ioctl(fd, HAMMERIOC_REBLOCK, &reblock) < 0) {
 		printf("Reblock %s failed: %s\n", filesystem, strerror(errno));
 	} else if (reblock.head.flags & HAMMER_IOC_HEAD_INTR) {
-		printf("Reblock %s interrupted by timer at %016llx\n",
-			filesystem, reblock.cur_obj_id);
-		if (CyclePath)
-			hammer_set_cycle(reblock.cur_obj_id);
+		printf("Reblock %s interrupted by timer at %016llx %04x\n",
+			filesystem,
+			reblock.cur_obj_id, reblock.cur_localization);
+		if (CyclePath) {
+			hammer_set_cycle(reblock.cur_obj_id,
+					 reblock.cur_localization);
+		}
 	} else {
 		if (CyclePath)
 			hammer_reset_cycle();
@@ -89,11 +113,9 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	close(fd);
 	printf("Reblocked:\n"
 	       "    %lld/%lld btree nodes\n"
-	       "    %lld/%lld records\n"
 	       "    %lld/%lld data elements\n"
 	       "    %lld/%lld data bytes\n",
 	       reblock.btree_moves, reblock.btree_count,
-	       reblock.record_moves, reblock.record_count,
 	       reblock.data_moves, reblock.data_count,
 	       reblock.data_byte_moves, reblock.data_byte_count
 	);
@@ -103,8 +125,11 @@ static
 void
 reblock_usage(int exit_code)
 {
-	fprintf(stderr, "hammer reblock <filesystem> [percentage] "
-			"(default 90)\n");
+	fprintf(stderr, "hammer reblock <filesystem> [percentage]\n");
+	fprintf(stderr, "hammer reblock-btree <filesystem> [percentage]\n");
+	fprintf(stderr, "hammer reblock-inodes <filesystem> [percentage]\n");
+	fprintf(stderr, "hammer reblock-data <filesystem> [percentage]\n");
+	fprintf(stderr, "By default 90%% is used.  Use 100%% to defragment\n");
 	exit(exit_code);
 }
 

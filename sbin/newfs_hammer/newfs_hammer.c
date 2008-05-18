@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.25 2008/05/12 21:17:17 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.26 2008/05/18 01:49:44 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -491,6 +491,7 @@ format_root(void)
 
 	elm = &bnode->elms[0];
 	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
+	elm->leaf.base.localization = HAMMER_LOCALIZE_INODE;
 	elm->leaf.base.obj_id = HAMMER_OBJID_ROOT;
 	elm->leaf.base.key = 0;
 	elm->leaf.base.create_tid = create_tid;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.18 2008/05/13 20:49:34 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.19 2008/05/18 01:49:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -180,10 +180,10 @@ main(int ac, char **av)
 			hammer_cmd_reblock(av + 1, ac - 1, -1);
 		else if (strcmp(av[0], "reblock-btree") == 0)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_BTREE);
+		else if (strcmp(av[0], "reblock-inodes") == 0)
+			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_INODES);
 		else if (strcmp(av[0], "reblock-data") == 0)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_DATA);
-		else if (strcmp(av[0], "reblock-recs") == 0)
-			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_RECS);
 		else
 			usage(1);
 		exit(0);
