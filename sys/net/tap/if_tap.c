@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.39 2008/05/18 02:40:41 sephe Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.40 2008/05/18 05:12:08 sephe Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -91,6 +91,7 @@ static void		tapifstart	(struct ifnet *);
 static int		tapifioctl	(struct ifnet *, u_long, caddr_t,
 					 struct ucred *);
 static void		tapifinit	(void *);
+static void		tapifstop(struct tap_softc *, int);
 
 /* character device */
 static d_open_t		tapopen;
@@ -140,7 +141,7 @@ tapmodevent(module_t mod, int type, void *data)
 
 		dev_ops_add(&tap_ops, 0, 0);
 		attached = 1;
-	break;
+		break;
 
 	case MOD_UNLOAD:
 		if (taprefcnt > 0)
@@ -166,16 +167,19 @@ tapmodevent(module_t mod, int type, void *data)
 					"taplastunit = %d\n",
 					minor(tp->tap_dev), taplastunit);
 
+				lwkt_serialize_enter(ifp->if_serializer);
+				tapifstop(tp, 1);
+				lwkt_serialize_exit(ifp->if_serializer);
+
 				ether_ifdetach(ifp);
 				destroy_dev(tp->tap_dev);
 				kfree(tp, M_TAP);
+			} else {
+				unit++;
 			}
-			else
-				unit ++;
 		}
-
 		attached = 0;
-	break;
+		break;
 
 	default:
 		return (EOPNOTSUPP);
@@ -243,6 +247,7 @@ tapcreate(cdev_t dev)
 	ether_ifattach(ifp, ether_addr, NULL);
 
 	tp->tap_flags |= TAP_INITED;
+	tp->tap_devq.ifq_maxlen = ifqmaxlen;
 
 	TAPDEBUG(ifp, "created. minor = %#x\n", minor(tp->tap_dev));
 } /* tapcreate */
@@ -271,17 +276,17 @@ tapopen(struct dev_open_args *ap)
 		tp = dev->si_drv1;
 		ifp = &tp->arpcom.ac_if;
 	} else {
+		if (tp->tap_flags & TAP_OPEN) {
+			rel_mplock();
+			return (EBUSY);
+		}
+
 		ifp = &tp->arpcom.ac_if;
 
                 EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 
 		/* Announce the return of the interface. */
 		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
-	}
-
-	if (tp->tap_flags & TAP_OPEN) {
-		rel_mplock();
-		return (EBUSY);
 	}
 
 	bcopy(tp->arpcom.ac_enaddr, tp->ether_addr, sizeof(tp->ether_addr));
@@ -309,13 +314,12 @@ tapclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
+	int clear_flags = 1;
 
 	/* junk all pending output */
 
 	get_mplock();
-	lwkt_serialize_enter(ifp->if_serializer);
 	ifq_purge(&ifp->if_snd);
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	/*
 	 * do not bring the interface down, and do not anything with
@@ -323,13 +327,14 @@ tapclose(struct dev_close_args *ap)
 	 */
 
 	if ((tp->tap_flags & TAP_VMNET) == 0) {
-		if (ifp->if_flags & IFF_UP) {
-			lwkt_serialize_enter(ifp->if_serializer);
+		if (ifp->if_flags & IFF_UP)
 			if_down(ifp);
-			lwkt_serialize_exit(ifp->if_serializer);
-		}
-		ifp->if_flags &= ~IFF_RUNNING;
+		clear_flags = 0;
 	}
+	lwkt_serialize_enter(ifp->if_serializer);
+	tapifstop(tp, clear_flags);
+	lwkt_serialize_exit(ifp->if_serializer);
+
 	if_purgeaddrs_nolink(ifp);
 
 	EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
@@ -368,10 +373,14 @@ tapclose(struct dev_close_args *ap)
 static void
 tapifinit(void *xtp)
 {
-	struct tap_softc	*tp = (struct tap_softc *)xtp;
-	struct ifnet		*ifp = &tp->tap_if;
+	struct tap_softc *tp = xtp;
+	struct ifnet *ifp = &tp->tap_if;
 
 	TAPDEBUG(ifp, "initializing, minor = %#x\n", minor(tp->tap_dev));
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	tapifstop(tp, 1);
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -412,9 +421,10 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 					if ((ifp->if_flags & IFF_RUNNING) == 0)
 						tapifinit(tp);
 				} else {
-					/* We don't have a tapifstop() */
-					ifp->if_flags &= ~IFF_RUNNING;
+					tapifstop(tp, 1);
 				}
+			} else {
+				/* XXX */
 			}
 			break;
 		case SIOCADDMULTI: /* XXX -- just like vmnet does */
@@ -457,7 +467,10 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 static void
 tapifstart(struct ifnet *ifp)
 {
-	struct tap_softc	*tp = ifp->if_softc;
+	struct tap_softc *tp = ifp->if_softc;
+	struct ifqueue *ifq;
+	struct mbuf *m;
+	int has_data = 0;
 
 	TAPDEBUG(ifp, "starting, minor = %#x\n", minor(tp->tap_dev));
 
@@ -470,14 +483,26 @@ tapifstart(struct ifnet *ifp)
 	    ((tp->tap_flags & TAP_READY) != TAP_READY)) {
 		TAPDEBUG(ifp, "not ready. minor = %#x, tap_flags = 0x%x\n",
 			 minor(tp->tap_dev), tp->tap_flags);
-
 		ifq_purge(&ifp->if_snd);
 		return;
 	}
 
 	ifp->if_flags |= IFF_OACTIVE;
 
-	if (!ifq_is_empty(&ifp->if_snd)) {
+	ifq = &tp->tap_devq;
+	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
+		if (IF_QFULL(ifq)) {
+			IF_DROP(ifq);
+			ifp->if_oerrors++;
+			m_freem(m);
+		} else {
+			IF_ENQUEUE(ifq, m);
+			ifp->if_opackets++;
+			has_data = 1;
+		}
+	}
+
+	if (has_data) {
 		if (tp->tap_flags & TAP_RWAIT) {
 			tp->tap_flags &= ~TAP_RWAIT;
 			wakeup((caddr_t)tp);
@@ -499,7 +524,6 @@ tapifstart(struct ifnet *ifp)
 		get_mplock();
 		selwakeup(&tp->tap_rsel);
 		rel_mplock();
-		ifp->if_opackets ++; /* obytes are counted in ether_output */
 	}
 
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -561,7 +585,13 @@ tapioctl(struct dev_ioctl_args *ap)
 
 	case FIONREAD:
 		*(int *)data = 0;
-		if ((mb = ifq_poll(&ifp->if_snd)) != NULL) {
+
+		/* Take a look at devq first */
+		IF_POLL(&tp->tap_devq, mb);
+		if (mb == NULL)
+			mb = ifq_poll(&ifp->if_snd);
+
+		if (mb != NULL) {
 			for(; mb != NULL; mb = mb->m_next)
 				*(int *)data += mb->m_len;
 		} 
@@ -651,7 +681,7 @@ tapread(struct dev_read_args *ap)
 	/* sleep until we get a packet */
 	do {
 		lwkt_serialize_enter(ifp->if_serializer);
-		m0 = ifq_dequeue(&ifp->if_snd, NULL);
+		IF_DEQUEUE(&tp->tap_devq, m0);
 		if (m0 == NULL) {
 			if (ap->a_ioflag & IO_NDELAY) {
 				lwkt_serialize_exit(ifp->if_serializer);
@@ -789,9 +819,8 @@ tappoll(struct dev_poll_args *ap)
 
 	TAPDEBUG(ifp, "polling, minor = %#x\n", minor(tp->tap_dev));
 
-	lwkt_serialize_enter(ifp->if_serializer);
 	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (!ifq_is_empty(&ifp->if_snd)) {
+		if (!IF_QEMPTY(&tp->tap_devq)) {
 			TAPDEBUG(ifp,
 				 "has data in queue. minor = %#x\n",
 				 minor(tp->tap_dev));
@@ -806,7 +835,6 @@ tappoll(struct dev_poll_args *ap)
 			rel_mplock();
 		}
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	if (ap->a_events & (POLLOUT | POLLWRNORM))
 		revents |= (ap->a_events & (POLLOUT | POLLWRNORM));
@@ -862,13 +890,11 @@ static int
 filt_tapread(struct knote *kn, long hint)
 {
 	struct tap_softc *tp = (void *)kn->kn_hook;
-	struct ifnet *ifp = &tp->tap_if;
 
-	if (ifq_is_empty(&ifp->if_snd) == 0) {
+	if (IF_QEMPTY(&tp->tap_devq) == 0)	/* XXX serializer */
 		return(1);
-	} else {
+	else
 		return(0);
-	}
 }
 
 static void
@@ -877,4 +903,15 @@ filt_tapdetach(struct knote *kn)
 	struct tap_softc *tp = (void *)kn->kn_hook;
 
 	SLIST_REMOVE(&tp->tap_rsel.si_note, kn, knote, kn_selnext);
+}
+
+static void
+tapifstop(struct tap_softc *tp, int clear_flags)
+{
+	struct ifnet *ifp = &tp->tap_if;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+	IF_DRAIN(&tp->tap_devq);
+	if (clear_flags)
+		ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 }
