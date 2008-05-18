@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.60 2008/05/16 13:19:12 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.61 2008/05/18 04:38:44 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -329,6 +329,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		lwkt_serialize_enter(ifp->if_serializer);
 		error = bridge_output_p(ifp, m, NULL, NULL);
 		lwkt_serialize_exit(ifp->if_serializer);
+		return error;
 	}
 
 	/*
