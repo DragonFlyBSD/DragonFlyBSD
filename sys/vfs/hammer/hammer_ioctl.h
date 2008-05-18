@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.8 2008/05/13 20:46:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.9 2008/05/18 01:48:50 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -47,7 +47,7 @@
 /*
  * Common HAMMER ioctl header
  *
- * Global flags are stored in the upper 16 bits
+ * Global flags are stored in the upper 16 bits.
  */
 struct hammer_ioc_head {
 	int32_t		flags;
@@ -57,10 +57,11 @@ struct hammer_ioc_head {
 
 #define HAMMER_IOC_HEAD_INTR	0x00010000
 #define HAMMER_IOC_DO_BTREE	0x00020000	/* reblocker */
-#define HAMMER_IOC_DO_RECS	0x00040000	/* reblocker */
+#define HAMMER_IOC_DO_INODES	0x00040000	/* reblocker */
 #define HAMMER_IOC_DO_DATA	0x00080000	/* reblocker */
 
-#define HAMMER_IOC_DO_FLAGS	(HAMMER_IOC_DO_BTREE | HAMMER_IOC_DO_RECS | \
+#define HAMMER_IOC_DO_FLAGS	(HAMMER_IOC_DO_BTREE |	\
+				 HAMMER_IOC_DO_INODES |	\
 				 HAMMER_IOC_DO_DATA)
 
 /*
@@ -81,6 +82,10 @@ struct hammer_ioc_prune {
 	struct hammer_ioc_head head;
 	int		nelms;
 	int		reserved01;
+	u_int32_t	beg_localization;
+	u_int32_t	cur_localization;
+	u_int32_t	end_localization;
+	u_int32_t	reserved03;
 	int64_t		beg_obj_id;
 	int64_t		cur_obj_id;
 	int64_t		cur_key;
@@ -148,11 +153,17 @@ struct hammer_ioc_history {
  */
 struct hammer_ioc_reblock {
 	struct hammer_ioc_head head;
+	int32_t		free_level;		/* 0 for maximum compaction */
+	u_int32_t	reserved01;
+
+	u_int32_t	beg_localization;
+	u_int32_t	cur_localization;
+	u_int32_t	end_localization;
+	u_int32_t	reserved03;
+
 	int64_t		beg_obj_id;
 	int64_t		cur_obj_id;		/* Stopped at (interrupt) */
 	int64_t		end_obj_id;
-	int32_t		free_level;		/* 0 for maximum compaction */
-	int32_t		unused01;
 
 	int64_t		btree_count;		/* B-Tree nodes checked */
 	int64_t		record_count;		/* Records checked */

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.59 2008/05/13 20:46:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.60 2008/05/18 01:48:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -236,6 +236,7 @@ loop:
 	 */
 retry:
 	hammer_init_cursor(trans, &cursor, cache, NULL);
+	cursor.key_beg.localization = HAMMER_LOCALIZE_INODE;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = 0;
 	cursor.key_beg.create_tid = 0;
@@ -342,6 +343,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->ino_data.nlinks = 0;
 	/* XXX */
 	ip->ino_leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
+	ip->ino_leaf.base.localization = HAMMER_LOCALIZE_INODE;
 	ip->ino_leaf.base.obj_id = ip->obj_id;
 	ip->ino_leaf.base.key = 0;
 	ip->ino_leaf.base.create_tid = 0;
@@ -416,6 +418,7 @@ retry:
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
 		hammer_normalize_cursor(cursor);
+		cursor->key_beg.localization = HAMMER_LOCALIZE_INODE;
 		cursor->key_beg.obj_id = ip->obj_id;
 		cursor->key_beg.key = 0;
 		cursor->key_beg.create_tid = 0;
@@ -562,6 +565,7 @@ retry:
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
 		hammer_normalize_cursor(cursor);
+		cursor->key_beg.localization = HAMMER_LOCALIZE_INODE;
 		cursor->key_beg.obj_id = ip->obj_id;
 		cursor->key_beg.key = 0;
 		cursor->key_beg.create_tid = 0;

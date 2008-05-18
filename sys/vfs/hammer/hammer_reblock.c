@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.15 2008/05/15 03:36:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.16 2008/05/18 01:48:50 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -50,7 +50,9 @@ static int hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 				 hammer_btree_elm_t elm);
 static int hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 				hammer_cursor_t cursor, hammer_btree_elm_t elm);
-static int hammer_reblock_node(struct hammer_ioc_reblock *reblock,
+static int hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
+				hammer_cursor_t cursor, hammer_btree_elm_t elm);
+static int hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 				hammer_cursor_t cursor, hammer_btree_elm_t elm);
 
 int
@@ -67,6 +69,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 		return(EINVAL);
 
 	reblock->cur_obj_id = reblock->beg_obj_id;
+	reblock->cur_localization = reblock->beg_localization;
 
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
@@ -74,6 +77,7 @@ retry:
 		hammer_done_cursor(&cursor);
 		return(error);
 	}
+	cursor.key_beg.localization = reblock->cur_localization;
 	cursor.key_beg.obj_id = reblock->cur_obj_id;
 	cursor.key_beg.key = HAMMER_MIN_KEY;
 	cursor.key_beg.create_tid = 1;
@@ -81,6 +85,7 @@ retry:
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
+	cursor.key_end.localization = reblock->end_localization;
 	cursor.key_end.obj_id = reblock->end_obj_id;
 	cursor.key_end.key = HAMMER_MAX_KEY;
 	cursor.key_end.create_tid = HAMMER_MAX_TID - 1;
@@ -91,10 +96,22 @@ retry:
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 	cursor.flags |= HAMMER_CURSOR_BACKEND;
 
+	/*
+	 * This flag allows the btree scan code to return internal nodes,
+	 * so we can reblock them in addition to the leafs.  Only specify it
+	 * if we intend to reblock B-Tree nodes.
+	 */
+	if (reblock->head.flags & HAMMER_IOC_DO_BTREE)
+		cursor.flags |= HAMMER_CURSOR_REBLOCKING;
+
 	error = hammer_btree_first(&cursor);
 	while (error == 0) {
+		/*
+		 * Internal or Leaf node
+		 */
 		elm = &cursor.node->ondisk->elms[cursor.index];
 		reblock->cur_obj_id = elm->base.obj_id;
+		reblock->cur_localization = elm->base.localization;
 
 		/*
 		 * Acquiring the sync_lock prevents the operation from
@@ -102,9 +119,9 @@ retry:
 		 *
 		 * NOTE: cursor.node may have changed on return.
 		 */
-		hammer_lock_ex(&trans->hmp->sync_lock);
+		hammer_sync_lock_sh(trans);
 		error = hammer_reblock_helper(reblock, &cursor, elm);
-		hammer_unlock(&trans->hmp->sync_lock);
+		hammer_sync_unlock(trans);
 		if (error == 0) {
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			error = hammer_btree_iterate(&cursor);
@@ -115,7 +132,8 @@ retry:
 		 * cache.  NOTE: We still hold locks on the cursor, we
 		 * cannot call the flusher synchronously.
 		 */
-		if (trans->hmp->locked_dirty_count > hammer_limit_dirtybufs) {
+		if (trans->hmp->locked_dirty_count +
+		    trans->hmp->io_running_count > hammer_limit_dirtybufs) {
 			hammer_flusher_async(trans->hmp);
 			tsleep(trans, 0, "hmrslo", hz / 10);
 		}
@@ -150,26 +168,29 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 	int bytes;
 	int cur;
 
-	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
-		return(0);
 	error = 0;
 
 	/*
 	 * Reblock data.  Note that data embedded in a record is reblocked
-	 * by the record reblock code.
+	 * by the record reblock code.  Data processing only occurs at leaf
+	 * nodes and for RECORD element types.
 	 */
+	if (cursor->node->ondisk->type != HAMMER_BTREE_TYPE_LEAF)
+		goto skip;
+	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
+		return(0);
 	tmp_offset = elm->leaf.data_offset;
 	zone = HAMMER_ZONE_DECODE(tmp_offset);		/* can be 0 */
 	if ((zone == HAMMER_ZONE_SMALL_DATA_INDEX ||
 	     zone == HAMMER_ZONE_LARGE_DATA_INDEX) &&
-	    error == 0 && (reblock->head.flags & HAMMER_IOC_DO_DATA)) {
+	    error == 0 && (reblock->head.flags & (HAMMER_IOC_DO_DATA | HAMMER_IOC_DO_INODES))) {
 		++reblock->data_count;
 		reblock->data_byte_count += elm->leaf.data_len;
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
+		if (hammer_debug_general & 0x4000)
+			kprintf("D %6d/%d\n", bytes, reblock->free_level);
 		if (error == 0 && cur == 0 && bytes >= reblock->free_level) {
-			if (hammer_debug_general & 0x4000)
-				kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
 				error = hammer_reblock_data(reblock,
@@ -182,9 +203,9 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		}
 	}
 
+skip:
 	/*
-	 * Reblock a B-Tree node.  Adjust elm to point at the parent's
-	 * leaf entry.
+	 * Reblock a B-Tree internal or leaf node.
 	 */
 	tmp_offset = cursor->node->node_offset;
 	zone = HAMMER_ZONE_DECODE(tmp_offset);
@@ -193,17 +214,27 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		++reblock->btree_count;
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
+		if (hammer_debug_general & 0x4000)
+			kprintf("B %6d/%d\n", bytes, reblock->free_level);
 		if (error == 0 && cur == 0 && bytes >= reblock->free_level) {
-			if (hammer_debug_general & 0x4000)
-				kprintf("%6d ", bytes);
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
 				if (cursor->parent)
 					elm = &cursor->parent->ondisk->elms[cursor->parent_index];
 				else
 					elm = NULL;
-				error = hammer_reblock_node(reblock,
-							    cursor, elm);
+				switch(cursor->node->ondisk->type) {
+				case HAMMER_BTREE_TYPE_LEAF:
+					error = hammer_reblock_leaf_node(
+							reblock, cursor, elm);
+					break;
+				case HAMMER_BTREE_TYPE_INTERNAL:
+					error = hammer_reblock_int_node(
+							reblock, cursor, elm);
+					break;
+				default:
+					panic("Illegal B-Tree node type");
+				}
 			}
 			if (error == 0) {
 				++reblock->btree_moves;
@@ -259,15 +290,14 @@ done:
 }
 
 /*
- * Reblock a B-Tree (leaf) node.  The parent must be adjusted to point to
- * the new copy of the leaf node.  elm is a pointer to the parent element
- * pointing at cursor.node.
+ * Reblock a B-Tree leaf node.  The parent must be adjusted to point to
+ * the new copy of the leaf node.
  *
- * XXX reblock internal nodes too.
+ * elm is a pointer to the parent element pointing at cursor.node.
  */
 static int
-hammer_reblock_node(struct hammer_ioc_reblock *reblock,
-		    hammer_cursor_t cursor, hammer_btree_elm_t elm)
+hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
+			 hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
 	hammer_node_t onode;
 	hammer_node_t nnode;
@@ -314,7 +344,7 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
-		kprintf("REBLOCK NODE %016llx -> %016llx\n",
+		kprintf("REBLOCK LNODE %016llx -> %016llx\n",
 			onode->node_offset, nnode->node_offset);
 	}
 	hammer_modify_node_done(nnode);
@@ -323,6 +353,98 @@ hammer_reblock_node(struct hammer_ioc_reblock *reblock,
 	hammer_unlock(&onode->lock);
 	hammer_rel_node(onode);
 
+	return (error);
+}
+
+/*
+ * Reblock a B-Tree internal node.  The parent must be adjusted to point to
+ * the new copy of the internal node, and the node's children's parent
+ * pointers must also be adjusted to point to the new copy.
+ *
+ * elm is a pointer to the parent element pointing at cursor.node.
+ */
+static int
+hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
+			 hammer_cursor_t cursor, hammer_btree_elm_t elm)
+{
+	hammer_node_locklist_t locklist = NULL;
+	hammer_node_t onode;
+	hammer_node_t nnode;
+	int error;
+	int i;
+
+	error = hammer_btree_lock_children(cursor, &locklist);
+	if (error)
+		goto done;
+
+	onode = cursor->node;
+	nnode = hammer_alloc_btree(cursor->trans, &error);
+
+	if (nnode == NULL)
+		goto done;
+
+	/*
+	 * Move the node.  Adjust the parent's pointer to us first.
+	 */
+	hammer_lock_ex(&nnode->lock);
+	hammer_modify_node_noundo(cursor->trans, nnode);
+	bcopy(onode->ondisk, nnode->ondisk, sizeof(*nnode->ondisk));
+
+	if (elm) {
+		/*
+		 * We are not the root of the B-Tree 
+		 */
+		hammer_modify_node(cursor->trans, cursor->parent,
+				   &elm->internal.subtree_offset,
+				   sizeof(elm->internal.subtree_offset));
+		elm->internal.subtree_offset = nnode->node_offset;
+		hammer_modify_node_done(cursor->parent);
+	} else {
+		/*
+		 * We are the root of the B-Tree
+		 */
+                hammer_volume_t volume;
+                        
+                volume = hammer_get_root_volume(cursor->trans->hmp, &error);
+                KKASSERT(error == 0);
+
+                hammer_modify_volume_field(cursor->trans, volume,
+					   vol0_btree_root);
+                volume->ondisk->vol0_btree_root = nnode->node_offset;
+                hammer_modify_volume_done(volume);
+                hammer_rel_volume(volume, 0);
+        }
+
+	/*
+	 * Now adjust our children's pointers to us.
+	 */
+	for (i = 0; i < nnode->ondisk->count; ++i) {
+		elm = &nnode->ondisk->elms[i];
+		error = btree_set_parent(cursor->trans, nnode, elm);
+		if (error)
+			panic("reblock internal node: fixup problem");
+	}
+
+	/*
+	 * Clean up.
+	 *
+	 * The new node replaces the current node in the cursor.  The cursor
+	 * expects it to be locked so leave it locked.  Discard onode.
+	 */
+	hammer_delete_node(cursor->trans, onode);
+
+	if (hammer_debug_general & 0x4000) {
+		kprintf("REBLOCK INODE %016llx -> %016llx\n",
+			onode->node_offset, nnode->node_offset);
+	}
+	hammer_modify_node_done(nnode);
+	cursor->node = nnode;
+
+	hammer_unlock(&onode->lock);
+	hammer_rel_node(onode);
+
+done:
+	hammer_btree_unlock_children(&locklist);
 	return (error);
 }
 

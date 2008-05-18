@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.68 2008/05/15 03:36:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.69 2008/05/18 01:48:50 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -90,6 +90,7 @@ struct hammer_transaction {
 	struct hammer_mount *hmp;
 	hammer_tid_t	tid;
 	hammer_tid_t	time;
+	int		sync_lock_refs;
 	struct hammer_volume *rootvol;
 };
 
@@ -402,7 +403,8 @@ struct hammer_volume {
 	int32_t	vol_no;
 	int64_t nblocks;	/* note: special calculation for statfs */
 	int64_t buffer_base;	/* base offset of buffer 0 */
-	hammer_off_t maxbuf_off; /* Maximum buffer offset */
+	hammer_off_t maxbuf_off; /* Maximum buffer offset (zone-2) */
+	hammer_off_t maxraw_off; /* Maximum raw offset for device */
 	char	*vol_name;
 	struct vnode *devvp;
 	int	vol_flags;
@@ -593,6 +595,7 @@ extern struct vop_ops hammer_spec_vops;
 extern struct vop_ops hammer_fifo_vops;
 extern struct bio_ops hammer_bioops;
 
+extern int hammer_debug_io;
 extern int hammer_debug_general;
 extern int hammer_debug_debug;
 extern int hammer_debug_inode;
@@ -660,6 +663,10 @@ void	hammer_unlock(struct hammer_lock *lock);
 void	hammer_ref(struct hammer_lock *lock);
 void	hammer_unref(struct hammer_lock *lock);
 
+void	hammer_sync_lock_ex(hammer_transaction_t trans);
+void	hammer_sync_lock_sh(hammer_transaction_t trans);
+void	hammer_sync_unlock(hammer_transaction_t trans);
+
 u_int32_t hammer_to_unix_xid(uuid_t *uuid);
 void hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 void	hammer_to_timespec(hammer_tid_t tid, struct timespec *ts);
@@ -699,9 +706,12 @@ int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
 int	hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid);
 int	hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid);
 
-
+int	btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
+                        hammer_btree_elm_t elm);
 int	hammer_btree_lock_children(hammer_cursor_t cursor,
                         struct hammer_node_locklist **locklistp);
+void	hammer_btree_unlock_children(struct hammer_node_locklist **locklistp);
+
 
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
@@ -719,6 +729,8 @@ hammer_volume_t	hammer_get_volume(hammer_mount_t hmp,
 			int32_t vol_no, int *errorp);
 hammer_buffer_t	hammer_get_buffer(hammer_mount_t hmp,
 			hammer_off_t buf_offset, int isnew, int *errorp);
+void		hammer_clrxlate_buffer(hammer_mount_t hmp,
+			hammer_off_t buf_offset);
 void	hammer_uncache_buffer(struct hammer_mount *hmp, hammer_off_t off);
 
 int		hammer_ref_volume(hammer_volume_t volume);
@@ -826,7 +838,8 @@ int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 void hammer_io_init(hammer_io_t io, hammer_mount_t hmp,
 			enum hammer_io_type type);
 void hammer_io_reinit(hammer_io_t io, enum hammer_io_type type);
-int hammer_io_read(struct vnode *devvp, struct hammer_io *io);
+int hammer_io_read(struct vnode *devvp, struct hammer_io *io,
+			hammer_off_t limit);
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
 void hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io);

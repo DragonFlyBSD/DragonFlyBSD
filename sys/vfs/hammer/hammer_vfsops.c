@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.34 2008/05/06 00:21:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.35 2008/05/18 01:48:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #include <sys/buf2.h>
 #include "hammer.h"
 
+int hammer_debug_io;
 int hammer_debug_general;
 int hammer_debug_debug;
 int hammer_debug_inode;
@@ -70,6 +71,8 @@ int64_t hammer_zone_limit;
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
 	   &hammer_debug_general, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_io, CTLFLAG_RW,
+	   &hammer_debug_io, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_debug, CTLFLAG_RW,
 	   &hammer_debug_debug, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_inode, CTLFLAG_RW,
@@ -186,6 +189,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->namekey_iterator = mycpu->gd_time_seconds;
 		/*TAILQ_INIT(&hmp->recycle_list);*/
 
+		hmp->root_btree_beg.localization = HAMMER_MIN_LOCALIZATION;
 		hmp->root_btree_beg.obj_id = -0x8000000000000000LL;
 		hmp->root_btree_beg.key = -0x8000000000000000LL;
 		hmp->root_btree_beg.create_tid = 1;
@@ -193,6 +197,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_beg.rec_type = 0;
 		hmp->root_btree_beg.obj_type = 0;
 
+		hmp->root_btree_end.localization = HAMMER_MAX_LOCALIZATION;
 		hmp->root_btree_end.obj_id = 0x7FFFFFFFFFFFFFFFLL;
 		hmp->root_btree_end.key = 0x7FFFFFFFFFFFFFFFLL;
 		hmp->root_btree_end.create_tid = 0xFFFFFFFFFFFFFFFFULL;

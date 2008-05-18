@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.53 2008/05/12 23:15:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.54 2008/05/18 01:48:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -666,6 +666,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	namekey = hammer_directory_namekey(ncp->nc_name, nlen);
 
 	error = hammer_init_cursor(&trans, &cursor, &dip->cache[0], dip);
+	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -1063,6 +1064,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	 * directly translate to a 64 bit 'seek' position.
 	 */
 	hammer_init_cursor(&trans, &cursor, &ip->cache[0], ip);
+	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
@@ -1144,14 +1146,26 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 
 	ip = VTOI(ap->a_vp);
 
-	hammer_simple_transaction(&trans, ip->hmp);
+	/*
+	 * Shortcut if the symlink data was stuffed into ino_data.
+	 */
+	if (ip->ino_data.size <= HAMMER_INODE_BASESYMLEN) {
+		error = uiomove(ip->ino_data.ext.symlink,
+				ip->ino_data.size, ap->a_uio);
+		return(error);
+	}
 
+	/*
+	 * Long version
+	 */
+	hammer_simple_transaction(&trans, ip->hmp);
 	hammer_init_cursor(&trans, &cursor, &ip->cache[0], ip);
 
 	/*
 	 * Key range (begin and end inclusive) to scan.  Directory keys
 	 * directly translate to a 64 bit 'seek' position.
 	 */
+	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC; /* XXX */
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
@@ -1258,6 +1272,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	namekey = hammer_directory_namekey(fncp->nc_name, fncp->nc_nlen);
 retry:
 	hammer_init_cursor(&trans, &cursor, &fdip->cache[0], fdip);
+	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
         cursor.key_beg.obj_id = fdip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -1546,15 +1561,21 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 */
 	if (error == 0) {
 		bytes = strlen(ap->a_target);
-		record = hammer_alloc_mem_record(nip, bytes);
-		record->type = HAMMER_MEM_RECORD_GENERAL;
 
-		record->leaf.base.key = HAMMER_FIXKEY_SYMLINK;
-		record->leaf.base.rec_type = HAMMER_RECTYPE_FIX;
-		record->leaf.data_len = bytes;
-		KKASSERT(HAMMER_SYMLINK_NAME_OFF == 0);
-		bcopy(ap->a_target, record->data->symlink.name, bytes);
-		error = hammer_ip_add_record(&trans, record);
+		if (bytes <= HAMMER_INODE_BASESYMLEN) {
+			bcopy(ap->a_target, nip->ino_data.ext.symlink, bytes);
+		} else {
+			record = hammer_alloc_mem_record(nip, bytes);
+			record->type = HAMMER_MEM_RECORD_GENERAL;
+
+			record->leaf.base.localization = HAMMER_LOCALIZE_MISC;
+			record->leaf.base.key = HAMMER_FIXKEY_SYMLINK;
+			record->leaf.base.rec_type = HAMMER_RECTYPE_FIX;
+			record->leaf.data_len = bytes;
+			KKASSERT(HAMMER_SYMLINK_NAME_OFF == 0);
+			bcopy(ap->a_target, record->data->symlink.name, bytes);
+			error = hammer_ip_add_record(&trans, record);
+		}
 
 		/*
 		 * Set the file size to the length of the link.
@@ -1713,6 +1734,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	 * stored in the actual records represent BASE+LEN, not BASE.  The
 	 * first record containing bio_offset will have a key > bio_offset.
 	 */
+	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
@@ -1992,6 +2014,7 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
 retry:
 	hammer_init_cursor(trans, &cursor, &dip->cache[0], dip);
+	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;

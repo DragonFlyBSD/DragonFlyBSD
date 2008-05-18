@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.18 2008/05/13 20:46:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.19 2008/05/18 01:48:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -149,6 +149,8 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		 */
 		cursor.key_beg.key = hist->key;
 		cursor.key_end.key = HAMMER_MAX_KEY;
+		cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
+		cursor.key_end.localization = HAMMER_LOCALIZE_MISC;
 
 		switch(ip->ino_data.obj_type) {
 		case HAMMER_OBJTYPE_REGFILE:
@@ -174,6 +176,8 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		cursor.key_end.key = 0;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_INODE;
+		cursor.key_beg.localization = HAMMER_LOCALIZE_INODE;
+		cursor.key_end.localization = HAMMER_LOCALIZE_INODE;
 	}
 
 	error = hammer_btree_first(&cursor);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.18 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.19 2008/05/18 01:48:50 dillon Exp $
  */
 
 /*
@@ -131,6 +131,7 @@ typedef struct hammer_cursor *hammer_cursor_t;
 #define HAMMER_CURSOR_CREATE_CHECK	0x8000	/* as-of lookup */
 
 #define HAMMER_CURSOR_PRUNING		0x00010000
+#define HAMMER_CURSOR_REBLOCKING	0x00020000
 
 /*
  * Flags we can clear when reusing a cursor (we can clear all of them)

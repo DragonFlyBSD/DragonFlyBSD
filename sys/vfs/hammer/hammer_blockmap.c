@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.12 2008/05/06 00:21:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.13 2008/05/18 01:48:50 dillon Exp $
  */
 
 /*
@@ -379,6 +379,8 @@ hammer_blockmap_free(hammer_transaction_t trans,
 		    ~HAMMER_LARGEBLOCK_MASK64) {
 			hammer_freemap_free(trans, layer2->u.phys_offset,
 					    bmap_off, &error);
+			hammer_clrxlate_buffer(trans->hmp,
+					       layer2->u.phys_offset);
 			layer2->u.phys_offset = HAMMER_BLOCKMAP_FREE;
 
 			hammer_modify_buffer(trans, buffer1,

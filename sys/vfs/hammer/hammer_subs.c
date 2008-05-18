@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.19 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.20 2008/05/18 01:48:50 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -202,6 +202,38 @@ hammer_unref(struct hammer_lock *lock)
 	crit_exit();
 }
 
+/*
+ * The sync_lock must be held when doing any modifying operations on
+ * meta-data.  The flusher holds the lock exclusively while the reblocker
+ * and pruner use a shared lock.
+ *
+ * Modifying operations can run in parallel until the flusher needs to
+ * sync the disk media.
+ */
+void
+hammer_sync_lock_ex(hammer_transaction_t trans)
+{
+	++trans->sync_lock_refs;
+	hammer_lock_sh(&trans->hmp->sync_lock);
+}
+
+void
+hammer_sync_lock_sh(hammer_transaction_t trans)
+{
+	++trans->sync_lock_refs;
+	hammer_lock_ex(&trans->hmp->sync_lock);
+}
+
+void
+hammer_sync_unlock(hammer_transaction_t trans)
+{
+	--trans->sync_lock_refs;
+	hammer_unlock(&trans->hmp->sync_lock);
+}
+
+/*
+ * Misc
+ */
 u_int32_t
 hammer_to_unix_xid(uuid_t *uuid)
 {

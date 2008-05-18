@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.58 2008/05/12 23:15:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.59 2008/05/18 01:48:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -476,6 +476,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 		++trans->hmp->namekey_iterator;
 
 	record->type = HAMMER_MEM_RECORD_ADD;
+	record->leaf.base.localization = HAMMER_LOCALIZE_MISC;
 	record->leaf.base.obj_id = dip->obj_id;
 	record->leaf.base.key = hammer_directory_namekey(ncp->nc_name, bytes);
 	record->leaf.base.key += trans->hmp->namekey_iterator;
@@ -623,6 +624,7 @@ hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
 	hammer_inode_t ip = record->ip;
 	int error;
 
+	KKASSERT(record->leaf.base.localization != 0);
 	record->leaf.base.obj_id = ip->obj_id;
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
 	error = hammer_mem_add(trans, record);
@@ -655,6 +657,7 @@ hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 	KKASSERT(bytes != 0);
 retry:
 	hammer_normalize_cursor(cursor);
+	cursor->key_beg.localization = HAMMER_LOCALIZE_MISC;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.key = offset + bytes;
 	cursor->key_beg.create_tid = trans->tid;
@@ -699,6 +702,7 @@ retry:
 	 * undo elements.
 	 */
 	elm.base.btype = HAMMER_BTREE_TYPE_RECORD;
+	elm.base.localization = HAMMER_LOCALIZE_MISC;
 	elm.base.obj_id = ip->obj_id;
 	elm.base.key = offset + bytes;
 	elm.base.create_tid = trans->tid;
@@ -780,6 +784,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 
 	KKASSERT(record->flush_state == HAMMER_FST_FLUSH);
 	KKASSERT(record->flags & HAMMER_RECF_INTERLOCK_BE);
+	KKASSERT(record->leaf.base.localization != 0);
 
 	hammer_normalize_cursor(cursor);
 	cursor->key_beg = record->leaf.base;
@@ -1283,6 +1288,7 @@ hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 retry:
 	hammer_normalize_cursor(cursor);
+	cursor->key_beg.localization = HAMMER_LOCALIZE_MISC;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.create_tid = 0;
 	cursor->key_beg.delete_tid = 0;
@@ -1412,6 +1418,7 @@ hammer_ip_delete_range_all(hammer_cursor_t cursor, hammer_inode_t ip,
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 retry:
 	hammer_normalize_cursor(cursor);
+	cursor->key_beg.localization = HAMMER_LOCALIZE_MISC;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.create_tid = 0;
 	cursor->key_beg.delete_tid = 0;
@@ -1610,6 +1617,7 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	 */
 	hammer_init_cursor(trans, &cursor, &ip->cache[0], ip);
 
+	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.32 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.33 2008/05/18 01:48:50 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -579,11 +579,16 @@ struct hammer_inode_data {
 	u_int64_t mtime;
 	u_int64_t size;		/* filesystem object size */
 	u_int64_t nlinks;	/* hard links */
-	char	reserved04[32];
+	u_int64_t reserved04;
+	union {
+		char	reserved06[24];
+		char	symlink[24];	/* HAMMER_INODE_BASESYMLEN */
+	} ext;
 };
 
 #define HAMMER_INODE_DATA_VERSION	1
 #define HAMMER_OBJID_ROOT		1
+#define HAMMER_INODE_BASESYMLEN		24
 
 /*
  * A directory entry specifies the HAMMER filesystem object id, a copy of

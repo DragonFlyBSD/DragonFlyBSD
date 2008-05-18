@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.1 2008/05/12 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.2 2008/05/18 01:48:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -67,6 +67,7 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	if ((prune->head.flags & HAMMER_IOC_PRUNE_ALL) && prune->nelms)
 		return(EINVAL);
 
+	prune->cur_localization = prune->end_localization;
 	prune->cur_obj_id = prune->end_obj_id;
 	prune->cur_key = HAMMER_MAX_KEY;
 
@@ -76,6 +77,7 @@ retry:
 		hammer_done_cursor(&cursor);
 		return(error);
 	}
+	cursor.key_beg.localization = prune->beg_localization;
 	cursor.key_beg.obj_id = prune->beg_obj_id;
 	cursor.key_beg.key = HAMMER_MIN_KEY;
 	cursor.key_beg.create_tid = 1;
@@ -83,6 +85,7 @@ retry:
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
+	cursor.key_end.localization = prune->cur_localization;
 	cursor.key_end.obj_id = prune->cur_obj_id;
 	cursor.key_end.key = prune->cur_key;
 	cursor.key_end.create_tid = HAMMER_MAX_TID - 1;
@@ -94,14 +97,27 @@ retry:
 	cursor.flags |= HAMMER_CURSOR_BACKEND;
 
 	/*
-	 * This flag allows the B-Tree code to clean up loose ends while
-	 * it is scanning.
+	 * This flag allows the B-Tree code to clean up loose ends.
 	 */
 	cursor.flags |= HAMMER_CURSOR_PRUNING;
 
+	hammer_sync_lock_sh(trans);
 	error = hammer_btree_last(&cursor);
 	while (error == 0) {
+		/*
+		 * Yield to more important tasks
+		 */
+		if (trans->hmp->sync_lock.wanted) {
+			hammer_sync_unlock(trans);
+			tsleep(trans, 0, "hmrslo", hz / 10);
+			hammer_sync_lock_sh(trans);
+		}
+
+		/*
+		 * Check for work
+		 */
 		elm = &cursor.node->ondisk->elms[cursor.index];
+		prune->cur_localization = elm->base.localization;
 		prune->cur_obj_id = elm->base.obj_id;
 		prune->cur_key = elm->base.key;
 
@@ -123,10 +139,8 @@ retry:
 			 */
 			isdir = (elm->base.rec_type == HAMMER_RECTYPE_DIRENTRY);
 
-			hammer_lock_ex(&trans->hmp->sync_lock);
 			error = hammer_delete_at_cursor(&cursor,
 							&prune->stat_bytes);
-			hammer_unlock(&trans->hmp->sync_lock);
 			if (error)
 				break;
 
@@ -142,10 +156,8 @@ retry:
 			 */
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 		} else if (realign_cre >= 0 || realign_del >= 0) {
-			hammer_lock_ex(&trans->hmp->sync_lock);
 			error = realign_prune(prune, &cursor,
 					      realign_cre, realign_del);
-			hammer_unlock(&trans->hmp->sync_lock);
 			if (error == 0) {
 				cursor.flags |= HAMMER_CURSOR_ATEDISK;
 				if (hammer_debug_general & 0x0200) {
@@ -169,7 +181,8 @@ retry:
 		 * cache.  NOTE: We still hold locks on the cursor, we
 		 * cannot call the flusher synchronously.
 		 */
-		if (trans->hmp->locked_dirty_count > hammer_limit_dirtybufs) {
+		if (trans->hmp->locked_dirty_count +
+		    trans->hmp->io_running_count > hammer_limit_dirtybufs) {
 			hammer_flusher_async(trans->hmp);
 			tsleep(trans, 0, "hmrslo", hz / 10);
 		}
@@ -177,6 +190,7 @@ retry:
 		if (error == 0)
 			error = hammer_btree_iterate_reverse(&cursor);
 	}
+	hammer_sync_unlock(trans);
 	if (error == ENOENT)
 		error = 0;
 	hammer_done_cursor(&cursor);

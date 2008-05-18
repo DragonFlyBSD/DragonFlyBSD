@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.16 2008/05/15 03:36:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.17 2008/05/18 01:48:50 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -179,6 +179,9 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	hammer_start_transaction_fls(&trans, hmp);
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
+	/*
+	 * Flush all pending inodes
+	 */
 	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
 		/*
 		 * Stop when we hit a different flush group
@@ -250,7 +253,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 	int count;
 	int i;
 
-	hammer_lock_ex(&hmp->sync_lock);
+	hammer_sync_lock_ex(trans);
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	/*
@@ -377,7 +380,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
 	}
-	hammer_unlock(&hmp->sync_lock);
+	hammer_sync_unlock(trans);
 	if (count)
 		hkprintf("Z%d", count);
 }

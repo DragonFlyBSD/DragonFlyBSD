@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.15 2008/05/13 20:46:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.16 2008/05/18 01:48:50 dillon Exp $
  */
 
 /*
@@ -105,11 +105,23 @@ struct hammer_base_elm {
 	u_int16_t rec_type;	/* 20 _RECTYPE_ */
 	u_int8_t obj_type;	/* 22 _OBJTYPE_ (restricted) */
 	u_int8_t btype;		/* 23 B-Tree element type */
-	int32_t reserved07;	/* 24 (future) */
+	u_int32_t localization;	/* 24 B-Tree localization parameter */
 				/* 28 */
 };
 
 typedef struct hammer_base_elm *hammer_base_elm_t;
+
+/*
+ * Localization has sorting priority over the obj_id and is used to
+ * localize inodes for very fast directory scans.
+ */
+#define HAMMER_LOCALIZE_RESERVED00	0x00000000
+#define HAMMER_LOCALIZE_INODE		0x00000001
+#define HAMMER_LOCALIZE_MISC		0x00000002
+#define HAMMER_LOCALIZE_RESERVED03	0x00000003
+
+#define HAMMER_MIN_LOCALIZATION		0x00000000U
+#define HAMMER_MAX_LOCALIZATION		0xFFFFFFFFU
 
 /*
  * Internal element (40 + 24 = 64 bytes).

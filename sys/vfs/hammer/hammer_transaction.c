@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.14 2008/04/29 01:10:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.15 2008/05/18 01:48:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -54,6 +54,7 @@ hammer_start_transaction(struct hammer_transaction *trans,
 	KKASSERT(error == 0);
 	trans->tid = 0;
 	trans->time = hammer_alloc_tid(trans, 1);
+	trans->sync_lock_refs = 0;
 }
 
 /*
@@ -71,11 +72,16 @@ hammer_simple_transaction(struct hammer_transaction *trans,
 	KKASSERT(error == 0);
 	trans->tid = 0;
 	trans->time = hammer_alloc_tid(trans, 1);
+	trans->sync_lock_refs = 0;
 }
 
 /*
  * Start a transaction using a particular TID.  Used by the sync code.
  * This does not stall.
+ *
+ * This routine may only be called from the flusher thread.  We predispose
+ * sync_lock_refs, implying serialization against the synchronization stage
+ * (which the flusher is responsible for).
  */
 void
 hammer_start_transaction_fls(struct hammer_transaction *trans,
@@ -83,19 +89,27 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 {
 	int error;
 
+	KKASSERT(curthread == hmp->flusher_td);
+
 	trans->type = HAMMER_TRANS_FLS;
 	trans->hmp = hmp;
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
 	trans->tid = hammer_alloc_tid(trans, 1);
 	trans->time = trans->tid;
+	trans->sync_lock_refs = 1;
 }
 
 void
 hammer_done_transaction(struct hammer_transaction *trans)
 {
+	int expected_lock_refs;
+
 	hammer_rel_volume(trans->rootvol, 0);
 	trans->rootvol = NULL;
+	expected_lock_refs = (trans->type == HAMMER_TRANS_FLS) ? 1 : 0;
+	KKASSERT(trans->sync_lock_refs == expected_lock_refs);
+	trans->sync_lock_refs = 0;
 }
 
 /*

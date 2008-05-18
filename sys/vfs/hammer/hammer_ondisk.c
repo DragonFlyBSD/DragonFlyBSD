@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.45 2008/05/15 03:36:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.46 2008/05/18 01:48:50 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -215,6 +215,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 	volume->nblocks = ondisk->vol_nblocks; 
 	volume->maxbuf_off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no,
 				    ondisk->vol_buf_end - ondisk->vol_buf_beg);
+	volume->maxraw_off = ondisk->vol_buf_end;
 	RB_INIT(&volume->rb_bufs_root);
 
 	if (RB_EMPTY(&hmp->rb_vols_root)) {
@@ -429,7 +430,8 @@ hammer_load_volume(hammer_volume_t volume)
 	hammer_lock_ex(&volume->io.lock);
 
 	if (volume->ondisk == NULL) {
-		error = hammer_io_read(volume->devvp, &volume->io);
+		error = hammer_io_read(volume->devvp, &volume->io,
+				       volume->maxraw_off);
 		if (error == 0)
 			volume->ondisk = (void *)volume->io.bp->b_data;
 	} else {
@@ -518,15 +520,14 @@ hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 	 * Locate the buffer given its zone-2 offset.
 	 */
 	buf_offset &= ~HAMMER_BUFMASK64;
-	KKASSERT((buf_offset & HAMMER_ZONE_RAW_BUFFER) ==
-		 HAMMER_ZONE_RAW_BUFFER);
+	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
 	volume = hammer_get_volume(hmp, vol_no, errorp);
 	if (volume == NULL)
 		return(NULL);
 
 	/*
-	 * NOTE: buf_offset and maxbuf_off are both full offset
+	 * NOTE: buf_offset and maxbuf_off are both full zone-2 offset
 	 * specifications.
 	 */
 	KKASSERT(buf_offset < volume->maxbuf_off);
@@ -580,7 +581,7 @@ again:
 	/*
 	 * Cache the blockmap translation
 	 */
-	if ((zoneX_offset & HAMMER_ZONE_RAW_BUFFER) != HAMMER_ZONE_RAW_BUFFER)
+	if ((zoneX_offset & HAMMER_OFF_ZONE_MASK) != HAMMER_ZONE_RAW_BUFFER)
 		buffer->zoneX_offset = zoneX_offset;
 
 	/*
@@ -599,6 +600,30 @@ again:
 	return(buffer);
 }
 
+/*
+ * Clear the cached zone-X translation for a buffer.
+ */
+void
+hammer_clrxlate_buffer(hammer_mount_t hmp, hammer_off_t buf_offset)
+{
+	hammer_buffer_t buffer;
+	hammer_volume_t volume;
+	int vol_no;
+	int error;
+
+	buf_offset &= ~HAMMER_BUFMASK64;
+	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
+	vol_no = HAMMER_VOL_DECODE(buf_offset);
+	volume = hammer_get_volume(hmp, vol_no, &error);
+	if (volume == NULL)
+		return;
+	buffer = RB_LOOKUP(hammer_buf_rb_tree, &volume->rb_bufs_root,
+			   buf_offset);
+	if (buffer)
+		buffer->zoneX_offset = 0;
+	hammer_rel_volume(volume, 0);
+}
+
 static int
 hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 {
@@ -612,11 +637,17 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	++buffer->io.loading;
 	hammer_lock_ex(&buffer->io.lock);
 
+	if (hammer_debug_io & 0x0001) {
+		kprintf("load_buffer %016llx %016llx\n",
+			buffer->zoneX_offset, buffer->zone2_offset);
+	}
+
 	if (buffer->ondisk == NULL) {
 		if (isnew) {
 			error = hammer_io_new(volume->devvp, &buffer->io);
 		} else {
-			error = hammer_io_read(volume->devvp, &buffer->io);
+			error = hammer_io_read(volume->devvp, &buffer->io,
+					       volume->maxraw_off);
 		}
 		if (error == 0)
 			buffer->ondisk = (void *)buffer->io.bp->b_data;
@@ -738,8 +769,7 @@ hammer_uncache_buffer(hammer_mount_t hmp, hammer_off_t buf_offset)
 	int error;
 
 	buf_offset &= ~HAMMER_BUFMASK64;
-	KKASSERT((buf_offset & HAMMER_ZONE_RAW_BUFFER) ==
-		 HAMMER_ZONE_RAW_BUFFER);
+	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
 	volume = hammer_get_volume(hmp, vol_no, &error);
 	KKASSERT(volume != 0);
@@ -908,6 +938,7 @@ static int
 hammer_load_node(hammer_node_t node, int isnew)
 {
 	hammer_buffer_t buffer;
+	hammer_off_t buf_offset;
 	int error;
 
 	error = 0;
@@ -932,9 +963,9 @@ hammer_load_node(hammer_node_t node, int isnew)
 				node->buffer = buffer;
 			}
 		} else {
-			buffer = hammer_get_buffer(node->hmp,
-						   node->node_offset, 0,
-						   &error);
+			buf_offset = node->node_offset & ~HAMMER_BUFMASK64;
+			buffer = hammer_get_buffer(node->hmp, buf_offset,
+						   0, &error);
 			if (buffer) {
 				KKASSERT(error == 0);
 				TAILQ_INSERT_TAIL(&buffer->clist,

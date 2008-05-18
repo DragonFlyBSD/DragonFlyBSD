@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.31 2008/05/15 03:36:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.32 2008/05/18 01:48:50 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -167,18 +167,30 @@ hammer_io_wait(hammer_io_t io)
 	}
 }
 
+#define HAMMER_MAXRA	4
+
 /*
  * Load bp for a HAMMER structure.  The io must be exclusively locked by
  * the caller.
+ *
+ * Generally speaking HAMMER assumes either an optimized layout or that
+ * typical access patterns will be close to the original layout when the
+ * information was written.  For this reason we try to cluster all reads.
  */
 int
-hammer_io_read(struct vnode *devvp, struct hammer_io *io)
+hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 {
 	struct buf *bp;
-	int error;
+	int   error;
 
 	if ((bp = io->bp) == NULL) {
+#if 1
+		error = cluster_read(devvp, limit, io->offset,
+				     HAMMER_BUFSIZE, MAXBSIZE, 16, &io->bp);
+#else
 		error = bread(devvp, io->offset, HAMMER_BUFSIZE, &io->bp);
+#endif
+
 		if (error == 0) {
 			bp = io->bp;
 			bp->b_ops = &hammer_bioops;
@@ -468,12 +480,19 @@ hammer_io_modify_done(hammer_io_t io)
 	--io->modify_refs;
 }
 
+/*
+ * Caller intends to modify a volume's ondisk structure.
+ *
+ * This is only allowed if we are the flusher or we have a ref on the
+ * sync_lock.
+ */
 void
 hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 		     void *base, int len)
 {
-	hammer_io_modify(&volume->io, 1);
+	KKASSERT (trans == NULL || trans->sync_lock_refs > 0);
 
+	hammer_io_modify(&volume->io, 1);
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)volume->ondisk;
 		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
@@ -484,14 +503,17 @@ hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 }
 
 /*
- * Caller intends to modify a buffer's ondisk structure.  The related
- * cluster must be marked open prior to being able to flush the modified
- * buffer so get that I/O going now.
+ * Caller intends to modify a buffer's ondisk structure.
+ *
+ * This is only allowed if we are the flusher or we have a ref on the
+ * sync_lock.
  */
 void
 hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,
 		     void *base, int len)
 {
+	KKASSERT (trans == NULL || trans->sync_lock_refs > 0);
+
 	hammer_io_modify(&buffer->io, 1);
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)buffer->ondisk;
