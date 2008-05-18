@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.21 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/if_bwi.c,v 1.22 2008/05/18 08:10:03 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -3313,16 +3313,22 @@ _bwi_txeof(struct bwi_softc *sc, uint16_t tx_id, int acked, int data_txcnt)
 			res[1].rc_res_tries = data_txcnt - BWI_SHRETRY_FB;
 		}
 
-		if (acked)
+		if (acked) {
+			ifp->if_opackets++;
 			retry = data_txcnt > 0 ? data_txcnt - 1 : 0;
-		else
+		} else {
+			ifp->if_oerrors++;
 			retry = data_txcnt;
+		}
 
 		ieee80211_ratectl_tx_complete(tb->tb_ni, tb->tb_buflen,
 			res, res_len, retry, 0, !acked);
 
 		ieee80211_free_node(tb->tb_ni);
 		tb->tb_ni = NULL;
+	} else {
+		/* XXX mgt packet error */
+		ifp->if_opackets++;
 	}
 
 	if (tbd->tbd_used == 0)
