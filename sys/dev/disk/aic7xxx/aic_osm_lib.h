@@ -33,7 +33,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic_osm_lib.h#5 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic_osm_lib.h,v 1.4 2004/11/18 20:22:31 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.h,v 1.5 2008/02/09 18:13:13 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic_osm_lib.h,v 1.6 2008/05/18 20:30:21 pavalos Exp $
  */
 
 /******************************** OS Includes *********************************/
@@ -189,9 +189,9 @@ aic_wakeup_recovery_thread(struct aic_softc *aic)
 
 /***************************** Timer Facilities *******************************/
 #if __FreeBSD_version >= 500000
-#define aic_timer_init(timer) callout_init(timer, /*mpsafe*/0)
+#define aic_timer_init(timer) callout_init(timer, /*mpsafe*/1)
 #else
-#define aic_timer_init callout_init
+#define aic_timer_init callout_init_mp
 #endif
 #define aic_timer_stop callout_stop
 

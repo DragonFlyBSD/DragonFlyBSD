@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.20 2008/02/10 00:01:02 pavalos Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.21 2008/05/18 20:30:22 pavalos Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -84,7 +84,7 @@ isp_attach(struct ispsoftc *isp)
 	 */
 	ISPLOCK_2_CAMLOCK(isp);
 	sim = cam_sim_alloc(isp_action, isp_poll, "isp", isp,
-	    device_get_unit(isp->isp_dev), 1, isp->isp_maxcmds, devq);
+	    device_get_unit(isp->isp_dev), &sim_mplock, 1, isp->isp_maxcmds, devq);
 	cam_simq_release(devq);		/* leaves 1 ref due to cam_sim_alloc */
 	if (sim == NULL) {
 		CAMLOCK_2_ISPLOCK(isp);
@@ -153,7 +153,7 @@ isp_attach(struct ispsoftc *isp)
 	if (IS_DUALBUS(isp)) {
 		ISPLOCK_2_CAMLOCK(isp);
 		sim = cam_sim_alloc(isp_action, isp_poll, "isp", isp,
-		    device_get_unit(isp->isp_dev), 1, isp->isp_maxcmds, devq);
+		    device_get_unit(isp->isp_dev), &sim_mplock, 1, isp->isp_maxcmds, devq);
 		if (sim == NULL) {
 			xpt_bus_deregister(cam_sim_path(isp->isp_sim));
 			xpt_free_path(isp->isp_path);

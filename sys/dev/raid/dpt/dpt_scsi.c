@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.17 2008/02/10 00:01:03 pavalos Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.18 2008/05/18 20:30:23 pavalos Exp $"
 
 #define _DPT_C_
 
@@ -1485,7 +1485,8 @@ dpt_attach(dpt_softc_t *dpt)
 		 * Construct our SIM entry
 		 */
 		dpt->sims[i] = cam_sim_alloc(dpt_action, dpt_poll, "dpt",
-					     dpt, dpt->unit, /*untagged*/2,
+					     dpt, dpt->unit, &sim_mplock,
+					     /*untagged*/2,
 					     /*tagged*/dpt->max_dccbs, devq);
 		if (xpt_bus_register(dpt->sims[i], i) != CAM_SUCCESS) {
 			cam_sim_free(dpt->sims[i]);

@@ -35,7 +35,7 @@
  * $Id$
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_isa.c,v 1.5 2004/10/15 23:39:52 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_isa.c,v 1.3 2008/02/09 18:13:13 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_isa.c,v 1.4 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -242,7 +242,7 @@ ahc_isa_attach(device_t dev)
 	 * set it up for attachment by our
 	 * common detect routine.
 	 */
-	name = kmalloc(strlen(device_get_nameunit(dev)) + 1, M_DEVBUF, M_WAITOK);
+	name = kmalloc(strlen(device_get_nameunit(dev)) + 1, M_DEVBUF, M_INTWAIT);
 	strcpy(name, device_get_nameunit(dev));
 	ahc = ahc_alloc(dev, name);
 	if (ahc == NULL)

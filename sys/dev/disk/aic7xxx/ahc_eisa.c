@@ -29,7 +29,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_eisa.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_eisa.c,v 1.34 2004/08/17 00:14:30 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_eisa.c,v 1.9 2007/07/06 04:56:22 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_eisa.c,v 1.10 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -119,7 +119,7 @@ aic7770_attach(device_t dev)
 	 * set it up for attachment by our
 	 * common detect routine.
 	 */
-	name = kmalloc(strlen(device_get_nameunit(dev)) + 1, M_DEVBUF, M_WAITOK);
+	name = kmalloc(strlen(device_get_nameunit(dev)) + 1, M_DEVBUF, M_INTWAIT);
 	strcpy(name, device_get_nameunit(dev));
 	ahc = ahc_alloc(dev, name);
 	if (ahc == NULL)

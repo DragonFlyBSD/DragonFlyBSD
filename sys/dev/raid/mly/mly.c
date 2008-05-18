@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.20 2008/02/10 00:01:03 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.21 2008/05/18 20:30:23 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1933,6 +1933,7 @@ mly_cam_attach(struct mly_softc *sc)
 
 	    if ((sc->mly_cam_sim[chn] = cam_sim_alloc(mly_cam_action, mly_cam_poll, "mly", sc,
 						      device_get_unit(sc->mly_dev),
+						      &sim_mplock,
 						      sc->mly_controllerinfo->maximum_parallel_commands,
 						      1, devq)) == NULL) {
 		return(ENOMEM);
@@ -1952,6 +1953,7 @@ mly_cam_attach(struct mly_softc *sc)
     for (i = 0; i < sc->mly_controllerinfo->virtual_channels_present; i++, chn++) {
 	if ((sc->mly_cam_sim[chn] = cam_sim_alloc(mly_cam_action, mly_cam_poll, "mly", sc,
 						  device_get_unit(sc->mly_dev),
+						  &sim_mplock,
 						  sc->mly_controllerinfo->maximum_parallel_commands,
 						  0, devq)) == NULL) {
 	    return(ENOMEM);

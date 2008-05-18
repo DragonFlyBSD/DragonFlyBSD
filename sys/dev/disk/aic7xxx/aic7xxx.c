@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#155 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.111 2007/04/19 18:53:52 scottl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.28 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.29 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -3896,13 +3896,13 @@ ahc_alloc(void *platform_arg, char *name)
 	int	i;
 
 #if !defined(__DragonFly__) && !defined(__FreeBSD__)
-	ahc = kmalloc(sizeof(*ahc), M_DEVBUF, M_WAITOK);
+	ahc = kmalloc(sizeof(*ahc), M_DEVBUF, M_INTWAIT);
 #else
 	ahc = device_get_softc((device_t)platform_arg);
 #endif
 	memset(ahc, 0, sizeof(*ahc));
 	ahc->seep_config = kmalloc(sizeof(*ahc->seep_config),
-				  M_DEVBUF, M_WAITOK);
+				  M_DEVBUF, M_INTWAIT);
 	LIST_INIT(&ahc->pending_scbs);
 	LIST_INIT(&ahc->timedout_scbs);
 	/* We don't know our unit number until the OSM sets it */
@@ -3945,7 +3945,7 @@ ahc_softc_init(struct ahc_softc *ahc)
 	/* XXX The shared scb data stuff should be deprecated */
 	if (ahc->scb_data == NULL) {
 		ahc->scb_data = kmalloc(sizeof(*ahc->scb_data),
-				       M_DEVBUF, M_WAITOK | M_ZERO);
+				       M_DEVBUF, M_INTWAIT | M_ZERO);
 	}
 
 	return (0);

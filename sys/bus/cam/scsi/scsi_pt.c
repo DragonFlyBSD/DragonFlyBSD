@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.22 2007/11/21 21:28:41 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.23 2008/05/18 20:30:20 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -144,38 +144,31 @@ ptopen(struct dev_open_args *ap)
 	struct cam_periph *periph;
 	struct pt_softc *softc;
 	int unit;
-	int error;
+	int error = 0;
 
 	unit = minor(dev);
 	periph = cam_extend_get(ptperiphs, unit);
-	if (periph == NULL)
+	if (cam_periph_acquire(periph) != CAM_REQ_CMP)
 		return (ENXIO);	
 
 	softc = (struct pt_softc *)periph->softc;
 
-	crit_enter();
+	cam_periph_lock(periph);
 	if (softc->flags & PT_FLAG_DEVICE_INVALID) {
-		crit_exit();
+		cam_periph_unlock(periph);
+		cam_periph_release(periph);
 		return(ENXIO);
 	}
 
-	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE,
-	    ("ptopen: dev=%s (unit %d)\n", devtoname(dev), unit));
-
-	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		crit_exit();
-		return (error); /* error code from tsleep */
+	if ((softc->flags & PT_FLAG_OPEN) == 0)
+		softc->flags |= PT_FLAG_OPEN;
+	else {
+		error = EBUSY;
+		cam_periph_release(periph);
 	}
 
-	crit_exit();
-
-	if ((softc->flags & PT_FLAG_OPEN) == 0) {
-		if (cam_periph_acquire(periph) != CAM_REQ_CMP)
-			error = ENXIO;
-		else
-			softc->flags |= PT_FLAG_OPEN;
-	} else
-		error = EBUSY;
+	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE,
+	    ("ptopen: dev=%s\n", devtoname(dev)));
 
 	cam_periph_unlock(periph);
 	return (error);
@@ -188,7 +181,6 @@ ptclose(struct dev_close_args *ap)
 	struct	cam_periph *periph;
 	struct	pt_softc *softc;
 	int	unit;
-	int	error;
 
 	unit = minor(dev);
 	periph = cam_extend_get(ptperiphs, unit);
@@ -197,8 +189,7 @@ ptclose(struct dev_close_args *ap)
 
 	softc = (struct pt_softc *)periph->softc;
 
-	if ((error = cam_periph_lock(periph, 0)) != 0)
-		return (error); /* error code from tsleep */
+	cam_periph_lock(periph);
 
 	softc->flags &= ~PT_FLAG_OPEN;
 	cam_periph_unlock(periph);
@@ -227,20 +218,14 @@ ptstrategy(struct dev_strategy_args *ap)
 		bp->b_error = ENXIO;
 		goto bad;		
 	}
+	cam_periph_lock(periph);
 	softc = (struct pt_softc *)periph->softc;
 
-	/*
-	 * Mask interrupts so that the pack cannot be invalidated until
-	 * after we are in the queue.  Otherwise, we might not properly
-	 * clean up one of the buffers.
-	 */
-	crit_enter();
-	
 	/*
 	 * If the device has been made invalid, error out
 	 */
 	if ((softc->flags & PT_FLAG_DEVICE_INVALID)) {
-		crit_exit();
+		cam_periph_unlock(periph);
 		bp->b_error = ENXIO;
 		goto bad;
 	}
@@ -249,13 +234,12 @@ ptstrategy(struct dev_strategy_args *ap)
 	 * Place it in the queue of disk activities for this disk
 	 */
 	bioq_insert_tail(&softc->bio_queue, bio);
-
-	crit_exit();
 	
 	/*
 	 * Schedule ourselves for performing the work.
 	 */
 	xpt_schedule(periph, /* XXX priority */1);
+	cam_periph_unlock(periph);
 
 	return(0);
 bad:
@@ -273,7 +257,6 @@ static void
 ptinit(void)
 {
 	cam_status status;
-	struct cam_path *path;
 
 	/*
 	 * Create our extend array for storing the devices we attach to.
@@ -288,21 +271,7 @@ ptinit(void)
 	 * Install a global async callback.  This callback will
 	 * receive async callbacks like "new device found".
 	 */
-	status = xpt_create_path(&path, /*periph*/NULL, CAM_XPT_PATH_ID,
-				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
-
-	if (status == CAM_REQ_CMP) {
-		struct ccb_setasync csa;
-
-                xpt_setup_ccb(&csa.ccb_h, path, /*priority*/5);
-                csa.ccb_h.func_code = XPT_SASYNC_CB;
-                csa.event_enable = AC_FOUND_DEVICE;
-                csa.callback = ptasync;
-                csa.callback_arg = NULL;
-                xpt_action((union ccb *)&csa);
-		status = csa.ccb_h.status;
-                xpt_free_path(path);
-        }
+	status = xpt_register_async(AC_FOUND_DEVICE, ptasync, NULL, NULL);
 
 	if (status != CAM_REQ_CMP) {
 		kprintf("pt: Failed to attach master async callback "
@@ -314,7 +283,6 @@ static cam_status
 ptctor(struct cam_periph *periph, void *arg)
 {
 	struct pt_softc *softc;
-	struct ccb_setasync csa;
 	struct ccb_getdev *cgd;
 
 	cgd = (struct ccb_getdev *)arg;
@@ -337,6 +305,7 @@ ptctor(struct cam_periph *periph, void *arg)
 
 	periph->softc = softc;
 	
+	cam_periph_unlock(periph);
 	cam_extend_set(ptperiphs, periph->unit_number, periph);
 
 	devstat_add_entry(&softc->device_stats, "pt",
@@ -349,6 +318,7 @@ ptctor(struct cam_periph *periph, void *arg)
 	make_dev(&pt_ops, periph->unit_number, UID_ROOT,
 		  GID_OPERATOR, 0600, "%s%d", periph->periph_name,
 		  periph->unit_number);
+	cam_periph_lock(periph);
 	/*
 	 * Add async callbacks for bus reset and
 	 * bus device reset calls.  I don't bother
@@ -357,12 +327,8 @@ ptctor(struct cam_periph *periph, void *arg)
 	 * them and the only alternative would be to
 	 * not attach the device on failure.
 	 */
-	xpt_setup_ccb(&csa.ccb_h, periph->path, /*priority*/5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = AC_SENT_BDR | AC_BUS_RESET | AC_LOST_DEVICE;
-	csa.callback = ptasync;
-	csa.callback_arg = periph;
-	xpt_action((union ccb *)&csa);
+	xpt_register_async(AC_SENT_BDR | AC_BUS_RESET | AC_LOST_DEVICE,
+			   ptasync, periph, periph->path);
 
 	/* Tell the user we've attached to the device */
 	xpt_announce_periph(periph, NULL);
@@ -376,28 +342,15 @@ ptoninvalidate(struct cam_periph *periph)
 	struct pt_softc *softc;
 	struct bio *q_bio;
 	struct buf *q_bp;
-	struct ccb_setasync csa;
 
 	softc = (struct pt_softc *)periph->softc;
 
 	/*
 	 * De-register any async callbacks.
 	 */
-	xpt_setup_ccb(&csa.ccb_h, periph->path,
-		      /* priority */ 5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = 0;
-	csa.callback = ptasync;
-	csa.callback_arg = periph;
-	xpt_action((union ccb *)&csa);
+	xpt_register_async(0, ptasync, periph, periph->path);
 
 	softc->flags |= PT_FLAG_DEVICE_INVALID;
-
-	/*
-	 * We need to be in a critical section here to keep the buffer
-	 * queue from being modified while we traverse it.
-	 */
-	crit_enter();
 
 	/*
 	 * Return all queued I/O with ENXIO.
@@ -413,10 +366,7 @@ ptoninvalidate(struct cam_periph *periph)
 		biodone(q_bio);
 	}
 
-	crit_exit();
-
-	xpt_print_path(periph->path);
-	kprintf("lost device\n");
+	xpt_print(periph->path, "lost device\n");
 }
 
 static void
@@ -429,8 +379,7 @@ ptdtor(struct cam_periph *periph)
 	devstat_remove_entry(&softc->device_stats);
 
 	cam_extend_release(ptperiphs, periph->unit_number);
-	xpt_print_path(periph->path);
-	kprintf("removing device entry\n");
+	xpt_print(periph->path, "removing device entry\n");
 	dev_ops_remove(&pt_ops, -1, periph->unit_number);
 	kfree(softc, M_DEVBUF);
 }
@@ -477,16 +426,13 @@ ptasync(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)
 		struct ccb_hdr *ccbh;
 
 		softc = (struct pt_softc *)periph->softc;
-		crit_enter();
 		/*
 		 * Don't fail on the expected unit attention
 		 * that will occur.
 		 */
 		softc->flags |= PT_FLAG_RETRY_UA;
-		for (ccbh = LIST_FIRST(&softc->pending_ccbs);
-		     ccbh != NULL; ccbh = LIST_NEXT(ccbh, periph_links.le))
+		LIST_FOREACH(ccbh, &softc->pending_ccbs, periph_links.le)
 			ccbh->ccb_state |= PT_CCB_RETRY_UA;
-		crit_exit();
 		/* FALLTHROUGH */
 	}
 	default:
@@ -507,7 +453,6 @@ ptstart(struct cam_periph *periph, union ccb *start_ccb)
 	/*
 	 * See if there is a buf with work for us to do..
 	 */
-	crit_enter();
 	bio = bioq_first(&softc->bio_queue);
 	if (periph->immediate_priority <= periph->pinfo.priority) {
 		CAM_DEBUG_PRINT(CAM_DEBUG_SUBTRACE,
@@ -516,10 +461,8 @@ ptstart(struct cam_periph *periph, union ccb *start_ccb)
 		SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
 				  periph_links.sle);
 		periph->immediate_priority = CAM_PRIORITY_NONE;
-		crit_exit();
 		wakeup(&periph->ccb_list);
 	} else if (bio == NULL) {
-		crit_exit();
 		xpt_release_ccb(start_ccb);
 	} else {
 		bioq_remove(&softc->bio_queue, bio);
@@ -549,7 +492,6 @@ ptstart(struct cam_periph *periph, union ccb *start_ccb)
 
 		start_ccb->ccb_h.ccb_bio = bio;
 		bio = bioq_first(&softc->bio_queue);
-		crit_exit();
 
 		xpt_action(start_ccb);
 		
@@ -599,15 +541,13 @@ ptdone(struct cam_periph *periph, union ccb *done_ccb)
 				struct buf *q_bp;
 				struct bio *q_bio;
 
-				crit_enter();
-
 				if (error == ENXIO) {
 					/*
 					 * Catastrophic error.  Mark our device
 					 * as invalid.
 					 */
-					xpt_print_path(periph->path);
-					kprintf("Invalidating device\n");
+					xpt_print(periph->path,
+					    "Invalidating device\n");
 					softc->flags |= PT_FLAG_DEVICE_INVALID;
 				}
 
@@ -625,7 +565,6 @@ ptdone(struct cam_periph *periph, union ccb *done_ccb)
 					q_bp->b_flags |= B_ERROR;
 					biodone(q_bio);
 				}
-				crit_exit();
 				bp->b_error = error;
 				bp->b_resid = bp->b_bcount;
 				bp->b_flags |= B_ERROR;
@@ -653,9 +592,7 @@ ptdone(struct cam_periph *periph, union ccb *done_ccb)
 		 * Block out any asyncronous callbacks
 		 * while we touch the pending ccb list.
 		 */
-		crit_enter();
 		LIST_REMOVE(&done_ccb->ccb_h, periph_links.le);
-		crit_exit();
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
 		biodone(bio);
@@ -690,7 +627,7 @@ ptioctl(struct dev_ioctl_args *ap)
 	struct cam_periph *periph;
 	struct pt_softc *softc;
 	int unit;
-	int error;
+	int error = 0;
 
 	unit = minor(dev);
 	periph = cam_extend_get(ptperiphs, unit);
@@ -700,9 +637,7 @@ ptioctl(struct dev_ioctl_args *ap)
 
 	softc = (struct pt_softc *)periph->softc;
 
-	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		return (error); /* error code from tsleep */
-	}	
+	cam_periph_lock(periph);
 
 	switch(ap->a_cmd) {
 	case PTIOCGETTIMEOUT:
@@ -712,18 +647,14 @@ ptioctl(struct dev_ioctl_args *ap)
 			*(int *)addr = 0;
 		break;
 	case PTIOCSETTIMEOUT:
-	{
 		if (*(int *)addr < 1) {
 			error = EINVAL;
 			break;
 		}
 
-		crit_enter();
 		softc->io_timeout = *(int *)addr * 1000;
-		crit_exit();
 
 		break;
-	}
 	default:
 		error = cam_periph_ioctl(periph, ap->a_cmd, addr, pterror);
 		break;

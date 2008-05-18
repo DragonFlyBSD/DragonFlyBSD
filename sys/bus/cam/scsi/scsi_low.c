@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.27 2008/02/10 00:01:01 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.28 2008/05/18 20:30:20 pavalos Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -781,7 +781,7 @@ scsi_low_attach_cam(struct scsi_low_softc *slp)
 	slp->sl_si.sim = cam_sim_alloc(scsi_low_scsi_action_cam,
 				scsi_low_poll_cam,
 				DEVPORT_DEVNAME(slp->sl_dev), slp,
-				DEVPORT_DEVUNIT(slp->sl_dev), 
+				DEVPORT_DEVUNIT(slp->sl_dev), &sim_mplock,
 				slp->sl_openings, tagged_openings, devq);
 	cam_simq_release(devq);
 	if (slp->sl_si.sim == NULL) {

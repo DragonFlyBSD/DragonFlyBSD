@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.18 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.19 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -526,7 +526,7 @@ ahbxptattach(struct ahb_softc *ahb)
 	 * Construct our SIM entry
 	 */
 	ahb->sim = cam_sim_alloc(ahbaction, ahbpoll, "ahb", ahb, ahb->unit,
-				 2, ahb->num_ecbs, NULL);
+				 &sim_mplock, 2, ahb->num_ecbs, NULL);
 	if (ahb->sim == NULL)
 		return (ENOMEM);
 

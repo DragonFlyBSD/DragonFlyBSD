@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.9 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.10 2008/05/18 20:30:22 pavalos Exp $
  */
 
 #include "opt_ata.h"
@@ -208,7 +208,7 @@ atapi_cam_attach(device_t dev)
     }
 
     if ((sim = cam_sim_alloc(atapi_action, atapi_poll, "ata",
-		 (void *)scp, unit, 1, 1, devq)) == NULL) {
+		 (void *)scp, unit, &sim_mplock, 1, 1, devq)) == NULL) {
 	error = ENOMEM;
 	goto out;
     }

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.26 2007/12/02 04:44:03 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.27 2008/05/18 20:30:19 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -731,8 +731,6 @@ scsi_op_desc(u_int16_t opcode, struct scsi_inquiry_data *inq_data)
 
 #endif
 
-
-#include <sys/param.h>
 
 #if !defined(SCSI_NO_SENSE_STRINGS)
 #define SST(asc, ascq, action, desc) \
@@ -2997,7 +2995,7 @@ sysctl_scsi_delay(SYSCTL_HANDLER_ARGS)
 	int error, delay;
 
 	delay = scsi_delay;
-	error = sysctl_handle_int(oidp, &delay, sizeof(delay), req);
+	error = sysctl_handle_int(oidp, &delay, 0, req);
 	if (error != 0 || req->newptr == NULL)
 		return (error);
 	return (set_scsi_delay(delay));

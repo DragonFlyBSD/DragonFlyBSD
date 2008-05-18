@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.13 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.14 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1527,7 +1527,7 @@ aic_attach(struct aic_softc *aic)
 	 * Construct our SIM entry
 	 */
 	aic->sim = cam_sim_alloc(aic_action, aic_poll, "aic", aic,
-				 aic->unit, 2, 256, NULL);
+				 aic->unit, &sim_mplock, 2, 256, NULL);
 	if (aic->sim == NULL)
 		return (ENOMEM);
 

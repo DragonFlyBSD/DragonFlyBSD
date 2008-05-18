@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.18 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.19 2008/05/18 20:30:22 pavalos Exp $
  */
 
  /*
@@ -831,7 +831,7 @@ bt_attach(device_t dev)
 	 * Construct our SIM entry
 	 */
 	bt->sim = cam_sim_alloc(btaction, btpoll, "bt", bt, bt->unit,
-				2, tagged_dev_openings, devq);
+				&sim_mplock, 2, tagged_dev_openings, devq);
 	cam_simq_release(devq);
 	if (bt->sim == NULL)
 		return (ENOMEM);

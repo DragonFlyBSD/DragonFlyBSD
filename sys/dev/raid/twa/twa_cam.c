@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.9 2008/02/10 00:01:03 pavalos Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.10 2008/05/18 20:30:23 pavalos Exp $
  */
 
 /*
@@ -87,6 +87,7 @@ twa_cam_setup(struct twa_softc *sc)
 	twa_dbg_dprint(3, sc, "Calling cam_sim_alloc");
 	sc->twa_sim = cam_sim_alloc(twa_action, twa_poll, "twa", sc,
 					device_get_unit(sc->twa_bus_dev),
+					&sim_mplock,
 					TWA_Q_LENGTH - 1, 1, devq);
 	cam_simq_release(devq);
 	if (sc->twa_sim == NULL) {

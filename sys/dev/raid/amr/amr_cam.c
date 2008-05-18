@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_cam.c,v 1.1.2.3 2002/11/11 13:19:10 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.10 2008/02/10 00:01:03 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.11 2008/05/18 20:30:23 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -148,6 +148,7 @@ amr_cam_attach(struct amr_softc *sc)
 						  "amr",
 						  sc,
 						  device_get_unit(sc->amr_dev),
+						  &sim_mplock,
 						  1,
 						  AMR_MAX_SCSI_CMDS,
 						  devq)) == NULL) {

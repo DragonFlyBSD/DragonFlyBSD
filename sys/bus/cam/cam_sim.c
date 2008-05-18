@@ -26,13 +26,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.10 2007/12/01 22:21:17 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.11 2008/05/18 20:30:19 pavalos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/lock.h>
+#include <sys/thread2.h>
 
 #include "cam.h"
 #include "cam_ccb.h"
@@ -43,6 +45,60 @@
 #define CAM_PATH_ANY (u_int32_t)-1
 
 MALLOC_DEFINE(M_CAMSIM, "CAM SIM", "CAM SIM buffers");
+
+/* Drivers will use sim_mplock if they need the BGL */
+sim_lock	sim_mplock;
+
+void
+cam_sim_lock(sim_lock *lock)
+{
+	if (lock == &sim_mplock)
+		get_mplock();
+	else
+		lockmgr(lock, LK_EXCLUSIVE);
+}
+
+void
+cam_sim_unlock(sim_lock *lock)
+{
+	if (lock == &sim_mplock)
+		rel_mplock();
+	else
+		lockmgr(lock, LK_RELEASE);
+}
+
+void
+sim_lock_assert_owned(sim_lock *lock)
+{
+	if (lock == &sim_mplock)
+		ASSERT_MP_LOCK_HELD(curthread);
+	else
+		KKASSERT(lockstatus(lock, curthread) != 0);
+}
+
+int
+sim_lock_sleep(void *ident, int flags, const char *wmesg, int timo,
+	       sim_lock *lock)
+{
+	int retval;
+
+	if (lock != &sim_mplock) {
+		/* lock should be held already */
+		KKASSERT(lockstatus(lock, curthread) != 0);
+		crit_enter();
+		tsleep_interlock(ident);
+		lockmgr(lock, LK_RELEASE);
+	}
+
+	retval = tsleep(ident, flags, wmesg, timo);
+
+	if (lock != &sim_mplock) {
+		lockmgr(lock, LK_EXCLUSIVE);
+		crit_exit();
+	}
+
+	return (retval);
+}
 
 struct cam_devq *
 cam_simq_alloc(u_int32_t max_sim_transactions)
@@ -64,7 +120,7 @@ cam_simq_release(struct cam_devq *devq)
 struct cam_sim *
 cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 	      const char *sim_name, void *softc, u_int32_t unit,
-	      int max_dev_transactions,
+	      sim_lock *lock, int max_dev_transactions,
 	      int max_tagged_dev_transactions, struct cam_devq *queue)
 {
 	struct cam_sim *sim;
@@ -87,6 +143,9 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 	else
 		cam_devq_reference(queue);
 
+	if (lock == NULL)
+		return (NULL);
+
 	sim = kmalloc(sizeof(struct cam_sim), M_CAMSIM, M_INTWAIT | M_ZERO);
 	sim->sim_action = sim_action;
 	sim->sim_poll = sim_poll;
@@ -99,8 +158,18 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 	sim->max_dev_openings = max_dev_transactions;
 	sim->flags = 0;
 	sim->refcount = 1;
-	callout_init(&sim->c_handle);
 	sim->devq = queue;
+	sim->lock = lock;
+	if (lock == &sim_mplock) {
+		sim->flags |= 0;
+		callout_init(&sim->callout);
+	} else {
+		sim->flags |= CAM_SIM_MPSAFE;
+		callout_init_mp(&sim->callout);
+	}
+
+	SLIST_INIT(&sim->ccb_freeq);
+	TAILQ_INIT(&sim->sim_doneq);
 
 	return (sim);
 }

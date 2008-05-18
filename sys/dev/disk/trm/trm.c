@@ -49,7 +49,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.17 2008/02/10 00:01:03 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.18 2008/05/18 20:30:22 pavalos Exp $
  */
 
 /*
@@ -3613,6 +3613,7 @@ trm_attach(device_t dev)
 	    "trm",
 	    pACB,
 	    unit,
+	    &sim_mplock,
 	    1,
 	    TRM_MAX_TAGS_CMD_QUEUE,
 	    device_Q);

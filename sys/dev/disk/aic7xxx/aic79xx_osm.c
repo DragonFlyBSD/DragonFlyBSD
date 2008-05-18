@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#35 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.23 2005/12/04 02:12:40 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.26 2008/03/06 20:07:51 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.27 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -133,7 +133,7 @@ ahd_attach(struct ahd_softc *ahd)
 	 */
 	sim = cam_sim_alloc(ahd_action, ahd_poll, "ahd", ahd,
 			    device_get_unit(ahd->dev_softc),
-			    1, AHD_MAX_QUEUE, NULL);
+			    &ahd->platform_data->lock, 1, AHD_MAX_QUEUE, NULL);
 	if (sim == NULL)
 		goto fail;
 

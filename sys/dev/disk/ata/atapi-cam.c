@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.14 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.15 2008/05/18 20:30:22 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -126,7 +126,7 @@ atapi_cam_attach_bus(struct ata_channel *ata_ch)
 
     devq = cam_simq_alloc(16);
     sim = cam_sim_alloc(atapi_action, atapi_poll, "ata", (void *)scp, 
-			unit, 1, 1, devq);
+			unit, &sim_mplock, 1, 1, devq);
     cam_simq_release(devq);
     if (sim == NULL)
 	goto error;

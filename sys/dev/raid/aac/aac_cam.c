@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_cam.c,v 1.2.2.4 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_cam.c,v 1.9 2008/02/10 00:01:03 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_cam.c,v 1.10 2008/05/18 20:30:23 pavalos Exp $
  */
 
 /*
@@ -171,7 +171,7 @@ aac_cam_attach(device_t dev)
 		return (EIO);
 
 	sim = cam_sim_alloc(aac_cam_action, aac_cam_poll, "aacp", camsc,
-	    device_get_unit(dev), 1, 1, devq);
+	    device_get_unit(dev), &sim_mplock, 1, 1, devq);
 	cam_simq_release(devq);
 	if (sim == NULL) {
 		return (EIO);

@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.23 2008/02/10 00:01:03 pavalos Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.24 2008/05/18 20:30:22 pavalos Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -9500,7 +9500,7 @@ int sym_cam_attach(hcb_p np)
 	 *  Construct our SIM entry.
 	 */
 	sim = cam_sim_alloc(sym_action, sym_poll, "sym", np, np->unit,
-			    1, SYM_SETUP_MAX_TAG, devq);
+			    &sim_mplock, 1, SYM_SETUP_MAX_TAG, devq);
 	cam_simq_release(devq);
 	if (sim == NULL)
 		goto fail;

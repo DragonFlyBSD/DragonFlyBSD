@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.20 2008/02/10 00:01:03 pavalos Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.21 2008/05/18 20:30:23 pavalos Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -482,7 +482,8 @@ iir_attach(struct gdt_softc *gdt)
          * Construct our SIM entry
          */
         gdt->sims[i] = cam_sim_alloc(iir_action, iir_poll, "iir",
-                                     gdt, gdt->sc_hanum, /*untagged*/2,
+                                     gdt, gdt->sc_hanum, &sim_mplock,
+				     /*untagged*/2,
                                      /*tagged*/GDT_MAXCMDS, devq);
         if (xpt_bus_register(gdt->sims[i], i) != CAM_SUCCESS) {
             cam_sim_free(gdt->sims[i]);

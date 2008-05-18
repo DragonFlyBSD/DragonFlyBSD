@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.c#20 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.45 2006/09/05 20:28:28 mjacob Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.22 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.23 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -187,7 +187,7 @@ ahc_attach(struct ahc_softc *ahc)
 	 */
 	sim = cam_sim_alloc(ahc_action, ahc_poll, "ahc", ahc,
 			    device_get_unit(ahc->dev_softc),
-			    1, AHC_MAX_QUEUE, NULL);
+			    &ahc->platform_data->lock, 1, AHC_MAX_QUEUE, NULL);
 	if (sim == NULL)
 		goto fail;
 
@@ -216,7 +216,8 @@ ahc_attach(struct ahc_softc *ahc)
 
 	if (ahc->features & AHC_TWIN) {
 		sim2 = cam_sim_alloc(ahc_action, ahc_poll, "ahc",
-				    ahc, device_get_unit(ahc->dev_softc), 1,
+				    ahc, device_get_unit(ahc->dev_softc),
+				    &ahc->platform_data->lock, 1,
 				    AHC_MAX_QUEUE, NULL);
 
 		if (sim2 == NULL) {

@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.19 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.20 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -648,7 +648,7 @@ aha_attach(struct aha_softc *aha)
 	 * Construct our SIM entry
 	 */
 	aha->sim = cam_sim_alloc(ahaaction, ahapoll, "aha", aha, device_get_unit(aha->dev),
-				2, tagged_dev_openings, devq);
+				&sim_mplock, 2, tagged_dev_openings, devq);
 	cam_simq_release(devq);
 	if (aha->sim == NULL) {
 		return (ENOMEM);

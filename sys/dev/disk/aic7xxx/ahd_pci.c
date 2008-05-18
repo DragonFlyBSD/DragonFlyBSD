@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahd_pci.c#17 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahd_pci.c,v 1.19 2005/09/22 04:56:59 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.12 2007/07/07 00:10:39 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahd_pci.c,v 1.13 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -90,7 +90,7 @@ ahd_pci_attach(device_t dev)
 	 * set it up for attachment by our
 	 * common detect routine.
 	 */
-	name = kmalloc(strlen(device_get_nameunit(dev)) + 1, M_DEVBUF, M_WAITOK);
+	name = kmalloc(strlen(device_get_nameunit(dev)) + 1, M_DEVBUF, M_INTWAIT);
 	strcpy(name, device_get_nameunit(dev));
 	ahd = ahd_alloc(dev, name);
 	if (ahd == NULL)

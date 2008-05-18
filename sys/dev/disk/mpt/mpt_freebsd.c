@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.10 2008/02/10 00:01:02 pavalos Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.11 2008/05/18 20:30:22 pavalos Exp $ */
 /*
  * FreeBSD/CAM specific routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -55,7 +55,7 @@ mpt_cam_attach(mpt_softc_t *mpt)
 	 * Construct our SIM entry.
 	 */
 	sim = cam_sim_alloc(mpt_action, mpt_poll, "mpt", mpt,
-	    mpt->unit, 1, maxq, NULL);
+	    mpt->unit, &sim_mplock, 1, maxq, NULL);
 	if (sim == NULL)
 		return;
 

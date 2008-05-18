@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.21 2008/05/18 03:02:53 pavalos Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.22 2008/05/18 20:30:22 pavalos Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -3782,7 +3782,7 @@ ncr_attach (device_t dev)
 	**	about our bus.
 	*/
 	np->sim = cam_sim_alloc(ncr_action, ncr_poll, "ncr", np, np->unit,
-				1, MAX_TAGS, devq);
+				&sim_mplock, 1, MAX_TAGS, devq);
 	cam_simq_release(devq);
 	if (np->sim == NULL)
 		return ENOMEM;

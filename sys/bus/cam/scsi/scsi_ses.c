@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.28 2007/12/01 22:21:18 pavalos Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.29 2008/05/18 20:30:20 pavalos Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -46,6 +46,7 @@
 #include "../cam_periph.h"
 #include "../cam_xpt_periph.h"
 #include "../cam_debug.h"
+#include "../cam_sim.h"
 
 #include "scsi_all.h"
 #include "scsi_message.h"
@@ -191,7 +192,6 @@ static void
 sesinit(void)
 {
 	cam_status status;
-	struct cam_path *path;
 
 	/*
 	 * Create our extend array for storing the devices we attach to.
@@ -206,21 +206,7 @@ sesinit(void)
 	 * Install a global async callback.  This callback will
 	 * receive async callbacks like "new device found".
 	 */
-	status = xpt_create_path(&path, NULL, CAM_XPT_PATH_ID,
-	    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
-
-	if (status == CAM_REQ_CMP) {
-		struct ccb_setasync csa;
-
-                xpt_setup_ccb(&csa.ccb_h, path, 5);
-                csa.ccb_h.func_code = XPT_SASYNC_CB;
-                csa.event_enable = AC_FOUND_DEVICE;
-                csa.callback = sesasync;
-                csa.callback_arg = NULL;
-                xpt_action((union ccb *)&csa);
-		status = csa.ccb_h.status;
-                xpt_free_path(path);
-        }
+	status = xpt_register_async(AC_FOUND_DEVICE, sesasync, NULL, NULL);
 
 	if (status != CAM_REQ_CMP) {
 		kprintf("ses: Failed to attach master async callback "
@@ -232,24 +218,17 @@ static void
 sesoninvalidate(struct cam_periph *periph)
 {
 	struct ses_softc *softc;
-	struct ccb_setasync csa;
 
 	softc = (struct ses_softc *)periph->softc;
 
 	/*
 	 * Unregister any async callbacks.
 	 */
-	xpt_setup_ccb(&csa.ccb_h, periph->path, 5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = 0;
-	csa.callback = sesasync;
-	csa.callback_arg = periph;
-	xpt_action((union ccb *)&csa);
+	xpt_register_async(0, sesasync, periph, periph->path);
 
 	softc->ses_flags |= SES_FLAG_INVALID;
 
-	xpt_print_path(periph->path);
-	kprintf("lost device\n");
+	xpt_print(periph->path, "lost device\n");
 }
 
 static void
@@ -260,8 +239,7 @@ sescleanup(struct cam_periph *periph)
 	softc = (struct ses_softc *)periph->softc;
 
 	cam_extend_release(sesperiphs, periph->unit_number);
-	xpt_print_path(periph->path);
-	kprintf("removing device entry\n");
+	xpt_print(periph->path, "removing device entry\n");
 	dev_ops_remove(&ses_ops, -1, periph->unit_number);
 	kfree(softc, M_SCSISES);
 }
@@ -322,7 +300,6 @@ static cam_status
 sesregister(struct cam_periph *periph, void *arg)
 {
 	struct ses_softc *softc;
-	struct ccb_setasync csa;
 	struct ccb_getdev *cgd;
 	char *tname;
 
@@ -372,21 +349,18 @@ sesregister(struct cam_periph *periph, void *arg)
 
 	cam_extend_set(sesperiphs, periph->unit_number, periph);
 
+	cam_periph_unlock(periph);
 	dev_ops_add(&ses_ops, -1, periph->unit_number);
 	make_dev(&ses_ops, periph->unit_number,
 		    UID_ROOT, GID_OPERATOR, 0600, "%s%d",
 		    periph->periph_name, periph->unit_number);
+	cam_periph_lock(periph);
 
 	/*
 	 * Add an async callback so that we get
 	 * notified if this device goes away.
 	 */
-	xpt_setup_ccb(&csa.ccb_h, periph->path, 5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = AC_LOST_DEVICE;
-	csa.callback = sesasync;
-	csa.callback_arg = periph;
-	xpt_action((union ccb *)&csa);
+	xpt_register_async(AC_LOST_DEVICE, sesasync, periph, periph->path);
 
 	switch (softc->ses_type) {
 	default:
@@ -419,24 +393,19 @@ sesopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct ses_softc *softc;
-	int error;
+	int error = 0;
 
-	crit_enter();
 	periph = cam_extend_get(sesperiphs, SESUNIT(dev));
 	if (periph == NULL) {
-		crit_exit();
 		return (ENXIO);
 	}
-	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
-		crit_exit();
-		return (error);
-	}
-	crit_exit();
 
 	if (cam_periph_acquire(periph) != CAM_REQ_CMP) {
 		cam_periph_unlock(periph);
 		return (ENXIO);
 	}
+
+	cam_periph_lock(periph);
 
 	softc = (struct ses_softc *)periph->softc;
 
@@ -463,10 +432,10 @@ sesopen(struct dev_open_args *ap)
 	}
 
 out:
+	cam_periph_unlock(periph);
 	if (error) {
 		cam_periph_release(periph);
 	}
-	cam_periph_unlock(periph);
 	return (error);
 }
 
@@ -485,11 +454,9 @@ sesclose(struct dev_close_args *ap)
 	if (periph == NULL)
 		return (ENXIO);
 
+	cam_periph_lock(periph);
+
 	softc = (struct ses_softc *)periph->softc;
-
-	if ((error = cam_periph_lock(periph, 0)) != 0)
-		return (error);
-
 	softc->ses_flags &= ~SES_FLAG_OPEN;
 
 	cam_periph_unlock(periph);
@@ -501,13 +468,11 @@ sesclose(struct dev_close_args *ap)
 static void
 sesstart(struct cam_periph *p, union ccb *sccb)
 {
-	crit_enter();
 	if (p->immediate_priority <= p->pinfo.priority) {
 		SLIST_INSERT_HEAD(&p->ccb_list, &sccb->ccb_h, periph_links.sle);
 		p->immediate_priority = CAM_PRIORITY_NONE;
 		wakeup(&p->ccb_list);
 	}
-	crit_exit();
 }
 
 static void
@@ -552,14 +517,17 @@ sesioctl(struct dev_ioctl_args *ap)
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("entering sesioctl\n"));
 
+	cam_periph_lock(periph);
 	ssc = (struct ses_softc *)periph->softc;
 
 	/*
 	 * Now check to see whether we're initialized or not.
 	 */
 	if ((ssc->ses_flags & SES_FLAG_INITIALIZED) == 0) {
+		cam_periph_unlock(periph);
 		return (ENXIO);
 	}
+	cam_periph_unlock(periph);
 
 	error = 0;
 
@@ -589,22 +557,34 @@ sesioctl(struct dev_ioctl_args *ap)
 		break;
 		
 	case SESIOC_GETOBJMAP:
+		/*
+		 * XXX Dropping the lock while copying multiple segments is
+		 * bogus.
+		 */
+		cam_periph_lock(periph);
 		for (uobj = addr, i = 0; i != ssc->ses_nobjects; i++, uobj++) {
 			obj.obj_id = i;
 			obj.subencid = ssc->ses_objmap[i].subenclosure;
 			obj.object_type = ssc->ses_objmap[i].enctype;
+			cam_periph_unlock(periph);
 			error = copyout(&obj, uobj, sizeof (ses_object));
+			cam_periph_lock(periph);
 			if (error) {
 				break;
 			}
 		}
+		cam_periph_unlock(periph);
 		break;
 
 	case SESIOC_GETENCSTAT:
+		cam_periph_lock(periph);
 		error = (*ssc->ses_vec.get_encstat)(ssc, 1);
-		if (error)
+		if (error) {
+			cam_periph_unlock(periph);
 			break;
+		}
 		tmp = ssc->ses_encstat & ~ENCI_SVALID;
+		cam_periph_unlock(periph);
 		error = copyout(&tmp, addr, sizeof (ses_encstat));
 		ssc->ses_encstat = tmp;
 		break;
@@ -613,7 +593,9 @@ sesioctl(struct dev_ioctl_args *ap)
 		error = copyin(addr, &tmp, sizeof (ses_encstat));
 		if (error)
 			break;
+		cam_periph_lock(periph);
 		error = (*ssc->ses_vec.set_encstat)(ssc, tmp, 1);
+		cam_periph_unlock(periph);
 		break;
 
 	case SESIOC_GETOBJSTAT:
@@ -624,7 +606,9 @@ sesioctl(struct dev_ioctl_args *ap)
 			error = EINVAL;
 			break;
 		}
+		cam_periph_lock(periph);
 		error = (*ssc->ses_vec.get_objstat)(ssc, &objs, 1);
+		cam_periph_unlock(periph);
 		if (error)
 			break;
 		error = copyout(&objs, addr, sizeof (ses_objstat));
@@ -643,7 +627,9 @@ sesioctl(struct dev_ioctl_args *ap)
 			error = EINVAL;
 			break;
 		}
+		cam_periph_lock(periph);
 		error = (*ssc->ses_vec.set_objstat)(ssc, &objs, 1);
+		cam_periph_unlock(periph);
 
 		/*
 		 * Always (for now) invalidate entry.
@@ -653,11 +639,15 @@ sesioctl(struct dev_ioctl_args *ap)
 
 	case SESIOC_INIT:
 
+		cam_periph_lock(periph);
 		error = (*ssc->ses_vec.init_enc)(ssc);
+		cam_periph_unlock(periph);
 		break;
 
 	default:
+		cam_periph_lock(periph);
 		error = cam_periph_ioctl(periph, ap->a_cmd, ap->a_data, seserror);
+		cam_periph_unlock(periph);
 		break;
 	}
 	return (error);

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.15 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.16 2008/05/18 20:30:22 pavalos Exp $
  */
 
 /*
@@ -2426,8 +2426,8 @@ amd_attach(device_t dev)
 	}
 
 	amd->psim = cam_sim_alloc(amd_action, amd_poll, "amd",
-				  amd, amd->unit, 1, MAX_TAGS_CMD_QUEUE,
-				  devq);
+				  amd, amd->unit, &sim_mplock, 1,
+				  MAX_TAGS_CMD_QUEUE, devq);
 	cam_simq_release(devq);
 	if (amd->psim == NULL) {
 		if (bootverbose)

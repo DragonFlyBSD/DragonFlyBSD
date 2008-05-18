@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.14 2008/03/01 22:03:13 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.15 2008/05/18 20:30:20 pavalos Exp $
  */
 /*
  * Ported from:
@@ -1388,7 +1388,7 @@ adv_attach(struct adv_softc *adv)
 	 * Construct our SIM entry.
 	 */
 	adv->sim = cam_sim_alloc(adv_action, adv_poll, "adv", adv, adv->unit,
-				 1, adv->max_openings, NULL);
+				 &sim_mplock, 1, adv->max_openings, NULL);
 	if (adv->sim == NULL)
 		return (ENOMEM);
 

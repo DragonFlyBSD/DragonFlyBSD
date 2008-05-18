@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.h,v 1.4 1999/12/29 04:54:27 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.6 2007/06/14 01:09:30 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.7 2008/05/18 20:30:19 pavalos Exp $
  */
 
 #ifndef _CAM_CAM_SIM_H
@@ -49,6 +49,14 @@ struct cam_devq;
 typedef void (*sim_action_func)(struct cam_sim *sim, union ccb *ccb);
 typedef void (*sim_poll_func)(struct cam_sim *sim);
 
+typedef struct lock	sim_lock;
+extern	sim_lock	sim_mplock;
+
+void		  cam_sim_lock(sim_lock *lock);
+void		  cam_sim_unlock(sim_lock *lock);
+void		  sim_lock_assert_owned(sim_lock *lock);
+int		  sim_lock_sleep(void *ident, int flags, const char *wmesg,
+				 int timo, sim_lock *lock);
 struct cam_devq * cam_simq_alloc(u_int32_t max_sim_transactions);
 void		  cam_simq_release(struct cam_devq *devq);
 
@@ -57,6 +65,7 @@ struct cam_sim *  cam_sim_alloc(sim_action_func sim_action,
 				const char *sim_name,
 				void *softc,
 				u_int32_t unit,
+				sim_lock *lock,
 				int max_dev_transactions,
 				int max_tagged_dev_transactions,
 				struct cam_devq *queue);
@@ -94,17 +103,36 @@ struct cam_sim {
 	sim_poll_func		sim_poll;
 	const char		*sim_name;
 	void			*softc;		/* might be NULL */
+	sim_lock		*lock;
+	TAILQ_HEAD(, ccb_hdr)	sim_doneq;
+	TAILQ_ENTRY(cam_sim)	links;
 	u_int32_t		path_id;	/* bootdev may set this to 0? */
 	u_int32_t		unit_number;
 	u_int32_t		bus_id;
 	int			max_tagged_dev_openings;
 	int			max_dev_openings;
 	u_int32_t		flags;
-#define		CAM_SIM_REL_TIMEOUT_PENDING	0x01
-	struct callout		c_handle;
+#define	CAM_SIM_REL_TIMEOUT_PENDING	0x01
+#define	CAM_SIM_MPSAFE			0x02
+#define CAM_SIM_ON_DONEQ		0x04
+	struct callout		callout;
 	struct cam_devq 	*devq;	/* Device Queue to use for this SIM */
 	int			refcount;	/* References to the sim */
+
+	/* "Pool" of inactive ccbs managed by xpt_alloc_ccb and xpt_free_ccb */
+	SLIST_HEAD(,ccb_hdr)	ccb_freeq;
+	/*
+	 * Maximum size of ccb pool.  Modified as devices are added/removed
+	 * or have their * opening counts changed.
+	 */
+	u_int			max_ccbs;
+	/* Current count of allocated ccbs */
+	u_int			ccb_count;
+
 };
+
+#define CAM_SIM_LOCK(sim)	cam_sim_lock((sim)->lock);
+#define CAM_SIM_UNLOCK(sim)	cam_sim_unlock((sim)->lock);
 
 static __inline u_int32_t
 cam_sim_path(struct cam_sim *sim)

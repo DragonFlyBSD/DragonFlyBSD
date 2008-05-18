@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.27 2008/02/10 00:01:03 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.28 2008/05/18 20:30:23 pavalos Exp $
  */
 
 /*
@@ -2070,8 +2070,8 @@ ciss_cam_init(struct ciss_softc *sc)
      */
     if ((sc->ciss_cam_sim = cam_sim_alloc(ciss_cam_action, ciss_cam_poll, "ciss", sc,
 					  device_get_unit(sc->ciss_dev),
+					  &sim_mplock, 1,
 					  sc->ciss_max_requests - 2,
-					  1,
 					  sc->ciss_cam_devq)) == NULL) {
 	ciss_printf(sc, "can't allocate CAM SIM\n");
 	return(ENOMEM);

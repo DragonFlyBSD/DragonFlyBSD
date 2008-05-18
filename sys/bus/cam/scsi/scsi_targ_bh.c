@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.18 2007/12/01 22:21:18 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.19 2008/05/18 20:30:20 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -47,6 +47,7 @@
 #include "../cam_queue.h"
 #include "../cam_xpt_periph.h"
 #include "../cam_debug.h"
+#include "../cam_sim.h"
 
 #include "scsi_all.h"
 #include "scsi_message.h"
@@ -156,27 +157,13 @@ static void
 targbhinit(void)
 {
 	cam_status status;
-	struct cam_path *path;
 
 	/*
 	 * Install a global async callback.  This callback will
 	 * receive async callbacks like "new path registered".
 	 */
-	status = xpt_create_path(&path, /*periph*/NULL, CAM_XPT_PATH_ID,
-				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
-
-	if (status == CAM_REQ_CMP) {
-		struct ccb_setasync csa;
-
-		xpt_setup_ccb(&csa.ccb_h, path, /*priority*/5);
-		csa.ccb_h.func_code = XPT_SASYNC_CB;
-		csa.event_enable = AC_PATH_REGISTERED | AC_PATH_DEREGISTERED;
-		csa.callback = targbhasync;
-		csa.callback_arg = NULL;
-		xpt_action((union ccb *)&csa);
-		status = csa.ccb_h.status;
-		xpt_free_path(path);
-        }
+	status = xpt_register_async(AC_PATH_REGISTERED | AC_PATH_DEREGISTERED,
+				    targbhasync, NULL, NULL);
 
 	if (status != CAM_REQ_CMP) {
 		kprintf("targbh: Failed to attach master async callback "
@@ -264,9 +251,9 @@ targbhenlun(struct cam_periph *periph)
 	xpt_action(&immed_ccb);
 	status = immed_ccb.ccb_h.status;
 	if (status != CAM_REQ_CMP) {
-		xpt_print_path(periph->path);
-		kprintf("targbhenlun - Enable Lun Rejected with status 0x%x\n",
-		       status);
+		xpt_print(periph->path,
+		    "targbhenlun - Enable Lun Rejected with status 0x%x\n",
+		    status);
 		return (status);
 	}
 	
@@ -299,9 +286,9 @@ targbhenlun(struct cam_periph *periph)
 	}
 
 	if (i == 0) {
-		xpt_print_path(periph->path);
-		kprintf("targbhenlun - Could not allocate accept tio CCBs: "
-		       "status = 0x%x\n", status);
+		xpt_print(periph->path,
+		    "targbhenlun - Could not allocate accept tio CCBs: status "
+		    "= 0x%x\n", status);
 		targbhdislun(periph);
 		return (CAM_REQ_CMP_ERR);
 	}
@@ -329,9 +316,9 @@ targbhenlun(struct cam_periph *periph)
 	}
 
 	if (i == 0) {
-		xpt_print_path(periph->path);
-		kprintf("targbhenlun - Could not allocate immediate notify "
-		       "CCBs: status = 0x%x\n", status);
+		xpt_print(periph->path,
+		    "targbhenlun - Could not allocate immediate notify "
+		    "CCBs: status = 0x%x\n", status);
 		targbhdislun(periph);
 		return (CAM_REQ_CMP_ERR);
 	}
@@ -424,7 +411,7 @@ targbhdtor(struct cam_periph *periph)
 		/* FALLTHROUGH */
 	default:
 		/* XXX Wait for callback of targbhdislun() */
-		tsleep(softc, 0, "targbh", hz/2);
+		sim_lock_sleep(softc, 0, "targbh", hz/2, periph->sim->lock);
 		kfree(softc, M_SCSIBH);
 		break;
 	}
@@ -442,23 +429,19 @@ targbhstart(struct cam_periph *periph, union ccb *start_ccb)
 
 	softc = (struct targbh_softc *)periph->softc;
 	
-	crit_enter();
 	ccbh = TAILQ_FIRST(&softc->work_queue);
 	if (periph->immediate_priority <= periph->pinfo.priority) {
 		start_ccb->ccb_h.ccb_type = TARGBH_CCB_WAITING;			
 		SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
 				  periph_links.sle);
 		periph->immediate_priority = CAM_PRIORITY_NONE;
-		crit_exit();
 		wakeup(&periph->ccb_list);
 	} else if (ccbh == NULL) {
-		crit_exit();
 		xpt_release_ccb(start_ccb);	
 	} else {
 		TAILQ_REMOVE(&softc->work_queue, ccbh, periph_links.tqe);
 		TAILQ_INSERT_HEAD(&softc->pending_queue, ccbh,
 				  periph_links.tqe);
-		crit_exit();
 		atio = (struct ccb_accept_tio*)ccbh;
 		desc = (struct targbh_cmd_desc *)atio->ccb_h.ccb_descr;
 
@@ -519,9 +502,7 @@ targbhstart(struct cam_periph *periph, union ccb *start_ccb)
 					 /*getcount_only*/0);
 			atio->ccb_h.status &= ~CAM_DEV_QFRZN;
 		}
-		crit_enter();
 		ccbh = TAILQ_FIRST(&softc->work_queue);
-		crit_exit();
 	}
 	if (ccbh != NULL)
 		xpt_schedule(periph, /*priority*/1);

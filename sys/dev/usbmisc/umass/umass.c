@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.37 2008/02/10 00:01:03 pavalos Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.38 2008/05/18 20:30:23 pavalos Exp $
  */
 
 /*
@@ -2696,6 +2696,7 @@ umass_cam_attach_sim(struct umass_softc *sc)
 				DEVNAME_SIM,
 				sc /*priv*/,
 				device_get_unit(sc->sc_dev) /*unit number*/,
+				&sim_mplock,
 				1 /*maximum device openings*/,
 				0 /*maximum tagged device openings*/,
 				devq);

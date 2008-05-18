@@ -1,4 +1,4 @@
-/*
+/*-
  * CAM request queue management functions.
  *
  * Copyright (c) 1997 Justin T. Gibbs.
@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/cam/cam_queue.c,v 1.5 1999/08/28 00:40:41 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.11 2007/12/01 22:21:17 pavalos Exp $
+ * $FreeBSD: src/sys/cam/cam_queue.c,v 1.9 2005/07/01 15:21:29 avatar Exp $
+ * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.12 2008/05/18 20:30:19 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>

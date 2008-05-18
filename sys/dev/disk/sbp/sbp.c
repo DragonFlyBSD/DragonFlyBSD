@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.27 2008/02/10 00:01:03 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.28 2008/05/18 20:30:22 pavalos Exp $
  *
  */
 
@@ -1885,6 +1885,7 @@ END_DEBUG
 
 	sbp->sim = cam_sim_alloc(sbp_action, sbp_poll, "sbp", sbp,
 				 device_get_unit(dev),
+				 &sim_mplock,
 				 /*untagged*/ 1,
 				 /*tagged*/ SBP_QUEUE_LEN - 1,
 				 devq);

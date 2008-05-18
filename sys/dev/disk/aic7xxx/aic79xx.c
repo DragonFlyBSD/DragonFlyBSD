@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#246 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.40 2007/04/19 18:53:52 scottl Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.30 2008/02/09 18:13:13 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.31 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -6235,7 +6235,7 @@ ahd_init(struct ahd_softc *ahd)
 
 	ahd->stack_size = ahd_probe_stack_size(ahd);
 	ahd->saved_stack = kmalloc(ahd->stack_size * sizeof(uint16_t),
-				  M_DEVBUF, M_WAITOK);
+				  M_DEVBUF, M_INTWAIT);
 
 	/*
 	 * Verify that the compiler hasn't over-agressively

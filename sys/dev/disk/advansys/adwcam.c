@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.18 2008/02/10 00:01:02 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.19 2008/05/18 20:30:20 pavalos Exp $
  */
 /*
  * Ported from:
@@ -1171,7 +1171,7 @@ adw_attach(struct adw_softc *adw)
 	 * Construct our SIM entry.
 	 */
 	adw->sim = cam_sim_alloc(adw_action, adw_poll, "adw", adw, adw->unit,
-				 1, adw->max_acbs, NULL);
+				 &sim_mplock, 1, adw->max_acbs, NULL);
 	if (adw->sim == NULL) {
 		error = ENOMEM;
 		goto fail;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.34 2008/02/10 00:01:03 pavalos Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.35 2008/05/18 20:30:23 pavalos Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -2742,7 +2742,7 @@ asr_attach (ATTACH_ARGS)
                          */
                         sc->ha_sim[bus] = cam_sim_alloc(
                           asr_action, asr_poll, "asr", sc,
-                          unit, 1, QueueSize, NULL);
+                          unit, &sim_mplock, 1, QueueSize, NULL);
                         if (sc->ha_sim[bus] == NULL)
                                 continue;
 
