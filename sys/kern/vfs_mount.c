@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.33 2008/05/18 05:54:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.34 2008/05/18 21:47:02 dillon Exp $
  */
 
 /*
@@ -911,9 +911,18 @@ vmntvnodescan(
 	struct vnode *vp;
 	int r = 0;
 	int maxcount = 1000000;
+	int stopcount = 0;
 	int count = 0;
 
 	lwkt_gettoken(&ilock, &mntvnode_token);
+
+	/*
+	 * If asked to do one pass stop after iterating available vnodes.
+	 * Under heavy loads new vnodes can be added while we are scanning,
+	 * so this isn't perfect.  Create a slop factor of 2x.
+	 */
+	if (flags & VMSC_ONEPASS)
+		stopcount = mp->mnt_nvnodelistsize * 2;
 
 	info.vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
 	TAILQ_INSERT_TAIL(&mntvnodescan_list, &info, entry);
@@ -948,7 +957,7 @@ vmntvnodescan(
 		if (slowfunc) {
 			int error;
 
-			switch(flags) {
+			switch(flags & (VMSC_GETVP|VMSC_GETVX|VMSC_NOWAIT)) {
 			case VMSC_GETVP:
 				error = vget(vp, LK_EXCLUSIVE);
 				break;
@@ -976,7 +985,7 @@ vmntvnodescan(
 			/*
 			 * Cleanup
 			 */
-			switch(flags) {
+			switch(flags & (VMSC_GETVP|VMSC_GETVX|VMSC_NOWAIT)) {
 			case VMSC_GETVP:
 			case VMSC_GETVP|VMSC_NOWAIT:
 				vput(vp);
@@ -1004,6 +1013,14 @@ next:
 			tsleep(mp, 0, "vnodescn", 1);
 			count = 0;
 		}
+
+		/*
+		 * If doing one pass this decrements to zero.  If it starts
+		 * at zero it is effectively unlimited for the purposes of
+		 * this loop.
+		 */
+		if (--stopcount == 0)
+			break;
 
 		/*
 		 * Iterate.  If the vnode was ripped out from under us

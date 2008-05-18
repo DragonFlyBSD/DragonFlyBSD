@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.79 2008/05/18 05:54:30 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.80 2008/05/18 21:47:05 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -287,9 +287,10 @@ struct vnode {
 /*
  * vmntvnodescan() flags
  */
-#define VMSC_GETVP	1
-#define VMSC_GETVX	2
+#define VMSC_GETVP	0x01
+#define VMSC_GETVX	0x02
 #define VMSC_NOWAIT	0x10
+#define VMSC_ONEPASS	0x20
 
 /*
  * Flags for ioflag. (high 16 bits used to ask for read-ahead and

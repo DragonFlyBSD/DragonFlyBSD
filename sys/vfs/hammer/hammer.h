@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.69 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.70 2008/05/18 21:47:06 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -843,7 +843,6 @@ int hammer_io_read(struct vnode *devvp, struct hammer_io *io,
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
 void hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io);
-int hammer_io_checkflush(hammer_io_t io);
 void hammer_io_clear_modify(struct hammer_io *io);
 void hammer_io_waitdep(struct hammer_io *io);
 

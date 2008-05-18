@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.46 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.47 2008/05/18 21:47:06 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1402,10 +1402,10 @@ hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor)
 	info.error = 0;
 	info.waitfor = waitfor;
 	if (waitfor == MNT_WAIT) {
-		vmntvnodescan(hmp->mp, VMSC_GETVP,
+		vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_ONEPASS,
 			      hammer_sync_scan1, hammer_sync_scan2, &info);
 	} else {
-		vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_NOWAIT,
+		vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_ONEPASS|VMSC_NOWAIT,
 			      hammer_sync_scan1, hammer_sync_scan2, &info);
 	}
 	return(info.error);

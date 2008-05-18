@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.32 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.33 2008/05/18 21:47:06 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -332,8 +332,23 @@ hammer_io_release(struct hammer_io *io, int flush)
 		 * structure and use bioops to disconnect it later on
 		 * if the kernel wants to discard the buffer.
 		 */
+		bp->b_flags &= ~B_LOCKED;
 		io->released = 1;
 		bqrelse(bp);
+	} else {
+		/*
+		 * A released buffer may have been locked when the kernel
+		 * tried to deallocate it while HAMMER still had references
+		 * on the hammer_buffer.  We must unlock the buffer or
+		 * it will just rot.
+		 */
+		crit_enter();
+		if (io->running == 0 && (bp->b_flags & B_LOCKED)) {
+			regetblk(bp);
+			bp->b_flags &= ~B_LOCKED;
+			bqrelse(bp);
+		}
+		crit_exit();
 	}
 }
 
@@ -744,19 +759,6 @@ hammer_io_checkwrite(struct buf *bp)
 	KKASSERT(io->running == 0);
 	io->running = 1;
 	++io->hmp->io_running_count;
-	return(0);
-}
-
-/*
- * Return non-zero if the caller should flush the structure associated
- * with this io sub-structure.
- */
-int
-hammer_io_checkflush(struct hammer_io *io)
-{
-	if (io->bp == NULL || (io->bp->b_flags & B_LOCKED)) {
-		return(1);
-	}
 	return(0);
 }
 
