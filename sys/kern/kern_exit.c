@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.90 2008/05/08 01:26:00 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.91 2008/05/18 20:02:02 nth Exp $
  */
 
 #include "opt_compat.h"
@@ -74,7 +74,6 @@
 #include <sys/lock.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
-#include <vm/vm_zone.h>
 #include <vm/vm_extern.h>
 #include <sys/user.h>
 
@@ -662,7 +661,7 @@ lwp_dispose(struct lwp *lp)
 		lp->lwp_thread = NULL;
 		lwkt_free_thread(td);
 	}
-	zfree(lwp_zone, lp);
+	kfree(lp, M_LWP);
 }
 
 int

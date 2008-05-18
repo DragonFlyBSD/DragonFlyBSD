@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.42 2008/04/01 18:06:34 nth Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.43 2008/05/18 20:02:02 nth Exp $
  */
 
 #include <sys/param.h>
@@ -59,6 +59,7 @@
 static MALLOC_DEFINE(M_PGRP, "pgrp", "process group header");
 MALLOC_DEFINE(M_SESSION, "session", "session header");
 MALLOC_DEFINE(M_PROC, "proc", "Proc structures");
+MALLOC_DEFINE(M_LWP, "lwp", "lwp structures");
 MALLOC_DEFINE(M_SUBPROC, "subproc", "Proc sub-structures");
 
 int ps_showallprocs = 1;
@@ -84,7 +85,6 @@ u_long pgrphash;
 struct proclist allproc;
 struct proclist zombproc;
 struct spinlock allproc_spin;
-vm_zone_t lwp_zone;
 vm_zone_t thread_zone;
 
 /*
@@ -130,7 +130,6 @@ procinit(void)
 	spin_init(&allproc_spin);
 	pidhashtbl = hashinit(maxproc / 4, M_PROC, &pidhash);
 	pgrphashtbl = hashinit(maxproc / 4, M_PROC, &pgrphash);
-	lwp_zone = zinit("LWP", sizeof (struct lwp), 0, 0, 5);
 	thread_zone = zinit("THREAD", sizeof (struct thread), 0, 0, 5);
 	uihashinit();
 }

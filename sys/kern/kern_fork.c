@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.76 2008/05/09 06:38:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.77 2008/05/18 20:02:02 nth Exp $
  */
 
 #include "opt_ktrace.h"
@@ -63,7 +63,6 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 
 #include <sys/vmmeter.h>
 #include <sys/thread2.h>
@@ -556,8 +555,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	struct lwp *lp;
 	struct thread *td;
 
-	lp = zalloc(lwp_zone);
-	bzero(lp, sizeof(*lp));
+	lp = kmalloc(sizeof(struct lwp), M_LWP, M_WAITOK|M_ZERO);
 
 	lp->lwp_proc = destproc;
 	lp->lwp_vmspace = destproc->p_vmspace;
