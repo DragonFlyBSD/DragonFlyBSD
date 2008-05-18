@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.38 2007/12/31 04:58:53 sephe Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.39 2008/05/18 02:40:41 sephe Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -482,7 +482,10 @@ tapifstart(struct ifnet *ifp)
 			tp->tap_flags &= ~TAP_RWAIT;
 			wakeup((caddr_t)tp);
 		}
+
+		get_mplock();
 		KNOTE(&tp->tap_rsel.si_note, 0);
+		rel_mplock();
 
 		if ((tp->tap_flags & TAP_ASYNC) && (tp->tap_sigio != NULL)) {
 			get_mplock();
