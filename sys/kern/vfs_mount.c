@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.32 2008/05/02 00:19:52 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.33 2008/05/18 05:54:25 dillon Exp $
  */
 
 /*
@@ -152,18 +152,6 @@ vremovevnodemnt(struct vnode *vp)
 	}
 	TAILQ_REMOVE(&vp->v_mount->mnt_nvnodelist, vp, v_nmntvnodes);
 }
-
-/*
- * Support function called with mntvnode_token held to move a vnode to
- * the end of the list.
- */
-static void
-vmovevnodetoend(struct mount *mp, struct vnode *vp)
-{
-	vremovevnodemnt(vp);
-	TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
-}
-
 
 /*
  * Allocate a new vnode and associate it with a tag, mount point, and
@@ -526,7 +514,25 @@ vlrureclaim(struct mount *mp, void *data)
 	done = 0;
 	lwkt_gettoken(&ilock, &mntvnode_token);
 	count = mp->mnt_nvnodelistsize / 10 + 1;
-	while (count && (vp = TAILQ_FIRST(&mp->mnt_nvnodelist)) != NULL) {
+	while (count && mp->mnt_syncer) {
+		/*
+		 * Next vnode.  Use the special syncer vnode to placemark
+		 * the LRU.  This way the LRU code does not interfere with
+		 * vmntvnodescan().
+		 */
+		vp = TAILQ_NEXT(mp->mnt_syncer, v_nmntvnodes);
+		TAILQ_REMOVE(&mp->mnt_nvnodelist, mp->mnt_syncer, v_nmntvnodes);
+		if (vp) {
+			TAILQ_INSERT_AFTER(&mp->mnt_nvnodelist, vp,
+					   mp->mnt_syncer, v_nmntvnodes);
+		} else {
+			TAILQ_INSERT_HEAD(&mp->mnt_nvnodelist, mp->mnt_syncer,
+					  v_nmntvnodes);
+			vp = TAILQ_NEXT(mp->mnt_syncer, v_nmntvnodes);
+			if (vp == NULL)
+				break;
+		}
+
 		/*
 		 * __VNODESCAN__
 		 *
@@ -537,7 +543,6 @@ vlrureclaim(struct mount *mp, void *data)
 		if (vp->v_type == VNON ||	/* syncer or indeterminant */
 		    !vmightfree(vp, trigger)	/* critical path opt */
 		) {
-			vmovevnodetoend(mp, vp);
 			--count;
 			continue;
 		}
@@ -549,8 +554,6 @@ vlrureclaim(struct mount *mp, void *data)
 		 * mountlist.
 		 */
 		if (vx_get_nonblock(vp) != 0) {
-			if (vp->v_mount == mp)
-				vmovevnodetoend(mp, vp);
 			--count;
 			continue;
 		}
@@ -566,8 +569,6 @@ vlrureclaim(struct mount *mp, void *data)
 		    vp->v_mount != mp ||
 		    !vtrytomakegoneable(vp, trigger)	/* critical path opt */
 		) {
-			if (vp->v_mount == mp)
-				vmovevnodetoend(mp, vp);
 			--count;
 			vx_put(vp);
 			continue;
@@ -581,7 +582,6 @@ vlrureclaim(struct mount *mp, void *data)
 		 * vnode to the free list if the vgone() was successful.
 		 */
 		KKASSERT(vp->v_mount == mp);
-		vmovevnodetoend(mp, vp);
 		vgone_vxlocked(vp);
 		vx_put(vp);
 		++done;
@@ -864,12 +864,17 @@ insmntque(struct vnode *vp, struct mount *mp)
 	}
 	/*
 	 * Insert into list of vnodes for the new mount point, if available.
+	 * The 'end' of the LRU list is the vnode prior to mp->mnt_syncer.
 	 */
 	if ((vp->v_mount = mp) == NULL) {
 		lwkt_reltoken(&ilock);
 		return;
 	}
-	TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
+	if (mp->mnt_syncer) {
+		TAILQ_INSERT_BEFORE(mp->mnt_syncer, vp, v_nmntvnodes);
+	} else {
+		TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
+	}
 	mp->mnt_nvnodelistsize++;
 	lwkt_reltoken(&ilock);
 }
@@ -916,7 +921,11 @@ vmntvnodescan(
 		if (--maxcount == 0)
 			panic("maxcount reached during vmntvnodescan");
 
-		if (vp->v_type == VNON)		/* visible but not ready */
+		/*
+		 * Skip if visible but not ready, or special (e.g.
+		 * mp->mnt_syncer) 
+		 */
+		if (vp->v_type == VNON)
 			goto next;
 		KKASSERT(vp->v_mount == mp);
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.49 2008/01/05 14:02:41 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.50 2008/05/18 05:54:31 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -658,10 +658,7 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 		    vp->v_flag, vp->v_sysref.refcnt,
 		    vp->v_writecount, vp->v_auxrefs);
 		kprintf("mount %p, op %p\n", vp->v_mount, vp->v_ops);
-		kprintf("freef %p, freeb %p, mount %p\n",
-		    TAILQ_NEXT(vp, v_freelist),
-		    *vp->v_freelist.tqe_prev,
-		    vp->v_mount);
+		kprintf("mount %p\n", vp->v_mount);
 		kprintf("cleanblkhd %p, dirtyblkhd %p, numoutput %d, type %d\n",
 		    RB_ROOT(&vp->v_rbclean_tree),
 		    RB_ROOT(&vp->v_rbdirty_tree),

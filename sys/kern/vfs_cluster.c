@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.35 2008/05/18 01:35:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.36 2008/05/18 05:54:25 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -106,7 +106,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 	 * Try to limit the amount of read-ahead by a few
 	 * ad-hoc parameters.  This needs work!!!
 	 */
-	racluster = vp->v_mount->mnt_iosize_max / size;
+	racluster = vmaxiosize(vp) / size;
 	maxra = 2 * racluster + (totread / size);
 	if (maxra > MAXRA)
 		maxra = MAXRA;
@@ -316,10 +316,20 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	struct buf *bp, *tbp;
 	off_t boffset;
 	int i, j;
+	int maxiosize = vmaxiosize(vp);
 
-	KASSERT(size == vp->v_mount->mnt_stat.f_iosize,
-	    ("cluster_rbuild: size %d != filesize %ld\n",
-	    size, vp->v_mount->mnt_stat.f_iosize));
+	/*
+	 * This is a filesystem sanity check.  For regular files h
+	 * cluster_write() currently uses f_iosize, make sure cluster_read()
+	 * uses the same block size.
+	 *
+	 * NOTE: The vp can be a block device
+	 */
+	if (vp->v_type == VREG) {
+		KASSERT(size == vp->v_mount->mnt_stat.f_iosize,
+		    ("cluster_rbuild: size %d != filesize %ld\n",
+		    size, vp->v_mount->mnt_stat.f_iosize));
+	}
 
 	/*
 	 * avoid a division
@@ -364,7 +374,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	for (boffset = doffset, i = 0; i < run; ++i, boffset += size) {
 		if (i) {
 			if ((bp->b_xio.xio_npages * PAGE_SIZE) +
-			    round_page(size) > vp->v_mount->mnt_iosize_max) {
+			    round_page(size) > maxiosize) {
 				break;
 			}
 
@@ -623,7 +633,7 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
 	if (vp->v_clen == 0 || loffset != vp->v_lastw + lblocksize ||
 	    bp->b_bio2.bio_offset == NOOFFSET ||
 	    (bp->b_bio2.bio_offset != vp->v_lasta + lblocksize)) {
-		maxclen = vp->v_mount->mnt_iosize_max;
+		maxclen = vmaxiosize(vp);
 		if (vp->v_clen != 0) {
 			/*
 			 * Next block is not sequential.
@@ -756,6 +766,7 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 	struct buf *bp, *tbp;
 	int i, j;
 	int totalwritten = 0;
+	int maxiosize = vmaxiosize(vp);
 
 	while (bytes > 0) {
 		crit_enter();
@@ -867,7 +878,7 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 				  ((bp->b_bio2.bio_offset + i) !=
 				    tbp->b_bio2.bio_offset) ||
 				  ((tbp->b_xio.xio_npages + bp->b_xio.xio_npages) >
-				    (vp->v_mount->mnt_iosize_max / PAGE_SIZE))) {
+				    (maxiosize / PAGE_SIZE))) {
 					BUF_UNLOCK(tbp);
 					crit_exit();
 					break;

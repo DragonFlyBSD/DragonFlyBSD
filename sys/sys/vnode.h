@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.78 2008/04/22 18:46:52 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.79 2008/05/18 05:54:30 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -489,6 +489,7 @@ int	vfsync(struct vnode *vp, int waitfor, int passes,
 int	vinitvmio(struct vnode *vp, off_t filesize);
 void	vprint (char *label, struct vnode *vp);
 int	vrecycle (struct vnode *vp);
+int	vmaxiosize (struct vnode *vp);
 void	vn_strategy(struct vnode *vp, struct bio *bio);
 int	vn_close (struct vnode *vp, int flags);
 int	vn_isdisk (struct vnode *vp, int *errp);

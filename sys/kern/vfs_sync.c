@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.17 2007/11/06 03:49:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.18 2008/05/18 05:54:25 dillon Exp $
  */
 
 /*
@@ -353,6 +353,11 @@ vfs_allocate_syncvnode(struct mount *mp)
 		next = start;
 	}
 	vn_syncer_add_to_worklist(vp, syncdelay > 0 ? next % syncdelay : 0);
+
+	/*
+	 * The mnt_syncer field inherits the vnode reference, which is
+	 * held until later decomissioning.
+	 */
 	mp->mnt_syncer = vp;
 	vx_unlock(vp);
 	return (0);
@@ -424,6 +429,8 @@ sync_inactive(struct vop_inactive_args *ap)
 
 /*
  * The syncer vnode is no longer needed and is being decommissioned.
+ * This can only occur when the last reference has been released on
+ * mp->mnt_syncer, so mp->mnt_syncer had better be NULL.
  *
  * Modifications to the worklist must be protected with a critical
  * section.
@@ -436,7 +443,7 @@ sync_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp = ap->a_vp;
 
 	crit_enter();
-	vp->v_mount->mnt_syncer = NULL;
+	KKASSERT(vp->v_mount->mnt_syncer != vp);
 	if (vp->v_flag & VONWORKLST) {
 		LIST_REMOVE(vp, v_synclist);
 		vp->v_flag &= ~VONWORKLST;

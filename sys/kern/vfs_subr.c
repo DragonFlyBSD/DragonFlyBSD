@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.113 2008/05/08 01:41:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.114 2008/05/18 05:54:25 dillon Exp $
  */
 
 /*
@@ -1244,6 +1244,22 @@ vrecycle(struct vnode *vp)
 		return (1);
 	}
 	return (0);
+}
+
+/*
+ * Return the maximum I/O size allowed for strategy calls on VP.
+ *
+ * If vp is VCHR or VBLK we dive the device, otherwise we use
+ * the vp's mount info.
+ */
+int
+vmaxiosize(struct vnode *vp)
+{
+	if (vp->v_type == VBLK || vp->v_type == VCHR) {
+		return(vp->v_rdev->si_iosize_max);
+	} else {
+		return(vp->v_mount->mnt_iosize_max);
+	}
 }
 
 /*

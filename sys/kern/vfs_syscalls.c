@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.126 2008/05/09 17:52:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.127 2008/05/18 05:54:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -607,6 +607,7 @@ dounmount(struct mount *mp, int flags)
 {
 	struct namecache *ncp;
 	struct nchandle nch;
+	struct vnode *vp;
 	int error;
 	int async_flag;
 	int lflags;
@@ -688,9 +689,16 @@ dounmount(struct mount *mp, int flags)
 		}
 	}
 
+	/*
+	 * Decomission our special mnt_syncer vnode.  This also stops
+	 * the vnlru code.  If we are unable to unmount we recommission
+	 * the vnode.
+	 */
 	if (error == 0) {
-		if (mp->mnt_syncer != NULL)
-			vrele(mp->mnt_syncer);
+		if ((vp = mp->mnt_syncer) != NULL) {
+			mp->mnt_syncer = NULL;
+			vrele(vp);
+		}
 		if (((mp->mnt_flag & MNT_RDONLY) ||
 		     (error = VFS_SYNC(mp, MNT_WAIT)) == 0) ||
 		    (flags & MNT_FORCE)) {
