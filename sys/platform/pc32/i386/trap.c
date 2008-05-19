@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.112 2008/05/09 07:24:46 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.113 2008/05/19 10:28:05 corecode Exp $
  */
 
 /*
@@ -69,6 +69,7 @@
 #ifdef KTRACE
 #include <sys/ktrace.h>
 #endif
+#include <sys/ktr.h>
 #include <sys/upcall.h>
 #include <sys/vkernel.h>
 #include <sys/sysproto.h>
@@ -369,6 +370,21 @@ userexit(struct lwp *lp)
 		lwkt_switch();
 }
 
+#if !defined(KTR_KERNENTRY)
+#define	KTR_KERNENTRY	KTR_ALL
+#endif
+KTR_INFO_MASTER(kernentry);
+KTR_INFO(KTR_KERNENTRY, kernentry, trap, 0, "pid=%d, tid=%d, trapno=%d, eva=%p",
+	 sizeof(int) + sizeof(int) + sizeof(int) + sizeof(vm_offset_t));
+KTR_INFO(KTR_KERNENTRY, kernentry, trap_ret, 0, "pid=%d, tid=%d",
+	 sizeof(int) + sizeof(int));
+KTR_INFO(KTR_KERNENTRY, kernentry, syscall, 0, "pid=%d, tid=%d, call=%d",
+	 sizeof(int) + sizeof(int) + sizeof(int));
+KTR_INFO(KTR_KERNENTRY, kernentry, syscall_ret, 0, "pid=%d, tid=%d, err=%d",
+	 sizeof(int) + sizeof(int) + sizeof(int));
+KTR_INFO(KTR_KERNENTRY, kernentry, fork_ret, 0, "pid=%d, tid=%d",
+	 sizeof(int) + sizeof(int));
+
 /*
  * Exception, fault, and trap interface to the kernel.
  * This common code is called from assembly language IDT gate entry
@@ -434,6 +450,7 @@ trap(struct trapframe *frame)
 		eva = rcr2();
 		cpu_enable_intr();
 	}
+
 #ifdef SMP
 	if (trap_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
@@ -514,6 +531,9 @@ restart:
 
         if ((ISPL(frame->tf_cs) == SEL_UPL) || (frame->tf_eflags & PSL_VM)) {
 		/* user trap */
+
+		KTR_LOG(kernentry_trap, p->p_pid, lp->lwp_tid,
+			frame->tf_trapno, eva);
 
 		userenter(td);
 
@@ -901,6 +921,8 @@ out2:	;
 	if (have_mplock)
 		rel_mplock();
 #endif
+	if (p != NULL && lp != NULL)
+		KTR_LOG(kernentry_trap_ret, p->p_pid, lp->lwp_tid);
 #ifdef INVARIANTS
 	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK),
 		("syscall: critical section count mismatch! %d/%d",
@@ -1226,6 +1248,9 @@ syscall2(struct trapframe *frame)
 	}
 #endif
 
+	KTR_LOG(kernentry_syscall, p->p_pid, lp->lwp_tid,
+		frame->tf_eax);
+
 #ifdef SMP
 	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_eip));
 	if (syscall_mpsafe == 0)
@@ -1426,6 +1451,7 @@ bad:
 	if (have_mplock)
 		rel_mplock();
 #endif
+	KTR_LOG(kernentry_syscall_ret, p->p_pid, lp->lwp_tid, error);
 #ifdef INVARIANTS
 	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK), 
 		("syscall: critical section count mismatch! %d/%d",
@@ -1441,6 +1467,7 @@ fork_return(struct lwp *lp, struct trapframe *frame)
 	frame->tf_edx = 1;
 
 	generic_lwp_return(lp, frame);
+	KTR_LOG(kernentry_fork_ret, lp->lwp_proc->p_pid, lp->lwp_tid);
 }
 
 /*
