@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/include/cpu.h,v 1.2 2007/07/10 18:35:38 josepht Exp $
+ * $DragonFly: src/sys/platform/vkernel/include/cpu.h,v 1.3 2008/05/19 10:29:58 corecode Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -48,6 +48,7 @@ extern int lwp_cpu_lock;
 extern int next_cpu;
 extern int real_ncpus;
 void setrealcpu(void);
+void identcpu(void);
 
 #endif
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.52 2008/05/10 17:24:12 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.53 2008/05/19 10:29:58 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -666,6 +666,7 @@ init_vkernel(void)
 	if (boothowto & RB_KDB)
 		Debugger("Boot flags requested debugger");
 #endif
+	identcpu();
 #if 0
 	initializecpu();	/* Initialize CPU registers */
 #endif

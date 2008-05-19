@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.27 2008/04/21 15:47:57 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.28 2008/05/19 10:29:58 corecode Exp $
  */
 
 #include "use_ether.h"
@@ -1149,6 +1149,15 @@ user_dbreg_trap(void)
 }
 
 #endif
+
+void
+identcpu(void)
+{
+	int regs[4];
+
+	do_cpuid(1, regs);
+	cpu_feature = regs[3];
+}
 
 
 #ifndef DDB
