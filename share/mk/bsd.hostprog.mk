@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/bsd.hostprog.mk,v 1.7 2007/08/25 15:22:30 corecode Exp $
+# $DragonFly: src/share/mk/bsd.hostprog.mk,v 1.8 2008/05/19 10:26:02 corecode Exp $
 
 .include <bsd.init.mk>
 
@@ -35,9 +35,9 @@ OBJS:=	${OBJS:N${_OBJ}} ${_OBJ}
 
 ${PROG}.nx: ${OBJS}
 .if defined(PROG_CXX)
-	${NXCXX} ${NXCXXFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
+	${NXCXX_LINK} ${NXCXXFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
 .else
-	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
+	${NXCC_LINK} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
 .endif
 .endif
 

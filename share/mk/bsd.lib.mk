@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.16 2006/02/13 13:27:20 corecode Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.17 2008/05/19 10:26:02 corecode Exp $
 #
 
 .include <bsd.init.mk>
@@ -185,7 +185,7 @@ ${SHLIB_NAME}: ${SOBJS}
 .if defined(SHLIB_LINK)
 	${LN} -fs ${.TARGET} ${SHLIB_LINK}
 .endif
-	${CC} ${LDFLAGS} -shared -Wl,-x \
+	${CC_LINK} ${LDFLAGS} -shared -Wl,-x \
 	    -o ${.TARGET} -Wl,-soname,${SONAME} \
 	    `lorder ${SOBJS} | tsort -q` ${LDADD}
 .endif

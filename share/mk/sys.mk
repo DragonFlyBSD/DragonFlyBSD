@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.20 2007/07/22 21:59:36 corecode Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.21 2008/05/19 10:26:02 corecode Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -41,15 +41,19 @@ CC		?=	c89
 .else
 CC		?=	cc
 .endif
+CC_LINK		?=	${CC}
 # The system cc frontend is not subject to the path, e.g. when buildworld
 # is doing cross compiles it may still need the native compiler for things.
 #
 NXENV		?=	CCVER=${HOST_CCVER} OBJFORMAT_PATH=/ PATH=/usr/bin:/bin:/usr/sbin:/sbin
 NXCC		?=	${NXENV} ${CC}
+NXCC_LINK	?=	${NXENV} ${CC_LINK}
 CFLAGS		?=	-O -pipe
 
 CXX		?=	c++
+CXX_LINK	?=	${CXX}
 NXCXX		?=	${NXENV} ${CXX}
+NXCXX_LINK	?=	${NXENV} ${CXX_LINK}
 CXXFLAGS	?=	${CXXINCLUDES} ${CFLAGS}
 
 CPP		?=	cpp
