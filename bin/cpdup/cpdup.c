@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.26 2008/04/22 19:45:05 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.27 2008/05/19 16:39:09 dillon Exp $
  */
 
 /*-
@@ -363,7 +363,7 @@ main(int ac, char **av)
     fsmid_flush();
 
     if (SummaryOpt && i == 0) {
-	long duration;
+	double duration;
 	struct timeval end;
 
 	gettimeofday(&end, NULL);
@@ -375,10 +375,10 @@ main(int ac, char **av)
 	CountWriteBytes +=  sizeof(struct stat) * CountRemovedItems;
 #endif
 
-	duration = end.tv_sec - start.tv_sec;
-	duration *= 1000000;
-	duration += end.tv_usec - start.tv_usec;
-	if (duration == 0) duration = 1;
+	duration = (end.tv_sec - start.tv_sec);
+	duration += (double)(end.tv_usec - start.tv_usec) / 1000000.0;
+	if (duration == 0.0)
+		duration = 1.0;
 	logstd("cpdup completed successfully\n");
 	logstd("%lld bytes source, %lld src bytes read, %lld tgt bytes read\n"
 	       "%lld bytes written (%.1fX speedup)\n",
@@ -394,9 +394,9 @@ main(int ac, char **av)
 	    (long long)CountLinkedItems,
 	    (long long)CountRemovedItems);
 	logstd("%.1f seconds %5d Kbytes/sec synced %5d Kbytes/sec scanned\n",
-	    (float)duration / (float)1000000,
-	    (long)((long)1000000 * (CountSourceReadBytes + CountTargetReadBytes + CountWriteBytes) / duration  / 1024.0),
-	    (long)((long)1000000 * CountSourceBytes / duration / 1024.0));
+	    duration,
+	    (int)((CountSourceReadBytes + CountTargetReadBytes + CountWriteBytes) / duration  / 1024.0),
+	    (int)(CountSourceBytes / duration / 1024.0));
     }
     exit((i == 0) ? 0 : 1);
 }
