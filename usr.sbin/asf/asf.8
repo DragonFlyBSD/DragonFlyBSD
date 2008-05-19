@@ -22,9 +22,9 @@
 .\" such damage.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/usr.sbin/asf/asf.8,v 1.3 2006/02/17 19:40:11 swildner Exp $
+.\" $DragonFly: src/usr.sbin/asf/asf.8,v 1.4 2008/05/19 10:13:08 corecode Exp $
 .\"
-.Dd January 11, 2006
+.Dd July 28, 2007
 .Os
 .Dt ASF 8
 .Sh NAME
@@ -32,7 +32,7 @@
 .Nd add symbol files
 .Sh SYNOPSIS
 .Nm
-.Op Fl afks
+.Op Fl afk
 .Op Ar modules-path Op Ar outfile
 .Sh DESCRIPTION
 By default,
@@ -53,7 +53,7 @@ If
 is specified,
 .Nm
 uses it for the modules directory instead of the default
-.Pa modules .
+.Pa /modules .
 This is useful when building in a non-standard location (i.e., not
 .Pa /usr/src
 and
@@ -83,8 +83,6 @@ it is located.
 Instead of reading from standard input, start a
 .Xr kldstat 8
 and read the information from it.
-.It Fl s
-Don't prepend a (guessed) subdirectory of the module path.
 .El
 .Sh EXAMPLES
 The common usage on a
@@ -96,10 +94,7 @@ system would probably be cut-and-pasting the output of
 .Ed
 .Pp
 into
-.Bd -literal -offset indent
-asf -s /modules
-.Ed
-.Pp
+.Nm
 and then issuing a
 .Bd -literal -offset indent
 (kgdb) source .asf

@@ -25,7 +25,7 @@
  */
 /* $Id: asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
 /* $FreeBSD: src/usr.sbin/asf/asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
-/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.4 2007/11/12 21:19:11 swildner Exp $ */
+/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.5 2008/05/19 10:13:08 corecode Exp $ */
 
 #define MAXLINE 1024
 #include <ctype.h>
@@ -164,11 +164,10 @@ usage(const char *myname)
 {
     fprintf(stderr,
 	"Usage:\n"
-	"%s [-a] [-f] [-k] [-s] [modules-path [outfile]]\n\n"
+	"%s [-a] [-f] [-k] [modules-path [outfile]]\n\n"
 	"\t-a\tappend to outfile)\n"
 	"\t-f\tfind the module in any subdirectory of module-path\n"
-	"\t-k\ttake input from kldstat(8)\n"
-	"\t-s\tdon't prepend subdir for module path\n",
+	"\t-k\ttake input from kldstat(8)\n",
 	myname);
 }
 
@@ -181,12 +180,10 @@ main(int argc, char *argv[])
     FILE *out;				/* output file */
     char ocbuf[MAXLINE];
     int tokens;				/* number of tokens on line */
-    char basetoken[MAXLINE];
     int i, ch;
     const char *filemode = "w";		/* mode for outfile */
     char cwd[MAXPATHLEN];		/* current directory */
     char *token[MAXTOKEN];
-    int nosubdir = 0;
     int dofind = 0;
 
     getcwd(cwd, MAXPATHLEN);		/* find where we are */
@@ -201,9 +198,6 @@ main(int argc, char *argv[])
 	    break;
 	case 'a': /* append to outfile */
 	    filemode = "a";
-	    break;
-	case 's': /* no subdir */
-	    nosubdir = 1;		/* nothing */
 	    break;
 	case 'f': /* find .ko (recursively) */
 	    dofind = 1;
@@ -240,7 +234,7 @@ main(int argc, char *argv[])
 	return 1;
     }
     if (modules_path == NULL)
-	modules_path = "modules";
+	modules_path = "/modules";
     if (outfile == NULL)
 	outfile = ".asf";
     if ((out = fopen(outfile, filemode)) == NULL) {
@@ -262,14 +256,10 @@ main(int argc, char *argv[])
 	    tokens = tokenize(buf, token, MAXTOKEN);
 	    base = strtoll(token[2], NULL, 16);
 	    if (!dofind) {
-		strcpy(basetoken, token[4]);
-		basetoken[strlen(basetoken) - 3] = '/';
-		basetoken[strlen(basetoken) - 2] = '\0'; /* cut off the .ko */
 		snprintf(ocbuf,
 		    MAXLINE,
-		    "/usr/bin/objdump --section-headers %s/%s%s",
+		    "/usr/bin/objdump --section-headers %s/%s",
 		    modules_path,
-		    nosubdir ? "" : basetoken,
 		    token[4]);
 	    } else {
 		char *modpath;
@@ -308,11 +298,10 @@ main(int argc, char *argv[])
 	    if (textaddr) {		/* we must have a text address */
 		if (!dofind) {
 		    fprintf(out,
-			"add-symbol-file %s%s%s/%s%s 0x%llx",
+			"add-symbol-file %s%s%s/%s 0x%llx",
 			modules_path[0] != '/' ? cwd : "",
 			modules_path[0] != '/' ? "/" : "",
 			modules_path,
-			nosubdir ? "" : basetoken,
 			token[4],
 			textaddr);
 		} else {
