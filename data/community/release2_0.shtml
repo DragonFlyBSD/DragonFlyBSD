@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - xxx 2008 Release 2.0.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.4 2008/05/15 12:52:22 matthias Exp $ -->
+<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.5 2008/05/19 08:33:22 matthias Exp $ -->
 
 <h1>Obtaining DragonFly 2.0.x for your system</h1>
 
@@ -155,6 +155,7 @@ only commit bug fixes to release branches.
 <h1>DragonFly 2.0 Release Notes</h1>
 <h3>Kernel changes</h3>
 <ul>
+    <li>Add a sysctl jail.allow_raw_sockets (default to disabled) which allows jails to use raw sockets.
 </ul>
 <h3>Hardware changes</h3>
 <ul>
@@ -170,6 +171,7 @@ only commit bug fixes to release branches.
 <h3>Userland changes</h3>
 <ul>
     <li>Citrus iconv was synced with NetBSD.
+    <li>Add blacklist feature for weak Debian-generated SSH keys.
 </ul>
 <h3>Removals</h3>
 <ul>
@@ -178,7 +180,10 @@ only commit bug fixes to release branches.
 <h3>Contributed Software</h3>
 <ul>
     <li>bzip was updated to version 1.0.5.
+    <li>less was updated to version 418.
+    <li>libarchive was updated to version 2.4.17.
     <li>OpenSSH was updated to version 5.0.
+    <li>tnftpd was synced with NetBSD as of May 2008.
 </ul>
 <h3>Sub-project progress report</h3>
 <ul>
