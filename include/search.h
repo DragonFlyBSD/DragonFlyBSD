@@ -1,6 +1,6 @@
 /*	$NetBSD: search.h,v 1.12 1999/02/22 10:34:28 christos Exp $	*/
 /* $FreeBSD: src/include/search.h,v 1.3.2.1 2000/08/17 07:38:34 jhb Exp $ */
-/* $DragonFly: src/include/search.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $ */
+/* $DragonFly: src/include/search.h,v 1.6 2008/05/19 10:05:18 corecode Exp $ */
 
 /*
  * Written by J.T. Conklin <jtc@netbsd.org>
@@ -45,6 +45,10 @@ __BEGIN_DECLS
 int	 hcreate (size_t);
 void	 hdestroy (void);
 ENTRY	*hsearch (ENTRY, ACTION);
+void	*lfind(const void *, const void *, size_t *, size_t,
+	    int (*)(const void *, const void *));
+void	*lsearch(const void *, void *, size_t *, size_t,
+	    int (*)(const void *, const void *));
 void	*tdelete (const void *, void **,
 		      int (*)(const void *, const void *));
 void	*tfind (const void *, void **,

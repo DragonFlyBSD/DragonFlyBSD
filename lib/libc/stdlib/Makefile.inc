@@ -1,6 +1,6 @@
 #	from @(#)Makefile.inc	8.3 (Berkeley) 2/4/95
 # $FreeBSD: src/lib/libc/stdlib/Makefile.inc,v 1.19.2.4 2001/10/02 11:15:38 ru Exp $
-# $DragonFly: src/lib/libc/stdlib/Makefile.inc,v 1.21 2008/01/25 23:24:31 swildner Exp $
+# $DragonFly: src/lib/libc/stdlib/Makefile.inc,v 1.22 2008/05/19 10:05:18 corecode Exp $
 
 # machine-independent stdlib sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libc/stdlib
@@ -8,7 +8,7 @@
 MISRCS+=abort.c abs.c atexit.c atof.c atoi.c atol.c atoll.c bsearch.c calloc.c div.c \
 	exit.c getenv.c getopt.c getopt_long.c getsubopt.c hcreate.c heapsort.c \
 	imaxabs.c imaxdiv.c \
-	labs.c ldiv.c llabs.c lldiv.c malloc.c merge.c putenv.c \
+	labs.c ldiv.c llabs.c lldiv.c lsearch.c malloc.c merge.c putenv.c \
 	qsort.c radixsort.c rand.c \
 	random.c reallocf.c realpath.c setenv.c strtod.c strtoimax.c strtol.c \
 	strtoll.c strtonum.c strtoq.c strtoul.c strtoull.c strtoumax.c \
@@ -23,7 +23,7 @@ MISRCS+=abort.c abs.c atexit.c atof.c atoi.c atol.c atoll.c bsearch.c calloc.c d
 MAN+=	abort.3 abs.3 alloca.3 atexit.3 atof.3 atoi.3 atol.3 bsearch.3 \
 	div.3 exit.3 getenv.3 getopt.3 getopt_long.3 getsubopt.3 hcreate.3 \
 	imaxabs.3 imaxdiv.3 \
-	labs.3 ldiv.3 llabs.3 lldiv.3 malloc.3 memory.3 \
+	labs.3 ldiv.3 llabs.3 lldiv.3 lsearch.3 malloc.3 memory.3 \
 	qsort.3 radixsort.3 rand.3 random.3 \
 	realpath.3 strtod.3 strtol.3 strtonum.3 strtoul.3 system.3 tsearch.3
 
@@ -32,6 +32,7 @@ MLINKS+=exit.3 _Exit.3
 MLINKS+=getenv.3 putenv.3 getenv.3 setenv.3 getenv.3 unsetenv.3
 MLINKS+=getopt_long.3 getopt_long_only.3
 MLINKS+=hcreate.3 hdestroy.3 hcreate.3 hsearch.3
+MLINKS+=lsearch.3 lfind.3
 MLINKS+=malloc.3 calloc.3 malloc.3 free.3 malloc.3 realloc.3 malloc.3 reallocf.3
 MLINKS+=qsort.3 heapsort.3 qsort.3 mergesort.3
 MLINKS+=rand.3 rand_r.3 rand.3 srand.3 rand.3 sranddev.3

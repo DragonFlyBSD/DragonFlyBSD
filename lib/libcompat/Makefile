@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libcompat/Makefile,v 1.19.2.1 2001/04/25 10:04:23 ru Exp $
-# $DragonFly: src/lib/libcompat/Makefile,v 1.2 2003/06/17 04:26:48 dillon Exp $
+# $DragonFly: src/lib/libcompat/Makefile,v 1.3 2008/05/19 10:05:18 corecode Exp $
 
 LIB=compat
 CFLAGS+=-DLIBC_SCCS -DSYSLIBC_SCCS -I${.CURDIR}/../libc/locale
@@ -24,17 +24,16 @@ MLINKS+=cftime.3 ascftime.3
 
 # compat 4.3 sources
 # XXX MISSING:	ecvt.c gcvt.c sibuf.c sobuf.c strout.c
-SRCS+=	cfree.c lsearch.c regex.c rexec.c
+SRCS+=	cfree.c regex.c rexec.c
 SRCS+=	insque.c remque.c
 
 # XXX MISSING:	ecvt.0
-MAN+=	4.3/cfree.3 4.3/insque.3 4.3/lsearch.3 4.3/re_comp.3 4.3/rexec.3
+MAN+=	4.3/cfree.3 4.3/insque.3 4.3/re_comp.3 4.3/rexec.3
 
 # XXX MISSING:	ecvt.3, so can't MLINK
 #MLINKS+=ecvt.3 fcvt.3 ecvt.3 gcvt.3
 MLINKS+=insque.3 remque.3
 MLINKS+=re_comp.3 re_exec.3
-MLINKS+=lsearch.3 lfind.3
 
 # compat 4.4 sources
 SRCS+=	cuserid.c
