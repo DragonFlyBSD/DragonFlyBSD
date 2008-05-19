@@ -1,5 +1,5 @@
 /* $NetBSD: sur.c,v 1.1 2006/06/19 15:44:56 gdamore Exp $ */
-/* $DragonFly: src/usr.sbin/sdpd/sur.c,v 1.1 2008/01/06 21:51:30 hasso Exp $ */
+/* $DragonFly: src/usr.sbin/sdpd/sur.c,v 1.2 2008/05/19 10:19:49 corecode Exp $ */
 
 /*
  * sur.c
@@ -33,6 +33,7 @@
  */
 
 #include <sys/queue.h>
+#include <sys/select.h>
 #include <bluetooth.h>
 #include <errno.h>
 #include <sdp.h>

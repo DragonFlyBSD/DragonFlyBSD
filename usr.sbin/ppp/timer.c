@@ -26,8 +26,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/timer.c,v 1.38.2.3 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/timer.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/timer.c,v 1.3 2008/05/19 10:19:49 corecode Exp $
  */
+
+#include <sys/select.h>
 
 #include <errno.h>
 #include <signal.h>

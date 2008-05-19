@@ -1,7 +1,7 @@
 #! /bin/sh -
 #	@(#)makesyscalls.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/kern/makesyscalls.sh,v 1.39.2.4 2001/10/20 09:01:24 marcel Exp $
-# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.16 2006/08/06 18:56:44 dillon Exp $
+# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.17 2008/05/19 10:19:49 corecode Exp $
 
 set -e
 
@@ -130,6 +130,7 @@ s/\$//g
 		printf " * created from%s\n */\n\n", $0 > sysarg
 		printf "#ifndef %s\n", sysproto_h > sysarg
 		printf "#define\t%s\n\n", sysproto_h > sysarg
+		printf "#include <sys/select.h>\n\n" > sysarg
 		printf "#include <sys/signal.h>\n\n" > sysarg
 		printf "#include <sys/acl.h>\n\n" > sysarg
 		printf "#include <sys/msgport.h>\n\n" > sysarg

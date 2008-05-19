@@ -29,7 +29,7 @@
  *	from: @(#)svc.h 1.20 88/02/08 SMI
  *	from: @(#)svc.h	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/svc.h,v 1.16 1999/12/29 05:00:43 peter Exp $
- * $DragonFly: src/include/rpc/svc.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
+ * $DragonFly: src/include/rpc/svc.h,v 1.4 2008/05/19 10:19:49 corecode Exp $
  */
 
 /*
@@ -41,6 +41,7 @@
 #ifndef _RPC_SVC_H
 #define _RPC_SVC_H
 #include <sys/cdefs.h>
+#include <sys/select.h>
 
 /*
  * This interface must manage two items concerning remote procedure calling:

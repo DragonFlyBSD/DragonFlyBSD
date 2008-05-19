@@ -35,12 +35,13 @@
  *
  * @(#)wwiomux.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/wwiomux.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwiomux.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/wwiomux.c,v 1.3 2008/05/19 10:19:49 corecode Exp $
  */
 
 #include "ww.h"
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #if !defined(OLD_TTY) && !defined(TIOCPKT_DATA)
 #include <sys/ioctl.h>
 #endif

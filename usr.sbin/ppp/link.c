@@ -24,11 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/link.c,v 1.16.2.2 2002/09/01 02:12:28 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/link.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/link.c,v 1.3 2008/05/19 10:19:49 corecode Exp $
  *
  */
 
 #include <sys/types.h>
+#include <sys/select.h>
 #include <netinet/in_systm.h>
 #include <sys/socket.h>
 #include <sys/un.h>

@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.47 2008/05/07 17:26:28 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.48 2008/05/19 10:19:49 corecode Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -111,6 +111,7 @@
 
 #ifndef _KERNEL
 /* Signals. */
+#include <sys/select.h>
 #include <sys/signal.h>
 #endif
 

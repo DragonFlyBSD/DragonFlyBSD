@@ -24,10 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ncpaddr.c,v 1.10.2.3 2003/04/29 16:05:55 ume Exp $
- * $DragonFly: src/usr.sbin/ppp/ncpaddr.c,v 1.3 2006/01/17 23:49:16 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/ncpaddr.c,v 1.4 2008/05/19 10:19:49 corecode Exp $
  */
 
 #include <sys/types.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #ifdef __OpenBSD__
 #include <net/if_types.h>

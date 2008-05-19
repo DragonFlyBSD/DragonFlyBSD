@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libbind/port_before.h,v 1.2 2006/09/20 21:48:39 victor Exp $ */
+/* $DragonFly: src/lib/libbind/port_before.h,v 1.3 2008/05/19 10:19:49 corecode Exp $ */
 #ifndef port_before_h
 #define port_before_h
 #include <config.h>
@@ -12,6 +12,7 @@ struct timezone;        /* silence warning */
 #include <sys/timers.h>
 #endif
 #include <limits.h>
+#include <sys/select.h>
 
 
 #undef WANT_IRS_GR

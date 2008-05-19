@@ -24,10 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/sync.c,v 1.6 1999/12/20 20:29:47 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/sync.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/sync.c,v 1.3 2008/05/19 10:19:49 corecode Exp $
  */
 
 #include <sys/types.h>
+#include <sys/select.h>
 
 #include <stdio.h>
 #include <termios.h>

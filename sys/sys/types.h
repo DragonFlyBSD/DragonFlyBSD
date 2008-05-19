@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.19 2008/05/11 03:39:49 hasso Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.20 2008/05/19 10:19:49 corecode Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -194,11 +194,7 @@ typedef __time_t	time_t;
 typedef __timer_t	timer_t;
 #endif
 
-#ifndef _SYS_SELECT_H_
-#include <sys/select.h>
-#endif
-
-#ifndef _POSIX_SOURCE
+#ifdef __BSD_VISIBLE
 
 #define NBBY 8		/* number of bits in a byte */
 /*
@@ -227,6 +223,6 @@ int	 truncate (const char *, off_t);
 __END_DECLS
 #endif /* !_KERNEL */
 
-#endif /* !_POSIX_SOURCE */
+#endif /* __BSD_VISIBLE */
 
 #endif /* !_SYS_TYPES_H_ */

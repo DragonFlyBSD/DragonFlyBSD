@@ -24,10 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/iplist.c,v 1.9 1999/08/28 01:18:31 peter Exp $
- * $DragonFly: src/usr.sbin/ppp/iplist.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/iplist.c,v 1.3 2008/05/19 10:19:49 corecode Exp $
  */
 
 #include <sys/types.h>
+#include <sys/select.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
