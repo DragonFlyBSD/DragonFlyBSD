@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc41/cc_prep/config/dragonfly.h,v 1.1 2006/09/27 12:10:33 corecode Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc41/cc_prep/config/dragonfly.h,v 1.2 2008/05/19 10:46:39 corecode Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -85,6 +85,9 @@ Boston, MA 02111-1307, USA.  */
    This ensures the configuration knows our system correctly so we can link
    with libraries compiled with the native cc.  */
 #undef NO_DOLLAR_IN_LABEL
+
+/* Define this so we can compile MS code for use with WINE.  */
+#define HANDLE_PRAGMA_PACK_PUSH_POP
 
 /* Used by libgcc2.c.  We support file locking with fcntl / F_SETLKW.
    This enables the test coverage code to use file locking when exiting a
