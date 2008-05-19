@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.22 2008/01/10 22:30:27 nth Exp $
+ * $DragonFly: src/include/unistd.h,v 1.23 2008/05/19 10:21:31 corecode Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -190,16 +190,6 @@ int	 rresvport(int *);
 int	 rresvport_af(int *, int);
 int	 ruserok(const char *, int, const char *, const char *);
 void	*sbrk(intptr_t);
-#ifndef _SELECT_DECLARED	/* bleh BSD compatibility */
-#define	_SELECT_DECLARED
-struct timeval;				/* select(2) */
-int	 select(int, fd_set * __restrict, fd_set * __restrict,
-		fd_set * __restrict, struct timeval * __restrict);
-struct timespec;			/* pselect(2) */
-int	 pselect(int, fd_set * __restrict, fd_set * __restrict,
-		fd_set * __restrict, const struct timespec * __restrict,
-		const sigset_t * __restrict);
-#endif
 int	 setdomainname(const char *, int);
 int	 setegid(gid_t);
 int	 seteuid(uid_t);
@@ -244,5 +234,10 @@ int	 getsubopt(char **, char * const *, char **);
 #endif /* !_POSIX_SOURCE */
 extern int optreset;			/* getopt(3) external variable */
 __END_DECLS
+
+/* BSD compatibility for certain function declarations */
+#ifdef __BSD_VISIBLE
+#include <sys/select.h>
+#endif
 
 #endif /* !_UNISTD_H_ */
