@@ -1,5 +1,5 @@
 /* $NetBSD: citrus_utf8.c,v 1.16 2007/03/06 16:13:58 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_utf8.c,v 1.2 2008/04/10 10:21:02 hasso Exp $ */
+/* $DragonFly: src/lib/libc/citrus/modules/citrus_utf8.c,v 1.3 2008/05/20 21:13:39 hasso Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -243,6 +243,7 @@ _citrus_UTF8_mbrtowc_priv(_UTF8EncodingInfo *ei, wchar_t *pwc, const char **s,
 	}
 	if (pwc != NULL)
 		*pwc = wchar;
+	*nresult = (wchar == 0) ? 0 : s0 - *s;
 	*s = s0;
 	psenc->chlen = 0;
 
