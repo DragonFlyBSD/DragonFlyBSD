@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.50 2008/05/18 05:54:31 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.51 2008/05/20 19:14:38 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -189,6 +189,12 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
 			error = vflush(mp, 0, flags);
+			if (error == 0) {
+				devvp = pmp->pm_devvp;
+				VOP_OPEN(devvp, FREAD, FSCRED, NULL);
+				VOP_CLOSE(devvp, FREAD|FWRITE);
+				pmp->pm_flags |= MSDOSFSMNT_RONLY;
+			}
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD))
 			/* not yet implemented */
@@ -200,16 +206,18 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			 * If upgrade to read-write by non-root, then verify
 			 * that user has necessary permissions on the device.
 			 */
+			devvp = pmp->pm_devvp;
+			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			if (cred->cr_uid != 0) {
-				devvp = pmp->pm_devvp;
-				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				error = VOP_ACCESS(devvp, VREAD | VWRITE, cred);
 				if (error) {
 					vn_unlock(devvp);
 					return (error);
 				}
-				vn_unlock(devvp);
 			}
+			VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL);
+			VOP_CLOSE(devvp, FREAD);
+			vn_unlock(devvp);
 			pmp->pm_flags &= ~MSDOSFSMNT_RONLY;
 		}
 		if (args.fspec == 0) {
