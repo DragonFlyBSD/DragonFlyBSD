@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.17 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.18 2008/05/20 18:23:33 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -426,6 +426,8 @@ fwohci_probe_phy(struct fwohci_softc *sc, device_t dev)
  *    It is not actually available port on your PC .
  */
 	OWRITE(sc, OHCI_HCCCTL, OHCI_HCC_LPS);
+	DELAY(500);
+
 	reg = fwphy_rddata(sc, FW_PHY_SPD_REG);
 
 	if((reg >> 5) != 7 ){
