@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.h,v 1.9.2.2 2006/08/10 06:07:49 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.9 2007/10/28 02:29:06 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.10 2008/05/20 19:23:25 dillon Exp $
  */
 #ifndef _NET80211_IEEE80211_H_
 #define _NET80211_IEEE80211_H_
@@ -160,7 +160,8 @@ struct ieee80211_qosframe_addr4 {
 #define	IEEE80211_FC1_RETRY			0x08
 #define	IEEE80211_FC1_PWR_MGT			0x10
 #define	IEEE80211_FC1_MORE_DATA			0x20
-#define	IEEE80211_FC1_WEP			0x40
+#define	IEEE80211_FC1_PROTECTED			0x40
+#define	IEEE80211_FC1_WEP			0x40	/* pre-RSNA compat */
 #define	IEEE80211_FC1_ORDER			0x80
 
 #define	IEEE80211_SEQ_FRAG_MASK			0x000f
