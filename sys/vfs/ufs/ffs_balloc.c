@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.18 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.19 2008/05/21 18:49:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,6 +74,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 	ufs_daddr_t newb, *bap, pref;
 	int deallocated, osize, nsize, num, i, error;
 	ufs_daddr_t *allocib, *blkp, *allocblk, allociblk[NIADDR + 1];
+	ufs_daddr_t *lbns_remfree, lbns[NIADDR + 1];
 	int unwindidx;
 	int seqcount;
 
@@ -229,6 +230,8 @@ ffs_balloc(struct vop_balloc_args *ap)
 	 */
 	allocib = NULL;
 	allocblk = allociblk;
+	lbns_remfree = lbns;
+
 	unwindidx = -1;
 
 	/*
@@ -249,6 +252,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 			goto fail2;
 		nb = newb;
 		*allocblk++ = nb;
+		*lbns_remfree++ = indirs[1].in_lbn;
 		bp = getblk(vp, lblktodoff(fs, indirs[1].in_lbn),
 			    fs->fs_bsize, 0, 0);
 		bp->b_bio2.bio_offset = fsbtodoff(fs, nb);
@@ -299,6 +303,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 		}
 		nb = newb;
 		*allocblk++ = nb;
+		*lbns_remfree++ = indirs[i].in_lbn;
 		nbp = getblk(vp, lblktodoff(fs, indirs[i].in_lbn),
 			     fs->fs_bsize, 0, 0);
 		nbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
@@ -355,6 +360,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 		}
 		nb = newb;
 		*allocblk++ = nb;
+		*lbns_remfree++ = lbn;
 		dbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 		if (flags & B_CLRBUF)
 			vfs_bio_clrbuf(dbp);
@@ -436,10 +442,19 @@ fail:
 	 * have an error to return to the user.
 	 */
 	(void) VOP_FSYNC(vp, MNT_WAIT);
-	for (deallocated = 0, blkp = allociblk; blkp < allocblk; blkp++) {
-		ffs_blkfree(ip, *blkp, fs->fs_bsize);
+	for (deallocated = 0, blkp = allociblk, lbns_remfree = lbns;
+	     blkp < allocblk; blkp++, lbns_remfree++) {
+		/*
+		 * We shall not leave the freed blocks on the vnode
+		 * buffer object lists.
+		 */
+		bp = getblk(vp, *lbns_remfree, fs->fs_bsize, 0, 0);
+		bp->b_flags |= (B_INVAL | B_RELBUF);
+		bp->b_flags &= ~B_ASYNC;
+		brelse(bp);
 		deallocated += fs->fs_bsize;
 	}
+
 	if (allocib != NULL) {
 		*allocib = 0;
 	} else if (unwindidx >= 0) {
@@ -472,6 +487,14 @@ fail:
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 	}
 	(void) VOP_FSYNC(vp, MNT_WAIT);
+
+	/*
+	 * After the buffers are invalidated and on-disk pointers are
+	 * cleared, free the blocks.
+	 */
+	for (blkp = allociblk; blkp < allocblk; blkp++) {
+		ffs_blkfree(ip, *blkp, fs->fs_bsize);
+	}
 
 	/*
 	 * Cleanup the data block we getblk()'d before returning.
