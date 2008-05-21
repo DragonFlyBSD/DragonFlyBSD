@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.41 2008/04/26 23:09:40 sephe Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.42 2008/05/21 19:56:46 mneumann Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -228,9 +228,9 @@ usb_attach(device_t self)
 	sc->sc_bus->usbctl = sc;
 	sc->sc_port.power = USB_MAX_POWER;
 
-	kprintf("%s", device_get_nameunit(sc->sc_dev));
+	device_printf(sc->sc_dev, "");
 	usbrev = sc->sc_bus->usbrev;
-	kprintf(": USB revision %s", usbrev_str[usbrev]);
+	kprintf("USB revision %s", usbrev_str[usbrev]);
 	switch (usbrev) {
 	case USBREV_1_0:
 	case USBREV_1_1:
@@ -261,7 +261,7 @@ usb_attach(device_t self)
 	sc->sc_bus->soft = softintr_establish(IPL_SOFTNET,
 	    sc->sc_bus->methods->soft_intr, sc->sc_bus);
 	if (sc->sc_bus->soft == NULL) {
-		kprintf("%s: can't register softintr\n", device_get_nameunit(sc->sc_dev));
+		device_printf(sc->sc_dev, "can't register softintr\n");
 		sc->sc_dying = 1;
 		return ENXIO;
 	}
@@ -276,8 +276,8 @@ usb_attach(device_t self)
 		dev = sc->sc_port.device;
 		if (dev->hub == NULL) {
 			sc->sc_dying = 1;
-			kprintf("%s: root device is not a hub\n",
-			       device_get_nameunit(sc->sc_dev));
+			device_printf(sc->sc_dev,
+			    "root device is not a hub\n");
 			return ENXIO;
 		}
 		sc->sc_bus->root_hub = dev;
@@ -297,8 +297,8 @@ usb_attach(device_t self)
 		}
 #endif
 	} else {
-		kprintf("%s: root hub problem, error=%d\n",
-		       device_get_nameunit(sc->sc_dev), err);
+		device_printf(sc->sc_dev,
+		    "root hub problem, error=%d\n", err);
 		sc->sc_dying = 1;
 	}
 #if 0
@@ -335,8 +335,8 @@ usb_create_event_thread(void *arg)
 
 	if (kthread_create(usb_event_thread, sc, &sc->sc_event_thread,
 			   "%s", device_get_nameunit(sc->sc_dev))) {
-		kprintf("%s: unable to create event thread for\n",
-		       device_get_nameunit(sc->sc_dev));
+		device_printf(sc->sc_dev,
+		    "unable to create event thread for\n");
 		panic("usb_create_event_thread");
 	}
 
@@ -872,8 +872,8 @@ usb_detach(device_t self)
 	if (sc->sc_event_thread != NULL) {
 		wakeup(&sc->sc_bus->needs_explore);
 		if (tsleep(sc, 0, "usbdet", hz * 60))
-			kprintf("%s: event thread didn't die\n",
-			       device_get_nameunit(sc->sc_dev));
+			device_printf(sc->sc_dev,
+			    "event thread didn't die\n");
 		DPRINTF(("usb_detach: event thread dead\n"));
 	}
 

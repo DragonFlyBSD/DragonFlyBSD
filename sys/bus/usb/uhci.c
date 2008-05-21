@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.162.2.1 2006/03/01 01:59:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.25 2007/06/29 22:56:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.26 2008/05/21 19:56:46 mneumann Exp $	*/
 
 /*	Also already incorporated from NetBSD:
  *	$NetBSD: uhci.c,v 1.172 2003/02/23 04:19:26 simonb Exp $
@@ -1133,8 +1133,8 @@ uhci_intr1(uhci_softc_t *sc)
 		return (0);
 
 	if (sc->sc_suspend != PWR_RESUME) {
-		kprintf("%s: interrupt while not operating ignored\n",
-		       device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev,
+		    "interrupt while not operating ignored\n");
 		UWRITE2(sc, UHCI_STS, status); /* acknowledge the ints */
 		return (0);
 	}
@@ -1147,23 +1147,23 @@ uhci_intr1(uhci_softc_t *sc)
 	if (status & UHCI_STS_RD) {
 		ack |= UHCI_STS_RD;
 #ifdef USB_DEBUG
-		kprintf("%s: resume detect\n", device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "resume detect\n");
 #endif
 	}
 	if (status & UHCI_STS_HSE) {
 		ack |= UHCI_STS_HSE;
-		kprintf("%s: host system error\n", device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "host system error\n");
 	}
 	if (status & UHCI_STS_HCPE) {
 		ack |= UHCI_STS_HCPE;
-		kprintf("%s: host controller process error\n",
-		       device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev,
+		    "host controller process error\n");
 	}
 	if (status & UHCI_STS_HCH) {
 		/* no acknowledge needed */
 		if (!sc->sc_dying) {
-			kprintf("%s: host controller halted\n",
-			    device_get_nameunit(sc->sc_bus.bdev));
+			device_printf(sc->sc_bus.bdev,
+			    "host controller halted\n");
 #ifdef USB_DEBUG
 			uhci_dump_all(sc);
 #endif
@@ -1498,8 +1498,7 @@ uhci_reset(uhci_softc_t *sc)
 		    (UREAD2(sc, UHCI_CMD) & UHCI_CMD_HCRESET); n++)
 		usb_delay_ms(&sc->sc_bus, 1);
 	if (n >= UHCI_RESET_TIMEOUT)
-		kprintf("%s: controller did not reset\n",
-		       device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "controller did not reset\n");
 }
 
 usbd_status
@@ -1529,8 +1528,7 @@ uhci_run(uhci_softc_t *sc, int run)
 		usb_delay_ms(&sc->sc_bus, 1);
 	}
 	crit_exit();
-	kprintf("%s: cannot %s\n", device_get_nameunit(sc->sc_bus.bdev),
-	       run ? "start" : "stop");
+	device_printf(sc->sc_bus.bdev, "cannot %s\n", run ? "start" : "stop");
 	return (USBD_IOERROR);
 }
 

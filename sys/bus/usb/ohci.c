@@ -1,6 +1,6 @@
 /*	$NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.154.2.4 2006/06/26 00:31:25 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.25 2008/04/20 13:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.26 2008/05/21 19:56:46 mneumann Exp $	*/
 
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -640,14 +640,13 @@ ohci_init(ohci_softc_t *sc)
 	u_int32_t rev;
 
 	DPRINTF(("ohci_init: start\n"));
-	kprintf("%s:", device_get_nameunit(sc->sc_bus.bdev));
+	device_printf(sc->sc_bus.bdev, "");
 	rev = OREAD4(sc, OHCI_REVISION);
-	kprintf(" OHCI version %d.%d%s\n", OHCI_REV_HI(rev), OHCI_REV_LO(rev),
+	kprintf("OHCI version %d.%d%s\n", OHCI_REV_HI(rev), OHCI_REV_LO(rev),
 	       OHCI_REV_LEGACY(rev) ? ", legacy support" : "");
 
 	if (OHCI_REV_HI(rev) != 1 || OHCI_REV_LO(rev) != 0) {
-		kprintf("%s: unsupported OHCI revision\n",
-		       device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "unsupported OHCI revision\n");
 		sc->sc_bus.usbrev = USBREV_UNKNOWN;
 		return (USBD_INVAL);
 	}
@@ -777,8 +776,8 @@ ohci_controller_init(ohci_softc_t *sc)
 			ctl = OREAD4(sc, OHCI_CONTROL);
 		}
 		if ((ctl & OHCI_IR) == 0) {
-			kprintf("%s: SMM does not respond, resetting\n",
-			       device_get_nameunit(sc->sc_bus.bdev));
+			device_printf(sc->sc_bus.bdev,
+			    "SMM does not respond, resetting\n");
 			OWRITE4(sc, OHCI_CONTROL, OHCI_HCFS_RESET);
 			goto reset;
 		}
@@ -819,7 +818,7 @@ ohci_controller_init(ohci_softc_t *sc)
 			break;
 	}
 	if (hcr) {
-		kprintf("%s: reset timeout\n", device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "reset timeout\n");
 		return (USBD_IOERROR);
 	}
 #ifdef USB_DEBUG
@@ -1139,8 +1138,8 @@ ohci_intr1(ohci_softc_t *sc)
 	if (eintrs & OHCI_SO) {
 		sc->sc_overrun_cnt++;
 		if (usbd_ratecheck(&sc->sc_overrun_ntc)) {
-			kprintf("%s: %u scheduling overruns\n",
-			    device_get_nameunit(sc->sc_bus.bdev), sc->sc_overrun_cnt);
+			device_printf(sc->sc_bus.bdev,
+			    "%u scheduling overruns\n", sc->sc_overrun_cnt);
 			sc->sc_overrun_cnt = 0;
 		}
 		/* XXX do what */
@@ -1152,12 +1151,12 @@ ohci_intr1(ohci_softc_t *sc)
 		eintrs &= ~OHCI_WDH;
 	}
 	if (eintrs & OHCI_RD) {
-		kprintf("%s: resume detect\n", device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "resume detect\n");
 		/* XXX process resume detect */
 	}
 	if (eintrs & OHCI_UE) {
-		kprintf("%s: unrecoverable error, controller halted\n",
-		       device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev,
+		    "unrecoverable error, controller halted\n");
 		OWRITE4(sc, OHCI_CONTROL, OHCI_HCFS_RESET);
 		/* XXX what else */
 	}
@@ -1179,8 +1178,8 @@ ohci_intr1(ohci_softc_t *sc)
 		/* Block unprocessed interrupts. XXX */
 		OWRITE4(sc, OHCI_INTERRUPT_DISABLE, eintrs);
 		sc->sc_eintrs &= ~eintrs;
-		kprintf("%s: blocking intrs 0x%x\n",
-		       device_get_nameunit(sc->sc_bus.bdev), eintrs);
+		device_printf(sc->sc_bus.bdev,
+		    "blocking intrs 0x%x\n", eintrs);
 	}
 
 	return (1);
@@ -3297,8 +3296,8 @@ ohci_device_isoc_enter(usbd_xfer_handle xfer)
 			nsitd = ohci_alloc_sitd(sc);
 			if (nsitd == NULL) {
 				/* XXX what now? */
-				kprintf("%s: isoc TD alloc failed\n",
-				       device_get_nameunit(sc->sc_bus.bdev));
+				device_printf(sc->sc_bus.bdev,
+				    "isoc TD alloc failed\n");
 				return;
 			}
 
@@ -3326,8 +3325,7 @@ ohci_device_isoc_enter(usbd_xfer_handle xfer)
 	nsitd = ohci_alloc_sitd(sc);
 	if (nsitd == NULL) {
 		/* XXX what now? */
-		kprintf("%s: isoc TD alloc failed\n",
-		       device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "isoc TD alloc failed\n");
 		return;
 	}
 	/* Fixup last used ITD */

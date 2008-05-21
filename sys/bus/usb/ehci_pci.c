@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.18.2.1 2006/01/26 01:43:13 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.18 2007/08/14 20:06:13 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.19 2008/05/21 19:56:46 mneumann Exp $
  */
 
 /*
@@ -502,8 +502,8 @@ ehci_pci_takecontroller(device_t self)
 		legsup = eec;
 		pci_write_config(self, eecp, legsup | EHCI_LEGSUP_OSOWNED, 4);
 		if (legsup & EHCI_LEGSUP_BIOSOWNED) {
-			kprintf("%s: waiting for BIOS to give up control\n",
-			    device_get_nameunit(sc->sc_bus.bdev));
+			device_printf(sc->sc_bus.bdev,
+			    "waiting for BIOS to give up control\n");
 			for (i = 0; i < 5000; i++) {
 				legsup = pci_read_config(self, eecp, 4);
 				if ((legsup & EHCI_LEGSUP_BIOSOWNED) == 0)
@@ -511,8 +511,8 @@ ehci_pci_takecontroller(device_t self)
 				DELAY(1000);
 			}
 			if (legsup & EHCI_LEGSUP_BIOSOWNED)
-				kprintf("%s: timed out waiting for BIOS\n",
-				    device_get_nameunit(sc->sc_bus.bdev));
+				device_printf(sc->sc_bus.bdev,
+				    "timed out waiting for BIOS\n");
 		}
 	}
 }

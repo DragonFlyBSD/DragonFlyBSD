@@ -1,6 +1,6 @@
 /*	$NetBSD: ehci.c,v 1.91 2005/02/27 00:27:51 perry Exp $ */
 /*	$FreeBSD: src/sys/dev/usb/ehci.c,v 1.36.2.3 2006/09/24 13:39:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.32 2007/06/29 22:56:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.33 2008/05/21 19:56:46 mneumann Exp $	*/
 
 /*
  * Copyright (c) 2004 The NetBSD Foundation, Inc.
@@ -325,23 +325,24 @@ ehci_init(ehci_softc_t *sc)
 	sc->sc_offs = EREAD1(sc, EHCI_CAPLENGTH);
 
 	vers = EREAD2(sc, EHCI_HCIVERSION);
-	kprintf("%s: EHCI version %x.%x\n", device_get_nameunit(sc->sc_bus.bdev),
-	       vers >> 8, vers & 0xff);
+	device_printf(sc->sc_bus.bdev,
+	    "EHCI version %x.%x\n", vers >> 8, vers & 0xff);
 
 	sparams = EREAD4(sc, EHCI_HCSPARAMS);
 	DPRINTF(("ehci_init: sparams=0x%x\n", sparams));
 	sc->sc_npcomp = EHCI_HCS_N_PCC(sparams);
 	ncomp = EHCI_HCS_N_CC(sparams);
 	if (ncomp != sc->sc_ncomp) {
-		kprintf("%s: wrong number of companions (%d != %d)\n",
-		       device_get_nameunit(sc->sc_bus.bdev),
-		       ncomp, sc->sc_ncomp);
+		device_printf(sc->sc_bus.bdev,
+		    "wrong number of companions (%d != %d)\n",
+		    ncomp, sc->sc_ncomp);
 		if (ncomp < sc->sc_ncomp)
 			sc->sc_ncomp = ncomp;
 	}
 	if (sc->sc_ncomp > 0) {
-		kprintf("%s: companion controller%s, %d port%s each:",
-		    device_get_nameunit(sc->sc_bus.bdev), sc->sc_ncomp!=1 ? "s" : "",
+		device_printf(sc->sc_bus.bdev,
+		    "companion controller%s, %d port%s each:",
+		    sc->sc_ncomp!=1 ? "s" : "",
 		    EHCI_HCS_N_PCC(sparams),
 		    EHCI_HCS_N_PCC(sparams)!=1 ? "s" : "");
 		for (i = 0; i < sc->sc_ncomp; i++)
@@ -371,8 +372,7 @@ ehci_init(ehci_softc_t *sc)
 			break;
 	}
 	if (hcr) {
-		kprintf("%s: reset timeout\n",
-		    device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "reset timeout\n");
 		return (USBD_IOERROR);
 	}
 
@@ -495,7 +495,7 @@ ehci_init(ehci_softc_t *sc)
 			break;
 	}
 	if (hcr) {
-		kprintf("%s: run timeout\n", device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "run timeout\n");
 		return (USBD_IOERROR);
 	}
 
@@ -567,8 +567,8 @@ ehci_intr1(ehci_softc_t *sc)
 		eintrs &= ~(EHCI_STS_INT | EHCI_STS_ERRINT);
 	}
 	if (eintrs & EHCI_STS_HSE) {
-		kprintf("%s: unrecoverable error, controller halted\n",
-		       device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev,
+		    "unrecoverable error, controller halted\n");
 		/* XXX what else */
 	}
 	if (eintrs & EHCI_STS_PCD) {
@@ -589,8 +589,8 @@ ehci_intr1(ehci_softc_t *sc)
 		/* Block unprocessed interrupts. */
 		sc->sc_eintrs &= ~eintrs;
 		EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
-		kprintf("%s: blocking intrs 0x%x\n",
-		       device_get_nameunit(sc->sc_bus.bdev), eintrs);
+		device_printf(sc->sc_bus.bdev,
+		    "blocking intrs 0x%x\n", eintrs);
 	}
 
 	return (1);
@@ -951,8 +951,7 @@ ehci_power(int why, void *v)
 			usb_delay_ms(&sc->sc_bus, 1);
 		}
 		if (hcr != 0) {
-			kprintf("%s: reset timeout\n",
-			    device_get_nameunit(sc->sc_bus.bdev));
+			device_printf(sc->sc_bus.bdev, "reset timeout\n");
 		}
 
 		cmd &= ~EHCI_CMD_RS;
@@ -966,8 +965,7 @@ ehci_power(int why, void *v)
 			usb_delay_ms(&sc->sc_bus, 1);
 		}
 		if (hcr != EHCI_STS_HCH) {
-			kprintf("%s: config timeout\n",
-			    device_get_nameunit(sc->sc_bus.bdev));
+			device_printf(sc->sc_bus.bdev, "config timeout\n");
 		}
 
 		sc->sc_bus.use_polling--;
@@ -1016,8 +1014,7 @@ ehci_power(int why, void *v)
 			usb_delay_ms(&sc->sc_bus, 1);
 		}
 		if (hcr == EHCI_STS_HCH) {
-			kprintf("%s: config timeout\n",
-			    device_get_nameunit(sc->sc_bus.bdev));
+			device_printf(sc->sc_bus.bdev, "config timeout\n");
 		}
 
 		usb_delay_ms(&sc->sc_bus, USB_RESUME_WAIT);
@@ -1320,9 +1317,9 @@ ehci_open(usbd_pipe_handle pipe)
 	default: panic("ehci_open: bad device speed %d", dev->speed);
 	}
 	if (speed != EHCI_QH_SPEED_HIGH && xfertype == UE_ISOCHRONOUS) {
-		kprintf("%s: *** WARNING: opening low/full speed device, this "
-		       "does not work yet.\n",
-		       device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev,
+		    "*** WARNING: opening low/full speed device, this "
+		    "does not work yet.\n");
 		DPRINTFN(1,("ehci_open: hshubaddr=%d hshubport=%d\n",
 			    hshubaddr, hshubport));
 		return USBD_INVAL;
@@ -1943,8 +1940,8 @@ ehci_root_ctrl_start(usbd_xfer_handle xfer)
 			v = EOREAD4(sc, port);
 			DPRINTF(("ehci after reset, status=0x%08x\n", v));
 			if (v & EHCI_PS_PR) {
-				kprintf("%s: port reset timeout\n",
-				       device_get_nameunit(sc->sc_bus.bdev));
+				device_printf(sc->sc_bus.bdev,
+				    "port reset timeout\n");
 				return (USBD_TIMEOUT);
 			}
 			if (!(v & EHCI_PS_PE)) {
@@ -2005,16 +2002,14 @@ ehci_disown(ehci_softc_t *sc, int index, int lowspeed)
 	if (sc->sc_npcomp != 0) {
 		int i = (index-1) / sc->sc_npcomp;
 		if (i >= sc->sc_ncomp)
-			kprintf("%s: strange port\n",
-			       device_get_nameunit(sc->sc_bus.bdev));
+			device_printf(sc->sc_bus.bdev, "strange port\n");
 		else
-			kprintf("%s: handing over %s speed device on "
-			       "port %d to %s\n",
-			       device_get_nameunit(sc->sc_bus.bdev),
-			       lowspeed ? "low" : "full",
-			       index, device_get_nameunit(sc->sc_comps[i]->bdev));
+			device_printf(sc->sc_bus.bdev,
+			    "handing over %s speed device on port %d to %s\n",
+			    lowspeed ? "low" : "full",
+			    index, device_get_nameunit(sc->sc_comps[i]->bdev));
 	} else {
-		kprintf("%s: npcomp == 0\n", device_get_nameunit(sc->sc_bus.bdev));
+		device_printf(sc->sc_bus.bdev, "npcomp == 0\n");
 	}
 #endif
 	port = EHCI_PORTSC(index);
