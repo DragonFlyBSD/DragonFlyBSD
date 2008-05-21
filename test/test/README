@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.54 2008/03/07 07:49:47 dave Exp $
+$DragonFly: src/test/test/README,v 1.55 2008/05/21 14:45:25 mneumann Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -48,3 +48,5 @@ had an age everyone could agree on. The only problem now was that it was older
 than the universe that contained it.
 
 I wondered why the baseball was getting bigger. Then it hit me.
+
+test test. works for me as well :)
