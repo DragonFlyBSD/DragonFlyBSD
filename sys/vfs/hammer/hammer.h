@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.70 2008/05/18 21:47:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.71 2008/05/22 04:14:01 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -252,7 +252,6 @@ typedef struct hammer_inode *hammer_inode_t;
 
 #define HAMMER_INODE_TRUNCATED	0x00010000
 #define HAMMER_INODE_DELETING	0x00020000 /* inode delete request (frontend)*/
-#define HAMMER_INODE_RESIGNAL	0x00040000 /* re-signal on re-flush */
 #define HAMMER_INODE_RESIGNAL	0x00040000 /* re-signal on re-flush */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|			    \

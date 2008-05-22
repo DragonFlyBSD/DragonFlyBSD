@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.54 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.55 2008/05/22 04:14:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1869,6 +1869,18 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 		bp->b_flags |= B_ERROR;
 		biodone(ap->a_bio);
 		return(EROFS);
+	}
+
+	/*
+	 * Interlock with inode destruction (no in-kernel or directory
+	 * topology visibility).  If we queue new IO while trying to
+	 * destroy the inode we can deadlock the vtrunc call in
+	 * hammer_inode_unloadable_check().
+	 */
+	if (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) {
+		bp->b_resid = 0;
+		biodone(ap->a_bio);
+		return(0);
 	}
 
 	/*

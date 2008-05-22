@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.60 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.61 2008/05/22 04:14:01 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1692,6 +1692,7 @@ void
 hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 {
 	struct vnode *vp;
+	struct bio *bio;
 
 	/*
 	 * Set the DELETING flag when the link count drops to 0 and the
@@ -1711,6 +1712,29 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 			if (hammer_get_vnode(ip, &vp) != 0)
 				return;
 		}
+
+		/*
+		 * biodone any buffers with pending IO.  These buffers are
+		 * holding a BUF_KERNPROC() exclusive lock and our
+		 * vtruncbuf() call will deadlock if any remain.
+		 *
+		 * (interlocked against hammer_vop_strategy_write via
+		 *  HAMMER_INODE_DELETING|HAMMER_INODE_DELETED).
+		 */
+		while ((bio = TAILQ_FIRST(&ip->bio_list)) != NULL) {
+			TAILQ_REMOVE(&ip->bio_list, bio, bio_act);
+			bio->bio_buf->b_resid = 0;
+			biodone(bio);
+		}
+		while ((bio = TAILQ_FIRST(&ip->bio_alt_list)) != NULL) {
+			TAILQ_REMOVE(&ip->bio_alt_list, bio, bio_act);
+			bio->bio_buf->b_resid = 0;
+			biodone(bio);
+		}
+
+		/*
+		 * Final cleanup
+		 */
 		if (ip->vp) {
 			vtruncbuf(ip->vp, 0, HAMMER_BUFSIZE);
 			vnode_pager_setsize(ip->vp, 0);
