@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
-.\" $DragonFly: src/share/man/man4/ktr.4,v 1.9 2008/05/15 09:26:14 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ktr.4,v 1.10 2008/05/22 04:00:43 swildner Exp $
 .\"
-.Dd May 14, 2008
+.Dd May 22, 2008
 .Dt KTR 4
 .Os
 .Sh NAME
@@ -42,6 +42,7 @@
 .Cd options KTR_IF_START
 .Cd options KTR_IFQ
 .Cd options KTR_IPIQ
+.Cd options KTR_KERNENTRY
 .Cd options KTR_MEMORY
 .Cd options KTR_POLLING
 .Cd options KTR_SERIALIZER
@@ -90,6 +91,8 @@ classic ifq dequeue/enqueue operation
 running/avoiding/scheduling ifnet.if_start
 .It Dv KTR_IPIQ
 IPI related data (IPI requests, CPU synchronization etc.)
+.It Dv KTR_KERNENTRY
+entry of the kernel from userland (faults, syscalls)
 .It Dv KTR_MEMORY
 .Xr kmalloc 9
 and
