@@ -56,7 +56,7 @@
  *      @(#)netdb.h	8.1 (Berkeley) 6/2/93
  *      From: Id: netdb.h,v 8.9 1996/11/19 08:39:29 vixie Exp $
  * $FreeBSD: src/include/netdb.h,v 1.14.2.5 2001/08/29 08:46:51 alfred Exp $
- * $DragonFly: src/include/netdb.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
+ * $DragonFly: src/include/netdb.h,v 1.6 2008/05/22 06:50:14 hasso Exp $
  */
 
 #ifndef _NETDB_H_
@@ -172,10 +172,12 @@ struct addrinfo {
  */
 #define	AI_PASSIVE	0x00000001 /* get address to use bind() */
 #define	AI_CANONNAME	0x00000002 /* fill ai_canonname */
-#define	AI_NUMERICHOST	0x00000004 /* prevent name resolution */
-/* valid flags for addrinfo */
+#define	AI_NUMERICHOST	0x00000004 /* prevent host name resolution */
+#define	AI_NUMERICSERV	0x00000008 /* prevent service name resolution */
+/* valid flags for addrinfo (not a standard def, apps should not use it) */
 #define AI_MASK \
-    (AI_PASSIVE | AI_CANONNAME | AI_NUMERICHOST | AI_ADDRCONFIG)
+    (AI_PASSIVE | AI_CANONNAME | AI_NUMERICHOST | AI_NUMERICSERV | \
+     AI_ADDRCONFIG)
 
 #define	AI_ALL		0x00000100 /* IPv6 and IPv4-mapped (with AI_V4MAPPED) */
 #define	AI_V4MAPPED_CFG	0x00000200 /* accept IPv4-mapped if kernel supports */

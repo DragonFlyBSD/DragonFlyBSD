@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getaddrinfo.c,v 1.9.2.14 2002/11/08 17:49:31 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.6 2005/11/13 02:04:47 swildner Exp $	*/
+/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.7 2008/05/22 06:50:14 hasso Exp $	*/
 /*	$KAME: getaddrinfo.c,v 1.15 2000/07/09 04:37:24 itojun Exp $	*/
 
 /*
@@ -186,7 +186,7 @@ struct res_target {
 	int n;			/* result length */
 };
 
-static int str_isnumber (const char *);
+static int str2number (const char *);
 static int explore_fqdn (const struct addrinfo *, const char *,
 	const char *, struct addrinfo **);
 static int explore_null (const struct addrinfo *,
@@ -349,19 +349,20 @@ freeaddrinfo(struct addrinfo *ai)
 }
 
 static int
-str_isnumber(const char *p)
+str2number(const char *p)
 {
 	char *ep;
+	unsigned long v;
 
 	if (*p == '\0')
-		return NO;
+		return -1;
 	ep = NULL;
 	errno = 0;
-	strtoul(p, &ep, 10);
-	if (errno == 0 && ep && *ep == '\0')
-		return YES;
+	v = strtoul(p, &ep, 10);
+	if (errno == 0 && ep && *ep == '\0' && v <= UINT_MAX)
+		return v;
 	else
-		return NO;
+		return -1;
 }
 
 int
@@ -1027,14 +1028,16 @@ get_port(struct addrinfo *ai, const char *servname, int matchonly)
 		return EAI_SOCKTYPE;
 	}
 
-	if (str_isnumber(servname)) {
+	port = str2number(servname);
+	if (port >= 0) {
 		if (!allownumeric)
 			return EAI_SERVICE;
-		port = atoi(servname);
 		if (port < 0 || port > 65535)
 			return EAI_SERVICE;
 		port = htons(port);
 	} else {
+		if (ai->ai_flags & AI_NUMERICSERV)
+			return EAI_NONAME;
 		switch (ai->ai_socktype) {
 		case SOCK_DGRAM:
 			proto = "udp";
