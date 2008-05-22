@@ -35,7 +35,7 @@
  *
  * @(#)vsnprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsnprintf.c,v 1.12.2.1 2002/09/23 06:58:17 maxim Exp $
- * $DragonFly: src/lib/libc/stdio/vsnprintf.c,v 1.8 2006/03/02 18:05:30 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vsnprintf.c,v 1.8.8.1 2008/05/22 07:19:33 hasso Exp $
  */
 
 #include <limits.h>
@@ -50,7 +50,7 @@ vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 {
 	size_t on;
 	int ret;
-	char dummy;
+	char dummy[2];
 	FILE f;
 
 	on = n;
@@ -60,7 +60,9 @@ vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 		n = INT_MAX;
 	/* Stdio internals do not deal correctly with zero length buffer */
 	if (n == 0) {
-                str = &dummy;
+		if (on > 0)
+			*str = '\0';
+		str = dummy;
                 n = 1;
 	}
 	f.pub._fileno = -1;
