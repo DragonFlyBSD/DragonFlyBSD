@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_anreg.h,v 1.1.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.8 2005/07/28 16:52:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.9 2008/05/23 15:34:03 sephe Exp $
  */
 
 #define AN_TIMEOUT	65536
@@ -395,13 +395,16 @@ struct an_txframe_802_3 {
 #define AN_PAYLOADTYPE_ETHER	0x0000
 #define AN_PAYLOADTYPE_LLC	0x0010
 
-#define AN_TXCTL_80211	\
-	(AN_TXCTL_TXOK_INTR|AN_TXCTL_TXERR_INTR|AN_HEADERTYPE_80211|	\
-	AN_PAYLOADTYPE_LLC|AN_TXCTL_NORELEASE)
+#define AN_TXCTL_80211		(AN_HEADERTYPE_80211|AN_PAYLOADTYPE_LLC)
 
-#define AN_TXCTL_8023	\
-	(AN_TXCTL_TXOK_INTR|AN_TXCTL_TXERR_INTR|AN_HEADERTYPE_8023|	\
-	AN_PAYLOADTYPE_ETHER|AN_TXCTL_NORELEASE)
+#define AN_TXCTL_8023		(AN_HEADERTYPE_8023|AN_PAYLOADTYPE_ETHER)
+
+/* 
+ * Additions to transmit control bits for MPI350
+ */
+
+#define AN_TXCTL_HW(x)		( x ? (AN_TXCTL_NORELEASE) : \
+	(AN_TXCTL_TXOK_INTR|AN_TXCTL_TXERR_INTR|AN_TXCTL_NORELEASE))
 
 #define AN_TXGAP_80211		0
 #define AN_TXGAP_8023		0

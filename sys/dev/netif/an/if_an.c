@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.43 2008/05/14 11:59:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.44 2008/05/23 15:34:03 sephe Exp $
  */
 
 /*
@@ -2480,7 +2480,7 @@ an_start(struct ifnet *ifp)
 	struct mbuf		*m0 = NULL;
 	struct an_txframe_802_3	tx_frame_802_3;
 	struct ether_header	*eh;
-	int			id, idx, i;
+	int			id, idx, i, ready;
 	unsigned char           txcontrol;
 	struct an_card_tx_desc an_tx_desc;
 	u_int8_t		*buf;
@@ -2501,12 +2501,14 @@ an_start(struct ifnet *ifp)
 		return;
 	}
 
+	ready = 0;
 	idx = sc->an_rdata.an_tx_prod;
 
 	if (!sc->mpi350) {
 		bzero((char *)&tx_frame_802_3, sizeof(tx_frame_802_3));
 
 		while (sc->an_rdata.an_tx_ring[idx] == 0) {
+			ready = 1;
 			m0 = ifq_dequeue(&ifp->if_snd, NULL);
 			if (m0 == NULL)
 				break;
@@ -2529,7 +2531,7 @@ an_start(struct ifnet *ifp)
 				   tx_frame_802_3.an_tx_802_3_payload_len,
 				   (caddr_t)&sc->an_txbuf);
 
-			txcontrol = AN_TXCTL_8023;
+			txcontrol = AN_TXCTL_8023 | AN_TXCTL_HW(sc->mpi350);
 			/* write the txcontrol only */
 			an_write_data(sc, id, 0x08, (caddr_t)&txcontrol,
 				      sizeof(txcontrol));
@@ -2563,11 +2565,12 @@ an_start(struct ifnet *ifp)
 		CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), 0);
 
 		while (sc->an_rdata.an_tx_empty ||
-		    idx != sc->an_rdata.an_tx_cons) {
+		       idx != sc->an_rdata.an_tx_cons) {
+			ready = 1;
 			m0 = ifq_dequeue(&ifp->if_snd, NULL);
-			if (m0 == NULL) {
+			if (m0 == NULL)
 				break;
-			}
+
 			buf = sc->an_tx_buffer[idx].an_dma_vaddr;
 
 			eh = mtod(m0, struct ether_header *);
@@ -2588,7 +2591,7 @@ an_start(struct ifnet *ifp)
 				   tx_frame_802_3.an_tx_802_3_payload_len,
 				   (caddr_t)&sc->an_txbuf);
 
-			txcontrol = AN_TXCTL_8023;
+			txcontrol = AN_TXCTL_8023 | AN_TXCTL_HW(sc->mpi350);
 			/* write the txcontrol only */
 			bcopy((caddr_t)&txcontrol, &buf[0x08],
 			      sizeof(txcontrol));
@@ -2609,7 +2612,7 @@ an_start(struct ifnet *ifp)
 			an_tx_desc.an_len =  0x44 +
 				tx_frame_802_3.an_tx_802_3_payload_len;
 			an_tx_desc.an_phys = sc->an_tx_buffer[idx].an_dma_paddr;
-			for (i = 0; i < sizeof(an_tx_desc) / 4 ; i++) {
+			for (i = sizeof(an_tx_desc) / 4 - 1; i >= 0 ; --i) {
 				CSR_MEM_AUX_WRITE_4(sc, AN_TX_DESC_OFFSET
 				    /* zero for now */ 
 				    + (0 * sizeof(an_tx_desc))
@@ -2637,7 +2640,7 @@ an_start(struct ifnet *ifp)
 		CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), AN_INTRS(sc->mpi350));
 	}
 
-	if (m0 != NULL)
+	if (!ready)
 		ifp->if_flags |= IFF_OACTIVE;
 
 	sc->an_rdata.an_tx_prod = idx;
