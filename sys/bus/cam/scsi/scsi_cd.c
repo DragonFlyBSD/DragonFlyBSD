@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.42 2008/05/18 20:30:19 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.43 2008/05/23 19:46:37 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -1021,12 +1021,10 @@ cdopen(struct dev_open_args *ap)
 	 */
 	error = cdcheckmedia(periph);
 
-	if (error == 0)
-		softc->flags |= CD_FLAG_OPEN;
-
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("leaving cdopen\n"));
 	cam_periph_unhold(periph);
 	cam_periph_unlock(periph);
+	/* stays acquired */
 
 	return (0);
 }
@@ -2832,24 +2830,6 @@ cdcheckmedia(struct cam_periph *periph)
 		disk_setdiskinfo(&softc->disk, &info);
 
 		/*
-		 * XXX KDM is this a good idea?  Seems to cause more
-		 * problems.
-		 */
-		if (softc->flags & CD_FLAG_OPEN) {
-			int force;
-
-			force = 1;
-
-			/*
-			 * We don't bother checking the return value here,
-			 * since we already have an error...
-			 */
-			dsioctl(softc->disk.d_cdev, DIOCSYNCSLICEINFO,
-				/*data*/(caddr_t)&force, /*flags*/ 0,
-				&softc->disk.d_slice, &softc->disk.d_info);
-		}
-
-		/*
 		 * Tell devstat(9) we don't have a blocksize.
 		 */
 		softc->device_stats.flags |= DEVSTAT_BS_UNAVAILABLE;
@@ -2861,44 +2841,6 @@ cdcheckmedia(struct cam_periph *periph)
 		info.d_media_blksize = softc->params.blksize;
 		info.d_media_blocks = softc->params.disksize;
 		disk_setdiskinfo(&softc->disk, &info);
-
-		/*
-		 * Force a re-sync of slice information, like the blocksize,
-		 * now that we know it.  It isn't pretty...but according to
-		 * Bruce Evans, this is probably the best way to do it in
-		 * -stable.  We only do this if we're already open, and
-		 * therefore dsopen() has already run.  If CD_FLAG_OPEN
-		 * isn't set, this isn't necessary.
-		 */
-		if (softc->flags & CD_FLAG_OPEN) {
-			int force;
-
-			force = 1;
-
-			error = dsioctl(softc->disk.d_cdev, DIOCSYNCSLICEINFO,
-					/*data*/(caddr_t)&force, /*flags*/ 0,
-					&softc->disk.d_slice,
-					&softc->disk.d_info);
-			if (error != 0) {
-				/*
-				 * Set a bogus sector size, so the slice code
-				 * won't try to divide by 0 and panic the
-				 * kernel.
-				 */
-				info.d_media_blksize = 2048;
-				info.d_media_blocks = 0;
-				info.d_media_size = 0;
-				disk_setdiskinfo(&softc->disk, &info);
-
-				/*
-				 * Tell devstat(9) we don't have a blocksize.
-				 */
-				softc->device_stats.flags |=
-					DEVSTAT_BS_UNAVAILABLE;
-
-				cdprevent(periph, PR_ALLOW);
-			}
-		}
 
 		/*
 		 * We unconditionally (re)set the blocksize each time the
