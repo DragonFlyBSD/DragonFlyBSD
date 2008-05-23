@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.27 2008/05/19 16:39:09 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.28 2008/05/23 06:55:11 dillon Exp $
  */
 
 /*-
@@ -335,9 +335,9 @@ main(int ac, char **av)
 	/* not reached */
     }
     bzero(&info, sizeof(info));
+#if USE_PTHREADS
     info.r = 0;
     info.children = 0;
-#if USE_PTHREADS
     pthread_cond_init(&info.cond, NULL);
 #endif
     if (dst) {
@@ -404,7 +404,9 @@ main(int ac, char **av)
 static struct hlink *
 hltlookup(struct stat *stp)
 {
+#if USE_PTHREADS
     struct timespec ts = { 0, 100000 };
+#endif
     struct hlink *hl;
     int n;
 

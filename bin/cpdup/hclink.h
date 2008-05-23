@@ -1,7 +1,7 @@
 /*
  * HCLINK.H
  *
- * $DragonFly: src/bin/cpdup/hclink.h,v 1.5 2008/04/14 05:40:51 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.h,v 1.6 2008/05/23 06:55:11 dillon Exp $
  */
 
 #ifndef _HCLINK_H_
@@ -24,6 +24,8 @@ typedef struct HCTransaction {
     enum { HCT_IDLE, HCT_SENT, HCT_REPLIED, HCT_DONE } state;
 #if USE_PTHREADS
     pthread_t	tid;
+    pthread_cond_t cond;
+    int		waiting;
 #endif
     char	rbuf[65536];	/* input buffer */
     char	wbuf[65536];	/* output buffer */
@@ -45,6 +47,7 @@ struct HostConf {
 #if USE_PTHREADS
     pthread_mutex_t read_mutex;
     hctransaction_t hct_hash[HCTHASH_SIZE];
+    pthread_t	reader_thread;
 #else
     struct HCTransaction trans;
 #endif
