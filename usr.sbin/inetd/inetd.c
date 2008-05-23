@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
  * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
- * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.10 2006/01/13 20:26:46 swildner Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.11 2008/05/23 23:40:59 swildner Exp $
  */
 
 /*
@@ -241,7 +241,7 @@ int	deny_severity;
 int	wrap_ex = 0;
 int	wrap_bi = 0;
 int	debug = 0;
-int	log = 0;
+int	dolog = 0;
 int	maxsock;			/* highest-numbered descriptor */
 fd_set	allsock;
 int	options;
@@ -347,7 +347,7 @@ main(int argc, char **argv)
 			options |= SO_DEBUG;
 			break;
 		case 'l':
-			log = 1;
+			dolog = 1;
 			break;
 		case 'R':
 			getvalue(optarg, &toomany,
@@ -616,7 +616,7 @@ main(int argc, char **argv)
 			    }
 		    } else
 			    ctrl = sep->se_fd;
-		    if (log && !ISWRAP(sep)) {
+		    if (dolog && !ISWRAP(sep)) {
 			    char pname[INET6_ADDRSTRLEN] = "unknown";
 			    socklen_t sl;
 			    sl = sizeof peermax;
@@ -735,7 +735,7 @@ main(int argc, char **argv)
 					_exit(0);
 				    }
 				}
-				if (log) {
+				if (dolog) {
 				    syslog(allow_severity,
 				        "connection from %.500s, service %s (%s%s)",
 					eval_client(&req), service, sep->se_proto,
