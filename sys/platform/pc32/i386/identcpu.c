@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.22 2008/05/16 14:46:46 sephe Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.23 2008/05/23 15:36:59 sephe Exp $
  */
 
 #include "opt_cpu.h"
@@ -1040,6 +1040,35 @@ print_AMD_assoc(int i)
 		kprintf(", %d-way associative\n", i);
 }
 
+/*
+ * #31116 Rev 3.06 section 3.9
+ * CPUID Fn8000_0006 L2/L3 Cache and L2 TLB Identifiers
+ */
+static void
+print_AMD_L2L3_assoc(int i)
+{
+	static const char *assoc_str[] = {
+		[0x0] = "disabled",
+		[0x1] = "direct mapped",
+		[0x2] = "2-way associative",
+		[0x4] = "4-way associative",
+		[0x6] = "8-way associative",
+		[0x8] = "16-way associative",
+		[0xa] = "32-way associative",
+		[0xb] = "48-way associative",
+		[0xc] = "64-way associative",
+		[0xd] = "96-way associative",
+		[0xe] = "128-way associative",
+		[0xf] = "fully associative"
+	};
+
+	i &= 0xf;
+	if (assoc_str[i] == NULL)
+		kprintf(", unknown associative\n");
+	else
+		kprintf(", %s\n", assoc_str[i]);
+}
+
 static void
 print_AMD_info(void)
 {
@@ -1074,7 +1103,20 @@ print_AMD_info(void)
 
 			kprintf(", %d bytes/line", regs[2] & 0xff);
 			kprintf(", %d lines/tag", (regs[2] >> 8) & 0x0f);
-			print_AMD_assoc((regs[2] >> 12) & 0x0f);	
+			print_AMD_L2L3_assoc((regs[2] >> 12) & 0x0f);
+
+			/*
+			 * #31116 Rev 3.06 section 2.16.2:
+			 * ... If EDX[31:16] is not zero then the processor
+			 * includes an L3. ...
+			 */
+			if ((regs[3] & 0xffff0000) != 0) {
+				kprintf("L3 shared cache: %d kbytes",
+					(regs[3] >> 18) * 512);
+				kprintf(", %d bytes/line", regs[3] & 0xff);
+				kprintf(", %d lines/tag", (regs[3] >> 8) & 0x0f);
+				print_AMD_L2L3_assoc((regs[3] >> 12) & 0x0f);
+			}
 		}
 	}
 	if (((cpu_id & 0xf00) == 0x500)
