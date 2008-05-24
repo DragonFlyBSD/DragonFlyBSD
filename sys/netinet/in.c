@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.28 2008/05/24 04:19:31 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.29 2008/05/24 04:59:14 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -379,8 +379,8 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			return (EADDRNOTAVAIL);
 		break;
 	}
-	switch (cmd) {
 
+	switch (cmd) {
 	case SIOCGIFADDR:
 		*((struct sockaddr_in *)&ifr->ifr_addr) = ia->ia_addr;
 		return (0);
