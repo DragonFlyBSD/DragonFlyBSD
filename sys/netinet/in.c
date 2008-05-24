@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.31 2008/05/24 06:03:23 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.32 2008/05/24 06:54:54 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -738,10 +738,13 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int 
 	oldaddr = ia->ia_addr;
 	if (oldaddr.sin_family == AF_INET)
 		LIST_REMOVE(ia, ia_hash);
+
 	ia->ia_addr = *sin;
-	if (ia->ia_addr.sin_family == AF_INET)
+	if (ia->ia_addr.sin_family == AF_INET) {
 		LIST_INSERT_HEAD(INADDR_HASH(ia->ia_addr.sin_addr.s_addr),
 		    ia, ia_hash);
+	}
+
 	/*
 	 * Give the interface a chance to initialize
 	 * if this is its first address,
@@ -758,11 +761,19 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int 
 		return (error);
 	}
 	lwkt_serialize_exit(ifp->if_serializer);
+
+	/*
+	 * Delete old route, if requested.
+	 */
 	if (scrub) {
 		ia->ia_ifa.ifa_addr = (struct sockaddr *)&oldaddr;
 		in_ifscrub(ifp, ia);
 		ia->ia_ifa.ifa_addr = (struct sockaddr *)&ia->ia_addr;
 	}
+
+	/*
+	 * Calculate netmask/subnetmask.
+	 */
 	if (IN_CLASSA(i))
 		ia->ia_netmask = IN_CLASSA_NET;
 	else if (IN_CLASSB(i))
@@ -777,11 +788,13 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int 
 	if (ia->ia_subnetmask == 0) {
 		ia->ia_subnetmask = ia->ia_netmask;
 		ia->ia_sockmask.sin_addr.s_addr = htonl(ia->ia_subnetmask);
-	} else
+	} else {
 		ia->ia_netmask &= ia->ia_subnetmask;
+	}
 	ia->ia_net = i & ia->ia_netmask;
 	ia->ia_subnet = i & ia->ia_subnetmask;
 	in_socktrim(&ia->ia_sockmask);
+
 	/*
 	 * Add route for the network.
 	 */
