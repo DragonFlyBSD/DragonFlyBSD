@@ -1,6 +1,6 @@
 /*	$NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ohci.c,v 1.154.2.4 2006/06/26 00:31:25 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.26 2008/05/21 19:56:46 mneumann Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ohci.c,v 1.27 2008/05/24 09:11:09 swildner Exp $	*/
 
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -640,10 +640,10 @@ ohci_init(ohci_softc_t *sc)
 	u_int32_t rev;
 
 	DPRINTF(("ohci_init: start\n"));
-	device_printf(sc->sc_bus.bdev, "");
 	rev = OREAD4(sc, OHCI_REVISION);
-	kprintf("OHCI version %d.%d%s\n", OHCI_REV_HI(rev), OHCI_REV_LO(rev),
-	       OHCI_REV_LEGACY(rev) ? ", legacy support" : "");
+	device_printf(sc->sc_bus.bdev, "OHCI version %d.%d%s\n",
+	    OHCI_REV_HI(rev), OHCI_REV_LO(rev),
+	    OHCI_REV_LEGACY(rev) ? ", legacy support" : "");
 
 	if (OHCI_REV_HI(rev) != 1 || OHCI_REV_LO(rev) != 0) {
 		device_printf(sc->sc_bus.bdev, "unsupported OHCI revision\n");

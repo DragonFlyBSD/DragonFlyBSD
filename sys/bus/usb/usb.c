@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.42 2008/05/21 19:56:46 mneumann Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.43 2008/05/24 09:11:09 swildner Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -228,9 +228,8 @@ usb_attach(device_t self)
 	sc->sc_bus->usbctl = sc;
 	sc->sc_port.power = USB_MAX_POWER;
 
-	device_printf(sc->sc_dev, "");
 	usbrev = sc->sc_bus->usbrev;
-	kprintf("USB revision %s", usbrev_str[usbrev]);
+	device_printf(sc->sc_dev, "USB revision %s", usbrev_str[usbrev]);
 	switch (usbrev) {
 	case USBREV_1_0:
 	case USBREV_1_1:
