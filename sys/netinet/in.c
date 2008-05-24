@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.32 2008/05/24 06:54:54 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.33 2008/05/24 07:41:25 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -733,8 +733,7 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int 
 	struct sockaddr_in oldaddr;
 	int flags = RTF_UP, error = 0;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
+	crit_enter();
 	oldaddr = ia->ia_addr;
 	if (oldaddr.sin_family == AF_INET)
 		LIST_REMOVE(ia, ia_hash);
@@ -744,23 +743,30 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int 
 		LIST_INSERT_HEAD(INADDR_HASH(ia->ia_addr.sin_addr.s_addr),
 		    ia, ia_hash);
 	}
+	crit_exit();
 
 	/*
 	 * Give the interface a chance to initialize
 	 * if this is its first address,
 	 * and to validate the address if necessary.
 	 */
-	if (ifp->if_ioctl &&
-	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL))) {
+	if (ifp->if_ioctl != NULL) {
+		lwkt_serialize_enter(ifp->if_serializer);
+		error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL);
 		lwkt_serialize_exit(ifp->if_serializer);
-		/* LIST_REMOVE(ia, ia_hash) is done in in_control */
-		ia->ia_addr = oldaddr;
-		if (ia->ia_addr.sin_family == AF_INET)
-			LIST_INSERT_HEAD(INADDR_HASH(ia->ia_addr.sin_addr.s_addr),
-			    ia, ia_hash);
-		return (error);
+		if (error) {
+			/* LIST_REMOVE(ia, ia_hash) is done in in_control */
+			ia->ia_addr = oldaddr;
+			if (ia->ia_addr.sin_family == AF_INET) {
+				crit_enter();
+				LIST_INSERT_HEAD(
+				INADDR_HASH(ia->ia_addr.sin_addr.s_addr),
+				ia, ia_hash);
+				crit_exit();
+			}
+			return (error);
+		}
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	/*
 	 * Delete old route, if requested.
