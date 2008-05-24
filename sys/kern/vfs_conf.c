@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.33 2007/08/26 16:54:51 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.34 2008/05/24 19:08:28 dillon Exp $
  */
 
 /*
@@ -248,19 +248,25 @@ done:
 		kfree(vfsname, M_MOUNT);
 	if (devname != NULL)
 		kfree(devname, M_MOUNT);
-	if (error != 0) {
-		if (mp != NULL) {
-			vfs_unbusy(mp);
-			kfree(mp, M_MOUNT);
-		}
-		kprintf("Root mount failed: %d\n", error);
-	} else {
+	if (error == 0) {
 		/* register with list of mounted filesystems */
 		mountlist_insert(mp, MNTINS_FIRST);
 
 		/* sanity check system clock against root fs timestamp */
 		inittodr(mp->mnt_time);
 		vfs_unbusy(mp);
+		if (mp->mnt_syncer == NULL) {
+			error = vfs_allocate_syncvnode(mp);
+			if (error)
+				kprintf("Warning: no syncer vp for root!\n");
+			error = 0;
+		}
+	} else {
+		if (mp != NULL) {
+			vfs_unbusy(mp);
+			kfree(mp, M_MOUNT);
+		}
+		kprintf("Root mount failed: %d\n", error);
 	}
 	return(error);
 }
