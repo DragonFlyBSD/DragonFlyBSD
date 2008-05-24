@@ -1,7 +1,7 @@
 /*
  * HCLINK.H
  *
- * $DragonFly: src/bin/cpdup/hclink.h,v 1.6 2008/05/23 06:55:11 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.h,v 1.7 2008/05/24 17:21:36 dillon Exp $
  */
 
 #ifndef _HCLINK_H_
@@ -45,7 +45,7 @@ struct HostConf {
     int		version;	/* cpdup protocol version */
     struct HCHostDesc *hostdescs;
 #if USE_PTHREADS
-    pthread_mutex_t read_mutex;
+    pthread_mutex_t hct_mutex[HCTHASH_SIZE];
     hctransaction_t hct_hash[HCTHASH_SIZE];
     pthread_t	reader_thread;
 #else

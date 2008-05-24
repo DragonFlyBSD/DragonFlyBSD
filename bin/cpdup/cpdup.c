@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.28 2008/05/23 06:55:11 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.29 2008/05/24 17:21:36 dillon Exp $
  */
 
 /*-
@@ -180,8 +180,10 @@ main(int ac, char **av)
     signal(SIGPIPE, SIG_IGN);
 
 #if USE_PTHREADS
-    pthread_mutex_init(&SrcHost.read_mutex, NULL);
-    pthread_mutex_init(&DstHost.read_mutex, NULL);
+    for (i = 0; i < HCTHASH_SIZE; ++i) {
+	pthread_mutex_init(&SrcHost.hct_mutex[i], NULL);
+	pthread_mutex_init(&DstHost.hct_mutex[i], NULL);
+    }
     pthread_mutex_init(&MasterMutex, NULL);
     pthread_mutex_lock(&MasterMutex);
 #endif
