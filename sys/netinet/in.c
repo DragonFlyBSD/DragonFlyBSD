@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.26 2008/03/07 11:34:20 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.27 2008/05/24 03:57:26 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -233,6 +233,9 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		("recursive SIOC%cLIFADDR!\n",
 		 cmd == SIOCDLIFADDR ? 'D' : 'A'));
 
+	/*
+	 * IFADDR alterations are serialized by netisr0
+	 */
 	switch (cmd) {
 	case SIOCSIFDSTADDR:
 	case SIOCSIFBRDADDR:
