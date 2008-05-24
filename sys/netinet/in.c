@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.27 2008/05/24 03:57:26 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.28 2008/05/24 04:19:31 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -222,7 +222,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCDLIFADDR:
 		if (td && (error = suser(td)) != 0)
 			return error;
-		/*fall through*/
+		/* FALLTHROUGH */
 	case SIOCGLIFADDR:
 		if (!ifp)
 			return EINVAL;
@@ -305,7 +305,6 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	}
 
 	switch (cmd) {
-
 	case SIOCAIFADDR:
 	case SIOCDIFADDR:
 		if (ifp == NULL)
@@ -317,10 +316,9 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				    ifra->ifra_addr.sin_addr.s_addr)
 					break;
 			}
-			if ((ifp->if_flags & IFF_POINTOPOINT)
-			    && (cmd == SIOCAIFADDR)
-			    && (ifra->ifra_dstaddr.sin_addr.s_addr
-				== INADDR_ANY)) {
+			if ((ifp->if_flags & IFF_POINTOPOINT) &&
+			    cmd == SIOCAIFADDR &&
+			    ifra->ifra_dstaddr.sin_addr.s_addr == INADDR_ANY) {
 				return EDESTADDRREQ;
 			}
 		}
@@ -345,7 +343,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			 * while we're modifying it.
 			 */
 			crit_enter();
-			
+
 			TAILQ_INSERT_TAIL(&in_ifaddrhead, ia, ia_link);
 			ifa = &ia->ia_ifa;
 			ifa_iflink(ifa, ifp, 1);
@@ -363,6 +361,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			if (!(ifp->if_flags & IFF_LOOPBACK))
 				in_interfaces++;
 			iaIsNew = 1;
+
 			crit_exit();
 		}
 		break;
@@ -454,19 +453,20 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				ifra->ifra_addr = ia->ia_addr;
 				hostIsNew = 0;
 			} else if (ifra->ifra_addr.sin_addr.s_addr ==
-					       ia->ia_addr.sin_addr.s_addr)
+				   ia->ia_addr.sin_addr.s_addr) {
 				hostIsNew = 0;
+			}
 		}
 		if (ifra->ifra_mask.sin_len) {
 			in_ifscrub(ifp, ia);
 			ia->ia_sockmask = ifra->ifra_mask;
 			ia->ia_sockmask.sin_family = AF_INET;
 			ia->ia_subnetmask =
-			     ntohl(ia->ia_sockmask.sin_addr.s_addr);
+			    ntohl(ia->ia_sockmask.sin_addr.s_addr);
 			maskIsNew = 1;
 		}
 		if ((ifp->if_flags & IFF_POINTOPOINT) &&
-		    (ifra->ifra_dstaddr.sin_family == AF_INET)) {
+		    ifra->ifra_dstaddr.sin_family == AF_INET) {
 			in_ifscrub(ifp, ia);
 			ia->ia_dstaddr = ifra->ifra_dstaddr;
 			maskIsNew  = 1; /* We lie; but the effect's the same */
@@ -479,7 +479,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			break;
 
 		if ((ifp->if_flags & IFF_BROADCAST) &&
-		    (ifra->ifra_broadaddr.sin_family == AF_INET))
+		    ifra->ifra_broadaddr.sin_family == AF_INET)
 			ia->ia_broadaddr = ifra->ifra_broadaddr;
 		if (error == 0)
 			EVENTHANDLER_INVOKE(ifaddr_event, ifp);
