@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.30 2008/05/24 05:22:44 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.31 2008/05/24 06:03:23 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -812,7 +812,7 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int 
 	if (ia->ia_addr.sin_addr.s_addr != INADDR_ANY ||
 	    ia->ia_netmask != IN_CLASSA_NET ||
 	    ia->ia_dstaddr.sin_addr.s_addr != htonl(IN_CLASSA_HOST)) {
-		if ((error = rtinit(&ia->ia_ifa, (int)RTM_ADD, flags)) != 0) {
+		if ((error = rtinit(&ia->ia_ifa, RTM_ADD, flags)) != 0) {
 			ia->ia_addr = oldaddr;
 			return (error);
 		}
