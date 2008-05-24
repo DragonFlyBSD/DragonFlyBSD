@@ -1,4 +1,4 @@
-# $DragonFly: src/secure/lib/libssh/Makefile.etc,v 1.4 2008/05/21 14:07:39 corecode Exp $
+# $DragonFly: src/secure/lib/libssh/Makefile.etc,v 1.5 2008/05/24 09:15:43 corecode Exp $
 #
 
 .include "../../Makefile.ssh.common"
@@ -15,7 +15,7 @@ FILESMODE=	644
 ${SSHDIR}/moduli:
 	@true
 
-BLACKLISTS!=	ls ${.CURDIR}/[RD]SA-*.?e* | cut -d. -f1 | sort -u
+BLACKLISTS!=	ls ${.CURDIR}/[RD]SA-*.?e* | sed -e 's/\.[^.]*$$//' | sort -u
 
 .for bl in ${BLACKLISTS}
 FILES+=	blacklist.${bl:T}
