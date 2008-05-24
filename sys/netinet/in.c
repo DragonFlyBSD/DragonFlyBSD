@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.29 2008/05/24 04:59:14 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.30 2008/05/24 05:22:44 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -406,13 +406,15 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			return (EINVAL);
 		oldaddr = ia->ia_dstaddr;
 		ia->ia_dstaddr = *(struct sockaddr_in *)&ifr->ifr_dstaddr;
-		lwkt_serialize_enter(ifp->if_serializer);
-		if (ifp->if_ioctl &&
-		    (error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR, (caddr_t)ia,
-					      td->td_proc->p_ucred))) {
-			ia->ia_dstaddr = oldaddr;
+		if (ifp->if_ioctl != NULL) {
+			lwkt_serialize_enter(ifp->if_serializer);
+			error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR, (caddr_t)ia,
+					      td->td_proc->p_ucred);
 			lwkt_serialize_exit(ifp->if_serializer);
-			return (error);
+			if (error) {
+				ia->ia_dstaddr = oldaddr;
+				return (error);
+			}
 		}
 		if (ia->ia_flags & IFA_ROUTE) {
 			ia->ia_ifa.ifa_dstaddr = (struct sockaddr *)&oldaddr;
@@ -421,7 +423,6 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 					(struct sockaddr *)&ia->ia_dstaddr;
 			rtinit(&ia->ia_ifa, RTM_ADD, RTF_HOST | RTF_UP);
 		}
-		lwkt_serialize_exit(ifp->if_serializer);
 		return (0);
 
 	case SIOCSIFBRDADDR:
