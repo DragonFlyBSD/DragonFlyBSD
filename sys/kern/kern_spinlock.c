@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.13 2008/05/05 11:07:48 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.14 2008/05/24 12:52:49 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -277,7 +277,7 @@ exponential_backoff(struct exponential_backoff *bo)
 	 * Quick backoff
 	 */
 	for (; backoff; --backoff)
-		cpu_nop();
+		cpu_pause();
 	if (bo->backoff < spinlocks_backoff_limit) {
 		bo->backoff <<= 1;
 		return (FALSE);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.16 2008/05/14 11:59:23 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.17 2008/05/24 12:52:49 sephe Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -338,7 +338,7 @@ lwkt_serialize_adaptive_sleep(void *arg)
      * Quick backoff
      */
     for (; backoff; --backoff)
-	cpu_nop();
+	cpu_pause();
     if (bo->backoff < slz_backoff_limit) {
 	bo->backoff <<= slz_backoff_shift;
 	return;
