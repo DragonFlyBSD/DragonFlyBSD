@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_init.c,v 1.23.2.11 2003/02/24 23:27:32 das Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.10 2007/04/29 01:10:33 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.11 2008/05/25 21:34:49 hasso Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -292,6 +292,8 @@ _thread_init(void)
 		TAILQ_INIT(&_thread_list);
 		TAILQ_INSERT_HEAD(&_thread_list, _thread_initial, tle);
 		_set_curthread(_thread_initial);
+		TAILQ_INIT(&_atfork_list);
+		_pthread_mutex_init(&_atfork_mutex, NULL);
 
 		/* Initialise the global signal action structure: */
 		sigfillset(&act.sa_mask);

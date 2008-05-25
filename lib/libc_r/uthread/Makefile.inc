@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc_r/uthread/Makefile.inc,v 1.23.2.8 2003/05/27 18:18:01 jdp Exp $
-# $DragonFly: src/lib/libc_r/uthread/Makefile.inc,v 1.9 2005/05/11 12:59:58 davidxu Exp $
+# $DragonFly: src/lib/libc_r/uthread/Makefile.inc,v 1.10 2008/05/25 21:34:49 hasso Exp $
 
 # uthread sources
 .PATH: ${.CURDIR}/uthread
@@ -7,6 +7,7 @@
 SRCS+= \
 	uthread_accept.c \
 	uthread_aio_suspend.c \
+	uthread_atfork.c \
 	uthread_attr_destroy.c \
 	uthread_attr_get_np.c \
 	uthread_attr_init.c \

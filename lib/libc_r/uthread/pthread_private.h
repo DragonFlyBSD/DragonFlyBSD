@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.15 2007/12/14 20:07:59 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.16 2008/05/25 21:34:49 hasso Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -370,6 +370,13 @@ struct pthread_cleanup {
 	struct pthread_cleanup	*next;
 	void			(*routine)(void *);
 	void			*routine_arg;
+};
+
+struct pthread_atfork {
+	TAILQ_ENTRY(pthread_atfork) qe;
+	void (*prepare)(void);
+	void (*parent)(void);
+	void (*child)(void);
 };
 
 struct pthread_attr {
@@ -934,6 +941,9 @@ SCLASS struct pthread *_thread_initial
 #else
 ;
 #endif
+
+SCLASS TAILQ_HEAD(atfork_head, pthread_atfork) _atfork_list;
+SCLASS pthread_mutex_t		_atfork_mutex;
 
 /* Default thread attributes: */
 SCLASS struct pthread_attr pthread_attr_default
