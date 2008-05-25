@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/uhci_pci.c,v 1.57 2005/03/01 07:50:11 imp Exp $
- * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.11 2007/06/27 12:27:59 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/uhci_pci.c,v 1.12 2008/05/25 17:48:33 mneumann Exp $
  */
 
 /* Universal Host Controller Interface
@@ -56,7 +56,6 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/queue.h>
-#include <sys/bus.h>
 #include <sys/rman.h>
 
 #include <bus/pci/pcivar.h>
