@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.51 2008/05/14 11:59:20 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.52 2008/05/25 09:44:31 sephe Exp $
  */
 
 /*
@@ -1073,12 +1073,49 @@ fxp_start(struct ifnet *ifp)
 		int segment, ntries = 0;
 
 		/*
-		 * Grab a packet to transmit. The packet is dequeued,
-		 * once we are sure that we have enough free descriptors.
+		 * Grab a packet to transmit.
 		 */
 		mb_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (mb_head == NULL)
 			break;
+tbdinit:
+		/*
+		 * Make sure that the packet fits into one TX desc
+		 */
+		segment = 0;
+		for (m = mb_head; m != NULL; m = m->m_next) {
+			if (m->m_len != 0) {
+				++segment;
+				if (segment >= FXP_NTXSEG)
+					break;
+			}
+		}
+		if (segment >= FXP_NTXSEG) {
+			struct mbuf *mn;
+
+			if (ntries) {
+				/*
+				 * Packet is excessively fragmented,
+				 * and will never fit into one TX
+				 * desc.  Give it up.
+				 */
+				m_freem(mb_head);
+				ifp->if_oerrors++;
+				continue;
+			}
+
+			mn = m_dup(mb_head, MB_DONTWAIT);
+			if (mn == NULL) {
+				m_freem(mb_head);
+				ifp->if_oerrors++;
+				continue;
+			}
+
+			m_freem(mb_head);
+			mb_head = mn;
+			ntries = 1;
+			goto tbdinit;
+		}
 
 		/*
 		 * Get pointer to next available tx desc.
@@ -1090,42 +1127,17 @@ fxp_start(struct ifnet *ifp)
 		 * the transmit buffer descriptors with the physical address
 		 * and size of the mbuf.
 		 */
-tbdinit:
 		for (m = mb_head, segment = 0; m != NULL; m = m->m_next) {
 			if (m->m_len != 0) {
-				if (segment == FXP_NTXSEG)
-					break;
+				KKASSERT(segment < FXP_NTXSEG);
+
 				txp->tbd[segment].tb_addr =
 				    vtophys(mtod(m, vm_offset_t));
 				txp->tbd[segment].tb_size = m->m_len;
 				segment++;
 			}
 		}
-		if (m != NULL) {
-			struct mbuf *mn;
-
-			/*
-			 * We ran out of segments. We have to recopy this
-			 * mbuf chain first. Bail out if we can't get the
-			 * new buffers.
-			 */
-			if (ntries > 0) {
-				ifq_prepend(&ifp->if_snd, mb_head);
-				ifp->if_flags |= IFF_OACTIVE;
-				break;
-			}
-
-			mn = m_dup(mb_head, MB_DONTWAIT);
-			if (mn == NULL) {
-				ifq_prepend(&ifp->if_snd, mb_head);
-				break;
-			}
-
-			m_freem(mb_head);
-			mb_head = mn;
-			ntries = 1;
-			goto tbdinit;
-		}
+		KKASSERT(m == NULL);
 
 		txp->tbd_number = segment;
 		txp->mb_head = mb_head;
@@ -1138,18 +1150,12 @@ tbdinit:
 			txp->cb_command =
 			    FXP_CB_COMMAND_XMIT | FXP_CB_COMMAND_SF |
 			    FXP_CB_COMMAND_S | FXP_CB_COMMAND_I;
-			/*
-			 * Set a 5 second timer just in case we don't hear
-			 * from the card again.
-			 */
-			ifp->if_timer = 5;
 		}
 		txp->tx_threshold = tx_threshold;
-	
+
 		/*
 		 * Advance the end of list forward.
 		 */
-
 		sc->cbl_last->cb_command &= ~FXP_CB_COMMAND_S;
 		sc->cbl_last = txp;
 
@@ -1162,6 +1168,11 @@ tbdinit:
 			sc->cbl_first = txp;
 
 		sc->tx_queued++;
+		/*
+		 * Set a 5 second timer just in case we don't hear
+		 * from the card again.
+		 */
+		ifp->if_timer = 5;
 
 		BPF_MTAP(ifp, mb_head);
 	}
@@ -1298,11 +1309,11 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 		}
 		sc->cbl_first = txp;
 
-		ifp->if_timer = 0;	/* XXX only if tx_queued is 0 */
 		if (old_queued > sc->tx_queued)
 			ifp->if_flags &= ~IFF_OACTIVE;
 
 		if (sc->tx_queued == 0) {
+			ifp->if_timer = 0;
 			if (sc->need_mcsetup)
 				fxp_mc_setup(sc);
 		}
@@ -1411,6 +1422,7 @@ fxp_tick(void *xsc)
 	struct fxp_stats *sp = sc->fxp_stats;
 	struct fxp_cb_tx *txp;
 	struct mbuf *m;
+	int old_queued;
 
 	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
@@ -1446,7 +1458,8 @@ fxp_tick(void *xsc)
 	 * with external storage to be released in a timely manner rather
 	 * than being defered for a potentially long time. This limits
 	 * the delay to a maximum of one second.
-	 */ 
+	 */
+	old_queued = sc->tx_queued;
 	for (txp = sc->cbl_first; sc->tx_queued &&
 	    (txp->cb_status & FXP_CB_STATUS_C) != 0;
 	    txp = txp->next) {
@@ -1459,6 +1472,12 @@ fxp_tick(void *xsc)
 		}
 	}
 	sc->cbl_first = txp;
+
+	if (old_queued > sc->tx_queued)
+		ifp->if_flags &= ~IFF_OACTIVE;
+	if (sc->tx_queued == 0)
+		ifp->if_timer = 0;
+
 	/*
 	 * If we haven't received any packets in FXP_MAC_RX_IDLE seconds,
 	 * then assume the receiver has locked up and attempt to clear
@@ -1791,6 +1810,7 @@ fxp_init(void *xsc)
 	txp->cb_command = FXP_CB_COMMAND_NOP | FXP_CB_COMMAND_S;
 	sc->cbl_first = sc->cbl_last = txp;
 	sc->tx_queued = 1;
+	/* XXX set if_timer? */
 
 	fxp_scb_wait(sc);
 	fxp_scb_cmd(sc, FXP_SCB_COMMAND_CU_START);
