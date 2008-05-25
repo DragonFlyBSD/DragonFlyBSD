@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.20 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.21 2008/05/25 18:41:33 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -214,14 +214,14 @@ void
 hammer_sync_lock_ex(hammer_transaction_t trans)
 {
 	++trans->sync_lock_refs;
-	hammer_lock_sh(&trans->hmp->sync_lock);
+	hammer_lock_ex(&trans->hmp->sync_lock);
 }
 
 void
 hammer_sync_lock_sh(hammer_transaction_t trans)
 {
 	++trans->sync_lock_refs;
-	hammer_lock_ex(&trans->hmp->sync_lock);
+	hammer_lock_sh(&trans->hmp->sync_lock);
 }
 
 void

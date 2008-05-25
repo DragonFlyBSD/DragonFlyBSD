@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.61 2008/05/22 04:14:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.62 2008/05/25 18:41:33 dillon Exp $
  */
 
 #include "hammer.h"
@@ -372,7 +372,6 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	 * the vap.
 	 */
 	xuid = hammer_to_unix_xid(&dip->ino_data.uid);
-	ip->ino_data.gid = dip->ino_data.gid;
 	xuid = vop_helper_create_uid(hmp->mp, dip->ino_data.mode, xuid, cred,
 				     &vap->va_mode);
 	ip->ino_data.mode = vap->va_mode;
@@ -380,11 +379,16 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	if (vap->va_vaflags & VA_UID_UUID_VALID)
 		ip->ino_data.uid = vap->va_uid_uuid;
 	else if (vap->va_uid != (uid_t)VNOVAL)
+		hammer_guid_to_uuid(&ip->ino_data.uid, vap->va_uid);
+	else
 		hammer_guid_to_uuid(&ip->ino_data.uid, xuid);
+
 	if (vap->va_vaflags & VA_GID_UUID_VALID)
 		ip->ino_data.gid = vap->va_gid_uuid;
 	else if (vap->va_gid != (gid_t)VNOVAL)
 		hammer_guid_to_uuid(&ip->ino_data.gid, vap->va_gid);
+	else
+		ip->ino_data.gid = dip->ino_data.gid;
 
 	hammer_ref(&ip->lock);
 	if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {

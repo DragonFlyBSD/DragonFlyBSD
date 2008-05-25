@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.55 2008/05/22 04:14:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.56 2008/05/25 18:41:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1368,7 +1368,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	int truncating;
 	off_t aligned_size;
 	u_int32_t flags;
-	uuid_t uuid;
 
 	vap = ap->a_vap;
 	ip = ap->a_vp->v_data;
@@ -1403,17 +1402,29 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		error = EPERM;
 		goto done;
 	}
-	if (vap->va_uid != (uid_t)VNOVAL) {
-		hammer_guid_to_uuid(&uuid, vap->va_uid);
-		if (bcmp(&uuid, &ip->ino_data.uid, sizeof(uuid)) != 0) {
-			ip->ino_data.uid = uuid;
-			modflags |= HAMMER_INODE_DDIRTY;
-		}
-	}
-	if (vap->va_gid != (uid_t)VNOVAL) {
-		hammer_guid_to_uuid(&uuid, vap->va_gid);
-		if (bcmp(&uuid, &ip->ino_data.gid, sizeof(uuid)) != 0) {
-			ip->ino_data.gid = uuid;
+	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
+		mode_t cur_mode = ip->ino_data.mode;
+		uid_t cur_uid = hammer_to_unix_xid(&ip->ino_data.uid);
+		gid_t cur_gid = hammer_to_unix_xid(&ip->ino_data.gid);
+		uuid_t uuid_uid;
+		uuid_t uuid_gid;
+
+		error = vop_helper_chown(ap->a_vp, vap->va_uid, vap->va_gid,
+					 ap->a_cred,
+					 &cur_uid, &cur_gid, &cur_mode);
+		if (error == 0) {
+			hammer_guid_to_uuid(&uuid_uid, cur_uid);
+			hammer_guid_to_uuid(&uuid_gid, cur_gid);
+			if (bcmp(&uuid_uid, &ip->ino_data.uid,
+				 sizeof(uuid_uid)) ||
+			    bcmp(&uuid_gid, &ip->ino_data.gid,
+				 sizeof(uuid_gid)) ||
+			    ip->ino_data.mode != cur_mode
+			) {
+				ip->ino_data.uid = uuid_uid;
+				ip->ino_data.gid = uuid_gid;
+				ip->ino_data.mode = cur_mode;
+			}
 			modflags |= HAMMER_INODE_DDIRTY;
 		}
 	}
@@ -1503,8 +1514,14 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		modflags |= HAMMER_INODE_DDIRTY;	/* XXX mtime */
 	}
 	if (vap->va_mode != (mode_t)VNOVAL) {
-		if (ip->ino_data.mode != vap->va_mode) {
-			ip->ino_data.mode = vap->va_mode;
+		mode_t   cur_mode = ip->ino_data.mode;
+		uid_t cur_uid = hammer_to_unix_xid(&ip->ino_data.uid);
+		gid_t cur_gid = hammer_to_unix_xid(&ip->ino_data.gid);
+
+		error = vop_helper_chmod(ap->a_vp, vap->va_mode, ap->a_cred,
+					 cur_uid, cur_gid, &cur_mode);
+		if (error == 0 && ip->ino_data.mode != cur_mode) {
+			ip->ino_data.mode = cur_mode;
 			modflags |= HAMMER_INODE_DDIRTY;
 		}
 	}
