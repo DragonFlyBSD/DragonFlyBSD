@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.43 2008/05/24 09:11:09 swildner Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.44 2008/05/25 16:53:41 mneumann Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -117,6 +117,7 @@ int	usb_noexplore = 0;
 struct usb_softc {
 	device_t	sc_dev;		/* base device */
 	cdev_t		sc_usbdev;
+	TAILQ_ENTRY(usb_softc) sc_coldexplist; /* cold needs-explore list */
 	usbd_bus_handle sc_bus;		/* USB controller */
 	struct usbd_port sc_port;	/* dummy port for root hub */
 
@@ -156,7 +157,10 @@ static void	usb_task_thread(void *);
 
 static cdev_t usb_dev;		/* The /dev/usb device. */
 static int usb_ndevs;			/* Number of /dev/usbN devices. */
-
+/* Busses to explore at the end of boot-time device configuration */
+static TAILQ_HEAD(, usb_softc) usb_coldexplist =
+    TAILQ_HEAD_INITIALIZER(usb_coldexplist);
+ 
 #define USB_MAX_EVENTS 100
 struct usb_event_q {
 	struct usb_event ue;
@@ -245,11 +249,9 @@ usb_attach(device_t self)
 	}
 	kprintf("\n");
 
-#if 0
 	/* Make sure not to use tsleep() if we are cold booting. */
 	if (cold)
 		sc->sc_bus->use_polling++;
-#endif
 
 	ue.u.ue_ctrlr.ue_bus = device_get_unit(sc->sc_dev);
 	usb_add_event(USB_EVENT_CTRLR_ATTACH, &ue);
@@ -287,12 +289,12 @@ usb_attach(device_t self)
 		 * the keyboard will not work until after cold boot.
 		 */
 		if (cold) {
-			/*
-			 * XXX Exploring high speed device here will
-			 * hang the system.
-			 */
-			if (speed != USB_SPEED_HIGH)
+			/* Explore high-speed busses before others. */
+			if (speed == USB_SPEED_HIGH)
 				dev->hub->explore(sc->sc_bus->root_hub);
+			else
+				TAILQ_INSERT_TAIL(&usb_coldexplist, sc,
+				    sc_coldexplist);
 		}
 #endif
 	} else {
@@ -300,10 +302,8 @@ usb_attach(device_t self)
 		    "root hub problem, error=%d\n", err);
 		sc->sc_dying = 1;
 	}
-#if 0
 	if (cold)
 		sc->sc_bus->use_polling--;
-#endif
 
 	usb_create_event_thread(sc);
 	/* The per controller devices (used for usb_discover) */
@@ -921,6 +921,27 @@ usb_child_detached(device_t self, device_t child)
 	/* XXX, should check it is the right device. */
 	sc->sc_port.device = NULL;
 }
+
+/* Explore USB busses at the end of device configuration */
+static void
+usb_cold_explore(void *arg)
+{
+	struct usb_softc *sc;
+
+	KASSERT(cold || TAILQ_EMPTY(&usb_coldexplist),
+	    ("usb_cold_explore: busses to explore when !cold"));
+	while (!TAILQ_EMPTY(&usb_coldexplist)) {
+		sc = TAILQ_FIRST(&usb_coldexplist);
+		TAILQ_REMOVE(&usb_coldexplist, sc, sc_coldexplist);
+
+		sc->sc_bus->use_polling++;
+		sc->sc_port.device->hub->explore(sc->sc_bus->root_hub);
+		sc->sc_bus->use_polling--;
+	}
+}
+
+SYSINIT(usb_cold_explore, SI_SUB_CONFIGURE, SI_ORDER_MIDDLE,
+    usb_cold_explore, NULL);
 
 DRIVER_MODULE(usb, ohci, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usb, uhci, usb_driver, usb_devclass, 0, 0);
