@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/c89/c89.c,v 1.5 2005/05/21 09:55:04 ru Exp $
- * $DragonFly: src/usr.bin/c89/c89.c,v 1.4 2007/09/22 21:13:47 pavalos Exp $
+ * $DragonFly: src/usr.bin/c89/c89.c,v 1.5 2008/05/25 08:18:26 swildner Exp $
  */
 
 #include <err.h>
@@ -46,6 +46,7 @@
  * -D_FOO_SOURCE feature test macro we support.)
  */
 static const char *args_prepended[] = {
+	"cc",
 	"-std=iso9899:199409",
 	"-pedantic"
 };
@@ -67,7 +68,6 @@ main(int argc, char **argv)
 	Argv = malloc((argc + 1 + N_ARGS_PREPENDED) * sizeof *Argv);
 	if (Argv == NULL)
 		err(1, "malloc");
-	Argv[Argc++] = argv[0];
 	for (i = 0; i < (int)N_ARGS_PREPENDED; ++i)
 		Argv[Argc++] = args_prepended[i];
 	while ((i = getopt(argc, argv, "cD:EgI:l:L:o:OsU:")) != -1) {
