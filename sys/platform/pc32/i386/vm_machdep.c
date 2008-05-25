@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.59 2007/04/30 07:18:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.60 2008/05/25 18:47:26 nth Exp $
  */
 
 #include "use_npx.h"
@@ -212,11 +212,12 @@ cpu_prepare_lwp(struct lwp *lp, struct lwp_params *params)
 	void *bad_return = NULL;
 	int error;
 
-	regs->tf_eip = params->func;
-	regs->tf_esp = params->stack;
+	regs->tf_eip = (int)params->func;
+	regs->tf_esp = (int)params->stack;
 	/* Set up argument for function call */
 	regs->tf_esp -= sizeof(params->arg);
-	error = copyout(&params->arg, regs->tf_esp, sizeof(params->arg));
+	error = 
+	    copyout(&params->arg, (void *)regs->tf_esp, sizeof(params->arg));
 	if (error)
 		return (error);
 	/*
@@ -225,7 +226,7 @@ cpu_prepare_lwp(struct lwp *lp, struct lwp_params *params)
 	 * a SIGSEGV if it returns anyways.
 	 */
 	regs->tf_esp -= sizeof(void *);
-	error = copyout(&bad_return, regs->tf_esp, sizeof(bad_return));
+	error = copyout(&bad_return, (void *)regs->tf_esp, sizeof(bad_return));
 	if (error)
 		return (error);
 
