@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.46 2008/05/26 13:24:59 mneumann Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.47 2008/05/26 13:56:08 mneumann Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -254,18 +254,7 @@ usb_attach(device_t self)
 	usb_add_event(USB_EVENT_CTRLR_ATTACH, &ue);
 
 #ifdef USB_USE_SOFTINTR
-#ifdef __HAVE_GENERIC_SOFT_INTERRUPTS
-	/* XXX we should have our own level */
-	sc->sc_bus->soft = softintr_establish(IPL_SOFTNET,
-	    sc->sc_bus->methods->soft_intr, sc->sc_bus);
-	if (sc->sc_bus->soft == NULL) {
-		device_printf(self, "can't register softintr\n");
-		sc->sc_dying = 1;
-		return ENXIO;
-	}
-#else
 	callout_init(&sc->sc_bus->softi);
-#endif
 #endif
 
 	err = usbd_new_device(self, sc->sc_bus, 0, speed, 0,
@@ -838,13 +827,9 @@ usb_schedsoftintr(usbd_bus_handle bus)
 	if (bus->use_polling) {
 		bus->methods->soft_intr(bus);
 	} else {
-#ifdef __HAVE_GENERIC_SOFT_INTERRUPTS
-		softintr_schedule(bus->soft);
-#else
 		if (!callout_pending(&bus->softi))
 			callout_reset(&bus->softi, 0, bus->methods->soft_intr,
 			    bus);
-#endif /* __HAVE_GENERIC_SOFT_INTERRUPTS */
 	}
 #else
        bus->methods->soft_intr(bus);
@@ -895,14 +880,7 @@ usb_detach(device_t self)
 	usbd_finish();
 
 #ifdef USB_USE_SOFTINTR
-#ifdef __HAVE_GENERIC_SOFT_INTERRUPTS
-	if (sc->sc_bus->soft != NULL) {
-		softintr_disestablish(sc->sc_bus->soft);
-		sc->sc_bus->soft = NULL;
-	}
-#else
 	callout_stop(&sc->sc_bus->softi);
-#endif
 #endif
 
 	ue.u.ue_ctrlr.ue_bus = device_get_unit(self);
