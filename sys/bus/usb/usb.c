@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.47 2008/05/26 13:56:08 mneumann Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.48 2008/05/26 14:00:46 mneumann Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -749,7 +749,8 @@ usb_get_next_event(struct usb_event *ue)
 		return (0);
 	}
 #endif
-	*ue = ueq->ue;
+	if (ue)
+		*ue = ueq->ue;
 	TAILQ_REMOVE(&usb_events, ueq, next);
 	kfree(ueq, M_USBDEV);
 	usb_nevents--;
@@ -780,7 +781,6 @@ void
 usb_add_event(int type, struct usb_event *uep)
 {
 	struct usb_event_q *ueq;
-	struct usb_event ue;
 	struct timeval thetime;
 
 	ueq = kmalloc(sizeof *ueq, M_USBDEV, M_INTWAIT);
@@ -807,7 +807,7 @@ usb_add_event(int type, struct usb_event *uep)
 	if (usb_nevents >= USB_MAX_EVENTS) {
 		/* Too many queued events, drop an old one. */
 		DPRINTF(("usb: event dropped\n"));
-		usb_get_next_event(&ue);
+		usb_get_next_event(NULL);
 	}
 	TAILQ_INSERT_TAIL(&usb_events, ueq, next);
 	usb_nevents++;
