@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.5 2008/05/16 13:19:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.6 2008/05/26 14:23:25 sephe Exp $
  */
 
 /*
@@ -2915,15 +2915,19 @@ bce_stop(struct bce_softc *sc)
 	 * Isolate/power down the PHY, but leave the media selection
 	 * unchanged so that things will be put back to normal when
 	 * we bring the interface back up.
+	 *
+	 * 'mii' may be NULL if bce_stop() is called by bce_detach().
 	 */
-	itmp = ifp->if_flags;
-	ifp->if_flags |= IFF_UP;
-	ifm = mii->mii_media.ifm_cur;
-	mtmp = ifm->ifm_media;
-	ifm->ifm_media = IFM_ETHER | IFM_NONE;
-	mii_mediachg(mii);
-	ifm->ifm_media = mtmp;
-	ifp->if_flags = itmp;
+	if (mii != NULL) {
+		itmp = ifp->if_flags;
+		ifp->if_flags |= IFF_UP;
+		ifm = mii->mii_media.ifm_cur;
+		mtmp = ifm->ifm_media;
+		ifm->ifm_media = IFM_ETHER | IFM_NONE;
+		mii_mediachg(mii);
+		ifm->ifm_media = mtmp;
+		ifp->if_flags = itmp;
+	}
 
 	sc->bce_link = 0;
 
