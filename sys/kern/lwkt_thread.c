@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.113 2008/05/18 20:57:56 nth Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.114 2008/05/26 17:11:09 nth Exp $
  */
 
 /*
@@ -66,10 +66,11 @@
 #include <vm/vm_map.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 
 #include <machine/stdarg.h>
 #include <machine/smp.h>
+
+static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 
 static int untimely_switch = 0;
 #ifdef	INVARIANTS
@@ -82,6 +83,7 @@ static __int64_t preempt_weird = 0;
 static __int64_t token_contention_count = 0;
 static __int64_t mplock_contention_count = 0;
 static int lwkt_use_spin_port;
+static struct objcache *thread_cache;
 
 /*
  * We can make all thread ports use the spin backend instead of the thread
@@ -154,6 +156,42 @@ _lwkt_enqueue(thread_t td)
     }
 }
 
+static __boolean_t
+_lwkt_thread_ctor(void *obj, void *privdata, int ocflags)
+{
+	struct thread *td = (struct thread *)obj;
+
+	td->td_kstack = NULL;
+	td->td_kstack_size = 0;
+	td->td_flags = TDF_ALLOCATED_THREAD;
+	return (1);
+}
+
+static void
+_lwkt_thread_dtor(void *obj, void *privdata)
+{
+	struct thread *td = (struct thread *)obj;
+
+	KASSERT(td->td_flags & TDF_ALLOCATED_THREAD,
+	    ("_lwkt_thread_dtor: not allocated from objcache"));
+	KASSERT((td->td_flags & TDF_ALLOCATED_STACK) && td->td_kstack &&
+		td->td_kstack_size > 0,
+	    ("_lwkt_thread_dtor: corrupted stack"));
+	kmem_free(&kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
+}
+
+/*
+ * Initialize the lwkt s/system.
+ */
+void
+lwkt_init(void)
+{
+    /* An objcache has 2 magazines per CPU so divide cache size by 2. */
+    thread_cache = objcache_create_mbacked(M_THREAD, sizeof(struct thread), 0,
+			CACHE_NTHREADS/2, _lwkt_thread_ctor, _lwkt_thread_dtor,
+			NULL);
+}
+
 /*
  * Schedule a thread to run.  As the current thread we can always safely
  * schedule ourselves, and a shortcut procedure is provided for that
@@ -212,25 +250,13 @@ thread_t
 lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 {
     void *stack;
-    globaldata_t gd = mycpu;
 
     if (td == NULL) {
-	crit_enter_gd(gd);
-	if (gd->gd_tdfreecount > 0) {
-	    --gd->gd_tdfreecount;
-	    td = TAILQ_FIRST(&gd->gd_tdfreeq);
-	    KASSERT(td != NULL && (td->td_flags & TDF_RUNNING) == 0,
-		("lwkt_alloc_thread: unexpected NULL or corrupted td"));
-	    TAILQ_REMOVE(&gd->gd_tdfreeq, td, td_threadq);
-	    crit_exit_gd(gd);
-	    flags |= td->td_flags & (TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
-	} else {
-	    crit_exit_gd(gd);
-	    td = zalloc(thread_zone);
-	    td->td_kstack = NULL;
-	    td->td_kstack_size = 0;
-	    flags |= TDF_ALLOCATED_THREAD;
-	}
+    	td = objcache_get(thread_cache, M_WAITOK);
+    	KASSERT((td->td_flags &
+		 (TDF_ALLOCATED_THREAD|TDF_RUNNING)) == TDF_ALLOCATED_THREAD,
+		("lwkt_alloc_thread: corrupted td flags 0x%X", td->td_flags));
+    	flags |= td->td_flags & (TDF_ALLOCATED_THREAD|TDF_ALLOCATED_STACK);
     }
     if ((stack = td->td_kstack) != NULL && td->td_kstack_size != stksize) {
 	if (flags & TDF_ALLOCATED_STACK) {
@@ -353,29 +379,18 @@ lwkt_wait_free(thread_t td)
 void
 lwkt_free_thread(thread_t td)
 {
-    struct globaldata *gd = mycpu;
-
     KASSERT((td->td_flags & TDF_RUNNING) == 0,
 	("lwkt_free_thread: did not exit! %p", td));
 
-    crit_enter_gd(gd);
-    if (gd->gd_tdfreecount < CACHE_NTHREADS &&
-	(td->td_flags & TDF_ALLOCATED_THREAD)
-    ) {
-	++gd->gd_tdfreecount;
-	TAILQ_INSERT_HEAD(&gd->gd_tdfreeq, td, td_threadq);
-	crit_exit_gd(gd);
-    } else {
-	crit_exit_gd(gd);
-	if (td->td_kstack && (td->td_flags & TDF_ALLOCATED_STACK)) {
-	    kmem_free(&kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
-	    /* gd invalid */
-	    td->td_kstack = NULL;
-	    td->td_kstack_size = 0;
-	}
-	if (td->td_flags & TDF_ALLOCATED_THREAD) {
-	    zfree(thread_zone, td);
-	}
+    if (td->td_flags & TDF_ALLOCATED_THREAD) {
+    	objcache_put(thread_cache, td);
+    } else if (td->td_flags & TDF_ALLOCATED_STACK) {
+	/* client-allocated struct with internally allocated stack */
+	KASSERT(td->td_kstack && td->td_kstack_size > 0,
+	    ("lwkt_free_thread: corrupted stack"));
+	kmem_free(&kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
+	td->td_kstack = NULL;
+	td->td_kstack_size = 0;
     }
 }
 
@@ -1271,8 +1286,7 @@ lwkt_exit(void)
     gd = mycpu;
     lwkt_remove_tdallq(td);
     if (td->td_flags & TDF_ALLOCATED_THREAD) {
-	++gd->gd_tdfreecount;
-	TAILQ_INSERT_TAIL(&gd->gd_tdfreeq, td, td_threadq);
+	objcache_put(thread_cache, td);
     }
     cpu_thread_exit();
 }

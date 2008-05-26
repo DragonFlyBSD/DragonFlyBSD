@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.92 2008/05/09 06:35:10 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.93 2008/05/26 17:11:09 nth Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -267,8 +267,8 @@ struct thread {
 #define TDF_TSLEEPQ		0x0080	/* on a tsleep wait queue */
 
 #define TDF_SYSTHREAD		0x0100	/* system thread */
-#define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
-#define TDF_ALLOCATED_STACK	0x0400	/* zalloc allocated stack */
+#define TDF_ALLOCATED_THREAD	0x0200	/* objcache allocated thread */
+#define TDF_ALLOCATED_STACK	0x0400	/* objcache allocated stack */
 #define TDF_VERBOSE		0x0800	/* verbose on exit */
 #define TDF_DEADLKTREAT		0x1000	/* special lockmgr deadlock treatment */
 #define TDF_STOPREQ		0x2000	/* suspend_kproc */
@@ -321,15 +321,7 @@ struct thread {
 
 #define IN_CRITICAL_SECT(td)	((td)->td_pri >= TDPRI_CRIT)
 
-#ifdef _KERNEL
-
-extern struct vm_zone	*thread_zone;
-
-#endif
-
-/*
- * Applies both to the kernel and to liblwkt.
- */
+extern void lwkt_init(void);
 extern struct thread *lwkt_alloc_thread(struct thread *, int, int, int);
 extern void lwkt_init_thread(struct thread *, void *, int, int,
 			     struct globaldata *);

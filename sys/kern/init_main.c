@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.85 2008/05/08 01:26:00 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.86 2008/05/26 17:11:09 nth Exp $
  */
 
 #include "opt_init_path.h"
@@ -662,7 +662,6 @@ SYSINIT(kickinit, SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
 void
 mi_gdinit(struct globaldata *gd, int cpuid)
 {
-	TAILQ_INIT(&gd->gd_tdfreeq);    /* for pmap_{new,dispose}_thread() */
 	TAILQ_INIT(&gd->gd_systimerq);
 	gd->gd_sysid_alloc = cpuid;	/* prime low bits for cpu lookup */
 	gd->gd_cpuid = cpuid;

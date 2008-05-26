@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.43 2008/05/18 20:02:02 nth Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.44 2008/05/26 17:11:09 nth Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,6 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <sys/user.h>
-#include <vm/vm_zone.h>
 #include <machine/smp.h>
 
 #include <sys/spinlock2.h>
@@ -85,7 +84,6 @@ u_long pgrphash;
 struct proclist allproc;
 struct proclist zombproc;
 struct spinlock allproc_spin;
-vm_zone_t thread_zone;
 
 /*
  * Random component to nextpid generation.  We mix in a random factor to make
@@ -128,9 +126,9 @@ procinit(void)
 	LIST_INIT(&allproc);
 	LIST_INIT(&zombproc);
 	spin_init(&allproc_spin);
+	lwkt_init();
 	pidhashtbl = hashinit(maxproc / 4, M_PROC, &pidhash);
 	pgrphashtbl = hashinit(maxproc / 4, M_PROC, &pgrphash);
-	thread_zone = zinit("THREAD", sizeof (struct thread), 0, 0, 5);
 	uihashinit();
 }
 
