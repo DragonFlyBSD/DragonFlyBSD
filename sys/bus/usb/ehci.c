@@ -1,6 +1,6 @@
 /*	$NetBSD: ehci.c,v 1.91 2005/02/27 00:27:51 perry Exp $ */
 /*	$FreeBSD: src/sys/dev/usb/ehci.c,v 1.36.2.3 2006/09/24 13:39:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.33 2008/05/21 19:56:46 mneumann Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.34 2008/05/26 12:02:42 mneumann Exp $	*/
 
 /*
  * Copyright (c) 2004 The NetBSD Foundation, Inc.
@@ -84,8 +84,6 @@
 
 #include <bus/usb/ehcireg.h>
 #include <bus/usb/ehcivar.h>
-
-#define delay(d)                DELAY(d)
 
 #ifdef USB_DEBUG
 #define EHCI_DEBUG USB_DEBUG
@@ -2807,7 +2805,7 @@ ehci_device_request(usbd_xfer_handle xfer)
 	if (ehcidebug > 10) {
 		DPRINTF(("ehci_device_request: status=%x\n",
 			 EOREAD4(sc, EHCI_USBSTS)));
-		delay(10000);
+		DELAY(10000);
 		ehci_dump_regs(sc);
 		ehci_dump_sqh(sc->sc_async_head);
 		ehci_dump_sqh(sqh);
@@ -2915,7 +2913,7 @@ ehci_device_bulk_start(usbd_xfer_handle xfer)
 #ifdef EHCI_DEBUG
 	if (ehcidebug > 10) {
 		DPRINTF(("ehci_device_bulk_start: data(2)\n"));
-		delay(10000);
+		DELAY(10000);
 		DPRINTF(("ehci_device_bulk_start: data(3)\n"));
 		ehci_dump_regs(sc);
 #if 0
@@ -3083,7 +3081,7 @@ ehci_device_intr_start(usbd_xfer_handle xfer)
 #ifdef EHCI_DEBUG
 	if (ehcidebug > 10) {
 		DPRINTF(("ehci_device_intr_start: data(2)\n"));
-		delay(10000);
+		DELAY(10000);
 		DPRINTF(("ehci_device_intr_start: data(3)\n"));
 		ehci_dump_regs(sc);
 		kprintf("sqh:\n");
