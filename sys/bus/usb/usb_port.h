@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.21 2007/11/05 19:09:42 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.22 2008/05/26 12:37:44 mneumann Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -140,8 +140,7 @@ __CONCAT(dname,_match)(device_t self)
 #define USB_MATCH_START(dname, uaa) \
         struct usb_attach_arg *uaa = device_get_ivars(self)
 
-#define USB_MATCH_SETUP \
-	sc->sc_dev = self
+#define USB_MATCH_SETUP()
 
 #define USB_ATTACH(dname) \
 Static int \
@@ -156,7 +155,6 @@ __CONCAT(dname,_attach)(device_t self)
 #define USB_ATTACH_SUCCESS_RETURN	return 0
 
 #define USB_ATTACH_SETUP \
-	sc->sc_dev = self; \
 	device_set_desc_copy(self, devinfo)
 
 #define USB_DETACH(dname) \

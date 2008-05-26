@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.44 2008/05/25 16:53:41 mneumann Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.45 2008/05/26 12:37:44 mneumann Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -115,7 +115,6 @@ int	usb_noexplore = 0;
 #endif
 
 struct usb_softc {
-	device_t	sc_dev;		/* base device */
 	cdev_t		sc_usbdev;
 	TAILQ_ENTRY(usb_softc) sc_coldexplist; /* cold needs-explore list */
 	usbd_bus_handle sc_bus;		/* USB controller */
@@ -149,9 +148,9 @@ struct dev_ops usb_ops = {
 	.d_poll =	usbpoll,
 };
 
-static void	usb_discover(void *);
+static void	usb_discover(device_t);
 static bus_child_detached_t usb_child_detached;
-static void	usb_create_event_thread(void *);
+static void	usb_create_event_thread(device_t);
 static void	usb_event_thread(void *);
 static void	usb_task_thread(void *);
 
@@ -223,8 +222,6 @@ usb_attach(device_t self)
 	int speed;
 	struct usb_event ue;
 
-	sc->sc_dev = self;
-
 	DPRINTF(("usbd_attach\n"));
 
 	usbd_init();
@@ -233,7 +230,7 @@ usb_attach(device_t self)
 	sc->sc_port.power = USB_MAX_POWER;
 
 	usbrev = sc->sc_bus->usbrev;
-	device_printf(sc->sc_dev, "USB revision %s", usbrev_str[usbrev]);
+	device_printf(self, "USB revision %s", usbrev_str[usbrev]);
 	switch (usbrev) {
 	case USBREV_1_0:
 	case USBREV_1_1:
@@ -253,7 +250,7 @@ usb_attach(device_t self)
 	if (cold)
 		sc->sc_bus->use_polling++;
 
-	ue.u.ue_ctrlr.ue_bus = device_get_unit(sc->sc_dev);
+	ue.u.ue_ctrlr.ue_bus = device_get_unit(self);
 	usb_add_event(USB_EVENT_CTRLR_ATTACH, &ue);
 
 #ifdef USB_USE_SOFTINTR
@@ -262,7 +259,7 @@ usb_attach(device_t self)
 	sc->sc_bus->soft = softintr_establish(IPL_SOFTNET,
 	    sc->sc_bus->methods->soft_intr, sc->sc_bus);
 	if (sc->sc_bus->soft == NULL) {
-		device_printf(sc->sc_dev, "can't register softintr\n");
+		device_printf(self, "can't register softintr\n");
 		sc->sc_dying = 1;
 		return ENXIO;
 	}
@@ -271,13 +268,13 @@ usb_attach(device_t self)
 #endif
 #endif
 
-	err = usbd_new_device(sc->sc_dev, sc->sc_bus, 0, speed, 0,
+	err = usbd_new_device(self, sc->sc_bus, 0, speed, 0,
 		  &sc->sc_port);
 	if (!err) {
 		dev = sc->sc_port.device;
 		if (dev->hub == NULL) {
 			sc->sc_dying = 1;
-			device_printf(sc->sc_dev,
+			device_printf(self,
 			    "root device is not a hub\n");
 			return ENXIO;
 		}
@@ -298,14 +295,14 @@ usb_attach(device_t self)
 		}
 #endif
 	} else {
-		device_printf(sc->sc_dev,
+		device_printf(self,
 		    "root hub problem, error=%d\n", err);
 		sc->sc_dying = 1;
 	}
 	if (cold)
 		sc->sc_bus->use_polling--;
 
-	usb_create_event_thread(sc);
+	usb_create_event_thread(self);
 	/* The per controller devices (used for usb_discover) */
 	/* XXX This is redundant now, but old usbd's will want it */
 	dev_ops_add(&usb_ops, -1, device_get_unit(self));
@@ -327,14 +324,14 @@ usb_attach(device_t self)
 static const char *taskq_names[] = USB_TASKQ_NAMES;
 
 void
-usb_create_event_thread(void *arg)
+usb_create_event_thread(device_t self)
 {
-	struct usb_softc *sc = arg;
+	struct usb_softc *sc = device_get_softc(self);
 	int i;
 
-	if (kthread_create(usb_event_thread, sc, &sc->sc_event_thread,
-			   "%s", device_get_nameunit(sc->sc_dev))) {
-		device_printf(sc->sc_dev,
+	if (kthread_create(usb_event_thread, self, &sc->sc_event_thread,
+			   "%s", device_get_nameunit(self))) {
+		device_printf(self,
 		    "unable to create event thread for\n");
 		panic("usb_create_event_thread");
 	}
@@ -418,7 +415,8 @@ usb_rem_task(usbd_device_handle dev, struct usb_task *task)
 void
 usb_event_thread(void *arg)
 {
-	struct usb_softc *sc = arg;
+	device_t self = arg;
+	struct usb_softc *sc = device_get_softc(self);
 
 	DPRINTF(("usb_event_thread: start\n"));
 
@@ -436,13 +434,13 @@ usb_event_thread(void *arg)
 
 	/* Make sure first discover does something. */
 	sc->sc_bus->needs_explore = 1;
-	usb_discover(sc);
+	usb_discover(self);
 
 	while (!sc->sc_dying) {
 #ifdef USB_DEBUG
 		if (usb_noexplore < 2)
 #endif
-		usb_discover(sc);
+		usb_discover(self);
 #ifdef USB_DEBUG
 		tsleep(&sc->sc_bus->needs_explore, 0, "usbevt",
 		       usb_noexplore ? 0 : hz * 60);
@@ -711,9 +709,9 @@ usbpoll(struct dev_poll_args *ap)
 
 /* Explore device tree from the root. */
 static void
-usb_discover(void *v)
+usb_discover(device_t self)
 {
-	struct usb_softc *sc = v;
+	struct usb_softc *sc = device_get_softc(self);
 
 	DPRINTFN(2,("usb_discover\n"));
 #ifdef USB_DEBUG
@@ -871,7 +869,7 @@ usb_detach(device_t self)
 	if (sc->sc_event_thread != NULL) {
 		wakeup(&sc->sc_bus->needs_explore);
 		if (tsleep(sc, 0, "usbdet", hz * 60))
-			device_printf(sc->sc_dev,
+			device_printf(self,
 			    "event thread didn't die\n");
 		DPRINTF(("usb_detach: event thread dead\n"));
 	}
@@ -907,7 +905,7 @@ usb_detach(device_t self)
 #endif
 #endif
 
-	ue.u.ue_ctrlr.ue_bus = device_get_unit(sc->sc_dev);
+	ue.u.ue_ctrlr.ue_bus = device_get_unit(self);
 	usb_add_event(USB_EVENT_CTRLR_DETACH, &ue);
 
 	return (0);
