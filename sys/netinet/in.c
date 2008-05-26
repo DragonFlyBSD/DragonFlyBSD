@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.34 2008/05/24 08:04:42 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.35 2008/05/26 13:29:33 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -68,8 +68,8 @@ static int in_lifaddr_ioctl (struct socket *, u_long, caddr_t,
 	struct ifnet *, struct thread *);
 
 static void	in_socktrim (struct sockaddr_in *);
-static int	in_ifinit (struct ifnet *,
-	    struct in_ifaddr *, struct sockaddr_in *, int);
+static int	in_ifinit(struct ifnet *, struct in_ifaddr *,
+		    const struct sockaddr_in *, int);
 
 static void	in_control_dispatch(struct netmsg *);
 static int	in_control_internal(u_long, caddr_t, struct ifnet *,
@@ -438,7 +438,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 
 	case SIOCSIFADDR:
 		error = in_ifinit(ifp, ia,
-		    (struct sockaddr_in *) &ifr->ifr_addr, 1);
+		    (const struct sockaddr_in *)&ifr->ifr_addr, 1);
 		if (error != 0 && iaIsNew)
 			break;
 		if (error == 0)
@@ -524,7 +524,10 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	 */
 	crit_enter();	/* XXX MP */
 	TAILQ_REMOVE(&in_ifaddrhead, ia, ia_link);
-	LIST_REMOVE(ia, ia_hash);
+	if (cmd == SIOCDIFADDR && ia->ia_addr.sin_family == AF_INET) {
+		/* XXX Assume that 'ia' is in hash table */
+		LIST_REMOVE(ia, ia_hash);
+	}
 	crit_exit();	/* XXX MP */
 
 	ifa_destroy(&ia->ia_ifa);
@@ -732,19 +735,24 @@ in_ifscrub(struct ifnet *ifp, struct in_ifaddr *ia)
  * and routing table entry.
  */
 static int
-in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int scrub)
+in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia,
+	  const struct sockaddr_in *sin, int scrub)
 {
 	u_long i = ntohl(sin->sin_addr.s_addr);
 	struct sockaddr_in oldaddr;
 	int flags = RTF_UP, error = 0;
+	int old_hash = 0, new_hash = 0;
 
 	crit_enter();
 	oldaddr = ia->ia_addr;
-	if (oldaddr.sin_family == AF_INET)
+	if (oldaddr.sin_family == AF_INET) {
+		old_hash = 1;
 		LIST_REMOVE(ia, ia_hash);
+	}
 
 	ia->ia_addr = *sin;
 	if (ia->ia_addr.sin_family == AF_INET) {
+		new_hash = 1;
 		LIST_INSERT_HEAD(INADDR_HASH(ia->ia_addr.sin_addr.s_addr),
 		    ia, ia_hash);
 	}
@@ -759,18 +767,8 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int 
 		lwkt_serialize_enter(ifp->if_serializer);
 		error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL);
 		lwkt_serialize_exit(ifp->if_serializer);
-		if (error) {
-			/* LIST_REMOVE(ia, ia_hash) is done in in_control */
-			ia->ia_addr = oldaddr;
-			if (ia->ia_addr.sin_family == AF_INET) {
-				crit_enter();
-				LIST_INSERT_HEAD(
-				INADDR_HASH(ia->ia_addr.sin_addr.s_addr),
-				ia, ia_hash);
-				crit_exit();
-			}
-			return (error);
-		}
+		if (error)
+			goto fail;
 	}
 
 	/*
@@ -836,10 +834,8 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int 
 	if (ia->ia_addr.sin_addr.s_addr != INADDR_ANY ||
 	    ia->ia_netmask != IN_CLASSA_NET ||
 	    ia->ia_dstaddr.sin_addr.s_addr != htonl(IN_CLASSA_HOST)) {
-		if ((error = rtinit(&ia->ia_ifa, RTM_ADD, flags)) != 0) {
-			ia->ia_addr = oldaddr;
-			return (error);
-		}
+		if ((error = rtinit(&ia->ia_ifa, RTM_ADD, flags)) != 0)
+			goto fail;
 		ia->ia_flags |= IFA_ROUTE;
 	}
 
@@ -853,6 +849,18 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int 
 		addr.s_addr = htonl(INADDR_ALLHOSTS_GROUP);
 		in_addmulti(&addr, ifp);
 	}
+	return (0);
+fail:
+	crit_enter();
+	if (new_hash)
+		LIST_REMOVE(ia, ia_hash);
+
+	ia->ia_addr = oldaddr;
+	if (old_hash) {
+		LIST_INSERT_HEAD(INADDR_HASH(ia->ia_addr.sin_addr.s_addr),
+		    ia, ia_hash);
+	}
+	crit_exit();
 	return (error);
 }
 
