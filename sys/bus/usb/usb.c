@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.45 2008/05/26 12:37:44 mneumann Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.46 2008/05/26 13:24:59 mneumann Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -155,7 +155,7 @@ static void	usb_event_thread(void *);
 static void	usb_task_thread(void *);
 
 static cdev_t usb_dev;		/* The /dev/usb device. */
-static int usb_ndevs;			/* Number of /dev/usbN devices. */
+static int usb_ndevs;		/* Number of /dev/usbN devices. */
 /* Busses to explore at the end of boot-time device configuration */
 static TAILQ_HEAD(, usb_softc) usb_coldexplist =
     TAILQ_HEAD_INITIALIZER(usb_coldexplist);
@@ -206,7 +206,7 @@ MODULE_VERSION(usb, 1);
 static int
 usb_match(device_t self)
 {
-	DPRINTF(("usbd_match\n"));
+	DPRINTF(("usb_match\n"));
 	return (UMATCH_GENERIC);
 }
 
@@ -222,7 +222,7 @@ usb_attach(device_t self)
 	int speed;
 	struct usb_event ue;
 
-	DPRINTF(("usbd_attach\n"));
+	DPRINTF(("usb_attach\n"));
 
 	usbd_init();
 	sc->sc_bus = aux;
@@ -944,4 +944,3 @@ SYSINIT(usb_cold_explore, SI_SUB_CONFIGURE, SI_ORDER_MIDDLE,
 DRIVER_MODULE(usb, ohci, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usb, uhci, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usb, ehci, usb_driver, usb_devclass, 0, 0);
-
