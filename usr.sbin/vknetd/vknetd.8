@@ -31,13 +31,13 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/usr.sbin/vknetd/vknetd.8,v 1.1 2008/05/27 01:58:01 dillon Exp $
+.\" $DragonFly: src/usr.sbin/vknetd/vknetd.8,v 1.2 2008/05/27 23:26:38 dillon Exp $
 .\"
 .Dd May 26, 2008
-.Dt vknet 8
+.Dt vknetd 8
 .Os
 .Sh NAME
-.Nm vknet
+.Nm vknetd
 .Nd create a bridged network for (typically user-run) vkernel's
 .Sh SYNOPSIS
 .Nm
@@ -139,7 +139,8 @@ denial of service attack on the host network.
 does not currently implement a timeout for its MAC cache.
 .Sh SEE ALSO
 .Xr vkernel 7 ,
-.Xr vke 7 
+.Xr vke 7 ,
+.Xr vknet 1
 .Sh HISTORY
 The
 .Nm

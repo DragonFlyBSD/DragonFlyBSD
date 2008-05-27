@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.3 (Berkeley) 1/7/94
 # $FreeBSD: src/usr.bin/Makefile,v 1.144.2.17 2003/01/04 17:17:07 obrien Exp $
-# $DragonFly: src/usr.bin/Makefile,v 1.42 2008/02/08 14:06:25 hasso Exp $
+# $DragonFly: src/usr.bin/Makefile,v 1.43 2008/05/27 23:26:35 dillon Exp $
 
 # XXX MISSING:		deroff diction graph learn plot
 #			spell spline struct xsend
@@ -208,6 +208,7 @@ SUBDIR=	alias \
 	vgrind \
 	vi \
 	vis \
+	vknet \
 	vmstat \
 	w \
 	wall \
