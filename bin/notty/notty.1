@@ -1,0 +1,24 @@
+.\"
+.\" $DragonFly: src/bin/notty/notty.1,v 1.1 2008/05/27 17:10:49 dillon Exp $
+.Dd May 27, 2008
+.Dt NOTTY 1
+.Os
+.Sh NAME
+.Nm notty
+.Nd Execute a program in the background, detached from the controlling terminal
+.Sh SYNOPSIS
+.Nm notty
+.Op Fl 012
+.Ar command Ar args...
+.Sh DESCRIPTION
+The
+.Nm
+utility will detach the specified command from the controlling terminal,
+running it in the background.  By default stdin, stdout, and stderr are
+set to /dev/null.  One or more of stdin, stdout, or stderr may be left
+open by specifying the appropriate options.
+.Sh HISTORY
+The
+.Nm
+command was originally written in 1994 by Matthew Dillon to provide
+a convenient shortcut for detaching programs.
