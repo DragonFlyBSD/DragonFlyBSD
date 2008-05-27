@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.55 2008/05/27 05:25:35 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.56 2008/05/27 07:48:00 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -1114,7 +1114,9 @@ netif_init_tap(int tap_unit, in_addr_t *addr, in_addr_t *mask, int s)
 	}
 
 back:
-	if (ifbridge == NULL) {
+	if (tap_unit < 0) {
+		/* Do nothing */
+	} else if (ifbridge == NULL) {
 		/* Set tap(4) address/netmask */
 		if (netif_set_tapaddr(tap_unit, tap_addr, netmask, s) < 0)
 			return -1;
