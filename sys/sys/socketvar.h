@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.31 2008/05/27 05:25:36 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.32 2008/05/27 17:31:12 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -217,6 +217,8 @@ struct	xsocket {
 
 /* do we have to send all at once on a socket? */
 
+#ifdef _KERNEL
+
 /*
  * How much space is there in a socket buffer (so->so_snd or so->so_rcv)?
  * This is problematical if the fields are unsigned, as the space might
@@ -239,6 +241,8 @@ ssb_space(struct signalsockbuf *ssb)
 	mleft = ssb->ssb_mbmax - ssb->ssb_mbcnt;
 	return((bleft < mleft) ? bleft : mleft);
 }
+
+#endif
 
 #define ssb_append(ssb, m)						\
 	sbappend(&(ssb)->sb, m)
