@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.9 2008/05/27 05:25:33 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.10 2008/05/27 23:44:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,6 +61,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define VKE_DEVNAME		"vke"
 
@@ -321,7 +322,8 @@ vke_attach(const struct vknetif_info *info, int unit)
 	fd = info->tap_fd;
 
 	/*
-	 * This is only a TAP device if tap_unit is non-zero.
+	 * This is only a TAP device if tap_unit is non-zero.  If
+	 * connecting to a virtual socket we generate a unique MAC.
 	 */
 	if (info->tap_unit >= 0) {
 		if (ioctl(fd, TAPGIFINFO, &tapinfo) < 0) {
@@ -335,6 +337,15 @@ vke_attach(const struct vknetif_info *info, int unit)
 				"failed: %s\n", unit, strerror(errno));
 			return ENXIO;
 		}
+	} else {
+		int fd = open("/dev/urandom", O_RDONLY);
+		if (fd >= 0) {
+			read(fd, enaddr + 2, 4);
+			close(fd);
+		}
+		enaddr[4] = (int)getpid() >> 8;
+		enaddr[5] = (int)getpid() & 255;
+		
 	}
 	enaddr[1] += 1;
 
