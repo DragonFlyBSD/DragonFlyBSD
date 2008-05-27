@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.54 2008/05/27 01:10:45 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.55 2008/05/27 05:25:35 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -973,6 +973,8 @@ unix_connect(const char *path)
 	struct sockaddr_un sunx;
 	int len;
 	int net_fd;
+	int sndbuf = 262144;
+	struct stat st;
 
 	snprintf(sunx.sun_path, sizeof(sunx.sun_path), "%s", path);
 	len = offsetof(struct sockaddr_un, sun_path[strlen(sunx.sun_path)]);
@@ -987,6 +989,9 @@ unix_connect(const char *path)
 		close(net_fd);
 		return(-1);
 	}
+	setsockopt(net_fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
+	if (fstat(net_fd, &st) == 0)
+		printf("Network socket buffer: %d bytes\n", st.st_blksize);
 	fcntl(net_fd, F_SETFL, O_NONBLOCK);
 	return(net_fd);
 }

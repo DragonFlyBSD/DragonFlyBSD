@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.47 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.48 2008/05/27 05:25:34 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -554,12 +554,13 @@ restart:
 			    gotoerr(so->so_proto->pr_flags & PR_CONNREQUIRED ?
 				   ENOTCONN : EDESTADDRREQ);
 		}
+		if ((atomic && resid > so->so_snd.ssb_hiwat) ||
+		    clen > so->so_snd.ssb_hiwat) {
+			gotoerr(EMSGSIZE);
+		}
 		space = ssb_space(&so->so_snd);
 		if (flags & MSG_OOB)
 			space += 1024;
-		if ((atomic && resid > so->so_snd.ssb_hiwat) ||
-		    clen > so->so_snd.ssb_hiwat)
-			gotoerr(EMSGSIZE);
 		if (space < resid + clen && uio &&
 		    (atomic || space < so->so_snd.ssb_lowat || space < clen)) {
 			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT))

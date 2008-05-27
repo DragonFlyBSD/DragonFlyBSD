@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.40 2008/05/27 01:10:39 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.41 2008/05/27 05:25:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ static	struct unp_head unp_shead, unp_dhead;
  * Unix communications domain.
  *
  * TODO:
- *	SEQPACKET, RDM
+ *	RDM
  *	rethink name space problems
  *	need a proper out-of-band
  *	lock pushdown
@@ -233,7 +233,6 @@ uipc_rcvd(struct socket *so, int flags)
 {
 	struct unpcb *unp = so->so_pcb;
 	struct socket *so2;
-	u_long newhiwat;
 
 	if (unp == NULL)
 		return EINVAL;
@@ -246,19 +245,18 @@ uipc_rcvd(struct socket *so, int flags)
 	case SOCK_SEQPACKET:
 		if (unp->unp_conn == NULL)
 			break;
-		so2 = unp->unp_conn->unp_socket;
 		/*
-		 * Adjust backpressure on sender
-		 * and wakeup any waiting to write.
+		 * Because we are transfering mbufs directly to the
+		 * peer socket we have to use SSB_STOP on the sender
+		 * to prevent it from building up infinite mbufs.
 		 */
-		so2->so_snd.ssb_mbmax += unp->unp_mbcnt - so->so_rcv.ssb_mbcnt;
-		unp->unp_mbcnt = so->so_rcv.ssb_mbcnt;
-		newhiwat =
-		    so2->so_snd.ssb_hiwat + unp->unp_cc - so->so_rcv.ssb_cc;
-		chgsbsize(so2->so_cred->cr_uidinfo, &so2->so_snd.ssb_hiwat,
-		    newhiwat, RLIM_INFINITY);
-		unp->unp_cc = so->so_rcv.ssb_cc;
-		sowwakeup(so2);
+		so2 = unp->unp_conn->unp_socket;
+		if (so->so_rcv.ssb_cc < so2->so_snd.ssb_hiwat &&
+		    so->so_rcv.ssb_mbcnt < so2->so_snd.ssb_mbmax
+		) {
+			so2->so_snd.ssb_flags &= ~SSB_STOP;
+			sowwakeup(so2);
+		}
 		break;
 
 	default:
@@ -276,7 +274,6 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	int error = 0;
 	struct unpcb *unp = so->so_pcb;
 	struct socket *so2;
-	u_long newhiwat;
 
 	if (unp == NULL) {
 		error = EINVAL;
@@ -368,14 +365,17 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 			sbappend(&so2->so_rcv.sb, m);
 			m = NULL;
 		}
-		so->so_snd.ssb_mbmax -=
-			so2->so_rcv.ssb_mbcnt - unp->unp_conn->unp_mbcnt;
-		unp->unp_conn->unp_mbcnt = so2->so_rcv.ssb_mbcnt;
-		newhiwat = so->so_snd.ssb_hiwat -
-		    (so2->so_rcv.ssb_cc - unp->unp_conn->unp_cc);
-		chgsbsize(so->so_cred->cr_uidinfo, &so->so_snd.ssb_hiwat,
-		    newhiwat, RLIM_INFINITY);
-		unp->unp_conn->unp_cc = so2->so_rcv.ssb_cc;
+
+		/*
+		 * Because we are transfering mbufs directly to the
+		 * peer socket we have to use SSB_STOP on the sender
+		 * to prevent it from building up infinite mbufs.
+		 */
+		if (so2->so_rcv.ssb_cc >= so->so_snd.ssb_hiwat ||
+		    so2->so_rcv.ssb_mbcnt >= so->so_snd.ssb_mbmax
+		) {
+			so->so_snd.ssb_flags |= SSB_STOP;
+		}
 		sorwakeup(so2);
 		break;
 
@@ -406,16 +406,10 @@ static int
 uipc_sense(struct socket *so, struct stat *sb)
 {
 	struct unpcb *unp = so->so_pcb;
-	struct socket *so2;
 
 	if (unp == NULL)
 		return EINVAL;
 	sb->st_blksize = so->so_snd.ssb_hiwat;
-	if ((so->so_type == SOCK_STREAM || so->so_type == SOCK_SEQPACKET) &&
-	    unp->unp_conn != NULL) {
-		so2 = unp->unp_conn->unp_socket;
-		sb->st_blksize += so2->so_rcv.ssb_cc;
-	}
 	sb->st_dev = NOUDEV;
 	if (unp->unp_ino == 0)		/* make up a non-zero inode number */
 		unp->unp_ino = (++unp_ino == 0) ? ++unp_ino : unp_ino;

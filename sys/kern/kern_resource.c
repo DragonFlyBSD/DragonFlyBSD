@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.34 2007/08/20 05:40:40 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.35 2008/05/27 05:25:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -682,10 +682,19 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 
 	crit_enter();
 	new = uip->ui_sbsize + to - *hiwat;
-	/* don't allow them to exceed max, but allow subtraction */
-	if (to > *hiwat && new > max) {
-		crit_exit();
-		return (0);
+
+	/*
+	 * If we are trying to increase the socket buffer size
+	 * Scale down the hi water mark when we exceed the user's
+	 * allowed socket buffer space.
+	 *
+	 * We can't scale down too much or we will blow up atomic packet
+	 * operations.
+	 */
+	if (to > *hiwat && to > MCLBYTES && new > max) {
+		to = to * max / new;
+		if (to < MCLBYTES)
+			to = MCLBYTES;
 	}
 	uip->ui_sbsize = new;
 	*hiwat = to;

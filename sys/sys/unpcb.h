@@ -32,7 +32,7 @@
  *
  *	@(#)unpcb.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/unpcb.h,v 1.9.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/sys/unpcb.h,v 1.4 2005/04/20 19:38:22 hsu Exp $
+ * $DragonFly: src/sys/sys/unpcb.h,v 1.5 2008/05/27 05:25:36 dillon Exp $
  */
 
 #ifndef _SYS_UNPCB_H_
@@ -79,8 +79,8 @@ struct	unpcb {
 	struct	unp_head unp_refs;	/* referencing socket linked list */
 	LIST_ENTRY(unpcb) unp_reflink;	/* link in unp_refs list */
 	struct	sockaddr_un *unp_addr;	/* bound address of socket */
-	int	unp_cc;			/* copy of rcv.sb_cc */
-	int	unp_mbcnt;		/* copy of rcv.sb_mbcnt */
+	int	unused01;
+	int	unused02;
 	unp_gen_t unp_gencnt;		/* generation count of this instance */
 	int	unp_flags;		/* flags */
 	struct	xucred unp_peercred;	/* peer credentials, if applicable */

@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.30 2007/11/07 18:24:04 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.31 2008/05/27 05:25:36 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -83,6 +83,7 @@ struct signalsockbuf {
 #define SSB_AIO		0x80		/* AIO operations queued */
 #define SSB_KNOTE	0x100		/* kernel note attached */
 #define SSB_MEVENT	0x200		/* need message event notification */
+#define SSB_STOP	0x400		/* backpressure indicator */
 
 /*
  * Per-socket kernel structure.  Contains universal send and receive queues,
@@ -220,11 +221,24 @@ struct	xsocket {
  * How much space is there in a socket buffer (so->so_snd or so->so_rcv)?
  * This is problematical if the fields are unsigned, as the space might
  * still be negative (cc > hiwat or mbcnt > mbmax).  Should detect
- * overflow and return 0.  Should use "lmin" but it doesn't exist now.
+ * overflow and return 0.
+ *
+ * SSB_STOP ignores cc/hiwat and returns 0.  This is used by unix domain
+ * stream sockets to signal backpressure.
  */
-#define ssb_space(ssb) 							\
-	((long)imin((int)((ssb)->ssb_hiwat - (ssb)->ssb_cc),		\
-		    (int)((ssb)->ssb_mbmax - (ssb)->ssb_mbcnt)))
+static __inline
+long
+ssb_space(struct signalsockbuf *ssb)
+{
+	long bleft;
+	long mleft;
+
+	if (ssb->ssb_flags & SSB_STOP)
+		return(0);
+	bleft = ssb->ssb_hiwat - ssb->ssb_cc;
+	mleft = ssb->ssb_mbmax - ssb->ssb_mbcnt;
+	return((bleft < mleft) ? bleft : mleft);
+}
 
 #define ssb_append(ssb, m)						\
 	sbappend(&(ssb)->sb, m)

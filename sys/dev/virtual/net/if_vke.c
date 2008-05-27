@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.8 2008/05/27 01:10:38 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.9 2008/05/27 05:25:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -156,11 +156,17 @@ vke_start(struct ifnet *ifp)
 		return;
 
 	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
+		/*
+		 * Copy the data into a single mbuf and write it out
+		 * non-blocking.
+		 */
 		if (m->m_pkthdr.len <= MCLBYTES) {
 			m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
 			BPF_MTAP(ifp, m);
-			write(sc->sc_fd, sc->sc_txbuf, m->m_pkthdr.len);
-			ifp->if_opackets++;
+			if (write(sc->sc_fd, sc->sc_txbuf, m->m_pkthdr.len) < 0)
+				ifp->if_oerrors++;
+			else
+				ifp->if_opackets++;
 		} else {
 			ifp->if_oerrors++;
 		}

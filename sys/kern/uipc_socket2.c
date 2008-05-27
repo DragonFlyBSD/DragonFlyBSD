@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.30 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.31 2008/05/27 05:25:34 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -423,7 +423,7 @@ ssb_reserve(struct signalsockbuf *ssb, u_long cc, struct socket *so,
 	 * or when called from netgraph (ie, ngd_attach)
 	 */
 	if (cc > sb_max_adj)
-		return (0);
+		cc = sb_max_adj;
 	if (!chgsbsize(so->so_cred->cr_uidinfo, &ssb->ssb_hiwat, cc,
 		       rl ? rl->rlim_cur : RLIM_INFINITY)) {
 		return (0);
