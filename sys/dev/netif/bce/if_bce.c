@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.7 2008/05/27 11:39:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.8 2008/05/27 12:07:01 sephe Exp $
  */
 
 /*
@@ -3737,15 +3737,11 @@ bce_rx_intr(struct bce_softc *sc, int count)
 		unsigned int len;
 		uint32_t status = 0;
 
-#ifdef foo /* DEVICE_POLLING */
-		/*
-		 * Even if polling(4) is enabled, we can't just reap
-		 * 'count' RX descriptors and leave.  It seems that RX
-		 * engine would be left in a wired state, if we broke
-		 * out the loop in the middle.
-		 */
-		if (count >= 0 && count-- == 0)
+#ifdef DEVICE_POLLING
+		if (count >= 0 && count-- == 0) {
+			sc->hw_rx_cons = sw_cons;
 			break;
+		}
 #endif
 
 		/*
