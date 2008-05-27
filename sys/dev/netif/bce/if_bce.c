@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.6 2008/05/26 14:23:25 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.7 2008/05/27 11:39:42 sephe Exp $
  */
 
 /*
@@ -3426,6 +3426,7 @@ bce_free_tx_chain(struct bce_softc *sc)
 	/* Clear each TX chain page. */
 	for (i = 0; i < TX_PAGES; i++)
 		bzero(sc->tx_bd_chain[i], BCE_TX_CHAIN_PAGE_SZ);
+	sc->used_tx_bd = 0;
 
 	/* Check if we lost any mbufs in the process. */
 	DBRUNIF((sc->tx_mbuf_alloc),
@@ -3666,6 +3667,24 @@ bce_phy_intr(struct bce_softc *sc)
 
 
 /****************************************************************************/
+/* Reads the receive consumer value from the status block (skipping over    */
+/* chain page pointer if necessary).                                        */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   hw_cons                                                                */
+/****************************************************************************/
+static __inline uint16_t
+bce_get_hw_rx_cons(struct bce_softc *sc)
+{
+	uint16_t hw_cons = sc->status_block->status_rx_quick_consumer_index0;
+
+	if ((hw_cons & USABLE_RX_BD_PER_PAGE) == USABLE_RX_BD_PER_PAGE)
+		hw_cons++;
+	return hw_cons;
+}
+
+
+/****************************************************************************/
 /* Handles received frame interrupt events.                                 */
 /*                                                                          */
 /* Returns:                                                                 */
@@ -3674,7 +3693,6 @@ bce_phy_intr(struct bce_softc *sc)
 static void
 bce_rx_intr(struct bce_softc *sc, int count)
 {
-	struct status_block *sblk = sc->status_block;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t hw_cons, sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
 	uint32_t sw_prod_bseq;
@@ -3691,9 +3709,7 @@ bce_rx_intr(struct bce_softc *sc, int count)
 	}
 
 	/* Get the hardware's view of the RX consumer index. */
-	hw_cons = sc->hw_rx_cons = sblk->status_rx_quick_consumer_index0;
-	if ((hw_cons & USABLE_RX_BD_PER_PAGE) == USABLE_RX_BD_PER_PAGE)
-		hw_cons++;
+	hw_cons = sc->hw_rx_cons = bce_get_hw_rx_cons(sc);
 
 	/* Get working copies of the driver's view of the RX indices. */
 	sw_cons = sc->rx_cons;
@@ -3947,13 +3963,8 @@ bce_rx_int_next_rx:
 		 * should not be performed, so that we would not spend
 		 * too much time in RX processing.
 		 */
-		if (count < 0 && sw_cons == hw_cons) {
-			hw_cons = sc->hw_rx_cons =
-				sblk->status_rx_quick_consumer_index0;
-			if ((hw_cons & USABLE_RX_BD_PER_PAGE) ==
-			    USABLE_RX_BD_PER_PAGE)
-				hw_cons++;
-		}
+		if (count < 0 && sw_cons == hw_cons)
+			hw_cons = sc->hw_rx_cons = bce_get_hw_rx_cons(sc);
 
 		/*
 		 * Prevent speculative reads from getting ahead
@@ -3982,6 +3993,24 @@ bce_rx_int_next_rx:
 
 
 /****************************************************************************/
+/* Reads the transmit consumer value from the status block (skipping over   */
+/* chain page pointer if necessary).                                        */
+/*                                                                          */
+/* Returns:                                                                 */
+/*   hw_cons                                                                */
+/****************************************************************************/
+static __inline uint16_t
+bce_get_hw_tx_cons(struct bce_softc *sc)
+{
+	uint16_t hw_cons = sc->status_block->status_tx_quick_consumer_index0;
+
+	if ((hw_cons & USABLE_TX_BD_PER_PAGE) == USABLE_TX_BD_PER_PAGE)
+		hw_cons++;
+	return hw_cons;
+}
+
+
+/****************************************************************************/
 /* Handles transmit completion interrupt events.                            */
 /*                                                                          */
 /* Returns:                                                                 */
@@ -3990,7 +4019,6 @@ bce_rx_int_next_rx:
 static void
 bce_tx_intr(struct bce_softc *sc)
 {
-	struct status_block *sblk = sc->status_block;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t hw_tx_cons, sw_tx_cons, sw_tx_chain_cons;
 
@@ -3999,12 +4027,7 @@ bce_tx_intr(struct bce_softc *sc)
 	DBRUNIF(1, sc->tx_interrupts++);
 
 	/* Get the hardware's view of the TX consumer index. */
-	hw_tx_cons = sc->hw_tx_cons = sblk->status_tx_quick_consumer_index0;
-
-	/* Skip to the next entry if this is a chain page pointer. */
-	if ((hw_tx_cons & USABLE_TX_BD_PER_PAGE) == USABLE_TX_BD_PER_PAGE)
-		hw_tx_cons++;
-
+	hw_tx_cons = sc->hw_tx_cons = bce_get_hw_tx_cons(sc);
 	sw_tx_cons = sc->tx_cons;
 
 	/* Prevent speculative reads from getting ahead of the status block. */
@@ -4079,11 +4102,7 @@ bce_tx_intr(struct bce_softc *sc)
 
 		if (sw_tx_cons == hw_tx_cons) {
 			/* Refresh hw_cons to see if there's new work. */
-			hw_tx_cons = sc->hw_tx_cons =
-				sblk->status_tx_quick_consumer_index0;
-			if ((hw_tx_cons & USABLE_TX_BD_PER_PAGE) ==
-			    USABLE_TX_BD_PER_PAGE)
-				hw_tx_cons++;
+			hw_tx_cons = sc->hw_tx_cons = bce_get_hw_tx_cons(sc);
 		}
 
 		/*
@@ -4691,6 +4710,7 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct bce_softc *sc = ifp->if_softc;
 	struct status_block *sblk = sc->status_block;
+	uint16_t hw_tx_cons, hw_rx_cons;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -4755,12 +4775,15 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		}
 	}
 
+	hw_rx_cons = bce_get_hw_rx_cons(sc);
+	hw_tx_cons = bce_get_hw_tx_cons(sc);
+
 	/* Check for any completed RX frames. */
-	if (sblk->status_rx_quick_consumer_index0 != sc->hw_rx_cons)
+	if (hw_rx_cons != sc->hw_rx_cons)
 		bce_rx_intr(sc, count);
 
 	/* Check for any completed TX frames. */
-	if (sblk->status_tx_quick_consumer_index0 != sc->hw_tx_cons)
+	if (hw_tx_cons != sc->hw_tx_cons)
 		bce_tx_intr(sc);
 
 	bus_dmamap_sync(sc->status_tag,	sc->status_map, BUS_DMASYNC_PREWRITE);
@@ -4771,25 +4794,6 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 }
 
 #endif	/* DEVICE_POLLING */
-
-
-#if 0
-static inline int
-bce_has_work(struct bce_softc *sc)
-{
-	struct status_block *stat = sc->status_block;
-
-	if ((stat->status_rx_quick_consumer_index0 != sc->hw_rx_cons) ||
-	    (stat->status_tx_quick_consumer_index0 != sc->hw_tx_cons))
-		return 1;
-
-	if (((stat->status_attn_bits & STATUS_ATTN_BITS_LINK_STATE) != 0) !=
-	    bp->link_up)
-		return 1;
-
-	return 0;
-}
-#endif
 
 
 /*
@@ -4809,6 +4813,7 @@ bce_intr(void *xsc)
 	struct bce_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct status_block *sblk;
+	uint16_t hw_rx_cons, hw_tx_cons;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -4832,6 +4837,10 @@ bce_intr(void *xsc)
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
 	       BCE_PCICFG_INT_ACK_CMD_USE_INT_HC_PARAM |
 	       BCE_PCICFG_INT_ACK_CMD_MASK_INT);
+
+	/* Check if the hardware has finished any work. */
+	hw_rx_cons = bce_get_hw_rx_cons(sc);
+	hw_tx_cons = bce_get_hw_tx_cons(sc);
 
 	/* Keep processing data as long as there is work to do. */
 	for (;;) {
@@ -4870,11 +4879,11 @@ bce_intr(void *xsc)
 		}
 
 		/* Check for any completed RX frames. */
-		if (sblk->status_rx_quick_consumer_index0 != sc->hw_rx_cons)
+		if (hw_rx_cons != sc->hw_rx_cons)
 			bce_rx_intr(sc, -1);
 
 		/* Check for any completed TX frames. */
-		if (sblk->status_tx_quick_consumer_index0 != sc->hw_tx_cons)
+		if (hw_tx_cons != sc->hw_tx_cons)
 			bce_tx_intr(sc);
 
 		/*
@@ -4894,8 +4903,9 @@ bce_intr(void *xsc)
 		 * If there's no work left then exit the
 		 * interrupt service routine.
 		 */
-		if (sblk->status_rx_quick_consumer_index0 == sc->hw_rx_cons &&
-		    sblk->status_tx_quick_consumer_index0 == sc->hw_tx_cons)
+		hw_rx_cons = bce_get_hw_rx_cons(sc);
+		hw_tx_cons = bce_get_hw_tx_cons(sc);
+		if ((hw_rx_cons == sc->hw_rx_cons) && (hw_tx_cons == sc->hw_tx_cons))
 			break;
 	}
 
