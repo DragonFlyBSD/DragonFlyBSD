@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.65 2008/05/15 13:48:27 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.66 2008/05/27 01:10:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1011,7 +1011,7 @@ if_unroute(struct ifnet *ifp, int flag, int fam)
 		struct ifaddr *ifa = ifac->ifa;
 
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
-			pfctlinput(PRC_IFDOWN, ifa->ifa_addr);
+			kpfctlinput(PRC_IFDOWN, ifa->ifa_addr);
 	}
 	ifq_purge(&ifp->if_snd);
 	rt_ifmsg(ifp);
@@ -1033,7 +1033,7 @@ if_route(struct ifnet *ifp, int flag, int fam)
 		struct ifaddr *ifa = ifac->ifa;
 
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
-			pfctlinput(PRC_IFUP, ifa->ifa_addr);
+			kpfctlinput(PRC_IFUP, ifa->ifa_addr);
 	}
 	rt_ifmsg(ifp);
 #ifdef INET6

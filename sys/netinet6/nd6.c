@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.29 2008/05/14 11:59:24 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.30 2008/05/27 01:10:43 dillon Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -924,7 +924,7 @@ nd6_free(struct rtentry *rt)
 	struct nd_defrouter *dr;
 
 	/*
-	 * we used to have pfctlinput(PRC_HOSTDEAD) here.
+	 * we used to have kpfctlinput(PRC_HOSTDEAD) here.
 	 * even though it is not harmful, it was not really necessary.
 	 */
 

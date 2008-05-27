@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.27 2008/03/07 11:34:21 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.28 2008/05/27 01:10:43 dillon Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -2327,7 +2327,7 @@ icmp6_redirect_input(struct mbuf *m, int off)
 			   (struct sockaddr *)NULL, RTF_GATEWAY | RTF_HOST,
 			   (struct sockaddr *)&ssrc);
 	}
-	/* finally update cached route in each socket via pfctlinput */
+	/* finally update cached route in each socket via kpfctlinput */
     {
 	struct sockaddr_in6 sdst;
 
@@ -2335,7 +2335,7 @@ icmp6_redirect_input(struct mbuf *m, int off)
 	sdst.sin6_family = AF_INET6;
 	sdst.sin6_len = sizeof(struct sockaddr_in6);
 	bcopy(&reddst6, &sdst.sin6_addr, sizeof(struct in6_addr));
-	pfctlinput(PRC_REDIRECT_HOST, (struct sockaddr *)&sdst);
+	kpfctlinput(PRC_REDIRECT_HOST, (struct sockaddr *)&sdst);
 #ifdef IPSEC
 	key_sa_routechange((struct sockaddr *)&sdst);
 #endif

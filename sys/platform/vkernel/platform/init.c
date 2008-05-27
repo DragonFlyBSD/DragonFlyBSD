@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.53 2008/05/19 10:29:58 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/init.c,v 1.54 2008/05/27 01:10:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -50,6 +50,7 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
+#include <sys/un.h>
 #include <vm/vm_page.h>
 
 #include <machine/cpu.h>
@@ -119,6 +120,7 @@ static void init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type);
 static void init_netif(char *netifExp[], int netifFileNum);
 static void writepid( void );
 static void cleanpid( void );
+static int unix_connect(const char *path);
 static void usage(const char *ctl, ...);
 
 static int save_ac;
@@ -913,7 +915,7 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 		}
 	} else {
 		/*
-		 * User supplied tap(4) device file
+		 * User supplied tap(4) device file or unix socket.
 		 */
 		if (netif[0] == '/')	/* Absolute path */
 			strlcpy(tap_dev, netif, sizeof(tap_dev));
@@ -921,6 +923,13 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 			snprintf(tap_dev, sizeof(tap_dev), "/dev/%s", netif);
 
 		tap_fd = open(tap_dev, TAPDEV_OFLAGS);
+
+		/*
+		 * If we cannot open normally try to connect to it.
+		 */
+		if (tap_fd < 0)
+			tap_fd = unix_connect(tap_dev);
+
 		if (tap_fd < 0) {
 			warn("Unable to open %s", tap_dev);
 			return -1;
@@ -940,6 +949,12 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 		 */
 		if (netif_set_tapflags(*tap_unit, IFF_UP, s) == 0)
 			failed = 0;
+	} else if (S_ISSOCK(st.st_mode)) {
+		/*
+		 * Special socket connection (typically to vknet).  We
+		 * do not have to do anything.
+		 */
+		failed = 0;
 	} else {
 		warnx("%s is not a tap(4) device", tap_dev);
 	}
@@ -950,6 +965,30 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 		*tap_unit = -1;
 	}
 	return tap_fd;
+}
+
+static int
+unix_connect(const char *path)
+{
+	struct sockaddr_un sunx;
+	int len;
+	int net_fd;
+
+	snprintf(sunx.sun_path, sizeof(sunx.sun_path), "%s", path);
+	len = offsetof(struct sockaddr_un, sun_path[strlen(sunx.sun_path)]);
+	++len;	/* include nul */
+	sunx.sun_family = AF_UNIX;
+	sunx.sun_len = len;
+
+	net_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+	if (net_fd < 0)
+		return(-1);
+	if (connect(net_fd, (void *)&sunx, len) < 0) {
+		close(net_fd);
+		return(-1);
+	}
+	fcntl(net_fd, F_SETFL, O_NONBLOCK);
+	return(net_fd);
 }
 
 #undef TAPDEV_MAJOR

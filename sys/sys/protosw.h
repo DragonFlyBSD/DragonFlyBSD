@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.20 2007/12/19 11:00:23 sephe Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.21 2008/05/27 01:10:47 dillon Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -383,8 +383,8 @@ char	*prcorequests[] = {
  */
 #ifdef _KERNEL
 
-void	pfctlinput (int, struct sockaddr *);
-void	pfctlinput2 (int, struct sockaddr *, void *);
+void	kpfctlinput (int, struct sockaddr *);
+void	kpfctlinput2 (int, struct sockaddr *, void *);
 struct protosw *pffindproto (int family, int protocol, int type);
 struct protosw *pffindtype (int family, int type);
 

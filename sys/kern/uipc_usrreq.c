@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.39 2008/05/09 17:52:17 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.40 2008/05/27 01:10:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -243,6 +243,7 @@ uipc_rcvd(struct socket *so, int flags)
 		/*NOTREACHED*/
 
 	case SOCK_STREAM:
+	case SOCK_SEQPACKET:
 		if (unp->unp_conn == NULL)
 			break;
 		so2 = unp->unp_conn->unp_socket;
@@ -326,6 +327,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	}
 
 	case SOCK_STREAM:
+	case SOCK_SEQPACKET:
 		/* Connect if not connected yet. */
 		/*
 		 * Note: A better implementation would complain
@@ -359,6 +361,9 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 				control = NULL;
 				m = NULL;
 			}
+		} else if (so->so_type == SOCK_SEQPACKET) {
+			sbappendrecord(&so2->so_rcv.sb, m);
+			m = NULL;
 		} else {
 			sbappend(&so2->so_rcv.sb, m);
 			m = NULL;
@@ -406,7 +411,8 @@ uipc_sense(struct socket *so, struct stat *sb)
 	if (unp == NULL)
 		return EINVAL;
 	sb->st_blksize = so->so_snd.ssb_hiwat;
-	if (so->so_type == SOCK_STREAM && unp->unp_conn != NULL) {
+	if ((so->so_type == SOCK_STREAM || so->so_type == SOCK_SEQPACKET) &&
+	    unp->unp_conn != NULL) {
 		so2 = unp->unp_conn->unp_socket;
 		sb->st_blksize += so2->so_rcv.ssb_cc;
 	}
@@ -480,6 +486,8 @@ uipc_ctloutput(struct socket *so, struct sockopt *sopt)
 			else {
 				if (so->so_type == SOCK_STREAM)
 					error = ENOTCONN;
+				else if (so->so_type == SOCK_SEQPACKET)
+					error = ENOTCONN;
 				else
 					error = EINVAL;
 			}
@@ -516,6 +524,7 @@ static u_long	unpdg_recvspace = 4*1024;
 static int	unp_rights;			/* file descriptors in flight */
 static struct spinlock unp_spin = SPINLOCK_INITIALIZER(&unp_spin);
 
+SYSCTL_DECL(_net_local_seqpacket);
 SYSCTL_DECL(_net_local_stream);
 SYSCTL_INT(_net_local_stream, OID_AUTO, sendspace, CTLFLAG_RW, 
 	   &unpst_sendspace, 0, "");
@@ -541,6 +550,7 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 		switch (so->so_type) {
 
 		case SOCK_STREAM:
+		case SOCK_SEQPACKET:
 			error = soreserve(so, unpst_sendspace, unpst_recvspace,
 					  ai->sb_rlimit);
 			break;
@@ -753,6 +763,7 @@ unp_connect2(struct socket *so, struct socket *so2)
 		break;
 
 	case SOCK_STREAM:
+	case SOCK_SEQPACKET:
 		unp2->unp_conn = unp;
 		soisconnected(so);
 		soisconnected(so2);
@@ -780,6 +791,7 @@ unp_disconnect(struct unpcb *unp)
 		unp->unp_socket->so_state &= ~SS_ISCONNECTED;
 		break;
 	case SOCK_STREAM:
+	case SOCK_SEQPACKET:
 		soisdisconnected(unp->unp_socket);
 		unp2->unp_conn = NULL;
 		soisdisconnected(unp2->unp_socket);
@@ -885,15 +897,20 @@ SYSCTL_PROC(_net_local_dgram, OID_AUTO, pcblist, CTLFLAG_RD,
 SYSCTL_PROC(_net_local_stream, OID_AUTO, pcblist, CTLFLAG_RD, 
 	    (caddr_t)(long)SOCK_STREAM, 0, unp_pcblist, "S,xunpcb",
 	    "List of active local stream sockets");
+SYSCTL_PROC(_net_local_seqpacket, OID_AUTO, pcblist, CTLFLAG_RD, 
+	    (caddr_t)(long)SOCK_SEQPACKET, 0, unp_pcblist, "S,xunpcb",
+	    "List of active local seqpacket stream sockets");
 
 static void
 unp_shutdown(struct unpcb *unp)
 {
 	struct socket *so;
 
-	if (unp->unp_socket->so_type == SOCK_STREAM && unp->unp_conn != NULL &&
-	    (so = unp->unp_conn->unp_socket))
+	if ((unp->unp_socket->so_type == SOCK_STREAM ||
+	     unp->unp_socket->so_type == SOCK_SEQPACKET) &&
+	    unp->unp_conn != NULL && (so = unp->unp_conn->unp_socket)) {
 		socantrcvmore(so);
+	}
 }
 
 static void

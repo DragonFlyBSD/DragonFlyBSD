@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.7 2007/07/02 05:38:28 dillon Exp $
+ * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.8 2008/05/27 01:10:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -314,16 +314,21 @@ vke_attach(const struct vknetif_info *info, int unit)
 	KKASSERT(info->tap_fd >= 0);
 	fd = info->tap_fd;
 
-	if (ioctl(fd, TAPGIFINFO, &tapinfo) < 0) {
-		kprintf(VKE_DEVNAME "%d: ioctl(TAPGIFINFO) failed: %s\n",
-			unit, strerror(errno));
-		return ENXIO;
-	}
+	/*
+	 * This is only a TAP device if tap_unit is non-zero.
+	 */
+	if (info->tap_unit >= 0) {
+		if (ioctl(fd, TAPGIFINFO, &tapinfo) < 0) {
+			kprintf(VKE_DEVNAME "%d: ioctl(TAPGIFINFO) "
+				"failed: %s\n", unit, strerror(errno));
+			return ENXIO;
+		}
 
-	if (ioctl(fd, SIOCGIFADDR, enaddr) < 0) {
-		kprintf(VKE_DEVNAME "%d: ioctl(SIOCGIFADDR) failed: %s\n",
-			unit, strerror(errno));
-		return ENXIO;
+		if (ioctl(fd, SIOCGIFADDR, enaddr) < 0) {
+			kprintf(VKE_DEVNAME "%d: ioctl(SIOCGIFADDR) "
+				"failed: %s\n", unit, strerror(errno));
+			return ENXIO;
+		}
 	}
 	enaddr[1] += 1;
 

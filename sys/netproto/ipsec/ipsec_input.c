@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.12 2007/10/20 10:28:44 sephe Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.13 2008/05/27 01:10:44 dillon Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -502,7 +502,7 @@ esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		struct ip6ctlparam ip6cp1;
 
 		/*
-		 * Notify the error to all possible sockets via pfctlinput2.
+		 * Notify the error to all possible sockets via kpfctlinput2.
 		 * Since the upper layer information (such as protocol type,
 		 * source and destination ports) is embedded in the encrypted
 		 * data and might have been cut, we can't directly call
@@ -510,13 +510,13 @@ esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		 * function will consider source and destination addresses
 		 * as well as the flow info value, and may be able to find
 		 * some PCB that should be notified.
-		 * Although pfctlinput2 will call esp6_ctlinput(), there is
+		 * Although kpfctlinput2 will call esp6_ctlinput(), there is
 		 * no possibility of an infinite loop of function calls,
 		 * because we don't pass the inner IPv6 header.
 		 */
 		bzero(&ip6cp1, sizeof(ip6cp1));
 		ip6cp1.ip6c_src = ip6cp->ip6c_src;
-		pfctlinput2(cmd, sa, (void *)&ip6cp1);
+		kpfctlinput2(cmd, sa, (void *)&ip6cp1);
 
 		/*
 		 * Then go to special cases that need ESP header information.

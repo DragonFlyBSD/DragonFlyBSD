@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.21 2008/01/05 14:02:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.22 2008/05/27 01:10:43 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -2676,7 +2676,7 @@ ipsec6_output_trans(struct ipsec_output_state *state, u_char *nexthdrp,
 			 * just silently discarding. (jinmei@kame.net)
 			 * XXX: should we restrict the error to TCP packets?
 			 * XXX: should we directly notify sockets via
-			 *      pfctlinputs?
+			 *      kpfctlinputs?
 			 */
 			icmp6_error(state->m, ICMP6_DST_UNREACH,
 				    ICMP6_DST_UNREACH_ADMIN, 0);

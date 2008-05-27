@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.16 2007/11/26 11:43:09 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.17 2008/05/27 01:10:43 dillon Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -909,13 +909,13 @@ esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		 * function will consider source and destination addresses
 		 * as well as the flow info value, and may be able to find
 		 * some PCB that should be notified.
-		 * Although pfctlinput2 will call esp6_ctlinput(), there is
+		 * Although kpfctlinput2 will call esp6_ctlinput(), there is
 		 * no possibility of an infinite loop of function calls,
 		 * because we don't pass the inner IPv6 header.
 		 */
 		bzero(&ip6cp1, sizeof(ip6cp1));
 		ip6cp1.ip6c_src = ip6cp->ip6c_src;
-		pfctlinput2(cmd, sa, (void *)&ip6cp1);
+		kpfctlinput2(cmd, sa, (void *)&ip6cp1);
 
 		/*
 		 * Then go to special cases that need ESP header information.

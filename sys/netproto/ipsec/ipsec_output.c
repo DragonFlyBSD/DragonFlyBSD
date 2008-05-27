@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.11 2007/10/20 10:28:44 sephe Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.12 2008/05/27 01:10:44 dillon Exp $
  */
 
 /*
@@ -556,7 +556,7 @@ ipsec6_output_trans(
 		 * just silently discarding. (jinmei@kame.net)
 		 * XXX: should we restrict the error to TCP packets?
 		 * XXX: should we directly notify sockets via
-		 *      pfctlinputs?
+		 *      kpfctlinputs?
 		 */
 		icmp6_error(m, ICMP6_DST_UNREACH,
 			    ICMP6_DST_UNREACH_ADMIN, 0);

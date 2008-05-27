@@ -32,7 +32,7 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.20 2007/12/30 20:02:57 hasso Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.21 2008/05/27 01:10:47 dillon Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -450,7 +450,7 @@ struct sf_hdtr {
 	int trl_cnt;		/* number of trailer iovec's */
 };
 
-#ifndef	_KERNEL
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>

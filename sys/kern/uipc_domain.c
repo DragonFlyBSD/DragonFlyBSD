@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.9 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.10 2008/05/27 01:10:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -190,7 +190,7 @@ found:
 }
 
 void
-pfctlinput(int cmd, struct sockaddr *sa)
+kpfctlinput(int cmd, struct sockaddr *sa)
 {
 	struct domain *dp;
 	struct protosw *pr;
@@ -202,7 +202,7 @@ pfctlinput(int cmd, struct sockaddr *sa)
 }
 
 void
-pfctlinput2(int cmd, struct sockaddr *sa, void *ctlparam)
+kpfctlinput2(int cmd, struct sockaddr *sa, void *ctlparam)
 {
 	struct domain *dp;
 	struct protosw *pr;
