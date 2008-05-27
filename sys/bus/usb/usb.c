@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.48 2008/05/26 14:00:46 mneumann Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.49 2008/05/27 12:00:47 mneumann Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -97,12 +97,22 @@ MALLOC_DEFINE(M_USBHC, "USBHC", "USB host controller");
  */
 SYSCTL_NODE(_hw, OID_AUTO, usb, CTLFLAG_RW, 0, "USB debugging");
 
+/*
+ * XXX: This is a hack! If your USB keyboard doesn't work
+ * early at boot, try setting this tunable to 0 from
+ * bootleader:     
+ *
+ *      set hw.usb.hack_defer_exploration=0
+ */ 
+static int	hack_defer_exploration = 1;
+
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (usbdebug) kprintf x
 #define DPRINTFN(n,x)	if (usbdebug>(n)) kprintf x
 int	usbdebug = 0;
 SYSCTL_INT(_hw_usb, OID_AUTO, debug, CTLFLAG_RW,
 	   &usbdebug, 0, "usb debug level");
+
 /*
  * 0  - do usual exploration
  * 1  - do not use timeout exploration
@@ -222,6 +232,9 @@ usb_attach(device_t self)
 	int speed;
 	struct usb_event ue;
 
+	TUNABLE_INT_FETCH("hw.usb.hack_defer_exploration",
+	    &hack_defer_exploration);
+
 	DPRINTF(("usb_attach\n"));
 
 	usbd_init();
@@ -247,7 +260,7 @@ usb_attach(device_t self)
 	kprintf("\n");
 
 	/* Make sure not to use tsleep() if we are cold booting. */
-	if (cold)
+	if (hack_defer_exploration && cold)
 		sc->sc_bus->use_polling++;
 
 	ue.u.ue_ctrlr.ue_bus = device_get_unit(self);
@@ -275,12 +288,21 @@ usb_attach(device_t self)
 		 * the keyboard will not work until after cold boot.
 		 */
 		if (cold) {
-			/* Explore high-speed busses before others. */
-			if (speed == USB_SPEED_HIGH)
-				dev->hub->explore(sc->sc_bus->root_hub);
-			else
-				TAILQ_INSERT_TAIL(&usb_coldexplist, sc,
-				    sc_coldexplist);
+			if (hack_defer_exploration) {
+				/* Explore high-speed busses before others. */
+				if (speed == USB_SPEED_HIGH)
+					dev->hub->explore(sc->sc_bus->root_hub);
+				else
+					TAILQ_INSERT_TAIL(&usb_coldexplist, sc,
+					    sc_coldexplist);
+			} else {
+				/*
+				 * XXX Exploring high speed devices here will
+				 * hang the system.
+				 */
+				if (speed != USB_SPEED_HIGH)
+					dev->hub->explore(sc->sc_bus->root_hub);
+			}
 		}
 #endif
 	} else {
@@ -288,7 +310,7 @@ usb_attach(device_t self)
 		    "root hub problem, error=%d\n", err);
 		sc->sc_dying = 1;
 	}
-	if (cold)
+	if (hack_defer_exploration && cold)
 		sc->sc_bus->use_polling--;
 
 	usb_create_event_thread(self);
@@ -903,6 +925,12 @@ static void
 usb_cold_explore(void *arg)
 {
 	struct usb_softc *sc;
+
+	TUNABLE_INT_FETCH("hw.usb.hack_defer_exploration",
+	    &hack_defer_exploration);
+
+	if (!hack_defer_exploration)
+		return;
 
 	KASSERT(cold || TAILQ_EMPTY(&usb_coldexplist),
 	    ("usb_cold_explore: busses to explore when !cold"));
