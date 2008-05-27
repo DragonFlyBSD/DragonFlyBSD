@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.8 2008/05/27 12:07:01 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.9 2008/05/27 13:27:35 sephe Exp $
  */
 
 /*
@@ -82,8 +82,8 @@
 
 #include "miibus_if.h"
 
-#include "if_bcereg.h"
-#include "if_bcefw.h"
+#include <dev/netif/bce/if_bcereg.h>
+#include <dev/netif/bce/if_bcefw.h>
 
 /****************************************************************************/
 /* BCE Debug Options                                                        */
