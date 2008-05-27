@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/vknetd/filter.c,v 1.1 2008/05/27 01:58:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/vknetd/filter.c,v 1.2 2008/05/27 22:47:16 dillon Exp $
  */
 /*
  * Bridging code (serialized)
@@ -56,8 +56,9 @@ filter_ok(u_int8_t *pkt, int bytes)
 	 * Allow only ARP and IP packetes
 	 */
 	ether_type = ntohs(*(u_int16_t *)(pkt + 12));
-	if (ether_type != ETHERTYPE_ARP &&
-	    ether_type != ETHERTYPE_IP)
+	if (ether_type == ETHERTYPE_ARP)
+		return(1);
+	if (ether_type != ETHERTYPE_IP)
 		return(0);
 
 	/*
