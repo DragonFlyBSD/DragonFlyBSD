@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.20 2008/05/19 10:19:49 corecode Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.21 2008/05/28 10:37:25 corecode Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -195,6 +195,8 @@ typedef __timer_t	timer_t;
 #endif
 
 #ifdef __BSD_VISIBLE
+
+#include <sys/fd_set.h>
 
 #define NBBY 8		/* number of bits in a byte */
 /*
