@@ -32,31 +32,55 @@
  *
  *	@(#)select.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
- * $DragonFly: src/sys/sys/select.h,v 1.11 2008/05/28 10:35:11 corecode Exp $
+ * $DragonFly: src/sys/sys/fd_set.h,v 1.1 2008/05/28 10:35:11 corecode Exp $
  */
 
-#ifndef _SYS_SELECT_H_
-#define	_SYS_SELECT_H_
+#ifndef _SYS_FD_SET_H_
+#define	_SYS_FD_SET_H_
 
-#include <sys/cdefs.h>
-
-#ifndef _SYS_SIGNAL_H_
-#include <sys/signal.h>
+/*
+ * Select uses bit masks of file descriptors in longs.  These macros
+ * manipulate such bit fields (the filesystem macros use chars).
+ * FD_SETSIZE may be defined by the user, but the default here should
+ * be enough for most uses.
+ */
+#ifndef FD_SETSIZE
+#define FD_SETSIZE	1024
 #endif
-#ifndef _SYS_TIME_H_
-#include <sys/time.h>
+
+#define	__NBBY		8		/* number of bits in a byte */
+
+typedef unsigned long   __fd_mask;
+#define __NFDBITS ((unsigned int)sizeof(__fd_mask) * __NBBY)	/* bits per mask */
+
+#ifndef __howmany
+#define __howmany(x, y)	(((x) + ((y) - 1)) / (y))
 #endif
 
-#include <sys/fd_set.h>
+typedef struct fd_set {
+	__fd_mask fds_bits[__howmany(FD_SETSIZE, __NFDBITS)];
+} fd_set;
 
-__BEGIN_DECLS
-struct timeval;
-int	select(int, fd_set * __restrict, fd_set * __restrict,
-	       fd_set * __restrict, struct timeval * __restrict);
-struct timespec;
-int	 pselect(int, fd_set * __restrict, fd_set * __restrict,
-		fd_set * __restrict, const struct timespec * __restrict,
-		const sigset_t * __restrict);
-__END_DECLS
+#define _fdset_mask(n)	((fd_mask)1 << ((n) % NFDBITS))
+#define FD_SET(n, p)	((p)->fds_bits[(n)/NFDBITS] |= _fdset_mask(n))
+#define FD_CLR(n, p)	((p)->fds_bits[(n)/NFDBITS] &= ~_fdset_mask(n))
+#define FD_ISSET(n, p)	((p)->fds_bits[(n)/NFDBITS] & _fdset_mask(n))
+#define FD_ZERO(p)	__builtin_memset((p), 0, sizeof(*(p)))
 
-#endif	/* !_SYS_SELECT_H_ */
+
+/*
+ * Expose classic BSD names if we're not running in conformance mode.
+ */
+#ifdef __BSD_VISIBLE
+
+#define fd_mask	__fd_mask
+#define NFDBITS	__NFDBITS
+#ifndef howmany
+#define howmany(a, b)	__howmany(a, b)
+#endif
+
+#define FD_COPY(f, t)	__builtin_memcpy((t), (f), sizeof(*(f)))
+
+#endif /* __BSD_VISIBLE */
+
+#endif /* _SYS_FD_SET_H_ */
