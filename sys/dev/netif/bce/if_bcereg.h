@@ -27,7 +27,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bcereg.h,v 1.13 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bcereg.h,v 1.1 2007/05/26 08:50:49 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bcereg.h,v 1.2 2008/05/28 10:51:56 sephe Exp $
  */
 
 #ifndef	_BCE_H_DEFINED
@@ -4639,21 +4639,22 @@ struct bce_softc {
 	 * to control how often the status block, statistics block and
 	 * interrupts are generated.
 	 */
-	uint16_t		bce_tx_quick_cons_trip_int;
-	uint16_t		bce_tx_quick_cons_trip;
-	uint16_t		bce_rx_quick_cons_trip_int;
-	uint16_t		bce_rx_quick_cons_trip;
+	uint32_t		bce_tx_quick_cons_trip_int;
+	uint32_t		bce_tx_quick_cons_trip;
+	uint32_t		bce_rx_quick_cons_trip_int;
+	uint32_t		bce_rx_quick_cons_trip;
 	uint16_t		bce_comp_prod_trip_int;
 	uint16_t		bce_comp_prod_trip;
-	uint16_t		bce_tx_ticks_int;
-	uint16_t		bce_tx_ticks;
-	uint16_t		bce_rx_ticks_int;
-	uint16_t		bce_rx_ticks;
+	uint32_t		bce_tx_ticks_int;
+	uint32_t		bce_tx_ticks;
+	uint32_t		bce_rx_ticks_int;
+	uint32_t		bce_rx_ticks;
 	uint16_t		bce_com_ticks_int;
 	uint16_t		bce_com_ticks;
 	uint16_t		bce_cmd_ticks_int;
 	uint16_t		bce_cmd_ticks;
 	uint32_t		bce_stats_ticks;
+	uint32_t		bce_coalchg_mask;	/* BCE_COALMASK_ */
 
 	/* The address of the integrated PHY on the MII bus. */
 	int			bce_phy_addr;
@@ -4814,6 +4815,15 @@ struct bce_softc {
 	uint32_t lost_status_block_updates;
 #endif
 };
+
+#define BCE_COALMASK_TX_BDS_INT		0x01
+#define BCE_COALMASK_TX_BDS		0x02
+#define BCE_COALMASK_TX_TICKS_INT	0x04
+#define BCE_COALMASK_TX_TICKS		0x08
+#define BCE_COALMASK_RX_BDS_INT		0x10
+#define BCE_COALMASK_RX_BDS		0x20
+#define BCE_COALMASK_RX_TICKS_INT	0x40
+#define BCE_COALMASK_RX_TICKS		0x80
 
 struct bce_dmamap_arg {
 	int			bce_maxsegs;

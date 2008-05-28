@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.9 2008/05/27 13:27:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.10 2008/05/28 10:51:56 sephe Exp $
  */
 
 /*
@@ -376,6 +376,35 @@ static void	bce_tick(void *);
 static void	bce_tick_serialized(struct bce_softc *);
 static void	bce_add_sysctls(struct bce_softc *);
 
+static void	bce_coal_change(struct bce_softc *);
+static int	bce_sysctl_tx_bds_int(SYSCTL_HANDLER_ARGS);
+static int	bce_sysctl_tx_bds(SYSCTL_HANDLER_ARGS);
+static int	bce_sysctl_tx_ticks_int(SYSCTL_HANDLER_ARGS);
+static int	bce_sysctl_tx_ticks(SYSCTL_HANDLER_ARGS);
+static int	bce_sysctl_rx_bds_int(SYSCTL_HANDLER_ARGS);
+static int	bce_sysctl_rx_bds(SYSCTL_HANDLER_ARGS);
+static int	bce_sysctl_rx_ticks_int(SYSCTL_HANDLER_ARGS);
+static int	bce_sysctl_rx_ticks(SYSCTL_HANDLER_ARGS);
+static int	bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS,
+				       uint32_t *, uint32_t);
+
+static uint32_t	bce_tx_bds_int = 20;	/* bcm: 20 */
+static uint32_t	bce_tx_bds = 24;	/* bcm: 20 */
+static uint32_t	bce_tx_ticks_int = 80;	/* bcm: 80 */
+static uint32_t	bce_tx_ticks = 1000;	/* bcm: 80 */
+static uint32_t	bce_rx_bds_int = 6;	/* bcm: 6 */
+static uint32_t	bce_rx_bds = 24;	/* bcm: 6 */
+static uint32_t	bce_rx_ticks_int = 18;	/* bcm: 18 */
+static uint32_t	bce_rx_ticks = 125;	/* bcm: 18 */
+
+TUNABLE_INT("hw.bce.tx_bds_int", &bce_tx_bds_int);
+TUNABLE_INT("hw.bce.tx_bds", &bce_tx_bds);
+TUNABLE_INT("hw.bce.tx_ticks_int", &bce_tx_ticks_int);
+TUNABLE_INT("hw.bce.tx_ticks", &bce_tx_ticks);
+TUNABLE_INT("hw.bce.rx_bds_int", &bce_rx_bds_int);
+TUNABLE_INT("hw.bce.rx_bds", &bce_rx_bds);
+TUNABLE_INT("hw.bce.rx_ticks_int", &bce_rx_ticks_int);
+TUNABLE_INT("hw.bce.rx_ticks", &bce_rx_ticks);
 
 /****************************************************************************/
 /* DragonFly device dispatch table.                                         */
@@ -657,15 +686,15 @@ bce_attach(device_t dev)
 	sc->bce_rx_ticks_int           = 0;
 	sc->bce_rx_ticks               = 0;
 #else
-	sc->bce_tx_quick_cons_trip_int = 20;
-	sc->bce_tx_quick_cons_trip     = 20;
-	sc->bce_tx_ticks_int           = 80;
-	sc->bce_tx_ticks               = 80;
+	sc->bce_tx_quick_cons_trip_int = bce_tx_bds_int;
+	sc->bce_tx_quick_cons_trip     = bce_tx_bds;
+	sc->bce_tx_ticks_int           = bce_tx_ticks_int;
+	sc->bce_tx_ticks               = bce_tx_ticks;
 
-	sc->bce_rx_quick_cons_trip_int = 6;
-	sc->bce_rx_quick_cons_trip     = 6;
-	sc->bce_rx_ticks_int           = 18;
-	sc->bce_rx_ticks               = 18;
+	sc->bce_rx_quick_cons_trip_int = bce_rx_bds_int;
+	sc->bce_rx_quick_cons_trip     = bce_rx_bds;
+	sc->bce_rx_ticks_int           = bce_rx_ticks_int;
+	sc->bce_rx_ticks               = bce_rx_ticks;
 #endif
 
 	/* Update statistics once every second. */
@@ -2930,6 +2959,7 @@ bce_stop(struct bce_softc *sc)
 	}
 
 	sc->bce_link = 0;
+	sc->bce_coalchg_mask = 0;
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	ifp->if_timer = 0;
@@ -4914,6 +4944,9 @@ bce_intr(void *xsc)
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
 	       BCE_PCICFG_INT_ACK_CMD_INDEX_VALID | sc->last_status_idx);
 
+	if (sc->bce_coalchg_mask)
+		bce_coal_change(sc);
+
 	/* Handle any frames that arrived while handling the interrupt. */
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -5524,6 +5557,40 @@ bce_add_sysctls(struct bce_softc *sc)
 
 	ctx = &sc->bce_sysctl_ctx;
 	children = SYSCTL_CHILDREN(sc->bce_sysctl_tree);
+
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "tx_bds_int",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bce_sysctl_tx_bds_int, "I",
+			"Send max coalesced BD count during interrupt");
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "tx_bds",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bce_sysctl_tx_bds, "I",
+			"Send max coalesced BD count");
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "tx_ticks_int",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bce_sysctl_tx_ticks_int, "I",
+			"Send coalescing ticks during interrupt");
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "tx_ticks",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bce_sysctl_tx_ticks, "I",
+			"Send coalescing ticks");
+
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "rx_bds_int",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bce_sysctl_rx_bds_int, "I",
+			"Receive max coalesced BD count during interrupt");
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "rx_bds",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bce_sysctl_rx_bds, "I",
+			"Receive max coalesced BD count");
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "rx_ticks_int",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bce_sysctl_rx_ticks_int, "I",
+			"Receive coalescing ticks during interrupt");
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "rx_ticks",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bce_sysctl_rx_ticks, "I",
+			"Receive coalescing ticks");
 
 #ifdef BCE_DEBUG
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, 
@@ -7151,3 +7218,167 @@ bce_breakpoint(struct bce_softc *sc)
 }
 
 #endif	/* BCE_DEBUG */
+
+static int
+bce_sysctl_tx_bds_int(SYSCTL_HANDLER_ARGS)
+{
+	struct bce_softc *sc = arg1;
+
+	return bce_sysctl_coal_change(oidp, arg1, arg2, req,
+			&sc->bce_tx_quick_cons_trip_int,
+			BCE_COALMASK_TX_BDS_INT);
+}
+
+static int
+bce_sysctl_tx_bds(SYSCTL_HANDLER_ARGS)
+{
+	struct bce_softc *sc = arg1;
+
+	return bce_sysctl_coal_change(oidp, arg1, arg2, req,
+			&sc->bce_tx_quick_cons_trip,
+			BCE_COALMASK_TX_BDS);
+}
+
+static int
+bce_sysctl_tx_ticks_int(SYSCTL_HANDLER_ARGS)
+{
+	struct bce_softc *sc = arg1;
+
+	return bce_sysctl_coal_change(oidp, arg1, arg2, req,
+			&sc->bce_tx_ticks_int,
+			BCE_COALMASK_TX_TICKS_INT);
+}
+
+static int
+bce_sysctl_tx_ticks(SYSCTL_HANDLER_ARGS)
+{
+	struct bce_softc *sc = arg1;
+
+	return bce_sysctl_coal_change(oidp, arg1, arg2, req,
+			&sc->bce_tx_ticks,
+			BCE_COALMASK_TX_TICKS);
+}
+
+static int
+bce_sysctl_rx_bds_int(SYSCTL_HANDLER_ARGS)
+{
+	struct bce_softc *sc = arg1;
+
+	return bce_sysctl_coal_change(oidp, arg1, arg2, req,
+			&sc->bce_rx_quick_cons_trip_int,
+			BCE_COALMASK_RX_BDS_INT);
+}
+
+static int
+bce_sysctl_rx_bds(SYSCTL_HANDLER_ARGS)
+{
+	struct bce_softc *sc = arg1;
+
+	return bce_sysctl_coal_change(oidp, arg1, arg2, req,
+			&sc->bce_rx_quick_cons_trip,
+			BCE_COALMASK_RX_BDS);
+}
+
+static int
+bce_sysctl_rx_ticks_int(SYSCTL_HANDLER_ARGS)
+{
+	struct bce_softc *sc = arg1;
+
+	return bce_sysctl_coal_change(oidp, arg1, arg2, req,
+			&sc->bce_rx_ticks_int,
+			BCE_COALMASK_RX_TICKS_INT);
+}
+
+static int
+bce_sysctl_rx_ticks(SYSCTL_HANDLER_ARGS)
+{
+	struct bce_softc *sc = arg1;
+
+	return bce_sysctl_coal_change(oidp, arg1, arg2, req,
+			&sc->bce_rx_ticks,
+			BCE_COALMASK_RX_TICKS);
+}
+
+static int
+bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS, uint32_t *coal,
+		       uint32_t coalchg_mask)
+{
+	struct bce_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error = 0, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = *coal;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (!error && req->newptr != NULL) {
+		if (v < 0) {
+			error = EINVAL;
+		} else {
+			*coal = v;
+			sc->bce_coalchg_mask |= coalchg_mask;
+		}
+	}
+
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+static void
+bce_coal_change(struct bce_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0) {
+		sc->bce_coalchg_mask = 0;
+		return;
+	}
+
+	if (sc->bce_coalchg_mask &
+	    (BCE_COALMASK_TX_BDS | BCE_COALMASK_TX_BDS_INT)) {
+		REG_WR(sc, BCE_HC_TX_QUICK_CONS_TRIP,
+		       (sc->bce_tx_quick_cons_trip_int << 16) |
+		       sc->bce_tx_quick_cons_trip);
+		if (bootverbose) {
+			if_printf(ifp, "tx_bds %u, tx_bds_int %u\n",
+				  sc->bce_tx_quick_cons_trip,
+				  sc->bce_tx_quick_cons_trip_int);
+		}
+	}
+
+	if (sc->bce_coalchg_mask &
+	    (BCE_COALMASK_TX_TICKS | BCE_COALMASK_TX_TICKS_INT)) {
+		REG_WR(sc, BCE_HC_TX_TICKS,
+		       (sc->bce_tx_ticks_int << 16) | sc->bce_tx_ticks);
+		if (bootverbose) {
+			if_printf(ifp, "tx_ticks %u, tx_ticks_int %u\n",
+				  sc->bce_tx_ticks, sc->bce_tx_ticks_int);
+		}
+	}
+
+	if (sc->bce_coalchg_mask &
+	    (BCE_COALMASK_RX_BDS | BCE_COALMASK_RX_BDS_INT)) {
+		REG_WR(sc, BCE_HC_RX_QUICK_CONS_TRIP,
+		       (sc->bce_rx_quick_cons_trip_int << 16) |
+		       sc->bce_rx_quick_cons_trip);
+		if (bootverbose) {
+			if_printf(ifp, "rx_bds %u, rx_bds_int %u\n",
+				  sc->bce_rx_quick_cons_trip,
+				  sc->bce_rx_quick_cons_trip_int);
+		}
+	}
+
+	if (sc->bce_coalchg_mask &
+	    (BCE_COALMASK_RX_TICKS | BCE_COALMASK_RX_TICKS_INT)) {
+		REG_WR(sc, BCE_HC_RX_TICKS,
+		       (sc->bce_rx_ticks_int << 16) | sc->bce_rx_ticks);
+		if (bootverbose) {
+			if_printf(ifp, "rx_ticks %u, rx_ticks_int %u\n",
+				  sc->bce_rx_ticks, sc->bce_rx_ticks_int);
+		}
+	}
+
+	sc->bce_coalchg_mask = 0;
+}
