@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.15 2008/03/20 12:55:32 sephe Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.16 2008/05/28 12:11:13 sephe Exp $
  */
 
 /*
@@ -608,10 +608,7 @@ ng_ether_rcv_lower(node_p node, struct mbuf *m, meta_p meta)
 	}
 
 	/* Send it on its way */
-	lwkt_serialize_enter(ifp->if_serializer);
 	error = ether_output_frame(ifp, m);
-	lwkt_serialize_exit(ifp->if_serializer);
-
 	return (error);
 }
 

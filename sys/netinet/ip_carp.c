@@ -25,7 +25,7 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.7 2008/03/07 11:34:20 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_carp.c,v 1.8 2008/05/28 12:11:13 sephe Exp $
  */
 
 #include "opt_carp.h"
@@ -1052,9 +1052,7 @@ carp_send_arp(struct carp_softc *sc)
 
 		if (ifa->ifa_addr->sa_family != AF_INET)
 			continue;
-		lwkt_serialize_enter(sc->sc_carpdev->if_serializer);
 	        arp_ifinit2(sc->sc_carpdev, ifa, IF_LLADDR(sc->sc_ifp));	
-		lwkt_serialize_exit(sc->sc_carpdev->if_serializer); 
 
 		DELAY(1000);	/* XXX */
 	}

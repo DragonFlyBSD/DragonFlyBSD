@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.46 2008/05/14 11:59:24 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.47 2008/05/28 12:11:13 sephe Exp $
  */
 
 /*
@@ -953,9 +953,14 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t proxy)
 void
 arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 {
-	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY)
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY) {
+		lwkt_serialize_exit(ifp->if_serializer);
 		arprequest(ifp, &IA_SIN(ifa)->sin_addr, &IA_SIN(ifa)->sin_addr,
 			   IF_LLADDR(ifp));
+		lwkt_serialize_enter(ifp->if_serializer);
+	}
 	ifa->ifa_rtrequest = arp_rtrequest;
 	ifa->ifa_flags |= RTF_CLONING;
 }
@@ -963,6 +968,8 @@ arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 void
 arp_ifinit2(struct ifnet *ifp, struct ifaddr *ifa, u_char *enaddr)
 {
+	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+
 	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY)
 		arprequest(ifp, &IA_SIN(ifa)->sin_addr, &IA_SIN(ifa)->sin_addr,
 			   enaddr);

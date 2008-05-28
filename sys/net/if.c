@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.66 2008/05/27 01:10:41 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.67 2008/05/28 12:11:13 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -2075,8 +2075,9 @@ int
 ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 {
 	struct ifaltq *ifq = &ifp->if_snd;
-	int not_serialized, running = 0;
-	int error, start = 0;
+	int running = 0, error, start = 0;
+
+	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
 
 	ALTQ_LOCK(ifq);
 	error = ifq_enqueue_locked(ifq, m, pa);
@@ -2117,30 +2118,26 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	 * contention on ifnet's serializer, ifnet.if_start will
 	 * be scheduled on ifnet's CPU.
 	 */
-	not_serialized = !IS_SERIALIZED(ifp->if_serializer);
-	if (not_serialized) {
-		if (!lwkt_serialize_try(ifp->if_serializer)) {
-			/*
-			 * ifnet serializer contention happened,
-			 * ifnet.if_start is scheduled on ifnet's
-			 * CPU, and we keep going.
-			 */
-			logifstart(contend_sched, ifp);
-			if_start_schedule(ifp);
-			return 0;
-		}
+	if (!lwkt_serialize_try(ifp->if_serializer)) {
+		/*
+		 * ifnet serializer contention happened,
+		 * ifnet.if_start is scheduled on ifnet's
+		 * CPU, and we keep going.
+		 */
+		logifstart(contend_sched, ifp);
+		if_start_schedule(ifp);
+		return 0;
 	}
 
 	if ((ifp->if_flags & IFF_OACTIVE) == 0) {
 		logifstart(run, ifp);
 		ifp->if_start(ifp);
 		if ((ifp->if_flags &
-		(IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
+		     (IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
 			running = 1;
 	}
 
-	if (not_serialized)
-		lwkt_serialize_exit(ifp->if_serializer);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	if (ifq_dispatch_schednochk || if_start_need_schedule(ifq, running)) {
 		/*

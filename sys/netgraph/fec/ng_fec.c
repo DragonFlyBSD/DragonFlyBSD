@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.25 2008/05/14 11:59:24 sephe Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.26 2008/05/28 12:11:13 sephe Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -999,10 +999,11 @@ ng_fec_start(struct ifnet *ifp)
 	}
 	ifp->if_opackets++;
 
+	/*
+	 * Release current iface's serializer to avoid possible dead lock
+	 */
 	lwkt_serialize_exit(ifp->if_serializer);
-	lwkt_serialize_enter(oifp->if_serializer);
 	priv->if_error = ether_output_frame(oifp, m0);
-	lwkt_serialize_exit(oifp->if_serializer);
 	lwkt_serialize_enter(ifp->if_serializer);
 }
 

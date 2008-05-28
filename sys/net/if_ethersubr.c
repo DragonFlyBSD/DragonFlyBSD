@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.61 2008/05/18 04:38:44 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.62 2008/05/28 12:11:13 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -180,6 +180,8 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	int hlen = ETHER_HDR_LEN;	/* link layer header length */
 	struct arpcom *ac = IFP2AC(ifp);
 	int error;
+
+	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
 
 	if (ifp->if_flags & IFF_MONITOR)
 		gotoerr(ENETDOWN);
@@ -403,6 +405,8 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	int error = 0;
 	struct altq_pktattr pktattr;
 	struct m_tag *mtag;
+
+	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
 
 	/* Extract info from dummynet tag */
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
