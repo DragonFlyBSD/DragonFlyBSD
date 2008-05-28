@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.10 2008/05/28 10:51:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.11 2008/05/28 13:53:42 sephe Exp $
  */
 
 /*
@@ -357,7 +357,7 @@ static void	bce_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static void	bce_init(void *);
 static void	bce_mgmt_init(struct bce_softc *);
 
-static void	bce_init_context(struct bce_softc *);
+static void	bce_init_ctx(struct bce_softc *);
 static void	bce_get_mac_addr(struct bce_softc *);
 static void	bce_set_mac_addr(struct bce_softc *);
 static void	bce_phy_intr(struct bce_softc *);
@@ -2816,28 +2816,30 @@ bce_init_cpus(struct bce_softc *sc)
 /*   Nothing.                                                               */
 /****************************************************************************/
 static void
-bce_init_context(struct bce_softc *sc)
+bce_init_ctx(struct bce_softc *sc)
 {
-	uint32_t vcid;
+	uint32_t vcid = 96;
 
-	vcid = 96;
 	while (vcid) {
 		uint32_t vcid_addr, pcid_addr, offset;
+		int i;
 
 		vcid--;
 
    		vcid_addr = GET_CID_ADDR(vcid);
 		pcid_addr = vcid_addr;
 
-		REG_WR(sc, BCE_CTX_VIRT_ADDR, 0x00);
-		REG_WR(sc, BCE_CTX_PAGE_TBL, pcid_addr);
+		for (i = 0; i < (CTX_SIZE / PHY_CTX_SIZE); i++) {
+			vcid_addr += (i << PHY_CTX_SHIFT);
+			pcid_addr += (i << PHY_CTX_SHIFT);
 
-		/* Zero out the context. */
-		for (offset = 0; offset < PHY_CTX_SIZE; offset += 4)
-			CTX_WR(sc, 0x00, offset, 0);
+			REG_WR(sc, BCE_CTX_VIRT_ADDR, vcid_addr);
+			REG_WR(sc, BCE_CTX_PAGE_TBL, pcid_addr);
 
-		REG_WR(sc, BCE_CTX_VIRT_ADDR, vcid_addr);
-		REG_WR(sc, BCE_CTX_PAGE_TBL, pcid_addr);
+			/* Zero out the context. */
+			for (offset = 0; offset < PHY_CTX_SIZE; offset += 4)
+				CTX_WR(sc, vcid_addr, offset, 0);
+		}
 	}
 }
 
@@ -3098,7 +3100,7 @@ bce_chipinit(struct bce_softc *sc)
 	       BCE_MISC_ENABLE_STATUS_BITS_CONTEXT_ENABLE);
 
 	/* Initialize context mapping and zero out the quick contexts. */
-	bce_init_context(sc);
+	bce_init_ctx(sc);
 
 	/* Initialize the on-boards CPUs */
 	bce_init_cpus(sc);
