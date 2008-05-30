@@ -32,9 +32,9 @@
 .\"
 .\"	@(#)bcd.6	8.1 (Berkeley) 5/31/93
 .\" $FreeBSD: src/games/morse/morse.6,v 1.4.2.7 2003/01/26 02:57:27 keramida Exp $
-.\" $DragonFly: src/games/morse/morse.6,v 1.7 2007/04/27 08:49:42 swildner Exp $
+.\" $DragonFly: src/games/morse/morse.6,v 1.8 2008/05/30 21:47:04 corecode Exp $
 .\"
-.Dd April 22, 2007
+.Dd May 30, 2008
 .Dt MORSE 6
 .Os
 .Sh NAME
@@ -48,6 +48,7 @@
 .Op Fl d Ar device
 .Op Fl e
 .Op Fl w Ar speed
+.Op Fl W Ar spped
 .Op Fl f Ar frequency
 .Op Fl s
 .Op Ar string ...
@@ -78,6 +79,13 @@ Select a different dsp device from the default
 .It Fl w Ar speed
 Set the sending speed in words per minute. If not specified the default
 speed of 20 WPM is used.
+.It Fl W Ar spacespeed
+Enable Farnsworth-keying.
+The argument to
+.Fl w
+will set the character keying speed and the argument to
+.Fl W
+will set the spacing between character and words.
 .It Fl f Ar frequency
 Set the sidetone frequency to something other than the default 600 Hz.
 .It Fl d Ar device

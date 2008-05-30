@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)morse.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/morse/morse.c,v 1.12.2.2 2002/03/12 17:45:15 phantom Exp $
- * $DragonFly: src/games/morse/morse.c,v 1.7 2008/03/30 16:45:04 corecode Exp $
+ * $DragonFly: src/games/morse/morse.c,v 1.8 2008/05/30 21:47:04 corecode Exp $
  */
 
 /*
@@ -198,24 +198,25 @@ void		play(const char *, int);
 void		ttyout(const char *, int);
 void		sighandler(int);
 
-#define GETOPTOPTS "d:ef:opP:sw:"
+#define GETOPTOPTS "d:ef:opP:sw:W:"
 #define USAGE \
-"usage: morse [-s] [-e] [-p | -o] [-P device] [-d device] [-w speed] [-f frequency] [string ...]\n"
+"usage: morse [-s] [-e] [-p | -o] [-P device] [-d device] [-w speed] [-W speed] [-f frequency] [string ...]\n"
 
 static int      oflag, pflag, sflag, eflag;
 static int      wpm = 20;	/* words per minute */
+static int	farnsworth = -1;
 #define FREQUENCY 600
 static int      freq = FREQUENCY;
 static char	*device;	/* for tty-controlled generator */
 
-static struct tone_data tone_dot, tone_dash, tone_silence;
+static struct tone_data tone_dot, tone_dash, tone_silence, tone_letter_silence;
 #define DSP_RATE 44100
 static const char *snddev = NULL;
 
 #define DASH_LEN 3
 #define CHAR_SPACE 3
 #define WORD_SPACE (7 - CHAR_SPACE)
-static float    dot_clock;
+static float    dot_clock, word_clock;
 int             spkr, line;
 struct termios	otty, ntty;
 int		olflags;
@@ -256,6 +257,9 @@ main(int argc, char **argv)
 		case 'w':
 			wpm = atoi(optarg);
 			break;
+		case 'W':
+			farnsworth = atoi(optarg);
+			break;
 		case '?':
 		default:
 			fputs(USAGE, stderr);
@@ -265,7 +269,7 @@ main(int argc, char **argv)
 		fputs("morse: only one of -o, -p, -d and -s allowed\n", stderr);
 		exit(1);
 	}
-	if ((pflag || device) && ((wpm < 1) || (wpm > 60))) {
+	if ((pflag || device) && ((wpm < 1) || (wpm > 60) || (farnsworth > 60))) {
 		fputs("morse: insane speed\n", stderr);
 		exit(1);
 	}
@@ -273,15 +277,26 @@ main(int argc, char **argv)
 		freq = FREQUENCY;
 	if (pflag || device) {
 		/*
-		 * A note on how to get to this magic 2.4:
+		 * A note on how to get to this magic 1.2:
 		 * x WPM = 50*x dits per minute (norm word "PARIS").
 		 * dits per sec = dits per minute / 60, thus
-		 * dits per sec = 50 * x / 60 = x / (60 / 50) = x / 2.4
+		 * dits per sec = 50 * x / 60 = x / (60 / 50) = x / 1.2
 		 */
-		dot_clock = wpm / 2.4;		/* dots/sec */
+		dot_clock = wpm / 1.2;		/* dots/sec */
 		dot_clock = 1 / dot_clock;	/* duration of a dot */
-		dot_clock = dot_clock / 2;	/* dot_clock runs at twice */
-						/* the dot rate */
+
+		word_clock = dot_clock;
+
+		/*
+		 * This is how to get to this formula:
+		 * PARIS = 22 dit (symbols) + 9 symbol spaces = 31 symbol times
+		 *       + 19 space times.
+		 *
+		 * The symbol times are in dot_clock, so the spaces have to
+		 * make up to reach the farnsworth time.
+		 */
+		if (farnsworth > 0)
+			word_clock = (60.0 / farnsworth - 31 * dot_clock) / 19;
 	}
 	if (snddev == NULL) {
 		if (oflag)
@@ -308,6 +323,7 @@ main(int argc, char **argv)
 		alloc_soundbuf(&tone_dot, dot_clock, 1);
 		alloc_soundbuf(&tone_dash, DASH_LEN * dot_clock, 1);
 		alloc_soundbuf(&tone_silence, dot_clock, 0);
+		alloc_soundbuf(&tone_letter_silence, word_clock, 0);
 	} else
 	if (device) {
 		if ((line = open(device, O_WRONLY | O_NONBLOCK)) == -1) {
@@ -509,20 +525,22 @@ play(const char *s, int prosign)
 			break;
 		case ' ':
 			duration = WORD_SPACE;
-			tone = &tone_silence;
+			tone = &tone_letter_silence;
 			break;
 		default:
 			errx(1, "invalid morse digit");
 		}
 		while (duration-- > 0)
 			write(spkr, tone->data, tone->len);
-		write(spkr, tone_silence.data, tone_silence.len);
+		/* Only space within a symbol */
+		if (c[1] != '\0' || prosign)
+			write(spkr, tone_silence.data, tone_silence.len);
 	}
 	if (prosign)
 		return;
-	duration = CHAR_SPACE - 1;  /* we already waited 1 after the last symbol */
+	duration = CHAR_SPACE;
 	while (duration-- > 0)
-		write(spkr, tone_silence.data, tone_silence.len);
+		write(spkr, tone_letter_silence.data, tone_letter_silence.len);
 
 	/* Sync out the audio data with other output */
 	if (!oflag)
@@ -547,7 +565,7 @@ ttyout(const char *s, int prosign)
 			break;
 		case ' ':
 			on = 0;
-			duration = dot_clock * WORD_SPACE;
+			duration = word_clock * WORD_SPACE;
 			break;
 		default:
 			on = 0;
@@ -565,10 +583,12 @@ ttyout(const char *s, int prosign)
 		lflags &= ~TIOCM_RTS;
 		ioctl(line, TIOCMSET, &lflags);
 		duration = dot_clock * 1000000;
-		usleep(duration);
+		/* Only space within a symbol */
+		if (c[1] != '\0' || prosign)
+			usleep(duration);
 	}
 	if (!prosign) {
-		duration = dot_clock * (CHAR_SPACE - 1) * 1000000;
+		duration = word_clock * CHAR_SPACE * 1000000;
 		usleep(duration);
 	}
 }
