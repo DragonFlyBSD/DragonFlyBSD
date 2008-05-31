@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/string/Makefile.inc,v 1.19.2.5 2001/12/25 00:36:53 ache Exp $
-# $DragonFly: src/lib/libc/string/Makefile.inc,v 1.4 2005/08/26 22:03:26 joerg Exp $
+# $DragonFly: src/lib/libc/string/Makefile.inc,v 1.5 2008/05/31 04:51:55 swildner Exp $
 
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/string ${.CURDIR}/../libc/string
 
@@ -28,7 +28,7 @@ MAN+=	bcmp.3 bcopy.3 bstring.3 bzero.3 ffs.3 index.3 memccpy.3 memchr.3 \
 	memcmp.3 memcpy.3 memmove.3 memset.3 rindex.3 strcasecmp.3 strcat.3 \
 	strchr.3 strcmp.3 strcoll.3 strcpy.3 strcspn.3 strdup.3 strerror.3 \
 	string.3 strlcpy.3 strlen.3 strmode.3 strpbrk.3 strrchr.3 strsep.3 \
-	strspn.3 strstr.3 strtok.3 strxfrm.3 swab.3 wmemchr.3
+	strspn.3 strstr.3 strtok.3 strxfrm.3 swab.3 wcswidth.3 wmemchr.3
 
 MLINKS+=strcasecmp.3 strncasecmp.3
 MLINKS+=strcat.3 strncat.3
