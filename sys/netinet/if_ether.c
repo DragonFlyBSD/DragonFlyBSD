@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.47 2008/05/28 12:11:13 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.48 2008/05/31 08:29:05 sephe Exp $
  */
 
 /*
@@ -490,38 +490,36 @@ arpintr(struct netmsg *msg)
 	u_short ar_hrd;
 
 	if (m->m_len < sizeof(struct arphdr) &&
-	    ((m = m_pullup(m, sizeof(struct arphdr))) == NULL)) {
+	    (m = m_pullup(m, sizeof(struct arphdr))) == NULL) {
 		log(LOG_ERR, "arp: runt packet -- m_pullup failed\n");
-		goto out2;
+		return;
 	}
 	ar = mtod(m, struct arphdr *);
 
 	ar_hrd = ntohs(ar->ar_hrd);
-	if (ar_hrd != ARPHRD_ETHER &&
-	    ar_hrd != ARPHRD_IEEE802) {
-		log(LOG_ERR,
-		    "arp: unknown hardware address format (0x%2D)\n",
+	if (ar_hrd != ARPHRD_ETHER && ar_hrd != ARPHRD_IEEE802) {
+		log(LOG_ERR, "arp: unknown hardware address format (0x%2D)\n",
 		    (unsigned char *)&ar->ar_hrd, "");
-		goto out1;
+		m_freem(m);
+		return;
 	}
 
-	if (m->m_pkthdr.len < arphdr_len(ar) &&
-	    (m = m_pullup(m, arphdr_len(ar))) == NULL) {
-		log(LOG_ERR, "arp: runt packet\n");
-		goto out1;
+	if (m->m_pkthdr.len < arphdr_len(ar)) {
+		if ((m = m_pullup(m, arphdr_len(ar))) == NULL) {
+			log(LOG_ERR, "arp: runt packet\n");
+			return;
+		}
+		ar = mtod(m, struct arphdr *);
 	}
 
 	switch (ntohs(ar->ar_pro)) {
 #ifdef INET
-		case ETHERTYPE_IP:
-			in_arpinput(m);
-			goto out2;
+	case ETHERTYPE_IP:
+		in_arpinput(m);
+		return;
 #endif
 	}
-out1:
 	m_freem(m);
-out2:
-	;
 	/* msg was embedded in the mbuf, do not reply! */
 }
 
