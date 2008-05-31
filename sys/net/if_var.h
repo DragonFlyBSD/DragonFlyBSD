@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.50 2008/05/14 11:59:23 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.51 2008/05/31 06:03:26 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -369,7 +369,10 @@ struct ifaddr_container {
 	struct ifaddr		*ifa;
 	TAILQ_ENTRY(ifaddr_container)	ifa_link;   /* queue macro glue */
 	u_int			ifa_refcnt; /* references to this structure */
+	uint32_t		ifa_listmask;	/* IFA_LIST_ */
 };
+
+#define IFA_LIST_IFADDRHEAD	0x1	/* on ifnet.if_addrheads[cpuid] */
 
 /*
  * The ifaddr structure contains information about one address
