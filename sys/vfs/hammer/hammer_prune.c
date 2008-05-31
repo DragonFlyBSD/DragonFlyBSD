@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.2 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.3 2008/05/31 18:37:57 dillon Exp $
  */
 
 #include "hammer.h"
@@ -55,10 +55,13 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 {
 	struct hammer_cursor cursor;
 	hammer_btree_elm_t elm;
+	struct hammer_ioc_prune_elm *copy_elms;
+	struct hammer_ioc_prune_elm *user_elms;
 	int error;
 	int isdir;
 	int realign_cre;
 	int realign_del;
+	int elm_array_size;
 
 	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS)
 		return(EINVAL);
@@ -71,11 +74,24 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	prune->cur_obj_id = prune->end_obj_id;
 	prune->cur_key = HAMMER_MAX_KEY;
 
+	/*
+	 * Copy element array from userland
+	 */
+	elm_array_size = sizeof(*copy_elms) * prune->nelms;
+	user_elms = prune->elms;
+	copy_elms = kmalloc(elm_array_size, M_TEMP, M_WAITOK);
+	if ((error = copyin(user_elms, copy_elms, elm_array_size)) != 0)
+		goto failed;
+	prune->elms = copy_elms;
+
+	/*
+	 * Scan backwards.  Retries typically occur if a deadlock is detected.
+	 */
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 	if (error) {
 		hammer_done_cursor(&cursor);
-		return(error);
+		goto failed;
 	}
 	cursor.key_beg.localization = prune->beg_localization;
 	cursor.key_beg.obj_id = prune->beg_obj_id;
@@ -200,6 +216,9 @@ retry:
 		prune->head.flags |= HAMMER_IOC_HEAD_INTR;
 		error = 0;
 	}
+failed:
+	prune->elms = user_elms;
+	kfree(copy_elms, M_TEMP);
 	return(error);
 }
 
@@ -257,8 +276,8 @@ check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
 		if (elm->base.delete_tid &&
 		    elm->base.create_tid >= scan->beg_tid &&
 		    elm->base.delete_tid <= scan->end_tid &&
-		    elm->base.create_tid / scan->mod_tid ==
-		    elm->base.delete_tid / scan->mod_tid) {
+		    (elm->base.create_tid - scan->beg_tid) / scan->mod_tid ==
+		    (elm->base.delete_tid - scan->beg_tid) / scan->mod_tid) {
 			return(0);
 		}
 	}
@@ -283,9 +302,9 @@ static int
 realign_prune(struct hammer_ioc_prune *prune,
 	      hammer_cursor_t cursor, int realign_cre, int realign_del)
 {
+	struct hammer_ioc_prune_elm *scan;
 	hammer_btree_elm_t elm;
 	hammer_tid_t delta;
-	hammer_tid_t mod;
 	hammer_tid_t tid;
 	int error;
 
@@ -298,18 +317,17 @@ realign_prune(struct hammer_ioc_prune *prune,
 	 * Align the create_tid.  By doing a reverse iteration we guarantee
 	 * that all records after our current record have already been
 	 * aligned, allowing us to safely correct the right-hand-boundary
-	 * (because no record to our right if otherwise exactly matching
+	 * (because no record to our right is otherwise exactly matching
 	 * will have a create_tid to the left of our aligned create_tid).
-	 *
-	 * Ordering is important here XXX but disk write ordering for
-	 * inter-cluster corrections is not currently guaranteed.
 	 */
 	error = 0;
 	if (realign_cre >= 0) {
-		mod = prune->elms[realign_cre].mod_tid;
-		delta = elm->leaf.base.create_tid % mod;
+		scan = &prune->elms[realign_cre];
+
+		delta = (elm->leaf.base.create_tid - scan->beg_tid) % 
+			scan->mod_tid;
 		if (delta) {
-			tid = elm->leaf.base.create_tid - delta + mod;
+			tid = elm->leaf.base.create_tid - delta + scan->mod_tid;
 
 			/* can EDEADLK */
 			error = hammer_btree_correct_rhb(cursor, tid + 1);
@@ -338,8 +356,10 @@ realign_prune(struct hammer_ioc_prune *prune,
 	 * overlap a record that has not yet been pruned.
 	 */
 	if (error == 0 && realign_del >= 0) {
-		mod = prune->elms[realign_del].mod_tid;
-		delta = elm->leaf.base.delete_tid % mod;
+		scan = &prune->elms[realign_del];
+
+		delta = (elm->leaf.base.delete_tid - scan->beg_tid) % 
+			scan->mod_tid;
 		if (delta) {
 			error = hammer_btree_extract(cursor,
 						     HAMMER_CURSOR_GET_LEAF);
@@ -349,7 +369,7 @@ realign_prune(struct hammer_ioc_prune *prune,
 					    sizeof(elm->leaf.base.delete_tid));
 				elm->leaf.base.delete_tid =
 					    elm->leaf.base.delete_tid -
-					    delta + mod;
+					    delta + scan->mod_tid;
 				hammer_modify_node_done(cursor->node);
 			}
 		}
