@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/usr.bin/vknet/vknet.1,v 1.1 2008/05/27 23:26:38 dillon Exp $
+.\" $DragonFly: src/usr.bin/vknet/vknet.1,v 1.2 2008/05/31 12:04:15 swildner Exp $
 .\"
 .Dd May 27, 2008
 .Dt vknet 1
@@ -107,7 +107,6 @@ remote specification.  This option is typically not specified manually.
 .Li "vknet -r 5 /dev/vknet myhomesystem:/dev/vknet"
 .Pp
 .Li "vknet -r 5 -b bridge0 -B bridge0 auto myhomesystem:auto"
-.Pp
 .Sh REQUIREMENTS
 You may have to load the
 .Ar if_tap
@@ -132,8 +131,8 @@ typically connects to, established by
 .Sh BUGS
 There are currently no known bugs.
 .Sh SEE ALSO
+.Xr vke 4 ,
 .Xr vkernel 7 ,
-.Xr vke 7 ,
 .Xr vknetd 8
 .Sh HISTORY
 The
