@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.11 2008/05/28 13:53:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.12 2008/05/31 11:18:09 sephe Exp $
  */
 
 /*
@@ -5637,7 +5637,7 @@ bce_add_sysctls(struct bce_softc *sc)
 #endif
 
 	SYSCTL_ADD_ULONG(ctx, children, OID_AUTO, 
-		"stat_IfHcInOctets",
+		"stat_IfHCInOctets",
 		CTLFLAG_RD, &sc->stat_IfHCInOctets,
 		"Bytes received");
 
