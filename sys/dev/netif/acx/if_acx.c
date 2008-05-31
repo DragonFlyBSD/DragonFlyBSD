@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.25.2.1 2008/02/14 13:06:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.25.2.2 2008/05/31 13:16:31 sephe Exp $
  */
 
 /*
@@ -2719,7 +2719,6 @@ acx_set_chan(struct acx_softc *sc, struct ieee80211_channel *c)
 	uint8_t chan;
 
 	chan = ieee80211_chan2ieee(ic, c);
-	DPRINTF((&ic->ic_if, "to chan %u\n", chan));
 	if (acx_enable_txchan(sc, chan) != 0) {
 		if_printf(&ic->ic_if, "enable TX on channel %d failed\n", chan);
 		return EIO;
