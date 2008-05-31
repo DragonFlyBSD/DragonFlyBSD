@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.11 2008/05/18 01:49:41 dillon Exp $
+ * $DragonFly: src/sbin/hammer/Attic/cmd_prune.c,v 1.12 2008/05/31 18:45:04 dillon Exp $
  */
 
 #include "hammer.h"
@@ -69,6 +69,7 @@ hammer_cmd_prune(char **av, int ac)
 	hammer_tid_t now_tid = (hammer_tid_t)time(NULL) * 1000000000LL;
 
 	bzero(&prune, sizeof(prune));
+	prune.elms = malloc(HAMMER_MAX_PRUNE_ELMS * sizeof(*prune.elms));
 	prune.nelms = 0;
 	prune.beg_localization = HAMMER_MIN_LOCALIZATION;
 	prune.beg_obj_id = HAMMER_MIN_OBJID;
@@ -162,6 +163,7 @@ hammer_prune_load_file(hammer_tid_t now_tid, struct hammer_ioc_prune *prune,
 			continue;
 		if (strcmp(av[0], "prune") != 0)
 			continue;
+		printf("prune %s\n", av[2]);
 		if (hammer_prune_parse_line(now_tid, prune, filesystem,
 					    av + 1, ac - 1) < 0) {
 			errx(1, "Malformed prune directive in %s line %d\n",

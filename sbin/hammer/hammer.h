@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.13 2008/05/18 01:49:41 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.14 2008/05/31 18:45:04 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -39,6 +39,7 @@
 #include <sys/diskmbr.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/mount.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,6 +65,7 @@ extern const char *CyclePath;
 void hammer_cmd_show(hammer_tid_t node_offset, int depth,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound);
 void hammer_cmd_prune(char **av, int ac);
+void hammer_cmd_softprune(char **av, int ac);
 void hammer_cmd_synctid(char **av, int ac);
 void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);

@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.17 2008/05/18 01:49:41 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.18 2008/05/31 18:45:04 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -138,6 +138,47 @@ output as 0.
 .It Ar namekey32 Ar filename
 Generate the top 32 bits of a HAMMER 64 bit directory hash for the specified
 file name.
+.It Ar softprune Ar softlink-dir
+Prune the filesystem based on previously created snapshot softlinks.  This
+is a more convenient method of pruning then the fixed timestamp ranges used
+in the
+.Ar prune
+command.
+The target directory is expected to contain softlinks pointing to
+snapshots of the filesystems you wish to retain.  The directory is scanned
+non-recursively and the mount points and transaction ids stored in the
+softlinks are extracted and sorted.
+The filesystem is then explicitly pruned according to what is found.
+Cleaning out portions of the filesystem is as simple as removing a softlink
+and then running the
+.Ar softprune
+command.
+.Pp
+As a safety measure pruning only occurs if one or more softlinks are found
+containing the @@ snapshot id extension.
+.Pp
+Currently the scanned softlink directory must contain softlinks pointing
+to a single HAMMER mount.  The softlinks may specify absolute or relative
+paths.  Softlinks must use 20-character (@@0x%016llx) transaction ids,
+as might be returned from 'hammer synctid <filesystem>'.
+.Pp
+Example, lets say your snapshot directory contains the following links:
+.Pp
+.Li "lrwxr-xr-x  1 root  wheel  29 May 31 17:57 snap1 -> /usr/obj/@@0x10d2cd05b7270d16"
+.Pp
+.Li "lrwxr-xr-x  1 root  wheel  29 May 31 17:58 snap2 -> /usr/obj/@@0x10d2cd13f3fde98f"
+.Pp
+.Li "lrwxr-xr-x  1 root  wheel  29 May 31 17:59 snap3 -> /usr/obj/@@0x10d2cd222adee364"
+.Pp
+If you were to run the softprune command on this directory, then the HAMMER
+/usr/obj mount will be pruned to retain the above three snapshots.
+In addition, modifications made to the filesystem older then the oldest
+snapshot will be destroyed and potentially fine-grained modifications made
+to the filesystem more recently then the most recent snapshot will be
+retained.
+.Pp
+If you then delete the snap2 softlink and rerun the softprune command,
+modifications pertaining to that snapshot would be destroyed.
 .It Ar prune Ar filesystem Ar from Ar #{smhdMy} Ar to Ar #{smhdMy} Ar every Ar #{smhdMy}
 .It Ar prune Ar filesystem Ar from Ar #{smhdMy} Ar everything
 .It Ar prune Ar filesystem Ar everything
