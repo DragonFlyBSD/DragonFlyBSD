@@ -1,0 +1,126 @@
+.\" Copyright (c) 2008 The DragonFly Project.  All rights reserved.
+.\" 
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" 
+.\" $DragonFly: src/usr.bin/undo/undo.1,v 1.1 2008/06/01 02:03:10 dillon Exp $
+.Dd May 31, 2008
+.Dt UNDO 1
+.Os
+.Sh NAME
+.Nm undo
+.Nd Undo changes made to files on HAMMER filesystems
+.Sh SYNOPSIS
+.Nm
+.Op Fl dDhiuv
+.Op Fl o Ar outfile
+.Op Fl t Ar <number>{s,m,h,d}
+.Op Fl t Ar <number>{s,m,h,d}
+.Ar file1
+.Ar ...
+.Sh DESCRIPTION
+The
+.Nm
+utility acquires an older version of the specified files and can output
+them stdout, generate a file with the previous contents, or generate
+a diff to stdout.  A history can also be generated.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl d
+Generate a unified diff from the older version to the current version.
+.It Fl D
+Generate a unified diff from the current version to the older version.
+.It Fl i
+Generate a single line giving the transaction id and converted timestamp
+of the version of the file requested, rather then dumping the contents
+of the file.
+.It Fl h
+Iterate through the file's entire history generating undo files, diffs,
+output, etc.  Execute the generation op for each version.
+.It Fl u
+Output to a file synthesized from the input filename postfixed with ".undo".
+If not specified output is either to stdout or, if a single file argument
+is given, the file specified by the
+.Fl o
+option.
+.It Fl v
+Increase verboseness.
+.It Fl o Ar outfile
+Output to the specified file instead of to stdout.  If iterating through
+a file's entire history
+.Ar outfile
+will be postfixed with an iteration number in the form "outfile.%04d".
+If multiple files are specified
+.Ar outfile
+is used as a template where '%s' is replaced with the last component of
+each file path.  When used with multiple files '%%' must be used in the
+.Ar outfile
+specification to indicate a '%'.  When used with a single file the
+.Ar outfile
+string is used verbatim.
+.It Fl t Ar <number>{s,m,h,d}
+Specify how far to go back relative to the current time.  A HAMMER
+transaction id (0x16chars) may also be specified.  If not specified
+the program will attempt to locate the most recent version of the
+file(s) prior to the current version.
+This option does not apply if
+.Fl h
+is specified.
+.It Fl t Ar <number>{s,m,h,d}
+A second time specification may be given when the
+.Fl d
+or
+.Fl D
+option is used, to provide two end-points for the diff.  The file as-of
+the second
+.Fl t
+is used instead of the current version of the file.
+.El
+.Sh EXAMPLES
+.Pp
+.Li "undo -d mytextfile"
+.Pp
+.Li "undo -o mytextfile.old mytextfile
+.Sh DIAGNOSTICS
+Exit status is 0 on success and 1 on error.
+.Sh BUGS
+HAMMER only synchronizes information to disk every 30 seconds or so and
+a quick file create / delete is done entirely in system memory and cannot
+be undone.  This can be worked around by running 'hammer synctid <filesystem>'.
+.Sh SEE ALSO
+.Xr hammer 8
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 1.13 .
+.Sh AUTHORS
+.An Matthew Dillon Aq dillon@backplane.com
