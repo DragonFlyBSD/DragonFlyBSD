@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)getfsstat.2	8.3 (Berkeley) 5/25/95
 .\" $FreeBSD: src/lib/libc/sys/getfsstat.2,v 1.7.2.4 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getfsstat.2,v 1.4 2007/12/03 20:11:15 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/getfsstat.2,v 1.5 2008/06/01 20:46:45 dillon Exp $
 .\"
 .Dd May 25, 1995
 .Dt GETFSSTAT 2
@@ -39,6 +39,8 @@
 .Sh NAME
 .Nm getfsstat
 .Nd get list of all mounted filesystems
+.Nm getvfsstat
+.Nd get extended list of all mounted filesystems
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -47,6 +49,7 @@
 .In sys/mount.h
 .Ft int
 .Fn getfsstat "struct statfs *buf" "long bufsize" "int flags"
+.Fn getvfsstat "struct statfs *buf" "struct statvfs *vbuf" "long vbufsize" "int flags"
 .Sh DESCRIPTION
 .Fn Getfsstat
 returns information about all mounted filesystems.
@@ -145,6 +148,15 @@ Thus, some of the information will be out of date, but
 .Fn getfsstat
 will not block waiting for information from a filesystem that is
 unable to respond.
+.Fn Getvfsstat
+returns extended information about all mounted filesystems.
+Note that
+.Fa vbufsize
+represents the size of
+.Fa vbuf ,
+and
+.Fa buf
+is expected to be of contemporary size for its own structures.
 .Sh RETURN VALUES
 Upon successful completion, the number of
 .Fa fsstat
@@ -154,7 +166,9 @@ Otherwise, -1 is returned and the global variable
 is set to indicate the error.
 .Sh ERRORS
 .Fn Getfsstat
-fails if one or more of the following are true:
+and
+.Fn getvfsstat
+fail if one or more of the following are true:
 .Bl -tag -width Er
 .It Bq Er EFAULT
 .Fa Buf

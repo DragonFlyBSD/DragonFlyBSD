@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.26 2008/04/20 19:21:42 swildner Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.27 2008/06/01 20:46:44 dillon Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -13,8 +13,8 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	exec.c fmtcheck.c fnmatch.c fpclassifyd.c fpclassifyf.c fstab.c \
 	ftok.c fts.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdomainname.c getgrent.c getgrouplist.c \
-	gethostname.c getloadavg.c getlogin.c getmntinfo.c getnetgrent.c \
-	getobjformat.c getosreldate.c getpagesize.c \
+	gethostname.c getloadavg.c getlogin.c getmntinfo.c getmntvinfo.c \
+	getnetgrent.c getobjformat.c getosreldate.c getpagesize.c \
 	getpeereid.c getprogname.c getpwent.c getttyent.c \
 	getusershell.c getvfsbyname.c getvfsent.c glob.c \
 	infinity.c infinityf.c initgroups.c isascii.c \
@@ -95,6 +95,7 @@ MLINKS+=getfsent.3 endfsent.3 getfsent.3 getfsfile.3 getfsent.3 getfsspec.3 \
 MLINKS+=getgrent.3 endgrent.3 getgrent.3 getgrgid.3 getgrent.3 getgrnam.3 \
 	getgrent.3 setgrent.3 getgrent.3 setgroupent.3
 MLINKS+=gethostname.3 sethostname.3
+MLINKS+=getmntinfo.3 getmntvinfo.3
 MLINKS+=getnetgrent.3 endnetgrent.3 getnetgrent.3 innetgr.3 \
 	getnetgrent.3 setnetgrent.3
 MLINKS+=getprogname.3 setprogname.3
