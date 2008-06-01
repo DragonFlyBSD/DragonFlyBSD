@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.47 2008/05/18 21:47:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.48 2008/06/01 21:05:39 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -249,6 +249,8 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 		}
 		hmp->fsid_udev = dev2udev(vn_todev(volume->devvp));
 		hmp->mp->mnt_stat.f_blocks += ondisk->vol0_stat_bigblocks *
+			(HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
+		hmp->mp->mnt_vstat.f_blocks += ondisk->vol0_stat_bigblocks *
 			(HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
 	}
 late_failure:

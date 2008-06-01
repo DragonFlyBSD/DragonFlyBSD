@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.13 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.14 2008/06/01 21:05:39 dillon Exp $
  */
 
 /*
@@ -42,7 +42,9 @@
 static hammer_off_t hammer_find_hole(hammer_mount_t hmp,
 				   hammer_holes_t holes, int bytes);
 static void hammer_add_hole(hammer_mount_t hmp, hammer_holes_t holes,
-				    hammer_off_t offset, int bytes);
+				   hammer_off_t offset, int bytes);
+static void hammer_clean_holes(hammer_mount_t hmp, hammer_holes_t holes,
+				   hammer_off_t offset);
 
 /*
  * Allocate bytes from a zone
@@ -138,11 +140,11 @@ again:
 	/*
 	 * Allocate layer2 backing store in layer1 if necessary.  next_offset
 	 * can skip to a bigblock boundary but alloc_offset is at least
-	 * bigblock=aligned so that's ok.
+	 * bigblock-aligned so that's ok.
 	 */
-	if (next_offset == rootmap->alloc_offset &&
-	    ((next_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0 ||
-	    layer1->phys_offset == HAMMER_BLOCKMAP_FREE)
+	if ((next_offset == rootmap->alloc_offset &&
+	    (next_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0) ||
+	    layer1->phys_offset == HAMMER_BLOCKMAP_FREE
 	) {
 		KKASSERT((next_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0);
 		hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
@@ -370,13 +372,25 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	KKASSERT(layer2->bytes_free <= HAMMER_LARGEBLOCK_SIZE);
 
 	/*
-	 * If the big-block is free, return it to the free pool.  If our
-	 * iterator is in the wholely free block, leave the block intact
-	 * and reset the iterator.
+	 * If the big-block is free, return it to the free pool.  The layer2
+	 * infrastructure is left intact even if the entire layer2 becomes
+	 * free.
+	 *
+	 * At the moment if our iterator is in a bigblock that becomes
+	 * wholely free, we have to leave the block allocated and we cannot
+	 * reset the iterator because there may be UNDOs on-disk that
+	 * reference areas of that block and we cannot overwrite those areas.
 	 */
 	if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
 		if ((rootmap->next_offset ^ bmap_off) &
 		    ~HAMMER_LARGEBLOCK_MASK64) {
+			/*
+			 * Our iterator is not in the now-free big-block
+			 * and we can release it.
+			 */
+			hammer_clean_holes(trans->hmp,
+					   &trans->hmp->holes[zone],
+					   bmap_off);
 			hammer_freemap_free(trans, layer2->u.phys_offset,
 					    bmap_off, &error);
 			hammer_clrxlate_buffer(trans->hmp,
@@ -387,9 +401,12 @@ hammer_blockmap_free(hammer_transaction_t trans,
 					     layer1, sizeof(*layer1));
 			++layer1->blocks_free;
 #if 0
-			/* 
-			 * XXX Not working yet - we aren't clearing it when
-			 * reallocating the block later on.
+			/*
+			 * This commented out code would release the layer2
+			 * bigblock.  We do not want to do this, at least
+			 * not right now.
+			 *
+			 * This also may be incomplete.
 			 */
 			if (layer1->blocks_free == HAMMER_BLOCKMAP_RADIX2) {
 				hammer_freemap_free(
@@ -403,14 +420,13 @@ hammer_blockmap_free(hammer_transaction_t trans,
 						   HAMMER_LAYER1_CRCSIZE);
 			hammer_modify_buffer_done(buffer1);
 		} else {
-			/*
-			 * Leave block intact and reset the iterator. 
-			 *
-			 * XXX can't do this yet because if we allow data 
-			 * allocations they could overwrite deleted data
-			 * that is still subject to an undo on reboot.
-			 */
 #if 0
+			/*
+			 * This commented out code would reset the iterator,
+			 * which we cannot do at the moment as it could cause
+			 * new allocations to overwrite deleted data still
+			 * subject to undo on reboot.
+			 */
 			hammer_modify_volume(trans, root_volume,
 					     NULL, 0);
 			rootmap->next_offset &= ~HAMMER_LARGEBLOCK_MASK64;
@@ -640,6 +656,8 @@ hammer_find_hole(hammer_mount_t hmp, hammer_holes_t holes, int bytes)
  * If a newly created hole is reasonably sized then record it.  We only
  * keep track of a limited number of holes.  Lost holes are recovered by
  * reblocking.
+ *
+ * offset is a zone-N offset.
  */
 static void
 hammer_add_hole(hammer_mount_t hmp, hammer_holes_t holes,
@@ -660,5 +678,27 @@ hammer_add_hole(hammer_mount_t hmp, hammer_holes_t holes,
 	TAILQ_INSERT_TAIL(&holes->list, hole, entry);
 	hole->offset = offset;
 	hole->bytes = bytes;
+}
+
+/*
+ * Clean out any holes cached for the bigblock we are about to release back
+ * to the free pool.
+ */
+static void
+hammer_clean_holes(hammer_mount_t hmp, hammer_holes_t holes,
+		   hammer_off_t offset)
+{
+	hammer_hole_t hole;
+
+	offset &= ~HAMMER_LARGEBLOCK_MASK64;
+
+restart:
+	TAILQ_FOREACH(hole, &holes->list, entry) {
+		if ((hole->offset & ~HAMMER_LARGEBLOCK_MASK64) == offset) {
+			TAILQ_REMOVE(&holes->list, hole, entry);
+			kfree(hole, M_HAMMER);
+			goto restart;
+		}
+	}
 }
 

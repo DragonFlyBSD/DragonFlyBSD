@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.33 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.34 2008/06/01 21:05:39 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -283,7 +283,7 @@ struct hammer_blockmap_layer2 {
 
 #define HAMMER_BLOCKMAP_LAYER1	/* 18+19+23 */		\
 	(HAMMER_BLOCKMAP_RADIX1 * HAMMER_BLOCKMAP_LAYER2)
-#define HAMMER_BLOCKMAP_LAYER2	/* 19+23 */		\
+#define HAMMER_BLOCKMAP_LAYER2	/* 19+23 - 4TB */		\
 	(HAMMER_BLOCKMAP_RADIX2 * HAMMER_LARGEBLOCK_SIZE64)
 
 #define HAMMER_BLOCKMAP_LAYER1_MASK	(HAMMER_BLOCKMAP_LAYER1 - 1)

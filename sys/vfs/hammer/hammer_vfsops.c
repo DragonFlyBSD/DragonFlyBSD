@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.35 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.36 2008/06/01 21:05:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -121,6 +121,8 @@ static int	hammer_vfs_unmount(struct mount *mp, int mntflags);
 static int	hammer_vfs_root(struct mount *mp, struct vnode **vpp);
 static int	hammer_vfs_statfs(struct mount *mp, struct statfs *sbp,
 				struct ucred *cred);
+static int	hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp,
+				struct ucred *cred);
 static int	hammer_vfs_sync(struct mount *mp, int waitfor);
 static int	hammer_vfs_vget(struct mount *mp, ino_t ino,
 				struct vnode **vpp);
@@ -137,6 +139,7 @@ static struct vfsops hammer_vfsops = {
 	.vfs_unmount	= hammer_vfs_unmount,
 	.vfs_root 	= hammer_vfs_root,
 	.vfs_statfs	= hammer_vfs_statfs,
+	.vfs_statvfs	= hammer_vfs_statvfs,
 	.vfs_sync	= hammer_vfs_sync,
 	.vfs_vget	= hammer_vfs_vget,
 	.vfs_init	= hammer_vfs_init,
@@ -306,6 +309,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	mp->mnt_stat.f_iosize = HAMMER_BUFSIZE;
 	mp->mnt_stat.f_bsize = HAMMER_BUFSIZE;
+
+	mp->mnt_vstat.f_frsize = HAMMER_BUFSIZE;
+	mp->mnt_vstat.f_bsize = HAMMER_BUFSIZE;
+
 	mp->mnt_maxsymlinklen = 255;
 	mp->mnt_flag |= MNT_LOCAL;
 
@@ -347,6 +354,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		crc32((char *)&rootvol->ondisk->vol_fsid + 0, 8);
 	mp->mnt_stat.f_fsid.val[1] =
 		crc32((char *)&rootvol->ondisk->vol_fsid + 8, 8);
+
+	mp->mnt_vstat.f_fsid_uuid = rootvol->ondisk->vol_fsid;
+	mp->mnt_vstat.f_fsid = crc32(&mp->mnt_vstat.f_fsid_uuid,
+				     sizeof(mp->mnt_vstat.f_fsid_uuid));
 
 	/*
 	 * Certain often-modified fields in the root volume are cached in
@@ -558,6 +569,35 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 		mp->mnt_stat.f_files = 0;
 
 	*sbp = mp->mnt_stat;
+	return(0);
+}
+
+static int
+hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
+{
+	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	hammer_volume_t volume;
+	hammer_volume_ondisk_t ondisk;
+	int error;
+	int64_t bfree;
+
+	volume = hammer_get_root_volume(hmp, &error);
+	if (error)
+		return(error);
+	ondisk = volume->ondisk;
+
+	/*
+	 * Basic stats
+	 */
+	mp->mnt_vstat.f_files = ondisk->vol0_stat_inodes;
+	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_LARGEBLOCK_SIZE;
+	hammer_rel_volume(volume, 0);
+
+	mp->mnt_vstat.f_bfree = bfree / HAMMER_BUFSIZE;
+	mp->mnt_vstat.f_bavail = mp->mnt_stat.f_bfree;
+	if (mp->mnt_vstat.f_files < 0)
+		mp->mnt_vstat.f_files = 0;
+	*sbp = mp->mnt_vstat;
 	return(0);
 }
 
