@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.14 2008/02/05 20:49:52 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.15 2008/06/01 19:27:37 dillon Exp $
  */
 
 #ifndef _SYS_MOUNTCTL_H_
@@ -76,6 +76,7 @@
 #define MOUNTCTL_STATUS_BLK_JOURNAL	11
 
 #define MOUNTCTL_SET_EXPORT		16	/* sys/mount.h:export_args */
+#define MOUNTCTL_STATVFS		17	/* get extended stats */
 
 /*
  * Data structures for the journaling API

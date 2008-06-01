@@ -70,7 +70,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.14 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.15 2008/06/01 19:27:35 dillon Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -314,6 +314,10 @@ vfs_register(struct vfsconf *vfc)
 	if (vfsops->vfs_statfs == NULL) {
 		/* return file system's status */
 		vfsops->vfs_statfs = vfs_stdstatfs;
+	}
+	if (vfsops->vfs_statvfs == NULL) {
+		/* return file system's status */
+		vfsops->vfs_statvfs = vfs_stdstatvfs;
 	}
 	if (vfsops->vfs_sync == NULL) {
 		/*

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/include/libc_private.h,v 1.3 1999/08/27 23:59:47 peter Exp $
- * $DragonFly: src/lib/libc/include/libc_private.h,v 1.7 2005/07/21 21:33:26 joerg Exp $
+ * $DragonFly: src/lib/libc/include/libc_private.h,v 1.8 2008/06/01 19:27:32 dillon Exp $
  *
  * Private definitions for libc, libc_r and libpthread.
  *
@@ -80,7 +80,5 @@ void *__get_errno_GOT_ptr(void);
 
 struct statfs;
 struct statvfs;
-
-void	__cvtstatvfs(const struct statfs *, struct statvfs *);
 
 #endif /* _LIBC_PRIVATE_H_ */

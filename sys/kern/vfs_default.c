@@ -5,7 +5,8 @@
  * This code is derived from software contributed
  * to Berkeley by John Heidemann of the UCLA Ficus project.
  *
- * Source: * @(#)i405_init.c 2.10 92/04/27 UCLA Ficus project
+ * The statvfs->statfs conversion code was contributed to the DragonFly
+ * Project by Joerg Sonnenberger <joerg@bec.de>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,9 +36,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *
+ * Source: * @(#)i405_init.c 2.10 92/04/27 UCLA Ficus project
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.52 2008/01/18 19:13:16 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.53 2008/06/01 19:27:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1289,6 +1290,69 @@ int
 vfs_stdstatfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	return (EOPNOTSUPP);
+}
+
+/*
+ * If the VFS does not implement statvfs, then call statfs and convert
+ * the values.  This code was taken from libc's __cvtstatvfs() function,
+ * contributed by Joerg Sonnenberger.
+ */
+int	
+vfs_stdstatvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
+{
+	struct statfs *in;
+	int error;
+
+	in = &mp->mnt_stat;
+	error = VFS_STATFS(mp, in, cred);
+	if (error == 0) {
+		bzero(sbp, sizeof(*sbp));
+
+		sbp->f_bsize = in->f_bsize;
+		sbp->f_frsize = in->f_bsize;
+		sbp->f_blocks = in->f_blocks;
+		sbp->f_bfree = in->f_bfree;
+		sbp->f_bavail = in->f_bavail;
+		sbp->f_files = in->f_files;
+		sbp->f_ffree = in->f_ffree;
+
+		/*
+		 * XXX
+		 * This field counts the number of available inodes to non-root
+		 * users, but this information is not available via statfs.
+		 * Just ignore this issue by returning the total number 
+		 * instead.
+		 */
+		sbp->f_favail = in->f_ffree;
+
+		/*
+		 * XXX
+		 * This field has a different meaning for statfs and statvfs.
+		 * For the former it is the cookie exported for NFS and not
+		 * intended for normal userland use.
+		 */
+		sbp->f_fsid = 0;
+
+		sbp->f_flag = 0;
+		if (in->f_flags & MNT_RDONLY)
+			sbp->f_flag |= ST_RDONLY;
+		if (in->f_flags & MNT_NOSUID)
+			sbp->f_flag |= ST_NOSUID;
+		sbp->f_namemax = 0;
+		sbp->f_owner = in->f_owner;
+		/*
+		 * XXX
+		 * statfs contains the type as string, statvfs expects it as
+		 * enumeration.
+		 */
+		sbp->f_type = 0;
+
+		sbp->f_syncreads = in->f_syncreads;
+		sbp->f_syncwrites = in->f_syncwrites;
+		sbp->f_asyncreads = in->f_asyncreads;
+		sbp->f_asyncwrites = in->f_asyncwrites;
+	}
+	return (error);
 }
 
 int

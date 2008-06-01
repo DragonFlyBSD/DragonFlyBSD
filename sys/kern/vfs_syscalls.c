@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.127 2008/05/18 05:54:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.128 2008/06/01 19:27:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1122,6 +1122,107 @@ sys_fstatfs(struct fstatfs_args *uap)
 	int error;
 
 	error = kern_fstatfs(uap->fd, &buf);
+
+	if (error == 0)
+		error = copyout(&buf, uap->buf, sizeof(*uap->buf));
+	return (error);
+}
+
+int
+kern_statvfs(struct nlookupdata *nd, struct statvfs *buf)
+{
+	struct mount *mp;
+	struct statvfs *sp;
+	int error;
+
+	if ((error = nlookup(nd)) != 0)
+		return (error);
+	mp = nd->nl_nch.mount;
+	sp = &mp->mnt_vstat;
+	if ((error = VFS_STATVFS(mp, sp, nd->nl_cred)) != 0)
+		return (error);
+
+	sp->f_flag = 0;
+	if (mp->mnt_flag & MNT_RDONLY)
+		sp->f_flag |= ST_RDONLY;
+	if (mp->mnt_flag & MNT_NOSUID)
+		sp->f_flag |= ST_NOSUID;
+	bcopy(sp, buf, sizeof(*buf));
+	return (0);
+}
+
+/*
+ * statfs_args(char *path, struct statfs *buf)
+ *
+ * Get filesystem statistics.
+ */
+int
+sys_statvfs(struct statvfs_args *uap)
+{
+	struct nlookupdata nd;
+	struct statvfs buf;
+	int error;
+
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_statvfs(&nd, &buf);
+	nlookup_done(&nd);
+	if (error == 0)
+		error = copyout(&buf, uap->buf, sizeof(*uap->buf));
+	return (error);
+}
+
+int
+kern_fstatvfs(int fd, struct statvfs *buf)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct file *fp;
+	struct mount *mp;
+	struct statvfs *sp;
+	int error;
+
+	KKASSERT(p);
+	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
+		return (error);
+	mp = ((struct vnode *)fp->f_data)->v_mount;
+	if (mp == NULL) {
+		error = EBADF;
+		goto done;
+	}
+	if (fp->f_cred == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+	sp = &mp->mnt_vstat;
+	if ((error = VFS_STATVFS(mp, sp, fp->f_cred)) != 0)
+		goto done;
+
+	sp->f_flag = 0;
+	if (mp->mnt_flag & MNT_RDONLY)
+		sp->f_flag |= ST_RDONLY;
+	if (mp->mnt_flag & MNT_NOSUID)
+		sp->f_flag |= ST_NOSUID;
+
+	bcopy(sp, buf, sizeof(*buf));
+	error = 0;
+done:
+	fdrop(fp);
+	return (error);
+}
+
+/*
+ * fstatfs_args(int fd, struct statfs *buf)
+ *
+ * Get filesystem statistics.
+ */
+int
+sys_fstatvfs(struct fstatvfs_args *uap)
+{
+	struct statvfs buf;
+	int error;
+
+	error = kern_fstatvfs(uap->fd, &buf);
 
 	if (error == 0)
 		error = copyout(&buf, uap->buf, sizeof(*uap->buf));
@@ -3620,6 +3721,53 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 	}
 	return (copyout(sp, uap->buf, sizeof(*sp)));
 }
+
+/*
+ * fhstatvfs_args(struct fhandle *u_fhp, struct statvfs *buf)
+ */
+int
+sys_fhstatvfs(struct fhstatvfs_args *uap)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct statvfs *sp;
+	struct mount *mp;
+	struct vnode *vp;
+	fhandle_t fh;
+	int error;
+
+	/*
+	 * Must be super user
+	 */
+	if ((error = suser(td)))
+		return (error);
+
+	if ((error = copyin(uap->u_fhp, &fh, sizeof(fhandle_t))) != 0)
+		return (error);
+
+	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL)
+		return (ESTALE);
+
+	if (p != NULL && !chroot_visible_mnt(mp, p))
+		return (ESTALE);
+
+	if ((error = VFS_FHTOVP(mp, &fh.fh_fid, &vp)))
+		return (error);
+	mp = vp->v_mount;
+	sp = &mp->mnt_vstat;
+	vput(vp);
+	if ((error = VFS_STATVFS(mp, sp, p->p_ucred)) != 0)
+		return (error);
+
+	sp->f_flag = 0;
+	if (mp->mnt_flag & MNT_RDONLY)
+		sp->f_flag |= ST_RDONLY;
+	if (mp->mnt_flag & MNT_NOSUID)
+		sp->f_flag |= ST_NOSUID;
+
+	return (copyout(sp, uap->buf, sizeof(*sp)));
+}
+
 
 /*
  * Syscall to push extended attribute configuration information into the

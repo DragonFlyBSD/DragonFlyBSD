@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.39 2008/05/25 18:34:45 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.40 2008/06/01 19:27:37 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -55,6 +55,9 @@
 #endif
 #ifndef _SYS_NAMECACHE_H_
 #include <sys/namecache.h>
+#endif
+#ifndef _SYS_STATVFS_H_
+#include <sys/statvfs.h>
 #endif
 #endif
 
@@ -162,6 +165,7 @@ struct mount {
 	int		mnt_kern_flag;		/* kernel only flags */
 	int		mnt_maxsymlinklen;	/* max size of short symlink */
 	struct statfs	mnt_stat;		/* cache of filesystem stats */
+	struct statvfs	mnt_vstat;		/* extended stats */
 	qaddr_t		mnt_data;		/* private data */
 	time_t		mnt_time;		/* last time written*/
 	u_int		mnt_iosize_max;		/* max IO request size */
@@ -414,6 +418,8 @@ typedef int vfs_quotactl_t(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 				    struct ucred *cred);
 typedef int vfs_statfs_t(struct mount *mp, struct statfs *sbp,
 				    struct ucred *cred);
+typedef int vfs_statvfs_t(struct mount *mp, struct statvfs *sbp,
+				    struct ucred *cred);
 typedef int vfs_sync_t(struct mount *mp, int waitfor);
 typedef int vfs_vget_t(struct mount *mp, ino_t ino, struct vnode **vpp);
 typedef int vfs_fhtovp_t(struct mount *mp, struct fid *fhp,
@@ -440,7 +446,8 @@ struct vfsops {
 	vfs_vptofh_t 	*vfs_vptofh;
 	vfs_init_t  	*vfs_init;
 	vfs_uninit_t 	*vfs_uninit;
-	vfs_extattrctl_t 	*vfs_extattrctl;
+	vfs_extattrctl_t *vfs_extattrctl;
+	vfs_statvfs_t 	*vfs_statvfs;
 };
 
 #define VFS_MOUNT(MP, PATH, DATA, CRED) \
@@ -451,6 +458,7 @@ struct vfsops {
 #define VFS_QUOTACTL(MP,C,U,A,CRED)	\
 	(*(MP)->mnt_op->vfs_quotactl)(MP, C, U, A, CRED)
 #define VFS_STATFS(MP, SBP, CRED) (*(MP)->mnt_op->vfs_statfs)(MP, SBP, CRED)
+#define VFS_STATVFS(MP, SBP, CRED) (*(MP)->mnt_op->vfs_statvfs)(MP, SBP, CRED)
 #define VFS_SYNC(MP, WAIT)	  (*(MP)->mnt_op->vfs_sync)(MP, WAIT)
 #define VFS_VGET(MP, INO, VPP)	  (*(MP)->mnt_op->vfs_vget)(MP, INO, VPP)
 #define VFS_FHTOVP(MP, FIDP, VPP) 	\
@@ -553,6 +561,7 @@ vfs_unmount_t 	vfs_stdunmount;
 vfs_root_t  	vfs_stdroot;
 vfs_quotactl_t 	vfs_stdquotactl;
 vfs_statfs_t  	vfs_stdstatfs;
+vfs_statvfs_t  	vfs_stdstatvfs;
 vfs_sync_t   	vfs_stdsync;
 vfs_sync_t   	vfs_stdnosync;
 vfs_vget_t  	vfs_stdvget;
@@ -594,15 +603,18 @@ int	mountlist_scan(int (*callback)(struct mount *, void *), void *, int);
 
 __BEGIN_DECLS
 int	fstatfs (int, struct statfs *);
+int	fstatvfs (int, struct statvfs *);
 int	getfh (const char *, fhandle_t *);
 int	getfsstat (struct statfs *, long, int);
 int	getmntinfo (struct statfs **, int);
 int	mount (const char *, const char *, int, void *);
 int	statfs (const char *, struct statfs *);
+int	statvfs (const char *, struct statvfs *);
 int	unmount (const char *, int);
 int	fhopen (const struct fhandle *, int);
 int	fhstat (const struct fhandle *, struct stat *);
 int	fhstatfs (const struct fhandle *, struct statfs *);
+int	fhstatvfs (const struct fhandle *, struct statvfs *);
 
 /* C library stuff */
 void	endvfsent (void);

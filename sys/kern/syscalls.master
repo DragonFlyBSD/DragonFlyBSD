@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.57 2008/01/10 22:30:27 nth Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.58 2008/06/01 19:27:35 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -32,6 +32,7 @@
 #include <sys/param.h>
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
+#include <sys/statvfs.h>
 
 #ifdef COMPAT_43
 #include <emulation/43bsd/stat.h>
@@ -684,3 +685,6 @@
 499	STD	BSD	{ int pselect(int nd, fd_set *in, fd_set *ou, \
 			    fd_set *ex, const struct timespec *ts,    \
 			    const sigset_t *sigmask); }
+500	STD	BSD	{ int statvfs(const char *path, struct statvfs *buf); }
+501	STD	BSD	{ int fstatvfs(int fd, struct statvfs *buf); }
+502	STD	BSD	{ int fhstatvfs(const struct fhandle *u_fhp, struct statvfs *buf); }

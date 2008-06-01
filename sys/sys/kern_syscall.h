@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.37 2007/06/16 19:57:08 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.38 2008/06/01 19:27:37 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -64,6 +64,7 @@ struct vnode;
 struct file;
 struct ucred;
 struct uuid;
+struct statvfs;
 
 /*
  * Prototypes for syscalls in kern/kern_descrip.c
@@ -135,6 +136,7 @@ int kern_chmod(struct nlookupdata *nd, int mode);
 int kern_chown(struct nlookupdata *nd, int uid, int gid);
 int kern_chroot(struct nchandle *nch);
 int kern_fstatfs(int fd, struct statfs *buf);
+int kern_fstatvfs(int fd, struct statvfs *buf);
 int kern_ftruncate(int fd, off_t length);
 int kern_futimes(int fd, struct timeval *tptr);
 int kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
@@ -155,6 +157,7 @@ int kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond);
 int kern_rmdir(struct nlookupdata *nd);
 int kern_stat(struct nlookupdata *nd, struct stat *st);
 int kern_statfs(struct nlookupdata *nd, struct statfs *buf);
+int kern_statvfs(struct nlookupdata *nd, struct statvfs *buf);
 int kern_symlink(struct nlookupdata *nd, char *path, int mode);
 int kern_truncate(struct nlookupdata *nd, off_t length);
 int kern_unlink(struct nlookupdata *nd);

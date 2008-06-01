@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.32 2008/02/22 05:19:25 swildner Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.33 2008/06/01 19:27:33 dillon Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -19,7 +19,6 @@
 # Sources common to both syscall interfaces:
 SRCS+=	ftruncate.c lseek.c mmap.c truncate.c
 SRCS+=	pread.c pwrite.c preadv.c pwritev.c
-SRCS+=	__cvtstatvfs.c fstatvfs.c statvfs.c
 
 # Add machine dependent asm sources:
 SRCS+=${MDASM}
