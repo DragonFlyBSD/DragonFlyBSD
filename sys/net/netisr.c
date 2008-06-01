@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.40 2008/05/02 07:40:32 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.41 2008/06/01 07:43:29 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -255,12 +255,7 @@ void
 netmsg_service_loop_mpsafe(void *arg)
 {
     rel_mplock();
-
-    struct netmsg *msg;
-
-    while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
-	msg->nm_dispatch(msg);
-    }
+    netmsg_service_loop(arg);
 }
 
 /*
