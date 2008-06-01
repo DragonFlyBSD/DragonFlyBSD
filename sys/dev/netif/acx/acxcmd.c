@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.10 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.10.2.1 2008/06/01 04:27:53 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -105,6 +105,7 @@ struct bss_join_hdr {
 /*
  * non-data frame tx rate
  */
+#define ACX_NDATA_TXRATE_1		10	/* 1Mbits/s */
 #define ACX_NDATA_TXRATE_2		20	/* 2Mbits/s */
 
 /*
@@ -148,7 +149,7 @@ acx_join_bss(struct acx_softc *sc, uint8_t mode, struct ieee80211_node *ni,
 
 	sc->chip_set_bss_join_param(sc, bj->chip_spec, ic->ic_dtim_period);
 
-	bj->ndata_txrate = ACX_NDATA_TXRATE_2;
+	bj->ndata_txrate = ACX_NDATA_TXRATE_1;
 	bj->ndata_txopt = 0;
 	bj->mode = mode;
 	bj->channel = ieee80211_chan2ieee(ic, c);
