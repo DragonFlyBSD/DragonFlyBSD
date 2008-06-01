@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.128 2008/06/01 19:27:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.129 2008/06/01 19:55:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1315,6 +1315,113 @@ getfsstat_callback(struct mount *mp, void *data)
 	info->count++;
 	return(0);
 }
+
+/*
+ * getvfsstat_args(struct statfs *buf, struct statvfs *vbuf,
+		   long bufsize, int flags)
+ *
+ * Get statistics on all filesystems.
+ */
+
+struct getvfsstat_info {
+	struct statfs *sfsp;
+	struct statvfs *vsfsp;
+	long count;
+	long maxcount;
+	int error;
+	int flags;
+	struct proc *p;
+};
+
+static int getvfsstat_callback(struct mount *, void *);
+
+/* ARGSUSED */
+int
+sys_getvfsstat(struct getvfsstat_args *uap)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct getvfsstat_info info;
+
+	bzero(&info, sizeof(info));
+
+	info.maxcount = uap->vbufsize / sizeof(struct statvfs);
+	info.sfsp = uap->buf;
+	info.vsfsp = uap->vbuf;
+	info.count = 0;
+	info.flags = uap->flags;
+	info.p = p;
+
+	mountlist_scan(getvfsstat_callback, &info, MNTSCAN_FORWARD);
+	if (info.vsfsp && info.count > info.maxcount)
+		uap->sysmsg_result = info.maxcount;
+	else
+		uap->sysmsg_result = info.count;
+	return (info.error);
+}
+
+static int
+getvfsstat_callback(struct mount *mp, void *data)
+{
+	struct getvfsstat_info *info = data;
+	struct statfs *sp;
+	struct statvfs *vsp;
+	char *freepath;
+	char *fullpath;
+	int error;
+
+	if (info->vsfsp && info->count < info->maxcount) {
+		if (info->p && !chroot_visible_mnt(mp, info->p))
+			return(0);
+		sp = &mp->mnt_stat;
+		vsp = &mp->mnt_vstat;
+
+		/*
+		 * If MNT_NOWAIT or MNT_LAZY is specified, do not
+		 * refresh the fsstat cache. MNT_NOWAIT or MNT_LAZY
+		 * overrides MNT_WAIT.
+		 */
+		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
+		    (info->flags & MNT_WAIT)) &&
+		    (error = VFS_STATFS(mp, sp, info->p->p_ucred))) {
+			return(0);
+		}
+		sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
+
+		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
+		    (info->flags & MNT_WAIT)) &&
+		    (error = VFS_STATVFS(mp, vsp, info->p->p_ucred))) {
+			return(0);
+		}
+		vsp->f_flag = 0;
+		if (mp->mnt_flag & MNT_RDONLY)
+			vsp->f_flag |= ST_RDONLY;
+		if (mp->mnt_flag & MNT_NOSUID)
+			vsp->f_flag |= ST_NOSUID;
+
+		error = mount_path(info->p, mp, &fullpath, &freepath);
+		if (error) {
+			info->error = error;
+			return(-1);
+		}
+		bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
+		strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
+		kfree(freepath, M_TEMP);
+
+		error = copyout(sp, info->sfsp, sizeof(*sp));
+		if (error == 0)
+			error = copyout(vsp, info->vsfsp, sizeof(*vsp));
+		if (error) {
+			info->error = error;
+			return (-1);
+		}
+		++info->sfsp;
+		++info->vsfsp;
+	}
+	info->count++;
+	return(0);
+}
+
 
 /*
  * fchdir_args(int fd)

@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.58 2008/06/01 19:27:35 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.59 2008/06/01 19:55:30 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -688,3 +688,5 @@
 500	STD	BSD	{ int statvfs(const char *path, struct statvfs *buf); }
 501	STD	BSD	{ int fstatvfs(int fd, struct statvfs *buf); }
 502	STD	BSD	{ int fhstatvfs(const struct fhandle *u_fhp, struct statvfs *buf); }
+503	STD	BSD	{ int getvfsstat(struct statfs *buf,          \
+			    struct statvfs *vbuf, long vbufsize, int flags); }
