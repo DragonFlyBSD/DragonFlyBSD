@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.68 2008/05/31 06:03:26 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.69 2008/06/01 07:44:37 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -105,7 +105,7 @@ static void	if_attachdomain(void *);
 static void	if_attachdomain1(struct ifnet *);
 static int	ifconf(u_long, caddr_t, struct ucred *);
 static void	ifinit(void *);
-static void	ifaddrinit(void *);
+static void	ifnetinit(void *);
 static void	if_slowtimo(void *);
 static void	link_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
 static int	if_rtdel(struct radix_node *, void *);
@@ -123,7 +123,7 @@ SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
 
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
 /* Must be after netisr_init */
-SYSINIT(ifaddr, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifaddrinit, NULL)
+SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifnetinit, NULL)
 
 MALLOC_DEFINE(M_IFADDR, "ifaddr", "interface address");
 MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
@@ -162,7 +162,7 @@ struct callout		if_slowtimo_timer;
 
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
-static struct thread	ifaddr_threads[MAXCPU];
+static struct thread	ifnet_threads[MAXCPU];
 
 #define IFQ_KTR_STRING		"ifq=%p"
 #define IFQ_KTR_ARG_SIZE	(sizeof(void *))
@@ -2333,19 +2333,19 @@ ifa_destroy(struct ifaddr *ifa)
 struct lwkt_port *
 ifa_portfn(int cpu)
 {
-	return &ifaddr_threads[cpu].td_msgport;
+	return &ifnet_threads[cpu].td_msgport;
 }
 
 static void
-ifaddrinit(void *dummy __unused)
+ifnetinit(void *dummy __unused)
 {
 	int i;
 
 	for (i = 0; i < ncpus; ++i) {
-		struct thread *thr = &ifaddr_threads[i];
+		struct thread *thr = &ifnet_threads[i];
 
 		lwkt_create(netmsg_service_loop_mpsafe, NULL, NULL, thr, 0, i,
-			    "ifaddr %d", i);
+			    "ifnet %d", i);
 		netmsg_service_port_init(&thr->td_msgport);
 	}
 }
