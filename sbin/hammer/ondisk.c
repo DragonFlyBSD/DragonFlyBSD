@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.19 2008/05/12 21:17:16 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.20 2008/06/01 20:59:28 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -602,15 +602,19 @@ format_undomap(hammer_volume_ondisk_t ondisk)
  * target bigblock).
  */
 void
-format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_off)
+format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_base)
 {
-	blockmap->phys_offset = alloc_bigblock(NULL, zone_off);
-	blockmap->alloc_offset = zone_off;
-	blockmap->first_offset = zone_off;
-	blockmap->next_offset = zone_off;
+	blockmap->phys_offset = alloc_bigblock(NULL, zone_base);
+	blockmap->alloc_offset = zone_base;
+	blockmap->first_offset = zone_base;
+	blockmap->next_offset = zone_base;
 	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
 }
 
+/*
+ * Allocate a chunk of data out of a blockmap.  This is a simplified
+ * version which uses next_offset as a simple allocation iterator.
+ */
 static
 void *
 alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
@@ -632,13 +636,14 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	rootmap = &volume->ondisk->vol0_blockmap[zone];
 
 	/*
-	 * Alignment and buffer-boundary issues
+	 * Alignment and buffer-boundary issues.  If the allocation would
+	 * cross a buffer boundary we have to skip to the next buffer.
 	 */
 	bytes = (bytes + 7) & ~7;
-	if ((rootmap->phys_offset ^ (rootmap->phys_offset + bytes - 1)) &
+	if ((rootmap->next_offset ^ (rootmap->next_offset + bytes - 1)) &
 	    ~HAMMER_BUFMASK64) {
 		volume->cache.modified = 1;
-		rootmap->phys_offset = (rootmap->phys_offset + bytes) &
+		rootmap->next_offset = (rootmap->next_offset + bytes) &
 				       ~HAMMER_BUFMASK64;
 	}
 
@@ -646,30 +651,38 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	 * Dive layer 1
 	 */
 	layer1_offset = rootmap->phys_offset +
-			HAMMER_BLOCKMAP_LAYER1_OFFSET(rootmap->alloc_offset);
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(rootmap->next_offset);
 
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
-	if ((rootmap->alloc_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0) {
+	if ((rootmap->next_offset >= rootmap->alloc_offset &&
+	    (rootmap->next_offset & HAMMER_BLOCKMAP_LAYER2_MASK) == 0) ||
+	    layer1->phys_offset == HAMMER_BLOCKMAP_FREE
+	) {
+		assert(rootmap->next_offset >= rootmap->alloc_offset);
 		buffer1->cache.modified = 1;
 		bzero(layer1, sizeof(*layer1));
 		layer1->blocks_free = HAMMER_BLOCKMAP_RADIX2;
 		layer1->phys_offset = alloc_bigblock(NULL,
-						     rootmap->alloc_offset);
+						     rootmap->next_offset);
 	}
 
 	/*
 	 * Dive layer 2
 	 */
 	layer2_offset = layer1->phys_offset +
-			HAMMER_BLOCKMAP_LAYER2_OFFSET(rootmap->alloc_offset);
+			HAMMER_BLOCKMAP_LAYER2_OFFSET(rootmap->next_offset);
 
 	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
-	if ((rootmap->alloc_offset & HAMMER_LARGEBLOCK_MASK64) == 0) {
+	if ((rootmap->next_offset & HAMMER_LARGEBLOCK_MASK64) == 0 &&
+	    (rootmap->next_offset >= rootmap->alloc_offset ||
+	     layer2->u.phys_offset == HAMMER_BLOCKMAP_FREE)
+	) {
+		assert(rootmap->next_offset >= rootmap->alloc_offset);
 		buffer2->cache.modified = 1;
 		bzero(layer2, sizeof(*layer2));
 		layer2->u.phys_offset = alloc_bigblock(NULL,
-						       rootmap->alloc_offset);
+						       rootmap->next_offset);
 		layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
 		--layer1->blocks_free;
 	}
@@ -678,9 +691,9 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	buffer2->cache.modified = 1;
 	volume->cache.modified = 1;
 	layer2->bytes_free -= bytes;
-	*result_offp = rootmap->alloc_offset;
-	rootmap->alloc_offset += bytes;
-	rootmap->next_offset = rootmap->alloc_offset;
+	*result_offp = rootmap->next_offset;
+	rootmap->next_offset += bytes;
+	rootmap->alloc_offset = rootmap->next_offset;
 
 	bigblock_offset = layer2->u.phys_offset + 
 			  (*result_offp & HAMMER_LARGEBLOCK_MASK);
@@ -698,6 +711,67 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 
 	rel_volume(volume);
 	return(ptr);
+}
+
+/*
+ * Presize a blockmap.  Allocate all layer2 bigblocks required to map the
+ * blockmap through the specified zone limit.
+ *
+ * Note: This code is typically called later, after some data may have
+ *	 already been allocated, but can be called or re-called at any time.
+ * 
+ * Note: vol0_zone_limit is not zone-encoded.
+ */
+void
+presize_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_base,
+		 hammer_off_t vol0_zone_limit)
+{
+	struct buffer_info *buffer1 = NULL;
+	struct buffer_info *buffer2 = NULL;
+	struct hammer_blockmap_layer1 *layer1;
+	struct hammer_blockmap_layer2 *layer2;
+	hammer_off_t zone_limit;
+	hammer_off_t layer1_offset;
+	hammer_off_t layer2_offset;
+
+	zone_limit = zone_base + vol0_zone_limit;
+
+	while (zone_base < zone_limit) {
+		layer1_offset = blockmap->phys_offset +
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(zone_base);
+		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
+
+		if ((zone_base >= blockmap->alloc_offset &&
+		    (zone_base & HAMMER_BLOCKMAP_LAYER2_MASK) == 0) ||
+		     layer1->phys_offset == HAMMER_BLOCKMAP_FREE
+		) {
+			bzero(layer1, sizeof(*layer1));
+			layer1->blocks_free = HAMMER_BLOCKMAP_RADIX2;
+			layer1->phys_offset = alloc_bigblock(NULL, zone_base);
+			layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+			buffer1->cache.modified = 1;
+		}
+		layer2_offset = layer1->phys_offset +
+				HAMMER_BLOCKMAP_LAYER2_OFFSET(zone_base);
+		layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
+		if (zone_base >= blockmap->alloc_offset ||
+		    layer2->u.phys_offset == HAMMER_BLOCKMAP_FREE) {
+			bzero(layer2, sizeof(*layer2));
+			layer2->u.phys_offset = HAMMER_BLOCKMAP_FREE;
+			layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+			layer2->entry_crc = crc32(layer2,
+						  HAMMER_LAYER2_CRCSIZE);
+			buffer2->cache.modified = 1;
+		}
+		zone_base += HAMMER_LARGEBLOCK_SIZE64;
+	}
+	if (blockmap->alloc_offset < zone_limit)
+		blockmap->alloc_offset = zone_limit;
+
+	if (buffer1)
+		rel_buffer(buffer1);
+	if (buffer2)
+		rel_buffer(buffer2);
 }
 
 #if 0

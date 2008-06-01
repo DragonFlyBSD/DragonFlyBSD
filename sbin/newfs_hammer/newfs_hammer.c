@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.26 2008/05/18 01:49:44 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.27 2008/06/01 20:59:29 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -47,12 +47,13 @@ static void usage(void);
 int
 main(int ac, char **av)
 {
-	int i;
-	int ch;
 	u_int32_t status;
 	off_t total;
+	int ch;
+	int i;
 	const char *label = NULL;
 	struct volume_info *vol;
+	hammer_off_t vol0_zone_limit;
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
@@ -159,6 +160,18 @@ main(int ac, char **av)
 		if (i != RootVolNo)
 			format_volume(get_volume(i), NumVolumes, label, total);
 	}
+
+	/*
+	 * Pre-size the blockmap layer1/layer2 infrastructure to the zone
+	 * limit.  If we do this the filesystem does not have to allocate
+	 * new layer2 blocks which reduces the chances of the reblocker
+	 * having to fallback to an extremely inefficient algorithm.
+	 */
+	vol = get_volume(RootVolNo);
+	vol0_zone_limit = vol->ondisk->vol0_zone_limit;
+	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
+			 HAMMER_ZONE_BTREE, vol0_zone_limit);
+
 	printf("---------------------------------------------\n");
 	printf("%d volume%s total size %s\n",
 		NumVolumes, (NumVolumes == 1 ? "" : "s"), sizetostr(total));
@@ -166,8 +179,7 @@ main(int ac, char **av)
 	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
 	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
 
-	vol = get_volume(RootVolNo);
-	printf("zone-limit:	     %s\n", sizetostr(vol->ondisk->vol0_zone_limit));
+	printf("zone-limit:	     %s\n", sizetostr(vol0_zone_limit));
 	printf("\n");
 
 	flush_all_volumes();
@@ -401,13 +413,17 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		ondisk->vol0_next_tid = createtid();
 
 		/*
-		 * Set the default zone limit to 100x the size of the
-		 * filesystem.  We do not want to create a huge zone limit
-		 * for tiny filesystems because the blockmap could wind up
-		 * getting fragmented and eating a large chunk of the disk
-		 * space.
+		 * Set the default zone limit to 4x the size of the
+		 * filesystem, allowing the filesystem to survive a
+		 * worse-case of 75% fragmentation per zone.  The limit
+		 * can be expanded at any time if the filesystem is
+		 * made larger.
+		 *
+		 * We do not want to create a huge zone limit for tiny
+		 * filesystems because the blockmap could wind up getting
+		 * fragmented and eating a large chunk of the disk space.
 		 */
-		zone_limit = (hammer_off_t)total_size * 100;
+		zone_limit = (hammer_off_t)total_size * 4;
 		zone_limit = (zone_limit + HAMMER_BLOCKMAP_LAYER2_MASK) &
 			     ~HAMMER_BLOCKMAP_LAYER2_MASK;
 		if (zone_limit < (hammer_off_t)total_size ||
