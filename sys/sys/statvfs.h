@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/statvfs.h,v 1.6 2007/11/02 19:52:24 dillon Exp $
+ * $DragonFly: src/sys/sys/statvfs.h,v 1.7 2008/06/01 20:18:03 dillon Exp $
  */
 
 #ifndef _SYS_STATVFS_H_
@@ -90,6 +90,9 @@ struct statvfs {
 __BEGIN_DECLS
 int	fstatvfs(int, struct statvfs *);
 int	statvfs(const char * __restrict, struct statvfs * __restrict);
+int     fhstatvfs (const struct fhandle *, struct statvfs * __restrict);
+int     getvfsstat (struct statfs * __restrict, struct statvfs * __restrict, long, int);
+
 __END_DECLS
 
 #endif /* _SYS_STATVFS_H_ */
