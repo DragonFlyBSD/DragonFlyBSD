@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/statvfs.h,v 1.7 2008/06/01 20:18:03 dillon Exp $
+ * $DragonFly: src/sys/sys/statvfs.h,v 1.8 2008/06/01 20:44:45 dillon Exp $
  */
 
 #ifndef _SYS_STATVFS_H_
@@ -39,6 +39,8 @@
 
 #include <sys/types.h>
 #include <sys/uuid.h>
+
+struct fhandle;
 
 /*
  * The POSIX 1003.1 standard uses free and available nomenclature to mean the
@@ -91,7 +93,6 @@ __BEGIN_DECLS
 int	fstatvfs(int, struct statvfs *);
 int	statvfs(const char * __restrict, struct statvfs * __restrict);
 int     fhstatvfs (const struct fhandle *, struct statvfs * __restrict);
-int     getvfsstat (struct statfs * __restrict, struct statvfs * __restrict, long, int);
 
 __END_DECLS
 
