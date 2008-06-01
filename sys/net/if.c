@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.69 2008/06/01 07:44:37 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.70 2008/06/01 08:09:14 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -245,7 +245,7 @@ if_start_ipifunc(void *arg)
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(ifa_portfn(mycpuid), lmsg);
+		lwkt_sendmsg(ifnet_portfn(mycpuid), lmsg);
 	crit_exit();
 }
 
@@ -355,7 +355,7 @@ check:
 		crit_enter();
 		if (lmsg->ms_flags & MSGF_DONE)	{ /* XXX necessary? */
 			logifstart(sched, ifp);
-			lwkt_sendmsg(ifa_portfn(mycpuid), lmsg);
+			lwkt_sendmsg(ifnet_portfn(mycpuid), lmsg);
 		}
 		crit_exit();
 	}
@@ -2331,7 +2331,7 @@ ifa_destroy(struct ifaddr *ifa)
 }
 
 struct lwkt_port *
-ifa_portfn(int cpu)
+ifnet_portfn(int cpu)
 {
 	return &ifnet_threads[cpu].td_msgport;
 }

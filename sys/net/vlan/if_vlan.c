@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.32 2008/05/16 13:19:12 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.33 2008/06/01 08:09:14 sephe Exp $
  */
 
 /*
@@ -160,7 +160,7 @@ static __inline void
 vlan_forwardmsg(struct lwkt_msg *lmsg, int next_cpu)
 {
 	if (next_cpu < ncpus)
-		lwkt_forwardmsg(ifa_portfn(next_cpu), lmsg);
+		lwkt_forwardmsg(ifnet_portfn(next_cpu), lmsg);
 	else
 		lwkt_replymsg(lmsg, 0);
 }
@@ -550,7 +550,7 @@ vlan_link(struct ifvlan *ifv, struct ifnet *ifp_p)
 	vmsg.nv_ifv = ifv;
 	vmsg.nv_ifp_p = ifp_p;
 
-	lwkt_domsg(ifa_portfn(0), &nmsg->nm_lmsg, 0);
+	lwkt_domsg(ifnet_portfn(0), &nmsg->nm_lmsg, 0);
 }
 
 static void
@@ -692,7 +692,7 @@ vlan_unlink(struct ifvlan *ifv, struct ifnet *ifp_p)
 	vmsg.nv_ifv = ifv;
 	vmsg.nv_ifp_p = ifp_p;
 
-	lwkt_domsg(ifa_portfn(0), &nmsg->nm_lmsg, 0);
+	lwkt_domsg(ifnet_portfn(0), &nmsg->nm_lmsg, 0);
 
 	crit_enter();
 	if (LIST_EMPTY(&vlantrunks[mycpuid].vlan_list)) {

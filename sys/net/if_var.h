@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.51 2008/05/31 06:03:26 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.52 2008/06/01 08:09:14 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -489,6 +489,14 @@ IFAFREE(struct ifaddr *_ifa)
 	_IFAFREE(_ifa, mycpuid);
 }
 
+struct lwkt_port *ifnet_portfn(int);
+
+static __inline struct lwkt_port *
+ifa_portfn(int cpu)
+{
+	return ifnet_portfn(cpu);
+}
+
 extern	struct ifnethead ifnet;
 extern struct	ifnet	**ifindex2ifnet;
 extern	int ifqmaxlen;
@@ -541,7 +549,6 @@ void	*ifa_create(int, int);
 void	ifa_destroy(struct ifaddr *);
 void	ifa_iflink(struct ifaddr *, struct ifnet *, int);
 void	ifa_ifunlink(struct ifaddr *, struct ifnet *);
-struct lwkt_port *ifa_portfn(int);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
