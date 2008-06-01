@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.9 2007/11/25 18:10:06 swildner Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.10 2008/06/01 20:52:21 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -46,6 +46,7 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/sysctl.h>
+#include <sys/statvfs.h>
 
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
@@ -104,16 +105,16 @@ unit_t unitp [] = { NONE, KILO, MEGA, GIGA, TERA, PETA };
 int	  bread(off_t, void *, int);
 int	  checkvfsname(const char *, char **);
 char	 *getmntpt(char *);
-int	  longwidth(long);
+int	  quadwidth(int64_t);
 char	 *makenetvfslist(void);
 char	**makevfslist(char *);
-void	  prthuman(struct statfs *, long);
+void	  prthuman(struct statvfs *, long);
 void	  prthumanval(double);
-void	  prtstat(struct statfs *, struct maxwidths *);
-long	  regetmntinfo(struct statfs **, long, char **);
+void	  prtstat(struct statfs *, struct statvfs *, struct maxwidths *);
+long	  regetmntinfo(struct statfs **, struct statvfs **,  long, char **);
 int	  ufs_df(char *, struct maxwidths *);
 unit_t	  unit_adjust(double *);
-void	  update_maxwidths(struct maxwidths *, struct statfs *);
+void	  update_maxwidths(struct maxwidths *, struct statfs *, struct statvfs *);
 void	  usage(void);
 
 int	aflag = 0, hflag, iflag, nflag;
@@ -125,11 +126,18 @@ imax(int a, int b)
 	return (a > b ? a : b);
 }
 
+static __inline int64_t
+qmax(int64_t a, int64_t b)
+{
+	return (a > b ? a : b);
+}
+
 int
 main(int argc, char **argv)
 {
 	struct stat stbuf;
 	struct statfs statfsbuf, *mntbuf;
+	struct statvfs statvfsbuf, *mntvbuf;
 	struct maxwidths maxwidths;
 	const char *fstype;
 	char *mntpath, *mntpt, **vfslist;
@@ -198,20 +206,20 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	mntsize = getmntinfo(&mntbuf, MNT_NOWAIT);
+	mntsize = getmntvinfo(&mntbuf, &mntvbuf, MNT_NOWAIT);
 	bzero(&maxwidths, sizeof(maxwidths));
 	for (i = 0; i < mntsize; i++)
-		update_maxwidths(&maxwidths, &mntbuf[i]);
+		update_maxwidths(&maxwidths, &mntbuf[i], &mntvbuf[i]);
 
 	rv = 0;
 	if (!*argv) {
-		mntsize = regetmntinfo(&mntbuf, mntsize, vfslist);
+		mntsize = regetmntinfo(&mntbuf, &mntvbuf, mntsize, vfslist);
 		bzero(&maxwidths, sizeof(maxwidths));
 		for (i = 0; i < mntsize; i++)
-			update_maxwidths(&maxwidths, &mntbuf[i]);
+			update_maxwidths(&maxwidths, &mntbuf[i], &mntvbuf[i]);
 		for (i = 0; i < mntsize; i++) {
 			if (aflag || (mntbuf[i].f_flags & MNT_IGNORE) == 0)
-				prtstat(&mntbuf[i], &maxwidths);
+				prtstat(&mntbuf[i], &mntvbuf[i], &maxwidths);
 		}
 		exit(rv);
 	}
@@ -245,9 +253,10 @@ main(int argc, char **argv)
 					rmdir(mntpt);
 					free(mntpath);
 					continue;
-				} else if (statfs(mntpt, &statfsbuf) == 0) {
+				} else if (statfs(mntpt, &statfsbuf) == 0 &&
+					   statvfs(mntpt, &statvfsbuf) == 0) {
 					statfsbuf.f_mntonname[0] = '\0';
-					prtstat(&statfsbuf, &maxwidths);
+					prtstat(&statfsbuf, &statvfsbuf, &maxwidths);
 				} else {
 					warn("%s", *argv);
 					rv = 1;
@@ -268,11 +277,16 @@ main(int argc, char **argv)
 			rv = 1;
 			continue;
 		}
+		if (statvfs(mntpt, &statvfsbuf) < 0) {
+			warn("%s", mntpt);
+			rv = 1;
+			continue;
+		}
 		if (argc == 1) {
 			bzero(&maxwidths, sizeof(maxwidths));
-			update_maxwidths(&maxwidths, &statfsbuf);
+			update_maxwidths(&maxwidths, &statfsbuf, &statvfsbuf);
 		}
-		prtstat(&statfsbuf, &maxwidths);
+		prtstat(&statfsbuf, &statvfsbuf, &maxwidths);
 	}
 	return (rv);
 }
@@ -282,8 +296,9 @@ getmntpt(char *name)
 {
 	long mntsize, i;
 	struct statfs *mntbuf;
+	struct statvfs *mntvbuf;
 
-	mntsize = getmntinfo(&mntbuf, MNT_NOWAIT);
+	mntsize = getmntvinfo(&mntbuf, &mntvbuf, MNT_NOWAIT);
 	for (i = 0; i < mntsize; i++) {
 		if (!strcmp(mntbuf[i].f_mntfromname, name))
 			return (mntbuf[i].f_mntonname);
@@ -297,22 +312,27 @@ getmntpt(char *name)
  * current (not cached) info.  Returns the new count of valid statfs bufs.
  */
 long
-regetmntinfo(struct statfs **mntbufp, long mntsize, char **vfslist)
+regetmntinfo(struct statfs **mntbufp, struct statvfs **mntvbufp, long mntsize, char **vfslist)
 {
 	int i, j;
 	struct statfs *mntbuf;
+	struct statvfs *mntvbuf;
 
 	if (vfslist == NULL)
-		return (nflag ? mntsize : getmntinfo(mntbufp, MNT_WAIT));
+		return (nflag ? mntsize : getmntvinfo(mntbufp, mntvbufp, MNT_WAIT));
 
 	mntbuf = *mntbufp;
+	mntvbuf = *mntvbufp;
 	for (j = 0, i = 0; i < mntsize; i++) {
 		if (checkvfsname(mntbuf[i].f_fstypename, vfslist))
 			continue;
-		if (!nflag)
+		if (!nflag) {
 			statfs(mntbuf[i].f_mntonname,&mntbuf[j]);
-		else if (i != j)
+			statvfs(mntbuf[i].f_mntonname,&mntvbuf[j]);
+		} else if (i != j) {
 			mntbuf[j] = mntbuf[i];
+			mntvbuf[j] = mntvbuf[i];
+		}
 		j++;
 	}
 	return (j);
@@ -346,12 +366,11 @@ unit_adjust(double *val)
 }
 
 void
-prthuman(struct statfs *sfsp, long used)
+prthuman(struct statvfs *vsfsp, long used)
 {
-
-	prthumanval((double)sfsp->f_blocks * (double)sfsp->f_bsize);
-	prthumanval((double)used * (double)sfsp->f_bsize);
-	prthumanval((double)sfsp->f_bavail * (double)sfsp->f_bsize);
+	prthumanval((double)vsfsp->f_blocks * (double)vsfsp->f_bsize);
+	prthumanval((double)used * (double)vsfsp->f_bsize);
+	prthumanval((double)vsfsp->f_bavail * (double)vsfsp->f_bsize);
 }
 
 void
@@ -373,20 +392,27 @@ prthumanval(double bytes)
  * Convert statfs returned filesystem size into BLOCKSIZE units.
  * Attempts to avoid overflow for large filesystems.
  */
-#define fsbtoblk(num, fsbs, bs) \
-	(((fsbs) != 0 && (fsbs) < (bs)) ? \
-		(num) / ((bs) / (fsbs)) : (num) * ((fsbs) / (bs)))
+static
+int64_t
+fsbtoblk(int64_t num, long bsize, long reqbsize)
+{
+	if (bsize && bsize < reqbsize)
+		num = num / (reqbsize / bsize);
+	else
+		num = num * (bsize / reqbsize);
+	return(num);
+}
 
 /*
  * Print out status about a filesystem.
  */
 void
-prtstat(struct statfs *sfsp, struct maxwidths *mwp)
+prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
 {
 	static long blocksize;
 	static int headerlen, timesthrough;
 	static const char *header;
-	long used, availblks, inodes;
+	int64_t used, availblks, inodes;
 
 	if (++timesthrough == 1) {
 		mwp->mntfrom = imax(mwp->mntfrom, strlen("Filesystem"));
@@ -412,24 +438,24 @@ prtstat(struct statfs *sfsp, struct maxwidths *mwp)
 		printf("  Mounted on\n");
 	}
 	printf("%-*s", mwp->mntfrom, sfsp->f_mntfromname);
-	used = sfsp->f_blocks - sfsp->f_bfree;
-	availblks = sfsp->f_bavail + used;
+	used = vsfsp->f_blocks - vsfsp->f_bfree;
+	availblks = vsfsp->f_bavail + used;
 	if (hflag) {
-		prthuman(sfsp, used);
+		prthuman(vsfsp, used);
 	} else {
-		printf(" %*ld %*ld %*ld", mwp->total,
-	            fsbtoblk(sfsp->f_blocks, sfsp->f_bsize, blocksize),
-		    mwp->used, fsbtoblk(used, sfsp->f_bsize, blocksize),
-	            mwp->avail, fsbtoblk(sfsp->f_bavail, sfsp->f_bsize,
+		printf(" %*lld %*lld %*lld", mwp->total,
+	            fsbtoblk(vsfsp->f_blocks, vsfsp->f_bsize, blocksize),
+		    mwp->used, fsbtoblk(used, vsfsp->f_bsize, blocksize),
+	            mwp->avail, fsbtoblk(vsfsp->f_bavail, vsfsp->f_bsize,
 		    blocksize));
 	}
 	printf(" %5.0f%%",
 	    availblks == 0 ? 100.0 : (double)used / (double)availblks * 100.0);
 	if (iflag) {
-		inodes = sfsp->f_files;
-		used = inodes - sfsp->f_ffree;
-		printf(" %*ld %*ld %4.0f%% ", mwp->iused, used,
-		    mwp->ifree, sfsp->f_ffree, inodes == 0 ? 100.0 :
+		inodes = vsfsp->f_files;
+		used = inodes - vsfsp->f_ffree;
+		printf(" %*lld %*lld %4.0f%% ", mwp->iused, used,
+		    mwp->ifree, (int64_t)vsfsp->f_ffree, inodes == 0 ? 100.0 :
 		    (double)used / (double)inodes * 100.0);
 	} else
 		printf("  ");
@@ -441,7 +467,7 @@ prtstat(struct statfs *sfsp, struct maxwidths *mwp)
  * the filesystem specified by `sfsp'.
  */
 void
-update_maxwidths(struct maxwidths *mwp, struct statfs *sfsp)
+update_maxwidths(struct maxwidths *mwp, struct statfs *sfsp, struct statvfs *vsfsp)
 {
 	static long blocksize;
 	int dummy;
@@ -450,20 +476,20 @@ update_maxwidths(struct maxwidths *mwp, struct statfs *sfsp)
 		getbsize(&dummy, &blocksize);
 
 	mwp->mntfrom = imax(mwp->mntfrom, strlen(sfsp->f_mntfromname));
-	mwp->total = imax(mwp->total, longwidth(fsbtoblk(sfsp->f_blocks,
-	    sfsp->f_bsize, blocksize)));
-	mwp->used = imax(mwp->used, longwidth(fsbtoblk(sfsp->f_blocks -
-	    sfsp->f_bfree, sfsp->f_bsize, blocksize)));
-	mwp->avail = imax(mwp->avail, longwidth(fsbtoblk(sfsp->f_bavail,
-	    sfsp->f_bsize, blocksize)));
-	mwp->iused = imax(mwp->iused, longwidth(sfsp->f_files -
-	    sfsp->f_ffree));
-	mwp->ifree = imax(mwp->ifree, longwidth(sfsp->f_ffree));
+	mwp->total = imax(mwp->total, quadwidth(fsbtoblk(vsfsp->f_blocks,
+	    vsfsp->f_bsize, blocksize)));
+	mwp->used = imax(mwp->used, quadwidth(fsbtoblk(vsfsp->f_blocks -
+	    vsfsp->f_bfree, vsfsp->f_bsize, blocksize)));
+	mwp->avail = imax(mwp->avail, quadwidth(fsbtoblk(vsfsp->f_bavail,
+	    vsfsp->f_bsize, blocksize)));
+	mwp->iused = imax(mwp->iused, quadwidth(vsfsp->f_files -
+	    vsfsp->f_ffree));
+	mwp->ifree = imax(mwp->ifree, quadwidth(vsfsp->f_ffree));
 }
 
 /* Return the width in characters of the specified long. */
 int
-longwidth(long val)
+quadwidth(int64_t val)
 {
 	int len;
 
@@ -477,7 +503,6 @@ longwidth(long val)
 		len++;
 		val /= 10;
 	}
-
 	return (len);
 }
 
@@ -498,7 +523,9 @@ int
 ufs_df(char *file, struct maxwidths *mwp)
 {
 	struct statfs statfsbuf;
+	struct statvfs statvfsbuf;
 	struct statfs *sfsp;
+	struct statvfs *vsfsp;
 	const char *mntpt;
 	static int synced;
 
@@ -514,24 +541,26 @@ ufs_df(char *file, struct maxwidths *mwp)
 		return (1);
 	}
 	sfsp = &statfsbuf;
+	vsfsp = &statvfsbuf;
 	sfsp->f_type = 1;
 	strcpy(sfsp->f_fstypename, "ufs");
 	sfsp->f_flags = 0;
-	sfsp->f_bsize = sblock.fs_fsize;
-	sfsp->f_iosize = sblock.fs_bsize;
-	sfsp->f_blocks = sblock.fs_dsize;
-	sfsp->f_bfree = sblock.fs_cstotal.cs_nbfree * sblock.fs_frag +
+	sfsp->f_bsize = vsfsp->f_bsize = sblock.fs_fsize;
+	sfsp->f_iosize = vsfsp->f_frsize = sblock.fs_bsize;
+	sfsp->f_blocks = vsfsp->f_blocks = sblock.fs_dsize;
+	sfsp->f_bfree = vsfsp->f_bfree =
+		sblock.fs_cstotal.cs_nbfree * sblock.fs_frag +
 		sblock.fs_cstotal.cs_nffree;
-	sfsp->f_bavail = freespace(&sblock, sblock.fs_minfree);
-	sfsp->f_files =  sblock.fs_ncg * sblock.fs_ipg;
-	sfsp->f_ffree = sblock.fs_cstotal.cs_nifree;
+	sfsp->f_bavail = vsfsp->f_bavail = freespace(&sblock, sblock.fs_minfree);
+	sfsp->f_files = vsfsp->f_files = sblock.fs_ncg * sblock.fs_ipg;
+	sfsp->f_ffree = vsfsp->f_ffree = sblock.fs_cstotal.cs_nifree;
 	sfsp->f_fsid.val[0] = 0;
 	sfsp->f_fsid.val[1] = 0;
 	if ((mntpt = getmntpt(file)) == 0)
 		mntpt = "";
 	memmove(&sfsp->f_mntonname[0], mntpt, (size_t)MNAMELEN);
 	memmove(&sfsp->f_mntfromname[0], file, (size_t)MNAMELEN);
-	prtstat(sfsp, mwp);
+	prtstat(sfsp, vsfsp, mwp);
 	close(rfd);
 	return (0);
 }
