@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.1 2008/05/31 18:45:04 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.2 2008/06/01 01:33:58 dillon Exp $
  */
 
 #include "hammer.h"
@@ -67,6 +67,13 @@ hammer_cmd_softprune(char **av, int ac)
 	base = NULL;
 	rcode = 0;
 
+	/*
+	 * NOTE: To resitrct to a single file XXX we have to set
+	 * the localization the same (not yet implemented).  Typically
+	 * two passes would be needed, one using HAMMER_LOCALIZE_MISC
+	 * and one using HAMMER_LOCALIZE_INODE.
+	 */
+
 	bzero(&template, sizeof(template));
 	template.beg_localization = HAMMER_MIN_LOCALIZATION;
 	template.beg_obj_id = HAMMER_MIN_OBJID;
@@ -78,17 +85,15 @@ hammer_cmd_softprune(char **av, int ac)
 	/*
 	 * For now just allow one directory
 	 */
-	if (ac != 1)
+	if (ac == 0 || ac > 1)
 		softprune_usage(1);
 
 	/*
-	 * Scan the softlink directories
+	 * Scan the softlink directory.
 	 */
-	while (ac) {
-		hammer_softprune_scandir(&base, &template, *av);
-		++av;
-		--ac;
-	}
+	hammer_softprune_scandir(&base, &template, *av);
+	++av;
+	--ac;
 
 	/*
 	 * XXX future (need to store separate cycles for each filesystem)
@@ -118,6 +123,7 @@ hammer_cmd_softprune(char **av, int ac)
 			rcode = 1;
 			continue;
 		}
+		printf("objspace %016llx %016llx\n", scan->prune.beg_obj_id, scan->prune.end_obj_id);
 
 		if (ioctl(fd, HAMMERIOC_PRUNE, &scan->prune) < 0) {
 			printf("Prune %s failed: %s\n",
@@ -247,9 +253,9 @@ hammer_softprune_addentry(struct softprune **basep,
 		scan->fs = fs;
 		scan->filesystem = fspath;
 		scan->prune = *template;
-		scan->next = *basep;
 		scan->maxelms = 32;
 		scan->prune.elms = malloc(sizeof(*elm) * scan->maxelms);
+		scan->next = *basep;
 		*basep = scan;
 	} else {
 		free(fspath);
@@ -345,7 +351,7 @@ hammer_softprune_finalize(struct softprune *scan)
 	 */
 	assert(scan->prune.nelms < scan->maxelms);
 	elm = &scan->prune.elms[scan->prune.nelms++];
-	elm->beg_tid = 0;
+	elm->beg_tid = 1;
 	elm->end_tid = elm[-1].beg_tid;
 	elm->mod_tid = elm->end_tid - elm->beg_tid;
 }
