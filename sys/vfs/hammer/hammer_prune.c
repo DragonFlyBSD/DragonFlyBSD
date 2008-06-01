@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.3 2008/05/31 18:37:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.4 2008/06/01 01:33:25 dillon Exp $
  */
 
 #include "hammer.h"
@@ -65,8 +65,13 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS)
 		return(EINVAL);
-	if (prune->beg_obj_id >= prune->end_obj_id)
+	if (prune->beg_localization > prune->end_localization)
 		return(EINVAL);
+	if (prune->beg_localization == prune->end_localization) {
+		if (prune->beg_obj_id > prune->end_obj_id)
+			return(EINVAL);
+		/* key-space limitations - no check needed */
+	}
 	if ((prune->head.flags & HAMMER_IOC_PRUNE_ALL) && prune->nelms)
 		return(EINVAL);
 
@@ -140,6 +145,14 @@ retry:
 		if (prune->stat_oldest_tid > elm->leaf.base.create_tid)
 			prune->stat_oldest_tid = elm->leaf.base.create_tid;
 
+		if (hammer_debug_general & 0x0200) {
+			kprintf("check %016llx %016llx cre=%016llx del=%016llx\n",
+					elm->base.obj_id,
+					elm->base.key,
+					elm->base.create_tid,
+					elm->base.delete_tid);
+		}
+				
 		if (check_prune(prune, elm, &realign_cre, &realign_del) == 0) {
 			if (hammer_debug_general & 0x0200) {
 				kprintf("check %016llx %016llx: DELETE\n",

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.56 2008/05/25 18:41:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.57 2008/06/01 01:33:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1794,6 +1794,9 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 
 		/*
 		 * Calculate the gap, if any, and zero-fill it.
+		 *
+		 * n is the offset of the start of the record verses our
+		 * current seek offset in the bio.
 		 */
 		n = (int)(rec_offset - (bio->bio_offset + boff));
 		if (n > 0) {
@@ -1808,15 +1811,19 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * Calculate the data offset in the record and the number
 		 * of bytes we can copy.
 		 *
-		 * Note there is a degenerate case here where boff may
-		 * already be at bp->b_bufsize.
+		 * There are two degenerate cases.  First, boff may already
+		 * be at bp->b_bufsize.  Secondly, the data offset within
+		 * the record may exceed the record's size.
 		 */
 		roff = -n;
 		rec_offset += roff;
 		n = cursor.leaf->data_len - roff;
-		KKASSERT(n > 0);
-		if (n > bp->b_bufsize - boff)
+		if (n <= 0) {
+			kprintf("strategy_read: bad n=%d roff=%d\n", n, roff);
+			n = 0;
+		} else if (n > bp->b_bufsize - boff) {
 			n = bp->b_bufsize - boff;
+		}
 
 		/*
 		 * If we cached a truncation point on our front-end the
