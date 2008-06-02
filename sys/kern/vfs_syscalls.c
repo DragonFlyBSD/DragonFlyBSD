@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.129 2008/06/01 19:55:30 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.130 2008/06/02 20:06:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2221,7 +2221,9 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
+	struct vnode *vp;
 	struct vattr vattr;
+	off_t new_offset;
 	int error;
 
 	fp = holdfp(p->p_fd, fd, -1);
@@ -2231,24 +2233,38 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 		error = ESPIPE;
 		goto done;
 	}
+	vp = (struct vnode *)fp->f_data;
 
 	switch (whence) {
 	case L_INCR:
-		fp->f_offset += offset;
+		new_offset = fp->f_offset + offset;
 		error = 0;
 		break;
 	case L_XTND:
-		error = VOP_GETATTR((struct vnode *)fp->f_data, &vattr);
-		if (error == 0)
-			fp->f_offset = offset + vattr.va_size;
+		error = VOP_GETATTR(vp, &vattr);
+		new_offset = offset + vattr.va_size;
 		break;
 	case L_SET:
-		fp->f_offset = offset;
+		new_offset = offset;
 		error = 0;
 		break;
 	default:
+		new_offset = 0;
 		error = EINVAL;
 		break;
+	}
+
+	/*
+	 * Validate the seek position.  Negative offsets are not allowed
+	 * for regular files, block specials, or directories.
+	 */
+	if (error == 0) {
+		if (new_offset < 0 &&
+		    (vp->v_type == VREG || vp->v_type == VDIR ||
+		     vp->v_type == VCHR || vp->v_type == VBLK)) {
+			error = EINVAL;
+		}
+		fp->f_offset = new_offset;
 	}
 	*res = fp->f_offset;
 done:
@@ -2267,7 +2283,7 @@ sys_lseek(struct lseek_args *uap)
 	int error;
 
 	error = kern_lseek(uap->fd, uap->offset, uap->whence,
-	    &uap->sysmsg_offset);
+			   &uap->sysmsg_offset);
 
 	return (error);
 }
