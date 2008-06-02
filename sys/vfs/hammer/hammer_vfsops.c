@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.36 2008/06/01 21:05:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.37 2008/06/02 20:19:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -369,6 +369,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	hmp->next_tid = rootvol->ondisk->vol0_next_tid;
 	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
 	      sizeof(hmp->blockmap));
+	hmp->copy_stat_freebigblocks = rootvol->ondisk->vol0_stat_freebigblocks;
 
 	/*
 	 * Use the zone limit set by newfs_hammer, or the zone limit set by
@@ -585,6 +586,10 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	if (error)
 		return(error);
 	ondisk = volume->ondisk;
+
+	kprintf("rsvi %d rsvd %d rsvdb %d rsvrecs %d\n",
+		hmp->rsv_inodes, hmp->rsv_databufs,
+		hmp->rsv_databytes, hmp->rsv_recs);
 
 	/*
 	 * Basic stats

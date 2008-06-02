@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.59 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.60 2008/06/02 20:19:03 dillon Exp $
  */
 
 #include "hammer.h"
@@ -267,6 +267,8 @@ hammer_rel_mem_record(struct hammer_record *record)
 				RB_REMOVE(hammer_rec_rb_tree,
 					  &record->ip->rec_tree,
 					  record);
+				--ip->hmp->rsv_recs;
+				ip->hmp->rsv_databytes -= record->leaf.data_len;
 				record->flags &= ~HAMMER_RECF_ONRBTREE;
 				if (RB_EMPTY(&record->ip->rec_tree)) {
 					record->ip->flags &= ~HAMMER_INODE_XDIRTY;
@@ -804,7 +806,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	if (record->type == HAMMER_MEM_RECORD_DEL) {
 		error = hammer_btree_lookup(cursor);
 		if (error == 0) {
-			error = hammer_ip_delete_record(cursor, trans->tid);
+			error = hammer_ip_delete_record(cursor, record->ip,
+							trans->tid);
 			if (error == 0) {
 				record->flags |= HAMMER_RECF_DELETED_FE;
 				record->flags |= HAMMER_RECF_DELETED_BE;
@@ -944,6 +947,8 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 		record->leaf.base.key &= ~(0xFFFFFFFFLL);
 		record->leaf.base.key |= trans->hmp->namekey_iterator;
 	}
+	++trans->hmp->rsv_recs;
+	record->ip->hmp->rsv_databytes += record->leaf.data_len;
 	record->flags |= HAMMER_RECF_ONRBTREE;
 	hammer_modify_inode(trans, record->ip, HAMMER_INODE_XDIRTY);
 	hammer_rel_mem_record(record);
@@ -1386,7 +1391,7 @@ retry:
 		 * will set HAMMER_CURSOR_DELBTREE which hammer_ip_next()
 		 * uses to perform a fixup.
 		 */
-		error = hammer_ip_delete_record(cursor, trans->tid);
+		error = hammer_ip_delete_record(cursor, ip, trans->tid);
 		if (error)
 			break;
 		error = hammer_ip_next(cursor);
@@ -1457,7 +1462,7 @@ retry:
 		 * must be synced and cannot be deleted.
 		 */
 		if (leaf->base.rec_type != HAMMER_RECTYPE_DIRENTRY) {
-			error = hammer_ip_delete_record(cursor, trans->tid);
+			error = hammer_ip_delete_record(cursor, ip, trans->tid);
 			++*countp;
 		}
 		if (error)
@@ -1486,7 +1491,8 @@ retry:
  * cursor and retry.
  */
 int
-hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
+hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
+			hammer_tid_t tid)
 {
 	hammer_btree_elm_t elm;
 	hammer_mount_t hmp;
@@ -1521,10 +1527,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid)
 	 * If we were mounted with the nohistory option, we physically
 	 * delete the record.
 	 */
-	if (hmp->hflags & HMNT_NOHISTORY)
-		dodelete = 1;
-	else
-		dodelete = 0;
+	dodelete = hammer_nohistory(ip);
 
 	if (error == 0) {
 		error = hammer_cursor_upgrade(cursor);

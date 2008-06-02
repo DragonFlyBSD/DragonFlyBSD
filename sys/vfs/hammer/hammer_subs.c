@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.21 2008/05/25 18:41:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.22 2008/06/02 20:19:03 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -337,6 +337,16 @@ hammer_get_obj_type(enum vtype vtype)
 		return(HAMMER_OBJTYPE_UNKNOWN);
 	}
 	/* not reached */
+}
+
+int
+hammer_nohistory(hammer_inode_t ip)
+{
+	if (ip->hmp->hflags & HMNT_NOHISTORY)
+		return(1);
+	if (ip->ino_data.uflags & (SF_NOHISTORY|UF_NOHISTORY))
+		return(1);
+	return(0);
 }
 
 /*

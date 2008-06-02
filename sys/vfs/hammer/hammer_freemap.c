@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.11 2008/05/13 05:04:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.12 2008/06/02 20:19:03 dillon Exp $
  */
 
 /*
@@ -108,6 +108,8 @@ new_volume:
 						     trans->rootvol,
 						     vol0_stat_freebigblocks);
 				--ondisk->vol0_stat_freebigblocks;
+				trans->hmp->copy_stat_freebigblocks =
+					ondisk->vol0_stat_freebigblocks;
 				hammer_modify_volume_done(trans->rootvol);
 				break;
 			}
@@ -117,7 +119,7 @@ new_volume:
 				 * layer2 has no free blocks remaining,
 				 * skip to the next layer.
 				 */
-				result_offset = (result_offset + HAMMER_BLOCKMAP_LAYER2_MASK) & ~HAMMER_BLOCKMAP_LAYER2_MASK;
+				result_offset = (result_offset + HAMMER_BLOCKMAP_LAYER2) & ~HAMMER_BLOCKMAP_LAYER2_MASK;
 				if (HAMMER_VOL_DECODE(result_offset) != vol_no)
 					goto new_volume;
 			} else {
@@ -183,6 +185,7 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 				   vol0_stat_freebigblocks);
 	++ondisk->vol0_stat_freebigblocks;
 	hammer_modify_volume_done(trans->rootvol);
+	trans->hmp->copy_stat_freebigblocks = ondisk->vol0_stat_freebigblocks;
 
 	hammer_unlock(&trans->hmp->free_lock);
 
@@ -190,5 +193,41 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 		hammer_rel_buffer(buffer1, 0);
 	if (buffer2)
 		hammer_rel_buffer(buffer2, 0);
+}
+
+/*
+ * Check space availability
+ */
+int
+hammer_checkspace(hammer_mount_t hmp)
+{
+	const int in_size = sizeof(struct hammer_inode_data) +
+			    sizeof(union hammer_btree_elm);
+	const int rec_size = (sizeof(union hammer_btree_elm) * 2);
+	const int blkconv = HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE;
+	const int limit_inodes = HAMMER_LARGEBLOCK_SIZE / in_size;
+	const int limit_recs = HAMMER_LARGEBLOCK_SIZE / rec_size;
+	int usedbigblocks;;
+
+	/*
+	 * Quick and very dirty, not even using the right units (bigblocks
+	 * vs 16K buffers), but this catches almost everything.
+	 */
+	if (hmp->copy_stat_freebigblocks >= hmp->rsv_databufs + 8 &&
+	    hmp->rsv_inodes < limit_inodes &&
+	    hmp->rsv_recs < limit_recs &&
+	    hmp->rsv_databytes < HAMMER_LARGEBLOCK_SIZE) {
+		return(0);
+	}
+
+	/*
+	 * Do a more involved check
+	 */
+	usedbigblocks = (hmp->rsv_inodes * in_size / HAMMER_LARGEBLOCK_SIZE) +
+			(hmp->rsv_recs * rec_size / HAMMER_LARGEBLOCK_SIZE) +
+			hmp->rsv_databufs / blkconv + 6;
+	if (hmp->copy_stat_freebigblocks >= usedbigblocks)
+		return(0);
+	return (ENOSPC);
 }
 

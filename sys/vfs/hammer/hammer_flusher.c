@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.17 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.18 2008/06/02 20:19:03 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -201,7 +201,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		 * XXX this breaks atomicy
 		 */
 		if (hammer_must_finalize_undo(hmp)) {
-			Debugger("Too many undos!!");
+			kprintf("HAMMER: Warning: UNDO area too small!");
 			hammer_flusher_finalize(&trans);
 		}
 	}

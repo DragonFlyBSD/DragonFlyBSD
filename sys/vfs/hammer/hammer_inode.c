@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.62 2008/05/25 18:41:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.63 2008/06/02 20:19:03 dillon Exp $
  */
 
 #include "hammer.h"
@@ -298,6 +298,13 @@ retry:
 				ip, ip->obj_id, &cursor, *errorp);
 			Debugger("x");
 		}
+		if (ip->flags & HAMMER_INODE_RSV_INODES) {
+			ip->flags &= ~HAMMER_INODE_RSV_INODES; /* sanity */
+			--ip->hmp->rsv_inodes;
+		}
+		ip->hmp->rsv_databufs -= ip->rsv_databufs;
+		ip->rsv_databufs = 0;			       /* sanity */
+
 		--hammer_count_inodes;
 		kfree(ip, M_HAMMER);
 		ip = NULL;
@@ -341,7 +348,14 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->ino_data.mtime = trans->time;
 	ip->ino_data.size = 0;
 	ip->ino_data.nlinks = 0;
-	/* XXX */
+
+	/*
+	 * A nohistory designator on the parent directory is inherited by
+	 * the child.
+	 */
+	ip->ino_data.uflags = dip->ino_data.uflags &
+			      (SF_NOHISTORY|UF_NOHISTORY|UF_NODUMP);
+
 	ip->ino_leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	ip->ino_leaf.base.localization = HAMMER_LOCALIZE_INODE;
 	ip->ino_leaf.base.obj_id = ip->obj_id;
@@ -443,7 +457,7 @@ retry:
 		}
 
 		if (error == 0) {
-			error = hammer_ip_delete_record(cursor, trans->tid);
+			error = hammer_ip_delete_record(cursor, ip, trans->tid);
 			if (hammer_debug_inode)
 				kprintf(" error %d\n", error);
 			if (error && error != EDEADLK) {
@@ -718,6 +732,10 @@ hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
 		  (flags & (HAMMER_INODE_DDIRTY |
 			    HAMMER_INODE_XDIRTY | HAMMER_INODE_BUFS |
 			    HAMMER_INODE_DELETED | HAMMER_INODE_ITIMES)) == 0);
+	if ((ip->flags & HAMMER_INODE_RSV_INODES) == 0) {
+		ip->flags |= HAMMER_INODE_RSV_INODES;
+		++ip->hmp->rsv_inodes;
+	}
 
 	ip->flags |= flags;
 }
@@ -1183,11 +1201,15 @@ hammer_flush_inode_done(hammer_inode_t ip)
 		TAILQ_INSERT_TAIL(&ip->bio_list, bio, bio_act);
 	}
 	/*
-	 * Fix up the dirty buffer status.
+	 * Fix up the dirty buffer status.  IO completions will also
+	 * try to clean up rsv_databufs.
 	 */
 	if (TAILQ_FIRST(&ip->bio_list) ||
 	    (ip->vp && RB_ROOT(&ip->vp->v_rbdirty_tree))) {
 		ip->flags |= HAMMER_INODE_BUFS;
+	} else {
+		ip->hmp->rsv_databufs -= ip->rsv_databufs;
+		ip->rsv_databufs = 0;
 	}
 
 	/*
@@ -1236,6 +1258,15 @@ hammer_flush_inode_done(hammer_inode_t ip)
 		} else {
 			hammer_flush_inode(ip, 0);
 		}
+	}
+
+	/*
+	 * If the inode is now clean drop the space reservation.
+	 */
+	if ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
+	    (ip->flags & HAMMER_INODE_RSV_INODES)) {
+		ip->flags &= ~HAMMER_INODE_RSV_INODES;
+		--ip->hmp->rsv_inodes;
 	}
 
 	/*
@@ -1729,11 +1760,19 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 			TAILQ_REMOVE(&ip->bio_list, bio, bio_act);
 			bio->bio_buf->b_resid = 0;
 			biodone(bio);
+			if (ip->rsv_databufs) {
+				--ip->rsv_databufs;
+				--ip->hmp->rsv_databufs;
+			}
 		}
 		while ((bio = TAILQ_FIRST(&ip->bio_alt_list)) != NULL) {
 			TAILQ_REMOVE(&ip->bio_alt_list, bio, bio_act);
 			bio->bio_buf->b_resid = 0;
 			biodone(bio);
+			if (ip->rsv_databufs) {
+				--ip->rsv_databufs;
+				--ip->hmp->rsv_databufs;
+			}
 		}
 
 		/*

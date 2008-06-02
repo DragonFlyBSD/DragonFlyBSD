@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.71 2008/05/22 04:14:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.72 2008/06/02 20:19:03 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -49,6 +49,7 @@
 #include <sys/mountctl.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
+#include <sys/stat.h>
 #include <sys/globaldata.h>
 #include <sys/lockf.h>
 #include <sys/buf.h>
@@ -207,6 +208,7 @@ struct hammer_inode {
 	int			flags;
 	int			error;		/* flush error */
 	int			cursor_ip_refs;	/* sanity */
+	int			rsv_databufs;	/* counts towards hmp */
 	struct vnode		*vp;
 	struct lockf		advlock;
 	struct hammer_lock	lock;		/* sync copy interlock */
@@ -235,7 +237,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define VTOI(vp)	((struct hammer_inode *)(vp)->v_data)
 
 #define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
-#define HAMMER_INODE_UNUSED0002	0x0002
+#define HAMMER_INODE_RSV_INODES	0x0002	/* hmp->rsv_inodes bumped */
 #define HAMMER_INODE_ITIMES	0x0004	/* in-memory mtime/atime modified */
 #define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records */
 #define HAMMER_INODE_ONDISK	0x0010	/* inode is on-disk (else not yet) */
@@ -540,6 +542,10 @@ struct hammer_mount {
 	int	ronly;
 	int	nvolumes;
 	int	volume_iterator;
+	int	rsv_inodes;	/* reserved space due to dirty inodes */
+	int	rsv_databufs;	/* reserved space due to dirty buffers */
+	int	rsv_databytes;	/* reserved space due to record data */
+	int	rsv_recs;	/* reserved space due to dirty records */
 	int	flusher_signal;	/* flusher thread sequencer */
 	int	flusher_act;	/* currently active flush group */
 	int	flusher_done;	/* set to act when complete */
@@ -563,6 +569,8 @@ struct hammer_mount {
 	int	objid_cache_count;
 	hammer_tid_t asof;
 	hammer_off_t next_tid;
+	int64_t copy_stat_freebigblocks;	/* number of free bigblocks */
+
 	u_int32_t namekey_iterator;
 	hammer_off_t zone_limits[HAMMER_MAX_ZONES];
 	struct netexport export;
@@ -632,7 +640,8 @@ int	hammer_ip_lookup(hammer_cursor_t cursor);
 int	hammer_ip_first(hammer_cursor_t cursor);
 int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
-int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_tid_t tid);
+int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
+			hammer_tid_t tid);
 int	hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes);
 int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
 			hammer_inode_t ip);
@@ -683,6 +692,7 @@ enum vtype hammer_get_vnode_type(u_int8_t obj_type);
 int hammer_get_dtype(u_int8_t obj_type);
 u_int8_t hammer_get_obj_type(enum vtype vtype);
 int64_t hammer_directory_namekey(void *name, int len);
+int	hammer_nohistory(hammer_inode_t ip);
 
 int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 			   struct hammer_node **cache, hammer_inode_t ip);
@@ -777,6 +787,7 @@ hammer_off_t hammer_freemap_alloc(hammer_transaction_t trans,
 			hammer_off_t owner, int *errorp);
 void hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 			hammer_off_t owner, int *errorp);
+int hammer_checkspace(hammer_mount_t hmp);
 hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 			int bytes, int *errorp);
 void hammer_blockmap_free(hammer_transaction_t trans,

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.57 2008/06/01 01:33:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.58 2008/06/02 20:19:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -153,6 +153,7 @@ static int hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 			   struct vnode *dvp, struct ucred *cred, int flags);
 static int hammer_vop_strategy_read(struct vop_strategy_args *ap);
 static int hammer_vop_strategy_write(struct vop_strategy_args *ap);
+static void hammer_cleanup_write_io(hammer_inode_t ip);
 
 #if 0
 static
@@ -294,6 +295,9 @@ hammer_vop_write(struct vop_write_args *ap)
 	while (uio->uio_resid > 0) {
 		int fixsize = 0;
 
+		if ((error = hammer_checkspace(trans.hmp)) != 0)
+			break;
+
 		/*
 		 * Do not allow huge writes to deadlock the buffer cache
 		 */
@@ -384,6 +388,11 @@ hammer_vop_write(struct vop_write_args *ap)
 		flags |= HAMMER_INODE_ITIMES | HAMMER_INODE_BUFS;
 		flags |= HAMMER_INODE_DDIRTY;	/* XXX mtime */
 		hammer_modify_inode(&trans, ip, flags);
+
+		if ((bp->b_flags & B_DIRTY) == 0) {
+			++ip->rsv_databufs;
+			++ip->hmp->rsv_databufs;
+		}
 
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
@@ -476,6 +485,8 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
+	if ((error = hammer_checkspace(dip->hmp)) != 0)
+		return (error);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -805,6 +816,8 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 		return (EROFS);
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
+	if ((error = hammer_checkspace(dip->hmp)) != 0)
+		return (error);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -850,6 +863,8 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
+	if ((error = hammer_checkspace(dip->hmp)) != 0)
+		return (error);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -914,6 +929,8 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
+	if ((error = hammer_checkspace(dip->hmp)) != 0)
+		return (error);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -1200,9 +1217,17 @@ int
 hammer_vop_nremove(struct vop_nremove_args *ap)
 {
 	struct hammer_transaction trans;
+	struct hammer_inode *dip;
 	int error;
 
-	hammer_start_transaction(&trans, VTOI(ap->a_dvp)->hmp);
+	dip = VTOI(ap->a_dvp);
+
+	if (hammer_nohistory(dip) == 0 &&
+	    (error = hammer_checkspace(dip->hmp)) != 0) {
+		return (error);
+	}
+
+	hammer_start_transaction(&trans, dip->hmp);
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0);
 	hammer_done_transaction(&trans);
 
@@ -1239,6 +1264,8 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 		return (EROFS);
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
+	if ((error = hammer_checkspace(fdip->hmp)) != 0)
+		return (error);
 
 	hammer_start_transaction(&trans, fdip->hmp);
 
@@ -1344,9 +1371,17 @@ int
 hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 {
 	struct hammer_transaction trans;
+	struct hammer_inode *dip;
 	int error;
 
-	hammer_start_transaction(&trans, VTOI(ap->a_dvp)->hmp);
+	dip = VTOI(ap->a_dvp);
+
+	if (hammer_nohistory(dip) == 0 &&
+	    (error = hammer_checkspace(dip->hmp)) != 0) {
+		return (error);
+	}
+
+	hammer_start_transaction(&trans, dip->hmp);
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0);
 	hammer_done_transaction(&trans);
 
@@ -1377,6 +1412,10 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		return(EROFS);
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
+	if (hammer_nohistory(ip) == 0 &&
+	    (error = hammer_checkspace(ip->hmp)) != 0) {
+		return (error);
+	}
 
 	hammer_start_transaction(&trans, ip->hmp);
 	error = 0;
@@ -1554,6 +1593,8 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
+	if ((error = hammer_checkspace(dip->hmp)) != 0)
+		return (error);
 
 	/*
 	 * Create a transaction to cover the operations we perform.
@@ -1631,9 +1672,17 @@ int
 hammer_vop_nwhiteout(struct vop_nwhiteout_args *ap)
 {
 	struct hammer_transaction trans;
+	struct hammer_inode *dip;
 	int error;
 
-	hammer_start_transaction(&trans, VTOI(ap->a_dvp)->hmp);
+	dip = VTOI(ap->a_dvp);
+
+	if (hammer_nohistory(dip) == 0 &&
+	    (error = hammer_checkspace(dip->hmp)) != 0) {
+		return (error);
+	}
+
+	hammer_start_transaction(&trans, dip->hmp);
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp,
 				ap->a_cred, ap->a_flags);
 	hammer_done_transaction(&trans);
@@ -1892,6 +1941,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 		bp->b_error = EROFS;
 		bp->b_flags |= B_ERROR;
 		biodone(ap->a_bio);
+		hammer_cleanup_write_io(ip);
 		return(EROFS);
 	}
 
@@ -1904,6 +1954,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	if (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) {
 		bp->b_resid = 0;
 		biodone(ap->a_bio);
+		hammer_cleanup_write_io(ip);
 		return(0);
 	}
 
@@ -1962,6 +2013,7 @@ hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip, struct bio *bio)
 		bp->b_resid = 0;
 		biodone(bio);
 		--hammer_bio_count;
+		hammer_cleanup_write_io(ip);
 		return(0);
 	}
 
@@ -2015,7 +2067,17 @@ hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip, struct bio *bio)
 	}
 	biodone(bio);
 	--hammer_bio_count;
+	hammer_cleanup_write_io(ip);
 	return(error);
+}
+
+static void
+hammer_cleanup_write_io(hammer_inode_t ip)
+{
+	if (ip->rsv_databufs) {
+		--ip->rsv_databufs;
+		--ip->hmp->rsv_databufs;
+	}
 }
 
 /*
