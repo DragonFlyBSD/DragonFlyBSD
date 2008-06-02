@@ -32,7 +32,7 @@
  *
  * @(#)stat_flags.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/lib/libc/gen/strtofflags.c,v 1.18.2.1 2000/06/28 01:52:24 joe Exp $
- * $DragonFly: src/lib/libc/gen/strtofflags.c,v 1.4 2005/11/19 22:32:53 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/strtofflags.c,v 1.5 2008/06/02 20:17:07 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -55,9 +55,12 @@ static struct {
 	{ "noarchived",		SF_ARCHIVED,	0 },
 	{ "noschg",		SF_IMMUTABLE,	0 },
 	{ "noschange",		SF_IMMUTABLE,	0 },
+#ifdef SF_NOHISTORY
+	{ "noshistory",		SF_NOHISTORY,	1 },
+#endif
 	{ "nosimmutable",	SF_IMMUTABLE,	0 },
-	{ "nosunlnk",		SF_NOUNLINK,	0 },
-	{ "nosunlink",		SF_NOUNLINK,	0 },
+	{ "nosunlnk",		SF_NOUNLINK,	1 },
+	{ "nosunlink",		SF_NOUNLINK,	1 },
 	{ "nouappnd",		UF_APPEND,	0 },
 	{ "nouappend",		UF_APPEND,	0 },
 	{ "nouchg",		UF_IMMUTABLE,	0 },
@@ -65,8 +68,12 @@ static struct {
 	{ "nouimmutable",	UF_IMMUTABLE,	0 },
 	{ "nodump",		UF_NODUMP,	1 },
 	{ "noopaque",		UF_OPAQUE,	0 },
-	{ "nouunlnk",		UF_NOUNLINK,	0 },
-	{ "nouunlink",		UF_NOUNLINK,	0 }
+#ifdef UF_NOHISTORY
+	{ "nouhistory",		UF_NOHISTORY,	1 },
+	{ "nohistory",		UF_NOHISTORY,	1 },
+#endif
+	{ "nouunlnk",		UF_NOUNLINK,	1 },
+	{ "nouunlink",		UF_NOUNLINK,	1 }
 };
 #define longestflaglen	12
 #define nmappings	(sizeof(mapping) / sizeof(mapping[0]))
