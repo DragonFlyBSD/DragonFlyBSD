@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/statvfs.h,v 1.9 2008/06/02 06:42:45 hasso Exp $
+ * $DragonFly: src/sys/sys/statvfs.h,v 1.10 2008/06/02 16:55:08 dillon Exp $
  */
 
 #ifndef _SYS_STATVFS_H_
@@ -41,6 +41,7 @@
 #include <sys/uuid.h>
 
 struct fhandle;
+struct statfs;
 
 /*
  * The POSIX 1003.1 standard uses free and available nomenclature to mean the
