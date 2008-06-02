@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/vknetd/vknetd.c,v 1.1 2008/05/27 01:58:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/vknetd/vknetd.c,v 1.2 2008/06/02 20:03:22 dillon Exp $
  */
 /*
  * vknet [-p path] [-t tapdev] network/mask
@@ -470,5 +470,6 @@ usage(void)
 {
 	fprintf(stderr, "vknet [-p path] [-t tapdev] [-U] [network/bits]\n");
 	fprintf(stderr, "network must be specified in default secure mode\n");
+	exit(1);
 }
 
