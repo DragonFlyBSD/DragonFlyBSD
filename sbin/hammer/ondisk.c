@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.20 2008/06/01 20:59:28 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.21 2008/06/02 16:57:53 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -481,6 +481,8 @@ initialize_freemap(struct volume_info *vol)
 /*
  * Allocate big-blocks using our poor-man's volume->vol_free_off and
  * update the freemap if owner != 0.
+ *
+ * An owner of 0 is used for bootstrapping the freemap.
  */
 hammer_off_t
 alloc_bigblock(struct volume_info *volume, hammer_off_t owner)
@@ -524,6 +526,9 @@ alloc_bigblock(struct volume_info *volume, hammer_off_t owner)
 		layer2->u.owner = owner;
 		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 		buffer->cache.modified = 1;
+
+		--root_vol->ondisk->vol0_stat_freebigblocks;
+		root_vol->cache.modified = 1;
 
 		rel_buffer(buffer);
 		rel_volume(root_vol);
