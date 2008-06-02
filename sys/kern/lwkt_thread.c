@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.114 2008/05/26 17:11:09 nth Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.115 2008/06/02 16:54:21 dillon Exp $
  */
 
 /*
@@ -249,15 +249,28 @@ lwkt_gdinit(struct globaldata *gd)
 thread_t
 lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 {
+    globaldata_t gd = mycpu;
     void *stack;
 
+    /*
+     * If static thread storage is not supplied allocate a thread.  Reuse
+     * a cached free thread if possible.  gd_freetd is used to keep an exiting
+     * thread intact through the exit.
+     */
     if (td == NULL) {
-    	td = objcache_get(thread_cache, M_WAITOK);
+	if ((td = gd->gd_freetd) != NULL)
+	    gd->gd_freetd = NULL;
+	else
+	    td = objcache_get(thread_cache, M_WAITOK);
     	KASSERT((td->td_flags &
 		 (TDF_ALLOCATED_THREAD|TDF_RUNNING)) == TDF_ALLOCATED_THREAD,
 		("lwkt_alloc_thread: corrupted td flags 0x%X", td->td_flags));
     	flags |= td->td_flags & (TDF_ALLOCATED_THREAD|TDF_ALLOCATED_STACK);
     }
+
+    /*
+     * Try to reuse cached stack.
+     */
     if ((stack = td->td_kstack) != NULL && td->td_kstack_size != stksize) {
 	if (flags & TDF_ALLOCATED_STACK) {
 	    kmem_free(&kernel_map, (vm_offset_t)stack, td->td_kstack_size);
@@ -269,7 +282,7 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 	flags |= TDF_ALLOCATED_STACK;
     }
     if (cpu < 0)
-	lwkt_init_thread(td, stack, stksize, flags, mycpu);
+	lwkt_init_thread(td, stack, stksize, flags, gd);
     else
 	lwkt_init_thread(td, stack, stksize, flags, globaldata_find(cpu));
     return(td);
@@ -1276,18 +1289,30 @@ void
 lwkt_exit(void)
 {
     thread_t td = curthread;
+    thread_t std;
     globaldata_t gd;
 
     if (td->td_flags & TDF_VERBOSE)
 	kprintf("kthread %p %s has exited\n", td, td->td_comm);
     caps_exit(td);
-    crit_enter_quick(td);
-    lwkt_deschedule_self(td);
+
+    /*
+     * Get us into a critical section to interlock gd_freetd and loop
+     * until we can get it freed.
+     *
+     * We have to cache the current td in gd_freetd because objcache_put()ing
+     * it would rip it out from under us while our thread is still active.
+     */
     gd = mycpu;
-    lwkt_remove_tdallq(td);
-    if (td->td_flags & TDF_ALLOCATED_THREAD) {
-	objcache_put(thread_cache, td);
+    crit_enter_quick(td);
+    while ((std = gd->gd_freetd) != NULL) {
+	gd->gd_freetd = NULL;
+	objcache_put(thread_cache, std);
     }
+    lwkt_deschedule_self(td);
+    lwkt_remove_tdallq(td);
+    if (td->td_flags & TDF_ALLOCATED_THREAD)
+	gd->gd_freetd = td;
     cpu_thread_exit();
 }
 

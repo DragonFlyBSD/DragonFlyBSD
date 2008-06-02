@@ -55,7 +55,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.48 2008/05/26 17:11:09 nth Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.49 2008/06/02 16:54:20 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -125,7 +125,7 @@ struct pipe;
 struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
 	struct thread	*gd_curthread;
-	int		gd_unused00;
+	struct thread	*gd_freetd;		/* cache one free td */
 	__uint32_t	gd_reqflags;		/* (see note above) */
 	void		*gd_unused00B;
 	lwkt_queue	gd_tdallq;		/* all threads */
