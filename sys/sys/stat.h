@@ -33,7 +33,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.12 2007/11/02 19:52:24 dillon Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.13 2008/06/02 20:13:37 dillon Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -178,6 +178,8 @@ struct stat {
 #define	UF_APPEND	0x00000004	/* writes to file may only append */
 #define UF_OPAQUE	0x00000008	/* directory is opaque wrt. union */
 #define UF_NOUNLINK	0x00000010	/* file may not be removed or renamed */
+#define UF_FBSDRSVD20	0x00000020	/* (unused) */
+#define UF_NOHISTORY	0x00000040	/* do not retain history/snapshots */
 /*
  * Super-user changeable flags.
  */
@@ -186,6 +188,8 @@ struct stat {
 #define	SF_IMMUTABLE	0x00020000	/* file may not be changed */
 #define	SF_APPEND	0x00040000	/* writes to file may only append */
 #define	SF_NOUNLINK	0x00100000	/* file may not be removed or renamed */
+#define SF_FBSDRSVD20	0x00200000	/* (used by FreeBSD for snapshots) */
+#define SF_NOHISTORY	0x00400000	/* do not retain history/snapshots */
 
 #ifdef _KERNEL
 /*
