@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.43 2008/06/01 20:44:45 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.44 2008/06/02 06:42:45 hasso Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -606,7 +606,6 @@ __BEGIN_DECLS
 int	fstatfs (int, struct statfs *);
 int	getfh (const char *, fhandle_t *);
 int	getfsstat (struct statfs *, long, int);
-int     getvfsstat (struct statfs * __restrict, struct statvfs * __restrict, lon
 int	getmntinfo (struct statfs **, int);
 int	getmntvinfo (struct statfs **, struct statvfs **, int);
 int	mount (const char *, const char *, int, void *);
