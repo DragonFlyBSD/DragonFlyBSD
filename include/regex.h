@@ -35,13 +35,14 @@
  * SUCH DAMAGE.
  *
  *	@(#)regex.h	8.2 (Berkeley) 1/3/94
- * $DragonFly: src/include/regex.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/regex.h,v 1.3 2008/06/02 06:50:08 hasso Exp $
  */
 
 #ifndef _REGEX_H_
 #define	_REGEX_H_
 
 #include <sys/cdefs.h>
+#include <sys/types.h>
 
 /* types */
 typedef off_t regoff_t;
